@@ -76,6 +76,48 @@ grep -rl "firebase-admin\|private_key" dist/ && echo "FUGA" || echo "limpio"
 curl -sL -o /dev/null -w "%{http_code}\n" https://agenda-literaria.web.app/admin
 ```
 
+### Qué versión está publicada
+
+La versión se estampa en el build: `package.json` + SHA corto del commit
+(D-36). Se ve en tres lugares:
+
+```bash
+# 1. Local, antes de deployar (lo mismo que va a quedar en dist/)
+node -e "import('./scripts/version.mjs').then(m => console.log(m.infoVersion().version))"
+
+# 2. Lo que quedó en el build
+cat dist/version.json
+
+# 3. Lo que está publicado, y con qué cabeceras se sirve
+curl -s https://agenda-literaria.web.app/version.json
+curl -sI https://agenda-literaria.web.app/version.json | grep -i cache-control
+```
+
+Un `+…-sucio.…` en la versión avisa que se buildeó con cambios sin commitear:
+lo publicado no corresponde exactamente a ningún commit.
+
+**Los paneles abiertos se enteran solos.** Al volver a la pestaña (o cada 15
+minutos si está a la vista) el panel compara su versión contra `/version.json` y
+recarga. Si alguien está a mitad de un formulario, en vez de recargar le muestra
+un aviso para que guarde primero. No hay que avisarle a nadie después de un
+deploy.
+
+**Después de tocar las cabeceras de cache, verificarlas contra el sitio real** —
+son la mitad del mecanismo (D-38):
+
+```bash
+for RUTA in / /admin /version.json; do
+  echo -n "$RUTA -> "
+  curl -sI "https://agenda-literaria.web.app$RUTA" | grep -i "^cache-control" || echo "(sin cabecera)"
+done
+# y un asset con hash, que tiene que decir immutable
+curl -sI "https://agenda-literaria.web.app/_astro/$(ls dist/_astro | grep '\.js$' | head -1)" \
+  | grep -i "^cache-control"
+```
+
+Esperado: `no-cache` en `/` y `/admin`, `no-store` en `/version.json`,
+`max-age=31536000, immutable` en `/_astro/*`.
+
 ### Reglas de Firestore
 
 ```bash
@@ -187,6 +229,8 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | `evaluation error` en vez de `permission-denied` en el emulador | `resource` no está cargado en la primera pasada del evaluador | cosmético, ignorar (D-04) |
 | El panel dice "sin permisos" con la cuenta correcta | el claim entra al token en el próximo login | salir y volver a entrar |
 | Un `grep` sobre el ICS no encuentra algo que sí está | el formato ICS parte las líneas largas | desdoblar (`'\r\n '` → `''`) antes de buscar |
+| El panel muestra "hay una versión nueva" y recargar no la trae | algo entre el navegador y Hosting está ignorando el `no-cache` del HTML | cerrar y reabrir la pestaña; si persiste, revisar las cabeceras con los `curl` de arriba |
+| El panel se recarga solo en medio de la carga de una actividad | no debería: con cambios sin guardar solo avisa | es un bug — reportarlo con la versión que muestra el aviso |
 | El formulario hace zoom en iPhone al enfocar un campo | un input con menos de 16px | ya resuelto en `global.css`; no bajar el tamaño de los campos en mobile |
 
 ## Costos

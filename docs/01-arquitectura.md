@@ -96,17 +96,21 @@ src/
     opciones.ts             taxonomías autogestionadas (§4)
     opciones-base.json      opciones fijas, compartidas con los scripts
     toPublic.ts             proyección pública (§5.2)
+    version.ts              versión del bundle y decisión de recargar
+    formulario-sucio.ts     ¿hay cambios sin guardar? store de módulo
     firebase-client.ts      auth y Firestore del panel
     firebase-admin.ts       SOLO build time (§5.4)
   components/admin/         el panel entero
   layouts/Base.astro        head, fuentes, viewport
   pages/
     admin.astro             island client:only
+    version.json.ts         /version.json — qué versión está publicada
     index.astro             placeholder del sitio público
 functions/
   calendario.js             diff y armado del evento — lógica pura
   index.js                  triggers de Firestore y schedule del rebuild
 scripts/
+  version.mjs               versión del build: package.json + SHA de git
   seed-emulador.mjs         siembra /opciones/* en el emulador
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador

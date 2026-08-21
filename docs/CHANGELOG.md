@@ -9,6 +9,32 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### La app tiene versión, y el panel abierto se actualiza solo
+
+El panel es una SPA estática: alguien puede tener `/admin` abierto durante días
+con el JS de una versión anterior, reportar un bug ya arreglado o seguir usando
+uno que ya se corrigió.
+
+Ahora el build estampa una versión (`0.1.0+a1b2c3d` — `package.json` + SHA del
+commit, D-36), la publica en `/version.json` sin cachear, y el panel la compara
+al abrirse, al volver a la pestaña y cada 15 minutos.
+
+Si no coincide y no hay nada en juego, recarga sola. Si el formulario tiene
+cambios sin guardar **no recarga**: muestra un aviso fijo arriba, sin botón de
+cerrar, y espera a que la persona guarde — son 30+ campos y varios minutos de
+trabajo, perderlos es peor que tener el JS viejo (D-37). Al guardar, la recarga
+ocurre sola.
+
+Lo que hace que todo esto sirva son las cabeceras de cache, ahora explícitas en
+`firebase.json` (D-38): el HTML y `/version.json` no se cachean, y
+`dist/_astro/*` —que lleva hash en el nombre— se cachea un año como `immutable`.
+Con el HTML cacheado, recargar volvía a pedir los mismos assets viejos y la
+detección no servía para nada. `location.reload()` no puede saltear el cache; las
+cabeceras son la otra mitad del mecanismo.
+
+La versión se exporta desde `src/lib/version.ts` (`VERSION_APP`, `INFO_VERSION`)
+para que la use quien la necesite — un reporte de bug, por ejemplo.
+
 ### `arancel` vuelve a obligar a elegir
 
 D-12 había dejado un riesgo abierto: al preseleccionar la primera opción en

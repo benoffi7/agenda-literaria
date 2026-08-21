@@ -10,6 +10,7 @@ import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
 import { TagsInput } from '@/components/admin/campos/TagsInput';
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
+import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { actualizarActividad, crearActividad, documentoAForm, slugDisponible } from '@/lib/actividades';
 import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import { actividadFormSchema } from '@/lib/schema';
@@ -69,6 +70,8 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
+
+  useFormularioSucio(form);
 
   /**
    * Etiquetas creadas con "Otro" que todavía no están en `/opciones/*`.

@@ -79,6 +79,18 @@ Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
 
 Rewrite de `/admin/**` a `/admin/index.html` para el router propio de la SPA.
 
+**Cabeceras de cache declaradas en `firebase.json`** (D-38), no el default:
+
+| Recurso | `Cache-Control` |
+|---|---|
+| `/_astro/**` (assets con hash) | `public, max-age=31536000, immutable` |
+| `/version.json` | `no-store, max-age=0` |
+| `**/*.html`, `/`, `/admin`, `/admin/**` | `no-cache` |
+
+Es lo que hace que un panel abierto pueda actualizarse: con el HTML cacheado,
+recargar vuelve a pedir los mismos assets viejos. Verificarlas después de cada
+deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
+
 ## Cloud Functions (v2)
 
 Ambas en `southamerica-east1`, Node 22, `maxInstances: 5`.

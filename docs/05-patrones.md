@@ -99,6 +99,41 @@ Los condicionales del §11 van en `superRefine`, no en el tipo:
 
 Los errores se mapean por `path.join('.')` y se muestran al lado de su campo.
 
+## Estado compartido fuera del árbol: store de módulo
+
+Cuando dos partes del panel que no se conocen necesitan compartir un dato
+chico, va un módulo con una variable y suscriptores, no un contexto de React.
+
+```ts
+// src/lib/formulario-sucio.ts
+let sucio = false;
+const oyentes = new Set<() => void>();
+
+export const hayCambiosSinGuardar = () => sucio;
+export const marcarCambiosSinGuardar = (v: boolean) => { … };
+export const observarCambiosSinGuardar = (o: () => void) => { … };
+```
+
+El aviso de versión nueva necesita saber si el formulario tiene cambios sin
+guardar, y vive fuera de su árbol. Con props había que cablear `AdminApp` →
+vista → formulario; con contexto, envolver el árbol entero para un booleano.
+Así el formulario **toca una línea** (`useFormularioSucio(form)`) y nada en el
+medio se enteró.
+
+Aplica a estado de UI de una sola pestaña que no se persiste. Si el dato tiene
+que sobrevivir a la pestaña o viajar a Firestore, no es esto.
+
+## Lo que el build sabe y el cliente no: variables `PUBLIC_*`
+
+La versión de la app la calcula un script de build (`scripts/version.mjs`) y
+`astro.config.mjs` la deja en `process.env.PUBLIC_VERSION_APP`. Desde ahí la
+leen por igual el bundle del cliente y el endpoint que genera
+`/version.json`, con `import.meta.env` — el mismo mecanismo que ya usa la config
+del SDK web.
+
+Dos fuentes para el mismo dato es lo que hay que evitar: si el bundle dijera una
+versión y `/version.json` otra, el panel se recargaría en loop.
+
 ## Ids generados en el cliente, nunca por índice
 
 Cualquier array editable cuyos elementos se sincronicen con un sistema externo
