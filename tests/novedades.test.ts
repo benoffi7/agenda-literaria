@@ -129,9 +129,11 @@ describe('la lista publicada', () => {
     }
   });
 
-  it('la primera entrada cuenta que existe la ayuda', () => {
-    // Es la única novedad que se explica a sí misma: si esa entrada no fuera la
-    // primera, nadie se enteraría de que hay una guía.
-    expect(NOVEDADES[0]?.id).toBe('ayuda-y-novedades');
+  it('la entrada que cuenta que existe la ayuda no se borra nunca', () => {
+    // Es la única novedad que se explica a sí misma: quien abre la lista por
+    // primera vez se entera ahí de que hay una guía. La versión anterior de
+    // este test exigía que fuera la PRIMERA, y eso se rompe con cada novedad
+    // nueva sin que haya nada mal. Lo que importa es que siga estando.
+    expect(NOVEDADES.map((n) => n.id)).toContain('ayuda-y-novedades');
   });
 });

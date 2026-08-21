@@ -49,6 +49,52 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'medicion-del-uso',
+    fecha: '2026-08-21',
+    version: '1.0.0',
+    titulo: 'El panel mide cómo se usa, para encontrar lo que molesta',
+    detalle:
+      'Queda registrado en qué pantalla se trabaja, qué campos dan error al guardar y cuánto ' +
+      'tarda una carga. Es para descubrir qué está mal hecho antes de que alguien se enoje. ' +
+      'No se guarda nada de lo que escribís, ni tu mail, ni quién sos: solo qué campo falló y ' +
+      'cuántas veces. Te lo contamos porque corresponde, no porque haga falta tu permiso ' +
+      'técnico.',
+    donde: 'No se ve en ninguna pantalla: pasa de fondo.',
+  },
+  {
+    id: 'reportar-desde-el-panel',
+    fecha: '2026-08-21',
+    version: '1.0.0',
+    titulo: 'Podés reportar un problema o pedir algo sin salir del panel',
+    detalle:
+      'Cargás el problema y llega directo a la lista de pendientes del proyecto. Queda con la ' +
+      'versión del panel que estabas usando, así se puede reproducir. Ojo: por ahora la ' +
+      'respuesta no vuelve al panel, así que si es urgente, avisá también por otro lado.',
+    donde: 'Botón «Reportar algo», arriba a la derecha.',
+  },
+  {
+    id: 'historial-de-cambios',
+    fecha: '2026-08-21',
+    version: '1.0.0',
+    titulo: 'Si pisás una descripción larga, ya no se pierde',
+    detalle:
+      'Cada vez que se edita una actividad se guarda cómo estaba antes. Se conservan las ' +
+      'últimas veinte. Todavía no hay pantalla para verlas, así que si necesitás recuperar ' +
+      'algo, pedilo: el dato está guardado.',
+    donde: 'No se ve en ninguna pantalla todavía.',
+  },
+  {
+    id: 'etiquetas-a-revisar',
+    fecha: '2026-08-21',
+    version: '1.0.0',
+    titulo: 'Una etiqueta nueva que creás no le aparece a la otra persona hasta revisarla',
+    detalle:
+      'Cuando usás «Otro…» para agregar un barrio, un arancel o un tag, lo podés usar enseguida ' +
+      'y queda marcado «(sin aprobar)». La otra cuenta no lo ve en su desplegable hasta que se ' +
+      'revise. Es para que la lista no se llene de variantes de lo mismo escritas distinto.',
+    donde: 'En cualquier desplegable con la opción «Otro…».',
+  },
+  {
     id: 'ayuda-y-novedades',
     fecha: '2026-08-21',
     titulo: 'Hay una guía del panel adentro del panel, y esta lista de novedades',

@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.0.0 — 2026-08-21
+
+Primera versión etiquetada. Cierra los pasos 1, 2, 4 y 5 del orden de
+implementación del §10: modelo y reglas, panel de carga, sync a Google Calendar
+y trigger de rebuild. **Falta el paso 3, el sitio público**, que es la razón de
+ser del proyecto.
+
+Qué hay funcionando:
+
+- **Panel de carga** en `/admin`, con el formulario completo del §11 —
+  condicional por tipo, editor de sesiones, taxonomías autogestionadas,
+  material— usable desde un teléfono.
+- **Sync a Google Calendar** con el diff por id de sesión del §7.2, verificado
+  contra el calendario real.
+- **Duplicar** una actividad, **vista previa** del evento antes de publicar y
+  **coordenadas** de la sede pegando un link de Maps.
+- **Historial de versiones** de cada actividad (§12): pisar una descripción
+  larga ya no la pierde.
+- **Reportes** de bugs y sugerencias del panel a issues de GitHub.
+- **Versionado del panel** con recarga al publicar una versión nueva, y
+  **analítica** de fricciones sin mandar contenido a ningún tercero.
+- **Ayuda dentro del panel** y lista de novedades para la segunda cuenta.
+- **460 tests.** La carga inicial del panel bajó de 766 a 380 kB.
+
+Lo que todavía no está desplegado y necesita trabajo manual del dueño está en
+[`08-operacion.md`](08-operacion.md): el PAT de GitHub para `dispararRebuild` y
+`reporteAIssue`, y el secret de deploy para GitHub Actions.
+
+
 Todo cambio de código entra acá. Lo más nuevo arriba.
 
 Formato: qué cambió, y cuando importa, **por qué**. Las decisiones de fondo
