@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# Decide qué hay que deployar a partir de la lista de archivos que cambiaron.
+# Lee la lista por stdin (una ruta por línea) y escribe tres líneas:
+#
+#   hosting=true|false
+#   functions=true|false
+#   firestore=true|false
+#
+# Vive en un script y no dentro del workflow para poder testearlo:
+# `tests/que-deployar.test.ts` le pasa listas de archivos y verifica la
+# decisión. Un `if` en YAML no se puede probar hasta que ya deployó mal.
+#
+#   git diff --name-only A B | ./scripts/que-deployar.sh
+set -euo pipefail
+
+CAMBIOS=$(cat)
+
+if [ -z "$CAMBIOS" ]; then
+  printf 'hosting=false\nfunctions=false\nfirestore=false\n'
+  exit 0
+fi
+
+# ── Functions y reglas: lista blanca ──────────────────────────────
+# Se puede porque son autocontenidos: `functions/` no importa nada de `src/`, y
+# las reglas y los índices son archivos sueltos. Acá una lista blanca no puede
+# quedarse corta.
+FUNCTIONS=false
+FIRESTORE=false
+# `firebase.json` define la config de las Functions además de las cabeceras.
+printf '%s\n' "$CAMBIOS" | grep -qE '^functions/|^firebase\.json$' && FUNCTIONS=true
+printf '%s\n' "$CAMBIOS" | grep -qE '^firestore\.(rules|indexes\.json)$' && FIRESTORE=true
+
+# ── Hosting: lista NEGRA, a propósito ─────────────────────────────
+# El bundle del panel depende de cosas que están fuera de `src/`: hoy
+# `functions/calendario.js` entra por el alias `@calendario`, y mañana puede ser
+# otra. Una lista blanca de rutas se pierde ese caso EN SILENCIO — el build
+# sigue verde y producción queda con el panel viejo.
+#
+# Así que se invierte: hosting se deploya SIEMPRE salvo que todo lo que cambió
+# sea provablemente incapaz de afectarlo. Un archivo nuevo y desconocido cae del
+# lado de deployar, que es el error barato.
+# `firestore.*` y `.firebaserc` son config del servidor: no los importa nadie,
+# así que no pueden entrar al bundle. Tienen su propia decisión más arriba.
+NO_AFECTAN='^docs/|^tests/|^\.github/|\.md$|^\.gitignore$|^firestore\.(rules|indexes\.json)$|^\.firebaserc$|^scripts/(seed-emulador|preparar-produccion|set-admin-claim|aprobar-opciones|que-deployar|verificar-bundle)\.(mjs|sh)$'
+
+RELEVANTES=$(
+  printf '%s\n' "$CAMBIOS" \
+    | grep -vE "$NO_AFECTAN" \
+    | awk '!/^functions\// || /^functions\/calendario\.js$/' \
+    | grep -v '^$' || true
+)
+
+HOSTING=false
+[ -n "$RELEVANTES" ] && HOSTING=true
+
+printf 'hosting=%s\nfunctions=%s\nfirestore=%s\n' "$HOSTING" "$FUNCTIONS" "$FIRESTORE"

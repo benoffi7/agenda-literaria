@@ -21,8 +21,11 @@ export default defineConfig({
       PUBLIC_FIREBASE_AUTH_DOMAIN: 'agenda-literaria.firebaseapp.com',
       PUBLIC_FIREBASE_APP_ID: '1:1038157194972:web:fake',
       PUBLIC_USE_EMULATORS: 'true',
-      FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
-      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
+      // Se respeta el valor del entorno si viene: permite apuntar los tests a
+      // otro emulador, y sin esto no se puede verificar el guard de
+      // EXIGIR_EMULADOR (el config pisaba la variable del shell).
+      FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080',
+      FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099',
     },
     // El emulador es estado compartido: los archivos no pueden pisarse entre sí.
     fileParallelism: false,

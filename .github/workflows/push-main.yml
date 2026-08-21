@@ -1,0 +1,244 @@
+# Deploy de código: un push a main publica lo que haga falta y nada más.
+#
+# Es distinto de `deploy.yml`, que es el deploy de DATOS (§8): ese lo dispara la
+# Function cuando cambia una actividad y solo republica el sitio. Este se
+# dispara por código y puede tocar Hosting, las reglas de Firestore y las
+# Functions.
+#
+# El gate son los tests. Si algo falla no se deploya nada: es preferible dejar
+# producción como está que publicar algo roto.
+name: Deploy desde main
+
+on:
+  push:
+    branches: [main]
+    # Los tags los crea este mismo workflow; sin esto, crear el tag dispararía
+    # otra corrida que no aporta nada.
+    tags-ignore: ['**']
+  workflow_dispatch:
+    inputs:
+      forzar_todo:
+        description: 'Deployar todo sin mirar qué cambió'
+        type: boolean
+        default: false
+
+# Un deploy de código a la vez, y NO se cancela a mitad de camino. A diferencia
+# del rebuild de datos —donde un build superseded no aporta nada— acá cancelar
+# puede dejar las Functions a medio desplegar.
+concurrency:
+  group: deploy-codigo-produccion
+  cancel-in-progress: false
+
+permissions:
+  # Para crear el tag cuando cambia la versión.
+  contents: write
+
+jobs:
+  # ───────────────────────────────────────────────────────────────
+  # Qué hay que deployar. Se decide una vez y lo usan los tres jobs.
+  # ───────────────────────────────────────────────────────────────
+  decidir:
+    name: Qué deployar
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      hosting: ${{ steps.q.outputs.hosting }}
+      functions: ${{ steps.q.outputs.functions }}
+      firestore: ${{ steps.q.outputs.firestore }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Hacen falta los dos commits para poder diffear.
+          fetch-depth: 0
+
+      - name: Qué archivos cambiaron
+        id: q
+        env:
+          ANTES: ${{ github.event.before }}
+          FORZAR: ${{ inputs.forzar_todo }}
+        run: |
+          set -euo pipefail
+
+          if [ "${FORZAR:-false}" = "true" ]; then
+            printf 'hosting=true\nfunctions=true\nfirestore=true\n' >> "$GITHUB_OUTPUT"
+            echo "::notice::se deploya todo (pedido manual)"; exit 0
+          fi
+
+          # Primer push, force-push, o `before` inaccesible: no se puede saber
+          # qué cambió, así que se deploya todo. Falla hacia el lado de
+          # deployar: quedarse corto deja producción con código viejo en
+          # silencio, que es peor que un deploy de más.
+          if [ -z "${ANTES:-}" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$ANTES^{commit}" 2>/dev/null; then
+            printf 'hosting=true\nfunctions=true\nfirestore=true\n' >> "$GITHUB_OUTPUT"
+            echo "::notice::se deploya todo (no se puede diffear contra el commit anterior)"; exit 0
+          fi
+
+          CAMBIOS=$(git diff --name-only "$ANTES" "${{ github.sha }}")
+          echo "Archivos cambiados:"; printf '%s\n' "$CAMBIOS" | sed 's/^/  /'
+
+          # La decisión vive en un script para poder testearla:
+          # tests/que-deployar.test.ts le pasa listas de archivos y verifica el
+          # resultado. Un `if` en YAML no se puede probar hasta que ya deployó
+          # mal.
+          DECISION=$(printf '%s\n' "$CAMBIOS" | ./scripts/que-deployar.sh)
+          printf '%s\n' "$DECISION" | tee -a "$GITHUB_OUTPUT"
+          echo "::notice::$(printf '%s' "$DECISION" | tr '\n' ' ')"
+
+  # ───────────────────────────────────────────────────────────────
+  # El gate. Corre siempre, incluso si no hay nada que deployar.
+  # ───────────────────────────────────────────────────────────────
+  verificar:
+    name: Tests y typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+
+      # Los emuladores de Firebase necesitan JDK 21+.
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+
+      - run: npm ci
+
+      - name: Preparar tipos de Astro
+        # `tsc` necesita `.astro/types.d.ts`, que lo genera este comando.
+        run: npx astro sync
+
+      - run: npx tsc --noEmit
+
+      - name: Tests, con emuladores
+        # `EXIGIR_EMULADOR=1` hace que los tests de integración FALLEN en vez de
+        # saltearse si el emulador no responde. Sin eso, `npm test` en un runner
+        # sin emuladores da verde salteando 33 tests en silencio, y un cambio a
+        # `firestore.rules` se deployaría sin que nadie las pruebe — que es
+        # exactamente lo que este workflow habilita.
+        env:
+          EXIGIR_EMULADOR: '1'
+        run: |
+          npx firebase emulators:exec --only auth,firestore \
+            --project agenda-literaria 'npm test'
+
+  # ───────────────────────────────────────────────────────────────
+  # Reglas primero: si el panel nuevo escribe campos que las reglas viejas
+  # rechazan, el orden inverso deja una ventana de escrituras fallidas.
+  # ───────────────────────────────────────────────────────────────
+  firestore:
+    name: Reglas e índices
+    needs: [decidir, verificar]
+    if: needs.decidir.outputs.firestore == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
+          npx firebase deploy --only firestore:rules,firestore:indexes \
+            --project agenda-literaria --non-interactive
+          rm -f /tmp/sa.json
+
+  hosting:
+    name: Sitio y panel
+    needs: [decidir, verificar, firestore]
+    # `always()` porque `firestore` se saltea cuando no cambiaron las reglas, y
+    # un job salteado haría que este también se saltee.
+    if: |
+      always() && needs.decidir.outputs.hosting == 'true'
+      && needs.verificar.result == 'success'
+      && needs.firestore.result != 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # La versión del panel lleva el SHA corto del commit: sin el historial
+          # el script no puede leerlo y el build queda sellado como "sin-git".
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Verificar que la credencial no se filtró
+        run: ./scripts/verificar-bundle.sh dist
+
+      - name: Que la versión del build sea la del commit
+        # Si el árbol del runner quedara sucio, la versión saldría sellada como
+        # "-sucio" y el panel se recargaría solo sin motivo.
+        run: |
+          V=$(node -p "require('./dist/version.json').version")
+          echo "versión publicada: $V"
+          case "$V" in
+            *-sucio*|*sin-git*)
+              echo "::error::la versión quedó como «$V»: el build no salió de un commit limpio"
+              exit 1;;
+          esac
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: agenda-literaria
+          channelId: live
+
+  functions:
+    name: Cloud Functions
+    needs: [decidir, verificar, hosting]
+    if: |
+      always() && needs.decidir.outputs.functions == 'true'
+      && needs.verificar.result == 'success'
+      && needs.hosting.result != 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - run: npm ci
+        working-directory: functions
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
+          npx firebase deploy --only functions --project agenda-literaria --non-interactive
+          rm -f /tmp/sa.json
+
+  # ───────────────────────────────────────────────────────────────
+  # El tag: solo cuando cambia `version` en package.json, o sea cuando una
+  # persona decidió que esto es una versión. No uno por commit.
+  # ───────────────────────────────────────────────────────────────
+  etiquetar:
+    name: Tag de versión
+    needs: [verificar, hosting, functions, firestore]
+    if: always() && needs.verificar.result == 'success' && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Crear el tag si la versión es nueva
+        run: |
+          set -euo pipefail
+          V="v$(node -p "require('./package.json').version")"
+          if git rev-parse -q --verify "refs/tags/$V" >/dev/null; then
+            echo "::notice::$V ya existe, no se toca"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$V" -m "Versión ${V#v} — desplegada desde ${{ github.sha }}"
+          git push origin "$V"
+          echo "::notice::tag $V creado"

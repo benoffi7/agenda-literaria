@@ -93,7 +93,44 @@ diferencia real es `PUBLIC_USE_EMULATORS`.
 **No crear un `.env` sin sufijo:** se carga en los dos modos y pisa a los otros
 dos. Está en el `.gitignore` a propósito.
 
-## Deployar
+## Deploy automático desde main
+
+Un push a `main` deploya lo que haga falta y nada más
+(`.github/workflows/push-main.yml`).
+
+**El gate son los tests.** Si `tsc`, la suite o el build fallan, no se deploya
+nada. La suite corre **con los emuladores** (`EXIGIR_EMULADOR=1`), así que un
+cambio a `firestore.rules` se prueba antes de publicarse; sin ese flag los 33
+tests de integración se saltearían en silencio y "verde" no distinguiría entre
+*las reglas pasaron* y *las reglas no se probaron*.
+
+**Qué se deploya** lo decide `scripts/que-deployar.sh`, testeado en
+`tests/que-deployar.test.ts`:
+
+| | Criterio |
+|---|---|
+| Reglas e índices | cambió `firestore.rules` o `firestore.indexes.json` |
+| Functions | cambió algo en `functions/` o `firebase.json` |
+| Hosting | **lista negra**: se deploya salvo que todo lo que cambió sea provablemente incapaz de afectar el bundle |
+
+La lista negra del hosting es a propósito. El bundle del panel depende de cosas
+fuera de `src/` —hoy `functions/calendario.js` por el alias `@calendario`— y una
+lista blanca de rutas se pierde ese caso **en silencio**: el build queda verde y
+producción se queda con el panel viejo. Con lista negra, un archivo nuevo y
+desconocido cae del lado de deployar, que es el error barato.
+
+**Orden:** reglas → hosting → functions. Las reglas primero porque si el panel
+nuevo escribe campos que las reglas viejas rechazan, el orden inverso deja una
+ventana de escrituras fallidas.
+
+**El tag** lo crea el workflow cuando cambia `version` en `package.json`, no en
+cada commit: aparece cuando una persona decidió que eso es una versión. Es
+idempotente.
+
+Para deployar todo sin mirar el diff: Actions → «Deploy desde main» → Run
+workflow → *Deployar todo*.
+
+### Deploy a mano
 
 ### Sitio y panel
 
