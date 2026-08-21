@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { claseInput } from '@/components/admin/campos/Campo';
+import {
+  claseBotonFila,
+  claseBotonPrimario,
+  claseBotonSecundario,
+  claseInput,
+} from '@/components/admin/campos/Campo';
 import { borrarActividad, listarActividades } from '@/lib/actividades';
 import { normalize } from '@/lib/normalize';
 import type { ActividadConId } from '@/types/actividad';
@@ -51,9 +56,10 @@ export function ListaActividades({ onEditar, onNueva, version }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
-          className={`${claseInput} max-w-xs`}
+          type="search"
+          className={`${claseInput} sm:max-w-xs`}
           placeholder="Buscar…"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -61,7 +67,7 @@ export function ListaActividades({ onEditar, onNueva, version }: Props) {
         <button
           type="button"
           onClick={onNueva}
-          className="ml-auto rounded-md bg-acento px-4 py-2 text-sm text-white"
+          className={`${claseBotonPrimario} w-full sm:ml-auto sm:w-auto`}
         >
           + Nueva actividad
         </button>
@@ -84,35 +90,40 @@ export function ListaActividades({ onEditar, onNueva, version }: Props) {
         {filtradas.map((a) => (
           <li
             key={a.id}
-            className="flex flex-wrap items-center gap-3 rounded-md border border-borde bg-white px-3 py-2.5"
+            className="rounded-md border border-borde bg-white px-3 py-2.5 sm:flex sm:items-center sm:gap-3"
           >
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-serif font-semibold">{a.titulo}</p>
-              <p className="text-xs text-tinta/55">
-                {a.tipo} · {a.sesiones?.length ?? 0}{' '}
-                {(a.sesiones?.length ?? 0) === 1 ? 'encuentro' : 'encuentros'}
-                {a.sede?.barrio ? ` · ${a.sede.barrio}` : ''}
-              </p>
+            <div className="flex min-w-0 items-start gap-2 sm:flex-1">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-serif font-semibold">{a.titulo}</p>
+                <p className="text-xs text-tinta/55">
+                  {a.tipo} · {a.sesiones?.length ?? 0}{' '}
+                  {(a.sesiones?.length ?? 0) === 1 ? 'encuentro' : 'encuentros'}
+                  {a.sede?.barrio ? ` · ${a.sede.barrio}` : ''}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}
+              >
+                {a.estado}
+              </span>
             </div>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}
-            >
-              {a.estado}
-            </span>
-            <button
-              type="button"
-              onClick={() => onEditar(a)}
-              className="rounded-md border border-borde px-3 py-1.5 text-sm"
-            >
-              Editar
-            </button>
-            <button
-              type="button"
-              onClick={() => void eliminar(a)}
-              className="rounded px-2 py-1 text-xs text-acento hover:bg-acento/10"
-            >
-              Borrar
-            </button>
+            <div className="mt-2 flex gap-2 sm:mt-0 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => onEditar(a)}
+                className={`${claseBotonSecundario} flex-1 sm:flex-none`}
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                onClick={() => void eliminar(a)}
+                aria-label={`Borrar ${a.titulo}`}
+                className={`${claseBotonFila} shrink-0 text-acento hover:bg-acento/10`}
+              >
+                Borrar
+              </button>
+            </div>
           </li>
         ))}
       </ul>

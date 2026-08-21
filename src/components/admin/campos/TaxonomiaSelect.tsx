@@ -1,6 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOpciones } from '@/components/admin/useOpciones';
-import { claseInput } from '@/components/admin/campos/Campo';
+import {
+  claseBotonSecundario,
+  claseBotonTinta,
+  claseInput,
+} from '@/components/admin/campos/Campo';
 import { normalize } from '@/lib/normalize';
 import { slugify } from '@/lib/slugify';
 import type { CampoTaxonomia } from '@/types/actividad';
@@ -17,6 +21,13 @@ interface Props {
   onChange: (slug: string, labelNuevo?: string) => void;
   id?: string;
   placeholder?: string;
+  /**
+   * Preselecciona la primera opción del desplegable cuando el campo está
+   * vacío. Se usa en los campos donde la primera opción es una elección
+   * válida, para no obligar a tocar un desplegable que ya muestra lo correcto.
+   * No hace nada en taxonomías que arrancan sin opciones base (barrio, tags).
+   */
+  autoSeleccionarPrimera?: boolean;
 }
 
 const OTRO = '__otro__';
@@ -29,11 +40,27 @@ const OTRO = '__otro__';
  * si el usuario escribe "gor" y aparece "A la gorra", el 90% de los duplicados
  * no llega a nacer.
  */
-export function TaxonomiaSelect({ campo, value, onChange, id, placeholder }: Props) {
+export function TaxonomiaSelect({
+  campo,
+  value,
+  onChange,
+  id,
+  placeholder,
+  autoSeleccionarPrimera = false,
+}: Props) {
   const { valores } = useOpciones(campo);
   const [modoOtro, setModoOtro] = useState(false);
   const [texto, setTexto] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Las opciones llegan de Firestore, así que la preselección no se puede
+  // hacer en el estado inicial del formulario: recién acá se sabe cuál es la
+  // primera. Solo dispara con el campo vacío, así que nunca pisa una elección
+  // hecha a mano ni el valor de una actividad que se está editando.
+  useEffect(() => {
+    if (!autoSeleccionarPrimera || value || valores.length === 0) return;
+    onChange(valores[0]!.slug);
+  }, [autoSeleccionarPrimera, value, valores, onChange]);
 
   // El valor puede ser un slug creado por "Otro" que todavía no está en el
   // desplegable de esta sesión (recién tipeado): igual hay que mostrarlo.
@@ -64,10 +91,17 @@ export function TaxonomiaSelect({ campo, value, onChange, id, placeholder }: Pro
   if (modoOtro) {
     return (
       <div className="relative">
-        <div className="flex gap-2">
+        {/*
+          El input y sus dos botones no caben en fila en un teléfono angosto:
+          hasta sm el input toma el ancho completo y los botones van abajo,
+          repartidos mitad y mitad.
+        */}
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             ref={inputRef}
             autoFocus
+            enterKeyHint="done"
+            autoCapitalize="sentences"
             className={claseInput}
             value={texto}
             placeholder="Escribí una etiqueta nueva"
@@ -83,24 +117,26 @@ export function TaxonomiaSelect({ campo, value, onChange, id, placeholder }: Pro
               }
             }}
           />
-          <button
-            type="button"
-            className="shrink-0 rounded-md bg-tinta px-3 py-2 text-sm text-white disabled:opacity-40"
-            disabled={!slugTipeado}
-            onClick={confirmarTexto}
-          >
-            Usar
-          </button>
-          <button
-            type="button"
-            className="shrink-0 rounded-md border border-borde px-3 py-2 text-sm"
-            onClick={() => {
-              setModoOtro(false);
-              setTexto('');
-            }}
-          >
-            Cancelar
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={`${claseBotonTinta} flex-1 sm:flex-none`}
+              disabled={!slugTipeado}
+              onClick={confirmarTexto}
+            >
+              Usar
+            </button>
+            <button
+              type="button"
+              className={`${claseBotonSecundario} flex-1 sm:flex-none`}
+              onClick={() => {
+                setModoOtro(false);
+                setTexto('');
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
 
         {coincidencia && (
@@ -110,12 +146,12 @@ export function TaxonomiaSelect({ campo, value, onChange, id, placeholder }: Pro
         )}
 
         {sugerencias.length > 0 && (
-          <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-borde bg-white shadow-lg">
+          <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto overscroll-contain rounded-md border border-borde bg-white shadow-lg">
             {sugerencias.map((v) => (
               <li key={v.slug}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
+                  className="flex min-h-touch w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
                   onClick={() => {
                     onChange(v.slug);
                     setModoOtro(false);
@@ -148,6 +184,12 @@ export function TaxonomiaSelect({ campo, value, onChange, id, placeholder }: Pro
         onChange(e.target.value);
       }}
     >
+      {/*
+        Este option vale "": es un prompt, no una opción. El texto tiene que
+        leerse como una instrucción — un placeholder tipo "Gratis, a la
+        gorra…" se ve idéntico a un valor ya elegido y hace creer que el
+        campo está completo cuando está vacío.
+      */}
       <option value="">{placeholder ?? 'Elegí una opción…'}</option>
       {!esConocido && value && <option value={value}>{value} (nueva)</option>}
       {valores.map((v) => (

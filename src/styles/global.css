@@ -9,9 +9,59 @@
   --color-tinta: oklch(0.22 0.015 265);
   --color-borde: oklch(0.9 0.008 85);
   --color-acento: oklch(0.52 0.13 25);
+
+  /* Altura mínima de un blanco táctil. 44px es el mínimo de las guías de
+     Apple; Material pide 48. Se usa en todo control que se toque con el dedo. */
+  --spacing-touch: 2.75rem;
 }
 
 html {
   background: var(--color-papel);
   color: var(--color-tinta);
+  /* Evita que iOS reescale el texto al rotar a horizontal. */
+  -webkit-text-size-adjust: 100%;
+}
+
+/*
+ * iOS Safari hace zoom sobre la página al enfocar un campo cuyo texto mida
+ * menos de 16px, y después no vuelve solo: el usuario queda con el formulario
+ * corrido. Por eso los campos van a 16px en pantallas chicas y recién bajan a
+ * 14px de sm en adelante, donde no hay zoom porque no hay teclado virtual.
+ */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* En una tablet en horizontal el dedo sigue siendo el puntero, pero el mouse
+   no: solo se agrandan los blancos cuando el puntero es grueso. */
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  select {
+    min-height: var(--spacing-touch);
+  }
+}
+
+/* Respeta a quien pidió menos movimiento en el sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Utilidades para los bordes seguros del dispositivo (notch, barra de gestos). */
+@utility pb-segura {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+@utility px-segura {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 }

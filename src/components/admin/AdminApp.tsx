@@ -38,7 +38,7 @@ export function AdminApp() {
 
   if (!usuario) {
     return (
-      <div className="mx-auto max-w-sm px-4 py-24 text-center">
+      <div className="mx-auto max-w-sm px-segura py-24 text-center">
         <h1 className="font-serif text-2xl font-semibold">Panel de carga</h1>
         <p className="mt-2 text-sm text-tinta/60">
           Agenda de actividades literarias
@@ -46,7 +46,7 @@ export function AdminApp() {
         <button
           type="button"
           onClick={() => void loginConGoogle()}
-          className="mt-6 w-full rounded-md bg-acento px-4 py-2.5 text-sm text-white"
+          className="mt-6 min-h-touch w-full rounded-md bg-acento px-4 text-sm font-medium text-white"
         >
           Entrar con Google
         </button>
@@ -63,7 +63,7 @@ export function AdminApp() {
   // Firestore lo rechazan igual, esto solo evita mostrar un panel inútil.
   if (esAdmin === false) {
     return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
+      <div className="mx-auto max-w-md px-segura py-24 text-center">
         <h1 className="font-serif text-xl font-semibold">Sin permisos</h1>
         <p className="mt-2 text-sm text-tinta/60">
           {usuario.email} no tiene el claim <code>admin</code>. Correlo con{' '}
@@ -75,7 +75,7 @@ export function AdminApp() {
         <button
           type="button"
           onClick={() => void logout()}
-          className="mt-6 rounded-md border border-borde px-4 py-2 text-sm"
+          className="mt-6 min-h-touch rounded-md border border-borde bg-white px-4 text-sm"
         >
           Salir
         </button>
@@ -84,9 +84,9 @@ export function AdminApp() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="mx-auto max-w-3xl px-segura py-6 lg:max-w-4xl">
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <h1 className="font-serif text-xl font-semibold">
             {vista.tipo === 'lista'
               ? 'Actividades'
@@ -94,13 +94,13 @@ export function AdminApp() {
                 ? 'Nueva actividad'
                 : vista.actividad.titulo}
           </h1>
-          <p className="text-xs text-tinta/50">{usuario.email}</p>
+          <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
         </div>
         {vista.tipo !== 'lista' && (
           <button
             type="button"
             onClick={() => setVista({ tipo: 'lista' })}
-            className="rounded-md border border-borde px-3 py-1.5 text-sm"
+            className="min-h-touch shrink-0 rounded-md border border-borde bg-white px-3 text-sm"
           >
             ← Volver
           </button>
@@ -108,7 +108,7 @@ export function AdminApp() {
         <button
           type="button"
           onClick={() => void logout()}
-          className="rounded px-2 py-1 text-xs text-tinta/55 hover:bg-black/5"
+          className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
         >
           Salir
         </button>

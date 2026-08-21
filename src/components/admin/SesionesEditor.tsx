@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { claseInput } from '@/components/admin/campos/Campo';
+import {
+  claseBotonFila,
+  claseBotonPrimario,
+  claseBotonSecundario,
+  claseBotonTinta,
+  claseInput,
+} from '@/components/admin/campos/Campo';
 import {
   aDatetimeLocal,
   deDatetimeLocal,
@@ -64,30 +70,27 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={agregar}
-          className="rounded-md bg-tinta px-3 py-1.5 text-sm text-white"
-        >
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <button type="button" onClick={agregar} className={claseBotonTinta}>
           + Agregar encuentro
         </button>
         <button
           type="button"
           onClick={() => setAbrirGenerador((v) => !v)}
-          className="rounded-md border border-borde px-3 py-1.5 text-sm"
+          className={claseBotonSecundario}
+          aria-expanded={abrirGenerador}
         >
           Generar N encuentros…
         </button>
         <button
           type="button"
           onClick={() => onChange(ordenarPorInicio(sesiones))}
-          className="rounded-md border border-borde px-3 py-1.5 text-sm"
+          className={claseBotonSecundario}
           disabled={sesiones.length < 2}
         >
           Ordenar por fecha
         </button>
-        <span className="ml-auto text-xs text-tinta/50">
+        <span className="text-xs text-tinta/50 sm:ml-auto">
           {sesiones.length} {sesiones.length === 1 ? 'encuentro' : 'encuentros'}
         </span>
       </div>
@@ -99,6 +102,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
               Cantidad
               <input
                 type="number"
+                inputMode="numeric"
                 min={1}
                 max={52}
                 value={cantidad}
@@ -110,6 +114,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
               Cada (días)
               <input
                 type="number"
+                inputMode="numeric"
                 min={1}
                 value={cadaDias}
                 onChange={(e) => setCadaDias(Number(e.target.value))}
@@ -119,7 +124,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
             <button
               type="button"
               onClick={generar}
-              className="rounded-md bg-acento px-3 py-2 text-sm text-white"
+              className={`${claseBotonPrimario} w-full sm:w-auto`}
             >
               Generar
             </button>
@@ -147,7 +152,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
               s.cancelada ? 'border-borde bg-black/[0.03] opacity-60' : 'border-borde bg-white'
             }`}
           >
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <span className="font-serif text-sm font-semibold text-tinta/70">
                 Encuentro {i + 1}
               </span>
@@ -159,25 +164,26 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
                   en Calendar
                 </span>
               )}
-              <div className="ml-auto flex gap-1">
+              <div className="ml-auto flex shrink-0 gap-1">
                 <button
                   type="button"
                   onClick={() => duplicar(s.id)}
-                  className="rounded px-2 py-1 text-xs text-tinta/60 hover:bg-black/5"
+                  className={`${claseBotonFila} text-tinta/60 hover:bg-black/5`}
                 >
                   Duplicar
                 </button>
                 <button
                   type="button"
                   onClick={() => borrar(s.id)}
-                  className="rounded px-2 py-1 text-xs text-acento hover:bg-acento/10"
+                  aria-label={`Borrar encuentro ${s.inicio || ''}`}
+                  className={`${claseBotonFila} text-acento hover:bg-acento/10`}
                 >
                   Borrar
                 </button>
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs">
                 Inicio
                 <input

@@ -1,4 +1,8 @@
-import { claseInput } from '@/components/admin/campos/Campo';
+import {
+  claseBotonFila,
+  claseBotonTinta,
+  claseInput,
+} from '@/components/admin/campos/Campo';
 import {
   ENTREGAS_MATERIAL,
   TIPOS_MATERIAL,
@@ -37,7 +41,7 @@ export function MaterialEditor({ items, onChange, error }: Props) {
       <button
         type="button"
         onClick={() => onChange([...items, itemVacio()])}
-        className="self-start rounded-md bg-tinta px-3 py-1.5 text-sm text-white"
+        className={`${claseBotonTinta} w-full sm:w-auto sm:self-start`}
       >
         + Agregar material
       </button>
@@ -46,7 +50,7 @@ export function MaterialEditor({ items, onChange, error }: Props) {
 
       {items.map((it, i) => (
         <div key={i} className="rounded-md border border-borde bg-white p-3">
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs">
               Tipo
               <select
@@ -91,6 +95,11 @@ export function MaterialEditor({ items, onChange, error }: Props) {
             <label className="flex flex-col gap-1 text-xs sm:col-span-2">
               URL
               <input
+                type="url"
+                inputMode="url"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={it.url}
                 onChange={(e) => editar(i, { url: e.target.value })}
                 placeholder="https://…"
@@ -99,10 +108,11 @@ export function MaterialEditor({ items, onChange, error }: Props) {
             </label>
           </div>
 
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <label className="flex items-center gap-2 text-xs text-tinta/70">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <label className="flex min-h-touch flex-1 items-center gap-2 text-xs text-tinta/70">
               <input
                 type="checkbox"
+                className="size-4 shrink-0"
                 checked={it.publico}
                 onChange={(e) => editar(i, { publico: e.target.checked })}
               />
@@ -111,7 +121,8 @@ export function MaterialEditor({ items, onChange, error }: Props) {
             <button
               type="button"
               onClick={() => onChange(items.filter((_, j) => j !== i))}
-              className="rounded px-2 py-1 text-xs text-acento hover:bg-acento/10"
+              aria-label={`Borrar material ${it.titulo || i + 1}`}
+              className={`${claseBotonFila} shrink-0 text-acento hover:bg-acento/10`}
             >
               Borrar
             </button>

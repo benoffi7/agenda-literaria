@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
+import {
+  Campo,
+  claseBotonPrimario,
+  claseBotonSecundario,
+  claseInput,
+} from '@/components/admin/campos/Campo';
 import { Seccion } from '@/components/admin/campos/Seccion';
 import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
 import { TagsInput } from '@/components/admin/campos/TagsInput';
@@ -197,7 +202,7 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
 
   return (
     <form
-      className="flex flex-col gap-4 pb-28"
+      className="flex flex-col gap-4 pb-56 sm:pb-28"
       onSubmit={(e) => {
         e.preventDefault();
         void guardar();
@@ -214,7 +219,8 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
                 cambiarTipo(slug);
                 recordarLabel('tipo', labelNuevo);
               }}
-              placeholder="Taller, club de lectura…"
+              placeholder="Elegí el tipo…"
+              autoSeleccionarPrimera
             />
           </Campo>
 
@@ -253,6 +259,9 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
             className="sm:col-span-2"
           >
             <input
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               className={claseInput}
               value={form.slug}
               disabled={slugBloqueado}
@@ -301,16 +310,17 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
       {/* ── Dónde ──────────────────────────────────────────────── */}
       <Seccion titulo="Dónde">
         <Campo label="Modalidad" requerido error={errorDe('modalidad')} className="mb-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             {MODALIDADES.map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => cambiarModalidad(m)}
-                className={`rounded-md border px-3 py-1.5 text-sm ${
+                aria-pressed={form.modalidad === m}
+                className={`min-h-touch flex-1 rounded-md border px-3 text-sm sm:flex-none sm:px-4 ${
                   form.modalidad === m
-                    ? 'border-acento bg-acento/10 text-acento'
-                    : 'border-borde'
+                    ? 'border-acento bg-acento/10 font-medium text-acento'
+                    : 'border-borde bg-white'
                 }`}
               >
                 {ETIQUETA_MODALIDAD[m]}
@@ -345,7 +355,7 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
                   set('sede', { ...form.sede!, barrio: slug });
                   recordarLabel('barrio', labelNuevo);
                 }}
-                placeholder="Villa Crespo, Boedo…"
+                placeholder="Elegí o agregá el barrio…"
               />
             </Campo>
             <Campo label="Ciudad">
@@ -379,7 +389,8 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
                   set('online', { ...form.online!, plataforma: slug });
                   recordarLabel('plataforma', labelNuevo);
                 }}
-                placeholder="Zoom, Meet…"
+                placeholder="Elegí la plataforma…"
+                autoSeleccionarPrimera
               />
             </Campo>
             <Campo
@@ -387,6 +398,11 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
               ayuda="No se publica: se manda al inscribirse."
             >
               <input
+                type="url"
+                inputMode="url"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 className={claseInput}
                 value={form.online.url}
                 onChange={(e) => set('online', { ...form.online!, url: e.target.value })}
@@ -427,6 +443,9 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
           <Campo label="Instagram del organizador">
             <input
               className={claseInput}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={form.organizador.instagram}
               onChange={(e) => set('organizador', { ...form.organizador, instagram: e.target.value })}
               placeholder="@casabrandon"
@@ -500,7 +519,8 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
                 set('arancel', { ...form.arancel, tipo: slug });
                 recordarLabel('arancel', labelNuevo);
               }}
-              placeholder="Gratis, a la gorra…"
+              placeholder="Elegí el arancel…"
+              autoSeleccionarPrimera
             />
           </Campo>
           <Campo label="Notas del arancel" ayuda="«2 cuotas», «incluye material»">
@@ -562,6 +582,7 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
             <Campo label="Cupo">
               <input
                 type="number"
+                inputMode="numeric"
                 min={1}
                 className={claseInput}
                 value={form.inscripcion.cupo ?? ''}
@@ -631,6 +652,11 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
           </Campo>
           <Campo label="Imagen" error={errorDe('imagenUrl')}>
             <input
+              type="url"
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               className={claseInput}
               value={form.imagenUrl ?? ''}
               onChange={(e) => set('imagenUrl', e.target.value)}
@@ -680,45 +706,54 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
         </div>
       </Seccion>
 
-      {/* ── Barra de acciones ──────────────────────────────────── */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-borde bg-papel/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2">
+      {/*
+        ── Barra de acciones ────────────────────────────────────
+        Fija abajo, con pb-segura para que en un iPhone no quede debajo de la
+        barra de gestos. En mobile los dos botones de guardado van a mitad y
+        mitad del ancho, y "Cancelar" pasa a una línea propia arriba: tres
+        botones en fila en 360px dan blancos de ~100px y se erra el toque.
+      */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-papel/95 px-segura pt-3 pb-segura backdrop-blur">
+        <div className="mx-auto flex max-w-3xl flex-col gap-2 sm:flex-row sm:items-center lg:max-w-4xl">
+          {/*
+            El resumen de errores se reduce a un contador. Listar cuatro rutas
+            de campo acá tapaba media pantalla en mobile, y el detalle ya está
+            al lado de cada campo.
+          */}
+          {(fallo || resumenErrores.length > 0) && (
+            <p role="status" className="text-xs text-acento sm:order-2 sm:flex-1 sm:text-center">
+              {resumenErrores.length > 0
+                ? `${resumenErrores.length} ${resumenErrores.length === 1 ? 'campo' : 'campos'} para revisar`
+                : fallo}
+            </p>
+          )}
+
           <button
             type="button"
             onClick={onCancelar}
-            className="rounded-md border border-borde px-3 py-2 text-sm"
+            className={`${claseBotonSecundario} sm:order-1`}
           >
             Cancelar
           </button>
-          {fallo && <span className="text-xs text-acento">{fallo}</span>}
-          <div className="ml-auto flex gap-2">
+
+          <div className="flex gap-2 sm:order-3">
             <button
               type="button"
               disabled={guardando}
               onClick={() => void guardar('borrador')}
-              className="rounded-md border border-borde px-4 py-2 text-sm disabled:opacity-50"
+              className={`${claseBotonSecundario} flex-1 sm:flex-none`}
             >
               Guardar borrador
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="rounded-md bg-acento px-4 py-2 text-sm text-white disabled:opacity-50"
+              className={`${claseBotonPrimario} flex-1 sm:flex-none`}
             >
               {guardando ? 'Guardando…' : inicial ? 'Guardar cambios' : 'Crear actividad'}
             </button>
           </div>
         </div>
-
-        {resumenErrores.length > 0 && (
-          <ul className="mx-auto mt-2 max-w-3xl text-xs text-acento">
-            {resumenErrores.slice(0, 4).map(([path, msg]) => (
-              <li key={path}>
-                {path}: {msg}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </form>
   );

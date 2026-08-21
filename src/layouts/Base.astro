@@ -14,7 +14,14 @@ const { titulo, descripcion, noIndex = false } = Astro.props;
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover: deja que la página pinte detrás del notch y de la
+         barra de gestos del iPhone. Lo que no puede quedar tapado se separa
+         con env(safe-area-inset-*) desde el CSS. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#fdfcf9" />
     <title>{titulo}</title>
     {descripcion && <meta name="description" content={descripcion} />}
     {noIndex && <meta name="robots" content="noindex, nofollow" />}
@@ -25,7 +32,7 @@ const { titulo, descripcion, noIndex = false } = Astro.props;
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap"
     />
   </head>
-  <body class="min-h-dvh font-sans antialiased">
+  <body class="min-h-dvh overflow-x-hidden font-sans antialiased">
     <slot />
   </body>
 </html>
