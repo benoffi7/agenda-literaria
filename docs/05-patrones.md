@@ -182,6 +182,22 @@ export const nuevaSesionId = (): string => `ses_${crypto.randomUUID()}`;
 El schema lo verifica (`/^ses_/`), así que un id armado a mano falla la
 validación.
 
+## `db` se importa de `firestore-client`, nunca de `firebase-client`
+
+El panel corta su bundle en el login (B-09, D-51): `firebase-client.ts` tiene la
+app y el auth, `firestore-client.ts` tiene `db()`. Importar `db` del primero
+—o re-exportarlo desde ahí— vuelve a atar el SDK de Firestore al chunk que se
+baja para mostrar el botón "Entrar con Google", y **el build sigue en verde**.
+
+```ts
+import { auth } from '@/lib/firebase-client';    // login, claim admin
+import { db } from '@/lib/firestore-client';      // todo lo que lee o escribe
+```
+
+Por la misma razón, `AdminApp` carga `ListaActividades` y `ActividadFormulario`
+con `import()` y no con `import` estático. `tests/bundle-panel.test.ts` falla si
+alguna de las dos reglas se rompe.
+
 ## Idempotencia en los scripts
 
 `preparar-produccion.mjs` no pisa las opciones que ya existen: chequea antes.

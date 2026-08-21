@@ -6,7 +6,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import base from '@/lib/opciones-base.json';
-import { db } from '@/lib/firebase-client';
+import { db } from '@/lib/firestore-client';
 import { slugify } from '@/lib/slugify';
 import type { CampoTaxonomia, DocOpciones, ValorOpcion } from '@/types/actividad';
 

@@ -3,7 +3,8 @@ import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebas
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase-client';
+import { auth } from '@/lib/firebase-client';
+import { db } from '@/lib/firestore-client';
 import {
   actualizarActividad,
   crearActividad,

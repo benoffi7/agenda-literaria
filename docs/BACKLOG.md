@@ -137,7 +137,7 @@ el campo lo detecta y explica cómo salir del paso. Anotado en B-45.
 
 ### B-08 · Sin tests de componentes
 
-No hay testing-library instalada. La lógica pura está muy cubierta (256 tests),
+No hay testing-library instalada. La lógica pura está muy cubierta (263 tests),
 pero el render y la interacción del formulario se verificaron a mano.
 
 Vale al menos para `TaxonomiaSelect` (el bug del placeholder que se veía como
@@ -147,11 +147,26 @@ para `VistaPreviaEvento`: su adaptador está testeado, pero que el aviso del
 link público se muestre —y que la descripción tenga su propio scroll— se
 verificó a mano.
 
-### B-09 · El bundle del panel pesa 576 KB
+### B-09 · El bundle del panel pesa 576 KB — ✅ hecho (2026-08-21)
 
-Es el SDK de Firebase. Queda aislado en `/admin` y la home carga 8 KB, así que
-no afecta al público ni al SEO. Se podría bajar con imports más finos o carga
-diferida de Firestore, pero no es urgente.
+La carga inicial de `/admin` bajó de **766 kB a 353 kB** (gzip 200 → 95): la
+pantalla de login ya no baja el SDK de Firestore. `db()` se mudó a
+`src/lib/firestore-client.ts` y `AdminApp` carga el listado y el formulario con
+`import()` diferido. Ver [CHANGELOG](CHANGELOG.md) y D-51.
+
+Quedó afuera, a propósito: imports más finos del SDK (el modular v11 ya
+tree-shakea bien — el chunk de auth son 166 kB y no entra nada de Firestore) y
+`manualChunks` en `astro.config.mjs` (no cambia lo que el navegador necesita
+para el primer render).
+
+### B-50 · Verificar el corte del bundle después de mergear analytics
+
+`firebase/analytics` se agregó en paralelo, también de forma diferida. Los dos
+cambios apuntan al mismo número, así que después del merge conviene un
+`npm run build` y confirmar que el SDK de analytics **no** aparece en el chunk
+inicial de `/admin` (el que la island carga como `component-url`). Si aparece,
+alcanza con que el módulo que lo inicializa no sea alcanzable de forma estática
+desde `AdminApp` (D-51).
 
 ### B-35 · Salir del panel con cambios sin guardar no avisa
 
