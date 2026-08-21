@@ -18,6 +18,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
 | 10 | [`10-salud-del-codigo.md`](10-salud-del-codigo.md) | Diagnóstico medido: tamaño, acoplamiento, duplicación. Qué conviene arreglar, qué está bien y qué no hay que tocar. |
 | 11 | [`11-ideas-de-producto.md`](11-ideas-de-producto.md) | Propuestas de funcionalidad con su argumento en contra, y lo que se descartó a propósito. Se lee antes de decidir qué sigue. |
+| 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01): URLs, pantallas, SEO, filtros y casos borde. Lo que falta construir. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
@@ -30,7 +31,7 @@ Falta el sitio público, que es la razón de ser del proyecto.
 |---|---|
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ |
-| 3. Sitio público (SSG) | ⬜ **lo próximo** |
+| 3. Sitio público (SSG) | ⬜ **lo próximo** — diseñado en [`12-sitio-publico.md`](12-sitio-publico.md), sin construir |
 | 4. Sync a Google Calendar | ✅ |
 | 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 
