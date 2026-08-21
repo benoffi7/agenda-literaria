@@ -12,6 +12,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/actividades/{id}/versiones/{ts}` | historial (§12) | **nadie todavía** — no implementado |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
+| `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
 `tags`.
@@ -226,6 +227,43 @@ Que el punto caiga lejos de Argentina **no** bloquea: solo avisa.
 
 `geo` es público: viaja en `events.json` dentro de `sede` (§5.2). Es la misma
 información que ya publica el evento de Calendar.
+
+## `/reportes/{id}` — bugs y sugerencias del panel
+
+No está en el §3 del `CLAUDE.md`: es una colección nueva. El tipo canónico está
+en [`src/types/reporte.ts`](../src/types/reporte.ts).
+
+```
+tipo: 'bug' | 'sugerencia'
+titulo: string                  // 6..120, el título del issue
+descripcion: string             // 15..4000
+pasos: string | null            // cómo reproducirlo — solo en un bug
+severidad: 'me-bloquea' | 'molesta' | 'menor' | null
+actividad: { id, titulo } | null        // actividad referida
+contexto: {
+  versionPanel,                 // VERSION_APP del bundle que corría + fecha del build
+  navegador, ventana, zonaHoraria, url,
+  pantalla: 'listado' | 'nueva-actividad' | 'editar-actividad' | 'encuentros' | 'otra'
+}
+reportadoPor: { uid, email }    // NUNCA sale al issue (§5.1)
+estado: 'pendiente' | 'enviando' | 'creado' | 'error'
+intentos: number                // tope 3 (D-34)
+github: { numero, url, creadoEn } | null
+error: string | null
+creadoEn, actualizadoEn: Timestamp
+```
+
+**El panel solo crea.** El ciclo de vida (`estado`, `intentos`, `github`,
+`error`) lo mueve la Function `reporteAIssue` con el Admin SDK; las reglas
+prohíben al cliente cualquier `update`, y validan la forma del documento en la
+creación: sin eso un reporte podría nacer "creado" y no publicarse nunca.
+
+**Los topes de largo están en tres lugares** —el schema de zod, las reglas y el
+issue— y son los mismos a propósito: el issue es público y un reporte de 40 KB
+no se revisa.
+
+Qué sale al issue y qué no está en [`07-seguridad.md`](07-seguridad.md).
+
 
 ## Campos que faltan
 

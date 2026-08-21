@@ -157,6 +157,10 @@ Esperado: `no-cache` en `/` y `/admin`, `no-store` en `/version.json`,
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
+**Las reglas de `/reportes/{id}` todavía no están desplegadas.** Hasta que se
+desplieguen, el formulario de reportes del panel recibe *permission denied* al
+guardar.
+
 ### Functions
 
 ```bash
@@ -169,7 +173,104 @@ cada 5 minutos que no puede hacer nada.
 
 Un `firebase deploy --only functions` sin filtro la incluiría.
 
+### Reportes del panel → issues de GitHub (una sola vez)
+
+Cinco pasos manuales, en este orden. Los tres primeros los hace el dueño de la
+cuenta de GitHub y de GCP; ningún agente ni script debe crear el PAT.
+
+**1. Crear el PAT.** Fine-grained token, en
+https://github.com/settings/personal-access-tokens/new
+
+- *Resource owner:* `benoffi7` · *Repository access:* solo
+  `benoffi7/agenda-literaria`.
+- *Permissions → Repository → Issues: **Read and write***. Nada más — con eso
+  alcanza para crear issues, y si se filtra no da acceso al código.
+- Vencimiento: el que sea, pero anotarlo. Cuando vence, la Function falla con
+  401 y el reporte queda en estado `error` (no se pierde).
+
+**2. Guardarlo en Secret Manager.** Nunca en `functions/.env` ni en el repo
+(§5.4). El comando pide el valor por stdin, así que el token no queda en el
+historial del shell:
+
+```bash
+gcloud services enable secretmanager.googleapis.com --project agenda-literaria
+
+# Pegar el token, Enter, y Ctrl-D
+gcloud secrets create GITHUB_TOKEN --replication-policy=automatic \
+  --project agenda-literaria --data-file=-
+
+# Para rotarlo más adelante: una versión nueva, sin borrar el secreto
+# gcloud secrets versions add GITHUB_TOKEN --project agenda-literaria --data-file=-
+```
+
+**3. Dejar que la Function lo lea.** Corre como `calendar-sync@`, que por
+defecto no tiene acceso al secreto:
+
+```bash
+gcloud secrets add-iam-policy-binding GITHUB_TOKEN \
+  --project agenda-literaria \
+  --member="serviceAccount:calendar-sync@agenda-literaria.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+**4. Desplegar reglas y Function.**
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only functions:reporteAIssue
+```
+
+**5. Crear las etiquetas del issue** (opcional, para que queden con color):
+
+```bash
+gh label create reporte-panel --repo benoffi7/agenda-literaria \
+  --color 5319e7 --description "Cargado desde el panel de /admin"
+gh label create sugerencia --repo benoffi7/agenda-literaria \
+  --color 0e8a16 --description "Idea o mejora pedida desde el panel"
+# `bug` ya existe en todo repo de GitHub
+```
+
+Verificación de punta a punta: entrar a `/admin`, cargar un reporte de prueba, y
+que en la lista "Últimos reportes" aparezca el número de issue en unos segundos.
+Si queda en "no se pudo publicar", el motivo está en el propio documento y en los
+logs:
+
+```bash
+gcloud functions logs read reporteAIssue --project agenda-literaria \
+  --region southamerica-east1 --limit 20
+```
+
+### Reintentar un reporte que quedó en `error`
+
+Pasa si el token venció, si le falta el permiso o si el repo está mal escrito. El
+reporte **no se perdió**: está en Firestore y se reintenta poniéndolo otra vez en
+`pendiente`, lo que vuelve a disparar la Function. El cliente no puede hacerlo
+(las reglas se lo prohíben), así que va con el Admin SDK, **desde la raíz del
+repo**:
+
+```bash
+node -e "
+const {initializeApp, applicationDefault} = require('firebase-admin/app');
+const {getFirestore} = require('firebase-admin/firestore');
+initializeApp({credential: applicationDefault(), projectId: 'agenda-literaria'});
+(async () => {
+  const db = getFirestore();
+  // 'enviando' entra también: es un reporte cuya invocación se cortó a mitad.
+  const q = await db.collection('reportes')
+    .where('estado','in',['error','enviando']).get();
+  for (const d of q.docs) {
+    await d.ref.update({ estado: 'pendiente', intentos: 0, error: null });
+    console.log('reencolado', d.id, '|', d.data().titulo);
+  }
+})();
+"
+```
+
+`intentos: 0` es necesario: con los tres intentos gastados la Function ignora el
+documento a propósito (D-34).
+
 Para desplegarla, primero los pasos manuales de "Activar el rebuild automático".
+
 
 ### Preparar un proyecto desde cero
 
@@ -415,6 +516,10 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | El panel muestra "hay una versión nueva" y recargar no la trae | algo entre el navegador y Hosting está ignorando el `no-cache` del HTML | cerrar y reabrir la pestaña; si persiste, revisar las cabeceras con los `curl` de arriba |
 | El panel se recarga solo en medio de la carga de una actividad | no debería: con cambios sin guardar solo avisa | es un bug — reportarlo con la versión que muestra el aviso |
 | El formulario hace zoom en iPhone al enfocar un campo | un input con menos de 16px | ya resuelto en `global.css`; no bajar el tamaño de los campos en mobile |
+| El reporte del panel queda en "no se pudo publicar" con 401 o 403 | el PAT venció o no tiene permiso de Issues sobre el repo | rotar el secreto y reencolar el reporte (arriba) |
+| El reporte del panel da *permission denied* al guardar | faltan desplegar las reglas de `/reportes` | `firebase deploy --only firestore:rules` |
+| `tests/reportes.integracion.test.ts` falla entero contra el emulador | el emulador se arrancó en otro checkout y sirve otras reglas | reiniciar `npm run emu` en este checkout |
+
 | `sistema/rebuild.ultimoError` dice `HTTP 401 Bad credentials` | el PAT venció o se revocó | rotar el secreto (`gcloud secrets versions add GITHUB_TOKEN`); el contador se rearma con el próximo cambio |
 | `ultimoError` dice `HTTP 404` | el PAT no ve el repo, o `GITHUB_REPO` está mal | revisar el repository access del token y `functions/.env` |
 | `ultimoError` dice `HTTP 422` | el `event_type` no coincide con el `types:` del workflow, o el workflow no está en la branch por defecto | tienen que ser los dos `rebuild`, y `deploy.yml` tiene que estar mergeado a `main` |
@@ -423,6 +528,7 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | El build del workflow no encuentra actividades | falta el secret `FIREBASE_SERVICE_ACCOUNT`, o `deploy-ci@` no tiene `datastore.viewer` | pasos 3-4 |
 | El schedule corre pero nunca dispara nada | `agotado: true` en `sistema/rebuild` | ver "El sitio no se actualiza…" |
 | El deploy de `syncCalendar` se queja de que falta el secreto `GITHUB_TOKEN` | `dispararRebuild` lo declara con `defineSecret`, y según la versión de `firebase-tools` la validación puede correr sobre todo el codebase y no solo sobre la función filtrada | crear el secreto (paso 2 de "Activar el rebuild automático"); existe aunque la Function no esté desplegada |
+
 
 ## Costos
 

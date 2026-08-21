@@ -322,3 +322,5 @@ export const dispararRebuild = onSchedule(
     logger.info('rebuild disparado', { motivo: estado.motivo, intento: decision.intento });
   },
 );
+
+export { reporteAIssue } from './reportes-trigger.js';

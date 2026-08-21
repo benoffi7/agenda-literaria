@@ -92,6 +92,31 @@ pendientes del dueño (ver arriba).
 
 ## P2 — mejoras reales
 
+### B-30 · Las respuestas del dueño no vuelven al panel
+
+El reporte sale del panel y termina en un issue público, pero la conversación
+sigue **solo en GitHub**: quien reportó ve el número de issue y el link, no la
+respuesta. Si no tiene cuenta de GitHub a mano, se entera por otro canal.
+
+Posible mejora: espejar los comentarios del issue de vuelta al documento
+`/reportes/{id}` (un `onSchedule` que consulte los issues abiertos con la
+etiqueta `reporte-panel`, o un webhook de GitHub hacia una función HTTP) y
+mostrarlos en la pantalla de reportes. Con webhook hay que validar la firma
+`X-Hub-Signature-256` con un secreto, que es otro secreto más en Secret Manager.
+
+Mientras no exista, el formulario y la lista lo dicen con todas las letras.
+
+### B-31 · Un reporte en `error` no se puede reintentar desde el panel
+
+Si la creación del issue falla por configuración (token vencido, permiso, repo
+mal escrito), el reporte queda guardado en estado `error` y visible en el panel,
+pero no hay botón para reintentar: las reglas prohíben que el cliente toque el
+documento (el ciclo de vida es de la Function). Hoy se reintenta a mano con el
+Admin SDK — el comando está en [`08-operacion.md`](08-operacion.md).
+
+Opciones: una acción del panel que escriba solo `estado: 'pendiente'` con una
+regla que permita ese único cambio, o una función `onCall` de reintento.
+
 ### B-03 · Historial de versiones (§12)
 
 Un `onDocumentUpdated` que escriba el `before` completo en
@@ -198,7 +223,24 @@ cada rebuild, así que probablemente `no-cache` o un `max-age` corto.
 
 ## P3 — cuando sobre tiempo
 
+### B-33 · Las etiquetas de GitHub hay que crearlas una vez
+
+El issue se crea con `reporte-panel` y `bug`/`sugerencia`. GitHub crea las
+etiquetas que no existan, pero sin color ni descripción. Crearlas a mano una vez
+(los comandos están en [`08-operacion.md`](08-operacion.md)) deja la lista
+prolija y filtrable.
+
+### B-34 · Nada limita cuántos reportes se pueden cargar
+
+Las reglas validan la forma del reporte y que quien lo carga sea admin, pero no
+la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
+cuentas de confianza no es un problema real; si alguna vez se le da el panel a
+más gente, conviene un tope por autor y por día.
+
+### B-10 · `aprobada` en las opciones (§4.3)
+
 ### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
+
 
 Las opciones creadas con "Otro" nacen pendientes: funcionan para quien las creó
 y no aparecen en el desplegable de las demás cuentas hasta aprobarlas. Se aprueba

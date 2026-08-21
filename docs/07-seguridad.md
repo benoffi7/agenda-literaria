@@ -52,6 +52,65 @@ Tres cosas se mantienen porque son las que hacen que el desvío sea aceptable:
 Si la actividad es un encuentro abierto sin inscripción, publicar el link tiene
 sentido. Si tiene cupo, no: el link circula y el cupo deja de existir.
 
+## Los reportes del panel salen a un repo público
+
+El panel puede cargar bugs y sugerencias, y una Cloud Function los publica como
+issue en `benoffi7/agenda-literaria`. Ese repo es **público** — verificado, no
+asumido:
+
+```bash
+gh repo view benoffi7/agenda-literaria --json visibility   # → PUBLIC
+```
+
+Así que el issue es una tercera salida pública, junto con el `events.json` y el
+calendario, y le aplican las mismas reglas.
+
+| Qué | Sale al issue | Dónde queda |
+|---|---|---|
+| Título, descripción y pasos | sí, **filtrados** | completos en Firestore |
+| Contexto técnico (navegador, ventana, ruta, zona horaria, versión) | sí | — |
+| `reportadoPor.uid` / `reportadoPor.email` | **no** (D-32) | `/reportes/{id}` |
+| Título y slug de la actividad referida | solo si está **publicada** (D-33) | `/reportes/{id}` |
+| Id de la actividad referida | sí — es opaco | — |
+
+El filtro (`redactar()` en `functions/reportes.js`) tapa **mails** y **links de
+reunión** (zoom, meet, teams, jitsi, whereby, wa.me) en todo el texto libre. Es
+la segunda defensa: la primera es que el formulario avisa, arriba de todo, que el
+repo es público.
+
+La decisión sobre la actividad la toma la Function leyendo el documento, no el
+panel: si dependiera del cliente, un panel viejo o modificado podría publicar el
+título de un borrador.
+
+**El PAT de GitHub no está en el cliente.** Si el panel llamara a la API de
+GitHub, el token viajaría en el bundle de `/admin` y cualquiera podría escribir
+en el repo. Por eso el panel escribe en Firestore y el token vive en Secret
+Manager, accesible solo desde la Function (§5.4).
+
+### Reglas de `/reportes/{id}`
+
+```js
+match /reportes/{id} {
+  allow read: if esAdmin();
+  allow create: if esAdmin() && reporteValido();
+  allow update, delete: if false;      // el ciclo de vida es de la Function
+}
+```
+
+`reporteValido()` valida la **forma** del documento, no solo quién escribe:
+conjunto exacto de campos, topes de largo (los mismos que el schema del
+formulario), `reportadoPor.uid == request.auth.uid`, `creadoEn == request.time`,
+y que nazca en `estado: 'pendiente'` con `intentos: 0` y `github: null`.
+
+El motivo del último punto: el estado inicial es lo que decide si la Function
+toma el reporte. Un documento que naciera "creado" quedaría muerto en Firestore
+sin publicarse nunca, y uno que naciera con un `github` inventado apuntaría a un
+issue ajeno.
+
+`tests/reportes.integracion.test.ts` verifica cada uno de esos rechazos contra el
+emulador, y `tests/reportes.test.ts` verifica que el issue armado a partir de un
+reporte real no contenga el uid ni el mail.
+
 ## Autorización
 
 ### Reglas de Firestore
@@ -147,9 +206,14 @@ bundle** (trampa 4, §5.4). Tres defensas:
 
 | Qué | Dónde va | Dónde NO |
 |---|---|---|
+| Service account key | ninguna parte: se usan las ADC de gcloud y la identidad del runtime | disco, repo |
+| PAT de GitHub (reportes y §8) | Secret Manager, como `GITHUB_TOKEN` | `functions/.env`, repo, bundle del panel |
+| Nombre del repo (`GITHUB_REPO`) | `functions/.env`, versionado — no es secreto | — |
+
 | Service account key | ninguna parte en local: se usan las ADC de gcloud y la identidad del runtime | disco, repo |
 | Key de `deploy-ci@` | secret `FIREBASE_SERVICE_ACCOUNT` de GitHub Actions | disco, repo |
 | PAT de GitHub (§8) | Secret Manager, atado a la Function con `defineSecret` | `functions/.env`, repo |
+
 | URL privada del ICS | `.env` local si hace falta | repo |
 | Config del SDK web | versionada, no es secreta | — |
 
@@ -192,6 +256,16 @@ curl -s -X PATCH "$BASE/opciones/arancel?key=$K" -H "Content-Type: application/j
 
 # Esta SÍ debe funcionar: los chips de filtro la necesitan (§4.4)
 curl -s "$BASE/opciones/arancel?key=$K"
+```
+
+### El issue no filtró la identidad de quien reportó
+
+Los tests lo cubren, pero cuando haya issues reales conviene mirarlos:
+
+```bash
+gh issue list --repo benoffi7/agenda-literaria --label reporte-panel \
+  --json number,title,body |
+  grep -Ei "@gmail|@hotmail|zoom\.us|meet\.google|wa\.me" && echo "FUGA" || echo "limpio"
 ```
 
 ### El calendario real no filtró nada
