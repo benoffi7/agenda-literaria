@@ -37,6 +37,21 @@ service cloud.firestore {
 
     match /opciones/{campo} {
       allow read: if true;
+
+      // §4.3 — `aprobada` decide si una opción creada con "Otro" entra al
+      // desplegable de las demás cuentas. Aprobar es, a nivel de reglas, una
+      // escritura más de este documento: la autoridad para aprobar es el claim
+      // `admin`, el mismo que ya habilita crear la opción y editar cualquier
+      // actividad.
+      //
+      // No se intenta una regla más fina (ej.: "solo el dueño puede aprobar")
+      // porque las reglas no pueden inspeccionar qué elemento del array cambió:
+      // `valores` llega como un array de maps y no hay forma de compararlo
+      // elemento por elemento contra el anterior. Una regla que no puede
+      // verificar lo que promete es peor que no tenerla. Si en algún momento
+      // hace falta separar "quien carga" de "quien valida", el camino es un
+      // claim aparte (`curador`) y mover la aprobación a un solo campo o a un
+      // documento propio, que sí es verificable.
       allow write: if esAdmin();
     }
 

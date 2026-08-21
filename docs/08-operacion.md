@@ -48,9 +48,42 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run seed` | siembra `/opciones/*` en el emulador |
 | `npm run admin:claim -- --todos` | claim `admin` a los usuarios del emulador |
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
+| `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
+| `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 
 `admin:claim` apunta al emulador por defecto; `admin:claim:prod` es un script
 aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
+`opciones:aprobar` sigue la misma convención, y además el script anuncia el
+objetivo (EMULADOR o PRODUCCIÓN) antes de escribir.
+
+## Aprobar una etiqueta nueva (§4.3)
+
+Una opción creada con "Otro" funciona para quien la creó pero **no aparece en el
+desplegable de la otra cuenta** hasta que se la apruebe. Nadie recibe un aviso
+todavía, así que conviene revisar de vez en cuando:
+
+```bash
+# Qué hay pendiente
+npm run opciones:aprobar:prod -- --listar
+
+# Aprobar (el comando exacto lo imprime --listar)
+npm run opciones:aprobar:prod -- arancel con-beca-parcial
+```
+
+Ensayarlo primero contra el emulador es gratis: `npm run opciones:aprobar --`
+(mismo script, otro objetivo).
+
+**Si una etiqueta es basura** —un typo con `usos: 1`— hoy no hay comando para
+borrarla: no la apruebes y quedará invisible para las demás cuentas. Borrar
+taxonomías es parte de la UI de administración que falta (B-06).
+
+Hay un `--backfill` opcional que marca `aprobada: true` en los valores
+anteriores al campo. No cambia comportamiento (la ausencia ya se lee como
+aprobada, D-26): sirve para que el documento no se lea a medias.
+
+```bash
+npm run opciones:aprobar:prod -- --backfill
+```
 
 ## Entornos
 

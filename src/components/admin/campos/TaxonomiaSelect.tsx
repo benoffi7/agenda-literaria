@@ -6,11 +6,17 @@ import {
   claseInput,
 } from '@/components/admin/campos/Campo';
 import { normalize } from '@/lib/normalize';
+import { estaAprobada } from '@/lib/opciones';
 import { slugify } from '@/lib/slugify';
 import type { CampoTaxonomia } from '@/types/actividad';
 
 interface Props {
   campo: CampoTaxonomia;
+  /**
+   * uid de quien está cargando. Decide qué opciones pendientes de aprobación
+   * puede elegir: las propias sí, las de otra persona no (§4.3).
+   */
+  uid: string;
   /** Slug seleccionado. */
   value: string;
   /**
@@ -47,13 +53,14 @@ const OTRO = '__otro__';
  */
 export function TaxonomiaSelect({
   campo,
+  uid,
   value,
   onChange,
   id,
   placeholder,
   autoSeleccionarPrimera = false,
 }: Props) {
-  const { valores } = useOpciones(campo);
+  const { valores, elegibles } = useOpciones(campo, uid);
   const [modoOtro, setModoOtro] = useState(false);
   const [texto, setTexto] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,21 +70,31 @@ export function TaxonomiaSelect({
   // primera. Solo dispara con el campo vacío, así que nunca pisa una elección
   // hecha a mano ni el valor de una actividad que se está editando.
   useEffect(() => {
-    if (!autoSeleccionarPrimera || value || valores.length === 0) return;
-    onChange(valores[0]!.slug);
-  }, [autoSeleccionarPrimera, value, valores, onChange]);
+    if (!autoSeleccionarPrimera || value || elegibles.length === 0) return;
+    onChange(elegibles[0]!.slug);
+  }, [autoSeleccionarPrimera, value, elegibles, onChange]);
 
   // El valor puede ser un slug creado por "Otro" que todavía no está en el
   // desplegable de esta sesión (recién tipeado): igual hay que mostrarlo.
-  const esConocido = valores.some((v) => v.slug === value);
+  const esConocido = elegibles.some((v) => v.slug === value);
+
+  // §4.3 — o puede ser una opción pendiente creada por OTRA persona: no es
+  // elegible, pero la actividad la guardó legítimamente, así que se muestra su
+  // etiqueta (mostrar el slug crudo se ve roto) y el select conserva el valor.
+  const pendienteAjena = !esConocido && value ? valores.find((v) => v.slug === value) : undefined;
 
   const sugerencias = useMemo(() => {
     const q = normalize(texto.trim());
-    if (!q) return valores.slice(0, 8);
-    return valores.filter((v) => normalize(v.label).includes(q)).slice(0, 8);
-  }, [texto, valores]);
+    if (!q) return elegibles.slice(0, 8);
+    return elegibles.filter((v) => normalize(v.label).includes(q)).slice(0, 8);
+  }, [texto, elegibles]);
 
   // El slug de lo tipeado; si coincide con algo existente, se reusa (§4.2).
+  //
+  // Se busca en la lista completa, no solo en lo elegible: si la etiqueta ya existe
+  // como opción pendiente de otra persona, hay que reusarla igual. La transacción de
+  // §4.2 lo haría de todas formas, y avisarlo acá evita que alguien crea que
+  // está creando una opción nueva. La deduplicación gana: §4.2 es crítico.
   const slugTipeado = slugify(texto);
   const coincidencia = valores.find((v) => v.slug === slugTipeado);
 
@@ -146,7 +163,9 @@ export function TaxonomiaSelect({
 
         {coincidencia && (
           <p className="mt-1 text-xs text-acento">
-            Ya existe como «{coincidencia.label}» — se va a reusar esa.
+            Ya existe como «{coincidencia.label}»
+            {!estaAprobada(coincidencia) && ' (sin aprobar todavía)'} — se va a reusar
+            esa.
           </p>
         )}
 
@@ -164,9 +183,9 @@ export function TaxonomiaSelect({
                   }}
                 >
                   <span>{v.label}</span>
-                  {v.usos > 0 && (
-                    <span className="text-xs text-tinta/40">{v.usos} usos</span>
-                  )}
+                  <span className="shrink-0 text-xs text-tinta/40">
+                    {!estaAprobada(v) ? 'sin aprobar' : v.usos > 0 ? `${v.usos} usos` : ''}
+                  </span>
                 </button>
               </li>
             ))}
@@ -196,10 +215,18 @@ export function TaxonomiaSelect({
         campo está completo cuando está vacío.
       */}
       <option value="">{placeholder ?? 'Elegí una opción…'}</option>
-      {!esConocido && value && <option value={value}>{value} (nueva)</option>}
-      {valores.map((v) => (
+      {!esConocido && value && (
+        <option value={value}>
+          {pendienteAjena ? `${pendienteAjena.label} (sin aprobar)` : `${value} (nueva)`}
+        </option>
+      )}
+      {elegibles.map((v) => (
         <option key={v.slug} value={v.slug}>
-          {v.label}
+          {/*
+            §4.3 — marcar las propias sin aprobar: si no, quien las creó no
+            tiene forma de entender por qué la otra cuenta no las ve.
+          */}
+          {estaAprobada(v) ? v.label : `${v.label} (sin aprobar)`}
         </option>
       ))}
       <option value={OTRO}>Otro…</option>

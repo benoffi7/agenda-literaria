@@ -222,11 +222,15 @@ export function ActividadFormulario({
 
       // §4.2 — las etiquetas nuevas se incorporan al desplegable acá, en
       // transacción y reusando por slug si ya existían.
+      //
+      // §4.3 — el uid queda como huella de autor: la opción nueva sirve para
+      // esta actividad y para las próximas de esta cuenta, pero no entra al
+      // desplegable de las demás hasta que alguien la apruebe.
       for (const { campo, label } of labelsNuevos) {
-        await upsertOpcion(campo, label);
+        await upsertOpcion(campo, label, uid);
       }
       const labelsTags = candidato.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
-      if (labelsTags.length) await upsertOpciones('tags', labelsTags);
+      if (labelsTags.length) await upsertOpciones('tags', labelsTags, uid);
 
       const conSlug: ActividadForm = { ...candidato, slug };
       const id = inicial
@@ -275,6 +279,7 @@ export function ActividadFormulario({
           <Campo label="Tipo de actividad" requerido error={errorDe('tipo')}>
             <TaxonomiaSelect
               campo="tipo"
+              uid={uid}
               value={form.tipo}
               onChange={(slug, labelNuevo) => {
                 cambiarTipo(slug);
@@ -411,6 +416,7 @@ export function ActividadFormulario({
             <Campo label="Barrio" error={errorDe('sede.barrio')}>
               <TaxonomiaSelect
                 campo="barrio"
+                uid={uid}
                 value={form.sede.barrio}
                 onChange={(slug, labelNuevo) => {
                   set('sede', { ...form.sede!, barrio: slug });
@@ -450,6 +456,7 @@ export function ActividadFormulario({
             <Campo label="Plataforma" requerido error={errorDe('online.plataforma')}>
               <TaxonomiaSelect
                 campo="plataforma"
+                uid={uid}
                 value={form.online.plataforma}
                 onChange={(slug, labelNuevo) => {
                   set('online', { ...form.online!, plataforma: slug });
@@ -580,6 +587,7 @@ export function ActividadFormulario({
           <Campo label="Arancel" requerido error={errorDe('arancel.tipo')}>
             <TaxonomiaSelect
               campo="arancel"
+              uid={uid}
               value={form.arancel.tipo}
               onChange={(slug, labelNuevo) => {
                 set('arancel', { ...form.arancel, tipo: slug });
@@ -708,6 +716,7 @@ export function ActividadFormulario({
         <div className="grid gap-4">
           <Campo label="Tags" ayuda="Alimentan los filtros del sitio público.">
             <TagsInput
+              uid={uid}
               value={form.tags}
               onChange={(slugs, nuevos) => {
                 set('tags', slugs);

@@ -74,6 +74,12 @@ const calendario = async () => {
  *
  * Se cachea por instancia: son 5 documentos que cambian muy de vez en cuando y
  * la Function corre una vez por escritura de actividad.
+ *
+ * §4.3 — acá entran TODAS las opciones, también las pendientes de aprobación.
+ * A propósito: `aprobada` decide qué se puede *elegir* en el desplegable de las
+ * otras cuentas, no qué se puede *mostrar*. La actividad guardó ese slug
+ * legítimamente y el evento es público: filtrar acá haría que la descripción
+ * dijera "con-beca-parcial" en lugar de "Con beca parcial".
  */
 const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'];
 let _labels = null;

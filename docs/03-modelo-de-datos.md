@@ -116,9 +116,11 @@ Un patrón genérico resuelve cinco campos: desplegable enumerado + casilla
 ```
 /opciones/arancel
   valores: [
-    { slug: 'gratis',       label: 'Gratis',           orden: 1, fijo: true,  usos: 0 },
-    { slug: 'a-la-gorra',   label: 'A la gorra',       orden: 2, fijo: true,  usos: 0 },
-    { slug: 'beca-parcial', label: 'Con beca parcial', orden: 9, fijo: false, usos: 3 }
+    { slug: 'gratis',       label: 'Gratis',           orden: 1, fijo: true,  usos: 0, aprobada: true },
+    { slug: 'a-la-gorra',   label: 'A la gorra',       orden: 2, fijo: true,  usos: 0, aprobada: true },
+    { slug: 'beca-parcial', label: 'Con beca parcial', orden: 9, fijo: false, usos: 3, aprobada: true },
+    { slug: 'bono-social',  label: 'Bono social',      orden: 99, fijo: false, usos: 1,
+      aprobada: false, huellaCreador: '3f9a1c07' }
   ]
 ```
 
@@ -153,6 +155,40 @@ El orden lo calcula `ordenarValores`: primero las fijas por su `orden`, después
 las creadas con "Otro" por uso descendente. **Ese orden decide cuál opción
 preselecciona el formulario**, así que está fijado con tests en
 `tests/opciones-orden.test.ts`.
+
+### `aprobada` y `huellaCreador`
+
+Desde que hay **dos cuentas con claim `admin`** cargando actividades, una
+etiqueta nueva no puede aparecer sola en el desplegable de la otra persona
+(§4.3). El patrón es uno solo para los cinco campos:
+
+| Campo | Tipo | Qué significa |
+|---|---|---|
+| `aprobada` | `boolean` opcional | ¿entra al desplegable de todos? Lo creado con "Otro" nace en `false` |
+| `huellaCreador` | `string` opcional | quién la creó, **como huella del uid, no como uid** |
+
+Tres reglas, todas en `src/lib/opciones.ts`:
+
+1. **`fijo: true` implica aprobada.** Las base lo están por definición.
+2. **El campo ausente cuenta como aprobada** (`estaAprobada`). Los documentos
+   que ya están en producción se escribieron antes de que existiera el campo, y
+   `preparar-produccion.mjs` no los pisa: si la ausencia contara como
+   "pendiente", opciones que hoy se usan desaparecerían del desplegable y el
+   formulario mostraría el slug crudo de una actividad que ya estaba bien
+   cargada. Ver [D-26](06-decisiones.md).
+3. **Filtrar lo elegible no es filtrar lo resolvible.** `opcionesVisibles` decide
+   qué se puede *elegir*; la etiqueta de un slug pendiente se sigue *mostrando*
+   (en el formulario y en la descripción del evento), porque la actividad lo
+   guardó legítimamente y el calendario es público. Ver [D-30](06-decisiones.md).
+
+`huellaCreador` es una huella FNV-1a de 8 hex (`src/lib/huella.ts`) y no el uid:
+este documento es de **lectura pública** (§5.3) y el §5.1 dice que los uids no
+salen al público. La visibilidad solo necesita comparar igualdad. Ver
+[D-27](06-decisiones.md) y [`07-seguridad.md`](07-seguridad.md).
+
+Aprobar es una escritura más del documento, así que la autoridad es el claim
+`admin` (D-28). Se hace con `scripts/aprobar-opciones.mjs` — ver
+[`08-operacion.md`](08-operacion.md); todavía no hay UI en el panel (D-29).
 
 ### Advertencia: las etiquetas se ven en público
 
@@ -198,5 +234,6 @@ pero el §3.1 no lo tiene en el modelo. Hoy en esos tipos se carga solo el autor
 vía `tallerista`. Decisión pendiente del usuario: campo propio o dentro de la
 descripción.
 
-**`aprobada` en las opciones.** El §4.3 lo menciona para cuando cargue gente
-además del dueño. No está implementado.
+**`aprobada` en las opciones.** Ya está implementado (2026-08-21) — ver
+"`aprobada` y `huellaCreador`" más arriba. Lo que falta es la UI para aprobar
+desde el panel: hoy se aprueba con un script.

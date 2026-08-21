@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { OPCIONES_BASE, observarOpciones, ordenarValores } from '@/lib/opciones';
+import {
+  OPCIONES_BASE,
+  observarOpciones,
+  opcionesVisibles,
+  ordenarValores,
+} from '@/lib/opciones';
 import { labelsDeOpciones, type LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
 
@@ -8,8 +13,19 @@ import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
  * el desplegable sin recargar el panel.
  * Si Firestore no responde, cae a las opciones base para que el formulario
  * siga siendo usable.
+ *
+ * Devuelve dos listas y la diferencia importa (§4.3):
+ *
+ * - `valores` — **todas**, sin filtrar. Es lo que hay que usar para resolver la
+ *   etiqueta de un slug: una actividad puede estar usando legítimamente una
+ *   opción pendiente de otra persona, y con la lista filtrada se mostraría el
+ *   slug crudo.
+ * - `elegibles` — lo que esta cuenta puede **elegir**: las aprobadas más las
+ *   que ella misma creó y esperan validación. Es lo que va en el desplegable.
+ *
+ * Sin `uid`, `elegibles` son solo las aprobadas.
  */
-export function useOpciones(campo: CampoTaxonomia) {
+export function useOpciones(campo: CampoTaxonomia, uid?: string) {
   const [valores, setValores] = useState<ValorOpcion[]>(() =>
     ordenarValores(OPCIONES_BASE[campo]),
   );
@@ -28,7 +44,9 @@ export function useOpciones(campo: CampoTaxonomia) {
     };
   }, [campo]);
 
-  return { valores, cargando };
+  const elegibles = useMemo(() => opcionesVisibles(valores, uid), [valores, uid]);
+
+  return { valores, elegibles, cargando };
 }
 
 /**

@@ -198,10 +198,12 @@ cada rebuild, así que probablemente `no-cache` o un `max-age` corto.
 
 ## P3 — cuando sobre tiempo
 
-### B-10 · `aprobada` en las opciones (§4.3)
+### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
 
-Para cuando cargue gente además del dueño: las opciones nuevas funcionan pero no
-aparecen en el desplegable de los demás hasta ser validadas.
+Las opciones creadas con "Otro" nacen pendientes: funcionan para quien las creó
+y no aparecen en el desplegable de las demás cuentas hasta aprobarlas. Se aprueba
+con `scripts/aprobar-opciones.mjs`. Decisiones: D-26 a D-30. Lo que quedó
+abierto está en B-25 a B-29.
 
 ### B-11 · Duplicar una actividad entera — ✅ hecho (2026-08-21)
 
@@ -246,6 +248,56 @@ mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
 `<button role="menuitem">` alcanzables con Tab, pero no implementa el patrón
 completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
 cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
+
+### B-25 · Aprobar taxonomías desde el panel
+
+Hoy aprobar (§4.3) necesita `scripts/aprobar-opciones.mjs`, o sea una máquina
+con Node y `gcloud`: desde el teléfono no se puede. La pantalla natural es la
+administración de taxonomías de **B-06** (editar, borrar, ver `usos`), que
+tampoco existe — conviene hacer las dos juntas. Decisión: D-29.
+
+Prioridad real: sube a P2 si el dueño empieza a cargar desde el teléfono.
+
+### B-26 · Nadie se entera de que hay algo para aprobar
+
+Una etiqueta pendiente queda invisible para la otra cuenta y **no hay ningún
+aviso**: si nadie corre `--listar`, la etiqueta puede quedar pendiente para
+siempre y las dos personas terminan creando dos slugs para lo mismo (justo lo
+que el §4.2 evita).
+
+Mínimo útil: un contador de pendientes en la cabecera del panel. Cuadra con
+B-25.
+
+### B-27 · El `events.json` tiene que publicar solo las opciones aprobadas
+
+Parte de **B-01** (el sitio público, que todavía no existe). El generador tiene
+que armar `opciones.*` (§4.4) con `opcionesVisibles(valores)` **sin uid**, que
+devuelve exactamente las aprobadas. Queda anotado acá para que no se pierda: si
+se vuelca el array crudo, los chips de filtro del sitio muestran vocabulario sin
+validar.
+
+### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño
+
+Hoy cualquiera de las dos cuentas con claim `admin` puede aprobar (D-28), y las
+opciones nuevas nacen pendientes **incluso las del dueño**, porque el código no
+distingue dueño de admin.
+
+Si el dueño quiere ser el único que valida, o que lo suyo nazca aprobado, hace
+falta un claim aparte (`curador`) y mover la aprobación a un campo o documento
+propio para que las reglas puedan verificarla — hoy no pueden, porque `valores`
+es un array de maps y no se puede comparar elemento por elemento.
+
+No se implementó por cuenta propia: cambia el modelo de permisos.
+
+### B-29 · ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? — decisión del dueño
+
+Si la cuenta B tipea en "Otro" una etiqueta que ya existe como pendiente de la
+cuenta A, hoy se reusa el slug (bien, §4.2) pero la opción **sigue pendiente**:
+dos personas la usan y ninguna la ve en su desplegable.
+
+Que dos cuentas distintas la usen es buena señal de que es vocabulario real, y
+aprobarla ahí sería automático y barato. Contra: aprueba sin que nadie mire, y
+alcanza con que la segunda persona repita el mismo typo.
 
 ---
 

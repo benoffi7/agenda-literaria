@@ -1,21 +1,21 @@
 {
   "arancel": [
-    { "slug": "gratis", "label": "Gratis", "orden": 1, "fijo": true, "usos": 0 },
-    { "slug": "a-la-gorra", "label": "A la gorra", "orden": 2, "fijo": true, "usos": 0 },
-    { "slug": "arancelado", "label": "Arancelado", "orden": 3, "fijo": true, "usos": 0 }
+    { "slug": "gratis", "label": "Gratis", "orden": 1, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "a-la-gorra", "label": "A la gorra", "orden": 2, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "arancelado", "label": "Arancelado", "orden": 3, "fijo": true, "usos": 0, "aprobada": true }
   ],
   "tipo": [
-    { "slug": "taller", "label": "Taller", "orden": 1, "fijo": true, "usos": 0 },
-    { "slug": "club-lectura", "label": "Club de lectura", "orden": 2, "fijo": true, "usos": 0 },
-    { "slug": "encuentro", "label": "Encuentro", "orden": 3, "fijo": true, "usos": 0 },
-    { "slug": "presentacion", "label": "Presentación", "orden": 4, "fijo": true, "usos": 0 },
-    { "slug": "charla", "label": "Charla", "orden": 5, "fijo": true, "usos": 0 }
+    { "slug": "taller", "label": "Taller", "orden": 1, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "club-lectura", "label": "Club de lectura", "orden": 2, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "encuentro", "label": "Encuentro", "orden": 3, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "presentacion", "label": "Presentación", "orden": 4, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "charla", "label": "Charla", "orden": 5, "fijo": true, "usos": 0, "aprobada": true }
   ],
   "barrio": [],
   "plataforma": [
-    { "slug": "zoom", "label": "Zoom", "orden": 1, "fijo": true, "usos": 0 },
-    { "slug": "meet", "label": "Google Meet", "orden": 2, "fijo": true, "usos": 0 },
-    { "slug": "jitsi", "label": "Jitsi", "orden": 3, "fijo": true, "usos": 0 }
+    { "slug": "zoom", "label": "Zoom", "orden": 1, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "meet", "label": "Google Meet", "orden": 2, "fijo": true, "usos": 0, "aprobada": true },
+    { "slug": "jitsi", "label": "Jitsi", "orden": 3, "fijo": true, "usos": 0, "aprobada": true }
   ],
   "tags": []
 }
