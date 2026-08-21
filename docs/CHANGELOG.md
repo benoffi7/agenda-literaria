@@ -1,5 +1,24 @@
 # Changelog
 
+## Sin publicar
+
+### Ideas de producto, con su argumento en contra
+
+Documento nuevo: [`11-ideas-de-producto.md`](11-ideas-de-producto.md). Solo
+documentación — no toca código.
+
+Cuatro propuestas pensadas desde el circuito literario y no desde el software, y
+**dos descartes con su motivo**: guardar datos de los inscriptos (rompe la única
+garantía simple que tiene el proyecto: hoy no guarda datos personales de
+terceros) y hacer reusables las sedes y organizadores (pierde contra "Duplicar",
+que ya existe).
+
+Anotadas en el backlog como B-95 a B-102. Las dos que menos cuestan usan datos
+que ya están cargados: el texto para publicar en redes revive
+`difusion.arrobar`, el único campo del §3.1 que se llena y no se usa para nada,
+y "esta semana" se deriva de lo que el listado ya tiene en memoria.
+
+
 ## 1.0.1 — 2026-08-22
 
 ### La versión del panel está siempre visible al pie

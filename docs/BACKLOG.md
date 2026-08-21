@@ -305,6 +305,120 @@ existente y nombrarlo en el aviso, para que borrar el test rompa el vínculo.
 **Una ayuda que miente es peor que no tener ayuda**, así que si la lista de
 avisos crece, este ítem sube de prioridad.
 
+### B-95 · El texto para publicar en redes
+
+`difusion.arrobar` es el único campo del §3.1 que se carga y **no se usa para
+nada**: se guarda y ahí muere. Mientras tanto, cada actividad se vuelve a
+escribir a mano en Instagram, con la hora y el arancel copiados de mirar el panel
+en otra pestaña.
+
+Una sección colapsada del formulario, del mismo tipo que la vista previa del
+evento, con el texto listo para pegar y un botón de copiar: título, fechas,
+modalidad y barrio, arancel con notas, cómo se inscribe, y al final los handles
+de `arrobar` + `organizador.instagram` + `tallerista.instagram`, deduplicados.
+Dos variantes: "anuncio" (el ciclo entero) y "recordatorio" (el próximo
+encuentro, con su tema y su lectura).
+
+**No toca el modelo, ni las reglas, ni las Functions, ni el sitio:** una función
+pura (`src/lib/textoRedes.ts`) y un componente. El link de la reunión no va nunca
+(§5.1); `arrobar` sí, que es su lugar.
+
+Decisión del dueño: si el texto lleva el link a la página de la actividad
+—hoy no existe—. Conviene decidirlo antes para no cambiar el formato después.
+Razonamiento y contra en [`11-ideas-de-producto.md`](11-ideas-de-producto.md).
+
+### B-96 · "Esta semana" arriba del listado
+
+El listado está ordenado por última modificación, así que arriba está lo que
+tocaste, no lo que se viene. Con dos personas cargando, nadie tiene el panorama:
+el club de lectura es mañana y la lectura no se cargó, o la inscripción cierra
+hoy y la actividad sigue en borrador.
+
+Un bloque chico arriba del listado con tres cosas: encuentros de los próximos 7
+días, inscripciones que cierran en los próximos 3, y **borradores cuyo primer
+encuentro es en menos de una semana** —el olvido caro, porque después de la fecha
+no tiene arreglo—.
+
+El listado ya trae todas las actividades a memoria (`listarActividades`): es una
+función pura sobre lo que ya está cargado, cero lecturas nuevas. **Que no se
+dibuje cuando no tiene nada que decir**, así que estar visible ya es
+información.
+
+### B-97 · `inscripcion.completo` — poder decir que se llenó
+
+Después de publicar no hay forma de decir nada. El taller se llenó, la gente
+sigue mandando DM, y el sitio y el calendario siguen mostrando "cupo: 12" porque
+`inscripcion.cupo` se carga una vez y no se vuelve a mirar.
+
+Un booleano `inscripcion.completo` (**campo nuevo en `inscripcion` del §3.1**),
+que se prende **desde el menú "⋯" del listado**, no desde el formulario: un toque
+desde el teléfono, sin abrir 30+ campos. De ahí sale el cartel en el sitio (con
+B-01), y la línea en la descripción del evento — así **quien ya estaba suscripto
+al calendario se entera sin que nadie le avise**.
+
+Toca: `types/actividad.ts`, `schema.ts`, `actividades.ts`, `toPublic.ts`,
+`construirDescripcion` de `functions/calendario.js`, el menú del listado, y el
+sitio cuando exista. Una línea o dos en cada uno.
+
+**Ojo:** cambiar la descripción actualiza los N eventos del ciclo. Es lo
+correcto y la guarda del §7.1 lo maneja (D-07), pero verlo en emuladores antes de
+creerlo.
+
+Conviene antes de B-01 para que el `events.json` nazca con el campo. Decisiones
+del dueño: booleano o contador (recomendado el booleano: un contador se
+desactualiza con cada inscripción, no solo con la última), y si "completo"
+esconde el botón de inscripción en el sitio (recomendado que no: siempre hay
+lista de espera).
+
+### B-98 · Cancelar un encuentro sin que desaparezca en silencio
+
+**Contradice el §7.3 del `CLAUDE.md` y la guía del panel.** Necesita decisión del
+dueño antes de tocar nada.
+
+Hoy `sesion.cancelada === true` **borra** el evento. Quien tenía ese jueves
+agendado, con su recordatorio, ve el evento desaparecer sin ningún aviso. Es
+justo el momento en que un calendario público vale más —es la única vez que el
+dato cambió *después* de que la gente lo guardó— y el sistema elige no decirlo. Y
+no hay dónde escribir por qué: "se pasa al jueves que viene" y "se cancela por
+falta de inscriptos" se ven igual, como un hueco.
+
+Propuesta: `sesion.motivoCancelacion: string | null`, y que un encuentro
+cancelado **actualice** su evento en vez de borrarlo (`CANCELADO — ` en el título,
+el motivo arriba de la descripción). Lo que no cambia: pasar la actividad a
+borrador/pendiente/cancelada sigue borrando todo, y **borrar** el encuentro sigue
+borrando su evento. La distinción es esa: cancelar es un anuncio, borrar es una
+corrección.
+
+Más barato de lo que parece: todo vive en `debeExistir` y `construirEvento`, dos
+funciones puras ya exportadas y con tests, y la vista previa del panel las
+importa (D-20), así que el panel lo muestra sin una línea de UI.
+
+**No es solo código:** el aviso `cancelar-encuentro` de `src/lib/ayuda.ts` pasa a
+mentir, y es uno de los seis avisos de lo que no se puede deshacer. Es
+exactamente el escenario de **B-63** — se actualiza en el mismo commit o no se
+hace.
+
+Va después de B-01 (toca la parte más frágil, §7 y §10 avisan), pero **decidirlo
+antes**: si el sitio nace sabiendo que una sesión cancelada tiene motivo, la
+página de detalle lo muestra de entrada.
+
+Segunda decisión, menor: si un evento cancelado se borra cuando su fecha ya pasó
+o queda como registro (recomendado: queda).
+
+### B-99 · El `events.json` necesita un eje de encuentros, no solo de actividades
+
+Parte de **B-01**, anotado para que no se pierda al escribir el generador.
+
+El modelo es centrado en la actividad y está bien (§2.2): un club de 8 encuentros
+es una tarjeta. Pero la pregunta que se le hace a una agenda es "¿qué hay el
+sábado?", que es centrada en el encuentro — y con tarjetas por actividad hay que
+abrir todas para saberlo.
+
+No hace falta cambiar el modelo: que el `events.json` lleve **también** un índice
+plano de encuentros próximos (fecha, id de sesión, slug), derivado en build time,
+para que la island ofrezca "este fin de semana" sin aplanar los ciclos en el
+navegador en cada filtrado. Es barato al escribir el generador y caro después.
+
 ## P3 — cuando sobre tiempo
 
 ### B-33 · Las etiquetas de GitHub hay que crearlas una vez
@@ -500,6 +614,58 @@ Tres cosas conocidas, ninguna urgente:
 - **La capa no atrapa el foco.** Cierra con `Escape`, con el botón y con un
   click en el fondo, y al abrirse el foco va al diálogo, pero con Tab se puede
   salir hacia el formulario de atrás. Es el mismo patrón incompleto que B-14.
+
+### B-100 · Prellenar sede, organizador e inscripción desde lo ya cargado
+
+Extender el patrón del §4 para que elegir "Casa Brandon" complete nombre,
+dirección, barrio, ciudad, indicaciones y coordenadas; y lo mismo con el
+organizador y su Instagram, y con el canal de inscripción.
+
+**Está en P3 a propósito, y con una condición.** Compite con "Duplicar" (B-11),
+que ya resuelve el caso repetitivo real de este circuito —el ciclo del año pasado
+con otras fechas— y lo resuelve para los 30 campos, no para tres. Lo que quedaría
+es "tres talleres distintos en la misma sede", que existe y es menos frecuente.
+
+Costo escondido: el §4.1 guarda **solo el slug** para que renombrar no toque
+documentos, y con una sede eso no sirve (si la sede se mudó, la actividad del año
+pasado no debe cambiar de dirección). La actividad tendría que guardar una
+**copia** del objeto — segunda fuente de verdad, y el problema de B-04
+multiplicado.
+
+Vale la pena **si los datos dicen que las sedes se repiten**, y hoy nadie lo
+mide. El vocabulario del §9 puede contestarlo antes de escribir una línea.
+
+### B-101 · Las actividades que ya pasaron no se archivan en ninguna parte
+
+No hay estado para "terminó". Un taller de marzo sigue `publicado` con todas sus
+sesiones en el pasado: se mezcla en el listado del panel (ordenado por última
+modificación) y, cuando exista el sitio, hay que decidir si aparece.
+
+No hace falta un estado nuevo: se deriva de la última sesión. Lo que hace falta es
+decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
+filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
+probablemente lo correcto?). Cuadra con B-96 y con B-01.
+
+### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño
+
+Recomendación: **no**, y queda anotado para que la pregunta no vuelva a aparecer
+sin el razonamiento.
+
+Hoy el sistema **no guarda ni un dato personal de un tercero**, y por eso el §5
+cabe en una tabla y el §7 se verifica de un pantallazo. Una lista de inscriptos
+mete nombres y teléfonos de gente que no usa el sistema, y a partir de ahí la
+privacidad, la retención y el borrado pasan a ser responsabilidad del proyecto.
+
+Los tres casos que la pedirían tienen salidas más baratas: el conteo lo resuelve
+B-97 con un booleano; el aviso de cancelación lo resuelve B-98 por el calendario,
+sin guardar nada de nadie; y la conversación ya vive en el DM, que es donde
+además se contesta. Copiarla a mano al panel es trabajo nuevo, y una lista
+copiada a mano queda incompleta el primer día ocupado.
+
+Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso
+público (B-98), después el estado agregado (B-97), y la lista de personas solo si
+eso no alcanzó. Detalle en
+[`11-ideas-de-producto.md`](11-ideas-de-producto.md).
 
 ## Cerrados
 
