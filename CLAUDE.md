@@ -5,6 +5,19 @@ Contiene decisiones de arquitectura ya tomadas y cerradas. Si algo parece
 mejorable, proponerlo explícitamente antes de implementar algo distinto — no
 cambiar de enfoque por cuenta propia.
 
+> **Estado de la implementación: [`docs/`](docs/README.md).**
+> Este archivo dice qué se decidió; `docs/` dice qué se construyó, qué infra
+> existe hoy, y qué falta.
+>
+> Dos reglas de proceso, detalladas en [`docs/05-patrones.md`](docs/05-patrones.md):
+>
+> 1. **Todo pedido de funcionalidad, arreglo o modificación de código termina
+>    con la documentación actualizada.** Es parte de haber terminado, no un paso
+>    posterior. Como mínimo, entra en [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
+> 2. **Todo reporte de posible bug va a [`docs/BACKLOG.md`](docs/BACKLOG.md),
+>    ordenado por prioridad** — incluso si se arregla en el momento, para que
+>    quede el rastro.
+
 ---
 
 ## 1. Qué es el proyecto

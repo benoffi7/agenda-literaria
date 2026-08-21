@@ -4,7 +4,13 @@ Sitio público de talleres de escritura, clubes de lectura, encuentros y
 presentaciones en Argentina, con panel propio de carga.
 
 Las decisiones de arquitectura están en **[CLAUDE.md](./CLAUDE.md)** — leerlo
-antes de tocar código.
+antes de tocar código. El estado de la implementación, el inventario de
+infraestructura, los patrones, el changelog y el backlog están en
+**[`docs/`](./docs/README.md)**.
+
+**Al terminar cualquier cambio de código, actualizar `docs/`.** Los reportes de
+bug van al [backlog](./docs/BACKLOG.md) por prioridad. Detalle en
+[`docs/05-patrones.md`](./docs/05-patrones.md).
 
 ## Estado
 
