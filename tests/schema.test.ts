@@ -130,3 +130,33 @@ describe('schema — material', () => {
     expect(errores(v)).toContain('material.items.0.titulo');
   });
 });
+
+describe('schema — no publicar con el slug de una copia (trampa 10)', () => {
+  it('rechaza publicar con un slug que termina en -copia', () => {
+    const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-copia' };
+    expect(errores(v)).toContain('slug');
+  });
+
+  it('rechaza también los sufijos numerados', () => {
+    const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-copia-3' };
+    expect(errores(v)).toContain('slug');
+  });
+
+  it('deja GUARDAR un borrador con ese slug', () => {
+    // La copia nace como borrador con `-copia` a propósito: el bloqueo es solo
+    // al publicar, para no romper el flujo de duplicar.
+    const v = { ...valido(), estado: 'borrador' as const, slug: 'club-lectura-copia' };
+    expect(errores(v)).toEqual([]);
+  });
+
+  it('deja publicar en cuanto se corrige el slug', () => {
+    const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-2027' };
+    expect(errores(v)).toEqual([]);
+  });
+
+  it('no confunde un slug que solo contiene la palabra copia', () => {
+    // "copiando-a-borges" no es una copia: la regla es sobre el sufijo.
+    const v = { ...valido(), estado: 'publicado' as const, slug: 'copia-de-seguridad-taller' };
+    expect(errores(v)).toEqual([]);
+  });
+});

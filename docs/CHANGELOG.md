@@ -9,6 +9,21 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### No se puede publicar con el slug de una copia
+
+Duplicar una actividad propone un slug `…-copia` y lo deja editable. El riesgo
+que quedaba: publicar sin corregirlo deja esa palabra en la URL **para
+siempre**, porque el slug se vuelve inmutable al publicar (trampa 10) y
+cambiarlo después pierde el SEO de esa página.
+
+El schema ahora lo rechaza al publicar, no al guardar. La copia tiene que poder
+existir como borrador con ese slug — es como nace.
+
+El predicado vive en `src/lib/duplicar.ts` y lo importa el schema, para no
+escribir la expresión regular dos veces. Un test verifica que
+`copia-de-seguridad-taller` sí se puede publicar: la regla es sobre el sufijo,
+no sobre la palabra.
+
 ### Vista previa del evento de Calendar en el panel (B-12)
 
 **Por qué:** la descripción del evento lleva ~20 campos del formulario (D-09) y

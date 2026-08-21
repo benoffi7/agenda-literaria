@@ -79,6 +79,10 @@ Material · Opcional · Difusión. Las tres últimas son acordeones colapsados.
   Arranca destildado y advierte sobre el zoombombing (D-15).
 - **Guardar borrador** valida igual que publicar. Un borrador inválido no se
   guarda.
+- **No se puede publicar con el slug propuesto para una copia** (`…-copia`).
+  Guardarlo como borrador sí, porque la copia nace justamente con ese slug: el
+  bloqueo es solo al publicar, porque ahí el slug queda fijo para siempre
+  (trampa 10).
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
   tipearlas: abandonar el formulario no debe dejar basura en la taxonomía.
 

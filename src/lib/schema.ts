@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { esSlugDeCopia } from '@/lib/duplicar';
 import {
   ENTREGAS_MATERIAL,
   ESTADOS,
@@ -157,6 +158,18 @@ export const actividadFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ['material', 'items'],
         message: 'Agregá al menos un material o destildá la casilla',
+      });
+    }
+
+    // Trampa 10 — el slug queda inmutable al publicar, así que una URL
+    // `…-copia` publicada por descuido no se arregla nunca más sin perder el
+    // SEO de esa página. Se bloquea al publicar, no al guardar borrador: la
+    // copia nace como borrador con ese slug a propósito.
+    if (v.estado === 'publicado' && esSlugDeCopia(v.slug)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['slug'],
+        message: 'Antes de publicar, cambiá el slug: quedaría fijo con «-copia» en la URL',
       });
     }
 

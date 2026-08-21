@@ -34,6 +34,15 @@ const RE_TITULO_COPIA = /\s*\(copia(?:\s+\d+)?\)\s*$/i;
 const RE_SLUG_COPIA = /-copia(?:-\d+)?$/;
 
 /**
+ * ¿Este slug es el que se propuso automáticamente para una copia?
+ *
+ * Lo usa el schema para no dejar publicar con él: el slug queda inmutable al
+ * publicar (trampa 10), así que una URL `…-copia` publicada por descuido no se
+ * puede arreglar nunca más sin perder el SEO de esa página.
+ */
+export const esSlugDeCopia = (slug: string): boolean => RE_SLUG_COPIA.test(slug);
+
+/**
  * El título se marca como copia: en el listado, dos filas con el mismo título
  * son indistinguibles. Se limpia el sufijo anterior primero, así duplicar dos
  * veces no deja "Taller (copia) (copia)".
