@@ -49,6 +49,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'version-en-el-pie',
+    fecha: '2026-08-22',
+    version: '1.0.1',
+    titulo: 'Abajo de todo siempre dice qué versión del panel estás usando',
+    detalle:
+      'Y si hay una más nueva publicada, te lo avisa ahí con un botón para actualizar. ' +
+      'Sirve para cuando algo no funciona: con ese número se puede saber exactamente qué ' +
+      'versión estabas usando.',
+    donde: 'Al pie de cualquier pantalla del panel.',
+  },
+  {
     id: 'medicion-del-uso',
     fecha: '2026-08-21',
     version: '1.0.0',

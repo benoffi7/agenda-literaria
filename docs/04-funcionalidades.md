@@ -181,6 +181,21 @@ El formulario es usable en teléfono:
 - Teclados por campo: numérico en cupo, de URL en los links, sin autocapitalizar
   ni autocorregir en slug, handles y URLs.
 
+### La versión está siempre a la vista
+
+Al pie de las tres pantallas del panel —login, "sin permisos" y el panel mismo—
+está la versión que está corriendo. Si hay una publicada distinta, lo dice y
+ofrece un botón para actualizar; si el panel ya se va a recargar solo, no ofrece
+el botón, porque viviría un segundo.
+
+Si no se pudo leer `/version.json` dice **"no se pudo verificar"** en lugar de
+insinuar que está al día: el caso en que ese dato importa es justamente cuando
+algo falla.
+
+Para qué sirve tenerla siempre visible: es el dato que hace accionable un
+reporte. El formulario de reportes ya la manda solo, pero cuando el problema se
+cuenta por WhatsApp o de palabra, tiene que poder leerse de algún lado.
+
 ### Versión y actualización automática
 
 El panel sabe qué versión está corriendo y detecta cuando la publicada es otra.

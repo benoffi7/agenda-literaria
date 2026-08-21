@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1 — 2026-08-22
+
+### La versión del panel está siempre visible al pie
+
+Pedido del dueño. Al pie de las tres pantallas —login, "sin permisos" y el
+panel— se ve la versión corriendo, y si hay una publicada distinta lo dice con
+un botón para actualizar.
+
+`useVersionPublicada` hace el fetch y el `reload()`, así que llamarlo desde el
+pie **y** desde el aviso habrían sido dos chequeos en paralelo y, en el peor
+caso, dos recargas. Ahora lo llama `AdminApp` una sola vez y reparte el estado
+por props; `AvisoVersionNueva` dejó de llamarlo.
+
+El pie no es fijo: va al final del contenido. Un tercer elemento fijo, con la
+barra de acciones abajo y el aviso de versión arriba, dejaría el formulario de
+un teléfono viendo tres franjas y una rendija.
+
+
 ## 1.0.0 — 2026-08-21
 
 Primera versión etiquetada. Cierra los pasos 1, 2, 4 y 5 del orden de

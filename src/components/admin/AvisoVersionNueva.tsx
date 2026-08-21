@@ -1,5 +1,11 @@
 import { claseBotonPrimario } from '@/components/admin/campos/Campo';
-import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
+import type { DecisionVersion } from '@/lib/version';
+
+interface Props {
+  decision: DecisionVersion;
+  versionActual: string;
+  versionPublicada: string | null;
+}
 
 /**
  * Aviso de "hay una versión nueva del panel".
@@ -15,9 +21,13 @@ import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
  * Por qué no tiene "cerrar": tiene que no poder ignorarse por accidente. Se va
  * cuando el problema se resolvió — y al guardar el formulario se va solo,
  * porque ahí ya no queda nada que perder y la recarga ocurre sin preguntar.
+ *
+ * Recibe el estado por props en vez de llamar a `useVersionPublicada`: ese hook
+ * hace el fetch y el `reload()`, así que dos componentes llamándolo serían dos
+ * chequeos en paralelo y, en el peor caso, dos recargas. Lo llama `AdminApp`
+ * una sola vez y lo reparte acá y al pie.
  */
-export function AvisoVersionNueva() {
-  const { decision, versionActual, versionPublicada } = useVersionPublicada();
+export function AvisoVersionNueva({ decision, versionActual, versionPublicada }: Props) {
 
   if (decision.accion !== 'avisar') return null;
 

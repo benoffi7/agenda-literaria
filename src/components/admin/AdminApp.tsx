@@ -3,6 +3,8 @@ import { Suspense, lazy, useEffect, useState, type ComponentType, type ReactNode
 // desde el primer render, incluso en la pantalla de login. No arrastra
 // Firestore, así que no rompe el corte del bundle de D-51.
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
+import { PieVersion } from '@/components/admin/PieVersion';
+import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
@@ -87,6 +89,11 @@ export function AdminApp() {
   const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
   const [version, setVersion] = useState(0);
 
+  // Una sola llamada: el hook hace el fetch de /version.json y el reload().
+  // Dos componentes llamándolo serían dos chequeos y, en el peor caso, dos
+  // recargas. Se reparte al aviso y al pie.
+  const estadoVersion = useVersionPublicada();
+
   useEffect(() => {
     return observarAuth(async (u) => {
       setUsuario(u);
@@ -127,6 +134,7 @@ export function AdminApp() {
             Emuladores activos — la cuenta que uses es de mentira.
           </p>
         )}
+        <PieVersion {...estadoVersion} />
       </div>
     );
   }
@@ -151,13 +159,14 @@ export function AdminApp() {
         >
           Salir
         </button>
+        <PieVersion {...estadoVersion} />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-3xl px-segura py-6 lg:max-w-4xl">
-      <AvisoVersionNueva />
+      <AvisoVersionNueva {...estadoVersion} />
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-xl font-semibold">
@@ -238,6 +247,7 @@ export function AdminApp() {
           }}
         />
       )}
+      <PieVersion {...estadoVersion} />
     </div>
   );
 }

@@ -175,3 +175,47 @@ describe('formulario-sucio — el store que evita perder el trabajo', () => {
     ).toBe('avisar');
   });
 });
+
+describe('el pie del panel — qué muestra según el estado', () => {
+  /**
+   * `PieVersion` es JSX y no hay testing-library (B-08), así que se testea la
+   * decisión que toma, que es la parte que puede estar mal: cuándo decir que
+   * hay una actualización disponible y cuándo ofrecer el botón.
+   *
+   * Replica las dos condiciones del componente. Si alguna cambia allá y no
+   * acá, este test deja de proteger nada — está anotado en B-08.
+   */
+  const hayActualizacion = (actual: string, publicada: string | null) =>
+    Boolean(publicada) && publicada !== actual;
+
+  const ofreceBoton = (accion: string, actual: string, publicada: string | null) =>
+    hayActualizacion(actual, publicada) && accion !== 'recargar';
+
+  it('no anuncia nada cuando la versión corriendo es la publicada', () => {
+    expect(hayActualizacion('1.0.0+abc', '1.0.0+abc')).toBe(false);
+  });
+
+  it('anuncia la actualización cuando difieren', () => {
+    expect(hayActualizacion('1.0.0+abc', '1.0.1+def')).toBe(true);
+  });
+
+  it('no anuncia nada si no se pudo leer la publicada', () => {
+    // Sin red o sin /version.json: no se sabe. Insinuar que está al día sería
+    // peor, y el pie lo dice como "no se pudo verificar".
+    expect(hayActualizacion('1.0.0+abc', null)).toBe(false);
+  });
+
+  it('no ofrece el botón si el panel ya se va a recargar solo', () => {
+    // Un botón que vive un segundo hasta que la página se recarga es ruido.
+    expect(ofreceBoton('recargar', '1.0.0+abc', '1.0.1+def')).toBe(false);
+  });
+
+  it('ofrece el botón cuando la recarga automática no va a ocurrir', () => {
+    // El caso real: hay un formulario con cambios sin guardar.
+    expect(ofreceBoton('avisar', '1.0.0+abc', '1.0.1+def')).toBe(true);
+  });
+
+  it('no ofrece el botón si no hay nada que actualizar', () => {
+    expect(ofreceBoton('nada', '1.0.0+abc', '1.0.0+abc')).toBe(false);
+  });
+});
