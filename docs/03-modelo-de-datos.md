@@ -167,16 +167,36 @@ Dos consecuencias:
    `rebuildPorOpciones` solo marca el rebuild del sitio, no re-sincroniza el
    calendario.
 
+## `sede.geo` — el punto exacto
+
+```
+sede: { nombre, direccion, barrio, ciudad, indicaciones, geo }
+geo: { lat: number, lng: number } | null
+```
+
+Opcional y por defecto `null`. **El formulario lo captura** pegando el link de
+Google Maps del lugar o un par `lat, lng` (D-46): el parseo está en
+[`src/lib/coordenadas.ts`](../src/lib/coordenadas.ts), puro y testeado en
+`tests/coordenadas.test.ts`.
+
+Con `geo` cargado, `construirLinkMapa` de `functions/calendario.js` arma el link
+del evento con las coordenadas; sin él, con el texto de la ubicación. Vale la
+pena cargarlo donde la dirección no alcanza: una librería sin numeración clara,
+un centro cultural dentro de un predio, una casa en un pasaje.
+
+El rango lo validan las dos puntas —el parseo al pegar y `schema.ts` al
+guardar—, porque un lat/lng invertido manda el evento al otro lado del mundo.
+Que el punto caiga lejos de Argentina **no** bloquea: solo avisa.
+
+`geo` es público: viaja en `events.json` dentro de `sede` (§5.2). Es la misma
+información que ya publica el evento de Calendar.
+
 ## Campos que faltan
 
 **`libro presentado`.** El §11 lo lista como campo de presentaciones y charlas,
 pero el §3.1 no lo tiene en el modelo. Hoy en esos tipos se carga solo el autor,
 vía `tallerista`. Decisión pendiente del usuario: campo propio o dentro de la
 descripción.
-
-**`sede.geo`.** Existe en el modelo y la Function lo usa para armar un link de
-mapa exacto si está presente, pero **el formulario no lo captura**, así que
-siempre es `null` y el mapa se resuelve por dirección.
 
 **`aprobada` en las opciones.** El §4.3 lo menciona para cuando cargue gente
 además del dueño. No está implementado.

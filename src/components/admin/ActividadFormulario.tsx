@@ -10,6 +10,7 @@ import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
 import { TagsInput } from '@/components/admin/campos/TagsInput';
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
+import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
 import { actualizarActividad, crearActividad, documentoAForm, slugDisponible } from '@/lib/actividades';
 import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
@@ -433,6 +434,11 @@ export function ActividadFormulario({
                 onChange={(e) => set('sede', { ...form.sede!, indicaciones: e.target.value })}
               />
             </Campo>
+            <CoordenadasSede
+              geo={form.sede.geo}
+              onChange={(geo) => set('sede', { ...form.sede!, geo })}
+              className="sm:col-span-2"
+            />
           </div>
         )}
 

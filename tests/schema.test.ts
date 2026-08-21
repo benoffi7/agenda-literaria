@@ -131,6 +131,29 @@ describe('schema — material', () => {
   });
 });
 
+describe('schema — coordenadas de la sede (§3.1)', () => {
+  const conGeo = (geo: { lat: number; lng: number } | null) => {
+    const v = valido();
+    return { ...v, sede: { ...v.sede, geo } };
+  };
+
+  it('acepta la sede sin coordenadas: el campo es opcional', () => {
+    expect(errores(conGeo(null))).toEqual([]);
+  });
+
+  it('acepta un punto válido', () => {
+    expect(errores(conGeo({ lat: -34.5989, lng: -58.4392 }))).toEqual([]);
+  });
+
+  it('rechaza una latitud que no existe', () => {
+    expect(errores(conGeo({ lat: 200, lng: -58.4392 }))).toContain('sede.geo.lat');
+  });
+
+  it('rechaza una longitud que no existe', () => {
+    expect(errores(conGeo({ lat: -34.5989, lng: -400 }))).toContain('sede.geo.lng');
+  });
+});
+
 describe('schema — no publicar con el slug de una copia (trampa 10)', () => {
   it('rechaza publicar con un slug que termina en -copia', () => {
     const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-copia' };
