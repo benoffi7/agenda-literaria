@@ -47,9 +47,22 @@ implementar sincronización bidireccional.
 El panel es una island `client:only="react"` en la ruta `/admin` del mismo
 proyecto que el sitio público (§2.3). Un repo, un Hosting target, un deploy.
 
-El bundle pesado queda aislado en esa ruta: `/admin` carga ~576 KB (el SDK de
-Firebase) y la home carga ~8 KB. Verificable en `dist/_astro/` después de un
+El bundle pesado queda aislado en esa ruta: la home carga ~8 kB y `/admin` es el
+único que paga el SDK de Firebase. Verificable en `dist/_astro/` después de un
 build.
+
+Dentro de `/admin`, el bundle está partido en dos por el login (B-09, D-51):
+
+| Cuándo se baja | Qué | Peso |
+|---|---|---|
+| Al entrar a `/admin` | React + `firebase/app` + `firebase/auth` + `AdminApp` | ~353 kB · gzip ~95 kB |
+| Recién después del login | Firestore + `ListaActividades` | ~323 kB · gzip ~83 kB |
+| Al abrir el formulario | `ActividadFormulario` + zod + vista previa | ~93 kB · gzip ~25 kB |
+
+La pantalla de login pesa la mitad que antes (~750 kB) porque **no baja
+Firestore**: `db()` vive en `src/lib/firestore-client.ts`, aparte de
+`firebase-client.ts`. El corte depende del grafo de imports, así que lo cuida
+`tests/bundle-panel.test.ts`.
 
 ## Por qué el JSON público lo genera el build
 
@@ -98,7 +111,8 @@ src/
     opciones-base.json      opciones fijas, compartidas con los scripts
     toPublic.ts             proyección pública (§5.2)
     vistaPreviaEvento.ts    form → evento de Calendar, reusando @calendario
-    firebase-client.ts      auth y Firestore del panel
+    firebase-client.ts      app y auth del panel — sin Firestore (B-09)
+    firestore-client.ts     db() del panel, aparte para no cargarlo en el login
     firebase-admin.ts       SOLO build time (§5.4)
   components/admin/         el panel entero
   layouts/Base.astro        head, fuentes, viewport

@@ -385,6 +385,55 @@ por `Escape`. El panel no tiene librería de UI y no se agregó ninguna.
 
 ---
 
+## D-51 · El bundle del panel se corta en el login, no con `manualChunks`
+
+**Decisión** (B-09): la carga inicial de `/admin` baja de ~750 kB a ~353 kB
+(gzip 200 → 95) cortando el grafo de imports en dos lugares, sin tocar
+`astro.config.mjs` ni agregar dependencias:
+
+1. **`db()` se mudó a `src/lib/firestore-client.ts`.** `firebase-client.ts` es el
+   módulo que carga la pantalla de login; mientras importaba `firebase/firestore`
+   para `getFirestore` y `connectFirestoreEmulator`, el SDK entero entraba al
+   chunk inicial. Ahora ese módulo es solo `firebase/app` + `firebase/auth`.
+2. **`AdminApp` carga `ListaActividades` y `ActividadFormulario` con `import()`.**
+   Mover `db()` sola no alcanzaba: `actividades.ts` y `opciones.ts` importan
+   `firebase/firestore` de forma estática por su cuenta, así que Firestore sigue
+   entrando a cualquier chunk que las alcance. Diferir las dos vistas que las
+   usan es lo que efectivamente lo saca del arranque.
+
+**Motivo del orden:** hacer solo (1) no cambia nada medible, y hacer solo (2)
+deja Firestore en el chunk del login por culpa de `getFirestore`. Las dos juntas
+son las que mueven el número, y son cuatro líneas de import más un módulo nuevo.
+
+**Alternativa descartada: `build.rollupOptions.output.manualChunks`.** Parte los
+archivos pero no cambia lo que el navegador necesita para el primer render: lo
+que se importa de forma estática se baja igual. Además `astro.config.mjs` es el
+archivo que sostiene la guarda de `firebase-admin` (§5.4) y el alias
+`@calendario` (D-20); no vale meterle configuración de chunks para algo que se
+resuelve en los imports.
+
+**Alternativa descartada: `db()` async con `await import('firebase/firestore')`.**
+Habría contagiado `await` a `refOpciones`, a `observarOpciones` —que devuelve la
+función de desuscripción de forma sincrónica— y de ahí a `useOpciones` y a los
+componentes. Mucho más código tocado para el mismo resultado.
+
+**Costo:** la suma de todos los chunks sube ~2 kB (+0,3%) por partirlos, y
+después del login hay un salto de red extra que se ve como un "Cargando…" de un
+frame. A cambio, la pantalla de login —lo único que se ve con mala señal— pesa
+la mitad.
+
+**Trampa nueva:** el corte no está en la configuración, está en el grafo de
+imports, así que un `import` estático de más lo deshace **con el build en verde**.
+Dos reglas, con tests en `tests/bundle-panel.test.ts` que fallan si se rompen:
+`db` se importa de `@/lib/firestore-client` y nunca de `firebase-client`, y
+`AdminApp` no importa las dos vistas de forma estática.
+
+**El `Suspense` va adentro del helper `diferido()`** y no en los puntos de uso
+del JSX, así el cambio en `AdminApp.tsx` queda contenido en el bloque de
+imports.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

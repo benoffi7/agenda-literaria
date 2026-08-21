@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
-import { ActividadFormulario } from '@/components/admin/ActividadFormulario';
-import { ListaActividades } from '@/components/admin/ListaActividades';
+import { Suspense, lazy, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import {
   loginConGoogle,
   logout,
@@ -8,6 +6,8 @@ import {
   tieneClaimAdmin,
   usarEmuladores,
 } from '@/lib/firebase-client';
+import type { ActividadFormulario as TipoFormulario } from '@/components/admin/ActividadFormulario';
+import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { User } from 'firebase/auth';
 
@@ -18,6 +18,41 @@ type Vista =
   // B-11 — la copia viaja como form, no como documento: se guarda por el camino
   // de creación, así el id, el slug y `createdAt`/`createdBy` son de la copia.
   | { tipo: 'duplicar'; copia: ActividadForm; tituloOrigen: string };
+
+/**
+ * B-09 — carga diferida del panel autenticado.
+ *
+ * El listado y el formulario son los que arrastran el SDK de Firestore
+ * (`@/lib/firestore-client`) y, con él, la mitad del bundle. Nadie los ve antes
+ * de loguearse ni sin el claim `admin`, así que se cargan por `import()`: la
+ * pantalla de login baja solo React + `firebase/auth`.
+ *
+ * El `Suspense` va acá adentro a propósito: así los puntos de uso del JSX no
+ * cambian y el diff queda contenido en este bloque.
+ */
+const diferido = <P extends object>(
+  cargar: () => Promise<{ default: (props: P) => ReactNode }>,
+): ComponentType<P> => {
+  const Cargado = lazy(cargar);
+  return (props: P) => (
+    <Suspense fallback={<p className="p-8 text-sm text-tinta/50">Cargando…</p>}>
+      <Cargado {...props} />
+    </Suspense>
+  );
+};
+
+// Los props salen del componente real vía `import type` (se borra al compilar,
+// no genera import en runtime). Hay que anotarlos explícitamente: dentro de un
+// `.then()` TypeScript no puede inferir `P`.
+const ListaActividades = diferido<Parameters<typeof TipoLista>[0]>(() =>
+  import('@/components/admin/ListaActividades').then((m) => ({ default: m.ListaActividades })),
+);
+
+const ActividadFormulario = diferido<Parameters<typeof TipoFormulario>[0]>(() =>
+  import('@/components/admin/ActividadFormulario').then((m) => ({
+    default: m.ActividadFormulario,
+  })),
+);
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).

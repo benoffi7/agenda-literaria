@@ -9,6 +9,43 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### La pantalla de login del panel ya no baja Firestore (B-09)
+
+**Por qué:** el panel se usa desde el teléfono, a veces con mala conexión, y
+había que bajar ~750 KB antes de ver el botón "Entrar con Google". La mitad de
+eso era el SDK de Firestore, que recién hace falta **después** de entrar.
+
+Dos cortes en el grafo de imports, sin dependencias nuevas y sin tocar
+`astro.config.mjs`:
+
+1. `db()` se mudó de `src/lib/firebase-client.ts` a
+   **`src/lib/firestore-client.ts`**. `firebase-client` es el módulo que carga la
+   pantalla de login: mientras importaba `firebase/firestore` para `getFirestore`,
+   arrastraba el SDK entero al chunk inicial.
+2. `AdminApp` carga `ListaActividades` y `ActividadFormulario` con `import()`
+   diferido (D-51). Son los que importan Firestore, y nadie los ve sin loguearse
+   ni sin el claim `admin`.
+
+Medido con `npm run build`, en `dist/_astro/`:
+
+| Chunk | Antes | Después |
+|---|---|---|
+| `client.*.js` (React) | 186,6 kB · gzip 58,4 | igual |
+| `AdminApp.*.js` | **579,7 kB · gzip 141,6** | **166,1 kB · gzip 36,4** (+ shim de 94 B) |
+| `actividades.*.js` (Firestore) | — | 317,7 kB · gzip 80,5 — **diferido** |
+| `ActividadFormulario.*.js` | — | 92,6 kB · gzip 24,7 — **diferido** |
+| `ListaActividades.*.js` | — | 5,3 kB · gzip 2,4 — **diferido** |
+| `index.*.js` (home pública) | 7,8 kB · gzip 3,1 | igual |
+
+**Carga inicial de `/admin`: 766,3 kB → 352,8 kB (−54%); gzip 200,0 → 94,9
+(−53%).** La home pública no cambia. La suma de todos los chunks sube 2,0 kB
+(+0,3%): es el costo de partirlos, y se paga solo después del login.
+
+Guardas nuevas en `tests/bundle-panel.test.ts`: el corte vive en el grafo de
+imports, así que un `import` estático de más lo deshace con el build en verde.
+Los tests leen los fuentes como texto y fallan si `firebase-client` vuelve a
+tocar Firestore o si `AdminApp` importa las dos vistas de forma estática.
+
 ### Vista previa del evento de Calendar en el panel (B-12)
 
 **Por qué:** la descripción del evento lleva ~20 campos del formulario (D-09) y
