@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// §5.3 — el custom claim `admin` se setea una vez con el Admin SDK
+// (scripts/set-admin-claim.mjs). Sin ese claim no hay escritura posible.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // `token.get('admin', false)` y no `token.admin`: leer una clave ausente de
+    // un map en las reglas es un evaluation error, no `false`. Con el acceso
+    // directo, cualquier usuario sin el claim hace fallar la regla y el cliente
+    // recibe "evaluation error" en lugar de un permission-denied limpio.
+    function esAdmin() {
+      return request.auth != null && request.auth.token.get('admin', false) == true;
+    }
+
+    match /actividades/{id} {
+      // Ojo (§5.3): esta condición obliga a que toda query pública incluya
+      // where('estado','==','publicado') o Firestore rechaza la query entera.
+      //
+      // El `|| esAdmin()` es un agregado sobre la regla del documento: sin él
+      // el panel no puede listar sus propios borradores.
+      //
+      // Cuando la lectura se deniega, el emulador reporta "evaluation error"
+      // en vez de permission-denied, porque en su primera pasada `resource`
+      // todavía no está cargado y `resource.data` explota. Es cosmético: las
+      // cuatro evaluaciones deniegan igual. Intentar blindarlo con
+      // `resource != null` o `.get('estado','')` no lo evita.
+      allow read: if esAdmin() || resource.data.estado == 'publicado';
+      allow write: if esAdmin();
+
+      // §12 — historial de versiones. Solo lo escribe la Function con Admin SDK.
+      match /versiones/{version} {
+        allow read: if esAdmin();
+        allow write: if false;
+      }
+    }
+
+    match /opciones/{campo} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // §8 — flag de rebuild pendiente. Solo backend.
+    match /sistema/{doc} {
+      allow read: if esAdmin();
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

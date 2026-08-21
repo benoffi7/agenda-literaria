@@ -1,0 +1,144 @@
+import { useEffect, useState } from 'react';
+import { ActividadFormulario } from '@/components/admin/ActividadFormulario';
+import { ListaActividades } from '@/components/admin/ListaActividades';
+import {
+  loginConGoogle,
+  logout,
+  observarAuth,
+  tieneClaimAdmin,
+  usarEmuladores,
+} from '@/lib/firebase-client';
+import type { ActividadConId } from '@/types/actividad';
+import type { User } from 'firebase/auth';
+
+type Vista = { tipo: 'lista' } | { tipo: 'nueva' } | { tipo: 'editar'; actividad: ActividadConId };
+
+/**
+ * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
+ * El router es propio y mínimo: son tres vistas.
+ */
+export function AdminApp() {
+  const [usuario, setUsuario] = useState<User | null>(null);
+  const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    return observarAuth(async (u) => {
+      setUsuario(u);
+      setEsAdmin(u ? await tieneClaimAdmin(u) : null);
+      setCargando(false);
+    });
+  }, []);
+
+  if (cargando) {
+    return <p className="p-8 text-sm text-tinta/50">Cargando…</p>;
+  }
+
+  if (!usuario) {
+    return (
+      <div className="mx-auto max-w-sm px-4 py-24 text-center">
+        <h1 className="font-serif text-2xl font-semibold">Panel de carga</h1>
+        <p className="mt-2 text-sm text-tinta/60">
+          Agenda de actividades literarias
+        </p>
+        <button
+          type="button"
+          onClick={() => void loginConGoogle()}
+          className="mt-6 w-full rounded-md bg-acento px-4 py-2.5 text-sm text-white"
+        >
+          Entrar con Google
+        </button>
+        {usarEmuladores && (
+          <p className="mt-4 text-xs text-tinta/45">
+            Emuladores activos — la cuenta que uses es de mentira.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // §5.3 — sin el custom claim `admin` no hay escritura posible: las reglas de
+  // Firestore lo rechazan igual, esto solo evita mostrar un panel inútil.
+  if (esAdmin === false) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-24 text-center">
+        <h1 className="font-serif text-xl font-semibold">Sin permisos</h1>
+        <p className="mt-2 text-sm text-tinta/60">
+          {usuario.email} no tiene el claim <code>admin</code>. Correlo con{' '}
+          <code className="rounded bg-tinta/8 px-1">
+            npm run admin:claim -- {usuario.uid}
+          </code>{' '}
+          y volvé a entrar.
+        </p>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="mt-6 rounded-md border border-borde px-4 py-2 text-sm"
+        >
+          Salir
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6">
+      <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
+        <div className="flex-1">
+          <h1 className="font-serif text-xl font-semibold">
+            {vista.tipo === 'lista'
+              ? 'Actividades'
+              : vista.tipo === 'nueva'
+                ? 'Nueva actividad'
+                : vista.actividad.titulo}
+          </h1>
+          <p className="text-xs text-tinta/50">{usuario.email}</p>
+        </div>
+        {vista.tipo !== 'lista' && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'lista' })}
+            className="rounded-md border border-borde px-3 py-1.5 text-sm"
+          >
+            ← Volver
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="rounded px-2 py-1 text-xs text-tinta/55 hover:bg-black/5"
+        >
+          Salir
+        </button>
+      </header>
+
+      {usarEmuladores && (
+        <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Conectado a los emuladores locales. Nada de esto toca producción.
+        </p>
+      )}
+
+      {vista.tipo === 'lista' && (
+        <ListaActividades
+          version={version}
+          onNueva={() => setVista({ tipo: 'nueva' })}
+          onEditar={(a) => setVista({ tipo: 'editar', actividad: a })}
+        />
+      )}
+
+      {vista.tipo !== 'lista' && (
+        <ActividadFormulario
+          uid={usuario.uid}
+          inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
+          onCancelar={() => setVista({ tipo: 'lista' })}
+          onGuardado={() => {
+            setVersion((v) => v + 1);
+            setVista({ tipo: 'lista' });
+          }}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,114 @@
+import type { SesionForm } from '@/types/actividad';
+
+/**
+ * §7.2 / trampa 2 — los ids de sesión se generan al crear la fila del
+ * formulario, NUNCA por índice del array. Si se usa el índice, borrar la
+ * sesión 3 renumera todo y el diff contra Calendar cree que cambiaron cinco
+ * encuentros en vez de uno.
+ */
+export const nuevaSesionId = (): string => {
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : // Fallback para contextos sin crypto.randomUUID (no debería pasar en
+        // localhost ni en https, pero no queremos ids colisionables).
+        `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `ses_${uuid}`;
+};
+
+const DOS_HORAS_MS = 2 * 60 * 60 * 1000;
+
+/** `Date` → string apto para `<input type="datetime-local">`, en hora local. */
+export const aDatetimeLocal = (d: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+};
+
+/** String de `datetime-local` → `Date` en hora local del navegador. */
+export const deDatetimeLocal = (s: string): Date | null => {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+export const sesionVacia = (inicio?: Date, duracionMs = DOS_HORAS_MS): SesionForm => {
+  const desde = inicio ?? new Date();
+  return {
+    id: nuevaSesionId(),
+    inicio: aDatetimeLocal(desde),
+    fin: aDatetimeLocal(new Date(desde.getTime() + duracionMs)),
+    tema: '',
+    lectura: '',
+    cancelada: false,
+    calendarEventId: null,
+  };
+};
+
+/** Duplica una sesión conservando datos pero con id nuevo y una semana después. */
+export const duplicarSesion = (s: SesionForm, cadaDias = 7): SesionForm => {
+  const inicio = deDatetimeLocal(s.inicio);
+  const fin = deDatetimeLocal(s.fin);
+  const salto = cadaDias * 24 * 60 * 60 * 1000;
+  return {
+    ...s,
+    id: nuevaSesionId(),
+    inicio: inicio ? aDatetimeLocal(new Date(inicio.getTime() + salto)) : s.inicio,
+    fin: fin ? aDatetimeLocal(new Date(fin.getTime() + salto)) : s.fin,
+    cancelada: false,
+    // El id de Calendar es de la sesión original: la copia todavía no existe allá.
+    calendarEventId: null,
+  };
+};
+
+/**
+ * §11 — "generar N encuentros semanales" ahorra mucho tipeo, pero las fechas
+ * resultantes quedan editables una por una: los ciclos siempre tienen
+ * excepciones (un feriado, una semana que se corre).
+ *
+ * No usa RRULE ni eventos recurrentes de Calendar (§2.2): siempre lista
+ * explícita de sesiones.
+ */
+export const generarSesiones = (opts: {
+  cantidad: number;
+  inicio: string;
+  duracionMinutos: number;
+  cadaDias?: number;
+}): SesionForm[] => {
+  const { cantidad, inicio, duracionMinutos, cadaDias = 7 } = opts;
+  const primera = deDatetimeLocal(inicio);
+  if (!primera || cantidad < 1) return [];
+
+  const saltoMs = cadaDias * 24 * 60 * 60 * 1000;
+  const duracionMs = duracionMinutos * 60 * 1000;
+
+  return Array.from({ length: cantidad }, (_, i) => {
+    // Se recalcula desde la primera fecha en cada paso para no acumular
+    // desvíos, y con Date local para que un cambio de horario de verano no
+    // corra el horario del encuentro.
+    const arranque = new Date(primera.getTime() + saltoMs * i);
+    return {
+      id: nuevaSesionId(),
+      inicio: aDatetimeLocal(arranque),
+      fin: aDatetimeLocal(new Date(arranque.getTime() + duracionMs)),
+      tema: '',
+      lectura: '',
+      cancelada: false,
+      calendarEventId: null,
+    };
+  });
+};
+
+/** Duración en minutos de una sesión, para prellenar el generador. */
+export const duracionMinutos = (s: SesionForm): number => {
+  const a = deDatetimeLocal(s.inicio);
+  const b = deDatetimeLocal(s.fin);
+  if (!a || !b) return 120;
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
+};
+
+/** Ordena por fecha de inicio. Las sesiones se muestran cronológicamente. */
+export const ordenarPorInicio = (sesiones: SesionForm[]): SesionForm[] =>
+  [...sesiones].sort((a, b) => a.inicio.localeCompare(b.inicio));

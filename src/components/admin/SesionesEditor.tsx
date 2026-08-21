@@ -1,0 +1,234 @@
+import { useState } from 'react';
+import { claseInput } from '@/components/admin/campos/Campo';
+import {
+  aDatetimeLocal,
+  deDatetimeLocal,
+  duplicarSesion,
+  duracionMinutos,
+  generarSesiones,
+  ordenarPorInicio,
+  sesionVacia,
+} from '@/lib/sesiones';
+import type { SesionForm } from '@/types/actividad';
+
+interface Props {
+  sesiones: SesionForm[];
+  onChange: (s: SesionForm[]) => void;
+  /** Los clubes de lectura muestran el campo "lectura" con más prominencia. */
+  mostrarLectura?: boolean;
+  error?: string;
+}
+
+/**
+ * §11 — Editor de sesiones: filas dinámicas (agregar / duplicar / borrar),
+ * cada una con su `id` generado al crearse.
+ *
+ * "Generar N encuentros semanales" ahorra mucho tipeo, pero las fechas
+ * resultantes quedan editables una por una: los ciclos siempre tienen
+ * excepciones (§2.2 — sin RRULE, lista explícita).
+ */
+export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Props) {
+  const [abrirGenerador, setAbrirGenerador] = useState(false);
+  const [cantidad, setCantidad] = useState(8);
+  const [cadaDias, setCadaDias] = useState(7);
+
+  const primera = sesiones[0];
+  const duracion = primera ? duracionMinutos(primera) : 120;
+
+  const editar = (id: string, cambios: Partial<SesionForm>) =>
+    onChange(sesiones.map((s) => (s.id === id ? { ...s, ...cambios } : s)));
+
+  const agregar = () => {
+    // Arranca una semana después de la última, que es el caso más común.
+    const ultima = sesiones[sesiones.length - 1];
+    const base = ultima ? deDatetimeLocal(ultima.inicio) : null;
+    const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : new Date();
+    onChange([...sesiones, sesionVacia(siguiente, duracion * 60_000)]);
+  };
+
+  /** Borra por id, nunca por índice (trampa 2). */
+  const borrar = (id: string) => onChange(sesiones.filter((s) => s.id !== id));
+
+  const duplicar = (id: string) => {
+    const s = sesiones.find((x) => x.id === id);
+    if (s) onChange([...sesiones, duplicarSesion(s, 7)]);
+  };
+
+  const generar = () => {
+    const inicio = primera?.inicio ?? aDatetimeLocal(new Date());
+    onChange(
+      generarSesiones({ cantidad, inicio, duracionMinutos: duracion, cadaDias }),
+    );
+    setAbrirGenerador(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={agregar}
+          className="rounded-md bg-tinta px-3 py-1.5 text-sm text-white"
+        >
+          + Agregar encuentro
+        </button>
+        <button
+          type="button"
+          onClick={() => setAbrirGenerador((v) => !v)}
+          className="rounded-md border border-borde px-3 py-1.5 text-sm"
+        >
+          Generar N encuentros…
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(ordenarPorInicio(sesiones))}
+          className="rounded-md border border-borde px-3 py-1.5 text-sm"
+          disabled={sesiones.length < 2}
+        >
+          Ordenar por fecha
+        </button>
+        <span className="ml-auto text-xs text-tinta/50">
+          {sesiones.length} {sesiones.length === 1 ? 'encuentro' : 'encuentros'}
+        </span>
+      </div>
+
+      {abrirGenerador && (
+        <div className="rounded-md border border-acento/30 bg-acento/5 p-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-xs">
+              Cantidad
+              <input
+                type="number"
+                min={1}
+                max={52}
+                value={cantidad}
+                onChange={(e) => setCantidad(Number(e.target.value))}
+                className={`${claseInput} w-24`}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              Cada (días)
+              <input
+                type="number"
+                min={1}
+                value={cadaDias}
+                onChange={(e) => setCadaDias(Number(e.target.value))}
+                className={`${claseInput} w-24`}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={generar}
+              className="rounded-md bg-acento px-3 py-2 text-sm text-white"
+            >
+              Generar
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-tinta/60">
+            Reemplaza la lista actual. Toma la fecha y duración del primer
+            encuentro como base — después ajustás las excepciones una por una.
+          </p>
+        </div>
+      )}
+
+      {error && <p className="text-xs font-medium text-acento">{error}</p>}
+
+      {sesiones.length === 0 && (
+        <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/50">
+          Todavía no hay encuentros.
+        </p>
+      )}
+
+      <ol className="flex flex-col gap-2">
+        {sesiones.map((s, i) => (
+          <li
+            key={s.id}
+            className={`rounded-md border p-3 ${
+              s.cancelada ? 'border-borde bg-black/[0.03] opacity-60' : 'border-borde bg-white'
+            }`}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <span className="font-serif text-sm font-semibold text-tinta/70">
+                Encuentro {i + 1}
+              </span>
+              {s.calendarEventId && (
+                <span
+                  className="rounded-full bg-tinta/10 px-2 py-0.5 text-[11px] text-tinta/60"
+                  title={`Evento de Calendar: ${s.calendarEventId}`}
+                >
+                  en Calendar
+                </span>
+              )}
+              <div className="ml-auto flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => duplicar(s.id)}
+                  className="rounded px-2 py-1 text-xs text-tinta/60 hover:bg-black/5"
+                >
+                  Duplicar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => borrar(s.id)}
+                  className="rounded px-2 py-1 text-xs text-acento hover:bg-acento/10"
+                >
+                  Borrar
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-xs">
+                Inicio
+                <input
+                  type="datetime-local"
+                  value={s.inicio}
+                  onChange={(e) => editar(s.id, { inicio: e.target.value })}
+                  className={claseInput}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Fin
+                <input
+                  type="datetime-local"
+                  value={s.fin}
+                  onChange={(e) => editar(s.id, { fin: e.target.value })}
+                  className={claseInput}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Tema
+                <input
+                  value={s.tema}
+                  onChange={(e) => editar(s.id, { tema: e.target.value })}
+                  placeholder="Ejercicio de voz"
+                  className={claseInput}
+                />
+              </label>
+              {mostrarLectura !== false && (
+                <label className="flex flex-col gap-1 text-xs">
+                  Lectura asignada
+                  <input
+                    value={s.lectura}
+                    onChange={(e) => editar(s.id, { lectura: e.target.value })}
+                    placeholder="Cap. 1-4"
+                    className={claseInput}
+                  />
+                </label>
+              )}
+            </div>
+
+            <label className="mt-2 flex items-center gap-2 text-xs text-tinta/70">
+              <input
+                type="checkbox"
+                checked={s.cancelada}
+                onChange={(e) => editar(s.id, { cancelada: e.target.checked })}
+              />
+              Cancelado — se borra del calendario público (§7.3)
+            </label>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
