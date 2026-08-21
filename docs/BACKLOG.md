@@ -111,13 +111,16 @@ falla en lugares sin numeración clara.
 
 ### B-08 · Sin tests de componentes
 
-No hay testing-library instalada. La lógica pura está muy cubierta (134 tests),
+No hay testing-library instalada. La lógica pura está muy cubierta (158 tests),
 pero el render y la interacción del formulario se verificaron a mano.
 
 Vale al menos para `TaxonomiaSelect` (el bug del placeholder que se veía como
-opción elegida habría salido en un test de render) y para el editor de sesiones.
+opción elegida habría salido en un test de render), para el editor de sesiones y
+para `VistaPreviaEvento`: su adaptador está testeado, pero que el aviso del link
+público se muestre —y que la descripción tenga su propio scroll— se verificó a
+mano.
 
-### B-09 · El bundle del panel pesa 570 KB
+### B-09 · El bundle del panel pesa 576 KB
 
 Es el SDK de Firebase. Queda aislado en `/admin` y la home carga 8 KB, así que
 no afecta al público ni al SEO. Se podría bajar con imports más finos o carga
@@ -137,10 +140,16 @@ aparecen en el desplegable de los demás hasta ser validadas.
 Un ciclo nuevo suele ser el del año anterior con otras fechas. Hoy hay que
 cargarlo de cero.
 
-### B-12 · Vista previa de cómo queda el evento
+### B-12 · Vista previa de cómo queda el evento — ✅ hecho (2026-08-21)
 
-El panel no muestra cómo va a verse la descripción en Calendar. Con ~20 campos
-volcados ahí, una vista previa evitaría publicar y corregir.
+Sección colapsada al final del formulario: título, ubicación y descripción del
+evento para el encuentro que se elija, armados con `construirEvento` de
+`functions/calendario.js` —la misma función que publica el evento (D-16)—, así
+que no puede divergir de lo que sale. Ver el
+[changelog](CHANGELOG.md) y [`04-funcionalidades.md`](04-funcionalidades.md).
+
+Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
+mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
 
 ### B-13 · El schedule de `dispararRebuild` no reintenta con backoff
 

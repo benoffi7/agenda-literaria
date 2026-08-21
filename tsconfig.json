@@ -8,7 +8,12 @@
     "verbatimModuleSyntax": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      // Lógica pura del evento de Calendar, compartida por la Function y la
+      // vista previa del panel: una sola fuente de verdad. Si la vista previa
+      // duplicara `construirDescripcion`, mentiría en cuanto las dos copias se
+      // separaran. El mismo alias está en astro.config.mjs y vitest.config.ts.
+      "@calendario": ["functions/calendario.js"]
     }
   }
 }

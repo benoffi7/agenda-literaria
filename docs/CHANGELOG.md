@@ -9,6 +9,43 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Vista previa del evento de Calendar en el panel (B-12)
+
+**Por qué:** la descripción del evento lleva ~20 campos del formulario (D-09) y
+la única forma de ver el resultado era publicar y mirar el calendario. El ciclo
+publicar-corregir sobre un calendario público es exactamente lo que no conviene
+hacer.
+
+Sección nueva al final del formulario, colapsada: se elige el encuentro y se ve
+el **título**, la **ubicación** y la **descripción completa** tal como van a
+salir.
+
+**Sin duplicar la lógica.** La vista previa importa `construirEvento` de
+`functions/calendario.js`, la misma función que corre en la Cloud Function, a
+través del alias `@calendario` (D-16). Si armara su propio texto, las dos
+versiones se separarían en el primer cambio y la vista previa mentiría — y una
+vista previa que miente es peor que no tenerla. De paso, las reglas de
+privacidad del §5.1 salen gratis: el link de la reunión solo con `urlPublica`,
+la difusión interna nunca, la URL del material privado tampoco.
+
+Las dos adaptaciones que hacían falta viven en `src/lib/vistaPreviaEvento.ts`:
+
+- **Fechas:** el formulario tiene strings de `datetime-local` y la descripción
+  espera `Timestamp`. La conversión la hace `formADocumento`, la misma que corre
+  al guardar, así que la vista previa ve el documento que se va a escribir.
+- **Etiquetas:** la actividad guarda slugs (§4.1). El mapa `slug → etiqueta` se
+  arma con las opciones que el panel ya tiene cargadas (`useLabelsTaxonomia`),
+  incluidas las creadas con "Otro" que todavía no están en `/opciones/*` porque
+  se persisten en el submit (D-02).
+
+La vista previa también **señala** lo que se puede pasar por alto: si el link de
+la reunión va a salir publicado, avisa en rojo; si la actividad no está
+publicada o el encuentro está cancelado, aclara que hoy ese evento no existe en
+el calendario (§7.3), usando el mismo `debeExistir` que el sync.
+
+19 tests nuevos (158 en total), entre ellos que la vista previa no muestra el
+link privado de la reunión, la difusión interna ni la URL del material privado.
+
 ### El checkbox "publicar el link de la reunión" ahora hace algo
 
 El modelo del §3.1 tiene `online.urlPublica` y el formulario su casilla, pero la

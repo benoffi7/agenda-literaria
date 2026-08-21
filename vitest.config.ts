@@ -3,7 +3,12 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // El mismo alias que astro.config.mjs y tsconfig.json: la lógica del
+      // evento de Calendar se importa de un solo lugar (§7.4).
+      '@calendario': fileURLToPath(new URL('./functions/calendario.js', import.meta.url)),
+    },
   },
   test: {
     environment: 'node',

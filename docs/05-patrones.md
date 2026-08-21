@@ -59,6 +59,13 @@ están aparte.
 
 **Al agregar lógica, preguntarse si necesita red.** Si no, va en un módulo puro.
 
+Ese aislamiento también permitió **reusar** `functions/calendario.js` desde el
+panel para la vista previa del evento, con el alias `@calendario` (D-16): la
+vista previa no reimplementa la descripción, importa la misma función que
+publica el evento. Cuando dos lugares tienen que mostrar lo mismo —y más si
+lo que está en juego son las reglas de privacidad del §5.1— el patrón es
+compartir el módulo, no copiar la lógica.
+
 ## Comparar payloads, no listas de campos
 
 La guarda anti-loop del sync **no** mantiene una lista de campos relevantes:

@@ -47,7 +47,7 @@ implementar sincronización bidireccional.
 El panel es una island `client:only="react"` en la ruta `/admin` del mismo
 proyecto que el sitio público (§2.3). Un repo, un Hosting target, un deploy.
 
-El bundle pesado queda aislado en esa ruta: `/admin` carga ~570 KB (el SDK de
+El bundle pesado queda aislado en esa ruta: `/admin` carga ~576 KB (el SDK de
 Firebase) y la home carga ~8 KB. Verificable en `dist/_astro/` después de un
 build.
 
@@ -96,6 +96,7 @@ src/
     opciones.ts             taxonomías autogestionadas (§4)
     opciones-base.json      opciones fijas, compartidas con los scripts
     toPublic.ts             proyección pública (§5.2)
+    vistaPreviaEvento.ts    form → evento de Calendar, reusando @calendario
     firebase-client.ts      auth y Firestore del panel
     firebase-admin.ts       SOLO build time (§5.4)
   components/admin/         el panel entero
@@ -105,14 +106,38 @@ src/
     index.astro             placeholder del sitio público
 functions/
   calendario.js             diff y armado del evento — lógica pura
+                            COMPARTIDA: el panel la importa como @calendario
   index.js                  triggers de Firestore y schedule del rebuild
 scripts/
   seed-emulador.mjs         siembra /opciones/* en el emulador
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
-tests/                      134 tests
+tests/                      158 tests
 firestore.rules             reglas del §5.3
 ```
+
+## Una sola fuente de verdad para el evento de Calendar
+
+`functions/calendario.js` no es solo de la Function: el panel lo importa con el
+alias **`@calendario`** para la vista previa del evento (D-16).
+
+```
+                    functions/calendario.js
+                    (JS puro, sin Firebase)
+                       ╱                ╲
+        functions/index.js          src/lib/vistaPreviaEvento.ts
+        (sync a Calendar)           (vista previa del panel)
+```
+
+El alias está declarado en los tres lugares que resuelven módulos:
+`astro.config.mjs` (Vite), `tsconfig.json` (TypeScript) y `vitest.config.ts`
+(los tests). Apunta a **ese archivo**, no a `functions/*`: un comodín invitaría
+a importar `functions/index.js` desde el cliente y eso arrastra
+`firebase-admin` al bundle (trampa 4).
+
+**Por qué importa:** la descripción del evento aplica las reglas de privacidad
+del §5.1. Una copia de esa lógica en el panel se desactualizaría y la vista
+previa mostraría de menos o de más. Al ser la misma función, no puede pasar.
 
 ## Frontera crítica: `firebase-admin` nunca al cliente
 

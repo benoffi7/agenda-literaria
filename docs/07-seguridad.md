@@ -19,6 +19,19 @@ que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
 trabajo o un `wa.me` con mensaje precargado. El formulario lo dice en la ayuda
 del campo.
 
+## La vista previa del panel no es una tercera salida
+
+La vista previa del evento (B-12) muestra el evento armado por
+`construirEvento`, **la misma función que lo publica** (D-16). No puede mostrar
+de más (haría creer que se publica algo que no se publica) ni de menos (genera
+desconfianza): es el mismo texto.
+
+`tests/vistaPreviaEvento.test.ts` lo fija para los tres casos sensibles: el link
+privado de la reunión, la difusión interna y la URL del material privado.
+
+Y de paso la vista previa **avisa** cuando el link de la reunión va a salir: es
+el último lugar donde se puede notar antes de publicar.
+
 ## El link de la reunión: default privado, publicable a pedido
 
 `online.urlPublica` **se respeta** desde el 2026-08-21 (D-15), en el
