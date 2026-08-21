@@ -6,11 +6,18 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
+import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
 import { planificar } from './calendario.js';
+import {
+  CAMPOS_REARME,
+  decidirDisparo,
+  registrarExito,
+  registrarFallo,
+} from './rebuild.js';
 
 initializeApp();
 const db = getFirestore();
@@ -27,6 +34,19 @@ setGlobalOptions({
 });
 
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID;
+
+/** `owner/repo` del repositorio que tiene el workflow de build (§8). */
+const GITHUB_REPO = process.env.GITHUB_REPO;
+
+/**
+ * §5.4 — el PAT de GitHub es lo único secreto de este proyecto, así que va a
+ * Secret Manager y no a `functions/.env` (que sí está versionado).
+ *
+ * `defineSecret` es lo que ata el secreto a la Function: leerlo de
+ * `process.env` sin declararlo acá daría `undefined` en producción, porque
+ * nadie habría montado el secreto en el runtime.
+ */
+const GITHUB_TOKEN = defineSecret('GITHUB_TOKEN');
 
 /**
  * §2.6 — service account, sin OAuth ni refresh tokens.
@@ -72,10 +92,21 @@ const cargarLabels = async () => {
   return labels;
 };
 
-/** Marca que hay que rebuildear el sitio (§8). El debounce lo hace el schedule. */
+/**
+ * Marca que hay que rebuildear el sitio (§8). El debounce lo hace el schedule.
+ *
+ * `CAMPOS_REARME` resetea el contador de fallos: un cambio nuevo merece sus
+ * propios intentos. Es lo que hace que el rebuild se recupere solo después de
+ * un problema persistente (ver `rebuild.js`).
+ */
 const marcarRebuild = (motivo) =>
   db.doc('sistema/rebuild').set(
-    { pendiente: true, motivo, actualizado: FieldValue.serverTimestamp() },
+    {
+      pendiente: true,
+      motivo,
+      actualizado: FieldValue.serverTimestamp(),
+      ...CAMPOS_REARME,
+    },
     { merge: true },
   );
 
@@ -189,39 +220,99 @@ export const rebuildPorOpciones = onDocumentWritten('opciones/{campo}', async (e
 // disparan cinco builds.
 // ─────────────────────────────────────────────────────────────────
 
-export const dispararRebuild = onSchedule(
-  { schedule: 'every 5 minutes', timeZone: 'America/Argentina/Buenos_Aires' },
-  async () => {
-    const ref = db.doc('sistema/rebuild');
-    const snap = await ref.get();
-    if (!snap.exists || snap.data().pendiente !== true) return;
+/** Timeout del dispatch. Sin esto un socket colgado se come el tick entero. */
+const TIMEOUT_DISPATCH_MS = 15_000;
 
-    const token = process.env.GITHUB_TOKEN;
-    const repo = process.env.GITHUB_REPO;
-    if (!token || !repo) {
-      // El paso 5 todavía no está armado. No es un error: es una pieza que
-      // falta, y logearlo como error cada 5 minutos es ruido.
-      logger.info('rebuild pendiente pero sin GitHub configurado (paso 5)');
-      return;
-    }
-
+/**
+ * Dispara el `repository_dispatch` que arranca el workflow de build
+ * (`.github/workflows/deploy.yml`, `types: [rebuild]`).
+ *
+ * Devuelve `null` si salió bien, o el mensaje del error para guardarlo en el
+ * documento. No tira: el que decide qué hacer con el fallo es el schedule.
+ */
+const dispararDispatch = async (repo, token, motivo) => {
+  try {
     const r = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ event_type: 'rebuild' }),
+      // El motivo viaja al workflow para que el run diga qué lo disparó.
+      body: JSON.stringify({
+        event_type: 'rebuild',
+        client_payload: { motivo: motivo ?? 'sin motivo' },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_DISPATCH_MS),
     });
+    if (r.ok) return null;
+    // El cuerpo trae el porqué real ("Bad credentials", "Not Found" si el PAT
+    // no ve el repo). Sin él, un 404 y un PAT vencido se ven igual.
+    const cuerpo = await r.text().catch(() => '');
+    return `HTTP ${r.status} ${cuerpo}`.trim();
+  } catch (e) {
+    return e?.message ?? String(e);
+  }
+};
 
-    if (!r.ok) {
-      // El flag queda en true a propósito: el próximo tick reintenta.
-      logger.error('repository_dispatch falló', { status: r.status });
+export const dispararRebuild = onSchedule(
+  {
+    schedule: 'every 5 minutes',
+    timeZone: 'America/Argentina/Buenos_Aires',
+    secrets: [GITHUB_TOKEN],
+  },
+  async () => {
+    const ref = db.doc('sistema/rebuild');
+    const snap = await ref.get();
+    const estado = snap.exists ? snap.data() : null;
+    const ahora = Date.now();
+
+    const decision = decidirDisparo(estado, ahora);
+    if (decision.accion === 'esperar') {
+      if (decision.motivo === 'agotado') {
+        // El `error` ya se logueó en el tick que agotó los intentos. Repetirlo
+        // cada 5 minutos sería el ruido que el límite vino a evitar: el estado
+        // persistente está en el documento (`agotado`, `ultimoError`).
+        logger.debug('rebuild agotado: espera un cambio nuevo o un disparo manual', {
+          intentos: decision.intentos,
+        });
+      }
       return;
     }
 
-    await ref.set({ pendiente: false, disparado: FieldValue.serverTimestamp() }, { merge: true });
-    logger.info('rebuild disparado');
+    const token = GITHUB_TOKEN.value();
+    if (!token || !GITHUB_REPO) {
+      // Falta configuración, no falló nada: no consume un intento ni ensucia
+      // el contador. Y va como info, que cada 5 minutos ya es suficiente.
+      logger.info('rebuild pendiente pero sin GitHub configurado (§8)');
+      return;
+    }
+
+    const error = await dispararDispatch(GITHUB_REPO, token, estado.motivo);
+
+    if (error) {
+      // El flag `pendiente` queda en true: el próximo tick reintenta, con
+      // backoff, hasta agotar los intentos.
+      const fallo = registrarFallo(estado, error, ahora);
+      await ref.set(fallo, { merge: true });
+      if (fallo.agotado) {
+        logger.error('el rebuild agotó los reintentos: el sitio quedó viejo', {
+          intentos: fallo.intentos,
+          error: fallo.ultimoError,
+          motivo: estado.motivo,
+        });
+      } else {
+        logger.warn('repository_dispatch falló, se reintenta', {
+          intentos: fallo.intentos,
+          error: fallo.ultimoError,
+        });
+      }
+      return;
+    }
+
+    await ref.set(registrarExito(ahora), { merge: true });
+    logger.info('rebuild disparado', { motivo: estado.motivo, intento: decision.intento });
   },
 );

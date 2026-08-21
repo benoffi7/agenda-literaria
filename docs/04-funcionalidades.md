@@ -177,13 +177,49 @@ y tags.
 los uids. El link de la reunión solo si se tildó "publicar el link" en esa
 actividad. Ver [`07-seguridad.md`](07-seguridad.md).
 
-## Trigger de rebuild — parcial
+## Trigger de rebuild — completo en código, sin desplegar
 
-`syncCalendar` y `rebuildPorOpciones` escriben `sistema/rebuild.pendiente = true`.
+Con SSG una actividad nueva no existe hasta que se rebuildea (§8). El lazo es:
 
-`dispararRebuild` (el schedule que haría el `repository_dispatch` a GitHub cada
-5 minutos, con debounce) **está escrito pero sin desplegar**: falta el sitio
-público y el workflow de Actions.
+1. `syncCalendar` y `rebuildPorOpciones` escriben
+   `sistema/rebuild.pendiente = true` con el motivo.
+2. `dispararRebuild` (schedule cada 5 minutos) ve el flag y manda un
+   `repository_dispatch` con `event_type: rebuild` a `benoffi7/agenda-literaria`.
+3. `.github/workflows/deploy.yml` corre los tests, buildea el sitio y lo
+   despliega a Firebase Hosting.
+4. Con el dispatch aceptado, el flag baja a `false`.
+
+**El debounce vive en el paso 2:** cinco ediciones seguidas marcan el mismo
+documento cinco veces y disparan un solo build. Latencia resultante: ~2-7
+minutos, más lo que tarde el workflow.
+
+El workflow también corre a mano desde la pestaña Actions
+(`workflow_dispatch`), que es la forma de probarlo y de republicar después de un
+cambio de código: no se dispara con el push a `main`.
+
+### Qué pasa si el dispatch falla
+
+El flag queda en `true` y el schedule reintenta con backoff exponencial: a los
+5, 10, 20 y 40 minutos del fallo anterior. A los 5 intentos (~75 minutos) se
+rinde, para no golpear la API de GitHub cada 5 minutos indefinidamente.
+
+Todo queda en `sistema/rebuild`:
+
+| Campo | Qué dice |
+|---|---|
+| `intentos` | fallos consecutivos del dispatch |
+| `ultimoError` | el error del último fallo (`HTTP 401 Bad credentials`, un timeout…) |
+| `ultimoIntento` | cuándo se intentó por última vez — de acá sale el backoff |
+| `agotado` | `true` si se agotaron los intentos y dejó de reintentar |
+
+Al agotarse se loguea un `error` (una vez, no uno cada 5 minutos). El contador
+se resetea de dos maneras: un disparo exitoso, o **un cambio nuevo** — editar
+cualquier actividad rearma los intentos, así que el lazo se recupera solo
+cuando el problema de fondo se resuelve.
+
+**Falta desplegarlo.** No falta código: falta el PAT de GitHub en Secret
+Manager y el secret de deploy en GitHub, que solo puede crear el dueño. Ver
+[`08-operacion.md`](08-operacion.md).
 
 ## Sitio público — no existe
 

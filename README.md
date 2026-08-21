@@ -20,7 +20,7 @@ bug van al [backlog](./docs/BACKLOG.md) por prioridad. Detalle en
 | 2. Panel de admin (React) | ✅ formulario completo |
 | 3. Sitio público (SSG) | ⬜ placeholder |
 | 4. Sync a Google Calendar | ✅ |
-| 5. Trigger de rebuild | 🟡 código listo, sin desplegar |
+| 5. Trigger de rebuild | 🟡 código y workflow listos; faltan las credenciales del dueño |
 
 ## Arrancar
 
@@ -114,6 +114,7 @@ esperado, no un bug.
 ```
 functions/
   calendario.js   diff y armado del evento — lógica pura, testeable sin red
+  rebuild.js      backoff y corte por intentos del rebuild — lógica pura (§8)
   index.js        los triggers de Firestore y el schedule del rebuild
 ```
 
@@ -140,6 +141,8 @@ de la service account dándole **"Realizar cambios en los eventos"**.
 firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
 ```
 
-`dispararRebuild` (§8) queda **sin desplegar** hasta que existan el sitio
-público y el workflow de Actions: es un schedule cada 5 minutos que hoy no
-tendría nada que disparar.
+`dispararRebuild` (§8) queda **sin desplegar** hasta que el dueño cree el PAT de
+GitHub en Secret Manager y la credencial de deploy: sin eso es un schedule cada
+5 minutos que no puede disparar nada. El workflow que lo atiende ya existe
+(`.github/workflows/deploy.yml`) y los pasos manuales están en
+[`docs/08-operacion.md`](docs/08-operacion.md).

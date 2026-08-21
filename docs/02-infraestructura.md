@@ -89,25 +89,48 @@ Ambas en `southamerica-east1`, Node 22, `maxInstances: 5`.
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE |
 | `dispararRebuild` | `onSchedule every 5 minutes` | **escrita, sin desplegar** |
 
-`dispararRebuild` no se desplegó porque todavía no existen el sitio público ni
-el workflow de GitHub Actions que tendría que disparar: sería un schedule
-corriendo cada 5 minutos para no hacer nada.
+`dispararRebuild` sigue sin desplegar, pero ya no por falta de código: el
+workflow de Actions existe (`.github/workflows/deploy.yml`) y la Function está
+completa. Falta lo que **solo puede hacer el dueño a mano**: crear el PAT de
+GitHub, guardarlo en Secret Manager y cargar el secret de deploy en GitHub. La
+lista de pasos está en [`08-operacion.md`](08-operacion.md).
 
-### Variables de entorno
+### Variables de entorno y secretos
 
-En `functions/.env`, versionado:
+En `functions/.env`, versionado (nada de esto es secreto):
 
-| Variable | Secreta | Valor |
+| Variable | Valor |
+|---|---|
+| `GOOGLE_CALENDAR_ID` | el id del calendario público |
+| `GITHUB_REPO` | `benoffi7/agenda-literaria` |
+
+En **Secret Manager**, atado a la Function con `defineSecret` (§5.4):
+
+| Secreto | Para qué | Estado |
 |---|---|---|
-| `GOOGLE_CALENDAR_ID` | no | el id del calendario público |
-| `GITHUB_TOKEN` | **sí** | falta — va a Secret Manager (§5.4) |
-| `GITHUB_REPO` | no | falta — para el paso 5 |
+| `GITHUB_TOKEN` | PAT que autoriza el `repository_dispatch` | **falta crearlo** |
+
+`defineSecret` es lo que monta el secreto en el runtime de la Function: leerlo
+de `process.env` sin declararlo daba `undefined` en producción. La service
+account de la Function necesita `roles/secretmanager.secretAccessor` sobre ese
+secreto, y la API `secretmanager.googleapis.com` habilitada.
+
+### Secrets de GitHub Actions
+
+| Secret | Para qué | Estado |
+|---|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | JSON de la key con que el workflow lee Firestore en build time (§2.4) y despliega Hosting | **falta crearlo** |
+
+Es la única key de service account del proyecto, y existe porque un runner de
+GitHub no tiene ADC. Nunca va al repo (§5.4): vive en los secrets de GitHub y
+solo se materializa en la memoria del runner.
 
 ## Service accounts
 
 | Email | Para qué |
 |---|---|
 | `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. |
+| `deploy-ci@…` | **falta crearla.** Identidad del workflow de Actions: leer Firestore en build time y desplegar Hosting. |
 | `firebase-adminsdk-fbsvc@…` | default del Admin SDK, sin uso propio |
 | `1038157194972-compute@…` | default de Compute, sin uso propio |
 | `agenda-literaria@appspot…` | default de App Engine, sin uso propio |
@@ -125,6 +148,21 @@ roles/artifactregistry.reader  leer su propia imagen al arrancar
 **Los últimos tres hay que otorgarlos a mano.** La service account por defecto
 de Compute los trae de fábrica; una propia no. Es la causa de que el primer
 deploy de Functions falle con `eventarc.events.receiveEvent denied`.
+
+Al desplegar `dispararRebuild` hay que sumarle
+`roles/secretmanager.secretAccessor` **sobre el secreto `GITHUB_TOKEN`**, no
+sobre el proyecto entero: es el único secreto que la Function necesita leer.
+
+### Roles de `deploy-ci@` (cuando exista)
+
+```
+roles/datastore.viewer         leer Firestore en build time (§2.4)
+roles/firebasehosting.admin    desplegar el sitio
+```
+
+Deliberadamente **no** tiene escritura en Firestore: el workflow solo lee. Si
+la key se filtrara, el daño se limita a leer datos que ya son públicos y a
+desplegar el sitio.
 
 ## Google Calendar
 
@@ -150,6 +188,7 @@ cloudfunctions, run, eventarc, pubsub        Functions v2
 cloudbuild, artifactregistry                 build de las Functions
 cloudscheduler                               para dispararRebuild (paso 5)
 calendar-json                                sync a Calendar
+secretmanager                                el PAT de GitHub — FALTA habilitar
 cloudbilling, billingbudgets                 budget alert
 ```
 

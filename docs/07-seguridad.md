@@ -119,14 +119,21 @@ bundle** (trampa 4, §5.4). Tres defensas:
 
 | Qué | Dónde va | Dónde NO |
 |---|---|---|
-| Service account key | ninguna parte: se usan las ADC de gcloud y la identidad del runtime | disco, repo |
-| PAT de GitHub (§8) | Secret Manager | `functions/.env`, repo |
+| Service account key | ninguna parte en local: se usan las ADC de gcloud y la identidad del runtime | disco, repo |
+| Key de `deploy-ci@` | secret `FIREBASE_SERVICE_ACCOUNT` de GitHub Actions | disco, repo |
+| PAT de GitHub (§8) | Secret Manager, atado a la Function con `defineSecret` | `functions/.env`, repo |
 | URL privada del ICS | `.env` local si hace falta | repo |
 | Config del SDK web | versionada, no es secreta | — |
 
 La URL privada del ICS (`.../private-.../basic.ics`) da acceso de lectura al
 calendario entero a quien la tenga. Si aparece en un historial de comandos o un
 chat, conviene rotarla desde la configuración del calendario.
+
+**La key de `deploy-ci@` es la única key del proyecto**, y existe porque un
+runner de GitHub no tiene ADC. Por eso la cuenta es aparte de `calendar-sync@` y
+tiene lo mínimo: `datastore.viewer` (leer, no escribir) y
+`firebasehosting.admin`. Si se filtrara, el daño se limita a leer datos que ya
+son públicos y a desplegar el sitio — no a modificar la base.
 
 ## Cómo verificar — comandos
 
@@ -136,6 +143,10 @@ chat, conviene rotarla desde la configuración del calendario.
 npm run build
 grep -rl "firebase-admin\|private_key\|service_account" dist/ && echo "FUGA" || echo "limpio"
 ```
+
+El mismo chequeo corre como **paso bloqueante** del workflow de deploy
+(`.github/workflows/deploy.yml`): si encuentra algo, el job falla y no se
+publica nada. Falla cerrado a propósito — publicar la key es irreversible.
 
 ### Las reglas rechazan lo anónimo en producción
 

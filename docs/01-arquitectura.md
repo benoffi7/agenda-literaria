@@ -61,6 +61,31 @@ Consecuencia: **una actividad nueva no existe en el sitio hasta que se
 rebuildea.** De ahí el mecanismo de rebuild del §8, con ~2-7 minutos de
 latencia.
 
+### El lazo del rebuild (§8)
+
+```
+  syncCalendar / rebuildPorOpciones
+            │ escriben sistema/rebuild.pendiente = true
+            ▼
+     sistema/rebuild  ◄────────────────┐
+            │                          │ baja el flag, resetea intentos
+            │ cada 5 min               │
+            ▼                          │
+     dispararRebuild ──────────────────┘
+            │ repository_dispatch (event_type: rebuild)
+            ▼
+  .github/workflows/deploy.yml
+     npm ci → npm test → npm run build → Firebase Hosting
+```
+
+**El debounce está en el schedule, no en la Function de sync.** Cinco ediciones
+seguidas marcan el mismo flag cinco veces y disparan un solo build.
+
+Si el `repository_dispatch` falla, el flag queda en `true` y el schedule
+reintenta con backoff exponencial hasta cinco veces; después se rinde y deja el
+error en el documento (`functions/rebuild.js`). Un cambio nuevo rearma los
+intentos, así que el lazo se recupera solo cuando el problema se resuelve.
+
 ## Por qué la búsqueda es en memoria
 
 Firestore no tiene full-text (§2.5). El sitio público hace **un solo fetch** de
@@ -108,16 +133,15 @@ src/
 functions/
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario
+  rebuild.js                backoff y corte por intentos — lógica pura (§8)
   index.js                  triggers de Firestore y schedule del rebuild
+.github/workflows/
+  deploy.yml                build + deploy que dispara el rebuild (§8)
 scripts/
   seed-emulador.mjs         siembra /opciones/* en el emulador
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
-<<<<<<< HEAD
-tests/                      179 tests
-=======
-tests/                      179 tests
->>>>>>> worktree-agent-add25c227db1eed8b
+tests/                      204 tests
 firestore.rules             reglas del §5.3
 ```
 

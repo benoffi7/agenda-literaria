@@ -218,6 +218,11 @@ pagar por un schedule que no hace nada.
 El flag `sistema/rebuild` **sí** se escribe, así que cuando exista el paso 5 ya
 hay de dónde leer.
 
+**Actualización (B-02):** el workflow ya existe y la Function está completa.
+Sigue sin desplegarse, pero por otro motivo: le faltan credenciales que solo
+puede crear el dueño (el PAT y la key de CI, §5.4). Los pasos están en
+[`08-operacion.md`](08-operacion.md).
+
 ---
 
 ## D-14 · La documentación se actualiza con cada cambio
@@ -264,6 +269,81 @@ sin URL cargada no se inventa el campo aunque el flag esté en true.
 Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
 
 ---
+
+## D-21 · El PAT va por `defineSecret`, no por `process.env`
+
+**Decisión:** `dispararRebuild` declara el secreto con
+`defineSecret('GITHUB_TOKEN')` y lo pide con `.value()`.
+
+**Motivo:** el código anterior leía `process.env.GITHUB_TOKEN` sin declararlo.
+En Cloud Functions v2 eso da `undefined` en producción, porque nadie monta el
+secreto en el runtime si la Function no lo pide. La única forma de que
+funcionara habría sido poner el PAT en `functions/.env`, que está versionado —
+exactamente lo que el §5.4 prohíbe.
+
+Como efecto lateral, el deploy falla si el secreto no existe. Es preferible a un
+schedule que corre cada 5 minutos loguéandose como "sin GitHub configurado".
+
+---
+
+## D-22 · Un solo workflow, disparado por evento y a mano — no por push
+
+**Decisión:** `.github/workflows/deploy.yml` responde a `repository_dispatch`
+(`types: [rebuild]`) y a `workflow_dispatch`. **No** corre con el push a `main`.
+
+**Motivo:** el disparador del §8 es un cambio de **datos**, no de código, y es
+el caso frecuente. Para un cambio de código está el botón "Run workflow", que
+además obliga a mirar el resultado en vez de descubrir un deploy roto por
+accidente. Si más adelante molesta, agregar `on: push` es una línea.
+
+**Lo que sí tiene el workflow, y es deliberado:**
+
+- **`npm test` antes del build.** Un test roto no debe publicarse. Los de
+  integración se saltean solos sin emuladores.
+- **El grep de `dist/` como gate del deploy.** Es el mismo chequeo que ya
+  documentaba el §5.4, ahora bloqueante: publicar la service account key es
+  irreversible, así que falla cerrado.
+- **`concurrency` con `cancel-in-progress: true`.** Si llega un dispatch nuevo
+  mientras corre un build, el viejo se cancela: el nuevo lee los mismos datos y
+  más frescos.
+- **Una service account propia (`deploy-ci@`) con `datastore.viewer` +
+  `firebasehosting.admin`,** no la de las Functions. El workflow solo lee
+  Firestore; si la key se filtrara, el daño se limita a datos ya públicos.
+
+---
+
+## D-23 · El backoff del rebuild se rinde, y se rearma con el próximo cambio
+
+**Decisión (B-13):** ante un `repository_dispatch` fallido, el schedule
+reintenta con backoff exponencial (5, 10, 20, 40 min) hasta cinco veces, deja
+`intentos`/`ultimoError`/`agotado` en `sistema/rebuild`, loguea `error` al
+agotarse, y **no** vuelve a intentar hasta que haya un cambio nuevo.
+
+**El problema que resuelve:** con el PAT vencido, reintentar cada 5 minutos son
+~288 llamadas por día que fallan todas, y ningún registro de que el sitio está
+viejo salvo un log perdido.
+
+**La pregunta difícil era cómo se vuelve a la normalidad.** Dos caminos, y hacen
+falta los dos:
+
+1. **Un disparo exitoso** resetea el contador. Es el camino normal.
+2. **Un cambio nuevo rearma los intentos** (`CAMPOS_REARME` en `marcarRebuild`).
+   Sin esto, agotarse sería un estado terminal que hay que destrabar a mano
+   editando Firestore.
+
+Con eso el presupuesto de reintentos es **por cambio**, no global: aunque el
+problema persista, cada edición gasta a lo sumo cinco llamadas, no infinitas. Y
+cuando el problema se arregla, la siguiente edición publica sin intervención.
+
+**Costo aceptado:** si el PAT vence y nadie mira, el sitio se queda viejo en
+silencio después del `error` inicial. La alternativa (un mail por tick) es la
+que genera el ruido que hace que nadie mire nada. El estado vive en
+`sistema/rebuild`, que es un solo documento y contesta "¿está roto el rebuild?"
+de un vistazo.
+
+**Lo que no se hizo:** una alerta de verdad (log-based alert de GCP sobre el
+mensaje `el rebuild agotó los reintentos`, o un mail). Es configuración de
+consola, no código, y queda a criterio del dueño.
 
 ## D-20 · La lógica del evento se comparte por alias, no se duplica
 

@@ -29,7 +29,7 @@ Falta el sitio público, que es la razón de ser del proyecto.
 | 2. Panel de admin (React) | ✅ |
 | 3. Sitio público (SSG) | ⬜ **lo próximo** |
 | 4. Sync a Google Calendar | ✅ |
-| 5. Trigger de rebuild | 🟡 código escrito, sin desplegar |
+| 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 
 El paso 4 se hizo antes del 3 porque el usuario lo pidió en ese orden. El
 `CLAUDE.md` advierte que el sync va al final "cuando el modelo ya no se mueva":
@@ -41,7 +41,7 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 179 tests. 21 necesitan los emuladores
+2. **Correr los tests.** `npm test` — 204 tests. 21 necesitan los emuladores
    corriendo (`npm run emu`); si no están, se saltean solos.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.

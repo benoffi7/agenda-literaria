@@ -9,6 +9,61 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### El rebuild del sitio ya tiene quién lo atienda · B-02
+
+El §8 define un lazo cerrado: la Function marca `sistema/rebuild.pendiente`, un
+schedule cada 5 minutos manda un `repository_dispatch` a GitHub, y Actions
+buildea y publica. La mitad de GitHub no existía, así que `dispararRebuild`
+estaba escrita pero sin desplegar (D-13).
+
+**Lo nuevo:** `.github/workflows/deploy.yml`, que responde al
+`repository_dispatch` (`types: [rebuild]`) y también corre a mano
+(`workflow_dispatch`, la forma de probarlo). Corre los tests, buildea con la
+credencial de CI como secret, verifica que `firebase-admin` no se filtró al
+bundle, y despliega a Hosting. Cualquier paso que falle corta el deploy: es
+mejor un sitio con los datos de ayer que uno publicado a medias.
+
+**No corre con el push a `main`** a propósito (D-22): el disparador del §8 es un
+cambio de datos, y para un cambio de código está el botón "Run workflow".
+
+**Bug de fondo arreglado:** la Function leía `process.env.GITHUB_TOKEN` sin
+declarar el secreto. En Functions v2 eso es `undefined` en producción — el PAT
+solo habría funcionado versionado en `functions/.env`, que es exactamente lo que
+el §5.4 prohíbe. Ahora va por `defineSecret` (D-21).
+
+`GITHUB_REPO=benoffi7/agenda-literaria` quedó en `functions/.env` (no es
+secreto), y el `client_payload` del dispatch lleva el motivo, así que el run de
+Actions dice qué edición lo causó.
+
+**Falta lo que solo puede hacer el dueño** (B-20 del backlog): crear el PAT y
+guardarlo en Secret Manager, crear la service account de CI y cargar su key como
+secret de GitHub, y recién ahí desplegar la Function. Pasos con comandos en
+[`08-operacion.md`](08-operacion.md).
+
+### El rebuild se rinde en vez de golpear cada 5 minutos para siempre · B-13
+
+Si el `repository_dispatch` fallaba, el flag quedaba en `true` y el schedule
+reintentaba cada 5 minutos indefinidamente: con un PAT vencido, ~288 llamadas
+por día que fallan todas, y ningún rastro de que el sitio estaba viejo más allá
+de un log perdido.
+
+Ahora reintenta con **backoff exponencial** (5, 10, 20, 40 minutos) hasta cinco
+veces, y deja el estado en `sistema/rebuild`: `intentos`, `ultimoError`,
+`ultimoIntento`, `agotado`. Al agotarse loguea un `error` **una vez** — repetirlo
+cada 5 minutos sería el ruido que el límite vino a evitar.
+
+**La parte que importa es cómo se vuelve a la normalidad** (D-23). Dos caminos,
+y hacen falta los dos: un disparo exitoso resetea el contador, y **un cambio
+nuevo rearma los intentos**. Sin el segundo, agotarse sería un estado terminal
+que hay que destrabar editando Firestore a mano. Con él, el presupuesto de
+reintentos es por cambio y no global: aunque el problema persista, cada edición
+gasta a lo sumo cinco llamadas, y cuando el problema se arregla la siguiente
+edición publica sin que nadie intervenga.
+
+La lógica (backoff, corte, reseteos) vive en `functions/rebuild.js`, sin Firebase
+ni red ni reloj propio, con 20 tests que cubren la secuencia completa: 24 horas
+de ticks con GitHub caído son 5 intentos, no 288.
+
 ### No se puede publicar con el slug de una copia
 
 Duplicar una actividad propone un slug `…-copia` y lo deja editable. El riesgo

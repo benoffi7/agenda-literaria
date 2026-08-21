@@ -11,10 +11,36 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`) y `syncCalendar` |
 | `/actividades/{id}/versiones/{ts}` | historial (§12) | **nadie todavía** — no implementado |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
-| `/sistema/rebuild` | flag de rebuild pendiente (§8) | `syncCalendar`, `rebuildPorOpciones` |
+| `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
 `tags`.
+
+### `/sistema/rebuild`
+
+Documento único. No lo lee nadie más que la Function del schedule, pero es
+donde hay que mirar cuando el sitio no se actualiza
+([`08-operacion.md`](08-operacion.md)).
+
+```
+pendiente: boolean        // hay cambios sin publicar
+motivo: string            // "actividad abc123" / "opciones/tags"
+actualizado: Timestamp    // cuándo se marcó
+disparado: Timestamp      // cuándo salió el último dispatch OK
+intentos: number          // fallos CONSECUTIVOS del dispatch; 0 = todo bien
+ultimoError: string|null  // el error del último fallo, recortado a 300 chars
+ultimoIntento: Timestamp  // de acá sale el backoff exponencial
+agotado: boolean          // se rindió: no reintenta hasta un cambio nuevo
+```
+
+Los cuatro últimos son de B-13. `intentos` se resetea con un disparo exitoso o
+con un cambio nuevo (D-23): un cambio nuevo merece sus propios intentos, y es
+lo que hace que el lazo se recupere solo cuando el problema de fondo se arregla.
+
+`ultimoIntento` y `disparado` se escriben como `Date` y no con
+`serverTimestamp()`: la lógica del backoff lee `ultimoIntento` de vuelta para
+comparar, y el sentinel de servidor no se puede comparar con nada. `actualizado`
+sí usa `serverTimestamp()` porque nadie lo lee para decidir.
 
 ## Las dos representaciones de una actividad
 
