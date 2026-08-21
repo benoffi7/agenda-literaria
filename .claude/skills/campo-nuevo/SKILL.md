@@ -1,0 +1,134 @@
+---
+name: campo-nuevo
+description: Agrega un campo al modelo de una actividad de punta a punta, en el orden correcto y sin dejar ningún lugar sin tocar — tipo, schema de zod, conversión form ⇄ documento, formulario, proyección pública, evento de Calendar, analítica, ayuda, doc y tests. Invocalo cuando se pida agregar, quitar o cambiar un campo de /actividades, de /opciones o del formulario del panel (por ejemplo el "libro presentado" de DEC-1), o cuando el usuario diga "/campo-nuevo".
+---
+
+# Agregar un campo al modelo
+
+Un campo del modelo toca once lugares. Los que se olvidan siempre son los mismos
+tres: **la proyección pública**, **el default de lectura** y **la ayuda**. Los
+tres fallan sin que nada se ponga en rojo, y uno de ellos publica datos.
+
+La definición canónica del modelo es el **§3 del `CLAUDE.md`**; su traducción a
+TypeScript, `src/types/actividad.ts`. `docs/03-modelo-de-datos.md` explica cómo
+se usa.
+
+## 0 · Antes de escribir una línea: cuatro decisiones
+
+Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
+no se pueden deshacer después.
+
+1. **¿Es público?** Resolvé las cuatro salidas, una por una:
+   `events.json` (`src/lib/toPublic.ts`) · el evento de Calendar
+   (`functions/calendario.js`) · el issue de GitHub (`functions/reportes.js`) ·
+   GA4 (`src/lib/analytics-eventos.ts`). "No decidí" no es una opción: el default
+   de agregarlo al `pick` es publicar (§5.1).
+2. **¿Es un dato libre o una taxonomía?** Si es un valor de un conjunto que va a
+   crecer, va como `/opciones/{campo}` con el patrón del §4 (slugify + upsert
+   transaccional + aprobación), no como string libre.
+3. **¿Entra al evento de Calendar?** Si sí, entra a la **descripción** vía
+   `construirDescripcion`, y por lo tanto al payload que compara la guarda
+   anti-loop: el cambio se propaga solo a las N sesiones del ciclo (D-07). Si lo
+   armás fuera de `construirEvento`, deja de propagarse en silencio (trampa 9).
+4. **¿Qué pasa con los documentos que ya están en producción?** No tienen el
+   campo. El default de lectura tiene que **preservar el comportamiento
+   anterior** (`v.campo ?? <lo de antes>`, D-26), y el tipo lo declara opcional
+   para que el compilador obligue a decidirlo en cada lectura. Un backfill, si
+   hace falta, va como migración **opcional e idempotente**, nunca como
+   requisito.
+
+## 1 · Tipo
+
+`src/types/actividad.ts`: agregalo a `Actividad` y, si se carga desde el
+formulario, a `ActividadForm`. Las fechas son `Timestamp` en Firestore y
+`string` de `datetime-local` en el form: **nunca strings de fecha en Firestore**
+(trampa 1).
+
+## 2 · Schema
+
+`src/lib/schema.ts`. La validación es **en el submit, no por campo**. Si el
+campo es obligatorio solo en algunos casos, la condición va en `superRefine`
+(como los condicionales del §11), no en el tipo, y el mensaje se muestra al lado
+del campo por `path.join('.')`.
+
+## 3 · Conversión
+
+`src/lib/actividades.ts`: `formADocumento` y `documentoAForm`. El ida y vuelta
+no debe perder nada — hay test de integración que lo verifica, y en particular
+que no se pierdan los ids de sesión.
+
+## 4 · Formulario
+
+`src/components/admin/`. Con el §11 en la mano:
+
+- Va en la sección que le corresponde, y **condicional por tipo/modalidad** si
+  no aplica siempre.
+- Controles con las clases de `campos/Campo.tsx` (`claseInput`,
+  `claseBotonPrimario`, …). **No escribas clases de botón sueltas.**
+- Mobile: 16px hasta `sm` (menos hace zoom en iOS y no vuelve), blanco táctil de
+  44px (`min-h-touch`), `min-w-0` en los contenedores, columna por default y
+  fila desde `sm`, y el teclado que corresponda (`inputMode`, `autoCapitalize`).
+- Si el campo tiene una trampa detrás, la ayuda corta va en la prop `ayuda` del
+  `Campo`.
+- Si es una taxonomía, usá el input con autocompletado: si lo tipeado normaliza a
+  un slug que ya existe, avisa y **reusa** (§4.2). Las etiquetas nuevas se
+  persisten **en el submit**, no al tipearlas.
+
+## 5 · Proyección pública
+
+`src/lib/toPublic.ts`, según la decisión 1. La proyección es una **whitelist**:
+se enumera lo que sale. No agregues un spread. Si el campo sale condicionado por
+un flag, el flag manda y sin dato no se inventa el campo (D-15).
+
+## 6 · Evento de Calendar
+
+`functions/calendario.js` — `construirDescripcion` y, si corresponde,
+`construirUbicacion`. Es **lógica pura y compartida**: la importa la Function y
+también el panel por el alias `@calendario` para la vista previa (D-20). Por eso
+mismo la vista previa se actualiza sola; no la reimplementes.
+
+## 7 · Duplicar
+
+`src/lib/duplicar.ts`. ¿La copia hereda este campo? Los ids de sesión y
+`calendarEventId` no se heredan nunca; el slug y el estado tampoco. Si el campo
+es específico de una edición del ciclo (como los encuentros cancelados),
+decidilo explícitamente.
+
+## 8 · Analítica
+
+`src/lib/analytics-eventos.ts`, solo si aporta. **No sale contenido**: entero,
+booleano, enum cerrado o ruta del schema. No existe sanitizador de texto libre y
+no se agrega uno. Si el campo es validable, el vocabulario de campos se deriva
+del schema (D-60), así que revisá que la ruta nueva quede reconocida. Si tocás la
+taxonomía, `docs/09-analitica.md` se actualiza en el mismo cambio.
+
+## 9 · Reglas de Firestore
+
+`firestore.rules`. Las de `/actividades` validan quién escribe, no la forma. Pero
+si el campo entra a `/reportes/{id}`, ahí sí hay validación de forma: conjunto
+exacto de campos y topes de largo, y agregar un campo sin tocarla hace que la
+escritura sea rechazada.
+
+## 10 · Tests
+
+Con el criterio de `docs/05-patrones.md`: la lógica pura, exhaustivamente y sin
+emuladores; contra el emulador, solo lo que solo ahí se puede verificar. Como
+mínimo:
+
+- schema: el caso válido y el inválido, con los condicionales del §11;
+- ida y vuelta form ⇄ documento sin pérdida;
+- **la decisión de privacidad del paso 0**, con un test que la nombre
+  (`it('… (§5.1, trampa 5)')`) — si el campo no es público, un test que verifique
+  que **no** aparece en la salida;
+- si entra al evento, que el cambio del campo propague a las N sesiones.
+
+Nombres en español, describiendo el comportamiento, con la referencia a la
+sección o la trampa.
+
+## 11 · Cerrar
+
+Invocá el skill `cerrar-cambio`: `docs/03-modelo-de-datos.md` (campo nuevo),
+`docs/04-funcionalidades.md` (si se ve), `docs/07-seguridad.md` (si cambia qué
+es público), CHANGELOG, y `ayuda.ts`/`novedades.ts` según corresponda.
+
+Y pasá el `auditor-privacidad`: un campo nuevo es exactamente su caso.

@@ -16,6 +16,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 7 | [`07-seguridad.md`](07-seguridad.md) | Qué es público y qué no. Cómo se verifica. |
 | 8 | [`08-operacion.md`](08-operacion.md) | Correr local, deployar, diagnosticar. |
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
+| 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan, cuándo invocarlos, y qué se decidió **no** automatizar porque ya hay un test. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
@@ -46,3 +47,7 @@ si el modelo cambia al construir el sitio público, hay que revisar
    corriendo (`npm run emu`); si no están, se saltean solos.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
+4. **Antes de cerrar un cambio, pasar los auditores** de
+   [`13-agentes.md`](13-agentes.md) — privacidad, trampas y documentación — y
+   cerrarlo con el skill `cerrar-cambio`. Corren además de los tests, sobre lo
+   que la suite no puede ver.
