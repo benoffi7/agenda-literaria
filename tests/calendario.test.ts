@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error — la Function es JS plano, sin tipos.
-import { actividadCambio, construirEvento, planificar, sesionCambio, TIMEZONE } from '../functions/calendario.js';
+import {
+  construirDescripcion,
+  construirEvento,
+  construirLinkMapa,
+  construirUbicacion,
+  planificar,
+  TIMEZONE,
+} from '../functions/calendario.js';
 
 /** Timestamp mínimo, como el que entrega Firestore a la Function. */
 const ts = (iso: string) => {
@@ -67,14 +74,25 @@ describe('planificar — guarda anti-loop (§7.1, trampa 3)', () => {
     expect(planificar(antes, despues)).toEqual([]);
   });
 
-  it('calendarEventId no cuenta como cambio de la sesión', () => {
-    expect(sesionCambio(sesion(), sesion({ calendarEventId: 'evt_1' }))).toBe(false);
+  it('el id del evento no forma parte del payload que se compara', () => {
+    const a = construirEvento(actividad(), sesion());
+    const b = construirEvento(actividad(), sesion({ calendarEventId: 'evt_1' }));
+    expect(a).toEqual(b);
   });
 
-  it('el array sesiones no entra en la comparación de la actividad', () => {
-    const a = actividad();
-    const b = actividad({ sesiones: [sesion({ calendarEventId: 'evt_1' })] });
-    expect(actividadCambio(a, b)).toBe(false);
+  it('editar la difusión interna no dispara ningún update', () => {
+    const s = sesion({ calendarEventId: 'evt_1' });
+    const antes = actividad({ sesiones: [s] });
+    const despues = actividad({ sesiones: [s], difusion: { arrobar: ['@x'], notas: 'privado' } });
+    expect(planificar(antes, despues)).toEqual([]);
+  });
+
+  it('editar el link privado de la reunión no dispara ningún update', () => {
+    const s = sesion({ calendarEventId: 'evt_1' });
+    const base = { modalidad: 'virtual', sede: null, sesiones: [s] };
+    const antes = actividad({ ...base, online: { plataforma: 'zoom', url: 'https://a', urlPublica: false } });
+    const despues = actividad({ ...base, online: { plataforma: 'zoom', url: 'https://b', urlPublica: false } });
+    expect(planificar(antes, despues)).toEqual([]);
   });
 });
 
@@ -110,6 +128,7 @@ describe('planificar — diff por id (§7.2, trampa 2)', () => {
     const ops = planificar(antes, despues);
     expect(ops).toHaveLength(1);
     expect(ops[0]).toMatchObject({ tipo: 'crear', id: 'ses_d' });
+    expect(ops[0].evento.summary).toBeTruthy();
   });
 
   it('correr la fecha de un encuentro actualiza solo ese', () => {
@@ -229,12 +248,271 @@ describe('construirEvento — §7.4', () => {
     expect(JSON.stringify(construirEvento(a, sesion()))).not.toContain('coordinar con prensa');
   });
 
-  it('usa la dirección de la sede como ubicación', () => {
-    expect(construirEvento(actividad(), sesion()).location).toBe('Drago 236');
+  it('la ubicación lleva sede, calle y país, no solo la calle', () => {
+    // "Drago 236" solo no se puede geolocalizar: Google no tiene con qué
+    // desambiguar y el evento queda sin mapa o con el mapa en otra ciudad.
+    const loc = construirEvento(actividad(), sesion()).location;
+    expect(loc).toContain('Drago 236');
+    expect(loc).toContain('Argentina');
   });
 
-  it('sin sede no manda ubicación', () => {
+  it('una actividad virtual se lee como tal en la vista de agenda', () => {
     const e = construirEvento(actividad({ sede: null, modalidad: 'virtual' }), sesion());
-    expect(e.location).toBeUndefined();
+    expect(e.location).toBe('Encuentro virtual');
+  });
+});
+
+const sedeCompleta = {
+  nombre: 'Casa Brandon',
+  direccion: 'Luis María Drago 236',
+  barrio: 'Villa Crespo',
+  ciudad: 'CABA',
+  indicaciones: 'Timbre 2',
+  geo: null,
+};
+
+describe('construirUbicacion', () => {
+  it('junta sede, calle, barrio, ciudad y país', () => {
+    expect(construirUbicacion(actividad({ sede: sedeCompleta }), LABELS)).toBe(
+      'Casa Brandon, Luis María Drago 236, Villa Crespo, CABA, Argentina',
+    );
+  });
+
+  it('no repite un valor cargado en dos campos', () => {
+    const sede = { ...sedeCompleta, barrio: 'Palermo', ciudad: 'Palermo' };
+    expect(construirUbicacion(actividad({ sede }))).toBe(
+      'Casa Brandon, Luis María Drago 236, Palermo, Argentina',
+    );
+  });
+
+  it('tolera una sede con solo dirección', () => {
+    const sede = { nombre: '', direccion: 'Corrientes 1234', barrio: '', ciudad: '', geo: null };
+    expect(construirUbicacion(actividad({ sede }))).toBe('Corrientes 1234, Argentina');
+  });
+
+  it('sin sede y presencial no inventa ubicación', () => {
+    expect(construirUbicacion(actividad({ sede: null, modalidad: 'presencial' }))).toBeUndefined();
+  });
+});
+
+describe('construirLinkMapa', () => {
+  it('arma una búsqueda de Google Maps con la dirección completa', () => {
+    const link = construirLinkMapa(actividad({ sede: sedeCompleta }));
+    expect(link).toContain('https://www.google.com/maps/search/?api=1&query=');
+    expect(decodeURIComponent(link!)).toContain('Luis María Drago 236');
+    expect(decodeURIComponent(link!)).toContain('Argentina');
+  });
+
+  it('si la sede tiene coordenadas, usa el punto exacto', () => {
+    const sede = { ...sedeCompleta, geo: { lat: -34.5989, lng: -58.4392 } };
+    const link = construirLinkMapa(actividad({ sede }));
+    expect(link).toContain('query=-34.5989%2C-58.4392');
+  });
+
+  it('sin sede no hay mapa', () => {
+    expect(construirLinkMapa(actividad({ sede: null }))).toBeNull();
+  });
+});
+
+const LABELS = {
+  arancel: { 'a-la-gorra': 'A la gorra', gratis: 'Gratis' },
+  tipo: { 'club-lectura': 'Club de lectura', taller: 'Taller' },
+  barrio: { 'villa-crespo': 'Villa Crespo' },
+  plataforma: { zoom: 'Zoom' },
+  tags: { narrativa: 'Narrativa' },
+};
+
+const completa = (over: Record<string, unknown> = {}) =>
+  actividad({
+    tipo: 'club-lectura',
+    sede: { ...sedeCompleta, barrio: 'villa-crespo' },
+    online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+    modalidad: 'hibrido',
+    arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
+    inscripcion: {
+      requiere: true,
+      via: 'mail',
+      destino: 'hola@casabrandon.org',
+      cupo: 12,
+      cierra: ts('2026-09-01T15:00:00Z'),
+    },
+    material: {
+      tiene: true,
+      items: [
+        { tipo: 'lectura', titulo: 'Pedro Páramo', url: 'https://drive/publico', entrega: 'previo', publico: true },
+        { tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
+      ],
+    },
+    organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
+    tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
+    tags: ['narrativa'],
+    difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
+    ...over,
+  });
+
+describe('construirDescripcion — lo que SÍ va al evento', () => {
+  const d = () => construirDescripcion(completa(), sesion({ tema: 'Cap. 1-4', lectura: 'Pedro Páramo' }), LABELS);
+
+  it('resuelve los slugs de taxonomía a su etiqueta legible (§4.1)', () => {
+    expect(d()).toContain('A la gorra');
+    expect(d()).not.toContain('a-la-gorra');
+    expect(d()).toContain('Club de lectura');
+    expect(d()).toContain('Villa Crespo');
+  });
+
+  it('incluye modalidad, sede, cómo llegar y el mapa', () => {
+    const texto = d();
+    expect(texto).toContain('Presencial y virtual');
+    expect(texto).toContain('Casa Brandon');
+    expect(texto).toContain('Timbre 2');
+    expect(texto).toContain('google.com/maps');
+  });
+
+  it('incluye el arancel con sus notas', () => {
+    expect(d()).toContain('incluye material');
+  });
+
+  it('incluye la inscripción completa', () => {
+    const texto = d();
+    expect(texto).toContain('hola@casabrandon.org');
+    expect(texto).toContain('Cupo: 12');
+    expect(texto).toMatch(/Cierra: .*2026/);
+  });
+
+  it('incluye organizador y tallerista con su bio', () => {
+    const texto = d();
+    expect(texto).toContain('Casa Brandon');
+    expect(texto).toContain('@casabrandon');
+    expect(texto).toContain('María Moreno');
+    expect(texto).toContain('Cronista y ensayista.');
+  });
+
+  it('llama Invitado al tallerista en una presentación', () => {
+    const texto = construirDescripcion(completa({ tipo: 'presentacion' }), sesion(), LABELS);
+    expect(texto).toContain('Invitado: María Moreno');
+  });
+
+  it('incluye tema y lectura del encuentro', () => {
+    const texto = d();
+    expect(texto).toContain('Tema: Cap. 1-4');
+    expect(texto).toContain('Lectura: Pedro Páramo');
+  });
+
+  it('incluye los tags como temas', () => {
+    expect(d()).toContain('Narrativa');
+  });
+
+  it('numera el encuentro dentro del ciclo', () => {
+    const s1 = sesion({ id: 'ses_1', inicio: ts('2026-09-03T22:00:00Z') });
+    const s2 = sesion({ id: 'ses_2', inicio: ts('2026-09-10T22:00:00Z') });
+    const a = completa({ esCiclo: true, sesiones: [s1, s2] });
+    expect(construirDescripcion(a, s2, LABELS)).toContain('Encuentro 2 de 2');
+  });
+
+  it('numera por fecha, no por posición en el array', () => {
+    const tarde = sesion({ id: 'ses_tarde', inicio: ts('2026-09-10T22:00:00Z') });
+    const temprano = sesion({ id: 'ses_temprano', inicio: ts('2026-09-03T22:00:00Z') });
+    // Array desordenado a propósito.
+    const a = completa({ esCiclo: true, sesiones: [tarde, temprano] });
+    expect(construirDescripcion(a, temprano, LABELS)).toContain('Encuentro 1 de 2');
+  });
+
+  it('no numera una actividad de un solo encuentro', () => {
+    expect(construirDescripcion(completa({ esCiclo: false }), sesion(), LABELS)).not.toContain('Encuentro 1');
+  });
+
+  it('avisa cuando no hay inscripción previa', () => {
+    const a = completa({ inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: null } });
+    expect(construirDescripcion(a, sesion(), LABELS)).toContain('Sin inscripción previa');
+  });
+});
+
+describe('construirDescripcion — lo que NUNCA va al evento (§5.1, §7.4)', () => {
+  const d = () => construirDescripcion(completa(), sesion(), LABELS);
+
+  it('no publica el link de la reunión, solo la plataforma (trampa 5)', () => {
+    expect(d()).not.toContain('zoom.us/j/secreto');
+    expect(d()).toContain('Zoom');
+    expect(d()).toContain('se envía a quienes se inscriban');
+  });
+
+  it('no publica el link ni siquiera con urlPublica en true', () => {
+    // §7.4 es incondicional: el calendario es público.
+    const a = completa({ online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: true } });
+    expect(construirDescripcion(a, sesion(), LABELS)).not.toContain('zoom.us/j/secreto');
+  });
+
+  it('no publica la difusión interna', () => {
+    expect(d()).not.toContain('coordinar con prensa');
+    expect(d()).not.toContain('@editorial');
+  });
+
+  it('un material privado conserva título pero pierde la URL', () => {
+    const texto = d();
+    expect(texto).toContain('Guía de lectura');
+    expect(texto).not.toContain('drive/privado');
+    expect(texto).toContain('drive/publico');
+  });
+
+  it('no publica material si la casilla está destildada', () => {
+    const a = completa({ material: { tiene: false, items: [{ tipo: 'lectura', titulo: 'Oculto', url: 'https://x', entrega: 'previo', publico: true }] } });
+    expect(construirDescripcion(a, sesion(), LABELS)).not.toContain('Oculto');
+  });
+});
+
+describe('planificar — el payload propaga los campos nuevos', () => {
+  const s = sesion({ calendarEventId: 'evt_1' });
+
+  it('cambiar el arancel actualiza el evento', () => {
+    const antes = completa({ sesiones: [s] });
+    const despues = completa({ sesiones: [s], arancel: { tipo: 'gratis', notas: '' } });
+    expect(planificar(antes, despues, LABELS).map((o: { tipo: string }) => o.tipo)).toEqual(['actualizar']);
+  });
+
+  it('cambiar el organizador actualiza el evento', () => {
+    const antes = completa({ sesiones: [s] });
+    const despues = completa({ sesiones: [s], organizador: { nombre: 'Otro', instagram: '', web: '' } });
+    expect(planificar(antes, despues, LABELS)).toHaveLength(1);
+  });
+
+  it('cambiar la inscripción actualiza el evento', () => {
+    const antes = completa({ sesiones: [s] });
+    const despues = completa({
+      sesiones: [s],
+      inscripcion: { requiere: true, via: 'whatsapp', destino: 'https://wa.me/1', cupo: 5, cierra: null },
+    });
+    expect(planificar(antes, despues, LABELS)).toHaveLength(1);
+  });
+
+  it('agregar material actualiza el evento', () => {
+    const antes = completa({ sesiones: [s], material: { tiene: false, items: [] } });
+    const despues = completa({ sesiones: [s] });
+    expect(planificar(antes, despues, LABELS)).toHaveLength(1);
+  });
+});
+
+describe('etiquetas — el calendario es público, no puede mostrar slugs crudos', () => {
+  it('usa la etiqueta registrada en /opciones cuando existe', () => {
+    const a = completa({ sede: { ...sedeCompleta, barrio: 'villa-crespo' } });
+    expect(construirDescripcion(a, sesion(), LABELS)).toContain('Villa Crespo');
+  });
+
+  it('des-sluguea como último recurso si no está registrada', () => {
+    // Sin LABELS: un slug creado con "Otro" que todavía no se leyó de Firestore.
+    const a = completa({ sede: { ...sedeCompleta, barrio: 'parque-chas' } });
+    const texto = construirDescripcion(a, sesion(), {});
+    expect(texto).toContain('Parque Chas');
+    expect(texto).not.toContain('parque-chas');
+  });
+
+  it('no deja slugs con guiones en los tags', () => {
+    const a = completa({ tags: ['no-ficcion'] });
+    expect(construirDescripcion(a, sesion(), {})).toContain('No Ficcion');
+  });
+
+  it('el tipo de material sale con tilde, no con el valor del enum', () => {
+    const texto = construirDescripcion(completa(), sesion(), LABELS);
+    expect(texto).toContain('Guía, al inscribirse');
+    expect(texto).not.toContain('(guia,');
   });
 });

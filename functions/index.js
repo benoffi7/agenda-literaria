@@ -10,7 +10,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
-import { construirEvento, planificar } from './calendario.js';
+import { planificar } from './calendario.js';
 
 initializeApp();
 const db = getFirestore();
@@ -47,6 +47,31 @@ const calendario = async () => {
   return _calendar;
 };
 
+/**
+ * §4.1 — la actividad guarda solo el slug de cada taxonomía, así que para que
+ * la descripción del evento diga "A la gorra" y no "a-la-gorra" hay que
+ * resolver las etiquetas contra /opciones/*.
+ *
+ * Se cachea por instancia: son 5 documentos que cambian muy de vez en cuando y
+ * la Function corre una vez por escritura de actividad.
+ */
+const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'];
+let _labels = null;
+
+const cargarLabels = async () => {
+  if (_labels) return _labels;
+  const labels = {};
+  const snaps = await db.getAll(...CAMPOS_TAXONOMIA.map((c) => db.doc(`opciones/${c}`)));
+  snaps.forEach((snap, i) => {
+    const campo = CAMPOS_TAXONOMIA[i];
+    labels[campo] = Object.fromEntries(
+      (snap.data()?.valores ?? []).map((v) => [v.slug, v.label]),
+    );
+  });
+  _labels = labels;
+  return labels;
+};
+
 /** Marca que hay que rebuildear el sitio (§8). El debounce lo hace el schedule. */
 const marcarRebuild = (motivo) =>
   db.doc('sistema/rebuild').set(
@@ -63,7 +88,8 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
   const despues = event.data?.after?.data() ?? null;
   const { id } = event.params;
 
-  const ops = planificar(antes, despues);
+  const labels = await cargarLabels();
+  const ops = planificar(antes, despues, labels);
 
   if (ops.length === 0) {
     // §7.1 — la guarda anti-loop vive acá: la escritura de `calendarEventId`
@@ -89,7 +115,7 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
       if (op.tipo === 'crear') {
         const { data } = await cal.events.insert({
           calendarId: CALENDAR_ID,
-          requestBody: construirEvento(despues, op.sesion),
+          requestBody: op.evento,
         });
         idsNuevos.set(op.id, data.id);
         logger.info('evento creado', { id, sesion: op.id, eventId: data.id });
@@ -97,7 +123,7 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
         await cal.events.update({
           calendarId: CALENDAR_ID,
           eventId: op.eventId,
-          requestBody: construirEvento(despues, op.sesion),
+          requestBody: op.evento,
         });
         logger.info('evento actualizado', { id, sesion: op.id });
       } else if (op.tipo === 'borrar') {
@@ -149,9 +175,14 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
 // renombra una etiqueta y el sitio sigue mostrando la vieja (trampa 8).
 // ─────────────────────────────────────────────────────────────────
 
-export const rebuildPorOpciones = onDocumentWritten('opciones/{campo}', (event) =>
-  marcarRebuild(`opciones/${event.params.campo}`),
-);
+export const rebuildPorOpciones = onDocumentWritten('opciones/{campo}', async (event) => {
+  // El caché de etiquetas quedó viejo. Se invalida solo en esta instancia; las
+  // demás lo recargan al reciclarse. No es exacto, pero renombrar una etiqueta
+  // es raro y el costo de equivocarse es una descripción con el label anterior
+  // hasta la próxima edición de la actividad.
+  _labels = null;
+  await marcarRebuild(`opciones/${event.params.campo}`);
+});
 
 // ─────────────────────────────────────────────────────────────────
 // §8 — debounce del rebuild: si se editan cinco campos seguidos no se
