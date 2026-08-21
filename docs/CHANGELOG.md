@@ -9,6 +9,21 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### `arancel` vuelve a obligar a elegir
+
+D-12 había dejado un riesgo abierto: al preseleccionar la primera opción en
+todos los campos con opciones base, `arancel` arrancaba en "Gratis". Un taller
+pago que nadie corrige se publicaba como gratuito, en el sitio y en el
+calendario público.
+
+Decisión del usuario (D-16): `arancel` es la excepción y obliga a elegir. `tipo`
+y `plataforma` siguen preseleccionando, porque ahí equivocarse se ve y se
+corrige.
+
+Hay un test que verifica que el atributo no vuelva a aparecer en ese campo — lee
+el fuente, que es poco ortodoxo, pero es la forma de que un copy-paste
+distraído entre campos vecinos no revierta la decisión en silencio.
+
 ### El checkbox "publicar el link de la reunión" ahora hace algo
 
 El modelo del §3.1 tiene `online.urlPublica` y el formulario su casilla, pero la

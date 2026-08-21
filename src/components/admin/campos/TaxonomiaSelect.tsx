@@ -23,8 +23,13 @@ interface Props {
   placeholder?: string;
   /**
    * Preselecciona la primera opción del desplegable cuando el campo está
-   * vacío. Se usa en los campos donde la primera opción es una elección
-   * válida, para no obligar a tocar un desplegable que ya muestra lo correcto.
+   * vacío, para no obligar a tocar un desplegable que ya muestra lo correcto.
+   *
+   * Se usa donde equivocarse es barato: `tipo` y `plataforma`. **No** en
+   * `arancel`: ahí el default sería "Gratis" y un taller pago que nadie
+   * corrige se publica como gratuito, en el sitio y en el calendario. Un clic
+   * más por actividad vale menos que eso.
+   *
    * No hace nada en taxonomías que arrancan sin opciones base (barrio, tags).
    */
   autoSeleccionarPrimera?: boolean;

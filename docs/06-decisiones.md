@@ -199,7 +199,10 @@ arancel" sobre un formulario que parecía completo.
 arancel…"), y `arancel`, `tipo` y `plataforma` preseleccionan la primera opción.
 `barrio` y `tags` no, porque no tienen opciones base.
 
-**Riesgo aceptado:** `arancel` arranca en "Gratis". Si se carga un taller pago y
+**Corregido el 2026-08-21 (D-16):** `arancel` quedó fuera de la preselección.
+El texto de abajo describe el estado anterior.
+
+**Riesgo que se corrigió:** `arancel` arrancaba en "Gratis". Si se carga un taller pago y
 no se cambia, se publica como gratuito. `tests/opciones-orden.test.ts` fija cuál
 es el default de cada campo para que un reordenamiento no lo cambie en silencio.
 El usuario está avisado.
@@ -223,6 +226,24 @@ hay de dónde leer.
 proceso, con la tabla de qué documento toca según el tipo de cambio, y la regla
 de que todo reporte de posible bug va al [`BACKLOG.md`](BACKLOG.md) ordenado por
 prioridad.
+
+---
+
+## D-16 · `arancel` no se preselecciona
+
+**Decisión del usuario** (2026-08-21), revisando el riesgo que D-12 había
+dejado abierto: **arancel obliga a elegir**.
+
+`tipo` y `plataforma` siguen preseleccionando la primera opción, porque ahí
+equivocarse es barato — una categoría o una plataforma mal puesta se ve y se
+corrige. En `arancel` el default era "Gratis": un taller pago que nadie corrige
+se publica como gratuito, en el sitio **y** en el calendario público, y la gente
+llega esperando no pagar. Un clic más por actividad vale menos que eso.
+
+`tests/opciones-orden.test.ts` verifica que el atributo
+`autoSeleccionarPrimera` **no** esté en el campo de arancel. Es un test que lee
+el fuente, poco ortodoxo, pero es la forma de fijar una decisión de producto que
+de otro modo se revierte con un copy-paste distraído entre campos vecinos.
 
 ---
 

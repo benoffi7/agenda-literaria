@@ -520,7 +520,6 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
                 recordarLabel('arancel', labelNuevo);
               }}
               placeholder="Elegí el arancel…"
-              autoSeleccionarPrimera
             />
           </Campo>
           <Campo label="Notas del arancel" ayuda="«2 cuotas», «incluye material»">

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import base from '@/lib/opciones-base.json';
 import { ordenarValores } from '@/lib/opciones';
 import type { ValorOpcion } from '@/types/actividad';
@@ -13,8 +14,13 @@ const primera = (campo: keyof typeof base) =>
  * actividad puede terminar guardada con un arancel que nadie eligió.
  */
 describe('opción preseleccionada por campo', () => {
-  it('arancel arranca en Gratis', () => {
-    expect(primera('arancel')?.slug).toBe('gratis');
+  it('arancel NO se preselecciona', () => {
+    // Decisión del dueño: el default sería "Gratis" y un taller pago que nadie
+    // corrige se publica como gratuito. El campo obliga a elegir.
+    const form = readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8');
+    const bloqueArancel = form.slice(form.indexOf('campo="arancel"'));
+    const hastaElCierre = bloqueArancel.slice(0, bloqueArancel.indexOf('/>'));
+    expect(hastaElCierre).not.toContain('autoSeleccionarPrimera');
   });
 
   it('tipo arranca en taller', () => {

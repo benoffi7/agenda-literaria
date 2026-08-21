@@ -40,9 +40,10 @@ Material · Opcional · Difusión. Las tres últimas son acordeones colapsados.
   actividad: cambiarlo rompe la URL y el SEO (trampa 10).
 - Elegir **club de lectura** activa "es ciclo" y "tiene material", porque es
   casi siempre así.
-- Los desplegables con opciones base (`arancel`, `tipo`, `plataforma`)
-  **preseleccionan la primera opción**. `barrio` y `tags` arrancan vacíos porque
-  no tienen opciones base.
+- `tipo` y `plataforma` **preseleccionan la primera opción**. `arancel` **no**:
+  obliga a elegir, porque su default sería "Gratis" y un taller pago sin
+  corregir se publicaría como gratuito (D-16). `barrio` y `tags` arrancan
+  vacíos porque no tienen opciones base.
 - El checkbox **"publicar el link de la reunión"** sí tiene efecto: con él
   tildado, la URL sale en el `events.json` y en la descripción del evento.
   Arranca destildado y advierte sobre el zoombombing (D-15).
