@@ -78,6 +78,12 @@ reunión** (zoom, meet, teams, jitsi, whereby, wa.me) en todo el texto libre. Es
 la segunda defensa: la primera es que el formulario avisa, arriba de todo, que el
 repo es público.
 
+**Todo el texto libre incluye el título**, que es el `title` del issue y el
+renglón que más se lee desde internet. Hasta el 2026-08-22 no pasaba por el
+filtro: la tabla de arriba decía "filtrados" y valía para la descripción y los
+pasos nada más (B-81 en [`BACKLOG.md`](BACKLOG.md) → Cerrados). Los tests que lo
+sostienen están en `tests/costuras.test.ts`.
+
 La decisión sobre la actividad la toma la Function leyendo el documento, no el
 panel: si dependiera del cliente, un panel viejo o modificado podría publicar el
 título de un borrador.

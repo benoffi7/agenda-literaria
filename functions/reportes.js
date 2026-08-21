@@ -117,7 +117,12 @@ const bloque = (titulo, cuerpo) => (cuerpo ? `### ${titulo}\n\n${cuerpo}\n` : ''
  */
 export const construirIssue = ({ id, reporte, actividad = null }) => {
   const tipo = reporte.tipo === 'sugerencia' ? 'sugerencia' : 'bug';
-  const titulo = String(reporte.titulo ?? '').trim() || '(sin título)';
+  // `redactar` también acá: el título va al `title` del issue, que es lo primero
+  // que se ve desde internet. El formulario del panel promete que "si se cuela
+  // un mail o un link de reunión, el panel lo tapa antes de publicar" — sin esta
+  // llamada la promesa valía para la descripción y los pasos, pero no para el
+  // renglón más visible de los tres (§5.1, trampa 5).
+  const titulo = redactar(reporte.titulo) || '(sin título)';
   const c = reporte.contexto ?? {};
 
   const contexto = [
