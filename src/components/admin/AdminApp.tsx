@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActividadFormulario } from '@/components/admin/ActividadFormulario';
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
+import { BotonAyuda } from '@/components/admin/ayuda/BotonAyuda';
 import { ListaActividades } from '@/components/admin/ListaActividades';
 import {
   loginConGoogle,
@@ -115,6 +116,10 @@ export function AdminApp() {
             ← Volver
           </button>
         )}
+        {/* Única entrada a la ayuda y a las novedades (D-61): el encabezado se
+            ve en todas las pantallas, y al ser una capa se puede consultar sin
+            perder el formulario a medio cargar. */}
+        <BotonAyuda contexto={vista.tipo === 'lista' ? 'lista' : 'formulario'} />
         <button
           type="button"
           onClick={() => void logout()}

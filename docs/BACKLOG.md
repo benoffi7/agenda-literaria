@@ -181,6 +181,35 @@ cada rebuild, así que probablemente `no-cache` o un `max-age` corto.
 
 ---
 
+### B-62 · Ayuda contextual por sección del formulario
+
+La guía (B-60) se abre desde el encabezado y muestra desplegado el capítulo de
+la pantalla en la que estás, pero no hay un "?" al lado del título de cada
+sección del formulario, que es donde más apuntaría: la duda aparece mirando
+"Difusión", no pensando en abrir la ayuda.
+
+El mecanismo ya está: cada capítulo declara a qué sección del formulario
+corresponde (`seccionFormulario` en `src/lib/ayuda.ts`), así que falta un botón
+en `Seccion` y pasarle el id en las nueve secciones. No se hizo de entrada para
+no tocar `ActividadFormulario.tsx` en nueve lugares mientras varias manos lo
+estaban editando (D-61).
+
+### B-63 · Nada verifica que la guía siga diciendo la verdad
+
+`tests/ayuda.test.ts` verifica que **exista** un capítulo por sección del
+formulario, que los seis avisos irreversibles estén y que el texto no tenga
+jerga. Lo que ningún test puede ver es que el texto siga siendo **cierto**: si
+mañana cancelar un encuentro deja de borrar el evento, la guía va a seguir
+diciendo que lo borra y nada va a fallar.
+
+Hoy eso lo sostiene la regla de proceso de [`05-patrones.md`](05-patrones.md).
+Opciones si alcanza para más: repasar la guía cada vez que se toca el sync o el
+formulario (barato, se olvida), o atar cada aviso a un test de comportamiento
+existente y nombrarlo en el aviso, para que borrar el test rompa el vínculo.
+
+**Una ayuda que miente es peor que no tener ayuda**, así que si la lista de
+avisos crece, este ítem sube de prioridad.
+
 ## P3 — cuando sobre tiempo
 
 ### B-10 · `aprobada` en las opciones (§4.3)
@@ -233,6 +262,43 @@ completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
 cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
 
 ---
+
+### B-60 · Ayuda dentro del panel — ✅ hecho (2026-08-21)
+
+Botón "Ayuda" en el encabezado, que abre una capa con la guía: los seis avisos
+de lo que no se puede deshacer y un capítulo por sección del formulario, más el
+recorrido de una actividad, el listado, las listas que crecen y la carga desde
+el teléfono. Contenido en `src/lib/ayuda.ts`, tests en `tests/ayuda.test.ts`.
+
+Ver [CHANGELOG](CHANGELOG.md), D-61 y D-62. Lo que quedó afuera está en B-62 y
+B-63.
+
+### B-61 · Historial de novedades del panel — ✅ hecho (2026-08-21)
+
+Pestaña "Novedades" en la misma capa, con "qué podés hacer ahora que antes no
+podías" en el idioma de quien carga actividades. Contenido en
+`src/lib/novedades.ts` (en el repo, se despliega con el build: D-63), lo no
+leído se marca con el id de la última vista en el navegador (D-64), y el aviso
+es un número en el botón.
+
+Ver [CHANGELOG](CHANGELOG.md), D-63, D-64 y D-65. Limitaciones en B-64.
+
+### B-64 · Pendientes chicos del centro de ayuda
+
+Tres cosas conocidas, ninguna urgente:
+
+- **Las novedades no se anclan a la versión del panel.** `Novedad` ya tiene un
+  campo `version` opcional y `src/lib/version.ts` expone `VERSION_APP`, así que
+  atarlos es corto: estampar la versión al agregar la entrada y mostrarla al
+  lado de la fecha. Sirve sobre todo para un reporte de bug ("con la versión en
+  la que salió tal cosa"). Las entradas viejas no la tienen porque el versionado
+  llegó después.
+- **No se puede corregir una errata ni avisar nada sin desplegar** — costo
+  aceptado en D-63. Si algún día hace falta un aviso urgente (una caída), es
+  otro problema y otra herramienta.
+- **La capa no atrapa el foco.** Cierra con `Escape`, con el botón y con un
+  click en el fondo, y al abrirse el foco va al diálogo, pero con Tab se puede
+  salir hacia el formulario de atrás. Es el mismo patrón incompleto que B-14.
 
 ## Cerrados
 

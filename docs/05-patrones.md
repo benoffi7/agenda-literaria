@@ -19,11 +19,46 @@ En cada cambio, revisar qué corresponde tocar:
 | implica una decisión o un desvío del `CLAUDE.md` | [`06-decisiones.md`](06-decisiones.md) |
 | cambia qué es público o cómo se verifica | [`07-seguridad.md`](07-seguridad.md) |
 | cambia cómo se corre o despliega | [`08-operacion.md`](08-operacion.md) |
+| **se nota al usar el panel** | [`src/lib/novedades.ts`](../src/lib/novedades.ts) — ver abajo |
+| **cambia un comportamiento que no se ve** | [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) — ver abajo |
 | **cualquier cambio** | [`CHANGELOG.md`](CHANGELOG.md) |
 
 **Todo reporte de posible bug va al [`BACKLOG.md`](BACKLOG.md), ordenado por
 prioridad**, incluso si se arregla en el momento — en ese caso entra ya cerrado,
 para que quede el rastro de qué se rompió y por qué.
+
+## Regla de proceso: la ayuda del panel se actualiza con la funcionalidad
+
+El panel lo usan **dos** personas: quien pidió cada cosa y sabe por qué es como
+es, y quien no participó de ninguna de esas decisiones. La segunda se entera de
+lo nuevo solo si alguien se lo cuenta — o si está escrito adentro del panel. Hay
+dos archivos para eso, y son parte de "haber terminado" igual que el changelog:
+
+| Archivo | Qué es | Cuándo se toca |
+|---|---|---|
+| [`src/lib/novedades.ts`](../src/lib/novedades.ts) | "Qué podés hacer ahora que antes no podías", en el idioma de quien carga actividades | cuando el cambio **se nota al usar el panel**. Una entrada arriba del array: id nuevo, fecha, título, dos frases y dónde está. 30 segundos |
+| [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) | La guía: el *para qué* de cada sección y los comportamientos que no se ven | cuando el cambio **agrega o modifica algo que no se adivina** mirando la pantalla: algo que queda fijo, algo que se publica o deja de publicarse, algo que borra o crea eventos |
+
+**No** va a `novedades.ts` lo que no cambia nada para quien carga (un refactor,
+una cabecera de cache, un test). Esa lista no es un registro de trabajo: si se
+llena de entradas que no le sirven a nadie, se deja de leer y el mecanismo
+muere.
+
+**La ayuda corta de un campo puntual no va en `ayuda.ts`**: va en la prop
+`ayuda` de `Campo`, al lado del campo, que es donde se lee. `ayuda.ts` es para
+lo que no cabe ahí.
+
+Dos tests sostienen la regla, y son a propósito incómodos de saltear:
+
+- `tests/ayuda.test.ts` lee `ActividadFormulario.tsx` y **falla si el
+  formulario tiene una sección sin capítulo en la guía**. Agregar una sección
+  nueva obliga a escribir su ayuda en el mismo cambio. Si falla, la respuesta no
+  es aflojar el test.
+- El mismo archivo verifica que los seis avisos irreversibles sigan explicados
+  (la dirección web que se congela al publicar, el link de la reunión, lo
+  interno, cancelar un encuentro, pasar a borrador, el calendario como espejo) y
+  que el texto no tenga jerga: sin `§`, sin nombres de archivo, sin nombres de
+  campo.
 
 ## Idioma
 
