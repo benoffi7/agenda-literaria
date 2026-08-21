@@ -926,8 +926,6 @@ la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
 cuentas de confianza no es un problema real; si alguna vez se le da el panel a
 más gente, conviene un tope por autor y por día.
 
-### B-10 · `aprobada` en las opciones (§4.3)
-
 ### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
 
 

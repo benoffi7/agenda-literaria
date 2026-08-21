@@ -20,6 +20,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 11 | [`11-ideas-de-producto.md`](11-ideas-de-producto.md) | Propuestas de funcionalidad con su argumento en contra, y lo que se descartó a propósito. Se lee antes de decidir qué sigue. |
 | 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01): URLs, pantallas, SEO, filtros y casos borde. Lo que falta construir. |
 | 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan, cuándo invocarlos, y qué se decidió **no** automatizar porque ya hay un test. |
+| 14 | [`14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) | Cómo se ataca el backlog acumulado sin que los frentes se pisen. Se reparte por archivo, no por tema. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
