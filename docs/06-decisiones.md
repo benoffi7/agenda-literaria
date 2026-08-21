@@ -265,6 +265,111 @@ Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
 
 ---
 
+## D-31 · Los reportes van por trigger de Firestore, no por `onCall`
+
+**Decisión:** el panel escribe `/reportes/{id}` y un `onDocumentWritten` crea el
+issue en GitHub.
+
+**Alternativa descartada:** una función `onCall` que reciba el reporte y llame a
+GitHub en la misma request.
+
+**Motivo:** el reporte no se puede perder. Con `onCall`, mientras dura la
+llamada el reporte solo existe en la memoria de la Function: si la API de GitHub
+está caída o el token venció, la llamada falla y lo que escribió la persona se
+va con ella. Con el trigger, la escritura **es** el reporte —queda guardado
+antes de que GitHub entre en juego— y el issue es un efecto posterior,
+reintentable, cuyo resultado se ve en el propio documento.
+
+Además la autorización ya la hacen las reglas con `esAdmin()` (§5.3), sin
+reimplementar el chequeo del claim, y el panel se entera del número de issue
+escuchando el documento.
+
+**Costo:** el número de issue no aparece en el mismo click. Llega un segundo
+después por `onSnapshot`, y hasta entonces la lista dice "creando el issue…".
+
+---
+
+## D-32 · El issue no dice quién reportó
+
+**Decisión:** el issue lleva el id del documento (`reportes/{id}`) y nada más
+sobre la persona. El uid y el mail quedan en Firestore.
+
+**Motivo:** el repo `benoffi7/agenda-literaria` es **público** (verificado con
+`gh repo view --json visibility`), así que el issue es público. Publicar el mail
+de quien carga actividades lo expone a bots, y el §5.1 ya prohíbe los uids en
+las salidas públicas.
+
+La trazabilidad que pedía el pedido —quién lo cargó, cuándo, y el número de
+issue— está completa en el documento, que solo leen los admins. Con dos cuentas
+cargando, mirar el documento cuesta un click.
+
+---
+
+## D-33 · El texto libre se filtra antes de publicarlo
+
+**Decisión:** `redactar()` tapa mails y links de reunión en todo lo que sale al
+issue, y el título de la actividad referida se copia **solo si está publicada**.
+
+**Motivo:** el issue es público. Alguien que explica un problema pega lo que
+tiene a mano: "no me deja mandar el link https://zoom.us/j/… a
+hola@taller.org". Eso es exactamente la trampa 5 y el §5.1.
+
+Detalles que hacen que sirva:
+
+- El texto **completo** queda en Firestore: no se pierde nada, solo se recorta
+  lo que se publica.
+- La decisión sobre la actividad la toma la Function leyendo el documento, no el
+  panel: así no depende de lo que mande el cliente.
+- El formulario avisa que el repo es público, para que el filtro sea la segunda
+  defensa y no la primera.
+
+---
+
+## D-34 · Los reintentos se cuentan en el documento, no en la plataforma
+
+**Decisión:** el estado del reporte (`pendiente` → `enviando` → `creado` |
+`error`) más `intentos`. Un fallo transitorio vuelve el estado a `pendiente`, y
+esa misma escritura vuelve a disparar el trigger, hasta 3 intentos.
+
+**Alternativa descartada:** `retry: true` en el trigger, que reentrega el evento
+con backoff durante días.
+
+**Motivo:** hace falta distinguir lo transitorio (5xx, 429, error de red) de lo
+que es configuración (401, 403, 404: token vencido, sin permiso, repo mal
+escrito). Reintentar un 401 durante siete días no arregla nada y no se ve en
+ninguna parte. Con el estado en el documento, el fallo aparece en el panel con
+su motivo, y el intento queda acotado.
+
+La transacción que toma el reporte cumple dos funciones: es la guarda anti-loop
+(la escritura de vuelta del número de issue dispara el trigger otra vez, y ahí
+no hay nada que hacer — §7.1, trampa 3) y evita el issue duplicado cuando
+Firestore entrega el mismo evento dos veces, que es su garantía real ("al menos
+una vez").
+
+---
+
+## D-35 · El trigger de reportes lleva sus opciones explícitas
+
+**Decisión:** `reporteAIssue` declara región, `maxInstances`, service account y
+`secrets` en su propia definición, en vez de heredar el `setGlobalOptions()` de
+`functions/index.js`.
+
+**Motivo:** no es preferencia de estilo. En ESM los imports se ejecutan antes
+que el cuerpo del módulo que importa, así que cuando `reportes-trigger.js`
+define la Function el `setGlobalOptions()` de `index.js` **todavía no corrió**:
+el endpoint quedaría sin región ni service account. Con las opciones explícitas
+el orden deja de importar.
+
+Efecto lateral bienvenido: `index.js` solo suma la línea del export, así que dos
+personas (o dos agentes) tocando Functions en paralelo no chocan.
+
+**Se reusa la service account `calendar-sync@`** en lugar de crear una propia:
+una nueva necesitaría a mano los tres roles que la default de Compute trae de
+fábrica (D-06) y es el error que ya hizo fallar dos deploys. El precio es que
+esa identidad suma el acceso al secreto del PAT.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

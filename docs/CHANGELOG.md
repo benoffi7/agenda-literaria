@@ -9,6 +9,40 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Reportar bugs y sugerencias desde el panel, con issue en GitHub
+
+**Pedido:** que la otra cuenta con claim `admin` pueda contar problemas e ideas
+sin salir del panel, y que eso llegue a GitHub para poder contestarlo ahí.
+
+Hay una pantalla nueva en `/admin` ("Reportar algo"): tipo (bug o sugerencia),
+título, qué pasó, cómo se repite, cuánto molesta, en qué pantalla estaba y —si
+aplica— la actividad involucrada. El panel captura además navegador, tamaño de
+ventana, ruta, **zona horaria** (sin la zona, un bug de fechas no se diagnostica:
+trampa 1) y la **versión del bundle** que estaba corriendo (`VERSION_APP`), que
+es lo que permite rebuildear el código exacto del reporte.
+
+**El token de GitHub no está en el cliente.** El panel escribe en
+`/reportes/{id}` y una Cloud Function (`reporteAIssue`) crea el issue con el PAT
+en Secret Manager. Si el panel llamara a la API de GitHub, el token viajaría en
+el bundle de `/admin` y cualquiera podría escribir en el repo — el §5.4 lo
+prohíbe.
+
+Es un **trigger de Firestore y no un `onCall`** (D-31): así el reporte queda
+guardado antes de que GitHub entre en juego y no se pierde si la API falla; el
+número de issue vuelve al panel por `onSnapshot`.
+
+**El repo es público**, así que el issue también (D-32, D-33): no lleva el uid
+ni el mail de quien reportó —eso queda en Firestore, que solo leen los admins—,
+el texto libre pasa por un filtro que tapa mails y links de reunión, y de la
+actividad referida solo sale el título si ya está publicada.
+
+Falta un paso manual del dueño antes de que funcione: crear el PAT, guardarlo en
+Secret Manager, dar el permiso a la service account y desplegar la Function y
+las reglas. Los comandos están en [`08-operacion.md`](08-operacion.md).
+
+**Limitación conocida:** las respuestas del dueño en el issue no vuelven al
+panel. Anotada como [B-30](BACKLOG.md).
+
 ### `arancel` vuelve a obligar a elegir
 
 D-12 había dejado un riesgo abierto: al preseleccionar la primera opción en

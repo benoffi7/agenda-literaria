@@ -85,6 +85,45 @@ El formulario es usable en teléfono:
 - Teclados por campo: numérico en cupo, de URL en los links, sin autocapitalizar
   ni autocorregir en slug, handles y URLs.
 
+### Reportar bugs y sugerencias
+
+Botón "Reportar algo" en el encabezado del panel. El formulario pide:
+
+| Campo | Detalle |
+|---|---|
+| Tipo | "Algo no funciona" o "Se me ocurre algo". Ordena el resto del formulario |
+| En una línea | el título del issue |
+| Qué pasó / la idea | el cuerpo |
+| Cómo se repite | opcional, solo en un bug |
+| Cuánto molesta | solo en un bug: me bloquea / molesta / es un detalle |
+| Dónde estabas | se pregunta, no se deduce: el problema suele pasar en la pantalla anterior |
+| Actividad | opcional, para referenciar una actividad concreta |
+
+Además se manda solo, sin preguntar: navegador, tamaño de ventana, ruta, **zona
+horaria** (sin la zona un bug de fechas no se diagnostica — trampa 1) y la
+**versión del bundle** que estaba corriendo (`VERSION_APP`, `0.1.0+<sha>` más la
+fecha del build): con ese string el dueño rebuildea el código exacto contra el
+que se reportó, y si el árbol estaba sucio al buildear la versión lo dice.
+
+**Qué pasa después.** El panel escribe en `/reportes/{id}` y la Cloud Function
+`reporteAIssue` crea un issue en `benoffi7/agenda-literaria` con el PAT en
+Secret Manager: el token nunca está en el panel (§5.4). El número de issue vuelve
+al documento y aparece en la lista "Últimos reportes" un segundo después, sin
+recargar.
+
+Estados que muestra la lista: *guardado, creando el issue…* → *en GitHub* (con
+link al issue) o *no se pudo publicar* (con el motivo). El reporte queda guardado
+en Firestore pase lo que pase con GitHub (D-31).
+
+**El repo es público, así que el issue también.** El formulario lo dice, el issue
+**no** lleva el mail ni el uid de quien reportó (D-32), el texto libre pasa por un
+filtro que tapa mails y links de reunión (D-33), y el título de la actividad
+referida se copia solo si ya está publicada. El detalle sin recortar y quién lo
+cargó quedan en Firestore.
+
+**Limitación:** las respuestas del dueño se leen en GitHub. El panel todavía no
+las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
+
 ## Sync a Google Calendar
 
 Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.

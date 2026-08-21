@@ -225,3 +225,5 @@ export const dispararRebuild = onSchedule(
     logger.info('rebuild disparado');
   },
 );
+
+export { reporteAIssue } from './reportes-trigger.js';

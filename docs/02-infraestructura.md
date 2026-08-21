@@ -81,17 +81,24 @@ Rewrite de `/admin/**` a `/admin/index.html` para el router propio de la SPA.
 
 ## Cloud Functions (v2)
 
-Ambas en `southamerica-east1`, Node 22, `maxInstances: 5`.
+Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 
 | Función | Trigger | Estado |
 |---|---|---|
 | `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE |
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE |
 | `dispararRebuild` | `onSchedule every 5 minutes` | **escrita, sin desplegar** |
+| `reporteAIssue` | `onDocumentWritten reportes/{id}` | **escrita, sin desplegar** — falta el secreto |
 
 `dispararRebuild` no se desplegó porque todavía no existen el sitio público ni
 el workflow de GitHub Actions que tendría que disparar: sería un schedule
 corriendo cada 5 minutos para no hacer nada.
+
+`reporteAIssue` no se desplegó porque falta el secreto con el PAT: sin token no
+puede crear ningún issue. Las opciones (región, service account, `secrets`) van
+**explícitas en su propia definición** y no en el `setGlobalOptions()` de
+`index.js` — en ESM el import corre antes y las opciones globales llegarían tarde
+(D-35).
 
 ### Variables de entorno
 
@@ -100,8 +107,18 @@ En `functions/.env`, versionado:
 | Variable | Secreta | Valor |
 |---|---|---|
 | `GOOGLE_CALENDAR_ID` | no | el id del calendario público |
-| `GITHUB_TOKEN` | **sí** | falta — va a Secret Manager (§5.4) |
-| `GITHUB_REPO` | no | falta — para el paso 5 |
+| `GITHUB_REPO` | no | `benoffi7/agenda-literaria` |
+
+### Secretos (Secret Manager)
+
+| Secreto | Lo usa | Estado |
+|---|---|---|
+| `GITHUB_TOKEN` | `reporteAIssue` (issues de reportes) y a futuro `dispararRebuild` (§8) | **falta crearlo** |
+
+El PAT nunca va a `functions/.env` ni al repo (§5.4). El valor se resuelve en
+runtime con `defineSecret(...).value()`, así que tampoco queda en el artefacto
+del deploy. Los comandos para crearlo y dar el permiso están en
+[`08-operacion.md`](08-operacion.md).
 
 ## Service accounts
 
@@ -125,6 +142,12 @@ roles/artifactregistry.reader  leer su propia imagen al arrancar
 **Los últimos tres hay que otorgarlos a mano.** La service account por defecto
 de Compute los trae de fábrica; una propia no. Es la causa de que el primer
 deploy de Functions falle con `eventarc.events.receiveEvent denied`.
+
+Cuando se despliegue `reporteAIssue` hay que sumarle
+`roles/secretmanager.secretAccessor` sobre el secreto `GITHUB_TOKEN`: la Function
+corre con esta misma identidad (se reusa a propósito — una service account nueva
+necesitaría otra vez los tres roles que la default de Compute trae de fábrica,
+que es lo que ya hizo fallar dos deploys — D-06, D-35).
 
 ## Google Calendar
 
@@ -152,6 +175,9 @@ cloudscheduler                               para dispararRebuild (paso 5)
 calendar-json                                sync a Calendar
 cloudbilling, billingbudgets                 budget alert
 ```
+
+**Falta habilitar `secretmanager.googleapis.com`** para el PAT de los reportes
+(el comando está en [`08-operacion.md`](08-operacion.md)).
 
 Hay muchas más habilitadas por defecto (BigQuery, Dataplex, etc.) que el
 proyecto no usa. No molestan y desactivarlas no aporta.

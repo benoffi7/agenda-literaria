@@ -40,6 +40,52 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    function reporteValido() {
+      let d = request.resource.data;
+      let campos = ['tipo', 'titulo', 'descripcion', 'pasos', 'severidad', 'actividad',
+                    'contexto', 'reportadoPor', 'estado', 'intentos', 'github', 'error',
+                    'creadoEn'];
+      return d.keys().hasOnly(campos) && d.keys().hasAll(campos)
+        && d.tipo in ['bug', 'sugerencia']
+        && d.titulo is string && d.titulo.size() >= 6 && d.titulo.size() <= 120
+        && d.descripcion is string && d.descripcion.size() >= 15 && d.descripcion.size() <= 4000
+        && (d.pasos == null || (d.pasos is string && d.pasos.size() <= 2000))
+        && (d.severidad == null || d.severidad in ['me-bloquea', 'molesta', 'menor'])
+        && (d.actividad == null || d.actividad.keys().hasOnly(['id', 'titulo']))
+        && d.contexto.keys().hasOnly(['versionPanel', 'navegador', 'ventana',
+                                      'zonaHoraria', 'url', 'pantalla'])
+        // §5.1 — el uid queda acá y no sale al issue. Que sea el propio evita
+        // que un admin cargue un reporte a nombre del otro.
+        && d.reportadoPor.keys().hasOnly(['uid', 'email'])
+        && d.reportadoPor.uid == request.auth.uid
+        && d.estado == 'pendiente'
+        && d.intentos == 0
+        && d.github == null
+        && d.error == null
+        // Con `request.time` el cliente no puede antedatar el reporte.
+        && d.creadoEn == request.time;
+    }
+
+    // Reportes del panel (bugs y sugerencias). Los crea un admin desde
+    // /admin y la Function `reporteAIssue` los publica como issue de GitHub.
+    //
+    // Las reglas son la autorización real: por eso la Function es un trigger
+    // de Firestore y no un `onCall` que tenga que revalidar el claim a mano.
+    //
+    // Se valida la forma del documento, no solo quién escribe: el reporte
+    // termina en un repo PÚBLICO, y el estado inicial es lo que decide si la
+    // Function lo toma. Sin esto, un admin distraído (o un script con su
+    // token) podría crear un reporte que nace "creado", o con los intentos
+    // gastados, y nunca se publicaría.
+    match /reportes/{id} {
+      // Los dos admins leen todos los reportes: es una bandeja compartida.
+      allow read: if esAdmin();
+      allow create: if esAdmin() && reporteValido();
+      // El ciclo de vida (estado, intentos, github) lo mueve solo la Function
+      // con el Admin SDK, que no pasa por estas reglas.
+      allow update, delete: if false;
+    }
+
     // §8 — flag de rebuild pendiente. Solo backend.
     match /sistema/{doc} {
       allow read: if esAdmin();

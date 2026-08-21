@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActividadFormulario } from '@/components/admin/ActividadFormulario';
 import { ListaActividades } from '@/components/admin/ListaActividades';
+import { ReportesPanel } from '@/components/admin/ReportesPanel';
 import {
   loginConGoogle,
   logout,
@@ -11,11 +12,15 @@ import {
 import type { ActividadConId } from '@/types/actividad';
 import type { User } from 'firebase/auth';
 
-type Vista = { tipo: 'lista' } | { tipo: 'nueva' } | { tipo: 'editar'; actividad: ActividadConId };
+type Vista =
+  | { tipo: 'lista' }
+  | { tipo: 'nueva' }
+  | { tipo: 'editar'; actividad: ActividadConId }
+  | { tipo: 'reportes' };
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
- * El router es propio y mínimo: son tres vistas.
+ * El router es propio y mínimo: son cuatro vistas.
  */
 export function AdminApp() {
   const [usuario, setUsuario] = useState<User | null>(null);
@@ -92,7 +97,9 @@ export function AdminApp() {
               ? 'Actividades'
               : vista.tipo === 'nueva'
                 ? 'Nueva actividad'
-                : vista.actividad.titulo}
+                : vista.tipo === 'reportes'
+                  ? 'Bugs y sugerencias'
+                  : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
         </div>
@@ -103,6 +110,15 @@ export function AdminApp() {
             className="min-h-touch shrink-0 rounded-md border border-borde bg-white px-3 text-sm"
           >
             ← Volver
+          </button>
+        )}
+        {vista.tipo !== 'reportes' && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'reportes' })}
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Reportar algo
           </button>
         )}
         <button
@@ -128,7 +144,11 @@ export function AdminApp() {
         />
       )}
 
-      {vista.tipo !== 'lista' && (
+      {vista.tipo === 'reportes' && (
+        <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />
+      )}
+
+      {(vista.tipo === 'nueva' || vista.tipo === 'editar') && (
         <ActividadFormulario
           uid={usuario.uid}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
