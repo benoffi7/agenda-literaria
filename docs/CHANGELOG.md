@@ -67,6 +67,46 @@ producir).
 
 ## 1.0.1 — 2026-08-22
 
+### Revisión de las costuras del merge: el título de un reporte ya no filtra mails
+
+Once features se integraron el mismo día, escritas en paralelo. Cada una está
+testeada por dentro; lo que nadie había probado es **el par**. Esta pasada buscó
+ahí. Salieron trece cosas, en [`BACKLOG.md`](BACKLOG.md) como B-80 a B-92: ocho
+con un test que las demuestra en
+[`tests/costuras.test.ts`](../tests/costuras.test.ts), y cinco que no se pueden
+testear sin render (B-08) o sin los emuladores con Functions, marcadas como
+tales.
+
+Se arregló una sola, porque era una línea y no admitía discusión (B-81):
+
+**`construirIssue` no redactaba el título del reporte.** La descripción y los
+pasos pasaban por `redactar()` —que tapa mails y links de reunión antes de
+publicar— y el título no, que es el `title` del issue: el renglón más visible de
+un repo público. Un "No le llega el mail a hola@casabrandon.org" escrito en el
+campo "En una línea" salía tal cual, mientras el propio formulario prometía en
+pantalla que "si se cuela alguno, el panel lo tapa antes de publicar" (§5.1,
+trampa 5).
+
+El resto quedó en el backlog con su test en `it.fails`, que es lo que mantiene el
+CI verde y falla el día en que alguien los arregla. Los dos que más importan:
+
+- **B-80 (P0).** El listado se refresca justo después de guardar, o sea antes de
+  que `syncCalendar` escriba los `calendarEventId`. Editar desde ese snapshot los
+  pisa con `null`, y la edición siguiente vuelve a **crear** el evento: dos
+  eventos para el mismo encuentro en el calendario público, y el primero
+  huérfano. Es el daño de la trampa 3 por una puerta que la guarda anti-loop no
+  cubre — el panel es dueño de un campo que escribe la Function.
+- **B-82 (P0).** `syncCalendar` decide con el payload del evento y no con el
+  estado del documento, así que una reentrega (la entrega de Firestore es *al
+  menos una vez*) duplica el evento. `guardarVersion` y `reporteAIssue` sí se
+  blindan; este no.
+
+Y uno que vale por lo que dice del método: **B-83**, el rebuild del sitio se
+marca en la última línea de `syncCalendar`, después de dos `return` tempranos.
+Un cambio que no altera el evento del calendario —`destacado`, `imagenUrl`— no
+pide rebuild, así que no se ve nunca en el sitio. Es la trampa 8 otra vez, con
+otro disparador: el rebuild no puede ser un efecto secundario del sync.
+
 ### La versión del panel está siempre visible al pie
 
 Pedido del dueño. Al pie de las tres pantallas —login, "sin permisos" y el

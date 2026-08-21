@@ -65,6 +65,75 @@ dueño (D-23).
 
 ---
 
+## P0 — rompe algo o pierde datos
+
+Los dos salieron de revisar las costuras del merge del 2026-08-21: cada feature
+está testeada por dentro, el par no. Los tests que los demuestran están en
+[`tests/costuras.test.ts`](../tests/costuras.test.ts), marcados `it.fails` para
+no romper el CI: fallan el día en que alguien los arregle, que es cuando hay que
+venir a borrar el `.fails`.
+
+### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento
+
+**Qué se rompe.** Dos eventos en el calendario público para el mismo encuentro,
+y el primero huérfano: nada del sistema lo referencia, así que nada lo va a
+borrar nunca. Es el daño de la trampa 3 del §13 por una puerta distinta.
+
+**Cómo se llega.** Es el camino normal, no una carrera exótica:
+
+1. Se publica la actividad. `syncCalendar` crea el evento y **después** escribe
+   `calendarEventId` en el documento (segundos, más si la Function arranca en
+   frío).
+2. `onGuardado` refresca el listado en ese mismo instante
+   (`setVersion(v + 1)` → `listarActividades()`), así que el snapshot que queda
+   en memoria es de **antes** del write-back: `calendarEventId: null`.
+3. Se vuelve a tocar "Editar" en esa fila. `documentoAForm` copia el `null` al
+   form y `formADocumento` lo escribe: el id se perdió. El guardado todavía
+   actualiza el evento correcto —`planificar` lo saca del `before`—, así que no
+   se nota nada.
+4. La edición siguiente ya no tiene de dónde sacarlo: `planificar` emite
+   `crear`. Segundo evento.
+
+**Por qué no lo agarró nadie.** `syncCalendar` solo escribe ids de vuelta para
+las ops `crear` y `borrar` (`idsNuevos` / `idsBorrados`); una `actualizar` no
+repone el id que el panel borró. Y el panel es dueño de un campo que escribe la
+Function: `formADocumento` lo emite en cada guardado.
+
+**Salidas posibles**, en orden de prolijidad:
+
+- que `actualizarActividad` relea el documento y fusione los `calendarEventId`
+  por id de sesión antes de escribir (el panel deja de ser dueño del campo);
+- o que `syncCalendar` reponga el id también en las ops `actualizar`, que tapa
+  el síntoma pero deja la ventana abierta entre las dos escrituras;
+- o que el listado escuche con `onSnapshot` en lugar de `getDocs`, que angosta
+  la ventana sin cerrarla (el form se arma una vez, al montar).
+
+### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento
+
+La entrega de eventos de Firestore es **al menos una vez**. `syncCalendar`
+decide con el payload del evento (`before`/`after`) y no mira el estado actual
+del documento, así que la reentrega de la escritura que publicó una actividad
+vuelve a emitir `crear`: segundo evento en el calendario público, y el primero
+huérfano.
+
+Los otros dos triggers del proyecto sí se blindan, y es la comparación que
+muestra el agujero:
+
+- `guardarVersion` usa `idDeVersion(event.time, event.id)`: el reintento
+  reescribe el mismo documento (D-43).
+- `reporteAIssue` toma el reporte en una transacción y mira `estado`/`github`.
+- `syncCalendar` no usa `event.id` en ninguna parte.
+
+La guarda anti-loop del §7.1 no cubre esto: corta la recursión porque la
+*segunda* escritura produce el mismo payload, pero una reentrega de la *misma*
+escritura trae el mismo `before` y el mismo `after`.
+
+El arreglo natural es el mismo del historial: llevar los ids de evento ya
+aplicados por `event.id`, o relee el documento dentro de la transacción del
+write-back y no crear si la sesión ya tiene un `calendarEventId`.
+
+---
+
 ## P1 — bloquean el objetivo del proyecto
 
 El proyecto existe para que la gente encuentre los talleres en Google (§2.3).
@@ -218,6 +287,31 @@ ya lo necesita.
 
 ~~B-02 · Trigger de rebuild~~ → [cerrado](#cerrados), con pasos manuales
 pendientes del dueño (ver arriba).
+
+### B-83 · El rebuild del sitio cuelga del sync a Calendar
+
+`syncCalendar` marca `sistema/rebuild` en la **última** línea, después de dos
+cortes tempranos: `if (ops.length === 0) return;` y `if (!CALENDAR_ID) return;`.
+Consecuencia: un cambio que no altera el evento del calendario no pide rebuild y
+el sitio público se queda con el dato viejo.
+
+Los campos que salen al `events.json` (§5.2) y **no** entran al evento de
+Calendar son `destacado`, `imagenUrl`, `searchText` y el `slug`. Así que tildar
+"Destacar en la portada" o corregir la imagen de una actividad ya publicada no
+se ve nunca en el sitio, hasta que alguien edite otra cosa. Es la trampa 8 del
+§13 con otro disparador: ahí era olvidarse de `/opciones/*`, acá es que el
+rebuild sea un efecto secundario del sync.
+
+Segundo caso, el mismo agujero: sin `GOOGLE_CALENDAR_ID` configurado la Function
+loguea el error y vuelve **antes** de marcar el rebuild, así que un proyecto sin
+calendario no publica nada nunca.
+
+El arreglo es mover `marcarRebuild` arriba de los dos cortes: el rebuild
+corresponde porque la actividad cambió, no porque el calendario haya recibido
+operaciones. Cuesta un build de más cuando el cambio es solo interno
+(`difusion`), que al lado de esto es gratis — el debounce del §8 ya los junta.
+
+Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
 
 ---
 
@@ -703,6 +797,103 @@ prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), n
 etiquetas de UI. Unificarlos haría que un cambio de copy del panel cambie lo que
 se publica en el calendario.
 
+### B-84 · Cancelar un encuentro de un ciclo renumera y reescribe los otros siete
+
+`posicionEnCiclo` numera sobre las sesiones **no canceladas**, así que cancelar
+el tercero de ocho convierte al sexto en "Encuentro 5 de 7" en el calendario
+público. Dos costos:
+
+- **Renumera.** Quien ya tenía "Encuentro 6 de 8" agendado ve cómo se le
+  renombra el evento, y el número deja de coincidir con la lectura asignada de
+  esa fila del formulario.
+- **Siete escrituras de más.** El §7.2 existe para reflejar los cambios sin
+  tocar lo que no cambió, y una cancelación toca ocho eventos.
+
+`calendario.test.ts` tiene "cancelar un encuentro borra solo el suyo" y pasa: su
+fixture no es un ciclo. En un ciclo —el caso del §2.2, que es el motivo de que
+las sesiones sean un array— el invariante no vale.
+
+Lo que hay que decidir es qué significa el número. Lo más barato y lo que menos
+sorprende: numerar sobre **todas** las sesiones (el sexto sigue siendo el sexto,
+y el total sigue siendo ocho), y que el cancelado simplemente no tenga evento.
+
+Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts), con lo que hace
+hoy escrito al lado para que el cambio se note.
+
+### B-85 · El debounce del rebuild se come el cambio que llega mientras dispara
+
+`dispararRebuild` lee `sistema/rebuild`, habla con GitHub (hasta 15 s de
+timeout) y después escribe `registrarExito`, que baja `pendiente` sin comparar
+contra lo que hay en el documento. Una actividad guardada en esa ventana marca su
+rebuild y el tick se lo lleva: el build que arrancó no la incluye y ya nadie va a
+pedir otro. El sitio queda viejo hasta la próxima edición ajena.
+
+Es poco probable (una ventana de segundos cada cinco minutos) y el daño es
+acotado, pero el arreglo también: `registrarExito` en una transacción que solo
+baje `pendiente` si `actualizado` sigue siendo el que se leyó, o un token de
+generación en el documento.
+
+Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
+
+### B-86 · `usos` solo cuenta creaciones, así que el orden por frecuencia no funciona
+
+El §4.3 le da dos trabajos a `usos`: ordenar el desplegable por frecuencia real
+—"mejor que alfabético"— y detectar basura ("una opción con `usos: 1` creada
+hace meses es casi seguro un typo colgado").
+
+`upsertOpcion` sabe sumar el uso de una opción existente, pero el submit del
+formulario solo lo llama para las etiquetas tipeadas en "Otro" (`labelsNuevos`,
+`tagsNuevos`). Elegir una opción del desplegable no registra nada. Resultado:
+todas las opciones creadas se quedan clavadas en `usos: 1` para siempre y las
+base en `0`, así que `ordenarValores` ordena por etiqueta y la señal de basura no
+distingue el typo del barrio que se usa todas las semanas.
+
+Es una línea en `guardar()` —registrar el uso de los slugs elegidos, no solo de
+los nuevos— más cuidado con no sumar dos veces cuando la etiqueta es nueva
+(`upsertOpcion` ya la crea con `usos: 1`). Sin test: el camino pasa por el
+submit del componente y no hay testing-library (B-08).
+
+### B-87 · El formulario nace sucio, así que el aviso de versión nunca se recarga solo
+
+`autoSeleccionarPrimera` en el desplegable de `tipo` preselecciona "Taller" desde
+un efecto, y ese efecto es de un hijo: corre **antes** que los efectos de
+`ActividadFormulario`. Los dos consumidores del estado inicial del formulario
+toman su huella en el efecto del padre, o sea antes de ver la preselección:
+
+- `useFormularioSucio` deja `sucio = true` en cuanto React procesa el `setForm`
+  del hijo. Abrir "Nueva actividad" y no tocar nada ya cuenta como trabajo sin
+  guardar: el aviso de versión nueva no se auto-recarga nunca y muestra el
+  cartel "Guardá lo que estás cargando y después recargá: si recargás ahora, se
+  pierde" sobre un formulario vacío.
+- `useMedicionFormulario` compara la misma huella al cerrar, así que el
+  parámetro `sucio` de `formulario_abandonado` es **siempre 1** y deja de
+  responder la pregunta que documenta [`09-analitica.md`](09-analitica.md)
+  ("¿había trabajo adentro, o se abrió el formulario y se salió?").
+
+El arreglo es que la preselección no cuente como cambio: aplicarla al armar el
+estado inicial (`formVacio()` con el primer valor de la taxonomía, que se conoce
+desde `OPCIONES_BASE`) en lugar de con un efecto sobre el formulario ya montado.
+
+**Sin test, y por eso está acá y no en P0/P1:** el mecanismo se leyó en el
+código y el orden de los efectos es una garantía de React, pero verificarlo
+necesita render, y no hay testing-library (B-08). Es la primera cosa que valdría
+la pena verificar si se instala.
+
+### B-90 · "Generar N encuentros" sobre un ciclo publicado borra y recrea los ocho eventos
+
+El generador del §11 reemplaza la lista de sesiones, y `generarSesiones` da ids
+nuevos. Sobre un ciclo ya publicado el diff no reconoce ningún encuentro: ocho
+`borrar` y ocho `crear`. Es exactamente lo que el §7.2 dice que no hay que hacer
+—"eso perdería los recordatorios y las suscripciones de la gente"— y el cartel
+del formulario avisa "Reemplaza la lista actual", que no se lee como "reemplaza
+también el calendario".
+
+Salidas: reusar el id de la fila que ocupa la misma posición cuando la cantidad
+no cambia, o al menos avisar en el cartel cuando alguna sesión ya tiene
+`calendarEventId` ("esto borra N eventos del calendario y crea otros N").
+
+Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
+
 
 ## P3 — cuando sobre tiempo
 
@@ -1156,6 +1347,62 @@ Un intermedio razonable: `auditor-privacidad` siempre que el diff toque una de
 las cuatro salidas, y los otros dos solo antes del PR. Requiere decidir el
 disparador de B-115.
 
+### B-88 · La analítica no reconoce la versión de un build de árbol sucio
+
+`scripts/version.mjs` produce tres formas: `1.0.1+5e2cb50`,
+`1.0.1+5e2cb50-sucio.20260821-2124` y `1.0.1+sin-git.20260821-2124`. El
+sanitizador `FORMATO_VERSION` de `analytics-eventos.ts` solo acepta la primera:
+el sufijo de las otras dos lleva guiones y pasa de 20 caracteres, así que el
+parámetro viaja como `otro`.
+
+O sea que en cualquier build que no salga de un árbol limpio —y con
+`registrarVersion(VERSION_APP)` ya enchufado, eso es todo lo que se prueba a
+mano— los eventos pierden justo el dato que existe para atribuir un pico a un
+deploy. Producción se buildea limpio, así que el impacto real es sobre los datos
+de desarrollo, que igual no se miden (`PUBLIC_USE_EMULATORS`). Queda acá y no más
+arriba por eso.
+
+El arreglo es ampliar el sanitizador a las formas que el build produce de verdad
+(el guion y el largo del sello), no abrirlo: el punto del formato cerrado sigue
+siendo que `version` no pueda ser una puerta de texto libre.
+
+Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts), con una guarda
+para que se enteren si `version.mjs` cambia de formato.
+
+### B-89 · Borrar una actividad deja huérfana su subcolección `versiones`
+
+`borrarActividad` es un `deleteDoc`, y Firestore no borra subcolecciones. Las
+hasta 20 versiones de `/actividades/{id}/versiones/*` quedan para siempre, con
+copias completas del documento (incluidos `online.url` y `difusion`) y sin
+ninguna forma de llegar a ellas desde el panel.
+
+No es una fuga: las reglas limitan la lectura al claim `admin` igual que antes
+(`match /versiones/{version} { allow read: if esAdmin() }`). Es basura que crece
+y datos internos que sobreviven a la decisión de borrar la actividad.
+
+Lo barato es una Function `onDocumentDeleted` que borre la subcolección, del
+mismo tamaño que la poda que ya existe en `historial-trigger.js`. Sin test: la
+escritura de versiones es un trigger, así que verificarlo pide los emuladores con
+Functions.
+
+### B-91 · Un slug legítimo que termine en `-copia` no se puede publicar
+
+`esSlugDeCopia` es `/-copia(?:-\d+)?$/` sobre el slug entero, y el schema lo usa
+para bloquear la publicación. Un título que derive en algo como
+`taller-de-copia` (o cualquier cosa que termine en esa palabra) queda imposible
+de publicar, con un mensaje que habla de un sufijo que la persona no puso.
+
+Es un borde angosto y el error es del lado seguro (bloquea, no publica una URL
+rota), así que P3. Si molesta, la marca de copia puede ir en el estado y no en el
+texto del slug.
+
+### B-92 · B-56 quedó desactualizado en este mismo archivo
+
+B-56 dice que nadie llama a `registrarVersion(VERSION_APP)`; el merge lo enchufó
+en `AdminApp` (efecto de montaje, al lado de `medirPanelAbierto`). La entrada
+sigue pidiendo una línea que ya está escrita. Vale borrarla — y de paso es lo que
+destapa B-88, que hasta ese merge no tenía efecto.
+
 
 ## Cerrados
 
@@ -1176,6 +1423,7 @@ Se dejan para que quede el rastro de qué se rompió.
 | El checkbox "publicar el link de la reunión" no hacía nada | la proyección y el evento descartaban la URL sin mirar el flag | D-15 |
 | **B-02** · No había quién atendiera el `repository_dispatch`: el paso 5 del §10 estaba a medias | faltaba el workflow de Actions y la config del repo. Queda pendiente **B-20** (credenciales del dueño) y el deploy de la Function | `.github/workflows/deploy.yml`, D-22 |
 | **B-02** · `dispararRebuild` leía `process.env.GITHUB_TOKEN` sin declarar el secreto | en Functions v2 eso da `undefined` en producción: el PAT solo habría funcionado versionado en `functions/.env`, que es lo que el §5.4 prohíbe | D-21 |
+| **B-81** · El título de un reporte salía sin redactar al issue de GitHub, que es público: un mail o un link de reunión escrito ahí quedaba a la vista | `construirIssue` pasaba `descripcion` y `pasos` por `redactar()` y el `titulo` no, que es el renglón más visible. El formulario del panel promete en pantalla que el panel los tapa | `functions/reportes.js`, `tests/costuras.test.ts` |
 | **B-13** · Un `repository_dispatch` fallido reintentaba cada 5 minutos para siempre, sin límite ni registro | el fallo no dejaba rastro fuera de un log: ni contador, ni error persistido, ni forma de saber que el sitio estaba viejo | `functions/rebuild.js`, D-23 |
 
 | Riesgo: `arancel` preseleccionado en "Gratis" podía publicar un taller pago como gratuito | la preselección se aplicó a todos los campos con opciones base, sin distinguir el costo de equivocarse | D-16 |
