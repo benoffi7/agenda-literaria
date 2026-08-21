@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
-import { CentroAyuda } from '@/components/admin/ayuda/CentroAyuda';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+
+/**
+ * La capa se carga al abrirla, no al montar el panel: `ayuda.ts` son ~25 kB de
+ * texto de la guía que no hacen falta hasta que alguien la consulta. El botón
+ * y el contador de novedades sí son estáticos, porque el número tiene que
+ * aparecer solo (`novedades.ts` es la lista, mucho más chica).
+ */
+const CentroAyuda = lazy(() =>
+  import('@/components/admin/ayuda/CentroAyuda').then((m) => ({ default: m.CentroAyuda })),
+);
 import type { ContextoAyuda } from '@/lib/ayuda';
 import { NOVEDADES, leerVisto, novedadesNoLeidas } from '@/lib/novedades';
 
@@ -58,12 +67,16 @@ export function BotonAyuda({ contexto }: Props) {
       </button>
 
       {abierto && (
-        <CentroAyuda
-          contexto={contexto}
-          idsSinLeer={sinLeer}
-          onCerrar={() => setAbierto(false)}
-          onNovedadesLeidas={apagarNumero}
-        />
+        // Sin fallback visible: la capa pesa poco y aparece en un tick. Un
+        // "Cargando…" parpadeando molesta más que esperar ese tick.
+        <Suspense fallback={null}>
+          <CentroAyuda
+            contexto={contexto}
+            idsSinLeer={sinLeer}
+            onCerrar={() => setAbierto(false)}
+            onNovedadesLeidas={apagarNumero}
+          />
+        </Suspense>
       )}
     </>
   );

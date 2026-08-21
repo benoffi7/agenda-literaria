@@ -195,7 +195,7 @@ el campo lo detecta y explica cómo salir del paso. Anotado en B-45.
 
 ### B-08 · Sin tests de componentes
 
-No hay testing-library instalada. La lógica pura está muy cubierta (420 tests),
+No hay testing-library instalada. La lógica pura está muy cubierta (460 tests),
 pero el render y la interacción del formulario se verificaron a mano.
 
 Vale al menos para `TaxonomiaSelect` (el bug del placeholder que se veía como
