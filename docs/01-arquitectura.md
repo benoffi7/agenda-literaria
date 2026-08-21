@@ -105,6 +105,8 @@ src/
     index.astro             placeholder del sitio público
 functions/
   calendario.js             diff y armado del evento — lógica pura
+  historial.js              cuándo se guarda una versión (§12) — lógica pura
+  historial-trigger.js      el onDocumentUpdated del historial
   index.js                  triggers de Firestore y schedule del rebuild
 scripts/
   seed-emulador.mjs         siembra /opciones/* en el emulador

@@ -79,6 +79,19 @@ cambio al calendario, **en silencio**. Con el payload no se puede olvidar.
 Aplicable a cualquier lugar donde haya que decidir "¿cambió algo relevante?":
 derivar lo relevante y comparar eso.
 
+El historial de versiones (§12) es el segundo uso del patrón, y muestra que hay
+que elegir la **dirección** de lo que se enumera. Ahí lo derivado es el
+*contenido editable* —el documento menos lo que escribe la máquina— y lo que se
+enumera a mano es la lista de campos de máquina, no la de campos importantes:
+
+| | Si te olvidás de un campo nuevo |
+|---|---|
+| lista de campos **importantes** | el cambio no se registra → **pérdida de datos, en silencio** |
+| lista de campos **de máquina** | se registra de más → un documento de basura, visible |
+
+Cuando el costo de los dos errores no es simétrico, la lista va del lado en que
+olvidarse sale barato (D-41).
+
 ## Validación en el submit, no por campo
 
 El formulario es estado controlado de React y se valida con zod al guardar

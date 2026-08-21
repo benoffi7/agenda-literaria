@@ -85,13 +85,21 @@ firebase deploy --only firestore:rules,firestore:indexes
 ### Functions
 
 ```bash
-firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
+firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones,functions:guardarVersion
 ```
 
-**Desplegar solo esas dos.** `dispararRebuild` está escrita pero no se despliega
+**Desplegar solo esas tres.** `dispararRebuild` está escrita pero no se despliega
 todavía (D-13): sería un schedule cada 5 minutos sin nada que disparar.
 
 Un `firebase deploy --only functions` sin filtro la incluiría.
+
+`guardarVersion` (el historial del §12) es nueva y **todavía no se desplegó**.
+No necesita ninguna config nueva: corre como `calendar-sync@`, que ya tiene
+`datastore.user` y los roles de Eventarc, y solo escribe en Firestore. Después
+de desplegarla, la verificación es editar la descripción de una actividad de
+prueba y confirmar en la consola que apareció **una** versión y no dos — la
+segunda sería el write-back del sync, que es justo lo que la guarda evita
+(D-41).
 
 ### Preparar un proyecto desde cero
 
@@ -126,7 +134,7 @@ done
 firebase deploy --only firestore:rules,firestore:indexes
 node scripts/preparar-produccion.mjs <email>
 npm run build && firebase deploy --only hosting
-firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
+firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones,functions:guardarVersion
 ```
 
 ## Diagnosticar

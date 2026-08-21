@@ -81,13 +81,25 @@ Rewrite de `/admin/**` a `/admin/index.html` para el router propio de la SPA.
 
 ## Cloud Functions (v2)
 
-Ambas en `southamerica-east1`, Node 22, `maxInstances: 5`.
+Todas en `southamerica-east1`, Node 22, `maxInstances: 5`.
 
 | Función | Trigger | Estado |
 |---|---|---|
 | `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE |
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE |
+| `guardarVersion` | `onDocumentUpdated actividades/{id}` | **escrita, sin desplegar** |
 | `dispararRebuild` | `onSchedule every 5 minutes` | **escrita, sin desplegar** |
+
+`guardarVersion` (§12, D-41) declara `region`, `maxInstances` y `serviceAccount`
+**en su propio trigger** y no los hereda del `setGlobalOptions` de `index.js`:
+vive en `functions/historial-trigger.js`, y los imports de ESM se evalúan antes
+del cuerpo del importador, así que cuando se define, `setGlobalOptions` todavía
+no corrió. Heredarlas la dejaría en `us-central1` con la SA por defecto.
+
+Reusa `calendar-sync@` a propósito: es la única SA del proyecto que ya tiene los
+roles que un trigger de Firestore v2 necesita y hay que otorgar a mano (ver
+abajo). Una SA propia sin permiso de Calendar sería más prolijo —no necesita
+tocar Calendar— pero es trabajo de IAM antes de poder desplegar.
 
 `dispararRebuild` no se desplegó porque todavía no existen el sitio público ni
 el workflow de GitHub Actions que tendría que disparar: sería un schedule
@@ -107,7 +119,7 @@ En `functions/.env`, versionado:
 
 | Email | Para qué |
 |---|---|
-| `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. |
+| `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. La usa también `guardarVersion`, que no toca Calendar. |
 | `firebase-adminsdk-fbsvc@…` | default del Admin SDK, sin uso propio |
 | `1038157194972-compute@…` | default de Compute, sin uso propio |
 | `agenda-literaria@appspot…` | default de App Engine, sin uso propio |
@@ -115,7 +127,7 @@ En `functions/.env`, versionado:
 ### Roles de `calendar-sync@`
 
 ```
-roles/datastore.user           escribir el calendarEventId de vuelta
+roles/datastore.user           escribir el calendarEventId de vuelta y las versiones (§12)
 roles/logging.logWriter        logs
 roles/eventarc.eventReceiver   recibir el trigger de Firestore
 roles/run.invoker              ser invocada como servicio de Cloud Run

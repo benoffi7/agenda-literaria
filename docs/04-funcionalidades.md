@@ -133,8 +133,30 @@ filtros, `events.json`, páginas de detalle por slug.
 `toPublic.ts` (la proyección) y `normalize.ts` (la búsqueda) ya están escritos y
 testeados, así que la base está.
 
-## Historial de versiones — no existe
+## Historial de versiones — sin UI todavía
 
-El §12 pide un `onDocumentUpdated` que escriba el `before` completo en
-`/actividades/{id}/versiones/{timestamp}`. Las reglas ya contemplan esa
-subcolección, pero la Function no está escrita.
+Cada vez que una edición pisa algo que cargó una persona, `guardarVersion`
+(`onDocumentUpdated`) deja el documento anterior en
+`/actividades/{id}/versiones/{version}`. Antes de esto, **pisar una descripción
+larga la perdía para siempre**.
+
+| Qué pasa en el panel | Qué pasa en el historial |
+|---|---|
+| Se edita cualquier campo y se guarda | queda una versión con el documento anterior |
+| Se guarda sin haber cambiado nada | nada: no se pisó nada |
+| El sync escribe `calendarEventId` de vuelta | nada: no lo tipeó una persona |
+| Se crea una actividad, o se duplica una | nada: no hay documento anterior |
+| Se borra la actividad entera | nada — es la limitación de abajo |
+
+Se conservan las **últimas 20 versiones** por actividad; al pasarse, se borra la
+más vieja (D-42).
+
+**No hay pantalla para verlas ni para restaurar.** Se recupera a mano desde la
+consola de Firestore: se abre la subcolección `versiones` de la actividad, se
+elige la versión —el id es la fecha y hora, y `camposCambiados` dice qué pisó esa
+edición— y se copia el valor del campo desde `documento` de vuelta al
+formulario. Es incómodo, pero el dato **existe**, que es lo que faltaba. La UI
+está en el backlog (B-40).
+
+**Limitación:** borrar la actividad entera desde el panel no guarda versión y no
+hay nada que recuperar, ni la actividad ni su historial (B-41).

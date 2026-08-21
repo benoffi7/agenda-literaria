@@ -265,6 +265,106 @@ Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
 
 ---
 
+## D-41 · El historial guarda por contenido editable, no por escritura
+
+**Contexto.** El §12 pide un `onDocumentUpdated` que escriba el `before` en
+`/actividades/{id}/versiones/{timestamp}` y dice que son 5 líneas. Escritas de
+corrido, esas 5 líneas generan versiones de basura: el trigger se dispara con
+**toda** escritura, y `syncCalendar` escribe `calendarEventId` de vuelta en
+`sesiones` después de sincronizar. Cada publicación dejaría dos versiones (el
+cambio real y el write-back), y editar ocho veces seguidas mientras el sync
+corre, muchas más.
+
+**Decisión:** se guarda una versión cuando cambió el **contenido editable** del
+documento, definido como el documento *menos lo que escribe la máquina*:
+
+```js
+const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy'];
+const CAMPOS_DE_MAQUINA_SESION = ['calendarEventId'];
+```
+
+Es el mismo criterio de D-07 —derivar lo relevante y comparar eso, en vez de
+mantener una lista de campos— aplicado en la dirección contraria, y la dirección
+es la decisión:
+
+| | Falla si te olvidás de un campo nuevo |
+|---|---|
+| Lista **blanca** de campos recuperables | pisar ese campo **no** guarda versión → **pérdida de datos, en silencio** |
+| Lista **negra** de campos de máquina | una versión **de más** → un documento de basura, visible y acotado por D-42 |
+
+De los dos errores posibles, el segundo es barato. Así un campo nuevo del modelo
+(`libroPresentado`, DEC-1) entra al historial solo, sin que nadie se acuerde de
+nada.
+
+**Por qué la propiedad se sostiene y no es un acuerdo entre dos listas:** el
+write-back de `syncCalendar` toca *únicamente* `calendarEventId`, así que
+produce un contenido editable idéntico **por construcción**. Igual que en D-07,
+no hay forma de romperlo por olvido.
+
+La comparación se hace sobre una forma canónica (claves ordenadas, `Timestamp`
+normalizado a milisegundos) porque `JSON.stringify` respeta el orden de
+inserción y nada garantiza que dos lecturas de Firestore entreguen los campos en
+el mismo orden.
+
+**Efecto lateral bueno:** guardar el formulario sin cambiar nada —que igual
+escribe `updatedAt`/`updatedBy`— no deja una versión idéntica a la anterior.
+
+**Diferencia deliberada con el sync:** `difusion` y `online.url` no alteran el
+evento de Calendar y no disparan nada allá (D-07), pero **sí** guardan versión
+acá. Son texto que tipeó una persona: pisarlos tiene que ser recuperable.
+
+---
+
+## D-42 · Retención por cantidad, no por antigüedad
+
+**Decisión:** se conservan las últimas **20 versiones** por actividad
+(`MAX_VERSIONES`). La poda corre en el mismo trigger que escribe la versión.
+
+**Por qué acotarlo:** una actividad muy editada acumula copias del documento
+entero. No es un problema de costo —20 copias de unos pocos KB es storage
+irrelevante— pero crecer sin límite era una decisión implícita, y esas son las
+que después sorprenden.
+
+**Por qué por cantidad y no un TTL:** por antigüedad falla justo en el caso de
+uso. El escenario real es "pisé la descripción hace meses y recién ahora me doy
+cuenta": un ciclo cargado en marzo, editado una vez y revisado en diciembre
+habría perdido su única versión útil con cualquier TTL razonable. Por cantidad
+el crecimiento queda acotado **y** siempre quedan las N más nuevas, que son las
+que se piden de vuelta, incluido el caso de las ocho ediciones seguidas.
+
+**Costo de la poda:** se leen solo los ids (`select()` sin campos), o sea
+`MAX_VERSIONES + 1` lecturas por edición. Despreciable al lado de las llamadas a
+Calendar que la misma edición ya dispara.
+
+Depende de que el id ordene cronológicamente, que es lo que garantiza D-43.
+
+---
+
+## D-43 · El id de la versión no es solo el timestamp
+
+**Desvío del §12**, que propone `/versiones/{timestamp}`.
+
+**El agujero:** dos escrituras en el mismo milisegundo colisionan y la segunda
+**pisa** a la primera. Perder una versión es exactamente lo que esta feature
+viene a evitar, así que no se puede dejar al azar del reloj.
+
+**Lo implementado:** `{instante ISO-8601}_{id del evento}` — por ejemplo
+`2026-08-21T18-00-00-123Z_abc123`. Dos propiedades salen de ahí:
+
+- **Único:** dos disparos simultáneos son dos eventos distintos, así que no se
+  pisan aunque caigan en el mismo milisegundo.
+- **Idempotente:** Cloud Functions v2 entrega *al menos* una vez. Un reintento
+  del mismo evento tiene el mismo instante y el mismo id, así que reescribe la
+  misma versión en lugar de duplicarla. Por eso el instante sale de `event.time`
+  y no de `Date.now()`.
+
+**Por qué ISO y no milisegundos:** mientras no exista UI (B-40) el historial se
+lee desde la consola de Firestore, donde el id es todo lo que se ve de un
+documento. Y al ser de ancho fijo, el orden lexicográfico de los ids es el orden
+cronológico — de eso depende la poda de D-42.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

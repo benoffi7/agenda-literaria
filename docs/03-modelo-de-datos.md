@@ -9,7 +9,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | Ruta | Qué guarda | Quién escribe |
 |---|---|---|
 | `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`) y `syncCalendar` |
-| `/actividades/{id}/versiones/{ts}` | historial (§12) | **nadie todavía** — no implementado |
+| `/actividades/{id}/versiones/{version}` | historial de versiones (§12) | `guardarVersion` (Admin SDK) |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/rebuild` | flag de rebuild pendiente (§8) | `syncCalendar`, `rebuildPorOpciones` |
 
@@ -135,6 +135,51 @@ Dos consecuencias:
    queda con el texto anterior hasta la próxima edición de la actividad.
    `rebuildPorOpciones` solo marca el rebuild del sitio, no re-sincroniza el
    calendario.
+
+## Historial de versiones (§12)
+
+Cada edición que pisa contenido cargado por una persona deja el documento
+anterior en una subcolección:
+
+```
+/actividades/{id}/versiones/{version}
+  guardadoEn: Timestamp        // el instante de la edición que pisó estos datos
+  actualizadoPor: string|null  // uid de quien la hizo
+  camposCambiados: string[]    // ['descripcion', 'titulo'] — qué pisó esa edición
+  documento: { … }             // el `before` COMPLETO, con sus Timestamp nativos
+```
+
+`documento` es el documento entero y sin proyectar, a propósito: recuperar un
+campo a mano es copiar y pegar. Incluye `difusion` y `online.url`, que son
+internos — la subcolección solo la lee un admin y no hay camino al `events.json`.
+Ver [`07-seguridad.md`](07-seguridad.md).
+
+`camposCambiados` está para poder elegir qué versión abrir desde la consola de
+Firestore sin revisarlas de a una, mientras no exista UI de restauración (B-40).
+
+### Cuándo se guarda una versión — y cuándo no
+
+Lo escribe `guardarVersion` (`onDocumentUpdated`), que **se dispara con toda
+escritura del documento**. La versión se guarda solo si cambió el *contenido
+editable*: el documento menos lo que escribe la máquina (`updatedAt`,
+`updatedBy`, `sesiones[].calendarEventId`).
+
+| Escritura | ¿Versión? |
+|---|---|
+| Se edita cualquier campo del formulario | **sí** |
+| `syncCalendar` escribe `calendarEventId` de vuelta | no |
+| Se guarda el formulario sin cambiar nada | no |
+| Se **crea** una actividad (incluido duplicar) | no — no hay nada anterior que perder |
+| Se **borra** la actividad entera | no — ver B-41 |
+
+Sin la primera exclusión, cada publicación dejaría dos versiones: la del cambio
+real y la del write-back de la Function. El criterio y su fundamento están en
+D-41; la retención (20 por actividad) en D-42 y la forma del id en D-43.
+
+**El id del documento no es solo el timestamp.** Es `{ISO-8601}_{id del evento}`:
+dos escrituras en el mismo milisegundo colisionarían y la segunda pisaría a la
+primera. Es de ancho fijo, así que el orden lexicográfico de los ids es el orden
+cronológico — de eso depende la poda.
 
 ## Campos que faltan
 

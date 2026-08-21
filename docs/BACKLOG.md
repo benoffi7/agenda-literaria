@@ -68,13 +68,43 @@ Sin esto, una actividad nueva no aparece en el sitio hasta un build manual.
 
 ## P2 — mejoras reales
 
-### B-03 · Historial de versiones (§12)
+### B-40 · UI para ver y restaurar versiones
 
-Un `onDocumentUpdated` que escriba el `before` completo en
-`/actividades/{id}/versiones/{timestamp}`. El §12 dice que son 5 líneas.
+El historial ya se guarda (B-03, §12), pero **no hay pantalla**: recuperar un
+campo pisado es abrir la consola de Firestore, buscar la subcolección
+`versiones` de la actividad, elegir un documento por su id (que es la fecha y
+hora) y copiar el valor a mano al formulario.
 
-Las reglas ya contemplan la subcolección. **Hoy pisar una descripción larga la
-pierde**, y el §12 avisa que tarde o temprano pasa.
+**Sin UI el historial ya sirve, y por eso se cerró B-03 sin ella:** lo que no
+tenía arreglo era que el dato *no existiera*. Ahora existe, y recuperarlo es
+incómodo pero posible — y es una operación rara, que hace el dueño, no un
+usuario. Cada versión guarda `camposCambiados`, así que se puede ver de un
+pantallazo cuál abrir sin revisarlas de a una.
+
+Lo que haría falta: una pestaña "Historial" en el formulario que liste las
+versiones con fecha y qué campos pisó cada una, un diff contra el estado actual,
+y un "restaurar este campo" (mejor que restaurar el documento entero: restaurar
+todo pisaría cambios posteriores que sí se querían).
+
+**Ojo al implementarlo:** restaurar es una escritura más al documento, así que
+dispara `guardarVersion` y deja versión de lo restaurado. Eso es correcto —
+deshacer un "deshacer" tiene que ser posible— pero conviene verificarlo.
+
+### B-41 · Borrar una actividad no guarda versión y no hay nada que recuperar
+
+`guardarVersion` es un `onDocumentUpdated`, así que no se dispara al borrar
+(§12: es lo que pide el documento). El panel borra por fila, sin papelera: se va
+la actividad y con ella su subcolección de versiones queda huérfana e
+inalcanzable desde la UI.
+
+Es el único agujero de pérdida de datos que queda. Un borrado es más
+deliberado que pisar un campo sin darse cuenta —hay que apretar borrar y
+confirmar— así que es menos urgente, pero es irreversible.
+
+Opciones: un `onDocumentDeleted` que guarde la última versión (queda huérfana
+igual, hay que decidir dónde), o borrado lógico (`estado: 'borrado'` y filtrarlo
+del listado), que además resolvería el "lo borré sin querer" sin tocar el
+historial. Lo segundo es más trabajo y toca el listado y las reglas.
 
 ### B-04 · Renombrar una etiqueta no actualiza los eventos ya creados
 
@@ -156,6 +186,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| Pisar una descripción larga la perdía para siempre | no había historial: el §12 estaba pendiente desde el principio (B-03) | D-41, D-42, D-43 |
 | "Elegí el arancel" al guardar un formulario que parecía completo | el placeholder se renderizaba como el primer `<option>` con valor `""`, y el texto era un ejemplo ("Gratis, a la gorra…") que se veía idéntico a una opción elegida | `2fab7ef`, D-12 |
 | El evento de Calendar quedaba sin mapa o con el mapa en otra ciudad | `location` mandaba solo `sede.direccion`, sin ciudad ni país | `90edc8a`, D-10 |
 | iOS Safari hacía zoom al enfocar un campo y no volvía | inputs a 14px; iOS hace zoom por debajo de 16px | `2fab7ef` |
