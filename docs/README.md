@@ -16,6 +16,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 7 | [`07-seguridad.md`](07-seguridad.md) | Qué es público y qué no. Cómo se verifica. |
 | 8 | [`08-operacion.md`](08-operacion.md) | Correr local, deployar, diagnosticar. |
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
+| 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01): URLs, pantallas, SEO, filtros y casos borde. Lo que falta construir. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
@@ -28,7 +29,7 @@ Falta el sitio público, que es la razón de ser del proyecto.
 |---|---|
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ |
-| 3. Sitio público (SSG) | ⬜ **lo próximo** |
+| 3. Sitio público (SSG) | ⬜ **lo próximo** — diseñado en [`12-sitio-publico.md`](12-sitio-publico.md), sin construir |
 | 4. Sync a Google Calendar | ✅ |
 | 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 

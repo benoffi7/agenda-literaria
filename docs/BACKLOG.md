@@ -17,6 +17,7 @@ trabajo.
 | # | Tema | Contexto |
 |---|---|---|
 | DEC-1 | ~~`libro presentado`~~ **resuelto: campo propio con obra + autor.** Pendiente de implementar. | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
+| DEC-6 | **Las ocho decisiones que bloquean el sitio público.** Están listadas en el §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). | La primera —**el dominio final**— bloquea B-109 y con él todo lo demás: sin `site` no hay canonical, ni Open Graph, ni sitemap, y mudar el dominio después de indexar cuesta meses. Le siguen el canal de contacto público, el nombre del sitio y si el sitio público se mide. |
 
 Resueltas el 2026-08-21:
 
@@ -85,12 +86,167 @@ búsqueda (`normalize.ts`) y el acceso de build time (`firebase-admin.ts`).
 **Ojo:** toda query pública necesita `where('estado','==','publicado')` o
 Firestore rechaza la query entera (trampa 7).
 
+**El diseño está hecho: [`12-sitio-publico.md`](12-sitio-publico.md).** URLs,
+pantallas, SEO, filtros y casos borde, decididos con su motivo. B-01 queda como
+el paraguas; lo construible son **B-105 a B-114**, en el orden del §13 de ese
+documento.
+
+### B-105 · El detalle y la home
+
+`src/pages/actividad/[slug].astro` (SSG con `getStaticPaths`, **cero
+JavaScript**) y `src/pages/index.astro` con `src/components/Filtros.tsx` como
+island.
+
+El detalle primero: es el que recibe el tráfico de Google y de Instagram, y es
+el que no depende de nada más (§1 y §4.3 del diseño).
+
+La home es un **listado híbrido** (§6.3): el build imprime en HTML todas las
+tarjetas vigentes con sus `data-*` de filtrado, y la island muestra y oculta lo
+que ya está en el DOM. Con JS apagado se ve la lista completa y "Explorá por"
+—links a los hubs— es la navegación. El markup de la tarjeta se define **una
+sola vez**, en el componente Astro, y la island clona un `<template>` para las
+tarjetas que no están en el HTML (las pasadas).
+
+**Ojo:** todas las fechas se formatean con
+`Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })`,
+en el build y en el cliente. El JSON las lleva en UTC (trampa 1).
+
+### B-106 · `events.json` en build time
+
+Lectura de Firestore con el Admin SDK, `toPublic.ts`, y el índice que la island
+filtra en memoria (§2.4, §2.5). Incluye las opciones de `/opciones/*` en el
+mismo archivo (§4.4) para que los chips no tengan nada cableado.
+
+Tres cosas que no son obvias (§3 del diseño):
+
+- **El JSON recorta más que `toPublic`**: no lleva `descripcion`,
+  `inscripcion.destino`, `sede.direccion`, `sede.geo`, `sede.indicaciones`,
+  `material`, `tallerista.bio`, `sesiones[].tema` ni `sesiones[].lectura`. Nada
+  de eso se usa para filtrar, todo vive en el HTML del detalle, y sacar el mail
+  de inscripción del JSON deja de servirlo en lote a los bots.
+- **Sin credenciales, en CI el build falla** (`hayCredenciales()`). Un deploy
+  con cero actividades borra el sitio de Google y se recupera en semanas. En
+  local sigue con lista vacía.
+- **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
+  island lo pide con `?v={VERSION_APP}`.
+
+### B-107 · Meta, Open Graph y JSON-LD
+
+Va pegado a B-105: una página de detalle sin datos estructurados no sirve para
+lo que existe el proyecto (§2.3).
+
+- `title` / `description` / `canonical` por tipo de página (§5.1 del diseño). El
+  título de la actividad primero, y el barrio adentro.
+- Open Graph completo + `twitter:card`. Sin `imagenUrl`, cinco imágenes
+  estáticas de 1200×630 en `public/og/`, una por tipo: un link sin preview en
+  Instagram no se toca.
+- **JSON-LD `Event`**: `EducationEvent` para taller y club de lectura,
+  `LiteraryEvent` para encuentro, presentación y charla. Un ciclo es un
+  `EventSeries` con un `subEvent` por sesión — una actividad, N encuentros
+  (§2.2), no ocho eventos que compiten entre sí.
+- **Fechas con offset `-03:00`**, no `Z`.
+- **`offers` con precio solo si `arancel.tipo == 'gratis'`** (`0` / `ARS`). Un
+  `0` en un taller arancelado es un dato falso en un formato que las máquinas
+  creen.
+- **El link de la reunión no va al JSON-LD nunca**, ni con `urlPublica: true`
+  (D-15): `VirtualLocation.url` es la URL canónica de la actividad. El JSON-LD
+  es lo primero que cosecha un bot (trampa 5).
+- Además: `BreadcrumbList` en el detalle, `CollectionPage` + `ItemList` en la
+  home y los hubs, `Organization` en `/acerca`.
+
+### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis`
+
+Un solo componente de página con el subconjunto ya filtrado en HTML y la island
+montada con el filtro preaplicado y visible como chip. Es lo que gana
+`taller de escritura villa crespo` y `club de lectura online`: un filtro no
+puede, porque no tiene URL ni `h1` (§2.1 del diseño).
+
+Los de tipo y barrio se generan recorriendo `/opciones/{tipo,barrio}` — una
+opción nueva trae su hub sola. El slug de la URL es el **slug** de la taxonomía,
+nunca el label: el label se renombra (§4.1) y una URL no (trampa 10).
+
+Un hub que se queda sin actividades vigentes **no se borra**: se genera vacío,
+con aviso y links. Un 404 sobre una URL indexada es peor.
+
+### B-109 · `site`, `robots.txt`, `sitemap.xml` y `/pasadas`
+
+**Va primero de todo**, porque depende de la decisión del dominio (§11.1 del
+diseño) y porque canonical, Open Graph y sitemap necesitan URLs absolutas.
+`astro.config.mjs` hoy **no tiene `site`**.
+
+El sitemap se genera a mano (endpoint estático), no con `@astrojs/sitemap`: las
+reglas de qué entra —90 días para las pasadas, 30 para las canceladas, meses con
+3 o más— son nuestras. `lastmod` necesita B-112; sin eso se omite, que es mejor
+que estampar la fecha del build en todo.
+
+`/pasadas` entra acá y no en B-108 porque su razón de ser es de indexación: sin
+esa página, cada actividad que pasa se convierte en una página huérfana que solo
+el sitemap enlaza.
+
+### B-110 · Una actividad cancelada no puede devolver 404
+
+Hoy el camino natural (`estado == 'publicado'`) hace que una actividad cancelada
+pierda su página. La URL estuvo tres semanas en Instagram y en Google, y a quien
+pregunta "¿se hace o no se hace?" el sitio le contesta "no existe".
+
+Lo que hay que hacer (§7.3 del diseño): el build también trae
+`estado == 'cancelado'`, genera la página con la franja `CANCELADA`, sin CTA, con
+las fechas intactas y `eventStatus: EventCancelled` — que es exactamente lo que
+Google pide. No entra al listado ni a `events.json`. Sale del sitemap a los 30
+días.
+
+**Solo si estuvo publicada alguna vez**, que hoy no es un dato del modelo. La
+heurística disponible es que alguna sesión tenga `calendarEventId` (el sync solo
+crea eventos de actividades publicadas), y el build la puede leer porque trabaja
+sobre el documento crudo. Lo correcto es un `publicadaAlgunaVez: boolean` — es
+una de las decisiones de §11.1.
+
+### B-111 · `inscripcion.abierta` se congela en el build y miente
+
+`toPublic` calcula `abierta` con `Date.now()` **del momento del build**. Una
+inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild
+siguiente, y con el rebuild automático todavía pendiente (**B-20**) eso puede
+ser días. El sitio invita a anotarse en algo que ya cerró.
+
+Arreglo: proyectar **`inscripcion.cierraEn`** (el ISO de `cierra`) además del
+booleano. Con la fecha, el HTML puede decir "las inscripciones cierran el 22 de
+septiembre" —que es lo que hace que alguien escriba hoy— y el cliente recalcula
+si ya cerró. No expone nada nuevo: es una fecha que la página ya quiere mostrar.
+
+Hoy no se nota porque no hay sitio público. Va antes de B-108 porque el detalle
+ya lo necesita.
+
 ~~B-02 · Trigger de rebuild~~ → [cerrado](#cerrados), con pasos manuales
 pendientes del dueño (ver arriba).
 
 ---
 
 ## P2 — mejoras reales
+
+### B-112 · `estado` y `actualizadoEn` en la proyección pública
+
+Dos campos que el sitio público necesita y `toPublic.ts` no lleva
+([`12-sitio-publico.md`](12-sitio-publico.md) §11.2):
+
+- **`estado`** (`'publicado' | 'cancelado'`) — sin esto el HTML no puede pintar
+  la franja CANCELADA ni emitir `eventStatus`. Lo necesita B-110.
+- **`actualizadoEn`** (ISO de `updatedAt`) — es el `lastmod` del sitemap y el
+  "actualizado el …" del detalle. Sin él el sitemap va sin `lastmod`, que es
+  mejor que estampar la fecha del build en todas las páginas: eso le enseña al
+  buscador que nuestras fechas mienten.
+
+Ninguno de los dos publica nada nuevo: son datos que la página ya muestra.
+
+### B-113 · Páginas de mes — `/agenda/{aaaa-mm}`
+
+"Qué hay este mes" es una forma real de mirar la agenda, pero la página es un
+subconjunto de la home y la consulta es de volumen bajo. Por eso va acotada
+(§2.2 del diseño): solo meses vigentes, solo con **3 o más** actividades, no en
+la navegación, y cuando el mes termina la URL no se rompe —se emite una última
+vez con aviso y link a `/pasadas`.
+
+Un ciclo que cruza dos meses aparece en los dos, y en cada uno muestra las
+fechas de ese mes. Es la misma tarjeta con el subtítulo recalculado.
 
 ### B-40 · UI para ver y restaurar versiones
 
@@ -306,6 +462,21 @@ existente y nombrarlo en el aviso, para que borrar el test rompa el vínculo.
 avisos crece, este ítem sube de prioridad.
 
 ## P3 — cuando sobre tiempo
+
+### B-114 · Precio real en los datos estructurados
+
+`arancel.tipo` es un slug de taxonomía, no un monto, así que el `offers` del
+JSON-LD puede decir "a la gorra" pero no un precio. Google muestra el precio en
+el resultado enriquecido cuando lo tiene, y en un taller arancelado eso es
+información que la gente quiere antes de escribir.
+
+Hace falta un campo de monto en el modelo (`arancel.monto` + moneda, `ARS`),
+opcional y solo para los tipos que lo tengan. Mientras no exista, la regla del
+diseño (§5.3) es **no emitir precio salvo `gratis`**: un `0` en un taller pago es
+un dato falso en un formato que las máquinas creen.
+
+Es P3 porque `arancel.tipo` ya comunica lo esencial —y en la mitad de los casos
+del circuito es "a la gorra", que no tiene precio que publicar.
 
 ### B-33 · Las etiquetas de GitHub hay que crearlas una vez
 

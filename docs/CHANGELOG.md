@@ -1,5 +1,25 @@
 # Changelog
 
+## Sin versión — 2026-08-21 · solo documentación
+
+### Diseño del sitio público (B-01)
+
+[`12-sitio-publico.md`](12-sitio-publico.md): mapa de URLs, cada pantalla con su
+orden de prioridad visual, el SEO concreto (etiquetas y JSON-LD `Event` /
+`EventSeries`), los filtros y cómo se combinan, los casos incómodos, y lo que
+falta decidir. **No hay código todavía**: B-01 queda como paraguas y lo
+construible es B-105 a B-114.
+
+Tres hallazgos del diseño que valen aparte:
+
+- **`inscripcion.abierta` se congela en el build** y va a decir "abierta" en algo
+  que ya cerró (B-111).
+- **Una actividad cancelada devolvería 404** en una URL que estuvo indexada y en
+  Instagram (B-110).
+- **`astro.config.mjs` no tiene `site`**, así que no hay URL absoluta para
+  canonical, Open Graph ni sitemap (B-109) — y eso depende de decidir el dominio.
+
+
 ## 1.0.1 — 2026-08-22
 
 ### La versión del panel está siempre visible al pie
