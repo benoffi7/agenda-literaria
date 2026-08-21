@@ -67,3 +67,13 @@ export const claseBotonTinta = `${claseBoton} bg-tinta text-white hover:bg-tinta
 export const claseBotonFila =
   'inline-flex min-h-touch items-center rounded-md px-3 text-xs font-medium ' +
   'transition-colors sm:min-h-9';
+
+/**
+ * Ítem de un menú de acciones desplegable. Ocupa todo el ancho y alinea a la
+ * izquierda: en un menú, el texto tiene que empezar todo en la misma columna
+ * para poder recorrerlo con el ojo. Mantiene el blanco táctil de 44px incluso
+ * en `sm`, porque acá los ítems quedan pegados uno al otro.
+ */
+export const claseBotonMenu =
+  'flex w-full min-h-touch items-center rounded-sm px-3 text-left text-sm ' +
+  'transition-colors';

@@ -244,6 +244,86 @@ Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
 
 ---
 
+## D-16 · La copia corre las fechas en semanas enteras
+
+**Decisión** (B-11): al duplicar una actividad, la copia conserva la estructura
+interna del ciclo intacta —los mismos huecos entre encuentros, las mismas
+duraciones— y mueve el bloque completo en **semanas enteras** hacia adelante. El
+piso es el más tardío entre hoy y el último encuentro del original.
+
+**Alternativas descartadas:**
+
+- **Las mismas fechas.** Un ciclo del año anterior con las fechas del año
+  anterior no sirve, y publicar la copia sin mirar crearía eventos vencidos en el
+  calendario.
+- **Fechas vacías.** Obliga a cargar ocho fechas de cero, que es justo el trabajo
+  que duplicar viene a evitar. Además el formulario abre con ocho errores de
+  validación.
+- **Correr un año exacto.** Mueve un martes a un miércoles. Los ciclos literarios
+  son "los martes a las 19"; el día de semana es parte del dato.
+
+**Por qué el piso es el último encuentro y no solo hoy:** duplicar un ciclo en
+curso significa "la próxima edición", y esa arranca cuando la actual termina.
+Con un solo criterio quedan bien los dos casos (ciclo viejo y ciclo en curso), y
+el desplazamiento mínimo es de una semana: una copia sentada exactamente sobre
+las fechas del original no le sirve a nadie.
+
+**Se corre también `inscripcion.cierra`.** Si quedaba en el valor viejo, la
+proyección pública calculaba `abierta: false` y la copia salía con la
+inscripción cerrada.
+
+**La suma es por componentes locales** (`setDate`), no `+ n * 86400000`: sumar
+milisegundos corre el horario del encuentro si en el medio hay un cambio de
+horario de verano. Argentina hoy no lo tiene, pero el navegador que carga puede
+estar en otro huso.
+
+**Lo que queda a cargo del usuario:** las excepciones del ciclo nuevo (un
+feriado, una semana que se corre). Las fechas quedan editables una por una, igual
+que las del generador de encuentros del §11.
+
+---
+
+## D-17 · La copia se marca en el título y en el slug
+
+**Decisión** (B-11): la copia arranca como «Título del original (copia)» con
+slug `slug-original-copia`, y `-copia-2`, `-copia-3`… si ese slug ya está tomado.
+Ambos son propuestas editables.
+
+**Motivo del sufijo en el título:** en el listado, dos filas con el mismo título
+son indistinguibles, y la copia es un borrador que hay que revisar. Además el
+slug se sigue derivando del título mientras la actividad no esté publicada, así
+que en cuanto el usuario pone el título real ("Club 2027") el slug lo acompaña y
+el `-copia` desaparece solo.
+
+**El sufijo no se encadena:** duplicar una copia no da "Taller (copia) (copia)"
+ni `taller-copia-copia`.
+
+**Riesgo aceptado:** publicar sin revisar deja un "(copia)" a la vista y una URL
+`…-copia` que después queda fija (trampa 10). Se mitiga con el aviso arriba del
+formulario, que nombra los tres campos a revisar, y con que la copia sea siempre
+borrador.
+
+**La unicidad se propone en memoria, se verifica en Firestore.** El listado ya
+tiene todos los slugs cargados, así que alcanza para proponer uno libre sin una
+lectura extra; `slugDisponible` en el submit sigue siendo la guarda real.
+
+---
+
+## D-18 · Duplicar y borrar van en un menú de acciones
+
+**Decisión** (B-11): cada fila del listado tiene "Editar" como botón y un menú
+"⋯" con "Duplicar" y "Borrar".
+
+**Motivo:** el listado es tarjeta en mobile y fila desde `sm`. Tres botones en
+fila en 360px dan blancos de ~100px y se erra el toque; el mínimo del proyecto es
+44px. De paso, "Borrar" deja de estar pegado a "Editar" y pasa a requerir un
+toque deliberado.
+
+**Costo:** un componente propio (`MenuAcciones`) con cierre por click afuera y
+por `Escape`. El panel no tiene librería de UI y no se agregó ninguna.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

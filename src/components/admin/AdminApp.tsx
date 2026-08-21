@@ -8,14 +8,20 @@ import {
   tieneClaimAdmin,
   usarEmuladores,
 } from '@/lib/firebase-client';
-import type { ActividadConId } from '@/types/actividad';
+import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { User } from 'firebase/auth';
 
-type Vista = { tipo: 'lista' } | { tipo: 'nueva' } | { tipo: 'editar'; actividad: ActividadConId };
+type Vista =
+  | { tipo: 'lista' }
+  | { tipo: 'nueva' }
+  | { tipo: 'editar'; actividad: ActividadConId }
+  // B-11 — la copia viaja como form, no como documento: se guarda por el camino
+  // de creación, así el id, el slug y `createdAt`/`createdBy` son de la copia.
+  | { tipo: 'duplicar'; copia: ActividadForm; tituloOrigen: string };
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
- * El router es propio y mínimo: son tres vistas.
+ * El router es propio y mínimo: lista, nueva, editar y duplicar.
  */
 export function AdminApp() {
   const [usuario, setUsuario] = useState<User | null>(null);
@@ -92,7 +98,9 @@ export function AdminApp() {
               ? 'Actividades'
               : vista.tipo === 'nueva'
                 ? 'Nueva actividad'
-                : vista.actividad.titulo}
+                : vista.tipo === 'duplicar'
+                  ? `Copia de ${vista.tituloOrigen}`
+                  : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
         </div>
@@ -125,6 +133,9 @@ export function AdminApp() {
           version={version}
           onNueva={() => setVista({ tipo: 'nueva' })}
           onEditar={(a) => setVista({ tipo: 'editar', actividad: a })}
+          onDuplicar={(copia, tituloOrigen) =>
+            setVista({ tipo: 'duplicar', copia, tituloOrigen })
+          }
         />
       )}
 
@@ -132,6 +143,8 @@ export function AdminApp() {
         <ActividadFormulario
           uid={usuario.uid}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
+          copia={vista.tipo === 'duplicar' ? vista.copia : undefined}
+          tituloOrigen={vista.tipo === 'duplicar' ? vista.tituloOrigen : undefined}
           onCancelar={() => setVista({ tipo: 'lista' })}
           onGuardado={() => {
             setVersion((v) => v + 1);

@@ -9,6 +9,47 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Duplicar una actividad entera · B-11
+
+**Pedido:** un ciclo nuevo suele ser el del año anterior con otras fechas, y
+cargarlo de cero son 30+ campos.
+
+En el listado, cada fila tiene ahora un menú "⋯" con "Duplicar", que abre el
+formulario precargado con una copia para editar y guardar como actividad nueva.
+"Borrar" se mudó a ese mismo menú (D-18).
+
+La lógica de la copia es pura y vive en `src/lib/duplicar.ts`, aparte de
+Firestore: acá un bug corrompe los eventos de calendario del **original**. Lo
+que la copia no hereda:
+
+- **Los ids de sesión.** Se generan de nuevo con `nuevaSesionId()`. Dos
+  actividades compartiendo ids de sesión rompen el diff del §7.2: es la llave
+  con la que la Function decide qué evento crear, actualizar o borrar.
+- **`calendarEventId`**, que queda en `null` en todas las sesiones. Los eventos
+  del original existen en el calendario; los de la copia no. Heredarlos haría
+  que editar la copia modifique o borre eventos del original.
+- **El slug**, que se propone como `slug-original-copia` y sigue editable
+  (D-17).
+- **El estado**: la copia arranca en `borrador`, así que no manda nada al
+  calendario hasta que el usuario la revise y publique (§7.3).
+- **`createdAt`/`createdBy`**, que son de la copia: se guarda por el camino de
+  creación, no por el de edición.
+- **La cancelación de un encuentro**, que es una excepción del ciclo original
+  ("ese martes no hubo"), no una propiedad del ciclo nuevo.
+
+**Las fechas se corren en semanas enteras** hacia adelante, conservando el día
+de semana, la hora, las duraciones y los huecos irregulares del ciclo (D-16).
+Se corre también el cierre de inscripción, que si no dejaba la copia con la
+inscripción cerrada.
+
+El formulario avisa arriba que es una copia y nombra los tres campos a revisar
+antes de publicar: título, slug y fechas.
+
+**Tests:** 21 nuevos. Los cuatro invariantes que importan (ids nuevos,
+`calendarEventId` en `null`, estado borrador, slug distinto) están cubiertos
+como lógica pura y otra vez de punta a punta contra el emulador, verificando que
+el documento del original quede intacto.
+
 ### El checkbox "publicar el link de la reunión" ahora hace algo
 
 El modelo del §3.1 tiene `online.urlPublica` y el formulario su casilla, pero la

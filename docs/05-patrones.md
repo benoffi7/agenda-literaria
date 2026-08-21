@@ -53,9 +53,13 @@ propósito: cualquiera que lea el código puede ir a la fuente de la decisión.
 más frágil del sistema, y aislarlo permite testearlo sin emuladores y sin tocar
 un calendario real.
 
-Mismo criterio en `src/lib/`: `slugify`, `normalize`, `sesiones`, `toPublic` y
-`schema` son puros. Los que hablan con Firestore (`actividades`, `opciones`)
-están aparte.
+Mismo criterio en `src/lib/`: `slugify`, `normalize`, `sesiones`, `duplicar`,
+`toPublic` y `schema` son puros. Los que hablan con Firestore (`actividades`,
+`opciones`) están aparte.
+
+`duplicar.ts` es el ejemplo más claro de por qué: un bug ahí corrompe los
+eventos de calendario de la actividad **original**, y siendo puro se cubre con
+veinte tests que corren en milisegundos y sin emuladores.
 
 **Al agregar lógica, preguntarse si necesita red.** Si no, va en un módulo puro.
 
@@ -173,8 +177,8 @@ dominio literario. Serif (Lora) para títulos, sans (Inter) para el resto.
 Las clases de controles están centralizadas en
 [`campos/Campo.tsx`](../src/components/admin/campos/Campo.tsx): `claseInput`,
 `claseBotonPrimario`, `claseBotonSecundario`, `claseBotonTinta`,
-`claseBotonFila`. **No escribir clases de botón sueltas** — si hace falta una
-variante, agregarla ahí.
+`claseBotonFila`, `claseBotonMenu`. **No escribir clases de botón sueltas** — si
+hace falta una variante, agregarla ahí.
 
 `--spacing-touch` (44px) es el mínimo de un blanco táctil y se aplica con
 `min-h-touch`.

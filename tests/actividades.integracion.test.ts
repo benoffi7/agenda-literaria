@@ -11,6 +11,7 @@ import {
   leerActividad,
   slugDisponible,
 } from '@/lib/actividades';
+import { duplicarActividadForm } from '@/lib/duplicar';
 import { toPublic } from '@/lib/toPublic';
 import { sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
@@ -175,6 +176,37 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     expect(vuelta.sesiones[0]!.inicio).toBe('2026-09-03T19:00');
     expect(vuelta.inscripcion.cierra).toBe('2026-09-01T00:00');
     expect(vuelta.material.items[0]!.publico).toBe(false);
+  });
+
+  it('la copia se guarda como documento nuevo sin tocar los ids ni los eventos del original (B-11)', async () => {
+    const form = { ...formCompleto(), slug: 'club-b11', estado: 'publicado' as const };
+    // El original ya tiene sus eventos en el calendario.
+    form.sesiones = form.sesiones.map((s, i) => ({ ...s, calendarEventId: `evento_${i}` }));
+    const idOriginal = await crearActividad(form, UID);
+
+    const guardado = await leerActividad(idOriginal);
+    const copia = duplicarActividadForm(documentoAForm(guardado!), { tomados: [form.slug] });
+    const idCopia = await crearActividad(copia, 'otro_uid');
+
+    expect(idCopia).not.toBe(idOriginal);
+    const laCopia = await leerActividad(idCopia);
+    const elOriginal = await leerActividad(idOriginal);
+
+    // La copia: borrador, slug propio, sin eventos y con ids de sesión nuevos.
+    expect(laCopia!.estado).toBe('borrador');
+    expect(laCopia!.slug).toBe('club-b11-copia');
+    expect(laCopia!.sesiones.every((s) => s.calendarEventId === null)).toBe(true);
+    const idsOriginal = elOriginal!.sesiones.map((s) => s.id);
+    expect(laCopia!.sesiones.some((s) => idsOriginal.includes(s.id))).toBe(false);
+    // Fechas como Timestamp, no como string (trampa 1).
+    expect(typeof laCopia!.sesiones[0]!.inicio.toDate).toBe('function');
+    // `createdAt`/`createdBy` son de la copia.
+    expect(laCopia!.createdBy).toBe('otro_uid');
+
+    // Y el original, intacto: sus eventos de Calendar siguen siendo suyos.
+    expect(elOriginal!.estado).toBe('publicado');
+    expect(elOriginal!.createdBy).toBe(UID);
+    expect(elOriginal!.sesiones.map((s) => s.calendarEventId)).toEqual(['evento_0', 'evento_1']);
   });
 
   it('lo que se guarda, proyectado, no filtra el link ni la difusión (§5)', async () => {

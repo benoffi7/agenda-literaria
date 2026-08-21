@@ -62,6 +62,11 @@ suscripciones (trampa 2). Hay tests específicos para esto en
 `calendarEventId` lo escribe la Function, no el panel. El formulario lo conserva
 tal cual al editar.
 
+**Al duplicar una actividad, los ids se rehacen y `calendarEventId` vuelve a
+`null`** (`src/lib/duplicar.ts`). Dos actividades con los mismos ids de sesión
+harían que editar una toque los eventos de la otra: el diff del §7.2 no tiene
+forma de distinguirlas.
+
 ## Fechas
 
 **Siempre `Timestamp`, nunca strings** (trampa 1). Y siempre `timeZone`
