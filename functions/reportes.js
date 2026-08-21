@@ -142,7 +142,9 @@ export const construirIssue = ({ id, reporte, actividad = null }) => {
     : '';
 
   const encabezado =
-    `> Cargado desde el panel de carga el ${fecha(reporte.creadoEn)}.\n` +
+    // Sin punto final: el formato de hora en castellano ya termina en "p. m."
+    // y quedaba "7:00 p. m..".
+    `> Cargado desde el panel de carga el ${fecha(reporte.creadoEn)}\n` +
     `> Trazabilidad completa (quién lo cargó y el detalle sin recortar) en ` +
     `Firestore: \`reportes/${id}\`.\n\n` +
     `**Tipo:** ${tipo}` +
