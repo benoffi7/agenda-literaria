@@ -1027,6 +1027,135 @@ que sobrevivieron dos commits
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
 
+## Agentes y automatización del flujo (B-115 a B-124)
+
+Lo que quedó pendiente al definir los agentes y skills de `.claude/`. El qué hay
+y por qué está en [`13-agentes.md`](13-agentes.md). La prioridad va en cada ítem.
+
+### B-115 · Nada invoca a los auditores solos · P2
+
+Los tres auditores (`auditor-privacidad`, `auditor-trampas`,
+`auditor-documentacion`) hay que pedirlos. Si nadie se acuerda, no corren — que
+es exactamente el problema que tienen las dos reglas de proceso de
+[`05-patrones.md`](05-patrones.md) y que estos agentes venían a resolver.
+
+Dos caminos, y no son excluyentes: un hook local en `settings.json` (correr el
+auditor que corresponda al cerrar un cambio) o un job de GitHub Actions sobre el
+PR. El hook es inmediato pero cuesta una corrida por cierre; el job de Actions es
+más barato de ignorar. Decidirlo con B-124.
+
+### B-116 · La verificación contra el sistema real no está automatizada · P2
+
+[`07-seguridad.md`](07-seguridad.md) y [`08-operacion.md`](08-operacion.md)
+tienen el bloque que importa de verdad: leer el ICS del calendario y buscar el
+link de reunión, intentar la escritura anónima con `curl`, revisar las cabeceras
+de cache, mirar qué versión quedó publicada. Los tests unitarios prueban la
+intención; esto lee el resultado.
+
+No se automatizó porque necesita red y secretos —la URL privada del ICS y la API
+key de producción— y **un agente no debe tenerlos en la mano** (§5.4). La forma
+razonable es un script en `scripts/` que lea las variables del entorno y lo corra
+el dueño, con el skill `que-deployar` nombrándolo. Mientras no exista, los
+comandos están en la doc y se corren a mano.
+
+### B-117 · `tests/bundle-panel.test.ts` no cubre el tercer chunk · P2
+
+Hallazgo del `auditor-trampas` en su primera corrida. El test cuida cinco cosas
+del corte del bundle (B-09, D-51), pero:
+
+- `ReportesPanel` es el **tercer** componente que `AdminApp` carga con `import()`
+  y no está en la lista: volverlo estático deshace el corte y el build queda
+  verde;
+- ningún test frena un import estático nuevo en `AdminApp`, `firebase-client`,
+  `PieVersion`, `AvisoVersionNueva` o `ayuda/` que arrastre `firebase/firestore`
+  **por la cadena** de imports, no directamente. Hoy eso se revisa a ojo.
+
+Lo segundo es lo que vale: pide seguir el grafo, no comparar una lista de
+literales. Relacionado con B-50.
+
+### B-118 · B-56 quedó desactualizado · P3
+
+Hallazgo del `auditor-documentacion`. B-56 dice que `registrarVersion` existe
+pero que nadie lo llama, y hoy se llama en `src/components/admin/AdminApp.tsx`
+(`registrarVersion(VERSION_APP)`), así que los eventos ya viajan con el parámetro
+`version`. Falta confirmarlo en GA4 y cerrar el ítem.
+
+No se tocó B-56 al encontrarlo porque no era parte del cambio que lo detectó: se
+anota para que quede el rastro, que es la regla.
+
+### B-119 · No hay un mapa trampa → test → archivo · P3
+
+El `auditor-trampas` reconstruye en cada corrida, con `grep`, qué test nombra
+cada trampa del §13. Funciona porque la convención se respeta (los `describe` y
+los `it` citan `§7.1`, `trampa 3`), pero es frágil: si mañana un test cambia de
+nombre, el agente reporta "sin red" sobre algo que sí está cubierto, o peor, lo
+contrario.
+
+Un archivo chico de mapeo —trampa, archivo donde vive, test que la fija— haría el
+reporte determinístico y, de paso, un test podría verificar que las diez trampas
+sigan teniendo dueño. Es la mitad de B-63 aplicada a las trampas.
+
+### B-120 · Nada verifica que `13-agentes.md` liste los agentes que existen · P3
+
+Un agente nuevo en `.claude/agents/` que no entre al documento es invisible: no
+lo va a invocar nadie que lea la doc. Y al revés, un agente borrado deja una
+sección que promete algo que no está.
+
+Es el mismo patrón de `tests/ayuda.test.ts` (que falla si el formulario tiene una
+sección sin capítulo) aplicado a otra lista, y se resuelve igual: un test que lea
+el directorio y el documento. También podría validar el frontmatter, que es
+justamente lo que rompió tres agentes en silencio la primera vez (ver
+[`13-agentes.md`](13-agentes.md)).
+
+### B-121 · Con el sitio público hay que sumar sus salidas al auditor · P1 (junto con B-01)
+
+Hoy el `auditor-privacidad` audita `toPublic.ts` como **función**, porque el
+`events.json` no se genera todavía. Cuando exista el sitio público (B-01) van a
+aparecer dos salidas materializadas: el `events.json` y el HTML de las páginas de
+detalle. Hay que sumar al agente la verificación sobre el artefacto —el `grep`
+sobre `dist/` buscando `difusion`, la URL de la reunión y los uids— y decidir la
+cabecera de cache del JSON (B-37).
+
+Va con B-01: hacerlo antes es escribir contra algo que no existe.
+
+### B-122 · Falta un auditor del sitio público · P2 (después de B-01)
+
+El proyecto existe para que la gente encuentre los talleres en Google (§2.3), y
+eso se rompe en silencio: un `getStaticPaths` que se saltea una actividad, un
+`noindex` que quedó del placeholder, títulos duplicados, la home indexable con
+contenido de prueba (DEC-4), datos estructurados que no validan, o el filtro en
+memoria que necesita JS y deja el listado vacío para un crawler.
+
+No se puede escribir todavía: `src/pages/index.astro` es un placeholder.
+
+### B-123 · El inventario de infra no se re-releva solo · P3
+
+[`02-infraestructura.md`](02-infraestructura.md) dice que fue relevado con
+`gcloud` y `firebase`, "no de memoria", y trae los comandos para repetirlo. Nadie
+lo repite. El `auditor-documentacion` puede detectar que la doc se contradice
+consigo misma, pero **no** puede saber qué Functions están desplegadas de verdad
+ni qué roles tiene una service account: no tiene credenciales y no debe tenerlas.
+
+La forma sensata es un script que corra el dueño y que imprima el inventario en
+el formato del documento, para diffear a ojo. Sin eso, el riesgo es el inverso al
+habitual: la doc dice que algo falta cuando ya está hecho (ver B-118).
+
+### B-124 · Decisión del dueño: ¿cuándo corren los auditores? · P3
+
+Tres opciones, y la diferencia es plata y fricción:
+
+- **A pedido** (hoy): cero costo, se olvida.
+- **En cada cierre de cambio**, por hook: no se olvida, pero son tres corridas
+  por cambio y una de ellas usa el modelo caro (`auditor-privacidad` corre en
+  `opus` a propósito: un falso negativo ahí es una credencial filtrada o un link
+  de reunión público).
+- **Solo en el PR**, por Actions: costo acotado y queda escrito en el PR, pero
+  llega después de haber commiteado.
+
+Un intermedio razonable: `auditor-privacidad` siempre que el diff toque una de
+las cuatro salidas, y los otros dos solo antes del PR. Requiere decidir el
+disparador de B-115.
+
 
 ## Cerrados
 

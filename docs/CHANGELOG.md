@@ -121,6 +121,38 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Agentes y skills del repo, en `.claude/` · B-115 a B-124
+
+Tres auditores de solo lectura (`auditor-privacidad`, `auditor-trampas`,
+`auditor-documentacion`) y cuatro procedimientos como skills (`cerrar-cambio`,
+`campo-nuevo`, `al-backlog`, `/que-deployar`). Qué hace cada uno, cuándo se
+invoca y qué **no** hace está en [`13-agentes.md`](13-agentes.md), nuevo en el
+índice.
+
+**Por qué así:** el criterio fue no duplicar lo que ya verifica un test — un
+agente que repite un test da falsa sensación de cobertura. Los tests de este repo
+cubren los campos, los archivos y las salidas **que ya conocen**; lo que queda
+sin red es el campo nuevo, la salida nueva y el trigger nuevo. El documento dice
+explícitamente qué se decidió no automatizar y con qué test se cubre.
+
+**Auditor y no skill** para lo que solo mira (arranca limpio, sin `Write`, se
+puede correr en paralelo); **skill y no auditor** para lo que escribe archivos
+siguiendo pasos fijos, porque necesita el contexto de la conversación que produjo
+el cambio y la aprobación de quien está ahí.
+
+Dos hallazgos reales de la primera corrida quedaron anotados en vez de
+arreglados, porque no eran de este cambio: `ReportesPanel` es el tercer chunk
+diferido del panel y ningún test lo cuida (B-117), y B-56 dice que nadie llama a
+`registrarVersion` cuando `AdminApp` ya lo llama (B-118).
+
+De paso, la lección del formato: las tres descripciones de los agentes tenían un
+`": "` sin comillas, lo que hace inválido el YAML del frontmatter y **el archivo
+entero se ignora sin ningún error visible**. Se detectó parseando el frontmatter
+antes de commitear. Está escrito en el documento porque va a volver a pasar.
+
+No va a `novedades.ts` ni a `ayuda.ts`: no cambia nada de lo que puede hacer
+quien carga actividades en el panel.
+
 ### Ayuda dentro del panel y novedades para quien no participó de las decisiones · B-60, B-61
 
 **Por qué:** el panel lo usan dos personas. Una pidió cada funcionalidad y sabe

@@ -19,6 +19,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 10 | [`10-salud-del-codigo.md`](10-salud-del-codigo.md) | Diagnóstico medido: tamaño, acoplamiento, duplicación. Qué conviene arreglar, qué está bien y qué no hay que tocar. |
 | 11 | [`11-ideas-de-producto.md`](11-ideas-de-producto.md) | Propuestas de funcionalidad con su argumento en contra, y lo que se descartó a propósito. Se lee antes de decidir qué sigue. |
 | 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01): URLs, pantallas, SEO, filtros y casos borde. Lo que falta construir. |
+| 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan, cuándo invocarlos, y qué se decidió **no** automatizar porque ya hay un test. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
@@ -49,3 +50,7 @@ si el modelo cambia al construir el sitio público, hay que revisar
    corriendo (`npm run emu`); si no están, se saltean solos.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
+4. **Antes de cerrar un cambio, pasar los auditores** de
+   [`13-agentes.md`](13-agentes.md) — privacidad, trampas y documentación — y
+   cerrarlo con el skill `cerrar-cambio`. Corren además de los tests, sobre lo
+   que la suite no puede ver.
