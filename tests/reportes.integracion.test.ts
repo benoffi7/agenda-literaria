@@ -11,7 +11,8 @@ import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebas
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import { Timestamp, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase-client';
+import { auth } from '@/lib/firebase-client';
+import { db } from '@/lib/firestore-client';
 import { formAReporte } from '@/lib/reporte-schema';
 import { crearReporte } from '@/lib/reportes';
 import type { ContextoReporte, ReporteForm } from '@/types/reporte';

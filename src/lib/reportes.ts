@@ -15,7 +15,9 @@ import {
   query,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase-client';
+// `firestore-client` y no `firebase-client`: el corte del bundle (B-09) saca
+// Firestore del chunk de login.
+import { db } from '@/lib/firestore-client';
 import { formAReporte } from '@/lib/reporte-schema';
 import { INFO_VERSION } from '@/lib/version';
 import type { ContextoReporte, Pantalla, Reporte, ReporteConId, ReporteForm } from '@/types/reporte';
