@@ -59,6 +59,30 @@ están aparte.
 
 **Al agregar lógica, preguntarse si necesita red.** Si no, va en un módulo puro.
 
+### El reloj también es infraestructura
+
+`functions/rebuild.js` decide cuándo reintentar un rebuild fallido (backoff
+exponencial, corte a los N intentos). No llama a `Date.now()`: el "ahora" entra
+como parámetro.
+
+```js
+// mal — para testear el cuarto reintento hay que esperar 75 minutos
+export const decidirDisparo = (estado) => { const ahora = Date.now(); … };
+
+// bien — el test simula 24 horas de ticks en 3 ms
+export const decidirDisparo = (estado, ahora) => { … };
+```
+
+Los límites (`MAX_INTENTOS`, `ESPERA_BASE_MS`) también son parámetros con
+default, así que un test puede bajar el máximo a 2 sin reescribir nada.
+
+Mismo criterio para los timestamps que la lógica **lee de vuelta**:
+`ultimoIntento` y `disparado` se escriben como `Date` desde el módulo puro, no
+con `serverTimestamp()` — el sentinel del servidor no se puede comparar con
+nada, y mezclar dos relojes en el mismo cálculo es cómo se cuelan los errores
+de skew. `actualizado`, que nadie lee para decidir, sigue con
+`serverTimestamp()`.
+
 ## Comparar payloads, no listas de campos
 
 La guarda anti-loop del sync **no** mantiene una lista de campos relevantes:

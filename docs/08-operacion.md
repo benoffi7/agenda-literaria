@@ -89,9 +89,12 @@ firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
 ```
 
 **Desplegar solo esas dos.** `dispararRebuild` está escrita pero no se despliega
-todavía (D-13): sería un schedule cada 5 minutos sin nada que disparar.
+todavía (D-13): le falta el PAT en Secret Manager, y sin eso sería un schedule
+cada 5 minutos que no puede hacer nada.
 
 Un `firebase deploy --only functions` sin filtro la incluiría.
+
+Para desplegarla, primero los pasos manuales de "Activar el rebuild automático".
 
 ### Preparar un proyecto desde cero
 
@@ -127,7 +130,110 @@ firebase deploy --only firestore:rules,firestore:indexes
 node scripts/preparar-produccion.mjs <email>
 npm run build && firebase deploy --only hosting
 firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
+
+# 7. Rebuild automático: ver "Activar el rebuild automático" más abajo
+#    (PAT en Secret Manager, service account de CI, secret de GitHub, y recién
+#    ahí `firebase deploy --only functions:dispararRebuild`)
 ```
+
+## Activar el rebuild automático (§8)
+
+Todo el código está escrito: la Function (`dispararRebuild`), su lógica de
+reintentos (`functions/rebuild.js`) y el workflow
+(`.github/workflows/deploy.yml`). Lo que falta son **credenciales, y solo las
+puede crear el dueño**: el PAT y la key de service account no pueden pasar por
+un agente ni por el repo (§5.4).
+
+Los cinco pasos, en orden.
+
+### 1 · PAT de GitHub
+
+Un token fine-grained en <https://github.com/settings/personal-access-tokens>:
+
+- **Repository access:** solo `benoffi7/agenda-literaria`.
+- **Permissions → Repository → Contents: Read and write.** Es el permiso que
+  habilita el `repository_dispatch`; con menos, GitHub responde 403.
+- **Expiration:** lo que se elija hay que anotarlo. Cuando venza, el dispatch
+  empieza a fallar con `HTTP 401 Bad credentials` y eso queda en
+  `sistema/rebuild.ultimoError`.
+
+Con un token clásico, el scope equivalente es `repo` (o `public_repo` si el repo
+es público).
+
+### 2 · El PAT a Secret Manager
+
+```bash
+gcloud services enable secretmanager.googleapis.com --project agenda-literaria
+
+# Pegar el PAT sin newline al final: un \n en el header Authorization lo rompe.
+printf %s 'ghp_EL_TOKEN' | gcloud secrets create GITHUB_TOKEN \
+  --data-file=- --replication-policy=automatic --project agenda-literaria
+
+# La Function corre como calendar-sync@ (D-06), así que el acceso se le da a
+# ella, y solo sobre este secreto.
+gcloud secrets add-iam-policy-binding GITHUB_TOKEN \
+  --member="serviceAccount:calendar-sync@agenda-literaria.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" --project agenda-literaria
+```
+
+Para rotarlo después: `gcloud secrets versions add GITHUB_TOKEN --data-file=-`.
+La Function toma la versión nueva al reciclar la instancia; para forzarlo,
+redeployarla.
+
+### 3 · Service account para el workflow
+
+El runner de GitHub no tiene ADC, así que necesita una key. Es la **única** key
+del proyecto, y por eso la cuenta es aparte de `calendar-sync@` y solo puede
+leer:
+
+```bash
+gcloud iam service-accounts create deploy-ci \
+  --display-name="Deploy del sitio desde GitHub Actions" --project agenda-literaria
+
+for R in datastore.viewer firebasehosting.admin; do
+  gcloud projects add-iam-policy-binding agenda-literaria \
+    --member="serviceAccount:deploy-ci@agenda-literaria.iam.gserviceaccount.com" \
+    --role="roles/$R" --condition=None
+done
+
+# La key: se baja, se pega en GitHub y se borra del disco enseguida.
+gcloud iam service-accounts keys create /tmp/deploy-ci.json \
+  --iam-account=deploy-ci@agenda-literaria.iam.gserviceaccount.com \
+  --project agenda-literaria
+```
+
+### 4 · La key como secret de GitHub
+
+En **Settings → Secrets and variables → Actions → New repository secret** del
+repo, con nombre exacto `FIREBASE_SERVICE_ACCOUNT` y el **contenido completo**
+del JSON como valor. Con `gh` instalado:
+
+```bash
+gh secret set FIREBASE_SERVICE_ACCOUNT --repo benoffi7/agenda-literaria \
+  < /tmp/deploy-ci.json
+rm /tmp/deploy-ci.json    # no dejarla en el disco
+```
+
+**Probar el workflow antes de seguir:** Actions → "Build y deploy del sitio" →
+Run workflow. Si termina verde, el deploy funciona y recién ahí conviene
+desplegar la Function.
+
+### 5 · Desplegar la Function
+
+```bash
+firebase deploy --only functions:dispararRebuild
+```
+
+Verificar que el schedule quedó armado y que el primer tick hace algo:
+
+```bash
+gcloud scheduler jobs list --location southamerica-east1 --project agenda-literaria
+gcloud functions logs read dispararRebuild --project agenda-literaria \
+  --region southamerica-east1 --limit 20
+```
+
+Mensaje esperado sin cambios pendientes: nada (el schedule sale en silencio).
+Con un cambio pendiente: `rebuild disparado`.
 
 ## Diagnosticar
 
@@ -140,6 +246,50 @@ gcloud functions logs read syncCalendar --project agenda-literaria \
 
 Los mensajes útiles: `evento creado`, `evento actualizado`, `evento borrado`,
 `sin cambios relevantes para Calendar`, `falló una operación de Calendar`.
+
+### El sitio no se actualiza después de cargar una actividad
+
+El estado del lazo del §8 está entero en un solo documento. Con las ADC de
+gcloud, desde la raíz del repo:
+
+```bash
+node -e "
+const {initializeApp, applicationDefault} = require('firebase-admin/app');
+const {getFirestore} = require('firebase-admin/firestore');
+initializeApp({credential: applicationDefault(), projectId: 'agenda-literaria'});
+getFirestore().doc('sistema/rebuild').get().then(d => console.log(d.data()));
+"
+```
+
+Cómo leerlo:
+
+| Qué se ve | Qué significa |
+|---|---|
+| `pendiente: false` | no hay nada que rebuildear; el último disparo salió bien |
+| `pendiente: true`, `intentos: 0` | recién marcado, el schedule todavía no tickeó (hasta 5 min) |
+| `pendiente: true`, `intentos: 1-4` | está reintentando con backoff — mirar `ultimoError` |
+| `agotado: true` | se rindió. `ultimoError` dice por qué. Se rearma solo con el próximo cambio, o a mano con el workflow |
+
+Los logs del schedule:
+
+```bash
+gcloud functions logs read dispararRebuild --project agenda-literaria \
+  --region southamerica-east1 --limit 30
+```
+
+Mensajes: `rebuild disparado`, `repository_dispatch falló, se reintenta`,
+`el rebuild agotó los reintentos: el sitio quedó viejo`, `rebuild pendiente
+pero sin GitHub configurado`.
+
+Y del lado de GitHub, los runs del workflow:
+
+```bash
+gh run list --repo benoffi7/agenda-literaria --workflow deploy.yml --limit 5
+```
+
+**Para publicar ya, sin esperar:** Actions → "Build y deploy del sitio" → Run
+workflow. Eso no toca el flag de Firestore, así que el próximo tick puede
+disparar un build redundante; es inofensivo.
 
 ### Leer el calendario real
 
@@ -188,6 +338,14 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | El panel dice "sin permisos" con la cuenta correcta | el claim entra al token en el próximo login | salir y volver a entrar |
 | Un `grep` sobre el ICS no encuentra algo que sí está | el formato ICS parte las líneas largas | desdoblar (`'\r\n '` → `''`) antes de buscar |
 | El formulario hace zoom en iPhone al enfocar un campo | un input con menos de 16px | ya resuelto en `global.css`; no bajar el tamaño de los campos en mobile |
+| `sistema/rebuild.ultimoError` dice `HTTP 401 Bad credentials` | el PAT venció o se revocó | rotar el secreto (`gcloud secrets versions add GITHUB_TOKEN`); el contador se rearma con el próximo cambio |
+| `ultimoError` dice `HTTP 404` | el PAT no ve el repo, o `GITHUB_REPO` está mal | revisar el repository access del token y `functions/.env` |
+| `ultimoError` dice `HTTP 422` | el `event_type` no coincide con el `types:` del workflow, o el workflow no está en la branch por defecto | tienen que ser los dos `rebuild`, y `deploy.yml` tiene que estar mergeado a `main` |
+| El log dice `rebuild pendiente pero sin GitHub configurado` | falta el secreto `GITHUB_TOKEN` o `GITHUB_REPO` | los pasos 1-2 de "Activar el rebuild automático" |
+| El deploy del workflow falla con `Permission denied` sobre Hosting | a `deploy-ci@` le falta `roles/firebasehosting.admin` | otorgarlo (paso 3) |
+| El build del workflow no encuentra actividades | falta el secret `FIREBASE_SERVICE_ACCOUNT`, o `deploy-ci@` no tiene `datastore.viewer` | pasos 3-4 |
+| El schedule corre pero nunca dispara nada | `agotado: true` en `sistema/rebuild` | ver "El sitio no se actualiza…" |
+| El deploy de `syncCalendar` se queja de que falta el secreto `GITHUB_TOKEN` | `dispararRebuild` lo declara con `defineSecret`, y según la versión de `firebase-tools` la validación puede correr sobre todo el codebase y no solo sobre la función filtrada | crear el secreto (paso 2 de "Activar el rebuild automático"); existe aunque la Function no esté desplegada |
 
 ## Costos
 
@@ -196,6 +354,12 @@ Plan Blaze con budget de USD 5/mes y avisos al 50, 90 y 100%.
 Lo que consume: Firestore (free tier generoso), invocaciones de Functions (una
 por escritura de actividad), y el storage de Artifact Registry para las imágenes
 de las Functions — este último con política de borrado a 1 día.
+
+`dispararRebuild` suma ~8.600 invocaciones por mes (una cada 5 minutos), que
+entran holgadas en el free tier de 2 millones. Casi todas leen un documento y
+salen. Del lado de GitHub, lo que se paga son minutos de Actions: el debounce
+del §8 es justamente lo que hace que una sesión de edición sea un build y no
+diez.
 
 El sitio público no lee Firestore (§2.5), así que el tráfico de visitas no
 genera costo de base de datos.

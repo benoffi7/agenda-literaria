@@ -29,7 +29,7 @@ Falta el sitio público, que es la razón de ser del proyecto.
 | 2. Panel de admin (React) | ✅ |
 | 3. Sitio público (SSG) | ⬜ **lo próximo** |
 | 4. Sync a Google Calendar | ✅ |
-| 5. Trigger de rebuild | 🟡 código escrito, sin desplegar |
+| 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 
 El paso 4 se hizo antes del 3 porque el usuario lo pidió en ese orden. El
 `CLAUDE.md` advierte que el sync va al final "cuando el modelo ya no se mueva":
