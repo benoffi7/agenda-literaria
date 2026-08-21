@@ -9,8 +9,14 @@ ui-debug.log
 .DS_Store
 
 # Claves — NUNCA al repo (§5.4)
+# .env.production y .env.development SÍ están versionados: la config del SDK
+# web es pública por diseño (viaja en el bundle). Lo que no se versiona es
+# cualquier archivo con la service account key.
 .env
 .env.local
 .env.*.local
 service-account*.json
 *-service-account.json
+
+# Caché local del deploy de Hosting
+.firebase/
