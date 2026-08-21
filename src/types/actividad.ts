@@ -187,6 +187,21 @@ export interface ValorOpcion {
   /** Protege las opciones base: no se borran ni renombran desde la UI (§4.3). */
   fijo: boolean;
   usos: number;
+  /**
+   * §4.3 — una opción creada con "Otro" no entra al desplegable de los demás
+   * hasta que alguien la valida.
+   *
+   * **Opcional a propósito:** los documentos de `/opciones/*` que ya están en
+   * producción se escribieron antes de que existiera el campo. Ausente cuenta
+   * como aprobada — ver `estaAprobada` en `lib/opciones.ts`.
+   */
+  aprobada?: boolean;
+  /**
+   * Huella del uid de quien la creó, para que la siga viendo mientras espera
+   * aprobación. **Es una huella, no un uid:** este documento es de lectura
+   * pública (§5.3) y los uids no salen al público (§5.1). Ver `lib/huella.ts`.
+   */
+  huellaCreador?: string;
 }
 
 export interface DocOpciones {

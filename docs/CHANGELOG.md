@@ -9,6 +9,47 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Las etiquetas nuevas esperan aprobación antes de entrar al desplegable de los demás
+
+Ya hay **dos cuentas con claim `admin`** cargando actividades, así que el §4.3
+dejó de ser hipotético: si una inventa "Bono social", esa etiqueta no puede
+aparecerle sola en el desplegable a la otra. Se implementó `aprobada` en el
+patrón de taxonomías — uno solo para los cinco campos (`arancel`, `tipo`,
+`barrio`, `plataforma`, `tags`).
+
+Qué pasa ahora con una opción creada con "Otro":
+
+- **funciona sin fricción para quien la creó** — la actividad se guarda con ese
+  slug y la opción le queda en el desplegable, marcada "(sin aprobar)" para que
+  entienda por qué la otra cuenta no la ve;
+- **no aparece** en el desplegable ni en las sugerencias de las demás cuentas
+  hasta aprobarla;
+- **se sigue mostrando como etiqueta en todas las salidas** — el evento público
+  de Calendar dice "Bono social", no "bono-social" (D-30). La aprobación filtra
+  lo *elegible*, nunca lo *resolvible*;
+- si otra cuenta tipea la misma etiqueta, **se reusa el slug** en lugar de
+  duplicar: la deduplicación del §4.2 gana sobre la visibilidad.
+
+**Lo que no se rompe: las opciones que ya están en producción.** Esos documentos
+no tienen el campo, y `preparar-produccion.mjs` no los pisa. La ausencia se lee
+como **aprobada** (D-26): el default va hacia atrás, no hacia adelante. Si
+contara como pendiente, un barrio ya usado desaparecería del desplegable y el
+formulario mostraría el slug crudo al editar una actividad que estaba bien.
+
+**El creador se guarda como huella del uid, no como uid** (D-27):
+`/opciones/*` es de lectura pública (§5.3) y el §5.1 dice que los uids no salen
+al público. Para decidir "¿esta opción la creé yo?" alcanza un pseudónimo opaco.
+
+**Aprobar** es tarea de mantenimiento, no de carga: `scripts/aprobar-opciones.mjs`
+(`--listar`, aprobar por campo+slug, `--backfill` opcional). Cualquier cuenta con
+el claim puede aprobar, porque las reglas no pueden verificar una autoridad más
+fina sobre un array de maps (D-28); la UI en el panel va con la administración de
+taxonomías que falta (D-29, B-06).
+
+Tests nuevos: el default de compatibilidad, la visibilidad cruzada entre las dos
+cuentas, y el script corriendo de verdad contra el emulador (no una
+reimplementación de su lógica). Item B-10 del backlog.
+
 ### El checkbox "publicar el link de la reunión" ahora hace algo
 
 El modelo del §3.1 tiene `online.urlPublica` y el formulario su casilla, pero la

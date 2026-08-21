@@ -79,6 +79,46 @@ cambio al calendario, **en silencio**. Con el payload no se puede olvidar.
 Aplicable a cualquier lugar donde haya que decidir "¿cambió algo relevante?":
 derivar lo relevante y comparar eso.
 
+## Un campo nuevo se lee con el default que preserva lo anterior
+
+Los documentos que ya están en producción no tienen el campo que se agrega hoy,
+y los scripts de siembra son idempotentes: no los pisan. Entonces el default de
+lectura no es una preferencia estética, decide si algo que funcionaba sigue
+funcionando.
+
+```ts
+// bien — lo que ya estaba cargado se sigue comportando igual
+export const estaAprobada = (v: ValorOpcion) => v.fijo || (v.aprobada ?? true);
+
+// mal — el día del deploy desaparecen del desplegable las opciones que ya se usan
+export const estaAprobada = (v: ValorOpcion) => v.fijo || v.aprobada === true;
+```
+
+Solo lo **nuevo** arranca con el comportamiento nuevo, porque solo lo nuevo se
+escribe con el campo puesto. Y el tipo lo declara opcional (`aprobada?:`) para
+que el compilador obligue a decidir el default en cada lectura.
+
+Si además se quiere el campo explícito en los documentos viejos, va como
+migración **opcional e idempotente** (`--backfill`), nunca como requisito para
+que el código funcione: un restore o un proyecto nuevo traen de vuelta los
+documentos sin el campo. Ver [D-26](06-decisiones.md).
+
+## Filtrar lo elegible no es filtrar lo mostrable
+
+Cuando una lista sirve para dos cosas —elegir un valor y resolver el valor ya
+guardado— hay que devolver las dos, con nombres que no se confundan:
+
+```ts
+const { valores, elegibles } = useOpciones(campo, uid);
+// valores   → todas: para resolver la etiqueta de un slug ya guardado
+// elegibles → lo que esta cuenta puede elegir ahora
+```
+
+Filtrar de más se ve enseguida en producción: la actividad guardó legítimamente
+un slug que la lista filtrada no tiene, y la UI muestra `"con-beca-parcial"` en
+lugar de `"Con beca parcial"` — o peor, en una salida pública como el evento de
+Calendar. Ver [D-30](06-decisiones.md).
+
 ## Validación en el submit, no por campo
 
 El formulario es estado controlado de React y se valida con zod al guardar

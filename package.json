@@ -14,6 +14,8 @@
     "test:watch": "vitest",
     "emu": "JAVA_HOME=\"/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home\" firebase emulators:start --import=.emulador --export-on-exit=.emulador",
     "seed": "node scripts/seed-emulador.mjs",
+    "opciones:aprobar": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/aprobar-opciones.mjs",
+    "opciones:aprobar:prod": "node scripts/aprobar-opciones.mjs",
     "admin:claim": "FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099} node scripts/set-admin-claim.mjs",
     "admin:claim:prod": "node scripts/set-admin-claim.mjs"
   },

@@ -71,6 +71,33 @@ escribe "gor" y aparece "A la gorra", el 90% de los duplicados no llega a nacer
 (§4.2). Si lo tipeado normaliza a un slug que ya existe, avisa que va a reusar
 esa opción en lugar de crear una nueva.
 
+### Aprobación de etiquetas nuevas (§4.3)
+
+Hay dos cuentas cargando actividades, así que una etiqueta que inventa una no
+aparece sola en el desplegable de la otra:
+
+| Quién | Qué ve de una opción recién creada |
+|---|---|
+| quien la creó | la ve y la puede elegir, marcada **"(sin aprobar)"** |
+| la otra cuenta | no la ve en el desplegable ni en las sugerencias |
+| la otra cuenta, editando una actividad que ya la usa | ve su etiqueta con "(sin aprobar)" y el valor no se pierde |
+| el sitio público y el calendario | la etiqueta se muestra normal (no el slug) |
+
+Lo que **no** cambia: la actividad se guarda con ese slug sin ninguna fricción,
+y la etiqueta se sigue resolviendo en todas las salidas (una opción pendiente en
+el evento de Calendar dice "Con beca parcial", no "con-beca-parcial").
+
+Si alguien tipea en "Otro" una etiqueta que ya existe como pendiente de la otra
+cuenta, el formulario avisa y **reusa** ese slug: la deduplicación del §4.2 gana
+sobre la visibilidad.
+
+Las opciones base (`fijo: true`) están aprobadas por definición, y **las que ya
+estaban cargadas antes de que existiera el campo siguen visibles** (D-26).
+
+Aprobar es una tarea de mantenimiento, no de carga: se hace con
+`scripts/aprobar-opciones.mjs` (ver [`08-operacion.md`](08-operacion.md)). No hay
+UI en el panel todavía (D-29).
+
 ### Mobile y tablet
 
 El formulario es usable en teléfono:

@@ -89,6 +89,7 @@ src/
   types/actividad.ts        el modelo del §3 en TypeScript
   lib/
     slugify.ts              normalización de taxonomías (§4.2)
+    huella.ts               huella del uid que crea una opción (§4.3, D-27)
     normalize.ts            searchText y búsqueda sin acentos (§6)
     sesiones.ts             ids uuid, generador de N encuentros (§11)
     schema.ts               validación del form con zod, condicionales del §11
@@ -110,6 +111,7 @@ scripts/
   seed-emulador.mjs         siembra /opciones/* en el emulador
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
+  aprobar-opciones.mjs      aprueba opciones de taxonomía pendientes (§4.3)
 tests/                      134 tests
 firestore.rules             reglas del §5.3
 ```

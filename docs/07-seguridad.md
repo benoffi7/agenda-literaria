@@ -78,6 +78,34 @@ query pública incluya `where('estado','==','publicado')`, si no Firestore
 rechaza la query entera (trampa 7). Con el JSON estático casi no afecta, pero
 tenerlo presente si se agrega alguna lectura en vivo.
 
+### Aprobar taxonomías (§4.3)
+
+`/opciones/{campo}` es de **lectura pública** y de escritura solo con claim
+`admin`. Aprobar una opción (`aprobada: true`) es una escritura más de ese
+documento, así que **cualquiera de las cuentas con el claim puede aprobar**
+(D-28). No hay una regla más fina porque las reglas no pueden comparar el array
+`valores` elemento por elemento contra el anterior: no hay forma de verificar
+"esta escritura solo cambió `aprobada`". Está anotado en las propias reglas.
+
+Dos consecuencias que importan acá:
+
+- **El creador se guarda como huella, no como uid** (D-27). El documento es
+  público y el §5.1 dice que los uids no salen al público. `huellaCreador` es una
+  huella de 8 hex del uid: sirve para comparar igualdad y no dice nada de nadie.
+  Un test de integración verifica que el uid no aparezca en el documento.
+- **La aprobación no esconde etiquetas ya en uso** (D-30). Filtra lo que se puede
+  *elegir*, no lo que se puede *mostrar*: si una actividad usa una opción
+  pendiente, el evento público sigue diciendo "Con beca parcial" y no
+  "con-beca-parcial".
+
+Al `events.json` van **solo las aprobadas** — `opcionesVisibles(valores)` sin
+uid: el sitio público no publica vocabulario sin validar.
+
+```bash
+# Qué hay pendiente de aprobar en producción
+node scripts/aprobar-opciones.mjs --listar
+```
+
 ### Custom claim `admin`
 
 Se setea una vez con el Admin SDK. El panel solo lo lee para decidir qué
