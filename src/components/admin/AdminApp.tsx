@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActividadFormulario } from '@/components/admin/ActividadFormulario';
+import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
 import { ListaActividades } from '@/components/admin/ListaActividades';
 import {
   loginConGoogle,
@@ -91,6 +92,7 @@ export function AdminApp() {
 
   return (
     <div className="mx-auto max-w-3xl px-segura py-6 lg:max-w-4xl">
+      <AvisoVersionNueva />
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-xl font-semibold">

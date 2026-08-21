@@ -154,6 +154,33 @@ El formulario es usable en teléfono:
 - Teclados por campo: numérico en cupo, de URL en los links, sin autocapitalizar
   ni autocorregir en slug, handles y URLs.
 
+### Versión y actualización automática
+
+El panel sabe qué versión está corriendo y detecta cuando la publicada es otra.
+
+- La versión se estampa en el build: `0.1.0+a1b2c3d` (versión del
+  `package.json` + SHA corto del commit). Viaja dentro del bundle, así que
+  identifica al JS que está corriendo en esa pestaña.
+- `/version.json` dice cuál es la publicada. Se sirve sin cachear.
+- El panel lo consulta al abrirse, **al volver a la pestaña** y cada 15 minutos
+  si está a la vista, con un piso de un chequeo por minuto.
+
+Qué hace cuando no coinciden:
+
+| Situación | Qué pasa |
+|---|---|
+| No hay un formulario a medio cargar | recarga sola, sin preguntar |
+| El formulario tiene cambios sin guardar | **no recarga**: aviso fijo arriba, sin botón de cerrar, que pide guardar primero |
+| Se guarda el formulario con el aviso puesto | ya no hay nada que perder → recarga sola |
+| Ya recargó por esa versión y sigue sin coincidir | avisa que recargar no alcanzó, en vez de entrar en loop de recargas |
+
+El aviso muestra las dos versiones (`corriendo → publicada`): es lo que hay que
+copiar en un reporte de bug.
+
+Recargar mientras alguien completa los 30+ campos le borra varios minutos de
+trabajo, y eso es peor que tener el JS viejo. De ahí que el único caso en que el
+panel no decide solo sea ese.
+
 ## Sync a Google Calendar
 
 Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.

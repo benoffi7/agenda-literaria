@@ -270,6 +270,86 @@ Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
 
 ---
 
+## D-36 · La versión es `package.json` + SHA del commit, no un timestamp
+
+**Decisión:** la versión que estampa el build es `0.1.0+a1b2c3d` — el `version`
+del `package.json` más el SHA corto de git (`scripts/version.mjs`).
+
+**Motivo:** tiene que ser reproducible (mismo commit → misma versión, así se
+puede volver a buildear lo que alguien reportó) y legible por una persona (el
+dueño necesita saber qué versión reporta un bug, y del otro lado alcanza un
+`show` de ese SHA para ver el código exacto).
+
+**Alternativa descartada: el timestamp del build como identidad.** El sitio se
+rebuildea cada vez que cambia una actividad en Firestore (§8) y en todos esos
+builds el JS del panel es idéntico. Con el timestamp como versión, el panel se
+habría recargado solo varias veces por día sin ningún motivo.
+
+Los dos casos sin commit del que colgarse **sí** llevan sello de tiempo, porque
+ahí no hay identidad estable posible: árbol sucio (`+a1b2c3d-sucio.20260821-2129`)
+y clone sin `.git` (`+sin-git.…`). El sufijo `sucio` además avisa que lo
+publicado no corresponde exactamente a ningún commit.
+
+**Consecuencia asumida:** dos builds del mismo commit son la misma versión. Si
+se despliega dos veces el mismo código, el panel no se recarga — y está bien,
+porque el JS es el mismo.
+
+---
+
+## D-37 · El panel se recarga solo, salvo con el formulario a medio cargar
+
+**Decisión:** cuando la versión publicada no coincide con la que está corriendo,
+el panel hace `location.reload()` sin preguntar. La única excepción es el
+formulario con cambios sin guardar: ahí **avisa y espera**.
+
+**Motivo:** el formulario son 30+ campos y varios minutos de trabajo (§11).
+Recargar en el medio lo borra, y eso es peor que tener el JS viejo. Al revés,
+preguntar siempre convierte una mejora invisible en una molestia diaria.
+
+Al guardar, el formulario se desmonta, deja de haber algo que perder y la
+recarga ocurre sola: el aviso se resuelve sin que nadie tenga que hacer clic en
+nada.
+
+**Cómo se sabe si el formulario está sucio:** un store de módulo de diez líneas
+(`src/lib/formulario-sucio.ts`) que el formulario actualiza comparando el JSON
+de su estado contra el inicial (`useFormularioSucio`, un `useEffect`).
+Descartadas: pasar el dato por props (obligaba a cablear `AdminApp` → vista →
+formulario) y un contexto de React (envolver el árbol entero para un booleano).
+El formulario toca **una línea**.
+
+**Protección anti-loop:** `location.reload()` **no puede** saltear el cache — no
+existe forma de forzar un hard refresh desde JS. Si después de recargar la
+versión sigue sin coincidir (algún intermediario ignorando las cabeceras), el
+panel no recarga de nuevo: avisa y pide intervención a mano. La marca de "ya
+recargué por esta versión" va en `sessionStorage`, que es exactamente lo que
+sobrevive a un reload y muere con la pestaña.
+
+---
+
+## D-38 · Cabeceras de cache explícitas en `firebase.json`
+
+**Decisión:** `firebase.json` declara el cache de Hosting en vez de dejar el
+default.
+
+| Recurso | Cabecera | Por qué |
+|---|---|---|
+| `/_astro/**` | `public, max-age=31536000, immutable` | el nombre lleva hash de contenido: si cambia el contenido cambia la URL, así que cachear un año es gratis y es lo que hace rápida la recarga |
+| `/version.json` | `no-store, max-age=0` | es el recurso que dice qué hay publicado; cacheado no sirve para nada |
+| `**/*.html`, `/`, `/admin`, `/admin/**` | `no-cache` | el HTML es el que referencia los assets nuevos |
+
+**Motivo:** sin esto la detección de versión no sirve. El default de Hosting
+cachea el HTML, y con el HTML cacheado recargar vuelve a pedir los mismos assets
+viejos: el panel detecta que hay versión nueva, recarga, y sigue corriendo la
+vieja. Las cabeceras son la mitad del mecanismo, no un detalle de performance.
+
+`no-cache` no es "no cachear": el navegador guarda la copia pero **revalida**
+antes de usarla, así que un deploy nuevo se detecta en el primer pedido y una
+recarga sin cambios sigue costando un 304. Es el punto justo para el HTML.
+
+Las rutas de la SPA (`/admin`, `/admin/**`) van explícitas porque los globs de
+Hosting matchean la **URL pedida**, no el archivo que se sirve después del
+rewrite: `**/*.html` no matchea un pedido a `/admin`.
+
 ## D-46 · Las coordenadas se pegan desde Google Maps, sin geocoding
 
 **Problema:** `sede.geo` estaba en el modelo y la Function ya lo usaba (D-10),

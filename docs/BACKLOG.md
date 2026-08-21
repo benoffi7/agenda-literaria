@@ -137,7 +137,7 @@ el campo lo detecta y explica cómo salir del paso. Anotado en B-45.
 
 ### B-08 · Sin tests de componentes
 
-No hay testing-library instalada. La lógica pura está muy cubierta (235 tests),
+No hay testing-library instalada. La lógica pura está muy cubierta (256 tests),
 pero el render y la interacción del formulario se verificaron a mano.
 
 Vale al menos para `TaxonomiaSelect` (el bug del placeholder que se veía como
@@ -152,6 +152,32 @@ verificó a mano.
 Es el SDK de Firebase. Queda aislado en `/admin` y la home carga 8 KB, así que
 no afecta al público ni al SEO. Se podría bajar con imports más finos o carga
 diferida de Firestore, pero no es urgente.
+
+### B-35 · Salir del panel con cambios sin guardar no avisa
+
+El store de `formulario-sucio.ts` ya sabe que hay cambios pendientes, y el aviso
+de versión nueva lo usa. Pero cerrar la pestaña, volver a la lista o tocar
+"Cancelar" sigue descartando el formulario sin preguntar.
+
+Con el dato ya disponible es un `beforeunload` y una confirmación en el botón de
+volver. Queda fuera de este cambio porque toca el flujo del formulario, no el de
+versiones.
+
+### B-36 · La versión no distingue dos builds sucios del mismo commit
+
+`+a1b2c3d-sucio.20260821-2129` lleva sello de tiempo, así que dos builds sucios
+distintos sí se ven distintos. Lo que no se puede saber es **qué** cambió: el
+sufijo dice "esto no es ningún commit" y nada más.
+
+Es aceptable porque producción se buildea de un árbol limpio. Si alguna vez se
+deploya desde un árbol sucio en serio, la salida es un hash del diff.
+
+### B-37 · `/events.json` va a necesitar su propia cabecera de cache
+
+Las cabeceras de `firebase.json` cubren el HTML, `/version.json` y
+`dist/_astro/*`. El `events.json` del sitio público (B-01) todavía no existe:
+cuando exista hay que decidir su cache — no lleva hash en el nombre y cambia en
+cada rebuild, así que probablemente `no-cache` o un `max-age` corto.
 
 ---
 
@@ -222,6 +248,7 @@ Se dejan para que quede el rastro de qué se rompió.
 | `createdAt`/`createdBy` se perdían al editar | `setDoc` con `merge:false` borraba los campos que el form no incluye | `9a45c86` |
 | El primer deploy de Functions falló dos veces | la service account propia no tiene los roles que la default de Compute trae de fábrica | `af88f84`, D-06 |
 | Riesgo: agregar un campo a la descripción del evento sin agregarlo a `CAL_FIELDS` dejaba de propagarlo, en silencio | lista de campos mantenida a mano | `90edc8a`, D-07 |
+| Riesgo: un panel abierto días corriendo JS viejo — bugs ya arreglados que se vuelven a reportar, y bugs corregidos que se siguen usando | SPA estática sin versión ni cabeceras de cache: el HTML cacheado hacía que recargar volviera a pedir los mismos assets | D-36, D-37, D-38 |
 | El checkbox "publicar el link de la reunión" no hacía nada | la proyección y el evento descartaban la URL sin mirar el flag | D-15 |
 | **B-02** · No había quién atendiera el `repository_dispatch`: el paso 5 del §10 estaba a medias | faltaba el workflow de Actions y la config del repo. Queda pendiente **B-20** (credenciales del dueño) y el deploy de la Function | `.github/workflows/deploy.yml`, D-22 |
 | **B-02** · `dispararRebuild` leía `process.env.GITHUB_TOKEN` sin declarar el secreto | en Functions v2 eso da `undefined` en producción: el PAT solo habría funcionado versionado en `functions/.env`, que es lo que el §5.4 prohíbe | D-21 |

@@ -11,6 +11,7 @@ import { TagsInput } from '@/components/admin/campos/TagsInput';
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
+import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
 import { actualizarActividad, crearActividad, documentoAForm, slugDisponible } from '@/lib/actividades';
 import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
@@ -89,6 +90,8 @@ export function ActividadFormulario({
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
+
+  useFormularioSucio(form);
 
   /**
    * Etiquetas creadas con "Otro" que todavía no están en `/opciones/*`.

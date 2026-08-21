@@ -123,12 +123,16 @@ src/
     opciones-base.json      opciones fijas, compartidas con los scripts
     toPublic.ts             proyección pública (§5.2)
     vistaPreviaEvento.ts    form → evento de Calendar, reusando @calendario
+    coordenadas.ts          parseo de links de Google Maps a lat/lng
+    version.ts              versión del bundle y decisión de recargar
+    formulario-sucio.ts     ¿hay cambios sin guardar? store de módulo
     firebase-client.ts      auth y Firestore del panel
     firebase-admin.ts       SOLO build time (§5.4)
   components/admin/         el panel entero
   layouts/Base.astro        head, fuentes, viewport
   pages/
     admin.astro             island client:only
+    version.json.ts         /version.json — qué versión está publicada
     index.astro             placeholder del sitio público
 functions/
   calendario.js             diff y armado del evento — lógica pura
@@ -138,10 +142,11 @@ functions/
 .github/workflows/
   deploy.yml                build + deploy que dispara el rebuild (§8)
 scripts/
+  version.mjs               versión del build: package.json + SHA de git
   seed-emulador.mjs         siembra /opciones/* en el emulador
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
-tests/                      235 tests
+tests/                      256 tests
 firestore.rules             reglas del §5.3
 ```
 
