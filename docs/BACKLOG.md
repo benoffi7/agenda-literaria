@@ -305,6 +305,134 @@ existente y nombrarlo en el aviso, para que borrar el test rompa el vínculo.
 **Una ayuda que miente es peor que no tener ayuda**, así que si la lista de
 avisos crece, este ítem sube de prioridad.
 
+### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx`
+
+El archivo tiene 858 LOC, de las cuales **227 son lógica** y el resto JSX. Esas
+227 incluyen reglas del modelo que ningún test puede ejecutar, porque están en un
+`.tsx` y no hay testing-library (B-08):
+
+| Bloque | Líneas | Qué codifica |
+|---|---|---|
+| `formVacio()` | 49-69 | el documento por defecto del §3.1 |
+| `cambiarTipo` | 144-156 | "club de lectura ⇒ es ciclo y tiene material" (§2.2, §11) |
+| `cambiarModalidad` | 158-176 | "virtual ⇒ `sede = null`", "presencial ⇒ `online = null`" |
+| `labelsPendientes` | 188-198 | buffer de etiquetas sin persistir (D-02) |
+| `guardar()` | 200-256 | el caso de uso completo de guardado |
+
+Si un cambio futuro invierte uno de esos condicionales, `npm test` pasa entero.
+
+Extraer las cascadas y `formVacio` a un módulo puro (~90 LOC) se testea como
+`tests/duplicar.test.ts`, sin emuladores. `guardar()` a un módulo de caso de uso
+(~60 LOC) se testea como `tests/actividades.integracion.test.ts`. Es refactor
+mecánico, sin cambio de comportamiento: el archivo baja a ~250 LOC y ~150 pasan a
+ser testeables. Medida completa en
+[`10-salud-del-codigo.md`](10-salud-del-codigo.md).
+
+### B-71 · Un guardado que falla deja opciones de taxonomía huérfanas
+
+`guardar()` persiste las etiquetas nuevas en `/opciones/*` (líneas 237 y 240)
+**antes** de escribir la actividad (líneas 244-245). Si la escritura falla —red,
+permisos, slug que se tomó entre el chequeo y el write— las opciones ya se
+crearon y quedan colgadas en el desplegable.
+
+Es una versión parcial de lo que D-02 quiso evitar ("abandonar el formulario no
+debería dejar basura en la taxonomía"), y hoy no hay nada que lo note: ningún
+test lo cubre y no hay UI para limpiar taxonomías (B-06). Se limpia a mano con
+`npm run opciones:aprobar` mirando la lista, o no se limpia.
+
+Arreglo: invertir el orden —escribir la actividad primero y las opciones
+después— o mover las dos cosas a la misma transacción. Lo primero es más simple
+y deja el caso peor en "la etiqueta no se registró para la próxima vez", que es
+recuperable tipeándola otra vez. Sale con B-70, cuando `guardar()` deje de estar
+dentro del componente.
+
+### B-72 · La deduplicación §4.2 del cliente está implementada dos veces
+
+`TaxonomiaSelect.tsx` y `TagsInput.tsx` resuelven el mismo problema del §4 con
+dos implementaciones separadas, y ya divergieron:
+
+| Regla | `TaxonomiaSelect` | `TagsInput` |
+|---|---|---|
+| Filtro de sugerencias | tope 8, con texto vacío muestra las primeras 8 | tope 6, con texto vacío muestra nada |
+| Dedupe por slug | avisa "Ya existe como «X» — se va a reusar esa" | reusa en silencio |
+| Badge "sin aprobar" | JSX propio | JSX propio, idéntico |
+
+El §4.2 está marcado **crítico** en el `CLAUDE.md`. La transacción de
+`src/lib/opciones.ts` sí está testeada contra el emulador; la mitad del cliente
+—la que evita que el 90 % de los duplicados nazca— tiene dos copias, ambas en
+`.tsx`, ninguna con test.
+
+Arreglo: extraer `sugerenciasPara(texto, elegibles, tope)` y
+`resolverEtiqueta(texto, valores)` a un módulo puro de ~40 LOC con sus tests, y
+que los dos componentes las llamen. **Los componentes no se unifican**: un
+`<select>` con "Otro" y un input de chips son widgets distintos.
+
+### B-73 · Los tags no se miden
+
+`CAMPOS_TAXONOMIA_MEDIBLES` (`src/lib/analytics-eventos.ts:134`) declara `'tags'`
+como valor válido de `detalle` para `taxonomia-otro`, `taxonomia-nueva`,
+`taxonomia-reusada` y `taxonomia-sugerencia`. Pero `TagsInput.tsx` **no llama a
+`medirFuncion` en ningún lado**: ese valor no puede aparecer en GA4.
+
+O sea que el campo de taxonomía con más volumen esperado es el único invisible en
+la analítica de taxonomías, y el vocabulario declara algo que el código no puede
+producir. Cuatro llamadas a `medirFuncion`, en los mismos puntos donde
+`TaxonomiaSelect` ya las tiene (líneas 104, 182, 208). Sale gratis junto con
+B-72, que es cuando esos puntos quedan compartidos.
+
+Distinto de B-58: eso es "dos interacciones sin medir por no tocar el JSX", esto
+es un campo entero.
+
+### B-74 · `crearIssue` no tiene timeout y puede colgar el trigger de reportes
+
+`functions/index.js:230` define `TIMEOUT_DISPATCH_MS` con el comentario "Sin esto
+un socket colgado se come el tick entero", y lo usa con `AbortSignal.timeout` en
+`dispararDispatch`.
+
+`functions/reportes-trigger.js` copió las cinco cabeceras de esa llamada
+(líneas 66-71 ≡ `index.js:242-247`) **pero no el timeout**: no tiene ningún
+`AbortSignal`. Un socket colgado contra la API de GitHub deja la invocación
+corriendo hasta el timeout de la plataforma.
+
+Son dos líneas. Y es el ejemplo de por qué B-77 vale: el conocimiento estaba
+escrito, en una sola de las dos copias.
+
+### B-75 · Tres enums del modelo están copiados en `analytics-eventos.ts` sin guardia
+
+| Original (`src/types/actividad.ts`) | Copia (`src/lib/analytics-eventos.ts`) |
+|---|---|
+| `ESTADOS` (línea 26) | `ESTADOS_DESTINO` (línea 45) |
+| `MODALIDADES` (línea 23) | `MODALIDADES_MEDIBLES` (línea 47) |
+| `CAMPOS_TAXONOMIA` (línea 212) | `CAMPOS_TAXONOMIA_MEDIBLES` (línea 134) |
+
+`analytics-eventos.ts` **ya importa `@/types/actividad`** (línea 2) y ese módulo
+no importa nada, así que traer las tres constantes cuesta cero bytes de bundle:
+el argumento de D-60 (importar zod metía 68 kB en el chunk inicial) no aplica acá.
+
+Sin guardia, agregar un sexto `tipo` o un quinto `estado` hace que la analítica
+lo mande como `'otro'` en silencio — exactamente el modo de falla que D-60
+describe y previene, una góndola más allá.
+
+Arreglo: seis líneas, importar en vez de copiar. Si por algún motivo se quieren
+dejar separados, el patrón correcto ya existe: un test que las derive, como
+`tests/analytics-campos.test.ts` hace con `CAMPOS_VALIDABLES`.
+
+### B-76 · El listado muestra el estado en slug crudo
+
+`ListaActividades.tsx:124` renderiza `{a.estado}`, así que la píldora dice
+"borrador" y "publicado" en minúscula, mientras el formulario dice "Borrador" y
+"Publicado" (`ETIQUETA_ESTADO`, `ActividadFormulario.tsx:73-78`). Es la misma
+actividad en dos pantallas con dos escrituras.
+
+Pasa porque el vocabulario de etiquetas es local al formulario. Un
+`src/lib/etiquetas.ts` de ~20 LOC con los tres mapas (`estado`, `modalidad`,
+`via`) que usen el formulario y el listado lo cierra.
+
+**No incluir los mapas `ETIQUETA_*` de `functions/calendario.js`**: esos son
+prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), no
+etiquetas de UI. Unificarlos haría que un cambio de copy del panel cambie lo que
+se publica en el calendario.
+
 ## P3 — cuando sobre tiempo
 
 ### B-33 · Las etiquetas de GitHub hay que crearlas una vez
@@ -500,6 +628,66 @@ Tres cosas conocidas, ninguna urgente:
 - **La capa no atrapa el foco.** Cierra con `Escape`, con el botón y con un
   click en el fondo, y al abrirse el foco va al diálogo, pero con Tab se puede
   salir hacia el formulario de atrás. Es el mismo patrón incompleto que B-14.
+
+### B-77 · `functions/index.js` es el único archivo de `functions/` sin el corte puro/trigger
+
+327 LOC con seis responsabilidades: init de `db`, auth de Calendar, carga de
+labels, marcado de rebuild, dos triggers (`syncCalendar`, `rebuildPorOpciones`),
+el schedule `dispararRebuild` y un cliente HTTP de GitHub (líneas 239-263).
+
+El resto de `functions/` sí tiene el corte que
+[`05-patrones.md`](05-patrones.md) prescribe: `calendario.js`, `rebuild.js`,
+`historial.js` y `reportes.js` son puros (877 de las 1.502 LOC) y concentran los
+tests más densos del repo; `historial-trigger.js` y `reportes-trigger.js` son los
+wrappers. `index.js` quedó afuera, y es el archivo de 327 LOC **sin ningún test**.
+
+Ya se cobró una: el cliente de GitHub se duplicó sin el timeout (B-74). Extraer
+`functions/github.js` puro con `fetch` inyectable y mover `syncCalendar` a
+`calendario-trigger.js` es medio día y no hay diseño nuevo que discutir — el
+patrón se usa cinco veces en el mismo directorio.
+
+**No mover la copia de `CAMPOS_TAXONOMIA` de la línea 84 a `src/`:** `functions/`
+se despliega con su propio `package.json` y no puede importar hacia arriba
+(D-20 lo evaluó y descartó). Si molesta, la respuesta es un test que compare las
+dos listas.
+
+### B-78 · El 26 % de `src/lib/` es prosa, no lógica
+
+`ayuda.ts` (616 LOC de guía) y el array `NOVEDADES` (175 de las 300 LOC de
+`novedades.ts`), más `opciones-base.json`, son 937 LOC de **contenido
+editorial** conviviendo con un `slugify.ts` de 13 líneas. Se editan cuando cambia
+la funcionalidad, no cuando cambia la lógica, y son los archivos #2 y #6 más
+grandes del repo por eso.
+
+Mover el contenido a `src/contenido/` y dejar en `novedades.ts` solo las cuatro
+funciones (`novedadesNoLeidas`, `leerVisto`, `guardarVisto`, `fechaLegible`) hace
+que el ranking de tamaño vuelva a hablar de código. Es cosmético: no cambia
+comportamiento ni destraba nada, por eso es P3.
+
+Que el contenido viva en el repo y no en Firestore es decisión cerrada (D-63) y
+que sea data tipada y testeada también (D-62). Esto es solo dónde vive el
+archivo.
+
+### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección
+
+Después de B-70 el archivo queda en ~630 LOC, todas de JSX: nueve `<Seccion>`
+en un solo `return`.
+
+| Sección | Líneas | Aprox. |
+|---|---|---|
+| Qué es | 286-363 | 78 |
+| Encuentros | 364-385 | 22 |
+| Dónde | 386-515 | 130 |
+| Quién | 516-593 | 78 |
+| Arancel e inscripción | 594-693 | 100 |
+| Material / Opcional / Difusión / Vista previa | 694-858 | 165 |
+
+Vale por la superficie de conflicto: es el segundo archivo más tocado del repo
+(9 de 41 commits) y en este proyecto ya se commitearon marcadores de conflicto
+que sobrevivieron dos commits
+(`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
+ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
+`ActividadFormulario.tsx` en nueve lugares).
 
 ## Cerrados
 

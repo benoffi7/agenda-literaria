@@ -16,6 +16,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 7 | [`07-seguridad.md`](07-seguridad.md) | Qué es público y qué no. Cómo se verifica. |
 | 8 | [`08-operacion.md`](08-operacion.md) | Correr local, deployar, diagnosticar. |
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
+| 10 | [`10-salud-del-codigo.md`](10-salud-del-codigo.md) | Diagnóstico medido: tamaño, acoplamiento, duplicación. Qué conviene arreglar, qué está bien y qué no hay que tocar. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 

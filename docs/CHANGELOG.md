@@ -1,5 +1,32 @@
 # Changelog
 
+## Sin etiquetar
+
+### Diagnóstico medido de la salud del código
+
+Nuevo [`10-salud-del-codigo.md`](10-salud-del-codigo.md): tamaño, concentración,
+acoplamiento y duplicación contados sobre el árbol real, no estimados. Sin
+cambios en `src/`, `functions/`, `tests/` ni `scripts/` — es solo diagnóstico.
+
+Lo que cambió la forma de mirar el código: el problema no es que haya archivos
+grandes (el más grande es el 8,9 % del total, y dos de los tres primeros son
+prosa). Es que **1.143 LOC de lógica viven dentro de `.tsx`**, donde no hay
+testing-library que las alcance (B-08), y 227 de esas están en
+`ActividadFormulario.tsx` junto al caso de uso de guardado.
+
+También quedó medido lo que está sano y conviene no romper: cero ciclos de
+import en 62 archivos, y los dos módulos con más fan-in
+(`types/actividad.ts` con 19 consumidores, `Campo.tsx` con 12) son hojas con
+fan-out 0 — no hay god object.
+
+Diez ítems nuevos en el [backlog](BACKLOG.md), **B-70 a B-79**, todos P2 o P3:
+nada está roto y nada de esto bloquea el sitio público (B-01). Los dos con más
+filo son B-74 (`crearIssue` copió las cabeceras del cliente de GitHub pero no el
+timeout, y el comentario del original explica por qué importa) y B-73 (los tags
+no se miden: el vocabulario de analítica declara un valor que el código no puede
+producir).
+
+
 ## 1.0.1 — 2026-08-22
 
 ### La versión del panel está siempre visible al pie
