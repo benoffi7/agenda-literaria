@@ -20,3 +20,12 @@ service-account*.json
 
 # Caché local del deploy de Hosting
 .firebase/
+
+# Functions
+functions/node_modules/
+# El patrón `.env` de arriba también matchea functions/.env. Se exceptúa: solo
+# tiene el ID del calendario, que no es secreto, y sin él un clone nuevo no
+# puede deployar la Function. Los secretos van a Secret Manager.
+!functions/.env
+functions/.env.local
+functions/.env.*.local

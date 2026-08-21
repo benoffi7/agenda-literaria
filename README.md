@@ -13,8 +13,8 @@ antes de tocar código.
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ formulario completo |
 | 3. Sitio público (SSG) | ⬜ placeholder |
-| 4. Sync a Google Calendar | ⬜ |
-| 5. Trigger de rebuild | ⬜ |
+| 4. Sync a Google Calendar | ✅ |
+| 5. Trigger de rebuild | 🟡 código listo, sin desplegar |
 
 ## Arrancar
 
@@ -97,3 +97,43 @@ tests/                      cobertura de las trampas de §13
   (§5.1, trampa 5). El checkbox para publicarlo arranca destildado.
 - La service account key va en variable de entorno de CI, nunca en el repo.
 - La URL privada del ICS del calendario es un secreto: va en `.env`, no acá.
+
+## Sync a Google Calendar (§7)
+
+El calendario es un **espejo de solo lectura**: Firestore es la única fuente de
+verdad y el flujo es unidireccional (§2.1). Si alguien edita un evento directo
+en Calendar, ese cambio se pierde en el próximo sync — es el comportamiento
+esperado, no un bug.
+
+```
+functions/
+  calendario.js   diff y armado del evento — lógica pura, testeable sin red
+  index.js        los triggers de Firestore y el schedule del rebuild
+```
+
+`calendario.js` no importa Firebase ni googleapis a propósito: el diff es la
+parte más frágil del sistema y así se testea sin emuladores y sin tocar un
+calendario real. Los 27 tests de `tests/calendario.test.ts` cubren la guarda
+anti-loop, el diff por id y la propagación de un cambio de sede a las N
+sesiones del ciclo.
+
+### Autenticación
+
+La Function **corre como** la service account
+`calendar-sync@agenda-literaria.iam.gserviceaccount.com` y toma el token de las
+credenciales de su propio runtime.
+
+Es un desvío respecto del §2.6, que habla de autenticar con la *key* de la
+service account: el resultado es el mismo y no queda ninguna key para guardar,
+rotar ni filtrar. El setup del calendario es idéntico — compartirlo con el mail
+de la service account dándole **"Realizar cambios en los eventos"**.
+
+### Desplegar
+
+```bash
+firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
+```
+
+`dispararRebuild` (§8) queda **sin desplegar** hasta que existan el sitio
+público y el workflow de Actions: es un schedule cada 5 minutos que hoy no
+tendría nada que disparar.
