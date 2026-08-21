@@ -252,6 +252,28 @@ Las cabeceras de `firebase.json` cubren el HTML, `/version.json` y
 cuando exista hay que decidir su cache — no lleva hash en el nombre y cambia en
 cada rebuild, así que probablemente `no-cache` o un `max-age` corto.
 
+### B-55 · Instrumentar el pegado de coordenadas de la sede
+
+El vocabulario ya está: `funcion_usada` acepta `coordenadas-pegar` y
+`coordenadas-fallo`, con `detalle` en `coord-link-corto`,
+`coord-sin-coordenadas`, `coord-coma-decimal` y `coord-formato`
+([`09-analitica.md`](09-analitica.md)). Falta **una línea por rama** en
+`src/components/admin/CoordenadasSede.tsx`, que se mergeó después de escribir la
+instrumentación.
+
+Vale la pena porque decide el arreglo: si el 80% de los fallos es un link corto,
+lo que hay que hacer es resolverlos, no explicar mejor el campo.
+
+### B-56 · Enchufar `registrarVersion(VERSION_APP)`
+
+`src/lib/version.ts` se mergeó después, así que el setter existe
+(`registrarVersion` en `src/lib/analytics.ts`) pero nadie lo llama: hoy los
+eventos viajan sin el parámetro `version`.
+
+Es **una línea** en `AdminApp` (o en `admin.astro`):
+`registrarVersion(VERSION_APP)`. Sin eso, un pico de errores de validación no se
+puede atribuir a un deploy, que es la mitad de la utilidad de medirlos.
+
 ---
 
 ## P3 — cuando sobre tiempo
@@ -373,6 +395,43 @@ dos personas la usan y ninguna la ve en su desplegable.
 Que dos cuentas distintas la usen es buena señal de que es vocabulario real, y
 aprobarla ahí sería automático y barato. Contra: aprueba sin que nadie mire, y
 alcanza con que la segunda persona repita el mismo typo.
+
+### B-57 · El abandono por cierre de pestaña se pierde si el SDK no cargó
+
+`formulario_abandonado` se dispara también en `pagehide`, pero el SDK de
+analítica se carga diferido (D-58): si alguien abre el panel y cierra la pestaña
+antes de que arranque, ese evento se encola y muere con la página.
+
+El camino que importa —"Cancelar" / "← Volver"— no sale de la página y se mide
+bien. Si el número de abandonos parece bajo, esta es la primera sospecha.
+Arreglarlo bien pide `sendBeacon` contra el Measurement Protocol, que es bastante
+más máquina de la que amerita.
+
+### B-58 · Dos interacciones sin medir, por no tocar el JSX
+
+Marcar un encuentro como **cancelado** y tildar **"publicar el link de la
+reunión"** están en `onChange` inline dentro del JSX, y medirlas exigía
+reacomodar el markup de componentes que otros cambios están tocando. Se dejaron
+afuera a propósito.
+
+`url_publica` se mide igual en `guardado_ok`, que es el dato que importa. La
+cancelación de un encuentro no se mide en ninguna parte.
+
+Tampoco está el **embudo fino** del formulario (qué campo se tocó último antes de
+abandonar): eso pide instrumentar 30+ inputs o un `onFocus` a nivel del `<form>`,
+y hoy `formulario_abandonado.faltantes` da la ubicación gruesa sin tocar nada.
+
+### B-59 · La instrumentación suma 2.8 KB gzip al chunk del panel
+
+El SDK de analítica está diferido y no toca el chunk inicial (D-58), pero la
+proyección y la taxonomía sí: +11.2 KB (2.8 KB gzip) sobre `AdminApp.js`.
+
+Si el trabajo de bajar el bundle (B-09) necesita esos kilobytes, se puede mover
+`construirEvento` y los vocabularios al lado diferido y dejar que `medir()`
+encole los valores crudos. **No se hizo de entrada** porque parte la garantía de
+privacidad en dos pasos: hoy la proyección es un único portón sincrónico, y eso
+vale más que 2.8 KB.
+
 
 ---
 

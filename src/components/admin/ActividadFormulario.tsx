@@ -12,6 +12,7 @@ import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
+import { useMedicionFormulario } from '@/components/admin/useMedicionFormulario';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
 import { actualizarActividad, crearActividad, documentoAForm, slugDisponible } from '@/lib/actividades';
 import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
@@ -92,6 +93,9 @@ export function ActividadFormulario({
   const [fallo, setFallo] = useState<string | null>(null);
 
   useFormularioSucio(form);
+
+  /** Analítica del ciclo de carga. No sale contenido: docs/09-analitica.md. */
+  const medicion = useMedicionFormulario(form, inicial ? 'editar' : copia ? 'duplicar' : 'nueva');
 
   /**
    * Etiquetas creadas con "Otro" que todavía no están en `/opciones/*`.
@@ -195,6 +199,7 @@ export function ActividadFormulario({
 
   const guardar = async (estadoDestino?: ActividadForm['estado']) => {
     setFallo(null);
+    const accion = estadoDestino === 'borrador' ? 'borrador' : 'submit';
     const candidato: ActividadForm = estadoDestino
       ? { ...form, estado: estadoDestino }
       : form;
@@ -205,6 +210,7 @@ export function ActividadFormulario({
       for (const issue of parsed.error.issues) {
         mapa[issue.path.join('.')] = issue.message;
       }
+      medicion.validacionFallida(parsed.error.issues, accion);
       setErrores(mapa);
       setFallo('Revisá los campos marcados.');
       return;
@@ -215,6 +221,7 @@ export function ActividadFormulario({
     try {
       const slug = slugify(candidato.slug);
       if (!(await slugDisponible(slug, inicial?.id))) {
+        medicion.guardadoFallido('slug-tomado', accion);
         setErrores({ slug: 'Ya hay otra actividad con este slug' });
         setFallo('El slug está tomado.');
         return;
@@ -237,8 +244,10 @@ export function ActividadFormulario({
         ? (await actualizarActividad(inicial.id, conSlug, uid), inicial.id)
         : await crearActividad(conSlug, uid);
 
+      medicion.guardadoOk(conSlug, accion);
       onGuardado(id);
     } catch (e) {
+      medicion.guardadoFallido(e, accion);
       setFallo(e instanceof Error ? e.message : 'No se pudo guardar.');
     } finally {
       setGuardando(false);

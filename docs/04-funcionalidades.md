@@ -247,6 +247,36 @@ cargó quedan en Firestore.
 **Limitación:** las respuestas del dueño se leen en GitHub. El panel todavía no
 las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
 
+## Analítica del panel
+
+El panel está instrumentado para encontrar **fricción**, no para contar visitas:
+dónde se abandona una carga, qué campos fallan validación y con qué frecuencia,
+cuánto tarda una carga completa, qué funciones se usan de verdad, y mobile
+contra escritorio.
+
+Son **ocho eventos** con nombres estables, documentados uno por uno en
+[`09-analitica.md`](09-analitica.md) — ese documento es la referencia, porque el
+valor de esto aparece meses después y nadie se acuerda qué medía cada nombre.
+
+Lo que hay que saber sin abrirlo:
+
+- **No sale contenido ni datos personales.** Ni títulos, ni descripciones, ni
+  mails de inscripción, ni links de reunión, ni handles, ni direcciones, ni
+  uids, ni el mail de quien está logueado. Se mide *que* un campo falló
+  validación y *cuál* campo, nunca qué se escribió (ver
+  [`07-seguridad.md`](07-seguridad.md)).
+- **No se mide en desarrollo.** Con `PUBLIC_USE_EMULATORS=true` no sale nada, y
+  los tests corren con ese flag.
+- **Un fallo de analítica no rompe el panel.** El SDK entra por un `import()`
+  diferido: si lo bloquea un ad blocker o falla la red, el formulario sigue
+  funcionando igual.
+- **Las dos personas se distinguen por un identificador aleatorio** del
+  navegador, no por el uid ni por el mail.
+- Los datos se ven en GA4, pero **hay que registrar los parámetros como
+  dimensiones personalizadas** antes de que aparezcan en los informes, y los
+  informes tardan 24-48 h. Los pasos están en
+  [`09-analitica.md`](09-analitica.md).
+
 
 ## Sync a Google Calendar
 

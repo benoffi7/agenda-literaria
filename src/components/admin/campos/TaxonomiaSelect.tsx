@@ -5,6 +5,7 @@ import {
   claseBotonTinta,
   claseInput,
 } from '@/components/admin/campos/Campo';
+import { medirFuncion } from '@/lib/analytics';
 import { normalize } from '@/lib/normalize';
 import { estaAprobada } from '@/lib/opciones';
 import { slugify } from '@/lib/slugify';
@@ -100,6 +101,7 @@ export function TaxonomiaSelect({
 
   const confirmarTexto = () => {
     if (!slugTipeado) return;
+    medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
     if (coincidencia) {
       // Ya existe: se reusa, no se duplica.
       onChange(coincidencia.slug);
@@ -177,6 +179,7 @@ export function TaxonomiaSelect({
                   type="button"
                   className="flex min-h-touch w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
                   onClick={() => {
+                    medirFuncion('taxonomia-sugerencia', campo);
                     onChange(v.slug);
                     setModoOtro(false);
                     setTexto('');
@@ -202,6 +205,7 @@ export function TaxonomiaSelect({
       value={value || ''}
       onChange={(e) => {
         if (e.target.value === OTRO) {
+          medirFuncion('taxonomia-otro', campo);
           setModoOtro(true);
           return;
         }

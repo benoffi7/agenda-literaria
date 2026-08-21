@@ -15,6 +15,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 6 | [`06-decisiones.md`](06-decisiones.md) | Decisiones tomadas durante la implementación, y los desvíos del `CLAUDE.md` con su motivo. |
 | 7 | [`07-seguridad.md`](07-seguridad.md) | Qué es público y qué no. Cómo se verifica. |
 | 8 | [`08-operacion.md`](08-operacion.md) | Correr local, deployar, diagnosticar. |
+| 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 

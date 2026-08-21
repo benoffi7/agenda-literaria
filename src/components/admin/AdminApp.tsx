@@ -3,6 +3,9 @@ import { Suspense, lazy, useEffect, useState, type ComponentType, type ReactNode
 // desde el primer render, incluso en la pantalla de login. No arrastra
 // Firestore, así que no rompe el corte del bundle de D-51.
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
+// El SDK de analítica lo carga este módulo de forma diferida, así que el
+// import no engorda el chunk inicial.
+import { medirPanelAbierto } from '@/lib/analytics';
 import {
   loginConGoogle,
   logout,
@@ -87,6 +90,12 @@ export function AdminApp() {
       setEsAdmin(u ? await tieneClaimAdmin(u) : null);
       setCargando(false);
     });
+  }, []);
+
+  // Analítica del panel. Deliberadamente fuera del efecto de auth y sin datos
+  // de la sesión: no se mide ni el uid ni el mail (docs/09-analitica.md).
+  useEffect(() => {
+    medirPanelAbierto();
   }, []);
 
   if (cargando) {

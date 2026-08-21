@@ -338,6 +338,80 @@ el calendario (§7.3), usando el mismo `debeExistir` que el sync.
 19 tests nuevos (158 en total), entre ellos que la vista previa no muestra el
 link privado de la reunión, la difusión interna ni la URL del material privado.
 
+### Analítica del panel: medir fricción, no visitas
+
+**Pedido:** entender qué hace la gente al cargar una actividad y, sobre todo,
+dónde se traba. El formulario tiene 30+ campos condicionales y los dos problemas
+que ya aparecieron —el placeholder que se veía como una opción elegida (D-12) y
+el zoom de iOS— nadie los vio hasta que el dueño se frustró y los reportó a
+mano. La idea es encontrar el próximo antes de eso.
+
+**Ocho eventos** con nombres estables, documentados uno por uno en
+[`09-analitica.md`](09-analitica.md), que es la referencia y no una nota al pie:
+el valor de esto aparece meses después, cuando alguien mira un gráfico y tiene
+que saber qué significaba cada nombre.
+
+Lo que responden, en orden de utilidad:
+
+- `campo_invalido` — **qué campo falla validación y con qué frecuencia**, uno por
+  campo para poder rankearlos. El schema ya devolvía los errores por `path`; el
+  vocabulario de rutas se deriva del propio schema (D-60), así que un campo
+  nuevo se mide solo.
+- `formulario_abandonado` — **dónde se abandona una carga**: qué grupos de campos
+  quedaron sin completar, cuánto tiempo pasó, si había trabajo adentro.
+- `guardado_ok` — **cuánto tarda una carga completa**, y qué forma tiene lo que
+  se carga (encuentros, modalidad, material, tags, si se publicó el link).
+- `guardado_fallido` — guardados que fallan y por qué, con el motivo
+  clasificado.
+- `funcion_usada` — **qué funciones se usan de verdad**: el generador de N
+  encuentros, "Otro" en las taxonomías, duplicar, los acordeones.
+- `panel_abierto`, `formulario_abierto`, `validacion_fallida` — los
+  denominadores.
+
+Todos los eventos llevan `dispositivo` (mobile / tablet / escritorio) y `ancho`,
+que es la mitad del análisis: el bug del zoom de iOS solo se ve comparando
+mobile contra escritorio.
+
+**Nada de esto lleva contenido, y no depende de acordarse de filtrar.** La
+proyección (`src/lib/analytics-eventos.ts`) es una whitelist en las dos
+direcciones: un evento no declarado no manda nada, un parámetro no declarado se
+descarta, y **no existe un sanitizador de texto libre** — entero, booleano, enum
+cerrado, o ruta de campo del schema. Un `medir()` que pase el formulario entero
+produce un payload vacío, no una fuga (D-56). Es el mismo criterio del §5.2 y de
+`toPublic.ts`, un paso más estricto porque el destino es un tercero.
+
+`tests/analytics-privacidad.test.ts` lo verifica como se verifica el link de
+Zoom en el calendario: llena un formulario con centinelas en cada campo de texto
+—incluidos el link de la reunión, la difusión interna, el uid y el mail del
+admin—, los mete como parámetros de cada evento declarado, y busca los
+centinelas en el payload. Además prueba **cada parámetro de cada evento** uno por
+uno, así que un parámetro futuro que acepte texto libre rompe el test sin que
+haya que acordarse de escribirle un caso.
+
+Las dos personas que cargan se distinguen por un identificador **aleatorio** del
+navegador, no por el uid ni por un hash del mail: con dos admins conocidos, ese
+hash se revierte probando dos entradas (D-57).
+
+**No engorda el chunk inicial del panel más que su propio código.**
+`firebase/analytics` entra por un `import()` dinámico disparado al idle: queda en
+un chunk propio de 34.5 KB (7.3 KB gzip) sin `modulepreload`, que no se descarga
+hasta que el panel está interactivo. La instrumentación en sí suma 11.2 KB
+(2.8 KB gzip). El bundle del sitio público no cambió ni un byte (D-58).
+
+**No se mide en desarrollo** (con `PUBLIC_USE_EMULATORS=true` no sale nada, y los
+tests corren con ese flag) y **un fallo de analítica no rompe el panel**: si un
+ad blocker bloquea el `import()`, la cola se descarta y el formulario sigue
+igual.
+
+En los componentes el cambio es mínimo: una llamada por punto de medición. Toda
+la lógica vive en archivos nuevos (`analytics-eventos.ts`, `analytics.ts`,
+`useMedicionFormulario.ts`).
+
+**Lo que quedó sin medir**, para no refactorizar nada: el embudo campo por campo
+(exigiría instrumentar 30+ inputs), y dos casillas que están en `onChange`
+inline del JSX. Está en el backlog ([B-58](BACKLOG.md)).
+
+
 ### Duplicar una actividad entera · B-11
 
 **Pedido:** un ciclo nuevo suele ser el del año anterior con otras fechas, y
