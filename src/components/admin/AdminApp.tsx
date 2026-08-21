@@ -5,7 +5,8 @@ import { Suspense, lazy, useEffect, useState, type ComponentType, type ReactNode
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
-import { medirPanelAbierto } from '@/lib/analytics';
+import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
+import { VERSION_APP } from '@/lib/version';
 import {
   loginConGoogle,
   logout,
@@ -95,6 +96,9 @@ export function AdminApp() {
   // Analítica del panel. Deliberadamente fuera del efecto de auth y sin datos
   // de la sesión: no se mide ni el uid ni el mail (docs/09-analitica.md).
   useEffect(() => {
+    // Sin esto los eventos viajan sin `version` y un pico de errores no se
+    // puede atribuir a un deploy, que es la mitad del valor de medir.
+    registrarVersion(VERSION_APP);
     medirPanelAbierto();
   }, []);
 

@@ -1,4 +1,3 @@
-import { actividadFormSchema } from '@/lib/schema';
 import { slugify } from '@/lib/slugify';
 import type { ActividadForm } from '@/types/actividad';
 
@@ -185,50 +184,85 @@ export type Grupo = (typeof GRUPOS)[number];
  * Los índices de array se colapsan a `N` (`sesiones.3.fin` → `sesiones.N.fin`):
  * lo que importa es qué campo falla, no en qué fila.
  */
-const desenvolver = (esquema: unknown): any => {
-  let n: any = esquema;
-  for (let i = 0; i < 12; i++) {
-    const def = n?._def;
-    if (!def) break;
-    // ZodEffects (refine/superRefine/transform) guarda el interior en `schema`;
-    // Optional / Nullable / Default lo guardan en `innerType`.
-    if (def.schema) n = def.schema;
-    else if (def.innerType) n = def.innerType;
-    else break;
-  }
-  return n;
-};
-
-const recorrerSchema = (
-  esquema: unknown,
-  prefijo: string,
-  salida: Set<string>,
-  profundidad = 0,
-): void => {
-  if (profundidad > 6) return;
-  const n = desenvolver(esquema);
-  const tipo = n?._def?.typeName;
-  if (tipo === 'ZodObject') {
-    for (const [clave, hijo] of Object.entries(n.shape as Record<string, unknown>)) {
-      const ruta = prefijo ? `${prefijo}.${clave}` : clave;
-      salida.add(ruta);
-      recorrerSchema(hijo, ruta, salida, profundidad + 1);
-    }
-  } else if (tipo === 'ZodArray' && prefijo) {
-    const ruta = `${prefijo}.N`;
-    salida.add(ruta);
-    recorrerSchema(n._def.type, ruta, salida, profundidad + 1);
-  }
-};
-
-const derivarCampos = (): Set<string> => {
-  const salida = new Set<string>();
-  recorrerSchema(actividadFormSchema, '', salida);
-  return salida;
-};
-
-/** Rutas de campo que el schema puede reportar como inválidas. */
-export const CAMPOS_VALIDABLES: ReadonlySet<string> = derivarCampos();
+/**
+ * Rutas de campo que el schema puede reportar como inválidas.
+ *
+ * Es una constante y no una derivación del schema en runtime, aunque derivarla
+ * sería más elegante. El motivo es de bundle: importar `@/lib/schema` acá
+ * arrastra zod, y como `AdminApp` importa el transporte de analítica de forma
+ * estática, zod terminaba en el chunk inicial del panel — 68 kB que el corte de
+ * B-09 justamente había sacado de ahí.
+ *
+ * La garantía que se buscaba —que esta lista no pueda quedar desactualizada en
+ * silencio— no se pierde: se mueve al test. `tests/analytics-campos.test.ts`
+ * deriva el vocabulario del schema de zod y falla si difiere de esta lista, con
+ * el detalle de qué sobra y qué falta. Misma protección, sin costo en runtime.
+ */
+export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
+  'arancel',
+  'arancel.notas',
+  'arancel.tipo',
+  'descripcion',
+  'destacado',
+  'difusion',
+  'difusion.arrobar',
+  'difusion.arrobar.N',
+  'difusion.notas',
+  'esCiclo',
+  'estado',
+  'imagenUrl',
+  'inscripcion',
+  'inscripcion.cierra',
+  'inscripcion.cupo',
+  'inscripcion.destino',
+  'inscripcion.requiere',
+  'inscripcion.via',
+  'material',
+  'material.items',
+  'material.items.N',
+  'material.items.N.entrega',
+  'material.items.N.publico',
+  'material.items.N.tipo',
+  'material.items.N.titulo',
+  'material.items.N.url',
+  'material.tiene',
+  'modalidad',
+  'online',
+  'online.plataforma',
+  'online.url',
+  'online.urlPublica',
+  'organizador',
+  'organizador.instagram',
+  'organizador.nombre',
+  'organizador.web',
+  'sede',
+  'sede.barrio',
+  'sede.ciudad',
+  'sede.direccion',
+  'sede.geo',
+  'sede.geo.lat',
+  'sede.geo.lng',
+  'sede.indicaciones',
+  'sede.nombre',
+  'sesiones',
+  'sesiones.N',
+  'sesiones.N.calendarEventId',
+  'sesiones.N.cancelada',
+  'sesiones.N.fin',
+  'sesiones.N.id',
+  'sesiones.N.inicio',
+  'sesiones.N.lectura',
+  'sesiones.N.tema',
+  'slug',
+  'tags',
+  'tags.N',
+  'tallerista',
+  'tallerista.bio',
+  'tallerista.instagram',
+  'tallerista.nombre',
+  'tipo',
+  'titulo',
+]);
 
 /**
  * Ruta de campo → ruta normalizada, o `'otro'` si no es una ruta del schema.

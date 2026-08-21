@@ -166,7 +166,7 @@ scripts/
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
   aprobar-opciones.mjs      aprueba opciones de taxonomía pendientes (§4.3)
-tests/                      365 tests
+tests/                      420 tests
 firestore.rules             reglas del §5.3
 ```
 
