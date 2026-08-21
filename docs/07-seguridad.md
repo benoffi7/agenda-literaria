@@ -39,6 +39,83 @@ Tres cosas se mantienen porque son las que hacen que el desvío sea aceptable:
 Si la actividad es un encuentro abierto sin inscripción, publicar el link tiene
 sentido. Si tiene cupo, no: el link circula y el cupo deja de existir.
 
+## Analítica del panel
+
+El panel manda eventos a GA4 (ver [`09-analitica.md`](09-analitica.md)). Es una
+tercera salida además del `events.json` y del calendario, y la más estricta de
+las tres: **acá no sale contenido, nunca, ni con permiso del dueño.**
+
+### Qué se manda
+
+Solo datos derivados: enteros, booleanos, valores de vocabularios cerrados, y
+**rutas de campo** del schema (`arancel.tipo`, `sesiones.N.fin`).
+
+Se mide *que* un campo falló validación y *cuál* campo. Nunca *qué* se escribió.
+
+### Qué NUNCA sale
+
+| Qué | Nota |
+|---|---|
+| Cualquier valor de cualquier campo | títulos, descripciones, temas, lecturas, notas |
+| `inscripcion.destino` | el mail o teléfono de inscripción **sí** va al JSON público, pero no a analítica: acá no aporta nada |
+| `online.url` | ni siquiera con `urlPublica: true`. El desvío del D-15 aplica al JSON y al calendario, no a esto |
+| `difusion` | trabajo interno |
+| `material.items[].url` y `titulo` | |
+| `sede.direccion`, `sede.nombre`, `indicaciones` | |
+| Handles de Instagram, webs, `imagenUrl` | |
+| `createdBy` / `updatedBy`, el uid y el mail del usuario logueado | ni crudos ni hasheados |
+| El mensaje de un error | `formADocumento` tira `Fecha inválida: "<lo tipeado>"`: el mensaje *es* contenido. Sale la etiqueta `fecha-invalida` |
+
+### Cómo se garantiza
+
+Es el mismo criterio del §5.2 y de `toPublic.ts`: **se manda una proyección
+deliberada, no el objeto.** Acá la proyección es una whitelist en las dos
+direcciones (`construirEvento`, en `src/lib/analytics-eventos.ts`):
+
+1. Un **nombre de evento** no declarado no manda nada.
+2. Un **parámetro** no declarado en ese evento se descarta.
+3. Cada parámetro declarado tiene un sanitizador, y **no existe un sanitizador
+   de texto libre**: entero, booleano, enum cerrado, ruta del schema, o lista de
+   esos. Un string fuera de su vocabulario se reemplaza por `otro`.
+
+La consecuencia es la propiedad que importa: **no depende de que cada punto de
+medición se acuerde de filtrar.** Un `medir()` mal escrito que pase el
+formulario entero produce un payload vacío, no una fuga.
+
+El identificador que distingue a las dos personas es un valor **aleatorio**
+generado en el navegador y guardado en `localStorage`, no el uid ni el mail, y
+tampoco un hash de ellos: con dos admins conocidos, un hash del mail se
+revierte probando dos entradas (D-57).
+
+### Cómo verificar
+
+`tests/analytics-privacidad.test.ts` es el equivalente, para la analítica, del
+test que verifica que el link de Zoom no sale al calendario. No confía en la
+intención del código: arma el payload y busca el dato adentro.
+
+```bash
+npx vitest run tests/analytics-privacidad.test.ts
+```
+
+Qué verifica:
+
+- Un formulario con **centinelas** en cada campo de texto —incluidos el link de
+  la reunión, la difusión interna, la URL del material privado, el uid y el mail
+  del admin— metido como parámetros de **cada** evento declarado: ningún
+  centinela aparece en ningún payload.
+- Un centinela en **cada parámetro declarado de cada evento**, uno por uno. Es la
+  garantía estructural: si mañana alguien agrega un parámetro que acepte texto
+  libre, el test falla sin que haya que acordarse de escribirle un caso.
+- Que ningún valor de parámetro sea un objeto o un array (un valor anidado podría
+  esconder contenido), y que todo string esté en un vocabulario cerrado.
+- Que los issues **reales** de zod sobre un formulario roto produzcan rutas de
+  campo reconocidas, y no valores.
+- Que con los emuladores prendidos la analítica esté apagada.
+
+Sobre el sistema real, lo que corresponde es el DebugView de GA4: mirar evento
+por evento lo que llega y confirmar que no hay un parámetro de más. Está en
+[`09-analitica.md`](09-analitica.md).
+
 ## Autorización
 
 ### Reglas de Firestore

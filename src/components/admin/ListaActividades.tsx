@@ -6,6 +6,7 @@ import {
 } from '@/components/admin/campos/Campo';
 import { MenuAcciones } from '@/components/admin/MenuAcciones';
 import { borrarActividad, documentoAForm, listarActividades } from '@/lib/actividades';
+import { medirFuncion } from '@/lib/analytics';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { normalize } from '@/lib/normalize';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
@@ -57,6 +58,7 @@ export function ListaActividades({ onEditar, onNueva, onDuplicar, version }: Pro
    * contra el choque sigue siendo `slugDisponible` en el submit.
    */
   const duplicar = (a: ActividadConId) => {
+    medirFuncion('actividad-duplicar', undefined, a.sesiones?.length ?? 0);
     const copia = duplicarActividadForm(documentoAForm(a), {
       tomados: actividades.map((x) => x.slug),
     });

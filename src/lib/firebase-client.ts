@@ -27,6 +27,10 @@ const config = {
   storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
+  // Analítica del panel. Va en la config del app para que `getAnalytics` no
+  // tenga que ir a buscar la config dinámica por red (docs/09-analitica.md).
+  // Si falta, no se mide: es uno de los portones de `debeMedir`.
+  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const usarEmuladores = import.meta.env.PUBLIC_USE_EMULATORS === 'true';

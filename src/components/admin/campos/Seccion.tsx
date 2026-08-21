@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
+import { medirSeccion } from '@/lib/analytics';
 
 interface Props {
   titulo: string;
@@ -53,7 +54,12 @@ export function Seccion({
           type="button"
           aria-expanded={abierta}
           aria-controls={idPanel}
-          onClick={() => setAbierta((v) => !v)}
+          onClick={() => {
+            // Qué acordeones se despliegan de verdad. Va el slug del título,
+            // que es un literal del código (docs/09-analitica.md).
+            medirSeccion(titulo, !abierta);
+            setAbierta((v) => !v);
+          }}
           className="flex min-h-touch w-full items-center px-4 py-3"
         >
           {encabezado}

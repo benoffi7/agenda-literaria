@@ -345,6 +345,109 @@ por `Escape`. El panel no tiene librería de UI y no se agregó ninguna.
 
 ---
 
+## D-56 · La analítica manda una proyección, no el objeto
+
+**Decisión:** los eventos de analítica del panel pasan por una whitelist en las
+dos direcciones: un nombre de evento no declarado no manda nada, y un parámetro
+no declarado en ese evento se descarta. Cada parámetro tiene un sanitizador, y
+**no existe un sanitizador de texto libre**: entero, booleano, enum cerrado,
+ruta de campo del schema, o lista de esos.
+
+**Motivo:** es el criterio del §5.2 y de `toPublic.ts` —se manda una proyección
+deliberada, no el objeto— pero llevado un paso más allá, porque el destino es un
+tercero. La diferencia práctica es de dónde viene la garantía: con filtros en
+cada punto de medición, la privacidad depende de que quince llamadas se acuerden
+de filtrar; con la whitelist, un `medir()` que pase el formulario entero produce
+un payload vacío.
+
+**Alternativa descartada:** sanitizar en cada `medir()`. Se descartó por lo de
+arriba, y porque el mismo argumento del D-07 aplica: lo que se mantiene a mano
+se desactualiza en silencio, y acá el silencio es una fuga.
+
+**Costo:** medir un dato nuevo obliga a declararlo y a elegirle un vocabulario.
+Es la intención.
+
+---
+
+## D-57 · El perfil es un identificador aleatorio, no el uid ni un hash del mail
+
+**Decisión:** para distinguir a las dos personas que cargan, se usa un valor
+aleatorio generado en el navegador y guardado en `localStorage`.
+
+**Alternativas descartadas:**
+
+- **El uid o el mail.** Son exactamente lo que el §5.1 mantiene fuera de toda
+  salida.
+- **Un hash del mail.** Parece la opción prudente y no lo es: el conjunto de
+  admins es de dos personas conocidas, así que el hash se revierte probando dos
+  entradas. Sería el mail con otro nombre.
+- **Solo el `client_id` de GA4.** Alcanzaría, pero es una cookie propia de GA y
+  no se puede leer ni razonar sobre ella desde el código.
+
+**Costo:** el identificador se pierde si se limpia el navegador, y una misma
+persona en dos aparatos cuenta como dos. Aceptable: lo único que se necesita es
+separar "una persona se trabó diez veces" de "diez personas se trabaron una
+vez".
+
+---
+
+## D-58 · El SDK de analítica se carga diferido, y su ausencia no rompe nada
+
+**Decisión:** `firebase/analytics` entra por un `import()` dinámico disparado con
+`requestIdleCallback`, y todo `medir()` está envuelto en un `try/catch`.
+
+**Motivo:** el bundle del panel ya pesa ~570 KB (B-09) y hay trabajo en curso
+para bajarlo; sumarle el SDK al chunk inicial sería trabajar en contra. Medido:
+el SDK queda en un chunk propio de 34.5 KB (7.3 KB gzip) que no lleva
+`modulepreload` y solo se descarga cuando el navegador está libre.
+
+Y un ad blocker que bloquee ese `import()` no puede tirar el formulario: los
+eventos previos a la carga se encolan (máximo 30), y si el SDK nunca llega la
+cola se descarta.
+
+**Costo:** un evento disparado al cerrar la pestaña se pierde si el SDK todavía
+no cargó ([B-57](BACKLOG.md)). El camino que importa —"Cancelar" / "Volver"— no
+sale de la página, así que se mide igual.
+
+---
+
+## D-59 · Ocho eventos con nombres estables, y uno por campo inválido
+
+**Decisión:** la taxonomía tiene ocho eventos
+([`09-analitica.md`](09-analitica.md)), no uno por interacción. Las funciones del
+panel van todas en `funcion_usada` con un enum cerrado.
+
+**Motivo:** cincuenta eventos sueltos no se analizan; diez bien elegidos sí. Un
+test fija el tope en diez, para que el número once sea una decisión y no un
+descuido, y otro verifica que la lista de nombres implementados sea exactamente
+la documentada — si se agrega uno sin documentarlo, falla.
+
+**La excepción es `campo_invalido`**, que se dispara una vez **por campo** además
+del `validacion_fallida` que resume el intento. Es redundante a propósito: GA4 no
+sabe desarmar una lista concatenada, y sin un evento por campo no se puede
+rankear qué campo traba a la gente, que es la pregunta que motivó todo esto.
+
+---
+
+## D-60 · El vocabulario de campos se deriva del schema, no se mantiene a mano
+
+**Decisión:** las rutas de campo válidas para `campo_invalido` se derivan
+recorriendo `actividadFormSchema` al cargar el módulo, colapsando los índices de
+array a `N` (`sesiones.3.fin` → `sesiones.N.fin`).
+
+**Motivo:** es el mismo argumento del D-07. Una lista escrita al lado del schema
+se desactualiza, y acá desactualizarse significa que un campo nuevo que falla
+validación se reporta como `otro` justo cuando alguien está buscando por qué la
+gente se traba en él. En silencio, otra vez.
+
+**Costo:** el recorrido usa las estructuras internas de zod (`_def.typeName`,
+`shape`, `innerType`). Es la parte más frágil de la instrumentación, y por eso
+hay un test que verifica que el vocabulario derivado contenga rutas concretas y
+que tenga un tamaño plausible: si una actualización de zod rompe el recorrido, el
+test falla en vez de dejar todo en `otro`.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActividadFormulario } from '@/components/admin/ActividadFormulario';
 import { ListaActividades } from '@/components/admin/ListaActividades';
+import { medirPanelAbierto } from '@/lib/analytics';
 import {
   loginConGoogle,
   logout,
@@ -36,6 +37,12 @@ export function AdminApp() {
       setEsAdmin(u ? await tieneClaimAdmin(u) : null);
       setCargando(false);
     });
+  }, []);
+
+  // Analítica del panel. Deliberadamente fuera del efecto de auth y sin datos
+  // de la sesión: no se mide ni el uid ni el mail (docs/09-analitica.md).
+  useEffect(() => {
+    medirPanelAbierto();
   }, []);
 
   if (cargando) {

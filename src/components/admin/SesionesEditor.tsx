@@ -6,6 +6,7 @@ import {
   claseBotonTinta,
   claseInput,
 } from '@/components/admin/campos/Campo';
+import { medirFuncion } from '@/lib/analytics';
 import {
   aDatetimeLocal,
   deDatetimeLocal,
@@ -49,19 +50,25 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
     const ultima = sesiones[sesiones.length - 1];
     const base = ultima ? deDatetimeLocal(ultima.inicio) : null;
     const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : new Date();
+    medirFuncion('encuentro-agregar', undefined, sesiones.length + 1);
     onChange([...sesiones, sesionVacia(siguiente, duracion * 60_000)]);
   };
 
   /** Borra por id, nunca por índice (trampa 2). */
-  const borrar = (id: string) => onChange(sesiones.filter((s) => s.id !== id));
+  const borrar = (id: string) => {
+    medirFuncion('encuentro-borrar', undefined, sesiones.length - 1);
+    onChange(sesiones.filter((s) => s.id !== id));
+  };
 
   const duplicar = (id: string) => {
     const s = sesiones.find((x) => x.id === id);
+    if (s) medirFuncion('encuentro-duplicar', undefined, sesiones.length + 1);
     if (s) onChange([...sesiones, duplicarSesion(s, 7)]);
   };
 
   const generar = () => {
     const inicio = primera?.inicio ?? aDatetimeLocal(new Date());
+    medirFuncion('encuentros-generar', undefined, cantidad);
     onChange(
       generarSesiones({ cantidad, inicio, duracionMinutos: duracion, cadaDias }),
     );
@@ -84,7 +91,10 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
         </button>
         <button
           type="button"
-          onClick={() => onChange(ordenarPorInicio(sesiones))}
+          onClick={() => {
+            medirFuncion('encuentros-ordenar', undefined, sesiones.length);
+            onChange(ordenarPorInicio(sesiones));
+          }}
           className={claseBotonSecundario}
           disabled={sesiones.length < 2}
         >
