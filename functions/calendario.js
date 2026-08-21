@@ -10,8 +10,10 @@ export const TIMEZONE = 'America/Argentina/Buenos_Aires';
  * §5.1 y §7.4 — lo que NUNCA entra al evento, porque el calendario es público
  * y scrapeable igual que el events.json:
  *
- *  - `online.url`      → el link de la reunión se manda al inscribirse.
- *                        Publicarlo habilita zoombombing (trampa 5).
+ *  - `online.url` con `urlPublica: false` → el link de la reunión se manda
+ *                        al inscribirse. Publicarlo habilita zoombombing
+ *                        (trampa 5). Con `urlPublica: true` el dueño decidió
+ *                        publicarlo y sale en la descripción.
  *  - `difusion`        → trabajo interno.
  *  - `material.items[].url` con `publico: false` → solo tipo y título.
  *  - `createdBy` / `updatedBy` → uids.
@@ -176,11 +178,16 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
     if (mapa) donde.push(`Mapa: ${mapa}`);
   }
   if (actividad.online?.plataforma) {
-    // La plataforma sí; el link NO (§7.4, trampa 5).
-    donde.push(
-      `Plataforma: ${etiqueta(labels, 'plataforma', actividad.online.plataforma)} ` +
-        '(el link se envía a quienes se inscriban)',
-    );
+    const plataforma = etiqueta(labels, 'plataforma', actividad.online.plataforma);
+    // El §7.4 dice que el link no va nunca. Se respeta el flag `urlPublica` del
+    // modelo (§3.1) por decisión explícita del dueño: sin eso, la casilla del
+    // formulario prometía algo que no pasaba. Default false, y el formulario
+    // advierte sobre el zoombombing.
+    if (actividad.online.urlPublica && actividad.online.url) {
+      donde.push(`Plataforma: ${plataforma}`, `Link: ${actividad.online.url}`);
+    } else {
+      donde.push(`Plataforma: ${plataforma} (el link se envía a quienes se inscriban)`);
+    }
   }
   bloques.push(donde.join('\n'));
 

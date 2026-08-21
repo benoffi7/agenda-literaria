@@ -18,9 +18,14 @@ trabajo.
 |---|---|---|
 | DEC-1 | **`libro presentado`**: ¿campo propio o dentro de la descripción? | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Hoy en esos tipos se carga solo el autor. |
 | DEC-2 | **`arancel` preselecciona "Gratis"**: ¿se queda así o vuelve a obligar a elegir? | Si se carga un taller pago y no se cambia, se publica como gratuito y la gente llega esperando no pagar. |
-| DEC-3 | **Checkbox "publicar el link de la reunión"**: ¿respetarlo o quitarlo? | Hoy no tiene efecto: el §5.2 y el §7.4 descartan la URL sin condición. El formulario promete algo que no pasa. |
-| DEC-4 | **La home está indexable** con el placeholder | ¿`noindex` hasta que exista el sitio público, o se deja? |
-| DEC-5 | **Los eventos de prueba** quedaron en el calendario a pedido del usuario | Se llaman "PRUEBA descripción — borrar". ¿Se renombran, se dejan, o se borran cuando haya datos reales? |
+
+Resueltas el 2026-08-21:
+
+| # | Tema | Resolución |
+|---|---|---|
+| DEC-3 | Checkbox "publicar el link de la reunión" | **respetarlo** → implementado (D-15) |
+| DEC-4 | Home indexable con el placeholder | se deja así |
+| DEC-5 | Eventos de prueba en el calendario | los borra el usuario |
 
 ---
 
@@ -159,3 +164,4 @@ Se dejan para que quede el rastro de qué se rompió.
 | `createdAt`/`createdBy` se perdían al editar | `setDoc` con `merge:false` borraba los campos que el form no incluye | `9a45c86` |
 | El primer deploy de Functions falló dos veces | la service account propia no tiene los roles que la default de Compute trae de fábrica | `af88f84`, D-06 |
 | Riesgo: agregar un campo a la descripción del evento sin agregarlo a `CAL_FIELDS` dejaba de propagarlo, en silencio | lista de campos mantenida a mano | `90edc8a`, D-07 |
+| El checkbox "publicar el link de la reunión" no hacía nada | la proyección y el evento descartaban la URL sin mirar el flag | D-15 |

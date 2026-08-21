@@ -5,7 +5,9 @@ import type { Actividad, ItemMaterial, Sesion } from '@/types/actividad';
  * El build NO vuelca el documento entero: lo proyecta.
  *
  * Nunca al JSON (§5.1):
- *  - `online.url`      → el link de Zoom se manda al inscribirse (trampa 5)
+ *  - `online.url` con `urlPublica: false` → el link de la reunión se manda
+ *                        al inscribirse (trampa 5). Con `urlPublica: true`
+ *                        el dueño decidió publicarlo — ver abajo.
  *  - `difusion`        → trabajo interno
  *  - `material.items[].url` con `publico: false`
  *  - `createdBy` / `updatedBy` → uids
@@ -51,7 +53,7 @@ export interface ActividadPublica {
     cupo: number | null;
     abierta: boolean;
   };
-  online: { plataforma: string } | null;
+  online: { plataforma: string; url?: string } | null;
   material: {
     tiene: boolean;
     items: ItemMaterialPublico[];
@@ -104,8 +106,22 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
     cupo: a.inscripcion.cupo,
     abierta: !a.inscripcion.cierra || aMillis(a.inscripcion.cierra) > ahora,
   },
-  // Solo la plataforma. La URL nunca sale (§5.1).
-  online: a.online ? { plataforma: a.online.plataforma } : null,
+  /**
+   * La plataforma siempre; la URL solo si `urlPublica` está en true.
+   *
+   * Desvío consciente del §5.2, que descarta la URL sin condición: el modelo
+   * del §3.1 tiene el flag `urlPublica` y el formulario su casilla, así que
+   * ignorarlo era prometer algo que no pasaba. Decisión explícita del dueño.
+   *
+   * El default sigue siendo `false` y el formulario advierte que un link de
+   * reunión público habilita zoombombing (trampa 5). Publicarlo es una acción
+   * deliberada por actividad, no el comportamiento por omisión.
+   */
+  online: a.online
+    ? a.online.urlPublica && a.online.url
+      ? { plataforma: a.online.plataforma, url: a.online.url }
+      : { plataforma: a.online.plataforma }
+    : null,
   material: {
     tiene: a.material?.tiene ?? false,
     items: (a.material?.items ?? []).map(itemPublico),

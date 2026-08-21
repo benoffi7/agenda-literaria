@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — la Function es JS plano, sin tipos.
+// La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
   construirDescripcion,
   construirEvento,
@@ -127,8 +127,12 @@ describe('planificar — diff por id (§7.2, trampa 2)', () => {
 
     const ops = planificar(antes, despues);
     expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'crear', id: 'ses_d' });
-    expect(ops[0].evento.summary).toBeTruthy();
+    // La op de crear trae el evento ya armado: la Function no lo reconstruye.
+    expect(ops[0]).toMatchObject({
+      tipo: 'crear',
+      id: 'ses_d',
+      evento: { summary: expect.any(String) },
+    });
   });
 
   it('correr la fecha de un encuentro actualiza solo ese', () => {
@@ -436,10 +440,28 @@ describe('construirDescripcion — lo que NUNCA va al evento (§5.1, §7.4)', ()
     expect(d()).toContain('se envía a quienes se inscriban');
   });
 
-  it('no publica el link ni siquiera con urlPublica en true', () => {
-    // §7.4 es incondicional: el calendario es público.
-    const a = completa({ online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: true } });
-    expect(construirDescripcion(a, sesion(), LABELS)).not.toContain('zoom.us/j/secreto');
+  it('publica el link SOLO si urlPublica está en true', () => {
+    // Desvío consciente del §7.4, decidido por el dueño: el modelo tiene el
+    // flag y el formulario su casilla. Ignorarlo prometía algo que no pasaba.
+    const a = completa({ online: { plataforma: 'zoom', url: 'https://zoom.us/j/abierto', urlPublica: true } });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain('Link: https://zoom.us/j/abierto');
+    expect(texto).not.toContain('se envía a quienes se inscriban');
+  });
+
+  it('el default es NO publicarlo', () => {
+    // urlPublica es false por defecto en el formulario: publicar el link es una
+    // acción deliberada por actividad, no el comportamiento por omisión.
+    const texto = construirDescripcion(completa(), sesion(), LABELS);
+    expect(texto).not.toContain('zoom.us/j/secreto');
+    expect(texto).toContain('se envía a quienes se inscriban');
+  });
+
+  it('urlPublica en true sin URL cargada no rompe nada', () => {
+    const a = completa({ online: { plataforma: 'zoom', url: '', urlPublica: true } });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain('se envía a quienes se inscriban');
+    expect(texto).not.toContain('Link:');
   });
 
   it('no publica la difusión interna', () => {
@@ -482,6 +504,13 @@ describe('planificar — el payload propaga los campos nuevos', () => {
       inscripcion: { requiere: true, via: 'whatsapp', destino: 'https://wa.me/1', cupo: 5, cierra: null },
     });
     expect(planificar(antes, despues, LABELS)).toHaveLength(1);
+  });
+
+  it('tildar "publicar el link" actualiza los eventos ya creados', () => {
+    const base = { plataforma: 'zoom', url: 'https://zoom.us/j/x' };
+    const antes = completa({ sesiones: [s], online: { ...base, urlPublica: false } });
+    const despues = completa({ sesiones: [s], online: { ...base, urlPublica: true } });
+    expect(planificar(antes, despues, LABELS).map((o: { tipo: string }) => o.tipo)).toEqual(['actualizar']);
   });
 
   it('agregar material actualiza el evento', () => {

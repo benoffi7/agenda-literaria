@@ -8,7 +8,7 @@ comparten las mismas reglas.
 
 | Campo | Motivo | Dónde se filtra |
 |---|---|---|
-| `online.url` | el link de la reunión se manda al inscribirse; publicarlo habilita zoombombing (trampa 5) | `toPublic.ts`, `calendario.js` |
+| `online.url` **con `urlPublica: false`** | el link de la reunión se manda al inscribirse; publicarlo habilita zoombombing (trampa 5). Es el default. | `toPublic.ts`, `calendario.js` |
 | `difusion` | trabajo interno | ambos |
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
@@ -19,15 +19,25 @@ que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
 trabajo o un `wa.me` con mensaje precargado. El formulario lo dice en la ayuda
 del campo.
 
-## El link de la reunión no sale nunca, ni con `urlPublica`
+## El link de la reunión: default privado, publicable a pedido
 
-El modelo tiene `online.urlPublica: boolean` y el formulario tiene su checkbox,
-pero **hoy no tiene efecto**: la proyección del §5.2 descarta la URL sin
-condición, y el §7.4 lo dice explícitamente para el calendario.
+`online.urlPublica` **se respeta** desde el 2026-08-21 (D-15), en el
+`events.json` y en la descripción del evento de Calendar.
 
-Es una inconsistencia del `CLAUDE.md` que se resolvió del lado seguro. Está en
-el [backlog](BACKLOG.md) como decisión pendiente: respetar el flag, o quitar el
-checkbox del formulario para no prometer algo que no pasa.
+Es un desvío consciente del §5.2 y del §7.4, que descartan la URL sin
+condición. Lo decidió el dueño: el modelo del §3.1 tiene el flag y el
+formulario su casilla, así que ignorarlo era prometer algo que no pasaba.
+
+Tres cosas se mantienen porque son las que hacen que el desvío sea aceptable:
+
+1. **El default es `false`.** Publicar el link es una acción deliberada por
+   actividad.
+2. **El formulario advierte** que un link de reunión público habilita
+   zoombombing, en el propio checkbox.
+3. **Sin URL cargada no se inventa el campo**, aunque el flag esté en true.
+
+Si la actividad es un encuentro abierto sin inscripción, publicar el link tiene
+sentido. Si tiene cupo, no: el link circula y el cupo deja de existir.
 
 ## Autorización
 

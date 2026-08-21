@@ -226,11 +226,34 @@ prioridad.
 
 ---
 
+## D-15 · `urlPublica` se respeta
+
+**Decisión del usuario** (2026-08-21), sobre la pregunta de si el checkbox
+"publicar el link de la reunión" debía respetarse o quitarse: **respetarlo**.
+
+**Desvío del §5.2 y del §7.4**, que descartan la URL de la reunión sin
+condición. El motivo del desvío es que el modelo del §3.1 tiene el flag
+`urlPublica` y el formulario su casilla: ignorarlo era prometer algo que no
+pasaba.
+
+**Lo que se mantiene**, y es lo que hace aceptable el desvío: el default sigue
+en `false`, el formulario advierte sobre el zoombombing en el propio checkbox, y
+sin URL cargada no se inventa el campo aunque el flag esté en true.
+
+Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
+
+---
+
+## Decidido, sin trabajo pendiente
+
+| Tema | Resolución |
+|---|---|
+| Home indexable con el placeholder | se deja así (usuario, 2026-08-21) |
+| Eventos de prueba en el calendario | los borra el usuario (2026-08-21) |
+
 ## Pendiente de decidir
 
 | Tema | Quién decide |
 |---|---|
 | `libro presentado`: campo propio o dentro de la descripción | usuario |
-| Si `arancel` debe seguir obligando a elegir en vez de preseleccionar "Gratis" | usuario |
-| Si el checkbox "publicar el link" debe respetarse o quitarse del formulario | usuario |
-| Si la home debe llevar `noindex` hasta que exista el sitio público | usuario |
+| Si `arancel` debe seguir preseleccionando "Gratis" | usuario |

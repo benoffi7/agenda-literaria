@@ -9,6 +9,22 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### El checkbox "publicar el link de la reunión" ahora hace algo
+
+El modelo del §3.1 tiene `online.urlPublica` y el formulario su casilla, pero la
+proyección pública y la descripción del evento descartaban la URL sin mirar el
+flag: el formulario prometía algo que no pasaba.
+
+Decisión del usuario: **respetarlo** (D-15). Es un desvío del §5.2 y del §7.4,
+que lo descartan sin condición.
+
+Lo que se mantiene y hace aceptable el desvío: el default sigue en `false`, el
+formulario advierte sobre el zoombombing en el propio checkbox, y sin URL
+cargada no se inventa el campo aunque el flag esté en true.
+
+También se cerraron dos decisiones sin trabajo asociado: la home se deja
+indexable con el placeholder, y los eventos de prueba los borra el usuario.
+
 ### Documentación del proyecto
 
 Carpeta `docs/` con arquitectura, inventario de infraestructura, modelo de

@@ -43,9 +43,9 @@ Material · Opcional · Difusión. Las tres últimas son acordeones colapsados.
 - Los desplegables con opciones base (`arancel`, `tipo`, `plataforma`)
   **preseleccionan la primera opción**. `barrio` y `tags` arrancan vacíos porque
   no tienen opciones base.
-- El checkbox de publicar el link de la reunión **no tiene efecto**: el §5.2 y el
-  §7.4 prohíben publicar la URL de forma incondicional. Ver
-  [`06-decisiones.md`](06-decisiones.md).
+- El checkbox **"publicar el link de la reunión"** sí tiene efecto: con él
+  tildado, la URL sale en el `events.json` y en la descripción del evento.
+  Arranca destildado y advierte sobre el zoombombing (D-15).
 - **Guardar borrador** valida igual que publicar. Un borrador inválido no se
   guarda.
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
@@ -112,8 +112,9 @@ sede con "cómo llegar" y link a Google Maps, plataforma, arancel con notas,
 inscripción con vía, cupo y cierre, material, organizador, tallerista con bio,
 y tags.
 
-**Lo que nunca lleva** (§5.1, §7.4): el link de la reunión, la difusión interna,
-la URL del material privado, los uids. Ver [`07-seguridad.md`](07-seguridad.md).
+**Lo que nunca lleva** (§5.1): la difusión interna, la URL del material privado,
+los uids. El link de la reunión solo si se tildó "publicar el link" en esa
+actividad. Ver [`07-seguridad.md`](07-seguridad.md).
 
 ## Trigger de rebuild — parcial
 

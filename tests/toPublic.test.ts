@@ -65,10 +65,26 @@ const actividad = (over: Partial<Actividad> = {}): Actividad => ({
 });
 
 describe('toPublic — §5, trampa 5', () => {
-  it('no filtra el link de la reunión, solo la plataforma', () => {
+  it('por defecto no filtra el link de la reunión, solo la plataforma', () => {
     const p = toPublic(actividad(), 'id1');
     expect(p.online).toEqual({ plataforma: 'zoom' });
     expect(JSON.stringify(p)).not.toContain('zoom.us/j/999');
+  });
+
+  it('publica el link si urlPublica está en true', () => {
+    // Desvío consciente del §5.2, decidido por el dueño.
+    const a = actividad();
+    a.online = { plataforma: 'zoom', url: 'https://zoom.us/j/abierto', urlPublica: true };
+    expect(toPublic(a, 'id1').online).toEqual({
+      plataforma: 'zoom',
+      url: 'https://zoom.us/j/abierto',
+    });
+  });
+
+  it('urlPublica en true sin URL no inventa el campo', () => {
+    const a = actividad();
+    a.online = { plataforma: 'zoom', url: '', urlPublica: true };
+    expect(toPublic(a, 'id1').online).toEqual({ plataforma: 'zoom' });
   });
 
   it('no incluye difusion', () => {
