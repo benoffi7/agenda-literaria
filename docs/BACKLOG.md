@@ -102,12 +102,14 @@ El §4.3 dice que las opciones creadas con "Otro" son editables y borrables, y q
 `usos` sirve para detectar basura ("una opción con `usos: 1` creada hace meses es
 casi seguro un typo colgado"). No hay pantalla para nada de eso.
 
-### B-07 · El formulario no captura `sede.geo`
+### B-07 · ~~El formulario no captura `sede.geo`~~ · ✅ hecho
 
-El campo existe en el modelo y la Function lo usa para armar un link de mapa
-exacto si está presente, pero el formulario no lo pide, así que siempre es
-`null` y el mapa resuelve por dirección. Suficiente para direcciones normales;
-falla en lugares sin numeración clara.
+El formulario captura las coordenadas pegando el link de Google Maps del lugar
+o un par `lat, lng` (D-46). Sin geocoding: es una API paga y el budget es de
+USD 5/mes.
+
+**Queda afuera a propósito** el link corto `maps.app.goo.gl` (redirect + CORS):
+el campo lo detecta y explica cómo salir del paso. Anotado en B-45.
 
 ### B-08 · Sin tests de componentes
 
@@ -141,6 +143,16 @@ cargarlo de cero.
 
 El panel no muestra cómo va a verse la descripción en Calendar. Con ~20 campos
 volcados ahí, una vista previa evitaría publicar y corregir.
+
+### B-45 · Los links cortos de Maps (`maps.app.goo.gl`) no se pueden pegar
+
+El campo de coordenadas (D-46) acepta el link largo y el par `lat, lng`, pero no
+el link corto del botón "Compartir", que es justo el que ofrece la app de Maps
+en el teléfono. Es un redirect y seguirlo desde el navegador lo bloquea CORS.
+
+Hoy el campo lo detecta y explica que hay que abrirlo para copiar el link largo.
+Si molesta seguido, la salida es una Function que siga el redirect y devuelva la
+URL final — otro endpoint y otro deploy, así que no se hizo de entrada.
 
 ### B-13 · El schedule de `dispararRebuild` no reintenta con backoff
 

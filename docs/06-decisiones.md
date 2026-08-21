@@ -165,8 +165,8 @@ o con el mapa en otra ciudad.
 repetir un valor cargado en dos campos. Más un link de Google Maps en la
 descripción, que usa las coordenadas si `sede.geo` está presente.
 
-`sede.geo` existe en el modelo pero el formulario no lo captura, así que hoy
-siempre resuelve por dirección.
+`sede.geo` ya se captura en el formulario (D-46): si está cargado, el link
+apunta al punto exacto; si no, sigue resolviendo por dirección.
 
 ---
 
@@ -262,6 +262,42 @@ en `false`, el formulario advierte sobre el zoombombing en el propio checkbox, y
 sin URL cargada no se inventa el campo aunque el flag esté en true.
 
 Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
+
+---
+
+## D-46 · Las coordenadas se pegan desde Google Maps, sin geocoding
+
+**Problema:** `sede.geo` estaba en el modelo y la Function ya lo usaba (D-10),
+pero el formulario no lo pedía, así que era siempre `null`. Resolver por texto
+alcanza para una dirección de ciudad normal y falla justo en lo que abunda en el
+circuito literario: la librería sin numeración clara, el centro cultural dentro
+de un predio, la casa en un pasaje.
+
+**Alternativa descartada: la API de Geocoding de Google.** Cuesta plata, pide
+otra key y el proyecto tiene un budget de USD 5/mes (§2.3). Un mapa embebido
+para elegir el punto tampoco: es otra key y otro script en el bundle del panel,
+que ya pesa 570 KB.
+
+**Lo implementado:** un campo donde se pega el link de Google Maps del lugar —
+lo que la persona ya tiene abierto cuando carga la actividad — o un par
+`lat, lng`. El parseo es una función pura (`src/lib/coordenadas.ts`), la UI un
+control chico (`CoordenadasSede.tsx`).
+
+**Los links cortos (`maps.app.goo.gl`) no se soportan y se dicen así.** Son un
+redirect y seguirlo desde el navegador lo bloquea CORS. Antes que resolverlos
+con una Function (otro endpoint, otro deploy, para un caso que se arregla
+abriendo el link), el mensaje explica qué hacer.
+
+**Cómo se verifica que el punto sea el correcto:** el propio campo muestra la
+coordenada cargada con un link al mapa —armado igual que el de la Function, no
+uno parecido—, y la vista previa del evento del formulario
+(`VistaPreviaEvento.tsx`) muestra la ubicación y el link de Maps tal como van a
+salir. Pegar el link y mirar la vista previa es el ciclo completo, sin publicar.
+
+**El rango se valida; la geografía solo avisa.** Una latitud de 200 no existe y
+se rechaza. Un punto fuera de Argentina es legal —puede haber una actividad en
+Montevideo— así que se guarda con un aviso: el caso normal es un typo o un
+lat/lng al revés, y ahí el aviso lo dice explícitamente.
 
 ---
 

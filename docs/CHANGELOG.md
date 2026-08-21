@@ -9,6 +9,46 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### El formulario captura el punto exacto de la sede (`sede.geo`) · B-07
+
+`sede.geo` estaba en el modelo (§3.1) y `construirLinkMapa` ya lo usaba para que
+el link del evento apunte al punto exacto, pero el formulario no lo pedía: era
+siempre `null` y el mapa resolvía por el texto de la dirección. Alcanza para una
+dirección de ciudad normal y falla en lo que abunda en el circuito literario —
+una librería sin numeración clara, un centro cultural dentro de un predio, una
+casa en un pasaje.
+
+**Por qué se pega un link y no se geocodifica:** resolver la dirección a
+coordenadas es una API paga con otra key, y el budget es de USD 5/mes (D-46). Lo
+natural igual es que quien carga ya tenga el lugar abierto en Maps.
+
+Lo que acepta el campo:
+
+- el link largo de Maps: `/maps/place/…@lat,lng,17z/data=…!3d…!4d…` (usa el
+  punto del lugar, no el centro de la cámara), `/maps/@lat,lng,z`, y los de
+  búsqueda con `?q=` / `?query=` / `?ll=` / `?destination=`;
+- un par `lat, lng` pegado directo, que es lo que copia el clic derecho de Maps.
+
+**Los links cortos `maps.app.goo.gl` no** — son un redirect y seguirlo desde el
+navegador lo bloquea CORS. Se detectan y el mensaje dice qué hacer, igual que
+cualquier otra entrada que no se pueda parsear: el campo nunca falla en
+silencio.
+
+El rango se valida en las dos puntas (el parseo al pegar, `schema.ts` al
+guardar): una latitud de 200 no existe. Que el punto caiga lejos de Argentina
+**no** bloquea, avisa — y si invirtiendo lat/lng caería dentro del país, el
+aviso lo dice, porque es el error real. La coordenada se puede quitar para
+volver a `null`, y cuando hay una cargada se ve el valor y un link para
+verificarla en el mapa.
+
+Para verificar el punto sin publicar: el campo muestra la coordenada con un link
+al mapa —el mismo que arma la Function, no uno parecido— y la vista previa del
+evento muestra la ubicación y el link de Maps tal como van a salir.
+
+El parseo es un módulo puro (`src/lib/coordenadas.ts`, 27 tests) y la UI un
+control aparte (`CoordenadasSede.tsx`); en `ActividadFormulario.tsx` el cambio
+son las dos líneas que lo insertan en la sección "Dónde".
+
 ### `arancel` vuelve a obligar a elegir
 
 D-12 había dejado un riesgo abierto: al preseleccionar la primera opción en

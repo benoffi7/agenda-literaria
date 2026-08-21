@@ -47,6 +47,15 @@ Material · Opcional · Difusión. Las tres últimas son acordeones colapsados.
 - El checkbox **"publicar el link de la reunión"** sí tiene efecto: con él
   tildado, la URL sale en el `events.json` y en la descripción del evento.
   Arranca destildado y advierte sobre el zoombombing (D-15).
+- El **punto exacto en el mapa** (`sede.geo`) es opcional: se pega el link de
+  Google Maps del lugar —o un par `lat, lng`— y con eso el link del evento
+  apunta al punto en vez de hacer que Google adivine por la dirección (D-46).
+  Se aplica al pegar, sin apretar nada. Los links cortos `maps.app.goo.gl` no
+  traen coordenadas y el campo lo dice, con qué hacer para salir del paso. Un
+  punto lejos de Argentina no bloquea: avisa. Se puede quitar y volver a
+  "sin coordenadas". Para confirmar que se cargó bien: el campo muestra la
+  coordenada con un link al mapa, y la **vista previa del evento** muestra la
+  ubicación y el link de Maps tal como van a salir.
 - **Guardar borrador** valida igual que publicar. Un borrador inválido no se
   guarda.
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
@@ -106,6 +115,10 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 
 **Ubicación:** sede, calle, barrio, ciudad y país, para que Google pueda
 geolocalizar. Mandar solo la calle no alcanza.
+
+**Mapa:** si la sede tiene coordenadas cargadas (`sede.geo`), el link de la
+descripción apunta al punto exacto; si no, a la búsqueda por el texto de la
+ubicación (D-10, D-46).
 
 **Descripción:** todo lo cargado en el formulario que sea publicable —
 posición en el ciclo, descripción, tema y lectura del encuentro, modalidad,

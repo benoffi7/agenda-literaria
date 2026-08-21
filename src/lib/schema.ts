@@ -37,7 +37,17 @@ const sedeSchema = z.object({
   barrio: opcional,
   ciudad: opcional,
   indicaciones: opcional,
-  geo: z.object({ lat: z.number(), lng: z.number() }).nullable().default(null),
+  // El rango se valida también acá y no solo al pegar el link: una latitud de
+  // 200 no existe, y un lat/lng invertido manda el evento al otro lado del
+  // mundo. El aviso de "esto cae lejos de Argentina" es del formulario, porque
+  // no bloquea (lib/coordenadas.ts).
+  geo: z
+    .object({
+      lat: z.number().min(-90, 'Latitud fuera de rango').max(90, 'Latitud fuera de rango'),
+      lng: z.number().min(-180, 'Longitud fuera de rango').max(180, 'Longitud fuera de rango'),
+    })
+    .nullable()
+    .default(null),
 });
 
 const onlineSchema = z.object({
