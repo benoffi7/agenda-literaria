@@ -298,8 +298,54 @@ no se escribe, que un anónimo lee lo publicado pero no un borrador, y que la
 proyección no filtra. `tests/calendario.test.ts` verifica lo mismo para el
 evento.
 
-## Historial
+## Historial de versiones
 
-Las reglas contemplan `/actividades/{id}/versiones/{ts}` con escritura solo por
-Admin SDK, pero **la Function del §12 no está escrita**: hoy pisar una
-descripción larga la pierde. Está en el [backlog](BACKLOG.md).
+`guardarVersion` escribe el documento anterior completo en
+`/actividades/{id}/versiones/{version}` cada vez que una edición pisa contenido
+cargado por una persona (§12, D-41).
+
+**Guarda el documento entero, sin proyectar** — incluidos `difusion` y
+`online.url`, que son internos. Eso es deliberado: el §12 pide el `before`
+completo, y proyectarlo sería guardar un historial del que justamente no se
+puede recuperar lo que uno quiere recuperar.
+
+Es aceptable porque **la audiencia de la subcolección es exactamente la misma
+que la del documento padre**, y no hay camino desde ahí a una salida pública:
+
+| | |
+|---|---|
+| Quién puede leerla | solo un admin — `allow read: if esAdmin()` |
+| Quién puede escribirla | nadie desde el cliente — `allow write: if false`, solo el Admin SDK |
+| ¿Llega al `events.json`? | **no.** El build lee la colección `/actividades`, y una query de colección **no** trae subcolecciones. `toPublic.ts` nunca la ve. |
+| ¿Llega a Google Calendar? | **no.** `calendario.js` recibe el documento de la actividad, no sus versiones. |
+
+O sea: un admin que lee una versión ya podía leer los mismos campos en el
+documento padre, incluidos los borradores (D-04). La subcolección no amplía a
+nadie lo que puede ver.
+
+**Lo que sí hay que no hacer:** si algún día el build necesita recorrer
+subcolecciones (`getCollections()`, `collectionGroup('versiones')`), pasaría a
+tener en mano documentos con `difusion` y `online.url` de todas las actividades.
+Cualquier lectura nueva ahí tiene que quedar afuera de lo que se proyecta al
+JSON.
+
+Las reglas ya contemplaban esta subcolección desde antes de que existiera la
+Function, así que no hubo que cambiarlas.
+
+### Verificar que las versiones no son públicas
+
+```bash
+K=$(grep PUBLIC_FIREBASE_API_KEY .env.production | cut -d= -f2)
+BASE="https://firestore.googleapis.com/v1/projects/agenda-literaria/databases/(default)/documents"
+
+# Debe devolver "Missing or insufficient permissions" incluso si la actividad
+# está publicada: la regla de lectura del padre no cascadea a la subcolección.
+curl -s "$BASE/actividades/<id>/versiones?key=$K"
+```
+
+Y sobre el JSON, una vez que exista el sitio público (B-01):
+
+```bash
+npm run build
+grep -rl "difusion\|versiones" dist/events.json && echo "FUGA" || echo "limpio"
+```

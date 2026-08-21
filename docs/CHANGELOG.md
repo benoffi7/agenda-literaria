@@ -9,6 +9,49 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Historial de versiones (B-03, §12)
+
+**Hoy pisar una descripción larga la perdía para siempre**, y era lo más cercano
+a pérdida de datos que tenía el sistema. Ahora cada edición que pisa contenido
+cargado por una persona guarda el documento anterior en
+`/actividades/{id}/versiones/{version}`.
+
+La trampa que el §12 no menciona: `onDocumentUpdated` se dispara con **toda**
+escritura, y `syncCalendar` escribe `calendarEventId` de vuelta en `sesiones`
+después de sincronizar. Guardar en cada disparo generaría dos versiones por
+publicación —el cambio real y el write-back de la Function— y muchas más si
+alguien edita ocho veces seguidas mientras el sync corre.
+
+Se resolvió con el mismo criterio que la guarda anti-loop del sync (D-07):
+**derivar lo que importa y comparar eso**, en vez de mantener una lista de
+campos. Acá lo derivado es el *contenido editable* —el documento sin lo que
+escribe la máquina (`updatedAt`, `updatedBy`, `sesiones[].calendarEventId`)— y
+el write-back produce un contenido editable idéntico por construcción (D-41).
+
+Tres decisiones que estaban implícitas y quedaron explícitas:
+
+- **Retención por cantidad, no por antigüedad** (D-42): se conservan las últimas
+  20 versiones por actividad. Un TTL fallaría justo en el caso de uso real
+  ("pisé la descripción hace meses y recién ahora me doy cuenta").
+- **El id del documento no es solo el timestamp** (D-43): lleva además el id del
+  evento. Dos escrituras en el mismo milisegundo colisionarían y la segunda
+  pisaría a la primera — perder una versión es exactamente lo que esto viene a
+  evitar. De paso, un reintento del mismo evento reescribe la misma versión en
+  vez de duplicarla.
+- **Se guarda el documento entero**, incluidos `difusion` y `online.url`. La
+  subcolección solo la lee un admin (`firestore.rules`) y las subcolecciones no
+  entran en una query de colección, así que no hay camino al `events.json`. Ver
+  [`07-seguridad.md`](07-seguridad.md).
+
+**Sin UI todavía**: el historial se recupera a mano desde la consola de
+Firestore. Sirve igual —el dato existe, que es lo que faltaba— y cada versión
+guarda `camposCambiados` para poder elegir cuál abrir. La UI de restauración
+quedó en el backlog (B-40).
+
+La lógica pura está en `functions/historial.js` (36 tests, sin emuladores) y el
+trigger en `functions/historial-trigger.js`. De `functions/index.js` se toca una
+sola línea: el export.
+
 ### Reportar bugs y sugerencias desde el panel, con issue en GitHub
 
 **Pedido:** que la otra cuenta con claim `admin` pueda contar problemas e ideas

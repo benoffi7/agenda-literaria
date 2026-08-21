@@ -323,4 +323,5 @@ export const dispararRebuild = onSchedule(
   },
 );
 
+export { guardarVersion } from './historial-trigger.js';
 export { reporteAIssue } from './reportes-trigger.js';

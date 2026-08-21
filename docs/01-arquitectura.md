@@ -153,6 +153,10 @@ functions/
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario
   rebuild.js                backoff y corte por intentos — lógica pura (§8)
+  historial.js              cuándo se guarda una versión (§12) — lógica pura
+  historial-trigger.js      el onDocumentUpdated del historial
+  reportes.js               armado del issue de GitHub — lógica pura
+  reportes-trigger.js       la Function que crea el issue
   index.js                  triggers de Firestore y schedule del rebuild
 .github/workflows/
   deploy.yml                build + deploy que dispara el rebuild (§8)
@@ -162,7 +166,7 @@ scripts/
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
   aprobar-opciones.mjs      aprueba opciones de taxonomía pendientes (§4.3)
-tests/                      329 tests
+tests/                      365 tests
 firestore.rules             reglas del §5.3
 ```
 
