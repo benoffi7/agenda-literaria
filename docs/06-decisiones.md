@@ -265,6 +265,45 @@ Aplica en las dos salidas: `toPublic.ts` y la descripción del evento.
 
 ---
 
+## D-20 · La lógica del evento se comparte por alias, no se duplica
+
+**Contexto:** la vista previa del panel (B-12) tiene que mostrar la descripción
+del evento tal como va a salir. Esa descripción la arma `construirDescripcion`
+en `functions/calendario.js`, que corre en la Cloud Function.
+
+**Decisión:** el panel **importa** esa función. `functions/calendario.js` se
+expone al código de `src/` con el alias `@calendario`, declarado en los tres
+lugares que resuelven módulos: `astro.config.mjs` (Vite), `tsconfig.json`
+(TypeScript) y `vitest.config.ts` (los tests).
+
+**Motivo:** si la vista previa armara su propio texto, las dos versiones se
+separarían en el primer cambio y la vista previa mentiría. Una vista previa que
+miente es peor que no tenerla, y acá el costo es concreto: la descripción
+respeta las reglas de privacidad del §5.1, así que una copia desactualizada
+podría mostrar de menos (genera desconfianza) o de más (hace creer que se
+publica algo que no se publica). Con una sola fuente de verdad eso sale gratis.
+
+**Por qué funciona:** `functions/calendario.js` es JS puro, sin dependencias de
+Firebase ni de red. Está separado así desde el sync (D-07) justamente para poder
+testearlo sin emuladores; reusarlo desde el panel es la misma propiedad.
+
+**Alternativas descartadas:**
+
+- *Mover el módulo a `src/lib/` e importarlo desde `functions/`.* La Function se
+  despliega con su propio `package.json` y su propio directorio: `functions/` no
+  puede importar hacia arriba sin un paso de copiado o build.
+- *Un alias con comodín (`@funciones/*` → `functions/*`).* Invitaría a importar
+  `functions/index.js` desde un componente cliente, y eso arrastra
+  `firebase-admin` al bundle (trampa 4, §5.4). El alias apunta a un solo
+  archivo, el que se sabe puro.
+
+**Costo:** `functions/calendario.js` pasó a ser código compartido y entra al
+bundle del panel (~6 KB). Cambiarlo ahora afecta dos consumidores, no uno: el
+sync y la vista previa. Es la contrapartida buscada — que no se puedan separar.
+
+`debeExistir` (§7.3) también se exportó, para que el aviso de "esto todavía no
+está en el calendario" use el criterio del sync y no una copia.
+
 ## D-17 · La copia corre las fechas en semanas enteras
 
 **Decisión** (B-11): al duplicar una actividad, la copia conserva la estructura
@@ -342,6 +381,7 @@ toque deliberado.
 
 **Costo:** un componente propio (`MenuAcciones`) con cierre por click afuera y
 por `Escape`. El panel no tiene librería de UI y no se agregó ninguna.
+
 
 ---
 

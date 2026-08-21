@@ -10,11 +10,13 @@ import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
 import { TagsInput } from '@/components/admin/campos/TagsInput';
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
+import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
 import { actualizarActividad, crearActividad, documentoAForm, slugDisponible } from '@/lib/actividades';
 import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import { actividadFormSchema } from '@/lib/schema';
 import { sesionVacia } from '@/lib/sesiones';
 import { slugify } from '@/lib/slugify';
+import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import {
   ESTADOS,
   MODALIDADES,
@@ -168,6 +170,24 @@ export function ActividadFormulario({
   };
 
   const resumenErrores = useMemo(() => Object.entries(errores), [errores]);
+
+  /**
+   * Las etiquetas creadas con "Otro" todavía no están en `/opciones/*` (se
+   * persisten en el submit, D-02), así que la vista previa las necesita de acá:
+   * si no, mostraría "Con Beca Parcial" des-slugueado donde el evento publicado
+   * va a decir "Con beca parcial".
+   */
+  const labelsPendientes = useMemo<LabelsTaxonomia>(() => {
+    const mapa: LabelsTaxonomia = {};
+    for (const { campo, label } of labelsNuevos) {
+      mapa[campo] = { ...mapa[campo], [slugify(label)]: label.trim() };
+    }
+    const tags = Object.entries(tagsNuevos);
+    if (tags.length) {
+      mapa.tags = Object.fromEntries(tags.map(([slug, label]) => [slug, label.trim()]));
+    }
+    return mapa;
+  }, [labelsNuevos, tagsNuevos]);
 
   const guardar = async (estadoDestino?: ActividadForm['estado']) => {
     setFallo(null);
@@ -740,6 +760,21 @@ export function ActividadFormulario({
             />
           </Campo>
         </div>
+      </Seccion>
+
+      {/*
+        ── Vista previa del evento ─────────────────────────────
+        Última sección y colapsada: es el paso natural antes de publicar, y
+        mientras está cerrada no abre las cinco suscripciones a /opciones que
+        necesita para resolver las etiquetas.
+      */}
+      <Seccion
+        titulo="Vista previa del evento"
+        descripcion="Cómo va a quedar en Google Calendar. Lo arma la misma lógica que publica el evento."
+        colapsable
+        abiertaPorDefecto={false}
+      >
+        <VistaPreviaEvento form={form} labelsPendientes={labelsPendientes} />
       </Seccion>
 
       {/*

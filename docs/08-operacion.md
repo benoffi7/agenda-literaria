@@ -41,7 +41,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 |---|---|
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
-| `npm test` | los 160 tests |
+| `npm test` | los 179 tests |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |

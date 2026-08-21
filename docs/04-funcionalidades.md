@@ -95,6 +95,32 @@ corre).
 Marcar un encuentro como cancelado lo borra del calendario público (§7.3) pero
 lo conserva en el documento.
 
+### Vista previa del evento de Calendar
+
+Última sección del formulario, colapsada. Se elige un encuentro y se ve cómo va
+a quedar su evento: **título**, **ubicación** y **descripción completa**.
+
+Lo arma `construirEvento` de `functions/calendario.js`, la misma función que
+publica el evento (D-20): lo que se ve es exactamente lo que va a ver la gente,
+con las reglas de privacidad del §5.1 incluidas — el link de la reunión solo si
+se tildó "publicar el link", la difusión interna nunca, la URL del material
+privado tampoco.
+
+Tres avisos, porque son las cosas que se pasan por alto:
+
+- **El link de la reunión va a salir** (`urlPublica` tildado): aviso destacado,
+  porque el calendario es público (D-15, trampa 5).
+- **El link no sale:** nota al pie de que se envía a quienes se inscriban.
+- **La actividad no está publicada, o el encuentro está cancelado:** ese evento
+  hoy no existe en el calendario (§7.3); la vista previa muestra cómo quedaría.
+
+Las etiquetas de taxonomía se resuelven con las opciones que el panel ya tiene
+cargadas, incluidas las que se acaban de crear con "Otro" y todavía no están en
+`/opciones/*` (se persisten en el submit, D-02).
+
+Mientras haya un encuentro con la fecha incompleta la vista previa lo dice, en
+lugar de mostrar un evento a medias.
+
 ### Taxonomías con autocompletado
 
 El campo "Otro" es un input con autocompletado contra la lista existente. Si se

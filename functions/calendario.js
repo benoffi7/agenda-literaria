@@ -276,8 +276,12 @@ const porId = (sesiones = []) => new Map(sesiones.map((s) => [s.id, s]));
 /**
  * §7.3 — Una sesión tiene evento en el calendario solo si la actividad está
  * publicada y la sesión no está cancelada.
+ *
+ * Se exporta para que la vista previa del panel avise "esto todavía no existe
+ * en el calendario" con el mismo criterio que aplica el sync, en lugar de
+ * reimplementarlo y arriesgarse a que las dos versiones se separen.
  */
-const debeExistir = (actividad, sesion) =>
+export const debeExistir = (actividad, sesion) =>
   actividad?.estado === 'publicado' && !sesion.cancelada;
 
 /**
