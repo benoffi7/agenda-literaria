@@ -16,7 +16,37 @@ formas: la pantalla solo evita mostrar un panel inútil.
 
 Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
 normalización que va a usar el sitio público. Cada fila muestra tipo, cantidad de
-encuentros, barrio y un badge de estado. Editar y borrar por fila.
+encuentros, barrio y un badge de estado.
+
+Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar** y
+**Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
+táctiles de ~100px y se erra el toque (D-19).
+
+### Duplicar una actividad
+
+Abre el formulario precargado con una copia del original, para editar y guardar
+como actividad **nueva**. El caso es el ciclo del año anterior con otras fechas:
+son 30+ campos que no hay que volver a cargar.
+
+Lo que la copia **no** hereda:
+
+| Qué | Por qué |
+|---|---|
+| los ids de sesión | son la llave del diff a Calendar (§7.2). Compartirlos haría que editar una actividad toque los eventos de la otra |
+| `calendarEventId` | queda `null`: los eventos del original existen, los de la copia no |
+| el slug | se propone `…-copia` y queda editable — es inmutable después de publicar (trampa 10) |
+| el estado | arranca en `borrador`: duplicar no publica ni manda nada al calendario |
+| `createdAt` / `createdBy` | son de la copia, no del original |
+| los encuentros cancelados | vuelven a estar activos: una cancelación es una excepción del ciclo viejo |
+
+**Las fechas se corren en semanas enteras** hacia adelante, hasta después del
+último encuentro del original (y siempre en el futuro). Así se conservan el día
+de semana, la hora, las duraciones y los huecos irregulares del ciclo, y solo
+hay que ajustar las excepciones nuevas. También se corre el cierre de
+inscripción. El detalle y las alternativas descartadas están en D-17.
+
+El formulario avisa arriba que es una copia y nombra los tres campos a revisar
+antes de publicar: título, slug y fechas.
 
 ### Formulario
 

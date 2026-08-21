@@ -27,6 +27,16 @@ interface Props {
   uid: string;
   /** Si viene, el formulario edita; si no, crea. */
   inicial?: ActividadConId;
+  /**
+   * B-11 — copia precargada de otra actividad, ya con ids de sesión nuevos,
+   * `calendarEventId` en null, slug propuesto y estado borrador
+   * (`duplicarActividadForm`). Llega sin `inicial` a propósito: se guarda por
+   * el camino de creación, así el documento, el slug y `createdAt`/`createdBy`
+   * son de la copia y no del original.
+   */
+  copia?: ActividadForm;
+  /** Título del original, solo para el aviso de la copia. */
+  tituloOrigen?: string;
   onGuardado: (id: string) => void;
   onCancelar: () => void;
 }
@@ -62,9 +72,16 @@ const ETIQUETA_ESTADO = {
   cancelado: 'Cancelado',
 };
 
-export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Props) {
+export function ActividadFormulario({
+  uid,
+  inicial,
+  copia,
+  tituloOrigen,
+  onGuardado,
+  onCancelar,
+}: Props) {
   const [form, setForm] = useState<ActividadForm>(() =>
-    inicial ? documentoAForm(inicial) : formVacio(),
+    inicial ? documentoAForm(inicial) : (copia ?? formVacio()),
   );
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
@@ -208,6 +225,26 @@ export function ActividadFormulario({ uid, inicial, onGuardado, onCancelar }: Pr
         void guardar();
       }}
     >
+      {/*
+        Aviso de copia. Dice explícitamente qué se rehízo y qué hay que revisar:
+        una copia guardada sin mirar es una actividad con el título del año
+        pasado y un slug "-copia" que después queda fijo (trampa 10).
+      */}
+      {copia && (
+        <div className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2.5 text-xs">
+          <p className="font-medium text-acento">
+            Copia de «{tituloOrigen ?? copia.titulo}» — todavía no existe.
+          </p>
+          <p className="mt-1 text-tinta/70">
+            Los encuentros son nuevos y todavía no están en el calendario: los del
+            original quedan intactos. Las fechas se corrieron en semanas enteras
+            para conservar el día y la hora. Revisá <strong>título</strong>,{' '}
+            <strong>slug</strong> y <strong>fechas</strong> antes de publicar: el
+            slug queda fijo después.
+          </p>
+        </div>
+      )}
+
       {/* ── Qué es ─────────────────────────────────────────────── */}
       <Seccion titulo="Qué es" descripcion="Elegí el tipo primero: el resto del formulario se adapta.">
         <div className="grid gap-4 sm:grid-cols-2">

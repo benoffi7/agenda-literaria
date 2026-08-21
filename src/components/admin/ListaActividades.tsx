@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  claseBotonFila,
   claseBotonPrimario,
   claseBotonSecundario,
   claseInput,
 } from '@/components/admin/campos/Campo';
-import { borrarActividad, listarActividades } from '@/lib/actividades';
+import { MenuAcciones } from '@/components/admin/MenuAcciones';
+import { borrarActividad, documentoAForm, listarActividades } from '@/lib/actividades';
+import { duplicarActividadForm } from '@/lib/duplicar';
 import { normalize } from '@/lib/normalize';
-import type { ActividadConId } from '@/types/actividad';
+import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
 interface Props {
   onEditar: (a: ActividadConId) => void;
   onNueva: () => void;
+  /** Abre el formulario con una copia lista para editar y guardar como nueva. */
+  onDuplicar: (copia: ActividadForm, tituloOrigen: string) => void;
   /** Cambia cuando se guarda algo, para refrescar el listado. */
   version: number;
 }
@@ -23,7 +26,7 @@ const COLOR_ESTADO: Record<string, string> = {
   cancelado: 'bg-acento/10 text-acento',
 };
 
-export function ListaActividades({ onEditar, onNueva, version }: Props) {
+export function ListaActividades({ onEditar, onNueva, onDuplicar, version }: Props) {
   const [actividades, setActividades] = useState<ActividadConId[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -47,6 +50,18 @@ export function ListaActividades({ onEditar, onNueva, version }: Props) {
     if (!q) return actividades;
     return actividades.filter((a) => (a.searchText ?? '').includes(q));
   }, [actividades, busqueda]);
+
+  /**
+   * B-11 — la copia se arma acá porque el listado ya tiene todos los slugs en
+   * memoria: alcanza para proponer uno libre sin ir a Firestore. La guarda real
+   * contra el choque sigue siendo `slugDisponible` en el submit.
+   */
+  const duplicar = (a: ActividadConId) => {
+    const copia = duplicarActividadForm(documentoAForm(a), {
+      tomados: actividades.map((x) => x.slug),
+    });
+    onDuplicar(copia, a.titulo);
+  };
 
   const eliminar = async (a: ActividadConId) => {
     if (!confirm(`¿Borrar «${a.titulo}»? No se puede deshacer.`)) return;
@@ -107,6 +122,10 @@ export function ListaActividades({ onEditar, onNueva, version }: Props) {
                 {a.estado}
               </span>
             </div>
+            {/*
+              Duplicar y borrar van en un menú y no en la fila: tres botones en
+              360px dan blancos de ~100px y se erra el toque. Ver MenuAcciones.
+            */}
             <div className="mt-2 flex gap-2 sm:mt-0 sm:shrink-0">
               <button
                 type="button"
@@ -115,14 +134,13 @@ export function ListaActividades({ onEditar, onNueva, version }: Props) {
               >
                 Editar
               </button>
-              <button
-                type="button"
-                onClick={() => void eliminar(a)}
-                aria-label={`Borrar ${a.titulo}`}
-                className={`${claseBotonFila} shrink-0 text-acento hover:bg-acento/10`}
-              >
-                Borrar
-              </button>
+              <MenuAcciones
+                etiqueta={`Más acciones de ${a.titulo}`}
+                acciones={[
+                  { label: 'Duplicar', onSelect: () => duplicar(a) },
+                  { label: 'Borrar', onSelect: () => void eliminar(a), peligrosa: true },
+                ]}
+              />
             </div>
           </li>
         ))}

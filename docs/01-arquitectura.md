@@ -91,6 +91,7 @@ src/
     slugify.ts              normalización de taxonomías (§4.2)
     normalize.ts            searchText y búsqueda sin acentos (§6)
     sesiones.ts             ids uuid, generador de N encuentros (§11)
+    duplicar.ts             copia de una actividad: ids nuevos, fechas corridas
     schema.ts               validación del form con zod, condicionales del §11
     actividades.ts          CRUD y conversión form ⇄ documento
     opciones.ts             taxonomías autogestionadas (§4)
@@ -110,7 +111,7 @@ scripts/
   seed-emulador.mjs         siembra /opciones/* en el emulador
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
-tests/                      134 tests
+tests/                      160 tests
 firestore.rules             reglas del §5.3
 ```
 

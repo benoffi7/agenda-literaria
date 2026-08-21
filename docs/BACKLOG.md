@@ -111,11 +111,12 @@ falla en lugares sin numeración clara.
 
 ### B-08 · Sin tests de componentes
 
-No hay testing-library instalada. La lógica pura está muy cubierta (134 tests),
+No hay testing-library instalada. La lógica pura está muy cubierta (160 tests),
 pero el render y la interacción del formulario se verificaron a mano.
 
 Vale al menos para `TaxonomiaSelect` (el bug del placeholder que se veía como
-opción elegida habría salido en un test de render) y para el editor de sesiones.
+opción elegida habría salido en un test de render), para el editor de sesiones y
+para el `MenuAcciones` del listado (cierre por click afuera y por `Escape`).
 
 ### B-09 · El bundle del panel pesa 570 KB
 
@@ -132,10 +133,15 @@ diferida de Firestore, pero no es urgente.
 Para cuando cargue gente además del dueño: las opciones nuevas funcionan pero no
 aparecen en el desplegable de los demás hasta ser validadas.
 
-### B-11 · Duplicar una actividad entera
+### B-11 · Duplicar una actividad entera — ✅ hecho (2026-08-21)
 
-Un ciclo nuevo suele ser el del año anterior con otras fechas. Hoy hay que
-cargarlo de cero.
+Menú "⋯" por fila en el listado, con "Duplicar", que abre el formulario
+precargado con una copia. La copia rehace los ids de sesión, pone
+`calendarEventId` en `null`, propone slug nuevo, arranca en borrador y corre las
+fechas en semanas enteras.
+
+Ver [CHANGELOG](CHANGELOG.md), D-17, D-18 y D-19. Lógica en
+`src/lib/duplicar.ts`, tests en `tests/duplicar.test.ts`.
 
 ### B-12 · Vista previa de cómo queda el evento
 
@@ -147,6 +153,13 @@ volcados ahí, una vista previa evitaría publicar y corregir.
 Si el `repository_dispatch` falla, el flag queda en `true` y el próximo tick
 reintenta a los 5 minutos, indefinidamente. Suficiente, pero sin límite ni
 alerta.
+
+### B-14 · El menú de acciones del listado no se navega con flechas
+
+`MenuAcciones` cierra con `Escape` y con un click afuera, y sus ítems son
+`<button role="menuitem">` alcanzables con Tab, pero no implementa el patrón
+completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
+cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
 
 ---
 
