@@ -9,6 +9,66 @@ están en [`06-decisiones.md`](06-decisiones.md); acá va el registro.
 
 ## 2026-08-21
 
+### Ayuda dentro del panel y novedades para quien no participó de las decisiones · B-60, B-61
+
+**Por qué:** el panel lo usan dos personas. Una pidió cada funcionalidad y sabe
+por qué es como es; la otra no participó de ninguna de esas decisiones y hoy se
+entera de lo nuevo solo si alguien se lo cuenta. Y el panel cambia seguido: en un
+día entraron duplicar, la vista previa del evento, las coordenadas de la sede y
+el aviso de versión nueva.
+
+Botón **"Ayuda"** en el encabezado, en todas las pantallas. Abre una **capa** y
+no una vista del router (D-61): la ayuda se consulta *mientras* se carga una
+actividad, y navegar a otra pantalla desmontaría el formulario con sus 30+
+campos cargados a mano. Dos pestañas, un solo botón, porque el encabezado tiene
+que seguir entrando en 360px (D-65).
+
+**Guía.** Arriba y sin colapsar, los seis avisos de lo que se hace mal una vez y
+no se puede deshacer: la dirección web que queda fija al publicar, el link de la
+reunión que solo se publica si se tilda la casilla (y lo que eso significa con
+cupo), lo que es interno y nunca sale, cancelar un encuentro, pasar a borrador
+—que borra todos los eventos— y el calendario como espejo que no se edita del
+otro lado. Después, un capítulo por sección del formulario más el recorrido de
+una actividad hasta la gente, el listado, las listas que crecen con "Otro", el
+aviso de versión nueva y la carga desde el teléfono.
+
+**No duplica la ayuda de campo**, que ya existe al lado de cada campo y es donde
+sirve: la guía es el *para qué* y lo que no se ve. Y el tono no nombra archivos,
+secciones del `CLAUDE.md` ni campos del modelo — hay un test que lo verifica.
+
+**Novedades.** El mismo changelog contado como "qué podés hacer ahora que antes
+no podías", con la fecha y dónde está en el panel. Vive en el repo y se despliega
+con el build (D-63): una novedad existe *porque se publicó código*, así que
+"editable sin deploy" no compra nada y sí costaría reglas, tests de integración y
+una pantalla de edición que nadie iba a construir — como la de taxonomías que
+B-06 pide desde el principio y sigue sin existir. Acá la entrada va en el mismo
+commit que la funcionalidad y se revisa con el código.
+
+**El aviso es un número al lado de "Ayuda"** (D-64). Sin ventana que se abra
+sola, sin cartel que haya que cerrar: quien está cargando una actividad a las
+once de la noche quiere guardar, no enterarse de una mejora. Se apaga al abrir la
+pestaña una vez. La marca de "hasta acá leí" es el id de la última novedad vista,
+guardado en el navegador; sin marca, todo cuenta como nuevo (la primera vez es la
+invitación a leer la lista), y con una marca que ya no existe no avisa nada, que
+es el lado prudente del error.
+
+**Contenido como data, no como pantallas** (D-62), y por eso hay tests:
+`tests/ayuda.test.ts` **lee `ActividadFormulario.tsx` y falla si el formulario
+tiene una sección sin capítulo en la guía** —el mismo recurso de
+`tests/opciones-orden.test.ts`—, verifica que los seis avisos sigan explicados y
+que no se cuele jerga. `tests/novedades.test.ts` cubre el cálculo de lo no leído
+con sus dos bordes, el navegador que no deja guardar datos, y que la fecha no
+retroceda un día por interpretarse como medianoche UTC.
+
+**Quién mantiene esto al día:** hay una regla de proceso nueva en
+[`05-patrones.md`](05-patrones.md) — si el cambio se nota al usar el panel, entra
+en `novedades.ts`; si agrega un comportamiento que no se adivina, entra en
+`ayuda.ts`; en el mismo cambio que el código, no después. El test de secciones es
+lo que hace que no se pueda saltear en silencio.
+
+El formulario **no se tocó**: el único cambio en código existente son dos líneas
+en `AdminApp.tsx` (el import y el botón del encabezado).
+
 ### Historial de versiones (B-03, §12)
 
 **Hoy pisar una descripción larga la perdía para siempre**, y era lo más cercano
@@ -163,6 +223,7 @@ Guardas nuevas en `tests/bundle-panel.test.ts`: el corte vive en el grafo de
 imports, así que un `import` estático de más lo deshace con el build en verde.
 Los tests leen los fuentes como texto y fallan si `firebase-client` vuelve a
 tocar Firestore o si `AdminApp` importa las dos vistas de forma estática.
+
 
 ### La app tiene versión, y el panel abierto se actualiza solo
 

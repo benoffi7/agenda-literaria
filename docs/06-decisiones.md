@@ -907,6 +907,137 @@ por `Escape`. El panel no tiene librería de UI y no se agregó ninguna.
 
 ---
 
+## D-61 · La ayuda es una capa, no una pantalla del panel
+
+**Decisión** (B-60): el botón "Ayuda" del encabezado abre una capa sobre lo que
+esté en pantalla. No es una vista del router propio (`lista` / `nueva` /
+`editar` / `duplicar`).
+
+**Motivo:** el momento en que se consulta la ayuda es *mientras* se carga una
+actividad. Una vista nueva desmonta `ActividadFormulario`, y con él los 30+
+campos cargados a mano: la ayuda tendría el peor precio posible justo cuando más
+se necesita. Con una capa, consultarla cuesta cero.
+
+**Por qué va en el encabezado y no dentro de cada pantalla:** es el único lugar
+que se ve en todas, y así el formulario no necesita saber que la ayuda existe
+—cosa nada menor con varias manos tocando ese archivo al mismo tiempo—. El
+contexto (listado o formulario) es lo único que se pasa, y solo decide qué
+capítulo aparece desplegado.
+
+**Alternativas descartadas:**
+
+- *Un "?" por sección del formulario.* Es lo que mejor apunta, pero obliga a
+  tocar las nueve secciones del formulario. Queda como [B-60](BACKLOG.md) con el
+  mecanismo listo: cada capítulo ya declara a qué sección corresponde.
+- *Un tour guiado al primer ingreso.* Se ignora, se saltea, y hay que
+  mantenerlo alineado con el layout además de con la funcionalidad.
+- *Un documento aparte (Drive, Notion).* Es lo que ya no funciona: nadie abre
+  otra pestaña para cargar un taller, y un documento afuera del repo se
+  desactualiza sin que nada lo note.
+
+---
+
+## D-62 · El contenido de la ayuda es data tipada y testeada
+
+**Decisión:** el texto vive en `src/lib/ayuda.ts` como arrays de objetos
+(`AVISOS`, `CAPITULOS`), y los componentes solo lo pintan.
+
+**Motivo:** el riesgo real de una ayuda no es que quede fea, es que **mienta**.
+Con el contenido como data se puede verificar:
+
+- `tests/ayuda.test.ts` lee `ActividadFormulario.tsx` y falla si hay una sección
+  del formulario sin capítulo. Es el mismo recurso poco ortodoxo de
+  `tests/opciones-orden.test.ts` (leer el fuente), y por el mismo motivo: fija
+  algo que de otro modo se pierde en silencio.
+- Verifica que los seis avisos irreversibles sigan explicados, con un mínimo de
+  largo para que no se puedan vaciar.
+- Verifica el **tono**: el texto no puede contener `§`, "trampa", nombres de
+  archivo, ni nombres de campo (`slug`, `urlPublica`, `searchText`). Sin eso, la
+  jerga del resto de la documentación se filtra sola.
+
+**Costo:** el texto entra al bundle del panel — unos 19 KB de contenido entre
+la guía y las novedades, bastante menos comprimido. Queda aislado en `/admin`,
+que ya carga el SDK de Firebase, así que no afecta al sitio público ni al SEO
+(ver B-09).
+
+---
+
+## D-63 · Las novedades viven en el repo, no en Firestore
+
+**Decisión:** `src/lib/novedades.ts` se despliega con el build. No hay una
+colección de novedades editable desde el panel ni desde la consola.
+
+**Motivo — el mantenimiento decide el diseño.** La pregunta no es dónde es más
+flexible, es quién lo va a mantener al día dentro de dos meses:
+
+| | En el repo | En Firestore |
+|---|---|---|
+| Cuándo se escribe | en el mismo commit que la funcionalidad | después del deploy, a mano |
+| Quién revisa que esté | la review del cambio, y la regla de proceso | nadie |
+| Qué hace falta construir | nada | reglas, tests de integración y una pantalla de edición |
+| Si nadie lo escribe | se nota en el diff | no se nota nunca |
+
+Y el argumento que cierra: **una novedad existe porque se publicó código**. No
+hay caso en que haga falta anunciar algo sin haber desplegado nada, así que
+"editable sin deploy" no compra nada real. La evidencia está en el propio
+proyecto: [B-06](BACKLOG.md) pide desde el principio una pantalla para
+administrar taxonomías y nunca se construyó. Una pantalla para editar novedades
+habría corrido la misma suerte, y con ella la lista entera.
+
+**Costo aceptado:** no se puede corregir una errata ni avisar de una caída sin
+desplegar. Queda anotado como [B-62](BACKLOG.md); si algún día hace falta un
+aviso urgente, es otra cosa y se resuelve aparte.
+
+---
+
+## D-64 · Lo no leído se marca con un id en el navegador, y el aviso es un número
+
+**Decisión:** se guarda el id de la última novedad vista en el navegador de cada
+persona; las posteriores son "sin leer" y el botón "Ayuda" muestra su cantidad.
+
+**Por qué el id y no la fecha:** varias novedades comparten fecha (salen el
+mismo día) y una fecha no distingue entre ellas. El orden del array es el orden
+real, así que "hasta acá leí" es una posición, y la posición se nombra con un id
+estable. De ahí la regla de no reusar ni renombrar ids.
+
+**Los dos casos de borde, y hacia dónde se falla:**
+
+- **Sin marca guardada** (primera vez, navegador nuevo, datos borrados) → todo
+  cuenta como nuevo. Es deliberado: la primera vez, el número es la invitación a
+  leer la lista completa.
+- **Marca que ya no está en la lista** (alguien borró una entrada vieja) → no se
+  avisa de nada. Se falla hacia el silencio: un aviso falso que aparece siempre
+  se aprende a ignorar, y ahí el mecanismo entero deja de servir.
+
+**Por qué no algo compartido entre dispositivos:** guardarlo en Firestore por
+usuario haría que el teléfono y la computadora lleven la misma cuenta, a cambio
+de una escritura, unas reglas y un documento por persona. Para "¿vi esta lista?"
+no vale: leerla dos veces no molesta a nadie.
+
+**Cómo se avisa, y cómo no:** un número al lado de la palabra "Ayuda". Sin
+ventana que se abra sola, sin cartel que haya que cerrar, sin punto rojo
+parpadeando. Quien está cargando una actividad a las once de la noche no quiere
+enterarse de una mejora: quiere guardar. El número espera, y se apaga al abrir
+la pestaña de novedades una vez. El único aviso que interrumpe en este panel
+sigue siendo el de versión nueva (D-37), y ese interrumpe porque si no se pierde
+trabajo.
+
+---
+
+## D-65 · Guía y novedades comparten un botón, con dos pestañas
+
+**Decisión:** una sola entrada en el encabezado, con pestañas "Guía" y
+"Novedades". Si hay novedades sin leer, abre en Novedades; si no, en la guía.
+
+**Motivo:** el encabezado tiene que seguir entrando en 360px al lado de
+"Volver", "Salir" y el mail de la cuenta. Dos botones más ahí es una fila que se
+parte en tres líneas. Y las dos cosas se consultan en el mismo momento —"¿cómo
+era esto?" y "¿qué cambió?"—, así que separarlas no ayuda a encontrarlas.
+
+**Costo:** la pestaña que abre depende del estado de lectura, o sea que la misma
+acción no siempre muestra lo mismo. Es lo que se quiere: si hay algo sin leer, es
+la razón por la que la persona hizo clic.
+
 ## D-51 · El bundle del panel se corta en el login, no con `manualChunks`
 
 **Decisión** (B-09): la carga inicial de `/admin` baja de ~750 kB a ~353 kB
@@ -1057,6 +1188,7 @@ gente se traba en él. En silencio, otra vez.
 hay un test que verifica que el vocabulario derivado contenga rutas concretas y
 que tenga un tamaño plausible: si una actualización de zod rompe el recorrido, el
 test falla en vez de dejar todo en `otro`.
+
 
 ---
 

@@ -208,6 +208,63 @@ Recargar mientras alguien completa los 30+ campos le borra varios minutos de
 trabajo, y eso es peor que tener el JS viejo. De ahí que el único caso en que el
 panel no decide solo sea ese.
 
+### Ayuda y novedades del panel
+
+Botón **"Ayuda"** en el encabezado, visible en todas las pantallas. Abre una
+capa —no una vista del router (D-61)— con dos pestañas: **Guía** y
+**Novedades**. Al ser una capa, se puede consultar desde el formulario sin
+desmontarlo y sin perder lo cargado.
+
+En mobile ocupa la pantalla completa con su propio scroll y su safe-area; desde
+`sm` es un cuadro centrado. Cierra con "Cerrar", con `Escape` y con un click en
+el fondo. Mientras está abierta, el `body` no scrollea.
+
+**Guía** — el contenido vive en [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) como
+data tipada, no repartido en JSX (D-62):
+
+- Arriba y sin colapsar, los **seis avisos de lo que no se puede deshacer**: la
+  dirección web que queda fija al publicar, el link de la reunión que solo se
+  publica si se tilda la casilla, lo que es interno y nunca sale, cancelar un
+  encuentro, pasar a borrador (borra todos los eventos) y el calendario como
+  espejo de solo lectura.
+- Después, un **capítulo por sección del formulario** (con el mismo título) más
+  cuatro que no son secciones: el recorrido de una actividad hasta la gente, el
+  listado, las listas que crecen con "Otro", el aviso de versión nueva, las
+  novedades y la carga desde el teléfono. Cada capítulo dice **para qué** sirve
+  la sección y lista los comportamientos que no se ven; los puntos marcados como
+  "cuidado" llevan una barra de acento.
+- El capítulo que aparece desplegado depende de desde dónde se abrió: del
+  listado abre "El listado de actividades"; del formulario, "Cómo llega una
+  actividad a la gente".
+
+**No duplica la ayuda de campo.** Los textos cortos de un campo puntual siguen
+en la prop `ayuda` de `Campo`, al lado del campo. La guía es el *para qué* y lo
+que no se ve.
+
+**Novedades** — [`src/lib/novedades.ts`](../src/lib/novedades.ts), en el repo y
+desplegado con el build (D-63). Es el changelog traducido a "qué podés hacer
+ahora que antes no podías": lo más nuevo arriba, con la fecha, dos frases y
+dónde está en el panel. No es `CHANGELOG.md`, que es técnico y no le sirve a
+quien carga actividades.
+
+Lo no leído se marca por navegador (D-64): se guarda el id de la última novedad
+vista y el botón "Ayuda" muestra un número con las posteriores. Sin marca
+guardada (primera vez, navegador nuevo) **todo cuenta como nuevo**, que es la
+invitación a leer la lista completa. Con una marca que ya no existe en la lista,
+no avisa nada: preferimos perder un aviso antes que gritar novedades ya leídas.
+
+El aviso es solo ese número. No hay ventana que se abra sola ni cartel que haya
+que cerrar: se apaga al abrir la pestaña de novedades una vez. Si el navegador
+no permite guardar datos (ventana privada), el número reaparece en la próxima
+visita y nada se rompe.
+
+**Quién lo mantiene:** la regla de proceso está en
+[`05-patrones.md`](05-patrones.md) — un cambio que se nota al usar el panel
+entra en `novedades.ts`, y un comportamiento que no se adivina entra en
+`ayuda.ts`, en el mismo commit. `tests/ayuda.test.ts` falla si el formulario
+tiene una sección sin capítulo, así que una sección nueva no puede quedar sin
+ayuda.
+
 ### Reportar bugs y sugerencias
 
 Botón "Reportar algo" en el encabezado del panel. El formulario pide:

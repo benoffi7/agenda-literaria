@@ -7,6 +7,8 @@ import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
 import { VERSION_APP } from '@/lib/version';
+// Estático: la ayuda es solo datos y componentes, no toca Firestore.
+import { BotonAyuda } from '@/components/admin/ayuda/BotonAyuda';
 import {
   loginConGoogle,
   logout,
@@ -189,6 +191,10 @@ export function AdminApp() {
             Reportar algo
           </button>
         )}
+        {/* Única entrada a la ayuda y a las novedades (D-61): el encabezado se
+            ve en todas las pantallas, y al ser una capa se puede consultar sin
+            perder el formulario a medio cargar. */}
+        <BotonAyuda contexto={vista.tipo === 'lista' ? 'lista' : 'formulario'} />
         <button
           type="button"
           onClick={() => void logout()}
