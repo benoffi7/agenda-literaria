@@ -2,6 +2,55 @@
 
 ## 2026-08-24
 
+### La red de contención sobrevive a que le muevan el piso
+
+Integrada la fase 1 completa. Lo que rompió no fue el código: fueron los
+**chequeos estructurales**, que leen el fuente para verificar propiedades y por
+eso dependen de dónde están las cosas. B-77 partió `functions/index.js` en
+módulos y los dejó midiendo el vacío — verdes, sin probar nada.
+
+**La extracción del cuerpo de un trigger buscaba `\n});`.** Con los triggers ya
+partidos, ese patrón cortaba todos los cuerpos en la primera llamada anidada, así
+que los chequeos veían fragmentos y reportaban hallazgos que no existían. Ahora
+cuenta paréntesis balanceados. Y lo que el test adivinaba por regex —qué campos
+escribe el sync— pasó a ser un export: `CAMPOS_QUE_ESCRIBE_EL_SYNC` en
+`functions/sincronizacion.js`. Adivinarlo ya había fallado dos veces.
+
+**Un chequeo que enumera nombres se queda viejo, y se edita sin pensar.** El de
+triggers blindados listaba `['guardarVersion','reporteAIssue']`; B-41 agregó
+`guardarVersionAlBorrar` y el test lo dio por regresión. La lista se reemplazó
+por la propiedad —al menos dos blindados—, que es lo que el chequeo quiere
+garantizar. Un test que hay que actualizar para que siga pasando se termina
+actualizando en automático, y ahí se apagan los chequeos.
+
+Uno quedó apagado a propósito (**B-166**): el detector de guardas dejó de
+reconocer las de `guardarVersion` porque el refactor las mudó a un helper y él
+las busca en el cuerpo del trigger. Está `it.skip`, no `it.fails`, porque un test
+apagado tiene que verse apagado.
+
+### B-84 cerrado: el semáforo disparó como estaba diseñado
+
+Los tres `it.fails` de `tests/invariantes-de-ciclo.test.ts` empezaron a pasar
+cuando 1B arregló la renumeración, y **un `it.fails` que pasa rompe el CI** —que
+es toda la idea— así que vinieron a promoverse. El test que documentaba el
+comportamiento viejo ("cancelar un encuentro emite una operación por encuentro
+del ciclo") se invirtió en la propiedad buena: **el costo de cancelar no escala
+con el tamaño del ciclo**. Se dejó separado del que verifica *cuál* es la
+operación, porque un arreglo que emitiera un `actualizar` idempotente por hermano
+pasaría aquel y volvería a reescribir los siete eventos restantes.
+
+**Y el fixture tenía la misma clase de bug que el archivo persigue.** El cuarto
+caso de `FAMILIA_DE_CICLOS` —un ciclo con el tercer encuentro ya cancelado— le
+dejaba a esa sesión su `calendarEventId`. El sistema no puede tener ese estado
+asentado: al borrar el evento, `syncCalendar` repone `null` en la sesión. El
+fixture describía algo irreal y por eso `planificar` emitía un borrado de más en
+cada escritura posterior. Es la cuarta aparición de B-135 —un fixture que no
+reproduce el dominio— y esta vez adentro del archivo escrito para detectarla.
+
+`docs/13-agentes.md` nombra `antes-de-pushear` y `automatizar`, que existían sin
+estar documentados (lo detectó B-120, que es el test que verifica justamente eso).
+
+
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 
 Cuatro vocabularios de la analítica se mantenían por separado de su fuente, y
