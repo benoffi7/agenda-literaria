@@ -60,6 +60,46 @@ Dos tests sostienen la regla, y son a propósito incómodos de saltear:
   que el texto no tenga jerga: sin `§`, sin nombres de archivo, sin nombres de
   campo.
 
+## Regla de proceso: si hay un skill, se usa
+
+**Siempre que exista un skill para lo que hay que hacer, se invoca el skill.**
+No se rehace el procedimiento a mano "porque esta vez es corto".
+
+El motivo no es ahorrar tipeo: **un skill es el procedimiento acordado.** Cuando
+alguien lo hace a mano en paralelo, no queda una versión y una copia — quedan
+dos versiones, y la que se ejecuta a mano no tiene forma de enterarse cuando la
+otra cambia. Es exactamente el mecanismo por el que el corte del bundle se
+deshace en silencio, por el que `desSlug` estuvo duplicado en el panel y en el
+evento (H2), y por el que la analítica dejó de reconocer las versiones que el
+build produce (B-88): **dos derivaciones de la misma idea se separan sin que
+nada falle.**
+
+Los pasos que se saltean al hacerlo a mano son siempre los mismos tres, y son
+los que el skill existe para que no se salteen: la entrada de `novedades.ts`, el
+default de lectura del campo nuevo, y el ítem del backlog del bug que apareció
+en el camino.
+
+| Si estás por… | Invocá |
+|---|---|
+| cerrar un cambio (doc, CHANGELOG, ayuda, novedades, backlog) | `cerrar-cambio` |
+| agregar un campo al modelo | `campo-nuevo` |
+| anotar un bug o una idea | `al-backlog` |
+| pushear o abrir un PR | `antes-de-pushear` |
+| automatizar algo que ya se hizo dos veces | `automatizar` |
+| decidir qué deployar | `/que-deployar` |
+
+Dos aclaraciones para que la regla no se vuelva absurda:
+
+- **Si el skill está mal, se arregla el skill** — en el mismo cambio. Lo que no
+  se hace es esquivarlo esta vez y dejarlo mal para la próxima.
+- **Un skill no reemplaza a los tests ni a los auditores**: corre además. Y a la
+  inversa, un skill que reimplementa lo que un script ya decide es la misma
+  duplicación al revés: `que-deployar` **usa** `scripts/que-deployar.sh`, no
+  copia la decisión.
+
+El inventario completo, con qué automatiza cada uno y qué se decidió **no**
+automatizar, está en [`13-agentes.md`](13-agentes.md).
+
 ## Idioma
 
 Código, campos, comentarios y commits en **español** (§14). Es coherente con el
@@ -316,6 +356,43 @@ emuladores no están (`describe.skipIf`).
 **Qué no:** los componentes de React no tienen tests de render. No hay
 testing-library instalada. La verificación de la UI fue manual y contra
 producción.
+
+### Verificar la clase, no la instancia
+
+Un test que verifica una instancia protege esa instancia. `costuras.test.ts`
+demuestra que `calendarEventId` se pisa; nada impedía que el mes siguiente se
+pisara otro campo por el mismo camino. Cuando el bug tiene una **forma**
+—"un campo que escribe el backend viaja por el formulario", "un trigger decide
+desde el payload y no desde el estado"— el test se escribe sobre la forma:
+
+```ts
+// mal — protege un campo
+expect(guardar().sesiones[0].calendarEventId).not.toBeNull();
+
+// bien — protege la categoría, y el campo nuevo entra solo
+for (const campo of CAMPOS_DE_MAQUINA_SESION) { … }
+```
+
+Tres propiedades que hacen que un chequeo de clase valga:
+
+1. **La lista se deriva del código**, no se mantiene a mano: los campos salen de
+   `functions/historial.js`, los triggers se descubren del fuente, las formas de
+   versión se sacan de `scripts/version.mjs`. Lo nuevo entra sin que nadie se
+   acuerde. Cuando la lista **no** se puede derivar (`EFECTOS_INCONDICIONALES`),
+   extenderla es trabajo de los auditores — ver [`13-agentes.md`](13-agentes.md).
+2. **No se puede satisfacer sin arreglar nada.** Un chequeo con una lista de
+   excepciones que va a crecer da falsa cobertura y es peor que no tenerlo.
+3. **El chequeo dice qué lo haría pasar**, en un comentario. Si el arreglo
+   elegido es más barato que eso, el `it.fails` sigue fallando y eso también es
+   información: la clase quedó abierta.
+
+Los invariantes de una entidad del dominio se afirman sobre una **familia** de
+fixtures, no sobre uno: `tests/fixtures/ciclo.ts` incluye a propósito el
+fixture de una sola sesión que dejó pasar B-84, para que un invariante que solo
+vale ahí no pueda pasar por verdadero.
+
+`it.fails` es la marca de una clase todavía viva: mantiene el CI verde y **falla
+el día en que alguien la arregla**, que es cuando hay que venir a promoverlo.
 
 Los nombres de los tests describen el comportamiento en español, con la
 referencia a la sección:

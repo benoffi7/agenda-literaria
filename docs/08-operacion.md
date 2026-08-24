@@ -50,11 +50,62 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
+| `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build y fuga de credenciales |
 
 `admin:claim` apunta al emulador por defecto; `admin:claim:prod` es un script
 aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
 `opciones:aprobar` sigue la misma convención, y además el script anuncia el
 objetivo (EMULADOR o PRODUCCIÓN) antes de escribir.
+
+## El gate de antes de pushear
+
+Cinco pasos mecánicos, en un script para poder correrlos a mano, y un hook que
+solo los llama. La separación es la misma lección de `que-deployar.sh`: un `if`
+adentro de un hook es igual de imposible de probar que un `if` adentro de un
+YAML.
+
+```bash
+./scripts/verificar-todo.sh
+```
+
+| # | Paso | Por qué está |
+|---|---|---|
+| 1 | marcadores de conflicto (`sin-marcadores-de-conflicto.test.ts`) | es el más barato y ya se commitearon dos veces |
+| 2 | `astro sync` + `tsc --noEmit` | sin `astro sync` el typecheck da doce errores que no son del cambio |
+| 3 | `npm test` con los emuladores arriba y `EXIGIR_EMULADOR=1` | sin eso los tests de integración se saltean **en silencio** y las reglas se pushean sin probar |
+| 4 | `npm run build` | |
+| 5 | `./scripts/verificar-bundle.sh dist` | el gate del §5.4 / trampa 4; va después del build porque sin `dist/` no verifica nada |
+
+### Activarlo (hay que hacerlo una vez por clon)
+
+Los hooks viven en `.git/hooks/`, que **no se versiona**. El directorio
+`githooks/` sí, así que se enchufa apuntando git ahí:
+
+```bash
+git config core.hooksPath githooks
+```
+
+Es config del clon (no viaja con el repo) y alcanza a todos los worktrees,
+porque la config vive en el directorio común de git. Para desenchufarlo,
+`git config --unset core.hooksPath`.
+
+### Saltearlo a propósito
+
+```bash
+SALTEAR_PRE_PUSH=1 git push
+git push --no-verify
+```
+
+Las dos formas quedan en el historial del shell, que es la idea: que saltear sea
+una decisión y no un olvido. El hook además avisa en amarillo qué **no** se
+verificó.
+
+### Lo que el gate no puede ver
+
+Privacidad de un campo nuevo, trampas del §13 en código nuevo, y si la doc
+acompaña al cambio. Eso necesita criterio y va por el skill
+`antes-de-pushear`, que lanza los tres auditores en paralelo: un hook de git no
+puede invocar un modelo. Ver [`13-agentes.md`](13-agentes.md).
 
 ## Aprobar una etiqueta nueva (§4.3)
 
