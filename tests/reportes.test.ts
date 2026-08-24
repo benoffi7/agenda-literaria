@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
@@ -283,4 +285,29 @@ describe('formAReporte', () => {
     expect(json).not.toContain('uid_tia_hilda');
     expect(json).not.toContain('librosdelatiahilda');
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-74 · el trigger no se puede colgar contra la API de GitHub
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * `reportes-trigger.js` había copiado las cinco cabeceras de la llamada de
+ * `index.js` **pero no el timeout**, y el comentario que explica por qué hace
+ * falta estaba escrito en una sola de las dos copias. Un socket colgado dejaba
+ * la invocación corriendo hasta el timeout de la plataforma.
+ *
+ * Es un test sobre la fuente porque lo que hay que garantizar es que la llamada
+ * lleve el `AbortSignal`: simularlo pediría colgar un socket de verdad.
+ */
+describe('B-74 · las dos llamadas a GitHub abortan por timeout', () => {
+  const fuente = (relativo: string) =>
+    readFileSync(fileURLToPath(new URL(`../${relativo}`, import.meta.url)), 'utf8');
+
+  it.each(['functions/reportes-trigger.js', 'functions/index.js'])(
+    '%s corta el fetch con AbortSignal.timeout',
+    (archivo) => {
+      expect(fuente(archivo)).toMatch(/signal: AbortSignal\.timeout\(/);
+    },
+  );
 });

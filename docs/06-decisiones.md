@@ -769,6 +769,11 @@ viejo salvo un log perdido.
 falta los dos:
 
 1. **Un disparo exitoso** resetea el contador. Es el camino normal.
+   **Actualización (B-85):** el disparo exitoso resetea el contador siempre,
+   pero baja `pendiente` solo si la marca `actualizado` del documento sigue
+   siendo la que el tick leyó. Si cambió, alguien marcó un rebuild nuevo durante
+   los hasta 15 s del `fetch` y ese cambio no entró al build que arrancó: el
+   flag queda arriba y el próximo tick dispara otro.
 2. **Un cambio nuevo rearma los intentos** (`CAMPOS_REARME` en `marcarRebuild`).
    Sin esto, agotarse sería un estado terminal que hay que destrabar a mano
    editando Firestore.

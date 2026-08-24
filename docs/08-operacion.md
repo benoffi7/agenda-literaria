@@ -508,7 +508,9 @@ gcloud functions logs read dispararRebuild --project agenda-literaria \
 
 Mensajes: `rebuild disparado`, `repository_dispatch falló, se reintenta`,
 `el rebuild agotó los reintentos: el sitio quedó viejo`, `rebuild pendiente
-pero sin GitHub configurado`.
+pero sin GitHub configurado`, `llegó otro cambio durante el dispatch: queda
+pendiente para el próximo tick` (B-85: el flag **no** se baja, porque el build
+que arrancó no incluye ese cambio).
 
 Y del lado de GitHub, los runs del workflow:
 

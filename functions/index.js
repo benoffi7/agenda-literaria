@@ -384,8 +384,28 @@ export const dispararRebuild = onSchedule(
       return;
     }
 
-    await ref.set(registrarExito(ahora), { merge: true });
+    // B-85 — bajar `pendiente` se hace comparando: entre la lectura de arriba y
+    // este punto pasó una llamada a GitHub de hasta 15 s, y una actividad
+    // guardada en esa ventana marcó su rebuild. Ese cambio no entró al build que
+    // acabamos de disparar, así que el flag tiene que quedar arriba.
+    //
+    // Va en transacción para que la comparación no tenga su propia ventana: si
+    // la marca llega mientras la transacción corre, Firestore la reintenta y la
+    // ve.
+    const exito = await db.runTransaction(async (tx) => {
+      const actual = await tx.get(ref);
+      const campos = registrarExito(ahora, {
+        marcaLeida: estado.actualizado ?? null,
+        marcaActual: (actual.exists ? actual.data().actualizado : null) ?? null,
+      });
+      tx.set(ref, campos, { merge: true });
+      return campos;
+    });
+
     logger.info('rebuild disparado', { motivo: estado.motivo, intento: decision.intento });
+    if (exito.pendiente) {
+      logger.info('llegó otro cambio durante el dispatch: queda pendiente para el próximo tick');
+    }
   },
 );
 

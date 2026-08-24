@@ -510,32 +510,73 @@ describe('B-81 · el título del reporte también se redacta (§5.1, trampa 5)',
 
 /**
  * `dispararRebuild` lee `sistema/rebuild`, habla con GitHub (hasta 15 s de
- * timeout) y después escribe `registrarExito`, que baja `pendiente` sin mirar si
- * en el medio alguien lo volvió a subir. Una actividad guardada en esa ventana
- * marca su rebuild y el tick se lo come: el sitio queda viejo hasta la próxima
- * edición ajena.
+ * timeout) y después escribe `registrarExito`, que bajaba `pendiente` sin mirar
+ * si en el medio alguien lo volvió a subir. Una actividad guardada en esa
+ * ventana marcaba su rebuild y el tick se lo comía: el sitio quedaba viejo hasta
+ * la próxima edición ajena.
+ *
+ * **Arreglado:** `registrarExito` compara la marca `actualizado` que el tick
+ * leyó contra la que hay al escribir, y la escritura va en transacción.
  */
-describe('B-85 · registrarExito baja `pendiente` sin comparar', () => {
+describe('B-85 · registrarExito compara antes de bajar `pendiente`', () => {
   const ahora = Date.UTC(2026, 7, 21, 12, 0, 0);
+  const marca = (iso: string) => {
+    const d = new Date(iso);
+    return { toMillis: () => d.getTime(), toDate: () => d };
+  };
 
   it('en el camino feliz baja el flag, que es lo que corresponde', () => {
     expect(registrarExito(ahora)).toMatchObject({ pendiente: false, intentos: 0 });
   });
 
-  it.fails('B-85: un rebuild marcado durante el dispatch no se puede perder', () => {
+  it('con la misma marca a los dos lados, también', () => {
+    const leida = marca('2026-08-21T11:59:00Z');
+    expect(
+      registrarExito(ahora, { marcaLeida: leida, marcaActual: marca('2026-08-21T11:59:00Z') }),
+    ).toMatchObject({ pendiente: false });
+  });
+
+  it('B-85: un rebuild marcado durante el dispatch no se pierde', () => {
     // El tick lee el estado…
-    let doc: Record<string, unknown> = { pendiente: true, motivo: 'actividad A', intentos: 0 };
+    let doc: Record<string, unknown> = {
+      pendiente: true,
+      motivo: 'actividad A',
+      intentos: 0,
+      actualizado: marca('2026-08-21T11:59:00Z'),
+    };
     const leido = { ...doc };
     expect(leido.pendiente).toBe(true);
 
     // …y mientras el `fetch` a GitHub está en vuelo, syncCalendar marca otro.
-    doc = { ...doc, pendiente: true, motivo: 'actividad B', ...CAMPOS_REARME };
+    doc = {
+      ...doc,
+      pendiente: true,
+      motivo: 'actividad B',
+      actualizado: marca('2026-08-21T11:59:30Z'),
+      ...CAMPOS_REARME,
+    };
 
-    // El dispatch salió bien: `ref.set(registrarExito(ahora), { merge: true })`.
-    doc = { ...doc, ...registrarExito(ahora) };
+    // El dispatch salió bien, y la escritura compara la marca (en transacción,
+    // así que lee la de "actividad B").
+    doc = {
+      ...doc,
+      ...registrarExito(ahora, {
+        marcaLeida: leido.actualizado,
+        marcaActual: doc.actualizado,
+      }),
+    };
 
-    // El build que arrancó no incluye a "actividad B", y ya nadie va a pedir otro.
+    // El build que arrancó no incluye a "actividad B": el flag queda arriba y el
+    // próximo tick lo dispara.
     expect(doc.pendiente).toBe(true);
+    // Y el disparo igual salió bien: los reintentos vuelven a cero.
+    expect(doc).toMatchObject({ intentos: 0, ultimoError: null, agotado: false });
+  });
+
+  it('index.js escribe el éxito en una transacción, comparando la marca', () => {
+    const src = fuente('functions/index.js');
+    expect(src).toContain('marcaLeida: estado.actualizado ?? null,');
+    expect(src).toMatch(/const exito = await db\.runTransaction\(/);
   });
 });
 

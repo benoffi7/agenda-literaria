@@ -765,7 +765,11 @@ B-72, que es cuando esos puntos quedan compartidos.
 Distinto de B-58: eso es "dos interacciones sin medir por no tocar el JSX", esto
 es un campo entero.
 
-### B-74 · `crearIssue` no tiene timeout y puede colgar el trigger de reportes
+### B-74 · `crearIssue` no tiene timeout y puede colgar el trigger de reportes — ✅ hecho (2026-08-24)
+
+**Arreglado:** las dos llamadas a GitHub abortan a los 15 s, y
+`tests/reportes.test.ts` lo verifica en los dos archivos a la vez para que no se
+pueda volver a perder en una copia.
 
 `functions/index.js:230` define `TIMEOUT_DISPATCH_MS` con el comentario "Sin esto
 un socket colgado se come el tick entero", y lo usa con `AbortSignal.timeout` en
@@ -838,7 +842,13 @@ y el total sigue siendo ocho), y que el cancelado simplemente no tenga evento.
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts), con lo que hace
 hoy escrito al lado para que el cambio se note.
 
-### B-85 · El debounce del rebuild se come el cambio que llega mientras dispara
+### B-85 · El debounce del rebuild se come el cambio que llega mientras dispara — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera de las dos opciones de abajo: `registrarExito`
+compara la marca `actualizado` que el tick leyó contra la que hay al escribir, y
+la escritura va en transacción (así la comparación no tiene su propia ventana).
+Si la marca cambió, `pendiente` queda en `true` y el próximo tick dispara otro
+build; los reintentos igual se resetean, porque el disparo salió bien.
 
 `dispararRebuild` lee `sistema/rebuild`, habla con GitHub (hasta 15 s de
 timeout) y después escribe `registrarExito`, que baja `pendiente` sin comparar

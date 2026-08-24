@@ -2,6 +2,22 @@
 
 ## 2026-08-24
 
+### El tick del rebuild ya no se come un cambio, y el trigger de reportes no se cuelga
+
+- **B-85** · `dispararRebuild` leía `sistema/rebuild`, hablaba con GitHub (hasta
+  15 s) y después bajaba `pendiente` sin comparar. Una actividad guardada en esa
+  ventana marcaba su rebuild y el tick se lo llevaba: el build que arrancó no la
+  incluía y ya nadie iba a pedir otro. Ahora `registrarExito` recibe la marca
+  `actualizado` que el tick leyó y la que hay al escribir, y si difieren deja
+  `pendiente` en `true` (el disparo salió bien, así que los reintentos igual
+  vuelven a cero). La escritura va en transacción para que la comparación no
+  tenga su propia ventana.
+- **B-74** · `crearIssue` en `reportes-trigger.js` había copiado las cinco
+  cabeceras de la llamada de `index.js` **pero no el timeout** — y el comentario
+  que explica por qué hace falta ("sin esto un socket colgado se come el tick
+  entero") estaba en una sola de las dos copias. Ahora las dos abortan a los
+  15 s, con un test que lo verifica en los dos archivos a la vez.
+
 ### Destacar una actividad ya llega al sitio: el rebuild dejó de colgar del sync
 
 **B-83.** `syncCalendar` marcaba `sistema/rebuild` en la última línea, después
