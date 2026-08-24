@@ -1364,6 +1364,92 @@ listado vacío.
 
 ---
 
+## D-90 · El id del evento de Calendar lo elige el cliente, derivado del id de sesión
+
+**Decisión (B-82):** al crear un evento, `syncCalendar` manda el `id` en el
+`requestBody` — `ses_<uuid>` sin el `_` ni los guiones, que es lo que
+`idDeEvento` deriva del id de sesión. Un `insert` repetido devuelve **409** y se
+resuelve con un `update` sobre ese mismo evento.
+
+**El problema:** la entrega de eventos de Firestore es *al menos una vez*, y la
+Function decide con el payload del evento (`before`/`after`), no con el estado
+del documento. Una reentrega de la escritura que publicó una actividad trae el
+mismo `before` y el mismo `after`, así que `planificar` vuelve a decir `crear`:
+dos eventos para el mismo encuentro en el calendario **público**, y el primero
+huérfano. La guarda anti-loop del §7.1 (D-07) no cubre esto: corta la
+*recursión* —la segunda escritura produce el mismo payload— no la *reentrega*.
+
+**Por qué esta salida y no un marcador en el documento.** La alternativa era
+llevar en Firestore los `event.id` ya aplicados, como hace `guardarVersion` con
+`idDeVersion(event.time, event.id)` (D-43). Funciona, pero deja la idempotencia
+del lado equivocado: la Function tendría que **acordarse** de lo que hizo, con
+un registro que hay que escribir, leer y podar, y que puede desincronizarse del
+calendario real. Con el id derivado, la unicidad la garantiza el sistema donde
+está el daño. No hay estado nuevo que mantener y la propiedad no se puede
+romper por olvido, igual que en D-07.
+
+**Lo que hubo que verificar, y no asumir:** Calendar acepta un id elegido por el
+cliente solo en **base32hex** (`0-9a-v`, RFC 2938 §3.1.2) y de 5 a 1024
+caracteres. `ses_` + un uuid sin guiones son 35 caracteres de `0-9a-f`, que es
+un subconjunto. `tests/sincronizacion.test.ts` lo comprueba contra ids generados
+por el mismo código del panel (`nuevaSesionId`), no contra un literal.
+
+Y sacar los guiones es **inyectivo** porque están en posiciones fijas: dos
+sesiones nunca comparten el id del evento. Si colisionaran, el 409 haría que dos
+encuentros terminaran apuntando al mismo evento.
+
+**Compatible hacia atrás:** los eventos que ya existen conservan el id que les
+dio Google. El diff los sigue encontrando por el `calendarEventId` guardado;
+esto solo decide el id de los que se crean de ahora en adelante.
+
+**Efecto lateral bueno:** una sesión que pasó a borrador (se borró su evento) y
+volvió a publicarse antes se recreaba con un id nuevo; ahora el `insert` da 409
+—Calendar reserva el id de un evento borrado— y el `update` con
+`status: 'confirmed'` **restaura el evento original**, con los recordatorios y
+las suscripciones de la gente. Sin el 409 manejado, ese encuentro no habría
+podido volver nunca al calendario.
+
+**Costo aceptado:** si el id de sesión no tiene la forma documentada —el
+respaldo de `nuevaSesionId` sin `crypto.randomUUID` usa base36, que tiene letras
+fuera del alfabeto— `idDeEvento` devuelve `null`, el `insert` va sin id y lo
+elige Google. Se pierde la idempotencia de esa sesión, nunca la sincronización.
+
+---
+
+## D-91 · El `calendarEventId` se repone en toda operación, y solo si cambió
+
+**Decisión (B-80):** el write-back de `syncCalendar` escribe el id del evento
+para **las tres** operaciones del plan —`crear`, `actualizar` y `borrar`— y no
+solo para la primera y la última. `reponerIds` devuelve `null` si el documento
+ya tiene los ids que corresponden, y en ese caso no se escribe nada.
+
+**El problema:** el panel es dueño de un campo que escribe la Function.
+`formADocumento` emite `calendarEventId` en cada guardado, y el listado se
+refresca al guardar (`setVersion(v + 1)`), o sea **antes** de que llegue el
+write-back. Guardar desde ese snapshot pisa el id con `null`. Ese guardado
+todavía actualiza el evento correcto —`planificar` lo saca del `before`— así que
+no se nota; la edición siguiente ya no tiene de dónde sacarlo y emite `crear`.
+
+**Por qué del lado de la Function.** El backlog listaba tres salidas y la más
+prolija era del lado del panel (que `actualizarActividad` relea y fusione los
+ids antes de escribir, y el panel deje de ser dueño del campo). Se eligió la de
+la Function porque es **defensiva**: no depende de que el cliente se porte bien,
+y cubre también un guardado hecho por un script, por la consola de Firestore o
+por una versión vieja del panel abierta en otra pestaña. La ventana entre las
+dos escrituras sigue existiendo, pero ya no deja daño permanente: la pasada que
+pisó el campo es la misma que lo repara.
+
+La salida del panel sigue valiendo y quedó abierta como **B-150**: son
+complementarias, no alternativas.
+
+**Por qué `reponerIds` devuelve `null` cuando no hay cambios.** Sin eso, cada
+`actualizar` escribiría el documento para dejarlo igual, y cada escritura es un
+disparo más de esta misma Function (y de `guardarVersion`). Con la comparación,
+el caso normal no escribe: solo escribe cuando de verdad hay un id para reponer
+o para limpiar.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

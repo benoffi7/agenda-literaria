@@ -69,11 +69,19 @@ dueño (D-23).
 
 Los dos salieron de revisar las costuras del merge del 2026-08-21: cada feature
 está testeada por dentro, el par no. Los tests que los demuestran están en
-[`tests/costuras.test.ts`](../tests/costuras.test.ts), marcados `it.fails` para
-no romper el CI: fallan el día en que alguien los arregle, que es cuando hay que
-venir a borrar el `.fails`.
+[`tests/costuras.test.ts`](../tests/costuras.test.ts). **Los dos están
+arreglados (2026-08-24)** y sus tests ya no son `it.fails`: pasaron a `it` y
+ahora son la guarda de que no vuelvan.
 
-### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento
+### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento — ✅ hecho (2026-08-24)
+
+**Arreglado** del lado de la Function: el write-back repone el id en **toda**
+operación del plan, no solo en `crear` y `borrar` (`reponerIds` en
+`functions/sincronizacion.js`, D-91). La pasada que pisa el campo es la misma
+que lo repara. La salida del lado del panel —que `actualizarActividad` relea y
+fusione los ids, y el panel deje de ser dueño del campo— sigue valiendo y quedó
+abierta como **B-150**.
+
 
 **Qué se rompe.** Dos eventos en el calendario público para el mismo encuentro,
 y el primero huérfano: nada del sistema lo referencia, así que nada lo va a
@@ -108,7 +116,12 @@ Function: `formADocumento` lo emite en cada guardado.
 - o que el listado escuche con `onSnapshot` en lugar de `getDocs`, que angosta
   la ventana sin cerrarla (el form se arma una vez, al montar).
 
-### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento
+### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento — ✅ hecho (2026-08-24)
+
+**Arreglado** con el id del evento elegido por el cliente y derivado del id de
+sesión (`idDeEvento`, D-90): el `insert` repetido devuelve 409 y se resuelve
+actualizando ese mismo evento. La idempotencia quedó en el sistema externo, sin
+ningún registro nuevo que la Function tenga que mantener.
 
 La entrega de eventos de Firestore es **al menos una vez**. `syncCalendar`
 decide con el payload del evento (`before`/`after`) y no mira el estado actual
@@ -1250,6 +1263,21 @@ que sobrevivieron dos commits
 (`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
+
+### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
+
+B-80 se arregló del lado de la Function (D-91), que es el lado defensivo: el
+write-back repone el id que el panel pisó. Lo que **no** cambió es de quién es
+el campo: `formADocumento` sigue emitiendo `calendarEventId` en cada guardado,
+así que sigue habiendo una ventana en la que el documento tiene `null` y una
+sesión sin id.
+
+Con el arreglo de la Function esa ventana ya no deja daño permanente, así que
+esto es prolijidad, no un bug: que `actualizarActividad` relea el documento y
+fusione los ids por id de sesión antes de escribir, o directamente que
+`formADocumento` no emita el campo. Toca `src/lib/actividades.ts` y el
+formulario, o sea el archivo más disputado del repo (fase 2 del plan de
+saneamiento).
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 

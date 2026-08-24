@@ -49,6 +49,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'sin-encuentros-duplicados',
+    fecha: '2026-08-24',
+    titulo: 'El calendario público ya no puede quedarse con dos veces el mismo encuentro',
+    detalle:
+      'Había dos formas de que un encuentro terminara publicado dos veces: editar una actividad ' +
+      'justo después de publicarla, y un reintento interno del sistema. Las dos están cerradas. ' +
+      'Si en el calendario ves un encuentro repetido de antes, hay que borrarlo a mano una vez.',
+    donde: 'En el calendario público, y en la vista «Calendario» del panel.',
+  },
+  {
     id: 'calendario-en-curso',
     fecha: '2026-08-24',
     titulo: 'Una actividad que está empezando ahora ya no se te esconde en la lista',

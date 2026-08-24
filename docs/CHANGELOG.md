@@ -2,6 +2,38 @@
 
 ## 2026-08-24
 
+### Los dos P0 del sync a Calendar: ya no puede haber dos eventos para un encuentro
+
+Los dos caminos que duplicaban un evento en el calendario **público** están
+cerrados, y los dos del lado de la Function, que es el lado que no depende de
+que el cliente se porte bien.
+
+- **B-82** · `syncCalendar` decide con el payload del evento (`before`/`after`),
+  y la entrega de eventos de Firestore es *al menos una vez*: una reentrega
+  volvía a emitir `crear`. Ahora **el id del evento lo elige el cliente**,
+  derivado del id de sesión (`idDeEvento`), así que el segundo `insert` choca
+  con el primero y Calendar contesta 409 en vez de crear un evento nuevo. La
+  idempotencia queda en el sistema externo y no en una cuenta que la Function
+  tenga que llevar (**D-90**). El 409 se resuelve actualizando ese mismo evento,
+  lo que además arregla un caso que antes no tenía salida: un encuentro que se
+  despublicó y se volvió a publicar (Calendar reserva el id de un evento
+  borrado).
+- **B-80** · el write-back del sync reponía `calendarEventId` solo en las ops
+  `crear` y `borrar`, así que un guardado hecho desde un listado refrescado
+  *antes* del write-back dejaba el campo en `null` y la edición siguiente creaba
+  un segundo evento. Ahora se repone en **toda** operación, y solo se escribe si
+  algo cambió de verdad (`reponerIds`), así que el caso normal no gasta un
+  disparo más de la Function (**D-91**).
+
+La lógica pura del trigger que no es el diff vive en
+`functions/sincronizacion.js` — `calendario.js` sigue siendo el diff y lo que
+comparte el panel por `@calendario` (D-20).
+
+Los dos `it.fails` de [`tests/costuras.test.ts`](../tests/costuras.test.ts)
+pasaron a `it`, y `tests/sincronizacion.test.ts` verifica lo que no se puede
+asumir: que los ids que genera el panel caen dentro del alfabeto base32hex que
+exige Calendar, y que la derivación no colisiona.
+
 ### Vista calendario del panel, y los ocho hallazgos de auditarla
 
 La vista muestra los encuentros por día con su **estado de publicación** — no el

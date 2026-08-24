@@ -17,6 +17,7 @@ import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue, redactar } from '../functions/reportes.js';
 import { planificar } from '../functions/calendario.js';
+import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
 import { generarSesiones } from '@/lib/sesiones';
 import type { Actividad } from '@/types/actividad';
@@ -140,20 +141,39 @@ describe('B-80 · guardar desde un listado viejo y el calendarEventId', () => {
   });
 
   /**
-   * Y acá se ve. `syncCalendar` solo escribe ids de vuelta para las ops `crear`
-   * y `borrar` (`idsNuevos` / `idsBorrados` en functions/index.js), así que
-   * después del guardado anterior el documento quedó con `calendarEventId: null`
-   * y `evt_1` sin dueño. La edición siguiente vuelve a **crear** el evento:
-   * dos eventos para el mismo encuentro en el calendario público, y `evt_1`
-   * huérfano para siempre (nadie lo referencia, así que nada lo va a borrar).
+   * Acá se veía el daño. `syncCalendar` escribía ids de vuelta solo para las
+   * ops `crear` y `borrar`, así que después del guardado anterior el documento
+   * quedaba con `calendarEventId: null` y `evt_1` sin dueño; la edición
+   * siguiente volvía a **crear** el evento: dos eventos para el mismo
+   * encuentro en el calendario público, y `evt_1` huérfano para siempre.
    *
-   * Es la trampa 3 del §13 por otra puerta: no por el loop de la Function, sino
-   * porque el panel es dueño de un campo que escribe la Function.
+   * Era la trampa 3 del §13 por otra puerta: no por el loop de la Function,
+   * sino porque el panel es dueño de un campo que escribe la Function.
+   *
+   * **Arreglado** del lado de la Function (`reponerIds`), que es el lado que no
+   * depende de que el cliente se porte bien: el `actualizar` que ese mismo
+   * guardado dispara repone el id que el panel pisó, en la misma pasada.
    */
-  it.fails('B-80: la edición siguiente NO debería crear un segundo evento', () => {
+  it('B-80: el write-back repone el id y la edición siguiente no crea un segundo evento', () => {
     const trasElPisón = guardar('Taller de crónica urbana');
-    const ops = planificar(trasElPisón, guardar('Taller de crónica, edición 2027'));
-    expect(tipos(ops)).not.toContain('crear');
+    expect(trasElPisón.sesiones[0].calendarEventId).toBeNull();
+
+    // El sync de ESE guardado: `actualizar` sobre evt_1, y el id de vuelta al
+    // documento. Es lo que hace `syncCalendar` con el mapa `ids`.
+    const ops = planificar(enFirestore, trasElPisón) as any[];
+    const ids = new Map<string, string | null>(
+      ops.map((op) => [op.id, op.tipo === 'borrar' ? null : op.eventId]),
+    );
+    const reparado = {
+      ...trasElPisón,
+      sesiones: reponerIds(trasElPisón.sesiones, ids) ?? trasElPisón.sesiones,
+    };
+    expect(reparado.sesiones[0].calendarEventId).toBe('evt_1');
+
+    // Y con el documento reparado, la edición siguiente actualiza en vez de crear.
+    expect(tipos(planificar(reparado, guardar('Taller de crónica, edición 2027')))).not.toContain(
+      'crear',
+    );
   });
 });
 
@@ -162,13 +182,14 @@ describe('B-80 · guardar desde un listado viejo y el calendarEventId', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Réplica mínima del cuerpo de `syncCalendar` (functions/index.js:123-208): el
- * plan sale del **payload del evento**, y los ids nuevos se escriben en el
- * documento al final. No hay nada más en el original que cambie el resultado.
+ * Réplica mínima del cuerpo de `syncCalendar` (functions/index.js): el plan
+ * sale del **payload del evento**, el id del evento se deriva del id de sesión
+ * y los ids se escriben en el documento al final. No hay nada más en el
+ * original que cambie el resultado.
  *
- * `guardarVersion` (historial) y `reporteAIssue` sí se blindan contra la
- * reentrega —el primero con `idDeVersion(event.time, event.id)`, el segundo con
- * una transacción sobre `estado`—; `syncCalendar` no.
+ * El `calendario` es un `Map` por id de evento, que es justo lo que hace que la
+ * réplica sirva: un `insert` con un id que ya existe no puede crear una segunda
+ * entrada, igual que Calendar contesta 409 en vez de crear un segundo evento.
  */
 const correrSyncCalendar = (
   antes: any,
@@ -179,35 +200,40 @@ const correrSyncCalendar = (
   const ops = planificar(antes, despues, {});
   if (ops.length === 0) return { ops, marcoRebuild: false };
 
-  const idsNuevos = new Map<string, string>();
-  const idsBorrados = new Set<string>();
+  const ids = new Map<string, string | null>();
   for (const op of ops as any[]) {
     if (op.tipo === 'crear') {
-      const eventId = `evt_${calendario.size + 1}`;
-      calendario.set(eventId, op.evento);
-      idsNuevos.set(op.id, eventId);
+      // B-82 — el id lo elige el cliente. Sin forma documentada de id de
+      // sesión no hay id derivable y lo asigna Google, como antes.
+      const propuesto = idDeEvento(op.id) ?? `evt_${calendario.size + 1}`;
+      if (calendario.has(propuesto)) {
+        // Lo que hace `crearEvento` con el 409: `update` sobre ese mismo
+        // evento, nunca un evento nuevo.
+        calendario.set(propuesto, { ...op.evento, status: 'confirmed' });
+      } else {
+        calendario.set(propuesto, op.evento);
+      }
+      ids.set(op.id, propuesto);
     } else if (op.tipo === 'actualizar') {
       calendario.set(op.eventId, op.evento);
+      ids.set(op.id, op.eventId);
     } else if (op.tipo === 'borrar') {
       calendario.delete(op.eventId);
-      idsBorrados.add(op.id);
+      ids.set(op.id, null);
     }
   }
 
-  if (idsNuevos.size > 0 || idsBorrados.size > 0) {
-    documento.sesiones = documento.sesiones.map((s) => {
-      if (idsNuevos.has(s.id)) return { ...s, calendarEventId: idsNuevos.get(s.id) };
-      if (idsBorrados.has(s.id)) return { ...s, calendarEventId: null };
-      return s;
-    });
-  }
+  const repuestas = reponerIds(documento.sesiones, ids);
+  if (repuestas) documento.sesiones = repuestas;
   return { ops, marcoRebuild: true };
 };
 
 describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () => {
+  /** Id con la forma que genera el panel (`nuevaSesionId`): `ses_<uuid>`. */
+  const idSesion = 'ses_3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b';
   const sinIds = [
     {
-      id: 'ses_1',
+      id: idSesion,
       inicio: ts('2026-09-03T22:00:00Z'),
       fin: ts('2026-09-04T00:00:00Z'),
       tema: null,
@@ -227,21 +253,34 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
     const calendario = new Map();
     correrSyncCalendar(antes, despues, documento, calendario);
     expect(calendario.size).toBe(1);
-    expect(documento.sesiones[0]!.calendarEventId).toBe('evt_1');
+    expect(documento.sesiones[0]!.calendarEventId).toBe(idDeEvento(idSesion));
   });
 
   /**
    * El mismo evento entregado dos veces trae el mismo `before`/`after`, así que
-   * `planificar` vuelve a decir "crear" aunque el documento ya tenga el id.
-   * Resultado: dos eventos para el mismo encuentro en el calendario público, y
-   * el primero huérfano.
+   * `planificar` vuelve a decir "crear" aunque el documento ya tenga el id: la
+   * guarda del §7.1 corta la recursión, no la reentrega.
+   *
+   * **Arreglado donde tiene que estar: en el sistema externo.** El id del
+   * evento se deriva del id de sesión, así que el segundo `insert` choca con el
+   * primero (409) en vez de crear un evento nuevo. No hace falta que la
+   * Function lleve la cuenta de qué eventos ya vio.
    */
-  it.fails('B-82: una reentrega del mismo evento NO debería duplicar el evento', () => {
+  it('B-82: una reentrega del mismo evento no duplica el evento', () => {
     const documento = { sesiones: sinIds.map((s) => ({ ...s })) };
     const calendario = new Map();
     const { antes, despues } = publicar();
     correrSyncCalendar(antes, despues, documento, calendario);
     correrSyncCalendar(antes, despues, documento, calendario); // reentrega
+    expect(calendario.size).toBe(1);
+    expect([...calendario.keys()]).toEqual([idDeEvento(idSesion)]);
+  });
+
+  it('y diez reentregas tampoco', () => {
+    const documento = { sesiones: sinIds.map((s) => ({ ...s })) };
+    const calendario = new Map();
+    const { antes, despues } = publicar();
+    for (let i = 0; i < 10; i += 1) correrSyncCalendar(antes, despues, documento, calendario);
     expect(calendario.size).toBe(1);
   });
 
@@ -250,8 +289,14 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
     // Si esto deja de matchear, la réplica de arriba dejó de valer.
     expect(src).toContain('const antes = event.data?.before?.data() ?? null;');
     expect(src).toContain('const ops = planificar(antes, despues, labels);');
-    // Y no hay ninguna guarda por id de evento ni relectura previa al plan.
+    // Sigue sin haber guarda por id de evento ni relectura previa al plan: la
+    // idempotencia no está en la Function, está en el id que elige el cliente.
     expect(src).not.toMatch(/event\.id/);
+    expect(src).toContain('const propuesto = idDeEvento(op.id);');
+    expect(src).toContain('requestBody: propuesto ? { ...op.evento, id: propuesto } : op.evento,');
+    // Y el 409 se resuelve actualizando ese mismo evento, no creando otro.
+    expect(src).toContain("if (!propuesto || code !== 409) throw e;");
+    expect(src).toContain("requestBody: { ...op.evento, status: 'confirmed' },");
   });
 });
 

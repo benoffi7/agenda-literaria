@@ -12,6 +12,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
 import { planificar } from './calendario.js';
+import { idDeEvento, reponerIds } from './sincronizacion.js';
 import {
   CAMPOS_REARME,
   decidirDisparo,
@@ -120,6 +121,49 @@ const marcarRebuild = (motivo) =>
 // Sync a Calendar
 // ─────────────────────────────────────────────────────────────────
 
+/**
+ * Crea el evento de una sesión y devuelve el id que quedó en Calendar.
+ *
+ * B-82 — el id lo elige el cliente (`idDeEvento`), derivado del id de sesión.
+ * Así un `insert` repetido —una reentrega del mismo evento de Firestore, que
+ * la plataforma garantiza *al menos una vez*— choca con el que ya existe y
+ * devuelve 409 en lugar de crear un segundo evento en el calendario público.
+ */
+const crearEvento = async (cal, op) => {
+  const propuesto = idDeEvento(op.id);
+
+  try {
+    const { data } = await cal.events.insert({
+      calendarId: CALENDAR_ID,
+      requestBody: propuesto ? { ...op.evento, id: propuesto } : op.evento,
+    });
+    return data.id;
+  } catch (e) {
+    const code = e?.code ?? e?.response?.status;
+    if (!propuesto || code !== 409) throw e;
+
+    // 409 = ya existe un evento con ese id. Llegan dos caminos, y los dos se
+    // resuelven igual —dejando el contenido de ahora en ese mismo evento:
+    //
+    //  - la reentrega que este id vino a resolver: el evento ya se creó en la
+    //    entrega anterior, así que el update reescribe lo mismo;
+    //  - una sesión que pasó a borrador (se borró el evento) y volvió a
+    //    publicarse: Calendar reserva el id de un evento borrado, así que sin
+    //    esto ese encuentro no podría volver nunca al calendario.
+    //    `status: 'confirmed'` es lo que lo resucita.
+    await cal.events.update({
+      calendarId: CALENDAR_ID,
+      eventId: propuesto,
+      requestBody: { ...op.evento, status: 'confirmed' },
+    });
+    logger.info('el evento ya existía con el id derivado: se actualizó', {
+      sesion: op.id,
+      eventId: propuesto,
+    });
+    return propuesto;
+  }
+};
+
 export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) => {
   const antes = event.data?.before?.data() ?? null;
   const despues = event.data?.after?.data() ?? null;
@@ -142,30 +186,32 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
   }
 
   const cal = await calendario();
-  // Los ids nuevos se juntan y se escriben de una sola vez al final: un update
-  // por sesión serían N disparos más de esta misma Function.
-  const idsNuevos = new Map();
-  const idsBorrados = new Set();
+  // Qué `calendarEventId` queda en cada sesión (`null` = se borró). Se juntan
+  // y se escriben de una sola vez al final: un update por sesión serían N
+  // disparos más de esta misma Function.
+  const ids = new Map();
 
   for (const op of ops) {
     try {
       if (op.tipo === 'crear') {
-        const { data } = await cal.events.insert({
-          calendarId: CALENDAR_ID,
-          requestBody: op.evento,
-        });
-        idsNuevos.set(op.id, data.id);
-        logger.info('evento creado', { id, sesion: op.id, eventId: data.id });
+        const eventId = await crearEvento(cal, op);
+        ids.set(op.id, eventId);
+        logger.info('evento creado', { id, sesion: op.id, eventId });
       } else if (op.tipo === 'actualizar') {
         await cal.events.update({
           calendarId: CALENDAR_ID,
           eventId: op.eventId,
           requestBody: op.evento,
         });
+        // B-80 — el id se repone también acá, no solo al crear y al borrar: si
+        // el panel guardó desde un snapshot previo al write-back, el documento
+        // quedó con `calendarEventId: null` y la edición siguiente crearía un
+        // segundo evento. Ver `reponerIds`.
+        ids.set(op.id, op.eventId);
         logger.info('evento actualizado', { id, sesion: op.id });
       } else if (op.tipo === 'borrar') {
         await cal.events.delete({ calendarId: CALENDAR_ID, eventId: op.eventId });
-        idsBorrados.add(op.id);
+        ids.set(op.id, null);
         logger.info('evento borrado', { id, sesion: op.id });
       }
     } catch (e) {
@@ -173,7 +219,7 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
       // buscado, no un error — se marca igual para limpiar el id colgado.
       const code = e?.code ?? e?.response?.status;
       if (op.tipo === 'borrar' && (code === 404 || code === 410)) {
-        idsBorrados.add(op.id);
+        ids.set(op.id, null);
         logger.warn('el evento ya no existía en Calendar', { id, sesion: op.id });
       } else {
         // No se corta el loop: un encuentro que falla no debe dejar los otros
@@ -188,19 +234,18 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
     }
   }
 
-  if (idsNuevos.size > 0 || idsBorrados.size > 0) {
+  if (ids.size > 0) {
     // Se relee el documento: entre el diff y este punto pudo haber otra
     // edición, y escribir el array que teníamos en memoria la perdería.
     const ref = db.doc(`actividades/${id}`);
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists) return;
-      const sesiones = (snap.data().sesiones ?? []).map((s) => {
-        if (idsNuevos.has(s.id)) return { ...s, calendarEventId: idsNuevos.get(s.id) };
-        if (idsBorrados.has(s.id)) return { ...s, calendarEventId: null };
-        return s;
-      });
-      tx.update(ref, { sesiones });
+      const sesiones = reponerIds(snap.data().sesiones ?? [], ids);
+      // `null` = el documento ya tiene los ids que corresponden, que es el caso
+      // normal de un `actualizar`. Escribirlo igual dispararía esta misma
+      // Function otra vez para no cambiar nada.
+      if (sesiones) tx.update(ref, { sesiones });
     });
   }
 

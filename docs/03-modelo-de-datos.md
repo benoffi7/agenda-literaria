@@ -87,7 +87,18 @@ suscripciones (trampa 2). Hay tests específicos para esto en
 `tests/calendario.test.ts`.
 
 `calendarEventId` lo escribe la Function, no el panel. El formulario lo conserva
-tal cual al editar.
+tal cual al editar, y desde B-80 la Function lo **repone** en cada
+sincronización si el documento vino sin él (D-91): el panel emite el campo en
+cada guardado y puede pisarlo con `null` si guardó desde un listado que se
+refrescó antes del write-back.
+
+**El id del evento de Calendar se deriva del id de sesión** (`ses_<uuid>` sin el
+`_` ni los guiones, `idDeEvento` en
+[`functions/sincronizacion.js`](../functions/sincronizacion.js)): así una
+reentrega del evento de Firestore no puede crear un segundo evento (D-90). Los
+eventos creados antes de eso conservan el id que les dio Google, y se siguen
+encontrando por este campo — que es, y sigue siendo, la única referencia entre
+una sesión y su evento.
 
 **Al duplicar una actividad, los ids se rehacen y `calendarEventId` vuelve a
 `null`** (`src/lib/duplicar.ts`). Dos actividades con los mismos ids de sesión
