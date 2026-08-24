@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import base from '@/lib/opciones-base.json';
 import { huellaCreador } from '@/lib/huella';
@@ -139,5 +140,40 @@ describe('huellaCreador — §4.3, §5.1', () => {
 
   it('sin uid no hay huella — no puede haber dos sesiones anónimas que se reconozcan', () => {
     expect(huellaCreador('')).toBe('');
+  });
+});
+
+/**
+ * B-131 — el dueño decidió que las opciones nuevas nazcan **aprobadas**, y con
+ * eso la maquinaria de aprobación queda dormida. Una maquinaria dormida tiene
+ * dos formas de fallar en silencio, y esta guardia cubre las dos: que el
+ * default se vuelva a dar vuelta sin que nadie lo note, y que alguien lea
+ * `aprobada: true` como un descuido y lo "arregle".
+ *
+ * Se lee el fuente y no se corre `upsertOpcion` a propósito: el camino real
+ * necesita el emulador y sus tests se saltean cuando no está corriendo, que es
+ * justo cuando un cambio de default pasaría inadvertido (D-98: la guardia más
+ * barata que alcance).
+ */
+describe('default de `aprobada` en upsertOpcion — B-131', () => {
+  const bloqueNueva = (): string => {
+    const src = readFileSync('src/lib/opciones.ts', 'utf8');
+    const desde = src.indexOf('const nueva = ()');
+    expect(desde, 'no se encontró el constructor de la opción nueva').toBeGreaterThan(0);
+    return src.slice(desde, src.indexOf('runTransaction', desde));
+  };
+
+  it('nace aprobada', () => {
+    expect(bloqueNueva()).toMatch(/aprobada:\s*true/);
+  });
+
+  it('con el motivo escrito al lado, para que no se lea como un descuido', () => {
+    expect(bloqueNueva()).toContain('B-131');
+  });
+
+  it('y sigue guardando la huella de su autor', () => {
+    // Es el rastro de quién la creó y lo que hace falta el día que la
+    // aprobación se vuelva a prender: no es código muerto.
+    expect(bloqueNueva()).toContain('huellaCreador(uid)');
   });
 });

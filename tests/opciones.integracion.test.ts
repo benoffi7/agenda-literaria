@@ -132,6 +132,23 @@ describe.skipIf(!vivo)('taxonomías contra el emulador — §4.2', () => {
  * intención estaba bien (§ "verificar contra el sistema real" de 05-patrones).
  */
 describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
+  /**
+   * Pone una opción en el estado "pendiente" a mano.
+   *
+   * Desde B-131 nada nace pendiente, así que la maquinaria de aprobación
+   * —`estaAprobada`, `opcionesVisibles`, el script, la pantalla de taxonomías—
+   * no tiene forma de recibir un caso de prueba del camino normal. Se sigue
+   * verificando entera con el estado que produciría el default invertido: es lo
+   * que garantiza que funcione el día que se prenda de nuevo, y también cubre
+   * las opciones que quedaron pendientes en producción **antes** de B-131.
+   */
+  const volverPendiente = async (campo: string, slug: string) => {
+    const valores = await valoresCrudos(campo);
+    await setDoc(doc(db(), 'opciones', campo), {
+      valores: valores.map((v) => (v.slug === slug ? { ...v, aprobada: false } : v)),
+    });
+  };
+
   const correrScript = (...args: string[]) =>
     execFileSync('node', ['scripts/aprobar-opciones.mjs', ...args], {
       cwd: fileURLToPath(new URL('..', import.meta.url)),
@@ -145,16 +162,23 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
     await sembrarBase();
   }, 30_000);
 
-  it('una opción creada con "Otro" nace pendiente y con la huella de su autor', async () => {
+  /**
+   * B-131 — el default se dio vuelta por decisión del dueño: una etiqueta
+   * nueva queda disponible para las dos cuentas enseguida. La huella del autor
+   * se sigue guardando (es el rastro de quién la creó, y lo que hace falta el
+   * día que la aprobación se vuelva a prender).
+   */
+  it('una opción creada con "Otro" nace aprobada y con la huella de su autor', async () => {
     await upsertOpcion('arancel', 'Con beca parcial', UID);
     const nueva = (await valoresCrudos('arancel')).find((v) => v.slug === 'con-beca-parcial')!;
-    expect(nueva.aprobada).toBe(false);
+    expect(nueva.aprobada).toBe(true);
     expect(nueva.huellaCreador).toBe(huellaCreador(UID));
     // §5.1 — este documento es de lectura pública: el uid no puede estar ahí.
     expect(JSON.stringify(nueva)).not.toContain(UID);
   });
 
-  it('funciona para quien la creó y no aparece en el desplegable de la otra cuenta', async () => {
+  it('una pendiente funciona para quien la creó y no aparece en el desplegable de la otra cuenta', async () => {
+    await volverPendiente('arancel', 'con-beca-parcial');
     const valores = await leerOpciones('arancel');
     expect(opcionesVisibles(valores, UID).map((v) => v.slug)).toContain('con-beca-parcial');
     expect(opcionesVisibles(valores, UID_OTRO).map((v) => v.slug)).not.toContain(
@@ -199,6 +223,7 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
 
   it('--listar muestra las pendientes y solo esas', async () => {
     await upsertOpciones('tags', ['Narrativa'], UID);
+    await volverPendiente('tags', 'narrativa');
     const salida = correrScript('--listar');
     expect(salida).toContain('opciones/tags');
     expect(salida).toContain('narrativa');
