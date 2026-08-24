@@ -410,7 +410,13 @@ todo pisaría cambios posteriores que sí se querían).
 dispara `guardarVersion` y deja versión de lo restaurado. Eso es correcto —
 deshacer un "deshacer" tiene que ser posible— pero conviene verificarlo.
 
-### B-41 · Borrar una actividad no guarda versión y no hay nada que recuperar
+### B-41 · Borrar una actividad no guarda versión y no hay nada que recuperar — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera opción: `guardarVersionAlBorrar`
+(`onDocumentDeleted`) guarda el documento completo con `borrado: true`, por el
+mismo camino que el trigger de edición. El borrado lógico se descartó con motivo
+(D-94). La subcolección sigue quedando huérfana, que es lo que ya reportaba
+**B-89**: es el precio de que el borrado sea recuperable.
 
 `guardarVersion` es un `onDocumentUpdated`, así que no se dispara al borrar
 (§12: es lo que pide el documento). El panel borra por fila, sin papelera: se va
@@ -426,7 +432,12 @@ igual, hay que decidir dónde), o borrado lógico (`estado: 'borrado'` y filtrar
 del listado), que además resolvería el "lo borré sin querer" sin tocar el
 historial. Lo segundo es más trabajo y toca el listado y las reglas.
 
-### B-04 · Renombrar una etiqueta no actualiza los eventos ya creados
+### B-04 · Renombrar una etiqueta no actualiza los eventos ya creados — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera opción: `rebuildPorOpciones` re-sincroniza los
+eventos de las actividades publicadas cuando cambia una etiqueta (D-93), con la
+guarda de que subir `usos` no cuenta como renombre y con un tope de 150 eventos
+por corrida.
 
 La descripción del evento muestra la etiqueta, no el slug (D-11). Si se renombra
 "A la gorra", los eventos existentes siguen diciendo lo anterior hasta la

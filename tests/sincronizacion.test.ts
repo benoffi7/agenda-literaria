@@ -10,6 +10,9 @@ import { describe, expect, it } from 'vitest';
 import {
   ALFABETO_ID_CALENDAR,
   idDeEvento,
+  mapaDeEtiquetas,
+  mismasEtiquetas,
+  replanificarPorEtiquetas,
   reponerIds,
 } from '../functions/sincronizacion.js';
 import { nuevaSesionId } from '@/lib/sesiones';
@@ -161,5 +164,146 @@ describe('reponerIds — qué queda escrito después de sincronizar', () => {
     expect(
       reponerIds([{ id: 'ses_1' }], new Map<string, string | null>([['ses_1', null]])),
     ).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-04 · renombrar una etiqueta y los eventos ya creados
+// ─────────────────────────────────────────────────────────────────────
+
+const ts = (iso: string) => {
+  const d = new Date(iso);
+  return { toDate: () => d, toMillis: () => d.getTime() };
+};
+
+const publicada = (over: Record<string, unknown> = {}) => ({
+  titulo: 'Club de lectura',
+  descripcion: 'Ocho encuentros',
+  estado: 'publicado',
+  modalidad: 'presencial',
+  sede: { nombre: 'Casa Brandon', direccion: 'Drago 236', barrio: 'villa-crespo', ciudad: 'CABA' },
+  inscripcion: { requiere: false, destino: '' },
+  arancel: { tipo: 'a-la-gorra', notas: '' },
+  esCiclo: false,
+  sesiones: [
+    {
+      id: 'ses_3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b',
+      inicio: ts('2026-09-03T22:00:00Z'),
+      fin: ts('2026-09-04T00:00:00Z'),
+      tema: null,
+      lectura: null,
+      cancelada: false,
+      calendarEventId: 'evt_1',
+    },
+  ],
+  ...over,
+});
+
+const etiquetas = (arancel: string) => ({ arancel: { 'a-la-gorra': arancel } });
+
+describe('mismasEtiquetas — qué cuenta como renombre', () => {
+  it('dos mapas iguales son iguales', () => {
+    expect(mismasEtiquetas({ gratis: 'Gratis' }, { gratis: 'Gratis' })).toBe(true);
+  });
+
+  /**
+   * El caso frecuente, y el que hay que descartar: `upsertOpcion` escribe
+   * `/opciones/*` en CADA guardado del formulario para subir `usos`. Como el
+   * mapa solo lleva slug y etiqueta, eso no se ve acá — que es exactamente lo
+   * que se quiere.
+   */
+  it('subir `usos` no cambia ninguna etiqueta', () => {
+    const antes = mapaDeEtiquetas([{ slug: 'gratis', label: 'Gratis', usos: 3 }]);
+    const despues = mapaDeEtiquetas([{ slug: 'gratis', label: 'Gratis', usos: 4 }]);
+    expect(mismasEtiquetas(antes, despues)).toBe(true);
+  });
+
+  it('reordenar las opciones tampoco', () => {
+    const valores = [
+      { slug: 'gratis', label: 'Gratis' },
+      { slug: 'a-la-gorra', label: 'A la gorra' },
+    ];
+    const alReves = valores.slice().reverse();
+    expect(mismasEtiquetas(mapaDeEtiquetas(valores), mapaDeEtiquetas(alReves))).toBe(true);
+  });
+
+  it('renombrar una etiqueta sí', () => {
+    expect(mismasEtiquetas({ gratis: 'Gratis' }, { gratis: 'Sin cargo' })).toBe(false);
+  });
+
+  it('una opción nueva cuenta como cambio, y no hace daño: nadie la usa todavía', () => {
+    expect(mismasEtiquetas({ gratis: 'Gratis' }, { gratis: 'Gratis', beca: 'Con beca' })).toBe(
+      false,
+    );
+  });
+
+  it('borrar una opción también', () => {
+    expect(mismasEtiquetas({ gratis: 'Gratis' }, {})).toBe(false);
+  });
+
+  it('sin argumentos no explota', () => {
+    expect(mismasEtiquetas()).toBe(true);
+  });
+});
+
+describe('replanificarPorEtiquetas — qué eventos se reescriben (B-04)', () => {
+  it('renombrar la etiqueta del arancel reescribe el evento', () => {
+    const ops = replanificarPorEtiquetas(
+      publicada(),
+      etiquetas('A la gorra'),
+      etiquetas('A la gorra (lo que puedas)'),
+    );
+    expect(ops).toHaveLength(1);
+    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_1' });
+    expect(ops[0]!.evento.description).toContain('A la gorra (lo que puedas)');
+  });
+
+  it('si la etiqueta renombrada no aparece en el evento, no hay nada que hacer', () => {
+    const ops = replanificarPorEtiquetas(
+      publicada({ arancel: { tipo: 'gratis', notas: '' } }),
+      etiquetas('A la gorra'),
+      etiquetas('A la gorra (lo que puedas)'),
+    );
+    expect(ops).toEqual([]);
+  });
+
+  it('el barrio también viaja en la ubicación', () => {
+    const ops = replanificarPorEtiquetas(
+      publicada(),
+      { barrio: { 'villa-crespo': 'Villa Crespo' } },
+      { barrio: { 'villa-crespo': 'Villa Crespo (CABA)' } },
+    );
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.evento.location).toContain('Villa Crespo (CABA)');
+  });
+
+  it('una sesión sin evento no se toca: crear es trabajo del diff', () => {
+    const sinEvento = publicada();
+    sinEvento.sesiones[0]!.calendarEventId = null as never;
+    expect(replanificarPorEtiquetas(sinEvento, etiquetas('A la gorra'), etiquetas('Otra'))).toEqual(
+      [],
+    );
+  });
+
+  it('una sesión cancelada tampoco: su evento no debería existir', () => {
+    const cancelada = publicada();
+    cancelada.sesiones[0]!.cancelada = true;
+    expect(replanificarPorEtiquetas(cancelada, etiquetas('A la gorra'), etiquetas('Otra'))).toEqual(
+      [],
+    );
+  });
+
+  it('una actividad que no está publicada tampoco', () => {
+    expect(
+      replanificarPorEtiquetas(
+        publicada({ estado: 'borrador' }),
+        etiquetas('A la gorra'),
+        etiquetas('Otra'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('sin actividad devuelve vacío', () => {
+    expect(replanificarPorEtiquetas(null, {}, {})).toEqual([]);
   });
 });

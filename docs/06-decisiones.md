@@ -1492,6 +1492,75 @@ publicar `destacado` es gratis, y el debounce del §8 junta los seguidos.
 
 ---
 
+## D-93 · Renombrar una etiqueta re-sincroniza los eventos publicados
+
+**Decisión (B-04):** `rebuildPorOpciones` compara las etiquetas del `before` con
+las del `after` y, si alguna cambió, reescribe los eventos de las actividades
+publicadas que la usan. Con tope de 150 eventos por corrida y
+`timeoutSeconds: 300`.
+
+**El problema:** la descripción y la ubicación del evento muestran la
+**etiqueta**, no el slug (D-11). La actividad guarda solo el slug (§4.1), que es
+lo que permite renombrar sin tocar documentos — pero el evento de Calendar es una
+copia ya materializada. Renombrar "A la gorra" arreglaba el sitio (que se
+rebuildea) y dejaba el calendario diciendo lo anterior hasta la próxima edición
+de cada actividad.
+
+**Por qué no se resuelve con `planificar`.** El diff recibe **un** juego de
+etiquetas y compara el evento de `antes` contra el de `despues`; con la actividad
+igual a los dos lados no ve ninguna diferencia. Acá lo que cambió son las
+etiquetas, así que `replanificarPorEtiquetas` construye el mismo evento con el
+mapa viejo y con el nuevo y compara **eso**. Es el criterio de D-07 —comparar el
+payload que se le mandaría a Calendar— aplicado al otro eje.
+
+**La guarda que hace esto viable:** `/opciones/*` se escribe en **cada** guardado
+del formulario, porque `upsertOpcion` sube `usos` (§4.2). Sin `mismasEtiquetas`,
+cada guardado dispararía una re-sincronización completa del calendario. La
+comparación es sobre el mapa `{slug: label}`, así que `usos` y el reordenamiento
+de las opciones no cuentan como renombre. Una opción **nueva** sí cuenta como
+cambio, y no hace daño: todavía no la usa ninguna actividad, así que no genera
+ninguna operación.
+
+**Costo aceptado:** el tope de 150 eventos. Con 20 actividades publicadas de 8
+encuentros ya son 160 round trips a Calendar, y la Function tiene timeout. Si se
+alcanza, se loguea `error` con cuántos quedaron: el sitio ya está al día y cada
+actividad se pone al día sola con su próxima edición. Es un tope de seguridad
+para que un renombre no deje la Function reintentando en loop.
+
+---
+
+## D-94 · Borrar una actividad guarda su última versión, y no es borrado lógico
+
+**Decisión (B-41):** un `onDocumentDeleted` sobre `actividades/{id}` escribe el
+documento completo en `/actividades/{id}/versiones/{version}` con
+`borrado: true`, por el mismo camino que el trigger de edición (mismo id
+idempotente, misma retención).
+
+**El problema:** `guardarVersion` es un `onDocumentUpdated` (§12), así que no se
+disparaba al borrar. El panel borra por fila y sin papelera: era el último
+agujero de pérdida de datos, y el único irreversible.
+
+**Por qué no borrado lógico.** `estado: 'borrado'` + filtrarlo del listado
+también resolvería el "lo borré sin querer", y encima sin subcolección huérfana.
+Se descartó por dos motivos: toca el listado, el formulario, las reglas y el enum
+del modelo —o sea la fase 2 del plan de saneamiento, con el archivo más
+disputado del repo— y sobre todo porque `estado` ya decide qué se publica (§7.3):
+sumarle un valor mezcla "esto no se muestra" con "esto no existe". El trigger son
+quince líneas, no cambia el modelo y guarda exactamente lo que se perdía.
+
+**Lo que queda pendiente, y ya estaba (B-89):** la subcolección sobrevive al
+documento padre, así que la versión del borrado queda huérfana — alcanzable por
+path desde la consola de Firestore, invisible desde el panel. Es a la vez lo que
+hace recuperable el borrado y lo que B-89 tiene que resolver cuando exista UI de
+restauración (B-40). Borrarla en el mismo trigger sería tirar justo lo que se
+acaba de guardar.
+
+**Quién borró no se sabe:** el evento de borrado no trae uid, así que
+`actualizadoPor` guarda el último que editó. Es lo más cerca que se puede estar
+sin agregar un campo al modelo.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

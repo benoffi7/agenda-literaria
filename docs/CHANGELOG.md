@@ -2,6 +2,28 @@
 
 ## 2026-08-24
 
+### Renombrar una etiqueta llega al calendario, y borrar una actividad ya no la pierde
+
+- **B-04** · el evento de Calendar muestra la etiqueta, no el slug (D-11), así
+  que renombrar "A la gorra" arreglaba el sitio y dejaba el calendario diciendo
+  lo anterior hasta la próxima edición de cada actividad. Ahora
+  `rebuildPorOpciones` compara las etiquetas de antes con las de después y
+  reescribe los eventos publicados que las usan (**D-93**). La guarda que hace
+  esto viable es `mismasEtiquetas`: `/opciones/*` se escribe en **cada** guardado
+  del formulario para subir `usos` (§4.2), y eso no es un renombre.
+- **B-41** · `guardarVersion` es un `onDocumentUpdated`, así que borrar una
+  actividad no dejaba nada que recuperar: era el último agujero de pérdida de
+  datos, y el único irreversible. Ahora hay un `guardarVersionAlBorrar`
+  (`onDocumentDeleted`) que guarda el documento completo con `borrado: true`, por
+  el mismo camino que el trigger de edición — mismo id idempotente (D-43), misma
+  retención (D-42). Se descartó el borrado lógico y está escrito por qué
+  (**D-94**).
+
+Hay que redesplegar `rebuildPorOpciones` (que además pasó a
+`timeoutSeconds: 300`) y desplegar `guardarVersionAlBorrar` junto con
+`guardarVersion`: los pasos y las verificaciones están en
+[`08-operacion.md`](08-operacion.md).
+
 ### El tick del rebuild ya no se come un cambio, y el trigger de reportes no se cuelga
 
 - **B-85** · `dispararRebuild` leía `sistema/rebuild`, hablaba con GitHub (hasta

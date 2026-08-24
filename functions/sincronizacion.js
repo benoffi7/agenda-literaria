@@ -112,6 +112,24 @@ export const mapaDeEtiquetas = (valores = []) =>
   Object.fromEntries((valores ?? []).map((v) => [v.slug, v.label]));
 
 /**
+ * ¿Los dos mapas dicen lo mismo?
+ *
+ * No se comparan con `JSON.stringify`: el mapa se arma recorriendo el array
+ * `valores`, así que reordenar las opciones —o agregar una nueva— cambia el
+ * orden de las claves sin cambiar ninguna etiqueta. Y la escritura frecuente de
+ * `/opciones/*` no es un renombre, es el `usos + 1` de `upsertOpcion` (§4.2),
+ * que pasa en **cada** guardado del formulario: sin esta comparación, cada
+ * guardado dispararía una re-sincronización completa del calendario.
+ */
+export const mismasEtiquetas = (antes = {}, despues = {}) => {
+  const slugs = new Set([...Object.keys(antes), ...Object.keys(despues)]);
+  for (const slug of slugs) {
+    if (antes[slug] !== despues[slug]) return false;
+  }
+  return true;
+};
+
+/**
  * B-04 — Los eventos de una actividad que hay que reescribir porque cambió una
  * etiqueta de taxonomía.
  *

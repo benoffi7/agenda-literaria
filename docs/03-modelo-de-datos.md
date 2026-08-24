@@ -9,7 +9,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | Ruta | Qué guarda | Quién escribe |
 |---|---|---|
 | `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`) y `syncCalendar` |
-| `/actividades/{id}/versiones/{version}` | historial de versiones (§12) | `guardarVersion` (Admin SDK) |
+| `/actividades/{id}/versiones/{version}` | historial de versiones (§12) | `guardarVersion` y `guardarVersionAlBorrar` (Admin SDK) |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
@@ -210,10 +210,12 @@ Dos consecuencias:
 1. Un tag creado como "narrativa" (minúscula) aparece así en el calendario
    público. Hoy no hay normalización de mayúsculas ni UI para editar etiquetas
    — está en el [backlog](BACKLOG.md).
-2. Renombrar una etiqueta **no** actualiza los eventos ya creados. El evento
-   queda con el texto anterior hasta la próxima edición de la actividad.
-   `rebuildPorOpciones` solo marca el rebuild del sitio, no re-sincroniza el
-   calendario.
+2. Renombrar una etiqueta **sí** actualiza los eventos ya creados desde B-04:
+   `rebuildPorOpciones` compara las etiquetas de antes con las de después y, si
+   alguna cambió, reescribe los eventos de las actividades publicadas que la
+   usan (D-93). Antes solo marcaba el rebuild del sitio y el calendario quedaba
+   con el texto anterior hasta la próxima edición de la actividad. El tope es de
+   150 eventos por corrida: lo que sobre se pone al día con la próxima edición.
 
 ## `sede.geo` — el punto exacto
 
@@ -285,6 +287,7 @@ anterior en una subcolección:
   guardadoEn: Timestamp        // el instante de la edición que pisó estos datos
   actualizadoPor: string|null  // uid de quien la hizo
   camposCambiados: string[]    // ['descripcion', 'titulo'] — qué pisó esa edición
+  borrado: boolean             // true si la escribió el borrado de la actividad (B-41)
   documento: { … }             // el `before` COMPLETO, con sus Timestamp nativos
 ```
 
@@ -309,7 +312,7 @@ editable*: el documento menos lo que escribe la máquina (`updatedAt`,
 | `syncCalendar` escribe `calendarEventId` de vuelta | no |
 | Se guarda el formulario sin cambiar nada | no |
 | Se **crea** una actividad (incluido duplicar) | no — no hay nada anterior que perder |
-| Se **borra** la actividad entera | no — ver B-41 |
+| Se **borra** la actividad entera | **sí**, desde B-41: la escribe `guardarVersionAlBorrar` (`onDocumentDeleted`) con `borrado: true` |
 
 Sin la primera exclusión, cada publicación dejaría dos versiones: la del cambio
 real y la del write-back de la Function. El criterio y su fundamento están en

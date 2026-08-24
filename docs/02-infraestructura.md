@@ -100,11 +100,22 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 
 | Función | Trigger | Estado |
 |---|---|---|
-| `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE |
-| `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE |
+| `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — **hay que redesplegar** (B-80, B-82, B-83) |
+| `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — **hay que redesplegar** (B-04, `timeoutSeconds: 300`) |
 | `guardarVersion` | `onDocumentUpdated actividades/{id}` | **escrita, sin desplegar** |
+| `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | **escrita, sin desplegar** (B-41) |
 | `dispararRebuild` | `onSchedule every 5 minutes` | **escrita, sin desplegar** |
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | **escrita, sin desplegar** — falta el secreto |
+
+`rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
+solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
+las actividades publicadas, que son N round trips a Calendar (con un tope de 150
+eventos por corrida). Las demás opciones las sigue heredando del
+`setGlobalOptions` de `index.js`, donde está definida.
+
+`guardarVersionAlBorrar` vive en el mismo archivo que `guardarVersion` y comparte
+sus opciones, así que no necesita IAM nuevo: es una Function más en el mismo
+deploy.
 
 `guardarVersion` (§12, D-41) declara `region`, `maxInstances` y `serviceAccount`
 **en su propio trigger** y no los hereda del `setGlobalOptions` de `index.js`:
