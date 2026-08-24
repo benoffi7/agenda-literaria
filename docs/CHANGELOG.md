@@ -4,6 +4,20 @@
 
 ### Fase 3B — el listado, el panel y el centro de ayuda
 
+**B-14 y el tercer punto de B-64 · el teclado, en las dos pantallas a la vez.**
+Eran dos ítems del backlog porque se vieron en dos lugares, pero es una clase: un
+patrón de teclado a medio hacer —cierra con `Escape`, se alcanza con Tab, y nada
+más— en el menú "⋯" del listado y en la capa del centro de ayuda. La aritmética
+del foco salió a `src/lib/foco.ts` (pura, 15 tests) y el DOM quedó en cada
+componente. El menú suma ↓/↑ con vuelta, `Home`/`End`, apertura con flecha y
+**devuelve el foco al "⋯" al cerrar**; la capa cicla el Tab sobre sus propios
+controles y devuelve el foco a lo que estaba enfocado antes de abrirla.
+
+Escribiendo esa cuenta apareció un bug que habría entrado sin que nadie lo viera:
+tratar "ninguno enfocado" como el índice `-1` a secas hace que ↑ caiga en el
+**penúltimo**, y con dos ítems —los que el menú tiene hoy— el resultado parece
+razonable.
+
 **B-35 · irse del formulario ya no descarta en silencio.** Cuatro botones del
 encabezado y el "Cancelar" del formulario abandonaban los 30+ campos del §11 sin
 preguntar, y cerrar la pestaña también. Ahora hay un `confirm()` que dice qué se

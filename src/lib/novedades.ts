@@ -49,6 +49,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'menu-y-ayuda-con-teclado',
+    fecha: '2026-08-24',
+    titulo: 'El menú «⋯» de cada actividad y la ayuda se manejan con el teclado',
+    detalle:
+      'En el menú de cada fila podés bajar y subir con las flechas y salir con Escape, y al ' +
+      'salir volvés al mismo lugar del listado en vez de empezar de nuevo. La ventana de ayuda ' +
+      'ya no te deja escaparte con Tab hacia el formulario de atrás.',
+    donde: 'El botón «⋯» de cada actividad del listado, y el botón «Ayuda» del encabezado.',
+  },
+  {
     id: 'aviso-al-salir-sin-guardar',
     fecha: '2026-08-24',
     titulo: 'Si te vas de una actividad a medio cargar, ahora el panel te pregunta',

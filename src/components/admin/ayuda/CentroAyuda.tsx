@@ -8,6 +8,7 @@ import {
   type ContextoAyuda,
   type PuntoAyuda,
 } from '@/lib/ayuda';
+import { SELECTOR_ENFOCABLE, indiceDeTab } from '@/lib/foco';
 import { NOVEDADES, fechaLegible, guardarVisto } from '@/lib/novedades';
 
 interface Props {
@@ -64,19 +65,57 @@ export function CentroAyuda({ contexto, idsSinLeer, onCerrar, onNovedadesLeidas 
     onNovedadesLeidas();
   }, [pestania, onNovedadesLeidas]);
 
+  /**
+   * B-64 — la capa atrapa el foco y lo devuelve al cerrarse.
+   *
+   * Antes cerraba con `Escape`, con el botón y con un click en el fondo, y al
+   * abrirse el foco iba al diálogo; pero con Tab se salía hacia el formulario de
+   * atrás, que sigue montado y tapado. Quien navega con teclado perdía la capa
+   * sin haberla cerrado, y encima empezaba a tabular por 30+ campos que no ve.
+   *
+   * Los enfocables se recalculan en cada Tab y no se guardan en un `ref`: las
+   * pestañas y el acordeón de la guía cambian la lista mientras la capa está
+   * abierta, así que una lista congelada al abrir estaría mal casi siempre.
+   */
   useEffect(() => {
-    const escape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCerrar();
+    // Quién tenía el foco antes de abrir, para devolvérselo. Es el botón
+    // "Ayuda" del encabezado en el caso normal.
+    const anterior = document.activeElement as HTMLElement | null;
+
+    const teclas = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCerrar();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+
+      const enfocables = [
+        ...(caja.current?.querySelectorAll<HTMLElement>(SELECTOR_ENFOCABLE) ?? []),
+      ];
+      if (enfocables.length === 0) return;
+
+      const actual = enfocables.indexOf(document.activeElement as HTMLElement);
+      // Solo se intercepta el Tab que se iría afuera del ciclo: adentro, el Tab
+      // nativo ya respeta el orden del documento mejor que cualquier cálculo.
+      // `actual === -1` es el foco en la caja del diálogo, recién abierta.
+      const enElBorde =
+        actual === -1 || (e.shiftKey ? actual === 0 : actual === enfocables.length - 1);
+      if (!enElBorde) return;
+
+      e.preventDefault();
+      enfocables[indiceDeTab(actual, enfocables.length, e.shiftKey)]?.focus();
     };
-    document.addEventListener('keydown', escape);
+
+    document.addEventListener('keydown', teclas);
     // Sin esto, la rueda del mouse sobre la capa scrollea el formulario de
     // atrás cuando la guía llega a su final.
     const previo = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     caja.current?.focus();
     return () => {
-      document.removeEventListener('keydown', escape);
+      document.removeEventListener('keydown', teclas);
       document.body.style.overflow = previo;
+      anterior?.focus();
     };
   }, [onCerrar]);
 

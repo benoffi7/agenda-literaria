@@ -22,6 +22,11 @@ Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar** y
 **Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
 táctiles de ~100px y se erra el toque (D-19).
 
+El menú implementa el patrón de menú de ARIA (B-14): se abre con ↓ o ↑ cayendo en
+el primero o en el último ítem, se recorre con las flechas dando la vuelta, con
+`Home`/`End` va a los extremos, y al cerrarse con `Escape` **devuelve el foco al
+"⋯"** — sin eso había que re-tabular el listado entero para volver a la fila.
+
 ### Duplicar una actividad
 
 Abre el formulario precargado con una copia del original, para editar y guardar
@@ -235,6 +240,10 @@ desmontarlo y sin perder lo cargado.
 En mobile ocupa la pantalla completa con su propio scroll y su safe-area; desde
 `sm` es un cuadro centrado. Cierra con "Cerrar", con `Escape` y con un click en
 el fondo. Mientras está abierta, el `body` no scrollea.
+
+Con teclado, la capa **cicla el Tab sobre sus propios controles** y al cerrarse
+devuelve el foco a lo que estaba enfocado antes de abrirla (B-64). Antes se salía
+con Tab hacia el formulario de atrás, que sigue montado y tapado.
 
 **Guía** — el contenido vive en [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) como
 data tipada, no repartido en JSX (D-62):

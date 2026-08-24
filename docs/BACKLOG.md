@@ -1381,12 +1381,29 @@ mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
 ~~B-13 · El schedule de `dispararRebuild` no reintenta con backoff~~ →
 [cerrado](#cerrados).
 
-### B-14 · El menú de acciones del listado no se navega con flechas
+### B-14 · El menú de acciones del listado no se navega con flechas — ✅ hecho (2026-08-24)
 
 `MenuAcciones` cierra con `Escape` y con un click afuera, y sus ítems son
 `<button role="menuitem">` alcanzables con Tab, pero no implementa el patrón
 completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
 cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
+
+**Cómo quedó, y por qué antes de que el menú creciera.** Se hizo junto con el
+tercer punto de **B-64** (la capa de ayuda no atrapaba el foco) porque son la
+misma clase vista en dos pantallas: un patrón de teclado a medio hacer. La
+aritmética —dónde cae el foco al pasarse del último, qué tecla mueve a dónde—
+salió a `src/lib/foco.ts`, pura y con tests; el DOM queda en cada componente.
+
+El menú tiene ahora ↓/↑ con vuelta, `Home`/`End`, se abre con ↓ o ↑ cayendo en el
+primero o el último, y **devuelve el foco al "⋯" al cerrarse con `Escape`** — sin
+eso había que re-tabular el listado entero para volver a la fila donde se estaba,
+que es lo que hacía inservible el `Escape`. La capa de ayuda cicla el Tab y
+devuelve el foco a lo que estaba enfocado antes de abrirla.
+
+Un bug que apareció escribiendo la cuenta: tratar "ninguno enfocado" como el
+índice `-1` a secas hacía que ↑ cayera en el **penúltimo**. Con dos ítems —los
+que el menú tiene hoy— el resultado parece razonable, así que habría entrado sin
+que nadie lo viera.
 
 ### B-25 · Aprobar taxonomías desde el panel
 
@@ -1528,9 +1545,10 @@ Tres cosas conocidas, ninguna urgente:
 - **No se puede corregir una errata ni avisar nada sin desplegar** — costo
   aceptado en D-63. Si algún día hace falta un aviso urgente (una caída), es
   otro problema y otra herramienta.
-- **La capa no atrapa el foco.** Cierra con `Escape`, con el botón y con un
-  click en el fondo, y al abrirse el foco va al diálogo, pero con Tab se puede
-  salir hacia el formulario de atrás. Es el mismo patrón incompleto que B-14.
+- ~~**La capa no atrapa el foco.**~~ ✅ hecho (2026-08-24), junto con B-14, que
+  era la misma clase en otra pantalla: la capa cicla el Tab sobre sus propios
+  controles y devuelve el foco a lo que estaba enfocado antes de abrirse. Ver
+  `src/lib/foco.ts`.
 
 ### B-100 · Prellenar sede, organizador e inscripción desde lo ya cargado
 
