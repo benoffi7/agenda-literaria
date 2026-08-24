@@ -797,7 +797,7 @@ prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), n
 etiquetas de UI. Unificarlos haría que un cambio de copy del panel cambie lo que
 se publica en el calendario.
 
-### B-84 · Cancelar un encuentro de un ciclo renumera y reescribe los otros siete
+### B-84 · Cancelar un encuentro de un ciclo renumera y reescribe los otros siete — ✅ hecho (2026-08-24)
 
 `posicionEnCiclo` numera sobre las sesiones **no canceladas**, así que cancelar
 el tercero de ocho convierte al sexto en "Encuentro 5 de 7" en el calendario
@@ -819,6 +819,21 @@ y el total sigue siendo ocho), y que el cancelado simplemente no tenga evento.
 
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts), con lo que hace
 hoy escrito al lado para que el cambio se note.
+
+**Resuelto así** (D-95): se numera sobre **todas** las sesiones, canceladas
+incluidas. El número es la identidad del encuentro dentro del ciclo —qué lectura
+le toca, qué fila del formulario es—, no un recuento en vivo de los que siguen en
+pie; y es el criterio que el panel ya usaba para el "2 de 8" de la vista
+calendario (D-70), que hasta ahora decía "6 de 8" mientras el evento público
+decía "5 de 7". Cancelar toca ahora **un solo** evento. El total sigue diciendo
+ocho y en la serie queda un hueco: es cómo un suscripto ve que ese día se
+canceló.
+
+El test de `calendario.test.ts` que pasaba con el invariante roto —"cancelar un
+encuentro borra solo el suyo"— corre ahora sobre un ciclo de verdad, y hay un
+test en `costuras.test.ts` que **ata** la numeración del panel con la del evento
+publicado. Quedan abiertos **B-160** (el residual: agregar o borrar una fila sí
+renumera, por diseño) y **B-161** (los fixtures que siguen sin ser un ciclo).
 
 ### B-85 · El debounce del rebuild se come el cambio que llega mientras dispara
 
@@ -929,6 +944,44 @@ ordena: se apoya en que `encuentrosDe` ya ordenó por inicio. Hoy todos los
 caminos del componente pasan por ahí, así que funciona. El día que alguien
 alimente `mesInicial` con una lista armada de otra forma, la vista abre en un mes
 arbitrario y nadie lo nota. Un `.sort()` lo cierra.
+
+### B-160 · Agregar o borrar una fila de un ciclo publicado reescribe los otros N · P3
+
+Residual de B-84, y por diseño (D-95): el número del evento es "Encuentro 3 de
+8", así que cambiar el largo del ciclo hace falso el "de 8" de todos los demás y
+el diff los actualiza. Son `actualizar`, nunca `borrar`+`crear`: los
+recordatorios y las suscripciones sobreviven, pero el texto de los otros siete
+eventos cambia por agregar un noveno encuentro.
+
+A diferencia de la cancelación, acá el conjunto de encuentros cambió de verdad y
+el número nuevo es el correcto, así que no está claro que haya algo que arreglar.
+Si molesta en la práctica, la salida es **sacar el total** de la descripción
+("Encuentro 3", sin "de 8"): agregar al final dejaría de tocar a nadie y el total
+—que es el dato volátil— ya está en la descripción de la actividad. Se decide
+con uso real, no antes.
+
+Ojo con el orden: si la fila nueva se intercala **antes** de encuentros que ya
+existen, esos sí cambian de número con cualquier variante. Eso es correcto.
+
+### B-161 · Fixtures de `calendario.test.ts` que todavía no ejercitan el ciclo · P3
+
+B-84 existió porque un test pasaba con el invariante roto: su fixture era una
+actividad de dos sesiones sin `esCiclo`, así que la numeración del evento no
+entraba en juego. Los bloques del diff (creación, anti-loop, diff por id, cambio
+global, despublicar y cancelar) ya corren sobre un ciclo de ocho encuentros
+semanales. Quedan con fixture de un solo encuentro, y a propósito:
+
+- **`planificar` — el payload propaga los campos nuevos** (arancel, organizador,
+  inscripción, "publicar el link", material): son cinco tests de una sola sesión
+  que verifican *que un campo propaga*, no *a cuántos*. Sobre un ciclo pasarían a
+  esperar ocho ops y el test diría menos.
+- **`construirEvento` y `construirDescripcion`**: son de contenido —qué sale y
+  qué nunca sale—, y ahí una sesión alcanza. La numeración del ciclo tiene sus
+  propios tests.
+
+Vale releerlo con el mismo ojo cada vez que se toque el diff: el patrón —"el
+fixture no ejercita el caso central del §2.2"— es el que hay que cazar, no estos
+casos puntuales.
 
 ## P3 — cuando sobre tiempo
 

@@ -18,8 +18,9 @@ import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eve
 import { construirIssue, redactar } from '../functions/reportes.js';
 import { construirDescripcion, planificar } from '../functions/calendario.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
+import { encuentrosDe } from '@/lib/calendarioPanel';
 import { generarSesiones } from '@/lib/sesiones';
-import type { Actividad } from '@/types/actividad';
+import type { Actividad, ActividadConId } from '@/types/actividad';
 
 const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
@@ -329,6 +330,32 @@ describe('B-84 · cancelar un encuentro de un ciclo (§7.2, §2.2)', () => {
     const sexta = despues.sesiones[5]!;
     expect(construirDescripcion(antes, antes.sesiones[5]!, {})).toContain('Encuentro 6 de 8');
     expect(construirDescripcion(despues, sexta, {})).toContain('Encuentro 6 de 8');
+  });
+});
+
+/**
+ * El número del encuentro sale dos veces en el panel: en el "2 de 8" de la
+ * vista calendario (`encuentrosDe`, D-70) y en la descripción del evento que se
+ * publica (`posicionEnCiclo`, D-95). Hasta B-84 los dos criterios estaban
+ * separados —el panel contaba los cancelados y el evento no—, así que el mismo
+ * encuentro era "6 de 8" en una pantalla y "5 de 7" en el calendario de la
+ * gente. Este test los ata: separarlos otra vez pone algo en rojo.
+ */
+describe('B-84 · el número del encuentro es el mismo en el panel y en el evento', () => {
+  it('coincide encuentro por encuentro, con uno cancelado en el medio', () => {
+    const conCancelado = ciclo({
+      sesiones: ochoSesiones((i) => (i === 2 ? { cancelada: true } : {})),
+    }) as unknown as ActividadConId;
+
+    const encuentros = encuentrosDe([{ ...conCancelado, id: 'act1', tipo: 'club-lectura' }]);
+    expect(encuentros).toHaveLength(8);
+
+    for (const encuentro of encuentros) {
+      const sesion = conCancelado.sesiones.find((s) => s.id === encuentro.sesionId)!;
+      expect(construirDescripcion(conCancelado, sesion, {})).toContain(
+        `Encuentro ${encuentro.indice} de ${encuentro.total}`,
+      );
+    }
   });
 });
 

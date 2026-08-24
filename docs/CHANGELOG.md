@@ -2,6 +2,42 @@
 
 ## 2026-08-24
 
+### Cancelar un encuentro de un ciclo ya no renumera a los otros siete (B-84)
+
+La descripción del evento abre con "Encuentro 3 de 8" y `posicionEnCiclo`
+numeraba sobre las sesiones **no canceladas**: cancelar el tercero de ocho
+convertía al sexto en "Encuentro 5 de 7". El diff emitía siete `actualizar` de
+más y —lo que importa— el texto de siete eventos **ya agendados** cambiaba sin
+que nada hubiera cambiado para su dueño. No se perdían: eran `actualizar` y no
+`borrar`+`crear`, así que los recordatorios sobrevivían.
+
+Ahora se numera sobre **todas** las sesiones, canceladas incluidas (**D-95**). El
+número es la identidad del encuentro dentro del ciclo —qué lectura le toca, qué
+fila del formulario es—, no un recuento en vivo de los que siguen en pie; el §2.2
+le da ese sentido cuando dice que las sesiones son una lista explícita porque
+cada encuentro tiene su tema. Y es el criterio que el panel **ya** usaba para el
+"2 de 8" de la vista calendario (D-70): antes de esto el mismo encuentro era
+"6 de 8" en una pantalla y "5 de 7" en el calendario de la gente. Cancelar toca
+ahora un solo evento. La alternativa descartada —posición sobre las no canceladas
+con el total original— y el porqué están en D-95.
+
+**La mitad del trabajo fue el test.** "Cancelar un encuentro borra solo el suyo"
+pasaba con el invariante roto porque su fixture no era un ciclo: dos sesiones,
+sin `esCiclo`, y todas en el mismo instante, así que la numeración no entraba en
+juego. Es el patrón de B-84 en su forma pura —un fixture que no ejercita el caso
+central del dominio—, el mismo que hizo indetectable a H1 el 22. Los bloques del
+diff corren ahora sobre un ciclo de ocho encuentros semanales con su evento cada
+uno, los tests de borrar y agregar una fila dejan explícito que renumerar **ahí**
+es por diseño (el ciclo cambió de largo) y que nunca es borrar y recrear, y hay
+un test en `costuras.test.ts` que **ata** la numeración del panel con la del
+evento publicado: separarlas otra vez pone algo en rojo. La vista previa se
+compara contra el payload que se le manda a Calendar, no solo consigo misma
+(D-20).
+
+Abre **B-160** (agregar o borrar una fila sí renumera: residual asumido, con la
+salida anotada por si molesta) y **B-161** (los fixtures que siguen siendo de un
+solo encuentro, con el motivo de cada uno).
+
 ### Vista calendario del panel, y los ocho hallazgos de auditarla
 
 La vista muestra los encuentros por día con su **estado de publicación** — no el
