@@ -1742,3 +1742,40 @@ por si el costo molesta en la práctica.
 | Si hace falta un claim `curador` aparte del `admin` para aprobar taxonomías (D-28) | dueño |
 | Si las opciones que crea el dueño deberían nacer aprobadas (hoy nacen pendientes todas) | dueño |
 | Si una etiqueta que una segunda cuenta reusa debería aprobarse sola | dueño |
+
+---
+
+## D-100 · Toda salida del formulario pasa por una sola puerta
+
+**Contexto (B-35):** el store de `formulario-sucio.ts` ya sabía que había cambios
+pendientes —lo usaba el aviso de versión nueva para no recargar la pestaña por
+atrás—, pero las salidas que dispara la propia persona no lo miraban. "Volver",
+"Reportar algo", "Salir" y "Cancelar" descartaban los 30+ campos del §11 sin
+preguntar, y cerrar la pestaña también.
+
+**Decisión:** un único `salirDe(accion)` en `AdminApp` envuelve a las cuatro
+salidas, y la regla de cuándo preguntar es una función pura
+(`src/lib/salida-del-panel.ts`).
+
+**Por qué envolver la acción y no chequear en cada `onClick`.** El chequeo
+repetido cuatro veces es la misma lista duplicada que D-98 combate: el día que se
+agregue una salida nueva —y este encabezado ya sumó tres botones en un mes— nadie
+se acuerda del quinto chequeo, y el olvido no falla en ninguna parte. Con el
+envoltorio, la forma de escribir un botón de salida **es** la que lleva el aviso.
+
+**Por qué la vista entra en la decisión y no solo el store.** El store se apaga
+en el cleanup del formulario, así que en régimen alcanzaría con él. Pero si
+alguna vez queda encendido por un camino no previsto, la consecuencia sin el
+chequeo de vista es que todos los botones del panel piden confirmación, incluso
+en el listado, donde no hay nada que perder — y un aviso que aparece cuando no
+hay nada en juego se aprende a ignorar, con lo cual también se ignora el que sí
+importa.
+
+**Lo que el `beforeunload` no puede hacer:** el navegador muestra su propio
+cartel y no acepta texto. Por eso el `confirm()` de las cuatro salidas
+controladas vale la pena aparte: es el único lugar donde se puede decir *qué* se
+pierde.
+
+**De paso**, "← Volver" pasó a respetar `volverA` igual que "Cancelar": eran dos
+salidas del mismo formulario con dos criterios, y volver por el encabezado desde
+el calendario perdía el mes que se estaba mirando.

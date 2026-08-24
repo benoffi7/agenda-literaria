@@ -4,6 +4,21 @@
 
 ### Fase 3B — el listado, el panel y el centro de ayuda
 
+**B-35 · irse del formulario ya no descarta en silencio.** Cuatro botones del
+encabezado y el "Cancelar" del formulario abandonaban los 30+ campos del §11 sin
+preguntar, y cerrar la pestaña también. Ahora hay un `confirm()` que dice qué se
+pierde, más un `beforeunload` para el cierre de pestaña, y **una sola puerta**:
+`salirDe(accion)` envuelve a las cuatro salidas en vez de repetir el chequeo en
+cada `onClick`, que es la lista duplicada que D-98 combate. La regla de cuándo
+preguntar es pura (`src/lib/salida-del-panel.ts`) y mira además la vista, no solo
+el store: un aviso que aparece en el listado, donde no hay nada que perder, se
+aprende a ignorar. Ver **D-100**.
+
+Salió también un bug de acá: **"← Volver" del encabezado ignoraba `volverA`**, así
+que editar un encuentro desde la vista calendario y volver por el encabezado
+mandaba al listado y perdía el mes que se estaba mirando, mientras que "Cancelar"
+sí lo respetaba. Dos salidas del mismo formulario con dos criterios.
+
 **B-76 · el estado ya se lee igual en las dos pantallas.** El síntoma —el listado
 decía "borrador" donde el formulario decía "Borrador"— venía cerrado con la vista
 calendario, que subió `ETIQUETA_ESTADO` a `src/lib/filtrosActividades.ts`. Lo que

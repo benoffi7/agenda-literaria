@@ -49,6 +49,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'aviso-al-salir-sin-guardar',
+    fecha: '2026-08-24',
+    titulo: 'Si te vas de una actividad a medio cargar, ahora el panel te pregunta',
+    detalle:
+      'Antes, tocar «Volver», «Reportar algo», «Salir» o «Cancelar» con la actividad a medio ' +
+      'llenar la descartaba sin decir nada, y cerrar la pestaña también. Ahora pregunta antes, ' +
+      'y solo cuando hay algo escrito que se perdería.',
+    donde: 'En cualquier botón que te saque del formulario, y al cerrar la pestaña.',
+  },
+  {
     id: 'destacar-llega-al-sitio',
     fecha: '2026-08-24',
     titulo: 'Destacar una actividad, o cambiarle la imagen, ahora sí se ve en el sitio',

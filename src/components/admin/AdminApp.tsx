@@ -8,6 +8,13 @@ import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
+// Store de módulo, sin Firestore ni React context (ver formulario-sucio.ts).
+import { hayCambiosSinGuardar, marcarCambiosSinGuardar } from '@/lib/formulario-sucio';
+import {
+  AVISO_CAMBIOS_SIN_GUARDAR,
+  debeConfirmarSalida,
+  tieneFormulario,
+} from '@/lib/salida-del-panel';
 import { VERSION_APP } from '@/lib/version';
 // Estático: la ayuda es solo datos y componentes, no toca Firestore.
 import { BotonAyuda } from '@/components/admin/ayuda/BotonAyuda';
@@ -89,10 +96,8 @@ const CalendarioActividades = diferido<Parameters<typeof TipoCalendario>[0]>(() 
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
- * El router es propio y mínimo: lista, nueva, editar y duplicar.
-/**
- * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
- * El router es propio y mínimo: lista, nueva, editar, duplicar y reportes.
+ * El router es propio y mínimo: lista, nueva, editar, duplicar, reportes y
+ * calendario.
  */
 export function AdminApp() {
   const [usuario, setUsuario] = useState<User | null>(null);
@@ -113,12 +118,66 @@ export function AdminApp() {
    */
   const [volverA, setVolverA] = useState<'lista' | 'calendario'>('lista');
 
+  /**
+   * B-35 — toda salida del formulario pasa por acá.
+   *
+   * Antes cada botón del encabezado hacía su `setVista` directo, así que
+   * "Volver", "Calendario", "Reportar algo", "Salir" y "Cancelar" descartaban
+   * los 30+ campos del §11 sin decir nada. La regla de cuándo preguntar es pura
+   * y vive en `salida-del-panel.ts`; acá queda solo el `confirm()`.
+   *
+   * Envolver la acción en vez de chequear en cada `onClick` es lo que hace que
+   * una salida nueva no pueda olvidarse del aviso: el botón nuevo se escribe
+   * como `salirDe(() => …)` porque es la forma que tienen todos los demás.
+   */
+  const salirDe = (accion: () => void): void => {
+    if (debeConfirmarSalida(vista.tipo, hayCambiosSinGuardar())) {
+      if (!confirm(AVISO_CAMBIOS_SIN_GUARDAR)) return;
+      // La persona eligió perderlos: el store queda limpio para que el aviso no
+      // se repita en la pantalla siguiente si el desmontaje llega después.
+      marcarCambiosSinGuardar(false);
+    }
+    accion();
+  };
+
+  /**
+   * A dónde manda "← Volver" del encabezado. Desde el formulario respeta
+   * `volverA` igual que "Cancelar": antes mandaba siempre al listado, así que
+   * editar un encuentro desde el calendario y volver por el encabezado perdía
+   * el mes que se estaba mirando — justo lo que `volverA` existe para evitar.
+   */
+  const destinoDeVolver = (): Vista =>
+    tieneFormulario(vista.tipo) ? { tipo: volverA } : { tipo: 'lista' };
+
   useEffect(() => {
     return observarAuth(async (u) => {
       setUsuario(u);
       setEsAdmin(u ? await tieneClaimAdmin(u) : null);
       setCargando(false);
     });
+  }, []);
+
+  /**
+   * B-35 — cerrar la pestaña con el formulario a medio cargar.
+   *
+   * Es el único camino de salida que el panel no controla: no hay click que
+   * interceptar, así que va por `beforeunload`. El navegador muestra su propio
+   * cartel y no se le puede poner texto — de ahí que el `confirm()` de las
+   * salidas de abajo sí valga la pena, que es donde se puede explicar qué se
+   * pierde.
+   *
+   * El estado se lee dentro del handler y no como dependencia del efecto: el
+   * listener se registra una vez y siempre ve el valor actual del store.
+   */
+  useEffect(() => {
+    const alCerrar = (e: BeforeUnloadEvent) => {
+      if (!hayCambiosSinGuardar()) return;
+      e.preventDefault();
+      // Sin esto Chrome ignora el `preventDefault()` y cierra sin preguntar.
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', alCerrar);
+    return () => window.removeEventListener('beforeunload', alCerrar);
   }, []);
 
   // Analítica del panel. Deliberadamente fuera del efecto de auth y sin datos
@@ -206,7 +265,7 @@ export function AdminApp() {
         {vista.tipo !== 'lista' && (
           <button
             type="button"
-            onClick={() => setVista({ tipo: 'lista' })}
+            onClick={() => salirDe(() => setVista(destinoDeVolver()))}
             className="min-h-touch shrink-0 rounded-md border border-borde bg-white px-3 text-sm"
           >
             ← Volver
@@ -224,7 +283,7 @@ export function AdminApp() {
         {vista.tipo !== 'reportes' && (
           <button
             type="button"
-            onClick={() => setVista({ tipo: 'reportes' })}
+            onClick={() => salirDe(() => setVista({ tipo: 'reportes' }))}
             className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
           >
             Reportar algo
@@ -244,7 +303,7 @@ export function AdminApp() {
         />
         <button
           type="button"
-          onClick={() => void logout()}
+          onClick={() => salirDe(() => void logout())}
           className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
         >
           Salir
@@ -298,7 +357,7 @@ export function AdminApp() {
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
           copia={vista.tipo === 'duplicar' ? vista.copia : undefined}
           tituloOrigen={vista.tipo === 'duplicar' ? vista.tituloOrigen : undefined}
-          onCancelar={() => setVista({ tipo: volverA })}
+          onCancelar={() => salirDe(() => setVista({ tipo: volverA }))}
           onGuardado={() => {
             setVersion((v) => v + 1);
             setVista({ tipo: volverA });

@@ -514,7 +514,7 @@ inicial de `/admin` (el que la island carga como `component-url`). Si aparece,
 alcanza con que el módulo que lo inicializa no sea alcanzable de forma estática
 desde `AdminApp` (D-51).
 
-### B-35 · Salir del panel con cambios sin guardar no avisa
+### B-35 · Salir del panel con cambios sin guardar no avisa — ✅ hecho (2026-08-24)
 
 El store de `formulario-sucio.ts` ya sabe que hay cambios pendientes, y el aviso
 de versión nueva lo usa. Pero cerrar la pestaña, volver a la lista o tocar
@@ -523,6 +523,16 @@ de versión nueva lo usa. Pero cerrar la pestaña, volver a la lista o tocar
 Con el dato ya disponible es un `beforeunload` y una confirmación en el botón de
 volver. Queda fuera de este cambio porque toca el flujo del formulario, no el de
 versiones.
+
+**Cómo quedó.** El `beforeunload` para cerrar la pestaña, y un `confirm()` con
+texto propio en las cuatro salidas que el panel sí controla: "← Volver",
+"Reportar algo", "Salir" y el "Cancelar" del formulario. "Calendario" no lo
+necesita porque solo se ofrece desde el listado.
+
+La regla de cuándo preguntar salió a `src/lib/salida-del-panel.ts` (pura, con
+test) y en `AdminApp` quedó un solo `salirDe(accion)` que envuelve a las cuatro:
+una salida nueva se escribe con esa forma, así que no puede olvidarse del aviso.
+Ver **D-100**.
 
 ### B-36 · La versión no distingue dos builds sucios del mismo commit — ❌ descartado (2026-08-24)
 
@@ -1898,6 +1908,7 @@ Se dejan para que quede el rastro de qué se rompió.
 | Qué | Causa | Dónde |
 |---|---|---|
 
+| Editar un encuentro desde la vista calendario y volver por el encabezado mandaba al listado y perdía el mes que se estaba mirando | el botón "← Volver" hacía `setVista({tipo:'lista'})` fijo, mientras el "Cancelar" del formulario ya respetaba `volverA`: dos salidas del mismo formulario con dos criterios | B-35, `AdminApp.tsx` |
 | El listado y el calendario contestaban "¿ya pasó?" con campos distintos: un taller en curso desaparecía del listado a los minutos de empezar | `proximoEncuentro` filtraba por `inicio`, `yaPaso` por `fin`, y el fixture de los tests tenía `fin === inicio`, así que la diferencia era indetectable (patrón B-84) | auditoría del calendario, H1 |
 | `desSlug` estaba copiado idéntico en el panel y en la descripción del evento | mejorar uno separaba los dos sin que nada fallara (D-20) | H2 |
 | El calendario mostraba alarma roja después de cada publicación, diciendo que el sync había fallado | el texto afirmaba falla sobre algo en vuelo; el write-back del id tarda segundos | H3 |
