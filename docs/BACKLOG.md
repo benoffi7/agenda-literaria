@@ -1102,14 +1102,26 @@ quedan sin sentido:
 - **B-28** (¿claim `curador`?) y **B-29** (¿auto-aprobar una etiqueta reusada?):
   las dos preguntas desaparecen.
 
-**Hay dos formas de honrar la decisión, y la diferencia importa:**
+**Decidido (2026-08-24): se voltea el default y la maquinaria queda dormida.** El
+dueño la quiere disponible para cuando haya más admins y más tags, que es
+exactamente el escenario que el §4.3 anticipa (*"si en el futuro carga gente
+además del dueño"*). Prenderla de nuevo va a ser volver a poner `false`.
 
-1. **Voltear el default y dejar la maquinaria dormida.** Una línea, reversible, y
-   si algún día carga una tercera persona se vuelve a prender. Costo: código que
-   no hace nada, que es la clase de cosa que confunde a quien lo lee después.
-2. **Sacar la maquinaria.** Deja el código diciendo la verdad, y el §4.3 —que la
-   propone *"si en el futuro carga gente además del dueño"*— queda como la nota
-   de por qué no está. Costo: rehacerla si vuelve a hacer falta.
+Lo que hay que hacer para que el código dormido no se lea como código muerto:
+
+- **Un comentario en `upsertOpcion`, en el lugar del default**, que diga que está
+  en `true` por decisión y no por descuido, y qué la revierte. Sin eso, el
+  próximo que lea `aprobada: true` al lado de `estaAprobada` y `opcionesVisibles`
+  va a suponer que alguien se olvidó de terminar algo.
+- **Un test que fije el default**, del mismo tipo que
+  `tests/opciones-orden.test.ts` con la preselección. La maquinaria dormida tiene
+  dos formas de fallar en silencio, y las dos son de la clase que este repo ya
+  aprendió a cubrir: que el default se vuelva a dar vuelta sin que nadie lo note,
+  o que alguien "limpie" `estaAprobada`/`huellaCreador` como código sin uso y
+  después no haya nada que prender.
+- **Dejar los tests de la aprobación como están.** Siguen verificando la
+  maquinaria, y son lo que garantiza que funcione el día que se prenda. No
+  sacarlos por estar cubriendo un camino que hoy nadie recorre.
 
 **Vale notar por qué la decisión es razonable:** el problema que el §4.3 quería
 evitar era que el desplegable se llene de variantes de lo mismo, y eso ya lo

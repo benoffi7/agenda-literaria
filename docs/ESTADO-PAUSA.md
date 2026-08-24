@@ -59,9 +59,11 @@ Ojo con el punto 2 del ítem: si se resuelve guardando el mail en el documento,
 - **«Feria» va como opción base** de `tipo` (B-129). Falta decidir qué reglas
   condicionales del §11 le corresponden — probablemente ciclo, porque una feria
   suele ser de varios días.
-- **Las opciones creadas con «Otro» nacen aprobadas** (B-131). Ojo: eso deja
-  inerte el mecanismo de aprobación entero y vacía B-25, B-26, B-28 y B-29. Hay
-  que elegir entre voltear el default dejando la maquinaria dormida, o sacarla.
+- **Las opciones creadas con «Otro» nacen aprobadas** (B-131), y **la maquinaria
+  de aprobación se deja dormida** para cuando haya más admins y más tags. O sea:
+  voltear el default, comentar por qué está así, y un test que lo fije — para que
+  no se dé vuelta solo ni alguien la borre por parecer código sin uso. B-25,
+  B-26, B-28 y B-29 quedan en espera de ese momento, no descartados.
 
 ## Lo que sigue después de la fase 1
 
