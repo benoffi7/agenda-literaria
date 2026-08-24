@@ -191,6 +191,35 @@ describe('corte del bundle del panel — B-09, B-117, B-50', () => {
   });
 });
 
+/**
+ * Trampa 4 del §13 — `firebase-admin` en el bundle cliente.
+ *
+ * Es la trampa más caras del §13 (si se cuela, la key de la service account
+ * termina en un artefacto público, §5.4) y hasta acá **no había ningún test que
+ * la cubriera**: el hallazgo salió de armar el mapa de B-119. Se cierra con el
+ * mismo recorrido de arriba, que es lo que hacía falta: la regla del §5.4 no es
+ * "este archivo no lo importa", es "no se llega desde el cliente", y eso es una
+ * pregunta sobre el grafo.
+ *
+ * Se mira el grafo **completo**, diferidos incluidos: un `import()` también
+ * termina en un chunk que el navegador puede bajar.
+ */
+describe('trampa 4 · la service account no puede llegar al cliente', () => {
+  const ADMIN = 'src/lib/firebase-admin.ts';
+
+  it('CONTROL POSITIVO: el módulo que hay que mantener afuera existe y sí trae el SDK', () => {
+    // Si `firebase-admin.ts` se renombrara o dejara de importar el SDK, el
+    // chequeo de abajo pasaría por vacío en vez de por correcto.
+    expect(existsSync(ruta(ADMIN))).toBe(true);
+    expect(importsEstaticos(fuente(ADMIN)).some((i) => i.startsWith('firebase-admin'))).toBe(true);
+  });
+
+  it('no se alcanza desde la island, ni siquiera por un import diferido', () => {
+    expect([...COMPLETO.archivos].filter((a) => a === ADMIN)).toEqual([]);
+    expect([...COMPLETO.paquetes].filter((p) => p.startsWith('firebase-admin'))).toEqual([]);
+  });
+});
+
 describe('quién es dueño de Firestore — B-09', () => {
   it('firebase-client no importa firebase/firestore', () => {
     // Es el módulo de la pantalla de login: si acá entra Firestore, el SDK
