@@ -361,7 +361,7 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 | Se publica una actividad | un evento por sesión no cancelada |
 | Se corre la fecha de un encuentro | se actualiza **solo** ese evento |
 | Se cambia la sede o el título | se actualizan **todos** los eventos del ciclo |
-| Se borra un encuentro | se borra **solo** su evento |
+| Se borra un encuentro | se borra su evento, y los demás se **actualizan**: el ciclo cambió de largo, así que el "de 8" de los otros pasó a ser falso (B-160) |
 | Se cancela un encuentro | se borra su evento, y **ningún otro se toca** (B-84, D-95) |
 | Pasa a borrador, pendiente o cancelado | se borran todos sus eventos |
 | Se borra la actividad | se borran todos sus eventos |

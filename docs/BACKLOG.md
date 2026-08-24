@@ -963,6 +963,41 @@ con uso real, no antes.
 Ojo con el orden: si la fila nueva se intercala **antes** de encuentros que ya
 existen, esos sí cambian de número con cualquier variante. Eso es correcto.
 
+### B-162 · Los ciclos ya publicados con un encuentro cancelado se quedan con el número viejo · P3
+
+Consecuencia de D-95 en lo que ya está en el calendario. La guarda del §7.1
+compara el payload de antes contra el de después **calculando los dos con el
+código nuevo** (D-07), así que un ciclo que hoy tenga un encuentro cancelado no
+genera ninguna operación al volver a guardarlo: los siete eventos siguen
+diciendo "de 7" en el calendario de quien los tenga agendados, mientras el panel
+y la vista previa muestran "de 8". La divergencia solo se ve desde afuera.
+
+Se corrige sola en cuanto un cambio que **sí** salga al evento —título,
+descripción, sede, tema, lectura— reescriba esos eventos. Para forzarlo hoy hay
+que editar algo de eso a mano en las actividades afectadas, que son pocas y las
+puede listar el dueño desde la vista calendario (los encuentros cancelados se ven
+en gris).
+
+Un resync de verdad —leer Calendar y reconciliar— es **B-125**, que necesita que
+el panel o un script se pueda autenticar contra la API. Mientras eso no exista,
+esto es texto viejo en eventos ya publicados: molesta, no rompe.
+
+### B-163 · El panel numera encuentros que el evento no numera · P3
+
+`encuentrosDe` (D-70) y la vista calendario muestran "Encuentro 2 de 3" en
+**cualquier** actividad de más de una sesión, mientras `posicionEnCiclo` (D-95)
+numera solo si `esCiclo` está tildado. El schema prohíbe `esCiclo` con menos de
+dos sesiones pero no el recíproco, así que tres encuentros sin tildar el ciclo es
+un documento válido: el panel numera y el evento público no dice nada.
+
+Es anterior a B-84 y no está claro que sea un bug —el evento afirma "Encuentro 2
+de 3" solo cuando el dueño declaró que es un ciclo, y eso es defendible—, pero
+son dos criterios para lo mismo derivado, que es lo que D-71 y D-20 evitan. Las
+dos salidas: que el evento numere cuando hay más de una sesión aunque no sea
+ciclo, o que el panel deje de numerar sin `esCiclo`. Hay un test en
+`costuras.test.ts` que fija el comportamiento actual, así que unificarlo se va a
+notar.
+
 ### B-161 · Fixtures de `calendario.test.ts` que todavía no ejercitan el ciclo · P3
 
 B-84 existió porque un test pasaba con el invariante roto: su fixture era una

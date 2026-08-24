@@ -383,8 +383,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'El tema y la lectura de cada encuentro salen en el evento de ese día, junto con la ' +
-          'posición en el ciclo («Encuentro 3 de 8»). Ese número es el de la fila, contando ' +
-          'también los cancelados: cancelar uno no renumera a los demás.',
+          'posición en el ciclo («Encuentro 3 de 8»). El número sale del orden de las fechas y ' +
+          'cuenta también los cancelados: cancelar uno no renumera a los demás.',
       },
       {
         texto:

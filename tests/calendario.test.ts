@@ -184,8 +184,13 @@ describe('planificar — diff por id (§7.2, trampa 2)', () => {
   });
 
   it('correr la fecha de un encuentro actualiza solo ese', () => {
-    // Se corre un día, sin pasar al siguiente: la numeración no se mueve.
-    const corrida = { ...tres[1]!, inicio: ts('2026-09-11T22:00:00Z') };
+    // Se corre un día, sin pasar al siguiente: la numeración no se mueve. Se
+    // corren las dos puntas, que es lo que hace el formulario.
+    const corrida = {
+      ...tres[1]!,
+      inicio: ts('2026-09-11T22:00:00Z'),
+      fin: ts('2026-09-12T00:00:00Z'),
+    };
     const despues = ciclo({ sesiones: [tres[0]!, corrida, tres[2]!] });
 
     const ops = planificar(conTres(), despues);

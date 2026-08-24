@@ -155,7 +155,10 @@ describe('vistaPreviaEvento — adaptación del formulario', () => {
     const f = form({ sesiones: tres });
 
     // La vista previa no puede decir una cosa y el calendario otra: se compara
-    // contra el payload que el diff le mandaría a Calendar (D-20).
+    // contra el payload que el diff le mandaría a Calendar. Hoy es la misma
+    // cadena de funciones, así que la igualdad no puede fallar: es la guarda
+    // que se pone en rojo el día que alguien reimplemente la previa acá (D-20).
+    // Lo que verifica el caso es el número de la línea siguiente.
     const documento = formADocumento(f, '', false);
     const creada = planificar(null, documento, LABELS).find(
       (o: { id: string }) => o.id === 'ses_c',

@@ -357,6 +357,24 @@ describe('B-84 · el número del encuentro es el mismo en el panel y en el event
       );
     }
   });
+
+  /**
+   * Donde los dos criterios **no** coinciden, y es anterior a B-84: el panel
+   * numera cualquier actividad de más de una sesión y el evento solo numera si
+   * `esCiclo` está tildado. El schema prohíbe `esCiclo` con menos de dos
+   * sesiones, pero no el recíproco: tres encuentros sin tildar el ciclo es un
+   * documento válido y cargable. Queda fijado acá para que el día que se
+   * unifique se note (B-163).
+   */
+  it('sin esCiclo el panel numera y el evento no: la divergencia que queda (B-163)', () => {
+    const sinCiclo = ciclo({ esCiclo: false, sesiones: ochoSesiones().slice(0, 3) });
+    const encuentros = encuentrosDe([
+      { ...(sinCiclo as unknown as ActividadConId), id: 'act2', tipo: 'taller' },
+    ]);
+
+    expect(encuentros[1]).toMatchObject({ indice: 2, total: 3 });
+    expect(construirDescripcion(sinCiclo, sinCiclo.sesiones[1]!, {})).not.toContain('Encuentro');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────
