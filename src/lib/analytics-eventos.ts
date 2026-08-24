@@ -1,5 +1,10 @@
 import { slugify } from '@/lib/slugify';
-import type { ActividadForm } from '@/types/actividad';
+import {
+  CAMPOS_TAXONOMIA,
+  ESTADOS,
+  MODALIDADES,
+  type ActividadForm,
+} from '@/types/actividad';
 
 /**
  * Taxonomía de eventos de analítica del panel, y la **proyección** que decide
@@ -42,9 +47,27 @@ export type ModoFormulario = (typeof MODOS)[number];
 /** Qué botón disparó el guardado. */
 export const ACCIONES = ['borrador', 'submit'] as const;
 
-export const ESTADOS_DESTINO = ['borrador', 'pendiente', 'publicado', 'cancelado'] as const;
+/**
+ * Los dos vocabularios que la analítica **no** define: los toma del modelo
+ * (`@/types/actividad`) en vez de copiarlos (B-75).
+ *
+ * El modo de falla de la copia era el del D-60 una góndola más allá: un quinto
+ * `estado` o una cuarta `modalidad` en el modelo dejaba a la analítica
+ * reportándolo como `'otro'` **en silencio**, justo el dato con el que se
+ * contestan las preguntas de `docs/09-analitica.md`. Acá no hay lista que
+ * mantener: son el mismo objeto, y un test lo fija por identidad.
+ *
+ * El argumento de bundle del D-60 no aplica: `@/types/actividad` tiene fan-out
+ * 0 —son interfaces y arrays de literales, sin un solo import— así que zod
+ * sigue entrando solo por `@/lib/schema`, que este módulo no toca. Medido en el
+ * build: la carga inicial de `/admin` no se movió ni un byte.
+ *
+ * Los alias existen porque el nombre dice para qué se usa acá: `estado` es el
+ * **destino** de un guardado, no cualquier estado.
+ */
+export const ESTADOS_DESTINO = ESTADOS;
 
-export const MODALIDADES_MEDIBLES = ['presencial', 'virtual', 'hibrido'] as const;
+export const MODALIDADES_MEDIBLES = MODALIDADES;
 
 /**
  * Motivos de un guardado fallido, clasificados. El mensaje crudo NO se manda:
@@ -130,14 +153,11 @@ export const SECCIONES = [
   'vista-previa-del-evento',
 ] as const;
 
-/** Campos con taxonomía autogestionada (§4). */
-export const CAMPOS_TAXONOMIA_MEDIBLES = [
-  'arancel',
-  'tipo',
-  'barrio',
-  'plataforma',
-  'tags',
-] as const;
+/**
+ * Campos con taxonomía autogestionada (§4). Importado del modelo, no copiado
+ * (B-75): un sexto campo con taxonomía se mide solo, sin caer en `'otro'`.
+ */
+export const CAMPOS_TAXONOMIA_MEDIBLES = CAMPOS_TAXONOMIA;
 
 /**
  * Modos de fallo al pegar un link de Google Maps en las coordenadas de la sede.
