@@ -2,6 +2,37 @@
 
 ## 2026-08-24
 
+### El formulario, partido en nueve secciones
+
+Cierra **B-79** y con él **B-70**. Las nueve `<Seccion>` del §11 y la barra de
+acciones pasaron a `src/components/admin/formulario/`, una por archivo, y
+`ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas, guardado y el
+orden de las secciones (**D-104**).
+
+Vale por la superficie de conflicto: era el segundo archivo más tocado del repo
+(9 de 41 commits) y acá ya se commitearon marcadores de conflicto que
+sobrevivieron dos commits. También destraba B-62, el "?" por sección, que hoy
+pedía tocar el mismo archivo en nueve lugares.
+
+El JSX se movió **verbatim** —las props se llaman igual que las variables que
+tenían adentro—, así que el diff no puede esconder un cambio de comportamiento.
+Lo único que no era presentación se fue a un módulo puro:
+`lib/formulario/condicionales.ts`, porque `necesitaSede` decide a la vez qué se
+muestra y qué exige el schema, y si esas dos derivaciones se separan el
+formulario esconde un campo que el guardado pide.
+
+**Dos tests leían `ActividadFormulario.tsx` como texto** y se arreglaron en el
+mismo cambio: `ayuda` (cada sección tiene su capítulo) y `opciones-orden` (el
+arancel no se preselecciona). Los dos leen ahora el directorio de secciones, y
+el segundo afirma primero que encontró el campo: un `not.toContain` sobre un
+string vacío pasa sin haber mirado nada, que es la forma exacta en que este
+refactor podría haberlos apagado en silencio.
+
+**Costo medido, con el build:** la carga inicial de `/admin` pasó de **387.797 a
+388.380 bytes** (+583 B, +0,15 %; gzip 106.934 → 107.127), los mismos 4 chunks y
+ningún `modulepreload` nuevo. La suma de todos los chunks subió 3.418 B: es el
+envoltorio de diez componentes nuevos.
+
 ### Regenerar los encuentros ya no borra y recrea los eventos del calendario
 
 Cierra **B-90**. El generador del §11 daba ids nuevos a las ocho filas, así que

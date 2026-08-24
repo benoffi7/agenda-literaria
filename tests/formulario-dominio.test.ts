@@ -12,6 +12,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { formVacio, onlineVacio, primeraOpcionBase, sedeVacia } from '@/lib/formulario/estadoInicial';
 import { cambiarModalidad, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
+import {
+  esCharla,
+  esClub,
+  esTaller,
+  necesitaOnline,
+  necesitaSede,
+  nombrePersona,
+} from '@/lib/formulario/condicionales';
 import { labelsPendientesDe, recordarLabel } from '@/lib/formulario/etiquetas';
 import {
   guardarActividad,
@@ -194,6 +202,45 @@ describe('cambiarTitulo — trampa 10', () => {
     const f = cambiarTitulo(publicada, 'Otro título', true);
     expect(f.titulo).toBe('Otro título');
     expect(f.slug).toBe('taller-viejo');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Condicionales del §11: qué partes del formulario aplican
+// ─────────────────────────────────────────────────────────────────────
+
+describe('condicionales del §11', () => {
+  const con = (over: Partial<ActividadForm>) => ({ ...formVacio(), ...over });
+
+  it('el tallerista es del taller; el autor invitado, de presentación y charla', () => {
+    expect(esTaller(con({ tipo: 'taller' }))).toBe(true);
+    expect(esCharla(con({ tipo: 'presentacion' }))).toBe(true);
+    expect(esCharla(con({ tipo: 'charla' }))).toBe(true);
+    expect(esCharla(con({ tipo: 'taller' }))).toBe(false);
+    expect(esClub(con({ tipo: 'club-lectura' }))).toBe(true);
+  });
+
+  it('el rótulo de la persona cambia con el tipo', () => {
+    expect(nombrePersona(con({ tipo: 'taller' }))).toBe('Tallerista');
+    expect(nombrePersona(con({ tipo: 'charla' }))).toBe('Autor o autora invitada');
+  });
+
+  it('híbrido pide las dos cosas; virtual y presencial, una cada uno', () => {
+    expect(necesitaSede(con({ modalidad: 'hibrido' }))).toBe(true);
+    expect(necesitaOnline(con({ modalidad: 'hibrido' }))).toBe(true);
+    expect(necesitaSede(con({ modalidad: 'virtual' }))).toBe(false);
+    expect(necesitaOnline(con({ modalidad: 'presencial' }))).toBe(false);
+  });
+
+  it('lo que el formulario muestra es lo mismo que el schema exige', () => {
+    // Si se separan, el formulario esconde un campo que el schema pide y el
+    // guardado falla por algo que no está en pantalla. `cambiarModalidad` crea
+    // el bloque exactamente cuando el condicional dice que hace falta.
+    for (const modalidad of ['presencial', 'virtual', 'hibrido'] as const) {
+      const f = cambiarModalidad(formVacio(), modalidad);
+      expect(f.sede !== null).toBe(necesitaSede(f));
+      expect(f.online !== null).toBe(necesitaOnline(f));
+    }
   });
 });
 

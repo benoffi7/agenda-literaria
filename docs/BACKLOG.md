@@ -725,7 +725,7 @@ plano de encuentros próximos (fecha, id de sesión, slug), derivado en build ti
 para que la island ofrezca "este fin de semana" sin aplanar los ciclos en el
 navegador en cada filtrado. Es barato al escribir el generador y caro después.
 
-### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx`
+### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx` — ✅ hecho (2026-08-24)
 
 El archivo tiene 858 LOC, de las cuales **227 son lógica** y el resto JSX. Esas
 227 incluyen reglas del modelo que ningún test puede ejecutar, porque están en un
@@ -747,6 +747,18 @@ Extraer las cascadas y `formVacio` a un módulo puro (~90 LOC) se testea como
 mecánico, sin cambio de comportamiento: el archivo baja a ~250 LOC y ~150 pasan a
 ser testeables. Medida completa en
 [`10-salud-del-codigo.md`](10-salud-del-codigo.md).
+
+**Hecho.** Quedaron cinco módulos en `src/lib/formulario/`: `estadoInicial.ts`
+(`formVacio` y los sub-objetos que crean y destruyen las cascadas),
+`cascadas.ts` (las tres del §11), `condicionales.ts` (qué partes del formulario
+aplican, que además tienen que coincidir con lo que el schema exige),
+`etiquetas.ts` (el buffer de D-02) y `guardar.ts` (el caso de uso, con las
+escrituras como puertos — D-102). Los cubre
+[`tests/formulario-dominio.test.ts`](../tests/formulario-dominio.test.ts).
+
+Con la lógica afuera y el JSX partido (B-79), `ActividadFormulario.tsx` quedó en
+~230 LOC. Dos bugs que vivían en esa lógica salieron en el mismo cambio: **B-71**
+y **B-87**.
 
 ### B-71 · Un guardado que falla deja opciones de taxonomía huérfanas — ✅ hecho (2026-08-24)
 
@@ -858,12 +870,18 @@ Ver [CHANGELOG](CHANGELOG.md) y **D-98**.
 
 `ListaActividades.tsx:124` renderiza `{a.estado}`, así que la píldora dice
 "borrador" y "publicado" en minúscula, mientras el formulario dice "Borrador" y
-"Publicado" (`ETIQUETA_ESTADO`, `ActividadFormulario.tsx:73-78`). Es la misma
-actividad en dos pantallas con dos escrituras.
+"Publicado" (`ETIQUETA_ESTADO`). Es la misma actividad en dos pantallas con dos
+escrituras.
 
 Pasa porque el vocabulario de etiquetas es local al formulario. Un
 `src/lib/etiquetas.ts` de ~20 LOC con los tres mapas (`estado`, `modalidad`,
 `via`) que usen el formulario y el listado lo cierra.
+
+**Dónde están hoy:** B-79 los sacó del `.tsx` a
+`src/components/admin/formulario/etiquetasUI.ts`, porque los comparten varias
+secciones. Son esos tres los que hay que mudar a `src/lib/etiquetas.ts`; la
+mudanza toca los archivos del formulario, así que conviene hacerla desde este
+frente y no desde el del listado.
 
 **No incluir los mapas `ETIQUETA_*` de `functions/calendario.js`**: esos son
 prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), no
@@ -1634,7 +1652,7 @@ Que el contenido viva en el repo y no en Firestore es decisión cerrada (D-63) y
 que sea data tipada y testeada también (D-62). Esto es solo dónde vive el
 archivo.
 
-### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección
+### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección — ✅ hecho (2026-08-24)
 
 Después de B-70 el archivo queda en ~630 LOC, todas de JSX: nueve `<Seccion>`
 en un solo `return`.
@@ -1654,6 +1672,20 @@ que sobrevivieron dos commits
 (`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
+
+**Hecho (D-104).** Diez archivos en `src/components/admin/formulario/`: las
+nueve secciones, la barra de acciones, el tipo de props común y el vocabulario
+de etiquetas de la UI. El JSX se movió verbatim —las props se llaman igual que
+las variables que tenían adentro—, así que el diff no esconde ningún cambio de
+comportamiento. `ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas,
+guardado y el orden de las secciones.
+
+Costo: +583 B en la carga inicial de `/admin` (+0,15 %), mismos 4 chunks.
+
+Dos tests que leían el `.tsx` como texto se arreglaron en el mismo cambio
+(`ayuda` y `opciones-orden`): ahora leen el directorio, y el de `opciones-orden`
+verifica primero que **encontró** el campo, porque un `not.toContain` sobre un
+string vacío pasa sin haber mirado nada.
 
 ### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
 

@@ -1855,6 +1855,53 @@ las dos.
 
 ---
 
+## D-104 · El formulario se parte por sección, y las secciones son presentación
+
+**Decisión:** las nueve secciones del §11 y la barra de acciones viven en
+`src/components/admin/formulario/`, una por archivo.
+`ActividadFormulario.tsx` se queda con el estado, las cascadas, el guardado y
+el orden de las secciones: pasó de 858 a ~230 líneas.
+
+**Motivo (B-79):** era el segundo archivo más tocado del repo (9 de 41 commits)
+y en este proyecto ya se commitearon marcadores de conflicto que sobrevivieron
+dos commits (`tests/sin-marcadores-de-conflicto.test.ts`). Nueve `<Seccion>` en
+un solo `return` significa que dos cambios cualesquiera del panel chocan en el
+mismo archivo.
+
+**Las secciones no deciden nada.** Reciben `form`, `set`, `errorDe` y `uid`, y
+los condicionales del §11 ya resueltos. Por eso el cuerpo del JSX se movió
+**verbatim**: las props se llaman igual que las variables que tenía adentro, así
+que el diff del refactor no esconde ningún cambio de comportamiento.
+
+**Y los condicionales del §11 se fueron a un módulo puro**
+(`lib/formulario/condicionales.ts`), no a cada sección: `necesitaSede` decide a
+la vez qué se muestra y qué exige el schema en su `superRefine`. Si esas dos
+derivaciones se separan, el formulario esconde un campo que el guardado pide y
+el error aparece sobre un campo que no está en pantalla. Un test las ata.
+
+**El vocabulario de la UI** (`ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`,
+`ETIQUETA_ESTADO`) quedó en `formulario/etiquetasUI.ts` porque ahora lo comparten
+varias secciones. **No se unificó con los `ETIQUETA_*` de
+`functions/calendario.js`**: esos son prosa del evento público y unificarlos
+haría que un cambio de copy del panel cambie lo que se publica. B-76 quiere
+llevarlos a un `src/lib/etiquetas.ts` compartido con el listado; cuando salga,
+son estos tres mapas los que se mudan.
+
+**Costo medido:** la carga inicial de `/admin` pasó de **387.797 a 388.380
+bytes** (+583 B, +0,15 %; gzip 106.934 → 107.127, +193 B), con los mismos 4
+chunks. La suma de todos los chunks subió 3.418 B: es el envoltorio de diez
+componentes nuevos. Se paga en superficie de conflicto y en poder tocar una
+sección sin abrir las otras ocho (B-62 pedía exactamente eso).
+
+**Dos tests leían `ActividadFormulario.tsx` como texto** y había que arreglarlos
+en el mismo cambio, no después: `tests/ayuda.test.ts` (cada sección tiene su
+capítulo) y `tests/opciones-orden.test.ts` (el arancel no se preselecciona).
+Los dos leen ahora el directorio, y el segundo afirma primero que **encontró**
+el campo: si no, un `not.toContain` sobre un string vacío pasa sin haber mirado
+nada.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |
