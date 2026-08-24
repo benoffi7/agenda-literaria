@@ -32,6 +32,18 @@ export default defineConfig({
          * firebase-admin al bundle (trampa 4, §5.4).
          */
         '@calendario': fileURLToPath(new URL('./functions/calendario.js', import.meta.url)),
+
+        /*
+         * `@historial` es lo mismo para la lógica del historial de versiones
+         * (§12): el panel necesita comparar una versión guardada contra el
+         * documento actual, y esa comparación es la misma que decide si se
+         * guarda una versión. Duplicarla habría creado dos ideas distintas de
+         * "qué campos escribe la máquina" (`calendarEventId`, `updatedAt`),
+         * que es justo el acuerdo que D-41 evita mantener a mano.
+         *
+         * Tampoco importa Firebase, así que Vite la bundlea igual que la otra.
+         */
+        '@historial': fileURLToPath(new URL('./functions/historial.js', import.meta.url)),
       },
     },
     // Guarda de §5.4: firebase-admin no puede terminar en un bundle de cliente.

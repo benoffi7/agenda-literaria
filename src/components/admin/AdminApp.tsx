@@ -27,6 +27,7 @@ import {
 } from '@/lib/firebase-client';
 import type { ActividadFormulario as TipoFormulario } from '@/components/admin/ActividadFormulario';
 import type { CalendarioActividades as TipoCalendario } from '@/components/admin/CalendarioActividades';
+import type { HistorialActividad as TipoHistorial } from '@/components/admin/HistorialActividad';
 import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
@@ -42,7 +43,11 @@ type Vista =
   | { tipo: 'reportes' }
   // La vista calendario es de solo lectura: enumera encuentros y, al tocar uno,
   // abre la actividad. No necesita estado propio (D-70).
-  | { tipo: 'calendario' };
+  | { tipo: 'calendario' }
+  // B-40 — historial de versiones de UNA actividad. Lleva la actividad y no solo
+  // su id porque la comparación es contra el documento actual, y el listado ya
+  // lo tiene en memoria: entrar no cuesta una lectura.
+  | { tipo: 'historial'; actividad: ActividadConId };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -91,6 +96,15 @@ const ReportesPanel = diferido<Parameters<typeof TipoReportes>[0]>(() =>
 const CalendarioActividades = diferido<Parameters<typeof TipoCalendario>[0]>(() =>
   import('@/components/admin/CalendarioActividades').then((m) => ({
     default: m.CalendarioActividades,
+  })),
+);
+
+// B-40 — ídem, y con una razón de más: es la vista menos usada del panel
+// (recuperar un campo pisado es una operación rara), así que es justo la que no
+// tiene por qué viajar en el chunk que se baja para mostrar "Entrar con Google".
+const HistorialActividad = diferido<Parameters<typeof TipoHistorial>[0]>(() =>
+  import('@/components/admin/HistorialActividad').then((m) => ({
+    default: m.HistorialActividad,
   })),
 );
 
@@ -258,7 +272,9 @@ export function AdminApp() {
                     ? 'Bugs y sugerencias'
                     : vista.tipo === 'calendario'
                       ? 'Calendario'
-                  : vista.actividad.titulo}
+                      : vista.tipo === 'historial'
+                        ? `Historial de ${vista.actividad.titulo}`
+                        : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
         </div>
@@ -334,6 +350,20 @@ export function AdminApp() {
             setVolverA('lista');
             setVista({ tipo: 'duplicar', copia, tituloOrigen });
           }}
+          onHistorial={(a) => {
+            setVolverA('lista');
+            setVista({ tipo: 'historial', actividad: a });
+          }}
+        />
+      )}
+
+      {vista.tipo === 'historial' && (
+        <HistorialActividad
+          actividad={vista.actividad}
+          uid={usuario.uid}
+          // Restaurar es una edición del documento: el listado tiene que
+          // releerlo, igual que después de guardar el formulario.
+          onRestaurado={() => setVersion((v) => v + 1)}
         />
       )}
 

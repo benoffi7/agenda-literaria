@@ -31,6 +31,8 @@ interface Props {
   onNueva: () => void;
   /** Abre el formulario con una copia lista para editar y guardar como nueva. */
   onDuplicar: (copia: ActividadForm, tituloOrigen: string) => void;
+  /** B-40 — abre el historial de versiones de esa actividad. */
+  onHistorial: (a: ActividadConId) => void;
   /** Cambia cuando se guarda algo, para refrescar el listado. */
   version: number;
 }
@@ -55,7 +57,13 @@ const COLOR_ESTADO: Record<string, string> = {
   cancelado: 'bg-acento/10 text-acento',
 };
 
-export function ListaActividades({ onEditar, onNueva, onDuplicar, version }: Props) {
+export function ListaActividades({
+  onEditar,
+  onNueva,
+  onDuplicar,
+  onHistorial,
+  version,
+}: Props) {
   const [actividades, setActividades] = useState<ActividadConId[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -206,6 +214,10 @@ export function ListaActividades({ onEditar, onNueva, onDuplicar, version }: Pro
                 etiqueta={`Más acciones de ${a.titulo}`}
                 acciones={[
                   { label: 'Duplicar', onSelect: () => duplicar(a) },
+                  // B-40 — va acá y no en el formulario: recuperar un campo
+                  // pisado se busca desde el listado ("¿qué le pasó a esta?"),
+                  // y el formulario ya tiene 30+ campos peleando por espacio.
+                  { label: 'Historial', onSelect: () => onHistorial(a) },
                   { label: 'Borrar', onSelect: () => void eliminar(a), peligrosa: true },
                 ]}
               />

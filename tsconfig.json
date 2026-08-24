@@ -13,7 +13,11 @@
       // vista previa del panel: una sola fuente de verdad. Si la vista previa
       // duplicara `construirDescripcion`, mentiría en cuanto las dos copias se
       // separaran. El mismo alias está en astro.config.mjs y vitest.config.ts.
-      "@calendario": ["functions/calendario.js"]
+      "@calendario": ["functions/calendario.js"],
+      // Ídem con el historial de versiones (§12): el panel compara una versión
+      // contra el documento actual con la MISMA función que decide qué se
+      // guarda, así no hay dos ideas de "qué campos escribe la máquina".
+      "@historial": ["functions/historial.js"]
     }
   }
 }
