@@ -69,6 +69,21 @@ export const claseBotonFila =
   'transition-colors sm:min-h-9';
 
 /**
+ * Chip de un grupo donde una opción está elegida y las otras no: el filtro por
+ * estado de publicación del calendario, el cambio entre agenda y mes.
+ *
+ * Son dos clases y no una con un booleano de color suelto en el componente,
+ * porque "elegido" es parte del estilo del control y no del layout: si cada uso
+ * pinta su propio activo, en dos pantallas ya son dos grises distintos.
+ */
+const claseChipBase =
+  'inline-flex min-h-touch items-center rounded-full border px-3 text-xs font-medium ' +
+  'transition-colors sm:min-h-9';
+
+export const claseBotonChip = `${claseChipBase} border-borde bg-white hover:bg-black/[0.03]`;
+export const claseBotonChipActivo = `${claseChipBase} border-tinta bg-tinta text-white`;
+
+/**
  * Ítem de un menú de acciones desplegable. Ocupa todo el ancho y alinea a la
  * izquierda: en un menú, el texto tiene que empezar todo en la misma columna
  * para poder recorrerlo con el ojo. Mantiene el blanco táctil de 44px incluso

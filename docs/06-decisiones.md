@@ -1192,6 +1192,178 @@ test falla en vez de dejar todo en `otro`.
 
 ---
 
+## D-70 · Dos lentes sobre lo mismo: el listado enumera actividades, el calendario enumera encuentros
+
+**Contexto:** el pedido fue "una vista calendario donde lo importante es el
+estado de la publicación". El listado muestra **una tarjeta por actividad** — el
+§2.2 es explícito: un club de ocho encuentros es una actividad, no ocho. Un
+calendario muestra **días**, así que ese mismo club aparece ocho veces. Las dos
+formas son correctas y hay que decidir cómo se relacionan.
+
+**Decisión:** son **dos lentes sobre los mismos documentos**, con ejes distintos
+y un solo lugar donde se edita.
+
+| | Listado | Calendario |
+|---|---|---|
+| Qué enumera | actividades | encuentros |
+| Para qué | encontrar y editar | ver qué está publicado y cuándo |
+| Unidad de la fila | la actividad | la sesión |
+| Qué abre al tocar | la actividad | **la actividad** |
+
+Tres reglas sostienen que no se lea como duplicación:
+
+1. **Cada encuentro dice qué lugar ocupa en su actividad** ("Encuentro 3 de 8").
+   Sin eso, ocho renglones con el mismo título se leen como ocho actividades.
+2. **El resumen del mes cuenta las dos cosas**: "12 encuentros de 3 actividades".
+3. **La unidad de edición no cambia:** tocar un encuentro abre la actividad
+   completa. No hay ninguna escritura desde el calendario — sigue siendo una sola
+   escritura por actividad, como pide el §2.2.
+
+**Alternativas descartadas:**
+
+- *Que el calendario muestre una entrada por actividad, en su primera fecha.* Es
+  el listado con otra forma: no responde "qué hay el jueves", que es la única
+  razón de mirar un calendario.
+- *Colapsar el ciclo en su rango ("del 3/9 al 22/10") ocupando una barra.* Pierde
+  exactamente el dato que el estado de publicación necesita: cada encuentro tiene
+  su propio evento y puede estar publicado o no **por separado** (uno cancelado,
+  uno cuyo evento falló). Una barra no puede tener siete estados.
+- *Convertir las sesiones en documentos propios para que el calendario los
+  consulte.* Es revisitar el §2.2, que es una decisión cerrada.
+
+---
+
+## D-71 · El estado de publicación se deriva, y `debeExistir` no se reimplementa
+
+**Contexto:** "estado de la publicación" no es el campo `estado`. La pregunta que
+se contesta mirando un calendario es *¿esto ya lo ve la gente?*, y eso depende de
+tres datos a la vez: `actividad.estado`, `sesion.cancelada` y si la sesión tiene
+`calendarEventId` — o sea si el evento **existe** en el calendario público.
+
+**Decisión:** `estadoPublicacion` (en `src/lib/calendarioPanel.ts`) cruza
+`debeExistir(actividad, sesion)` —**importada de `@calendario`**, la misma
+función que usa el sync para decidir— con la existencia de `calendarEventId`:
+
+| debería existir | existe | estado |
+|---|---|---|
+| sí | sí | `en-calendario` |
+| sí | **no** | `falta-en-calendario` |
+| no | **sí** | `sobra-en-calendario` |
+| no | no | el motivo: `encuentro-cancelado`, `borrador`, `pendiente` o `cancelado` |
+
+**Motivo de no copiar la regla:** es el mismo de D-20. Si el panel reimplementara
+el §7.3, el día que cambie la condición del sync el panel mostraría un estado y
+el calendario público tendría otro — y esta vista existe precisamente para
+detectar esa clase de divergencia. Reimplementarla sería construir el detector
+con el mismo defecto que busca.
+
+**Lo que aparece gracias al cruce, y hoy no muestra ninguna pantalla:**
+
+- `falta-en-calendario` — la actividad dice "publicado", el encuentro no está
+  cancelado, y en el calendario no hay nada: la Function no corrió o falló. Antes
+  de esto nadie se enteraba nunca; el panel no tenía forma de saberlo y el
+  calendario tampoco grita.
+- `sobra-en-calendario` — el espejo: pasó a borrador o se canceló, y el evento
+  sigue ahí. La gente puede seguir viendo algo que ya no debería estar.
+
+`calendarEventId` es fiable en las dos direcciones porque `syncCalendar` lo
+escribe al crear el evento y lo vuelve a `null` al borrarlo, incluso cuando
+Calendar responde que el evento ya no existía.
+
+**Límite conocido:** el id dice qué cree Firestore, no qué tiene Google. Un
+evento borrado a mano en Calendar (§2.1: el calendario es un espejo) sigue
+figurando como `en-calendario` hasta la próxima edición. Verificar contra la API
+sería una lectura de red por sesión en una pantalla de solo lectura, y contradice
+que Firestore es la única fuente de verdad. Anotado en B-127.
+
+**Segundo límite, deliberado:** `sobra-en-calendario` es transitorio durante los
+segundos que tarda el sync después de guardar. El aviso lo dice en lugar de
+esconderlo: preferimos un falso positivo que se va solo antes que ocultar el caso
+real, que es el que nadie ve.
+
+---
+
+## D-72 · En el teléfono no hay grilla de mes
+
+**Contexto:** una grilla de 7 columnas en 360px da celdas de ~45px. No entra la
+hora, mucho menos el título, y los blancos táctiles quedan en la mitad de los
+44px del proyecto.
+
+**Decisión:** la grilla de mes se renderiza **solo desde `sm`**
+(`hidden sm:block`), y abajo de ese ancho se ve siempre la **agenda**: los días
+que tienen algo, uno abajo del otro, con el encabezado del día y una fila por
+encuentro de 44px de alto. Los días vacíos no se dibujan.
+
+Desde `sm` aparece el conmutador "Mes / Agenda" y la grilla es el default.
+
+**Por qué el corte es por CSS y no por una medición en JavaScript:** así no hay
+un estado que pueda quedar en "mes" en una pantalla donde el mes no se lee — por
+ejemplo al girar el teléfono o angostar la ventana. Si el modo es "mes", abajo de
+`sm` la agenda sigue estando y la grilla simplemente no se muestra.
+
+**Lo que se pierde:** en el teléfono no se ve la forma del mes (qué semanas están
+cargadas y cuáles vacías). Es aceptable: en un teléfono lo que se consulta es
+"qué se viene", y para eso la agenda es mejor que la grilla incluso donde la
+grilla cabría.
+
+---
+
+## D-73 · El listado ordena por lo que se viene, no por lo que se tocó
+
+**Contexto (B-96):** el listado ordenaba por `updatedAt desc`, así que arriba
+estaba lo último editado. Con dos personas cargando, un borrador cuyo primer
+encuentro es en cuatro días quedaba al fondo — y pasada la fecha no tiene
+arreglo.
+
+**Decisión:** el orden por defecto es **próximo encuentro ascendente**. Lo que no
+tiene nada por venir va al final, ordenado por última modificación. "Última
+modificación" sigue disponible como opción explícita, junto con "título A-Z".
+
+**Por qué la cola va por última modificación y no por su fecha vieja:** si las
+pasadas se intercalaran cronológicamente, el fondo del listado sería un archivo
+histórico y lo recién tocado —que es lo que alguien está editando ahora— quedaría
+perdido en el medio.
+
+**Los cancelados no cuentan como próximos:** un encuentro cancelado no va a
+pasar, y si contara, un ciclo cancelado a mitad de camino aparecería arriba como
+lo más urgente.
+
+Cierra B-96 por otro camino que el que proponía el backlog (un bloque "esta
+semana" arriba del listado): el orden resuelve el problema sin agregar una
+sección que hay que mantener, y la vista calendario cubre el panorama. Lo que el
+bloque hacía y esto no: avisar de las inscripciones que cierran en los próximos
+días — queda anotado en B-128.
+
+---
+
+## D-74 · Cinco filtros, y cuatro descartados con su motivo
+
+**Decisión:** el listado filtra por **estado, tipo, modalidad, barrio y fechas**
+("con algo por venir" / "sin fechas por venir"), y todo se cruza con el buscador
+de texto que ya existía. Los desplegables ofrecen **solo los valores que alguna
+actividad usa**, y muestran la **etiqueta** de la taxonomía, nunca el valor
+guardado (§4.1): un filtro que dice `villa-crespo` está roto a la vista.
+
+Todo corre en memoria sobre lo que `listarActividades()` ya trajo: cero lecturas
+nuevas, cero índices compuestos. Es el §2.5 aplicado al panel.
+
+**Qué se descartó y por qué:**
+
+| Filtro | Por qué no |
+|---|---|
+| `arancel` | Es un atributo de publicación, no una forma de recordar una actividad: nadie busca "el taller arancelado". Y su riesgo real —publicar un taller pago como gratuito (D-16)— se previene en el formulario, que es donde se carga, no en el listado |
+| `tags` | Es multivaluado, así que necesita un control de selección múltiple, y hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera |
+| `destacado` | Un booleano que hoy no consume nadie: el sitio público todavía no existe (B-01). Filtrar por él contesta una pregunta que nadie tiene |
+| quién la cargó | Hay dos cuentas, pero el dato es un identificador de usuario y no un nombre: haría falta un mapa de personas que no existe, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre |
+| estado de publicación (el del calendario) | Existe, pero **en la vista calendario**. Ponerlo también acá sería derivar lo mismo en dos pantallas con dos criterios que se pueden separar, que es justo lo que D-71 evita |
+
+**Los filtros arrancan colapsados detrás de un botón con el número de filtros
+puestos.** En 360px cinco desplegables abiertos empujan el listado abajo del
+pliegue; y el número es lo que impide que un filtro olvidado se lea como un
+listado vacío.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |
