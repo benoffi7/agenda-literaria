@@ -55,13 +55,22 @@ Hasta que eso esté, una actividad nueva no aparece en el sitio hasta un build
 manual. **El paso 5 no tiene sentido sin el 1 y el 2:** el schedule correría
 cada 5 minutos loguéandose como "sin GitHub configurado".
 
-### B-21 · Alerta de rebuild agotado (opcional)
+### B-21 · Alerta de rebuild agotado (opcional) — código listo (2026-08-24), falta el click del dueño
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
 `el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
-`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP
-sobre ese mensaje: configuración de consola, no código. Queda a criterio del
-dueño (D-23).
+`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP:
+configuración de consola, no código, y queda a criterio del dueño (D-23).
+
+**Lo que se hizo del lado del código (2026-08-24):** ese log lleva ahora el
+campo `alerta: "rebuild-agotado"`, para que el filtro de la alerta apunte a un
+campo estable y no al texto del mensaje —que se rompería en silencio el día que
+alguien reescriba la frase—. El filtro exacto y los pasos de la consola están en
+[`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
+
+**Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
+de GCP con un canal de notificación propio. Tiene sentido recién cuando
+`dispararRebuild` esté desplegada (B-20).
 
 ---
 

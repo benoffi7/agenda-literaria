@@ -468,6 +468,12 @@ export const dispararRebuild = onSchedule(
       await ref.set(fallo, { merge: true });
       if (fallo.agotado) {
         logger.error('el rebuild agotó los reintentos: el sitio quedó viejo', {
+          // B-21 — etiqueta estable para la alerta de GCP. El filtro de una
+          // log-based alert sobre el *texto* del mensaje se rompe en silencio
+          // el día que alguien reescribe la frase; sobre un campo, no. Es el
+          // único log del proyecto que amerita despertar a alguien: significa
+          // que el sitio público quedó viejo y que ya nadie va a reintentar.
+          alerta: 'rebuild-agotado',
           intentos: fallo.intentos,
           error: fallo.ultimoError,
           motivo: estado.motivo,
