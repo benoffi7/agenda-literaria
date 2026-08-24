@@ -2,6 +2,58 @@
 
 ## 2026-08-24
 
+### Taxonomías: una sola deduplicación, etiquetas presentables y pantalla para administrarlas
+
+La fase 3A del plan de saneamiento, sobre el §4 del `CLAUDE.md`. Cierra **B-72**,
+**B-05**, **B-06**, **B-25**, **B-26**, **B-73** y **B-131**, y deja **B-86**
+hecho a medias a propósito (ver abajo).
+
+**B-72 · la mitad crítica del §4.2 estaba escrita dos veces.** `TaxonomiaSelect`
+y `TagsInput` tenían cada uno su filtro de sugerencias y su resolución por slug
+—la parte que evita que el 90 % de los duplicados nazca— y ya habían divergido en
+tres reglas. Ahora las dos llaman a `src/lib/taxonomia.ts`, puro y con 27 tests
+(D-100). Los componentes **no** se unificaron: un `<select>` con "Otro" y un
+input de chips son widgets distintos. Lo que se comparte es lo que no puede
+divergir, y las dos diferencias que quedan son parámetros con motivo escrito.
+
+**B-05 · las etiquetas se veían en público sin normalizar.** Un tag tipeado
+"narrativa" se publicaba así, al lado de "Poesía". `upsertOpcion` guarda el label
+con `etiquetaPresentable` —trim, espacios colapsados y **solo la primera letra en
+mayúscula**, que es lo que no rompe "Villa Crespo" ni "Club de lectura" (D-101).
+El slug, que es la identidad, no cambia.
+
+**B-06, B-25 y B-26 · pantalla para administrar las taxonomías.** Las cinco
+listas, con `usos` y estado a la vista, y tres acciones por fila: renombrar,
+borrar y aprobar. Renombrar **no toca el slug** (§4.1), así que corregir cómo se
+escribe una etiqueta no desconecta las actividades que ya la usan; borrar **no
+toca las actividades**, que siguen mostrando el des-slug de D-11, y por eso
+borrar algo con usos se confirma aparte mostrando exactamente cómo se va a ver.
+Las opciones base no ofrecen ninguna acción, y la guarda no es la UI: está en la
+transacción (D-102). Arriba, el contador de pendientes de B-26.
+
+**La pantalla queda creada y sin montar**: colgarla del router es editar
+`AdminApp.tsx`, que en esta fase es de otro frente. Anotado como **B-167**, con
+la novedad y la ayuda del panel pendientes de ese mismo paso — hasta que se monte
+no hay nada que anunciar.
+
+**B-73 · los tags no se medían.** `CAMPOS_TAXONOMIA_MEDIBLES` declaraba `'tags'`
+y `TagsInput` no llamaba a `medirFuncion` en ningún lado: el campo con más
+volumen esperado era el único invisible en GA4. Ahora emite `taxonomia-nueva`,
+`taxonomia-reusada` y `taxonomia-sugerencia`. `taxonomia-otro` no aplica: no hay
+modo "Otro" que abrir (D-105).
+
+**B-131 · las opciones nuevas nacen aprobadas.** Decisión del dueño. La
+maquinaria de aprobación queda **dormida, no muerta**: sigue entera, con el
+motivo escrito al lado del default, una guardia que lo fija y sus tests
+ejercitándola con una opción puesta pendiente a mano (D-104).
+
+**B-86 · `usos` solo contaba creaciones.** La operación está hecha
+—`registrarUsos(campo, slugs)`, una transacción por campo, ignora lo que no
+existe y no cuenta dos veces el mismo slug (D-103)— pero **el cableado no**:
+llamarla es una línea en `guardar()`, que vive en `ActividadFormulario.tsx`, de
+otro frente. Queda como **B-168**, con el orden exacto escrito para que no se
+cuente doble.
+
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 
 Cuatro vocabularios de la analítica se mantenían por separado de su fuente, y

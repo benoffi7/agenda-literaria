@@ -139,6 +139,10 @@ Un patrón genérico resuelve cinco campos: desplegable enumerado + casilla
 Un documento con array, no una subcolección: son pocas opciones y se leen todas
 juntas para pintar el formulario en una sola lectura.
 
+El `label` se guarda **presentable**: espacios colapsados y primera letra en
+mayúscula, sin tocar el resto (D-101). El `slug` es la identidad y sale de
+`slugify`; el `label` es lo que se ve.
+
 **La actividad guarda solo el `slug`.** Renombrar el label no obliga a tocar
 ningún documento de actividad — pero ver la advertencia sobre el calendario más
 abajo.
@@ -176,11 +180,14 @@ etiqueta nueva no puede aparecer sola en el desplegable de la otra persona
 
 | Campo | Tipo | Qué significa |
 |---|---|---|
-| `aprobada` | `boolean` opcional | ¿entra al desplegable de todos? Lo creado con "Otro" nace en `false` |
+| `aprobada` | `boolean` opcional | ¿entra al desplegable de todos? Lo creado con "Otro" nace en `true` desde el 2026-08-24 (D-104); antes nacía en `false` |
 | `huellaCreador` | `string` opcional | quién la creó, **como huella del uid, no como uid** |
 
 Tres reglas, todas en `src/lib/opciones.ts`:
 
+0. **Lo nuevo nace aprobado** (D-104), así que hoy el único `aprobada: false`
+   que se puede encontrar en producción es de antes de esa decisión. La
+   maquinaria se conserva entera para el día que se vuelva a prender.
 1. **`fijo: true` implica aprobada.** Las base lo están por definición.
 2. **El campo ausente cuenta como aprobada** (`estaAprobada`). Los documentos
    que ya están en producción se escribieron antes de que existiera el campo, y

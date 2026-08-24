@@ -265,6 +265,13 @@ línea en `SECCIONES`.
 `taxonomia-reusada` vs `taxonomia-nueva` mide si el autocompletado del §4.2
 está evitando duplicados de verdad, que es lo único que lo justifica.
 
+**`detalle: tags` existe para tres de los cuatro eventos, no para los cuatro.**
+El input de etiquetas emite `taxonomia-nueva`, `taxonomia-reusada` y
+`taxonomia-sugerencia`, pero **nunca `taxonomia-otro`**: no hay ningún "Otro…"
+que elegir, el input es siempre el de tipear (D-105). Que ese cruce esté vacío es
+correcto, no un agujero de instrumentación. Hasta el 2026-08-24 los tres
+faltaban: `tags` era el único campo de taxonomía invisible en GA4 (B-73).
+
 `coordenadas-fallo` responde una pregunta con una consecuencia directa: **si el
 80% de los fallos es `coord-link-corto`, la solución es resolver los links
 cortos, no explicar mejor el campo.**

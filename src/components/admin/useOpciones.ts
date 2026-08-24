@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   OPCIONES_BASE,
+  estaAprobada,
   observarOpciones,
   opcionesVisibles,
   ordenarValores,
 } from '@/lib/opciones';
 import { labelsDeOpciones, type LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
-import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
+import { CAMPOS_TAXONOMIA, type CampoTaxonomia, type ValorOpcion } from '@/types/actividad';
 
 /**
  * §4.4 — las opciones se leen en vivo, así una etiqueta nueva aparece sola en
@@ -79,5 +80,73 @@ export function useLabelsTaxonomia(pendientes: LabelsTaxonomia = {}): LabelsTaxo
         pendientes,
       ),
     [arancel.valores, tipo.valores, barrio.valores, plataforma.valores, tags.valores, pendientes],
+  );
+}
+
+/**
+ * §4.1 · B-06 — las cinco taxonomías en vivo, sin filtrar por aprobación, para
+ * la pantalla que las administra.
+ *
+ * Sin filtrar es el punto: administrarlas incluye ver justamente lo que el
+ * desplegable esconde (lo pendiente de otra cuenta) y lo que sobra (el typo con
+ * `usos: 1`). Cinco `useOpciones` en orden fijo, como `useLabelsTaxonomia`:
+ * `CAMPOS_TAXONOMIA` es una constante, así que la cantidad de hooks nunca
+ * cambia entre renders.
+ */
+export function useTodasLasOpciones(): {
+  porCampo: Record<CampoTaxonomia, ValorOpcion[]>;
+  cargando: boolean;
+} {
+  const arancel = useOpciones('arancel');
+  const tipo = useOpciones('tipo');
+  const barrio = useOpciones('barrio');
+  const plataforma = useOpciones('plataforma');
+  const tags = useOpciones('tags');
+
+  return useMemo(
+    () => ({
+      porCampo: {
+        arancel: arancel.valores,
+        tipo: tipo.valores,
+        barrio: barrio.valores,
+        plataforma: plataforma.valores,
+        tags: tags.valores,
+      },
+      cargando:
+        arancel.cargando ||
+        tipo.cargando ||
+        barrio.cargando ||
+        plataforma.cargando ||
+        tags.cargando,
+    }),
+    [arancel, tipo, barrio, plataforma, tags],
+  );
+}
+
+/** Las que esperan validación en un campo (§4.3). */
+export const pendientesDe = (valores: ValorOpcion[]): ValorOpcion[] =>
+  valores.filter((v) => !estaAprobada(v));
+
+/**
+ * §4.3 · B-26 — cuántas opciones esperan validación, en total.
+ *
+ * Existe para que la cabecera del panel pueda mostrar un número: una etiqueta
+ * pendiente es invisible para la otra cuenta y, sin aviso, puede quedar
+ * pendiente para siempre mientras las dos personas crean dos slugs para lo
+ * mismo — justo lo que el §4.2 evita.
+ *
+ * Hoy devuelve 0 salvo por lo que quedó pendiente antes de B-131 (las opciones
+ * nuevas nacen aprobadas). Se deja igual: es la parte de la maquinaria dormida
+ * que hay que tener lista para el día que se prenda.
+ *
+ * Ojo: abre cinco suscripciones a Firestore, así que va montado una sola vez y
+ * en un lugar que esté siempre visible, no en cada pantalla.
+ */
+export function usePendientesDeAprobacion(): number {
+  const { porCampo } = useTodasLasOpciones();
+  return useMemo(
+    () =>
+      CAMPOS_TAXONOMIA.reduce((total, campo) => total + pendientesDe(porCampo[campo]).length, 0),
+    [porCampo],
   );
 }

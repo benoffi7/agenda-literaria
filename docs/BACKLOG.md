@@ -456,7 +456,14 @@ próxima edición de la actividad.
 las actividades publicadas cuando cambia `/opciones/*`, o aceptarlo y
 documentarlo (ya está documentado).
 
-### B-05 · Las etiquetas de taxonomía se ven en público sin normalizar
+### B-05 · Las etiquetas de taxonomía se ven en público sin normalizar — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera opción **y** la segunda: `upsertOpcion` guarda el
+label con `etiquetaPresentable` —espacios colapsados y primera letra en
+mayúscula, sin tocar el resto (D-101)— y lo que ya está cargado mal se corrige
+renombrando desde la pantalla de B-06. Solo la primera letra: bajar el resto
+rompería "Villa Crespo", subir cada palabra rompería "Club de lectura".
+
 
 Un tag creado como "narrativa" (minúscula) aparece así en el calendario público
 y va a aparecer en los filtros del sitio. Ya pasó: `/opciones/tags` tiene
@@ -466,7 +473,18 @@ Opciones: capitalizar la primera letra al crear, o una UI para editar etiquetas
 (el §4.3 dice que las creadas con "Otro" son editables y borrables — esa UI no
 existe).
 
-### B-06 · No hay UI para administrar taxonomías
+### B-06 · No hay UI para administrar taxonomías — ✅ hecho (2026-08-24)
+
+**Hecho:** `src/components/admin/taxonomias/TaxonomiasPanel.tsx` — las cinco
+listas con `usos` y estado, y renombrar / borrar / aprobar por fila (D-102).
+Renombrar no toca el slug (§4.1); borrar no toca las actividades, que siguen
+mostrando el des-slug de D-11, y por eso se confirma aparte cuando la opción está
+en uso. Las base no ofrecen acciones y la guarda vive en la transacción, no en la
+UI.
+
+**Falta montarla en el router del panel: B-167.** El componente es
+autocontenido; la línea que falta es en `AdminApp.tsx`.
+
 
 El §4.3 dice que las opciones creadas con "Otro" son editables y borrables, y que
 `usos` sirve para detectar basura ("una opción con `usos: 1` creada hace meses es
@@ -766,7 +784,15 @@ y deja el caso peor en "la etiqueta no se registró para la próxima vez", que e
 recuperable tipeándola otra vez. Sale con B-70, cuando `guardar()` deje de estar
 dentro del componente.
 
-### B-72 · La deduplicación §4.2 del cliente está implementada dos veces
+### B-72 · La deduplicación §4.2 del cliente está implementada dos veces — ✅ hecho (2026-08-24)
+
+**Arreglado** como decía el ítem: `src/lib/taxonomia.ts`, puro, con
+`sugerenciasPara`, `resolverEtiqueta`, `pistaDeOpcion` y `etiquetaConEstado`, y
+los dos componentes llamándolas (D-100). 27 tests en `tests/taxonomia.test.ts`,
+incluida una guardia de que la copia no vuelva a nacer. Los componentes no se
+unificaron, y las dos diferencias que quedan (tope y qué mostrar con el input
+vacío) son ahora parámetros con motivo escrito.
+
 
 `TaxonomiaSelect.tsx` y `TagsInput.tsx` resuelven el mismo problema del §4 con
 dos implementaciones separadas, y ya divergieron:
@@ -787,7 +813,13 @@ Arreglo: extraer `sugerenciasPara(texto, elegibles, tope)` y
 que los dos componentes las llamen. **Los componentes no se unifican**: un
 `<select>` con "Otro" y un input de chips son widgets distintos.
 
-### B-73 · Los tags no se miden
+### B-73 · Los tags no se miden — ✅ hecho (2026-08-24)
+
+**Arreglado:** `TagsInput` emite `taxonomia-nueva`, `taxonomia-reusada` y
+`taxonomia-sugerencia` con `detalle: 'tags'`. `taxonomia-otro` **no** se emite y
+no es un olvido: no hay modo "Otro" que abrir en un input de chips (D-105, y
+queda escrito en `09-analitica.md` para que su ausencia no se lea como un bug).
+
 
 `CAMPOS_TAXONOMIA_MEDIBLES` (`src/lib/analytics-eventos.ts:134`) declara `'tags'`
 como valor válido de `detalle` para `taxonomia-otro`, `taxonomia-nueva`,
@@ -920,7 +952,16 @@ generación en el documento.
 
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
 
-### B-86 · `usos` solo cuenta creaciones, así que el orden por frecuencia no funciona
+### B-86 · `usos` solo cuenta creaciones, así que el orden por frecuencia no funciona · parcial
+
+**La operación está hecha (2026-08-24), el cableado no.** `registrarUsos(campo,
+slugs)` en `src/lib/opciones.ts`: una transacción por campo, ignora los slugs que
+no existen y no cuenta dos veces el mismo slug (D-103).
+
+Llamarla es una línea en `guardar()`, que vive en `ActividadFormulario.tsx` —de
+otro frente del plan de saneamiento—, así que quedó anotado como **B-168** con el
+orden exacto para no contar doble.
+
 
 El §4.3 le da dos trabajos a `usos`: ordenar el desplegable por frecuencia real
 —"mejor que alfabético"— y detectar basura ("una opción con `usos: 1` creada
@@ -1153,7 +1194,14 @@ Dos cosas a resolver, y la segunda importa:
 Salió de la conversación del 2026-08-24, verificando que las actividades del otro
 admin sí aparecen en el panel de los dos.
 
-### B-131 · Las opciones creadas con «Otro» nacen aprobadas · P2
+### B-131 · Las opciones creadas con «Otro» nacen aprobadas · P2 — ✅ hecho (2026-08-24)
+
+**Hecho tal como lo pedía el ítem** (D-104): `aprobada: true` con el motivo
+escrito al lado, una guardia que fija el default leyendo el fuente
+(`tests/opciones-aprobacion.test.ts`, que no necesita emulador), y los tests de
+la aprobación conservados enteros — ahora fabrican la pendiente a mano
+(`volverPendiente`) porque `upsertOpcion` ya no puede producirla.
+
 
 **Decisión del dueño (2026-08-24):** una etiqueta nueva cargada con «Otro» tiene
 que quedar disponible para las dos cuentas enseguida, sin pasar por aprobación.
@@ -1283,7 +1331,66 @@ así que un valor nuevo va en los dos lados, y si falta en uno se publica el val
 crudo. Y `docs/03-modelo-de-datos.md` más el §3.1 del `CLAUDE.md` quedan
 desactualizados.
 
+### B-167 · Montar la pantalla de taxonomías en el router del panel · P2
+
+`src/components/admin/taxonomias/TaxonomiasPanel.tsx` existe, funciona y **no se
+puede abrir**: colgarla del router es editar `AdminApp.tsx`, que en la fase 3 del
+plan de saneamiento es de otro frente. Mientras tanto B-06, B-25 y B-26 están
+hechos y no se ven.
+
+Lo que hay que hacer, todo en `AdminApp.tsx`:
+
+- agregar `{ tipo: 'taxonomias' }` al tipo `Vista`;
+- cargarla con `lazy(() => import('@/components/admin/taxonomias/TaxonomiasPanel'))`,
+  **diferida como las otras cuatro vistas** — un import estático deshace el corte
+  del bundle (B-09 / D-51) y el build sigue verde;
+- un botón en la cabecera, al lado del de reportes;
+- el contador de pendientes de B-26 en la cabecera, con
+  `usePendientesDeAprobacion()` de `useOpciones.ts` (abre cinco suscripciones:
+  va montado una sola vez).
+
+Y con eso, lo que la regla de proceso pide y hoy sería mentira: la entrada en
+`src/lib/novedades.ts` ("ahora podés corregir cómo se escribe una etiqueta y
+borrar las que sobran") y el capítulo en `src/lib/ayuda.ts`. No se escribieron
+antes a propósito: anunciar una pantalla que no se puede abrir es peor que no
+anunciarla.
+
+### B-168 · Contar el uso de las etiquetas elegidas al guardar · P2
+
+La mitad que falta de **B-86**. `registrarUsos` está escrita y testeada; nadie la
+llama, así que `usos` sigue contando solo creaciones y el orden por frecuencia
+del §4.3 sigue sin funcionar.
+
+Es una línea en `guardar()` (`ActividadFormulario.tsx`, frente de la fase 2), y
+el orden importa:
+
+1. escribir la actividad (la inversión de B-71),
+2. `upsertOpcion` de las etiquetas nuevas,
+3. `registrarUsos(campo, slugs)` con los slugs elegidos **menos** los que se
+   acaban de crear en el paso 2 — nacen con `usos: 1` y sumarlos otra vez los
+   deja en 2.
+
+Sale con B-70/B-71, cuando `guardar()` deje de vivir dentro del componente.
+
 ## P3 — cuando sobre tiempo
+
+### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa · P3
+
+Corriendo `npx vitest run` entero, tres tests de
+`tests/opciones.integracion.test.ts` fallaron —«aprobar dos veces no rompe nada»,
+«--listar muestra las pendientes y solo esas» y «--backfill hace explícito ese
+default»— y el mismo archivo corrido solo pasó, y la corrida completa siguiente
+también. O sea: **flaky, no roto**.
+
+Los tres son los que ejecutan `scripts/aprobar-opciones.mjs` de verdad contra el
+emulador (`execFileSync`), así que la sospecha es la interacción entre el script
+—que abre su propia app de firebase-admin— y el estado que dejan los otros
+archivos de integración. `fileParallelism: false` ya está puesto, así que no es
+paralelismo de archivos.
+
+Vale la pena porque un test que falla una de cada N corridas enseña a ignorar el
+rojo, que es lo único peor que no tener el test. Primer paso: correr la suite en
+loop unas cuantas veces para ver cada cuánto pasa y con qué vecino.
 
 ### B-114 · Precio real en los datos estructurados
 
@@ -1366,7 +1473,16 @@ mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
 completo de menú ARIA (flechas arriba/abajo, foco que vuelve al disparador al
 cerrar). Con dos ítems alcanza; si el menú crece, conviene completarlo.
 
-### B-25 · Aprobar taxonomías desde el panel
+### B-25 · Aprobar taxonomías desde el panel — ✅ hecho (2026-08-24)
+
+**Hecho** junto con B-06, como decía el ítem: botón "Aprobar" en la fila, sobre
+`aprobarOpcion` (transaccional, rechaza las `fijo`). Ya no hace falta una máquina
+con Node y `gcloud`.
+
+**Ojo:** con B-131 nada nace pendiente, así que hoy esto solo alcanza a lo que
+quedó pendiente antes de esa decisión (D-104). Es la maquinaria dormida, y se
+deja lista a propósito.
+
 
 Hoy aprobar (§4.3) necesita `scripts/aprobar-opciones.mjs`, o sea una máquina
 con Node y `gcloud`: desde el teléfono no se puede. La pantalla natural es la
@@ -1375,7 +1491,16 @@ tampoco existe — conviene hacer las dos juntas. Decisión: D-29.
 
 Prioridad real: sube a P2 si el dueño empieza a cargar desde el teléfono.
 
-### B-26 · Nadie se entera de que hay algo para aprobar
+### B-26 · Nadie se entera de que hay algo para aprobar — ✅ hecho (2026-08-24)
+
+**Hecho a medias, y la mitad que falta es de otro frente.** La pantalla de
+taxonomías muestra arriba cuántas etiquetas esperan aprobación, y
+`usePendientesDeAprobacion()` (en `useOpciones.ts`) deja el número listo para la
+**cabecera** del panel, que es lo que pedía el ítem — pero la cabecera vive en
+`AdminApp.tsx`. Va con B-167.
+
+Con B-131 el contador da 0 salvo por lo viejo (D-104).
+
 
 Una etiqueta pendiente queda invisible para la otra cuenta y **no hay ningún
 aviso**: si nadie corre `--listar`, la etiqueta puede quedar pendiente para
