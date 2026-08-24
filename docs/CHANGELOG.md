@@ -2,6 +2,51 @@
 
 ## 2026-08-24
 
+### El formulario deja de ser el dueño de las reglas del modelo (fase 2)
+
+La lógica de dominio de `ActividadFormulario.tsx` se mudó a módulos puros en
+`src/lib/formulario/` y **de paso se arreglaron los dos bugs que vivían
+adentro**. Cierra **B-71** y **B-87**; **B-70** avanza (falta B-79, el JSX).
+
+Por qué el orden importa: esas reglas —"un club de lectura es un ciclo con
+material", "una actividad virtual no tiene sede", el documento por defecto del
+§3.1, el caso de uso de guardado— estaban en un `.tsx`, y como no hay
+testing-library (B-08) **ningún test podía ejecutarlas**. Invertir uno de esos
+condicionales dejaba `npm test` entero en verde. Ahora hay tests puros que
+corren en milisegundos (`tests/formulario-dominio.test.ts`).
+
+**B-71 · un guardado que fallaba dejaba etiquetas colgadas en el desplegable.**
+Las opciones nuevas se creaban **antes** de escribir la actividad, así que un
+fallo de red o de permisos dejaba basura permanente en una taxonomía que no
+tiene UI de limpieza (B-06) — justo lo que D-02 quiso evitar. Invertido el orden
+(**D-100**), el peor caso es que la etiqueta no quede registrada, y de eso ya
+había red: el evento público la resuelve con el des-slug de D-11 ("Con Beca
+Parcial" en lugar de "Con beca parcial"). Se pasó de perder datos a perder una
+capitalización. Un fallo al registrar la etiqueta ya **no** vuelve fallido el
+guardado: la actividad está escrita y reintentar chocaría contra su propio slug.
+
+El orden se afirma con puertos falsos que anotan la secuencia de llamadas
+(**D-102**), y el `it.fails` de la clase en `tests/clases-de-bug.test.ts` quedó
+promovido a `it`: de acá en adelante, un flujo nuevo que escriba la taxonomía
+antes que la actividad rompe el CI.
+
+**B-87 · el formulario nacía sucio.** La preselección de "Taller" la hacía un
+efecto del hijo, que corre antes que los del padre: el formulario quedaba "con
+cambios sin guardar" sin que nadie tocara nada. Consecuencias visibles: el aviso
+de versión nueva no se auto-recargaba nunca —mostraba "Guardá lo que estás
+cargando" sobre un formulario vacío— y el parámetro `sucio` de
+`formulario_abandonado` era siempre 1, así que la analítica no podía distinguir
+"se abrió y se salió" de "había trabajo adentro". Ahora la preselección viene en
+el estado inicial (**D-101**), que se puede resolver sin leer Firestore porque
+ninguna opción creada con "Otro" puede quedar antes que una fija (§4.3).
+
+Sin entrada en novedades: no hay nada nuevo que se pueda hacer en el panel, se
+dejó de hacer algo mal.
+
+Abiertos en el camino: **B-167** (nadie avisa en pantalla que la etiqueta no se
+registró) y **B-168** (el desplegable muestra el slug crudo de una etiqueta no
+registrada; ese archivo es del frente de taxonomías).
+
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 
 Cuatro vocabularios de la analítica se mantenían por separado de su fuente, y

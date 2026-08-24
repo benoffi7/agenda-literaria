@@ -1,0 +1,67 @@
+/**
+ * Buffer de etiquetas creadas con "Otro" que todavía no están en `/opciones/*`.
+ *
+ * D-02 — se persisten en el submit y no al tipearlas: abandonar el formulario a
+ * mitad de camino no debe dejar basura en la taxonomía (§4.3). La consecuencia
+ * es que entre que se tipean y que se guardan hay etiquetas que solo existen en
+ * la memoria del formulario, y la vista previa del evento las necesita para no
+ * mostrarlas des-slugueadas.
+ *
+ * Puro: es el reducer del buffer más la proyección al mapa que consume
+ * `lib/vistaPreviaEvento.ts`. Estaba dentro del `.tsx` (B-70).
+ */
+import { slugify } from '@/lib/slugify';
+import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
+
+/**
+ * Los campos con taxonomía de valor único. `tags` no está: es multivalor y su
+ * buffer es un mapa `slug → label` que arma `TagsInput`.
+ */
+export type CampoLabelUnico = 'arancel' | 'tipo' | 'barrio' | 'plataforma';
+
+export interface LabelNuevo {
+  campo: CampoLabelUnico;
+  label: string;
+}
+
+/**
+ * Registra la etiqueta recién tipeada en un campo de valor único.
+ *
+ * Reemplaza la anterior del mismo campo en lugar de acumularla: el campo tiene
+ * un solo valor, así que la etiqueta previa ya no se va a guardar y persistirla
+ * crearía en la taxonomía una opción que nadie eligió — el `usos: 1` colgado
+ * del que se queja el §4.3.
+ *
+ * Sin `label` (se eligió una opción que ya existe) no hay nada que recordar.
+ */
+export const recordarLabel = (
+  previos: readonly LabelNuevo[],
+  campo: CampoLabelUnico,
+  label?: string,
+): LabelNuevo[] =>
+  label ? [...previos.filter((l) => l.campo !== campo), { campo, label }] : [...previos];
+
+/**
+ * Mapa `campo → slug → label` con las etiquetas que todavía no están en
+ * `/opciones/*`, para que la vista previa muestre "Con beca parcial" y no
+ * "Con Beca Parcial" (el des-slug de D-11) donde el evento publicado va a decir
+ * lo primero.
+ *
+ * El slug se deriva con `slugify` —el mismo que usa la transacción del §4.2— y
+ * las etiquetas se recortan igual que al persistirlas: si acá se guardara el
+ * texto con espacios y allá sin, la vista previa mentiría por un espacio.
+ */
+export const labelsPendientesDe = (
+  labelsNuevos: readonly LabelNuevo[],
+  tagsNuevos: Record<string, string>,
+): LabelsTaxonomia => {
+  const mapa: LabelsTaxonomia = {};
+  for (const { campo, label } of labelsNuevos) {
+    mapa[campo] = { ...mapa[campo], [slugify(label)]: label.trim() };
+  }
+  const tags = Object.entries(tagsNuevos);
+  if (tags.length) {
+    mapa.tags = Object.fromEntries(tags.map(([slug, label]) => [slug, label.trim()]));
+  }
+  return mapa;
+};

@@ -748,7 +748,7 @@ mecánico, sin cambio de comportamiento: el archivo baja a ~250 LOC y ~150 pasan
 ser testeables. Medida completa en
 [`10-salud-del-codigo.md`](10-salud-del-codigo.md).
 
-### B-71 · Un guardado que falla deja opciones de taxonomía huérfanas
+### B-71 · Un guardado que falla deja opciones de taxonomía huérfanas — ✅ hecho (2026-08-24)
 
 `guardar()` persiste las etiquetas nuevas en `/opciones/*` (líneas 237 y 240)
 **antes** de escribir la actividad (líneas 244-245). Si la escritura falla —red,
@@ -765,6 +765,18 @@ después— o mover las dos cosas a la misma transacción. Lo primero es más si
 y deja el caso peor en "la etiqueta no se registró para la próxima vez", que es
 recuperable tipeándola otra vez. Sale con B-70, cuando `guardar()` deje de estar
 dentro del componente.
+
+**Resuelto así (D-100):** se invirtió el orden, en
+`src/lib/formulario/guardar.ts` — el caso de uso que B-70 sacó del componente.
+Verificado el modo de falla que queda: el evento público resuelve la etiqueta no
+registrada con el des-slug de D-11, o sea "Con Beca Parcial" en lugar de "Con
+beca parcial". Un fallo al registrar la etiqueta ya no vuelve fallido el
+guardado (la actividad está escrita; reintentar chocaría contra su propio slug).
+El `it.fails` de la clase en `tests/clases-de-bug.test.ts` quedó promovido a
+`it`, y el orden se afirma además con puertos falsos en
+`tests/formulario-dominio.test.ts`. Quedan abiertos **B-167** (nadie avisa en
+pantalla que la etiqueta no se registró) y **B-168** (el desplegable muestra el
+slug crudo de una etiqueta no registrada).
 
 ### B-72 · La deduplicación §4.2 del cliente está implementada dos veces
 
@@ -938,7 +950,7 @@ los nuevos— más cuidado con no sumar dos veces cuando la etiqueta es nueva
 (`upsertOpcion` ya la crea con `usos: 1`). Sin test: el camino pasa por el
 submit del componente y no hay testing-library (B-08).
 
-### B-87 · El formulario nace sucio, así que el aviso de versión nunca se recarga solo
+### B-87 · El formulario nace sucio, así que el aviso de versión nunca se recarga solo — ✅ hecho (2026-08-24)
 
 `autoSeleccionarPrimera` en el desplegable de `tipo` preselecciona "Taller" desde
 un efecto, y ese efecto es de un hijo: corre **antes** que los efectos de
@@ -963,6 +975,18 @@ desde `OPCIONES_BASE`) en lugar de con un efecto sobre el formulario ya montado.
 código y el orden de los efectos es una garantía de React, pero verificarlo
 necesita render, y no hay testing-library (B-08). Es la primera cosa que valdría
 la pena verificar si se instala.
+
+**Resuelto así (D-101):** la preselección se aplica en `formVacio()`
+(`src/lib/formulario/estadoInicial.ts`) y el campo `tipo` dejó de pasar
+`autoSeleccionarPrimera`. `plataforma` lo conserva: su bloque nace de un cambio
+de modalidad, o sea de una acción de quien carga.
+
+Sigue sin haber un test de render, pero la clase quedó cubierta desde dos
+lados en `tests/formulario-dominio.test.ts`: uno afirma que `formVacio().tipo`
+es la misma opción que mostraría el desplegable, y otro —de fuente— que ningún
+campo que exista desde el montaje delegue su preselección a un efecto. Lo que
+falta verificar con render es el síntoma (que el aviso de versión se
+auto-recargue), no el mecanismo.
 
 ### B-90 · "Generar N encuentros" sobre un ciclo publicado borra y recrea los ocho eventos
 
@@ -1652,6 +1676,34 @@ Es chico y es de datos, no de código: en dev no se mide (`PUBLIC_USE_EMULATORS`
 así que en producción no debería haber ninguno de los dos. Si algún día se quiere
 usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
 vocabulario en vez de caer en la bolsa.
+
+### B-167 · Nadie avisa cuando una etiqueta nueva no se registró · P3
+
+Con el orden de escritura de D-100, si la actividad se guarda pero falla el alta
+de la etiqueta en `/opciones/*`, el guardado es un éxito y la etiqueta queda sin
+registrar. Es el modo de falla que se eligió a propósito —es recuperable
+tipeándola otra vez— pero hoy **no se ve**: `guardarActividad` devuelve
+`etiquetasSinRegistrar: true` y el formulario no lo mira.
+
+No hay dónde mostrarlo con lo que hay: al guardar, el formulario se desmonta y
+la pantalla pasa al listado. Las salidas son una franja en el listado (archivo
+del frente 3B) o quedarse en el formulario con el aviso. Vale poco por sí solo;
+vale más el día que exista la UI de taxonomías (B-06), que es donde la etiqueta
+faltante se arregla en un clic.
+
+### B-168 · El desplegable muestra el slug crudo de una etiqueta no registrada · P3
+
+`TaxonomiaSelect.tsx` renderiza `` `${value} (nueva)` `` cuando el valor
+guardado no está en `/opciones/*`, así que al reeditar una actividad cuya
+etiqueta no llegó a registrarse (D-100) se lee "con-beca-parcial (nueva)" en
+lugar de "Con Beca Parcial". El evento público **sí** lo resuelve, con el
+des-slug de D-11 (`desSlug`, reusado en el panel como `legible` en
+`filtrosActividades.ts`): el panel es el único lugar que muestra el slug pelado,
+que es lo que el propio D-11 dice que "se ve roto".
+
+Es una línea, y el módulo ya está importado del lado del panel. **Toca
+`campos/TaxonomiaSelect.tsx`, que es del frente 3A** (taxonomías): sale con
+B-72, cuando esos componentes se toquen de todas formas.
 
 ### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
 

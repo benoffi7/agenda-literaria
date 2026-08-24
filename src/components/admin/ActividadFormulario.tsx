@@ -14,12 +14,17 @@ import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { useMedicionFormulario } from '@/components/admin/useMedicionFormulario';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
-import { actualizarActividad, crearActividad, documentoAForm, slugDisponible } from '@/lib/actividades';
-import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
-import { actividadFormSchema } from '@/lib/schema';
-import { sesionVacia } from '@/lib/sesiones';
+import { documentoAForm } from '@/lib/actividades';
+import { cambiarModalidad, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
+import { formVacio } from '@/lib/formulario/estadoInicial';
+import {
+  labelsPendientesDe,
+  recordarLabel,
+  type CampoLabelUnico,
+  type LabelNuevo,
+} from '@/lib/formulario/etiquetas';
+import { guardarActividad } from '@/lib/formulario/guardar';
 import { slugify } from '@/lib/slugify';
-import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import {
   ESTADOS,
   MODALIDADES,
@@ -45,28 +50,6 @@ interface Props {
   onGuardado: (id: string) => void;
   onCancelar: () => void;
 }
-
-const formVacio = (): ActividadForm => ({
-  tipo: '' as ActividadForm['tipo'],
-  titulo: '',
-  slug: '',
-  descripcion: '',
-  imagenUrl: '',
-  organizador: { nombre: '', instagram: '', web: '' },
-  tallerista: null,
-  esCiclo: false,
-  sesiones: [sesionVacia()],
-  modalidad: 'presencial',
-  sede: { nombre: '', direccion: '', barrio: '', ciudad: 'CABA', indicaciones: '', geo: null },
-  online: null,
-  inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: '' },
-  arancel: { tipo: '', notas: '' },
-  material: { tiene: false, items: [] },
-  difusion: { arrobar: [], notas: '' },
-  estado: 'borrador',
-  tags: [],
-  destacado: false,
-});
 
 const ETIQUETA_MODALIDAD = { presencial: 'Presencial', virtual: 'Virtual', hibrido: 'Híbrido' };
 const ETIQUETA_VIA = { mail: 'Mail', whatsapp: 'WhatsApp', dm: 'DM de Instagram', formulario: 'Formulario' };
@@ -102,9 +85,7 @@ export function ActividadFormulario({
    * Se persisten en el submit, no al tipearlas: abandonar el formulario no
    * debería dejar basura en la taxonomía (§4.3).
    */
-  const [labelsNuevos, setLabelsNuevos] = useState<
-    { campo: 'arancel' | 'tipo' | 'barrio' | 'plataforma'; label: string }[]
-  >([]);
+  const [labelsNuevos, setLabelsNuevos] = useState<LabelNuevo[]>([]);
   const [tagsNuevos, setTagsNuevos] = useState<Record<string, string>>({});
 
   const set = <K extends keyof ActividadForm>(k: K, v: ActividadForm[K]) =>
@@ -124,58 +105,15 @@ export function ActividadFormulario({
 
   const errorDe = (path: string) => errores[path];
 
-  const recordarLabel = (
-    campo: 'arancel' | 'tipo' | 'barrio' | 'plataforma',
-    label?: string,
-  ) => {
-    if (label) setLabelsNuevos((prev) => [...prev.filter((l) => l.campo !== campo), { campo, label }]);
-  };
+  const anotarLabel = (campo: CampoLabelUnico, label?: string) =>
+    setLabelsNuevos((prev) => recordarLabel(prev, campo, label));
 
-  const cambiarTitulo = (titulo: string) => {
-    setForm((f) => ({
-      ...f,
-      titulo,
-      // El slug se deriva del título mientras no esté publicado, y sigue
-      // siendo editable a mano.
-      slug: slugBloqueado ? f.slug : slugify(titulo),
-    }));
-  };
-
-  const cambiarTipo = (tipo: string) => {
-    setForm((f) => ({
-      ...f,
-      tipo: tipo as ActividadForm['tipo'],
-      // Un club de lectura es casi siempre un ciclo con material (§2.2, §11).
-      esCiclo: tipo === 'club-lectura' ? true : f.esCiclo,
-      material: tipo === 'club-lectura' ? { ...f.material, tiene: true } : f.material,
-      tallerista:
-        tipo === 'taller' || tipo === 'presentacion' || tipo === 'charla'
-          ? (f.tallerista ?? { nombre: '', bio: '', instagram: '' })
-          : f.tallerista,
-    }));
-  };
-
-  const cambiarModalidad = (modalidad: ActividadForm['modalidad']) => {
-    setForm((f) => ({
-      ...f,
-      modalidad,
-      sede:
-        modalidad === 'virtual'
-          ? null
-          : (f.sede ?? {
-              nombre: '',
-              direccion: '',
-              barrio: '',
-              ciudad: 'CABA',
-              indicaciones: '',
-              geo: null,
-            }),
-      online:
-        modalidad === 'presencial'
-          ? null
-          : (f.online ?? { plataforma: '', url: '', urlPublica: false }),
-    }));
-  };
+  /** Las cascadas del modelo viven en `lib/formulario/cascadas.ts` (B-70). */
+  const conTitulo = (titulo: string) =>
+    setForm((f) => cambiarTitulo(f, titulo, slugBloqueado));
+  const conTipo = (tipo: string) => setForm((f) => cambiarTipo(f, tipo));
+  const conModalidad = (modalidad: ActividadForm['modalidad']) =>
+    setForm((f) => cambiarModalidad(f, modalidad));
 
   const resumenErrores = useMemo(() => Object.entries(errores), [errores]);
 
@@ -185,70 +123,53 @@ export function ActividadFormulario({
    * si no, mostraría "Con Beca Parcial" des-slugueado donde el evento publicado
    * va a decir "Con beca parcial".
    */
-  const labelsPendientes = useMemo<LabelsTaxonomia>(() => {
-    const mapa: LabelsTaxonomia = {};
-    for (const { campo, label } of labelsNuevos) {
-      mapa[campo] = { ...mapa[campo], [slugify(label)]: label.trim() };
-    }
-    const tags = Object.entries(tagsNuevos);
-    if (tags.length) {
-      mapa.tags = Object.fromEntries(tags.map(([slug, label]) => [slug, label.trim()]));
-    }
-    return mapa;
-  }, [labelsNuevos, tagsNuevos]);
+  const labelsPendientes = useMemo(
+    () => labelsPendientesDe(labelsNuevos, tagsNuevos),
+    [labelsNuevos, tagsNuevos],
+  );
 
+  /**
+   * El caso de uso vive en `lib/formulario/guardar.ts` (B-70): validar, chequear
+   * el slug, escribir la actividad y registrar las etiquetas nuevas. Acá queda
+   * solo lo que es del componente — estado de React y analítica — traducido
+   * desde el resultado.
+   */
   const guardar = async (estadoDestino?: ActividadForm['estado']) => {
     setFallo(null);
     const accion = estadoDestino === 'borrador' ? 'borrador' : 'submit';
-    const candidato: ActividadForm = estadoDestino
-      ? { ...form, estado: estadoDestino }
-      : form;
-
-    const parsed = actividadFormSchema.safeParse(candidato);
-    if (!parsed.success) {
-      const mapa: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        mapa[issue.path.join('.')] = issue.message;
-      }
-      medicion.validacionFallida(parsed.error.issues, accion);
-      setErrores(mapa);
-      setFallo('Revisá los campos marcados.');
-      return;
-    }
-    setErrores({});
     setGuardando(true);
-
     try {
-      const slug = slugify(candidato.slug);
-      if (!(await slugDisponible(slug, inicial?.id))) {
+      const r = await guardarActividad({
+        form,
+        uid,
+        estadoDestino,
+        idActual: inicial?.id,
+        labelsNuevos,
+        tagsNuevos,
+      });
+
+      if (r.estado === 'invalido') {
+        medicion.validacionFallida(r.issues, accion);
+        setErrores(r.errores);
+        setFallo('Revisá los campos marcados.');
+        return;
+      }
+      setErrores({});
+
+      if (r.estado === 'slug-tomado') {
         medicion.guardadoFallido('slug-tomado', accion);
-        setErrores({ slug: 'Ya hay otra actividad con este slug' });
+        setErrores(r.errores);
         setFallo('El slug está tomado.');
         return;
       }
-
-      // §4.2 — las etiquetas nuevas se incorporan al desplegable acá, en
-      // transacción y reusando por slug si ya existían.
-      //
-      // §4.3 — el uid queda como huella de autor: la opción nueva sirve para
-      // esta actividad y para las próximas de esta cuenta, pero no entra al
-      // desplegable de las demás hasta que alguien la apruebe.
-      for (const { campo, label } of labelsNuevos) {
-        await upsertOpcion(campo, label, uid);
+      if (r.estado === 'error') {
+        medicion.guardadoFallido(r.error, accion);
+        setFallo(r.error instanceof Error ? r.error.message : 'No se pudo guardar.');
+        return;
       }
-      const labelsTags = candidato.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
-      if (labelsTags.length) await upsertOpciones('tags', labelsTags, uid);
 
-      const conSlug: ActividadForm = { ...candidato, slug };
-      const id = inicial
-        ? (await actualizarActividad(inicial.id, conSlug, uid), inicial.id)
-        : await crearActividad(conSlug, uid);
-
-      medicion.guardadoOk(conSlug, accion);
-      onGuardado(id);
-    } catch (e) {
-      medicion.guardadoFallido(e, accion);
-      setFallo(e instanceof Error ? e.message : 'No se pudo guardar.');
+      medicion.guardadoOk(r.guardado, accion);
+      onGuardado(r.id);
     } finally {
       setGuardando(false);
     }
@@ -291,11 +212,10 @@ export function ActividadFormulario({
               uid={uid}
               value={form.tipo}
               onChange={(slug, labelNuevo) => {
-                cambiarTipo(slug);
-                recordarLabel('tipo', labelNuevo);
+                conTipo(slug);
+                anotarLabel('tipo', labelNuevo);
               }}
               placeholder="Elegí el tipo…"
-              autoSeleccionarPrimera
             />
           </Campo>
 
@@ -317,7 +237,7 @@ export function ActividadFormulario({
             <input
               className={claseInput}
               value={form.titulo}
-              onChange={(e) => cambiarTitulo(e.target.value)}
+              onChange={(e) => conTitulo(e.target.value)}
               placeholder="Taller de crónica urbana"
             />
           </Campo>
@@ -390,7 +310,7 @@ export function ActividadFormulario({
               <button
                 key={m}
                 type="button"
-                onClick={() => cambiarModalidad(m)}
+                onClick={() => conModalidad(m)}
                 aria-pressed={form.modalidad === m}
                 className={`min-h-touch flex-1 rounded-md border px-3 text-sm sm:flex-none sm:px-4 ${
                   form.modalidad === m
@@ -429,7 +349,7 @@ export function ActividadFormulario({
                 value={form.sede.barrio}
                 onChange={(slug, labelNuevo) => {
                   set('sede', { ...form.sede!, barrio: slug });
-                  recordarLabel('barrio', labelNuevo);
+                  anotarLabel('barrio', labelNuevo);
                 }}
                 placeholder="Elegí o agregá el barrio…"
               />
@@ -469,7 +389,7 @@ export function ActividadFormulario({
                 value={form.online.plataforma}
                 onChange={(slug, labelNuevo) => {
                   set('online', { ...form.online!, plataforma: slug });
-                  recordarLabel('plataforma', labelNuevo);
+                  anotarLabel('plataforma', labelNuevo);
                 }}
                 placeholder="Elegí la plataforma…"
                 autoSeleccionarPrimera
@@ -600,7 +520,7 @@ export function ActividadFormulario({
               value={form.arancel.tipo}
               onChange={(slug, labelNuevo) => {
                 set('arancel', { ...form.arancel, tipo: slug });
-                recordarLabel('arancel', labelNuevo);
+                anotarLabel('arancel', labelNuevo);
               }}
               placeholder="Elegí el arancel…"
             />

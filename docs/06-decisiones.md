@@ -1726,6 +1726,96 @@ por si el costo molesta en la práctica.
 
 ---
 
+## D-100 · La actividad se escribe antes que las etiquetas nuevas
+
+**Decisión:** en el guardado del formulario, primero se escribe la actividad y
+recién después se registran en `/opciones/*` las etiquetas creadas con "Otro".
+Era al revés (B-71).
+
+**Motivo:** las dos escrituras pueden fallar por separado, y una de las dos no
+se puede deshacer desde el panel: no hay UI para limpiar taxonomías (B-06). Con
+el orden viejo, un guardado que fallaba —red, permisos, un slug que se tomó en
+el medio— dejaba opciones colgadas en el desplegable de todo el mundo, que es
+justo lo que D-02 quiso evitar. Invertido, el peor caso es que el slug quede
+guardado sin estar registrado: el evento público lo resuelve con el des-slug de
+D-11 ("Con Beca Parcial" en lugar de "Con beca parcial") y volver a tipear la
+etiqueta la registra. **El modo de falla pasa de basura permanente en la
+taxonomía a una capitalización distinta.**
+
+**Y un fallo al registrar la etiqueta no vuelve fallido el guardado.** La
+actividad ya está escrita; devolver error haría que el segundo intento choque
+contra su propio slug (`slugDisponible` ya lo ve tomado) sobre algo que en
+realidad se guardó bien. El caso de uso lo informa en su resultado
+(`etiquetasSinRegistrar`) y hoy nadie lo muestra en pantalla — queda anotado
+como **B-167**.
+
+**Alternativa descartada:** las dos escrituras en una sola transacción. Son
+documentos de colecciones distintas y `upsertOpcion` ya corre su propia
+transacción por etiqueta (§4.2); envolver todo pedía rehacer esa función para un
+caso cuyo daño ya quedó acotado.
+
+**La guarda es de clase, no de instancia:** el chequeo de
+`tests/clases-de-bug.test.ts` busca las dos escrituras por nombre en todo `src/`
+y falla si la irreversible queda primero, así que cubre también el próximo flujo
+que escriba en dos lugares. Por eso `guardar.ts` llama a sus puertos por nombre
+desestructurado y no como `puertos.x(...)`: escondidos, la guarda pasaría sin
+mirar nada.
+
+---
+
+## D-101 · La preselección del desplegable va en el estado inicial, no en un efecto
+
+**Decisión:** el `tipo` de una actividad nueva viene ya preseleccionado desde
+`formVacio()` (D-12 sigue valiendo: el desplegable muestra la primera opción).
+El efecto `autoSeleccionarPrimera` del hijo se sigue usando en `plataforma`,
+pero **no** en un campo que exista desde el montaje.
+
+**Motivo:** el efecto de un hijo corre antes que los del padre, así que escribía
+el estado del formulario después del primer render y los dos consumidores de
+"¿cambió algo?" veían un cambio que nadie hizo (B-87): el aviso de versión nueva
+no se auto-recargaba nunca —mostraba "Guardá lo que estás cargando" sobre un
+formulario vacío— y el parámetro `sucio` de `formulario_abandonado` era siempre
+1, o sea que dejaba de responder la única pregunta que justifica ese evento.
+
+**Se puede resolver sin leer Firestore** porque `ordenarValores` pone las
+opciones fijas antes que las creadas con "Otro" (§4.3): la primera elegible es
+siempre la primera opción base, y eso se sabe desde `OPCIONES_BASE`. Un test ata
+las dos derivaciones, para que reordenar el JSON no separe la preselección de lo
+que muestra el desplegable.
+
+`plataforma` se queda con el efecto a propósito: su bloque lo crea un cambio de
+modalidad, o sea una acción de quien carga, y para entonces el formulario ya
+está sucio de verdad.
+
+---
+
+## D-102 · Las escrituras del caso de uso de guardado entran como puertos
+
+**Decisión:** `src/lib/formulario/guardar.ts` recibe sus cinco escrituras
+(`slugDisponible`, `upsertOpcion`, `upsertOpciones`, `crearActividad`,
+`actualizarActividad`) como un objeto de puertos, con `puertosFirestore` como
+default.
+
+**Motivo:** el bug que se estaba arreglando (B-71) **es un orden de
+escrituras**, y un orden no se afirma mirando el resultado: hay que ver la
+secuencia de llamadas. Con puertos falsos que anotan su nombre, el test afirma
+"slug → actividad → etiquetas" y, sobre todo, "si la actividad no se pudo
+escribir, no se creó ninguna opción" — sin emuladores, en milisegundos y sin
+poder tocar datos de verdad.
+
+**Alternativa descartada:** testearlo contra el emulador, como
+`tests/actividades.integracion.test.ts`. Ese archivo verifica el ida y vuelta
+del documento, que es su valor; para el orden habría que provocar un fallo de
+permisos a mitad de camino, y además los tests de integración se saltean solos
+cuando el emulador no está, así que la guarda desaparecería justo en la corrida
+de CI.
+
+Es el mismo criterio que `functions/rebuild.js` con el reloj
+([`05-patrones.md`](05-patrones.md) → "El reloj también es infraestructura"): lo
+que hace falta controlar para testear entra como parámetro con default.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |
