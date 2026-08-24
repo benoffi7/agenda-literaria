@@ -12,6 +12,14 @@ import {
   marcarCambiosSinGuardar,
   observarCambiosSinGuardar,
 } from '@/lib/formulario-sucio';
+import { FORMATO_VERSION, construirEvento } from '@/lib/analytics-eventos';
+import {
+  ENTRADAS_DE_BUILD,
+  componerVersion,
+  infoVersion,
+  versionBase,
+  versionesPosibles,
+} from '../scripts/version.mjs';
 
 const VIEJA = '0.1.0+a1b2c3d';
 const NUEVA = '0.1.0+e4f5a6b';
@@ -217,5 +225,114 @@ describe('el pie del panel — qué muestra según el estado', () => {
 
   it('no ofrece el botón si no hay nada que actualizar', () => {
     expect(ofreceBoton('nada', '1.0.0+abc', '1.0.0+abc')).toBe(false);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// El formato de versión: un solo productor, un solo consumidor (B-88 · D-98)
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * `scripts/version.mjs` **produce** el formato y `analytics-eventos.ts` lo
+ * **consume**, y no pueden compartir el código: el productor importa
+ * `node:child_process` y el consumidor viaja al navegador — el mismo motivo por
+ * el que `CAMPOS_VALIDABLES` es una constante y no una derivación de zod (D-60).
+ *
+ * Hasta B-88 los dos lados derivaron por separado y se separaron: el build
+ * estampaba `1.0.1+5e2cb50-sucio.20260821-2124` y la analítica lo mandaba como
+ * `'otro'`, o sea que perdía el único dato que existía para atribuir un pico a
+ * un deploy.
+ *
+ * **Este describe es el lazo.** No hay una lista de ejemplos copiada a mano: se
+ * recorre el dominio completo de entradas de un build y se mete cada salida del
+ * productor en el sanitizador real del consumidor. Un formato nuevo del lado
+ * del build falla acá, no en producción y no en silencio.
+ */
+describe('el formato de versión que produce el build es el que la analítica acepta', () => {
+  /** Lo que la analítica dejaría salir para esta versión. */
+  const medida = (v: string): unknown =>
+    construirEvento('panel_abierto', { version: v })!.params.version;
+
+  const ahora = new Date('2026-08-21T21:24:33.000Z');
+
+  it('las tres formas que el build puede estampar viajan enteras', () => {
+    const posibles = versionesPosibles({ ahora });
+    // Tres formas: con commit limpio, con commit sucio, y sin `.git`.
+    expect(posibles).toHaveLength(3);
+    for (const v of posibles) {
+      expect(medida(v), `el build estampa ${v} y la analítica lo manda como otro`).toBe(v);
+    }
+  });
+
+  it('el dominio de entradas está completo: hay commit o no, y el árbol está limpio o no', () => {
+    // Si mañana `componerVersion` mira un hecho nuevo del build, la forma que
+    // produzca queda fuera de `versionesPosibles()` y el lazo de arriba deja de
+    // cubrirla. Esto lo fija: el dominio son las 2×2 combinaciones.
+    expect(ENTRADAS_DE_BUILD).toHaveLength(4);
+    for (const entrada of ENTRADAS_DE_BUILD) {
+      expect(Object.keys(entrada).sort()).toEqual(['sha', 'sucio']);
+    }
+  });
+
+  it('la versión que estampa ESTE árbol de trabajo la acepta la analítica', () => {
+    // El lazo vivo: corre git de verdad. En CI el árbol está limpio y en la
+    // máquina de quien trabaja casi nunca lo está, así que entre las dos se
+    // cubren las dos ramas con commit — y las dos tienen que pasar.
+    const { version } = infoVersion();
+    expect(medida(version), `el build estampa ${version}`).toBe(version);
+  });
+
+  it('`sin-git` no depende de que el árbol esté sucio: un clone sin `.git` es una sola forma', () => {
+    const limpio = componerVersion({ base: '1.0.1', sha: null, sucio: false, ahora });
+    const sucio = componerVersion({ base: '1.0.1', sha: null, sucio: true, ahora });
+    expect(limpio).toBe(sucio);
+    expect(limpio).toBe('1.0.1+sin-git.20260821-2124');
+  });
+
+  it('el sello de tiempo distingue dos builds sucios del mismo commit', () => {
+    const uno = componerVersion({ base: '1.0.1', sha: '5e2cb50', sucio: true, ahora });
+    const dos = componerVersion({
+      base: '1.0.1',
+      sha: '5e2cb50',
+      sucio: true,
+      ahora: new Date('2026-08-21T22:00:00.000Z'),
+    });
+    expect(uno).not.toBe(dos);
+    // Y el mismo commit limpio, dos veces, es la misma versión (D-36): el panel
+    // no se recarga solo por un rebuild que no cambió el JS.
+    expect(componerVersion({ base: '1.0.1', sha: '5e2cb50', sucio: false, ahora })).toBe(
+      componerVersion({
+        base: '1.0.1',
+        sha: '5e2cb50',
+        sucio: false,
+        ahora: new Date('2026-09-01T10:00:00.000Z'),
+      }),
+    );
+  });
+
+  it('`versionBase` sale del package.json, que es la parte que mueve una persona', () => {
+    expect(versionBase()).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('aceptar el guion no abrió la puerta al texto libre', () => {
+    // La otra mitad de B-88: el formato se amplió a lo que el build produce, no
+    // se abrió. Nada de esto puede viajar como `version`.
+    const rechazados = [
+      'Taller de crónica urbana',
+      'centinela-inscripciones@ejemplo.com',
+      'https://zoom.us/j/999999',
+      '1.0.1+5e2cb50 sucio',
+      '1.0.1+' + 'a'.repeat(41),
+      '1.0.1++5e2cb50',
+      '1.0.1+-sucio',
+      '1.0.1+',
+    ];
+    for (const v of rechazados) {
+      expect(FORMATO_VERSION.test(v), v).toBe(false);
+      expect(medida(v), v).toBe('otro');
+    }
+    // Un semver sin sufijo es legítimo: es lo que se ve si alguien estampa la
+    // versión a mano.
+    expect(medida('1.0.1')).toBe('1.0.1');
   });
 });

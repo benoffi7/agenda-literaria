@@ -463,19 +463,18 @@ describe('B-85 · registrarExito baja `pendiente` sin comparar', () => {
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * `scripts/version.mjs` produce tres formas de versión; el `FORMATO_VERSION` de
- * la analítica solo acepta la primera, así que en un build de árbol sucio o sin
- * `.git` **todos** los eventos viajan con `version: 'otro'` — y `version` existe
- * justamente para atribuir un pico de errores a un deploy.
+ * `scripts/version.mjs` produce tres formas de versión y el `FORMATO_VERSION` de
+ * la analítica aceptaba solo la primera, así que en un build de árbol sucio o
+ * sin `.git` **todos** los eventos viajaban con `version: 'otro'` — y `version`
+ * existe justamente para atribuir un pico de errores a un deploy.
+ *
+ * **Arreglado** (B-88 · D-98): el productor tiene un solo lugar donde se arma la
+ * cadena (`componerVersion`) y el consumidor acepta las tres formas. Los dos
+ * lados los ata `tests/version.test.ts`, que recorre el dominio completo de
+ * entradas de un build y mete cada salida en este mismo sanitizador; acá quedan
+ * los tres casos concretos que la costura tenía roídos.
  */
-describe('B-88 · versiones de build que la analítica no reconoce', () => {
-  it('las tres formas siguen siendo las que produce el build', () => {
-    const src = fuente('scripts/version.mjs');
-    expect(src).toContain('`${pkg.version}+${sha}`');
-    expect(src).toContain('-sucio.${sello(ahora)}');
-    expect(src).toContain('+sin-git.${sello(ahora)}');
-  });
-
+describe('B-88 · las tres versiones de build que la analítica tiene que reconocer', () => {
   const version = (v: string) =>
     construirEventoAnalitica('panel_abierto', { version: v })!.params.version;
 
@@ -483,11 +482,13 @@ describe('B-88 · versiones de build que la analítica no reconoce', () => {
     expect(version('1.0.1+5e2cb50')).toBe('1.0.1+5e2cb50');
   });
 
-  it.fails('B-88: la versión de un build de árbol sucio también tendría que viajar', () => {
-    expect(version('1.0.1+5e2cb50-sucio.20260821-2124')).not.toBe('otro');
+  it('la versión de un build de árbol sucio también viaja', () => {
+    expect(version('1.0.1+5e2cb50-sucio.20260821-2124')).toBe(
+      '1.0.1+5e2cb50-sucio.20260821-2124',
+    );
   });
 
-  it.fails('B-88: y la de un clone sin .git', () => {
-    expect(version('1.0.1+sin-git.20260821-2124')).not.toBe('otro');
+  it('y la de un clone sin .git', () => {
+    expect(version('1.0.1+sin-git.20260821-2124')).toBe('1.0.1+sin-git.20260821-2124');
   });
 });

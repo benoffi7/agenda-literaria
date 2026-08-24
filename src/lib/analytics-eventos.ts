@@ -322,11 +322,32 @@ const unir = (valores: string[]): string =>
   recortarLista([...new Set(valores)].sort().join(','));
 
 /**
- * `0.1.0+5e2cb50` y nada más. Sin la versión, un pico de errores de validación
- * no se puede atribuir a un deploy; con un formato abierto, el campo sería una
- * puerta para texto libre. El formato se verifica, no se confía.
+ * Las tres formas que estampa el build: `1.0.1+5e2cb50`,
+ * `1.0.1+5e2cb50-sucio.20260821-2124` y `1.0.1+sin-git.20260821-2124`.
+ *
+ * Sin la versión, un pico de errores de validación no se puede atribuir a un
+ * deploy; con un formato abierto, el campo sería una puerta para texto libre.
+ * El formato se verifica, no se confía: semver de tres números y, como máximo,
+ * **un** sufijo que arranca alfanumérico y sigue con `[0-9A-Za-z.-]` hasta 40
+ * caracteres. No entra un espacio, ni un acento, ni `@ : / ?`, así que un
+ * título, un mail, un handle o un link no tienen forma de pasar por acá.
+ *
+ * **El productor del formato es `scripts/version.mjs`; este es su consumidor**
+ * (B-88, D-98). No se importa: ese script corre en Node —`child_process`,
+ * `fs`— y traerlo al bundle es el mismo problema que el D-60 tiene con zod.
+ * Así que la lista no se copia: los dos lados los ata un test.
+ * `tests/version.test.ts` recorre `versionesPosibles()` —el dominio completo de
+ * entradas que puede tener un build— y verifica que cada salida sobreviva
+ * **entera** a este sanitizador, más la versión que el árbol de trabajo estampa
+ * ahora mismo. Una forma nueva inventada del lado del build rompe ese test en
+ * vez de viajar como `'otro'` en silencio, que es lo que pasaba hasta B-88.
+ *
+ * El sufijo tolera un guion porque el build lo produce (`-sucio.`, `sin-git.`),
+ * no porque el vocabulario se haya abierto: sigue siendo cerrado y verificado,
+ * y lo que no matchea viaja como `'otro'`.
  */
-const FORMATO_VERSION = /^\d{1,3}\.\d{1,3}\.\d{1,3}(?:[-+][0-9A-Za-z.]{1,20})?$/;
+export const FORMATO_VERSION =
+  /^\d{1,3}\.\d{1,3}\.\d{1,3}(?:[-+][0-9A-Za-z][0-9A-Za-z.-]{0,39})?$/;
 
 const sanitizar = (san: Sanitizador, valor: unknown): string | number | undefined => {
   switch (san.tipo) {
