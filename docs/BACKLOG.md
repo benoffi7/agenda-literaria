@@ -842,7 +842,7 @@ de literales dejaron de estar duplicados en el chunk de `duplicar`.
 
 Ver [CHANGELOG](CHANGELOG.md) y **D-98**.
 
-### B-76 · El listado muestra el estado en slug crudo
+### B-76 · El listado muestra el estado en slug crudo — ✅ hecho (2026-08-24)
 
 `ListaActividades.tsx:124` renderiza `{a.estado}`, así que la píldora dice
 "borrador" y "publicado" en minúscula, mientras el formulario dice "Borrador" y
@@ -857,6 +857,18 @@ Pasa porque el vocabulario de etiquetas es local al formulario. Un
 prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), no
 etiquetas de UI. Unificarlos haría que un cambio de copy del panel cambie lo que
 se publica en el calendario.
+
+
+**Cómo quedó.** La píldora del listado usa `ETIQUETA_ESTADO`, que vive en
+`src/lib/filtrosActividades.ts` desde la vista calendario: el síntoma —la misma
+actividad escrita de dos maneras en dos pantallas— está cerrado, y
+`tests/etiquetas-de-ui.test.ts` lo fija.
+
+Lo que **no** se hizo: el `src/lib/etiquetas.ts` que propone el ítem. Los mapas
+del formulario (`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`) siguen
+siendo locales, así que la clase está viva y ya divergió una vez —"Híbrido"
+contra "Presencial y virtual"—. Unificarlos toca `ActividadFormulario.tsx`, que
+es de la fase 2: queda en **B-167**, con el `it.fails` que lo espera.
 
 ### B-84 · Cancelar un encuentro de un ciclo renumera y reescribe los otros siete — ✅ hecho (2026-08-24)
 
@@ -1621,6 +1633,26 @@ que sobrevivieron dos commits
 (`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
+
+### B-167 · El formulario y el listado tienen cada uno su vocabulario de etiquetas · P3
+
+Residual de **B-76**, y la parte que era la causa y no el síntoma. El listado ya
+usa `ETIQUETA_ESTADO` de `src/lib/filtrosActividades.ts`, pero
+`ActividadFormulario.tsx:71-78` mantiene sus tres mapas propios
+(`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`).
+
+Ya divergieron: para `modalidad: 'hibrido'` el formulario dice **"Híbrido"** y el
+desplegable de filtros dice **"Presencial y virtual"**. Las dos pantallas están a
+un clic de distancia y hablan del mismo valor guardado.
+
+El arreglo es el `src/lib/etiquetas.ts` de ~20 LOC que proponía B-76 —con los
+mapas de `estado`, `modalidad` y `via`— del que tiren las dos pantallas. **No se
+hizo ahora porque toca `ActividadFormulario.tsx`**, que es de la fase 2 del
+saneamiento. `tests/etiquetas-de-ui.test.ts` tiene el `it.fails` que se vuelve
+`it` el día que se cierre.
+
+Ojo con lo que **no** entra: los `ETIQUETA_*` de `functions/calendario.js` son
+prosa del evento público, no etiquetas de UI (el motivo, en B-76).
 
 ### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
 

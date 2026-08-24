@@ -2,6 +2,26 @@
 
 ## 2026-08-24
 
+### Fase 3B — el listado, el panel y el centro de ayuda
+
+**B-76 · el estado ya se lee igual en las dos pantallas.** El síntoma —el listado
+decía "borrador" donde el formulario decía "Borrador"— venía cerrado con la vista
+calendario, que subió `ETIQUETA_ESTADO` a `src/lib/filtrosActividades.ts`. Lo que
+faltaba era la guardia: `tests/etiquetas-de-ui.test.ts` fija que el listado use el
+mapa compartido y no el valor crudo, y compara el mapa del formulario contra el
+compartido. Ese segundo chequeo **falla a propósito** (`it.fails`): el formulario
+todavía tiene sus tres mapas locales y ya divergieron —"Híbrido" contra
+"Presencial y virtual"—. Unificarlos toca `ActividadFormulario.tsx`, que es de la
+fase 2, así que queda anotado en **B-167**.
+
+**B-96 · ya estaba cerrado, por otro camino.** Lo resolvió D-73 (el listado ordena
+por próximo encuentro, no por última modificación) en lugar del bloque "esta
+semana" que proponía el backlog. Se verificó contra el código y no se agregó nada:
+un bloque más sería la segunda pantalla que contesta la misma pregunta, que es lo
+que D-71 evita. Lo único que el bloque hacía y el orden no —avisar de las
+inscripciones que cierran— sigue abierto en **B-126**.
+
+
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 
 Cuatro vocabularios de la analítica se mantenían por separado de su fuente, y
