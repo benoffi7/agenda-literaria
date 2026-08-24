@@ -1,5 +1,10 @@
 import { slugify } from '@/lib/slugify';
-import type { ActividadForm } from '@/types/actividad';
+import {
+  CAMPOS_TAXONOMIA,
+  ESTADOS,
+  MODALIDADES,
+  type ActividadForm,
+} from '@/types/actividad';
 
 /**
  * Taxonomía de eventos de analítica del panel, y la **proyección** que decide
@@ -42,9 +47,27 @@ export type ModoFormulario = (typeof MODOS)[number];
 /** Qué botón disparó el guardado. */
 export const ACCIONES = ['borrador', 'submit'] as const;
 
-export const ESTADOS_DESTINO = ['borrador', 'pendiente', 'publicado', 'cancelado'] as const;
+/**
+ * Los dos vocabularios que la analítica **no** define: los toma del modelo
+ * (`@/types/actividad`) en vez de copiarlos (B-75).
+ *
+ * El modo de falla de la copia era el del D-60 una góndola más allá: un quinto
+ * `estado` o una cuarta `modalidad` en el modelo dejaba a la analítica
+ * reportándolo como `'otro'` **en silencio**, justo el dato con el que se
+ * contestan las preguntas de `docs/09-analitica.md`. Acá no hay lista que
+ * mantener: son el mismo objeto, y un test lo fija por identidad.
+ *
+ * El argumento de bundle del D-60 no aplica: `@/types/actividad` tiene fan-out
+ * 0 —son interfaces y arrays de literales, sin un solo import— así que zod
+ * sigue entrando solo por `@/lib/schema`, que este módulo no toca. Medido en el
+ * build: la carga inicial de `/admin` no se movió ni un byte.
+ *
+ * Los alias existen porque el nombre dice para qué se usa acá: `estado` es el
+ * **destino** de un guardado, no cualquier estado.
+ */
+export const ESTADOS_DESTINO = ESTADOS;
 
-export const MODALIDADES_MEDIBLES = ['presencial', 'virtual', 'hibrido'] as const;
+export const MODALIDADES_MEDIBLES = MODALIDADES;
 
 /**
  * Motivos de un guardado fallido, clasificados. El mensaje crudo NO se manda:
@@ -130,14 +153,11 @@ export const SECCIONES = [
   'vista-previa-del-evento',
 ] as const;
 
-/** Campos con taxonomía autogestionada (§4). */
-export const CAMPOS_TAXONOMIA_MEDIBLES = [
-  'arancel',
-  'tipo',
-  'barrio',
-  'plataforma',
-  'tags',
-] as const;
+/**
+ * Campos con taxonomía autogestionada (§4). Importado del modelo, no copiado
+ * (B-75): un sexto campo con taxonomía se mide solo, sin caer en `'otro'`.
+ */
+export const CAMPOS_TAXONOMIA_MEDIBLES = CAMPOS_TAXONOMIA;
 
 /**
  * Modos de fallo al pegar un link de Google Maps en las coordenadas de la sede.
@@ -302,11 +322,32 @@ const unir = (valores: string[]): string =>
   recortarLista([...new Set(valores)].sort().join(','));
 
 /**
- * `0.1.0+5e2cb50` y nada más. Sin la versión, un pico de errores de validación
- * no se puede atribuir a un deploy; con un formato abierto, el campo sería una
- * puerta para texto libre. El formato se verifica, no se confía.
+ * Las tres formas que estampa el build: `1.0.1+5e2cb50`,
+ * `1.0.1+5e2cb50-sucio.20260821-2124` y `1.0.1+sin-git.20260821-2124`.
+ *
+ * Sin la versión, un pico de errores de validación no se puede atribuir a un
+ * deploy; con un formato abierto, el campo sería una puerta para texto libre.
+ * El formato se verifica, no se confía: semver de tres números y, como máximo,
+ * **un** sufijo que arranca alfanumérico y sigue con `[0-9A-Za-z.-]` hasta 40
+ * caracteres. No entra un espacio, ni un acento, ni `@ : / ?`, así que un
+ * título, un mail, un handle o un link no tienen forma de pasar por acá.
+ *
+ * **El productor del formato es `scripts/version.mjs`; este es su consumidor**
+ * (B-88, D-98). No se importa: ese script corre en Node —`child_process`,
+ * `fs`— y traerlo al bundle es el mismo problema que el D-60 tiene con zod.
+ * Así que la lista no se copia: los dos lados los ata un test.
+ * `tests/version.test.ts` recorre `versionesPosibles()` —el dominio completo de
+ * entradas que puede tener un build— y verifica que cada salida sobreviva
+ * **entera** a este sanitizador, más la versión que el árbol de trabajo estampa
+ * ahora mismo. Una forma nueva inventada del lado del build rompe ese test en
+ * vez de viajar como `'otro'` en silencio, que es lo que pasaba hasta B-88.
+ *
+ * El sufijo tolera un guion porque el build lo produce (`-sucio.`, `sin-git.`),
+ * no porque el vocabulario se haya abierto: sigue siendo cerrado y verificado,
+ * y lo que no matchea viaja como `'otro'`.
  */
-const FORMATO_VERSION = /^\d{1,3}\.\d{1,3}\.\d{1,3}(?:[-+][0-9A-Za-z.]{1,20})?$/;
+export const FORMATO_VERSION =
+  /^\d{1,3}\.\d{1,3}\.\d{1,3}(?:[-+][0-9A-Za-z][0-9A-Za-z.-]{0,39})?$/;
 
 const sanitizar = (san: Sanitizador, valor: unknown): string | number | undefined => {
   switch (san.tipo) {

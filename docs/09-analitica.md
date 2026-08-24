@@ -12,7 +12,7 @@ mismo cambio.
 | Destino | Google Analytics 4, propiedad `G-9CFMHSSGRC` (el web app ya la traía) |
 | Implementación | `src/lib/analytics-eventos.ts` (puro) + `src/lib/analytics.ts` (transporte) |
 | Instrumentación del formulario | `src/components/admin/useMedicionFormulario.ts` |
-| Tests | `tests/analytics-eventos.test.ts`, `tests/analytics-privacidad.test.ts` |
+| Tests | `tests/analytics-eventos.test.ts`, `tests/analytics-privacidad.test.ts`, `tests/analytics-campos.test.ts` (el vocabulario de campos contra el schema) y `tests/version.test.ts` (el formato de `version` contra el build) |
 | Alcance | solo el panel `/admin`. El sitio público no mide nada |
 
 ---
@@ -60,7 +60,19 @@ Van en **todos** los eventos.
 |---|---|---|
 | `dispositivo` | `mobile` · `tablet` · `escritorio` | La mitad del análisis. Se deriva del ancho y de `pointer: coarse`, no del user agent |
 | `ancho` | `xs` (<400) · `sm` (<768) · `md` (<1024) · `lg` | Los cortes del layout. El ancho exacto no aporta y es una huella |
-| `version` | `0.1.0+5e2cb50` | Atribuir un pico a un deploy. Formato verificado; cualquier otra cosa viaja como `otro` |
+| `version` | `1.0.1+5e2cb50` · `1.0.1+5e2cb50-sucio.20260821-2124` · `1.0.1+sin-git.20260821-2124` | Atribuir un pico a un deploy. Formato verificado contra el productor; cualquier otra cosa viaja como `otro` |
+
+**Las tres formas de `version` son las tres que el build puede estampar** y las
+tres viajan enteras (B-88 · D-98). El sufijo `-sucio.` avisa que lo publicado no
+corresponde a ningún commit, y `+sin-git.` que se buildeó desde un clone sin
+historial; hasta B-88 esas dos viajaban como `otro`, o sea que justo el build que
+no se puede identificar por el commit tampoco se podía identificar por la
+versión. El formato lo produce `scripts/version.mjs` y lo verifica
+`analytics-eventos.ts`, y como no pueden compartir código —uno corre en Node, el
+otro en el navegador— los ata `tests/version.test.ts`: recorre el dominio
+completo de entradas de un build y mete cada salida en el sanitizador real. En
+producción no se ve ninguna de las dos con sufijo de tiempo: el workflow de
+deploy falla si la versión del build sale `-sucio` o `sin-git`.
 
 ---
 
@@ -166,7 +178,7 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 |---|---|---|
 | `modo` | `nueva` · `editar` · `duplicar` | |
 | `accion` | `borrador` · `submit` | |
-| `estado` | `borrador` · `pendiente` · `publicado` · `cancelado` | ¿Se publica o queda en borrador para siempre? |
+| `estado` | `borrador` · `pendiente` · `publicado` · `cancelado` (los del modelo) | ¿Se publica o queda en borrador para siempre? |
 | `segundos` | 0–7200 | **Cuánto tarda una carga completa**, desde abrir el formulario |
 | `intentos_validacion` | 0–50 | Cuántos rebotes hubo antes de entrar |
 | `encuentros` | 0–200 | |
@@ -180,6 +192,13 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 
 `url_publica` es 1 solo si el flag está tildado **y** hay URL cargada, igual que
 en `toPublic`: sin URL no se inventa el campo.
+
+**`estado` y `modalidad` no tienen vocabulario propio: usan el del modelo**
+(`ESTADOS` y `MODALIDADES` de `src/types/actividad.ts`), igual que `detalle` con
+los campos de taxonomía (`CAMPOS_TAXONOMIA`). Eran copias hasta B-75, y una copia
+significaba que un quinto `estado` en el modelo se reportaba como `otro` en
+silencio — justo el dato con el que se contestan las preguntas de este
+documento. Hoy un valor nuevo del modelo se mide solo.
 
 ---
 
@@ -291,11 +310,27 @@ en su propio chunk:
 
 | Chunk | Peso | Cuándo se descarga |
 |---|---|---|
-| `AdminApp.*.js` | +11.2 kB (+2.8 kB gzip) sobre el anterior | con el panel — es la instrumentación, no el SDK |
+| `AdminApp.*.js` | +9.058 bytes (+3.126 gzip) sobre el mismo build sin instrumentación | con el panel — es la instrumentación, no el SDK |
 | `index.esm.*.js` | 34.5 kB (7.3 kB gzip) | **solo al idle**, después del primer render |
 
 El chunk del SDK **no** lleva `modulepreload`, así que el navegador no lo pide
 antes de tiempo. El bundle del sitio público no cambió ni un byte.
+
+**Medido de nuevo el 2026-08-24** (cierre estático de imports de `/admin`,
+comparando el build real contra el mismo build con la instrumentación en
+no-ops):
+
+| | raw | gzip |
+|---|---|---|
+| Carga inicial de `/admin` hoy | 386.303 B | 107.590 B |
+| Sin ninguna instrumentación | 377.245 B | 104.464 B |
+| **Toda la instrumentación** | **9.058 B** | **3.126 B** (2,9 %) |
+| Solo la taxonomía + la proyección | 6.522 B | 2.188 B (2,0 %) |
+
+Esa última fila es lo que costaría ganar mudando `construirEvento` al lado
+diferido, que es lo que proponía [B-59](BACKLOG.md): **2,14 kB gzip a cambio de
+partir la garantía de privacidad en dos pasos.** Se descartó con ese número
+(D-99).
 
 Los eventos disparados antes de que el SDK cargue se encolan (máximo 30) y se
 vacían al arrancar. Si nunca arranca, la cola se descarta.

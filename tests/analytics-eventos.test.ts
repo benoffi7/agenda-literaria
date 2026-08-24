@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ANCHOS,
+  CAMPOS_TAXONOMIA_MEDIBLES,
   CAMPOS_VALIDABLES,
+  ESTADOS_DESTINO,
   EVENTOS,
   GRUPOS,
+  MODALIDADES_MEDIBLES,
   NOMBRES_EVENTOS,
   avanceDelFormulario,
   bucketDeAncho,
@@ -15,6 +18,7 @@ import {
   normalizarCampo,
   seccionASlug,
 } from '@/lib/analytics-eventos';
+import { CAMPOS_TAXONOMIA, ESTADOS, MODALIDADES } from '@/types/actividad';
 import { formularioLleno } from './fixtures/formulario';
 
 /**
@@ -145,6 +149,33 @@ describe('construirEvento — whitelist en las dos direcciones', () => {
   it('todos los eventos declaran la versión', () => {
     for (const nombre of NOMBRES_EVENTOS) {
       expect(Object.keys(EVENTOS[nombre])).toContain('version');
+    }
+  });
+
+  it('los vocabularios del modelo no son copias: son el mismo objeto (B-75)', () => {
+    // La guardia es la identidad, no la igualdad: si mañana alguien vuelve a
+    // escribir la lista al lado del import, `toBe` falla aunque los valores
+    // coincidan hoy. Eso es lo que evita el modo de falla del B-75 — un quinto
+    // `estado` en el modelo que la analítica reporta como `otro` en silencio.
+    expect(ESTADOS_DESTINO).toBe(ESTADOS);
+    expect(MODALIDADES_MEDIBLES).toBe(MODALIDADES);
+    expect(CAMPOS_TAXONOMIA_MEDIBLES).toBe(CAMPOS_TAXONOMIA);
+  });
+
+  it('los enums del modelo llegan enteros a la especificación del evento', () => {
+    // Que el vocabulario del parámetro sea el del modelo no alcanza si el
+    // evento declara otro: se verifica contra el payload real.
+    for (const estado of ESTADOS) {
+      expect(construirEvento('guardado_ok', { estado })?.params.estado).toBe(estado);
+    }
+    for (const modalidad of MODALIDADES) {
+      expect(construirEvento('guardado_ok', { modalidad })?.params.modalidad).toBe(modalidad);
+    }
+    for (const campo of CAMPOS_TAXONOMIA) {
+      expect(
+        construirEvento('funcion_usada', { funcion: 'taxonomia-otro', detalle: campo })?.params
+          .detalle,
+      ).toBe(campo);
     }
   });
 

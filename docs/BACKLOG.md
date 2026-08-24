@@ -524,14 +524,29 @@ Con el dato ya disponible es un `beforeunload` y una confirmación en el botón 
 volver. Queda fuera de este cambio porque toca el flujo del formulario, no el de
 versiones.
 
-### B-36 · La versión no distingue dos builds sucios del mismo commit
+### B-36 · La versión no distingue dos builds sucios del mismo commit — ❌ descartado (2026-08-24)
 
 `+a1b2c3d-sucio.20260821-2129` lleva sello de tiempo, así que dos builds sucios
-distintos sí se ven distintos. Lo que no se puede saber es **qué** cambió: el
-sufijo dice "esto no es ningún commit" y nada más.
+distintos ya se ven distintos. Lo que no se puede saber es **qué** cambió.
 
-Es aceptable porque producción se buildea de un árbol limpio. Si alguna vez se
-deploya desde un árbol sucio en serio, la salida es un hash del diff.
+**Se descarta, con tres motivos:**
+
+1. **Un hash del diff no contesta la pregunta.** Diría si dos builds sucios
+   salieron del mismo árbol, no qué tenían de distinto. Para eso hace falta el
+   diff, y quien buildeó sucio lo tiene en su disco.
+2. **Producción no puede salir de un árbol sucio.** El job de deploy de
+   `.github/workflows/push-main.yml` corta con `::error::` si la versión del
+   build contiene `-sucio` o `sin-git`, así que el formato con sello de tiempo
+   es dev-only por construcción. Un ítem que solo aplica a builds que nunca se
+   publican no vale su costo.
+3. **No es la línea que parece.** Un hash fiel tendría que cubrir también los
+   archivos sin trackear (`git diff HEAD` no los ve, `status --porcelain` sí),
+   o sea decidir qué entra al hash y mantener esa decisión.
+
+Lo que sí tenía valor de esta zona ya se hizo: hasta **B-88** un build sucio
+mandaba `version: otro` a la analítica, y ahora la versión sucia viaja entera y
+con su sello. Distinguir dos builds sucios *entre sí* ya funciona; explicar en
+qué se diferencian no es trabajo de una cadena de versión.
 
 ### B-37 · `/events.json` va a necesitar su propia cabecera de cache
 
@@ -552,15 +567,18 @@ instrumentación.
 Vale la pena porque decide el arreglo: si el 80% de los fallos es un link corto,
 lo que hay que hacer es resolverlos, no explicar mejor el campo.
 
-### B-56 · Enchufar `registrarVersion(VERSION_APP)`
+### B-56 · Enchufar `registrarVersion(VERSION_APP)` — ✅ hecho
 
-`src/lib/version.ts` se mergeó después, así que el setter existe
-(`registrarVersion` en `src/lib/analytics.ts`) pero nadie lo llama: hoy los
-eventos viajan sin el parámetro `version`.
+Lo enchufó el merge del 2026-08-21: `src/components/admin/AdminApp.tsx` llama
+`registrarVersion(VERSION_APP)` en el efecto de montaje, **antes** de
+`medirPanelAbierto()`, así que el primer evento ya viaja con `version`.
 
-Es **una línea** en `AdminApp` (o en `admin.astro`):
-`registrarVersion(VERSION_APP)`. Sin eso, un pico de errores de validación no se
-puede atribuir a un deploy, que es la mitad de la utilidad de medirlos.
+Verificado al cerrar B-88, que es lo que esto destapó: hasta ese arreglo el
+parámetro llegaba, pero como `otro` en cualquier build sucio. Lo único que queda
+es confirmarlo en GA4 (DebugView), que es un paso de consola del dueño.
+
+**B-92 y B-118 son la misma observación sobre esta entrada, duplicada**: las dos
+decían que B-56 estaba desactualizado. Quedan cerradas con esto.
 
 ---
 
@@ -803,25 +821,26 @@ corriendo hasta el timeout de la plataforma.
 Son dos líneas. Y es el ejemplo de por qué B-77 vale: el conocimiento estaba
 escrito, en una sola de las dos copias.
 
-### B-75 · Tres enums del modelo están copiados en `analytics-eventos.ts` sin guardia
+### B-75 · Tres enums del modelo están copiados en `analytics-eventos.ts` sin guardia — ✅ hecho (2026-08-24)
 
-| Original (`src/types/actividad.ts`) | Copia (`src/lib/analytics-eventos.ts`) |
-|---|---|
-| `ESTADOS` (línea 26) | `ESTADOS_DESTINO` (línea 45) |
-| `MODALIDADES` (línea 23) | `MODALIDADES_MEDIBLES` (línea 47) |
-| `CAMPOS_TAXONOMIA` (línea 212) | `CAMPOS_TAXONOMIA_MEDIBLES` (línea 134) |
+`ESTADOS_DESTINO`, `MODALIDADES_MEDIBLES` y `CAMPOS_TAXONOMIA_MEDIBLES` eran
+copias literales de `ESTADOS`, `MODALIDADES` y `CAMPOS_TAXONOMIA` de
+`src/types/actividad.ts`. Sin guardia, un quinto `estado` o un sexto campo con
+taxonomía se reportaba como `'otro'` en silencio.
 
-`analytics-eventos.ts` **ya importa `@/types/actividad`** (línea 2) y ese módulo
-no importa nada, así que traer las tres constantes cuesta cero bytes de bundle:
-el argumento de D-60 (importar zod metía 68 kB en el chunk inicial) no aplica acá.
+Ahora son **el mismo objeto**, y la guardia es la identidad: el test compara
+referencias (`toBe`), así que volver a escribir la lista al lado del import falla
+aunque los valores coincidan ese día. Un segundo test verifica que cada valor del
+modelo llegue entero al payload, no solo al vocabulario.
 
-Sin guardia, agregar un sexto `tipo` o un quinto `estado` hace que la analítica
-lo mande como `'otro'` en silencio — exactamente el modo de falla que D-60
-describe y previene, una góndola más allá.
+**Verificado con el build**, que era la duda: `@/types/actividad` tiene fan-out 0,
+así que zod (53.015 B, chunk `types.*`) sigue fuera de la carga inicial y sin
+moverse. La carga inicial de `/admin` pasó de **386.088 a 386.291 bytes** (+203 B,
++0,05 %; gzip 107.490 → 107.597, +107 B), los mismos 4 chunks y ningún
+`modulepreload` nuevo. La suma de **todos** los chunks bajó 101 bytes: los arrays
+de literales dejaron de estar duplicados en el chunk de `duplicar`.
 
-Arreglo: seis líneas, importar en vez de copiar. Si por algún motivo se quieren
-dejar separados, el patrón correcto ya existe: un test que las derive, como
-`tests/analytics-campos.test.ts` hace con `CAMPOS_VALIDABLES`.
+Ver [CHANGELOG](CHANGELOG.md) y **D-98**.
 
 ### B-76 · El listado muestra el estado en slug crudo
 
@@ -1422,16 +1441,34 @@ Tampoco está el **embudo fino** del formulario (qué campo se tocó último ant
 abandonar): eso pide instrumentar 30+ inputs o un `onFocus` a nivel del `<form>`,
 y hoy `formulario_abandonado.faltantes` da la ubicación gruesa sin tocar nada.
 
-### B-59 · La instrumentación suma 2.8 KB gzip al chunk del panel
+### B-59 · La instrumentación suma 2.8 KB gzip al chunk del panel — ❌ descartado (2026-08-24)
 
-El SDK de analítica está diferido y no toca el chunk inicial (D-58), pero la
-proyección y la taxonomía sí: +11.2 KB (2.8 KB gzip) sobre `AdminApp.js`.
+El SDK de analítica está diferido y no toca el chunk inicial (D-58); la
+proyección y la taxonomía sí. La propuesta era moverlas al lado diferido y dejar
+que `medir()` encole los valores crudos.
 
-Si el trabajo de bajar el bundle (B-09) necesita esos kilobytes, se puede mover
-`construirEvento` y los vocabularios al lado diferido y dejar que `medir()`
-encole los valores crudos. **No se hizo de entrada** porque parte la garantía de
-privacidad en dos pasos: hoy la proyección es un único portón sincrónico, y eso
-vale más que 2.8 KB.
+**Medido primero** (cierre estático de imports de `/admin`, el build real contra
+el mismo build con la instrumentación en no-ops):
+
+| | raw | gzip |
+|---|---|---|
+| Carga inicial de `/admin` hoy | 386.303 B | 107.590 B |
+| Sin ninguna instrumentación | 377.245 B | 104.464 B |
+| Toda la instrumentación | 9.058 B | 3.126 B (2,9 %) |
+| **Solo la taxonomía + la proyección** | **6.522 B** | **2.188 B (2,0 %)** |
+
+O sea que el techo de lo que este ítem podía ganar es **2,14 kB gzip**: el 2,0 %
+de la carga inicial comprimida, el 1,7 % de la cruda. (El número viejo, 2.8 KB,
+medía toda la instrumentación, no la parte que se iba a mover.)
+
+**Se descarta con ese número.** Hoy la proyección es un único portón sincrónico:
+`medir()` proyecta **antes** de encolar, así que lo que espera en la cola —hasta
+30 eventos si el SDK no cargó, o nunca carga porque un ad blocker lo bloquea— son
+payloads ya sanitizados. Del otro lado, la cola guardaría los valores **crudos**:
+contenido del formulario en memoria, y la propiedad que hace valer a los 11 tests
+de `analytics-privacidad.test.ts` pasaría a depender de dos pasos en vez de uno.
+2,14 kB gzip no paga eso, y si el bundle necesitara kilobytes hay 34,5 kB de SDK
+y 186 kB de runtime de React antes en la fila. Ver **D-99**.
 
 
 ---
@@ -1585,6 +1622,37 @@ que sobrevivieron dos commits
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
 
+### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
+
+La tercera copia del formato de versión está en el test de privacidad
+(`tests/analytics-privacidad.test.ts:60`), que la usa como predicado de
+admisibilidad: un string que matchea el formato se acepta como valor de
+parámetro. B-88 amplió el formato real y **no** tocó esa copia, así que hoy es
+estrictamente más angosta que la del código.
+
+**No es una fuga y no puede volverse una**: al ser más angosta, lo único que
+puede hacer es rechazar un valor que el código sí acepta, o sea dar una falsa
+alarma. Hoy ni eso, porque ningún caso del test mete una versión válida en el
+payload. El arreglo es importar `FORMATO_VERSION` de `@/lib/analytics-eventos`,
+que ya se exporta, y borrar la copia.
+
+No se hizo junto con B-88 a propósito: ese cambio tenía que dejar los 11 tests de
+privacidad en verde **sin tocarlos**, que es la única forma de que la garantía
+signifique algo.
+
+### B-166 · Un build sin versión estampada es indistinguible de un formato inválido · P3
+
+`VERSION_APP` vale `'desconocida'` cuando no hay versión estampada (dev server,
+tests), y el sanitizador lo manda como `'otro'` — el mismo valor que usa para "el
+formato no lo reconozco". Después de B-88 el segundo caso no debería ocurrir
+nunca, así que un `version: otro` con volumen es una alarma… que hoy se confunde
+con el ruido de dev.
+
+Es chico y es de datos, no de código: en dev no se mide (`PUBLIC_USE_EMULATORS`),
+así que en producción no debería haber ninguno de los dos. Si algún día se quiere
+usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
+vocabulario en vez de caer en la bolsa.
+
 ### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
 
 B-80 se arregló del lado de la Function (D-91), que es el lado defensivo: el
@@ -1599,6 +1667,7 @@ fusione los ids por id de sesión antes de escribir, o directamente que
 `formADocumento` no emita el campo. Toca `src/lib/actividades.ts` y el
 formulario, o sea el archivo más disputado del repo (fase 2 del plan de
 saneamiento).
+
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 
@@ -1646,15 +1715,13 @@ del corte del bundle (B-09, D-51), pero:
 Lo segundo es lo que vale: pide seguir el grafo, no comparar una lista de
 literales. Relacionado con B-50.
 
-### B-118 · B-56 quedó desactualizado · P3
+### B-118 · B-56 quedó desactualizado · ✅ hecho (2026-08-24)
 
-Hallazgo del `auditor-documentacion`. B-56 dice que `registrarVersion` existe
-pero que nadie lo llama, y hoy se llama en `src/components/admin/AdminApp.tsx`
-(`registrarVersion(VERSION_APP)`), así que los eventos ya viajan con el parámetro
-`version`. Falta confirmarlo en GA4 y cerrar el ítem.
+Hallazgo del `auditor-documentacion`. B-56 quedó corregido al cerrar B-88.
+Confirmar en GA4 (DebugView) sigue siendo un paso de consola del dueño.
 
-No se tocó B-56 al encontrarlo porque no era parte del cambio que lo detectó: se
-anota para que quede el rastro, que es la regla.
+**B-92 dice exactamente lo mismo que este ítem**: el hallazgo se anotó dos veces
+en la misma pasada. Los dos se cierran acá.
 
 ### B-119 · No hay un mapa trampa → test → archivo · P3
 
@@ -1729,27 +1796,35 @@ Un intermedio razonable: `auditor-privacidad` siempre que el diff toque una de
 las cuatro salidas, y los otros dos solo antes del PR. Requiere decidir el
 disparador de B-115.
 
-### B-88 · La analítica no reconoce la versión de un build de árbol sucio
+### B-88 · La analítica no reconoce la versión de un build de árbol sucio — ✅ hecho (2026-08-24)
 
-`scripts/version.mjs` produce tres formas: `1.0.1+5e2cb50`,
-`1.0.1+5e2cb50-sucio.20260821-2124` y `1.0.1+sin-git.20260821-2124`. El
-sanitizador `FORMATO_VERSION` de `analytics-eventos.ts` solo acepta la primera:
-el sufijo de las otras dos lleva guiones y pasa de 20 caracteres, así que el
-parámetro viaja como `otro`.
+`scripts/version.mjs` produce tres formas y `FORMATO_VERSION` aceptaba solo la
+primera (el sufijo de las otras dos lleva guiones y pasa de 20 caracteres), así
+que todo build que no saliera de un árbol limpio mandaba `version: otro` en
+**todos** sus eventos.
 
-O sea que en cualquier build que no salga de un árbol limpio —y con
-`registrarVersion(VERSION_APP)` ya enchufado, eso es todo lo que se prueba a
-mano— los eventos pierden justo el dato que existe para atribuir un pico a un
-deploy. Producción se buildea limpio, así que el impacto real es sobre los datos
-de desarrollo, que igual no se miden (`PUBLIC_USE_EMULATORS`). Queda acá y no más
-arriba por eso.
+**Lo que se arregló no es el regex, es la costura.** Ampliar el regex a mano
+dejaba el mismo problema para el próximo formato que alguien invente — que es
+exactamente cómo apareció este. Ahora:
 
-El arreglo es ampliar el sanitizador a las formas que el build produce de verdad
-(el guion y el largo del sello), no abrirlo: el punto del formato cerrado sigue
-siendo que `version` no pueda ser una puerta de texto libre.
+- el productor tiene **un solo lugar** donde se arma la cadena (`componerVersion`,
+  puro) y declara al lado su dominio completo de entradas (`ENTRADAS_DE_BUILD`);
+- el consumidor sigue con su constante, porque importar el productor arrastraría
+  `node:child_process` al bundle (el problema del D-60 con zod);
+- **los ata un test**: `tests/version.test.ts` recorre `versionesPosibles()` y
+  mete cada salida del productor en el sanitizador real del consumidor, más la
+  versión que estampa el árbol de trabajo de quien corre los tests (git de
+  verdad). Un formato nuevo del lado del build rompe ese test en vez de mandar
+  `otro` a GA4.
 
-Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts), con una guarda
-para que se enteren si `version.mjs` cambia de formato.
+El formato se amplió a lo que el build produce, no se abrió: semver más un sufijo
+de `[0-9A-Za-z.-]` hasta 40 caracteres, sin espacios ni acentos ni `@ : / ?`.
+Nueve entradas rechazadas quedaron fijadas en un test y los 11 de privacidad
+siguen en verde sin tocarse.
+
+Los dos `it.fails` de `tests/costuras.test.ts` quedaron promovidos a `it`, y el
+grep sobre el fuente de `version.mjs` salió: lo reemplaza el lazo. Ver
+[CHANGELOG](CHANGELOG.md) y **D-98**.
 
 ### B-89 · Borrar una actividad deja huérfana su subcolección `versiones`
 
@@ -1778,12 +1853,10 @@ Es un borde angosto y el error es del lado seguro (bloquea, no publica una URL
 rota), así que P3. Si molesta, la marca de copia puede ir en el estado y no en el
 texto del slug.
 
-### B-92 · B-56 quedó desactualizado en este mismo archivo
+### B-92 · B-56 quedó desactualizado en este mismo archivo — ✅ hecho (2026-08-24)
 
-B-56 dice que nadie llama a `registrarVersion(VERSION_APP)`; el merge lo enchufó
-en `AdminApp` (efecto de montaje, al lado de `medirPanelAbierto`). La entrada
-sigue pidiendo una línea que ya está escrita. Vale borrarla — y de paso es lo que
-destapa B-88, que hasta ese merge no tenía efecto.
+Duplicado de **B-118**: el mismo hallazgo anotado dos veces. B-56 quedó
+corregido al cerrar B-88.
 
 
 ## Cerrados

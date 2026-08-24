@@ -2,6 +2,80 @@
 
 ## 2026-08-24
 
+### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
+
+Cuatro vocabularios de la analítica se mantenían por separado de su fuente, y
+todos fallaban igual: el valor nuevo viaja como `otro` **en silencio**, justo
+cuando alguien está mirando los datos para entender algo. Cierra **B-75** y
+**B-88**, y descarta **B-36** y **B-59** con el número medido.
+
+**B-88 · la versión de un build sucio viajaba como `otro`.** `scripts/version.mjs`
+estampa tres formas —`1.0.1+5e2cb50`, `1.0.1+5e2cb50-sucio.20260821-2124` y
+`1.0.1+sin-git.20260821-2124`— y el sanitizador de la analítica aceptaba solo la
+primera, porque el sufijo de las otras dos lleva guiones y pasa de 20 caracteres.
+Con `registrarVersion(VERSION_APP)` ya enchufado en `AdminApp`, eso era todo lo
+que se prueba a mano: los eventos perdían el único dato que existe para atribuir
+un pico a un deploy.
+
+Lo que se arregló **no es el regex**. Ampliarlo a mano dejaba el mismo problema
+para el próximo formato que alguien invente, que es exactamente cómo apareció
+este: el productor y el consumidor derivaban el formato por separado. Ahora hay
+un solo lugar donde se arma la cadena (`componerVersion`, puro) con el dominio
+completo de entradas de un build declarado al lado (`ENTRADAS_DE_BUILD`), y como
+productor y consumidor no pueden compartir código —uno usa `node:child_process`,
+el otro viaja al navegador— **los ata un test**: `tests/version.test.ts` recorre
+`versionesPosibles()` y mete cada salida en el sanitizador real, más la versión
+que estampa el árbol de trabajo de quien corre los tests. Es el patrón del D-60
+con zod, aplicado a un formato en vez de a una lista (D-98). Los dos `it.fails`
+de B-88 en `tests/costuras.test.ts` quedaron promovidos a `it`.
+
+El formato se amplió a lo que el build produce, no se abrió: semver más un sufijo
+de `[0-9A-Za-z.-]` hasta 40 caracteres, sin espacios, sin acentos y sin
+`@ : / ?`. Un título, un mail, un handle o un link siguen sin poder pasar, con
+nueve entradas rechazadas fijadas en un test.
+
+**B-75 · tres enums del modelo copiados sin guardia.** `ESTADOS_DESTINO`,
+`MODALIDADES_MEDIBLES` y `CAMPOS_TAXONOMIA_MEDIBLES` eran copias literales de
+`ESTADOS`, `MODALIDADES` y `CAMPOS_TAXONOMIA`. Ahora son el mismo objeto, y la
+guardia es la identidad: el test compara referencias, así que volver a escribir
+la lista al lado del import falla aunque los valores coincidan ese día.
+
+La duda era el bundle, y se verificó con el build: `@/types/actividad` tiene
+fan-out 0, así que zod sigue fuera de la carga inicial y su chunk no se movió un
+byte. La carga inicial de `/admin` (cierre estático de imports) pasó de **386.088
+a 386.303 bytes** con los dos cambios juntos: **+215 B, +0,06 %**; gzip 107.490 →
+107.590 (+100 B). Los mismos 4 chunks, ningún `modulepreload` nuevo, el SDK de
+analítica sigue diferido. La suma de **todos** los chunks bajó 101 bytes: los
+arrays de literales dejaron de estar duplicados en el chunk de `duplicar`.
+
+**B-59 · descartado con el número.** La propuesta era mudar la proyección al lado
+diferido. Medido contra el mismo build con la instrumentación en no-ops, toda la
+instrumentación son 9.058 B (3.126 gzip) de la carga inicial y **la parte que se
+iba a mover, 6.522 B (2.188 gzip)**: 2,0 % del payload comprimido. A cambio, la
+cola de eventos previos al SDK pasaría a guardar valores **crudos** en vez de
+payloads ya sanitizados, o sea contenido del formulario en memoria esperando a un
+SDK que un ad blocker puede bloquear. 2,14 kB gzip no paga partir en dos el único
+portón sincrónico que hace valer los 11 tests de privacidad (D-99).
+
+**B-36 · descartado.** Un hash del diff no dice **qué** cambió entre dos builds
+sucios, solo si son el mismo árbol — y el sello de tiempo ya los distingue.
+Además el job de deploy corta si la versión sale `-sucio` o `sin-git`, así que
+esas formas son dev-only por construcción.
+
+De paso: **B-56**, **B-92** y **B-118** quedan cerrados (los dos últimos son el
+mismo hallazgo anotado dos veces), y el D-60 quedó enmendado — decía que el
+vocabulario de campos se deriva del schema "al cargar el módulo", y desde B-09 la
+derivación vive en `tests/analytics-campos.test.ts`. Nuevos: **B-165** (la tercera
+copia del formato de versión, en el test de privacidad, que no se tocó a
+propósito) y **B-166**.
+
+**`novedades.ts` no se toca.** Es "qué podés hacer ahora que antes no podías" en
+el idioma de quien carga actividades (D-63), y nada de esto se nota usando el
+panel: un enum importado en vez de copiado y una cadena de versión que ahora
+llega entera a GA4 no cambian ni una pantalla ni un paso. Lo que cambió es la
+calidad de los datos con los que se contestan las preguntas de
+[`09-analitica.md`](09-analitica.md), y ese documento sí quedó actualizado.
+
 ### Renombrar una etiqueta llega al calendario, y borrar una actividad ya no la pierde
 
 - **B-04** · el evento de Calendar muestra la etiqueta, no el slug (D-11), así

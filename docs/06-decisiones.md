@@ -1194,6 +1194,14 @@ hay un test que verifica que el vocabulario derivado contenga rutas concretas y
 que tenga un tamaño plausible: si una actualización de zod rompe el recorrido, el
 test falla en vez de dejar todo en `otro`.
 
+**Enmienda (B-09):** el recorrido dejó de correr en el navegador. Importar
+`@/lib/schema` desde el módulo de analítica arrastraba zod al chunk inicial del
+panel —68 kB que el corte de B-09 había sacado—, así que hoy `CAMPOS_VALIDABLES`
+es una constante y **el recorrido vive en `tests/analytics-campos.test.ts`**, que
+lo deriva del schema y falla diciendo qué sobra y qué falta. La decisión de fondo
+no cambió: la lista no se mantiene a mano, se verifica contra el schema. Lo que
+cambió es dónde corre la verificación. Es el patrón que D-98 generaliza.
+
 
 ---
 
@@ -1368,6 +1376,101 @@ pliegue; y el número es lo que impide que un filtro olvidado se lea como un
 listado vacío.
 
 ---
+
+## D-98 · Toda lista duplicada lleva guardia, y la guardia más barata que alcance
+
+**Contexto:** la analítica tenía cuatro vocabularios que se mantenían por
+separado de su fuente. Tres eran copias literales de enums del modelo
+(`ESTADOS`, `MODALIDADES`, `CAMPOS_TAXONOMIA` — B-75) y el cuarto era el formato
+de la versión, que `scripts/version.mjs` **produce** y `analytics-eventos.ts`
+**consume** (B-88). Los cuatro se habían separado o iban a separarse, y el modo
+de falla es siempre el mismo: el valor nuevo viaja como `'otro'` **en silencio**,
+justo cuando alguien está mirando los datos para entender algo.
+
+**Decisión:** ninguna lista duplicada queda sin guardia, y la guardia se elige
+por lo que el bundle permite:
+
+| Caso | Guardia | Por qué esa |
+|---|---|---|
+| `ESTADOS`, `MODALIDADES`, `CAMPOS_TAXONOMIA` | **importar** el enum del modelo | `@/types/actividad` tiene fan-out 0: cuesta 203 bytes en la carga inicial de `/admin` (+0,05 %) y el chunk de zod no se movió. Si se puede importar, se importa |
+| El formato de `version` | **un test que ata productor y consumidor** | No se puede importar: el productor usa `node:child_process` y el consumidor viaja al navegador. Es el caso del D-60 con zod |
+| Las rutas de campo (`CAMPOS_VALIDABLES`) | test que las deriva del schema (D-60) | Idem: importar `@/lib/schema` metía 68 kB de zod en el chunk inicial |
+
+**El import se prefiere al test** porque no hay nada que mantener: la guardia es
+la identidad. El test de B-75 no compara valores, compara referencias (`toBe`):
+si alguien vuelve a escribir la lista al lado del import, falla aunque los
+valores coincidan ese día.
+
+**Cómo se ata un formato que no se puede importar** (B-88, y el patrón para el
+próximo):
+
+1. El productor tiene **un solo lugar** donde se arma la cadena
+   (`componerVersion`, puro) y declara al lado el **dominio completo de entradas**
+   que un build puede tener (`ENTRADAS_DE_BUILD`: hay commit o no, el árbol está
+   limpio o no).
+2. `versionesPosibles()` recorre ese dominio y devuelve todo lo que el build
+   puede llegar a estampar. No es una lista de ejemplos escrita a mano: sale de
+   ejecutar el productor.
+3. El test mete cada salida en el sanitizador **real** del consumidor y exige que
+   viaje entera, y además hace lo mismo con la versión que estampa el árbol de
+   trabajo de quien corre los tests (git de verdad: en CI limpio, en la máquina
+   de quien trabaja casi siempre sucio, y las dos ramas tienen que pasar).
+
+Una forma nueva inventada del lado del build rompe ese test en vez de mandar
+`'otro'` a GA4.
+
+**Alternativa descartada: arreglar el regex y listo.** Era una línea y dejaba el
+mismo problema para el próximo formato que alguien invente — que es exactamente
+cómo apareció este.
+
+**Alternativa descartada: mover el formato a un módulo compartido.** Tendría que
+ser importable desde un `.mjs` de build y desde el bundle del navegador a la vez.
+Se puede, pero el módulo compartido más chico posible es una constante de una
+línea, y para sostenerla habría que meter un archivo nuevo en `src/lib/` que el
+script de build importe cruzando la frontera TS/Node. El test cuesta menos y
+cubre más (verifica el productor **ejecutándolo**, no leyéndolo).
+
+**Costo asumido:** el formato aceptado se amplió a `[-+][0-9A-Za-z][0-9A-Za-z.-]`
+hasta 40 caracteres, para que entren `+5e2cb50-sucio.20260821-2124` y
+`+sin-git.20260821-2124`. Sigue siendo cerrado: sin espacios, sin acentos, sin
+`@ : / ?`, así que un título, un mail, un handle o un link no pueden pasar. Nueve
+entradas rechazadas quedaron fijadas en un test, y los 11 tests de privacidad
+siguen en verde sin tocarse.
+
+---
+
+## D-99 · La proyección de analítica no se muda al lado diferido
+
+**Decisión** (B-59, descartado): `construirEvento` y los vocabularios se quedan
+en el chunk inicial del panel. No se mueven al lado diferido con `medir()`
+encolando valores crudos.
+
+**Lo medido** (2026-08-24, cierre estático de imports de `/admin`, comparando el
+build real contra el mismo build con la instrumentación en no-ops):
+
+| | raw | gzip |
+|---|---|---|
+| Carga inicial de `/admin` hoy | 386.303 B | 107.590 B |
+| Sin ninguna instrumentación | 377.245 B | 104.464 B |
+| Toda la instrumentación | 9.058 B | 3.126 B (2,9 %) |
+| **Solo la taxonomía + la proyección** | **6.522 B** | **2.188 B (2,0 %)** |
+
+Esa última fila es el techo de lo que B-59 podía ganar: **2,14 kB gzip**, el
+2,0 % de la carga inicial comprimida y el 1,7 % de la cruda. El chunk del SDK
+(34,5 kB / 7,3 kB gzip) ya está diferido y sin `modulepreload` (D-58), que era el
+bulto de verdad.
+
+**Motivo para no hacerlo:** hoy la proyección es **un único portón sincrónico**.
+`medir()` proyecta antes de encolar, así que lo que espera en la cola —hasta 30
+eventos, si el SDK todavía no cargó o nunca carga— son payloads ya sanitizados.
+Con la proyección del otro lado, la cola guardaría **los valores crudos**: el
+contenido del formulario viviría en memoria esperando a un SDK que un ad blocker
+puede impedir que llegue, y la propiedad que hace valer a los 11 tests de
+`analytics-privacidad.test.ts` —"un `medir()` mal escrito produce un payload
+vacío, no una fuga"— pasaría a depender de dos pasos en vez de uno.
+
+2,14 kB gzip no paga eso. Si algún día el bundle necesita esos kilobytes, hay
+34,5 kB de SDK y 186 kB de runtime de React antes en la fila.
 
 ## D-90 · El id del evento de Calendar lo elige el cliente, derivado del id de sesión
 
