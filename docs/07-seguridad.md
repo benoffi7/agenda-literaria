@@ -155,6 +155,13 @@ direcciones (`construirEvento`, en `src/lib/analytics-eventos.ts`):
 3. Cada parámetro declarado tiene un sanitizador, y **no existe un sanitizador
    de texto libre**: entero, booleano, enum cerrado, ruta del schema, o lista de
    esos. Un string fuera de su vocabulario se reemplaza por `otro`.
+4. El único que no sale de un enum ni del schema es `version`, y va contra un
+   **formato verificado**: semver de tres números más, como máximo, un sufijo que
+   arranca alfanumérico y sigue con `[0-9A-Za-z.-]` hasta 40 caracteres. No entra
+   un espacio, ni un acento, ni `@ : / ?`, así que un título, un mail, un handle
+   o un link no pueden pasar por ahí; lo que no matchea viaja como `otro`. El
+   formato es exactamente el que produce `scripts/version.mjs`, y que los dos
+   lados no se separen lo verifica `tests/version.test.ts` (B-88 · D-98).
 
 La consecuencia es la propiedad que importa: **no depende de que cada punto de
 medición se acuerde de filtrar.** Un `medir()` mal escrito que pase el

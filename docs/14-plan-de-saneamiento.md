@@ -75,16 +75,20 @@ lo que el alias existe para evitar.
 El test que hoy dice `cancelar un encuentro borra solo el suyo` pasa porque su
 fixture **no es un ciclo**: el invariante no vale justo en el caso del §2.2.
 
-### 1C · Analítica, versión y enums
+### 1C · Analítica, versión y enums — ✅ terminada (2026-08-24)
 
 **Dueño de:** `src/lib/analytics*.ts`, `src/lib/version.ts`, `scripts/version.mjs`
 
-| | Qué |
-|---|---|
-| B-75 | P2 · tres enums del modelo copiados sin guardia |
-| B-88 | P3 · la analítica descarta la versión de un build de árbol sucio |
-| B-36 | P3 · dos builds sucios del mismo commit no se distinguen |
-| B-59 | P3 · la instrumentación suma 2,8 kB gzip |
+| | Qué | Resultado |
+|---|---|---|
+| B-75 | P2 · tres enums del modelo copiados sin guardia | hecho: se importan, +203 B en la carga inicial |
+| B-88 | P3 · la analítica descarta la versión de un build de árbol sucio | hecho: productor y consumidor atados por un test (D-98) |
+| B-36 | P3 · dos builds sucios del mismo commit no se distinguen | **descartado**: el sello ya los distingue, y el deploy corta si el build sale sucio |
+| B-59 | P3 · la instrumentación suma 2,8 kB gzip | **descartado**: medido, la parte movible es 2,14 kB gzip (D-99) |
+
+Dependencia anotada y **no** hecha: la tercera copia del formato de versión vive
+en `tests/analytics-privacidad.test.ts`, que este frente tenía que dejar en verde
+sin tocar (**B-165**).
 
 ## Fase 2 — el formulario, un dueño solo
 

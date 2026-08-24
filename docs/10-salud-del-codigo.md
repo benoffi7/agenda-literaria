@@ -286,17 +286,20 @@ de chips son widgets distintos, y fusionarlos sería peor.
 
 **Qué es.** Dos cosas distintas que comparten causa.
 
-*(a) Enums del modelo, copiados en `analytics-eventos.ts`:*
+*(a) Enums del modelo, copiados en `analytics-eventos.ts` — **arreglado**
+(B-75, 2026-08-24):*
 
-| Original (`src/types/actividad.ts`) | Copia (`src/lib/analytics-eventos.ts`) | ¿Guardia? |
+| Original (`src/types/actividad.ts`) | Antes en `analytics-eventos.ts` | ¿Guardia? |
 |---|---|---|
-| `ESTADOS` (línea 26) | `ESTADOS_DESTINO` (línea 45) | no |
-| `MODALIDADES` (línea 23) | `MODALIDADES_MEDIBLES` (línea 47) | no |
-| `CAMPOS_TAXONOMIA` (línea 212) | `CAMPOS_TAXONOMIA_MEDIBLES` (línea 134) | no |
+| `ESTADOS` | `ESTADOS_DESTINO` (copia literal) | ahora: **es el mismo objeto** |
+| `MODALIDADES` | `MODALIDADES_MEDIBLES` (copia literal) | ahora: **es el mismo objeto** |
+| `CAMPOS_TAXONOMIA` | `CAMPOS_TAXONOMIA_MEDIBLES` (copia literal) | ahora: **es el mismo objeto** |
 
-`analytics-eventos.ts` **ya importa `@/types/actividad`** (línea 2), y ese módulo
-tiene fan-out 0: importar las tres constantes cuesta cero bytes de bundle.
-No hay motivo técnico para la copia.
+`analytics-eventos.ts` **ya importaba `@/types/actividad`** y ese módulo tiene
+fan-out 0, así que no había motivo técnico para la copia. Se verificó con el
+build antes de creerlo: la carga inicial de `/admin` subió 203 bytes (+0,05 %) y
+el chunk de zod no se movió. El test compara **referencias**, no valores: volver
+a copiar la lista falla aunque los valores coincidan ese día (D-98).
 
 *(b) Etiquetas de UI, fragmentadas:*
 
@@ -307,19 +310,17 @@ No hay motivo técnico para la copia.
   público ("por DM de Instagram", "Presencial y virtual"). **Esto no es
   duplicación:** es otro vocabulario para otra audiencia. No unificar.
 
-**Qué se rompe por tenerlo así.** Agregar un sexto `tipo` o un quinto `estado`
-—los dos campos con taxonomía autogestionada del §4— hace que la analítica lo
-mande como `'otro'` en silencio. Es **el mismo modo de falla que D-60 documenta
+**Qué se rompía por tenerlo así.** Agregar un sexto `tipo` o un quinto `estado`
+—los dos campos con taxonomía autogestionada del §4— hacía que la analítica lo
+mandara como `'otro'` en silencio. Es **el mismo modo de falla que D-60 documenta
 y previene** con un test, una góndola más allá. El costo es el que dice D-60:
 "un campo nuevo se reporta como `otro` justo cuando alguien está buscando por
 qué la gente se traba en él. En silencio, otra vez."
 
-**Qué costaría arreglarlo.** Seis líneas: importar los tres enums en vez de
-copiarlos (**B-75**). Si por algún motivo se quieren dejar separados, el patrón
-correcto ya existe en el repo: un test que los derive, como
-`tests/analytics-campos.test.ts` hace con `CAMPOS_VALIDABLES`. Para las
-etiquetas, un `src/lib/etiquetas.ts` de ~20 LOC que usen el formulario y el
-listado (**B-76**).
+**Qué costó arreglarlo.** Lo de (a) fueron las seis líneas previstas: importar
+los tres enums en vez de copiarlos (**B-75**, hecho). Falta lo de (b): un
+`src/lib/etiquetas.ts` de ~20 LOC que usen el formulario y el listado
+(**B-76**).
 
 ### Problema 4 · `functions/index.js` es el único archivo de `functions/` que no recibió el corte puro/trigger
 
@@ -414,7 +415,7 @@ Estas cosas parecen problemas si se las mira solo con métricas. No lo son.
 |---|---|---|
 | **El panel como monolito en `/admin`** | Decisión cerrada: un repo, un Hosting target, un deploy. El bundle pesado ya está aislado en esa ruta (D-51). No partir el panel en su propia app ni en servicios. | `CLAUDE.md` §2.3 |
 | **Firestore como única fuente de verdad** | Decisión cerrada. Nada de sync bidireccional con Calendar. | `CLAUDE.md` §2.1 |
-| **`CAMPOS_VALIDABLES` como constante a mano** | Derivarla en runtime metía zod (68 kB) en el chunk inicial. La garantía vive en un test que la deriva del schema. Si algo hay que hacer es **extender** este patrón a los tres enums del problema 3, no quitarlo. | D-60, B-09 |
+| **`CAMPOS_VALIDABLES` como constante a mano** | Derivarla en runtime metía zod (68 kB) en el chunk inicial. La garantía vive en un test que la deriva del schema. El patrón se extendió: los tres enums del problema 3 hoy se importan (B-75) y el formato de versión lo ata un test (B-88). El criterio quedó escrito en D-98. | D-60, B-09, D-98 |
 | **La copia de `CAMPOS_TAXONOMIA` en `functions/index.js:84`** | `functions/` se despliega con su propio `package.json` y no puede importar hacia arriba; D-20 evaluó y descartó mover el módulo. Si molesta, la respuesta es un test que compare las dos listas, no un import imposible. | D-20 |
 | **Los mapas `ETIQUETA_*` de `functions/calendario.js`** | Son prosa para el evento público ("Presencial y virtual"), no etiquetas de UI. Unificarlos con los del formulario haría que un cambio de copy del panel cambie lo que se publica en el calendario. | §5.1 |
 | **`TaxonomiaSelect` y `TagsInput` como componentes separados** | Un desplegable con "Otro" y un input de chips son widgets distintos. Se comparte la lógica (problema 2), no el markup. | §4 |
@@ -432,8 +433,9 @@ problema medible no es el tamaño (el archivo más grande es el 8,9 %), es que
 **1.143 LOC de lógica de dominio viven donde ningún test llega**, y 227 de esas
 están en `ActividadFormulario.tsx` junto al caso de uso de guardado. Todo lo
 demás son costuras de la integración en paralelo: tres copias sin guardia de
-enums que ya se sabe cómo guardar (D-60), una regla crítica del §4.2
-implementada dos veces, y un timeout que no se copió junto con las cabeceras.
+enums que ya se sabe cómo guardar (D-60 — los tres del problema 3 ya se
+importan, B-75), una regla crítica del §4.2 implementada dos veces, y un timeout
+que no se copió junto con las cabeceras.
 
 Ítems de trabajo: **B-70 a B-79** en [`BACKLOG.md`](BACKLOG.md). Ninguno es P0
 ni P1 — nada está roto y nada de esto bloquea el sitio público.
