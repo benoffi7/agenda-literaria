@@ -127,20 +127,36 @@ export const construirLinkMapa = (actividad, labels = {}) => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 };
 
-/** Numera el encuentro dentro del ciclo: "Encuentro 3 de 8". */
+/**
+ * Numera el encuentro dentro del ciclo: "Encuentro 3 de 8".
+ *
+ * Se numera sobre **todas** las sesiones del array, canceladas incluidas
+ * (D-95). El número es la identidad del encuentro dentro del ciclo —con qué
+ * lectura se corresponde, qué fila del formulario es—, no un recuento en vivo
+ * de los que siguen en pie. Numerar sobre las no canceladas hacía que cancelar
+ * el tercero de ocho convirtiera al sexto en "Encuentro 5 de 7": el diff
+ * reescribía los otros siete eventos y a quien lo tenía agendado se le
+ * renombraba sin que nada hubiera cambiado para él (B-84).
+ *
+ * Es además el mismo criterio que usa el panel para el "2 de 8" de la vista
+ * calendario (`encuentrosDe`, D-70): antes el panel decía "6 de 8" y el evento
+ * público "5 de 7" para el mismo encuentro.
+ *
+ * El cancelado no tiene evento (§7.3), así que en el calendario queda un hueco
+ * en la secuencia. Eso es información —hubo un encuentro y se canceló—, no un
+ * error de conteo.
+ */
 const posicionEnCiclo = (actividad, sesion) => {
   const sesiones = actividad.sesiones ?? [];
   if (!actividad.esCiclo || sesiones.length < 2) return null;
 
   // Se numera por fecha, no por posición en el array: el array puede estar
   // desordenado y "Encuentro 5" tiene que ser el quinto en el tiempo.
-  const ordenadas = [...sesiones]
-    .filter((s) => !s.cancelada)
-    .sort((a, b) => {
-      const ma = typeof a.inicio?.toMillis === 'function' ? a.inicio.toMillis() : 0;
-      const mb = typeof b.inicio?.toMillis === 'function' ? b.inicio.toMillis() : 0;
-      return ma - mb;
-    });
+  const ordenadas = [...sesiones].sort((a, b) => {
+    const ma = typeof a.inicio?.toMillis === 'function' ? a.inicio.toMillis() : 0;
+    const mb = typeof b.inicio?.toMillis === 'function' ? b.inicio.toMillis() : 0;
+    return ma - mb;
+  });
 
   const i = ordenadas.findIndex((s) => s.id === sesion.id);
   if (i === -1) return null;

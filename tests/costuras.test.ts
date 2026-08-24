@@ -16,7 +16,7 @@ import { Timestamp } from 'firebase/firestore';
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue, redactar } from '../functions/reportes.js';
-import { planificar } from '../functions/calendario.js';
+import { construirDescripcion, planificar } from '../functions/calendario.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
 import { generarSesiones } from '@/lib/sesiones';
 import type { Actividad } from '@/types/actividad';
@@ -300,39 +300,35 @@ describe('B-83 · un cambio que no toca el evento no dispara rebuild', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
-// B-84 · Cancelar un encuentro de un ciclo renumera los otros siete
+// B-84 · Cancelar un encuentro de un ciclo renumeraba los otros siete
+//        (ARREGLADO)
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * `posicionEnCiclo` numera sobre las sesiones **no canceladas**, así que
- * cancelar el tercero de ocho convierte al sexto en "Encuentro 5 de 7". El test
- * "cancelar un encuentro borra solo el suyo" de `calendario.test.ts` pasa porque
- * su fixture no es un ciclo — que es justo el caso del §2.2.
+ * `posicionEnCiclo` numeraba sobre las sesiones **no canceladas**, así que
+ * cancelar el tercero de ocho convertía al sexto en "Encuentro 5 de 7": siete
+ * `actualizar` de más, y el texto de siete eventos ya agendados cambiando sin
+ * que nada hubiera cambiado para su dueño.
+ *
+ * Arreglado numerando sobre todas las sesiones, canceladas incluidas (D-95).
+ * Estos tests son la guarda; el detalle del ciclo está en `calendario.test.ts`.
  */
-describe('B-84 · cancelar un encuentro de un ciclo', () => {
+describe('B-84 · cancelar un encuentro de un ciclo (§7.2, §2.2)', () => {
   const antes = ciclo();
   const despues = ciclo({
     sesiones: ochoSesiones((i) => (i === 2 ? { cancelada: true } : {})),
   });
 
-  it('hoy reescribe los otros siete eventos además de borrar el cancelado', () => {
-    // Lo que hace hoy, para que el arreglo se note.
-    expect(tipos(planificar(antes, despues, {}))).toEqual([
-      'actualizar',
-      'actualizar',
-      'borrar',
-      'actualizar',
-      'actualizar',
-      'actualizar',
-      'actualizar',
-      'actualizar',
-    ]);
-  });
-
-  it.fails('B-84: cancelar uno solo tendría que tocar un solo evento', () => {
+  it('cancelar uno solo toca un solo evento', () => {
     const ops = planificar(antes, despues, {});
     expect(ops).toHaveLength(1);
     expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_2' });
+  });
+
+  it('no renumera a los otros siete: el sexto sigue siendo "6 de 8"', () => {
+    const sexta = despues.sesiones[5]!;
+    expect(construirDescripcion(antes, antes.sesiones[5]!, {})).toContain('Encuentro 6 de 8');
+    expect(construirDescripcion(despues, sexta, {})).toContain('Encuentro 6 de 8');
   });
 });
 
