@@ -106,7 +106,9 @@ por una**: los ciclos siempre tienen excepciones (un feriado, una semana que se
 corre).
 
 Marcar un encuentro como cancelado lo borra del calendario público (§7.3) pero
-lo conserva en el documento.
+lo conserva en el documento. **No renumera a los demás:** el número del evento
+cuenta también los cancelados (D-95), así que el que decía "Encuentro 6 de 8"
+sigue diciéndolo y su evento no se toca.
 
 ### Vista previa del evento de Calendar
 
@@ -360,7 +362,7 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 | Se corre la fecha de un encuentro | se actualiza **solo** ese evento |
 | Se cambia la sede o el título | se actualizan **todos** los eventos del ciclo |
 | Se borra un encuentro | se borra **solo** su evento |
-| Se cancela un encuentro | se borra su evento |
+| Se cancela un encuentro | se borra su evento, y **ningún otro se toca** (B-84, D-95) |
 | Pasa a borrador, pendiente o cancelado | se borran todos sus eventos |
 | Se borra la actividad | se borran todos sus eventos |
 | Se vuelve a publicar | se crean de nuevo |
@@ -377,7 +379,8 @@ descripción apunta al punto exacto; si no, a la búsqueda por el texto de la
 ubicación (D-10, D-46).
 
 **Descripción:** todo lo cargado en el formulario que sea publicable —
-posición en el ciclo, descripción, tema y lectura del encuentro, modalidad,
+posición en el ciclo ("Encuentro 3 de 8", contando también los encuentros
+cancelados: D-95), descripción, tema y lectura del encuentro, modalidad,
 sede con "cómo llegar" y link a Google Maps, plataforma, arancel con notas,
 inscripción con vía, cupo y cierre, material, organizador, tallerista con bio,
 y tags.

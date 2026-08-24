@@ -1364,6 +1364,69 @@ listado vacío.
 
 ---
 
+## D-95 · El número del encuentro cuenta también los cancelados
+
+**Contexto (B-84).** La descripción del evento abre con "Club de lectura ·
+Encuentro 3 de 8". `posicionEnCiclo` numeraba sobre las sesiones **no
+canceladas**, así que cancelar el tercero de ocho convertía al sexto en
+"Encuentro 5 de 7". Dos costos, y el segundo es el que importa:
+
+- Siete `actualizar` a la API de Calendar por cancelar un encuentro, cuando el
+  §7.2 existe para tocar solo lo que cambió.
+- **El texto de siete eventos ya agendados cambiaba.** Quien anotó "Encuentro 6
+  de 8" veía cómo se le renombraba el evento sin que nada hubiera cambiado para
+  él, y el número dejaba de coincidir con la lectura asignada a esa fila del
+  formulario. No se perdían los eventos —eran `actualizar`, no `borrar`+`crear`,
+  así que los recordatorios y las suscripciones sobrevivían—, pero el daño de
+  reescribir lo que la gente ya leyó es real.
+
+**Decisión:** se numera sobre **todas** las sesiones del array, canceladas
+incluidas. El cancelado no tiene evento (§7.3), así que en el calendario queda
+un hueco en la serie.
+
+**Motivo:** el número es la **identidad** del encuentro dentro del ciclo, no un
+recuento en vivo de los que siguen en pie. Es lo que le sirve a quien lo tiene
+agendado: le dice qué encuentro del ciclo es este, con qué lectura se
+corresponde y qué fila del formulario le pidió el organizador. Una identidad que
+cambia retroactivamente no es una identidad. El §2.2 le da sentido justamente
+así: las sesiones son una lista explícita —y no un evento recurrente— porque
+cada encuentro tiene su propio tema y su propia lectura.
+
+Y es el criterio que el panel **ya** usaba para el "2 de 8" de la vista
+calendario (`encuentrosDe`, D-70): antes de esto, el panel decía "6 de 8" y el
+evento público "5 de 7" para el mismo encuentro. Dos criterios para lo mismo
+derivado es exactamente lo que D-71 y D-20 evitan.
+
+**El costo, asumido:** el total dice 8 cuando hay 7 encuentros que se van a
+hacer, y quien mira el calendario cuenta 7 eventos. Es información, no un error
+de conteo: el hueco en la serie es cómo un suscripto se entera de que ese día se
+canceló. La alternativa lo borra de la historia y le renombra el resto.
+
+**Alternativas descartadas:**
+
+- *Numerar sobre las no canceladas con el total original ("Encuentro 5 de 8").*
+  Mantiene el daño —la posición sigue renumerándose y sigue reescribiendo los
+  otros siete— y encima vuelve incoherente el par: la posición contada de una
+  manera y el total de otra. Sin la propiedad que se buscaba, con un texto peor.
+- *Sacar la numeración de la descripción.* Es lo único en el evento que dice
+  **cuál** de los encuentros del ciclo es este: sin eso, el evento del sexto es
+  indistinguible del quinto salvo por la fecha, y el tema —que es opcional— deja
+  de tener con qué anclarse. Además el panel lo muestra, así que la vista previa
+  y el evento perderían información que la pantalla sí tiene. Tirar la
+  funcionalidad para arreglar su caso borde.
+- *Guardar el número como campo de la sesión.* Sería estable ante cualquier
+  edición, pero es un cambio de modelo (§3.1) que se propaga al formulario, al
+  generador de encuentros y a la proyección pública, para un problema que se
+  resuelve derivándolo bien.
+
+**Lo que sigue renumerando, por diseño:** **agregar o borrar una fila** de un
+ciclo publicado cambia el largo del ciclo, así que el "de N" de los demás pasa a
+ser falso y se actualizan (nunca se borran ni se recrean). Ahí el conjunto de
+encuentros cambió de verdad; en una cancelación no. Queda anotado como **B-160**
+por si el costo molesta en la práctica.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

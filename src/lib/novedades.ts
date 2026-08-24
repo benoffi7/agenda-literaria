@@ -49,6 +49,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cancelar-no-renumera',
+    fecha: '2026-08-24',
+    titulo: 'Cancelar un encuentro ya no le cambia el nombre a los demás',
+    detalle:
+      'Antes, cancelar el tercero de ocho hacía que el sexto pasara a decir «Encuentro 5 de 7» en ' +
+      'el calendario de todos los que lo tenían agendado, sin que nada hubiera cambiado para ' +
+      'ellos. Ahora cada encuentro conserva su número y en la serie queda un hueco, que es la ' +
+      'forma de ver que ese día se canceló.',
+    donde: 'Al tildar «cancelado» en un encuentro de un ciclo.',
+  },
+  {
     id: 'calendario-en-curso',
     fecha: '2026-08-24',
     titulo: 'Una actividad que está empezando ahora ya no se te esconde en la lista',

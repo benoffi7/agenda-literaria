@@ -93,7 +93,10 @@ export const AVISOS: AvisoAyuda[] = [
       'Al marcar un encuentro como cancelado, su evento desaparece del calendario público. El ' +
       'encuentro sigue acá, con su fecha y su tema, así que queda el registro de que ese día estaba ' +
       'previsto y no se hizo. Si destildás la cancelación, el evento vuelve. Borrar el encuentro, en ' +
-      'cambio, lo saca del calendario y también del registro.',
+      'cambio, lo saca del calendario y también del registro. ' +
+      'Los demás encuentros no se tocan: el que era «Encuentro 6 de 8» sigue diciendo eso en el ' +
+      'calendario de quien lo tenga agendado. En la serie queda un hueco, que es justamente la ' +
+      'forma de ver que ese día se canceló.',
   },
   {
     id: 'borrador-borra-eventos',
@@ -380,7 +383,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'El tema y la lectura de cada encuentro salen en el evento de ese día, junto con la ' +
-          'posición en el ciclo («Encuentro 3 de 8»).',
+          'posición en el ciclo («Encuentro 3 de 8»). Ese número es el de la fila, contando ' +
+          'también los cancelados: cancelar uno no renumera a los demás.',
       },
       {
         texto:

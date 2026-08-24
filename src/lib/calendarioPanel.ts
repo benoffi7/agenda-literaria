@@ -318,8 +318,9 @@ export interface Encuentro {
    *
    * Se numeran **todos** los encuentros, incluidos los cancelados, porque el
    * panel los muestra todos y así el número coincide con la fila del
-   * formulario. La numeración del evento público (`posicionEnCiclo`) sí saltea
-   * los cancelados: ahí no existen.
+   * formulario. El evento público usa el mismo criterio desde B-84
+   * (`posicionEnCiclo`, D-95): antes salteaba los cancelados, así que el panel
+   * decía "6 de 8" y el evento "5 de 7" para el mismo encuentro.
    */
   indice: number;
   total: number;
