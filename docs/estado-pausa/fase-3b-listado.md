@@ -19,54 +19,56 @@ listado, router del panel, reportes y centro de ayuda.
 |---|---|
 | **B-76** · estado en slug crudo | ✅ **cerrado y commiteado.** El síntoma ya venía arreglado por la vista calendario (el listado usa `ETIQUETA_ESTADO`). Lo que se agregó es la guardia de clase: `tests/etiquetas-de-ui.test.ts` |
 | **B-96** · "esta semana" | ✅ **verificado, ya estaba cerrado** por D-73 (el listado ordena por próximo encuentro). No se agregó código: un bloque más sería una segunda pantalla contestando la misma pregunta (D-71). El residual real sigue abierto en B-126 |
-| **B-35** · salir con cambios sin guardar | 🟡 **a medias.** `src/lib/salida-del-panel.ts` está escrito, compila y está commiteado, **pero todavía no lo usa nadie**. Falta cablearlo en `AdminApp.tsx` |
-| **B-14** · menú sin flechas | ⬜ sin empezar |
-| **B-64** · pendientes del centro de ayuda | ⬜ sin empezar |
-| **B-31** · reintentar un reporte en `error` | ⬜ sin empezar |
-| **B-40** · UI de versiones | ⬜ sin empezar |
+| **B-35** · salir con cambios sin guardar | ✅ **cerrado y commiteado.** `salirDe()` en `AdminApp` envuelve las cuatro salidas + `beforeunload`. Regla pura en `src/lib/salida-del-panel.ts`. D-100 |
+| **B-14** · menú sin flechas | ✅ **cerrado y commiteado.** Patrón de menú ARIA completo en `MenuAcciones`, con `src/lib/foco.ts` |
+| **B-64** · pendientes del centro de ayuda | ✅ **cerrado y commiteado.** Foco atrapado en la capa + versión de cada novedad. El punto del medio no era trabajo pendiente sino el costo aceptado en D-63 |
+| **B-31** · reintentar un reporte en `error` | ✅ **cerrado y commiteado.** Botón en `ReportesPanel` + `reintentoValido()` en `firestore.rules` + 7 tests contra el emulador. D-101 |
+| **B-40** · UI de versiones | 🟡 **en curso, es lo único que falta.** Ver abajo |
 | **B-62** · ayuda contextual por sección | ⬜ **fuera de esta corrida a propósito**: depende de que la fase 2 parta el formulario por secciones |
 
 ## Dónde quedé exactamente
 
-En `src/lib/salida-del-panel.ts` — módulo nuevo, puro, terminado: exporta
-`VISTAS_CON_FORMULARIO`, `tieneFormulario`, `AVISO_CAMBIOS_SIN_GUARDAR` y
-`debeConfirmarSalida(tipoDeVista, hayCambiosSinGuardar)`. Le falta **consumidor y
-test**.
+Arrancando **B-40**, que es lo único que queda del frente. Todavía no hay código
+escrito de ese ítem.
 
 ## Siguiente acción concreta
 
-1. En `src/components/admin/AdminApp.tsx`, importar `debeConfirmarSalida` y
-   `AVISO_CAMBIOS_SIN_GUARDAR` de `@/lib/salida-del-panel` y
-   `hayCambiosSinGuardar` de `@/lib/formulario-sucio`. Definir dentro de
-   `AdminApp`:
+1. Escribir `src/lib/historial.ts`: lectura de `actividades/{id}/versiones`
+   (ordenada por id descendente, que es cronológico por `idDeVersion`) más la
+   lógica **pura** del diff y de la restauración por campo. `db` se pide a
+   `@/lib/firestore-client`.
+2. Escribir `src/components/admin/HistorialActividad.tsx`: lista de versiones con
+   fecha y `camposCambiados`, y "restaurar este campo" por campo.
+3. En `AdminApp.tsx`: sumar la vista `{ tipo: 'historial'; actividad }` al type
+   `Vista` y cargarla con el helper `diferido()` que ya está en el archivo —
+   **nunca** con `import` estático (B-09/D-51).
+4. En `ListaActividades.tsx`: agregar "Historial" a las acciones del
+   `MenuAcciones` de cada fila, con un `onHistorial` nuevo en `Props`.
+5. Verificar `npx vitest run tests/bundle-panel.test.ts` y agregar ahí la guarda
+   de que la vista nueva entra diferida.
 
-   ```tsx
-   const salirDe = (accion: () => void) => {
-     if (debeConfirmarSalida(vista.tipo, hayCambiosSinGuardar()) &&
-         !confirm(AVISO_CAMBIOS_SIN_GUARDAR)) return;
-     accion();
-   };
-   ```
+**Las tres trampas de B-40, que ya están razonadas:**
 
-   y envolver con `salirDe(...)` los **cinco** botones del encabezado que hoy
-   abandonan el formulario sin preguntar: "← Volver" (línea ~209), "Calendario"
-   (~218), "Reportar algo" (~227), "Salir" (~247) y el `onCancelar` que se le
-   pasa a `ActividadFormulario` (~301). `onGuardado` **no** se envuelve.
-2. Agregar en el mismo componente un `useEffect` con `beforeunload` que llame a
-   `e.preventDefault()` y setee `e.returnValue = ''` cuando
-   `hayCambiosSinGuardar()`. Sin el `returnValue` Chrome lo ignora.
-3. Escribir `tests/salida-del-panel.test.ts` sobre el módulo puro (las tres
-   vistas con formulario piden confirmación, las otras no, y con el store limpio
-   nunca).
-4. Cerrar B-35 con el skill `cerrar-cambio`: entra en `novedades.ts` (se nota al
-   usar el panel) y en el CHANGELOG.
-
-Después seguir con B-14 → B-64 → B-31 → B-40, en ese orden (de más chico a más
-grande, para que lo grande no se lleve puesto lo chico).
+- El documento de versión guarda `sesiones` **con `calendarEventId` adentro**.
+  Restaurarlo tal cual reinyecta ids de evento viejos y duplica eventos en el
+  calendario público (clase de B-80). Hay que conservar el `calendarEventId`
+  **actual** de cada sesión, emparejando por `id` de sesión.
+- No restaurar `slug` de una actividad publicada (trampa 10: URLs rotas).
+- Restaurar es una escritura más, así que dispara `guardarVersion` y deja versión
+  de lo restaurado. Eso es **correcto** —deshacer un "deshacer" tiene que ser
+  posible— pero conviene verlo en emuladores antes de creerlo.
 
 ## `AdminApp.tsx` y el corte del bundle (B-09 / D-51)
 
-**Todavía no lo toqué.** En cuanto se toque, la regla es: cualquier vista nueva
+**Ya lo toqué, y el corte sigue en pie.** Lo que cambió del router: (a) un
+`salirDe(accion)` que envuelve las cuatro salidas del formulario, (b) un
+`destinoDeVolver()` para que "← Volver" respete `volverA`, (c) un `useEffect` con
+`beforeunload`, (d) se limpió un docblock duplicado por un merge viejo. **No se
+agregó ninguna vista ni ningún import estático nuevo pesado**: los dos imports
+nuevos son `@/lib/formulario-sucio` y `@/lib/salida-del-panel`, los dos módulos
+puros sin Firestore. `npx vitest run tests/bundle-panel.test.ts` pasa (6/6).
+
+La regla para lo que falta: cualquier vista nueva
 —B-40 es una— entra con `import()` diferido usando el helper `diferido()` que ya
 está en el archivo, **nunca** con `import` estático, y `db` se pide siempre a
 `@/lib/firestore-client` y jamás a `@/lib/firebase-client`.
@@ -91,16 +93,17 @@ cientos de bytes sin motivo, algo volvió al chunk del login.
 - **`AdminApp.tsx` tiene un docblock duplicado** (líneas ~90-96, dos veces "SPA
   del panel…" con el primer `/**` sin cerrar). Es un merge desprolijo que
   compila. Limpiarlo cuando se toque el archivo.
-- **El botón "← Volver" del encabezado ignora `volverA`**: editar desde el
-  calendario y volver por el encabezado manda al listado, mientras que "Cancelar"
-  dentro del formulario respeta el calendario. Arreglarlo junto con B-35, que es
-  el ítem de las salidas.
-- **Para B-31 hay que tocar `firestore.rules`**, que hoy tiene
-  `allow update, delete: if false` en `/reportes/{id}`. El reintento necesita
-  además resetear `intentos` a `0`, no solo `estado` a `'pendiente'`:
-  `decidirAccion` de `functions/reportes.js` ignora un reporte con
-  `intentos >= MAX_INTENTOS`. Los emuladores estaban levantados, así que la regla
-  se puede verificar en `tests/reportes.integracion.test.ts`.
+- **El botón "← Volver" del encabezado ignoraba `volverA`** — arreglado con B-35
+  y anotado en la tabla de Cerrados del backlog.
+- **El emulador sirve las reglas del directorio desde el que se lo arrancó**, no
+  las del checkout donde corren los tests. Estaba corriendo desde el checkout
+  principal, así que la regla nueva de B-31 no existía para mis tests: habrían
+  dado verde sin probar nada. Se resolvió con `cargarReglas()` en
+  `tests/emulador.ts`, que empuja el archivo local por la API del emulador. Los
+  otros tres archivos de integración siguen sin usarlo: **B-168**.
+  **Efecto compartido a tener en cuenta:** `cargarReglas` cambia las reglas del
+  emulador para todos los tests que corran contra él. Si otro frente corre su
+  suite en paralelo, la última carga gana.
 - **Para B-40, la trampa que hay que respetar**: el documento de versión guarda
   `sesiones` **con `calendarEventId` adentro**. Restaurar `sesiones` tal cual
   reinyecta ids de evento viejos y duplica eventos en el calendario público — es
