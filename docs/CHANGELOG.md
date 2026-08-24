@@ -18,6 +18,17 @@ tratar "ninguno enfocado" como el índice `-1` a secas hace que ↑ caiga en el
 **penúltimo**, y con dos ítems —los que el menú tiene hoy— el resultado parece
 razonable.
 
+**B-64 · las novedades ya dicen en qué versión salieron.** Mostrarlas ya se
+mostraba: el campo existía, el componente lo pintaba, y estaba vacío. La causa no
+era el olvido sino que **no estaba dicho de dónde sale**: `VERSION_APP` lleva el
+`+<sha>` del build, que quien escribe la entrada no puede saber. La versión de una
+novedad es la de `package.json` —la release en la que entra— y eso quedó escrito
+en el tipo, en el paso 4 del skill `cerrar-cambio` (que decía "`version` si se
+sabe", y por eso nunca se sabía) y en dos tests: la forma, y que no retroceda al
+bajar por la lista. Con eso B-64 queda cerrado: su punto del medio —no poder
+corregir una errata sin desplegar— no es trabajo pendiente sino el costo aceptado
+en D-63.
+
 **B-35 · irse del formulario ya no descarta en silencio.** Cuatro botones del
 encabezado y el "Cancelar" del formulario abandonaban los 30+ campos del §11 sin
 preguntar, y cerrar la pestaña también. Ahora hay un `confirm()` que dice qué se

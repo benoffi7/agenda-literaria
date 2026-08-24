@@ -1532,16 +1532,19 @@ es un número en el botón.
 
 Ver [CHANGELOG](CHANGELOG.md), D-63, D-64 y D-65. Limitaciones en B-64.
 
-### B-64 · Pendientes chicos del centro de ayuda
+### B-64 · Pendientes chicos del centro de ayuda — ✅ hecho (2026-08-24)
 
-Tres cosas conocidas, ninguna urgente:
+Tres cosas conocidas, ninguna urgente. **Dos quedaron cerradas**; la del medio no
+es trabajo pendiente sino un costo aceptado en D-63, así que el ítem cierra acá:
 
-- **Las novedades no se anclan a la versión del panel.** `Novedad` ya tiene un
-  campo `version` opcional y `src/lib/version.ts` expone `VERSION_APP`, así que
-  atarlos es corto: estampar la versión al agregar la entrada y mostrarla al
-  lado de la fecha. Sirve sobre todo para un reporte de bug ("con la versión en
-  la que salió tal cosa"). Las entradas viejas no la tienen porque el versionado
-  llegó después.
+- ~~**Las novedades no se anclan a la versión del panel.**~~ ✅ hecho
+  (2026-08-24). Mostrarla ya se mostraba; lo que faltaba era **de dónde sale**, y
+  esa era la razón de que el campo quedara vacío: `VERSION_APP` incluye el
+  `+<sha>` del build, que quien escribe la entrada no puede saber. La versión de
+  una novedad es la de `package.json` —la release en la que entra—, y eso quedó
+  escrito en el tipo, en el paso 4 del skill `cerrar-cambio` (que era el que
+  decía "si se sabe" y por eso nunca se llenaba) y en dos tests: la forma, y que
+  no retroceda al bajar por la lista.
 - **No se puede corregir una errata ni avisar nada sin desplegar** — costo
   aceptado en D-63. Si algún día hace falta un aviso urgente (una caída), es
   otro problema y otra herramienta.

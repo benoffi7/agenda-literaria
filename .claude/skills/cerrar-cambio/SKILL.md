@@ -66,7 +66,11 @@ Solo **si el cambio se nota al usar el panel**. Una entrada arriba del array:
 
 - `id`: nuevo, estable, en kebab-case. **No se reusa ni se renombra**: es la
   marca de "hasta acá leí" guardada en el navegador de cada persona.
-- `fecha`: `AAAA-MM-DD`. `version` si se sabe.
+- `fecha`: `AAAA-MM-DD`.
+- `version`: el número de `package.json` tal cual (`1.0.1`), **sin** el `+<sha>`
+  que le agrega el build. No hace falta saber contra qué commit se publica, solo
+  en qué release entra. Es lo que permite después decir "esto empezó con la
+  versión en la que salió tal cosa" (B-64).
 - `titulo`: qué podés hacer ahora que antes no podías, en una línea.
 - `detalle`: dos o tres frases. Si no entra, es ayuda y no novedad.
 - `donde`: dónde está en el panel.
