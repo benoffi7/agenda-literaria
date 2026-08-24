@@ -1130,6 +1130,89 @@ los duplicados **antes** de que nazcan. La aprobación agregaba control de
 vocabulario, no corrección. Con dos personas de confianza, la fricción no se
 paga.
 
+### B-132 · El desplegable muestra el slug crudo mientras la etiqueta no está registrada · P2
+
+Reportado por el dueño usando el panel (2026-08-24): *"cuando cargo barrios o
+lugares los escribe con minúscula"*.
+
+Confirmado en `src/components/admin/campos/TaxonomiaSelect.tsx:224`:
+
+```tsx
+{pendienteAjena ? `${pendienteAjena.label} (sin aprobar)` : `${value} (nueva)`}
+```
+
+`value` es el **slug**, no la etiqueta. Al escribir «Villa Crespo» en «Otro…», la
+opción todavía no está en `/opciones/*` —se persiste en el submit, por D-02— así
+que `esConocido` es `false` y el desplegable pinta `villa-crespo (nueva)`.
+
+**El dato no se pierde:** el componente ya recibe la etiqueta tipeada en
+`confirmarTexto`, que llama `onChange(slugTipeado, texto.trim())`. Solo no se la
+guarda para mostrarla. El arreglo es acordarse de esa etiqueta mientras la opción
+está pendiente de persistir.
+
+Afecta a los cinco campos de taxonomía, no solo a barrio.
+
+### B-133 · No se pueden cargar varios handles en «arrobar» · P2
+
+Reportado por el dueño (2026-08-24): *"no me deja poner coma ni enter en arrobas
+para publicar"*.
+
+Confirmado en `src/components/admin/ActividadFormulario.tsx:772-778`. El campo es
+un input de una línea que hace ida y vuelta en **cada tecla**:
+
+```tsx
+value={form.difusion.arrobar.join(', ')}
+onChange={… e.target.value.split(',').map((s) => s.trim()).filter(Boolean) …}
+```
+
+Al tipear la coma, el `split` produce un elemento vacío, el `filter(Boolean)` lo
+descarta y el `join(', ')` vuelve a pintar el valor **sin la coma**. O sea que la
+coma se borra sola en el momento de escribirla, y por eso no hay forma de cargar
+un segundo handle. Y Enter tampoco sirve: es un input de una línea dentro del
+`<form>`, así que Enter **intenta guardar la actividad**.
+
+El campo es una lista, así que la solución es tratarlo como lista y no como
+string: el patrón ya existe en el repo, es `TagsInput` — chips, Enter para
+confirmar, Backspace para borrar el último. Reusarlo es mejor que arreglar el
+split, porque el bug de fondo es haber modelado una lista como texto.
+
+### B-134 · Los tipos y las entregas de material son enums cerrados · P2
+
+Reportado por el dueño (2026-08-24), cargando un club de lectura real: *"en
+material adicional son varias cosas: libro, newsletters, guía, playlist… y son al
+inscribirse pero otros durante el mes. Agregar «durante el mes» a la lista de
+opciones"*.
+
+Los dos campos son `z.enum` en `src/lib/schema.ts:62,65`, o sea **cerrados**, a
+diferencia del `tipo` de la actividad que es taxonomía abierta (§4):
+
+| Campo | Hoy | Falta |
+|---|---|---|
+| `TIPOS_MATERIAL` | `lectura`, `guia`, `contexto`, `autor`, `otro` | newsletter, playlist… y «libro», que hoy entra como `lectura` |
+| `ENTREGAS_MATERIAL` | `previo`, `al-inscribirse`, `en-el-encuentro` | **«durante el mes»**, que es el pedido concreto |
+
+**«Durante el mes» es lo interesante del reporte**, y no es solo una opción más:
+dice que la entrega del material no es un instante sino que puede ser progresiva
+a lo largo del ciclo. Encaja con el §2.2 —un club de lectura son ocho encuentros
+con su lectura cada uno— y es exactamente el caso de uso que el §4.1 llama de
+primera clase, como «a la gorra».
+
+**La decisión de fondo, que es del dueño:** ¿se agregan valores a los dos enums,
+o `material.items[].tipo` pasa a ser **taxonomía abierta** como el resto (§4)?
+Abrirlo sale casi gratis —la implementación de `opciones.ts` ya resuelve cinco
+campos con un solo patrón— y evita volver a tocar código la próxima vez que
+aparezca un formato que nadie previó, que en tres reportes ya pasó una vez.
+`entrega`, en cambio, conviene que siga cerrada: son momentos del ciclo de vida
+de la inscripción, no vocabulario libre, y el §5.1 los usa para decidir qué se
+publica.
+
+Ojo con dos cosas al implementarlo: los dos enums tienen mapas de etiquetas en el
+formulario **y** en `functions/calendario.js` —que son prosa para el público, y
+el diagnóstico de salud dijo explícitamente que no hay que unificarlos (§B-70)—
+así que un valor nuevo va en los dos lados, y si falta en uno se publica el valor
+crudo. Y `docs/03-modelo-de-datos.md` más el §3.1 del `CLAUDE.md` quedan
+desactualizados.
+
 ## P3 — cuando sobre tiempo
 
 ### B-114 · Precio real en los datos estructurados

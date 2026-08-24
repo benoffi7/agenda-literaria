@@ -65,6 +65,21 @@ Ojo con el punto 2 del ítem: si se resuelve guardando el mail en el documento,
   no se dé vuelta solo ni alguien la borre por parecer código sin uso. B-25,
   B-26, B-28 y B-29 quedan en espera de ese momento, no descartados.
 
+## Reportes del dueño usando el panel de verdad (2026-08-24)
+
+Cuatro cosas, de tres reportes. **Dos son bugs del panel**, los dos confirmados
+en el código:
+
+- **B-132** · el desplegable de taxonomía muestra el **slug crudo**
+  (`villa-crespo (nueva)`) mientras la etiqueta no está registrada. La etiqueta
+  tipeada existe, solo no se guarda para mostrarla.
+- **B-133** · el campo «arrobar» **se come la coma** al escribirla, así que no se
+  puede cargar un segundo handle. Está modelado como string y es una lista; la
+  salida es reusar `TagsInput`.
+- **B-134** · los tipos y las entregas de material son enums cerrados. El pedido
+  concreto es agregar «durante el mes», y hay una decisión de fondo: si
+  `material.items[].tipo` pasa a taxonomía abierta como el resto.
+
 ## Lo que sigue después de la fase 1
 
 Fases 2, 3 y 4 del plan, y al cierre la actualización completa de la
