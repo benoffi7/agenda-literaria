@@ -375,8 +375,14 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           '«Generar encuentros» toma la fecha y la duración del primero y arma la serie cada tantos ' +
-          'días. Reemplaza lo que haya cargado, así que se usa al principio y no después de ajustar ' +
-          'fechas a mano.',
+          'días. Recalcula las fechas de lo que haya cargado y borra los temas y las lecturas, así ' +
+          'que se usa al principio y no después de ajustarlo todo a mano.',
+      },
+      {
+        texto:
+          'Si los encuentros ya están en el calendario, generarlos de nuevo los mueve de día en ' +
+          'lugar de borrarlos y volver a crearlos: quien se suscribió los conserva, con sus ' +
+          'recordatorios. Si pedís menos de los que hay, los últimos sí se borran del calendario.',
       },
       {
         texto:

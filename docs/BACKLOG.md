@@ -988,7 +988,7 @@ campo que exista desde el montaje delegue su preselección a un efecto. Lo que
 falta verificar con render es el síntoma (que el aviso de versión se
 auto-recargue), no el mecanismo.
 
-### B-90 · "Generar N encuentros" sobre un ciclo publicado borra y recrea los ocho eventos
+### B-90 · "Generar N encuentros" sobre un ciclo publicado borra y recrea los ocho eventos — ✅ hecho (2026-08-24)
 
 El generador del §11 reemplaza la lista de sesiones, y `generarSesiones` da ids
 nuevos. Sobre un ciclo ya publicado el diff no reconoce ningún encuentro: ocho
@@ -1002,6 +1002,15 @@ no cambia, o al menos avisar en el cartel cuando alguna sesión ya tiene
 `calendarEventId` ("esto borra N eventos del calendario y crea otros N").
 
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
+
+**Resuelto así (D-103):** se reusa el id **y** el `calendarEventId` de la fila
+de la misma posición, y no solo cuando la cantidad coincide: generar diez sobre
+ocho son ocho actualizaciones y dos altas; seis sobre ocho, seis y dos bajas.
+Correr un ciclo publicado una semana pasó de 8 `borrar` + 8 `crear` a 8
+`actualizar`. El cartel dice ahora qué recalcula y qué borra, y aclara —solo
+cuando hay encuentros ya publicados— que se mueven en lugar de recrearse. Los
+tests corren el generador contra el `planificar` de verdad, porque lo que estaba
+roto era el par. Queda abierto **B-169**.
 
 
 ### B-125 · Un evento borrado a mano en Calendar no se detecta · P2
@@ -1676,6 +1685,24 @@ Es chico y es de datos, no de código: en dev no se mide (`PUBLIC_USE_EMULATORS`
 así que en producción no debería haber ninguno de los dos. Si algún día se quiere
 usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
 vocabulario en vez de caer en la bolsa.
+
+### B-169 · Regenerar los encuentros borra los temas y las lecturas cargados · P2
+
+`generarSesiones` devuelve `tema: ''` y `lectura: ''` en todas las filas, así
+que volver a generar las fechas de un club de lectura de ocho encuentros borra
+las ocho lecturas asignadas — que es lo más caro de tipear de toda la actividad.
+Pasaba desde siempre (el generador reemplazaba la lista entera) y por eso no es
+una regresión, pero después de D-103 la fila **conserva su identidad**: el
+encuentro 3 sigue siendo el encuentro 3, con su evento de calendario, y perder
+su tema dejó de tener sentido.
+
+Es una línea al lado de las dos que ya heredan `id` y `calendarEventId`. Lo que
+hay que decidir antes es si conservar el tema es lo que espera quien aprieta el
+botón: hoy el cartel dice explícitamente que los borra. Sale con la UI, no
+suelto.
+
+El caso que lo hace doler: el ciclo se corre una semana, se regeneran las fechas
+y hay que volver a tipear ocho lecturas que no cambiaron.
 
 ### B-167 · Nadie avisa cuando una etiqueta nueva no se registró · P3
 

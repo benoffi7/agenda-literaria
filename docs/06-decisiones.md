@@ -1816,6 +1816,45 @@ que hace falta controlar para testear entra como parámetro con default.
 
 ---
 
+## D-103 · Regenerar los encuentros conserva la identidad de la fila
+
+**Decisión:** `generarSesiones` recibe la lista que reemplaza (`previas`) y la
+fila que queda en cada posición hereda su `id` y su `calendarEventId`. Solo las
+posiciones que no existían estrenan un id.
+
+**Motivo (B-90):** el generador daba ocho ids nuevos, así que sobre un ciclo ya
+publicado el diff del §7.2 no reconocía ningún encuentro y hacía ocho `borrar` y
+ocho `crear`. Eso es exactamente lo que ese diff existe para evitar: "perdería
+los recordatorios y las suscripciones de la gente". El caso real es banal —el
+ciclo se corre una semana y se regeneran las fechas— y el cartel decía
+"Reemplaza la lista actual", que nadie lee como "reemplaza el calendario".
+
+Con el id heredado, correr el ciclo una semana son ocho `actualizar`: al
+suscripto se le mueve la fecha del evento, que es lo que pasó de verdad.
+
+**Se reusa por posición, no solo cuando la cantidad no cambia** (que era la
+salida mínima que proponía el backlog): generar diez sobre ocho son ocho
+actualizaciones y dos altas, y generar seis sobre ocho, seis actualizaciones y
+dos bajas. Cuesta lo mismo y cubre los dos casos que más se usan.
+
+**Esto no contradice la trampa 2** ("ids de sesión por índice, nunca"). El id no
+se *deriva* del índice: se **hereda** de la fila que ocupaba esa posición, y las
+filas nuevas siguen estrenando un uuid de cliente. La trampa habla de ids
+calculados como `ses_${i}`, que cambian de dueño cuando se borra una fila del
+medio; acá el generador reemplaza la lista entera de una, así que la posición es
+la única correspondencia que existe entre lo viejo y lo nuevo.
+
+**Lo que sigue borrando:** el tema y la lectura de cada fila. No es lo que B-90
+pedía y en un club de lectura es trabajo tipeado a mano, así que quedó anotado
+como **B-169**, ahora que conservar la fila lo vuelve barato.
+
+**La guarda:** los tests de B-90 en `tests/costuras.test.ts` corren el generador
+de verdad contra el `planificar` de verdad. Es el par lo que estaba roto —cada
+pieza por separado hacía lo suyo bien—, así que la afirmación tiene que cruzar
+las dos.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

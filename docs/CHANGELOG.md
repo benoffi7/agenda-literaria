@@ -2,6 +2,33 @@
 
 ## 2026-08-24
 
+### Regenerar los encuentros ya no borra y recrea los eventos del calendario
+
+Cierra **B-90**. El generador del §11 daba ids nuevos a las ocho filas, así que
+sobre un ciclo **ya publicado** el diff del §7.2 no reconocía ningún encuentro:
+ocho `borrar` y ocho `crear` contra el calendario público, o sea "perder los
+recordatorios y las suscripciones de la gente", que es literalmente lo que ese
+diff existe para evitar. El caso que lo dispara es banal: el ciclo se corre una
+semana y se regeneran las fechas.
+
+Ahora `generarSesiones` recibe la lista que reemplaza y la fila de cada posición
+hereda su `id` y su `calendarEventId` (**D-103**), así que ese mismo cambio son
+ocho `actualizar`. Se reusa por posición aunque cambie la cantidad: diez sobre
+ocho son ocho actualizaciones y dos altas; seis sobre ocho, seis y dos bajas.
+
+No contradice la trampa 2: el id no se deriva del índice, se hereda de la fila
+que ocupaba esa posición, y las filas nuevas siguen estrenando un uuid.
+
+El cartel del generador decía "Reemplaza la lista actual", que no se lee como
+"reemplaza el calendario": ahora dice qué recalcula y qué borra, y —solo cuando
+hay encuentros ya publicados— que se mueven en lugar de recrearse. La guía del
+panel se corrigió en el mismo lugar, y hay una novedad.
+
+Los tests corren el generador de verdad contra el `planificar` de verdad: lo que
+estaba roto era el par, no cada pieza. Abierto en el camino: **B-169**
+(regenerar sigue borrando los temas y las lecturas, que ahora que la fila
+conserva su identidad dejó de tener sentido).
+
 ### El formulario deja de ser el dueño de las reglas del modelo (fase 2)
 
 La lógica de dominio de `ActividadFormulario.tsx` se mudó a módulos puros en
