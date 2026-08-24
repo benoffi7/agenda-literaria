@@ -1450,6 +1450,43 @@ o para limpiar.
 
 ---
 
+## D-92 · El rebuild se marca por contenido editable, no por operaciones de Calendar
+
+**Decisión (B-83):** `syncCalendar` marca `sistema/rebuild` **al principio**,
+antes de los cortes `if (ops.length === 0)` y `if (!CALENDAR_ID)`, y la
+condición es `huboCambioDeContenido(antes, despues)` — la misma función que
+decide si se guarda una versión del historial (D-41).
+
+**El problema:** el rebuild era un *efecto secundario* del sync a Calendar.
+`destacado`, `imagenUrl`, `searchText` y el `slug` salen al `events.json` (§5.2)
+y no entran al evento del calendario, así que tildar "Destacar en la portada" de
+una actividad publicada no generaba ninguna operación, no marcaba rebuild y no
+llegaba nunca al sitio. Y sin `GOOGLE_CALENDAR_ID` configurado la Function
+volvía antes de marcar: un proyecto sin calendario no publicaba nada, nunca.
+
+**Por qué con guarda y no `marcarRebuild` arriba a secas.** Esta misma Function
+escribe `calendarEventId` de vuelta en el documento, y esa escritura la vuelve a
+disparar. Marcar sin condición pediría un build por cada sincronización, y no es
+solo un build de más: `marcarRebuild` incluye `CAMPOS_REARME`, que rearma el
+contador de reintentos (D-23), y volvería a subir `pendiente` justo después de
+que un build arrancó — el mismo daño que B-85, provocado por nosotros.
+
+**Por qué `huboCambioDeContenido` y no una lista de campos públicos.** Porque la
+pregunta ya estaba resuelta en `historial.js`: el contenido editable es el
+documento *menos lo que escribe la máquina*, o sea "todo lo que pudo tipear una
+persona". Es una lista **negra** (D-41), así que un campo nuevo del modelo entra
+solo: el error posible es un build de más, nunca un cambio que no se publica.
+Una lista blanca de campos públicos fallaría en la dirección cara: agregar
+un campo al `events.json` y olvidarse de sumarlo a la lista dejaría de publicar
+ese dato, en silencio. Es el mismo razonamiento de D-07 y D-41, y reusar la
+función es lo que impide que los dos criterios se separen.
+
+**Costo aceptado:** un cambio puramente interno (`difusion`, el link privado de
+la reunión) marca un rebuild que no cambia nada del sitio. Al lado de no
+publicar `destacado` es gratis, y el debounce del §8 junta los seguidos.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

@@ -391,7 +391,10 @@ actividad. Ver [`07-seguridad.md`](07-seguridad.md).
 Con SSG una actividad nueva no existe hasta que se rebuildea (§8). El lazo es:
 
 1. `syncCalendar` y `rebuildPorOpciones` escriben
-   `sistema/rebuild.pendiente = true` con el motivo.
+   `sistema/rebuild.pendiente = true` con el motivo. `syncCalendar` lo marca
+   **antes** de hablar con Calendar y por haber cambiado el contenido editable
+   de la actividad, no por haber generado operaciones de calendario (B-83,
+   D-92): `destacado` e `imagenUrl` van al sitio y no al evento.
 2. `dispararRebuild` (schedule cada 5 minutos) ve el flag y manda un
    `repository_dispatch` con `event_type: rebuild` a `benoffi7/agenda-literaria`.
 3. `.github/workflows/deploy.yml` corre los tests, buildea el sitio y lo

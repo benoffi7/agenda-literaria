@@ -19,6 +19,7 @@ import { construirIssue, redactar } from '../functions/reportes.js';
 import { planificar } from '../functions/calendario.js';
 import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
+import { huboCambioDeContenido } from '../functions/historial.js';
 import { generarSesiones } from '@/lib/sesiones';
 import type { Actividad } from '@/types/actividad';
 
@@ -305,23 +306,31 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * `syncCalendar` marca `sistema/rebuild` **al final**, después de un
- * `if (ops.length === 0) return;` y de un `if (!CALENDAR_ID) return;`. O sea: si
- * el cambio no altera el evento del calendario, el sitio público no se
- * rebuildea. Es la trampa 8 del §13 con otro disparador.
+ * `syncCalendar` marcaba `sistema/rebuild` **al final**, después de un
+ * `if (ops.length === 0) return;` y de un `if (!CALENDAR_ID) return;`: si el
+ * cambio no alteraba el evento del calendario, el sitio público no se
+ * rebuildeaba. Era la trampa 8 del §13 con otro disparador.
+ *
+ * **Arreglado:** el rebuild se marca antes de los dos cortes, y la decisión la
+ * toma `huboCambioDeContenido` —el mismo criterio del historial (D-41)— para
+ * que el write-back de `calendarEventId` de la propia Function no pida un build
+ * por cada sync.
  */
 const marcaRebuild = (antes: unknown, despues: unknown) =>
-  planificar(antes, despues, {}).length > 0;
+  huboCambioDeContenido(antes, despues);
 
-describe('B-83 · un cambio que no toca el evento no dispara rebuild', () => {
-  it('index.js corta antes de marcarRebuild cuando no hay operaciones', () => {
+describe('B-83 · el rebuild ya no cuelga del sync a Calendar', () => {
+  it('index.js marca el rebuild antes de los dos cortes tempranos', () => {
     const src = fuente('functions/index.js');
+    const marca = src.indexOf('await marcarRebuild(`actividad ${id}`)');
     const corte = src.indexOf('if (ops.length === 0)');
     const sinCalendario = src.indexOf('if (!CALENDAR_ID)');
-    const marca = src.indexOf('await marcarRebuild(');
-    expect(corte).toBeGreaterThan(-1);
+    expect(marca).toBeGreaterThan(-1);
+    expect(corte).toBeGreaterThan(marca);
     expect(sinCalendario).toBeGreaterThan(corte);
-    expect(marca).toBeGreaterThan(sinCalendario);
+    // Y la marca va con guarda: sin ella, el write-back de la propia Function
+    // pediría un build por cada sincronización.
+    expect(src).toContain('if (huboCambioDeContenido(antes, despues)) {');
   });
 
   it('destacar una actividad publicada no genera ninguna operación de Calendar', () => {
@@ -330,17 +339,44 @@ describe('B-83 · un cambio que no toca el evento no dispara rebuild', () => {
 
   /**
    * `destacado` sale al `events.json` (§5.2) y decide la portada del sitio: sin
-   * rebuild, tildarlo no se ve nunca. Lo mismo `imagenUrl`, `slug` de un
-   * borrador y `searchText`.
+   * rebuild, tildarlo no se veía nunca. Lo mismo `imagenUrl`, el `slug` y
+   * `searchText`.
    */
-  it.fails('B-83: destacar una actividad publicada tiene que marcar rebuild', () => {
+  it('B-83: destacar una actividad publicada marca rebuild', () => {
     expect(marcaRebuild(ciclo({ destacado: false }), ciclo({ destacado: true }))).toBe(true);
   });
 
-  it.fails('B-83: cambiar la imagen de portada también', () => {
+  it('B-83: cambiar la imagen de portada también', () => {
     expect(
       marcaRebuild(ciclo({ imagenUrl: null }), ciclo({ imagenUrl: 'https://cdn/tapa.jpg' })),
     ).toBe(true);
+  });
+
+  it('B-83: y corregir el texto de búsqueda o el slug', () => {
+    expect(marcaRebuild(ciclo({ searchText: 'club' }), ciclo({ searchText: 'club lectura' }))).toBe(
+      true,
+    );
+    expect(marcaRebuild(ciclo({ slug: 'club' }), ciclo({ slug: 'club-de-lectura' }))).toBe(true);
+  });
+
+  /**
+   * La otra mitad del arreglo, y la que hace que no sea "poner marcarRebuild
+   * arriba a lo bruto": el write-back de `calendarEventId` que escribe esta
+   * misma Function no pide un build.
+   */
+  it('el write-back del propio sync no marca rebuild', () => {
+    const sinIds = ciclo({ sesiones: ochoSesiones(() => ({ calendarEventId: null })) });
+    expect(marcaRebuild(sinIds, ciclo())).toBe(false);
+  });
+
+  it('guardar el formulario sin cambiar nada tampoco', () => {
+    const antes = ciclo({ updatedAt: ts('2026-08-24T12:00:00Z'), updatedBy: 'uid-1' });
+    const despues = ciclo({ updatedAt: ts('2026-08-24T12:05:00Z'), updatedBy: 'uid-1' });
+    expect(marcaRebuild(antes, despues)).toBe(false);
+  });
+
+  it('borrar la actividad marca rebuild: hay que sacarla del sitio', () => {
+    expect(marcaRebuild(ciclo(), null)).toBe(true);
   });
 });
 

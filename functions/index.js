@@ -13,6 +13,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
 import { planificar } from './calendario.js';
 import { idDeEvento, reponerIds } from './sincronizacion.js';
+import { huboCambioDeContenido } from './historial.js';
 import {
   CAMPOS_REARME,
   decidirDisparo,
@@ -169,6 +170,28 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
   const despues = event.data?.after?.data() ?? null;
   const { id } = event.params;
 
+  // B-83 — el rebuild del sitio se marca ACÁ, antes de los dos cortes de
+  // abajo, porque corresponde por que la actividad cambió y no por que el
+  // calendario haya recibido operaciones. `destacado`, `imagenUrl`,
+  // `searchText` y el `slug` salen al `events.json` (§5.2) y **no** entran al
+  // evento de Calendar: colgando el rebuild del sync, tildar "Destacar en la
+  // portada" de una actividad publicada no llegaba nunca al sitio. Y sin
+  // `GOOGLE_CALENDAR_ID` configurado no se publicaba nada, nunca.
+  //
+  // La guarda no puede faltar: esta misma Function escribe `calendarEventId`
+  // de vuelta, y marcar el rebuild ahí sería pedir un build por cada sync —
+  // que además rearma el contador de reintentos (`CAMPOS_REARME`, D-23) y
+  // vuelve a subir `pendiente` justo después de que un build arrancó.
+  //
+  // La pregunta "¿cambió algo que le importe a quien lo lee?" ya está resuelta
+  // en `historial.js`: `huboCambioDeContenido` compara el **contenido
+  // editable**, o sea el documento menos lo que escribe la máquina (D-41). El
+  // write-back produce, por construcción, el mismo contenido editable. Es la
+  // misma propiedad de D-07, y no un acuerdo entre dos listas de campos.
+  if (huboCambioDeContenido(antes, despues)) {
+    await marcarRebuild(`actividad ${id}`);
+  }
+
   const labels = await cargarLabels();
   const ops = planificar(antes, despues, labels);
 
@@ -248,8 +271,6 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
       if (sesiones) tx.update(ref, { sesiones });
     });
   }
-
-  await marcarRebuild(`actividad ${id}`);
 });
 
 // ─────────────────────────────────────────────────────────────────

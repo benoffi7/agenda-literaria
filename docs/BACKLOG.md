@@ -301,7 +301,12 @@ ya lo necesita.
 ~~B-02 · Trigger de rebuild~~ → [cerrado](#cerrados), con pasos manuales
 pendientes del dueño (ver arriba).
 
-### B-83 · El rebuild del sitio cuelga del sync a Calendar
+### B-83 · El rebuild del sitio cuelga del sync a Calendar — ✅ hecho (2026-08-24)
+
+**Arreglado:** `marcarRebuild` pasó arriba de los dos cortes, con la condición
+`huboCambioDeContenido(antes, despues)` — el mismo criterio del historial
+(D-41), para que el write-back de la propia Function no pida un build por cada
+sincronización (D-92).
 
 `syncCalendar` marca `sistema/rebuild` en la **última** línea, después de dos
 cortes tempranos: `if (ops.length === 0) return;` y `if (!CALENDAR_ID) return;`.

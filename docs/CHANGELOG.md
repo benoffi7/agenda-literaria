@@ -2,6 +2,25 @@
 
 ## 2026-08-24
 
+### Destacar una actividad ya llega al sitio: el rebuild dejó de colgar del sync
+
+**B-83.** `syncCalendar` marcaba `sistema/rebuild` en la última línea, después
+de `if (ops.length === 0) return;` y de `if (!CALENDAR_ID) return;`. O sea que
+el rebuild era un efecto secundario del sync a Calendar, y los campos que van al
+`events.json` pero **no** al evento —`destacado`, `imagenUrl`, `searchText`, el
+`slug`— no llegaban nunca al sitio. Sin `GOOGLE_CALENDAR_ID` configurado, no se
+publicaba nada.
+
+Ahora se marca al principio, y la condición no es "hubo operaciones de
+calendario" sino `huboCambioDeContenido(antes, despues)`: la misma función con
+la que el historial decide si guardar una versión (D-41). Eso es lo que hace que
+mover la marca arriba no sea a lo bruto — el write-back de `calendarEventId` de
+la propia Function produce el mismo contenido editable por construcción, así que
+no pide un build por cada sync ni rearma el contador de reintentos (**D-92**).
+
+Los dos `it.fails` de B-83 pasaron a `it`, y se sumaron los casos que cierran la
+guarda: el write-back, un guardado que no cambió nada y el borrado.
+
 ### Los dos P0 del sync a Calendar: ya no puede haber dos eventos para un encuentro
 
 Los dos caminos que duplicaban un evento en el calendario **público** están
