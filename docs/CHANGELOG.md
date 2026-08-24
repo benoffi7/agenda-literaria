@@ -38,6 +38,12 @@ Abre **B-160** (agregar o borrar una fila sí renumera: residual asumido, con la
 salida anotada por si molesta) y **B-161** (los fixtures que siguen siendo de un
 solo encuentro, con el motivo de cada uno).
 
+**En producción no se toca nada hasta la próxima edición.** El sync corre por
+escritura del documento, así que los eventos de un ciclo que hoy tenga un
+encuentro cancelado se renumeran —una sola vez, y para bien— cuando alguien
+vuelva a guardar esa actividad. Los ciclos sin cancelaciones producen exactamente
+la misma descripción que antes.
+
 ### Vista calendario del panel, y los ocho hallazgos de auditarla
 
 La vista muestra los encuentros por día con su **estado de publicación** — no el
