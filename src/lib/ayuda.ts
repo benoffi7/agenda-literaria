@@ -203,7 +203,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Borrar una actividad publicada borra también sus eventos del calendario, y no se puede ' +
-          'deshacer. Si la idea es sacarla de circulación pero conservarla, pasala a borrador.',
+          'deshacer desde el panel. Si la idea es sacarla de circulación pero conservarla, pasala a ' +
+          'borrador. Por si acaso, al borrar queda guardada una copia de todo lo que tenía cargado: ' +
+          'no la vas a ver en el panel, pero se puede recuperar pidiéndosela a quien administra el ' +
+          'sistema.',
         cuidado: true,
       },
     ],

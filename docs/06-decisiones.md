@@ -769,6 +769,11 @@ viejo salvo un log perdido.
 falta los dos:
 
 1. **Un disparo exitoso** resetea el contador. Es el camino normal.
+   **Actualización (B-85):** el disparo exitoso resetea el contador siempre,
+   pero baja `pendiente` solo si la marca `actualizado` del documento sigue
+   siendo la que el tick leyó. Si cambió, alguien marcó un rebuild nuevo durante
+   los hasta 15 s del `fetch` y ese cambio no entró al build que arrancó: el
+   flag queda arriba y el próximo tick dispara otro.
 2. **Un cambio nuevo rearma los intentos** (`CAMPOS_REARME` en `marcarRebuild`).
    Sin esto, agotarse sería un estado terminal que hay que destrabar a mano
    editando Firestore.
@@ -1364,6 +1369,196 @@ listado vacío.
 
 ---
 
+## D-90 · El id del evento de Calendar lo elige el cliente, derivado del id de sesión
+
+**Decisión (B-82):** al crear un evento, `syncCalendar` manda el `id` en el
+`requestBody` — `ses_<uuid>` sin el `_` ni los guiones, que es lo que
+`idDeEvento` deriva del id de sesión. Un `insert` repetido devuelve **409** y se
+resuelve con un `update` sobre ese mismo evento.
+
+**El problema:** la entrega de eventos de Firestore es *al menos una vez*, y la
+Function decide con el payload del evento (`before`/`after`), no con el estado
+del documento. Una reentrega de la escritura que publicó una actividad trae el
+mismo `before` y el mismo `after`, así que `planificar` vuelve a decir `crear`:
+dos eventos para el mismo encuentro en el calendario **público**, y el primero
+huérfano. La guarda anti-loop del §7.1 (D-07) no cubre esto: corta la
+*recursión* —la segunda escritura produce el mismo payload— no la *reentrega*.
+
+**Por qué esta salida y no un marcador en el documento.** La alternativa era
+llevar en Firestore los `event.id` ya aplicados, como hace `guardarVersion` con
+`idDeVersion(event.time, event.id)` (D-43). Funciona, pero deja la idempotencia
+del lado equivocado: la Function tendría que **acordarse** de lo que hizo, con
+un registro que hay que escribir, leer y podar, y que puede desincronizarse del
+calendario real. Con el id derivado, la unicidad la garantiza el sistema donde
+está el daño. No hay estado nuevo que mantener y la propiedad no se puede
+romper por olvido, igual que en D-07.
+
+**Lo que hubo que verificar, y no asumir:** Calendar acepta un id elegido por el
+cliente solo en **base32hex** (`0-9a-v`, RFC 2938 §3.1.2) y de 5 a 1024
+caracteres. `ses_` + un uuid sin guiones son 35 caracteres de `0-9a-f`, que es
+un subconjunto. `tests/sincronizacion.test.ts` lo comprueba contra ids generados
+por el mismo código del panel (`nuevaSesionId`), no contra un literal.
+
+Y sacar los guiones es **inyectivo** porque están en posiciones fijas: dos
+sesiones nunca comparten el id del evento. Si colisionaran, el 409 haría que dos
+encuentros terminaran apuntando al mismo evento.
+
+**Compatible hacia atrás:** los eventos que ya existen conservan el id que les
+dio Google. El diff los sigue encontrando por el `calendarEventId` guardado;
+esto solo decide el id de los que se crean de ahora en adelante.
+
+**Efecto lateral bueno:** una sesión que pasó a borrador (se borró su evento) y
+volvió a publicarse antes se recreaba con un id nuevo; ahora el `insert` da 409
+—Calendar reserva el id de un evento borrado— y el `update` con
+`status: 'confirmed'` **restaura el evento original**, con los recordatorios y
+las suscripciones de la gente. Sin el 409 manejado, ese encuentro no habría
+podido volver nunca al calendario.
+
+**Costo aceptado:** si el id de sesión no tiene la forma documentada —el
+respaldo de `nuevaSesionId` sin `crypto.randomUUID` usa base36, que tiene letras
+fuera del alfabeto— `idDeEvento` devuelve `null`, el `insert` va sin id y lo
+elige Google. Se pierde la idempotencia de esa sesión, nunca la sincronización.
+
+---
+
+## D-91 · El `calendarEventId` se repone en toda operación, y solo si cambió
+
+**Decisión (B-80):** el write-back de `syncCalendar` escribe el id del evento
+para **las tres** operaciones del plan —`crear`, `actualizar` y `borrar`— y no
+solo para la primera y la última. `reponerIds` devuelve `null` si el documento
+ya tiene los ids que corresponden, y en ese caso no se escribe nada.
+
+**El problema:** el panel es dueño de un campo que escribe la Function.
+`formADocumento` emite `calendarEventId` en cada guardado, y el listado se
+refresca al guardar (`setVersion(v + 1)`), o sea **antes** de que llegue el
+write-back. Guardar desde ese snapshot pisa el id con `null`. Ese guardado
+todavía actualiza el evento correcto —`planificar` lo saca del `before`— así que
+no se nota; la edición siguiente ya no tiene de dónde sacarlo y emite `crear`.
+
+**Por qué del lado de la Function.** El backlog listaba tres salidas y la más
+prolija era del lado del panel (que `actualizarActividad` relea y fusione los
+ids antes de escribir, y el panel deje de ser dueño del campo). Se eligió la de
+la Function porque es **defensiva**: no depende de que el cliente se porte bien,
+y cubre también un guardado hecho por un script, por la consola de Firestore o
+por una versión vieja del panel abierta en otra pestaña. La ventana entre las
+dos escrituras sigue existiendo, pero ya no deja daño permanente: la pasada que
+pisó el campo es la misma que lo repara.
+
+La salida del panel sigue valiendo y quedó abierta como **B-150**: son
+complementarias, no alternativas.
+
+**Por qué `reponerIds` devuelve `null` cuando no hay cambios.** Sin eso, cada
+`actualizar` escribiría el documento para dejarlo igual, y cada escritura es un
+disparo más de esta misma Function (y de `guardarVersion`). Con la comparación,
+el caso normal no escribe: solo escribe cuando de verdad hay un id para reponer
+o para limpiar.
+
+---
+
+## D-92 · El rebuild se marca por contenido editable, no por operaciones de Calendar
+
+**Decisión (B-83):** `syncCalendar` marca `sistema/rebuild` **al principio**,
+antes de los cortes `if (ops.length === 0)` y `if (!CALENDAR_ID)`, y la
+condición es `huboCambioDeContenido(antes, despues)` — la misma función que
+decide si se guarda una versión del historial (D-41).
+
+**El problema:** el rebuild era un *efecto secundario* del sync a Calendar.
+`destacado`, `imagenUrl`, `searchText` y el `slug` salen al `events.json` (§5.2)
+y no entran al evento del calendario, así que tildar "Destacar en la portada" de
+una actividad publicada no generaba ninguna operación, no marcaba rebuild y no
+llegaba nunca al sitio. Y sin `GOOGLE_CALENDAR_ID` configurado la Function
+volvía antes de marcar: un proyecto sin calendario no publicaba nada, nunca.
+
+**Por qué con guarda y no `marcarRebuild` arriba a secas.** Esta misma Function
+escribe `calendarEventId` de vuelta en el documento, y esa escritura la vuelve a
+disparar. Marcar sin condición pediría un build por cada sincronización, y no es
+solo un build de más: `marcarRebuild` incluye `CAMPOS_REARME`, que rearma el
+contador de reintentos (D-23), y volvería a subir `pendiente` justo después de
+que un build arrancó — el mismo daño que B-85, provocado por nosotros.
+
+**Por qué `huboCambioDeContenido` y no una lista de campos públicos.** Porque la
+pregunta ya estaba resuelta en `historial.js`: el contenido editable es el
+documento *menos lo que escribe la máquina*, o sea "todo lo que pudo tipear una
+persona". Es una lista **negra** (D-41), así que un campo nuevo del modelo entra
+solo: el error posible es un build de más, nunca un cambio que no se publica.
+Una lista blanca de campos públicos fallaría en la dirección cara: agregar
+un campo al `events.json` y olvidarse de sumarlo a la lista dejaría de publicar
+ese dato, en silencio. Es el mismo razonamiento de D-07 y D-41, y reusar la
+función es lo que impide que los dos criterios se separen.
+
+**Costo aceptado:** un cambio puramente interno (`difusion`, el link privado de
+la reunión) marca un rebuild que no cambia nada del sitio. Al lado de no
+publicar `destacado` es gratis, y el debounce del §8 junta los seguidos.
+
+---
+
+## D-93 · Renombrar una etiqueta re-sincroniza los eventos publicados
+
+**Decisión (B-04):** `rebuildPorOpciones` compara las etiquetas del `before` con
+las del `after` y, si alguna cambió, reescribe los eventos de las actividades
+publicadas que la usan. Con tope de 150 eventos por corrida y
+`timeoutSeconds: 300`.
+
+**El problema:** la descripción y la ubicación del evento muestran la
+**etiqueta**, no el slug (D-11). La actividad guarda solo el slug (§4.1), que es
+lo que permite renombrar sin tocar documentos — pero el evento de Calendar es una
+copia ya materializada. Renombrar "A la gorra" arreglaba el sitio (que se
+rebuildea) y dejaba el calendario diciendo lo anterior hasta la próxima edición
+de cada actividad.
+
+**Por qué no se resuelve con `planificar`.** El diff recibe **un** juego de
+etiquetas y compara el evento de `antes` contra el de `despues`; con la actividad
+igual a los dos lados no ve ninguna diferencia. Acá lo que cambió son las
+etiquetas, así que `replanificarPorEtiquetas` construye el mismo evento con el
+mapa viejo y con el nuevo y compara **eso**. Es el criterio de D-07 —comparar el
+payload que se le mandaría a Calendar— aplicado al otro eje.
+
+**La guarda que hace esto viable:** `/opciones/*` se escribe en **cada** guardado
+del formulario, porque `upsertOpcion` sube `usos` (§4.2). Sin `mismasEtiquetas`,
+cada guardado dispararía una re-sincronización completa del calendario. La
+comparación es sobre el mapa `{slug: label}`, así que `usos` y el reordenamiento
+de las opciones no cuentan como renombre. Una opción **nueva** sí cuenta como
+cambio, y no hace daño: todavía no la usa ninguna actividad, así que no genera
+ninguna operación.
+
+**Costo aceptado:** el tope de 150 eventos. Con 20 actividades publicadas de 8
+encuentros ya son 160 round trips a Calendar, y la Function tiene timeout. Si se
+alcanza, se loguea `error` con cuántos quedaron: el sitio ya está al día y cada
+actividad se pone al día sola con su próxima edición. Es un tope de seguridad
+para que un renombre no deje la Function reintentando en loop.
+
+---
+
+## D-94 · Borrar una actividad guarda su última versión, y no es borrado lógico
+
+**Decisión (B-41):** un `onDocumentDeleted` sobre `actividades/{id}` escribe el
+documento completo en `/actividades/{id}/versiones/{version}` con
+`borrado: true`, por el mismo camino que el trigger de edición (mismo id
+idempotente, misma retención).
+
+**El problema:** `guardarVersion` es un `onDocumentUpdated` (§12), así que no se
+disparaba al borrar. El panel borra por fila y sin papelera: era el último
+agujero de pérdida de datos, y el único irreversible.
+
+**Por qué no borrado lógico.** `estado: 'borrado'` + filtrarlo del listado
+también resolvería el "lo borré sin querer", y encima sin subcolección huérfana.
+Se descartó por dos motivos: toca el listado, el formulario, las reglas y el enum
+del modelo —o sea la fase 2 del plan de saneamiento, con el archivo más
+disputado del repo— y sobre todo porque `estado` ya decide qué se publica (§7.3):
+sumarle un valor mezcla "esto no se muestra" con "esto no existe". El trigger son
+quince líneas, no cambia el modelo y guarda exactamente lo que se perdía.
+
+**Lo que queda pendiente, y ya estaba (B-89):** la subcolección sobrevive al
+documento padre, así que la versión del borrado queda huérfana — alcanzable por
+path desde la consola de Firestore, invisible desde el panel. Es a la vez lo que
+hace recuperable el borrado y lo que B-89 tiene que resolver cuando exista UI de
+restauración (B-40). Borrarla en el mismo trigger sería tirar justo lo que se
+acaba de guardar.
+
+**Quién borró no se sabe:** el evento de borrado no trae uid, así que
+`actualizadoPor` guarda el último que editó. Es lo más cerca que se puede estar
+sin agregar un campo al modelo.
+
 ## D-95 · El número del encuentro cuenta también los cancelados
 
 **Contexto (B-84).** La descripción del evento abre con "Club de lectura ·
@@ -1424,6 +1619,7 @@ ciclo publicado cambia el largo del ciclo, así que el "de N" de los demás pasa
 ser falso y se actualizan (nunca se borran ni se recrean). Ahí el conjunto de
 encuentros cambió de verdad; en una cancelación no. Queda anotado como **B-160**
 por si el costo molesta en la práctica.
+
 
 ---
 

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
@@ -335,5 +337,58 @@ describe('versionesAborrar — retención por cantidad', () => {
   it('el tope no cambia sin que un test lo diga', () => {
     // La retención es una decisión explícita, no un número que se toca de paso.
     expect(MAX_VERSIONES).toBe(20);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-41 · la versión del borrado
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * `guardarVersion` es un `onDocumentUpdated`, así que no se disparaba al borrar:
+ * el panel borra por fila y sin papelera, y se iba la actividad entera sin nada
+ * que recuperar. Ahora hay un `onDocumentDeleted` que guarda la última versión.
+ *
+ * La lógica pura que usa es la misma de siempre —`camposCambiados` contra
+ * `null`— y eso es lo que se testea acá; que el trigger exista y comparta la
+ * retención se verifica sobre la fuente.
+ */
+describe('B-41 · borrar una actividad guarda su última versión', () => {
+  it('con `despues` en null, los campos cambiados son todo el contenido editable', () => {
+    const campos = camposCambiados(actividad(), null);
+    expect(campos).toContain('titulo');
+    expect(campos).toContain('descripcion');
+    expect(campos).toContain('sesiones');
+    // Lo que escribe la máquina no cuenta como contenido perdido.
+    expect(campos).not.toContain('updatedAt');
+    expect(campos).not.toContain('updatedBy');
+  });
+
+  it('borrar siempre cuenta como cambio de contenido', () => {
+    expect(huboCambioDeContenido(actividad(), null)).toBe(true);
+  });
+
+  it('el id de la versión del borrado también es idempotente (D-43)', () => {
+    // Cloud Functions entrega al menos una vez: dos entregas del mismo borrado
+    // tienen el mismo instante y el mismo id de evento.
+    expect(idDeVersion('2026-08-24T12:00:00.000Z', 'ev1')).toBe(
+      idDeVersion('2026-08-24T12:00:00.000Z', 'ev1'),
+    );
+  });
+
+  it('el trigger existe, se exporta y comparte la retención con el de edición', () => {
+    const fuente = (relativo: string) =>
+      readFileSync(fileURLToPath(new URL(`../${relativo}`, import.meta.url)), 'utf8');
+
+    const trigger = fuente('functions/historial-trigger.js');
+    expect(trigger).toContain('export const guardarVersionAlBorrar = onDocumentDeleted(OPCIONES,');
+    // Las dos escrituras pasan por el mismo helper: la retención, el id y la
+    // forma del documento no se pueden separar entre "editaron" y "borraron".
+    expect(trigger.match(/await guardar\(\{/g)).toHaveLength(2);
+    expect(trigger.match(/versionesAborrar\(/g)).toHaveLength(1);
+    // Y está exportado desde el entrypoint, o si no no se despliega.
+    expect(fuente('functions/index.js')).toContain(
+      "export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';",
+    );
   });
 });

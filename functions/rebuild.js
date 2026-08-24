@@ -88,9 +88,24 @@ export const decidirDisparo = (estado, ahora, opciones = {}) => {
  *
  * Acá se resetea el contador: el camino normal de vuelta a cero es que el
  * problema se resuelva y el disparo funcione.
+ *
+ * **B-85 — `pendiente` no se baja a ciegas.** El tick lee el documento, habla
+ * con GitHub (hasta 15 s de timeout) y después escribe. Una actividad guardada
+ * en esa ventana marca su rebuild, y bajar el flag sin mirar se lo comía: el
+ * build que arrancó no la incluye y ya nadie iba a pedir otro, así que el sitio
+ * quedaba viejo hasta la próxima edición ajena.
+ *
+ * `marcaLeida` y `marcaActual` son el `actualizado` del documento cuando el
+ * tick lo leyó y ahora, en la transacción que escribe. Si difieren, alguien
+ * marcó un rebuild nuevo en el medio y `pendiente` queda en `true` para que el
+ * próximo tick lo dispare. El resto se resetea igual: el disparo **sí** salió
+ * bien, así que los reintentos vuelven a cero.
+ *
+ * Sin argumentos se comporta como antes (baja el flag), que es lo que
+ * corresponde cuando no hay con qué comparar.
  */
-export const registrarExito = (ahora) => ({
-  pendiente: false,
+export const registrarExito = (ahora, { marcaLeida, marcaActual } = {}) => ({
+  pendiente: milis(marcaActual) !== milis(marcaLeida),
   disparado: new Date(ahora),
   intentos: 0,
   ultimoError: null,

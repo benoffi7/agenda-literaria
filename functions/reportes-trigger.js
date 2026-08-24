@@ -58,6 +58,16 @@ const OPCIONES = {
 
 const API = 'https://api.github.com';
 
+/**
+ * Timeout de la llamada a GitHub (B-74). Sin esto un socket colgado se come la
+ * invocación entera hasta el timeout de la plataforma.
+ *
+ * El conocimiento ya estaba escrito en la otra copia de esta misma llamada
+ * (`TIMEOUT_DISPATCH_MS` en `index.js`): acá se habían copiado las cinco
+ * cabeceras y no el `AbortSignal`. Es el ejemplo de por qué B-77 vale.
+ */
+const TIMEOUT_MS = 15_000;
+
 /** Crea el issue. Devuelve `{ ok, numero, url, status, mensaje }`. */
 const crearIssue = async ({ repo, token, issue }) => {
   let r;
@@ -72,6 +82,7 @@ const crearIssue = async ({ repo, token, issue }) => {
         'User-Agent': 'agenda-literaria',
       },
       body: JSON.stringify(issue),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (e) {
     // Sin status: error de red. Reintentable.

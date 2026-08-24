@@ -49,6 +49,27 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'destacar-llega-al-sitio',
+    fecha: '2026-08-24',
+    titulo: 'Destacar una actividad, o cambiarle la imagen, ahora sí se ve en el sitio',
+    detalle:
+      'Antes, los cambios que no tocan el calendario —destacar en la portada, la imagen, el ' +
+      'título para buscar— se guardaban bien pero el sitio no se rehacía, así que no se veían ' +
+      'hasta que editabas otra cosa. Ahora cualquier cambio que hagas pide la actualización del ' +
+      'sitio, que tarda unos minutos.',
+    donde: 'Casilla «Destacar en la portada» y campo de imagen, en el formulario.',
+  },
+  {
+    id: 'sin-encuentros-duplicados',
+    fecha: '2026-08-24',
+    titulo: 'El calendario público ya no puede quedarse con dos veces el mismo encuentro',
+    detalle:
+      'Había dos formas de que un encuentro terminara publicado dos veces: editar una actividad ' +
+      'justo después de publicarla, y un reintento interno del sistema. Las dos están cerradas. ' +
+      'Si en el calendario ves un encuentro repetido de antes, hay que borrarlo a mano una vez.',
+    donde: 'En el calendario público, y en la vista «Calendario» del panel.',
+  },
+  {
     id: 'cancelar-no-renumera',
     fecha: '2026-08-24',
     titulo: 'Cancelar un encuentro ya no le cambia el nombre a los demás',

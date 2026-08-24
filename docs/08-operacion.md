@@ -201,11 +201,20 @@ guardar.
 ### Functions
 
 ```bash
-firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones,functions:guardarVersion
+firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones,functions:guardarVersion,functions:guardarVersionAlBorrar
 ```
 
-**Desplegar solo esas tres.** `dispararRebuild` está escrita pero no se despliega
-todavía (D-13): sería un schedule cada 5 minutos sin nada que disparar.
+**Desplegar solo esas cuatro.** `dispararRebuild` está escrita pero no se
+despliega todavía (D-13): sería un schedule cada 5 minutos sin nada que disparar.
+
+**`syncCalendar` y `rebuildPorOpciones` cambiaron el 2026-08-24** (B-80, B-82,
+B-83, B-04) y las que están en producción son las viejas: hasta que se
+redesplieguen, siguen pudiendo duplicar un evento y siguen sin publicar
+`destacado`. La verificación después del deploy está más abajo, en "Verificar el
+sync después de redesplegar".
+
+`guardarVersionAlBorrar` (B-41) es nueva y va en el mismo deploy que
+`guardarVersion`: mismo archivo, mismas opciones, misma service account.
 
 Un `firebase deploy --only functions` sin filtro la incluiría.
 
@@ -474,7 +483,32 @@ gcloud functions logs read syncCalendar --project agenda-literaria \
 ```
 
 Los mensajes útiles: `evento creado`, `evento actualizado`, `evento borrado`,
-`sin cambios relevantes para Calendar`, `falló una operación de Calendar`.
+`sin cambios relevantes para Calendar`, `falló una operación de Calendar`, y
+desde B-82 `el evento ya existía con el id derivado: se actualizó` (una
+reentrega, o un encuentro que volvió a publicarse: no es un error).
+
+### Verificar el sync después de redesplegar (B-80, B-82, B-83, B-04)
+
+Cuatro pruebas sobre una actividad de prueba publicada, en este orden. Las tres
+primeras se miran en el calendario real (ver "Leer el calendario real"):
+
+1. **B-83** · tildar "Destacar en la portada" y guardar. No tiene que aparecer
+   ninguna operación de Calendar en los logs, y `sistema/rebuild.pendiente` tiene
+   que quedar en `true` con `motivo: "actividad <id>"`. Antes no se marcaba.
+2. **B-80** · publicar, esperar el write-back, y sin recargar el panel editar el
+   título desde el listado dos veces seguidas. En el calendario tiene que haber
+   **un** evento, no dos, y el documento tiene que conservar su
+   `calendarEventId` después de cada guardado.
+3. **B-82** · el id del evento de una sesión nueva tiene que ser el id de sesión
+   sin el `_` ni los guiones (`ses_3f2a…` → `ses3f2a…`), visible en
+   `calendarEventId`. Los eventos viejos conservan el id de Google: eso es lo
+   esperado, no hay que migrar nada.
+4. **B-04** · renombrar una etiqueta de taxonomía usada por una actividad
+   publicada (por ejemplo el barrio) y confirmar en los logs de
+   `rebuildPorOpciones` el mensaje `eventos re-sincronizados por un cambio de
+   etiqueta`, con la descripción del evento ya actualizada. Guardar el formulario
+   sin renombrar nada tiene que loguear `sin etiquetas renombradas`: el `usos + 1`
+   de cada guardado **no** re-sincroniza.
 
 ### El sitio no se actualiza después de cargar una actividad
 
@@ -508,7 +542,9 @@ gcloud functions logs read dispararRebuild --project agenda-literaria \
 
 Mensajes: `rebuild disparado`, `repository_dispatch falló, se reintenta`,
 `el rebuild agotó los reintentos: el sitio quedó viejo`, `rebuild pendiente
-pero sin GitHub configurado`.
+pero sin GitHub configurado`, `llegó otro cambio durante el dispatch: queda
+pendiente para el próximo tick` (B-85: el flag **no** se baja, porque el build
+que arrancó no incluye ese cambio).
 
 Y del lado de GitHub, los runs del workflow:
 

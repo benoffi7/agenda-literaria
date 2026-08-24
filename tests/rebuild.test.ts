@@ -186,3 +186,43 @@ describe('vuelta a la normalidad — el contador se resetea (B-13)', () => {
     expect(decidirDisparo({ ...remarcado, ...exito }, ahora).motivo).toBe('sin-pendiente');
   });
 });
+
+describe('registrarExito — la marca del documento (B-85)', () => {
+  it('sin marcas se comporta como antes: baja el flag', () => {
+    expect(registrarExito(T0).pendiente).toBe(false);
+  });
+
+  it('con la misma marca a los dos lados baja el flag', () => {
+    expect(
+      registrarExito(T0, { marcaLeida: ts(T0 - MINUTO), marcaActual: ts(T0 - MINUTO) }).pendiente,
+    ).toBe(false);
+  });
+
+  /**
+   * El caso de B-85: una actividad guardada mientras el `fetch` a GitHub estaba
+   * en vuelo marcó su rebuild, y ese cambio no entró al build que arrancó.
+   */
+  it('si la marca cambió durante el dispatch, `pendiente` queda arriba', () => {
+    const exito = registrarExito(T0, {
+      marcaLeida: ts(T0 - MINUTO),
+      marcaActual: ts(T0 - 30_000),
+    });
+    expect(exito.pendiente).toBe(true);
+    // El disparo salió bien: el contador igual se resetea.
+    expect(exito).toMatchObject({ intentos: 0, ultimoError: null, agotado: false });
+    // Y el próximo tick lo dispara, sin backoff.
+    expect(decidirDisparo({ ...pendiente(), ...exito }, T0 + MINUTO).accion).toBe('disparar');
+  });
+
+  it('un documento sin marca que aparece con marca también queda pendiente', () => {
+    // El caso de un `sistema/rebuild` escrito por la versión anterior.
+    expect(registrarExito(T0, { marcaLeida: null, marcaActual: ts(T0) }).pendiente).toBe(true);
+  });
+
+  it('acepta Date y milisegundos, no solo Timestamp', () => {
+    expect(registrarExito(T0, { marcaLeida: new Date(T0), marcaActual: T0 }).pendiente).toBe(false);
+    expect(registrarExito(T0, { marcaLeida: new Date(T0), marcaActual: T0 + 1 }).pendiente).toBe(
+      true,
+    );
+  });
+});

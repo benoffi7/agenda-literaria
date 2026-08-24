@@ -13,6 +13,14 @@ import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
 import { planificar } from './calendario.js';
 import {
+  idDeEvento,
+  mapaDeEtiquetas,
+  mismasEtiquetas,
+  replanificarPorEtiquetas,
+  reponerIds,
+} from './sincronizacion.js';
+import { huboCambioDeContenido } from './historial.js';
+import {
   CAMPOS_REARME,
   decidirDisparo,
   registrarExito,
@@ -120,10 +128,75 @@ const marcarRebuild = (motivo) =>
 // Sync a Calendar
 // ─────────────────────────────────────────────────────────────────
 
+/**
+ * Crea el evento de una sesión y devuelve el id que quedó en Calendar.
+ *
+ * B-82 — el id lo elige el cliente (`idDeEvento`), derivado del id de sesión.
+ * Así un `insert` repetido —una reentrega del mismo evento de Firestore, que
+ * la plataforma garantiza *al menos una vez*— choca con el que ya existe y
+ * devuelve 409 en lugar de crear un segundo evento en el calendario público.
+ */
+const crearEvento = async (cal, op) => {
+  const propuesto = idDeEvento(op.id);
+
+  try {
+    const { data } = await cal.events.insert({
+      calendarId: CALENDAR_ID,
+      requestBody: propuesto ? { ...op.evento, id: propuesto } : op.evento,
+    });
+    return data.id;
+  } catch (e) {
+    const code = e?.code ?? e?.response?.status;
+    if (!propuesto || code !== 409) throw e;
+
+    // 409 = ya existe un evento con ese id. Llegan dos caminos, y los dos se
+    // resuelven igual —dejando el contenido de ahora en ese mismo evento:
+    //
+    //  - la reentrega que este id vino a resolver: el evento ya se creó en la
+    //    entrega anterior, así que el update reescribe lo mismo;
+    //  - una sesión que pasó a borrador (se borró el evento) y volvió a
+    //    publicarse: Calendar reserva el id de un evento borrado, así que sin
+    //    esto ese encuentro no podría volver nunca al calendario.
+    //    `status: 'confirmed'` es lo que lo resucita.
+    await cal.events.update({
+      calendarId: CALENDAR_ID,
+      eventId: propuesto,
+      requestBody: { ...op.evento, status: 'confirmed' },
+    });
+    logger.info('el evento ya existía con el id derivado: se actualizó', {
+      sesion: op.id,
+      eventId: propuesto,
+    });
+    return propuesto;
+  }
+};
+
 export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) => {
   const antes = event.data?.before?.data() ?? null;
   const despues = event.data?.after?.data() ?? null;
   const { id } = event.params;
+
+  // B-83 — el rebuild del sitio se marca ACÁ, antes de los dos cortes de
+  // abajo, porque corresponde por que la actividad cambió y no por que el
+  // calendario haya recibido operaciones. `destacado`, `imagenUrl`,
+  // `searchText` y el `slug` salen al `events.json` (§5.2) y **no** entran al
+  // evento de Calendar: colgando el rebuild del sync, tildar "Destacar en la
+  // portada" de una actividad publicada no llegaba nunca al sitio. Y sin
+  // `GOOGLE_CALENDAR_ID` configurado no se publicaba nada, nunca.
+  //
+  // La guarda no puede faltar: esta misma Function escribe `calendarEventId`
+  // de vuelta, y marcar el rebuild ahí sería pedir un build por cada sync —
+  // que además rearma el contador de reintentos (`CAMPOS_REARME`, D-23) y
+  // vuelve a subir `pendiente` justo después de que un build arrancó.
+  //
+  // La pregunta "¿cambió algo que le importe a quien lo lee?" ya está resuelta
+  // en `historial.js`: `huboCambioDeContenido` compara el **contenido
+  // editable**, o sea el documento menos lo que escribe la máquina (D-41). El
+  // write-back produce, por construcción, el mismo contenido editable. Es la
+  // misma propiedad de D-07, y no un acuerdo entre dos listas de campos.
+  if (huboCambioDeContenido(antes, despues)) {
+    await marcarRebuild(`actividad ${id}`);
+  }
 
   const labels = await cargarLabels();
   const ops = planificar(antes, despues, labels);
@@ -142,30 +215,32 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
   }
 
   const cal = await calendario();
-  // Los ids nuevos se juntan y se escriben de una sola vez al final: un update
-  // por sesión serían N disparos más de esta misma Function.
-  const idsNuevos = new Map();
-  const idsBorrados = new Set();
+  // Qué `calendarEventId` queda en cada sesión (`null` = se borró). Se juntan
+  // y se escriben de una sola vez al final: un update por sesión serían N
+  // disparos más de esta misma Function.
+  const ids = new Map();
 
   for (const op of ops) {
     try {
       if (op.tipo === 'crear') {
-        const { data } = await cal.events.insert({
-          calendarId: CALENDAR_ID,
-          requestBody: op.evento,
-        });
-        idsNuevos.set(op.id, data.id);
-        logger.info('evento creado', { id, sesion: op.id, eventId: data.id });
+        const eventId = await crearEvento(cal, op);
+        ids.set(op.id, eventId);
+        logger.info('evento creado', { id, sesion: op.id, eventId });
       } else if (op.tipo === 'actualizar') {
         await cal.events.update({
           calendarId: CALENDAR_ID,
           eventId: op.eventId,
           requestBody: op.evento,
         });
+        // B-80 — el id se repone también acá, no solo al crear y al borrar: si
+        // el panel guardó desde un snapshot previo al write-back, el documento
+        // quedó con `calendarEventId: null` y la edición siguiente crearía un
+        // segundo evento. Ver `reponerIds`.
+        ids.set(op.id, op.eventId);
         logger.info('evento actualizado', { id, sesion: op.id });
       } else if (op.tipo === 'borrar') {
         await cal.events.delete({ calendarId: CALENDAR_ID, eventId: op.eventId });
-        idsBorrados.add(op.id);
+        ids.set(op.id, null);
         logger.info('evento borrado', { id, sesion: op.id });
       }
     } catch (e) {
@@ -173,7 +248,7 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
       // buscado, no un error — se marca igual para limpiar el id colgado.
       const code = e?.code ?? e?.response?.status;
       if (op.tipo === 'borrar' && (code === 404 || code === 410)) {
-        idsBorrados.add(op.id);
+        ids.set(op.id, null);
         logger.warn('el evento ya no existía en Calendar', { id, sesion: op.id });
       } else {
         // No se corta el loop: un encuentro que falla no debe dejar los otros
@@ -188,23 +263,20 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
     }
   }
 
-  if (idsNuevos.size > 0 || idsBorrados.size > 0) {
+  if (ids.size > 0) {
     // Se relee el documento: entre el diff y este punto pudo haber otra
     // edición, y escribir el array que teníamos en memoria la perdería.
     const ref = db.doc(`actividades/${id}`);
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists) return;
-      const sesiones = (snap.data().sesiones ?? []).map((s) => {
-        if (idsNuevos.has(s.id)) return { ...s, calendarEventId: idsNuevos.get(s.id) };
-        if (idsBorrados.has(s.id)) return { ...s, calendarEventId: null };
-        return s;
-      });
-      tx.update(ref, { sesiones });
+      const sesiones = reponerIds(snap.data().sesiones ?? [], ids);
+      // `null` = el documento ya tiene los ids que corresponden, que es el caso
+      // normal de un `actualizar`. Escribirlo igual dispararía esta misma
+      // Function otra vez para no cambiar nada.
+      if (sesiones) tx.update(ref, { sesiones });
     });
   }
-
-  await marcarRebuild(`actividad ${id}`);
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -212,14 +284,105 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
 // renombra una etiqueta y el sitio sigue mostrando la vieja (trampa 8).
 // ─────────────────────────────────────────────────────────────────
 
-export const rebuildPorOpciones = onDocumentWritten('opciones/{campo}', async (event) => {
-  // El caché de etiquetas quedó viejo. Se invalida solo en esta instancia; las
-  // demás lo recargan al reciclarse. No es exacto, pero renombrar una etiqueta
-  // es raro y el costo de equivocarse es una descripción con el label anterior
-  // hasta la próxima edición de la actividad.
-  _labels = null;
-  await marcarRebuild(`opciones/${event.params.campo}`);
-});
+/**
+ * Cuántos eventos se reescriben como máximo al renombrar una etiqueta (B-04).
+ *
+ * Es un tope de seguridad, no una regla de negocio: con 30 actividades
+ * publicadas de 8 encuentros ya son 240 round trips a Calendar, y la Function
+ * tiene un timeout. Si se alcanza, se loguea `error` con lo que faltó: cada
+ * actividad se pone al día sola con su próxima edición, y el sitio (que sí
+ * muestra la etiqueta nueva) ya se rebuildeó.
+ */
+const MAX_EVENTOS_RESYNC = 150;
+
+export const rebuildPorOpciones = onDocumentWritten(
+  {
+    document: 'opciones/{campo}',
+    // Renombrar una etiqueta reescribe los eventos de todas las actividades
+    // publicadas (B-04): son N round trips a Calendar, no una escritura.
+    timeoutSeconds: 300,
+  },
+  async (event) => {
+    const { campo } = event.params;
+
+    // El caché de etiquetas quedó viejo. Se invalida solo en esta instancia; las
+    // demás lo recargan al reciclarse.
+    _labels = null;
+    await marcarRebuild(`opciones/${campo}`);
+
+    // ── B-04 · los eventos ya creados muestran la etiqueta, no el slug ──
+    //
+    // La descripción y la ubicación del evento resuelven el slug a su etiqueta
+    // (D-11), así que renombrar "A la gorra" dejaba a los eventos existentes
+    // diciendo lo anterior hasta la próxima edición de cada actividad. El
+    // rebuild del sitio no alcanza: el calendario es la otra salida pública.
+    const antes = mapaDeEtiquetas(event.data?.before?.data()?.valores);
+    const despues = mapaDeEtiquetas(event.data?.after?.data()?.valores);
+
+    if (mismasEtiquetas(antes, despues)) {
+      // El caso frecuente y de lejos: `usos + 1` de `upsertOpcion` en cada
+      // guardado del formulario, o una opción nueva (que ninguna actividad usa
+      // todavía). Sin esta guarda, cada guardado re-sincronizaría todo.
+      logger.debug('sin etiquetas renombradas: no se re-sincroniza el calendario', { campo });
+      return;
+    }
+
+    if (!CALENDAR_ID) {
+      logger.error('GOOGLE_CALENDAR_ID sin configurar: no se re-sincroniza nada', { campo });
+      return;
+    }
+
+    // `cargarLabels` ya releyó las cinco taxonomías (el caché se invalidó
+    // arriba), así que `labels` tiene las etiquetas nuevas. El mapa viejo es el
+    // mismo con este campo pisado por el `before`.
+    const labels = await cargarLabels();
+    const labelsAntes = { ...labels, [campo]: antes };
+
+    // Solo las publicadas: las demás no tienen eventos (§7.3).
+    const snap = await db.collection('actividades').where('estado', '==', 'publicado').get();
+    const cal = await calendario();
+    let reescritos = 0;
+    let pendientes = 0;
+
+    for (const doc of snap.docs) {
+      const ops = replanificarPorEtiquetas(doc.data(), labelsAntes, labels);
+      for (const op of ops) {
+        if (reescritos >= MAX_EVENTOS_RESYNC) {
+          pendientes += 1;
+          continue;
+        }
+        try {
+          await cal.events.update({
+            calendarId: CALENDAR_ID,
+            eventId: op.eventId,
+            requestBody: op.evento,
+          });
+          reescritos += 1;
+        } catch (e) {
+          // Un evento que falla no puede dejar los otros sin actualizar, igual
+          // que en el diff.
+          logger.error('falló la re-sincronización de un evento', {
+            campo,
+            actividad: doc.id,
+            sesion: op.id,
+            error: e?.message,
+          });
+        }
+      }
+    }
+
+    if (pendientes > 0) {
+      logger.error('la re-sincronización por etiquetas se cortó por el tope', {
+        campo,
+        reescritos,
+        pendientes,
+        tope: MAX_EVENTOS_RESYNC,
+      });
+    } else if (reescritos > 0) {
+      logger.info('eventos re-sincronizados por un cambio de etiqueta', { campo, reescritos });
+    }
+  },
+);
 
 // ─────────────────────────────────────────────────────────────────
 // §8 — debounce del rebuild: si se editan cinco campos seguidos no se
@@ -305,6 +468,12 @@ export const dispararRebuild = onSchedule(
       await ref.set(fallo, { merge: true });
       if (fallo.agotado) {
         logger.error('el rebuild agotó los reintentos: el sitio quedó viejo', {
+          // B-21 — etiqueta estable para la alerta de GCP. El filtro de una
+          // log-based alert sobre el *texto* del mensaje se rompe en silencio
+          // el día que alguien reescribe la frase; sobre un campo, no. Es el
+          // único log del proyecto que amerita despertar a alguien: significa
+          // que el sitio público quedó viejo y que ya nadie va a reintentar.
+          alerta: 'rebuild-agotado',
           intentos: fallo.intentos,
           error: fallo.ultimoError,
           motivo: estado.motivo,
@@ -318,10 +487,30 @@ export const dispararRebuild = onSchedule(
       return;
     }
 
-    await ref.set(registrarExito(ahora), { merge: true });
+    // B-85 — bajar `pendiente` se hace comparando: entre la lectura de arriba y
+    // este punto pasó una llamada a GitHub de hasta 15 s, y una actividad
+    // guardada en esa ventana marcó su rebuild. Ese cambio no entró al build que
+    // acabamos de disparar, así que el flag tiene que quedar arriba.
+    //
+    // Va en transacción para que la comparación no tenga su propia ventana: si
+    // la marca llega mientras la transacción corre, Firestore la reintenta y la
+    // ve.
+    const exito = await db.runTransaction(async (tx) => {
+      const actual = await tx.get(ref);
+      const campos = registrarExito(ahora, {
+        marcaLeida: estado.actualizado ?? null,
+        marcaActual: (actual.exists ? actual.data().actualizado : null) ?? null,
+      });
+      tx.set(ref, campos, { merge: true });
+      return campos;
+    });
+
     logger.info('rebuild disparado', { motivo: estado.motivo, intento: decision.intento });
+    if (exito.pendiente) {
+      logger.info('llegó otro cambio durante el dispatch: queda pendiente para el próximo tick');
+    }
   },
 );
 
-export { guardarVersion } from './historial-trigger.js';
+export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { reporteAIssue } from './reportes-trigger.js';

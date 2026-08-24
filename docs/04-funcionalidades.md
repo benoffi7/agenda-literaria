@@ -394,7 +394,10 @@ actividad. Ver [`07-seguridad.md`](07-seguridad.md).
 Con SSG una actividad nueva no existe hasta que se rebuildea (§8). El lazo es:
 
 1. `syncCalendar` y `rebuildPorOpciones` escriben
-   `sistema/rebuild.pendiente = true` con el motivo.
+   `sistema/rebuild.pendiente = true` con el motivo. `syncCalendar` lo marca
+   **antes** de hablar con Calendar y por haber cambiado el contenido editable
+   de la actividad, no por haber generado operaciones de calendario (B-83,
+   D-92): `destacado` e `imagenUrl` van al sitio y no al evento.
 2. `dispararRebuild` (schedule cada 5 minutos) ve el flag y manda un
    `repository_dispatch` con `event_type: rebuild` a `benoffi7/agenda-literaria`.
 3. `.github/workflows/deploy.yml` corre los tests, buildea el sitio y lo
@@ -454,7 +457,7 @@ larga la perdía para siempre**.
 | Se guarda sin haber cambiado nada | nada: no se pisó nada |
 | El sync escribe `calendarEventId` de vuelta | nada: no lo tipeó una persona |
 | Se crea una actividad, o se duplica una | nada: no hay documento anterior |
-| Se borra la actividad entera | nada — es la limitación de abajo |
+| Se borra la actividad entera | queda una versión con `borrado: true` y el documento completo (B-41) |
 
 Se conservan las **últimas 20 versiones** por actividad; al pasarse, se borra la
 más vieja (D-42).
@@ -466,5 +469,9 @@ edición— y se copia el valor del campo desde `documento` de vuelta al
 formulario. Es incómodo, pero el dato **existe**, que es lo que faltaba. La UI
 está en el backlog (B-40).
 
-**Limitación:** borrar la actividad entera desde el panel no guarda versión y no
-hay nada que recuperar, ni la actividad ni su historial (B-41).
+**Borrar una actividad sí guarda versión** (B-41, D-94): `guardarVersionAlBorrar`
+(`onDocumentDeleted`) escribe el documento completo con `borrado: true`, así que
+una actividad borrada por error se puede volver a cargar copiando y pegando desde
+la consola. **Limitación que queda:** el documento padre ya no existe, así que
+esa subcolección es alcanzable por path pero invisible desde el panel — y la
+actividad se recrea con otro id (B-89).

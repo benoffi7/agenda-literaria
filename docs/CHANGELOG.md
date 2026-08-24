@@ -2,6 +2,95 @@
 
 ## 2026-08-24
 
+### Renombrar una etiqueta llega al calendario, y borrar una actividad ya no la pierde
+
+- **B-04** · el evento de Calendar muestra la etiqueta, no el slug (D-11), así
+  que renombrar "A la gorra" arreglaba el sitio y dejaba el calendario diciendo
+  lo anterior hasta la próxima edición de cada actividad. Ahora
+  `rebuildPorOpciones` compara las etiquetas de antes con las de después y
+  reescribe los eventos publicados que las usan (**D-93**). La guarda que hace
+  esto viable es `mismasEtiquetas`: `/opciones/*` se escribe en **cada** guardado
+  del formulario para subir `usos` (§4.2), y eso no es un renombre.
+- **B-41** · `guardarVersion` es un `onDocumentUpdated`, así que borrar una
+  actividad no dejaba nada que recuperar: era el último agujero de pérdida de
+  datos, y el único irreversible. Ahora hay un `guardarVersionAlBorrar`
+  (`onDocumentDeleted`) que guarda el documento completo con `borrado: true`, por
+  el mismo camino que el trigger de edición — mismo id idempotente (D-43), misma
+  retención (D-42). Se descartó el borrado lógico y está escrito por qué
+  (**D-94**).
+
+Hay que redesplegar `rebuildPorOpciones` (que además pasó a
+`timeoutSeconds: 300`) y desplegar `guardarVersionAlBorrar` junto con
+`guardarVersion`: los pasos y las verificaciones están en
+[`08-operacion.md`](08-operacion.md).
+
+### El tick del rebuild ya no se come un cambio, y el trigger de reportes no se cuelga
+
+- **B-85** · `dispararRebuild` leía `sistema/rebuild`, hablaba con GitHub (hasta
+  15 s) y después bajaba `pendiente` sin comparar. Una actividad guardada en esa
+  ventana marcaba su rebuild y el tick se lo llevaba: el build que arrancó no la
+  incluía y ya nadie iba a pedir otro. Ahora `registrarExito` recibe la marca
+  `actualizado` que el tick leyó y la que hay al escribir, y si difieren deja
+  `pendiente` en `true` (el disparo salió bien, así que los reintentos igual
+  vuelven a cero). La escritura va en transacción para que la comparación no
+  tenga su propia ventana.
+- **B-74** · `crearIssue` en `reportes-trigger.js` había copiado las cinco
+  cabeceras de la llamada de `index.js` **pero no el timeout** — y el comentario
+  que explica por qué hace falta ("sin esto un socket colgado se come el tick
+  entero") estaba en una sola de las dos copias. Ahora las dos abortan a los
+  15 s, con un test que lo verifica en los dos archivos a la vez.
+
+### Destacar una actividad ya llega al sitio: el rebuild dejó de colgar del sync
+
+**B-83.** `syncCalendar` marcaba `sistema/rebuild` en la última línea, después
+de `if (ops.length === 0) return;` y de `if (!CALENDAR_ID) return;`. O sea que
+el rebuild era un efecto secundario del sync a Calendar, y los campos que van al
+`events.json` pero **no** al evento —`destacado`, `imagenUrl`, `searchText`, el
+`slug`— no llegaban nunca al sitio. Sin `GOOGLE_CALENDAR_ID` configurado, no se
+publicaba nada.
+
+Ahora se marca al principio, y la condición no es "hubo operaciones de
+calendario" sino `huboCambioDeContenido(antes, despues)`: la misma función con
+la que el historial decide si guardar una versión (D-41). Eso es lo que hace que
+mover la marca arriba no sea a lo bruto — el write-back de `calendarEventId` de
+la propia Function produce el mismo contenido editable por construcción, así que
+no pide un build por cada sync ni rearma el contador de reintentos (**D-92**).
+
+Los dos `it.fails` de B-83 pasaron a `it`, y se sumaron los casos que cierran la
+guarda: el write-back, un guardado que no cambió nada y el borrado.
+
+### Los dos P0 del sync a Calendar: ya no puede haber dos eventos para un encuentro
+
+Los dos caminos que duplicaban un evento en el calendario **público** están
+cerrados, y los dos del lado de la Function, que es el lado que no depende de
+que el cliente se porte bien.
+
+- **B-82** · `syncCalendar` decide con el payload del evento (`before`/`after`),
+  y la entrega de eventos de Firestore es *al menos una vez*: una reentrega
+  volvía a emitir `crear`. Ahora **el id del evento lo elige el cliente**,
+  derivado del id de sesión (`idDeEvento`), así que el segundo `insert` choca
+  con el primero y Calendar contesta 409 en vez de crear un evento nuevo. La
+  idempotencia queda en el sistema externo y no en una cuenta que la Function
+  tenga que llevar (**D-90**). El 409 se resuelve actualizando ese mismo evento,
+  lo que además arregla un caso que antes no tenía salida: un encuentro que se
+  despublicó y se volvió a publicar (Calendar reserva el id de un evento
+  borrado).
+- **B-80** · el write-back del sync reponía `calendarEventId` solo en las ops
+  `crear` y `borrar`, así que un guardado hecho desde un listado refrescado
+  *antes* del write-back dejaba el campo en `null` y la edición siguiente creaba
+  un segundo evento. Ahora se repone en **toda** operación, y solo se escribe si
+  algo cambió de verdad (`reponerIds`), así que el caso normal no gasta un
+  disparo más de la Function (**D-91**).
+
+La lógica pura del trigger que no es el diff vive en
+`functions/sincronizacion.js` — `calendario.js` sigue siendo el diff y lo que
+comparte el panel por `@calendario` (D-20).
+
+Los dos `it.fails` de [`tests/costuras.test.ts`](../tests/costuras.test.ts)
+pasaron a `it`, y `tests/sincronizacion.test.ts` verifica lo que no se puede
+asumir: que los ids que genera el panel caen dentro del alfabeto base32hex que
+exige Calendar, y que la derivación no colisiona.
+
 ### Cancelar un encuentro de un ciclo ya no renumera a los otros siete (B-84)
 
 La descripción del evento abre con "Encuentro 3 de 8" y `posicionEnCiclo`
@@ -46,6 +135,7 @@ encuentro cancelado se queda con sus siete eventos diciendo "de 7" hasta que un
 cambio que **sí** salga al evento —título, descripción, sede, tema, lectura— los
 reescriba. Los ciclos sin cancelaciones producen exactamente la misma descripción
 que antes. Anotado como **B-162**.
+
 
 ### Vista calendario del panel, y los ocho hallazgos de auditarla
 

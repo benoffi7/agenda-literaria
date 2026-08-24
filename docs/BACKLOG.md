@@ -55,13 +55,22 @@ Hasta que eso esté, una actividad nueva no aparece en el sitio hasta un build
 manual. **El paso 5 no tiene sentido sin el 1 y el 2:** el schedule correría
 cada 5 minutos loguéandose como "sin GitHub configurado".
 
-### B-21 · Alerta de rebuild agotado (opcional)
+### B-21 · Alerta de rebuild agotado (opcional) — código listo (2026-08-24), falta el click del dueño
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
 `el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
-`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP
-sobre ese mensaje: configuración de consola, no código. Queda a criterio del
-dueño (D-23).
+`sistema/rebuild`. Convertir eso en un aviso real es una log-based alert de GCP:
+configuración de consola, no código, y queda a criterio del dueño (D-23).
+
+**Lo que se hizo del lado del código (2026-08-24):** ese log lleva ahora el
+campo `alerta: "rebuild-agotado"`, para que el filtro de la alerta apunte a un
+campo estable y no al texto del mensaje —que se rompería en silencio el día que
+alguien reescriba la frase—. El filtro exacto y los pasos de la consola están en
+[`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
+
+**Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
+de GCP con un canal de notificación propio. Tiene sentido recién cuando
+`dispararRebuild` esté desplegada (B-20).
 
 ---
 
@@ -69,11 +78,19 @@ dueño (D-23).
 
 Los dos salieron de revisar las costuras del merge del 2026-08-21: cada feature
 está testeada por dentro, el par no. Los tests que los demuestran están en
-[`tests/costuras.test.ts`](../tests/costuras.test.ts), marcados `it.fails` para
-no romper el CI: fallan el día en que alguien los arregle, que es cuando hay que
-venir a borrar el `.fails`.
+[`tests/costuras.test.ts`](../tests/costuras.test.ts). **Los dos están
+arreglados (2026-08-24)** y sus tests ya no son `it.fails`: pasaron a `it` y
+ahora son la guarda de que no vuelvan.
 
-### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento
+### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento — ✅ hecho (2026-08-24)
+
+**Arreglado** del lado de la Function: el write-back repone el id en **toda**
+operación del plan, no solo en `crear` y `borrar` (`reponerIds` en
+`functions/sincronizacion.js`, D-91). La pasada que pisa el campo es la misma
+que lo repara. La salida del lado del panel —que `actualizarActividad` relea y
+fusione los ids, y el panel deje de ser dueño del campo— sigue valiendo y quedó
+abierta como **B-150**.
+
 
 **Qué se rompe.** Dos eventos en el calendario público para el mismo encuentro,
 y el primero huérfano: nada del sistema lo referencia, así que nada lo va a
@@ -108,7 +125,12 @@ Function: `formADocumento` lo emite en cada guardado.
 - o que el listado escuche con `onSnapshot` en lugar de `getDocs`, que angosta
   la ventana sin cerrarla (el form se arma una vez, al montar).
 
-### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento
+### B-82 · `syncCalendar` no es idempotente: una reentrega duplica el evento — ✅ hecho (2026-08-24)
+
+**Arreglado** con el id del evento elegido por el cliente y derivado del id de
+sesión (`idDeEvento`, D-90): el `insert` repetido devuelve 409 y se resuelve
+actualizando ese mismo evento. La idempotencia quedó en el sistema externo, sin
+ningún registro nuevo que la Function tenga que mantener.
 
 La entrega de eventos de Firestore es **al menos una vez**. `syncCalendar`
 decide con el payload del evento (`before`/`after`) y no mira el estado actual
@@ -288,7 +310,12 @@ ya lo necesita.
 ~~B-02 · Trigger de rebuild~~ → [cerrado](#cerrados), con pasos manuales
 pendientes del dueño (ver arriba).
 
-### B-83 · El rebuild del sitio cuelga del sync a Calendar
+### B-83 · El rebuild del sitio cuelga del sync a Calendar — ✅ hecho (2026-08-24)
+
+**Arreglado:** `marcarRebuild` pasó arriba de los dos cortes, con la condición
+`huboCambioDeContenido(antes, despues)` — el mismo criterio del historial
+(D-41), para que el write-back de la propia Function no pida un build por cada
+sincronización (D-92).
 
 `syncCalendar` marca `sistema/rebuild` en la **última** línea, después de dos
 cortes tempranos: `if (ops.length === 0) return;` y `if (!CALENDAR_ID) return;`.
@@ -392,7 +419,13 @@ todo pisaría cambios posteriores que sí se querían).
 dispara `guardarVersion` y deja versión de lo restaurado. Eso es correcto —
 deshacer un "deshacer" tiene que ser posible— pero conviene verificarlo.
 
-### B-41 · Borrar una actividad no guarda versión y no hay nada que recuperar
+### B-41 · Borrar una actividad no guarda versión y no hay nada que recuperar — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera opción: `guardarVersionAlBorrar`
+(`onDocumentDeleted`) guarda el documento completo con `borrado: true`, por el
+mismo camino que el trigger de edición. El borrado lógico se descartó con motivo
+(D-94). La subcolección sigue quedando huérfana, que es lo que ya reportaba
+**B-89**: es el precio de que el borrado sea recuperable.
 
 `guardarVersion` es un `onDocumentUpdated`, así que no se dispara al borrar
 (§12: es lo que pide el documento). El panel borra por fila, sin papelera: se va
@@ -408,7 +441,12 @@ igual, hay que decidir dónde), o borrado lógico (`estado: 'borrado'` y filtrar
 del listado), que además resolvería el "lo borré sin querer" sin tocar el
 historial. Lo segundo es más trabajo y toca el listado y las reglas.
 
-### B-04 · Renombrar una etiqueta no actualiza los eventos ya creados
+### B-04 · Renombrar una etiqueta no actualiza los eventos ya creados — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera opción: `rebuildPorOpciones` re-sincroniza los
+eventos de las actividades publicadas cuando cambia una etiqueta (D-93), con la
+guarda de que subir `usos` no cuenta como renombre y con un tope de 150 eventos
+por corrida.
 
 La descripción del evento muestra la etiqueta, no el slug (D-11). Si se renombra
 "A la gorra", los eventos existentes siguen diciendo lo anterior hasta la
@@ -747,7 +785,11 @@ B-72, que es cuando esos puntos quedan compartidos.
 Distinto de B-58: eso es "dos interacciones sin medir por no tocar el JSX", esto
 es un campo entero.
 
-### B-74 · `crearIssue` no tiene timeout y puede colgar el trigger de reportes
+### B-74 · `crearIssue` no tiene timeout y puede colgar el trigger de reportes — ✅ hecho (2026-08-24)
+
+**Arreglado:** las dos llamadas a GitHub abortan a los 15 s, y
+`tests/reportes.test.ts` lo verifica en los dos archivos a la vez para que no se
+pueda volver a perder en una copia.
 
 `functions/index.js:230` define `TIMEOUT_DISPATCH_MS` con el comentario "Sin esto
 un socket colgado se come el tick entero", y lo usa con `AbortSignal.timeout` en
@@ -820,6 +862,14 @@ y el total sigue siendo ocho), y que el cancelado simplemente no tenga evento.
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts), con lo que hace
 hoy escrito al lado para que el cambio se note.
 
+### B-85 · El debounce del rebuild se come el cambio que llega mientras dispara — ✅ hecho (2026-08-24)
+
+**Arreglado** con la primera de las dos opciones de abajo: `registrarExito`
+compara la marca `actualizado` que el tick leyó contra la que hay al escribir, y
+la escritura va en transacción (así la comparación no tiene su propia ventana).
+Si la marca cambió, `pendiente` queda en `true` y el próximo tick dispara otro
+build; los reintentos igual se resetean, porque el disparo salió bien.
+
 **Resuelto así** (D-95): se numera sobre **todas** las sesiones, canceladas
 incluidas. El número es la identidad del encuentro dentro del ciclo —qué lectura
 le toca, qué fila del formulario es—, no un recuento en vivo de los que siguen en
@@ -836,6 +886,7 @@ publicado. Quedan abiertos **B-160** (el residual: agregar o borrar una fila sí
 renumera, por diseño) y **B-161** (los fixtures que siguen sin ser un ciclo).
 
 ### B-85 · El debounce del rebuild se come el cambio que llega mientras dispara
+
 
 `dispararRebuild` lee `sistema/rebuild`, habla con GitHub (hasta 15 s de
 timeout) y después escribe `registrarExito`, que baja `pendiente` sin comparar
@@ -1533,6 +1584,21 @@ que sobrevivieron dos commits
 (`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
+
+### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
+
+B-80 se arregló del lado de la Function (D-91), que es el lado defensivo: el
+write-back repone el id que el panel pisó. Lo que **no** cambió es de quién es
+el campo: `formADocumento` sigue emitiendo `calendarEventId` en cada guardado,
+así que sigue habiendo una ventana en la que el documento tiene `null` y una
+sesión sin id.
+
+Con el arreglo de la Function esa ventana ya no deja daño permanente, así que
+esto es prolijidad, no un bug: que `actualizarActividad` relea el documento y
+fusione los ids por id de sesión antes de escribir, o directamente que
+`formADocumento` no emita el campo. Toca `src/lib/actividades.ts` y el
+formulario, o sea el archivo más disputado del repo (fase 2 del plan de
+saneamiento).
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 
