@@ -6,7 +6,7 @@ frente que siga abierto.** Este documento existe para no reconstruir el contexto
 
 ## `main`
 
-**680 tests en verde**, typecheck y build limpios, `dist/` sin rastros del Admin
+**710 tests en verde**, typecheck y build limpios, `dist/` sin rastros del Admin
 SDK. Un solo working-tree además de los worktrees de los agentes.
 
 Nada pusheado: el repo remoto sigue vacío y el dueño lo quiere **privado antes
@@ -34,7 +34,7 @@ para no perder tiempo).
 | Frente | Ítems | Su estado de pausa |
 |---|---|---|
 | **Fase 2 · formulario** | B-70 primero, después B-71, B-87, B-90, y B-79 último | [`estado-pausa/fase-2-formulario.md`](estado-pausa/fase-2-formulario.md) |
-| **Fase 3A · taxonomías** | B-72 primero, después B-86, B-05, B-06, B-25, B-26, B-73 | [`estado-pausa/fase-3a-taxonomias.md`](estado-pausa/fase-3a-taxonomias.md) |
+| ~~**Fase 3A · taxonomías**~~ | ✅ **mergeada en `main`** — B-72, B-05, B-06, B-25, B-26, B-73, B-131. Su [estado de pausa](estado-pausa/fase-3a-taxonomias.md) queda como registro | — |
 | **Fase 3B · listado y panel** | B-76, B-96, B-31, B-40, B-35, B-14, B-64 | [`estado-pausa/fase-3b-listado.md`](estado-pausa/fase-3b-listado.md) |
 | **Fase 4 · red de contención** | B-166, B-117, B-50, B-119, B-34, B-115 | [`estado-pausa/fase-4-contencion.md`](estado-pausa/fase-4-contencion.md) |
 
@@ -59,7 +59,7 @@ backlog.
    npx vitest run`, `npm run build`, `./scripts/verificar-bundle.sh dist`. Los
    commits que empiecen con `WIP:` **no están verificados** y son lo primero a
    revisar.
-3. **Orden de merge sugerido: 4 → 3A → 3B → 2.** La fase 4 toca `tests/` y
+3. **3A ya está mergeada.** Del resto, el orden sugerido es **4 → 3B → 2**. La fase 4 toca `tests/` y
    `scripts/`, así que entra sin roce y deja los chequeos nuevos ya puestos para
    los otros tres. La fase 2 va última porque es la que mueve más código.
    Conflictos esperables: `docs/BACKLOG.md` y `docs/CHANGELOG.md`, y son
@@ -145,12 +145,18 @@ el pedido concreto es agregar «durante el mes», con la decisión de fondo de s
 archivos que los frentes 2 y 3A están tocando ahora, así que **se resuelven
 después de mergear**, no en paralelo.
 
-## Lo que sigue cuando los cuatro frentes cierren
+## Lo que sigue cuando los frentes cierren
 
-1. Los reportes de uso real: B-129, B-130, B-131, B-132, B-133, B-134.
-2. **La actualización completa de la documentación**, que el dueño pidió
+1. **B-170 · montar la pantalla de taxonomías en el router.** Está construida y
+   funciona, pero no se puede abrir: `AdminApp.tsx` es del frente 3B. Va apenas
+   3B esté mergeada, y con ella la novedad y el capítulo de ayuda, que 3A dejó
+   sin escribir a propósito —anunciar una pantalla que no se puede abrir es
+   mentir. **B-168** es su par: cablear `registrarUsos` en `guardar()`, que es del
+   frente 2.
+2. Los reportes de uso real: B-129, B-130, B-131, B-132, B-133, B-134.
+3. **La actualización completa de la documentación**, que el dueño pidió
    explícitamente, incluida la reescritura de
    [`10-salud-del-codigo.md`](10-salud-del-codigo.md) con las mediciones
    **post-refactor** (las de hoy son de antes de las fases 2 y 3).
-3. **Borrar este archivo y `docs/estado-pausa/`.** Dejarlos es documentación que
+4. **Borrar este archivo y `docs/estado-pausa/`.** Dejarlos es documentación que
    miente.
