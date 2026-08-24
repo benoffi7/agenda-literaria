@@ -1055,6 +1055,34 @@ Tres cosas que arrastra, y son el trabajo real del ítem:
 Y el reporte deja una lección de producto que vale más que el ítem: **la primera
 cosa que faltó fue una categoría del dominio, no una función del software.**
 
+### B-130 · El listado no dice quién cargó cada actividad · P2
+
+`createdBy` y `updatedBy` **se guardan en cada documento y no se muestran en
+ninguna parte**: el panel los escribe (`formADocumento`) y nunca los lee. Con dos
+personas cargando sobre la misma lista —no hay filtro por usuario, las dos ven
+todo, borradores incluidos— la pregunta «¿esto lo cargaste vos?» no se puede
+contestar mirando la pantalla.
+
+El dato ya está, así que es mostrarlo: una línea en la fila del listado, y quizás
+en el encabezado del formulario al editar algo ajeno.
+
+Dos cosas a resolver, y la segunda importa:
+
+1. **`createdBy` es un uid**, no un nombre. Hay que resolverlo a algo legible.
+   Las dos cuentas están en `docs/02-infraestructura.md`, pero cablearlas en el
+   código es exactamente el tipo de cosa que queda vieja sin que nada falle. Lo
+   razonable es leer el `displayName` o el mail de Auth, o guardar el mail en el
+   documento al escribir — que es más simple y no necesita otra lectura.
+2. **Es un uid, y el §5.1 dice que los uids no salen al público.** Mostrarlo en el
+   panel está bien: solo lo ven los admins. Pero si algún día se guarda el mail
+   en el documento, hay que verificar que `toPublic` lo siga descartando — hoy
+   descarta `createdBy`/`updatedBy` por nombre, así que un campo nuevo con el
+   mail **se filtraría al `events.json`**. Es la clase de bug B-81: el saneador
+   aplicado campo por campo en vez de en un punto de paso obligado.
+
+Salió de la conversación del 2026-08-24, verificando que las actividades del otro
+admin sí aparecen en el panel de los dos.
+
 ## P3 — cuando sobre tiempo
 
 ### B-114 · Precio real en los datos estructurados

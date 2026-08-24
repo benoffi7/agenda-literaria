@@ -49,6 +49,11 @@ Anotado como **B-129**. Se puede resolver hoy con «Otro…» sin tocar código;
 que hay que decidir es si va como opción base y qué reglas condicionales del §11
 le corresponden.
 
+**B-130** — el listado no dice quién cargó cada actividad. `createdBy` se guarda
+y nunca se lee, y con dos personas sobre la misma lista la pregunta aparece sola.
+Ojo con el punto 2 del ítem: si se resuelve guardando el mail en el documento,
+`toPublic` lo tiene que descartar explícitamente o se filtra al `events.json`.
+
 ## Lo que sigue después de la fase 1
 
 Fases 2, 3 y 4 del plan, y al cierre la actualización completa de la
