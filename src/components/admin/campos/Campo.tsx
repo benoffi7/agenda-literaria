@@ -84,6 +84,15 @@ export const claseBotonChip = `${claseChipBase} border-borde bg-white hover:bg-b
 export const claseBotonChipActivo = `${claseChipBase} border-tinta bg-tinta text-white`;
 
 /**
+ * Enlace-acción dentro de una celda apretada — la grilla del calendario, donde
+ * no entra un botón con su blanco táctil completo. Es la única variante que se
+ * salta el `min-h-touch` a propósito, y por eso está acá y no suelta en el
+ * componente: si hace falta otra vez, se reusa esta.
+ */
+export const claseEnlaceCelda =
+  'rounded px-1 text-left text-xs text-acento hover:bg-black/5';
+
+/**
  * Ítem de un menú de acciones desplegable. Ocupa todo el ancho y alinea a la
  * izquierda: en un menú, el texto tiene que empezar todo en la misma columna
  * para poder recorrerlo con el ojo. Mantiene el blanco táctil de 44px incluso

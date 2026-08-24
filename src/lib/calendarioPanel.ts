@@ -30,6 +30,7 @@
  * fecha.
  */
 import { TIMEZONE, debeExistir } from '@calendario';
+import { instanteDeTimestamp as instante } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, Estado, Sesion } from '@/types/actividad';
 
 // ─────────────────────────────────────────────────────────────────
@@ -214,8 +215,9 @@ export const INFO_PUBLICACION: Record<EstadoPublicacion, InfoPublicacion> = {
   'falta-en-calendario': {
     etiqueta: 'Falta en el calendario',
     significa:
-      'Debería estar publicado y su evento no existe: la publicación al calendario no llegó a ' +
-      'correr o falló. Volver a guardar la actividad lo reintenta.',
+      'Debería estar publicado y su evento todavía no existe. Si acabás de guardar, esperá ' +
+      'unos segundos y refrescá: la publicación tarda un momento. Si sigue así, no llegó a ' +
+      'correr o falló, y volver a guardar la actividad lo reintenta.',
     grupo: 'problema',
   },
   'sobra-en-calendario': {
@@ -325,13 +327,6 @@ export interface Encuentro {
 }
 
 /** ¿La sesión tiene fechas usables? Un documento roto no debe vaciar la vista. */
-const instante = (valor: unknown): Date | null => {
-  const fecha =
-    valor && typeof (valor as { toDate?: unknown }).toDate === 'function'
-      ? (valor as { toDate: () => Date }).toDate()
-      : null;
-  return fecha && !Number.isNaN(fecha.getTime()) ? fecha : null;
-};
 
 /**
  * Todos los encuentros de todas las actividades, en orden cronológico.

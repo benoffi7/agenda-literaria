@@ -16,6 +16,8 @@
  * un test no puede depender de qué día es hoy.
  */
 import { normalize } from '@/lib/normalize';
+import { instanteDeTimestamp as instante } from '@/lib/sesiones';
+import { ESTADOS, MODALIDADES } from '@/types/actividad';
 import type { ActividadConId, Estado, Modalidad } from '@/types/actividad';
 
 // ─────────────────────────────────────────────────────────────────
@@ -97,18 +99,21 @@ export const hayFiltros = (f: Filtros): boolean =>
 // Fechas de una actividad
 // ─────────────────────────────────────────────────────────────────
 
-const instante = (valor: unknown): Date | null => {
-  const fecha =
-    valor && typeof (valor as { toDate?: unknown }).toDate === 'function'
-      ? (valor as { toDate: () => Date }).toDate()
-      : null;
-  return fecha && !Number.isNaN(fecha.getTime()) ? fecha : null;
-};
 
 const millis = (valor: unknown): number => instante(valor)?.getTime() ?? 0;
 
 /**
- * El próximo encuentro que todavía no arrancó, o `null` si no queda ninguno.
+ * El próximo encuentro que todavía no terminó, o `null` si no queda ninguno.
+ *
+ * **Se descarta por el fin y se devuelve el inicio.** Un taller de 19 a 21, a
+ * las 19:30, sigue siendo "lo próximo": todavía se puede entrar. Filtrar por el
+ * inicio lo mandaba al fondo del listado y lo metía en "sin encuentros por
+ * venir" justo durante las dos horas en que alguien podría necesitar abrirlo.
+ *
+ * Es además el mismo criterio que `yaPaso` de `calendarioPanel.ts` — "hoy sigue
+ * siendo hoy" — y el que prometen los textos del filtro y de la guía. Antes los
+ * dos módulos contestaban "¿ya pasó?" con campos distintos, y el fixture de los
+ * tests tenía `fin === inicio`, así que la diferencia era indetectable.
  *
  * **Los cancelados no cuentan:** un encuentro cancelado no va a pasar, y si
  * contara, un ciclo cancelado a mitad de camino seguiría apareciendo arriba del
@@ -119,7 +124,8 @@ export const proximoEncuentro = (actividad: ActividadConId, ahora: Date): Date |
   for (const sesion of actividad.sesiones ?? []) {
     if (sesion.cancelada) continue;
     const inicio = instante(sesion.inicio);
-    if (!inicio || inicio.getTime() < ahora.getTime()) continue;
+    const fin = instante(sesion.fin) ?? inicio;
+    if (!inicio || !fin || fin.getTime() < ahora.getTime()) continue;
     if (!proximo || inicio.getTime() < proximo.getTime()) proximo = inicio;
   }
   return proximo;
@@ -236,12 +242,14 @@ export const ETIQUETA_MODALIDAD: Record<Modalidad, string> = {
  * crudo mientras las opciones no llegaron. Es el mismo criterio que aplica la
  * descripción del evento cuando el valor no está registrado.
  */
-export const legible = (valor: string): string =>
-  valor
-    .split('-')
-    .filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(' ');
+/**
+ * Slug → etiqueta legible, cuando el slug no está registrado en `/opciones/*`.
+ *
+ * Es la MISMA función que usa la descripción del evento público, importada de
+ * `@calendario` y no copiada: si el respaldo del panel y el del calendario
+ * divergen, el mismo slug se lee distinto en cada lado y nada falla (D-20).
+ */
+export { desSlug as legible } from '@calendario';
 
 /**
  * Los valores que **existen en los datos**, no la taxonomía completa.
@@ -263,10 +271,19 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
     if (a.sede?.barrio) barrios.add(a.sede.barrio);
   }
 
+  // El orden de los desplegables no puede salir del orden de llegada de los
+  // datos: `listarActividades()` no garantiza uno estable, así que "Estado"
+  // listaría «borrador, publicado» un día y «publicado, cancelado» otro. Los
+  // dos que tienen un orden correcto lo usan; los abiertos van alfabéticos.
+  const porDeclaracion = <T,>(orden: readonly T[]) => (a: T, b: T) =>
+    orden.indexOf(a) - orden.indexOf(b);
+
   return {
-    estados: [...estados],
-    tipos: [...tipos],
-    modalidades: [...modalidades],
+    // Ciclo de vida, que es el orden con el que se piensa el estado.
+    estados: [...estados].sort(porDeclaracion(ESTADOS)),
+    // Es taxonomía abierta (§4): alfabético, como los barrios.
+    tipos: [...tipos].sort((a, b) => a.localeCompare(b, 'es')),
+    modalidades: [...modalidades].sort(porDeclaracion(MODALIDADES)),
     barrios: [...barrios].sort((a, b) => a.localeCompare(b, 'es')),
   };
 };

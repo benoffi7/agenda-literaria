@@ -19,6 +19,9 @@ import {
   tieneFuturo,
 } from '@/lib/filtrosActividades';
 import { buildSearchText } from '@/lib/normalize';
+// Se importa el otro módulo a propósito: el test de abajo ata los dos criterios
+// de "¿ya pasó?", que es lo que divergió en el H1.
+import { encuentrosDe, yaPaso } from '@/lib/calendarioPanel';
 import { ESTADOS, MODALIDADES, type ActividadConId, type Sesion } from '@/types/actividad';
 
 const ts = (iso: string) => {
@@ -35,7 +38,11 @@ const sesion = (inicio: string, over: Partial<Sesion> = {}): Sesion =>
     calendarEventId: null,
     ...over,
     inicio: ts(inicio),
-    fin: ts(inicio),
+    // Dos horas de duración, no cero. Con `fin === inicio` los criterios "ya
+    // pasó por el inicio" y "ya pasó por el fin" son idénticos, así que el
+    // fixture volvía indetectable la divergencia del H1 — el patrón de B-84:
+    // un test que pasa porque su fixture no ejercita el caso real.
+    fin: over.fin ?? ts(inicio.replace(/T(\d{2})/, (_, h) => `T${String(Number(h) + 2).padStart(2, '0')}`)),
   }) as unknown as Sesion;
 
 /** Solo el barrio, que es lo único de la sede que mira el filtro. */
@@ -285,12 +292,32 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
     }),
   ] as ActividadConId[];
 
-  it('no repite valores y ordena los barrios', () => {
+  it('no repite valores y el orden no depende de cómo lleguen los datos', () => {
+    // La versión anterior de este test afirmaba el orden de LLEGADA
+    // (`['taller','charla']`, `['borrador','publicado']`), y con eso cementaba
+    // el problema en vez de frenarlo: `listarActividades()` no garantiza un
+    // orden estable, así que el desplegable cambiaba solo entre sesiones.
+    //
+    // Ahora cada eje tiene el orden que le corresponde: los enums cerrados por
+    // su declaración, las taxonomías abiertas alfabéticas.
     const opciones = opcionesPresentes(datos);
-    expect(opciones.tipos).toEqual(['taller', 'charla']);
+    expect(opciones.tipos).toEqual(['charla', 'taller']);
     expect(opciones.estados).toEqual(['borrador', 'publicado']);
-    expect(opciones.modalidades).toEqual(['virtual', 'presencial']);
+    expect(opciones.modalidades).toEqual(['presencial', 'virtual']);
     expect(opciones.barrios).toEqual(['almagro', 'villa-crespo']);
+  });
+
+  it('el orden es el mismo aunque los datos lleguen al revés', () => {
+    // Es la propiedad que importa, y la que el test viejo no podía ver.
+    const alRevés = [...datos].reverse();
+    expect(opcionesPresentes(alRevés)).toEqual(opcionesPresentes(datos));
+  });
+
+  it('los estados siguen el ciclo de vida, no el alfabeto', () => {
+    // «borrador» antes que «publicado» es el orden con el que se piensa el
+    // estado; alfabéticamente sería «borrador, cancelado, pendiente, publicado».
+    const todos = ESTADOS.map((estado, i) => acto({ id: `a${i}`, estado }));
+    expect(opcionesPresentes(todos).estados).toEqual([...ESTADOS]);
   });
 
   it('no ofrece un barrio que ninguna actividad usa', () => {
@@ -306,5 +333,45 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
       modalidades: [],
       barrios: [],
     });
+  });
+});
+
+describe('un encuentro en curso todavía cuenta como por venir (H1)', () => {
+  /**
+   * El bug que esto fija: el listado descartaba por `inicio` y el calendario por
+   * `fin`, así que un taller de 19 a 21 desaparecía del listado a las 19:01 —
+   * justo durante las dos horas en que alguien podría necesitar abrirlo.
+   *
+   * El fixture tiene que tener duración real: con `fin === inicio` los dos
+   * criterios son el mismo y el test no prueba nada (patrón B-84).
+   */
+  const enCurso = acto({
+    id: 'en-curso',
+    sesiones: [sesion('2026-09-03T19:00:00Z', { fin: ts('2026-09-03T21:00:00Z') })],
+  });
+  const durante = new Date('2026-09-03T19:30:00Z');
+
+  it('lo cuenta como próximo encuentro', () => {
+    expect(proximoEncuentro(enCurso, durante)).not.toBeNull();
+  });
+
+  it('devuelve el inicio, no el fin — es lo que se muestra en «Próximo»', () => {
+    expect(proximoEncuentro(enCurso, durante)?.toISOString()).toBe('2026-09-03T19:00:00.000Z');
+  });
+
+  it('tiene futuro, así que el filtro «con algo por venir» lo agarra', () => {
+    expect(tieneFuturo(enCurso, durante)).toBe(true);
+  });
+
+  it('una vez terminado, ya no', () => {
+    expect(tieneFuturo(enCurso, new Date('2026-09-03T21:01:00Z'))).toBe(false);
+  });
+
+  it('coincide con el criterio del calendario para el mismo encuentro', () => {
+    // La divergencia entre los dos módulos es lo que produjo el bug: este test
+    // los ata, así que separarlos otra vez pone algo en rojo.
+    const [e] = encuentrosDe([enCurso]);
+    expect(yaPaso(e!, durante)).toBe(false);
+    expect(tieneFuturo(enCurso, durante)).toBe(true);
   });
 });

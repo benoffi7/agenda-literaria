@@ -32,7 +32,13 @@ const fecha = (t, opciones) => {
  * "villa-crespo" → "Villa Crespo". El calendario es público y mostrar el slug
  * crudo se ve roto.
  */
-const desSlug = (slug) =>
+/**
+ * Exportada porque el panel la reusa (`legible` en `src/lib/filtrosActividades.ts`):
+ * el respaldo que se ve en un filtro tiene que decir lo mismo que la
+ * descripción del evento público. Antes era una copia idéntica en los dos
+ * lados, así que mejorar uno separaba los dos sin que nada fallara (D-20).
+ */
+export const desSlug = (slug) =>
   slug
     .split('-')
     .filter(Boolean)

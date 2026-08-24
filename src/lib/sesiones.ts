@@ -112,3 +112,20 @@ export const duracionMinutos = (s: SesionForm): number => {
 /** Ordena por fecha de inicio. Las sesiones se muestran cronológicamente. */
 export const ordenarPorInicio = (sesiones: SesionForm[]): SesionForm[] =>
   [...sesiones].sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+/**
+ * `Timestamp` de Firestore → `Date`, o `null` si no hay una fecha usable.
+ *
+ * Vive acá porque es la conversión de la trampa 1 y este módulo es el hogar de
+ * las conversiones de fecha. Estaba copiada, idéntica y privada, en
+ * `calendarioPanel.ts` y en `filtrosActividades.ts`: el día que una de las dos
+ * aceptara algo más —un `Date` crudo, un ISO de `duplicar`— el listado y el
+ * calendario habrían discrepado sobre **cuáles sesiones existen**, sin error.
+ */
+export const instanteDeTimestamp = (valor: unknown): Date | null => {
+  const fecha =
+    valor && typeof (valor as { toDate?: unknown }).toDate === 'function'
+      ? (valor as { toDate: () => Date }).toDate()
+      : null;
+  return fecha && !Number.isNaN(fecha.getTime()) ? fecha : null;
+};

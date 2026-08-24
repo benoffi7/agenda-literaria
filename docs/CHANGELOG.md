@@ -1,5 +1,58 @@
 # Changelog
 
+## 2026-08-24
+
+### Vista calendario del panel, y los ocho hallazgos de auditarla
+
+La vista muestra los encuentros por día con su **estado de publicación** — no el
+campo `estado`, sino la pregunta real: *¿esto ya lo ve la gente?*, que depende
+del estado de la actividad, de si el encuentro está cancelado y de si su evento
+existe de verdad en el calendario. Se deriva con `debeExistir` de `@calendario`,
+la misma función que usa el sync (D-71), así que el panel y el calendario
+público no pueden separarse. De ahí sale el caso que ninguna otra pantalla
+mostraba: un encuentro que **debería** estar publicado y no tiene evento.
+
+El listado suma ordenamiento y filtros, todo en memoria sobre lo que
+`listarActividades()` ya trajo — cero lecturas nuevas (§2.5 aplicado al panel).
+Cierra **B-96**.
+
+El agente que escribió esto murió antes de commitear y antes de verificar nada;
+el trabajo se rescató de su working tree. Auditarlo después encontró ocho
+divergencias, ninguna P0 ni P1, y las seis concretas quedaron arregladas:
+
+- **H1** · el listado descartaba encuentros por `inicio` y el calendario por
+  `fin`, así que un taller de 19 a 21 desaparecía del listado a las 19:01 —
+  justo durante las dos horas en que alguien podría abrirlo. El fixture de los
+  tests tenía `fin === inicio`, o sea duración cero, así que la divergencia era
+  **indetectable por construcción**: el patrón exacto de B-84. Ahora el fixture
+  tiene duración real y hay un test que **ata los dos criterios**, así que
+  separarlos otra vez pone algo en rojo.
+- **H2** · `desSlug` estaba copiado idéntico en el panel y en la descripción del
+  evento. Ahora se exporta de `@calendario` y se reusa (D-20).
+- **H3** · el calendario mostraba alarma roja después de **cada** publicación,
+  afirmando que el sync había fallado, cuando en realidad estaba en vuelo: el
+  write-back del id tarda segundos. En dos semanas esa alarma no se lee más, y
+  la vista existe para que se lea.
+- **H4** · el aviso de encuentros pasados decía "ya no tiene arreglo" también
+  para los que **sobran** en el calendario público, donde las dos afirmaciones
+  son falsas y sí hay algo que hacer. Ahora se cuentan aparte.
+- **H5** · el orden de tres desplegables lo decidía el orden de llegada de los
+  datos, y un test lo cementaba. Los enums cerrados van por su declaración, las
+  taxonomías abiertas alfabéticas, y hay un test de que el orden no cambia si
+  los datos llegan al revés.
+- **H6** · la conversión `Timestamp` → `Date` estaba duplicada en los dos
+  módulos nuevos. Es el corazón de la trampa 1: divergir habría hecho que el
+  listado y el calendario discrepen sobre **cuáles sesiones existen**, sin
+  error. Ahora vive en `sesiones.ts`, que es el hogar de las conversiones.
+
+Más dos detalles: la clase de botón suelta de la grilla pasó a
+`claseEnlaceCelda` en el lugar centralizado, y el formulario vuelve al
+calendario si se lo abrió desde ahí, en vez de mandar siempre al listado y
+perder el mes que se estaba mirando.
+
+Quedan abiertos **B-125** a **B-128** con los límites que la vista no cubre.
+
+
 ## Sin versión — 2026-08-21 · solo documentación
 
 ### Diseño del sitio público (B-01)

@@ -49,6 +49,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'calendario-en-curso',
+    fecha: '2026-08-24',
+    titulo: 'Una actividad que está empezando ahora ya no se te esconde en la lista',
+    detalle:
+      'Antes, un taller de 19 a 21 desaparecía de "lo que se viene" a las 19:01, justo cuando ' +
+      'alguien podía necesitar abrirlo. Ahora sigue contando como próximo hasta que termina de ' +
+      'verdad.',
+    donde: 'En la lista, en el orden y en el filtro «con algo por venir».',
+  },
+  {
     id: 'vista-calendario',
     fecha: '2026-08-22',
     titulo: 'Hay una vista calendario que te dice qué está publicado de verdad',

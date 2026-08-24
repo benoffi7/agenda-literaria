@@ -3,6 +3,7 @@ import {
   claseBotonChip,
   claseBotonChipActivo,
   claseBotonSecundario,
+  claseEnlaceCelda,
 } from '@/components/admin/campos/Campo';
 import { listarActividades } from '@/lib/actividades';
 import {
@@ -268,13 +269,41 @@ export function CalendarioActividades({ onEditar, version }: Props) {
         </div>
       )}
 
+      {/*
+        Se cuentan por separado porque el consejo es opuesto. `pasados` es el
+        grupo `problema` completo, y para la mitad `sobra` las dos frases del
+        texto anterior eran falsas: el encuentro no "quedó sin publicarse"
+        —está publicado de más— y sí tiene arreglo, porque el evento sigue
+        colgado en el calendario público y hay que borrarlo. Un texto que dice
+        "ya no tiene arreglo" empuja a no tocar algo que la gente todavía ve.
+      */}
       {problemas.pasados.length > 0 && (
-        <p className="text-xs text-tinta/55">
-          Además, {problemas.pasados.length}{' '}
-          {problemas.pasados.length === 1 ? 'encuentro que ya pasó' : 'encuentros que ya pasaron'}{' '}
-          {problemas.pasados.length === 1 ? 'quedó' : 'quedaron'} sin publicarse como debía. Ya no
-          tiene arreglo: queda como registro de que ese día no salió al calendario.
-        </p>
+        <div className="flex flex-col gap-1 text-xs text-tinta/55">
+          {(() => {
+            const faltaron = problemas.pasados.filter((e) => e.estado === 'falta-en-calendario');
+            const sobran = problemas.pasados.filter((e) => e.estado === 'sobra-en-calendario');
+            return (
+              <>
+                {faltaron.length > 0 && (
+                  <p>
+                    Además, {faltaron.length}{' '}
+                    {faltaron.length === 1 ? 'encuentro que ya pasó' : 'encuentros que ya pasaron'}{' '}
+                    {faltaron.length === 1 ? 'quedó' : 'quedaron'} sin publicarse. Eso ya no tiene
+                    arreglo: queda como registro de que ese día no salió al calendario.
+                  </p>
+                )}
+                {sobran.length > 0 && (
+                  <p className="text-acento">
+                    Y {sobran.length}{' '}
+                    {sobran.length === 1 ? 'encuentro que ya pasó sigue' : 'encuentros que ya pasaron siguen'}{' '}
+                    en el calendario público sin corresponder. Eso sí se puede arreglar: volvé a
+                    guardar la actividad para que se borren.
+                  </p>
+                )}
+              </>
+            );
+          })()}
+        </div>
       )}
 
       {/* ── Navegación del mes ─────────────────────────────────────── */}
@@ -444,7 +473,7 @@ export function CalendarioActividades({ onEditar, version }: Props) {
                         <button
                           type="button"
                           onClick={() => setModo('agenda')}
-                          className="rounded px-1 text-left text-xs text-acento hover:bg-black/5"
+                          className={claseEnlaceCelda}
                         >
                           +{delDia.length - 3} más
                         </button>

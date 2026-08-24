@@ -106,6 +106,13 @@ export function AdminApp() {
   // recargas. Se reparte al aviso y al pie.
   const estadoVersion = useVersionPublicada();
 
+  /**
+   * A dónde vuelve el formulario al guardar o cancelar. Sin esto, editar desde
+   * el calendario devolvía al listado y se perdía el mes que se estaba
+   * mirando — que en una vista de calendario es la mitad del contexto.
+   */
+  const [volverA, setVolverA] = useState<'lista' | 'calendario'>('lista');
+
   useEffect(() => {
     return observarAuth(async (u) => {
       setUsuario(u);
@@ -253,18 +260,31 @@ export function AdminApp() {
       {vista.tipo === 'lista' && (
         <ListaActividades
           version={version}
-          onNueva={() => setVista({ tipo: 'nueva' })}
-          onEditar={(a) => setVista({ tipo: 'editar', actividad: a })}
-          onDuplicar={(copia, tituloOrigen) =>
-            setVista({ tipo: 'duplicar', copia, tituloOrigen })
-          }
+          onNueva={() => {
+            setVolverA('lista');
+            setVista({ tipo: 'nueva' });
+          }}
+          onEditar={(a) => {
+            // Se resetea acá y no solo se setea en el calendario: si no, la
+            // preferencia queda pegada y una edición desde el listado
+            // devolvería al calendario.
+            setVolverA('lista');
+            setVista({ tipo: 'editar', actividad: a });
+          }}
+          onDuplicar={(copia, tituloOrigen) => {
+            setVolverA('lista');
+            setVista({ tipo: 'duplicar', copia, tituloOrigen });
+          }}
         />
       )}
 
       {vista.tipo === 'calendario' && (
         <CalendarioActividades
           version={version}
-          onEditar={(a) => setVista({ tipo: 'editar', actividad: a })}
+          onEditar={(a) => {
+            setVolverA('calendario');
+            setVista({ tipo: 'editar', actividad: a });
+          }}
         />
       )}
 
@@ -278,10 +298,10 @@ export function AdminApp() {
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
           copia={vista.tipo === 'duplicar' ? vista.copia : undefined}
           tituloOrigen={vista.tipo === 'duplicar' ? vista.tituloOrigen : undefined}
-          onCancelar={() => setVista({ tipo: 'lista' })}
+          onCancelar={() => setVista({ tipo: volverA })}
           onGuardado={() => {
             setVersion((v) => v + 1);
-            setVista({ tipo: 'lista' });
+            setVista({ tipo: volverA });
           }}
         />
       )}

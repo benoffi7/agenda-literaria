@@ -577,7 +577,7 @@ Decisión del dueño: si el texto lleva el link a la página de la actividad
 —hoy no existe—. Conviene decidirlo antes para no cambiar el formato después.
 Razonamiento y contra en [`11-ideas-de-producto.md`](11-ideas-de-producto.md).
 
-### B-96 · "Esta semana" arriba del listado
+### B-96 · "Esta semana" arriba del listado — ✅ hecho (2026-08-24)
 
 El listado está ordenado por última modificación, así que arriba está lo que
 tocaste, no lo que se viene. Con dos personas cargando, nadie tiene el panorama:
@@ -894,6 +894,41 @@ no cambia, o al menos avisar en el cartel cuando alguna sesión ya tiene
 
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
 
+
+### B-125 · Un evento borrado a mano en Calendar no se detecta · P2
+
+La vista calendario compara el `calendarEventId` guardado contra lo que
+**debería** existir, no contra lo que Google Calendar tiene de verdad. Si alguien
+borra un evento a mano desde Calendar, el panel sigue diciendo "En el
+calendario". Es coherente con el §2.1 —el calendario es un espejo y editarlo a
+mano no es un caso soportado— pero la vista promete estado de publicación y en
+ese caso miente.
+
+Cerrarlo pide leer la API de Calendar desde el panel, que hoy no tiene forma de
+autenticarse contra ella (la identidad es de la Function, D-06).
+
+### B-126 · La vista calendario no avisa de inscripciones que cierran · P2
+
+`inscripcion.cierra` no aparece en ninguna parte del calendario, y es una fecha
+con la misma urgencia que un encuentro: pasada, la actividad sigue publicada
+invitando a anotarse. Encaja natural como un marcador más en el día que
+corresponde, con otro color.
+
+### B-127 · `useLabelsTaxonomia` abre cinco suscripciones en la primera pantalla · P3
+
+El hook abre un `observarOpciones` por campo (arancel, tipo, barrio, plataforma,
+tags) y el listado —la primera pantalla del panel autenticado— solo usa dos.
+Su propio docstring advierte que conviene montarlo "recién cuando hace falta".
+No rompe nada y `OPCIONES_BASE` cubre el primer render, pero son cinco listeners
+abiertos toda la sesión donde antes había cero.
+
+### B-128 · `mesesConEncuentros` depende de recibir la lista ya ordenada · P3
+
+`mesesConEncuentros` promete devolver los meses "del más viejo al más nuevo" y no
+ordena: se apoya en que `encuentrosDe` ya ordenó por inicio. Hoy todos los
+caminos del componente pasan por ahí, así que funciona. El día que alguien
+alimente `mesInicial` con una lista armada de otra forma, la vista abre en un mes
+arbitrario y nadie lo nota. Un `.sort()` lo cierra.
 
 ## P3 — cuando sobre tiempo
 
@@ -1408,6 +1443,13 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+
+| El listado y el calendario contestaban "¿ya pasó?" con campos distintos: un taller en curso desaparecía del listado a los minutos de empezar | `proximoEncuentro` filtraba por `inicio`, `yaPaso` por `fin`, y el fixture de los tests tenía `fin === inicio`, así que la diferencia era indetectable (patrón B-84) | auditoría del calendario, H1 |
+| `desSlug` estaba copiado idéntico en el panel y en la descripción del evento | mejorar uno separaba los dos sin que nada fallara (D-20) | H2 |
+| El calendario mostraba alarma roja después de cada publicación, diciendo que el sync había fallado | el texto afirmaba falla sobre algo en vuelo; el write-back del id tarda segundos | H3 |
+| El aviso de encuentros pasados decía "ya no tiene arreglo" también para los que sobran en el calendario público | contaba junto `falta` y `sobra`, que piden lo opuesto | H4 |
+| El orden de tres desplegables lo decidía el orden de llegada de los datos, y un test lo cementaba | `listarActividades()` no garantiza orden estable | H5 |
+| La conversión `Timestamp` → `Date` estaba duplicada en dos módulos | es el corazón de la trampa 1; divergir habría hecho que el listado y el calendario discrepen sobre cuáles sesiones existen | H6 |
 | Pisar una descripción larga la perdía para siempre | no había historial: el §12 estaba pendiente desde el principio (B-03) | D-41, D-42, D-43 |
 | "Elegí el arancel" al guardar un formulario que parecía completo | el placeholder se renderizaba como el primer `<option>` con valor `""`, y el texto era un ejemplo ("Gratis, a la gorra…") que se veía idéntico a una opción elegida | `2fab7ef`, D-12 |
 | El evento de Calendar quedaba sin mapa o con el mapa en otra ciudad | `location` mandaba solo `sede.direccion`, sin ciudad ni país | `90edc8a`, D-10 |
