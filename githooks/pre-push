@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# Gate de `git push`. No decide nada: llama a `scripts/verificar-todo.sh`, que
+# es el que se puede correr a mano y el que se puede testear. Un `if` dentro de
+# un hook es igual de imposible de probar que un `if` dentro de un YAML.
+#
+# ── Cómo se activa (no se activa solo) ────────────────────────────
+# Los hooks viven en `.git/hooks/`, que no se versiona, así que este directorio
+# no hace nada hasta que alguien lo enchufa:
+#
+#     git config core.hooksPath githooks
+#
+# Es por clon (la config no viaja con el repo) y alcanza a todos los worktrees,
+# porque la config vive en el directorio común de git. Para desenchufarlo:
+#
+#     git config --unset core.hooksPath
+#
+# ── Cómo se saltea a propósito ────────────────────────────────────
+#     SALTEAR_PRE_PUSH=1 git push
+#     git push --no-verify
+#
+# Las dos formas dejan el rastro en el historial del shell, que es la idea: que
+# saltear sea una decisión y no un olvido.
+set -euo pipefail
+
+if [ "${SALTEAR_PRE_PUSH:-}" = '1' ]; then
+  printf '\033[33m⚠ pre-push salteado por SALTEAR_PRE_PUSH=1.\033[0m\n'
+  printf '  Nadie verificó tipos, tests, build ni la fuga de credenciales.\n'
+  exit 0
+fi
+
+# git manda por stdin una línea por ref: "<ref local> <sha local> <ref remota>
+# <sha remoto>". Con el sha local en ceros, el push es un borrado de rama: no
+# hay árbol nuevo que verificar y correr el build sería tiempo tirado.
+HAY_COMMITS=0
+VACIO='0000000000000000000000000000000000000000'
+while read -r _ref_local sha_local _ref_remota _sha_remoto; do
+  [ -z "${sha_local:-}" ] && continue
+  [ "$sha_local" = "$VACIO" ] && continue
+  HAY_COMMITS=1
+done
+
+if [ "$HAY_COMMITS" = '0' ]; then
+  printf 'pre-push: no hay commits nuevos que verificar (¿borrado de rama?).\n'
+  exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+exec ./scripts/verificar-todo.sh
