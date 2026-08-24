@@ -33,13 +33,19 @@ para no perder tiempo).
 
 | Frente | Ítems | Su estado de pausa |
 |---|---|---|
-| **Fase 2 · formulario** | B-70 primero, después B-71, B-87, B-90, y B-79 último | [`estado-pausa/fase-2-formulario.md`](estado-pausa/fase-2-formulario.md) |
+| **Fase 2 · formulario** | ⚠️ **abierta, con rescate.** B-70, B-71, B-87 y B-90 commiteados; B-79 y el cierre documental a medias. Branch `worktree-agent-a541ee3dce3fc09b0` | [`estado-pausa/fase-2-formulario.md`](estado-pausa/fase-2-formulario.md) |
 | ~~**Fase 3A · taxonomías**~~ | ✅ **mergeada en `main`** — B-72, B-05, B-06, B-25, B-26, B-73, B-131. Su [estado de pausa](estado-pausa/fase-3a-taxonomias.md) queda como registro | — |
-| **Fase 3B · listado y panel** | B-76, B-96, B-31, B-40, B-35, B-14, B-64 | [`estado-pausa/fase-3b-listado.md`](estado-pausa/fase-3b-listado.md) |
+| **Fase 3B · listado y panel** | ⚠️ **abierta, con rescate.** B-76, B-35, B-14, B-64 y B-31 commiteados; B-40 a medio montar. Branch `worktree-agent-a896145367cd860c8` | [`estado-pausa/fase-3b-listado.md`](estado-pausa/fase-3b-listado.md) |
 | ~~**Fase 4 · red de contención**~~ | ✅ **mergeada en `main`** — B-171, B-117, B-50, B-119, B-115. B-34 no entró (la forma del límite es una decisión). Su [estado de pausa](estado-pausa/fase-4-contencion.md) queda como registro | — |
 
-Si falta alguno de esos archivos, ese frente se cortó antes de escribirlo: mirá
-sus commits con `git log --oneline main..<su-branch>`.
+**Los dos frentes que quedan murieron a mitad de trabajo** —uno por watchdog,
+otro porque la máquina se durmió— y ninguno alcanzó a cerrar. Lo que había sin
+commitear lo rescaté yo: **el último commit de cada branch empieza con `WIP:
+rescate` y NO está verificado**. En los dos casos había archivos **sin trackear**,
+que son los que se pierden del todo; ahora están a salvo.
+
+El aviso completo, con los comandos exactos para verificar cada uno, está arriba
+de todo en sus archivos de estado. **Leelos antes de mergear nada.**
 
 **Dos ítems quedaron fuera de esta corrida a propósito**, y no por olvido: **B-62**
 (ayuda contextual por sección) y **B-08** (tests de componentes) necesitan el
