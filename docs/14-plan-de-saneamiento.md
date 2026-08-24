@@ -26,11 +26,19 @@ Los dos archivos disputados, que son los que hay que cuidar:
 | `src/components/admin/ActividadFormulario.tsx` | 8 ítems lo quieren tocar. **Un solo dueño por fase.** |
 | `functions/calendario.js` | lo importa el panel por el alias `@calendario` (D-20), así que un cambio ahí afecta a las Functions **y** al bundle |
 
-## Fase 1 — lo que rompe, en paralelo
+## Fase 1 — lo que rompe, en paralelo — ✅ terminada (2026-08-24)
 
-Tres frentes, sin archivos compartidos entre ellos. Arrancan juntos.
+Tres frentes, sin archivos compartidos entre ellos. Arrancaron juntos y los tres
+están integrados en `main`.
 
-### 1A · Cloud Functions
+**Lo que costó no fue el código, fueron los chequeos.** El refactor de B-77
+partió `functions/index.js` en módulos y dejó a los chequeos estructurales —los
+que leen el fuente para verificar propiedades— midiendo el vacío: verdes, sin
+probar nada. La lección quedó escrita en el CHANGELOG y en B-166: un chequeo que
+depende de dónde están las cosas hay que revisarlo cuando las cosas se mueven, y
+uno que **enumera nombres** en lugar de afirmar una propiedad se queda viejo solo.
+
+### 1A · Cloud Functions — ✅ terminada
 
 **Dueño de:** `functions/**` (salvo `calendario.js`, que es de 1B)
 
@@ -59,7 +67,7 @@ base32hex (`0-9a-v`), y `ses_<uuid>` sin el guión bajo y sin los guiones ya cae
 adentro. Los eventos que ya existen conservan su id de Google, así que es
 compatible hacia atrás: el diff usa el `calendarEventId` guardado.
 
-### 1B · El evento de Calendar (`calendario.js`)
+### 1B · El evento de Calendar (`calendario.js`) — ✅ terminada
 
 **Dueño de:** `functions/calendario.js`, `src/lib/vistaPreviaEvento.ts`
 
@@ -72,8 +80,16 @@ Functions/panel. Si lo tocara 1A junto con `index.js`, un merge desprolijo
 podría dejar el panel y el sync mostrando cosas distintas — que es exactamente
 lo que el alias existe para evitar.
 
-El test que hoy dice `cancelar un encuentro borra solo el suyo` pasa porque su
-fixture **no es un ciclo**: el invariante no vale justo en el caso del §2.2.
+El test que decía `cancelar un encuentro borra solo el suyo` pasaba porque su
+fixture **no era un ciclo**: el invariante no valía justo en el caso del §2.2.
+Arreglado (D-95), y los tres `it.fails` de `tests/invariantes-de-ciclo.test.ts`
+quedaron promovidos a `it` — el semáforo funcionó exactamente como se diseñó.
+
+Con una coda: el propio fixture tenía la clase de bug que el archivo persigue. Su
+cuarto caso —un ciclo con el tercer encuentro ya cancelado— le dejaba a esa
+sesión su `calendarEventId`, estado que el sistema no puede tener asentado
+porque el sync repone `null` al borrar. Cuarta aparición de B-135, esta vez
+adentro del archivo escrito para detectarla.
 
 ### 1C · Analítica, versión y enums — ✅ terminada (2026-08-24)
 
@@ -90,12 +106,32 @@ Dependencia anotada y **no** hecha: la tercera copia del formato de versión viv
 en `tests/analytics-privacidad.test.ts`, que este frente tenía que dejar en verde
 sin tocar (**B-165**).
 
+## Las fases 2, 3 y 4 corren juntas — 🔄 en curso (2026-08-24)
+
+El plan las escribió en secuencia, y la secuencia estaba justificada por
+**dependencias de contenido**: la fase 2 esperaba a la 1 porque B-90 necesitaba
+el diff de `calendario.js` ya cerrado, y la 3B esperaba a la 2 por B-62.
+
+Terminada la fase 1, esas dependencias se evaporaron salvo dos, y lo que queda es
+el criterio de arriba: **se reparte por archivo**. Las fases 2, 3A, 3B y 4 no
+comparten un solo archivo entre ellas, así que corren los cuatro frentes a la vez.
+La secuencia era una consecuencia de las dependencias, no un valor en sí.
+
+Las dos que sobreviven, y por eso quedaron fuera de esta corrida:
+
+- **B-62** (ayuda contextual por sección) necesita el formulario ya partido por
+  secciones — o sea, la fase 2 terminada.
+- **B-08** (tests de componentes) necesita lo mismo: escribirlos contra el `.tsx`
+  antes de que la fase 2 le saque la lógica es escribirlos dos veces.
+
+Y una frontera que el reparto por archivo deja al descubierto: 3A construye la
+pantalla de administración de taxonomías (B-06), pero el router vive en
+`AdminApp.tsx`, que es de 3B. 3A deja el componente autocontenido y **sin
+montar**, con la dependencia anotada.
+
 ## Fase 2 — el formulario, un dueño solo
 
 **Dueño de:** `ActividadFormulario.tsx` y los módulos de dominio que salgan de él
-
-Arranca cuando termina la fase 1, porque B-90 necesita saber cómo quedó el diff
-de `calendario.js` (1B) y B-87 depende de que la instrumentación esté quieta (1C).
 
 | | Qué | Orden |
 |---|---|---|
@@ -147,7 +183,8 @@ lo resuelve solo. El modo de falla pasa de *basura permanente en la taxonomía* 
 | B-64 | P3 · pendientes chicos del centro de ayuda |
 | B-62 | P2 · ayuda contextual por sección — **después de la fase 2** |
 
-3B va después de la vista calendario, que ya toca estos archivos.
+3B va después de la vista calendario, que ya toca estos archivos. **B-62 no
+entra en esta corrida**: depende de la fase 2, que corre al mismo tiempo.
 
 ## Fase 4 — la red de contención
 
@@ -155,14 +192,14 @@ lo resuelve solo. El modo de falla pasa de *basura permanente en la taxonomía* 
 
 | | Qué |
 |---|---|
-| B-08 | P2 · sin tests de componentes — **después de la fase 2**, cuando quede menos lógica en el `.tsx` |
+| B-08 | P2 · sin tests de componentes — **fuera de esta corrida**: la fase 2 le está sacando la lógica al `.tsx` justo ahora |
 | B-117 | P2 · `bundle-panel.test.ts` no cubre el tercer chunk |
 | B-50 | P2 · verificar el corte del bundle después de analytics |
 | B-115 | P2 · nada invoca a los auditores solos |
 | B-119 | P3 · falta un mapa trampa → test → archivo |
 | B-120 | P3 · nada verifica que `13-agentes.md` liste los agentes que existen |
 | B-34 | P3 · nada limita cuántos reportes se pueden cargar |
-| B-78 | P3 · el 26 % de `src/lib/` es prosa |
+| B-78 | P3 · el 26 % de `src/lib/` es prosa — **fuera de esta corrida**: toca archivos de los otros tres frentes |
 
 ## Lo que no es trabajo de código
 
