@@ -34,7 +34,7 @@ están integrados en `main`.
 **Lo que costó no fue el código, fueron los chequeos.** El refactor de B-77
 partió `functions/index.js` en módulos y dejó a los chequeos estructurales —los
 que leen el fuente para verificar propiedades— midiendo el vacío: verdes, sin
-probar nada. La lección quedó escrita en el CHANGELOG y en B-166: un chequeo que
+probar nada. La lección quedó escrita en el CHANGELOG y en B-171: un chequeo que
 depende de dónde están las cosas hay que revisarlo cuando las cosas se mueven, y
 uno que **enumera nombres** en lugar de afirmar una propiedad se queda viejo solo.
 

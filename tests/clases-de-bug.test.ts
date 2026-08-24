@@ -132,16 +132,225 @@ const helpersConRed = (src: string): string[] =>
     })
     .map(({ nombre }) => nombre);
 
-/** ¿Este trigger produce un efecto que no se puede deshacer emitiéndolo dos veces? */
-const tieneEfectoDuplicable = (t: Trigger): boolean => {
-  const red = helpersConRed(fuente(t.archivo));
-  const llamaHelper = red.some((h) => new RegExp(`\\b${h}\\(`).test(t.cuerpo));
-  return (
-    llamaHelper ||
-    /\bfetch\(|cal\.events\.\w+\(/.test(t.cuerpo) ||
-    /\.(set|add|create)\(/.test(t.cuerpo)
-  );
+// ─────────────────────────────────────────────────────────────────────
+// Seguir la llamada — B-171
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * El detector anterior buscaba el efecto y la guarda **en el cuerpo del
+ * trigger**. B-77 movió las dos cosas a helpers y el detector dejó de verlas:
+ *
+ *  - el efecto de `guardarVersion` es `versiones.doc(version).set(...)`, que
+ *    ahora vive en `guardar` (`historial-trigger.js`), así que los dos triggers
+ *    de historial pasaron a contarse como "sin efecto";
+ *  - la guarda de `syncCalendar` es `idDeEvento(op.id)`, que vive en
+ *    `crearEvento` (`index.js`), así que el trigger **ya blindado** seguía
+ *    contándose como desguarnecido.
+ *
+ * Un chequeo que solo mira la hoja del árbol se apaga con el primer
+ * `Extract Function`. Lo de abajo **sigue la llamada**: arma la traza del
+ * trigger expandiendo cada llamada a una función declarada en `functions/**`
+ * —del mismo archivo o importada— y clasifica lo que encuentra en el orden en
+ * que ocurre.
+ */
+
+/**
+ * El fuente sin comentarios, conservando los literales de string.
+ *
+ * Hace falta porque los comentarios de este repo **nombran** las llamadas que se
+ * están buscando ("el `update` reescribe lo mismo", "`eventoId` de `event.id`"):
+ * sin sacarlos, la prosa que explica una guarda contaría como la guarda. Los
+ * strings se conservan porque distinguir `.doc('literal')` de `.doc(variable)`
+ * es justamente lo que decide si una escritura puede duplicar.
+ */
+const sinComentarios = (src: string): string => {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i]!;
+    const d = src[i + 1];
+    if (c === '/' && d === '/') {
+      while (i < src.length && src[i] !== '\n') i++;
+      continue;
+    }
+    if (c === '/' && d === '*') {
+      i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') {
+      out += c;
+      i++;
+      while (i < src.length && src[i] !== c) {
+        if (src[i] === '\\') {
+          out += src[i]! + (src[i + 1] ?? '');
+          i += 2;
+          continue;
+        }
+        out += src[i]!;
+        i++;
+      }
+      out += src[i] ?? '';
+      i++;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
 };
+
+type Declaracion = { archivo: string; nombre: string; cuerpo: string };
+
+/**
+ * Las declaraciones de nivel superior de un archivo, con su cuerpo.
+ *
+ * El corte es "hasta la próxima declaración de nivel superior". Es aproximado a
+ * propósito: lo único que se hace con el cuerpo es buscar llamadas, y unas
+ * líneas de más al final no cambian ninguna respuesta.
+ */
+const cacheDeclaraciones = new Map<string, Declaracion[]>();
+const declaracionesDe = (archivo: string): Declaracion[] => {
+  const ya = cacheDeclaraciones.get(archivo);
+  if (ya) return ya;
+  const src = sinComentarios(fuente(archivo));
+  const anclas = [
+    ...src.matchAll(/^(?:export\s+)?(?:async\s+)?(?:const|let|var|function)\s+(\w+)/gm),
+  ];
+  const decls = anclas.map((m, i) => ({
+    archivo,
+    nombre: m[1]!,
+    cuerpo: src.slice(m.index!, anclas[i + 1]?.index ?? src.length),
+  }));
+  cacheDeclaraciones.set(archivo, decls);
+  return decls;
+};
+
+/** Un path relativo resuelto contra el archivo que lo importa. */
+const resolverPath = (desde: string, spec: string): string => {
+  const partes = desde.split('/').slice(0, -1);
+  for (const p of spec.split('/')) {
+    if (p === '.') continue;
+    else if (p === '..') partes.pop();
+    else partes.push(p);
+  }
+  return partes.join('/');
+};
+
+/** Qué nombre importado viene de qué archivo de `functions/`. */
+const cacheImportes = new Map<string, Map<string, string>>();
+const importesDe = (archivo: string): Map<string, string> => {
+  const ya = cacheImportes.get(archivo);
+  if (ya) return ya;
+  const mapa = new Map<string, string>();
+  for (const m of sinComentarios(fuente(archivo)).matchAll(
+    /import\s*\{([^}]*)\}\s*from\s*'(\.[^']+)'/g,
+  )) {
+    const destino = resolverPath(archivo, m[2]!);
+    if (!ARCHIVOS_FUNCTIONS.includes(destino)) continue;
+    for (const parte of m[1]!.split(',')) {
+      const nombre = parte.trim().split(/\s+as\s+/).pop()?.trim();
+      if (nombre) mapa.set(nombre, destino);
+    }
+  }
+  cacheImportes.set(archivo, mapa);
+  return mapa;
+};
+
+/** Cómo se resuelve un nombre llamado desde un archivo. Se inyecta para poder testear el detector. */
+type Resolver = (archivo: string, nombre: string) => Declaracion | null;
+
+const enFunctions: Resolver = (archivo, nombre) => {
+  const local = declaracionesDe(archivo).find((d) => d.nombre === nombre);
+  if (local) return local;
+  const otro = importesDe(archivo).get(nombre);
+  if (!otro) return null;
+  return declaracionesDe(otro).find((d) => d.nombre === nombre) ?? null;
+};
+
+/**
+ * Los tokens que interesan, en un solo barrido para que el **orden** entre ellos
+ * quede registrado (la guarda por reclamo de estado depende de eso).
+ *
+ * `T` — `runTransaction(`: se reclama el estado antes de actuar.
+ *
+ * `E` — un efecto que puede crear **algo nuevo**:
+ *  - `fetch(`: HTTP arbitrario, la identidad la elige el otro lado;
+ *  - `.insert(` / `.add(` / `.create(`: verbos de creación;
+ *  - `.doc(<expresión>).set(`: escritura en una dirección **calculada** — si la
+ *    expresión no deriva del evento, dos entregas escriben dos documentos.
+ *
+ * Y lo que deliberadamente **no** es efecto duplicable, porque re-ejecutarlo no
+ * puede producir un segundo nada:
+ *  - `.update(` / `.patch(` / `.delete(`: direccionan una identidad que ya
+ *    existe (por eso el re-sync de etiquetas de `rebuildPorOpciones` no cuenta);
+ *  - `.doc('literal').set(`: siempre la misma dirección (por eso `marcarRebuild`
+ *    no cuenta).
+ */
+const RE_TOKEN = new RegExp(
+  [
+    '\\brunTransaction\\(',
+    '\\bfetch\\(',
+    '\\.(?:insert|add|create)\\(',
+    // `(?!['"`])` = el argumento de `.doc()` no arranca con
+    // comilla simple, doble ni backtick: es una expresión, no un path fijo.
+    "\\.doc\\(\\s*(?!['\"`])[^)]*\\)\\s*\\.set\\(",
+    '\\b(\\w+)\\(',
+  ].join('|'),
+  'g',
+);
+
+type Traza = { marcas: string; cuerpos: string[] };
+
+/**
+ * La traza de una declaración: las marcas en orden de aparición, expandiendo las
+ * llamadas que el resolver reconozca, y los cuerpos que se recorrieron.
+ */
+const trazar = (
+  decl: Declaracion,
+  resolver: Resolver,
+  visitados = new Set<string>(),
+): Traza => {
+  visitados.add(`${decl.archivo}::${decl.nombre}`);
+  let marcas = '';
+  const cuerpos = [decl.cuerpo];
+  for (const m of decl.cuerpo.matchAll(RE_TOKEN)) {
+    const llamada = m[1];
+    if (llamada === undefined) {
+      marcas += m[0]!.startsWith('runTransaction') ? 'T' : 'E';
+      continue;
+    }
+    const destino = resolver(decl.archivo, llamada);
+    if (!destino || visitados.has(`${destino.archivo}::${destino.nombre}`)) continue;
+    const dentro = trazar(destino, resolver, visitados);
+    marcas += dentro.marcas;
+    cuerpos.push(...dentro.cuerpos);
+  }
+  return { marcas, cuerpos };
+};
+
+const comoDeclaracion = (t: Trigger): Declaracion => ({
+  archivo: t.archivo,
+  nombre: t.nombre,
+  cuerpo: sinComentarios(t.cuerpo),
+});
+
+const cacheTrazas = new Map<string, Traza>();
+const trazaDe = (t: Trigger): Traza => {
+  const clave = `${t.archivo}::${t.nombre}`;
+  const ya = cacheTrazas.get(clave);
+  if (ya) return ya;
+  const traza = trazar(comoDeclaracion(t), enFunctions);
+  cacheTrazas.set(clave, traza);
+  return traza;
+};
+
+/** Lo mismo, sin seguir ninguna llamada: sirve para saber si seguirla cambió algo. */
+const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () => null);
+
+/** ¿Este trigger produce un efecto que no se puede deshacer emitiéndolo dos veces? */
+const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
   it('encuentra los seis triggers del proyecto', () => {
@@ -344,35 +553,127 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
  *  - **por estado, reclamado antes del efecto** — `reporteAIssue` toma el
  *    reporte en una transacción y recién después habla con GitHub.
  *
- * La asimetría era la pista: los dos que se blindan lo hacen, `syncCalendar`
- * no mira `event.id` en ninguna parte.
+ * y hoy hay una tercera, que es la que cerró B-82:
+ *
+ *  - **por identidad elegida por nosotros** — `syncCalendar` deriva el id del
+ *    evento de Calendar del id de sesión (`idDeEvento`), así que el `insert`
+ *    repetido choca con el que ya existe y devuelve 409.
+ *
+ * Las tres se reconocen sobre la **traza** del trigger, no sobre su cuerpo: las
+ * tres viven hoy en un helper, y buscarlas en el cuerpo es lo que apagó este
+ * chequeo (B-171).
  */
-const tieneGuardaDeReentrega = (t: Trigger): boolean => {
-  // Por clave derivada del evento. Se acepta el `event.id` crudo y también que
-  // se lo pase a un constructor de clave: B-77 refactorizó `guardarVersion`
-  // para que reciba el id como parámetro y arme la clave con `idDeVersion`, y
-  // la detección atada al literal `event.id` dejó de verlo. Un chequeo que
-  // reconoce una guarda por el nombre de una variable local se apaga con el
-  // primer renombre.
-  if (/\bevent\.id\b|\bidDe[A-Z]\w*\(/.test(t.cuerpo)) return true;
-  const transaccion = primero(t.cuerpo, /runTransaction\(/);
-  const efecto = primero(t.cuerpo, /\bfetch\(|cal\.events\.\w+\(|\.(set|add|create)\(/);
-  return transaccion < efecto;
+const RE_CLAVE_DERIVADA = /\bevent\.id\b|\bidDe[A-Z]\w*\(/;
+
+/** Guarda por clave: el id de lo que se escribe no lo elige el receptor. */
+const guardaPorClave = (t: Trigger): boolean =>
+  trazaDe(t).cuerpos.some((c) => RE_CLAVE_DERIVADA.test(c));
+
+/** Guarda por reclamo: hay una transacción **antes** del primer efecto. */
+const guardaPorReclamo = (marcas: string): boolean => {
+  const reclamo = marcas.indexOf('T');
+  const efecto = marcas.indexOf('E');
+  return reclamo !== -1 && (efecto === -1 || reclamo < efecto);
 };
 
+const tieneGuardaDeReentrega = (t: Trigger): boolean =>
+  guardaPorClave(t) || guardaPorReclamo(trazaDe(t).marcas);
+
+/**
+ * El detector, probado contra cuerpos inventados — B-171.
+ *
+ * Es la parte que faltaba la primera vez. El detector de arriba es el que decide
+ * si el chequeo de la clase mira algo o da un verde vacío, y hasta ahora nadie
+ * lo verificaba: cuando B-77 lo dejó ciego, el síntoma fue un test que había que
+ * apagar. Con cuerpos sintéticos se prueba **el detector**, y esos cuerpos no
+ * envejecen con el refactor de mañana.
+ */
+const marcasDe = (cuerpo: string, helpers: Record<string, string> = {}): string =>
+  trazar({ archivo: 'fingido.js', nombre: 'trigger', cuerpo: sinComentarios(cuerpo) }, (_, n) =>
+    helpers[n] === undefined
+      ? null
+      : { archivo: 'fingido.js', nombre: n, cuerpo: sinComentarios(helpers[n]!) },
+  ).marcas;
+
+describe('el detector de efectos duplicables discrimina — B-171', () => {
+  it('un efecto que solo vive en un helper se detecta igual', () => {
+    // LA regresión de B-171, congelada: `guardarVersion` dejó de contar como
+    // "con efecto" el día que su `.set()` se mudó a `guardar`.
+    expect(marcasDe('await guardar({ id, eventoId: event.id });')).toBe('');
+    expect(
+      marcasDe('await guardar({ id, eventoId: event.id });', {
+        guardar: 'await versiones.doc(version).set({ documento });',
+      }),
+    ).toBe('E');
+  });
+
+  it('sigue la llamada más de un salto', () => {
+    expect(marcasDe('await a();', { a: 'await b();', b: 'await fetch(url);' })).toBe('E');
+  });
+
+  it('no se cuelga con un ciclo entre helpers', () => {
+    expect(marcasDe('await a();', { a: 'await b();', b: 'await a();' })).toBe('');
+  });
+
+  it('direccionar una identidad que ya existe no es un efecto duplicable', () => {
+    // Re-ejecutarlos no puede producir un segundo nada.
+    expect(marcasDe('await cal.events.update({ eventId });')).toBe('');
+    expect(marcasDe('await cal.events.delete({ eventId });')).toBe('');
+    expect(marcasDe('await ref.update({ estado });')).toBe('');
+    expect(marcasDe('batch.delete(versiones.doc(viejo));')).toBe('');
+  });
+
+  it('escribir siempre en la misma dirección tampoco lo es', () => {
+    // `marcarRebuild`: si contara, cualquier trigger que marque el rebuild
+    // pediría una guarda de reentrega que no necesita.
+    expect(marcasDe("db.doc('sistema/rebuild').set({ pendiente: true }, { merge: true });")).toBe(
+      '',
+    );
+  });
+
+  it('escribir en una dirección calculada sí lo es', () => {
+    expect(marcasDe('await versiones.doc(version).set({ documento });')).toBe('E');
+  });
+
+  it('los verbos de creación lo son, y un `Map` no', () => {
+    expect(marcasDe('await cal.events.insert({ requestBody });')).toBe('E');
+    expect(marcasDe('await col.add({ x: 1 });')).toBe('E');
+    // `ids.set(op.id, eventId)` es un `Map` en memoria, no una escritura.
+    expect(marcasDe('const ids = new Map(); ids.set(op.id, eventId);')).toBe('');
+  });
+
+  it('un comentario que nombra la llamada no cuenta como la llamada', () => {
+    // El repo explica sus guardas en prosa: "el `update` reescribe lo mismo",
+    // "`eventoId` de `event.id`". Sin sacar los comentarios, la explicación de
+    // una guarda contaría como la guarda.
+    expect(marcasDe('// acá iría un await fetch(url) y un .add({})\nreturn;')).toBe('');
+    expect(marcasDe('/* await fetch(url); */ return;')).toBe('');
+    // Y al revés: un `//` adentro de un string no arranca un comentario.
+    expect(marcasDe("const API = 'https://api.github.com'; await fetch(API);")).toBe('E');
+  });
+
+  it('el orden entre el reclamo y el efecto se registra, y decide la guarda', () => {
+    expect(guardaPorReclamo(marcasDe('await db.runTransaction(tx); await fetch(url);'))).toBe(true);
+    expect(guardaPorReclamo(marcasDe('await fetch(url); await db.runTransaction(tx);'))).toBe(false);
+    // Y también cuando el efecto está un salto más abajo.
+    expect(
+      guardaPorReclamo(
+        marcasDe('await db.runTransaction(tx); await crear();', { crear: 'await fetch(url);' }),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => {
-  // APAGADO a propósito (B-166). El detector de guardas dejó de reconocer las
-  // de `guardarVersion` y `guardarVersionAlBorrar` después del refactor de
-  // B-77: la guarda se mudó a un helper y la detección la buscaba en el cuerpo
-  // del trigger. Queda `skip` y no `fails` porque un test apagado se ve apagado,
-  // mientras que un `it.fails` que empieza a pasar es ruido. El resto de la
-  // clase de B-82 sigue verificándose.
-  it.skip('hay triggers con efecto duplicable y hay al menos dos ya blindados', () => {
+  it('hay triggers con efecto duplicable y hay al menos dos ya blindados', () => {
     const conEfecto = deDocumento.filter(tieneEfectoDuplicable);
-    expect(conEfecto.length).toBeGreaterThanOrEqual(2);
     // Los positivos: sin al menos dos, el detector podría estar midiendo
     // cualquier cosa y el chequeo de abajo daría un verde vacío.
-    //
+    expect(conEfecto.length).toBeGreaterThanOrEqual(2);
+    // Y el negativo, que es la otra mitad: un detector que dijera "todo efecto
+    // es duplicable" también daría un verde vacío, con la lista llena.
+    expect(deDocumento.length).toBeGreaterThan(conEfecto.length);
+
     // Se afirma la propiedad y no la lista. Enumerar los blindados obliga a
     // editar este test con cada trigger nuevo, y un test que hay que actualizar
     // para que siga pasando se termina actualizando sin pensar — que es como se
@@ -380,20 +681,54 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
     // enumerada lo dio por regresión.
     const blindados = conEfecto.filter(tieneGuardaDeReentrega).map((t) => t.nombre);
     expect(blindados.length, `blindados: ${blindados.join(', ')}`).toBeGreaterThanOrEqual(2);
-    expect(blindados).toContain('reporteAIssue');
+
+    // Las dos formas de blindaje están vivas. Que exista un ejemplo de cada una
+    // es lo que mantiene honestas a las dos ramas del detector: si una se
+    // apagara, la otra sola seguiría dando verde.
+    expect(conEfecto.filter(guardaPorClave).length).toBeGreaterThanOrEqual(1);
+    expect(
+      conEfecto.filter((t) => guardaPorReclamo(trazaDe(t).marcas)).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   /**
-   * **Qué lo haría pasar:** que `syncCalendar` derive el id del evento de
-   * Calendar del id de sesión (la salida que propone el plan de saneamiento:
-   * un `insert` repetido da 409 en vez de crear un segundo evento), o que
-   * relea el documento dentro de una transacción antes de decidir `crear`, o
-   * que lleve la marca de `event.id` ya aplicado.
-   *
-   * Y vale para el trigger que se agregue mañana: un `onDocumentWritten` nuevo
-   * con un `fetch` adentro y sin guarda cae acá el día que se escribe.
+   * La razón por la que este archivo tuvo que rehacerse (B-171): hoy el efecto y
+   * la guarda de los triggers blindados **no están en el cuerpo del trigger**.
+   * Si algún día volvieran todos al cuerpo, seguir la llamada dejaría de aportar
+   * y este test avisa — no para volver atrás, sino para que nadie crea que el
+   * seguimiento está cubierto cuando ya no se ejercita.
    */
-  it.fails('B-82: ningún trigger con efecto duplicable decide solo con el payload', () => {
+  it('seguir la llamada es lo que hace visible el efecto y la guarda', () => {
+    const efectoSoloEnHelper = deDocumento.filter(
+      (t) => !trazaSuperficial(t).marcas.includes('E') && trazaDe(t).marcas.includes('E'),
+    );
+    expect(efectoSoloEnHelper.map((t) => t.nombre).length).toBeGreaterThanOrEqual(1);
+
+    const guardaSoloEnHelper = deDocumento.filter(
+      (t) =>
+        guardaPorClave(t) &&
+        !RE_CLAVE_DERIVADA.test(sinComentarios(t.cuerpo)) &&
+        tieneEfectoDuplicable(t),
+    );
+    expect(guardaSoloEnHelper.map((t) => t.nombre).length).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * B-82 cerrado: `syncCalendar` elige el id del evento de Calendar derivándolo
+   * del id de sesión (`idDeEvento`), así que un `insert` repetido choca con el
+   * que ya existe y devuelve 409 en vez de crear un segundo evento.
+   *
+   * Era `it.fails` mientras la clase estaba viva. Pasó a `it` con el arreglo —
+   * y no antes, porque el detector viejo no veía la guarda nueva: el `it.fails`
+   * siguió "pasando" (fallando) un tiempo después de que el bug estaba
+   * arreglado. Un detector ciego no solo pierde regresiones: también miente
+   * sobre lo que sigue roto.
+   *
+   * Vale para el trigger que se agregue mañana: un `onDocumentWritten` nuevo con
+   * un `fetch` adentro y sin guarda cae acá el día que se escribe, y ahora
+   * también si el `fetch` lo hace un helper.
+   */
+  it('B-82: ningún trigger con efecto duplicable decide solo con el payload', () => {
     const sinGuarda = deDocumento
       .filter(tieneEfectoDuplicable)
       .filter((t) => !tieneGuardaDeReentrega(t))

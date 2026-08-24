@@ -36,7 +36,7 @@ para no perder tiempo).
 | **Fase 2 · formulario** | B-70 primero, después B-71, B-87, B-90, y B-79 último | [`estado-pausa/fase-2-formulario.md`](estado-pausa/fase-2-formulario.md) |
 | ~~**Fase 3A · taxonomías**~~ | ✅ **mergeada en `main`** — B-72, B-05, B-06, B-25, B-26, B-73, B-131. Su [estado de pausa](estado-pausa/fase-3a-taxonomias.md) queda como registro | — |
 | **Fase 3B · listado y panel** | B-76, B-96, B-31, B-40, B-35, B-14, B-64 | [`estado-pausa/fase-3b-listado.md`](estado-pausa/fase-3b-listado.md) |
-| **Fase 4 · red de contención** | B-166, B-117, B-50, B-119, B-34, B-115 | [`estado-pausa/fase-4-contencion.md`](estado-pausa/fase-4-contencion.md) |
+| **Fase 4 · red de contención** | B-171, B-117, B-50, B-119, B-34, B-115 | [`estado-pausa/fase-4-contencion.md`](estado-pausa/fase-4-contencion.md) |
 
 Si falta alguno de esos archivos, ese frente se cortó antes de escribirlo: mirá
 sus commits con `git log --oneline main..<su-branch>`.
@@ -73,7 +73,7 @@ backlog.
    propósito: significa que el bug quedó arreglado y hay que promoverlo a `it`.
    Hoy `tests/costuras.test.ts` no tiene ninguno —los seis se promovieron— y en
    `tests/clases-de-bug.test.ts` quedan cinco vivos.
-6. **Hay un test apagado: B-166.** `it.skip` en `tests/clases-de-bug.test.ts`. Es
+6. **Hay un test apagado: B-171.** `it.skip` en `tests/clases-de-bug.test.ts`. Es
    el detector de guardas de reentrega, y mientras siga apagado un trigger nuevo
    sin guarda entra sin que nada lo frene — el agujero por el que pasó B-82. Es
    el primer ítem del frente 4.

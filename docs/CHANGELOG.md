@@ -23,7 +23,7 @@ por la propiedad —al menos dos blindados—, que es lo que el chequeo quiere
 garantizar. Un test que hay que actualizar para que siga pasando se termina
 actualizando en automático, y ahí se apagan los chequeos.
 
-Uno quedó apagado a propósito (**B-166**): el detector de guardas dejó de
+Uno quedó apagado a propósito (**B-171**): el detector de guardas dejó de
 reconocer las de `guardarVersion` porque el refactor las mudó a un helper y él
 las busca en el cuerpo del trigger. Está `it.skip`, no `it.fails`, porque un test
 apagado tiene que verse apagado.
@@ -101,6 +101,79 @@ existe y no cuenta dos veces el mismo slug (D-103)— pero **el cableado no**:
 llamarla es una línea en `guardar()`, que vive en `ActividadFormulario.tsx`, de
 otro frente. Queda como **B-168**, con el orden exacto escrito para que no se
 cuente doble.
+### La red de contención: los chequeos estructurales dejan de mirar una sola hoja
+
+Fase 4 del plan de saneamiento. Ningún bug arreglado acá: lo que se arregló es la
+red, que en tres lugares distintos había dejado de agarrar por la misma razón —
+**preguntaba por un archivo cuando la propiedad es sobre el grafo**. Cierra
+**B-171** (el detector apagado), **B-117**, **B-50**, **B-119** y **B-115**, y
+cubre la **trampa 4** del §13.
+
+**B-171 · el detector de triggers blindados estaba apagado.** El chequeo de la
+clase de B-82 —"todo trigger con efecto duplicable se blinda"— estaba en
+`it.skip`. Después del refactor de B-77 el efecto y la guarda de los triggers
+viven en helpers, y el detector los buscaba en el cuerpo del trigger:
+`guardarVersion` y `guardarVersionAlBorrar` dejaron de contar como triggers con
+efecto (su `.set()` se mudó a `guardar()`), así que no había dos blindados que
+contar. Y algo peor que nadie había visto: `syncCalendar`, **ya blindado** desde
+que B-82 cerró (`idDeEvento` dentro de `crearEvento`), seguía contándose como
+desguarnecido, así que el `it.fails` de B-82 seguía fallando mucho después de que
+el bug estaba arreglado. Un detector ciego no solo pierde regresiones: también
+miente sobre lo que sigue roto, y un `it.fails` que falla se ve exactamente como
+tiene que verse.
+
+Ahora el detector **sigue la llamada**: arma la traza del trigger expandiendo
+cada llamada a una función declarada en `functions/**` —del mismo archivo o
+importada— y clasifica en orden lo que encuentra. De paso se afinó qué es un
+efecto duplicable: crear algo cuya identidad elige el receptor o escribir en una
+dirección **calculada** sí; direccionar una identidad que ya existe (`.update`,
+`.delete`) o escribir siempre en la misma dirección (`marcarRebuild`) no. El
+`it.skip` volvió a `it` y el `it.fails` de B-82 pasó a `it` (D-108).
+
+Y va lo que faltaba la primera vez: **nueve tests del propio detector** contra
+cuerpos sintéticos, incluida la regresión exacta de B-171, más un control
+negativo sobre el repo real (tiene que haber al menos un trigger **sin** efecto
+duplicable). El detector es lo que decide si el chequeo mira algo o da un verde
+vacío.
+
+**B-117 y B-50 · el corte del bundle se cuida siguiendo el grafo.**
+`tests/bundle-panel.test.ts` comparaba literales y nombraba los dos componentes
+diferidos que había ese día; ya eran cuatro, y volver estático `ReportesPanel` o
+`CalendarioActividades` deshacía el corte con el test en verde. Ahora recorre el
+cierre transitivo de imports desde la entrada de la island —que se lee de
+`admin.astro`, no se hardcodea— y afirma dos propiedades: el SDK pesado no es
+alcanzable siguiendo solo imports estáticos, y lo que se carga con `import()` no
+es alcanzable de forma estática. El quinto componente diferido queda cubierto sin
+tocar el archivo. **B-50** entra en la primera propiedad: `firebase/analytics`
+sigue afuera del chunk inicial, y ahora hay un test que lo mantiene así en vez de
+un `npm run build` de una vez (D-106).
+
+**La trampa 4 del §13, que no tenía ningún test.** `firebase-admin` en el bundle
+cliente —o sea la key de la service account en un artefacto público (§5.4)— era
+la única de las diez trampas sin red, y la de peor consecuencia. La cubre el
+mismo recorrido: la regla del §5.4 no es "este archivo no lo importa", es "no se
+llega desde el cliente", y eso se contesta recorriendo. Se mira el grafo
+completo, diferidos incluidos.
+
+**B-119 · el mapa trampa → test → archivo, que se verifica solo.**
+[`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) dice dónde vive cada trampa del
+§13 y qué test la fija, y `tests/mapa-de-trampas.test.ts` lo contrasta con el
+repo: lee la lista de trampas del `CLAUDE.md` (no la copia), exige que cada test
+citado **nombre** su trampa, y calcula del repo cuáles no tienen ninguno para
+compararlo con lo que el documento declara, en las dos direcciones. Una trampa no
+puede quedarse sin red en silencio, y el documento tampoco puede declarar sin red
+algo ya cubierto (D-107). Quedó abierta la **trampa 7** (query pública sin el
+`where`), anotada como B-172.
+
+**B-115 · ya estaba cerrado y nadie lo había marcado.** Lo cierra el skill
+`antes-de-pushear`, que entró con B-139: lanza los tres auditores en paralelo
+antes de un push o un PR. Se marcó con su causa en vez de duplicar el trabajo.
+
+Anotado y **no** hecho, porque toca archivos de otros frentes: **B-172** (la
+trampa 7), **B-173** (`tsc --noEmit` sale siempre en rojo por doce errores de
+`ImportMeta`, así que un error nuevo se esconde entre ellos) y **B-34** (el tope
+de reportes vive en `firestore.rules` o en la Function, y la forma del límite es
+una decisión).
 
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 
@@ -167,7 +240,7 @@ mismo hallazgo anotado dos veces), y el D-60 quedó enmendado — decía que el
 vocabulario de campos se deriva del schema "al cargar el módulo", y desde B-09 la
 derivación vive en `tests/analytics-campos.test.ts`. Nuevos: **B-165** (la tercera
 copia del formato de versión, en el test de privacidad, que no se tocó a
-propósito) y **B-166**.
+propósito) y **B-171**.
 
 **`novedades.ts` no se toca.** Es "qué podés hacer ahora que antes no podías" en
 el idioma de quien carga actividades (D-63), y nada de esto se nota usando el
