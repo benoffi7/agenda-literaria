@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { planificar } from '@calendario';
+import { formADocumento } from '@/lib/actividades';
 import { labelsDeOpciones, vistaPreviaEvento } from '@/lib/vistaPreviaEvento';
 import type { ActividadForm, SesionForm, ValorOpcion } from '@/types/actividad';
 
@@ -142,6 +144,25 @@ describe('vistaPreviaEvento — adaptación del formulario', () => {
     // Ordena por fecha y no por posición en el array, igual que el evento real.
     expect(previa(f, 'ses_a').descripcion).toContain('Encuentro 1 de 2');
     expect(previa(f, 'ses_b').descripcion).toContain('Encuentro 2 de 2');
+  });
+
+  it('numera igual que el evento publicado: el cancelado sigue contando (B-84, D-95)', () => {
+    const tres = [
+      sesion({ id: 'ses_a' }),
+      sesion({ id: 'ses_b', inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00', cancelada: true }),
+      sesion({ id: 'ses_c', inicio: '2026-09-17T19:00', fin: '2026-09-17T21:00' }),
+    ];
+    const f = form({ sesiones: tres });
+
+    // La vista previa no puede decir una cosa y el calendario otra: se compara
+    // contra el payload que el diff le mandaría a Calendar (D-20).
+    const documento = formADocumento(f, '', false);
+    const creada = planificar(null, documento, LABELS).find(
+      (o: { id: string }) => o.id === 'ses_c',
+    ) as { evento: { description: string } };
+
+    expect(previa(f, 'ses_c').descripcion).toBe(creada.evento.description);
+    expect(previa(f, 'ses_c').descripcion).toContain('Encuentro 3 de 3');
   });
 
   it('muestra el título del evento, con el tema del encuentro', () => {

@@ -37,6 +37,34 @@ const actividad = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+/**
+ * Un ciclo de verdad: `esCiclo` tildado y N encuentros con fechas distintas.
+ *
+ * El §2.2 dice que el ciclo es el caso normal —"un club de lectura de 8
+ * encuentros es UNA actividad con OCHO sesiones"—, así que los tests del diff
+ * corren sobre esto y no sobre una actividad de un solo encuentro. Con
+ * `esCiclo` ausente o con todas las sesiones en el mismo instante, la
+ * numeración del evento (`posicionEnCiclo`) no entra en juego y el invariante
+ * que se quiere proteger no se ejercita: es lo que hacía pasar el test de
+ * B-84.
+ */
+const sesionesSemanales = (
+  cuantas: number,
+  over: (i: number) => Record<string, unknown> = () => ({}),
+) =>
+  Array.from({ length: cuantas }, (_, i) =>
+    sesion({
+      id: `ses_${i}`,
+      inicio: ts(new Date(Date.UTC(2026, 8, 3, 22) + i * 7 * 86_400_000).toISOString()),
+      fin: ts(new Date(Date.UTC(2026, 8, 4, 0) + i * 7 * 86_400_000).toISOString()),
+      calendarEventId: `evt_${i}`,
+      ...over(i),
+    }),
+  );
+
+const ciclo = (over: Record<string, unknown> = {}) =>
+  actividad({ esCiclo: true, sesiones: sesionesSemanales(8), ...over });
+
 const tipos = (ops: { tipo: string }[]) => ops.map((o) => o.tipo);
 
 describe('planificar — creación', () => {
@@ -55,14 +83,15 @@ describe('planificar — creación', () => {
   });
 
   it('crea un evento por cada encuentro del ciclo, no uno recurrente (§2.2)', () => {
-    const a = actividad({
-      sesiones: [
-        sesion({ id: 'ses_1' }),
-        sesion({ id: 'ses_2' }),
-        sesion({ id: 'ses_3' }),
-      ],
-    });
-    expect(planificar(null, a)).toHaveLength(3);
+    const a = ciclo({ sesiones: sesionesSemanales(3, () => ({ calendarEventId: null })) });
+    const ops = planificar(null, a);
+    expect(tipos(ops)).toEqual(['crear', 'crear', 'crear']);
+    // Cada evento es el suyo, numerado: nada de RRULE ni de un evento madre.
+    expect(ops.map((o) => (o as { evento: { description: string } }).evento.description)).toEqual([
+      expect.stringContaining('Encuentro 1 de 3'),
+      expect.stringContaining('Encuentro 2 de 3'),
+      expect.stringContaining('Encuentro 3 de 3'),
+    ]);
   });
 });
 
@@ -72,6 +101,13 @@ describe('planificar — guarda anti-loop (§7.1, trampa 3)', () => {
     // Exactamente lo que hace la Function al terminar: guarda el id del evento.
     const despues = actividad({ sesiones: [sesion({ calendarEventId: 'evt_1' })] });
     expect(planificar(antes, despues)).toEqual([]);
+  });
+
+  it('escribir los ocho calendarEventId de un ciclo tampoco genera nada', () => {
+    // Lo que hace la Function al terminar de crear los ocho eventos. Si la
+    // numeración dependiera de algo que el write-back mueve, esto reentraría.
+    const antes = ciclo({ sesiones: sesionesSemanales(8, () => ({ calendarEventId: null })) });
+    expect(planificar(antes, ciclo())).toEqual([]);
   });
 
   it('el id del evento no forma parte del payload que se compara', () => {
@@ -97,121 +133,162 @@ describe('planificar — guarda anti-loop (§7.1, trampa 3)', () => {
 });
 
 describe('planificar — diff por id (§7.2, trampa 2)', () => {
-  const tres = [
-    sesion({ id: 'ses_a', calendarEventId: 'evt_a' }),
-    sesion({ id: 'ses_b', calendarEventId: 'evt_b' }),
-    sesion({ id: 'ses_c', calendarEventId: 'evt_c' }),
-  ];
+  // Un ciclo de tres encuentros semanales, cada uno con su evento ya creado.
+  const tres = sesionesSemanales(3);
+  const conTres = (over: Record<string, unknown> = {}) =>
+    ciclo({ sesiones: tres, ...over });
 
-  it('borrar la sesión del medio toca solo su evento', () => {
-    const antes = actividad({ sesiones: tres });
-    const despues = actividad({ sesiones: [tres[0]!, tres[2]!] });
+  /** Lo que el §7.2 no perdona: que un encuentro que no cambió se borre y se recree. */
+  const niBorraNiRecrea = (ops: { tipo: string; eventId?: string }[], eventId: string) => {
+    expect(ops.filter((o) => o.tipo === 'crear')).toHaveLength(0);
+    expect(ops.filter((o) => o.tipo === 'borrar')).toEqual([
+      expect.objectContaining({ eventId }),
+    ]);
+  };
 
-    const ops = planificar(antes, despues);
-    expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_b' });
+  it('borrar la sesión del medio borra solo su evento', () => {
+    const despues = ciclo({ sesiones: [tres[0]!, tres[2]!] });
+    const ops = planificar(conTres(), despues);
+
+    niBorraNiRecrea(ops, 'evt_1');
+    // Las otras dos se actualizan porque el ciclo pasó a tener dos encuentros:
+    // la fila se eliminó, así que el "de 3" dejó de ser cierto. Es texto, no
+    // borrar y recrear: el evento que la gente tiene agendado sobrevive.
+    expect(tipos(ops)).toEqual(['borrar', 'actualizar', 'actualizar']);
   });
 
-  it('borrar la primera no renumera ni toca las otras dos', () => {
-    const antes = actividad({ sesiones: tres });
-    const despues = actividad({ sesiones: [tres[1]!, tres[2]!] });
+  it('borrar la primera no borra ni recrea a las otras dos', () => {
+    const despues = ciclo({ sesiones: [tres[1]!, tres[2]!] });
+    const ops = planificar(conTres(), despues);
 
-    const ops = planificar(antes, despues);
-    expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_a' });
+    niBorraNiRecrea(ops, 'evt_0');
+    expect(ops.filter((o) => o.tipo === 'actualizar')).toHaveLength(2);
   });
 
-  it('agregar un encuentro no toca los existentes', () => {
-    const antes = actividad({ sesiones: tres });
-    const despues = actividad({ sesiones: [...tres, sesion({ id: 'ses_d' })] });
+  it('agregar un encuentro crea solo el nuevo', () => {
+    const cuarta = sesion({
+      id: 'ses_3',
+      inicio: ts('2026-09-24T22:00:00Z'),
+      fin: ts('2026-09-25T00:00:00Z'),
+    });
+    const ops = planificar(conTres(), ciclo({ sesiones: [...tres, cuarta] }));
 
-    const ops = planificar(antes, despues);
-    expect(ops).toHaveLength(1);
+    expect(ops.filter((o) => o.tipo === 'borrar')).toHaveLength(0);
     // La op de crear trae el evento ya armado: la Function no lo reconstruye.
-    expect(ops[0]).toMatchObject({
-      tipo: 'crear',
-      id: 'ses_d',
+    expect(ops.find((o) => o.tipo === 'crear')).toMatchObject({
+      id: 'ses_3',
       evento: { summary: expect.any(String) },
     });
+    // Los tres existentes se actualizan: el ciclo pasó a ser de cuatro.
+    expect(ops.filter((o) => o.tipo === 'actualizar')).toHaveLength(3);
   });
 
   it('correr la fecha de un encuentro actualiza solo ese', () => {
-    const antes = actividad({ sesiones: tres });
-    const corrida = { ...tres[1]!, inicio: ts('2026-09-17T22:00:00Z') };
-    const despues = actividad({ sesiones: [tres[0]!, corrida, tres[2]!] });
+    // Se corre un día, sin pasar al siguiente: la numeración no se mueve.
+    const corrida = { ...tres[1]!, inicio: ts('2026-09-11T22:00:00Z') };
+    const despues = ciclo({ sesiones: [tres[0]!, corrida, tres[2]!] });
 
-    const ops = planificar(antes, despues);
+    const ops = planificar(conTres(), despues);
     expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_b' });
+    expect(ops[0]).toMatchObject({ tipo: 'actualizar', eventId: 'evt_1' });
   });
 });
 
 describe('planificar — cambio global (trampa 9)', () => {
-  const ocho = Array.from({ length: 8 }, (_, i) =>
-    sesion({ id: `ses_${i}`, calendarEventId: `evt_${i}` }),
-  );
-
   it('un cambio de sede propaga a las ocho sesiones del ciclo', () => {
-    const antes = actividad({ sesiones: ocho });
-    const despues = actividad({
-      sesiones: ocho,
-      sede: { nombre: 'Otra sede', direccion: 'Corrientes 1234' },
-    });
+    const despues = ciclo({ sede: { nombre: 'Otra sede', direccion: 'Corrientes 1234' } });
 
-    const ops = planificar(antes, despues);
+    const ops = planificar(ciclo(), despues);
     expect(ops).toHaveLength(8);
     expect(tipos(ops).every((t) => t === 'actualizar')).toBe(true);
   });
 
   it('un cambio de título también propaga a todas', () => {
-    const antes = actividad({ sesiones: ocho });
-    const despues = actividad({ sesiones: ocho, titulo: 'Título nuevo' });
-    expect(planificar(antes, despues)).toHaveLength(8);
+    expect(planificar(ciclo(), ciclo({ titulo: 'Título nuevo' }))).toHaveLength(8);
   });
 
   it('cambiar un campo que no afecta al evento no propaga nada', () => {
-    const antes = actividad({ sesiones: ocho });
     // difusion es interna y no sale al calendario.
-    const despues = actividad({ sesiones: ocho, difusion: { notas: 'nuevo' } });
-    expect(planificar(antes, despues)).toEqual([]);
+    expect(planificar(ciclo(), ciclo({ difusion: { notas: 'nuevo' } }))).toEqual([]);
   });
 });
 
 describe('planificar — despublicar y cancelar (§7.3)', () => {
-  const dos = [
-    sesion({ id: 'ses_a', calendarEventId: 'evt_a' }),
-    sesion({ id: 'ses_b', calendarEventId: 'evt_b' }),
-  ];
+  const ocho = sesionesSemanales(8);
 
-  it('pasar a borrador borra todos los eventos', () => {
-    const ops = planificar(actividad({ sesiones: dos }), actividad({ sesiones: dos, estado: 'borrador' }));
-    expect(tipos(ops)).toEqual(['borrar', 'borrar']);
+  it('pasar a borrador borra los ocho eventos', () => {
+    const ops = planificar(ciclo(), ciclo({ estado: 'borrador' }));
+    expect(tipos(ops)).toEqual(Array(8).fill('borrar'));
   });
 
-  it('cancelar la actividad borra todos los eventos', () => {
-    const ops = planificar(actividad({ sesiones: dos }), actividad({ sesiones: dos, estado: 'cancelado' }));
-    expect(tipos(ops)).toEqual(['borrar', 'borrar']);
+  it('cancelar la actividad borra los ocho eventos', () => {
+    const ops = planificar(ciclo(), ciclo({ estado: 'cancelado' }));
+    expect(tipos(ops)).toEqual(Array(8).fill('borrar'));
   });
 
-  it('cancelar un encuentro borra solo el suyo', () => {
-    const despues = actividad({
-      sesiones: [dos[0]!, { ...dos[1]!, cancelada: true }],
+  /**
+   * B-84. El fixture es un ciclo a propósito: con una actividad de dos
+   * sesiones y sin `esCiclo` este test pasaba mientras el invariante estaba
+   * roto, porque la numeración del evento no entraba en juego (§2.2).
+   */
+  it('cancelar el tercero de ocho borra solo el suyo (B-84)', () => {
+    const despues = ciclo({
+      sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
     });
-    const ops = planificar(actividad({ sesiones: dos }), despues);
+    const ops = planificar(ciclo(), despues);
     expect(ops).toHaveLength(1);
-    expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_b' });
+    expect(ops[0]).toMatchObject({ tipo: 'borrar', eventId: 'evt_2' });
   });
 
-  it('borrar la actividad entera borra todos los eventos', () => {
-    const ops = planificar(actividad({ sesiones: dos }), null);
-    expect(tipos(ops)).toEqual(['borrar', 'borrar']);
+  it('borrar la actividad entera borra los ocho eventos', () => {
+    expect(tipos(planificar(ciclo(), null))).toEqual(Array(8).fill('borrar'));
   });
 
   it('republicar vuelve a crear los eventos', () => {
-    const sinIds = dos.map((s) => ({ ...s, calendarEventId: null }));
-    const antes = actividad({ sesiones: sinIds, estado: 'borrador' });
-    const despues = actividad({ sesiones: sinIds, estado: 'publicado' });
-    expect(tipos(planificar(antes, despues))).toEqual(['crear', 'crear']);
+    const sinIds = ocho.map((s) => ({ ...s, calendarEventId: null }));
+    const antes = ciclo({ sesiones: sinIds, estado: 'borrador' });
+    const despues = ciclo({ sesiones: sinIds, estado: 'publicado' });
+    expect(tipos(planificar(antes, despues))).toEqual(Array(8).fill('crear'));
+  });
+});
+
+/**
+ * B-84 · qué significa el número del encuentro (D-95).
+ *
+ * Se numera sobre **todas** las sesiones, canceladas incluidas: el número es la
+ * identidad del encuentro dentro del ciclo —qué lectura le toca, qué fila del
+ * formulario es—, no un recuento en vivo de los que siguen en pie. Numerando
+ * sobre las no canceladas, cancelar el tercero de ocho convertía al sexto en
+ * "Encuentro 5 de 7" y el diff reescribía los otros siete.
+ */
+describe('numeración del ciclo — cancelar no renumera (B-84, D-95)', () => {
+  const conTercerCancelado = ciclo({
+    sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
+  });
+
+  it('el sexto sigue siendo "Encuentro 6 de 8" después de cancelar el tercero', () => {
+    const antes = ciclo();
+    expect(construirDescripcion(antes, antes.sesiones[5]!, LABELS)).toContain('Encuentro 6 de 8');
+    expect(
+      construirDescripcion(conTercerCancelado, conTercerCancelado.sesiones[5]!, LABELS),
+    ).toContain('Encuentro 6 de 8');
+  });
+
+  it('el cancelado conserva su número, aunque no tenga evento', () => {
+    // La vista previa del panel sí lo muestra: ahí se ve cómo quedaría.
+    expect(
+      construirDescripcion(conTercerCancelado, conTercerCancelado.sesiones[2]!, LABELS),
+    ).toContain('Encuentro 3 de 8');
+  });
+
+  it('cancelar uno de dos deja "1 de 2", no "1 de 1"', () => {
+    const dos = ciclo({ sesiones: sesionesSemanales(2, (i) => (i === 1 ? { cancelada: true } : {})) });
+    expect(construirDescripcion(dos, dos.sesiones[0]!, LABELS)).toContain('Encuentro 1 de 2');
+  });
+
+  it('el total no cambia por cancelar, así que ningún otro evento se toca', () => {
+    const ops = planificar(ciclo(), conTercerCancelado);
+    expect(ops.filter((o: { tipo: string }) => o.tipo === 'actualizar')).toHaveLength(0);
   });
 });
 
