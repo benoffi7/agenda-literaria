@@ -1031,17 +1031,17 @@ desde Android, versión `1.0.1+538bef7`:
 cerrado: alcanza con elegir «Otro…» en el desplegable y escribir «Feria». Eso ya
 funciona.
 
-Lo que hay que decidir es si además corresponde que sea **opción base**
-(`fijo: true` en `src/lib/opciones-base.json`), y hay un argumento fuerte para
-que sí, el mismo del §4.1 con «a la gorra»: en el circuito literario argentino
-una feria del libro no es un caso raro, es una categoría de primera clase. Las
-cinco de hoy salieron del §3.1, que no la contempla.
+**Decidido por el dueño (2026-08-24): va como opción base**, `fijo: true` en
+`src/lib/opciones-base.json`. El argumento es el del §4.1 con «a la gorra»: en el
+circuito literario argentino una feria del libro no es un caso raro, es una
+categoría de primera clase. Las cinco de hoy salieron del §3.1, que no la
+contempla, así que el §3.1 queda desactualizado y hay que anotar el desvío.
 
 Tres cosas que arrastra, y son el trabajo real del ítem:
 
-1. **Si se carga con «Otro», nace sin aprobar** (D-26 a D-30): no le aparece a la
-   otra cuenta en su desplegable hasta que se apruebe con
-   `npm run opciones:aprobar:prod`. Como opción base nacería aprobada.
+1. ~~Si se carga con «Otro», nace sin aprobar~~ — ya no aplica: como opción base
+   nace aprobada, y además el dueño decidió que **todas** las opciones nuevas
+   nazcan aprobadas (ver **B-131**).
 2. **Un tipo nuevo no tiene reglas condicionales** (§11). El formulario decide
    con `cambiarTipo` qué mostrar y qué activar solo — «club de lectura» prende
    «es ciclo» y «tiene material», «taller» y «presentación» piden tallerista.
@@ -1082,6 +1082,41 @@ Dos cosas a resolver, y la segunda importa:
 
 Salió de la conversación del 2026-08-24, verificando que las actividades del otro
 admin sí aparecen en el panel de los dos.
+
+### B-131 · Las opciones creadas con «Otro» nacen aprobadas · P2
+
+**Decisión del dueño (2026-08-24):** una etiqueta nueva cargada con «Otro» tiene
+que quedar disponible para las dos cuentas enseguida, sin pasar por aprobación.
+
+El cambio en sí es de una línea: `aprobada: false` → `true` en el `upsertOpcion`
+de `src/lib/opciones.ts` (línea 131), más los tests que fijan ese default.
+
+**La consecuencia que hay que mirar antes de hacerlo:** con esto el mecanismo de
+aprobación queda **inerte**. Nada nace pendiente, así que `estaAprobada`,
+`opcionesVisibles`, `huellaCreador`, el script `aprobar-opciones.mjs` y el
+indicador «(sin aprobar)» de la UI dejan de tener efecto, y estos tres ítems se
+quedan sin sentido:
+
+- **B-25** (aprobar desde el panel) y **B-26** (avisar que hay algo pendiente):
+  no habría nada que aprobar ni de qué avisar.
+- **B-28** (¿claim `curador`?) y **B-29** (¿auto-aprobar una etiqueta reusada?):
+  las dos preguntas desaparecen.
+
+**Hay dos formas de honrar la decisión, y la diferencia importa:**
+
+1. **Voltear el default y dejar la maquinaria dormida.** Una línea, reversible, y
+   si algún día carga una tercera persona se vuelve a prender. Costo: código que
+   no hace nada, que es la clase de cosa que confunde a quien lo lee después.
+2. **Sacar la maquinaria.** Deja el código diciendo la verdad, y el §4.3 —que la
+   propone *"si en el futuro carga gente además del dueño"*— queda como la nota
+   de por qué no está. Costo: rehacerla si vuelve a hacer falta.
+
+**Vale notar por qué la decisión es razonable:** el problema que el §4.3 quería
+evitar era que el desplegable se llene de variantes de lo mismo, y eso ya lo
+resuelve el §4.2 —slugify más el autocompletado contra lo existente— que ataja
+los duplicados **antes** de que nazcan. La aprobación agregaba control de
+vocabulario, no corrección. Con dos personas de confianza, la fricción no se
+paga.
 
 ## P3 — cuando sobre tiempo
 

@@ -54,6 +54,15 @@ y nunca se lee, y con dos personas sobre la misma lista la pregunta aparece sola
 Ojo con el punto 2 del ítem: si se resuelve guardando el mail en el documento,
 `toPublic` lo tiene que descartar explícitamente o se filtra al `events.json`.
 
+## Decisiones del dueño tomadas durante la pausa
+
+- **«Feria» va como opción base** de `tipo` (B-129). Falta decidir qué reglas
+  condicionales del §11 le corresponden — probablemente ciclo, porque una feria
+  suele ser de varios días.
+- **Las opciones creadas con «Otro» nacen aprobadas** (B-131). Ojo: eso deja
+  inerte el mecanismo de aprobación entero y vacía B-25, B-26, B-28 y B-29. Hay
+  que elegir entre voltear el default dejando la maquinaria dormida, o sacarla.
+
 ## Lo que sigue después de la fase 1
 
 Fases 2, 3 y 4 del plan, y al cierre la actualización completa de la
