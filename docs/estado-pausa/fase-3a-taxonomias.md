@@ -8,13 +8,20 @@ taxonomías autogestionadas (§4 del `CLAUDE.md`).
 
 ## ¿Hay algo roto?
 
-No. `npx tsc --noEmit` limpio y `npx vitest run` en verde (683 tests, 1 skip)
-al momento de escribir esto.
+No. `npx tsc --noEmit` limpio, `npx vitest run` en verde (710 tests, 1 skip),
+`npm run build` OK y `./scripts/verificar-bundle.sh dist` limpio.
+
+Dos avisos, ninguno bloqueante:
 
 > Si `tsc` tira decenas de `Property 'env' does not exist on type 'ImportMeta'`
 > en `analytics.ts` / `firebase-client.ts` / `version.ts`, **no es de este
 > frente**: falta correr `npx astro sync` una vez en el worktree para que
 > existan los tipos de Astro. Después queda limpio.
+
+> Los tres tests de `tests/opciones.integracion.test.ts` que ejecutan
+> `scripts/aprobar-opciones.mjs` fallaron **una vez** en una corrida completa y
+> pasaron solos y en las dos corridas siguientes. Flaky, no roto; anotado como
+> **B-169**. Se ve corriendo `npx vitest run` varias veces seguidas.
 
 ## Archivos de este frente
 
@@ -22,111 +29,79 @@ Propiedad exclusiva: `src/lib/opciones.ts`, `src/lib/taxonomia.ts` (nuevo),
 `src/components/admin/campos/TaxonomiaSelect.tsx`,
 `src/components/admin/campos/TagsInput.tsx`,
 `src/components/admin/useOpciones.ts`,
-`src/components/admin/taxonomias/**` (nuevo, B-06) y sus tests.
+`src/components/admin/taxonomias/TaxonomiasPanel.tsx` (nuevo) y sus tests
+(`tests/taxonomia.test.ts` nuevo, `tests/opciones*.test.ts`).
 
-**No tocar** (frentes en paralelo): `ActividadFormulario.tsx` (fase 2),
-`ListaActividades.tsx` / `AdminApp.tsx` / `ReportesPanel.tsx` / centro de ayuda
-(3B), `functions/**` (cerrado), `docs/14-plan-de-saneamiento.md` (lo integra el
-coordinador).
+**No se tocó** (frentes en paralelo): `ActividadFormulario.tsx` (fase 2),
+`ListaActividades.tsx` / `AdminApp.tsx` / `ReportesPanel.tsx` / el centro de
+ayuda (3B), `functions/**`, `docs/14-plan-de-saneamiento.md`,
+`src/lib/novedades.ts` y `src/lib/ayuda.ts` (ver B-167).
 
 ## Ítem por ítem
 
 | Ítem | Estado |
 |---|---|
-| **B-72** · la dedup del §4.2 estaba dos veces | **parcial, commiteado.** El módulo puro existe (`src/lib/taxonomia.ts`) con `sugerenciasPara`, `resolverEtiqueta`, `pistaDeOpcion`, `etiquetaConEstado`, `etiquetaPresentable` + los tres predicados mudados de `opciones.ts`. **Falta que los dos componentes lo usen** y falta `tests/taxonomia.test.ts`. |
-| **B-86** · `usos` solo cuenta creaciones | **la mitad que me toca, commiteada.** `registrarUsos(campo, slugs)` en `opciones.ts`, una transacción por campo, ignora slugs que no existen, dedupe interno. **El cableado va en `guardar()` de `ActividadFormulario.tsx`, que NO es de este frente** → anotado como dependencia (ver abajo). |
-| **B-05** · etiquetas sin normalizar en público | **hecho, commiteado.** `etiquetaPresentable` (trim + colapsar espacios + primera letra en mayúscula) aplicada en `upsertOpcion`. Lo que ya está cargado mal (`narrativa`) se arregla renombrando desde la pantalla de B-06. |
-| **B-06** · UI para administrar taxonomías | **no empezado.** Las escrituras ya están: `renombrarOpcion`, `borrarOpcion`, `aprobarOpcion` en `opciones.ts`, con la guarda de `fijo` (§4.3) centralizada en `editarValor`. Falta el componente. |
-| **B-25** · aprobar desde el panel | **no empezado** (la escritura `aprobarOpcion` ya está). Depende de B-06. |
-| **B-26** · avisar que hay algo para aprobar | **no empezado.** Depende de B-06 y del header, que es de 3B. |
-| **B-73** · los tags no se miden | **no empezado.** Sale con B-72, cuando los puntos de medición queden compartidos. |
-| **B-131** · las opciones nuevas nacen aprobadas | **hecho, commiteado** (no estaba en la tabla del plan; es de este archivo y estaba decidido por el dueño el 2026-08-24). Ver abajo. |
+| **B-72** · la dedup del §4.2 estaba dos veces | **cerrado.** `src/lib/taxonomia.ts` + los dos componentes llamándolo + `tests/taxonomia.test.ts` (27 tests, con guardia anti-recaída). D-100. |
+| **B-86** · `usos` solo cuenta creaciones | **parcial, a propósito.** `registrarUsos` hecha y testeada (D-103); el cableado es una línea en `guardar()`, de otro frente → **B-168**. |
+| **B-05** · etiquetas sin normalizar en público | **cerrado.** `etiquetaPresentable` en `upsertOpcion` (D-101). |
+| **B-06** · UI para administrar taxonomías | **cerrado en código, SIN MONTAR** → **B-167**. D-102. |
+| **B-25** · aprobar desde el panel | **cerrado** (botón en la pantalla, `aprobarOpcion` transaccional). Sin montar, igual que B-06. |
+| **B-26** · avisar que hay algo para aprobar | **cerrado a medias**: el contador está en la pantalla y `usePendientesDeAprobacion()` queda listo para la cabecera, que es de 3B → B-167. |
+| **B-73** · los tags no se miden | **cerrado.** D-105. |
+| **B-131** · las opciones nuevas nacen aprobadas | **cerrado.** D-104. No estaba en la tabla del plan; es de este archivo y estaba decidido por el dueño. |
 
-Commiteado hasta ahora: `3edbb94`.
+Commits: `3edbb94` (lib), `c1ee948` (B-72 + B-73), `1208e6f` (pantalla + doc), y
+este.
 
-## Dónde quedé exactamente
+## Lo que queda, en orden
 
-En `src/lib/taxonomia.ts` está todo lo que hace falta y **nadie lo llama
-todavía**: `TaxonomiaSelect.tsx` y `TagsInput.tsx` siguen con sus dos copias del
-filtro de sugerencias y de la resolución por slug. Eso es el corazón de B-72.
+1. **B-167 — montar la pantalla** (frente 3B, `AdminApp.tsx`). Todo lo que hay
+   que hacer está escrito en el ítem del backlog: tipo `Vista`, `lazy(...)`
+   **diferido** (un import estático deshace el corte del bundle B-09/D-51),
+   botón en la cabecera, contador con `usePendientesDeAprobacion()`. Y con eso,
+   la entrada en `src/lib/novedades.ts` y el capítulo en `src/lib/ayuda.ts`, que
+   no se escribieron antes porque anunciar una pantalla que no se puede abrir es
+   peor que no anunciarla. **Mientras no se monte, el componente ni siquiera
+   entra al build** (no lo referencia nadie).
+2. **B-168 — cablear `registrarUsos`** (frente fase 2, dentro de B-70/B-71). El
+   orden exacto está en el ítem: actividad → `upsertOpcion` de las nuevas →
+   `registrarUsos` con las elegidas **menos** las recién creadas.
+3. **B-169 — el flaky**, cuando moleste.
 
-### Siguiente acción concreta
+## Decisiones nuevas
 
-1. En `src/components/admin/campos/TaxonomiaSelect.tsx`, reemplazar el `useMemo`
-   de `sugerencias` por
-   `sugerenciasPara(texto, elegibles, { mostrarConTextoVacio: true })`, y el par
-   `slugTipeado` / `coincidencia` por `resolverEtiqueta(texto, valores)`. Usar
-   `pistaDeOpcion(v)` en el `<span>` de la derecha de cada sugerencia y
-   `etiquetaConEstado(v)` en los `<option>`. Importar de `@/lib/taxonomia`.
-2. En `src/components/admin/campos/TagsInput.tsx`, lo mismo con
-   `sugerenciasPara(texto, elegibles, { excluir: value })` (sin
-   `mostrarConTextoVacio`: el input está siempre visible y una lista desplegada
-   sin texto tapa el formulario) y `resolverEtiqueta` en `confirmar()`.
-3. Escribir `tests/taxonomia.test.ts`: dedupe por slug con las cuatro variantes
-   de "a la gorra" del §4.2, autocompletado sin acentos ("poesia" encuentra
-   "Poesía"), tope, `excluir`, `mostrarConTextoVacio`, `etiquetaPresentable`
-   ("narrativa" → "Narrativa", "Villa  Crespo" → "Villa Crespo", y que NO baje
-   el resto: "Google Meet" queda igual).
-4. **B-73, en el mismo paso 2**: agregar en `TagsInput` las llamadas a
-   `medirFuncion` que hoy solo tiene `TaxonomiaSelect` —
-   `medirFuncion('taxonomia-nueva' | 'taxonomia-reusada', 'tags')` en
-   `confirmar()` y `medirFuncion('taxonomia-sugerencia', 'tags')` al tocar una
-   sugerencia. `'taxonomia-otro'` **no** aplica a tags: no hay modo "Otro" que
-   abrir, el input es siempre el de tipear. Anotarlo en `docs/09-analitica.md`.
-5. Después, B-06: crear
-   `src/components/admin/taxonomias/TaxonomiasPanel.tsx` (ver abajo).
+`D-100` a `D-105` en [`06-decisiones.md`](../06-decisiones.md): el módulo puro y
+por qué los widgets no se unifican; la etiqueta presentable vs. el slug; las tres
+reglas de la pantalla; `registrarUsos`; el default de aprobación dormido; y qué
+se mide de los tags y qué no.
 
-## B-06 — cómo montar la pantalla (importa)
+## Lo que descubrí y conviene saber
 
-Cuando el componente exista, va a quedar **creado y sin montar**: colgarlo del
-router del panel es editar `src/components/admin/AdminApp.tsx`, que es del
-frente 3B. Lo que hay que hacer ahí, cuando 3B lo tome (**B-167**, anotado en el
-backlog):
-
-- agregar `{ tipo: 'taxonomias' }` al tipo `Vista`,
-- un `lazy(() => import('@/components/admin/taxonomias/TaxonomiasPanel'))`,
-  diferido como las otras cuatro vistas (el corte del bundle de B-09/D-51: nada
-  de esto se importa estático),
-- un botón en la cabecera, al lado del de reportes,
-- y el contador de pendientes de B-26 en la cabecera, con el hook que este
-  frente deja listo en `useOpciones.ts`.
-
-El componente tiene que quedar **autocontenido**: recibe el `uid` por prop y no
-depende de nada del router.
-
-## Lo que descubrí y no estaba en la doc
-
-- **B-86 no es "una línea en `guardar()`" desde este frente.** El backlog lo
-  describe como una línea, y lo es — pero la línea vive en un archivo de otro
-  frente. Lo que se puede hacer acá es la operación (`registrarUsos`) y dejar el
-  cableado anotado. El orden correcto en `guardar()` es: escribir la actividad →
-  `upsertOpcion` de las etiquetas nuevas → `registrarUsos` con los slugs
-  elegidos **menos** los que se acaban de crear (nacen con `usos: 1`; sumarlos
-  otra vez los deja en 2). Eso engancha con la inversión de orden de B-71.
+- **B-86 no se podía cerrar desde acá.** El backlog lo describe como "una línea
+  en `guardar()`" y lo es, pero esa línea vive en un archivo de otro frente.
 - **B-131 cambia qué significan B-25 y B-26.** Con las opciones naciendo
-  aprobadas, no hay nada pendiente que aprobar ni de qué avisar: la pantalla y
-  el contador se construyen igual —la decisión del dueño es explícitamente
-  "dejar la maquinaria dormida, no borrarla"— pero hoy el contador va a mostrar
-  0 salvo por las opciones que quedaron pendientes en producción antes de la
-  decisión. Está dicho en el código y en los tests.
-- **Voltear el default rompió 4 tests de integración de aprobación**, porque
-  fabricaban la opción pendiente llamando a `upsertOpcion`. Se los adaptó con un
-  helper `volverPendiente()` que la pone pendiente a mano: la maquinaria sigue
-  probada de punta a punta con el script real, que es lo que B-131 pedía
-  conservar.
-- **`etiquetaPresentable` solo toca la primera letra.** Bajar el resto rompería
-  "Villa Crespo" y "Google Meet"; subir cada palabra rompería "Club de lectura".
-- **B-28 y B-29 siguen siendo decisiones del dueño** y no se tocaron. B-29
-  (auto-aprobar una etiqueta que reusa la segunda cuenta) queda de hecho sin
-  efecto mientras B-131 esté vigente.
+  aprobadas no hay nada pendiente que aprobar: la pantalla y el contador se
+  construyeron igual —la decisión del dueño es explícitamente "dejar la
+  maquinaria dormida, no borrarla"— pero hoy solo alcanzan a lo que quedó
+  pendiente antes de la decisión.
+- **Voltear el default rompió 4 tests de integración** que fabricaban la
+  pendiente con `upsertOpcion`. Se los adaptó con `volverPendiente()`, que la
+  pone pendiente a mano: la maquinaria sigue probada de punta a punta con el
+  script real, que es lo que B-131 pedía conservar.
+- **El bundle no se movió**: la carga inicial de `/admin` sigue en los mismos dos
+  chunks (`client` + `AdminApp`, ~380 kB), porque nada nuevo se importa de forma
+  estática y la pantalla todavía no se referencia.
+- **B-28 y B-29 siguen siendo decisiones del dueño** y no se tocaron. B-29 queda
+  sin efecto práctico mientras B-131 esté vigente.
+- **B-129 (el tipo «feria» como opción base) no se tocó**: es de
+  `opciones-base.json` pero arrastra reglas condicionales del formulario, que es
+  de otro frente.
 
-## Verificación antes de cada commit
+## Verificación
 
 ```bash
 npx tsc --noEmit
 npx vitest run
+npm run build && ./scripts/verificar-bundle.sh dist
+npx vitest run tests/bundle-panel.test.ts   # la alarma barata del corte B-09
 ```
-
-Y al cerrar el frente, además: `npm run build` y `./scripts/verificar-bundle.sh dist`
-(el corte del bundle de B-09: `npx vitest run tests/bundle-panel.test.ts` es la
-alarma barata).
