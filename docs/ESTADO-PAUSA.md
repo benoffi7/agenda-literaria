@@ -6,7 +6,7 @@ frente que siga abierto.** Este documento existe para no reconstruir el contexto
 
 ## `main`
 
-**710 tests en verde**, typecheck y build limpios, `dist/` sin rastros del Admin
+**736 tests en verde, sin un solo `it.skip`**, typecheck y build limpios, `dist/` sin rastros del Admin
 SDK. Un solo working-tree además de los worktrees de los agentes.
 
 Nada pusheado: el repo remoto sigue vacío y el dueño lo quiere **privado antes
@@ -36,7 +36,7 @@ para no perder tiempo).
 | **Fase 2 · formulario** | B-70 primero, después B-71, B-87, B-90, y B-79 último | [`estado-pausa/fase-2-formulario.md`](estado-pausa/fase-2-formulario.md) |
 | ~~**Fase 3A · taxonomías**~~ | ✅ **mergeada en `main`** — B-72, B-05, B-06, B-25, B-26, B-73, B-131. Su [estado de pausa](estado-pausa/fase-3a-taxonomias.md) queda como registro | — |
 | **Fase 3B · listado y panel** | B-76, B-96, B-31, B-40, B-35, B-14, B-64 | [`estado-pausa/fase-3b-listado.md`](estado-pausa/fase-3b-listado.md) |
-| **Fase 4 · red de contención** | B-171, B-117, B-50, B-119, B-34, B-115 | [`estado-pausa/fase-4-contencion.md`](estado-pausa/fase-4-contencion.md) |
+| ~~**Fase 4 · red de contención**~~ | ✅ **mergeada en `main`** — B-171, B-117, B-50, B-119, B-115. B-34 no entró (la forma del límite es una decisión). Su [estado de pausa](estado-pausa/fase-4-contencion.md) queda como registro | — |
 
 Si falta alguno de esos archivos, ese frente se cortó antes de escribirlo: mirá
 sus commits con `git log --oneline main..<su-branch>`.
@@ -59,7 +59,7 @@ backlog.
    npx vitest run`, `npm run build`, `./scripts/verificar-bundle.sh dist`. Los
    commits que empiecen con `WIP:` **no están verificados** y son lo primero a
    revisar.
-3. **3A ya está mergeada.** Del resto, el orden sugerido es **4 → 3B → 2**. La fase 4 toca `tests/` y
+3. **3A y 4 ya están mergeadas.** Del resto, **3B antes que 2**, porque la 2 mueve más código. La fase 4 toca `tests/` y
    `scripts/`, así que entra sin roce y deja los chequeos nuevos ya puestos para
    los otros tres. La fase 2 va última porque es la que mueve más código.
    Conflictos esperables: `docs/BACKLOG.md` y `docs/CHANGELOG.md`, y son
@@ -73,10 +73,9 @@ backlog.
    propósito: significa que el bug quedó arreglado y hay que promoverlo a `it`.
    Hoy `tests/costuras.test.ts` no tiene ninguno —los seis se promovieron— y en
    `tests/clases-de-bug.test.ts` quedan cinco vivos.
-6. **Hay un test apagado: B-171.** `it.skip` en `tests/clases-de-bug.test.ts`. Es
-   el detector de guardas de reentrega, y mientras siga apagado un trigger nuevo
-   sin guarda entra sin que nada lo frene — el agujero por el que pasó B-82. Es
-   el primer ítem del frente 4.
+6. **Ya no hay tests apagados.** El detector de guardas volvió a `it` (B-171) y
+   la suite no tiene un solo `it.skip`. Si aparece uno, tiene que traer su
+   número de backlog al lado.
 7. **Corré la suite con `EXIGIR_EMULADOR=1`** para que los 33 tests de
    integración **fallen** en vez de saltearse en silencio. Los emuladores se
    cayeron cuatro veces en la sesión anterior por el harness, no por el
