@@ -1018,6 +1018,43 @@ Vale releerlo con el mismo ojo cada vez que se toque el diff: el patrón —"el
 fixture no ejercita el caso central del §2.2"— es el que hay que cazar, no estos
 casos puntuales.
 
+### B-129 · «Feria» falta en los tipos de actividad · P2
+
+**Primer reporte real cargado desde el panel** —
+[issue #4](https://github.com/benoffi7/agenda-literaria/issues/4), del dueño,
+desde Android, versión `1.0.1+538bef7`:
+
+> Falta FERIA en dónde describís: taller, curso, etc
+
+**Se puede hacer hoy sin tocar código.** `tipo` es una taxonomía autogestionada
+(§4) y el schema lo trata como slug abierto (`texto.min(1)`), no como enum
+cerrado: alcanza con elegir «Otro…» en el desplegable y escribir «Feria». Eso ya
+funciona.
+
+Lo que hay que decidir es si además corresponde que sea **opción base**
+(`fijo: true` en `src/lib/opciones-base.json`), y hay un argumento fuerte para
+que sí, el mismo del §4.1 con «a la gorra»: en el circuito literario argentino
+una feria del libro no es un caso raro, es una categoría de primera clase. Las
+cinco de hoy salieron del §3.1, que no la contempla.
+
+Tres cosas que arrastra, y son el trabajo real del ítem:
+
+1. **Si se carga con «Otro», nace sin aprobar** (D-26 a D-30): no le aparece a la
+   otra cuenta en su desplegable hasta que se apruebe con
+   `npm run opciones:aprobar:prod`. Como opción base nacería aprobada.
+2. **Un tipo nuevo no tiene reglas condicionales** (§11). El formulario decide
+   con `cambiarTipo` qué mostrar y qué activar solo — «club de lectura» prende
+   «es ciclo» y «tiene material», «taller» y «presentación» piden tallerista.
+   «Feria» cae en el default: sin tallerista, sin material, sin ciclo. Hay que
+   decidir qué le corresponde (¿una feria tiene varios días? probablemente sí, o
+   sea ciclo).
+3. **La guía del panel** lista los tipos y el capítulo tendría que nombrarla
+   (`src/lib/ayuda.ts`), y el §3.1 del `CLAUDE.md` quedaría desactualizado — es
+   una decisión del dueño si se corrige el documento o se anota el desvío.
+
+Y el reporte deja una lección de producto que vale más que el ítem: **la primera
+cosa que faltó fue una categoría del dominio, no una función del software.**
+
 ## P3 — cuando sobre tiempo
 
 ### B-114 · Precio real en los datos estructurados

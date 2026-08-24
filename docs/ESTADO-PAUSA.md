@@ -41,6 +41,14 @@ está verificado y puede estar a mitad de un cambio**.
    `EXIGIR_EMULADOR=1` para que los 33 tests de integración **fallen** en vez de
    saltearse en silencio.
 
+## Llegó mientras estaba pausado
+
+**[Issue #4](https://github.com/benoffi7/agenda-literaria/issues/4)** — el primer
+reporte real cargado desde el panel: falta «Feria» en los tipos de actividad.
+Anotado como **B-129**. Se puede resolver hoy con «Otro…» sin tocar código; lo
+que hay que decidir es si va como opción base y qué reglas condicionales del §11
+le corresponden.
+
 ## Lo que sigue después de la fase 1
 
 Fases 2, 3 y 4 del plan, y al cierre la actualización completa de la
