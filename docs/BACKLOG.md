@@ -505,14 +505,16 @@ tree-shakea bien — el chunk de auth son 166 kB y no entra nada de Firestore) y
 `manualChunks` en `astro.config.mjs` (no cambia lo que el navegador necesita
 para el primer render).
 
-### B-50 · Verificar el corte del bundle después de mergear analytics
+### B-50 · Verificar el corte del bundle después de mergear analytics — ✅ hecho (2026-08-24)
 
-`firebase/analytics` se agregó en paralelo, también de forma diferida. Los dos
-cambios apuntan al mismo número, así que después del merge conviene un
-`npm run build` y confirmar que el SDK de analytics **no** aparece en el chunk
-inicial de `/admin` (el que la island carga como `component-url`). Si aparece,
-alcanza con que el módulo que lo inicializa no sea alcanzable de forma estática
-desde `AdminApp` (D-51).
+Verificado, y de una forma que no hay que repetir: `tests/bundle-panel.test.ts`
+recorre el grafo de imports desde la island y afirma que `firebase/analytics`
+—igual que `firebase/firestore`— no es alcanzable siguiendo solo imports
+estáticos. El único import del SDK de analytics del proyecto es el `import()`
+dinámico de `src/lib/analytics.ts`.
+
+Un test vale más que el `npm run build` de una vez que pedía el ítem: la
+pregunta vuelve a hacerse sola en cada corrida. Ver B-117 y D-100.
 
 ### B-35 · Salir del panel con cambios sin guardar no avisa
 
@@ -1314,6 +1316,26 @@ la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
 cuentas de confianza no es un problema real; si alguna vez se le da el panel a
 más gente, conviene un tope por autor y por día.
 
+**Mirado en la fase 4 y dejado sin hacer, a propósito (2026-08-24).** El tope
+vive en `firestore.rules`, que no es propiedad de este frente, y no hay ninguna
+forma de escribir la red de contención antes que la regla: un test no puede
+frenar un límite que no existe. Además la forma del límite es una decisión, no
+una implementación — hay dos y no dan lo mismo:
+
+- **por autor y por día**, contando con una query en la regla (`allow create if
+  ...`): Firestore no puede contar documentos dentro de una regla, así que pide
+  un contador escrito por el propio cliente (`/reportes-contador/{uid}-{fecha}`)
+  y una regla que lo obligue a incrementarse de a uno. Es el patrón estándar y
+  es feo pero funciona sin Function;
+- **en la Function**, cortando en `decidirAccion` cuando el autor pasó el tope
+  del día. No frena la escritura del reporte (que es lo que garantiza no
+  perderlo, ver el encabezado de `reportes-trigger.js`), frena el **issue**, que
+  es el efecto caro.
+
+La segunda es más barata y más alineada con el diseño de reportes: el reporte se
+guarda igual y lo que se limita es la salida a GitHub. Necesita decisión del
+dueño sobre el tope. Toca `functions/**`, o sea la fase 1.
+
 ### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
 
 
@@ -1653,6 +1675,68 @@ así que en producción no debería haber ninguno de los dos. Si algún día se 
 usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
 vocabulario en vez de caer en la bolsa.
 
+### B-167 · La trampa 7 del §13 no tiene ningún test · P2
+
+Salió de armar el mapa de B-119, que la calcula en vez de suponerla: de las diez
+trampas del §13, la 7 —query pública sin `where('estado','==','publicado')`— es
+la única que quedó sin red.
+
+`tests/actividades.integracion.test.ts` cubre las reglas **por documento** (un
+anónimo lee lo publicado, no lee un borrador). La trampa habla de otra cosa: con
+`allow read` condicionado a `resource.data`, una **query de colección** sin el
+`where` se rechaza **entera** en lugar de devolver el subconjunto visible. Es un
+modo de falla de la consulta, no del documento, y hoy no hay ninguna query de
+colección en el test de reglas.
+
+Casi no muerde mientras el público lea el `events.json` estático (§2.5). Muerde
+el día de la primera lectura en vivo del sitio público (B-01), que es justo
+cuando nadie se va a acordar del §5.3 — o sea, el peor momento posible.
+
+Son dos `it` en el test de reglas: una `getDocs(collection(db,'actividades'))`
+anónima que tiene que rechazarse, y la misma con el `where` que tiene que
+devolver solo lo publicado. Toca un test que no es de la fase 4.
+
+### B-168 · El detector de triggers blindados dejó de ver las guardas mudadas a helpers — ✅ hecho (2026-08-24)
+
+> **Numeración:** en la consigna de la fase 4 este ítem se llamó "B-166", pero
+> ese número ya estaba tomado por lo de la versión sin estampar. Es B-168.
+
+El chequeo de la clase de B-82 en `tests/clases-de-bug.test.ts` estaba en
+`it.skip`. Causa: después del refactor de B-77 el efecto y la guarda de los
+triggers viven en helpers, y el detector los buscaba en el cuerpo del trigger.
+Dos consecuencias, y la segunda no la había visto nadie:
+
+1. `guardarVersion` y `guardarVersionAlBorrar` dejaron de contar como triggers
+   con efecto (su `.set()` se mudó a `guardar()`), así que no había dos
+   blindados que contar y el test hubo que apagarlo;
+2. `syncCalendar`, que **ya estaba blindado** (B-82 cerrado: `idDeEvento` dentro
+   de `crearEvento`), seguía contándose como desguarnecido, así que el
+   `it.fails` de B-82 seguía fallando mucho después de que el bug estaba
+   arreglado. **Un detector ciego no solo pierde regresiones: también miente
+   sobre lo que sigue roto.**
+
+Arreglado siguiendo la llamada (D-102) y con nueve tests del propio detector
+contra cuerpos sintéticos, que es lo que faltaba la primera vez. El `it.skip`
+volvió a `it` y el `it.fails` de B-82 pasó a `it`.
+
+### B-169 · `npx tsc --noEmit` sale con doce errores de `ImportMeta` · P3
+
+Verificación de la fase 4: `npx tsc --noEmit` termina con doce
+`Property 'env' does not exist on type 'ImportMeta'` en `src/lib/analytics.ts`,
+`src/lib/firebase-client.ts` y `src/lib/version.ts`. Es ruido conocido —faltan
+los tipos que genera `astro sync` (`.astro/types.d.ts`, que no está versionado)—
+y el código está bien.
+
+Es P3 porque no rompe nada, y no es cosmético: **el comando de verificación que
+usan todos los frentes sale siempre en rojo**, así que un error nuevo de verdad
+se esconde entre los doce y nadie lo ve. Se arregla con un `astro sync` antes del
+`tsc` en `scripts/verificar-todo.sh` y en el CI, o versionando el
+`env.d.ts` con el `/// <reference types="astro/client" />`.
+
+No entró en la fase 4 porque `scripts/verificar-todo.sh` lo corren los cuatro
+frentes ahora mismo y tocarlo era pedir un conflicto en el archivo que todos
+usan para verificar.
+
 ### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
 
 B-80 se arregló del lado de la Function (D-91), que es el lado defensivo: el
@@ -1674,10 +1758,25 @@ saneamiento).
 Lo que quedó pendiente al definir los agentes y skills de `.claude/`. El qué hay
 y por qué está en [`13-agentes.md`](13-agentes.md). La prioridad va en cada ítem.
 
-### B-115 · Nada invoca a los auditores solos · P2
+### B-115 · Nada invoca a los auditores solos — ✅ hecho (2026-08-24, por B-139)
 
-Los tres auditores (`auditor-privacidad`, `auditor-trampas`,
-`auditor-documentacion`) hay que pedirlos. Si nadie se acuerda, no corren — que
+**Ya estaba cerrado y nadie lo había marcado.** Lo cierra el skill
+`.claude/skills/antes-de-pushear`, que entró con B-139: lanza los tres auditores
+en paralelo en el momento en que hace falta —antes de un push o un PR—, junta
+los hallazgos en una tabla y decide si el push sale. La mitad mecánica
+(typecheck, tests con emuladores, build, fuga de credenciales) la corre
+`githooks/pre-push` → `scripts/verificar-todo.sh`, porque un hook de git no
+puede invocar un modelo.
+
+De los dos caminos que proponía el ítem se tomó el primero (el gate local) y en
+mejor forma: no es un hook que gasta una corrida en cada cierre, es un skill que
+se dispara con la intención de pushear.
+
+**Lo que queda, y es de otro ítem:** el skill se dispara cuando alguien dice
+"pusheá"; un `git push` a secas solo pasa por el gate mecánico, y **el hook
+todavía no está activado** (`core.hooksPath`, decisión del dueño — B-138). Si se
+quiere que corran sí o sí, es el job de GitHub Actions sobre el PR, que es la
+otra mitad de B-124. Si nadie se acuerda, no corren — que
 es exactamente el problema que tienen las dos reglas de proceso de
 [`05-patrones.md`](05-patrones.md) y que estos agentes venían a resolver.
 
@@ -1700,10 +1799,19 @@ razonable es un script en `scripts/` que lea las variables del entorno y lo corr
 el dueño, con el skill `que-deployar` nombrándolo. Mientras no exista, los
 comandos están en la doc y se corren a mano.
 
-### B-117 · `tests/bundle-panel.test.ts` no cubre el tercer chunk · P2
+### B-117 · `tests/bundle-panel.test.ts` no cubre el tercer chunk — ✅ hecho (2026-08-24)
 
-Hallazgo del `auditor-trampas` en su primera corrida. El test cuida cinco cosas
-del corte del bundle (B-09, D-51), pero:
+Hecho, y por la segunda mitad del ítem, que era la que valía. El test ya no
+compara literales: recorre el cierre transitivo de imports desde la entrada de
+la island (leída de `admin.astro`, no hardcodeada) y afirma dos propiedades —
+el SDK pesado no se alcanza siguiendo solo imports estáticos, y lo que se carga
+con `import()` no es alcanzable de forma estática—. El tercer chunk y el cuarto
+(`ReportesPanel`, `CalendarioActividades`) entran solos, y el quinto también.
+
+De paso cerró B-50 y cubrió la trampa 4 del §13, que era la única de las diez
+sin ningún test (ver `docs/15-mapa-de-trampas.md`). Decisión: D-100.
+
+El texto original del ítem, que sigue explicando por qué:
 
 - `ReportesPanel` es el **tercer** componente que `AdminApp` carga con `import()`
   y no está en la lista: volverlo estático deshace el corte y el build queda
@@ -1723,7 +1831,19 @@ Confirmar en GA4 (DebugView) sigue siendo un paso de consola del dueño.
 **B-92 dice exactamente lo mismo que este ítem**: el hallazgo se anotó dos veces
 en la misma pasada. Los dos se cierran acá.
 
-### B-119 · No hay un mapa trampa → test → archivo · P3
+### B-119 · No hay un mapa trampa → test → archivo — ✅ hecho (2026-08-24)
+
+Está en [`15-mapa-de-trampas.md`](15-mapa-de-trampas.md), y no se lee: se
+verifica. `tests/mapa-de-trampas.test.ts` lee la lista de trampas del §13 del
+`CLAUDE.md` (no la copia), comprueba que los archivos citados existan, que cada
+test citado **nombre** su trampa, y —lo que vale— calcula del repo cuáles no
+tienen ningún test y lo compara contra las que el documento declara sin red, en
+las dos direcciones.
+
+Resultado de la primera corrida: **dos trampas sin red**. La 4 se cerró en la
+misma corrida (B-117); la 7 queda abierta como B-167. Decisión: D-101.
+
+El texto original del ítem:
 
 El `auditor-trampas` reconstruye en cada corrida, con `grep`, qué test nombra
 cada trampa del §13. Funciona porque la convención se respeta (los `describe` y

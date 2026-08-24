@@ -133,7 +133,7 @@ const helpersConRed = (src: string): string[] =>
     .map(({ nombre }) => nombre);
 
 // ─────────────────────────────────────────────────────────────────────
-// Seguir la llamada — B-166
+// Seguir la llamada — B-168
 // ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -561,7 +561,7 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
  *
  * Las tres se reconocen sobre la **traza** del trigger, no sobre su cuerpo: las
  * tres viven hoy en un helper, y buscarlas en el cuerpo es lo que apagó este
- * chequeo (B-166).
+ * chequeo (B-168).
  */
 const RE_CLAVE_DERIVADA = /\bevent\.id\b|\bidDe[A-Z]\w*\(/;
 
@@ -580,7 +580,7 @@ const tieneGuardaDeReentrega = (t: Trigger): boolean =>
   guardaPorClave(t) || guardaPorReclamo(trazaDe(t).marcas);
 
 /**
- * El detector, probado contra cuerpos inventados — B-166.
+ * El detector, probado contra cuerpos inventados — B-168.
  *
  * Es la parte que faltaba la primera vez. El detector de arriba es el que decide
  * si el chequeo de la clase mira algo o da un verde vacío, y hasta ahora nadie
@@ -595,9 +595,9 @@ const marcasDe = (cuerpo: string, helpers: Record<string, string> = {}): string 
       : { archivo: 'fingido.js', nombre: n, cuerpo: sinComentarios(helpers[n]!) },
   ).marcas;
 
-describe('el detector de efectos duplicables discrimina — B-166', () => {
+describe('el detector de efectos duplicables discrimina — B-168', () => {
   it('un efecto que solo vive en un helper se detecta igual', () => {
-    // LA regresión de B-166, congelada: `guardarVersion` dejó de contar como
+    // LA regresión de B-168, congelada: `guardarVersion` dejó de contar como
     // "con efecto" el día que su `.set()` se mudó a `guardar`.
     expect(marcasDe('await guardar({ id, eventoId: event.id });')).toBe('');
     expect(
@@ -692,7 +692,7 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
   });
 
   /**
-   * La razón por la que este archivo tuvo que rehacerse (B-166): hoy el efecto y
+   * La razón por la que este archivo tuvo que rehacerse (B-168): hoy el efecto y
    * la guarda de los triggers blindados **no están en el cuerpo del trigger**.
    * Si algún día volvieran todos al cuerpo, seguir la llamada dejaría de aportar
    * y este test avisa — no para volver atrás, sino para que nadie crea que el

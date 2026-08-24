@@ -1439,6 +1439,92 @@ siguen en verde sin tocarse.
 
 ---
 
+## D-100 · Un chequeo estructural pregunta por el grafo, no por un archivo
+
+**Decisión (B-117, B-50, trampa 4):** los tests que cuidan el corte del bundle y
+la separación cliente/servidor recorren el **cierre transitivo de imports** desde
+la entrada de la island, y afirman propiedades sobre lo alcanzable. No comparan
+listas de nombres de archivos.
+
+**El motivo, que es un patrón y no una preferencia.** La regla del §5.4 no es
+"`AdminApp` no importa `firebase-admin`": es "**no se llega** a `firebase-admin`
+desde el cliente". La del corte del bundle no es "estos dos componentes se cargan
+con `import()`": es "lo que se difiere **no es alcanzable** de forma estática".
+Las dos son preguntas sobre el grafo, y una lista de nombres las responde solo
+para el repo del día que se escribió: `bundle-panel.test.ts` nombraba dos
+componentes diferidos cuando ya había cuatro, y el modo de falla más probable
+—un import nuevo tres saltos más abajo que arrastra el SDK por la cadena— no
+tenía forma de aparecer en ninguna lista.
+
+**La contracara, que es obligatoria:** un recorrido de grafo puede fallar
+devolviendo poco, y entonces "no se alcanza X" pasa en verde porque no se alcanza
+nada. Por eso cada chequeo de este tipo lleva su **control positivo**: se afirma
+que siguiendo los `import()` el SDK **sí** aparece, que el grafo inicial tiene un
+mínimo de archivos y que incluye `react`. Sin el control, la propiedad no se
+puede creer.
+
+Vale para lo que venga: la pregunta "¿esto llega hasta acá?" se contesta
+recorriendo, y se acompaña de la pregunta "¿el recorrido sabría encontrarlo?".
+
+## D-101 · El mapa de trampas se verifica contra el repo, no se lee
+
+**Decisión (B-119):** `docs/15-mapa-de-trampas.md` es el mapa trampa → test →
+archivo, y `tests/mapa-de-trampas.test.ts` lo contrasta con el repo en cada
+corrida. La lista de trampas se **lee** del §13 del `CLAUDE.md` y la lista de
+trampas descubiertas se **calcula** de los tests; el documento solo declara, y el
+test compara las dos direcciones.
+
+**Por qué no alcanzaba con escribir el documento.** El ítem pedía reemplazar un
+`grep` frágil del `auditor-trampas` por algo determinístico. Un documento a mano
+es determinístico y **peor**: el `grep` al menos mira el repo de hoy, y una tabla
+sin verificar envejece en silencio justo en la dirección que importa (dice que
+algo está cubierto cuando ya no lo está). Verificándolo, la tabla no puede
+mentir en ninguno de los dos sentidos.
+
+**Lo que esto convierte en regla:** el test que cubre una trampa la **nombra**
+(`trampa N`) en su `describe` o en su cabecera. Era una costumbre que hacía
+posible el `grep`; ahora es obligatoria y hay un test que la exige.
+
+**Lo que el mapa no dice, y está anotado en el propio documento:** si la red es
+*completa*. Verifica que exista un test que nombre la trampa, no que ese test
+agote el modo de falla. La cobertura parcial se anota a mano en la sección
+correspondiente.
+
+## D-102 · Un detector estático sigue la llamada, y se testea con cuerpos sintéticos
+
+**Decisión (B-168):** los chequeos que buscan un patrón en el código de las
+Functions (efecto duplicable, guarda de reentrega) operan sobre la **traza** del
+trigger —expandiendo las llamadas a funciones declaradas en `functions/**`, del
+mismo archivo o importadas— y no sobre el texto del cuerpo del trigger.
+
+**El motivo:** el refactor de B-77 movió a helpers exactamente las dos cosas que
+el detector buscaba, y el detector se apagó. No fue mala suerte: **`Extract
+Function` es el refactor más común que existe**, y cualquier chequeo que mire una
+sola hoja del árbol va a quedar ciego la primera vez que alguien lo aplique. La
+pregunta "¿este trigger produce un efecto duplicable?" no es sobre su texto, es
+sobre lo que ejecuta.
+
+**Y qué es un efecto duplicable, afinado en el camino.** Crear algo cuya
+identidad elige el receptor (`fetch(`, `.insert(`, `.add(`, `.create(`) o
+escribir en una **dirección calculada** (`.doc(<expresión>).set(`) puede
+duplicar. Direccionar una identidad que ya existe (`.update(`, `.delete(`,
+`.patch(`) o escribir siempre en la misma dirección (`.doc('literal').set(`, o
+sea `marcarRebuild`) no puede: re-ejecutarlo no produce un segundo nada. Sin esa
+distinción el detector pedía guardas de reentrega donde no hacían falta.
+
+**La parte que faltaba la primera vez:** el detector **se testea**. Nueve tests
+con cuerpos inventados y un resolver falso —incluida la regresión exacta de
+B-168, un efecto que solo vive en un helper— más los controles positivos y
+negativos sobre el repo real (hay al menos dos triggers con efecto duplicable,
+y hay al menos uno **sin**). El detector es lo que decide si el chequeo mira algo
+o da un verde vacío; hasta ahora nadie lo verificaba, y el síntoma fue un test
+que hubo que apagar.
+
+**El corolario que más duele:** un detector ciego no solo pierde regresiones.
+También **miente sobre lo que sigue roto** — el `it.fails` de B-82 siguió
+fallando meses después de que el bug estaba arreglado, y nadie lo notó porque un
+`it.fails` que falla se ve exactamente como debe verse.
+
 ## D-99 · La proyección de analítica no se muda al lado diferido
 
 **Decisión** (B-59, descartado): `construirEvento` y los vocabularios se quedan
