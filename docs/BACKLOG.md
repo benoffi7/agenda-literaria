@@ -1283,6 +1283,23 @@ así que un valor nuevo va en los dos lados, y si falta en uno se publica el val
 crudo. Y `docs/03-modelo-de-datos.md` más el §3.1 del `CLAUDE.md` quedan
 desactualizados.
 
+### B-166 · El detector de guardas de reentrega quedó apagado
+
+`tests/clases-de-bug.test.ts` tiene un `it.skip`: el chequeo "todo trigger con
+efecto duplicable se blinda" ya no reconoce las guardas de `guardarVersion` ni de
+`guardarVersionAlBorrar`. No es que falten — el refactor de B-77 las mudó a un
+helper, y el detector las busca dentro del cuerpo del trigger.
+
+Hay que hacerlo **seguir la llamada al helper** en vez de mirar solo el cuerpo.
+Mientras tanto, un trigger nuevo sin guarda de reentrega entra sin que nada lo
+frene, que es exactamente el agujero por el que pasó B-82.
+
+Quedó `it.skip` y no `it.fails` a propósito: `it.fails` es el semáforo de un bug
+de producción confirmado —pasa cuando alguien lo arregla y rompe el CI para
+avisar—, y acá lo roto es el detector, no el código. Un test apagado tiene que
+verse apagado.
+
+
 ## P3 — cuando sobre tiempo
 
 ### B-114 · Precio real en los datos estructurados
