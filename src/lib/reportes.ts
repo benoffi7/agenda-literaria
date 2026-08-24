@@ -9,11 +9,13 @@
 import {
   addDoc,
   collection,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 // `firestore-client` y no `firebase-client`: el corte del bundle (B-09) saca
 // Firestore del chunk de login.
@@ -62,6 +64,36 @@ export const crearReporte = async (
     creadoEn: serverTimestamp(),
   });
   return ref.id;
+};
+
+/**
+ * B-31 — vuelve a poner en cola un reporte que quedó en `error`.
+ *
+ * **Por qué esto y no una función `onCall` de reintento.** El disparador de la
+ * publicación ya es una escritura en el documento: `estadoTrasFallo` de
+ * `functions/reportes.js` reintenta poniendo `estado: 'pendiente'`, y esa misma
+ * escritura vuelve a disparar el trigger. El botón del panel hace exactamente lo
+ * que la Function ya hace sola, así que no hace falta un segundo camino —con su
+ * endpoint, su chequeo de claim a mano y su propia forma de fallar— para el
+ * mismo efecto. La autorización la siguen haciendo las reglas (§5.3).
+ *
+ * **`intentos: 0` no es opcional.** `decidirAccion` ignora un reporte con los
+ * intentos agotados, que es el caso más común de un `error` (falló tres veces).
+ * Sin resetearlos, el botón escribiría el documento y no pasaría nada.
+ *
+ * No se toca el texto del reporte: la regla lo prohíbe explícitamente, porque es
+ * lo que termina en un repo público.
+ */
+export const reintentarReporte = async (id: string): Promise<void> => {
+  await updateDoc(doc(db(), COL, id), {
+    estado: 'pendiente',
+    intentos: 0,
+    // Se limpia el mensaje del fallo anterior: si no, queda contradiciendo al
+    // estado nuevo en la pantalla.
+    error: null,
+    // Las reglas exigen `request.time`, igual que en la creación.
+    actualizadoEn: serverTimestamp(),
+  });
 };
 
 /**

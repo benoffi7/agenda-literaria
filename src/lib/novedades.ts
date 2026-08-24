@@ -57,6 +57,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'reintentar-reporte-fallido',
+    fecha: '2026-08-24',
+    version: '1.0.1',
+    titulo: 'Un reporte que no se pudo publicar ahora lo podés reintentar vos',
+    detalle:
+      'Cuando un bug o una sugerencia queda como «no se pudo publicar», aparece un botón para ' +
+      'volver a intentarlo, sin pedirle nada a nadie. Conviene esperar un rato si acaba de ' +
+      'fallar: casi siempre es algo que se está arreglando del otro lado.',
+    donde: 'En «Reportar algo», en la lista de últimos reportes.',
+  },
+  {
     id: 'menu-y-ayuda-con-teclado',
     fecha: '2026-08-24',
     version: '1.0.1',

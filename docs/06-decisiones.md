@@ -1779,3 +1779,45 @@ pierde.
 **De paso**, "← Volver" pasó a respetar `volverA` igual que "Cancelar": eran dos
 salidas del mismo formulario con dos criterios, y volver por el encabezado desde
 el calendario perdía el mes que se estaba mirando.
+
+---
+
+## D-101 · El reintento de un reporte es una escritura acotada, no un `onCall`
+
+**Contexto (B-31):** un reporte que la Function no pudo publicar queda en `error`,
+visible en el panel y sin nada que hacerle. Reintentar era abrir una terminal con
+el Admin SDK, o sea una máquina con Node y credenciales — desde el teléfono,
+imposible.
+
+**Decisión:** un botón "Reintentar" en la pantalla de reportes que escribe
+`estado: 'pendiente'`, `intentos: 0` y `error: null`, habilitado por una regla
+(`reintentoValido`) que permite exactamente esa transición y ninguna otra.
+
+**Por qué no una función `onCall`.** El disparador de la publicación **ya** es una
+escritura en el documento: `estadoTrasFallo` reintenta poniendo el estado en
+`pendiente`, y esa misma escritura vuelve a disparar el trigger. El botón hace lo
+que el sistema ya hace solo. Un `onCall` habría sido un segundo camino al mismo
+efecto, con su endpoint, su chequeo del claim reimplementado a mano —que las
+reglas ya hacen (§5.3)— y su propia forma de fallar. Es la duplicación de
+`docs/05-patrones.md`: dos derivaciones de la misma idea que se separan sin que
+nada falle.
+
+**`intentos: 0` no es un detalle de implementación.** `decidirAccion` ignora un
+reporte con los `MAX_INTENTOS` gastados, que es el caso más común de un `error`
+(falló tres veces por un token vencido). Mover solo el estado habría dado un botón
+que escribe el documento y no produce nada — el peor resultado posible, porque se
+ve como si hubiera funcionado.
+
+**Qué NO habilita la regla, y por qué cada una importa:**
+
+| Prohibido | Si se permitiera |
+|---|---|
+| cambiar el texto del reporte | el documento que se revisó al crearlo deja de ser el que se publica en un repo **público** |
+| reintentar en `enviando` | la Function lo tomó hace un segundo: es la carrera que crea el issue duplicado |
+| reintentar con `github` puesto | dos issues para el mismo reporte |
+| borrar | un reporte es el pedido de una persona; el panel no tiene por qué poder hacerlo desaparecer |
+
+El estado `enviando` queda deliberadamente afuera del panel aunque también se
+destrabe poniéndolo en `pendiente`: ahí sí puede haber una invocación en vuelo, y
+esa operación se queda en el runbook con el Admin SDK
+([`08-operacion.md`](08-operacion.md)).

@@ -321,6 +321,14 @@ Estados que muestra la lista: *guardado, creando el issue…* → *en GitHub* (c
 link al issue) o *no se pudo publicar* (con el motivo). El reporte queda guardado
 en Firestore pase lo que pase con GitHub (D-31).
 
+**Reintentar (B-31).** Un reporte en *no se pudo publicar* tiene un botón
+**Reintentar**: lo vuelve a poner en cola y la Function lo toma de nuevo, con los
+intentos a cero. La lista se mueve sola de un estado al otro. Conviene arreglar
+antes la causa —token vencido, permiso, repo mal escrito— o vuelve a fallar.
+Solo aparece en ese estado: en cualquier otro el reporte está en cola, en vuelo o
+ya publicado, y "reintentar" significaría un segundo issue del mismo reporte
+(D-101).
+
 **El repo es público, así que el issue también.** El formulario lo dice, el issue
 **no** lleva el mail ni el uid de quien reportó (D-32), el texto libre pasa por un
 filtro que tapa mails y links de reunión (D-33), y el título de la actividad

@@ -81,6 +81,57 @@ service cloud.firestore {
         && d.creadoEn == request.time;
     }
 
+    /**
+     * B-31 — el único cambio que el panel puede hacerle a un reporte ya creado:
+     * volver a intentar la publicación de uno que quedó en `error`.
+     *
+     * El ciclo de vida sigue siendo de la Function; esto no lo abre, agrega
+     * **una** transición y la deja verificable en la regla misma. Cinco
+     * condiciones, y cada una tapa una forma de hacer daño:
+     *
+     *  - `estado == 'error'` de partida: no se puede "reintentar" algo que está
+     *    en vuelo (`enviando`) ni ya publicado, que es como se crearían dos
+     *    issues del mismo reporte.
+     *  - `github == null` de partida: defensa en profundidad de lo mismo. Si el
+     *    documento ya tiene número de issue, no hay nada que reintentar.
+     *  - solo cambian cuatro campos: el texto del reporte —lo que va al repo
+     *    PÚBLICO— no se puede editar por este camino. Reintentar publica lo
+     *    mismo que se guardó, no otra cosa.
+     *  - `intentos == 0`: es lo que hace que el reintento sirva. `decidirAccion`
+     *    de `functions/reportes.js` ignora un reporte con los intentos
+     *    agotados, así que mover solo el estado dejaría el botón sin efecto en
+     *    el caso más común (falló tres veces por un token vencido).
+     *  - `error == null`: se limpia el mensaje del fallo anterior, que si no
+     *    queda contradiciendo al estado nuevo en la pantalla.
+     *
+     * Borrar sigue prohibido: un reporte es el pedido de una persona, y el
+     * panel no tiene por qué poder hacerlo desaparecer.
+     */
+    function reintentoValido() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      // Todo con `.get(clave, default)` y no con acceso directo, por el mismo
+      // motivo que `esAdmin()`: leer una clave ausente de un map es un
+      // evaluation error, no `false`. `actualizadoEn` es el caso real —es
+      // opcional en el documento— y `github` lo sería en un documento anterior
+      // al campo.
+      //
+      // Igual que en `/actividades`, el emulador sigue reportando "evaluation
+      // error" en algunos rechazos: evalúa ramas que la conjunción no necesita.
+      // Es cosmético —deniegan igual, y los siete tests de B-31 lo fijan— y no
+      // se arregla escribiéndolo de otra forma: se probó con `.get()` y con
+      // `keys().hasAll()`, y el log dice lo mismo.
+      return previo.get('estado', '') == 'error'
+        && previo.get('github', null) == null
+        && d.diff(previo).affectedKeys()
+             .hasOnly(['estado', 'intentos', 'error', 'actualizadoEn'])
+        && d.get('estado', '') == 'pendiente'
+        && d.get('intentos', -1) == 0
+        && d.get('error', 'no vino') == null
+        && d.keys().hasAll(['actualizadoEn'])
+        && d.actualizadoEn == request.time;
+    }
+
     // Reportes del panel (bugs y sugerencias). Los crea un admin desde
     // /admin y la Function `reporteAIssue` los publica como issue de GitHub.
     //
@@ -96,9 +147,11 @@ service cloud.firestore {
       // Los dos admins leen todos los reportes: es una bandeja compartida.
       allow read: if esAdmin();
       allow create: if esAdmin() && reporteValido();
-      // El ciclo de vida (estado, intentos, github) lo mueve solo la Function
-      // con el Admin SDK, que no pasa por estas reglas.
-      allow update, delete: if false;
+      // El ciclo de vida (estado, intentos, github) lo mueve la Function con el
+      // Admin SDK, que no pasa por estas reglas. La única excepción es el
+      // reintento de B-31, acotado arriba.
+      allow update: if esAdmin() && reintentoValido();
+      allow delete: if false;
     }
 
     // §8 — flag de rebuild pendiente. Solo backend.

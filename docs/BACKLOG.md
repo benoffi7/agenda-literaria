@@ -385,7 +385,7 @@ mostrarlos en la pantalla de reportes. Con webhook hay que validar la firma
 
 Mientras no exista, el formulario y la lista lo dicen con todas las letras.
 
-### B-31 · Un reporte en `error` no se puede reintentar desde el panel
+### B-31 · Un reporte en `error` no se puede reintentar desde el panel — ✅ hecho (2026-08-24)
 
 Si la creación del issue falla por configuración (token vencido, permiso, repo
 mal escrito), el reporte queda guardado en estado `error` y visible en el panel,
@@ -395,6 +395,23 @@ Admin SDK — el comando está en [`08-operacion.md`](08-operacion.md).
 
 Opciones: una acción del panel que escriba solo `estado: 'pendiente'` con una
 regla que permita ese único cambio, o una función `onCall` de reintento.
+
+**Cómo quedó: la primera opción, y no la `onCall`.** El disparador de la
+publicación ya es una escritura en el documento —`estadoTrasFallo` reintenta
+poniendo `estado: 'pendiente'` y eso vuelve a disparar el trigger—, así que el
+botón hace lo mismo que la Function ya hace sola. Un `onCall` habría sido un
+segundo camino, con su endpoint, su chequeo del claim a mano y su propia forma de
+fallar, para el mismo efecto.
+
+Un detalle que el ítem no decía y decide si el botón sirve: hay que resetear
+**`intentos` a 0**, no solo el estado. `decidirAccion` ignora un reporte con los
+tres intentos gastados, que es justamente el caso más común de un `error`.
+
+La regla (`reintentoValido`) permite una sola transición y prohíbe explícitamente
+tocar el texto —que es lo que va a un repo público—, reintentar algo `enviando` o
+ya publicado, y borrar. Siete tests contra el emulador, en
+`tests/reportes-reintento.integracion.test.ts`. Ver **D-101** y §7 de
+[`07-seguridad.md`](07-seguridad.md).
 
 ### B-03 · Historial de versiones (§12)
 
@@ -1664,6 +1681,31 @@ que sobrevivieron dos commits
 (`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
+
+### B-168 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado · P2
+
+El emulador sirve las reglas **del directorio desde el que se lo arrancó**, no las
+del checkout donde corren los tests. Con un solo repo no se nota. Con varios
+worktrees en paralelo —que es cómo se está trabajando este backlog— un test de
+reglas puede estar verificando el archivo de otra rama y **dar verde sin haber
+probado el cambio**. Es el modo de falla más caro que tiene un test de reglas:
+dice "las reglas pasaron" cuando quiere decir "unas reglas pasaron".
+
+Se descubrió haciendo B-31: el emulador estaba levantado desde el checkout
+principal, así que la regla nueva no existía para los tests de la rama que la
+agregaba. La salida ya está escrita —`cargarReglas()` en `tests/emulador.ts`
+empuja el archivo local por la API del emulador— y la usa
+`tests/reportes-reintento.integracion.test.ts`.
+
+**Lo que falta** es que la usen los otros tres archivos de integración
+(`reportes`, `actividades`, `opciones`), que hoy siguen dependiendo de dónde se
+arrancó el emulador. Es una línea en cada `beforeAll`. Se dejó afuera de B-31 a
+propósito: tocar los tres archivos a la vez pisa a los otros frentes, y el
+`EXIGIR_EMULADOR=1` del CI ya arranca el emulador en el checkout correcto.
+
+Ojo con el efecto compartido: `cargarReglas` cambia las reglas del emulador
+**para todos** los tests que estén corriendo contra él. Con un solo checkout es
+inocuo; corriendo dos suites en paralelo, la última que carga gana.
 
 ### B-167 · El formulario y el listado tienen cada uno su vocabulario de etiquetas · P3
 

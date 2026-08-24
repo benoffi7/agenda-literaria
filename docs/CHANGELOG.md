@@ -18,6 +18,32 @@ tratar "ninguno enfocado" como el índice `-1` a secas hace que ↑ caiga en el
 **penúltimo**, y con dos ítems —los que el menú tiene hoy— el resultado parece
 razonable.
 
+**B-31 · un reporte que no se pudo publicar se reintenta desde el panel.** Si el
+token venció o el repo estaba mal escrito, el reporte quedaba en `error` a la
+vista y sin nada que hacerle: reintentar era abrir una terminal con el Admin SDK.
+Ahora la fila tiene un botón **Reintentar**.
+
+Se eligió una escritura acotada del cliente y **no** una función `onCall`: el
+disparador de la publicación ya es una escritura en el documento —la Function
+reintenta sola poniendo `estado: 'pendiente'`— así que el botón hace lo mismo que
+el sistema ya hace, sin un segundo camino con su propio chequeo de claim y su
+propia forma de fallar. La autorización la siguen haciendo las reglas (§5.3).
+
+Lo que decide si el botón sirve, y que el backlog no decía: hay que resetear
+**`intentos` a 0**. `decidirAccion` ignora un reporte con los tres intentos
+gastados, que es el caso más común de un `error`, así que mover solo el estado
+habría dejado un botón que escribe el documento y no pasa nada.
+
+`reintentoValido()` permite **una** transición y prohíbe editar el texto que va al
+repo público, reintentar algo en vuelo o ya publicado, y borrar. Ver **D-101**.
+
+De paso salió un agujero de verificación que no era de este ítem: el emulador
+sirve el `firestore.rules` **del directorio desde el que se lo arrancó**, así que
+con varios worktrees en paralelo un test de reglas puede estar verificando el
+archivo de otra rama y dar verde sin haber probado el cambio. Ahora hay un
+`cargarReglas()` que empuja las de este checkout antes de correr, y los siete
+tests de B-31 lo usan. Anotado para el resto en **B-168**.
+
 **B-64 · las novedades ya dicen en qué versión salieron.** Mostrarlas ya se
 mostraba: el campo existía, el componente lo pintaba, y estaba vacío. La causa no
 era el olvido sino que **no estaba dicho de dónde sale**: `VERSION_APP` lleva el
