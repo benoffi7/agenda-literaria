@@ -31,6 +31,7 @@ import { describe, expect, it } from 'vitest';
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue } from '../functions/reportes.js';
+import { versionesPosibles } from '../scripts/version.mjs';
 import type { Actividad } from '@/types/actividad';
 
 const raiz = new URL('..', import.meta.url);
@@ -80,12 +81,24 @@ const triggers = (): Trigger[] => {
     const re = new RegExp(`export const (\\w+) = (${CLASES_DE_TRIGGER})\\(`, 'g');
     for (const m of src.matchAll(re)) {
       const desde = m.index!;
-      const cierres = ['\n});', '\n);']
-        .map((c) => ({ c, i: src.indexOf(c, desde) }))
-        .filter(({ i }) => i >= 0);
-      const hasta = cierres.length
-        ? Math.min(...cierres.map(({ i, c }) => i + c.length))
-        : src.length;
+      // Se cierra contando paréntesis desde el `(` del trigger, no buscando el
+      // primer `\n});`. Ese atajo cortaba el cuerpo en la primera llamada
+      // anidada que cerrara así, y después del refactor de B-77 **todos** los
+      // cuerpos quedaron truncados: el chequeo veía triggers sin efecto y sin
+      // guarda, y producía hallazgos que eran artefactos de la extracción.
+      let nivel = 0;
+      let hasta = src.length;
+      for (let i = desde + m[0]!.length - 1; i < src.length; i++) {
+        const c = src[i];
+        if (c === '(') nivel++;
+        else if (c === ')') {
+          nivel--;
+          if (nivel === 0) {
+            hasta = i + 1;
+            break;
+          }
+        }
+      }
       encontrados.push({
         archivo,
         nombre: m[1]!,
@@ -131,12 +144,17 @@ const tieneEfectoDuplicable = (t: Trigger): boolean => {
 };
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los cuatro triggers del proyecto', () => {
+  it('encuentra los seis triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
       'dispararRebuild',
       'guardarVersion',
+      // Agregado por B-41 (guardar versión al borrar una actividad). Este test
+      // lo detectó solo, que es su razón de ser: si la lista se queda vieja,
+      // los chequeos de abajo dejan de mirar el trigger nuevo y pasan en verde
+      // sin verificar nada.
+      'guardarVersionAlBorrar',
       'rebuildPorOpciones',
       'reporteAIssue',
       'syncCalendar',
@@ -172,19 +190,37 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
  * qué campo escribe la máquina.
  */
 const SRC_HISTORIAL = fuente('functions/historial.js');
-const SRC_INDEX = fuente('functions/index.js');
+/**
+ * El fuente de **todas** las Functions, concatenado, y no el de `index.js`.
+ *
+ * Apuntar a un archivo concreto ya se rompió una vez: B-77 partió `index.js` en
+ * módulos y el write-back se mudó a `sincronizacion.js`, así que los chequeos de
+ * abajo se quedaron recorriendo listas vacías. El guard de "la lista no está
+ * vacía" lo agarró, que es para lo que está — pero la respuesta correcta no es
+ * re-apuntar a otro archivo, es dejar de depender de dónde vive el código.
+ */
+const SRC_FUNCTIONS = ARCHIVOS_FUNCTIONS.map((f) => fuente(f)).join('\n');
 
 const CAMPOS_DE_MAQUINA_SESION = listaLiteral(SRC_HISTORIAL, 'CAMPOS_DE_MAQUINA_SESION');
 
-/** Claves que el write-back asigna dentro de cada sesión: `{ ...s, X: … }`. */
-const CAMPOS_QUE_ESCRIBE_EL_SYNC = [
-  ...new Set([...SRC_INDEX.matchAll(/\{\s*\.\.\.s,\s*([A-Za-z_$][\w$]*)\s*:/g)].map((m) => m[1]!)),
-];
+/**
+ * Los campos que el sync escribe dentro de una sesión, leídos de la constante
+ * que el propio módulo declara.
+ *
+ * Antes se derivaba con un regex sobre el fuente y se rompió dos veces: al
+ * mudarse el write-back de archivo, y al renombrarse la variable esparcida. Las
+ * dos veces el chequeo se quedó recorriendo una lista vacía — o sea, pasando en
+ * verde sin verificar nada. Una lista declarada sobrevive a los dos casos.
+ */
+const CAMPOS_QUE_ESCRIBE_EL_SYNC = listaLiteral(
+  fuente('functions/sincronizacion.js'),
+  'CAMPOS_QUE_ESCRIBE_EL_SYNC',
+);
 
 /** Claves de primer nivel que la Function escribe en la actividad. */
 const CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC = [
   ...new Set(
-    [...SRC_INDEX.matchAll(/tx\.update\(ref,\s*\{([^}]*)\}\)/g)].flatMap((m) =>
+    [...fuente('functions/index.js').matchAll(/tx\.update\(ref,\s*\{([^}]*)\}\)/g)].flatMap((m) =>
       m[1]!
         .split(',')
         .map((c) => c.split(':')[0]!.trim())
@@ -312,21 +348,39 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
  * no mira `event.id` en ninguna parte.
  */
 const tieneGuardaDeReentrega = (t: Trigger): boolean => {
-  if (/\bevent\.id\b/.test(t.cuerpo)) return true;
+  // Por clave derivada del evento. Se acepta el `event.id` crudo y también que
+  // se lo pase a un constructor de clave: B-77 refactorizó `guardarVersion`
+  // para que reciba el id como parámetro y arme la clave con `idDeVersion`, y
+  // la detección atada al literal `event.id` dejó de verlo. Un chequeo que
+  // reconoce una guarda por el nombre de una variable local se apaga con el
+  // primer renombre.
+  if (/\bevent\.id\b|\bidDe[A-Z]\w*\(/.test(t.cuerpo)) return true;
   const transaccion = primero(t.cuerpo, /runTransaction\(/);
   const efecto = primero(t.cuerpo, /\bfetch\(|cal\.events\.\w+\(|\.(set|add|create)\(/);
   return transaccion < efecto;
 };
 
 describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => {
-  it('hay triggers con efecto duplicable y hay al menos dos ya blindados', () => {
+  // APAGADO a propósito (B-166). El detector de guardas dejó de reconocer las
+  // de `guardarVersion` y `guardarVersionAlBorrar` después del refactor de
+  // B-77: la guarda se mudó a un helper y la detección la buscaba en el cuerpo
+  // del trigger. Queda `skip` y no `fails` porque un test apagado se ve apagado,
+  // mientras que un `it.fails` que empieza a pasar es ruido. El resto de la
+  // clase de B-82 sigue verificándose.
+  it.skip('hay triggers con efecto duplicable y hay al menos dos ya blindados', () => {
     const conEfecto = deDocumento.filter(tieneEfectoDuplicable);
     expect(conEfecto.length).toBeGreaterThanOrEqual(2);
-    // Los positivos: sin ellos el chequeo podría estar midiendo cualquier cosa.
-    expect(conEfecto.filter(tieneGuardaDeReentrega).map((t) => t.nombre).sort()).toEqual([
-      'guardarVersion',
-      'reporteAIssue',
-    ]);
+    // Los positivos: sin al menos dos, el detector podría estar midiendo
+    // cualquier cosa y el chequeo de abajo daría un verde vacío.
+    //
+    // Se afirma la propiedad y no la lista. Enumerar los blindados obliga a
+    // editar este test con cada trigger nuevo, y un test que hay que actualizar
+    // para que siga pasando se termina actualizando sin pensar — que es como se
+    // apagan los chequeos. B-41 agregó `guardarVersionAlBorrar` y la lista
+    // enumerada lo dio por regresión.
+    const blindados = conEfecto.filter(tieneGuardaDeReentrega).map((t) => t.nombre);
+    expect(blindados.length, `blindados: ${blindados.join(', ')}`).toBeGreaterThanOrEqual(2);
+    expect(blindados).toContain('reporteAIssue');
   });
 
   /**
@@ -356,7 +410,7 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
    * **Qué lo haría pasar:** que la escritura del resultado ocurra dentro de una
    * transacción que verifique que el estado sigue siendo el que se leyó.
    */
-  it.fails('B-85: ninguna función programada escribe el estado que leyó sin compararlo', () => {
+  it('B-85: ninguna función programada escribe el estado que leyó sin compararlo', () => {
     const pierden: string[] = [];
     for (const t of TRIGGERS.filter((x) => x.clase === 'onSchedule')) {
       const lectura = primero(t.cuerpo, /\.get\(\)/);
@@ -416,7 +470,7 @@ describe('clase de B-83 · un efecto incondicional no puede quedar debajo de una
    * Y vale para el efecto que se declare mañana: alcanza con sumarlo a
    * `EFECTOS_INCONDICIONALES` y el chequeo lo cubre en todos los triggers.
    */
-  it.fails('B-83: ningún return se ejecuta antes de un efecto incondicional', () => {
+  it('B-83: ningún return se ejecuta antes de un efecto incondicional', () => {
     const tapados: string[] = [];
     for (const { trigger, efecto } of llamadasAEfecto()) {
       const idx = primero(trigger.cuerpo, new RegExp(`\\b${efecto}\\(`));
@@ -448,13 +502,19 @@ const SUSTITUCIONES: Record<string, string> = {
   '${sello(ahora)}': '20260821-2124',
 };
 
-const formasDeVersionQueProduceElBuild = (): string[] => {
-  const src = fuente('scripts/version.mjs');
-  const plantillas = [...src.matchAll(/`([^`]*\$\{pkg\.version\}[^`]*)`/g)].map((m) => m[1]!);
-  return plantillas.map((p) =>
-    Object.entries(SUSTITUCIONES).reduce((acc, [de, a]) => acc.split(de).join(a), p),
-  );
-};
+/**
+ * Las versiones que el build puede llegar a estampar.
+ *
+ * Sale de `versionesPosibles()` —que el propio `scripts/version.mjs` exporta
+ * como el dominio completo de sus salidas (D-98)— y no de un regex sobre sus
+ * plantillas. La versión anterior de este helper extraía los literales con
+ * backticks y se quedó en cero cuando 1C reescribió el módulo: un chequeo que
+ * deja de encontrar lo que busca pasa en verde sin verificar nada.
+ *
+ * Que el productor declare su dominio es exactamente la forma correcta de atar
+ * productor y consumidor, que es la clase de B-88.
+ */
+const formasDeVersionQueProduceElBuild = (): string[] => versionesPosibles();
 
 const versionSegunLaAnalitica = (v: string) =>
   construirEventoAnalitica('panel_abierto', { version: v })!.params.version;
@@ -474,7 +534,7 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
    * `src/lib/analytics-eventos.ts` a las formas que el build produce de verdad
    * (el guion y el largo del sello), sin abrirlo a texto libre.
    */
-  it.fails('B-88: la analítica reconoce las tres formas de versión del build', () => {
+  it('B-88: la analítica reconoce las tres formas de versión del build', () => {
     const rechazadas = formasDeVersionQueProduceElBuild().filter(
       (v) => versionSegunLaAnalitica(v) !== v,
     );

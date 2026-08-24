@@ -94,7 +94,20 @@ export const sesionesDeCiclo = (opciones: OpcionesSesiones = {}): SesionFixture[
       tema: `Capítulos ${i * 4 + 1}-${i * 4 + 4}`,
       lectura: null,
       cancelada: canceladas.includes(i),
-      calendarEventId: conEventos ? `evt_${String(i + 1).padStart(4, '0')}` : null,
+      // Una sesión ya cancelada **no** conserva su `calendarEventId`: al borrar
+      // el evento, `syncCalendar` repone `null` en esa sesión (`ids.set(op.id,
+      // null)` en `functions/index.js`, y también en el 404/410). Un fixture
+      // con `cancelada: true` y un id de evento vivo describe un estado que el
+      // sistema no puede tener asentado — y le hacía emitir un borrado de más
+      // a `planificar` en cada escritura posterior.
+      //
+      // Es la misma clase que este archivo persigue (B-135): el fixture no
+      // reproducía el dominio, así que el invariante "cancelar toca un solo
+      // evento" no podía valer. Cancelar en el momento sí conserva el id —eso
+      // lo hace `conCancelada` sobre una sesión viva—, que es el caso que los
+      // invariantes ejercitan.
+      calendarEventId:
+        conEventos && !canceladas.includes(i) ? `evt_${String(i + 1).padStart(4, '0')}` : null,
     };
   });
 

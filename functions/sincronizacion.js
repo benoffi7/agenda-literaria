@@ -92,6 +92,21 @@ export const idDeEvento = (sesionId) => {
  * el documento ya tiene el id correcto, y escribirlo igual sería un disparo
  * más de esta misma Function por cada `actualizar`.
  */
+/**
+ * Los campos de una sesión que escribe el sync, declarados.
+ *
+ * Existe para que `tests/clases-de-bug.test.ts` no tenga que adivinarlos con un
+ * regex sobre el fuente: eso se rompió dos veces —una al mudar el write-back de
+ * `index.js` a este módulo, otra al renombrar la variable esparcida— y un
+ * chequeo estructural que deja de encontrar lo que busca **pasa en verde sin
+ * verificar nada**, que es peor que no tenerlo.
+ *
+ * Un campo nuevo acá tiene que sumarse también a `CAMPOS_DE_MAQUINA_SESION` de
+ * `historial.js`, o cada write-back genera una versión de basura (§12). El test
+ * verifica justamente eso.
+ */
+export const CAMPOS_QUE_ESCRIBE_EL_SYNC = ['calendarEventId'];
+
 export const reponerIds = (sesiones = [], ids) => {
   if (!ids || ids.size === 0) return null;
 

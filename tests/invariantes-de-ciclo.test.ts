@@ -8,9 +8,9 @@
  * sesión no puede pasar por verdadero, porque el mismo `it` lo evalúa también
  * sobre el ciclo de ocho.
  *
- * Los `it.fails` son la clase todavía viva. Cuando el frente 1B arregle B-84,
- * pasan solos → el `it.fails` que pasa **rompe el CI**, que es la señal para
- * venir a borrarle el `.fails`.
+ * Los `it.fails` eran la clase todavía viva. El frente 1B arregló B-84 y
+ * pasaron solos → el `it.fails` que pasa **rompe el CI**, que fue la señal
+ * para venir a borrarles el `.fails`. Hoy son `it` y son la red de regresión.
  *
  * La segunda mitad del archivo es el **detector**: lo que encuentra la próxima
  * instancia de la clase (el fixture flojo que todavía no existe), en lugar de
@@ -94,20 +94,28 @@ describe('el fixture canónico es el caso del §2.2, y no se puede ablandar', ()
 
 describe('invariantes de un ciclo — sobre la familia, no sobre una instancia', () => {
   /**
-   * Lo que hace hoy, escrito al lado para que el arreglo se note: en un ciclo
-   * de ocho, cancelar uno emite ocho operaciones. Con una sola sesión emite
-   * una — y ese es exactamente el fixture con el que el invariante "pasa".
+   * El costo de cancelar **no escala con el tamaño del ciclo**.
+   *
+   * Antes de arreglar B-84 este `it` documentaba lo contrario —en un ciclo de
+   * ocho, cancelar uno emitía ocho operaciones— y era el testigo de que el bug
+   * seguía vivo. 1B lo arregló (D-95), así que ahora afirma la propiedad buena.
+   *
+   * Se queda como test propio y no se funde con el de abajo: aquel verifica
+   * *cuál* es la operación, este verifica *cuántas son* en función del tamaño.
+   * Un arreglo que emitiera un `actualizar` idempotente por hermano pasaría el
+   * de identidad —el borrado seguiría estando— y volvería a reescribir los
+   * siete eventos restantes, que es el daño que costaba caro.
    */
-  it('hoy: cancelar un encuentro emite una operación por encuentro del ciclo', () => {
+  it('B-84: cancelar cuesta lo mismo en un ciclo de ocho que en uno de dos', () => {
     const medido = CICLOS_QUE_NUMERAN.map((caso) => {
       const objetivo = delMedio(caso);
       const ops = planificar(caso.actividad, conCancelada(caso.actividad, objetivo.id));
       return [caso.cantidad, ops.length];
     });
-    expect(medido).toEqual(CICLOS_QUE_NUMERAN.map((c) => [c.cantidad, c.cantidad]));
+    expect(medido).toEqual(CICLOS_QUE_NUMERAN.map((c) => [c.cantidad, 1]));
   });
 
-  it.fails('B-84: cancelar un encuentro toca un solo evento, en cualquier ciclo', () => {
+  it('B-84: cancelar un encuentro toca un solo evento, en cualquier ciclo', () => {
     const sobrantes: string[] = [];
     for (const caso of CICLOS_QUE_NUMERAN) {
       const objetivo = delMedio(caso);
@@ -124,7 +132,7 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
     expect(sobrantes).toEqual([]);
   });
 
-  it.fails('B-84: el número de un encuentro no cambia porque otro se cancele', () => {
+  it('B-84: el número de un encuentro no cambia porque otro se cancele', () => {
     const renumerados: string[] = [];
     for (const caso of CICLOS_QUE_NUMERAN) {
       const objetivo = delMedio(caso);
@@ -141,7 +149,7 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
     expect(renumerados).toEqual([]);
   });
 
-  it.fails('B-84: el total del ciclo es su cantidad de encuentros, cancelados incluidos', () => {
+  it('B-84: el total del ciclo es su cantidad de encuentros, cancelados incluidos', () => {
     const mal: string[] = [];
     for (const caso of CICLOS_QUE_NUMERAN) {
       for (const s of sesionesDe(caso.actividad)) {
@@ -156,8 +164,9 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
   });
 
   it('un encuentro cancelado no tiene evento en ningún ciclo (§7.3)', () => {
-    // Este sí vale hoy, y es la mitad del invariante que ya funciona: lo que
-    // falta arreglar es el daño colateral, no el borrado.
+    // Esta mitad del invariante ya valía con el bug vivo: lo que B-84 rompía
+    // era el daño colateral, no el borrado. Se queda igual justamente por eso
+    // — es el control que no se movió cuando se movió todo lo demás.
     for (const caso of CICLOS_QUE_NUMERAN) {
       const objetivo = delMedio(caso);
       const ops = planificar(caso.actividad, conCancelada(caso.actividad, objetivo.id)) as {

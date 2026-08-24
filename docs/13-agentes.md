@@ -253,6 +253,41 @@ no deben desplegarse todavía** porque les falta el PAT (B-20, D-13). Es
 conocimiento que hoy vive en dos párrafos de
 [`08-operacion.md`](08-operacion.md) y que se paga caro olvidando.
 
+### 🛡️ `antes-de-pushear`
+
+El pedido era que los auditores **prevengan antes de pushear** y que se lancen
+todos. Este skill lanza los tres en paralelo, junta los hallazgos y decide si el
+push sale.
+
+La parte que importa es el corte: un hook de git **no puede invocar un modelo**,
+así que lo mecánico (marcadores de conflicto, typecheck, tests con emuladores,
+build, fuga de credenciales) vive en `githooks/pre-push` →
+`scripts/verificar-todo.sh`, y lo que necesita criterio (¿este campo nuevo es
+publicable?, ¿el código nuevo cae en una trampa del §13?, ¿la doc acompañó?)
+vive acá. El skill **no** re-verifica lo mecánico: corre el script y lee el
+resultado, porque un modelo reimplementando lo que un script ya decide es una
+segunda copia que se va a quedar vieja.
+
+Cierra B-115: hasta ahora nada invocaba a los auditores juntos, así que existían
+pero solo corrían si alguien se acordaba de los tres.
+
+### 🔁 `automatizar`
+
+La mejora continua, con una regla sola: **la segunda vez es la señal.** Busca lo
+que ya se hizo a mano más de una vez —o el error que ya volvió con otra cara— y
+elige la forma: test, script, hook, skill o auditor.
+
+Lleva adentro los cinco casos que este repo ya pagó (la decisión de deploy que
+vivía en un `if` del YAML, la búsqueda de `firebase-admin` duplicada en dos
+workflows, los 43 tests que se salteaban en silencio, los marcadores de conflicto
+commiteados dos veces, el fixture flojo que dejó pasar tres bugs). Están ahí como
+**calibración**: sin ejemplos, "¿esto amerita automatizarse?" se contesta distinto
+cada vez.
+
+Es la respuesta a la regla de que un bug no puede volver a aparecer —no el bug,
+**la idea del bug**—: cuando algo reaparece con otra cara, lo que falta no es el
+arreglo, es el detector.
+
 ---
 
 ## Qué se decidió no automatizar
