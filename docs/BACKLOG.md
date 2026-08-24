@@ -18,6 +18,7 @@ trabajo.
 |---|---|---|
 | DEC-1 | ~~`libro presentado`~~ **resuelto: campo propio con obra + autor.** Pendiente de implementar. | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
 | DEC-6 | **Las ocho decisiones que bloquean el sitio público.** Están listadas en el §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). | La primera —**el dominio final**— bloquea B-109 y con él todo lo demás: sin `site` no hay canonical, ni Open Graph, ni sitemap, y mudar el dominio después de indexar cuesta meses. Le siguen el canal de contacto público, el nombre del sitio y si el sitio público se mide. |
+| DEC-7 | **La galería de imágenes (B-167): cuatro decisiones.** (a) ¿la descripción es *epígrafe* o *texto alternativo*? (b) ¿tamaño máximo y cuántas imágenes por actividad? (c) ¿se permite alojar propias desde el día uno, o arranca solo con URLs externas? (d) ¿las externas se descargan al build para poder optimizarlas? | (a) es la que más pesa y no es cosmética: un **epígrafe** es opcional y se muestra; un **texto alternativo** es lo que leen un lector de pantalla y Google, y no debería ser opcional. Se pidió "descripción opcional", que es un epígrafe — si además hace falta accesibilidad y SEO (B-107 los necesita), son **dos campos**, no uno. (c) parte el trabajo en dos entregas: solo URLs no necesita Storage, ni reglas nuevas, ni target de deploy, ni EXIF, y es la mitad del valor con un cuarto del riesgo. |
 
 Resueltas el 2026-08-21:
 
@@ -341,6 +342,161 @@ operaciones. Cuesta un build de más cuando el cambio es solo interno
 Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
 
 ---
+
+### B-167 · Galería de imágenes: una lista, con descripción, propias o de afuera
+
+Pedido del dueño (2026-08-24): una actividad tiene una **lista** de imágenes,
+cada una con descripción opcional; cada imagen puede ser una **URL de otro lado**
+o un archivo que **subimos y alojamos nosotros**. Y **vista previa**, incluida en
+el momento de pegar una URL.
+
+Está en P1 y no en P2 por una razón de orden, no de urgencia: **el modelo pasa de
+un campo a una lista**, y B-107 (Open Graph y JSON-LD) necesita exactamente una
+imagen. Si la galería entra después del sitio público, se rehace la tarjeta, el
+detalle, la proyección y el `events.json`. Entra antes de B-01, o se paga dos
+veces.
+
+#### El cambio de modelo, y la migración que no se ve
+
+Hoy es `imagenUrl: string | null` y toca nueve archivos: `types/actividad.ts`,
+`schema.ts`, `actividades.ts` (las dos conversiones), `toPublic.ts` (tipo y
+proyección), `ActividadFormulario.tsx`, `analytics-eventos.ts` y un comentario de
+`functions/index.js`.
+
+Pasa a algo como `imagenes: [{ id, url, descripcion, origen: 'externa'|'propia',
+storagePath?, ancho?, alto?, portada? }]`.
+
+**Los ids se generan en el cliente, nunca por índice** — es la trampa 2 del §13,
+la misma que costó el diff de sesiones: borrar la segunda imagen renumera todo y
+cualquier cosa que compare por posición cree que cambiaron todas.
+
+**El default de lectura es la parte que se olvida.** Los documentos que ya están
+en producción tienen `imagenUrl` y no tienen `imagenes`. La lectura tiene que
+convertir `imagenUrl` en una lista de un elemento marcada como portada, y hay que
+decidir si se hace **al leer para siempre** (compatible, código que queda) o con
+una **migración de una vez** (más limpio, pero es un script que escribe en
+producción). Con el volumen actual la migración es de minutos.
+
+#### Lo que aparece por primera vez: Firebase Storage
+
+No hay Storage en el proyecto. `firebase.json` tiene `firestore` y `hosting`, y
+nada más. Entra un producto nuevo, y con él:
+
+- **`storage.rules`, que son un archivo aparte de `firestore.rules`.** Escritura
+  solo con el claim `admin`, y ahí aplica D-05 tal cual: `request.auth.token.admin
+  == true` es un **error de evaluación** cuando el claim no está, no `false`. Va
+  `token.get('admin', false)`.
+- **Un target de deploy que `scripts/que-deployar.sh` no conoce.** Hoy decide
+  `hosting`, `functions` y `firestore`. Sin una regla nueva, un cambio en
+  `storage.rules` se deploya nunca — y las reglas por defecto de Storage son
+  abiertas o cerradas según cómo se cree el bucket, así que "nunca" es el peor de
+  los dos casos. El script tiene 20 tests: la regla nueva va con los suyos.
+- **`firebase/storage` en el bundle.** El corte de B-09/D-51 dejó la carga
+  inicial de `/admin` en ~385 KB separando `firebase-client.ts` (app+auth) de
+  `firestore-client.ts` (db). Meter el SDK de Storage en cualquiera de los dos lo
+  deshace. Va en su propio módulo, cargado lazy junto con la sección de imágenes
+  del formulario, y `tests/bundle-panel.test.ts` tiene que cubrirlo — importar
+  desde el módulo equivocado ya deshizo este corte **tres veces** sin que nada
+  fallara.
+- **Validación del archivo, del lado de las reglas y no solo del cliente.** Tipo
+  (`image/jpeg`, `png`, `webp`, `avif`) y tamaño máximo. **SVG no**: es un
+  documento ejecutable, y si algún día se sirve por un rewrite de Hosting pasa a
+  ser mismo origen que el panel.
+
+#### EXIF: la privacidad que no está en el §5 y debería
+
+Una foto de celular trae GPS. En este dominio eso es concreto: **muchos talleres
+se dan en casas particulares**, y la lista es pública y scrapeable. Subir la foto
+del living publica las coordenadas del living, aunque `sede.direccion` diga solo
+el barrio.
+
+Hay que **quitar el EXIF al subir**, y el lugar es del lado del servidor o en la
+Function, no en el cliente (el cliente es lo que se puede saltear). Esto es una
+fila nueva en la tabla del §5.1 de `CLAUDE.md` y en
+[`07-seguridad.md`](07-seguridad.md).
+
+#### La vista previa, que es la otra mitad del pedido
+
+Pegar una URL y verla. Los casos que hay que resolver, porque son los que se
+ven en la demo y no en el diseño:
+
+- la URL no es una imagen (devuelve HTML) → mensaje, no un roto silencioso;
+- la URL es `http://` y el panel es `https://` → contenido mixto, el navegador la
+  bloquea y no se entiende por qué;
+- la imagen tarda o no carga nunca → estado de carga y de error, con la URL
+  igual guardable si el dueño insiste;
+- el dominio de afuera puede caerse mañana → la vista previa es del momento de
+  cargar, no una garantía. Vale detectar links muertos, pero como aviso.
+
+**Y ojo con `astro:assets`.** El sitio público es SSG: una imagen remota no se
+optimiza en build sin descargarla, y Astro exige declarar los dominios
+permitidos (`image.domains` / `remotePatterns`) o el build se comporta distinto
+de lo que se probó. Con URLs arbitrarias cargadas por un admin, la lista de
+dominios no se puede enumerar de antemano — hay que decidir entre no optimizar
+las externas, o descargarlas al build (que las convierte en propias por la
+puerta de atrás).
+
+#### Borrado y huérfanos
+
+Quitar una imagen de la lista, o borrar la actividad, tiene que **borrar el
+objeto de Storage**. Si no: archivos que nadie referencia, que siguen siendo
+públicos y que se pagan.
+
+Es exactamente la clase de **B-71** (un guardado que falla deja opciones
+huérfanas en la taxonomía), y el orden correcto es el mismo que ahí: primero el
+documento, después el archivo. Si falla el borrado del archivo queda basura
+invisible; si falla al revés, el documento apunta a un archivo que no está.
+
+Dos casos que lo complican y hay que resolver explícitamente:
+
+- **Duplicar una actividad.** Si la copia comparte el `storagePath`, borrar una
+  le rompe las imágenes a la otra. O se copian los objetos, o se cuentan las
+  referencias.
+- **Restaurar una versión (§12, B-40).** Una versión vieja referencia un archivo
+  que quizá ya se borró. Restaurar tiene que decir qué imágenes no volvieron, en
+  lugar de dejar la lista con agujeros.
+
+#### El rebuild: esto ya fue un bug, con estos mismos campos
+
+`functions/index.js` tiene el comentario: el rebuild del sitio colgaba del sync a
+Calendar, así que **`destacado` e `imagenUrl` no llegaban nunca al sitio** —
+porque no van al calendario y por lo tanto no había operaciones que lo
+dispararan. Eso es **B-83**, ya arreglado.
+
+Una galería es más de lo mismo y de manual: las imágenes no van a Google Calendar
+(la API no tiene campo de imagen; el §7.4 arma solo `summary`, `description`,
+`location` y las fechas). Así que hay que **verificar** que la lista entre por el
+camino que B-83 dejó arreglado, y no asumirlo.
+
+#### Los lugares que toca, para no descubrirlos de a uno
+
+El criterio del skill `campo-nuevo` es que un campo del modelo toca once lugares
+y los que se olvidan son siempre los mismos tres: **la proyección pública, el
+default de lectura de los documentos que ya existen, y la ayuda**. Acá:
+
+| Lugar | Qué |
+|---|---|
+| `types/actividad.ts` | la lista y el ítem |
+| `schema.ts` | zod: URL válida, largo de la descripción, y **una sola portada** |
+| `actividades.ts` | las dos conversiones, más el default de lectura de `imagenUrl` |
+| `toPublic.ts` | §5.2 — qué campos de cada imagen se publican. `storagePath` **no** |
+| `ActividadFormulario.tsx` | sección nueva: filas, orden, portada, subida, vista previa |
+| `functions/` | borrado de objetos al borrar la actividad; quitar EXIF |
+| `storage.rules` | archivo nuevo |
+| `que-deployar.sh` | target nuevo + sus tests |
+| `analytics-eventos.ts` | cuántas imágenes, propias vs externas — sin la URL |
+| `ayuda.ts` / `novedades.ts` | se nota al usar el panel: va a los dos |
+| `searchText` (§6) | decidir si la descripción entra. Recomendado **no**: infla el índice con texto que nadie busca |
+| tests | la familia de fixtures del §2.2, con y sin imágenes, propias y externas |
+
+#### Costo
+
+Storage se paga por almacenamiento y por egreso, y una galería en un sitio
+público indexado es egreso real. Hace falta al menos un tamaño derivado (una
+miniatura para la tarjeta) en lugar de servir el original de 4 MB en un listado
+de treinta actividades. Y el budget alert del §2.3 está puesto para Functions:
+conviene revisarlo antes, no después de la factura.
+
 
 ## P2 — mejoras reales
 
