@@ -1726,12 +1726,210 @@ por si el costo molesta en la práctica.
 
 ---
 
+## D-100 · La mitad cliente del §4.2 vive en un módulo puro, y los widgets no se unifican
+
+**Problema:** `TaxonomiaSelect` y `TagsInput` resolvían el mismo problema del
+§4.2 —autocompletado contra lo existente y deduplicación por slug antes de
+escribir— con **dos implementaciones separadas**, las dos en `.tsx`, ninguna con
+test, y ya divergidas: distinto tope de sugerencias, distinto comportamiento con
+el input vacío, y una avisaba "ya existe como «X»" mientras la otra reusaba en
+silencio (B-72). El §4.2 está marcado **crítico** en el `CLAUDE.md` y esa mitad
+es la que evita que el 90 % de los duplicados nazca.
+
+**Lo decidido:** `src/lib/taxonomia.ts`, puro y sin Firestore, con
+`sugerenciasPara`, `resolverEtiqueta`, `etiquetaPresentable`, `pistaDeOpcion` y
+`etiquetaConEstado`, más los tres predicados que ya existían (`ordenarValores`,
+`estaAprobada`, `opcionesVisibles`) mudados desde `opciones.ts` — que los
+re-exporta, así ningún consumidor cambia de import y sigue siendo la única
+puerta a `/opciones/*`.
+
+**Los componentes NO se unifican.** Un `<select>` con "Otro" y un input de chips
+son widgets distintos: unificarlos sería un componente con dos modos y ningún
+uso claro. Lo que se comparte es lo que no puede divergir.
+
+Las dos diferencias que quedan son ahora **parámetros con motivo escrito**, no
+accidentes:
+
+| | Desplegable | Chips de tags |
+|---|---|---|
+| tope de sugerencias | 8 | 8 (antes 6, sin razón) |
+| con el input vacío | muestra las primeras 8 | no muestra nada |
+
+Lo segundo no es un descuido: el modo "Otro" del desplegable se abre a propósito
+y ver la lista orienta; el input de tags está siempre visible y una lista
+desplegada sin que nadie escriba taparía el formulario.
+
+**Por qué un módulo puro y no un hook:** se testea sin emulador y sin
+testing-library, que no está instalada (B-08). `tests/taxonomia.test.ts` cubre
+las cuatro variantes de "a la gorra" del §4.2, el autocompletado sin acentos, el
+tope, la exclusión de lo ya elegido, y lleva una guardia de que la copia no
+vuelva a nacer (D-98: la guardia más barata que alcance).
+
+---
+
+## D-101 · La etiqueta se guarda presentable; el slug es la identidad
+
+**Problema:** un tag tipeado "narrativa" se guardaba así y se publicaba así —en
+el calendario y en los chips de filtro del sitio (§4.4)— al lado de "Poesía" que
+alguien escribió con mayúscula. La taxonomía se veía descuidada sin estar
+duplicada (B-05). Ya había pasado: `/opciones/tags` tiene `narrativa="narrativa"`.
+
+**Lo decidido:** `etiquetaPresentable` —trim, colapsar espacios internos y
+**primera letra en mayúscula, nada más**— aplicada en `upsertOpcion`, que es el
+punto de paso obligado de toda creación. No en cada componente: es la lección de
+B-81, el saneador va en la salida y no campo por campo.
+
+**Solo la primera letra**, y es la parte que importa:
+
+- bajar el resto rompería "Villa Crespo", "Google Meet" o unas siglas;
+- subir cada palabra rompería "Club de lectura" → "Club De Lectura".
+
+`slugify` normaliza la **identidad**; esto normaliza lo que se **ve**. Son dos
+funciones distintas sobre el mismo texto y por eso no se combinan.
+
+**Lo que ya está cargado mal no se toca por migración**: se corrige renombrando
+desde la pantalla de taxonomías (D-102), que es de una vez y a la vista. Una
+migración que capitalice labels ajenos es más riesgo que valor para cuatro
+etiquetas.
+
+---
+
+## D-102 · La pantalla de taxonomías renombra sin tocar el slug, y borra sin tocar las actividades
+
+**Problema:** el §4.3 dice que las opciones creadas con "Otro" son editables y
+borrables y que `usos` sirve para detectar basura, y nada de eso tenía dónde
+pasar: había que abrir la consola de Firestore (B-06). Aprobar, además, pedía una
+máquina con Node y `gcloud`, o sea que desde el teléfono no se podía (B-25).
+
+**Lo decidido:** `src/components/admin/taxonomias/TaxonomiasPanel.tsx`, una
+pantalla con las cinco taxonomías y tres acciones por fila —renombrar, borrar,
+aprobar— sobre `renombrarOpcion` / `borrarOpcion` / `aprobarOpcion` de
+`opciones.ts`. Las tres pasan por un solo `editarValor` transaccional, donde vive
+la guarda de `fijo` del §4.3: una guarda copiada tres veces se olvida en la
+cuarta.
+
+Tres reglas, y las tres son decisiones:
+
+1. **Renombrar no recalcula el slug.** Es exactamente el punto del §4.1 ("la
+   actividad guarda solo el slug, así renombrar el label no obliga a tocar ningún
+   documento"): arreglar "narrativa" → "Narrativa" no puede desconectar las
+   actividades que ya la usan. Consecuencia aceptada: el slug puede quedar viejo
+   respecto del label. Es lo mismo que ya pasa con cualquier renombre y no se ve
+   en ninguna salida.
+2. **Borrar no busca las actividades que la usan.** Serían cientos de documentos
+   y esto corre en el navegador. La actividad que la tenga guardada sigue
+   mostrando su etiqueta des-slugueada (D-11), que es el respaldo para el que se
+   escribió. Por eso borrar algo con `usos > 0` se confirma aparte, y el aviso
+   muestra el des-slug real importado de `@calendario` (D-20) en vez de una copia
+   que podría mentir.
+3. **Las opciones base no ofrecen ninguna acción.** No es solo esconder botones:
+   `editarValor` las rechaza. Son las que pueden estar cableadas en la lógica (el
+   badge verde de "Gratis").
+
+**La señal de basura del §4.3 se muestra, no se calcula aparte:** una opción no
+fija con `usos <= 1` se marca "casi sin usar, puede ser un typo". Es la lectura
+literal del §4.3, y no borra nada sola.
+
+La pantalla es **autocontenida** (no recibe nada del router) porque montarla es
+editar `AdminApp.tsx`, que en el plan de saneamiento es de otro frente: queda
+como **B-170**.
+
+---
+
+## D-103 · `usos` se cuenta al elegir, no solo al crear, y en una transacción por campo
+
+**Problema:** el §4.3 le da dos trabajos a `usos` —ordenar el desplegable por
+frecuencia real y delatar basura— y ninguno funcionaba: solo se contaba la
+creación, así que todas las creadas quedaban clavadas en 1 y las base en 0
+(B-86). `ordenarValores` terminaba ordenando por etiqueta y la señal de basura no
+distinguía el typo del barrio que se usa todas las semanas.
+
+**Lo decidido:** `registrarUsos(campo, slugs)` en `opciones.ts`, una transacción
+por campo (no una por slug: en `tags` una actividad puede traer cinco).
+
+Dos reglas que la hacen difícil de usar mal:
+
+- **los slugs que no existen se ignoran.** Sin label no hay opción que crear, y
+  crear una des-slugueada acá metería vocabulario que nadie tipeó;
+- **un slug repetido en la misma llamada cuenta una vez.** Una actividad usa una
+  etiqueta, no la usa N veces.
+
+**Lo que queda pendiente y es de otro frente:** llamarla desde `guardar()`. El
+orden correcto es actividad primero, después `upsertOpcion` de las etiquetas
+nuevas, después `registrarUsos` con los slugs elegidos **menos** los que se
+acaban de crear (nacen con `usos: 1`; sumarlos otra vez los deja en 2). Engancha
+con la inversión de orden de B-71, así que sale en el frente del formulario
+(**B-168**).
+
+---
+
+## D-104 · Las opciones nuevas nacen aprobadas, y la maquinaria queda dormida
+
+**Decisión del dueño (2026-08-24), ejecutada acá.** Una etiqueta nueva cargada
+con "Otro" queda disponible para las dos cuentas enseguida: `aprobada: true` en
+`upsertOpcion` (B-131).
+
+**El argumento:** el problema que el §4.3 quería evitar era que el desplegable se
+llene de variantes de lo mismo, y eso lo resuelve el §4.2 —slugify más
+autocompletado—, que ataja los duplicados **antes** de que nazcan. La aprobación
+agregaba control de vocabulario, no corrección; con dos personas de confianza la
+fricción no se paga.
+
+**Lo que NO se hizo, y es la mitad de la decisión:** desarmar la maquinaria.
+`estaAprobada`, `opcionesVisibles`, `huellaCreador`, `aprobarOpcion`, el
+indicador "(sin aprobar)", el contador de pendientes y
+`scripts/aprobar-opciones.mjs` quedan **enteros**. El §4.3 anticipa el escenario
+("si en el futuro carga gente además del dueño") y volver a prenderla es poner
+`false` en un lugar.
+
+Para que el código dormido no se lea como código muerto:
+
+- el default lleva **el motivo escrito al lado**, con el número de ítem;
+- `tests/opciones-aprobacion.test.ts` **fija el default** leyendo el fuente —el
+  camino real necesita el emulador y sus tests se saltean cuando no está
+  corriendo, que es justo cuando un cambio de default pasaría inadvertido;
+- los tests de la aprobación **se conservan**. Ya no pueden fabricar una
+  pendiente llamando a `upsertOpcion`, así que la ponen pendiente a mano
+  (`volverPendiente`) y siguen ejercitando la maquinaria de punta a punta con el
+  script real. Es lo que garantiza que funcione el día que se prenda, y además
+  cubre las opciones que quedaron pendientes en producción **antes** de esta
+  decisión.
+
+**Consecuencia sobre otros ítems:** B-25 (aprobar desde el panel) y B-26 (avisar
+que hay pendientes) se construyeron igual —son la maquinaria— pero hoy operan
+sobre un conjunto que solo tiene lo viejo. B-28 (¿claim `curador`?) y B-29
+(¿auto-aprobar una etiqueta reusada?) quedan sin efecto práctico mientras esto
+esté vigente; siguen siendo decisiones del dueño y no se tocaron.
+
+---
+
+## D-105 · Los tags se miden con los mismos eventos, menos el que no existe
+
+**Problema:** `CAMPOS_TAXONOMIA_MEDIBLES` declaraba `'tags'` como valor válido de
+`detalle` para los cuatro eventos de taxonomía, y `TagsInput` no llamaba a
+`medirFuncion` en ningún lado (B-73): el campo con más volumen esperado era el
+único invisible en GA4, y el vocabulario declaraba algo que el código no podía
+producir.
+
+**Lo decidido:** `TagsInput` emite `taxonomia-nueva`, `taxonomia-reusada` y
+`taxonomia-sugerencia` con `detalle: 'tags'`, en los mismos puntos donde el
+desplegable ya los tenía.
+
+**`taxonomia-otro` no se emite para tags, a propósito.** No hay modo "Otro" que
+abrir: el input de chips es siempre el de tipear. Emitirlo en cada tag tipeado
+inflaría el evento que mide "cuánta gente sale del desplegable enumerado", que es
+otra pregunta. Queda documentado en [`09-analitica.md`](09-analitica.md) para que
+su ausencia no se lea como un bug.
+
+Un tag que ya estaba puesto no se mide: no es una interacción con la taxonomía.
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |
 |---|---|
 | Home indexable con el placeholder | se deja así (usuario, 2026-08-21) |
 | Eventos de prueba en el calendario | los borra el usuario (2026-08-21) |
+| Si las opciones nuevas deberían nacer aprobadas | sí, nacen aprobadas (dueño, 2026-08-24 — D-104) |
 
 ## Pendiente de decidir
 
@@ -1740,5 +1938,4 @@ por si el costo molesta en la práctica.
 | `libro presentado`: campo propio o dentro de la descripción | usuario |
 | Si `arancel` debe seguir preseleccionando "Gratis" | usuario |
 | Si hace falta un claim `curador` aparte del `admin` para aprobar taxonomías (D-28) | dueño |
-| Si las opciones que crea el dueño deberían nacer aprobadas (hoy nacen pendientes todas) | dueño |
 | Si una etiqueta que una segunda cuenta reusa debería aprobarse sola | dueño |

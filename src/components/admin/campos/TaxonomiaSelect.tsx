@@ -6,9 +6,15 @@ import {
   claseInput,
 } from '@/components/admin/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
-import { normalize } from '@/lib/normalize';
 import { estaAprobada } from '@/lib/opciones';
-import { slugify } from '@/lib/slugify';
+// §4.2 — el autocompletado y la deduplicación por slug son las mismas para los
+// dos widgets de taxonomía y viven en un módulo puro (B-72).
+import {
+  etiquetaConEstado,
+  pistaDeOpcion,
+  resolverEtiqueta,
+  sugerenciasPara,
+} from '@/lib/taxonomia';
 import type { CampoTaxonomia } from '@/types/actividad';
 
 interface Props {
@@ -84,30 +90,22 @@ export function TaxonomiaSelect({
   // etiqueta (mostrar el slug crudo se ve roto) y el select conserva el valor.
   const pendienteAjena = !esConocido && value ? valores.find((v) => v.slug === value) : undefined;
 
-  const sugerencias = useMemo(() => {
-    const q = normalize(texto.trim());
-    if (!q) return elegibles.slice(0, 8);
-    return elegibles.filter((v) => normalize(v.label).includes(q)).slice(0, 8);
-  }, [texto, elegibles]);
+  // Con el input vacío se muestran las primeras: entrar a "Otro" es un paso
+  // deliberado y ver qué hay orienta antes de tipear.
+  const sugerencias = useMemo(
+    () => sugerenciasPara(texto, elegibles, { mostrarConTextoVacio: true }),
+    [texto, elegibles],
+  );
 
-  // El slug de lo tipeado; si coincide con algo existente, se reusa (§4.2).
-  //
-  // Se busca en la lista completa, no solo en lo elegible: si la etiqueta ya existe
-  // como opción pendiente de otra persona, hay que reusarla igual. La transacción de
-  // §4.2 lo haría de todas formas, y avisarlo acá evita que alguien crea que
-  // está creando una opción nueva. La deduplicación gana: §4.2 es crítico.
-  const slugTipeado = slugify(texto);
-  const coincidencia = valores.find((v) => v.slug === slugTipeado);
+  // §4.2 — lo tipeado, resuelto contra la lista COMPLETA: si la etiqueta ya
+  // existe como opción pendiente de otra persona hay que reusar su slug igual.
+  const { slug: slugTipeado, coincidencia, labelNuevo } = resolverEtiqueta(texto, valores);
 
   const confirmarTexto = () => {
     if (!slugTipeado) return;
     medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
-    if (coincidencia) {
-      // Ya existe: se reusa, no se duplica.
-      onChange(coincidencia.slug);
-    } else {
-      onChange(slugTipeado, texto.trim());
-    }
+    // Ya existe: se reusa, no se duplica.
+    onChange(slugTipeado, labelNuevo);
     setModoOtro(false);
     setTexto('');
   };
@@ -186,9 +184,7 @@ export function TaxonomiaSelect({
                   }}
                 >
                   <span>{v.label}</span>
-                  <span className="shrink-0 text-xs text-tinta/40">
-                    {!estaAprobada(v) ? 'sin aprobar' : v.usos > 0 ? `${v.usos} usos` : ''}
-                  </span>
+                  <span className="shrink-0 text-xs text-tinta/40">{pistaDeOpcion(v)}</span>
                 </button>
               </li>
             ))}
@@ -230,7 +226,7 @@ export function TaxonomiaSelect({
             §4.3 — marcar las propias sin aprobar: si no, quien las creó no
             tiene forma de entender por qué la otra cuenta no las ve.
           */}
-          {estaAprobada(v) ? v.label : `${v.label} (sin aprobar)`}
+          {etiquetaConEstado(v)}
         </option>
       ))}
       <option value={OTRO}>Otro…</option>

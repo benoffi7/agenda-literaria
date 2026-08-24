@@ -249,7 +249,24 @@ está roto y nada de esto bloquea el sitio público (B-01), que sigue siendo lo
 Resultado esperado: el archivo baja a ~250 LOC y ~150 LOC pasan a ser
 testeables. Medio día para los dos primeros puntos.
 
-### Problema 2 · La deduplicación §4.2 del cliente está implementada dos veces, y ya divergieron
+### Problema 2 · La deduplicación §4.2 del cliente está implementada dos veces, y ya divergieron — ✅ resuelto (2026-08-24)
+
+**Resuelto** con B-72 y B-73, tal como lo proponía el diagnóstico: las reglas
+puras se extrajeron a `src/lib/taxonomia.ts` y los dos componentes las llaman
+(D-100). El texto de abajo describe cómo estaba y se deja como rastro.
+
+Lo que quedó distinto de la propuesta, y con motivo:
+
+- el tope es **un parámetro** con default 8, no un argumento obligatorio, y el
+  "qué mostrar con el input vacío" también: son las dos diferencias legítimas
+  entre un desplegable y un input de chips, y ahora tienen el motivo escrito al
+  lado en vez de ser un accidente;
+- **el aviso de reuso no se copió al input de chips.** Ahí el reuso ya se ve: el
+  chip aparece con la etiqueta canónica ("Narrativa" cuando se tipeó
+  "narrativa"), que es la misma información sin un cartel de más;
+- el módulo terminó en ~180 LOC y no ~40, casi todo comentario: se llevó también
+  `ordenarValores`, `estaAprobada` y `opcionesVisibles`, que ya eran puras y
+  estaban en `opciones.ts` atadas a Firestore sin necesitarlo.
 
 **Qué es.** `TaxonomiaSelect.tsx` (240 LOC) y `TagsInput.tsx` (129 LOC) resuelven
 el mismo problema del §4 con dos implementaciones separadas de tres reglas:

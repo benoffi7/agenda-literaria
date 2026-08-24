@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { claseInput } from '@/components/admin/campos/Campo';
 import { useOpciones } from '@/components/admin/useOpciones';
-import { normalize } from '@/lib/normalize';
+import { medirFuncion } from '@/lib/analytics';
 import { estaAprobada } from '@/lib/opciones';
-import { slugify } from '@/lib/slugify';
+// §4.2 — mismas reglas que el desplegable, un solo módulo puro (B-72).
+import { pistaDeOpcion, resolverEtiqueta, sugerenciasPara } from '@/lib/taxonomia';
 
 interface Props {
   /** uid de quien carga: decide qué tags pendientes puede elegir (§4.3). */
@@ -16,6 +17,10 @@ interface Props {
 /**
  * §4 — `tags` usa la misma taxonomía autogestionada que el resto, con el mismo
  * autocompletado. Los tags nuevos se registran en el submit.
+ *
+ * No se unifica con `TaxonomiaSelect`: un `<select>` con "Otro" y un input de
+ * chips son widgets distintos. Lo que se comparte es la lógica del §4.2
+ * (`@/lib/taxonomia`), que es la que no puede divergir (B-72).
  */
 export function TagsInput({ uid, value, onChange }: Props) {
   const { valores, elegibles } = useOpciones('tags', uid);
@@ -23,13 +28,12 @@ export function TagsInput({ uid, value, onChange }: Props) {
   const [nuevos, setNuevos] = useState<Record<string, string>>({});
 
   // Solo lo elegible: un tag pendiente de otra persona no se sugiere (§4.3).
-  const sugerencias = useMemo(() => {
-    const q = normalize(texto.trim());
-    if (!q) return [];
-    return elegibles
-      .filter((v) => normalize(v.label).includes(q) && !value.includes(v.slug))
-      .slice(0, 6);
-  }, [texto, elegibles, value]);
+  // Sin `mostrarConTextoVacio`: este input está siempre visible y una lista
+  // desplegada sin que nadie escriba taparía el resto del formulario.
+  const sugerencias = useMemo(
+    () => sugerenciasPara(texto, elegibles, { excluir: value }),
+    [texto, elegibles, value],
+  );
 
   // Para mostrar se usa la lista completa: un tag ya guardado en la actividad
   // tiene que verse con su etiqueta aunque todavía no esté aprobado.
@@ -52,13 +56,24 @@ export function TagsInput({ uid, value, onChange }: Props) {
   };
 
   const confirmar = () => {
-    const slug = slugify(texto);
+    // §4.2 — si ya existe con ese slug se reusa en lugar de duplicar. Se
+    // resuelve contra la lista completa: si el tag ya existe como opción
+    // pendiente de otra persona hay que reusar su slug igual.
+    const { slug, coincidencia, labelNuevo } = resolverEtiqueta(texto, valores);
     if (!slug) return;
-    // Si ya existe con ese slug, se reusa en lugar de duplicar (§4.2). Se busca
-    // en la lista completa: si el tag ya existe como opción pendiente de otra
-    // persona hay que reusar su slug igual, no crear un duplicado.
-    const existente = valores.find((v) => v.slug === slug);
-    agregar(slug, existente ? undefined : texto.trim());
+    // Un tag que ya está puesto no es una interacción con la taxonomía: se
+    // limpia el input y no se mide nada.
+    if (value.includes(slug)) {
+      setTexto('');
+      return;
+    }
+    // B-73 — el campo de taxonomía con más volumen esperado era el único que no
+    // reportaba nada, así que `detalle: 'tags'` no podía aparecer en GA4 aunque
+    // el vocabulario lo declara. Mismos eventos que en el desplegable; no hay
+    // `taxonomia-otro` porque acá no hay modo "Otro" que abrir: el input es
+    // siempre el de tipear.
+    medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', 'tags');
+    agregar(slug, labelNuevo);
   };
 
   return (
@@ -112,12 +127,13 @@ export function TagsInput({ uid, value, onChange }: Props) {
               <button
                 type="button"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
-                onClick={() => agregar(v.slug)}
+                onClick={() => {
+                  medirFuncion('taxonomia-sugerencia', 'tags');
+                  agregar(v.slug);
+                }}
               >
                 <span>{v.label}</span>
-                <span className="shrink-0 text-xs text-tinta/40">
-                  {!estaAprobada(v) ? 'sin aprobar' : v.usos > 0 ? `${v.usos} usos` : ''}
-                </span>
+                <span className="shrink-0 text-xs text-tinta/40">{pistaDeOpcion(v)}</span>
               </button>
             </li>
           ))}

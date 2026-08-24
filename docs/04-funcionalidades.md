@@ -143,6 +143,17 @@ escribe "gor" y aparece "A la gorra", el 90% de los duplicados no llega a nacer
 (§4.2). Si lo tipeado normaliza a un slug que ya existe, avisa que va a reusar
 esa opción en lugar de crear una nueva.
 
+El desplegable y el input de etiquetas usan **la misma** lógica (D-100): buscar
+sin acentos ni mayúsculas y a mitad de palabra, reusar por slug, y mostrar a la
+derecha de cada sugerencia cuántas veces se usó. La única diferencia visible es
+que el desplegable, al entrar a "Otro", ya muestra las primeras opciones sin que
+haya que escribir nada; el input de etiquetas no despliega nada hasta que se
+escribe, para no tapar el formulario.
+
+Una etiqueta nueva se guarda **presentable**: espacios de más colapsados y la
+primera letra en mayúscula, sin tocar el resto (D-101). "narrativa" se guarda
+"Narrativa"; "Villa Crespo" y "Club de lectura" quedan como se escribieron.
+
 ### Aprobación de etiquetas nuevas (§4.3)
 
 Hay dos cuentas cargando actividades, así que una etiqueta que inventa una no
@@ -166,9 +177,41 @@ sobre la visibilidad.
 Las opciones base (`fijo: true`) están aprobadas por definición, y **las que ya
 estaban cargadas antes de que existiera el campo siguen visibles** (D-26).
 
-Aprobar es una tarea de mantenimiento, no de carga: se hace con
-`scripts/aprobar-opciones.mjs` (ver [`08-operacion.md`](08-operacion.md)). No hay
-UI en el panel todavía (D-29).
+**Desde el 2026-08-24 esto está dormido:** por decisión del dueño las opciones
+nuevas **nacen aprobadas** (D-104), así que la tabla de arriba describe la
+maquinaria —que sigue entera y probada— y no lo que pasa hoy. Lo único que puede
+estar pendiente es lo que se creó antes de esa decisión. Volver a prenderla es un
+`false` en `upsertOpcion`.
+
+Aprobar es una tarea de mantenimiento, no de carga: se hace desde la pantalla de
+taxonomías (abajo) o con `scripts/aprobar-opciones.mjs`
+(ver [`08-operacion.md`](08-operacion.md)).
+
+### Administración de taxonomías
+
+Pantalla propia con las cinco listas —arancel, tipo, barrios, plataformas y
+etiquetas— y, por cada opción, su etiqueta, su slug, cuántas veces se usó y si
+está aprobada. Es donde el §4.3 se vuelve accionable (D-102):
+
+| Acción | Qué hace | Sobre qué |
+|---|---|---|
+| **Renombrar** | corrige cómo se ve la etiqueta, **sin mover el slug** | las creadas con "Otro" |
+| **Borrar** | la saca de las listas | las creadas con "Otro" |
+| **Aprobar** | la hace visible para la otra cuenta | las que quedaron pendientes |
+
+Las opciones **base** están marcadas y no tienen acciones: son las que puede
+haber cableadas en la lógica (§4.3).
+
+Dos avisos que la pantalla da porque son las consecuencias que no se adivinan:
+
+- una opción creada con "Otro" y **casi sin usar** se marca "puede ser un typo",
+  que es la señal de basura del §4.3;
+- **borrar algo que está en uso** se confirma aparte, diciendo con qué texto van
+  a quedar las actividades que la usan (el des-slug de D-11, calculado con la
+  misma función que arma el evento público).
+
+**Todavía no está colgada del panel** (B-170): el componente existe y funciona,
+falta la línea en el router, que es de otro frente.
 
 ### Mobile y tablet
 
