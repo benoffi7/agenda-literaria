@@ -49,6 +49,27 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'vista-calendario',
+    fecha: '2026-08-22',
+    titulo: 'Hay una vista calendario que te dice qué está publicado de verdad',
+    detalle:
+      'Muestra los encuentros día por día y, con un color por encuentro, si la gente ya lo ve en ' +
+      'el calendario público. Lo más útil: avisa cuando un encuentro debería estar publicado y su ' +
+      'evento no existe, algo que antes no se veía en ninguna pantalla. En el teléfono se ve como ' +
+      'agenda, no como grilla.',
+    donde: 'Botón «Calendario», arriba a la derecha del listado.',
+  },
+  {
+    id: 'orden-y-filtros-del-listado',
+    fecha: '2026-08-22',
+    titulo: 'El listado arranca por lo que se viene, y se puede filtrar',
+    detalle:
+      'Arriba está la actividad con el encuentro más próximo, no la última que tocaste, y cada ' +
+      'fila dice cuándo es. Con el botón «Filtros» podés cruzar estado, tipo, modalidad, barrio y ' +
+      'si le queda algo por venir. El orden de antes sigue disponible en «Ordenar por».',
+    donde: 'En el listado de actividades.',
+  },
+  {
     id: 'version-en-el-pie',
     fecha: '2026-08-22',
     version: '1.0.1',

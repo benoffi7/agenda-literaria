@@ -206,6 +206,115 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'calendario',
+    titulo: 'La vista calendario',
+    paraQue:
+      'Ver los encuentros día por día y, sobre todo, saber de un pantallazo qué está viéndose ya en el calendario público y qué no.',
+    puntos: [
+      {
+        texto:
+          'Se entra con el botón «Calendario» del listado. El listado muestra una tarjeta por ' +
+          'actividad; el calendario muestra un renglón por encuentro, así que un ciclo de ocho ' +
+          'aparece ocho veces. Cada renglón dice qué encuentro es («Encuentro 3 de 8») y al ' +
+          'tocarlo se abre la actividad completa, que sigue siendo la única cosa que se edita.',
+      },
+      {
+        texto:
+          'El color de cada encuentro no es el estado de la actividad: es la respuesta a «¿esto ' +
+          'ya lo ve la gente?». Sale de tres cosas juntas: el estado de la actividad, si el ' +
+          'encuentro está cancelado, y si su evento existe de verdad en el calendario público. ' +
+          'Abajo de todo hay una lista con qué significa cada uno.',
+      },
+      {
+        texto:
+          'Si un encuentro debería estar publicado y su evento no existe, aparece un aviso rojo ' +
+          'arriba de todo. Quiere decir que la publicación al calendario no llegó a correr o ' +
+          'falló, y hasta ahora no había ninguna pantalla donde eso se viera: la actividad decía ' +
+          '«publicado» y en el calendario no había nada. Se arregla volviendo a guardar la ' +
+          'actividad.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'El caso opuesto también avisa: un encuentro que ya no debería estar publicado y cuyo ' +
+          'evento todavía figura. Ahí la gente puede seguir viendo un encuentro que pasó a ' +
+          'borrador o que se canceló. Si acabás de guardar, esperá unos segundos y refrescá: ' +
+          'la publicación tarda un momento.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'El aviso mira todos los meses, no el que estás viendo, y trae un botón para ir al mes ' +
+          'donde está el problema. La vista se abre directamente en ese mes cuando hay alguno.',
+      },
+      {
+        texto:
+          'Los encuentros cancelados de una actividad publicada se siguen viendo, en gris: el ' +
+          'encuentro queda como registro de que ese día estaba previsto, aunque su evento ya no ' +
+          'esté en el calendario. Lo mismo con las actividades canceladas cuyos encuentros ya ' +
+          'pasaron.',
+      },
+      {
+        texto:
+          'En el teléfono no hay grilla de mes: siete columnas en una pantalla angosta no se ' +
+          'leen. Se ve la agenda, que son los días con algo uno abajo del otro. En pantalla ' +
+          'grande se puede elegir entre «Mes» y «Agenda».',
+      },
+      {
+        texto:
+          'Un mes sin nada lo dice, y ofrece ir al mes más cercano que tenga encuentros, así no ' +
+          'hay que adivinar para qué lado apretar la flecha.',
+      },
+    ],
+  },
+  {
+    id: 'orden-y-filtros',
+    titulo: 'Ordenar y filtrar el listado',
+    paraQue:
+      'Encontrar una actividad entre muchas, y tener arriba lo que está por pasar en lugar de lo último que tocaste.',
+    puntos: [
+      {
+        texto:
+          'Por defecto el listado ordena por lo que se viene primero: arriba está el encuentro ' +
+          'más próximo. Antes ordenaba por lo último modificado, y así un borrador con el primer ' +
+          'encuentro en cuatro días quedaba al fondo y no lo veía nadie.',
+      },
+      {
+        texto:
+          'Cada fila dice cuándo es su próximo encuentro, o que no le queda ninguno por venir. ' +
+          'Los encuentros cancelados no cuentan como próximos.',
+      },
+      {
+        texto:
+          'El desplegable «Ordenar por» tiene además última modificación —el orden de antes— y ' +
+          'título de A a Z.',
+      },
+      {
+        texto:
+          'El botón «Filtros» abre cinco: estado, tipo, modalidad, barrio y fechas. Se cruzan ' +
+          'entre sí y se combinan con el buscador. El número al lado del botón dice cuántos hay ' +
+          'puestos, para que un filtro olvidado no parezca un listado vacío.',
+      },
+      {
+        texto:
+          '«Con algo por venir» deja las actividades que todavía tienen un encuentro por pasar, y ' +
+          'su opuesto deja las que ya terminaron o nunca tuvieron fecha. Es la forma de encontrar ' +
+          'lo que quedó sin cerrar.',
+      },
+      {
+        texto:
+          'Los filtros de tipo y barrio ofrecen solo lo que alguna actividad usa de verdad, así ' +
+          'que nunca hay una opción que devuelva cero. Y se muestran con su nombre, no con la ' +
+          'forma en que se guardan.',
+      },
+      {
+        texto:
+          'Todo esto pasa con lo que el panel ya tiene cargado: filtrar y ordenar es instantáneo ' +
+          'y no consulta nada.',
+      },
+    ],
+  },
+  {
     id: 'que-es',
     titulo: 'Qué es',
     seccionFormulario: 'Qué es',
@@ -611,6 +720,7 @@ export const CAPITULOS: CapituloAyuda[] = [
 export const CAPITULO_POR_CONTEXTO = {
   lista: 'listado',
   formulario: 'flujo',
+  calendario: 'calendario',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;

@@ -19,6 +19,7 @@ import {
   usarEmuladores,
 } from '@/lib/firebase-client';
 import type { ActividadFormulario as TipoFormulario } from '@/components/admin/ActividadFormulario';
+import type { CalendarioActividades as TipoCalendario } from '@/components/admin/CalendarioActividades';
 import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
@@ -31,7 +32,10 @@ type Vista =
   // B-11 — la copia viaja como form, no como documento: se guarda por el camino
   // de creación, así el id, el slug y `createdAt`/`createdBy` son de la copia.
   | { tipo: 'duplicar'; copia: ActividadForm; tituloOrigen: string }
-  | { tipo: 'reportes' };
+  | { tipo: 'reportes' }
+  // La vista calendario es de solo lectura: enumera encuentros y, al tocar uno,
+  // abre la actividad. No necesita estado propio (D-70).
+  | { tipo: 'calendario' };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -73,6 +77,14 @@ const ActividadFormulario = diferido<Parameters<typeof TipoFormulario>[0]>(() =>
 // del login y desharía el corte de B-09.
 const ReportesPanel = diferido<Parameters<typeof TipoReportes>[0]>(() =>
   import('@/components/admin/ReportesPanel').then((m) => ({ default: m.ReportesPanel })),
+);
+
+// Diferida por la misma razón que las otras vistas: lee /actividades, así que
+// arrastra Firestore y no puede volver al chunk del login (B-09, D-51).
+const CalendarioActividades = diferido<Parameters<typeof TipoCalendario>[0]>(() =>
+  import('@/components/admin/CalendarioActividades').then((m) => ({
+    default: m.CalendarioActividades,
+  })),
 );
 
 /**
@@ -178,6 +190,8 @@ export function AdminApp() {
                   ? `Copia de ${vista.tituloOrigen}`
                   : vista.tipo === 'reportes'
                     ? 'Bugs y sugerencias'
+                    : vista.tipo === 'calendario'
+                      ? 'Calendario'
                   : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
@@ -189,6 +203,15 @@ export function AdminApp() {
             className="min-h-touch shrink-0 rounded-md border border-borde bg-white px-3 text-sm"
           >
             ← Volver
+          </button>
+        )}
+        {vista.tipo === 'lista' && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'calendario' })}
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Calendario
           </button>
         )}
         {vista.tipo !== 'reportes' && (
@@ -203,7 +226,15 @@ export function AdminApp() {
         {/* Única entrada a la ayuda y a las novedades (D-61): el encabezado se
             ve en todas las pantallas, y al ser una capa se puede consultar sin
             perder el formulario a medio cargar. */}
-        <BotonAyuda contexto={vista.tipo === 'lista' ? 'lista' : 'formulario'} />
+        <BotonAyuda
+          contexto={
+            vista.tipo === 'lista'
+              ? 'lista'
+              : vista.tipo === 'calendario'
+                ? 'calendario'
+                : 'formulario'
+          }
+        />
         <button
           type="button"
           onClick={() => void logout()}
@@ -227,6 +258,13 @@ export function AdminApp() {
           onDuplicar={(copia, tituloOrigen) =>
             setVista({ tipo: 'duplicar', copia, tituloOrigen })
           }
+        />
+      )}
+
+      {vista.tipo === 'calendario' && (
+        <CalendarioActividades
+          version={version}
+          onEditar={(a) => setVista({ tipo: 'editar', actividad: a })}
         />
       )}
 
