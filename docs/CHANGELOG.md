@@ -52,6 +52,53 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### B-188 · el workflow del rebuild estaba registrado sin triggers, por un `: `
+
+`deploy.yml` tenía esta línea:
+
+```yaml
+run: echo "Motivo: ${{ github.event.client_payload.motivo || 'disparo manual' }}"
+```
+
+Un `: ` adentro de un escalar sin comillas hace que YAML lea un mapa anidado, así
+que **el archivo entero era inválido** y GitHub lo registraba **sin ningún
+trigger**. Estuvo así desde el primer día: el `repository_dispatch` de
+`dispararRebuild` no disparaba nada, la Function veía su POST devolver 204, y lo
+único visible era una corrida fallida sin jobs en cada push.
+
+**Cómo se encontró, que es la parte reutilizable.** La UI no era necesaria y la API
+no expone el error de arranque. Lo dijeron dos observaciones y un parser:
+
+1. El `name` de la entidad del workflow era **el path** en lugar de "Build y deploy
+   del sitio" → GitHub nunca leyó el `name:`.
+2. `POST .../dispatches` contestó **422 "Workflow does not have 'workflow_dispatch'
+   trigger"** sobre un archivo que lo declara en la línea 15 → la versión que
+   GitHub tiene no tiene triggers.
+3. `yaml` en modo estricto sobre los dos workflows: *Nested mappings are not allowed
+   in compact mappings at line 38, column 14*.
+
+Antes de eso se habían descartado los sospechosos obvios —tabs, BOM, CRLF, claves
+duplicadas, caracteres invisibles— y todos estaban limpios: el problema no era el
+archivo como bytes sino como gramática.
+
+**La red.** `tests/workflows.test.ts` parsea todos los workflows en modo estricto,
+exige `name` y al menos un trigger, y ata el `repository_dispatch` de `deploy.yml`
+con el `event_type: 'rebuild'` que manda `functions/index.js` — dos archivos que
+tienen que coincidir y que hoy no tenían nada que los uniera. Verificado
+reintroduciendo el bug: falla y nombra línea y columna.
+
+Un detalle del diseño del test que vale para el próximo: **mira `doc.errors`, no el
+objeto parseado.** El parser de `yaml` se recupera del error y devuelve un objeto con
+`name` y `on` adentro, así que un test que mirara el resultado habría dado verde
+sobre un archivo que en GitHub no funciona. Un parser más tolerante que el consumidor
+real da la respuesta equivocada.
+
+Quedó como **trampa 11** del `CLAUDE.md` §13 (**D-118**). Es la primera del §13 que
+no es de dominio, y la decisión está escrita: lo que las hace la misma cosa no es el
+tema sino la forma de fallar — todo en verde, y el error solo visible del otro lado.
+De paso entra a la maquinaria de B-119, que exige fila en el mapa y que el test
+nombre su trampa.
+
 ### Un push a `main` ya publica solo
 
 El deploy por CI quedó andando el 2026-08-25 18:04: la corrida publicó

@@ -35,7 +35,13 @@ jobs:
         # El motivo lo manda la Function en el client_payload ("actividad X",
         # "opciones/tags"). Queda en el log para poder correlacionar un run con
         # la edición que lo causó.
-        run: echo "Motivo: ${{ github.event.client_payload.motivo || 'disparo manual' }}"
+        #
+        # `run: |` y no `run: echo …` en una línea: el texto lleva "Motivo:" y un
+        # `: ` dentro de un escalar sin comillas hace que YAML lea un mapa
+        # anidado. Eso rompía el archivo entero y **dejaba este workflow sin
+        # triggers** — ver B-188. Lo cubre `tests/workflows.test.ts`.
+        run: |
+          echo "Motivo: ${{ github.event.client_payload.motivo || 'disparo manual' }}"
 
       - uses: actions/checkout@v4
 

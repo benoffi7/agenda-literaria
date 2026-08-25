@@ -2126,7 +2126,7 @@ que un clone nuevo levanta los emuladores sin instalar nada.
 Lo que **no** cubre este arreglo: el deploy sigue sin poder correr por los secrets
 que faltan (ver «Pendiente de acción manual del dueño»). Este ítem es solo el gate.
 
-### B-188 · `deploy.yml` falla al arrancar, y es el último eslabón del rebuild · P1
+### B-188 · `deploy.yml` falla al arrancar, y es el último eslabón del rebuild — ✅ hecho (2026-08-25)
 
 Desde el primer push del repo (2026-08-25), **cada** push a `main` deja dos
 corridas en Actions: la de «Deploy desde main», que es la que corresponde, y una
@@ -2158,12 +2158,50 @@ aparecer nunca, y no va a haber ningún error que lo diga. La corrida fallida de
 cada push es la única señal visible, así que conviene no acostumbrarse a
 ignorarla.
 
-**Por dónde seguir:** el motivo solo se ve en la UI de Actions (la API no lo
-expone). Abrir la corrida y leer el error de arranque es el primer paso; si no
-dice nada útil, bisecar el archivo comentando bloques hasta que la corrida
-desaparezca. Candidato a mirar primero: la expresión
-`${{ github.event.client_payload.motivo || 'disparo manual' }}` del primer step,
-que en un evento `push` referencia un contexto que no existe.
+#### La causa, y cómo se encontró sin la UI
+
+El candidato que había anotado era el correcto pero por el motivo equivocado: no
+era el contexto inexistente, era **la sintaxis de la línea**.
+
+```yaml
+run: echo "Motivo: ${{ github.event.client_payload.motivo || 'disparo manual' }}"
+```
+
+Un `: ` adentro de un escalar sin comillas hace que YAML lea un **mapa anidado**, y
+el archivo entero queda inválido:
+
+```
+Nested mappings are not allowed in compact mappings at line 38, column 14
+```
+
+Lo que lo confirmó sin necesidad de la UI fueron dos observaciones:
+
+1. **El `name` de la entidad del workflow era el path** (`.github/workflows/deploy.yml`
+   en lugar de "Build y deploy del sitio"): GitHub nunca llegó a leer el `name:`.
+2. **`POST .../dispatches` contestó 422 "Workflow does not have 'workflow_dispatch'
+   trigger"** sobre un archivo que declara ese trigger en la línea 15. O sea que la
+   versión que GitHub tiene de este workflow **no tiene triggers**, y por eso un
+   push le generaba una corrida de error en vez de ignorarlo.
+
+Y el parser lo dijo en una línea, corriendo `yaml` con `strict` sobre los dos
+workflows. Lo que descartó los sospechosos obvios antes: no hay tabs, ni BOM, ni
+CRLF, ni claves duplicadas, ni caracteres invisibles — eso se verificó, y era
+verdad; el problema no era el archivo como bytes sino como gramática.
+
+**Arreglado** pasando la línea a `run: |`. Y va con red: `tests/workflows.test.ts`
+parsea todos los workflows en modo estricto y verifica que cada uno tenga `name` y
+al menos un trigger, más que el `repository_dispatch` de `deploy.yml` coincida con
+el `event_type` que manda `functions/index.js`. Se comprobó reintroduciendo el bug:
+el test falla y nombra la línea y la columna.
+
+**Por qué el chequeo mira `doc.errors` y no el objeto parseado:** el parser de
+`yaml` se **recupera** del error y devuelve un objeto con `name` y `on` adentro, así
+que un test que mirara el resultado habría dado verde sobre un archivo que en
+GitHub no funciona. Un parser más tolerante que el consumidor real da la respuesta
+equivocada.
+
+Quedó como **trampa 11** del `CLAUDE.md` §13 (D-118): es la única de la lista que
+no se identificó leyendo el código, y ningún test del repo podía verla.
 
 ### B-190 · La plataforma es obligatoria para lo virtual, y a veces todavía no se sabe cuál es · P2
 

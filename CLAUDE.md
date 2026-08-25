@@ -587,6 +587,9 @@ cerrada una feature.
    en los filtros.
 9. **Cambio de sede que no propaga a las N sesiones** del ciclo en Calendar.
 10. **Slug mutable** → URLs rotas y SEO perdido. Inmutable después de publicar.
+11. **Workflow de Actions que no parsea** → GitHub lo registra **sin ningún
+    trigger**, así que no corre nunca y nada lo dice de este lado. Un `: ` adentro
+    de un escalar sin comillas alcanza (`run: echo "Motivo: ..."`).
 
 ---
 

@@ -2349,3 +2349,33 @@ versión incluye revisar que las novedades sin publicar apunten a la que se est�
 publicando**, y no al número que había cuando se escribieron. `id` y `fecha` no se
 tocan nunca —el `id` es la marca de "hasta acá leí" en el navegador de cada
 persona—; `version` sí, mientras la entrada no haya salido.
+
+## D-118 · La trampa 11 entra al §13, aunque no sea de dominio
+
+**Contexto.** B-188: `deploy.yml` estuvo desde el primer día registrado en GitHub
+**sin ningún trigger**, porque un `: ` dentro de un escalar sin comillas invalidaba
+el YAML entero. El lazo del §8 quedaba cortado en el último eslabón y **nada de
+este lado lo decía**: la Function veía su `repository_dispatch` devolver 204, la
+suite pasaba, el typecheck pasaba, y lo único visible era una corrida sin jobs en
+la pestaña Actions.
+
+**Decisión.** Se agrega como **trampa 11** al §13 del `CLAUDE.md`, con su fila en
+[`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) y su test.
+
+**Por qué, si las otras diez son de dominio.** Las diez trampas del §13 son errores
+de modelo o de datos —timestamps, ids, loops, slugs—; ésta es de un archivo de
+configuración. Lo que las hace la misma cosa no es el tema sino **la forma de
+fallar**: un error que deja todo en verde y solo se nota del otro lado. Ese es el
+criterio con el que el §13 se escribió ("verificar cada uno antes de dar por cerrada
+una feature"), y el que hace que valga la pena una lista en lugar de confiar en la
+memoria.
+
+Y hay una razón mecánica: `tests/mapa-de-trampas.test.ts` **lee la lista del §13** y
+exige que cada trampa tenga fila y que cada test nombre la suya. Dejarla afuera del
+§13 la habría dejado también afuera de esa maquinaria — con lo que el chequeo nuevo
+podría desaparecer en un refactor sin que nada se ponga rojo, que es el problema que
+B-119 vino a resolver.
+
+**Consecuencia.** El §13 pasa a ser "errores que fallan en silencio", no "errores
+del modelo de datos". Si más adelante aparece un tercer grupo, conviene subtitular
+la sección antes de que la lista mezcle cosas que no se revisan en el mismo momento.

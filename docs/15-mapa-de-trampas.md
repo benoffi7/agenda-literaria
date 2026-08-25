@@ -38,6 +38,7 @@ palabras `trampa N`.
 | 8 | Olvidar el rebuild al cambiar `/opciones/*` | `functions/index.js`, `functions/rebuild.js` | `tests/costuras.test.ts`, `tests/clases-de-bug.test.ts` |
 | 9 | Cambio de sede que no propaga a las N sesiones | `functions/calendario.js` | `tests/calendario.test.ts` |
 | 10 | Slug mutable | `src/lib/schema.ts` | `tests/schema.test.ts` |
+| 11 | Workflow de Actions que no parsea | `.github/workflows/deploy.yml`, `.github/workflows/push-main.yml` | `tests/workflows.test.ts` |
 
 ## Sin red
 
@@ -53,6 +54,23 @@ palabras `trampa N`.
   Todavía casi no muerde porque el público lee el `events.json` estático (§2.5).
   Muerde el día que aparezca la primera lectura en vivo del sitio público (B-01),
   que es exactamente cuando nadie se va a acordar del §5.3.
+
+### La trampa 11, que se descubrió en producción
+
+Es la única de la lista que **no** se identificó leyendo el código sino mirando
+GitHub: `deploy.yml` tenía `run: echo "Motivo: ${{ … }}"`, y ese `: ` adentro de un
+escalar sin comillas hace que YAML lea un mapa anidado. El archivo entero quedaba
+inválido y GitHub lo registraba **sin triggers** — el `repository_dispatch` de
+`dispararRebuild` no disparaba nada, la Function veía su POST devolver 204, y lo
+único visible era una corrida fallida sin jobs en cada push. Estuvo así desde el
+primer día (B-188).
+
+Lo que la hace distinta de las otras diez: **ningún test del repo podía verla**. El
+YAML roto no rompe un import, ni un tipo, ni una aserción; el único lugar donde se
+nota es del otro lado. Y el parser tolerante engaña: `yaml` se recupera del error y
+devuelve un objeto con `name` y `on` adentro, así que el chequeo tiene que mirar
+`doc.errors` y no el resultado. Eso está escrito en el test, y se verificó
+reintroduciendo el bug.
 
 ### Lo que estaba sin red hasta hoy
 
