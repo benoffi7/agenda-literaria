@@ -95,7 +95,7 @@ Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsi
   Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
   `hayCredenciales()`, **existe y no la llama nadie** (**B-189**).
 
-### B-21 · Alerta de rebuild agotado (opcional) — código listo (2026-08-24), falta el click del dueño
+### B-21 · Alerta de rebuild agotado — el código está, y falta el runbook que este ítem daba por escrito
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
 `el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
@@ -109,8 +109,23 @@ alguien reescriba la frase—. El filtro exacto y los pasos de la consola están
 [`08-operacion.md`](08-operacion.md) § "Alerta de rebuild agotado".
 
 **Lo que queda, y solo lo puede hacer el dueño:** crear la alerta en su proyecto
-de GCP con un canal de notificación propio. Tiene sentido recién cuando
-`dispararRebuild` esté desplegada (B-20).
+de GCP con un canal de notificación propio. **Ya tiene sentido:** `dispararRebuild`
+está desplegada, B-20 cerrado y el lazo verificado de punta a punta el 2026-08-25.
+
+**Y falta algo más que el click, que este ítem daba por escrito:** decía que "el
+filtro exacto y los pasos de la consola están en `08-operacion.md` § 'Alerta de
+rebuild agotado'", y **esa sección no existe** — `grep -i alerta docs/08-operacion.md`
+no devuelve nada. La referencia era una promesa, no una instrucción, justo en el paso
+que solo puede dar el dueño. El runbook que falta es corto y los datos están todos:
+
+- el log sale de `functions/index.js:470` con nivel `error` y el campo
+  `alerta: 'rebuild-agotado'` en el `jsonPayload`;
+- la Function es `dispararRebuild`, en `southamerica-east1`;
+- el filtro, entonces, es
+  `resource.type="cloud_function" AND jsonPayload.alerta="rebuild-agotado"`
+  (o `resource.type="cloud_run_revision"` según cómo aparezca la v2 en Logging —
+  conviene mirar una entrada real antes de fijarlo);
+- y el canal de notificación lo elige el dueño.
 
 ---
 
@@ -2333,22 +2348,20 @@ eso no lo dice ningún test. Vale mirar con el mismo ojo las otras funciones que
 viven detrás de un acordeón o de un menú: material, difusión, historial, y la
 pantalla de taxonomías.
 
-### B-194 · El job de Functions deja roja cada corrida que toca `functions/`, y con ella se pierde el tag · P2
+### B-194 · Dos jobs que no pueden terminar bien, y uno bloquea el deploy del panel · P1
 
-Desde que el deploy por CI funciona (2026-08-25), `push-main.yml` tiene un job que
-no puede terminar bien: «Cloud Functions» corre `npx firebase deploy --only
-functions` con la credencial de `deploy-ci@`, y falla con
+Desde que el deploy por CI funciona (2026-08-25), `push-main.yml` tiene **dos** jobs
+que no pueden terminar bien con la credencial que hay:
 
-```
-Missing permissions required for functions deploy. You must have permission
-iam.serviceAccounts.ActAs on service account agenda-literaria@appspot.gserviceaccount.com
-```
+| Job | Corta con |
+|---|---|
+| Cloud Functions | `Missing permissions … iam.serviceAccounts.ActAs on agenda-literaria@appspot.gserviceaccount.com` |
+| Reglas e índices | `Permission denied` (desde D-119, que revirtió `firebaserules.admin`) |
 
-**Eso es a propósito**, y el razonamiento está en
-[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`": darle
-los roles de Functions a la única key del proyecto es casi ejecución arbitraria, y
-el deploy de Functions se hace de a una y a mano. Lo que **no** es a propósito son
-las dos consecuencias:
+**Los dos son a propósito**, y el razonamiento está en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`" y en
+**D-119**: la única key del proyecto no despliega código ni cambia qué es legible.
+Lo que **no** es a propósito son las tres consecuencias:
 
 1. **Toda corrida que toque `functions/` queda roja.** Una corrida roja que se
    espera roja es la forma más rápida de que nadie mire las corridas, que es
@@ -2358,22 +2371,118 @@ las dos consecuencias:
    un push que suba `version` en `package.json` **y** toque `functions/` no crea el
    tag. Y son el mismo push más seguido de lo que parece: el cambio del §7 al
    calendario suele venir con la versión nueva que lo anuncia.
+3. **Un push que toque las reglas y `src/` no publica el panel** — y ésta es la que
+   sube el ítem a P1. El `if` del job de Hosting pide
+   `needs.firestore.result != 'failure'`, así que el rojo del job de reglas lo
+   saltea. Medido:
+
+   ```bash
+   $ printf 'firestore.rules\nsrc/lib/schema.ts\n' | ./scripts/que-deployar.sh
+   hosting=true   functions=false   firestore=true     # → reglas ❌ → Hosting salteado
+   ```
+
+   El `if` existe por un motivo bueno (el panel nuevo no debe salir antes que las
+   reglas que necesita). Pero ahora distingue mal: trata igual "las reglas son
+   inválidas" y "esta credencial no despliega reglas, por diseño".
 
 Tres salidas, y la decisión es cuál:
 
-- **Sacar el job del workflow.** Es lo más honesto con lo que ya se decidió: si el
-  deploy de Functions es manual por diseño, un job que intenta hacerlo y falla no
-  aporta nada. Cuesta que nada avise cuando `functions/` cambió y hay que
-  desplegar a mano — se puede cubrir con un job que **solo avise**, sin deployar.
-- **Dejarlo, y sacar `functions` de los `needs` de `etiquetar`**, para no perder el
-  tag. Tapa la consecuencia 2 y deja la 1.
-- **Otorgar los roles.** Resuelve las dos y es la que se descartó por seguridad. Si
-  se revisara, la forma menos mala es una **segunda** service account solo para
-  Functions, con su propia key: así el alcance no se acumula sobre la que publica
-  el sitio.
+- **Sacar los dos jobs y reemplazarlos por uno que solo avise.** Es lo más honesto
+  con lo que ya se decidió: si reglas y Functions se despliegan a mano por diseño,
+  dos jobs que intentan hacerlo y fallan no aportan nada, y una corrida que se
+  espera roja es la forma más rápida de que nadie mire las corridas — que es
+  exactamente lo que pasó con B-188. El job de aviso anota "cambió `functions/`:
+  deployá a mano" y termina en verde. **Es la que recomendaría**, y resuelve las
+  tres consecuencias de una. Lo que cuesta: el orden "reglas antes que el panel"
+  deja de estar garantizado por el workflow y pasa a ser del runbook, así que hay
+  que escribirlo ahí.
+- **Dejarlos y aflojar los `if`**: sacar `functions` de los `needs` de `etiquetar`, y
+  cambiar el de Hosting por algo que distinga "reglas inválidas" de "sin permiso".
+  Tapa las consecuencias sin resolver la 1.
+- **Otorgar los roles.** Resuelve todo y es la que se descartó dos veces por
+  seguridad (§"Roles de `deploy-ci@`", D-119). Si se revisara, la forma menos mala es
+  una **segunda** service account por tarea, con su propia key, para que el alcance
+  no se acumule sobre la que publica el sitio.
 
 `que-deployar.sh` decide cuándo corre este job, así que la primera y la segunda
 opción se pueden probar con el script antes de tocar el YAML.
+
+### B-196 · Los tests de privacidad del `events.json` y del evento son una lista, no una propiedad · P2
+
+Sale del auditor de privacidad (B-195, H4). Las cuatro salidas públicas del §5.1 se
+verifican de dos maneras distintas, y dos están mejor cubiertas que las otras dos:
+
+| Salida | Cómo se verifica |
+|---|---|
+| Issue de GitHub | **barrido por clase** (`tests/clases-de-bug.test.ts`) |
+| Analítica | **barrido por clase** (`tests/analytics-privacidad.test.ts`) |
+| `events.json` / SSG | lista de campos conocidos (`tests/toPublic.test.ts`) |
+| Evento de Calendar | lista de campos conocidos (`tests/calendario.test.ts`) |
+
+Las dos últimas nombran cada campo privado que existía el día que se escribieron:
+`zoom.us/j/secreto`, `coordinar con prensa`, `drive/privado`, `evt_secreto`,
+`uid_abc`. Eso cubre lo que se conocía, no la propiedad. **El campo nuevo que nadie
+agregue a la lista se publica sin que nada se ponga rojo**, y `construirDescripcion`
+arma la descripción del evento con ~15 interpolaciones a mano, así que es justo donde
+un campo se cuela por descuido.
+
+**La forma:** un fixture donde **cada string** de la actividad es un centinela
+distinto y verificable (`CENTINELA_titulo`, `CENTINELA_difusion_notas`, …), y la
+afirmación de que en la salida sobreviven **exactamente** los centinelas de los
+campos que el §5.2 permite. Un campo nuevo nace en el fixture —porque el fixture se
+arma recorriendo el tipo— y si se publica sin estar permitido, falla.
+
+Lo caro es armar el fixture exhaustivo; lo barato es que después cada campo nuevo
+entra solo. Es el mismo patrón que ya usan las otras dos salidas, así que hay de
+dónde copiarlo.
+
+### B-195 · Lo que encontró el auditor de privacidad sobre el deploy nuevo — ✅ hecho (2026-08-25)
+
+Cuatro hallazgos al auditar el día completo. Los dos primeros son **consecuencia de
+arreglar B-188**: hasta ese momento `deploy.yml` no arrancaba nunca, así que sus
+problemas eran inertes.
+
+**H1 · el motivo del rebuild se interpolaba en el cuerpo del script.**
+
+```yaml
+run: |
+  echo "Motivo: ${{ github.event.client_payload.motivo || 'disparo manual' }}"
+```
+
+Dos cosas a la vez. `${{ }}` dentro de un `run:` se pega en el texto del script
+**antes** de que exista la shell, y `motivo` sale de Firestore: un valor con comillas
+o `$(…)` ejecuta lo que quiera en el job que más abajo recibe
+`FIREBASE_SERVICE_ACCOUNT`, la única key del proyecto. Y aparte, **los logs de
+Actions de un repo público los lee cualquiera**, así que el motivo es una salida
+pública más — una que el §5.1 no enumera.
+
+Arreglado pasándolo por `env:`. Va con dos redes en `tests/workflows.test.ts`:
+ningún `run:` de ningún workflow puede interpolar `github.event.*`, `inputs` ni
+`client_payload`; y en `tests/costuras.test.ts`, que el motivo sea **opaco**. Ese
+segundo es una propiedad y no una lista: ningún dato del documento se alcanza sin un
+acceso a propiedad, así que se exige que las interpolaciones del motivo no tengan un
+punto. `${id}` pasa; `${despues.titulo}` no, sin importar cómo se llame el campo. El
+cambio tentador era justamente ése — `actividad ${despues.titulo}` se lee mucho mejor
+en el log— y publicaría el título de una actividad que puede estar en **borrador**,
+porque `marcarRebuild` corre con `huboCambioDeContenido` y no espera a que se
+publique.
+
+**H2 · el radio de la única key había cambiado y `07-seguridad.md` decía lo
+contrario** → resuelto como **D-119**: se revirtieron los roles de reglas, y las dos
+listas quedaron atadas por `tests/roles-deploy-ci.test.ts`.
+
+**H3 · el gate de la trampa 4 estaba copiado en YAML, y la copia ya había
+divergido.** `deploy.yml` tenía el `grep` inline en vez de llamar a
+`scripts/verificar-bundle.sh`, y le faltaba la guarda final del script: que `dist/`
+tenga al menos un `.js`. O sea que **un build vacío pasaba el gate habiendo
+verificado nada** — exactamente lo que la cabecera del script advertía que pasaría
+al duplicarlo, y exactamente el build que describe **B-189**. Ahora llama al script,
+y el test exige que todo workflow que buildee lo haga.
+
+**H4 · las dos salidas que se arman interpolando texto no tienen barrido de
+centinelas** → queda abierto como **B-196**.
+
+Las tres redes nuevas se verificaron reintroduciendo cada bug.
 
 ## P3 — cuando sobre tiempo
 

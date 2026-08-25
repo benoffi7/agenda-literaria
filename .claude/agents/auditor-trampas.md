@@ -12,7 +12,7 @@ Un error que revienta el build o pone un test en rojo no es asunto tuyo — el C
 lo agarra. Vos buscás lo que deja todo en verde y aparece semanas después, en
 producción, con eventos duplicados o el panel viejo publicado.
 
-La lista viva está en `CLAUDE.md` §13 (diez trampas) y en `docs/05-patrones.md`.
+La lista viva está en `CLAUDE.md` §13 (once trampas) y en `docs/05-patrones.md`.
 Leelos: esto es el mapa de dónde vive cada una y **dónde los tests no miran**.
 
 ## Las trampas, su lugar y su punto ciego
@@ -29,6 +29,7 @@ Leelos: esto es el mapa de dónde vive cada una y **dónde los tests no miran**.
 | 8 | Olvidar disparar el rebuild → labels viejos en los filtros | `functions/index.js` (`syncCalendar`, `rebuildPorOpciones` marcan `sistema/rebuild.pendiente`) | `rebuild`, y `clases-de-bug` para que la marca no quede debajo de un `return` de guarda | una **colección nueva** cuyo contenido entre al `events.json` y que no marque el flag: eso no lo ve ningún test, porque el trigger que falta no existe para descubrirlo |
 | 9 | Cambio de sede que no propaga a las N sesiones | comparación de payload en `planificar` | `calendario` ("cambio global", "el payload propaga los campos nuevos") | un dato del evento que se arme **fuera** de `construirEvento`: queda afuera de la comparación y deja de propagarse en silencio |
 | 10 | Slug mutable → URLs rotas y SEO perdido | `src/lib/schema.ts` + el bloqueo del formulario al publicar | `schema` | un camino nuevo que escriba `slug` sin pasar por el schema (un script, una migración, la Function) |
+| 11 | Workflow de Actions que no parsea → GitHub lo registra **sin ningún trigger** y no corre nunca | `.github/workflows/*.yml` | `workflows` (parsea en modo estricto y exige `name` + al menos un trigger) | casi nada: el test verifica la **clase**, recorriendo el directorio. Si el diff toca un workflow, decí "cubierto por `tests/workflows.test.ts`" y no reportes de más. Lo que sí queda afuera es la *semántica*: que un `if` de job diga lo que se quiso decir |
 
 ## Los patrones de `05-patrones.md` que también fallan callados
 

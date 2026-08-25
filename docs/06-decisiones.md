@@ -2379,3 +2379,41 @@ B-119 vino a resolver.
 **Consecuencia.** El §13 pasa a ser "errores que fallan en silencio", no "errores
 del modelo de datos". Si más adelante aparece un tercer grupo, conviene subtitular
 la sección antes de que la lista mezcle cosas que no se revisan en el mismo momento.
+
+## D-119 · La única key del proyecto no puede cambiar qué es legible
+
+**Contexto.** El 2026-08-25, para que el job de reglas de `push-main.yml` dejara de
+fallar, se le agregaron a `deploy-ci@` los roles `firebaserules.admin` y
+`datastore.indexAdmin`. Un rato después el auditor de privacidad encontró que
+`07-seguridad.md` seguía afirmando lo de siempre —*"si se filtrara, el daño se limita
+a leer datos que ya son públicos y a desplegar el sitio — no a modificar la base"*—
+y que eso **había dejado de ser cierto**.
+
+**Decisión.** Se revierten los dos roles. Las reglas y los índices se despliegan a
+mano, igual que las Functions y por el mismo argumento.
+
+**El razonamiento, que es el que hay que volver a hacer si alguien propone
+agregarlos de nuevo.** Las reglas del §5.3 son lo **único** que mantiene fuera de
+una lectura anónima los borradores, `difusion`, `online.url` y los uids. Con
+`firebaserules.admin`, una key filtrada dejaba de poder "leer lo que ya es público"
+y pasaba a poder **hacer legible todo Firestore**. Y es peor que el caso de las
+Functions con el que se comparó: los roles de Functions habilitan un deploy, éste
+cambia la visibilidad de datos que **ya están guardados**.
+
+`serviceusage.serviceUsageConsumer` se queda. Lo único que habilita es preguntar si
+una API está habilitada, que es lo que cualquier comando de `firebase` hace antes de
+empezar; sin él el job cortaba con un 403 que no tenía nada que ver con el deploy.
+
+**La contra, asumida y anotada.** Un push que toque `firestore.rules` deja la
+corrida roja, y si toca las reglas **y** `src/` en el mismo push, el panel tampoco se
+publica: el `if` del job de Hosting pide `needs.firestore.result != 'failure'`. Ese
+`if` existe para que el panel nuevo no salga antes que las reglas que necesita — y
+con las reglas a mano, ese orden pasó a ser responsabilidad de quien deploya en lugar
+del workflow. Es **B-194**, con las salidas escritas.
+
+**Y una consecuencia de proceso.** El drift entre `02-infraestructura.md` (que se
+actualizó) y `07-seguridad.md` (que no) es cómo una afirmación de seguridad estuvo
+mintiendo una hora. Las dos listas quedaron atadas por
+`tests/roles-deploy-ci.test.ts`, que además falla si aparece cualquier rol de
+escritura que no sea el de Hosting: la próxima vez que el radio de la key cambie, el
+test obliga a reescribir la afirmación en el mismo commit.

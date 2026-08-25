@@ -1,6 +1,6 @@
 # Infraestructura — inventario
 
-Estado real al 2026-08-21, relevado con `gcloud` y `firebase`, no de memoria.
+Estado real al 2026-08-25, relevado con `gcloud` y `firebase`, no de memoria.
 Para re-relevarlo, ver los comandos al final.
 
 ## Proyecto
@@ -93,8 +93,6 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 
 ## Cloud Functions (v2)
 
-Todas en `southamerica-east1`, Node 22, `maxInstances: 5`.
-
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 
 
@@ -103,7 +101,7 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — **hay que redesplegar** (B-80, B-82, B-83) |
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — **hay que redesplegar** (B-04, `timeoutSeconds: 300`) |
 | `guardarVersion` | `onDocumentUpdated actividades/{id}` | ACTIVE |
-| `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | **escrita, sin desplegar** (B-41) |
+| `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | ACTIVE — desplegada a mano el 2026-08-25 |
 | `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
 
@@ -138,8 +136,9 @@ doc creía que faltaba trabajo que ya estaba hecho:
   desde el panel, que es la prueba más dura posible.
 - El secreto `GITHUB_TOKEN` figuraba como "falta crearlo" y **existe desde el
   2026-08-21**, o sea desde antes de que se escribiera que faltaba.
-- `guardarVersionAlBorrar` **sí** sigue sin desplegar. Es la única de la tabla que
-  la doc tenía bien.
+- `guardarVersionAlBorrar` era la única de la tabla que la doc tenía bien… y se
+  desplegó a mano ese mismo día, después de este relevo. **Las seis Functions del
+  proyecto están ACTIVE**, por primera vez.
 
 Consecuencia para B-20: **los cinco pasos están hechos** desde el 2026-08-25. Un
 push a `main` publica el sitio y el panel solo. Lo que sigue sin funcionar es el
@@ -154,20 +153,12 @@ silencio, porque la Function no tiene forma de enterarse. **Arreglado y verifica
 «Build y deploy del sitio» arrancó, imprimió el motivo del `client_payload` y publicó
 `1.1.0+ad973b8`.
 
-`dispararRebuild` sigue sin desplegar, pero ya no por falta de código: el
-workflow de Actions existe (`.github/workflows/deploy.yml`) y la Function está
-completa. Falta lo que **solo puede hacer el dueño a mano**: crear el PAT de
-GitHub, guardarlo en Secret Manager y cargar el secret de deploy en GitHub. La
-lista de pasos está en [`08-operacion.md`](08-operacion.md).
-
 `reporteAIssue` está desplegada y funcionando: el PAT existe en Secret Manager y
 los reportes del panel llegan como issues con la etiqueta `reporte-panel`. Las opciones (región, service account, `secrets`) van
 **explícitas en su propia definición** y no en el `setGlobalOptions()` de
 `index.js` — en ESM el import corre antes y las opciones globales llegarían tarde
 (D-35).
 
-
-### Variables de entorno
 
 ### Variables de entorno y secretos
 
@@ -179,13 +170,6 @@ En `functions/.env`, versionado (nada de esto es secreto):
 | `GOOGLE_CALENDAR_ID` | el id del calendario público |
 | `GITHUB_REPO` | `benoffi7/agenda-literaria` |
 
-En **Secret Manager**, atado a la Function con `defineSecret` (§5.4):
-
-| Secreto | Para qué | Estado |
-|---|---|---|
-| `GOOGLE_CALENDAR_ID` | no | el id del calendario público |
-| `GITHUB_REPO` | no | `benoffi7/agenda-literaria` |
-
 ### Secretos (Secret Manager)
 
 | Secreto | Lo usa | Estado |
@@ -196,8 +180,6 @@ El PAT nunca va a `functions/.env` ni al repo (§5.4). El valor se resuelve en
 runtime con `defineSecret(...).value()`, así que tampoco queda en el artefacto
 del deploy. Los comandos para crearlo y dar el permiso están en
 [`08-operacion.md`](08-operacion.md).
-
-| `GITHUB_TOKEN` | PAT que autoriza el `repository_dispatch` | **existe** desde el 2026-08-21 |
 
 `defineSecret` es lo que monta el secreto en el runtime de la Function: leerlo
 de `process.env` sin declararlo daba `undefined` en producción. La service
@@ -226,9 +208,7 @@ emergencia, no como el camino normal.
 
 | Email | Para qué |
 |---|---|
-| `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. La usa también `guardarVersion`, que no toca Calendar. |
-
-| `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. |
+| `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. La usan también `guardarVersion` y `guardarVersionAlBorrar`, que no tocan Calendar. |
 | `deploy-ci@…` | Identidad del workflow de Actions: leer Firestore en build time, desplegar Hosting y las reglas. Creada el 2026-08-25; **la única key del proyecto** es la suya, y vive solo en los secrets de GitHub. |
 
 | `firebase-adminsdk-fbsvc@…` | default del Admin SDK, sin uso propio |
@@ -264,22 +244,33 @@ sobre el proyecto entero: es el único secreto que la Function necesita leer.
 ```
 roles/datastore.viewer                     leer Firestore en build time (§2.4)
 roles/firebasehosting.admin                desplegar el sitio y el panel
-roles/firebaserules.admin                  desplegar firestore.rules
-roles/datastore.indexAdmin                 desplegar firestore.indexes.json
 roles/serviceusage.serviceUsageConsumer    el chequeo de "¿está la API habilitada?"
 ```
 
-Los dos primeros son el deploy del sitio; los tres siguientes se agregaron el
-2026-08-25 **después de leer el error**, no de entrada: sin
-`serviceUsageConsumer` el job de reglas cortaba con
-`403 Permission denied to get service [firestore.googleapis.com]` antes de
-intentar nada.
+**Tuvo dos roles más durante una hora, y se los quitamos el mismo día.** Para
+habilitar el job de reglas se agregaron `firebaserules.admin` y
+`datastore.indexAdmin`; el auditor de privacidad señaló lo que eso implicaba y se
+revirtió. El razonamiento, porque es el que hay que volver a hacer si alguien
+propone agregarlos de nuevo (D-119):
 
-Deliberadamente **no** tiene escritura de datos en Firestore —el workflow solo
-lee— **ni nada de Functions**. Si la key se filtrara, el daño se limita a leer
-datos que ya son públicos, publicar el sitio y reescribir las reglas.
+**Las reglas del §5.3 son lo único que mantiene fuera de una lectura anónima los
+borradores, `difusion`, `online.url` y los uids.** Con `firebaserules.admin`, una
+key filtrada dejaba de poder "leer lo que ya es público" y pasaba a poder **hacer
+legible todo Firestore**. Es el mismo argumento con el que esta cuenta no tiene los
+roles de Functions, aplicado a los datos en vez de al cómputo — y era peor, porque
+los roles de Functions solo habilitan un deploy y éste cambia la visibilidad de lo
+que ya está guardado.
 
-**Por qué no tiene los roles de Functions, que es la decisión que importa acá:**
+`serviceUsageConsumer` se queda: lo único que habilita es preguntar si una API está
+habilitada. Sin él, cualquier comando de `firebase` corta con
+`403 Permission denied to get service [firestore.googleapis.com]` antes de intentar
+nada.
+
+Deliberadamente **no** tiene escritura de ningún tipo: ni de datos, ni de reglas, ni
+de Functions. Si la key se filtrara, el daño se limita a leer datos que ya son
+públicos y a publicar el sitio.
+
+**Por qué no tiene los roles de Functions:**
 el job «Cloud Functions» de `push-main.yml` falla con
 `iam.serviceAccounts.ActAs on agenda-literaria@appspot.gserviceaccount.com`, y
 habilitarlo pide ese `roles/iam.serviceAccountUser` más `cloudfunctions.developer`,
@@ -289,11 +280,17 @@ desplegar código que corre con ella es, junto, casi ejecución arbitraria en el
 proyecto — y ésta es la **única key que existe**. El argumento por el que esta
 cuenta es aparte de `calendar-sync@` se cae si se le agrega eso. Las Functions se
 despliegan de a una y a mano, con el runbook de
-[`08-operacion.md`](08-operacion.md), que es como se hizo siempre. La contra
-asumida: **todo push que toque `functions/` deja la corrida roja**, y con ella se
-saltea el job del tag de versión.
+[`08-operacion.md`](08-operacion.md), que es como se hizo siempre. **Y las reglas
+igual, por la misma razón** (arriba).
 
-Otorgados y verificados el 2026-08-25 — exactamente esos cinco y nada más:
+La contra asumida, que es de las dos decisiones juntas: **el job de reglas y el de
+Functions no pueden terminar bien nunca.** Todo push que toque `firestore.rules`,
+`firestore.indexes.json` o `functions/` deja la corrida roja, y con ella se saltea el
+job del tag de versión. Peor: el `if` del job de Hosting pide
+`needs.firestore.result != 'failure'`, así que **un push que toque las reglas y el
+panel a la vez no publica el panel**. Eso es **B-194**, con las salidas escritas.
+
+Otorgados y verificados el 2026-08-25 — exactamente esos tres y nada más:
 
 ```bash
 gcloud projects get-iam-policy agenda-literaria --flatten="bindings[].members" \
@@ -332,12 +329,13 @@ cloudfunctions, run, eventarc, pubsub        Functions v2
 cloudbuild, artifactregistry                 build de las Functions
 cloudscheduler                               para dispararRebuild (paso 5)
 calendar-json                                sync a Calendar
-secretmanager                                el PAT de GitHub — FALTA habilitar
+secretmanager                                el PAT de GitHub — habilitada (2026-08-21)
 cloudbilling, billingbudgets                 budget alert
 ```
 
-**Falta habilitar `secretmanager.googleapis.com`** para el PAT de los reportes
-(el comando está en [`08-operacion.md`](08-operacion.md)).
+`secretmanager.googleapis.com` está habilitada desde el 2026-08-21, junto con la
+creación del secreto `GITHUB_TOKEN`. Se sabe sin mirar la consola: `reporteAIssue`
+lleva nueve issues creados, y sin la API y el secreto no podría crear ninguno.
 
 Hay muchas más habilitadas por defecto (BigQuery, Dataplex, etc.) que el
 proyecto no usa. No molestan y desactivarlas no aporta.

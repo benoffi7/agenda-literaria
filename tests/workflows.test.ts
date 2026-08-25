@@ -90,3 +90,68 @@ describe('los triggers de los que depende el §8', () => {
     expect(wf.on.push?.branches).toContain('main');
   });
 });
+
+/** Todos los `steps[].run` de todos los jobs de un workflow, con su nombre. */
+const pasosConScript = (archivo: string): { nombre: string; run: string }[] => {
+  const wf = parsear(archivo).toJS() as {
+    jobs?: Record<string, { steps?: { name?: string; run?: string; uses?: string }[] }>;
+  };
+  return Object.entries(wf.jobs ?? {}).flatMap(([job, def]) =>
+    (def.steps ?? [])
+      .filter((s) => typeof s.run === 'string')
+      .map((s) => ({ nombre: `${archivo} · ${job} · ${s.name ?? s.uses ?? 'sin nombre'}`, run: s.run! })),
+  );
+};
+
+describe('los scripts de los workflows no interpolan datos ajenos — §5.4', () => {
+  /**
+   * **Por qué es un chequeo de seguridad y no de estilo** (B-195). `${{ … }}`
+   * dentro de un `run:` se pega en el texto del script **antes** de que exista la
+   * shell, así que un valor con comillas o `$(…)` ejecuta lo que quiera. Cuando el
+   * valor sale de Firestore —el `motivo` del rebuild— es texto que no controlamos,
+   * y el job que lo imprime es el mismo que más abajo recibe
+   * `FIREBASE_SERVICE_ACCOUNT`: la única key del proyecto.
+   *
+   * Por `env:` el valor llega como variable de entorno y la shell no lo
+   * reinterpreta. La regla es esa, y vale para cualquier contexto que traiga datos
+   * de afuera: `github.event.*`, `inputs.*` y `client_payload`.
+   */
+  const CONTEXTOS_AJENOS = /\$\{\{[^}]*\b(github\.event|inputs|client_payload)\b/;
+
+  it.each(archivos)('%s no interpola contexto de evento en el cuerpo de un run', (archivo) => {
+    const culpables = pasosConScript(archivo)
+      .filter((p) => CONTEXTOS_AJENOS.test(p.run))
+      .map((p) => p.nombre);
+    expect(culpables, 'pasalo por `env:` en vez de interpolarlo en el script').toEqual([]);
+  });
+});
+
+describe('el gate de la trampa 4 no está copiado en YAML — §5.4', () => {
+  /**
+   * `scripts/verificar-bundle.sh` existe porque **dos** workflows lo necesitan, y
+   * su cabecera dice por qué no se duplica: "duplicar en YAML era garantizar que
+   * una de las dos copias se quedara vieja". Pasó exactamente eso — la copia de
+   * `deploy.yml` se quedó sin la guarda final, la que exige que `dist/` tenga al
+   * menos un `.js`, así que un build vacío pasaba el gate habiendo verificado
+   * nada (B-195, y es el build que B-189 describe).
+   *
+   * El chequeo es por clase: cualquier workflow que buildee tiene que llamar al
+   * script, no reimplementar el `grep`.
+   */
+  const PATRON_COPIADO = /grep[^\n]*(firebase-admin|private_key|BEGIN PRIVATE KEY)/;
+
+  it.each(archivos)('%s no reimplementa el grep del bundle', (archivo) => {
+    const culpables = pasosConScript(archivo)
+      .filter((p) => PATRON_COPIADO.test(p.run))
+      .map((p) => p.nombre);
+    expect(culpables, 'llamá a ./scripts/verificar-bundle.sh').toEqual([]);
+  });
+
+  it.each(archivos)('%s corre el script si buildea', (archivo) => {
+    const pasos = pasosConScript(archivo);
+    const buildea = pasos.some((p) => /npm run build|astro build/.test(p.run));
+    if (!buildea) return;
+    const verifica = pasos.some((p) => /verificar-bundle\.sh/.test(p.run));
+    expect(verifica, 'buildea pero no verifica que la credencial no se filtró').toBe(true);
+  });
+});

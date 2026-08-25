@@ -36,12 +36,27 @@ jobs:
         # "opciones/tags"). Queda en el log para poder correlacionar un run con
         # la edición que lo causó.
         #
-        # `run: |` y no `run: echo …` en una línea: el texto lleva "Motivo:" y un
+        # El valor entra por `env:` y NO interpolado en el cuerpo del script.
+        # Dos motivos, los dos del §5 (B-195):
+        #
+        # 1. `motivo` sale de Firestore, así que es texto que no controlamos, y
+        #    `${{ }}` dentro de `run:` se pega en el script ANTES de que exista
+        #    la shell: un valor con comillas o `$(...)` ejecuta lo que quiera en
+        #    un job que más abajo recibe `FIREBASE_SERVICE_ACCOUNT`. Por `env:`
+        #    llega como variable y la shell no lo reinterpreta.
+        # 2. Los logs de Actions de un repo público los lee cualquiera, así que
+        #    esto es una salida pública más. El motivo tiene que ser una
+        #    etiqueta opaca (`actividad <id>`, `opciones/<campo>`) y nunca el
+        #    título, que puede ser de un borrador.
+        #
+        # Y sigue en `run: |` y no en una línea: el texto lleva "Motivo:" y un
         # `: ` dentro de un escalar sin comillas hace que YAML lea un mapa
         # anidado. Eso rompía el archivo entero y **dejaba este workflow sin
-        # triggers** — ver B-188. Lo cubre `tests/workflows.test.ts`.
+        # triggers** — ver B-188 y la trampa 11. Lo cubre `tests/workflows.test.ts`.
+        env:
+          MOTIVO: ${{ github.event.client_payload.motivo || 'disparo manual' }}
         run: |
-          echo "Motivo: ${{ github.event.client_payload.motivo || 'disparo manual' }}"
+          echo "Motivo: $MOTIVO"
 
       - uses: actions/checkout@v4
 
@@ -73,15 +88,17 @@ jobs:
 
       - name: Verificar que la credencial no se filtró al bundle
         # Trampa 4 / §5.4: si `firebase-admin` se cuela en un componente
-        # cliente, la key termina en el bundle público. Es el mismo chequeo que
-        # documenta `docs/07-seguridad.md`, acá como gate del deploy: falla
-        # cerrado, porque publicar la key es irreversible.
-        run: |
-          if grep -rlE 'firebase-admin|private_key|service_account|BEGIN PRIVATE KEY' dist/; then
-            echo "::error::fuga de credenciales en dist/ (§5.4, trampa 4)"
-            exit 1
-          fi
-          echo "dist/ limpio"
+        # cliente, la key termina en el bundle público. Falla cerrado, porque
+        # publicar la key es irreversible.
+        #
+        # **El script y no una copia del `grep` acá** (B-195). Estaba duplicado
+        # en YAML y la copia ya había divergido: le faltaba la guarda final del
+        # script —que `dist/` tenga al menos un `.js`—, así que un build vacío
+        # pasaba el gate habiendo verificado nada. Es exactamente lo que la
+        # cabecera de `verificar-bundle.sh` advertía que iba a pasar, y encima
+        # este workflow es el que publica datos (§8) y B-189 describe el build
+        # que produce un `dist/` sin contenido.
+        run: ./scripts/verificar-bundle.sh dist
 
       - name: Deploy a Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0

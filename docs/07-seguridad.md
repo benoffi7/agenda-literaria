@@ -339,9 +339,26 @@ chat, conviene rotarla desde la configuración del calendario.
 
 **La key de `deploy-ci@` es la única key del proyecto**, y existe porque un
 runner de GitHub no tiene ADC. Por eso la cuenta es aparte de `calendar-sync@` y
-tiene lo mínimo: `datastore.viewer` (leer, no escribir) y
-`firebasehosting.admin`. Si se filtrara, el daño se limita a leer datos que ya
-son públicos y a desplegar el sitio — no a modificar la base.
+tiene lo mínimo: `roles/datastore.viewer` (leer, no escribir),
+`roles/firebasehosting.admin` y `roles/serviceusage.serviceUsageConsumer`
+(preguntar si una API está habilitada, que es lo que cualquier comando de
+`firebase` hace antes de empezar). Los nombres van completos, con el prefijo, para
+que el test que ata los dos documentos los pueda leer. Si se filtrara, el
+daño se limita a leer datos que ya son públicos y a desplegar el sitio — **no a
+modificar la base ni a cambiar qué es legible**.
+
+Esa última mitad **dejó de ser cierta durante una hora** el 2026-08-25, y vale
+escribir por qué: para habilitar el deploy de reglas por CI se le agregó
+`firebaserules.admin`, y las reglas del §5.3 son lo único que mantiene fuera de una
+lectura anónima los borradores, `difusion`, `online.url` y los uids. Con ese rol,
+una key filtrada pasaba de "leer lo que ya es público" a **hacer legible todo
+Firestore**. Se revirtió el mismo día (D-119) y las reglas se despliegan a mano.
+
+**La lista de roles de esta sección y la de
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`" tienen
+que decir lo mismo**, y lo verifica `tests/roles-deploy-ci.test.ts`: el drift entre
+las dos es cómo esta afirmación quedó mintiendo una hora, y una afirmación de
+seguridad que miente es peor que no tenerla.
 
 ## Cómo verificar — comandos
 

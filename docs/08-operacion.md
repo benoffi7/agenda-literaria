@@ -269,43 +269,32 @@ Esperado: `no-cache` en `/` y `/admin`, `no-store` en `/version.json`,
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-**Las reglas de `/reportes/{id}` todavía no están desplegadas.** Hasta que se
-desplieguen, el formulario de reportes del panel recibe *permission denied* al
-guardar.
+**Las reglas de `/reportes/{id}` ya están desplegadas.** Se sabe sin mirar la
+consola: `reporteAIssue` lleva nueve issues creados desde el panel, y eso solo es
+posible si el formulario pudo escribir en esa colección.
 
 ### Functions
 
 ```bash
-firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones,functions:guardarVersion,functions:guardarVersionAlBorrar
+firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
 ```
 
-**Desplegar solo esas cuatro.** `dispararRebuild` está escrita pero no se
-despliega todavía (D-13): sería un schedule cada 5 minutos sin nada que disparar.
+**Las seis Functions están desplegadas y ACTIVE** desde el 2026-08-25 (la última,
+`guardarVersionAlBorrar`, a mano ese día). Un `firebase deploy --only functions` sin
+filtro las incluye a las seis y hoy no rompe nada: ninguna depende de un secreto que
+falte.
 
-**`syncCalendar` y `rebuildPorOpciones` cambiaron el 2026-08-24** (B-80, B-82,
-B-83, B-04) y las que están en producción son las viejas: hasta que se
-redesplieguen, siguen pudiendo duplicar un evento y siguen sin publicar
-`destacado`. La verificación después del deploy está más abajo, en "Verificar el
-sync después de redesplegar".
+**Lo que sí queda pendiente es redesplegar esas dos.** `syncCalendar` y
+`rebuildPorOpciones` cambiaron el 2026-08-24 (B-80, B-82, B-83, B-04) y las que
+corren en producción son las viejas: hasta que se redesplieguen, `syncCalendar`
+puede duplicar un evento y `rebuildPorOpciones` sigue sin publicar `destacado`. La
+verificación después del deploy está más abajo, en "Verificar el sync después de
+redesplegar".
 
-`guardarVersionAlBorrar` (B-41) es nueva y va en el mismo deploy que
-`guardarVersion`: mismo archivo, mismas opciones, misma service account.
-
-Un `firebase deploy --only functions` sin filtro la incluiría.
-
-`guardarVersion` (el historial del §12) es nueva y **todavía no se desplegó**.
-No necesita ninguna config nueva: corre como `calendar-sync@`, que ya tiene
-`datastore.user` y los roles de Eventarc, y solo escribe en Firestore. Después
-de desplegarla, la verificación es editar la descripción de una actividad de
-prueba y confirmar en la consola que apareció **una** versión y no dos — la
-segunda sería el write-back del sync, que es justo lo que la guarda evita
-(D-41).
-
-**Desplegar solo esas dos.** `dispararRebuild` está escrita pero no se despliega
-todavía (D-13): le falta el PAT en Secret Manager, y sin eso sería un schedule
-cada 5 minutos que no puede hacer nada.
-
-Un `firebase deploy --only functions` sin filtro la incluiría.
+**El deploy de Functions es a mano, por diseño y no por falta de trabajo**
+(§"Roles de `deploy-ci@`" de [`02-infraestructura.md`](02-infraestructura.md)): la
+única key del proyecto no tiene los roles para desplegarlas, y darlos sería casi
+ejecución arbitraria. Lo mismo vale para las reglas desde el 2026-08-25 (D-119).
 
 ### Reportes del panel → issues de GitHub (una sola vez)
 
@@ -449,9 +438,7 @@ done
 firebase deploy --only firestore:rules,firestore:indexes
 node scripts/preparar-produccion.mjs <email>
 npm run build && firebase deploy --only hosting
-firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones,functions:guardarVersion
-
-firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
+firebase deploy --only functions
 
 # 7. Rebuild automático: ver "Activar el rebuild automático" más abajo
 #    (PAT en Secret Manager, service account de CI, secret de GitHub, y recién
@@ -461,11 +448,14 @@ firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
 
 ## Activar el rebuild automático (§8)
 
-Todo el código está escrito: la Function (`dispararRebuild`), su lógica de
-reintentos (`functions/rebuild.js`) y el workflow
-(`.github/workflows/deploy.yml`). Lo que falta son **credenciales, y solo las
-puede crear el dueño**: el PAT y la key de service account no pueden pasar por
-un agente ni por el repo (§5.4).
+**Los cinco pasos ya se hicieron, el 2026-08-25 (B-20), y el lazo se verificó de
+punta a punta.** Esta sección queda como runbook para rearmarlo en un proyecto
+nuevo, para rotar el PAT, o para recrear `deploy-ci@`.
+
+El código es la Function (`dispararRebuild`), su lógica de reintentos
+(`functions/rebuild.js`) y el workflow (`.github/workflows/deploy.yml`). Lo que
+pedía trabajo del dueño eran las **credenciales**: el PAT y la key de service
+account no pueden pasar por un agente ni por el repo (§5.4).
 
 Los cinco pasos, en orden.
 
@@ -589,11 +579,10 @@ cae en "deployar todo", con o sin el checkbox, porque sin `github.event.before` 
 script no puede diffear y falla hacia el lado de deployar. Así que el botón *Run
 workflow* no sirve para probar solo Hosting mientras las reglas no tengan permiso.
 
-#### Con los tres roles de reglas: publicado desde CI
+#### Publicado desde CI, y por qué el job de reglas volvió a quedar rojo
 
-Otorgados `roles/serviceusage.serviceUsageConsumer` (el 403 de arriba es el chequeo
-de API habilitada), `roles/firebaserules.admin` y `roles/datastore.indexAdmin`, la
-corrida siguiente quedó así:
+Con `serviceUsageConsumer` + `firebaserules.admin` + `datastore.indexAdmin`, la
+corrida siguiente publicó:
 
 | Job | Resultado |
 |---|---|
@@ -611,9 +600,24 @@ curl -sI https://agenda-literaria.web.app/version.json | grep -i cache-control
 curl -sL -o /dev/null -w '%{http_code}\n' https://agenda-literaria.web.app/admin
 ```
 
-Lo que queda rojo es el job de Functions, **a propósito** (§"Roles de `deploy-ci@`"
-de [`02-infraestructura.md`](02-infraestructura.md)), y con él se saltea el tag de
-versión: eso es **B-194**, con las tres salidas posibles escritas.
+**Y unas horas después los dos roles de reglas se revirtieron** (D-119): el auditor
+de privacidad mostró que `firebaserules.admin` convertía una key filtrada en "puede
+hacer legible todo Firestore", porque las reglas del §5.3 son lo único que mantiene
+fuera de una lectura anónima los borradores, `difusion` y los uids. Así que hoy el
+estado final es:
+
+| Cambia | Qué pasa |
+|---|---|
+| solo `src/` | ✅ **publica solo**, que es el caso normal |
+| solo docs | ✅ verde sin deployar nada |
+| `firestore.rules` o `firestore.indexes.json` | ❌ el job corta con `Permission denied` — reglas a mano |
+| algo de `functions/` | ❌ el job corta con `iam.serviceAccounts.ActAs` — Functions a mano |
+| **reglas + `src/` en el mismo push** | ❌ y **el panel no se publica**: el `if` de Hosting pide `needs.firestore.result != 'failure'` |
+
+Las tres últimas filas son **B-194**, con las salidas escritas. La última es la que
+más incomoda: el `if` existe para que el panel nuevo no salga antes que las reglas
+que necesita, y con las reglas a mano ese orden pasó a ser responsabilidad de quien
+deploya, no del workflow.
 
 El de Functions es otra cosa y **conviene no otorgarlo**: pide
 `roles/iam.serviceAccountUser` sobre `agenda-literaria@appspot.gserviceaccount.com`
@@ -782,7 +786,7 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | El panel se recarga solo en medio de la carga de una actividad | no debería: con cambios sin guardar solo avisa | es un bug — reportarlo con la versión que muestra el aviso |
 | El formulario hace zoom en iPhone al enfocar un campo | un input con menos de 16px | ya resuelto en `global.css`; no bajar el tamaño de los campos en mobile |
 | El reporte del panel queda en "no se pudo publicar" con 401 o 403 | el PAT venció o no tiene permiso de Issues sobre el repo | rotar el secreto y reencolar el reporte (arriba) |
-| El reporte del panel da *permission denied* al guardar | faltan desplegar las reglas de `/reportes` | `firebase deploy --only firestore:rules` |
+| El reporte del panel da *permission denied* al guardar | las reglas de `/reportes` no están desplegadas — deberían estarlo, ver arriba | `firebase deploy --only firestore:rules` |
 | `tests/reportes.integracion.test.ts` falla entero contra el emulador | el emulador se arrancó en otro checkout y sirve otras reglas | reiniciar `npm run emu` en este checkout |
 
 | `sistema/rebuild.ultimoError` dice `HTTP 401 Bad credentials` | el PAT venció o se revocó | rotar el secreto (`gcloud secrets versions add GITHUB_TOKEN`); el contador se rearma con el próximo cambio |

@@ -52,6 +52,94 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### Los tres auditores, y lo que encontraron sobre el deploy nuevo
+
+Se corrieron al final del día, sobre el rango completo. **Trampas: limpio** — y de
+paso verificó por su cuenta que el parser tolerante devuelve `name` y `on` sobre el
+YAML roto, que es el argumento del test nuevo. **Privacidad: cuatro hallazgos, dos
+P1.** **Documentación: catorce**, todos drift, ninguno trabajo sin documentar.
+
+**Los dos P1 de privacidad son consecuencia de arreglar B-188** (B-195): hasta ese
+momento `deploy.yml` no arrancaba nunca, así que sus problemas eran inertes.
+
+**El motivo del rebuild se interpolaba en el cuerpo del script.** `${{ }}` dentro de
+un `run:` se pega en el texto antes de que exista la shell, y `motivo` sale de
+Firestore: un valor con `$(…)` ejecutaba lo que quisiera en el job que más abajo
+recibe la única key del proyecto. Y aparte, **los logs de Actions de un repo público
+los lee cualquiera**, así que el motivo es una salida pública más que el §5.1 no
+enumera. Ahora entra por `env:`, con dos redes — y la segunda es la que me gustó:
+**el motivo tiene que ser opaco, verificado como propiedad y no como lista.** Ningún
+dato del documento se alcanza sin un acceso a propiedad, así que se exige que las
+interpolaciones no tengan un punto: `${id}` pasa, `${despues.titulo}` no, sin
+importar cómo se llame el campo. El cambio tentador era exactamente ése, y publicaría
+el título de una actividad que puede estar en borrador.
+
+**El gate de la trampa 4 estaba copiado en YAML, y la copia había divergido.**
+`deploy.yml` tenía el `grep` inline en vez de llamar a `verificar-bundle.sh`, y le
+faltaba la guarda final: que `dist/` tenga al menos un `.js`. **Un build vacío pasaba
+el gate habiendo verificado nada** — lo que la cabecera del script advertía que
+pasaría al duplicarlo, y exactamente el build de B-189. La fila de "qué se decidió no
+automatizar" que decía "gate bloqueante de los dos workflows" era falsa desde que se
+escribió.
+
+### D-119 · la única key del proyecto no puede cambiar qué es legible
+
+El auditor encontró que `07-seguridad.md` seguía afirmando *"si se filtrara, el daño
+se limita a leer datos que ya son públicos — no a modificar la base"* después de que
+le agregáramos `firebaserules.admin` esta misma tarde. **Y había dejado de ser
+cierto:** las reglas del §5.3 son lo único que mantiene fuera de una lectura anónima
+los borradores, `difusion`, `online.url` y los uids, así que una key filtrada pasaba
+de "leer lo que ya es público" a **hacer legible todo Firestore**.
+
+Se revirtieron los dos roles. Las reglas se despliegan a mano, igual que las
+Functions y por el mismo argumento — y es peor que ése: los roles de Functions
+habilitan un deploy, éste cambiaba la visibilidad de datos ya guardados.
+
+La contra está asumida y sube **B-194 a P1**: con el job de reglas rojo, un push que
+toque las reglas **y** `src/` no publica el panel, porque el `if` de Hosting pide
+`needs.firestore.result != 'failure'`. Ese `if` existe por un motivo bueno, pero
+ahora distingue mal entre "las reglas son inválidas" y "esta credencial no despliega
+reglas, por diseño".
+
+Y lo que hizo posible el drift quedó atado: `tests/roles-deploy-ci.test.ts` exige que
+`02-infraestructura.md` y `07-seguridad.md` declaren los mismos roles, y falla si
+aparece cualquier rol de escritura que no sea el de Hosting. **La próxima vez que el
+radio de la key cambie, el test obliga a reescribir la afirmación en el mismo
+commit.**
+
+### Catorce correcciones de drift, y todas hacia el mismo lado
+
+El auditor de documentación no encontró trabajo sin documentar —el CHANGELOG, el
+backlog, las novedades, la ayuda y las decisiones del día estaban— sino **catorce
+afirmaciones que ya no eran ciertas**, la mayoría de merges mal resueltos que venían
+de antes:
+
+- `02-infraestructura.md` tenía **cinco bloques duplicados**: la línea de
+  `southamerica-east1` dos veces, un `### Variables de entorno` vacío seguido de
+  `### Variables de entorno y secretos`, una tabla de "Secret Manager" que repetía
+  dos valores que no son secretos, una fila suelta de `GITHUB_TOKEN` fuera de toda
+  tabla, y dos filas de `calendar-sync@` con texto distinto.
+- Un párrafo que decía que `dispararRebuild` "sigue sin desplegar" **dos líneas
+  después** de decir que B-188 estaba arreglado, con la tabla del mismo archivo
+  mostrándola ACTIVE.
+- `08-operacion.md` decía "desplegar solo esas cuatro" y veinte líneas después "solo
+  esas dos", con un párrafo que afirmaba que `guardarVersion` "todavía no se
+  desplegó".
+- Dos comandos de deploy distintos, uno detrás del otro, en el runbook de proyecto
+  nuevo.
+- "Las reglas de `/reportes` todavía no están desplegadas", contradicho por los nueve
+  issues que `reporteAIssue` ya creó.
+- "FALTA habilitar `secretmanager`", cuando el mismo archivo dice que el secreto
+  existe desde el 21.
+- `13-agentes.md` y el cuerpo de `auditor-trampas` seguían diciendo "diez trampas"
+  después de que D-118 subiera a once — o sea que el agente iba a reportar como "sin
+  red" algo que sí la tiene.
+
+Todo corregido. **La lección no es la lista sino la dirección:** todo el drift de hoy
+apuntó al mismo lado —la doc creía que faltaba trabajo ya hecho— y eso hizo que B-20
+pareciera mucho más grande de lo que era. **B-123** (re-relevar el inventario solo)
+está anotado como P3 y con la evidencia de hoy merece subir.
+
 ### El lazo del §8, verificado de punta a punta
 
 Con B-188 arreglado se probó lo que nunca se había probado: mandar el **mismo**

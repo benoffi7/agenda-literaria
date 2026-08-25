@@ -320,6 +320,53 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
 const marcaRebuild = (antes: unknown, despues: unknown) =>
   huboCambioDeContenido(antes, despues);
 
+/**
+ * El `motivo` del rebuild viaja a un lugar público — B-195.
+ *
+ * `marcarRebuild(motivo)` lo guarda en `sistema/rebuild`, `dispararRebuild` lo
+ * manda en el `client_payload` del `repository_dispatch`, y el primer paso de
+ * `deploy.yml` lo imprime. **Los logs de Actions de un repo público los lee
+ * cualquiera**, así que el motivo es una salida pública más — una que el §5.1 no
+ * enumera porque hasta B-188 este workflow no arrancaba nunca y la línea no
+ * imprimía nada.
+ *
+ * Hoy los dos motivos son etiquetas opacas: `actividad <autoId>` y
+ * `opciones/<campo>`. El cambio que rompe esto es tentador y de una línea —
+ * `actividad ${despues.titulo}` se lee muchísimo mejor en el log— y publicaría el
+ * título de una actividad que puede estar en **borrador**, porque `marcarRebuild`
+ * corre con `huboCambioDeContenido` y no espera a que se publique.
+ *
+ * **El chequeo es una propiedad, no una lista:** ningún dato del documento se
+ * puede alcanzar sin un acceso a propiedad, así que se exige que las
+ * interpolaciones del motivo no tengan un punto. `${id}` y `${campo}` pasan;
+ * `${despues.titulo}` y `${data.slug}` no, sin importar cómo se llame el campo.
+ */
+describe('el motivo del rebuild es opaco — §5.1, B-195', () => {
+  const argumentos = (): string[] => {
+    const src = fuente('functions/index.js');
+    return [...src.matchAll(/marcarRebuild\(([^)]*)\)/g)].map((m) => m[1]!);
+  };
+
+  it('hay llamadas a marcarRebuild que verificar', () => {
+    // Control positivo: si el regex dejara de encontrar nada, la aserción de
+    // abajo pasaría recorriendo una lista vacía.
+    expect(argumentos().length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('ninguna interpolación del motivo accede a una propiedad', () => {
+    const conPunto = argumentos().flatMap((arg) =>
+      [...arg.matchAll(/\$\{([^}]*)\}/g)]
+        .map((m) => m[1]!)
+        .filter((expr) => expr.includes('.'))
+        .map((expr) => `marcarRebuild(${arg}) → \${${expr}}`),
+    );
+    expect(
+      conPunto,
+      'el motivo se publica en el log de Actions: usá un id, no un campo del documento',
+    ).toEqual([]);
+  });
+});
+
 describe('B-83 · el rebuild ya no cuelga del sync a Calendar', () => {
   it('index.js marca el rebuild antes de los dos cortes tempranos', () => {
     const src = fuente('functions/index.js');

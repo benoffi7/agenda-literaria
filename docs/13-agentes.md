@@ -140,7 +140,7 @@ las dos cosas son irreversibles.
 
 ### 🪤 `auditor-trampas`
 
-**Para qué.** Las diez trampas del §13 más los patrones de
+**Para qué.** Las once trampas del §13 más los patrones de
 [`05-patrones.md`](05-patrones.md) que comparten una propiedad: **se rompen sin
 que nada falle**. El cuerpo del agente es una tabla de trampa → dónde vive hoy →
 qué test la nombra → **dónde ese test no mira**. Esa última columna es el aporte:
@@ -304,7 +304,10 @@ arreglo, es el detector.
 | Qué deployar según lo que cambió | `que-deployar.test.ts`. El skill **usa** el script, no reimplementa la decisión |
 | Que el formulario no tenga una sección sin capítulo en la guía | `ayuda.test.ts` |
 | Marcadores de conflicto de git en archivos versionados | `sin-marcadores-de-conflicto.test.ts` |
-| Que la credencial no se filtre al `dist/` | `scripts/verificar-bundle.sh`, gate bloqueante de los dos workflows |
+| Que la credencial no se filtre al `dist/` | `scripts/verificar-bundle.sh`, gate bloqueante de los dos workflows. **Esta fila era falsa hasta el 2026-08-25:** `deploy.yml` tenía el `grep` copiado en YAML y la copia había perdido la guarda final —que `dist/` tenga al menos un `.js`—, así que un build vacío pasaba el gate habiendo verificado nada (B-195). Ahora los dos llaman al script, y `workflows.test.ts` exige que todo workflow que buildee lo haga |
+| Que los workflows de Actions parseen y tengan los triggers que el §8 necesita | `workflows.test.ts` (trampa 11, B-188): parsea en modo estricto, exige `name` y al menos un trigger, y ata el `event_type` que manda la Function con el `repository_dispatch` del workflow. Mira `doc.errors` y no el objeto parseado, porque el parser se recupera del error y devolvería `name` y `on` sobre un archivo que en GitHub no funciona |
+| Que ningún `run:` de un workflow interpole datos que no controlamos, y que el motivo del rebuild sea opaco | `workflows.test.ts` y `costuras.test.ts` (B-195). El segundo es una propiedad y no una lista: ninguna interpolación del motivo puede tener un punto, porque no hay forma de alcanzar un campo del documento sin un acceso a propiedad |
+| Que `02-infraestructura.md` y `07-seguridad.md` declaren los mismos roles de `deploy-ci@` | `roles-deploy-ci.test.ts` (B-195, D-119). El drift entre las dos es cómo una afirmación de seguridad estuvo mintiendo una hora |
 
 ### Porque un agente no es la herramienta
 
