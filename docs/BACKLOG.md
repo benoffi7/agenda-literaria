@@ -20,6 +20,7 @@ trabajo.
 | DEC-6 | **Las ocho decisiones que bloquean el sitio público.** Están listadas en el §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). | La primera —**el dominio final**— bloquea B-109 y con él todo lo demás: sin `site` no hay canonical, ni Open Graph, ni sitemap, y mudar el dominio después de indexar cuesta meses. Le siguen el canal de contacto público, el nombre del sitio y si el sitio público se mide. |
 | DEC-7 | **La galería de imágenes (B-167): cuatro decisiones.** (a) ¿la descripción es *epígrafe* o *texto alternativo*? (b) ¿tamaño máximo y cuántas imágenes por actividad? (c) ¿se permite alojar propias desde el día uno, o arranca solo con URLs externas? (d) ¿las externas se descargan al build para poder optimizarlas? | (a) es la que más pesa y no es cosmética: un **epígrafe** es opcional y se muestra; un **texto alternativo** es lo que leen un lector de pantalla y Google, y no debería ser opcional. Se pidió "descripción opcional", que es un epígrafe — si además hace falta accesibilidad y SEO (B-107 los necesita), son **dos campos**, no uno. (c) parte el trabajo en dos entregas: solo URLs no necesita Storage, ni reglas nuevas, ni target de deploy, ni EXIF, y es la mitad del valor con un cuarto del riesgo. |
 | DEC-8 | **Las N opciones para sumarse a un mismo ciclo (B-181): qué forma tienen.** ¿Nada de modelo y van en la descripción, una actividad por comisión atada por un campo nuevo, o un eje `opciones` con sus propias sesiones? | Bloquea B-181 y no se puede empezar sin la respuesta: los tres caminos tocan lugares distintos y el más fiel es el que llega al diff del §7.2 y a la numeración de D-95. Mientras no se decida, un club con cuatro horarios se carga como cuatro encuentros y el calendario público le manda los cuatro a cada suscripto. |
+| DEC-9 | **Cómo se llama el tipo de la librería que sale a la calle (B-192).** Los reportes proponen tres nombres para lo mismo: «Venta especial», «Librería ABIERTA», «Librería a la calle». | Un valor nuevo **no es reversible** —parte los datos en dos que después nadie puede volver a juntar (la lección de B-134)— y una etiqueta sí lo es. Así que hace falta decidir **un solo slug**, y de paso qué prende la cascada del §11: ¿es ciclo, como «Feria»? Mientras no se decida, se carga con «Otro…» y cada uno le pone otro nombre. |
 
 Resueltas el 2026-08-21:
 
@@ -71,7 +72,18 @@ estaban escritas:
 - **El paso 4 es el que desbloquea todo lo demás.** Sin `FIREBASE_SERVICE_ACCOUNT`
   no se publica ni el sitio ni el panel, así que ningún cambio de código llega a
   producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
-  ítem. Es el paso 3+4, no el 1+2, el que hay que hacer primero.
+  ítem.
+- **Y es lo único que falta.** Al relevar el proyecto el 2026-08-25
+  (`gcloud functions list`, `gcloud secrets list`) resultó que **los pasos 1, 2 y 5
+  ya estaban hechos** y la doc decía que no: el PAT existe en Secret Manager desde
+  el 2026-08-21, y `dispararRebuild`, `guardarVersion` y `reporteAIssue` están
+  **ACTIVE**. La lista de arriba llevaba días desactualizada hacia el lado caro
+  —hacía creer que faltaba trabajo ya hecho— y por eso este ítem parecía más grande
+  de lo que es. Queda **solo el 3 y el 4**.
+- **`dispararRebuild` ya está corriendo cada 5 minutos**, y el
+  `repository_dispatch` que manda apunta a `deploy.yml`, que **falla al arrancar**
+  (B-188). El lazo del §8 está prendido de punta a punta menos en el último
+  eslabón, y en silencio: la Function no se entera de que el workflow no arrancó.
 - **El build pasó sin la credencial, y hoy está bien que pase:** ninguna página
   lee Firestore todavía —el sitio público es el paso 3 y `index.astro` sigue
   siendo un placeholder—, así que el build solo arma el panel y no necesita
@@ -574,6 +586,7 @@ Dos cosas para no romper en el camino:
 El sync a Calendar no se toca: ya borra los eventos de todo lo que no está
 `publicado` (§7.3), así que un borrador más incompleto no llega a Calendar por
 definición.
+
 ### B-184 · Cuando el guardado falla, la barra dice cuántos campos faltan pero no cuáles
 
 Reporte del dueño usando el panel (2026-08-25):
@@ -609,6 +622,7 @@ valor del mensaje bueno se cobra recién con B-183 hecho.
 
 Ojo con el criterio de B-63: si se agrega el mensaje, el punto de la guía que hoy
 dice «esa barra dice cuántos campos hay que revisar» queda mintiendo.
+
 ### B-189 · `hayCredenciales()` existe y no la llama nadie, así que el build va a publicar un sitio vacío · P1
 
 `src/lib/firebase-admin.ts` exporta:
@@ -648,6 +662,47 @@ todavía no existe, y el consumidor nace sin llamarla.
 
 Queda **P1** y no P2 aunque hoy no se note: cuando se note, el síntoma es el sitio
 público vacío e indexado por Google, que es el objetivo del proyecto al revés.
+
+### B-191 · No hay autoguardado, así que una interrupción se lleva todo lo escrito
+
+[Issue #6](https://github.com/benoffi7/agenda-literaria/issues/6), del panel,
+Android, versión `1.0.1+538bef7`:
+
+> Se podrá guardar algo como borrador o auto guardado, como en word? Porque
+> reporté algo y todo lo que escribí se borró:(
+
+**El accidente concreto ya está cerrado**: tocar «Reportar algo» con el formulario
+a medio llenar lo descartaba sin decir nada, y eso es **B-35**, arreglado el
+2026-08-24 y publicado en 1.1.0 — ahora pregunta antes. Quien reportó esto todavía
+no lo tenía.
+
+**Lo que pidió no es eso, y sigue abierto.** Un aviso evita el accidente; no
+recupera el trabajo. Y hoy se combina mal con **B-183**: si «Guardar borrador»
+exige el formulario completo, la única respuesta honesta al aviso es "sí, perdelo".
+Los tres ítems son una sola historia contada en tres pedazos: **no podés guardar
+(B-183), no sabés por qué (B-184), y si te vas lo perdés (este)**.
+
+**La forma, que es más chica de lo que parece:** persistir el borrador del
+formulario en `localStorage`, con clave por actividad (más una para «nueva»), y al
+abrir ofrecer lo recuperado con un botón para descartarlo. **No toca Firestore**,
+así que no hay reglas nuevas, ni modelo, ni calendario, ni una escritura por tecla
+que cueste plata. El estado ya está centralizado desde B-70, y `formulario-sucio.ts`
+ya sabe cuándo hay algo que perder: son los dos ganchos que hacen falta.
+
+Tres cosas para no equivocarse:
+
+- **Lo guardado es contenido**, a diferencia de todo lo demás que el panel
+  persiste. Nunca sale del navegador y no puede filtrarse a la analítica, que
+  solo acepta enums y contadores (§9). Vale un test de eso.
+- **Recuperar en silencio es peor que no recuperar.** Si al abrir una actividad
+  aparece texto que no está en Firestore sin decir de dónde salió, la próxima
+  duda es "¿esto lo guardé o no?". Tiene que decirlo y tiene que poder
+  descartarse.
+- **Limpiar al guardar bien**, o el borrador viejo va a reaparecer encima de la
+  versión buena la próxima vez.
+
+**Orden:** B-183 primero. Es más barato, cierra el agujero de raíz y baja mucho la
+urgencia de esto.
 
 ## P2 — mejoras reales
 
@@ -1978,6 +2033,7 @@ El valor guardado es `dm` y no se toca: esto es la etiqueta, no la identidad.
 Cuando se haga, hay que revisar si `tests/etiquetas-de-ui.test.ts` fija alguno de
 los dos textos, y el comentario de `etiquetasUI.ts` que cita «por DM de
 Instagram» como ejemplo de prosa.
+
 ### B-186 · El almanaque de la fecha se cierra solo si se tarda en elegir · P2
 
 Reporte del dueño usando el panel (2026-08-25):
@@ -2036,6 +2092,7 @@ menos.
 Si al final resulta que es el selector nativo y no hay nada que apagar, la
 alternativa es un selector propio, y eso es otro ítem: pesa en el bundle (B-09) y
 hay que decidirlo, no descubrirlo.
+
 ### B-187 · `npx firebase` resolvía el global, así que el primer push de CI cortó al minuto — ✅ hecho (2026-08-25)
 
 El primer push a GitHub disparó «Deploy desde main» y el job `verificar` murió en
@@ -2070,7 +2127,8 @@ que un clone nuevo levanta los emuladores sin instalar nada.
 
 Lo que **no** cubre este arreglo: el deploy sigue sin poder correr por los secrets
 que faltan (ver «Pendiente de acción manual del dueño»). Este ítem es solo el gate.
-### B-188 · `deploy.yml` falla al arrancar en cada push, y no debería ni correr · P2
+
+### B-188 · `deploy.yml` falla al arrancar, y es el último eslabón del rebuild · P1
 
 Desde el primer push del repo (2026-08-25), **cada** push a `main` deja dos
 corridas en Actions: la de «Deploy desde main», que es la que corresponde, y una
@@ -2087,13 +2145,20 @@ debería producirle ninguna corrida.
 BOM, sin CRLF, sin claves duplicadas de primer nivel, `on`/`jobs`/`permissions` en
 su lugar— y el otro workflow, con la misma forma, arranca bien.
 
-**Por qué importa más que el ruido en la pestaña Actions:** `deploy.yml` es el
-workflow del lazo del §8, el que republica el sitio cuando se edita una actividad.
-Si GitHub no puede procesar el archivo, el `repository_dispatch` que manda
-`dispararRebuild` no va a disparar nada — y eso se descubriría recién al activar
-B-20, con el rebuild "activado" y sin funcionar. La corrida fallida de cada push
-es, de hecho, la única señal de que algo anda mal, así que conviene no
-acostumbrarse a ignorarla.
+**Por qué es P1 y no ruido en la pestaña Actions:** `deploy.yml` es el workflow del
+lazo del §8, el que republica el sitio cuando se edita una actividad. Y
+`dispararRebuild` **ya está desplegada y corriendo cada 5 minutos** —relevado el
+2026-08-25, contra lo que decía la doc—, así que el lazo está prendido de punta a
+punta y corta acá: la Function manda el `repository_dispatch`, el workflow no
+arranca, y **la Function no tiene forma de enterarse**; para ella el dispatch salió
+bien. Es una falla silenciosa en el último eslabón de una cadena que ya está en
+producción.
+
+Lo que todavía lo tapa es que no hay sitio público que republicar (paso 3 del §10).
+El día que lo haya, esto es el motivo por el que una actividad nueva no va a
+aparecer nunca, y no va a haber ningún error que lo diga. La corrida fallida de
+cada push es la única señal visible, así que conviene no acostumbrarse a
+ignorarla.
 
 **Por dónde seguir:** el motivo solo se ve en la UI de Actions (la API no lo
 expone). Abrir la corrida y leer el error de arranque es el primer paso; si no
@@ -2101,6 +2166,135 @@ dice nada útil, bisecar el archivo comentando bloques hasta que la corrida
 desaparezca. Candidato a mirar primero: la expresión
 `${{ github.event.client_payload.motivo || 'disparo manual' }}` del primer step,
 que en un evento `push` referencia un contexto que no existe.
+
+### B-190 · La plataforma es obligatoria para lo virtual, y a veces todavía no se sabe cuál es · P2
+
+[Issue #5](https://github.com/benoffi7/agenda-literaria/issues/5), del panel,
+Android, versión `1.0.1+538bef7`:
+
+> Si no dice que plataforma dónde es el encuentro virtual, no quiero poner otro
+> porqué capaz es meet o zoom. No podría no ser obligatoria? O no se me ocurre
+> que poner
+
+El `superRefine` del schema exige `online.plataforma` cuando la modalidad es
+virtual o híbrida. El motivo es bueno —el evento público dice por dónde se
+conecta la gente— pero **"todavía no se decidió" es un estado real del dominio**, y
+hoy el formulario no lo puede expresar: obliga a elegir algo. El reporte lo dice
+con precisión: no es que falte la opción, es que **poner cualquiera sería
+inventar**, y una plataforma equivocada en un evento público es peor que ninguna.
+
+**El arreglo más barato no toca el schema.** `online.plataforma` es una taxonomía
+autogestionada del §4, así que alcanza con una opción base `a-confirmar` con
+`fijo: true` en `src/lib/opciones-base.json` — una entrada, cero código. Es el
+argumento del §4.1 con «a la gorra»: no es un caso raro que se resuelve con
+«Otro…», es un estado de primera clase que merece nombre propio. Y además es
+**honesto de publicar**: el evento dice "Virtual · plataforma a confirmar", que es
+exactamente lo que se sabe.
+
+Hay que revisar dos cosas del otro lado antes de darlo por hecho:
+
+- **Cómo lo lee el evento** (`functions/calendario.js`): con `a-confirmar` la línea
+  tiene que decir algo legible, no el slug. Es la clase de bug B-76/B-132 y ya hay
+  un chequeo que exige etiqueta para todo valor de los enums, pero las taxonomías
+  abiertas no pasan por ahí.
+- **Qué pasa al publicar.** Si se acepta publicar con la plataforma a confirmar,
+  alguien tiene que volver a completarla, y nada se lo va a recordar. Ese
+  recordatorio es de la familia de B-126 (la vista calendario avisando de lo que
+  falta), no de este ítem.
+
+La otra mitad de la pregunta —hacerla **opcional** en vez de darle un valor— es la
+alternativa, y es peor: un campo opcional no distingue "no hace falta" de "falta",
+así que se publican encuentros virtuales sin decir por dónde y nadie se entera. El
+mismo razonamiento que llevó a que el arancel obligue a elegir (D-16).
+
+Lo mismo se le puede preguntar a `sede` en presencial —un lugar a confirmar es
+igual de común—, pero eso es otro ítem: la sede además arrastra la dirección, el
+mapa y el `location` del evento.
+
+### B-192 · Una librería que sale a la calle no tiene tipo · P2
+
+Dos reportes del panel que son el mismo pedido con dos nombres distintos, del
+mismo día:
+
+[Issue #8](https://github.com/benoffi7/agenda-literaria/issues/8):
+
+> Además de feria- cómo poner cuando una librería tiene un día especial que sale a
+> la calle o se pone en un bar o café una mesita con libros? Venta especial?
+
+[Issue #9](https://github.com/benoffi7/agenda-literaria/issues/9):
+
+> Para cuando una librería pone los libros a la calle o hace algo (tipo música o
+> charlas en la calle) ponerle : Librería ABIERTA - Librería a la calle
+
+Misma familia que **B-129** («Feria»): una categoría del dominio que las cinco de
+§3.1 no contemplan. Y como ahí, **se puede hacer hoy sin tocar código**: `tipo` es
+una taxonomía abierta y el schema lo trata como slug (`texto.min(1)`), así que
+«Otro…» + "Librería a la calle" ya funciona. Lo que hay que decidir es si pasa a
+ser opción base, y **cómo se llama**.
+
+**El nombre es el trabajo, no un detalle.** Los dos reportes proponen tres
+etiquetas para la misma cosa —"Venta especial", "Librería ABIERTA", "Librería a la
+calle"— y esa duda es la señal de que no es obvio. Acá aplica la lección de
+**B-134**: un valor nuevo **no es reversible** (parte los datos en dos que después
+nadie puede volver a juntar, porque nadie recuerda cuál eligió), y una **etiqueta
+sí lo es**. Así que: **un solo slug**, y el label se puede cambiar después. Va como
+**DEC-9**.
+
+Dos cosas que arrastra, y son el trabajo real:
+
+- **La cascada del §11.** ¿Prende «es un ciclo»? Una librería que abre a la calle
+  un sábado es un día; una semana de la librería son varios, uno por jornada, que
+  es lo mismo que se decidió para «Feria». No pide tallerista. Material,
+  probablemente tampoco. Si no se define la cascada, cae en el default y hay que
+  acordarse a mano, que es justo el olvido que el §11 evita.
+- **`fijo: true`**, por el mismo motivo que «Feria»: si la cascada la nombra por
+  slug, borrarla desde la pantalla de taxonomías —que ahora existe— dejaría la
+  regla apuntando a un tipo que no se puede elegir. Eso va con test.
+
+Nota de dominio que vale más que el ítem: los dos reportes describen algo que **no
+es una actividad con horario de inicio y fin claros** sino un local abierto un día,
+a veces con música o charlas adentro. Si eso se repite, el modelo va a necesitar
+distinguir "evento" de "jornada", y ahí se cruza con **B-181**.
+
+### B-193 · La vista previa del evento ya existía y quien la pidió no la encontró · P2
+
+[Issue #7](https://github.com/benoffi7/agenda-literaria/issues/7), del panel,
+Android, versión `1.0.1+538bef7`:
+
+> Se puede ver como una "vista previa" de como se va a ver en el calendario? O
+> debería entrar al calendario y suscribirme
+
+**La vista previa existe desde el 2026-08-21** (B-12, D-14) y estaba en la versión
+desde la que se escribió ese reporte. O sea: no falta la función, **falta poder
+encontrarla**. Es el reporte más barato de todos los que llegaron, porque no hay
+que construir nada.
+
+Por qué no se encontró, con lo que se sabe:
+
+- Es la **última** sección del formulario y **arranca colapsada**, junto con
+  Material, Opcional y Difusión. Hay que bajar hasta el final y abrirla.
+- El reporte salió con `Pantalla: Otra` y ruta `/admin/`: quien preguntó no estaba
+  en el formulario. Desde el listado, «cómo se va a ver el evento» no tiene
+  ninguna puerta.
+
+**Lo que NO es el arreglo:** explicarlo mejor en la guía. La guía ya lo explica
+—`ayuda.ts` tiene el capítulo— y no alcanzó, que es precisamente el límite que
+B-63 señala. Una función que hay que ir a buscar a la ayuda está escondida.
+
+Dos caminos, y se pueden combinar:
+
+1. **Que la vista previa nazca abierta la primera vez** que se abre una actividad,
+   y recuerde el estado después. Es el cambio más chico y ataca el motivo
+   principal.
+2. **Una puerta desde el listado**, en el menú «⋯» de cada fila —que es donde
+   estaba parada la persona—, que abra la vista previa sin entrar a editar. Cuesta
+   más, y de paso sirve para revisar qué se publicó sin riesgo de tocar nada.
+
+**El valor de este ítem está en la clase, más que en el arreglo.** Es la primera
+evidencia medida de que la segunda persona **no encuentra** lo que se construye, y
+eso no lo dice ningún test. Vale mirar con el mismo ojo las otras funciones que
+viven detrás de un acordeón o de un menú: material, difusión, historial, y la
+pantalla de taxonomías.
 
 ## P3 — cuando sobre tiempo
 
@@ -2667,6 +2861,7 @@ aparecen donde `.astro/` no existe todavía: un **worktree recién creado**, un
 clone fresco y **el CI** — o sea, exactamente los tres lugares donde el comando
 se corre para decidir algo. Un hallazgo que solo se reproduce en el entorno
 limpio es más grave, no menos.
+
 ### B-176 · Regenerar los encuentros borra los temas y las lecturas cargados · P2
 
 `generarSesiones` devuelve `tema: ''` y `lectura: ''` en todas las filas, así

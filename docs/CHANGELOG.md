@@ -52,6 +52,65 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### Los nueve issues de GitHub, leídos y volcados al backlog
+
+`reporteAIssue` viene creando issues desde el panel desde el 2026-08-21 y nadie los
+había mirado. Nueve: tres de prueba, ya cerrados, y seis de uso real. Uno
+(«Feria», #4) ya estaba cerrado como B-129. Los otros cinco eran cuatro pedidos
+distintos:
+
+- **B-190 · la plataforma es obligatoria y a veces no se sabe cuál es** (#5). "No
+  quiero poner otro porque capaz es meet o zoom." El arreglo más barato no toca el
+  schema: `online.plataforma` es taxonomía del §4, así que una opción base
+  `a-confirmar` con `fijo: true` es **una entrada** en `opciones-base.json`. Es el
+  argumento de «a la gorra» (§4.1): un estado real del dominio merece nombre
+  propio. Hacerla opcional sería peor — un campo opcional no distingue "no hace
+  falta" de "falta" (D-16).
+- **B-191 · no hay autoguardado** (#6). "Reporté algo y todo lo que escribí se
+  borró." El accidente concreto era **B-35** y ya está cerrado y publicado en
+  1.1.0: ahora pregunta antes. Pero un aviso evita el accidente, no recupera el
+  trabajo — y hoy se combina mal con B-183. Los tres ítems son **una historia en
+  tres pedazos: no podés guardar (B-183), no sabés por qué (B-184), y si te vas lo
+  perdés (B-191)**.
+- **B-192 · una librería que sale a la calle no tiene tipo** (#8 y #9). Misma
+  familia que «Feria», y como ahí se puede hacer hoy con «Otro…». **El nombre es el
+  trabajo:** los dos reportes proponen tres etiquetas para lo mismo, y por B-134 un
+  valor nuevo no es reversible mientras una etiqueta sí. Un solo slug, y el label
+  se decide (**DEC-9**).
+- **B-193 · la vista previa ya existía y quien la pidió no la encontró** (#7).
+  B-12 salió el 2026-08-21 y el reporte es del 24 sobre esa misma versión. No falta
+  la función: falta poder encontrarla — es la última sección del formulario, nace
+  colapsada, y la persona estaba en el listado. Y el arreglo **no** es explicarlo
+  mejor en la guía: la guía ya lo explica, que es justo el límite que B-63 señala.
+  Es la primera evidencia medida de que la segunda persona no encuentra lo que se
+  construye, y eso no lo dice ningún test.
+
+### El inventario de infra decía que faltaba trabajo que ya estaba hecho
+
+Al leer los issues quedó a la vista una contradicción: `02-infraestructura.md`
+listaba `reporteAIssue` como "escrita, sin desplegar — falta el secreto", y los
+nueve issues los creó esa Function. Relevado contra el proyecto
+(`gcloud functions list`, `gcloud secrets list`):
+
+| | La doc decía | Es |
+|---|---|---|
+| `guardarVersion` | escrita, sin desplegar | **ACTIVE** |
+| `dispararRebuild` | escrita, sin desplegar | **ACTIVE**, corriendo cada 5 min |
+| `reporteAIssue` | escrita, sin desplegar | **ACTIVE**, 9 issues |
+| `GITHUB_TOKEN` (Secret Manager) | falta crearlo | **existe** desde el 2026-08-21 |
+| `guardarVersionAlBorrar` | escrita, sin desplegar | correcto, sigue sin desplegar |
+
+**El drift fue todo hacia el mismo lado:** la doc hacía creer que faltaba trabajo
+ya hecho. Consecuencia concreta: de los cinco pasos de **B-20**, los pasos 1, 2 y 5
+estaban hechos — falta **solo** la service account `deploy-ci@` y el secret de
+GitHub.
+
+Y una que apareció sola: **`dispararRebuild` está corriendo y su
+`repository_dispatch` apunta a `deploy.yml`, que no arranca** (B-188, que por esto
+sube a **P1**). El lazo del §8 está prendido de punta a punta menos en el último
+eslabón, y en silencio — la Function no tiene forma de enterarse de que el workflow
+no arrancó; para ella el dispatch salió bien.
+
 ### El primer push del repo, y lo que enseñó
 
 GitHub estaba vacío: `1.1.0` es el primer push del historial. Las dos corridas

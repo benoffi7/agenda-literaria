@@ -102,10 +102,10 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 |---|---|---|
 | `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — **hay que redesplegar** (B-80, B-82, B-83) |
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — **hay que redesplegar** (B-04, `timeoutSeconds: 300`) |
-| `guardarVersion` | `onDocumentUpdated actividades/{id}` | **escrita, sin desplegar** |
+| `guardarVersion` | `onDocumentUpdated actividades/{id}` | ACTIVE |
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | **escrita, sin desplegar** (B-41) |
-| `dispararRebuild` | `onSchedule every 5 minutes` | **escrita, sin desplegar** |
-| `reporteAIssue` | `onDocumentWritten reportes/{id}` | **escrita, sin desplegar** — falta el secreto |
+| `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — **corriendo, y su workflow no arranca** (B-188) |
+| `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
 solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
@@ -128,9 +128,28 @@ roles que un trigger de Firestore v2 necesita y hay que otorgar a mano (ver
 abajo). Una SA propia sin permiso de Calendar sería más prolijo —no necesita
 tocar Calendar— pero es trabajo de IAM antes de poder desplegar.
 
-`dispararRebuild` no se desplegó porque todavía no existen el sitio público ni
-el workflow de GitHub Actions que tendría que disparar: sería un schedule
-corriendo cada 5 minutos para no hacer nada.
+**Relevado contra el proyecto el 2026-08-25** (`gcloud functions list`,
+`gcloud secrets list`), porque los párrafos de abajo decían lo contrario y llevaban
+días desactualizados. Lo que estaba mal, y en los dos casos hacia el mismo lado —la
+doc creía que faltaba trabajo que ya estaba hecho:
+
+- `guardarVersion`, `dispararRebuild` y `reporteAIssue` figuraban como "escritas,
+  sin desplegar" y están **ACTIVE**. `reporteAIssue` lleva **nueve issues creados**
+  desde el panel, que es la prueba más dura posible.
+- El secreto `GITHUB_TOKEN` figuraba como "falta crearlo" y **existe desde el
+  2026-08-21**, o sea desde antes de que se escribiera que faltaba.
+- `guardarVersionAlBorrar` **sí** sigue sin desplegar. Es la única de la tabla que
+  la doc tenía bien.
+
+Consecuencia para B-20: de sus cinco pasos, **el 1, el 2 y el 5 ya están hechos**.
+Lo único que falta es el 3 y el 4 — la service account `deploy-ci@` y el secret
+`FIREBASE_SERVICE_ACCOUNT` de GitHub.
+
+Y una que apareció al relevarlo: `dispararRebuild` está **corriendo cada 5
+minutos**, y el `repository_dispatch` que manda apunta a `deploy.yml`, que **falla
+al arrancar** (B-188). O sea que el lazo del §8 está prendido de punta a punta
+menos en el último eslabón, y en silencio: la Function no se entera de que el
+workflow no arrancó.
 
 `dispararRebuild` sigue sin desplegar, pero ya no por falta de código: el
 workflow de Actions existe (`.github/workflows/deploy.yml`) y la Function está
@@ -138,8 +157,8 @@ completa. Falta lo que **solo puede hacer el dueño a mano**: crear el PAT de
 GitHub, guardarlo en Secret Manager y cargar el secret de deploy en GitHub. La
 lista de pasos está en [`08-operacion.md`](08-operacion.md).
 
-`reporteAIssue` no se desplegó porque falta el secreto con el PAT: sin token no
-puede crear ningún issue. Las opciones (región, service account, `secrets`) van
+`reporteAIssue` está desplegada y funcionando: el PAT existe en Secret Manager y
+los reportes del panel llegan como issues con la etiqueta `reporte-panel`. Las opciones (región, service account, `secrets`) van
 **explícitas en su propia definición** y no en el `setGlobalOptions()` de
 `index.js` — en ESM el import corre antes y las opciones globales llegarían tarde
 (D-35).
@@ -168,14 +187,14 @@ En **Secret Manager**, atado a la Function con `defineSecret` (§5.4):
 
 | Secreto | Lo usa | Estado |
 |---|---|---|
-| `GITHUB_TOKEN` | `reporteAIssue` (issues de reportes) y a futuro `dispararRebuild` (§8) | **falta crearlo** |
+| `GITHUB_TOKEN` | `reporteAIssue` (issues de reportes) y `dispararRebuild` (§8) | **existe** desde el 2026-08-21 |
 
 El PAT nunca va a `functions/.env` ni al repo (§5.4). El valor se resuelve en
 runtime con `defineSecret(...).value()`, así que tampoco queda en el artefacto
 del deploy. Los comandos para crearlo y dar el permiso están en
 [`08-operacion.md`](08-operacion.md).
 
-| `GITHUB_TOKEN` | PAT que autoriza el `repository_dispatch` | **falta crearlo** |
+| `GITHUB_TOKEN` | PAT que autoriza el `repository_dispatch` | **existe** desde el 2026-08-21 |
 
 `defineSecret` es lo que monta el secreto en el runtime de la Function: leerlo
 de `process.env` sin declararlo daba `undefined` en producción. La service
@@ -196,9 +215,9 @@ solo se materializa en la memoria del runner.
 (2026-08-25) pasó el gate entero —tests con emuladores, typecheck, build y el
 chequeo de fuga— y murió en el paso del deploy con `Error: Input required and not
 supplied: firebaseServiceAccount`. Mientras no exista, publicar una versión es a
-mano (§"Deploy a mano" de [`08-operacion.md`](08-operacion.md)). El orden de los
-pasos de B-20 se invierte por esto: primero la service account y el secret, después
-el PAT del rebuild.
+mano (§"Deploy a mano" de [`08-operacion.md`](08-operacion.md)). Es lo **único** que
+falta de B-20: el PAT y el secreto de Secret Manager ya existen, y las Functions ya
+están desplegadas (ver arriba, relevado el 2026-08-25).
 
 
 ## Service accounts
