@@ -186,11 +186,19 @@ secreto, y la API `secretmanager.googleapis.com` habilitada.
 
 | Secret | Para qué | Estado |
 |---|---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | JSON de la key con que el workflow lee Firestore en build time (§2.4) y despliega Hosting | **falta crearlo** |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON de la key con que el workflow lee Firestore en build time (§2.4) y despliega Hosting | **falta crearlo** — el repo tiene cero secrets, verificado el 2026-08-25 |
 
 Es la única key de service account del proyecto, y existe porque un runner de
 GitHub no tiene ADC. Nunca va al repo (§5.4): vive en los secrets de GitHub y
 solo se materializa en la memoria del runner.
+
+**Es el único bloqueante para que un push publique algo.** El primer push del repo
+(2026-08-25) pasó el gate entero —tests con emuladores, typecheck, build y el
+chequeo de fuga— y murió en el paso del deploy con `Error: Input required and not
+supplied: firebaseServiceAccount`. Mientras no exista, publicar una versión es a
+mano (§"Deploy a mano" de [`08-operacion.md`](08-operacion.md)). El orden de los
+pasos de B-20 se invierte por esto: primero la service account y el secret, después
+el PAT del rebuild.
 
 
 ## Service accounts

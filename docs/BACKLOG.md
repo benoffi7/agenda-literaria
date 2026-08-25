@@ -57,6 +57,33 @@ Hasta que eso esté, una actividad nueva no aparece en el sitio hasta un build
 manual. **El paso 5 no tiene sentido sin el 1 y el 2:** el schedule correría
 cada 5 minutos loguéandose como "sin GitHub configurado".
 
+**Confirmado en producción el 2026-08-25**, con el primer push del repo a GitHub.
+Ya no es una previsión: el workflow «Deploy desde main» pasó el gate (tests,
+typecheck y build en verde) y murió en el paso del deploy con
+
+```
+Error: Input required and not supplied: firebaseServiceAccount
+```
+
+El repo tiene **cero secrets** cargados. Dos cosas que el intento enseñó y no
+estaban escritas:
+
+- **El paso 4 es el que desbloquea todo lo demás.** Sin `FIREBASE_SERVICE_ACCOUNT`
+  no se publica ni el sitio ni el panel, así que ningún cambio de código llega a
+  producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
+  ítem. Es el paso 3+4, no el 1+2, el que hay que hacer primero.
+- **El build pasó sin la credencial, y hoy está bien que pase:** ninguna página
+  lee Firestore todavía —el sitio público es el paso 3 y `index.astro` sigue
+  siendo un placeholder—, así que el build solo arma el panel y no necesita
+  credenciales. Lo que eso destapa es para después: la guarda que avisaría
+  (`hayCredenciales()` en `src/lib/firebase-admin.ts`) **existe y no la llama
+  nadie**, así que el día que entre B-106 el build va a publicar un sitio vacío
+  en silencio. Anotado como **B-189**.
+
+Mientras tanto, publicar una versión es a mano, con el runbook de
+[`08-operacion.md`](08-operacion.md) § "Deploy a mano":
+`npm run build && firebase deploy --only hosting`.
+
 ### B-21 · Alerta de rebuild agotado (opcional) — código listo (2026-08-24), falta el click del dueño
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
@@ -582,6 +609,45 @@ valor del mensaje bueno se cobra recién con B-183 hecho.
 
 Ojo con el criterio de B-63: si se agrega el mensaje, el punto de la guía que hoy
 dice «esa barra dice cuántos campos hay que revisar» queda mintiendo.
+### B-189 · `hayCredenciales()` existe y no la llama nadie, así que el build va a publicar un sitio vacío · P1
+
+`src/lib/firebase-admin.ts` exporta:
+
+```ts
+/** ¿Tenemos con qué leer Firestore en este build? */
+export const hayCredenciales = (): boolean => …
+```
+
+y `grep -rn hayCredenciales src/ scripts/` no la encuentra en ningún otro lado.
+Es la guarda escrita para esta situación exacta, sin cablear.
+
+**Hoy no rompe nada**, y por eso pasa desapercibida: ninguna página lee Firestore
+en el build —el sitio público es el paso 3 del §10 y `index.astro` es un
+placeholder—, así que un build sin credenciales es correcto. Se comprobó con el
+primer push de CI (2026-08-25): `npm run build` sin `FIREBASE_SERVICE_ACCOUNT`
+terminó en verde, como corresponde.
+
+**Rompe con B-106.** El día que el build lea Firestore para armar `events.json` y
+las páginas de detalle, un build sin credenciales no va a fallar: va a producir
+cero actividades y un `events.json` vacío, y el deploy lo va a publicar encima del
+sitio que sí tenía datos. Sin error, sin log, con el workflow en verde. Es la
+misma familia que el `EXIGIR_EMULADOR=1` del §CI —"verde" no puede significar a la
+vez "los datos están" y "no había datos que leer"— y que B-187: una condición que
+solo se evalúa cuando ya deployó.
+
+**El arreglo es una línea, y hay que hacerlo antes de B-106, no después.** El
+lugar es el paso de build de los dos workflows, o el módulo que lea Firestore:
+
+```ts
+if (!hayCredenciales()) throw new Error('build sin credenciales: no se puede leer Firestore');
+```
+
+Con un test que lo ate, porque el patrón que lo apaga otra vez es exactamente el
+que lo dejó apagado: alguien escribe la guarda pensando en el consumidor que
+todavía no existe, y el consumidor nace sin llamarla.
+
+Queda **P1** y no P2 aunque hoy no se note: cuando se note, el síntoma es el sitio
+público vacío e indexado por Google, que es el objetivo del proyecto al revés.
 
 ## P2 — mejoras reales
 
@@ -2004,6 +2070,37 @@ que un clone nuevo levanta los emuladores sin instalar nada.
 
 Lo que **no** cubre este arreglo: el deploy sigue sin poder correr por los secrets
 que faltan (ver «Pendiente de acción manual del dueño»). Este ítem es solo el gate.
+### B-188 · `deploy.yml` falla al arrancar en cada push, y no debería ni correr · P2
+
+Desde el primer push del repo (2026-08-25), **cada** push a `main` deja dos
+corridas en Actions: la de «Deploy desde main», que es la que corresponde, y una
+de `.github/workflows/deploy.yml` que muere sin ejecutar ningún job. GitHub la
+muestra con el path en lugar del `name:` del archivo —señal de que no llegó a
+parsearlo— y con el texto *"This run likely failed because of a workflow file
+issue"*, sin más detalle por API.
+
+Dos cosas raras a la vez: **`deploy.yml` no tiene trigger de `push`** (solo
+`repository_dispatch: [rebuild]` y `workflow_dispatch`), así que un push no
+debería producirle ninguna corrida.
+
+**Lo que se descartó:** el archivo es YAML estructuralmente válido —sin tabs, sin
+BOM, sin CRLF, sin claves duplicadas de primer nivel, `on`/`jobs`/`permissions` en
+su lugar— y el otro workflow, con la misma forma, arranca bien.
+
+**Por qué importa más que el ruido en la pestaña Actions:** `deploy.yml` es el
+workflow del lazo del §8, el que republica el sitio cuando se edita una actividad.
+Si GitHub no puede procesar el archivo, el `repository_dispatch` que manda
+`dispararRebuild` no va a disparar nada — y eso se descubriría recién al activar
+B-20, con el rebuild "activado" y sin funcionar. La corrida fallida de cada push
+es, de hecho, la única señal de que algo anda mal, así que conviene no
+acostumbrarse a ignorarla.
+
+**Por dónde seguir:** el motivo solo se ve en la UI de Actions (la API no lo
+expone). Abrir la corrida y leer el error de arranque es el primer paso; si no
+dice nada útil, bisecar el archivo comentando bloques hasta que la corrida
+desaparezca. Candidato a mirar primero: la expresión
+`${{ github.event.client_payload.motivo || 'disparo manual' }}` del primer step,
+que en un evento `push` referencia un contexto que no existe.
 
 ## P3 — cuando sobre tiempo
 

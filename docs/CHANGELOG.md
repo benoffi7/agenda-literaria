@@ -50,6 +50,36 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### El primer push del repo, y lo que enseñó
+
+GitHub estaba vacío: `1.1.0` es el primer push del historial. Las dos corridas
+—una que cortó al minuto y otra que llegó hasta el deploy— dejaron tres cosas que
+no estaban escritas, y ninguna era una previsión: son medidas.
+
+**Publicar por CI está bloqueado por un solo secret.** «Deploy desde main» pasó el
+gate completo —tests con emuladores, typecheck, build, chequeo de fuga— y murió en
+`Error: Input required and not supplied: firebaseServiceAccount`. El repo tiene
+cero secrets. Eso **invierte el orden de B-20**: el paso que desbloquea todo es la
+service account `deploy-ci@` y su secret, no el PAT del rebuild, porque sin él
+ningún cambio de código llega a producción por CI. Mientras tanto, publicar es a
+mano.
+
+**`hayCredenciales()` existe y no la llama nadie** (B-189, P1). Es la guarda de
+`firebase-admin.ts` escrita para "¿tenemos con qué leer Firestore en este build?",
+y `grep` no la encuentra en ningún otro lado. Hoy no rompe: ninguna página lee
+Firestore todavía, así que el build sin credenciales es correcto y termina en
+verde. Rompe con B-106 — ahí un build sin credenciales no va a fallar, va a
+publicar `events.json` vacío encima del sitio que tenía datos, en verde y sin log.
+Misma familia que el `EXIGIR_EMULADOR=1`: "verde" no puede significar a la vez "los
+datos están" y "no había datos que leer".
+
+**`deploy.yml` falla al arrancar en cada push** (B-188), y no debería ni correr: no
+tiene trigger de `push`. El archivo es YAML válido —sin tabs, sin BOM, sin CRLF,
+sin claves duplicadas— y GitHub no expone el motivo por API. Importa porque es el
+workflow del lazo del §8: si no se puede procesar, el `repository_dispatch` de
+`dispararRebuild` no va a disparar nada, y eso se descubriría recién al activar
+B-20.
+
 ### B-187 · el primer push de CI cortó al minuto
 
 `firebase-tools` estaba solo instalado global, y los workflows lo invocan con
