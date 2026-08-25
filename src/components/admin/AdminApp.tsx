@@ -47,7 +47,10 @@ type Vista =
   // B-40 — historial de versiones de UNA actividad. Lleva la actividad y no solo
   // su id porque la comparación es contra el documento actual, y el listado ya
   // lo tiene en memoria: entrar no cuesta una lectura.
-  | { tipo: 'historial'; actividad: ActividadConId };
+  | { tipo: 'historial'; actividad: ActividadConId }
+  // B-170 — administración de las taxonomías del §4. No lleva estado: la
+  // pantalla lee `/opciones/*` sola.
+  | { tipo: 'taxonomias' };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -105,6 +108,21 @@ const CalendarioActividades = diferido<Parameters<typeof TipoCalendario>[0]>(() 
 const HistorialActividad = diferido<Parameters<typeof TipoHistorial>[0]>(() =>
   import('@/components/admin/HistorialActividad').then((m) => ({
     default: m.HistorialActividad,
+  })),
+);
+
+// B-170 — ídem: la administración de taxonomías se abre poco y el contador de
+// pendientes que lleva al lado importa Firestore, así que ninguno de los dos
+// tiene por qué viajar en el chunk del login.
+const TaxonomiasPanel = diferido<object>(() =>
+  import('@/components/admin/taxonomias/TaxonomiasPanel').then((m) => ({
+    default: m.TaxonomiasPanel,
+  })),
+);
+
+const PendientesBadge = diferido<object>(() =>
+  import('@/components/admin/taxonomias/PendientesBadge').then((m) => ({
+    default: m.PendientesBadge,
   })),
 );
 
@@ -274,7 +292,9 @@ export function AdminApp() {
                       ? 'Calendario'
                       : vista.tipo === 'historial'
                         ? `Historial de ${vista.actividad.titulo}`
-                        : vista.actividad.titulo}
+                        : vista.tipo === 'taxonomias'
+                          ? 'Opciones de los desplegables'
+                          : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
         </div>
@@ -296,6 +316,16 @@ export function AdminApp() {
             Calendario
           </button>
         )}
+        {vista.tipo === 'lista' && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'taxonomias' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Opciones
+            <PendientesBadge />
+          </button>
+        )}
         {vista.tipo !== 'reportes' && (
           <button
             type="button"
@@ -314,7 +344,9 @@ export function AdminApp() {
               ? 'lista'
               : vista.tipo === 'calendario'
                 ? 'calendario'
-                : 'formulario'
+                : vista.tipo === 'taxonomias'
+                  ? 'lista'
+                  : 'formulario'
           }
         />
         <button
@@ -376,6 +408,8 @@ export function AdminApp() {
           }}
         />
       )}
+
+      {vista.tipo === 'taxonomias' && <TaxonomiasPanel />}
 
       {vista.tipo === 'reportes' && (
         <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />

@@ -65,3 +65,51 @@ export const labelsPendientesDe = (
   }
   return mapa;
 };
+
+/**
+ * Los slugs de taxonomía que esta actividad **eligió**, campo por campo, para
+ * que `registrarUsos` sume el `usos` del §4.3 (B-86, B-168, D-103).
+ *
+ * **Se restan los que se acaban de crear.** `upsertOpcion` los siembra con
+ * `usos: 1`, así que contarlos otra vez los dejaría en 2 y el orden por
+ * frecuencia arrancaría torcido justo para las opciones nuevas — que son las que
+ * el §4.3 quiere poder distinguir de la basura ("una opción con `usos: 1` creada
+ * hace meses es casi seguro un typo colgado"). Si esa resta se cae, el síntoma es
+ * silencioso: números plausibles y un orden mal.
+ *
+ * Puro y sobre el form ya guardado, no sobre el estado del componente: cuenta lo
+ * que quedó escrito, no lo que se tipeó y después se cambió.
+ */
+export const usosAContar = (
+  // `sede` y `online` son nulos según la modalidad (§11): un taller virtual no
+  // tiene barrio y uno presencial no tiene plataforma. El `?? ''` los descarta
+  // solo, porque `registrarUsos` ya ignora los slugs vacíos.
+  guardado: {
+    arancel: { tipo: string };
+    tipo: string;
+    sede: { barrio: string } | null;
+    online: { plataforma: string } | null;
+    tags: readonly string[];
+  },
+  labelsNuevos: readonly LabelNuevo[],
+  tagsNuevos: Record<string, string>,
+): Partial<Record<'arancel' | 'tipo' | 'barrio' | 'plataforma' | 'tags', string[]>> => {
+  const recienCreados = labelsPendientesDe(labelsNuevos, tagsNuevos);
+  const nuevoEn = (campo: keyof LabelsTaxonomia, slug: string) =>
+    Boolean(recienCreados[campo]?.[slug]);
+
+  const elegidos = {
+    arancel: [guardado.arancel.tipo],
+    tipo: [guardado.tipo],
+    barrio: [guardado.sede?.barrio ?? ''],
+    plataforma: [guardado.online?.plataforma ?? ''],
+    tags: [...guardado.tags],
+  };
+
+  const salida: Partial<Record<keyof typeof elegidos, string[]>> = {};
+  for (const [campo, slugs] of Object.entries(elegidos) as [keyof typeof elegidos, string[]][]) {
+    const aContar = slugs.filter((s) => s && !nuevoEn(campo, s));
+    if (aContar.length) salida[campo] = aContar;
+  }
+  return salida;
+};

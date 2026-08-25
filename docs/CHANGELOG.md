@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-08-25
+
+### Las dos mitades que ningún frente podía cerrar solo
+
+Terminado el plan de saneamiento, quedaban dos ítems que existían **solo** porque
+el trabajo se repartió por archivo: cada uno tenía su mitad hecha en un frente y
+su mitad pendiente en otro. Es el costo previsible de ese reparto, y se paga
+ahora, junto.
+
+**B-170 · la pantalla de taxonomías ya se puede abrir.** 3A la construyó completa
+y la dejó sin montar porque el router vive en `AdminApp.tsx`, de 3B. Ahora está en
+la cabecera del listado, como «Opciones».
+
+Con una trampa que valía la pena esquivar: el contador de pendientes de B-26
+necesita `usePendientesDeAprobacion`, que importa Firestore. La cabecera se
+renderiza en `AdminApp`, que está en **el chunk inicial** — el que se baja para
+mostrar "Entrar con Google". Llamarlo desde ahí habría arrastrado el SDK a ese
+chunk y deshecho el corte de B-09/D-51 **sin que nada falle**: el panel seguiría
+funcionando, solo tardaría el doble en aparecer. Ese error ya se cometió tres
+veces. Por eso el contador es un componente propio (`PendientesBadge`) envuelto en
+`diferido()` y usado solo en la vista de lista, donde el listado ya bajó
+Firestore. La carga inicial quedó igual: `client` en 184 kB.
+
+Va con su capítulo de ayuda, y ahí hay algo que no es obvio y se paga caro: **
+renombrar una opción no sirve para arreglar un typo ya guardado**. La actividad
+guarda el slug, no el texto, así que renombrar «Villa Crepso» a «Villa Crespo»
+deja las actividades apuntando al slug viejo. Para eso hay que borrar la mala y
+volver a elegir. El capítulo lo dice con esas palabras.
+
+**B-168 · el `usos` del §4.3 finalmente cuenta.** 3A escribió y testeó
+`registrarUsos`, pero llamarla era una línea en `guardar()`, de la fase 2. La
+resta es la parte con filo: las etiquetas recién creadas **no** se cuentan, porque
+`upsertOpcion` ya las siembra con `usos: 1` y sumarlas otra vez las deja en 2 —
+justo las opciones que el §4.3 quiere poder distinguir de la basura ("una opción
+con `usos: 1` creada hace meses es casi seguro un typo colgado"). El síntoma de
+equivocarse ahí es silencioso: números plausibles y un orden mal.
+
+Y el fixture del test tenía **la clase B-135 por cuarta vez**: `entrada()` dice
+que se tipeó «Con beca parcial» pero el form guarda `a-la-gorra`, combinación que
+el panel real no puede producir —`recordarLabel` pone el slug en el mismo cambio
+que registra el label—. Con ese fixture la resta no tiene nada que restar y el
+chequeo pasaba sin haber mirado el caso. Cierra **B-86**.
+
+
 ## 2026-08-24
 
 ### La red de contención sobrevive a que le muevan el piso

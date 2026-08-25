@@ -57,6 +57,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'administrar-las-opciones',
+    fecha: '2026-08-25',
+    version: '1.0.1',
+    titulo: 'Ya podés arreglar, borrar y ordenar las opciones de los desplegables',
+    detalle:
+      'El botón «Opciones» abre las cinco listas que crecen solas —arancel, tipo, barrio, ' +
+      'plataforma y etiquetas— con cuántas actividades usan cada una. Ahí podés renombrar una ' +
+      'mal escrita o borrar la que sobra, sin tocar ninguna actividad. Ojo: renombrar cambia ' +
+      'solo cómo se lee, así que NO corrige un typo ya guardado; para eso hay que borrar la ' +
+      'mala y volver a elegir.',
+    donde: 'Botón «Opciones», arriba del listado de actividades.',
+  },
+  {
     id: 'regenerar-encuentros-conserva-el-calendario',
     fecha: '2026-08-24',
     version: '1.0.1',

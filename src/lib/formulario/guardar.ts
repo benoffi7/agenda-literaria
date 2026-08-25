@@ -12,7 +12,8 @@
  * B-71— sin emuladores y sin poder tocar datos de verdad.
  */
 import { actualizarActividad, crearActividad, slugDisponible } from '@/lib/actividades';
-import { upsertOpcion, upsertOpciones } from '@/lib/opciones';
+import { usosAContar } from '@/lib/formulario/etiquetas';
+import { registrarUsos, upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import { actividadFormSchema } from '@/lib/schema';
 import { slugify } from '@/lib/slugify';
 import type { ActividadForm, CampoTaxonomia } from '@/types/actividad';
@@ -61,6 +62,7 @@ export interface PuertosGuardado {
   slugDisponible: (slug: string, idActual?: string) => Promise<boolean>;
   upsertOpcion: (campo: CampoTaxonomia, label: string, uid: string) => Promise<string>;
   upsertOpciones: (campo: CampoTaxonomia, labels: string[], uid: string) => Promise<string[]>;
+  registrarUsos: (campo: CampoTaxonomia, slugs: string[]) => Promise<void>;
   crearActividad: (f: ActividadForm, uid: string) => Promise<string>;
   actualizarActividad: (id: string, f: ActividadForm, uid: string) => Promise<void>;
 }
@@ -70,6 +72,7 @@ export const puertosFirestore: PuertosGuardado = {
   slugDisponible,
   upsertOpcion,
   upsertOpciones,
+  registrarUsos,
   crearActividad,
   actualizarActividad,
 };
@@ -92,8 +95,14 @@ export const guardarActividad = async (
   // por su `await`— para verificar cuál va primero. Llamarlas como
   // `puertos.<nombre>(...)` las esconde del chequeo, que entonces pasa sin
   // haber mirado nada.
-  const { slugDisponible, upsertOpcion, upsertOpciones, crearActividad, actualizarActividad } =
-    puertos;
+  const {
+    slugDisponible,
+    upsertOpcion,
+    upsertOpciones,
+    registrarUsos,
+    crearActividad,
+    actualizarActividad,
+  } = puertos;
   const candidato: ActividadForm = estadoDestino ? { ...form, estado: estadoDestino } : form;
 
   // §11 — los condicionales por tipo y modalidad se validan en el submit, no
@@ -143,6 +152,15 @@ export const guardarActividad = async (
       }
       const labelsTags = guardado.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
       if (labelsTags.length) await upsertOpciones('tags', labelsTags, uid);
+
+      // §4.3 — recién acá se cuenta el uso, y va después del alta a propósito:
+      // `registrarUsos` no crea el documento de opciones si no existe, así que
+      // contar antes de sembrar no contaría nada. B-168 / D-103.
+      for (const [campo, slugs] of Object.entries(
+        usosAContar(guardado, labelsNuevos, tagsNuevos),
+      ) as [CampoTaxonomia, string[]][]) {
+        await registrarUsos(campo, slugs);
+      }
     } catch {
       etiquetasSinRegistrar = true;
     }

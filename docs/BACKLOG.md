@@ -1556,7 +1556,7 @@ así que un valor nuevo va en los dos lados, y si falta en uno se publica el val
 crudo. Y `docs/03-modelo-de-datos.md` más el §3.1 del `CLAUDE.md` quedan
 desactualizados.
 
-### B-170 · Montar la pantalla de taxonomías en el router del panel · P2
+### B-170 · Montar la pantalla de taxonomías en el router del panel — ✅ hecho (2026-08-25)
 
 `src/components/admin/taxonomias/TaxonomiasPanel.tsx` existe, funciona y **no se
 puede abrir**: colgarla del router es editar `AdminApp.tsx`, que en la fase 3 del
@@ -1580,11 +1580,22 @@ borrar las que sobran") y el capítulo en `src/lib/ayuda.ts`. No se escribieron
 antes a propósito: anunciar una pantalla que no se puede abrir es peor que no
 anunciarla.
 
-### B-168 · Contar el uso de las etiquetas elegidas al guardar · P2
+### B-168 · Contar el uso de las etiquetas elegidas al guardar — ✅ hecho (2026-08-25)
 
-La mitad que falta de **B-86**. `registrarUsos` está escrita y testeada; nadie la
-llama, así que `usos` sigue contando solo creaciones y el orden por frecuencia
-del §4.3 sigue sin funcionar.
+**Hecho.** `usosAContar` (puro, en `src/lib/formulario/etiquetas.ts`) arma los
+slugs a contar por campo y `guardarActividad` los pasa a `registrarUsos` por
+puerto (D-113), después del alta de opciones —`registrarUsos` no crea el
+documento si no existe, así que contar antes de sembrar no contaría nada.
+
+**El fixture del test tenía la clase B-135 otra vez.** El `entrada()` por defecto
+dice que se tipeó «Con beca parcial» pero el form guarda `a-la-gorra`: en el panel
+real no puede pasar, porque `recordarLabel` registra el label en el mismo cambio
+que pone su slug en el form. Con ese fixture la resta no tiene nada que restar y
+el chequeo pasaba **sin haber mirado el caso**. El test de la resta usa uno
+coherente, y afirma además que los que ya existían sí se cuentan — sin eso
+pasaría con la lista vacía.
+
+Era la mitad que faltaba de **B-86**, que queda cerrado.
 
 Es una línea en `guardar()` (`ActividadFormulario.tsx`, frente de la fase 2), y
 el orden importa:

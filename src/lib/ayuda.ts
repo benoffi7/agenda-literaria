@@ -321,6 +321,51 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'opciones-de-los-desplegables',
+    titulo: 'Las opciones de los desplegables',
+    paraQue:
+      'Arreglar una opción mal escrita, borrar una que sobra, y aprobar las que cargó otro admin — sin tocar ninguna actividad.',
+    puntos: [
+      {
+        texto:
+          'El botón «Opciones» del listado abre las cinco listas que se administran solas: ' +
+          'arancel, tipo, barrio, plataforma y etiquetas. Al lado de cada valor dice cuántas ' +
+          'actividades lo usan.',
+      },
+      {
+        texto:
+          'Renombrar cambia solo cómo se lee. La actividad guarda un código interno, no el ' +
+          'texto, así que cambiarle el nombre a «A la gorra» no obliga a editar las veinte ' +
+          'actividades que la usan: se ven todas con el nombre nuevo en el momento.',
+      },
+      {
+        texto:
+          'Por eso mismo, renombrar NO sirve para arreglar una opción cargada por error. Si ' +
+          'escribiste «Villa Crepso» y renombrás a «Villa Crespo», las actividades siguen ' +
+          'apuntando al código viejo. Para eso hay que borrar la mala y volver a elegir la ' +
+          'buena en cada actividad.',
+      },
+      {
+        texto:
+          'Borrar una opción no toca las actividades que la usan: quedan apuntando a algo que ya ' +
+          'no está en la lista, y se ven con el nombre deducido del código. Si la opción está en ' +
+          'uso, el panel avisa cuántas actividades son antes de dejarte borrar.',
+      },
+      {
+        texto:
+          'Las opciones base —«Gratis», «A la gorra», «Arancelado» y las demás que vienen de ' +
+          'fábrica— no se pueden renombrar ni borrar. Suelen estar cableadas en la lógica del ' +
+          'sitio, así que cambiarlas rompería más de lo que arregla.',
+      },
+      {
+        texto:
+          'Cuando haya más de un admin cargando, las opciones que cree cada uno van a esperar ' +
+          'una aprobación y el botón «Opciones» va a mostrar cuántas hay pendientes. Hoy nacen ' +
+          'aprobadas: son todas tuyas.',
+      },
+    ],
+  },
+  {
     id: 'que-es',
     titulo: 'Qué es',
     seccionFormulario: 'Qué es',

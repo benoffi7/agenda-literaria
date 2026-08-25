@@ -301,6 +301,8 @@ const puertosFalsos = (over: Partial<PuertosGuardado> = {}) => {
     slugDisponible: async () => (llamadas.push('slugDisponible'), true),
     upsertOpcion: async (campo) => (llamadas.push(`upsertOpcion:${campo}`), 'slug'),
     upsertOpciones: async (campo) => (llamadas.push(`upsertOpciones:${campo}`), []),
+    registrarUsos: async (campo, slugs) =>
+      void llamadas.push(`registrarUsos:${campo}:${slugs.join(',')}`),
     crearActividad: async () => (llamadas.push('crearActividad'), 'act1'),
     actualizarActividad: async () => void llamadas.push('actualizarActividad'),
     ...over,
@@ -399,12 +401,56 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       entrada({ tagsNuevos: { 'micro-ficcion': 'Micro ficción' }, form: formularioLleno({ tags: ['micro-ficcion'] }) }),
       puertos,
     );
+    // La secuencia completa, y no solo "la actividad va primero": el orden
+    // relativo de los tres tramos es lo que hace que ninguno rompa al otro.
+    // `registrarUsos` va al final porque no crea el documento de opciones si no
+    // existe (B-168, D-103), así que contar antes de sembrar no contaría nada.
     expect(llamadas).toEqual([
       'slugDisponible',
       'crearActividad',
       'upsertOpcion:arancel',
       'upsertOpciones:tags',
+      // El arancel se cuenta acá porque el fixture por defecto es incoherente
+      // a propósito de nada: dice que se tipeó «Con beca parcial» pero el form
+      // guarda `a-la-gorra`. En el panel real no puede pasar —`recordarLabel`
+      // registra el label en el mismo cambio que pone su slug en el form— y el
+      // test de abajo usa un fixture coherente para ejercitar la resta.
+      'registrarUsos:arancel:a-la-gorra',
+      'registrarUsos:tipo:taller',
+      'registrarUsos:barrio:villa-crespo',
+      'registrarUsos:plataforma:zoom',
     ]);
+  });
+
+  it('B-168 — no vuelve a contar la etiqueta que se acaba de crear', async () => {
+    // `upsertOpcion` la siembra con `usos: 1`. Sumarla otra vez la deja en 2, y
+    // el orden por frecuencia del §4.3 arranca torcido justo para las nuevas —
+    // que son las que ese mismo párrafo quiere poder distinguir de la basura.
+    // El síntoma sería silencioso: números plausibles y un orden mal.
+    const { puertos, llamadas } = puertosFalsos();
+    await guardarActividad(
+      entrada({
+        // Coherente, que es la mitad que importa: el form guarda el slug de la
+        // etiqueta que se tipeó. Con el fixture por defecto —label nuevo de un
+        // campo cuyo valor guardado es otro— la resta no tiene nada que restar
+        // y el chequeo pasaría sin haber mirado el caso.
+        labelsNuevos: [{ campo: 'arancel' as const, label: 'Con beca parcial' }],
+        tagsNuevos: { 'micro-ficcion': 'Micro ficción' },
+        form: formularioLleno({
+          arancel: { tipo: 'con-beca-parcial', notas: '' },
+          tags: ['micro-ficcion', 'taller-largo'],
+        }),
+      }),
+      puertos,
+    );
+    const contados = llamadas.filter((l) => l.startsWith('registrarUsos:'));
+
+    // Ninguno de los dos recién creados se vuelve a contar.
+    expect(contados.join(' ')).not.toContain('con-beca-parcial');
+    expect(contados.join(' ')).not.toContain('micro-ficcion');
+    // Los que ya existían sí — sin esto el chequeo pasaría con la lista vacía.
+    expect(contados).toContain('registrarUsos:tipo:taller');
+    expect(contados).toContain('registrarUsos:tags:taller-largo');
   });
 
   it('si la actividad no se puede escribir, no queda ninguna opción huérfana', async () => {
