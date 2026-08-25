@@ -1460,7 +1460,7 @@ los duplicados **antes** de que nazcan. La aprobación agregaba control de
 vocabulario, no corrección. Con dos personas de confianza, la fricción no se
 paga.
 
-### B-132 · El desplegable muestra el slug crudo mientras la etiqueta no está registrada · P2
+### B-132 · El desplegable muestra el slug crudo mientras la etiqueta no está registrada — ✅ hecho (2026-08-25)
 
 Reportado por el dueño usando el panel (2026-08-24): *"cuando cargo barrios o
 lugares los escribe con minúscula"*.
@@ -1495,7 +1495,7 @@ está pendiente de persistir.
 
 Afecta a los cinco campos de taxonomía, no solo a barrio.
 
-### B-133 · No se pueden cargar varios handles en «arrobar» · P2
+### B-133 · No se pueden cargar varios handles en «arrobar» — ✅ hecho (2026-08-25)
 
 Reportado por el dueño (2026-08-24): *"no me deja poner coma ni enter en arrobas
 para publicar"*.
@@ -1518,6 +1518,31 @@ El campo es una lista, así que la solución es tratarlo como lista y no como
 string: el patrón ya existe en el repo, es `TagsInput` — chips, Enter para
 confirmar, Backspace para borrar el último. Reusarlo es mejor que arreglar el
 split, porque el bug de fondo es haber modelado una lista como texto.
+
+**Arreglado, pero NO reusando `TagsInput`** (D-116). El patrón de interacción sí
+se reusó; el componente no, porque está atado a la taxonomía `tags`: slugifica lo
+que se escribe y lo persiste en `/opciones/tags` (§4.2). Los handles de arrobar
+son trabajo interno del §3.2 —no salen al público (§5.1) y nadie va a filtrar por
+ellos—, así que reusarlo habría metido `@casabrandon` en el desplegable de
+etiquetas de **todas** las actividades. El bug de fondo era modelar una lista como
+string, y la respuesta no es cambiarla por la lista equivocada.
+
+Quedó `ChipsInput` sobre `src/lib/formulario/chips.ts`, que es puro y tiene 11
+tests. Tres cosas que se decidieron ahí y no son obvias:
+
+- **el espacio no separa**: hay nombres con espacios, y cortar por espacio
+  partiría «Casa Brandon» a la mitad mientras se escribe — el mismo daño que
+  hacía el bug original;
+- **los duplicados se comparan ignorando mayúsculas y el arroba de adelante**,
+  porque `@CasaBrandon`, `casabrandon` y `@casabrandon` son la misma cuenta y
+  tenerlas tres veces es el error que se comete al volver sobre una actividad
+  meses después;
+- **se guarda lo que se escribió**, no una versión normalizada: forzar el arroba
+  rompería los handles que no son de Instagram, y quitarlo perdería información
+  que quien lo tipeó puso a propósito.
+
+Y la ayuda del campo también estaba mal: decía «un handle por línea o separados
+por coma» y ninguna de las dos funcionaba.
 
 ### B-134 · Los tipos y las entregas de material son enums cerrados · P2
 

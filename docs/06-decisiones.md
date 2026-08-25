@@ -2280,3 +2280,36 @@ El estado `enviando` queda deliberadamente afuera del panel aunque también se
 destrabe poniéndolo en `pendiente`: ahí sí puede haber una invocación en vuelo, y
 esa operación se queda en el runbook con el Admin SDK
 ([`08-operacion.md`](08-operacion.md)).
+
+## D-116 · Una lista de texto libre no se edita con el widget de una taxonomía
+
+**Contexto.** B-133: el campo «arrobar al publicar» era un `<input>` de una línea
+que hacía `join(', ')` para mostrar y `split(',')` en cada tecla para guardar. Al
+tipear la coma, el `split` producía un elemento vacío, el `filter(Boolean)` lo
+descartaba y el `join` volvía a pintar el valor sin la coma: **la coma se borraba
+sola en el momento de escribirla**, así que no había forma de cargar un segundo
+handle. Enter tampoco servía — es un input dentro del `<form>`, así que intentaba
+guardar la actividad.
+
+El backlog proponía reusar `TagsInput`, que ya resuelve exactamente esa
+interacción: chips, Enter para confirmar, Backspace para borrar el último.
+
+**Decisión.** Se reusa el **patrón**, no el componente. `TagsInput` está atado a
+la taxonomía `tags`: slugifica lo que se escribe y lo persiste en
+`/opciones/tags` (§4.2). Los handles de arrobar no son una taxonomía —son trabajo
+interno del §3.2, no salen nunca al público (§5.1) y nadie va a filtrar por
+ellos—, así que reusarlo habría metido `@casabrandon` en el desplegable de
+etiquetas de todas las actividades, y con `usos` contándolo. Queda `ChipsInput`
+sobre un módulo puro (`src/lib/formulario/chips.ts`).
+
+**Por qué importa más de lo que parece.** "Ya existe un componente que se ve
+así" es la forma más fácil de acoplar dos cosas que no tienen nada que ver, y el
+acoplamiento no se nota hasta que el desplegable de etiquetas está lleno de
+handles de Instagram y hay que limpiarlo a mano actividad por actividad. El bug
+de fondo de B-133 era **modelar una lista como string**; cambiarla por la lista
+equivocada lo hubiera reemplazado por uno más caro de deshacer.
+
+**Consecuencia.** Hay dos widgets de chips. Comparten el patrón y no el código, y
+eso está bien: si mañana la taxonomía cambia cómo persiste, «arrobar» no tiene
+por qué enterarse. Lo que **sí** se comparte es la lógica pura de separar,
+deduplicar y quitar, que es donde estaba el bug.

@@ -7,6 +7,7 @@ import {
 } from '@/components/admin/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
 import { estaAprobada } from '@/lib/opciones';
+import { desSlug } from '@calendario';
 // §4.2 — el autocompletado y la deduplicación por slug son las mismas para los
 // dos widgets de taxonomía y viven en un módulo puro (B-72).
 import {
@@ -217,7 +218,22 @@ export function TaxonomiaSelect({
       <option value="">{placeholder ?? 'Elegí una opción…'}</option>
       {!esConocido && value && (
         <option value={value}>
-          {pendienteAjena ? `${pendienteAjena.label} (sin aprobar)` : `${value} (nueva)`}
+          {/*
+            B-132 — `value` es el SLUG, no la etiqueta. Pintarlo pelado hacía
+            que al tipear «Villa Crespo» en «Otro…» el desplegable dijera
+            `villa-crespo (nueva)`, y al reeditar una actividad cuya etiqueta
+            nunca llegó a registrarse, `con-beca-parcial (nueva)`.
+
+            Se resuelve con el MISMO des-slug que usa la descripción del evento
+            público, importado de `@calendario` y no copiado (D-20): si el
+            respaldo del panel y el del calendario divergen, el mismo slug se
+            lee distinto en cada lado y nada falla. El panel era el único lugar
+            que todavía mostraba el slug pelado — que es exactamente lo que
+            D-11 describe como "se ve roto".
+          */}
+          {pendienteAjena
+            ? `${pendienteAjena.label} (sin aprobar)`
+            : `${desSlug(value)} (nueva)`}
         </option>
       )}
       {elegibles.map((v) => (

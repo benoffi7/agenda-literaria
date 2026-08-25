@@ -2,6 +2,7 @@
  * §3.2 — trabajo interno: no sale al sitio público ni al calendario (§5.1).
  */
 import { Campo, claseInput } from '@/components/admin/campos/Campo';
+import { ChipsInput } from '@/components/admin/campos/ChipsInput';
 import { Seccion } from '@/components/admin/campos/Seccion';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
@@ -17,17 +18,15 @@ export function SeccionDifusion({ form, set }: Props) {
       insignia="interno"
     >
       <div className="grid gap-4">
-        <Campo label="Arrobar al publicar" ayuda="Un handle por línea o separados por coma.">
-          <input
-            className={claseInput}
-            value={form.difusion.arrobar.join(', ')}
-            onChange={(e) =>
-              set('difusion', {
-                ...form.difusion,
-                arrobar: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-              })
-            }
-            placeholder="@casabrandon, @editorial"
+        <Campo
+          label="Arrobar al publicar"
+          ayuda="Enter o coma para agregar. Backspace borra el último."
+        >
+          <ChipsInput
+            value={form.difusion.arrobar}
+            onChange={(arrobar) => set('difusion', { ...form.difusion, arrobar })}
+            placeholder="@casabrandon"
+            etiquetaQuitar={(h) => `Dejar de arrobar a ${h}`}
           />
         </Campo>
         <Campo label="Notas internas">

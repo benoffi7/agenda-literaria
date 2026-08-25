@@ -2,6 +2,49 @@
 
 ## 2026-08-25
 
+### Los dos bugs que aparecieron usando el panel de verdad
+
+**B-133 · el campo «arrobar» se comía la coma.** Era una lista modelada como
+string: `join(', ')` para mostrar, `split(',')` en cada tecla para guardar. Al
+tipear la coma, el `split` producía un elemento vacío, el `filter(Boolean)` lo
+descartaba y el `join` volvía a pintar el valor sin la coma — **la coma se borraba
+sola en el momento de escribirla**, así que no había forma de cargar un segundo
+handle. Enter tampoco: es un input dentro del `<form>`, así que intentaba guardar
+la actividad. Y la ayuda del campo decía «un handle por línea o separados por
+coma», con las dos cosas rotas.
+
+**No se arregló reusando `TagsInput`**, que era lo que proponía el backlog
+(D-116). El patrón de interacción sí; el componente no, porque está atado a la
+taxonomía `tags`: slugifica y persiste en `/opciones/tags`. Los handles son
+trabajo interno del §3.2, así que reusarlo habría metido `@casabrandon` en el
+desplegable de etiquetas de **todas** las actividades, con `usos` contándolo. El
+bug de fondo era modelar una lista como string; cambiarla por la lista equivocada
+lo hubiera reemplazado por uno más caro de deshacer.
+
+Quedó `ChipsInput` sobre un módulo puro con 11 tests. Tres decisiones que no son
+obvias: **el espacio no separa** (hay nombres con espacios, y cortar por espacio
+partiría «Casa Brandon» a la mitad mientras se escribe — el mismo daño que hacía
+el bug); los **duplicados se comparan ignorando mayúsculas y el arroba**, porque
+`@CasaBrandon` y `casabrandon` son la misma cuenta y tenerlas dos veces es el
+error que se comete al volver sobre una actividad meses después; y **se guarda lo
+que se escribió**, no una versión normalizada.
+
+**B-132 · el desplegable mostraba el slug pelado.** `villa-crespo (nueva)` en
+lugar de «Villa Crespo». Se llegaba por dos caminos —cargar una etiqueta nueva, y
+reabrir una actividad cuya etiqueta nunca se registró— y los dos salían de la
+misma línea: `` `${value} (nueva)` ``, donde `value` es el slug.
+
+Se resolvió con el **mismo** des-slug que usa la descripción del evento público,
+importado de `@calendario` y no copiado (D-20). El panel era el único lugar que
+todavía mostraba el slug pelado, que es exactamente lo que D-11 describe como "se
+ve roto".
+
+Y el chequeo que quedó no protege la línea, protege **la forma**: que ningún
+componente del panel interpole un valor de taxonomía crudo en un texto visible.
+El `(nueva)`, el `(sin aprobar)` y el que venga son la misma cosa, y el tercero lo
+va a escribir alguien que no leyó ese archivo. Verificado contra el código viejo
+para confirmar que lo detecta.
+
 ### Las dos mitades que ningún frente podía cerrar solo
 
 Terminado el plan de saneamiento, quedaban dos ítems que existían **solo** porque

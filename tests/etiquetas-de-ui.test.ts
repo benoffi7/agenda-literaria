@@ -99,3 +99,39 @@ describe('el formulario y el listado no pueden decir lo mismo de dos maneras (B-
     for (const m of MODALIDADES) expect(delFormulario[m]).toBe(ETIQUETA_MODALIDAD[m]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// B-132 — ningún desplegable del panel pinta un slug pelado
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * El bug era `` `${value} (nueva)` `` en `TaxonomiaSelect`: `value` es el slug,
+ * así que se leía `villa-crespo (nueva)`. Se llegaba por dos caminos —cargar una
+ * etiqueta nueva, y reeditar una actividad cuya etiqueta nunca se registró— y
+ * los dos salen de la misma línea.
+ *
+ * Lo que se verifica acá es **la clase**: que ningún componente del panel
+ * interpole un valor de taxonomía crudo en el texto que se ve. Arreglar la línea
+ * protege la línea; el `(nueva)`, el `(sin aprobar)` y el que venga son la misma
+ * forma, y el tercero lo va a escribir alguien que no leyó este archivo.
+ *
+ * Se lee del fuente porque el panel no tiene tests de componentes (B-08). La
+ * limitación está asumida: esto no prueba que la pantalla se vea bien, prueba que
+ * el des-slug compartido está en el camino.
+ */
+describe('ningún desplegable pinta un slug pelado (B-132)', () => {
+  const SELECT = fuente('components/admin/campos/TaxonomiaSelect.tsx');
+
+  it('el option del valor no conocido pasa por el des-slug compartido', () => {
+    // Del MISMO módulo que usa la descripción del evento público (D-20): dos
+    // des-slugs distintos leen el mismo slug de dos maneras y nada falla.
+    expect(SELECT).toMatch(/from '@calendario'/);
+    expect(SELECT).toMatch(/desSlug\(value\)/);
+  });
+
+  it('no queda ninguna interpolación del valor crudo en un texto visible', () => {
+    // El patrón exacto del bug, y sus vecinos: `${value}` seguido de texto
+    // dentro de un template literal que se renderiza.
+    expect(SELECT).not.toMatch(/`\$\{value\}[^`]/);
+  });
+});

@@ -57,6 +57,30 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'arrobar-varios-handles',
+    fecha: '2026-08-25',
+    version: '1.0.1',
+    titulo: 'Ahora sí podés arrobar a más de una cuenta',
+    detalle:
+      'El campo «Arrobar al publicar» se comía la coma justo al escribirla, así que no había ' +
+      'forma de cargar un segundo handle, y Enter intentaba guardar la actividad. Ahora cada ' +
+      'cuenta queda como una etiqueta: Enter o coma la agrega, Backspace borra la última, y ' +
+      'podés pegar una lista entera de una vez. La misma cuenta escrita distinto no entra dos ' +
+      'veces.',
+    donde: 'Sección «Difusión», campo «Arrobar al publicar».',
+  },
+  {
+    id: 'desplegables-sin-slug-crudo',
+    fecha: '2026-08-25',
+    version: '1.0.1',
+    titulo: 'Los desplegables ya no muestran el nombre en minúscula con guiones',
+    detalle:
+      'Al cargar un barrio o un lugar nuevo, el desplegable mostraba «villa-crespo (nueva)» en ' +
+      'lugar de «Villa Crespo». Pasaba también al reabrir una actividad cuya etiqueta no había ' +
+      'llegado a registrarse. Ahora se lee igual que en el evento del calendario.',
+    donde: 'Cualquier desplegable con «Otro…»: arancel, tipo, barrio y plataforma.',
+  },
+  {
     id: 'administrar-las-opciones',
     fecha: '2026-08-25',
     version: '1.0.1',
