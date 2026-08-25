@@ -532,14 +532,36 @@ repo, con nombre exacto `FIREBASE_SERVICE_ACCOUNT` y el **contenido completo**
 del JSON como valor. Con `gh` instalado:
 
 ```bash
+# `gh` tiene dos cuentas logueadas y la activa (gonza-benoffi-modo) NO tiene
+# permiso sobre este repo: sin esta línea, el comando corta con
+# «HTTP 403: You must have repository read permissions».
+export GH_TOKEN=$(gh auth token --user benoffi7)
+
 gh secret set FIREBASE_SERVICE_ACCOUNT --repo benoffi7/agenda-literaria \
   < /tmp/deploy-ci.json
 rm /tmp/deploy-ci.json    # no dejarla en el disco
+gh secret list --repo benoffi7/agenda-literaria   # que aparezca, sin ver el valor
 ```
 
-**Probar el workflow antes de seguir:** Actions → "Build y deploy del sitio" →
-Run workflow. Si termina verde, el deploy funciona y recién ahí conviene
-desplegar la Function.
+**Probar el workflow antes de seguir:** Actions → **«Deploy desde main»** → Run
+workflow → *Deployar todo*. **No** «Build y deploy del sitio»: ese es `deploy.yml`,
+que hoy **no arranca** (B-188), así que probar con él no dice nada sobre el secret.
+
+**Con los dos roles de `deploy-ci@` alcanza para publicar el sitio y el panel, y
+nada más.** `push-main.yml` tiene además un job que despliega las reglas de
+Firestore y otro que despliega las Functions, y los dos usan este mismo secret con
+`npx firebase deploy`: `datastore.viewer` + `firebasehosting.admin` no les alcanza.
+Mientras no cambien `firestore.rules`, `firestore.indexes.json` ni nada de
+`functions/`, esos jobs se saltean solos (`que-deployar.sh`) y no molestan. El día
+que cambien, el job va a cortar con `Permission denied` y **la corrida entera queda
+roja** —con lo que tampoco se crea el tag de la versión—. Ahí, y no antes, hay que
+sumarle los roles que pida el error: `firebaserules.admin` y `datastore.indexAdmin`
+para las reglas y los índices, y para las Functions v2 el juego largo
+(`cloudfunctions.developer`, `run.admin`, `eventarc.developer`,
+`artifactregistry.writer`, `cloudbuild.builds.editor` y `iam.serviceAccountUser`
+sobre `calendar-sync@`). Se agregan de a uno leyendo el error, que es más barato y
+más seguro que adivinar la lista completa de entrada: cada rol que se otorga de más
+es alcance que tiene la única key del proyecto.
 
 ### 5 · Desplegar la Function
 

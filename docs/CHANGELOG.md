@@ -52,6 +52,30 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### Dos defectos del runbook de `deploy-ci@`, antes de seguirlo
+
+El único paso que falta de B-20 es crear la service account y su secret, y al
+releer el runbook para dictarlo aparecieron dos cosas que lo hacían fallar:
+
+- **El `gh secret set` documentado corta con 403.** Hay dos cuentas de `gh`
+  logueadas y la activa (`gonza-benoffi-modo`) no tiene permiso sobre el repo. Es
+  el mismo tropiezo que el primer push. Queda con el `export GH_TOKEN=$(gh auth
+  token --user benoffi7)` adelante.
+- **"Probar el workflow" apuntaba al workflow que no arranca.** Decía Actions →
+  «Build y deploy del sitio», que es `deploy.yml` (B-188): probar con él no dice
+  nada sobre el secret. Ahora dice «Deploy desde main» → *Deployar todo*.
+
+Y una tercera que no era un defecto sino un alcance mal entendido: **los dos roles
+de `deploy-ci@` alcanzan para el sitio y el panel, y nada más.** La lista se
+escribió para `deploy.yml`, que solo buildea y publica Hosting; `push-main.yml`
+tiene además un job de reglas y otro de Functions que usan el mismo secret con
+`npx firebase deploy`. Mientras no cambien `firestore.rules` ni `functions/` esos
+jobs se saltean solos; el día que cambien, cortan con `Permission denied` y la
+corrida queda roja —y sin tag de versión—. Queda escrito qué roles pide cada uno,
+con la indicación de **agregarlos de a uno leyendo el error** en vez de otorgar la
+lista completa de entrada: cada rol de más es alcance que tiene la única key del
+proyecto.
+
 ### Los nueve issues de GitHub, leídos y volcados al backlog
 
 `reporteAIssue` viene creando issues desde el panel desde el 2026-08-21 y nadie los
