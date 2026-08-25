@@ -18,8 +18,15 @@ Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
 normalización que va a usar el sitio público. Cada fila muestra tipo, cantidad de
 encuentros, barrio y un badge de estado.
 
-Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar** y
-**Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
+Cada fila dice además cuándo es su próximo encuentro y, **si la cargó la otra
+cuenta, lo marca** (B-130). Lo propio no lleva marca: si todo lleva marca, la
+marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
+hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
+para saber quién; con tres deja de alcanzar y ahí hay que guardar el mail
+(B-179).
+
+Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar**,
+**Historial** y **Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
 táctiles de ~100px y se erra el toque (D-19).
 
 El menú implementa el patrón de menú de ARIA (B-14): se abre con ↓ o ↑ cayendo en
@@ -66,8 +73,33 @@ tipo primero y el resto se adapta:
 | `sede` | presencial, híbrido |
 | `online` | virtual, híbrido |
 
+Y dos cascadas que marcan casillas solas, porque casi siempre es así: **club de
+lectura** prende «es un ciclo» y «tiene material»; **feria** prende «es un ciclo»
+y nada más —una feria del libro dura varios días, así que es una actividad con N
+encuentros (§2.2), uno por jornada, pero no tiene quien la dé (B-129)—. Las dos
+se pueden destildar.
+
+Desde el 2026-08-25 el formulario **no es un solo archivo**: son diez componentes
+de sección más seis módulos de dominio puros (`estadoInicial`, `cascadas`,
+`condicionales`, `etiquetas`, `guardar`, `chips`). El `.tsx` pasó de 858 a 258
+líneas y lo que quedó es el armado. Ver [`10-salud-del-codigo.md`](10-salud-del-codigo.md) §1.3.
+
 Secciones: Qué es · Encuentros · Dónde · Quién · Arancel e inscripción ·
 Material · Opcional · Difusión. Las tres últimas son acordeones colapsados.
+
+**Material** (§3.1) tiene siete formatos —libro o lectura, guía, contexto, sobre
+el autor, newsletter, playlist, otro— y cuatro momentos de entrega: previo al
+encuentro, al inscribirse, **durante el mes** y en el encuentro. «Durante el mes»
+salió de cargar un club de lectura real (B-134) y dice algo del dominio: la
+entrega no siempre es un instante, puede ser progresiva a lo largo del ciclo.
+
+**Difusión → «Arrobar al publicar»** es una lista de chips: Enter o coma agrega,
+Backspace borra la última, y se puede pegar una lista entera. Antes era un
+`<input>` que hacía `join`/`split` en cada tecla, así que **la coma se borraba
+sola en el momento de escribirla** y no había forma de cargar un segundo handle
+(B-133). El espacio no separa, porque hay nombres con espacios. La misma cuenta
+escrita distinto —`@CasaBrandon`, `casabrandon`— no entra dos veces, aunque se
+guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
 
 **Comportamientos no obvios:**
 
@@ -215,8 +247,22 @@ Dos avisos que la pantalla da porque son las consecuencias que no se adivinan:
   a quedar las actividades que la usan (el des-slug de D-11, calculado con la
   misma función que arma el evento público).
 
-**Todavía no está colgada del panel** (B-170): el componente existe y funciona,
-falta la línea en el router, que es de otro frente.
+**Se abre con el botón «Opciones»** arriba del listado, que lleva al lado el
+contador de opciones pendientes de aprobar (B-26).
+
+Ese contador es un componente propio y **diferido**, y no una llamada al hook en
+la cabecera, por una razón concreta: `usePendientesDeAprobacion` importa
+Firestore, y la cabecera se renderiza en `AdminApp`, que está en el chunk inicial
+—el que se baja para mostrar "Entrar con Google"—. Llamarlo desde ahí habría
+arrastrado el SDK a ese chunk y deshecho el corte de B-09/D-51 **sin que nada
+falle**: el panel seguiría funcionando, solo tardaría el doble en aparecer. Ese
+error ya se cometió tres veces en este repo.
+
+Y una advertencia que la guía repite porque se paga caro: **renombrar no arregla
+un typo ya guardado.** La actividad guarda el slug, no el texto, así que
+renombrar «Villa Crepso» a «Villa Crespo» deja las actividades apuntando al slug
+viejo. Para eso hay que borrar la mala y volver a elegir la buena en cada
+actividad.
 
 ### Mobile y tablet
 
@@ -504,7 +550,7 @@ filtros, `events.json`, páginas de detalle por slug.
 `toPublic.ts` (la proyección) y `normalize.ts` (la búsqueda) ya están escritos y
 testeados, así que la base está.
 
-## Historial de versiones — sin UI todavía
+## Historial de versiones
 
 Cada vez que una edición pisa algo que cargó una persona, `guardarVersion`
 (`onDocumentUpdated`) deja el documento anterior en
@@ -522,12 +568,20 @@ larga la perdía para siempre**.
 Se conservan las **últimas 20 versiones** por actividad; al pasarse, se borra la
 más vieja (D-42).
 
-**No hay pantalla para verlas ni para restaurar.** Se recupera a mano desde la
-consola de Firestore: se abre la subcolección `versiones` de la actividad, se
-elige la versión —el id es la fecha y hora, y `camposCambiados` dice qué pisó esa
-edición— y se copia el valor del campo desde `documento` de vuelta al
-formulario. Es incómodo, pero el dato **existe**, que es lo que faltaba. La UI
-está en el backlog (B-40).
+**Hay pantalla** desde el 2026-08-25 (B-40): en el menú «⋯» de cada fila del
+listado, «Historial». Muestra las versiones de esa actividad, qué campos pisó
+cada edición y permite restaurar.
+
+Se carga **diferida** (`import()`), no en el chunk inicial del panel: es la vista
+menos usada —recuperar un campo pisado es una operación rara— así que es justo la
+que no tiene por qué viajar en lo que se baja para mostrar "Entrar con Google"
+(B-09, D-51).
+
+La comparación entre una versión guardada y el documento actual usa **la misma
+función** que decide qué se guarda, importada por el alias `@historial`. Duplicarla
+habría creado dos ideas distintas de "qué campos escribe la máquina"
+(`calendarEventId`, `updatedAt`), que es el acuerdo que D-41 evita mantener a
+mano.
 
 **Borrar una actividad sí guarda versión** (B-41, D-94): `guardarVersionAlBorrar`
 (`onDocumentDeleted`) escribe el documento completo con `borrado: true`, así que

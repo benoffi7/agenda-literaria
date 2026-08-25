@@ -338,6 +338,24 @@ pero el §3.1 no lo tiene en el modelo. Hoy en esos tipos se carga solo el autor
 vía `tallerista`. Decisión pendiente del usuario: campo propio o dentro de la
 descripción.
 
-**`aprobada` en las opciones.** Ya está implementado (2026-08-21) — ver
-"`aprobada` y `huellaCreador`" más arriba. Lo que falta es la UI para aprobar
-desde el panel: hoy se aprueba con un script.
+**`aprobada` en las opciones.** Implementado (2026-08-21), y desde el 2026-08-25
+**hay UI**: la pantalla de administración de taxonomías aprueba, renombra y
+borra. Ver [`04-funcionalidades.md`](04-funcionalidades.md). El script sigue
+existiendo pero ya no es el único camino.
+
+## Desvíos respecto del §3.1 del `CLAUDE.md`
+
+El §3.1 es la decisión cerrada del dueño y no se edita desde acá. Estos son los
+puntos donde el modelo implementado ya no coincide, con su motivo:
+
+| Campo | §3.1 dice | Hoy | Por qué |
+|---|---|---|---|
+| `tipo` | cinco valores (`taller`, `club-lectura`, `encuentro`, `presentacion`, `charla`) | **seis**: se agregó `feria` como opción base | El primer reporte real cargado desde el panel fue justamente eso: faltaba una **categoría del dominio**, no una función del software. En el circuito literario argentino una feria del libro no es un caso raro (B-129), el mismo argumento que el §4.1 usa con «a la gorra». |
+| `material.items[].tipo` | `lectura \| guia \| contexto \| autor \| otro` | **siete**: + `newsletter`, `playlist` | Cargando un club de lectura real aparecieron formatos que no entraban en ninguno (B-134). **No** se agregó `libro`: `lectura` ya es eso, y tener los dos partiría los datos existentes en dos valores que después no se pueden volver a juntar. Se cambió la etiqueta a "Libro o lectura", que es reversible. |
+| `material.items[].entrega` | `previo \| al-inscribirse \| en-el-encuentro` | **cuatro**: + `durante-el-mes` | Pedido concreto del dueño (B-134), y dice algo del dominio: la entrega no siempre es un instante, puede ser progresiva a lo largo del ciclo. Encaja con el §2.2 — ocho encuentros con su lectura cada uno. |
+
+`entrega` sigue siendo un **enum cerrado** a propósito, a diferencia de las cinco
+taxonomías del §4: son momentos del ciclo de vida de la inscripción, no
+vocabulario libre, y el §5.1 los usa para decidir qué se publica. Si
+`material.items[].tipo` debería pasar a taxonomía abierta es una decisión
+pendiente del dueño, anotada en B-134.

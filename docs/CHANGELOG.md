@@ -2,6 +2,41 @@
 
 ## 2026-08-25
 
+### El plan de saneamiento cerrado, y la documentación al día
+
+Las cuatro fases integradas. [`10-salud-del-codigo.md`](10-salud-del-codigo.md)
+se **remidió entero** —ningún número heredado sin volver a contarlo, que es la
+única forma de que la comparación signifique algo— y quedó reescrito:
+
+| | Antes | Ahora |
+|---|---:|---:|
+| Concentración en los 15 archivos más grandes | 52,7 % | **41,7 %** |
+| Líneas de test por línea de código testeable | 0,81 | **1,14** |
+| `ActividadFormulario.tsx` | 858 LOC, el más grande | 258 LOC, el 15º |
+| Ciclos de import | 0 | 0 |
+
+Y el cambio que no es un número: **el archivo más grande del repo dejó de ser
+lógica.** Hoy es `ayuda.ts` (789 LOC), que es el texto de la guía. Que la cima de
+la lista sea copy cambia lo que "el archivo más grande" significa como señal.
+
+Los cuatro problemas del diagnóstico anterior están cerrados. El que queda es
+otro, y creció en importancia porque los demás se cerraron: **34 componentes y
+5.355 LOC de `.tsx` se verifican leyendo el fuente con expresiones regulares**, y
+ese enfoque falló de tres maneras distintas en dos días. La lógica de dominio ya
+salió de los `.tsx`, que era el motivo por el que B-08 estaba postergado.
+
+**Lo que el reparto por archivo enseñó, y no estaba previsto:** frentes que no se
+ven eligen el mismo número siguiente. Pasó en los cuatro merges —tres ítems y
+tres decisiones en uno solo— y una vez fue peor que una colisión: dos frentes
+descubrieron el mismo bug por caminos distintos y le pusieron números distintos.
+**Dos números para un bug es peor que dos bugs con el mismo número**, porque uno
+se cierra y el otro queda vivo describiendo algo ya arreglado. El chequeo son dos
+comandos y quedó como regla del plan.
+
+Borrados `ESTADO-PAUSA.md` y `docs/estado-pausa/`: existían para sobrevivir una
+pausa, y dejarlos sería documentación que miente.
+
+
 ### Lo que faltaba del dominio: Feria, «durante el mes», y quién cargó qué
 
 **B-129 · «Feria».** El primer reporte real cargado desde el panel no fue una

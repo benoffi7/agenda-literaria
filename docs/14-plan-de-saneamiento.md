@@ -1,4 +1,21 @@
-# Plan de saneamiento
+# Plan de saneamiento — ✅ terminado (2026-08-25)
+
+> **Las cuatro fases están integradas en `main`.** Este documento queda como
+> registro de cómo se hizo y de qué se aprendió del reparto; los resultados
+> medidos están en [`10-salud-del-codigo.md`](10-salud-del-codigo.md), que se
+> remidió entero después de integrar.
+>
+> **Lo que el reparto por archivo funcionó:** cero ciclos de import después de
+> cuatro frentes en paralelo sobre los mismos directorios, y ningún conflicto en
+> código salvo uno (`src/lib/novedades.ts`, resuelto a mano).
+>
+> **Lo que costó, y no estaba previsto:** frentes que no se ven **eligen el mismo
+> número siguiente**. Pasó en los cuatro merges —tres ítems y tres decisiones en
+> uno solo— y una vez fue peor que una colisión: dos frentes descubrieron el
+> mismo bug por caminos distintos y le pusieron números distintos. Dos números
+> para un bug es peor que dos bugs con el mismo número, porque uno de los dos se
+> cierra y el otro queda vivo describiendo algo ya arreglado. El chequeo son dos
+> comandos y ahora vive en la regla 5 de abajo.
 
 Cómo se ataca el backlog acumulado —lo del diagnóstico de salud
 ([`10-salud-del-codigo.md`](10-salud-del-codigo.md)) más lo de la caza de bugs—
@@ -106,7 +123,7 @@ Dependencia anotada y **no** hecha: la tercera copia del formato de versión viv
 en `tests/analytics-privacidad.test.ts`, que este frente tenía que dejar en verde
 sin tocar (**B-165**).
 
-## Las fases 2, 3 y 4 corren juntas — 🔄 en curso (2026-08-24)
+## Las fases 2, 3 y 4 corrieron juntas — ✅ terminadas (2026-08-25)
 
 El plan las escribió en secuencia, y la secuencia estaba justificada por
 **dependencias de contenido**: la fase 2 esperaba a la 1 porque B-90 necesitaba
@@ -224,3 +241,18 @@ repo), B-116 (verificación contra el sistema real), B-123 (re-relevar la infra)
    backlog priorizados.
 4. **El conteo de tests en la doc no se toca**: cambia en cada merge y genera
    conflicto en cuatro archivos a la vez.
+5. **Al mergear, revisá la numeración antes de dar por buena la resolución.**
+   Frentes que no se ven eligen el mismo número siguiente:
+
+   ```
+   grep -h '^### B-' docs/BACKLOG.md      | sed 's/^### \(B-[0-9]*\).*/\1/' | sort | uniq -d
+   grep -h '^## D-'  docs/06-decisiones.md | sed 's/^## \(D-[0-9]*\).*/\1/'  | sort | uniq -d
+   ```
+
+   Sin salida = sin duplicados. Corrélos **también antes de empezar**: la primera
+   vez que se usaron destaparon dos entradas duplicadas que llevaban días ahí,
+   residuo de haber resuelto conflictos conservando los dos lados. Eso es lo que
+   cuesta esa resolución, y por eso solo vale en markdown.
+6. **Y revisá si el ítem que estás cerrando ya existe con otro número.** Si dos
+   frentes describen el mismo bug desde ángulos distintos, se funde en uno con lo
+   que cada uno aporta — no se cierran los dos ni se deja el segundo vivo.
