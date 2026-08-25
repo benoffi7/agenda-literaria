@@ -52,6 +52,18 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### El lazo del §8, verificado de punta a punta
+
+Con B-188 arreglado se probó lo que nunca se había probado: mandar el **mismo**
+`repository_dispatch` que manda `dispararRebuild` (`event_type: 'rebuild'`, con un
+`motivo` en el `client_payload`). «Build y deploy del sitio» arrancó, imprimió
+`Motivo: verificación de B-188` —la línea que estaba rota— y publicó
+`1.1.0+ad973b8`.
+
+Es la primera vez que el lazo del §8 se recorre completo: editar una actividad →
+`dispararRebuild` → `repository_dispatch` → build → Hosting. Antes de hoy le
+faltaban las credenciales, y con las credenciales le faltaba el último eslabón.
+
 ### B-188 · el workflow del rebuild estaba registrado sin triggers, por un `: `
 
 `deploy.yml` tenía esta línea:

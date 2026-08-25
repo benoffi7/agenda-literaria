@@ -38,7 +38,7 @@ Resueltas el 2026-08-21:
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
 
-### B-20 · Activar el rebuild automático (cierra B-02) — ✅ los cinco pasos hechos (2026-08-25), pero el lazo corta en B-188
+### B-20 · Activar el rebuild automático (cierra B-02) — ✅ hecho y verificado de punta a punta (2026-08-25)
 
 Los cinco pasos que dependían del dueño, en el orden en que se hicieron (comandos
 exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automático"):
@@ -54,13 +54,14 @@ exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automát
    2026-08-25**. La corrida de las 18:04 publicó `1.1.0+675d9e5` desde CI: reglas,
    índices, sitio y panel, todo verde.
 5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
-   ACTIVE. Pero su `repository_dispatch` apunta a un workflow que no arranca
-   (B-188), así que el lazo del §8 está prendido y cortado en el último eslabón.
+   ACTIVE, y su `repository_dispatch` ahora sí arranca el workflow (era **B-188**,
+   arreglado el mismo día).
 
-**Los cinco pasos están hechos, y el rebuild sigue sin funcionar.** Ya no por
-credenciales: `dispararRebuild` corre, tiene su PAT y manda el
-`repository_dispatch`; lo que no arranca es el workflow que lo recibe (**B-188**).
-Este ítem queda cerrado en lo que dependía del dueño; lo que falta es un bug.
+**Los cinco pasos están hechos y el lazo funciona.** Verificado el 2026-08-25
+mandando el mismo `event_type: 'rebuild'` que manda la Function: «Build y deploy del
+sitio» arrancó, imprimió el motivo del `client_payload` y publicó `1.1.0+ad973b8`.
+Lo que faltaba después de las credenciales era un bug, **B-188**, arreglado el mismo
+día.
 
 Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
 solo**. Lo que no, y es una contra asumida: todo push que toque `functions/` deja

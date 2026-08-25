@@ -545,7 +545,8 @@ gh secret list --repo benoffi7/agenda-literaria   # que aparezca, sin ver el val
 
 **Probar el workflow antes de seguir:** Actions → **«Deploy desde main»** → Run
 workflow. **No** «Build y deploy del sitio»: ese es `deploy.yml`, que hoy **no
-arranca** (B-188), así que probar con él no dice nada sobre el secret.
+arranca**… ya no: era B-188 y se arregló. Pero sigue sin servir para probar el
+secret, porque el que publica en un push es «Deploy desde main».
 
 Y sabé de antemano qué vas a ver: la corrida **va a quedar roja** y eso no significa
 que el secret esté mal. Un `workflow_dispatch` siempre intenta los tres deploys (ver

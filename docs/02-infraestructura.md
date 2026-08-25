@@ -104,7 +104,7 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — **hay que redesplegar** (B-04, `timeoutSeconds: 300`) |
 | `guardarVersion` | `onDocumentUpdated actividades/{id}` | ACTIVE |
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | **escrita, sin desplegar** (B-41) |
-| `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — **corriendo, y su workflow no arranca** (B-188) |
+| `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
@@ -143,14 +143,16 @@ doc creía que faltaba trabajo que ya estaba hecho:
 
 Consecuencia para B-20: **los cinco pasos están hechos** desde el 2026-08-25. Un
 push a `main` publica el sitio y el panel solo. Lo que sigue sin funcionar es el
-rebuild por editar una actividad, y ya no por falta de credenciales: es **B-188**,
-el workflow que no arranca.
+rebuild por editar una actividad, que estaba cortado por **B-188** y quedó
+arreglado y verificado el mismo día.
 
-Y una que apareció al relevarlo: `dispararRebuild` está **corriendo cada 5
-minutos**, y el `repository_dispatch` que manda apunta a `deploy.yml`, que **falla
-al arrancar** (B-188). O sea que el lazo del §8 está prendido de punta a punta
-menos en el último eslabón, y en silencio: la Function no se entera de que el
-workflow no arrancó.
+Y una que apareció al relevarlo: `dispararRebuild` estaba **corriendo cada 5
+minutos** mandando su `repository_dispatch` a un `deploy.yml` que **no arrancaba**
+(B-188) — el lazo del §8 prendido de punta a punta menos en el último eslabón, y en
+silencio, porque la Function no tiene forma de enterarse. **Arreglado y verificado el
+2026-08-25**: mandando a mano el mismo `event_type: 'rebuild'` que manda la Function,
+«Build y deploy del sitio» arrancó, imprimió el motivo del `client_payload` y publicó
+`1.1.0+ad973b8`.
 
 `dispararRebuild` sigue sin desplegar, pero ya no por falta de código: el
 workflow de Actions existe (`.github/workflows/deploy.yml`) y la Function está
