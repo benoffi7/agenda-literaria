@@ -38,11 +38,10 @@ Resueltas el 2026-08-21:
 Código terminado, no se puede avanzar sin credenciales que un agente no debe
 crear ni ver (§5.4).
 
-### B-20 · Activar el rebuild automático (cierra B-02)
+### B-20 · Activar el rebuild automático (cierra B-02) — ✅ los cinco pasos hechos (2026-08-25), pero el lazo corta en B-188
 
-El workflow y la Function están escritos y testeados. Falta, en este orden
-(comandos exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild
-automático"):
+Los cinco pasos que dependían del dueño, en el orden en que se hicieron (comandos
+exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild automático"):
 
 1. ~~Crear el PAT de GitHub~~ — **hecho** (existe desde el 2026-08-21).
 2. ~~Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
@@ -50,56 +49,50 @@ automático"):
 3. ~~Crear la service account `deploy-ci@` con `datastore.viewer` +
    `firebasehosting.admin`~~ — **hecho el 2026-08-25**, con esos dos roles y sin
    ninguna key.
-4. **LO ÚNICO QUE FALTA.** Bajar la key de `deploy-ci@`, cargarla como secret
-   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco. Después probar:
-   Actions → «Deploy desde main» → Run workflow → *Deployar todo*. Los comandos
-   exactos, con el `export GH_TOKEN` que hace falta, en
-   [`08-operacion.md`](08-operacion.md) § "La key como secret de GitHub".
+4. ~~Bajar la key de `deploy-ci@`, cargarla como secret
+   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco~~ — **hecho el
+   2026-08-25**. La corrida de las 18:04 publicó `1.1.0+675d9e5` desde CI: reglas,
+   índices, sitio y panel, todo verde.
 5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
    ACTIVE. Pero su `repository_dispatch` apunta a un workflow que no arranca
    (B-188), así que el lazo del §8 está prendido y cortado en el último eslabón.
 
-Hasta que eso esté, una actividad nueva no aparece en el sitio hasta un build
-manual. **El paso 5 no tiene sentido sin el 1 y el 2:** el schedule correría
-cada 5 minutos loguéandose como "sin GitHub configurado".
+**Los cinco pasos están hechos, y el rebuild sigue sin funcionar.** Ya no por
+credenciales: `dispararRebuild` corre, tiene su PAT y manda el
+`repository_dispatch`; lo que no arranca es el workflow que lo recibe (**B-188**).
+Este ítem queda cerrado en lo que dependía del dueño; lo que falta es un bug.
 
-**Confirmado en producción el 2026-08-25**, con el primer push del repo a GitHub.
-Ya no es una previsión: el workflow «Deploy desde main» pasó el gate (tests,
-typecheck y build en verde) y murió en el paso del deploy con
+Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
+solo**. Lo que no, y es una contra asumida: todo push que toque `functions/` deja
+la corrida roja, porque `deploy-ci@` no tiene —a propósito— los roles para
+desplegar Functions, y con la corrida roja se saltea también el job del tag de
+versión. El razonamiento está en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
 
-```
-Error: Input required and not supplied: firebaseServiceAccount
-```
+#### Lo que enseñó el camino, que valía más que los pasos
 
-El repo tiene **cero secrets** cargados. Dos cosas que el intento enseñó y no
-estaban escritas:
+Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsión:
 
-- **El paso 4 es el que desbloquea todo lo demás.** Sin `FIREBASE_SERVICE_ACCOUNT`
-  no se publica ni el sitio ni el panel, así que ningún cambio de código llega a
+- **El inventario mentía, siempre hacia el mismo lado.** Los pasos 1, 2 y 5
+  figuraban como pendientes y estaban hechos desde el 2026-08-21 (el PAT en Secret
+  Manager, y `dispararRebuild`/`guardarVersion`/`reporteAIssue` **ACTIVE**). Este
+  ítem parecía mucho más grande de lo que era porque la doc mostraba como pendiente
+  trabajo terminado hacía días.
+- **El paso 4 era el que desbloqueaba todo.** Sin `FIREBASE_SERVICE_ACCOUNT` no se
+  publica ni el sitio ni el panel, o sea que **ningún** cambio de código llegaba a
   producción por CI — no solo el rebuild de datos, que es de lo que hablaba este
-  ítem.
-- **Y es lo único que falta.** Al relevar el proyecto el 2026-08-25
-  (`gcloud functions list`, `gcloud secrets list`) resultó que **los pasos 1, 2 y 5
-  ya estaban hechos** y la doc decía que no: el PAT existe en Secret Manager desde
-  el 2026-08-21, y `dispararRebuild`, `guardarVersion` y `reporteAIssue` están
-  **ACTIVE**. La lista de arriba llevaba días desactualizada hacia el lado caro
-  —hacía creer que faltaba trabajo ya hecho— y por eso este ítem parecía más grande
-  de lo que es. Queda **solo el 3 y el 4**.
-- **`dispararRebuild` ya está corriendo cada 5 minutos**, y el
-  `repository_dispatch` que manda apunta a `deploy.yml`, que **falla al arrancar**
-  (B-188). El lazo del §8 está prendido de punta a punta menos en el último
-  eslabón, y en silencio: la Function no se entera de que el workflow no arrancó.
-- **El build pasó sin la credencial, y hoy está bien que pase:** ninguna página
-  lee Firestore todavía —el sitio público es el paso 3 y `index.astro` sigue
-  siendo un placeholder—, así que el build solo arma el panel y no necesita
-  credenciales. Lo que eso destapa es para después: la guarda que avisaría
-  (`hayCredenciales()` en `src/lib/firebase-admin.ts`) **existe y no la llama
-  nadie**, así que el día que entre B-106 el build va a publicar un sitio vacío
-  en silencio. Anotado como **B-189**.
-
-Mientras tanto, publicar una versión es a mano, con el runbook de
-[`08-operacion.md`](08-operacion.md) § "Deploy a mano":
-`npm run build && firebase deploy --only hosting`.
+  ítem al escribirse.
+- **Un job de reglas que falla bloquea el deploy del sitio.** El `if` del job de
+  Hosting pide `needs.firestore.result != 'failure'`, así que la primera corrida con
+  credencial salteó Hosting por un permiso que le faltaba al job de reglas. Es el
+  "reglas primero" llevado hasta el final y está bien que sea así, pero conviene
+  saberlo antes de leer una corrida roja.
+- **`workflow_dispatch` siempre deploya todo**, con o sin el checkbox: sin
+  `github.event.before` el script no puede diffear y falla hacia el lado de
+  deployar. El botón *Run workflow* no sirve para probar solo Hosting.
+- **El build pasa sin credencial, y hoy está bien que pase:** ninguna página lee
+  Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
+  `hayCredenciales()`, **existe y no la llama nadie** (**B-189**).
 
 ### B-21 · Alerta de rebuild agotado (opcional) — código listo (2026-08-24), falta el click del dueño
 
@@ -2300,6 +2293,48 @@ evidencia medida de que la segunda persona **no encuentra** lo que se construye,
 eso no lo dice ningún test. Vale mirar con el mismo ojo las otras funciones que
 viven detrás de un acordeón o de un menú: material, difusión, historial, y la
 pantalla de taxonomías.
+
+### B-194 · El job de Functions deja roja cada corrida que toca `functions/`, y con ella se pierde el tag · P2
+
+Desde que el deploy por CI funciona (2026-08-25), `push-main.yml` tiene un job que
+no puede terminar bien: «Cloud Functions» corre `npx firebase deploy --only
+functions` con la credencial de `deploy-ci@`, y falla con
+
+```
+Missing permissions required for functions deploy. You must have permission
+iam.serviceAccounts.ActAs on service account agenda-literaria@appspot.gserviceaccount.com
+```
+
+**Eso es a propósito**, y el razonamiento está en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`": darle
+los roles de Functions a la única key del proyecto es casi ejecución arbitraria, y
+el deploy de Functions se hace de a una y a mano. Lo que **no** es a propósito son
+las dos consecuencias:
+
+1. **Toda corrida que toque `functions/` queda roja.** Una corrida roja que se
+   espera roja es la forma más rápida de que nadie mire las corridas, que es
+   exactamente lo que pasó con B-188: la señal de que algo anda mal se vuelve
+   ruido de fondo.
+2. **Se pierde el tag de versión.** El job `etiquetar` pide `!failure()`, así que
+   un push que suba `version` en `package.json` **y** toque `functions/` no crea el
+   tag. Y son el mismo push más seguido de lo que parece: el cambio del §7 al
+   calendario suele venir con la versión nueva que lo anuncia.
+
+Tres salidas, y la decisión es cuál:
+
+- **Sacar el job del workflow.** Es lo más honesto con lo que ya se decidió: si el
+  deploy de Functions es manual por diseño, un job que intenta hacerlo y falla no
+  aporta nada. Cuesta que nada avise cuando `functions/` cambió y hay que
+  desplegar a mano — se puede cubrir con un job que **solo avise**, sin deployar.
+- **Dejarlo, y sacar `functions` de los `needs` de `etiquetar`**, para no perder el
+  tag. Tapa la consecuencia 2 y deja la 1.
+- **Otorgar los roles.** Resuelve las dos y es la que se descartó por seguridad. Si
+  se revisara, la forma menos mala es una **segunda** service account solo para
+  Functions, con su propia key: así el alcance no se acumula sobre la que publica
+  el sitio.
+
+`que-deployar.sh` decide cuándo corre este job, así que la primera y la segunda
+opción se pueden probar con el script antes de tocar el YAML.
 
 ## P3 — cuando sobre tiempo
 

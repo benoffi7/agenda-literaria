@@ -52,6 +52,35 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### Un push a `main` ya publica solo
+
+El deploy por CI quedó andando el 2026-08-25 18:04: la corrida publicó
+`1.1.0+675d9e5` —reglas, índices, sitio y panel— y con eso **B-20 cierra sus cinco
+pasos**. Publicar a mano queda como salida de emergencia, no como el camino normal.
+
+Los roles se otorgaron **de a uno leyendo el error**, que era el plan: a los dos
+iniciales se sumaron `serviceusage.serviceUsageConsumer` —el primer 403 no era del
+deploy sino del chequeo de "¿está la API habilitada?"—, `firebaserules.admin` y
+`datastore.indexAdmin`. Cinco en total, todavía **sin escritura de datos** y **sin
+nada de Functions**.
+
+**Lo que enseñó la primera corrida con credencial, y no había previsto:** Hosting se
+salteó. Su `if` pide `needs.firestore.result != 'failure'`, así que **un job de
+reglas que falla bloquea el deploy del sitio** — el "reglas primero" llevado hasta
+el final. Está bien que sea así, pero significa que una corrida roja en reglas no es
+"falta un permiso allá": es "no se publicó nada". Y de paso: `workflow_dispatch`
+**siempre** deploya todo, con o sin el checkbox, porque sin `github.event.before` el
+script no puede diffear y falla hacia el lado de deployar.
+
+**Lo que queda rojo, a propósito:** el job de Functions. Habilitarlo pide
+`iam.serviceAccountUser` sobre la SA de App Engine más `run.admin` y cuatro más —
+poder actuar como una identidad privilegiada y desplegar código que corre con ella
+es, junto, casi ejecución arbitraria, y ésta es la única key del proyecto. El
+argumento por el que `deploy-ci@` es aparte de `calendar-sync@` se caía si se le
+agregaba eso. La contra asumida tiene dos filos y quedó anotada como **B-194**:
+toda corrida que toque `functions/` queda roja, y con el rojo se pierde el tag de
+versión — que es el mismo push más seguido de lo que parece.
+
 ### `deploy-ci@` creada, y B-20 con un solo paso abierto
 
 La service account del workflow existe desde hoy, con exactamente

@@ -588,10 +588,31 @@ cae en "deployar todo", con o sin el checkbox, porque sin `github.event.before` 
 script no puede diffear y falla hacia el lado de deployar. Así que el botón *Run
 workflow* no sirve para probar solo Hosting mientras las reglas no tengan permiso.
 
-Si hace falta habilitar el job de reglas, los roles son
-`roles/serviceusage.serviceUsageConsumer` (el 403 de arriba es el chequeo de API
-habilitada), `roles/firebaserules.admin` y `roles/datastore.indexAdmin`. Es un
-agregado acotado y defendible.
+#### Con los tres roles de reglas: publicado desde CI
+
+Otorgados `roles/serviceusage.serviceUsageConsumer` (el 403 de arriba es el chequeo
+de API habilitada), `roles/firebaserules.admin` y `roles/datastore.indexAdmin`, la
+corrida siguiente quedó así:
+
+| Job | Resultado |
+|---|---|
+| Qué deployar · Tests y typecheck | ✅ |
+| Reglas e índices | ✅ |
+| **Sitio y panel** | ✅ **publicó `1.1.0+675d9e5`** |
+| Cloud Functions | ❌ `iam.serviceAccounts.ActAs` (esperado — B-194) |
+| Tag de versión | ⏭️ salteado por el rojo de Functions |
+
+O sea: **un push a `main` publica solo.** Verificado a la salida:
+
+```bash
+curl -s https://agenda-literaria.web.app/version.json   # 1.1.0+675d9e5
+curl -sI https://agenda-literaria.web.app/version.json | grep -i cache-control
+curl -sL -o /dev/null -w '%{http_code}\n' https://agenda-literaria.web.app/admin
+```
+
+Lo que queda rojo es el job de Functions, **a propósito** (§"Roles de `deploy-ci@`"
+de [`02-infraestructura.md`](02-infraestructura.md)), y con él se saltea el tag de
+versión: eso es **B-194**, con las tres salidas posibles escritas.
 
 El de Functions es otra cosa y **conviene no otorgarlo**: pide
 `roles/iam.serviceAccountUser` sobre `agenda-literaria@appspot.gserviceaccount.com`

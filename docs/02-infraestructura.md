@@ -141,10 +141,10 @@ doc creía que faltaba trabajo que ya estaba hecho:
 - `guardarVersionAlBorrar` **sí** sigue sin desplegar. Es la única de la tabla que
   la doc tenía bien.
 
-Consecuencia para B-20: de sus cinco pasos, **el 1, el 2 y el 5 ya están hechos**.
-Y desde el 2026-08-25 el 3 también está hecho: **lo único que falta es el paso 4**,
-la key de `deploy-ci@` cargada como secret `FIREBASE_SERVICE_ACCOUNT` en GitHub.
-Es el único paso que un agente no puede dar (§5.4).
+Consecuencia para B-20: **los cinco pasos están hechos** desde el 2026-08-25. Un
+push a `main` publica el sitio y el panel solo. Lo que sigue sin funcionar es el
+rebuild por editar una actividad, y ya no por falta de credenciales: es **B-188**,
+el workflow que no arranca.
 
 Y una que apareció al relevarlo: `dispararRebuild` está **corriendo cada 5
 minutos**, y el `repository_dispatch` que manda apunta a `deploy.yml`, que **falla
@@ -206,19 +206,18 @@ secreto, y la API `secretmanager.googleapis.com` habilitada.
 
 | Secret | Para qué | Estado |
 |---|---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | JSON de la key con que el workflow lee Firestore en build time (§2.4) y despliega Hosting | **falta crearlo** — el repo tiene cero secrets, verificado el 2026-08-25 |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON de la key con que el workflow lee Firestore en build time (§2.4) y despliega Hosting | **existe** desde el 2026-08-25 |
 
 Es la única key de service account del proyecto, y existe porque un runner de
 GitHub no tiene ADC. Nunca va al repo (§5.4): vive en los secrets de GitHub y
 solo se materializa en la memoria del runner.
 
-**Es el único bloqueante para que un push publique algo.** El primer push del repo
-(2026-08-25) pasó el gate entero —tests con emuladores, typecheck, build y el
-chequeo de fuga— y murió en el paso del deploy con `Error: Input required and not
-supplied: firebaseServiceAccount`. Mientras no exista, publicar una versión es a
-mano (§"Deploy a mano" de [`08-operacion.md`](08-operacion.md)). Es lo **único** que
-falta de B-20: el PAT y el secreto de Secret Manager ya existen, y las Functions ya
-están desplegadas (ver arriba, relevado el 2026-08-25).
+**Fue el único bloqueante para que un push publique algo**, y ya está resuelto. El
+primer push del repo pasó el gate entero y murió con `Error: Input required and not
+supplied: firebaseServiceAccount`; con el secret cargado, la corrida del 2026-08-25
+18:04 publicó `1.1.0+675d9e5` desde CI. El deploy a mano
+(§"Deploy a mano" de [`08-operacion.md`](08-operacion.md)) queda como salida de
+emergencia, no como el camino normal.
 
 
 ## Service accounts
@@ -228,7 +227,7 @@ están desplegadas (ver arriba, relevado el 2026-08-25).
 | `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. La usa también `guardarVersion`, que no toca Calendar. |
 
 | `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. |
-| `deploy-ci@…` | Identidad del workflow de Actions: leer Firestore en build time y desplegar Hosting. Creada el 2026-08-25 con sus dos roles y **sin ninguna key todavía**. |
+| `deploy-ci@…` | Identidad del workflow de Actions: leer Firestore en build time, desplegar Hosting y las reglas. Creada el 2026-08-25; **la única key del proyecto** es la suya, y vive solo en los secrets de GitHub. |
 
 | `firebase-adminsdk-fbsvc@…` | default del Admin SDK, sin uso propio |
 | `1038157194972-compute@…` | default de Compute, sin uso propio |
@@ -261,15 +260,38 @@ sobre el proyecto entero: es el único secreto que la Function necesita leer.
 ### Roles de `deploy-ci@`
 
 ```
-roles/datastore.viewer         leer Firestore en build time (§2.4)
-roles/firebasehosting.admin    desplegar el sitio
+roles/datastore.viewer                     leer Firestore en build time (§2.4)
+roles/firebasehosting.admin                desplegar el sitio y el panel
+roles/firebaserules.admin                  desplegar firestore.rules
+roles/datastore.indexAdmin                 desplegar firestore.indexes.json
+roles/serviceusage.serviceUsageConsumer    el chequeo de "¿está la API habilitada?"
 ```
 
-Deliberadamente **no** tiene escritura en Firestore: el workflow solo lee. Si
-la key se filtrara, el daño se limita a leer datos que ya son públicos y a
-desplegar el sitio.
+Los dos primeros son el deploy del sitio; los tres siguientes se agregaron el
+2026-08-25 **después de leer el error**, no de entrada: sin
+`serviceUsageConsumer` el job de reglas cortaba con
+`403 Permission denied to get service [firestore.googleapis.com]` antes de
+intentar nada.
 
-Otorgados y verificados el 2026-08-25 — exactamente esos dos y nada más:
+Deliberadamente **no** tiene escritura de datos en Firestore —el workflow solo
+lee— **ni nada de Functions**. Si la key se filtrara, el daño se limita a leer
+datos que ya son públicos, publicar el sitio y reescribir las reglas.
+
+**Por qué no tiene los roles de Functions, que es la decisión que importa acá:**
+el job «Cloud Functions» de `push-main.yml` falla con
+`iam.serviceAccounts.ActAs on agenda-literaria@appspot.gserviceaccount.com`, y
+habilitarlo pide ese `roles/iam.serviceAccountUser` más `cloudfunctions.developer`,
+`run.admin`, `eventarc.developer`, `artifactregistry.writer` y
+`cloudbuild.builds.editor`. Poder actuar como una identidad privilegiada **y**
+desplegar código que corre con ella es, junto, casi ejecución arbitraria en el
+proyecto — y ésta es la **única key que existe**. El argumento por el que esta
+cuenta es aparte de `calendar-sync@` se cae si se le agrega eso. Las Functions se
+despliegan de a una y a mano, con el runbook de
+[`08-operacion.md`](08-operacion.md), que es como se hizo siempre. La contra
+asumida: **todo push que toque `functions/` deja la corrida roja**, y con ella se
+saltea el job del tag de versión.
+
+Otorgados y verificados el 2026-08-25 — exactamente esos cinco y nada más:
 
 ```bash
 gcloud projects get-iam-policy agenda-literaria --flatten="bindings[].members" \
