@@ -544,24 +544,71 @@ gh secret list --repo benoffi7/agenda-literaria   # que aparezca, sin ver el val
 ```
 
 **Probar el workflow antes de seguir:** Actions → **«Deploy desde main»** → Run
-workflow → *Deployar todo*. **No** «Build y deploy del sitio»: ese es `deploy.yml`,
-que hoy **no arranca** (B-188), así que probar con él no dice nada sobre el secret.
+workflow. **No** «Build y deploy del sitio»: ese es `deploy.yml`, que hoy **no
+arranca** (B-188), así que probar con él no dice nada sobre el secret.
+
+Y sabé de antemano qué vas a ver: la corrida **va a quedar roja** y eso no significa
+que el secret esté mal. Un `workflow_dispatch` siempre intenta los tres deploys (ver
+abajo), y con los dos roles mínimos los de reglas y Functions no tienen permiso. Lo
+que hay que leer es el error de cada job, no el color de la corrida.
+
+#### Medido el 2026-08-25, con el secret ya puesto
+
+La primera corrida con credencial (*Deployar todo*) dio esto, y conviene leerlo
+antes de otorgar nada:
+
+| Job | Resultado |
+|---|---|
+| Qué deployar · Tests y typecheck | ✅ |
+| Reglas e índices | ❌ `403 Permission denied to get service [firestore.googleapis.com]` |
+| Cloud Functions | ❌ `Missing permissions … iam.serviceAccounts.ActAs on agenda-literaria@appspot.gserviceaccount.com` |
+| Sitio y panel | ⏭️ **salteado** |
+| Tag de versión | ⏭️ salteado |
+
+**El salteo de Hosting es lo que hay que entender, y no es un bug:** su `if` pide
+`needs.firestore.result != 'failure'`, o sea que **un job de reglas que falla
+bloquea el deploy del sitio**, sea porque las reglas son inválidas o —como acá—
+porque a la credencial le falta un permiso. Es el "reglas primero" del §orden
+llevado hasta el final, y está bien que sea así.
+
+**Pero eso NO significa que un push no publique.** Los tres jobs los decide
+`que-deployar.sh`, y en un push normal las reglas no cambian:
+
+```bash
+$ printf 'src/lib/novedades.ts\n' | ./scripts/que-deployar.sh
+hosting=true   functions=false   firestore=false     # firestore SALTEADO, no failure → Hosting corre
+$ printf 'firestore.rules\n'      | ./scripts/que-deployar.sh
+hosting=false  functions=false   firestore=true      # y acá Hosting no se toca
+```
+
+O sea: **con los dos roles, un push de código publica el panel y el sitio.** Lo que
+no funciona es deployar reglas, deployar Functions, y *Deployar todo* — que
+arrastra a Hosting por el `if`. Ojo con esto último: `workflow_dispatch` **siempre**
+cae en "deployar todo", con o sin el checkbox, porque sin `github.event.before` el
+script no puede diffear y falla hacia el lado de deployar. Así que el botón *Run
+workflow* no sirve para probar solo Hosting mientras las reglas no tengan permiso.
+
+Si hace falta habilitar el job de reglas, los roles son
+`roles/serviceusage.serviceUsageConsumer` (el 403 de arriba es el chequeo de API
+habilitada), `roles/firebaserules.admin` y `roles/datastore.indexAdmin`. Es un
+agregado acotado y defendible.
+
+El de Functions es otra cosa y **conviene no otorgarlo**: pide
+`roles/iam.serviceAccountUser` sobre `agenda-literaria@appspot.gserviceaccount.com`
+más `cloudfunctions.developer`, `run.admin`, `eventarc.developer`,
+`artifactregistry.writer` y `cloudbuild.builds.editor`. Poder actuar como una
+identidad privilegiada y desplegar código que corre con ella es, junta, casi
+ejecución arbitraria en el proyecto — y esto es **la única key que existe**. El
+deploy de Functions es de a una y a mano, con el runbook de más arriba, que es como
+se hizo siempre.
 
 **Con los dos roles de `deploy-ci@` alcanza para publicar el sitio y el panel, y
 nada más.** `push-main.yml` tiene además un job que despliega las reglas de
 Firestore y otro que despliega las Functions, y los dos usan este mismo secret con
-`npx firebase deploy`: `datastore.viewer` + `firebasehosting.admin` no les alcanza.
-Mientras no cambien `firestore.rules`, `firestore.indexes.json` ni nada de
-`functions/`, esos jobs se saltean solos (`que-deployar.sh`) y no molestan. El día
-que cambien, el job va a cortar con `Permission denied` y **la corrida entera queda
-roja** —con lo que tampoco se crea el tag de la versión—. Ahí, y no antes, hay que
-sumarle los roles que pida el error: `firebaserules.admin` y `datastore.indexAdmin`
-para las reglas y los índices, y para las Functions v2 el juego largo
-(`cloudfunctions.developer`, `run.admin`, `eventarc.developer`,
-`artifactregistry.writer`, `cloudbuild.builds.editor` y `iam.serviceAccountUser`
-sobre `calendar-sync@`). Se agregan de a uno leyendo el error, que es más barato y
-más seguro que adivinar la lista completa de entrada: cada rol que se otorga de más
-es alcance que tiene la única key del proyecto.
+`npx firebase deploy`. El detalle de qué falla, con qué error y qué rol pide cada
+uno está medido abajo. La regla al otorgar es agregar **de a uno leyendo el error**
+y no la lista completa de entrada: cada rol de más es alcance que tiene la única
+key del proyecto.
 
 ### 5 · Desplegar la Function
 
