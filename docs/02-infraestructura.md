@@ -142,8 +142,9 @@ doc creía que faltaba trabajo que ya estaba hecho:
   la doc tenía bien.
 
 Consecuencia para B-20: de sus cinco pasos, **el 1, el 2 y el 5 ya están hechos**.
-Lo único que falta es el 3 y el 4 — la service account `deploy-ci@` y el secret
-`FIREBASE_SERVICE_ACCOUNT` de GitHub.
+Y desde el 2026-08-25 el 3 también está hecho: **lo único que falta es el paso 4**,
+la key de `deploy-ci@` cargada como secret `FIREBASE_SERVICE_ACCOUNT` en GitHub.
+Es el único paso que un agente no puede dar (§5.4).
 
 Y una que apareció al relevarlo: `dispararRebuild` está **corriendo cada 5
 minutos**, y el `repository_dispatch` que manda apunta a `deploy.yml`, que **falla
@@ -227,7 +228,7 @@ están desplegadas (ver arriba, relevado el 2026-08-25).
 | `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. La usa también `guardarVersion`, que no toca Calendar. |
 
 | `calendar-sync@…` | **identidad de las Functions.** Es la cuenta con la que se comparte el calendario. |
-| `deploy-ci@…` | **falta crearla.** Identidad del workflow de Actions: leer Firestore en build time y desplegar Hosting. |
+| `deploy-ci@…` | Identidad del workflow de Actions: leer Firestore en build time y desplegar Hosting. Creada el 2026-08-25 con sus dos roles y **sin ninguna key todavía**. |
 
 | `firebase-adminsdk-fbsvc@…` | default del Admin SDK, sin uso propio |
 | `1038157194972-compute@…` | default de Compute, sin uso propio |
@@ -257,7 +258,7 @@ Al desplegar `dispararRebuild` hay que sumarle
 `roles/secretmanager.secretAccessor` **sobre el secreto `GITHUB_TOKEN`**, no
 sobre el proyecto entero: es el único secreto que la Function necesita leer.
 
-### Roles de `deploy-ci@` (cuando exista)
+### Roles de `deploy-ci@`
 
 ```
 roles/datastore.viewer         leer Firestore en build time (§2.4)
@@ -267,6 +268,20 @@ roles/firebasehosting.admin    desplegar el sitio
 Deliberadamente **no** tiene escritura en Firestore: el workflow solo lee. Si
 la key se filtrara, el daño se limita a leer datos que ya son públicos y a
 desplegar el sitio.
+
+Otorgados y verificados el 2026-08-25 — exactamente esos dos y nada más:
+
+```bash
+gcloud projects get-iam-policy agenda-literaria --flatten="bindings[].members" \
+  --filter="bindings.members:deploy-ci@agenda-literaria.iam.gserviceaccount.com" \
+  --format="value(bindings.role)"
+```
+
+**Alcanzan para Hosting y nada más.** Los jobs de reglas y de Functions de
+`push-main.yml` usan el mismo secret y van a cortar con `Permission denied` el día
+que cambien esos paths; los roles que piden, y por qué se agregan de a uno leyendo
+el error en lugar de otorgarlos de entrada, están en
+[`08-operacion.md`](08-operacion.md) § "La key como secret de GitHub".
 
 
 ## Google Calendar

@@ -52,6 +52,23 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### `deploy-ci@` creada, y B-20 con un solo paso abierto
+
+La service account del workflow existe desde hoy, con exactamente
+`roles/datastore.viewer` + `roles/firebasehosting.admin` y **sin ninguna key**. Los
+pasos que un agente puede dar están dados; el que falta es el único que no puede
+(§5.4): bajar la key, cargarla como secret y borrarla del disco.
+
+Precondiciones verificadas antes de tocar nada, porque son las que hacen fallar
+esto a mitad de camino: el proyecto **no tiene organización** —así que no hay
+`constraints/iam.disableServiceAccountKeyCreation` que bloquee crear la key—, la
+cuenta de gcloud es `owner`, y las APIs de IAM, Hosting, Rules y Firestore están
+habilitadas.
+
+La lista de cinco pasos de B-20 quedó reescrita: **cuatro están hechos** y el
+único abierto es el 4. Estaba mostrando como pendiente trabajo terminado hacía
+días, que es lo que hacía parecer este ítem mucho más grande de lo que era.
+
 ### Dos defectos del runbook de `deploy-ci@`, antes de seguirlo
 
 El único paso que falta de B-20 es crear la service account y su secret, y al

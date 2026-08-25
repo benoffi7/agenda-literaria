@@ -44,15 +44,20 @@ El workflow y la Function están escritos y testeados. Falta, en este orden
 (comandos exactos en [`08-operacion.md`](08-operacion.md) → "Activar el rebuild
 automático"):
 
-1. Crear el PAT de GitHub (fine-grained, solo `benoffi7/agenda-literaria`,
-   permiso **Contents: Read and write**).
-2. Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
-   dándole `secretAccessor` a `calendar-sync@`.
-3. Crear la service account `deploy-ci@` con `datastore.viewer` +
-   `firebasehosting.admin` y bajar su key.
-4. Cargar esa key como secret `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla
-   del disco. Probar el workflow a mano (Run workflow).
-5. `firebase deploy --only functions:dispararRebuild`.
+1. ~~Crear el PAT de GitHub~~ — **hecho** (existe desde el 2026-08-21).
+2. ~~Habilitar `secretmanager.googleapis.com` y crear el secreto `GITHUB_TOKEN`,
+   dándole `secretAccessor` a `calendar-sync@`~~ — **hecho** (2026-08-21).
+3. ~~Crear la service account `deploy-ci@` con `datastore.viewer` +
+   `firebasehosting.admin`~~ — **hecho el 2026-08-25**, con esos dos roles y sin
+   ninguna key.
+4. **LO ÚNICO QUE FALTA.** Bajar la key de `deploy-ci@`, cargarla como secret
+   `FIREBASE_SERVICE_ACCOUNT` en GitHub y borrarla del disco. Después probar:
+   Actions → «Deploy desde main» → Run workflow → *Deployar todo*. Los comandos
+   exactos, con el `export GH_TOKEN` que hace falta, en
+   [`08-operacion.md`](08-operacion.md) § "La key como secret de GitHub".
+5. ~~`firebase deploy --only functions:dispararRebuild`~~ — **hecho**: está
+   ACTIVE. Pero su `repository_dispatch` apunta a un workflow que no arranca
+   (B-188), así que el lazo del §8 está prendido y cortado en el último eslabón.
 
 Hasta que eso esté, una actividad nueva no aparece en el sitio hasta un build
 manual. **El paso 5 no tiene sentido sin el 1 y el 2:** el schedule correría
