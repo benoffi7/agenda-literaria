@@ -282,7 +282,7 @@ proyecto no usa. No molestan y desactivarlas no aporta.
 |---|---|
 | Node | 22 |
 | **JDK 21+** | los emuladores lo exigen |
-| `firebase-tools` | 15.9.1 |
+| `firebase-tools` | **lo trae `npm ci`** (devDependency) — ya no hay que instalarlo a mano |
 | `gcloud` | autenticado, con ADC |
 
 **Ojo con Java.** En la máquina de desarrollo el JDK por defecto es el 17 que
@@ -293,6 +293,14 @@ Android Studio.
 
 Los scripts contra producción usan las **Application Default Credentials** de
 gcloud, así que no hay ninguna service account key en disco.
+
+**`firebase-tools` pasó a ser una `devDependency`** y no un requisito del entorno
+(B-187). Era global, y `npx firebase` en esta máquina resolvía ese global: los
+workflows usan el mismo comando y en un runner sin instalación global cortaban con
+`npm error could not determine executable to run`. Un requisito del entorno que
+solo existe en una máquina es un requisito que CI descubre por su cuenta. Ahora el
+gate de pre-push y los workflows corren el **mismo** binario, que es lo que hace
+que "verde local" signifique algo.
 
 ## Re-relevar el inventario
 

@@ -1970,6 +1970,40 @@ menos.
 Si al final resulta que es el selector nativo y no hay nada que apagar, la
 alternativa es un selector propio, y eso es otro ítem: pesa en el bundle (B-09) y
 hay que decidirlo, no descubrirlo.
+### B-187 · `npx firebase` resolvía el global, así que el primer push de CI cortó al minuto — ✅ hecho (2026-08-25)
+
+El primer push a GitHub disparó «Deploy desde main» y el job `verificar` murió en
+el paso de los tests:
+
+```
+npm error could not determine executable to run
+```
+
+`firebase-tools` estaba **solo instalado global** (declarado como dependencia del
+entorno local en [`02-infraestructura.md`](02-infraestructura.md), versión
+15.9.1). Los workflows lo invocan con `npx firebase`, que en la máquina de
+desarrollo encuentra el global y en un runner limpio no encuentra nada. Tres
+lugares dependían de eso: `emulators:exec` del gate de CI, y los dos
+`firebase deploy` de las reglas y de las Functions.
+
+**Lo importante no es el error, es que el gate de pre-push no podía verlo.**
+`scripts/verificar-todo.sh` corre el mismo `npx firebase` en la misma máquina que
+tiene el global, así que da verde por el mismo motivo por el que CI da rojo. Es la
+familia de B-180 y de `que-deployar.sh`: una condición que solo se evalúa en
+producción se descubre en producción, y acá "producción" es el push.
+
+**Arreglado** pasando `firebase-tools` a `devDependency` (`^15.28.1`, 17 MB) en
+lugar de instalarlo en el workflow. Las dos opciones tapan el error; solo una tapa
+la clase: con la dependencia declarada, `npm ci` la provee en los cuatro jobs y en
+cualquier clone nuevo, y el gate local y CI corren **el mismo binario**. Un
+`npm i -g` en el YAML habría dejado dos versiones que pueden separarse, que es la
+forma en que este error vuelve con otra cara.
+
+De paso, `npm run emu` usaba `firebase` pelado: también pasó a `npx firebase`, así
+que un clone nuevo levanta los emuladores sin instalar nada.
+
+Lo que **no** cubre este arreglo: el deploy sigue sin poder correr por los secrets
+que faltan (ver «Pendiente de acción manual del dueño»). Este ítem es solo el gate.
 
 ## P3 — cuando sobre tiempo
 

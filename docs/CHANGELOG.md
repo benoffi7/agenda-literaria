@@ -50,6 +50,25 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### B-187 · el primer push de CI cortó al minuto
+
+`firebase-tools` estaba solo instalado global, y los workflows lo invocan con
+`npx firebase`: en esta máquina encuentra el global, en un runner limpio corta con
+`npm error could not determine executable to run`. Murieron el
+`emulators:exec` del gate y los dos `firebase deploy`.
+
+**Lo que importa no es el error, es que el gate de pre-push no podía verlo:**
+`verificar-todo.sh` corre el mismo comando en la máquina que tiene el global, así
+que da verde por el mismo motivo por el que CI da rojo. Misma familia que B-180 y
+que `que-deployar.sh` — una condición que solo se evalúa en producción se descubre
+en producción, y acá "producción" es el push.
+
+Pasó a `devDependency` (17 MB) en lugar de un `npm i -g` en el YAML: las dos
+opciones tapan el error, solo una tapa la clase. Con la dependencia declarada, el
+gate local y los cuatro jobs corren **el mismo binario**. `npm run emu` también
+pasó a `npx firebase`, así que un clone nuevo levanta los emuladores sin instalar
+nada.
+
 ### Seis reportes de usar el panel de verdad, anotados
 
 **B-181 · un club puede ofrecer N opciones para sumarte, no N encuentros.** Es la
