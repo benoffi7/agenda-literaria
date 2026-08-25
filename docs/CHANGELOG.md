@@ -2,6 +2,22 @@
 
 ## 2026-08-25
 
+### El gate de antes de pushear fallaba por su propia plomería
+
+Correr `scripts/verificar-todo.sh` con los emuladores ya arriba —`npm run emu` en
+otra terminal, que es como se trabaja— hacía que `emulators:exec` intentara
+levantar los suyos, encontrara los puertos tomados y cortara con "port taken". O
+sea: los emuladores estaban, la suite pasaba, y el gate decía que el push no
+sale.
+
+**Un gate que falla por su propia plomería enseña a saltearlo, y ahí deja de ser
+un gate.** Ahora detecta el hub del emulador y, si contesta, usa el que está.
+
+Queda anotado que ese `if` no tiene test (B-180), a diferencia de la decisión de
+`que-deployar.sh`, que tiene 20: es el mismo argumento que llevó a sacarla del
+YAML —una decisión que no se puede probar se prueba en producción— y acá
+"producción" es el momento de pushear.
+
 ### El plan de saneamiento cerrado, y la documentación al día
 
 Las cuatro fases integradas. [`10-salud-del-codigo.md`](10-salud-del-codigo.md)

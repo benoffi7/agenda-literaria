@@ -1705,6 +1705,22 @@ Sale junto con la maquinaria de aprobación que B-131 dejó dormida: las dos esp
 el mismo momento, que es cuando haya más de dos personas cargando.
 
 
+### B-180 · La detección de emuladores de `verificar-todo.sh` no tiene test · P3
+
+El paso 3 del gate ahora detecta si los emuladores ya están arriba y usa esos en
+lugar de levantar otros (antes cortaba con "port taken" y **el gate fallaba por
+su propia plomería**, que es lo que enseña a saltearlo). Esa decisión es un `if`
+en bash y no tiene test, a diferencia de la de `que-deployar.sh`, que tiene 20.
+
+Es el mismo argumento que llevó a extraer `que-deployar.sh` del YAML: una
+decisión que no se puede probar se prueba en producción. Acá "producción" es el
+momento de pushear, o sea el peor momento para descubrirla.
+
+Lo testeable sin emuladores de verdad es la elección de rama: dado un hub que
+contesta, usa `npm test` directo; dado uno que no, usa `emulators:exec`. Se puede
+con un servidor HTTP de dos líneas y `FIREBASE_EMULATOR_HUB` apuntado ahí.
+
+
 ## P3 — cuando sobre tiempo
 
 ### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa · P3

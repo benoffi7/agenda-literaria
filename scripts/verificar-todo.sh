@@ -61,9 +61,26 @@ paso 'Tests con emuladores (EXIGIR_EMULADOR=1)'
 if [ -z "${JAVA_HOME:-}" ] && [ -d '/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home' ]; then
   export JAVA_HOME='/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home'
 fi
-EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore \
-  --project agenda-literaria 'npm test' \
-  || fallo 'la suite no pasa con los emuladores arriba'
+# Si los emuladores YA están arriba —`npm run emu` en otra terminal, que es como
+# se trabaja— `emulators:exec` intenta arrancar los suyos, encuentra los puertos
+# tomados y corta con "port taken". El gate fallaba entonces por el motivo
+# equivocado: los emuladores estaban, la suite pasaba, y el push no salía.
+#
+# Un gate que falla por su propia plomería enseña a saltearlo, y ahí deja de ser
+# un gate. Así que se detecta el hub del emulador y, si contesta, se usa el que
+# está en vez de levantar otro.
+EMU_HUB="${FIREBASE_EMULATOR_HUB:-127.0.0.1:4400}"
+if curl -sf --max-time 2 "http://${EMU_HUB}/emulators" >/dev/null 2>&1; then
+  printf '  (emuladores ya arriba en %s: se usan esos)\n' "$EMU_HUB"
+  FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}" \
+    FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099}" \
+    EXIGIR_EMULADOR=1 npm test \
+    || fallo 'la suite no pasa con los emuladores arriba'
+else
+  EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore \
+    --project agenda-literaria 'npm test' \
+    || fallo 'la suite no pasa con los emuladores arriba'
+fi
 
 # ── 4 · Build ─────────────────────────────────────────────────────
 paso 'Build del sitio y del panel'
