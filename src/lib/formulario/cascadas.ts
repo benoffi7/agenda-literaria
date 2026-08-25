@@ -44,7 +44,15 @@ export const cambiarTitulo = (
 export const cambiarTipo = (f: ActividadForm, tipo: string): ActividadForm => ({
   ...f,
   tipo: tipo as ActividadForm['tipo'],
-  esCiclo: tipo === 'club-lectura' ? true : f.esCiclo,
+  // `feria` va acá con `club-lectura` (B-129): una feria del libro es de varios
+  // días, así que es un ciclo del §2.2 —una actividad con N encuentros— y no una
+  // fecha suelta. Sin esto caía en el default y quien la cargara tendría que
+  // acordarse de tildar «es un ciclo» a mano, que es justo el olvido que las
+  // cascadas del §11 existen para evitar.
+  //
+  // Lo que NO prende: material y tallerista. Una feria no tiene quien la dé, y
+  // el material de lectura no es su caso.
+  esCiclo: tipo === 'club-lectura' || tipo === 'feria' ? true : f.esCiclo,
   material: tipo === 'club-lectura' ? { ...f.material, tiene: true } : f.material,
   tallerista:
     tipo === 'taller' || tipo === 'presentacion' || tipo === 'charla'

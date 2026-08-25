@@ -8,6 +8,7 @@ import {
   TIPOS_MATERIAL,
   type ItemMaterial,
 } from '@/types/actividad';
+import { ETIQUETA_TIPO_MATERIAL } from '@calendario';
 
 interface Props {
   items: ItemMaterial[];
@@ -25,9 +26,15 @@ const itemVacio = (): ItemMaterial => ({
   publico: false,
 });
 
+/**
+ * En mayúscula inicial: acá es el texto de un desplegable, no una frase. El
+ * evento público tiene su propio mapa en minúscula porque ahí cae a mitad de
+ * una línea. Esa diferencia es deliberada (ver `functions/calendario.js`).
+ */
 const ETIQUETA_ENTREGA: Record<(typeof ENTREGAS_MATERIAL)[number], string> = {
   previo: 'Previo al encuentro',
   'al-inscribirse': 'Al inscribirse',
+  'durante-el-mes': 'Durante el mes',
   'en-el-encuentro': 'En el encuentro',
 };
 
@@ -62,7 +69,14 @@ export function MaterialEditor({ items, onChange, error }: Props) {
               >
                 {TIPOS_MATERIAL.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {/*
+                      B-134 — pintaba `{t}`, o sea el valor crudo: el
+                      desplegable decía "guia" y "autor" mientras el evento
+                      público decía "Guía" y "Sobre el autor". Es la misma
+                      forma que B-76 y B-132, tercera aparición. El mapa se
+                      importa de `@calendario` y no se copia (D-20).
+                    */}
+                    {ETIQUETA_TIPO_MATERIAL[t]}
                   </option>
                 ))}
               </select>

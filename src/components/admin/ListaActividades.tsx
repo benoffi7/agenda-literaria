@@ -10,6 +10,7 @@ import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
 import { borrarActividad, documentoAForm, listarActividades } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
+import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import {
   ETIQUETA_ESTADO,
@@ -35,6 +36,8 @@ interface Props {
   onHistorial: (a: ActividadConId) => void;
   /** Cambia cuando se guarda algo, para refrescar el listado. */
   version: number;
+  /** B-130 — para distinguir lo propio de lo que cargó la otra cuenta. */
+  uid: string;
 }
 
 /**
@@ -63,6 +66,7 @@ export function ListaActividades({
   onDuplicar,
   onHistorial,
   version,
+  uid,
 }: Props) {
   const [actividades, setActividades] = useState<ActividadConId[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -190,7 +194,20 @@ export function ListaActividades({
                 </p>
                 {/* B-96 — la fecha que importa es la que viene, no la última
                     modificación: es lo que hace accionable el listado. */}
-                <p className="text-xs text-tinta/45">{textoProximo(a, ahora)}</p>
+                <p className="text-xs text-tinta/45">
+                  {textoProximo(a, ahora)}
+                  {/*
+                    B-130 — `createdBy` se guardaba en cada documento y no se
+                    leía en ninguna parte, así que "¿esto lo cargué yo?" no se
+                    podía contestar mirando la pantalla. Solo se marca lo ajeno:
+                    si todo lleva marca, la marca deja de avisar.
+                  */}
+                  {ETIQUETA_AUTORIA[autoriaDe(a, uid)] && (
+                    <span className="ml-1.5 text-tinta/40">
+                      · {ETIQUETA_AUTORIA[autoriaDe(a, uid)]}
+                    </span>
+                  )}
+                </p>
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}

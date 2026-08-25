@@ -1341,7 +1341,7 @@ Vale releerlo con el mismo ojo cada vez que se toque el diff: el patrón —"el
 fixture no ejercita el caso central del §2.2"— es el que hay que cazar, no estos
 casos puntuales.
 
-### B-129 · «Feria» falta en los tipos de actividad · P2
+### B-129 · «Feria» falta en los tipos de actividad — ✅ hecho (2026-08-25)
 
 **Primer reporte real cargado desde el panel** —
 [issue #4](https://github.com/benoffi7/agenda-literaria/issues/4), del dueño,
@@ -1375,10 +1375,22 @@ Tres cosas que arrastra, y son el trabajo real del ítem:
    (`src/lib/ayuda.ts`), y el §3.1 del `CLAUDE.md` quedaría desactualizado — es
    una decisión del dueño si se corrige el documento o se anota el desvío.
 
+**Hecho.** «Feria» es opción base (`fijo: true`, orden 6) y su regla del §11 es
+**ciclo sí, material y tallerista no**: una feria del libro dura varios días, así
+que es una actividad con N encuentros (§2.2), uno por jornada, y no tiene quien la
+dé. Sin la cascada caía en el default y había que acordarse de tildar «es un
+ciclo» a mano, que es el olvido que el §11 existe para evitar. Va con dos tests
+—uno por la cascada, otro por el `fijo`, porque borrarla desde la pantalla de
+taxonomías dejaría la regla apuntando a un tipo que no se puede elegir— y su
+punto en la guía.
+
+**El §3.1 del `CLAUDE.md` queda desactualizado**: lista cinco tipos y ahora son
+seis. Se anota el desvío en lugar de editar el documento del dueño.
+
 Y el reporte deja una lección de producto que vale más que el ítem: **la primera
 cosa que faltó fue una categoría del dominio, no una función del software.**
 
-### B-130 · El listado no dice quién cargó cada actividad · P2
+### B-130 · El listado no dice quién cargó cada actividad — ✅ hecho (2026-08-25)
 
 `createdBy` y `updatedBy` **se guardan en cada documento y no se muestran en
 ninguna parte**: el panel los escribe (`formADocumento`) y nunca los lee. Con dos
@@ -1388,6 +1400,26 @@ contestar mirando la pantalla.
 
 El dato ya está, así que es mostrarlo: una línea en la fila del listado, y quizás
 en el encabezado del formulario al editar algo ajeno.
+
+**Hecho, y más chico de lo que el ítem proponía.** Los dos caminos que evaluaba
+—guardar el mail en el documento, o cablear el mapa uid→nombre— eran más grandes
+que la pregunta. Lo que se reportó fue *"los eventos que crea el otro admin
+también me aparecen, ¿no?"*, o sea **¿esto lo cargué yo?**, y eso se contesta con
+el uid que el panel ya tiene en la sesión: cero cambios de modelo, cero riesgo de
+filtración.
+
+La fila marca solo lo ajeno («La cargó otra cuenta»). Lo propio no lleva marca a
+propósito: si todo lleva marca, la marca deja de avisar. Y un documento sin
+`createdBy` —los anteriores a que se escribiera— queda como `desconocida` y
+tampoco se marca, porque afirmar de más sobre datos viejos es peor que callarse.
+
+**Con dos cuentas alcanza; con tres, no.** "Otra cuenta" identifica sola a la
+otra persona mientras sean dos. Cuando aparezca la tercera hay que guardar el mail
+—y ahí sí verificar que `toPublic` lo descarte, que es el punto 2 de arriba—.
+`toPublic` construye el objeto público campo por campo, o sea **lista blanca**, así
+que un campo nuevo queda afuera por construcción y no por acordarse; eso reduce el
+riesgo pero no lo elimina, porque alguien podría agregarlo a la proyección.
+Queda como **B-179**.
 
 Dos cosas a resolver, y la segunda importa:
 
@@ -1544,7 +1576,7 @@ tests. Tres cosas que se decidieron ahí y no son obvias:
 Y la ayuda del campo también estaba mal: decía «un handle por línea o separados
 por coma» y ninguna de las dos funcionaba.
 
-### B-134 · Los tipos y las entregas de material son enums cerrados · P2
+### B-134 · Los tipos y las entregas de material son enums cerrados — ✅ parcial (2026-08-25)
 
 Reportado por el dueño (2026-08-24), cargando un club de lectura real: *"en
 material adicional son varias cosas: libro, newsletters, guía, playlist… y son al
@@ -1565,8 +1597,27 @@ a lo largo del ciclo. Encaja con el §2.2 —un club de lectura son ocho encuent
 con su lectura cada uno— y es exactamente el caso de uso que el §4.1 llama de
 primera clase, como «a la gorra».
 
-**La decisión de fondo, que es del dueño:** ¿se agregan valores a los dos enums,
-o `material.items[].tipo` pasa a ser **taxonomía abierta** como el resto (§4)?
+**Hecho lo pedido, pendiente la decisión de fondo.** Agregados: `durante-el-mes`
+en las entregas —el pedido concreto—, más `newsletter` y `playlist` en los tipos.
+
+**No se agregó `libro`, y no es un olvido.** El reporte lo nombra, pero `lectura`
+ya es eso: el texto asignado. Tener los dos partiría los datos existentes en dos
+valores que después no se pueden volver a juntar, porque nadie va a saber cuál
+eligió cada uno. Se cambió la **etiqueta** a "Libro o lectura", que es reversible;
+agregar el valor no lo es. Si el dueño prefiere el valor aparte, se hace — pero
+esa es la decisión que hay que tomar a ojos abiertos.
+
+**Y apareció la tercera instancia de la clase de B-76/B-132**: el desplegable de
+tipo de material pintaba el valor crudo, así que decía "guia" y "autor" mientras
+el evento público decía "Guía" y "Sobre el autor". Arreglado importando el mapa de
+`@calendario` en lugar de copiarlo (D-20), y con un chequeo nuevo que afirma que
+**todo** valor de los dos enums tiene etiqueta en las dos pantallas — verificado
+contra un valor inventado para confirmar que lo detecta y que nombra cuál falta.
+`entrega` mantiene dos mapas a propósito: el panel capitaliza, el evento va en
+minúscula a mitad de frase.
+
+**La decisión que queda, y es del dueño:** ¿`material.items[].tipo` pasa a ser
+**taxonomía abierta** como el resto (§4)?
 Abrirlo sale casi gratis —la implementación de `opciones.ts` ya resuelve cinco
 campos con un solo patrón— y evita volver a tocar código la próxima vez que
 aparezca un formato que nadie previó, que en tres reportes ya pasó una vez.
@@ -1632,6 +1683,27 @@ el orden importa:
    deja en 2.
 
 Sale con B-70/B-71, cuando `guardar()` deje de vivir dentro del componente.
+
+### B-179 · Con tres admins, «otra cuenta» deja de identificar a nadie · P2
+
+B-130 marca lo ajeno con «La cargó otra cuenta», que alcanza porque hay **dos**
+cuentas: no ser vos implica ser la otra persona. Con la tercera, la marca dice
+que no fuiste vos y nada más.
+
+Ahí hace falta el nombre, y el camino es guardar el mail en el documento al
+escribir (más simple que resolver el uid contra Auth en cada fila). Dos cosas a
+verificar en ese momento:
+
+1. **el §5.1** — `toPublic` construye el objeto campo por campo, o sea lista
+   blanca, así que un campo nuevo queda afuera **por construcción**. Eso reduce el
+   riesgo pero no lo elimina: alguien puede agregarlo a la proyección sin pensar.
+   Vale un test que afirme que ningún campo con `@` sale al `events.json`;
+2. **el historial (§12)** — el mail entra en las versiones guardadas, así que
+   borrar una cuenta no lo borra de ahí.
+
+Sale junto con la maquinaria de aprobación que B-131 dejó dormida: las dos esperan
+el mismo momento, que es cuando haya más de dos personas cargando.
+
 
 ## P3 — cuando sobre tiempo
 

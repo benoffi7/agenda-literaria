@@ -62,17 +62,31 @@ const ETIQUETA_VIA = {
   formulario: 'por formulario',
 };
 
-const ETIQUETA_TIPO_MATERIAL = {
-  lectura: 'Lectura',
+/**
+ * Los formatos, en sustantivo. **Exportado** porque el panel lo reusa (D-20): el
+ * desplegable del editor de material pintaba el valor crudo —"guia", "autor"—
+ * mientras el evento decía "Guía" y "Sobre el autor" (B-134). Son sustantivos y
+ * no prosa, así que sirven igual en las dos pantallas.
+ *
+ * `ETIQUETA_ENTREGA`, en cambio, NO se exporta: acá va en minúscula porque cae a
+ * mitad de una frase entre paréntesis, y en el panel es el texto de un
+ * desplegable. Esa diferencia es correcta y unificarla haría que un cambio de
+ * copy del panel cambie lo que se publica.
+ */
+export const ETIQUETA_TIPO_MATERIAL = {
+  lectura: 'Libro o lectura',
   guia: 'Guía',
   contexto: 'Contexto',
   autor: 'Sobre el autor',
+  newsletter: 'Newsletter',
+  playlist: 'Playlist',
   otro: 'Otro',
 };
 
 const ETIQUETA_ENTREGA = {
   previo: 'previo al encuentro',
   'al-inscribirse': 'al inscribirse',
+  'durante-el-mes': 'durante el mes',
   'en-el-encuentro': 'en el encuentro',
 };
 

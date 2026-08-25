@@ -29,10 +29,44 @@ export type Estado = (typeof ESTADOS)[number];
 export const VIAS_INSCRIPCION = ['mail', 'whatsapp', 'dm', 'formulario'] as const;
 export type ViaInscripcion = (typeof VIAS_INSCRIPCION)[number];
 
-export const TIPOS_MATERIAL = ['lectura', 'guia', 'contexto', 'autor', 'otro'] as const;
+/**
+ * Los formatos de material de un club de lectura (B-134).
+ *
+ * **No se agregó `libro`, y no es un olvido.** El reporte que abrió esto lo
+ * nombra —"son varias cosas: libro, newsletters, guía, playlist"— pero `lectura`
+ * ya es eso: el texto asignado. Tener las dos partiría los datos existentes en
+ * dos valores que después no se pueden volver a juntar, porque nadie va a saber
+ * cuál eligió cada uno. Se cambió la **etiqueta** a "Libro o lectura", que es
+ * reversible; agregar el valor no lo es.
+ *
+ * `newsletter` y `playlist` sí son formatos nuevos: no entraban en ninguno.
+ */
+export const TIPOS_MATERIAL = [
+  'lectura',
+  'guia',
+  'contexto',
+  'autor',
+  'newsletter',
+  'playlist',
+  'otro',
+] as const;
 export type TipoMaterial = (typeof TIPOS_MATERIAL)[number];
 
-export const ENTREGAS_MATERIAL = ['previo', 'al-inscribirse', 'en-el-encuentro'] as const;
+/**
+ * Cuándo llega el material. Sigue **cerrado** a propósito, a diferencia de las
+ * taxonomías del §4: son momentos del ciclo de vida de la inscripción, no
+ * vocabulario libre, y el §5.1 los usa para decidir qué se publica.
+ *
+ * `durante-el-mes` es el pedido concreto del dueño (B-134), y dice algo del
+ * dominio: la entrega no siempre es un instante, puede ser progresiva a lo largo
+ * del ciclo. Encaja con el §2.2 —ocho encuentros con su lectura cada uno.
+ */
+export const ENTREGAS_MATERIAL = [
+  'previo',
+  'al-inscribirse',
+  'durante-el-mes',
+  'en-el-encuentro',
+] as const;
 export type EntregaMaterial = (typeof ENTREGAS_MATERIAL)[number];
 
 export interface Organizador {

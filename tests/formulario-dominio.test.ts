@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { formVacio, onlineVacio, primeraOpcionBase, sedeVacia } from '@/lib/formulario/estadoInicial';
+import opcionesBase from '@/lib/opciones-base.json';
 import { cambiarModalidad, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import {
   esCharla,
@@ -127,6 +128,28 @@ describe('cambiarTipo — §2.2 y §11', () => {
     const f = cambiarTipo(formVacio(), 'club-lectura');
     expect(f.esCiclo).toBe(true);
     expect(f.material.tiene).toBe(true);
+  });
+
+  it('B-129 — una feria es un ciclo, pero sin material ni tallerista', () => {
+    // Una feria del libro dura varios días: es una actividad con N encuentros
+    // (§2.2), uno por jornada. Sin esta cascada caía en el default y había que
+    // acordarse de tildar «es un ciclo» a mano — el olvido que el §11 evita.
+    const f = cambiarTipo(formVacio(), 'feria');
+    expect(f.esCiclo).toBe(true);
+    // Y las dos que NO le corresponden: una feria no tiene quien la dé, y el
+    // material de lectura no es su caso. Sin estas dos afirmaciones el test
+    // pasaría igual con una cascada que prende todo.
+    expect(f.material.tiene).toBe(false);
+    expect(f.tallerista).toBeNull();
+  });
+
+  it('B-129 — «Feria» está entre las opciones de fábrica del tipo', () => {
+    const tipos = opcionesBase.tipo as { slug: string; fijo: boolean }[];
+    const feria = tipos.find((v) => v.slug === 'feria');
+    // `fijo` es lo que la protege de que alguien la borre desde la pantalla de
+    // taxonomías (§4.3): la cascada de arriba la nombra por slug, así que
+    // borrarla dejaría la regla apuntando a un tipo que no se puede elegir.
+    expect(feria?.fijo).toBe(true);
   });
 
   it('un taller abre el bloque de tallerista', () => {

@@ -2,6 +2,60 @@
 
 ## 2026-08-25
 
+### Lo que faltaba del dominio: Feria, «durante el mes», y quién cargó qué
+
+**B-129 · «Feria».** El primer reporte real cargado desde el panel no fue una
+función del software: fue **una categoría del dominio que faltaba**. Ahora es
+opción base con su regla del §11 — ciclo sí, material y tallerista no: una feria
+del libro dura varios días, así que es una actividad con N encuentros (§2.2), uno
+por jornada, y no tiene quien la dé. Sin la cascada caía en el default y había que
+acordarse de tildar «es un ciclo» a mano, que es el olvido que el §11 evita.
+
+Va con dos tests, y el segundo es el que no es obvio: que «Feria» sea `fijo`. La
+cascada la nombra por slug, así que borrarla desde la pantalla de taxonomías
+—que ahora existe— dejaría la regla apuntando a un tipo que no se puede elegir.
+
+**B-134 · «durante el mes», y la tercera instancia de la misma clase.** Agregados
+`durante-el-mes` en las entregas —el pedido concreto, y dice algo del dominio: la
+entrega no siempre es un instante, puede ser progresiva a lo largo del ciclo— más
+`newsletter` y `playlist` en los tipos.
+
+**No se agregó `libro`**, que el reporte nombra: `lectura` ya es eso. Tener los
+dos partiría los datos existentes en dos valores que después no se pueden volver a
+juntar, porque nadie va a saber cuál eligió cada uno. Se cambió la **etiqueta** a
+"Libro o lectura", que es reversible; agregar el valor no lo es.
+
+Y en el camino apareció **la tercera instancia de B-76/B-132**: el desplegable de
+tipo de material pintaba el valor crudo, así que decía "guia" y "autor" mientras el
+evento público decía "Guía" y "Sobre el autor". El mapa se importa de
+`@calendario` en lugar de copiarse (D-20), y el chequeo nuevo no protege la línea:
+afirma que **todo** valor de los dos enums tiene etiqueta en las dos pantallas.
+El patrón que produce la cuarta instancia es agregar un valor al enum y olvidarse
+de un mapa, y ahí el desplegable muestra el slug sin que nada falle.
+
+Ese chequeo destapó dos fallas del extractor de mapas que usaba, las dos de la
+misma familia —un chequeo que lee el fuente y **cree** haber encontrado lo que
+buscaba—: no saltaba la anotación de tipo (`const X: Record<…> = {`), así que el
+mapa anotado salía vacío y el error decía "el panel no sabe decir «previo»" sobre
+un mapa que lo dice; y cruzaba saltos de línea, así que una **mención** del nombre
+en un comentario enganchaba con el `= {` del mapa siguiente y se leía el mapa
+equivocado. Un chequeo que mide otra cosa es peor que uno que no mide nada,
+porque el mensaje de error manda a buscar donde no está.
+
+**B-130 · quién cargó cada actividad**, y salió más chico que lo que el ítem
+proponía. Sus dos caminos —guardar el mail en el documento, o cablear el mapa
+uid→nombre— eran más grandes que la pregunta. Lo reportado fue *"los eventos que
+crea el otro admin también me aparecen, ¿no?"*, o sea **¿esto lo cargué yo?**, y
+eso se contesta con el uid que el panel ya tiene en la sesión: cero cambios de
+modelo, cero riesgo de filtrar un uid al público (§5.1).
+
+La fila marca solo lo ajeno. Lo propio no lleva marca a propósito —si todo lleva
+marca, la marca deja de avisar— y un documento sin `createdBy` queda sin marcar,
+porque afirmar de más sobre datos viejos es peor que callarse. Con dos cuentas
+"otra cuenta" identifica sola a la otra persona; con tres deja de alcanzar, y eso
+es **B-179**, junto con la maquinaria de aprobación que B-131 dejó dormida: las dos
+esperan el mismo momento.
+
 ### Los dos bugs que aparecieron usando el panel de verdad
 
 **B-133 · el campo «arrobar» se comía la coma.** Era una lista modelada como

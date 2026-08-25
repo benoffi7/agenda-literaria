@@ -382,6 +382,7 @@ export function AdminApp() {
             setVolverA('lista');
             setVista({ tipo: 'duplicar', copia, tituloOrigen });
           }}
+          uid={usuario.uid}
           onHistorial={(a) => {
             setVolverA('lista');
             setVista({ tipo: 'historial', actividad: a });

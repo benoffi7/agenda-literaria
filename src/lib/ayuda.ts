@@ -383,6 +383,11 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Una «feria» también nace marcada como ciclo, porque suele durar varios días: cargá un ' +
+          'encuentro por jornada. No pide tallerista ni abre material.',
+      },
+      {
+        texto:
           'La dirección web se va armando sola con el título mientras la actividad no esté ' +
           'publicada, y se puede editar a mano. Al publicar queda fija.',
         cuidado: true,

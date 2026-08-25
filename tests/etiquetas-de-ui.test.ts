@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ETIQUETA_ESTADO as ETIQUETA_ESTADO_FORM } from '@/components/admin/formulario/etiquetasUI';
 import { ETIQUETA_ESTADO, ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
+import { ENTREGAS_MATERIAL, TIPOS_MATERIAL } from '@/types/actividad';
+import { ETIQUETA_TIPO_MATERIAL } from '@calendario';
 import { ESTADOS, MODALIDADES } from '@/types/actividad';
 
 /**
@@ -28,6 +30,10 @@ import { ESTADOS, MODALIDADES } from '@/types/actividad';
 const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../src/${rel}`, import.meta.url)), 'utf8');
 
+/** Ídem, pero desde la raíz del repo: `functions/` no está bajo `src/`. */
+const fuenteEnRaiz = (rel: string): string =>
+  readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8');
+
 /*
  * B-79 partió el formulario en secciones y se llevó los mapas a
  * `formulario/etiquetasUI.ts`. Este chequeo los buscaba en
@@ -52,10 +58,28 @@ const LISTADO = fuente('components/admin/ListaActividades.tsx');
  * romper esto, no volverlo silencioso.
  */
 const mapaDelFuente = (src: string, nombre: string): Record<string, string> => {
-  const bloque = new RegExp(`ETIQUETA_${nombre}\\s*=\\s*\\{([^}]*)\\}`).exec(src);
+  /*
+   * Dos cosas que este regex aprendió a la mala, las dos de la misma clase —un
+   * chequeo que lee el fuente y cree haber encontrado lo que buscaba:
+   *
+   *  1. `[^={\n]*` salta una anotación de tipo entre el nombre y el `=`
+   *     (`const ETIQUETA_ENTREGA: Record<…, string> = {`). Sin eso el mapa
+   *     anotado salía vacío y el chequeo decía "el panel no sabe decir
+   *     «previo»" sobre un mapa que lo dice.
+   *  2. El `\n` adentro de la clase negada es lo que impide cruzar líneas. Sin
+   *     él, una **mención** del nombre en un comentario de arriba enganchaba con
+   *     el `= {` del mapa SIGUIENTE, así que se leía el mapa equivocado y
+   *     faltaban todas las claves. Un chequeo que mide otra cosa es peor que uno
+   *     que no mide nada, porque el mensaje de error manda a buscar donde no está.
+   */
+  const bloque = new RegExp(`ETIQUETA_${nombre}[^={\n]*=\\s*\\{([^}]*)\\}`).exec(src);
   if (!bloque?.[1]) return {};
   return Object.fromEntries(
-    [...bloque[1].matchAll(/(\w+)\s*:\s*'([^']*)'/g)].map((m) => [m[1]!, m[2]!]),
+    // La clave puede venir citada: un slug con guion (`'al-inscribirse'`) no es
+    // un identificador válido, así que en el fuente va entre comillas. `\w+`
+    // solo veía las de una palabra, y las de guion —que son justo las que este
+    // chequeo existe para no perder— salían como ausentes.
+    [...bloque[1].matchAll(/'?([\w-]+)'?\s*:\s*'([^']*)'/g)].map((m) => [m[1]!, m[2]!]),
   );
 };
 
@@ -133,5 +157,46 @@ describe('ningún desplegable pinta un slug pelado (B-132)', () => {
     // El patrón exacto del bug, y sus vecinos: `${value}` seguido de texto
     // dentro de un template literal que se renderiza.
     expect(SELECT).not.toMatch(/`\$\{value\}[^`]/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-134 — todo valor del modelo tiene etiqueta en las dos pantallas
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * La clase, por tercera vez en este archivo: **un valor del modelo que se
+ * renderiza sin pasar por un mapa de etiquetas**. Fue el estado en el listado
+ * (B-76), el slug de taxonomía en los desplegables (B-132) y el tipo de material
+ * en el editor (B-134), que decía "guia" y "autor" mientras el evento público
+ * decía "Guía" y "Sobre el autor".
+ *
+ * Arreglar cada instancia no evita la cuarta: el patrón que la produce es
+ * agregar un valor al enum y olvidarse de uno de los mapas, y ahí el desplegable
+ * muestra el slug sin que nada falle. Esto lo hace fallar.
+ */
+describe('ningún valor del modelo se renderiza sin etiqueta (B-134)', () => {
+  it('cada tipo de material tiene etiqueta en el vocabulario compartido', () => {
+    for (const tipo of TIPOS_MATERIAL) {
+      expect(ETIQUETA_TIPO_MATERIAL[tipo], `falta la etiqueta de «${tipo}»`).toBeTruthy();
+    }
+  });
+
+  it('cada entrega tiene etiqueta en el panel y en el evento público', () => {
+    // Los dos mapas existen a propósito —el panel capitaliza, el evento va en
+    // minúscula a mitad de frase— pero ninguno puede tener agujeros.
+    const delEvento = mapaDelFuente(fuenteEnRaiz('functions/calendario.js'), 'ENTREGA');
+    const delPanel = mapaDelFuente(fuente('components/admin/MaterialEditor.tsx'), 'ENTREGA');
+    for (const entrega of ENTREGAS_MATERIAL) {
+      expect(delEvento[entrega], `el evento no sabe decir «${entrega}»`).toBeTruthy();
+      expect(delPanel[entrega], `el panel no sabe decir «${entrega}»`).toBeTruthy();
+    }
+  });
+
+  it('el editor de material no pinta el valor crudo', () => {
+    const EDITOR = fuente('components/admin/MaterialEditor.tsx');
+    // El bug exacto: `{t}` suelto como contenido de un `<option>`.
+    expect(EDITOR).not.toMatch(/<option key=\{t\} value=\{t\}>\s*\n?\s*\{t\}/);
+    expect(EDITOR).toMatch(/ETIQUETA_TIPO_MATERIAL\[t\]/);
   });
 });
