@@ -368,6 +368,37 @@ que "verde local" signifique algo.
 
 ## Re-relevar el inventario
 
+**Un comando** (B-123):
+
+```bash
+./scripts/relevar-infra.sh
+```
+
+Consulta el proyecto y **compara contra lo que este documento afirma**, en lugar de
+imprimir una lista para leer a ojo. Sale con 1 y nombra cada divergencia; con
+`--crudo` imprime solo el estado. Compara tres cosas —el estado de las Functions, los
+roles de `deploy-ci@` y la existencia de los secretos— porque son las tres que
+mintieron el 2026-08-25. El resto se sigue mirando con los comandos de abajo:
+automatizar la comparación de todo pedía parsear prosa, y un comparador que se
+equivoca leyendo la doc es peor que ninguno.
+
+La decisión vive en `scripts/comparar-infra.sh`, separada de la consulta, y tiene
+nueve tests (`tests/comparar-infra.test.ts`): consultar `gcloud` necesita credenciales
+que un agente no debe tener (§5.4), comparar dos listas de texto no. Es el mismo corte
+que `que-deployar.sh`.
+
+Para los secrets de GitHub hace falta la cuenta con permiso sobre el repo:
+
+```bash
+export GH_TOKEN=$(gh auth token --user benoffi7)
+```
+
+Sin eso, el script avisa y deja esa comparación **sin verificar** en lugar de
+reportarla como faltante: "no pude ver" y "no existe" no son lo mismo, y la primera
+vez que un chequeo grita en falso se lo empieza a ignorar.
+
+### Los comandos, uno por uno
+
 ```bash
 gcloud services list --enabled --project agenda-literaria
 gcloud iam service-accounts list --project agenda-literaria

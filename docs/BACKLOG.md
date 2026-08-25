@@ -95,7 +95,7 @@ Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsi
   Firestore todavía. Lo que eso destapó es para después — la guarda que avisaría,
   `hayCredenciales()`, **existe y no la llama nadie** (**B-189**).
 
-### B-21 · Alerta de rebuild agotado — el código está, y falta el runbook que este ítem daba por escrito
+### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
 `el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
@@ -112,20 +112,17 @@ alguien reescriba la frase—. El filtro exacto y los pasos de la consola están
 de GCP con un canal de notificación propio. **Ya tiene sentido:** `dispararRebuild`
 está desplegada, B-20 cerrado y el lazo verificado de punta a punta el 2026-08-25.
 
-**Y falta algo más que el click, que este ítem daba por escrito:** decía que "el
-filtro exacto y los pasos de la consola están en `08-operacion.md` § 'Alerta de
-rebuild agotado'", y **esa sección no existe** — `grep -i alerta docs/08-operacion.md`
-no devuelve nada. La referencia era una promesa, no una instrucción, justo en el paso
-que solo puede dar el dueño. El runbook que falta es corto y los datos están todos:
+**Este ítem apuntaba a un runbook que no existía**, y eso se arregló el 2026-08-25:
+decía que "el filtro exacto y los pasos de la consola están en `08-operacion.md`
+§ 'Alerta de rebuild agotado'" y `grep -i alerta` sobre ese archivo no devolvía nada.
+La referencia era una promesa, no una instrucción, justo en el único paso que solo
+puede dar el dueño. **Ahora la sección existe**, con los tres pasos: mirar una entrada
+real antes de fijar el filtro (las Functions v2 aparecen como `cloud_run_revision` y
+no como `cloud_function`, y el `service_name` va en minúsculas), crear la alerta, y
+qué hacer cuando llegue.
 
-- el log sale de `functions/index.js:470` con nivel `error` y el campo
-  `alerta: 'rebuild-agotado'` en el `jsonPayload`;
-- la Function es `dispararRebuild`, en `southamerica-east1`;
-- el filtro, entonces, es
-  `resource.type="cloud_function" AND jsonPayload.alerta="rebuild-agotado"`
-  (o `resource.type="cloud_run_revision"` según cómo aparezca la v2 en Logging —
-  conviene mirar una entrada real antes de fijarlo);
-- y el canal de notificación lo elige el dueño.
+Lo único que queda es el click y el canal de notificación, que es dato personal y
+configuración de consola (§5.4).
 
 ---
 
@@ -3233,7 +3230,7 @@ memoria que necesita JS y deja el listado vacío para un crawler.
 
 No se puede escribir todavía: `src/pages/index.astro` es un placeholder.
 
-### B-123 · El inventario de infra no se re-releva solo · P3
+### B-123 · El inventario de infra no se re-releva solo — ✅ hecho (2026-08-25)
 
 [`02-infraestructura.md`](02-infraestructura.md) dice que fue relevado con
 `gcloud` y `firebase`, "no de memoria", y trae los comandos para repetirlo. Nadie
@@ -3244,6 +3241,39 @@ ni qué roles tiene una service account: no tiene credenciales y no debe tenerla
 La forma sensata es un script que corra el dueño y que imprima el inventario en
 el formato del documento, para diffear a ojo. Sin eso, el riesgo es el inverso al
 habitual: la doc dice que algo falta cuando ya está hecho (ver B-118).
+
+**Y eso es exactamente lo que pasó el 2026-08-25**, dos veces en el mismo día: tres
+Functions figuraban "escritas, sin desplegar" y estaban **ACTIVE**; el secreto
+`GITHUB_TOKEN` figuraba "falta crearlo" y existía desde el 21. B-20 parecía tener
+cinco pasos pendientes y tenía uno. Eso subió este ítem de P3 a hacerlo.
+
+**Hecho, y con una vuelta de tuerca sobre lo que pedía el ítem:** en lugar de
+imprimir para diffear a ojo, **compara**. `./scripts/relevar-infra.sh` consulta el
+proyecto, sale con 1 y nombra cada divergencia; `--crudo` imprime solo el estado.
+
+Compara las tres cosas que mintieron —estado de las Functions, roles de `deploy-ci@`,
+existencia de los secretos (GCP y GitHub)— y no el inventario entero: automatizar el
+resto pedía parsear prosa, y un comparador que se equivoca leyendo la doc es peor que
+ninguno. Eso está escrito en la cabecera del script, para que la próxima persona no
+lo lea como una omisión.
+
+**Está partido en dos, y ahí está lo que lo hace mantenible.** `relevar-infra.sh`
+consulta `gcloud`/`gh` —necesita credenciales, no se puede testear—, y
+`comparar-infra.sh` recibe el estado por stdin y el documento como argumento, así que
+**la mitad que decide tiene nueve tests** (`tests/comparar-infra.test.ts`), incluidos
+los dos casos reales del día. Es el mismo corte de `que-deployar.sh`, por el mismo
+motivo: una decisión que no se puede probar se prueba en producción.
+
+Dos detalles que valieron la pena:
+
+- **El aviso del rol nombra el otro archivo.** Si `deploy-ci@` tiene un rol que la
+  doc no declara, el mensaje manda a mirar también `07-seguridad.md` — porque el
+  drift entre esos dos es cómo una afirmación de seguridad quedó mintiendo una hora
+  (D-119). Hay un test de eso.
+- **"No pude ver" no es "no existe".** Sin permiso para leer los secrets de GitHub,
+  el script deja esa comparación **sin verificar** en lugar de reportar que falta.
+  Lo escribí mal la primera vez y el propio script gritó en falso; la primera vez que
+  un chequeo grita en falso se lo empieza a ignorar, así que también tiene test.
 
 ### B-124 · Decisión del dueño: ¿cuándo corren los auditores? · P3
 

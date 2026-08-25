@@ -319,7 +319,11 @@ arreglo, es el detector.
 - **Crear credenciales** (PAT, key de service account, toggles de consola). Lo
   prohíbe el §5.4 y lo dice el backlog: es trabajo del dueño.
 - **Re-relevar el inventario de infra** (§ `02-infraestructura.md`): necesita
-  `gcloud` autenticado. B-123.
+  `gcloud` autenticado, así que no lo puede hacer un agente. **Pero sí un script**:
+  `scripts/relevar-infra.sh` lo releva y lo compara contra el documento (B-123,
+  cerrado el 2026-08-25). La mitad que decide —`comparar-infra.sh`— está separada y
+  tiene tests, porque no necesita credenciales. Lo que queda del lado del dueño es
+  correrlo.
 - **Un auditor del sitio público** (SEO, indexabilidad, accesibilidad): no se
   puede escribir contra algo que todavía no existe (B-01). B-122.
 - **Un agente de code review genérico**: es exactamente lo que Claude hace sin

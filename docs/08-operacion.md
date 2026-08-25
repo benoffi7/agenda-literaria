@@ -653,6 +653,116 @@ gcloud functions logs read dispararRebuild --project agenda-literaria \
 Mensaje esperado sin cambios pendientes: nada (el schedule sale en silencio).
 Con un cambio pendiente: `rebuild disparado`.
 
+## Alerta de rebuild agotado (B-21)
+
+El único log del proyecto que amerita despertar a alguien. Cuando el
+`repository_dispatch` falla cinco veces con backoff (5, 10, 20, 40 min — D-23),
+`dispararRebuild` se rinde y **no vuelve a intentar hasta que haya un cambio
+nuevo**: el sitio público queda viejo y nadie se entera. Eso es lo que esta alerta
+avisa.
+
+**El lado del código ya está** (`functions/index.js`, al agotarse los intentos):
+
+```js
+logger.error('el rebuild agotó los reintentos: el sitio quedó viejo', {
+  alerta: 'rebuild-agotado',
+  intentos: fallo.intentos,
+  error: fallo.ultimoError,
+  motivo: estado.motivo,
+});
+```
+
+El campo `alerta` existe **para que el filtro no dependa del texto del mensaje**: un
+filtro sobre la frase se rompe en silencio el día que alguien la reescribe, y una
+alerta que dejó de disparar no se nota nunca. El filtro apunta al campo.
+
+### 1 · Mirar una entrada real antes de fijar el filtro
+
+Este paso no se saltea. Las Functions v2 corren sobre Cloud Run, así que en Logging
+aparecen como `cloud_run_revision` y **no** como `cloud_function`, y el nombre del
+servicio va en `resource.labels.service_name`. Conviene confirmarlo con una entrada
+de verdad en lugar de copiar el filtro de acá:
+
+```bash
+# Cualquier log reciente de la Function, con su resource.type y sus labels
+gcloud logging read \
+  'resource.labels.service_name="dispararrebuild"' \
+  --project agenda-literaria --limit 1 --format=json \
+  | python3 -c 'import json,sys; e=json.load(sys.stdin)[0]; print(e["resource"]["type"], e["resource"]["labels"])'
+```
+
+Ojo con dos cosas que se ven ahí: el `service_name` va en **minúsculas**
+(`dispararrebuild`), y si el proyecto todavía tiene Functions de 1ª generación el
+`resource.type` puede variar entre una y otra.
+
+Para forzar una entrada de prueba sin esperar una caída real, se puede poner el
+documento en estado agotado a mano — el mismo camino del §"Reintentar un reporte que
+quedó en `error`", pero sobre `sistema/rebuild`:
+
+```bash
+FIRESTORE_EMULATOR_HOST= node -e "
+  const { initializeApp } = require('firebase-admin/app');
+  const { getFirestore } = require('firebase-admin/firestore');
+  initializeApp({ projectId: 'agenda-literaria' });
+  getFirestore().doc('sistema/rebuild').set(
+    { pendiente: true, intentos: 5, agotado: true, ultimoError: 'prueba de alerta' },
+    { merge: true },
+  ).then(() => console.log('listo: el próximo tick loguea el error'));
+"
+```
+
+**Dejarlo así rompe el rebuild hasta el próximo cambio de contenido**, que es
+justamente lo que la alerta avisa; después del ensayo, bajar `agotado` e `intentos`.
+
+### 2 · Crear la alerta
+
+Consola → **Logging → Log-based Metrics**, o directamente
+**Monitoring → Alerting → Create Policy → Log-based alert**. El filtro, ajustado con
+lo que devolvió el paso 1:
+
+```
+resource.type="cloud_run_revision"
+resource.labels.service_name="dispararrebuild"
+severity=ERROR
+jsonPayload.alerta="rebuild-agotado"
+```
+
+`jsonPayload.alerta` es la condición que importa; las otras tres acotan el ruido. Si
+el paso 1 mostró otro `resource.type`, **dejar solo las dos últimas líneas**: el
+campo `alerta` no lo emite nada más en el proyecto, así que alcanza para no tener
+falsos positivos.
+
+Configuración sugerida:
+
+| | |
+|---|---|
+| Condición | *Any log entry matches* — no hace falta umbral: una sola vez ya es la noticia |
+| Auto-close | 1 día, el mínimo. La alerta no se "resuelve" sola: el rebuild solo se rearma con un cambio nuevo |
+| Canal | mail del dueño. Un canal nuevo se crea en **Monitoring → Alerting → Notification channels** |
+| Nombre | `rebuild agotado — el sitio público quedó viejo` |
+
+**El canal lo elige el dueño y es el único paso que no se puede escribir acá**
+(§5.4): crear un canal de notificación con un mail o un teléfono es dato personal y
+configuración de consola.
+
+### 3 · Qué hacer cuando llegue
+
+La alerta dice que el sitio quedó viejo, no qué se rompió. El diagnóstico es el
+§"El sitio no se actualiza después de cargar una actividad" más abajo, y el motivo
+concreto está en el documento:
+
+```bash
+gcloud firestore documents get 'sistema/rebuild' --project agenda-literaria
+```
+
+`ultimoError` suele ser una de tres: el PAT venció (401), el repo cambió de nombre
+(404), o el workflow no arrancó — que es lo que fue **B-188** y no da error del lado
+de la Function, porque el `repository_dispatch` devuelve 204 igual.
+
+El rearme es automático con el próximo cambio de contenido (`CAMPOS_REARME`, D-23);
+para forzarlo sin editar una actividad, bajar `agotado` e `intentos` a mano con el
+snippet del paso 1.
+
 ## Diagnosticar
 
 ### Logs del sync

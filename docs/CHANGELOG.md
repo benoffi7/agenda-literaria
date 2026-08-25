@@ -52,6 +52,56 @@ acordarse del caso.
 De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
 `durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
 
+### B-123 · el inventario de infra se releva con un comando, y compara
+
+El ítem pedía "un script que imprima el inventario en el formato del documento, para
+diffear a ojo". Quedó con una vuelta de tuerca: **compara**.
+`./scripts/relevar-infra.sh` consulta el proyecto, sale con 1 y nombra cada
+divergencia.
+
+Lo que lo justificó fue el propio día: la doc decía que faltaba trabajo terminado
+hacía días —tres Functions "sin desplegar" que estaban ACTIVE, un secreto "falta
+crearlo" que existía desde el 21— y **B-20 parecía tener cinco pasos pendientes y
+tenía uno**. Ese es el drift que este script atrapa, y va siempre en la misma
+dirección: alguien despliega algo y no vuelve al documento.
+
+**Está partido en dos, y ahí está lo que lo hace mantenible.** `relevar-infra.sh`
+consulta `gcloud`/`gh` y no se puede testear; `comparar-infra.sh` recibe el estado
+por stdin y el documento como argumento, así que **la mitad que decide tiene nueve
+tests**, incluidos los dos casos reales del día. Mismo corte que `que-deployar.sh`,
+mismo motivo: una decisión que no se puede probar se prueba en producción.
+
+Compara tres cosas —Functions, roles de `deploy-ci@`, secretos— y no el inventario
+entero, y eso está escrito en la cabecera para que no se lea como una omisión:
+automatizar el resto pedía parsear prosa, y un comparador que se equivoca leyendo la
+doc es peor que ninguno.
+
+Dos detalles que valieron la pena. **El aviso del rol nombra el otro archivo:** si
+`deploy-ci@` tiene un rol que la doc no declara, manda a mirar también
+`07-seguridad.md`, porque el drift entre esos dos es cómo una afirmación de seguridad
+quedó mintiendo una hora. Y **"no pude ver" no es "no existe":** sin permiso para
+leer los secrets de GitHub, la comparación queda *sin verificar* en lugar de reportar
+que falta. Eso lo escribí mal la primera vez, el script gritó en falso, y quedó con
+test — la primera vez que un chequeo grita en falso se lo empieza a ignorar.
+
+### El runbook de la alerta que B-21 daba por escrito
+
+B-21 decía que "el filtro exacto y los pasos de la consola están en `08-operacion.md`
+§ 'Alerta de rebuild agotado'", y esa sección **no existía**. La referencia era una
+promesa, no una instrucción, justo en el único paso que solo puede dar el dueño.
+
+Ahora está, con tres pasos y uno que no se saltea: **mirar una entrada real antes de
+fijar el filtro.** Las Functions v2 corren sobre Cloud Run, así que en Logging
+aparecen como `cloud_run_revision` y no como `cloud_function`, y el `service_name` va
+en minúsculas — copiar un filtro de un runbook sin confirmarlo es cómo se arma una
+alerta que nunca dispara, y una alerta que no dispara no se nota nunca. Va con el
+snippet para forzar una entrada de prueba (poner `sistema/rebuild` en agotado a mano)
+y el aviso de que dejarlo así rompe el rebuild hasta el próximo cambio.
+
+El filtro apunta a `jsonPayload.alerta="rebuild-agotado"` y no al texto del mensaje,
+que es para lo que se agregó ese campo: un filtro sobre la frase se rompe en silencio
+el día que alguien la reescribe.
+
 ### Los tres auditores, y lo que encontraron sobre el deploy nuevo
 
 Se corrieron al final del día, sobre el rango completo. **Trampas: limpio** — y de
