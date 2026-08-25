@@ -181,6 +181,30 @@ idempotente.
 Para deployar todo sin mirar el diff: Actions → «Deploy desde main» → Run
 workflow → *Deployar todo*.
 
+### Publicar una versión
+
+Subir `version` en `package.json` es lo que convierte un push en una release, y
+arrastra dos cosas que no son automáticas:
+
+1. **Las novedades sin publicar tienen que apuntar a la versión que se está
+   publicando** (D-117), no al número que había cuando se escribieron. Es el
+   único uso del campo `version` de `src/lib/novedades.ts` —correlacionar un
+   síntoma con una release— y un valor equivocado ahí es peor que ninguno.
+   Qué revisar: las entradas de `novedades.ts` que estén arriba de la última
+   publicada.
+
+   ```bash
+   # Qué versión está en producción, y con qué commit se armó
+   curl -s https://agenda-literaria.web.app/version.json
+   # Qué novedades tiene ese commit (las de más arriba son las que no salieron)
+   git show <sha>:src/lib/novedades.ts | grep "id: "
+   ```
+
+2. **Que las novedades existan.** Un cambio que se nota al usar el panel y no
+   entró a `novedades.ts` no se lo cuenta nadie a la otra persona que carga
+   actividades: el CHANGELOG es para quien programa. Es la fila de la tabla del
+   §"cerrar un cambio" que más se saltea.
+
 ### Deploy a mano
 
 ### Sitio y panel

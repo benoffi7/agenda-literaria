@@ -2313,3 +2313,39 @@ equivocada lo hubiera reemplazado por uno más caro de deshacer.
 eso está bien: si mañana la taxonomía cambia cómo persiste, «arrobar» no tiene
 por qué enterarse. Lo que **sí** se comparte es la lógica pura de separar,
 deduplicar y quitar, que es donde estaba el bug.
+
+## D-117 · Un número de versión que ya salió no se reusa para lo que no salió
+
+**Contexto.** Desde B-64 cada novedad del panel se ancla a la versión en la que
+sale, para que un reporte pueda decir "esto empezó a pasar con la versión en la
+que salió tal cosa". El problema apareció al ir a publicar: `package.json` decía
+`1.0.1`, y **`1.0.1` ya estaba en producción** —el panel servía
+`1.0.1+538bef7`, desplegado el 2026-08-21— mientras siete novedades escritas
+después decían `version: '1.0.1'` porque en el momento de escribirlas era el
+número vigente. Otras seis, de las mismas semanas, no decían nada.
+
+Trece entradas, entonces, apuntaban a una versión que no las contenía o a
+ninguna.
+
+**Decisión.** Se sube a `1.1.0` y se re-sellan las trece: las siete que decían
+`1.0.1` sin haber salido, y las seis que no tenían número. Se deja intacta la
+única que sí salió en `1.0.1` (`version-en-el-pie`, que es justamente el commit
+que la estampó) y las cuatro de `1.0.0`.
+
+`1.1.0` y no `1.0.2` porque entre el commit desplegado y este hay dos pantallas
+nuevas —la vista calendario y la de taxonomías—, filtros y orden en el listado, y
+un tipo de actividad más. Un parche no describe eso.
+
+**Por qué no se dejó como estaba.** El campo `version` existe para una sola cosa:
+correlacionar un síntoma con una release. Un valor equivocado ahí es peor que un
+valor ausente — ausente hace que quien diagnostica busque en otro lado, y
+equivocado lo manda a leer el diff de una versión que no tocó ese código. Y el
+error no se detecta después: nada puede verificar que `1.0.1` era mentira una vez
+que 1.0.1 quedó atrás.
+
+**Consecuencia, y la regla que queda.** El número se escribe cuando se escribe la
+novedad, así que el desfasaje puede volver a pasar: la regla es que **publicar una
+versión incluye revisar que las novedades sin publicar apunten a la que se está
+publicando**, y no al número que había cuando se escribieron. `id` y `fecha` no se
+tocan nunca —el `id` es la marca de "hasta acá leí" en el navegador de cada
+persona—; `version` sí, mientras la entrada no haya salido.

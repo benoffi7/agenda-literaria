@@ -1,5 +1,92 @@
 # Changelog
 
+## 1.1.0 — 2026-08-25
+
+**La primera release desde `1.0.1+538bef7`**, que es lo que el panel sirve hoy y
+se desplegó el 2026-08-21. Todo lo de los cuatro días siguientes —el formulario
+partido en secciones, la vista calendario, la pantalla de taxonomías, el orden y
+los filtros del listado, los dos P0 del sync a Calendar, «Feria»— nunca llegó a
+producción. Esta versión es eso.
+
+`1.1.0` y no `1.0.2` por lo que hay adentro: dos pantallas nuevas, filtros y
+orden en el listado, y un tipo de actividad más. Un parche no lo describe.
+
+### Cuatro novedades que faltaban, y trece con la versión equivocada
+
+Los cambios de los últimos días entraron al CHANGELOG pero **no** a
+`src/lib/novedades.ts`, que es lo que la otra persona que carga actividades
+efectivamente lee. Se agregaron las cuatro que se notan al usar el panel:
+
+- **`etiquetas-nacen-aprobadas`** — la que más importaba, porque **corrige una
+  novedad que ya se publicó**. `etiquetas-a-revisar` salió en `1.0.0` diciendo
+  que una etiqueta nueva no le aparece a la otra cuenta hasta revisarla, y B-131
+  volteó el default (D-104). Una novedad vieja que quedó mentirosa no se edita
+  —el `id` es la marca de "hasta acá leí" y quien ya la leyó no vería la
+  corrección—: se agrega una nueva que dice qué cambió.
+- **`tipo-feria`** — B-129, con su cascada del §11.
+- **`material-mas-formatos`** — B-134: `durante-el-mes`, `newsletter`,
+  `playlist`, «Libro o lectura», y el `(Otro,` que se fue del evento (B-182).
+- **`quien-cargo-cada-actividad`** — B-130, que además contesta la pregunta que
+  lo originó ("los eventos del otro admin también me aparecen, ¿no?").
+
+Y **trece entradas apuntaban a una versión que no las contenía**: siete decían
+`1.0.1` —el número vigente cuando se escribieron, ya desplegado sin ellas— y seis
+no decían nada. Se re-sellaron todas a `1.1.0`. El detalle y la regla que queda
+—publicar una versión incluye revisar las novedades sin publicar— en **D-117**.
+
+### B-182 · el evento ya no dice «(Otro, …)»
+
+Mirando un club de lectura publicado, tres de cinco líneas de material decían
+`(Otro, previo al encuentro)`: `otro` es el formato donde cae todo lo que no entra
+en los demás, así que es el más usado, y «Otro» no informa nada al lado del
+título. Ahora con `tipo === 'otro'` la línea sale `- <título> (<entrega>)`. La
+entrega se conserva: es la mitad del ítem que no está en el título. En el
+desplegable del panel «Otro» sigue estando — es otra pantalla con otro criterio,
+el mismo motivo por el que `ETIQUETA_ENTREGA` no se comparte (D-20).
+
+Va con test, porque el patrón que lo restaura es tocar el `map` de material sin
+acordarse del caso.
+
+De paso, la guía nombraba tres momentos de entrega y hay cuatro desde B-134:
+`durante el mes` faltaba. Una ayuda que miente es peor que no tener ayuda.
+
+### Seis reportes de usar el panel de verdad, anotados
+
+**B-181 · un club puede ofrecer N opciones para sumarte, no N encuentros.** Es la
+primera forma del dominio que el modelo **no puede expresar**: `sesiones` es una
+secuencia donde todas las filas pasan, y cuatro horarios alternativos del mismo
+ciclo son excluyentes. Cargados como encuentros, el calendario le manda los cuatro
+eventos a cada suscripto y el evento dice «Encuentro 2 de 4» sobre una
+alternativa. Los tres caminos posibles cuestan cosas muy distintas, así que la
+forma la decide el dueño: **DEC-8**.
+
+**B-183 · «Guardar borrador» exige el formulario completo** (P1). El schema se
+valida igual para borrador que para publicado, así que no se puede guardar a
+medias — y desde B-35 el panel avisa al salir con cambios sin guardar, o sea que
+quien carga queda entre un aviso que le dice que va a perder el trabajo y un
+guardado que no lo acepta. El patrón del arreglo ya está en el archivo: la regla
+del slug `-copia` corre solo al publicar.
+
+**B-184 · el mensaje de error dice cuántos campos faltan, no cuáles** (P1). Fue
+una decisión escrita —listar rutas de campo tapaba media pantalla en mobile— y el
+reporte la da por equivocada, con un motivo que la decisión no tuvo en cuenta:
+cuatro secciones arrancan colapsadas, así que un campo rechazado adentro de un
+acordeón cerrado no se ve en ninguna parte. El contador dice tres, la pantalla
+muestra cero.
+
+**B-186 · el almanaque se cierra solo si se tarda en elegir la fecha** (P2). Leer
+el código descartó los dos sospechosos obvios —no hay reordenamiento de filas ni
+`key` por índice, y el valor no se normaliza al escribirlo— y dejó tres
+candidatos. El primero explica el "si no pongo rápido" mejor que los otros dos: el
+arranque de la analítica va en `requestIdleCallback(…, { timeout: 4000 })`, o sea
+que **se dispara cuando la persona se queda quieta**. Se descarta o se confirma
+con un build sin `PUBLIC_FIREBASE_MEASUREMENT_ID`, sin tocar código.
+
+**B-185 · «DM de Instagram» → «DM al Instagram»** (P3). Copy, en dos lugares con
+dos registros distintos que **no** están unificados a propósito (D-20). La contra
+de esa decisión es esta: cambiar uno y olvidarse del otro es la clase de bug B-76
+y el build queda verde igual, así que son las dos líneas o ninguna.
+
 ## 2026-08-25
 
 ### El gate de antes de pushear fallaba por su propia plomería

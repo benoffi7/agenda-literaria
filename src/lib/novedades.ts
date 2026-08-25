@@ -57,9 +57,57 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'etiquetas-nacen-aprobadas',
+    fecha: '2026-08-25',
+    version: '1.1.0',
+    titulo: 'Una etiqueta nueva que creás ya la puede usar la otra cuenta enseguida',
+    detalle:
+      'Esto cambia lo que decía la novedad «Una etiqueta nueva que creás no le aparece a la otra ' +
+      'persona hasta revisarla»: ya no hay que revisar nada. Lo que cargás con «Otro…» —un barrio, ' +
+      'un arancel, una etiqueta— queda disponible para las dos cuentas en el momento. La revisión ' +
+      'sigue existiendo por dentro para el día en que cargue gente de afuera; hoy no molesta a nadie.',
+    donde: 'En cualquier desplegable con la opción «Otro…».',
+  },
+  {
+    id: 'tipo-feria',
+    fecha: '2026-08-25',
+    version: '1.1.0',
+    titulo: '«Feria» ya está en la lista de tipos de actividad',
+    detalle:
+      'Antes había que cargarla con «Otro…» y acordarse de tildar «es un ciclo» a mano. Ahora está ' +
+      'entre las opciones de siempre y, al elegirla, nace marcada como ciclo: una feria dura varios ' +
+      'días, así que va un encuentro por jornada. No pide tallerista ni abre la sección de material.',
+    donde: 'Campo «Tipo», en la sección «Qué es».',
+  },
+  {
+    id: 'material-mas-formatos',
+    fecha: '2026-08-25',
+    version: '1.1.0',
+    titulo: 'El material acepta «durante el mes», newsletter y playlist',
+    detalle:
+      'La entrega ya no tiene que ser un instante: «Durante el mes» es para la lectura que se va ' +
+      'repartiendo a lo largo del ciclo. Y se sumaron dos formatos que antes no entraban en ningún ' +
+      'lado, newsletter y playlist. «Lectura» ahora se lee «Libro o lectura», que es lo mismo de ' +
+      'siempre con el nombre más claro. Y en el evento, un ítem cargado como «Otro» ya no arrastra ' +
+      'la palabra «Otro»: queda el título y cuándo llega.',
+    donde: 'Sección «Material», en cada fila.',
+  },
+  {
+    id: 'quien-cargo-cada-actividad',
+    fecha: '2026-08-25',
+    version: '1.1.0',
+    titulo: 'El listado te dice cuáles cargó la otra cuenta',
+    detalle:
+      'Sí, en el panel se ven las actividades de las dos cuentas: es una sola agenda. Lo que faltaba ' +
+      'era poder distinguirlas, y ahora las que no cargaste vos dicen «La cargó otra cuenta» debajo ' +
+      'de la fecha. Lo tuyo no lleva marca, a propósito: si todo estuviera marcado, la marca no ' +
+      'avisaría de nada.',
+    donde: 'Debajo de la fecha, en cada fila del listado.',
+  },
+  {
     id: 'arrobar-varios-handles',
     fecha: '2026-08-25',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'Ahora sí podés arrobar a más de una cuenta',
     detalle:
       'El campo «Arrobar al publicar» se comía la coma justo al escribirla, así que no había ' +
@@ -72,7 +120,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'desplegables-sin-slug-crudo',
     fecha: '2026-08-25',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'Los desplegables ya no muestran el nombre en minúscula con guiones',
     detalle:
       'Al cargar un barrio o un lugar nuevo, el desplegable mostraba «villa-crespo (nueva)» en ' +
@@ -83,7 +131,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'administrar-las-opciones',
     fecha: '2026-08-25',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'Ya podés arreglar, borrar y ordenar las opciones de los desplegables',
     detalle:
       'El botón «Opciones» abre las cinco listas que crecen solas —arancel, tipo, barrio, ' +
@@ -96,7 +144,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'regenerar-encuentros-conserva-el-calendario',
     fecha: '2026-08-24',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'Volver a generar los encuentros ya no borra los eventos del calendario',
     detalle:
       'Si el ciclo se corre una semana, ahora podés volver a generar las fechas sin perder nada ' +
@@ -108,7 +156,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'reintentar-reporte-fallido',
     fecha: '2026-08-24',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'Un reporte que no se pudo publicar ahora lo podés reintentar vos',
     detalle:
       'Cuando un bug o una sugerencia queda como «no se pudo publicar», aparece un botón para ' +
@@ -119,7 +167,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'menu-y-ayuda-con-teclado',
     fecha: '2026-08-24',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'El menú «⋯» de cada actividad y la ayuda se manejan con el teclado',
     detalle:
       'En el menú de cada fila podés bajar y subir con las flechas y salir con Escape, y al ' +
@@ -130,7 +178,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'aviso-al-salir-sin-guardar',
     fecha: '2026-08-24',
-    version: '1.0.1',
+    version: '1.1.0',
     titulo: 'Si te vas de una actividad a medio cargar, ahora el panel te pregunta',
     detalle:
       'Antes, tocar «Volver», «Reportar algo», «Salir» o «Cancelar» con la actividad a medio ' +
@@ -141,6 +189,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'destacar-llega-al-sitio',
     fecha: '2026-08-24',
+    version: '1.1.0',
     titulo: 'Destacar una actividad, o cambiarle la imagen, ahora sí se ve en el sitio',
     detalle:
       'Antes, los cambios que no tocan el calendario —destacar en la portada, la imagen, el ' +
@@ -152,6 +201,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'sin-encuentros-duplicados',
     fecha: '2026-08-24',
+    version: '1.1.0',
     titulo: 'El calendario público ya no puede quedarse con dos veces el mismo encuentro',
     detalle:
       'Había dos formas de que un encuentro terminara publicado dos veces: editar una actividad ' +
@@ -162,6 +212,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'cancelar-no-renumera',
     fecha: '2026-08-24',
+    version: '1.1.0',
     titulo: 'Cancelar un encuentro ya no le cambia el nombre a los demás',
     detalle:
       'Antes, cancelar el tercero de ocho hacía que el sexto pasara a decir «Encuentro 5 de 7» en ' +
@@ -173,6 +224,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'calendario-en-curso',
     fecha: '2026-08-24',
+    version: '1.1.0',
     titulo: 'Una actividad que está empezando ahora ya no se te esconde en la lista',
     detalle:
       'Antes, un taller de 19 a 21 desaparecía de "lo que se viene" a las 19:01, justo cuando ' +
@@ -183,6 +235,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'vista-calendario',
     fecha: '2026-08-22',
+    version: '1.1.0',
     titulo: 'Hay una vista calendario que te dice qué está publicado de verdad',
     detalle:
       'Muestra los encuentros día por día y, con un color por encuentro, si la gente ya lo ve en ' +
@@ -194,6 +247,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'orden-y-filtros-del-listado',
     fecha: '2026-08-22',
+    version: '1.1.0',
     titulo: 'El listado arranca por lo que se viene, y se puede filtrar',
     detalle:
       'Arriba está la actividad con el encuentro más próximo, no la última que tocaste, y cada ' +

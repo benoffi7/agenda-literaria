@@ -491,6 +491,13 @@ sede con "cómo llegar" y link a Google Maps, plataforma, arancel con notas,
 inscripción con vía, cupo y cierre, material, organizador, tallerista con bio,
 y tags.
 
+Cada línea de material es `- <título> (<formato>, <entrega>)`, y el formato
+**`otro` no se nombra** (B-182): "Otro" no informa nada al lado del título, y es
+el formato donde cae todo lo que no entra en los demás, así que la mitad de las
+líneas decían lo mismo. La entrega sí queda: no está en el título. En el
+desplegable del panel «Otro» sigue estando, que es otra cosa — ahí hay que poder
+elegirlo.
+
 **Lo que nunca lleva** (§5.1): la difusión interna, la URL del material privado,
 los uids. El link de la reunión solo si se tildó "publicar el link" en esa
 actividad. Ver [`07-seguridad.md`](07-seguridad.md).

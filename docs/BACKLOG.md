@@ -19,6 +19,7 @@ trabajo.
 | DEC-1 | ~~`libro presentado`~~ **resuelto: campo propio con obra + autor.** Pendiente de implementar. | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
 | DEC-6 | **Las ocho decisiones que bloquean el sitio público.** Están listadas en el §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). | La primera —**el dominio final**— bloquea B-109 y con él todo lo demás: sin `site` no hay canonical, ni Open Graph, ni sitemap, y mudar el dominio después de indexar cuesta meses. Le siguen el canal de contacto público, el nombre del sitio y si el sitio público se mide. |
 | DEC-7 | **La galería de imágenes (B-167): cuatro decisiones.** (a) ¿la descripción es *epígrafe* o *texto alternativo*? (b) ¿tamaño máximo y cuántas imágenes por actividad? (c) ¿se permite alojar propias desde el día uno, o arranca solo con URLs externas? (d) ¿las externas se descargan al build para poder optimizarlas? | (a) es la que más pesa y no es cosmética: un **epígrafe** es opcional y se muestra; un **texto alternativo** es lo que leen un lector de pantalla y Google, y no debería ser opcional. Se pidió "descripción opcional", que es un epígrafe — si además hace falta accesibilidad y SEO (B-107 los necesita), son **dos campos**, no uno. (c) parte el trabajo en dos entregas: solo URLs no necesita Storage, ni reglas nuevas, ni target de deploy, ni EXIF, y es la mitad del valor con un cuarto del riesgo. |
+| DEC-8 | **Las N opciones para sumarse a un mismo ciclo (B-181): qué forma tienen.** ¿Nada de modelo y van en la descripción, una actividad por comisión atada por un campo nuevo, o un eje `opciones` con sus propias sesiones? | Bloquea B-181 y no se puede empezar sin la respuesta: los tres caminos tocan lugares distintos y el más fiel es el que llega al diff del §7.2 y a la numeración de D-95. Mientras no se decida, un club con cuatro horarios se carga como cuatro encuentros y el calendario público le manda los cuatro a cada suscripto. |
 
 Resueltas el 2026-08-21:
 
@@ -497,6 +498,90 @@ miniatura para la tarjeta) en lugar de servir el original de 4 MB en un listado
 de treinta actividades. Y el budget alert del §2.3 está puesto para Functions:
 conviene revisarlo antes, no después de la factura.
 
+### B-183 · «Guardar borrador» exige el formulario completo, así que no se puede guardar a medias
+
+Reporte del dueño usando el panel (2026-08-25):
+
+> No me deja GUARDAR BORRADOR si no completo todo. Tiene que ser más flexible el
+> guardar borrador.
+
+`actividadFormSchema` (`src/lib/schema.ts`) se valida **igual para borrador que
+para publicado**: título, dirección web, descripción, un encuentro, el arancel
+elegido, sede y dirección si es presencial, plataforma si es virtual, vía y
+destino si requiere inscripción. La única regla que hoy distingue el estado es la
+del slug `-copia`, que corre solo al publicar (trampa 10) — o sea que **el patrón
+ya existe en el archivo**, aplicado a una regla sola.
+
+**Por qué es P1 y no una molestia.** Un borrador es, por definición, lo que
+todavía no está completo: es la mitad de la razón por la que el estado existe. Y
+desde B-35 el panel avisa al salir con cambios sin guardar, así que el que carga
+queda encerrado entre un aviso que le dice que va a perder el trabajo y un
+guardado que no lo acepta. La salida es completar campos inventados o perder lo
+cargado, y las dos terminan igual: la actividad no se carga, y la que no se carga
+no se publica ni se indexa.
+
+**La forma del arreglo.** Partir la validación en dos niveles sobre el mismo
+schema, no en dos schemas:
+
+- **Guardar borrador** — lo mínimo para que el documento exista y se pueda
+  encontrar después en el listado: título no vacío, y el slug (que ya se genera
+  solo desde el título mientras no esté publicado). Nada más.
+- **Publicar** — todo lo de hoy, que es lo que hace que el sitio y el evento no
+  publiquen algo a medias.
+
+Los `superRefine` no cambian de contenido: cambian de condición, igual que la
+regla del slug. Y los `sesiones`/`arancel`/`sede` obligatorios pasan a ser
+obligatorios **al publicar**.
+
+Dos cosas para no romper en el camino:
+
+- **La barra de errores no debe mentir.** Hoy cuenta "campos a revisar" contra el
+  schema único; si el borrador valida con menos, la barra tiene que seguir
+  mostrando lo que va a faltar **para publicar**, o quien carga se va a
+  encontrar el bloqueo recién al final. Que sea aviso, no bloqueo.
+- **Lo que el modelo necesita para no corromperse sigue siendo obligatorio** en
+  los dos niveles: los `id` de sesión (trampa 2) y que las fechas sean
+  `Timestamp` (trampa 1). Eso no es "completar el formulario", es que el
+  documento sea legible.
+
+El sync a Calendar no se toca: ya borra los eventos de todo lo que no está
+`publicado` (§7.3), así que un borrador más incompleto no llega a Calendar por
+definición.
+### B-184 · Cuando el guardado falla, la barra dice cuántos campos faltan pero no cuáles
+
+Reporte del dueño usando el panel (2026-08-25):
+
+> cuando no se pueda guardar y diga que faltan campos, siempre especificarlos
+
+Hoy `BarraAcciones` muestra `«3 campos para revisar»` y nada más. Fue una
+decisión escrita —listar las rutas de campo tapaba media pantalla en mobile, y el
+detalle está en rojo al lado de cada campo— y **el reporte la da por equivocada**.
+Con razón, y hay un motivo concreto que la decisión no tuvo en cuenta:
+
+**las secciones «Material», «Opcional», «Difusión» y «Vista previa» arrancan
+colapsadas.** Un campo rechazado adentro de un acordeón cerrado no se ve en
+ninguna parte: el contador dice que hay tres, la pantalla muestra cero, y no hay
+forma de saber dónde mirar salvo abrir todo y bajar. Eso no es un resumen
+apretado, es un mensaje que no se puede accionar.
+
+**La forma del arreglo**, que además resuelve lo que motivó la decisión original:
+
+- Nombrar los campos, no las rutas del schema (`sede.direccion` → «Dirección»);
+  ya hay vocabulario de UI para eso en `formulario/etiquetasUI.ts`.
+- Con muchos, nombrar la **sección** y no cada campo: «Falta completar: Dónde
+  (2), Arancel e inscripción (1)». Es corto en mobile y alcanza para saber a
+  dónde ir.
+- Que cada nombre **lleve al campo**: abrir la sección si está colapsada y
+  scrollear hasta él. Es lo que cierra el agujero del acordeón.
+
+Depende de **B-183**: mientras el borrador exija el formulario completo, el
+mensaje va a listar campos que a quien está guardando a medias no le importan
+todavía. Con los dos niveles de validación, el mensaje del borrador es la lista
+corta y el de publicar es la larga. Se pueden hacer en cualquier orden, pero el
+valor del mensaje bueno se cobra recién con B-183 hecho.
+
+Ojo con el criterio de B-63: si se agrega el mensaje, el punto de la guía que hoy
+dice «esa barra dice cuántos campos hay que revisar» queda mintiendo.
 
 ## P2 — mejoras reales
 
@@ -1720,6 +1805,171 @@ Lo testeable sin emuladores de verdad es la elección de rama: dado un hub que
 contesta, usa `npm test` directo; dado uno que no, usa `emulators:exec`. Se puede
 con un servidor HTTP de dos líneas y `FIREBASE_EMULATOR_HUB` apuntado ahí.
 
+### B-181 · Un club puede ofrecer N opciones para sumarte, y el modelo solo sabe de N encuentros · P2
+
+Reporte del dueño usando el panel de verdad (2026-08-25):
+
+> un club de lectura puede darte 4 opciones para sumarte. Pero no son 4
+> encuentros, sino opciones.
+
+`sesiones` (§2.2, §3.1) es una **secuencia**: N filas son N encuentros que pasan
+todos, y quien se anota va a todos. Un club que abre cuatro horarios del mismo
+ciclo —martes 19, jueves 19, sábado 11, y uno virtual— tiene cuatro filas que son
+**alternativas excluyentes**: cada persona va a una sola. Hoy no hay forma de
+decir eso, y si se cargan como encuentros el panel y el sitio afirman algo falso:
+
+- el calendario público publica los cuatro eventos y quien se suscribe se lleva
+  los cuatro, tres de los cuales no son suyos (§7);
+- el evento dice «Encuentro 2 de 4» (D-95), que sobre una alternativa no
+  significa nada;
+- «con algo por venir» y el orden por encuentro más próximo cuentan cuatro fechas
+  donde hay una;
+- si además el ciclo tiene encuentros reales, las dos dimensiones se multiplican
+  y la lista de sesiones deja de ser legible.
+
+**Por qué vale la pena:** es la primera forma del dominio que el modelo no puede
+expresar. «Feria» (B-129) era un valor que faltaba en una taxonomía abierta y se
+podía cargar con «Otro…» el mismo día; esto no tiene esa salida. Y es una forma
+común en el circuito: los clubes con cupo chico abren varias comisiones del mismo
+ciclo justamente porque no les entra la gente en una.
+
+**La forma la decide el dueño (DEC-8).** Tres caminos con costos muy distintos:
+
+1. **Nada de modelo:** se carga una fecha y las otras tres van en la descripción.
+   Cero código y cero riesgo; nadie puede filtrar por «hay horario los sábados» y
+   el calendario sigue publicando lo que se cargue.
+2. **Una actividad por comisión**, atadas por un campo nuevo (`comisionDe` o
+   parecido). Reusa todo lo que ya existe —sesiones, calendario, filtros— y
+   cuesta N tarjetas casi iguales en el listado más mantenerlas en sincronía:
+   cambió la sede → cuatro escrituras, que es exactamente lo que el §2.2 quiso
+   evitar.
+3. **Un eje nuevo en el documento** (`opciones: [{ id, etiqueta, sesiones }]`),
+   que es lo que el reporte describe literalmente. El más fiel y el más caro:
+   toca el schema, el formulario, la proyección pública, el diff del §7.2 —que
+   hoy es una sola `Map` por id de sesión— y la numeración de D-95.
+
+**Sube a P1 cuando salga el sitio público** (B-105 a B-114): hasta entonces el
+daño es un calendario con eventos de más, y después es información equivocada
+indexada en Google, que es el objetivo del proyecto.
+
+### B-182 · El evento dice «(Otro, previo al encuentro)» en la mitad de las líneas de material — ✅ hecho (2026-08-25)
+
+Reporte del dueño mirando un evento ya publicado de un club de lectura:
+
+> - Libro virtual: Han cantado BINGO (Lectura, al inscribirse)
+> - Durante el mes recibís 2 newsletters para profundizar en la lectura (Guía, al inscribirse)
+> - Bonus track: material adicional (Otro, previo al encuentro)
+> - Playlist inspirado en el universo del libro (Otro, previo al encuentro)
+> - Acceso a un grupo de telegram para charlar sobre el libro (Otro, previo al encuentro)
+>
+> Puede sacarse el (otro…?
+
+**Sí, y el reporte muestra por qué.** `otro` es el formato donde cae todo lo que
+no entra en los demás, así que es el más usado: tres de las cinco líneas repiten
+una palabra que no informa nada al lado del título —«Playlist inspirado en el
+universo del libro **(Otro**…»— y encima empuja hacia abajo el dato que sí
+importa, cuándo llega.
+
+Arreglado en `functions/calendario.js`: con `tipo === 'otro'` la línea sale
+`- <título> (<entrega>)`. **La entrega no se toca**, que es la mitad del ítem que
+no está en el título. En el desplegable del panel «Otro» sigue siendo una opción:
+ahí hay que poder elegirlo, y es otra pantalla con otro criterio (la misma razón
+por la que `ETIQUETA_ENTREGA` no se comparte entre panel y evento — D-20).
+
+Va con test en `tests/calendario.test.ts`, que es lo que evita que vuelva: el
+patrón que lo restaura es tocar el `map` de material sin acordarse del caso.
+
+Dos cosas que el reporte deja ver y **no** son este ítem:
+
+- Ese evento se cargó con `Guía` para dos newsletters y `Otro` para una playlist,
+  porque salió de la versión desplegada. Los formatos `newsletter` y `playlist`
+  ya existen (B-134) y llegan con **1.1.0**.
+- «Durante el mes recibís 2 newsletters» está escrito en el **título** del ítem
+  porque cuando se cargó no existía la entrega `durante-el-mes`. Ahora existe, y
+  la guía la nombra.
+
+### B-185 · «DM de Instagram» debería decir «DM al Instagram» · P3
+
+Reporte del dueño (2026-08-25): la vía de inscripción se lee mal. Es «DM **al**
+Instagram», no «de».
+
+Es copy, y está en **dos lugares con dos registros distintos**, que es lo que hay
+que no romper:
+
+| Dónde | Hoy | Qué es |
+|---|---|---|
+| `src/components/admin/formulario/etiquetasUI.ts` | `dm: 'DM de Instagram'` | opción de un desplegable del panel |
+| `functions/calendario.js` | `dm: 'por DM de Instagram'` | prosa, cae a mitad de una frase del evento público |
+
+No están unificados **a propósito** (D-20): unificarlos haría que un cambio de
+copy del panel cambie lo que se publica. La contra es esta: cambiar uno y
+olvidarse del otro es exactamente la clase de bug B-76 —el panel y el evento
+diciendo cosas distintas del mismo valor guardado— y acá el build queda verde
+igual. Así que el arreglo son las dos líneas, o ninguna.
+
+El valor guardado es `dm` y no se toca: esto es la etiqueta, no la identidad.
+
+Cuando se haga, hay que revisar si `tests/etiquetas-de-ui.test.ts` fija alguno de
+los dos textos, y el comentario de `etiquetasUI.ts` que cita «por DM de
+Instagram» como ejemplo de prosa.
+### B-186 · El almanaque de la fecha se cierra solo si se tarda en elegir · P2
+
+Reporte del dueño usando el panel (2026-08-25):
+
+> el almanaque cuando «corrés» la fecha se suele cerrar si no pongo rápido la
+> fecha, pero bueno, lo pongo manual
+
+O sea: se abre el selector nativo de `<input type="datetime-local">`, se navega
+entre meses, y **si la elección tarda, el almanaque se cierra solo**. La salida es
+tipear la fecha a mano, que funciona pero es lo contrario de lo que el selector
+existe para evitar — y un ciclo tiene ocho fechas, así que es la interacción más
+repetida del formulario.
+
+**Lo que se descartó leyendo el código** (los dos sospechosos obvios, los dos
+inocentes):
+
+- **No es un reordenamiento de filas.** `ordenarPorInicio` corre solo con el
+  botón explícito, no en cada cambio, así que cambiar la fecha no mueve la fila
+  de lugar.
+- **No es un `key` por índice.** Las filas van con `key={s.id}` (trampa 2), así
+  que React no reemplaza el nodo del input al re-renderizar.
+- **El valor no se normaliza al escribirlo.** `editar(s.id, { inicio:
+  e.target.value })` guarda el string crudo, así que React no le reescribe al
+  input un valor distinto del que tiene.
+
+**Tres candidatos, en orden de qué tan bien explican "si no pongo rápido":**
+
+1. **El arranque diferido de la analítica.** `arrancar()` en `src/lib/analytics.ts`
+   carga `firebase/analytics` con `requestIdleCallback(fn, { timeout: 4000 })`, o
+   `setTimeout(fn, 2000)` donde no existe. O sea: **se dispara justo cuando la
+   persona se queda quieta**, que es exactamente la condición que el reporte
+   describe. Es un `import()` dinámico de un chunk grande más la inicialización
+   del SDK. Prueba de un minuto y sin tocar código: es uno de los tres portones
+   de `debeMedir`, así que un build con `PUBLIC_FIREBASE_MEASUREMENT_ID` vacío
+   apaga la analítica entera — si con eso el almanaque no se cierra, es esto.
+2. **Un cambio de layout debajo del selector abierto.** La barra de acciones es
+   `fixed` abajo y su mensaje («N campos para revisar») aparece y desaparece según
+   la validación; `AvisoVersionNueva` puede insertar una barra arriba. En Android
+   un reflow de la página con el picker abierto lo descarta.
+3. **Un `value` vacío de vuelta.** Un `datetime-local` incompleto reporta
+   `value === ''`. Si en algún momento del recorrido del almanaque llega un
+   `change` con `''`, se guarda `''`, React lo reescribe y el navegador limpia el
+   campo y cierra. Se confirma o se descarta logueando `e.target.value` en cada
+   `change` mientras se usa el selector.
+
+**Lo que falta para arreglarlo es el dato del dispositivo**, que es justo lo que
+un bug de fechas no se diagnostica sin él (trampa 1, en versión picker): navegador
+y sistema. El reporte anterior del dueño (issue #4) vino de Android, así que
+Chrome/Android es la primera hipótesis, y el selector nativo de `datetime-local`
+se comporta distinto en cada plataforma.
+
+**P2 y no P1** porque hay salida —tipear— y no se pierde ni se corrompe nada. Pero
+es fricción en la acción más repetida del panel, y del tipo que hace que se cargue
+menos.
+
+Si al final resulta que es el selector nativo y no hay nada que apagar, la
+alternativa es un selector propio, y eso es otro ítem: pesa en el bundle (B-09) y
+hay que decidirlo, no descubrirlo.
 
 ## P3 — cuando sobre tiempo
 

@@ -626,4 +626,18 @@ describe('etiquetas — el calendario es público, no puede mostrar slugs crudos
     expect(texto).toContain('Guía, al inscribirse');
     expect(texto).not.toContain('(guia,');
   });
+
+  it('un material de tipo «otro» no dice «Otro», pero sí cuándo llega (B-182)', () => {
+    const a = completa({
+      material: {
+        tiene: true,
+        items: [
+          { tipo: 'otro', titulo: 'Grupo de Telegram', url: '', entrega: 'previo', publico: true },
+        ],
+      },
+    });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain('- Grupo de Telegram (previo al encuentro)');
+    expect(texto).not.toContain('Otro,');
+  });
 });

@@ -567,8 +567,9 @@ export const CAPITULOS: CapituloAyuda[] = [
     puntos: [
       {
         texto:
-          'Cada ítem dice cuándo se entrega: antes del encuentro, al inscribirse, o en el encuentro ' +
-          'mismo. Eso también se publica, así que la gente sabe qué esperar.',
+          'Cada ítem dice cuándo se entrega: antes del encuentro, al inscribirse, durante el mes o ' +
+          'en el encuentro mismo. Eso también se publica, así que la gente sabe qué esperar. Un ítem ' +
+          'cargado como «Otro» sale con el título y el momento, sin la palabra «Otro».',
       },
       {
         texto:

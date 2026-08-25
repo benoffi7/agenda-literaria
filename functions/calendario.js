@@ -257,7 +257,14 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   const items = actividad.material?.tiene ? (actividad.material.items ?? []) : [];
   if (items.length) {
     const lineas = items.map((i) => {
-      const meta = [ETIQUETA_TIPO_MATERIAL[i.tipo] ?? i.tipo, ETIQUETA_ENTREGA[i.entrega] ?? i.entrega]
+      // `otro` no se nombra en el evento (B-182). "Otro" no le dice nada a quien
+      // lee —el título ya dice qué es: "Playlist inspirada en el libro (Otro,
+      // previo al encuentro)"— y en la práctica es el formato más usado, porque
+      // es donde cae todo lo que no entra en los demás. La entrega sí se
+      // conserva: eso no está en el título. En el panel «Otro» sigue siendo una
+      // opción del desplegable, que es otra cosa: ahí hay que poder elegirla.
+      const tipo = i.tipo === 'otro' ? null : (ETIQUETA_TIPO_MATERIAL[i.tipo] ?? i.tipo);
+      const meta = [tipo, ETIQUETA_ENTREGA[i.entrega] ?? i.entrega]
         .filter(Boolean)
         .join(', ');
       const base = `- ${i.titulo}${meta ? ` (${meta})` : ''}`;
