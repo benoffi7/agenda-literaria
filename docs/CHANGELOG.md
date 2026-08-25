@@ -2,11 +2,13 @@
 
 ## 1.1.0 — 2026-08-25
 
-**La primera release desde `1.0.1+538bef7`**, que es lo que el panel sirve hoy y
-se desplegó el 2026-08-21. Todo lo de los cuatro días siguientes —el formulario
+**Desplegada como `1.1.0+301091a`** el 2026-08-25, a mano
+(`npm run build && firebase deploy --only hosting`): por CI todavía no se puede,
+ver abajo. Es la primera release desde `1.0.1+538bef7`, que era lo que el panel
+servía desde el 2026-08-21. Todo lo de los cuatro días siguientes —el formulario
 partido en secciones, la vista calendario, la pantalla de taxonomías, el orden y
-los filtros del listado, los dos P0 del sync a Calendar, «Feria»— nunca llegó a
-producción. Esta versión es eso.
+los filtros del listado, los dos P0 del sync a Calendar, «Feria»— no había
+llegado a producción. Esta versión es eso.
 
 `1.1.0` y no `1.0.2` por lo que hay adentro: dos pantallas nuevas, filtros y
 orden en el listado, y un tipo de actividad más. Un parche no lo describe.
