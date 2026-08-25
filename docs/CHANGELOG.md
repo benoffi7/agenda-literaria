@@ -174,6 +174,91 @@ trampa 7), **B-173** (`tsc --noEmit` sale siempre en rojo por doce errores de
 `ImportMeta`, así que un error nuevo se esconde entre ellos) y **B-34** (el tope
 de reportes vive en `firestore.rules` o en la Function, y la forma del límite es
 una decisión).
+### Fase 3B — el listado, el panel y el centro de ayuda
+
+**B-14 y el tercer punto de B-64 · el teclado, en las dos pantallas a la vez.**
+Eran dos ítems del backlog porque se vieron en dos lugares, pero es una clase: un
+patrón de teclado a medio hacer —cierra con `Escape`, se alcanza con Tab, y nada
+más— en el menú "⋯" del listado y en la capa del centro de ayuda. La aritmética
+del foco salió a `src/lib/foco.ts` (pura, 15 tests) y el DOM quedó en cada
+componente. El menú suma ↓/↑ con vuelta, `Home`/`End`, apertura con flecha y
+**devuelve el foco al "⋯" al cerrar**; la capa cicla el Tab sobre sus propios
+controles y devuelve el foco a lo que estaba enfocado antes de abrirla.
+
+Escribiendo esa cuenta apareció un bug que habría entrado sin que nadie lo viera:
+tratar "ninguno enfocado" como el índice `-1` a secas hace que ↑ caiga en el
+**penúltimo**, y con dos ítems —los que el menú tiene hoy— el resultado parece
+razonable.
+
+**B-31 · un reporte que no se pudo publicar se reintenta desde el panel.** Si el
+token venció o el repo estaba mal escrito, el reporte quedaba en `error` a la
+vista y sin nada que hacerle: reintentar era abrir una terminal con el Admin SDK.
+Ahora la fila tiene un botón **Reintentar**.
+
+Se eligió una escritura acotada del cliente y **no** una función `onCall`: el
+disparador de la publicación ya es una escritura en el documento —la Function
+reintenta sola poniendo `estado: 'pendiente'`— así que el botón hace lo mismo que
+el sistema ya hace, sin un segundo camino con su propio chequeo de claim y su
+propia forma de fallar. La autorización la siguen haciendo las reglas (§5.3).
+
+Lo que decide si el botón sirve, y que el backlog no decía: hay que resetear
+**`intentos` a 0**. `decidirAccion` ignora un reporte con los tres intentos
+gastados, que es el caso más común de un `error`, así que mover solo el estado
+habría dejado un botón que escribe el documento y no pasa nada.
+
+`reintentoValido()` permite **una** transición y prohíbe editar el texto que va al
+repo público, reintentar algo en vuelo o ya publicado, y borrar. Ver **D-110**.
+
+De paso salió un agujero de verificación que no era de este ítem: el emulador
+sirve el `firestore.rules` **del directorio desde el que se lo arrancó**, así que
+con varios worktrees en paralelo un test de reglas puede estar verificando el
+archivo de otra rama y dar verde sin haber probado el cambio. Ahora hay un
+`cargarReglas()` que empuja las de este checkout antes de correr, y los siete
+tests de B-31 lo usan. Anotado para el resto en **B-174**.
+
+**B-64 · las novedades ya dicen en qué versión salieron.** Mostrarlas ya se
+mostraba: el campo existía, el componente lo pintaba, y estaba vacío. La causa no
+era el olvido sino que **no estaba dicho de dónde sale**: `VERSION_APP` lleva el
+`+<sha>` del build, que quien escribe la entrada no puede saber. La versión de una
+novedad es la de `package.json` —la release en la que entra— y eso quedó escrito
+en el tipo, en el paso 4 del skill `cerrar-cambio` (que decía "`version` si se
+sabe", y por eso nunca se sabía) y en dos tests: la forma, y que no retroceda al
+bajar por la lista. Con eso B-64 queda cerrado: su punto del medio —no poder
+corregir una errata sin desplegar— no es trabajo pendiente sino el costo aceptado
+en D-63.
+
+**B-35 · irse del formulario ya no descarta en silencio.** Cuatro botones del
+encabezado y el "Cancelar" del formulario abandonaban los 30+ campos del §11 sin
+preguntar, y cerrar la pestaña también. Ahora hay un `confirm()` que dice qué se
+pierde, más un `beforeunload` para el cierre de pestaña, y **una sola puerta**:
+`salirDe(accion)` envuelve a las cuatro salidas en vez de repetir el chequeo en
+cada `onClick`, que es la lista duplicada que D-98 combate. La regla de cuándo
+preguntar es pura (`src/lib/salida-del-panel.ts`) y mira además la vista, no solo
+el store: un aviso que aparece en el listado, donde no hay nada que perder, se
+aprende a ignorar. Ver **D-109**.
+
+Salió también un bug de acá: **"← Volver" del encabezado ignoraba `volverA`**, así
+que editar un encuentro desde la vista calendario y volver por el encabezado
+mandaba al listado y perdía el mes que se estaba mirando, mientras que "Cancelar"
+sí lo respetaba. Dos salidas del mismo formulario con dos criterios.
+
+**B-76 · el estado ya se lee igual en las dos pantallas.** El síntoma —el listado
+decía "borrador" donde el formulario decía "Borrador"— venía cerrado con la vista
+calendario, que subió `ETIQUETA_ESTADO` a `src/lib/filtrosActividades.ts`. Lo que
+faltaba era la guardia: `tests/etiquetas-de-ui.test.ts` fija que el listado use el
+mapa compartido y no el valor crudo, y compara el mapa del formulario contra el
+compartido. Ese segundo chequeo **falla a propósito** (`it.fails`): el formulario
+todavía tiene sus tres mapas locales y ya divergieron —"Híbrido" contra
+"Presencial y virtual"—. Unificarlos toca `ActividadFormulario.tsx`, que es de la
+fase 2, así que queda anotado en **B-175**.
+
+**B-96 · ya estaba cerrado, por otro camino.** Lo resolvió D-73 (el listado ordena
+por próximo encuentro, no por última modificación) en lugar del bloque "esta
+semana" que proponía el backlog. Se verificó contra el código y no se agregó nada:
+un bloque más sería la segunda pantalla que contesta la misma pregunta, que es lo
+que D-71 evita. Lo único que el bloque hacía y el orden no —avisar de las
+inscripciones que cierran— sigue abierto en **B-126**.
+
 
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 

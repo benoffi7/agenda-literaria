@@ -8,6 +8,7 @@ export default defineConfig({
       // El mismo alias que astro.config.mjs y tsconfig.json: la lógica del
       // evento de Calendar se importa de un solo lugar (§7.4).
       '@calendario': fileURLToPath(new URL('./functions/calendario.js', import.meta.url)),
+      '@historial': fileURLToPath(new URL('./functions/historial.js', import.meta.url)),
     },
   },
   test: {

@@ -37,8 +37,16 @@ export interface Novedad {
   /** Dónde está en el panel, para poder ir a mirarlo. */
   donde?: string;
   /**
-   * Versión del panel en la que salió, si se sabe. Hoy no se llena: el
-   * versionado se agregó después de casi todas estas entradas (B-64).
+   * Versión del panel en la que salió, si se sabe (B-64).
+   *
+   * Sirve para un reporte de bug: "esto empezó a pasar con la versión en la que
+   * salió tal cosa". Es el **número de `package.json`** —la parte semver, sin el
+   * `+<sha>` que le agrega el build—, porque quien escribe la entrada no puede
+   * saber contra qué commit se va a publicar, pero sí en qué release entra.
+   *
+   * Opcional y no obligatoria a propósito: las entradas anteriores al versionado
+   * no la tienen y nunca la van a tener. `tests/novedades.test.ts` verifica la
+   * forma de las que sí están, no que estén.
    */
   version?: string;
 }
@@ -48,6 +56,39 @@ export interface Novedad {
  * que decide qué está sin leer, así que **las entradas nuevas van primero**.
  */
 export const NOVEDADES: Novedad[] = [
+  {
+    id: 'reintentar-reporte-fallido',
+    fecha: '2026-08-24',
+    version: '1.0.1',
+    titulo: 'Un reporte que no se pudo publicar ahora lo podés reintentar vos',
+    detalle:
+      'Cuando un bug o una sugerencia queda como «no se pudo publicar», aparece un botón para ' +
+      'volver a intentarlo, sin pedirle nada a nadie. Conviene esperar un rato si acaba de ' +
+      'fallar: casi siempre es algo que se está arreglando del otro lado.',
+    donde: 'En «Reportar algo», en la lista de últimos reportes.',
+  },
+  {
+    id: 'menu-y-ayuda-con-teclado',
+    fecha: '2026-08-24',
+    version: '1.0.1',
+    titulo: 'El menú «⋯» de cada actividad y la ayuda se manejan con el teclado',
+    detalle:
+      'En el menú de cada fila podés bajar y subir con las flechas y salir con Escape, y al ' +
+      'salir volvés al mismo lugar del listado en vez de empezar de nuevo. La ventana de ayuda ' +
+      'ya no te deja escaparte con Tab hacia el formulario de atrás.',
+    donde: 'El botón «⋯» de cada actividad del listado, y el botón «Ayuda» del encabezado.',
+  },
+  {
+    id: 'aviso-al-salir-sin-guardar',
+    fecha: '2026-08-24',
+    version: '1.0.1',
+    titulo: 'Si te vas de una actividad a medio cargar, ahora el panel te pregunta',
+    detalle:
+      'Antes, tocar «Volver», «Reportar algo», «Salir» o «Cancelar» con la actividad a medio ' +
+      'llenar la descartaba sin decir nada, y cerrar la pestaña también. Ahora pregunta antes, ' +
+      'y solo cuando hay algo escrito que se perdería.',
+    donde: 'En cualquier botón que te saque del formulario, y al cerrar la pestaña.',
+  },
   {
     id: 'destacar-llega-al-sitio',
     fecha: '2026-08-24',

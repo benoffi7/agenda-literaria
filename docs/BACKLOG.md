@@ -541,7 +541,7 @@ mostrarlos en la pantalla de reportes. Con webhook hay que validar la firma
 
 Mientras no exista, el formulario y la lista lo dicen con todas las letras.
 
-### B-31 · Un reporte en `error` no se puede reintentar desde el panel
+### B-31 · Un reporte en `error` no se puede reintentar desde el panel — ✅ hecho (2026-08-24)
 
 Si la creación del issue falla por configuración (token vencido, permiso, repo
 mal escrito), el reporte queda guardado en estado `error` y visible en el panel,
@@ -551,6 +551,23 @@ Admin SDK — el comando está en [`08-operacion.md`](08-operacion.md).
 
 Opciones: una acción del panel que escriba solo `estado: 'pendiente'` con una
 regla que permita ese único cambio, o una función `onCall` de reintento.
+
+**Cómo quedó: la primera opción, y no la `onCall`.** El disparador de la
+publicación ya es una escritura en el documento —`estadoTrasFallo` reintenta
+poniendo `estado: 'pendiente'` y eso vuelve a disparar el trigger—, así que el
+botón hace lo mismo que la Function ya hace sola. Un `onCall` habría sido un
+segundo camino, con su endpoint, su chequeo del claim a mano y su propia forma de
+fallar, para el mismo efecto.
+
+Un detalle que el ítem no decía y decide si el botón sirve: hay que resetear
+**`intentos` a 0**, no solo el estado. `decidirAccion` ignora un reporte con los
+tres intentos gastados, que es justamente el caso más común de un `error`.
+
+La regla (`reintentoValido`) permite una sola transición y prohíbe explícitamente
+tocar el texto —que es lo que va a un repo público—, reintentar algo `enviando` o
+ya publicado, y borrar. Siete tests contra el emulador, en
+`tests/reportes-reintento.integracion.test.ts`. Ver **D-101** y §7 de
+[`07-seguridad.md`](07-seguridad.md).
 
 ### B-03 · Historial de versiones (§12)
 
@@ -690,7 +707,7 @@ dinámico de `src/lib/analytics.ts`.
 Un test vale más que el `npm run build` de una vez que pedía el ítem: la
 pregunta vuelve a hacerse sola en cada corrida. Ver B-117 y D-100.
 
-### B-35 · Salir del panel con cambios sin guardar no avisa
+### B-35 · Salir del panel con cambios sin guardar no avisa — ✅ hecho (2026-08-24)
 
 El store de `formulario-sucio.ts` ya sabe que hay cambios pendientes, y el aviso
 de versión nueva lo usa. Pero cerrar la pestaña, volver a la lista o tocar
@@ -699,6 +716,16 @@ de versión nueva lo usa. Pero cerrar la pestaña, volver a la lista o tocar
 Con el dato ya disponible es un `beforeunload` y una confirmación en el botón de
 volver. Queda fuera de este cambio porque toca el flujo del formulario, no el de
 versiones.
+
+**Cómo quedó.** El `beforeunload` para cerrar la pestaña, y un `confirm()` con
+texto propio en las cuatro salidas que el panel sí controla: "← Volver",
+"Reportar algo", "Salir" y el "Cancelar" del formulario. "Calendario" no lo
+necesita porque solo se ofrece desde el listado.
+
+La regla de cuándo preguntar salió a `src/lib/salida-del-panel.ts` (pura, con
+test) y en `AdminApp` quedó un solo `salirDe(accion)` que envuelve a las cuatro:
+una salida nueva se escribe con esa forma, así que no puede olvidarse del aviso.
+Ver **D-100**.
 
 ### B-36 · La versión no distingue dos builds sucios del mismo commit — ❌ descartado (2026-08-24)
 
@@ -1032,7 +1059,7 @@ de literales dejaron de estar duplicados en el chunk de `duplicar`.
 
 Ver [CHANGELOG](CHANGELOG.md) y **D-98**.
 
-### B-76 · El listado muestra el estado en slug crudo
+### B-76 · El listado muestra el estado en slug crudo — ✅ hecho (2026-08-24)
 
 `ListaActividades.tsx:124` renderiza `{a.estado}`, así que la píldora dice
 "borrador" y "publicado" en minúscula, mientras el formulario dice "Borrador" y
@@ -1047,6 +1074,18 @@ Pasa porque el vocabulario de etiquetas es local al formulario. Un
 prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), no
 etiquetas de UI. Unificarlos haría que un cambio de copy del panel cambie lo que
 se publica en el calendario.
+
+
+**Cómo quedó.** La píldora del listado usa `ETIQUETA_ESTADO`, que vive en
+`src/lib/filtrosActividades.ts` desde la vista calendario: el síntoma —la misma
+actividad escrita de dos maneras en dos pantallas— está cerrado, y
+`tests/etiquetas-de-ui.test.ts` lo fija.
+
+Lo que **no** se hizo: el `src/lib/etiquetas.ts` que propone el ítem. Los mapas
+del formulario (`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`) siguen
+siendo locales, así que la clase está viva y ya divergió una vez —"Híbrido"
+contra "Presencial y virtual"—. Unificarlos toca `ActividadFormulario.tsx`, que
+es de la fase 2: queda en **B-167**, con el `it.fails` que lo espera.
 
 ### B-84 · Cancelar un encuentro de un ciclo renumera y reescribe los otros siete — ✅ hecho (2026-08-24)
 
@@ -1628,7 +1667,7 @@ mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
 ~~B-13 · El schedule de `dispararRebuild` no reintenta con backoff~~ →
 [cerrado](#cerrados).
 
-### B-14 · El menú de acciones del listado no se navega con flechas
+### B-14 · El menú de acciones del listado no se navega con flechas — ✅ hecho (2026-08-24)
 
 `MenuAcciones` cierra con `Escape` y con un click afuera, y sus ítems son
 `<button role="menuitem">` alcanzables con Tab, pero no implementa el patrón
@@ -1645,13 +1684,22 @@ con Node y `gcloud`.
 quedó pendiente antes de esa decisión (D-104). Es la maquinaria dormida, y se
 deja lista a propósito.
 
+**Cómo quedó, y por qué antes de que el menú creciera.** Se hizo junto con el
+tercer punto de **B-64** (la capa de ayuda no atrapaba el foco) porque son la
+misma clase vista en dos pantallas: un patrón de teclado a medio hacer. La
+aritmética —dónde cae el foco al pasarse del último, qué tecla mueve a dónde—
+salió a `src/lib/foco.ts`, pura y con tests; el DOM queda en cada componente.
 
-Hoy aprobar (§4.3) necesita `scripts/aprobar-opciones.mjs`, o sea una máquina
-con Node y `gcloud`: desde el teléfono no se puede. La pantalla natural es la
-administración de taxonomías de **B-06** (editar, borrar, ver `usos`), que
-tampoco existe — conviene hacer las dos juntas. Decisión: D-29.
+El menú tiene ahora ↓/↑ con vuelta, `Home`/`End`, se abre con ↓ o ↑ cayendo en el
+primero o el último, y **devuelve el foco al "⋯" al cerrarse con `Escape`** — sin
+eso había que re-tabular el listado entero para volver a la fila donde se estaba,
+que es lo que hacía inservible el `Escape`. La capa de ayuda cicla el Tab y
+devuelve el foco a lo que estaba enfocado antes de abrirla.
 
-Prioridad real: sube a P2 si el dueño empieza a cargar desde el teléfono.
+Un bug que apareció escribiendo la cuenta: tratar "ninguno enfocado" como el
+índice `-1` a secas hacía que ↑ cayera en el **penúltimo**. Con dos ítems —los
+que el menú tiene hoy— el resultado parece razonable, así que habría entrado sin
+que nadie lo viera.
 
 ### B-26 · Nadie se entera de que hay algo para aprobar — ✅ hecho (2026-08-24)
 
@@ -1780,22 +1828,26 @@ es un número en el botón.
 
 Ver [CHANGELOG](CHANGELOG.md), D-63, D-64 y D-65. Limitaciones en B-64.
 
-### B-64 · Pendientes chicos del centro de ayuda
+### B-64 · Pendientes chicos del centro de ayuda — ✅ hecho (2026-08-24)
 
-Tres cosas conocidas, ninguna urgente:
+Tres cosas conocidas, ninguna urgente. **Dos quedaron cerradas**; la del medio no
+es trabajo pendiente sino un costo aceptado en D-63, así que el ítem cierra acá:
 
-- **Las novedades no se anclan a la versión del panel.** `Novedad` ya tiene un
-  campo `version` opcional y `src/lib/version.ts` expone `VERSION_APP`, así que
-  atarlos es corto: estampar la versión al agregar la entrada y mostrarla al
-  lado de la fecha. Sirve sobre todo para un reporte de bug ("con la versión en
-  la que salió tal cosa"). Las entradas viejas no la tienen porque el versionado
-  llegó después.
+- ~~**Las novedades no se anclan a la versión del panel.**~~ ✅ hecho
+  (2026-08-24). Mostrarla ya se mostraba; lo que faltaba era **de dónde sale**, y
+  esa era la razón de que el campo quedara vacío: `VERSION_APP` incluye el
+  `+<sha>` del build, que quien escribe la entrada no puede saber. La versión de
+  una novedad es la de `package.json` —la release en la que entra—, y eso quedó
+  escrito en el tipo, en el paso 4 del skill `cerrar-cambio` (que era el que
+  decía "si se sabe" y por eso nunca se llenaba) y en dos tests: la forma, y que
+  no retroceda al bajar por la lista.
 - **No se puede corregir una errata ni avisar nada sin desplegar** — costo
   aceptado en D-63. Si algún día hace falta un aviso urgente (una caída), es
   otro problema y otra herramienta.
-- **La capa no atrapa el foco.** Cierra con `Escape`, con el botón y con un
-  click en el fondo, y al abrirse el foco va al diálogo, pero con Tab se puede
-  salir hacia el formulario de atrás. Es el mismo patrón incompleto que B-14.
+- ~~**La capa no atrapa el foco.**~~ ✅ hecho (2026-08-24), junto con B-14, que
+  era la misma clase en otra pantalla: la capa cicla el Tab sobre sus propios
+  controles y devuelve el foco a lo que estaba enfocado antes de abrirse. Ver
+  `src/lib/foco.ts`.
 
 ### B-100 · Prellenar sede, organizador e inscripción desde lo ya cargado
 
@@ -1908,6 +1960,51 @@ que sobrevivieron dos commits
 (`tests/sin-marcadores-de-conflicto.test.ts`). Conviene hacerlo cuando no haya
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
+
+### B-174 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado · P2
+
+El emulador sirve las reglas **del directorio desde el que se lo arrancó**, no las
+del checkout donde corren los tests. Con un solo repo no se nota. Con varios
+worktrees en paralelo —que es cómo se está trabajando este backlog— un test de
+reglas puede estar verificando el archivo de otra rama y **dar verde sin haber
+probado el cambio**. Es el modo de falla más caro que tiene un test de reglas:
+dice "las reglas pasaron" cuando quiere decir "unas reglas pasaron".
+
+Se descubrió haciendo B-31: el emulador estaba levantado desde el checkout
+principal, así que la regla nueva no existía para los tests de la rama que la
+agregaba. La salida ya está escrita —`cargarReglas()` en `tests/emulador.ts`
+empuja el archivo local por la API del emulador— y la usa
+`tests/reportes-reintento.integracion.test.ts`.
+
+**Lo que falta** es que la usen los otros tres archivos de integración
+(`reportes`, `actividades`, `opciones`), que hoy siguen dependiendo de dónde se
+arrancó el emulador. Es una línea en cada `beforeAll`. Se dejó afuera de B-31 a
+propósito: tocar los tres archivos a la vez pisa a los otros frentes, y el
+`EXIGIR_EMULADOR=1` del CI ya arranca el emulador en el checkout correcto.
+
+Ojo con el efecto compartido: `cargarReglas` cambia las reglas del emulador
+**para todos** los tests que estén corriendo contra él. Con un solo checkout es
+inocuo; corriendo dos suites en paralelo, la última que carga gana.
+
+### B-175 · El formulario y el listado tienen cada uno su vocabulario de etiquetas · P3
+
+Residual de **B-76**, y la parte que era la causa y no el síntoma. El listado ya
+usa `ETIQUETA_ESTADO` de `src/lib/filtrosActividades.ts`, pero
+`ActividadFormulario.tsx:71-78` mantiene sus tres mapas propios
+(`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`).
+
+Ya divergieron: para `modalidad: 'hibrido'` el formulario dice **"Híbrido"** y el
+desplegable de filtros dice **"Presencial y virtual"**. Las dos pantallas están a
+un clic de distancia y hablan del mismo valor guardado.
+
+El arreglo es el `src/lib/etiquetas.ts` de ~20 LOC que proponía B-76 —con los
+mapas de `estado`, `modalidad` y `via`— del que tiren las dos pantallas. **No se
+hizo ahora porque toca `ActividadFormulario.tsx`**, que es de la fase 2 del
+saneamiento. `tests/etiquetas-de-ui.test.ts` tiene el `it.fails` que se vuelve
+`it` el día que se cierre.
+
+Ojo con lo que **no** entra: los `ETIQUETA_*` de `functions/calendario.js` son
+prosa del evento público, no etiquetas de UI (el motivo, en B-76).
 
 ### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
 
@@ -2258,6 +2355,7 @@ Se dejan para que quede el rastro de qué se rompió.
 | Qué | Causa | Dónde |
 |---|---|---|
 
+| Editar un encuentro desde la vista calendario y volver por el encabezado mandaba al listado y perdía el mes que se estaba mirando | el botón "← Volver" hacía `setVista({tipo:'lista'})` fijo, mientras el "Cancelar" del formulario ya respetaba `volverA`: dos salidas del mismo formulario con dos criterios | B-35, `AdminApp.tsx` |
 | El listado y el calendario contestaban "¿ya pasó?" con campos distintos: un taller en curso desaparecía del listado a los minutos de empezar | `proximoEncuentro` filtraba por `inicio`, `yaPaso` por `fin`, y el fixture de los tests tenía `fin === inicio`, así que la diferencia era indetectable (patrón B-84) | auditoría del calendario, H1 |
 | `desSlug` estaba copiado idéntico en el panel y en la descripción del evento | mejorar uno separaba los dos sin que nada fallara (D-20) | H2 |
 | El calendario mostraba alarma roja después de cada publicación, diciendo que el sync había fallado | el texto afirmaba falla sobre algo en vuelo; el write-back del id tarda segundos | H3 |

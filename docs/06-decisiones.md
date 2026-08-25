@@ -2025,3 +2025,82 @@ Un tag que ya estaba puesto no se mide: no es una interacción con la taxonomía
 | Si `arancel` debe seguir preseleccionando "Gratis" | usuario |
 | Si hace falta un claim `curador` aparte del `admin` para aprobar taxonomías (D-28) | dueño |
 | Si una etiqueta que una segunda cuenta reusa debería aprobarse sola | dueño |
+
+---
+
+## D-109 · Toda salida del formulario pasa por una sola puerta
+
+**Contexto (B-35):** el store de `formulario-sucio.ts` ya sabía que había cambios
+pendientes —lo usaba el aviso de versión nueva para no recargar la pestaña por
+atrás—, pero las salidas que dispara la propia persona no lo miraban. "Volver",
+"Reportar algo", "Salir" y "Cancelar" descartaban los 30+ campos del §11 sin
+preguntar, y cerrar la pestaña también.
+
+**Decisión:** un único `salirDe(accion)` en `AdminApp` envuelve a las cuatro
+salidas, y la regla de cuándo preguntar es una función pura
+(`src/lib/salida-del-panel.ts`).
+
+**Por qué envolver la acción y no chequear en cada `onClick`.** El chequeo
+repetido cuatro veces es la misma lista duplicada que D-98 combate: el día que se
+agregue una salida nueva —y este encabezado ya sumó tres botones en un mes— nadie
+se acuerda del quinto chequeo, y el olvido no falla en ninguna parte. Con el
+envoltorio, la forma de escribir un botón de salida **es** la que lleva el aviso.
+
+**Por qué la vista entra en la decisión y no solo el store.** El store se apaga
+en el cleanup del formulario, así que en régimen alcanzaría con él. Pero si
+alguna vez queda encendido por un camino no previsto, la consecuencia sin el
+chequeo de vista es que todos los botones del panel piden confirmación, incluso
+en el listado, donde no hay nada que perder — y un aviso que aparece cuando no
+hay nada en juego se aprende a ignorar, con lo cual también se ignora el que sí
+importa.
+
+**Lo que el `beforeunload` no puede hacer:** el navegador muestra su propio
+cartel y no acepta texto. Por eso el `confirm()` de las cuatro salidas
+controladas vale la pena aparte: es el único lugar donde se puede decir *qué* se
+pierde.
+
+**De paso**, "← Volver" pasó a respetar `volverA` igual que "Cancelar": eran dos
+salidas del mismo formulario con dos criterios, y volver por el encabezado desde
+el calendario perdía el mes que se estaba mirando.
+
+---
+
+## D-110 · El reintento de un reporte es una escritura acotada, no un `onCall`
+
+**Contexto (B-31):** un reporte que la Function no pudo publicar queda en `error`,
+visible en el panel y sin nada que hacerle. Reintentar era abrir una terminal con
+el Admin SDK, o sea una máquina con Node y credenciales — desde el teléfono,
+imposible.
+
+**Decisión:** un botón "Reintentar" en la pantalla de reportes que escribe
+`estado: 'pendiente'`, `intentos: 0` y `error: null`, habilitado por una regla
+(`reintentoValido`) que permite exactamente esa transición y ninguna otra.
+
+**Por qué no una función `onCall`.** El disparador de la publicación **ya** es una
+escritura en el documento: `estadoTrasFallo` reintenta poniendo el estado en
+`pendiente`, y esa misma escritura vuelve a disparar el trigger. El botón hace lo
+que el sistema ya hace solo. Un `onCall` habría sido un segundo camino al mismo
+efecto, con su endpoint, su chequeo del claim reimplementado a mano —que las
+reglas ya hacen (§5.3)— y su propia forma de fallar. Es la duplicación de
+`docs/05-patrones.md`: dos derivaciones de la misma idea que se separan sin que
+nada falle.
+
+**`intentos: 0` no es un detalle de implementación.** `decidirAccion` ignora un
+reporte con los `MAX_INTENTOS` gastados, que es el caso más común de un `error`
+(falló tres veces por un token vencido). Mover solo el estado habría dado un botón
+que escribe el documento y no produce nada — el peor resultado posible, porque se
+ve como si hubiera funcionado.
+
+**Qué NO habilita la regla, y por qué cada una importa:**
+
+| Prohibido | Si se permitiera |
+|---|---|
+| cambiar el texto del reporte | el documento que se revisó al crearlo deja de ser el que se publica en un repo **público** |
+| reintentar en `enviando` | la Function lo tomó hace un segundo: es la carrera que crea el issue duplicado |
+| reintentar con `github` puesto | dos issues para el mismo reporte |
+| borrar | un reporte es el pedido de una persona; el panel no tiene por qué poder hacerlo desaparecer |
+
+El estado `enviando` queda deliberadamente afuera del panel aunque también se
+destrabe poniéndolo en `pendiente`: ahí sí puede haber una invocación en vuelo, y
+esa operación se queda en el runbook con el Admin SDK
+([`08-operacion.md`](08-operacion.md)).

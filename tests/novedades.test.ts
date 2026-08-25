@@ -129,6 +129,29 @@ describe('la lista publicada', () => {
     }
   });
 
+  it('la versión, cuando está, es la de una release y no la de un build (B-64)', () => {
+    // Es el número de `package.json`, sin el `+<sha>` ni el `-sucio.<sello>` que
+    // le agrega `scripts/version.mjs`: quien escribe la entrada no sabe contra
+    // qué commit se va a publicar, pero sí en qué release entra. Un `+<sha>` acá
+    // sería la versión de la máquina de quien la escribió, que no le sirve a
+    // nadie para reproducir un bug.
+    for (const n of NOVEDADES) {
+      if (n.version === undefined) continue;
+      expect(n.version, `versión rara en «${n.id}»`).toMatch(/^\d+\.\d+\.\d+$/);
+    }
+  });
+
+  it('la versión no retrocede al bajar por la lista (B-64)', () => {
+    // No todas la tienen —el versionado llegó después de las primeras—, pero las
+    // que la tienen tienen que ir de la más nueva a la más vieja, igual que las
+    // fechas: una entrada vieja con una versión posterior a la de arriba es una
+    // entrada mal insertada.
+    const versiones = NOVEDADES.flatMap((n) => (n.version ? [n.version] : []));
+    const comparar = (a: string, b: string) =>
+      b.localeCompare(a, 'en', { numeric: true, sensitivity: 'base' });
+    expect([...versiones].sort(comparar)).toEqual(versiones);
+  });
+
   it('la entrada que cuenta que existe la ayuda no se borra nunca', () => {
     // Es la única novedad que se explica a sí misma: quien abre la lista por
     // primera vez se entera ahí de que hay una guía. La versión anterior de

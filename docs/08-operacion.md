@@ -354,8 +354,18 @@ gcloud functions logs read reporteAIssue --project agenda-literaria \
 
 Pasa si el token venció, si le falta el permiso o si el repo está mal escrito. El
 reporte **no se perdió**: está en Firestore y se reintenta poniéndolo otra vez en
-`pendiente`, lo que vuelve a disparar la Function. El cliente no puede hacerlo
-(las reglas se lo prohíben), así que va con el Admin SDK, **desde la raíz del
+`pendiente`, lo que vuelve a disparar la Function.
+
+**Desde el panel (B-31), que es el camino normal:** en "Bugs y sugerencias", cada
+reporte que dice "no se pudo publicar" tiene un botón **Reintentar**. Escribe
+`estado: 'pendiente'`, `intentos: 0` y `error: null`, que es exactamente lo que
+hacía el comando de abajo. La lista se actualiza sola. Antes de tocarlo conviene
+haber arreglado la causa —el token, el permiso, el repo— o va a volver a fallar.
+
+**Con el Admin SDK**, que sigue haciendo falta para dos cosas que el panel no
+puede: reintentar en bloque, y destrabar un reporte que quedó en `enviando`
+porque la invocación se cortó a mitad (ese estado el panel no lo toca, para no
+competir con una Function que puede seguir en vuelo). Va **desde la raíz del
 repo**:
 
 ```bash

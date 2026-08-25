@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { claseBotonSecundario } from '@/components/admin/campos/Campo';
 import { ReporteFormulario } from '@/components/admin/ReporteFormulario';
-import { observarReportes } from '@/lib/reportes';
+import { observarReportes, reintentarReporte } from '@/lib/reportes';
 import type { EstadoReporte, ReporteConId } from '@/types/reporte';
 
 interface Props {
@@ -42,6 +43,8 @@ const cuando = (r: ReporteConId): string => {
 export function ReportesPanel({ usuario }: Props) {
   const [reportes, setReportes] = useState<ReporteConId[]>([]);
   const [fallo, setFallo] = useState<string | null>(null);
+  /** Id del reporte que se está reintentando, para no tocar el botón dos veces. */
+  const [reintentando, setReintentando] = useState<string | null>(null);
 
   useEffect(
     () =>
@@ -51,6 +54,25 @@ export function ReportesPanel({ usuario }: Props) {
       ),
     [],
   );
+
+  /**
+   * B-31 — reintentar la publicación de un reporte que quedó en `error`.
+   *
+   * No hay que actualizar la lista a mano: el `onSnapshot` ve el cambio de
+   * estado y después el número de issue, así que la fila se mueve sola de
+   * "no se pudo publicar" a "creando el issue…" y a "en GitHub".
+   */
+  const reintentar = async (id: string) => {
+    setReintentando(id);
+    try {
+      await reintentarReporte(id);
+      setFallo(null);
+    } catch (e: unknown) {
+      setFallo(e instanceof Error ? e.message : 'No se pudo reintentar');
+    } finally {
+      setReintentando(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,6 +116,19 @@ export function ReportesPanel({ usuario }: Props) {
                 >
                   {TEXTO_ESTADO[r.estado] ?? r.estado}
                 </span>
+                {/* B-31 — solo en `error`: en cualquier otro estado el reporte
+                    está en cola, en vuelo o ya publicado, y "reintentar"
+                    significaría un segundo issue del mismo reporte. */}
+                {r.estado === 'error' && !r.github && (
+                  <button
+                    type="button"
+                    onClick={() => void reintentar(r.id)}
+                    disabled={reintentando === r.id}
+                    className={`${claseBotonSecundario} shrink-0 disabled:opacity-50`}
+                  >
+                    {reintentando === r.id ? 'Reintentando…' : 'Reintentar'}
+                  </button>
+                )}
                 {r.github && (
                   <a
                     href={r.github.url}

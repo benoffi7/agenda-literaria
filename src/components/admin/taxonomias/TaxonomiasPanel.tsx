@@ -60,7 +60,7 @@ const DONDE: Record<CampoTaxonomia, string> = {
  *   confirma aparte.
  *
  * Es autocontenida a propósito: no sabe nada del router del panel, así que
- * montarla es una línea en `AdminApp` (B-167).
+ * montarla es una línea en `AdminApp` (B-170).
  */
 export function TaxonomiasPanel() {
   const { porCampo, cargando } = useTodasLasOpciones();

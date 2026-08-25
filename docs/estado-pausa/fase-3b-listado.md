@@ -55,10 +55,10 @@ listado, router del panel, reportes y centro de ayuda.
 |---|---|
 | **B-76** · estado en slug crudo | ✅ **cerrado y commiteado.** El síntoma ya venía arreglado por la vista calendario (el listado usa `ETIQUETA_ESTADO`). Lo que se agregó es la guardia de clase: `tests/etiquetas-de-ui.test.ts` |
 | **B-96** · "esta semana" | ✅ **verificado, ya estaba cerrado** por D-73 (el listado ordena por próximo encuentro). No se agregó código: un bloque más sería una segunda pantalla contestando la misma pregunta (D-71). El residual real sigue abierto en B-126 |
-| **B-35** · salir con cambios sin guardar | ✅ **cerrado y commiteado.** `salirDe()` en `AdminApp` envuelve las cuatro salidas + `beforeunload`. Regla pura en `src/lib/salida-del-panel.ts`. D-100 |
+| **B-35** · salir con cambios sin guardar | ✅ **cerrado y commiteado.** `salirDe()` en `AdminApp` envuelve las cuatro salidas + `beforeunload`. Regla pura en `src/lib/salida-del-panel.ts`. D-109 |
 | **B-14** · menú sin flechas | ✅ **cerrado y commiteado.** Patrón de menú ARIA completo en `MenuAcciones`, con `src/lib/foco.ts` |
 | **B-64** · pendientes del centro de ayuda | ✅ **cerrado y commiteado.** Foco atrapado en la capa + versión de cada novedad. El punto del medio no era trabajo pendiente sino el costo aceptado en D-63 |
-| **B-31** · reintentar un reporte en `error` | ✅ **cerrado y commiteado.** Botón en `ReportesPanel` + `reintentoValido()` en `firestore.rules` + 7 tests contra el emulador. D-101 |
+| **B-31** · reintentar un reporte en `error` | ✅ **cerrado y commiteado.** Botón en `ReportesPanel` + `reintentoValido()` en `firestore.rules` + 7 tests contra el emulador. D-110 |
 | **B-40** · UI de versiones | 🟡 **en curso, es lo único que falta.** Ver abajo |
 | **B-62** · ayuda contextual por sección | ⬜ **fuera de esta corrida a propósito**: depende de que la fase 2 parta el formulario por secciones |
 
@@ -123,7 +123,7 @@ cientos de bytes sin motivo, algo volvió al chunk del login.
 - **La causa de B-76 sigue viva y ya divergió.** `ActividadFormulario.tsx:71-78`
   mantiene sus propios `ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD` y `ETIQUETA_VIA`;
   para `modalidad: 'hibrido'` el formulario dice **"Híbrido"** y el desplegable de
-  filtros dice **"Presencial y virtual"**. Anotado como **B-167** con su
+  filtros dice **"Presencial y virtual"**. Anotado como **B-175** con su
   `it.fails` en `tests/etiquetas-de-ui.test.ts`. **Es dependencia de la fase 2**:
   el arreglo (`src/lib/etiquetas.ts`) toca el formulario.
 - **`AdminApp.tsx` tiene un docblock duplicado** (líneas ~90-96, dos veces "SPA
@@ -136,7 +136,7 @@ cientos de bytes sin motivo, algo volvió al chunk del login.
   principal, así que la regla nueva de B-31 no existía para mis tests: habrían
   dado verde sin probar nada. Se resolvió con `cargarReglas()` en
   `tests/emulador.ts`, que empuja el archivo local por la API del emulador. Los
-  otros tres archivos de integración siguen sin usarlo: **B-168**.
+  otros tres archivos de integración siguen sin usarlo: **B-174**.
   **Efecto compartido a tener en cuenta:** `cargarReglas` cambia las reglas del
   emulador para todos los tests que corran contra él. Si otro frente corre su
   suite en paralelo, la última carga gana.

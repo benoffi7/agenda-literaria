@@ -99,7 +99,8 @@ Manager, accesible solo desde la Function (§5.4).
 match /reportes/{id} {
   allow read: if esAdmin();
   allow create: if esAdmin() && reporteValido();
-  allow update, delete: if false;      // el ciclo de vida es de la Function
+  allow update: if esAdmin() && reintentoValido();   // solo error → pendiente
+  allow delete: if false;
 }
 ```
 
@@ -116,6 +117,30 @@ issue ajeno.
 `tests/reportes.integracion.test.ts` verifica cada uno de esos rechazos contra el
 emulador, y `tests/reportes.test.ts` verifica que el issue armado a partir de un
 reporte real no contenga el uid ni el mail.
+
+### La única escritura del cliente sobre un reporte ya creado (B-31)
+
+`reintentoValido()` habilita **una** transición: un reporte en `error` vuelve a
+`pendiente` para que la Function lo tome de nuevo. Cinco condiciones, cada una
+tapando una forma de hacer daño:
+
+| Condición | Qué evita |
+|---|---|
+| `estado` previo es `error` | reintentar algo `enviando` o ya `creado` — así se crean dos issues del mismo reporte |
+| `github` previo es `null` | lo mismo, en profundidad: si ya tiene número, no hay nada que reintentar |
+| solo cambian `estado`, `intentos`, `error`, `actualizadoEn` | **editar el texto que va al repo público** por la puerta del reintento |
+| `intentos == 0` | que el botón no haga nada: la Function ignora un reporte con los intentos agotados, que es el caso más común de un `error` |
+| `actualizadoEn == request.time` | antedatar, igual que en la creación |
+
+Borrar sigue prohibido: un reporte es el pedido de una persona y el panel no
+tiene por qué poder hacerlo desaparecer.
+
+`tests/reportes-reintento.integracion.test.ts` fija los siete casos contra el
+emulador. Está en su propio archivo porque **carga en el emulador las reglas de
+este checkout** antes de correr: el emulador sirve el `firestore.rules` del
+directorio desde el que se lo arrancó, así que con varios worktrees a la vez un
+test de reglas puede estar verificando el archivo de otra rama y dar verde sin
+haber probado nada.
 
 ## Analítica del panel
 

@@ -22,6 +22,11 @@ Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar** y
 **Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
 táctiles de ~100px y se erra el toque (D-19).
 
+El menú implementa el patrón de menú de ARIA (B-14): se abre con ↓ o ↑ cayendo en
+el primero o en el último ítem, se recorre con las flechas dando la vuelta, con
+`Home`/`End` va a los extremos, y al cerrarse con `Escape` **devuelve el foco al
+"⋯"** — sin eso había que re-tabular el listado entero para volver a la fila.
+
 ### Duplicar una actividad
 
 Abre el formulario precargado con una copia del original, para editar y guardar
@@ -279,6 +284,10 @@ En mobile ocupa la pantalla completa con su propio scroll y su safe-area; desde
 `sm` es un cuadro centrado. Cierra con "Cerrar", con `Escape` y con un click en
 el fondo. Mientras está abierta, el `body` no scrollea.
 
+Con teclado, la capa **cicla el Tab sobre sus propios controles** y al cerrarse
+devuelve el foco a lo que estaba enfocado antes de abrirla (B-64). Antes se salía
+con Tab hacia el formulario de atrás, que sigue montado y tapado.
+
 **Guía** — el contenido vive en [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) como
 data tipada, no repartido en JSX (D-62):
 
@@ -354,6 +363,14 @@ recargar.
 Estados que muestra la lista: *guardado, creando el issue…* → *en GitHub* (con
 link al issue) o *no se pudo publicar* (con el motivo). El reporte queda guardado
 en Firestore pase lo que pase con GitHub (D-31).
+
+**Reintentar (B-31).** Un reporte en *no se pudo publicar* tiene un botón
+**Reintentar**: lo vuelve a poner en cola y la Function lo toma de nuevo, con los
+intentos a cero. La lista se mueve sola de un estado al otro. Conviene arreglar
+antes la causa —token vencido, permiso, repo mal escrito— o vuelve a fallar.
+Solo aparece en ese estado: en cualquier otro el reporte está en cola, en vuelo o
+ya publicado, y "reintentar" significaría un segundo issue del mismo reporte
+(D-101).
 
 **El repo es público, así que el issue también.** El formulario lo dice, el issue
 **no** lleva el mail ni el uid de quien reportó (D-32), el texto libre pasa por un
