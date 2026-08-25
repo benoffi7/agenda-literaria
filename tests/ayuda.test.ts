@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { AVISOS, CAPITULOS, CAPITULO_POR_CONTEXTO } from '@/lib/ayuda';
 
 /**
@@ -47,7 +47,17 @@ describe('capítulos', () => {
     // Lee el formulario de verdad, como `tests/opciones-orden.test.ts`: es la
     // forma de que agregar una sección nueva sin escribir su ayuda falle acá y
     // no dos meses después, cuando alguien no entienda para qué es.
-    const fuente = readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8');
+    //
+    // Desde B-79 cada sección vive en su archivo dentro de `formulario/`, así
+    // que se lee el directorio entero: mirar solo `ActividadFormulario.tsx`
+    // dejaría de ver ocho de las nueve secciones y el test pasaría sin haber
+    // mirado nada.
+    const fuente = [
+      readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8'),
+      ...readdirSync('src/components/admin/formulario')
+        .filter((f) => f.endsWith('.tsx'))
+        .map((f) => readFileSync(`src/components/admin/formulario/${f}`, 'utf8')),
+    ].join('\n');
     const secciones = [...fuente.matchAll(/\btitulo="([^"]+)"/g)].map((m) => m[1]!);
     expect(secciones.length).toBeGreaterThanOrEqual(9);
 

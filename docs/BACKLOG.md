@@ -928,7 +928,7 @@ plano de encuentros próximos (fecha, id de sesión, slug), derivado en build ti
 para que la island ofrezca "este fin de semana" sin aplanar los ciclos en el
 navegador en cada filtrado. Es barato al escribir el generador y caro después.
 
-### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx`
+### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx` — ✅ hecho (2026-08-24)
 
 El archivo tiene 858 LOC, de las cuales **227 son lógica** y el resto JSX. Esas
 227 incluyen reglas del modelo que ningún test puede ejecutar, porque están en un
@@ -951,7 +951,19 @@ mecánico, sin cambio de comportamiento: el archivo baja a ~250 LOC y ~150 pasan
 ser testeables. Medida completa en
 [`10-salud-del-codigo.md`](10-salud-del-codigo.md).
 
-### B-71 · Un guardado que falla deja opciones de taxonomía huérfanas
+**Hecho.** Quedaron cinco módulos en `src/lib/formulario/`: `estadoInicial.ts`
+(`formVacio` y los sub-objetos que crean y destruyen las cascadas),
+`cascadas.ts` (las tres del §11), `condicionales.ts` (qué partes del formulario
+aplican, que además tienen que coincidir con lo que el schema exige),
+`etiquetas.ts` (el buffer de D-02) y `guardar.ts` (el caso de uso, con las
+escrituras como puertos — D-102). Los cubre
+[`tests/formulario-dominio.test.ts`](../tests/formulario-dominio.test.ts).
+
+Con la lógica afuera y el JSX partido (B-79), `ActividadFormulario.tsx` quedó en
+~230 LOC. Dos bugs que vivían en esa lógica salieron en el mismo cambio: **B-71**
+y **B-87**.
+
+### B-71 · Un guardado que falla deja opciones de taxonomía huérfanas — ✅ hecho (2026-08-24)
 
 `guardar()` persiste las etiquetas nuevas en `/opciones/*` (líneas 237 y 240)
 **antes** de escribir la actividad (líneas 244-245). Si la escritura falla —red,
@@ -978,25 +990,17 @@ incluida una guardia de que la copia no vuelva a nacer. Los componentes no se
 unificaron, y las dos diferencias que quedan (tope y qué mostrar con el input
 vacío) son ahora parámetros con motivo escrito.
 
-
-`TaxonomiaSelect.tsx` y `TagsInput.tsx` resuelven el mismo problema del §4 con
-dos implementaciones separadas, y ya divergieron:
-
-| Regla | `TaxonomiaSelect` | `TagsInput` |
-|---|---|---|
-| Filtro de sugerencias | tope 8, con texto vacío muestra las primeras 8 | tope 6, con texto vacío muestra nada |
-| Dedupe por slug | avisa "Ya existe como «X» — se va a reusar esa" | reusa en silencio |
-| Badge "sin aprobar" | JSX propio | JSX propio, idéntico |
-
-El §4.2 está marcado **crítico** en el `CLAUDE.md`. La transacción de
-`src/lib/opciones.ts` sí está testeada contra el emulador; la mitad del cliente
-—la que evita que el 90 % de los duplicados nazca— tiene dos copias, ambas en
-`.tsx`, ninguna con test.
-
-Arreglo: extraer `sugerenciasPara(texto, elegibles, tope)` y
-`resolverEtiqueta(texto, valores)` a un módulo puro de ~40 LOC con sus tests, y
-que los dos componentes las llamen. **Los componentes no se unifican**: un
-`<select>` con "Otro" y un input de chips son widgets distintos.
+**Resuelto así (D-100):** se invirtió el orden, en
+`src/lib/formulario/guardar.ts` — el caso de uso que B-70 sacó del componente.
+Verificado el modo de falla que queda: el evento público resuelve la etiqueta no
+registrada con el des-slug de D-11, o sea "Con Beca Parcial" en lugar de "Con
+beca parcial". Un fallo al registrar la etiqueta ya no vuelve fallido el
+guardado (la actividad está escrita; reintentar chocaría contra su propio slug).
+El `it.fails` de la clase en `tests/clases-de-bug.test.ts` quedó promovido a
+`it`, y el orden se afirma además con puertos falsos en
+`tests/formulario-dominio.test.ts`. Quedan abiertos **B-167** (nadie avisa en
+pantalla que la etiqueta no se registró) y **B-168** (el desplegable muestra el
+slug crudo de una etiqueta no registrada).
 
 ### B-73 · Los tags no se miden — ✅ hecho (2026-08-24)
 
@@ -1063,12 +1067,18 @@ Ver [CHANGELOG](CHANGELOG.md) y **D-98**.
 
 `ListaActividades.tsx:124` renderiza `{a.estado}`, así que la píldora dice
 "borrador" y "publicado" en minúscula, mientras el formulario dice "Borrador" y
-"Publicado" (`ETIQUETA_ESTADO`, `ActividadFormulario.tsx:73-78`). Es la misma
-actividad en dos pantallas con dos escrituras.
+"Publicado" (`ETIQUETA_ESTADO`). Es la misma actividad en dos pantallas con dos
+escrituras.
 
 Pasa porque el vocabulario de etiquetas es local al formulario. Un
 `src/lib/etiquetas.ts` de ~20 LOC con los tres mapas (`estado`, `modalidad`,
 `via`) que usen el formulario y el listado lo cierra.
+
+**Dónde están hoy:** B-79 los sacó del `.tsx` a
+`src/components/admin/formulario/etiquetasUI.ts`, porque los comparten varias
+secciones. Son esos tres los que hay que mudar a `src/lib/etiquetas.ts`; la
+mudanza toca los archivos del formulario, así que conviene hacerla desde este
+frente y no desde el del listado.
 
 **No incluir los mapas `ETIQUETA_*` de `functions/calendario.js`**: esos son
 prosa para el evento público ("Presencial y virtual", "por DM de Instagram"), no
@@ -1160,7 +1170,7 @@ los nuevos— más cuidado con no sumar dos veces cuando la etiqueta es nueva
 (`upsertOpcion` ya la crea con `usos: 1`). Sin test: el camino pasa por el
 submit del componente y no hay testing-library (B-08).
 
-### B-87 · El formulario nace sucio, así que el aviso de versión nunca se recarga solo
+### B-87 · El formulario nace sucio, así que el aviso de versión nunca se recarga solo — ✅ hecho (2026-08-24)
 
 `autoSeleccionarPrimera` en el desplegable de `tipo` preselecciona "Taller" desde
 un efecto, y ese efecto es de un hijo: corre **antes** que los efectos de
@@ -1186,7 +1196,19 @@ código y el orden de los efectos es una garantía de React, pero verificarlo
 necesita render, y no hay testing-library (B-08). Es la primera cosa que valdría
 la pena verificar si se instala.
 
-### B-90 · "Generar N encuentros" sobre un ciclo publicado borra y recrea los ocho eventos
+**Resuelto así (D-101):** la preselección se aplica en `formVacio()`
+(`src/lib/formulario/estadoInicial.ts`) y el campo `tipo` dejó de pasar
+`autoSeleccionarPrimera`. `plataforma` lo conserva: su bloque nace de un cambio
+de modalidad, o sea de una acción de quien carga.
+
+Sigue sin haber un test de render, pero la clase quedó cubierta desde dos
+lados en `tests/formulario-dominio.test.ts`: uno afirma que `formVacio().tipo`
+es la misma opción que mostraría el desplegable, y otro —de fuente— que ningún
+campo que exista desde el montaje delegue su preselección a un efecto. Lo que
+falta verificar con render es el síntoma (que el aviso de versión se
+auto-recargue), no el mecanismo.
+
+### B-90 · "Generar N encuentros" sobre un ciclo publicado borra y recrea los ocho eventos — ✅ hecho (2026-08-24)
 
 El generador del §11 reemplaza la lista de sesiones, y `generarSesiones` da ids
 nuevos. Sobre un ciclo ya publicado el diff no reconoce ningún encuentro: ocho
@@ -1200,6 +1222,15 @@ no cambia, o al menos avisar en el cartel cuando alguna sesión ya tiene
 `calendarEventId` ("esto borra N eventos del calendario y crea otros N").
 
 Test en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
+
+**Resuelto así (D-103):** se reusa el id **y** el `calendarEventId` de la fila
+de la misma posición, y no solo cuando la cantidad coincide: generar diez sobre
+ocho son ocho actualizaciones y dos altas; seis sobre ocho, seis y dos bajas.
+Correr un ciclo publicado una semana pasó de 8 `borrar` + 8 `crear` a 8
+`actualizar`. El cartel dice ahora qué recalcula y qué borra, y aclara —solo
+cuando hay encuentros ya publicados— que se mueven en lugar de recrearse. Los
+tests corren el generador contra el `planificar` de verdad, porque lo que estaba
+roto era el par. Queda abierto **B-169**.
 
 
 ### B-125 · Un evento borrado a mano en Calendar no se detecta · P2
@@ -1443,6 +1474,19 @@ Confirmado en `src/components/admin/campos/TaxonomiaSelect.tsx:224`:
 `value` es el **slug**, no la etiqueta. Al escribir «Villa Crespo» en «Otro…», la
 opción todavía no está en `/opciones/*` —se persiste en el submit, por D-02— así
 que `esConocido` es `false` y el desplegable pinta `villa-crespo (nueva)`.
+
+**Hay un segundo camino al mismo síntoma**, encontrado por el frente de la fase 2
+y anotado acá en lugar de como ítem aparte —es el mismo bug, la misma línea y el
+mismo arreglo—: reeditar una actividad **cuya etiqueta nunca llegó a
+registrarse** (D-111) también cae en `esConocido === false`, y ahí se lee
+`con-beca-parcial (nueva)`. O sea que no hace falta estar cargando algo nuevo
+para verlo.
+
+**Y el arreglo ya está a mano.** El evento público resuelve esto con el des-slug
+de D-11, reusado en el panel como `legible` en `filtrosActividades.ts`, y 3A dejó
+`etiquetaPresentable` en `src/lib/taxonomia.ts`. El panel es el único lugar que
+todavía muestra el slug pelado, que es exactamente lo que D-11 describe como "se
+ve roto".
 
 **El dato no se pierde:** el componente ya recibe la etiqueta tipeada en
 `confirmarTexto`, que llama `onChange(slugTipeado, texto.trim())`. Solo no se la
@@ -1940,7 +1984,7 @@ Que el contenido viva en el repo y no en Firestore es decisión cerrada (D-63) y
 que sea data tipada y testeada también (D-62). Esto es solo dónde vive el
 archivo.
 
-### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección
+### B-79 · Partir el JSX de `ActividadFormulario` en componentes por sección — ✅ hecho (2026-08-24)
 
 Después de B-70 el archivo queda en ~630 LOC, todas de JSX: nueve `<Seccion>`
 en un solo `return`.
@@ -2005,6 +2049,19 @@ saneamiento. `tests/etiquetas-de-ui.test.ts` tiene el `it.fails` que se vuelve
 
 Ojo con lo que **no** entra: los `ETIQUETA_*` de `functions/calendario.js` son
 prosa del evento público, no etiquetas de UI (el motivo, en B-76).
+**Hecho (D-104).** Diez archivos en `src/components/admin/formulario/`: las
+nueve secciones, la barra de acciones, el tipo de props común y el vocabulario
+de etiquetas de la UI. El JSX se movió verbatim —las props se llaman igual que
+las variables que tenían adentro—, así que el diff no esconde ningún cambio de
+comportamiento. `ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas,
+guardado y el orden de las secciones.
+
+Costo: +583 B en la carga inicial de `/admin` (+0,15 %), mismos 4 chunks.
+
+Dos tests que leían el `.tsx` como texto se arreglaron en el mismo cambio
+(`ayuda` y `opciones-orden`): ahora leen el directorio, y el de `opciones-orden`
+verifica primero que **encontró** el campo, porque un `not.toContain` sobre un
+string vacío pasa sin haber mirado nada.
 
 ### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
 
@@ -2105,6 +2162,37 @@ aparecen donde `.astro/` no existe todavía: un **worktree recién creado**, un
 clone fresco y **el CI** — o sea, exactamente los tres lugares donde el comando
 se corre para decidir algo. Un hallazgo que solo se reproduce en el entorno
 limpio es más grave, no menos.
+### B-176 · Regenerar los encuentros borra los temas y las lecturas cargados · P2
+
+`generarSesiones` devuelve `tema: ''` y `lectura: ''` en todas las filas, así
+que volver a generar las fechas de un club de lectura de ocho encuentros borra
+las ocho lecturas asignadas — que es lo más caro de tipear de toda la actividad.
+Pasaba desde siempre (el generador reemplazaba la lista entera) y por eso no es
+una regresión, pero después de D-103 la fila **conserva su identidad**: el
+encuentro 3 sigue siendo el encuentro 3, con su evento de calendario, y perder
+su tema dejó de tener sentido.
+
+Es una línea al lado de las dos que ya heredan `id` y `calendarEventId`. Lo que
+hay que decidir antes es si conservar el tema es lo que espera quien aprieta el
+botón: hoy el cartel dice explícitamente que los borra. Sale con la UI, no
+suelto.
+
+El caso que lo hace doler: el ciclo se corre una semana, se regeneran las fechas
+y hay que volver a tipear ocho lecturas que no cambiaron.
+
+### B-177 · Nadie avisa cuando una etiqueta nueva no se registró · P3
+
+Con el orden de escritura de D-100, si la actividad se guarda pero falla el alta
+de la etiqueta en `/opciones/*`, el guardado es un éxito y la etiqueta queda sin
+registrar. Es el modo de falla que se eligió a propósito —es recuperable
+tipeándola otra vez— pero hoy **no se ve**: `guardarActividad` devuelve
+`etiquetasSinRegistrar: true` y el formulario no lo mira.
+
+No hay dónde mostrarlo con lo que hay: al guardar, el formulario se desmonta y
+la pantalla pasa al listado. Las salidas son una franja en el listado (archivo
+del frente 3B) o quedarse en el formulario con el aviso. Vale poco por sí solo;
+vale más el día que exista la UI de taxonomías (B-06), que es donde la etiqueta
+faltante se arregla en un clic.
 
 ### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
 

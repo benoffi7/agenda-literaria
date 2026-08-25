@@ -70,7 +70,10 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
     const inicio = primera?.inicio ?? aDatetimeLocal(new Date());
     medirFuncion('encuentros-generar', undefined, cantidad);
     onChange(
-      generarSesiones({ cantidad, inicio, duracionMinutos: duracion, cadaDias }),
+      // `previas` para que las filas que ya existen conserven su id y su evento
+      // de calendario (B-90): sin eso, regenerar un ciclo publicado borraba y
+      // recreaba los ocho eventos, y con ellos los recordatorios de la gente.
+      generarSesiones({ cantidad, inicio, duracionMinutos: duracion, cadaDias, previas: sesiones }),
     );
     setAbrirGenerador(false);
   };
@@ -140,8 +143,17 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
             </button>
           </div>
           <p className="mt-2 text-xs text-tinta/60">
-            Reemplaza la lista actual. Toma la fecha y duración del primer
-            encuentro como base — después ajustás las excepciones una por una.
+            Recalcula las fechas de la lista actual y borra los temas y lecturas
+            ya cargados. Toma la fecha y duración del primer encuentro como base
+            — después ajustás las excepciones una por una.
+            {sesiones.some((s) => s.calendarEventId) && (
+              <>
+                {' '}
+                Los encuentros que ya están en el calendario se mueven de fecha:
+                no se borran ni se vuelven a crear, así que quien se suscribió los
+                conserva.
+              </>
+            )}
           </p>
         </div>
       )}

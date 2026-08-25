@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { ETIQUETA_ESTADO as ETIQUETA_ESTADO_FORM } from '@/components/admin/formulario/etiquetasUI';
 import { ETIQUETA_ESTADO, ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { ESTADOS, MODALIDADES } from '@/types/actividad';
 
@@ -27,7 +28,20 @@ import { ESTADOS, MODALIDADES } from '@/types/actividad';
 const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../src/${rel}`, import.meta.url)), 'utf8');
 
-const FORMULARIO = fuente('components/admin/ActividadFormulario.tsx');
+/*
+ * B-79 partió el formulario en secciones y se llevó los mapas a
+ * `formulario/etiquetasUI.ts`. Este chequeo los buscaba en
+ * `ActividadFormulario.tsx` y se quedó midiendo un archivo que ya no los tiene:
+ * el mapa salía vacío y el chequeo de `estado` rompió, mientras el `it.fails` de
+ * `modalidad` seguía fallando **por el motivo equivocado** — que es el punto
+ * ciego que encontró B-171: un `it.fails` que falla se ve bien aunque falle por
+ * otra cosa.
+ *
+ * De ahí que `estado` ya no se lea del fuente: se compara la identidad del
+ * objeto, que es lo que de verdad garantiza que hay un solo vocabulario. Solo
+ * `modalidad` sigue leyéndose como texto, porque ahí todavía hay dos mapas.
+ */
+const FORMULARIO = fuente('components/admin/formulario/etiquetasUI.ts');
 const LISTADO = fuente('components/admin/ListaActividades.tsx');
 
 /**
@@ -63,10 +77,11 @@ describe('el listado muestra la etiqueta y no el valor guardado (B-76)', () => {
 });
 
 describe('el formulario y el listado no pueden decir lo mismo de dos maneras (B-76)', () => {
-  it('los estados coinciden', () => {
-    const delFormulario = mapaDelFuente(FORMULARIO, 'ESTADO');
-    expect(Object.keys(delFormulario).length).toBe(ESTADOS.length);
-    for (const e of ESTADOS) expect(delFormulario[e]).toBe(ETIQUETA_ESTADO[e]);
+  it('los estados son un solo mapa, no dos que coinciden', () => {
+    // Identidad y no igualdad: dos objetos con el mismo contenido vuelven a
+    // divergir el día que alguien toca uno. Esto solo pasa si es el mismo.
+    expect(ETIQUETA_ESTADO_FORM).toBe(ETIQUETA_ESTADO);
+    for (const e of ESTADOS) expect(ETIQUETA_ESTADO[e]).toBeTruthy();
   });
 
   /**

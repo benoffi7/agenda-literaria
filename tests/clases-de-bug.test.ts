@@ -1022,11 +1022,12 @@ describe('clase de B-71 · el efecto irreversible va último', () => {
   });
 
   /**
-   * **Qué lo haría pasar:** escribir la actividad primero y las etiquetas
-   * después (o las dos en la misma transacción). Sale con B-70, cuando
-   * `guardar()` deje de vivir dentro del componente.
+   * **Arreglado (B-71):** el caso de uso salió del componente a
+   * `src/lib/formulario/guardar.ts` (B-70) y ahí la actividad se escribe
+   * primero. El `it.fails` quedó promovido a `it`: de acá en adelante, un flujo
+   * nuevo que cree la etiqueta antes de la actividad rompe el CI.
    */
-  it.fails('B-71: la actividad se escribe antes que las etiquetas de taxonomía', () => {
+  it('B-71: la actividad se escribe antes que las etiquetas de taxonomía', () => {
     const alReves: string[] = [];
     for (const { archivo, src } of flujosQueEscribenEnDosLugares()) {
       const irreversible = primero(src, EFECTO_IRREVERSIBLE);

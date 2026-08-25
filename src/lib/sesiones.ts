@@ -76,8 +76,25 @@ export const generarSesiones = (opts: {
   inicio: string;
   duracionMinutos: number;
   cadaDias?: number;
+  /**
+   * Las sesiones que se están reemplazando. La fila generada en la posición N
+   * hereda el `id` y el `calendarEventId` de la que ocupaba esa posición.
+   *
+   * B-90 — sin esto, regenerar los encuentros de un ciclo **ya publicado**
+   * daba ocho ids nuevos y el diff del §7.2 no reconocía ninguno: ocho
+   * `borrar` y ocho `crear` contra el calendario, o sea "perder los
+   * recordatorios y las suscripciones de la gente", que es exactamente lo que
+   * ese diff existe para evitar. Reusando el id, el mismo cambio son ocho
+   * `actualizar`: al suscripto se le mueve la fecha del evento, que es lo que
+   * pasó de verdad.
+   *
+   * Si la cantidad cambia, se reusa lo que se superpone: generar 10 sobre 8
+   * son 8 actualizaciones y 2 altas; generar 6 sobre 8, 6 actualizaciones y 2
+   * bajas.
+   */
+  previas?: readonly SesionForm[];
 }): SesionForm[] => {
-  const { cantidad, inicio, duracionMinutos, cadaDias = 7 } = opts;
+  const { cantidad, inicio, duracionMinutos, cadaDias = 7, previas = [] } = opts;
   const primera = deDatetimeLocal(inicio);
   if (!primera || cantidad < 1) return [];
 
@@ -89,14 +106,19 @@ export const generarSesiones = (opts: {
     // desvíos, y con Date local para que un cambio de horario de verano no
     // corra el horario del encuentro.
     const arranque = new Date(primera.getTime() + saltoMs * i);
+    const previa = previas[i];
     return {
-      id: nuevaSesionId(),
+      // El id se hereda por posición, pero **nunca se deriva del índice**
+      // (trampa 2): el de una fila nueva sigue siendo un uuid de cliente.
+      id: previa?.id ?? nuevaSesionId(),
       inicio: aDatetimeLocal(arranque),
       fin: aDatetimeLocal(new Date(arranque.getTime() + duracionMs)),
       tema: '',
       lectura: '',
       cancelada: false,
-      calendarEventId: null,
+      // Va con el id: sin él, el diff vería una sesión conocida sin evento y
+      // crearía un segundo evento para el mismo encuentro.
+      calendarEventId: previa?.calendarEventId ?? null,
     };
   });
 };

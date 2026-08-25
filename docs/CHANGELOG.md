@@ -259,6 +259,110 @@ un bloque más sería la segunda pantalla que contesta la misma pregunta, que es
 que D-71 evita. Lo único que el bloque hacía y el orden no —avisar de las
 inscripciones que cierran— sigue abierto en **B-126**.
 
+### El formulario, partido en nueve secciones
+
+Cierra **B-79** y con él **B-70**. Las nueve `<Seccion>` del §11 y la barra de
+acciones pasaron a `src/components/admin/formulario/`, una por archivo, y
+`ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas, guardado y el
+orden de las secciones (**D-115**).
+
+Vale por la superficie de conflicto: era el segundo archivo más tocado del repo
+(9 de 41 commits) y acá ya se commitearon marcadores de conflicto que
+sobrevivieron dos commits. También destraba B-62, el "?" por sección, que hoy
+pedía tocar el mismo archivo en nueve lugares.
+
+El JSX se movió **verbatim** —las props se llaman igual que las variables que
+tenían adentro—, así que el diff no puede esconder un cambio de comportamiento.
+Lo único que no era presentación se fue a un módulo puro:
+`lib/formulario/condicionales.ts`, porque `necesitaSede` decide a la vez qué se
+muestra y qué exige el schema, y si esas dos derivaciones se separan el
+formulario esconde un campo que el guardado pide.
+
+**Dos tests leían `ActividadFormulario.tsx` como texto** y se arreglaron en el
+mismo cambio: `ayuda` (cada sección tiene su capítulo) y `opciones-orden` (el
+arancel no se preselecciona). Los dos leen ahora el directorio de secciones, y
+el segundo afirma primero que encontró el campo: un `not.toContain` sobre un
+string vacío pasa sin haber mirado nada, que es la forma exacta en que este
+refactor podría haberlos apagado en silencio.
+
+**Costo medido, con el build:** la carga inicial de `/admin` pasó de **387.797 a
+388.380 bytes** (+583 B, +0,15 %; gzip 106.934 → 107.127), los mismos 4 chunks y
+ningún `modulepreload` nuevo. La suma de todos los chunks subió 3.418 B: es el
+envoltorio de diez componentes nuevos.
+
+### Regenerar los encuentros ya no borra y recrea los eventos del calendario
+
+Cierra **B-90**. El generador del §11 daba ids nuevos a las ocho filas, así que
+sobre un ciclo **ya publicado** el diff del §7.2 no reconocía ningún encuentro:
+ocho `borrar` y ocho `crear` contra el calendario público, o sea "perder los
+recordatorios y las suscripciones de la gente", que es literalmente lo que ese
+diff existe para evitar. El caso que lo dispara es banal: el ciclo se corre una
+semana y se regeneran las fechas.
+
+Ahora `generarSesiones` recibe la lista que reemplaza y la fila de cada posición
+hereda su `id` y su `calendarEventId` (**D-114**), así que ese mismo cambio son
+ocho `actualizar`. Se reusa por posición aunque cambie la cantidad: diez sobre
+ocho son ocho actualizaciones y dos altas; seis sobre ocho, seis y dos bajas.
+
+No contradice la trampa 2: el id no se deriva del índice, se hereda de la fila
+que ocupaba esa posición, y las filas nuevas siguen estrenando un uuid.
+
+El cartel del generador decía "Reemplaza la lista actual", que no se lee como
+"reemplaza el calendario": ahora dice qué recalcula y qué borra, y —solo cuando
+hay encuentros ya publicados— que se mueven en lugar de recrearse. La guía del
+panel se corrigió en el mismo lugar, y hay una novedad.
+
+Los tests corren el generador de verdad contra el `planificar` de verdad: lo que
+estaba roto era el par, no cada pieza. Abierto en el camino: **B-176**
+(regenerar sigue borrando los temas y las lecturas, que ahora que la fila
+conserva su identidad dejó de tener sentido).
+
+### El formulario deja de ser el dueño de las reglas del modelo (fase 2)
+
+La lógica de dominio de `ActividadFormulario.tsx` se mudó a módulos puros en
+`src/lib/formulario/` y **de paso se arreglaron los dos bugs que vivían
+adentro**. Cierra **B-71** y **B-87**; **B-70** avanza (falta B-79, el JSX).
+
+Por qué el orden importa: esas reglas —"un club de lectura es un ciclo con
+material", "una actividad virtual no tiene sede", el documento por defecto del
+§3.1, el caso de uso de guardado— estaban en un `.tsx`, y como no hay
+testing-library (B-08) **ningún test podía ejecutarlas**. Invertir uno de esos
+condicionales dejaba `npm test` entero en verde. Ahora hay tests puros que
+corren en milisegundos (`tests/formulario-dominio.test.ts`).
+
+**B-71 · un guardado que fallaba dejaba etiquetas colgadas en el desplegable.**
+Las opciones nuevas se creaban **antes** de escribir la actividad, así que un
+fallo de red o de permisos dejaba basura permanente en una taxonomía que no
+tiene UI de limpieza (B-06) — justo lo que D-02 quiso evitar. Invertido el orden
+(**D-111**), el peor caso es que la etiqueta no quede registrada, y de eso ya
+había red: el evento público la resuelve con el des-slug de D-11 ("Con Beca
+Parcial" en lugar de "Con beca parcial"). Se pasó de perder datos a perder una
+capitalización. Un fallo al registrar la etiqueta ya **no** vuelve fallido el
+guardado: la actividad está escrita y reintentar chocaría contra su propio slug.
+
+El orden se afirma con puertos falsos que anotan la secuencia de llamadas
+(**D-113**), y el `it.fails` de la clase en `tests/clases-de-bug.test.ts` quedó
+promovido a `it`: de acá en adelante, un flujo nuevo que escriba la taxonomía
+antes que la actividad rompe el CI.
+
+**B-87 · el formulario nacía sucio.** La preselección de "Taller" la hacía un
+efecto del hijo, que corre antes que los del padre: el formulario quedaba "con
+cambios sin guardar" sin que nadie tocara nada. Consecuencias visibles: el aviso
+de versión nueva no se auto-recargaba nunca —mostraba "Guardá lo que estás
+cargando" sobre un formulario vacío— y el parámetro `sucio` de
+`formulario_abandonado` era siempre 1, así que la analítica no podía distinguir
+"se abrió y se salió" de "había trabajo adentro". Ahora la preselección viene en
+el estado inicial (**D-112**), que se puede resolver sin leer Firestore porque
+ninguna opción creada con "Otro" puede quedar antes que una fija (§4.3).
+
+Sin entrada en novedades: no hay nada nuevo que se pueda hacer en el panel, se
+dejó de hacer algo mal.
+
+Abiertos en el camino: **B-177**, que nadie avisa en pantalla cuando la etiqueta
+no se registró. Y un segundo camino a **B-132**, que se anotó adentro de ese ítem
+en lugar de como uno nuevo: reeditar una actividad cuya etiqueta nunca se
+registró muestra el slug pelado igual que cargarla por primera vez. Mismo bug,
+misma línea, mismo arreglo — dos números habrían sido peor que uno.
 
 ### Analítica, versión y enums: las cuatro listas duplicadas de la fase 1C
 

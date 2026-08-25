@@ -1,30 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import base from '@/lib/opciones-base.json';
 import { ordenarValores } from '@/lib/opciones';
+import { formVacio } from '@/lib/formulario/estadoInicial';
 import type { ValorOpcion } from '@/types/actividad';
 
 const primera = (campo: keyof typeof base) =>
   ordenarValores(base[campo] as ValorOpcion[])[0];
 
 /**
- * `TaxonomiaSelect` con `autoSeleccionarPrimera` toma `valores[0]` después de
- * ordenar. Estos tests fijan cuál es esa opción: si alguien reordena
- * opciones-base.json, el default del formulario cambia sin que se note, y una
- * actividad puede terminar guardada con un arancel que nadie eligió.
+ * El bloque de un `<TaxonomiaSelect campo="X" …/>`, buscado en el formulario y
+ * en sus secciones (B-79 las partió en archivos aparte). Devuelve `''` si el
+ * campo no está en ninguno: sin ese caso explícito, mover el campo de archivo
+ * dejaría los tests de abajo pasando sin haber leído nada.
+ */
+const bloqueDelCampo = (campo: string): string => {
+  const archivos = [
+    'src/components/admin/ActividadFormulario.tsx',
+    ...readdirSync('src/components/admin/formulario')
+      .filter((f) => f.endsWith('.tsx'))
+      .map((f) => `src/components/admin/formulario/${f}`),
+  ];
+  for (const archivo of archivos) {
+    const src = readFileSync(archivo, 'utf8');
+    const i = src.indexOf(`campo="${campo}"`);
+    if (i === -1) continue;
+    const resto = src.slice(i);
+    return resto.slice(0, resto.indexOf('/>'));
+  }
+  return '';
+};
+
+/**
+ * Qué opción muestra elegida cada desplegable. Estos tests la fijan: si alguien
+ * reordena opciones-base.json, el default del formulario cambia sin que se
+ * note, y una actividad puede terminar guardada con un arancel que nadie
+ * eligió.
  */
 describe('opción preseleccionada por campo', () => {
+  it('el campo arancel sigue estando en el formulario', () => {
+    expect(bloqueDelCampo('arancel')).not.toBe('');
+  });
+
   it('arancel NO se preselecciona', () => {
     // Decisión del dueño: el default sería "Gratis" y un taller pago que nadie
     // corrige se publica como gratuito. El campo obliga a elegir.
-    const form = readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8');
-    const bloqueArancel = form.slice(form.indexOf('campo="arancel"'));
-    const hastaElCierre = bloqueArancel.slice(0, bloqueArancel.indexOf('/>'));
-    expect(hastaElCierre).not.toContain('autoSeleccionarPrimera');
+    expect(bloqueDelCampo('arancel')).not.toContain('autoSeleccionarPrimera');
   });
 
-  it('tipo arranca en taller', () => {
+  it('tipo arranca en taller, y el estado inicial trae esa misma opción', () => {
+    // Desde B-87 la preselección de `tipo` no la hace un efecto del hijo sino
+    // `formVacio()`, así que las dos derivaciones tienen que coincidir: si se
+    // separan, el formulario muestra una opción y guarda otra.
     expect(primera('tipo')?.slug).toBe('taller');
+    expect(formVacio().tipo).toBe(primera('tipo')?.slug);
   });
 
   it('plataforma arranca en zoom', () => {

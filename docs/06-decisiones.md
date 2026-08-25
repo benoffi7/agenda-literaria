@@ -2009,6 +2009,182 @@ su ausencia no se lea como un bug.
 
 Un tag que ya estaba puesto no se mide: no es una interacción con la taxonomía.
 
+## D-111 · La actividad se escribe antes que las etiquetas nuevas
+
+**Decisión:** en el guardado del formulario, primero se escribe la actividad y
+recién después se registran en `/opciones/*` las etiquetas creadas con "Otro".
+Era al revés (B-71).
+
+**Motivo:** las dos escrituras pueden fallar por separado, y una de las dos no
+se puede deshacer desde el panel: no hay UI para limpiar taxonomías (B-06). Con
+el orden viejo, un guardado que fallaba —red, permisos, un slug que se tomó en
+el medio— dejaba opciones colgadas en el desplegable de todo el mundo, que es
+justo lo que D-02 quiso evitar. Invertido, el peor caso es que el slug quede
+guardado sin estar registrado: el evento público lo resuelve con el des-slug de
+D-11 ("Con Beca Parcial" en lugar de "Con beca parcial") y volver a tipear la
+etiqueta la registra. **El modo de falla pasa de basura permanente en la
+taxonomía a una capitalización distinta.**
+
+**Y un fallo al registrar la etiqueta no vuelve fallido el guardado.** La
+actividad ya está escrita; devolver error haría que el segundo intento choque
+contra su propio slug (`slugDisponible` ya lo ve tomado) sobre algo que en
+realidad se guardó bien. El caso de uso lo informa en su resultado
+(`etiquetasSinRegistrar`) y hoy nadie lo muestra en pantalla — queda anotado
+como **B-167**.
+
+**Alternativa descartada:** las dos escrituras en una sola transacción. Son
+documentos de colecciones distintas y `upsertOpcion` ya corre su propia
+transacción por etiqueta (§4.2); envolver todo pedía rehacer esa función para un
+caso cuyo daño ya quedó acotado.
+
+**La guarda es de clase, no de instancia:** el chequeo de
+`tests/clases-de-bug.test.ts` busca las dos escrituras por nombre en todo `src/`
+y falla si la irreversible queda primero, así que cubre también el próximo flujo
+que escriba en dos lugares. Por eso `guardar.ts` llama a sus puertos por nombre
+desestructurado y no como `puertos.x(...)`: escondidos, la guarda pasaría sin
+mirar nada.
+
+---
+
+## D-112 · La preselección del desplegable va en el estado inicial, no en un efecto
+
+**Decisión:** el `tipo` de una actividad nueva viene ya preseleccionado desde
+`formVacio()` (D-12 sigue valiendo: el desplegable muestra la primera opción).
+El efecto `autoSeleccionarPrimera` del hijo se sigue usando en `plataforma`,
+pero **no** en un campo que exista desde el montaje.
+
+**Motivo:** el efecto de un hijo corre antes que los del padre, así que escribía
+el estado del formulario después del primer render y los dos consumidores de
+"¿cambió algo?" veían un cambio que nadie hizo (B-87): el aviso de versión nueva
+no se auto-recargaba nunca —mostraba "Guardá lo que estás cargando" sobre un
+formulario vacío— y el parámetro `sucio` de `formulario_abandonado` era siempre
+1, o sea que dejaba de responder la única pregunta que justifica ese evento.
+
+**Se puede resolver sin leer Firestore** porque `ordenarValores` pone las
+opciones fijas antes que las creadas con "Otro" (§4.3): la primera elegible es
+siempre la primera opción base, y eso se sabe desde `OPCIONES_BASE`. Un test ata
+las dos derivaciones, para que reordenar el JSON no separe la preselección de lo
+que muestra el desplegable.
+
+`plataforma` se queda con el efecto a propósito: su bloque lo crea un cambio de
+modalidad, o sea una acción de quien carga, y para entonces el formulario ya
+está sucio de verdad.
+
+---
+
+## D-113 · Las escrituras del caso de uso de guardado entran como puertos
+
+**Decisión:** `src/lib/formulario/guardar.ts` recibe sus cinco escrituras
+(`slugDisponible`, `upsertOpcion`, `upsertOpciones`, `crearActividad`,
+`actualizarActividad`) como un objeto de puertos, con `puertosFirestore` como
+default.
+
+**Motivo:** el bug que se estaba arreglando (B-71) **es un orden de
+escrituras**, y un orden no se afirma mirando el resultado: hay que ver la
+secuencia de llamadas. Con puertos falsos que anotan su nombre, el test afirma
+"slug → actividad → etiquetas" y, sobre todo, "si la actividad no se pudo
+escribir, no se creó ninguna opción" — sin emuladores, en milisegundos y sin
+poder tocar datos de verdad.
+
+**Alternativa descartada:** testearlo contra el emulador, como
+`tests/actividades.integracion.test.ts`. Ese archivo verifica el ida y vuelta
+del documento, que es su valor; para el orden habría que provocar un fallo de
+permisos a mitad de camino, y además los tests de integración se saltean solos
+cuando el emulador no está, así que la guarda desaparecería justo en la corrida
+de CI.
+
+Es el mismo criterio que `functions/rebuild.js` con el reloj
+([`05-patrones.md`](05-patrones.md) → "El reloj también es infraestructura"): lo
+que hace falta controlar para testear entra como parámetro con default.
+
+---
+
+## D-114 · Regenerar los encuentros conserva la identidad de la fila
+
+**Decisión:** `generarSesiones` recibe la lista que reemplaza (`previas`) y la
+fila que queda en cada posición hereda su `id` y su `calendarEventId`. Solo las
+posiciones que no existían estrenan un id.
+
+**Motivo (B-90):** el generador daba ocho ids nuevos, así que sobre un ciclo ya
+publicado el diff del §7.2 no reconocía ningún encuentro y hacía ocho `borrar` y
+ocho `crear`. Eso es exactamente lo que ese diff existe para evitar: "perdería
+los recordatorios y las suscripciones de la gente". El caso real es banal —el
+ciclo se corre una semana y se regeneran las fechas— y el cartel decía
+"Reemplaza la lista actual", que nadie lee como "reemplaza el calendario".
+
+Con el id heredado, correr el ciclo una semana son ocho `actualizar`: al
+suscripto se le mueve la fecha del evento, que es lo que pasó de verdad.
+
+**Se reusa por posición, no solo cuando la cantidad no cambia** (que era la
+salida mínima que proponía el backlog): generar diez sobre ocho son ocho
+actualizaciones y dos altas, y generar seis sobre ocho, seis actualizaciones y
+dos bajas. Cuesta lo mismo y cubre los dos casos que más se usan.
+
+**Esto no contradice la trampa 2** ("ids de sesión por índice, nunca"). El id no
+se *deriva* del índice: se **hereda** de la fila que ocupaba esa posición, y las
+filas nuevas siguen estrenando un uuid de cliente. La trampa habla de ids
+calculados como `ses_${i}`, que cambian de dueño cuando se borra una fila del
+medio; acá el generador reemplaza la lista entera de una, así que la posición es
+la única correspondencia que existe entre lo viejo y lo nuevo.
+
+**Lo que sigue borrando:** el tema y la lectura de cada fila. No es lo que B-90
+pedía y en un club de lectura es trabajo tipeado a mano, así que quedó anotado
+como **B-169**, ahora que conservar la fila lo vuelve barato.
+
+**La guarda:** los tests de B-90 en `tests/costuras.test.ts` corren el generador
+de verdad contra el `planificar` de verdad. Es el par lo que estaba roto —cada
+pieza por separado hacía lo suyo bien—, así que la afirmación tiene que cruzar
+las dos.
+
+---
+
+## D-115 · El formulario se parte por sección, y las secciones son presentación
+
+**Decisión:** las nueve secciones del §11 y la barra de acciones viven en
+`src/components/admin/formulario/`, una por archivo.
+`ActividadFormulario.tsx` se queda con el estado, las cascadas, el guardado y
+el orden de las secciones: pasó de 858 a ~230 líneas.
+
+**Motivo (B-79):** era el segundo archivo más tocado del repo (9 de 41 commits)
+y en este proyecto ya se commitearon marcadores de conflicto que sobrevivieron
+dos commits (`tests/sin-marcadores-de-conflicto.test.ts`). Nueve `<Seccion>` en
+un solo `return` significa que dos cambios cualesquiera del panel chocan en el
+mismo archivo.
+
+**Las secciones no deciden nada.** Reciben `form`, `set`, `errorDe` y `uid`, y
+los condicionales del §11 ya resueltos. Por eso el cuerpo del JSX se movió
+**verbatim**: las props se llaman igual que las variables que tenía adentro, así
+que el diff del refactor no esconde ningún cambio de comportamiento.
+
+**Y los condicionales del §11 se fueron a un módulo puro**
+(`lib/formulario/condicionales.ts`), no a cada sección: `necesitaSede` decide a
+la vez qué se muestra y qué exige el schema en su `superRefine`. Si esas dos
+derivaciones se separan, el formulario esconde un campo que el guardado pide y
+el error aparece sobre un campo que no está en pantalla. Un test las ata.
+
+**El vocabulario de la UI** (`ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`,
+`ETIQUETA_ESTADO`) quedó en `formulario/etiquetasUI.ts` porque ahora lo comparten
+varias secciones. **No se unificó con los `ETIQUETA_*` de
+`functions/calendario.js`**: esos son prosa del evento público y unificarlos
+haría que un cambio de copy del panel cambie lo que se publica. B-76 quiere
+llevarlos a un `src/lib/etiquetas.ts` compartido con el listado; cuando salga,
+son estos tres mapas los que se mudan.
+
+**Costo medido:** la carga inicial de `/admin` pasó de **387.797 a 388.380
+bytes** (+583 B, +0,15 %; gzip 106.934 → 107.127, +193 B), con los mismos 4
+chunks. La suma de todos los chunks subió 3.418 B: es el envoltorio de diez
+componentes nuevos. Se paga en superficie de conflicto y en poder tocar una
+sección sin abrir las otras ocho (B-62 pedía exactamente eso).
+
+**Dos tests leían `ActividadFormulario.tsx` como texto** y había que arreglarlos
+en el mismo cambio, no después: `tests/ayuda.test.ts` (cada sección tiene su
+capítulo) y `tests/opciones-orden.test.ts` (el arancel no se preselecciona).
+Los dos leen ahora el directorio, y el segundo afirma primero que **encontró**
+el campo: si no, un `not.toContain` sobre un string vacío pasa sin haber mirado
+nada.
+
+---
+
 ## Decidido, sin trabajo pendiente
 
 | Tema | Resolución |

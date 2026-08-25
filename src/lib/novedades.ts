@@ -57,6 +57,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'regenerar-encuentros-conserva-el-calendario',
+    fecha: '2026-08-24',
+    version: '1.0.1',
+    titulo: 'Volver a generar los encuentros ya no borra los eventos del calendario',
+    detalle:
+      'Si el ciclo se corre una semana, ahora podés volver a generar las fechas sin perder nada ' +
+      'del calendario: los encuentros que ya estaban publicados se mueven de día en lugar de ' +
+      'borrarse y crearse de nuevo, así que quien se suscribió los conserva con sus ' +
+      'recordatorios. Los temas y las lecturas se siguen borrando, eso no cambió.',
+    donde: 'Botón «Generar N encuentros…», en la sección Encuentros.',
+  },
+  {
     id: 'reintentar-reporte-fallido',
     fecha: '2026-08-24',
     version: '1.0.1',

@@ -22,7 +22,7 @@ import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
 import { huboCambioDeContenido } from '../functions/historial.js';
 import { encuentrosDe } from '@/lib/calendarioPanel';
 import { generarSesiones } from '@/lib/sesiones';
-import type { Actividad, ActividadConId } from '@/types/actividad';
+import type { Actividad, ActividadConId, SesionForm } from '@/types/actividad';
 
 const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
@@ -463,20 +463,21 @@ describe('B-84 · el número del encuentro es el mismo en el panel y en el event
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * El generador del §11 **reemplaza** la lista, y `generarSesiones` da ids
- * nuevos. Sobre un ciclo ya publicado eso es exactamente lo que el §7.2 dice que
- * no hay que hacer: borrar y recrear los ocho eventos, perdiendo los
- * recordatorios y las suscripciones de la gente. El cartel del formulario avisa
- * "Reemplaza la lista actual"; no dice que reemplaza el calendario.
+ * El generador del §11 **reemplaza** la lista, y `generarSesiones` daba ids
+ * nuevos. Sobre un ciclo ya publicado eso era exactamente lo que el §7.2 dice
+ * que no hay que hacer: borrar y recrear los ocho eventos, perdiendo los
+ * recordatorios y las suscripciones de la gente. El cartel del formulario decía
+ * "Reemplaza la lista actual", que no se lee como "reemplaza el calendario".
+ *
+ * **Arreglado (D-114):** el generador recibe las sesiones que reemplaza y la
+ * fila de cada posición hereda `id` y `calendarEventId`. Estos tests corren el
+ * generador de verdad contra el diff de verdad, así que atan el par: si
+ * cualquiera de los dos deja de reusar el id, vuelven a aparecer los `borrar`.
  */
 describe('B-90 · el generador de encuentros sobre un ciclo publicado', () => {
-  it('genera ids nuevos, así que el diff no reconoce ningún encuentro', () => {
-    const generadas = generarSesiones({
-      cantidad: 8,
-      inicio: '2026-09-03T19:00',
-      duracionMinutos: 120,
-    });
-    const despues = ciclo({
+  /** Las sesiones generadas, en la forma en que llegan al documento. */
+  const documentoCon = (generadas: SesionForm[]) =>
+    ciclo({
       sesiones: generadas.map((s) => ({
         id: s.id,
         inicio: ts(new Date(s.inicio).toISOString()),
@@ -484,12 +485,68 @@ describe('B-90 · el generador de encuentros sobre un ciclo publicado', () => {
         tema: null,
         lectura: null,
         cancelada: false,
-        calendarEventId: null,
+        calendarEventId: s.calendarEventId,
       })),
     });
-    const ops = tipos(planificar(ciclo(), despues, {}));
-    expect(ops.filter((t) => t === 'borrar')).toHaveLength(8);
-    expect(ops.filter((t) => t === 'crear')).toHaveLength(8);
+
+  /** El mismo ciclo publicado, en la forma del formulario. */
+  const previas = (): SesionForm[] =>
+    Array.from({ length: 8 }, (_, i) => ({
+      id: `ses_${i}`,
+      inicio: '2026-09-03T19:00',
+      fin: '2026-09-03T21:00',
+      tema: '',
+      lectura: '',
+      cancelada: false,
+      calendarEventId: `evt_${i}`,
+    }));
+
+  it('correr el ciclo una semana mueve los ocho eventos, no los recrea', () => {
+    const generadas = generarSesiones({
+      cantidad: 8,
+      inicio: '2026-09-10T19:00',
+      duracionMinutos: 120,
+      previas: previas(),
+    });
+    const ops = tipos(planificar(ciclo(), documentoCon(generadas), {}));
+    expect(ops.filter((t) => t === 'borrar')).toHaveLength(0);
+    expect(ops.filter((t) => t === 'crear')).toHaveLength(0);
+    expect(ops.filter((t) => t === 'actualizar')).toHaveLength(8);
+  });
+
+  it('generar diez sobre ocho crea solo los dos que faltan', () => {
+    const generadas = generarSesiones({
+      cantidad: 10,
+      inicio: '2026-09-10T19:00',
+      duracionMinutos: 120,
+      previas: previas(),
+    });
+    const ops = tipos(planificar(ciclo(), documentoCon(generadas), {}));
+    expect(ops.filter((t) => t === 'crear')).toHaveLength(2);
+    expect(ops.filter((t) => t === 'borrar')).toHaveLength(0);
+  });
+
+  it('generar seis sobre ocho borra solo los dos que sobran', () => {
+    const generadas = generarSesiones({
+      cantidad: 6,
+      inicio: '2026-09-10T19:00',
+      duracionMinutos: 120,
+      previas: previas(),
+    });
+    const ops = tipos(planificar(ciclo(), documentoCon(generadas), {}));
+    expect(ops.filter((t) => t === 'borrar')).toHaveLength(2);
+    expect(ops.filter((t) => t === 'crear')).toHaveLength(0);
+  });
+
+  it('sin `previas` sigue dando ids nuevos: es una lista nueva, no un reemplazo', () => {
+    const generadas = generarSesiones({
+      cantidad: 8,
+      inicio: '2026-09-10T19:00',
+      duracionMinutos: 120,
+    });
+    expect(generadas.every((s) => s.calendarEventId === null)).toBe(true);
+    expect(tipos(planificar(ciclo(), documentoCon(generadas), {})).filter((t) => t === 'crear'))
+      .toHaveLength(8);
   });
 });
 
