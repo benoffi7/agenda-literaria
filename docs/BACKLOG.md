@@ -1305,7 +1305,7 @@ El disparador puntual —los dos campos del generador se leen como «cantidad» 
 arregla la etiqueta, este caso concreto no vuelve a pasar aunque el modal no
 exista todavía.
 
-### B-63 · Nada verifica que la guía siga diciendo la verdad
+### B-63 · Nada verifica que la guía siga diciendo la verdad — ✅ hecho (2026-08-26)
 
 `tests/ayuda.test.ts` verifica que **exista** un capítulo por sección del
 formulario, que los seis avisos irreversibles estén y que el texto no tenga
@@ -1320,6 +1320,35 @@ existente y nombrarlo en el aviso, para que borrar el test rompa el vínculo.
 
 **Una ayuda que miente es peor que no tener ayuda**, así que si la lista de
 avisos crece, este ítem sube de prioridad.
+
+**Cómo quedó (2026-08-26).** Se tomó la segunda salida: cada aviso ata en `atadoA`
+los `it` de comportamiento que fijan lo que afirma. **27 vínculos**, y el chequeo no
+es la cita — abre cada archivo y exige que el `it` exista con ese nombre exacto y
+**escrito como llamada**, que entre en la corrida de `npm test` (los
+`*.integracion.test.ts` quedan excluidos: se saltean solos sin emuladores) y que no
+esté apagado ni invertido **ni lo apague ninguno de sus `describe`**.
+
+**El aserto lee el fuente con un walker y no con un `grep`**, porque las cuatro formas
+de que un chequeo así crea haber encontrado algo ya pasaron todas en este repo esta
+semana: el nombre suelto lo satisface el `import`; con los comentarios adentro lo
+satisface la prosa; una comilla suelta dentro de un literal de regex desincroniza al
+lector y le hace tragarse el `it` siguiente; y mirar el `it` sin su `describe` deja
+pasar un `describe.skip`. Las cuatro verificadas rompiéndolas.
+
+**Y encontró una mentira, que vale más que el mecanismo.** El capítulo «Encuentros»
+decía que «Generar N encuentros» **borra los temas y las lecturas**: era cierto hasta
+**B-176**, del mismo día, que le puso red al cartel de `SesionesEditor.tsx` **y no a la
+guía** — que decía la misma mentira y en la misma dirección cara: nadie aprieta el
+botón por miedo a perder algo que ya no se pierde. El capítulo de al lado ya decía lo
+contrario, o sea que la guía **se contradecía a sí misma**.
+
+**El agujero se redujo, no se cerró, y se sabe cuánto queda:** que el `it` atado
+afirme *lo del aviso* (que afirme algo lo sostiene el propio test; el resto es
+review); las frases sin `it` —«si destildás la cancelación, el evento vuelve» no tiene
+test de des-cancelar, y de «nada lee de vuelta del calendario» solo se pudo atar la
+mitad que existe—; y los puntos de capítulo, donde `atadoA` es opcional. La extensión
+natural, si el mecanismo prueba que sirve, es obligarlo en los puntos con
+`cuidado: true`.
 
 ### B-95 · El texto para publicar en redes
 
@@ -1430,8 +1459,13 @@ D-15.
 **Y hay dos textos que van a quedar mintiendo el día que esto entre**, los dos hay
 que corregir en el mismo cambio:
 
-1. El aviso «Cancelar un encuentro lo saca del calendario, pero no lo borra» de
-   `src/lib/ayuda.ts` — que hoy ya es discutible y con esto pasa a ser al revés.
+1. El aviso `cancelar-encuentro` de `src/lib/ayuda.ts` — que desde B-63 se llama
+   «Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá»
+   y **dice la verdad hoy**. Con B-98 pasa a ser al revés. **Y no hace falta
+   acordarse:** ese aviso está atado por `atadoA` a los `it` que fijan el
+   comportamiento actual, así que implementar B-98 **pone el test de la guía en
+   rojo** y obliga a reescribir el aviso en el mismo commit — que es literalmente lo
+   que este ítem pedía.
 2. El §7.3 del `CLAUDE.md`, que es la fuente.
 
 **Por qué no entró a la tanda del 2026-08-26:** necesita `SesionesEditor.tsx` para el

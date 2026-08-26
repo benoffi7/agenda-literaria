@@ -142,6 +142,52 @@ El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un bo
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
 
+### B-63 · Cada aviso de la guía nombra el test que lo sostiene
+
+`tests/ayuda.test.ts` verificaba que el texto **esté**: un capítulo por sección del
+formulario, los seis avisos irreversibles, sin jerga. Lo que ningún test podía ver es
+que el texto siga siendo **cierto** — el día que cancelar un encuentro deje de sacarlo
+del calendario, la guía sigue diciendo que lo saca y todo queda en verde. Y una ayuda
+que miente es peor que no tener ayuda, porque la gente toma decisiones que no se
+deshacen leyéndola.
+
+De las dos salidas del ítem se tomó la segunda: cada aviso ata, en el campo nuevo
+`atadoA`, los `it` de comportamiento que fijan lo que afirma. **27 vínculos**, y el
+chequeo no es la cita: abre cada archivo y exige que el `it` exista **con ese nombre
+exacto y escrito como llamada**, que entre en la corrida de `npm test` —los
+`*.integracion.test.ts` quedan excluidos, porque se saltean solos sin emuladores— y
+que no esté apagado ni invertido, **ni lo apague ninguno de sus `describe`**. Borrar,
+renombrar o saltear el test que sostiene un aviso pone la guía en rojo nombrando qué
+vínculo se cortó. El nombre del test no sale a la pantalla, y hay un chequeo de eso.
+
+**El aserto lee el fuente con un walker y no con un `grep`**, porque las cuatro formas
+de que un chequeo así crea haber encontrado algo ya pasaron todas en este repo esta
+semana: el nombre suelto lo satisface el `import`; con los comentarios adentro lo
+satisface la prosa; una comilla suelta dentro de un literal de regex desincroniza al
+lector y le hace tragarse el `it` siguiente; y mirar el `it` sin su `describe` deja
+pasar un `describe.skip`. Las cuatro verificadas rompiéndolas, con centinelas que
+después se borraron.
+
+**Y encontró una mentira, que valía más que el mecanismo.** El capítulo «Encuentros»
+decía que «Generar N encuentros» *borra los temas y las lecturas*: era cierto hasta
+**B-176**, que lo cambió el mismo día y le puso red al cartel de `SesionesEditor.tsx`
+**pero no a la guía** — que decía la misma mentira, y en la misma dirección cara:
+nadie aprieta el botón por miedo a perder algo que ya no se pierde. El capítulo de al
+lado ya decía lo contrario, así que la guía se contradecía a sí misma.
+
+El aviso de cancelar **no** mentía —`debeExistir` sigue borrando el evento del
+encuentro cancelado, que es lo que su texto dice— pero era la única de las seis
+cabeceras que no era cierta **leída sola**: «lo saca del calendario, pero no lo borra»
+admite «el evento se queda marcado como cancelado», que es falso. Ahora dice
+«**Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá**».
+Y cuando entre B-98 —aprobado hoy, sin implementar— el vínculo se corta solo y obliga
+a reescribir el aviso en el mismo commit, que es lo que ese ítem pedía.
+
+**El agujero se redujo, no se cerró, y se sabe cuánto queda.** Sin cubrir: que el `it`
+atado afirme *lo del aviso* (que afirme algo lo sostiene el propio test; el resto es
+review); las frases sin `it` —«si destildás la cancelación, el evento vuelve» no tiene
+test de des-cancelar—; y los puntos de capítulo, donde `atadoA` es opcional.
+
 ### B-196 · Los tests de privacidad del `events.json` y del evento pasan de lista a propiedad
 
 Las cuatro salidas públicas del §5.1 se verificaban de dos maneras, y dos estaban peor

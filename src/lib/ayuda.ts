@@ -10,7 +10,8 @@
  *
  * 1. Se puede testear. `tests/ayuda.test.ts` exige que estén cubiertos los seis
  *    comportamientos que no se pueden deshacer, que cada sección del formulario
- *    tenga su capítulo, y que el texto no tenga jerga de programación.
+ *    tenga su capítulo, que el texto no tenga jerga de programación, y que cada
+ *    aviso siga atado a un test de comportamiento que corre (ver abajo).
  * 2. Se puede actualizar sin leer código de UI: quien agrega una funcionalidad
  *    edita un array de textos.
  *
@@ -21,6 +22,30 @@
  *
  * Tono: le habla a alguien que organiza actividades literarias. Sin referencias
  * a secciones de documentos, sin nombres de archivos, sin jerga.
+ *
+ * ── Por qué cada aviso nombra un test (B-63) ────────────────────────────────
+ *
+ * Los tests de arriba verifican que el texto **esté**. Ninguno puede verificar
+ * que el texto sea **cierto**: el día que cancelar un encuentro deje de sacarlo
+ * del calendario, la guía va a seguir diciendo que lo saca y todo va a estar en
+ * verde. Y una ayuda que miente es peor que no tener ayuda, porque la gente
+ * toma decisiones que no se deshacen leyéndola.
+ *
+ * De ahí el campo `atadoA`: cada aviso nombra los tests de comportamiento que
+ * fijan lo que afirma. No es una cita decorativa —`tests/ayuda.test.ts` abre
+ * cada uno de esos archivos y exige que el `it` exista con ese nombre exacto,
+ * que no esté saltado y que ninguno de sus `describe` lo apague—, así que
+ * borrar, renombrar o saltear el test que sostiene un aviso pone el test de la
+ * guía en rojo nombrando qué vínculo se cortó. El nombre del test **no sale a
+ * la pantalla**: es data para el test, y hay un chequeo que lo verifica.
+ *
+ * **Lo que el vínculo NO puede verificar, y hay que saberlo:** que el `it`
+ * atado afirme de verdad lo que el aviso dice. El vínculo prueba que sigue
+ * habiendo un test con ese nombre corriendo; que su cuerpo no se haya vaciado
+ * lo sostiene el mismo `it` (si dejara de afirmar, fallaría) y la review. Y
+ * cubre un aviso por sus afirmaciones **atadas**: una frase suelta del texto,
+ * sin `it` que la fije, sigue pudiendo mentir. Las que quedaron así están
+ * anotadas en B-63.
  */
 
 /** Un comportamiento que no se ve, dentro de un capítulo. */
@@ -28,6 +53,26 @@ export interface PuntoAyuda {
   texto: string;
   /** Se destaca: equivocarse acá cuesta caro o no se deshace. */
   cuidado?: boolean;
+  /**
+   * Tests de comportamiento que fijan lo que este punto afirma. Opcional acá
+   * —en los avisos es obligatorio—, y se verifica igual cuando está.
+   */
+  atadoA?: VinculoTest[];
+}
+
+/**
+ * Un test de comportamiento que fija lo que la guía afirma.
+ *
+ * `archivo` es la ruta desde la raíz del repo y tiene que entrar en la corrida
+ * de `npm test`: bajo `tests/` y terminada en `.test.ts`. Los
+ * `*.integracion.test.ts` **no** sirven: se saltean solos cuando no hay
+ * emuladores, así que un vínculo ahí podría estar verde sin haber corrido nada.
+ *
+ * `it` es el nombre exacto del `it`, tal cual está escrito en el fuente.
+ */
+export interface VinculoTest {
+  archivo: string;
+  it: string;
 }
 
 export interface CapituloAyuda {
@@ -49,6 +94,11 @@ export interface AvisoAyuda {
   id: string;
   titulo: string;
   texto: string;
+  /**
+   * Los tests de comportamiento que fijan lo que este aviso afirma.
+   * **Obligatorio**: `tests/ayuda.test.ts` falla si un aviso no ata ninguno.
+   */
+  atadoA: VinculoTest[];
 }
 
 /**
@@ -66,6 +116,13 @@ export const AVISOS: AvisoAyuda[] = [
       'actividad desaparezca de las búsquedas de Google. Revisá el título antes de publicar, porque ' +
       'de ahí sale la dirección. Por lo mismo, una copia no se deja publicar mientras conserve la ' +
       'dirección que termina en «-copia»: el panel te lo pide antes de dejarte seguir.',
+    atadoA: [
+      // Publicada, el título cambia y la dirección no.
+      { archivo: 'tests/formulario-dominio.test.ts', it: 'con el slug bloqueado el título cambia y el slug no' },
+      // Y la copia no se deja publicar mientras conserve la dirección «-copia».
+      { archivo: 'tests/schema.test.ts', it: 'rechaza publicar con un slug que termina en -copia' },
+      { archivo: 'tests/schema.test.ts', it: 'deja GUARDAR un borrador con ese slug' },
+    ],
   },
   {
     id: 'link-reunion',
@@ -76,6 +133,14 @@ export const AVISOS: AvisoAyuda[] = [
       'el link en el sitio». Si la actividad tiene cupo, publicarlo es dejar la puerta abierta: entra ' +
       'cualquiera, el cupo deja de significar algo y alguien puede arruinar el encuentro. Tildalo ' +
       'solo en encuentros abiertos, sin inscripción ni cupo.',
+    atadoA: [
+      // Se guarda y no se publica, salvo que la casilla esté tildada — en el
+      // evento del calendario y en el sitio, que son las dos salidas.
+      { archivo: 'tests/calendario.test.ts', it: 'el default es NO publicarlo' },
+      { archivo: 'tests/calendario.test.ts', it: 'publica el link SOLO si urlPublica está en true' },
+      { archivo: 'tests/toPublic.test.ts', it: 'por defecto no filtra el link de la reunión, solo la plataforma' },
+      { archivo: 'tests/toPublic.test.ts', it: 'publica el link si urlPublica está en true' },
+    ],
   },
   {
     id: 'interno',
@@ -85,10 +150,25 @@ export const AVISOS: AvisoAyuda[] = [
       'en el sitio, ni en el calendario, ni en el evento. Lo mismo vale para el material que dejás ' +
       'sin marcar como público: de ese se ve el título y el tipo, nunca el link. Si algo no tiene ' +
       'que verlo nadie de afuera, va en uno de esos dos lugares y en ningún otro.',
+    atadoA: [
+      // «Difusión» no sale ni al sitio ni al evento.
+      { archivo: 'tests/toPublic.test.ts', it: 'no incluye difusion' },
+      { archivo: 'tests/calendario.test.ts', it: 'no publica la difusión interna' },
+      // Del material sin marcar como público se ve el título, nunca el link.
+      { archivo: 'tests/toPublic.test.ts', it: 'un material privado conserva título y tipo pero pierde la URL' },
+      { archivo: 'tests/calendario.test.ts', it: 'un material privado conserva título pero pierde la URL' },
+    ],
   },
   {
     id: 'cancelar-encuentro',
-    titulo: 'Cancelar un encuentro lo saca del calendario, pero no lo borra',
+    /*
+     * El título decía «Cancelar un encuentro lo saca del calendario, pero no lo
+     * borra», y ese «lo» tenía dos lecturas: la que el texto explica —el
+     * encuentro sigue acá— y una falsa, «el evento se queda en el calendario
+     * marcado como cancelado», que es justo lo que hoy NO pasa. En un aviso que
+     * se lee de un pantallazo, el título tiene que ser cierto solo.
+     */
+    titulo: 'Cancelar un encuentro saca su evento del calendario y conserva el encuentro acá',
     texto:
       'Al marcar un encuentro como cancelado, su evento desaparece del calendario público. El ' +
       'encuentro sigue acá, con su fecha y su tema, así que queda el registro de que ese día estaba ' +
@@ -97,6 +177,15 @@ export const AVISOS: AvisoAyuda[] = [
       'Los demás encuentros no se tocan: el que era «Encuentro 6 de 8» sigue diciendo eso en el ' +
       'calendario de quien lo tenga agendado. En la serie queda un hueco, que es justamente la ' +
       'forma de ver que ese día se canceló.',
+    atadoA: [
+      // Cancelar saca del calendario el evento de ESE encuentro, y solo el suyo.
+      { archivo: 'tests/calendario.test.ts', it: 'cancelar el tercero de ocho borra solo el suyo (B-84)' },
+      // El encuentro sigue acá, con su número: el hueco en la serie se ve.
+      { archivo: 'tests/calendario.test.ts', it: 'el cancelado conserva su número, aunque no tenga evento' },
+      // Y los demás no se tocan: el 6 de 8 sigue diciendo eso.
+      { archivo: 'tests/calendario.test.ts', it: 'el sexto sigue siendo "Encuentro 6 de 8" después de cancelar el tercero' },
+      { archivo: 'tests/calendario.test.ts', it: 'el total no cambia por cancelar, así que ningún otro evento se toca' },
+    ],
   },
   {
     id: 'borrador-borra-eventos',
@@ -107,6 +196,15 @@ export const AVISOS: AvisoAyuda[] = [
       'publicar se crean de nuevo, pero son eventos nuevos: quien se los había guardado o tenía un ' +
       'recordatorio, lo pierde. Para corregir un dato no hace falta despublicar: editás, guardás, y ' +
       'el calendario se actualiza solo.',
+    atadoA: [
+      // Borrador y cancelada borran los eventos de todos los encuentros.
+      { archivo: 'tests/calendario.test.ts', it: 'pasar a borrador borra los ocho eventos' },
+      { archivo: 'tests/calendario.test.ts', it: 'cancelar la actividad borra los ocho eventos' },
+      // Al republicar se crean de nuevo: son eventos nuevos, no los de antes.
+      { archivo: 'tests/calendario.test.ts', it: 'republicar vuelve a crear los eventos' },
+      // Y corregir un dato con la actividad publicada actualiza, no recrea.
+      { archivo: 'tests/calendario.test.ts', it: 'un cambio de título también propaga a todas' },
+    ],
   },
   {
     id: 'calendario-espejo',
@@ -115,6 +213,19 @@ export const AVISOS: AvisoAyuda[] = [
       'Todo lo que se ve en el calendario público sale de este panel. Si entrás a Google Calendar y ' +
       'cambiás a mano una hora, un título o una dirección, ese cambio se pierde la próxima vez que ' +
       'se toque la actividad acá, sin avisar. Lo que haya que cambiar, se cambia en el panel.',
+    atadoA: [
+      /*
+       * Lo que se puede atar es la mitad verificable del aviso: cuando la
+       * actividad se toca acá, el evento se reescribe entero con lo que dice el
+       * panel —de ahí que el cambio hecho a mano se pierda—, y un solo cambio
+       * de la actividad reescribe los eventos de sus ocho encuentros.
+       *
+       * La otra mitad —que nada lee de vuelta del calendario— no tiene test que
+       * la fije, porque no hay código que hacerlo fallar: está anotada en B-63.
+       */
+      { archivo: 'tests/calendario.test.ts', it: 'un cambio de sede propaga a las ocho sesiones del ciclo' },
+      { archivo: 'tests/calendario.test.ts', it: 'un cambio de título también propaga a todas' },
+    ],
   },
 ];
 
@@ -494,14 +605,32 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           '«Generar encuentros» toma la fecha y la duración del primero y arma la serie cada tantos ' +
-          'días. Recalcula las fechas de lo que haya cargado y borra los temas y las lecturas, así ' +
-          'que se usa al principio y no después de ajustarlo todo a mano.',
+          'días. Recalcula solo las fechas: el tema, la lectura y la cancelación de cada encuentro ' +
+          'se conservan, así que si el ciclo se corre una semana no hay que volver a tipear las ocho ' +
+          'lecturas. Un encuentro que antes no existía nace limpio.',
+        atadoA: [
+          /*
+           * Este punto decía «borra los temas y las lecturas», y era cierto
+           * hasta B-176. El código pasó a conservarlos y el texto se quedó
+           * mintiendo en la dirección más cara —que es la que hace que nadie
+           * apriete el botón—, sin que nada fallara: es el caso que B-63 dice
+           * que no se puede ver, encontrado en la guía y no en un cartel.
+           */
+          { archivo: 'tests/sesiones.test.ts', it: 'regenerar conserva el tema, la lectura y la cancelación de cada fila' },
+          { archivo: 'tests/sesiones.test.ts', it: 'y las fechas sí se recalculan: es lo único que el generador pisa' },
+          { archivo: 'tests/sesiones.test.ts', it: 'pero una fila que no existía antes nace limpia' },
+        ],
       },
       {
         texto:
           'Si los encuentros ya están en el calendario, generarlos de nuevo los mueve de día en ' +
           'lugar de borrarlos y volver a crearlos: quien se suscribió los conserva, con sus ' +
           'recordatorios. Si pedís menos de los que hay, los últimos sí se borran del calendario.',
+        atadoA: [
+          { archivo: 'tests/sesiones.test.ts', it: 'la fila de cada posición hereda el id y su evento de calendario' },
+          { archivo: 'tests/sesiones.test.ts', it: 'generar de menos deja afuera las últimas, no las primeras' },
+          { archivo: 'tests/calendario.test.ts', it: 'correr la fecha de un encuentro actualiza solo ese' },
+        ],
       },
       {
         texto:
