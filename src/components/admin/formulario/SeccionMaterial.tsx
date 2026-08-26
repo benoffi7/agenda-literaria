@@ -6,11 +6,21 @@ import { Seccion } from '@/components/admin/campos/Seccion';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
-type Props = Omit<PropsSeccion, 'uid'> & { esClub: boolean };
+type Props = Omit<PropsSeccion, 'uid'> & {
+  esClub: boolean;
+  /**
+   * B-184 — sube cuando la barra manda a un campo de esta sección: arranca
+   * cerrada, y un error adentro de un acordeón cerrado no se ve en ninguna
+   * parte de la pantalla.
+   */
+  pedidoDeApertura?: number;
+};
 
-export function SeccionMaterial({ form, set, errorDe, esClub }: Props) {
+export function SeccionMaterial({ form, set, errorDe, esClub, pedidoDeApertura }: Props) {
   return (
     <Seccion
+      ancla="material"
+      pedidoDeApertura={pedidoDeApertura}
       titulo="Material"
       descripcion="Lecturas, guías y contexto. Sobre todo en clubes de lectura."
       colapsable

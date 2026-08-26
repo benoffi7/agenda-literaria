@@ -151,3 +151,18 @@ export const instanteDeTimestamp = (valor: unknown): Date | null => {
       : null;
   return fecha && !Number.isNaN(fecha.getTime()) ? fecha : null;
 };
+
+/**
+ * Fecha y hora cortas, en la zona del proyecto, para mostrar en el panel.
+ *
+ * Vive acá por el mismo motivo que `instanteDeTimestamp`: este módulo es el
+ * hogar de las conversiones de fecha, y el `timeZone` explícito es el que evita
+ * la trampa 1 también al mostrar. Sin esto, quien mira desde otra zona ve la
+ * hora de su navegador y no la del encuentro.
+ */
+export const fechaHoraCorta = (d: Date): string =>
+  new Intl.DateTimeFormat('es-AR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  }).format(d);

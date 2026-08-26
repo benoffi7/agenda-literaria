@@ -82,12 +82,16 @@ propiedad del día en que se escribió.
    bidireccional en analítica. Un `...actividad`, un `...doc.data()`, un
    `Object.keys(...).map` o un `JSON.stringify(doc)` en una salida pública es
    **P0 aunque hoy no filtre nada**: publica solo el campo que se agregue mañana.
-4. **`firebase-admin` nunca al cliente** (trampa 4, §5.4). Tres defensas:
+4. **`firebase-admin` nunca al cliente** (trampa 4, §5.4). Cuatro defensas:
    `src/lib/firebase-admin.ts` tira error si ve `window`, `astro.config.mjs` lo
-   marca `ssr.external`, y `scripts/verificar-bundle.sh` corre como paso
-   bloqueante en los dos workflows. Si el diff importa `firebase-admin` desde
-   algo que no sea frontmatter de `.astro`, `getStaticPaths` o un script de
-   build, es P0.
+   marca `ssr.external`, `scripts/verificar-bundle.sh` corre como paso bloqueante
+   en los dos workflows, y `tests/build-credenciales.test.ts` recorre **todo**
+   `src/` verificando que nada más que la propia puerta lo importe.
+   **Ese barrido ya está automatizado: no lo reportes.** Lo que sí te toca es lo
+   que ese test no ve — un `await import('firebase-admin')` o un `require`
+   dinámico, y que `ssr.external` siga en `astro.config.mjs`. Un import estático
+   desde algo que no sea frontmatter de `.astro`, `getStaticPaths` o un script de
+   build sigue siendo P0 si el test no lo cubriera.
 5. **El historial de versiones guarda el documento entero sin proyectar**, a
    propósito (§12, D-41), y es aceptable porque su audiencia es la misma que la
    del documento padre. Se vuelve un hallazgo el día que el build lea

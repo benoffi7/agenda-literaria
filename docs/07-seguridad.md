@@ -32,6 +32,58 @@ privado de la reunión, la difusión interna y la URL del material privado.
 Y de paso la vista previa **avisa** cuando el link de la reunión va a salir: es
 el último lugar donde se puede notar antes de publicar.
 
+## El borrador autoguardado tampoco es una salida (B-191, D-122)
+
+El formulario se persiste solo en el navegador de quien está cargando. **Es la
+única cosa que el panel guarda fuera de Firestore que es contenido**: todo lo
+demás que vive en el navegador son marcas (qué novedad se leyó, qué acordeón se
+abrió, qué versión se vio).
+
+Por qué no es una salida nueva:
+
+1. **No sale del dispositivo.** No hay red en el camino: se escribe y se lee del
+   mismo navegador, con clave **por admin y por formulario** — la huella del uid
+   (`lib/huella.ts`, nunca el uid en claro) más el id de la actividad, o `nueva` /
+   `copia` cuando todavía no hay documento.
+2. **No pasa por la analítica.** El vocabulario de eventos solo acepta enums y
+   contadores (§9 de este documento y `docs/09-analitica.md`), y un descuido acá
+   sería la primera vía de fuga de texto libre del panel. `tests/autoguardado.test.ts`
+   lee el código de `lib/formulario/autoguardado.ts` y de `useAutoguardado.ts`
+   —con los comentarios afuera— y falla si aparece un `import` de `analytics`, un
+   `medir(` o cualquier cosa de Firestore.
+3. **No cambia lo que es público.** Lo guardado es una copia de lo que ya está en
+   la pantalla de un panel que pide sesión con permiso de admin; y el borrador
+   que se llegue a guardar en Firestore queda con `estado` no publicado, que las
+   reglas del §5.3 ya mantienen fuera de una lectura anónima.
+4. **Recuperar no puede publicar lo que estaba privado.** El borrador vive hasta
+   30 días, así que un valor de hace tres semanas se aplica sobre el documento de
+   hoy. El caso concreto: se destilda «mostrar el link sin inscribirse», no se
+   guarda, se recupera a los veinte días y se publica — y el link de la reunión
+   sale a `events.json` y a la descripción del evento (trampa 5). **Cinco campos no
+   se aplican tal cual:** los `calendarEventId`, que los escribe el backend
+   (familia de B-80); los dos flags de publicación, que vuelven a `false`; y
+   `estado`, el `slug` bloqueado y `sesiones[].cancelada`, que salen del documento
+   de hoy —un borrador que decía `publicado` re-publicaba una actividad retirada a
+   propósito—. La lista y el porqué de cada uno están en **D-124**, en un solo
+   lugar: se quedó corta dos veces por estar repartida. El aviso de recuperación
+   avisa cuando hay flags en juego, porque la casilla puede estar en una sección
+   cerrada donde nadie la ve.
+
+Lo que sí hay que tener presente: **es contenido en un dispositivo compartido**.
+Mientras la sesión está abierta, el borrador queda ahí hasta que se descarta, se
+guarda o pasan 30 días. El alcance es el de la sesión del panel en ese navegador,
+y **salir de la agenda borra todos los borradores** (`borrarTodosLosBorradores`,
+antes del `signOut`). Sin ese paso el contenido sobrevivía al logout, en claro y
+bajo una clave predecible.
+
+Con precisión, porque la diferencia importa: eso lo garantizan **los dos botones de
+salir**, que son los dos únicos caminos que llaman a `logout()`. Una sesión que
+termina sin un click —token revocado, cuenta deshabilitada, logout en otra
+pestaña— vuelve al login y deja los borradores donde están. Es **B-203**, y el
+arreglo tiene su propio cuidado: borrar en cualquier `null` de `onAuthStateChanged`
+se llevaría trabajo bueno en un `null` transitorio, que es peor. Y el aviso de
+recuperación tiene el botón para descartarlo a la vista.
+
 ## El link de la reunión: default privado, publicable a pedido
 
 `online.urlPublica` **se respeta** desde el 2026-08-21 (D-15), en el

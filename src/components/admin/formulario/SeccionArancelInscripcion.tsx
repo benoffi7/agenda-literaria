@@ -16,7 +16,7 @@ interface Props extends PropsSeccion {
 
 export function SeccionArancelInscripcion({ form, set, errorDe, uid, anotarLabel }: Props) {
   return (
-    <Seccion titulo="Arancel e inscripción">
+    <Seccion ancla="arancel-inscripcion" titulo="Arancel e inscripción">
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Arancel" requerido error={errorDe('arancel.tipo')}>
           <TaxonomiaSelect

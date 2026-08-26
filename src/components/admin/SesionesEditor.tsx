@@ -158,7 +158,11 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
         </div>
       )}
 
-      {error && <p className="text-xs font-medium text-acento">{error}</p>}
+      {error && (
+        <p data-campo-con-error className="scroll-mt-16 text-xs font-medium text-acento">
+          {error}
+        </p>
+      )}
 
       {sesiones.length === 0 && (
         <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/50">

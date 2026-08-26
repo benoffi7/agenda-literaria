@@ -1,3 +1,4 @@
+import { colapsarIndices } from '@/lib/rutaCampo';
 import { slugify } from '@/lib/slugify';
 import {
   CAMPOS_TAXONOMIA,
@@ -293,7 +294,7 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
 export const normalizarCampo = (valor: unknown): string => {
   if (typeof valor !== 'string' && !Array.isArray(valor)) return FUERA_DE_VOCABULARIO;
   const crudo = Array.isArray(valor) ? valor.join('.') : valor;
-  const ruta = crudo.replace(/\.\d+(?=\.|$)/g, '.N');
+  const ruta = colapsarIndices(crudo);
   return CAMPOS_VALIDABLES.has(ruta) ? ruta : FUERA_DE_VOCABULARIO;
 };
 

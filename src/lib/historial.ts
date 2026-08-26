@@ -37,6 +37,7 @@ import {
 // `firestore-client` y no `firebase-client`: el corte del bundle (B-09, D-51).
 import { db } from '@/lib/firestore-client';
 import { buildSearchText } from '@/lib/normalize';
+import { fechaHoraCorta } from '@/lib/sesiones';
 import { camposCambiados } from '@historial';
 import type { Actividad, ActividadConId, Sesion, TimestampLike } from '@/types/actividad';
 
@@ -219,11 +220,7 @@ export const resumenDeCampo = (valor: unknown, largo = 90): string => {
   if (typeof valor === 'object') {
     const o = valor as Record<string, unknown>;
     if (typeof o.toDate === 'function') {
-      return new Intl.DateTimeFormat('es-AR', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-        timeZone: 'America/Argentina/Buenos_Aires',
-      }).format((o.toDate as () => Date)());
+      return fechaHoraCorta((o.toDate as () => Date)());
     }
     // Un objeto del modelo (sede, organizador, inscripción): lo que se reconoce
     // de un vistazo es su nombre, y si no tiene, sus claves con algo cargado.

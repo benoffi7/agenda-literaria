@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { medirSeccion } from '@/lib/analytics';
 
 interface Props {
@@ -8,6 +8,20 @@ interface Props {
   colapsable?: boolean;
   abiertaPorDefecto?: boolean;
   insignia?: string;
+  /**
+   * Ancla en el DOM, para que la barra de acciones pueda llevar hasta acá
+   * (B-184). Es el `id` de la sección en `lib/formulario/camposFaltantes.ts`.
+   */
+  ancla?: string;
+  /**
+   * Contador de pedidos de apertura. Cada vez que sube, la sección se abre.
+   *
+   * B-184 — un campo rechazado adentro de un acordeón cerrado no está en ninguna
+   * parte de la pantalla: el contador decía "3 campos" y se veían cero. Es un
+   * contador y no un booleano a propósito, para que un segundo pedido vuelva a
+   * abrirla después de que alguien la cerró a mano.
+   */
+  pedidoDeApertura?: number;
   children: ReactNode;
 }
 
@@ -17,10 +31,16 @@ export function Seccion({
   colapsable = false,
   abiertaPorDefecto = true,
   insignia,
+  ancla,
+  pedidoDeApertura = 0,
   children,
 }: Props) {
   const [abierta, setAbierta] = useState(colapsable ? abiertaPorDefecto : true);
   const idPanel = useId();
+
+  useEffect(() => {
+    if (pedidoDeApertura > 0) setAbierta(true);
+  }, [pedidoDeApertura]);
 
   const encabezado = (
     <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
@@ -44,8 +64,10 @@ export function Seccion({
     </div>
   );
 
+  // El `scroll-mt` deja aire arriba cuando se scrollea hasta acá desde el
+  // mensaje de campos faltantes de la barra.
   return (
-    <section className="rounded-lg border border-borde bg-white/60">
+    <section id={ancla} className="scroll-mt-4 rounded-lg border border-borde bg-white/60">
       {colapsable ? (
         // Un <button> real y no un div con onClick: se abre con teclado, lo
         // anuncia el lector de pantalla, y en mobile el blanco táctil ocupa

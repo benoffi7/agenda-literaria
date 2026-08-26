@@ -251,12 +251,35 @@ Notas que importan:
 
 ### 3.2 Un build sin credenciales no puede publicar un sitio vacío
 
-`hayCredenciales()` ya existe en `firebase-admin.ts`. La regla:
+`hayCredenciales()` ya existe en `firebase-admin.ts`. La regla, que no cambió:
 
 - **En CI (`process.env.CI`), sin credenciales el build falla.** Un deploy con
   cero actividades borra el sitio entero de Google, y se recupera en semanas.
 - **En local, sin credenciales el build sigue** con lista vacía y un aviso en
   consola, para poder trabajar el CSS sin emuladores.
+
+**Quién implementa cada mitad** (B-189, D-123, cerrado el 2026-08-26):
+
+- Las dos cláusulas de arriba las decide **el lector de Firestore** —el que arme
+  el `events.json`—, porque "seguir con lista vacía" es una respuesta que solo
+  puede dar él: es su valor de retorno. Va a ser cuatro líneas al principio de
+  esa función:
+
+  ```ts
+  if (!hayCredenciales()) {
+    if (process.env.CI) throw new Error('build sin credenciales en CI');
+    console.warn('build sin credenciales: 0 actividades');
+    return [];
+  }
+  ```
+
+- Y detrás hay una **red que ya está puesta**: `adminApp()` tira si no hay
+  credenciales, así que un consumidor que se olvide del chequeo de arriba —el
+  patrón que dejó esta guarda apagada un mes— se encuentra un error claro en vez
+  de leer cero documentos en silencio. Es la puerta única a Firestore en build
+  time (§5.4), así que no se puede esquivar por olvido.
+  `tests/build-credenciales.test.ts` fija las dos cosas: que la puerta tire, y
+  que nada más en `src/` importe el Admin SDK por su cuenta.
 
 ### 3.3 Estados y qué se genera con cada uno
 

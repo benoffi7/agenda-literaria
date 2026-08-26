@@ -20,7 +20,7 @@ interface Props extends PropsSeccion {
 
 export function SeccionDonde({ form, set, errorDe, uid, conModalidad, anotarLabel, necesitaSede, necesitaOnline }: Props) {
   return (
-    <Seccion titulo="Dónde">
+    <Seccion ancla="donde" titulo="Dónde">
       <Campo label="Modalidad" requerido error={errorDe('modalidad')} className="mb-4">
         <div className="flex gap-2">
           {MODALIDADES.map((m) => (

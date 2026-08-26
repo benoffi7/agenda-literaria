@@ -1,5 +1,245 @@
 # Changelog
 
+## 1.2.0 — 2026-08-26
+
+Los tres ítems P1 del formulario que eran **una sola historia contada en tres
+pedazos**: no podías guardar (B-183), no sabías por qué (B-184), y si te ibas lo
+perdías (B-191). Se hicieron en ese orden a propósito: B-183 es el más barato,
+cierra el agujero de raíz y baja mucho la urgencia del autoguardado.
+
+`1.2.0` y no `1.1.1` porque cambia lo que el panel acepta y agrega
+comportamiento nuevo; un parche no lo describe. Sale con el próximo push a
+`main`, que desde B-20 publica solo.
+
+### B-183 · «Guardar borrador» pide el título, y nada más
+
+Reporte del dueño usando el panel: *"No me deja GUARDAR BORRADOR si no completo
+todo"*. El schema validaba lo mismo para un borrador que para algo publicado, así
+que el estado que existe para lo incompleto exigía el formulario completo. Con el
+aviso de B-35 al salir con cambios sin guardar, la única salida honesta era
+completar campos inventados o perder lo cargado.
+
+Ahora son **dos niveles sobre el mismo schema** —no dos schemas— con la
+condición `estado === 'publicado'`, que es exactamente lo que sale al sitio y a
+Calendar. El patrón ya estaba en el archivo aplicado a una regla sola: el slug
+`…-copia`, que solo se bloquea al publicar. Los `superRefine` no cambiaron de
+contenido, cambiaron de condición. **D-120** tiene el porqué de la línea y de
+por qué no son dos schemas.
+
+Lo que sigue bloqueando en los dos niveles es lo que haría ilegible el
+documento, no lo que lo haría incompleto: el `id` de cada sesión (trampa 2), que
+las fechas se puedan convertir a `Timestamp` (trampa 1), el formato del slug y
+el rango de las coordenadas.
+
+### B-184 · La barra dice qué falta, y lleva hasta el campo
+
+Reporte del dueño: *"cuando no se pueda guardar y diga que faltan campos,
+siempre especificarlos"*. Decía «3 campos para revisar». Era una decisión escrita
+—listar rutas de campo tapaba media pantalla en mobile— a la que le faltaba un
+dato: **cuatro de las nueve secciones arrancan colapsadas**, así que el campo
+rechazado podía no estar en ninguna parte de la pantalla. El contador decía tres
+y se veían cero.
+
+Ahora nombra los campos si son pocos («Falta completar: Título, Arancel») y las
+secciones con su cuenta si son muchos («Dónde (2), Arancel e inscripción (1)»),
+que además es más corto que tres rutas de campo. Cada nombre es un botón: abre la
+sección si estaba cerrada y scrollea hasta el primer campo rechazado, que se
+encuentra por orden de documento (`data-campo-con-error` + `querySelector`) sin
+que nadie mantenga un orden a mano. **D-121**.
+
+Y como ahora el borrador valida con menos, la misma barra muestra **en gris** lo
+que va a faltar para publicar. Es la contra de D-120, cubierta: aviso, no
+bloqueo, para que el muro no aparezca recién al final.
+
+El diccionario de nombres y secciones es data (`lib/formulario/camposFaltantes.ts`)
+y está atado al schema por una cadena de tres eslabones: zod deriva el
+vocabulario de rutas (`tests/analytics-campos.test.ts`) y ese vocabulario exige
+un nombre para cada ruta (`tests/campos-faltantes.test.ts`). Un campo nuevo sin
+nombre falla en el test, no en producción con un mensaje que dice «1 campo» y no
+dice cuál. Los títulos y los ids de sección se leen de los `.tsx`: si alguien
+renombra una sección, el mensaje mandaría a una que no existe.
+
+### B-191 · El formulario se guarda solo en el navegador
+
+Del issue #6, desde el panel: *"Se podrá guardar algo como borrador o auto
+guardado, como en word? Porque reporté algo y todo lo que escribí se borró"*. El
+accidente concreto ya estaba cerrado —B-35, publicado en `1.1.0`— pero un aviso
+evita el accidente y no recupera el trabajo.
+
+Se persiste en `localStorage`, con clave por actividad, y al abrir se **ofrece**
+lo recuperado con su fecha y un botón para descartarlo: recuperar en silencio es
+peor que no recuperar, porque la duda que deja es "¿esto lo guardé o no?". No
+toca Firestore, así que no hay reglas nuevas, ni modelo, ni una escritura por
+tecla que cueste plata. Se limpia al guardar bien, se descarta lo ilegible, lo de
+otra versión del formato y lo de más de 30 días, y nunca tira: `localStorage`
+lanza excepción en modo privado y con la cuota llena, y un formulario no puede
+romperse porque no se pudo autoguardar. **D-122**.
+
+**La guarda que no era obvia.** `calendarEventId` es el único campo del
+formulario que escribe el backend, y el autoguardado institucionaliza los
+formularios viejos: hasta 30 días. Un borrador anterior al write-back lo tiene en
+`null`, y aplicarlo tal cual lo persistiría; el sync de ese guardado todavía usa
+el id del snapshot anterior, así que **no se nota**, y la edición siguiente crea
+un segundo evento para el mismo encuentro. Es B-80 con un día de demora. Lo
+recuperado pasa por `conIdsDeCalendarioDe`, que cruza por id de sesión y devuelve
+los ids del documento de hoy. Anotado en `15-mapa-de-trampas.md`.
+
+Lo guardado es **contenido**, a diferencia de todo lo demás que el panel
+persiste en el navegador. `tests/autoguardado.test.ts` lee el código del módulo y
+del hook —con los comentarios afuera, porque justamente hablan de la analítica
+para explicar que no la tocan— y falla si aparece un `import` de `analytics`, un
+`medir(` o cualquier cosa de Firestore. Queda escrito en `07-seguridad.md`, con
+lo único que hay que tener presente: es contenido en un dispositivo, y en una
+computadora compartida queda ahí hasta que se descarte, se guarde o venza.
+
+### B-189 · la guarda de credenciales del build, cableada
+
+`hayCredenciales()` estaba escrita en `firebase-admin.ts` y **no la llamaba
+nadie**: era la guarda del consumidor que todavía no existe. Ahora la llama
+`adminApp()`, que es la única puerta a Firestore en build time.
+
+Va en la puerta y no en el paso de build de los dos workflows —la otra opción que
+el ítem proponía— porque cubre más: `1.1.0` se desplegó a mano
+(`npm run build && firebase deploy`), que es el camino que ningún `if` de un YAML
+mira. Y en la puerta no se puede no llamar: `firebase-admin` no se importa desde
+ningún otro lado (§5.4), y eso ahora lo fija un test que recorre `src/`.
+
+La regla del §3.2 de `12-sitio-publico.md` —falla en CI, en local sigue con lista
+vacía y un aviso— **no cambió**: sigue siendo del lector de Firestore, porque
+"seguir con lista vacía" es un valor de retorno y la puerta no puede devolver eso.
+Lo que se agrega es la red de atrás, para el consumidor que se olvide del chequeo.
+Ese documento ahora dice qué mitad implementa cada uno. **D-123**.
+
+`tests/build-credenciales.test.ts` (10 tests) fija las dos cosas —que la puerta
+tire y que sea única— y se verificó reintroduciendo el bug: sacando la llamada y
+dejando la función exportada, tres tests se ponen rojos.
+
+### De paso, dos cosas que estaban escritas dos veces
+
+- **El colapso de índices de una ruta** (`sesiones.3.fin` → `sesiones.N.fin`) lo
+  necesitaban la analítica y el diccionario de nombres nuevo. Salió a
+  `lib/rutaCampo.ts`: es la clase de regla de una línea que en este repo ya se
+  escribió dos veces con dos comportamientos distintos (B-72, B-75).
+- **`Intl` con la zona del proyecto** para mostrar fecha y hora cortas estaba
+  embebido en `historial.ts` y lo necesitaba el aviso del autoguardado. Salió a
+  `lib/sesiones.ts` como `fechaHoraCorta`, que es el hogar de las conversiones de
+  fecha por el mismo argumento que `instanteDeTimestamp`.
+
+### Lo que encontraron los auditores antes del push, y entró en la misma versión
+
+Los tres auditores del cierre —privacidad, trampas y documentación— encontraron
+**cinco bugs de B-191**, o sea de la función que se estaba por publicar. Los cinco
+se arreglaron acá y no fueron al backlog: son de este cambio. **D-124** tiene el
+razonamiento completo.
+
+El P1 es el que importa. `conIdsDeCalendarioDe` reconciliaba `calendarEventId` con
+un argumento correcto —el borrador vive hasta 30 días, así que un valor viejo se
+aplica sobre el documento de hoy— y el error no era el argumento sino **creer que
+ese campo era el único**. Los otros dos son los flags de publicación:
+`online.urlPublica` y `material.items[].publico`, que deciden si el link de la
+reunión y las URLs del material salen a `events.json` y a la descripción del
+evento. Se destilda la casilla, no se guarda, se recupera a los veinte días, se
+publica, y el link sale: la trampa 5 por una puerta nueva. Ahora vuelven a `false`,
+que es el default que `toPublic` ya declaraba, y el aviso lo dice cuando había
+alguna tildada — hace falta porque `Seccion` lee `abiertaPorDefecto` **solo al
+montar**, así que un flag que llega con el borrador quedaba en una sección cerrada,
+o sea en ninguna parte de la pantalla. Es el mismo agujero que documenta B-184 para
+los errores.
+
+Los otros cuatro: la clave del borrador no llevaba el uid (con dos admins en la
+misma máquina, a B se le ofrecía el de A) y no se borraba al cerrar sesión; la
+clave de «nueva» era la misma que la de «duplicar», así que un borrador
+interrumpido se ofrecía dentro de un duplicado y publicaba una actividad distinta
+de la que se quiso duplicar —el discriminador ya estaba una línea más abajo, en la
+medición—; y la guarda de forma validaba 2 campos de ~30 mientras `toPublic`
+proyecta `sede`, `organizador` y `tallerista` **enteros**, así que lo recuperado
+ahora entra podado contra el molde del formulario.
+
+**Y un quinto que apareció al verificar los otros cuatro, que es el más
+transferible:** el test que fijaba la guarda de B-80 **no la fijaba**. Decía
+`toContain('conIdsDeCalendarioDe')`, y esa cadena la satisface el `import`: se
+borró la llamada y los 39 tests siguieron verdes. Vale para cualquier test que lea
+un fuente buscando un nombre, y quedó anotado en `13-agentes.md`. Los dos tests de
+saneadores afirman ahora la composición con los espacios colapsados —así el
+formateador no los rompe— y se verificó que caen.
+
+Aparece un módulo nuevo, `lib/formulario/borradoresDelNavegador.ts`, y la razón es
+el corte del bundle: el borrado lo necesita `AdminApp`, que está en el chunk
+inicial del panel, y `autoguardado.ts` importa el molde del formulario y con él
+`lib/opciones`. Importarlo desde ahí habría deshecho el corte de B-09/D-51, que ya
+se rompió tres veces sin que nada fallara. El módulo nuevo no importa nada.
+
+**Se verificó reintroduciendo cada bug**, uno por uno: sin `sinFlagsDePublicacion`
+caen dos tests, con la clave compartida cae uno, sin la poda caen dos.
+
+### Y la segunda vuelta, que encontró cuatro más — dos de ellos míos
+
+Con los cinco arreglados se volvió a pasar el auditor de privacidad sobre los
+arreglos, porque el criterio del repo dice que en un P1 el falso negativo cuesta
+más que el falso positivo. Encontró cuatro cosas, y **dos las había introducido el
+arreglo anterior**:
+
+- **P1 · la lista se quedó corta otra vez.** `estado`, el `slug` bloqueado y
+  `sesiones[].cancelada` se seguían aplicando crudos desde un borrador de hasta 30
+  días. El precedente estaba en el repo: `duplicar.ts` —el otro lugar donde se
+  aplica un formulario viejo— ya lo había contestado con `estado: 'borrador'` y el
+  comentario «duplicar no publica». Un borrador que decía `publicado`
+  **re-publicaba** una actividad retirada a propósito, con la Function recreándole
+  los N eventos; el `slug` cambiaba la URL de algo indexado (trampa 10); y un
+  `cancelada: false` viejo le revivía el encuentro a todo el que estuviera
+  suscripto. Los tres salen del documento de hoy, y ahora **la lista de los seis
+  campos vive en un solo lugar** — se quedó corta dos veces porque estaba
+  repartida.
+- **P1 · el molde de la poda borraba `tallerista.bio`.** Escrito a mano, con la
+  forma de `organizador` —que tiene `web` y no `bio`, porque son dos tipos
+  distintos—. O sea que la poda escrita para no *publicar* una clave de más
+  **perdía** el texto más largo sobre una persona, en la función que existe para no
+  perder texto. Ahora sale de las mismas fábricas que las cascadas, y para eso
+  `personaVacia()` se mudó a `estadoInicial.ts`, al lado de `sedeVacia()` y
+  `onlineVacio()`.
+- **P1 · el test que escribí para el borrado al cerrar sesión tenía el mismo
+  agujero que acababa de encontrar:** `toContain('borrarTodosLosBorradores')`, que
+  lo satisface el import. La clase apareció dos veces en el mismo cierre, la
+  segunda en el test escrito para arreglarla — que es la señal de que la forma del
+  aserto es más fácil de equivocar que el código que verifica. Por eso quedó en
+  `13-agentes.md` como regla y no solo arreglada acá.
+- Y dos de forma: el molde **da la forma, no los defaults** (usarlo de default
+  metería un `{lat: 0, lng: 0}` —el golfo de Guinea— en una sede sin bloque), y
+  **podar no puede dejar el formulario incompleto**, porque un borrador sin
+  `material` pasa la guarda y el primer `f.material.items.some(...)` se lleva
+  puesta la isla del panel.
+
+Los cuatro nuevos también se verificaron reintroduciéndolos, y los cuatro caen. La
+suite quedó en **986 tests**.
+
+Quedaron abiertos dos que **no** se arreglaron acá, con el motivo escrito:
+**B-203** (una sesión que termina sin un click —token revocado, logout en otra
+pestaña— deja los borradores: el arreglo tiene que distinguir la transición a
+`null` de un `null` transitorio, o se lleva trabajo bueno) y **B-202** (dos asertos
+de `foco.test.ts` con la misma forma floja).
+
+Quedaron abiertos tres ítems que **no** son de este cambio: **B-199** (el modal
+para elegir qué se duplica, que el dueño pidió y que es más grande que esto),
+**B-200** (la guarda de forma no valida que las fechas sean parseables —
+preexistente, y falla visible, no dato corrupto) y **B-201** (el conteo de líneas
+de `10-salud-del-codigo.md` §1.3, que hay que recontar con el criterio escrito al
+lado en vez de inventarle un número).
+
+### Doc
+
+`04-funcionalidades.md` (el punto que decía que el borrador valida igual que
+publicar quedó al revés, «seis módulos de dominio puros» que ya son diez, y lo que
+pasa al recuperar un borrador), `06-decisiones.md` (D-120 a D-124, con la nota que
+D-124 le agrega a D-122 sobre lo que su guarda no vio), `07-seguridad.md` (sección
+nueva, con la promesa de que el borrador no sobrevive a la sesión ahora cumplida por
+código), `15-mapa-de-trampas.md` (la trampa 5 tiene una vía nueva, y la trampa 2 ya
+tenía la suya), `13-agentes.md` y `.claude/agents/auditor-privacidad.md` (dos
+chequeos que pasaron a estar cubiertos por tests, así que el auditor deja de
+repetirlos), `src/lib/ayuda.ts` (el punto que describía la barra vieja mentía, y se
+agregaron los comportamientos que no se adivinan mirando, incluida la casilla que
+no vuelve tildada) y tres novedades en `src/lib/novedades.ts`, selladas `1.2.0`
+como pide D-117.
+
 ## 1.1.0 — 2026-08-25
 
 **Desplegada como `1.1.0+301091a`** el 2026-08-25, a mano

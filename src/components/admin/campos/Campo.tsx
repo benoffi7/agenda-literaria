@@ -10,7 +10,16 @@ interface Props {
   className?: string;
 }
 
-/** Envoltorio de campo: label, ayuda y error. Un solo lugar para el layout. */
+/**
+ * Envoltorio de campo: label, ayuda y error. Un solo lugar para el layout.
+ *
+ * El campo rechazado queda marcado en el DOM con `data-campo-con-error`, que es
+ * lo que el formulario usa para scrollear hasta **el primero** después de un
+ * guardado que falló (B-184). Es un atributo y no una lista de ids porque el
+ * orden que importa —cuál es el primero— es el del documento, y el DOM ya lo
+ * sabe: `querySelector` devuelve justo ese, sin que nadie mantenga el orden a
+ * mano.
+ */
 export function Campo({
   label,
   htmlFor,
@@ -21,7 +30,10 @@ export function Campo({
   className = '',
 }: Props) {
   return (
-    <div className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
+    <div
+      data-campo-con-error={error ? '' : undefined}
+      className={`flex min-w-0 scroll-mt-16 flex-col gap-1.5 ${className}`}
+    >
       <label htmlFor={htmlFor} className="text-sm font-medium text-tinta">
         {label}
         {requerido && <span className="ml-0.5 text-acento">*</span>}

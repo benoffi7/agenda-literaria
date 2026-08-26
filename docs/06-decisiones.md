@@ -2417,3 +2417,297 @@ mintiendo una hora. Las dos listas quedaron atadas por
 `tests/roles-deploy-ci.test.ts`, que además falla si aparece cualquier rol de
 escritura que no sea el de Hosting: la próxima vez que el radio de la key cambie, el
 test obliga a reescribir la afirmación en el mismo commit.
+
+## D-120 · Dos niveles de validación sobre un solo schema, y la línea es «publicado»
+
+**Contexto.** Reporte del dueño usando el panel (2026-08-25): *"No me deja GUARDAR
+BORRADOR si no completo todo. Tiene que ser más flexible el guardar borrador"*.
+`actividadFormSchema` validaba lo mismo para un borrador que para algo publicado, así
+que un borrador —que por definición es lo que **todavía no** está completo— exigía
+título, descripción, un encuentro, arancel, sede y dirección. Con B-35 avisando al
+salir con cambios sin guardar, quien cargaba quedaba encerrado entre un aviso que
+decía "vas a perder el trabajo" y un guardado que no lo aceptaba.
+
+**Decisión.** Dos niveles **sobre el mismo schema**, no dos schemas: las reglas de
+completitud pasan a correr dentro de un `superRefine` condicionado a
+`estado === 'publicado'`.
+
+**Por qué un schema y no dos.** El patrón ya estaba en el archivo aplicado a una
+regla sola —el slug `…-copia`, que solo se bloquea al publicar (trampa 10)—, así que
+los `superRefine` no cambiaron de contenido: cambiaron de condición. Dos schemas
+paralelos se desincronizan en el primer campo nuevo, y el que se olvida de actualizar
+es siempre el de publicar, que es el que importa.
+
+**Por qué la línea es `publicado` y no «borrador vs. el resto».** Publicado es
+exactamente lo que sale: el sitio filtra por ese estado y el §7.3 borra de Calendar
+los eventos de todo lo que no lo tiene. `pendiente` y `cancelado` se guardan con el
+nivel corto a propósito — el bloqueo llega al intentar publicar, que es cuando puede
+salir algo a medias.
+
+**Lo que sigue bloqueando en los dos niveles**, y no es completitud: el `id` de cada
+sesión (trampa 2), que sus fechas se puedan convertir a `Timestamp` (trampa 1), el
+formato del slug y el rango de las coordenadas. Un borrador con eso roto no es un
+borrador incompleto, es un documento ilegible: `formADocumento` tira
+`Fecha inválida` antes de escribir.
+
+**La contra, cubierta por D-121.** Si el borrador valida con menos, el bloqueo
+aparecería recién al final. Por eso la barra muestra siempre lo que va a faltar para
+publicar, en gris: aviso, no bloqueo.
+
+## D-121 · El mensaje de la barra nombra campos o secciones, y lleva hasta ahí
+
+**Contexto.** Reporte del dueño (2026-08-25): *"cuando no se pueda guardar y diga que
+faltan campos, siempre especificarlos"*. La barra decía «3 campos para revisar». Era
+una decisión escrita —listar rutas de campo tapaba media pantalla en mobile y el
+detalle está en rojo al lado de cada campo— y el reporte la dio por equivocada.
+
+**Decisión.** El mensaje nombra los campos cuando son pocos (hasta tres) y las
+secciones con su cuenta cuando son muchos, y cada nombre es un botón que abre la
+sección y scrollea hasta el primer campo rechazado.
+
+**El dato que la decisión original no tuvo en cuenta**, y que es el que la vuelve
+equivocada: **cuatro de las nueve secciones arrancan colapsadas**. Un campo rechazado
+adentro de un acordeón cerrado no está en ninguna parte de la pantalla —el contador
+decía tres y se veían cero—, así que no era un resumen apretado: era un mensaje que
+no se podía accionar. Nombrar secciones con su cuenta resuelve además lo que motivó
+la decisión original: es más corto que tres rutas de campo.
+
+**Dónde vive.** El diccionario de nombres y secciones es data
+(`lib/formulario/camposFaltantes.ts`), no JSX, para poder testearlo. La cadena que lo
+mantiene honesto es de tres eslabones: el schema de zod deriva el vocabulario de
+rutas (`tests/analytics-campos.test.ts`) y ese vocabulario exige un nombre para cada
+ruta (`tests/campos-faltantes.test.ts`). Un campo nuevo sin nombre falla en el test,
+no en producción con un mensaje que dice «1 campo» y no dice cuál. Los títulos y los
+ids de sección viven como literales en los `.tsx` y el test los compara: si alguien
+renombra una sección, el mensaje mandaría a una sección que no existe.
+
+**Cómo se encuentra "el primer campo".** El campo rechazado se marca en el DOM
+(`data-campo-con-error`) y se busca con `querySelector`, que devuelve el primero **en
+orden de documento**. Nadie mantiene un orden a mano, y el orden del formulario es el
+único que le sirve a quien lo está recorriendo.
+
+## D-122 · El autoguardado vive en el navegador, no en Firestore
+
+**Contexto.** Un reporte desde el panel (issue #6, Android, `1.0.1+538bef7`): *"Se
+podrá guardar algo como borrador o auto guardado, como en word? Porque reporté algo y
+todo lo que escribí se borró"*. El accidente concreto ya estaba cerrado —B-35 avisa
+antes de descartar el formulario, publicado en `1.1.0`—, pero un aviso evita el
+accidente y no recupera el trabajo.
+
+**Decisión.** El formulario se persiste en `localStorage`, con clave por admin y por
+formulario, y al abrir se **ofrece** lo recuperado.
+
+> **La forma de la clave y lo que pasa al recuperar los corrige D-124.** Esta
+> decisión decía "clave por actividad, más una para la actividad nueva", y esa
+> clave compartida entre la carga nueva y la copia era un bug; y la guarda de
+> `calendarEventId` que se describe abajo era **la mitad** de la que hacía falta.
+> Lo que sigue vale, salvo esos dos puntos.
+
+**Por qué no Firestore.** Es lo que hace que esto sea chico: no hay reglas nuevas, ni
+campos nuevos, ni un trigger que dispare el sync a Calendar, ni una escritura por
+tecla que cueste plata. Y el borrador a medias tampoco tendría por qué existir en la
+base: no es una actividad, es lo que alguien está escribiendo.
+
+**Las tres cosas que no se podían hacer mal:**
+
+1. **Recuperar en silencio es peor que no recuperar.** Si al abrir aparece texto que
+   no está guardado, sin decir de dónde salió, la próxima duda es "¿esto lo guardé o
+   no?". El aviso dice que es de este dispositivo, de cuándo es, y que no llegó a la
+   agenda; y se puede descartar.
+2. **Lo guardado es contenido**, a diferencia de todo lo demás que el panel persiste
+   en el navegador (qué novedad se leyó, qué acordeón se abrió). No puede filtrarse a
+   la analítica, que solo acepta enums y contadores (§9): el módulo y el hook no
+   importan nada de `analytics` y `tests/autoguardado.test.ts` lo verifica leyendo el
+   código, con los comentarios afuera.
+3. **Limpiar al guardar bien**, o el borrador viejo reaparece encima de la versión
+   buena la próxima vez que se abra la actividad.
+
+**Lo que se descarta y se borra al leerlo:** un JSON ilegible, uno de otra
+`VERSION_BORRADOR` —un borrador viejo aplicado sobre un formulario nuevo parece
+bueno, que es lo peligroso— y uno de más de 30 días. Se borra en el mismo paso: si
+quedara, reaparecería en cada apertura sin que nadie pueda hacer nada con él.
+
+**Nunca rompe el formulario.** `localStorage` **tira** —no devuelve `null`— en modo
+privado, con la cuota llena y en un iframe con cookies bloqueadas, así que el acceso
+entero va en try/catch y el autoguardado que no pudo guardar no interrumpe el tecleo.
+
+**La guarda que no era obvia: `calendarEventId`.** Es el único campo del formulario
+que **escribe el backend** (el write-back del §7.1), y el autoguardado
+institucionaliza los formularios viejos: hasta 30 días. Un borrador guardado antes
+del write-back lo tiene en `null`, y aplicarlo tal cual persistiría ese `null`; el
+sync de ese guardado todavía usa el id del snapshot anterior
+(`previa?.calendarEventId ?? …`) así que **no se nota**, y la edición siguiente ve
+una sesión conocida sin evento y crea un segundo evento para el mismo encuentro. Es
+el mecanismo de B-80 con un día de demora. Por eso lo recuperado pasa por
+`conIdsDeCalendarioDe`, que cruza por id de sesión —estable y del cliente, trampa 2—
+y le devuelve a cada fila el id de calendario que hoy tiene en el documento. Queda
+anotado en `15-mapa-de-trampas.md` como vía nueva de una clase conocida.
+
+**Lo que esta guarda no vio, y es la lección que dejó:** el razonamiento era
+correcto —hay campos donde un valor de hace 30 días tiene consecuencias— y el error
+fue creer que `calendarEventId` era el único. Los otros dos son los flags de
+publicación, y eso es **D-124**.
+
+**Orden con D-120.** B-183 iba primero por diseño: es más barato, cierra el agujero
+de raíz y baja mucho la urgencia de esto. Los tres ítems eran una sola historia
+contada en tres pedazos —no podés guardar, no sabés por qué, y si te vas lo perdés—.
+
+## D-123 · La guarda de credenciales va en la puerta, no en el paso del workflow
+
+**Contexto.** B-189: `hayCredenciales()` estaba escrita en `firebase-admin.ts`
+desde el principio y **no la llamaba nadie**. Hoy no rompe —ninguna página lee
+Firestore en el build todavía—, y por eso pasó un mes desapercibida. Rompe con
+B-106: un build sin credenciales que arma el `events.json` no falla, produce cero
+actividades, y el deploy lo publica encima del sitio que sí tenía datos. En verde
+y sin log.
+
+**Decisión.** El chequeo va adentro de `adminApp()`, la única puerta a Firestore en
+build time.
+
+**Por qué no en el paso de build de los workflows**, que era la otra opción escrita
+en el ítem: cubre menos. `1.1.0` se desplegó a mano
+(`npm run build && firebase deploy`), que es exactamente el camino que ningún `if`
+de un YAML mira. En la puerta, en cambio, la guarda **no se puede no llamar**:
+cualquier lectura de Firestore en el build pasa por ahí porque `firebase-admin` no
+se importa desde ningún otro lado (§5.4), y eso lo fija un test que recorre `src/`.
+
+**Por qué no alcanzaba con la regla del §3.2 de `12-sitio-publico.md`.** Esa regla
+—falla en CI, en local sigue con lista vacía y un aviso— **no cambió**, y sigue
+siendo del lector de Firestore: "seguir con lista vacía" es un valor de retorno, y
+la puerta no puede devolver eso. Lo que se agrega es la red de atrás. Las dos
+capas responden a preguntas distintas: la del lector es *qué hacer sin datos*, la
+de la puerta es *que nadie lea sin credenciales sin enterarse*. Y la de la puerta
+existe justamente porque la del lector es la que se olvida — es el patrón que dejó
+esta guarda apagada: alguien escribe la guarda pensando en el consumidor que
+todavía no existe, y el consumidor nace sin llamarla.
+
+**La contra, asumida.** Un build en una máquina de Google con credenciales del
+metadata server —que `applicationDefault()` encuentra sin ninguna variable— queda
+bloqueado hasta exportar una de las tres. Es el lado prudente del error: hoy el
+build corre en Actions con el secret y a mano en una máquina de trabajo, y en los
+dos casos hay variable. El camino local sin credenciales de producción es el
+emulador, que `hayCredenciales()` acepta y que el §10 pide igual para desarrollar.
+
+**Se verificó reintroduciendo el bug:** sacando la llamada de `adminApp()` y
+dejando la función exportada —o sea el estado exacto de B-189—, tres tests de
+`tests/build-credenciales.test.ts` se ponen rojos.
+
+---
+
+## D-124 · Lo que se recupera de un borrador no es lo que se guardó
+
+**Contexto.** B-191 dejó el autoguardado andando, y los tres auditores del cierre
+encontraron que la guarda que traía era **la mitad** de la que hacía falta.
+`conIdsDeCalendarioDe` reconciliaba un campo, `calendarEventId`, con un
+razonamiento correcto: el borrador vive hasta 30 días, así que un valor viejo se
+aplica sobre el documento de hoy y hay campos donde eso tiene consecuencias. El
+error no era el razonamiento: era creer que ese campo era el único.
+
+**Decisión.** Lo recuperado pasa por **tres** saneadores antes de entrar al
+formulario, y ninguno de los tres es reversible en el otro sentido:
+
+1. **Los `calendarEventId` son del documento de hoy** (`conIdsDeCalendarioDe`). Lo
+   escribe el backend; aplicar el de hace un mes crea un segundo evento para el
+   mismo encuentro en la edición siguiente. Es la familia de B-80.
+2. **Los flags de publicación vuelven a privado** (`sinFlagsDePublicacion`).
+   `online.urlPublica` y `material.items[].publico` son los dos que deciden si el
+   link de la reunión y las URLs del material salen a `events.json` y a la
+   descripción del evento. Se destilda una casilla, no se guarda, se recupera a los
+   veinte días, se publica — y el link sale. Es la trampa 5 por una puerta nueva.
+3. **Solo entran las claves que el formulario conoce** (`podarConMolde`). La guarda
+   de forma mira dos campos de ~30, y aguas abajo `formADocumento` copia `sede`,
+   `online`, `organizador` y `tallerista` tal cual, y `toPublic` proyecta los tres
+   primeros **enteros**: una clave de más en el borrador termina en `events.json`.
+   Hoy no filtra nada, porque nadie escribe esa clave; entra por la regla de
+   "publica solo el campo que se agregue mañana" (§5.2).
+
+**Por qué los flags vuelven a `false` y no se preservan.** La asimetría es total:
+una casilla destildada se vuelve a tildar en dos segundos, y un link publicado no
+se despublica de donde ya lo copiaron. Es además el default que `toPublic` ya
+declara — publicar un link es una acción deliberada por actividad, no el
+comportamiento por omisión (D-15).
+
+**El agravante que lo hacía silencioso**, y que es la razón de que el aviso lo
+diga: `SeccionMaterial` decide si abre según `form.material.tiene`, y `Seccion` lee
+`abiertaPorDefecto` **solo al montar**. Un flag que llega con el borrador —después
+del montaje— quedaba en una sección cerrada, o sea en ninguna parte de la pantalla.
+Es el mismo agujero que documenta B-184 para los errores, aplicado a un flag de
+publicación.
+
+**La clave del borrador es por admin y por formulario.** Dos cosas que faltaban:
+
+- **Por admin**, con la huella de `lib/huella.ts` y no el uid en claro. El §5.1
+  marca como interno buena parte de lo que el formulario contiene (`difusion`,
+  `inscripcion.destino`, `online.url`), y con dos cuentas en la misma máquina —la
+  premisa de D-57— una clave sin dueño le ofrecía a B el borrador sin guardar de A.
+- **Distinguiendo la carga nueva de la copia.** Las dos nacen sin id, así que
+  compartían la clave `nueva`. El comentario que lo justificaba —"las dos se
+  guardan creando un documento"— razona sobre la **escritura**, y lo que se ofrece
+  es **contenido**: un borrador de "nueva" interrumpido se ofrecía dentro de un
+  duplicado y, aceptado, publicaba una actividad distinta de la que se quiso
+  duplicar. El discriminador ya estaba una línea más abajo, en la medición.
+
+**Y cerrar sesión se lleva los borradores.** Sin eso, el contenido sobrevivía al
+logout hasta 30 días. La frase que `07-seguridad.md` ya afirmaba —"es el mismo
+alcance que la sesión del panel en ese navegador"— era falsa como estaba
+implementado, y de las dos salidas posibles se eligió **cumplir la promesa** en vez
+de bajarla a la prosa.
+
+**Por qué hay un módulo nuevo, `borradoresDelNavegador.ts`.** El borrado lo
+necesita `AdminApp`, que vive en el chunk inicial del panel; `autoguardado.ts`
+importa el molde del formulario y con él `lib/opciones`. Importarlo desde `AdminApp`
+se habría llevado todo eso a la carga inicial y habría deshecho el corte de
+B-09/D-51 — que ya se rompió tres veces sin que nada fallara. El módulo nuevo no
+importa nada, y `autoguardado.ts` re-exporta lo suyo para que sus consumidores no
+cambien.
+
+**Y la lista se quedó corta otra vez.** Con los flags arreglados, la re-auditoría
+encontró tres campos más con la misma propiedad, y el precedente estaba en el
+repo: `duplicar.ts` —el otro lugar donde se aplica un formulario viejo— ya había
+contestado esta pregunta con una línea y un comentario, `estado: 'borrador'`,
+«duplicar no publica». Recuperar aplicaba `estado` crudo, así que un borrador de
+hace veinte días que decía `publicado` **re-publicaba** una actividad retirada a
+propósito: vuelve a `events.json` y la Function le recrea los N eventos. Es el
+§7.3 al revés. Con `slug` es la trampa 10 —el input está bloqueado al publicar,
+pero el borrador pisaba el campo sin mirar ese flag— y con `sesiones[].cancelada`
+es recrearle el evento a todo el que esté suscripto.
+
+Los tres salen ahora del documento de hoy (`conLoQueEsDelDocumento`), y **la lista
+vive en un solo lugar**: se quedó corta dos veces porque estaba repartida entre dos
+funciones. La regla, escrita: *recuperar un borrador no cambia el estado de
+publicación; publicar y despublicar se eligen mirando la pantalla*. La contra
+asumida es `cancelada`: si la cancelación se hizo dentro del borrador, hay que
+volver a tildarla — una casilla contra un evento que reaparece en el calendario de
+otros.
+
+**El molde de la poda estaba mal, y borraba `tallerista.bio`.** Escrito a mano, le
+puso a `tallerista` la forma de `organizador` —que tiene `web` y no `bio`, porque
+son dos tipos distintos—, así que la poda que existe para no *publicar* una clave
+de más **perdía** el texto más largo sobre una persona, en la función que existe
+para no perder texto. Es la clase de B-88 otra vez: el productor de la forma
+(`cascadas`) y el consumidor (el molde) derivando por separado. Ahora el molde sale
+de las mismas fábricas, y para eso `personaVacia()` salió de `cascadas.ts` a
+`estadoInicial.ts`, donde ya viven `sedeVacia()` y `onlineVacio()`.
+
+De paso, dos cosas que el molde destapó: **el molde da la forma, no los defaults**
+—tiene `sede.geo` con forma de coordenada para poder podar adentro, y usarlo como
+default metería un `{lat: 0, lng: 0}`, el golfo de Guinea, en una sede sin bloque—,
+y **podar no puede dejar el formulario incompleto**: la guarda de forma mira dos
+campos de ~30, así que un borrador sin `material` la pasa y el primer consumidor
+que haga `f.material.items.some(...)` se lleva puesta la isla del panel. Lo que
+falta se completa desde `formVacio()`.
+
+**Se verificó reintroduciendo cada bug**, uno por uno: sin `sinFlagsDePublicacion`
+en el formulario caen dos tests, con la clave compartida entre nueva y copia cae
+uno, y sin la poda caen dos. La primera corrida de esa verificación **no falló**, y
+eso destapó un cuarto problema: el test que afirmaba la guarda de B-80 decía
+`toContain('conIdsDeCalendarioDe')`, y esa cadena **la satisface el import**. O sea
+que verificaba que el nombre estuviera importado, no que se llamara. Ahora los dos
+tests afirman la composición con los espacios colapsados, y se verificó que caen.
+
+Y esa clase se repitió **en el test escrito para arreglarla**: el que fija el
+borrado al cerrar sesión decía `toContain('borrarTodosLosBorradores')`, que lo
+satisface el import de `AdminApp.tsx`. Es la señal de que la forma del aserto es
+más fácil de equivocar que el código que verifica, y por eso quedó anotada en
+`13-agentes.md` y no solo arreglada acá. Hay dos asertos vivos con la misma forma
+en `tests/foco.test.ts`, que son **B-202**.

@@ -53,7 +53,11 @@ export function MaterialEditor({ items, onChange, error }: Props) {
         + Agregar material
       </button>
 
-      {error && <p className="text-xs font-medium text-acento">{error}</p>}
+      {error && (
+        <p data-campo-con-error className="scroll-mt-16 text-xs font-medium text-acento">
+          {error}
+        </p>
+      )}
 
       {items.map((it, i) => (
         <div key={i} className="rounded-md border border-borde bg-white p-3">

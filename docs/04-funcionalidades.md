@@ -80,12 +80,16 @@ encuentros (§2.2), uno por jornada, pero no tiene quien la dé (B-129)—. Las 
 se pueden destildar.
 
 Desde el 2026-08-25 el formulario **no es un solo archivo**: son diez componentes
-de sección más seis módulos de dominio puros (`estadoInicial`, `cascadas`,
-`condicionales`, `etiquetas`, `guardar`, `chips`). El `.tsx` pasó de 858 a 258
-líneas y lo que quedó es el armado. Ver [`10-salud-del-codigo.md`](10-salud-del-codigo.md) §1.3.
+de sección más los módulos de dominio puros de `lib/formulario/` (`estadoInicial`,
+`cascadas`, `condicionales`, `etiquetas`, `guardar`, `chips`, `autoria`,
+`camposFaltantes`, `autoguardado`, `borradoresDelNavegador`), y lo que quedó en el
+`.tsx` es el armado. El conteo de líneas vive en
+[`10-salud-del-codigo.md`](10-salud-del-codigo.md) §1.3 y quedó viejo: es **B-201**.
 
 Secciones: Qué es · Encuentros · Dónde · Quién · Arancel e inscripción ·
-Material · Opcional · Difusión. Las tres últimas son acordeones colapsados.
+Material · Opcional · Difusión · Vista previa del evento. Las cuatro últimas son
+acordeones colapsados, y desde B-184 cada sección tiene un ancla propia para que
+el mensaje de campos faltantes pueda abrirla y llevar hasta el campo.
 
 **Material** (§3.1) tiene siete formatos —libro o lectura, guía, contexto, sobre
 el autor, newsletter, playlist, otro— y cuatro momentos de entrega: previo al
@@ -123,8 +127,31 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   "sin coordenadas". Para confirmar que se cargó bien: el campo muestra la
   coordenada con un link al mapa, y la **vista previa del evento** muestra la
   ubicación y el link de Maps tal como van a salir.
-- **Guardar borrador** valida igual que publicar. Un borrador inválido no se
-  guarda.
+- **Guardar borrador pide lo mínimo: título y dirección web.** Nada más. Todo lo
+  demás —tipo, descripción, organizador, arancel, encuentros, sede— se exige
+  **al publicar**, que es lo que sale al sitio y al calendario (B-183, D-120).
+  Lo que sigue bloqueando en los dos niveles es lo que haría ilegible el
+  documento: la fecha de cada encuentro cargado y su identificador interno
+  (trampas 1 y 2).
+- **La barra de abajo dice qué falta, y lleva hasta ahí.** Con pocos campos los
+  nombra («Falta completar: Título, Arancel»); con muchos nombra las secciones
+  con su cuenta («Dónde (2), Arancel e inscripción (1)»). Cada nombre es un
+  botón: **abre la sección si estaba cerrada** y scrollea hasta el campo, que es
+  lo que faltaba —un campo rechazado adentro de un acordeón colapsado no estaba
+  en ninguna parte de la pantalla (B-184, D-121). Cuando el borrador se puede
+  guardar pero le falta algo para publicar, la misma barra lo dice en gris: es
+  aviso, no bloqueo.
+- **El formulario se guarda solo en el navegador mientras se escribe**, y al
+  abrirlo ofrece lo que haya quedado sin guardar, con la fecha y un botón para
+  descartarlo. No toca la base: es del dispositivo donde se estaba cargando, se
+  borra al guardar bien, **se borra al cerrar sesión** y vence al mes (B-191,
+  D-122). Es por cuenta y por formulario: la carga nueva y una copia no comparten
+  el suyo.
+- **Recuperar un borrador no vuelve a tildar las casillas que publican un link.**
+  Si el borrador tenía tildado «mostrar el link sin inscribirse» —de la reunión o
+  de un material—, al recuperarlo queda destildado y el aviso lo dice. Un valor de
+  hace tres semanas aplicado sobre lo de hoy no puede publicar un link solo
+  (D-124, trampa 5).
 - **No se puede publicar con el slug propuesto para una copia** (`…-copia`).
   Guardarlo como borrador sí, porque la copia nace justamente con ese slug: el
   bloqueo es solo al publicar, porque ahí el slug queda fijo para siempre

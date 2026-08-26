@@ -57,6 +57,42 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'autoguardado-del-formulario',
+    fecha: '2026-08-26',
+    version: '1.2.0',
+    titulo: 'El formulario se guarda solo mientras lo completás',
+    detalle:
+      'Lo que vas escribiendo queda guardado cada pocos segundos en el dispositivo que estés ' +
+      'usando. Si se cierra la pantalla o te vas sin guardar, al volver a abrir la actividad te ' +
+      'ofrece seguir desde ahí, con la fecha de lo último que quedó. Es de tu cuenta y se borra ' +
+      'al salir. Al recuperarlo, las casillas que muestran un link quedan destildadas.',
+    donde: 'Formulario de una actividad, en un aviso arriba de todo',
+  },
+  {
+    id: 'borrador-sin-completar-todo',
+    fecha: '2026-08-26',
+    version: '1.2.0',
+    titulo: 'Guardar borrador ya no te pide completar todo',
+    detalle:
+      'Ahora alcanza con el título para guardar una actividad a medias y seguirla otro día: el ' +
+      'tipo, la descripción, quién la organiza, el arancel, la sede y los encuentros se piden ' +
+      'recién cuando la publicás, que es cuando sale al calendario. Lo único que se sigue ' +
+      'pidiendo siempre es la fecha de cada encuentro que hayas cargado.',
+    donde: 'Botón «Guardar borrador», abajo del formulario',
+  },
+  {
+    id: 'la-barra-dice-que-falta',
+    fecha: '2026-08-26',
+    version: '1.2.0',
+    titulo: 'Cuando falta algo, la barra dice qué y te lleva hasta ahí',
+    detalle:
+      'Antes decía cuántos campos faltaban; ahora los nombra, y si son muchos nombra las ' +
+      'secciones con la cantidad de cada una. Tocando un nombre se abre la sección —incluso si ' +
+      'estaba cerrada— y baja hasta el campo. Y si el borrador se puede guardar pero le falta ' +
+      'algo para publicarse, la barra lo avisa en gris sin frenar el guardado.',
+    donde: 'Barra de abajo del formulario',
+  },
+  {
     id: 'etiquetas-nacen-aprobadas',
     fecha: '2026-08-25',
     version: '1.1.0',

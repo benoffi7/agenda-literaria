@@ -6,11 +6,20 @@ import { ChipsInput } from '@/components/admin/campos/ChipsInput';
 import { Seccion } from '@/components/admin/campos/Seccion';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
-type Props = Pick<PropsSeccion, 'form' | 'set'>;
+type Props = Pick<PropsSeccion, 'form' | 'set'> & {
+  /**
+   * B-184 — sube cuando la barra manda a un campo de esta sección: arranca
+   * cerrada, y un error adentro de un acordeón cerrado no se ve en ninguna
+   * parte de la pantalla.
+   */
+  pedidoDeApertura?: number;
+};
 
-export function SeccionDifusion({ form, set }: Props) {
+export function SeccionDifusion({ form, set, pedidoDeApertura }: Props) {
   return (
     <Seccion
+      ancla="difusion"
+      pedidoDeApertura={pedidoDeApertura}
       titulo="Difusión"
       descripcion="Uso interno. Nunca sale al sitio público ni al calendario."
       colapsable

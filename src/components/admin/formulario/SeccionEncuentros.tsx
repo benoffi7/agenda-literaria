@@ -14,6 +14,7 @@ type Props = Omit<PropsSeccion, 'uid'> & {
 export function SeccionEncuentros({ form, set, errorDe, esClub }: Props) {
   return (
     <Seccion
+      ancla="encuentros"
       titulo="Encuentros"
       descripcion="Un ciclo de 8 encuentros es una sola actividad con ocho sesiones."
       insignia={form.esCiclo ? 'ciclo' : undefined}

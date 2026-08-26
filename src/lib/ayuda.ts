@@ -155,8 +155,36 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          '«Guardar borrador» pide los mismos datos que publicar: un borrador con campos vacíos no ' +
-          'se guarda. Si te falta un dato, poné algo provisorio y corregilo después.',
+          '«Guardar borrador» te pide solo el título: podés guardar una actividad a medias y ' +
+          'seguirla otro día. El tipo, la descripción, quién organiza, el arancel, la sede y los ' +
+          'encuentros se piden recién al publicar, porque son los datos que salen al calendario.',
+      },
+      {
+        texto:
+          'Lo único que se pide siempre, también en un borrador, es la fecha y la hora de cada ' +
+          'encuentro que hayas agregado. Si no querés poner fechas todavía, borrá la fila del ' +
+          'encuentro y agregala cuando las sepas.',
+      },
+      {
+        texto:
+          'Mientras completás, el formulario se va guardando solo en el dispositivo que estés ' +
+          'usando. Si se cierra la pantalla o te vas sin guardar, al volver a abrir la actividad ' +
+          'te ofrece seguir desde ahí, y podés descartarlo. Eso queda en ese dispositivo: si ' +
+          'cargabas desde el teléfono, no lo vas a encontrar en la computadora.',
+      },
+      {
+        texto:
+          'Ese guardado automático es de tu cuenta: si otra persona entra con la suya en la misma ' +
+          'computadora, no ve lo que dejaste a medias. Y al salir de la agenda se borra, así que ' +
+          'en una computadora prestada conviene salir.',
+      },
+      {
+        texto:
+          'Cuando recuperás una carga sin terminar, las casillas de «mostrar el link sin ' +
+          'inscribirse» —la de la reunión y las del material— quedan destildadas, y el aviso te lo ' +
+          'dice. Es a propósito: lo que quedó guardado hace tres semanas no puede publicar un link ' +
+          'por su cuenta. Si querías mostrarlo, volvé a tildarlo antes de publicar.',
+        cuidado: true,
       },
       {
         texto:
@@ -768,8 +796,15 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Cuando algo está mal cargado, esa barra dice cuántos campos hay que revisar. El detalle ' +
-          'de qué falta está al lado de cada campo, en rojo.',
+          'Cuando algo está mal cargado, esa barra nombra lo que falta —los campos si son pocos, ' +
+          'las secciones con su cuenta si son muchos— y tocando un nombre se abre esa sección y ' +
+          'baja hasta el campo. El detalle también está al lado de cada campo, en rojo.',
+      },
+      {
+        texto:
+          'Si la actividad se puede guardar pero todavía no está para publicarse, la misma barra ' +
+          'lo avisa en gris. Eso no frena el guardado: es para que no te enteres de lo que falta ' +
+          'el día que quieras publicarla.',
       },
       {
         texto:

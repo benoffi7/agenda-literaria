@@ -9,7 +9,7 @@
  */
 import { OPCIONES_BASE, opcionesVisibles, ordenarValores } from '@/lib/opciones';
 import { sesionVacia } from '@/lib/sesiones';
-import type { ActividadForm, CampoTaxonomia, Online, Sede } from '@/types/actividad';
+import type { ActividadForm, CampoTaxonomia, Online, Persona, Sede } from '@/types/actividad';
 
 /** La sede que se crea al pasar a presencial o híbrido. `CABA` por defecto. */
 export const sedeVacia = (): Sede => ({
@@ -23,6 +23,19 @@ export const sedeVacia = (): Sede => ({
 
 /** El bloque online que se crea al pasar a virtual o híbrido. */
 export const onlineVacio = (): Online => ({ plataforma: '', url: '', urlPublica: false });
+
+/**
+ * La persona que se crea al elegir un tipo que la pide (taller, presentación,
+ * charla). **No es la misma forma que `organizador`**, que tiene `web` y no
+ * `bio`.
+ *
+ * Está acá, y no como literal en `cascadas.ts`, porque el molde con el que
+ * `autoguardado.ts` poda lo recuperado necesita exactamente esta forma — y
+ * escribirla dos veces ya salió mal una vez: el molde nació con la forma de
+ * `organizador`, así que la poda borraba `tallerista.bio` de todo borrador
+ * recuperado (D-124).
+ */
+export const personaVacia = (): Persona => ({ nombre: '', bio: '', instagram: '' });
 
 /**
  * Primera opción elegible de una taxonomía **según las opciones base**, que es

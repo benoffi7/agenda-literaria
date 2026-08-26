@@ -9,11 +9,26 @@ import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 interface Props extends PropsSeccion {
   /** Buffer `slug → label` de los tags tipeados que todavía no se guardaron (D-02). */
   setTagsNuevos: (nuevos: Record<string, string>) => void;
+  /**
+   * B-184 — sube cuando la barra manda a un campo de esta sección: arranca
+   * cerrada, y un error adentro de un acordeón cerrado no se ve en ninguna
+   * parte de la pantalla.
+   */
+  pedidoDeApertura?: number;
 }
 
-export function SeccionOpcional({ form, set, errorDe, uid, setTagsNuevos }: Props) {
+export function SeccionOpcional({
+  form,
+  set,
+  errorDe,
+  uid,
+  setTagsNuevos,
+  pedidoDeApertura,
+}: Props) {
   return (
     <Seccion
+      ancla="opcional"
+      pedidoDeApertura={pedidoDeApertura}
       titulo="Opcional"
       descripcion="Tags, imagen, destacado."
       colapsable

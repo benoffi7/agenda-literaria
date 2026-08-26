@@ -20,6 +20,7 @@ interface Props {
 export function SeccionVistaPrevia({ form, labelsPendientes }: Props) {
   return (
     <Seccion
+      ancla="vista-previa"
       titulo="Vista previa del evento"
       descripcion="Cómo va a quedar en Google Calendar. Lo arma la misma lógica que publica el evento."
       colapsable

@@ -19,6 +19,10 @@ import { VERSION_APP } from '@/lib/version';
 // Estático: la ayuda es solo datos y componentes, no toca Firestore.
 import { BotonAyuda } from '@/components/admin/ayuda/BotonAyuda';
 import {
+  almacenDelNavegador,
+  borrarTodosLosBorradores,
+} from '@/lib/formulario/borradoresDelNavegador';
+import {
   loginConGoogle,
   logout,
   observarAuth,
@@ -125,6 +129,25 @@ const PendientesBadge = diferido<object>(() =>
     default: m.PendientesBadge,
   })),
 );
+
+/**
+ * Cerrar sesión se lleva los borradores del navegador (B-191).
+ *
+ * El autoguardado persiste **contenido**, y parte de ese contenido el §5.1 lo
+ * marca como interno (`difusion`, `inscripcion.destino`, `online.url`). Sin este
+ * paso sobrevive al logout hasta 30 días, en claro y bajo una clave predecible:
+ * en una máquina compartida, la persona que entra después se encuentra con lo que
+ * dejó a medias la anterior. La clave lleva la huella del uid, así que el aviso
+ * no se lo ofrecería —eso es lo que arregla la clave—, pero el contenido seguiría
+ * ahí, y `07-seguridad.md` promete que el alcance es el de la sesión del panel.
+ *
+ * Se borra **antes** del `signOut`: después de cerrar sesión la pantalla puede
+ * remontar y no hay garantía de llegar a correrlo.
+ */
+const cerrarSesion = () => {
+  borrarTodosLosBorradores(almacenDelNavegador());
+  return logout();
+};
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
@@ -264,7 +287,7 @@ export function AdminApp() {
         </p>
         <button
           type="button"
-          onClick={() => void logout()}
+          onClick={() => void cerrarSesion()}
           className="mt-6 min-h-touch rounded-md border border-borde bg-white px-4 text-sm"
         >
           Salir
@@ -351,7 +374,7 @@ export function AdminApp() {
         />
         <button
           type="button"
-          onClick={() => salirDe(() => void logout())}
+          onClick={() => salirDe(() => void cerrarSesion())}
           className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
         >
           Salir

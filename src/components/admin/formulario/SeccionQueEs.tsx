@@ -21,7 +21,11 @@ interface Props extends PropsSeccion {
 
 export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anotarLabel, slugBloqueado }: Props) {
   return (
-    <Seccion titulo="Qué es" descripcion="Elegí el tipo primero: el resto del formulario se adapta.">
+    <Seccion
+      ancla="que-es"
+      titulo="Qué es"
+      descripcion="Elegí el tipo primero: el resto del formulario se adapta."
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Tipo de actividad" requerido error={errorDe('tipo')}>
           <TaxonomiaSelect

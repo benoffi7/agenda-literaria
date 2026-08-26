@@ -14,7 +14,7 @@ type Props = Omit<PropsSeccion, 'uid'> & {
 
 export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePersona }: Props) {
   return (
-    <Seccion titulo="Quién">
+    <Seccion ancla="quien" titulo="Quién">
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo label="Organizador" requerido error={errorDe('organizador.nombre')}>
           <input

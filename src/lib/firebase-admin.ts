@@ -20,6 +20,26 @@ const PROJECT_ID = process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria';
 
 let _app: App | null = null;
 
+/**
+ * ¿Tenemos con qué leer Firestore en este build?
+ *
+ * Las tres fuentes son las que `credencial()` sabe usar, más el emulador. Es
+ * deliberadamente una pregunta sobre el **entorno** y no un intento de conexión:
+ * tiene que poder contestarse antes de inicializar nada y sin red.
+ *
+ * Lo que no ve: credenciales que vengan del metadata server de una máquina de
+ * Google (`applicationDefault()` las encuentra sin ninguna variable). Un build ahí
+ * quedaría bloqueado por esta guarda hasta exportar una de las tres. Es el lado
+ * prudente del error: hoy el build corre en Actions con el secret y a mano en una
+ * máquina de trabajo, y en los dos casos hay variable.
+ */
+export const hayCredenciales = (): boolean =>
+  Boolean(
+    process.env.FIRESTORE_EMULATOR_HOST ||
+      process.env.FIREBASE_SERVICE_ACCOUNT ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  );
+
 const credencial = () => {
   // En CI la key viaja como secret en una variable de entorno, nunca en el repo.
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -28,8 +48,41 @@ const credencial = () => {
   return applicationDefault();
 };
 
+/**
+ * La app de admin, y **la única puerta a Firestore en build time**.
+ *
+ * ── B-189 · la guarda va acá, en la puerta, y no en el paso del workflow ──
+ * `hayCredenciales()` existía desde el principio y no la llamaba nadie: era la
+ * guarda escrita para el consumidor que todavía no existía, y el patrón que la
+ * deja apagada es que el consumidor nazca sin llamarla. Puesta acá **no se puede
+ * no llamar**: cualquier lectura de Firestore en el build —el `events.json` y las
+ * páginas de detalle de B-106, y lo que venga después— pasa por esta función,
+ * porque es el único módulo que puede hablar con el Admin SDK (§5.4).
+ *
+ * En el paso de build de los dos workflows habría cubierto menos: `1.1.0` se
+ * desplegó a mano (`npm run build && firebase deploy`), que es justo el camino
+ * que ningún `if` de un YAML mira.
+ *
+ * **Qué evita.** Un build sin credenciales que lee Firestore no falla: produce
+ * cero actividades y un `events.json` vacío, y el deploy lo publica encima del
+ * sitio que sí tenía datos. Sin error, sin log, con el workflow en verde. Es la
+ * familia del `EXIGIR_EMULADOR=1` del §CI: "verde" no puede significar a la vez
+ * "los datos están" y "no había datos que leer".
+ *
+ * **El camino local es el emulador**, que `hayCredenciales()` acepta: es lo que
+ * el §10 pide para desarrollar, y evita que un build de prueba tenga que ver la
+ * base de producción.
+ */
 export const adminApp = (): App => {
   if (_app) return _app;
+  if (!hayCredenciales()) {
+    throw new Error(
+      'Build sin credenciales: no se puede leer Firestore, y un sitio vacío se ' +
+        'publicaría encima del que tiene datos (B-189). Levantá el emulador ' +
+        '(FIRESTORE_EMULATOR_HOST) o exportá FIREBASE_SERVICE_ACCOUNT o ' +
+        'GOOGLE_APPLICATION_CREDENTIALS.',
+    );
+  }
   if (getApps().length) {
     _app = getApps()[0]!;
     return _app;
@@ -42,11 +95,3 @@ export const adminApp = (): App => {
 };
 
 export const adminDb = (): Firestore => getFirestore(adminApp());
-
-/** ¿Tenemos con qué leer Firestore en este build? */
-export const hayCredenciales = (): boolean =>
-  Boolean(
-    process.env.FIRESTORE_EMULATOR_HOST ||
-      process.env.FIREBASE_SERVICE_ACCOUNT ||
-      process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  );

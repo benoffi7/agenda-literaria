@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAutoguardado } from '@/components/admin/useAutoguardado';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { useMedicionFormulario } from '@/components/admin/useMedicionFormulario';
+import { AvisoBorradorLocal } from '@/components/admin/formulario/AvisoBorradorLocal';
 import { BarraAcciones } from '@/components/admin/formulario/BarraAcciones';
 import { SeccionArancelInscripcion } from '@/components/admin/formulario/SeccionArancelInscripcion';
 import { SeccionDifusion } from '@/components/admin/formulario/SeccionDifusion';
@@ -12,6 +14,15 @@ import { SeccionQueEs } from '@/components/admin/formulario/SeccionQueEs';
 import { SeccionQuien } from '@/components/admin/formulario/SeccionQuien';
 import { SeccionVistaPrevia } from '@/components/admin/formulario/SeccionVistaPrevia';
 import { documentoAForm } from '@/lib/actividades';
+import {
+  claveBorrador,
+  conIdsDeCalendarioDe,
+  conLoQueEsDelDocumento,
+  cuandoSeGuardo,
+  sinFlagsDePublicacion,
+  teniaFlagsDePublicacion,
+} from '@/lib/formulario/autoguardado';
+import { resumirFaltantes, type IdSeccion } from '@/lib/formulario/camposFaltantes';
 import { cambiarModalidad, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import {
   esCharla,
@@ -29,6 +40,7 @@ import {
   type LabelNuevo,
 } from '@/lib/formulario/etiquetas';
 import { guardarActividad } from '@/lib/formulario/guardar';
+import { faltaParaPublicar } from '@/lib/schema';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
 interface Props {
@@ -63,8 +75,28 @@ export function ActividadFormulario({
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
+  /**
+   * Cuántas veces se pidió abrir cada sección (B-184). Es un contador por
+   * sección y no un booleano para que un segundo pedido vuelva a abrirla después
+   * de que alguien la cerró a mano.
+   */
+  const [aperturas, setAperturas] = useState<Partial<Record<IdSeccion, number>>>({});
 
   useFormularioSucio(form);
+
+  /**
+   * B-191 — el formulario se guarda solo en el navegador mientras se escribe, y
+   * al abrir ofrece lo que haya quedado sin guardar. No toca Firestore.
+   *
+   * La clave es por admin y por formulario. La carga nueva y la copia **no**
+   * comparten la suya aunque las dos se guarden creando un documento: lo que se
+   * ofrece es contenido, y un borrador de "nueva" ofrecido dentro de un duplicado
+   * publica una actividad distinta de la que se quiso duplicar.
+   */
+  const autoguardado = useAutoguardado(
+    form,
+    claveBorrador({ uid, idActividad: inicial?.id, esCopia: Boolean(copia) }),
+  );
 
   /** Analítica del ciclo de carga. No sale contenido: docs/09-analitica.md. */
   const medicion = useMedicionFormulario(form, inicial ? 'editar' : copia ? 'duplicar' : 'nueva');
@@ -95,7 +127,47 @@ export function ActividadFormulario({
   const conModalidad = (modalidad: ActividadForm['modalidad']) =>
     setForm((f) => cambiarModalidad(f, modalidad));
 
-  const resumenErrores = useMemo(() => Object.entries(errores), [errores]);
+  /**
+   * Lo que el schema rechazó, agrupado por sección y con el nombre de cada campo
+   * (B-184). Antes de esto la barra mostraba `resumenErrores.length` y nada más.
+   */
+  const faltantes = useMemo(() => resumirFaltantes(Object.keys(errores)), [errores]);
+
+  /**
+   * Lo que le va a faltar para publicar, aunque el borrador ya se pueda guardar
+   * (B-183). Se recalcula con cada tecla: es un `safeParse` de zod sobre un
+   * objeto de treinta campos, del mismo orden que el `JSON.stringify` que ya
+   * corre en cada tecleo para saber si hay cambios sin guardar.
+   */
+  const pendientesParaPublicar = useMemo(
+    () => resumirFaltantes(faltaParaPublicar(form).map((i) => i.path.join('.'))),
+    [form],
+  );
+
+  const irASeccion = (id: IdSeccion) =>
+    setAperturas((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+
+  /**
+   * Un guardado que falla abre las secciones donde quedó algo pendiente y lleva
+   * hasta el primer campo rechazado.
+   *
+   * El `setTimeout` no es un parche de estética: la sección colapsada se abre en
+   * **su** efecto, que corre después de este render, así que el campo todavía no
+   * está en el DOM cuando este efecto se ejecuta. Sin la espera, `querySelector`
+   * no lo encuentra justo en el caso que B-184 vino a arreglar.
+   */
+  useEffect(() => {
+    if (faltantes.total === 0) return;
+    for (const seccion of faltantes.secciones) irASeccion(seccion.id);
+    const id = setTimeout(() => {
+      document
+        .querySelector('[data-campo-con-error]')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 0);
+    return () => clearTimeout(id);
+    // Depende de `errores` y no de `faltantes`: es "hubo un intento fallido
+    // nuevo", y `faltantes` se deriva de ahí.
+  }, [errores]);
 
   /**
    * Las etiquetas creadas con "Otro" todavía no están en `/opciones/*` (se
@@ -130,8 +202,10 @@ export function ActividadFormulario({
 
       if (r.estado === 'invalido') {
         medicion.validacionFallida(r.issues, accion);
+        // Sin `fallo`: la barra ya nombra los campos y las secciones que faltan
+        // (B-184), y "Revisá los campos marcados" arriba de eso solo tapaba el
+        // mensaje que sí dice dónde mirar.
         setErrores(r.errores);
-        setFallo('Revisá los campos marcados.');
         return;
       }
       setErrores({});
@@ -149,6 +223,9 @@ export function ActividadFormulario({
       }
 
       medicion.guardadoOk(r.guardado, accion);
+      // El borrador del navegador ya no tiene sentido: lo guardado es esto
+      // mismo, y dejarlo haría que reapareciera encima de la versión buena.
+      autoguardado.limpiar();
       onGuardado(r.id);
     } finally {
       setGuardando(false);
@@ -163,6 +240,38 @@ export function ActividadFormulario({
         void guardar();
       }}
     >
+      {/*
+        B-191 — lo que quedó sin guardar de una sesión anterior. Va primero: es
+        una decisión sobre con qué contenido se sigue trabajando, y tomarla
+        después de haber tocado diez campos no sirve de nada.
+      */}
+      {autoguardado.recuperado && (
+        <AvisoBorradorLocal
+          cuando={cuandoSeGuardo(autoguardado.recuperado)}
+          linksSinPublicar={
+            teniaFlagsDePublicacion(autoguardado.recuperado.form) || teniaFlagsDePublicacion(form)
+          }
+          onRecuperar={() => {
+            // El borrador tiene hasta 30 días, así que no todo se aplica tal
+            // cual. Los tres saneadores, y `autoguardado.ts` tiene el detalle:
+            //
+            // - los `calendarEventId` son del documento de hoy (familia de B-80);
+            // - los flags de publicación vuelven a privado (trampa 5);
+            // - el estado, el slug bloqueado y las cancelaciones son del
+            //   documento: recuperar no publica ni despublica nada.
+            setForm((actual) =>
+              conLoQueEsDelDocumento(
+                conIdsDeCalendarioDe(sinFlagsDePublicacion(autoguardado.recuperado!.form), actual),
+                actual,
+                slugBloqueado,
+              ),
+            );
+            autoguardado.descartar();
+          }}
+          onDescartar={autoguardado.descartar}
+        />
+      )}
+
       {/*
         Aviso de copia. Dice explícitamente qué se rehízo y qué hay que revisar:
         una copia guardada sin mirar es una actividad con el título del año
@@ -231,7 +340,13 @@ export function ActividadFormulario({
         anotarLabel={anotarLabel}
       />
 
-      <SeccionMaterial form={form} set={set} errorDe={errorDe} esClub={esClub(form)} />
+      <SeccionMaterial
+        form={form}
+        set={set}
+        errorDe={errorDe}
+        esClub={esClub(form)}
+        pedidoDeApertura={aperturas['material']}
+      />
 
       <SeccionOpcional
         form={form}
@@ -239,19 +354,22 @@ export function ActividadFormulario({
         errorDe={errorDe}
         uid={uid}
         setTagsNuevos={setTagsNuevos}
+        pedidoDeApertura={aperturas['opcional']}
       />
 
-      <SeccionDifusion form={form} set={set} />
+      <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />
 
       <SeccionVistaPrevia form={form} labelsPendientes={labelsPendientes} />
 
       <BarraAcciones
         guardando={guardando}
         fallo={fallo}
-        cantidadErrores={resumenErrores.length}
+        faltantes={faltantes}
+        pendientesParaPublicar={pendientesParaPublicar}
         esEdicion={Boolean(inicial)}
         onCancelar={onCancelar}
         onGuardarBorrador={() => void guardar('borrador')}
+        onIrASeccion={irASeccion}
       />
     </form>
   );

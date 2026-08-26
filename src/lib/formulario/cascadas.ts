@@ -9,7 +9,7 @@
  * Todas son `form → form`: no tocan estado de React, así que se testean como
  * `lib/duplicar.ts`, sin emuladores y sin render.
  */
-import { onlineVacio, sedeVacia } from '@/lib/formulario/estadoInicial';
+import { onlineVacio, personaVacia, sedeVacia } from '@/lib/formulario/estadoInicial';
 import { slugify } from '@/lib/slugify';
 import type { ActividadForm } from '@/types/actividad';
 
@@ -56,7 +56,7 @@ export const cambiarTipo = (f: ActividadForm, tipo: string): ActividadForm => ({
   material: tipo === 'club-lectura' ? { ...f.material, tiene: true } : f.material,
   tallerista:
     tipo === 'taller' || tipo === 'presentacion' || tipo === 'charla'
-      ? (f.tallerista ?? { nombre: '', bio: '', instagram: '' })
+      ? (f.tallerista ?? personaVacia())
       : f.tallerista,
 });
 
