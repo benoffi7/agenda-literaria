@@ -12,6 +12,7 @@ import {
 import { toPublic } from '@/lib/toPublic';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { formVacio } from '@/lib/formulario/estadoInicial';
+import { actividadFormSchema } from '@/lib/schema';
 import type { Actividad, Imagen } from '@/types/actividad';
 
 /**
@@ -108,6 +109,34 @@ describe('el default de lectura de los documentos que ya existen (D-125)', () =>
   it('si ya hay `imagenes`, el campo viejo se ignora', () => {
     const lista = imagenesDe({ imagenes: [img({ url: 'https://nueva/1.jpg' })], imagenUrl: 'https://vieja/x.jpg' });
     expect(lista.map((i) => i.url)).toEqual(['https://nueva/1.jpg']);
+  });
+});
+
+describe('el generador de ids y el schema que los valida (clase de B-88)', () => {
+  /**
+   * Dos derivaciones del mismo acuerdo: `nuevaImagenId()` y `ID_IMAGEN_MIGRADA`
+   * producen el formato, `/^img_/` en el schema lo valida. Cada lado estaba
+   * aserido contra el literal por su cuenta y **nadie hacía pasar la salida del
+   * productor por el consumidor**.
+   *
+   * El caso que rompe en semi-silencio: cambiar `ID_IMAGEN_MIGRADA` deja
+   * **inguardable en el panel toda actividad anterior a la galería**, porque su
+   * fila migrada no pasaría el regex — y nada lo diría hasta que alguien intente
+   * guardar una.
+   */
+  it('el schema acepta todos los ids que el generador produce, incluido el migrado', () => {
+    for (const id of [nuevaImagenId(), ID_IMAGEN_MIGRADA]) {
+      const r = actividadFormSchema.safeParse({
+        ...formVacio(),
+        titulo: 'Taller',
+        slug: 'taller',
+        imagenes: [{ id, url: 'https://a/1.jpg', epigrafe: '', origen: 'externa', portada: true }],
+      });
+      const rutas = r.success ? [] : r.error.issues.map((i) => i.path.join('.'));
+      expect(rutas.filter((x) => x.includes('imagenes')), `el schema rechazó el id ${id}`).toEqual(
+        [],
+      );
+    }
   });
 });
 

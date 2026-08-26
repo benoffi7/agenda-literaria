@@ -13,6 +13,7 @@ comparten las mismas reglas.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
+| `imagenes[].storagePath` | ruta interna del bucket: publicarla dibuja su estructura y deja probar objetos por nombre (B-167) | `toPublic.ts` |
 
 `inscripcion.destino` **sí** sale: es el canal de inscripción. El §5.1 advierte
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
@@ -224,7 +225,7 @@ Se mide *que* un campo falló validación y *cuál* campo. Nunca *qué* se escri
 | `difusion` | trabajo interno |
 | `material.items[].url` y `titulo` | |
 | `sede.direccion`, `sede.nombre`, `indicaciones` | |
-| Handles de Instagram, webs, `imagenUrl` | |
+| Handles de Instagram, webs, `imagenes[].url` y `imagenes[].epigrafe` | |
 | `createdBy` / `updatedBy`, el uid y el mail del usuario logueado | ni crudos ni hasheados |
 | El mensaje de un error | `formADocumento` tira `Fecha inválida: "<lo tipeado>"`: el mensaje *es* contenido. Sale la etiqueta `fecha-invalida` |
 

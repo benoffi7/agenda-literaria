@@ -70,6 +70,12 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
                   <img
                     src={img.url}
                     alt=""
+                    /*
+                      El host de la imagen es de un tercero y esta petición sale
+                      del panel: sin esto se lleva el `Referer` con la URL de
+                      `/admin`, o sea aprende que un admin lo abrió y cuándo.
+                    */
+                    referrerPolicy="no-referrer"
                     className="h-full w-full object-cover"
                     onLoad={() => marcarPrevia(img.id, 'lista')}
                     onError={() => marcarPrevia(img.id, 'rota')}

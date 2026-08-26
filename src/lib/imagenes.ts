@@ -28,7 +28,15 @@ export const nuevaImagenId = (): string => {
   return `img_${uuid}`;
 };
 
-/** DEC-7b — cuántas por actividad. El tope se valida en el schema y en las reglas. */
+/**
+ * DEC-7b — cuántas por actividad. **Hoy el tope lo valida solo el schema.**
+ *
+ * Decía "y en las reglas", y era falso: `firestore.rules` no valida forma en
+ * `/actividades` (solo `esAdmin()`) y `storage.rules` todavía no existe. La
+ * validación del lado de las reglas entra con la tajada de la subida, que es donde
+ * importa —ahí el cliente es lo que se puede saltear— y hasta entonces esto es una
+ * sola defensa, no dos.
+ */
 export const MAXIMO_IMAGENES = 4;
 
 /** DEC-7b — tamaño máximo de un archivo propio, en bytes. */

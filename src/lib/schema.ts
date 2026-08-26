@@ -62,9 +62,15 @@ const imagenSchema = z.object({
   url: texto.min(1, 'Falta la dirección de la imagen'),
   epigrafe: opcional,
   origen: z.enum(['externa', 'propia']),
-  // `storagePath` no se valida contra un formato: lo escribe la Function, no el
-  // formulario, y atarlo a un patrón acá haría que un cambio del lado del
-  // servidor rompa el guardado del panel.
+  // `storagePath` no se valida contra un formato: atarlo a un patrón acá haría
+  // que un cambio del lado del servidor rompa el guardado del panel.
+  //
+  // **Quién lo escribe está sin decidir, y es la deuda de esta tajada.** El plan
+  // es que lo escriba la Function al subir, pero `formADocumento` hoy copia la
+  // fila entera con un spread, así que serían dos escritores para un campo de
+  // máquina **adentro de un array de contenido** — que es `calendarEventId`
+  // dentro de `sesiones` otra vez. Hoy no filtra nada (`imagenPublica` enumera).
+  // Se decide antes de la subida: ver B-206.
   storagePath: z.string().optional(),
   ancho: z.number().optional(),
   alto: z.number().optional(),
@@ -219,7 +225,18 @@ export const actividadFormSchema = z
     if (!v.organizador.nombre) falta(['organizador', 'nombre'], 'Falta el organizador');
     if (!v.arancel.tipo) falta(['arancel', 'tipo'], 'Elegí el arancel');
     v.imagenes.forEach((img, n) => {
-      if (!esUrl(img.url)) falta(['imagenes', String(n), 'url'], 'URL inválida');
+      if (!esUrl(img.url)) {
+        falta(['imagenes', String(n), 'url'], 'URL inválida');
+        return;
+      }
+      // `z.string().url()` acepta todo lo que `new URL()` parsee, o sea también
+      // `data:` y `javascript:`, y esa URL sale entera al `events.json` y va a
+      // terminar en un `<img src>` y en `og:image` (B-107). Y un `http://` pasa
+      // la validación y después lo bloquea el contenido mixto en una página
+      // `https`: imagen rota en el sitio, sin que nada avise.
+      if (!/^https:\/\//i.test(img.url)) {
+        falta(['imagenes', String(n), 'url'], 'La dirección tiene que empezar con https://');
+      }
     });
     if (v.sesiones.length === 0) falta(['sesiones'], 'Cargá al menos un encuentro');
 

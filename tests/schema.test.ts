@@ -284,6 +284,25 @@ describe('schema — la galería (B-167)', () => {
     expect(errores({ ...valido(), imagenes: cinco })).toContain('imagenes');
   });
 
+  it('al publicar, la URL tiene que ser https', () => {
+    // `z.string().url()` acepta todo lo que `new URL()` parsee, o sea también
+    // `data:` y `javascript:`, y esa URL sale entera al events.json y va a
+    // terminar en un <img src> y en og:image (B-107). Y un http:// lo bloquea el
+    // contenido mixto: imagen rota en el sitio, sin que nada avise.
+    for (const url of ['http://ejemplo.ar/tapa.jpg', 'data:image/png;base64,AAA']) {
+      expect(
+        errores({ ...publicado(), imagenes: [img({ url })] }),
+        `se aceptó ${url}`,
+      ).toContain('imagenes.0.url');
+    }
+  });
+
+  it('pero un borrador con http:// se guarda igual: se corrige antes de publicar', () => {
+    expect(errores({ ...valido(), imagenes: [img({ url: 'http://ejemplo.ar/t.jpg' })] })).toEqual(
+      [],
+    );
+  });
+
   it('storagePath se acepta pero no se exige: lo escribe la Function', () => {
     expect(
       errores({ ...publicado(), imagenes: [img({ origen: 'propia', storagePath: 'a/b.jpg' })] }),

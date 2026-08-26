@@ -60,9 +60,52 @@ silencio.
 esté completa y tenga versión, no a mitad de camino. La ayuda sí, porque describe
 lo que ya se puede hacer y lo que no se adivina mirando.
 
+### Los auditores sobre esta tajada: un P0, y la celda que no tenía test
+
+**P0 · restaurar «Imágenes» desde una versión anterior a B-167 escribía
+`imagenes: null` en el documento en vivo.** Lo encontró el `auditor-trampas`, y es
+**más general que la galería**: `camposCambiados` une las claves de los dos
+documentos, así que **cualquier** campo agregado al modelo después de una versión
+guardada aparecía como restaurable, y el `??` de `valorARestaurar` lo convertía en
+`null`. `restaurarCampo` escribe con un `updateDoc` directo, o sea que **no pasa
+por el schema** y nada lo frena.
+
+La cadena completa, sin un solo error visible: el documento queda con
+`imagenes: null` → `imagenesDe` lo ve falsy → cae al `imagenUrl` viejo → **la
+galería entera se reemplaza por la imagen de antes de la migración** → y la
+escritura marca rebuild, así que eso llega al sitio público **solo**. `imagenes` es
+la instancia nueva; el mismo camino existía para todos los campos anteriores.
+
+El arreglo es un filtro de una línea —un campo que no existía en esa versión no es
+restaurable— y trajo de paso `tests/historial-restaurar.test.ts`: las tres
+funciones de ese camino **no tenían ningún test**, y es el camino que escribe en
+producción sin pasar por el schema.
+
+**P1 · la celda «al calendario no va nada» no la fijaba ningún test.** El fixture
+de `calendario.test.ts` no tenía imágenes, así que agregar `Foto: ${…}` a la
+descripción del evento no habría roto nada. Ahora van con centinelas y el mensaje
+del test dice **cuál** se escapó. Verificado inyectando la fuga — y la primera
+verificación fue inválida (inyecté en una variable que no existe, así que la línea
+nunca corría): un chequeo que no se puede ver fallar no está verificado.
+
+Cinco más, todos del auditor de privacidad y todos arreglados: `esUrl` aceptaba
+`data:` y `javascript:` —y esa URL va a `og:image`— así que al publicar ahora se
+exige `https://`; la vista previa del panel le mandaba el `Referer` al host de la
+imagen; la tabla de «qué nunca sale» no tenía la fila de `storagePath` y la de GA4
+seguía nombrando `imagenUrl`; el comentario de `imagenes.ts` afirmaba una defensa
+que no existe («se valida en las reglas» — `storage.rules` todavía no existe); y el
+par nuevo de la clase B-88 quedó atado: cambiar `ID_IMAGEN_MIGRADA` dejaba
+**inguardable toda actividad anterior a la galería** y ningún test lo miraba.
+
+Dos quedaron como **B-206**, que bloquea la segunda tajada y no esta: la URL
+pública de una imagen propia **contiene** el `storagePath` más un token permanente
+—así que ocultar el campo no logra lo que el comentario dice—, y
+`storagePath`/`ancho`/`alto` van a tener dos escritores, que es `calendarEventId`
+dentro de `sesiones` otra vez.
+
 Doc: `03-modelo-de-datos.md` (sección nueva), `04-funcionalidades.md`,
 `06-decisiones.md` (**D-125**), `src/lib/ayuda.ts`.
-`tests/imagenes.test.ts` (17 casos) más los que crecieron. **1013 tests.**
+`tests/imagenes.test.ts`, `tests/historial-restaurar.test.ts` y los que crecieron. **1024 tests.**
 
 ## 1.2.0 — 2026-08-26
 

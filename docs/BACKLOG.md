@@ -865,6 +865,48 @@ Functions termina rojo a propósito (los roles que `deploy-ci@` no tiene, D-119)
 Lo primero cierra el agujero; lo segundo lo hace visible cuando falle igual.
 Conviene el primero, y el segundo si sobra tiempo.
 
+### B-206 · Dos cosas que hay que decidir antes de la subida de imágenes propias · P1 (junto con la segunda tajada de B-167)
+
+Las encontró el `auditor-privacidad` en el cierre de la primera tajada. **Hoy
+ninguna filtra nada** —no hay imágenes propias porque no hay subida— y las dos se
+vuelven reales el día que la haya. Van juntas porque bloquean el mismo trabajo.
+
+**1 · La URL pública de una imagen propia contiene el `storagePath`.** Esto
+desarma el argumento con el que se decidió no publicar el campo. La URL canónica
+de Firebase Storage es
+`…/v0/b/<bucket>/o/actividades%2F<id>%2Ftapa.jpg?alt=media&token=…`: el path va
+URL-encodeado adentro, y el `token` es un bearer **permanente** hasta que se
+revoca. Con `origen: 'propia'` publicado al lado, un scraper tiene bucket, path y
+token.
+
+No publicar `storagePath` sigue siendo correcto —es el handle autoritativo, y las
+externas no tienen path— pero **no logra lo que el comentario de `toPublic.ts`
+dice**. Hay que decidir cómo se sirve una propia: por un rewrite de Hosting o un
+dominio propio (el path deja de ser visible, y de paso el egreso pasa por el CDN),
+o con `getDownloadURL()` asumiendo que path y token son públicos y escribiéndolo
+como tal. La primera es más trabajo y la única que cumple la promesa.
+
+**2 · `storagePath`, `ancho` y `alto` van a tener dos dueños.** El plan es que los
+escriba la Function al subir, pero `formADocumento` hoy copia la fila entera con un
+spread. Serían dos escritores para un campo de máquina **adentro de un array de
+contenido**, que es `calendarEventId` dentro de `sesiones` otra vez — la familia de
+B-80, por una puerta nueva.
+
+Las dos consecuencias concretas, ninguna de privacidad:
+
+- `functions/historial.js` tiene `CAMPOS_DE_MAQUINA_SESION = ['calendarEventId']` y
+  **no** tiene el equivalente para `imagenes`. Cuando la Function escriba de vuelta,
+  `huboCambioDeContenido` va a ver un cambio de contenido: **una versión de
+  historial y un rebuild del sitio por cada imagen optimizada**.
+- El borrador de `localStorage` vive 30 días y `sinFlagsDePublicacion` no toca
+  `imagenes`: un borrador viejo puede volver con un `storagePath` a un objeto que ya
+  se borró. Es el sexto campo de la lista de D-124, que se quedó corta dos veces.
+
+**El arreglo, cuando se haga:** `CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']`
+en `functions/historial.js`, y que `formADocumento` los **conserve explícitamente**
+del documento de hoy en vez de spreadearlos del formulario — igual que ya hace con
+`calendarEventId: s.calendarEventId ?? null`.
+
 ## P2 — mejoras reales
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública

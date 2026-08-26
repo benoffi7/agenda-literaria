@@ -2782,3 +2782,11 @@ olvido: subir archivos propios. El modelo ya lo soporta (`origen: 'propia'`,
 de deploy que `que-deployar.sh` no conoce, la Function que quita el EXIF y deriva
 la miniatura, y el SDK de Storage en su propio módulo lazy. Va en su propia tajada
 porque cada uno de esos cuatro es un lugar donde equivocarse en silencio.
+
+**Y dos cosas que la auditoría de esta tajada dejó decididas a medias**, las dos
+sin efecto hoy y las dos reales el día que haya propias: la URL pública de una
+imagen propia **contiene** el `storagePath` URL-encodeado más un token permanente,
+así que ocultar el campo no logra lo que dice el comentario de `toPublic.ts`; y
+`storagePath`/`ancho`/`alto` van a tener dos escritores —la Function y el spread de
+`formADocumento`—, que es `calendarEventId` dentro de `sesiones` otra vez. Las dos
+son **B-206**, y bloquean la segunda tajada, no esta.

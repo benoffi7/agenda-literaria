@@ -114,9 +114,35 @@ export const slugRestaurable = (actual: Actividad): boolean => actual.estado !==
  * afuera sin que este módulo tenga que saber cuáles son.
  */
 export const camposRestaurables = (version: Version, actual: Actividad): string[] =>
-  (camposCambiados(version.documento, actual) as string[]).filter(
-    (campo) => campo !== 'slug' || slugRestaurable(actual),
-  );
+  (camposCambiados(version.documento, actual) as string[])
+    .filter((campo) => campo !== 'slug' || slugRestaurable(actual))
+    .filter((campo) => existiaEnLaVersion(campo, version));
+
+/**
+ * ¿El campo **existía** cuando se guardó esta versión?
+ *
+ * `camposCambiados` une las claves de los dos documentos, así que un campo que se
+ * agregó al modelo **después** de esta versión sale reportado como cambiado — con
+ * razón, para el trigger que decide si vale guardar una versión. Pero para decidir
+ * qué es *restaurable* ese criterio miente: no hay nada que restaurar, el campo no
+ * existía.
+ *
+ * Sin este filtro, `valorARestaurar` lo convierte en `null` con su `??`, y
+ * `restaurarCampo` lo escribe con un `updateDoc` que **no pasa por el schema**. O
+ * sea: la pantalla ofrece "Imágenes — Decía: (vacío)" sobre una versión anterior a
+ * B-167, y restaurarla escribe `imagenes: null` en el documento en vivo. De ahí
+ * `imagenesDe` lo ve falsy, cae al `imagenUrl` viejo, y **la galería entera se
+ * reemplaza por la imagen de antes de la migración** — que además llega al sitio
+ * sola, porque la escritura marca rebuild. Nada tira error en toda la cadena.
+ *
+ * **Es la clase, no la instancia.** Le pasa a cualquier campo agregado al modelo
+ * después de que se guardó una versión: `imagenes` es el más nuevo y el que más
+ * duele, pero el mismo camino existía para todos los anteriores. Es el patrón del
+ * §5 de `05-patrones.md` —un campo nuevo se lee con el default que preserva lo
+ * anterior— aplicado al lugar donde nadie lo miró: la restauración.
+ */
+const existiaEnLaVersion = (campo: string, version: Version): boolean =>
+  campo in (version.documento as unknown as Record<string, unknown>);
 
 /**
  * El valor que se va a escribir, que **no siempre es el que dice la versión**.

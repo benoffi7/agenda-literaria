@@ -516,6 +516,57 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
 describe('construirDescripcion — lo que NUNCA va al evento (§5.1, §7.4)', () => {
   const d = () => construirDescripcion(completa(), sesion(), LABELS);
 
+  /**
+   * B-167 — la galería **no va al evento**: la API de Calendar no tiene campo de
+   * imagen y el §7.4 arma solo `summary`, `description`, `location` y las fechas.
+   *
+   * Esta celda de la tabla del paso 0 no la fijaba nada: el fixture `completa()`
+   * no tenía imágenes, así que agregar `Foto: ${…}` a la descripción no habría
+   * roto ningún test. Los cuatro valores van con centinelas para que el que falle
+   * diga **cuál** se escapó.
+   */
+  it('la galería no llega a la descripción del evento (trampa 5)', () => {
+    const conGaleria = completa({
+      imagenes: [
+        {
+          id: 'img_1',
+          url: 'https://cdn.example/CENTINELA-URL-IMAGEN.jpg',
+          epigrafe: 'CENTINELA-EPIGRAFE el patio',
+          origen: 'propia',
+          storagePath: 'CENTINELA-STORAGEPATH/act-1/tapa.jpg',
+          portada: true,
+        },
+      ],
+    });
+    const texto = construirDescripcion(conGaleria, sesion(), LABELS);
+    for (const centinela of [
+      'CENTINELA-URL-IMAGEN',
+      'CENTINELA-EPIGRAFE',
+      'CENTINELA-STORAGEPATH',
+    ]) {
+      expect(texto, `se escapó ${centinela} a la descripción del evento`).not.toContain(
+        centinela,
+      );
+    }
+  });
+
+  it('y tampoco al evento entero: ni al summary, ni a la ubicación', () => {
+    const conGaleria = completa({
+      imagenes: [
+        {
+          id: 'img_1',
+          url: 'https://cdn.example/CENTINELA-URL-IMAGEN.jpg',
+          epigrafe: 'CENTINELA-EPIGRAFE',
+          origen: 'externa',
+          portada: true,
+        },
+      ],
+    });
+    const evento = JSON.stringify(construirEvento(conGaleria, sesion(), LABELS));
+    expect(evento).not.toContain('CENTINELA-URL-IMAGEN');
+    expect(evento).not.toContain('CENTINELA-EPIGRAFE');
+  });
+
   it('no publica el link de la reunión, solo la plataforma (trampa 5)', () => {
     expect(d()).not.toContain('zoom.us/j/secreto');
     expect(d()).toContain('Zoom');
