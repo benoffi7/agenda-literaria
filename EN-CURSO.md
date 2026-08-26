@@ -6,8 +6,11 @@ vacío — si tiene contenido y nadie está trabajando, está mintiendo, y hay q
 vaciarlo. La documentación de verdad vive en [`docs/`](docs/README.md).
 
 Para parar todo: leé «Cómo parar» al final. Nada de lo que está en curso queda a
-medias en `main`, porque los commits los hace el orquestador y solo con la suite
-verde.
+medias en `main`: los commits los hace el orquestador, uno por ítem y stageado por
+path. **A mitad de tanda la suite completa está roja** —el árbol tiene trabajo en
+vuelo de varios frentes a la vez— así que cada commit se verifica con los tests de su
+frente más los archivos que toca, y la suite entera se corre al cerrar, antes de
+pushear. Está explicado abajo.
 
 ---
 
@@ -107,8 +110,12 @@ presentado y el cupo completo.
    que no llegó a cerrar.
 3. **Descartar lo suelto** (si se abandona la tanda): `git checkout -- <paths>` de
    esos archivos, o `git stash` si se quiere conservar para después.
-4. **Lo commiteado es seguro**: cada commit pasó `npm test` entero y el gate
-   mecánico. `git log --oneline origin/main..HEAD` dice qué falta pushear.
+4. **Lo commiteado es coherente, pero la suite entera todavía no corrió sobre el
+   conjunto.** Cada commit pasó los tests de su frente y los de los archivos que
+   toca; la corrida completa y el gate mecánico van al cerrar la tanda. Si se corta
+   acá, **antes de pushear hay que correr `./scripts/verificar-todo.sh`** — y el hook
+   lo hace solo en el `git push`, así que en la práctica no se puede saltear.
+   `git log --oneline origin/main..HEAD` dice qué falta pushear.
 5. **Si se pushea**: el hook corre `verificar-todo.sh` solo (`core.hooksPath` quedó
    activado hoy). La corrida de Actions va a quedar **roja** por el job de Functions
    si el push toca `functions/` — es la contra asumida de D-119, y Hosting corre
