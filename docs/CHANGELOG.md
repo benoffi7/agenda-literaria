@@ -2,6 +2,26 @@
 
 ## Sin publicar — 2026-08-26
 
+### Novedades del panel a escribir al cortar la versión
+
+**Por qué está acá y no en `src/lib/novedades.ts`:** una entrada de novedades
+lleva `version`, y esa es la de `package.json` en el momento de publicar (D-117).
+Escribirlas antes obliga a adivinar el número o a corregirlas después, y una
+entrada con la versión equivocada rompe lo único que esa lista sirve para
+contestar: "esto empezó con la versión en la que salió tal cosa".
+
+Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mismo
+cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
+porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
+
+- **`galeria-de-imagenes`** — *Ahora una actividad puede tener varias imágenes*.
+  Hasta cuatro, cada una con un epígrafe opcional, y una marcada como portada: esa
+  es la que se ve al compartir el link. Se pegan direcciones de imágenes que ya
+  estén publicadas en otro lado y se ven al momento de pegarlas. Subir fotos desde
+  el dispositivo todavía no está. · **Dónde:** Formulario de una actividad, sección
+  «Opcional».
+
+
 ### B-167 · La galería de imágenes: el modelo y el editor de URLs
 
 **Primera de dos tajadas.** Esta cambia el modelo y el formulario; la que falta es
