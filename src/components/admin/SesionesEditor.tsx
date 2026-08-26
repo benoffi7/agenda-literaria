@@ -111,8 +111,17 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
       {abrirGenerador && (
         <div className="rounded-md border border-acento/30 bg-acento/5 p-3">
           <div className="flex flex-wrap items-end gap-3">
+            {/*
+              B-204 — decían «Cantidad» y «Cada (días)». Leídas una al lado de la
+              otra parecen dos cantidades, y un segundo admin cargando una feria
+              lo reportó así: «no entiendo porque hay 2 opciones, lo de cantidad y
+              cantidad de días». La segunda no es una cantidad de días: es el
+              salto. Con el default de 7, pedir 3 encuentros para una feria de tres
+              días seguidos generaba tres semanas — fechas válidas, no las que
+              quería, y sin que nada avise.
+            */}
             <label className="flex flex-col gap-1 text-xs">
-              Cantidad
+              Cuántos encuentros
               <input
                 type="number"
                 inputMode="numeric"
@@ -120,18 +129,18 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
                 max={52}
                 value={cantidad}
                 onChange={(e) => setCantidad(Number(e.target.value))}
-                className={`${claseInput} w-24`}
+                className={`${claseInput} w-32`}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              Cada (días)
+              Cada cuántos días
               <input
                 type="number"
                 inputMode="numeric"
                 min={1}
                 value={cadaDias}
                 onChange={(e) => setCadaDias(Number(e.target.value))}
-                className={`${claseInput} w-24`}
+                className={`${claseInput} w-32`}
               />
             </label>
             <button
@@ -143,9 +152,10 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
             </button>
           </div>
           <p className="mt-2 text-xs text-tinta/60">
-            Recalcula las fechas de la lista actual y borra los temas y lecturas
-            ya cargados. Toma la fecha y duración del primer encuentro como base
-            — después ajustás las excepciones una por una.
+            <strong>7 es una vez por semana</strong>; para días seguidos —una feria
+            de tres jornadas— va 1. Recalcula las fechas de la lista actual y borra
+            los temas y lecturas ya cargados. Toma la fecha y duración del primer
+            encuentro como base — después ajustás las excepciones una por una.
             {sesiones.some((s) => s.calendarEventId) && (
               <>
                 {' '}

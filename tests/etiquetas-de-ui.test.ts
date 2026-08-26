@@ -200,3 +200,46 @@ describe('ningún valor del modelo se renderiza sin etiqueta (B-134)', () => {
     expect(EDITOR).toMatch(/ETIQUETA_TIPO_MATERIAL\[t\]/);
   });
 });
+
+/**
+ * B-204 — las dos etiquetas del generador de encuentros.
+ *
+ * Decían «Cantidad» y «Cada (días)», y leídas una al lado de la otra parecen dos
+ * cantidades. Lo reportó un segundo admin cargando una feria: *"no entiendo porque
+ * hay 2 opciones, lo de cantidad y cantidad de días"*. La segunda no es una
+ * cantidad de días, es el **salto** entre un encuentro y el siguiente.
+ *
+ * Se fija porque el costo del malentendido no es cosmético: con el default de 7,
+ * pedir 3 encuentros para una feria de tres días seguidos genera **tres semanas**.
+ * Las fechas son válidas, así que no falla nada, y eso llega al calendario público.
+ */
+describe('B-204 · el generador de encuentros dice qué es cada campo', () => {
+  /**
+   * **Sin comentarios**, y por experiencia propia: la primera versión de este test
+   * se puso roja con el código correcto, porque el comentario que explica el cambio
+   * cita las etiquetas viejas. Un aserto de fuente que lee prosa mide la prosa.
+   */
+  const editor = () =>
+    fuente('components/admin/SesionesEditor.tsx')
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('los dos campos se nombran por lo que hacen, no como dos cantidades', () => {
+    expect(editor()).toContain('Cuántos encuentros');
+    expect(editor()).toContain('Cada cuántos días');
+  });
+
+  it('y no vuelven a las etiquetas que se leían mal', () => {
+    const src = editor().replace(/\s+/g, ' ');
+    expect(src).not.toContain('> Cantidad <');
+    expect(src).not.toContain('Cada (días)');
+  });
+
+  it('el texto de al lado dice qué significa el default de 7', () => {
+    // Sin esto, «cada cuántos días» sigue siendo correcto y sigue sin decir que
+    // el valor que ya está puesto es «una vez por semana».
+    const src = editor().replace(/\s+/g, ' ');
+    expect(src).toContain('7 es una vez por semana');
+  });
+});

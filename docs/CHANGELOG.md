@@ -14,6 +14,12 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`generador-dice-que-es-cada-campo`** — *El generador de encuentros dice qué es
+  cada campo*. Los dos campos de «Generar N encuentros» ahora se llaman «Cuántos
+  encuentros» y «Cada cuántos días», y el texto de al lado aclara que 7 es una vez
+  por semana y que para días seguidos —una feria de varias jornadas— va 1. ·
+  **Dónde:** Formulario, sección «Encuentros», botón «Generar N encuentros…».
+
 - **`galeria-de-imagenes`** — *Ahora una actividad puede tener varias imágenes*.
   Hasta cuatro, cada una con un epígrafe opcional, y una marcada como portada: esa
   es la que se ve al compartir el link. Se pegan direcciones de imágenes que ya
@@ -79,6 +85,32 @@ silencio.
 `novedades.ts` **no** se tocó a propósito: la novedad se escribe cuando la función
 esté completa y tenga versión, no a mitad de camino. La ayuda sí, porque describe
 lo que ya se puede hacer y lo que no se adivina mirando.
+
+### B-204 · El generador de encuentros dice qué es cada campo
+
+Reporte de un segundo admin cargando una feria: *"no entiendo porque hay 2
+opciones, lo de cantidad y cantidad de días"*. Los campos decían **«Cantidad»** y
+**«Cada (días)»**, y leídos uno al lado del otro parecen dos cantidades. La segunda
+no es una cantidad de días: es el **salto** entre un encuentro y el siguiente.
+
+No era cosmético. Con el default de 7, pedir 3 encuentros para una feria de tres
+días seguidos genera **tres semanas**: fechas válidas, así que no falla nada, y eso
+llega al calendario público. El error es silencioso.
+
+Ahora dicen «Cuántos encuentros» y «Cada cuántos días», y el párrafo de abajo abre
+con lo que faltaba: «**7 es una vez por semana**; para días seguidos —una feria de
+tres jornadas— va 1». El default no se toca: semanal sigue siendo el caso común, y
+lo que cambió es que ahora se entiende sin preguntar.
+
+Queda fijado en `tests/etiquetas-de-ui.test.ts`, con las etiquetas viejas como
+aserto negativo. Y ese test enseñó otra vez la lección de la semana: la primera
+versión se puso **roja con el código correcto**, porque el comentario que explica el
+cambio cita las etiquetas viejas y el aserto las encontraba en la prosa. Lee el
+fuente sin comentarios, como los de `autoguardado.test.ts`.
+
+El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
+de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
+particular, y se podía hacer solo.
 
 ### Los auditores sobre esta tajada: un P0, y la celda que no tenía test
 

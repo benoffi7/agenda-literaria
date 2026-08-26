@@ -2748,7 +2748,7 @@ usuario a `null`, guardando el anterior en un `useRef`.
 
 **Test:** `it('cualquier fin de sesión se lleva los borradores, no solo el botón (§5.1)')`.
 
-### B-204 · Los dos campos del generador de encuentros se leen como «cantidad» y «cantidad de días» · P2
+### B-204 · Los dos campos del generador de encuentros se leen como «cantidad» y «cantidad de días» — ✅ hecho (2026-08-26)
 
 Reporte de un segundo admin cargando una feria (2026-08-26):
 
@@ -2774,6 +2774,18 @@ seguidos» es Cantidad 3, Cada 1, y se entiende sin abrir nada.
 Relacionado con **B-62** (el modal por sección con qué hace / qué impacto / un
 ejemplo), que es el arreglo general del que este es el caso particular. Este se
 puede hacer solo y hoy.
+
+**Cómo quedó (2026-08-26).** «Cuántos encuentros» y «Cada cuántos días», y el
+párrafo de abajo abre diciendo lo que faltaba: **«7 es una vez por semana; para
+días seguidos —una feria de tres jornadas— va 1»**. El default no cambió: sigue en
+7 porque semanal sigue siendo el caso común, y lo que cambió es que ahora se
+entiende sin abrir nada.
+
+Las tres cosas quedan fijadas en `tests/etiquetas-de-ui.test.ts`, con las etiquetas
+viejas como aserto negativo. Y ese test enseñó de nuevo la lección de la semana:
+la primera versión se puso roja **con el código correcto**, porque el comentario
+que explica el cambio cita las etiquetas viejas y el aserto las encontraba en la
+prosa. Lee el fuente sin comentarios.
 
 ## P3 — cuando sobre tiempo
 
