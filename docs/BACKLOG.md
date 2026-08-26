@@ -813,6 +813,17 @@ all`, el repo público y no fork, el actor era el dueño, y el archivo **no se h
 tocado** en el push. Con todo eso, la corrida no se puede reintentar
 (`gh run rerun` → "This workflow run cannot be retried").
 
+**La causa, confirmada:** GitHub Actions estaba en `major_outage`. El incidente se
+abrió a las **15:11:58Z** y la corrida es de las **15:31:44Z**, o sea en el medio;
+el republish a mano de `deploy.yml`, quince minutos después, falló igual y del
+mismo modo. Se confirmó contra
+`https://www.githubstatus.com/api/v2/summary.json`, que es el chequeo que conviene
+hacer **primero** la próxima vez: dos workflows distintos fallando al arrancar, sin
+cambios en `.github/`, es afuera y no adentro.
+
+Que la causa sea de afuera es justamente lo que hace que este ítem valga: las
+caídas de Actions van a volver a pasar, y lo que falla acá es la **recuperación**.
+
 **El bug no es la falla transitoria: es que nada la repara y nada la nota.**
 `decidir` diffea con `ANTES: ${{ github.event.before }}`, o sea el head del push
 anterior. Entonces:
