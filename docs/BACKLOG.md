@@ -17,10 +17,19 @@ trabajo.
 | # | Tema | Contexto |
 |---|---|---|
 | DEC-1 | ~~`libro presentado`~~ **resuelto: campo propio con obra + autor.** Pendiente de implementar. | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
-| DEC-6 | **Las ocho decisiones que bloquean el sitio público.** Están listadas en el §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). | La primera —**el dominio final**— bloquea B-109 y con él todo lo demás: sin `site` no hay canonical, ni Open Graph, ni sitemap, y mudar el dominio después de indexar cuesta meses. Le siguen el canal de contacto público, el nombre del sitio y si el sitio público se mide. |
-| DEC-7 | **La galería de imágenes (B-167): cuatro decisiones.** (a) ¿la descripción es *epígrafe* o *texto alternativo*? (b) ¿tamaño máximo y cuántas imágenes por actividad? (c) ¿se permite alojar propias desde el día uno, o arranca solo con URLs externas? (d) ¿las externas se descargan al build para poder optimizarlas? | (a) es la que más pesa y no es cosmética: un **epígrafe** es opcional y se muestra; un **texto alternativo** es lo que leen un lector de pantalla y Google, y no debería ser opcional. Se pidió "descripción opcional", que es un epígrafe — si además hace falta accesibilidad y SEO (B-107 los necesita), son **dos campos**, no uno. (c) parte el trabajo en dos entregas: solo URLs no necesita Storage, ni reglas nuevas, ni target de deploy, ni EXIF, y es la mitad del valor con un cuarto del riesgo. |
-| DEC-8 | **Las N opciones para sumarse a un mismo ciclo (B-181): qué forma tienen.** ¿Nada de modelo y van en la descripción, una actividad por comisión atada por un campo nuevo, o un eje `opciones` con sus propias sesiones? | Bloquea B-181 y no se puede empezar sin la respuesta: los tres caminos tocan lugares distintos y el más fiel es el que llega al diff del §7.2 y a la numeración de D-95. Mientras no se decida, un club con cuatro horarios se carga como cuatro encuentros y el calendario público le manda los cuatro a cada suscripto. |
-| DEC-9 | **Cómo se llama el tipo de la librería que sale a la calle (B-192).** Los reportes proponen tres nombres para lo mismo: «Venta especial», «Librería ABIERTA», «Librería a la calle». | Un valor nuevo **no es reversible** —parte los datos en dos que después nadie puede volver a juntar (la lección de B-134)— y una etiqueta sí lo es. Así que hace falta decidir **un solo slug**, y de paso qué prende la cascada del §11: ¿es ciclo, como «Feria»? Mientras no se decida, se carga con «Otro…» y cada uno le pone otro nombre. |
+| DEC-6 | **El dominio: propio, no `.web.app`. Falta el nombre.** Las otras siete quedan en pausa con el sitio. | Resuelto a medias el 2026-08-26: se descartó `agenda-literaria.web.app` —el momento gratis para elegir es ahora, que nada está indexado— pero para registrar un dominio hace falta el nombre, y eso se decide junto. Así que **el sitio público queda congelado** por decisión del dueño, y con él B-105 a B-114. Lo que sí se resolvió: el canal de contacto es el **DM de Instagram** (falta el handle). Sigue abierto: el nombre, y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). |
+
+Resueltas el 2026-08-26:
+
+| # | Tema | Resolución |
+|---|---|---|
+| DEC-7 | La galería de imágenes (B-167), cuatro decisiones | (a) **un solo campo opcional**, que es un epígrafe; el texto alternativo sale del título de la actividad — decisión de accesibilidad tomada a propósito, no un olvido. (b) **hasta 4 imágenes de 3 MB**, validado en el schema **y** en `storage.rules`, porque el cliente se puede saltear; el mensaje de rechazo tiene que decir el tamaño real y el máximo, que 3 MB es menos que una foto de celular sin recortar. (c) **conviven externas y propias** desde el día uno, así que entra Firebase Storage con todo lo que arrastra. (d) las **propias se optimizan** del lado de la Function (EXIF, recompresión, miniatura) y las **externas se sirven tal cual**, sin descargarlas al build. Ojo con la trampa que aparece acá y no está en el §13: una Function que escribe la miniatura en el mismo bucket **se dispara a sí misma** — es la trampa 3 con otra cara. |
+| DEC-8 | Las N opciones para sumarse a un mismo ciclo (B-181) | **Eje nuevo `opciones: [{ id, etiqueta, sesiones }]`** — el más fiel y el más caro, que es lo que el reporte describe literalmente. Toca el schema, el formulario, la proyección, el diff del §7.2 y la numeración de D-95; los ids van generados en el cliente (trampa 2). Va **después de B-167 y antes de descongelar el sitio**: hoy el daño es un calendario con eventos de más, y después es información equivocada indexada en Google. |
+| DEC-9 | Cómo se llama la librería que sale a la calle (B-192) | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
+| B-28 | ¿Claim `curador` para aprobar? | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
+| B-29 | ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? | **Sí.** Y es más barato de lo que parecía: `ValorOpcion` ya tiene `huellaCreador`, así que comparar esa huella con la de quien guarda alcanza, dentro de la misma transacción del §4.2 que ya incrementa `usos`. Dos bordes: si `huellaCreador` está ausente (documentos viejos) **no** se auto-aprueba, porque no se puede saber de quién era; y queda por decidir si la etiqueta aprobada así **se marca** en la pantalla de taxonomías o desaparece de pendientes sin rastro — conviene marcarla, es lo que permite deshacer el typo que las dos personas escribieron igual. |
+| B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. Hoy el sistema no guarda ni un dato personal de un tercero, y por eso el §5 cabe en una tabla. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
+| B-124 | ¿Cuándo corren los auditores? | **A pedido**, como hoy. La mitigación es que `/antes-de-pushear` los lanza a los tres con un comando, así que "a pedido" no es "a mano". Y conviene usarlo: en el cierre de la `1.2.0` los tres auditores encontraron **dieciséis** bugs en tres pasadas, dos de ellos P1 de privacidad. |
 
 Resueltas el 2026-08-21:
 
@@ -793,6 +802,57 @@ llamada borrada seguía verde. Los dos tests de saneadores ahora afirman la
 composición con los espacios colapsados, y se verificó que caen. Es la clase de
 "chequeo que no chequea", y vale para cualquier test que lea un fuente buscando un
 nombre.
+
+### B-205 · Un push cuya corrida no arranca no se deploya nunca, y el push siguiente no lo repara · P1
+
+Pasó el 2026-08-26 con el push de la `1.2.0` (`9fd50f3`): la corrida de
+«Deploy desde main» terminó en **`startup_failure` a los 0 segundos**, sin ningún
+job. Verificado que la causa no era del repo: el YAML parseaba (`workflows.test.ts`
+en verde), el workflow estaba `active`, Actions habilitado con `allowed_actions:
+all`, el repo público y no fork, el actor era el dueño, y el archivo **no se había
+tocado** en el push. Con todo eso, la corrida no se puede reintentar
+(`gh run rerun` → "This workflow run cannot be retried").
+
+**El bug no es la falla transitoria: es que nada la repara y nada la nota.**
+`decidir` diffea con `ANTES: ${{ github.event.before }}`, o sea el head del push
+anterior. Entonces:
+
+1. el push N no deploya (corrida fallida al arrancar, cancelada, o lo que sea);
+2. el push N+1 diffea **desde el commit de N**, que ya está en `main`;
+3. los cambios de N quedan fuera del diff **para siempre**, y el deploy los
+   saltea sin decir nada.
+
+En este caso concreto el push siguiente iba a ser de `docs/` solamente, así que
+`que-deployar.sh` habría decidido "nada que deployar" y la `1.2.0` se quedaba en
+`main` sin publicarse, con producción en `1.1.0+c84da0c` y **ningún síntoma**. Se
+descubrió mirando `/version.json` a mano, no porque algo avisara.
+
+Es la misma familia que B-188 —un deploy que no ocurre y no se nota de este
+lado— y que la lección de B-20 sobre el job de reglas que bloquea Hosting. La
+diferencia es que acá el estado queda **inconsistente hacia adelante**: no alcanza
+con arreglar la causa, hay que republicar.
+
+**Qué se hizo el 2026-08-26**, y es el workaround, no el arreglo: disparar
+`deploy.yml` a mano (`gh workflow run deploy.yml --ref main`), que es el deploy de
+datos y publica **Hosting solo** — sin tocar Functions ni reglas, que en este
+cambio no se tocaron. Su `workflow_dispatch` está documentado para esto
+("republicar después de un cambio de código"). Se prefirió a `push-main.yml` a
+mano porque ése, sin `github.event.before`, deploya **todo**, y el job de
+Functions termina rojo a propósito (los roles que `deploy-ci@` no tiene, D-119).
+
+**Los dos arreglos posibles, y el segundo es el que vale:**
+
+- **Diffear contra lo publicado y no contra el push anterior.** `/version.json`
+  del sitio en vivo ya dice qué commit está publicado (`1.1.0+c84da0c`), así que
+  `decidir` puede usar **ese** sha como base en lugar de `github.event.before`.
+  Con eso, un deploy que no ocurrió se recupera solo en el push siguiente, que es
+  exactamente la propiedad que falta. Es el arreglo de raíz y es chico.
+- **Un chequeo que compare lo publicado con `main`**, del estilo de
+  `relevar-infra.sh` (B-123): si `/version.json` no coincide con el head de
+  `main`, avisar. Sin esto, la única red es que alguien mire.
+
+Lo primero cierra el agujero; lo segundo lo hace visible cuando falle igual.
+Conviene el primero, y el segundo si sobra tiempo.
 
 ## P2 — mejoras reales
 
