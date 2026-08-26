@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   DIAS_QUE_VIVE,
+  alCambiarDeSesion,
   conIdsDeCalendarioDe,
   conLoQueEsDelDocumento,
   PREFIJO_CLAVE,
@@ -168,6 +169,77 @@ describe('cerrar sesión se lleva los borradores (§5.1)', () => {
     const fuente = fuenteDelPanel();
     expect(fuente).toContain('borrarTodosLosBorradores(almacenDelNavegador());returnlogout()');
     expect(fuente).not.toContain('onClick={()=>voidlogout()}');
+  });
+});
+
+/**
+ * B-203 — la sesión termina sin que nadie toque «Salir».
+ *
+ * `cerrarSesion()` cubre los dos botones, que son los dos únicos call sites de
+ * `logout()`. `observarAuth` es `onAuthStateChanged` y avisa igual sin ningún
+ * click: token revocado, cuenta deshabilitada, logout en otra pestaña.
+ *
+ * El borde importa tanto como el caso: el primer aviso del observador es `null`
+ * mientras se restaura la sesión, y borrar ahí se llevaría lo que alguien está
+ * escribiendo — que es peor que la exposición residual y es justo lo que B-191
+ * vino a evitar. Por eso la condición es la transición y no el valor.
+ */
+describe('cualquier fin de sesión, no solo el botón (B-203)', () => {
+  const conBorradores = () => {
+    const { almacen, datos } = almacenFalso();
+    guardarBorradorLocal(almacen, claveBorrador({ uid: UID, idActividad: 'act-1' }), formVacio());
+    guardarBorradorLocal(almacen, claveBorrador({ uid: UID }), formVacio());
+    // Una marca, no contenido: nunca se toca (§5.1 solo habla de lo guardado).
+    datos.set('agenda-literaria:novedad-leida', '2026-08-26');
+    return { almacen, datos };
+  };
+
+  const cuantosBorradores = (datos: Map<string, string>): number =>
+    [...datos.keys()].filter((k) => k.startsWith(PREFIJO_CLAVE)).length;
+
+  it('cualquier fin de sesión se lleva los borradores, no solo el botón (§5.1)', () => {
+    const { almacen, datos } = conBorradores();
+    expect(cuantosBorradores(datos)).toBe(2);
+
+    // Sin ningún click: el observador avisa `null` con una sesión real detrás.
+    expect(alCambiarDeSesion(almacen, UID, null)).toBe(true);
+
+    expect(cuantosBorradores(datos)).toBe(0);
+    expect(datos.has('agenda-literaria:novedad-leida')).toBe(true);
+
+    // Y el enganche, que la función pura sola no prueba. Se afirma la **llamada
+    // dentro del observador** y con `uidAnterior.current` de argumento: buscar el
+    // nombre lo satisface el `import`, y buscarlo sin quitar comentarios lo
+    // satisface la prosa del bloque que está justo arriba. Es la misma clase de
+    // aserto flojo que ya falló tres veces en este repo.
+    expect(fuenteDelPanel()).toContain(
+      'observarAuth(async(u)=>{alCambiarDeSesion(almacenDelNavegador(),uidAnterior.current,u?.uid??null);uidAnterior.current=u?.uid??null;',
+    );
+  });
+
+  it('un `null` transitorio no borra nada: perder trabajo bueno es peor (B-191)', () => {
+    const { almacen, datos } = conBorradores();
+
+    // Abrir el panel: el observador avisa `null` antes de restaurar la sesión, y
+    // enseguida el usuario. Ninguno de los dos avisos es un fin de sesión.
+    expect(alCambiarDeSesion(almacen, null, null)).toBe(false);
+    expect(alCambiarDeSesion(almacen, null, UID)).toBe(false);
+    // Refresco de token: mismo uid, tampoco.
+    expect(alCambiarDeSesion(almacen, UID, UID)).toBe(false);
+
+    expect(cuantosBorradores(datos)).toBe(2);
+  });
+
+  it('el cambio de cuenta sin `null` en el medio también termina la sesión anterior', () => {
+    const { almacen, datos } = conBorradores();
+    expect(alCambiarDeSesion(almacen, UID, OTRO_UID)).toBe(true);
+    expect(cuantosBorradores(datos)).toBe(0);
+  });
+
+  it('un almacén que tira no rompe el fin de sesión', () => {
+    const { almacen } = almacenFalso({ falla: true });
+    expect(() => alCambiarDeSesion(almacen, UID, null)).not.toThrow();
+    expect(() => alCambiarDeSesion(null, UID, null)).not.toThrow();
   });
 });
 

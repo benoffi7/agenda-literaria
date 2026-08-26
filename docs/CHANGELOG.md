@@ -14,6 +14,11 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`borradores-y-el-fin-de-sesion`** — *(afinar la novedad del autoguardado, no una
+  entrada nueva)*. La entrada `autoguardado-del-formulario` dice «se borra al salir»;
+  con B-203 es más cierto y conviene que diga **«se borra cuando se cierra la sesión,
+  la cierres vos o se cierre sola»**.
+
 - **`tipo-libreria-a-la-calle`** — *Hay un tipo nuevo: «Librería a la calle»*. Para
   cuando una librería saca los libros a la vereda, se instala en un bar o hace algo
   en la calle. Como «Feria», viene marcada como ciclo: cargá un encuentro por
@@ -122,6 +127,32 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-203 · Cualquier fin de sesión se lleva los borradores, no solo el botón
+
+`cerrarSesion()` cubría los dos botones «Salir», que son los dos únicos call sites
+de `logout()`. `observarAuth` es `onAuthStateChanged` y avisa **sin ningún click**
+—token revocado, cuenta deshabilitada, logout en otra pestaña—: ahí el panel volvía
+al login y los borradores quedaban en el navegador, en claro y hasta 30 días, con
+campos que el §5.1 marca como internos.
+
+**El cuidado que tiene, y por lo que fue su propio ítem:** borrar en cualquier
+`null` del observador se llevaría trabajo bueno en el `null` **transitorio**, el que
+aparece mientras se restaura la sesión al abrir el panel. Perder lo que alguien está
+escribiendo es peor que la exposición residual — es exactamente lo que B-191 vino a
+evitar. Así que la condición es la **transición** y no el valor: se compara el uid
+anterior con el actual. `null → uid` es el arranque y no borra; `uid → mismo uid` es
+refresco de token y tampoco; `uid → null` y **`uid → otro uid`** sí — ese último es
+el que el predicado ingenuo se comía, porque `onAuthStateChanged` no garantiza pasar
+por `null` al cambiar de cuenta.
+
+La regla devuelve si borró, y eso es lo que deja fijar el caso **y el borde** con
+tests de comportamiento, sin montar el panel. Verificado con tres roturas.
+
+Y de paso el §7 de `07-seguridad.md` dice dos cosas que antes no: si la sesión se
+corta con la pestaña cerrada no hay observador que lo vea, y el borrado es por
+prefijo — o sea de los borradores **de este navegador**, no «de los míos». Las dos
+son contras asumidas, y ninguna estaba escrita.
 
 ### B-192 / DEC-9 · «Librería a la calle» es un tipo de fábrica
 

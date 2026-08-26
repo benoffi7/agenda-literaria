@@ -79,3 +79,38 @@ export const borrarTodosLosBorradores = (almacen: AlmacenLocal | null): void => 
     /* un almacén que tira no puede impedir cerrar sesión */
   }
 };
+
+/**
+ * El borrado que corresponde a un cambio de sesión (B-203).
+ *
+ * `cerrarSesion()` cubre los dos botones «Salir», que son los dos únicos call
+ * sites de `logout()`. Lo que no cubre: `onAuthStateChanged` dispara **sin
+ * ningún click** —token revocado, cuenta deshabilitada, logout en otra
+ * pestaña—, y ahí el panel vuelve al login con los borradores intactos, en
+ * claro y hasta 30 días, con campos que el §5.1 marca como internos
+ * (`difusion`, `inscripcion.destino`, `online.url`).
+ *
+ * **Lo que no se puede hacer es borrar en cualquier `null`.** El primer aviso de
+ * `onAuthStateChanged` es `null` mientras se restaura la sesión guardada: borrar
+ * ahí se lleva trabajo bueno al abrir el panel, y perder lo que alguien estaba
+ * escribiendo es exactamente lo que el autoguardado vino a evitar (B-191). Es
+ * peor que la exposición residual, así que la condición es la **transición**: se
+ * borra cuando había una sesión y dejó de ser la misma.
+ *
+ * De ahí que compare uids y no "hay usuario / no hay": `null → uid` es el
+ * arranque normal y no borra nada; `uid → mismo uid` es un refresco de token y
+ * tampoco; `uid → null` es el fin de sesión, y `uid → otro uid` es el cambio de
+ * cuenta sin `null` intermedio, que también termina la sesión anterior.
+ *
+ * Devuelve si borró, para que el punto de uso pueda afirmarse en un test sin
+ * montar el panel.
+ */
+export const alCambiarDeSesion = (
+  almacen: AlmacenLocal | null,
+  uidAnterior: string | null,
+  uidActual: string | null,
+): boolean => {
+  if (uidAnterior === null || uidActual === uidAnterior) return false;
+  borrarTodosLosBorradores(almacen);
+  return true;
+};

@@ -2790,7 +2790,7 @@ imágenes a la otra.
 y los handles a arrobar, que son trabajo interno de *otra* edición, y nadie los
 revisa porque no se ven (están en un acordeón cerrado).
 
-### B-203 · Una sesión que termina sin un click deja los borradores en el navegador · P2
+### B-203 · Una sesión que termina sin un click deja los borradores en el navegador — ✅ hecho (2026-08-26)
 
 Lo encontró el `auditor-privacidad` verificando el arreglo de su propio hallazgo.
 `cerrarSesion()` borra los borradores y cubre los **dos** botones «Salir», que son
@@ -2809,6 +2809,28 @@ eso es peor que la exposición residual. Hay que borrar en la **transición** de
 usuario a `null`, guardando el anterior en un `useRef`.
 
 **Test:** `it('cualquier fin de sesión se lleva los borradores, no solo el botón (§5.1)')`.
+
+**Cómo quedó (2026-08-26).** `alCambiarDeSesion` en `borradoresDelNavegador.ts` —el
+módulo que existe para que `AdminApp` no arrastre el molde del formulario al chunk
+inicial— enganchada en el observador de auth con un `useRef` para el uid anterior.
+El arreglo **no agrega ningún import al panel**: ese módulo ya estaba importado.
+
+**Compara uids y no «hay usuario / no hay»**, que es lo que el ítem pedía no
+equivocar y un poco más: `null → uid` es el arranque y no borra; `uid → mismo uid`
+es refresco de token y tampoco; `uid → null` es el fin de sesión; y **`uid → otro
+uid`** también, que es el caso que el predicado ingenuo se comía —
+`onAuthStateChanged` no garantiza pasar por `null` al cambiar de cuenta.
+
+Devuelve si borró, y eso es lo que permite fijar el caso **y el borde** con tests de
+comportamiento contra el almacén falso, sin montar el panel ni mockear Firebase. El
+aserto de fuente queda solo para el enganche, y afirma la **llamada** con
+`uidAnterior.current` de argumento. Verificado con tres roturas: la condición
+ingenua, desenganchar el observador, y una función que dice que borró sin borrar.
+
+**Dos cosas que quedan afuera y ahora están dichas en `07-seguridad.md`:** si la
+sesión se corta con la pestaña cerrada no hay observador que lo vea —el aviso de
+apertura es indistinguible del arranque normal—, y el borrado es por prefijo, o sea
+de los borradores **de este navegador** y no «de los míos».
 
 ### B-204 · Los dos campos del generador de encuentros se leen como «cantidad» y «cantidad de días» — ✅ hecho (2026-08-26)
 

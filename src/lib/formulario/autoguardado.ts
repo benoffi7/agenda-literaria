@@ -62,6 +62,7 @@ export const VERSION_BORRADOR = 2;
  */
 export {
   almacenDelNavegador,
+  alCambiarDeSesion,
   borrarBorradorLocal,
   borrarTodosLosBorradores,
   PREFIJO_CLAVE,

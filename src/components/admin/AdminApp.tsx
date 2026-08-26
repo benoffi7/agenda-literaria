@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 // Estático a propósito: el aviso de versión nueva tiene que poder aparecer
 // desde el primer render, incluso en la pantalla de login. No arrastra
 // Firestore, así que no rompe el corte del bundle de D-51.
@@ -19,6 +19,7 @@ import { VERSION_APP } from '@/lib/version';
 // Estático: la ayuda es solo datos y componentes, no toca Firestore.
 import { BotonAyuda } from '@/components/admin/ayuda/BotonAyuda';
 import {
+  alCambiarDeSesion,
   almacenDelNavegador,
   borrarTodosLosBorradores,
 } from '@/lib/formulario/borradoresDelNavegador';
@@ -204,8 +205,30 @@ export function AdminApp() {
   const destinoDeVolver = (): Vista =>
     tieneFormulario(vista.tipo) ? { tipo: volverA } : { tipo: 'lista' };
 
+  /**
+   * B-203 — el fin de sesión que no pasa por el botón «Salir».
+   *
+   * `cerrarSesion()` cubre los dos botones, que son los dos únicos call sites de
+   * `logout()`. Pero `observarAuth` es `onAuthStateChanged` y avisa **sin ningún
+   * click**: token revocado, cuenta deshabilitada, logout en otra pestaña. Ahí el
+   * panel vuelve al login y, sin esto, los borradores quedan en el navegador en
+   * claro y hasta 30 días, con campos que el §5.1 marca como internos.
+   *
+   * El uid anterior va en un `useRef` porque la condición es la **transición**, no
+   * el valor: el primer aviso del observador es `null` mientras se restaura la
+   * sesión, y borrar en cualquier `null` se llevaría el trabajo de quien está
+   * abriendo el panel. La regla —qué transición borra y por qué— vive en
+   * `alCambiarDeSesion`, junto al borrado; acá queda solo el enganche.
+   *
+   * Se corre **antes** del `await`: el `ref` tiene que quedar al día aunque la
+   * lectura del claim tarde y llegue otro aviso del observador en el medio.
+   */
+  const uidAnterior = useRef<string | null>(null);
+
   useEffect(() => {
     return observarAuth(async (u) => {
+      alCambiarDeSesion(almacenDelNavegador(), uidAnterior.current, u?.uid ?? null);
+      uidAnterior.current = u?.uid ?? null;
       setUsuario(u);
       setEsAdmin(u ? await tieneClaimAdmin(u) : null);
       setCargando(false);

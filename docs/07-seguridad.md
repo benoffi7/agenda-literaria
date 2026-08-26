@@ -74,23 +74,41 @@ Lo que sí hay que tener presente: **es contenido en un dispositivo compartido**
 Mientras la sesión está abierta, el borrador queda ahí hasta que se descarta, se
 guarda o pasan 30 días.
 
-**Las dos salidas borran de verdad**, y las dos hubo que arreglarlas:
+**Las dos salidas borran de verdad**, y las dos hubo que arreglarlas el 2026-08-26:
 
-- **«Descartar»**, el botón del aviso, borra la clave. Hasta el 2026-08-26 solo
-  escondía el aviso, así que el borrador seguía en el navegador y volvía a
-  ofrecerse al reabrir la actividad — esta frase era falsa, y la mitigación de
-  B-203 se apoyaba en un botón que no descartaba nada.
-- **Salir de la agenda** borra todos (`borrarTodosLosBorradores`, antes del
-  `signOut`). Sin ese paso el contenido sobrevivía al logout, en claro y bajo una
-  clave predecible.
+- **«Descartar»**, el botón del aviso de recuperación, borra la clave. Hasta ese día
+  solo escondía el aviso, así que el borrador seguía en el navegador y volvía a
+  ofrecerse al reabrir la actividad: el botón que esta sección presenta como la
+  salida a mano no descartaba nada.
+- **El fin de la sesión** borra todos: `alCambiarDeSesion` en el observador de auth,
+  más `borrarTodosLosBorradores` antes del `signOut` en los dos botones «Salir». Sin
+  eso el contenido sobrevivía al logout, en claro y bajo una clave predecible.
 
-Con precisión, porque la diferencia importa: lo segundo lo garantizan **los dos
-botones de salir**, que son los dos únicos caminos que llaman a `logout()`. Una
-sesión que termina sin un click —token revocado, cuenta deshabilitada, logout en
-otra pestaña— vuelve al login y deja los borradores donde están. Es **B-203**, y el
-arreglo tiene su propio cuidado: borrar en cualquier `null` de
-`onAuthStateChanged` se llevaría trabajo bueno en un `null` transitorio, que es
-peor.
+Con precisión, porque la diferencia importa: lo segundo lo garantiza **la sesión**, y
+no los dos botones. Hasta B-203 lo garantizaban los botones —los dos únicos caminos
+que llaman a `logout()`— y una sesión que terminaba sin un click (token revocado,
+cuenta deshabilitada, logout en otra pestaña) volvía al login dejando los borradores
+donde estaban.
+
+**La condición es la transición y no el valor**, y eso no es un detalle de
+implementación: el primer aviso de `onAuthStateChanged` es `null` mientras se
+restaura la sesión guardada, así que borrar en cualquier `null` se llevaría lo que
+alguien está escribiendo al abrir el panel — peor que la exposición residual, y
+justo lo que el autoguardado vino a evitar. Se compara el uid anterior con el
+actual: `null → uid` no borra, `uid → mismo uid` (refresco de token) tampoco,
+`uid → null` y `uid → otro uid` sí. Ese último es el que se escapa con el predicado
+ingenuo: `onAuthStateChanged` no garantiza pasar por `null` al cambiar de cuenta.
+
+**Dos cosas que quedan afuera, asumidas y dichas:**
+
+- Si la sesión se corta con la pestaña cerrada no hay observador corriendo, y el
+  aviso siguiente es el de apertura, sin uid anterior — indistinguible del arranque
+  normal, así que no borra. Esos borradores viven hasta que alguien los descarta,
+  los guarda, entra con otra cuenta en ese navegador, o pasan 30 días.
+- El borrado es por prefijo, o sea **de los borradores de este navegador** y no «de
+  los míos»: el fin de sesión de una cuenta se lleva también los de la otra. Es el
+  lado prudente del error —borra de más, no de menos— y para este panel es lo
+  deseable, pero no es lo que el nombre sugiere.
 
 ## El link de la reunión: default privado, publicable a pedido
 
