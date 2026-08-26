@@ -865,7 +865,7 @@ Functions termina rojo a propósito (los roles que `deploy-ci@` no tiene, D-119)
 Lo primero cierra el agujero; lo segundo lo hace visible cuando falle igual.
 Conviene el primero, y el segundo si sobra tiempo.
 
-### B-206 · Dos cosas que hay que decidir antes de la subida de imágenes propias · P1 (junto con la segunda tajada de B-167)
+### B-206 · Lo que había que decidir antes de la subida de imágenes propias — ✅ decidido (2026-08-26), pendiente de implementar
 
 Las encontró el `auditor-privacidad` en el cierre de la primera tajada. **Hoy
 ninguna filtra nada** —no hay imágenes propias porque no hay subida— y las dos se
@@ -906,6 +906,51 @@ Las dos consecuencias concretas, ninguna de privacidad:
 en `functions/historial.js`, y que `formADocumento` los **conserve explícitamente**
 del documento de hoy en vez de spreadearlos del formulario — igual que ya hace con
 `calendarEventId: s.calendarEventId ?? null`.
+
+---
+
+**Decidido el 2026-08-26. Tres respuestas, y la primera cambia la doc y no el código.**
+
+**1 · Las propias se sirven con `getDownloadURL()`, y el path del bucket pasa a ser
+público — escrito como tal.** Se eligió el camino sin infra: es lo que el SDK
+devuelve y funciona hoy. La contra se asume y se anota donde se lee: para una imagen
+propia, **el path y un token permanente son públicos**, porque viajan adentro de la
+URL. Deja de ser cierto que «`storagePath` no sale»; lo que sigue siendo cierto es
+que no lo publicamos nosotros en la proyección, y eso se mantiene —no hay motivo
+para emitir el handle autoritativo— pero como prolijidad, no como defensa.
+
+**La consecuencia que esto arrastra, y es la parte que no era obvia: si el path es
+público, el nombre del archivo también lo es.** Un
+`actividades/<id>/taller-en-casa-de-ana.jpg` cuenta algo que la actividad no cuenta,
+y el id ya es público (va en el `events.json`). Así que **la Function renombra a algo
+opaco** —el id de la fila más la extensión, `img_<uuid>.webp`— y nunca conserva el
+nombre que traía el archivo. Va con test.
+
+Si algún día molesta, la salida está escrita arriba: un rewrite de Hosting, que
+además saca el egreso de Storage y lo pasa por el CDN.
+
+**2 · El dueño de `storagePath`, `ancho` y `alto` es la Function.** El formulario los
+**conserva** del documento de hoy en vez de spreadearlos, igual que ya hace con
+`calendarEventId: s.calendarEventId ?? null`. Arrastra dos cosas que van en el mismo
+cambio y no después:
+
+- `CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']` en
+  `functions/historial.js`. Sin eso hay **una versión de historial y un rebuild del
+  sitio por cada imagen optimizada**.
+- Los tres campos entran a los saneadores del borrador recuperado (**D-124**), que es
+  la lista que ya se quedó corta dos veces. Un borrador de hace tres semanas no puede
+  devolver un `storagePath` a un objeto que se borró.
+
+**3 · Se guarda el original saneado más una miniatura.** Dos objetos por imagen: el
+original sin EXIF y recomprimido para la página de detalle, y una miniatura para la
+tarjeta del listado. Es el mínimo que evita servir 3 MB en un listado de treinta
+tarjetas, que es el egreso que se paga, y deja de dónde volver a generar otro tamaño
+sin pedir la foto de nuevo. El almacenamiento duplicado es la parte barata.
+
+**Y una que sale de la 3 y hay que hacer antes de la primera subida:** el budget
+alert del §2.3 está puesto **solo para Functions**. Storage se paga por
+almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
+Conviene extenderlo antes, no después de la factura.
 
 ## P2 — mejoras reales
 

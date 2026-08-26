@@ -13,7 +13,7 @@ comparten las mismas reglas.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
-| `imagenes[].storagePath` | ruta interna del bucket: publicarla dibuja su estructura y deja probar objetos por nombre (B-167) | `toPublic.ts` |
+| `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado (B-206). Por eso la Function le pone un **nombre opaco** al archivo | `toPublic.ts` |
 
 `inscripcion.destino` **sí** sale: es el canal de inscripción. El §5.1 advierte
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
