@@ -298,7 +298,7 @@ es la decisión:
 | Lista **negra** de campos de máquina | una versión **de más** → un documento de basura, visible y acotado por D-42 |
 
 De los dos errores posibles, el segundo es barato. Así un campo nuevo del modelo
-(`libroPresentado`, DEC-1) entra al historial solo, sin que nadie se acuerde de
+(`libro`, DEC-1) entra al historial solo, sin que nadie se acuerde de
 nada.
 
 **Por qué la propiedad se sostiene y no es un acuerdo entre dos listas:** el
@@ -2790,3 +2790,72 @@ así que ocultar el campo no logra lo que dice el comentario de `toPublic.ts`; y
 `storagePath`/`ancho`/`alto` van a tener dos escritores —la Function y el spread de
 `formADocumento`—, que es `calendarEventId` dentro de `sesiones` otra vez. Las dos
 son **B-206**, y bloquean la segunda tajada, no esta.
+
+---
+
+## D-126 · El libro presentado es un campo propio de dos textos, y es público
+
+**Contexto.** DEC-1, decidido por el dueño el 2026-08-21 e implementado el
+2026-08-26: campo propio —no dentro de la descripción— con el título de la obra y el
+autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte.
+
+**Campo propio y no un párrafo.** Dentro de la descripción el dato existe para quien
+lee y no existe para nada más: no se puede mostrar aparte, no se puede filtrar, y no
+se puede buscar sin buscar en todo el texto. La contra es un campo más en un
+formulario de 30+, y se paga con el condicional del §11: aparece en presentación y
+charla, los dos tipos en los que la persona al frente es «autor o autora invitada».
+
+**Dos textos y no uno.** `titulo` identifica la obra; `autor` se llena **solo cuando
+difiere del invitado** —una traducción, una antología, un autor que no viene—. En una
+presentación normal el autor es quien viene, ya cargado en `tallerista`, y la
+descripción del evento no lo repite. Sin título no hay libro: se escribe `null`,
+igual que un `tallerista` sin nombre.
+
+**La tabla del paso 0, que es lo que no se puede deshacer:**
+
+| Salida | ¿Sale? | Motivo |
+|---|---|---|
+| `events.json` | **sí** (`titulo`, `autor`, enumerados) | información de la actividad, del orden del título |
+| Evento de Calendar | **sí**, en la descripción | «presentación de tal libro» es el dato central del evento |
+| Issue de GitHub | **no** | el reporte es sobre el panel; de la actividad salen título y slug |
+| GA4 | **no** el contenido; sí `tiene_libro` y las rutas de campo | no hay sanitizador de texto libre y no se agrega uno |
+| `searchText` (→ `events.json`) | **sí** | encontrar la presentación buscando la obra era la mitad del pedido |
+
+Esa quinta fila no está en el paso 0 del skill y **debería**: es una salida pública
+por la puerta de atrás, porque el `searchText` viaja entero al `events.json`.
+
+**Entra al evento por `construirDescripcion`**, adentro de `construirEvento`, así que
+corregir el título de la obra propaga a las N sesiones del ciclo sin ningún caso
+especial (trampa 9, D-07). Armado por fuera dejaría de propagarse en silencio. La
+vista previa del panel se actualiza sola por `@calendario` (D-20).
+
+**El default de lectura es determinístico, y es la lección de D-125 aplicada.**
+`libroVacio()` es la única fábrica de la forma: la usan el formulario nuevo, la
+lectura de todo documento anterior a DEC-1 y —por venir dentro de `formVacio()`— el
+molde con el que el autoguardado poda lo recuperado. Un default no determinístico
+haría que `huboCambioDeContenido` vea un cambio en cada apertura del formulario: una
+versión al historial por cada vez que alguien **mira** una actividad.
+
+**`VERSION_BORRADOR` no subió, y esa es la diferencia con D-125.** La guarda de B-88
+se puso roja —correcto, la forma del formulario cambió— y la respuesta fue agregar las
+dos rutas y **no** subir la versión: `libro` es **aditivo**. Un borrador anterior no
+trae la clave, la poda no la copia y la mezcla la completa con `libroVacio()`, o sea
+el mismo resultado que un formulario abierto hoy sin cargar el campo. Subirla tiraría
+a la basura todo borrador en curso en el navegador de cada admin a cambio de nada. La
+guarda existe para hacer pensar, no para subir el número.
+
+**El bloque se muestra en cualquier actividad que ya lo tenga cargado**, no solo en
+los dos tipos que lo piden. `formADocumento` conserva el libro al cambiar de tipo
+—las cascadas agregan y no sacan— y `duplicar` lo hereda, mientras las dos salidas
+públicas no miran el `tipo`: sin esa segunda mitad, una presentación pasada a taller
+seguía publicando «Libro: …» sin pantalla desde donde verlo ni borrarlo. La
+alternativa —condicionar la proyección por tipo— es peor: esconde en la salida algo
+que el documento sigue teniendo.
+
+**No se exige para publicar.** Igual que el bloque de autor invitado: una presentación
+ya publicada no puede volverse inguardable por un campo que se agregó hoy, y el §11
+dice qué se **pide**, no qué se prohíbe publicar sin.
+
+**Lo que esta decisión NO resuelve:** filtrar por libro en el sitio público. El dato
+ya viaja y es buscable por `searchText`; un chip de filtro por obra tiene sentido
+recién cuando haya varias presentaciones del mismo libro.

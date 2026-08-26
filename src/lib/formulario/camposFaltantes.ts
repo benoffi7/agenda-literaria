@@ -117,6 +117,13 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'tallerista.nombre': { etiqueta: 'Tallerista o invitado', seccion: 'quien' },
   'tallerista.instagram': { etiqueta: 'Instagram del tallerista', seccion: 'quien' },
   'tallerista.bio': { etiqueta: 'Bio del tallerista', seccion: 'quien' },
+  // DEC-1 — el libro presentado vive en «Quién», al lado del autor invitado: son
+  // los dos campos que aparecen juntos en una presentación (§11). Las etiquetas
+  // son palabra por palabra las del formulario, para no tener que traducir nada
+  // al ir a buscarlo.
+  libro: { etiqueta: 'Libro presentado', seccion: 'quien' },
+  'libro.titulo': { etiqueta: 'Libro presentado', seccion: 'quien' },
+  'libro.autor': { etiqueta: 'Autor del libro', seccion: 'quien' },
 
   // ── Arancel e inscripción ──
   arancel: { etiqueta: 'Arancel', seccion: 'arancel-inscripcion' },

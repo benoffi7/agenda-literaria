@@ -21,6 +21,9 @@ const actividad = (over: Partial<Actividad> = {}): Actividad => ({
   imagenUrl: null,
   organizador: { nombre: 'Brandon', instagram: '@brandon', web: '' },
   tallerista: null,
+  // DEC-1 — con centinelas: si el fixture no tuviera el campo, sacarlo de la
+  // proyección (o meterlo de más) no rompería ningún test de este archivo.
+  libro: { titulo: 'CENTINELA-LIBRO Pedro Páramo', autor: 'CENTINELA-AUTORLIBRO Juan Rulfo' },
   esCiclo: true,
   sesiones: [
     {
@@ -111,6 +114,49 @@ describe('toPublic — §5, trampa 5', () => {
     const p = toPublic(actividad(), 'id1');
     expect(JSON.stringify(p)).not.toContain('evt_secreto');
     expect(p.sesiones[0]!.tema).toBe('Cap. 1-4');
+  });
+});
+
+describe('toPublic — el libro presentado (DEC-1, §5.1, trampa 5)', () => {
+  /**
+   * La decisión del paso 0: el libro **es público**. Es información de la
+   * actividad, del mismo orden que el título y el tallerista, y es lo que hace
+   * que alguien que busca la obra encuentre la presentación.
+   *
+   * Está acá y con centinelas porque la celda de la tabla tiene que estar fijada
+   * en los dos sentidos: que salga, y que salga **solo lo decidido**.
+   */
+  it('sale al events.json, con título y autor', () => {
+    const p = toPublic(actividad(), 'id1');
+    expect(p.libro).toEqual({
+      titulo: 'CENTINELA-LIBRO Pedro Páramo',
+      autor: 'CENTINELA-AUTORLIBRO Juan Rulfo',
+    });
+  });
+
+  it('enumera los dos campos: una clave de más en el documento no sale (§5.2)', () => {
+    // La proyección es whitelist, no spread: el campo que alguien agregue mañana
+    // a `libro` no se publica solo.
+    const conExtra = actividad({
+      libro: {
+        titulo: 'Pedro Páramo',
+        autor: '',
+        // @ts-expect-error — a propósito: simula el campo interno de mañana.
+        notasInternas: 'CENTINELA-NOTAS coordinar con la editorial',
+      },
+    });
+    const p = toPublic(conExtra, 'id1');
+    expect(JSON.stringify(p.libro)).not.toContain('CENTINELA-NOTAS');
+    expect(Object.keys(p.libro!).sort()).toEqual(['autor', 'titulo']);
+  });
+
+  it('sin título no inventa el campo (D-15)', () => {
+    // Los documentos anteriores a DEC-1 no lo tienen, y una actividad que no es
+    // presentación tampoco: en los tres casos el JSON dice `null` y el sitio no
+    // pinta un rótulo vacío.
+    expect(toPublic(actividad({ libro: undefined }), 'id1').libro).toBeNull();
+    expect(toPublic(actividad({ libro: null }), 'id1').libro).toBeNull();
+    expect(toPublic(actividad({ libro: { titulo: '', autor: 'Rulfo' } }), 'id1').libro).toBeNull();
   });
 });
 

@@ -224,6 +224,28 @@ Dos consecuencias:
    con el texto anterior hasta la próxima edición de la actividad. El tope es de
    150 eventos por corrida: lo que sobre se pone al día con la próxima edición.
 
+## `libro` — la obra que se presenta (DEC-1)
+
+`libro: { titulo, autor } | null`. El §11 lo listaba para presentaciones y charlas
+desde el principio y el §3.1 no lo tenía: hasta el 2026-08-26 se cargaba el autor en
+`tallerista` y el título de la obra quedaba enterrado en la descripción, donde nada
+lo puede leer.
+
+Tres cosas que no se adivinan del tipo:
+
+- **`autor` se llena solo cuando difiere del invitado.** En una presentación normal
+  el autor es quien viene, ya cargado en `tallerista`, y la descripción del evento no
+  lo repite. Se usa para una traducción, una antología, o un autor que no viene.
+- **Sin título no hay libro:** el panel escribe `null`, igual que un `tallerista` sin
+  nombre, y la proyección no inventa el campo (D-15).
+- **Entra al `searchText`** (§6), título y autor. Encontrar la presentación buscando
+  la obra era la mitad del pedido, y es lo que hace que el campo valga más que un
+  párrafo en la descripción.
+
+El default de lectura es `libroVacio()`, **una sola fábrica** para el formulario
+nuevo, la lectura de todo documento anterior y el molde con el que el autoguardado
+poda lo recuperado. Es determinístico a propósito: la lección de D-125. Ver **D-126**.
+
 ## `imagenes` — la galería, y el campo que reemplaza (B-167)
 
 Era `imagenUrl: string | null`. Es `imagenes: Imagen[]`, con
@@ -362,11 +384,6 @@ cronológico — de eso depende la poda.
 
 
 ## Campos que faltan
-
-**`libro presentado`.** El §11 lo lista como campo de presentaciones y charlas,
-pero el §3.1 no lo tiene en el modelo. Hoy en esos tipos se carga solo el autor,
-vía `tallerista`. Decisión pendiente del usuario: campo propio o dentro de la
-descripción.
 
 **`aprobada` en las opciones.** Implementado (2026-08-21), y desde el 2026-08-25
 **hay UI**: la pantalla de administración de taxonomías aprueba, renombra y

@@ -803,6 +803,8 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'inscripcion.destino',
         'inscripcion.requiere',
         'inscripcion.via',
+        'libro.autor',
+        'libro.titulo',
         'material.items',
         'material.tiene',
         'modalidad',
@@ -830,8 +832,14 @@ describe('la versión del formato y la forma del formulario no derivan por separ
       ]);
     // Subió a 2 con B-167: el formulario pasó de `imagenUrl` a `imagenes`, y un
     // borrador viejo aplicado sobre la forma nueva **parece bueno** — que es
-    // justo lo peligroso. Esta es la primera vez que esta red se ejerce de
-    // verdad, y funcionó: el cambio de forma la puso roja.
+    // justo lo peligroso.
+    //
+    // **DEC-1 la puso roja y NO la subió**, y esa es la diferencia que este test
+    // existe para hacer pensar: `libro` es **aditivo**. Un borrador anterior no
+    // trae la clave, `podarConMolde` no la copia y `mezclarProfundo` la completa
+    // con `libroVacio()` — o sea el mismo resultado que un formulario abierto hoy
+    // sin cargar el campo. Subirla tiraría a la basura todo borrador en curso en
+    // el navegador de cada admin a cambio de nada.
     expect(VERSION_BORRADOR).toBe(2);
   });
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { camposRestaurables, valorARestaurar } from '@/lib/historial';
+import { readFileSync } from 'node:fs';
+import { camposRestaurables, payloadDeRestauracion, valorARestaurar } from '@/lib/historial';
+import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import type { Actividad } from '@/types/actividad';
 
 /**
@@ -121,5 +123,71 @@ describe('lo que se escribe es lo que decía la versión', () => {
     const restaurado = valorARestaurar('imagenes', version as never, actividad()) as unknown[];
     expect(restaurado).toHaveLength(1);
     expect((restaurado[0] as { url: string }).url).toBe('https://vieja/x.jpg');
+  });
+});
+
+describe('el searchText y la restauración no derivan por separado (B-88, B-72)', () => {
+  /**
+   * `historial.ts` tenía su propia copia de «de qué campos sale el `searchText`»,
+   * con cinco de los seis. Al agregar el libro (DEC-1), restaurar un libro viejo
+   * escribía el campo y **dejaba el `searchText` con el título descartado** — y eso
+   * es lo que sale al `events.json`, o sea el documento diciendo una cosa y el
+   * índice público otra. La respuesta no fue un test que compare dos listas: fue
+   * que haya una sola (`CAMPOS_DE_SEARCH_TEXT`).
+   *
+   * Estos dos chequeos cubren las dos direcciones de la clase, y ninguno compara
+   * literales — uno mide comportamiento y el otro lee la función, que tiene ocho
+   * líneas.
+   */
+  it('todo campo de la lista cambia de verdad el searchText', () => {
+    // Si la lista nombra un campo que `buildSearchText` ignora, restaurarlo
+    // recalcula al vacío: peor que no recalcular.
+    for (const campo of CAMPOS_DE_SEARCH_TEXT) {
+      const conCentinela: Record<string, unknown> = {
+        titulo: '',
+        descripcion: '',
+        sede: { nombre: '', barrio: '' },
+        organizador: { nombre: '' },
+        tallerista: { nombre: '' },
+        libro: { titulo: '', autor: '' },
+      };
+      conCentinela[campo] =
+        campo === 'sede'
+          ? { nombre: 'CENTINELA', barrio: '' }
+          : campo === 'libro'
+            ? { titulo: 'CENTINELA', autor: '' }
+            : campo === 'organizador' || campo === 'tallerista'
+              ? { nombre: 'CENTINELA' }
+              : 'CENTINELA';
+      expect(buildSearchText(conCentinela), `${campo} no llega al searchText`).toContain(
+        'centinela',
+      );
+    }
+  });
+
+  it('y toda fuente que la función lee está en la lista', () => {
+    // La dirección que falló: `buildSearchText` creció y la lista no. Se lee la
+    // función —ocho líneas— y se extraen los `a.<campo>` que consume.
+    const fuente = readFileSync('src/lib/normalize.ts', 'utf8');
+    const cuerpo = fuente.slice(fuente.indexOf('export const buildSearchText'));
+    const leidos = new Set([...cuerpo.matchAll(/\ba\.([a-zA-Z]+)/g)].map((m) => m[1]!));
+    for (const campo of leidos) {
+      expect(
+        (CAMPOS_DE_SEARCH_TEXT as readonly string[]).includes(campo),
+        `buildSearchText lee \`${campo}\` y CAMPOS_DE_SEARCH_TEXT no lo tiene`,
+      ).toBe(true);
+    }
+    // Y que de verdad encontró algo: un regex que no matchea nada pasaría solo.
+    expect(leidos.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it('restaurar un libro viejo recalcula el searchText (§6)', () => {
+    const version = versionAnteriorAB167();
+    (version.documento as Record<string, unknown>).libro = {
+      titulo: 'Pedro Páramo',
+      autor: 'Juan Rulfo',
+    };
+    const payload = payloadDeRestauracion('libro', version as never, actividad(), 'uid-a');
+    expect(payload.searchText).toContain('pedro paramo');
   });
 });

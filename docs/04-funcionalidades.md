@@ -70,6 +70,7 @@ tipo primero y el resto se adapta:
 | `material` | club de lectura (abierto por defecto), o si se tilda |
 | `tallerista` | taller |
 | autor invitado | presentación, charla — el mismo campo, con otro label |
+| `libro` (obra y su autor) | presentación, charla — y en cualquier actividad que ya lo tenga cargado (DEC-1, D-126) |
 | `sede` | presencial, híbrido |
 | `online` | virtual, híbrido |
 

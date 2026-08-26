@@ -229,7 +229,7 @@ proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, d
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
 arranca obligando a decidir las cuatro salidas **antes** de escribir código, que
-es la parte que no se puede deshacer. DEC-1 (el libro presentado) es su primer
+es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
 ### 🐞 `al-backlog`

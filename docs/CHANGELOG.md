@@ -14,6 +14,12 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`libro-presentado`** — *En una presentación o una charla ya se carga el libro*.
+  El título de la obra tiene su propio campo, así que no hace falta meterlo en la
+  descripción: se muestra aparte, sale en el evento del calendario y quien busque el
+  nombre del libro encuentra la actividad. El autor se completa solo si es distinto
+  de la persona invitada. · **Dónde:** Formulario, sección «Quién».
+
 - **`borradores-y-el-fin-de-sesion`** — *(afinar la novedad del autoguardado, no una
   entrada nueva)*. La entrada `autoguardado-del-formulario` dice «se borra al salir»;
   con B-203 es más cierto y conviene que diga **«se borra cuando se cierra la sesión,
@@ -127,6 +133,55 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### DEC-1 · El libro presentado: campo propio, con la obra y su autor
+
+El §11 lo listaba para presentaciones y charlas desde el principio y el §3.1 no lo
+tenía: hasta hoy se cargaba el autor en `tallerista` y el título de la obra quedaba
+enterrado en la descripción, donde nada lo puede leer. Ahora es
+`libro: { titulo, autor } | null`, con el autor cargado **solo si difiere del
+invitado** — en una presentación normal el autor es quien viene, y repetirlo abajo en
+«Invitado» sería decir dos veces la misma cosa. **D-126** tiene el razonamiento.
+
+Las cuatro salidas del paso 0, decididas antes de escribir código: **sale** al
+`events.json` y a la descripción del evento; **no sale** al issue de GitHub ni a GA4,
+que solo lleva el booleano `tiene_libro`. Y **una quinta que el skill no lista y
+debería**: entra al `searchText`, que viaja entero al `events.json`, y es lo que hace
+que buscar «Pedro Páramo» encuentre la presentación. Eso era la mitad del pedido.
+
+Dos cosas que el cambio dejó mejor de lo que estaban:
+
+- **`VERSION_BORRADOR` no subió, y eso es la guarda funcionando bien.** Se puso roja
+  —la forma del formulario cambió— y la respuesta correcta fue agregar las rutas sin
+  subir el número: `libro` es aditivo, así que un borrador anterior sigue sirviendo.
+  Subirla tiraría a la basura todo borrador en curso a cambio de nada. La guarda
+  existe para hacer pensar, no para subir el número; con B-167 el bump **sí**
+  correspondía porque ahí el borrador viejo *parecía* bueno.
+- **El bloque se muestra en cualquier actividad que ya lo tenga cargado**, no solo en
+  los dos tipos que lo piden. Lo encontró el auditor: las cascadas agregan y no
+  sacan, `duplicar` hereda, y las dos salidas públicas no miran el `tipo` — así que
+  una presentación pasada a taller seguía publicando «Libro: …» **sin pantalla desde
+  donde verlo ni borrarlo**. Esconderlo en la salida habría sido peor: el documento
+  lo seguiría teniendo.
+
+### B-207 · `searchText` tenía dos listas de fuentes, y restaurar del historial publicaba la vieja
+
+El P1 que salió de DEC-1. `historial.ts` tenía **su propia copia** de «de qué campos
+sale el `searchText`» con cinco entradas, mientras `buildSearchText` consumía seis:
+restaurar un libro viejo desde la pantalla de versiones escribía el campo y dejaba el
+`searchText` con el título descartado — y ese `searchText` sale al `events.json`. El
+documento diciendo una cosa y el índice público otra, y esa rama no tenía **ningún**
+test.
+
+**No se arregló agregando `'libro'` a la lista.** Eso deja el par vivo, y el par es el
+bug: es la clase de B-88 y la de B-72 a la vez. Ahora hay **una sola lista**, al lado
+de la función que la usa, y el historial la importa.
+
+La red va en las dos direcciones y ninguna compara literales: uno mete un centinela
+en cada campo de la lista y exige que llegue al `searchText` —si la lista nombra un
+campo que la función ignora, restaurarlo recalcula al vacío—, y el otro lee la
+función, extrae los campos que consume y exige que estén en la lista. Verificadas las
+dos, cada una con el mensaje que nombra qué drifteó.
 
 ### B-203 · Cualquier fin de sesión se lleva los borradores, no solo el botón
 

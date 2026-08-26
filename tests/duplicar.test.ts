@@ -30,6 +30,7 @@ const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   imagenes: [],
   organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
   tallerista: { nombre: 'María Moreno', bio: 'Cronista', instagram: '@mmoreno' },
+  libro: { titulo: 'Los siete locos', autor: 'Roberto Arlt' },
   esCiclo: true,
   sesiones: [
     sesion({ id: 'ses_a', inicio: '2025-09-02T19:00', fin: '2025-09-02T21:00' }),
@@ -235,6 +236,9 @@ describe('duplicar una actividad — el resto del contenido', () => {
     expect(copia.difusion).toEqual(o.difusion);
     expect(copia.organizador).toEqual(o.organizador);
     expect(copia.tallerista).toEqual(o.tallerista);
+    // DEC-1 — la copia hereda el libro: duplicar una presentación es la misma
+    // obra en otra fecha o en otra librería. Si es otro libro, son dos campos.
+    expect(copia.libro).toEqual(o.libro);
     expect(copia.tags).toEqual(o.tags);
     expect(copia.esCiclo).toBe(true);
     expect(copia.inscripcion.requiere).toBe(true);
@@ -254,6 +258,10 @@ describe('duplicar una actividad — el resto del contenido', () => {
     expect(copia.difusion.arrobar).not.toBe(o.difusion.arrobar);
     expect(copia.tags).not.toBe(o.tags);
     expect(copia.organizador).not.toBe(o.organizador);
+    // DEC-1 — el form del original sale de `documentoAForm`, que comparte
+    // objetos con el documento que el listado tiene en memoria: pisar el título
+    // del libro en la copia no puede cambiar el del original.
+    expect(copia.libro).not.toBe(o.libro);
   });
 
   it('descancela los encuentros: una cancelación es una excepción del ciclo original', () => {

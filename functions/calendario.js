@@ -193,6 +193,25 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
 
   if (actividad.descripcion) bloques.push(actividad.descripcion.trim());
 
+  // ── La obra (DEC-1) ───────────────────────────────────────────
+  /**
+   * El libro presentado va **acá adentro** y no armado por fuera de
+   * `construirEvento`: así entra al payload que compara la guarda anti-loop, y
+   * cambiar el título de la obra propaga solo a las N sesiones del ciclo (D-07,
+   * trampa 9). Armarlo afuera dejaría de propagarse en silencio.
+   *
+   * Es público a propósito: «presentación de tal libro» es el dato central del
+   * evento, del mismo orden que el título de la actividad (§5.1).
+   *
+   * El autor sale solo si está cargado, que es solo cuando **difiere del
+   * invitado** (ver `Libro.autor`): repetirlo abajo, en «Invitado», sería decir
+   * dos veces la misma cosa.
+   */
+  const libro = actividad.libro;
+  if (libro?.titulo) {
+    bloques.push(`Libro: ${libro.titulo}${libro.autor ? ` — ${libro.autor}` : ''}`);
+  }
+
   // ── De este encuentro ─────────────────────────────────────────
   const deEsteEncuentro = [];
   if (sesion.tema) deEsteEncuentro.push(`Tema: ${sesion.tema}`);

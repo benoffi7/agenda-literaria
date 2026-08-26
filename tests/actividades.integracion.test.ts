@@ -44,6 +44,7 @@ const formCompleto = (): ActividadForm => ({
   imagenes: [],
   organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
   tallerista: { nombre: 'María Moreno', bio: 'Cronista', instagram: '@mmoreno' },
+  libro: { titulo: '', autor: '' },
   esCiclo: true,
   sesiones: [
     { ...sesionVacia(), inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00', tema: 'Cap. 1-4' },

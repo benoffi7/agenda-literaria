@@ -188,6 +188,7 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 | `tags` | 0–100 | ¿Alguien pone tags? Alimentan los filtros del sitio público |
 | `requiere_inscripcion` | 0 · 1 | |
 | `tiene_tallerista` | 0 · 1 | |
+| `tiene_libro` | 0 · 1 | ¿Se cargó la obra en una presentación o una charla? (DEC-1). El **título nunca** viaja: es texto libre |
 | `url_publica` | 0 · 1 | ¿Cuántas veces se tilda "publicar el link"? (D-15) |
 
 `url_publica` es 1 solo si el flag está tildado **y** hay URL cargada, igual que

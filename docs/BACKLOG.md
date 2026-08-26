@@ -16,7 +16,7 @@ trabajo.
 
 | # | Tema | Contexto |
 |---|---|---|
-| DEC-1 | ~~`libro presentado`~~ **resuelto: campo propio con obra + autor.** Pendiente de implementar. | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
+| DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
 | DEC-6 | **El dominio: propio, no `.web.app`. Falta el nombre.** Las otras siete quedan en pausa con el sitio. | Resuelto a medias el 2026-08-26: se descartó `agenda-literaria.web.app` —el momento gratis para elegir es ahora, que nada está indexado— pero para registrar un dominio hace falta el nombre, y eso se decide junto. Así que **el sitio público queda congelado** por decisión del dueño, y con él B-105 a B-114. Lo que sí se resolvió: el canal de contacto es el **DM de Instagram** (falta el handle). Sigue abierto: el nombre, y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md). |
 
 Resueltas el 2026-08-26:
@@ -951,6 +951,33 @@ sin pedir la foto de nuevo. El almacenamiento duplicado es la parte barata.
 alert del §2.3 está puesto **solo para Functions**. Storage se paga por
 almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
 Conviene extenderlo antes, no después de la factura.
+
+### B-207 · `searchText` tenía dos listas de fuentes, y restaurar del historial publicaba la vieja — ✅ hecho (2026-08-26)
+
+Lo encontró el `auditor-privacidad` sobre DEC-1, y es consecuencia directa de ese
+cambio. `historial.ts` tenía **su propia copia** de «de qué campos sale el
+`searchText`» (`CAMPOS_DE_BUSQUEDA`, cinco entradas) mientras `buildSearchText`
+consumía seis. Al agregar el libro, restaurar un libro viejo desde la pantalla de
+versiones **escribía el campo y dejaba el `searchText` con el título descartado** —
+y ese `searchText` sale al `events.json`, o sea el documento diciendo una cosa y el
+índice público de búsqueda diciendo otra. El camino estaba abierto: la pantalla ya
+ofrecía restaurar «Libro presentado», y esa rama no tenía **ningún** test.
+
+Es la clase de B-88 y la de B-72 a la vez: el productor y el consumidor de la misma
+regla derivando por separado.
+
+**Cómo quedó.** No se arregló agregando `'libro'` a la lista y un test que compare
+las dos: eso deja el par vivo. **Ahora hay una sola lista** —
+`CAMPOS_DE_SEARCH_TEXT` en `normalize.ts`, al lado de la función que la usa— y
+`historial.ts` la importa.
+
+La red va en las dos direcciones y ninguna compara literales: un test **de
+comportamiento** que mete un centinela en cada campo de la lista y exige que
+aparezca en el `searchText` (si la lista nombra un campo que la función ignora,
+restaurarlo recalcula al vacío), y otro que lee la función —ocho líneas— extrae los
+`a.<campo>` que consume y exige que estén todos en la lista (la dirección que
+falló). Verificadas las dos: sacando `libro` de la lista y agregándole un campo
+inventado, cada rotura cae con el mensaje que nombra qué drifteó.
 
 ## P2 — mejoras reales
 

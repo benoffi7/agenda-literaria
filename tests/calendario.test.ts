@@ -208,6 +208,24 @@ describe('planificar — cambio global (trampa 9)', () => {
     expect(tipos(ops).every((t) => t === 'actualizar')).toBe(true);
   });
 
+  /**
+   * DEC-1 + trampa 9 — el libro entra al evento por `construirDescripcion`, que
+   * es lo que compara la guarda anti-loop (D-07). Por eso corregir el título de
+   * la obra en una actividad de ocho encuentros actualiza los ocho eventos, sin
+   * ningún caso especial. Armado por fuera de `construirEvento` habría dejado de
+   * propagarse **en silencio**, que es exactamente la trampa 9.
+   */
+  it('DEC-1: corregir el libro presentado propaga a las ocho sesiones (trampa 9)', () => {
+    const antes = ciclo({ libro: { titulo: 'Los detectives salvages', autor: '' } });
+    const despues = ciclo({ libro: { titulo: 'Los detectives salvajes', autor: '' } });
+    const ops = planificar(antes, despues);
+    expect(ops).toHaveLength(8);
+    expect(ops.every((o) => o.tipo === 'actualizar')).toBe(true);
+    for (const op of ops) {
+      expect(op.evento?.description).toContain('Los detectives salvajes');
+    }
+  });
+
   it('un cambio de título también propaga a todas', () => {
     expect(planificar(ciclo(), ciclo({ titulo: 'Título nuevo' }))).toHaveLength(8);
   });
@@ -431,6 +449,11 @@ const completa = (over: Record<string, unknown> = {}) =>
     },
     organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
     tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
+    // DEC-1 — el libro presentado va con centinelas, y no es decoración: si el
+    // fixture no tuviera el campo, **nada** fijaría esta celda de la tabla del
+    // paso 0 y sacar la línea de la descripción no rompería ningún test. Es lo
+    // que pasó con la galería (B-167).
+    libro: { titulo: 'CENTINELA-LIBRO Los detectives salvajes', autor: 'CENTINELA-AUTORLIBRO Bolano' },
     tags: ['narrativa'],
     difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
     ...over,
@@ -486,6 +509,31 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
 
   it('incluye los tags como temas', () => {
     expect(d()).toContain('Narrativa');
+  });
+
+  /**
+   * DEC-1 — el libro presentado **sí va al evento** (§5.1): «presentación de tal
+   * libro» es el dato central del evento, del mismo orden que el título.
+   */
+  it('incluye el libro presentado con su autor (DEC-1, §5.1)', () => {
+    expect(d()).toContain('Libro: CENTINELA-LIBRO Los detectives salvajes');
+    expect(d()).toContain('— CENTINELA-AUTORLIBRO Bolano');
+  });
+
+  it('sin autor cargado no deja el guion suelto: el autor es el invitado (DEC-1)', () => {
+    const a = completa({ libro: { titulo: 'Los siete locos', autor: '' } });
+    const texto = construirDescripcion(a, sesion(), LABELS);
+    expect(texto).toContain('Libro: Los siete locos');
+    expect(texto).not.toContain('Los siete locos —');
+  });
+
+  it('sin libro cargado no aparece el rótulo (DEC-1)', () => {
+    // Es el caso de todo documento anterior a DEC-1 y de todo taller: el campo
+    // ausente no puede pintar «Libro: » vacío en el calendario público.
+    for (const libro of [undefined, null, { titulo: '', autor: '' }]) {
+      const texto = construirDescripcion(completa({ libro }), sesion(), LABELS);
+      expect(texto, `libro=${JSON.stringify(libro)}`).not.toContain('Libro:');
+    }
   });
 
   it('numera el encuentro dentro del ciclo', () => {

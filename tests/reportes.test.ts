@@ -207,6 +207,36 @@ describe('actividadParaIssue — proyección, no volcado', () => {
     expect(actividadParaIssue({ estado: 'pendiente', titulo: 'x' })).toBeNull();
     expect(actividadParaIssue(null)).toBeNull();
   });
+
+  /**
+   * DEC-1, §5.1 — el libro presentado **no sale al issue de GitHub**, que es un
+   * repo público y ajeno al sitio: el reporte es sobre el panel, no sobre la
+   * actividad, y de ella solo salen título y slug. Que la proyección enumere ya
+   * lo garantiza; esto lo fija con un centinela, porque «enumera» es una
+   * propiedad que se puede perder en un spread de una línea.
+   */
+  it('el libro presentado no llega al issue (DEC-1, §5.1)', () => {
+    const actividad = {
+      estado: 'publicado',
+      titulo: 'Presentación de un libro',
+      slug: 'presentacion',
+      libro: { titulo: 'CENTINELA-LIBRO Los detectives salvajes', autor: 'CENTINELA-AUTORLIBRO' },
+    };
+    const proyectada = actividadParaIssue(actividad);
+    expect(Object.keys(proyectada!).sort()).toEqual(['slug', 'titulo']);
+
+    const issue = construirIssue({
+      id: 'rep1',
+      reporte: reporte({ actividad: { id: 'act1', titulo: 'Presentación de un libro' } }),
+      actividad: proyectada,
+    });
+    for (const centinela of ['CENTINELA-LIBRO', 'CENTINELA-AUTORLIBRO']) {
+      expect(
+        `${issue.title}\n${issue.body}`,
+        `se escapó ${centinela} al issue público`,
+      ).not.toContain(centinela);
+    }
+  });
 });
 
 describe('validación del formulario de reporte', () => {

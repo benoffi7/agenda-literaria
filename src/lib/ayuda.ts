@@ -569,6 +569,15 @@ export const CAPITULOS: CapituloAyuda[] = [
           'alcanzan; es una presentación, no un curriculum.',
       },
       {
+        texto:
+          'En una presentación o una charla se carga además el libro que se presenta. Va en su ' +
+          'propio campo y no dentro de la descripción: así se puede mostrar aparte, y alguien que ' +
+          'busca el título del libro encuentra la actividad. El autor del libro se llena solo ' +
+          'cuando es distinto de la persona invitada —una traducción, una antología, un autor que ' +
+          'no viene—; si el autor es quien viene, alcanza con cargarlo arriba. El título y el ' +
+          'autor salen en el sitio y en el evento del calendario.',
+      },
+      {
         texto: 'Los usuarios de Instagram van con arroba y sin link: «@casabrandon».',
       },
     ],

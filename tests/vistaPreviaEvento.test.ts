@@ -47,6 +47,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   imagenes: [],
   organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
   tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
+  libro: { titulo: '', autor: '' },
   esCiclo: true,
   sesiones: [sesion()],
   modalidad: 'hibrido',

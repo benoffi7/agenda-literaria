@@ -32,6 +32,10 @@ export const CENTINELAS = {
   organizador: 'CENTINELA-ORGANIZADOR Casa Brandon',
   tallerista: 'CENTINELA-TALLERISTA Ana Perez',
   web: 'https://CENTINELA-web.example',
+  // DEC-1 — el libro presentado es texto libre, así que tiene centinela como
+  // cualquier otro campo de contenido: la analítica no puede llevarlo.
+  libro: 'CENTINELA-LIBRO Los detectives salvajes',
+  autorDelLibro: 'CENTINELA-AUTORLIBRO Roberto Bolano',
 } as const;
 
 /** Todos los centinelas, para recorrerlos en las aserciones. */
@@ -61,6 +65,7 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
     bio: CENTINELAS.bio,
     instagram: CENTINELAS.handle,
   },
+  libro: { titulo: CENTINELAS.libro, autor: CENTINELAS.autorDelLibro },
   esCiclo: true,
   sesiones: [
     {

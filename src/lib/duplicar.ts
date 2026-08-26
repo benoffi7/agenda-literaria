@@ -188,6 +188,18 @@ export const duplicarActividadForm = (
 
     organizador: { ...origen.organizador },
     tallerista: origen.tallerista ? { ...origen.tallerista } : null,
+    /**
+     * DEC-1 — la copia **hereda el libro**. Duplicar una presentación es la
+     * misma obra en otra fecha o en otra librería, que es el caso que hizo
+     * existir a `duplicar` (§11: 30+ campos). Si es otro libro, son dos campos
+     * de texto para pisar.
+     *
+     * Se copia el objeto en lugar de compartir la referencia, como el resto de
+     * los anidados: el form del original sale de `documentoAForm`, que comparte
+     * objetos con el documento que el listado tiene en memoria, y editar la
+     * copia no puede tocar nada del original ni en el estado de React.
+     */
+    libro: { ...origen.libro },
     sede: origen.sede
       ? { ...origen.sede, geo: origen.sede.geo ? { ...origen.sede.geo } : null }
       : null,

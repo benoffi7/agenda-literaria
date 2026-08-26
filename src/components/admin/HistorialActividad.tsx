@@ -42,6 +42,8 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   imagenes: 'Imágenes',
   organizador: 'Organizador',
   tallerista: 'Tallerista o invitado',
+  // DEC-1 — sin esta entrada el historial mostraría la clave cruda `libro`.
+  libro: 'Libro presentado',
   esCiclo: 'Es un ciclo',
   sesiones: 'Encuentros',
   modalidad: 'Modalidad',

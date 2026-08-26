@@ -1,8 +1,10 @@
 /**
- * Organizador siempre; tallerista o autor invitado según el tipo (§11).
+ * Organizador siempre; tallerista o autor invitado según el tipo (§11), y el
+ * libro presentado en presentación y charla (DEC-1).
  */
 import { Campo, claseInput } from '@/components/admin/campos/Campo';
 import { Seccion } from '@/components/admin/campos/Seccion';
+import { muestraLibro } from '@/lib/formulario/condicionales';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 type Props = Omit<PropsSeccion, 'uid'> & {
@@ -84,6 +86,49 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                     bio: e.target.value,
                   })
                 }
+              />
+            </Campo>
+          </div>
+        </div>
+      )}
+
+      {/*
+        DEC-1 — el libro presentado. Aparece en presentación y charla, los dos
+        tipos en los que la persona al frente es «autor o autora invitada», y
+        además en cualquier actividad que ya lo tenga cargado: lo que se publica
+        tiene que poder verse y borrarse desde donde se cargó.
+
+        La condición es del modelo y vive en `formulario/condicionales.ts`
+        (B-70), no acá: se importa en lugar de recibirse como prop porque
+        depende del contenido del formulario y no solo del tipo, y escribirla en
+        el `.tsx` es lo que hace que el campo se esconda en un caso donde el
+        documento —y las dos salidas públicas— lo siguen teniendo.
+      */}
+      {muestraLibro(form) && (
+        <div className="mt-4 border-t border-borde pt-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo
+              label="Libro presentado"
+              error={errorDe('libro.titulo')}
+              ayuda="Se publica en el sitio y en el evento del calendario."
+            >
+              <input
+                className={claseInput}
+                value={form.libro.titulo}
+                onChange={(e) => set('libro', { ...form.libro, titulo: e.target.value })}
+                placeholder="Los detectives salvajes"
+              />
+            </Campo>
+            <Campo
+              label="Autor del libro"
+              error={errorDe('libro.autor')}
+              ayuda="Solo si es distinto de la persona invitada."
+            >
+              <input
+                className={claseInput}
+                value={form.libro.autor}
+                onChange={(e) => set('libro', { ...form.libro, autor: e.target.value })}
+                placeholder="Roberto Bolaño"
               />
             </Campo>
           </div>

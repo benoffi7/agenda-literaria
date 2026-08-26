@@ -9,7 +9,7 @@
  */
 import { OPCIONES_BASE, opcionesVisibles, ordenarValores } from '@/lib/opciones';
 import { sesionVacia } from '@/lib/sesiones';
-import type { ActividadForm, CampoTaxonomia, Online, Persona, Sede } from '@/types/actividad';
+import type { ActividadForm, CampoTaxonomia, Libro, Online, Persona, Sede } from '@/types/actividad';
 
 /** La sede que se crea al pasar a presencial o híbrido. `CABA` por defecto. */
 export const sedeVacia = (): Sede => ({
@@ -44,6 +44,25 @@ export const onlineVacio = (): Online => ({ plataforma: '', url: '', urlPublica:
  * recuperado (D-124).
  */
 export const personaVacia = (): Persona => ({ nombre: '', bio: '', instagram: '' });
+
+/**
+ * El bloque del libro presentado, vacío (DEC-1).
+ *
+ * Es **el único productor de esta forma**, y por eso existe como fábrica: la usa
+ * el formulario nuevo (`formVacio`), el default de lectura de los documentos que
+ * no tienen el campo (`documentoAForm`) y, por venir dentro de `formVacio`, el
+ * molde con el que `autoguardado.ts` poda lo recuperado. Escribir el literal en
+ * cada lado es la clase de B-88 —el productor y el consumidor derivando por
+ * separado— y ya borró `tallerista.bio` una vez (D-124).
+ *
+ * **Tiene que ser determinístico**, y no es un detalle: es el default de lectura
+ * de todo documento anterior a DEC-1, así que si devolviera algo distinto en
+ * cada llamada (un id, una fecha) `huboCambioDeContenido` vería un cambio en
+ * cada apertura del formulario y el panel escribiría una versión al historial
+ * por cada vez que alguien mira una actividad. Es el argumento de
+ * `ID_IMAGEN_MIGRADA` (D-125), en otro campo.
+ */
+export const libroVacio = (): Libro => ({ titulo: '', autor: '' });
 
 /**
  * Primera opción elegible de una taxonomía **según las opciones base**, que es
@@ -81,6 +100,10 @@ export const formVacio = (): ActividadForm => ({
   imagenes: [],
   organizador: { nombre: '', instagram: '', web: '' },
   tallerista: null,
+  // DEC-1 — nace vacío y no en `null`: son dos campos de texto, y
+  // `formADocumento` los convierte en `null` si no tienen título, así que un
+  // bloque vacío no fabrica nada en el documento.
+  libro: libroVacio(),
   esCiclo: false,
   sesiones: [sesionVacia()],
   modalidad: 'presencial',

@@ -250,6 +250,11 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'inscripcion.destino',
   'inscripcion.requiere',
   'inscripcion.via',
+  // DEC-1 — el libro presentado. Son **nombres de campo** y no contenido: acá
+  // viaja `libro.titulo` como ruta que falló la validación, nunca el título.
+  'libro',
+  'libro.autor',
+  'libro.titulo',
   'material',
   'material.items',
   'material.items.N',
@@ -472,6 +477,9 @@ export const EVENTOS = {
     tags: { tipo: 'entero', max: 100 },
     requiere_inscripcion: { tipo: 'booleano' },
     tiene_tallerista: { tipo: 'booleano' },
+    // DEC-1 — si el libro presentado se cargó o no. Booleano y nada más: el
+    // título es texto libre y no hay sanitizador de texto libre (§9).
+    tiene_libro: { tipo: 'booleano' },
     url_publica: { tipo: 'booleano' },
   },
 
@@ -650,5 +658,7 @@ export const formaDelFormulario = (form: ActividadForm): Record<string, unknown>
   tags: form.tags.length,
   requiere_inscripcion: form.inscripcion.requiere,
   tiene_tallerista: tieneTexto(form.tallerista?.nombre),
+  // DEC-1 — se completó o no. Nunca el título de la obra.
+  tiene_libro: tieneTexto(form.libro?.titulo),
   url_publica: Boolean(form.online?.urlPublica && tieneTexto(form.online?.url)),
 });

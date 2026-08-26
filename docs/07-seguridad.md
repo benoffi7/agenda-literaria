@@ -15,6 +15,11 @@ comparten las mismas reglas.
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado (B-206). Por eso la Function le pone un **nombre opaco** al archivo | `toPublic.ts` |
 
+`libro` **sí** sale, título y autor, a las dos salidas públicas: es el dato central
+de una presentación, del mismo orden que el título de la actividad, y entra también
+al `searchText` para que buscar la obra encuentre la actividad (DEC-1, **D-126**). A
+GA4 va solo `tiene_libro`, un booleano: el título es texto libre.
+
 `inscripcion.destino` **sí** sale: es el canal de inscripción. El §5.1 advierte
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
 trabajo o un `wa.me` con mensaje precargado. El formulario lo dice en la ayuda

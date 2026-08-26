@@ -142,6 +142,38 @@ describe('los payloads reales de los puntos de medición', () => {
     );
   });
 
+  /**
+   * DEC-1, §5.1 — de la analítica sale **si el libro se cargó o no**, nunca el
+   * título de la obra ni su autor. Los dos son texto libre y no hay sanitizador
+   * de texto libre (§9 de `docs/07-seguridad.md`): la única forma de que un
+   * título no se escape es que el valor sea un booleano.
+   *
+   * El centinela del fixture es lo que fija esta celda: `revisar()` recorre
+   * todos los centinelas, así que mandar `libro: form.libro.titulo` por descuido
+   * en cualquier evento pone rojo esto.
+   */
+  it('del libro presentado sale el booleano, nunca el título (DEC-1, §5.1)', () => {
+    const evento = construirEvento('guardado_ok', {
+      dispositivo: 'mobile',
+      ancho: 'xs',
+      modo: 'nueva',
+      accion: 'submit',
+      ...formaDelFormulario(form),
+    });
+    revisar(evento);
+    expect(evento!.params.tiene_libro).toBe(1);
+    expect(
+      formaDelFormulario(formularioLleno({ libro: { titulo: '', autor: '' } })).tiene_libro,
+    ).toBe(false);
+  });
+
+  it('la ruta del campo sí viaja: es el nombre, no el valor (DEC-1, D-60)', () => {
+    // Lo que la analítica necesita para decir «la gente se traba en el libro» es
+    // la ruta `libro.titulo`, que es vocabulario cerrado derivado del schema.
+    expect(normalizarCampo('libro.titulo')).toBe('libro.titulo');
+    expect(normalizarCampo(CENTINELAS.libro)).toBe(FUERA_DE_VOCABULARIO);
+  });
+
   it('formulario_abandonado dice en qué grupo se trabó, no qué escribió', () => {
     const { completos, faltantes } = avanceDelFormulario(
       formularioLleno({ material: { tiene: true, items: [] } }),

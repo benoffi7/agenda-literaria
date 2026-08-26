@@ -36,7 +36,7 @@ import {
 } from 'firebase/firestore';
 // `firestore-client` y no `firebase-client`: el corte del bundle (B-09, D-51).
 import { db } from '@/lib/firestore-client';
-import { buildSearchText } from '@/lib/normalize';
+import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { fechaHoraCorta } from '@/lib/sesiones';
 import { camposCambiados } from '@historial';
 import type { Actividad, ActividadConId, Sesion, TimestampLike } from '@/types/actividad';
@@ -189,7 +189,13 @@ export const valorARestaurar = (
  * sitio público. `formADocumento` lo recalcula en cada guardado justamente por
  * esto; el historial escribe por otro camino y tiene que hacer lo mismo.
  */
-const CAMPOS_DE_BUSQUEDA = ['titulo', 'descripcion', 'sede', 'organizador', 'tallerista'];
+/**
+ * De qué campos sale el `searchText`. **Importada, no copiada:** esta lista tenía
+ * su propia versión con cinco de los seis, y al agregar el libro (DEC-1) restaurar
+ * un libro viejo escribía el campo y dejaba el índice de búsqueda con el título
+ * descartado — que es lo que sale al `events.json`. Ver `CAMPOS_DE_SEARCH_TEXT`.
+ */
+const CAMPOS_DE_BUSQUEDA: readonly string[] = CAMPOS_DE_SEARCH_TEXT;
 
 /**
  * El objeto que se le manda a `updateDoc`: el campo restaurado, la autoría de

@@ -3,8 +3,8 @@
  *
  * "Se elige `tipo` primero y se muestra solo lo que aplica": el material es
  * sobre todo del club de lectura, el tallerista es del taller, el autor
- * invitado de la presentación y la charla, la sede de lo presencial y el
- * bloque online de lo virtual.
+ * invitado y el libro presentado de la presentación y la charla, la sede de lo
+ * presencial y el bloque online de lo virtual.
  *
  * Son reglas del modelo y no de presentación —el schema valida los mismos
  * condicionales en su `superRefine`—, así que viven acá y no en el `.tsx`
@@ -27,6 +27,24 @@ export const necesitaSede = (f: ActividadForm): boolean =>
 
 export const necesitaOnline = (f: ActividadForm): boolean =>
   f.modalidad === 'virtual' || f.modalidad === 'hibrido';
+
+/**
+ * ¿Se muestra el bloque del libro presentado? (DEC-1)
+ *
+ * En presentación y charla **siempre**: son los dos tipos que lo piden (§11), los
+ * mismos en los que la persona al frente se llama «autor o autora invitada».
+ *
+ * Y además **en cualquier tipo que ya lo tenga cargado**, que no es cortesía:
+ * `formADocumento` conserva el libro al cambiar de tipo —las cascadas agregan y
+ * no sacan, para no borrar lo que alguien escribió— y `duplicar` lo hereda. Sin
+ * esta segunda mitad, una presentación pasada a taller sigue publicando
+ * «Libro: …» en el sitio y en el evento del calendario sin ninguna pantalla desde
+ * donde verlo ni borrarlo: contenido público sin forma de editarlo desde donde se
+ * cargó. La condición del §11 dice qué se **pide**; lo que ya está cargado se
+ * muestra igual.
+ */
+export const muestraLibro = (f: ActividadForm): boolean =>
+  esCharla(f) || Boolean(f.libro?.titulo?.trim());
 
 /**
  * Cómo se llama la persona al frente. No es lo mismo quien da un taller que

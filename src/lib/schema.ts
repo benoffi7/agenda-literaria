@@ -157,6 +157,18 @@ export const actividadFormSchema = z
       .object({ nombre: opcional, bio: opcional, instagram: opcional })
       .nullable()
       .default(null),
+    /**
+     * DEC-1 — el libro presentado. **No se exige para publicar**, igual que el
+     * bloque de autor invitado del §11 con el que aparece y desaparece: una
+     * presentación puede publicarse sin el dato cargado, y bloquear el publicado
+     * por un campo nuevo dejaría inguardables las presentaciones que ya existen.
+     *
+     * Va sin `.nullable()`: en el formulario es siempre un objeto de dos textos
+     * (`libroVacio()`), y el `null` del documento lo produce `formADocumento`.
+     */
+    libro: z
+      .object({ titulo: opcional, autor: opcional })
+      .default({ titulo: '', autor: '' }),
 
     esCiclo: z.boolean().default(false),
     sesiones: z.array(sesionSchema),

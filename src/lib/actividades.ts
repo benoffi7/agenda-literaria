@@ -12,6 +12,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firestore-client';
+import { libroVacio } from '@/lib/formulario/estadoInicial';
 import { buildSearchText } from '@/lib/normalize';
 import { deDatetimeLocal, aDatetimeLocal } from '@/lib/sesiones';
 import { imagenesDe } from '@/lib/imagenes';
@@ -54,6 +55,21 @@ export const formADocumento = (
   // El tallerista solo tiene sentido si tiene nombre.
   const tallerista = f.tallerista?.nombre?.trim() ? f.tallerista : null;
 
+  /**
+   * DEC-1 — el libro solo tiene sentido si tiene título: es lo que lo identifica,
+   * igual que el nombre al tallerista. Un autor cargado sin título no se escribe,
+   * porque «el autor de nada» no es un dato.
+   *
+   * **No depende del `tipo`**, a diferencia de `sede`/`online` con la modalidad:
+   * las cascadas del §11 agregan y no sacan, así que cambiar el desplegable de
+   * tipo no borra lo que alguien ya escribió. Se enumeran los dos campos en lugar
+   * de copiar el objeto con un spread: una clave de más que llegue de un borrador
+   * recuperado no puede entrar al documento (§5.2).
+   */
+  const libro = f.libro?.titulo?.trim()
+    ? { titulo: limpiar(f.libro.titulo), autor: limpiar(f.libro.autor) }
+    : null;
+
   const base = {
     tipo: f.tipo,
     titulo: limpiar(f.titulo),
@@ -64,6 +80,7 @@ export const formADocumento = (
     imagenes: f.imagenes.map((i) => ({ ...i })),
     organizador: f.organizador,
     tallerista,
+    libro,
 
     esCiclo: f.esCiclo,
     sesiones: f.sesiones.map((s) => ({
@@ -109,6 +126,9 @@ export const formADocumento = (
       sede,
       organizador: f.organizador,
       tallerista,
+      // DEC-1 — el libro entra a la búsqueda: encontrar la presentación
+      // buscando el título de la obra es la mitad de por qué el campo existe.
+      libro,
     }),
     updatedBy: uid,
     updatedAt: serverTimestamp(),
@@ -131,6 +151,12 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
   imagenes: imagenesDe(a),
   organizador: a.organizador ?? { nombre: '', instagram: '', web: '' },
   tallerista: a.tallerista ?? null,
+  // DEC-1 — default de lectura: un documento anterior al campo (o uno sin libro
+  // cargado, que lo tiene en `null`) se lee con el bloque vacío. Es la misma
+  // fábrica que usa `formVacio`, así que es **determinístico**: si devolviera
+  // algo distinto en cada lectura, el formulario nacería sucio y se escribiría
+  // una versión al historial por cada apertura (D-125, D-26).
+  libro: a.libro ?? libroVacio(),
   esCiclo: a.esCiclo,
   sesiones: (a.sesiones ?? []).map(
     (s): SesionForm => ({

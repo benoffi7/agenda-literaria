@@ -82,6 +82,27 @@ export interface Persona {
   instagram: string;
 }
 
+/**
+ * La obra que se presenta (DEC-1). Aparece en `presentacion` y `charla`, los
+ * mismos dos tipos que abren el bloque de autor invitado (§11).
+ *
+ * **Es un campo propio y no un párrafo de la descripción**: así se puede mostrar
+ * aparte, buscar por él (entra al `searchText` del §6) y filtrar más adelante.
+ * Hasta acá una presentación cargaba el autor en `tallerista` y el título del
+ * libro quedaba enterrado en la descripción, donde nada lo puede leer.
+ */
+export interface Libro {
+  /** Título de la obra. Es lo que identifica al libro; sin esto no hay libro. */
+  titulo: string;
+  /**
+   * Autor de la obra, **solo si difiere del invitado** que ya está en
+   * `tallerista`. En una presentación normal el autor es el invitado y este
+   * campo queda vacío; se llena cuando se presenta a un tercero (una traducción,
+   * una antología, un autor que no viene o que ya murió).
+   */
+  autor: string;
+}
+
 export interface Sesion {
   /** `ses_<uuid>` — generado en cliente, NUNCA por índice (§3.1, trampa 2). */
   id: string;
@@ -202,6 +223,17 @@ export interface Actividad {
   imagenUrl?: string | null;
   organizador: Organizador;
   tallerista: Persona | null;
+  /**
+   * DEC-1 — el libro presentado. **Opcional a propósito:** los documentos que ya
+   * están en producción no lo tienen, y el default de lectura los devuelve con
+   * el bloque vacío (`libroVacio()` en `formulario/estadoInicial.ts`), que es
+   * exactamente el comportamiento anterior. Que el tipo lo declare opcional es
+   * lo que obliga al compilador a decidirlo en cada lectura (D-26).
+   *
+   * `null` es el valor que escribe el panel cuando no hay título: un libro sin
+   * título no es un libro, igual que un `tallerista` sin nombre.
+   */
+  libro?: Libro | null;
 
   esCiclo: boolean;
   sesiones: Sesion[];
@@ -256,9 +288,22 @@ export interface ActividadForm
     | 'inscripcion'
     | 'imagenes'
     | 'imagenUrl'
+    | 'libro'
   > {
   sesiones: SesionForm[];
   inscripcion: Omit<Inscripcion, 'cierra'> & { cierra: string };
+  /**
+   * DEC-1 — **siempre un objeto en el formulario, nunca `null`**, aunque en el
+   * documento sea `Libro | null`.
+   *
+   * Es la asimetría de `imagenes` por el mismo motivo: el default de lectura ya
+   * resolvió el caso de los documentos viejos antes de llegar acá, así que la
+   * pantalla no tiene que preguntarse si el bloque existe. Y a diferencia de
+   * `tallerista`, que lo crea la cascada de tipo, este nace con el formulario:
+   * dos campos de texto vacíos no fabrican datos que nadie cargó, porque
+   * `formADocumento` los convierte en `null` si no tienen título.
+   */
+  libro: Libro;
   /**
    * Siempre un array, nunca `undefined`: el formulario no tiene el problema de
    * los documentos viejos, porque el default de lectura ya resolvió eso antes de

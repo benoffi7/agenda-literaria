@@ -1,5 +1,5 @@
 import { imagenesDe } from '@/lib/imagenes';
-import type { Actividad, Imagen, ItemMaterial, Sesion } from '@/types/actividad';
+import type { Actividad, Imagen, ItemMaterial, Libro, Sesion } from '@/types/actividad';
 
 /**
  * §5 — Todo lo que entra al `events.json` es público y scrapeable.
@@ -41,6 +41,19 @@ export interface ImagenPublica {
   alto?: number;
 }
 
+/**
+ * §5.1 + DEC-1 — el libro presentado **sí es público**.
+ *
+ * Es información de la actividad, del mismo orden que el título y el tallerista:
+ * quien busca «se presenta tal libro» tiene que encontrarla. Se enumeran los dos
+ * campos igual que el resto de la proyección —whitelist, sin spread— así que una
+ * clave que se agregue mañana al modelo no sale sola.
+ */
+export interface LibroPublico {
+  titulo: string;
+  autor: string;
+}
+
 export interface ActividadPublica {
   id: string;
   titulo: string;
@@ -56,6 +69,7 @@ export interface ActividadPublica {
   arancel: Actividad['arancel'];
   organizador: Actividad['organizador'];
   tallerista: Actividad['tallerista'];
+  libro: LibroPublico | null;
   esCiclo: boolean;
   sesiones: SesionPublica[];
   inscripcion: {
@@ -101,6 +115,14 @@ const imagenPublica = (i: Imagen): ImagenPublica => ({
   ...(i.alto !== undefined ? { alto: i.alto } : {}),
 });
 
+/**
+ * El libro, o `null`. Sin título no se inventa el campo (D-15): un objeto con
+ * dos cadenas vacías en el `events.json` haría que el sitio pinte el rótulo
+ * «Libro:» vacío en toda actividad que no lo tenga.
+ */
+const libroPublico = (l: Libro | null | undefined): LibroPublico | null =>
+  l?.titulo ? { titulo: l.titulo, autor: l.autor ?? '' } : null;
+
 const sesionPublica = (s: Sesion): SesionPublica => ({
   id: s.id,
   inicio: aIso(s.inicio),
@@ -131,6 +153,7 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   arancel: a.arancel,
   organizador: a.organizador,
   tallerista: a.tallerista ?? null,
+  libro: libroPublico(a.libro),
   esCiclo: a.esCiclo ?? false,
   sesiones: (a.sesiones ?? []).map(sesionPublica),
   inscripcion: {
