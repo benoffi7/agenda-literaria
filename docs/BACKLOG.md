@@ -25,7 +25,7 @@ Resueltas el 2026-08-26:
 |---|---|---|
 | DEC-7 | La galería de imágenes (B-167), cuatro decisiones | (a) **un solo campo opcional**, que es un epígrafe; el texto alternativo sale del título de la actividad — decisión de accesibilidad tomada a propósito, no un olvido. (b) **hasta 4 imágenes de 3 MB**, validado en el schema **y** en `storage.rules`, porque el cliente se puede saltear; el mensaje de rechazo tiene que decir el tamaño real y el máximo, que 3 MB es menos que una foto de celular sin recortar. (c) **conviven externas y propias** desde el día uno, así que entra Firebase Storage con todo lo que arrastra. (d) las **propias se optimizan** del lado de la Function (EXIF, recompresión, miniatura) y las **externas se sirven tal cual**, sin descargarlas al build. Ojo con la trampa que aparece acá y no está en el §13: una Function que escribe la miniatura en el mismo bucket **se dispara a sí misma** — es la trampa 3 con otra cara. |
 | DEC-8 | Las N opciones para sumarse a un mismo ciclo (B-181) | **Eje nuevo `opciones: [{ id, etiqueta, sesiones }]`** — el más fiel y el más caro, que es lo que el reporte describe literalmente. Toca el schema, el formulario, la proyección, el diff del §7.2 y la numeración de D-95; los ids van generados en el cliente (trampa 2). Va **después de B-167 y antes de descongelar el sitio**: hoy el daño es un calendario con eventos de más, y después es información equivocada indexada en Google. |
-| DEC-9 | Cómo se llama la librería que sale a la calle (B-192) | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
+| DEC-9 | Cómo se llama la librería que sale a la calle (B-192) — **implementado el 2026-08-26** | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
 | B-28 | ¿Claim `curador` para aprobar? | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
 | B-29 | ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? | **Sí.** Y es más barato de lo que parecía: `ValorOpcion` ya tiene `huellaCreador`, así que comparar esa huella con la de quien guarda alcanza, dentro de la misma transacción del §4.2 que ya incrementa `usos`. Dos bordes: si `huellaCreador` está ausente (documentos viejos) **no** se auto-aprueba, porque no se puede saber de quién era; y queda por decidir si la etiqueta aprobada así **se marca** en la pantalla de taxonomías o desaparece de pendientes sin rastro — conviene marcarla, es lo que permite deshacer el typo que las dos personas escribieron igual. |
 | B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. Hoy el sistema no guarda ni un dato personal de un tercero, y por eso el §5 cabe en una tabla. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
@@ -2478,7 +2478,7 @@ Lo mismo se le puede preguntar a `sede` en presencial —un lugar a confirmar es
 igual de común—, pero eso es otro ítem: la sede además arrastra la dirección, el
 mapa y el `location` del evento.
 
-### B-192 · Una librería que sale a la calle no tiene tipo · P2
+### B-192 · Una librería que sale a la calle no tiene tipo — ✅ hecho (2026-08-26)
 
 Dos reportes del panel que son el mismo pedido con dos nombres distintos, del
 mismo día:
@@ -2522,6 +2522,23 @@ Nota de dominio que vale más que el ítem: los dos reportes describen algo que 
 es una actividad con horario de inicio y fin claros** sino un local abierto un día,
 a veces con música o charlas adentro. Si eso se repite, el modelo va a necesitar
 distinguir "evento" de "jornada", y ahí se cruza con **B-181**.
+
+**Cómo quedó (2026-08-26, DEC-9).** Slug **`libreria-a-la-calle`**, label «Librería
+a la calle», `orden: 7`, `fijo: true`. Se eligió el más concreto de los tres
+propuestos porque es el que menos se va a estirar para significar otra cosa; el
+label es cambiable, el slug no (la lección de B-134).
+
+La cascada es la de «Feria» y por el mismo motivo: salir a la vereda un sábado es un
+día, y una semana de la librería son varias jornadas. No prende material ni
+tallerista.
+
+**Y de paso la cascada dejó de ser una cadena de `||`.** Eran tres tipos ya, y una
+cadena que crece es cómo un tipo nuevo queda con la mitad de la regla. Ahora es
+`CICLOS_POR_TIPO`, un `Set`, con **dos tests en las dos direcciones**: que todo tipo
+del Set prenda «es un ciclo», y que todo tipo del Set exista en
+`opciones-base.json` con `fijo: true` — esa segunda es la que faltaría si alguien
+agrega un slug al Set y se olvida del JSON, y la cascada quedaría apuntando a un
+tipo que no se puede elegir. Verificado rompiendo las dos por separado.
 
 ### B-193 · La vista previa del evento ya existía y quien la pidió no la encontró · P2
 

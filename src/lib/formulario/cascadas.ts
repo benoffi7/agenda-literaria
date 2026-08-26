@@ -41,6 +41,17 @@ export const cambiarTitulo = (
  * por un cambio de desplegable es pérdida de trabajo, y el checkbox está al
  * lado para apagarlo a mano.
  */
+/**
+ * Los tipos que prenden «es un ciclo» solos.
+ *
+ * Es un `Set` y no una cadena de `||` porque ya son tres y va a seguir creciendo:
+ * cada categoría del dominio que dure varios días entra acá. Los slugs son los de
+ * `opciones-base.json`, y están protegidos con `fijo: true` porque esta regla los
+ * nombra: borrarlos desde la pantalla de taxonomías dejaría la cascada apuntando a
+ * un tipo que no se puede elegir (§4.3).
+ */
+export const CICLOS_POR_TIPO = new Set(['club-lectura', 'feria', 'libreria-a-la-calle']);
+
 export const cambiarTipo = (f: ActividadForm, tipo: string): ActividadForm => ({
   ...f,
   tipo: tipo as ActividadForm['tipo'],
@@ -50,9 +61,15 @@ export const cambiarTipo = (f: ActividadForm, tipo: string): ActividadForm => ({
   // acordarse de tildar «es un ciclo» a mano, que es justo el olvido que las
   // cascadas del §11 existen para evitar.
   //
-  // Lo que NO prende: material y tallerista. Una feria no tiene quien la dé, y
-  // el material de lectura no es su caso.
-  esCiclo: tipo === 'club-lectura' || tipo === 'feria' ? true : f.esCiclo,
+  // `libreria-a-la-calle` va con las dos, por el mismo motivo y con el mismo
+  // ejemplo (B-192, DEC-9): una librería que sale a la vereda un sábado es un día,
+  // y una semana de la librería son varias jornadas — que es exactamente lo que se
+  // decidió para «Feria».
+  //
+  // Lo que NO prende en ninguna de las dos: material y tallerista. Una feria no
+  // tiene quien la dé, el material de lectura no es su caso, y una librería en la
+  // calle tampoco.
+  esCiclo: CICLOS_POR_TIPO.has(tipo) ? true : f.esCiclo,
   material: tipo === 'club-lectura' ? { ...f.material, tiene: true } : f.material,
   tallerista:
     tipo === 'taller' || tipo === 'presentacion' || tipo === 'charla'

@@ -12,7 +12,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { formVacio, onlineVacio, primeraOpcionBase, sedeVacia } from '@/lib/formulario/estadoInicial';
 import opcionesBase from '@/lib/opciones-base.json';
-import { cambiarModalidad, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
+import {
+  CICLOS_POR_TIPO,
+  cambiarModalidad,
+  cambiarTipo,
+  cambiarTitulo,
+} from '@/lib/formulario/cascadas';
 import {
   esCharla,
   esClub,
@@ -150,6 +155,52 @@ describe('cambiarTipo — §2.2 y §11', () => {
     // taxonomías (§4.3): la cascada de arriba la nombra por slug, así que
     // borrarla dejaría la regla apuntando a un tipo que no se puede elegir.
     expect(feria?.fijo).toBe(true);
+  });
+
+  it('B-192 / DEC-9 — «Librería a la calle» es un ciclo, con la cascada de «Feria»', () => {
+    // Dos reportes del panel pedían lo mismo con tres nombres distintos («Venta
+    // especial», «Librería ABIERTA», «Librería a la calle»). Se eligió UN slug,
+    // porque un valor nuevo no es reversible —parte los datos en dos que después
+    // nadie puede volver a juntar, la lección de B-134— y la etiqueta sí lo es.
+    //
+    // La cascada es la de «Feria» y por el mismo motivo: salir a la vereda un
+    // sábado es un día, y una semana de la librería son varias jornadas.
+    const f = cambiarTipo(formVacio(), 'libreria-a-la-calle');
+    expect(f.esCiclo).toBe(true);
+    // Y las dos que no le corresponden: una librería en la calle no tiene quien
+    // la dé ni material de lectura asignado.
+    expect(f.material.tiene).toBe(false);
+    expect(f.tallerista).toBeNull();
+  });
+
+  it('B-192 — está entre las opciones de fábrica y protegida con `fijo`', () => {
+    const tipos = opcionesBase.tipo as { slug: string; label: string; fijo: boolean }[];
+    const libreria = tipos.find((v) => v.slug === 'libreria-a-la-calle');
+    expect(libreria?.label).toBe('Librería a la calle');
+    // La cascada la nombra por slug: borrarla desde la pantalla de taxonomías
+    // dejaría la regla apuntando a un tipo que no se puede elegir (§4.3).
+    expect(libreria?.fijo).toBe(true);
+  });
+
+  it('la cascada de ciclos no se escribe dos veces: los tipos salen del Set', () => {
+    // El registro y la regla tienen que ser la misma cosa: una cadena de `||` que
+    // crece es cómo un tipo nuevo queda con la mitad de la cascada.
+    for (const tipo of CICLOS_POR_TIPO) {
+      expect(cambiarTipo(formVacio(), tipo).esCiclo, `${tipo} tendría que ser ciclo`).toBe(true);
+    }
+    // Y un tipo que no está en el Set no prende nada.
+    expect(cambiarTipo(formVacio(), 'charla').esCiclo).toBe(false);
+  });
+
+  it('todo tipo del Set existe como opción de fábrica y está protegido', () => {
+    // Es la otra dirección, y es la que faltaría si alguien agrega un slug al Set
+    // sin agregarlo al JSON: la cascada apuntaría a un tipo inexistente.
+    const tipos = opcionesBase.tipo as { slug: string; fijo: boolean }[];
+    for (const tipo of CICLOS_POR_TIPO) {
+      const opcion = tipos.find((v) => v.slug === tipo);
+      expect(opcion, `${tipo} no está en opciones-base.json`).toBeDefined();
+      expect(opcion?.fijo, `${tipo} tendría que ser fijo`).toBe(true);
+    }
   });
 
   it('un taller abre el bloque de tallerista', () => {

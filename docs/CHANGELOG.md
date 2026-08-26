@@ -14,6 +14,11 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`tipo-libreria-a-la-calle`** — *Hay un tipo nuevo: «Librería a la calle»*. Para
+  cuando una librería saca los libros a la vereda, se instala en un bar o hace algo
+  en la calle. Como «Feria», viene marcada como ciclo: cargá un encuentro por
+  jornada. · **Dónde:** Formulario, campo «Tipo de actividad».
+
 - **`regenerar-no-borra-los-temas`** — *Regenerar las fechas ya no borra los temas
   ni las lecturas*. «Generar N encuentros» recalcula solo las fechas: los temas, las
   lecturas y las cancelaciones que hayas cargado se conservan. Antes había que
@@ -117,6 +122,27 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-192 / DEC-9 · «Librería a la calle» es un tipo de fábrica
+
+Dos reportes del panel del mismo día pedían lo mismo con tres nombres distintos
+—«Venta especial», «Librería ABIERTA», «Librería a la calle»— y esa duda era la
+señal de que el nombre era el trabajo. Se eligió **un solo slug**,
+`libreria-a-la-calle`, porque un valor nuevo **no es reversible**: parte los datos
+en dos que después nadie puede volver a juntar, que es la lección de B-134. El label
+sí se puede cambiar.
+
+Va con `fijo: true` y la cascada de «Feria», por el mismo motivo y con el mismo
+ejemplo: salir a la vereda un sábado es un día, y una semana de la librería son
+varias jornadas. No prende material ni tallerista.
+
+**Y de paso la cascada dejó de ser una cadena de `||`.** Ya eran tres tipos, y una
+cadena que crece es cómo un tipo nuevo termina con la mitad de la regla. Ahora es
+`CICLOS_POR_TIPO`, con dos tests en **las dos direcciones**: que todo tipo del
+registro prenda «es un ciclo», y que todo tipo del registro exista en
+`opciones-base.json` con `fijo: true`. La segunda es la que faltaría si alguien
+agrega un slug al registro y se olvida del JSON — la cascada quedaría nombrando un
+tipo que no se puede elegir. Verificado rompiendo las dos por separado.
 
 ### B-176 · Regenerar las fechas ya no borra los temas ni las lecturas
 

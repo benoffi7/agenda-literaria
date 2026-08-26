@@ -73,6 +73,14 @@
       "fijo": true,
       "usos": 0,
       "aprobada": true
+    },
+    {
+      "slug": "libreria-a-la-calle",
+      "label": "Librería a la calle",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
     }
   ],
   "barrio": [],
