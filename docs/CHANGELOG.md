@@ -142,6 +142,58 @@ El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un bo
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
 
+### B-196 · Los tests de privacidad del `events.json` y del evento pasan de lista a propiedad
+
+Las cuatro salidas públicas del §5.1 se verificaban de dos maneras, y dos estaban peor
+cubiertas: el issue de GitHub y la analítica tenían **barrido por clase**, mientras el
+`events.json` y el evento de Calendar tenían una **lista de campos conocidos** —
+`zoom.us/j/secreto`, `coordinar con prensa`, `drive/privado`, `evt_secreto`,
+`uid_abc`—. Eso cubre lo que se sabía el día que se escribieron, no la propiedad: **el
+campo nuevo que nadie agregue a la lista se publica y nada se pone rojo**. Ya había
+pasado dos veces esta semana en su variante barata: una celda de la tabla del paso 0
+que no la fijaba nada porque el fixture no tenía el campo.
+
+Ahora hay un fixture donde **cada string del documento es un centinela**, y la
+afirmación es sobre la salida: sobreviven **exactamente** los permitidos. Se barren
+tres salidas —el `events.json`, el evento en los **ocho** encuentros del ciclo, y el
+`searchText`, que es pública por la puerta de atrás (quinta fila de D-126)— en cinco
+casos, incluidos el documento anterior a B-167 y el desvío de `urlPublica: true`.
+
+**El corazón del chequeo es la lista de lo que SÍ debe salir**, y por eso está
+agrupada, nombrada y justificada una por una: nueve grupos para el JSON, ocho para el
+evento, uno para el `searchText`. Una excepción sin motivo es una fuga aprobada por
+cansancio, y un barrido con veinte de esas no verifica nada.
+
+**La aserción va en las dos direcciones, y la segunda es la que faltaba:** que un
+centinela permitido **no aparezca** también falla. Eso convierte cada fila de las
+tablas de D-125, D-126 y D-127 en algo que se pone rojo — sacar el libro de la
+proyección, o la línea del cupo del evento, se nota. Un barrido de una sola dirección
+pasa con una salida vacía.
+
+Tres redes para que el fixture no envejezca, que es lo que hace que un campo nuevo
+entre solo: se compara contra **las interfaces de `src/types/actividad.ts`** y falla si
+le falta un campo o si aparece una interfaz nueva sin anclar; todo string del fixture
+tiene que ser un centinela o vocabulario cerrado, así un campo nuevo no puede entrar
+con un valor inocente («Casa Brandon») y quedar fuera del barrido para siempre; y
+ningún centinela puede ser substring de otro ni dejar de ser URL-safe — el evento pasa
+la ubicación por `encodeURIComponent`, así que un centinela con espacios **esconderÍa**
+una fuga por ese camino, y por eso la sede del fixture va sin coordenadas a propósito.
+
+Verificado reintroduciendo la fuga en los dos lados, y lo verifiqué yo también por mi
+cuenta: el barrido se pone rojo nombrando cuál centinela se escapó y a qué salida. La
+demostración quedó **permanente** en tres meta-tests, para no depender de que alguien
+repita el experimento.
+
+`toPublic.test.ts` y `calendario.test.ts` conservan sus casos nombrados —ahí están las
+**instancias**— con un comentario que avisa que al crecer el modelo no hay que
+agregarle un `not.toContain` a esa lista: lo agarra el barrido.
+
+**No apareció ninguna fuga.** Sí quedó a la vista que `sede`, `arancel`, `organizador`
+y `tallerista` se proyectan **como objeto entero** (`toPublic.ts:151-157`), a
+diferencia de `libro`, que está enumerado justamente para que «una clave que se agregue
+mañana no salga sola». No hace falta cambiarlo: ahora, el día que pase, el barrido lo
+dice — y esa es exactamente la diferencia entre una lista y una propiedad.
+
 ### B-97 · `inscripcion.completo`: poder decir que se llenó
 
 Después de publicar no había forma de decir nada. Ahora hay un booleano

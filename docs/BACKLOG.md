@@ -2758,7 +2758,7 @@ Tres salidas, y la decisión es cuál:
 `que-deployar.sh` decide cuándo corre este job, así que la primera y la segunda
 opción se pueden probar con el script antes de tocar el YAML.
 
-### B-196 · Los tests de privacidad del `events.json` y del evento son una lista, no una propiedad · P2
+### B-196 · Los tests de privacidad del `events.json` y del evento son una lista, no una propiedad — ✅ hecho (2026-08-26)
 
 Sale del auditor de privacidad (B-195, H4). Las cuatro salidas públicas del §5.1 se
 verifican de dos maneras distintas, y dos están mejor cubiertas que las otras dos:

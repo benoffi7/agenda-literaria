@@ -72,6 +72,18 @@ const actividad = (over: Partial<Actividad> = {}): Actividad => ({
   ...over,
 });
 
+/**
+ * Los casos nombrados de la proyección: la forma exacta de `online`, el desvío
+ * de `urlPublica`, qué sobrevive de un material privado.
+ *
+ * **La propiedad —"no sale nada más que lo permitido"— vive en
+ * `tests/barrido-de-salidas-publicas.test.ts`** (B-196): ahí cada string del
+ * documento es un centinela y la aserción es sobre la salida entera, así que un
+ * campo nuevo entra al chequeo solo. Los `not.toContain('coordinar con prensa')`
+ * de acá abajo son instancias y se quedan como tales: **no** hay que agregarle
+ * un campo a esta lista cuando el modelo crece, hay que dejar que el barrido lo
+ * agarre.
+ */
 describe('toPublic — §5, trampa 5', () => {
   it('por defecto no filtra el link de la reunión, solo la plataforma', () => {
     const p = toPublic(actividad(), 'id1');

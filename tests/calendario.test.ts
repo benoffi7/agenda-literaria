@@ -658,6 +658,16 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
   });
 });
 
+/**
+ * Las **instancias**: cada campo privado que existe hoy, con su caso propio.
+ *
+ * **La propiedad —"de las ~15 interpolaciones no sale nada más que lo
+ * permitido"— vive en `tests/barrido-de-salidas-publicas.test.ts`** (B-196): ahí
+ * el documento entero es centinelas y la aserción es sobre el evento completo
+ * (`summary`, `description`, `location`), en los ocho encuentros del ciclo. Un
+ * campo nuevo entra a ese chequeo solo, sin que nadie tenga que acordarse de
+ * agregarle un `not.toContain` a este bloque.
+ */
 describe('construirDescripcion — lo que NUNCA va al evento (§5.1, §7.4)', () => {
   const d = () => construirDescripcion(completa(), sesion(), LABELS);
 
