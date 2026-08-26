@@ -40,7 +40,7 @@ Nadie toca: `docs/**`, `src/lib/schema.ts`, `src/types/actividad.ts`,
 |---|---|---|---|
 | A | **B-199** modal de duplicar | `lib/duplicar.ts`, `ListaActividades.tsx`, `MenuAcciones.tsx`, modal nuevo, `tests/duplicar.test.ts` | en curso |
 | B | **B-186** almanaque · **B-193** encontrar la vista previa | `SesionesEditor.tsx`, `SeccionEncuentros.tsx`, `SeccionVistaPrevia.tsx`, `VistaPreviaEvento.tsx`, `campos/Seccion.tsx`, `campos/Campo.tsx`, `tests/foco.test.ts`, `tests/vistaPreviaEvento.test.ts` | en curso |
-| C | **B-196** privacidad como propiedad | `tests/toPublic.test.ts`, `tests/calendario.test.ts`, `tests/reportes.test.ts`, `tests/analytics-privacidad.test.ts`, `tests/fixtures/**` | en curso |
+| C | **B-196** privacidad como propiedad | ídem | ✅ **commiteado** `1302135` |
 | D | **B-63** que la guía no pueda mentir | `lib/ayuda.ts`, `tests/ayuda.test.ts` | en curso |
 | E | **B-95** texto para redes | `lib/textoRedes.ts` (nuevo), componente nuevo, tests nuevos | en curso |
 | F | **B-126** · **B-127** · **B-128** vista calendario y taxonomías | `lib/calendarioPanel.ts`, `CalendarioActividades.tsx`, el hook de labels, `tests/calendarioPanel.test.ts` | en curso |
@@ -54,6 +54,20 @@ Nadie toca: `docs/**`, `src/lib/schema.ts`, `src/types/actividad.ts`,
   cómodo.
 
 ---
+
+## Lo que hay que saber a mitad de tanda
+
+**La suite completa está roja, y es esperable.** El árbol tiene trabajo en vuelo de
+cinco frentes, así que `npm test` entero no puede estar verde hasta que aterricen
+todos. Lo que sí vale: **cada commit es coherente por sí solo** —se stagea por path y
+se verifica corriendo los tests del frente más los archivos que toca— y la suite
+completa se corre al cerrar la tanda, antes de pushear.
+
+**Un hallazgo del frente C que le toca a otro:** `tests/invariantes-de-ciclo.test.ts`
+referencia entradas de `tests/calendarioPanel.test.ts` **por número de línea**
+(`DURACION_CERO_CONOCIDA`), así que editar ese archivo —que es justo lo que hace el
+frente F— corre las líneas y pone rojo un test que no tiene nada que ver. Un registro
+anclado por número de línea es frágil por construcción; anotarlo al cerrar.
 
 ## Encolado, con el motivo de por qué no está en la tanda
 
