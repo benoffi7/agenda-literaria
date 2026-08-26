@@ -1416,10 +1416,27 @@ las tres con el mismo perfil.
 caían**. La lista de D-124 vive en un solo lugar a propósito, pero eso no alcanza —
 cada entrada necesita su propio clavo, y las cuatro que tiene ahora lo tienen.
 
-### B-98 · Cancelar un encuentro sin que desaparezca en silencio
+### B-98 · Cancelar un encuentro sin que desaparezca en silencio — ✅ aprobado (2026-08-26), pendiente de implementar
 
-**Contradice el §7.3 del `CLAUDE.md` y la guía del panel.** Necesita decisión del
-dueño antes de tocar nada.
+**Contradice el §7.3 del `CLAUDE.md` y la guía del panel**, y por eso necesitaba
+decisión del dueño. **La dio el 2026-08-26: sí, y con el motivo de cancelación
+incluido.**
+
+Así que el §7.3 cambia, y eso hay que escribirlo como desvío explícito en
+`docs/06-decisiones.md` cuando se implemente: el `CLAUDE.md` es la decisión cerrada
+y no se edita desde acá, pero el desvío se anota con su motivo, como ya se hizo con
+D-15.
+
+**Y hay dos textos que van a quedar mintiendo el día que esto entre**, los dos hay
+que corregir en el mismo cambio:
+
+1. El aviso «Cancelar un encuentro lo saca del calendario, pero no lo borra» de
+   `src/lib/ayuda.ts` — que hoy ya es discutible y con esto pasa a ser al revés.
+2. El §7.3 del `CLAUDE.md`, que es la fuente.
+
+**Por qué no entró a la tanda del 2026-08-26:** necesita `SesionesEditor.tsx` para el
+campo del motivo (que otro frente estaba tocando) y cambia lo que sale al evento, así
+que el barrido de centinelas de B-196 tiene que conocerlo. Va después de esos dos.
 
 Hoy `sesion.cancelada === true` **borra** el evento. Quien tenía ese jueves
 agendado, con su recordatorio, ve el evento desaparecer sin ningún aviso. Es
