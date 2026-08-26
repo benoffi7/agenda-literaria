@@ -2416,7 +2416,7 @@ Cuando se haga, hay que revisar si `tests/etiquetas-de-ui.test.ts` fija alguno d
 los dos textos, y el comentario de `etiquetasUI.ts` que cita «por DM de
 Instagram» como ejemplo de prosa.
 
-### B-186 · El almanaque de la fecha se cierra solo si se tarda en elegir · P2
+### B-186 · El almanaque de la fecha se cierra solo si se tarda en elegir — ✅ hecho (2026-08-26)
 
 Reporte del dueño usando el panel (2026-08-25):
 
@@ -2693,7 +2693,7 @@ del Set prenda «es un ciclo», y que todo tipo del Set exista en
 agrega un slug al Set y se olvida del JSON, y la cascada quedaría apuntando a un
 tipo que no se puede elegir. Verificado rompiendo las dos por separado.
 
-### B-193 · La vista previa del evento ya existía y quien la pidió no la encontró · P2
+### B-193 · La vista previa del evento ya existía y quien la pidió no la encontró — ✅ hecho (2026-08-26), falta la puerta del listado
 
 [Issue #7](https://github.com/benoffi7/agenda-literaria/issues/7), del panel,
 Android, versión `1.0.1+538bef7`:

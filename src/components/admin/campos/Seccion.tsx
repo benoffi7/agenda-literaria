@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { medirSeccion } from '@/lib/analytics';
+import type { AlmacenLocal } from '@/lib/formulario/borradoresDelNavegador';
 
 interface Props {
   titulo: string;
@@ -22,8 +23,97 @@ interface Props {
    * abrirla después de que alguien la cerró a mano.
    */
   pedidoDeApertura?: number;
+  /**
+   * Clave con la que esta sección **recuerda** si quedó abierta o cerrada
+   * (B-193). Sin clave no recuerda nada, que es el comportamiento de siempre.
+   */
+  recuerdaComo?: string;
   children: ReactNode;
 }
+
+/**
+ * ── B-193 · el acordeón se acuerda de cómo lo dejaron ─────────────────────
+ *
+ * El reporte pedía una vista previa del evento que **ya existía**: última
+ * sección, colapsada, y desde el listado sin ninguna puerta. O sea que el
+ * problema no era la función sino encontrarla, y explicarlo mejor en la guía no
+ * es el arreglo (la guía ya lo explicaba).
+ *
+ * Que nazca abierta ataca eso, pero abrirla siempre castiga a quien ya la
+ * conoce y la cerró a propósito. Con memoria, las dos cosas: la primera vez está
+ * a la vista, y después vale lo que la persona decidió.
+ *
+ * Va por sección y **no** por actividad: es una preferencia de quien carga, no
+ * un dato de la actividad. Lo único que se guarda es `abierta`/`cerrada`, así
+ * que no hay nada del §5.1 en juego —a diferencia del borrador local, que sí
+ * guarda contenido y por eso lleva la huella del admin en la clave.
+ */
+const PREFIJO_SECCION = 'agenda:seccion:';
+
+/**
+ * Lo mínimo de `localStorage` que hace falta. Es un `Pick` del puerto que ya
+ * define `borradoresDelNavegador.ts` —importado como tipo, así que no entra al
+ * grafo de imports del bundle (B-09)— para no inventar un segundo vocabulario
+ * para la misma idea.
+ */
+export type AlmacenDeSecciones = Pick<AlmacenLocal, 'getItem' | 'setItem'>;
+
+/**
+ * Cómo quedó esta sección la última vez, o `null` si no hay memoria.
+ *
+ * `null` y `false` no son lo mismo y de ahí el tipo: «nunca se tocó» cae al
+ * default de la sección, «se cerró» gana sobre el default.
+ */
+export const leerSeccionRecordada = (
+  almacen: AlmacenDeSecciones | null,
+  clave?: string,
+): boolean | null => {
+  if (!almacen || !clave) return null;
+  try {
+    const guardado = almacen.getItem(`${PREFIJO_SECCION}${clave}`);
+    return guardado === 'abierta' ? true : guardado === 'cerrada' ? false : null;
+  } catch {
+    // Un almacén que tira no puede romper el formulario: se cae al default.
+    return null;
+  }
+};
+
+export const recordarSeccion = (
+  almacen: AlmacenDeSecciones | null,
+  clave: string | undefined,
+  abierta: boolean,
+): void => {
+  if (!almacen || !clave) return;
+  try {
+    almacen.setItem(`${PREFIJO_SECCION}${clave}`, abierta ? 'abierta' : 'cerrada');
+  } catch {
+    // Sin memoria se pierde la preferencia, no la sección.
+  }
+};
+
+/**
+ * El `localStorage` del navegador, o `null` si no se puede usar. Acceder **tira**
+ * —no devuelve null— en un iframe con cookies bloqueadas y en algunos modos
+ * privados, así que el acceso va adentro del try/catch y no solo la escritura.
+ */
+const almacenDelNavegador = (): AlmacenDeSecciones | null => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+/** ¿Con qué estado arranca la sección? Puro, para poder testear los tres casos. */
+export const seccionArrancaAbierta = ({
+  colapsable,
+  abiertaPorDefecto,
+  recordada,
+}: {
+  colapsable: boolean;
+  abiertaPorDefecto: boolean;
+  recordada: boolean | null;
+}): boolean => (colapsable ? (recordada ?? abiertaPorDefecto) : true);
 
 export function Seccion({
   titulo,
@@ -33,9 +123,16 @@ export function Seccion({
   insignia,
   ancla,
   pedidoDeApertura = 0,
+  recuerdaComo,
   children,
 }: Props) {
-  const [abierta, setAbierta] = useState(colapsable ? abiertaPorDefecto : true);
+  const [abierta, setAbierta] = useState(() =>
+    seccionArrancaAbierta({
+      colapsable,
+      abiertaPorDefecto,
+      recordada: leerSeccionRecordada(almacenDelNavegador(), recuerdaComo),
+    }),
+  );
   const idPanel = useId();
 
   useEffect(() => {
@@ -77,10 +174,15 @@ export function Seccion({
           aria-expanded={abierta}
           aria-controls={idPanel}
           onClick={() => {
+            const proxima = !abierta;
             // Qué acordeones se despliegan de verdad. Va el slug del título,
             // que es un literal del código (docs/09-analitica.md).
-            medirSeccion(titulo, !abierta);
-            setAbierta((v) => !v);
+            medirSeccion(titulo, proxima);
+            // Lo que se recuerda es el click, no el `pedidoDeApertura`: que la
+            // barra abra una sección para mostrar un campo rechazado (B-184) no
+            // es una preferencia de nadie.
+            recordarSeccion(almacenDelNavegador(), recuerdaComo, proxima);
+            setAbierta(proxima);
           }}
           className="flex min-h-touch w-full items-center px-4 py-3"
         >

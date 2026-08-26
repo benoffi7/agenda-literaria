@@ -131,6 +131,14 @@ export const FUNCIONES = [
    * sería que alguien se queje. Entero, sin texto libre (§9).
    */
   'duplicar-desmarcar',
+  /**
+   * B-186 — correr un encuentro con los botones, en días (con signo).
+   *
+   * **Toda la hipótesis del arreglo es que esto reemplaza al almanaque**, que se
+   * cierra solo y no es nuestro para arreglar. Sin este evento no hay forma de
+   * saber si se usa, y el ítem quedaría cerrado por fe.
+   */
+  'encuentro-correr',
   // B-97 — prender o apagar «se llenó» desde el menú del listado. La pregunta
   // que contesta es si la función se usa: si nadie la toca, el cartel de cupo
   // completo no existe en la práctica y el sitio sigue mintiendo el cupo.

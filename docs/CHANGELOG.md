@@ -14,6 +14,18 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`correr-la-fecha-de-un-encuentro`** — *Correr un encuentro de fecha ya no pide
+  pelear con el almanaque*. Cada encuentro tiene cuatro botones —un día o una semana,
+  adelante o atrás— que mueven el inicio y el fin juntos. Y si escribís la fecha a
+  mano, abajo dice en qué día de la semana cae y cuánto dura, que era lo único que
+  había que ir a mirar al calendario. Cambiar el inicio ya no obliga a corregir el
+  fin. · **Dónde:** Formulario → Encuentros.
+
+- **`vista-previa-abierta`** — *La vista previa del evento está a la vista*. La sección
+  del final del formulario arranca abierta: ahí se ve el título, la ubicación y el
+  texto completo del evento tal como lo va a ver quien esté suscrito al calendario. Si
+  la cerrás, queda cerrada la próxima vez. · **Dónde:** Formulario → Vista previa.
+
 - **`duplicar-elegir-que-se-copia`** — *Al duplicar podés elegir qué se copia*.
   «Duplicar» ahora pregunta antes: viene todo tildado, como hasta ahora, y destildás lo
   que sea de la edición anterior — la descripción, los temas de cada encuentro, el
@@ -149,6 +161,62 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-186 · Correr la fecha de un encuentro sin pelear con el almanaque
+
+**El diagnóstico terminó afuera del repo: el almanaque es el selector nativo de
+`<input type="datetime-local">` y nada nuestro corre mientras está abierto.** Los tres
+candidatos del ítem caen leyendo el código, y el favorito —el arranque diferido de la
+analítica— es inocente por **timing** y no por efecto: se agenda desde
+`medirPanelAbierto()` al montar `AdminApp` y dispara **una sola vez y dentro de los
+4 s**, así que no puede estar ahí minutos después con el picker abierto en la quinta
+fila. El autoguardado de B-191 escribe en `localStorage` sin ningún `setState`, y el
+chequeo de versión es cada 15 minutos con un `setPublicada` de la misma string, que
+para React es un no-op. Lo cierra el navegador por sus reglas de descarte —blur,
+scroll, cambio de viewport, un toque afuera— y el tiempo correlaciona porque cuantos
+más meses hay que recorrer, más chances hay de que ocurra una.
+
+**Entonces el arreglo no es un selector propio** —pesaría en el bundle (B-09) y
+heredaría el mismo problema en otra forma— sino que **no haga falta abrirlo**:
+
+- **Cuatro botones «Correr ±1 día / ±1 semana» por fila**, que es literalmente la
+  operación que el reporte nombra («cuando *corrés* la fecha»). Mueven **inicio y fin
+  juntos** y conservan `id`, `calendarEventId` y `cancelada`: mover una fecha no puede
+  crear un segundo evento para el mismo encuentro (el diff del §7.2 cruza por `id`), y
+  ±7 conserva el día de la semana, que es cómo se corren los ciclos de verdad.
+- **El campo de inicio conserva la duración.** Antes, cambiar el inicio dejaba el fin
+  donde estaba: dos campos que resolver, y en el medio el formulario quedaba con
+  `fin <= inicio`, que es justo lo que el schema rechaza al guardar.
+- **Un eco: «Cae jueves, 10 de septiembre, dura 2 h».** Es la mitad que hace que tipear
+  no sea un castigo, porque **lo único que el almanaque daba y el tipeo no es ver en
+  qué día de la semana cae**. Y de paso nombra el fin invertido, que hasta ahora
+  aparecía recién al guardar.
+
+Se mide con `encuentro-correr`, y no es adorno: toda la hipótesis del arreglo es que
+esto reemplaza al almanaque, así que sin el evento el ítem quedaría cerrado por fe.
+
+### B-193 · La vista previa del evento nace abierta, y se acuerda
+
+No faltaba la función —existía desde B-12— faltaba **encontrarla**: última sección,
+colapsada, y el reporte salió con `Pantalla: Otra` desde el listado, o sea de alguien
+que no estaba en el formulario. `Seccion` recibe `recuerdaComo` y guarda en
+`localStorage` si la dejaron abierta o cerrada; la vista previa arranca abierta.
+
+**Las dos mitades hacen falta:** abrirla siempre castiga a quien ya la conoce y la
+cerró a propósito. Y solo se recuerda el click, no el `pedidoDeApertura` de B-184: que
+la barra abra una sección para mostrar un campo rechazado no es la preferencia de
+nadie.
+
+El argumento original del colapso —no abrir las cinco suscripciones a `/opciones/*`—
+era menor de lo que parecía: cuatro de esos cinco documentos ya los suscriben los
+desplegables de taxonomía de secciones abiertas, así que lo único que agrega es `tags`.
+Falta la otra puerta que el ítem propone, la del menú «⋯» del listado, que es donde
+estaba parada la persona que preguntó.
+
+**Y dejó una frase de la guía en falso**, que corregí en el mismo cambio: «Las
+secciones Material, Opcional, Difusión **y Vista previa del evento** arrancan
+cerradas». Es exactamente la clase de B-63 —y justamente uno de los agujeros que B-63
+declaró **sin cubrir**, porque es un punto de capítulo sin `atadoA`, no un aviso.
 
 ### B-199 · Duplicar pregunta qué copiar
 

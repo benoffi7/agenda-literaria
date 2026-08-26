@@ -1019,7 +1019,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Las secciones «Material», «Opcional», «Difusión» y «Vista previa del evento» arrancan ' +
+          'Las secciones «Material», «Opcional» y «Difusión» arrancan cerradas para que el ' +
+          'formulario no sea infinito. Se abren tocando el título, y la que abras o cierres ' +
+          'queda así para la próxima.' +
           'cerradas para que el formulario no sea infinito. Se abren tocando el título.',
       },
     ],

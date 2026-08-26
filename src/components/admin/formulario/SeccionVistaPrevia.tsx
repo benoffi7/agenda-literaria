@@ -2,9 +2,21 @@
  * B-12 — cómo queda el evento en Google Calendar, armado por la misma función
  * que lo publica (D-20).
  *
- * Va última y colapsada: es el paso natural antes de publicar, y mientras está
- * cerrada no abre las cinco suscripciones a `/opciones/*` que necesita para
- * resolver las etiquetas.
+ * Va última porque es el paso natural antes de publicar.
+ *
+ * **B-193 — y arranca abierta.** Arrancaba colapsada para no abrir las cinco
+ * suscripciones a `/opciones/*` que necesita para resolver las etiquetas, y ese
+ * ahorro resultó menos importante que su costo: alguien pidió por escrito una
+ * vista previa que ya existía, desde el listado y sin haber entrado al
+ * formulario. Una función que hay que ir a buscar no existe en la práctica.
+ *
+ * El ahorro además era menor de lo que parecía: cuatro de esos cinco documentos
+ * ya los suscriben los desplegables de taxonomía de las secciones que arrancan
+ * abiertas (tipo, barrio, plataforma, arancel), así que lo único que agrega es
+ * `tags`.
+ *
+ * `recuerdaComo` es lo que evita el otro extremo: quien la cierra a propósito la
+ * encuentra cerrada la próxima vez.
  */
 import { Seccion } from '@/components/admin/campos/Seccion';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
@@ -24,7 +36,7 @@ export function SeccionVistaPrevia({ form, labelsPendientes }: Props) {
       titulo="Vista previa del evento"
       descripcion="Cómo va a quedar en Google Calendar. Lo arma la misma lógica que publica el evento."
       colapsable
-      abiertaPorDefecto={false}
+      recuerdaComo="vista-previa"
     >
       <VistaPreviaEvento form={form} labelsPendientes={labelsPendientes} />
     </Seccion>
