@@ -153,9 +153,10 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
           </div>
           <p className="mt-2 text-xs text-tinta/60">
             <strong>7 es una vez por semana</strong>; para días seguidos —una feria
-            de tres jornadas— va 1. Recalcula las fechas de la lista actual y borra
-            los temas y lecturas ya cargados. Toma la fecha y duración del primer
-            encuentro como base — después ajustás las excepciones una por una.
+            de tres jornadas— va 1. Recalcula <strong>solo las fechas</strong>: los
+            temas, las lecturas y las cancelaciones que ya cargaste se conservan.
+            Toma la fecha y duración del primer encuentro como base — después
+            ajustás las excepciones una por una.
             {sesiones.some((s) => s.calendarEventId) && (
               <>
                 {' '}

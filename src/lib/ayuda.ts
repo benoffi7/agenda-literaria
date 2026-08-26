@@ -161,6 +161,14 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Con «Generar N encuentros» cargás las fechas de una vez: le decís cuántos ' +
+          'encuentros y cada cuántos días. Siete es una vez por semana; para días seguidos, ' +
+          'como una feria de tres jornadas, va uno. Recalcula solo las fechas: los temas, las ' +
+          'lecturas y las cancelaciones que ya cargaste se conservan, y los encuentros que ya ' +
+          'están en el calendario se mueven de fecha en lugar de borrarse y volver a crearse.',
+      },
+      {
+        texto:
           'Lo único que se pide siempre, también en un borrador, es la fecha y la hora de cada ' +
           'encuentro que hayas agregado. Si no querés poner fechas todavía, borrá la fila del ' +
           'encuentro y agregala cuando las sepas.',

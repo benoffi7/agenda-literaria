@@ -243,3 +243,34 @@ describe('B-204 · el generador de encuentros dice qué es cada campo', () => {
     expect(src).toContain('7 es una vez por semana');
   });
 });
+
+/**
+ * B-176 — el cartel del generador tiene que decir la verdad sobre lo que pisa.
+ *
+ * Decía «borra los temas y lecturas ya cargados», y era cierto. Ahora el generador
+ * conserva el contenido de cada fila y **solo** recalcula las fechas, así que el
+ * mismo cartel pasó a mentir en la dirección más cara: alguien no aprieta el botón
+ * por miedo a perder ocho lecturas que ya no se pierden.
+ *
+ * Va acá y no suelto porque el ítem lo pedía así: el arreglo sale con la UI. Es la
+ * clase de B-63 —nada verifica que lo que la pantalla afirma siga siendo cierto—
+ * aplicada al único cartel que describe una operación destructiva.
+ */
+describe('B-176 · el cartel del generador dice qué se conserva', () => {
+  const editor = () =>
+    fuente('components/admin/SesionesEditor.tsx')
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+      .replace(/\s+/g, ' ');
+
+  it('dice que recalcula solo las fechas', () => {
+    expect(editor()).toContain('solo las fechas');
+  });
+
+  it('y ya no dice que borra los temas y las lecturas', () => {
+    // El código los conserva desde B-176: si el cartel sigue diciendo que los
+    // borra, nadie aprieta el botón.
+    expect(editor()).not.toContain('borra los temas');
+  });
+});

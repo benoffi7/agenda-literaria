@@ -3443,7 +3443,7 @@ clone fresco y **el CI** — o sea, exactamente los tres lugares donde el comand
 se corre para decidir algo. Un hallazgo que solo se reproduce en el entorno
 limpio es más grave, no menos.
 
-### B-176 · Regenerar los encuentros borra los temas y las lecturas cargados · P2
+### B-176 · Regenerar los encuentros borra los temas y las lecturas cargados — ✅ hecho (2026-08-26)
 
 `generarSesiones` devuelve `tema: ''` y `lectura: ''` en todas las filas, así
 que volver a generar las fechas de un club de lectura de ocho encuentros borra
@@ -3460,6 +3460,26 @@ suelto.
 
 El caso que lo hace doler: el ciclo se corre una semana, se regeneran las fechas
 y hay que volver a tipear ocho lecturas que no cambiaron.
+
+**Cómo quedó (2026-08-26).** El generador recalcula **solo las fechas**: tema,
+lectura y cancelación salen de la fila previa, y una fila que no existía antes nace
+limpia. Salió con la UI, como pedía el ítem: el cartel decía «borra los temas y
+lecturas ya cargados» y ahora dice qué se conserva — si el código conserva y el
+cartel dice que borra, la que miente es la pantalla, y nadie aprieta el botón.
+
+**`cancelada` cambió de lado y el ítem no lo nombraba.** Antes se pisaba a `false`,
+y había un test que lo afirmaba sin decir por qué. El razonamiento escrito que
+justificaba limpiarla —«una cancelación es una excepción del ciclo viejo»— es de
+`duplicarSesionParaCopia`, y **ahí vale**: la copia es una actividad nueva, sin nada
+en el calendario de nadie. Regenerar pasa sobre una actividad que puede estar
+publicada, así que destildarla **recrea el evento en la agenda de todo el que esté
+suscripto**, y eso no lo pidió nadie. Es la asimetría de D-124: volver a tildar
+cuesta un click y se ve, porque la sección Encuentros no está colapsada.
+
+Dos redes, y las dos verificadas rompiéndolas: el comportamiento en
+`tests/sesiones.test.ts` y **el texto del cartel** en `tests/etiquetas-de-ui.test.ts`
+—que es la clase de B-63 aplicada al único cartel que describe una operación
+destructiva—. Sin lo segundo, el código y la pantalla podían separarse en silencio.
 
 ### B-177 · Nadie avisa cuando una etiqueta nueva no se registró · P3
 

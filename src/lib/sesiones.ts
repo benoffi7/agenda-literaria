@@ -113,9 +113,25 @@ export const generarSesiones = (opts: {
       id: previa?.id ?? nuevaSesionId(),
       inicio: aDatetimeLocal(arranque),
       fin: aDatetimeLocal(new Date(arranque.getTime() + duracionMs)),
-      tema: '',
-      lectura: '',
-      cancelada: false,
+      /**
+       * B-176 — el contenido de la fila **se conserva**. Lo que el generador
+       * recalcula son las fechas, y nada más.
+       *
+       * Devolvía `''` en las tres, así que regenerar un club de ocho encuentros
+       * borraba las ocho lecturas asignadas, que es lo más caro de tipear de toda
+       * la actividad. Venía de cuando el generador reemplazaba la lista entera;
+       * desde D-103 la fila **conserva su identidad** —el encuentro 3 sigue siendo
+       * el 3, con su evento de calendario— y perder su tema dejó de tener sentido.
+       *
+       * `cancelada` va con los otros dos, y el ítem no lo nombraba: pisarlo a
+       * `false` **recrea el evento en el calendario de todo el que esté
+       * suscripto**. Es la asimetría de D-124 otra vez — destildar a mano cuesta
+       * un click, y un evento que reaparece en la agenda de otros no se deshace.
+       * Si la fila no existía antes, nace en `false`, que es lo correcto.
+       */
+      tema: previa?.tema ?? '',
+      lectura: previa?.lectura ?? '',
+      cancelada: previa?.cancelada ?? false,
       // Va con el id: sin él, el diff vería una sesión conocida sin evento y
       // crearía un segundo evento para el mismo encuentro.
       calendarEventId: previa?.calendarEventId ?? null,

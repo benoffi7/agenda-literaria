@@ -14,6 +14,12 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`regenerar-no-borra-los-temas`** — *Regenerar las fechas ya no borra los temas
+  ni las lecturas*. «Generar N encuentros» recalcula solo las fechas: los temas, las
+  lecturas y las cancelaciones que hayas cargado se conservan. Antes había que
+  volver a tipear todo, que en un club de ocho encuentros era lo más caro. ·
+  **Dónde:** Formulario, sección «Encuentros».
+
 - **`generador-dice-que-es-cada-campo`** — *El generador de encuentros dice qué es
   cada campo*. Los dos campos de «Generar N encuentros» ahora se llaman «Cuántos
   encuentros» y «Cada cuántos días», y el texto de al lado aclara que 7 es una vez
@@ -111,6 +117,32 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-176 · Regenerar las fechas ya no borra los temas ni las lecturas
+
+`generarSesiones` devolvía `tema: ''` y `lectura: ''` en todas las filas, así que
+correr un ciclo una semana borraba las ocho lecturas asignadas — lo más caro de
+tipear de toda la actividad. Venía de cuando el generador reemplazaba la lista
+entera; desde D-103 la fila conserva su identidad, así que perder su contenido dejó
+de tener sentido. Ahora recalcula **solo las fechas**.
+
+Salió con la UI, como el ítem pedía: el cartel decía «borra los temas y lecturas ya
+cargados», y con el código conservándolos ese cartel pasaba a mentir en la dirección
+más cara —nadie aprieta el botón por miedo a perder algo que ya no se pierde—.
+
+**`cancelada` cambió de lado, y el ítem no lo nombraba.** Antes se pisaba a `false`
+y había un test que lo afirmaba **sin decir por qué**. El razonamiento escrito que
+justificaba limpiarla —«una cancelación es una excepción del ciclo viejo»— resultó
+ser de `duplicarSesionParaCopia`, y ahí vale: la copia es una actividad nueva, sin
+nada en el calendario de nadie. Regenerar pasa sobre una actividad que puede estar
+**publicada**, así que destildarla recrea el evento en la agenda de todo el que esté
+suscripto. Es la asimetría de D-124 otra vez, y las dos funciones son distintas: el
+generador solo lo usa el editor.
+
+Dos redes, las dos verificadas rompiéndolas: el comportamiento, y **el texto del
+cartel** —que es la clase de B-63 aplicada al único cartel que describe una
+operación destructiva—. Sin la segunda, el código y la pantalla podían separarse en
+silencio: lo comprobé volviendo el texto viejo y todo seguía verde.
 
 ### Los auditores sobre esta tajada: un P0, y la celda que no tenía test
 
