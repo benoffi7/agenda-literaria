@@ -2869,7 +2869,7 @@ centinelas** → queda abierto como **B-196**.
 
 Las tres redes nuevas se verificaron reintroduciendo cada bug.
 
-### B-199 · Duplicar copia todo sin preguntar, y con imágenes propias eso deja de ser gratis · P2
+### B-199 · Duplicar copia todo sin preguntar, y con imágenes propias eso deja de ser gratis — ✅ hecho (2026-08-26)
 
 Pedido del dueño (2026-08-26), a partir de la pregunta de qué hereda una copia en
 la galería de B-167: **un modal al duplicar, con los campos que se quieren

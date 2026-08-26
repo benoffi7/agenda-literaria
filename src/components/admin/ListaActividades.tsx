@@ -4,6 +4,7 @@ import {
   claseBotonSecundario,
   claseInput,
 } from '@/components/admin/campos/Campo';
+import { DialogoDuplicar } from '@/components/admin/DialogoDuplicar';
 import { FiltrosActividades } from '@/components/admin/FiltrosActividades';
 import { MenuAcciones } from '@/components/admin/MenuAcciones';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
@@ -16,7 +17,12 @@ import {
 import { medirFuncion } from '@/lib/analytics';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
-import { duplicarActividadForm } from '@/lib/duplicar';
+import {
+  casillasAplicables,
+  duplicarActividadForm,
+  type CasillaCopia,
+  type QueCopiar,
+} from '@/lib/duplicar';
 import {
   ETIQUETA_ESTADO,
   FILTROS_VACIOS,
@@ -79,6 +85,20 @@ export function ListaActividades({
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS);
   const [orden, setOrden] = useState<Orden>(ORDEN_POR_DEFECTO);
 
+  /**
+   * B-199 — la actividad que se está por duplicar, con las casillas que le
+   * aplican. `null` mientras no hay modal abierto.
+   *
+   * Las casillas se calculan al abrir y quedan guardadas: recalcularlas en cada
+   * render sería recorrer el original ocho veces por tilde, y la lista no puede
+   * cambiar mientras el modal está abierto.
+   */
+  const [porDuplicar, setPorDuplicar] = useState<{
+    actividad: ActividadConId;
+    form: ActividadForm;
+    casillas: CasillaCopia[];
+  } | null>(null);
+
   // El reloj se captura una vez: si cada render preguntara la hora, el orden
   // podría cambiar mientras alguien está por tocar una fila.
   const [ahora] = useState(() => new Date());
@@ -117,13 +137,42 @@ export function ListaActividades({
    * B-11 — la copia se arma acá porque el listado ya tiene todos los slugs en
    * memoria: alcanza para proponer uno libre sin ir a Firestore. La guarda real
    * contra el choque sigue siendo `slugDisponible` en el submit.
+   *
+   * La medición está acá y no al abrir el modal: lo que se quiere contar son las
+   * copias que se hicieron, no las que se pensaron y se cancelaron.
+   */
+  const confirmarDuplicado = (
+    a: ActividadConId,
+    form: ActividadForm,
+    copiar?: QueCopiar,
+  ) => {
+    medirFuncion('actividad-duplicar', undefined, a.sesiones?.length ?? 0);
+    const copia = duplicarActividadForm(form, {
+      tomados: actividades.map((x) => x.slug),
+      copiar,
+    });
+    setPorDuplicar(null);
+    onDuplicar(copia, a.titulo);
+  };
+
+  /**
+   * B-199 — «Duplicar» abre el modal en vez de duplicar de una.
+   *
+   * La conversión a formulario se hace acá y se guarda: es lo que el modal
+   * necesita para decidir qué casillas mostrar, y volver a convertir al confirmar
+   * daría dos formularios distintos sobre el mismo documento.
+   *
+   * **Si no aplica ninguna casilla, se duplica directo.** Un modal con cero
+   * opciones es un click de peaje: no hay nada que desmarcar.
    */
   const duplicar = (a: ActividadConId) => {
-    medirFuncion('actividad-duplicar', undefined, a.sesiones?.length ?? 0);
-    const copia = duplicarActividadForm(documentoAForm(a), {
-      tomados: actividades.map((x) => x.slug),
-    });
-    onDuplicar(copia, a.titulo);
+    const form = documentoAForm(a);
+    const casillas = casillasAplicables(form);
+    if (casillas.length === 0) {
+      confirmarDuplicado(a, form);
+      return;
+    }
+    setPorDuplicar({ actividad: a, form, casillas });
   };
 
   /**
@@ -287,7 +336,10 @@ export function ListaActividades({
                         : 'Marcar cupo completo',
                     onSelect: () => marcarCupo(a, a.inscripcion?.completo !== true),
                   },
-                  { label: 'Duplicar', onSelect: () => duplicar(a) },
+                  // `devuelveFoco`: abre una capa encima del listado, así que
+                  // el foco tiene que estar en el "⋯" cuando la capa se monta —
+                  // es a ese botón al que vuelve al cerrarse (B-14).
+                  { label: 'Duplicar', onSelect: () => duplicar(a), devuelveFoco: true },
                   // B-40 — va acá y no en el formulario: recuperar un campo
                   // pisado se busca desde el listado ("¿qué le pasó a esta?"),
                   // y el formulario ya tiene 30+ campos peleando por espacio.
@@ -299,6 +351,17 @@ export function ListaActividades({
           </li>
         ))}
       </ul>
+
+      {porDuplicar && (
+        <DialogoDuplicar
+          titulo={porDuplicar.actividad.titulo}
+          casillas={porDuplicar.casillas}
+          onCancelar={() => setPorDuplicar(null)}
+          onConfirmar={(copiar) =>
+            confirmarDuplicado(porDuplicar.actividad, porDuplicar.form, copiar)
+          }
+        />
+      )}
     </div>
   );
 }

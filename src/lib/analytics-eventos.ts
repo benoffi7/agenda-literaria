@@ -123,6 +123,14 @@ export const FUNCIONES = [
   'seccion-abrir',
   'seccion-cerrar',
   'actividad-duplicar',
+  /**
+   * B-199 — cuántas casillas se destildaron al duplicar, como entero.
+   *
+   * Contesta la pregunta por la que el modal existe: **si nadie destilda nunca, el
+   * modal es un peaje** y hay que volver al click directo. Sin esto, la única señal
+   * sería que alguien se queje. Entero, sin texto libre (§9).
+   */
+  'duplicar-desmarcar',
   // B-97 — prender o apagar «se llenó» desde el menú del listado. La pregunta
   // que contesta es si la función se usa: si nadie la toca, el cartel de cupo
   // completo no existe en la práctica y el sitio sigue mintiendo el cupo.

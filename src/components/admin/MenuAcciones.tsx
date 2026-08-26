@@ -7,6 +7,15 @@ export interface Accion {
   onSelect: () => void;
   /** Acción destructiva: se pinta con el acento y se separa del resto. */
   peligrosa?: boolean;
+  /**
+   * La acción abre una capa encima del listado en lugar de cambiar de vista
+   * (B-199, el modal de duplicar): el foco vuelve al "⋯" **antes** de disparar,
+   * así el elemento que la capa memoriza para devolverle el foco al cerrarse
+   * sigue montado. Sin esto, el `activeElement` que la capa ve es el ítem del
+   * menú que está por desmontarse, y al cerrar el foco queda en la nada — que es
+   * exactamente el bug que cerró B-14, una pantalla más allá.
+   */
+  devuelveFoco?: boolean;
 }
 
 interface Props {
@@ -47,9 +56,11 @@ export function MenuAcciones({ acciones, etiqueta }: Props) {
   const id = useId();
 
   /**
-   * Cerrar devolviendo el foco al "⋯". Se usa en todos los caminos de cierre
-   * **menos** al elegir una acción: ahí la acción puede cambiar de vista, y
-   * devolver el foco a un botón que está por desmontarse no sirve de nada.
+   * Cerrar devolviendo el foco al "⋯". Se usa en todos los caminos de cierre, y
+   * al elegir una acción **solo si la acción lo pide** (`devuelveFoco`): una que
+   * cambia de vista devolvería el foco a un botón que está por desmontarse, y
+   * una que abre una capa encima necesita justo lo contrario — que el "⋯" tenga
+   * el foco cuando la capa se monta, para que sea ahí donde vuelva al cerrarse.
    */
   const cerrarYVolverAlDisparador = () => {
     setAbierto(false);
@@ -131,7 +142,8 @@ export function MenuAcciones({ acciones, etiqueta }: Props) {
               onClick={() => {
                 // Se cierra antes de actuar: la acción puede cambiar de vista y
                 // dejar el menú abierto colgado en la pantalla siguiente.
-                setAbierto(false);
+                if (a.devuelveFoco) cerrarYVolverAlDisparador();
+                else setAbierto(false);
                 a.onSelect();
               }}
               className={`${claseBotonMenu} ${

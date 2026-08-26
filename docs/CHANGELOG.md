@@ -14,6 +14,14 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`duplicar-elegir-que-se-copia`** — *Al duplicar podés elegir qué se copia*.
+  «Duplicar» ahora pregunta antes: viene todo tildado, como hasta ahora, y destildás lo
+  que sea de la edición anterior — la descripción, los temas de cada encuentro, el
+  material, las imágenes, el cupo o las etiquetas. Las notas internas de difusión y las
+  cuentas a arrobar vienen destildadas: son trabajo de la otra edición y no se ven sin
+  abrir el acordeón. Solo aparecen las casillas de lo que la actividad tiene cargado. ·
+  **Dónde:** Listado, menú «⋯» → «Duplicar».
+
 - **`cupo-completo`** — *Ahora podés avisar que una actividad se llenó*. En el menú «⋯»
   del listado hay «Marcar cupo completo»: lo dice en el sitio y en el evento del
   calendario de cada encuentro, así que quien ya se había suscripto al calendario se
@@ -141,6 +149,50 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-199 · Duplicar pregunta qué copiar
+
+«Duplicar» abre una capa con casillas antes de armar la copia. El default está
+decidido y es **prendido lo que hoy se copia, apagado solo lo riesgoso**: nacen
+apagadas la **difusión** —notas internas y handles de otra edición, que se arrastraban
+sin que nadie los revise porque viven en un acordeón cerrado— y las **imágenes
+propias**. El modal es para **desmarcar**: con todo apagado, «el mismo club, la
+temporada que viene» costaría quince tildes y se dejaría de usar el botón.
+
+**El default vive en `duplicar.ts` y no en la pantalla**, así que un llamador que no
+pase nada obtiene el default seguro y no el «copiá todo» de antes. El slug, el estado,
+los ids de sesión, `calendarEventId` y las cancelaciones **no son casillas**: no se
+heredan y no son opcionales (trampas 2 y 10, §7.3). Se muestran como letra chica de
+«siempre pasa esto», legibles **antes** de duplicar en vez de descubrirse en el
+formulario.
+
+Dos detalles que hacen que el modal no sea peaje: **solo se ofrecen las casillas que
+la actividad tiene algo que copiar** —una fila para algo que no existe arruina el
+vistazo—, y si no aplica ninguna **se duplica directo**. Y destildar cualquier casilla
+deja una copia que el formulario acepta: la copia nace borrador, así que lo que falte
+se reclama al publicar y no al abrir, que es el argumento con el que D-17 descartó las
+fechas vacías.
+
+La casilla de imágenes propias existe, arranca apagada y **no tiene código propio**:
+hasta B-206 no hay forma de que exista una imagen propia, y la pregunta de si se copia
+el objeto de Storage o se cuentan referencias (B-71) queda anotada en el tipo, sin
+código especulativo. Un test verifica que tildarla y destildarla dan el mismo
+resultado, y cita B-206.
+
+**Y salieron dos cosas del foco que no estaban en el ítem.** `MenuAcciones` aprendió
+`devuelveFoco`: la acción que abre una capa devuelve el foco al «⋯» **antes** de
+disparar, porque el ítem del menú desaparece al elegirlo y el `activeElement` que la
+capa memorizaría sería un nodo desmontado — el foco terminaba en el `body` al cerrar
+(B-14). Y la capa engancha su efecto de teclado **una sola vez**, con `onCancelar` por
+ref: con la función en las dependencias, un re-render del listado corría la limpieza,
+devolvía el foco y lo re-capturaba, llevándoselo a la casilla que se estaba tildando.
+**La misma fragilidad está latente en `CentroAyuda`** y quedó anotada.
+
+La medición se movió al **confirmar**: antes se disparaba al hacer click en el ítem del
+menú, o sea que contaba copias *pensadas* y no hechas. Y se agregó
+`duplicar-desmarcar` con la cantidad de casillas destildadas, que contesta la pregunta
+por la que el modal existe: **si nadie destilda nunca, el modal es un peaje** y hay que
+volver al click directo.
 
 ### B-63 · Cada aviso de la guía nombra el test que lo sostiene
 

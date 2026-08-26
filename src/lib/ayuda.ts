@@ -363,9 +363,34 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Duplicar sirve para el ciclo que se repite: abre una copia con todo cargado, con las ' +
-          'fechas corridas hacia adelante en semanas enteras, así se conservan el día de la semana y ' +
-          'la hora. Arranca en borrador y no manda nada al calendario hasta que la publiques.',
+          'Duplicar sirve para el ciclo que se repite. Antes de armar la copia te pregunta qué ' +
+          'copiar: viene todo tildado y destildás lo que sea de la edición anterior. Las fechas se ' +
+          'corren hacia adelante en semanas enteras, así se conservan el día de la semana y la ' +
+          'hora. Arranca en borrador y no manda nada al calendario hasta que la publiques.',
+        atadoA: [
+          {
+            archivo: 'tests/duplicar.test.ts',
+            it: 'el default hereda lo que hoy se copia: el modal es para desmarcar, no para armar la copia de cero',
+          },
+        ],
+      },
+      {
+        texto:
+          'En esa pregunta, la difusión —las notas internas y las cuentas a arrobar— viene ' +
+          'destildada a propósito: es trabajo de la edición anterior y no se ve sin abrir el ' +
+          'acordeón, así que antes se colaba en la copia sin que nadie la revise. Solo aparecen ' +
+          'las casillas de lo que la actividad tiene cargado, y destildar algo nunca deja la copia ' +
+          'sin poder guardarse.',
+        atadoA: [
+          {
+            archivo: 'tests/duplicar.test.ts',
+            it: 'la difusión no se hereda: son notas y handles de otra edición que nadie revisa',
+          },
+          {
+            archivo: 'tests/duplicar.test.ts',
+            it: 'destildar cualquier casilla deja una copia que el formulario acepta',
+          },
+        ],
       },
       {
         texto:
