@@ -387,7 +387,7 @@ describe('B-83 · el rebuild ya no cuelga del sync a Calendar', () => {
 
   /**
    * `destacado` sale al `events.json` (§5.2) y decide la portada del sitio: sin
-   * rebuild, tildarlo no se veía nunca. Lo mismo `imagenUrl`, el `slug` y
+   * rebuild, tildarlo no se veía nunca. Lo mismo `imagenes`, el `slug` y
    * `searchText`.
    */
   it('B-83: destacar una actividad publicada marca rebuild', () => {
@@ -397,6 +397,31 @@ describe('B-83 · el rebuild ya no cuelga del sync a Calendar', () => {
   it('B-83: cambiar la imagen de portada también', () => {
     expect(
       marcaRebuild(ciclo({ imagenUrl: null }), ciclo({ imagenUrl: 'https://cdn/tapa.jpg' })),
+    ).toBe(true);
+  });
+
+  /**
+   * B-167 — la galería es más de lo mismo y de manual: las imágenes NO van a
+   * Google Calendar (la API no tiene campo de imagen), así que no generan
+   * operaciones de calendario. Sin el arreglo de B-83 no llegarían nunca al
+   * sitio, igual que `destacado` e `imagenUrl` antes. Se verifica, no se asume.
+   */
+  it('B-83 + B-167: agregar una imagen a la galería marca rebuild', () => {
+    expect(
+      marcaRebuild(
+        ciclo({ imagenes: [] }),
+        ciclo({
+          imagenes: [
+            {
+              id: 'img_1',
+              url: 'https://cdn/tapa.jpg',
+              epigrafe: '',
+              origen: 'externa',
+              portada: true,
+            },
+          ],
+        }),
+      ),
     ).toBe(true);
   });
 

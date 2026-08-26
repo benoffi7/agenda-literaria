@@ -2730,3 +2730,55 @@ satisface el import de `AdminApp.tsx`. Es la señal de que la forma del aserto e
 más fácil de equivocar que el código que verifica, y por eso quedó anotada en
 `13-agentes.md` y no solo arreglada acá. Hay dos asertos vivos con la misma forma
 en `tests/foco.test.ts`, que son **B-202**.
+
+---
+
+## D-125 · La galería: una lista, un epígrafe opcional, y el texto alternativo del título
+
+**Contexto.** B-167, con las cuatro decisiones de DEC-7 tomadas por el dueño el
+2026-08-26. El modelo pasa de un campo a una lista, y eso tenía que entrar
+**antes** del sitio público: B-107 necesita exactamente una imagen para Open
+Graph, así que si la galería llegaba después había que rehacer la tarjeta, el
+detalle, la proyección y el `events.json`.
+
+**La que más pesa, y no es cosmética: el epígrafe no es el texto alternativo.**
+Se pidió "descripción opcional", que es un **epígrafe**: se muestra debajo de la
+foto y puede no estar. El **texto alternativo** es otra cosa —lo que leen un
+lector de pantalla y Google— y no debería ser opcional. Las tres salidas posibles
+eran dos campos, un campo obligatorio que sirva para las dos cosas, o un campo
+opcional con el alternativo derivado. **Se eligió la tercera:** el epígrafe es
+opcional y el texto alternativo sale del **título de la actividad**.
+
+Por qué, y la contra asumida: un campo obligatorio por imagen en un panel de una
+persona produce "foto" como texto alternativo, que es peor que un título
+descriptivo ("Taller de crónica urbana en Casa Brandon"). La contra real es que
+las cuatro imágenes de una actividad comparten el mismo alternativo, que para un
+lector de pantalla es repetición. Se acepta: la alternativa medía peor.
+
+**`portada` es un flag explícito y no "la primera".** La imagen que uno quiere que
+aparezca al compartir el link no siempre es la primera que cargó, y reordenar
+necesita su propio gesto —arrastrar— que es más trabajo de formulario que un
+botón. El schema valida **exactamente una** en los dos niveles de D-120: dos
+portadas hacen que B-107 emita una imagen distinta según el orden de lectura, que
+es la clase de bug que no falla, miente.
+
+**El default de lectura, para siempre, y con id determinístico.** Lo segundo es lo
+que casi fue un bug: la regla del repo es que los ids se generan en el cliente
+(trampa 2), pero un default de **lectura** que genera un uuid produce un id
+distinto en cada lectura, y entonces `huboCambioDeContenido` ve un cambio cada vez
+que se abre el formulario. El centinela `img_legacy` además dice, a quien lo mire,
+que esa fila viene de un documento anterior a la galería.
+
+**Duplicar hereda las externas y no las propias.** Una externa es una URL de otro
+lado: copiarla no cuesta nada. Una propia vive en nuestro Storage, y si la copia
+compartiera el `storagePath`, borrar una le rompería las imágenes a la otra — la
+clase de B-71 con estado compartido. Es la respuesta conservadora **hasta B-199**,
+el modal que va a dejar elegir qué se duplica; ahí se decide si las propias se
+copian como objetos.
+
+**Lo que esta decisión NO resuelve todavía**, y está dicho para que no parezca
+olvido: subir archivos propios. El modelo ya lo soporta (`origen: 'propia'`,
+`storagePath`), y falta la mitad de infraestructura — `storage.rules`, el target
+de deploy que `que-deployar.sh` no conoce, la Function que quita el EXIF y deriva
+la miniatura, y el SDK de Storage en su propio módulo lazy. Va en su propia tajada
+porque cada uno de esos cuatro es un lugar donde equivocarse en silencio.

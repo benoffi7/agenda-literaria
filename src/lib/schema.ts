@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { esSlugDeCopia } from '@/lib/duplicar';
 import {
   ENTREGAS_MATERIAL,
@@ -48,6 +49,27 @@ const publicando = (estado: string): boolean => estado === 'publicado';
 
 /** Una URL válida, para las validaciones que solo corren al publicar. */
 const esUrl = (valor: string): boolean => z.string().url().safeParse(valor).success;
+
+/**
+ * Una fila de la galería (B-167). Las reglas de forma van en los dos niveles: son
+ * las que harían ilegible el documento, no las que lo harían incompleto.
+ *
+ * `epigrafe` es opcional a propósito (DEC-7a): es un pie de foto, no el texto
+ * alternativo — ese sale del título de la actividad.
+ */
+const imagenSchema = z.object({
+  id: z.string().regex(/^img_/, 'El id de imagen debe venir de nuevaImagenId()'),
+  url: texto.min(1, 'Falta la dirección de la imagen'),
+  epigrafe: opcional,
+  origen: z.enum(['externa', 'propia']),
+  // `storagePath` no se valida contra un formato: lo escribe la Function, no el
+  // formulario, y atarlo a un patrón acá haría que un cambio del lado del
+  // servidor rompa el guardado del panel.
+  storagePath: z.string().optional(),
+  ancho: z.number().optional(),
+  alto: z.number().optional(),
+  portada: z.boolean().default(false),
+});
 
 const sesionSchema = z
   .object({
@@ -116,9 +138,9 @@ export const actividadFormSchema = z
       .min(1, 'El slug es obligatorio')
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Solo minúsculas, números y guiones'),
     descripcion: opcional,
-    // La URL se valida al publicar (abajo): a medio escribir, "https://ins" no
+    // Las URLs se validan al publicar (abajo): a medio escribir, "https://ins" no
     // es una URL y no tiene por qué frenar un borrador.
-    imagenUrl: z.string().trim().nullable().or(z.literal('')).default(''),
+    imagenes: z.array(imagenSchema).default([]),
 
     organizador: z.object({
       nombre: opcional,
@@ -168,6 +190,22 @@ export const actividadFormSchema = z
   // Todo lo de acá abajo corre **solo** si el guardado es a `publicado`. Es la
   // completitud del §11: lo que evita que el sitio o el evento salgan a medias.
   .superRefine((v, ctx) => {
+    const faltaSiempre = (path: (string | number)[], message: string) =>
+      ctx.addIssue({ code: 'custom', path, message });
+
+    // Las dos de la galería que van en los DOS niveles (D-120): harían ilegible
+    // el documento, no incompleto.
+    if (v.imagenes.length > MAXIMO_IMAGENES) {
+      faltaSiempre(['imagenes'], `Hasta ${MAXIMO_IMAGENES} imágenes por actividad`);
+    }
+    // Exactamente una portada, o ninguna si la lista está vacía. Dos portadas
+    // hacen que B-107 emita una imagen distinta según el orden de lectura.
+    const portadas = v.imagenes.filter((i) => i.portada).length;
+    if (v.imagenes.length > 0 && portadas !== 1) {
+      faltaSiempre(['imagenes'], 'Elegí una sola imagen como portada');
+    }
+  })
+  .superRefine((v, ctx) => {
     if (!publicando(v.estado)) return;
 
     const falta = (path: (string | number)[], message: string) =>
@@ -180,7 +218,9 @@ export const actividadFormSchema = z
     if (v.descripcion.length < 10) falta(['descripcion'], 'Escribí una descripción');
     if (!v.organizador.nombre) falta(['organizador', 'nombre'], 'Falta el organizador');
     if (!v.arancel.tipo) falta(['arancel', 'tipo'], 'Elegí el arancel');
-    if (v.imagenUrl && !esUrl(v.imagenUrl)) falta(['imagenUrl'], 'URL inválida');
+    v.imagenes.forEach((img, n) => {
+      if (!esUrl(img.url)) falta(['imagenes', String(n), 'url'], 'URL inválida');
+    });
     if (v.sesiones.length === 0) falta(['sesiones'], 'Cargá al menos un encuentro');
 
     // §11 — sede aparece en presencial e híbrido, y ahí es obligatoria.

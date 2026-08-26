@@ -78,7 +78,7 @@ export const formVacio = (): ActividadForm => ({
   titulo: '',
   slug: '',
   descripcion: '',
-  imagenUrl: '',
+  imagenes: [],
   organizador: { nombre: '', instagram: '', web: '' },
   tallerista: null,
   esCiclo: false,

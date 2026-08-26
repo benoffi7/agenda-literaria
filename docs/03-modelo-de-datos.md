@@ -224,6 +224,36 @@ Dos consecuencias:
    con el texto anterior hasta la próxima edición de la actividad. El tope es de
    150 eventos por corrida: lo que sobre se pone al día con la próxima edición.
 
+## `imagenes` — la galería, y el campo que reemplaza (B-167)
+
+Era `imagenUrl: string | null`. Es `imagenes: Imagen[]`, con
+`{ id, url, epigrafe, origen, storagePath?, ancho?, alto?, portada }`.
+
+Tres cosas que no se adivinan del tipo:
+
+- **El `id` se genera en el cliente al crear la fila** (`nuevaImagenId()`,
+  `img_<uuid>`), nunca por índice. Es la trampa 2, la misma que costó el diff de
+  sesiones: borrar la segunda imagen renumera todo y cualquier cosa que compare
+  por posición cree que cambiaron todas.
+- **`epigrafe` es un pie de foto, no el texto alternativo.** El alternativo —lo
+  que leen un lector de pantalla y Google— sale del **título de la actividad**.
+  Es una decisión de accesibilidad tomada a propósito (D-125): pedir un campo por
+  imagen produce "foto" como texto alternativo, que es peor que un título
+  descriptivo.
+- **`storagePath` nunca sale al público** (§5.1): es la ruta interna del bucket y
+  publicarla dibuja su estructura. Lo fija `tests/imagenes.test.ts`.
+
+**Los documentos que ya están en producción no tienen `imagenes`.** Los lee
+`imagenesDe()`, que convierte `imagenUrl` en una lista de un elemento marcada como
+portada — **para siempre**, no con un script que escriba en producción. El id de
+esa fila es el centinela fijo `img_legacy` y **no** un uuid nuevo: un uuid en cada
+lectura hace que `huboCambioDeContenido` vea un cambio cada vez que se abre el
+formulario, o sea el aviso de "cambios sin guardar" apareciendo solo y una versión
+nueva en el historial por cada apertura.
+
+`imagenUrl` sigue en el tipo, marcado `@deprecated`: los documentos viejos lo
+tienen y el default lo lee. **Las escrituras nuevas no lo escriben.**
+
 ## `sede.geo` — el punto exacto
 
 ```

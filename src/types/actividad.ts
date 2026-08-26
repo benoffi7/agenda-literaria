@@ -94,6 +94,40 @@ export interface Sesion {
   calendarEventId: string | null;
 }
 
+/**
+ * Una imagen de la galería (B-167, DEC-7).
+ *
+ * Reemplaza al `imagenUrl` único. El modelo es una **lista** porque una actividad
+ * tiene el flyer, fotos del espacio y de ediciones anteriores, y B-107 necesita
+ * exactamente una para Open Graph — de ahí `portada`.
+ */
+export interface Imagen {
+  /** `img_<uuid>` — generado en cliente, NUNCA por índice (§3.1, trampa 2). */
+  id: string;
+  url: string;
+  /**
+   * Pie de foto, **opcional** (DEC-7a). No es el texto alternativo: ese sale del
+   * título de la actividad, decidido a propósito para no pedir un campo por
+   * imagen que terminaría diciendo "foto". Ver D-125.
+   */
+  epigrafe: string;
+  /**
+   * `externa` es una URL de otro lado, que se sirve tal cual desde su origen;
+   * `propia` está en nuestro Storage y la Function le quitó el EXIF y derivó una
+   * miniatura (DEC-7c, DEC-7d).
+   */
+  origen: 'externa' | 'propia';
+  /**
+   * Ruta del objeto en Storage. Solo las propias. **Nunca sale al público**
+   * (§5.1): dibuja la estructura del bucket.
+   */
+  storagePath?: string;
+  ancho?: number;
+  alto?: number;
+  /** Exactamente una por actividad: es la que va a Open Graph y a la tarjeta. */
+  portada: boolean;
+}
+
 export interface Sede {
   nombre: string;
   direccion: string;
@@ -153,7 +187,19 @@ export interface Actividad {
   /** Único, inmutable después de publicar (§7, trampa 10). */
   slug: string;
   descripcion: string;
-  imagenUrl: string | null;
+  /**
+   * B-167 — la galería. **Opcional a propósito:** los documentos que ya están en
+   * producción tienen `imagenUrl` y no tienen esto, y el default de lectura los
+   * convierte en una lista de un elemento (D-125). Que el tipo lo declare
+   * opcional es lo que obliga al compilador a decidirlo en cada lectura (D-26).
+   */
+  imagenes?: Imagen[];
+  /**
+   * @deprecated Lo reemplazó `imagenes` (B-167). Sigue en el tipo porque los
+   * documentos viejos lo tienen y el default de lectura lo lee; las escrituras
+   * nuevas **no** lo escriben.
+   */
+  imagenUrl?: string | null;
   organizador: Organizador;
   tallerista: Persona | null;
 
@@ -208,9 +254,17 @@ export interface ActividadForm
     | 'createdBy'
     | 'updatedBy'
     | 'inscripcion'
+    | 'imagenes'
+    | 'imagenUrl'
   > {
   sesiones: SesionForm[];
   inscripcion: Omit<Inscripcion, 'cierra'> & { cierra: string };
+  /**
+   * Siempre un array, nunca `undefined`: el formulario no tiene el problema de
+   * los documentos viejos, porque el default de lectura ya resolvió eso antes de
+   * llegar acá. Y `imagenUrl` no está: el formulario no escribe el campo viejo.
+   */
+  imagenes: Imagen[];
 }
 
 /** §4.1 — `/opciones/{campo}` */

@@ -231,7 +231,19 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'difusion.notas',
   'esCiclo',
   'estado',
-  'imagenUrl',
+  // B-167 — la galería es una lista, así que sus rutas van colapsadas
+  // (`rutaCampo.ts`). Son **nombres de campo**, no contenido: ninguna URL ni
+  // ningún epígrafe sale a la analítica (§7 de 07-seguridad.md).
+  'imagenes',
+  'imagenes.N',
+  'imagenes.N.alto',
+  'imagenes.N.ancho',
+  'imagenes.N.epigrafe',
+  'imagenes.N.id',
+  'imagenes.N.origen',
+  'imagenes.N.portada',
+  'imagenes.N.storagePath',
+  'imagenes.N.url',
   'inscripcion',
   'inscripcion.cierra',
   'inscripcion.cupo',

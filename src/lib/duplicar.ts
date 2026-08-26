@@ -1,3 +1,4 @@
+import { nuevaImagenId } from '@/lib/imagenes';
 import { aDatetimeLocal, deDatetimeLocal, nuevaSesionId } from '@/lib/sesiones';
 import type { ActividadForm, SesionForm } from '@/types/actividad';
 
@@ -167,6 +168,24 @@ export const duplicarActividadForm = (
     // original: el form del original sale de `documentoAForm`, que sí comparte
     // objetos con el documento que el listado tiene en memoria. Editar la copia
     // no puede tocar nada del original, ni en el estado de React.
+    /**
+     * B-167 — la copia hereda las **externas** y no las propias.
+     *
+     * Una externa es una URL de otro lado: copiarla no cuesta nada y las dos
+     * actividades pueden apuntar al mismo lugar sin interferir. Una propia vive
+     * en nuestro Storage, y si la copia compartiera el `storagePath`, borrar una
+     * le rompería las imágenes a la otra — la clase de B-71 con estado
+     * compartido. Mientras no exista el modal de B-199, que va a dejar elegir
+     * qué se duplica, la respuesta conservadora es no heredarlas: volver a subir
+     * hasta cuatro fotos es barato al lado de un borrado que rompe a otro.
+     *
+     * Ids nuevos, como las sesiones: compartirlos haría que cualquier cosa que
+     * compare por id crea que son la misma fila (trampa 2).
+     */
+    imagenes: origen.imagenes
+      .filter((i) => i.origen === 'externa')
+      .map((i, n) => ({ ...i, id: nuevaImagenId(), portada: n === 0 })),
+
     organizador: { ...origen.organizador },
     tallerista: origen.tallerista ? { ...origen.tallerista } : null,
     sede: origen.sede

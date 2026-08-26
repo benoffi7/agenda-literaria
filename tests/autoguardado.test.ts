@@ -725,7 +725,7 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'difusion.notas',
         'esCiclo',
         'estado',
-        'imagenUrl',
+        'imagenes',
         'inscripcion.cierra',
         'inscripcion.cupo',
         'inscripcion.destino',
@@ -756,6 +756,10 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'tipo',
         'titulo',
       ]);
-    expect(VERSION_BORRADOR).toBe(1);
+    // Subió a 2 con B-167: el formulario pasó de `imagenUrl` a `imagenes`, y un
+    // borrador viejo aplicado sobre la forma nueva **parece bueno** — que es
+    // justo lo peligroso. Esta es la primera vez que esta red se ejerce de
+    // verdad, y funcionó: el cambio de forma la puso roja.
+    expect(VERSION_BORRADOR).toBe(2);
   });
 });

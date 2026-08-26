@@ -174,6 +174,19 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'En «Opcional» podés cargar hasta cuatro imágenes, cada una con un epígrafe si querés. ' +
+          'Una queda marcada como portada: esa es la que se ve al compartir el link de la ' +
+          'actividad. Por ahora se pegan direcciones de imágenes que ya estén publicadas en otro ' +
+          'lado; subir fotos desde el teléfono todavía no está.',
+      },
+      {
+        texto:
+          'El epígrafe es lo que se muestra debajo de la foto, y es opcional. Lo que leen quienes ' +
+          'usan un lector de pantalla, y lo que lee Google, es el título de la actividad — así que ' +
+          'un título que describa bien lo que es sirve para las dos cosas.',
+      },
+      {
+        texto:
           'Ese guardado automático es de tu cuenta: si otra persona entra con la suya en la misma ' +
           'computadora, no ve lo que dejaste a medias. Y al salir de la agenda se borra, así que ' +
           'en una computadora prestada conviene salir.',

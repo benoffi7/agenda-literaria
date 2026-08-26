@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Imagen } from '@/types/actividad';
 import { actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
 import { sesionVacia } from '@/lib/sesiones';
 import type { ItemMaterial } from '@/types/actividad';
@@ -235,17 +236,58 @@ describe('schema — material (al publicar)', () => {
   });
 });
 
-describe('schema — imagen (al publicar)', () => {
-  it('rechaza una URL inválida', () => {
-    expect(errores({ ...publicado(), imagenUrl: 'no-es-una-url' })).toContain('imagenUrl');
+describe('schema — la galería (B-167)', () => {
+  const img = (over: Partial<Imagen> = {}): Imagen => ({
+    id: 'img_1',
+    url: 'https://ejemplo.ar/tapa.jpg',
+    epigrafe: '',
+    origen: 'externa',
+    portada: true,
+    ...over,
   });
 
-  it('acepta la imagen vacía', () => {
-    expect(errores({ ...publicado(), imagenUrl: '' })).toEqual([]);
+  it('acepta la lista vacía: la imagen nunca fue obligatoria', () => {
+    expect(errores({ ...publicado(), imagenes: [] })).toEqual([]);
   });
 
-  it('acepta una URL válida', () => {
-    expect(errores({ ...publicado(), imagenUrl: 'https://ejemplo.ar/tapa.jpg' })).toEqual([]);
+  it('acepta una externa con portada', () => {
+    expect(errores({ ...publicado(), imagenes: [img()] })).toEqual([]);
+  });
+
+  it('rechaza al publicar una URL inválida, con la ruta de la fila', () => {
+    expect(errores({ ...publicado(), imagenes: [img({ url: 'no-es-una-url' })] })).toContain(
+      'imagenes.0.url',
+    );
+  });
+
+  it('pero un borrador con la URL a medio escribir se guarda igual (D-120)', () => {
+    expect(errores({ ...valido(), imagenes: [img({ url: 'https://ins' })] })).toEqual([]);
+  });
+
+  it('el id tiene que venir del generador, en los dos niveles (trampa 2)', () => {
+    // Por índice, borrar la segunda imagen renumera todo y cualquier cosa que
+    // compare por posición cree que cambiaron todas.
+    expect(errores({ ...valido(), imagenes: [img({ id: '0' })] })).toContain('imagenes.0.id');
+  });
+
+  it('exactamente una portada, en los dos niveles', () => {
+    const dos = [img(), img({ id: 'img_2' })];
+    expect(errores({ ...valido(), imagenes: dos })).toContain('imagenes');
+    const ninguna = [img({ portada: false })];
+    expect(errores({ ...valido(), imagenes: ninguna })).toContain('imagenes');
+  });
+
+  it('hasta cuatro, en los dos niveles (DEC-7b)', () => {
+    const cinco = Array.from({ length: 5 }, (_, n) =>
+      img({ id: `img_${n}`, portada: n === 0 }),
+    );
+    expect(errores({ ...valido(), imagenes: cinco })).toContain('imagenes');
+  });
+
+  it('storagePath se acepta pero no se exige: lo escribe la Function', () => {
+    expect(
+      errores({ ...publicado(), imagenes: [img({ origen: 'propia', storagePath: 'a/b.jpg' })] }),
+    ).toEqual([]);
   });
 });
 

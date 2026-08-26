@@ -1,4 +1,5 @@
-import type { Actividad, ItemMaterial, Sesion } from '@/types/actividad';
+import { imagenesDe } from '@/lib/imagenes';
+import type { Actividad, Imagen, ItemMaterial, Sesion } from '@/types/actividad';
 
 /**
  * §5 — Todo lo que entra al `events.json` es público y scrapeable.
@@ -29,13 +30,24 @@ export interface ItemMaterialPublico {
   url?: string;
 }
 
+/** §5.1 — lo mismo que `Imagen` **menos `storagePath`**, que es interno. */
+export interface ImagenPublica {
+  id: string;
+  url: string;
+  epigrafe: string;
+  origen: 'externa' | 'propia';
+  portada: boolean;
+  ancho?: number;
+  alto?: number;
+}
+
 export interface ActividadPublica {
   id: string;
   titulo: string;
   slug: string;
   tipo: Actividad['tipo'];
   descripcion: string;
-  imagenUrl: string | null;
+  imagenes: ImagenPublica[];
   modalidad: Actividad['modalidad'];
   sede: Actividad['sede'];
   tags: string[];
@@ -67,6 +79,28 @@ const aIso = (t: { toDate(): Date } | Date): string =>
 const aMillis = (t: { toMillis(): number } | Date): number =>
   t instanceof Date ? t.getTime() : t.toMillis();
 
+/**
+ * Qué de cada imagen es público (§5.1, B-167).
+ *
+ * **`storagePath` no sale.** Es la ruta interna del bucket: publicarla dibuja su
+ * estructura y deja probar objetos por nombre. Lo demás sí: la URL es lo que el
+ * navegador va a pedir igual, el epígrafe se muestra, y `ancho`/`alto` evitan que
+ * la tarjeta salte al cargar.
+ *
+ * `origen` sale porque el build lo necesita: las propias tienen tamaños derivados
+ * y las externas se sirven tal cual desde su origen (DEC-7d). Es un enum cerrado
+ * de dos valores, no contenido.
+ */
+const imagenPublica = (i: Imagen): ImagenPublica => ({
+  id: i.id,
+  url: i.url,
+  epigrafe: i.epigrafe,
+  origen: i.origen,
+  portada: i.portada,
+  ...(i.ancho !== undefined ? { ancho: i.ancho } : {}),
+  ...(i.alto !== undefined ? { alto: i.alto } : {}),
+});
+
 const sesionPublica = (s: Sesion): SesionPublica => ({
   id: s.id,
   inicio: aIso(s.inicio),
@@ -88,7 +122,7 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   slug: a.slug,
   tipo: a.tipo,
   descripcion: a.descripcion,
-  imagenUrl: a.imagenUrl ?? null,
+  imagenes: imagenesDe(a).map(imagenPublica),
   modalidad: a.modalidad,
   sede: a.sede ?? null,
   tags: a.tags ?? [],

@@ -44,7 +44,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   titulo: 'Club de lectura latinoamericana',
   slug: 'club-latinoamericana',
   descripcion: 'Ocho encuentros para leer el boom.',
-  imagenUrl: '',
+  imagenes: [],
   organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
   tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
   esCiclo: true,

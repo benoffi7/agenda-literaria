@@ -1,5 +1,69 @@
 # Changelog
 
+## Sin publicar — 2026-08-26
+
+### B-167 · La galería de imágenes: el modelo y el editor de URLs
+
+**Primera de dos tajadas.** Esta cambia el modelo y el formulario; la que falta es
+subir archivos propios, y está nombrada abajo con lo que le falta. Entra ahora y no
+después del sitio público porque B-107 necesita exactamente una imagen para Open
+Graph: si la galería llegaba después, había que rehacer la tarjeta, el detalle, la
+proyección y el `events.json`.
+
+`imagenUrl: string | null` pasa a `imagenes: Imagen[]`, con las cuatro decisiones
+de DEC-7 tomadas por el dueño y el razonamiento en **D-125**. Lo que importa:
+
+- **El epígrafe no es el texto alternativo.** Es opcional y se muestra debajo de la
+  foto; el alternativo sale del **título de la actividad**. Decisión de
+  accesibilidad tomada a propósito: un campo obligatorio por imagen en un panel de
+  una persona produce «foto» como alternativo, que es peor que un título
+  descriptivo. La contra asumida es que las cuatro imágenes comparten el mismo.
+- **`portada` es un flag explícito**, no «la primera», y el schema valida
+  exactamente una en los dos niveles de D-120: dos portadas hacen que B-107 emita
+  una imagen distinta según el orden de lectura, que es la clase de bug que no
+  falla, miente. Quitar la portada la reasigna a la que queda primera.
+- **Los ids se generan en el cliente** (`img_<uuid>`), nunca por índice — trampa 2.
+- **El default de lectura, para siempre**, y con **id determinístico**. Esto casi
+  fue un bug: un uuid nuevo en cada lectura hace que `huboCambioDeContenido` vea un
+  cambio cada vez que se abre el formulario, o sea el aviso de «cambios sin
+  guardar» apareciendo solo y una versión nueva en el historial por cada apertura.
+  El centinela `img_legacy` además dice que la fila viene de un documento anterior.
+- **`storagePath` no sale al público** (§5.1): dibuja el bucket. Con test que lo
+  nombra, verificado publicándolo a propósito.
+- **Duplicar hereda las externas y no las propias**, hasta que exista el modal de
+  B-199: compartir el `storagePath` haría que borrar una le rompa las imágenes a la
+  otra, que es la clase de B-71 con estado compartido.
+
+**Las tres guardas del repo se activaron solas, y es lo mejor que pasó acá.** El
+vocabulario de la analítica derivado del schema (D-60) exigió las diez rutas
+nuevas; el diccionario de nombres de B-184 exigió un nombre para cada una; y el
+chequeo de `VERSION_BORRADOR` contra la forma del formulario —escrito ayer para la
+clase de B-88— se puso rojo y obligó a subirla a **2**, que es exactamente su
+razón de ser: un borrador con `imagenUrl` aplicado sobre un formulario con
+`imagenes` **parece bueno**. Es la primera vez que esa red se ejerce de verdad.
+
+Y el test del rebuild creció con el cambio, que este ítem pedía verificar y no
+asumir: las imágenes no van a Google Calendar, así que no generan operaciones de
+calendario y sin el arreglo de B-83 no llegarían nunca al sitio — exactamente lo
+que pasaba con `destacado` e `imagenUrl`.
+
+**Lo que falta para cerrar B-167**, con el motivo de por qué va aparte: subir
+archivos propios necesita `storage.rules` (archivo nuevo), un target de deploy que
+`que-deployar.sh` no conoce —y sin la regla nueva, un cambio de reglas de Storage
+se deploya **nunca**, que es el peor de los dos defaults—, la Function que quita el
+EXIF y deriva la miniatura (con la guarda anti-loop, porque escribir la miniatura
+en el mismo bucket re-dispara la Function: es la trampa 3 con otra cara), y el SDK
+de Storage en su propio módulo lazy. Cada uno es un lugar donde equivocarse en
+silencio.
+
+`novedades.ts` **no** se tocó a propósito: la novedad se escribe cuando la función
+esté completa y tenga versión, no a mitad de camino. La ayuda sí, porque describe
+lo que ya se puede hacer y lo que no se adivina mirando.
+
+Doc: `03-modelo-de-datos.md` (sección nueva), `04-funcionalidades.md`,
+`06-decisiones.md` (**D-125**), `src/lib/ayuda.ts`.
+`tests/imagenes.test.ts` (17 casos) más los que crecieron. **1013 tests.**
+
 ## 1.2.0 — 2026-08-26
 
 Los tres ítems P1 del formulario que eran **una sola historia contada en tres

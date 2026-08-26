@@ -1,7 +1,8 @@
 /**
- * El acordeón del §11: tags, imagen y destacado.
+ * El acordeón del §11: tags, galería de imágenes y destacado.
  */
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
+import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
+import { Campo } from '@/components/admin/campos/Campo';
 import { Seccion } from '@/components/admin/campos/Seccion';
 import { TagsInput } from '@/components/admin/campos/TagsInput';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
@@ -45,17 +46,11 @@ export function SeccionOpcional({
             }}
           />
         </Campo>
-        <Campo label="Imagen" error={errorDe('imagenUrl')}>
-          <input
-            type="url"
-            inputMode="url"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            className={claseInput}
-            value={form.imagenUrl ?? ''}
-            onChange={(e) => set('imagenUrl', e.target.value)}
-            placeholder="https://…"
+        <Campo label="Imágenes" error={errorDe('imagenes')}>
+          <GaleriaEditor
+            imagenes={form.imagenes}
+            onChange={(imagenes) => set('imagenes', imagenes)}
+            tituloActividad={form.titulo}
           />
         </Campo>
         <label className="flex items-center gap-2 text-sm">

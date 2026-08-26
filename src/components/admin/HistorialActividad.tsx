@@ -36,7 +36,10 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   titulo: 'Título',
   slug: 'Dirección web',
   descripcion: 'Descripción',
+  // `imagenUrl` se conserva: las versiones anteriores a B-167 lo tienen, y sin
+  // la entrada el historial mostraría la clave cruda.
   imagenUrl: 'Imagen',
+  imagenes: 'Imágenes',
   organizador: 'Organizador',
   tallerista: 'Tallerista o invitado',
   esCiclo: 'Es un ciclo',

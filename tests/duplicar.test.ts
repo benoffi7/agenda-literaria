@@ -27,7 +27,7 @@ const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   titulo: 'Club de lectura latinoamericana',
   slug: 'club-latinoamericana',
   descripcion: 'Ocho encuentros por narrativa del boom y después.',
-  imagenUrl: '',
+  imagenes: [],
   organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
   tallerista: { nombre: 'María Moreno', bio: 'Cronista', instagram: '@mmoreno' },
   esCiclo: true,

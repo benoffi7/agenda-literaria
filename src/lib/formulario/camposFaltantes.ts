@@ -141,7 +141,19 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'material.items.N.publico': { etiqueta: 'Visibilidad del material', seccion: 'material' },
 
   // ── Opcional ──
-  imagenUrl: { etiqueta: 'Imagen', seccion: 'opcional' },
+  // B-167 — todas las rutas de la galería dicen «Imágenes»: el mensaje de la
+  // barra nombra el campo que hay que ir a mirar, y ahí lo que se mira es la
+  // sección entera, no la clave `portada` de la tercera fila.
+  imagenes: { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.alto': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.ancho': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.epigrafe': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.id': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.origen': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.portada': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.storagePath': { etiqueta: 'Imágenes', seccion: 'opcional' },
+  'imagenes.N.url': { etiqueta: 'Imágenes', seccion: 'opcional' },
   tags: { etiqueta: 'Tags', seccion: 'opcional' },
   'tags.N': { etiqueta: 'Tags', seccion: 'opcional' },
   destacado: { etiqueta: 'Destacar en la portada', seccion: 'opcional' },

@@ -52,7 +52,7 @@ import type { ActividadForm } from '@/types/actividad';
  * este número, así que agregar un campo falla hasta que alguien decida si el
  * borrador viejo sigue sirviendo.
  */
-export const VERSION_BORRADOR = 1;
+export const VERSION_BORRADOR = 2;
 
 /**
  * La clave, el almacén y el borrado viven en `borradoresDelNavegador.ts` y se

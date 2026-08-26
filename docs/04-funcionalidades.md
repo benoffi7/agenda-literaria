@@ -152,6 +152,12 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   de un material—, al recuperarlo queda destildado y el aviso lo dice. Un valor de
   hace tres semanas aplicado sobre lo de hoy no puede publicar un link solo
   (D-124, trampa 5).
+- **Una actividad tiene una galería de imágenes, no una sola** (B-167): hasta
+  cuatro, cada una con su epígrafe opcional y una marcada como portada, que es la
+  que va a aparecer al compartir el link. Se pegan direcciones de afuera y se ven
+  al momento de pegarlas. El texto que leen un lector de pantalla y Google sale del
+  **título de la actividad**, no del epígrafe (D-125). Subir archivos propios
+  todavía no está: el modelo lo soporta y falta la infraestructura.
 - **No se puede publicar con el slug propuesto para una copia** (`…-copia`).
   Guardarlo como borrador sí, porque la copia nace justamente con ese slug: el
   bloqueo es solo al publicar, porque ahí el slug queda fijo para siempre

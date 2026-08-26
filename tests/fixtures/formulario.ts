@@ -24,6 +24,7 @@ export const CENTINELAS = {
   uid: 'bNvcQmbUwdSduoSfA2Oa9hxYMQp2',
   mailAdmin: 'benoffi11@gmail.com',
   imagen: 'https://ejemplo.com/CENTINELA-imagen.jpg',
+  epigrafeImagen: 'CENTINELA-EPIGRAFE el patio en la primera edicion',
   urlMaterial: 'https://drive.example/CENTINELA-material',
   tituloMaterial: 'CENTINELA-MATERIAL guia de lectura',
   notasArancel: 'CENTINELA-ARANCEL dos cuotas',
@@ -41,7 +42,15 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
   titulo: CENTINELAS.titulo,
   slug: CENTINELAS.slug,
   descripcion: CENTINELAS.descripcion,
-  imagenUrl: CENTINELAS.imagen,
+  imagenes: [
+    {
+      id: 'img_centinela',
+      url: CENTINELAS.imagen,
+      epigrafe: CENTINELAS.epigrafeImagen,
+      origen: 'externa',
+      portada: true,
+    },
+  ],
   organizador: {
     nombre: CENTINELAS.organizador,
     instagram: CENTINELAS.handle,

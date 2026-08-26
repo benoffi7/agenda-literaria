@@ -14,6 +14,7 @@ import {
 import { db } from '@/lib/firestore-client';
 import { buildSearchText } from '@/lib/normalize';
 import { deDatetimeLocal, aDatetimeLocal } from '@/lib/sesiones';
+import { imagenesDe } from '@/lib/imagenes';
 import { slugify } from '@/lib/slugify';
 import type {
   Actividad,
@@ -58,7 +59,9 @@ export const formADocumento = (
     titulo: limpiar(f.titulo),
     slug: slugify(f.slug),
     descripcion: limpiar(f.descripcion),
-    imagenUrl: nuloSiVacio(f.imagenUrl ?? ''),
+    // La galería viaja como lista. `imagenUrl` **no se escribe**: es el campo
+    // viejo, que solo se lee (B-167, D-125).
+    imagenes: f.imagenes.map((i) => ({ ...i })),
     organizador: f.organizador,
     tallerista,
 
@@ -122,7 +125,10 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
   titulo: a.titulo,
   slug: a.slug,
   descripcion: a.descripcion,
-  imagenUrl: a.imagenUrl ?? '',
+  // Default de lectura para siempre: un documento anterior a la galería trae
+  // `imagenUrl` y se lee como una lista de un elemento marcada como portada, con
+  // un id determinístico (D-125).
+  imagenes: imagenesDe(a),
   organizador: a.organizador ?? { nombre: '', instagram: '', web: '' },
   tallerista: a.tallerista ?? null,
   esCiclo: a.esCiclo,
