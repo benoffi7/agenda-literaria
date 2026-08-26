@@ -54,6 +54,9 @@ const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
     destino: 'hola@casabrandon.org',
     cupo: 12,
     cierra: '2025-08-30T00:00',
+    // B-97 — el original está completo, así que la copia tiene algo que NO
+    // heredar. Con `false` el chequeo de abajo pasaría por vacío.
+    completo: true,
   },
   arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
   material: {
@@ -243,6 +246,15 @@ describe('duplicar una actividad — el resto del contenido', () => {
     expect(copia.esCiclo).toBe(true);
     expect(copia.inscripcion.requiere).toBe(true);
     expect(copia.inscripcion.cupo).toBe(12);
+    /**
+     * B-97 — el cupo completo **no** se hereda, y es el mismo criterio que
+     * `cancelada` en las sesiones: que la edición anterior se haya llenado es un
+     * hecho de esa edición. La copia no tiene una sola inscripción todavía, y
+     * heredarlo publicaría «Cupo completo» —al sitio y a los N eventos— sobre un
+     * cupo entero libre.
+     */
+    expect(o.inscripcion.completo, 'el original tiene que estar completo').toBe(true);
+    expect(copia.inscripcion.completo).toBe(false);
     // El tema y la lectura de cada encuentro son la mitad del trabajo de carga.
     expect(copia.sesiones.map((s) => s.tema)).toEqual(o.sesiones.map((s) => s.tema));
     expect(copia.sesiones.map((s) => s.lectura)).toEqual(o.sesiones.map((s) => s.lectura));

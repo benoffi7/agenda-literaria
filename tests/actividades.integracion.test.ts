@@ -10,6 +10,7 @@ import {
   crearActividad,
   documentoAForm,
   leerActividad,
+  marcarCupoCompleto,
   slugDisponible,
 } from '@/lib/actividades';
 import { duplicarActividadForm } from '@/lib/duplicar';
@@ -66,6 +67,9 @@ const formCompleto = (): ActividadForm => ({
     destino: 'hola@casabrandon.org',
     cupo: 12,
     cierra: '2026-09-01T00:00',
+    // B-97 — en `true` para que la ida y vuelta lo ejercite: con `false` no se
+    // distingue "lo conserva" de "lo pisa con el default".
+    completo: true,
   },
   arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
   material: {
@@ -209,6 +213,45 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     expect(elOriginal!.estado).toBe('publicado');
     expect(elOriginal!.createdBy).toBe(UID);
     expect(elOriginal!.sesiones.map((s) => s.calendarEventId)).toEqual(['evento_0', 'evento_1']);
+  });
+
+  /**
+   * B-97 — «se llenó», marcado desde el listado contra el emulador.
+   *
+   * Va contra el emulador y no en un test puro porque lo que se verifica es
+   * **semántica de Firestore**: `marcarCupoCompleto` escribe con ruta punteada
+   * (`'inscripcion.completo'`), y lo que hay que ver es que eso deje el resto del
+   * objeto `inscripcion` intacto en el documento de verdad. Un `updateDoc` con la
+   * clave sin puntear reemplazaría el objeto entero y se llevaría el destino, el
+   * cupo y el cierre — y desde el listado no hay formulario con el que reponerlos.
+   */
+  it('marcar el cupo completo no pisa el resto de la inscripción (B-97)', async () => {
+    const form = { ...formCompleto(), slug: 'club-b97', estado: 'publicado' as const };
+    const id = await crearActividad(form, UID);
+
+    await marcarCupoCompleto(id, true, 'otro_uid');
+    const lleno = await leerActividad(id);
+
+    expect(lleno!.inscripcion.completo).toBe(true);
+    // Lo que NO se tocó: el resto del bloque sigue igual, y con sus tipos.
+    expect(lleno!.inscripcion.destino).toBe('hola@casabrandon.org');
+    expect(lleno!.inscripcion.cupo).toBe(12);
+    expect(lleno!.inscripcion.requiere).toBe(true);
+    expect(lleno!.inscripcion.via).toBe('mail');
+    expect(typeof lleno!.inscripcion.cierra!.toDate).toBe('function');
+    // Firma la edición, que es lo que hace correr el historial y el rebuild.
+    expect(lleno!.updatedBy).toBe('otro_uid');
+    // Y no toca nada de afuera del bloque.
+    expect(lleno!.createdBy).toBe(UID);
+    expect(lleno!.sesiones.map((x) => x.id)).toEqual(form.sesiones.map((x) => x.id));
+
+    // Apagarlo vuelve a `false` y no deja el campo ausente: `undefined` en un
+    // `updateDoc` no borra, y el default de lectura tiene que seguir siendo el
+    // valor guardado y no el de un campo que falta.
+    await marcarCupoCompleto(id, false, UID);
+    const vacio = await leerActividad(id);
+    expect(vacio!.inscripcion.completo).toBe(false);
+    expect(documentoAForm(vacio!).inscripcion.completo).toBe(false);
   });
 
   it('lo que se guarda, proyectado, no filtra el link ni la difusión (§5)', async () => {

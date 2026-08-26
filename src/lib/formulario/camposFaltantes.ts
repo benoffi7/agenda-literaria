@@ -134,6 +134,11 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'inscripcion.via': { etiqueta: 'Por dónde se inscriben', seccion: 'arancel-inscripcion' },
   'inscripcion.destino': { etiqueta: 'Destino de la inscripción', seccion: 'arancel-inscripcion' },
   'inscripcion.cupo': { etiqueta: 'Cupo', seccion: 'arancel-inscripcion' },
+  // B-97 — no se edita desde el formulario (se prende desde el menú del
+  // listado), pero el schema lo puede rechazar igual, y entonces el mensaje
+  // tiene que nombrarlo. La sección es la que muestra el aviso de que está
+  // marcada como completa.
+  'inscripcion.completo': { etiqueta: 'Cupo completo', seccion: 'arancel-inscripcion' },
   'inscripcion.cierra': { etiqueta: 'Cierre de la inscripción', seccion: 'arancel-inscripcion' },
 
   // ── Material ──

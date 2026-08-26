@@ -401,9 +401,11 @@ export const conIdsDeCalendarioDe = (
  *   fue *dentro* del borrador, hay que volver a tildarlo. Es una casilla contra un
  *   evento que reaparece en el calendario de otros.
  *
- * **Esta es la lista, y vive en un solo lugar a propósito.** Se quedó corta dos
- * veces —primero solo `calendarEventId`, después sin `estado`— porque estaba
- * repartida. El campo que se agregue mañana se pregunta acá.
+ * **Esta es la lista, y vive en un solo lugar a propósito.** Se quedó corta **tres**
+ * veces: primero solo `calendarEventId`, después sin `estado`/`slug`/`cancelada`, y
+ * después sin `inscripcion.completo` (B-97). Las tres veces el campo nuevo tenía el
+ * mismo perfil —lo escribe otra pantalla o el backend, y manda a una salida
+ * pública— así que la pregunta al agregar un campo es esa, y no «¿es importante?».
  */
 export const conLoQueEsDelDocumento = (
   recuperado: ActividadForm,
@@ -415,6 +417,13 @@ export const conLoQueEsDelDocumento = (
     ...recuperado,
     estado: actual.estado,
     slug: slugBloqueado ? actual.slug : recuperado.slug,
+    // B-97 — el mismo perfil que `cancelada`, y por eso entra acá: es estado que
+    // cambia **después** de publicar, se prende **fuera del formulario** (desde el
+    // menú del listado) y manda a las dos salidas públicas. Un borrador de hace
+    // veinte días con `false` apaga el cartel de una actividad marcada hoy; uno con
+    // `true` publica «Cupo completo» con el cupo libre, en el sitio y en el
+    // calendario de todos los suscriptos.
+    inscripcion: { ...recuperado.inscripcion, completo: actual.inscripcion.completo },
     sesiones: recuperado.sesiones.map((s) =>
       canceladaHoy.has(s.id) ? { ...s, cancelada: canceladaHoy.get(s.id)! } : s,
     ),

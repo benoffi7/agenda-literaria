@@ -255,12 +255,33 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   if (arancel.length) bloques.push(arancel.join('\n'));
 
   // ── Inscripción ───────────────────────────────────────────────
+  /**
+   * B-97 — «Cupo completo» va **acá adentro**, como el libro: entra al payload
+   * que compara la guarda anti-loop, así que prenderlo actualiza los N eventos
+   * del ciclo sin ningún caso especial (D-07, trampa 9). Armado por fuera de
+   * `construirEvento` dejaría de propagarse en silencio.
+   *
+   * Es el punto del campo: quien ya estaba suscripto al calendario se entera de
+   * que se llenó **sin que nadie le avise**, que es la única vez que un
+   * calendario público vale más que una página.
+   *
+   * **El canal de inscripción no se esconde**, y es decisión del dueño: la línea
+   * va arriba y el «Inscripción por…» queda abajo. Siempre hay lista de espera y
+   * las bajas existen, así que esconder el canal convierte una baja en un lugar
+   * que se pierde. El paréntesis dice por qué el canal sigue ahí; sin él, un
+   * cupo completo con un mail al lado se lee como un error.
+   */
   const insc = actividad.inscripcion;
+  const completo = insc?.completo === true;
   if (insc?.requiere) {
-    const lineas = [
+    const lineas = [];
+    if (completo) {
+      lineas.push('Cupo completo (se puede escribir igual: puede liberarse un lugar)');
+    }
+    lineas.push(
       `Inscripción ${ETIQUETA_VIA[insc.via] ?? ''}`.trim() +
         (insc.destino ? `: ${insc.destino}` : ''),
-    ];
+    );
     if (insc.cupo) lineas.push(`Cupo: ${insc.cupo}`);
     if (insc.cierra) {
       lineas.push(
@@ -269,7 +290,9 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
     }
     bloques.push(lineas.join('\n'));
   } else if (insc) {
-    bloques.push('Sin inscripción previa');
+    // Sin inscripción previa también se llena: es un hecho de la sala, no del
+    // canal. Acá no hay a quién escribirle, así que la línea va sola y seca.
+    bloques.push(completo ? 'Sin inscripción previa\nCupo completo' : 'Sin inscripción previa');
   }
 
   // ── Material (§5.1: la URL solo si es pública) ─────────────────

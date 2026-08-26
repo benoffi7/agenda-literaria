@@ -226,6 +226,49 @@ describe('planificar — cambio global (trampa 9)', () => {
     }
   });
 
+  /**
+   * B-97 + trampa 9 — es el riesgo que el ítem marcaba para mirar de verdad:
+   * prender «se llenó» cambia la descripción de los N eventos del ciclo.
+   *
+   * Es lo correcto y es el punto del campo —así se entera quien ya estaba
+   * suscripto al calendario, sin que nadie le avise— y la guarda del §7.1 lo
+   * maneja sin ningún caso especial porque la línea se arma **adentro** de
+   * `construirDescripcion` (D-07). Lo que este test fija es que sean ocho
+   * `actualizar` y **cero** `borrar` y cero `crear`: borrar y recrear le
+   * perdería a la gente sus recordatorios, y es exactamente lo que pasaría si la
+   * línea se armara por fuera y alguien "arreglara" el diff a mano.
+   */
+  it('B-97: marcar cupo completo actualiza los ocho eventos y no borra ninguno (trampa 9)', () => {
+    const conCupo = (completo: boolean) =>
+      ciclo({
+        inscripcion: {
+          requiere: true,
+          via: 'mail',
+          destino: 'hola@casabrandon.org',
+          cupo: 12,
+          completo,
+        },
+      });
+
+    const ops = planificar(conCupo(false), conCupo(true));
+    expect(tipos(ops)).toEqual(Array(8).fill('actualizar'));
+    for (const op of ops) {
+      expect((op as { evento: { description: string } }).evento.description).toContain(
+        'Cupo completo',
+      );
+    }
+
+    // Y apagarlo también propaga a las ocho: si se libera un lugar, el cartel se
+    // va del calendario de todos, no solo del sitio.
+    const apagado = planificar(conCupo(true), conCupo(false));
+    expect(tipos(apagado)).toEqual(Array(8).fill('actualizar'));
+    for (const op of apagado) {
+      expect((op as { evento: { description: string } }).evento.description).not.toContain(
+        'Cupo completo',
+      );
+    }
+  });
+
   it('un cambio de título también propaga a todas', () => {
     expect(planificar(ciclo(), ciclo({ titulo: 'Título nuevo' }))).toHaveLength(8);
   });
@@ -533,6 +576,60 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
     for (const libro of [undefined, null, { titulo: '', autor: '' }]) {
       const texto = construirDescripcion(completa({ libro }), sesion(), LABELS);
       expect(texto, `libro=${JSON.stringify(libro)}`).not.toContain('Libro:');
+    }
+  });
+
+  /**
+   * B-97 — «se llenó» **sí va al evento** (§5.1), y es el punto del campo: el
+   * calendario es la única salida que le llega sola a quien ya guardó la fecha.
+   */
+  it('dice que el cupo está completo (B-97, §5.1)', () => {
+    const texto = construirDescripcion(completa({
+      inscripcion: { ...(completa().inscripcion as object), completo: true },
+    }), sesion(), LABELS);
+    expect(texto).toContain('Cupo completo');
+  });
+
+  /**
+   * La segunda decisión del dueño, que es la que se puede perder en una
+   * "mejora": el canal de inscripción **no se esconde** cuando está completo.
+   * Siempre hay lista de espera y las bajas existen — esconder el canal
+   * convierte una baja en un lugar que se pierde.
+   */
+  it('con el cupo completo el canal de inscripción sigue saliendo (B-97)', () => {
+    const texto = construirDescripcion(completa({
+      inscripcion: { ...(completa().inscripcion as object), completo: true },
+    }), sesion(), LABELS);
+    expect(texto).toContain('Inscripción por mail: hola@casabrandon.org');
+    // Y el paréntesis que explica por qué el mail sigue ahí: sin él, un cupo
+    // completo con un contacto al lado se lee como un error.
+    expect(texto).toContain('puede liberarse un lugar');
+  });
+
+  it('sin inscripción previa también puede estar completo, y ahí la línea va sola (B-97)', () => {
+    const texto = construirDescripcion(
+      completa({ inscripcion: { requiere: false, destino: '', completo: true } }),
+      sesion(),
+      LABELS,
+    );
+    expect(texto).toContain('Sin inscripción previa');
+    expect(texto).toContain('Cupo completo');
+    // No hay a quién escribirle, así que tampoco se promete nada.
+    expect(texto).not.toContain('puede liberarse un lugar');
+  });
+
+  it('sin marcarlo no aparece el rótulo, ni en los documentos que no tienen el campo (B-97)', () => {
+    // Es el caso de toda actividad anterior a B-97: el default de lectura es
+    // `false` y el calendario público no puede decir «Cupo completo» solo.
+    for (const completo of [undefined, false]) {
+      const texto = construirDescripcion(
+        completa({ inscripcion: { ...(completa().inscripcion as object), completo } }),
+        sesion(),
+        LABELS,
+      );
+      expect(texto, `completo=${String(completo)}`).not.toContain('Cupo completo');
+      // Y el cupo numérico sigue saliendo como siempre.
+      expect(texto).toContain('Cupo: 12');
     }
   });
 

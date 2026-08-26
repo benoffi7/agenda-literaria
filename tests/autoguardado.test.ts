@@ -635,6 +635,40 @@ describe('recuperar no publica ni despublica nada (§5.1, trampa 10)', () => {
     );
   });
 
+  it('el cupo completo sale del documento de hoy, no del borrador (B-97)', () => {
+    // Cuarto campo de la lista, y el que la dejó corta por tercera vez. Mismo
+    // perfil que `cancelada`: lo prende **otra pantalla** (el menú del listado),
+    // cambia después de publicar, y manda a las dos salidas públicas. Un borrador
+    // de hace veinte días con `false` apaga el cartel de una actividad marcada hoy.
+    const borrador = {
+      ...formVacio(),
+      inscripcion: { ...formVacio().inscripcion, completo: false },
+    };
+    const hoy = { ...formVacio(), inscripcion: { ...formVacio().inscripcion, completo: true } };
+    expect(conLoQueEsDelDocumento(borrador, hoy, false).inscripcion.completo).toBe(true);
+  });
+
+  it('y al revés: un borrador que decía «completo» no lo publica solo', () => {
+    const borrador = {
+      ...formVacio(),
+      inscripcion: { ...formVacio().inscripcion, completo: true },
+    };
+    const hoy = { ...formVacio(), inscripcion: { ...formVacio().inscripcion, completo: false } };
+    expect(conLoQueEsDelDocumento(borrador, hoy, false).inscripcion.completo).toBe(false);
+  });
+
+  it('pero el resto de la inscripción sí sale del borrador: es contenido', () => {
+    // Si se tomara el objeto entero del documento, recuperar perdería el destino y
+    // el cupo que la persona estaba escribiendo — justo lo que el borrador salva.
+    const borrador = {
+      ...formVacio(),
+      inscripcion: { ...formVacio().inscripcion, destino: 'hola@ejemplo.ar', cupo: 12 },
+    };
+    const r = conLoQueEsDelDocumento(borrador, formVacio(), false).inscripcion;
+    expect(r.destino).toBe('hola@ejemplo.ar');
+    expect(r.cupo).toBe(12);
+  });
+
   it('el formulario aplica los tres saneadores en cadena, y el resultado va al estado', () => {
     // Los asertos de antes —el nombre de la función, y `'actual,slugBloqueado,'`—
     // no ataban nada: pasaban con una llamada muerta en cualquier parte del
@@ -799,6 +833,7 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'estado',
         'imagenes',
         'inscripcion.cierra',
+        'inscripcion.completo',
         'inscripcion.cupo',
         'inscripcion.destino',
         'inscripcion.requiere',
@@ -840,6 +875,20 @@ describe('la versión del formato y la forma del formulario no derivan por separ
     // con `libroVacio()` — o sea el mismo resultado que un formulario abierto hoy
     // sin cargar el campo. Subirla tiraría a la basura todo borrador en curso en
     // el navegador de cada admin a cambio de nada.
+    //
+    // **B-97 tampoco la subió, y por los mismos dos motivos más uno.**
+    // `inscripcion.completo` es aditivo igual que `libro`: un borrador anterior no
+    // trae la clave y la mezcla la completa con el `false` de `formVacio()`, que es
+    // exactamente lo que muestra un formulario abierto hoy sobre una actividad que
+    // no está completa. No hay una forma nueva que haga que lo viejo *parezca*
+    // bueno, que es el criterio del bump (y lo que sí pasaba con B-167).
+    //
+    // Y el motivo de más: `completo` **no se edita desde el formulario** —se prende
+    // desde el menú del listado—, así que lo correcto para esa clave nunca es "lo
+    // que decía el borrador" sino "lo que dice el documento de hoy", igual que
+    // `estado` y `sesiones[].cancelada` en `conLoQueEsDelDocumento`. Subir la
+    // versión no arregla eso: tiraría los borradores de hoy y los de mañana
+    // volverían a tener la misma pregunta. Ver el reporte de B-97.
     expect(VERSION_BORRADOR).toBe(2);
   });
 });

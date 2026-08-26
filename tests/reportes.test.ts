@@ -237,6 +237,42 @@ describe('actividadParaIssue — proyección, no volcado', () => {
       ).not.toContain(centinela);
     }
   });
+
+  /**
+   * B-97, §5.1 — «se llenó» **no sale al issue de GitHub**. El reporte es sobre
+   * el panel, no sobre la actividad: de ella salen título y slug y nada más, y
+   * el estado del cupo no ayuda a diagnosticar un bug del formulario.
+   *
+   * Un booleano no admite centinela, así que lo que fija esta celda es la
+   * enumeración de claves más el centinela del contacto de inscripción que va al
+   * lado: si alguien cambiara la proyección por un spread para "llevar el
+   * contexto de la inscripción", las dos cosas se rompen juntas.
+   */
+  it('el cupo completo no llega al issue (B-97, §5.1)', () => {
+    const proyectada = actividadParaIssue({
+      estado: 'publicado',
+      titulo: 'Club de lectura',
+      slug: 'club',
+      inscripcion: {
+        requiere: true,
+        via: 'mail',
+        destino: 'centinela-inscripciones@ejemplo.com',
+        cupo: 12,
+        completo: true,
+      },
+    });
+    expect(Object.keys(proyectada!).sort()).toEqual(['slug', 'titulo']);
+
+    const issue = construirIssue({
+      id: 'rep1',
+      reporte: reporte({ actividad: { id: 'act1', titulo: 'Club de lectura' } }),
+      actividad: proyectada,
+    });
+    const todo = `${issue.title}\n${issue.body}`;
+    expect(todo).not.toContain('centinela-inscripciones');
+    expect(todo).not.toContain('Cupo completo');
+    expect(todo).not.toContain('completo');
+  });
 });
 
 describe('validación del formulario de reporte', () => {

@@ -14,6 +14,14 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`cupo-completo`** — *Ahora podés avisar que una actividad se llenó*. En el menú «⋯»
+  del listado hay «Marcar cupo completo»: lo dice en el sitio y en el evento del
+  calendario de cada encuentro, así que quien ya se había suscripto al calendario se
+  entera sin que le avises. Es un toque, sin abrir el formulario, y si se libera un
+  lugar el mismo menú lo saca. El contacto de inscripción **no se esconde**: queda a la
+  vista con el cartel al lado, porque siempre hay quien quiere anotarse por si se cae
+  alguien. · **Dónde:** Listado de actividades, menú «⋯» de cada fila.
+
 - **`libro-presentado`** — *En una presentación o una charla ya se carga el libro*.
   El título de la obra tiene su propio campo, así que no hace falta meterlo en la
   descripción: se muestra aparte, sale en el evento del calendario y quien busque el
@@ -133,6 +141,63 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-97 · `inscripcion.completo`: poder decir que se llenó
+
+Después de publicar no había forma de decir nada. Ahora hay un booleano
+`inscripcion.completo` que se prende **desde el menú «⋯» del listado** —un toque desde
+el teléfono, sin abrir 30+ campos— y de ahí sale la línea «Cupo completo» en la
+descripción de los N eventos del ciclo: **quien ya estaba suscripto al calendario se
+entera sin que nadie le avise**. El razonamiento completo, con la tabla de las cinco
+salidas, está en **D-127**.
+
+Las dos decisiones del dueño, que son las que un cambio razonable rompería:
+
+- **Un booleano y no un contador de lugares.** Un contador queda viejo con cada
+  inscripción y no solo con la última. Es además la salida que B-102 ya nombraba para
+  resolver el conteo sin guardar un dato de ningún tercero.
+- **El canal de inscripción no se esconde**: queda, con el cartel al lado. Siempre hay
+  lista de espera y las bajas existen, así que esconder el canal convierte una baja en
+  un lugar que se pierde. Sale con test en las dos salidas públicas.
+
+Lo que importa del cómo:
+
+- **Escribe solo `inscripcion.completo`, con ruta punteada.** Verificado contra el
+  emulador: marcarlo no pisa el destino, el cupo ni el cierre. Un `updateDoc` con la
+  clave sin puntear reemplaza el objeto entero, y desde el listado no hay formulario
+  con el que reponer lo que se llevó.
+- **Propaga a las N sesiones porque la línea se arma adentro de `construirDescripcion`**
+  (trampa 9, D-07). El test exige ocho `actualizar` y **cero** `borrar`, y otro exige
+  que la línea aparezca **una sola vez**: armarla también por fuera no rompe la
+  propagación pero duplica la línea en el calendario público, y ningún test de
+  propagación se da cuenta.
+- **Default de lectura `false` y determinístico** (D-26, D-125): las actividades que ya
+  están publicadas no cambian ni en pantalla ni en ninguna salida.
+- **Tiene un solo dueño, y no es el formulario.** Esto salió de la auditoría y es la
+  parte que más importa: `completo` tenía **dos escritores** adentro de un objeto de
+  contenido —el perfil exacto de `calendarEventId` dentro de `sesiones`, la clase de
+  B-80— por dos caminos distintos. Un formulario abierto desde antes de marcarlo
+  apagaba el cartel en su próximo guardado; y un borrador local, que vive hasta 30
+  días, hacía lo mismo o lo contrario. Ahora `inscripcion` se guarda **por subcampos
+  punteados** con `completo` afuera, y el campo entró a la lista de D-124 — que con
+  esto se quedó corta por **tercera** vez, y las tres con el mismo perfil: un campo
+  que escribe otra pantalla y que manda a una salida pública.
+- **No entra al `searchText`** (la quinta salida, la de D-126): nadie busca «completo»
+  y ese campo viaja entero al `events.json` en cada visita. Con test que lo nombra.
+- **No sale al issue de GitHub**; a GA4 va solo el booleano `cupo_completo`, la ruta
+  `inscripcion.completo` y la función `actividad-cupo-completo`.
+- **`VERSION_BORRADOR` no subió**: el campo es aditivo. La guarda de B-88 se puso roja y
+  la respuesta correcta fue agregar la ruta, no el número.
+- **La copia no lo hereda** (mismo criterio que `cancelada`).
+- Y el cartel se ve en la fila del listado, más un aviso en «Arancel e inscripción»:
+  lo que se publica tiene que poder verse y sacarse desde el panel.
+
+Verificado rompiendo cada red: 24 roturas, las 24 caen (esconder el canal, sacar el
+campo de la proyección, no escribirlo en el guardado, heredarlo al duplicar, armar la
+línea afuera, armarla **dos veces**, filtrarlo al `searchText`, proyectar el reporte con
+spread, dejar el menú de una sola dirección…). Y las dos del dueño único, que al
+principio **no** caían: la lista de D-124 vive en un solo lugar, pero cada entrada
+necesita su propio clavo. **1122 tests**, con emuladores.
 
 ### DEC-1 · El libro presentado: campo propio, con la obra y su autor
 

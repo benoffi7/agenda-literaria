@@ -189,6 +189,7 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 | `requiere_inscripcion` | 0 · 1 | |
 | `tiene_tallerista` | 0 · 1 | |
 | `tiene_libro` | 0 · 1 | ¿Se cargó la obra en una presentación o una charla? (DEC-1). El **título nunca** viaja: es texto libre |
+| `cupo_completo` | 0 · 1 | ¿Estaba marcada como completa al guardar? (B-97). No hay contador de lugares, así que no hay número que viaje |
 | `url_publica` | 0 · 1 | ¿Cuántas veces se tilda "publicar el link"? (D-15) |
 
 `url_publica` es 1 solo si el flag está tildado **y** hay URL cargada, igual que

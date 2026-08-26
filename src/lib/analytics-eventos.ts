@@ -123,6 +123,10 @@ export const FUNCIONES = [
   'seccion-abrir',
   'seccion-cerrar',
   'actividad-duplicar',
+  // B-97 — prender o apagar «se llenó» desde el menú del listado. La pregunta
+  // que contesta es si la función se usa: si nadie la toca, el cartel de cupo
+  // completo no existe en la práctica y el sitio sigue mintiendo el cupo.
+  'actividad-cupo-completo',
   // Pegar un link de Google Maps para las coordenadas de la sede. Tiene varios
   // modos de fallo y saber cuál pesa más decide el arreglo: si casi todos pegan
   // un link corto, lo que hay que hacer es resolverlos, no explicar mejor.
@@ -246,6 +250,9 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'imagenes.N.url',
   'inscripcion',
   'inscripcion.cierra',
+  // B-97 — es el **nombre** del campo, no su valor: un booleano no es contenido
+  // ni siquiera cuando viaja como ruta.
+  'inscripcion.completo',
   'inscripcion.cupo',
   'inscripcion.destino',
   'inscripcion.requiere',
@@ -480,6 +487,9 @@ export const EVENTOS = {
     // DEC-1 — si el libro presentado se cargó o no. Booleano y nada más: el
     // título es texto libre y no hay sanitizador de texto libre (§9).
     tiene_libro: { tipo: 'booleano' },
+    // B-97 — si la actividad estaba marcada como completa al guardar. Booleano y
+    // nada más: no hay cuántos lugares quedan, porque no hay contador (§3.1).
+    cupo_completo: { tipo: 'booleano' },
     url_publica: { tipo: 'booleano' },
   },
 
@@ -660,5 +670,7 @@ export const formaDelFormulario = (form: ActividadForm): Record<string, unknown>
   tiene_tallerista: tieneTexto(form.tallerista?.nombre),
   // DEC-1 — se completó o no. Nunca el título de la obra.
   tiene_libro: tieneTexto(form.libro?.titulo),
+  // B-97 — «se llenó», tal como estaba en el momento del guardado.
+  cupo_completo: form.inscripcion.completo,
   url_publica: Boolean(form.online?.urlPublica && tieneTexto(form.online?.url)),
 });

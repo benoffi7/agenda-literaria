@@ -183,6 +183,13 @@ export const actividadFormSchema = z
       destino: opcional,
       cupo: z.number().int().positive().nullable().default(null),
       cierra: opcional,
+      /**
+       * B-97 — «se llenó». Va en los dos niveles con default `false` y **sin
+       * ninguna regla en `superRefine`**: no es completitud, es un estado que
+       * cambia después de publicar. Un borrador puede estar completo, y una
+       * actividad completa se sigue pudiendo publicar y editar.
+       */
+      completo: z.boolean().default(false),
     }),
 
     arancel: z.object({

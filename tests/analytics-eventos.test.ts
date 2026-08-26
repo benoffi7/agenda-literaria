@@ -300,7 +300,14 @@ describe('avanceDelFormulario — dónde quedó una carga abandonada', () => {
 
   it('inscripción sin destino se traba en "inscripcion"', () => {
     const sinDestino = formularioLleno({
-      inscripcion: { requiere: true, via: 'mail', destino: '', cupo: null, cierra: '' },
+      inscripcion: {
+        requiere: true,
+        via: 'mail',
+        destino: '',
+        cupo: null,
+        cierra: '',
+        completo: false,
+      },
     });
     expect(avanceDelFormulario(sinDestino).faltantes).toContain('inscripcion');
   });

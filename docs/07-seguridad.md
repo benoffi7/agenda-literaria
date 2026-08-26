@@ -20,6 +20,11 @@ de una presentación, del mismo orden que el título de la actividad, y entra ta
 al `searchText` para que buscar la obra encuentre la actividad (DEC-1, **D-126**). A
 GA4 va solo `tiene_libro`, un booleano: el título es texto libre.
 
+`inscripcion.completo` **sí** sale a las dos salidas públicas y **no** entra al
+`searchText`. Y el canal de inscripción **sigue saliendo con el cupo completo**, por
+decisión del dueño: siempre hay lista de espera, y esconderlo convierte una baja en un
+lugar que se pierde (B-97, **D-127**).
+
 `inscripcion.destino` **sí** sale: es el canal de inscripción. El §5.1 advierte
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
 trabajo o un `wa.me` con mensaje precargado. El formulario lo dice en la ayuda

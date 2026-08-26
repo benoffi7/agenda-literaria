@@ -172,6 +172,26 @@ export interface Inscripcion {
   destino: string;
   cupo: number | null;
   cierra: TimestampLike | null;
+  /**
+   * B-97 — «se llenó». Se prende desde el menú «⋯» del listado, no desde el
+   * formulario: es el dato que cambia **después** de publicar, y abrir 30+
+   * campos desde el teléfono para tocar una casilla no se hace.
+   *
+   * **Un booleano y no un contador de lugares.** Un número queda viejo con cada
+   * inscripción y no solo con la última, y un número viejo es peor que ninguno
+   * porque parece información fresca. Esto se prende cuando no entra nadie más y
+   * se apaga si se libera un lugar.
+   *
+   * **No esconde el canal de inscripción** (§5.2, `toPublic`): queda, con el
+   * cartel al lado. Siempre hay lista de espera y las bajas existen — esconder el
+   * canal convierte una baja en un lugar que se pierde.
+   *
+   * **Opcional a propósito:** los documentos que ya están en producción no lo
+   * tienen, y el default de lectura los devuelve en `false`, que es exactamente
+   * el comportamiento anterior. Que el tipo lo declare opcional es lo que obliga
+   * al compilador a decidirlo en cada lectura (D-26).
+   */
+  completo?: boolean;
 }
 
 export interface Arancel {
@@ -291,7 +311,21 @@ export interface ActividadForm
     | 'libro'
   > {
   sesiones: SesionForm[];
-  inscripcion: Omit<Inscripcion, 'cierra'> & { cierra: string };
+  /**
+   * `completo` es **siempre un booleano en el formulario**, nunca `undefined`:
+   * el default de lectura ya resolvió los documentos anteriores a B-97 antes de
+   * llegar acá, así que la pantalla no tiene que preguntárselo. Es la misma
+   * asimetría que `libro` y por el mismo motivo.
+   *
+   * Está en el formulario **aunque no se prenda desde el formulario**: sin esto,
+   * `formADocumento` reescribe `inscripcion` completo en cada guardado y una
+   * edición de la descripción apagaría el cartel de «Cupo completo» sin que
+   * nadie lo pida — y con él la línea de los N eventos del calendario.
+   */
+  inscripcion: Omit<Inscripcion, 'cierra' | 'completo'> & {
+    cierra: string;
+    completo: boolean;
+  };
   /**
    * DEC-1 — **siempre un objeto en el formulario, nunca `null`**, aunque en el
    * documento sea `Libro | null`.

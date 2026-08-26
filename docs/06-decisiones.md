@@ -2859,3 +2859,95 @@ dice qué se **pide**, no qué se prohíbe publicar sin.
 **Lo que esta decisión NO resuelve:** filtrar por libro en el sitio público. El dato
 ya viaja y es buscable por `searchText`; un chip de filtro por obra tiene sentido
 recién cuando haya varias presentaciones del mismo libro.
+
+---
+
+## D-127 · «Se llenó» es un booleano, se prende desde el listado, y no esconde el canal
+
+**Contexto.** B-97, decidido por el dueño el 2026-08-26 e implementado el mismo día.
+Después de publicar no había forma de decir nada: el taller se llenaba, la gente
+seguía mandando DM, y el sitio y el calendario seguían mostrando «cupo: 12» porque
+`inscripcion.cupo` se carga una vez y no se vuelve a mirar.
+
+**Un booleano y no un contador de lugares.** Un contador queda viejo con **cada**
+inscripción y no solo con la última, y un número viejo es peor que ninguno porque
+parece información fresca. `inscripcion.completo` se prende cuando no entra nadie más
+y se apaga si se libera un lugar. Es además la salida que **B-102** ya nombraba para
+resolver el conteo sin guardar un dato de ningún tercero: el sistema sigue sin saber
+quién se anotó, y el §5 sigue cabiendo en una tabla.
+
+**El canal de inscripción NO se esconde.** `via` y `destino` siguen saliendo con el
+cupo completo, en el `events.json` y en la descripción del evento, con el cartel **al
+lado** y no en su lugar. Siempre hay lista de espera y las bajas existen: esconder el
+canal convierte una baja en un lugar que se pierde. Para el organizador, un DM de más
+cuesta menos que un lugar vacío. En el evento la línea lleva el paréntesis que explica
+por qué el contacto sigue ahí —«se puede escribir igual: puede liberarse un lugar»—:
+sin él, un cupo completo con un mail al lado se lee como un error.
+
+**Se prende desde el menú «⋯» del listado, no desde el formulario**, y esa es la mitad
+del valor. Es el dato que cambia *después* de publicar, cuando ya no se está cargando
+nada: abrir 30+ campos desde el teléfono para tocar una casilla no se hace, y lo que
+no se hace no informa a nadie. `marcarCupoCompleto` escribe **solo esa clave**, con
+ruta punteada, así que un toque no puede pisar el destino ni el cierre que el
+documento tenga en ese momento.
+
+**La tabla del paso 0, que es lo que no se puede deshacer:**
+
+| Salida | ¿Sale? | Motivo |
+|---|---|---|
+| `events.json` | **sí** (`completo`, enumerado) | es el punto del campo: sin esto el sitio sigue diciendo «cupo: 12» cuando ya no entra nadie |
+| Evento de Calendar | **sí**, en la descripción | es la única salida que le llega **sola** a quien ya guardó la fecha |
+| Issue de GitHub | **no** | el reporte es sobre el panel; de la actividad salen título y slug |
+| GA4 | **no** hay contenido posible: va `cupo_completo` (booleano), la ruta `inscripcion.completo` y la función `actividad-cupo-completo` | un booleano no lleva texto libre |
+| `searchText` (→ `events.json`) | **no** | nadie busca «completo», y el `searchText` viaja entero al `events.json` en cada visita |
+
+Esa quinta fila la agregó D-126 y sigue haciendo falta: es una salida pública por la
+puerta de atrás. Acá la respuesta es la contraria a la del libro, y por eso vale
+escribirla.
+
+**Entra al evento por `construirDescripcion`**, adentro de `construirEvento`, así que
+prenderlo actualiza los N eventos del ciclo sin ningún caso especial (trampa 9, D-07).
+Es el riesgo que el ítem marcaba para mirar de verdad, y está fijado con un test que
+exige **ocho `actualizar` y cero `borrar`**: borrar y recrear le perdería a la gente
+sus recordatorios. Apagarlo propaga igual. Y hay un test que pide que la línea aparezca
+**una sola vez** en el evento: armarla *también* por fuera no rompe la propagación
+—sigue entrando al payload— pero deja la línea dos veces en el calendario público, y
+ningún test de propagación se da cuenta. La vista previa del panel se actualiza sola
+por `@calendario` (D-20).
+
+**El default de lectura es `false` y es determinístico**, la lección de D-125 y D-126
+aplicada: un default derivado (comparar el cupo contra algo, mirar la hora) haría que
+`huboCambioDeContenido` vea un cambio en cada apertura del formulario, o sea una
+versión al historial por cada vez que alguien **mira** una actividad. La primera
+edición de una actividad anterior a B-97 sí registra `inscripcion` como cambiado —el
+documento cambió de verdad— y es **una sola vez por actividad**, no una por apertura.
+
+**Tiene un solo dueño, y no es el formulario.** `inscripcion` se escribe **por
+subcampos punteados** al guardar, y `completo` queda afuera (`payloadDeActualizacion`).
+Sin eso el campo tenía dos escritores adentro de un objeto de contenido —el perfil
+exacto de `calendarEventId` dentro de `sesiones`, o sea la clase de B-80— y un
+formulario abierto desde antes de marcarlo apagaba el cartel del sitio y de los N
+eventos en su próximo guardado, sin que nadie lo pida. El otro camino era el borrador
+local, que vive hasta 30 días: `completo` entró a la lista de D-124, que con esto se
+quedó corta por **tercera** vez.
+
+**`VERSION_BORRADOR` no subió.** La guarda de B-88 se puso roja —correcto, la forma del
+formulario cambió— y la respuesta fue agregar la ruta y no subir el número:
+`inscripcion.completo` es **aditivo**, y un borrador anterior no trae la clave, la poda
+no la copia y la mezcla la completa con el `false` de `formVacio()`, que es lo mismo que
+muestra un formulario abierto hoy. No hay una forma nueva que haga que lo viejo
+*parezca* bueno, que es el criterio del bump (y lo que sí pasaba con B-167).
+
+**La copia no lo hereda.** Mismo criterio que `cancelada` en las sesiones: que la
+edición anterior se haya llenado es un hecho de esa edición, no una propiedad del ciclo
+nuevo, que todavía no tiene una sola inscripción.
+
+**Lo que se publica se ve desde el panel.** El cartel está en la fila del listado y la
+sección «Arancel e inscripción» muestra un **aviso** cuando está marcada —un aviso y no
+una casilla: con una casilla habría dos lugares donde prenderlo y ninguno sería el
+bueno—. Es la segunda mitad de lo que D-126 aprendió con el libro heredado por un
+taller: algo que sale al sitio y al calendario no puede quedar sin pantalla desde donde
+verlo y sacarlo.
+
+**Lo que esta decisión NO resuelve:** el cartel en el sitio público. Es B-01, y el dato
+ya viaja en el `events.json` esperándolo.

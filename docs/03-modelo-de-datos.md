@@ -224,6 +224,23 @@ Dos consecuencias:
    con el texto anterior hasta la próxima edición de la actividad. El tope es de
    150 eventos por corrida: lo que sobre se pone al día con la próxima edición.
 
+## `inscripcion.completo` — «se llenó» (B-97)
+
+Un **booleano**, no un contador de lugares: un contador queda viejo con cada
+inscripción y no solo con la última, y un número viejo es peor que ninguno porque
+parece fresco. Se prende cuando no entra nadie más y se apaga si se libera un lugar.
+
+**Quién lo escribe es la parte que importa:** solo el menú «⋯» del listado, con ruta
+punteada (`marcarCupoCompleto`). El formulario **no** lo escribe — `inscripcion` se
+guarda por subcampos y `completo` queda afuera (`payloadDeActualizacion`)— porque con
+dos escritores adentro de un objeto de contenido pasa lo de `calendarEventId` dentro
+de `sesiones`: un formulario abierto desde antes de marcarlo apagaba el cartel en su
+próximo guardado. Y por lo mismo entró a la lista de D-124, para que un borrador de
+hace veinte días no lo pise.
+
+Default de lectura `false`, determinístico. **No entra al `searchText`**: nadie busca
+«completo» y ese campo viaja entero al `events.json`. Ver **D-127**.
+
 ## `libro` — la obra que se presenta (DEC-1)
 
 `libro: { titulo, autor } | null`. El §11 lo listaba para presentaciones y charlas

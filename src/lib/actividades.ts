@@ -105,6 +105,21 @@ export const formADocumento = (
       destino: f.inscripcion.requiere ? limpiar(f.inscripcion.destino) : '',
       cupo: f.inscripcion.cupo,
       cierra: f.inscripcion.cierra ? aTimestamp(f.inscripcion.cierra) : null,
+      /**
+       * B-97 — se escribe **siempre**, aunque el formulario no lo edite y aunque
+       * `requiere` esté en false.
+       *
+       * Que se escriba es lo que evita la pérdida: el objeto `inscripcion` se
+       * reemplaza entero en cada guardado, así que omitirlo acá haría que editar
+       * la descripción apague el cartel de «Cupo completo» —y con él la línea de
+       * los N eventos del calendario— sin que nadie lo haya pedido.
+       *
+       * Y no se pone en `false` cuando `requiere` es false, a diferencia de `via`
+       * y `destino`: se sigue el criterio de `cupo`, que tampoco se borra. «Se
+       * llenó» es un hecho de la sala, no del canal — una actividad sin
+       * inscripción previa también se llena.
+       */
+      completo: f.inscripcion.completo,
     },
     arancel: { tipo: f.arancel.tipo, notas: limpiar(f.arancel.notas) },
     material: {
@@ -178,6 +193,13 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
     destino: a.inscripcion.destino,
     cupo: a.inscripcion.cupo,
     cierra: a.inscripcion.cierra ? aDatetimeLocal(a.inscripcion.cierra.toDate()) : '',
+    // B-97 — default de lectura: un documento anterior al campo se lee como no
+    // completo, que es exactamente el comportamiento anterior (D-26). Es
+    // **determinístico** —`false` y no algo derivado de la hora o del cupo—: un
+    // default que variara haría que el formulario nazca sucio y se escriba una
+    // versión al historial por cada vez que alguien **mira** una actividad
+    // (D-125, D-126).
+    completo: a.inscripcion.completo ?? false,
   },
   arancel: a.arancel,
   material: a.material ?? { tiene: false, items: [] },
@@ -209,6 +231,34 @@ export const crearActividad = async (f: ActividadForm, uid: string): Promise<str
   return ref.id;
 };
 
+/**
+ * Lo que se le manda a `updateDoc` al guardar el formulario.
+ *
+ * Es puro y está separado para poder verificar sin emuladores la única cosa que
+ * importa acá: que **`inscripcion.completo` no viaje**.
+ *
+ * `inscripcion` se escribe **por subcampos punteados** y ese queda afuera (B-97).
+ * Lo prende el menú del listado, no el formulario: escribir el objeto entero haría
+ * que guardar una coma de la descripción —con el formulario abierto desde antes de
+ * marcarlo— **apague el cartel** del sitio y de los N eventos del ciclo sin que
+ * nadie lo pida. Es la clase de B-80, un campo con dos dueños adentro de un objeto
+ * de contenido, y la respuesta es la misma: un solo dueño.
+ */
+export const payloadDeActualizacion = (
+  f: ActividadForm,
+  uid: string,
+): Record<string, unknown> => {
+  const { inscripcion, ...resto } = formADocumento(f, uid, false) as Record<string, unknown> & {
+    inscripcion: Record<string, unknown>;
+  };
+  const porSubcampo = Object.fromEntries(
+    Object.entries(inscripcion)
+      .filter(([clave]) => clave !== 'completo')
+      .map(([clave, valor]) => [`inscripcion.${clave}`, valor]),
+  );
+  return { ...resto, ...porSubcampo };
+};
+
 export const actualizarActividad = async (
   id: string,
   f: ActividadForm,
@@ -217,7 +267,38 @@ export const actualizarActividad = async (
   // `updateDoc` y no `setDoc`: preserva `createdAt`/`createdBy`, y de todas
   // formas reemplaza el array `sesiones` completo, así que una sesión borrada
   // en el form desaparece del documento (que es lo que el diff de §7.2 espera).
-  await updateDoc(doc(db(), COL, id), formADocumento(f, uid, false));
+  //
+  // **`inscripcion` se escribe por subcampos, y `completo` queda afuera** (B-97).
+  // Ese campo lo prende el menú del listado, no el formulario: escribir el objeto
+  // entero haría que guardar una coma de la descripción, con el formulario abierto
+  // desde antes de marcarlo, **apague el cartel** del sitio y de los N eventos del
+  // ciclo sin que nadie lo pida. Es la clase de B-80 —un campo con dos dueños
+  // adentro de un objeto de contenido— y la respuesta es la misma: un solo dueño.
+  await updateDoc(doc(db(), COL, id), payloadDeActualizacion(f, uid));
+};
+
+/**
+ * B-97 — prender o apagar «se llenó», desde el menú del listado.
+ *
+ * Escribe **solo esa clave**, con ruta punteada, y no el objeto `inscripcion`
+ * entero: así un toque desde el teléfono no puede pisar el destino ni el cierre
+ * que tenga el documento en este momento, y no hace falta traer el formulario
+ * para tocar una casilla.
+ *
+ * Firma la edición como cualquier otra (`updatedBy`/`updatedAt`): pasa por el
+ * trigger del historial (§12) y el sync le actualiza la descripción a los N
+ * eventos del ciclo (§7.1, D-07), que es de dónde se enteran los suscriptos.
+ */
+export const marcarCupoCompleto = async (
+  id: string,
+  completo: boolean,
+  uid: string,
+): Promise<void> => {
+  await updateDoc(doc(db(), COL, id), {
+    'inscripcion.completo': completo,
+    updatedBy: uid,
+    updatedAt: serverTimestamp(),
+  });
 };
 
 export const borrarActividad = async (id: string): Promise<void> => {

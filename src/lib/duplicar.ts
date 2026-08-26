@@ -217,6 +217,14 @@ export const duplicarActividadForm = (
       // El cierre acompaña al ciclo: si no, queda en el pasado y la copia sale
       // con la inscripción cerrada (`abierta` en la proyección pública, §5.2).
       cierra: correr(origen.inscripcion.cierra, dias),
+      /**
+       * B-97 — la copia **no hereda «se llenó»**. Es el mismo criterio que
+       * `cancelada` en las sesiones: que la edición anterior se haya llenado es un
+       * hecho de esa edición, no una propiedad del ciclo nuevo, que todavía no
+       * tiene una sola inscripción. Heredarlo publicaría «Cupo completo» en una
+       * actividad con el cupo entero libre, y sale al sitio y al calendario.
+       */
+      completo: false,
     },
     // Duplicar no publica: nada llega al calendario hasta que el usuario revise
     // fechas y slug y publique a mano (§7.3).

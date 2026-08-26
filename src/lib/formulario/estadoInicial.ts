@@ -109,7 +109,10 @@ export const formVacio = (): ActividadForm => ({
   modalidad: 'presencial',
   sede: sedeVacia(),
   online: null,
-  inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: '' },
+  // B-97 — `completo` nace en `false` y viaja en el formulario aunque no se edite
+  // desde ahí: se prende desde el menú del listado, y si el formulario no lo
+  // trajera, cada guardado lo apagaría (ver `formADocumento`).
+  inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: '', completo: false },
   arancel: { tipo: '', notas: '' },
   material: { tiene: false, items: [] },
   difusion: { arrobar: [], notas: '' },

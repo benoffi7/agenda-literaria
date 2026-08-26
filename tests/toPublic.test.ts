@@ -46,6 +46,11 @@ const actividad = (over: Partial<Actividad> = {}): Actividad => ({
     destino: 'hola@ejemplo.com',
     cupo: 12,
     cierra: ts('2026-09-01T00:00:00Z'),
+    // B-97 — en `true` en el fixture base a propósito. Con `false`, sacar
+    // `completo` de la proyección no rompería ningún test de este archivo: es la
+    // misma razón por la que el libro está acá con centinelas. Un booleano no
+    // admite centinela, así que lo que fija la celda es el valor esperado.
+    completo: true,
   },
   arancel: { tipo: 'a-la-gorra', notas: '' },
   material: {
@@ -175,6 +180,59 @@ describe('toPublic — inscripción', () => {
     const a = actividad();
     a.inscripcion.cierra = null;
     expect(toPublic(a, 'id1').inscripcion.abierta).toBe(true);
+  });
+
+  /**
+   * B-97, §5.1 — la decisión del paso 0: «se llenó» **es público**, y es el
+   * punto del campo. Sin esto el `events.json` sigue diciendo «cupo: 12» cuando
+   * ya no entra nadie, y un número viejo es peor que ningún número porque parece
+   * información fresca.
+   */
+  it('el cupo completo sale al events.json (B-97, §5.1, trampa 5)', () => {
+    expect(toPublic(actividad(), 'id1').inscripcion.completo).toBe(true);
+  });
+
+  /**
+   * La segunda decisión, y la que una "mejora" razonable rompería: **el canal de
+   * inscripción no se esconde**. Siempre hay lista de espera y las bajas
+   * existen, así que esconder el canal convierte una baja en un lugar que se
+   * pierde. El cartel va al lado del canal, no en su lugar.
+   */
+  it('con el cupo completo el canal de inscripción sigue saliendo (B-97)', () => {
+    const p = toPublic(actividad(), 'id1');
+    expect(p.inscripcion.completo).toBe(true);
+    expect(p.inscripcion.via).toBe('mail');
+    expect(p.inscripcion.destino).toBe('hola@ejemplo.com');
+    // Y el cupo numérico tampoco se borra: sigue siendo información de cuántos
+    // eran, no una promesa de lugares libres.
+    expect(p.inscripcion.cupo).toBe(12);
+  });
+
+  it('un documento anterior a B-97 se publica como no completo (D-26)', () => {
+    // El default de lectura preserva el comportamiento anterior: ni el sitio ni
+    // nadie puede empezar a decir «Cupo completo» por un campo que falta.
+    const a = actividad();
+    delete a.inscripcion.completo;
+    expect(toPublic(a, 'id1').inscripcion.completo).toBe(false);
+  });
+
+  it('enumera lo que sale de la inscripción: una clave de más no se publica (§5.2)', () => {
+    // La proyección es whitelist, no spread. Es la guarda que hace que `completo`
+    // sea una decisión y no un accidente — y la que va a frenar al campo que se
+    // agregue mañana al lado suyo.
+    const conExtra = actividad();
+    // @ts-expect-error — a propósito: el campo interno de mañana.
+    conExtra.inscripcion.notaInterna = 'CENTINELA-NOTAS llamar a la sede';
+    const p = toPublic(conExtra, 'id1');
+    expect(JSON.stringify(p.inscripcion)).not.toContain('CENTINELA-NOTAS');
+    expect(Object.keys(p.inscripcion).sort()).toEqual([
+      'abierta',
+      'completo',
+      'cupo',
+      'destino',
+      'requiere',
+      'via',
+    ]);
   });
 });
 

@@ -50,6 +50,30 @@ export function SeccionArancelInscripcion({ form, set, errorDe, uid, anotarLabel
         Requiere inscripción previa
       </label>
 
+      {/*
+        B-97 — **se ve acá y se prende en otra parte**, y las dos mitades son a
+        propósito.
+
+        Se prende desde el menú «⋯» del listado porque el caso es «se llenó, lo
+        marco desde el teléfono» y abrir 30+ campos para tocar una casilla no se
+        hace. Pero lo que se publica tiene que poder verse desde el panel: el
+        cartel ya está en el sitio y en la descripción de los N eventos, así que
+        quien está editando la actividad no puede no saberlo. De ahí un aviso y
+        no un control — si acá hubiera una casilla, habría dos lugares donde
+        prenderlo y ninguno sería el bueno.
+
+        No se reusa el texto del evento: ahí es prosa pública con su paréntesis,
+        acá es una etiqueta del panel. Es la misma razón por la que
+        `ETIQUETA_ENTREGA` no se comparte (D-20).
+      */}
+      {form.inscripcion.completo && (
+        <p className="mt-3 rounded-md border border-tinta/20 bg-tinta/[0.04] px-3 py-2 text-xs">
+          Está marcada como <strong>cupo completo</strong>: el evento del calendario lo dice
+          al lado del contacto de inscripción, que sigue a la vista por si se libera un
+          lugar. Se saca desde el menú «⋯» del listado.
+        </p>
+      )}
+
       {form.inscripcion.requiere && (
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <Campo label="Por dónde" requerido error={errorDe('inscripcion.via')}>

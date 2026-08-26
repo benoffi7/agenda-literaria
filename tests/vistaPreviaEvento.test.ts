@@ -66,6 +66,10 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
     destino: 'hola@casabrandon.org',
     cupo: 12,
     cierra: '2026-09-01T12:00',
+    // B-97 — el caso normal es "no está completo"; el que sí lo está tiene su
+    // propio chequeo abajo, que es el que verifica que la vista previa no
+    // reimplemente la línea (D-20).
+    completo: false,
   },
   arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
   material: {
@@ -145,6 +149,27 @@ describe('vistaPreviaEvento — adaptación del formulario', () => {
     // Ordena por fecha y no por posición en el array, igual que el evento real.
     expect(previa(f, 'ses_a').descripcion).toContain('Encuentro 1 de 2');
     expect(previa(f, 'ses_b').descripcion).toContain('Encuentro 2 de 2');
+  });
+
+  /**
+   * B-97 + D-20 — la vista previa **no reimplementa** la línea del cupo completo:
+   * la trae de `@calendario`, que es el mismo módulo que el sync. Por eso se
+   * compara contra el payload que el diff le mandaría a Calendar, y no contra una
+   * cadena escrita a mano acá: una igualdad contra un literal pasaría igual el
+   * día que alguien arme la línea por fuera de `construirDescripcion`, que es la
+   * trampa 9.
+   */
+  it('B-97: el cupo completo aparece solo en la previa, con el texto del evento (D-20)', () => {
+    const f = form({ inscripcion: { ...form().inscripcion, completo: true } });
+    const documento = formADocumento(f, '', false);
+    const creada = planificar(null, documento, LABELS).find(
+      (o: { id: string }) => o.id === f.sesiones[0]!.id,
+    ) as { evento: { description: string } };
+
+    expect(previa(f).descripcion).toBe(creada.evento.description);
+    expect(previa(f).descripcion).toContain('Cupo completo');
+    // Y sin marcarlo, la previa tampoco lo dice: el fixture base está en `false`.
+    expect(previa(form()).descripcion).not.toContain('Cupo completo');
   });
 
   it('numera igual que el evento publicado: el cancelado sigue contando (B-84, D-95)', () => {

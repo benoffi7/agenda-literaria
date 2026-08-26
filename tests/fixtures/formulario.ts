@@ -103,6 +103,11 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
     destino: CENTINELAS.mailInscripcion,
     cupo: 12,
     cierra: '2026-09-01T12:00',
+    // B-97 — en `true` a propósito: es la celda de GA4 del paso 0. Con `false`,
+    // mandar el booleano de más (o de menos) no rompería nada, y el centinela del
+    // mail de inscripción de al lado no alcanza — el booleano no lleva texto, así
+    // que lo que fija su celda es el valor esperado, no un centinela.
+    completo: true,
   },
   arancel: { tipo: 'a-la-gorra', notas: CENTINELAS.notasArancel },
   material: {

@@ -1360,7 +1360,7 @@ función pura sobre lo que ya está cargado, cero lecturas nuevas. **Que no se
 dibuje cuando no tiene nada que decir**, así que estar visible ya es
 información.
 
-### B-97 · `inscripcion.completo` — poder decir que se llenó
+### B-97 · `inscripcion.completo` — poder decir que se llenó — ✅ hecho (2026-08-26)
 
 Después de publicar no hay forma de decir nada. El taller se llenó, la gente
 sigue mandando DM, y el sitio y el calendario siguen mostrando "cupo: 12" porque
@@ -1393,6 +1393,28 @@ Conviene antes de B-01 para que el `events.json` nazca con el campo.
    Siempre hay lista de espera, y las bajas existen: esconder el canal convierte una
    baja en un lugar que se pierde. Para el organizador, un DM de más cuesta menos que
    un lugar vacío.
+
+**Cómo quedó (2026-08-26, D-127).** Las dos decisiones implementadas tal cual, con
+test en las dos salidas públicas. Se prende desde el menú «⋯» con ruta punteada, así
+que un toque desde el teléfono no puede pisar el destino ni el cierre — verificado
+contra el emulador. Propaga a los N eventos del ciclo porque la línea se arma adentro
+de `construirDescripcion`: ocho `actualizar`, cero `borrar`, que es el riesgo que este
+ítem pedía mirar de verdad y no asumir.
+
+**Lo que la auditoría encontró y es lo que más valió del cambio: el campo tenía dos
+dueños.** `completo` lo prende el listado, pero `formADocumento` reemplazaba el objeto
+`inscripcion` entero, así que un formulario abierto desde antes de marcarlo **apagaba
+el cartel** del sitio y de los N eventos en su próximo guardado. Y el borrador local
+—que vive 30 días— hacía lo mismo o lo contrario. Es el perfil de `calendarEventId`
+dentro de `sesiones`, o sea la clase de B-80, y se cerró por los dos lados: al guardar,
+`inscripcion` va **por subcampos punteados** con `completo` afuera
+(`payloadDeActualizacion`, función pura y testeable sin emuladores); al recuperar, el
+campo entró a la lista de **D-124** — que con esto se quedó corta por **tercera** vez, y
+las tres con el mismo perfil.
+
+**Y una lección sobre la red:** las dos roturas del dueño único al principio **no
+caían**. La lista de D-124 vive en un solo lugar a propósito, pero eso no alcanza —
+cada entrada necesita su propio clavo, y las cuatro que tiene ahora lo tienen.
 
 ### B-98 · Cancelar un encuentro sin que desaparezca en silencio
 

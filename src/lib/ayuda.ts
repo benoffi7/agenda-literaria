@@ -227,8 +227,28 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Cada fila tiene «Editar» y un menú «⋯» con «Duplicar» y «Borrar». Están en el menú, y no ' +
-          'como botones sueltos, para que «Borrar» no quede pegado a «Editar» en el teléfono.',
+          'Cada fila tiene «Editar» y un menú «⋯» con «Marcar cupo completo», «Duplicar», ' +
+          '«Historial» y «Borrar». Están en el menú, y no como botones sueltos, para que ' +
+          '«Borrar» no quede pegado a «Editar» en el teléfono.',
+      },
+      {
+        texto:
+          'Cuando una actividad se llena, «Marcar cupo completo» lo dice en el evento del ' +
+          'calendario de cada encuentro: quien ya se había suscripto al calendario se entera sin ' +
+          'que le avises. Es un toque desde el listado, sin abrir el formulario. Si se libera un ' +
+          'lugar, el mismo menú lo saca. En el sitio va a aparecer cuando el sitio esté publicado.',
+      },
+      {
+        texto:
+          'El contacto de inscripción no se esconde cuando está completo: queda a la vista con el ' +
+          'cartel al lado. Siempre hay quien quiere anotarse por si se cae alguien, y esconder el ' +
+          'contacto convierte una baja en un lugar que se pierde.',
+      },
+      {
+        texto:
+          'Marcar el cupo completo cambia el evento de los encuentros que ya están en el ' +
+          'calendario, así que no es un cambio silencioso: es justo lo que se busca, pero conviene ' +
+          'saberlo antes de tocarlo y destocarlo varias veces.',
       },
       {
         texto:
@@ -614,6 +634,13 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'La fecha de cierre es informativa: pasada esa fecha el sitio muestra la inscripción como ' +
           'cerrada, pero no se apaga nada solo ni se avisa a nadie.',
+      },
+      {
+        texto:
+          'El cupo se carga una vez y no se vuelve a mirar solo: que se hayan anotado doce de doce ' +
+          'no lo sabe nadie más que vos. Para eso está «Marcar cupo completo» en el menú «⋯» del ' +
+          'listado; acá abajo aparece un aviso cuando está marcada, pero se prende y se apaga ' +
+          'desde el listado.',
       },
     ],
   },

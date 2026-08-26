@@ -78,6 +78,8 @@ export interface ActividadPublica {
     destino: string;
     cupo: number | null;
     abierta: boolean;
+    /** B-97 — «se llenó». Ver la proyección abajo. */
+    completo: boolean;
   };
   online: { plataforma: string; url?: string } | null;
   material: {
@@ -162,6 +164,21 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
     destino: a.inscripcion.destino,
     cupo: a.inscripcion.cupo,
     abierta: !a.inscripcion.cierra || aMillis(a.inscripcion.cierra) > ahora,
+    /**
+     * B-97 — **sí es público, y es el punto del campo**: sin esto el sitio sigue
+     * diciendo «cupo: 12» cuando ya no entra nadie, que es peor que no decir
+     * nada porque parece información fresca.
+     *
+     * **El canal de inscripción no se esconde acá.** `via` y `destino` siguen
+     * saliendo con `completo: true`, y es una decisión del dueño, no un olvido:
+     * siempre hay lista de espera y las bajas existen, así que esconder el canal
+     * convierte una baja en un lugar que se pierde. El sitio muestra el cartel
+     * **al lado** del canal, no en su lugar.
+     *
+     * Default de lectura para los documentos anteriores al campo: `false`, o sea
+     * lo mismo que se publicaba antes (D-26).
+     */
+    completo: a.inscripcion.completo ?? false,
   },
   /**
    * La plataforma siempre; la URL solo si `urlPublica` está en true.

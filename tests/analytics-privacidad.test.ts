@@ -167,6 +167,36 @@ describe('los payloads reales de los puntos de medición', () => {
     ).toBe(false);
   });
 
+  /**
+   * B-97, §5.1 — de la analítica sale **si estaba marcada como completa**, y nada
+   * más. Es un booleano, así que no hay contenido posible: no existe el número de
+   * lugares que quedan (§3.1: booleano y no contador) ni el destino de la
+   * inscripción, que es el campo de al lado y sí es texto libre — su centinela lo
+   * cuida en el mismo payload.
+   */
+  it('del cupo completo sale el booleano y nada más (B-97, §5.1)', () => {
+    const evento = construirEvento('guardado_ok', {
+      dispositivo: 'mobile',
+      ancho: 'xs',
+      modo: 'nueva',
+      accion: 'submit',
+      ...formaDelFormulario(form),
+    });
+    revisar(evento);
+    expect(evento!.params.cupo_completo).toBe(1);
+    expect(
+      formaDelFormulario(
+        formularioLleno({ inscripcion: { ...form.inscripcion, completo: false } }),
+      ).cupo_completo,
+    ).toBe(false);
+  });
+
+  it('la ruta del campo del cupo viaja: es el nombre, no el estado (B-97, D-60)', () => {
+    // Lo que la analítica necesita para decir «el schema rechaza esto» es la ruta
+    // `inscripcion.completo`, que es vocabulario cerrado derivado del schema.
+    expect(normalizarCampo('inscripcion.completo')).toBe('inscripcion.completo');
+  });
+
   it('la ruta del campo sí viaja: es el nombre, no el valor (DEC-1, D-60)', () => {
     // Lo que la analítica necesita para decir «la gente se traba en el libro» es
     // la ruta `libro.titulo`, que es vocabulario cerrado derivado del schema.
@@ -208,7 +238,14 @@ describe('los payloads reales de los puntos de medición', () => {
           calendarEventId: null,
         },
       ],
-      inscripcion: { requiere: true, via: null, destino: '', cupo: null, cierra: '' },
+      inscripcion: {
+        requiere: true,
+        via: null,
+        destino: '',
+        cupo: null,
+        cierra: '',
+        completo: false,
+      },
     });
     const parsed = actividadFormSchema.safeParse(roto);
     expect(parsed.success).toBe(false);

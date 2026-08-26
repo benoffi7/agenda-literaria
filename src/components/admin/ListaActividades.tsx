@@ -7,7 +7,12 @@ import {
 import { FiltrosActividades } from '@/components/admin/FiltrosActividades';
 import { MenuAcciones } from '@/components/admin/MenuAcciones';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
-import { borrarActividad, documentoAForm, listarActividades } from '@/lib/actividades';
+import {
+  borrarActividad,
+  documentoAForm,
+  listarActividades,
+  marcarCupoCompleto,
+} from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
@@ -121,6 +126,37 @@ export function ListaActividades({
     onDuplicar(copia, a.titulo);
   };
 
+  /**
+   * B-97 — «se llenó», desde acá y no desde el formulario.
+   *
+   * Es el pedido tal cual: un toque desde el teléfono, sin abrir 30+ campos para
+   * tocar una casilla. Escribe **solo** `inscripcion.completo`
+   * (`marcarCupoCompleto`), y de ahí sale la línea de la descripción de los N
+   * eventos del ciclo — que es cómo se entera quien ya estaba suscripto al
+   * calendario, sin que nadie le avise (§7.1, D-07).
+   *
+   * La fila se actualiza en memoria en lugar de recargar el listado: recargar
+   * pierde el filtro y el scroll, y lo que cambió es un booleano de una fila.
+   *
+   * `valor` lleva 1 al prender y 0 al apagar: apagar es la mitad interesante de
+   * la pregunta —si el cartel se saca cuando se libera un lugar— y es un entero,
+   * no contenido (§9).
+   */
+  const marcarCupo = (a: ActividadConId, completo: boolean) => {
+    medirFuncion('actividad-cupo-completo', undefined, completo ? 1 : 0);
+    marcarCupoCompleto(a.id, completo, uid)
+      .then(() =>
+        setActividades((as) =>
+          as.map((x) =>
+            x.id === a.id ? { ...x, inscripcion: { ...x.inscripcion, completo } } : x,
+          ),
+        ),
+      )
+      .catch((e: unknown) =>
+        setFallo(e instanceof Error ? e.message : 'No se pudo cambiar el cupo'),
+      );
+  };
+
   const eliminar = async (a: ActividadConId) => {
     if (!confirm(`¿Borrar «${a.titulo}»? No se puede deshacer.`)) return;
     await borrarActividad(a.id);
@@ -209,11 +245,23 @@ export function ListaActividades({
                   )}
                 </p>
               </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}
-              >
-                {ETIQUETA_ESTADO[a.estado] ?? a.estado}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}
+                >
+                  {ETIQUETA_ESTADO[a.estado] ?? a.estado}
+                </span>
+                {/*
+                  B-97 — lo que se publica se ve desde el panel. Sin este cartel,
+                  «está marcada como completa» solo se sabría abriendo el menú, y
+                  el sitio y el calendario ya lo están diciendo.
+                */}
+                {a.inscripcion?.completo === true && (
+                  <span className="whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70">
+                    Cupo completo
+                  </span>
+                )}
+              </div>
             </div>
             {/*
               Duplicar y borrar van en un menú y no en la fila: tres botones en
@@ -230,6 +278,15 @@ export function ListaActividades({
               <MenuAcciones
                 etiqueta={`Más acciones de ${a.titulo}`}
                 acciones={[
+                  // B-97 va primero: es la acción de después de publicar, la que
+                  // se busca apurado desde el teléfono cuando se llenó.
+                  {
+                    label:
+                      a.inscripcion?.completo === true
+                        ? 'Marcar cupo disponible'
+                        : 'Marcar cupo completo',
+                    onSelect: () => marcarCupo(a, a.inscripcion?.completo !== true),
+                  },
                   { label: 'Duplicar', onSelect: () => duplicar(a) },
                   // B-40 — va acá y no en el formulario: recuperar un campo
                   // pisado se busca desde el listado ("¿qué le pasó a esta?"),
