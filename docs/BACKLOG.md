@@ -1353,11 +1353,19 @@ sitio cuando exista. Una línea o dos en cada uno.
 correcto y la guarda del §7.1 lo maneja (D-07), pero verlo en emuladores antes de
 creerlo.
 
-Conviene antes de B-01 para que el `events.json` nazca con el campo. Decisiones
-del dueño: booleano o contador (recomendado el booleano: un contador se
-desactualiza con cada inscripción, no solo con la última), y si "completo"
-esconde el botón de inscripción en el sitio (recomendado que no: siempre hay
-lista de espera).
+Conviene antes de B-01 para que el `events.json` nazca con el campo.
+
+**Decidido el 2026-08-26, las dos:**
+
+1. **Un booleano**, no un contador. Un contador de lugares queda viejo con **cada**
+   inscripción y no solo con la última, y un número viejo es peor que ningún número
+   porque parece información fresca. El booleano se prende cuando no entra nadie más
+   y se apaga si se libera un lugar. Es además la salida que **B-102** ya nombra para
+   resolver el conteo sin guardar un dato de nadie.
+2. **El botón de inscripción se queda**, con el cartel «Cupo completo» al lado.
+   Siempre hay lista de espera, y las bajas existen: esconder el canal convierte una
+   baja en un lugar que se pierde. Para el organizador, un DM de más cuesta menos que
+   un lugar vacío.
 
 ### B-98 · Cancelar un encuentro sin que desaparezca en silencio
 
@@ -2775,11 +2783,15 @@ imágenes a la otra.
 
 **Lo que hay que decidir al implementarlo, y es el trabajo real:**
 
-- **El default.** Se pidió "todos apagados", y eso convierte *duplicar* en
-  *actividad nueva*: el caso real es «el mismo club, la temporada que viene», donde
-  se quiere casi todo. La propuesta es al revés — prendido lo que hoy se copia y
-  **apagado solo lo riesgoso**: las imágenes propias, y nada más (el slug y el
-  estado ya no se heredan y no son opcionales).
+- ~~**El default.**~~ **Decidido el 2026-08-26: prendido lo que hoy se copia, y
+  apagado solo lo riesgoso.** El primer pedido era "todos apagados", y eso convertía
+  *duplicar* en *actividad nueva*: en el caso real —«el mismo club, la temporada que
+  viene»— habría que tildar quince casillas para conseguir lo que hoy sale de un
+  click, y con eso se deja de usar el botón. Nacen **apagadas** la **difusión**
+  (notas internas y handles de otra edición, que hoy se arrastran y nadie revisa
+  porque están en un acordeón cerrado) y las **imágenes propias**. El slug y el
+  estado ya no se heredan y no son opcionales. O sea: el modal es para
+  **desmarcar**, no para armar la copia de cero.
 - **Qué pasa si alguien tilda las imágenes propias.** El modal mueve la pregunta,
   no la contesta: o se copia el objeto de Storage —y duplicar deja de ser lógica
   pura del cliente, y puede fallar después de copiar dos de cuatro— o se cuentan
@@ -3615,8 +3627,11 @@ mejor forma: no es un hook que gasta una corrida en cada cierre, es un skill que
 se dispara con la intención de pushear.
 
 **Lo que queda, y es de otro ítem:** el skill se dispara cuando alguien dice
-"pusheá"; un `git push` a secas solo pasa por el gate mecánico, y **el hook
-todavía no está activado** (`core.hooksPath`, decisión del dueño — B-138). Si se
+"pusheá"; un `git push` a secas solo pasa por el gate mecánico, y **el hook quedó
+activado el 2026-08-26** (`core.hooksPath = githooks`, decidido por el dueño —
+B-138). Se activó porque el problema se midió: el push de la `1.2.0` pasó por el
+gate **porque alguien se acordó de correrlo a mano**, no porque el repo lo
+obligara. Si se
 quiere que corran sí o sí, es el job de GitHub Actions sobre el PR, que es la
 otra mitad de B-124. Si nadie se acuerda, no corren — que
 es exactamente el problema que tienen las dos reglas de proceso de
