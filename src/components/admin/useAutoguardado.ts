@@ -83,7 +83,16 @@ export function useAutoguardado(form: ActividadForm, clave: string): Autoguardad
 
   return {
     recuperado: descartado ? null : recuperado,
-    descartar: () => setDescartado(true),
+    // Descartar **borra**, no esconde. Escondiendo, el borrador seguía en el
+    // navegador —con `online.url`, `difusion` e `inscripcion.destino` en claro—
+    // hasta 30 días, y como el aviso se lee al montar, volver al listado y
+    // reabrir la actividad lo volvía a ofrecer: el botón no descartaba nada.
+    // Es seguro para el camino de recuperar, que también pasa por acá: el
+    // autoguardado reescribe la clave 800 ms después, ya saneada.
+    descartar: () => {
+      borrarBorradorLocal(dameAlmacen(), clave);
+      setDescartado(true);
+    },
     limpiar: () => {
       // Limpiar al guardar bien, o el borrador viejo reaparece encima de la
       // versión buena la próxima vez que se abra la actividad.

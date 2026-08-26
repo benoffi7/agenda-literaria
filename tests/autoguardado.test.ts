@@ -17,7 +17,13 @@ import {
   vaLaPenaOfrecer,
   type AlmacenLocal,
 } from '@/lib/formulario/autoguardado';
-import { formVacio, onlineVacio, personaVacia, sedeVacia } from '@/lib/formulario/estadoInicial';
+import {
+  formVacio,
+  geoVacia,
+  onlineVacio,
+  personaVacia,
+  sedeVacia,
+} from '@/lib/formulario/estadoInicial';
 import { huellaCreador } from '@/lib/huella';
 
 /**
@@ -65,16 +71,25 @@ const almacenFalso = (opts: { falla?: boolean } = {}) => {
 };
 
 /**
- * El código del formulario con los espacios colapsados, para poder afirmar una
- * **llamada** y que el aserto no se rompa cuando el formateador parte la línea.
- * Sin esto la única opción era buscar el nombre, que lo satisface el import.
+ * El código de un archivo **sin comentarios y sin espacios**, para poder afirmar
+ * una **llamada**.
+ *
+ * Las dos cosas hacen falta y por motivos distintos. Sin colapsar espacios hay
+ * que buscar un nombre, y el nombre lo satisface el `import`. Sin quitar
+ * comentarios lo satisface la **prosa**: este repo escribe comentarios largos que
+ * citan código, y el bloque que está justo arriba de la llamada que verificamos
+ * enumera los tres saneadores por nombre.
  */
-const fuenteDelFormulario = (): string =>
-  readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8').replace(/\s+/g, '');
+const codigoSinEspacios = (ruta: string): string =>
+  readFileSync(ruta, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/\s+/g, '');
 
-/** Ídem para el panel, que es donde vive el borrado al cerrar sesión. */
-const fuenteDelPanel = (): string =>
-  readFileSync('src/components/admin/AdminApp.tsx', 'utf8').replace(/\s+/g, '');
+const fuenteDelFormulario = (): string =>
+  codigoSinEspacios('src/components/admin/ActividadFormulario.tsx');
+
+const fuenteDelPanel = (): string => codigoSinEspacios('src/components/admin/AdminApp.tsx');
 
 const UID = 'uid-de-ana';
 const OTRO_UID = 'uid-de-beto';
@@ -125,6 +140,18 @@ describe('cerrar sesión se lleva los borradores (§5.1)', () => {
     expect([...datos.keys()].filter((k) => k.startsWith(PREFIJO_CLAVE))).toEqual([]);
     // Lo que no es un borrador no es contenido y no se toca.
     expect(datos.has('agenda-literaria:novedad-leida')).toBe(true);
+  });
+
+  it('descartar lo saca del navegador, no solo de la pantalla (§5.1)', () => {
+    // Escondía el aviso y dejaba el borrador —con `online.url`, `difusion` e
+    // `inscripcion.destino` en claro— hasta 30 días; y como el aviso se lee al
+    // montar, reabrir la actividad lo volvía a ofrecer. La doc afirmaba que el
+    // borrador queda "hasta que se descarta", y ese botón no descartaba nada.
+    const hook = readFileSync('src/components/admin/useAutoguardado.ts', 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+      .replace(/\s+/g, '');
+    expect(hook).toContain('descartar:()=>{borrarBorradorLocal(dameAlmacen(),clave);');
   });
 
   it('un almacén que tira no impide cerrar sesión', () => {
@@ -418,8 +445,12 @@ describe('recuperar no puede publicar un link que estaba privado (§5.1, trampa 
     expect(fuente).not.toContain('conIdsDeCalendarioDe(autoguardado.recuperado');
   });
 
-  it('y el aviso recibe si había algo tildado', () => {
-    expect(fuenteDelFormulario()).toContain('linksSinPublicar={teniaFlagsDePublicacion(');
+  it('y el aviso mira las dos formas: la del borrador y la de hoy', () => {
+    // Solo el primer disyunto dejaba un caso muerto: si el borrador no tenía
+    // flags y el documento de hoy sí, recuperar los apaga y el aviso callaba.
+    expect(fuenteDelFormulario()).toContain(
+      'linksSinPublicar={teniaFlagsDePublicacion(autoguardado.recuperado.form)||teniaFlagsDePublicacion(form)}',
+    );
   });
 });
 
@@ -532,9 +563,19 @@ describe('recuperar no publica ni despublica nada (§5.1, trampa 10)', () => {
     );
   });
 
-  it('el formulario lo aplica al recuperar, y con el flag del slug', () => {
-    expect(fuenteDelFormulario()).toContain('conLoQueEsDelDocumento(');
-    expect(fuenteDelFormulario()).toContain('actual,slugBloqueado,');
+  it('el formulario aplica los tres saneadores en cadena, y el resultado va al estado', () => {
+    // Los asertos de antes —el nombre de la función, y `'actual,slugBloqueado,'`—
+    // no ataban nada: pasaban con una llamada muerta en cualquier parte del
+    // archivo, y el segundo dependía de la coma final, así que se habría puesto
+    // rojo con el código correcto el día que la llamada entre en una línea.
+    const fuente = fuenteDelFormulario();
+    expect(fuente).toContain(
+      'setForm((actual)=>conLoQueEsDelDocumento(conIdsDeCalendarioDe(sinFlagsDePublicacion(',
+    );
+    // Corta antes del cierre a propósito: `slugBloqueado)` contra
+    // `slugBloqueado,)` depende de si el formateador parte la llamada en varias
+    // líneas, y atar eso es pintarse el aserto en una esquina.
+    expect(fuente).toContain('),actual,slugBloqueado');
   });
 });
 
@@ -602,6 +643,35 @@ describe('el molde de la poda no puede quedarse corto (B-88)', () => {
     expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.sede?.geo ?? null).toBeNull();
   });
 
+  it('un bloque a medias también se completa: material sin items no rompe la isla', () => {
+    // Completar de primer nivel no alcanzaba: la clave incompleta se conservaba
+    // tal cual, `material.items` quedaba `undefined`, y `teniaFlagsDePublicacion`
+    // —que se llama en el JSX— tiraba en el render.
+    const { almacen } = almacenFalso();
+    const form = { ...formVacio(), material: { tiene: true } };
+    guardarBorradorLocal(almacen, CLAVE, form as never, AHORA);
+    const leido = leerBorradorLocal(almacen, CLAVE, AHORA)!.form;
+    expect(leido.material).toEqual({ tiene: true, items: [] });
+    expect(() => teniaFlagsDePublicacion(leido)).not.toThrow();
+  });
+
+  it('sin sede no inventa ni coordenadas ni ciudad (§5.1)', () => {
+    // `sedeVacia()` trae `ciudad: 'CABA'`, y `toPublic` proyecta `sede` entera:
+    // completar con la fábrica publicaba una ubicación que nadie cargó. Es el
+    // mismo argumento del golfo de Guinea, una capa más arriba.
+    const { almacen } = almacenFalso();
+    const { sede: _, ...sinSede } = formVacio();
+    guardarBorradorLocal(almacen, CLAVE, sinSede as never, AHORA);
+    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.sede).toBeNull();
+  });
+
+  it('sin tallerista tampoco lo inventa', () => {
+    const { almacen } = almacenFalso();
+    const { tallerista: _, ...sinTallerista } = formVacio();
+    guardarBorradorLocal(almacen, CLAVE, sinTallerista as never, AHORA);
+    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.tallerista).toBeNull();
+  });
+
   it('una clave que falta se completa, así ningún consumidor tira', () => {
     // `pareceFormulario` mira 2 campos de ~30, así que un borrador sin `material`
     // pasa; el primero que haga `f.material.items.some(...)` se lleva la isla.
@@ -634,7 +704,18 @@ describe('la versión del formato y la forma del formulario no derivan por separ
   };
 
   it('cambiar la forma del formulario, también adentro, obliga a pasar por acá', () => {
-    expect(rutas({ ...formVacio(), tallerista: personaVacia(), online: onlineVacio() }).sort())
+    expect(
+      rutas({
+        ...formVacio(),
+        tallerista: personaVacia(),
+        online: onlineVacio(),
+        // `sede.geo` va con su fábrica: con el `null` de `formVacio()` entraba
+        // como hoja y las claves de adentro no se enumeraban, así que un campo
+        // nuevo en las coordenadas lo tiraba la poda **en silencio** y este test
+        // quedaba verde afirmando la pérdida.
+        sede: { ...sedeVacia(), geo: geoVacia() },
+      }).sort(),
+    )
       .toEqual([
         'arancel.notas',
         'arancel.tipo',
@@ -662,7 +743,8 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'sede.barrio',
         'sede.ciudad',
         'sede.direccion',
-        'sede.geo',
+        'sede.geo.lat',
+        'sede.geo.lng',
         'sede.indicaciones',
         'sede.nombre',
         'sesiones',

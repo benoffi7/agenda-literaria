@@ -225,6 +225,48 @@ preexistente, y falla visible, no dato corrupto) y **B-201** (el conteo de líne
 de `10-salud-del-codigo.md` §1.3, que hay que recontar con el criterio escrito al
 lado en vez de inventarle un número).
 
+### Y una tercera pasada, porque las dos primeras habían inyectado bugs
+
+Con la tasa medida —cuatro hallazgos en la segunda ronda, dos de ellos
+introducidos por los arreglos de la primera— una pasada más era barata al lado de
+publicar un link privado. Encontró siete cosas. La severidad bajó, pero no a cero:
+
+- **P1 · «Descartar» no descartaba.** El botón del aviso escondía el aviso y
+  dejaba el borrador en el navegador, así que reabrir la actividad lo volvía a
+  ofrecer — y `07-seguridad.md` afirmaba «queda ahí hasta que se descarta», que es
+  justo la mitigación en la que se apoyaba B-203. Ahora borra la clave.
+- **Completar la forma era de primer nivel**, así que un borrador con
+  `material: {tiene: true}` y sin `items` conservaba la clave incompleta y el
+  primer `f.material.items.some(...)` tiraba en el render, que es exactamente la
+  falla que el arreglo anterior decía prevenir. Ahora la mezcla es profunda.
+- **Y fabricaba `sede.ciudad: 'CABA'`**: una `sede` ausente se completaba con la
+  fábrica, y `toPublic` proyecta `sede` entera. Era el mismo argumento del golfo de
+  Guinea una capa más arriba, a mitad de camino. Los dos bloques que las cascadas
+  crean y destruyen —`sede` y `tallerista`— se completan a `null`.
+- **`sede.geo` era la última forma escrita a mano**, la misma configuración que
+  borró `tallerista.bio`; y el test de rutas de B-88 **no podía verla**, porque con
+  el `null` de `formVacio()` entraba como hoja. Salió `geoVacia()` a las fábricas y
+  el test ahora enumera `sede.geo.lat` y `sede.geo.lng`.
+- **Tres asertos más que no asertaban.** El par nuevo pasaba con una llamada
+  muerta en cualquier parte del archivo, y uno dependía de la coma final del
+  formateador. Pero el peor era estructural: los helpers leían el fuente **con los
+  comentarios adentro**, y el bloque que está justo arriba de la llamada enumera
+  los saneadores en prosa — o sea que un comentario podía satisfacer el aserto.
+  Ahora pasan por un quita-comentarios, que ya existía 200 líneas más abajo en el
+  mismo archivo.
+
+Y el séptimo, que se decidió **no** arreglar y queda escrito en D-124: la
+membresía de filas de `sesiones`. Un encuentro que hoy existe y no está en el
+borrador desaparece al recuperar. Es la simétrica de `cancelada` y no se protege
+porque la sección Encuentros **no está colapsada**, que era todo el argumento del
+caso de material: la fila que falta se ve antes de guardar. De paso quedaron
+nombrados `destacado` e `inscripcion.cierra` —de este último sale
+`inscripcion.abierta`, así que un `cierra` vacío viejo **reabre** una inscripción
+cerrada—, los dos reversibles con un click y afuera a propósito.
+
+Los cinco arreglos se verificaron reintroduciéndolos. **58 tests** en
+`autoguardado.test.ts`, 990 en total.
+
 ### Doc
 
 `04-funcionalidades.md` (el punto que decía que el borrador valida igual que

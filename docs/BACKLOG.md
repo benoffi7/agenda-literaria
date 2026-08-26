@@ -1094,6 +1094,32 @@ en `Seccion` y pasarle el id en las nueve secciones. No se hizo de entrada para
 no tocar `ActividadFormulario.tsx` en nueve lugares mientras varias manos lo
 estaban editando (D-61).
 
+**Actualizado el 2026-08-26, con un caso real y una forma más precisa.** Un
+segundo admin cargando una feria no entendió el generador de encuentros, y lo
+dijo así:
+
+> Y no entiendo porque hay 2 opciones : cuándo pongo N de encuentros. Lo de
+> cantidad y cantidad de días. Lo estoy probando en una feria que generalmente
+> son encuentros en varios días en mismos horarios... Tengo que crear los N de
+> encuentro por cada día no?
+
+Dos cosas que eso agrega al ítem:
+
+1. **La forma que pidió el dueño no es abrir el capítulo de la guía, son tres
+   partes:** qué hace la sección, **qué impacto tiene** —o sea qué sale al sitio
+   y al calendario, que es lo que no se adivina— y **un ejemplo**. Es más que un
+   `?` que scrollea a la ayuda: los capítulos de `ayuda.ts` hoy no están escritos
+   con esa estructura, así que el ítem incluye reescribirlos o agregar un campo.
+2. **El ejemplo es la parte que resuelve el caso**, y se nota en este reporte: la
+   duda no era qué es un encuentro, era cómo se cargan tres jornadas de una feria.
+   Un ejemplo por sección («una feria de tres días: Cantidad 3, Cada (días) 1»)
+   contesta eso; una definición, no.
+
+El disparador puntual —los dos campos del generador se leen como «cantidad» y
+«cantidad de días»— es más barato que este ítem y va aparte, en **B-204**: si se
+arregla la etiqueta, este caso concreto no vuelve a pasar aunque el modal no
+exista todavía.
+
 ### B-63 · Nada verifica que la guía siga diciendo la verdad
 
 `tests/ayuda.test.ts` verifica que **exista** un capítulo por sección del
@@ -2608,6 +2634,33 @@ eso es peor que la exposición residual. Hay que borrar en la **transición** de
 usuario a `null`, guardando el anterior en un `useRef`.
 
 **Test:** `it('cualquier fin de sesión se lleva los borradores, no solo el botón (§5.1)')`.
+
+### B-204 · Los dos campos del generador de encuentros se leen como «cantidad» y «cantidad de días» · P2
+
+Reporte de un segundo admin cargando una feria (2026-08-26):
+
+> Y no entiendo porque hay 2 opciones : cuándo pongo N de encuentros. Lo de
+> cantidad y cantidad de días.
+
+Las etiquetas son **«Cantidad»** y **«Cada (días)»** (`SesionesEditor.tsx`).
+Puestas una al lado de la otra y leídas rápido parecen dos cantidades: cuántos
+encuentros y cuántos días. La segunda no es una cantidad de días, es el **salto**
+entre un encuentro y el siguiente (`cadaDias`, default 7 = semanal).
+
+**Por qué vale la pena y no es cosmético:** el default de 7 hace que el caso de la
+feria —varias jornadas seguidas— salga mal sin que nada avise. Pide 3 encuentros,
+le genera uno por semana durante tres semanas, y eso llega al calendario público
+como tres eventos en fechas equivocadas. El error es silencioso: las fechas son
+válidas, solo no son las que quería.
+
+**El arreglo es de etiqueta y texto**, no de lógica: «Cuántos encuentros» y «Cada
+cuántos días», y el párrafo de abajo —que hoy explica que recalcula y borra temas—
+puede decir el caso de un solo día de diferencia. Con eso, «una feria de tres días
+seguidos» es Cantidad 3, Cada 1, y se entiende sin abrir nada.
+
+Relacionado con **B-62** (el modal por sección con qué hace / qué impacto / un
+ejemplo), que es el arreglo general del que este es el caso particular. Este se
+puede hacer solo y hoy.
 
 ## P3 — cuando sobre tiempo
 

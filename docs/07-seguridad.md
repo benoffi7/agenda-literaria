@@ -59,7 +59,7 @@ Por qué no es una salida nueva:
    30 días, así que un valor de hace tres semanas se aplica sobre el documento de
    hoy. El caso concreto: se destilda «mostrar el link sin inscribirse», no se
    guarda, se recupera a los veinte días y se publica — y el link de la reunión
-   sale a `events.json` y a la descripción del evento (trampa 5). **Cinco campos no
+   sale a `events.json` y a la descripción del evento (trampa 5). **Seis campos no
    se aplican tal cual:** los `calendarEventId`, que los escribe el backend
    (familia de B-80); los dos flags de publicación, que vuelven a `false`; y
    `estado`, el `slug` bloqueado y `sesiones[].cancelada`, que salen del documento
@@ -71,18 +71,25 @@ Por qué no es una salida nueva:
 
 Lo que sí hay que tener presente: **es contenido en un dispositivo compartido**.
 Mientras la sesión está abierta, el borrador queda ahí hasta que se descarta, se
-guarda o pasan 30 días. El alcance es el de la sesión del panel en ese navegador,
-y **salir de la agenda borra todos los borradores** (`borrarTodosLosBorradores`,
-antes del `signOut`). Sin ese paso el contenido sobrevivía al logout, en claro y
-bajo una clave predecible.
+guarda o pasan 30 días.
 
-Con precisión, porque la diferencia importa: eso lo garantizan **los dos botones de
-salir**, que son los dos únicos caminos que llaman a `logout()`. Una sesión que
-termina sin un click —token revocado, cuenta deshabilitada, logout en otra
-pestaña— vuelve al login y deja los borradores donde están. Es **B-203**, y el
-arreglo tiene su propio cuidado: borrar en cualquier `null` de `onAuthStateChanged`
-se llevaría trabajo bueno en un `null` transitorio, que es peor. Y el aviso de
-recuperación tiene el botón para descartarlo a la vista.
+**Las dos salidas borran de verdad**, y las dos hubo que arreglarlas:
+
+- **«Descartar»**, el botón del aviso, borra la clave. Hasta el 2026-08-26 solo
+  escondía el aviso, así que el borrador seguía en el navegador y volvía a
+  ofrecerse al reabrir la actividad — esta frase era falsa, y la mitigación de
+  B-203 se apoyaba en un botón que no descartaba nada.
+- **Salir de la agenda** borra todos (`borrarTodosLosBorradores`, antes del
+  `signOut`). Sin ese paso el contenido sobrevivía al logout, en claro y bajo una
+  clave predecible.
+
+Con precisión, porque la diferencia importa: lo segundo lo garantizan **los dos
+botones de salir**, que son los dos únicos caminos que llaman a `logout()`. Una
+sesión que termina sin un click —token revocado, cuenta deshabilitada, logout en
+otra pestaña— vuelve al login y deja los borradores donde están. Es **B-203**, y el
+arreglo tiene su propio cuidado: borrar en cualquier `null` de
+`onAuthStateChanged` se llevaría trabajo bueno en un `null` transitorio, que es
+peor.
 
 ## El link de la reunión: default privado, publicable a pedido
 

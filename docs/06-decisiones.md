@@ -2603,8 +2603,8 @@ razonamiento correcto: el borrador vive hasta 30 días, así que un valor viejo 
 aplica sobre el documento de hoy y hay campos donde eso tiene consecuencias. El
 error no era el razonamiento: era creer que ese campo era el único.
 
-**Decisión.** Lo recuperado pasa por **tres** saneadores antes de entrar al
-formulario, y ninguno de los tres es reversible en el otro sentido:
+**Decisión.** Lo recuperado pasa por **cuatro** saneadores —uno en la lectura y
+tres en la recuperación— antes de entrar al formulario:
 
 1. **Los `calendarEventId` son del documento de hoy** (`conIdsDeCalendarioDe`). Lo
    escribe el backend; aplicar el de hace un mes crea un segundo evento para el
@@ -2614,7 +2614,9 @@ formulario, y ninguno de los tres es reversible en el otro sentido:
    link de la reunión y las URLs del material salen a `events.json` y a la
    descripción del evento. Se destilda una casilla, no se guarda, se recupera a los
    veinte días, se publica — y el link sale. Es la trampa 5 por una puerta nueva.
-3. **Solo entran las claves que el formulario conoce** (`podarConMolde`). La guarda
+3. **Solo entran las claves que el formulario conoce** (`podarConMolde`, en la
+   **lectura**, no en la recuperación: es el único de los cuatro que corre al leer
+   de `localStorage`). La guarda
    de forma mira dos campos de ~30, y aguas abajo `formADocumento` copia `sede`,
    `online`, `organizador` y `tallerista` tal cual, y `toPublic` proyecta los tres
    primeros **enteros**: una clave de más en el borrador termina en `events.json`.
@@ -2646,6 +2648,23 @@ publicación.
   es **contenido**: un borrador de "nueva" interrumpido se ofrecía dentro de un
   duplicado y, aceptado, publicaba una actividad distinta de la que se quiso
   duplicar. El discriminador ya estaba una línea más abajo, en la medición.
+
+**Lo que se decidió dejar pasar, y queda dicho para que no vuelva a preguntarse.**
+La tercera pasada del auditor encontró un séptimo caso y dos campos borderline, y
+los tres se quedan del lado del borrador a propósito:
+
+- **La membresía de filas de `sesiones`.** Un encuentro que hoy existe en el
+  documento y no en el borrador desaparece al recuperar, y el diff del §7.2 le
+  borra el evento a quien esté suscripto. Es la simétrica de `cancelada`, con el
+  signo invertido, y no se protege por una razón: la sección **Encuentros no está
+  colapsada**, así que la fila que falta se ve antes de guardar — al contrario de
+  la casilla de material, que fue todo el argumento del punto 2. Y borrar una fila
+  dentro del borrador es trabajo legítimo que restaurarla desharía.
+- **`destacado`** y **`inscripcion.cierra`**. El segundo es el menos obvio: de él
+  sale `inscripcion.abierta` en la proyección, así que un `cierra` vacío de hace
+  tres semanas **reabre** una inscripción cerrada. Los dos son reversibles con un
+  click y ninguno toca el calendario, así que quedan afuera — pero quedan
+  **nombrados**, que es lo que faltó las dos veces que la lista se quedó corta.
 
 **Y cerrar sesión se lleva los borradores.** Sin eso, el contenido sobrevivía al
 logout hasta 30 días. La frase que `07-seguridad.md` ya afirmaba —"es el mismo

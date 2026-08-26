@@ -32,6 +32,7 @@ import {
 } from '@/lib/formulario/borradoresDelNavegador';
 import {
   formVacio,
+  geoVacia,
   onlineVacio,
   personaVacia,
   sedeVacia,
@@ -140,7 +141,7 @@ const moldeDelFormulario = (): Record<string, unknown> => ({
   ...formVacio(),
   tallerista: personaVacia(),
   online: onlineVacio(),
-  sede: { ...sedeVacia(), geo: { lat: 0, lng: 0 } },
+  sede: { ...sedeVacia(), geo: geoVacia() },
 });
 
 /**
@@ -180,10 +181,39 @@ const podarConMolde = (molde: unknown, valor: unknown): unknown => {
  * `f.material.items.some(...)` tira y se lleva puesta la isla del panel. Podar no
  * puede dejar el formulario incompleto.
  */
-const conFormaConocida = (form: unknown): ActividadForm => ({
-  ...formVacio(),
-  ...(podarConMolde(moldeDelFormulario(), form) as Partial<ActividadForm>),
-});
+const conFormaConocida = (form: unknown): ActividadForm => {
+  const podado = podarConMolde(moldeDelFormulario(), form) as Record<string, unknown>;
+  const completo = mezclarProfundo(formVacio(), podado) as ActividadForm;
+  return {
+    ...completo,
+    // Los dos bloques que las cascadas crean y destruyen: si el borrador no los
+    // trae, la respuesta es `null` —que es valor legal y es lo que produce una
+    // actividad virtual— y no el bloque vacío. Completarlos con la fábrica
+    // fabricaría datos que nadie cargó, y `sedeVacia()` trae `ciudad: 'CABA'`,
+    // que `toPublic` proyecta dentro de `sede` y saldría a `events.json`. Es el
+    // mismo argumento del `{lat: 0, lng: 0}`, una capa más arriba.
+    sede: 'sede' in podado ? (completo.sede ?? null) : null,
+    tallerista: 'tallerista' in podado ? (completo.tallerista ?? null) : null,
+  };
+};
+
+/**
+ * Completa `valor` con lo que le falte de `defecto`, en profundidad.
+ *
+ * De primer nivel no alcanza: un borrador con `material: {tiene: true}` y sin
+ * `items` conserva la clave incompleta, y el primer consumidor que haga
+ * `f.material.items.some(...)` tira en el render y se lleva puesta la isla del
+ * panel. Los arrays se toman enteros del valor: mezclarlos elemento por elemento
+ * inventaría filas.
+ */
+const mezclarProfundo = (defecto: unknown, valor: unknown): unknown => {
+  if (!esObjetoPlano(defecto) || !esObjetoPlano(valor)) return valor === undefined ? defecto : valor;
+  const salida: Record<string, unknown> = { ...defecto };
+  for (const clave of Object.keys(valor)) {
+    salida[clave] = mezclarProfundo(defecto[clave], valor[clave]);
+  }
+  return salida;
+};
 
 /**
  * Los flags de publicación del borrador recuperado vuelven a su default privado.

@@ -21,6 +21,14 @@ export const sedeVacia = (): Sede => ({
   geo: null,
 });
 
+/**
+ * Las coordenadas que crea el pegado de un link de Maps. `geo` nace en `null` y
+ * esta fábrica existe para que el molde de la poda de `autoguardado.ts` conozca
+ * su forma sin escribirla a mano — la última forma escrita a mano ahí borró
+ * `tallerista.bio` (D-124).
+ */
+export const geoVacia = (): NonNullable<Sede['geo']> => ({ lat: 0, lng: 0 });
+
 /** El bloque online que se crea al pasar a virtual o híbrido. */
 export const onlineVacio = (): Online => ({ plataforma: '', url: '', urlPublica: false });
 
