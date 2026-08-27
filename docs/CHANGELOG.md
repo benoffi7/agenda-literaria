@@ -1,100 +1,19 @@
 # Changelog
 
-## Sin publicar — 2026-08-26
+## 1.3.0 — 2026-08-27
 
-### Novedades del panel a escribir al cortar la versión
+**Once novedades del panel**, todas selladas `1.3.0` (D-117). Se escribieron en
+borrador acá abajo a medida que salía cada cambio y se pasaron a `novedades.ts` en el
+mismo commit que subió la versión: escribirlas antes obliga a adivinar el número, y
+una entrada con la versión equivocada rompe lo único que esa lista sirve para
+contestar — «esto empezó con la versión en la que salió tal cosa».
 
-**Por qué está acá y no en `src/lib/novedades.ts`:** una entrada de novedades
-lleva `version`, y esa es la de `package.json` en el momento de publicar (D-117).
-Escribirlas antes obliga a adivinar el número o a corregirlas después, y una
-entrada con la versión equivocada rompe lo único que esa lista sirve para
-contestar: "esto empezó con la versión en la que salió tal cosa".
+`1.3.0` y no `1.2.1` porque hay tres campos nuevos en el modelo (la galería, el libro
+presentado y «se llenó»), dos secciones nuevas en el formulario y una función nueva en
+el listado. Un parche no lo describe.
 
-Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mismo
-cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
-porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
-
-- **`cierres-de-inscripcion-en-el-calendario`** — *El calendario ahora te avisa de las
-  inscripciones que cierran*. La fecha de cierre aparece como un marcador en su día, en
-  celeste y con borde punteado, así no se confunde con un encuentro. Y si una
-  inscripción ya cerró y la actividad sigue publicada, sale un aviso arriba con el
-  nombre y el día: es el momento de correr la fecha o de marcar que se llenó. Lo que ya
-  marcaste como completo no aparece en ese aviso, porque no hay nada que hacer. ·
-  **Dónde:** Listado → botón «Calendario».
-
-- **`texto-para-redes`** — *Ya no hace falta escribir el posteo a mano*. La sección
-  «Texto para publicar» arma el texto con lo que cargaste —título, fechas, dónde,
-  arancel, cómo se inscribe— y al final arroba a las cuentas de «Arrobar al publicar»,
-  más el Instagram del organizador y de quien está al frente, sin repetir la misma
-  cuenta escrita distinto. Hay dos versiones: «Anuncio», con todas las fechas del
-  ciclo, y «Recordatorio», solo con el próximo encuentro y su tema y su lectura. El
-  botón copia; si el navegador no deja, te deja el texto seleccionado. El link de la
-  reunión **no sale nunca** y las notas internas de Difusión tampoco. · **Dónde:**
-  Formulario, sección «Texto para publicar».
-
-- **`correr-la-fecha-de-un-encuentro`** — *Correr un encuentro de fecha ya no pide
-  pelear con el almanaque*. Cada encuentro tiene cuatro botones —un día o una semana,
-  adelante o atrás— que mueven el inicio y el fin juntos. Y si escribís la fecha a
-  mano, abajo dice en qué día de la semana cae y cuánto dura, que era lo único que
-  había que ir a mirar al calendario. Cambiar el inicio ya no obliga a corregir el
-  fin. · **Dónde:** Formulario → Encuentros.
-
-- **`vista-previa-abierta`** — *La vista previa del evento está a la vista*. La sección
-  del final del formulario arranca abierta: ahí se ve el título, la ubicación y el
-  texto completo del evento tal como lo va a ver quien esté suscrito al calendario. Si
-  la cerrás, queda cerrada la próxima vez. · **Dónde:** Formulario → Vista previa.
-
-- **`duplicar-elegir-que-se-copia`** — *Al duplicar podés elegir qué se copia*.
-  «Duplicar» ahora pregunta antes: viene todo tildado, como hasta ahora, y destildás lo
-  que sea de la edición anterior — la descripción, los temas de cada encuentro, el
-  material, las imágenes, el cupo o las etiquetas. Las notas internas de difusión y las
-  cuentas a arrobar vienen destildadas: son trabajo de la otra edición y no se ven sin
-  abrir el acordeón. Solo aparecen las casillas de lo que la actividad tiene cargado. ·
-  **Dónde:** Listado, menú «⋯» → «Duplicar».
-
-- **`cupo-completo`** — *Ahora podés avisar que una actividad se llenó*. En el menú «⋯»
-  del listado hay «Marcar cupo completo»: lo dice en el sitio y en el evento del
-  calendario de cada encuentro, así que quien ya se había suscripto al calendario se
-  entera sin que le avises. Es un toque, sin abrir el formulario, y si se libera un
-  lugar el mismo menú lo saca. El contacto de inscripción **no se esconde**: queda a la
-  vista con el cartel al lado, porque siempre hay quien quiere anotarse por si se cae
-  alguien. · **Dónde:** Listado de actividades, menú «⋯» de cada fila.
-
-- **`libro-presentado`** — *En una presentación o una charla ya se carga el libro*.
-  El título de la obra tiene su propio campo, así que no hace falta meterlo en la
-  descripción: se muestra aparte, sale en el evento del calendario y quien busque el
-  nombre del libro encuentra la actividad. El autor se completa solo si es distinto
-  de la persona invitada. · **Dónde:** Formulario, sección «Quién».
-
-- **`borradores-y-el-fin-de-sesion`** — *(afinar la novedad del autoguardado, no una
-  entrada nueva)*. La entrada `autoguardado-del-formulario` dice «se borra al salir»;
-  con B-203 es más cierto y conviene que diga **«se borra cuando se cierra la sesión,
-  la cierres vos o se cierre sola»**.
-
-- **`tipo-libreria-a-la-calle`** — *Hay un tipo nuevo: «Librería a la calle»*. Para
-  cuando una librería saca los libros a la vereda, se instala en un bar o hace algo
-  en la calle. Como «Feria», viene marcada como ciclo: cargá un encuentro por
-  jornada. · **Dónde:** Formulario, campo «Tipo de actividad».
-
-- **`regenerar-no-borra-los-temas`** — *Regenerar las fechas ya no borra los temas
-  ni las lecturas*. «Generar N encuentros» recalcula solo las fechas: los temas, las
-  lecturas y las cancelaciones que hayas cargado se conservan. Antes había que
-  volver a tipear todo, que en un club de ocho encuentros era lo más caro. ·
-  **Dónde:** Formulario, sección «Encuentros».
-
-- **`generador-dice-que-es-cada-campo`** — *El generador de encuentros dice qué es
-  cada campo*. Los dos campos de «Generar N encuentros» ahora se llaman «Cuántos
-  encuentros» y «Cada cuántos días», y el texto de al lado aclara que 7 es una vez
-  por semana y que para días seguidos —una feria de varias jornadas— va 1. ·
-  **Dónde:** Formulario, sección «Encuentros», botón «Generar N encuentros…».
-
-- **`galeria-de-imagenes`** — *Ahora una actividad puede tener varias imágenes*.
-  Hasta cuatro, cada una con un epígrafe opcional, y una marcada como portada: esa
-  es la que se ve al compartir el link. Se pegan direcciones de imágenes que ya
-  estén publicadas en otro lado y se ven al momento de pegarlas. Subir fotos desde
-  el dispositivo todavía no está. · **Dónde:** Formulario de una actividad, sección
-  «Opcional».
-
+**El nombre del proyecto quedó decidido: «Agenda LEH — Leer, Escribir, Hacer»** (DEC-6
+#3), que es lo que desbloquea el sitio público. Falta registrar el dominio.
 
 ### B-167 · La galería de imágenes: el modelo y el editor de URLs
 

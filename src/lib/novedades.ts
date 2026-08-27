@@ -57,6 +57,134 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cierres-de-inscripcion-en-el-calendario',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'El calendario te avisa de las inscripciones que cierran',
+    detalle:
+      'La fecha de cierre aparece como un marcador en su día, en celeste y con borde punteado, ' +
+      'así no se confunde con un encuentro. Y si una inscripción ya cerró y la actividad sigue ' +
+      'publicada, sale un aviso arriba con el nombre y el día. Lo que marcaste como completo no ' +
+      'aparece en ese aviso, porque no hay nada que hacer.',
+    donde: 'Listado de actividades → botón «Calendario»',
+  },
+  {
+    id: 'texto-para-redes',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Ya no hace falta escribir el posteo a mano',
+    detalle:
+      'La sección «Texto para publicar» arma el texto con lo que cargaste y al final arroba a ' +
+      'las cuentas de «Arrobar al publicar», más el Instagram del organizador y de quien está al ' +
+      'frente, sin repetir la misma cuenta escrita distinto. Hay dos versiones: «Anuncio», con ' +
+      'todas las fechas, y «Recordatorio», con el próximo encuentro. El link de la reunión no ' +
+      'sale nunca.',
+    donde: 'Formulario, sección «Texto para publicar»',
+  },
+  {
+    id: 'correr-la-fecha-de-un-encuentro',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Correr un encuentro de fecha ya no pide pelear con el almanaque',
+    detalle:
+      'Cada encuentro tiene cuatro botones —un día o una semana, adelante o atrás— que mueven el ' +
+      'inicio y el fin juntos. Y si escribís la fecha a mano, abajo dice en qué día de la semana ' +
+      'cae y cuánto dura, que era lo único que había que ir a mirar al calendario. Cambiar el ' +
+      'inicio ya no obliga a corregir el fin.',
+    donde: 'Formulario, sección «Encuentros»',
+  },
+  {
+    id: 'duplicar-elegir-que-se-copia',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Al duplicar podés elegir qué se copia',
+    detalle:
+      '«Duplicar» ahora pregunta antes: viene todo tildado, como hasta ahora, y destildás lo que ' +
+      'sea de la edición anterior. Las notas internas de difusión y las cuentas a arrobar vienen ' +
+      'destildadas: son trabajo de la otra edición y no se ven sin abrir el acordeón. Solo ' +
+      'aparecen las casillas de lo que la actividad tiene cargado.',
+    donde: 'Listado, menú «⋯» → «Duplicar»',
+  },
+  {
+    id: 'cupo-completo',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Ahora podés avisar que una actividad se llenó',
+    detalle:
+      'En el menú «⋯» del listado hay «Marcar cupo completo»: lo dice en el evento del calendario ' +
+      'de cada encuentro, así que quien ya se había suscripto se entera sin que le avises. Es un ' +
+      'toque, sin abrir el formulario. El contacto de inscripción no se esconde: queda a la vista ' +
+      'con el cartel al lado, porque siempre hay quien quiere anotarse por si se cae alguien.',
+    donde: 'Listado de actividades, menú «⋯» de cada fila',
+  },
+  {
+    id: 'libro-presentado',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'En una presentación o una charla ya se carga el libro',
+    detalle:
+      'El título de la obra tiene su propio campo, así que no hace falta meterlo en la ' +
+      'descripción: se muestra aparte, sale en el evento del calendario y quien busque el nombre ' +
+      'del libro encuentra la actividad. El autor se completa solo si es distinto de la persona ' +
+      'invitada.',
+    donde: 'Formulario, sección «Quién»',
+  },
+  {
+    id: 'galeria-de-imagenes',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Una actividad puede tener varias imágenes',
+    detalle:
+      'Hasta cuatro, cada una con un epígrafe opcional, y una marcada como portada: esa es la que ' +
+      'se ve al compartir el link. Se pegan direcciones de imágenes que ya estén publicadas en ' +
+      'otro lado y se ven al momento de pegarlas. Subir fotos desde el dispositivo todavía no ' +
+      'está.',
+    donde: 'Formulario, sección «Opcional»',
+  },
+  {
+    id: 'regenerar-no-borra-los-temas',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Regenerar las fechas ya no borra los temas ni las lecturas',
+    detalle:
+      '«Generar N encuentros» recalcula solo las fechas: los temas, las lecturas y las ' +
+      'cancelaciones que hayas cargado se conservan. Antes había que volver a tipear todo, que en ' +
+      'un club de ocho encuentros era lo más caro de rehacer.',
+    donde: 'Formulario, sección «Encuentros»',
+  },
+  {
+    id: 'generador-dice-que-es-cada-campo',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'El generador de encuentros dice qué es cada campo',
+    detalle:
+      'Los dos campos de «Generar N encuentros» ahora se llaman «Cuántos encuentros» y «Cada ' +
+      'cuántos días», y el texto de al lado aclara que 7 es una vez por semana y que para días ' +
+      'seguidos —una feria de varias jornadas— va 1.',
+    donde: 'Formulario, sección «Encuentros», botón «Generar N encuentros…»',
+  },
+  {
+    id: 'tipo-libreria-a-la-calle',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'Hay un tipo nuevo: «Librería a la calle»',
+    detalle:
+      'Para cuando una librería saca los libros a la vereda, se instala en un bar o hace algo en ' +
+      'la calle. Como «Feria», viene marcada como ciclo: cargá un encuentro por jornada.',
+    donde: 'Formulario, campo «Tipo de actividad»',
+  },
+  {
+    id: 'vista-previa-abierta',
+    fecha: '2026-08-27',
+    version: '1.3.0',
+    titulo: 'La vista previa del evento está a la vista',
+    detalle:
+      'La sección del final del formulario arranca abierta: ahí se ve el título, la ubicación y ' +
+      'el texto completo del evento tal como lo va a ver quien esté suscrito al calendario. Si la ' +
+      'cerrás, queda cerrada la próxima vez.',
+    donde: 'Formulario, sección «Vista previa del evento»',
+  },
+  {
     id: 'autoguardado-del-formulario',
     fecha: '2026-08-26',
     version: '1.2.0',
