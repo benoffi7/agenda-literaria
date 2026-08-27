@@ -345,9 +345,18 @@ const toPublic = (a) => ({
 
 ### 5.3 Reglas de Firestore
 
+> ⚠️ **La regla de lectura de `/actividades` de este bloque se cambió — ver D-128
+> en [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
+> `allow read: if esAdmin();`. **No la restaures.** El `allow read` condicionado a
+> `estado == 'publicado'` filtraba: una regla de Firestore es todo-o-nada por
+> documento, así que autorizaba entregar el documento **entero** —link de la
+> reunión, `difusion`, uids, `storagePath`— y no la vista de `toPublic`. Se
+> reprodujo contra el emulador el 2026-08-27. El bloque de abajo queda como
+> estaba escrito, para que la entrada de D-128 se lea contra su original.
+
 ```js
 match /actividades/{id} {
-  allow read:  if resource.data.estado == 'publicado';
+  allow read:  if resource.data.estado == 'publicado';   // ← D-128: hoy es esAdmin()
   allow write: if request.auth.token.admin == true;
 }
 match /opciones/{campo} {
@@ -362,7 +371,10 @@ El custom claim se setea una vez con el Admin SDK desde un script local:
 **Ojo:** `allow read` con condición sobre `resource.data` obliga a que toda query
 pública incluya `where('estado','==','publicado')`, si no Firestore rechaza la
 query entera. Con el enfoque de JSON estático casi no afecta, pero tenerlo
-presente si se agrega alguna lectura en vivo.
+presente si se agrega alguna lectura en vivo. (Es la trampa 7 del §13, y con
+D-128 dejó de aplicar a `/actividades`: sin lectura anónima, no hay query pública
+que se rechace. `/opciones/*` sigue con `allow read: if true` y no tiene
+condición, así que tampoco.)
 
 ### 5.4 `firebase-admin` nunca al cliente
 

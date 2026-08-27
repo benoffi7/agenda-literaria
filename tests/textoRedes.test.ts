@@ -138,7 +138,7 @@ const act = (over: Partial<ActividadParaRedes> = {}): ActividadParaRedes =>
       completo: false,
     },
     arancel: { tipo: 'a-la-gorra', notas: 'Dos cuotas, incluye el material' },
-    organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
+    organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.example' },
     tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: 'mmoreno' },
     difusion: { arrobar: ['@CasaBrandon', 'editorialdelamona'], notas: 'coordinar con prensa' },
     ...over,

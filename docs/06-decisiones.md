@@ -209,7 +209,7 @@ El usuario está avisado.
 
 ---
 
-## D-13 · `dispararRebuild` escrita pero sin desplegar
+## D-13 · `dispararRebuild` escrita pero sin desplegar — desplegada desde el 2026-08-25
 
 **Motivo:** es un `onSchedule` cada 5 minutos y todavía no existen el sitio
 público ni el workflow de Actions que tendría que disparar. Desplegarla sería
@@ -222,6 +222,17 @@ hay de dónde leer.
 Sigue sin desplegarse, pero por otro motivo: le faltan credenciales que solo
 puede crear el dueño (el PAT y la key de CI, §5.4). Los pasos están en
 [`08-operacion.md`](08-operacion.md).
+
+**Cierre (B-20, 2026-08-25).** Está desplegada, y el lazo se verificó **de punta a
+punta** ese mismo día: un `repository_dispatch` a mano hizo correr «Build y deploy
+del sitio» y publicó. Las seis Functions están `ACTIVE` — relevado con `gcloud`,
+ver [`02-infraestructura.md`](02-infraestructura.md) — y
+[`08-operacion.md`](08-operacion.md) pasó de ser la lista de lo que faltaba a ser
+el runbook para rearmarlo en un proyecto nuevo o rotar el PAT.
+
+El motivo original de esta decisión sigue siendo válido como razonamiento: no se
+paga un schedule antes de que exista quien lo consuma. Lo que cambió es que ya
+existe.
 
 ---
 
@@ -546,7 +557,20 @@ campo propio, que sí es verificable desde las reglas. Está anotado en el
 
 ---
 
-## D-29 · La aprobación se hace por script, no por UI
+## D-29 · La aprobación se hace por script, no por UI — superada por B-06/B-25
+
+> **Superada el 2026-08-24.** La pantalla de administración de taxonomías se
+> construyó (B-06 y B-25): `TaxonomiasPanel.tsx` tiene un botón **Aprobar** por
+> fila pendiente —transaccional, y rechaza las `fijo`— y uno de **Borrar**. Ver
+> [`04-funcionalidades.md`](04-funcionalidades.md). El script sigue sirviendo
+> desde la terminal, pero ya no es el único camino, y el «costo aceptado» de más
+> abajo dejó de aplicar: se puede aprobar desde el teléfono.
+>
+> Con D-104 (mismo día) las opciones nuevas además nacen aprobadas, así que la
+> pantalla hoy importa sobre todo para lo que quedó pendiente de antes de esa
+> decisión. El resto de la entrada queda como estaba: el razonamiento de por qué
+> el desplegable de un formulario de carga era el lugar equivocado sigue siendo el
+> motivo por el que la pantalla es una pantalla aparte.
 
 **Decisión:** `scripts/aprobar-opciones.mjs` (`--listar`, aprobar por
 `campo`+`slug`, `--backfill`). El panel **no** tiene pantalla de aprobación.
@@ -2030,7 +2054,8 @@ actividad ya está escrita; devolver error haría que el segundo intento choque
 contra su propio slug (`slugDisponible` ya lo ve tomado) sobre algo que en
 realidad se guardó bien. El caso de uso lo informa en su resultado
 (`etiquetasSinRegistrar`) y hoy nadie lo muestra en pantalla — queda anotado
-como **B-167**.
+como **B-177** (decía «B-167» hasta el 2026-08-27; ese número se reasignó a la
+galería de imágenes).
 
 **Alternativa descartada:** las dos escrituras en una sola transacción. Son
 documentos de colecciones distintas y `upsertOpcion` ya corre su propia
@@ -2951,3 +2976,72 @@ verlo y sacarlo.
 
 **Lo que esta decisión NO resuelve:** el cartel en el sitio público. Es B-01, y el dato
 ya viaja en el `events.json` esperándolo.
+
+---
+
+## D-128 · Solo el admin lee `/actividades` — desvío del §5.3
+
+**Contexto.** Lo encontró el `auditor-privacidad` en el barrido del 2026-08-27, y se
+reprodujo contra el emulador antes de tocar nada. El §5.3 del `CLAUDE.md` prescribe:
+
+```js
+match /actividades/{id} {
+  allow read:  if resource.data.estado == 'publicado';
+  allow write: if request.auth.token.admin == true;
+}
+```
+
+Esa regla es coherente con el resto del diseño —§2.4 y §2.5 dicen que el público hace
+**un** fetch de `events.json` y **cero** lecturas de Firestore—, así que se leía como
+inofensiva: nadie del lado público la iba a usar. El problema es que **una regla de
+Firestore no proyecta**. Es todo-o-nada por documento: autoriza entregar el documento,
+no una vista de él.
+
+**Lo que pasaba.** Con la API key web —pública por diseño, en el bundle de `/admin` y
+versionada en `.env.production` de un repo **público**— una query anónima con el
+`where('estado','==','publicado')` devolvía los documentos enteros. La query estaba
+permitida porque cada documento devuelto cumple la condición. Volvía la lista completa
+del §5.1:
+
+| Campo | §5.1 dice |
+|---|---|
+| `online.url` con `urlPublica:false` | el link de la reunión no se publica nunca (trampa 5) |
+| `difusion.notas`, `difusion.arrobar` | trabajo interno |
+| `material.items[].url` con `publico:false` | solo título y tipo, sin URL |
+| `createdBy` / `updatedBy` | uids |
+| `sesiones[].calendarEventId` | dato de máquina |
+| `imagenes[].storagePath` | dibuja el bucket |
+
+O sea: `toPublic`, `construirDescripcion`, el barrido de centinelas de B-196 y la tabla
+de las cuatro salidas cuidaban una puerta que tenía otra abierta al lado. Y agrava que
+`toPublic` **todavía no tiene consumidor** (B-106 abierto, no hay `events.json` en
+`dist/`): el 100 % de lo que se alcanzaba desde afuera entraba por acá y no por la
+proyección.
+
+**Decisión:** `allow read: if esAdmin();`.
+
+**Por qué no rompe nada.** El panel siempre está logueado. El sitio público (B-01) sirve
+el `events.json` que produce el build con el Admin SDK, que no pasa por reglas. No hay
+ninguna lectura anónima en el repo hoy.
+
+**Alternativa descartada: partir el documento.** Mover los campos privados a una
+subcolección `privado/{doc}` con `allow read: if esAdmin()` conservaría la lectura en
+vivo de lo publicado. Se descartó **por ahora** porque nada la necesita: agregaría una
+lectura más por actividad y una escritura transaccional en el panel para sostener una
+capacidad que no se usa. **Es el camino correcto el día que haga falta lectura en vivo
+desde el cliente** — lo que no hay que hacer es volver a la regla de arriba.
+
+**Lo que se aprendió, y es lo que vale de esta entrada.** El `it` que fijaba el
+comportamiento se llamaba `it('un anónimo lee lo publicado')` y estaba **en verde**. No
+estaba mal escrito: fijaba fielmente lo que el §5.3 prescribía. Un test puede estar
+verde, ser correcto respecto de su especificación, y estar certificando una fuga —
+porque lo que estaba mal era la especificación. Por eso el reemplazo tiene control
+positivo (`el admin SÍ lee la publicada, con sus campos privados adentro`): sin él, los
+dos `it` de rechazo darían verde sobre una colección vacía.
+
+De paso **cierra B-172**: escribir la consulta de colección en el test de reglas era
+exactamente la red que le faltaba a la trampa 7 del §13. Ver
+[`15-mapa-de-trampas.md`](15-mapa-de-trampas.md).
+
+**El §5.3 del `CLAUDE.md` queda con un puntero a esta entrada**, para que el próximo que
+lo lea completo —como pide el encabezado— no restaure la regla de buena fe.

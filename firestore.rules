@@ -14,18 +14,48 @@ service cloud.firestore {
     }
 
     match /actividades/{id} {
-      // Ojo (§5.3): esta condición obliga a que toda query pública incluya
-      // where('estado','==','publicado') o Firestore rechaza la query entera.
-      //
-      // El `|| esAdmin()` es un agregado sobre la regla del documento: sin él
-      // el panel no puede listar sus propios borradores.
-      //
-      // Cuando la lectura se deniega, el emulador reporta "evaluation error"
-      // en vez de permission-denied, porque en su primera pasada `resource`
-      // todavía no está cargado y `resource.data` explota. Es cosmético: las
-      // cuatro evaluaciones deniegan igual. Intentar blindarlo con
-      // `resource != null` o `.get('estado','')` no lo evita.
-      allow read: if esAdmin() || resource.data.estado == 'publicado';
+      /*
+       * Solo el admin lee — D-128, desvío deliberado del §5.3 del `CLAUDE.md`,
+       * que prescribía `allow read: if resource.data.estado == 'publicado'`.
+       *
+       * Esa condición era coherente con §2.4/§2.5 (el público hace UN fetch de
+       * `events.json` y CERO lecturas de Firestore), pero dejaba la puerta
+       * abierta igual — y **las reglas son todo-o-nada por documento: no
+       * filtran campos**. Con la API key web —pública por diseño y versionada
+       * en `.env.production` de un repo público— un anónimo hacía la query con
+       * el `where('estado','==','publicado')` y recibía el documento ENTERO:
+       * `online.url` con `urlPublica:false`, `difusion.notas` y `arrobar`, la
+       * URL del material con `publico:false`, `createdBy`/`updatedBy`,
+       * `sesiones[].calendarEventId` y `imagenes[].storagePath`. Es la lista
+       * completa del §5.1, salteando `toPublic` por completo.
+       *
+       * O sea: toda la maquinaria de proyección estaba cuidando una puerta que
+       * tenía otra abierta al lado. Se reprodujo contra el emulador antes de
+       * tocar esto, y los dos `it` de `actividades.integracion.test.ts` lo
+       * fijan — uno por documento y otro por query, porque son dos permisos
+       * distintos.
+       *
+       * No rompe nada: el panel siempre está logueado, y el sitio público
+       * (B-01) sirve el `events.json` que produce el build con el Admin SDK. Si
+       * alguna vez hace falta lectura en vivo desde el cliente, el camino **no**
+       * es volver a esta regla: es sacar los campos privados del documento (una
+       * subcolección `privado/{doc}` con `allow read: if esAdmin()`), porque una
+       * regla no puede proyectar.
+       *
+       * Nota del emulador, que importa para escribir los tests: cuando la
+       * **lectura** se deniega, el `message` de la `FirebaseError` no es
+       * "Missing or insufficient permissions" —eso es de las escrituras— sino la
+       * traza de evaluación (`false for 'get' @ L50`), o directamente
+       * `Property estado is undefined on object` cuando la regla no se puede
+       * evaluar. Pero el **`code` sí es `permission-denied`** en todos esos
+       * casos, y es `unavailable` si el emulador no está.
+       *
+       * Por eso los tests de lectura afirman el `code` y no el mensaje
+       * (`rechazadaPorPermisos` en `actividades.integracion.test.ts`): un
+       * `rejects.toThrow()` pelado lo satisface un emulador caído, y un matcher
+       * por mensaje falla contra la traza. Se probó en las dos direcciones.
+       */
+      allow read: if esAdmin();
       allow write: if esAdmin();
 
       // §12 — historial de versiones. Solo lo escribe la Function con Admin SDK.

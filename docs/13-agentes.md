@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las cuatro salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las cinco salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -105,15 +105,28 @@ código.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **cuatro salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **cinco salidas públicas** y una sola regla
 (§5.1), y cada salida la produce un archivo distinto: `toPublic.ts` para el
 `events.json`, `calendario.js` para el evento de Calendar, `reportes.js` para el
-issue de GitHub (el repo es público), `analytics-eventos.ts` para GA4 — la más
-estricta, donde no sale contenido ni con permiso del dueño. El agente sabe qué
-archivo produce cada una, qué nunca sale, y las excepciones que cuestan de
-recordar (`online.urlPublica` vale para el JSON y el calendario pero **nunca**
-para la analítica; el historial de versiones guarda el documento entero sin
-proyectar a propósito).
+issue de GitHub (el repo es público), `analytics-eventos.ts` para GA4 —la más
+estricta, donde no sale contenido ni con permiso del dueño— y `textoRedes.ts`
+para el texto que se copia a redes, que es la más **irreversible** de todas: un
+posteo pegado en Instagram ya está copiado.
+
+El agente sabe qué archivo produce cada una, qué nunca sale, y las excepciones que
+cuestan de recordar (`online.urlPublica` vale para el JSON y el calendario pero
+**nunca** para la analítica ni para el posteo; el historial de versiones guarda el
+documento entero sin proyectar a propósito).
+
+> **La quinta salida faltaba en la ficha del agente hasta el 2026-08-27**, y el
+> agujero era del peor tipo: `textoRedes.ts` está bien cubierto por sus tests, así
+> que ningún test fallaba — lo que faltaba era que **el índice del agente la
+> nombrara**, y su `description` no incluía el archivo, así que un cambio que
+> interpolara un campo nuevo en el posteo no lo invocaba. Lo encontró el
+> `auditor-documentacion` auditando el cambio que arregló las cinco salidas en
+> `07-seguridad.md` y se olvidó de espejarlo acá. Moraleja para la próxima salida
+> nueva: son **tres** lugares (el documento de seguridad, el cuerpo del agente y
+> su `description`), y el tercero es el que decide si el agente se entera.
 
 **Cuándo se invoca.** Antes de cerrar cualquier cambio que toque una salida, el
 modelo, el schema, las reglas o el bundle. Su `description` nombra los archivos
@@ -121,7 +134,7 @@ para que Claude lo elija solo.
 
 **Qué agrega sobre los tests.** Los tests verifican los campos que conocen. Este
 agente verifica tres cosas que ningún test puede: que un **campo nuevo** tenga
-las cuatro celdas decididas, que la **forma** de la proyección siga siendo una
+las cinco celdas decididas, que la **forma** de la proyección siga siendo una
 whitelist (un `...actividad` no filtra nada hoy y publica el campo de mañana), y
 que exista un test que fije la decisión. No corre la suite: eso lo hace el CI.
 
@@ -130,7 +143,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las cuatro salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las cinco salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -228,7 +241,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las cuatro salidas **antes** de escribir código, que
+arranca obligando a decidir las cinco salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -300,7 +313,11 @@ arreglo, es el detector.
 | El corte del bundle del panel (`db` de `firestore-client`, no de `firebase-client`) | `bundle-panel.test.ts`, cinco casos sobre el grafo de imports. El agente **no** lo re-verifica: solo mira lo que ese test no ve (la cadena de imports y el tercer chunk) |
 | La guarda anti-loop y el diff por id de sesión | `calendario.test.ts` (`planificar` — guarda anti-loop, diff por id, cambio global, y "el payload propaga los campos nuevos") |
 | slugify y la deduplicación de taxonomías | `slugify.test.ts` y `opciones.integracion.test.ts` contra el emulador |
-| Que las reglas rechacen lo anónimo y lo que no es admin | `actividades.integracion.test.ts` y `reportes.integracion.test.ts`, con `EXIGIR_EMULADOR=1` en CI para que no se salteen en silencio |
+| Que las reglas rechacen lo anónimo y lo que no es admin | `actividades.integracion.test.ts` y `reportes.integracion.test.ts`, con `EXIGIR_EMULADOR=1` en CI para que no se salteen en silencio. **Esta fila decía menos de lo que parecía hasta el 2026-08-27:** los casos anónimos eran de **escritura**, y del lado de la lectura había un `it('un anónimo lee lo publicado')` en verde que estaba fijando una fuga (B-208, D-128). Hoy hay tres `it` de lectura —por documento, por query, y un control positivo— y el archivo empuja las reglas del checkout al emulador con `cargarReglas`, que antes no hacía |
+| Que ningún archivo versionado publique un uid de Firebase ni una casilla de correo personal | `sin-datos-personales.test.ts` (B-209). Es **angosto a propósito**: mira la forma de un uid y los proveedores de correo gratuitos. Un mail en dominio propio puede ser un fixture inventado o el real de una sede, y el test no puede distinguirlos sin versionar la lista de dominios reales — o sea, el dato que no queremos versionar. **Esa mitad sí es del `auditor-privacidad`** |
+| Que ningún campo privado del modelo llegue al `events.json` ni al evento de Calendar cuando se agrega un campo nuevo | `barrido-de-salidas-publicas.test.ts` (B-196): inyecta centinelas y los busca en las dos salidas, en las dos direcciones, con un fixture que se autoexige actualizado campo por interfaz. **Le sacó trabajo al `auditor-privacidad`**, que ya no tiene que reportar la instancia — solo el campo nuevo que el fixture todavía no ancló |
+| Que un trigger nuevo con efecto duplicable nazca sin guarda, y las demás clases de bug del repo | `clases-de-bug.test.ts` (B-135). Descubre los triggers **del fuente** en vez de listarlos, así que un trigger nuevo entra al chequeo solo |
+| Que el mapa de trampas → test → archivo diga la verdad | `mapa-de-trampas.test.ts` (B-119). Lee la lista de trampas del propio `CLAUDE.md` §13 y **calcula del repo** cuáles quedaron sin red, en las dos direcciones. Es el motivo por el que el `auditor-trampas` ya no reconstruye esa tabla con `grep` |
 | Qué deployar según lo que cambió | `que-deployar.test.ts`. El skill **usa** el script, no reimplementa la decisión |
 | Que `firebase-admin` no se importe fuera de su propia puerta | `build-credenciales.test.ts`, que recorre todo `src/`. Se le sacó la línea al `auditor-privacidad` cuando ese test existió (`1.2.0`): el agente ahora mira solo lo que el barrido no ve — imports dinámicos y el `ssr.external` de la config |
 | Que el borrador autoguardado no salga del navegador ni pase por la analítica | `autoguardado.test.ts`, que lee el código del módulo y del hook con los comentarios afuera. **Ojo con la forma del aserto:** buscar un nombre con `toContain` lo satisface el `import`, así que los dos que fijan los saneadores del punto de recuperación afirman la **llamada**, con los espacios colapsados (D-124) |

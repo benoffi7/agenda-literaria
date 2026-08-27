@@ -55,7 +55,7 @@ const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   inscripcion: {
     requiere: true,
     via: 'mail',
-    destino: 'hola@casabrandon.org',
+    destino: 'hola@casabrandon.example',
     cupo: 12,
     cierra: '2025-08-30T00:00',
     // B-97 — el original está completo, así que la copia tiene algo que NO
@@ -366,7 +366,7 @@ describe('duplicar — qué se copia se elige (B-199)', () => {
     expect(copia.sesiones.map((s) => s.tema)).toEqual(o.sesiones.map((s) => s.tema));
     expect(copia.material.items).toHaveLength(1);
     expect(copia.imagenes).toHaveLength(1);
-    expect(copia.inscripcion.destino).toBe('hola@casabrandon.org');
+    expect(copia.inscripcion.destino).toBe('hola@casabrandon.example');
     expect(copia.inscripcion.cupo).toBe(12);
     expect(copia.tags).toEqual(['narrativa']);
   });

@@ -648,7 +648,7 @@ describe('B-81 · el título del reporte también se redacta (§5.1, trampa 5)',
     });
 
   it('tapa un mail en el título', () => {
-    expect(issue('No le llega el mail a hola@casabrandon.org').title).toBe(
+    expect(issue('No le llega el mail a hola@casabrandon.example').title).toBe(
       '[bug] No le llega el mail a «mail oculto»',
     );
   });

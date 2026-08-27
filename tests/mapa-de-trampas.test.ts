@@ -1,7 +1,7 @@
 /**
  * El mapa trampa → test → archivo — B-119.
  *
- * `docs/15-mapa-de-trampas.md` dice qué test cubre cada una de las diez trampas
+ * `docs/15-mapa-de-trampas.md` dice qué test cubre cada una de las trampas
  * del `CLAUDE.md` §13. Un documento así, sin nada que lo verifique, envejece
  * peor que el `grep` que vino a reemplazar: el `grep` al menos mira el repo de
  * hoy. Esto lo verifica contra el repo en cada corrida.
@@ -66,7 +66,7 @@ const testsQueNombran = (numero: number): string[] =>
   TESTS_VERSIONADOS.filter((f) => new RegExp(`trampa ${numero}\\b`, 'i').test(fuente(f)));
 
 describe('el mapa está completo — B-119', () => {
-  it('el §13 del CLAUDE.md se leyó y tiene diez trampas numeradas', () => {
+  it('el §13 del CLAUDE.md se leyó y sus trampas están numeradas de 1 a N', () => {
     // Si el parseo del §13 se rompiera, el mapa podría estar vacío y todo lo de
     // abajo pasaría por comparar dos listas vacías entre sí.
     expect(TRAMPAS_DEL_CLAUDE_MD.length).toBeGreaterThanOrEqual(10);
@@ -127,7 +127,7 @@ describe('el mapa dice la verdad sobre la red que hay — B-119', () => {
   it('la mayoría de las trampas tiene red', () => {
     // Control positivo del chequeo de arriba: si `testsQueNombran` dejara de
     // encontrar nada, "las descubiertas son las declaradas" se podría satisfacer
-    // declarando las diez, y el mapa quedaría en verde diciendo que no hay red
+    // declarando todas, y el mapa quedaría en verde diciendo que no hay red
     // en ninguna parte.
     const conRed = TRAMPAS_DEL_CLAUDE_MD.filter((n) => testsQueNombran(n).length > 0);
     expect(conRed.length).toBeGreaterThanOrEqual(TRAMPAS_DEL_CLAUDE_MD.length - 2);

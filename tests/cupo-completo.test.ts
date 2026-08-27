@@ -85,7 +85,7 @@ const taller = (over: Partial<Actividad> = {}): Actividad =>
       geo: null,
     },
     online: null,
-    inscripcion: { requiere: true, via: 'mail', destino: 'hola@brandon.org', cupo: 12, cierra: null },
+    inscripcion: { requiere: true, via: 'mail', destino: 'hola@brandon.example', cupo: 12, cierra: null },
     arancel: { tipo: 'gratis', notas: '' },
     material: { tiene: false, items: [] },
     difusion: { arrobar: [], notas: '' },
@@ -111,7 +111,7 @@ const formLleno = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   ...formVacio(),
   titulo: 'Taller de crónica',
   slug: 'taller-de-cronica',
-  inscripcion: { ...formVacio().inscripcion, requiere: true, via: 'mail', destino: 'hola@brandon.org', cupo: 12, completo: true },
+  inscripcion: { ...formVacio().inscripcion, requiere: true, via: 'mail', destino: 'hola@brandon.example', cupo: 12, completo: true },
   ...over,
 });
 

@@ -206,8 +206,10 @@ salen al público. La visibilidad solo necesita comparar igualdad. Ver
 [D-27](06-decisiones.md) y [`07-seguridad.md`](07-seguridad.md).
 
 Aprobar es una escritura más del documento, así que la autoridad es el claim
-`admin` (D-28). Se hace con `scripts/aprobar-opciones.mjs` — ver
-[`08-operacion.md`](08-operacion.md); todavía no hay UI en el panel (D-29).
+`admin` (D-28). Se hace desde la pantalla de administración de taxonomías del
+panel (B-06/B-25, botón «Aprobar») o con `scripts/aprobar-opciones.mjs` — ver
+[`08-operacion.md`](08-operacion.md). D-29, que decía que no había UI, quedó
+superada el 2026-08-24.
 
 ### Advertencia: las etiquetas se ven en público
 

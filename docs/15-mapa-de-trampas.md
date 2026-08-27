@@ -1,6 +1,6 @@
 # Mapa de trampas → test → archivo
 
-Las diez trampas conocidas del [`CLAUDE.md`](../CLAUDE.md) §13, con **dónde vive
+Las trampas conocidas del [`CLAUDE.md`](../CLAUDE.md) §13, con **dónde vive
 la regla** y **qué test la fija**. Cierra B-119.
 
 ## Para qué
@@ -11,7 +11,7 @@ reportar "sin red" sobre algo cubierto, o —peor— lo contrario. Acá la respu
 está escrita, y [`tests/mapa-de-trampas.test.ts`](../tests/mapa-de-trampas.test.ts)
 la verifica contra el repo en cada corrida:
 
-- que estén **las diez** (la lista se lee del §13, así que una trampa nueva en el
+- que estén **todas** (la lista se lee del §13, así que una trampa nueva en el
   `CLAUDE.md` rompe el test hasta que entre acá);
 - que los archivos citados existan;
 - que cada test citado **nombre su trampa** (`trampa N`), que es la convención
@@ -34,7 +34,7 @@ palabras `trampa N`.
 | 4 | `firebase-admin` en bundle cliente | `src/lib/firebase-admin.ts`, `src/pages/admin.astro` | `tests/bundle-panel.test.ts` |
 | 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
 | 6 | Taxonomías sin slugify | `src/lib/slugify.ts`, `src/lib/opciones.ts` | `tests/slugify.test.ts` |
-| 7 | Query pública sin `where('estado','==','publicado')` | `firestore.rules` | — **sin red** |
+| 7 | Query pública sin `where('estado','==','publicado')` | `firestore.rules` | `tests/actividades.integracion.test.ts` |
 | 8 | Olvidar el rebuild al cambiar `/opciones/*` | `functions/index.js`, `functions/rebuild.js` | `tests/costuras.test.ts`, `tests/clases-de-bug.test.ts` |
 | 9 | Cambio de sede que no propaga a las N sesiones | `functions/calendario.js` | `tests/calendario.test.ts` |
 | 10 | Slug mutable | `src/lib/schema.ts`, `src/lib/formulario/autoguardado.ts` | `tests/schema.test.ts`, `tests/autoguardado.test.ts` |
@@ -42,18 +42,52 @@ palabras `trampa N`.
 
 ## Sin red
 
-- **Trampa 7 · query pública sin `where('estado','==','publicado')`** — B-167.
+**Ninguna.** Las once tienen al menos un test que las nombra, y el test de este
+mapa lo calcula del repo: si alguna se queda sin red, esta sección tiene que
+volver a decirlo o el `it` rompe.
 
-  `tests/actividades.integracion.test.ts` prueba las reglas **por documento** (un
-  anónimo lee lo publicado, no lee un borrador), que es la mitad de abajo. Lo que
-  la trampa dice es otra cosa: con `allow read` condicionado a `resource.data`,
-  una **query** de colección sin el `where` se rechaza **entera** — no devuelve
-  el subconjunto visible. Es un modo de falla de la consulta, no del documento, y
-  hoy no hay ninguna consulta de colección en el test de reglas.
+### La trampa 7, y el intento de cerrarla que casi quedó en verde por el motivo equivocado
 
-  Todavía casi no muerde porque el público lee el `events.json` estático (§2.5).
-  Muerde el día que aparezca la primera lectura en vivo del sitio público (B-01),
-  que es exactamente cuando nadie se va a acordar del §5.3.
+Vale contarla completa, porque el error del medio es más instructivo que el
+arreglo.
+
+Estuvo declarada sin red hasta el 2026-08-27. El motivo escrito era correcto:
+`tests/actividades.integracion.test.ts` probaba las reglas **por documento** (un
+anónimo lee lo publicado, no lee un borrador), y la trampa habla de la **query**
+— con `allow read` condicionado a `resource.data`, una consulta de colección sin
+el `where` se rechaza entera en vez de devolver el subconjunto visible.
+
+**Primero apareció algo peor que la trampa.** Lo que nadie había mirado es la otra
+mitad de esa misma frase: la query **con** el `where` sí pasaba, y devolvía los
+documentos **crudos**. La auditoría de privacidad la encontró y se reprodujo
+contra el emulador: volvían `online.url` con `urlPublica:false`, `difusion`, la
+URL del material privado, los uids, el `calendarEventId` y el `storagePath` — la
+lista completa del §5.1, salteando `toPublic`. Se estaba esperando a B-01 para
+poner red sobre una regla que ya estaba filtrando (B-208, D-128).
+
+**Y acá el error, que duró una hora.** Al arreglar la fuga
+(`allow read: if esAdmin()`) se escribió una query anónima en el test de reglas,
+se la vio pasar, y se dio la trampa 7 por cerrada. **Pasaba por el motivo
+equivocado:** sin ninguna condición sobre `resource.data`, *toda* query anónima se
+rechaza — con `where` y sin `where`. Lo que la trampa describe es un
+**contraste** entre las dos, y ese contraste no lo ejercitaba nada. Lo encontró el
+`auditor-trampas` revisando el propio cambio.
+
+Peor: el test de este mapa **no podía notarlo.** `testsQueNombran(7)` exige que
+algún archivo de `tests/` contenga el string `trampa 7`, y eso lo satisface un
+comentario. El chequeo verifica que exista una red, no que la red pruebe el
+mecanismo — está dicho en «Cobertura parcial» más abajo, y este es el caso más
+caro que dio hasta ahora, porque el falso verde venía envuelto en un arreglo real.
+
+**La red de verdad** es el `describe('trampa 7 — el mecanismo, con una regla
+condicionada')`, que carga **su propio ruleset** con `allow read: if
+resource.data.estado == 'publicado'` en un projectId aparte y afirma las dos
+mitades: la query con el `where` devuelve el subconjunto, la query sin el `where`
+se rechaza entera. Tiene control positivo y **se verificó invirtiendo la
+aserción**. Queda independiente de cuál sea la regla viva en `/actividades`: el
+día que B-01 necesite lectura en vivo y alguien vuelva a condicionar por
+`resource.data` —la subcolección `privado/` de D-128 o cualquier otra forma—, el
+mecanismo ya está fijado. **Cierra B-172.**
 
 ### La trampa 11, que se descubrió en producción
 

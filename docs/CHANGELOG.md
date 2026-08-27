@@ -1,5 +1,278 @@
 # Changelog
 
+## 1.3.1 — 2026-08-27
+
+**Auditoría completa del repo: los tres auditores más una remedición de la salud
+del código.** Salieron dos P0, los dos de privacidad y los dos arreglados acá.
+`1.3.1` y no `1.4.0` porque no cambia nada de lo que se puede hacer con el panel —
+pero sí lleva versión propia, y no entra bajo la de arriba, porque cambia las
+reglas de Firestore que se despliegan a producción y eso tiene que ser rastreable
+a un número.
+
+**Ninguna entrada en `novedades.ts`**, y es a propósito: quien carga actividades
+no ve ninguna diferencia. Esa lista no es un registro de trabajo (D-117).
+
+### P0 · Un anónimo leía el documento crudo de toda actividad publicada — B-208, D-128
+
+`firestore.rules` decía `allow read: if esAdmin() || resource.data.estado ==
+'publicado'`, que es **lo que prescribe el §5.3 del `CLAUDE.md`**. Una query
+anónima con el `where('estado','==','publicado')` devolvía los documentos enteros:
+el link de la reunión con `urlPublica:false`, `difusion.notas` y `arrobar`, la URL
+del material privado, los uids, el `calendarEventId` y el `storagePath`. La lista
+completa del §5.1, salteando `toPublic`.
+
+**Se reprodujo contra el emulador antes de tocar nada**, con las reglas de este
+checkout cargadas por la API del emulador. Y era explotable en producción: el repo
+es público, `.env.production` está versionado con el `projectId` y la API key, y
+`push-main.yml` deploya las reglas tal cual.
+
+El error de fondo, que es lo que vale de este cambio: **una regla de Firestore no
+proyecta.** Es todo-o-nada por documento. La regla del §5.3 se leía como inofensiva
+porque §2.4/§2.5 dicen que el público hace un fetch de `events.json` y cero
+lecturas de Firestore — pero *permitir* una lectura y *necesitarla* son cosas
+distintas, y toda la maquinaria de proyección estaba cuidando una puerta que tenía
+otra abierta al lado. Agrava que `toPublic` todavía no tiene consumidor (B-106):
+el 100 % de lo alcanzable desde afuera entraba por ahí.
+
+Arreglo: `allow read: if esAdmin();`. La alternativa —partir el documento en una
+subcolección `privado/`— queda escrita en D-128 para el día que haga falta lectura
+en vivo desde el cliente.
+
+**Y el detalle que más incomoda:** el test que fijaba esto se llamaba
+`it('un anónimo lee lo publicado')` y estaba **en verde**. No estaba mal escrito:
+fijaba fielmente lo que el §5.3 prescribía. Un test puede estar verde, ser
+correcto respecto de su especificación, y estar certificando una fuga. Por eso el
+reemplazo son tres `it` —rechazo por documento, rechazo por query, y un **control
+positivo** (`el admin SÍ lee la publicada, con sus campos privados adentro`)—: sin
+el tercero, los dos primeros darían verde sobre una colección vacía.
+
+De paso, `tests/actividades.integracion.test.ts` era el único test de reglas que
+**no** empujaba las reglas del checkout al emulador (`cargarReglas`), así que en un
+worktree podía estar verificando el archivo de otra rama. Ahora las empuja.
+
+El mapa de trampas se puso rojo solo para avisar que su sección «Sin red» había
+quedado desactualizada, que es el comportamiento que B-119 compró.
+
+**Cierra B-172**, la trampa 7 del §13 — pero en el segundo intento, y eso es lo
+que más vale de esta entrada. Al arreglar la fuga se escribió una query anónima en
+el test de reglas, se la vio pasar y se dio la trampa por cerrada. **Pasaba por el
+motivo equivocado:** sin condición sobre `resource.data`, *toda* query anónima se
+rechaza, con `where` y sin `where` — y lo que la trampa 7 describe es el
+**contraste** entre las dos. Lo encontró el `auditor-trampas` revisando este mismo
+cambio. Y `mapa-de-trampas.test.ts` no podía verlo: exige que algún archivo de
+`tests/` contenga el string `trampa 7`, y eso lo satisface un comentario. El
+chequeo verifica que exista una red, no que la red pruebe el mecanismo.
+
+La red de verdad es el `describe('trampa 7 — el mecanismo, con una regla
+condicionada')`, que carga **su propio ruleset** con la regla condicionada en un
+projectId aparte y afirma las dos mitades —con el `where` devuelve el subconjunto,
+sin el `where` se rechaza entera—, con control positivo y **verificado invirtiendo
+la aserción**. Queda independiente de cuál sea la regla viva en `/actividades`, que
+es exactamente lo que hace falta para el día que B-01 necesite lectura en vivo.
+
+### P0 · El repo público publicaba los uids y los mails de las dos cuentas admin — B-209
+
+`docs/02-infraestructura.md` tenía una tabla titulada «Cuentas con claim `admin`»
+con mail → uid de las dos cuentas, mapeados uno contra otro. El §5.1 y D-57 dicen
+que uid y mail de admin no salen ni crudos ni hasheados.
+
+Lo peor no era la tabla: **los mismos dos valores eran `CENTINELAS.uid` y
+`CENTINELAS.mailAdmin` en `tests/fixtures/formulario.ts`** — el dato que no puede
+salir, en el archivo cuyo trabajo es verificar que no sale, y los dos únicos
+centinelas de esa lista que no cumplían lo que su propio docblock promete
+(«inventados y bien reconocibles»). Estaban además en
+`tests/opciones-aprobacion.test.ts`, `tests/reportes.test.ts` y
+`docs/09-analitica.md`.
+
+**Es irreversible y conviene decirlo:** para cuando se detecta, ya está scrapeado.
+El arreglo corta el sangrado, no lo revierte.
+
+Los valores salieron de los cinco archivos. Los centinelas pasaron a
+`CENTINELAuid…` / `centinela-admin@ejemplo.com`, con el uid conservando los 28
+caracteres para que la forma real se siga ejercitando. El número de cuenta de
+facturación salió de la misma tabla por el mismo motivo. Y
+`scripts/preparar-produccion.mjs --listar` reemplaza a la tabla: la lista se saca
+de Auth cuando se la necesita en vez de vivir versionada.
+
+Red nueva: **`tests/sin-datos-personales.test.ts`**, que recorre `git ls-files`
+buscando la forma de un uid de Firebase y casillas en proveedores de correo
+gratuitos. Es **angosto a propósito y lo dice en el archivo**: un mail en dominio
+propio (`hola@casabrandon.org`) puede ser un fixture inventado o el real de una
+sede, y no se puede distinguir sin versionar la lista de dominios reales, que es
+justo el dato que no queremos versionar. Esa mitad queda en el
+`auditor-privacidad`. Un chequeo angosto que nunca da falsos positivos vale más
+que uno ancho que se apaga con excepciones — la tabla que lo hizo nacer sobrevivió
+meses en un archivo que nadie sospechaba.
+
+### Verificación en producción: había comandos para la escritura anónima y ninguno para la lectura
+
+`07-seguridad.md` § «Las reglas rechazan lo anónimo en producción» tenía dos
+`curl` de **escritura**. Ahora tiene los dos de lectura —el `getDoc` y la
+`runQuery` con el `where`, que era la que pasaba— y una advertencia sobre cómo
+leer el resultado: un `permission-denied` y un «no encontré nada» se parecen si
+solo se mira que no haya datos.
+
+Y se agregó el mapa de **las cinco salidas** al encabezado del documento, con la
+sexta que estuvo abierta hasta hoy. Faltaba `textoRedes.ts` (B-95), que es la más
+irreversible de todas: un posteo pegado en Instagram ya está copiado. La tabla
+campo por campo **no se copió**: vive en el docblock del módulo y se apunta a ella,
+porque dos copias de una tabla de privacidad es el problema que D-20 evita en otro
+lado y la que envejece siempre es la del documento.
+
+### Documentación: 15 puntos de drift, que eran cinco causas
+
+- **El rebuild automático ya está desplegado y tres lugares decían que no**
+  (D-13, `04-funcionalidades.md` ×2). B-20 cerró el 2026-08-25.
+- **La UI de taxonomías ya existe y tres lugares decían que solo había script**
+  (D-29, `03-modelo-de-datos.md`, `08-operacion.md`). B-06/B-25 cerraron el
+  2026-08-24.
+- **`B-167` se reusó para la galería y quedaron tres citas apuntando al ítem
+  equivocado.** La peor: `15-mapa-de-trampas.md` mandaba la trampa 7 a B-167 en
+  vez de B-172. Las otras van a B-177, B-132 y B-175.
+- **Un bloque mal pegado en el BACKLOG:** el párrafo `**Hecho (D-104)**` es el
+  cierre de **B-79** y estaba pegado al final de **B-175**, que está abierta. Se
+  leía como cerrada. Volvió a su lugar, con nota en los dos.
+- **`B-137` tenía un `it.fails` vivo hacía tres días y no existía en `docs/`.**
+  Abierto como P2. Es la regla de proceso del `CLAUDE.md` que no se cumplió.
+
+### El auditor de privacidad no conocía su propia quinta salida — B-216
+
+Consecuencia directa de haber arreglado las cinco salidas en `07-seguridad.md`
+**sin espejarlo** en la ficha del agente: seguía listando cuatro y su
+`description` no incluía `src/lib/textoRedes.ts`, que es lo que decide si Claude lo
+invoca por nombre de archivo. Ningún test podía fallar —el módulo está bien
+cubierto—; lo roto era la cadena de invocación.
+
+Lo encontró el `auditor-documentacion` auditando este cambio. Vale registrar el
+patrón: **la inconsistencia la creó a medias el arreglo, y la encontró otro auditor
+del mismo trío.** Queda escrita la regla de que una salida nueva se toca en tres
+lugares, y el tercero —la `description`— es el que decide si el agente se entera.
+
+Más: `13-agentes.md` sumó las cuatro filas que le faltaban a la tabla de «qué se
+decidió no automatizar» (`barrido-de-salidas-publicas`, `clases-de-bug`,
+`mapa-de-trampas` y el nuevo `sin-datos-personales`), y la fila de las reglas dice
+ahora cuánto cubría de verdad. `auditor-privacidad.md` tenía una celda pidiendo
+trabajo que `barrido-de-salidas-publicas.test.ts` (B-196) ya hace: pasó a decir
+«no lo reportes». Y `README.md` decía 460 tests y 21 de integración: son ~1.340 y
+51, contados en esta corrida.
+
+**Un falso positivo, anotado porque el auditor se equivocó y conviene saberlo:**
+el `auditor-privacidad` reportó que el `motivo` del `repository_dispatch` no tenía
+ninguna red. Sí la tiene, y más fuerte que la que proponía —
+`tests/costuras.test.ts` § «el motivo del rebuild es opaco» exige que ninguna
+interpolación acceda a una propiedad, que es una propiedad y no una whitelist, y
+tiene su control positivo. No se abrió ítem.
+
+### `docs/10-salud-del-codigo.md`, remedido de cero
+
+Estaba medido en `13b9baa`, cuarenta commits atrás. Los números se volvieron a
+contar todos. El titular: **la forma aguantó un 36 % de crecimiento del código sin
+moverse** — concentración del top-15 en 41,5 % (era 41,7), cero ciclos en 108
+archivos, fan-in concentrado en hojas con fan-out 0, y el ratio de tests subió de
+1,14 a 1,41.
+
+Lo que empeoró es lo mismo de antes y más grande: **39 componentes y 7.045 LOC de
+`.tsx` sin un solo test de componente** (eran 34 y 5.355), verificados leyendo el
+fuente con expresiones regulares en 32 de los 59 archivos de test. Y ahora hay un
+bug concreto que eso dejó pasar: B-210.
+
+Se agregó una sección que el documento no tenía: **lo que ninguna de sus métricas
+podía ver.** Los dos P0 de arriba pasaron por debajo de todas, con la suite en
+verde. La salud de forma y la corrección son ejes independientes y este archivo
+solo mide el primero.
+
+### Backlog
+
+Nuevos: **B-210** (la trampa de foco copiada, con una copia que se quedó sin el
+arreglo — P1), **B-211** (el doble de `Timestamp` definido 13 veces en 4 formas,
+dos de ellas mentirosas — P1), **B-212** (falta la proyección pública de
+`/opciones/*`, y el barrido de B-196 no la ve — P1), **B-137** (P2), **B-213**
+(los `.env` versionados sin gate — P2), **B-214** (Astro 5.x no tiene parche para
+ocho avisos: hay que subir a 6/7 **antes** de B-01 — P2) y **B-215** (tres
+duplicaciones chicas y la adopción de `tests/fixtures/` en 7 de 59 archivos — P2).
+
+Cerrados: **B-208**, **B-209**, **B-172**, **B-216**.
+
+### Segunda vuelta: lo que los auditores encontraron en el arreglo
+
+Los tres corrieron **sobre este cambio**, no sobre el repo quieto, y de ahí salió
+casi todo lo que sigue. Vale como calibración de para qué sirven.
+
+**Las aserciones de rechazo eran más débiles de lo que parecían.** Los cuatro
+`it` de lectura denegada usaban `rejects.toThrow()` pelado, que también lo satisface
+un emulador caído: los tests de reglas podían pintar verde sin haber probado una
+regla. Lo señaló el `auditor-privacidad`.
+
+Su arreglo propuesto —apretar el mensaje a `/permission|insufficient/i`— **no
+funciona**, y se comprobó: para una lectura denegada el emulador no devuelve
+"Missing or insufficient permissions" (eso es de las escrituras) sino la traza de
+evaluación (`false for 'get' @ L50`), o `Property estado is undefined on object`
+cuando la regla no se puede evaluar. Los cuatro fallaban. Lo que sí sirve es el
+**`code` de la `FirebaseError`**, que es `permission-denied` en todos esos casos y
+`unavailable` si el emulador no está: eso separa "la regla denegó" de "no se pudo
+preguntar". Es el helper `rechazadaPorPermisos`, y de paso corrigió el comentario
+de `firestore.rules` que yo había escrito sobre este tema, que era impreciso.
+
+**El control positivo cubría el `getDoc` y no el `getDocs`**, que es el camino por
+donde iba la fuga: son dos permisos distintos (`get` y `list`). Si mañana alguien
+rompe el `list` del admin, el rechazo anónimo seguiría en verde y el panel estaría
+roto. Se agregó el positivo por query.
+
+**El `--listar` que se agregó tenía un bug de parseo.** Buscaba el flag solo en
+`argv[2]`, así que `node ... mail@x --listar` lo ignoraba en silencio, sembraba
+`/opciones/*` **en producción** y terminaba en `createUser({email:'--listar'})`:
+tiraba, pero después de haber escrito. Ahora se busca en todos los argumentos y
+cualquier otro `-algo` aborta antes de tocar nada. Un flag mal puesto en un script
+que escribe en producción tiene que fallar cerrado.
+
+Y su garantía —«es solo consulta»— era del **orden de las líneas**, no del código:
+mover el `if` treinta líneas abajo convertía la consulta en una escritura, y el
+script aborta si detecta un emulador, así que sería siempre contra lo real. Es la
+**clase de B-209**, con su `describe` en `clases-de-bug.test.ts`, de la misma forma
+que la clase de B-71 (el efecto irreversible va último).
+
+**Una afirmación falsa que escribí yo:** «es la única de las cinco salidas donde el
+flag no alcanza», sobre `online.url` y el posteo. Falso — tampoco llega a la 3
+(`actividadParaIssue` devuelve `{titulo, slug}`) ni a la 4 (va `url_publica` como
+booleano). Como estaba escrito implicaba que en GA4 el flag sí alcanza, o sea lo
+contrario de la regla más dura del proyecto. Corregido a «solo en las salidas 1 y
+2», con el por qué de cada una de las otras tres.
+
+**Y la cuenta de salidas quedó atada, para que no vuelva a divergir.** Es la clase
+de B-88 aplicada a dos documentos: `docs/07-seguridad.md` y la ficha del agente
+derivan la misma lista por separado. Ahora `tests/agentes-y-skills.test.ts` exige
+que las dos tablas enumeren las mismas salidas, que cada archivo productor esté
+nombrado en el `description` —el punto que decide si el agente se despierta— y que
+exista. Verificado sacando `textoRedes.ts` del `description`: rompe.
+
+**Rastros menores que quedaban.** La tabla de secretos de `07-seguridad.md` estaba
+partida en tres por dos líneas en blanco, con dos filas duplicadas en redacciones
+distintas y las últimas renderizando sin encabezado; unificada, más las dos filas
+que faltaban (el id del calendario y la config del SDK web, que eran justo las dos
+preguntas que alguien venía a buscar ahí). Un comentario de `08-operacion.md`
+nombraba una cuenta de GitHub con sufijo de empleador: reemplazado por la
+instrucción genérica. Y el mail de fixture `hola@casabrandon.org` —sede real,
+casilla plausible— pasó a `.example` en los 14 lugares de `tests/`; las menciones
+de `docs/` quedan porque son registro histórico.
+
+**Lo que NO se hizo, con su motivo:** `--listar` sigue imprimiendo el uid además
+del mail. El `auditor-privacidad` propuso reemplazarlo por una huella de 8 hex
+porque el comando reconstruye en stdout el mapeo mail → uid que B-209 borró. Es un
+punto justo, pero el uid es lo que hace falta para operar (`setCustomUserClaims`),
+y el riesgo concreto —que alguien pegue esa salida en un archivo— ahora **rompe el
+CI**: `sin-datos-personales.test.ts` lo detecta. La mitigación existe y es mejor
+que empeorar el comando.
+
+**Dos de los tres auditores encontraron algo en el arreglo del otro**, y conviene
+que quede anotado como resultado del trío y no como anécdota: el de trampas
+encontró que la trampa 7 se había dado por cerrada pasando por el motivo
+equivocado, y el de documentación encontró la quinta salida sin espejar en la ficha
+del agente. Los dos hallazgos son sobre el cambio, no sobre el código viejo. Un
+auditor sirve más revisando un arreglo que revisando un repo quieto.
+
+El falso positivo del `auditor-privacidad` (el `motivo` del rebuild) está anotado
+más arriba, en la sección de documentación.
+
 ## 1.3.0 — 2026-08-27
 
 **Once novedades del panel**, todas selladas `1.3.0` (D-117). Se escribieron en

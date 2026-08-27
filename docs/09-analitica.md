@@ -394,9 +394,9 @@ desde el primer minuto.
 
 ## Aviso al otro admin
 
-Hay una segunda cuenta con el claim `admin`
-(`librosdelatiahilda@gmail.com`, ver [`02-infraestructura.md`](02-infraestructura.md)),
-y su uso también queda medido.
+Hay una segunda cuenta con el claim `admin` (ver
+[`02-infraestructura.md`](02-infraestructura.md), que ya no la nombra: el repo es
+público, §5.1) y su uso también queda medido.
 
 **Corresponde avisarle**, aunque no se registre nada personal: se mide con qué
 pantalla trabaja, en qué campos se traba y cuánto tarda. No se guarda su mail ni

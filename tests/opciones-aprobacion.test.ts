@@ -5,8 +5,14 @@ import { huellaCreador } from '@/lib/huella';
 import { estaAprobada, opcionesVisibles } from '@/lib/opciones';
 import { CAMPOS_TAXONOMIA, type ValorOpcion } from '@/types/actividad';
 
-const UID_A = 'bNvcQmbUwdSduoSfA2Oa9hxYMQp2';
-const UID_B = 'JBnbwgf2VxgPWSMaWKTI5PlSwUu1';
+/*
+ * Dos uids con la forma real (28 caracteres) pero inventados: eran los de las
+ * dos cuentas admin de verdad, y este repo es público (§5.1, D-57). Lo que el
+ * test necesita es que `huellaCreador` distinga dos uids distintos, no que sean
+ * los del proyecto.
+ */
+const UID_A = 'CENTINELAuidA000000000000000';
+const UID_B = 'CENTINELAuidB000000000000000';
 
 const opcion = (v: Partial<ValorOpcion> = {}): ValorOpcion => ({
   slug: 'beca',

@@ -124,9 +124,11 @@ npm run opciones:aprobar:prod -- arancel con-beca-parcial
 Ensayarlo primero contra el emulador es gratis: `npm run opciones:aprobar --`
 (mismo script, otro objetivo).
 
-**Si una etiqueta es basura** —un typo con `usos: 1`— hoy no hay comando para
-borrarla: no la apruebes y quedará invisible para las demás cuentas. Borrar
-taxonomías es parte de la UI de administración que falta (B-06).
+**Si una etiqueta es basura** —un typo con `usos: 1`— se borra desde la pantalla
+de administración de taxonomías del panel (B-06/B-25, botón «Borrar»), no desde
+este script. Las `fijo: true` no se pueden borrar ni renombrar, por diseño (§4.3).
+La alternativa sin borrar sigue valiendo: no aprobarla la deja invisible para las
+demás cuentas.
 
 Hay un `--backfill` opcional que marca `aprobada: true` en los valores
 anteriores al campo. No cambia comportamiento (la ausencia ya se lee como
@@ -440,6 +442,10 @@ node scripts/preparar-produccion.mjs <email>
 npm run build && firebase deploy --only hosting
 firebase deploy --only functions
 
+# Quién tiene el claim admin hoy (B-209 — la lista salió de la doc versionada,
+# porque el repo es público). Es solo consulta: no siembra ni escribe nada.
+node scripts/preparar-produccion.mjs --listar
+
 # 7. Rebuild automático: ver "Activar el rebuild automático" más abajo
 #    (PAT en Secret Manager, service account de CI, secret de GitHub, y recién
 #    ahí `firebase deploy --only functions:dispararRebuild`)
@@ -522,9 +528,10 @@ repo, con nombre exacto `FIREBASE_SERVICE_ACCOUNT` y el **contenido completo**
 del JSON como valor. Con `gh` instalado:
 
 ```bash
-# `gh` tiene dos cuentas logueadas y la activa (gonza-benoffi-modo) NO tiene
-# permiso sobre este repo: sin esta línea, el comando corta con
+# Si `gh` tiene más de una cuenta logueada, la activa puede no ser la dueña del
+# repo: sin esta línea el comando corta con
 # «HTTP 403: You must have repository read permissions».
+# (`gh auth status` dice cuáles hay.)
 export GH_TOKEN=$(gh auth token --user benoffi7)
 
 gh secret set FIREBASE_SERVICE_ACCOUNT --repo benoffi7/agenda-literaria \

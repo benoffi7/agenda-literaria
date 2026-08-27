@@ -10,9 +10,14 @@ Para re-relevarlo, ver los comandos al final.
 | Project ID | `agenda-literaria` |
 | Número | `1038157194972` |
 | Plan | **Blaze** (facturación habilitada) |
-| Cuenta de facturación | `019C0A-4613E2-EC4BDD` |
-| Dueño | `benoffi11@gmail.com` |
+| Cuenta de facturación | en la consola de Facturación — no se versiona |
+| Dueño | la cuenta admin principal — ver `--listar` más abajo |
 | Consola | https://console.firebase.google.com/project/agenda-literaria |
+
+El número de cuenta de facturación y el mail del dueño salieron de esta tabla
+por el mismo motivo que los uids de más abajo: el repo es público (§5.1, D-57).
+El Project ID y el número de proyecto se quedan — son públicos por diseño, van
+en el bundle del panel.
 
 El plan Blaze es obligatorio (§2.3): en Spark las Cloud Functions no hacen
 llamadas de red salientes, ni siquiera a APIs de Google, así que el sync a
@@ -56,10 +61,17 @@ client. No es automatizable con las credenciales del proyecto.
 
 ### Cuentas con claim `admin`
 
-| Email | uid |
-|---|---|
-| `benoffi11@gmail.com` | `bNvcQmbUwdSduoSfA2Oa9hxYMQp2` |
-| `librosdelatiahilda@gmail.com` | `JBnbwgf2VxgPWSMaWKTI5PlSwUu1` |
+**Son dos.** Los mails y los uids no se listan acá: este repo es público (§5.1,
+D-57 — uid y mail de admin no salen ni crudos ni hasheados, y esta tabla los
+publicaba mapeados uno contra otro, con el cartel de que son exactamente las
+cuentas que pueden escribir todo). Para verlas:
+
+```sh
+node scripts/preparar-produccion.mjs --listar
+```
+
+o la consola de Firebase → Authentication. Un uid no es una credencial, pero es
+la mitad del trabajo de un ataque dirigido, y publicarlo es irreversible.
 
 Las cuentas se crearon con el Admin SDK **antes** del primer login, para dejar
 el claim listo. Como hay una cuenta por email, al entrar con Google Firebase

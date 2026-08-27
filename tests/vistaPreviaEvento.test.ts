@@ -45,7 +45,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   slug: 'club-latinoamericana',
   descripcion: 'Ocho encuentros para leer el boom.',
   imagenes: [],
-  organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
+  organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.example' },
   tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
   libro: { titulo: '', autor: '' },
   esCiclo: true,
@@ -63,7 +63,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   inscripcion: {
     requiere: true,
     via: 'mail',
-    destino: 'hola@casabrandon.org',
+    destino: 'hola@casabrandon.example',
     cupo: 12,
     cierra: '2026-09-01T12:00',
     // B-97 — el caso normal es "no está completo"; el que sí lo está tiene su

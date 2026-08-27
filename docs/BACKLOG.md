@@ -138,11 +138,17 @@ configuración de consola (§5.4).
 
 ## P0 — rompe algo o pierde datos
 
-Los dos salieron de revisar las costuras del merge del 2026-08-21: cada feature
-está testeada por dentro, el par no. Los tests que los demuestran están en
-[`tests/costuras.test.ts`](../tests/costuras.test.ts). **Los dos están
-arreglados (2026-08-24)** y sus tests ya no son `it.fails`: pasaron a `it` y
-ahora son la guarda de que no vuelvan.
+**Todos arreglados.** Cuatro, en dos tandas y de dos clases distintas:
+
+- **B-80 y B-82** (2026-08-24) salieron de revisar las costuras del merge del
+  2026-08-21: cada feature estaba testeada por dentro, el par no. Los tests que
+  los demuestran están en [`tests/costuras.test.ts`](../tests/costuras.test.ts) y
+  ya no son `it.fails` — pasaron a `it` y ahora son la guarda de que no vuelvan.
+- **B-208 y B-209** (2026-08-27) salieron de la auditoría de privacidad, y son de
+  otra familia: no rompían nada visible ni perdían datos. **Publicaban.** Ninguno
+  de los dos tenía forma de aparecer en un test que estuviera mirando lo que el
+  código hace, porque los dos hacían exactamente lo que estaba escrito que
+  hicieran — el problema estaba en lo que estaba escrito.
 
 ### B-80 · Guardar desde el listado pisa el `calendarEventId` y la edición siguiente duplica el evento — ✅ hecho (2026-08-24)
 
@@ -215,6 +221,82 @@ escritura trae el mismo `before` y el mismo `after`.
 El arreglo natural es el mismo del historial: llevar los ids de evento ya
 aplicados por `event.id`, o relee el documento dentro de la transacción del
 write-back y no crear si la sesión ya tiene un `calendarEventId`.
+
+---
+
+### B-208 · Un anónimo leía el documento crudo de toda actividad publicada — ✅ hecho (2026-08-27)
+
+**Lo encontró el `auditor-privacidad` en el barrido del 2026-08-27 y se reprodujo
+contra el emulador antes de tocar nada.** `firestore.rules` decía
+`allow read: if esAdmin() || resource.data.estado == 'publicado'`, que es lo que
+prescribe el §5.3 del `CLAUDE.md`. Una query anónima con el
+`where('estado','==','publicado')` —permitida, porque cada documento devuelto
+cumple la condición— entregaba los documentos **enteros**: `online.url` con
+`urlPublica:false`, `difusion.notas` y `arrobar`, la URL del material con
+`publico:false`, `createdBy`/`updatedBy`, `sesiones[].calendarEventId` y
+`imagenes[].storagePath`. La lista completa del §5.1, salteando `toPublic`.
+
+**Era explotable, no teórico.** El repo es público, `.env.production` está
+versionado con `PUBLIC_FIREBASE_PROJECT_ID` y `PUBLIC_FIREBASE_API_KEY`, y
+`push-main.yml` deploya las reglas tal cual. Clonar el repo alcanzaba.
+
+**Por qué ninguna red lo vio.** Las cuatro salidas estaban auditadas y correctas.
+Esto no era una salida: era una **quinta** puerta que ninguna proyección
+atravesaba. Y el test que fijaba el comportamiento —`it('un anónimo lee lo
+publicado')`— estaba **en verde y era correcto respecto de su especificación**.
+Lo que estaba mal era la especificación. Agrava que `toPublic` todavía no tiene
+consumidor (B-106): el 100 % de lo alcanzable desde afuera entraba por acá.
+
+**Arreglo:** `allow read: if esAdmin();` — D-128, con la alternativa descartada
+(partir el documento en una subcolección `privado/`) escrita para el día que haga
+falta lectura en vivo.
+
+**Red:** tres `it` en `tests/actividades.integracion.test.ts` — el rechazo por
+documento, el rechazo por query, y un **control positivo** (`el admin SÍ lee la
+publicada, con sus campos privados adentro`) sin el cual los dos rechazos darían
+verde sobre una colección vacía. El fixture de la publicada lleva los campos del
+§5.1 adentro a propósito: si alguien afloja la regla, el diff dice qué se
+filtraba. De paso, este archivo era el único test de reglas que **no** empujaba
+las reglas del checkout al emulador (`cargarReglas`), así que en un worktree podía
+estar verificando el archivo de otra rama. Ahora las empuja.
+
+**Cierra B-172** (la trampa 7 del §13 quedó cubierta como efecto).
+
+### B-209 · El repo público publicaba los uids y los mails de las dos cuentas admin — ✅ hecho (2026-08-27)
+
+`docs/02-infraestructura.md` tenía una tabla titulada «Cuentas con claim `admin`»
+con mail → uid de las dos cuentas, mapeados uno contra otro. El repo es público.
+El §5.1 y D-57 son explícitos: uid y mail de admin no salen ni crudos ni
+hasheados.
+
+**Lo peor no era la tabla.** Los mismos dos valores estaban como `CENTINELAS.uid`
+y `CENTINELAS.mailAdmin` en `tests/fixtures/formulario.ts` — o sea, el dato que no
+puede salir vivía en el archivo cuyo trabajo es verificar que no sale, y eran los
+dos únicos centinelas de esa lista que no cumplían lo que su propio docblock
+promete («inventados y bien reconocibles»). Estaban además en
+`tests/opciones-aprobacion.test.ts`, y el mail del dueño en
+`docs/02-infraestructura.md` y `docs/09-analitica.md`.
+
+**Es irreversible**, y hay que decirlo: para cuando se detecta, ya está scrapeado
+e indexado. Lo que el arreglo consigue es cortar el sangrado, no revertirlo. Un
+uid no es una credencial, pero es la mitad del trabajo de un ataque dirigido.
+
+**Arreglo:** los valores salieron de los cinco archivos; los centinelas pasaron a
+`CENTINELAuid…` / `centinela-admin@ejemplo.com` (el uid conserva los 28
+caracteres, así la forma real se sigue ejercitando); el número de cuenta de
+facturación salió de la misma tabla por el mismo motivo; y
+`scripts/preparar-produccion.mjs --listar` reemplaza a la tabla — la lista se saca
+de Auth cuando se la necesita en vez de vivir versionada.
+
+**Red:** `tests/sin-datos-personales.test.ts`, que recorre `git ls-files`
+buscando la **forma** de un uid de Firebase (28 alfanuméricos con las tres clases
+de carácter) y casillas en proveedores de correo personales. Es angosto a
+propósito y lo dice: un mail en dominio propio (`hola@casabrandon.org`) puede ser
+un fixture inventado o real, y este test no puede distinguirlos sin versionar la
+lista de dominios reales, que es el dato que no queremos versionar. Esa mitad
+queda en el `auditor-privacidad`. Un chequeo angosto que nunca da falsos
+positivos vale más que uno ancho que se apaga con excepciones: la tabla que hizo
+nacer este test sobrevivió meses en un archivo que nadie sospechaba.
 
 ---
 
@@ -358,8 +440,11 @@ una de las decisiones de §11.1.
 
 `toPublic` calcula `abierta` con `Date.now()` **del momento del build**. Una
 inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild
-siguiente, y con el rebuild automático todavía pendiente (**B-20**) eso puede
-ser días. El sitio invita a anotarse en algo que ya cerró.
+siguiente. El rebuild automático ya corre solo (**B-20**, cerrado el 2026-08-25),
+así que la ventana bajó de días a los ~2-7 minutos del debounce del §8 — pero
+sigue siendo real, y no depende de que alguien edite: el `abierta: false` se
+calcula **en el build**, así que sin un cambio que dispare rebuild nadie
+recalcula nada y el sitio invita a anotarse en algo que ya cerró.
 
 Arreglo: proyectar **`inscripcion.cierraEn`** (el ISO de `cierra`) además del
 booleano. Con la fecha, el HTML puede decir "las inscripciones cierran el 22 de
@@ -979,6 +1064,89 @@ restaurarlo recalcula al vacío), y otro que lee la función —ocho líneas— 
 falló). Verificadas las dos: sacando `libro` de la lista y agregándole un campo
 inventado, cada rotura cae con el mensaje que nombra qué drifteó.
 
+### B-210 · La trampa de foco está copiada en dos diálogos y la copia se quedó con el bug · P1
+
+`src/lib/foco.ts` comparte la **aritmética** del foco a propósito: su docblock
+dice que la parte que toca el DOM «queda en cada componente, que es donde está el
+`ref`». Esa decisión era razonable con un solo diálogo. Hoy hay dos, y el bloque
+que toca el DOM —el `useEffect` con el handler de `keydown`, el ciclo de Tab, el
+`overflow: hidden` del body, la devolución del foco al abridor— está copiado
+verbatim en `DialogoDuplicar.tsx` y en `ayuda/CentroAyuda.tsx`. Son ~40 líneas
+idénticas.
+
+**Y ya divergieron, en el sentido que importa: una copia tiene el arreglo y la
+otra no.** `DialogoDuplicar` guarda el callback en un `ref` y usa deps `[]`, con
+un comentario que explica por qué —un `onCancelar` inline es una función nueva por
+render, así que cualquier re-render con la capa abierta corre la limpieza,
+devuelve el foco, lo re-captura y se lo lleva de vuelta a la caja—.
+`CentroAyuda` quedó con `useEffect(..., [onCerrar])`, y `ayuda/BotonAyuda.tsx` le
+pasa `onCerrar={() => setAbierto(false)}`, que es exactamente el caso inline que
+el comentario del otro archivo describe.
+
+**Cómo se ve:** `BotonAyuda` tiene estado propio (el contador de novedades sin
+leer). Marcar las novedades como leídas lo re-renderiza → `onCerrar` es una
+función nueva → el efecto de `CentroAyuda` se desmonta y se vuelve a montar →
+devuelve el foco al botón «Ayuda» y se lo roba de nuevo hacia la caja, y el
+scroll del body parpadea en el medio.
+
+Arreglo: un `useCapaModal({ alCerrar, caja })` en `src/lib/` o en
+`components/admin/`, con el `ref` del callback adentro, del que tiren los dos. El
+test de `foco.test.ts` ya cubre la aritmética; lo que falta es que el cableado
+tenga un solo dueño. **Es P1 y no P2 porque el arreglo ya está escrito en el
+repo** — solo está en el archivo equivocado.
+
+### B-211 · El doble de `Timestamp` está definido 13 veces en 4 formas, y dos mienten · P1
+
+`const ts = (iso) => ...` está escrito a mano en 11 archivos de `tests/` y
+exportado dos veces más desde `tests/fixtures/` (`ciclo.ts` y `centinelas.ts`,
+cada uno con una forma distinta). Cuatro variantes:
+
+| Forma | Dónde |
+|---|---|
+| `{ toDate, toMillis }` | `reportes`, `calendario`, `sincronizacion`, `historial`, `costuras`, `fixtures/ciclo` |
+| `{ toDate, toMillis, seconds: Math.floor(…), nanoseconds: 0 }` | `toPublic`, `libro-presentado`, `cupo-completo`, `fixtures/centinelas` |
+| `{ toDate, toMillis, seconds: 0, nanoseconds: 0 }` | `calendarioPanel`, `filtrosActividades` |
+| delega en `tsDe` | `textoRedes` |
+
+**La tercera forma es un fixture que miente**: dice que todo `Timestamp` es la
+época. Hoy no rompe porque ningún código de producción lee `.seconds` —lee
+`.toDate()` y `.toMillis()`—, pero el `Timestamp` real de Firestore sí lo expone,
+y el día que algo lo use esos dos archivos van a pasar con datos falsos. Es la
+trampa 1 del §13 dentro del fixture que existe para atajarla.
+
+**Es la misma clase que el repo ya automatizó** —«un fixture que no ejercita el
+caso central del dominio»— y que hizo nacer `tests/fixtures/ciclo.ts` y
+`invariantes-de-ciclo.test.ts`. Reapareció con otra cara: no es que el fixture no
+ejercite el caso, es que hay trece fixtures y no se parecen entre sí.
+
+Arreglo: **un** `ts()` exportado de `tests/fixtures/`, con la forma completa (la
+segunda), y los otros doce borrados. Es mecánico y sin riesgo: los cuerpos son
+compatibles hacia arriba. Lo que conviene decidir de paso es dónde vive — hoy
+`ciclo.ts` y `centinelas.ts` se lo copian entre ellos, que es el mismo bug un
+nivel más adentro.
+
+### B-212 · La proyección pública de `/opciones/*` no existe, y el barrido no la ve · P1
+
+`toPublic.ts` proyecta la actividad campo por campo, con whitelist y sin un solo
+spread. Para `/opciones/*` no hay nada equivalente, y B-106 la va a necesitar: el
+§4.4 dice que el `events.json` lleva `{ slug, label }`, pero el documento tiene
+además `orden`, `fijo`, `usos`, `aprobada` y `huellaCreador`.
+
+El default cuando se implemente B-106 es escribir `valores` tal cual —una línea, y
+se ve razonable— y ahí `huellaCreador` (un pseudónimo derivado de un uid) y `usos`
+entran al JSON público. **Nada lo detiene:** el barrido de centinelas de B-196
+está anclado a las interfaces de una *actividad* (`ANCLAS`), y `ValorOpcion` /
+`DocOpciones` están explícitamente en `AJENAS`. O sea: la única salida pública
+nueva que ya está planificada nace fuera de la red.
+
+Arreglo, hoy y aunque el consumidor no exista todavía —que es el punto—:
+`export const opcionPublica = (v: ValorOpcion) => ({ slug: v.slug, label: v.label })`
+en `toPublic.ts`, al lado de `imagenPublica` y `libroPublico`, que ya establecieron
+el patrón; más su `it` y su ancla en el barrido. Escribir la whitelist antes que
+el consumidor es lo que evita que la decisión la tome un spread.
+
+---
+
 ## P2 — mejoras reales
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública
@@ -1586,9 +1754,14 @@ beca parcial". Un fallo al registrar la etiqueta ya no vuelve fallido el
 guardado (la actividad está escrita; reintentar chocaría contra su propio slug).
 El `it.fails` de la clase en `tests/clases-de-bug.test.ts` quedó promovido a
 `it`, y el orden se afirma además con puertos falsos en
-`tests/formulario-dominio.test.ts`. Quedan abiertos **B-167** (nadie avisa en
-pantalla que la etiqueta no se registró) y **B-168** (el desplegable muestra el
-slug crudo de una etiqueta no registrada).
+`tests/formulario-dominio.test.ts`. Queda abierto **B-177** (nadie avisa en
+pantalla que la etiqueta no se registró); **B-132** (el desplegable mostraba el
+slug crudo de una etiqueta no registrada) está ✅ hecho (2026-08-25).
+
+> **Renumeración:** este párrafo decía «B-167» y «B-168». Los dos números se
+> reasignaron después —`B-167` es la galería de imágenes (DEC-7)— y las citas
+> quedaron apuntando al ítem equivocado hasta el 2026-08-27. Corregido a B-177 y
+> B-132.
 
 ### B-73 · Los tags no se miden — ✅ hecho (2026-08-24)
 
@@ -1683,7 +1856,8 @@ Lo que **no** se hizo: el `src/lib/etiquetas.ts` que propone el ítem. Los mapas
 del formulario (`ETIQUETA_ESTADO`, `ETIQUETA_MODALIDAD`, `ETIQUETA_VIA`) siguen
 siendo locales, así que la clase está viva y ya divergió una vez —"Híbrido"
 contra "Presencial y virtual"—. Unificarlos toca `ActividadFormulario.tsx`, que
-es de la fase 2: queda en **B-167**, con el `it.fails` que lo espera.
+es de la fase 2: queda en **B-175**, con el `it.fails` que lo espera (decía
+«B-167» hasta el 2026-08-27, número que después se reasignó a la galería).
 
 ### B-84 · Cancelar un encuentro de un ciclo renumera y reescribe los otros siete — ✅ hecho (2026-08-24)
 
@@ -2983,6 +3157,127 @@ la primera versión se puso roja **con el código correcto**, porque el comentar
 que explica el cambio cita las etiquetas viejas y el aserto las encontraba en la
 prosa. Lee el fuente sin comentarios.
 
+### B-216 · El `auditor-privacidad` no conocía su propia quinta salida — ✅ hecho (2026-08-27)
+
+`src/lib/textoRedes.ts` (B-95) es una salida pública desde que existe, y la más
+irreversible de las cinco: un posteo pegado en Instagram ya está copiado. La ficha
+del agente listaba **cuatro** salidas y no la incluía, ni en la tabla del cuerpo ni
+—lo que importa— en su `description`, que es lo que decide si Claude lo invoca por
+nombre de archivo. Idem `docs/13-agentes.md`.
+
+**Por qué es un hallazgo y no un typo.** Ningún test fallaba, y no podía fallar:
+`textoRedes.ts` está bien cubierto —`Pick` explícito, barrido de centinelas,
+guarda de forma—. Lo que estaba roto era la **cadena de invocación**: un cambio
+que agregara un campo e lo interpolara en el posteo no disparaba la auditoría, y
+si alguien la corría por otro motivo, el índice que el agente usa para orientarse
+no incluía la salida que debía mirar. Un auditor que no sabe que una puerta existe
+es peor que no tener auditor, porque su «LIMPIO» se lee como cobertura.
+
+**Cómo se encontró, que es la parte instructiva:** el mismo cambio que arregló
+esto agregó la tabla de las cinco salidas a `docs/07-seguridad.md` y **se olvidó de
+espejarla** en el agente. Lo detectó el `auditor-documentacion` auditando ese
+cambio. O sea: la inconsistencia la creó a medias el arreglo, y la encontró otro
+auditor del mismo trío.
+
+**Regla que queda escrita** en `13-agentes.md` para la próxima salida nueva: son
+**tres** lugares —el documento de seguridad, el cuerpo del agente y su
+`description`— y el tercero es el que decide si el agente se entera.
+
+### B-137 · `construirIssue` sanea campo por campo, no la salida armada · P2
+
+**Este ítem existía solo dentro de un comentario de test.**
+`tests/clases-de-bug.test.ts` tiene `it.fails('B-137: el saneador se aplica sobre
+la salida, no en cada campo')` desde el 2026-08-24, con la clase explicada en su
+docblock, y `grep -rn 'B-137' docs/` no devolvía nada. La regla de proceso del
+`CLAUDE.md` —todo reporte de bug entra al backlog— no se cumplió. Lo detectó el
+`auditor-documentacion` el 2026-08-27.
+
+`redactar()` se aplica a `descripcion` y `pasos` de la **entrada**, en siete
+llamadas, y no al `title`/`body` ya armados de `construirIssue`
+(`functions/reportes.js`). Hoy no filtra: los cuatro valores que se cuelan sin
+pasar por el saneador —`id` del reporte, `actividad.slug`, `reporte.actividad.id`
+y `severidad`— son ids o enums acotados por `reporteValido()` en las reglas, y no
+pueden traer un link. El punto es que la próxima interpolación no tiene por qué
+serlo, y ya pasó una vez con el `title`.
+
+Arreglo: mover `redactar()` a un único punto de paso obligado, sobre el
+`title`/`body` armados, en vez de por campo de la entrada. Los dos `it.fails`
+(B-81 y B-137) pasan a `it` solos.
+
+### B-213 · Los tres `.env` versionados no tienen ningún gate · P2
+
+`.gitignore` versiona `.env.development`, `.env.production` y `functions/.env`
+como excepciones deliberadas y bien argumentadas: la config del SDK web es pública
+por diseño y `functions/.env` solo lleva el ID del calendario y el repo de GitHub.
+Verificado hoy: las tres solo tienen claves `PUBLIC_*` más `GOOGLE_CALENDAR_ID` y
+`GITHUB_REPO`.
+
+El problema es que **la única defensa es la memoria**, y es la puerta que publica
+de la forma más irreversible que hay (un commit a un repo público). Todas las
+otras puertas del proyecto tienen gate automático: `verificar-bundle.sh` como paso
+bloqueante en los dos workflows, `build-credenciales.test.ts` recorriendo `src/`,
+`ssr.external` en `astro.config.mjs`. Esta no.
+
+El candidato concreto es `GOOGLE_CALENDAR_ICS_PRIVADO` (ver `07-seguridad.md`):
+es un secreto y tiene forma de URL cómoda de pegar en un `.env`.
+
+Arreglo: un `it` que lea los tres archivos versionados y exija que toda clave
+matchee una whitelist (`^PUBLIC_`, más las dos excepciones nombradas a mano), y
+que ningún **valor** matchee `private-[0-9a-f]{10,}`, `BEGIN PRIVATE KEY`,
+`ghp_` ni `github_pat_`. Compara claves y formas, nunca imprime valores.
+
+### B-214 · Astro 5.x no tiene parche para ocho avisos de seguridad: hay que subir a 6/7 antes de B-01 · P2
+
+`npm audit --omit=dev` da 2 altas en dependencias de producción: ocho avisos de
+Astro (instalado 5.18.2) más `sharp`, que viene de Astro. Los peores son un SSRF
+de CVSS 7.5 (`GHSA-2pvr-wf23-7pc7`, fetch de la página de error prerenderizada) y
+un XSS reflejado de 7.1 por nombre de slot sin escapar (`GHSA-8hv8-536x-4wqp`).
+
+**Ninguno es explotable hoy**, y se verificó uno por uno: no se usa `define:vars`,
+ni `transition:*`, ni `server:defer`, ni spread props en `.astro`, ni slots con
+nombre, ni `set:html`; y `output: 'static'`, así que el SSRF —que necesita
+runtime de servidor— no aplica. El sitio son tres páginas y un layout.
+
+**Lo que hace que sea un ítem y no un «ignorar»: no hay parche en la 5.x.** Las
+versiones corregidas son ≥6.1.6, ≥6.3.3, ≥6.4.6, ≥7.0.4 y ≥7.0.6 según el aviso.
+Quedarse en 5 es quedarse con los ocho abiertos para siempre.
+
+**Y el momento importa.** Conviene subir **antes** de construir el sitio público
+(B-01), no después: B-01 va a interpolar datos de Firestore en HTML, y ahí varios
+de estos pasan de teóricos a vivos — justo cuando el salto de mayor va a ser más
+caro de probar, porque habrá más superficie que revisar. Hoy el blast radius del
+upgrade son tres páginas.
+
+`functions/` aparte: 10 moderadas, ninguna alta, todas transitivas de
+`firebase-admin`/`googleapis`.
+
+### B-215 · Tres duplicaciones chicas en producción y una en los tests · P2
+
+Salidas del barrido de duplicación del 2026-08-27 (ventanas de 8 líneas
+significativas idénticas entre archivos). Ninguna es urgente; van juntas porque se
+arreglan en el mismo rato:
+
+- **El `useEffect` de carga de actividades**, verbatim en
+  `CalendarioActividades.tsx` y `ListaActividades.tsx`: el flag `vivo`, el
+  `setCargando`, el `catch` que estrecha `unknown` a mensaje, el `finally`. Un
+  `useActividades(version)` lo borra y le da un solo lugar al manejo de error, que
+  hoy son dos.
+- **`MESES`**, los doce nombres idénticos, en `calendarioPanel.ts` y
+  `novedades.ts`, y en los dos para lo mismo (formatear el nombre de un mes).
+- **La adopción de `tests/fixtures/` es de 7 archivos sobre 59.** Hay un
+  `actividadCentinela` completo y lo usa **uno**; siete archivos definen su propio
+  builder de actividad, con cuatro firmas distintas (`Record<string, unknown>`,
+  `Partial<Actividad>`, `Partial<ActividadConId>`, tipos propios). No es que
+  falte el fixture: está escrito y no se usa. Ver también B-211, que es la misma
+  historia con el `ts()`.
+
+**Lo que NO entra acá**, para que no se lo confunda con duplicación: los tres
+componentes de chips (`TaxonomiaSelect`, `TagsInput`, `ChipsInput`) comparten
+markup y **se dejan como están** — son tres widgets distintos y la lógica pura ya
+se comparte (D-116).
+
+---
+
 ## P3 — cuando sobre tiempo
 
 ### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` · P3
@@ -3481,6 +3776,23 @@ que sobrevivieron dos commits
 ramas abiertas, y habilita además B-62 (el "?" por sección, que hoy exige tocar
 `ActividadFormulario.tsx` en nueve lugares).
 
+**Hecho (D-104).** Diez archivos en `src/components/admin/formulario/`: las
+nueve secciones, la barra de acciones, el tipo de props común y el vocabulario
+de etiquetas de la UI. El JSX se movió verbatim —las props se llaman igual que
+las variables que tenían adentro—, así que el diff no esconde ningún cambio de
+comportamiento. `ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas,
+guardado y el orden de las secciones.
+
+Costo: +583 B en la carga inicial de `/admin` (+0,15 %), mismos 4 chunks.
+
+Dos tests que leían el `.tsx` como texto se arreglaron en el mismo cambio
+(`ayuda` y `opciones-orden`): ahora leen el directorio, y el de `opciones-orden`
+verifica primero que **encontró** el campo, porque un `not.toContain` sobre un
+string vacío pasa sin haber mirado nada.
+
+> Este párrafo estuvo pegado por error al final de **B-175** entre la
+> renumeración B-167→B-175 y el 2026-08-27. Volvió acá.
+
 ### B-174 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado · P2
 
 El emulador sirve las reglas **del directorio desde el que se lo arrancó**, no las
@@ -3525,19 +3837,15 @@ saneamiento. `tests/etiquetas-de-ui.test.ts` tiene el `it.fails` que se vuelve
 
 Ojo con lo que **no** entra: los `ETIQUETA_*` de `functions/calendario.js` son
 prosa del evento público, no etiquetas de UI (el motivo, en B-76).
-**Hecho (D-104).** Diez archivos en `src/components/admin/formulario/`: las
-nueve secciones, la barra de acciones, el tipo de props común y el vocabulario
-de etiquetas de la UI. El JSX se movió verbatim —las props se llaman igual que
-las variables que tenían adentro—, así que el diff no esconde ningún cambio de
-comportamiento. `ActividadFormulario.tsx` quedó en ~230 LOC: estado, cascadas,
-guardado y el orden de las secciones.
 
-Costo: +583 B en la carga inicial de `/admin` (+0,15 %), mismos 4 chunks.
-
-Dos tests que leían el `.tsx` como texto se arreglaron en el mismo cambio
-(`ayuda` y `opciones-orden`): ahora leen el directorio, y el de `opciones-orden`
-verifica primero que **encontró** el campo, porque un `not.toContain` sobre un
-string vacío pasa sin haber mirado nada.
+> **Nota de edición (2026-08-27).** Acá abajo estaba pegado un párrafo que
+> empezaba «**Hecho (D-104).** Diez archivos en
+> `src/components/admin/formulario/`…» y que **es el cierre de B-79**, no de este
+> ítem: `git log -S` lo ubica escrito junto a B-79 en el commit que partió el JSX
+> del formulario. Se perdió de allá y apareció acá durante la renumeración
+> B-167→B-175. Efecto mientras duró: **B-175 se leía como cerrada estando
+> abierta** —su `it.fails('las modalidades coinciden')` sigue en rojo— y B-79
+> quedó sin su cierre. El párrafo volvió a B-79.
 
 ### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
 
@@ -3570,9 +3878,24 @@ así que en producción no debería haber ninguno de los dos. Si algún día se 
 usar `otro` como alarma, `'desconocida'` tiene que ser un valor propio del
 vocabulario en vez de caer en la bolsa.
 
-### B-172 · La trampa 7 del §13 no tiene ningún test · P2
+### B-172 · La trampa 7 del §13 no tiene ningún test · ✅ hecho (2026-08-27)
 
-Salió de armar el mapa de B-119, que la calcula en vez de suponerla: de las diez
+**Cerrado como efecto de B-208, y vale anotar cómo.** Este ítem decía que faltaba
+escribir la query de colección en el test de reglas, y era cierto. Lo que no
+decía —porque nadie había mirado esa mitad— es que la query **con** el `where`
+pasaba y devolvía los documentos crudos: no era una trampa sin red, era una fuga
+abierta. Arreglar la fuga (D-128) obligó a escribir exactamente los dos `it` que
+este ítem pedía.
+
+El texto original queda abajo sin tocar, porque la parte mejor razonada es la que
+salió mal: «muerde el día de la primera lectura en vivo, que es justo cuando
+nadie se va a acordar del §5.3». Eso justificó postergarlo, y era falso — la
+trampa se podía ejercitar **ese mismo día**. Lo que faltaba no era esperar a
+B-01, era mirar la misma regla desde el otro lado.
+
+---
+
+Salió de armar el mapa de B-119, que la calcula en vez de suponerla: de las
 trampas del §13, la 7 —query pública sin `where('estado','==','publicado')`— es
 la única que quedó sin red.
 

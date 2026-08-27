@@ -536,7 +536,7 @@ elegirlo.
 los uids. El link de la reunión solo si se tildó "publicar el link" en esa
 actividad. Ver [`07-seguridad.md`](07-seguridad.md).
 
-## Trigger de rebuild — completo en código, sin desplegar
+## Trigger de rebuild
 
 Con SSG una actividad nueva no existe hasta que se rebuildea (§8). El lazo es:
 
@@ -579,9 +579,11 @@ se resetea de dos maneras: un disparo exitoso, o **un cambio nuevo** — editar
 cualquier actividad rearma los intentos, así que el lazo se recupera solo
 cuando el problema de fondo se resuelve.
 
-**Falta desplegarlo.** No falta código: falta el PAT de GitHub en Secret
-Manager y el secret de deploy en GitHub, que solo puede crear el dueño. Ver
-[`08-operacion.md`](08-operacion.md).
+**Desplegado y verificado de punta a punta desde el 2026-08-25 (B-20).** El PAT de
+GitHub en Secret Manager y el secret de deploy ya están creados, y el lazo se
+probó disparando un `repository_dispatch` a mano: corrió el workflow y publicó.
+[`08-operacion.md`](08-operacion.md) es ahora el runbook para rearmarlo en un
+proyecto nuevo o para rotar el PAT, no la lista de lo que falta.
 
 ## Sitio público — no existe
 

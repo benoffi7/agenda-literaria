@@ -14,7 +14,7 @@
  * frontmatter de estos archivos es plano (`clave: valor` de una línea). Lo que
  * se verifica es exactamente el modo de falla conocido, no el YAML completo.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
@@ -149,5 +149,91 @@ describe('docs/13-agentes.md dice lo que hay — cierra B-120', () => {
     );
     const prometidos = [...doc.matchAll(/`(auditor-[a-z-]+)`/g)].map((m) => m[1]!);
     expect([...new Set(prometidos)].filter((n) => !existentes.has(n))).toEqual([]);
+  });
+});
+
+/**
+ * La cuenta de salidas públicas, atada entre sus tres lugares — B-216.
+ *
+ * `src/lib/textoRedes.ts` (B-95) fue una salida pública desde que existió, y la
+ * ficha del `auditor-privacidad` listaba **cuatro**. Ningún test podía fallar: el
+ * módulo está bien cubierto por los suyos. Lo que estaba roto era la cadena de
+ * invocación — el `description` del agente no nombraba el archivo, así que un
+ * cambio que interpolara un campo nuevo en el posteo no lo despertaba, y si
+ * alguien lo corría igual, el índice que usa para orientarse no incluía la salida
+ * que debía mirar.
+ *
+ * Es la clase de B-88 aplicada a dos documentos: un productor y un consumidor que
+ * derivan la misma lista por separado. Así que se ata acá, y de las tres formas
+ * en que puede divergir:
+ *
+ * 1. las dos tablas tienen que enumerar las mismas salidas,
+ * 2. cada archivo productor tiene que estar nombrado en el `description` (que es
+ *    lo que decide si el agente se invoca solo),
+ * 3. y el archivo productor tiene que existir.
+ *
+ * Lo que este test NO puede ver: que una salida **nueva** entre a las tablas. Eso
+ * sigue siendo criterio, y es el punto 7 de "Cómo auditás" del propio agente.
+ */
+describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
+  const FICHA = '.claude/agents/auditor-privacidad.md';
+  const SEGURIDAD = 'docs/07-seguridad.md';
+
+  /**
+   * Las filas numeradas de la primera tabla del documento, con el archivo
+   * productor de la última columna con contenido. Se corta en la primera línea
+   * que no es fila: así una segunda tabla numerada más abajo no se mezcla.
+   */
+  const salidas = (relativo: string): { n: string; archivo: string }[] => {
+    const filas: { n: string; archivo: string }[] = [];
+    let empezo = false;
+    for (const linea of fuente(relativo).split('\n')) {
+      const m = /^\|\s*(\d)\s*\|(.+)$/.exec(linea);
+      if (!m) {
+        if (empezo) break;
+        continue;
+      }
+      empezo = true;
+      const celdas = m[2]!.split('|').map((c) => c.trim());
+      // La celda del productor es la primera que nombra un archivo del repo.
+      const archivo = celdas
+        .flatMap((c) => [...c.matchAll(/`((?:src|functions)\/[\w./-]+)`/g)].map((x) => x[1]!))
+        .at(0);
+      filas.push({ n: m[1]!, archivo: archivo ?? '(ninguno)' });
+    }
+    return filas;
+  };
+
+  it('el barrido encuentra las dos tablas', () => {
+    // Control positivo: si el parseo se rompiera, las comparaciones de abajo
+    // pasarían comparando dos listas vacías entre sí.
+    expect(salidas(FICHA).length).toBeGreaterThanOrEqual(4);
+    expect(salidas(SEGURIDAD).length).toBeGreaterThanOrEqual(4);
+    expect(salidas(FICHA).every((s) => s.archivo !== '(ninguno)')).toBe(true);
+  });
+
+  it('las dos tablas enumeran las mismas salidas, y en el mismo orden', () => {
+    expect(salidas(SEGURIDAD).map((s) => `${s.n} ${s.archivo}`)).toEqual(
+      salidas(FICHA).map((s) => `${s.n} ${s.archivo}`),
+    );
+  });
+
+  it('el description del agente nombra todos los archivos productores', () => {
+    // Es el punto que hace que el agente se invoque solo. Sin esto, la tabla
+    // puede estar perfecta y el agente no despertarse nunca.
+    const { claves } = frontmatter(fuente(FICHA));
+    const sinNombrar = salidas(FICHA)
+      .map((s) => s.archivo)
+      .filter((archivo) => !(claves.description ?? '').includes(archivo));
+    expect(sinNombrar, 'productores ausentes del description').toEqual([]);
+  });
+
+  it('todos los archivos productores existen', () => {
+    // `versionados()` de arriba lista solo `.claude/`, así que acá se mira el
+    // disco: los productores viven en `src/` y en `functions/`.
+    const inexistentes = salidas(FICHA)
+      .map((s) => s.archivo)
+      .filter((archivo) => !existsSync(fileURLToPath(new URL(archivo, raiz))));
+    expect(inexistentes).toEqual([]);
   });
 });

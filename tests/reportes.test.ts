@@ -36,7 +36,7 @@ const reporte = (over: Record<string, unknown> = {}) => ({
   severidad: 'me-bloquea',
   actividad: null,
   contexto: contexto(),
-  reportadoPor: { uid: 'uid_tia_hilda', email: 'librosdelatiahilda@gmail.com' },
+  reportadoPor: { uid: 'uid_tia_hilda', email: 'tia-hilda@ejemplo.com' },
   estado: 'pendiente',
   intentos: 0,
   github: null,
@@ -47,7 +47,7 @@ const reporte = (over: Record<string, unknown> = {}) => ({
 
 describe('redactar — el repo de GitHub es público (§5.1, trampa 5)', () => {
   it('tapa los mails que se hayan colado en el texto', () => {
-    expect(redactar('escribile a hola@casabrandon.org y listo')).toBe(
+    expect(redactar('escribile a hola@casabrandon.example y listo')).toBe(
       'escribile a «mail oculto» y listo',
     );
   });
@@ -308,7 +308,7 @@ describe('validación del formulario de reporte', () => {
 });
 
 describe('formAReporte', () => {
-  const usuario = { uid: 'uid_tia_hilda', email: 'librosdelatiahilda@gmail.com' };
+  const usuario = { uid: 'uid_tia_hilda', email: 'tia-hilda@ejemplo.com' };
   const form = (over: Partial<ReporteForm> = {}): ReporteForm => ({
     ...reporteVacio('editar-actividad'),
     titulo: 'No guarda el borrador',
@@ -327,7 +327,7 @@ describe('formAReporte', () => {
 
   it('guarda quién lo cargó, que es la trazabilidad interna', () => {
     const d = formAReporte(form(), contexto(), usuario);
-    expect(d.reportadoPor).toEqual({ uid: 'uid_tia_hilda', email: 'librosdelatiahilda@gmail.com' });
+    expect(d.reportadoPor).toEqual({ uid: 'uid_tia_hilda', email: 'tia-hilda@ejemplo.com' });
   });
 
   it('descarta pasos y severidad si al final era una sugerencia', () => {

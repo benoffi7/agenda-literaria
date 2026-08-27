@@ -21,8 +21,19 @@ export const CENTINELAS = {
   sede: 'CENTINELA-SEDE Casa Brandon',
   notasInternas: 'CENTINELA-NOTAS coordinar con prensa',
   bio: 'CENTINELA-BIO nacio en Rosario',
-  uid: 'bNvcQmbUwdSduoSfA2Oa9hxYMQp2',
-  mailAdmin: 'benoffi11@gmail.com',
+  /*
+   * Estos dos eran los valores REALES de una cuenta admin, y eran los únicos de
+   * esta lista que no cumplían lo que el docblock de arriba promete
+   * («inventados y bien reconocibles»). En un repo público eso es exactamente
+   * la fuga que el centinela existe para detectar: el dato que no puede salir,
+   * publicado en el archivo que verifica que no sale (§5.1, D-57).
+   *
+   * El uid conserva los 28 caracteres de un uid de Firebase a propósito: un
+   * chequeo que busque esa forma en los archivos versionados tiene que
+   * encontrar este y aceptarlo por el prefijo, no por el largo.
+   */
+  uid: 'CENTINELAuid0000000000000000',
+  mailAdmin: 'centinela-admin@ejemplo.com',
   imagen: 'https://ejemplo.com/CENTINELA-imagen.jpg',
   epigrafeImagen: 'CENTINELA-EPIGRAFE el patio en la primera edicion',
   urlMaterial: 'https://drive.example/CENTINELA-material',

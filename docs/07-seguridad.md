@@ -4,6 +4,24 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
+**Son cinco salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
+esas:
+
+| # | Salida | Quién decide qué sale |
+|---|---|---|
+| 1 | `events.json` y las páginas del sitio | `src/lib/toPublic.ts` |
+| 2 | El evento de Google Calendar | `functions/calendario.js` |
+| 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
+| 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
+| 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
+
+Y una sexta que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
+Firestore por un anónimo, que no pasaba por ninguna de las cinco proyecciones.
+Cerrada con D-128 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anotada
+acá porque el modo de falla —una puerta que ninguna proyección atraviesa— es el
+que hay que buscar al agregar una salida nueva.
+
 ## Qué NUNCA sale
 
 | Campo | Motivo | Dónde se filtra |
@@ -29,6 +47,45 @@ lugar que se pierde (B-97, **D-127**).
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
 trabajo o un `wa.me` con mensaje precargado. El formulario lo dice en la ayuda
 del campo.
+
+## El texto para redes SÍ es una salida, y es la más irreversible
+
+**Este documento se molestaba en explicar que la vista previa no es una salida y
+que el borrador autoguardado tampoco, y se olvidaba de la que sí lo es.** El
+`auditor-privacidad` lo encontró el 2026-08-27 y el hallazgo es de mapa, no de
+código: quien auditara con este archivo en la mano contaba cuatro salidas y hay
+**cinco**.
+
+`src/lib/textoRedes.ts` (B-95) arma el texto que se copia y se pega en Instagram.
+Es la salida de la que **no se puede volver**: un `events.json` se rebuildea, un
+evento de Calendar se edita, un issue se borra — un posteo ya está capturado.
+
+El módulo es de los más cuidadosos del repo, y por eso no hay hallazgo de código:
+`ActividadParaRedes` es un `Pick` explícito y no la actividad entera, y
+`tests/textoRedes.test.ts` tiene barrido de centinelas más una guarda de forma
+sobre ese `Pick`.
+
+**La tabla campo por campo vive en el docblock de `src/lib/textoRedes.ts`, y esa
+es la autoritativa** — diez filas, cada una con su motivo. No se copia acá a
+propósito: dos copias de una tabla de privacidad es exactamente el problema que
+D-20 evita en otro lado, y la copia que envejece siempre es la del documento.
+
+Lo único que conviene tener escrito de este lado, porque es la regla que
+sorprende:
+
+**`online.url` no sale al posteo nunca, ni con `urlPublica: true`.** El desvío de
+D-15 vale **solo para las salidas 1 y 2** —donde quien tilda la casilla ve un texto
+que dice qué hace— y no se extiende a un posteo abierto.
+
+Ojo con no leer eso como que el flag alcanza en las otras: a la **3** no llega
+porque `actividadParaIssue` devuelve `{ titulo, slug }` y nada más, y a la **4** no
+llega porque va `url_publica` como **booleano** — la salida más estricta, donde no
+sale contenido ni con permiso del dueño. Las tres son "no, nunca"; lo que cambia es
+por qué.
+
+Y el que se lee al revés de lo que uno espera: **`difusion.arrobar` sí sale**, y
+es su razón de existir — el campo se creó para este texto. Lo interno de
+`difusion` es `notas`, que no sale.
 
 ## La vista previa del panel no es una tercera salida
 
@@ -325,7 +382,7 @@ function esAdmin() {
 }
 
 match /actividades/{id} {
-  allow read:  if esAdmin() || resource.data.estado == 'publicado';
+  allow read:  if esAdmin();    // D-128 — antes: || resource.data.estado == 'publicado'
   allow write: if esAdmin();
   match /versiones/{version} {
     allow read:  if esAdmin();
@@ -342,17 +399,36 @@ match /sistema/{doc} {
 }
 ```
 
-Dos detalles que costaron encontrar:
+Tres detalles que costaron encontrar:
 
 - **`token.get('admin', false)`, no `token.admin`.** Leer una clave ausente de un
   map es un *evaluation error*, no `false`.
-- **El `|| esAdmin()` en la lectura** es un agregado sobre el §5.3: sin él el
-  panel no puede listar sus propios borradores.
+- **La lectura de `/actividades` es solo del admin (D-128, B-208).** El §5.3 del
+  `CLAUDE.md` prescribía `resource.data.estado == 'publicado'`, y eso filtraba:
+  **una regla de Firestore no proyecta.** Es todo-o-nada por documento, así que
+  autorizaba entregar el documento entero —con el link de la reunión, la
+  `difusion`, los uids y el `storagePath`— y no la vista de `toPublic`. El §2.5
+  dice que el público hace cero lecturas de Firestore, y por eso se leía como
+  inofensiva; lo que faltaba notar es que *permitirla* y *necesitarla* son cosas
+  distintas.
+- **La regla del padre no cascadea a la subcolección.** `versiones` necesita su
+  propio `allow read: if esAdmin()` — está más abajo, con su comando de
+  verificación.
 
-**Advertencia del §5.3:** la condición sobre `resource.data` obliga a que toda
-query pública incluya `where('estado','==','publicado')`, si no Firestore
-rechaza la query entera (trampa 7). Con el JSON estático casi no afecta, pero
-tenerlo presente si se agrega alguna lectura en vivo.
+**Advertencia del §5.3, hoy inerte pero no derogada:** una condición sobre
+`resource.data` obliga a que toda query pública incluya el `where`
+correspondiente, si no Firestore rechaza la query **entera** en vez de devolver
+el subconjunto visible (trampa 7).
+
+Desde D-128 **ninguna** colección de este proyecto tiene una regla de lectura
+condicionada por `resource.data` —`/actividades` es `esAdmin()` puro y
+`/opciones/*` es `if true`—, así que hoy no hay query que se pueda romper así. La
+advertencia queda porque el día que B-01 necesite lectura en vivo desde el
+cliente, la forma que D-128 recomienda (una subcolección `privado/`) reintroduce
+exactamente este mecanismo. El contraste está fijado en el `describe('trampa 7 —
+el mecanismo, con una regla condicionada')` de
+`tests/actividades.integracion.test.ts`, que carga su propio ruleset para probarlo
+sin depender de cuál sea la regla viva.
 
 ### Aprobar taxonomías (§4.3)
 
@@ -410,16 +486,20 @@ bundle** (trampa 4, §5.4). Tres defensas:
 
 | Qué | Dónde va | Dónde NO |
 |---|---|---|
-| Service account key | ninguna parte: se usan las ADC de gcloud y la identidad del runtime | disco, repo |
-| PAT de GitHub (reportes y §8) | Secret Manager, como `GITHUB_TOKEN` | `functions/.env`, repo, bundle del panel |
-| Nombre del repo (`GITHUB_REPO`) | `functions/.env`, versionado — no es secreto | — |
-
 | Service account key | ninguna parte en local: se usan las ADC de gcloud y la identidad del runtime | disco, repo |
 | Key de `deploy-ci@` | secret `FIREBASE_SERVICE_ACCOUNT` de GitHub Actions | disco, repo |
-| PAT de GitHub (§8) | Secret Manager, atado a la Function con `defineSecret` | `functions/.env`, repo |
-
+| PAT de GitHub (reportes y §8) | Secret Manager, atado a la Function con `defineSecret` | `functions/.env`, repo, bundle del panel |
 | URL privada del ICS | `.env` local si hace falta | repo |
-| Config del SDK web | versionada, no es secreta | — |
+| Nombre del repo (`GITHUB_REPO`) | `functions/.env`, versionado — no es secreto | — |
+| Id del calendario (`GOOGLE_CALENDAR_ID`) | `functions/.env`, versionado — **no es secreto**: es la dirección de suscripción de un calendario público, y publicarla es el punto del proyecto | — |
+| Config del SDK web (`PUBLIC_*`) | `.env.development` / `.env.production`, versionadas — pública por diseño, va al bundle | — |
+
+> La tabla estaba **partida en tres** por dos líneas en blanco, con `Service
+> account key` y `PAT de GitHub` en dos redacciones distintas cada uno, así que
+> las últimas filas renderizaban sin encabezado. Unificada el 2026-08-27, con las
+> dos filas que faltaban: el id del calendario y la config del SDK web eran
+> justamente las dos preguntas que alguien iba a venir a buscar acá y no
+> encontraba (B-213).
 
 La URL privada del ICS (`.../private-.../basic.ics`) da acceso de lectura al
 calendario entero a quien la tenga. Si aparece en un historial de comandos o un
@@ -475,9 +555,31 @@ curl -s -X POST "$BASE/actividades?key=$K" -H "Content-Type: application/json" \
 curl -s -X PATCH "$BASE/opciones/arancel?key=$K" -H "Content-Type: application/json" \
   -d '{"fields":{"valores":{"arrayValue":{"values":[]}}}}'
 
+# ── LECTURA (D-128, B-208) ────────────────────────────────────────
+# Hasta el 2026-08-27 acá solo había escrituras, y del lado de la lectura la
+# regla entregaba el documento ENTERO de toda actividad publicada. Estas dos
+# son las que hay que correr después de deployar reglas.
+
+# Debe devolver "Missing or insufficient permissions"
+curl -s "$BASE/actividades?key=$K"
+
+# Idem — la query con el where, que era la que pasaba y devolvía todo crudo
+curl -s -X POST \
+  "https://firestore.googleapis.com/v1/projects/agenda-literaria/databases/(default)/documents:runQuery?key=$K" \
+  -H "Content-Type: application/json" \
+  -d '{"structuredQuery":{"from":[{"collectionId":"actividades"}],
+       "where":{"fieldFilter":{"field":{"fieldPath":"estado"},
+       "op":"EQUAL","value":{"stringValue":"publicado"}}}}}'
+
 # Esta SÍ debe funcionar: los chips de filtro la necesitan (§4.4)
 curl -s "$BASE/opciones/arancel?key=$K"
 ```
+
+**Ojo con leer el resultado de estas dos:** un `permission-denied` y un
+"no encontré nada" se parecen si solo se mira que no haya datos. Si la primera
+devuelve `{}` en vez del error, no significa que esté cerrada — significa que la
+colección está vacía o que el `key` no era el de producción. El error tiene que
+estar **nombrado** en la respuesta.
 
 ### El issue no filtró la identidad de quien reportó
 

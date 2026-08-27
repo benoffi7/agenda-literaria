@@ -1,8 +1,20 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  connectFirestoreEmulator,
+  doc,
+  getDoc,
+  getDocs,
+  getFirestore,
+  query,
+  setDoc,
+  where,
+} from 'firebase/firestore';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import {
@@ -17,11 +29,53 @@ import { duplicarActividadForm } from '@/lib/duplicar';
 import { toPublic } from '@/lib/toPublic';
 import { sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
-import { emuladorVivo, limpiarFirestore } from './emulador';
+import { HOST_FIRESTORE, cargarReglas, emuladorVivo, limpiarFirestore } from './emulador';
 
 const vivo = await emuladorVivo();
 
 const UID = 'uid_test_admin';
+
+/*
+ * El emulador sirve el `firestore.rules` del directorio desde el que se lo
+ * arrancó, no el de este checkout. Este archivo es el que verifica las reglas y
+ * era el único que no las empujaba: con un worktree en paralelo podía estar
+ * dando verde sobre el archivo de otra rama — el modo de falla que el docblock
+ * de `cargarReglas` describe y que `reportes-reintento` ya evitaba.
+ */
+const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
+
+/**
+ * Afirma que una lectura se rechazó **por permisos**, y no por cualquier otra
+ * cosa.
+ *
+ * Un `rejects.toThrow()` pelado también lo satisface un emulador que se cayó a
+ * mitad de corrida, un `db()` que tira o un projectId equivocado: los tests de
+ * reglas pintarían verde sin haber probado ninguna regla. Lo señaló el
+ * `auditor-privacidad` sobre este mismo cambio.
+ *
+ * Lo que **no** sirve es apretar el mensaje. Para una lectura denegada el
+ * emulador no devuelve "Missing or insufficient permissions" —eso es de las
+ * escrituras— sino la traza de evaluación (`false for 'get' @ L50`) o incluso
+ * `Property estado is undefined on object`, que es la forma que toma la trampa 7
+ * cuando la regla no se puede evaluar sin el `where`. Se probó: el matcher por
+ * mensaje falla en las cuatro.
+ *
+ * El `code` de la `FirebaseError`, en cambio, es `permission-denied` en todos
+ * esos casos, y es `unavailable` si el emulador no está. Eso es lo que separa
+ * "la regla denegó" de "no se pudo preguntar".
+ */
+const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
+  let error: unknown;
+  try {
+    await lectura;
+  } catch (e) {
+    error = e;
+  }
+  expect(error, `${que}: la lectura NO se rechazó`).toBeDefined();
+  expect((error as { code?: string }).code, `${que}: se rechazó, pero no por permisos`).toBe(
+    'permission-denied',
+  );
+};
 
 const tokenAdmin = async (uid: string, esAdmin: boolean) => {
   const app = initAdmin({ projectId: 'agenda-literaria' }, `t-${uid}-${Date.now()}`);
@@ -64,7 +118,7 @@ const formCompleto = (): ActividadForm => ({
   inscripcion: {
     requiere: true,
     via: 'mail',
-    destino: 'hola@casabrandon.org',
+    destino: 'hola@casabrandon.example',
     cupo: 12,
     cierra: '2026-09-01T00:00',
     // B-97 — en `true` para que la ida y vuelta lo ejercite: con `false` no se
@@ -234,7 +288,7 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
 
     expect(lleno!.inscripcion.completo).toBe(true);
     // Lo que NO se tocó: el resto del bloque sigue igual, y con sus tipos.
-    expect(lleno!.inscripcion.destino).toBe('hola@casabrandon.org');
+    expect(lleno!.inscripcion.destino).toBe('hola@casabrandon.example');
     expect(lleno!.inscripcion.cupo).toBe(12);
     expect(lleno!.inscripcion.requiere).toBe(true);
     expect(lleno!.inscripcion.via).toBe('mail');
@@ -271,10 +325,23 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
 describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
   beforeAll(async () => {
     await limpiarFirestore();
+    await cargarReglas(REGLAS);
     await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    /*
+     * La publicada lleva adentro los campos del §5.1 a propósito: son
+     * exactamente los que un anónimo recibía cuando la regla decía
+     * `resource.data.estado == 'publicado'` (D-128). Puestos acá, el día que
+     * alguien afloje la regla el test no solo falla: el diff dice qué se
+     * filtraba.
+     */
     await setDoc(doc(db(), 'actividades', 'publicada'), {
       titulo: 'Publicada',
       estado: 'publicado',
+      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+      difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
+      createdBy: UID,
+      sesiones: [{ id: 'ses_1', calendarEventId: 'evt_privado' }],
+      imagenes: [{ id: 'img_1', storagePath: 'actividades/ruta/privada.jpg' }],
     });
     await setDoc(doc(db(), 'actividades', 'borrador'), {
       titulo: 'Borrador',
@@ -289,19 +356,74 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
     ).rejects.toThrow(/permission|insufficient/i);
   });
 
-  it('un anónimo lee lo publicado', async () => {
-    await signOut(auth());
+  /*
+   * ── Control positivo, y no es decorativo ─────────────────────────────
+   * Los dos `it` que siguen afirman que una lectura se rechaza. Un rechazo
+   * también ocurre si el documento no existe, si `limpiarFirestore` corrió de
+   * más o si el `beforeAll` falló en silencio: sin este control, los dos darían
+   * verde sobre una colección vacía sin haber probado nada. Es el mismo motivo
+   * por el que `bundle-panel.test.ts` sigue los `import()` para comprobar que
+   * el SDK *sí* aparece.
+   */
+  it('el admin SÍ lee la publicada, con sus campos privados adentro', async () => {
+    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
     const snap = await getDoc(doc(db(), 'actividades', 'publicada'));
     expect(snap.exists()).toBe(true);
+    expect(snap.data()?.online?.url).toBe('https://zoom.us/j/secreto');
+  });
+
+  /*
+   * El positivo por **query**, y no solo por documento: son dos permisos
+   * distintos (`get` y `list`), y el camino de la fuga era la query. Sin esto, el
+   * rechazo de abajo podría estar tapando que el admin tampoco puede listar —o
+   * sea, el panel roto— y el test seguiría en verde. Lo señaló el
+   * `auditor-privacidad` sobre este cambio.
+   */
+  it('el admin SÍ hace la query con el where y le vuelve la publicada', async () => {
+    await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
+    const snap = await getDocs(
+      query(collection(db(), 'actividades'), where('estado', '==', 'publicado')),
+    );
+    expect(snap.size).toBe(1);
+  });
+
+  /*
+   * D-128 — lo que este `it` afirma es lo contrario de lo que afirmaba hasta el
+   * 2026-08-27, cuando decía `it('un anónimo lee lo publicado')`. Ese `it` no
+   * estaba mal escrito: fijaba como deseado el comportamiento que prescribía el
+   * §5.3 del `CLAUDE.md`. Lo que estaba mal era la regla, porque una regla no
+   * proyecta: entregaba el documento entero y no la vista de `toPublic`.
+   */
+  it('un anónimo NO lee una actividad publicada: el documento trae el link y la difusión (§5.1)', async () => {
+    await signOut(auth());
+    await rechazadaPorPermisos(
+      getDoc(doc(db(), 'actividades', 'publicada')),
+      'la publicada, por documento',
+    );
+  });
+
+  /*
+   * Por query y no solo por documento, porque son dos permisos distintos: la
+   * fuga real no era un `getDoc` con el id adivinado —los ids son `act_<uuid>`—
+   * sino esta query, que devolvía la colección entera y cruda de una sola vez.
+   *
+   * Con la regla anterior pasaba: cada documento devuelto cumplía la condición.
+   * Sin el `where` se rechazaba por la **trampa 7** del §13, que es otro modo de
+   * falla — y ese contraste, que esta regla ya no puede ejercitar porque no
+   * condiciona por `resource.data`, está fijado en el `describe('trampa 7 — el
+   * mecanismo, con una regla condicionada')` al final del archivo.
+   */
+  it('una query anónima no devuelve documentos, ni con el where del §5.3', async () => {
+    await signOut(auth());
+    await rechazadaPorPermisos(
+      getDocs(query(collection(db(), 'actividades'), where('estado', '==', 'publicado'))),
+      'la query con el where',
+    );
   });
 
   it('un anónimo NO lee un borrador', async () => {
     await signOut(auth());
-    // Se afirma que la lectura se rechaza, sin atarse al mensaje: para una
-    // lectura denegada el emulador devuelve "evaluation error" en lugar de
-    // permission-denied (ver el comentario en firestore.rules). Lo que importa
-    // es que no entregue el documento.
-    await expect(getDoc(doc(db(), 'actividades', 'borrador'))).rejects.toThrow();
+    await rechazadaPorPermisos(getDoc(doc(db(), 'actividades', 'borrador')), 'el borrador');
   });
 
   it('las opciones se leen sin estar logueado (§4.4)', async () => {
@@ -314,5 +436,109 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
     await expect(
       setDoc(doc(db(), 'opciones', 'arancel'), { valores: [] }),
     ).rejects.toThrow(/permission|insufficient/i);
+  });
+});
+
+/*
+ * ── La trampa 7 del §13, probada como mecanismo y no como consecuencia ──────
+ *
+ * Este bloque nació de un hallazgo del `auditor-trampas` sobre el cambio de
+ * D-128, y vale contar por qué, porque es un modo de falla de los tests y no
+ * del código.
+ *
+ * Al cerrar B-208 la regla pasó a `allow read: if esAdmin()`, y con eso el `it`
+ * de arriba —«una query anónima no devuelve documentos, ni con el where»— pasó a
+ * dar verde. Se dio por cerrada la trampa 7. **Pero pasaba por el motivo
+ * equivocado:** sin ninguna condición sobre `resource.data`, *toda* query
+ * anónima se rechaza, con `where` y sin `where`. Lo que la trampa 7 describe es
+ * un **contraste**: con la regla condicionada, la query CON el `where` pasa y la
+ * query SIN el `where` se rechaza entera en vez de devolver el subconjunto
+ * visible. Ese contraste no lo ejercitaba nada.
+ *
+ * Y el chequeo de `mapa-de-trampas.test.ts` no podía notarlo: exige que algún
+ * archivo de `tests/` diga `trampa 7`, y eso lo satisface un comentario.
+ *
+ * Así que este test carga **su propio ruleset** con la regla condicionada, en un
+ * projectId aparte, y afirma las dos mitades. Queda independiente de cuál sea la
+ * regla viva en `/actividades`: el día que B-01 necesite lectura en vivo y
+ * alguien vuelva a condicionar por `resource.data` —la subcolección `privado/`
+ * de D-128, o cualquier otra forma—, el mecanismo ya está fijado.
+ */
+describe.skipIf(!vivo)('trampa 7 — el mecanismo, con una regla condicionada', () => {
+  const PID = 'trampa-7-mecanismo';
+  const BASE = `http://${HOST_FIRESTORE}/v1/projects/${PID}/databases/(default)/documents`;
+
+  // La regla que el §5.3 del CLAUDE.md prescribía, aislada en su propio
+  // projectId: cargarla sobre `agenda-literaria` reabriría la fuga de B-208
+  // para los tests que corran después.
+  const REGLA_CONDICIONADA = `
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        match /cosas/{id} {
+          allow read: if resource.data.estado == 'publicado';
+          allow write: if false;
+        }
+      }
+    }`;
+
+  let app: ReturnType<typeof initializeApp>;
+  let base: ReturnType<typeof getFirestore>;
+
+  beforeAll(async () => {
+    const r = await fetch(`http://${HOST_FIRESTORE}/emulator/v1/projects/${PID}:securityRules`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rules: { files: [{ name: 'firestore.rules', content: REGLA_CONDICIONADA }] },
+      }),
+    });
+    if (!r.ok) throw new Error(`el emulador rechazó el ruleset de prueba: ${r.status}`);
+
+    // Se siembra con `Bearer owner`, que en el emulador saltea las reglas: es el
+    // equivalente del Admin SDK y lo que hace el panel logueado.
+    for (const [id, estado] of [
+      ['publicada', 'publicado'],
+      ['borrador', 'borrador'],
+    ]) {
+      const w = await fetch(`${BASE}/cosas?documentId=${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+        body: JSON.stringify({ fields: { estado: { stringValue: estado } } }),
+      });
+      if (!w.ok) throw new Error(`no se pudo sembrar ${id}: ${w.status}`);
+    }
+
+    app = initializeApp({ projectId: PID, apiKey: 'fake-api-key' }, 'trampa-7');
+    base = getFirestore(app);
+    connectFirestoreEmulator(base, HOST_FIRESTORE.split(':')[0]!, Number(HOST_FIRESTORE.split(':')[1]));
+  }, 30_000);
+
+  afterAll(async () => {
+    await fetch(`http://${HOST_FIRESTORE}/emulator/v1/projects/${PID}/databases/(default)/documents`, {
+      method: 'DELETE',
+    });
+    await deleteApp(app);
+  });
+
+  it('control positivo: el documento publicado SÍ se lee de a uno', async () => {
+    // Sin esto, los dos de abajo podrían estar pasando sobre una colección
+    // vacía o un ruleset que no cargó, y el contraste no probaría nada.
+    const snap = await getDoc(doc(base, 'cosas', 'publicada'));
+    expect(snap.exists()).toBe(true);
+  });
+
+  it('la query CON el where devuelve el subconjunto visible', async () => {
+    const snap = await getDocs(
+      query(collection(base, 'cosas'), where('estado', '==', 'publicado')),
+    );
+    expect(snap.size).toBe(1);
+  });
+
+  it('la query SIN el where se rechaza ENTERA, no devuelve lo visible', async () => {
+    // Esta es la trampa: uno esperaría un resultado filtrado y recibe un
+    // rechazo. Es lo que hace que una lectura en vivo del sitio público falle
+    // por completo si alguien olvida el where del §5.3.
+    await rechazadaPorPermisos(getDocs(collection(base, 'cosas')), 'la query sin el where');
   });
 });

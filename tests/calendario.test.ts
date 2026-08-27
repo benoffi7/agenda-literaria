@@ -244,7 +244,7 @@ describe('planificar — cambio global (trampa 9)', () => {
         inscripcion: {
           requiere: true,
           via: 'mail',
-          destino: 'hola@casabrandon.org',
+          destino: 'hola@casabrandon.example',
           cupo: 12,
           completo,
         },
@@ -479,7 +479,7 @@ const completa = (over: Record<string, unknown> = {}) =>
     inscripcion: {
       requiere: true,
       via: 'mail',
-      destino: 'hola@casabrandon.org',
+      destino: 'hola@casabrandon.example',
       cupo: 12,
       cierra: ts('2026-09-01T15:00:00Z'),
     },
@@ -490,7 +490,7 @@ const completa = (over: Record<string, unknown> = {}) =>
         { tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
       ],
     },
-    organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.org' },
+    organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.example' },
     tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
     // DEC-1 — el libro presentado va con centinelas, y no es decoración: si el
     // fixture no tuviera el campo, **nada** fijaría esta celda de la tabla del
@@ -526,7 +526,7 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
 
   it('incluye la inscripción completa', () => {
     const texto = d();
-    expect(texto).toContain('hola@casabrandon.org');
+    expect(texto).toContain('hola@casabrandon.example');
     expect(texto).toContain('Cupo: 12');
     expect(texto).toMatch(/Cierra: .*2026/);
   });
@@ -600,7 +600,7 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
     const texto = construirDescripcion(completa({
       inscripcion: { ...(completa().inscripcion as object), completo: true },
     }), sesion(), LABELS);
-    expect(texto).toContain('Inscripción por mail: hola@casabrandon.org');
+    expect(texto).toContain('Inscripción por mail: hola@casabrandon.example');
     // Y el paréntesis que explica por qué el mail sigue ahí: sin él, un cupo
     // completo con un contacto al lado se lee como un error.
     expect(texto).toContain('puede liberarse un lugar');
