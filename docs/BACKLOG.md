@@ -346,7 +346,29 @@ tarjetas que no están en el HTML (las pasadas).
 `Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })`,
 en el build y en el cliente. El JSON las lleva en UTC (trampa 1).
 
-### B-106 · `events.json` en build time
+### B-106 · `events.json` en build time — ✅ hecho (2026-08-27)
+
+**Hecho.** `src/pages/events.json.ts` lee Firestore con el Admin SDK en el build y
+`src/lib/eventsJson.ts` arma el índice. Las tres cosas que el ítem marcaba como no
+obvias salieron como estaban diseñadas:
+
+- **El recorte** (§3.1) es una proyección aparte y **recibe una `ActividadPublica`,
+  no una `Actividad`**: así no puede volver a decidir sobre `difusion` o
+  `createdBy` — esa decisión ya está tomada un eslabón antes. Tiene su propio
+  barrido de centinelas, con control negativo que exige que la falta de recorte
+  falle nombrando `inscripcion.destino`.
+- **La guarda de credenciales** (D-123): en CI sin credenciales el build **falla**
+  —probado: sale con estado 1 y no emite el archivo— y en local sigue con lista
+  vacía y un aviso. Las dos ramas verificadas a mano.
+- **La cabecera `no-cache`** en `firebase.json` → **cierra B-37**.
+
+Y arrastró **B-111**, que era dependencia dura de la forma diseñada: el índice
+lleva `cierraEn` y no el booleano `abierta`, que se congela en el build.
+
+Lo que **no** entra y queda para el sitio: el `?v=` con el que la island va a pedir
+el archivo (no hay island todavía, es B-105) y el `estado` en la proyección, que es
+B-112 y lo necesita la franja CANCELADA del detalle, no el filtrado.
+
 
 Lectura de Firestore con el Admin SDK, `toPublic.ts`, y el índice que la island
 filtra en memoria (§2.4, §2.5). Incluye las opciones de `/opciones/*` en el
@@ -436,7 +458,19 @@ crea eventos de actividades publicadas), y el build la puede leer porque trabaja
 sobre el documento crudo. Lo correcto es un `publicadaAlgunaVez: boolean` — es
 una de las decisiones de §11.1.
 
-### B-111 · `inscripcion.abierta` se congela en el build y miente
+### B-111 · `inscripcion.abierta` se congela en el build y miente — ✅ hecho (2026-08-27)
+
+**Hecho** como parte de B-106, porque era dependencia dura de la forma diseñada del
+índice: `toPublic` proyecta `cierraEn` (el ISO de `cierra`) **además** del booleano,
+y el `events.json` lleva la fecha. Quien consume la recalcula con **su** reloj.
+
+`abierta` se conserva —el arreglo era «además del booleano», no «en lugar de»—
+porque un consumidor sin JavaScript no puede recalcular nada.
+
+**De paso, la lista de claves de `toPublic.test.ts` hizo su trabajo:** agregar la
+clave puso la suite en rojo nombrándola, que es exactamente para lo que está esa
+lista. Un campo nuevo en una proyección pública tiene que ser una decisión.
+
 
 `toPublic` calcula `abierta` con `Date.now()` **del momento del build**. Una
 inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild
@@ -1477,7 +1511,15 @@ mandaba `version: otro` a la analítica, y ahora la versión sucia viaja entera 
 con su sello. Distinguir dos builds sucios *entre sí* ya funciona; explicar en
 qué se diferencian no es trabajo de una cadena de versión.
 
-### B-37 · `/events.json` va a necesitar su propia cabecera de cache
+### B-37 · `/events.json` va a necesitar su propia cabecera de cache — ✅ hecho (2026-08-27)
+
+**Hecho** con B-106: `no-cache` en `firebase.json`. Se eligió eso y no un
+`max-age` corto porque el archivo **no lleva hash en el nombre** y cambia en cada
+rebuild: un `max-age` deja el índice más viejo que el HTML que lo acompaña, y el
+síntoma es un listado que muestra una actividad que la página de detalle ya no
+tiene (o al revés). `no-cache` no significa «no cachear»: significa revalidar, así
+que el CDN sigue sirviendo el archivo y solo paga un `304`.
+
 
 Las cabeceras de `firebase.json` cubren el HTML, `/version.json` y
 `dist/_astro/*`. El `events.json` del sitio público (B-01) todavía no existe:

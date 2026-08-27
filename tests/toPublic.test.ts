@@ -232,12 +232,45 @@ describe('toPublic — inscripción', () => {
     expect(JSON.stringify(p.inscripcion)).not.toContain('CENTINELA-NOTAS');
     expect(Object.keys(p.inscripcion).sort()).toEqual([
       'abierta',
+      // B-111 — el ISO del cierre, agregado a propósito. Esta lista es la que
+      // hizo que agregarlo fuera una decisión: la suite se puso roja nombrando
+      // la clave nueva, que es exactamente para lo que está.
+      'cierraEn',
       'completo',
       'cupo',
       'destino',
       'requiere',
       'via',
     ]);
+  });
+
+  it('proyecta el ISO del cierre y no solo el booleano — B-111', () => {
+    /*
+     * `abierta` se calcula con el reloj del **build** y se congela: una
+     * inscripción que cerró a la mañana sigue diciendo «abierta» hasta el
+     * rebuild siguiente. Con la fecha, quien consume la recalcula con su reloj.
+     *
+     * Se afirman las dos mitades del mismo documento, con el mismo `ahora`: el
+     * booleano dice «cerrada» y la fecha dice **cuándo**. Un test que solo
+     * mirara `cierraEn` no notaría que se rompió `abierta`, y al revés.
+     */
+    const cerrada = actividad();
+    cerrada.inscripcion.cierra = ts('2026-09-01T12:00:00.000Z');
+    const p = toPublic(cerrada, 'id1', Date.parse('2026-09-02T00:00:00.000Z'));
+
+    expect(p.inscripcion.abierta).toBe(false);
+    expect(p.inscripcion.cierraEn).toBe('2026-09-01T12:00:00.000Z');
+  });
+
+  it('sin cierre cargado, `cierraEn` es null y no una fecha inventada', () => {
+    // El default de D-15: sin dato no se inventa el campo. Un ISO de la época
+    // («1970-01-01») haría que el sitio diga que la inscripción cerró hace
+    // cincuenta años.
+    const a = actividad();
+    a.inscripcion.cierra = null;
+    const p = toPublic(a, 'id1');
+    expect(p.inscripcion.cierraEn).toBeNull();
+    expect(p.inscripcion.abierta).toBe(true);
   });
 });
 

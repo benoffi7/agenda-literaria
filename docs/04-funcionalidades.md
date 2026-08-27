@@ -585,13 +585,31 @@ probó disparando un `repository_dispatch` a mano: corrió el workflow y public�
 [`08-operacion.md`](08-operacion.md) es ahora el runbook para rearmarlo en un
 proyecto nuevo o para rotar el PAT, no la lista de lo que falta.
 
-## Sitio público — no existe
+## Sitio público — la primera pieza existe
 
-`src/pages/index.astro` es un placeholder. Falta todo el paso 3: listado con
-filtros, `events.json`, páginas de detalle por slug.
+`src/pages/index.astro` sigue siendo un placeholder. Falta el listado con filtros
+y las páginas de detalle por slug (B-105, B-107).
 
-`toPublic.ts` (la proyección) y `normalize.ts` (la búsqueda) ya están escritos y
-testeados, así que la base está.
+**Lo que ya está: `/events.json`** (B-106), el índice que el listado va a filtrar en
+memoria (§2.5). El build lo arma leyendo Firestore con el Admin SDK y sale como
+archivo estático; el público hace **un** fetch cacheado y **cero** lecturas de
+Firestore.
+
+Tres cosas del índice que conviene saber antes de consumirlo:
+
+- **Recorta más que `toPublic`.** No lleva `descripcion` (va un `resumen` de ~160
+  caracteres), ni `inscripcion.destino`, ni la dirección o las indicaciones de la
+  sede, ni el material, ni el tema y la lectura de cada encuentro, ni la bio del
+  tallerista. Todo eso vive en el HTML del detalle. El motivo principal no es el
+  peso: es que servir el mail de inscripción en el índice lo entrega **en lote y en
+  un solo GET**.
+- **Lleva `cierraEn` y no `abierta`** (B-111): el booleano se calcula con el reloj
+  del build y se congela hasta el rebuild siguiente.
+- **Las opciones de taxonomía viajan en el mismo archivo** (§4.4), así que los chips
+  de filtro no van a tener nada cableado.
+
+`toPublic.ts` (la frontera de privacidad) y `normalize.ts` (la búsqueda) ya estaban
+escritos y testeados: eso es lo que hizo que esta pieza fuera corta.
 
 ## Historial de versiones
 

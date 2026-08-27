@@ -45,6 +45,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { opcionesPublicas, toPublic } from '@/lib/toPublic';
+import { construirIndice } from '@/lib/eventsJson';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
 import {
@@ -702,5 +703,112 @@ describe('barrido de las opciones públicas (§4.4, B-212)', () => {
     expect(mensaje, 'el barrido NO detectó el spread: la red no atrapa nada').not.toBe('');
     expect(mensaje).toContain('FUGA');
     expect(mensaje).toContain('opcion.huellaCreador');
+  });
+});
+
+/**
+ * §3.1 — barrido del índice del listado — B-106.
+ *
+ * Es la **tercera** proyección en serie sobre el mismo documento: `toPublic`
+ * decide qué puede ser público y `entradaDeIndice` decide qué necesita el
+ * listado, que es menos. Cada eslabón de una cadena de proyecciones necesita su
+ * propio barrido: el de `toPublic` no dice nada sobre lo que el índice agrega o
+ * conserva, y el de acá no dice nada sobre privacidad.
+ *
+ * Se agrega en el mismo cambio que la proyección, y no después, porque las dos
+ * vueltas anteriores enseñaron que la salida que nace fuera del barrido se queda
+ * afuera (B-212: `ValorOpcion` estuvo en la lista de AJENAS desde que existía).
+ */
+describe('barrido del índice del listado (§3.1, B-106)', () => {
+  const PERMITIDO_EN_EL_INDICE: readonly Excepcion[] = [
+    {
+      nombre: 'identidad y búsqueda',
+      centinelas: ['titulo', 'slug', 'searchText'],
+      porque:
+        'el título es lo que la tarjeta muestra, el slug es el link al detalle, y el ' +
+        'searchText es el índice de la búsqueda en memoria del §6 — es la razón de ser ' +
+        'de este archivo.',
+    },
+    {
+      nombre: 'el resumen, que es descripción recortada',
+      centinelas: ['descripcion'],
+      porque:
+        '§3.1 — `resumen` son los primeros ~160 caracteres de `descripcion`, cortados en ' +
+        'palabra: es el texto de la tarjeta y la `meta description` del detalle. O sea que ' +
+        'el centinela de `descripcion` SÍ aparece, y eso es correcto. Lo que el índice no ' +
+        'lleva es la descripción **entera**, que es lo que pesa — y `searchText` ya la ' +
+        'contiene normalizada, así que mandar las dos sería mandarla dos veces.',
+    },
+    {
+      nombre: 'la portada',
+      centinelas: ['imagenes.url'],
+      porque:
+        'la tarjeta necesita una imagen, y es la URL que el navegador va a pedir igual. ' +
+        'El epígrafe NO está en esta lista: es del detalle, debajo de la foto (D-125).',
+    },
+    {
+      nombre: 'quién, solo el nombre',
+      centinelas: ['organizador.nombre', 'tallerista.nombre'],
+      porque:
+        '§3.1 — en el índice son strings y no objetos. El Instagram, la web y la bio ' +
+        'quedan en el detalle: servir los handles de terceros en lote es distinto de ' +
+        'mostrarlos en una página.',
+    },
+    {
+      nombre: 'dónde, para el filtro de barrio',
+      centinelas: ['sede.nombre', 'sede.barrio', 'sede.ciudad'],
+      porque:
+        'el barrio es el filtro de más valor (§2.1 del diseño) y el nombre de la sede es ' +
+        'lo que la tarjeta muestra. La dirección, las indicaciones y las coordenadas NO ' +
+        'están: no se filtra por ellas y viven en el detalle.',
+    },
+    {
+      nombre: 'taxonomías, como slug',
+      centinelas: ['arancel.tipo', 'online.plataforma', 'tags'],
+      porque:
+        '§4.4 — el índice lleva el slug y las etiquetas viajan aparte en `opciones`, así ' +
+        'que los chips se arman cruzando los dos sin nada cableado.',
+    },
+    {
+      nombre: 'las opciones de taxonomía',
+      centinelas: ['opcion.slug', 'opcion.label'],
+      porque: '§4.4 — es lo que hace que un chip nuevo aparezca solo. Ver B-212.',
+    },
+  ];
+
+  it('sobreviven exactamente los centinelas que el listado necesita', () => {
+    const indice = construirIndice({
+      actividades: [toPublic(actividadCentinela(), 'act_centinela')],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    barrer('events.json (índice del listado)', JSON.stringify(indice), PERMITIDO_EN_EL_INDICE);
+  });
+
+  it('CONTROL NEGATIVO: si el índice dejara de recortar, el barrido lo dice', () => {
+    /*
+     * El atajo que este archivo existe para frenar: volcar la `ActividadPublica`
+     * tal cual en vez de recortarla. Es una línea, compila, y publica en lote el
+     * mail de inscripción, las indicaciones de la sede y los temas de cada
+     * encuentro.
+     *
+     * Se exige que el barrido falle **nombrando** al menos el mail, que es el
+     * campo por el que el §5.1 ya advierte que los bots cosechan.
+     */
+    let mensaje = '';
+    try {
+      barrer(
+        'events.json (mutación: sin recorte)',
+        JSON.stringify([toPublic(actividadCentinela(), 'act_centinela')]),
+        PERMITIDO_EN_EL_INDICE,
+      );
+    } catch (e) {
+      mensaje = e instanceof Error ? e.message : String(e);
+    }
+
+    expect(mensaje, 'el barrido NO detectó la falta de recorte').not.toBe('');
+    expect(mensaje).toContain('FUGA');
+    expect(mensaje).toContain('inscripcion.destino');
   });
 });

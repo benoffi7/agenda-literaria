@@ -1,5 +1,94 @@
 # Changelog
 
+## 1.4.0 — 2026-08-27
+
+**El sitio público arrancó: `/events.json` existe** (B-106), y con él cierran
+B-111 y B-37. `1.4.0` y no `1.3.3` porque hay un artefacto público nuevo y un
+campo nuevo en la proyección: un parche no lo describe.
+
+Sin novedades en el panel: nada de esto se ve al cargar una actividad.
+
+### B-106 · El índice que el listado va a filtrar en memoria
+
+`src/pages/events.json.ts` lee Firestore con el Admin SDK en el build y
+`src/lib/eventsJson.ts` arma el índice. Sale como archivo estático: el público hace
+**un** fetch cacheado y **cero** lecturas de Firestore (§2.5), que es lo que hace
+que la parte pública no cueste prácticamente nada.
+
+**Es la tercera proyección en serie sobre el mismo documento**, y el detalle que
+importa es que **recibe una `ActividadPublica`, no una `Actividad`**: así no puede
+volver a decidir sobre `difusion` o `createdBy` — esa decisión ya está tomada un
+eslabón antes. `toPublic` contesta «qué puede ser público»; esto contesta «qué
+necesita el listado», que es menos. Dos preguntas distintas, dos lugares.
+
+Lo que el índice **no** lleva y sí está en `toPublic`: `descripcion` (va un
+`resumen` de ~160 caracteres cortado en palabra), `inscripcion.destino`,
+`sede.direccion`, `sede.geo`, `sede.indicaciones`, `material`, `sesiones[].tema`,
+`sesiones[].lectura` y `tallerista.bio`.
+
+**El motivo número uno no es privacidad, y conviene decirlo bien:**
+`inscripcion.destino` **es** público —sale en el HTML del detalle—. Lo que cambia es
+que servirlo en el índice lo entrega **en lote y en un solo GET**, y esa diferencia
+es la que decide si un bot lo cosecha. El §5.1 ya advertía sobre ese campo.
+
+Tiene su propio barrido de centinelas, con **control negativo**: se exige que volcar
+la `ActividadPublica` sin recortar —el atajo de una línea— falle nombrando
+`inscripcion.destino`. Se agregó en el mismo cambio que la proyección y no después,
+porque las dos vueltas anteriores enseñaron que la salida que nace fuera del barrido
+se queda afuera.
+
+**La guarda de credenciales, verificada en las dos ramas** (D-123, B-189). En CI sin
+credenciales el build **falla**: probado, sale con estado 1 y **no emite el
+archivo**. Esa es la mitad que importa — leer cero actividades no falla solo,
+produce un `events.json` vacío y el deploy lo publica encima del sitio que sí tenía
+datos, con el workflow en verde. Borrar el sitio de Google se recupera en semanas,
+no en un rebuild. En local sigue con lista vacía y un aviso, para poder trabajar el
+CSS sin emuladores.
+
+De paso, `verificar-todo.sh` ahora apunta el build al emulador: los emuladores ya
+eran requisito del paso 3, así que no agrega dependencia y hace que el gate local
+ejercite la lectura de verdad en vez del camino vacío.
+
+### B-111 · `abierta` se congela en el build, así que va la fecha
+
+Era dependencia dura de la forma diseñada del índice. `toPublic` proyecta
+`cierraEn` (el ISO de `cierra`) **además** del booleano, y el índice lleva la fecha:
+quien consume la recalcula con **su** reloj. `abierta` se conserva —el arreglo era
+«además del booleano», no «en lugar de»— porque un consumidor sin JavaScript no
+puede recalcular nada.
+
+**La lista de claves de `toPublic.test.ts` hizo su trabajo:** agregar el campo puso
+la suite en rojo nombrando la clave nueva. Un campo nuevo en una proyección pública
+tiene que ser una decisión, y esa lista es lo que lo garantiza.
+
+### B-37 · La cabecera del índice
+
+`no-cache` en `firebase.json`, y no un `max-age` corto: el archivo **no lleva hash
+en el nombre** y cambia en cada rebuild, así que un `max-age` deja el índice más
+viejo que el HTML que lo acompaña — y el síntoma es un listado que muestra una
+actividad que la página de detalle ya no tiene. `no-cache` no significa «no
+cachear»: significa revalidar, así que el CDN sigue sirviendo y paga un `304`.
+
+### Lo que NO entró, con su motivo
+
+- **El `?v=` con el que la island va a pedir el archivo.** No hay island todavía:
+  es B-105.
+- **`estado` en la proyección.** El ejemplo del diseño lo lista, pero hoy toda
+  entrada del índice es `publicado` por construcción (§3.3), así que sería un campo
+  provablemente constante. Lo necesita la franja CANCELADA del detalle, que es
+  B-112 + B-110.
+
+### Documentación
+
+`04-funcionalidades.md` pasó de «Sitio público — no existe» a describir la pieza que
+sí existe, con las tres cosas que hay que saber antes de consumir el índice.
+`README.md` marca el paso 3 como arrancado. El BACKLOG cierra los tres ítems.
+`10-salud-del-codigo.md` remedido: la concentración **bajó** un punto mientras el
+código creció, que es la primera vez que la métrica se mueve para el lado bueno en
+esta serie.
+
+1390 tests.
+
 ## 1.3.2 — 2026-08-27
 
 **Los tres P1 que abrió la auditoría de 1.3.1, cerrados.** Uno era un bug de

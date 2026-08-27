@@ -22,13 +22,13 @@ resuelve `@/`, `@calendario`, `@historial` y los relativos, e incluye los
 
 | | `13b9baa` | Hoy |
 |---|---:|---:|
-| Concentración en los 15 archivos más grandes | 41,7 % | **41,2 %** |
+| Concentración en los 15 archivos más grandes | 41,7 % | **40,6 %** |
 | Líneas de test por línea de código testeable | 1,14 | **1,45** |
-| Código de producción | 14.865 LOC | **20.273 LOC** (+36 %) |
+| Código de producción | 14.865 LOC | **20.611 LOC** (+39 %) |
 | Ciclos de import | 0 | **0** |
 
 **El resultado no es que los números mejoraron: es que aguantaron.** El código
-creció un 36 % en cuarenta commits y la concentración se movió dos décimas.
+creció un 39 % en cuarenta y dos commits y la concentración BAJÓ un punto.
 Cuando una métrica de forma se queda quieta mientras el denominador crece un
 tercio, no es que nadie tocó nada — es que lo que se agregó entró con la forma que
 ya tenía el repo. Eso es lo que el saneamiento estaba comprando.
@@ -44,24 +44,24 @@ verificación de los `.tsx`, que no se arregla creciendo prolijo.
 
 | Área | Archivos | LOC | Significativas |
 |---|---:|---:|---:|
-| `src/` | 94 | 17.622 | 11.283 |
+| `src/` | 96 | 17.961 | 11.444 |
 | `functions/` | 8 | 2.049 | 948 |
 | `scripts/` | 5 | 515 | 296 |
-| **Código (total)** | **109** | **20.273** | **12.574** |
-| `tests/` | 65 | 19.420 | 13.196 |
+| **Código (total)** | **111** | **20.611** | **12.735** |
+| `tests/` | 66 | 19.751 | 13.413 |
 
-`tests/` son 60 archivos de test más 5 de fixtures. La suite corre **1.369 tests**,
+`tests/` son 61 archivos de test más 5 de fixtures. La suite corre **1.390 tests**,
 57 de ellos contra los emuladores.
 
-Relación tests / código testeable (`.ts`/`.js`/`.mjs`, 13.241 LOC): **1,45 líneas
-de test por línea de código**, contra 1,14 en la medición anterior. Subió mientras
-el código crecía un 36 %, o sea que los tests crecieron más rápido que lo que
+Relación tests / código testeable (`.ts`/`.js`/`.mjs`, 13.579 LOC): **1,45 líneas
+de test por línea de código**, contra 1,14 en la medición anterior. Se mantuvo
+mientras el código crecía un 39 %, o sea que los tests crecieron más rápido que lo que
 verifican.
 
 ### 1.2 Concentración
 
-Los quince archivos más grandes son el **41,2 %** del código (antes: 41,7 %). El
-más grande es el **5,7 %** (antes: 5,3 %).
+Los quince archivos más grandes son el **40,6 %** del código (antes: 41,7 %). El
+más grande es el **5,6 %** (antes: 5,3 %).
 
 | LOC | Archivo | Qué es |
 |---:|---|---|
@@ -131,7 +131,7 @@ cosas.
 
 ### 1.5 Ciclos
 
-**Cero**, en 109 archivos de producción. Se midió con DFS sobre el grafo completo,
+**Cero**, en 111 archivos de producción. Se midió con DFS sobre el grafo completo,
 `import()` diferidos incluidos.
 
 ### 1.6 Prosa
@@ -191,7 +191,7 @@ certificando una fuga porque lo que estaba mal era la especificación.
 La conclusión operativa no es "hay que medir más cosas": es que **la salud de
 forma y la corrección son ejes independientes**, y este documento solo habla del
 primero. Los auditores existen para el segundo, y esta vez encontraron lo que
-1.369 tests no.
+1.390 tests no.
 
 ### Problema 1 · 39 componentes y 7.045 LOC de `.tsx` sin un solo test de componente
 
@@ -301,7 +301,7 @@ subir **antes** de B-01, cuando el blast radius son tres páginas.
 
 Un diagnóstico que solo encuentra problemas no se puede calibrar.
 
-1. **Cero ciclos de import** en 109 archivos, después de cuarenta commits que
+1. **Cero ciclos de import** en 111 archivos, después de cuarenta commits que
    agregaron un 36 % de código.
 
 2. **Los cuellos de botella siguen siendo hojas**, y aguantaron el crecimiento:
@@ -309,7 +309,7 @@ Un diagnóstico que solo encuentra problemas no se puede calibrar.
 
 3. **La forma resistió el crecimiento.** Es el hallazgo principal de esta
    medición y es fácil de pasar por alto porque no es un número que sube: la
-   concentración se movió del 41,7 % al 41,2 % mientras el denominador crecía un
+   concentración se movió del 41,7 % al 40,6 % mientras el denominador crecía un
    tercio.
 
 4. **La duplicación más peligrosa sigue prevenida por construcción.**

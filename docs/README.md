@@ -27,14 +27,15 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 
 ## Estado en una línea
 
-Panel de carga funcionando en producción y sync a Google Calendar andando.
-Falta el sitio público, que es la razón de ser del proyecto.
+Panel de carga funcionando en producción y sync a Google Calendar andando. Del
+sitio público —que es la razón de ser del proyecto— está construido el índice
+(`/events.json`) y falta todo lo que se ve.
 
 | Paso (§10 del `CLAUDE.md`) | Estado |
 |---|---|
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ |
-| 3. Sitio público (SSG) | ⬜ **lo próximo** — diseñado en [`12-sitio-publico.md`](12-sitio-publico.md), sin construir |
+| 3. Sitio público (SSG) | 🟡 **arrancó** — `/events.json` construido (B-106); faltan el listado, los hubs y el detalle. Diseñado en [`12-sitio-publico.md`](12-sitio-publico.md) |
 | 4. Sync a Google Calendar | ✅ |
 | 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 
@@ -48,7 +49,7 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 1.369 tests en 60 archivos. 57 necesitan los
+2. **Correr los tests.** `npm test` — 1.390 tests en 61 archivos. 57 necesitan los
    emuladores corriendo (`npm run emu`); si no están, se saltean solos — **salvo
    con `EXIGIR_EMULADOR=1`**, que es como los corre el CI justamente para que no
    se salteen en silencio.

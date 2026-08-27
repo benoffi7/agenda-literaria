@@ -83,8 +83,15 @@ else
 fi
 
 # ── 4 · Build ─────────────────────────────────────────────────────
+# `FIRESTORE_EMULATOR_HOST` se apunta a propósito (B-106): desde que el build
+# arma el `events.json` leyendo Firestore, un build sin credenciales produce el
+# archivo con lista vacía y un aviso (D-123). Eso no falla —es el camino local
+# deliberado— pero tampoco ejercita la lectura, que es lo que corre en CI. Los
+# emuladores ya son requisito del paso 3, así que esto no agrega ninguna
+# dependencia nueva y hace que el gate local pruebe el camino de verdad.
 paso 'Build del sitio y del panel'
-npm run build || fallo 'el build no pasa'
+FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}" \
+  npm run build || fallo 'el build no pasa'
 
 # ── 5 · Que la credencial no se filtró ────────────────────────────
 # El gate del §5.4 / trampa 4, el mismo script que corre en los dos workflows.

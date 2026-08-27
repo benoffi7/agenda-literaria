@@ -127,6 +127,28 @@ export interface ActividadPublica {
     destino: string;
     cupo: number | null;
     abierta: boolean;
+    /**
+     * El ISO del cierre, o `null` si no cierra — B-111.
+     *
+     * **`abierta` se congela en el build y miente.** Se calcula con el reloj del
+     * momento en que corrió el build, así que una inscripción que cerró a la
+     * mañana sigue diciendo «abierta» hasta el rebuild siguiente. Con el rebuild
+     * automático son ~2-7 minutos del debounce (§8), pero la ventana es real y
+     * **no depende de que alguien edite**: sin un cambio que dispare rebuild,
+     * nadie recalcula nada y el sitio invita a anotarse en algo que ya cerró.
+     *
+     * Mandando la fecha, quien consume la recalcula con **su** reloj. Y de paso
+     * la página puede decir «las inscripciones cierran el 22 de septiembre», que
+     * es lo que hace que alguien escriba hoy en vez de dejarlo para después.
+     *
+     * `abierta` se conserva —el arreglo es «además del booleano», no «en lugar
+     * de»— porque un consumidor sin JavaScript no puede recalcular nada y
+     * necesita algo ya resuelto. Lo que **no** puede hacer un consumidor nuevo es
+     * usar `abierta` teniendo `cierraEn` a mano.
+     *
+     * No expone nada nuevo: es una fecha que la página ya quiere mostrar.
+     */
+    cierraEn: string | null;
     /** B-97 — «se llenó». Ver la proyección abajo. */
     completo: boolean;
   };
@@ -245,6 +267,9 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
     destino: a.inscripcion.destino,
     cupo: a.inscripcion.cupo,
     abierta: !a.inscripcion.cierra || aMillis(a.inscripcion.cierra) > ahora,
+    // B-111 — la fecha cruda, para que el consumidor no dependa del reloj del
+    // build. Ver la nota del tipo.
+    cierraEn: a.inscripcion.cierra ? aIso(a.inscripcion.cierra) : null,
     /**
      * B-97 — **sí es público, y es el punto del campo**: sin esto el sitio sigue
      * diciendo «cupo: 12» cuando ya no entra nadie, que es peor que no decir
