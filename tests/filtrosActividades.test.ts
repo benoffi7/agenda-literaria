@@ -23,11 +23,9 @@ import { buildSearchText } from '@/lib/normalize';
 // de "¿ya pasó?", que es lo que divergió en el H1.
 import { encuentrosDe, yaPaso } from '@/lib/calendarioPanel';
 import { ESTADOS, MODALIDADES, type ActividadConId, type Sesion } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime(), seconds: 0, nanoseconds: 0 };
-};
+
 
 const sesion = (inicio: string, over: Partial<Sesion> = {}): Sesion =>
   ({

@@ -44,7 +44,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { toPublic } from '@/lib/toPublic';
+import { opcionesPublicas, toPublic } from '@/lib/toPublic';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
 import {
@@ -53,6 +53,7 @@ import {
   LABELS_CENTINELA,
   VOCABULARIO_CERRADO,
   actividadCentinela,
+  opcionCentinela,
 } from './fixtures/centinelas';
 import { barrer, type Excepcion } from './fixtures/barrido';
 
@@ -485,6 +486,15 @@ describe('el fixture de centinelas no puede envejecer', () => {
     Material: actividad.material as unknown as Record<string, unknown>,
     ItemMaterial: actividad.material.items[0] as unknown as Record<string, unknown>,
     Difusion: actividad.difusion as unknown as Record<string, unknown>,
+    /*
+     * B-212 — `/opciones/{campo}` es una salida pública **propia** desde que
+     * existe `opcionesPublicas`, y hasta ahora `ValorOpcion` estaba en AJENAS:
+     * o sea, afuera de este chequeo. Eso significaba que la única salida nueva
+     * ya planificada (B-106) nacía fuera de la red, y que el default —volcar
+     * `valores` tal cual— publicaba `huellaCreador` y `usos` sin que nada se
+     * pusiera rojo.
+     */
+    ValorOpcion: opcionCentinela() as unknown as Record<string, unknown>,
   };
 
   /**
@@ -496,8 +506,9 @@ describe('el fixture de centinelas no puede envejecer', () => {
     'TimestampLike', // no tiene contenido: es la forma de un Timestamp
     'ActividadForm', // el formulario, cubierto por tests/fixtures/formulario.ts
     'SesionForm', // idem
-    'ValorOpcion', // /opciones/*, no una actividad
-    'DocOpciones', // idem
+    // `DocOpciones` es `{ valores: ValorOpcion[] }` y nada más: lo que hay que
+    // decidir está en `ValorOpcion`, que ahora sí está anclada arriba.
+    'DocOpciones',
   ];
 
   it('el fixture tiene todos los campos de todas las interfaces del modelo', () => {
@@ -548,6 +559,16 @@ describe('el fixture de centinelas no puede envejecer', () => {
     };
 
     recorrer(actividad, 'actividad');
+    /*
+     * B-212 — la opción también, y esto faltaba. Anclar `ValorOpcion` en ANCLAS
+     * la metió en el chequeo de cobertura (que sus siete campos estén en el
+     * fixture) pero **no** en este recorrido, que es el que exige que cada
+     * string sea rastreable. Sin esta línea, un campo de texto nuevo en la
+     * taxonomía —digamos `notaDeModeracion`— quedaba obligado a entrar al
+     * fixture y podía entrar con un valor inocente: obligatorio de declarar,
+     * invisible para todo barrido. Lo encontró el `auditor-privacidad`.
+     */
+    recorrer(opcionCentinela(), 'opcion');
     expect(
       sueltos,
       `strings del fixture que no son centinelas ni vocabulario cerrado: ${sueltos.join(' | ')}. ` +
@@ -568,5 +589,118 @@ describe('el fixture de centinelas no puede envejecer', () => {
       const contenidos = valores.filter((b) => b !== a && b.includes(a));
       expect(contenidos, `el centinela ${a} está contenido en ${contenidos.join(', ')}`).toEqual([]);
     }
+  });
+});
+
+/**
+ * §4.4 — barrido de `/opciones/*` proyectado, la salida que faltaba — B-212.
+ *
+ * El `events.json` lleva las opciones de taxonomía además de las actividades:
+ * la web arma los chips de filtro recorriéndolas, así que sin ellas no hay
+ * filtros. El documento tiene siete campos y **dos** salen.
+ *
+ * Esto se escribió **antes que su consumidor** (B-106 todavía no existe), y ese
+ * es el punto: el camino corto cuando se escriba el `events.json` es volcar
+ * `valores` tal cual —una línea, se lee razonable— y con eso entran
+ * `huellaCreador` y `usos` sin que nadie lo haya decidido. Y nada lo detendría,
+ * porque hasta ahora `ValorOpcion` estaba en la lista de interfaces AJENAS de
+ * este archivo.
+ */
+describe('barrido de las opciones públicas (§4.4, B-212)', () => {
+  const PERMITIDO_EN_OPCIONES: readonly Excepcion[] = [
+    {
+      nombre: 'la etiqueta y su slug',
+      centinelas: ['opcion.slug', 'opcion.label'],
+      porque:
+        '§4.4 — es exactamente lo que el JSON lleva: la web arma los chips de filtro con ' +
+        'el label y cruza el slug contra el que guarda cada actividad. Sin los dos no hay ' +
+        'filtros, que es el motivo por el que las opciones viajan en el archivo.',
+    },
+  ];
+
+  it('sobreviven exactamente el slug y la etiqueta', () => {
+    const publicas = opcionesPublicas([opcionCentinela()]);
+    barrer('opciones del events.json', JSON.stringify(publicas), PERMITIDO_EN_OPCIONES);
+  });
+
+  it('la huella del creador no sale, aunque sea una huella y no un uid', () => {
+    /*
+     * El caso que más importa de los cinco que no salen, y el que un spread
+     * publicaría sin ruido. D-27 la hizo una huella justamente porque el
+     * documento es de lectura pública, pero «no es un uid» no es lo mismo que
+     * «es publicable»: sigue siendo un identificador estable de una persona, y
+     * §5.1 dice que del creador no sale nada.
+     */
+    const json = JSON.stringify(opcionesPublicas([opcionCentinela()]));
+    expect(json).not.toContain(CENTINELA['opcion.huellaCreador']);
+    expect(json).not.toContain('huellaCreador');
+  });
+
+  it('los campos de gestión tampoco: no llevan texto, así que se afirma por clave', () => {
+    // `orden`, `fijo`, `usos` y `aprobada` son números y booleanos: no hay
+    // string donde esconder contenido, así que el barrido de centinelas no los
+    // ve. Se comparan las claves de la salida contra la lista permitida.
+    const [publica] = opcionesPublicas([opcionCentinela()]);
+    expect(Object.keys(publica!).sort()).toEqual(['label', 'slug']);
+  });
+
+  it('una opción sin aprobar no entra a los filtros del sitio', () => {
+    // §4.3 / D-30 — el desplegable del panel se la muestra a quien la creó; un
+    // chip en el sitio público publica una decisión a medio tomar.
+    expect(opcionesPublicas([opcionCentinela({ aprobada: false })])).toEqual([]);
+  });
+
+  it('pero una opción base sí entra, aunque diga `aprobada: false`', () => {
+    /*
+     * Control del error que la primera versión de `opcionesPublicas` tenía: se
+     * filtraba con `v.aprobada !== false` en vez de reusar `estaAprobada`, que
+     * es `v.fijo || (v.aprobada ?? true)`. Las `fijo` son las opciones base del
+     * §4.1 —«Gratis», «A la gorra»— o sea justo las que no pueden faltar en los
+     * filtros.
+     */
+    const base = opcionCentinela({ fijo: true, aprobada: false });
+    expect(opcionesPublicas([base])).toHaveLength(1);
+  });
+
+  it('y el default de los documentos viejos cuenta como aprobada', () => {
+    // §4.3 — los documentos de producción anteriores al campo no lo tienen, y
+    // ausente cuenta como aprobada (`estaAprobada`). Si esto rompiera, renombrar
+    // una etiqueta vieja la borraría de los filtros del sitio.
+    const vieja = opcionCentinela({ aprobada: undefined });
+    expect(opcionesPublicas([vieja])).toHaveLength(1);
+  });
+
+  it('CONTROL NEGATIVO: un spread en la proyección dispara la fuga nombrando la huella', () => {
+    /*
+     * El `docs/BACKLOG.md` de B-212 y `13-agentes.md` afirman «verificado por
+     * mutación — cambiar la proyección por un spread dispara FUGA DE
+     * PRIVACIDAD». Eso se hizo **a mano**, y una afirmación de la doc que
+     * ningún test sostiene envejece igual que cualquier otra: mañana alguien
+     * afloja `PERMITIDO_EN_OPCIONES` y la frase sigue ahí, diciendo que hay una
+     * red que ya no atrapa nada.
+     *
+     * Así que se codifica. Es el gemelo del control del `libro` de más arriba, y
+     * lo señaló el `auditor-privacidad`: para la actividad ese control existía y
+     * para las opciones no.
+     *
+     * Se simula el atajo —volcar el documento entero, que es lo que uno escribe
+     * cuando implementa B-106 con apuro— y se exige que el barrido **falle**, y
+     * que falle **nombrando** el campo. Un barrido que se rompe con un mensaje
+     * genérico no sirve a las 2 de la mañana.
+     */
+    let mensaje = '';
+    try {
+      barrer(
+        'opciones (mutación: la proyección hace spread)',
+        JSON.stringify([{ ...opcionCentinela() }]),
+        PERMITIDO_EN_OPCIONES,
+      );
+    } catch (e) {
+      mensaje = e instanceof Error ? e.message : String(e);
+    }
+
+    expect(mensaje, 'el barrido NO detectó el spread: la red no atrapa nada').not.toBe('');
+    expect(mensaje).toContain('FUGA');
+    expect(mensaje).toContain('opcion.huellaCreador');
   });
 });

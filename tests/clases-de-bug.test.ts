@@ -1098,3 +1098,207 @@ describe('clase de B-209 · la consulta sale antes de cualquier escritura', () =
     expect(donde(src, 'Argumento no reconocido')).toBeLessThan(donde(src, 'getFirestore()'));
   });
 });
+
+/**
+ * Clase de B-211 · el doble de un tipo del dominio se define **una vez**.
+ *
+ * El doble de `Timestamp` estaba escrito trece veces —a mano en once tests y
+ * exportado desde los dos fixtures— en cuatro formas distintas, y **dos
+ * mentían**: devolvían `seconds: 0`, o sea "todo Timestamp es la época". No
+ * rompía nada porque ningún código de producción lee `.seconds`, pero el
+ * `Timestamp` real de Firestore sí lo expone. Es la trampa 1 del §13 dentro del
+ * fixture que existe para atajarla.
+ *
+ * ── Por qué hace falta esta guarda y no alcanzaba con unificar ────────────
+ * Es **la misma clase que este repo ya automatizó**: «un fixture que no ejercita
+ * el caso central del dominio», que hizo nacer `fixtures/ciclo.ts` y
+ * `invariantes-de-ciclo.test.ts` después de aparecer cuatro veces. Reapareció con
+ * otra cara — no es que el fixture no ejercitara el caso, es que había trece
+ * fixtures y no se parecían entre sí.
+ *
+ * O sea: **la automatización se escribió y no se adoptó.** Ese es un modo de
+ * falla distinto del que se atajó, y no tenía red. Unificar sin dejar guarda
+ * habría dejado el mismo hueco abierto: el catorceavo `ts()` se escribe en cinco
+ * segundos, porque es más rápido que buscar dónde vive el bueno.
+ */
+describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => {
+  const FIXTURE = 'tests/fixtures/tiempo.ts';
+
+  const testsVersionados = (): string[] =>
+    execFileSync('git', ['ls-files', '-z', 'tests'], { encoding: 'utf8' })
+      .split('\0')
+      .filter((f) => f.endsWith('.ts') && f !== FIXTURE);
+
+  /**
+   * La **forma** de un doble de Timestamp, no su nombre: lo que lo delata es
+   * devolver `toDate` y `toMillis` juntos. Buscar `const ts =` dejaría pasar al
+   * que se llame `stamp`, `fecha` o `t`, que es exactamente lo que escribe quien
+   * no encontró el fixture.
+   */
+  const FORMA_DE_DOBLE = /toDate:\s*\(\)\s*=>[\s\S]{0,80}?toMillis:\s*\(\)\s*=>/;
+
+  /** Sin comentarios: la prosa de este repo cita código, y engancharía. */
+  const codigo = (relativo: string): string => sinComentarios(fuente(relativo));
+
+  it('el fixture existe y hay tests que lo usarían', () => {
+    // Control positivo: sin esto, «ningún test define su propio doble» pasaría
+    // recorriendo una lista vacía.
+    expect(testsVersionados().length).toBeGreaterThan(40);
+    expect(codigo(FIXTURE)).toContain('export const ts');
+    // Y la forma encuentra lo que dice encontrar.
+    expect(FORMA_DE_DOBLE.test(codigo(FIXTURE))).toBe(true);
+  });
+
+  it('ningún test define su propio doble de Timestamp', () => {
+    const conCopia: string[] = [];
+    for (const archivo of testsVersionados()) {
+      if (FORMA_DE_DOBLE.test(codigo(archivo))) conCopia.push(archivo);
+    }
+    expect(
+      conCopia,
+      'importá { ts } de tests/fixtures/tiempo en vez de escribirlo de nuevo',
+    ).toEqual([]);
+  });
+
+  it('el doble no miente en los campos que nadie lee todavía', () => {
+    /*
+     * `seconds` y `nanoseconds` salen de la fecha, no de un cero. Es la parte
+     * que hacía falsas a dos de las cuatro copias: un doble que miente en un
+     * campo que nadie lee **todavía** es una bomba con fecha, no una
+     * simplificación — y el día que alguien lea `.seconds`, el test que falle no
+     * va a ser el que tenga el bug.
+     *
+     * Se mira el código **sin comentarios**: la primera versión de este `it`
+     * falló porque el docblock del fixture cita `seconds: 0` para explicar la
+     * variante mala. Es el modo de falla que este repo ya se hizo tres veces —
+     * un chequeo que engancha la prosa que habla del bug en vez del bug.
+     */
+    const src = codigo(FIXTURE);
+    expect(src).toMatch(/seconds:\s*Math\.floor/);
+    expect(src).not.toMatch(/seconds:\s*0\b/);
+    expect(src).not.toMatch(/nanoseconds:\s*0\b/);
+  });
+
+  it('el doble satisface el tipo declarado del modelo, no uno propio', () => {
+    // `TimestampLike` declara los cuatro campos. Las copias de dos campos
+    // convivían porque los builders que las usaban estaban tipados laxo: que el
+    // fixture devuelva el tipo hace que el compilador sostenga el acuerdo.
+    expect(codigo(FIXTURE)).toContain('): TimestampLike =>');
+    expect(codigo(FIXTURE)).toContain(
+      "import type { TimestampLike } from '@/types/actividad'",
+    );
+  });
+});
+
+/**
+ * Clase de B-212 · la misma decisión de privacidad, escrita en tres lugares.
+ *
+ * El documento de `/opciones/{campo}` llega a **tres** salidas por tres caminos
+ * distintos, y cada uno decide por su cuenta qué de un `ValorOpcion` es público:
+ *
+ * | Camino | Salida | Forma |
+ * |---|---|---|
+ * | `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | objetos `{ slug, label }` |
+ * | `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 y la vista previa | `Record<slug, label>` |
+ * | `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar | `Record<slug, label>` |
+ *
+ * ── Por qué no se unifican ────────────────────────────────────────────────
+ * Los dos primeros podrían compartir algo; el tercero **no puede**, y eso es lo
+ * que hace que este test sea la respuesta correcta en vez de un refactor:
+ * `functions/` se despliega con su propio `package.json` y no importa hacia
+ * arriba (D-20). Es el mismo caso que la copia de `CAMPOS_TAXONOMIA`, donde
+ * `docs/10-salud-del-codigo.md` ya dejó escrita la política: «si molesta, la
+ * respuesta es un test que compare las dos listas, no un import imposible».
+ *
+ * ── Qué se afirma ─────────────────────────────────────────────────────────
+ * Que cada camino lea de un `ValorOpcion` **exactamente `slug` y `label`**. Si
+ * alguno agrega `.usos` para ordenar los chips, o `.huellaCreador` para «mostrar
+ * quién la creó», este test lo nombra. Lo pidió el `auditor-privacidad` al notar
+ * que la tabla de `07-seguridad.md` atribuía todo a `opcionesPublicas`, que no
+ * interviene en dos de los tres caminos.
+ */
+describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () => {
+  const CAMINOS = [
+    { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica' },
+    { archivo: 'src/lib/vistaPreviaEvento.ts', funcion: 'labelsDeOpciones' },
+    { archivo: 'functions/index.js', funcion: 'cargarLabels' },
+  ];
+
+  const PERMITIDAS = ['slug', 'label'];
+
+  /**
+   * Los campos de `ValorOpcion` que **no** son públicos, derivados del modelo y
+   * no escritos a mano: si mañana se agrega uno, entra solo a este chequeo.
+   *
+   * ── Por qué se busca el nombre del campo y no la variable ─────────────────
+   * La primera versión de este test rastreaba accesos a través de una variable
+   * llamada `v` (`v.usos`, `v.huellaCreador`). **No detectaba nada realista:** se
+   * probó metiendo un `.sort((a, b) => b.usos - a.usos)` en `labelsDeOpciones` y
+   * el test siguió en verde, porque la variable se llamaba `b`. Un chequeo que
+   * depende del nombre que eligió quien escribió el código no verifica el código,
+   * verifica la convención de nombres.
+   */
+  const PROHIBIDAS = (() => {
+    const src = sinComentarios(fuente('src/types/actividad.ts'));
+    const desde = src.indexOf('export interface ValorOpcion');
+    const cuerpo = src.slice(desde, src.indexOf('}', desde));
+    return [...cuerpo.matchAll(/^\s{2}(\w+)\??:/gm)]
+      .map((m) => m[1]!)
+      .filter((c) => !PERMITIDAS.includes(c));
+  })();
+
+  /**
+   * El cuerpo de una función, desde su nombre hasta el próximo `export`/`const`
+   * de nivel superior. Alcanza para estas tres, que son cortas; lo que importa es
+   * que no cruce hacia la función siguiente.
+   */
+  const cuerpo = (archivo: string, funcion: string): string => {
+    const src = sinComentarios(fuente(archivo));
+    const desde = src.indexOf(funcion);
+    expect(desde, `no encontré \`${funcion}\` en ${archivo}`).toBeGreaterThan(-1);
+    const resto = src.slice(desde);
+    const corte = resto.slice(1).search(/\n(?:export )?const \w/);
+    return corte === -1 ? resto : resto.slice(0, corte + 1);
+  };
+
+  it('los tres caminos existen, y la lista de campos prohibidos salió del modelo', () => {
+    /*
+     * Control positivo en las dos mitades. Sin la primera, el `it` de abajo
+     * recorrería cuerpos vacíos; sin la segunda, compararía contra una lista
+     * vacía de campos prohibidos y no podría fallar nunca.
+     */
+    for (const { archivo, funcion } of CAMINOS) {
+      const src = cuerpo(archivo, funcion);
+      expect(src.length, `${funcion} salió vacío`).toBeGreaterThan(20);
+      // Y que cada camino lea de verdad las dos permitidas: si no, no es el
+      // camino que creemos y el chequeo de abajo mira otra cosa.
+      for (const permitida of PERMITIDAS) {
+        expect(src, `${funcion} no lee \`${permitida}\``).toContain(`.${permitida}`);
+      }
+    }
+
+    expect(PROHIBIDAS.length, 'no se pudieron derivar los campos de ValorOpcion').toBeGreaterThan(
+      3,
+    );
+    expect(PROHIBIDAS).toContain('huellaCreador');
+    expect(PROHIBIDAS).toContain('usos');
+  });
+
+  it('ninguno menciona un campo de la opción que no sea público', () => {
+    const deMas: string[] = [];
+
+    for (const { archivo, funcion } of CAMINOS) {
+      const src = cuerpo(archivo, funcion);
+      for (const prop of PROHIBIDAS) {
+        // `.usos` y no `usos`: se busca el **acceso**, sin importar de qué
+        // variable. Así `b.usos` dentro de un `sort` cuenta igual que `v.usos`.
+        if (src.includes(`.${prop}`)) deMas.push(`${archivo} · ${funcion} lee \`${prop}\``);
+      }
+    }
+
+    expect(
+      [...new Set(deMas)],
+      'un camino de /opciones/* lee un campo que no es público (§4.4, §5.1)',
+    ).toEqual([]);
+  });
+});

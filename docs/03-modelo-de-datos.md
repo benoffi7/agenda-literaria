@@ -205,6 +205,12 @@ este documento es de **lectura pública** (§5.3) y el §5.1 dice que los uids n
 salen al público. La visibilidad solo necesita comparar igualdad. Ver
 [D-27](06-decisiones.md) y [`07-seguridad.md`](07-seguridad.md).
 
+**Qué sale al `events.json`:** solo `slug` y `label` (§4.4). `orden`, `fijo`, `usos`,
+`aprobada` y `huellaCreador` **no** — la proyección es `opcionesPublicas` en
+`src/lib/toPublic.ts`, con la tabla de por qué cada uno se queda adentro en
+[`07-seguridad.md`](07-seguridad.md). Está escrita desde antes de que exista el
+`events.json` (B-212), para que el default no lo decida un spread.
+
 Aprobar es una escritura más del documento, así que la autoridad es el claim
 `admin` (D-28). Se hace desde la pantalla de administración de taxonomías del
 panel (B-06/B-25, botón «Aprobar») o con `scripts/aprobar-opciones.mjs` — ver

@@ -1,5 +1,178 @@
 # Changelog
 
+## 1.3.2 — 2026-08-27
+
+**Los tres P1 que abrió la auditoría de 1.3.1, cerrados.** Uno era un bug de
+verdad; los otros dos eran huecos de red. Y los tres dejaron una lección sobre el
+método de verificación del panel, que es lo que más vale de la entrada.
+
+### B-210 · La trampa de foco estaba copiada en dos diálogos, y la copia se quedó sin el arreglo
+
+`src/lib/foco.ts` compartía la **aritmética** del foco y dejaba el DOM en cada
+componente, con el argumento —escrito en su docblock— de que ahí está el `ref`. Con
+una capa era correcto. Con dos significó ~40 líneas copiadas verbatim, y las dos
+copias divergieron justo en lo que importa: `DialogoDuplicar` guardaba el callback
+en un `ref` con deps `[]` (arreglo deliberado y comentado) y `CentroAyuda` se quedó
+con `[onCerrar]`, mientras `BotonAyuda` le pasa una flecha inline.
+
+Cómo se veía: marcar las novedades como leídas cambia el estado de `BotonAyuda`, o
+sea re-render, o sea función nueva, o sea el efecto se desmonta y se vuelve a
+montar — devolviendo el foco al botón «Ayuda», robándoselo de vuelta a la caja y
+haciendo parpadear el scroll en el medio.
+
+Ahora el cableado está en `useCapaModal` y las dos capas lo usan. **La lección:
+compartir la mitad fácil de escribir mal no alcanza si la otra mitad también lo
+es.** La aritmética estaba compartida y el bug apareció igual, en el cableado.
+
+**Y lo que costó más que el arreglo: los cuatro tests que se rompieron.** Buscaban
+`e.key===Escape` y `alCancelar=useRef(onCancelar)` *dentro de* `DialogoDuplicar.tsx`,
+así que **un refactor que mejora el código los puso en rojo**. Es la cuarta vez que
+un chequeo que lee el fuente termina midiendo un archivo que ya no tiene lo que
+busca. No se los repuntó al archivo nuevo —sería el mismo chequeo frágil con otra
+ruta—: ahora afirman la propiedad de que ninguna capa tenga cableado propio, lo que
+además cubre a la próxima capa que alguien escriba. Verificado por mutación en las
+dos direcciones.
+
+Ese segundo caso es el que conviene mirar: un test que se rompe cuando el código
+mejora **cobra un impuesto a cada refactor**, y ese impuesto se paga en refactors
+que no se hacen. Está escrito en `docs/10-salud-del-codigo.md` como el argumento
+más fuerte que hay hoy para B-08.
+
+### B-211 · El doble de `Timestamp` estaba definido trece veces, en cuatro formas, y dos mentían
+
+A mano en once tests y exportado desde los dos fixtures, con formas distintas cada
+uno. Dos de las cuatro devolvían `seconds: 0`, o sea «todo Timestamp es la época».
+No rompía nada porque ningún código de producción lee `.seconds` —lee `.toDate()` y
+`.toMillis()`—, pero el `Timestamp` real de Firestore sí lo expone: era una bomba
+con fecha, no una simplificación. Es la trampa 1 del §13 dentro del fixture que
+existe para atajarla.
+
+Ahora hay uno, en `tests/fixtures/tiempo.ts`, devolviendo `TimestampLike` — el tipo
+que el modelo declara y que las copias de dos campos no satisfacían.
+
+**Lo que faltaba no era el fixture: era la guarda.** Esta es la clase que el repo
+**ya había automatizado** (`fixtures/ciclo.ts` + `invariantes-de-ciclo.test.ts`,
+después de aparecer cuatro veces) y volvió con otra cara: no era que el fixture no
+ejercitara el caso, era que había trece y no se parecían entre sí. O sea **la
+automatización se escribió y no se adoptó**, que es un modo de falla distinto y no
+tenía red. La clase de B-211 busca la **forma** (`toDate` y `toMillis` juntos) y no
+el nombre, así que también caza al que se llame `stamp` o `t`. La adopción de
+`tests/fixtures/` pasó de 7 archivos sobre 59 a 16 sobre 60.
+
+### B-212 · La proyección pública de `/opciones/*` no existía, y el barrido no la veía
+
+El `events.json` lleva las opciones de taxonomía además de las actividades: sin
+ellas no hay chips de filtro. El documento tiene siete campos y **dos** salen
+(`slug` y `label`, §4.4); los otros cinco son de gestión, y uno —`huellaCreador`—
+es un identificador estable de una persona.
+
+Se escribió **antes de su consumidor** (B-106 no existe todavía) y ese es el punto:
+el camino corto al implementarlo es volcar `valores` tal cual, una línea que se lee
+razonable, y con eso entran `huellaCreador` y `usos` sin que nadie lo haya
+decidido. Y nada lo detendría: `ValorOpcion` estaba en la lista de interfaces
+AJENAS del barrido de B-196, o sea que **la única salida nueva ya planificada nacía
+fuera de la red**. Ahora está anclada, con `opcionCentinela()` y tres centinelas
+propios. Verificado por mutación: cambiar la proyección por `{ ...v }` dispara
+«FUGA DE PRIVACIDAD … opcion.huellaCreador».
+
+**Un error propio que vale anotar**, porque es la clase de B-72 apareciendo en el
+acto de cerrar otro ítem: la primera versión filtraba las no aprobadas con
+`v.aprobada !== false` en vez de reusar `estaAprobada`, que es
+`v.fijo || (v.aprobada ?? true)`. Eso habría borrado de los filtros del sitio a una
+opción **base** con `aprobada: false` — «Gratis», «A la gorra». Hay dos `it` que lo
+fijan, y la regla se importa de `taxonomia` y no de `opciones`, que arrastra
+Firebase a una proyección que corre en el build.
+
+### Segunda vuelta: los cinco hallazgos del auditor sobre el propio cierre
+
+Ninguno era una fuga, y **cuatro eran afirmaciones que este cambio había escrito.**
+Van juntos porque cuentan una sola cosa: una regla explicada en un comentario o en
+una tabla no es una regla, y el test que la ata puede tener el mismo bug que
+pretende cerrar.
+
+**El guard de B-216 no podía ver lo que B-212 le rompió.** `07-seguridad.md` pasó a
+decir que la salida 1 la producen `toPublic` **y** `opcionesPublicas`, y la ficha del
+agente se quedó con solo `toPublic` — igual que el problema que B-216 había cerrado
+ocho horas antes, pero un nivel más adentro: el guard comparaba el primer path del
+repo de cada fila, y las dos filas colapsaban a `src/lib/toPublic.ts`, iguales. El
+índice envejeció y el test que lo ataba miraba el **archivo**, no qué de ese archivo
+produce la salida.
+
+Ahora compara las funciones, y es **direccional**: la ficha puede nombrar más detalle
+que el documento (nombra `construirDescripcion`, `redactar`…), lo que no puede pasar
+es que el documento nombre un productor que la ficha no conoce. La primera versión
+comparaba conjuntos y saltaba con cuatro desalineaciones legítimas.
+
+**Y la ficha decía otra cosa que B-212 volvió falsa:** «el creador de una opción va
+como huella de 8 hex». Se leía como *«el creador sale como huella»*, que es lo
+contrario de lo que se acababa de decidir. Que sea una huella y no un uid la hace
+aceptable **en el documento**, no publicable.
+
+**«Verificado por mutación» era a mano.** El BACKLOG y `13-agentes.md` afirmaban que
+un spread en la proyección disparaba la fuga; eso se había probado a mano y ningún
+test lo sostenía. Para la actividad ese control negativo existía (el caso `sinLibro`);
+para las opciones no. Ahora está codificado, y exige que el barrido falle **nombrando**
+`opcion.huellaCreador`: un barrido que se rompe con un mensaje genérico no sirve a las
+2 de la mañana.
+
+**Anclar `ValorOpcion` la metió en dos de las tres redes del fixture.** Entró al
+chequeo de cobertura —sus siete campos tienen que estar en `opcionCentinela()`— pero
+no al recorrido que exige que cada string sea rastreable, que solo recorría la
+actividad. Un campo de texto nuevo en la taxonomía quedaba **obligado a declararse y
+podía declararse con un valor inocente**: visible para el compilador, invisible para
+todo barrido. Es una línea.
+
+**El import que el docblock explica no lo fijaba nadie.** `toPublic` trae
+`opcionesVisibles` de `@/lib/taxonomia`, que es puro, y no de `@/lib/opciones`, que la
+re-exporta y además abre el cliente de Firestore. Está escrito con su por qué — y
+hacer el cambio **typechequea y deja toda la suite en verde**, arrastrando
+`firebase/firestore` al módulo de la proyección pública. El grafo de
+`bundle-panel.test.ts` tampoco lo veía, porque `toPublic` todavía no tiene ningún
+importador en `src/` (B-106). O sea: un archivo con una regla escrita, fuera de las
+dos redes que existen. La guarda nueva recorre el cierre transitivo de sus imports y
+nombra la cadena entera.
+
+**Y la tabla de privacidad atribuía todo a `opcionesPublicas`, que no interviene en
+dos de los tres caminos.** El documento de taxonomía llega a tres salidas por tres
+implementaciones distintas de la misma decisión (`slug` y `label`, nada más):
+`opcionesPublicas` para el `events.json`, `labelsDeOpciones` para el posteo y la vista
+previa, y `cargarLabels` para el evento de Calendar de verdad. La tercera **no se
+puede unificar**: `functions/` se despliega con su propio `package.json` y no importa
+de `src/` (D-20). Quien mañana busque por qué `usos` no sale al evento iba a mirar
+`opcionesPublicas`, que no participa de ese camino.
+
+Para ese caso la política del repo ya estaba escrita en `10-salud-del-codigo.md` —«un
+test que compare las listas, no un import imposible»— así que se aplicó: la clase de
+B-212 en `clases-de-bug.test.ts` exige que los tres caminos lean exactamente `slug` y
+`label`.
+
+**Ese test salió mal la primera vez, y es el detalle que más vale de la entrada.**
+Rastreaba los accesos a través de una variable llamada `v` (`v.usos`,
+`v.huellaCreador`). Se probó metiendo un `sort((a, b) => b.usos - a.usos)` en
+`labelsDeOpciones` y **siguió en verde**, porque la variable se llamaba `b`. Un
+chequeo que depende del nombre que eligió quien escribió el código verifica la
+convención de nombres, no el código. Ahora deriva del modelo qué campos están
+prohibidos y busca el acceso sin importar la variable — verificado con las dos
+mutaciones, la del `sort` y la de publicar la huella.
+
+Nit de paso: `src/types/actividad.ts` mandaba a buscar `estaAprobada` en
+`lib/opciones.ts`, y vive en `lib/taxonomia.ts`.
+
+### Documentación
+
+`07-seguridad.md` suma las dos filas de `/opciones/*` a «Qué NUNCA sale» y aclara
+que la salida 1 son actividades **y** opciones. `03-modelo-de-datos.md` dice qué de
+la taxonomía sale al JSON. `13-agentes.md` suma las tres redes nuevas.
+`10-salud-del-codigo.md` remedido: el problema 2 cerró y el problema 1 tiene ahora
+sus dos casos concretos del mismo día.
+
+Sin novedades en el panel: B-210 arregla un parpadeo del foco, que es un defecto y
+no una capacidad nueva — esa lista contesta «qué podés hacer ahora que antes no
+podías» (D-117).
+
+1369 tests.
+
+
 ## 1.3.1 — 2026-08-27
 
 **Auditoría completa del repo: los tres auditores más una remedición de la salud

@@ -29,6 +29,7 @@ import {
 import { labelsDeOpciones } from '@/lib/vistaPreviaEvento';
 import { CENTINELAS, VALORES_CENTINELA, formularioLleno } from './fixtures/formulario';
 import type { ActividadForm, Sesion, ValorOpcion } from '@/types/actividad';
+import { ts, tsDe } from './fixtures/tiempo';
 
 // ─────────────────────────────────────────────────────────────────
 // Fixtures
@@ -50,15 +51,8 @@ const LABELS = labelsDeOpciones({
   tags: [opcion('narrativa', 'Narrativa')],
 });
 
-/** Timestamp mínimo, como el que entrega Firestore. */
-const ts = (iso: string) => tsDe(new Date(iso));
 
-const tsDe = (d: Date) => ({
-  toDate: () => d,
-  toMillis: () => d.getTime(),
-  seconds: 0,
-  nanoseconds: 0,
-});
+
 
 const DOS_HORAS_MS = 2 * 60 * 60 * 1000;
 

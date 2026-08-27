@@ -99,18 +99,107 @@ describe('las dos pantallas usan la misma implementación (B-14, B-64)', () => {
     expect(src).toContain('disparador.current?.focus()');
   });
 
-  it('la capa de ayuda atrapa el Tab y devuelve el foco al cerrarse', () => {
-    const src = fuente('components/admin/ayuda/CentroAyuda.tsx');
-    expect(src).toContain("from '@/lib/foco'");
-    expect(src).toContain('SELECTOR_ENFOCABLE');
-    expect(src).toContain('anterior?.focus()');
+  it('el menú no tiene su propia copia del cálculo', () => {
+    // La clase que se cerró es «el mismo patrón de teclado a medio hacer en dos
+    // lugares»: una copia local del módulo la reabre. Las capas modales van por
+    // el describe de abajo, que es más estricto.
+    expect(fuente('components/admin/MenuAcciones.tsx')).not.toMatch(
+      /%\s*enfocables\.length|%\s*acciones\.length/,
+    );
+  });
+});
+
+/**
+ * El cableado de una capa modal vive en **un** lugar — B-210.
+ *
+ * `src/lib/foco.ts` compartía la aritmética y dejaba el DOM en cada componente,
+ * con el argumento de que ahí está el `ref`. Con dos capas eso significó ~40
+ * líneas copiadas verbatim, y las dos copias **divergieron en lo que importa**:
+ * `DialogoDuplicar` guardaba el callback en un `ref` con deps `[]` —arreglo
+ * deliberado y comentado— y `CentroAyuda` se quedó con `[onCerrar]`, mientras
+ * `BotonAyuda` le pasa una flecha inline. Resultado: marcar las novedades como
+ * leídas remontaba el efecto y le robaba el foco.
+ *
+ * La lección que vale más que el arreglo: **compartir la mitad fácil de escribir
+ * mal no alcanza si la otra mitad también lo es.** La aritmética estaba
+ * compartida y el bug apareció igual, en el cableado.
+ *
+ * Estos `it` son el único lugar donde se verifica **qué hace** el hook. Los
+ * componentes solo prueban que lo usan y que no tienen copia propia (ver
+ * `tests/duplicar-modal.test.ts`).
+ */
+describe('el cableado de una capa modal está en un solo lugar — B-210', () => {
+  const HOOK = 'components/admin/useCapaModal.ts';
+  const CAPAS = ['components/admin/DialogoDuplicar.tsx', 'components/admin/ayuda/CentroAyuda.tsx'];
+
+  /** Sin comentarios ni espacios: afirma la llamada y no la prosa que la cita. */
+  const codigo = (rel: string): string =>
+    fuente(rel)
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+      .replace(/\s+/g, '');
+
+  it('el hook existe y hay más de una capa que lo usaría', () => {
+    // Control positivo: con una sola capa, «todas usan el hook» es una
+    // afirmación sobre un conjunto de uno y no prueba nada sobre compartir.
+    expect(CAPAS.length).toBeGreaterThanOrEqual(2);
+    expect(codigo(HOOK)).toContain('exportfunctionuseCapaModal');
   });
 
-  it('ninguna de las dos tiene su propia copia del cálculo', () => {
-    // La clase que se cerró es «el mismo patrón de teclado a medio hacer en dos
-    // lugares»: una copia local del módulo la reabre.
-    for (const rel of ['components/admin/MenuAcciones.tsx', 'components/admin/ayuda/CentroAyuda.tsx']) {
-      expect(fuente(rel)).not.toMatch(/%\s*enfocables\.length|%\s*acciones\.length/);
+  it('las dos capas lo usan', () => {
+    for (const capa of CAPAS) {
+      expect(codigo(capa), `${capa} no llama al hook`).toContain('useCapaModal(caja,');
     }
+  });
+
+  it('ninguna capa reimplementa el cableado', () => {
+    /*
+     * La guarda que evita que B-210 vuelva: alcanza con que alguien escriba el
+     * `keydown` al lado del hook «porque este caso es distinto» para tener dos
+     * comportamientos otra vez. Aplica a **toda** capa de la lista, no solo a la
+     * que se estaba mirando cuando se escribió el test.
+     */
+    for (const capa of CAPAS) {
+      for (const propio of [
+        "addEventListener('keydown'",
+        'document.body.style.overflow',
+        'document.activeElement',
+        'SELECTOR_ENFOCABLE',
+      ]) {
+        expect(codigo(capa), `${capa} tiene su propio ${propio}`).not.toContain(propio);
+      }
+    }
+  });
+
+  it('el hook guarda el callback en un ref, que es el arreglo que una copia no tenía', () => {
+    /*
+     * El corazón de B-210. Sin el ref, el efecto necesita la función en sus
+     * dependencias; y como cualquier llamador razonable pasa una flecha inline,
+     * eso es «remontarse en cada render del padre»: devolver el foco,
+     * re-capturarlo y llevárselo a la caja, más el scroll parpadeando.
+     */
+    const src = codigo(HOOK);
+    expect(src).toContain('cerrar=useRef(alCerrar)');
+    expect(src).toContain('cerrar.current=alCerrar');
+    expect(src).toContain('cerrar.current()');
+    // Las dependencias son solo el ref del contenedor, que es estable. Si acá
+    // apareciera `alCerrar`, el bug volvió.
+    expect(src).toContain('},[caja]);');
+    expect(src).not.toContain('alCerrar]);');
+  });
+
+  it('el hook hace las cuatro cosas que una capa necesita', () => {
+    const src = codigo(HOOK);
+    // Cerrar con Escape, atrapar el Tab, frenar el scroll de atrás y devolver el
+    // foco a quien lo tenía. Las cuatro juntas: a alguna de las copias le faltó
+    // alguna en algún momento de su historia.
+    expect(src).toContain("e.key==='Escape'");
+    expect(src).toContain('indiceDeTab(actual,enfocables.length,e.shiftKey)');
+    expect(src).toContain("document.body.style.overflow='hidden'");
+    expect(src).toContain('anterior?.focus()');
+    // Y restaura el overflow previo en vez de asumir que era vacío.
+    expect(src).toContain('previo=document.body.style.overflow');
+    expect(src).toContain('document.body.style.overflow=previo');
   });
 });

@@ -27,11 +27,13 @@
  * para el caso de una sesión no puede pasar por verdadero.
  */
 
-/** Timestamp mínimo, como el que Firestore entrega a la Function. */
-export const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime() };
-};
+/*
+ * B-211 — el doble de `Timestamp` sale de `./tiempo`. Este archivo tenía su
+ * propia copia de dos campos, `centinelas.ts` tenía otra de cuatro, y once tests
+ * más la tenían a mano: trece definiciones en cuatro formas. La copia de dos
+ * campos no satisfacía `TimestampLike`, que declara los cuatro.
+ */
+import { ts } from './tiempo';
 
 /** Ocho encuentros es el ciclo del §2.2, no un número redondo cualquiera. */
 export const ENCUENTROS_DEL_CICLO = 8;

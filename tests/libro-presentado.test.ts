@@ -11,6 +11,7 @@ import { buildSearchText } from '@/lib/normalize';
 import { actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad, ActividadForm } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
 /**
  * DEC-1 — el libro presentado.
@@ -31,15 +32,7 @@ import type { Actividad, ActividadForm } from '@/types/actividad';
  * (GA4). La tabla completa está en el ADR.
  */
 
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    toDate: () => d,
-    toMillis: () => d.getTime(),
-    seconds: Math.floor(d.getTime() / 1000),
-    nanoseconds: 0,
-  };
-};
+
 
 /** Una presentación tal como la entrega Firestore. Sin `libro`, salvo que se pida. */
 const presentacion = (over: Partial<Actividad> = {}): Actividad =>

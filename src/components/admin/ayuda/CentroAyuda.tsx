@@ -8,7 +8,7 @@ import {
   type ContextoAyuda,
   type PuntoAyuda,
 } from '@/lib/ayuda';
-import { SELECTOR_ENFOCABLE, indiceDeTab } from '@/lib/foco';
+import { useCapaModal } from '@/components/admin/useCapaModal';
 import { NOVEDADES, fechaLegible, guardarVisto } from '@/lib/novedades';
 
 interface Props {
@@ -73,51 +73,13 @@ export function CentroAyuda({ contexto, idsSinLeer, onCerrar, onNovedadesLeidas 
    * atrás, que sigue montado y tapado. Quien navega con teclado perdía la capa
    * sin haberla cerrado, y encima empezaba a tabular por 30+ campos que no ve.
    *
-   * Los enfocables se recalculan en cada Tab y no se guardan en un `ref`: las
-   * pestañas y el acordeón de la guía cambian la lista mientras la capa está
-   * abierta, así que una lista congelada al abrir estaría mal casi siempre.
+   * **B-210 — el cableado sale de `useCapaModal`**, compartido con
+   * `DialogoDuplicar`. Estaba copiado verbatim en las dos, y esta copia se había
+   * quedado sin el `ref` del callback: con `[onCerrar]` en las dependencias y una
+   * flecha inline en `BotonAyuda`, marcar las novedades como leídas re-renderiza
+   * el botón, remonta el efecto y le roba el foco a lo que se estuviera usando.
    */
-  useEffect(() => {
-    // Quién tenía el foco antes de abrir, para devolvérselo. Es el botón
-    // "Ayuda" del encabezado en el caso normal.
-    const anterior = document.activeElement as HTMLElement | null;
-
-    const teclas = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCerrar();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-
-      const enfocables = [
-        ...(caja.current?.querySelectorAll<HTMLElement>(SELECTOR_ENFOCABLE) ?? []),
-      ];
-      if (enfocables.length === 0) return;
-
-      const actual = enfocables.indexOf(document.activeElement as HTMLElement);
-      // Solo se intercepta el Tab que se iría afuera del ciclo: adentro, el Tab
-      // nativo ya respeta el orden del documento mejor que cualquier cálculo.
-      // `actual === -1` es el foco en la caja del diálogo, recién abierta.
-      const enElBorde =
-        actual === -1 || (e.shiftKey ? actual === 0 : actual === enfocables.length - 1);
-      if (!enElBorde) return;
-
-      e.preventDefault();
-      enfocables[indiceDeTab(actual, enfocables.length, e.shiftKey)]?.focus();
-    };
-
-    document.addEventListener('keydown', teclas);
-    // Sin esto, la rueda del mouse sobre la capa scrollea el formulario de
-    // atrás cuando la guía llega a su final.
-    const previo = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    caja.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', teclas);
-      document.body.style.overflow = previo;
-      anterior?.focus();
-    };
-  }, [onCerrar]);
+  useCapaModal(caja, onCerrar);
 
   const clasePestania = (propia: Pestania) =>
     `flex-1 sm:flex-none ${pestania === propia ? claseBotonTinta : claseBotonSecundario}`;

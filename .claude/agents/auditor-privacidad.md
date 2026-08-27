@@ -20,7 +20,7 @@ Leelos antes de dictaminar: son la fuente, esto es el índice.
 
 | # | Salida | Quién la produce | Test que la fija |
 |---|---|---|---|
-| 1 | `events.json` y las páginas SSG | `src/lib/toPublic.ts` | `tests/toPublic.test.ts` |
+| 1 | `events.json` y las páginas SSG — la actividad **y** las opciones de taxonomía (§4.4) | `src/lib/toPublic.ts` — `toPublic` para la actividad, `opcionesPublicas` para `/opciones/*` | `tests/toPublic.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` |
 | 2 | El evento de Google Calendar | `functions/calendario.js` — `construirEvento`, `construirDescripcion`, `construirUbicacion`, `construirLinkMapa` | `tests/calendario.test.ts` |
 | 3 | El issue de GitHub (el repo `benoffi7/agenda-literaria` es **público**) | `functions/reportes.js` — `redactar`, `construirIssue`, `actividadParaIssue` | `tests/reportes.test.ts` |
 | 4 | GA4 (la más estricta: acá **no sale contenido nunca**, ni con permiso del dueño) | `src/lib/analytics-eventos.ts` — `construirEvento` y sus vocabularios | `tests/analytics-privacidad.test.ts` |
@@ -57,8 +57,10 @@ quien carga (D-122).
 - `material.items[].url` con `publico: false` — sale tipo y título, no la URL.
 - `createdBy` / `updatedBy`, uids, el mail del admin logueado — ni crudos ni
   hasheados (con dos admins conocidos, un hash se revierte probando dos
-  entradas; D-57). El creador de una opción de taxonomía va como huella de 8
-  hex (`src/lib/huella.ts`, D-27).
+  entradas; D-57). El creador de una opción de taxonomía se guarda como huella
+  de 8 hex (`src/lib/huella.ts`, D-27) **y esa huella tampoco sale**:
+  `opcionesPublicas` emite solo `slug` y `label` (B-212). Que sea una huella y
+  no un uid la hace aceptable **en el documento**, no publicable.
 - `sesion.calendarEventId` — interno.
 - Cualquier **valor de cualquier campo** hacia GA4. Se mide *que* un campo falló
   y *cuál*, nunca qué se escribió. El mensaje de un error de zod **es**

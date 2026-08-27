@@ -23,6 +23,7 @@ import { huboCambioDeContenido } from '../functions/historial.js';
 import { encuentrosDe } from '@/lib/calendarioPanel';
 import { generarSesiones } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, SesionForm } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
 const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
@@ -32,10 +33,7 @@ const fuente = (relativo: string) =>
 // Fixtures: el documento tal como lo entrega Firestore a la Function.
 // ─────────────────────────────────────────────────────────────────────
 
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime() };
-};
+
 
 /** Ocho encuentros semanales, cada uno con su evento ya creado en Calendar. */
 const ochoSesiones = (over: (i: number) => Record<string, unknown> = () => ({})) =>

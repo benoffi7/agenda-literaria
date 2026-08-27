@@ -1064,7 +1064,20 @@ restaurarlo recalcula al vacío), y otro que lee la función —ocho líneas— 
 falló). Verificadas las dos: sacando `libro` de la lista y agregándole un campo
 inventado, cada rotura cae con el mensaje que nombra qué drifteó.
 
-### B-210 · La trampa de foco está copiada en dos diálogos y la copia se quedó con el bug · P1
+### B-210 · La trampa de foco está copiada en dos diálogos y la copia se quedó con el bug — ✅ hecho (2026-08-27)
+
+**Hecho.** El cableado salió a `src/components/admin/useCapaModal.ts` y las dos capas lo
+usan. `CentroAyuda` recupera el `ref` del callback que solo `DialogoDuplicar` tenía, así
+que leer las novedades ya no remonta el efecto ni le roba el foco.
+
+**Y lo que costó más que el arreglo: los tests que se rompieron.** Cuatro `it` que leían
+el fuente buscaban `e.key===Escape` o `alCancelar=useRef(onCancelar)` dentro de
+`DialogoDuplicar.tsx`, así que **un refactor que mejora el código los puso en rojo**. Es
+la tercera vez que pasa lo mismo (§10, problema 1). No se los repuntó al archivo nuevo
+—sería el mismo chequeo frágil con otra ruta—: ahora afirman la **propiedad** de que
+ninguna capa tenga cableado propio, lo que además cubre a la próxima capa que alguien
+escriba. Verificado por mutación en las dos direcciones: reintroducir `alCerrar` en las
+dependencias rompe, y escribir un `keydown` en una capa rompe.
 
 `src/lib/foco.ts` comparte la **aritmética** del foco a propósito: su docblock
 dice que la parte que toca el DOM «queda en cada componente, que es donde está el
@@ -1095,7 +1108,20 @@ test de `foco.test.ts` ya cubre la aritmética; lo que falta es que el cableado
 tenga un solo dueño. **Es P1 y no P2 porque el arreglo ya está escrito en el
 repo** — solo está en el archivo equivocado.
 
-### B-211 · El doble de `Timestamp` está definido 13 veces en 4 formas, y dos mienten · P1
+### B-211 · El doble de `Timestamp` está definido 13 veces en 4 formas, y dos mienten — ✅ hecho (2026-08-27)
+
+**Hecho.** Uno solo, en `tests/fixtures/tiempo.ts`, devolviendo `TimestampLike` — el tipo
+que el modelo declara y que las copias de dos campos no satisfacían. `seconds` y
+`nanoseconds` salen de la fecha: las dos variantes que decían `seconds: 0` afirmaban que
+todo Timestamp es la época.
+
+**Lo que faltaba no era el fixture: era la guarda.** Esta es la clase que el repo ya
+había automatizado (`fixtures/ciclo.ts` + `invariantes-de-ciclo.test.ts`, después de
+aparecer cuatro veces) y volvió igual, porque **la automatización se escribió y no se
+adoptó** — un modo de falla distinto del que se atajó, y sin red. La clase de B-211 en
+`clases-de-bug.test.ts` busca la **forma** (`toDate` y `toMillis` juntos) y no el nombre,
+así que también caza al que se llame `stamp` o `t`. Verificado reintroduciendo una copia:
+falla nombrando el archivo.
 
 `const ts = (iso) => ...` está escrito a mano en 11 archivos de `tests/` y
 exportado dos veces más desde `tests/fixtures/` (`ciclo.ts` y `centinelas.ts`,
@@ -1125,7 +1151,58 @@ compatibles hacia arriba. Lo que conviene decidir de paso es dónde vive — hoy
 `ciclo.ts` y `centinelas.ts` se lo copian entre ellos, que es el mismo bug un
 nivel más adentro.
 
-### B-212 · La proyección pública de `/opciones/*` no existe, y el barrido no la ve · P1
+### B-212 · La proyección pública de `/opciones/*` no existe, y el barrido no la ve — ✅ hecho (2026-08-27)
+
+**Hecho.** `opcionPublica` y `opcionesPublicas` en `toPublic.ts`, con whitelist de dos
+campos y sin spread, escritas **antes** de su consumidor (B-106) porque el punto era
+llegar antes que el atajo.
+
+`ValorOpcion` salió de la lista de interfaces AJENAS del barrido de B-196 y pasó a estar
+anclada, con `opcionCentinela()` y tres rutas de centinela nuevas.
+
+**El `auditor-privacidad` encontró cinco cosas sobre este mismo cierre, y las cinco
+eran de índice y de red — ninguna una fuga.** Vale listarlas porque cuatro eran
+afirmaciones que el cierre había escrito:
+
+1. La ficha del agente seguía atribuyendo la salida 1 solo a `toPublic`, y el guard
+   de B-216 **no podía verlo**: comparaba el primer path de cada fila y las dos
+   colapsaban a `src/lib/toPublic.ts`. Es el modo de falla de B-216 un nivel más
+   adentro — el índice envejeció y el test que lo ataba miraba el archivo, no qué de
+   ese archivo produce la salida. El guard ahora compara las **funciones**, y es
+   direccional: la ficha puede saber más que el documento, nunca menos.
+2. Anclar `ValorOpcion` la metió en el chequeo de cobertura pero **no** en el
+   recorrido que exige que cada string del fixture sea rastreable. Un campo de texto
+   nuevo en la taxonomía quedaba obligado a declararse y podía entrar con un valor
+   inocente: obligatorio de declarar, invisible para todo barrido.
+3. «Verificado por mutación» era **a mano**. Ahora hay un `it` que mete el spread y
+   exige que el barrido falle nombrando `opcion.huellaCreador` — el gemelo del
+   control negativo que la actividad ya tenía para `libro`.
+4. El docblock que explica por qué el import va a `@/lib/taxonomia` y no a
+   `@/lib/opciones` **no lo fijaba nadie**: el atajo typechequeaba y dejaba toda la
+   suite verde, arrastrando `firebase/firestore` al módulo de la proyección pública.
+   Y el grafo de `bundle-panel.test.ts` tampoco lo veía, porque `toPublic` no tiene
+   importador todavía (B-106). Hay guarda nueva, sobre el cierre transitivo de sus
+   imports.
+5. La tabla de `07-seguridad.md` atribuía todo a `opcionesPublicas`, que **no
+   interviene en dos de los tres caminos**. Son tres —`opcionesPublicas`,
+   `labelsDeOpciones` y el `cargarLabels` de la Function— y el tercero **no se puede
+   unificar**: `functions/` no importa de `src/` (D-20). La política del repo para
+   ese caso ya estaba escrita en `10-salud-del-codigo.md`: un test que compare las
+   listas, no un import imposible. Es la clase de B-212 en `clases-de-bug.test.ts`.
+
+**Y ese último test salió mal la primera vez**, que es el detalle que más vale:
+rastreaba los accesos por una variable llamada `v`, así que meter un
+`sort((a, b) => b.usos - a.usos)` pasaba en verde. Un chequeo que depende del nombre
+que eligió quien escribió el código verifica la convención de nombres, no el código.
+Ahora deriva del modelo qué campos están prohibidos y busca el **acceso** sin
+importar de qué variable. Verificado con las dos mutaciones.
+
+**Un error propio que vale anotar:** la primera versión filtraba las no aprobadas con
+`v.aprobada !== false` en vez de reusar `estaAprobada`, que es
+`v.fijo || (v.aprobada ?? true)`. Eso habría borrado de los filtros del sitio a una
+opción **base** que tuviera `aprobada: false` — o sea «Gratis» y «A la gorra». Es la
+clase de B-72 (la misma regla escrita dos veces) apareciendo en el acto de cerrar otro
+ítem. Hay dos `it` que lo fijan.
 
 `toPublic.ts` proyecta la actividad campo por campo, con whitelist y sin un solo
 spread. Para `/opciones/*` no hay nada equivalente, y B-106 la va a necesitar: el

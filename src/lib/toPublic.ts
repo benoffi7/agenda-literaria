@@ -1,5 +1,19 @@
 import { imagenesDe } from '@/lib/imagenes';
-import type { Actividad, Imagen, ItemMaterial, Libro, Sesion } from '@/types/actividad';
+/*
+ * De `taxonomia` y no de `opciones`: las dos exportan `opcionesVisibles` —la
+ * segunda la re-exporta— pero `opciones.ts` importa `firestore-client`, y esto
+ * corre en el build de Astro. Traer Firebase acá sería arrastrarlo a la
+ * proyección pública por un import de conveniencia.
+ */
+import { opcionesVisibles } from '@/lib/taxonomia';
+import type {
+  Actividad,
+  Imagen,
+  ItemMaterial,
+  Libro,
+  Sesion,
+  ValorOpcion,
+} from '@/types/actividad';
 
 /**
  * §5 — Todo lo que entra al `events.json` es público y scrapeable.
@@ -52,6 +66,41 @@ export interface ImagenPublica {
 export interface LibroPublico {
   titulo: string;
   autor: string;
+}
+
+/**
+ * §4.4 — una opción de taxonomía en el `events.json`: **`slug` y `label`, nada
+ * más**.
+ *
+ * `ValorOpcion` tiene además `orden`, `fijo`, `usos`, `aprobada` y
+ * `huellaCreador`. Ninguno de esos cinco tiene por qué salir:
+ *
+ * | Campo | Por qué no sale |
+ * |---|---|
+ * | `orden` | es del desplegable del panel; los chips del sitio se ordenan por lo que el sitio decida |
+ * | `fijo` | dice si la UI del panel puede borrarla, no le sirve a nadie afuera |
+ * | `usos` | cuántas veces se usó es dato de gestión, y publicado dibuja qué carga esta gente y con qué frecuencia |
+ * | `aprobada` | estado interno de moderación (§4.3) |
+ * | `huellaCreador` | **es el que importa**: aunque sea una huella y no un uid (D-27), es un identificador estable de una persona, y §5.1 dice que del creador no sale nada al público |
+ *
+ * ── Por qué esto existe antes que su consumidor ──────────────────────────
+ * B-212. El `events.json` es B-106 y todavía no está escrito. Cuando se escriba,
+ * el camino corto es volcar `valores` tal cual —una línea, y se lee razonable— y
+ * ahí entran `huellaCreador` y `usos` sin que nadie lo haya decidido.
+ *
+ * Y **nada lo detendría**: el barrido de centinelas de B-196
+ * (`tests/barrido-de-salidas-publicas.test.ts`) está anclado a las interfaces de
+ * una *actividad*, y `ValorOpcion`/`DocOpciones` están declaradas ahí como
+ * ajenas. O sea: la única salida pública nueva que ya estaba planificada nacía
+ * fuera de la red.
+ *
+ * Escribir la whitelist ahora es lo que evita que la decisión la tome un spread
+ * escrito con apuro seis semanas después. Es la misma razón por la que
+ * `toPublic` enumera campo por campo en vez de usar `pick` genérico.
+ */
+export interface OpcionPublica {
+  slug: string;
+  label: string;
 }
 
 export interface ActividadPublica {
@@ -139,6 +188,38 @@ const itemPublico = (i: ItemMaterial): ItemMaterialPublico =>
   i.publico
     ? { tipo: i.tipo, titulo: i.titulo, entrega: i.entrega, url: i.url }
     : { tipo: i.tipo, titulo: i.titulo, entrega: i.entrega };
+
+/**
+ * §4.4 — una opción de taxonomía, proyectada. Ver `OpcionPublica`.
+ *
+ * Enumera los dos campos y no hace `pick`: si mañana se agrega una clave a
+ * `ValorOpcion`, esto sigue emitiendo dos y el compilador no se queja de nada —
+ * que es exactamente el comportamiento que se quiere de una whitelist.
+ */
+export const opcionPublica = (v: ValorOpcion): OpcionPublica => ({
+  slug: v.slug,
+  label: v.label,
+});
+
+/**
+ * Las opciones de un campo, listas para el `events.json`.
+ *
+ * **Se filtran las no aprobadas con `opcionesVisibles` sin `uid`**, y no con un
+ * filtro propio: esa función ya es la regla del §4.3 y su docblock nombra
+ * literalmente este caso («sin `uid` devuelve solo las aprobadas. Ese es el caso
+ * del sitio público»). Reimplementarla acá habría sido la clase de B-72 otra vez
+ * —la misma decisión escrita dos veces— y en el primer intento **ya salió mal**:
+ * `v.aprobada !== false` descarta una opción `fijo: true` que tuviera
+ * `aprobada: false`, y `estaAprobada` es `v.fijo || (v.aprobada ?? true)`. Las
+ * opciones base son justo las que no pueden desaparecer de los filtros.
+ *
+ * Ojo con el matiz de D-30, que sigue valiendo: filtrar **lo elegible** es
+ * correcto acá; lo que nunca se filtra es la lista con la que se **resuelve** un
+ * slug a su etiqueta, porque una actividad publicada puede tener guardada una
+ * opción pendiente y el sitio tiene que poder mostrar su nombre.
+ */
+export const opcionesPublicas = (valores: ValorOpcion[]): OpcionPublica[] =>
+  opcionesVisibles(valores).map(opcionPublica);
 
 export const toPublic = (a: Actividad, id: string, ahora = Date.now()): ActividadPublica => ({
   id,

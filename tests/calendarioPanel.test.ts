@@ -33,12 +33,10 @@ import {
   yaPaso,
 } from '@/lib/calendarioPanel';
 import type { ActividadConId, Estado, Sesion } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
 /** Timestamp mínimo, como el que entrega Firestore. */
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime(), seconds: 0, nanoseconds: 0 };
-};
+
 
 /**
  * B-136 — el default de `fin` es **una duración real**, no `inicio`.

@@ -1,17 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
 /** Timestamp mínimo, suficiente para la proyección. */
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    toDate: () => d,
-    toMillis: () => d.getTime(),
-    seconds: Math.floor(d.getTime() / 1000),
-    nanoseconds: 0,
-  };
-};
+
 
 const actividad = (over: Partial<Actividad> = {}): Actividad => ({
   tipo: 'club-lectura',

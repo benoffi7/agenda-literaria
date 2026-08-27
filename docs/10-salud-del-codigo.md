@@ -22,9 +22,9 @@ resuelve `@/`, `@calendario`, `@historial` y los relativos, e incluye los
 
 | | `13b9baa` | Hoy |
 |---|---:|---:|
-| Concentración en los 15 archivos más grandes | 41,7 % | **41,4 %** |
-| Líneas de test por línea de código testeable | 1,14 | **1,43** |
-| Código de producción | 14.865 LOC | **20.181 LOC** (+36 %) |
+| Concentración en los 15 archivos más grandes | 41,7 % | **41,2 %** |
+| Líneas de test por línea de código testeable | 1,14 | **1,45** |
+| Código de producción | 14.865 LOC | **20.273 LOC** (+36 %) |
 | Ciclos de import | 0 | **0** |
 
 **El resultado no es que los números mejoraron: es que aguantaron.** El código
@@ -44,23 +44,23 @@ verificación de los `.tsx`, que no se arregla creciendo prolijo.
 
 | Área | Archivos | LOC | Significativas |
 |---|---:|---:|---:|
-| `src/` | 93 | 17.531 | 11.288 |
+| `src/` | 94 | 17.622 | 11.283 |
 | `functions/` | 8 | 2.049 | 948 |
 | `scripts/` | 5 | 515 | 296 |
-| **Código (total)** | **108** | **20.181** | **12.579** |
-| `tests/` | 63 | 18.635 | 12.914 |
+| **Código (total)** | **109** | **20.273** | **12.574** |
+| `tests/` | 65 | 19.420 | 13.196 |
 
-`tests/` son 59 archivos de test más 4 de fixtures. La suite corre **1.348 tests**,
+`tests/` son 60 archivos de test más 5 de fixtures. La suite corre **1.369 tests**,
 57 de ellos contra los emuladores.
 
-Relación tests / código testeable (`.ts`/`.js`/`.mjs`, 13.066 LOC): **1,43 líneas
+Relación tests / código testeable (`.ts`/`.js`/`.mjs`, 13.241 LOC): **1,45 líneas
 de test por línea de código**, contra 1,14 en la medición anterior. Subió mientras
 el código crecía un 36 %, o sea que los tests crecieron más rápido que lo que
 verifican.
 
 ### 1.2 Concentración
 
-Los quince archivos más grandes son el **41,4 %** del código (antes: 41,7 %). El
+Los quince archivos más grandes son el **41,2 %** del código (antes: 41,7 %). El
 más grande es el **5,7 %** (antes: 5,3 %).
 
 | LOC | Archivo | Qué es |
@@ -131,7 +131,7 @@ cosas.
 
 ### 1.5 Ciclos
 
-**Cero**, en 108 archivos de producción. Se midió con DFS sobre el grafo completo,
+**Cero**, en 109 archivos de producción. Se midió con DFS sobre el grafo completo,
 `import()` diferidos incluidos.
 
 ### 1.6 Prosa
@@ -183,7 +183,7 @@ archivo que verifica que no sale (B-209).
 
 **Por qué está en este documento y no solo en el backlog:** los dos pasaron por
 debajo de todo lo que este archivo mide. Cero ciclos, fan-in en hojas,
-concentración estable, 1,43 de ratio de tests, y una fuga abierta. Ninguna
+concentración estable, 1,45 de ratio de tests, y una fuga abierta. Ninguna
 métrica de forma la iba a encontrar, y **el test que la fijaba estaba en verde** —
 `it('un anónimo lee lo publicado')`, correcto respecto de su especificación,
 certificando una fuga porque lo que estaba mal era la especificación.
@@ -191,7 +191,7 @@ certificando una fuga porque lo que estaba mal era la especificación.
 La conclusión operativa no es "hay que medir más cosas": es que **la salud de
 forma y la corrección son ejes independientes**, y este documento solo habla del
 primero. Los auditores existen para el segundo, y esta vez encontraron lo que
-1.348 tests no.
+1.369 tests no.
 
 ### Problema 1 · 39 componentes y 7.045 LOC de `.tsx` sin un solo test de componente
 
@@ -225,29 +225,57 @@ Ninguna de las tres habría existido con un test que monta el componente. **Es
 B-08**, y el motivo por el que estaba postergado —escribir tests contra el `.tsx`
 de 858 líneas era escribirlos dos veces— dejó de aplicar hace cuarenta commits.
 
-**El costo de seguir postergándolo ya se puede nombrar con un caso concreto:**
-B-210. La trampa de foco está copiada verbatim en dos diálogos, y una copia tiene
-un arreglo que la otra no. Un test de componente que abra la capa y tabule lo
-encuentra en tres líneas; leyendo el fuente con regex, no.
+**El costo de seguir postergándolo tiene dos casos concretos del mismo día**, y
+son las dos caras del mismo método:
 
-### Problema 2 · Duplicación en los fixtures, que es la clase que el repo ya automatizó
+1. **Lo que no vio.** B-210: la trampa de foco estaba copiada verbatim en dos
+   diálogos y una copia tenía un arreglo que la otra no. Un test de componente que
+   abra la capa y tabule lo encuentra en tres líneas; leyendo el fuente con regex,
+   no lo vio nadie por semanas.
+2. **Lo que frenó de más.** Arreglar B-210 —mover el cableado a un hook, que es
+   una mejora sin cambio de comportamiento— **puso cuatro `it` en rojo**, porque
+   buscaban `e.key==='Escape'` y `alCancelar=useRef(onCancelar)` *dentro de un
+   `.tsx` puntual*. Es la cuarta vez que un chequeo así mide un archivo que ya no
+   tiene lo que busca.
+
+El segundo es el que conviene mirar, porque es el más caro y el menos visible: un
+test que se rompe cuando el código mejora **cobra un impuesto a cada refactor**, y
+ese impuesto se paga en refactors que no se hacen. Los cuatro se reescribieron
+como propiedad («ninguna capa tiene cableado propio») en vez de repuntarlos al
+archivo nuevo, que habría sido el mismo chequeo frágil con otra ruta.
+
+### Problema 2 · La automatización que se escribe y no se adopta — ✅ cerrado (B-211)
+
+Cerró el mismo día que se midió, y la forma en que estaba mal es lo que vale
+guardar.
 
 `const ts = (iso) => ...` —el doble de `Timestamp`, o sea el corazón de la trampa
-1 del §13— está definido **13 veces en 4 formas distintas**, y dos de esas formas
-mienten (`seconds: 0` para cualquier fecha). Está duplicado incluso **entre los
-dos fixtures**, con formas distintas cada uno. Es B-211.
+1 del §13— estaba definido **13 veces en 4 formas distintas**, y dos de esas
+formas **mentían**: `seconds: 0` para cualquier fecha. Estaba duplicado incluso
+**entre los dos fixtures**, con una forma distinta cada uno.
 
-Y la adopción de `tests/fixtures/` es de **7 archivos sobre 59**: hay un
-`actividadCentinela` completo y lo usa uno solo, mientras siete archivos definen
-su propio builder de actividad con cuatro firmas distintas. Es B-215.
-
-**Lo que hace que esto sea un problema y no una molestia:** es exactamente la
+**Lo que hacía que fuera un problema y no una molestia:** era exactamente la
 clase que hizo nacer `tests/fixtures/ciclo.ts` y `invariantes-de-ciclo.test.ts`
 —«un fixture que no ejercita el caso central del dominio», que había aparecido
 cuatro veces— y que el skill `automatizar` lleva adentro como calibración. La
-clase volvió con otra cara: no es que el fixture no ejercite el caso, es que hay
-trece fixtures y no se parecen entre sí. **La automatización se escribió y no se
-adoptó**, que es un modo de falla distinto del que se atajó.
+clase volvió con otra cara: no era que el fixture no ejercitara el caso, era que
+había trece fixtures y no se parecían entre sí.
+
+**O sea: la automatización se había escrito y no se había adoptado.** Es un modo
+de falla distinto del que se atajó, y **no tenía red** — cosa que se ve mejor
+ahora que está cerrado: unificar sin dejar guarda habría dejado el mismo hueco,
+porque escribir el catorceavo `ts()` cuesta cinco segundos, menos que buscar
+dónde vive el bueno.
+
+La red es la clase de B-211 en `clases-de-bug.test.ts`, y busca la **forma**
+(`toDate` y `toMillis` juntos) en vez del nombre: así también caza al que se
+llame `stamp` o `t`. La adopción de `tests/fixtures/` pasó de **7 archivos sobre
+59** a **16 sobre 60**.
+
+Lo que **sigue abierto** de este frente es la otra mitad, y es B-215: siete
+archivos definen su propio builder de actividad con cuatro firmas distintas
+mientras `actividadCentinela` existe y lo usa uno solo. La misma historia, sin el
+agravante de que alguna copia mienta.
 
 ### Problema 3 · `functions/index.js`, 516 LOC, el último punto de concentración
 
@@ -273,7 +301,7 @@ subir **antes** de B-01, cuando el blast radius son tres páginas.
 
 Un diagnóstico que solo encuentra problemas no se puede calibrar.
 
-1. **Cero ciclos de import** en 108 archivos, después de cuarenta commits que
+1. **Cero ciclos de import** en 109 archivos, después de cuarenta commits que
    agregaron un 36 % de código.
 
 2. **Los cuellos de botella siguen siendo hojas**, y aguantaron el crecimiento:
@@ -281,7 +309,7 @@ Un diagnóstico que solo encuentra problemas no se puede calibrar.
 
 3. **La forma resistió el crecimiento.** Es el hallazgo principal de esta
    medición y es fácil de pasar por alto porque no es un número que sube: la
-   concentración se movió del 41,7 % al 41,4 % mientras el denominador crecía un
+   concentración se movió del 41,7 % al 41,2 % mientras el denominador crecía un
    tercio.
 
 4. **La duplicación más peligrosa sigue prevenida por construcción.**
@@ -345,12 +373,18 @@ producción (B-208) que ninguna métrica de este documento podía ver y que un t
 en verde estaba certificando — la lección es que la salud de forma y la corrección
 son ejes independientes, y este archivo solo mide el primero.
 
-Del eje de forma, lo que queda es lo mismo de antes y un poco más grande: **39
-componentes y 7.045 LOC de `.tsx` se verifican leyendo el fuente con expresiones
-regulares** (B-08), y ahora hay un bug concreto que eso dejó pasar (B-210). Lo
-demás es chico y está nombrado: los trece `ts()` (B-211), la duplicación menor
-(B-215), Astro sin parche en la 5.x (B-214), dos vocabularios para «modalidad»
-(B-175) y la prosa que pertenece al CHANGELOG (B-78).
+Del eje de forma, lo que queda es **el método, no la estructura**: 39 componentes
+y 6.962 LOC de `.tsx` se verifican leyendo el fuente con expresiones regulares
+(B-08). El mismo día dio las dos pruebas de lo que eso cuesta — **no vio** un bug
+que estaba a la vista (B-210) y **frenó** el refactor que lo arregló, poniendo
+cuatro `it` en rojo por mejorar el código.
+
+Los tres P1 que esta medición abrió se cerraron el mismo día: B-210 (el cableado
+de capa modal, ahora compartido), B-211 (los trece `ts()`, ahora uno con guarda) y
+B-212 (la proyección de `/opciones/*`, escrita antes de su consumidor). Queda
+chico y nombrado: la duplicación menor (B-215), Astro sin parche en la 5.x
+(B-214), dos vocabularios para «modalidad» (B-175), el saneador campo por campo
+(B-137), los `.env` sin gate (B-213) y la prosa que pertenece al CHANGELOG (B-78).
 
 Nada de eso bloquea el sitio público. B-208 sí lo habría hecho, y ese es el
 argumento para correr los auditores antes de construirlo y no después.

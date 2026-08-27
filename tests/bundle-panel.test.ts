@@ -246,3 +246,81 @@ describe('quién es dueño de Firestore — B-09', () => {
     }
   });
 });
+
+/**
+ * La proyección pública no puede tocar Firestore — B-212.
+ *
+ * `src/lib/toPublic.ts` corre en el **build de Astro**, con el Admin SDK, para
+ * producir el `events.json`. Importa `opcionesVisibles`, y esa función se puede
+ * traer de dos lugares: de `@/lib/taxonomia`, que es puro, o de `@/lib/opciones`,
+ * que la **re-exporta** y además importa `firestore-client`.
+ *
+ * El archivo tiene un docblock explicando cuál de los dos y por qué. Pero un
+ * comentario no es una guarda: cambiar el import por `@/lib/opciones`
+ * **typechequea y deja toda la suite en verde**, arrastrando `firebase/firestore`
+ * al módulo de la proyección pública. Y el recorrido del grafo de más arriba
+ * tampoco lo vería, porque `toPublic` no tiene hoy ningún importador en `src/`
+ * (B-106 no existe todavía), así que no está en el grafo de la island.
+ *
+ * O sea: es un archivo con una regla escrita, fuera de las dos redes que existen.
+ * Lo encontró el `auditor-privacidad`. Es exactamente la forma del §5.4 —«no se
+ * llega desde el cliente»— aplicada a un módulo que todavía no tiene clientes.
+ */
+describe('toPublic no arrastra Firestore — B-212', () => {
+  const PROYECCION = 'src/lib/toPublic.ts';
+
+  it('el archivo existe y tiene imports que revisar', () => {
+    // Control positivo: con una lista vacía, los dos `it` de abajo pasarían sin
+    // haber mirado nada.
+    expect(importsEstaticos(fuente(PROYECCION)).length).toBeGreaterThan(1);
+  });
+
+  it('no importa el módulo que habla con Firestore', () => {
+    const specs = importsEstaticos(fuente(PROYECCION));
+    // `@/lib/opciones` re-exporta lo mismo que `@/lib/taxonomia` y además abre
+    // el cliente de Firestore: es el atajo cómodo que hay que cerrar.
+    expect(specs, 'traelo de @/lib/taxonomia, que es puro').not.toContain('@/lib/opciones');
+  });
+
+  it('ni Firebase, por ninguna puerta', () => {
+    const todos = [
+      ...importsEstaticos(fuente(PROYECCION)),
+      ...importsDiferidos(fuente(PROYECCION)),
+    ];
+    const deFirebase = todos.filter((s) => s === 'firebase' || s.startsWith('firebase/'));
+    expect(deFirebase, 'la proyección pública no habla con Firebase').toEqual([]);
+  });
+
+  it('y su clausura de imports propios tampoco', () => {
+    /*
+     * La parte que importa de verdad: no alcanza con que `toPublic` esté limpio
+     * si algo que importa no lo está. Se recorre el cierre transitivo de sus
+     * imports **de `src/`** —el mismo `aArchivo` que usa el grafo de la island—
+     * y se exige que nadie en la cadena traiga Firebase.
+     */
+    const vistos = new Set<string>();
+    const pendientes = [PROYECCION];
+    const culpables: string[] = [];
+
+    while (pendientes.length > 0) {
+      const archivo = pendientes.pop()!;
+      if (vistos.has(archivo)) continue;
+      vistos.add(archivo);
+
+      const src = fuente(archivo);
+      for (const spec of [...importsEstaticos(src), ...importsDiferidos(src)]) {
+        if (spec === 'firebase' || spec.startsWith('firebase/')) {
+          culpables.push(`${archivo} → ${spec}`);
+          continue;
+        }
+        const destino = aArchivo(spec, archivo);
+        if (destino) pendientes.push(destino);
+      }
+    }
+
+    // Control positivo: la clausura tiene que haber visitado más que el archivo
+    // de entrada, o esto no probó nada.
+    expect(vistos.size).toBeGreaterThan(2);
+    expect(culpables, 'algo en la cadena de imports de toPublic trae Firebase').toEqual([]);
+  });
+});

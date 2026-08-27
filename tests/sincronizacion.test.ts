@@ -16,6 +16,7 @@ import {
   reponerIds,
 } from '../functions/sincronizacion.js';
 import { nuevaSesionId } from '@/lib/sesiones';
+import { ts } from './fixtures/tiempo';
 
 // ─────────────────────────────────────────────────────────────────────
 // B-82 · el id del evento lo elige el cliente
@@ -171,10 +172,7 @@ describe('reponerIds — qué queda escrito después de sincronizar', () => {
 // B-04 · renombrar una etiqueta y los eventos ya creados
 // ─────────────────────────────────────────────────────────────────────
 
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime() };
-};
+
 
 const publicada = (over: Record<string, unknown> = {}) => ({
   titulo: 'Club de lectura',

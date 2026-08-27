@@ -360,7 +360,8 @@ export interface ValorOpcion {
    *
    * **Opcional a propósito:** los documentos de `/opciones/*` que ya están en
    * producción se escribieron antes de que existiera el campo. Ausente cuenta
-   * como aprobada — ver `estaAprobada` en `lib/opciones.ts`.
+   * como aprobada — ver `estaAprobada` en `lib/taxonomia.ts` (se re-exporta desde
+   * `lib/opciones.ts`, que es la puerta a `/opciones/*`).
    */
   aprobada?: boolean;
   /**

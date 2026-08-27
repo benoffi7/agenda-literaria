@@ -38,18 +38,12 @@
  * y con las dos claves que ninguna pantalla escribe (`calendarEventId`,
  * `storagePath`).
  */
-import type { Actividad, Imagen, Sede } from '@/types/actividad';
+import type { Actividad, Imagen, Sede, ValorOpcion } from '@/types/actividad';
 
-/** `Timestamp` mínimo, como el que Firestore entrega al build y a la Function. */
-export const ts = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    toDate: () => d,
-    toMillis: () => d.getTime(),
-    seconds: Math.floor(d.getTime() / 1000),
-    nanoseconds: 0,
-  };
-};
+// B-211 — el doble de `Timestamp` sale de `./tiempo`, no de una copia por
+// fixture. Esta era la más completa de las cuatro formas que convivían, y es la
+// que quedó como base.
+import { ts } from './tiempo';
 
 /**
  * Cada ruta de contenido del documento, más las etiquetas de `/opciones/*` que
@@ -129,6 +123,14 @@ const RUTAS = [
   'labels.plataforma',
   'labels.arancel',
   'labels.tags',
+
+  // B-212 — el documento de `/opciones/{campo}` es una salida pública propia
+  // desde que existe `opcionesPublicas`, y hasta ahora `ValorOpcion` estaba en
+  // la lista de interfaces AJENAS del barrido. Con estas rutas, un campo nuevo
+  // en la taxonomía tiene que decidir si sale.
+  'opcion.slug',
+  'opcion.label',
+  'opcion.huellaCreador',
 ] as const;
 
 export type RutaCentinela = (typeof RUTAS)[number];
@@ -323,3 +325,31 @@ export const LABELS_CENTINELA: Record<string, Record<string, string>> = {
   arancel: { [CENTINELA['arancel.tipo']]: CENTINELA['labels.arancel'] },
   tags: { [CENTINELA.tags]: CENTINELA['labels.tags'] },
 };
+
+/**
+ * Una opción de taxonomía con centinela en cada campo que puede llevar
+ * contenido — B-212.
+ *
+ * `/opciones/{campo}` es de **lectura pública** (§5.3) y sus valores viajan al
+ * `events.json` (§4.4), así que es una salida con sus propias celdas que decidir.
+ * `ValorOpcion` estuvo en la lista de interfaces AJENAS del barrido hasta que
+ * existió `opcionesPublicas`, y eso significaba que el único consumidor nuevo ya
+ * planificado nacía fuera de la red.
+ *
+ * Los tres campos con centinela son los que pueden llevar algo identificable:
+ * `slug` y `label` (que **sí** salen, §4.4) y `huellaCreador` (que **no**: es un
+ * identificador estable de una persona, aunque sea una huella y no un uid, D-27).
+ * `orden`, `fijo`, `usos` y `aprobada` no llevan centinela porque son números y
+ * booleanos — no hay string donde esconder contenido; que no salgan se afirma
+ * comparando las claves de la salida, no buscando un valor.
+ */
+export const opcionCentinela = (over: Partial<ValorOpcion> = {}): ValorOpcion => ({
+  slug: CENTINELA['opcion.slug'],
+  label: CENTINELA['opcion.label'],
+  orden: 7,
+  fijo: false,
+  usos: 3,
+  aprobada: true,
+  huellaCreador: CENTINELA['opcion.huellaCreador'],
+  ...over,
+});

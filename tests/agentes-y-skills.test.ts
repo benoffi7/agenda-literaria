@@ -184,8 +184,8 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
    * productor de la última columna con contenido. Se corta en la primera línea
    * que no es fila: así una segunda tabla numerada más abajo no se mezcla.
    */
-  const salidas = (relativo: string): { n: string; archivo: string }[] => {
-    const filas: { n: string; archivo: string }[] = [];
+  const salidas = (relativo: string): { n: string; archivo: string; funciones: string[] }[] => {
+    const filas: { n: string; archivo: string; funciones: string[] }[] = [];
     let empezo = false;
     for (const linea of fuente(relativo).split('\n')) {
       const m = /^\|\s*(\d)\s*\|(.+)$/.exec(linea);
@@ -195,11 +195,15 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
       }
       empezo = true;
       const celdas = m[2]!.split('|').map((c) => c.trim());
+      const enBackticks = celdas.flatMap((c) => [...c.matchAll(/`([^`]+)`/g)].map((x) => x[1]!));
       // La celda del productor es la primera que nombra un archivo del repo.
-      const archivo = celdas
-        .flatMap((c) => [...c.matchAll(/`((?:src|functions)\/[\w./-]+)`/g)].map((x) => x[1]!))
-        .at(0);
-      filas.push({ n: m[1]!, archivo: archivo ?? '(ninguno)' });
+      const archivo = enBackticks.find((x) => /^(?:src|functions)\//.test(x));
+      /*
+       * Y **las funciones que esa fila nombra**, que es la parte que la primera
+       * versión de este chequeo no miraba — ver el `it` de abajo.
+       */
+      const funciones = enBackticks.filter((x) => /^[a-z][A-Za-z0-9]*$/.test(x));
+      filas.push({ n: m[1]!, archivo: archivo ?? '(ninguno)', funciones });
     }
     return filas;
   };
@@ -210,6 +214,50 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     expect(salidas(FICHA).length).toBeGreaterThanOrEqual(4);
     expect(salidas(SEGURIDAD).length).toBeGreaterThanOrEqual(4);
     expect(salidas(FICHA).every((s) => s.archivo !== '(ninguno)')).toBe(true);
+    // Y que el extractor de funciones encuentre algo: si devolviera siempre
+    // vacío, el `it` de abajo compararía dos listas vacías fila por fila.
+    expect(salidas(FICHA).some((s) => s.funciones.length > 0)).toBe(true);
+  });
+
+  it('la ficha conoce toda función productora que nombra el documento de seguridad', () => {
+    /*
+     * B-212 puso una **segunda** función productora en la salida 1
+     * (`opcionesPublicas`, para `/opciones/*`), se la agregó a
+     * `docs/07-seguridad.md` y **la ficha del agente se quedó atrás**. El `it`
+     * de arriba no lo vio: comparaba solo el primer path del repo de cada fila,
+     * y las dos filas 1 colapsaban a `src/lib/toPublic.ts`, iguales.
+     *
+     * O sea: es el modo de falla que este describe vino a cerrar, un nivel más
+     * adentro — el índice envejeció y el test que lo ataba miraba el archivo, no
+     * qué de ese archivo produce la salida. Lo encontró el `auditor-privacidad`
+     * sobre el mismo cambio que lo introdujo.
+     *
+     * ── Por qué es direccional y no una igualdad ──────────────────────────
+     * La primera versión comparaba los dos conjuntos y saltaba con cuatro
+     * desalineaciones legítimas: la ficha nombra `construirDescripcion`,
+     * `construirUbicacion`, `redactar`… y el documento de seguridad no, porque
+     * son documentos con distinto nivel de detalle. La ficha **es** el índice
+     * detallado; puede saber más.
+     *
+     * Lo que no puede pasar es lo contrario: que el documento de seguridad
+     * nombre un productor que la ficha no conoce. Ahí el agente audita con un
+     * índice incompleto, que es exactamente lo que pasó con `opcionesPublicas`.
+     */
+    const deFicha = salidas(FICHA);
+    const faltantes: string[] = [];
+
+    for (const fila of salidas(SEGURIDAD)) {
+      const enFicha = deFicha.find((s) => s.n === fila.n);
+      if (!enFicha) continue; // la comparación de filas la hace el `it` de arriba
+      for (const f of fila.funciones) {
+        if (!enFicha.funciones.includes(f)) faltantes.push(`salida ${fila.n}: ${f}`);
+      }
+    }
+
+    expect(
+      faltantes,
+      'la ficha del auditor no conoce un productor que 07-seguridad.md sí nombra',
+    ).toEqual([]);
   });
 
   it('las dos tablas enumeran las mismas salidas, y en el mismo orden', () => {

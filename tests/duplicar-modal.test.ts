@@ -82,10 +82,25 @@ describe('el listado abre la capa en vez de duplicar de una (B-199)', () => {
 });
 
 describe('la capa de duplicar se cierra sin dejar el foco en la nada (B-14, B-64)', () => {
-  it('cierra con Escape y devuelve el foco a donde estaba', () => {
+  /*
+   * B-210 — estos `it` se reescribieron cuando el cableado se mudó a
+   * `useCapaModal`, y **cómo rompieron es el punto**: buscaban
+   * `e.key==='Escape'` dentro de `DialogoDuplicar.tsx`, así que un refactor que
+   * mejora el código los pone en rojo. Es la tercera vez que un chequeo que lee
+   * el fuente termina midiendo un archivo que ya no tiene lo que busca
+   * (`docs/10-salud-del-codigo.md`, problema 1).
+   *
+   * No se los repuntó al archivo nuevo: eso sería el mismo chequeo frágil con
+   * otra ruta. Ahora afirman la **propiedad** —que la capa use el hook
+   * compartido y no tenga cableado propio—, y el detalle de qué hace el hook se
+   * verifica una sola vez, en `tests/foco.test.ts`. Cubre además a la próxima
+   * capa que alguien escriba, que es lo que ninguna de las dos versiones
+   * anteriores hacía.
+   */
+  it('el cableado sale del hook compartido, no de una copia local', () => {
     const modal = codigoSinEspacios(MODAL);
-    expect(modal).toContain("e.key==='Escape'");
-    expect(modal).toContain('anterior?.focus()');
+    expect(modal).toContain('useCapaModal(caja,onCancelar)');
+    expect(modal).toContain("from'@/components/admin/useCapaModal'");
   });
 
   it('y ese «donde estaba» es el "⋯" de la fila, no el ítem del menú que se desmonta', () => {
@@ -99,28 +114,24 @@ describe('la capa de duplicar se cierra sin dejar el foco en la nada (B-14, B-64
     expect(codigoSinEspacios(MENU)).toContain('if(a.devuelveFoco)cerrarYVolverAlDisparador();');
   });
 
-  it('atrapa el Tab con la aritmética compartida y no con una copia local', () => {
-    const modal = codigoSinEspacios(MODAL);
-    expect(modal).toContain('SELECTOR_ENFOCABLE');
-    expect(modal).toContain('indiceDeTab(actual,enfocables.length,e.shiftKey)');
-    // La clase que cerró B-64: el mismo patrón de teclado a medio hacer en otra
-    // pantalla, con su propio cálculo del módulo.
-    expect(modal).not.toMatch(/%\s*enfocables\.length/);
-  });
-
-  it('memoriza el foco una sola vez: un re-render del listado no se lo roba a la casilla', () => {
+  it('no tiene cableado de capa propio: ni teclado, ni scroll, ni foco a mano', () => {
     /*
-     * El efecto que atrapa el teclado también captura el `activeElement` al
-     * montarse y lo devuelve al desmontarse. Si dependiera de `onCancelar` —una
-     * función nueva por render en cualquier llamador que la escriba inline—, un
-     * re-render del listado con la capa abierta correría la limpieza y volvería a
-     * montar el efecto: le devolvería el foco, lo re-capturaría (la casilla que
-     * se está tildando) y se lo llevaría a la caja. De ahí el ref.
+     * El anti-patrón concreto, y lo que se busca acá es su **ausencia**: que
+     * nadie vuelva a escribir el `keydown`, el `overflow` del body o el
+     * `activeElement` al lado del hook «porque este caso es distinto». Es la
+     * clase que cerró B-64 —el mismo patrón de teclado a medio hacer en dos
+     * pantallas— y la que reabrió B-210 cuando las dos copias divergieron.
      */
     const modal = codigoSinEspacios(MODAL);
-    expect(modal).toContain('alCancelar=useRef(onCancelar)');
-    expect(modal).toContain('alCancelar.current()');
-    expect(modal).toContain('anterior?.focus();};},[]);');
+    for (const propio of [
+      'SELECTOR_ENFOCABLE',
+      "addEventListener('keydown'",
+      'document.body.style.overflow',
+      'document.activeElement',
+    ]) {
+      expect(modal, `${propio} tendría que venir del hook`).not.toContain(propio);
+    }
+    expect(modal).not.toMatch(/%\s*enfocables\.length/);
   });
 
   it('es un diálogo para el lector de pantalla, no un div que aparece', () => {

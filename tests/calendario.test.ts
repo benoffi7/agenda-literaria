@@ -8,12 +8,10 @@ import {
   planificar,
   TIMEZONE,
 } from '../functions/calendario.js';
+import { ts } from './fixtures/tiempo';
 
 /** Timestamp mínimo, como el que entrega Firestore a la Function. */
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime() };
-};
+
 
 const sesion = (over: Record<string, unknown> = {}) => ({
   id: 'ses_1',

@@ -13,11 +13,9 @@ import {
 } from '../functions/reportes.js';
 import { formAReporte, reporteFormSchema, reporteVacio } from '@/lib/reporte-schema';
 import type { ContextoReporte, ReporteForm } from '@/types/reporte';
+import { ts } from './fixtures/tiempo';
 
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return { toDate: () => d, toMillis: () => d.getTime() };
-};
+
 
 const contexto = (): ContextoReporte => ({
   versionPanel: '0.1.0 (2026-08-21 12:00 UTC)',

@@ -12,6 +12,7 @@ import { buildSearchText } from '@/lib/normalize';
 import { actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad, ActividadForm } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
 /**
  * B-97 — `inscripcion.completo`: poder decir que una actividad se llenó.
@@ -38,15 +39,7 @@ import type { Actividad, ActividadForm } from '@/types/actividad';
  * GitHub) y `analytics-privacidad.test.ts` (GA4).
  */
 
-const ts = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    toDate: () => d,
-    toMillis: () => d.getTime(),
-    seconds: Math.floor(d.getTime() / 1000),
-    nanoseconds: 0,
-  };
-};
+
 
 /**
  * Un taller tal como lo entrega Firestore, **sin `completo`**: es el estado de

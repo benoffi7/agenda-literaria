@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { claseBotonPrimario, claseBotonSecundario } from '@/components/admin/campos/Campo';
 import {
   COPIA_POR_DEFECTO,
@@ -6,7 +6,7 @@ import {
   type CasillaCopia,
   type QueCopiar,
 } from '@/lib/duplicar';
-import { SELECTOR_ENFOCABLE, indiceDeTab } from '@/lib/foco';
+import { useCapaModal } from '@/components/admin/useCapaModal';
 
 interface Props {
   /** Título del original, para que se vea qué se está duplicando. */
@@ -52,62 +52,17 @@ export function DialogoDuplicar({ titulo, casillas, onCancelar, onConfirmar }: P
   const idTitulo = useId();
   const idAyuda = useId();
 
-  /**
-   * `onCancelar` vive en un ref y el efecto de abajo se engancha **una sola
-   * vez**.
+  /*
+   * B-210 — el cableado de la capa (atrapar el Tab, Escape, frenar el scroll de
+   * atrás, devolver el foco) sale de `useCapaModal`, compartido con la capa de
+   * ayuda. Estaba copiado verbatim en las dos, y el `ref` del callback que hace
+   * que un `onCancelar` inline no rompa nada existía **solo acá**.
    *
-   * Con la función en las dependencias, un `onCancelar={() => …}` escrito
-   * inline en el listado —que es lo normal— es una función nueva por render, así
-   * que cualquier re-render del listado con la capa abierta correría la limpieza
-   * y volvería a montar el efecto: devolvería el foco, lo re-capturaría (para
-   * entonces, la casilla que se está tildando) y se lo llevaría a la caja del
-   * diálogo. Tildar dos casillas seguidas dejaría de funcionar por un detalle
-   * del llamador.
+   * El foco vuelve al "⋯" de la fila y no a la nada: `MenuAcciones` lo devuelve
+   * al disparador antes de disparar la acción, así que el elemento activo al
+   * abrirse sigue montado cuando se cierra (B-14).
    */
-  const alCancelar = useRef(onCancelar);
-  alCancelar.current = onCancelar;
-
-  useEffect(() => {
-    // Quién tenía el foco antes de abrir, para devolvérselo al cerrar: el "⋯"
-    // de la fila que se está duplicando.
-    const anterior = document.activeElement as HTMLElement | null;
-
-    const teclas = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        alCancelar.current();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-
-      const enfocables = [
-        ...(caja.current?.querySelectorAll<HTMLElement>(SELECTOR_ENFOCABLE) ?? []),
-      ];
-      if (enfocables.length === 0) return;
-
-      // Solo se intercepta el Tab que se iría afuera del ciclo: adentro, el Tab
-      // nativo respeta el orden del documento mejor que cualquier cálculo.
-      // `actual === -1` es el foco en la caja, recién abierta.
-      const actual = enfocables.indexOf(document.activeElement as HTMLElement);
-      const enElBorde =
-        actual === -1 || (e.shiftKey ? actual === 0 : actual === enfocables.length - 1);
-      if (!enElBorde) return;
-
-      e.preventDefault();
-      enfocables[indiceDeTab(actual, enfocables.length, e.shiftKey)]?.focus();
-    };
-
-    document.addEventListener('keydown', teclas);
-    // Sin esto, la rueda del mouse sobre la capa scrollea el listado de atrás.
-    const previo = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    caja.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', teclas);
-      document.body.style.overflow = previo;
-      anterior?.focus();
-    };
-    // Sin dependencias a propósito: ver `alCancelar`.
-  }, []);
+  useCapaModal(caja, onCancelar);
 
   return (
     <div

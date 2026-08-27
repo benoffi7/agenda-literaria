@@ -10,7 +10,7 @@ esas:
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
-| 1 | `events.json` y las páginas del sitio | `src/lib/toPublic.ts` |
+| 1 | `events.json` y las páginas del sitio — **actividades y también las opciones de taxonomía** (§4.4) | `src/lib/toPublic.ts`: `toPublic` para la actividad, `opcionesPublicas` para `/opciones/*` |
 | 2 | El evento de Google Calendar | `functions/calendario.js` |
 | 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
@@ -32,6 +32,40 @@ que hay que buscar al agregar una salida nueva.
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado (B-206). Por eso la Function le pone un **nombre opaco** al archivo | `toPublic.ts` |
+| `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
+| `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los tres de abajo |
+
+**De `/opciones/{campo}` salen `slug` y `label`, y nada más** (§4.4). La proyección
+se escribió **antes** de su consumidor (B-106 no existe todavía) y eso es a
+propósito: el camino corto al implementarla es volcar `valores` tal cual, y con eso
+entran los cinco campos de arriba sin que nadie lo haya decidido. Escribir la
+whitelist primero es lo que evita que la decisión la tome un spread.
+
+**Ojo, y esto es lo que no se ve mirando un solo archivo: la misma decisión está
+escrita en TRES lugares**, porque el documento de taxonomía llega a tres salidas
+por tres caminos distintos.
+
+| Camino | A qué salida | Por qué no se comparte |
+|---|---|---|
+| `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | emite objetos `{ slug, label }` |
+| `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 (el posteo) y la vista previa del evento | emite un `Record<slug, label>`, que es otra forma |
+| `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar de verdad | `functions/` se despliega con su propio `package.json` y **no puede importar de `src/`** (D-20) |
+
+Los tres hacen `[v.slug, v.label]` y ninguno filtra hoy. Pero son tres copias de
+una decisión de privacidad, y la tercera **no se puede unificar**: es el mismo caso
+que la copia de `CAMPOS_TAXONOMIA`, donde la respuesta del repo es «un test que
+compare las listas, no un import imposible». Ese test existe —
+`tests/clases-de-bug.test.ts`, clase de B-212 — y exige que los tres lean
+exactamente esas dos propiedades de un `ValorOpcion` y ninguna más.
+
+Quien mañana busque por qué `usos` no aparece en el evento de Calendar va a mirar
+`opcionesPublicas`, que **no interviene en ese camino**. Por eso está la tabla.
+
+Y las **no aprobadas no entran a los filtros** del sitio (§4.3). Se filtran con
+`opcionesVisibles` sin `uid`, que es la regla ya existente y no una copia: el matiz
+de D-30 sigue valiendo — se filtra lo *elegible*, nunca la lista con la que se
+*resuelve* un slug a su etiqueta, porque una actividad publicada puede tener
+guardada una opción pendiente y el sitio tiene que poder mostrar su nombre.
 
 `libro` **sí** sale, título y autor, a las dos salidas públicas: es el dato central
 de una presentación, del mismo orden que el título de la actividad, y entra también
