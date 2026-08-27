@@ -53,6 +53,10 @@ export const SECCIONES = [
   { id: 'material', titulo: 'Material', colapsable: true },
   { id: 'opcional', titulo: 'Opcional', colapsable: true },
   { id: 'difusion', titulo: 'Difusión', colapsable: true },
+  // B-95 — no lleva campos, igual que la vista previa: está en el registro porque
+  // el test exige que toda sección del formulario declare su ancla, no porque la
+  // barra pueda mandar a un campo de acá.
+  { id: 'texto-redes', titulo: 'Texto para publicar', colapsable: true },
   { id: 'vista-previa', titulo: 'Vista previa del evento', colapsable: true },
 ] as const satisfies readonly SeccionFormulario[];
 

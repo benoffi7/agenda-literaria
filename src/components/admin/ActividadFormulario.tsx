@@ -12,6 +12,7 @@ import { SeccionMaterial } from '@/components/admin/formulario/SeccionMaterial';
 import { SeccionOpcional } from '@/components/admin/formulario/SeccionOpcional';
 import { SeccionQueEs } from '@/components/admin/formulario/SeccionQueEs';
 import { SeccionQuien } from '@/components/admin/formulario/SeccionQuien';
+import { SeccionTextoRedes } from '@/components/admin/formulario/SeccionTextoRedes';
 import { SeccionVistaPrevia } from '@/components/admin/formulario/SeccionVistaPrevia';
 import { documentoAForm } from '@/lib/actividades';
 import {
@@ -358,6 +359,8 @@ export function ActividadFormulario({
       />
 
       <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />
+
+      <SeccionTextoRedes form={form} labelsPendientes={labelsPendientes} />
 
       <SeccionVistaPrevia form={form} labelsPendientes={labelsPendientes} />
 

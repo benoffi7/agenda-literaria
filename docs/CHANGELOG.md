@@ -14,6 +14,16 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`texto-para-redes`** — *Ya no hace falta escribir el posteo a mano*. La sección
+  «Texto para publicar» arma el texto con lo que cargaste —título, fechas, dónde,
+  arancel, cómo se inscribe— y al final arroba a las cuentas de «Arrobar al publicar»,
+  más el Instagram del organizador y de quien está al frente, sin repetir la misma
+  cuenta escrita distinto. Hay dos versiones: «Anuncio», con todas las fechas del
+  ciclo, y «Recordatorio», solo con el próximo encuentro y su tema y su lectura. El
+  botón copia; si el navegador no deja, te deja el texto seleccionado. El link de la
+  reunión **no sale nunca** y las notas internas de Difusión tampoco. · **Dónde:**
+  Formulario, sección «Texto para publicar».
+
 - **`correr-la-fecha-de-un-encuentro`** — *Correr un encuentro de fecha ya no pide
   pelear con el almanaque*. Cada encuentro tiene cuatro botones —un día o una semana,
   adelante o atrás— que mueven el inicio y el fin juntos. Y si escribís la fecha a
@@ -161,6 +171,51 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-95 · El texto para publicar en redes
+
+`difusion.arrobar` era **el único campo del §3.1 que se cargaba y no se usaba para
+nada**: se guardaba y ahí moría, mientras cada actividad se volvía a escribir a mano
+para publicarla. Ahora hay un texto listo para pegar, con botón de copiar, en dos
+variantes: **anuncio** (el ciclo entero) y **recordatorio** (el próximo encuentro, con
+su tema y su lectura). Una función pura y un componente: no toca el modelo, ni las
+reglas, ni las Functions, ni el sitio.
+
+- **El link a la página de la actividad no va.** Esa página no existe y el sitio está
+  congelado (DEC-6), así que sería un link a la nada. Dónde iría está marcado en el
+  código y es una línea.
+- **El link de la reunión no sale nunca, ni con `urlPublica: true`.** El desvío de
+  D-15 vale para el `events.json` y para el evento de Calendar; **un posteo se copia y
+  no se despublica.** Fijado con un test que nombra la trampa 5 y con un barrido de
+  centinelas que exige que ningún valor del formulario aparezca sin estar permitido por
+  nombre — la única red que caza un campo nuevo que se cuele mañana.
+- **Nada se reimplementó**, y esa es la mitad del trabajo: la regla de duplicados de
+  handles es `agregarChips` (B-133), así que «@CasaBrandon» y «casabrandon» salen una
+  sola vez conservando la forma con la que se escribió primero; la modalidad sale del
+  mapa de `filtrosActividades` —ya son dos y el `it.fails` de `etiquetas-de-ui` los
+  vigila, un tercero era el mismo bug otra vez—; el «Encuentro 3 de 8» es la numeración
+  de D-95; y desde el formulario la conversión la hace `formADocumento`, así que el
+  texto habla del documento que se va a guardar y no de la pantalla.
+- Entran el libro (D-126) y «cupo completo» (D-127, **con el canal a la vista**, que es
+  la simetría que ese ADR ya decidió). No entran las imágenes (D-125), el material, las
+  indicaciones de la sede ni la descripción: la prosa es de quien publica, y
+  automatizar el bloque de datos es lo que el ítem venía a ahorrar.
+- **El cierre de inscripción no se imprime si ya pasó.** Es el único otro uso del
+  reloj, y el motivo es que un posteo del 16 que dice «se inscribe hasta el 1» no es un
+  dato viejo: es una **instrucción falsa**.
+
+Dos hallazgos del propio agente que valen más que el ítem. Encontró que **dos guardas
+suyas eran redundantes** —el `if` del bloque de handles vacío y el `filter(Boolean)`
+al unir— porque al romper cada una por separado el test seguía verde y solo cayó
+rompiendo las dos: lo dejó documentado en vez de quitar una. Y encontró que **el
+detector de fixtures con duración cero no ve archivos sin trackear**: su helper tenía
+la debilidad de B-135 (`fin = inicio`) y el chequeo no la veía porque recorre
+`git ls-files`. Habría explotado en el primer commit.
+
+La sección arranca **cerrada**, al revés que la vista previa de B-193, y no es
+inconsistencia: esa se abrió porque alguien pidió por escrito una función que ya
+existía y no encontraba, y ese reporte no existe acá. `recuerdaComo` hace que quien la
+use la encuentre abierta la próxima vez.
 
 ### B-186 · Correr la fecha de un encuentro sin pelear con el almanaque
 

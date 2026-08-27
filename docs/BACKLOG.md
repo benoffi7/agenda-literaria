@@ -1350,7 +1350,7 @@ mitad que existe—; y los puntos de capítulo, donde `atadoA` es opcional. La e
 natural, si el mecanismo prueba que sirve, es obligarlo en los puntos con
 `cuidado: true`.
 
-### B-95 · El texto para publicar en redes
+### B-95 · El texto para publicar en redes — ✅ hecho (2026-08-26)
 
 `difusion.arrobar` es el único campo del §3.1 que se carga y **no se usa para
 nada**: se guarda y ahí muere. Mientras tanto, cada actividad se vuelve a

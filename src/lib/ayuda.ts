@@ -898,6 +898,62 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'texto-para-redes',
+    titulo: 'Texto para publicar',
+    seccionFormulario: 'Texto para publicar',
+    paraQue: 'El posteo armado con lo que ya cargaste, para copiar y pegar.',
+    puntos: [
+      {
+        texto:
+          '«Anuncio» trae todas las fechas del ciclo: es para cuando abre la inscripción. ' +
+          '«Recordatorio» trae solo el próximo encuentro, con su tema y su lectura: es para el ' +
+          'día antes.',
+      },
+      {
+        texto:
+          'Los handles del final salen de «Arrobar al publicar», más el Instagram del ' +
+          'organizador y el de quien está al frente. La misma cuenta escrita distinto ' +
+          '—«@CasaBrandon», «casabrandon»— sale una sola vez.',
+        atadoA: [
+          {
+            archivo: 'tests/textoRedes.test.ts',
+            it: 'la misma cuenta escrita distinto sale una sola vez (B-133)',
+          },
+        ],
+      },
+      {
+        texto:
+          'El link de la reunión no sale nunca, ni con «Publicar el link» tildado: en el ' +
+          'calendario vos decidís, pero un posteo se copia y no se despublica. Las notas ' +
+          'internas de Difusión tampoco salen.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/textoRedes.test.ts',
+            it: 'el link de la reunión no sale, ni con `urlPublica: true` (§5.1, trampa 5)',
+          },
+        ],
+      },
+      {
+        texto:
+          'Si marcaste «Cupo completo», el texto lo dice arriba y deja igual el contacto de ' +
+          'inscripción: siempre hay quien quiere anotarse por si se cae alguien.',
+        atadoA: [
+          {
+            archivo: 'tests/textoRedes.test.ts',
+            it: 'el cupo completo no esconde el canal, va arriba y con el paréntesis (D-127)',
+          },
+        ],
+      },
+      {
+        texto:
+          'El texto no lleva la descripción ni un link a la actividad: la prosa es tuya, y la ' +
+          'página del sitio todavía no existe. Lo que se automatiza es el bloque de datos, que ' +
+          'es lo que se copia mal.',
+      },
+    ],
+  },
+  {
     id: 'vista-previa',
     titulo: 'Vista previa del evento',
     seccionFormulario: 'Vista previa del evento',
