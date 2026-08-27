@@ -1,9 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ESTADOS_CIERRE,
+  INFO_CIERRE,
   INFO_PUBLICACION,
   ESTADOS_PUBLICACION,
+  agendaDe,
   agruparPorDia,
+  cierresDe,
+  cierresDelMes,
+  cierresQueUrgen,
+  estadoCierre,
+  porDiaCierres,
   claveDia,
   claveMes,
   diaLegible,
@@ -32,18 +40,32 @@ const ts = (iso: string) => {
   return { toDate: () => d, toMillis: () => d.getTime(), seconds: 0, nanoseconds: 0 };
 };
 
+/**
+ * B-136 — el default de `fin` es **una duración real**, no `inicio`.
+ *
+ * Con duración cero el encuentro termina en el mismo instante en que empieza, así
+ * que `yaPaso` lo da por pasado desde que arranca y cualquier caso de "en curso"
+ * queda mudo sin que nada falle. Es el fixture flojo que `tests/invariantes-de-
+ * ciclo.test.ts` detecta: los 16 usos del helper que no pasan `fin` heredaban
+ * ese cero. Dos horas es lo que dura un encuentro literario de verdad.
+ */
+const DOS_HORAS_MS = 2 * 60 * 60 * 1000;
+
 const sesion = (
   over: Omit<Partial<Sesion>, 'inicio' | 'fin'> & { id: string; inicio: string; fin?: string },
-): Sesion =>
-  ({
+): Sesion => {
+  const termina =
+    over.fin ?? new Date(new Date(over.inicio).getTime() + DOS_HORAS_MS).toISOString();
+  return {
     tema: null,
     lectura: null,
     cancelada: false,
     calendarEventId: null,
     ...over,
     inicio: ts(over.inicio),
-    fin: ts(over.fin ?? over.inicio),
-  }) as unknown as Sesion;
+    fin: ts(termina),
+  } as unknown as Sesion;
+};
 
 const actividad = (over: Partial<ActividadConId> = {}): ActividadConId =>
   ({
@@ -386,6 +408,268 @@ describe('el problema que hoy nadie ve', () => {
       }),
     ]);
     expect(yaPaso(enCurso!, ahora)).toBe(false);
+  });
+});
+
+describe('B-126 · el cierre de la inscripción, un marcador más en su día', () => {
+  const ahora = new Date('2026-09-20T12:00:00Z');
+
+  /** Una actividad publicada con inscripción y fecha de cierre. */
+  const conCierre = (
+    over: {
+      id?: string;
+      cierra?: string | null;
+      requiere?: boolean;
+      completo?: boolean;
+      cupo?: number | null;
+      estado?: Estado;
+      sesiones?: Sesion[];
+    } = {},
+  ): ActividadConId =>
+    actividad({
+      id: over.id ?? 'act_cierre',
+      estado: over.estado ?? 'publicado',
+      sesiones: over.sesiones ?? [],
+      inscripcion: {
+        requiere: over.requiere ?? true,
+        via: 'mail',
+        destino: 'hola@ejemplo.com',
+        cupo: over.cupo ?? 12,
+        cierra: over.cierra === null || over.cierra === undefined ? null : ts(over.cierra),
+        ...(over.completo === undefined ? {} : { completo: over.completo }),
+      },
+    } as unknown as Partial<ActividadConId>);
+
+  it('la fecha de cierre cae en su día civil, en la zona del proyecto (trampa 1)', () => {
+    // 23:00 UTC del 24 son las 20:00 del 24 en Buenos Aires, no el 25.
+    const [cierre] = cierresDe([conCierre({ cierra: '2026-09-24T23:00:00Z' })]);
+    expect(cierre!.dia).toBe('2026-09-24');
+    expect(cierre!.hora).toBe('20:00');
+    expect(cierre!.titulo).toBe('Club de lectura');
+    expect(cierre!.cupo).toBe(12);
+  });
+
+  it('una actividad que no está publicada no aporta cierre: no invita a nadie', () => {
+    for (const estado of ['borrador', 'pendiente', 'cancelado'] as Estado[]) {
+      expect(cierresDe([conCierre({ cierra: '2026-09-24T23:00:00Z', estado })])).toEqual([]);
+    }
+  });
+
+  it('una fecha colgada de una inscripción que ya no se requiere no aporta cierre', () => {
+    // `formADocumento` guarda `cierra` sin preguntar por `requiere`, así que la
+    // fecha vieja sobrevive al cambio y sin este filtro pintaría un marcador
+    // para algo que no se inscribe.
+    expect(
+      cierresDe([conCierre({ cierra: '2026-09-24T23:00:00Z', requiere: false })]),
+    ).toEqual([]);
+  });
+
+  it('sin fecha de cierre, o con una fecha rota, no hay marcador y la vista no se vacía', () => {
+    expect(cierresDe([conCierre({ cierra: null })])).toEqual([]);
+    const rota = actividad({
+      id: 'rota',
+      inscripcion: { requiere: true, via: 'mail', destino: 'x', cupo: null, cierra: 'ayer' },
+    } as unknown as Partial<ActividadConId>);
+    expect(cierresDe([rota, conCierre({ cierra: '2026-09-24T23:00:00Z' })])).toHaveLength(1);
+  });
+
+  it('vienen en orden cronológico aunque las actividades no lo estén', () => {
+    const cierres = cierresDe([
+      conCierre({ id: 'c', cierra: '2026-11-01T15:00:00Z' }),
+      conCierre({ id: 'a', cierra: '2026-09-01T15:00:00Z' }),
+      conCierre({ id: 'b', cierra: '2026-10-01T15:00:00Z' }),
+    ]);
+    expect(cierres.map((c) => c.actividadId)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('`completo` se lee con default `false` y determinístico (D-127)', () => {
+    // Los documentos anteriores a B-97 no tienen el campo.
+    const [sinCampo] = cierresDe([conCierre({ cierra: '2026-10-01T15:00:00Z' })]);
+    expect(sinCampo!.completo).toBe(false);
+    const [prendido] = cierresDe([
+      conCierre({ cierra: '2026-10-01T15:00:00Z', completo: true }),
+    ]);
+    expect(prendido!.completo).toBe(true);
+  });
+
+  it('cada estado dice qué significa y si pide algo', () => {
+    for (const estado of ESTADOS_CIERRE) {
+      expect(INFO_CIERRE[estado].etiqueta.length).toBeGreaterThan(0);
+      expect(INFO_CIERRE[estado].significa.length).toBeGreaterThan(20);
+    }
+    expect(ESTADOS_CIERRE.filter((e) => INFO_CIERRE[e].urge)).toEqual(['vencido']);
+  });
+
+  it('antes de la fecha avisa, después pide algo', () => {
+    const [futuro] = cierresDe([conCierre({ cierra: '2026-10-01T15:00:00Z' })]);
+    const [pasado] = cierresDe([conCierre({ cierra: '2026-09-01T15:00:00Z' })]);
+    expect(estadoCierre(futuro!, ahora)).toBe('por-venir');
+    expect(estadoCierre(pasado!, ahora)).toBe('vencido');
+  });
+
+  it('«se llenó» gana sobre la fecha: un cierre vencido y lleno no pide nada (D-127)', () => {
+    // Es el caso más común y sano de todos. Contarlo como problema haría que el
+    // aviso se encienda siempre, y un aviso que se enciende siempre se apaga.
+    const [llenoYVencido] = cierresDe([
+      conCierre({ cierra: '2026-09-01T15:00:00Z', completo: true }),
+    ]);
+    const [llenoYPorVenir] = cierresDe([
+      conCierre({ cierra: '2026-10-01T15:00:00Z', completo: true }),
+    ]);
+    expect(estadoCierre(llenoYVencido!, ahora)).toBe('cupo-completo');
+    expect(estadoCierre(llenoYPorVenir!, ahora)).toBe('cupo-completo');
+    expect(INFO_CIERRE['cupo-completo'].urge).toBe(false);
+  });
+
+  it('el aviso junta los vencidos de TODOS los meses y dice dónde están', () => {
+    const cierres = cierresDe([
+      conCierre({ id: 'jul', cierra: '2026-07-01T15:00:00Z' }),
+      conCierre({ id: 'ago', cierra: '2026-08-01T15:00:00Z' }),
+      // Lleno: vencido pero coherente, no entra al aviso.
+      conCierre({ id: 'lleno', cierra: '2026-06-01T15:00:00Z', completo: true }),
+      // Por venir: tampoco.
+      conCierre({ id: 'futuro', cierra: '2026-12-01T15:00:00Z' }),
+    ]);
+    const urgen = cierresQueUrgen(cierres, ahora);
+    expect(urgen.vencidos.map((c) => c.actividadId)).toEqual(['jul', 'ago']);
+    expect(urgen.meses).toEqual(['2026-07', '2026-08']);
+  });
+
+  it('los meses del aviso salen ordenados aunque la lista llegue al revés (B-128)', () => {
+    // La misma lección que B-128, aplicada a la función nueva: el orden es
+    // parte del resultado. Alimentado con `cierresDe` no se nota, porque esa ya
+    // ordena; con la lista al revés sí.
+    const alReves = [
+      ...cierresDe([
+        conCierre({ id: 'jul', cierra: '2026-07-01T15:00:00Z' }),
+        conCierre({ id: 'ago', cierra: '2026-08-01T15:00:00Z' }),
+      ]),
+    ].reverse();
+    expect(alReves.map((c) => c.actividadId)).toEqual(['ago', 'jul']);
+    expect(cierresQueUrgen(alReves, ahora).meses).toEqual(['2026-07', '2026-08']);
+  });
+
+  it('sin nada vencido el aviso no tiene qué mostrar', () => {
+    const cierres = cierresDe([conCierre({ cierra: '2026-12-01T15:00:00Z' })]);
+    expect(cierresQueUrgen(cierres, ahora).vencidos).toEqual([]);
+    expect(cierresQueUrgen([], ahora).meses).toEqual([]);
+  });
+
+  it('se filtran por mes y se indexan por día, como los encuentros', () => {
+    const cierres = cierresDe([
+      conCierre({ id: 'a', cierra: '2026-10-01T15:00:00Z' }),
+      conCierre({ id: 'b', cierra: '2026-10-01T18:00:00Z' }),
+      conCierre({ id: 'c', cierra: '2026-11-01T15:00:00Z' }),
+    ]);
+    expect(cierresDelMes(cierres, '2026-10')).toHaveLength(2);
+    expect(cierresDelMes(cierres, '2026-12')).toEqual([]);
+    const indice = porDiaCierres(cierres);
+    expect(indice.get('2026-10-01')!.map((c) => c.hora)).toEqual(['12:00', '15:00']);
+    expect(indice.get('2026-10-02')).toBeUndefined();
+  });
+
+  it('un día con un cierre y ningún encuentro APARECE en la agenda', () => {
+    // Es el caso que se perdía con `agruparPorDia` solo: la actividad de un
+    // encuentro lejano cuya inscripción cierra la semana que viene.
+    const encuentros = encuentrosDe([
+      actividad({
+        id: 'lejana',
+        sesiones: [sesion({ id: 'ses_1', inicio: '2026-11-20T22:00:00Z' })],
+      }),
+    ]);
+    const cierres = cierresDe([conCierre({ id: 'lejana', cierra: '2026-09-25T15:00:00Z' })]);
+    const dias = agendaDe(encuentros, cierres);
+    expect(dias.map((d) => d.dia)).toEqual(['2026-09-25', '2026-11-20']);
+    expect(dias[0]!.encuentros).toEqual([]);
+    expect(dias[0]!.cierres.map((c) => c.actividadId)).toEqual(['lejana']);
+    expect(dias[1]!.cierres).toEqual([]);
+  });
+
+  it('un día con encuentro y cierre a la vez los trae juntos, una sola vez', () => {
+    const encuentros = encuentrosDe([
+      actividad({
+        id: 'taller',
+        sesiones: [sesion({ id: 'ses_1', inicio: '2026-09-25T22:00:00Z' })],
+      }),
+    ]);
+    const cierres = cierresDe([conCierre({ id: 'taller', cierra: '2026-09-25T15:00:00Z' })]);
+    const dias = agendaDe(encuentros, cierres);
+    expect(dias).toHaveLength(1);
+    expect(dias[0]!.encuentros).toHaveLength(1);
+    expect(dias[0]!.cierres).toHaveLength(1);
+  });
+
+  it('sin cierres, la agenda es la de siempre', () => {
+    const encuentros = encuentrosDe([
+      actividad({ sesiones: [sesion({ id: 'ses_1', inicio: '2026-09-25T22:00:00Z' })] }),
+    ]);
+    expect(agendaDe(encuentros, []).map((d) => d.dia)).toEqual(
+      agruparPorDia(encuentros).map((d) => d.dia),
+    );
+    expect(agendaDe([], [])).toEqual([]);
+  });
+});
+
+describe('B-128 · el orden de los meses se produce acá, no se hereda del argumento', () => {
+  const ahora = new Date('2026-09-20T12:00:00Z');
+
+  // Tres meses, uno por actividad, y la lista **al revés**: es exactamente lo
+  // que devuelve cualquier camino que no pase por `encuentrosDe` —un `Map`
+  // recorrido en orden de inserción, dos tramos concatenados, un filtro que
+  // reordena—. Antes de B-128 nada acá fallaba: los meses salían al revés y la
+  // vista abría en un mes arbitrario.
+  const cronologicos = encuentrosDe([
+    actividad({ id: 'a', sesiones: [sesion({ id: 'ses_sep', inicio: '2026-09-10T22:00:00Z' })] }),
+    actividad({ id: 'b', sesiones: [sesion({ id: 'ses_oct', inicio: '2026-10-10T22:00:00Z' })] }),
+    actividad({ id: 'c', sesiones: [sesion({ id: 'ses_nov', inicio: '2026-11-10T22:00:00Z' })] }),
+  ]);
+  const alReves = [...cronologicos].reverse();
+
+  it('la lista llega al revés y los meses salen igual del más viejo al más nuevo', () => {
+    expect(alReves.map((e) => e.dia)).toEqual(['2026-11-10', '2026-10-10', '2026-09-10']);
+    expect(mesesConEncuentros(alReves)).toEqual(['2026-09', '2026-10', '2026-11']);
+    expect(mesesConEncuentros(alReves)).toEqual(mesesConEncuentros(cronologicos));
+  });
+
+  it('el mes más cercano tampoco depende del orden de entrada', () => {
+    expect(mesMasCercanoConEncuentros(mesesConEncuentros(alReves), '2026-08')).toBe('2026-09');
+  });
+
+  it('los meses con problemas salen ordenados, que es de lo que vive `mesInicial`', () => {
+    // Los tres están publicados y sin `calendarEventId`, así que los tres son
+    // problema; septiembre ya pasó, así que quedan octubre y noviembre.
+    expect(problemasDePublicacion(alReves, ahora).meses).toEqual(['2026-10', '2026-11']);
+    expect(mesInicial(alReves, ahora)).toBe('2026-10');
+  });
+});
+
+describe('B-126 · lo que el tipo no puede sostener del marcador de cierre', () => {
+  // Los tres `Record<EstadoCierre, string>` del componente los completa el
+  // compilador, así que un estado nuevo sin color no compila y no hace falta
+  // chequearlo. Estas dos cosas sí se pueden romper con el build en verde.
+  const vista = readFileSync('src/components/admin/CalendarioActividades.tsx', 'utf8');
+
+  /** El cuerpo de un componente del archivo, hasta el que le sigue. */
+  const cuerpoDe = (nombre: string): string => {
+    const desde = vista.indexOf(`function ${nombre}(`);
+    expect(desde).toBeGreaterThan(-1);
+    const siguiente = vista.indexOf('\nfunction ', desde + 1);
+    const hasta = vista.indexOf('\nexport function ', desde + 1);
+    const fin = [siguiente, hasta].filter((i) => i > -1).sort((a, b) => a - b)[0] ?? vista.length;
+    return vista.slice(desde, fin);
+  };
+
+  it('la fila de cierre mantiene el blanco táctil de 44px', () => {
+    // Se mira SU cuerpo y no el archivo entero: `min-h-touch` ya está en la fila
+    // de encuentro, así que un `toContain` sobre todo el fuente pasaría igual
+    // aunque la fila nueva no lo tenga.
+    expect(cuerpoDe('FilaCierre')).toContain('min-h-touch');
+  });
+
+  it('la leyenda recorre ESTADOS_CIERRE, así que un estado nuevo no queda sin explicar', () => {
+    // Enumerarlos a mano en el JSX es lo que deja el estado nuevo sin su línea:
+    // el chip aparece pintado y nadie escribe qué significa.
+    expect(vista).toMatch(/ESTADOS_CIERRE\.map\(/);
   });
 });
 

@@ -14,6 +14,14 @@ Así que se acumulan acá, en borrador, y se pasan a `novedades.ts` **en el mism
 cambio que sube la versión**. Cada `id` va decidido ya: no se reusa ni se renombra,
 porque es la marca de "hasta acá leí" guardada en el navegador de cada persona.
 
+- **`cierres-de-inscripcion-en-el-calendario`** — *El calendario ahora te avisa de las
+  inscripciones que cierran*. La fecha de cierre aparece como un marcador en su día, en
+  celeste y con borde punteado, así no se confunde con un encuentro. Y si una
+  inscripción ya cerró y la actividad sigue publicada, sale un aviso arriba con el
+  nombre y el día: es el momento de correr la fecha o de marcar que se llenó. Lo que ya
+  marcaste como completo no aparece en ese aviso, porque no hay nada que hacer. ·
+  **Dónde:** Listado → botón «Calendario».
+
 - **`texto-para-redes`** — *Ya no hace falta escribir el posteo a mano*. La sección
   «Texto para publicar» arma el texto con lo que cargaste —título, fechas, dónde,
   arancel, cómo se inscribe— y al final arroba a las cuentas de «Arrobar al publicar»,
@@ -171,6 +179,104 @@ fuente sin comentarios, como los de `autoguardado.test.ts`.
 El arreglo general sigue abierto y es **B-62**, enriquecido con este caso: un botón
 de info por sección con qué hace, qué impacto tiene y un ejemplo. Este era el caso
 particular, y se podía hacer solo.
+
+### B-126 · La vista calendario avisa de las inscripciones que cierran
+
+`inscripcion.cierra` no aparecía en ninguna pantalla, y es una fecha con la misma
+urgencia que un encuentro: pasada, la actividad **sigue publicada invitando a
+anotarse** con el mail o el WhatsApp a la vista. El listado ordena por próximo
+encuentro, así que un cierre que vence mañana queda enterrado detrás de actividades
+cuyo primer encuentro es en dos meses.
+
+Ahora es **un marcador más en su día**, en otra familia de color y con borde punteado:
+los verdes y ámbares de esa pantalla contestan *¿esto ya lo ve la gente?* y un cierre
+contesta otra pregunta, así que no puede leerse como un estado de publicación más.
+
+**Tipo aparte y no un `Encuentro` más.** Se parecen —día, hora, actividad— pero un
+cierre no tiene `sesionId` ni `calendarEventId`, no sale al calendario público y no
+participa del «2 de 8». Metido en `Encuentro[]` habría que acordarse de excluirlo en
+cuatro lugares donde olvidarse no rompe nada visible y deja las cuentas mal.
+
+**Tres filtros, y los tres son la diferencia entre un marcador y ruido:** solo
+actividades `publicado` (la urgencia es «sigue invitando»), solo con
+`inscripcion.requiere` —`formADocumento` guarda `cierra` sin preguntar por `requiere`,
+así que una actividad que dejó de pedir inscripción arrastra la fecha vieja— y solo
+con una fecha usable vía `instanteDeTimestamp`, la misma conversión de la trampa 1.
+
+**Y `inscripcion.completo` (D-127) decide cuándo el aviso NO se enciende**, que es la
+decisión más fina del cambio: un cierre vencido con cupo completo está exactamente
+como debe estar. Contarlo como problema haría que el aviso se dispare en el caso más
+común y **sano** de todos —el taller se llenó y por eso cerró— y un aviso que se
+enciende siempre se apaga en la cabeza de quien lo mira, justo cuando aparece el que sí
+importaba. Es la misma simetría de D-127: el cartel va al lado, no en lugar de.
+
+`agendaDe` reemplaza a `agruparPorDia` en la vista porque **un día con un cierre y
+ningún encuentro tiene que aparecer** — era el caso que más importa, la actividad de un
+encuentro lejano cuya inscripción cierra la semana que viene. Y no hay umbral «cierra
+pronto»: el calendario ya muestra la fecha, y el aviso se reserva para lo dañino.
+
+### B-127 · Una suscripción por documento de `/opciones/*`, no una por hook
+
+**El ítem hablaba de cinco listeners. Al medir son diez sobre cinco documentos:** la
+primera pantalla monta el listado (`useLabelsTaxonomia`, cinco campos) **y** el
+contador de la cabecera (`usePendientesDeAprobacion`, los mismos cinco). Con el
+formulario abierto se repite.
+
+Eso cambia el arreglo, y es el valor de haber medido antes de tocar. **Recortar el
+listado a los dos campos que muestra no baja de cinco** mientras la cabecera esté ahí
+—el contador mira los cinco por definición— y recortar apagaría el «en vivo» de los
+campos recortados, que es la propiedad del §4.4 que no se puede perder. Así que se
+comparte en vez de recortar: **10 → 5** en la primera pantalla, **hasta 20 → 5** con el
+formulario abierto, cada oyente sigue recibiendo cada snapshot, y ningún llamador
+cambió.
+
+Tres detalles que no son adorno: se **repite el último snapshot** al que se suscribe
+tarde —sin eso se queda en `OPCIONES_BASE` hasta un cambio que puede no llegar nunca,
+mostrando el slug crudo de una etiqueta que la pantalla de al lado muestra bien—; el
+refcount es un `Set` de cajas y **no un contador** (React llama las limpiezas de más en
+desarrollo, y un contador cerraría el listener de alguien que sigue mirando) ni un
+`Set` de funciones (dos hooks podrían pasar la misma referencia y contarían como uno);
+y el observador entra por parámetro, así que se prueba sin emuladores.
+
+**Queda abierto el paso de 5 → 1**, que pide escuchar la colección `opciones` completa
+con un solo `onSnapshot`. El registro ya está listo para repartir desde un único
+listener y no habría que tocar ningún componente. Se descartaron dos caminos y queda
+escrito por qué: un parámetro `campos` para narrow (no baja de cinco, y un llamador
+olvidado degrada **en silencio** a slugs crudos) y suscribir por lectura con un `Proxy`
+(funciona hasta que alguien hace `{...labels}` y ahí vuelve a cinco sin que nada avise).
+
+### B-128 · `mesesConEncuentros` ordena, ya no hereda el orden
+
+Prometía «del más viejo al más nuevo» apoyándose en que quien la llama había ordenado:
+cierto hoy, y no lo dice ninguna firma. Ahora ordena — las claves son `'AAAA-MM'`, así
+que el orden lexicográfico **es** el cronológico.
+
+**Y estaba la misma instancia en el lugar donde de verdad dolía**, que el ítem
+describía sin ubicar: `problemasDePublicacion` armaba su lista de meses sin ordenar, y
+`mesInicial` elige el primero prometiendo «el mes del primer problema por venir». Ahí
+sí bastaba una lista de otra procedencia para que la vista **abriera en un mes
+arbitrario**, sin que nada falle ni nadie se entere. `mesesConEncuentros` solo
+alimentaba a una función que ya reordenaba defensivamente.
+
+Los tests pasan la lista **al revés**, que es lo que devuelve cualquier camino que no
+pase por la función que ordenaba: un `Map` recorrido por inserción, dos tramos
+concatenados, un filtro que reordena.
+
+### Colateral · B-136 · el fixture de duración cero, cerrado
+
+El ratchet `DURACION_CERO_CONOCIDA` guardaba **un número de línea**
+(`calendarioPanel.test.ts:44`), y los imports de B-126 lo corrieron a la 52: dejó un
+test ajeno en rojo por drift, y tres frentes lo reportaron por separado. Se podía mover
+el número —dos caracteres— pero eso deja el archivo con una mina: cualquier edición
+arriba de esa línea vuelve a romper un test que no tiene nada que ver.
+
+Se cerró el fondo: el default del helper son **dos horas de verdad** y la lista quedó
+**vacía**, que es lo que el propio test pide («si alguien arregla una y no borra su
+línea, la lista se convierte en amnistía»). Verifiqué que el detector sigue detectando
+metiéndole un fixture flojo — y la primera verificación fue **inválida**, porque puse
+`inicio` y `fin` en la misma línea y el detector los busca en líneas separadas. Otra
+vez la misma lección: una rotura que no tiene la forma que el chequeo busca no prueba
+nada.
 
 ### B-95 · El texto para publicar en redes
 

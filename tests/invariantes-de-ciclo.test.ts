@@ -214,11 +214,11 @@ const paresInicioFin = (src: string): { linea: number; inicio: string; fin: stri
  * abierta protegería nada tampoco — así que la lista es exacta y cada línea
  * tiene dueño.
  */
-const DURACION_CERO_CONOCIDA = [
-  // B-136 · el default del helper `sesion()` es duración cero: 16 de sus 17
-  // usos no pasan `fin`. Es el fixture de H1, todavía vivo en el archivo que
-  // H1 arregló (ahí se arregló el caso puntual, no el default).
-  'tests/calendarioPanel.test.ts:44',
+const DURACION_CERO_CONOCIDA: string[] = [
+  // Vacía, y ese es el estado que hay que defender: la única entrada era el
+  // default del helper `sesion()` de `tests/calendarioPanel.test.ts` (B-136), y
+  // ahora ese default son dos horas de verdad. Agregar una línea acá es admitir
+  // una instancia nueva del patrón de H1: pensarlo dos veces antes.
 ];
 
 describe('detector de fixtures flojos — B-135', () => {

@@ -476,6 +476,65 @@ export const CAPITULOS: CapituloAyuda[] = [
           'Un mes sin nada lo dice, y ofrece ir al mes más cercano que tenga encuentros, así no ' +
           'hay que adivinar para qué lado apretar la flecha.',
       },
+      {
+        texto:
+          'El calendario también muestra las fechas de cierre de inscripción, en celeste y con ' +
+          'borde punteado para que no se confundan con un encuentro. Aparecen solo en las ' +
+          'actividades publicadas que piden inscripción: la de un borrador no le está ' +
+          'ofreciendo nada a nadie. Al tocarlas se abre la actividad, igual que con un encuentro.',
+        atadoA: [
+          {
+            archivo: 'tests/calendarioPanel.test.ts',
+            it: 'una actividad que no está publicada no aporta cierre: no invita a nadie',
+          },
+          {
+            archivo: 'tests/calendarioPanel.test.ts',
+            it: 'una fecha colgada de una inscripción que ya no se requiere no aporta cierre',
+          },
+        ],
+      },
+      {
+        texto:
+          'Si una inscripción ya cerró y la actividad sigue publicada, sale un aviso arriba de ' +
+          'todo con el nombre y el día en que cerró. No es un error del sistema: es que el sitio ' +
+          'y el evento del calendario siguen mostrando el contacto, así que alguien puede seguir ' +
+          'escribiendo para anotarse. Se resuelve de una de dos formas, y las dos están bien: ' +
+          'corré la fecha si todavía entra gente, o marcá «se llenó» desde el menú «⋯» del ' +
+          'listado si ya no entra nadie.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/calendarioPanel.test.ts',
+            it: 'el aviso junta los vencidos de TODOS los meses y dice dónde están',
+          },
+        ],
+      },
+      {
+        texto:
+          'Las actividades que ya marcaste como completas no entran en ese aviso: su marcador ' +
+          'queda en gris y dice «Cupo completo». Es a propósito. Que una inscripción cierre ' +
+          'porque se llenó es lo más normal que puede pasar, y si el aviso se encendiera también ' +
+          'ahí se encendería casi siempre — y un aviso que se enciende siempre deja de leerse, ' +
+          'justo cuando aparece el que sí importaba.',
+        atadoA: [
+          {
+            archivo: 'tests/calendarioPanel.test.ts',
+            it: '«se llenó» gana sobre la fecha: un cierre vencido y lleno no pide nada (D-127)',
+          },
+        ],
+      },
+      {
+        texto:
+          'Y un día que solo tiene un cierre de inscripción, sin ningún encuentro, se ve igual: ' +
+          'era el caso más fácil de perder de vista, el de la actividad con un solo encuentro ' +
+          'lejano cuya inscripción cierra la semana que viene.',
+        atadoA: [
+          {
+            archivo: 'tests/calendarioPanel.test.ts',
+            it: 'un día con un cierre y ningún encuentro APARECE en la agenda',
+          },
+        ],
+      },
     ],
   },
   {

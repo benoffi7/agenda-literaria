@@ -1833,14 +1833,14 @@ ese caso miente.
 Cerrarlo pide leer la API de Calendar desde el panel, que hoy no tiene forma de
 autenticarse contra ella (la identidad es de la Function, D-06).
 
-### B-126 · La vista calendario no avisa de inscripciones que cierran · P2
+### B-126 · La vista calendario no avisa de inscripciones que cierran — ✅ hecho (2026-08-26)
 
 `inscripcion.cierra` no aparece en ninguna parte del calendario, y es una fecha
 con la misma urgencia que un encuentro: pasada, la actividad sigue publicada
 invitando a anotarse. Encaja natural como un marcador más en el día que
 corresponde, con otro color.
 
-### B-127 · `useLabelsTaxonomia` abre cinco suscripciones en la primera pantalla · P3
+### B-127 · `useLabelsTaxonomia` abre cinco suscripciones en la primera pantalla — ✅ parcial (2026-08-26): 10→5, falta 5→1
 
 El hook abre un `observarOpciones` por campo (arancel, tipo, barrio, plataforma,
 tags) y el listado —la primera pantalla del panel autenticado— solo usa dos.
@@ -1848,7 +1848,7 @@ Su propio docstring advierte que conviene montarlo "recién cuando hace falta".
 No rompe nada y `OPCIONES_BASE` cubre el primer render, pero son cinco listeners
 abiertos toda la sesión donde antes había cero.
 
-### B-128 · `mesesConEncuentros` depende de recibir la lista ya ordenada · P3
+### B-128 · `mesesConEncuentros` depende de recibir la lista ya ordenada — ✅ hecho (2026-08-26)
 
 `mesesConEncuentros` promete devolver los meses "del más viejo al más nuevo" y no
 ordena: se apoya en que `encuentrosDe` ya ordenó por inicio. Hoy todos los

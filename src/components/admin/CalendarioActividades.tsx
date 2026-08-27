@@ -7,14 +7,20 @@ import {
 } from '@/components/admin/campos/Campo';
 import { listarActividades } from '@/lib/actividades';
 import {
+  ESTADOS_CIERRE,
+  INFO_CIERRE,
   INFO_PUBLICACION,
   INICIALES_SEMANA,
-  agruparPorDia,
+  agendaDe,
+  cierresDe,
+  cierresDelMes,
+  cierresQueUrgen,
   claveDia,
   claveMes,
   diaLegible,
   encuentrosDe,
   encuentrosDelMes,
+  estadoCierre,
   filtrarPorGrupo,
   mesInicial,
   mesMasCercanoConEncuentros,
@@ -22,11 +28,14 @@ import {
   mesesConEncuentros,
   nombreMes,
   porDia,
+  porDiaCierres,
   problemasDePublicacion,
   resumenPublicacion,
   semanasDelMes,
   yaPaso,
+  type Cierre,
   type Encuentro,
+  type EstadoCierre,
   type EstadoPublicacion,
   type GrupoPublicacion,
 } from '@/lib/calendarioPanel';
@@ -67,6 +76,40 @@ const PUNTO_PUBLICACION: Record<EstadoPublicacion, string> = {
   cancelado: 'bg-acento/40',
 };
 
+/**
+ * B-126 — el cierre de inscripción se pinta en **otra familia de color** que los
+ * estados de publicación, y esa es la mitad del marcador: los verdes, ámbares y
+ * acentos de arriba contestan *¿esto ya lo ve la gente?*, y un cierre contesta
+ * otra pregunta. El celeste no significa nada en esta pantalla todavía, que es
+ * exactamente lo que se necesita para que no se lea como un estado más.
+ *
+ * La excepción es `vencido`: ahí sí toma el acento pleno, porque es lo único de
+ * este eje que pide una acción y comparte urgencia con `falta-en-calendario`.
+ */
+const COLOR_CIERRE: Record<EstadoCierre, string> = {
+  'por-venir': 'bg-sky-100 text-sky-800',
+  vencido: 'bg-acento text-white',
+  'cupo-completo': 'bg-tinta/10 text-tinta/70',
+};
+
+/** El punto de color de la grilla, donde no cabe el texto del chip. */
+const PUNTO_CIERRE: Record<EstadoCierre, string> = {
+  'por-venir': 'bg-sky-500',
+  vencido: 'bg-acento',
+  'cupo-completo': 'bg-tinta/30',
+};
+
+/**
+ * El borde de la fila. Punteado en los tres casos a propósito: en la agenda un
+ * cierre y un encuentro son dos filas del mismo tamaño, y el color solo no
+ * alcanza para distinguirlos de un vistazo ni para quien no lo distingue.
+ */
+const BORDE_CIERRE: Record<EstadoCierre, string> = {
+  'por-venir': 'border-sky-300 bg-sky-50/60',
+  vencido: 'border-acento/50 bg-acento/5',
+  'cupo-completo': 'border-borde bg-white',
+};
+
 const GRUPOS: { id: GrupoPublicacion | null; label: string }[] = [
   { id: null, label: 'Todos' },
   { id: 'visible', label: 'En el calendario' },
@@ -84,6 +127,53 @@ function ChipEstado({ estado }: { estado: EstadoPublicacion }) {
     >
       {info.etiqueta}
     </span>
+  );
+}
+
+/** Chip con la etiqueta del estado de un cierre de inscripción (B-126). */
+function ChipCierre({ estado }: { estado: EstadoCierre }) {
+  const info = INFO_CIERRE[estado];
+  return (
+    <span
+      title={info.significa}
+      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${COLOR_CIERRE[estado]}`}
+    >
+      {info.etiqueta}
+    </span>
+  );
+}
+
+/**
+ * Una fila de cierre de inscripción en la agenda (B-126).
+ *
+ * Al tocarla se abre la actividad, igual que con un encuentro: la unidad de
+ * edición sigue siendo una (§2.2, D-70), y lo que hay que tocar —correr la
+ * fecha— está ahí adentro.
+ */
+function FilaCierre({
+  cierre,
+  estado,
+  onAbrir,
+}: {
+  cierre: Cierre;
+  estado: EstadoCierre;
+  onAbrir: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onAbrir}
+      className={`flex min-h-touch w-full items-center gap-3 rounded-md border border-dashed px-3 py-2 text-left transition-colors hover:bg-black/[0.03] ${BORDE_CIERRE[estado]}`}
+    >
+      <span className="w-11 shrink-0 font-mono text-xs text-tinta/60">{cierre.hora}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{cierre.titulo}</span>
+        <span className="block truncate text-xs text-tinta/55">
+          Inscripción{cierre.cupo ? ` · cupo ${cierre.cupo}` : ''}
+        </span>
+      </span>
+      <ChipCierre estado={estado} />
+    </button>
   );
 }
 
@@ -135,10 +225,19 @@ function FilaEncuentro({
  * en su actividad y **al tocarlo se abre la actividad**: la unidad de edición
  * sigue siendo una, como manda el §2.2.
  *
+ * **Dos ejes de fechas, no uno (B-126):** los encuentros y los **cierres de
+ * inscripción**. Un cierre es una fecha con la misma urgencia que un encuentro y
+ * no la mostraba ninguna pantalla: pasada, la actividad sigue publicada
+ * invitando a anotarse con el mail o el WhatsApp a la vista. Son marcadores
+ * aparte —otro color, borde punteado, tipo `Cierre` y no `Encuentro`— porque no
+ * salen al calendario público, no tienen estado de publicación y no cuentan en el
+ * resumen. Lo que se llenó (`inscripcion.completo`, D-127) se marca y **no**
+ * entra al aviso: es el caso más común y no pide nada.
+ *
  * **Mobile (D-72):** la grilla de mes se muestra recién desde `sm`. En 360px
  * siete columnas dan celdas de 45px, donde no entra ni la hora, así que abajo de
- * ese ancho se ve siempre la agenda: los días con algo, uno abajo del otro, con
- * blancos táctiles de 44px.
+ * ese ancho se ve siempre la agenda: los días con algo —encuentros o cierres—,
+ * uno abajo del otro, con blancos táctiles de 44px.
  */
 export function CalendarioActividades({ onEditar, version }: Props) {
   const [actividades, setActividades] = useState<ActividadConId[]>([]);
@@ -179,11 +278,25 @@ export function CalendarioActividades({ onEditar, version }: Props) {
   // lo vería nunca.
   const mes = mesElegido ?? (cargando ? claveMes(ahora) : mesInicial(encuentros, ahora));
 
+  // B-126 — el otro eje de fechas de la pantalla. Es función pura sobre las
+  // mismas actividades: ni una lectura nueva de Firestore.
+  const cierres = useMemo(() => cierresDe(actividades), [actividades]);
+  const cierresUrgentes = useMemo(() => cierresQueUrgen(cierres, ahora), [cierres, ahora]);
+
   const delMes = useMemo(() => encuentrosDelMes(encuentros, mes), [encuentros, mes]);
   const visibles = useMemo(() => filtrarPorGrupo(delMes, grupo), [delMes, grupo]);
   const resumen = useMemo(() => resumenPublicacion(delMes), [delMes]);
-  const dias = useMemo(() => agruparPorDia(visibles), [visibles]);
+  // Con un filtro de publicación puesto los cierres se esconden: ese filtro es
+  // sobre el estado de los encuentros en el calendario, y un cierre no tiene
+  // ninguno. Dejarlos visibles haría que "Con problema (2)" muestre tres cosas.
+  const cierresVisibles = useMemo(
+    () => (grupo === null ? cierresDelMes(cierres, mes) : []),
+    [cierres, mes, grupo],
+  );
+  const dias = useMemo(() => agendaDe(visibles, cierresVisibles), [visibles, cierresVisibles]);
   const indicePorDia = useMemo(() => porDia(visibles), [visibles]);
+  const indiceCierres = useMemo(() => porDiaCierres(cierresVisibles), [cierresVisibles]);
+  const hayAlgoEnElMes = visibles.length > 0 || cierresVisibles.length > 0;
   const semanas = useMemo(() => semanasDelMes(mes), [mes]);
   const mesCercano = useMemo(
     () => mesMasCercanoConEncuentros(mesesConEncuentros(encuentros), mes),
@@ -191,14 +304,20 @@ export function CalendarioActividades({ onEditar, version }: Props) {
   );
 
   const hoy = claveDia(ahora);
-  const abrir = (encuentro: Encuentro) => {
-    const actividad = porIdActividad.get(encuentro.actividadId);
+  /**
+   * La unidad de edición es la actividad (§2.2, D-70): tanto un encuentro como
+   * un cierre de inscripción abren la misma pantalla.
+   */
+  const abrirId = (actividadId: string) => {
+    const actividad = porIdActividad.get(actividadId);
     if (actividad) onEditar(actividad);
   };
 
+  const abrir = (encuentro: Encuentro) => abrirId(encuentro.actividadId);
+
   const agenda = (
     <div className="flex flex-col gap-4">
-      {dias.map(({ dia, encuentros: delDia }) => (
+      {dias.map(({ dia, encuentros: delDia, cierres: cierresDelDia }) => (
         <div key={dia} className="flex flex-col gap-1.5">
           <h3
             className={`text-sm font-medium ${
@@ -214,6 +333,16 @@ export function CalendarioActividades({ onEditar, version }: Props) {
               encuentro={e}
               pasado={yaPaso(e, ahora)}
               onAbrir={() => abrir(e)}
+            />
+          ))}
+          {/* B-126 — los cierres van después de los encuentros del día: son el
+              eje secundario, y así el día se sigue leyendo por lo que pasa. */}
+          {cierresDelDia.map((c) => (
+            <FilaCierre
+              key={`cierre-${c.actividadId}`}
+              cierre={c}
+              estado={estadoCierre(c, ahora)}
+              onAbrir={() => abrirId(c.actividadId)}
             />
           ))}
         </div>
@@ -303,6 +432,53 @@ export function CalendarioActividades({ onEditar, version }: Props) {
               </>
             );
           })()}
+        </div>
+      )}
+
+      {/* ── B-126 · La inscripción que cerró y sigue invitando ──────
+             Va acá y no en el mes que se está mirando: una inscripción vencida
+             en noviembre seguiría invisible mientras se mira septiembre. Lo que
+             se llenó no entra —`cupo-completo` no urge (D-127)—, porque un aviso
+             que se enciende en el caso más común se apaga en la cabeza de quien
+             lo mira. ──────────────────────────────────────────────────── */}
+      {cierresUrgentes.vencidos.length > 0 && (
+        <div
+          role="alert"
+          className="rounded-md border border-acento/40 bg-acento/5 px-3 py-2.5 text-sm"
+        >
+          <p className="font-medium text-acento">
+            {cierresUrgentes.vencidos.length === 1
+              ? 'Hay 1 actividad publicada cuya inscripción ya cerró.'
+              : `Hay ${cierresUrgentes.vencidos.length} actividades publicadas cuya inscripción ya cerró.`}
+          </p>
+          <p className="mt-1.5 text-xs text-tinta/70">{INFO_CIERRE.vencido.significa}</p>
+          <ul className="mt-1.5 flex flex-col gap-1 text-xs text-tinta/70">
+            {cierresUrgentes.vencidos.map((c) => (
+              <li key={`vencido-${c.actividadId}`}>
+                <button
+                  type="button"
+                  onClick={() => abrirId(c.actividadId)}
+                  className="min-h-touch text-left underline decoration-dotted hover:text-acento sm:min-h-0"
+                >
+                  {c.titulo} · cerró el {diaLegible(c.dia)} · {c.hora}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {cierresUrgentes.meses.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {cierresUrgentes.meses.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMesElegido(m)}
+                  className={m === mes ? claseBotonChipActivo : claseBotonChip}
+                >
+                  Ver {nombreMes(m)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -396,10 +572,13 @@ export function CalendarioActividades({ onEditar, version }: Props) {
         </p>
       )}
 
-      {/* ── Mes vacío: dice para qué lado hay algo ─────────────────── */}
-      {!cargando && delMes.length === 0 && (
+      {/* ── Mes vacío: dice para qué lado hay algo ───────────────────
+             `cierresVisibles` entra en la cuenta (B-126): un mes sin encuentros
+             pero con una inscripción que cierra tiene algo que mostrar, y decirle
+             "no hay nada" sería justo esconder el marcador nuevo. ───────── */}
+      {!cargando && delMes.length === 0 && cierresVisibles.length === 0 && (
         <div className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/55">
-          {encuentros.length === 0 ? (
+          {encuentros.length === 0 && cierres.length === 0 ? (
             <p>Todavía no hay encuentros cargados en ninguna actividad.</p>
           ) : (
             <>
@@ -418,14 +597,14 @@ export function CalendarioActividades({ onEditar, version }: Props) {
         </div>
       )}
 
-      {!cargando && delMes.length > 0 && visibles.length === 0 && (
+      {!cargando && delMes.length > 0 && !hayAlgoEnElMes && (
         <p className="rounded-md border border-dashed border-borde px-3 py-10 text-center text-sm text-tinta/55">
           En {nombreMes(mes)} no hay encuentros que coincidan con ese filtro.
         </p>
       )}
 
       {/* ── Grilla de mes: solo desde sm (D-72) ─────────────────────── */}
-      {visibles.length > 0 && modo === 'mes' && (
+      {hayAlgoEnElMes && modo === 'mes' && (
         <div className="hidden sm:block">
           <div className="grid grid-cols-7 gap-1 text-center text-xs text-tinta/50">
             {INICIALES_SEMANA.map((inicial, i) => (
@@ -440,6 +619,12 @@ export function CalendarioActividades({ onEditar, version }: Props) {
                 {semana.map((dia, j) => {
                   if (!dia) return <div key={`vacio-${j}`} className="min-h-24 rounded-md" />;
                   const delDia = indicePorDia.get(dia) ?? [];
+                  // B-126 — en una celda de grilla entran pocas líneas, así que
+                  // se muestran hasta tres encuentros y hasta dos cierres, y lo
+                  // que sobra de los dos se suma en un solo "+N más".
+                  const cierresDelDia = indiceCierres.get(dia) ?? [];
+                  const sobran =
+                    Math.max(0, delDia.length - 3) + Math.max(0, cierresDelDia.length - 2);
                   return (
                     <div
                       key={dia}
@@ -469,13 +654,34 @@ export function CalendarioActividades({ onEditar, version }: Props) {
                           </span>
                         </button>
                       ))}
-                      {delDia.length > 3 && (
+                      {cierresDelDia.slice(0, 2).map((c) => {
+                        const estado = estadoCierre(c, ahora);
+                        return (
+                          <button
+                            key={`cierre-${c.actividadId}`}
+                            type="button"
+                            onClick={() => abrirId(c.actividadId)}
+                            title={`${c.hora} · ${c.titulo} — ${INFO_CIERRE[estado].etiqueta}`}
+                            className="flex min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:bg-black/5"
+                          >
+                            <span
+                              aria-hidden
+                              className={`size-1.5 shrink-0 rounded-full ${PUNTO_CIERRE[estado]}`}
+                            />
+                            <span className="truncate italic">
+                              <span className="text-tinta/55">{c.hora}</span> {c.titulo}
+                            </span>
+                            <span className="sr-only"> — {INFO_CIERRE[estado].etiqueta}</span>
+                          </button>
+                        );
+                      })}
+                      {sobran > 0 && (
                         <button
                           type="button"
                           onClick={() => setModo('agenda')}
                           className={claseEnlaceCelda}
                         >
-                          +{delDia.length - 3} más
+                          +{sobran} más
                         </button>
                       )}
                     </div>
@@ -490,7 +696,7 @@ export function CalendarioActividades({ onEditar, version }: Props) {
       {/* La agenda es la vista de mobile siempre, y la elegida en escritorio
           cuando se pide. En modo mes se esconde desde sm, donde ya está la
           grilla. */}
-      {visibles.length > 0 && (
+      {hayAlgoEnElMes && (
         <div className={modo === 'mes' ? 'sm:hidden' : undefined}>{agenda}</div>
       )}
 
@@ -504,6 +710,17 @@ export function CalendarioActividades({ onEditar, version }: Props) {
             <li key={estado} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
               <ChipEstado estado={estado as EstadoPublicacion} />
               <span className="text-xs text-tinta/65">{info.significa}</span>
+            </li>
+          ))}
+          {/* B-126 — los cierres se explican en la misma lista: el marcador es
+              nuevo y sin esto nadie sabe qué es la fila punteada. */}
+          {ESTADOS_CIERRE.map((estado) => (
+            <li
+              key={`cierre-${estado}`}
+              className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2"
+            >
+              <ChipCierre estado={estado} />
+              <span className="text-xs text-tinta/65">{INFO_CIERRE[estado].significa}</span>
             </li>
           ))}
         </ul>
