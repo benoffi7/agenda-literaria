@@ -250,6 +250,8 @@ evento por función.
 | `actividad-duplicar` | "Duplicar" en el menú ⋯ del listado | — | encuentros del original |
 | `coordenadas-pegar` | se pega un link de Google Maps en la sede | — | — |
 | `coordenadas-fallo` | ese link no se pudo resolver | el modo de fallo | — |
+| `imagen-subida` | una imagen propia terminó de subir a Storage | — | — |
+| `imagen-rechazada` | la subida no salió | por qué | — |
 
 Valores de `detalle`:
 
@@ -258,6 +260,19 @@ Valores de `detalle`:
   `arancel-e-inscripcion`, `material`, `opcional`, `difusion`, `vista-previa`.
 - **Modos de fallo de coordenadas:** `coord-link-corto`,
   `coord-sin-coordenadas`, `coord-coma-decimal`, `coord-formato`.
+- **Motivos de rechazo de una imagen:** `tamano`, `tipo`, `red`.
+
+**Las dos de imágenes son el termómetro de una decisión del dueño** (B-167,
+DEC-7b). `imagen-subida` contesta si la mitad cara de la galería se usa: si nadie
+sube nunca y todos pegan URLs, la Function de optimización que falta (B-220) no
+vale lo que cuesta. Y `imagen-rechazada` con `detalle: tamano` es el único
+termómetro del tope de **3 MB**: si casi todos los rechazos son por tamaño, el
+número está mal elegido y lo que hay que hacer es recomprimir del lado de la
+Function, no explicar mejor.
+
+**Nunca viaja el nombre del archivo ni su tamaño real**, aunque el mensaje que ve
+la persona sí los diga: eso es contenido, y `detalle` es un enum cerrado de tres
+valores.
 
 `seccion-abrir` se instrumentó en el componente `Seccion`, así que **una sección
 nueva se mide sola** en cuanto existe. Cae en `detalle: otro` hasta que su slug

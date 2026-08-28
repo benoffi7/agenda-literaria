@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -128,8 +129,17 @@ const recorrer = (entrada: string, seguirDiferidos: boolean): Grafo => {
 const INICIAL = recorrer(ENTRADA, false);
 const COMPLETO = recorrer(ENTRADA, true);
 
-/** Los paquetes cuyo peso justifica todo el corte (D-51). */
-const SDK_PESADO = ['firebase/firestore', 'firebase/analytics'];
+/**
+ * Los paquetes cuyo peso justifica todo el corte (D-51).
+ *
+ * `firebase/storage` entró con la subida de imágenes propias (B-167, segunda
+ * tajada): pesa del mismo orden que Firestore y lo usa **un** módulo
+ * (`src/lib/subir-imagen.ts`), cargado con `import()` desde el editor de la
+ * galería. Sin esta línea, volverlo estático deshacía el corte con el build en
+ * verde — que es exactamente el modo de falla que B-50 dejó anotado cuando pasó
+ * lo mismo con `firebase/analytics`.
+ */
+const SDK_PESADO = ['firebase/firestore', 'firebase/analytics', 'firebase/storage'];
 
 describe('el recorrido del grafo ve lo que hay — B-117', () => {
   it('la entrada de la island es un archivo del panel', () => {
@@ -217,6 +227,63 @@ describe('trampa 4 · la service account no puede llegar al cliente', () => {
   it('no se alcanza desde la island, ni siquiera por un import diferido', () => {
     expect([...COMPLETO.archivos].filter((a) => a === ADMIN)).toEqual([]);
     expect([...COMPLETO.paquetes].filter((p) => p.startsWith('firebase-admin'))).toEqual([]);
+  });
+});
+
+/**
+ * B-167 (segunda tajada) — el SDK de Storage entra por una sola puerta, y esa
+ * puerta es un `import()`.
+ *
+ * **Por qué hace falta un chequeo aparte y no alcanza con `SDK_PESADO`.** El
+ * grafo `INICIAL` arranca en la island, y el editor de la galería vive tres
+ * saltos abajo de un componente que ya es diferido: volver estático el
+ * `import()` de `subir-imagen` **no** metería Storage en el chunk inicial, así
+ * que el chequeo de arriba seguiría en verde. Lo que sí pasaría es que el SDK se
+ * pegara al chunk del formulario, que baja **toda** persona que abre una
+ * actividad — y casi ninguna sube una imagen.
+ *
+ * Se verificó por mutación: volviendo estático ese `import()`, los chequeos de
+ * `SDK_PESADO` siguen pasando y este falla. Ese es exactamente el hueco que
+ * viene a tapar.
+ */
+describe('quién es dueño de Storage — B-167', () => {
+  const DUENO = 'src/lib/subir-imagen.ts';
+
+  /** Todos los fuentes del panel y de la librería compartida. */
+  const FUENTES = execFileSync('git', ['ls-files', '-z', 'src'], { encoding: 'utf8' })
+    .split('\0')
+    .filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
+
+  it('CONTROL POSITIVO: el dueño existe y sí importa el SDK', () => {
+    expect(existsSync(ruta(DUENO))).toBe(true);
+    expect(importsEstaticos(fuente(DUENO))).toContain('firebase/storage');
+    expect(FUENTES.length).toBeGreaterThan(20);
+  });
+
+  it('ningún otro módulo importa firebase/storage', () => {
+    const otros = FUENTES.filter(
+      (f) => f !== DUENO && importsEstaticos(fuente(f)).includes('firebase/storage'),
+    );
+    expect(otros).toEqual([]);
+  });
+
+  it('nadie importa al dueño de forma estática', () => {
+    // La regla que hace verdadero el comentario de `subir-imagen.ts`: se entra
+    // por `import()` o no se entra. Un `import { subirImagen } from …` en
+    // cualquier componente pega el SDK al chunk de quien lo importe.
+    const estaticos = FUENTES.filter((f) =>
+      importsEstaticos(fuente(f)).some((spec) => spec.replace(/\.tsx?$/, '').endsWith('subir-imagen')),
+    );
+    expect(estaticos).toEqual([]);
+  });
+
+  it('y alguien sí lo carga con import(): la puerta existe', () => {
+    // Control negativo del anterior: con el módulo huérfano, "nadie lo importa
+    // estáticamente" sería cierto y vacío.
+    const diferido = FUENTES.filter((f) =>
+      importsDiferidos(fuente(f)).some((spec) => spec.endsWith('subir-imagen')),
+    );
+    expect(diferido.length).toBeGreaterThanOrEqual(1);
   });
 });
 

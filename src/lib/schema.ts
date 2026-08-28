@@ -51,6 +51,13 @@ const publicando = (estado: string): boolean => estado === 'publicado';
 const esUrl = (valor: string): boolean => z.string().url().safeParse(valor).success;
 
 /**
+ * Los esquemas con los que puede empezar la URL de una imagen: `https`, y
+ * `http` **solo contra localhost**, que es el emulador de Storage. Ver el `if`
+ * que lo usa, más abajo, para el razonamiento completo.
+ */
+const ESQUEMA_PERMITIDO = /^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/)/i;
+
+/**
  * Una fila de la galería (B-167). Las reglas de forma van en los dos niveles: son
  * las que harían ilegible el documento, no las que lo harían incompleto.
  *
@@ -65,12 +72,11 @@ const imagenSchema = z.object({
   // `storagePath` no se valida contra un formato: atarlo a un patrón acá haría
   // que un cambio del lado del servidor rompa el guardado del panel.
   //
-  // **Quién lo escribe está sin decidir, y es la deuda de esta tajada.** El plan
-  // es que lo escriba la Function al subir, pero `formADocumento` hoy copia la
-  // fila entera con un spread, así que serían dos escritores para un campo de
-  // máquina **adentro de un array de contenido** — que es `calendarEventId`
-  // dentro de `sesiones` otra vez. Hoy no filtra nada (`imagenPublica` enumera).
-  // Se decide antes de la subida: ver B-206.
+  // **Quién lo escribe ya está decidido (B-206 #2).** Lo escribe la subida del
+  // panel, y mañana lo va a reescribir la Function de DEC-7d. Para que eso no sea
+  // `calendarEventId` dentro de `sesiones` otra vez, `formADocumento` **enumera**
+  // las claves de cada imagen en vez de spreadear la fila, y `functions/
+  // historial.js` lo declara en `CAMPOS_DE_MAQUINA_IMAGEN`.
   storagePath: z.string().optional(),
   ancho: z.number().optional(),
   alto: z.number().optional(),
@@ -253,7 +259,15 @@ export const actividadFormSchema = z
       // terminar en un `<img src>` y en `og:image` (B-107). Y un `http://` pasa
       // la validación y después lo bloquea el contenido mixto en una página
       // `https`: imagen rota en el sitio, sin que nada avise.
-      if (!/^https:\/\//i.test(img.url)) {
+      //
+      // La excepción de `localhost` es el emulador de Storage, que sirve por
+      // `http://127.0.0.1:9199/…`: sin ella, una imagen propia subida en
+      // desarrollo no se puede publicar ni siquiera para probar el flujo, que es
+      // justo lo que el §10 pide hacer contra emuladores. Lo que la excepción
+      // habilita en producción es una URL a `localhost`, o sea una imagen rota en
+      // la propia vista previa del panel — no un `data:` ni un `javascript:`, que
+      // siguen bloqueados por este mismo `if`.
+      if (!ESQUEMA_PERMITIDO.test(img.url)) {
         falta(['imagenes', String(n), 'url'], 'La dirección tiene que empezar con https://');
       }
     });

@@ -23,7 +23,7 @@ Resueltas el 2026-08-26:
 
 | # | Tema | Resolución |
 |---|---|---|
-| DEC-7 | La galería de imágenes (B-167), cuatro decisiones | (a) **un solo campo opcional**, que es un epígrafe; el texto alternativo sale del título de la actividad — decisión de accesibilidad tomada a propósito, no un olvido. (b) **hasta 4 imágenes de 3 MB**, validado en el schema **y** en `storage.rules`, porque el cliente se puede saltear; el mensaje de rechazo tiene que decir el tamaño real y el máximo, que 3 MB es menos que una foto de celular sin recortar. (c) **conviven externas y propias** desde el día uno, así que entra Firebase Storage con todo lo que arrastra. (d) las **propias se optimizan** del lado de la Function (EXIF, recompresión, miniatura) y las **externas se sirven tal cual**, sin descargarlas al build. Ojo con la trampa que aparece acá y no está en el §13: una Function que escribe la miniatura en el mismo bucket **se dispara a sí misma** — es la trampa 3 con otra cara. |
+| DEC-7 | La galería de imágenes (B-167), cuatro decisiones — **implementado en dos tajadas, 2026-08-26 y 2026-08-28** (D-125 y D-130); lo único que falta de (d) es la Function, que es **B-220** | (a) **un solo campo opcional**, que es un epígrafe; el texto alternativo sale del título de la actividad — decisión de accesibilidad tomada a propósito, no un olvido. (b) **hasta 4 imágenes de 3 MB**, validado en el schema **y** en `storage.rules`, porque el cliente se puede saltear; el mensaje de rechazo tiene que decir el tamaño real y el máximo, que 3 MB es menos que una foto de celular sin recortar. (c) **conviven externas y propias** desde el día uno, así que entra Firebase Storage con todo lo que arrastra. (d) las **propias se optimizan** del lado de la Function (EXIF, recompresión, miniatura) y las **externas se sirven tal cual**, sin descargarlas al build. Ojo con la trampa que aparece acá y no está en el §13: una Function que escribe la miniatura en el mismo bucket **se dispara a sí misma** — es la trampa 3 con otra cara. |
 | DEC-8 | Las N opciones para sumarse a un mismo ciclo (B-181) | **Eje nuevo `opciones: [{ id, etiqueta, sesiones }]`** — el más fiel y el más caro, que es lo que el reporte describe literalmente. Toca el schema, el formulario, la proyección, el diff del §7.2 y la numeración de D-95; los ids van generados en el cliente (trampa 2). Va **después de B-167 y antes de descongelar el sitio**: hoy el daño es un calendario con eventos de más, y después es información equivocada indexada en Google. |
 | DEC-9 | Cómo se llama la librería que sale a la calle (B-192) — **implementado el 2026-08-26** | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
 | B-28 | ¿Claim `curador` para aprobar? | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
@@ -523,7 +523,20 @@ Tests en [`tests/costuras.test.ts`](../tests/costuras.test.ts).
 
 ---
 
-### B-167 · Galería de imágenes: una lista, con descripción, propias o de afuera
+### B-167 · Galería de imágenes: una lista, con descripción, propias o de afuera — ✅ las dos tajadas hechas (2026-08-26 y 2026-08-27)
+
+> **Estado al 2026-08-27.** La primera tajada (modelo + editor de URLs externas)
+> salió en `1.3.0`. La segunda —**subir un archivo propio**, que es lo que el dueño
+> reclamó con «no estoy viendo lo de cargar imágenes»— salió después: entra
+> `storage.rules`, el emulador de Storage, la línea `storage=` de
+> `que-deployar.sh`, y `src/lib/subir-imagen.ts` cargado con `import()`. Razonamiento
+> en **D-130**; las dos preguntas que bloqueaban están resueltas en **B-206**.
+>
+> **Lo que sigue abierto**, y con ítem propio para que no se confunda con esto: la
+> Function de DEC-7d —recompresión y miniatura— es **B-208**; la limpieza de objetos
+> huérfanos es **B-209**; servirlas por dominio propio, **B-210**. Todo lo que este
+> ítem describe abajo se hizo salvo esos tres, y las anotaciones de más abajo dicen
+> cómo quedó cada punto.
 
 Pedido del dueño (2026-08-24): una actividad tiene una **lista** de imágenes,
 cada una con descripción opcional; cada imagen puede ser una **URL de otro lado**
@@ -583,6 +596,31 @@ nada más. Entra un producto nuevo, y con él:
   documento ejecutable, y si algún día se sirve por un rewrite de Hosting pasa a
   ser mismo origen que el panel.
 
+**Cómo quedó (2026-08-27).** Los cuatro puntos de arriba, uno por uno:
+
+- `storage.rules` existe, con `token.get('admin', false)` como pedía D-05, y lo
+  verifica `tests/storage-reglas.integracion.test.ts` **subiendo de verdad** contra
+  el emulador — que además hubo que agregar (`firebase.json` y el `--only` de los
+  dos lugares que corren la suite). Lo que las reglas **no** pueden validar es el
+  tope de 4 imágenes: una regla de Storage no cuenta los objetos de un prefijo. Ese
+  tope se queda en el schema, y está escrito para que no se lea como olvido.
+- `que-deployar.sh` emite una cuarta línea, `storage=`, y `storage.rules` entró
+  además a la lista **negra** de hosting por el mismo motivo que `firestore.rules`:
+  es config del servidor y nadie la importa. El job «Reglas e índices» de
+  `push-main.yml` arma el `--only` con lo que haya cambiado.
+- El SDK vive solo en `src/lib/subir-imagen.ts`, cargado con `import()`. Se cubrió
+  con **dos** chequeos y no uno, porque el obvio no alcanzaba: `firebase/storage`
+  entró a `SDK_PESADO` (no puede llegar al chunk inicial) **y** hay un bloque nuevo
+  «quién es dueño de Storage» que exige que nadie lo importe de forma estática. El
+  segundo hace falta porque el editor de la galería ya está en un chunk diferido:
+  volver estático ese `import()` no metería el SDK en el chunk inicial y el primer
+  chequeo seguiría en verde — lo habría pegado al chunk del formulario, que baja
+  todo el mundo. Verificado por mutación.
+- Tipo y tamaño se validan en las reglas. **Los tipos que se pueden subir son menos
+  que los que la galería muestra:** solo JPG y PNG, porque WebP y AVIF también
+  llevan EXIF/XMP y todavía no hay quien se lo saque. Vuelven con B-208. SVG queda
+  afuera igual que siempre.
+
 #### EXIF: la privacidad que no está en el §5 y debería
 
 Una foto de celular trae GPS. En este dominio eso es concreto: **muchos talleres
@@ -594,6 +632,29 @@ Hay que **quitar el EXIF al subir**, y el lugar es del lado del servidor o en la
 Function, no en el cliente (el cliente es lo que se puede saltear). Esto es una
 fila nueva en la tabla del §5.1 de `CLAUDE.md` y en
 [`07-seguridad.md`](07-seguridad.md).
+
+**Cómo quedó (2026-08-27), y por qué se hizo en el cliente igual.** El argumento de
+arriba sigue en pie y por eso la Function sigue en el plan (**B-208**): es la que no
+se puede saltear. Pero la Function es justamente lo que la segunda tajada dejó
+afuera, y **entre una tajada y la otra hay imágenes propias públicas**. Publicar las
+coordenadas del living no es una optimización pendiente: es irreversible. Así que el
+panel las saca ahora (`sinMetadatos`, en `src/lib/imagenes-archivo.ts`) y la Function
+las va a sacar otra vez — defensa en profundidad, el mismo patrón que DEC-7b ya había
+elegido para el tamaño.
+
+Dos consecuencias que no se adivinan y están en D-130 §3:
+
+- **Se saca sin recomprimir.** Recomprimir en un `canvas` también borraría el EXIF, y
+  haría que el tope de 3 MB de DEC-7b deje de significar lo que se decidió: una foto
+  de 8 MB entraría recomprimida y el mensaje que empuja a recortar no aparecería
+  nunca. Recorriendo segmentos JPEG y chunks PNG a mano, la función es pura y el test
+  verifica **sobre los bytes de salida** que el bloque `Exif` no está.
+- **Por eso solo se suben JPG y PNG.** WebP y AVIF también llevan EXIF/XMP y no hay
+  quien se lo saque todavía; se siguen mostrando si son externas, y vuelven a ser
+  subibles con B-208.
+
+La fila del §5.1 está puesta: `07-seguridad.md` § «Las imágenes propias, y qué se
+sube al bucket».
 
 #### La vista previa, que es la otra mitad del pedido
 
@@ -984,7 +1045,7 @@ Functions termina rojo a propósito (los roles que `deploy-ci@` no tiene, D-119)
 Lo primero cierra el agujero; lo segundo lo hace visible cuando falle igual.
 Conviene el primero, y el segundo si sobra tiempo.
 
-### B-206 · Lo que había que decidir antes de la subida de imágenes propias — ✅ decidido (2026-08-26), pendiente de implementar
+### B-206 · Lo que había que decidir antes de la subida de imágenes propias — ✅ decidido (2026-08-26) e implementado (2026-08-27)
 
 Las encontró el `auditor-privacidad` en el cierre de la primera tajada. **Hoy
 ninguna filtra nada** —no hay imágenes propias porque no hay subida— y las dos se
@@ -1025,6 +1086,34 @@ Las dos consecuencias concretas, ninguna de privacidad:
 en `functions/historial.js`, y que `formADocumento` los **conserve explícitamente**
 del documento de hoy en vez de spreadearlos del formulario — igual que ya hace con
 `calendarEventId: s.calendarEventId ?? null`.
+
+#### Cómo quedaron las dos (2026-08-27, con la subida) — razonamiento completo en **D-130**
+
+**1 · Se eligió `getDownloadURL()`, la opción barata, con dos condiciones que la
+vuelven honesta.** El ítem decía que el rewrite de Hosting era «la única que cumple
+la promesa», y lo que cambió la cuenta es que **la promesa estaba mal escrita**: el
+comentario de `toPublic.ts` decía que publicar el path «dibuja la estructura del
+bucket». Con un prefijo plano (`imagenes/`) y el nombre del objeto siendo el uuid de
+la fila, no hay estructura que dibujar; y con `allow read: if true` bajo ese prefijo,
+el token permanente no protege nada que no estuviera abierto. `storagePath` sigue
+afuera del `events.json`, pero por lo que sí es —el handle autoritativo, que un
+consumidor del JSON no usa— y no por un secreto que la URL desmiente. El comentario
+se reescribió; **una afirmación de seguridad que miente es peor que no tenerla**
+(B-195). El rewrite quedó abierto abajo, con el motivo corregido: costo y
+portabilidad, no privacidad.
+
+**2 · Implementado tal cual estaba escrito**, sin cambiarle nada:
+`CAMPOS_DE_MAQUINA_IMAGEN` en `functions/historial.js` y `formADocumento`
+enumerando las claves de cada imagen. Hoy el segundo escritor no existe todavía —los
+tres campos los escribe la subida del panel—, así que las dos mitades son
+preventivas; se hicieron ahora porque es cuando son gratis. Lo cuida
+`tests/clases-de-bug.test.ts`, que además verifica que **ninguna clave de más** entre
+al documento (el camino del §5.2 por el que un borrador viejo mete algo inventado).
+
+Un detalle que el ítem no anticipaba: los tres se copian con «si está» y **no** con
+`?? null`. Firestore guardaría el `null` como valor presente y `huboCambioDeContenido`
+no unifica ausente con `null` (D-41), así que un `storagePath: null` en cada imagen
+externa produciría una versión de historial y un rebuild por guardado.
 
 ---
 
@@ -1070,6 +1159,179 @@ sin pedir la foto de nuevo. El almacenamiento duplicado es la parte barata.
 alert del §2.3 está puesto **solo para Functions**. Storage se paga por
 almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
 Conviene extenderlo antes, no después de la factura.
+
+### B-224 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes · P1
+
+**Pasó dos veces el 2026-08-27/28, en dos worktrees distintos**, y la segunda quedó
+grabada en el propio `git stash list`: una entrada se llama literalmente
+`recuperado: cambios de otro worktree (pop accidental de stash compartido)`.
+
+**La causa, y es de git, no de nadie.** El stash vive en `refs/stash`, que es del
+**repositorio**, no del working-tree. `git worktree` aísla el índice, el `HEAD` y
+los archivos — **no el stash**. Entonces:
+
+```
+worktree A:  git stash push        # queda stash@{0} = A
+worktree B:  git stash push        # ahora stash@{0} = B, y A pasó a stash@{1}
+worktree A:  git stash pop         # ← se trae el trabajo de B a su árbol
+```
+
+En el caso real, un frente hizo `stash push` para poder rebasear, otro frente
+stasheó en el medio, y el `pop` del primero trajo 1061 líneas del segundo —cuatro
+archivos nuevos de una feature ajena— sobre su propio checkout, con conflictos.
+
+**Por qué es P1 y no una curiosidad.** Se recupera, pero solo si uno se da cuenta:
+`git stash pop` con conflictos **conserva la entrada**, así que el trabajo del otro
+no se pierde. El modo malo es el que no da conflicto — ahí el `pop` **borra la
+entrada** y los cambios del otro frente quedan mezclados en un árbol ajeno, sin
+rastro en el stash y sin que nadie los esté buscando. Y el repo trabaja con varios
+worktrees en paralelo a propósito (`docs/14-plan-de-saneamiento.md`), o sea que la
+condición que lo dispara es el modo de trabajo normal, no un accidente.
+
+**Es la misma familia que B-219** (dos worktrees compartiendo el emulador): algo que
+uno supone aislado por worktree y es global del repositorio. Vale la pena buscar el
+resto de esa familia — `refs/stash`, el emulador, y probablemente `.firebase/`.
+
+**Cómo se sale, hoy y a mano.** Nunca `git stash pop` a secas desde un worktree:
+
+```bash
+git stash list                    # mirar el nombre: dice de qué worktree salió
+git rev-parse 'stash@{N}'         # anotar el sha
+git stash apply <sha>             # apply, no pop: no toca la pila
+# …verificar que es lo tuyo…
+git stash drop 'stash@{N}'        # recién ahí, y confirmando el sha otra vez
+```
+
+Los dos detalles que hacen la diferencia: **`apply` y no `pop`** (si te equivocaste,
+la entrada del otro sigue ahí), y **por sha y no por índice** (los índices se corren
+solos cuando otro worktree stashea).
+
+**Las salidas de fondo, de menos a más:**
+
+1. **No usar `stash` en un worktree.** Para rebasear con el árbol sucio alcanza con
+   un commit temporal (`git commit -m wip` → `git rebase` → `git reset --soft HEAD~1`),
+   y un commit **sí** es por-worktree. Es lo más barato y no necesita nada nuevo.
+2. **Un helper `scripts/wip.sh`** que haga exactamente eso, para que no dependa de
+   que cada uno se acuerde. Encaja con el criterio del skill `automatizar`: esto ya
+   pasó dos veces.
+3. **Un test no lo puede atajar** —es un gesto interactivo, no código versionado—
+   pero **una línea en `docs/14-plan-de-saneamiento.md` sí**, que es donde se explica
+   cómo conviven los frentes en paralelo. Hoy ese documento reparte archivos y no
+   dice nada del stash.
+
+**Y una consecuencia operativa mientras tanto:** si te encontrás un `git stash list`
+con entradas de otros worktrees, **no las limpies**. Son el trabajo en curso de otro
+frente, y borrar una es la única forma de que esto sí pierda datos.
+
+### B-220 · La Function que optimiza las imágenes propias (DEC-7d) · P1
+
+**Es la mitad que la segunda tajada de B-167 dejó afuera a propósito**, y el criterio
+del corte fue el del repo: preferimos subir imágenes sin miniatura a no subir nada.
+Hoy una imagen propia se sube **tal cual la eligió la persona**, sin recomprimir y sin
+miniatura. Funciona, y las fotos de 3 MB pesan 3 MB en la tarjeta del listado.
+
+Lo que falta, y por qué cada parte es cara:
+
+- **Recomprimir y derivar la miniatura.** Necesita una librería de imágenes nativa en
+  `functions/` (`sharp` o equivalente), que es la primera dependencia binaria del
+  proyecto y cambia el tiempo de deploy de las Functions.
+- **La guarda anti-loop, que es la trampa 3 con otra cara.** El trigger es
+  `onObjectFinalized` sobre el mismo bucket en el que escribe la miniatura: sin guarda,
+  se dispara a sí mismo. Las dos formas conocidas: escribir la derivada bajo un prefijo
+  que el trigger ignore, o marcarla con `customMetadata` y cortar al leerla. La
+  segunda es la que sobrevive a que alguien mueva el prefijo.
+  **La red ya está puesta:** `tests/clases-de-bug.test.ts` descubre desde el 2026-08-27
+  las clases `onObjectFinalized|onObjectDeleted|onObjectArchived|onObjectMetadataUpdated`,
+  así que el trigger nuevo entra solo y va a pedir la guarda. Antes no: el descubridor
+  solo conocía `onDocument*` y `onSchedule` (D-130 §4).
+- **El write-back al documento.** La Function tiene que escribir `storagePath`, `ancho`
+  y `alto` en la fila de la galería, y para eso tiene que **encontrar** la actividad
+  que la referencia — que hoy no puede, porque el path no lleva el id de la actividad
+  (y no lo lleva por una razón dura: al subir todavía no hay actividad, ver D-130 §1).
+  La salida más barata es una query `where('imagenes', 'array-contains', …)`, que
+  Firestore no sabe hacer sobre un subcampo; la otra es que el panel escriba un
+  documento puente. **Esto hay que decidirlo antes de escribir código.**
+  Lo que sí ya está resuelto es la mitad que le sigue: `CAMPOS_DE_MAQUINA_IMAGEN`
+  (B-206 #2) evita que ese write-back deje una versión de historial y un rebuild del
+  sitio por imagen.
+- **Vuelven WebP y AVIF a `TIPOS_SUBIBLES`.** Hoy están afuera porque el panel no sabe
+  sacarles los metadatos; la Function que recomprime todo los vuelve seguros. Es un
+  cambio de una línea en `imagenes-archivo.ts` y una en `storage.rules`, con su test.
+
+**Lo que NO hay que rehacer:** el EXIF ya se saca en el panel, sin recomprimir y
+verificado sobre los bytes. La Function lo va a sacar otra vez, y eso está bien —es la
+capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
+
+### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2
+
+**Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
+actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
+escrito en `subir-imagen.ts`: un objeto huérfano cuesta centavos y es invisible; un
+borrado automático no tiene papelera de la que sacarlo, y hoy no hay ningún conteo de
+referencias que diga si ese archivo lo usa otra actividad.
+
+Se vuelve real cuando el bucket tenga volumen, y la pregunta a contestar es la misma
+que B-199 movió y no resolvió: **quién es dueño del objeto**. Dos caminos:
+
+- **Barrido periódico** (`onSchedule`): listar el prefijo `imagenes/`, cruzar contra
+  los `storagePath` de todas las actividades, borrar lo que no referencia nadie con un
+  margen de gracia de días —sin el margen se borra la imagen que alguien subió hace
+  cinco minutos y todavía no guardó—. Es el más simple y no necesita estado nuevo.
+- **Conteo de referencias**, que es la variante con estado compartido de B-71 y la que
+  habilitaría copiar imágenes propias al duplicar (hoy la casilla del modal está
+  escondida justamente porque no se puede, D-130 §5).
+
+El barrido primero; el conteo solo si hace falta copiar.
+
+### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
+
+**El motivo NO es privacidad** — eso quedó resuelto en B-206 #1 con el path opaco y la
+lectura pública (D-130 §1). Lo que compra este cambio es otra cosa, y por eso bajó a P3:
+
+- **Costo de egreso.** Hoy cada imagen se sirve desde `firebasestorage.googleapis.com`
+  y paga egreso de GCS por descarga. Detrás del CDN de Hosting, la mayoría de las
+  descargas las contesta el borde.
+- **Portabilidad.** La `url` que se guarda en el documento **incluye el bucket y un
+  token**: mudar de bucket, o revocar un token, invalida todas las URLs ya guardadas y
+  hay que reescribir documentos. Con una URL propia (`/img/<id>.jpg`) el documento
+  guarda algo estable y el mapeo vive en un solo lugar.
+
+Firebase Hosting **no** tiene rewrite directo a un bucket de GCS: hay que poner una
+Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al camino de
+una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
+
+### B-223 · `12-sitio-publico.md` sigue diseñando contra `imagenUrl`, que ya no existe · P2
+
+Lo encontró el `auditor-documentacion` en el cierre de la segunda tajada de B-167.
+El diseño del sitio público modela la imagen como **un campo único**
+(«la tarjeta sin `imagenUrl`…», «`imagenUrl: null` es frecuente…», `og:image`:
+`imagenUrl` cuando hay) en al menos seis lugares: líneas 201, 381, 552, 579, 932 y
+1017.
+
+**El modelo real es `imagenes[]` con `portada` desde la primera tajada** (D-125),
+que está en producción hace días. Y desde la segunda hay además imágenes
+**propias**, con `storagePath`, `ancho` y `alto` — que es justo lo que la tarjeta
+necesita para no saltar al cargar, y el documento no lo sabe.
+
+**No bloquea nada hoy**: el sitio público todavía no se construye. El daño es
+diferido y concreto: quien implemente B-01 va a leer ese documento y va a escribir
+la tarjeta contra un campo que no existe, y el `getStaticPaths` contra una forma
+que el `events.json` no tiene. Se arregla **antes** de empezar B-01, no después.
+
+Lo que hay que actualizar, además de reemplazar el nombre del campo:
+
+- El caso «sin imagen» (§7.6) pasa a ser «lista vacía», no `null`.
+- `og:image` sale de la **portada** (`portadaDe()`), no de «la imagen».
+- La tarjeta puede usar `ancho`/`alto` de una imagen propia para reservar el
+  hueco; una externa no los tiene y ahí sigue sin poder reservarlo. **Ojo con
+  dónde entra eso:** hoy `src/lib/eventsJson.ts` recorta el índice a
+  `imagenUrl: portadaDe(a.imagenes)?.url ?? null` y **no lleva las medidas**. No
+  está roto —el índice sigue funcionando igual con imágenes propias, y la
+  proyección larga sí las publica—, pero si la tarjeta las va a usar, el campo
+  tiene que entrar al índice, y eso es una salida pública: pasa por el fixture de
+  centinelas como cualquier otra.
+- El §7.6 dice que una imagen externa puede caerse mañana. Con las propias eso
+  deja de valer para la mitad de los casos, y conviene decirlo.
 
 ### B-207 · `searchText` tenía dos listas de fuentes, y restaurar del historial publicaba la vieja — ✅ hecho (2026-08-26)
 
@@ -1394,6 +1656,29 @@ Opciones, de menos a más invasiva:
 No bloquea nada hoy: con un solo worktree trabajando no pasa. Se anota porque el
 `docs/14-plan-de-saneamiento.md` reparte el backlog **entre worktrees en
 paralelo**, que es justo la condición que lo dispara.
+
+**Confirmado por segunda vez, desde otro worktree, el 2026-08-27** (cierre de la
+segunda tajada de B-167). Dos observaciones que acotan la causa más de lo que
+estaba y que apuntan a la opción 1:
+
+- **No hace falta un segundo worktree para que pase.** Con `vitest` corriendo
+  **los archivos en paralelo dentro de una sola suite** ya alcanza: dos corridas
+  seguidas dieron fallas **distintas** (`un anónimo lee lo publicado` una vez;
+  `reusa la opción existente en lugar de duplicarla` la otra). O sea que los
+  cuatro archivos de integración **se pisan entre sí**, no solo entre worktrees.
+  Eso descarta que el arreglo pueda ser solo de coordinación entre working-trees.
+- **`--no-file-parallelism` pasa siempre**, y es el bisturí que lo demuestra: 60
+  archivos, 1369 tests, verde en todas las corridas. Sirve además como taponazo
+  mientras se decide el arreglo de fondo.
+- **Y no lo trajo el cambio que se estaba probando:** se reprodujo **sacando del
+  run** el archivo de test que ese frente agregaba. Vale anotarlo porque el
+  reflejo ante un rojo intermitente es sospechar de lo último que uno tocó.
+
+Con esto, la **opción 1** (un `projectId` por working-tree) tampoco alcanza sola:
+aísla worktrees pero no archivos. Lo que cubre los dos casos es un `projectId`
+por **archivo de test** —el emulador es multi-proyecto y `limpiarFirestore()` ya
+lo recibe como argumento—, o dejar de vaciar la base y que cada archivo borre
+solo lo suyo.
 
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública

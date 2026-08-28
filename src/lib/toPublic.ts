@@ -44,7 +44,7 @@ export interface ItemMaterialPublico {
   url?: string;
 }
 
-/** §5.1 — lo mismo que `Imagen` **menos `storagePath`**, que es interno. */
+/** §5.1 — lo mismo que `Imagen` **menos `storagePath`**, que es el handle interno. */
 export interface ImagenPublica {
   id: string;
   url: string;
@@ -169,10 +169,37 @@ const aMillis = (t: { toMillis(): number } | Date): number =>
 /**
  * Qué de cada imagen es público (§5.1, B-167).
  *
- * **`storagePath` no sale.** Es la ruta interna del bucket: publicarla dibuja su
- * estructura y deja probar objetos por nombre. Lo demás sí: la URL es lo que el
- * navegador va a pedir igual, el epígrafe se muestra, y `ancho`/`alto` evitan que
- * la tarjeta salte al cargar.
+ * **`storagePath` no sale, y conviene saber por qué no** — B-206 #1, decidido el
+ * 2026-08-27 al implementar la subida.
+ *
+ * Lo que este comentario decía antes era que publicarlo "dibuja la estructura del
+ * bucket y deja probar objetos por nombre". Eso **no es cierto**, y ocultarlo no
+ * lo lograba: la URL canónica de Storage lleva el path URL-encodeado adentro
+ * (`…/o/imagenes%2Fimg_ab12…jpg?alt=media&token=…`) y esa URL sí se publica,
+ * porque es la que el navegador tiene que pedir. Con `origen: 'propia'` al lado,
+ * el path ya estaba a la vista.
+ *
+ * Lo que se hizo en cambio, que es lo que vuelve inofensivo el hecho:
+ *
+ *  1. **El path es opaco.** Un solo prefijo plano y el nombre es el uuid de la
+ *     fila (`rutaDeImagen`). No hay estructura que dibujar ni nombre que
+ *     adivinar: `imagenes/img_<uuid>.jpg` no dice nada de nada.
+ *  2. **Bajo ese prefijo la lectura es pública en `storage.rules`.** El token de
+ *     `getDownloadURL()` deja de ser lo que protege el objeto, así que un token
+ *     "filtrado" no abre nada que no estuviera abierto.
+ *
+ * Con eso, `storagePath` sigue afuera del JSON por lo que **sí** es: el handle
+ * autoritativo con el que el panel y la Function direccionan el objeto. Un
+ * consumidor del `events.json` no tiene nada que hacer con él, y las externas ni
+ * siquiera lo tienen. Es la misma regla de siempre —el JSON publica lo que el
+ * sitio necesita, no lo que el documento tiene— y no una promesa de secreto.
+ *
+ * La opción cara —un rewrite de Hosting o un dominio propio, que sacaría el path
+ * de la URL y de paso pondría el egreso detrás del CDN— quedó en el BACKLOG por
+ * lo que en realidad compra, que es costo y portabilidad, no privacidad.
+ *
+ * Lo demás sí sale: la URL es lo que el navegador va a pedir igual, el epígrafe se
+ * muestra, y `ancho`/`alto` evitan que la tarjeta salte al cargar.
  *
  * `origen` sale porque el build lo necesita: las propias tienen tamaños derivados
  * y las externas se sirven tal cual desde su origen (DEC-7d). Es un enum cerrado

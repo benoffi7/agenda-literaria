@@ -32,7 +32,7 @@ cp .env.example .env        # completar con la config del proyecto Firebase
 Dos terminales:
 
 ```bash
-npm run emu                 # emuladores: Auth 9099, Firestore 8080, UI 4000
+npm run emu                 # emuladores: Auth 9099, Firestore 8080, Storage 9199, UI 4000
 npm run seed                # siembra /opciones/* con las opciones base (§4.1)
 npm run dev                 # Astro en :4321 — el panel está en /admin
 ```

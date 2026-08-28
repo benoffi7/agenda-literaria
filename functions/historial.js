@@ -46,6 +46,25 @@ const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy'];
 const CAMPOS_DE_MAQUINA_SESION = ['calendarEventId'];
 
 /**
+ * Ídem dentro de cada imagen de la galería — B-206 #2, B-167.
+ *
+ * Es `calendarEventId` dentro de `sesiones` otra vez, por una puerta nueva: son
+ * campos que escribe la máquina **adentro de un array de contenido**. Hoy los
+ * escribe la subida del panel y mañana los va a reescribir la Function de DEC-7d
+ * (la que saca el EXIF, recomprime y deriva la miniatura), y ahí es donde esta
+ * lista deja de ser preventiva: sin ella, `huboCambioDeContenido` vería un cambio
+ * de contenido en cada write-back, o sea **una versión de historial y un rebuild
+ * del sitio por cada imagen optimizada**.
+ *
+ * `ancho` y `alto` están adentro aunque `toPublic` los publique. No es una
+ * contradicción: lo que esta lista decide no es "qué es público", es "qué escribe
+ * una persona". Y no se pierde nada: los tres cambian siempre junto con `url`
+ * —cada subida crea una fila con id nuevo, así que la URL cambia— y `url` sí es
+ * contenido, así que el rebuild se dispara igual por ese lado.
+ */
+const CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath', 'ancho', 'alto'];
+
+/**
  * Forma canónica de un valor de Firestore, comparable con `JSON.stringify`.
  *
  * Dos razones para no serializar el documento crudo:
@@ -94,6 +113,14 @@ export const contenidoEditable = (documento) => {
     limpio.sesiones = limpio.sesiones.map((sesion) => {
       const copia = { ...sesion };
       for (const campo of CAMPOS_DE_MAQUINA_SESION) delete copia[campo];
+      return copia;
+    });
+  }
+
+  if (Array.isArray(limpio.imagenes)) {
+    limpio.imagenes = limpio.imagenes.map((imagen) => {
+      const copia = { ...imagen };
+      for (const campo of CAMPOS_DE_MAQUINA_IMAGEN) delete copia[campo];
       return copia;
     });
   }

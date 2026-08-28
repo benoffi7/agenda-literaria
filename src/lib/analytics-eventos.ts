@@ -148,6 +148,23 @@ export const FUNCIONES = [
   // un link corto, lo que hay que hacer es resolverlos, no explicar mejor.
   'coordenadas-pegar',
   'coordenadas-fallo',
+  /**
+   * B-167 (segunda tajada) — una imagen propia subida.
+   *
+   * Contesta si la mitad cara de DEC-7c se usa: si nadie sube nunca y todos
+   * pegan URLs, la Function de optimización (DEC-7d, la tajada que falta) no
+   * vale lo que cuesta.
+   */
+  'imagen-subida',
+  /**
+   * Ídem, rechazada, con `detalle` en un enum cerrado: `tamano`, `tipo` o `red`.
+   *
+   * **Es el único termómetro del tope de 3 MB de DEC-7b.** Si casi todos los
+   * rechazos son por tamaño, el número está mal elegido y lo que hay que hacer
+   * es recomprimir del lado de la Function, no explicar mejor. Nunca viaja el
+   * nombre del archivo ni el tamaño real: eso es contenido (§9).
+   */
+  'imagen-rechazada',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 
@@ -191,11 +208,26 @@ export const FALLOS_COORDENADAS = [
   'coord-formato',
 ] as const;
 
+/**
+ * Por qué se rechazó una imagen propia al subirla (B-167). Son etiquetas de la
+ * causa, **nunca** el nombre del archivo ni su tamaño real — eso es contenido, y
+ * el mensaje que ve la persona sí los dice pero no viaja.
+ *
+ * Vive acá y no en `subir-imagen.ts` por la lección de B-88: el productor y el
+ * consumidor del vocabulario tienen que ser el mismo. Declarados por separado, el
+ * sanitizador de `detalle` los reemplaza por `otro` y los tres rechazos llegan a
+ * GA4 indistinguibles — con el agravante de que **falla en silencio**, porque un
+ * `otro` de más no rompe nada.
+ */
+export const MOTIVOS_IMAGEN = ['tamano', 'tipo', 'metadatos', 'red'] as const;
+export type MotivoImagen = (typeof MOTIVOS_IMAGEN)[number];
+
 /** Vocabulario del parámetro `detalle`. */
 export const DETALLES = [
   ...SECCIONES,
   ...CAMPOS_TAXONOMIA_MEDIBLES,
   ...FALLOS_COORDENADAS,
+  ...MOTIVOS_IMAGEN,
 ] as const;
 
 /**

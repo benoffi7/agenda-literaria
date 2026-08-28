@@ -10,7 +10,7 @@ cd functions && npm install && cd ..
 Tres terminales:
 
 ```bash
-npm run emu      # emuladores: Auth 9099, Firestore 8080, UI 4000
+npm run emu      # emuladores: Auth 9099, Firestore 8080, Storage 9199, UI 4000
 npm run seed     # siembra /opciones/* con las opciones base
 npm run dev      # Astro en :4321 — el panel está en /admin
 ```
@@ -286,6 +286,30 @@ firebase deploy --only firestore:rules,firestore:indexes
 **Las reglas de `/reportes/{id}` ya están desplegadas.** Se sabe sin mirar la
 consola: `reporteAIssue` lleva nueve issues creados desde el panel, y eso solo es
 posible si el formulario pudo escribir en esa colección.
+
+### Reglas de Storage (B-167, segunda tajada)
+
+```bash
+firebase deploy --only storage
+```
+
+**Es su propio target y no entra en `--only firestore:rules`.** `que-deployar.sh`
+lo decide aparte (línea `storage=`) y el job «Reglas e índices» de
+`push-main.yml` arma el `--only` con lo que haya cambiado. Igual que con las
+reglas de Firestore, ese job **falla en CI**: `deploy-ci@` no tiene
+`firebaserules.admin` a propósito (ver `02-infraestructura.md` § «Roles de
+`deploy-ci@`»), así que en la práctica esto se corre a mano.
+
+**Nunca se desplegaron todavía**, porque el archivo es de este cambio. Sin
+desplegarlas, Storage deniega **todo** por default y el botón «Subir una imagen»
+del panel falla con un mensaje de red: es el primer paso a hacer al publicar esta
+versión.
+
+**Antes de desplegar, revisar que el bucket exista.** Si el proyecto nunca usó
+Storage, hay que inicializarlo una vez desde la consola de Firebase (elige la
+región; conviene `southamerica-east1`, al lado de Firestore y de las Functions).
+`firebase deploy --only storage` contra un proyecto sin bucket falla con un error
+que no dice eso.
 
 ### Functions
 
@@ -904,6 +928,9 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `no longer supports Java version before 21` | los emuladores necesitan JDK 21+ | usar `npm run emu`, que apunta a `openjdk@21` |
+| Al subir una imagen desde el panel: «No se pudo subir la imagen» | `storage.rules` no está desplegado (o el bucket no existe todavía) | ver arriba, «Reglas de Storage» |
+| `EXIGIR_EMULADOR=1 pero el emulador de Storage no responde` | los emuladores se arrancaron sin `storage` en el `--only` | `npm run emu` los levanta todos; si se usa `emulators:exec`, el `--only` tiene que decir `auth,firestore,storage` |
+| Una imagen propia subida contra el emulador no deja publicar la actividad | no debería pasar: el schema acepta `http://127.0.0.1` justamente para eso (D-130) | si pasa, mirar `ESQUEMA_PERMITIDO` en `src/lib/schema.ts` |
 | `eventarc.events.receiveEvent denied` al deployar Functions | la service account propia no tiene los roles que la default de Compute trae de fábrica | otorgar `eventarc.eventReceiver`, `run.invoker`, `artifactregistry.reader` |
 | `Permission denied while using the Eventarc Service Agent` | primer uso de Functions v2, permisos propagándose | esperar unos minutos y reintentar |
 | `CONFIGURATION_NOT_FOUND` en la API de Auth | Firebase Auth nunca se inicializó | `POST identitytoolkit.googleapis.com/v2/projects/<p>/identityPlatform:initializeAuth` |

@@ -29,23 +29,39 @@ export const nuevaImagenId = (): string => {
 };
 
 /**
- * DEC-7b — cuántas por actividad. **Hoy el tope lo valida solo el schema.**
+ * DEC-7b — cuántas por actividad. **El tope lo valida solo el schema, y ahora eso
+ * es una decisión y no una promesa incumplida.**
  *
- * Decía "y en las reglas", y era falso: `firestore.rules` no valida forma en
- * `/actividades` (solo `esAdmin()`) y `storage.rules` todavía no existe. La
- * validación del lado de las reglas entra con la tajada de la subida, que es donde
- * importa —ahí el cliente es lo que se puede saltear— y hasta entonces esto es una
- * sola defensa, no dos.
+ * DEC-7b pide las dos defensas, schema y reglas, porque el cliente se puede
+ * saltear. Con la subida ya implementada, `storage.rules` existe y valida el
+ * **tamaño** y el **tipo** — pero no puede validar la **cantidad**: una regla de
+ * Storage evalúa una operación sobre un objeto y no puede contar los objetos de un
+ * prefijo ni leer la actividad que los va a referenciar. Así que el tope de 4 vive
+ * solo acá, y el daño de saltearlo es una actividad con cinco imágenes que el panel
+ * no deja guardar; no un objeto de 80 MB en el bucket, que es lo que las reglas sí
+ * frenan.
  */
 export const MAXIMO_IMAGENES = 4;
 
-/** DEC-7b — tamaño máximo de un archivo propio, en bytes. */
+/**
+ * DEC-7b — tamaño máximo de un archivo propio, en bytes.
+ *
+ * **El mismo número está en `storage.rules`**, y los ata
+ * `tests/storage-reglas.integracion.test.ts` subiendo de verdad contra el
+ * emulador: dos constantes que tienen que coincidir y nadie compara terminan
+ * divergiendo.
+ */
 export const MAXIMO_BYTES = 3 * 1024 * 1024;
 
 /**
- * Los tipos que se aceptan al subir. **SVG no**: es un documento ejecutable, y si
- * algún día se sirve por un rewrite de Hosting pasa a ser mismo origen que el
- * panel.
+ * Los tipos que la galería sabe **mostrar**. **SVG no**: es un documento
+ * ejecutable, y si algún día se sirve por un rewrite de Hosting pasa a ser mismo
+ * origen que el panel.
+ *
+ * Ojo: lo que se puede **subir** es un subconjunto más chico —`TIPOS_SUBIBLES` en
+ * `imagenes-archivo.ts`, hoy JPG y PNG—, porque subir implica poder sacarle los
+ * metadatos y eso todavía no está resuelto para WebP ni AVIF. Una externa en esos
+ * formatos se muestra igual: la sirve su origen y nosotros no la tocamos (DEC-7d).
  */
 export const TIPOS_ACEPTADOS = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;
 

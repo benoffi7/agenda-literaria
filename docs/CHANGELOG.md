@@ -1,5 +1,246 @@
 # Changelog
 
+## 1.5.0 — 2026-08-28
+
+> **Sellada `1.5.0`.** `1.5.0` y no `1.4.1` porque cambia lo que se puede hacer al
+> cargar una actividad —subir un archivo— y porque entra un producto nuevo de
+> Firebase, con sus reglas y su emulador; un parche no lo describe.
+>
+> El primer intento la selló `1.4.0` y quedó mal: el worktree salió de un `main`
+> anterior, y para cuando el trabajo estuvo listo `1.4.0` ya estaba publicada con el
+> `/events.json` adentro. **Sellar una novedad con un número ya usado rompe lo único
+> que esa lista sirve para contestar** —«esto empezó con la versión en la que salió
+> tal cosa»— y es el mismo error que D-117 vino a evitar, por una puerta nueva: no
+> por adivinar el número antes de tiempo, sino por adivinarlo desde una base vieja.
+
+### B-167 (segunda tajada) · Subir imágenes propias, no solo pegar un link
+
+El dueño lo dijo así: «no estoy viendo lo de cargar imágenes, solo siguen las de
+URL». Tenía razón — B-167 se hizo en dos tajadas y solo había salido la primera.
+Ahora la galería acepta las dos formas que DEC-7c decidió que convivieran desde el
+día uno. Razonamiento completo en **D-130**.
+
+Entra un producto nuevo, y con él cuatro lugares donde equivocarse en silencio:
+
+- **`storage.rules` (archivo nuevo).** Lectura pública bajo `imagenes/` —son
+  imágenes que van a la tarjeta del sitio y a `og:image`—, escritura solo con el
+  claim `admin`, y tipo y tamaño verificados **del lado del servidor**, que es la
+  mitad de DEC-7b que el schema no puede dar: abajo del panel hay una consola con
+  el SDK cargado. Lo verifica `tests/storage-reglas.integracion.test.ts`
+  **subiendo de verdad** contra el emulador, con las reglas empujadas desde este
+  checkout (la lección de los worktrees en paralelo: si no, se prueban las de otra
+  rama). Verificado por mutación: sacando `tamanoAceptado()` de las reglas, el
+  test se pone rojo.
+  **Lo que las reglas NO pueden validar es el tope de 4 imágenes** —una regla de
+  Storage no cuenta los objetos de un prefijo—, así que ese tope se queda en el
+  schema y está escrito para que no se lea como olvido.
+- **El emulador de Storage.** `firebase.json` lo declara, y el `--only` de los dos
+  lugares que corren la suite pasó a `auth,firestore,storage`. El helper nuevo
+  falla ruidosamente con `EXIGIR_EMULADOR=1`: sin eso, los tests de las reglas se
+  saltearían **en silencio** con Firestore arriba y Storage abajo, que es
+  exactamente lo que pasa si alguien se olvida de actualizar el `--only`.
+- **`que-deployar.sh` emite una cuarta línea, `storage=`.** Es un target aparte
+  (`firebase deploy --only storage`) y no entra en `--only firestore:rules`: sin la
+  regla nueva, un cambio en `storage.rules` se deployaba **nunca**, que es el peor
+  de los dos defaults. Y `storage.rules` entró a la lista **negra** de hosting por
+  el mismo motivo que `firestore.rules` —es config del servidor y nadie la
+  importa—, si no habría arrastrado un deploy de hosting cada vez.
+- **El SDK de Storage en su propio módulo diferido**, `src/lib/subir-imagen.ts`.
+
+**El corte del bundle necesitó dos chequeos y no uno, y eso es lo más interesante
+que pasó acá.** Lo obvio era sumar `firebase/storage` a `SDK_PESADO`. Se hizo, y
+después se intentó romperlo a propósito volviendo estático el `import()`: **el test
+siguió verde**. El motivo es que el editor de la galería ya vive tres saltos abajo
+de un componente diferido, así que el SDK no llegaba al chunk inicial — se pegaba
+al chunk del **formulario**, que baja toda persona que abre una actividad y casi
+ninguna sube una imagen. El chequeo que faltaba es «quién es dueño de Storage»:
+nadie importa `subir-imagen` de forma estática, y alguien sí lo carga con
+`import()`. Con eso, la misma mutación se pone roja.
+
+#### Las dos preguntas de B-206, contestadas
+
+**1 · Cómo se sirve una imagen propia.** Se eligió `getDownloadURL()` —la opción
+barata— y no el rewrite de Hosting. Lo que cambió la cuenta es que **la promesa
+estaba mal escrita**: el comentario de `toPublic.ts` decía que publicar
+`storagePath` «dibuja la estructura del bucket», y la URL de descarga ya llevaba el
+path adentro. Con un prefijo plano (`imagenes/`) y el nombre siendo el uuid de la
+fila, no hay estructura que dibujar; y con lectura pública bajo ese prefijo, el
+token permanente no protege nada que no estuviera abierto. `storagePath` sigue
+afuera del `events.json`, pero por lo que sí es —el handle autoritativo del panel—
+y no por un secreto que la URL desmiente. El comentario se reescribió: **una
+afirmación de seguridad que miente es peor que no tenerla**, que es la lección de
+B-195. El rewrite quedó en **B-222** con el motivo corregido: costo de egreso y
+portabilidad, no privacidad.
+
+Un detalle que decidió el diseño: **el path no se agrupa por actividad**, y no es
+un descuido. Al subir todavía no hay actividad — una actividad nueva no tiene id
+hasta que se guarda, así que `actividades/{id}/…` obligaría a guardar antes de
+poder subir una imagen, justo al revés de cómo se carga una actividad.
+
+**2 · Los dos dueños de `storagePath`, `ancho` y `alto`.** Implementado tal como
+B-206 lo dejó escrito: `CAMPOS_DE_MAQUINA_IMAGEN` en `functions/historial.js` y
+`formADocumento` **enumerando** las claves de cada imagen en vez de spreadear la
+fila. Hoy el segundo escritor todavía no existe, así que las dos mitades son
+preventivas — y se hicieron ahora porque es cuando son gratis; el día que llegue la
+Function, el costo de haberse olvidado es una versión de historial y un rebuild del
+sitio **por cada imagen optimizada**.
+
+Un detalle que B-206 no anticipaba: los tres se copian con «si está» y no con
+`?? null`. Firestore guardaría el `null` como valor presente y
+`huboCambioDeContenido` no unifica ausente con `null` a propósito (D-41), así que
+un `storagePath: null` en toda imagen externa produciría una versión y un rebuild
+por guardado.
+
+#### El EXIF se saca en el panel, aunque DEC-7d se lo dé a la Function
+
+DEC-7d sigue en pie y la Function sigue haciendo falta: es la que **no se puede
+saltear**, igual que las reglas frente al schema. Pero la Function es justamente lo
+que esta tajada no trae, y entre una tajada y la otra hay imágenes propias
+públicas. Una foto de celular lleva las coordenadas del lugar donde se sacó, y
+muchos talleres pasan en la casa de alguien: eso no es una optimización pendiente,
+es el dato personal de un tercero en el `events.json`, y una vez publicado no se
+despublica. Así que el panel lo saca ahora y la Function lo va a sacar otra vez.
+
+**Se saca sin recomprimir**, y esa parte es una decisión con tres motivos: dibujar
+en un `canvas` pierde calidad sin que nadie lo pida; **haría que el tope de 3 MB de
+DEC-7b deje de significar lo que se decidió que significara** —una foto de 8 MB
+entraría recomprimida y el mensaje que empuja a recortar no aparecería nunca—; y no
+se puede testear sin un navegador. Recorriendo los segmentos JPEG y los chunks PNG
+a mano, la función es **pura** y el test verifica sobre los bytes de salida que el
+bloque `Exif` no está y que el dato comprimido salió idéntico. Verificado por
+mutación: sacando `0xE1` de la lista negra, el test se pone rojo.
+
+Consecuencia asumida: **solo se pueden subir JPG y PNG.** WebP y AVIF se siguen
+mostrando si son externas —las sirve su origen y no las tocamos, DEC-7d— pero no se
+suben, porque sus contenedores también llevan EXIF/XMP. Vuelven con B-220.
+
+#### La red que se puso antes de que hiciera falta
+
+`tests/clases-de-bug.test.ts` promete en su cabecera que «un trigger nuevo entra
+solo». **Para un trigger de Storage eso era falso:** el descubridor buscaba
+`onDocument*` y `onSchedule` y nada más, así que un `onObjectFinalized` —el de
+DEC-7d, el que escribe la miniatura en el mismo bucket que lo dispara, o sea la
+trampa 3 con otra cara— habría entrado sin que nada le pidiera la guarda anti-loop.
+Se agregaron las cuatro clases `onObject*`. Hoy no cambian ningún resultado, y ese
+es el punto: es el único momento en que agregarlas es gratis.
+
+#### Lo que cambió de paso, y por qué
+
+**La casilla «las imágenes subidas al panel» del modal de duplicar dejó de
+mostrarse.** B-199 la había dejado apagada con `aplica` escondiéndola, porque no
+podía existir una imagen propia. Desde que puede, daría `true` y sería una casilla
+que **no hace nada**: tildarla no copia el objeto de Storage. Lo que se ofrecía
+como opción pasó a `SIEMPRE_AL_DUPLICAR`, que es donde viven los hechos no
+negociables. Una casilla que miente es peor que una función que falta.
+
+**El schema acepta `http://` contra `localhost`.** El emulador de Storage sirve por
+`http://127.0.0.1:9199/…`, así que sin la excepción una imagen propia subida en
+desarrollo no se podía publicar ni para probar el flujo — que es lo que el §10 pide
+hacer contra emuladores. Lo que habilita en producción es una URL a `localhost`, o
+sea una imagen rota en la vista previa del propio panel; `data:` y `javascript:`
+siguen bloqueados por el mismo `if`, que era el motivo real de esa validación.
+
+**Dos eventos nuevos de analítica**, `imagen-subida` e `imagen-rechazada` (con
+`detalle` en un enum cerrado: `tamano`, `tipo` o `red`). El segundo es el único
+termómetro del tope de 3 MB: si casi todos los rechazos son por tamaño, el número
+está mal elegido y lo que hay que hacer es recomprimir del lado de la Function, no
+explicar mejor.
+
+#### Lo que falta, con ítem propio para que no se confunda con esto
+
+**B-220** — la Function de DEC-7d: recompresión, miniatura y el segundo pase de
+EXIF. Se partió a propósito, y el criterio es el del repo: preferimos subir
+imágenes sin miniatura a no subir nada. Arrastra una dependencia binaria en
+`functions/`, el emulador de Functions atado al de Storage, la guarda anti-loop y
+una decisión que todavía no está tomada — **cómo encuentra la Function la actividad
+que referencia la imagen**, si el path no lleva su id.
+
+**B-221** — nadie borra los objetos huérfanos. Deliberado y escrito: un objeto de
+más cuesta centavos y es invisible; un borrado automático no tiene papelera.
+
+**B-222** — servirlas por dominio propio o rewrite de Hosting, por costo de egreso
+y portabilidad de las URLs guardadas.
+
+#### Lo que encontraron los auditores, y por qué vale contarlo
+
+Los tres corrieron sobre el cambio terminado. Cuatro hallazgos reales, y los cuatro
+son de la misma familia: **una capa que confía en lo que le dice otra**.
+
+- **El tipo del archivo se creía, no se verificaba** (P0). El `type` de un `File` lo
+  deriva el navegador de la **extensión**. Entonces un WebP —o un HEIC— renombrado
+  `.jpg` pasaba `validarArchivo`; `sinMetadatos` no reconocía la firma y devolvía el
+  archivo **tal cual**; y `storage.rules` lo aceptaba porque compara el
+  `contentType` que manda ese mismo cliente. Las tres capas miraban el mismo dato
+  y el navegador después lo renderizaba igual, porque para mostrar una imagen se
+  mira la firma y no el nombre. Ahora se verifican los bytes antes de subir
+  (`esDelTipoDeclarado`), que no puede rechazar un archivo bueno: un JPEG empieza
+  siempre con `FF D8`.
+- **«Desde SOS hasta el final son los datos comprimidos» era falso** (P1). Muchos
+  celulares apendan cosas **después del EOI**: la imagen secundaria MPF de los
+  Samsung es un JPEG entero **con su propio APP1 y su propio GPS**. Copiar «hasta el
+  final» se la llevaba puesta. Ahora se corta en el EOI real (`finDelJpeg`),
+  respetando el byte stuffing, los marcadores de reinicio y los segmentos de un
+  JPEG progresivo.
+- **Y la respuesta de fondo a los dos, que es la que va a envejecer bien:** un
+  **barrido sobre la salida**. Antes de subir, se buscan las tres marcas de
+  metadatos en los bytes que se van a subir y, si aparece alguna, la subida se
+  corta. Es el §5 aplicado a una salida binaria: se afirma sobre el resultado en
+  vez de sobre la lista de marcadores, así que un contenedor nuevo o un trailer
+  que todavía no vimos cae igual, sin que nadie lo haya previsto.
+- **`allow read` de Storage incluye `list`, y eso era una fuga viva** (P1). Con
+  `read: if true` sobre `imagenes/`, un `listAll()` **anónimo devolvía el bucket
+  entero** — comprobado contra el emulador, no deducido. Ahí el path opaco dejaba
+  de comprar nada (no hace falta adivinar un uuid si te dan la lista) y adentro
+  están también las fotos de las actividades en borrador. Va separado:
+  `allow get: if true` y `allow list: if esAdmin()`, con su caso en el test.
+  **Es la trampa 13 del §13**, que no existía.
+- **Los tres motivos de rechazo no estaban en el vocabulario de `detalle`** (P2), así
+  que llegaban a GA4 como `otro` y `imagen-rechazada` no era termómetro de nada. Es
+  la clase de B-88 —productor y consumidor del mismo vocabulario declarados por
+  separado— y falla en silencio. `MOTIVOS_IMAGEN` vive ahora en
+  `analytics-eventos.ts` y `ImagenRechazada.causa` **importa** ese tipo.
+
+Y dos comentarios que este mismo cambio volvió falsos y quedaron sin actualizar:
+el de `storagePath` en `types/actividad.ts` —que repetía la frase que el cambio
+declaró falsa— y el de `duplicar.ts`, que seguía diciendo «no hay forma de que
+exista una propia». Los dos corregidos: **una afirmación de seguridad que miente es
+peor que no tenerla**, y el tipo es la copia que más gente lee.
+
+#### Lo que el rebase obligó a corregir, y lo que enseñó
+
+Este frente salió de `1.3.0` y volvió cuando `main` ya estaba en `1.4.0`, cuatro
+commits más adelante. Nada del código chocó —el `/events.json` de `1.4.0` deriva su
+`imagenUrl` de `portadaDe(a.imagenes)`, así que las imágenes propias entran al índice
+sin tocar nada—, pero **la numeración sí**: los cinco ítems que este frente había
+abierto como B-208…B-212 ya estaban ocupados por otra cosa en `main`, incluida una
+fuga P0. Se renumeraron a **B-220…B-223** y la decisión pasó de D-128 a **D-130**.
+
+No es cosmético: un número reusado manda a quien lo sigue al ítem equivocado, y en
+esta misma tanda eso ya había mandado una trampa del §13 a la entrada que no era.
+
+Y uno de los cinco no había que renumerarlo sino **fusionarlo**: «los tests de
+integración se pisan entre sí» ya existía en `main` como **B-219**, encontrado por
+otro frente el mismo día y por otro camino. La evidencia de acá se sumó ahí y acota
+la causa: **no hace falta un segundo worktree** —con `vitest` paralelizando archivos
+dentro de una sola suite ya alcanza, dos corridas seguidas fallaron en tests
+distintos—, y `--no-file-parallelism` pasa siempre. Eso descarta que el arreglo pueda
+ser solo de coordinación entre working-trees.
+
+**Y apareció un bicho del propio proceso, que es B-224 y ya mordió dos veces:**
+`git stash` vive en `refs/stash`, que es del **repositorio** y no del working-tree.
+`git worktree` aísla el índice, el `HEAD` y los archivos; el stash, no. Un
+`git stash push` para poder rebasear, otro frente stasheando en el medio, y el `pop`
+se trae el trabajo del otro. Acá se recuperó entero porque el conflicto hizo que git
+**conservara** la entrada; el modo malo es el que aplica limpio, que borra la entrada
+y deja los cambios del otro mezclados en un árbol ajeno sin rastro. Es la misma
+familia que B-219: algo que uno supone aislado por worktree y es global del repo.
+
+**Sin desplegar todavía:** `storage.rules` es un archivo nuevo y nunca se subió, así
+que hasta que se corra `firebase deploy --only storage` el botón de subir falla con
+un mensaje de red. Es el primer paso al publicar esta versión — ver
+`08-operacion.md` § «Reglas de Storage», que además avisa de revisar que el bucket
+exista.
+
 ## 2026-08-27 (después de 1.4.0)
 
 Sin versión nueva: no cambia nada de lo que el panel o el sitio hacen. Es el gate

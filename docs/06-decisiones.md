@@ -2801,20 +2801,21 @@ clase de B-71 con estado compartido. Es la respuesta conservadora **hasta B-199*
 el modal que va a dejar elegir qué se duplica; ahí se decide si las propias se
 copian como objetos.
 
-**Lo que esta decisión NO resuelve todavía**, y está dicho para que no parezca
-olvido: subir archivos propios. El modelo ya lo soporta (`origen: 'propia'`,
-`storagePath`), y falta la mitad de infraestructura — `storage.rules`, el target
-de deploy que `que-deployar.sh` no conoce, la Function que quita el EXIF y deriva
-la miniatura, y el SDK de Storage en su propio módulo lazy. Va en su propia tajada
+**Lo que esta decisión NO resolvió**, y está dicho para que no parezca olvido:
+subir archivos propios. El modelo ya lo soportaba (`origen: 'propia'`,
+`storagePath`) y faltaba la mitad de infraestructura — `storage.rules`, el target
+de deploy que `que-deployar.sh` no conocía, la Function que quita el EXIF y deriva
+la miniatura, y el SDK de Storage en su propio módulo lazy. Fue a su propia tajada
 porque cada uno de esos cuatro es un lugar donde equivocarse en silencio.
 
 **Y dos cosas que la auditoría de esta tajada dejó decididas a medias**, las dos
-sin efecto hoy y las dos reales el día que haya propias: la URL pública de una
-imagen propia **contiene** el `storagePath` URL-encodeado más un token permanente,
-así que ocultar el campo no logra lo que dice el comentario de `toPublic.ts`; y
-`storagePath`/`ancho`/`alto` van a tener dos escritores —la Function y el spread de
-`formADocumento`—, que es `calendarEventId` dentro de `sesiones` otra vez. Las dos
-son **B-206**, y bloquean la segunda tajada, no esta.
+sin efecto entonces y las dos reales el día que hubiera propias: la URL pública de
+una imagen propia **contiene** el `storagePath` URL-encodeado más un token
+permanente, así que ocultar el campo no lograba lo que decía el comentario de
+`toPublic.ts`; y `storagePath`/`ancho`/`alto` iban a tener dos escritores —la
+Function y el spread de `formADocumento`—, que es `calendarEventId` dentro de
+`sesiones` otra vez. Las dos eran **B-206**, y las dos se resolvieron en la segunda
+tajada: ver **D-128**.
 
 ---
 
@@ -3088,3 +3089,195 @@ barrido y el índice era la única de las tres sin él. Una celda de la matriz s
 decidir se resuelve sola hacia el lado seguro **hasta que alguien escribe la
 línea que la resuelve para el otro** — que acá iba a ser cuando B-105 pinte la
 tarjeta.
+
+---
+
+## D-130 · Subir una imagen propia: path opaco, metadatos afuera antes de subir, y la miniatura para después
+
+**Contexto.** Segunda tajada de B-167, 2026-08-27. La primera dejó la galería
+aceptando **URLs de afuera**; el dueño la usó y avisó que «no estoy viendo lo de
+cargar imágenes». Tenía razón: DEC-7c decidió que conviven externas y propias desde
+el día uno, y las propias no existían. Esta tajada las trae, y contesta las dos
+preguntas que **B-206** había dejado escritas y sin implementar.
+
+### 1 · Cómo se sirve una imagen propia (B-206 #1)
+
+**Decisión: `getDownloadURL()`, la opción barata — pero con dos condiciones que la
+vuelven honesta en vez de resignada.**
+
+B-206 planteaba dos caminos: un rewrite de Hosting o dominio propio (el path deja de
+verse y el egreso pasa por el CDN), o `getDownloadURL()` asumiendo que path y token
+son públicos **y escribiéndolo como tal**. Decía además que la primera era «la única
+que cumple la promesa» del comentario de `toPublic.ts`.
+
+Lo que cambia la cuenta es que la promesa estaba mal escrita. El comentario decía que
+publicar `storagePath` «dibuja la estructura del bucket y deja probar objetos por
+nombre». Con las dos condiciones de abajo no hay estructura que dibujar ni nada que
+ganar probando:
+
+1. **El path es opaco y plano.** Un solo prefijo, `imagenes/`, y el nombre del objeto
+   es el id de la fila de la galería — un uuid que ya se generaba en el cliente por la
+   trampa 2. `imagenes/img_0e2a-4b1f.jpg` no dice nada de la actividad, del título ni
+   de la fecha. Y **no se agrupa por actividad**, que era lo intuitivo, por una razón
+   dura: al subir todavía no hay actividad. Una actividad nueva no tiene id hasta que
+   se guarda, y un path `actividades/{id}/…` obligaría a guardar antes de poder subir
+   una imagen — justo al revés de cómo se carga una actividad.
+2. **Bajo ese prefijo la lectura es pública en `storage.rules`.** El token permanente
+   de `getDownloadURL()` deja de ser lo que protege el objeto, así que un token
+   «filtrado» no abre nada que no estuviera abierto. Es coherente con lo que la imagen
+   es: la portada que va a `og:image`.
+
+Con eso, `storagePath` **sigue sin salir al `events.json`**, pero por lo que sí es —el
+handle autoritativo con el que el panel y la Function direccionan el objeto, y que un
+consumidor del JSON no usa para nada— y no por una confidencialidad que la URL
+desmentía. El comentario de `toPublic.ts` se reescribió: una afirmación de seguridad
+que miente es peor que no tenerla, porque se usa para decidir (la lección de B-195).
+
+**El rewrite de Hosting queda en el BACKLOG**, y con el motivo corregido: lo que compra
+es **costo y portabilidad** —egreso por el CDN, poder mudar de bucket sin reescribir las
+URLs ya guardadas— no privacidad.
+
+### 2 · Dos dueños para `storagePath`, `ancho` y `alto` (B-206 #2)
+
+**Se implementó el arreglo tal como B-206 lo dejó escrito**, sin cambiarlo:
+`CAMPOS_DE_MAQUINA_IMAGEN = ['storagePath','ancho','alto']` en
+`functions/historial.js`, y `formADocumento` **enumerando** las claves de cada imagen
+en vez de spreadear la fila — igual que ya hacía con
+`calendarEventId: s.calendarEventId ?? null`.
+
+Hoy el segundo escritor todavía no existe (los tres los escribe la subida del panel),
+así que las dos mitades son preventivas. Se hicieron igual, y ahora, por lo mismo que
+se agregaron las clases `onObject*` al descubridor de triggers: es el único momento en
+que el cambio es gratis, y el día que la Function llegue el costo de haberse olvidado
+es **una versión de historial y un rebuild del sitio por cada imagen optimizada**.
+
+Un detalle que no se adivina: los tres se copian con «si está», no con `?? null`.
+Firestore guardaría el `null` como valor presente, y `huboCambioDeContenido` **no
+unifica ausente con `null` a propósito** (D-41), así que escribir `storagePath: null`
+en toda imagen externa produciría una diferencia de contenido contra cualquier
+documento anterior — o sea, una versión y un rebuild por guardado.
+
+### 3 · Los metadatos se sacan en el panel, además de en la Function
+
+**Es un agregado a DEC-7d, no un reemplazo.** DEC-7d le da a la Function el EXIF, la
+recompresión y la miniatura. La Function sigue haciendo falta y por el motivo de
+siempre: es la que **no se puede saltear**, igual que `storage.rules` frente al schema.
+
+Pero la Function es justamente lo que esta tajada **no** trae (ver abajo), y entre una
+tajada y la otra hay imágenes propias públicas. Una foto sacada con un celular lleva
+las coordenadas GPS del lugar donde se sacó, y muchos talleres pasan en la casa de
+alguien: publicar eso no es una optimización pendiente, es el dato personal de un
+tercero en el `events.json`, y una vez publicado no se despublica. Así que el panel lo
+saca ahora y la Function lo va a sacar otra vez después. Defensa en profundidad, que es
+el mismo patrón que DEC-7b ya había elegido para el tamaño.
+
+**Se saca sin recomprimir**, y esa parte sí es una decisión. La otra forma —dibujar en
+un `canvas` y volver a exportar— también borra el EXIF, y se descartó por tres motivos:
+pierde calidad sin que nadie lo pida; **hace que el tope de 3 MB de DEC-7b deje de
+significar lo que se decidió que significara** (una foto de 8 MB entraría recomprimida
+y el mensaje que empuja a recortar no aparecería nunca); y no se puede testear sin un
+navegador. Recorriendo los segmentos JPEG y los chunks PNG a mano, en cambio, la
+función es pura y el test verifica **sobre los bytes de salida** que el bloque `Exif`
+no está y que el dato comprimido salió idéntico.
+
+**Y la primera versión de esto tenía dos agujeros, los dos de la misma familia: una
+capa confiando en lo que le decía otra.** Los encontró el `auditor-privacidad` y vale
+dejarlos escritos porque el arreglo de fondo es el que hay que repetir.
+
+*Uno.* **El tipo del archivo se creía.** El `type` de un `File` lo deriva el navegador
+de la **extensión**, así que un WebP —o un HEIC— renombrado `.jpg` pasaba
+`validarArchivo`, hacía que `sinMetadatos` no reconociera la firma y devolviera el
+archivo **tal cual**, y engañaba también a `storage.rules`, que compara el
+`contentType` que manda ese mismo cliente. Tres capas mirando el mismo dato, y el
+navegador después lo renderiza igual porque para mostrar una imagen se mira la firma y
+no el nombre. Se verifica la firma antes de subir (`esDelTipoDeclarado`); no puede
+rechazar un archivo bueno, porque un JPEG empieza siempre con `FF D8`.
+
+*Dos.* **«Desde SOS hasta el final son los datos comprimidos» era falso.** Muchos
+celulares apendan cosas **después del EOI**: la imagen secundaria MPF de los Samsung es
+un JPEG entero **con su propio APP1 y su propio GPS**; también están el MP4 de una
+motion photo y el trailer `SEFH`. Copiar «hasta el final» se los llevaba puestos, o sea
+exactamente lo que el módulo existe para sacar. Ahora se corta en el EOI real
+(`finDelJpeg`), respetando las tres cosas que impiden buscar `FF D9` a lo bruto: el
+byte stuffing, los marcadores de reinicio y los segmentos que un JPEG progresivo
+intercala entre scans.
+
+*Y el arreglo que vale más que los dos:* **un barrido sobre la salida**. Antes de
+`uploadBytes` se buscan las tres marcas de metadatos en los bytes que se van a subir y,
+si aparece alguna, la subida se corta con un mensaje que dice qué hacer. Es el §5
+aplicado a una salida binaria: se afirma sobre el **resultado** en vez de sobre la
+lista de marcadores, así que un contenedor nuevo o un trailer que todavía no vimos cae
+igual, sin que nadie lo haya previsto. Falla cerrado a propósito — una foto que hoy no
+se puede subir es un problema de una tarde; una foto con las coordenadas de una casa
+particular en el `events.json` no se despublica.
+
+**Consecuencia: solo se pueden subir JPG y PNG.** WebP y AVIF se siguen mostrando —una
+externa la sirve su origen y no la tocamos, DEC-7d— pero no se suben, porque sus
+contenedores también llevan EXIF/XMP y no hay quien se lo saque todavía. Ningún celular
+saca fotos en esos formatos, así que la contra es chica y la alternativa era publicar
+coordenadas. Vuelven a entrar con la Function, que recomprime todo.
+
+### 4 · Qué NO trae esta tajada, y por qué se partió
+
+**No trae la Function de DEC-7d**: ni la recompresión, ni la miniatura, ni el segundo
+pase de EXIF. Queda en el BACKLOG con su diseño.
+
+Se partió porque las dos mitades juntas eran demasiado para un cambio: la Function
+arrastra una dependencia nativa de procesamiento de imágenes en `functions/`, el
+emulador de Functions atado al de Storage, el write-back al documento y la guarda
+anti-loop —escribir la miniatura en el mismo bucket re-dispara el trigger, que es la
+trampa 3 con otra cara—. Y el criterio del repo es preferir **subir imágenes sin
+miniatura a no subir nada**.
+
+Lo que sí se hizo, para que la mitad que falta no pueda entrar sin su guarda:
+`tests/clases-de-bug.test.ts` descubría los triggers del fuente buscando `onDocument*`
+y `onSchedule`, **y nada más**. Un `onObjectFinalized` no habría entrado solo, o sea
+que la promesa de la cabecera de ese archivo —«un trigger nuevo entra solo»— era falsa
+justamente para el trigger más peligroso que le falta al proyecto. Se agregaron las
+cuatro clases `onObject*` al descubridor. Hoy no cambian ningún resultado, y ese es el
+punto: es el único momento en que agregarlas es gratis.
+
+### 5 · Lo que se decidió en el camino
+
+**La casilla «las imágenes subidas al panel» del modal de duplicar dejó de mostrarse.**
+B-199 la había dejado apagada y con `aplica` escondiéndola, porque no podía existir una
+imagen propia. Desde que puede, `aplica` daría `true` y sería una casilla que **no hace
+nada**: tildarla no copia el objeto de Storage. Lo que se ofrecía como opción pasó a
+`SIEMPRE_AL_DUPLICAR`, que es donde viven los hechos no negociables del duplicado. Una
+casilla que miente es peor que una función que falta.
+
+**`allow read` de Storage incluye `list`, y eso era una fuga viva.** Es la **trampa 13**
+del §13, que no existía hasta este cambio. La primera versión de las reglas decía
+`allow read: if true` bajo `imagenes/`, con el razonamiento de arriba: son imágenes
+públicas, no hay nada que esconder. Lo que no se vio es que `read` son **dos**
+operaciones, y que la segunda desarma el punto 1 de esta misma decisión: con un
+`listAll(ref(storage, 'imagenes'))` **anónimo** se obtenía el bucket entero. Un path
+opaco no compra nada si te dan la lista de paths — y adentro están también las fotos de
+las actividades que todavía están en borrador. Ahora van separadas
+(`allow get: if true`, `allow list: if esAdmin()`), con su caso en el test de
+integración. **Se encontró ejecutándolo contra el emulador, no leyendo la regla**, que
+es la diferencia entre el test de integración y una revisión.
+
+**El schema acepta `http://` contra `localhost`.** El emulador de Storage sirve por
+`http://127.0.0.1:9199/…`, así que sin la excepción una imagen propia subida en
+desarrollo no se puede publicar ni para probar el flujo — que es exactamente lo que el
+§10 pide hacer contra emuladores. Lo que la excepción habilita en producción es una URL
+a `localhost`, o sea una imagen rota en la vista previa del propio panel; `data:` y
+`javascript:` siguen bloqueados por el mismo `if`, que era el motivo real de esa
+validación.
+
+**No se borra nada de Storage, ni al quitar la fila ni al fallar a mitad de camino.**
+Un objeto huérfano cuesta centavos y es invisible; un borrado automático no tiene
+papelera de la que sacarlo, y hoy no hay ningún conteo de referencias que diga si ese
+archivo lo usa otra actividad. La limpieza queda en el BACKLOG con su criterio
+(**B-221**).
+
+**Y esa decisión desactiva sola el sexto campo que B-206 le sumaba a D-124.** El ítem
+advertía que un borrador de `localStorage` vive 30 días y que `sinFlagsDePublicacion`
+no toca `imagenes`, así que podía volver con un `storagePath` a un objeto ya borrado.
+Con «no se borra nada», ese objeto **sigue estando**: el borrador recuperado apunta a
+una imagen que existe y se ve. No hizo falta agregar `imagenes` a la poda, y tampoco
+subir `VERSION_BORRADOR` —la forma del formulario no cambió, `imagenes` ya estaba— que
+es el criterio de D-127: se bumpea cuando hay una forma nueva que hace que lo viejo
+*parezca* bueno, no cuando cambia lo que se puede escribir adentro. **Si algún día
+B-221 empieza a borrar, esto se reabre**, y queda dicho en ese ítem.

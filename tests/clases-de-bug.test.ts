@@ -63,8 +63,24 @@ type Trigger = {
   cuerpo: string;
 };
 
+/**
+ * Las clases de trigger que este archivo sabe descubrir.
+ *
+ * **`onObject*` entró antes de que existiera el primer trigger de Storage** —
+ * B-167, segunda tajada, y es la **trampa 12** del §13. La cabecera de este
+ * archivo promete que "un trigger nuevo entra solo", y para un trigger de Storage
+ * eso era falso: el regex solo conocía los de Firestore y el schedule, así que la
+ * Function de DEC-7d (la que escribe la miniatura en el mismo bucket que la
+ * dispara, o sea la trampa 3 con otra cara) habría entrado sin que nada le
+ * pidiera la guarda.
+ *
+ * Agregarlas hoy no cambia ningún resultado —no hay ninguna todavía, y el test
+ * de abajo sigue encontrando los seis de siempre— y es exactamente por eso que
+ * se agregan ahora: es el único momento en que el cambio es gratis.
+ */
 const CLASES_DE_TRIGGER =
-  'onDocumentWritten|onDocumentUpdated|onDocumentCreated|onDocumentDeleted|onSchedule';
+  'onDocumentWritten|onDocumentUpdated|onDocumentCreated|onDocumentDeleted|onSchedule' +
+  '|onObjectFinalized|onObjectDeleted|onObjectArchived|onObjectMetadataUpdated';
 
 /**
  * Los triggers definidos en `functions/**`, con su cuerpo.
@@ -413,6 +429,18 @@ const SRC_FUNCTIONS = ARCHIVOS_FUNCTIONS.map((f) => fuente(f)).join('\n');
 const CAMPOS_DE_MAQUINA_SESION = listaLiteral(SRC_HISTORIAL, 'CAMPOS_DE_MAQUINA_SESION');
 
 /**
+ * Lo mismo dentro de cada imagen de la galería — B-206 #2.
+ *
+ * No hay un `CAMPOS_QUE_ESCRIBE_EL_SYNC` con el que cruzarla: hoy el único que
+ * escribe estos campos es la subida del panel, y el segundo escritor (la Function
+ * de DEC-7d) todavía no existe. Lo que sí se puede afirmar ya, y es lo que hace
+ * el chequeo de abajo, es que **el registro creció con el cambio**: si mañana se
+ * agrega una clave de máquina a `Imagen` y nadie la suma acá, cada write-back de
+ * la Function va a dejar una versión de historial y un rebuild del sitio.
+ */
+const CAMPOS_DE_MAQUINA_IMAGEN = listaLiteral(SRC_HISTORIAL, 'CAMPOS_DE_MAQUINA_IMAGEN');
+
+/**
  * Los campos que el sync escribe dentro de una sesión, leídos de la constante
  * que el propio módulo declara.
  *
@@ -485,6 +513,50 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
     // sin verificar nada. La lista vive en functions/historial.js (D-41).
     expect(CAMPOS_DE_MAQUINA_SESION.length).toBeGreaterThan(0);
     expect(CAMPOS_QUE_ESCRIBE_EL_SYNC.length).toBeGreaterThan(0);
+    // B-206 #2 — el registro creció con la galería. Si esto se rompe, o se
+    // renombró la constante o alguien la borró, y el chequeo de abajo estaría
+    // recorriendo una lista vacía.
+    expect(CAMPOS_DE_MAQUINA_IMAGEN.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * B-206 #2 — la clave de máquina de una imagen sobrevive el ida y vuelta por
+   * el formulario, y **ninguna clave de más entra al documento**.
+   *
+   * Son las dos mitades de "conservar explícitamente" en vez de spreadear la
+   * fila. La primera es lo que hace que la subida no se pierda al guardar; la
+   * segunda es lo que va a hacer que, cuando la Function de DEC-7d sea el otro
+   * escritor, el panel no le meta claves que ella no puso — y de paso cierra el
+   * camino del §5.2 por el que un borrador viejo de `localStorage` mete una
+   * clave inventada en el documento.
+   */
+  it('B-206: formADocumento enumera las claves de una imagen, no las spreadea', () => {
+    const conImagen = (imagen: Record<string, unknown>): Actividad =>
+      ({
+        ...actividadCon({}),
+        imagenes: [
+          { id: 'img_1', url: 'https://x.ar/a.jpg', epigrafe: '', origen: 'propia', portada: true, ...imagen },
+        ],
+      }) as unknown as Actividad;
+
+    // 1 · los campos de máquina dan la vuelta completa
+    const conMaquina = Object.fromEntries(
+      CAMPOS_DE_MAQUINA_IMAGEN.map((c) => [c, c === 'storagePath' ? 'imagenes/img_1.jpg' : 1200]),
+    );
+    const ida = formADocumento(documentoAForm(conImagen(conMaquina)), 'uid', false) as {
+      imagenes: Record<string, unknown>[];
+    };
+    for (const campo of CAMPOS_DE_MAQUINA_IMAGEN) {
+      expect(ida.imagenes[0]![campo], campo).toEqual(conMaquina[campo]);
+    }
+
+    // 2 · una clave que el modelo no tiene NO llega al documento
+    const conBasura = formADocumento(
+      documentoAForm(conImagen({ inventada: 'no-deberia-viajar' })),
+      'uid',
+      false,
+    ) as { imagenes: Record<string, unknown>[] };
+    expect(Object.keys(conBasura.imagenes[0]!)).not.toContain('inventada');
   });
 
   it('todo campo de sesión que escribe el sync está declarado como campo de máquina', () => {
