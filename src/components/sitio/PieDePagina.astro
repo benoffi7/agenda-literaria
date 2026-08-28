@@ -5,8 +5,15 @@
  * Los destinos salen todos de `enlaces.ts` (B-228): es el único lugar donde
  * viven, así que renombrar la cuenta de Instagram o rotar el calendario se hace
  * una vez y no tres.
+ *
+ * **«Sugerir una actividad» manda a `/contacto`, no a un `mailto:` — B-233.**
+ * Mandaba al mail directo cuando `/contacto` no existía, y estaba bien entonces.
+ * Ahora esa página dice qué conviene contar —quién la da, cuándo y dónde—, y un
+ * mail que se saltea esa lista llega sin fecha o sin lugar: un ida y vuelta que
+ * la página evita. El `mailto:` sigue existiendo, pero de este lado del texto que
+ * lo prepara.
  */
-import { urlDeContacto, urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
+import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
 ---
 
 <footer class="mt-16 border-t border-borde">
@@ -44,7 +51,7 @@ import { urlDeContacto, urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
       <li>
         <a
           class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
-          href={urlDeContacto('sugerencia')}>Sugerir una actividad</a
+          href="/contacto">Sugerir una actividad</a
         >
       </li>
     </ul>
