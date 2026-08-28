@@ -24,15 +24,8 @@ import {
   teniaFlagsDePublicacion,
 } from '@/lib/formulario/autoguardado';
 import { resumirFaltantes, type IdSeccion } from '@/lib/formulario/camposFaltantes';
-import { cambiarModalidad, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
-import {
-  esCharla,
-  esClub,
-  esTaller,
-  necesitaOnline,
-  necesitaSede,
-  nombrePersona,
-} from '@/lib/formulario/condicionales';
+import { cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
+import { esCharla, esClub, esTaller, nombrePersona } from '@/lib/formulario/condicionales';
 import { formVacio } from '@/lib/formulario/estadoInicial';
 import {
   labelsPendientesDe,
@@ -125,8 +118,6 @@ export function ActividadFormulario({
   const conTitulo = (titulo: string) =>
     setForm((f) => cambiarTitulo(f, titulo, slugBloqueado));
   const conTipo = (tipo: string) => setForm((f) => cambiarTipo(f, tipo));
-  const conModalidad = (modalidad: ActividadForm['modalidad']) =>
-    setForm((f) => cambiarModalidad(f, modalidad));
 
   /**
    * Lo que el schema rechazó, agrupado por sección y con el nombre de cada campo
@@ -318,10 +309,7 @@ export function ActividadFormulario({
         set={set}
         errorDe={errorDe}
         uid={uid}
-        conModalidad={conModalidad}
         anotarLabel={anotarLabel}
-        necesitaSede={necesitaSede(form)}
-        necesitaOnline={necesitaOnline(form)}
       />
 
       <SeccionQuien

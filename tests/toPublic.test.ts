@@ -30,6 +30,20 @@ const actividad = (over: Partial<Actividad> = {}): Actividad => ({
       calendarEventId: 'evt_secreto',
     },
   ],
+  // B-224 — una fila virtual con su bloque online, y los tres derivados que
+  // escribe `formADocumento` a partir de ella.
+  modalidades: [
+    {
+      id: 'mod_1',
+      modalidad: 'virtual',
+      // Las dos fechas cargadas: son las que **no** salen a ninguna salida
+      // pública (B-224). El test que lo afirma vive en `tests/modalidades.test.ts`.
+      inicio: ts('2026-03-03T22:00:00Z'),
+      fin: ts('2026-06-30T22:00:00Z'),
+      sede: null,
+      online: { plataforma: 'zoom', url: 'https://zoom.us/j/999', urlPublica: false },
+    },
+  ],
   modalidad: 'virtual',
   sede: null,
   online: { plataforma: 'zoom', url: 'https://zoom.us/j/999', urlPublica: false },

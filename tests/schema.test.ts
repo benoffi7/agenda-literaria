@@ -23,16 +23,24 @@ const valido = () => ({
   tallerista: null,
   esCiclo: false,
   sesiones: [{ ...sesionVacia(), inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00' }],
-  modalidad: 'presencial' as const,
-  sede: {
-    nombre: 'Casa Brandon',
-    direccion: 'Drago 236',
-    barrio: 'villa-crespo',
-    ciudad: 'CABA',
-    indicaciones: '',
-    geo: null,
-  },
-  online: null,
+  // B-224 — una forma de cursar presencial, con su sede adentro.
+  modalidades: [
+    {
+      id: 'mod_1',
+      modalidad: 'presencial' as const,
+      inicio: '',
+      fin: '',
+      sede: {
+        nombre: 'Casa Brandon',
+        direccion: 'Drago 236',
+        barrio: 'villa-crespo',
+        ciudad: 'CABA',
+        indicaciones: '',
+        geo: null,
+      },
+      online: null,
+    },
+  ],
   inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: '' },
   arancel: { tipo: 'a-la-gorra', notas: '' },
   material: { tiene: false, items: [] as ItemMaterial[] },
@@ -73,7 +81,16 @@ describe('schema — el borrador se guarda a medias (B-183)', () => {
     organizador: { nombre: '', instagram: '', web: '' },
     sesiones: [],
     arancel: { tipo: '', notas: '' },
-    sede: { nombre: '', direccion: '', barrio: '', ciudad: '', indicaciones: '', geo: null },
+    modalidades: [
+      {
+        id: 'mod_1',
+        modalidad: 'presencial' as const,
+        inicio: '',
+        fin: '',
+        sede: { nombre: '', direccion: '', barrio: '', ciudad: '', indicaciones: '', geo: null },
+        online: null,
+      },
+    ],
   });
 
   it('guarda un borrador con solo título y slug', () => {
@@ -118,7 +135,7 @@ describe('schema — el borrador se guarda a medias (B-183)', () => {
     expect(e).toContain('organizador.nombre');
     expect(e).toContain('arancel.tipo');
     expect(e).toContain('sesiones');
-    expect(e).toContain('sede.nombre');
+    expect(e).toContain('modalidades.0.sede.nombre');
   });
 });
 
@@ -152,32 +169,82 @@ describe('schema — lo que bloquea en los dos niveles', () => {
   });
 });
 
-describe('schema — condicionales de §11 (al publicar)', () => {
+describe('schema — condicionales de §11, ahora por fila (al publicar)', () => {
+  /** La misma actividad publicada, con estas formas de cursar. */
+  const conFilas = (...filas: unknown[]) => ({ ...publicado(), modalidades: filas });
+  const fila = (over: Record<string, unknown>) => ({
+    id: 'mod_x',
+    modalidad: 'presencial',
+    inicio: '',
+    fin: '',
+    sede: null,
+    online: null,
+    ...over,
+  });
+
   it('exige sede en presencial', () => {
     const v = publicado();
-    v.sede = { ...v.sede, nombre: '', direccion: '' };
-    expect(errores(v)).toContain('sede.nombre');
-    expect(errores(v)).toContain('sede.direccion');
+    v.modalidades = [
+      { ...v.modalidades[0]!, sede: { ...v.modalidades[0]!.sede!, nombre: '', direccion: '' } },
+    ];
+    expect(errores(v)).toContain('modalidades.0.sede.nombre');
+    expect(errores(v)).toContain('modalidades.0.sede.direccion');
   });
 
   it('exige plataforma en virtual', () => {
-    const v = { ...publicado(), modalidad: 'virtual' as const, sede: null, online: null };
-    expect(errores(v)).toContain('online.plataforma');
+    expect(errores(conFilas(fila({ modalidad: 'virtual' })))).toContain(
+      'modalidades.0.online.plataforma',
+    );
   });
 
   it('exige sede Y plataforma en híbrido', () => {
-    const v = { ...publicado(), modalidad: 'hibrido' as const, online: null };
-    expect(errores(v)).toContain('online.plataforma');
+    const e = errores(conFilas(fila({ modalidad: 'hibrido' })));
+    expect(e).toContain('modalidades.0.sede.nombre');
+    expect(e).toContain('modalidades.0.online.plataforma');
   });
 
   it('no pide sede en virtual', () => {
-    const v = {
-      ...publicado(),
-      modalidad: 'virtual' as const,
-      sede: null,
-      online: { plataforma: 'zoom', url: '', urlPublica: false },
-    };
+    const v = conFilas(
+      fila({ modalidad: 'virtual', online: { plataforma: 'zoom', url: '', urlPublica: false } }),
+    );
     expect(actividadFormSchema.safeParse(v).success).toBe(true);
+  });
+
+  it('B-224 — el error señala la fila incompleta y no la primera', () => {
+    // La instancia que la lista hace posible: la primera está bien y la segunda
+    // no. Sin el índice en el `path`, el mensaje mandaría a mirar el bloque
+    // equivocado.
+    const v = publicado();
+    const e = errores({ ...v, modalidades: [...v.modalidades, fila({ modalidad: 'virtual' })] });
+    expect(e).toContain('modalidades.1.online.plataforma');
+    expect(e).not.toContain('modalidades.0.online.plataforma');
+  });
+
+  it('B-224 — sin ninguna forma de cursar no se puede publicar', () => {
+    expect(errores({ ...publicado(), modalidades: [] })).toContain('modalidades');
+    // Pero un borrador sin filas sí se guarda: es completitud, no un documento
+    // roto (B-183).
+    expect(errores({ ...valido(), modalidades: [] })).toEqual([]);
+  });
+
+  it('B-224 — una ventana al revés se rechaza en los dos niveles (trampa 1)', () => {
+    const v = valido();
+    v.modalidades = [
+      { ...v.modalidades[0]!, inicio: '2026-06-30T21:00', fin: '2026-03-03T19:00' },
+    ];
+    expect(errores(v)).toContain('modalidades.0.fin');
+  });
+
+  it('B-224 — con una sola de las dos fechas no hay nada que comparar', () => {
+    const v = valido();
+    v.modalidades = [{ ...v.modalidades[0]!, inicio: '2026-03-03T19:00' }];
+    expect(errores(v)).toEqual([]);
+  });
+
+  it('B-224 — rechaza ids que no vengan de nuevaModalidadId (trampa 2)', () => {
+    const v = valido();
+    v.modalidades = [{ ...v.modalidades[0]!, id: '0' }];
+    expect(errores(v)).toContain('modalidades.0.id');
   });
 });
 
@@ -313,7 +380,10 @@ describe('schema — la galería (B-167)', () => {
 describe('schema — coordenadas de la sede (§3.1)', () => {
   const conGeo = (geo: { lat: number; lng: number } | null) => {
     const v = valido();
-    return { ...v, sede: { ...v.sede, geo } };
+    return {
+      ...v,
+      modalidades: [{ ...v.modalidades[0]!, sede: { ...v.modalidades[0]!.sede!, geo } }],
+    };
   };
 
   it('acepta la sede sin coordenadas: el campo es opcional', () => {
@@ -325,11 +395,11 @@ describe('schema — coordenadas de la sede (§3.1)', () => {
   });
 
   it('rechaza una latitud que no existe, también en borrador', () => {
-    expect(errores(conGeo({ lat: 200, lng: -58.4392 }))).toContain('sede.geo.lat');
+    expect(errores(conGeo({ lat: 200, lng: -58.4392 }))).toContain('modalidades.0.sede.geo.lat');
   });
 
   it('rechaza una longitud que no existe, también en borrador', () => {
-    expect(errores(conGeo({ lat: -34.5989, lng: -400 }))).toContain('sede.geo.lng');
+    expect(errores(conGeo({ lat: -34.5989, lng: -400 }))).toContain('modalidades.0.sede.geo.lng');
   });
 });
 

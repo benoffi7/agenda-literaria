@@ -10,11 +10,17 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { formVacio, onlineVacio, primeraOpcionBase, sedeVacia } from '@/lib/formulario/estadoInicial';
+import {
+  formVacio,
+  modalidadVacia,
+  onlineVacio,
+  primeraOpcionBase,
+  sedeVacia,
+} from '@/lib/formulario/estadoInicial';
 import opcionesBase from '@/lib/opciones-base.json';
 import {
   CICLOS_POR_TIPO,
-  cambiarModalidad,
+  conModalidadDeFila,
   cambiarTipo,
   cambiarTitulo,
 } from '@/lib/formulario/cascadas';
@@ -44,11 +50,17 @@ describe('formVacio — el documento por defecto del §3.1', () => {
   it('arranca en borrador, presencial, con un encuentro y sin online', () => {
     const f = formVacio();
     expect(f.estado).toBe('borrador');
-    expect(f.modalidad).toBe('presencial');
     expect(f.sesiones).toHaveLength(1);
     expect(f.sesiones[0]!.id).toMatch(/^ses_/); // trampa 2: id de cliente, no índice
-    expect(f.sede).not.toBeNull();
-    expect(f.online).toBeNull();
+    // B-224 — una sola forma de cursar, presencial, con su sede y sin online.
+    expect(f.modalidades).toHaveLength(1);
+    expect(f.modalidades[0]!.id).toMatch(/^mod_/); // trampa 2, otra vez
+    expect(f.modalidades[0]!.modalidad).toBe('presencial');
+    expect(f.modalidades[0]!.sede).not.toBeNull();
+    expect(f.modalidades[0]!.online).toBeNull();
+    // Las dos fechas nacen vacías: son opcionales y no se inventa un «hoy».
+    expect(f.modalidades[0]!.inicio).toBe('');
+    expect(f.modalidades[0]!.fin).toBe('');
     expect(f.tallerista).toBeNull();
   });
 
@@ -235,32 +247,39 @@ describe('cambiarTipo — §2.2 y §11', () => {
   });
 });
 
-describe('cambiarModalidad — §11', () => {
+describe('conModalidadDeFila — §11, ahora por fila (B-224)', () => {
+  const fila = () => modalidadVacia('presencial');
+
   it('virtual borra la sede y crea el bloque online', () => {
-    const f = cambiarModalidad(formVacio(), 'virtual');
+    const f = conModalidadDeFila(fila(), 'virtual');
     expect(f.sede).toBeNull();
     expect(f.online).toEqual(onlineVacio());
   });
 
   it('presencial borra el online y crea la sede', () => {
-    const f = cambiarModalidad(cambiarModalidad(formVacio(), 'virtual'), 'presencial');
+    const f = conModalidadDeFila(conModalidadDeFila(fila(), 'virtual'), 'presencial');
     expect(f.online).toBeNull();
     expect(f.sede).toEqual(sedeVacia());
   });
 
   it('híbrido tiene las dos cosas', () => {
-    const f = cambiarModalidad(formVacio(), 'hibrido');
+    const f = conModalidadDeFila(fila(), 'hibrido');
     expect(f.sede).not.toBeNull();
     expect(f.online).not.toBeNull();
   });
 
   it('el link de la reunión nace sin publicar (§5.1, trampa 5)', () => {
-    expect(cambiarModalidad(formVacio(), 'virtual').online!.urlPublica).toBe(false);
+    expect(conModalidadDeFila(fila(), 'virtual').online!.urlPublica).toBe(false);
   });
 
   it('conserva la sede ya cargada al pasar a híbrido', () => {
-    const con = { ...formVacio(), sede: { ...sedeVacia(), nombre: 'Casa Brandon' } };
-    expect(cambiarModalidad(con, 'hibrido').sede!.nombre).toBe('Casa Brandon');
+    const con = { ...fila(), sede: { ...sedeVacia(), nombre: 'Casa Brandon' } };
+    expect(conModalidadDeFila(con, 'hibrido').sede!.nombre).toBe('Casa Brandon');
+  });
+
+  it('no toca el id de la fila: cambiar de modalidad no la reemplaza (trampa 2)', () => {
+    const f = fila();
+    expect(conModalidadDeFila(f, 'virtual').id).toBe(f.id);
   });
 });
 
@@ -300,20 +319,29 @@ describe('condicionales del §11', () => {
   });
 
   it('híbrido pide las dos cosas; virtual y presencial, una cada uno', () => {
-    expect(necesitaSede(con({ modalidad: 'hibrido' }))).toBe(true);
-    expect(necesitaOnline(con({ modalidad: 'hibrido' }))).toBe(true);
-    expect(necesitaSede(con({ modalidad: 'virtual' }))).toBe(false);
-    expect(necesitaOnline(con({ modalidad: 'presencial' }))).toBe(false);
+    const conFila = (m: 'presencial' | 'virtual' | 'hibrido') =>
+      con({ modalidades: [modalidadVacia(m)] });
+    expect(necesitaSede(conFila('hibrido'))).toBe(true);
+    expect(necesitaOnline(conFila('hibrido'))).toBe(true);
+    expect(necesitaSede(conFila('virtual'))).toBe(false);
+    expect(necesitaOnline(conFila('presencial'))).toBe(false);
+  });
+
+  it('B-224 — con dos filas, la actividad pide lo de las dos', () => {
+    const dos = con({ modalidades: [modalidadVacia('presencial'), modalidadVacia('virtual')] });
+    expect(necesitaSede(dos)).toBe(true);
+    expect(necesitaOnline(dos)).toBe(true);
   });
 
   it('lo que el formulario muestra es lo mismo que el schema exige', () => {
     // Si se separan, el formulario esconde un campo que el schema pide y el
-    // guardado falla por algo que no está en pantalla. `cambiarModalidad` crea
+    // guardado falla por algo que no está en pantalla. `conModalidadDeFila` crea
     // el bloque exactamente cuando el condicional dice que hace falta.
     for (const modalidad of ['presencial', 'virtual', 'hibrido'] as const) {
-      const f = cambiarModalidad(formVacio(), modalidad);
-      expect(f.sede !== null).toBe(necesitaSede(f));
-      expect(f.online !== null).toBe(necesitaOnline(f));
+      const fila = conModalidadDeFila(modalidadVacia('presencial'), modalidad);
+      const f = con({ modalidades: [fila] });
+      expect(fila.sede !== null).toBe(necesitaSede(f));
+      expect(fila.online !== null).toBe(necesitaOnline(f));
     }
   });
 });

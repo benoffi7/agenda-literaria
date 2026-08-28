@@ -739,8 +739,28 @@ export const CAPITULOS: CapituloAyuda[] = [
     id: 'donde',
     titulo: 'Dónde',
     seccionFormulario: 'Dónde',
-    paraQue: 'Presencial, virtual o las dos. Según lo que elijas aparece la dirección, la plataforma, o ambas.',
+    paraQue:
+      'Una fila por forma de cursar. Cada una puede ser presencial, virtual o las dos, y trae su ' +
+      'propia dirección o plataforma.',
     puntos: [
+      {
+        texto:
+          'Podés agregar más de una forma de cursar, igual que agregás encuentros. Sirve cuando la ' +
+          'misma actividad se da presencial en un lugar y virtual por otro lado: cada fila lleva su ' +
+          'dirección o su plataforma, así nadie tiene que adivinar cuál es cuál.',
+      },
+      {
+        texto:
+          'El «desde» y el «hasta» de cada forma de cursar son opcionales y hoy no se publican en ' +
+          'ningún lado: quedan guardados acá para vos. Todavía está por decidirse qué dicen frente ' +
+          'a las fechas de los encuentros, y hasta entonces no salen ni al sitio ni al calendario.',
+      },
+      {
+        texto:
+          'Si cambiás una fila de presencial a virtual, la dirección que habías cargado se queda en ' +
+          'pantalla pero no se guarda ni se publica: se guarda solo el lugar que corresponde a ' +
+          'lo que elegiste. Así podés volver atrás sin perder lo escrito.',
+      },
       {
         texto:
           'La dirección viaja completa al calendario —sede, calle, barrio, ciudad— para que Google ' +
@@ -780,7 +800,14 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'En «híbrido» se piden las dos cosas: la gente que va y la que se conecta se anotan igual.',
+          'En «híbrido» se piden las dos cosas en esa misma fila: la gente que va y la que se ' +
+          'conecta se anotan igual.',
+      },
+      {
+        texto:
+          'El evento del calendario nombra todas las formas de cursar, una por una y con su lugar. ' +
+          'La dirección que dibuja el mapa es la de la primera fila que tenga sede, porque el mapa ' +
+          'admite una sola: si querés que sea otra, movela arriba.',
       },
     ],
   },

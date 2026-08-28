@@ -1344,6 +1344,76 @@ contra el árbol.
 
 ## P2 — mejoras reales
 
+### B-224 · Una actividad tiene N modalidades, cada una con su lugar — ✅ hecho (2026-08-27), con una decisión abierta
+
+Pedido del dueño (2026-08-27), textual:
+
+> Una actividad tiene N modalidades (mismo sistema que encuentro, misma UI). Cada
+> modalidad puede ser presencial, virtual o híbrida, como está ahora. Solo hay que
+> sumarle una fecha y hora de inicio y una fecha y hora de finalización. Ambas son
+> opcionales.
+
+Hasta acá `modalidad` era **un escalar** a nivel actividad, con **una** `sede` y
+**un** bloque `online` al lado. Ahora es una **lista de filas** con el patrón de
+`sesiones` (§11): filas dinámicas, ids generados en el cliente (`mod_<uuid>`,
+**nunca por índice** — trampa 2), agregar / duplicar / borrar, y las fechas como
+`Timestamp` en Firestore y `datetime-local` en el formulario (trampa 1, con
+`aDatetimeLocal` / `deDatetimeLocal` de `src/lib/sesiones.ts`, reusadas y no
+reescritas). El razonamiento completo está en **D-130**.
+
+#### 🔴 Lo que falta decidir, y es del dueño
+
+**Qué significan las fechas de una modalidad frente a `sesiones[].inicio/fin`.**
+Él mismo lo dejó abierto: «sobre las fechas, te lo consulto pero hacé el resto».
+El campo está implementado —los dos `datetime-local` opcionales, guardados como
+`Timestamp`— y mientras tanto se eligió lo conservador: **no salen a ninguna de
+las cinco salidas públicas**. Ni al `events.json`, ni a la descripción del evento
+de Calendar, ni al texto para redes, ni al `searchText`, ni a la analítica.
+
+Un campo que no sale no puede decir algo equivocado en el calendario de todos los
+suscriptos, y agregarlo después es una línea; sacarlo de algo ya publicado, no.
+La celda está fijada por `tests/modalidades.test.ts`, que busca las fechas **por
+su valor** en las cinco salidas. Si se decide publicarlas, hay una celda más que
+resolver: el **índice del listado** (`eventsJson.ts`), que hoy no lleva ni
+siquiera las filas — solo sus valores, para el filtro.
+
+Las tres formas posibles, para cuando se decida:
+
+| Opción | Qué implica |
+|---|---|
+| **Ventana descriptiva** («la cursada presencial va de marzo a junio») | Sale como texto en la descripción del evento y en el detalle del sitio. No crea eventos, no entra al orden por «próximo encuentro» ni al filtro «con algo por venir». Es lo más barato: una línea en `construirDescripcion` y otra en `toPublic`. |
+| **Compite con los encuentros** | Habría dos ejes de fechas y `planificar` tendría que decidir cuál publica: es el §2.2 al revés y duplica eventos. |
+| **Solo interna** (lo de hoy) | Se ve en el panel y en ningún lado más. |
+
+#### Las otras tres decisiones, resueltas
+
+| # | Pregunta | Resolución |
+|---|---|---|
+| 1 | ¿`sede` y `online` se mueven adentro de cada fila? | **Sí, decisión del dueño**: «el formulario de modalidad se mantiene tal cual + doble fecha. Y sobre eso es tener N modalidades así como N encuentros. Misma interfaz y funcionalidades». Cada fila es una forma de cursar con su lugar. Quedan `modalidad`, `sede` y `online` a nivel actividad como campos **derivados** que escribe `formADocumento` — ver la fila 3. |
+| 2 | ¿Migración de los documentos que ya existen? | **No hace falta**, decisión del dueño: «no te preocupes por hoy, no hay nada en producción». No hay backfill, ni script, ni lectura de compatibilidad: solo un `?? []` donde el campo puede faltar. **Y esa fue la parte que costó decidir.** Hubo una `modalidadesDe` que sintetizaba una fila con el `modalidad`/`sede`/`online` de primer nivel, con id determinístico, copiando el patrón de `imagenesDe` (D-125): se escribió porque el `auditor-trampas` mostró que sin ella abrir y guardar un documento así le borraba la sede en silencio. Se sacó igual, y el argumento es el que vale: **existía para leer documentos que no existen**. Dos auditores le encontraron algo en una sola sesión —privacidad: es una rama de proyección pública que ningún centinela recorre; trampas: fabrica una fila fantasma cuando la lista está vacía a propósito— y el arreglo más barato para una rama sin barrido es no tener la rama. Una celda que no existe no hay que decidirla en cada una de las cinco salidas. |
+| 3 | ¿Cuál modalidad manda donde solo se puede decir una? | **La unión** (`modalidadResultante`): dos filas que difieren dan `hibrido`. No «la primera», que dependería del orden del array —la trampa 2 en otra forma—. Y el **filtro del panel busca por cualquiera de las filas**, no solo por la resultante: una actividad presencial-y-virtual aparece bajo los tres chips, porque las tres cosas son ciertas de ella. `sede` y `online` sí son «la primera fila que tenga una», porque una dirección hay que elegirla; si algún día importa distinguirla, la respuesta es un flag explícito como el `portada` de D-125. |
+
+#### Lo que este ítem NO hizo, y por qué
+
+- **No crea eventos de Calendar por modalidad.** El §2.2 es explícito: un evento
+  por sesión.
+- **No cambia el texto para redes.** `ActividadParaRedes` es un `Pick` declarado a
+  propósito, así que un campo nuevo del §3.1 no entra solo: `bloqueDonde` sigue
+  leyendo el escalar derivado y un posteo dice hoy exactamente lo que decía ayer.
+  Nombrar las N formas de cursar en la caption es una decisión de copy.
+- **No unifica `ETIQUETA_MODALIDAD`** (eso es B-175, con su `it.fails`).
+- **No migra `SesionesEditor` a otro comportamiento**: solo se le sacó el chasis
+  compartido (`campos/FilasEditor.tsx`), que ahora usan los dos editores.
+
+#### Se cruza con B-181 / DEC-8, y no lo reemplaza
+
+DEC-8 resolvió un eje nuevo `opciones: [{ id, etiqueta, sesiones }]` para las
+**alternativas excluyentes** de un ciclo («cuatro horarios, vas a uno»). Esto es
+otro eje: **tramos** de la misma cursada, que conviven. Una fila de modalidad no
+dice «elegí una», dice «de marzo a junio es presencial, en la librería». Si algún
+día se implementa DEC-8, la pregunta que aparece es si una opción lleva su propia
+modalidad — y ahí sí las dos listas se multiplican. Queda anotado, no resuelto.
+
 ### B-219 · Dos worktrees corriendo tests comparten el emulador y se pisan · P2
 
 Apareció el 2026-08-27 cerrando B-217: una corrida de `npm test` dio **1 test en
@@ -1394,6 +1464,16 @@ Opciones, de menos a más invasiva:
 No bloquea nada hoy: con un solo worktree trabajando no pasa. Se anota porque el
 `docs/14-plan-de-saneamiento.md` reparte el backlog **entre worktrees en
 paralelo**, que es justo la condición que lo dispara.
+
+**Tercera observación independiente, desde el worktree de B-224** (2026-08-27), con
+un dato que las otras dos no tienen: **se reprodujo con el árbol limpio**. El test
+`un anónimo lee lo publicado` falló en la corrida completa con el cambio adentro, y
+al hacer `git stash push -u` y correr la suite sobre `main` pelado **volvió a
+fallar** una de dos veces; aislado, el archivo pasa siempre.
+
+Vale anotar el método, no el hallazgo: ante un rojo intermitente el reflejo es
+sospechar del cambio propio, y `git stash` + dos corridas lo descarta en dos
+minutos. Es lo que evitó que este frente saliera a buscar un bug que no había.
 
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública

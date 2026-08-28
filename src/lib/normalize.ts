@@ -12,6 +12,19 @@ export const normalize = (s: string): string =>
 interface FuenteSearchText {
   titulo?: string;
   descripcion?: string;
+  /**
+   * B-224 — las formas de cursar. Entran por sus **sedes**: con dos filas en dos
+   * barrios, indexar solo la derivada dejaría el segundo barrio sin poder
+   * buscarse, y buscar por barrio es una de las formas en que alguien llega a una
+   * actividad.
+   */
+  modalidades?: readonly { sede?: { nombre?: string; barrio?: string } | null }[];
+  /**
+   * La sede **derivada** (la de la primera fila que tenga una). Se sigue leyendo
+   * además de `modalidades` para los llamadores que solo tienen ese escalar —
+   * `historial.ts` restaurando otro campo, y los tests—. Los repetidos no
+   * molestan: esto es un índice de substrings, no una lista.
+   */
   sede?: { nombre?: string; barrio?: string } | null;
   organizador?: { nombre?: string } | null;
   tallerista?: { nombre?: string } | null;
@@ -40,6 +53,7 @@ interface FuenteSearchText {
 export const CAMPOS_DE_SEARCH_TEXT = [
   'titulo',
   'descripcion',
+  'modalidades',
   'sede',
   'organizador',
   'tallerista',
@@ -52,6 +66,15 @@ export const buildSearchText = (a: FuenteSearchText): string =>
     [
       a.titulo ?? '',
       a.descripcion ?? '',
+      // Las sedes de todas las formas de cursar, sin repetir: la derivada es una
+      // de ellas y saldría dos veces.
+      ...[
+        ...new Set(
+          (a.modalidades ?? [])
+            .flatMap((m) => [m.sede?.nombre ?? '', m.sede?.barrio ?? ''])
+            .filter(Boolean),
+        ),
+      ],
       a.sede?.nombre ?? '',
       a.sede?.barrio ?? '',
       a.organizador?.nombre ?? '',

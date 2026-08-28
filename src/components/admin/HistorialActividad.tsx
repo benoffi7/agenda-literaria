@@ -46,6 +46,10 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   libro: 'Libro presentado',
   esCiclo: 'Es un ciclo',
   sesiones: 'Encuentros',
+  // B-224 — la lista es lo que se edita; `modalidad`, `sede` y `online` son
+  // derivados y cambian con ella, así que nombrarlos aparte diría cuatro veces
+  // el mismo cambio.
+  modalidades: 'Modalidades',
   modalidad: 'Modalidad',
   sede: 'Sede',
   online: 'Datos de la reunión',

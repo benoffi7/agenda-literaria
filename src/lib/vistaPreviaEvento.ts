@@ -91,7 +91,13 @@ export type ResultadoVistaPrevia =
 interface DocumentoParaPrevia {
   estado: Estado;
   sesiones: Sesion[];
-  online: Online | null;
+  /**
+   * B-224 — se miran **todas** las formas de cursar y no el `online` derivado:
+   * con dos filas virtuales, el derivado es el de la primera, así que un link
+   * público en la segunda no se avisaría — que es justo el aviso que existe para
+   * la trampa 5.
+   */
+  modalidades: { online: Online | null }[];
 }
 
 /**
@@ -133,7 +139,7 @@ export const vistaPreviaEvento = (
   }
 
   const evento = construirEvento(documento, sesion, labels);
-  const online = documento.online;
+  const onlines = documento.modalidades.map((m) => m.online).filter((o): o is Online => Boolean(o));
 
   return {
     ok: true,
@@ -142,8 +148,8 @@ export const vistaPreviaEvento = (
       ubicacion: evento.location ?? null,
       descripcion: evento.description,
       saleAlCalendario: debeExistir(documento, sesion),
-      linkPublicado: Boolean(online?.url && online.urlPublica),
-      linkReservado: Boolean(online?.url && !online.urlPublica),
+      linkPublicado: onlines.some((o) => o.url && o.urlPublica),
+      linkReservado: onlines.some((o) => o.url && !o.urlPublica),
     },
   };
 };

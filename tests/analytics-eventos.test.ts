@@ -195,8 +195,10 @@ describe('normalizarCampo — rutas derivadas del schema', () => {
     for (const esperado of [
       'titulo',
       'arancel.tipo',
-      'sede.direccion',
-      'online.plataforma',
+      // B-224 — la sede y la plataforma viven adentro de la fila, así que sus
+      // rutas van colapsadas como las de los encuentros.
+      'modalidades.N.sede.direccion',
+      'modalidades.N.online.plataforma',
       'inscripcion.destino',
       'sesiones',
       'sesiones.N.fin',
@@ -277,25 +279,75 @@ describe('avanceDelFormulario — dónde quedó una carga abandonada', () => {
 
   it('una actividad virtual no reclama sede', () => {
     const virtual = formularioLleno({
-      modalidad: 'virtual',
-      sede: null,
-      online: { plataforma: 'zoom', url: '', urlPublica: false },
+      modalidades: [
+        {
+          id: 'mod_v',
+          modalidad: 'virtual',
+          inicio: '',
+          fin: '',
+          sede: null,
+          online: { plataforma: 'zoom', url: '', urlPublica: false },
+        },
+      ],
     });
     expect(avanceDelFormulario(virtual).faltantes).not.toContain('donde');
   });
 
   it('una actividad presencial sin dirección se traba en "donde"', () => {
     const sinDireccion = formularioLleno({
-      sede: {
-        nombre: 'Casa Brandon',
-        direccion: '',
-        barrio: '',
-        ciudad: 'CABA',
-        indicaciones: '',
-        geo: null,
-      },
+      modalidades: [
+        {
+          id: 'mod_p',
+          modalidad: 'presencial',
+          inicio: '',
+          fin: '',
+          sede: {
+            nombre: 'Casa Brandon',
+            direccion: '',
+            barrio: '',
+            ciudad: 'CABA',
+            indicaciones: '',
+            geo: null,
+          },
+          online: null,
+        },
+      ],
     });
     expect(avanceDelFormulario(sinDireccion).faltantes).toContain('donde');
+  });
+
+  it('B-224 — la segunda forma de cursar incompleta también traba «donde»', () => {
+    // La instancia que el cambio a lista hace posible: la primera fila está
+    // completa y la segunda no. Con `every` esto se ve; con «mirá la sede de la
+    // actividad» quedaría verde y la carga se publicaría a medias.
+    const media = formularioLleno({
+      modalidades: [
+        {
+          id: 'mod_1',
+          modalidad: 'presencial',
+          inicio: '',
+          fin: '',
+          sede: {
+            nombre: 'Casa Brandon',
+            direccion: 'Drago 236',
+            barrio: '',
+            ciudad: 'CABA',
+            indicaciones: '',
+            geo: null,
+          },
+          online: null,
+        },
+        {
+          id: 'mod_2',
+          modalidad: 'virtual',
+          inicio: '',
+          fin: '',
+          sede: null,
+          online: { plataforma: '', url: '', urlPublica: false },
+        },
+      ],
+    });
+    expect(avanceDelFormulario(media).faltantes).toContain('donde');
   });
 
   it('inscripción sin destino se traba en "inscripcion"', () => {
@@ -327,7 +379,10 @@ describe('formaDelFormulario — contadores, no contenido', () => {
   it('describe la actividad guardada con números y booleanos', () => {
     const forma = formaDelFormulario(formularioLleno());
     expect(forma.encuentros).toBe(2);
-    expect(forma.modalidad).toBe('presencial');
+    // B-224 — la resultante de la única fila del fixture, que es híbrida, más el
+    // contador de formas de cursar.
+    expect(forma.modalidad).toBe('hibrido');
+    expect(forma.modalidades).toBe(1);
     expect(forma.tags).toBe(1);
     expect(forma.requiere_inscripcion).toBe(true);
     expect(forma.tiene_tallerista).toBe(true);
@@ -337,8 +392,16 @@ describe('formaDelFormulario — contadores, no contenido', () => {
     // Mismo criterio que `toPublic`: sin URL cargada no se inventa el campo.
     const forma = formaDelFormulario(
       formularioLleno({
-        modalidad: 'virtual',
-        online: { plataforma: 'zoom', url: '', urlPublica: true },
+        modalidades: [
+          {
+            id: 'mod_v',
+            modalidad: 'virtual',
+            inicio: '',
+            fin: '',
+            sede: null,
+            online: { plataforma: 'zoom', url: '', urlPublica: true },
+          },
+        ],
       }),
     );
     expect(forma.url_publica).toBe(false);

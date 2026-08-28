@@ -1,4 +1,5 @@
 import { portadaDe } from '@/lib/imagenes';
+import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { opcionesPublicas, type ActividadPublica, type OpcionPublica } from '@/lib/toPublic';
 import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
 
@@ -13,7 +14,9 @@ import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
  *
  * Lo que el índice **no** lleva, y sí está en `toPublic`: `descripcion`,
  * `sede.direccion`, `sede.geo`, `sede.indicaciones`, `inscripcion.destino`,
- * `material`, `sesiones[].tema`, `sesiones[].lectura` y `tallerista.bio`. Nada
+ * `material`, `sesiones[].tema`, `sesiones[].lectura`, `tallerista.bio` y las
+ * **filas** de `modalidades` con su sede (el índice lleva solo sus valores, para
+ * el filtro — B-224). Nada
  * de eso se usa para filtrar ni para pintar una tarjeta, y todo vive en el HTML
  * de la página de detalle, que es donde hace falta.
  *
@@ -61,7 +64,23 @@ export interface EntradaDeIndice {
   resumen: string;
   /** La portada de la galería, o `null`. Ver la nota de `imagenUrlDe`. */
   imagenUrl: string | null;
+  /** La resultante: la unión de las formas de cursar. Es lo que la tarjeta dice. */
   modalidad: string;
+  /**
+   * **Todas** las modalidades que la actividad ofrece, para el filtro (B-224).
+   *
+   * No es la lista de formas de cursar: son sus valores, sin repetir y sin sede
+   * ni fechas. Es lo único que el filtro necesita, y es lo que hace que una
+   * actividad presencial-y-virtual aparezca bajo los tres chips en vez de solo
+   * bajo «Presencial y virtual» — las tres cosas son ciertas de ella, y con el
+   * escalar solo el sitio la escondería de los dos filtros que la describen mejor.
+   * Es el mismo criterio que el filtro del panel.
+   *
+   * Las **sedes** de cada fila y las fechas de la ventana **no** entran: la
+   * primera es del detalle (el índice ya lleva una sola sede, la derivada) y las
+   * segundas no salen a ninguna salida todavía.
+   */
+  modalidades: string[];
   sede: SedeDeIndice | null;
   /** Solo el slug del arancel: las notas («2 cuotas») son del detalle. */
   arancel: { tipo: string };
@@ -158,6 +177,8 @@ export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
   resumen: resumenDe(a.descripcion),
   imagenUrl: imagenUrlDe(a),
   modalidad: a.modalidad,
+  // Los valores, no las filas: el filtro no necesita la sede de cada una.
+  modalidades: modalidadesQueOfrece(a.modalidades),
   sede: a.sede
     ? { nombre: a.sede.nombre, barrio: a.sede.barrio, ciudad: a.sede.ciudad }
     : null,

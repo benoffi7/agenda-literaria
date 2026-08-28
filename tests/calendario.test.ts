@@ -24,16 +24,61 @@ const sesion = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-const actividad = (over: Record<string, unknown> = {}) => ({
-  titulo: 'Club de lectura',
-  descripcion: 'Ocho encuentros',
-  estado: 'publicado',
-  modalidad: 'presencial',
-  sede: { nombre: 'Casa Brandon', direccion: 'Drago 236' },
-  inscripcion: { requiere: false, destino: '' },
-  sesiones: [sesion()],
-  ...over,
-});
+/**
+ * B-224 — el fixture arma la **lista** de formas de cursar a partir de los
+ * campos de primer nivel que recibe, salvo que el caso pase la suya.
+ *
+ * Sin esto, todos los casos de este archivo tendrían la lista vacía y el bloque
+ * «Dónde» del evento no se verificaría en ninguna parte: `construirDescripcion`
+ * recorre `modalidades`, así que sin filas no dice dónde. Lo encontró el
+ * `auditor-privacidad`, cuando todavía existía una rama de respaldo que tapaba el
+ * agujero (D-130).
+ *
+ * Se deriva en vez de escribirse en cada caso para no tocar los cuarenta
+ * `actividad({ sede: … })` que ya existen: siguen diciendo lo mismo y ahora pasan
+ * por el camino real. Los tres campos de primer nivel se conservan porque son los
+ * **derivados** del documento (`construirUbicacion` lee `sede`).
+ */
+const conFormasDeCursar = <T extends Record<string, unknown>>(a: T) =>
+  ('modalidades' in a
+    ? a
+    : {
+        ...a,
+        modalidades: [
+          {
+            id: 'mod_1',
+            modalidad: a.modalidad,
+            // Sin ventana: las dos fechas son opcionales y ninguno de los casos
+            // de este archivo la usa (hoy no sale al evento, B-224).
+            inicio: null,
+            fin: null,
+            sede: a.sede ?? null,
+            online: a.online ?? null,
+          },
+        ],
+      }) as T & { modalidades: unknown[] };
+
+const actividad = (over: Record<string, unknown> = {}) =>
+  conFormasDeCursar({
+    titulo: 'Club de lectura',
+    descripcion: 'Ocho encuentros',
+    estado: 'publicado',
+    modalidad: 'presencial',
+    sede: { nombre: 'Casa Brandon', direccion: 'Drago 236' },
+    inscripcion: { requiere: false, destino: '' },
+    sesiones: [sesion()],
+    ...over,
+  });
+
+/**
+ * El mismo documento pero **sin** la lista. No hay rama de compatibilidad que la
+ * sintetice (B-224): un documento así no tiene bloque «Dónde», y eso es lo que se
+ * verifica abajo.
+ */
+const actividadSinModalidades = (over: Record<string, unknown> = {}) => {
+  const { modalidades: _, ...resto } = actividad(over) as Record<string, unknown>;
+  return resto;
+};
 
 /**
  * Un ciclo de verdad: `esCiclo` tildado y N encuentros con fechas distintas.
@@ -666,6 +711,25 @@ describe('construirDescripcion — lo que SÍ va al evento', () => {
  * campo nuevo entra a ese chequeo solo, sin que nadie tenga que acordarse de
  * agregarle un `not.toContain` a este bloque.
  */
+describe('construirDescripcion — sin formas de cursar no hay bloque «Dónde» (B-224)', () => {
+  /**
+   * Hubo una rama de compatibilidad que sintetizaba una fila con el
+   * `modalidad`/`sede`/`online` de primer nivel, y se sacó: no hay documentos sin
+   * la lista —el dueño lo dijo— y era una rama más de la proyección pública sin
+   * ningún centinela que la recorriera.
+   *
+   * Este caso fija la consecuencia, que es lo que hay que saber si alguna vez
+   * aparece un documento así: no explota, no inventa una fila, **no dice dónde**.
+   */
+  it('no explota, no inventa una fila, y no dice dónde', () => {
+    const texto = construirDescripcion(actividadSinModalidades(), sesion(), LABELS);
+    expect(texto).not.toContain('Modalidad:');
+    expect(texto).not.toContain('Casa Brandon');
+    // Y el resto del evento sigue entero: la ausencia no se lleva puesto nada más.
+    expect(texto).toContain('Ocho encuentros');
+  });
+});
+
 describe('construirDescripcion — lo que NUNCA va al evento (§5.1, §7.4)', () => {
   const d = () => construirDescripcion(completa(), sesion(), LABELS);
 

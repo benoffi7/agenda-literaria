@@ -36,10 +36,21 @@ import {
 } from 'firebase/firestore';
 // `firestore-client` y no `firebase-client`: el corte del bundle (B-09, D-51).
 import { db } from '@/lib/firestore-client';
+import {
+  modalidadResultante,
+  onlinePrincipal,
+  sedePrincipal,
+} from '@/lib/modalidades';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { fechaHoraCorta } from '@/lib/sesiones';
 import { camposCambiados } from '@historial';
-import type { Actividad, ActividadConId, Sesion, TimestampLike } from '@/types/actividad';
+import type {
+  Actividad,
+  ActividadConId,
+  ModalidadFila,
+  Sesion,
+  TimestampLike,
+} from '@/types/actividad';
 
 const COL = 'actividades';
 const SUB = 'versiones';
@@ -116,7 +127,24 @@ export const slugRestaurable = (actual: Actividad): boolean => actual.estado !==
 export const camposRestaurables = (version: Version, actual: Actividad): string[] =>
   (camposCambiados(version.documento, actual) as string[])
     .filter((campo) => campo !== 'slug' || slugRestaurable(actual))
+    .filter((campo) => !CAMPOS_DERIVADOS.includes(campo))
     .filter((campo) => existiaEnLaVersion(campo, version));
+
+/**
+ * Los campos que **nadie edita**: los calcula `formADocumento` a partir de otros
+ * (B-224, D-130). Ofrecerlos para restaurar es ofrecer una incoherencia.
+ *
+ * `modalidad`, `sede` y `online` salen de `modalidades`; `searchText`, de media
+ * docena de campos (§6). Restaurar cualquiera de ellos **por separado** deja el
+ * documento diciendo dos cosas —una sede que ninguna forma de cursar tiene— hasta
+ * el próximo guardado, que lo pisa sin avisar. Y en el medio eso sale al
+ * `events.json` y al evento, porque la restauración escribe con `updateDoc` y
+ * marca rebuild.
+ *
+ * Lo que sí se restaura es `modalidades`, y `payloadDeRestauracion` recalcula los
+ * cuatro derivados en la misma escritura.
+ */
+const CAMPOS_DERIVADOS: readonly string[] = ['modalidad', 'sede', 'online', 'searchText'];
 
 /**
  * ¿El campo **existía** cuando se guardó esta versión?
@@ -213,8 +241,36 @@ export const payloadDeRestauracion = (
   const valor = valorARestaurar(campo, version, actual);
   const payload: Record<string, unknown> = { [campo]: valor };
 
+  /**
+   * B-224 — restaurar las formas de cursar arrastra sus tres derivados en la
+   * **misma** escritura. Sin esto el documento queda con una sede que ninguna
+   * fila tiene y una modalidad que no es la unión de nada, y eso sale al
+   * `events.json` y al evento hasta el próximo guardado.
+   */
+  if (campo === 'modalidades') {
+    const filas = (valor ?? []) as ModalidadFila[];
+    payload.modalidad = modalidadResultante(filas);
+    payload.sede = sedePrincipal(filas);
+    payload.online = onlinePrincipal(filas);
+  }
+
+  /**
+   * El `searchText` se arma sobre **el documento que va a quedar**, derivados
+   * incluidos — y no sobre `actual` con el campo restaurado encima.
+   *
+   * La diferencia es un bug real y silencioso: `buildSearchText` lee las sedes de
+   * `modalidades` **y** la `sede` de primer nivel, así que con `actual` crudo el
+   * índice se quedaba con el barrio **viejo** al lado del nuevo. La actividad
+   * seguía apareciendo al buscar un barrio que ya no es suyo, y se corregía sola
+   * recién en la próxima edición completa: si alguien la busca no la encuentra
+   * donde está, y si no la busca no se entera nadie.
+   *
+   * Es la clase de B-88 en miniatura —dos consumidores del mismo dato derivando
+   * por caminos distintos— y por eso el orden importa: primero se calculan los
+   * derivados, y el índice se arma sobre eso.
+   */
   if (CAMPOS_DE_BUSQUEDA.includes(campo)) {
-    payload.searchText = buildSearchText({ ...actual, [campo]: valor });
+    payload.searchText = buildSearchText({ ...actual, ...payload } as Actividad);
   }
 
   // La restauración es una edición más y se firma como tal: quien la hizo queda

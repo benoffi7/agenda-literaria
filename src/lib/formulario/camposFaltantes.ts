@@ -97,20 +97,31 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'sesiones.N.calendarEventId': { etiqueta: 'Encuentro', seccion: 'encuentros' },
 
   // ── Dónde ──
-  modalidad: { etiqueta: 'Modalidad', seccion: 'donde' },
-  sede: { etiqueta: 'Sede', seccion: 'donde' },
-  'sede.nombre': { etiqueta: 'Sede', seccion: 'donde' },
-  'sede.direccion': { etiqueta: 'Dirección', seccion: 'donde' },
-  'sede.barrio': { etiqueta: 'Barrio', seccion: 'donde' },
-  'sede.ciudad': { etiqueta: 'Ciudad', seccion: 'donde' },
-  'sede.indicaciones': { etiqueta: 'Cómo llegar', seccion: 'donde' },
-  'sede.geo': { etiqueta: 'Coordenadas de la sede', seccion: 'donde' },
-  'sede.geo.lat': { etiqueta: 'Coordenadas de la sede', seccion: 'donde' },
-  'sede.geo.lng': { etiqueta: 'Coordenadas de la sede', seccion: 'donde' },
-  online: { etiqueta: 'Datos del encuentro virtual', seccion: 'donde' },
-  'online.plataforma': { etiqueta: 'Plataforma', seccion: 'donde' },
-  'online.url': { etiqueta: 'Link del encuentro', seccion: 'donde' },
-  'online.urlPublica': { etiqueta: 'Publicar el link en el sitio', seccion: 'donde' },
+  // B-224 — las modalidades son una lista, y `sede`/`online` viven adentro de
+  // cada fila. Las rutas vienen con el índice colapsado: lo que hay que decir es
+  // «Dirección», no en qué fila — igual que con los encuentros.
+  modalidades: { etiqueta: 'Modalidad', seccion: 'donde' },
+  'modalidades.N': { etiqueta: 'Modalidad', seccion: 'donde' },
+  'modalidades.N.id': { etiqueta: 'Modalidad', seccion: 'donde' },
+  'modalidades.N.modalidad': { etiqueta: 'Modalidad', seccion: 'donde' },
+  'modalidades.N.inicio': { etiqueta: 'Desde cuándo', seccion: 'donde' },
+  'modalidades.N.fin': { etiqueta: 'Hasta cuándo', seccion: 'donde' },
+  'modalidades.N.sede': { etiqueta: 'Sede', seccion: 'donde' },
+  'modalidades.N.sede.nombre': { etiqueta: 'Sede', seccion: 'donde' },
+  'modalidades.N.sede.direccion': { etiqueta: 'Dirección', seccion: 'donde' },
+  'modalidades.N.sede.barrio': { etiqueta: 'Barrio', seccion: 'donde' },
+  'modalidades.N.sede.ciudad': { etiqueta: 'Ciudad', seccion: 'donde' },
+  'modalidades.N.sede.indicaciones': { etiqueta: 'Cómo llegar', seccion: 'donde' },
+  'modalidades.N.sede.geo': { etiqueta: 'Coordenadas de la sede', seccion: 'donde' },
+  'modalidades.N.sede.geo.lat': { etiqueta: 'Coordenadas de la sede', seccion: 'donde' },
+  'modalidades.N.sede.geo.lng': { etiqueta: 'Coordenadas de la sede', seccion: 'donde' },
+  'modalidades.N.online': { etiqueta: 'Datos del encuentro virtual', seccion: 'donde' },
+  'modalidades.N.online.plataforma': { etiqueta: 'Plataforma', seccion: 'donde' },
+  'modalidades.N.online.url': { etiqueta: 'Link del encuentro', seccion: 'donde' },
+  'modalidades.N.online.urlPublica': {
+    etiqueta: 'Publicar el link en el sitio',
+    seccion: 'donde',
+  },
 
   // ── Quién ──
   organizador: { etiqueta: 'Organizador', seccion: 'quien' },

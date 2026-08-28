@@ -18,7 +18,7 @@ esas:
 
 Y una sexta que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las cinco proyecciones.
-Cerrada con D-128 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anotada
+Cerrada con D-130 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anotada
 acá porque el modo de falla —una puerta que ninguna proyección atraviesa— es el
 que hay que buscar al agregar una salida nueva.
 
@@ -31,6 +31,7 @@ que hay que buscar al agregar una salida nueva.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
+| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las cinco salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado (B-206). Por eso la Function le pone un **nombre opaco** al archivo | `toPublic.ts` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los tres de abajo |
@@ -76,6 +77,20 @@ GA4 va solo `tiene_libro`, un booleano: el título es texto libre.
 `searchText`. Y el canal de inscripción **sigue saliendo con el cupo completo**, por
 decisión del dueño: siempre hay lista de espera, y esconderlo convierte una baja en un
 lugar que se pierde (B-97, **D-127**).
+
+`modalidades` **sí** sale, **menos las fechas**: la lista entera con la modalidad
+de cada fila y su lugar (B-224, **D-130**). Es lo que el sitio necesita para decir
+«los martes presencial en Villa Crespo, los jueves por Meet». `modalidadPublica`
+enumera la sede campo por campo en lugar de copiarla con un spread, y no es
+cosmético: la sede viaja **adentro de un array**, y la poda de `autoguardado.ts`
+deja pasar los arrays a propósito. La otra mitad de esa guarda es que
+`formADocumento` también enumera, así que una clave de más no llega ni a Firestore.
+
+Y en el **índice del listado** (`eventsJson.ts`, la tercera proyección) entran
+solo los **valores** de `modalidades` —`presencial`, `virtual`, `hibrido`—, que es
+lo que el filtro del sitio necesita: las sedes de cada fila quedan en el detalle y
+la ventana no sale. Su celda está fijada en el barrido, con el caso que lo dice
+por su nombre.
 
 `inscripcion.destino` **sí** sale: es el canal de inscripción. El §5.1 advierte
 que un WhatsApp personal ahí queda expuesto a bots — conviene un número de
@@ -132,7 +147,9 @@ desconfianza): es el mismo texto.
 privado de la reunión, la difusión interna y la URL del material privado.
 
 Y de paso la vista previa **avisa** cuando el link de la reunión va a salir: es
-el último lugar donde se puede notar antes de publicar.
+el último lugar donde se puede notar antes de publicar. Desde B-224 el aviso mira
+**todas** las formas de cursar y no la derivada: con dos filas virtuales, mirar
+solo la primera dejaría sin avisar un link público cargado en la segunda.
 
 ## El borrador autoguardado tampoco es una salida (B-191, D-122)
 
@@ -416,7 +433,7 @@ function esAdmin() {
 }
 
 match /actividades/{id} {
-  allow read:  if esAdmin();    // D-128 — antes: || resource.data.estado == 'publicado'
+  allow read:  if esAdmin();    // D-130 — antes: || resource.data.estado == 'publicado'
   allow write: if esAdmin();
   match /versiones/{version} {
     allow read:  if esAdmin();
@@ -437,7 +454,7 @@ Tres detalles que costaron encontrar:
 
 - **`token.get('admin', false)`, no `token.admin`.** Leer una clave ausente de un
   map es un *evaluation error*, no `false`.
-- **La lectura de `/actividades` es solo del admin (D-128, B-208).** El §5.3 del
+- **La lectura de `/actividades` es solo del admin (D-130, B-224).** El §5.3 del
   `CLAUDE.md` prescribía `resource.data.estado == 'publicado'`, y eso filtraba:
   **una regla de Firestore no proyecta.** Es todo-o-nada por documento, así que
   autorizaba entregar el documento entero —con el link de la reunión, la
@@ -454,11 +471,11 @@ Tres detalles que costaron encontrar:
 correspondiente, si no Firestore rechaza la query **entera** en vez de devolver
 el subconjunto visible (trampa 7).
 
-Desde D-128 **ninguna** colección de este proyecto tiene una regla de lectura
+Desde D-130 **ninguna** colección de este proyecto tiene una regla de lectura
 condicionada por `resource.data` —`/actividades` es `esAdmin()` puro y
 `/opciones/*` es `if true`—, así que hoy no hay query que se pueda romper así. La
 advertencia queda porque el día que B-01 necesite lectura en vivo desde el
-cliente, la forma que D-128 recomienda (una subcolección `privado/`) reintroduce
+cliente, la forma que D-130 recomienda (una subcolección `privado/`) reintroduce
 exactamente este mecanismo. El contraste está fijado en el `describe('trampa 7 —
 el mecanismo, con una regla condicionada')` de
 `tests/actividades.integracion.test.ts`, que carga su propio ruleset para probarlo
@@ -608,7 +625,7 @@ curl -s -X POST "$BASE/actividades?key=$K" -H "Content-Type: application/json" \
 curl -s -X PATCH "$BASE/opciones/arancel?key=$K" -H "Content-Type: application/json" \
   -d '{"fields":{"valores":{"arrayValue":{"values":[]}}}}'
 
-# ── LECTURA (D-128, B-208) ────────────────────────────────────────
+# ── LECTURA (D-130, B-224) ────────────────────────────────────────
 # Hasta el 2026-08-27 acá solo había escrituras, y del lado de la lectura la
 # regla entregaba el documento ENTERO de toda actividad publicada. Estas dos
 # son las que hay que correr después de deployar reglas.

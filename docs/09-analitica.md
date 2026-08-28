@@ -158,8 +158,8 @@ campo.
 | `intento` | 1–50 |
 
 **El vocabulario de `campo` se deriva del schema de zod**, no se mantiene a mano
-(D-60). Ejemplos: `titulo`, `arancel.tipo`, `sede.direccion`,
-`online.plataforma`, `inscripcion.destino`, `sesiones`, `sesiones.N.fin`,
+(D-60). Ejemplos: `titulo`, `arancel.tipo`, `modalidades.N.sede.direccion`,
+`modalidades.N.online.plataforma`, `inscripcion.destino`, `sesiones`, `sesiones.N.fin`,
 `material.items.N.titulo`.
 
 Los índices de fila se colapsan a `N`: `sesiones.3.fin` → `sesiones.N.fin`. Lo
@@ -182,7 +182,8 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 | `segundos` | 0–7200 | **Cuánto tarda una carga completa**, desde abrir el formulario |
 | `intentos_validacion` | 0–50 | Cuántos rebotes hubo antes de entrar |
 | `encuentros` | 0–200 | |
-| `modalidad` | `presencial` · `virtual` · `hibrido` | |
+| `modalidad` | `presencial` · `virtual` · `hibrido` | Desde B-224 es la **resultante**: la unión de las formas de cursar. La serie histórica no se corta |
+| `modalidades` | 0–20 | **¿Alguien carga más de una forma de cursar?** (B-224). Si nadie lo hace, la lista complicó el formulario a cambio de nada |
 | `es_ciclo` | 0 · 1 | |
 | `material_items` | 0–100 | ¿Se usa el material, o la sección está de adorno? |
 | `tags` | 0–100 | ¿Alguien pone tags? Alimentan los filtros del sitio público |
@@ -193,7 +194,9 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 | `url_publica` | 0 · 1 | ¿Cuántas veces se tilda "publicar el link"? (D-15) |
 
 `url_publica` es 1 solo si el flag está tildado **y** hay URL cargada, igual que
-en `toPublic`: sin URL no se inventa el campo.
+en `toPublic`: sin URL no se inventa el campo. Desde B-224 mira **todas** las
+formas de cursar: con dos filas virtuales, mirar solo la primera diría «no» con un
+link público en la segunda.
 
 **`estado` y `modalidad` no tienen vocabulario propio: usan el del modelo**
 (`ESTADOS` y `MODALIDADES` de `src/types/actividad.ts`), igual que `detalle` con
@@ -242,6 +245,9 @@ evento por función.
 | `encuentro-borrar` | "Borrar" en una fila | — | encuentros resultantes |
 | `encuentros-ordenar` | "Ordenar por fecha" | — | cantidad de encuentros |
 | `encuentros-generar` | **"Generar N encuentros"** | — | el N pedido |
+| `modalidad-agregar` | "+ Agregar modalidad" en «Dónde» | — | modalidades resultantes |
+| `modalidad-duplicar` | "Duplicar" en una fila de modalidad | — | modalidades resultantes |
+| `modalidad-borrar` | "Borrar" en una fila de modalidad | — | modalidades resultantes |
 | `taxonomia-otro` | se elige "Otro…" en un desplegable | el campo | — |
 | `taxonomia-nueva` | se confirma una etiqueta que no existía | el campo | — |
 | `taxonomia-reusada` | lo tipeado normalizó a un slug existente | el campo | — |
@@ -365,7 +371,7 @@ producción.
 
    Y como **métricas** personalizadas: `segundos`, `avance`, `encuentros`,
    `intento`, `intentos_validacion`, `cantidad`, `valor`, `material_items`,
-   `tags`.
+   `tags`, `modalidades`.
 
    El límite del plan gratuito es 50 dimensiones de evento, así que sobra.
 3. **Mirar los datos.** Tres latencias distintas, y es la fuente de la

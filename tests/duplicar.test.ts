@@ -42,16 +42,26 @@ const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
     // Se saltea una semana (feriado) — el hueco irregular tiene que sobrevivir.
     sesion({ id: 'ses_c', inicio: '2025-09-23T19:00', fin: '2025-09-23T21:30' }),
   ],
-  modalidad: 'hibrido',
-  sede: {
-    nombre: 'Casa Brandon',
-    direccion: 'Drago 236',
-    barrio: 'villa-crespo',
-    ciudad: 'CABA',
-    indicaciones: 'Timbre 2',
-    geo: null,
-  },
-  online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+  // B-224 — una fila híbrida: el mismo lugar de antes, ahora adentro de la forma
+  // de cursar. `modalidad`, `sede` y `online` son derivados y los escribe
+  // `formADocumento`.
+  modalidades: [
+    {
+      id: 'mod_a',
+      modalidad: 'hibrido',
+      inicio: '',
+      fin: '',
+      sede: {
+        nombre: 'Casa Brandon',
+        direccion: 'Drago 236',
+        barrio: 'villa-crespo',
+        ciudad: 'CABA',
+        indicaciones: 'Timbre 2',
+        geo: null,
+      },
+      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+    },
+  ],
   inscripcion: {
     requiere: true,
     via: 'mail',
@@ -244,9 +254,14 @@ describe('duplicar una actividad — el resto del contenido', () => {
 
     expect(copia.tipo).toBe(o.tipo);
     expect(copia.descripcion).toBe(o.descripcion);
-    expect(copia.modalidad).toBe(o.modalidad);
-    expect(copia.sede).toEqual(o.sede);
-    expect(copia.online).toEqual(o.online);
+    // B-224 — la forma de cursar se hereda entera (modalidad, lugar y ventana),
+    // con **id nuevo**: el id es lo único que no se puede compartir (trampa 2).
+    expect(copia.modalidades).toHaveLength(o.modalidades.length);
+    expect(copia.modalidades[0]!.modalidad).toBe(o.modalidades[0]!.modalidad);
+    expect(copia.modalidades[0]!.sede).toEqual(o.modalidades[0]!.sede);
+    expect(copia.modalidades[0]!.online).toEqual(o.modalidades[0]!.online);
+    expect(copia.modalidades[0]!.id).not.toBe(o.modalidades[0]!.id);
+    expect(copia.modalidades[0]!.id).toMatch(/^mod_/);
     expect(copia.arancel).toEqual(o.arancel);
     expect(copia.material).toEqual(o.material);
     /*
@@ -287,8 +302,9 @@ describe('duplicar una actividad — el resto del contenido', () => {
     // pasaría por vacío justo en el campo que más se copia por spread (B-199).
     const copia = duplicarActividadForm(o, { ahora: AHORA, copiar: { difusion: true } });
 
-    expect(copia.sede).not.toBe(o.sede);
-    expect(copia.online).not.toBe(o.online);
+    expect(copia.modalidades[0]).not.toBe(o.modalidades[0]);
+    expect(copia.modalidades[0]!.sede).not.toBe(o.modalidades[0]!.sede);
+    expect(copia.modalidades[0]!.online).not.toBe(o.modalidades[0]!.online);
     expect(copia.material.items[0]).not.toBe(o.material.items[0]);
     expect(copia.difusion.arrobar).not.toBe(o.difusion.arrobar);
     expect(copia.tags).not.toBe(o.tags);

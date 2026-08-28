@@ -1,4 +1,5 @@
 import { nuevaImagenId } from '@/lib/imagenes';
+import { duplicarModalidad } from '@/lib/modalidades';
 import { aDatetimeLocal, deDatetimeLocal, nuevaSesionId } from '@/lib/sesiones';
 import type { ActividadForm, SesionForm } from '@/types/actividad';
 
@@ -382,10 +383,23 @@ export const duplicarActividadForm = (
      * copia no puede tocar nada del original ni en el estado de React.
      */
     libro: { ...origen.libro },
-    sede: origen.sede
-      ? { ...origen.sede, geo: origen.sede.geo ? { ...origen.sede.geo } : null }
-      : null,
-    online: origen.online ? { ...origen.online } : null,
+    /**
+     * B-224 — la copia hereda las formas de cursar **con ids nuevos**. Es la
+     * trampa 2, la misma razón por la que no hereda los ids de sesión: dos
+     * actividades con las mismas filas hacen que cualquier cosa que compare por
+     * id crea que son la misma.
+     *
+     * Se hereda el lugar y **también la ventana de fechas**, a diferencia de las
+     * sesiones, que se corren en semanas enteras: la ventana de una modalidad no
+     * es un encuentro semanal, y correrla sería inventar un dato. Queda a la
+     * vista en el formulario de la copia, que nace en borrador.
+     *
+     * `duplicarModalidad` copia los anidados en lugar de compartir la
+     * referencia, como el resto: el form del original sale de `documentoAForm`,
+     * que comparte objetos con el documento que el listado tiene en memoria, y
+     * editar la copia no puede tocar nada del original ni en el estado de React.
+     */
+    modalidades: origen.modalidades.map(duplicarModalidad),
     arancel: { ...origen.arancel },
     material: copiar.material
       ? {

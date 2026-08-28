@@ -54,6 +54,13 @@ const documento = (over: Partial<Actividad>): Record<string, unknown> => {
       inicio: s.inicio.toDate(),
       fin: s.fin.toDate(),
     })),
+    // B-224 — la ventana de cada forma de cursar, con el mismo criterio: `Date`
+    // en vez del doble, y `null` cuando no hay fecha.
+    modalidades: a.modalidades.map((m) => ({
+      ...m,
+      inicio: m.inicio ? m.inicio.toDate() : null,
+      fin: m.fin ? m.fin.toDate() : null,
+    })),
     inscripcion: {
       ...a.inscripcion,
       cierra: a.inscripcion.cierra ? a.inscripcion.cierra.toDate() : null,

@@ -105,16 +105,26 @@ const formCompleto = (): ActividadForm => ({
     { ...sesionVacia(), inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00', tema: 'Cap. 1-4' },
     { ...sesionVacia(), inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00', tema: 'Cap. 5-8' },
   ],
-  modalidad: 'hibrido',
-  sede: {
-    nombre: 'Casa Brandon',
-    direccion: 'Drago 236',
-    barrio: 'villa-crespo',
-    ciudad: 'CABA',
-    indicaciones: 'Timbre 2',
-    geo: null,
-  },
-  online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+  // B-224 — una fila híbrida: el mismo lugar de antes, ahora adentro de la forma
+  // de cursar. `modalidad`, `sede` y `online` son derivados y los escribe
+  // `formADocumento`.
+  modalidades: [
+    {
+      id: 'mod_a',
+      modalidad: 'hibrido',
+      inicio: '',
+      fin: '',
+      sede: {
+        nombre: 'Casa Brandon',
+        direccion: 'Drago 236',
+        barrio: 'villa-crespo',
+        ciudad: 'CABA',
+        indicaciones: 'Timbre 2',
+        geo: null,
+      },
+      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+    },
+  ],
   inscripcion: {
     requiere: true,
     via: 'mail',
@@ -208,12 +218,56 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     expect(despues!.createdAt.toMillis()).toBe(antes!.createdAt.toMillis());
   });
 
-  it('descarta sede cuando la modalidad es virtual', async () => {
-    const form = { ...formCompleto(), slug: 'club-virtual', modalidad: 'virtual' as const };
+  it('descarta la sede de una fila que pasó a virtual (§11, B-224)', async () => {
+    // El formulario **conserva** la sede al cambiar el selector —las cascadas no
+    // borran lo que alguien escribió— y es `formADocumento` el que decide que no
+    // se escribe. Sin eso, una dirección que la actividad ya no tiene saldría al
+    // `events.json` y al evento.
+    const base = formCompleto();
+    const form = {
+      ...base,
+      slug: 'club-virtual',
+      modalidades: [{ ...base.modalidades[0]!, modalidad: 'virtual' as const }],
+    };
     const id = await crearActividad(form, UID);
     const a = await leerActividad(id);
+    expect(a!.modalidades[0]!.sede).toBeNull();
+    expect(a!.modalidades[0]!.online?.plataforma).toBe('zoom');
+    // Y los derivados acompañan: sin fila presencial no hay sede principal.
     expect(a!.sede).toBeNull();
+    expect(a!.modalidad).toBe('virtual');
     expect(a!.online?.plataforma).toBe('zoom');
+  });
+
+  it('B-224 — dos formas de cursar: la resultante es híbrida y la sede es la primera', async () => {
+    const base = formCompleto();
+    const form = {
+      ...base,
+      slug: 'club-dos-modalidades',
+      modalidades: [
+        { ...base.modalidades[0]!, id: 'mod_pres', modalidad: 'presencial' as const },
+        {
+          id: 'mod_virt',
+          modalidad: 'virtual' as const,
+          inicio: '2026-10-01T19:00',
+          fin: '2026-12-01T21:00',
+          sede: null,
+          online: { plataforma: 'meet', url: 'https://meet.example/x', urlPublica: false },
+        },
+      ],
+    };
+    const id = await crearActividad(form, UID);
+    const a = await leerActividad(id);
+    expect(a!.modalidades).toHaveLength(2);
+    expect(a!.modalidad).toBe('hibrido');
+    expect(a!.sede?.nombre).toBe('Casa Brandon');
+    // El online principal es el de la **primera fila que tenga uno**: la
+    // presencial no lo tiene (§11 lo borra al guardar), así que es el de la
+    // virtual.
+    expect(a!.online?.plataforma).toBe('meet');
+    // Trampa 1 — la ventana viaja como `Timestamp`, no como string.
+    expect(typeof a!.modalidades[1]!.inicio?.toMillis()).toBe('number');
+    expect(a!.modalidades[0]!.inicio).toBeNull();
   });
 
   it('detecta un slug ya tomado', async () => {
@@ -330,7 +384,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
     /*
      * La publicada lleva adentro los campos del §5.1 a propósito: son
      * exactamente los que un anónimo recibía cuando la regla decía
-     * `resource.data.estado == 'publicado'` (D-128). Puestos acá, el día que
+     * `resource.data.estado == 'publicado'` (D-130). Puestos acá, el día que
      * alguien afloje la regla el test no solo falla: el diff dice qué se
      * filtraba.
      */
@@ -388,7 +442,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
   });
 
   /*
-   * D-128 — lo que este `it` afirma es lo contrario de lo que afirmaba hasta el
+   * D-130 — lo que este `it` afirma es lo contrario de lo que afirmaba hasta el
    * 2026-08-27, cuando decía `it('un anónimo lee lo publicado')`. Ese `it` no
    * estaba mal escrito: fijaba como deseado el comportamiento que prescribía el
    * §5.3 del `CLAUDE.md`. Lo que estaba mal era la regla, porque una regla no
@@ -443,10 +497,10 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
  * ── La trampa 7 del §13, probada como mecanismo y no como consecuencia ──────
  *
  * Este bloque nació de un hallazgo del `auditor-trampas` sobre el cambio de
- * D-128, y vale contar por qué, porque es un modo de falla de los tests y no
+ * D-130, y vale contar por qué, porque es un modo de falla de los tests y no
  * del código.
  *
- * Al cerrar B-208 la regla pasó a `allow read: if esAdmin()`, y con eso el `it`
+ * Al cerrar B-224 la regla pasó a `allow read: if esAdmin()`, y con eso el `it`
  * de arriba —«una query anónima no devuelve documentos, ni con el where»— pasó a
  * dar verde. Se dio por cerrada la trampa 7. **Pero pasaba por el motivo
  * equivocado:** sin ninguna condición sobre `resource.data`, *toda* query
@@ -462,14 +516,14 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
  * projectId aparte, y afirma las dos mitades. Queda independiente de cuál sea la
  * regla viva en `/actividades`: el día que B-01 necesite lectura en vivo y
  * alguien vuelva a condicionar por `resource.data` —la subcolección `privado/`
- * de D-128, o cualquier otra forma—, el mecanismo ya está fijado.
+ * de D-130, o cualquier otra forma—, el mecanismo ya está fijado.
  */
 describe.skipIf(!vivo)('trampa 7 — el mecanismo, con una regla condicionada', () => {
   const PID = 'trampa-7-mecanismo';
   const BASE = `http://${HOST_FIRESTORE}/v1/projects/${PID}/databases/(default)/documents`;
 
   // La regla que el §5.3 del CLAUDE.md prescribía, aislada en su propio
-  // projectId: cargarla sobre `agenda-literaria` reabriría la fuga de B-208
+  // projectId: cargarla sobre `agenda-literaria` reabriría la fuga de B-224
   // para los tests que corran después.
   const REGLA_CONDICIONADA = `
     rules_version = '2';

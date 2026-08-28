@@ -19,6 +19,7 @@ En cada cambio, revisar qué corresponde tocar:
 | implica una decisión o un desvío del `CLAUDE.md` | [`06-decisiones.md`](06-decisiones.md) |
 | cambia qué es público o cómo se verifica | [`07-seguridad.md`](07-seguridad.md) |
 | cambia cómo se corre o despliega | [`08-operacion.md`](08-operacion.md) |
+| toca qué se mide o con qué nombre | [`09-analitica.md`](09-analitica.md) |
 | **se nota al usar el panel** | [`src/lib/novedades.ts`](../src/lib/novedades.ts) — ver abajo |
 | **cambia un comportamiento que no se ve** | [`src/lib/ayuda.ts`](../src/lib/ayuda.ts) — ver abajo |
 | **cualquier cambio** | [`CHANGELOG.md`](CHANGELOG.md) |
@@ -255,14 +256,27 @@ Los condicionales del §11 van en `superRefine`, no en el tipo:
 
 ```ts
 .superRefine((v, ctx) => {
-  const necesitaSede = v.modalidad === 'presencial' || v.modalidad === 'hibrido';
-  if (necesitaSede && !v.sede?.nombre) {
-    ctx.addIssue({ path: ['sede', 'nombre'], message: 'Una actividad presencial necesita sede' });
-  }
+  v.modalidades.forEach((m, i) => {
+    if (filaPideSede(m.modalidad) && !m.sede?.nombre) {
+      ctx.addIssue({
+        path: ['modalidades', i, 'sede', 'nombre'],
+        message: 'Una modalidad presencial necesita sede',
+      });
+    }
+  });
 })
 ```
 
-Los errores se mapean por `path.join('.')` y se muestran al lado de su campo.
+Los errores se mapean por `path.join('.')` y se muestran al lado de su campo. **El
+`path` lleva el índice de la fila** cuando el campo vive en una lista
+(`modalidades.1.sede.nombre`, `sesiones.3.fin`): sin él, el mensaje manda a mirar
+el bloque equivocado. `camposFaltantes.ts` los colapsa a `N` para nombrar el campo
+y no la fila.
+
+**La condición que usa el schema tiene que ser la misma que decide si el campo se
+muestra** (`filaPideSede` / `filaPideOnline` de `src/lib/modalidades.ts`). Si se
+separan, el formulario esconde un campo que el schema exige y el guardado falla
+por algo que no está en pantalla.
 
 ## Estado compartido fuera del árbol: store de módulo
 

@@ -116,6 +116,44 @@ export interface Sesion {
 }
 
 /**
+ * Una forma de cursar la actividad (B-224).
+ *
+ * Reemplaza al `modalidad` único **y se lleva `sede` y `online` adentro**, que es
+ * lo que el dueño pidió: «el formulario de modalidad se mantiene tal cual + doble
+ * fecha, y sobre eso es tener N modalidades así como N encuentros». O sea: el
+ * bloque entero de «Dónde» —el selector, y con él la sede o la plataforma que
+ * corresponda— se repite por fila.
+ *
+ * El modelo es una **lista** por el mismo motivo que `sesiones` es una lista
+ * (§2.2): un club puede darse presencial en una librería y virtual por Meet, y con
+ * un escalar y una sola sede eso no se puede decir.
+ *
+ * **La fila no es un encuentro.** No genera evento de Calendar —el §2.2 es
+ * taxativo: un evento por sesión— ni entra al «próximo encuentro» del listado.
+ */
+export interface ModalidadFila {
+  /** `mod_<uuid>` — generado en cliente, NUNCA por índice (§3.1, trampa 2). */
+  id: string;
+  modalidad: Modalidad;
+  /**
+   * Desde y hasta cuándo rige esta forma de cursar. Las dos **opcionales**: es lo
+   * que pidió el dueño, y `null` es «sin fecha», no «hoy».
+   *
+   * **Hoy no salen a ninguna salida pública, y es a propósito.** Qué significan
+   * frente a `sesiones[].inicio/fin` sigue sin decidir (B-224, decisión pendiente
+   * del dueño): un campo que no sale no puede filtrar nada por error, y agregarlo
+   * después es barato — sacarlo de algo ya publicado no.
+   */
+  inicio: TimestampLike | null;
+  /** Ver `inicio`. */
+  fin: TimestampLike | null;
+  /** La sede de esta forma de cursar. `null` en una fila virtual (§11). */
+  sede: Sede | null;
+  /** Los datos de la reunión de esta forma de cursar. `null` en presencial (§11). */
+  online: Online | null;
+}
+
+/**
  * Una imagen de la galería (B-167, DEC-7).
  *
  * Reemplaza al `imagenUrl` único. El modelo es una **lista** porque una actividad
@@ -258,8 +296,32 @@ export interface Actividad {
   esCiclo: boolean;
   sesiones: Sesion[];
 
+  /** B-224 — las formas de cursar, cada una con su lugar y su ventana. */
+  modalidades: ModalidadFila[];
+  /**
+   * La modalidad de la actividad entera, **derivada** de `modalidades` como su
+   * unión: dos filas que difieren dan `hibrido` (B-224, decisión 3).
+   *
+   * Es un campo derivado y no una segunda fuente de verdad: lo escribe
+   * `formADocumento` en cada guardado, igual que `searchText`. Existe porque las
+   * salidas que solo pueden decir **una** modalidad lo necesitan — el filtro del
+   * panel, la analítica y el `events.json`, que además lleva la lista entera al
+   * lado.
+   */
   modalidad: Modalidad;
+  /**
+   * La sede **principal**: la de la primera fila que tenga una, o `null`.
+   * Derivada, como `modalidad`.
+   *
+   * Existe porque hay salidas que solo admiten **una** dirección: el campo
+   * `location` del evento de Calendar —que es el que dibuja el mapa—, el
+   * `searchText` del §6 y el filtro por barrio del panel. «La primera que tenga
+   * sede» y no un flag explícito estilo `portada` (D-125) porque el orden de las
+   * filas lo elige quien carga y se ve en pantalla; si alguna vez importa
+   * distinguirlo, la respuesta es el flag.
+   */
   sede: Sede | null;
+  /** El bloque online **principal**, con el mismo criterio que `sede`. */
   online: Online | null;
 
   inscripcion: Inscripcion;
@@ -296,6 +358,24 @@ export interface SesionForm {
   calendarEventId: string | null;
 }
 
+/**
+ * Una fila de modalidad en el formulario (B-224): las fechas como strings de
+ * `datetime-local`, igual que `SesionForm`.
+ *
+ * `''` es «sin fecha» —el `null` del documento—, que es lo que reporta un
+ * `<input type="datetime-local">` vacío. La conversión en los dos sentidos es la
+ * de `lib/sesiones.ts` (`aDatetimeLocal` / `deDatetimeLocal`), reusada y no
+ * reescrita: es la que evita la trampa 1.
+ */
+export interface ModalidadFilaForm {
+  id: string;
+  modalidad: Modalidad;
+  inicio: string;
+  fin: string;
+  sede: Sede | null;
+  online: Online | null;
+}
+
 export interface ActividadForm
   extends Omit<
     Actividad,
@@ -309,8 +389,22 @@ export interface ActividadForm
     | 'imagenes'
     | 'imagenUrl'
     | 'libro'
+    | 'modalidades'
+    | 'modalidad'
+    | 'sede'
+    | 'online'
   > {
   sesiones: SesionForm[];
+  /**
+   * B-224 — las formas de cursar, con su lugar y su ventana.
+   *
+   * **`modalidad`, `sede` y `online` no están en el formulario**, y no es un
+   * olvido: los tres son campos **derivados** de esta lista y tenerlos también en
+   * el estado del formulario serían dos fuentes para el mismo dato, que es cómo se
+   * desincronizan. Los calcula `formADocumento` al guardar, igual que
+   * `searchText`.
+   */
+  modalidades: ModalidadFilaForm[];
   /**
    * `completo` es **siempre un booleano en el formulario**, nunca `undefined`:
    * el default de lectura ya resolvió los documentos anteriores a B-97 antes de
