@@ -3477,3 +3477,92 @@ termine.
 deja de tener un solo lector y el balance cambia: ahí corresponde volver a D-119 y
 partir la key en dos —una de lectura para el build, otra con permiso de deploy y
 `environment` con aprobación—. Está anotado como **B-225**.
+
+---
+
+## D-133 · El texto de «Suscribirse» es data testeada, y ninguna dirección se escribe en el markup
+
+**Contexto.** B-230, 2026-08-28. `/suscribirse` es una página estática de texto: lo
+natural era escribirla en el markup, como `index.astro`. Se hizo al revés — el
+contenido vive en `src/lib/suscripcion.ts` y la página lo recorre — y conviene dejar
+por qué, porque la alternativa era más corta.
+
+**Qué se decidió.**
+
+1. **El contenido va como data**, en registros tipados (`Record<IdCamino, Camino>`,
+   `Record<IdAdvertencia, Advertencia>`) más una lista de orden.
+2. **Ninguna URL se escribe en la página ni en sus componentes.** Todas salen de
+   `src/lib/enlaces.ts` (B-228), y el test barre el markup buscando cualquier
+   esquema escrito a mano.
+3. **Las promesas que la página hace sobre el calendario se verifican contra la
+   función que construye el evento** — el mismo módulo que consume la Cloud
+   Function (`functions/calendario.js`), no una copia.
+
+**Por qué.** Esta página no falla rompiéndose: falla dejando un camino a medias, y
+todas esas formas de fallar dejan el build en verde.
+
+| Cómo falla de verdad | Qué lo frena |
+|---|---|
+| se agrega un quinto camino y la página no lo muestra | el tipo obliga a que tenga contenido; la lista de orden y el test obligan a que se muestre |
+| un camino queda con el botón y sin los pasos | el test exige pasos en cada uno, y en el de copiar y pegar exige que nombre dónde se pega |
+| alguien pega en el markup la variante `private-` del `.ics`, que **da acceso de lectura al calendario entero** | el barrido de markup falla ante cualquier dirección escrita, y el del contenido exige que cada una sea exactamente una de las que `enlaces.ts` produce |
+| el enlace `webcal:` deja de avisarle a quien no ve la pantalla que se va a abrir otra aplicación | el aviso es un campo obligatorio del tipo, y el test exige que la única acción que no es `https:` lo nombre |
+| el comportamiento del calendario cambia y la página sigue prometiendo lo de antes | los cuatro tests contra `construirEvento`/`planificar` |
+
+La última fila es la que más pesa y es la lección de **B-63**, la misma por la que
+cada aviso de `src/lib/ayuda.ts` nombra el test que lo sostiene: un chequeo puede
+verificar que el texto **esté**, nunca que sea **cierto**. Acá pesa más todavía,
+porque este texto lo lee gente de afuera del proyecto y decide con él si espera el
+link de una reunión o si se presenta a un encuentro. Se verificó reintroduciendo el
+bug en las dos direcciones: sacándole la guarda de `urlPublica` al evento y dejando
+en pie el evento de un encuentro cancelado. Las dos ponen la página en rojo.
+
+**Un detalle del camino de Outlook que vale escribir.** Ese camino **no** lleva un
+botón que abra la dirección del `.ics`: abrirla en el navegador **descarga un
+archivo**, y ese archivo es exactamente lo que los pasos de ese mismo camino piden no
+usar —importarlo copia las fechas de hoy y no vuelve a mirar nunca más—. Un botón ahí
+deja el error a un toque de distancia del consejo que dice evitarlo. Va la dirección
+escrita, con botón de copiar que **aparece solo si el navegador tiene portapapeles**
+(sale del HTML oculto y lo muestra el script), porque un botón que no hace nada es
+peor que ninguno y el texto se puede seleccionar igual.
+
+**Lo que esto costó y se aceptó.** Un módulo y tres componentes para una página de
+texto. Es más de lo que pide el tamaño de la página y menos de lo que cuesta el
+primer camino que se publique sin instrucciones.
+
+**Un hallazgo del camino, que cambió el texto.** El primer borrador decía que el
+evento **nunca** trae el link de la reunión, citando el §7.4. Es falso desde D-15:
+con `urlPublica: true` el link sale en la descripción, por decisión explícita del
+dueño. La página dice «casi nunca» y explica el caso — y el test lo fija en las dos
+direcciones, así que el día que se saque esa posibilidad, se pone en rojo y la
+página puede volver a prometer «nunca».
+
+---
+
+## D-134 · La página es `/suscribirse` y no `/calendario`, y el bloque de la home queda escrito sin cablear
+
+**Contexto.** B-230, 2026-08-28. [`12-sitio-publico.md`](12-sitio-publico.md) §4.5
+diseñó esta página como **`/calendario`**. El encabezado del sitio (B-229, escrito
+antes que las páginas justamente para que los tres frentes en paralelo no se
+pisaran) ya enlaza **`/suscribirse`**, y el pie también.
+
+**Qué se decidió.** Vale `/suscribirse`, y se anota el desvío en vez de renombrar.
+
+**Por qué.**
+
+- **El enlace ya publicado manda.** Cambiarlo obligaba a tocar `Encabezado.astro` y
+  `PieDePagina.astro`, que tienen un solo dueño a propósito, y a hacerlo desde un
+  frente que corre en paralelo con otros dos.
+- **Nombra la acción y no la cosa.** «Calendario» es lo que hay del otro lado;
+  «suscribirse» es lo que la persona va a hacer, y es el único de los dos que
+  distingue esta página de la que solo muestra el calendario — que es, además, uno
+  de los cuatro caminos de adentro.
+- **El slug de una página pública es caro de mover** (trampa 10): mejor decidirlo
+  antes de que se indexe, que es ahora.
+
+**Lo que queda pendiente y por qué no se hizo acá.** El bloque corto para la home
+—`src/components/sitio/SuscribirseResumen.astro`, con el botón de Google y un enlace
+a la página entera— está escrito y **no está cableado**: la home la construye otro
+frente y este no la toca. Queda como **B-231**, con el componente ya hecho para que
+sea una línea.
+

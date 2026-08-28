@@ -307,6 +307,43 @@ Tres cosas se mantienen porque son las que hacen que el desvío sea aceptable:
 Si la actividad es un encuentro abierto sin inscripción, publicar el link tiene
 sentido. Si tiene cupo, no: el link circula y el cupo deja de existir.
 
+## La página «Suscribirse» publica la dirección del calendario — la pública
+
+`/suscribirse` (B-230) imprime la dirección del `.ics` **a la vista**, para que se
+pueda copiar y pegar en Outlook o en Thunderbird. Es correcto: esa dirección existe
+para que la gente se suscriba y el calendario ya es público.
+
+Lo que importa es **cuál** de las dos se imprime. Google publica dos direcciones del
+mismo calendario:
+
+```
+.../ical/<id>/public/basic.ics              ← la que va
+.../ical/<id>/private-<token>/basic.ics     ← nunca
+```
+
+La segunda **le da acceso de lectura al calendario entero a quien la tenga** y no se
+revoca sin rotarla. Están a un path de distancia y se copian igual de fácil, y ahora
+hay una página que muestra una dirección de calendario en pantalla: es el lugar más
+probable donde alguien pegue la equivocada.
+
+Tres redes, y ninguna es «acordarse»:
+
+1. `src/lib/enlaces.ts` es el único lugar donde se arman, y **no sabe producir** la
+   privada. `tests/enlaces.test.ts` falla si alguna de sus salidas contiene
+   `private-`.
+2. `tests/suscribirse.test.ts` exige que cada dirección de la página sea
+   **exactamente una** de las que `enlaces.ts` produce. Una escrita a mano —aunque
+   sea la buena— no pasa.
+3. El mismo test barre el markup de la página y de sus componentes buscando
+   cualquier `https://`, `http://` o `webcal://` escrito, y falla si encuentra uno.
+
+Verificado sobre el HTML construido, no solo en los tests:
+
+```bash
+npm run build
+grep -c 'private-' dist/suscribirse/index.html   # → 0
+```
+
 ## Los reportes del panel salen a un repo público
 
 El panel puede cargar bugs y sugerencias, y una Cloud Function los publica como

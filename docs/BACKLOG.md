@@ -3951,6 +3951,26 @@ documento de seguridad vuelva a decir que el daño se limita a leer.
 
 ---
 
+### B-231 · La home no ofrece suscribirse al calendario, y el bloque ya está escrito · P2
+
+`/suscribirse` existe (B-230) y se llega por el encabezado. Lo que falta es el
+enganche donde la decisión se toma de verdad: **abajo del listado**, cuando alguien
+ya vio que hay actividades y quiere no perdérselas. Entrar a una página aparte para
+suscribirse lo hace quien ya decidió; el resto necesita que se lo ofrezcan ahí.
+
+**Está hecho el trabajo y falta la línea.** `src/components/sitio/SuscribirseResumen.astro`
+es el bloque corto —el botón de Google y un enlace a la página entera— con su prop
+`nivel` para que el encabezado cuelgue del `h1` del listado sin saltear un nivel. No
+se cableó porque la home la construye otro frente y este no la tocó (D-134).
+
+```astro
+import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
+<SuscribirseResumen />
+```
+
+Queda P2 y no P1 porque la página funciona y es alcanzable desde las cuatro
+secciones del sitio. Lo que se pierde mientras tanto es conversión, no acceso.
+
 ## P3 — cuando sobre tiempo
 
 ### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` · P3
@@ -4985,6 +5005,7 @@ Se dejan para que quede el rastro de qué se rompió.
 | Una página del sitio público podía publicarse sin encabezado ni pie y nadie se enteraba | `Base.astro` trae el chrome apagado por defecto —lo correcto para `/admin`, lo equivocado para el sitio— así que olvidarse de `seccion` deja el build verde y la página sin salida. Cerrado con `tests/chrome-del-sitio.test.ts`, que encontró una al escribirlo | B-229, `src/components/sitio/` (2026-08-28) |
 | Faltaba un lugar único para los destinos externos del sitio, y tres frentes en paralelo iban a derivarlos por separado | no era un bug todavía: es la clase B-72/B-88 —tres derivaciones de la misma regla— vista antes de que ocurra. Se cerró escribiendo el contrato primero, que es la lección de la integración de `1.5.0` | B-228, `src/lib/enlaces.ts` (2026-08-28) |
 | El comparador de infraestructura reportaba que la doc mentía sobre `roles/iam.serviceAccountUser` cuando la que no miraba era él | `relevar-infra.sh` solo consultaba los bindings **del proyecto**, y `iam.serviceAccountUser` se otorga sobre **cada cuenta de runtime**. Salió a la luz al declarar los roles de D-132; es justo el rol que menos convenía no mirar, porque es la mitad de "puede desplegar código que corre como una identidad privilegiada" | B-226, `scripts/relevar-infra.sh` (2026-08-28) |
+| La página «Suscribirse» prometía que el evento de Calendar **nunca** trae el link de la reunión | es falso desde **D-15**: con `urlPublica: true` el link sale en la descripción, por decisión explícita del dueño. El borrador citaba el §7.4 del `CLAUDE.md`, que quedó desviado hace una semana y sigue escrito como si no. Lo peor del caso es que **no rompe nada**: la página se veía bien y le mentía a quien decidía con eso si esperar un link o no. Corregido a «casi nunca» con el caso explicado, y atado a `construirEvento` en las dos direcciones para que no pueda volver a mentir en silencio (D-133) | B-230, `src/lib/suscripcion.ts` (2026-08-28) |
 
 | Editar un encuentro desde la vista calendario y volver por el encabezado mandaba al listado y perdía el mes que se estaba mirando | el botón "← Volver" hacía `setVista({tipo:'lista'})` fijo, mientras el "Cancelar" del formulario ya respetaba `volverA`: dos salidas del mismo formulario con dos criterios | B-35, `AdminApp.tsx` |
 | El listado y el calendario contestaban "¿ya pasó?" con campos distintos: un taller en curso desaparecía del listado a los minutos de empezar | `proximoEncuentro` filtraba por `inicio`, `yaPaso` por `fin`, y el fixture de los tests tenía `fin === inicio`, así que la diferencia era indetectable (patrón B-84) | auditoría del calendario, H1 |
