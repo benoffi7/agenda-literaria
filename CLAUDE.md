@@ -602,6 +602,16 @@ cerrada una feature.
 11. **Workflow de Actions que no parsea** → GitHub lo registra **sin ningún
     trigger**, así que no corre nunca y nada lo dice de este lado. Un `: ` adentro
     de un escalar sin comillas alcanza (`run: echo "Motivo: ..."`).
+12. **Un trigger que escribe donde lo dispararon se dispara a sí mismo, y esto
+    no es solo de Firestore.** Es la trampa 3 con otra cara: un
+    `onObjectFinalized` de Storage que escribe la miniatura en el **mismo
+    bucket** entra en el mismo loop. La guarda va por `customMetadata` en el
+    objeto derivado, o por un prefijo separado que el trigger ignore. Lo nombraba
+    DEC-7 en el BACKLOG y faltaba acá.
+13. **`allow read` en Storage incluye `list`.** Con `read: if true` sobre un
+    prefijo, un `listAll()` **anónimo** devuelve todos los objetos — y de nada
+    sirve que el nombre de cada uno sea un uuid impredecible si te dan la lista
+    entera. Van separados: `allow get: if true` y `allow list: if esAdmin()`.
 
 ---
 

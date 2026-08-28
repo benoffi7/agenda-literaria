@@ -913,7 +913,7 @@ export const CAPITULOS: CapituloAyuda[] = [
     id: 'opcional',
     titulo: 'Opcional',
     seccionFormulario: 'Opcional',
-    paraQue: 'Etiquetas, imagen y destacado. Nada de esto es obligatorio, pero las etiquetas son las que hacen que la gente encuentre la actividad.',
+    paraQue: 'Etiquetas, imágenes y destacado. Nada de esto es obligatorio, pero las etiquetas son las que hacen que la gente encuentre la actividad.',
     puntos: [
       {
         texto:
@@ -924,6 +924,30 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'Escribí la etiqueta como querés que se lea, con la mayúscula donde va: se muestra tal ' +
           'cual en el sitio y en el calendario.',
+      },
+      {
+        texto:
+          'Las imágenes se pueden cargar de dos maneras: pegando la dirección de una que ya ' +
+          'está en otro sitio, o subiendo un archivo tuyo con «Subir una imagen». Las dos ' +
+          'conviven en la misma lista y se ven igual en el sitio.',
+      },
+      {
+        texto:
+          'Para subir: JPG o PNG, hasta 3 MB cada una y hasta cuatro por actividad. Una foto ' +
+          'sacada con el celular sin recortar casi siempre pasa los 3 MB; si el panel la ' +
+          'rechaza, te dice cuánto pesa y cuánto es el máximo.',
+      },
+      {
+        texto:
+          'Al subir una foto se le quitan los datos ocultos que traen las fotos, entre ellos ' +
+          'el lugar exacto donde se sacó. Si el taller es en una casa, esa dirección no se ' +
+          'publica sin que nadie se dé cuenta.',
+        cuidado: true,
+      },
+      {
+        texto:
+          '«Portada» es la que se ve al compartir el link y en la tarjeta del listado. Es una ' +
+          'sola: elegir otra desmarca la anterior.',
       },
       { texto: '«Destacar» es para que la actividad salga en la portada del sitio.' },
     ],

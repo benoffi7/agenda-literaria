@@ -30,18 +30,18 @@ const decidir = (archivos: string[]): Record<string, boolean> => {
 
 describe('qué deployar — lo obvio', () => {
   it('sin cambios, no deploya nada', () => {
-    expect(decidir([])).toEqual({ hosting: false, functions: false, firestore: false });
+    expect(decidir([])).toEqual({ hosting: false, functions: false, firestore: false, storage: false });
   });
 
   it('un cambio en el panel deploya solo hosting', () => {
     expect(decidir(['src/components/admin/AdminApp.tsx'])).toEqual({
-      hosting: true, functions: false, firestore: false,
+      hosting: true, functions: false, firestore: false, storage: false,
     });
   });
 
   it('un cambio en las reglas deploya solo firestore', () => {
     expect(decidir(['firestore.rules'])).toEqual({
-      hosting: false, functions: false, firestore: true,
+      hosting: false, functions: false, firestore: true, storage: false,
     });
   });
 
@@ -51,7 +51,7 @@ describe('qué deployar — lo obvio', () => {
 
   it('el trigger de una Function deploya solo functions', () => {
     expect(decidir(['functions/reportes-trigger.js'])).toEqual({
-      hosting: false, functions: true, firestore: false,
+      hosting: false, functions: true, firestore: false, storage: false,
     });
   });
 });
@@ -62,7 +62,7 @@ describe('qué deployar — el caso que motiva el diseño', () => {
     // vista previa del evento. Si solo se deployaran las Functions, la vista
     // previa mostraría algo distinto de lo que el sync publica.
     expect(decidir(['functions/calendario.js'])).toEqual({
-      hosting: true, functions: true, firestore: false,
+      hosting: true, functions: true, firestore: false, storage: false,
     });
   });
 
@@ -75,6 +75,44 @@ describe('qué deployar — el caso que motiva el diseño', () => {
     const r = decidir(['firebase.json']);
     expect(r.functions).toBe(true);
     expect(r.hosting).toBe(true);
+    // B-167 — y también las reglas de Storage: `firebase.json` es donde está
+    // declarado qué archivo son.
+    expect(r.storage).toBe(true);
+  });
+});
+
+describe('qué deployar — las reglas de Storage (B-167)', () => {
+  it('storage.rules deploya solo storage', () => {
+    // Es su propio target: `firebase deploy --only storage`. Si cayera en la
+    // decisión de `firestore`, un cambio de reglas de Storage se deployaría
+    // **nunca** — y el bucket quedaría con las reglas viejas sin que nada lo
+    // diga, que es el default caro.
+    expect(decidir(['storage.rules'])).toEqual({
+      hosting: false, functions: false, firestore: false, storage: true,
+    });
+  });
+
+  it('storage.rules NO arrastra hosting', () => {
+    // Es config del servidor y nadie la importa, así que no puede entrar al
+    // bundle. Es el mismo argumento que ya tenía `firestore.rules`, y lo que lo
+    // sostiene es la línea de la lista NEGRA: sin ella caería en "archivo
+    // desconocido" y pediría un deploy de hosting que no hace falta.
+    expect(decidir(['storage.rules']).hosting).toBe(false);
+  });
+
+  it('las dos reglas juntas deployan las dos, y nada más', () => {
+    expect(decidir(['firestore.rules', 'storage.rules'])).toEqual({
+      hosting: false, functions: false, firestore: true, storage: true,
+    });
+  });
+
+  it('el módulo que sube las imágenes es del panel, no de las reglas', () => {
+    // Control negativo: `src/lib/subir-imagen.ts` habla con Storage pero es
+    // código del bundle. Si por su nombre terminara decidiendo `storage`, un
+    // cambio del panel intentaría deployar reglas.
+    expect(decidir(['src/lib/subir-imagen.ts'])).toEqual({
+      hosting: true, functions: false, firestore: false, storage: false,
+    });
   });
 });
 
@@ -106,25 +144,25 @@ describe('qué deployar — falla hacia deployar', () => {
 describe('qué deployar — lo que no toca nada', () => {
   it('solo documentación no deploya nada', () => {
     expect(decidir(['docs/BACKLOG.md', 'README.md', 'CLAUDE.md'])).toEqual({
-      hosting: false, functions: false, firestore: false,
+      hosting: false, functions: false, firestore: false, storage: false,
     });
   });
 
   it('solo tests no deploya nada', () => {
     expect(decidir(['tests/schema.test.ts', 'tests/emulador.ts'])).toEqual({
-      hosting: false, functions: false, firestore: false,
+      hosting: false, functions: false, firestore: false, storage: false,
     });
   });
 
   it('solo workflows no deploya nada', () => {
     expect(decidir(['.github/workflows/push-main.yml'])).toEqual({
-      hosting: false, functions: false, firestore: false,
+      hosting: false, functions: false, firestore: false, storage: false,
     });
   });
 
   it('los scripts de mantenimiento no deployan nada', () => {
     expect(decidir(['scripts/preparar-produccion.mjs', 'scripts/seed-emulador.mjs'])).toEqual({
-      hosting: false, functions: false, firestore: false,
+      hosting: false, functions: false, firestore: false, storage: false,
     });
   });
 
@@ -137,13 +175,13 @@ describe('qué deployar — lo que no toca nada', () => {
 describe('qué deployar — combinaciones', () => {
   it('un cambio grande deploya todo', () => {
     expect(
-      decidir(['src/lib/schema.ts', 'functions/index.js', 'firestore.rules']),
-    ).toEqual({ hosting: true, functions: true, firestore: true });
+      decidir(['src/lib/schema.ts', 'functions/index.js', 'firestore.rules', 'storage.rules']),
+    ).toEqual({ hosting: true, functions: true, firestore: true, storage: true });
   });
 
   it('documentación junto con código deploya lo del código', () => {
     expect(decidir(['docs/CHANGELOG.md', 'src/lib/toPublic.ts'])).toEqual({
-      hosting: true, functions: false, firestore: false,
+      hosting: true, functions: false, firestore: false, storage: false,
     });
   });
 });

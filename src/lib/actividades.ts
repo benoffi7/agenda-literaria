@@ -128,9 +128,39 @@ export const formADocumento = (
     titulo: limpiar(f.titulo),
     slug: slugify(f.slug),
     descripcion: limpiar(f.descripcion),
-    // La galería viaja como lista. `imagenUrl` **no se escribe**: es el campo
-    // viejo, que solo se lee (B-167, D-125).
-    imagenes: f.imagenes.map((i) => ({ ...i })),
+    /**
+     * La galería viaja como lista. `imagenUrl` **no se escribe**: es el campo
+     * viejo, que solo se lee (B-167, D-125).
+     *
+     * **Se enumeran las claves en lugar de spreadear la fila** — B-206 #2, y es
+     * el mismo cuidado que `calendarEventId: s.calendarEventId ?? null` dos
+     * bloques más abajo. `storagePath`, `ancho` y `alto` son campos de máquina
+     * **adentro de un array de contenido**: hoy los escribe la subida del panel
+     * y mañana los va a reescribir la Function de DEC-7d, y en cuanto haya dos
+     * escritores un spread los pisa con lo que tuviera el formulario en un
+     * snapshot viejo. Es exactamente B-80 por una puerta nueva.
+     *
+     * Enumerar tiene además el efecto del §5.2: una clave de más que llegue de
+     * un borrador de `localStorage` recuperado no puede entrar al documento.
+     *
+     * Los tres se copian **solo si están** —el spread condicional de abajo— y no
+     * con `?? null`: Firestore guardaría el `null` como valor presente, y
+     * entonces una imagen externa, que nunca tuvo `storagePath`, quedaría
+     * distinta de la misma imagen leída de un documento anterior, que no tiene la
+     * clave. `huboCambioDeContenido` **no unifica ausente con `null` a propósito**
+     * (ver `functions/historial.js`), así que eso sería una versión de historial
+     * y un rebuild del sitio por cada guardado.
+     */
+    imagenes: f.imagenes.map((i) => ({
+      id: i.id,
+      url: limpiar(i.url),
+      epigrafe: limpiar(i.epigrafe),
+      origen: i.origen,
+      portada: i.portada,
+      ...(i.storagePath === undefined ? {} : { storagePath: i.storagePath }),
+      ...(i.ancho === undefined ? {} : { ancho: i.ancho }),
+      ...(i.alto === undefined ? {} : { alto: i.alto }),
+    })),
     organizador: f.organizador,
     tallerista,
     libro,

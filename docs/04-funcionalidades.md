@@ -155,10 +155,19 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   (D-124, trampa 5).
 - **Una actividad tiene una galería de imágenes, no una sola** (B-167): hasta
   cuatro, cada una con su epígrafe opcional y una marcada como portada, que es la
-  que va a aparecer al compartir el link. Se pegan direcciones de afuera y se ven
-  al momento de pegarlas. El texto que leen un lector de pantalla y Google sale del
-  **título de la actividad**, no del epígrafe (D-125). Subir archivos propios
-  todavía no está: el modelo lo soporta y falta la infraestructura.
+  que va a aparecer al compartir el link. El texto que leen un lector de pantalla y
+  Google sale del **título de la actividad**, no del epígrafe (D-125).
+- **Las imágenes entran de dos maneras, y conviven** (DEC-7c): pegando la dirección
+  de una que está en otro sitio —se ve al momento de pegarla— o **subiendo un
+  archivo propio**, que va a Firebase Storage. Para subir: JPG o PNG, hasta 3 MB,
+  con el rechazo diciendo cuánto pesa el archivo y cuánto es el máximo. **Al subir
+  se le quitan los metadatos**, y eso no es cosmético: una foto de celular lleva las
+  coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares
+  (D-131). Lo que todavía no está es la recompresión y la miniatura del lado de la
+  Function: es **B-220**, y hasta entonces una foto de 3 MB pesa 3 MB en la tarjeta.
+- **Duplicar no copia las imágenes subidas al panel**, solo las que son un link a
+  otro sitio: la copia y el original compartirían el mismo archivo, y borrar una le
+  rompería las imágenes a la otra. Lo dice la letra chica del modal de duplicar.
 - **No se puede publicar con el slug propuesto para una copia** (`…-copia`).
   Guardarlo como borrador sí, porque la copia nace justamente con ese slug: el
   bloqueo es solo al publicar, porque ahí el slug queda fijo para siempre

@@ -58,7 +58,8 @@ export interface Novedad {
 export const NOVEDADES: Novedad[] = [
   {
     id: 'varias-formas-de-cursar',
-    fecha: '2026-08-27',
+    fecha: '2026-08-28',
+    version: '1.5.0',
     titulo: 'Una actividad puede tener varias formas de cursar, cada una con su lugar',
     detalle:
       '«Dónde» ahora es una lista, igual que los encuentros: agregás una fila por cada forma de ' +
@@ -66,6 +67,19 @@ export const NOVEDADES: Novedad[] = [
       'presencial en la librería y también por videollamada. Cada fila tiene además un «desde» y ' +
       'un «hasta» opcionales, que por ahora quedan guardados para vos y no se publican.',
     donde: 'Formulario, sección «Dónde»',
+  },
+  {
+    id: 'subir-imagenes-propias',
+    fecha: '2026-08-28',
+    version: '1.5.0',
+    titulo: 'Ya podés subir tus propias imágenes, no solo pegar un link',
+    detalle:
+      'En «Opcional» hay un botón «Subir una imagen» al lado del campo donde se pega la ' +
+      'dirección. Las dos formas conviven en la misma lista: JPG o PNG, hasta 3 MB cada una ' +
+      'y hasta cuatro por actividad, y si el archivo pesa de más el panel te dice cuánto ' +
+      'pesa y cuánto es el máximo. A las fotos se les quitan los datos ocultos que traen ' +
+      '—entre ellos el lugar donde se sacaron— antes de subirlas.',
+    donde: 'Formulario de actividad → sección «Opcional» → Imágenes',
   },
   {
     id: 'cierres-de-inscripcion-en-el-calendario',

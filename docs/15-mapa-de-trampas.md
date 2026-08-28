@@ -44,6 +44,8 @@ palabras `trampa N`.
 | 9 | Cambio de sede que no propaga a las N sesiones | `functions/calendario.js` | `tests/calendario.test.ts`, `tests/modalidades.test.ts` |
 | 10 | Slug mutable | `src/lib/schema.ts`, `src/lib/formulario/autoguardado.ts` | `tests/schema.test.ts`, `tests/autoguardado.test.ts` |
 | 11 | Workflow de Actions que no parsea | `.github/workflows/deploy.yml`, `.github/workflows/push-main.yml` | `tests/workflows.test.ts` |
+| 12 | Un trigger que escribe donde lo dispararon (también en Storage) | `functions/index.js`, `functions/historial-trigger.js` | `tests/clases-de-bug.test.ts` |
+| 13 | `allow read` de Storage incluye `list` | `storage.rules` | `tests/storage-reglas.integracion.test.ts` |
 
 ## Sin red
 
@@ -68,7 +70,7 @@ documentos **crudos**. La auditoría de privacidad la encontró y se reprodujo
 contra el emulador: volvían `online.url` con `urlPublica:false`, `difusion`, la
 URL del material privado, los uids, el `calendarEventId` y el `storagePath` — la
 lista completa del §5.1, salteando `toPublic`. Se estaba esperando a B-01 para
-poner red sobre una regla que ya estaba filtrando (B-224, D-130).
+poner red sobre una regla que ya estaba filtrando (B-208, D-128).
 
 **Y acá el error, que duró una hora.** Al arreglar la fuga
 (`allow read: if esAdmin()`) se escribió una query anónima en el test de reglas,
@@ -91,7 +93,7 @@ mitades: la query con el `where` devuelve el subconjunto, la query sin el `where
 se rechaza entera. Tiene control positivo y **se verificó invirtiendo la
 aserción**. Queda independiente de cuál sea la regla viva en `/actividades`: el
 día que B-01 necesite lectura en vivo y alguien vuelva a condicionar por
-`resource.data` —la subcolección `privado/` de D-130 o cualquier otra forma—, el
+`resource.data` —la subcolección `privado/` de D-128 o cualquier otra forma—, el
 mecanismo ya está fijado. **Cierra B-172.**
 
 ### La trampa 11, que se descubrió en producción
@@ -124,8 +126,23 @@ reintroduciendo el bug.
 
 El test verifica que **exista** una red, no que sea completa. Dos casos anotados:
 
+- **Trampa 12** — la red es la **misma** que la de la trampa 3, y por eso la fila
+  apunta al mismo test: el descubridor de `tests/clases-de-bug.test.ts` pide una
+  guarda de reentrega a todo trigger con efecto duplicable, y desde el 2026-08-27
+  descubre también las clases `onObject*`. Lo que **no** hay todavía es la
+  instancia —no existe ninguna Function de Storage (B-220)— así que la fila
+  verifica que la trampa no pueda entrar sin guarda, no que una guarda concreta
+  funcione.
 - **Trampa 3** — la clase (todo trigger con efecto duplicable se blinda) la cuida
   `tests/clases-de-bug.test.ts`; la instancia, `tests/costuras.test.ts`.
+  **Y la red tenía un agujero de forma, tapado el 2026-08-28 (D-131):** el
+  descubridor de triggers buscaba `onDocument*` y `onSchedule` y nada más, así que
+  un trigger de **Storage** —`onObjectFinalized`— no habría entrado solo. Es el
+  caso que DEC-7d tiene pendiente y el más peligroso que le falta al proyecto:
+  escribir la miniatura en el mismo bucket que dispara la Function es la trampa 3
+  con otra cara. Se agregaron las cuatro clases `onObject*` **antes** de que
+  existiera el primer trigger de Storage, que es el único momento en que hacerlo
+  no cuesta nada.
 - **Trampa 8** — hay red sobre que el rebuild no cuelgue del sync (B-83) y sobre
   el debounce, pero el disparo por `/opciones/*` se verifica leyendo el fuente,
   no ejecutando el trigger.

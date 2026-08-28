@@ -3,10 +3,12 @@ import {
   ANCHOS,
   CAMPOS_TAXONOMIA_MEDIBLES,
   CAMPOS_VALIDABLES,
+  DETALLES,
   ESTADOS_DESTINO,
   EVENTOS,
   GRUPOS,
   MODALIDADES_MEDIBLES,
+  MOTIVOS_IMAGEN,
   NOMBRES_EVENTOS,
   avanceDelFormulario,
   bucketDeAncho,
@@ -457,5 +459,29 @@ describe('seccionASlug — los títulos de sección son literales del código', 
 
   it('un título desconocido no viaja como texto', () => {
     expect(seccionASlug('Taller de crónica urbana')).toBe('otro');
+  });
+});
+
+describe('los motivos de rechazo de una imagen sobreviven al sanitizador — B-167, B-88', () => {
+  it('los cuatro están en el vocabulario de `detalle`', () => {
+    // La clase de B-88: productor y consumidor del mismo vocabulario declarados
+    // por separado. Acá el modo de falla es **mudo** — un motivo que `DETALLES`
+    // no conoce llega a GA4 como `otro`, los cuatro rechazos quedan
+    // indistinguibles, y `imagen-rechazada` deja de ser el termómetro del tope de
+    // 3 MB sin que nada se ponga rojo. Por eso `ImagenRechazada.causa` **importa**
+    // el tipo de acá en vez de repetir la unión.
+    for (const motivo of MOTIVOS_IMAGEN) {
+      expect(DETALLES as readonly string[], motivo).toContain(motivo);
+    }
+  });
+
+  it('y llegan enteros al evento, no como «otro»', () => {
+    for (const motivo of MOTIVOS_IMAGEN) {
+      const evento = construirEvento('funcion_usada', {
+        funcion: 'imagen-rechazada',
+        detalle: motivo,
+      });
+      expect(evento?.params.detalle, motivo).toBe(motivo);
+    }
   });
 });

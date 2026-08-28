@@ -384,7 +384,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
     /*
      * La publicada lleva adentro los campos del §5.1 a propósito: son
      * exactamente los que un anónimo recibía cuando la regla decía
-     * `resource.data.estado == 'publicado'` (D-130). Puestos acá, el día que
+     * `resource.data.estado == 'publicado'` (D-128). Puestos acá, el día que
      * alguien afloje la regla el test no solo falla: el diff dice qué se
      * filtraba.
      */
@@ -442,7 +442,7 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
   });
 
   /*
-   * D-130 — lo que este `it` afirma es lo contrario de lo que afirmaba hasta el
+   * D-128 — lo que este `it` afirma es lo contrario de lo que afirmaba hasta el
    * 2026-08-27, cuando decía `it('un anónimo lee lo publicado')`. Ese `it` no
    * estaba mal escrito: fijaba como deseado el comportamiento que prescribía el
    * §5.3 del `CLAUDE.md`. Lo que estaba mal era la regla, porque una regla no
@@ -497,10 +497,10 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
  * ── La trampa 7 del §13, probada como mecanismo y no como consecuencia ──────
  *
  * Este bloque nació de un hallazgo del `auditor-trampas` sobre el cambio de
- * D-130, y vale contar por qué, porque es un modo de falla de los tests y no
+ * D-128, y vale contar por qué, porque es un modo de falla de los tests y no
  * del código.
  *
- * Al cerrar B-224 la regla pasó a `allow read: if esAdmin()`, y con eso el `it`
+ * Al cerrar B-208 la regla pasó a `allow read: if esAdmin()`, y con eso el `it`
  * de arriba —«una query anónima no devuelve documentos, ni con el where»— pasó a
  * dar verde. Se dio por cerrada la trampa 7. **Pero pasaba por el motivo
  * equivocado:** sin ninguna condición sobre `resource.data`, *toda* query
@@ -516,14 +516,14 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
  * projectId aparte, y afirma las dos mitades. Queda independiente de cuál sea la
  * regla viva en `/actividades`: el día que B-01 necesite lectura en vivo y
  * alguien vuelva a condicionar por `resource.data` —la subcolección `privado/`
- * de D-130, o cualquier otra forma—, el mecanismo ya está fijado.
+ * de D-128, o cualquier otra forma—, el mecanismo ya está fijado.
  */
 describe.skipIf(!vivo)('trampa 7 — el mecanismo, con una regla condicionada', () => {
   const PID = 'trampa-7-mecanismo';
   const BASE = `http://${HOST_FIRESTORE}/v1/projects/${PID}/databases/(default)/documents`;
 
   // La regla que el §5.3 del CLAUDE.md prescribía, aislada en su propio
-  // projectId: cargarla sobre `agenda-literaria` reabriría la fuga de B-224
+  // projectId: cargarla sobre `agenda-literaria` reabriría la fuga de B-208
   // para los tests que corran después.
   const REGLA_CONDICIONADA = `
     rules_version = '2';

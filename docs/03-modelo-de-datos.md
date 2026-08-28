@@ -287,8 +287,21 @@ Tres cosas que no se adivinan del tipo:
   Es una decisión de accesibilidad tomada a propósito (D-125): pedir un campo por
   imagen produce "foto" como texto alternativo, que es peor que un título
   descriptivo.
-- **`storagePath` nunca sale al público** (§5.1): es la ruta interna del bucket y
-  publicarla dibuja su estructura. Lo fija `tests/imagenes.test.ts`.
+- **`storagePath` nunca sale al público** (§5.1), pero **no porque sea secreto** —
+  esa era la frase de la primera tajada y B-206 #1 demostró que era falsa: la URL
+  de descarga lleva el path adentro, y esa URL sí se publica. Lo que se hizo en
+  cambio fue volver el path **opaco**: `imagenes/img_<uuid>.jpg`, un prefijo plano
+  y el nombre es el id de la fila. Queda afuera del JSON por lo que sí es —el
+  handle autoritativo con el que el panel direcciona el objeto, que un consumidor
+  del `events.json` no usa para nada—. Lo fija `tests/imagenes.test.ts`, y la
+  decisión está en **D-131**.
+- **`storagePath`, `ancho` y `alto` son campos de máquina** (B-206 #2). Hoy los
+  escribe la subida del panel y mañana los va a reescribir la Function de DEC-7d.
+  Para que eso no sea `calendarEventId` dentro de `sesiones` otra vez,
+  `formADocumento` **enumera** las claves de cada imagen en vez de spreadear la
+  fila, y `functions/historial.js` los declara en `CAMPOS_DE_MAQUINA_IMAGEN` —sin
+  eso, cada write-back de la Function dejaría una versión de historial y un
+  rebuild del sitio por imagen optimizada.
 
 **Los documentos que ya están en producción no tienen `imagenes`.** Los lee
 `imagenesDe()`, que convierte `imagenUrl` en una lista de un elemento marcada como

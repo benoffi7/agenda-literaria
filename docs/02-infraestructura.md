@@ -47,6 +47,35 @@ en la misma región: cada operación del diff de Calendar es un round trip.
 Reglas en `firestore.rules`, índices en `firestore.indexes.json`. Se despliegan
 con `firebase deploy --only firestore:rules,firestore:indexes`.
 
+## Cloud Storage
+
+| | |
+|---|---|
+| Bucket | `agenda-literaria.firebasestorage.app` (el default del proyecto) |
+| Declarado en | `PUBLIC_FIREBASE_STORAGE_BUCKET`, en los tres `.env.*` |
+| Reglas | `storage.rules` — **escritas, sin desplegar** |
+| Prefijo en uso | `imagenes/img_<uuid>.{jpg,png}` — la galería de B-167 |
+
+**Lo único que hay ahí son las imágenes propias de la galería** (B-167, DEC-7c):
+las que se suben desde el panel, en oposición a las externas, que son una URL de
+otro sitio y no pasan por acá.
+
+**El bucket estaba en la config del SDK desde el primer día y nunca se usó.** Antes
+de desplegar las reglas hay que confirmar que exista de verdad: si el proyecto
+nunca inicializó Storage, se hace una vez desde la consola de Firebase, que ahí
+pide la región (conviene `southamerica-east1`, al lado de Firestore y las
+Functions — las imágenes las sirve el CDN, pero el egreso interregional no).
+
+Se despliegan con `firebase deploy --only storage`, que es un target **aparte** de
+`firestore:rules`. `scripts/que-deployar.sh` lo decide en su propia línea; ver
+`08-operacion.md` § «Reglas de Storage».
+
+**Lo que estas reglas hacen** (DEC-7b): lectura pública bajo `imagenes/` —son
+imágenes que van al sitio y a `og:image`—, escritura solo con el claim `admin`, y
+un tope de 3 MB y de tipo (`image/jpeg`, `image/png`) verificado del lado del
+servidor porque el cliente se puede saltear. Lo que **no** pueden hacer es contar
+las imágenes de una actividad: ese tope vive en el schema.
+
 ## Authentication
 
 | | |

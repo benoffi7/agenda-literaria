@@ -85,10 +85,11 @@ if [ "$EMU_ARRIBA" = 1 ]; then
   printf '  (emuladores ya arriba en %s: se usan esos)\n' "$EMU_HUB"
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
     FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099}" \
+    FIREBASE_STORAGE_EMULATOR_HOST="${FIREBASE_STORAGE_EMULATOR_HOST:-127.0.0.1:9199}" \
     EXIGIR_EMULADOR=1 npm test \
     || fallo 'la suite no pasa con los emuladores arriba'
 else
-  EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore \
+  EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore,storage \
     --project agenda-literaria 'npm test' \
     || fallo 'la suite no pasa con los emuladores arriba'
 fi

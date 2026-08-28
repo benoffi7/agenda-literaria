@@ -1,0 +1,90 @@
+rules_version = '2';
+
+// B-167 (segunda tajada) — las imágenes propias de la galería, DEC-7b y DEC-7c.
+//
+// ── Por qué este archivo existe, y no alcanza con el schema ────────────────
+// El schema de zod (`src/lib/schema.ts`) valida lo que el **panel** manda. Acá
+// abajo hay una sesión de Firebase con el claim `admin` y el SDK de Storage
+// cargado: cualquiera que abra la consola del navegador puede llamar a
+// `uploadBytes` con un archivo de 80 MB y saltearse el formulario entero. Por eso
+// DEC-7b pide las dos defensas, y por eso el tamaño se verifica **acá también**.
+//
+// Lo que este archivo NO puede verificar, y está dicho para que no se lea como
+// olvido: **el tope de 4 imágenes por actividad**. Las reglas de Storage evalúan
+// una operación sobre un objeto y no pueden contar los objetos de un prefijo ni
+// leer la actividad que los va a referenciar. El tope de 4 vive solo en el
+// schema (`MAXIMO_IMAGENES`), y el daño de saltearlo es una actividad con cinco
+// imágenes que el panel no deja guardar — no un objeto de 80 MB en el bucket.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Igual que en `firestore.rules`: `token.get('admin', false)` y no
+    // `token.admin`, porque leer una clave ausente de un map es un evaluation
+    // error y no `false` — el cliente recibiría "evaluation error" en lugar de
+    // un permission-denied limpio.
+    function esAdmin() {
+      return request.auth != null && request.auth.token.get('admin', false) == true;
+    }
+
+    // Los dos tipos que el panel sabe limpiar de metadatos sin recomprimir
+    // (`sinMetadatos` en `src/lib/imagenes-archivo.ts`). WebP y AVIF quedaron
+    // afuera a propósito: su contenedor lleva EXIF/XMP y todavía no hay quien se
+    // lo saque, así que aceptarlos sería publicar la geolocalización de la foto.
+    // Vuelven a entrar con la Function de DEC-7d, que recomprime todo.
+    function tipoAceptado() {
+      return request.resource.contentType in ['image/jpeg', 'image/png'];
+    }
+
+    // DEC-7b — 3 MB. Es el mismo número que `MAXIMO_BYTES` en
+    // `src/lib/imagenes.ts`, y los ata `tests/storage-reglas.integracion.test.ts`
+    // subiendo de verdad contra el emulador.
+    function tamanoAceptado() {
+      return request.resource.size <= 3 * 1024 * 1024;
+    }
+
+    // ── Las imágenes propias de la galería ──────────────────────────
+    //
+    // **Un solo prefijo plano, con el nombre del archivo opaco.** El nombre es el
+    // id de la fila de la galería, que ya es un uuid generado en el cliente
+    // (`nuevaImagenId()`, trampa 2). Eso es lo que hace barata la decisión de
+    // B-206 #1: la URL de descarga lleva el path adentro, así que el path es
+    // público de hecho — y un path que es un uuid no dice absolutamente nada. No
+    // se agrupa por actividad justamente porque **al subir todavía no hay
+    // actividad**: una actividad nueva no tiene id hasta que se guarda.
+    match /imagenes/{archivo} {
+      // Público **por objeto, no por prefijo**, y la distinción es la que
+      // sostiene toda la decisión de B-206 #1.
+      //
+      // `get` abierto es el punto: estas imágenes van al sitio y a `og:image`, y
+      // el token de `getDownloadURL()` deja de ser lo que protege el objeto — que
+      // es lo que hace inofensivo que ese token viaje en el HTML.
+      //
+      // `list` **no**, y no alcanza con no escribirlo: `allow read` incluye las
+      // dos, y con `read: if true` un `listAll(ref(storage, 'imagenes'))`
+      // **anónimo devuelve el bucket entero** (verificado contra el emulador,
+      // no deducido). Ahí el path opaco deja de comprar nada: no hace falta
+      // adivinar un uuid si te los dan en una lista, y adentro están también las
+      // fotos de las actividades que todavía están en borrador.
+      allow get: if true;
+      allow list: if esAdmin();
+
+      // `create` y `update` separados de `delete` a propósito: en un borrado
+      // `request.resource` es null y `request.resource.size` sería un evaluation
+      // error, o sea un borrado legítimo denegado por un motivo confuso.
+      allow create, update: if esAdmin()
+        && tipoAceptado()
+        && tamanoAceptado()
+        && archivo.matches('^img_[A-Za-z0-9_-]+[.](jpg|png)$');
+
+      allow delete: if esAdmin();
+    }
+
+    // Todo lo demás cerrado. Sin esto, un prefijo nuevo que alguien invente
+    // mañana no tiene ninguna regla y Storage deniega — pero deniega también la
+    // lectura, y el modo de falla sería una imagen rota sin explicación. Que
+    // esté escrito hace que el `deny` sea una decisión y no un descuido.
+    match /{ruta=**} {
+      allow read, write: if false;
+    }
+  }
+}

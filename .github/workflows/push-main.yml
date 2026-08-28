@@ -45,6 +45,7 @@ jobs:
       hosting: ${{ steps.q.outputs.hosting }}
       functions: ${{ steps.q.outputs.functions }}
       firestore: ${{ steps.q.outputs.firestore }}
+      storage: ${{ steps.q.outputs.storage }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,7 +61,7 @@ jobs:
           set -euo pipefail
 
           if [ "${FORZAR:-false}" = "true" ]; then
-            printf 'hosting=true\nfunctions=true\nfirestore=true\n' >> "$GITHUB_OUTPUT"
+            printf 'hosting=true\nfunctions=true\nfirestore=true\nstorage=true\n' >> "$GITHUB_OUTPUT"
             echo "::notice::se deploya todo (pedido manual)"; exit 0
           fi
 
@@ -70,7 +71,7 @@ jobs:
           # silencio, que es peor que un deploy de más.
           if [ -z "${ANTES:-}" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ] \
              || ! git cat-file -e "$ANTES^{commit}" 2>/dev/null; then
-            printf 'hosting=true\nfunctions=true\nfirestore=true\n' >> "$GITHUB_OUTPUT"
+            printf 'hosting=true\nfunctions=true\nfirestore=true\nstorage=true\n' >> "$GITHUB_OUTPUT"
             echo "::notice::se deploya todo (no se puede diffear contra el commit anterior)"; exit 0
           fi
 
@@ -115,10 +116,13 @@ jobs:
         # sin emuladores da verde salteando 33 tests en silencio, y un cambio a
         # `firestore.rules` se deployaría sin que nadie las pruebe — que es
         # exactamente lo que este workflow habilita.
+        #
+        # B-167 — `storage` entra en la lista por el mismo motivo: desde que hay
+        # `storage.rules`, este workflow también las deploya.
         env:
           EXIGIR_EMULADOR: '1'
         run: |
-          npx firebase emulators:exec --only auth,firestore \
+          npx firebase emulators:exec --only auth,firestore,storage \
             --project agenda-literaria 'npm test'
 
   # ───────────────────────────────────────────────────────────────
@@ -128,7 +132,11 @@ jobs:
   firestore:
     name: Reglas e índices
     needs: [decidir, verificar]
-    if: needs.decidir.outputs.firestore == 'true'
+    # B-167 — las reglas de Storage van en este mismo job y no en uno propio: es
+    # el job «las reglas», y separarlo duplicaría el checkout, el `npm ci` y el
+    # manejo de la key para deployar un archivo. El `--only` se arma abajo con lo
+    # que haya cambiado.
+    if: needs.decidir.outputs.firestore == 'true' || needs.decidir.outputs.storage == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -139,9 +147,18 @@ jobs:
       - name: Deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+          DEPLOY_FIRESTORE: ${{ needs.decidir.outputs.firestore }}
+          DEPLOY_STORAGE: ${{ needs.decidir.outputs.storage }}
         run: |
+          set -euo pipefail
+          TARGETS=''
+          [ "$DEPLOY_FIRESTORE" = 'true' ] && TARGETS='firestore:rules,firestore:indexes'
+          if [ "$DEPLOY_STORAGE" = 'true' ]; then
+            TARGETS="${TARGETS:+$TARGETS,}storage"
+          fi
+          echo "targets: $TARGETS"
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
-          npx firebase deploy --only firestore:rules,firestore:indexes \
+          npx firebase deploy --only "$TARGETS" \
             --project agenda-literaria --non-interactive
           rm -f /tmp/sa.json
 

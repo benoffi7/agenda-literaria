@@ -172,13 +172,23 @@ export interface Imagen {
   epigrafe: string;
   /**
    * `externa` es una URL de otro lado, que se sirve tal cual desde su origen;
-   * `propia` está en nuestro Storage y la Function le quitó el EXIF y derivó una
-   * miniatura (DEC-7c, DEC-7d).
+   * `propia` está en nuestro Storage (DEC-7c).
+   *
+   * **Hoy el EXIF se lo saca el panel antes de subirla**, no la Function: la
+   * recompresión y la miniatura de DEC-7d son B-220 y todavía no existen. La
+   * distinción importa porque el panel se puede saltear y la Function no, así que
+   * quien lea esto no debe suponer una garantía de servidor que aún no hay. Ver
+   * D-131 §3.
    */
   origen: 'externa' | 'propia';
   /**
-   * Ruta del objeto en Storage. Solo las propias. **Nunca sale al público**
-   * (§5.1): dibuja la estructura del bucket.
+   * Ruta del objeto en Storage. Solo las propias. **No sale al `events.json`**,
+   * pero **no es un secreto**: la URL de descarga lo lleva URL-encodeado adentro
+   * y esa URL sí se publica. Queda afuera por lo que sí es —el handle
+   * autoritativo con el que el panel direcciona el objeto—, y lo que lo vuelve
+   * inofensivo es que sea opaco. El razonamiento completo, que es el autoritativo,
+   * está en el docblock de `imagenPublica` en `src/lib/toPublic.ts` (B-206 #1,
+   * D-131).
    */
   storagePath?: string;
   ancho?: number;

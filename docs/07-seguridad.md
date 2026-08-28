@@ -18,7 +18,7 @@ esas:
 
 Y una sexta que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las cinco proyecciones.
-Cerrada con D-130 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anotada
+Cerrada con D-128 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anotada
 acá porque el modo de falla —una puerta que ninguna proyección atraviesa— es el
 que hay que buscar al agregar una salida nueva.
 
@@ -32,7 +32,8 @@ que hay que buscar al agregar una salida nueva.
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las cinco salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
-| `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado (B-206). Por eso la Function le pone un **nombre opaco** al archivo | `toPublic.ts` |
+| **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
+| `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los tres de abajo |
 
@@ -135,6 +136,64 @@ por qué.
 Y el que se lee al revés de lo que uno espera: **`difusion.arrobar` sí sale**, y
 es su razón de existir — el campo se creó para este texto. Lo interno de
 `difusion` es `notas`, que no sale.
+
+## El bucket de Storage es una salida pública más (B-167, DEC-7)
+
+Hasta acá el §5 tenía **cinco** salidas: el `events.json`, el evento de Calendar,
+el issue de GitHub, GA4 y el texto para redes. Desde la segunda tajada de B-167
+hay una **sexta**, y es distinta de las otras cinco en algo que conviene tener
+presente: no pasa por `toPublic` ni por ninguna proyección, porque **no son
+campos, son bytes**. Lo que se sube es lo que se publica.
+
+Dos consecuencias que están decididas, no heredadas:
+
+- **Una imagen sube pública, y sube antes de que la actividad se publique.** Se
+  puede cargar una imagen en una actividad en `borrador`, y desde ese instante
+  cualquiera con la URL la puede pedir. `estado` no gobierna esta mitad del
+  contenido. Es la contra de haber elegido subir **antes** de guardar —que a su
+  vez es lo que hace que el path no pueda llevar el id de la actividad, D-131
+  §1— y es aceptable porque la URL no es adivinable: el nombre es un uuid y
+  **listar el prefijo está prohibido** (ver abajo).
+- **Un objeto no se despublica.** Quitar la fila de la galería lo saca del
+  documento, no del bucket, y hoy nada lo borra (B-221). Si alguna vez hay que
+  bajar una imagen de verdad, hay que borrar el objeto a mano.
+
+**`get` sí, `list` no**, y esa distinción es lo que sostiene todo el argumento de
+B-206 #1. Si el prefijo se pudiera enumerar, la opacidad del path no compraría
+nada —no hace falta adivinar un uuid si te dan la lista— y adentro están también
+las fotos de los borradores. **No alcanza con no escribirlo:** `allow read`
+incluye `get` **y** `list`, y con `read: if true` un `listAll()` anónimo devolvía
+el bucket entero. Se comprobó contra el emulador, no se dedujo, y desde entonces
+las reglas dicen `allow get: if true` y `allow list: if esAdmin()`, con su caso en
+`tests/storage-reglas.integracion.test.ts`.
+
+Y tres cosas más que hacen que no filtre nada de más:
+
+- **`storage.rules` es la mitad que el schema no puede dar** (DEC-7b). El panel
+  valida tipo y tamaño, y abajo del panel hay una consola de navegador con el SDK
+  cargado: cualquiera con el claim `admin` podría llamar a `uploadBytes` con un
+  archivo de 80 MB. Las reglas verifican **de nuevo** el tamaño (3 MB), el tipo
+  (JPG o PNG) y la forma del nombre. Lo que **no** pueden verificar es el tope de
+  4 imágenes por actividad: una regla de Storage evalúa una operación sobre un
+  objeto y no puede contar los de un prefijo. Ese tope vive solo en el schema, y
+  su peor caso es una actividad con cinco imágenes que el panel no deja guardar.
+  Lo verifica `tests/storage-reglas.integracion.test.ts`, **subiendo de verdad**
+  contra el emulador: las reglas son un lenguaje que evalúa un motor que no es el
+  nuestro y no hay forma honesta de probarlas sin ejecutarlas.
+- **El panel le saca los metadatos al archivo antes de subirlo**
+  (`sinMetadatos`, en `src/lib/imagenes-archivo.ts`). Una foto de celular lleva
+  las coordenadas GPS del lugar donde se sacó, y muchos talleres pasan en la casa
+  de alguien: eso es un dato personal de un tercero, y una vez publicado no se
+  puede despublicar. Se saca sin recomprimir —los píxeles salen byte por byte
+  iguales— y se verifica **sobre los bytes de salida**, no confiando en la
+  función. DEC-7d le da ese trabajo a la Function, y sigue siendo así: la Function
+  es la que no se puede saltear, igual que las reglas frente al schema. Lo que se
+  agregó acá es la primera capa, porque entre las dos tajadas hay imágenes propias
+  públicas y el hueco no podía quedar abierto.
+- **Solo JPG y PNG se pueden subir**, aunque la galería sepa mostrar también WebP
+  y AVIF de otros sitios. Esos dos contenedores llevan EXIF/XMP y todavía no hay
+  quien se lo saque: aceptarlos sería justamente publicar las coordenadas. Vuelven
+  con la Function de DEC-7d, que recomprime todo.
 
 ## La vista previa del panel no es una tercera salida
 
@@ -433,7 +492,7 @@ function esAdmin() {
 }
 
 match /actividades/{id} {
-  allow read:  if esAdmin();    // D-130 — antes: || resource.data.estado == 'publicado'
+  allow read:  if esAdmin();    // D-128 — antes: || resource.data.estado == 'publicado'
   allow write: if esAdmin();
   match /versiones/{version} {
     allow read:  if esAdmin();
@@ -454,7 +513,7 @@ Tres detalles que costaron encontrar:
 
 - **`token.get('admin', false)`, no `token.admin`.** Leer una clave ausente de un
   map es un *evaluation error*, no `false`.
-- **La lectura de `/actividades` es solo del admin (D-130, B-224).** El §5.3 del
+- **La lectura de `/actividades` es solo del admin (D-128, B-208).** El §5.3 del
   `CLAUDE.md` prescribía `resource.data.estado == 'publicado'`, y eso filtraba:
   **una regla de Firestore no proyecta.** Es todo-o-nada por documento, así que
   autorizaba entregar el documento entero —con el link de la reunión, la
@@ -471,11 +530,11 @@ Tres detalles que costaron encontrar:
 correspondiente, si no Firestore rechaza la query **entera** en vez de devolver
 el subconjunto visible (trampa 7).
 
-Desde D-130 **ninguna** colección de este proyecto tiene una regla de lectura
+Desde D-128 **ninguna** colección de este proyecto tiene una regla de lectura
 condicionada por `resource.data` —`/actividades` es `esAdmin()` puro y
 `/opciones/*` es `if true`—, así que hoy no hay query que se pueda romper así. La
 advertencia queda porque el día que B-01 necesite lectura en vivo desde el
-cliente, la forma que D-130 recomienda (una subcolección `privado/`) reintroduce
+cliente, la forma que D-128 recomienda (una subcolección `privado/`) reintroduce
 exactamente este mecanismo. El contraste está fijado en el `describe('trampa 7 —
 el mecanismo, con una regla condicionada')` de
 `tests/actividades.integracion.test.ts`, que carga su propio ruleset para probarlo
@@ -625,7 +684,7 @@ curl -s -X POST "$BASE/actividades?key=$K" -H "Content-Type: application/json" \
 curl -s -X PATCH "$BASE/opciones/arancel?key=$K" -H "Content-Type: application/json" \
   -d '{"fields":{"valores":{"arrayValue":{"values":[]}}}}'
 
-# ── LECTURA (D-130, B-224) ────────────────────────────────────────
+# ── LECTURA (D-128, B-208) ────────────────────────────────────────
 # Hasta el 2026-08-27 acá solo había escrituras, y del lado de la lectura la
 # regla entregaba el documento ENTERO de toda actividad publicada. Estas dos
 # son las que hay que correr después de deployar reglas.

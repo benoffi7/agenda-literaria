@@ -184,13 +184,17 @@ export interface QueCopiar {
   /**
    * Las imágenes **propias** (las que viven en nuestro Storage). Nace apagada.
    *
-   * Hoy tildarla no hace nada distinto, y es a propósito: **no hay forma de que
-   * exista una imagen propia** todavía —la subida es la segunda tajada de B-167
-   * y está bloqueada por B-206—, así que `aplica` la esconde y no hay código
-   * especulativo. Cuando se pueda subir, acá se contesta la pregunta que B-199
-   * mueve pero no resuelve: copiar el objeto de Storage (y duplicar deja de ser
-   * lógica pura, y puede fallar después de copiar dos de cuatro) o contar
-   * referencias (la variante con estado compartido de B-71).
+   * **La casilla ya no se muestra, y eso es un cambio deliberado de la segunda
+   * tajada de B-167.** Mientras no se podía subir, la fila era inofensiva porque
+   * `aplica` nunca daba `true`. Desde que se puede, daría `true` y sería **una
+   * casilla que no hace nada**: tildarla no copiaría el objeto de Storage, y una
+   * casilla que miente es peor que una función que falta.
+   *
+   * Lo que reemplaza a la fila es una línea en `SIEMPRE_AL_DUPLICAR`, que dice
+   * que no se copian y por qué. La clave se conserva en el tipo porque el día que
+   * se decida cómo copiarlas —el objeto de Storage, y duplicar deja de ser lógica
+   * pura y puede fallar después de copiar dos de cuatro; o contar referencias, la
+   * variante con estado compartido de B-71— la fila vuelve sin tocar nada más.
    */
   imagenesPropias: boolean;
 }
@@ -290,7 +294,11 @@ export const CASILLAS_COPIA: readonly CasillaCopia[] = [
     clave: 'imagenesPropias',
     label: 'Las imágenes subidas al panel',
     ayuda: 'Nace apagada: la copia y el original compartirían el archivo, y borrar una rompe la otra.',
-    aplica: (o) => o.imagenes.some((i) => i.origen === 'propia'),
+    // **Nunca se muestra**, y por eso `duplicarActividadForm` no tiene una rama
+    // para esta clave. Ver el comentario de `QueCopiar.imagenesPropias`: desde que
+    // se pueden subir imágenes propias, mostrarla sería ofrecer una casilla que no
+    // hace nada. Lo que el usuario sí ve es la línea de `SIEMPRE_AL_DUPLICAR`.
+    aplica: () => false,
   },
 ];
 
@@ -308,6 +316,10 @@ export const SIEMPRE_AL_DUPLICAR: readonly string[] = [
   'Las fechas se corren en semanas enteras, después del último encuentro del original: mismo día de semana y misma hora.',
   'La copia nace en borrador. No se publica nada ni se crea ningún evento en el calendario hasta que la revises.',
   'Los encuentros cancelados vuelven sin la cancelación, y «cupo completo» no se hereda.',
+  // B-167, segunda tajada. Está acá y no como casilla porque no es opcional: la
+  // copia y el original compartirían el mismo archivo en Storage, y borrar una le
+  // rompería las imágenes a la otra. Las de URL sí se copian y tienen su casilla.
+  'Las imágenes subidas al panel no se copian: hay que volver a subirlas. Las que son un link a otro sitio sí.',
 ];
 
 /**
@@ -356,10 +368,16 @@ export const duplicarActividadForm = (
      * compartido. La respuesta conservadora es no heredarlas: volver a subir
      * hasta cuatro fotos es barato al lado de un borrado que rompe a otro.
      *
-     * B-199 lo volvió elegible: `copiar.imagenes` son las externas. Las propias
-     * tienen su propia casilla, que nace apagada y **hoy no cambia nada** —no
-     * hay forma de que exista una propia hasta que se pueda subir (B-206), así
-     * que acá no hay ninguna rama para ese caso. Cuando la haya, es acá.
+     * B-199 lo volvió elegible: `copiar.imagenes` son las externas.
+     *
+     * **Las propias ya existen** —se pueden subir desde la segunda tajada de
+     * B-167— y siguen sin copiarse **nunca**. Eso ya no es "todavía no se puede":
+     * es la decisión, y por eso su casilla dejó de mostrarse (ver
+     * `QueCopiar.imagenesPropias`) y el hecho pasó a `SIEMPRE_AL_DUPLICAR`.
+     * Copiarlas necesita copiar el objeto de Storage —y duplicar deja de ser
+     * lógica pura, y puede fallar después de copiar dos de cuatro— o contar
+     * referencias, que es la variante con estado compartido de B-71. Si algún día
+     * se resuelve, la rama va acá.
      *
      * Ids nuevos, como las sesiones: compartirlos haría que cualquier cosa que
      * compare por id crea que son la misma fila (trampa 2).

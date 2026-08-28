@@ -178,7 +178,7 @@ esta medición:
 ### Problema 0 · Lo que ninguna métrica de este documento podía ver
 
 **`firestore.rules` entregaba el documento crudo de toda actividad publicada a
-cualquiera** (B-224, D-130). Reproducido contra el emulador: volvían el link de la
+cualquiera** (B-208, D-128). Reproducido contra el emulador: volvían el link de la
 reunión, la `difusion`, la URL del material privado, los uids, el
 `calendarEventId` y el `storagePath` — la lista completa del §5.1, salteando
 `toPublic`. Y era explotable en producción: el repo es público y
@@ -377,7 +377,7 @@ Estas cosas parecen problemas si se las mira solo con métricas.
 
 **La forma aguantó un 36 % de crecimiento sin moverse, y el problema que quedó no
 es de forma.** Esta medición encontró una fuga de privacidad abierta en
-producción (B-224) que ninguna métrica de este documento podía ver y que un test
+producción (B-208) que ninguna métrica de este documento podía ver y que un test
 en verde estaba certificando — la lección es que la salud de forma y la corrección
 son ejes independientes, y este archivo solo mide el primero.
 
@@ -394,5 +394,5 @@ chico y nombrado: la duplicación menor (B-215), Astro sin parche en la 5.x
 (B-214), dos vocabularios para «modalidad» (B-175), el saneador campo por campo
 (B-137), los `.env` sin gate (B-213) y la prosa que pertenece al CHANGELOG (B-78).
 
-Nada de eso bloquea el sitio público. B-224 sí lo habría hecho, y ese es el
+Nada de eso bloquea el sitio público. B-208 sí lo habría hecho, y ese es el
 argumento para correr los auditores antes de construirlo y no después.
