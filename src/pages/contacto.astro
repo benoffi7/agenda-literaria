@@ -1,0 +1,85 @@
+---
+/**
+ * `/contacto` — B-232.
+ *
+ * Sin backend: el sitio es estático y no hay nada que reciba un formulario. Son
+ * dos `mailto:` con el asunto ya puesto, y **el asunto es la funcionalidad** —
+ * separar una sugerencia de un error en la bandeja sin abrirlos es un pedido
+ * explícito del dueño.
+ *
+ * Los dos destinos salen de `urlDeContacto`, nunca de un `mailto:` escrito acá:
+ * la dirección y los asuntos viven en un solo lugar (B-228) y una copia en el
+ * marcado es la que se olvida de cambiar cuando la casilla cambie.
+ *
+ * **Se indexa** (sin `noIndex`). Es tentador esconderla para que un robot no
+ * coseche la dirección, pero no serviría: la casilla está en el `mailto:` igual,
+ * y quien busca «cómo contactar la agenda literaria» tiene que encontrar esta
+ * página. La protección contra el spam es filtrar, no esconderse.
+ */
+import Base from '@/layouts/Base.astro';
+import {
+  ANTES_DE_ESCRIBIR,
+  BLOQUES_DE_CONTACTO,
+  INTRO_DE_CONTACTO,
+  QUE_PASA_DESPUES,
+} from '@/lib/contactoDelSitio';
+
+const foco =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento';
+const claseEnlace = `text-acento underline decoration-borde underline-offset-4 hover:decoration-acento ${foco}`;
+const claseBoton = `inline-flex min-h-touch items-center justify-center rounded-md bg-tinta px-5 text-papel hover:bg-acento ${foco}`;
+---
+
+<Base
+  seccion="contacto"
+  titulo="Contacto — Agenda literaria"
+  descripcion="Sugerir una actividad para la agenda o avisar de un dato mal publicado."
+>
+  <main class="mx-auto max-w-2xl px-4 py-10 sm:py-14">
+    <h1 class="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">Contacto</h1>
+
+    {INTRO_DE_CONTACTO.map((parrafo) => <p class="mt-4 text-tinta/80">{parrafo}</p>)}
+
+    <p class="mt-4 text-tinta/80">
+      <a class={claseEnlace} href={ANTES_DE_ESCRIBIR.href}>{ANTES_DE_ESCRIBIR.texto}</a>.
+    </p>
+
+    {
+      BLOQUES_DE_CONTACTO.map((bloque) => (
+        <section aria-labelledby={`motivo-${bloque.motivo}`} class="mt-10 rounded-lg border border-borde p-5">
+          <h2 id={`motivo-${bloque.motivo}`} class="font-serif text-2xl font-semibold">
+            {bloque.etiqueta}
+          </h2>
+          <p class="mt-2 text-tinta/80">{bloque.ayuda}</p>
+
+          <p class="mt-4 text-sm font-semibold tracking-wide text-tinta/70 uppercase">
+            Qué conviene contarnos
+          </p>
+          <ul class="mt-2 list-disc space-y-1 ps-5 text-tinta/80">
+            {bloque.queIncluir.map((item) => (
+              <li>{item}</li>
+            ))}
+          </ul>
+
+          <p class="mt-5">
+            <a class={claseBoton} href={bloque.href}>
+              {bloque.etiqueta}
+            </a>
+          </p>
+          {/* El asunto se muestra para que se entienda por qué viene puesto, y
+              para que quien prefiera escribir desde otra casilla lo pueda copiar. */}
+          <p class="mt-2 text-sm text-tinta/70">
+            Se manda con el asunto «{bloque.asunto}».
+          </p>
+        </section>
+      ))
+    }
+
+    <section aria-labelledby="que-pasa-despues" class="mt-12">
+      <h2 id="que-pasa-despues" class="font-serif text-2xl font-semibold tracking-tight text-acento">
+        Qué pasa después
+      </h2>
+      {QUE_PASA_DESPUES.map((parrafo) => <p class="mt-3 text-tinta/80">{parrafo}</p>)}
+    </section>
+  </main>
+</Base>

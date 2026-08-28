@@ -1610,6 +1610,85 @@ contra el árbol.
 
 ## P2 — mejoras reales
 
+### B-232 · `/ayuda` y `/contacto` — ✅ hecho (2026-08-28)
+
+Las dos primeras páginas terminadas del sitio público. Son texto y nada más: no leen
+`events.json` ni Firestore, así que se pudieron escribir en paralelo con el listado
+sin depender de él.
+
+**`/ayuda`** le habla a quien busca una actividad, no a quien la carga —la guía del
+panel es otra cosa y vive adentro del panel—. 20 preguntas en cinco grupos,
+todas abiertas y con ancla propia (`/ayuda#a-la-gorra`). Las que el encargo pedía
+están fijadas en el test con el motivo de cada una: que esto **no es una plataforma
+de inscripción**, qué es cada tipo, «a la gorra» (§4.1), el ciclo como una tarjeta y
+no ocho (§2.2), el link de la reunión que no se publica (§5.1, trampa 5), y las
+salidas a `/suscribirse` y `/contacto`.
+
+**`/contacto`** son dos `mailto:` con el asunto ya puesto, con qué conviene contar en
+cada caso y qué pasa después. Nada de dirección ni asunto escritos a mano: salen de
+`enlaces.ts` (B-228).
+
+**Lo que hace que esto no envejezca mal** (D-135): el glosario de tipos y el de
+aranceles se **derivan** de `opciones-base.json`. Una lista de cinco tipos escrita a
+mano en la ayuda ya habría quedado vieja dos veces —`feria` (B-129) y
+`libreria-a-la-calle` entraron como opción base después del `CLAUDE.md`— y sin que
+nada fallara. Hoy el test nombra la categoría que falta explicar.
+
+Doce mutaciones probadas, todas rojas. Una fue instructiva y quedó anotada en el
+test: la primera versión del chequeo «la sugerencia pide quién, cuándo y dónde»
+usaba `d[oó]nde` y **la satisfacía «un link donde esté anunciada»**, que no dice nada
+del lugar. Se apretó a la forma con tilde, que es la interrogativa.
+
+### B-233 · El pie manda a un `mailto:` crudo y se saltea la lista de qué contar · P2
+
+`src/components/sitio/PieDePagina.astro` linkea «Sugerir una actividad» directo a
+`urlDeContacto('sugerencia')`. Estaba bien cuando `/contacto` no existía; desde
+B-232 la página tiene la lista de qué conviene contar —quién la da, cuándo, dónde,
+un link donde esté anunciada— y **el mail que sale del pie no la vio**.
+
+No es cosmético: cada sugerencia sin fecha o sin lugar es un ida y vuelta, y el ida y
+vuelta es donde se pierden. El arreglo es una línea (`href="/contacto"`), pero el
+archivo es del frente del chrome del sitio y no se toca desde otro (B-229).
+
+Lo mismo aplica a cualquier otro lugar que en el futuro ofrezca «sugerir» sin pasar
+por la página.
+
+### B-234 · El mapa de URLs de `12-sitio-publico.md` diseñó páginas que se llaman de otra manera · P2
+
+El §4.5 del diseño lista `/pasadas`, `/calendario`, `/acerca` y `/404`. El sitio que
+se está construyendo tiene `/`, `/suscribirse`, `/ayuda` y `/contacto` —así lo
+declara `Encabezado.astro`, que es lo que se publica—: `/calendario` pasó a llamarse
+`/suscribirse`, y el rol de `/acerca` («qué es, quién lo mantiene, cómo se carga una
+actividad, y el canal para proponer una») quedó repartido entre `/ayuda` y
+`/contacto`.
+
+Es la misma clase que **B-223**: el documento de diseño sigue describiendo un sitio
+que no es el que se está haciendo, y quien lo lea para escribir la próxima página va
+a diseñar contra los nombres viejos. Conviene arreglar los dos de una sola pasada,
+por una sola persona, cuando las tres páginas estén integradas — hacerlo ahora desde
+tres frentes en paralelo produce tres versiones del mismo párrafo.
+
+### B-235 · La home atenúa texto por debajo del contraste AA · P2
+
+`src/pages/index.astro` usa `text-tinta/60` (línea 14) y `text-tinta/45` (línea 17).
+Medido contra la paleta de `global.css` —papel `#fcfaf6`, tinta `#171b22`— eso da
+**4,49:1** y **≈3,0:1**, con el piso de AA en 4,5:1 para texto normal. El primero
+falla por un pelo y el segundo no está cerca.
+
+Apareció el 2026-08-28 midiendo el contraste de `/ayuda` y `/contacto` (B-232), que
+tenían el mismo `/60` en cuatro lugares por el mismo motivo: **se ve bien**, y ese es
+todo el problema. Nadie lo nota mirando, así que se escribe sin pensar. En esas dos
+páginas se subió a `/70` (6,3:1) y quedó fijado con un chequeo que prohíbe el rango
+entero — `tests/ayuda-del-sitio.test.ts`, «ningún texto de las dos páginas cae por
+debajo del contraste AA».
+
+**Qué hacer:** subir los dos a `/70` en la home y, cuando el listado esté integrado,
+extender el chequeo del test a todas las páginas del sitio en vez de a dos. Hoy está
+acotado a las dos porque la home es placeholder y la escribe otro frente (no se toca
+desde acá).
+
+
+
 ### B-224 · Una actividad tiene N modalidades, cada una con su lugar — ✅ hecho (2026-08-27), con una decisión abierta
 
 Pedido del dueño (2026-08-27), textual:
@@ -1762,6 +1841,18 @@ aísla worktrees pero no archivos. Lo que cubre los dos casos es un `projectId`
 por **archivo de test** —el emulador es multi-proyecto y `limpiarFirestore()` ya
 lo recibe como argumento—, o dejar de vaciar la base y que cada archivo borre
 solo lo suyo.
+
+**Cuarta observación, desde el worktree de B-232** (2026-08-28), y trae una cara
+nueva: **`--no-file-parallelism` ya no alcanza.** La corrida completa con la bandera
+puesta dio 3 tests rojos en `opciones.integracion.test.ts` («No existe(n) en
+`opciones/arancel`: `con-beca-parcial`»), y el mismo archivo aislado pasó los 16.
+
+Lo que eso agrega: la bandera serializa los archivos **de una corrida**, no las
+corridas **de dos worktrees**. Con tres frentes trabajando a la vez —que es la
+condición de hoy— la falla vuelve por el otro lado, y el síntoma engaña: parece un
+script roto (`aprobar-opciones.mjs` cortando con un slug que no existe) y es la base
+vaciada por el vecino en el medio del test. Sube la prioridad práctica del arreglo de
+fondo: el taponazo que veníamos usando cubría la mitad del problema.
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública
 
@@ -4985,6 +5076,8 @@ Se dejan para que quede el rastro de qué se rompió.
 | Una página del sitio público podía publicarse sin encabezado ni pie y nadie se enteraba | `Base.astro` trae el chrome apagado por defecto —lo correcto para `/admin`, lo equivocado para el sitio— así que olvidarse de `seccion` deja el build verde y la página sin salida. Cerrado con `tests/chrome-del-sitio.test.ts`, que encontró una al escribirlo | B-229, `src/components/sitio/` (2026-08-28) |
 | Faltaba un lugar único para los destinos externos del sitio, y tres frentes en paralelo iban a derivarlos por separado | no era un bug todavía: es la clase B-72/B-88 —tres derivaciones de la misma regla— vista antes de que ocurra. Se cerró escribiendo el contrato primero, que es la lección de la integración de `1.5.0` | B-228, `src/lib/enlaces.ts` (2026-08-28) |
 | El comparador de infraestructura reportaba que la doc mentía sobre `roles/iam.serviceAccountUser` cuando la que no miraba era él | `relevar-infra.sh` solo consultaba los bindings **del proyecto**, y `iam.serviceAccountUser` se otorga sobre **cada cuenta de runtime**. Salió a la luz al declarar los roles de D-132; es justo el rol que menos convenía no mirar, porque es la mitad de "puede desplegar código que corre como una identidad privilegiada" | B-226, `scripts/relevar-infra.sh` (2026-08-28) |
+| Una ayuda que enumerara los tipos de actividad a mano habría nacido vieja | el `CLAUDE.md` §3.1 lista cinco tipos y las opciones base ya son **siete**: `feria` (B-129) y `libreria-a-la-calle` entraron después. No era un bug todavía —la página no existía— pero el camino corto al escribirla era copiar la lista del documento. Se cerró derivando el glosario de `opciones-base.json`, con el test que nombra la categoría sin explicar | B-232, `src/lib/ayudaDelSitio.ts` (2026-08-28) |
+| Las dos páginas nuevas atenuaban texto por debajo del contraste AA, y se veía bien | `text-tinta/60` sobre papel da 4,49:1 con el piso en 4,5:1. Se escribe sin pensar justamente porque a ojo no se distingue de `/70`. Se subió a `/70` (6,3:1) y quedó fijado con un chequeo que prohíbe el rango entero, no la instancia. La home tiene el mismo problema y es de otro frente: **B-235** | B-232, `src/pages/{ayuda,contacto}.astro` (2026-08-28) |
 
 | Editar un encuentro desde la vista calendario y volver por el encabezado mandaba al listado y perdía el mes que se estaba mirando | el botón "← Volver" hacía `setVista({tipo:'lista'})` fijo, mientras el "Cancelar" del formulario ya respetaba `volverA`: dos salidas del mismo formulario con dos criterios | B-35, `AdminApp.tsx` |
 | El listado y el calendario contestaban "¿ya pasó?" con campos distintos: un taller en curso desaparecía del listado a los minutos de empezar | `proximoEncuentro` filtraba por `inicio`, `yaPaso` por `fin`, y el fixture de los tests tenía `fin === inicio`, así que la diferencia era indetectable (patrón B-84) | auditoría del calendario, H1 |

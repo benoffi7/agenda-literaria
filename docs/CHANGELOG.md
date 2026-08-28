@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-08-28 (después de 1.5.0) · las páginas de ayuda y contacto
+
+**`/ayuda` y `/contacto`, las dos primeras páginas terminadas del sitio público —
+B-232.** No leen `events.json` ni Firestore: son texto, y por eso se pudieron
+escribir en paralelo con el listado.
+
+`/ayuda` le habla a **quien busca una actividad**, no a quien la carga: 20
+preguntas en cinco grupos, todas abiertas y con ancla propia. Contesta que esto **no
+es una plataforma de inscripción**, qué es cada tipo, qué quiere decir «a la gorra»
+(§4.1), por qué un ciclo es una tarjeta y no ocho (§2.2), y por qué el link de la
+reunión no está publicado (§5.1, trampa 5).
+
+`/contacto` son dos `mailto:` con el asunto ya puesto —lo que permite separar una
+sugerencia de un error en la bandeja sin abrirlos—, con qué conviene contar en cada
+caso y qué pasa después. La dirección y los asuntos salen de `enlaces.ts` (B-228) y
+el test falla si aparece un `mailto:` escrito a mano en el marcado.
+
+**El contenido es data, no marcado** (`src/lib/ayudaDelSitio.ts`,
+`src/lib/contactoDelSitio.ts`), y lo que se puede derivar se deriva: el glosario de
+tipos y el de aranceles salen de `opciones-base.json`, y los motivos de contacto de
+`MOTIVOS_DE_CONTACTO`. El día que entre una categoría base nueva —ya pasó dos veces,
+con «Feria» (B-129) y con «Librería a la calle»— la ayuda queda incompleta y el test
+la nombra, en vez de quedar enumerando cinco tipos mientras el sitio muestra siete.
+Ver **D-135**.
+
+**Todo abierto, sin acordeón y sin JavaScript** (**D-136**): el uso principal de una
+página de ayuda es mandar el link de una respuesta suelta o caer en ella desde una
+búsqueda, y las dos cosas se degradan cuando se aterriza sobre un título plegado.
+
+**Contraste medido, no estimado.** Las dos páginas nacieron con `text-tinta/60` en
+cuatro lugares, que sobre esta paleta da **4,49:1** contra el piso de 4,5:1 de AA.
+Se ve perfectamente bien —ese es todo el problema— así que se subió a `/70` (6,3:1)
+y quedó como chequeo que prohíbe el rango entero en vez de criterio que hay que
+recordar. La home tiene lo mismo y es de otro frente: **B-235**.
+
+Trece mutaciones probadas, todas rojas: borrar una pregunta obligatoria, sacar la
+explicación de un tipo base, dejar de diferenciar «a la gorra» de gratis, linkear a
+una sección que no existe, meter un link de Zoom de ejemplo, meter jerga, repetir un
+ancla, pegar una pregunta en el marcado, escribir el `mailto:` a mano, sacarle el
+«dónde» a la sugerencia, sacarle el «en qué página» al reporte de error, agregar un
+motivo de contacto sin su lista y bajar el contraste de un texto a `/60`.
+
+Abiertos en el camino: **B-233** (el pie manda a un `mailto:` crudo en vez de a
+`/contacto`, que es donde está la lista de qué contar), **B-234** (el mapa de URLs de
+`12-sitio-publico.md` quedó viejo: diseñaba `/acerca` y `/calendario`, el sitio tiene
+`/ayuda`, `/contacto` y `/suscribirse`) y **B-235** (la home atenúa texto por debajo
+de AA).
+
+
 ## 2026-08-28 (después de 1.5.0) · el chrome compartido del sitio público
 
 **Encabezado y pie del sitio, con un solo dueño — B-229.** Navegación entre las

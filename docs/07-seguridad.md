@@ -22,6 +22,20 @@ Cerrada con D-128 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anota
 acá porque el modo de falla —una puerta que ninguna proyección atraviesa— es el
 que hay que buscar al agregar una salida nueva.
 
+**Las páginas de texto del sitio no son una sexta salida, y conviene tenerlo
+escrito** para que nadie las cuente ni las deje de mirar. `/ayuda` y `/contacto`
+(B-232) no proyectan ningún documento: su contenido está escrito a mano en
+`src/lib/ayudaDelSitio.ts` y `src/lib/contactoDelSitio.ts`. No hay campo que se pueda
+colar por un spread, así que no hay proyección que auditar.
+
+Lo que sí tienen es el riesgo propio del texto libre en una página pública: el
+**ejemplo bien intencionado**. Una ayuda que explica por qué el link de la reunión no
+se publica está a una frase de ilustrarlo con un link de reunión de verdad, que es la
+trampa 5 entrando por la puerta que ninguna proyección cubre. Por eso los dos módulos
+tienen barrido de centinelas en sus tests (`zoom.us/j`, `meet.google.com/`, `wa.me/`,
+cualquier `http`) y el chequeo de que la casilla de contacto no está escrita en el
+marcado de ninguna página — sale de `enlaces.ts` o no sale.
+
 ## Qué NUNCA sale
 
 | Campo | Motivo | Dónde se filtra |
