@@ -144,13 +144,23 @@ src/
     firebase-client.ts      app y auth del panel — sin Firestore (B-09)
     firestore-client.ts     db() del panel, aparte para no cargarlo en el login
     firebase-admin.ts       SOLO build time (§5.4)
+    enlaces.ts              destinos externos: calendario, IG, contacto (B-228)
+    contraste.ts            matemática de contraste WCAG, para el guard (B-235)
+    ayudaDelSitio.ts        el contenido de /ayuda, como datos (B-232)
+    contactoDelSitio.ts     el contenido de /contacto, derivado de enlaces (B-232)
+    suscripcion.ts          los caminos de /suscribirse, como datos (B-230)
   components/admin/         el panel entero
-  layouts/Base.astro        head, fuentes, viewport
+  components/sitio/         el chrome del sitio público y sus piezas (B-229)
+  layouts/Base.astro        head, fuentes, viewport, y el chrome — apagado por
+                            defecto, porque /admin no lo lleva (B-229)
   pages/
     admin.astro             island client:only
     version.json.ts         /version.json — qué versión está publicada
     events.json.ts          /events.json — lee Firestore en el build (B-106)
-    index.astro             placeholder del sitio público
+    index.astro             la home del sitio público
+    ayuda.astro             /ayuda — texto, sin JS ni Firestore (B-232)
+    contacto.astro          /contacto — dos mailto con asunto propio (B-232)
+    suscribirse.astro       /suscribirse — llevarse la agenda (B-230)
 functions/
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario

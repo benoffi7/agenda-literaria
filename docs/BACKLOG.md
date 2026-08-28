@@ -1164,7 +1164,7 @@ alert del §2.3 está puesto **solo para Functions**. Storage se paga por
 almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
 Conviene extenderlo antes, no después de la factura.
 
-### B-224 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes · P1
+### B-236 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes · P1
 
 **Pasó dos veces el 2026-08-27/28, en dos worktrees distintos**, y la segunda quedó
 grabada en el propio `git stash list`: una entrada se llama literalmente
@@ -1639,7 +1639,7 @@ test: la primera versión del chequeo «la sugerencia pide quién, cuándo y dó
 usaba `d[oó]nde` y **la satisfacía «un link donde esté anunciada»**, que no dice nada
 del lugar. Se apretó a la forma con tilde, que es la interrogativa.
 
-### B-233 · El pie manda a un `mailto:` crudo y se saltea la lista de qué contar · P2
+### B-233 · El pie manda a un `mailto:` crudo y se saltea la lista de qué contar — ✅ hecho (2026-08-28)
 
 `src/components/sitio/PieDePagina.astro` linkea «Sugerir una actividad» directo a
 `urlDeContacto('sugerencia')`. Estaba bien cuando `/contacto` no existía; desde
@@ -1668,7 +1668,7 @@ a diseñar contra los nombres viejos. Conviene arreglar los dos de una sola pasa
 por una sola persona, cuando las tres páginas estén integradas — hacerlo ahora desde
 tres frentes en paralelo produce tres versiones del mismo párrafo.
 
-### B-235 · La home atenúa texto por debajo del contraste AA · P2
+### B-235 · La home atenúa texto por debajo del contraste AA — ✅ hecho (2026-08-28)
 
 `src/pages/index.astro` usa `text-tinta/60` (línea 14) y `text-tinta/45` (línea 17).
 Medido contra la paleta de `global.css` —papel `#fcfaf6`, tinta `#171b22`— eso da
@@ -1682,10 +1682,23 @@ páginas se subió a `/70` (6,3:1) y quedó fijado con un chequeo que prohíbe e
 entero — `tests/ayuda-del-sitio.test.ts`, «ningún texto de las dos páginas cae por
 debajo del contraste AA».
 
-**Qué hacer:** subir los dos a `/70` en la home y, cuando el listado esté integrado,
-extender el chequeo del test a todas las páginas del sitio en vez de a dos. Hoy está
-acotado a las dos porque la home es placeholder y la escribe otro frente (no se toca
-desde acá).
+**Qué se hizo, y encontró más de lo que este ítem describía.** Al extender el
+chequeo a todo el sitio aparecieron **cuatro** lugares, no dos: además de los de la
+home, dos `marker:text-tinta/45` (2,86:1) en los marcadores de las listas de pasos
+numerados de `/suscribirse` — escritos **el mismo día** por otro frente, mientras
+éste se abría. Los marcadores de una lista ordenada son contenido: si no se leen, no
+se sabe cuál es el paso 3. Los cuatro a `/70`.
+
+**Y el chequeo cambió de forma, que es lo que vale.** No es un piso de opacidad
+escrito a mano —«nunca menos de /65»—, porque eso sería cierto para esta paleta y
+mentira para la siguiente sin que nadie se entere. `tests/contraste-del-sitio.test.ts`
+**lee los tokens de `global.css`** y calcula: aclarar la tinta pone en rojo las
+opacidades que dejaron de alcanzar, que es exactamente cuando hay que revisarlas. La
+matemática vive en `src/lib/contraste.ts` y se ancla contra los valores de la norma
+(21:1, 1:1) en vez de contra sí misma.
+
+Lo que enseñó: **la regla no se sostiene con atención.** Tres frentes en paralelo la
+rompieron dos veces en una tarde, y uno de ellos era el que la estaba documentando.
 
 
 
@@ -1853,6 +1866,23 @@ condición de hoy— la falla vuelve por el otro lado, y el síntoma engaña: pa
 script roto (`aprobar-opciones.mjs` cortando con un slug que no existe) y es la base
 vaciada por el vecino en el medio del test. Sube la prioridad práctica del arreglo de
 fondo: el taponazo que veníamos usando cubría la mitad del problema.
+
+**Quinta observación, desde el worktree de B-230** (2026-08-28), y cierra el
+argumento: **el mismo archivo falló en una corrida y se salteó en la siguiente.**
+No cambió nada del código en el medio — otro worktree levantó los emuladores.
+
+Las cuatro anteriores describían el emulador como *estado compartido que se
+corrompe*; ésta agrega que también es **estado compartido que aparece y
+desaparece**, y eso rompe la premisa del salteo automático. El diseño de hoy dice
+«si no hay emulador, salteo»; con varios worktrees, «hay emulador» pasa a depender
+de lo que esté haciendo el vecino, así que la misma suite reporta cobertura
+distinta en dos corridas seguidas. `EXIGIR_EMULADOR=1` tapa la variante silenciosa
+—que es para lo que existe— pero no la corrupción.
+
+**Cinco observaciones independientes, tres worktrees, dos días.** Lo que las cinco
+comparten está en **B-236**: algo que uno supone aislado por worktree y es global
+del repositorio. El arreglo de fondo probablemente sea un puerto de emulador por
+worktree, o un `projectId` por worktree sobre el mismo emulador.
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública
 

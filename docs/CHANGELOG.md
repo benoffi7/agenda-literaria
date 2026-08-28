@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-08-28 (después de 1.5.0) · la integración de los tres frentes del sitio
+
+**El sitio público tiene tres páginas** — `/ayuda`, `/contacto` (**B-232**) y
+`/suscribirse` (**B-230**) —, escritas en paralelo por dos frentes sobre el contrato
+compartido de B-228 y el chrome de B-229. Los detalles de cada una están en sus
+propias entradas, abajo. Acá va lo que apareció **al juntarlas**, que es lo que un
+frente solo no podía ver.
+
+**El contraste era peor de lo que decía el ítem que lo abrió — B-235.** Un frente lo
+encontró en sus páginas (`text-tinta/60` da 4,49:1 contra un piso de 4,5) y abrió el
+ítem describiendo dos lugares. Al extender el chequeo a todo el sitio aparecieron
+**cuatro**: los otros dos son marcadores de listas de pasos numerados en
+`/suscribirse`, con `/45` (2,86:1), escritos **el mismo día por el otro frente**
+mientras el ítem se abría. Los números de una lista ordenada son contenido — si no
+se leen, no se sabe cuál es el paso 3.
+
+Lo que enseñó, y por eso el chequeo es nuevo y no una nota: **la regla no se sostiene
+con atención.** Tres frentes en paralelo la rompieron dos veces en una tarde, y uno
+era el que la estaba documentando.
+
+`tests/contraste-del-sitio.test.ts` **lee los tokens de `global.css` y calcula**, en
+vez de fijar un piso de opacidad a mano. Un «nunca menos de /65» sería cierto para
+esta paleta y mentira para la siguiente, en silencio; leyendo los tokens, aclarar la
+tinta pone en rojo las opacidades que dejaron de alcanzar. La matemática vive en
+`src/lib/contraste.ts` y se ancla contra los valores de la norma —21:1 y 1:1— y no
+contra sí misma.
+
+**El pie mandaba a un `mailto:` crudo — B-233.** Estaba bien cuando `/contacto` no
+existía. Ahora esa página dice qué conviene contar, y un mail que se saltea la lista
+llega sin fecha o sin lugar: un ida y vuelta que la página evita.
+
+**Un número de backlog duplicado, arrastrado de la integración de `1.5.0` — B-236.**
+El ítem del `git stash` compartido entre worktrees se había quedado con **B-224**,
+que es «N modalidades» y tiene **137 referencias** en el código. Renumerado a B-236
+cambiando **dos líneas identificadas a mano**: un reemplazo global habría roto las
+137, que es exactamente el error que costó una hora esa mañana.
+
+**Quinta observación sobre B-219**, y cierra el argumento: un frente vio el mismo
+archivo **fallar en una corrida y saltearse en la siguiente**, sin tocar el código —
+otro worktree levantó los emuladores en el medio. Las cuatro anteriores describían el
+emulador como estado compartido que **se corrompe**; ésta agrega que también es
+estado que **aparece y desaparece**, y eso rompe la premisa del salteo automático: la
+misma suite reporta cobertura distinta en dos corridas seguidas.
+
+**Doc puesta al día con números contados en esta corrida**, no arrastrados:
+`docs/README.md` decía 1.403 tests en 61 archivos y son **1.574 en 71**;
+`docs/01-arquitectura.md` seguía llamando placeholder a la home y no tenía ninguna de
+las páginas ni carpetas nuevas. Y las decisiones quedaron en orden: los dos frentes
+escribieron en paralelo, así que entraron como D-135, D-136, D-133, D-134.
+
 ## 2026-08-28 (después de 1.5.0) · las páginas de ayuda y contacto
 
 **`/ayuda` y `/contacto`, las dos primeras páginas terminadas del sitio público —
@@ -560,7 +610,7 @@ dentro de una sola suite ya alcanza, dos corridas seguidas fallaron en tests
 distintos—, y `--no-file-parallelism` pasa siempre. Eso descarta que el arreglo pueda
 ser solo de coordinación entre working-trees.
 
-**Y apareció un bicho del propio proceso, que es B-224 y ya mordió dos veces:**
+**Y apareció un bicho del propio proceso, que es B-236 y ya mordió dos veces:**
 `git stash` vive en `refs/stash`, que es del **repositorio** y no del working-tree.
 `git worktree` aísla el índice, el `HEAD` y los archivos; el stash, no. Un
 `git stash push` para poder rebasear, otro frente stasheando en el medio, y el `pop`
