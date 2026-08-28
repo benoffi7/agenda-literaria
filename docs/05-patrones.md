@@ -445,7 +445,7 @@ página pública decía **menos** que el evento de Calendar del mismo encuentro.
 
 Cuando una salida pública es una **página** y no un archivo de datos, la frontera
 de privacidad no puede ser la disciplina de quien escribe el `.astro`: tiene que
-ser un **tipo** (D-136).
+ser un **tipo** (D-140).
 
 ```astro
 ---

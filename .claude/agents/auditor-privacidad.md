@@ -25,7 +25,7 @@ Leelos antes de dictaminar: son la fuente, esto es el índice.
 | 3 | El issue de GitHub (el repo `benoffi7/agenda-literaria` es **público**) | `functions/reportes.js` — `redactar`, `construirIssue`, `actividadParaIssue` | `tests/reportes.test.ts` |
 | 4 | GA4 (la más estricta: acá **no sale contenido nunca**, ni con permiso del dueño) | `src/lib/analytics-eventos.ts` — `construirEvento` y sus vocabularios | `tests/analytics-privacidad.test.ts` |
 | 5 | El texto para copiar a redes (**la más irreversible**: un posteo pegado en Instagram ya está copiado) | `src/lib/textoRedes.ts` — `construirTextoRedes` y el `Pick` de `ActividadParaRedes` | `tests/textoRedes.test.ts` |
-| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` — `detalleDeActividad` (el view-model), `datosEstructurados` (el JSON-LD), `urlSegura` y `handleInstagram` (todo href); `src/lib/contenidoDelSitio.ts` — `caminosDeDetalle`, el `where` y `etiquetasDelDetalle`. La plantilla `src/pages/actividad/[slug].astro` **solo acomoda**: recibe el view-model y nada más (D-136) | `tests/detallePublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (dos `describe`: la página y el JSON-LD), `tests/pagina-de-detalle.test.ts`, `tests/sitio-publico.integracion.test.ts` |
+| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` — `detalleDeActividad` (el view-model), `datosEstructurados` (el JSON-LD), `urlSegura` y `handleInstagram` (todo href); `src/lib/contenidoDelSitio.ts` — `caminosDeDetalle`, el `where` y `etiquetasDelDetalle`. La plantilla `src/pages/actividad/[slug].astro` **solo acomoda**: recibe el view-model y nada más (D-140) | `tests/detallePublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (dos `describe`: la página y el JSON-LD), `tests/pagina-de-detalle.test.ts`, `tests/sitio-publico.integracion.test.ts` |
 
 **La 6 nació con la tabla ya escrita, y eso es a propósito.** La 5 faltó acá hasta
 el 2026-08-27 y el diagnóstico de entonces fue que el agujero no era de cobertura
@@ -64,12 +64,12 @@ quien carga (D-122).
   de la actividad y al evento de Calendar (desvío deliberado, D-15). **A las
   salidas 3, 4 y 5 no va nunca**, ni con el flag en true; **al índice del
   listado tampoco** (D-129, porque servirlo en lote es lo que lo hace barato de
-  cosechar); **y a la página de detalle ni a su JSON-LD tampoco** (D-135, porque
+  cosechar); **y a la página de detalle ni a su JSON-LD tampoco** (D-139, porque
   un HTML indexado no se despublica). El mapa completo de las cinco celdas —las
-  dos mitades de la salida 1, la 2, el detalle y su JSON-LD— está en D-135, y
+  dos mitades de la salida 1, la 2, el detalle y su JSON-LD— está en D-139, y
   ninguna se deduce de las otras. Sin URL cargada no se inventa el campo.
 - **La hora de `createdAt`** — el campo sale como `creadoEn` recortado a
-  `AAAA-MM-DD` (D-134). Con un solo admin, el instante exacto de cada carga es su
+  `AAAA-MM-DD` (D-138). Con un solo admin, el instante exacto de cada carga es su
   agenda de trabajo, no una fecha: mismo razonamiento que D-57 y D-27. Y
   `updatedAt` no sale a ninguna salida.
 - `difusion` (entero) — trabajo interno, a ninguna salida.
@@ -114,7 +114,7 @@ propiedad del día en que se escribió.
    hallazgo por sí mismo: nadie decidió, y el default de "lo agrego al `pick`"
    publica. **Y con qué precisión sale también es una celda**: `creadoEn` pasó las
    seis y publicaba igual el milisegundo exacto de cada carga, que con un solo
-   admin es su agenda de trabajo (D-134).
+   admin es su agenda de trabajo (D-138).
    Y una **séptima** pregunta, que es la que decide si el campo es interno: **quién
    lo escribe.** Si lo escribe una Cloud Function, es candidato a no salir a
    ninguna de las seis (como `calendarEventId`), y su conflicto de dueños con
@@ -148,7 +148,7 @@ propiedad del día en que se escribió.
    con contenido, un mail, un JSON más, **una página**), decilo fuerte: son seis
    hoy y una séptima cambia el mapa y la doc — esta tabla, la de
    `docs/07-seguridad.md` y la del skill `campo-nuevo`, que es el que se ejecuta
-   cuando alguien agrega un campo (B-235).
+   cuando alguien agrega un campo (B-244).
 
 ## Qué NO hacés
 

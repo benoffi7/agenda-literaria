@@ -195,7 +195,7 @@ describe('lo que el índice sí resuelve, para que no lo resuelva cada consumido
     expect(JSON.stringify(e)).not.toContain('"abierta"');
   });
 
-  it('lleva la fecha de alta, que es la clave del orden «Recién agregadas» — D-134', () => {
+  it('lleva la fecha de alta, que es la clave del orden «Recién agregadas» — D-138', () => {
     /*
      * B-227. Es el único campo que el índice ganó con el sitio público, y el
      * barrido de centinelas no lo puede ver (un `Timestamp` no lleva centinela
@@ -203,12 +203,12 @@ describe('lo que el índice sí resuelve, para que no lo resuelva cada consumido
      * —o sea, sin ordenar— y toda la suite en verde.
      */
     // Con precisión de **día**: publicar el instante exacto de cada carga dibuja
-    // la agenda de trabajo del dueño, y el orden no lo necesita (D-134).
+    // la agenda de trabajo del dueño, y el orden no lo necesita (D-138).
     expect(entradaDeIndice(publica()).creadoEn).toBe('2026-08-01');
   });
 
   it('y NO lleva la fecha de la última edición', () => {
-    // La otra mitad de D-134: se publica cuándo se cargó, no cuándo se tocó por
+    // La otra mitad de D-138: se publica cuándo se cargó, no cuándo se tocó por
     // última vez. El fixture las tiene distintas justamente para poder afirmarlo.
     expect(JSON.stringify(entradaDeIndice(publica()))).not.toContain('2026-08-02');
   });

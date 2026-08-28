@@ -38,7 +38,7 @@ no se pueden deshacer después.
    > B-227). O sea que se podía seguir este skill al pie de la letra y publicar un
    > campo nuevo en Instagram o en Google sin que nada lo frenara — que es
    > exactamente la clase de bug que el skill existe para evitar. Lo encontró el
-   > `auditor-documentacion` (**B-235**). Si agregás una salida, **se agrega acá en
+   > `auditor-documentacion` (**B-244**). Si agregás una salida, **se agrega acá en
    > el mismo cambio**.
 2. **¿Es un dato libre o una taxonomía?** Si es un valor de un conjunto que va a
    crecer, va como `/opciones/{campo}` con el patrón del §4 (slugify + upsert
@@ -101,7 +101,7 @@ condicionado por un flag, el flag manda y sin dato no se inventa el campo (D-15)
 |---|---|
 | la salida 1 | `src/lib/toPublic.ts` — qué *puede* ser público |
 | …y además lo necesita el **listado** (filtrar, ordenar, pintar la tarjeta) | `src/lib/eventsJson.ts` — el índice recorta más que `toPublic` a propósito |
-| la salida 6 | `src/lib/detallePublico.ts` — la página de detalle **no ve el documento**, solo este view-model (D-136), así que un campo que no se agregue acá no aparece aunque esté en `toPublic` |
+| la salida 6 | `src/lib/detallePublico.ts` — la página de detalle **no ve el documento**, solo este view-model (D-140), así que un campo que no se agregue acá no aparece aunque esté en `toPublic` |
 | la salida 5 | `src/lib/textoRedes.ts` — el `Pick` de `ActividadParaRedes` |
 
 **El barrido te va a decir si te olvidaste de decidir**: `tests/barrido-de-salidas-publicas.test.ts`

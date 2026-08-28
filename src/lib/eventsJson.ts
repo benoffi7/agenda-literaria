@@ -90,7 +90,7 @@ export interface EntradaDeIndice {
   tags: string[];
   destacado: boolean;
   /**
-   * El ISO de cuándo se cargó — D-134. Es la clave del orden «Recién agregadas»
+   * El ISO de cuándo se cargó — D-138. Es la clave del orden «Recién agregadas»
    * del listado, que es lo único que la usa: la tarjeta no muestra esta fecha.
    */
   creadoEn: string;

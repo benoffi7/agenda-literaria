@@ -107,7 +107,7 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
     expect(caminos).toHaveLength(1);
   });
 
-  it('sobrevive al argumento que Astro le pasa a `getStaticPaths` — B-228', async () => {
+  it('sobrevive al argumento que Astro le pasa a `getStaticPaths` — B-237', async () => {
     /*
      * El bug que el build de verdad encontró y ningún unitario podía ver: Astro
      * **llama a `getStaticPaths` con un objeto propio** (`{ paginate, rss }`), y

@@ -985,7 +985,7 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
  * ── Por qué se barre el view-model y no el HTML ───────────────────────────
  * Porque el HTML no se puede barrer desde vitest: un `.astro` no se importa. La
  * respuesta de este cambio no fue «entonces no lo cubrimos», fue mover la
- * decisión a un módulo puro (**D-136**): la plantilla recibe **solo** este objeto,
+ * decisión a un módulo puro (**D-140**): la plantilla recibe **solo** este objeto,
  * así que lo que no esté acá no puede aparecer en la página — no porque nadie lo
  * escriba, sino porque no lo tiene.
  *
@@ -1128,7 +1128,7 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     });
   });
 
-  it('con `urlPublica: true` el link de la reunión TAMPOCO sale al detalle (D-135)', () => {
+  it('con `urlPublica: true` el link de la reunión TAMPOCO sale al detalle (D-139)', () => {
     /*
      * **Es más estricto que D-15**, que permite el link en las salidas 1 y 2, y
      * es la decisión de este cambio: la página de detalle es la superficie que
@@ -1162,7 +1162,7 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
             'no está registrada en `/opciones/plataforma` del fixture, y ahí `desSlug` es el ' +
             'último recurso del §4.1 — el mismo dato público con otra tipografía. Su **link** ' +
             'NO está en esta lista aunque esa fila tenga `urlPublica: true`: ese es el punto ' +
-            'de D-135.',
+            'de D-139.',
         },
       ],
       { insensible: true },

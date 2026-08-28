@@ -8,7 +8,7 @@ comparten las mismas reglas.
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
 esas. La **6** nació con B-227 y es la primera que es una *página* y no un
 archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
-ve el documento (D-136).
+ve el documento (D-140).
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
@@ -17,7 +17,7 @@ ve el documento (D-136).
 | 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
-| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y el `where`). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-136**) |
+| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y el `where`). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**) |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.
@@ -29,9 +29,9 @@ que hay que buscar al agregar una salida nueva.
 
 | Campo | Motivo | Dónde se filtra |
 |---|---|---|
-| `online.url` **con `urlPublica: false`** | el link de la reunión se manda al inscribirse; publicarlo habilita zoombombing (trampa 5). Es el default. **Y con `urlPublica: true` sale solo a las salidas 1 y 2** (D-15): al índice del listado no (D-129), y a la **página de detalle** ni a su **JSON-LD** tampoco (**D-135**), porque un HTML indexado no se despublica. El mapa completo de las cinco celdas está en D-135. | `toPublic.ts`, `calendario.js`, `eventsJson.ts`, `detallePublico.ts` |
-| `updatedAt` | se publica **cuándo se cargó** (`createdAt` → `creadoEn`, y solo `AAAA-MM-DD`: **D-134**) y no cuándo se editó. Una fecha de modificación convierte cada typo corregido en «actualizado hoy»; cuando el sitemap la necesite (§11.2 del diseño) es su propia decisión | `toPublic.ts` |
-| la **hora** de `createdAt` | el campo sale recortado al día: con **un solo admin**, el instante exacto de cada carga no es una fecha, es su agenda de trabajo — a qué hora carga y en qué tandas. Mismo razonamiento que D-57 y D-27: con un universo de una persona, el dato que «no nombra a nadie» igual la describe (D-134) | `toPublic.ts` |
+| `online.url` **con `urlPublica: false`** | el link de la reunión se manda al inscribirse; publicarlo habilita zoombombing (trampa 5). Es el default. **Y con `urlPublica: true` sale solo a las salidas 1 y 2** (D-15): al índice del listado no (D-129), y a la **página de detalle** ni a su **JSON-LD** tampoco (**D-139**), porque un HTML indexado no se despublica. El mapa completo de las cinco celdas está en D-139. | `toPublic.ts`, `calendario.js`, `eventsJson.ts`, `detallePublico.ts` |
+| `updatedAt` | se publica **cuándo se cargó** (`createdAt` → `creadoEn`, y solo `AAAA-MM-DD`: **D-138**) y no cuándo se editó. Una fecha de modificación convierte cada typo corregido en «actualizado hoy»; cuando el sitemap la necesite (§11.2 del diseño) es su propia decisión | `toPublic.ts` |
+| la **hora** de `createdAt` | el campo sale recortado al día: con **un solo admin**, el instante exacto de cada carga no es una fecha, es su agenda de trabajo — a qué hora carga y en qué tandas. Mismo razonamiento que D-57 y D-27: con un universo de una persona, el dato que «no nombra a nadie» igual la describe (D-138) | `toPublic.ts` |
 | `difusion` | trabajo interno | ambos |
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |

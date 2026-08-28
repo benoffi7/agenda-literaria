@@ -25,18 +25,18 @@ fragmentos de código son ilustrativos.
 > | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ menos §7.3 (canceladas, **B-110**) y la mitad de §7.1 que vive en `/pasadas` |
-> | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; la **hoja inferior** de filtros y el **CTA fijo** no (**B-229**) |
+> | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; la **hoja inferior** de filtros y el **CTA fijo** no (**B-238**) |
 > | §10 accesibilidad | ✅ |
 >
 > **Los cuatro desvíos, todos con su decisión escrita:**
 >
-> 1. **Hay selector de orden**, y §6.1 decía que no — **D-133**.
+> 1. **Hay selector de orden**, y §6.1 decía que no — **D-137**.
 > 2. **`online.url` no sale al detalle** ni con `urlPublica: true`, o sea más
->    estricto que lo que dice §4.3 — **D-135**.
+>    estricto que lo que dice §4.3 — **D-139**.
 > 3. **El panel de filtros es un *disclosure* inline y no una hoja modal** (§8).
 >    Un diálogo modal necesita trampa de foco, cierre con `Escape`, click en el
 >    fondo y `pushState`; un disclosure no necesita nada de eso y no tiene cómo
->    salir mal. La hoja queda en **B-229**, para hacerla bien y de una vez.
+>    salir mal. La hoja queda en **B-238**, para hacerla bien y de una vez.
 > 4. **La island renderiza su propia lista** en vez de mostrar y ocultar las
 >    tarjetas del HTML por `data-id` (§6.3). Se conserva todo lo que esa sección
 >    perseguía —el HTML completo del build, sin-JS servido, sin parpadeo, **un
@@ -44,7 +44,7 @@ fragmentos de código son ilustrativos.
 >    lista del build cuando tiene el índice y monta la suya con el mismo
 >    componente React. Sin `<template>`, sin reordenar nodos a mano, y con el
 >    filtrado testeado como lógica pura. El costo, dicho: el runtime de React
->    viaja a la home (**B-230**).
+>    viaja a la home (**B-239**).
 
 Restricciones que **no** se revisitan acá: Astro estático (§2.3), el JSON lo
 genera el build y no una Function (§2.4), la búsqueda y el filtrado son en

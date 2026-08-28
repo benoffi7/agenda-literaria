@@ -114,7 +114,7 @@ export type OrdenPublico = (typeof ORDENES_PUBLICOS)[number];
  * de que no hay un segundo criterio que alguien pida («¿por precio? no hay
  * precio; ¿por relevancia? es una lista de 40 cosas»). Los dos que están acá son
  * justamente los que ese argumento no consideró, y el desvío está escrito en
- * **D-133**:
+ * **D-137**:
  *
  * - **«Recién agregadas»** contesta «¿qué se sumó desde la última vez que
  *   miré?», que es la pregunta del recorrido C —el que vuelve— y la única que el

@@ -210,10 +210,10 @@ export const etiquetasDelDetalle = async (): Promise<MapaDeEtiquetas> => {
  * `where` generaría una página de detalle por cada borrador y la suite seguiría
  * en verde.
  *
- * `props` lleva **solo el view-model** (D-136): la plantilla no recibe la
+ * `props` lleva **solo el view-model** (D-140): la plantilla no recibe la
  * actividad, así que no puede publicar nada que esta proyección no haya decidido.
  *
- * ── `ahora` es tolerante, y eso NO es paranoia (B-228) ────────────────────
+ * ── `ahora` es tolerante, y eso NO es paranoia (B-237) ────────────────────
  * La plantilla la envuelve (`getStaticPaths = () => caminosDeDetalle()`) en vez
  * de aliasarla, porque **Astro llama a `getStaticPaths` con un argumento
  * propio** —`{ paginate, rss }`— y con el alias ese objeto caía en este

@@ -341,7 +341,7 @@ describe('los tres órdenes', () => {
 
   it('«recién agregadas» ordena por el alta, que es otra cosa', () => {
     /*
-     * El desvío de D-133: una actividad cargada hoy para diciembre queda al fondo
+     * El desvío de D-137: una actividad cargada hoy para diciembre queda al fondo
      * del orden cronológico, y es justo la que alguien que vuelve quiere ver. Que
      * el resultado sea **el inverso** del de arriba es lo que muestra que los dos
      * criterios no son el mismo con otro nombre.

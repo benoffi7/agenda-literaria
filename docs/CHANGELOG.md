@@ -24,18 +24,18 @@ con su tema, quién lo da, el material y cada forma de cursar con su sede.
 
 **Cuatro decisiones**, en [`06-decisiones.md`](06-decisiones.md):
 
-- **D-133** — hay selector de orden, contra lo que decía el §6.1 del diseño. Aquel
+- **D-137** — hay selector de orden, contra lo que decía el §6.1 del diseño. Aquel
   argumento evaluó precio y relevancia, que son los dos criterios que derivan del
   contenido; el que faltaba deriva de **cuándo se cargó**, y es la única forma de
   contestarle a quien vuelve. El default no cambia.
-- **D-134** — `creadoEn` entra a la proyección pública para ese orden, y **con
+- **D-138** — `creadoEn` entra a la proyección pública para ese orden, y **con
   precisión de día**: publicar el instante exacto de cada carga dibuja la agenda de
   trabajo del dueño, que con un solo admin es un dato sobre una persona (mismo
   razonamiento que D-57 y D-27). `updatedAt` no sale.
-- **D-135** — el link de la reunión **tampoco sale a la página de detalle**, ni con
+- **D-139** — el link de la reunión **tampoco sale a la página de detalle**, ni con
   `urlPublica: true`. Más estricto que D-15, por lo mismo que D-129 lo sacó del
   índice y por una razón más fuerte: un HTML indexado no se despublica.
-- **D-136** — la plantilla `.astro` **no recibe el documento**: recibe un
+- **D-140** — la plantilla `.astro` **no recibe el documento**: recibe un
   view-model que `src/lib/detallePublico.ts` armó campo por campo. La frontera de
   privacidad es un tipo, no la disciplina de quien escribe la plantilla — y de paso
   es lo que hace que la página entre al barrido de centinelas, porque un `.astro`
@@ -61,7 +61,7 @@ y el sitio la llaman con su formato (`Timestamp` uno, ISO el otro). Dos copias e
 el listado del panel y la tarjeta del sitio contestando distinto sobre la misma
 actividad, sin que nada falle.
 
-#### El bug que encontró el build, y no los tests — B-228
+#### El bug que encontró el build, y no los tests — B-237
 
 `export const getStaticPaths = caminosDeDetalle;` —el alias, que es lo que uno
 escribe— rompía la generación entera: Astro llama a `getStaticPaths` con un objeto
@@ -94,7 +94,7 @@ Cinco hallazgos sobre la salida nueva, los cinco arreglados acá:
    ese campo como texto, no como URL. Un `javascript:…` salía a la superficie que
    un bot cosecha primero.
 2. **`creadoEn` publicaba el milisegundo exacto** de cada carga (P2) → recortado al
-   día, ver D-134.
+   día, ver D-138.
 3. **La plantilla podía recuperar el documento entero** sin nombrar nada prohibido
    (P2): ya importaba de `contenidoDelSitio`, así que
    `const { actividades } = await contenidoDelSitio()` compilaba. El test pasó de
@@ -116,7 +116,7 @@ archivo— y otro que prohíbe armarla a mano.
 #### Lo que dijo el `auditor-documentacion`
 
 Catorce puntos, y el que importa no es de prosa: **el skill `campo-nuevo`
-preguntaba por cuatro salidas y son seis** (**B-235**). Le faltaban las dos de las
+preguntaba por cuatro salidas y son seis** (**B-244**). Le faltaban las dos de las
 que no se puede volver — el posteo de Instagram (desde B-95) y la página indexada
 (desde B-227)—, así que se podía seguir el procedimiento al pie de la letra y
 filtrar un campo nuevo a cualquiera de las dos. Es el documento que de verdad se
@@ -139,10 +139,10 @@ desde B-212 y nadie había marcado.
 - **`novedades.ts` y `ayuda.ts` no se tocan**, y es deliberado: el panel no cambió,
   y los dos textos de la ayuda que dicen «el sitio todavía no está publicado» hoy
   **son ciertos**. Cambiarlos ahora convertiría una ayuda cierta en una que miente.
-  Van con el deploy, y quedaron anotados en **B-233**.
-- Abiertos en el camino: **B-229** (la hoja de filtros y el CTA fijo de móvil),
-  **B-230** (el peso del runtime de React en la home, medido), **B-231** (la casilla
-  dice «publicar el link en el sitio» y el sitio no lo publica), **B-232** (el
+  Van con el deploy, y quedaron anotados en **B-242**.
+- Abiertos en el camino: **B-238** (la hoja de filtros y el CTA fijo de móvil),
+  **B-239** (el peso del runtime de React en la home, medido), **B-240** (la casilla
+  dice «publicar el link en el sitio» y el sitio no lo publica), **B-241** (el
   fixture del gate de build es anterior a B-224).
 
 #### El contraste, medido — y cuatro niveles de gris que no pasaban

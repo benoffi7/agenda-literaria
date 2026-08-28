@@ -3,7 +3,7 @@
  *
  * ── Por qué esto existe en vez de leer la actividad desde el `.astro` ──────
  * Porque la frontera de privacidad tiene que ser **un tipo**, no la disciplina de
- * quien escribe la plantilla (D-136).
+ * quien escribe la plantilla (D-140).
  *
  * `src/pages/actividad/[slug].astro` recibe un `DetallePublico` y **nada más**:
  * no tiene en mano ni el documento de Firestore ni la `ActividadPublica`, así que
@@ -25,7 +25,7 @@
  * la frontera ya descartó, porque no lo recibe.
  *
  * ── Las tres reglas que no se negocian ────────────────────────────────────
- * 1. **`online.url` no sale, ni con `urlPublica: true`** (D-135). Es más
+ * 1. **`online.url` no sale, ni con `urlPublica: true`** (D-139). Es más
  *    estricto que D-15, que lo permite en las salidas 1 y 2. Ver el docblock de
  *    `modalidadDeDetalle`.
  * 2. **Ningún `href` que no sea `http:`/`https:`** (`urlSegura`). El destino de
@@ -130,7 +130,7 @@ export interface ModalidadDeDetalle {
   modalidad: Modalidad;
   etiqueta: string;
   sede: SedeDeDetalle | null;
-  /** **Solo la plataforma.** El link de la reunión no llega hasta acá (D-135). */
+  /** **Solo la plataforma.** El link de la reunión no llega hasta acá (D-139). */
   plataforma: string | null;
 }
 
@@ -305,7 +305,7 @@ export const accionDeInscripcion = (
 /**
  * Una forma de cursar, con su lugar (B-224).
  *
- * **Acá se cae el link de la reunión, y es la decisión de D-135.** `toPublic`
+ * **Acá se cae el link de la reunión, y es la decisión de D-139.** `toPublic`
  * emite `online.url` cuando el dueño tildó `urlPublica` (D-15, desvío consciente
  * del §5.2), y esta proyección **no lo copia**: sale la plataforma y nada más.
  *
@@ -340,7 +340,7 @@ const modalidadDeDetalle = (
         mapa: construirLinkMapa({ sede: m.sede, modalidad: m.modalidad }, etiquetas),
       }
     : null,
-  // Enumerado: `m.online` puede traer `url` (D-15) y acá se descarta (D-135).
+  // Enumerado: `m.online` puede traer `url` (D-15) y acá se descarta (D-139).
   plataforma: m.online ? etiquetaDe(etiquetas, 'plataforma', m.online.plataforma) : null,
 });
 
@@ -567,7 +567,7 @@ const CANCELADO = 'https://schema.org/EventCancelled';
  * La canónica es absoluta y hoy no existe: `site` de `astro.config.mjs` depende
  * del dominio, que es **B-109**. Emitir una URL relativa ahí sería inválido y
  * emitir el link de la reunión está prohibido, así que se emite el lugar sin URL
- * y se completa con B-109 (anotado como **B-228**).
+ * y se completa con B-109 (anotado como **B-237**).
  */
 const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
   d.modalidades.flatMap((m) => {

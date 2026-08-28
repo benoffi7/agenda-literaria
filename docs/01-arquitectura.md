@@ -164,7 +164,7 @@ src/
     events.json.ts          /events.json — serializa lo que lee contenidoDelSitio
     index.astro             la home: listado en HTML + island de filtros (B-227)
     actividad/[slug].astro  el detalle, SSG y con CERO JavaScript. No ve el
-                            documento: recibe un view-model (D-136)
+                            documento: recibe un view-model (D-140)
 functions/
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario

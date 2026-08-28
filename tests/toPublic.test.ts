@@ -297,7 +297,7 @@ describe('toPublic — fechas', () => {
 });
 
 /**
- * `creadoEn` — la fecha de alta, **D-134** (B-227).
+ * `creadoEn` — la fecha de alta, **D-138** (B-227).
  *
  * Es el único campo que este cambio agregó a la frontera de privacidad, y tiene
  * que tener sus casos nombrados acá porque **el barrido de centinelas no lo
@@ -305,7 +305,7 @@ describe('toPublic — fechas', () => {
  * fechas de las modalidades de B-224. Sin estos casos, el campo podría entrar o
  * salir de la proyección sin que nada se ponga rojo.
  */
-describe('toPublic — la fecha de alta (D-134)', () => {
+describe('toPublic — la fecha de alta (D-138)', () => {
   it('sale con precisión de DÍA, no el instante de la carga', () => {
     /*
      * Lo marcó el `auditor-privacidad` sobre la primera versión, que publicaba el

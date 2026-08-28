@@ -3397,7 +3397,7 @@ es el criterio de D-127: se bumpea cuando hay una forma nueva que hace que lo vi
 *parezca* bueno, no cuando cambia lo que se puede escribir adentro. **Si algún día
 B-221 empieza a borrar, esto se reabre**, y queda dicho en ese ítem.
 
-## D-133 · El listado público **sí** tiene selector de orden — desvío del §6.1 del diseño
+## D-137 · El listado público **sí** tiene selector de orden — desvío del §6.1 del diseño
 
 `docs/12-sitio-publico.md` §6.1 cierra la lista de filtros con una línea tajante:
 «**No hay selector de orden**: no hay un segundo orden que alguien pida (¿por
@@ -3431,9 +3431,9 @@ cronológico ya no alcanza para eso.
    sigue canonizando a `/` sin query.
 
 `nuevas` es la que obligó a agregar un campo a la proyección pública: ver
-**D-134**.
+**D-138**.
 
-## D-134 · `creadoEn` es público — la fecha de alta, no la de edición
+## D-138 · `creadoEn` es público — la fecha de alta, no la de edición
 
 Para ordenar por «Recién agregadas» hace falta un dato que hasta B-227 no salía:
 cuándo se cargó la actividad. Se agrega `creadoEn` a `toPublic` y al índice, **como
@@ -3468,7 +3468,7 @@ distintos con dos consumidores distintos:
 
 | | Qué dice | Quién lo pide |
 |---|---|---|
-| `creadoEn` | cuándo entró al sitio | el orden «Recién agregadas» (D-133) |
+| `creadoEn` | cuándo entró al sitio | el orden «Recién agregadas» (D-137) |
 | `updatedAt` | cuándo se tocó por última vez | el `lastmod` del sitemap (§11.2 #3), que **todavía no existe** |
 
 Publicar el segundo «porque ya que estamos» convertiría cada corrección de un
@@ -3495,7 +3495,7 @@ estaba resuelta por omisión: **la página de detalle no publica ninguna de las 
 —no las necesita— y eso lo afirma `tests/detallePublico.test.ts` buscando los dos
 valores del fixture en la salida.
 
-## D-135 · El link de la reunión tampoco sale a la página de detalle
+## D-139 · El link de la reunión tampoco sale a la página de detalle
 
 **Es más estricto que D-15**, y conviene tener el mapa completo de una vez porque
 ahora son cinco celdas y ninguna se deduce de las otras:
@@ -3520,9 +3520,9 @@ sitio» y el sitio no lo publica. Es una inconsistencia entre lo que la casilla
 promete y lo que pasa, y se elige a propósito el lado del que se puede volver:
 mostrar el link mañana es una línea; sacarlo de Google no. Si el dueño lo quiere a
 la vista, la conversación es sobre el texto de la casilla —que hoy nombra «el
-sitio»— y no sobre agregar un `?.url` sin ruido. Queda anotado en **B-231**.
+sitio»— y no sobre agregar un `?.url` sin ruido. Queda anotado en **B-240**.
 
-## D-136 · La plantilla no recibe el documento: recibe un view-model
+## D-140 · La plantilla no recibe el documento: recibe un view-model
 
 La página de detalle (`src/pages/actividad/[slug].astro`) es la primera salida
 pública que es una **página** y no un archivo de datos, y eso rompe dos cosas que

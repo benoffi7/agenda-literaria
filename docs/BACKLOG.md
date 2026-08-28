@@ -316,27 +316,27 @@ en la caja de arriba de [`12-sitio-publico.md`](12-sitio-publico.md).
 
 Lo que conviene tener anotado acá, que es lo que costó decidir:
 
-- **Cuatro decisiones nuevas** — **D-133** (hay selector de orden, contra el §6.1),
-  **D-134** (`creadoEn` es público, con precisión de día), **D-135** (el link de la
-  reunión tampoco sale al detalle) y **D-136** (la plantilla recibe un view-model,
+- **Cuatro decisiones nuevas** — **D-137** (hay selector de orden, contra el §6.1),
+  **D-138** (`creadoEn` es público, con precisión de día), **D-139** (el link de la
+  reunión tampoco sale al detalle) y **D-140** (la plantilla recibe un view-model,
   no el documento).
 - **Una salida pública nueva**, la sexta: la página de detalle y su JSON-LD.
   Entró al barrido de centinelas **en el mismo cambio que la creó**, que es la
   lección de B-212 y de la salida 5 aplicada a tiempo.
-- **Dos bugs que ningún test podía ver** — **B-228** (lo encontró el build de
-  verdad) y **B-234** (lo encontró calcular el contraste, que nadie había
+- **Dos bugs que ningún test podía ver** — **B-237** (lo encontró el build de
+  verdad) y **B-243** (lo encontró calcular el contraste, que nadie había
   calculado).
 - **Cinco hallazgos del `auditor-privacidad`**, todos arreglados: el `url` del
   organizador sin sanear en el JSON-LD, la hora exacta de carga en `creadoEn`, el
   import del lector que dejaba a la plantilla recuperar el documento, las
   etiquetas del detalle filtradas por aprobación (contra D-30) y la salida 6 sin
   nombrar en el mapa de salidas.
-- **Abiertos en el camino:** B-229 (hoja de filtros y CTA fijo), B-230 (el peso de
-  React en la home), B-231 (la casilla del link dice algo que el sitio no hace),
-  B-232 (el fixture del gate de build es anterior a B-224), B-233 (la ayuda del
-  panel, cuando el sitio se publique). Cerrados en el camino: B-228 y B-234.
+- **Abiertos en el camino:** B-238 (hoja de filtros y CTA fijo), B-239 (el peso de
+  React en la home), B-240 (la casilla del link dice algo que el sitio no hace),
+  B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
+  panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
 
-### B-235 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
+### B-244 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
 
 El skill que se invoca **cada vez que se agrega un campo al modelo**
 (`.claude/skills/campo-nuevo/SKILL.md`, decisión 1) nombraba `events.json`,
@@ -392,7 +392,7 @@ sin-JS servido, sin parpadeo, un solo markup— y el filtrado queda como lógica
 testeable (`src/lib/listadoPublico.ts`, 58 casos).
 
 Lo que queda afuera y tiene su ítem: la hoja inferior de filtros y el CTA fijo de
-móvil (**B-229**), el peso del runtime de React en la home (**B-230**).
+móvil (**B-238**), el peso del runtime de React en la home (**B-239**).
 
 El plan original, como estaba escrito:
 
@@ -1690,7 +1690,7 @@ contra el árbol.
 
 ## P2 — mejoras reales
 
-### B-228 · Astro le pasa un argumento a `getStaticPaths` y el alias rompía el build entero — ✅ hecho (2026-08-28)
+### B-237 · Astro le pasa un argumento a `getStaticPaths` y el alias rompía el build entero — ✅ hecho (2026-08-28)
 
 **Qué se rompía.** `export const getStaticPaths = caminosDeDetalle;` — el alias,
 que es lo que uno escribe. Astro llama a `getStaticPaths` con un objeto propio
@@ -1711,7 +1711,7 @@ alguien vuelva al alias. Red: `tests/pagina-de-detalle.test.ts` prohíbe el alia
 `tests/sitio-publico.integracion.test.ts` la llama **igual que Astro** y exige que
 devuelva sus caminos.
 
-### B-234 · El texto secundario del sitio no llegaba a AA — ✅ hecho (2026-08-28)
+### B-243 · El texto secundario del sitio no llegaba a AA — ✅ hecho (2026-08-28)
 
 **Qué se rompía.** La primera versión de B-227 usaba `text-tinta/45`, `/50`, `/55`
 y `/60` para todo el texto secundario —fechas, rótulos, contadores, el número de
@@ -1734,7 +1734,7 @@ más abajo tiene que no pasar, o el piso no significaría nada.
 y en una pantalla elegida— y su rampa es anterior a esto; revisarla es su propio
 ítem, no éste.
 
-### B-229 · La hoja inferior de filtros y el CTA fijo de móvil · P2
+### B-238 · La hoja inferior de filtros y el CTA fijo de móvil · P2
 
 El §8 del diseño pide dos elementos fijos que B-227 no construyó, y los dos por el
 mismo motivo: son **capas modales**, y una capa modal mal hecha es peor que no
@@ -1752,7 +1752,7 @@ capa de ayuda del panel (B-14, B-64). El §10 del diseño dice que el sitio púb
 es el lugar donde ese componente se hace bien de entrada y que después puede
 resolver los dos del panel.
 
-### B-230 · La home baja el runtime de React por la island de filtros · P2
+### B-239 · La home baja el runtime de React por la island de filtros · P2
 
 Medido en el build del 2026-08-28: `client.BlZe1zq3.js` son **186 KB (58 KB
 gzip)**, más `Buscador` (16 KB / 5,8 KB gzip). El §8 del diseño fija el presupuesto
@@ -1776,9 +1776,9 @@ Tres caminos, de menos a más trabajo:
 Medir antes de elegir: con el sitio desplegado, cuánto tarda la home en un 3G
 simulado.
 
-### B-231 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica · P2
+### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica · P2
 
-**D-135** decidió que `online.url` no sale a la página de detalle ni con
+**D-139** decidió que `online.url` no sale a la página de detalle ni con
 `urlPublica: true`, más estricto que D-15. Correcto para el link —un HTML indexado
 no se despublica— pero deja una inconsistencia visible: quien tilda la casilla
 espera ver el link en el sitio, y no aparece.
@@ -1794,7 +1794,7 @@ Las dos salidas, y la conversación es del dueño:
 Mientras tanto la ayuda del panel dice «Solo sale al sitio y al evento del
 calendario si tildás…», que **también hay que corregir** en la salida que se elija.
 
-### B-232 · El fixture del gate de build es anterior a B-224, así que no ejercita el bloque «Dónde» · P2
+### B-241 · El fixture del gate de build es anterior a B-224, así que no ejercita el bloque «Dónde» · P2
 
 `scripts/build-contra-emulador.mjs` siembra una actividad con `modalidad`, `sede` y
 `online` de **primer nivel** y sin el array `modalidades`, que es la forma que el
@@ -1812,7 +1812,7 @@ comprueba menos de lo que parece.
 Arreglo: darle `modalidades: [{ id, modalidad, inicio, fin, sede, online }]` al
 fixture del script, con los mismos centinelas.
 
-### B-233 · Cuando el sitio se publique hay que corregir la ayuda del panel · P2
+### B-242 · Cuando el sitio se publique hay que corregir la ayuda del panel · P2
 
 Dos textos de `src/lib/ayuda.ts` dicen hoy la verdad y van a dejar de decirla el
 día del deploy:
@@ -5023,14 +5023,14 @@ los uids. Hoy eso lo hace el paso 4 del gate mecánico
 el HTML de las páginas de detalle, que **ya existe desde B-227**
 (`dist/actividad/{slug}/index.html`) y todavía no se barre ahí. El equivalente a
 nivel de view-model sí lo hace `tests/barrido-de-salidas-publicas.test.ts`
-(D-136), así que no hay hueco de cobertura sobre la decisión — lo que falta es la
+(D-140), así que no hay hueco de cobertura sobre la decisión — lo que falta es la
 verificación sobre el **artefacto**, que es lo que este ítem pide. La cabecera de
 cache (B-37) ya se decidió.
 
 **Ojo con el fixture antes de escribirlo:** hoy el gate siembra una actividad
 anterior a B-224 (sin `modalidades[]`), así que su HTML sale sin el bloque «Cómo
 se cursa» y sin JSON-LD. Un grep sobre ese HTML daría verde sin mirar dos
-secciones. Va primero **B-232**.
+secciones. Va primero **B-241**.
 
 ### B-122 · Falta un auditor del sitio público · P2 (después de B-01)
 
@@ -5046,7 +5046,7 @@ de verdad contra el que escribirlo. Conviene esperar igual al SEO absoluto
 auditar dos veces lo mismo.
 
 Y una parte ya dejó de corresponderle: el **contraste** lo calcula
-`tests/contraste.test.ts` (B-234), que además falla si un componente del sitio
+`tests/contraste.test.ts` (B-243), que además falla si un componente del sitio
 baja del piso. Un auditor que lo revise a ojo estaría repitiendo lo que un test ya
 frena, que es justo lo que la tabla de «qué no automatizar» de
 [`13-agentes.md`](13-agentes.md) pide no hacer.

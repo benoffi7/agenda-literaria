@@ -4,7 +4,7 @@
  * ── Por qué se lee el archivo y no se lo importa ──────────────────────────
  * Un `.astro` no se puede importar desde vitest: no hay forma de renderizarlo
  * acá. La respuesta de este cambio no fue dejarlo sin cobertura, fue partirlo en
- * dos (**D-136**):
+ * dos (**D-140**):
  *
  * | Mitad | Quién la cubre |
  * |---|---|
@@ -48,7 +48,7 @@ const frontmatter = (src: string): string => {
   return m![1]!;
 };
 
-describe('la página de detalle recibe el view-model y nada más (D-136)', () => {
+describe('la página de detalle recibe el view-model y nada más (D-140)', () => {
   const src = fuente(DETALLE);
   const cabecera = frontmatter(src);
 
@@ -80,7 +80,7 @@ describe('la página de detalle recibe el view-model y nada más (D-136)', () =>
     expect(cabecera).toContain('export const getStaticPaths');
   });
 
-  it('y la llama ENVUELTA, no aliasada — B-228', () => {
+  it('y la llama ENVUELTA, no aliasada — B-237', () => {
     /*
      * `export const getStaticPaths = caminosDeDetalle;` es lo que uno escribe, y
      * rompe el build entero: **Astro llama a `getStaticPaths` con un argumento
@@ -100,7 +100,7 @@ describe('la página de detalle recibe el view-model y nada más (D-136)', () =>
 
   const codigo = sinComentarios(src);
 
-  it('del lector importa SOLO `caminosDeDetalle` (D-136)', () => {
+  it('del lector importa SOLO `caminosDeDetalle` (D-140)', () => {
     /*
      * Lo pidió el `auditor-privacidad`, y es más fuerte que la lista negra de
      * abajo: el camino que quedaba abierto era **más corto que cualquiera de los
@@ -152,7 +152,7 @@ describe('la página de detalle recibe el view-model y nada más (D-136)', () =>
     }
   });
 
-  it('la plataforma se muestra, el link de la reunión no (D-135)', () => {
+  it('la plataforma se muestra, el link de la reunión no (D-139)', () => {
     // Control en las dos direcciones: que `plataforma` esté es lo que evita que
     // el `not.toContain` de arriba pase porque el bloque «Cómo se cursa» no
     // existe.

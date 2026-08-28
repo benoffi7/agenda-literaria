@@ -7,7 +7,7 @@
  * mayoritario cae acá desde Google o desde un link de Instagram (§1) y tiene una
  * sola pregunta: ¿esto me sirve y todavía puedo entrar?
  *
- * ── Esta plantilla no ve la actividad, y es a propósito (D-136) ───────────
+ * ── Esta plantilla no ve la actividad, y es a propósito (D-140) ───────────
  * `getStaticPaths` es `caminosDeDetalle` de `lib/contenidoDelSitio.ts`, que
  * entrega **solo** un `DetallePublico`: el view-model que `lib/detallePublico.ts`
  * armó enumerando campo por campo. Acá no hay una `ActividadPublica` ni un
@@ -34,7 +34,7 @@ export const prerender = true;
  * el alias ese objeto caía en el primer parámetro de la función, pisaba el reloj
  * del build y la generación entera moría con `ahora.getTime is not a function`.
  * No lo vio ningún test unitario —todos la llaman bien—: lo encontró el build de
- * verdad contra el emulador (B-228).
+ * verdad contra el emulador (B-237).
  */
 export const getStaticPaths = () => caminosDeDetalle();
 
@@ -387,7 +387,7 @@ const portada = detalle.imagenes[0] ?? null;
               )}
               {
                 /*
-                  **La plataforma y nada más** (D-135). El link de la reunión no
+                  **La plataforma y nada más** (D-139). El link de la reunión no
                   llega a esta plantilla ni con `urlPublica: true`: se manda al
                   inscribirse, y un link de reunión en un HTML indexado es
                   zoombombing barato (trampa 5).

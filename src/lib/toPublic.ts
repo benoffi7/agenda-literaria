@@ -148,7 +148,7 @@ export interface ActividadPublica {
   destacado: boolean;
   searchText: string;
   /**
-   * **`AAAA-MM-DD`** de cuándo se cargó la actividad — B-227 y **D-134**.
+   * **`AAAA-MM-DD`** de cuándo se cargó la actividad — B-227 y **D-138**.
    *
    * Existe por un orden del listado: «Recién agregadas» contesta «¿qué se sumó
    * desde la última vez que miré?», y esa pregunta no se puede contestar con las
@@ -427,7 +427,7 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   destacado: a.destacado ?? false,
   searchText: a.searchText ?? '',
   /*
-   * D-134 — la fecha de alta, para el orden «Recién agregadas».
+   * D-138 — la fecha de alta, para el orden «Recién agregadas».
    *
    * **`slice(0, 10)` recorta al día**, y no es cosmético: publicar el instante
    * exacto de cada carga dibuja la agenda de trabajo del dueño (ver el docblock

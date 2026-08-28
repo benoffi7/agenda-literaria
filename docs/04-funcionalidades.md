@@ -648,7 +648,7 @@ una pantalla vacía.
 | **Buscar** | contra `searchText`, con el `normalize` del §6: acentos y mayúsculas dan igual. Dos palabras se exigen **las dos** |
 | **Cuándo** | Próximas (default) · Este mes · Próximos 3 meses · cada mes con actividad |
 | **Filtros** (colapsados, con el número de puestos al lado) | tipo, cómo se cursa, arancel, barrio, ciudad y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos» |
-| **Ordenar por** | Próximas primero (default) · Recién agregadas · Título (**D-133**) |
+| **Ordenar por** | Próximas primero (default) · Recién agregadas · Título (**D-137**) |
 
 Los chips **no tienen nada cableado**: salen de `opciones.*` del propio
 `events.json` (§4.4), con el número de actividades de cada uno, y el que daría cero
@@ -698,7 +698,7 @@ perder su fecha original. Con `arancel: gratis` se emite `price: "0"`; con
 cualquier otro **no se emite precio**, porque el arancel es un slug y no un monto.
 
 **Lo que la página NO muestra**, y es decisión y no olvido: el link de la reunión,
-ni siquiera con «publicar el link en el sitio» tildado (**D-135**).
+ni siquiera con «publicar el link en el sitio» tildado (**D-139**).
 
 ### `/events.json`
 
@@ -726,7 +726,7 @@ Tres cosas del índice que conviene saber antes de consumirlo:
   de filtro no tienen nada cableado.
 - **Y desde B-227 lleva `creadoEn`**, la fecha de alta con precisión de día: es la
   clave del orden «Recién agregadas» y lo único que se agregó a la frontera de
-  privacidad (**D-134**). La hora no sale, y `updatedAt` tampoco.
+  privacidad (**D-138**). La hora no sale, y `updatedAt` tampoco.
 
 `toPublic.ts` (la frontera de privacidad) y `normalize.ts` (la búsqueda) ya estaban
 escritos y testeados: eso es lo que hizo que esta pieza fuera corta.
