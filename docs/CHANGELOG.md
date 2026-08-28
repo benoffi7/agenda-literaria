@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-08-28 (después de 1.5.0) · el sitio público, integrado
+
+**Las cuatro páginas conviven.** `/` con listado, búsqueda, filtros y orden;
+`/actividad/{slug}`; `/ayuda`; `/contacto`; `/suscribirse`. Tres frentes en paralelo,
+cada uno documentado en su propia entrada. Acá va lo que costó **juntarlos**, que es
+la parte que no se ve en ningún frente.
+
+**El frente del listado numeró sobre identificadores que se ocuparon mientras
+corría.** Salió de `cac918f` —antes de que existieran los rangos— y usó
+`B-228`..`B-235` y `D-133`..`D-136`, los doce tomados en el ínterin. Renumerados a
+`B-237`..`B-244` y `D-137`..`D-140`: **102 referencias**.
+
+El renombre se hizo **dentro de su worktree, antes del merge**, y esa es la parte
+que importa. Ahí adentro se verificó que la base no tenía ninguno de esos números,
+así que toda ocurrencia era suya y el reemplazo global era seguro. Hacerlo después
+del merge —cuando conviven los dos juegos— es exactamente el error que esa mañana se
+llevó puestas trece referencias ajenas.
+
+**Dos páginas traían su propio encabezado y su propio pie**, porque se escribieron
+antes de que existiera el chrome de B-229. Sin arreglarlo quedaban dos barras, dos
+pies y **dos landmarks `banner`**; en el detalle, además, **dos `id="contenido"`** —el
+del layout y el de su `<main>`—, con lo que su propio «Saltar al contenido» iba al
+equivocado. Se quedaron con el chrome del layout. Lo que sí sobrevivió es lo que el
+menú no reemplaza: el «Saltar al listado» de la home, que saltea también los seis
+ejes de filtros, y el «Ver todas las actividades» del detalle, al que se llega desde
+un buscador tanto como desde el listado.
+
+**Dos frentes escribieron un test de contraste con el mismo nombre**, sin verse. Se
+conservó la estructura de uno —la matemática en `src/lib/contraste.ts`, anclada
+contra los valores de la norma en vez de contra sí misma, y el barrido calculando
+por instancia en vez de con un piso fijo— y se le portó lo que el otro medía y éste
+no: **el acento sobre papel, y el papel sobre acento**, que es el botón de
+inscripción. La fórmula de WCAG es simétrica, pero cuál de los dos es el fondo decide
+la mezcla en cuanto hay una opacidad.
+
+**El guard del chrome encontró la página nueva**, que es para lo que se escribió:
+`actividad/[slug].astro` entró sin declarar sección y el test lo frenó antes del
+merge.
+
+**Verificado de punta a punta contra el emulador**, no solo con la suite:
+`EXIGIR_EMULADOR=1` da **1.741 de 1.741**, el gate de build genera la página de
+detalle **solo de la publicada**, y un barrido propio sembró una actividad con
+centinelas únicos en todo lo que el §5.1 prohíbe y buscó los veinte en el `dist/`
+entero: **cero fugas**, con el control negativo de que los doce que sí tienen que
+salir aparecen. El título de un material con `publico: false` sale y su URL no, que
+es lo que el §5.1 pide.
+
 ## 2026-08-28 (después de 1.5.0) · la integración de los tres frentes del sitio
 
 **El sitio público tiene tres páginas** — `/ayuda`, `/contacto` (**B-232**) y
