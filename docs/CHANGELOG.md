@@ -1,5 +1,82 @@
 # Changelog
 
+## 2026-08-27 (después de 1.4.0)
+
+Sin versión nueva: no cambia nada de lo que el panel o el sitio hacen. Es el gate
+que no probaba lo que prometía, más las redes que faltaban alrededor de la salida
+pública que `1.4.0` estrenó.
+
+### B-217 · El paso 4 del gate pasaba en verde sin leer Firestore
+
+`1.4.0` cerró con esta frase: «de paso, `verificar-todo.sh` apunta el build al
+emulador (…) y hace que el gate local ejercite la lectura de verdad en vez del
+camino vacío». **No la ejercitaba**, y lo encontró el `auditor-trampas`.
+
+Dos motivos que se tapaban entre sí. El paso 3 tiene dos ramas: si hay un hub de
+emuladores arriba lo reusa y queda vivo, y si no usa `emulators:exec`, que
+**levanta y apaga** los emuladores alrededor de los tests — así que en esa rama, al
+llegar al paso 4, no había nadie escuchando y el build moría a los **44 segundos**
+con `14 UNAVAILABLE`. El gate corrido sin emulador previo fallaba siempre y por su
+propia plomería, que es justo lo que el paso 3 había aprendido a no hacer (B-180),
+reintroducido un paso más abajo. Y con el emulador vivo tampoco probaba nada: los
+tests de integración del paso 3 llaman a `limpiarFirestore()`, así que el paso 4
+llegaba a una base **vacía** —medido: `0` actividades— y el build leía cero y salía
+en verde.
+
+O sea: un chequeo agregado **para** garantizar «esto leyó Firestore» que pasaba
+idéntico leyendo cero documentos. Es exactamente la trampa que el commit decía
+prevenir (D-123), con el gate cayendo en ella.
+
+La detección del hub ahora se hace **una vez** y la comparten los dos pasos —tenerla
+escrita dos veces fue lo que dejó al paso 4 apuntando a un puerto que el paso 3
+apagaba— y el paso 4 corre `scripts/build-contra-emulador.mjs`: siembra una
+actividad publicada y una en borrador, buildea, y **afirma sobre el
+`dist/events.json` que salió**. La publicada está, la borrador no, y ningún
+centinela de los campos recortados sobrevivió. Los fixtures se borran en un
+`finally`, porque el emulador de quien está trabajando puede tener datos
+persistidos.
+
+**Verificado por mutación**, que es lo único que distingue un chequeo de un
+comentario: con el `where` apuntado a un estado inexistente falla nombrando las
+cero actividades; sin el `where` falla nombrando la borrador; con
+`destino: a.inscripcion.destino` en el índice falla nombrando el campo.
+
+### B-218 · Las redes que faltaban alrededor de `/events.json`
+
+Cuatro hallazgos del `auditor-privacidad` sobre `4d223c1`, verificados uno por uno
+contra el árbol antes de acatarlos. **Ninguno era una fuga**: el recorte del
+índice, la query y `cierraEn` estaban bien. Lo que faltaba era la red.
+
+**Ningún test nombraba `src/pages/events.json.ts`.** Borrar el
+`.where('estado','==','publicado')` dejaba la suite entera en verde y publicaba en
+un solo GET el contenido de borradores, pendientes y canceladas. Lo cierra
+`tests/events-json-endpoint.integracion.test.ts`, que siembra la publicada y las
+tres no públicas y afirma sobre el JSON que el endpoint devuelve — de integración
+y no de texto, porque un `grep` al fuente pasaría con la cláusula escrita mal. El
+mismo archivo cubre las dos ramas de credenciales (D-123, B-189), que hasta hoy las
+sostenía una frase de un mensaje de commit.
+
+**La tabla de salidas nombraba un solo productor de la salida 1.** Desde B-106 son
+tres en serie: `toPublic.ts` decide qué *puede* ser público, `eventsJson.ts` qué
+necesita el listado, y `events.json.ts` *qué documentos* se leen. Es la forma de
+B-216 un archivo más adentro — un cambio que tocara solo `eventsJson.ts` no
+despertaba al auditor por nombre de archivo. Actualizadas las dos tablas y el
+`description` del frontmatter, que es el disparador.
+
+**La guarda de B-212 estaba cableada a un archivo.** `src/lib/eventsJson.ts` hereda
+la posición exacta de `toPublic.ts` —proyección pura, sin consumidor cliente hoy,
+con uno previsto en B-105— y ninguna de las tres redes lo veía: el barrido de
+credenciales busca `from 'firebase-admin` y el import sería la puerta legítima, el
+grafo de la island no lo alcanza, y `verificar-bundle.sh` lo vería en `dist/`, o sea
+tarde. Ahora es un `describe.each` sobre los dos.
+
+**Dos celdas sin decidir**, las dos con test nuevo: el link de la reunión con
+`urlPublica: true` no entra al índice — que es **D-129**, y no era una decisión
+tomada sino una consecuencia — y el `resumen` es un recorte de verdad, cosa que
+`resumen: a.descripcion` habría roto sin poner nada en rojo.
+
+Los tres tests nuevos se verificaron por mutación antes de darlos por buenos.
+
 ## 1.4.0 — 2026-08-27
 
 **El sitio público arrancó: `/events.json` existe** (B-106), y con él cierran

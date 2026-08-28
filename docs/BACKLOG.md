@@ -1258,7 +1258,143 @@ el consumidor es lo que evita que la decisión la tome un spread.
 
 ---
 
+### B-217 · El paso 4 del gate pasaba en verde sin leer Firestore — ✅ hecho (2026-08-27)
+
+`1.4.0` agregó al paso 4 de `scripts/verificar-todo.sh` un
+`FIRESTORE_EMULATOR_HOST` apuntado al emulador, con el comentario de que así el
+build «ejercita la lectura real» ahora que `src/pages/events.json.ts` arma el
+`events.json`. No la ejercitaba, por dos motivos que se tapaban entre sí:
+
+1. **El paso 3 tiene dos ramas.** Si detecta un hub de emuladores arriba lo reusa
+   y queda vivo; si no, usa `firebase emulators:exec`, que **levanta y apaga** los
+   emuladores alrededor de los tests. En esa segunda rama, al llegar al paso 4 no
+   había nadie escuchando: medido, el build se quedaba **44 segundos** y moría con
+   `14 UNAVAILABLE`. O sea que el gate corrido sin un emulador previo **fallaba
+   siempre y por su propia plomería** — exactamente lo que el paso 3 había
+   aprendido a no hacer (B-180), reintroducido un paso más abajo.
+2. **Y con el emulador vivo tampoco probaba nada.** Los tests de integración del
+   paso 3 terminan llamando a `limpiarFirestore()`, así que el paso 4 llegaba a
+   una base **vacía**. Medido en el emulador de la sesión: `0` actividades. El
+   build leía cero, escribía un `events.json` sin ninguna, y salía en verde.
+
+Las dos mitades juntas dan el peor resultado posible: un chequeo agregado **para**
+garantizar «esto leyó Firestore» que pasa idéntico leyendo cero documentos. Es la
+trampa que el propio commit decía prevenir — D-123 dice que leer cero actividades
+no falla solo, produce un `events.json` vacío, y el deploy lo publica encima del
+sitio que sí tenía datos.
+
+**El arreglo.** La detección del hub se hace **una vez** y la comparten los pasos 3
+y 4 (tenerla escrita dos veces fue lo que dejó al paso 4 apuntando a un puerto que
+el paso 3 apagaba). El paso 4 corre `scripts/build-contra-emulador.mjs`, contra el
+hub que ya está o contra uno efímero, y ese script siembra una actividad publicada
+y una en borrador, buildea, y **afirma sobre el `dist/events.json` que salió**: la
+publicada está, la borrador no, y ningún centinela de los campos recortados
+sobrevivió. Los documentos sembrados se borran en un `finally`.
+
+**Verificado por mutación**, que es lo único que distingue un chequeo de un
+comentario: con el `where` apuntado a un estado inexistente el gate falla
+nombrando las cero actividades; sin el `where` falla nombrando la borrador; con
+`destino: a.inscripcion.destino` agregado al índice falla nombrando el campo.
+
+No se testea el script del gate: no hay precedente de testear `verificar-todo.sh`
+en este repo y B-180 (P3) sigue siendo el ítem que lo pide para el paso 3.
+
+### B-218 · Las redes que faltaban alrededor de `/events.json` — ✅ hecho (2026-08-27)
+
+Cuatro hallazgos del `auditor-privacidad` sobre `4d223c1`, los cuatro
+verificados antes de acatarlos y los cuatro cerrados. **Ninguno era una fuga**:
+el recorte del índice, la query y `cierraEn` estaban bien. Lo que faltaba era la
+red que los sostenga.
+
+1. **Ningún test nombraba `src/pages/events.json.ts`.** `tests/eventsJson.test.ts`
+   prueba la librería y el barrido prueba la proyección: los dos entran a la
+   cadena **después** de que el endpoint eligió qué documentos leer, así que
+   ninguno miraba la query. Medido: borrar el `.where('estado','==','publicado')`
+   dejaba la suite entera en verde. Cerrado con
+   `tests/events-json-endpoint.integracion.test.ts`, que siembra una publicada y
+   las tres no públicas —borrador, cancelada, pendiente— y afirma sobre el JSON
+   que el endpoint devuelve. De integración y no de texto: un `grep` al fuente
+   pasaría con la cláusula escrita mal. El mismo archivo cubre las dos ramas de
+   credenciales (D-123, B-189), que hasta hoy las sostenía una frase de un mensaje
+   de commit.
+2. **La tabla de salidas nombraba un solo productor de la salida 1.**
+   `docs/07-seguridad.md` y la ficha del agente decían `src/lib/toPublic.ts`;
+   desde B-106 son **tres archivos en serie**. Es la forma de B-216 un archivo más
+   adentro: un cambio futuro que tocara solo `src/lib/eventsJson.ts` no despertaba
+   al auditor por nombre de archivo. Actualizadas las dos tablas y el
+   `description` del frontmatter, que es el disparador.
+3. **La guarda de B-212 estaba cableada a un archivo.**
+   `tests/bundle-panel.test.ts` tenía `const PROYECCION = 'src/lib/toPublic.ts'`, y
+   su docblock decía «`toPublic` no tiene hoy ningún importador en `src/`», frase
+   que B-106 dejó falsa. `src/lib/eventsJson.ts` **hereda la posición exacta** —
+   proyección pura, sin consumidor cliente hoy, con uno previsto en B-105 — y
+   ninguna de las tres redes lo veía. Ahora es un `describe.each` sobre los dos.
+4. **Dos celdas sin decidir.** El link de la reunión con `urlPublica: true` no
+   tenía caso en el barrido del índice (ver **D-129**), y el `resumen` era un
+   recorte solo por el nombre de la función: cambiar la línea a
+   `resumen: a.descripcion` dejaba todo verde, porque el test de ausencia busca la
+   clave `"descripcion"` —que sigue sin existir— y el barrido permite ese centinela
+   justamente porque el resumen lo contiene.
+
+Los tres tests nuevos se verificaron **por mutación**: se rompió la condición a
+propósito y se confirmó el rojo antes de darlos por buenos.
+
+Lo que el auditor reportó y **no** se acató: nada — los cuatro resultaron ciertos
+contra el árbol.
+
 ## P2 — mejoras reales
+
+### B-219 · Dos worktrees corriendo tests comparten el emulador y se pisan · P2
+
+Apareció el 2026-08-27 cerrando B-217: una corrida de `npm test` dio **1 test en
+rojo sobre 1403** y otra **2**, con el árbol y el comando idénticos, y las otras
+trece de esa tanda dieron verde. Un rojo que no se reproduce es peor que uno que
+sí: enseña a re-correr en vez de mirar.
+
+**La correlación está medida, no supuesta:** las dos corridas rojas son
+exactamente las dos que cayeron mientras había un `vitest` de **otro worktree**
+corriendo (`ps` lo mostró en las dos; las trece verdes salieron con el otro
+worktree quieto).
+
+**La causa, verificada con `lsof` y `ps` en el momento:** había **dos** emuladores
+arriba, uno por working-tree (`…/agenda-literaria` y
+`…/.claude/worktrees/agent-…`), y **un `vitest` del otro worktree corriendo en
+paralelo**. El segundo emulador no pudo tomar los puertos del primero, así que los
+corrió: hub `4401` en vez de `4400`, storage `9199` en vez de `9099`. Pero
+`vitest.config.ts` resuelve
+`FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080'`
+— o sea que **un `npm test` sin la variable exportada apunta al 8080 del otro
+worktree**, no al suyo.
+
+Y los tests de integración llaman a `limpiarFirestore()`, que borra la base
+**entera**. Dos suites concurrentes contra el mismo Firestore se borran los
+documentos entre sí a mitad de un `it`. El modo de falla es intermitente por
+construcción y no dice nada sobre el cambio que uno está probando.
+
+**Qué lo hace más caro ahora.** El paso 4 del gate (B-217) siembra dos actividades
+y afirma sobre el `dist/events.json` que salió. Si el otro worktree corre
+`limpiarFirestore()` entre la siembra y el build, el gate falla nombrando cero
+actividades — o sea, **acusando exactamente el bug que vino a atajar**. Se vio en
+la sesión en su forma benigna (el gate contó 2 publicadas donde siembra 1, por un
+documento que un test había dejado; eso se arregló con un `afterAll`), pero la
+forma mala es la otra.
+
+Opciones, de menos a más invasiva:
+
+1. **Que cada working-tree use su propio `projectId`.** El emulador de Firestore
+   es multi-proyecto y `limpiarFirestore()` ya recibe el `projectId` como
+   argumento, así que el borrado quedaría acotado. Choca con
+   `"singleProjectMode": true` de `firebase.json`, que habría que apagar.
+2. **Que `npm run emu` exporte los puertos que efectivamente tomó** y que
+   `vitest.config.ts` falle en vez de caer al `?? '127.0.0.1:8080'`. El default
+   silencioso es lo que hace que apuntarle al emulador de otro no se note.
+3. **Un lock de archivo** alrededor de la suite de integración. Es lo más simple
+   y lo más molesto: serializa dos worktrees que querían ir en paralelo.
+
+No bloquea nada hoy: con un solo worktree trabajando no pasa. Se anota porque el
+`docs/14-plan-de-saneamiento.md` reparte el backlog **entre worktrees en
+paralelo**, que es justo la condición que lo dispara.
+
 
 ### B-112 · `estado` y `actualizadoEn` en la proyección pública
 
@@ -2588,7 +2724,7 @@ el mismo momento, que es cuando haya más de dos personas cargando.
 
 ### B-180 · La detección de emuladores de `verificar-todo.sh` no tiene test · P3
 
-El paso 3 del gate ahora detecta si los emuladores ya están arriba y usa esos en
+El paso 3 del gate detecta si los emuladores ya están arriba y usa esos en
 lugar de levantar otros (antes cortaba con "port taken" y **el gate fallaba por
 su propia plomería**, que es lo que enseña a saltearlo). Esa decisión es un `if`
 en bash y no tiene test, a diferencia de la de `que-deployar.sh`, que tiene 20.
@@ -2600,6 +2736,11 @@ momento de pushear, o sea el peor momento para descubrirla.
 Lo testeable sin emuladores de verdad es la elección de rama: dado un hub que
 contesta, usa `npm test` directo; dado uno que no, usa `emulators:exec`. Se puede
 con un servidor HTTP de dos líneas y `FIREBASE_EMULATOR_HUB` apuntado ahí.
+
+**Sube de valor con B-217 (2026-08-27):** la detección se factorizó y ahora la
+comparten los pasos 3 **y** 4, así que ese `if` sin test decide dos ramas y no
+una. Sigue en P3 —el modo de falla es ruidoso, no silencioso— pero el argumento
+de arriba pesa el doble.
 
 ### B-181 · Un club puede ofrecer N opciones para sumarte, y el modelo solo sabe de N encuentros · P2
 
@@ -4276,6 +4417,17 @@ sobre `dist/` buscando `difusion`, la URL de la reunión y los uids— y decidir
 cabecera de cache del JSON (B-37).
 
 Va con B-01: hacerlo antes es escribir contra algo que no existe.
+
+**Adelantado a medias el 2026-08-27 (B-218).** La parte de «sumar las salidas al
+auditor» ya está: la fila 1 de las dos tablas nombra los tres productores
+(`toPublic.ts`, `eventsJson.ts`, `events.json.ts`) y el `description` del agente
+también, que es lo que decide si se lo invoca por nombre de archivo. **Sigue
+pendiente lo que este ítem pide de verdad:** la verificación sobre el
+**artefacto** — el `grep` a `dist/` buscando `difusion`, la URL de la reunión y
+los uids. Hoy eso lo hace el paso 4 del gate mecánico
+(`scripts/build-contra-emulador.mjs`, B-217) para el `events.json`, pero no para
+el HTML de las páginas de detalle, que todavía no existe. La cabecera de cache
+(B-37) ya se decidió.
 
 ### B-122 · Falta un auditor del sitio público · P2 (después de B-01)
 

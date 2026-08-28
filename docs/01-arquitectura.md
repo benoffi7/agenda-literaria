@@ -136,6 +136,7 @@ src/
     opciones.ts             taxonomías autogestionadas (§4)
     opciones-base.json      opciones fijas, compartidas con los scripts
     toPublic.ts             proyección pública (§5.2)
+    eventsJson.ts           el índice de /events.json — recorta la ActividadPublica
     vistaPreviaEvento.ts    form → evento de Calendar, reusando @calendario
     coordenadas.ts          parseo de links de Google Maps a lat/lng
     version.ts              versión del bundle y decisión de recargar
@@ -148,6 +149,7 @@ src/
   pages/
     admin.astro             island client:only
     version.json.ts         /version.json — qué versión está publicada
+    events.json.ts          /events.json — lee Firestore en el build (B-106)
     index.astro             placeholder del sitio público
 functions/
   calendario.js             diff y armado del evento — lógica pura
@@ -166,7 +168,8 @@ scripts/
   preparar-produccion.mjs   siembra /opciones/* y da el claim admin
   set-admin-claim.mjs       claim admin, con atajo --todos para el emulador
   aprobar-opciones.mjs      aprueba opciones de taxonomía pendientes (§4.3)
-tests/                      460 tests
+tests/                      la suite; el conteo vive en docs/README.md, que es
+                            donde se mide
 firestore.rules             reglas del §5.3
 ```
 

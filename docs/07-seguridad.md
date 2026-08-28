@@ -10,7 +10,7 @@ esas:
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
-| 1 | `events.json` y las páginas del sitio — **actividades y también las opciones de taxonomía** (§4.4) | `src/lib/toPublic.ts`: `toPublic` para la actividad, `opcionesPublicas` para `/opciones/*` |
+| 1 | `events.json` y las páginas del sitio — **actividades y también las opciones de taxonomía** (§4.4) | **Tres archivos en serie:** `src/lib/toPublic.ts` (`toPublic`, `opcionesPublicas`) decide qué *puede* ser público; `src/lib/eventsJson.ts` (`entradaDeIndice`, `construirIndice`, `resumenDe`) decide qué necesita el listado, que es menos; `src/pages/events.json.ts` elige *qué documentos* se leen (el `where` del §5.3) y serializa |
 | 2 | El evento de Google Calendar | `functions/calendario.js` |
 | 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
@@ -563,6 +563,25 @@ las dos es cómo esta afirmación quedó mintiendo una hora, y una afirmación d
 seguridad que miente es peor que no tenerla.
 
 ## Cómo verificar — comandos
+
+### El `events.json` que se sube es el que se cree (B-217)
+
+```bash
+npm run emu                              # en otra terminal
+./scripts/build-contra-emulador.mjs      # o el paso 4 de verificar-todo.sh
+```
+
+Siembra dos actividades de centinelas —una publicada y una en borrador—, corre
+el build y **afirma sobre `dist/events.json`**: que la publicada esté (o sea,
+que el build leyó Firestore y no salió en verde con el índice vacío), que la
+borrador no, y que ningún centinela de los campos que el índice recorta
+sobrevivió al archivo.
+
+Es la contraparte del barrido de `tests/barrido-de-salidas-publicas.test.ts`,
+que corre sobre el **valor de retorno** de `construirIndice`. Entre ese valor y
+el archivo que sube al Hosting están el `JSON.stringify` y la serialización del
+endpoint, y esto mira el otro extremo. El endpoint en sí lo cubre además
+`tests/events-json-endpoint.integracion.test.ts`, que corre en CI.
 
 ### El build no filtró el Admin SDK
 

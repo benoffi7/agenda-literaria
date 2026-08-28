@@ -786,6 +786,38 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
     barrer('events.json (índice del listado)', JSON.stringify(indice), PERMITIDO_EN_EL_INDICE);
   });
 
+  it('con `urlPublica: true` el link TAMPOCO entra al índice, a diferencia de las salidas 1 y 2', () => {
+    /*
+     * La celda que faltaba decidir. Las otras dos salidas que consumen el flag
+     * de D-15 tienen su caso `urlPublica: true` en este mismo archivo y ahí el
+     * link **sí** sale; el índice era la única de las tres sin el caso, así que
+     * se resolvía por omisión hacia el lado seguro y nada lo sostenía.
+     *
+     * La lista de permitidos va **sin agregarle `online.url`**, y eso es la
+     * afirmación: aunque el dueño haya decidido publicar el link, el listado no
+     * lo necesita —la tarjeta no tiene botón «Unirse»— y servirlo en lote es lo
+     * que hace barato el zoombombing (trampa 5).
+     */
+    const abierta = actividadCentinela({
+      online: {
+        plataforma: CENTINELA['online.plataforma'],
+        url: CENTINELA['online.url'],
+        urlPublica: true,
+      },
+    });
+    const indice = construirIndice({
+      actividades: [toPublic(abierta, 'act_abierta')],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    barrer(
+      'events.json (índice, link de reunión publicado a mano)',
+      JSON.stringify(indice),
+      PERMITIDO_EN_EL_INDICE,
+    );
+  });
+
   it('CONTROL NEGATIVO: si el índice dejara de recortar, el barrido lo dice', () => {
     /*
      * El atajo que este archivo existe para frenar: volcar la `ActividadPublica`

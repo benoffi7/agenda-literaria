@@ -248,7 +248,7 @@ describe('quién es dueño de Firestore — B-09', () => {
 });
 
 /**
- * La proyección pública no puede tocar Firestore — B-212.
+ * Las proyecciones públicas no pueden tocar Firestore — B-212, B-218.
  *
  * `src/lib/toPublic.ts` corre en el **build de Astro**, con el Admin SDK, para
  * producir el `events.json`. Importa `opcionesVisibles`, y esa función se puede
@@ -259,68 +259,84 @@ describe('quién es dueño de Firestore — B-09', () => {
  * comentario no es una guarda: cambiar el import por `@/lib/opciones`
  * **typechequea y deja toda la suite en verde**, arrastrando `firebase/firestore`
  * al módulo de la proyección pública. Y el recorrido del grafo de más arriba
- * tampoco lo vería, porque `toPublic` no tiene hoy ningún importador en `src/`
- * (B-106 no existe todavía), así que no está en el grafo de la island.
+ * tampoco lo vería: estas proyecciones no están en el grafo de la island de
+ * `/admin`, así que quedan fuera de las dos redes que existen. Es exactamente la
+ * forma del §5.4 —«no se llega desde el cliente»— aplicada a un módulo cuyos
+ * clientes todavía no existen.
  *
- * O sea: es un archivo con una regla escrita, fuera de las dos redes que existen.
- * Lo encontró el `auditor-privacidad`. Es exactamente la forma del §5.4 —«no se
- * llega desde el cliente»— aplicada a un módulo que todavía no tiene clientes.
+ * ── Por qué la lista y no un archivo — B-218 ──────────────────────────────
+ * Este bloque nació con `toPublic.ts` cableado en una constante, cuando su
+ * docblock podía decir «no tiene hoy ningún importador en `src/` (B-106 no existe
+ * todavía)». B-106 existe: `src/lib/eventsJson.ts` lo importa y **hereda la
+ * posición exacta** —proyección pura, sin consumidor cliente hoy, con uno
+ * previsto en B-105—, y el día que alguien le agregue un import de conveniencia
+ * para «leer las opciones acá» no lo ve nadie:
+ *
+ * | Red | Por qué no lo ve |
+ * |---|---|
+ * | `tests/build-credenciales.test.ts` | busca `from 'firebase-admin` y el import sería `@/lib/firebase-admin`, que es la puerta legítima |
+ * | el grafo de la island (arriba) | no alcanza `eventsJson.ts`: no se llega desde `/admin` |
+ * | `scripts/verificar-bundle.sh` | lo vería en `dist/`, o sea después de que el build lo bundleó |
+ *
+ * Lo encontró el `auditor-privacidad` las dos veces. Que sea una lista es lo que
+ * hace que la tercera proyección se agregue acá y no dentro de seis semanas.
  */
-describe('toPublic no arrastra Firestore — B-212', () => {
-  const PROYECCION = 'src/lib/toPublic.ts';
+describe.each(['src/lib/toPublic.ts', 'src/lib/eventsJson.ts'])(
+  '%s no arrastra Firestore — B-212',
+  (PROYECCION) => {
+    it('el archivo existe y tiene imports que revisar', () => {
+      // Control positivo: con una lista vacía, los dos `it` de abajo pasarían sin
+      // haber mirado nada.
+      expect(importsEstaticos(fuente(PROYECCION)).length).toBeGreaterThan(1);
+    });
 
-  it('el archivo existe y tiene imports que revisar', () => {
-    // Control positivo: con una lista vacía, los dos `it` de abajo pasarían sin
-    // haber mirado nada.
-    expect(importsEstaticos(fuente(PROYECCION)).length).toBeGreaterThan(1);
-  });
+    it('no importa el módulo que habla con Firestore', () => {
+      const specs = importsEstaticos(fuente(PROYECCION));
+      // `@/lib/opciones` re-exporta lo mismo que `@/lib/taxonomia` y además abre
+      // el cliente de Firestore: es el atajo cómodo que hay que cerrar.
+      expect(specs, 'traelo de @/lib/taxonomia, que es puro').not.toContain('@/lib/opciones');
+    });
 
-  it('no importa el módulo que habla con Firestore', () => {
-    const specs = importsEstaticos(fuente(PROYECCION));
-    // `@/lib/opciones` re-exporta lo mismo que `@/lib/taxonomia` y además abre
-    // el cliente de Firestore: es el atajo cómodo que hay que cerrar.
-    expect(specs, 'traelo de @/lib/taxonomia, que es puro').not.toContain('@/lib/opciones');
-  });
+    it('ni Firebase, por ninguna puerta', () => {
+      const todos = [
+        ...importsEstaticos(fuente(PROYECCION)),
+        ...importsDiferidos(fuente(PROYECCION)),
+      ];
+      const deFirebase = todos.filter((s) => s === 'firebase' || s.startsWith('firebase/'));
+      expect(deFirebase, 'la proyección pública no habla con Firebase').toEqual([]);
+    });
 
-  it('ni Firebase, por ninguna puerta', () => {
-    const todos = [
-      ...importsEstaticos(fuente(PROYECCION)),
-      ...importsDiferidos(fuente(PROYECCION)),
-    ];
-    const deFirebase = todos.filter((s) => s === 'firebase' || s.startsWith('firebase/'));
-    expect(deFirebase, 'la proyección pública no habla con Firebase').toEqual([]);
-  });
+    it('y su clausura de imports propios tampoco', () => {
+      /*
+       * La parte que importa de verdad: no alcanza con que `toPublic` esté limpio
+       * si algo que importa no lo está. Se recorre el cierre transitivo de sus
+       * imports **de `src/`** —el mismo `aArchivo` que usa el grafo de la island—
+       * y se exige que nadie en la cadena traiga Firebase.
+       */
+      const vistos = new Set<string>();
+      const pendientes = [PROYECCION];
+      const culpables: string[] = [];
 
-  it('y su clausura de imports propios tampoco', () => {
-    /*
-     * La parte que importa de verdad: no alcanza con que `toPublic` esté limpio
-     * si algo que importa no lo está. Se recorre el cierre transitivo de sus
-     * imports **de `src/`** —el mismo `aArchivo` que usa el grafo de la island—
-     * y se exige que nadie en la cadena traiga Firebase.
-     */
-    const vistos = new Set<string>();
-    const pendientes = [PROYECCION];
-    const culpables: string[] = [];
+      while (pendientes.length > 0) {
+        const archivo = pendientes.pop()!;
+        if (vistos.has(archivo)) continue;
+        vistos.add(archivo);
 
-    while (pendientes.length > 0) {
-      const archivo = pendientes.pop()!;
-      if (vistos.has(archivo)) continue;
-      vistos.add(archivo);
-
-      const src = fuente(archivo);
-      for (const spec of [...importsEstaticos(src), ...importsDiferidos(src)]) {
-        if (spec === 'firebase' || spec.startsWith('firebase/')) {
-          culpables.push(`${archivo} → ${spec}`);
-          continue;
+        const src = fuente(archivo);
+        for (const spec of [...importsEstaticos(src), ...importsDiferidos(src)]) {
+          if (spec === 'firebase' || spec.startsWith('firebase/')) {
+            culpables.push(`${archivo} → ${spec}`);
+            continue;
+          }
+          const destino = aArchivo(spec, archivo);
+          if (destino) pendientes.push(destino);
         }
-        const destino = aArchivo(spec, archivo);
-        if (destino) pendientes.push(destino);
       }
-    }
 
-    // Control positivo: la clausura tiene que haber visitado más que el archivo
-    // de entrada, o esto no probó nada.
-    expect(vistos.size).toBeGreaterThan(2);
-    expect(culpables, 'algo en la cadena de imports de toPublic trae Firebase').toEqual([]);
-  });
-});
+      // Control positivo: la clausura tiene que haber visitado más que el archivo
+      // de entrada, o esto no probó nada.
+      expect(vistos.size).toBeGreaterThan(2);
+      expect(culpables, `algo en la cadena de imports de ${PROYECCION} trae Firebase`).toEqual([]);
+    });
+  },
+);

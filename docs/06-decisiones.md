@@ -3045,3 +3045,46 @@ exactamente la red que le faltaba a la trampa 7 del §13. Ver
 
 **El §5.3 del `CLAUDE.md` queda con un puntero a esta entrada**, para que el próximo que
 lo lea completo —como pide el encabezado— no restaure la regla de buena fe.
+
+## D-129 · El índice no lleva el link de la reunión ni con `urlPublica: true`
+
+**Contexto.** D-15 es un desvío consciente del §5.2: el modelo tiene el flag
+`online.urlPublica` y el formulario su casilla, así que ignorarlo era prometer
+algo que no pasaba. Con el flag prendido, el link **sale** — a la salida 1
+(`events.json` y las páginas) y a la 2 (el evento de Calendar). A la 3, la 4 y la
+5 no llega nunca, con flag o sin flag.
+
+B-106 partió la salida 1 en dos artefactos: el **índice** (`/events.json`) y el
+**detalle** (el HTML de cada actividad). El flag de D-15 no decía nada sobre esa
+partición, porque cuando se escribió no existía.
+
+**Qué se decidió.** El link entra al **detalle** y no al índice. `entradaDeIndice`
+ya lo dejaba afuera —toma `online.plataforma` y nada más—, pero eso era una
+consecuencia y no una decisión: nadie la había tomado y nada la sostenía.
+
+**Por qué.** Es el mismo argumento que decide el recorte de `inscripcion.destino`
+y no es privacidad estricta: el link **es** público cuando el dueño prende el
+flag. Lo que cambia es que el índice lo entregaría **en lote y en un solo GET**,
+mientras que en el detalle hay que crawlear una página por actividad. Esa
+diferencia es la que decide si alguien lo cosecha, y con el link de una reunión
+el costo de que alguien lo coseche es zoombombing (trampa 5), que es
+irreversible mientras dura el encuentro.
+
+Y del otro lado no se pierde nada: el listado no lo usa. La tarjeta no tiene
+botón «Unirse» — eso es del detalle, que es donde alguien decide anotarse.
+
+**Cómo se sostiene.** Dos tests que se pusieron rojos con la mutación antes de
+darse por buenos: uno en `tests/eventsJson.test.ts` con control positivo (del
+otro lado de la frontera el link **sí** está, o el test estaría celebrando que se
+perdió un campo) y el caso `urlPublica: true` del barrido del índice en
+`tests/barrido-de-salidas-publicas.test.ts`, cuya lista de permitidos va **sin**
+`online.url` y eso es la afirmación. Además, el fixture del gate mecánico
+(`scripts/build-contra-emulador.mjs`) usa `urlPublica: true` a propósito: es el
+único caso que prueba que el índice lo saca por decisión propia y no de rebote.
+
+**Lo encontró el `auditor-privacidad`**, y la forma del hallazgo se repite: las
+otras dos salidas que consumen el flag tenían su caso `urlPublica: true` en el
+barrido y el índice era la única de las tres sin él. Una celda de la matriz sin
+decidir se resuelve sola hacia el lado seguro **hasta que alguien escribe la
+línea que la resuelve para el otro** — que acá iba a ser cuando B-105 pinte la
+tarjeta.

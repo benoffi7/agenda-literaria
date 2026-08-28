@@ -50,7 +50,8 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
-| `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build y fuga de credenciales |
+| `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
+| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` que salió |
 
 `admin:claim` apunta al emulador por defecto; `admin:claim:prod` es un script
 aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
@@ -73,8 +74,19 @@ YAML.
 | 1 | marcadores de conflicto (`sin-marcadores-de-conflicto.test.ts`) | es el más barato y ya se commitearon dos veces |
 | 2 | `astro sync` + `tsc --noEmit` | sin `astro sync` el typecheck da doce errores que no son del cambio |
 | 3 | `npm test` con los emuladores arriba y `EXIGIR_EMULADOR=1` | sin eso los tests de integración se saltean **en silencio** y las reglas se pushean sin probar |
-| 4 | `npm run build` | |
+| 4 | `./scripts/build-contra-emulador.mjs` con el emulador (el que ya está arriba, o uno efímero) | el build tiene que **leer Firestore de verdad**: siembra una actividad publicada y una en borrador, buildea, y afirma sobre el `dist/events.json` que la publicada está, la borrador no, y ningún campo recortado se coló (B-217) |
 | 5 | `./scripts/verificar-bundle.sh dist` | el gate del §5.4 / trampa 4; va después del build porque sin `dist/` no verifica nada |
+
+**El paso 4 se arregló el 2026-08-27 (B-217).** Nació apuntando
+`FIRESTORE_EMULATOR_HOST` al emulador y diciendo que con eso el build «ejercita
+la lectura real». No la ejercitaba: con el paso 3 en su rama de `emulators:exec`
+no quedaba nadie escuchando —el build moría a los 44 segundos con `14
+UNAVAILABLE`, o sea que el gate corrido sin emulador previo **fallaba siempre y
+por su propia plomería**—, y con el emulador vivo los tests de integración del
+paso 3 lo habían dejado vacío, así que leía cero actividades y salía en verde. El
+chequeo agregado *para* garantizar «esto leyó Firestore» pasaba idéntico sin leer
+nada. Ahora la detección del hub se hace **una vez** y la comparten los pasos 3 y
+4, y el paso 4 afirma sobre el archivo que produjo.
 
 ### Activarlo (hay que hacerlo una vez por clon)
 

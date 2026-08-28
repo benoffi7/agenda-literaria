@@ -1,6 +1,6 @@
 ---
 name: auditor-privacidad
-description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/textoRedes.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
+description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/textoRedes.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -20,7 +20,7 @@ Leelos antes de dictaminar: son la fuente, esto es el índice.
 
 | # | Salida | Quién la produce | Test que la fija |
 |---|---|---|---|
-| 1 | `events.json` y las páginas SSG — la actividad **y** las opciones de taxonomía (§4.4) | `src/lib/toPublic.ts` — `toPublic` para la actividad, `opcionesPublicas` para `/opciones/*` | `tests/toPublic.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` |
+| 1 | `events.json` y las páginas SSG — la actividad **y** las opciones de taxonomía (§4.4) | **Tres en serie:** `src/lib/toPublic.ts` — `toPublic`, `opcionesPublicas`; `src/lib/eventsJson.ts` — `entradaDeIndice`, `construirIndice`, `resumenDe`; `src/pages/events.json.ts` — la query (`where` del §5.3) y la serialización | `tests/toPublic.test.ts`, `tests/barrido-de-salidas-publicas.test.ts`, `tests/eventsJson.test.ts`, `tests/events-json-endpoint.integracion.test.ts` |
 | 2 | El evento de Google Calendar | `functions/calendario.js` — `construirEvento`, `construirDescripcion`, `construirUbicacion`, `construirLinkMapa` | `tests/calendario.test.ts` |
 | 3 | El issue de GitHub (el repo `benoffi7/agenda-literaria` es **público**) | `functions/reportes.js` — `redactar`, `construirIssue`, `actividadParaIssue` | `tests/reportes.test.ts` |
 | 4 | GA4 (la más estricta: acá **no sale contenido nunca**, ni con permiso del dueño) | `src/lib/analytics-eventos.ts` — `construirEvento` y sus vocabularios | `tests/analytics-privacidad.test.ts` |

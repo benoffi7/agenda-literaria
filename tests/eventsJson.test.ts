@@ -99,6 +99,55 @@ describe('la entrada del índice recorta lo que el listado no usa (§3.1)', () =
     const sin = toPublic(actividadCentinela({ tallerista: null }), 'act_sin');
     expect(entradaDeIndice(sin).tallerista).toBeNull();
   });
+
+  it('el resumen es un RECORTE, no la descripción entera (§3.1)', () => {
+    /*
+     * `resumenDe` está probado en aislamiento más arriba, pero eso no dice que el
+     * índice la use: cambiar la línea a `resumen: a.descripcion` deja todo lo
+     * demás en verde. El test de ausencia busca la **clave** `"descripcion"` —que
+     * sigue sin existir, la clave es `resumen`— y el barrido permite el centinela
+     * de `descripcion` justamente porque el resumen lo contiene.
+     *
+     * O sea: la promesa de «~160 caracteres» del §5.1 no estaba fijada donde se
+     * produce. Es la que evita mandar la descripción dos veces (una en `resumen`
+     * y otra, normalizada, en `searchText`), que es la razón de peso del recorte.
+     */
+    const larga = `${'palabra '.repeat(40)}final`;
+    expect(larga.length).toBeGreaterThan(LARGO_RESUMEN);
+
+    const e = entradaDeIndice(toPublic(actividadCentinela({ descripcion: larga }), 'act_larga'));
+    expect(e.resumen).not.toBe(larga);
+    expect(e.resumen.length).toBeLessThanOrEqual(LARGO_RESUMEN + 1);
+    expect(e.resumen.endsWith('…')).toBe(true);
+  });
+
+  it('el link de la reunión no entra al índice NI con urlPublica en true (§5.1, trampa 5)', () => {
+    /*
+     * D-15 permite publicar el link en las salidas 1 y 2 con el flag prendido, y
+     * el índice **es parte** de la salida 1. Pero el listado no lo usa: la tarjeta
+     * no tiene botón «Unirse», eso es del detalle.
+     *
+     * Sin este test la celda quedaba decidida por omisión —`entradaDeIndice` toma
+     * `plataforma` y nada más, pero nadie lo había decidido—, y agregarla cuando
+     * B-105 pinte la tarjeta iba a ser una línea que no frena nada. Servir los
+     * links de reunión **en lote y en un solo GET** es la forma de la trampa 5
+     * que más barata le sale a un bot.
+     */
+    const abierta = toPublic(
+      actividadCentinela({
+        online: {
+          plataforma: CENTINELA['online.plataforma'],
+          url: CENTINELA['online.url'],
+          urlPublica: true,
+        },
+      }),
+      'act_abierta',
+    );
+    // Control: del otro lado de la frontera el link SÍ está (D-15), o esto
+    // estaría celebrando que se perdió un campo.
+    expect(JSON.stringify(abierta)).toContain(CENTINELA['online.url']);
+    expect(JSON.stringify(entradaDeIndice(abierta))).not.toContain(CENTINELA['online.url']);
+  });
 });
 
 describe('lo que el índice sí resuelve, para que no lo resuelva cada consumidor', () => {

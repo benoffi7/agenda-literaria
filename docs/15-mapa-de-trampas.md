@@ -32,7 +32,7 @@ palabras `trampa N`.
 | 2 | Ids de sesión por índice | `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/formulario/autoguardado.ts` | `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts` |
 | 3 | Loop de escritura en la Function | `functions/index.js`, `functions/historial.js` | `tests/calendario.test.ts`, `tests/costuras.test.ts`, `tests/reportes.test.ts` |
 | 4 | `firebase-admin` en bundle cliente | `src/lib/firebase-admin.ts`, `src/pages/admin.astro` | `tests/bundle-panel.test.ts` |
-| 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
+| 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/eventsJson.test.ts`, `tests/barrido-de-salidas-publicas.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
 | 6 | Taxonomías sin slugify | `src/lib/slugify.ts`, `src/lib/opciones.ts` | `tests/slugify.test.ts` |
 | 7 | Query pública sin `where('estado','==','publicado')` | `firestore.rules` | `tests/actividades.integracion.test.ts` |
 | 8 | Olvidar el rebuild al cambiar `/opciones/*` | `functions/index.js`, `functions/rebuild.js` | `tests/costuras.test.ts`, `tests/clases-de-bug.test.ts` |

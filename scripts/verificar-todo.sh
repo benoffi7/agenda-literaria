@@ -69,10 +69,21 @@ fi
 # Un gate que falla por su propia plomería enseña a saltearlo, y ahí deja de ser
 # un gate. Así que se detecta el hub del emulador y, si contesta, se usa el que
 # está en vez de levantar otro.
+#
+# La detección se hace UNA vez y la contestan los pasos 3 y 4: los dos necesitan
+# lo mismo, y tenerla escrita dos veces fue justamente lo que dejó al paso 4
+# apuntando a un puerto que el paso 3 había apagado.
 EMU_HUB="${FIREBASE_EMULATOR_HUB:-127.0.0.1:4400}"
+HOST_FIRESTORE="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}"
 if curl -sf --max-time 2 "http://${EMU_HUB}/emulators" >/dev/null 2>&1; then
+  EMU_ARRIBA=1
+else
+  EMU_ARRIBA=0
+fi
+
+if [ "$EMU_ARRIBA" = 1 ]; then
   printf '  (emuladores ya arriba en %s: se usan esos)\n' "$EMU_HUB"
-  FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}" \
+  FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
     FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099}" \
     EXIGIR_EMULADOR=1 npm test \
     || fallo 'la suite no pasa con los emuladores arriba'
@@ -82,16 +93,30 @@ else
     || fallo 'la suite no pasa con los emuladores arriba'
 fi
 
-# ── 4 · Build ─────────────────────────────────────────────────────
-# `FIRESTORE_EMULATOR_HOST` se apunta a propósito (B-106): desde que el build
-# arma el `events.json` leyendo Firestore, un build sin credenciales produce el
-# archivo con lista vacía y un aviso (D-123). Eso no falla —es el camino local
-# deliberado— pero tampoco ejercita la lectura, que es lo que corre en CI. Los
-# emuladores ya son requisito del paso 3, así que esto no agrega ninguna
-# dependencia nueva y hace que el gate local pruebe el camino de verdad.
-paso 'Build del sitio y del panel'
-FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}" \
-  npm run build || fallo 'el build no pasa'
+# ── 4 · Build, leyendo Firestore de verdad ────────────────────────
+# Desde que el build arma el `events.json` leyendo Firestore (B-106), un build
+# sin credenciales produce el archivo con lista vacía y un aviso (D-123): no
+# falla —es el camino local deliberado— pero tampoco ejercita la lectura, que es
+# lo que corre en CI.
+#
+# La primera versión de este paso solo exportaba `FIRESTORE_EMULATOR_HOST` y
+# decía que con eso alcanzaba. No alcanzaba (B-217): con el paso 3 en su rama de
+# `emulators:exec` no había nadie escuchando, y con el emulador vivo los tests de
+# integración lo habían dejado vacío — el build leía cero actividades y salía en
+# verde. El gate agregado *para* garantizar «esto leyó Firestore» pasaba idéntico
+# sin leer nada.
+#
+# Así que el paso siembra, buildea y **afirma sobre el archivo que salió**. El
+# detalle está en el script; acá solo se decide contra qué emulador corre, con la
+# misma detección del paso 3: el que ya está arriba, o uno efímero.
+paso 'Build del sitio y del panel, leyendo Firestore de verdad'
+if [ "$EMU_ARRIBA" = 1 ]; then
+  FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
+    ./scripts/build-contra-emulador.mjs || fallo 'el build no pasa o no leyó Firestore'
+else
+  npx firebase emulators:exec --only firestore --project agenda-literaria \
+    './scripts/build-contra-emulador.mjs' || fallo 'el build no pasa o no leyó Firestore'
+fi
 
 # ── 5 · Que la credencial no se filtró ────────────────────────────
 # El gate del §5.4 / trampa 4, el mismo script que corre en los dos workflows.

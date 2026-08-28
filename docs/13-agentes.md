@@ -106,12 +106,19 @@ código.
 ### 🔒 `auditor-privacidad`
 
 **Para qué.** El proyecto tiene **cinco salidas públicas** y una sola regla
-(§5.1), y cada salida la produce un archivo distinto: `toPublic.ts` para el
-`events.json`, `calendario.js` para el evento de Calendar, `reportes.js` para el
-issue de GitHub (el repo es público), `analytics-eventos.ts` para GA4 —la más
-estricta, donde no sale contenido ni con permiso del dueño— y `textoRedes.ts`
-para el texto que se copia a redes, que es la más **irreversible** de todas: un
-posteo pegado en Instagram ya está copiado.
+(§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
+`reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
+para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño— y
+`textoRedes.ts` para el texto que se copia a redes, que es la más **irreversible**
+de todas: un posteo pegado en Instagram ya está copiado.
+
+La primera —el `events.json` y las páginas— es la excepción: desde B-106 son
+**tres archivos en serie**, y hay que auditar los tres. `toPublic.ts` decide qué
+*puede* ser público, `eventsJson.ts` decide qué necesita el listado (que es
+menos), y `events.json.ts` decide *qué documentos* se leen — el `where` del §5.3.
+La fila 1 de la tabla nombraba solo el primero hasta el 2026-08-27 (B-218), que es
+la forma de B-216 un archivo más adentro: con la tabla vieja, un cambio que tocara
+solo `eventsJson.ts` no despertaba a este agente por nombre de archivo.
 
 El agente sabe qué archivo produce cada una, qué nunca sale, y las excepciones que
 cuestan de recordar (`online.urlPublica` vale para el JSON y el calendario pero
@@ -316,6 +323,7 @@ arreglo, es el detector.
 | Que las reglas rechacen lo anónimo y lo que no es admin | `actividades.integracion.test.ts` y `reportes.integracion.test.ts`, con `EXIGIR_EMULADOR=1` en CI para que no se salteen en silencio. **Esta fila decía menos de lo que parecía hasta el 2026-08-27:** los casos anónimos eran de **escritura**, y del lado de la lectura había un `it('un anónimo lee lo publicado')` en verde que estaba fijando una fuga (B-208, D-128). Hoy hay tres `it` de lectura —por documento, por query, y un control positivo— y el archivo empuja las reglas del checkout al emulador con `cargarReglas`, que antes no hacía |
 | Que ningún archivo versionado publique un uid de Firebase ni una casilla de correo personal | `sin-datos-personales.test.ts` (B-209). Es **angosto a propósito**: mira la forma de un uid y los proveedores de correo gratuitos. Un mail en dominio propio puede ser un fixture inventado o el real de una sede, y el test no puede distinguirlos sin versionar la lista de dominios reales — o sea, el dato que no queremos versionar. **Esa mitad sí es del `auditor-privacidad`** |
 | Que ningún campo privado del modelo llegue al `events.json` ni al evento de Calendar cuando se agrega un campo nuevo | `barrido-de-salidas-publicas.test.ts` (B-196): inyecta centinelas y los busca en las dos salidas, en las dos direcciones, con un fixture que se autoexige actualizado campo por interfaz. **Le sacó trabajo al `auditor-privacidad`**, que ya no tiene que reportar la instancia — solo el campo nuevo que el fixture todavía no ancló |
+| Que el `events.json` que se sube salga del `where('estado','==','publicado')` y no lleve los campos recortados | `events-json-endpoint.integracion.test.ts` (B-218) siembra una publicada y las tres que no son públicas —borrador, cancelada, pendiente— y afirma sobre el JSON que devuelve el endpoint. **De integración y no de texto a propósito:** un `grep` al fuente buscando la cláusula pasaría con la cláusula escrita mal (`'Publicado'`, `'!='`, el campo renombrado). Y `scripts/build-contra-emulador.mjs` (B-217) hace la misma afirmación sobre el `dist/events.json` de verdad, en el paso 4 del gate: entre el valor de retorno de `construirIndice` y el archivo que sube al Hosting están el `JSON.stringify` y la serialización del endpoint |
 | Que un trigger nuevo con efecto duplicable nazca sin guarda, y las demás clases de bug del repo | `clases-de-bug.test.ts` (B-135). Descubre los triggers **del fuente** en vez de listarlos, así que un trigger nuevo entra al chequeo solo |
 | Que las opciones de `/opciones/*` no publiquen la huella del creador ni los campos de gestión | `barrido-de-salidas-publicas.test.ts` (B-212): `ValorOpcion` dejó de estar en la lista de interfaces AJENAS y pasó a estar anclada, con centinelas propios. El control negativo está **codificado** (no verificado a mano): un `it` mete el spread y exige que el barrido falle nombrando `opcion.huellaCreador`. Y la clase de B-212 en `clases-de-bug.test.ts` ata los **tres** caminos que proyectan una opción —`opcionesPublicas`, `labelsDeOpciones` y el `cargarLabels` de la Function, que no puede importar de `src/` (D-20)— derivando del modelo qué campos están prohibidos |
 | Que ninguna capa modal reimplemente el atrapar-el-Tab, el scroll y el foco | `foco.test.ts` (B-210). Afirma la **propiedad** (que la capa use `useCapaModal` y no tenga cableado propio), no el string de una implementación: la versión anterior buscaba `e.key==='Escape'` dentro de un `.tsx` y un refactor la ponía en rojo |
