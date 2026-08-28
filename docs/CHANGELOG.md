@@ -1,5 +1,174 @@
 # Changelog
 
+## 2026-08-28
+
+### B-227 · El sitio público: el listado con filtros y la página de detalle
+
+El primer frente del diseño de [`12-sitio-publico.md`](12-sitio-publico.md). Cierra
+**B-105** y la mitad de **B-107**; el estado sección por sección quedó en una caja
+arriba de ese documento, y lo que hace, en
+[`04-funcionalidades.md`](04-funcionalidades.md).
+
+**La home** imprime en HTML todas las actividades vigentes —eso es lo que ve Google
+y lo que ve alguien sin JavaScript— y encima monta una island que hace **un solo
+fetch** de `/events.json` y filtra, busca y ordena en memoria (§2.5). Cuando el
+índice llega, la island saca del DOM la lista del build y monta la suya **con el
+mismo componente**: un solo markup de tarjeta, y sin parpadeo porque el estado
+inicial es el del build. Si el fetch falla, la lista del build se queda donde está:
+nunca una pantalla vacía.
+
+**La página de detalle** (`/actividad/{slug}`) es estática y con **cero
+JavaScript**: es la que recibe el tráfico de Google y de Instagram. La ficha y el
+botón arriba, con el verbo de la vía real; después la descripción, los encuentros
+con su tema, quién lo da, el material y cada forma de cursar con su sede.
+
+**Cuatro decisiones**, en [`06-decisiones.md`](06-decisiones.md):
+
+- **D-133** — hay selector de orden, contra lo que decía el §6.1 del diseño. Aquel
+  argumento evaluó precio y relevancia, que son los dos criterios que derivan del
+  contenido; el que faltaba deriva de **cuándo se cargó**, y es la única forma de
+  contestarle a quien vuelve. El default no cambia.
+- **D-134** — `creadoEn` entra a la proyección pública para ese orden, y **con
+  precisión de día**: publicar el instante exacto de cada carga dibuja la agenda de
+  trabajo del dueño, que con un solo admin es un dato sobre una persona (mismo
+  razonamiento que D-57 y D-27). `updatedAt` no sale.
+- **D-135** — el link de la reunión **tampoco sale a la página de detalle**, ni con
+  `urlPublica: true`. Más estricto que D-15, por lo mismo que D-129 lo sacó del
+  índice y por una razón más fuerte: un HTML indexado no se despublica.
+- **D-136** — la plantilla `.astro` **no recibe el documento**: recibe un
+  view-model que `src/lib/detallePublico.ts` armó campo por campo. La frontera de
+  privacidad es un tipo, no la disciplina de quien escribe la plantilla — y de paso
+  es lo que hace que la página entre al barrido de centinelas, porque un `.astro`
+  no se puede importar desde un test.
+
+**Una salida pública nueva, la sexta**, con su lugar en el mapa de
+[`07-seguridad.md`](07-seguridad.md) y en la ficha del `auditor-privacidad`
+**escrito en el mismo cambio que la creó**. Es la lección de B-212 y de la salida 5
+aplicada a tiempo: el agujero de aquellas no era de cobertura, era que el índice no
+las nombraba.
+
+**Una sola lectura de Firestore para los tres artefactos del build.** El
+`where('estado','==','publicado')` del §5.3 se mudó del endpoint a
+`src/lib/contenidoDelSitio.ts`: con tres consumidores, tenerlo tres veces son dos
+copias que se pueden olvidar de actualizar, y la que se olvide publica los
+borradores en HTML mientras el JSON sigue limpio. Es la clase de B-72.
+
+**Lo que se comparte con el panel, y por qué.** «Cuál es el próximo encuentro» era
+una función privada de `filtrosActividades.ts` con tres decisiones sutiles adentro
+—se descarta por el fin y se devuelve el inicio, el fallback sin `fin`, los
+cancelados no cuentan—. Ahora es `proximaVentana` en `lib/sesiones.ts`, y el panel
+y el sitio la llaman con su formato (`Timestamp` uno, ISO el otro). Dos copias eran
+el listado del panel y la tarjeta del sitio contestando distinto sobre la misma
+actividad, sin que nada falle.
+
+#### El bug que encontró el build, y no los tests — B-228
+
+`export const getStaticPaths = caminosDeDetalle;` —el alias, que es lo que uno
+escribe— rompía la generación entera: Astro llama a `getStaticPaths` con un objeto
+propio (`{ paginate, rss }`), y ese objeto caía en el parámetro del reloj.
+`ahora.getTime is not a function`, **cero páginas de detalle**, y los 1.600 tests en
+verde. Lo encontró `scripts/build-contra-emulador.mjs`, o sea el §"Verificar contra
+el sistema real" de [`05-patrones.md`](05-patrones.md) haciendo lo que promete. Se
+arregló en dos capas —la plantilla envuelve, y la función ignora un `ahora` que no
+sea `Date`— y las dos tienen su test.
+
+Mirar el HTML que salió encontró además que el **tema** de un encuentro suelto no
+aparecía en ningún lado: la página pública decía menos que el evento de Calendar del
+mismo encuentro. Ahora el bloque de encuentros sale también con una sola fecha, si
+tiene tema, lectura o está cancelada.
+
+Y un tercero de la misma familia —cosas que el HTML del build muestra bien y que se
+rompen **después** de hidratar—: el `id="listado"` al que apunta «Saltar al listado»
+estaba puesto solo en el contenedor de la lista del build, que es justo el nodo que
+la island **saca del DOM** al tomar el control. En el HTML se veía perfecto; en el
+navegador, el link de salto mandaba a un div vacío. Ahora el `id` envuelve al
+buscador y a la lista, y hay un test que afirma esa relación de anidado.
+
+#### Lo que dijo el `auditor-privacidad`
+
+Cinco hallazgos sobre la salida nueva, los cinco arreglados acá:
+
+1. **El `url` del organizador entraba al JSON-LD sin pasar por `urlSegura`** (P1).
+   El HTML ya caía a texto plano con una web inválida, pero el
+   `<script type="application/ld+json">` publicaba el crudo — y `schema.ts` valida
+   ese campo como texto, no como URL. Un `javascript:…` salía a la superficie que
+   un bot cosecha primero.
+2. **`creadoEn` publicaba el milisegundo exacto** de cada carga (P2) → recortado al
+   día, ver D-134.
+3. **La plantilla podía recuperar el documento entero** sin nombrar nada prohibido
+   (P2): ya importaba de `contenidoDelSitio`, así que
+   `const { actividades } = await contenidoDelSitio()` compilaba. El test pasó de
+   lista negra a **lista blanca de imports**.
+4. **Las etiquetas del detalle se resolvían con la lista filtrada por aprobación**
+   (P2), y eso invierte D-30 —«se filtra lo elegible, nunca la lista con la que se
+   resuelve»—: una actividad con una opción pendiente mostraba «Con Beca Parcial»
+   desSlugeado. Ahora son dos mapas, con la asimetría explicada donde se usa.
+5. **La salida 6 no estaba en el mapa de salidas** (P1) → agregada a
+   `07-seguridad.md` y a la ficha del agente, que un test ata entre sí.
+
+Y una clase de bug que pidió cerrar antes de que apareciera el tercer lado: la ruta
+`/actividad/{slug}` se derivaba en dos lugares y el tercero ya estaba escrito en un
+comentario de `textoRedes.ts`. Ahora hay `rutaDeDetalle` en
+`src/lib/rutasPublicas.ts`, con un test que la ata al **directorio real de la
+página** —que es el productor de verdad, porque Astro deriva el path del nombre del
+archivo— y otro que prohíbe armarla a mano.
+
+#### Lo que dijo el `auditor-documentacion`
+
+Catorce puntos, y el que importa no es de prosa: **el skill `campo-nuevo`
+preguntaba por cuatro salidas y son seis** (**B-235**). Le faltaban las dos de las
+que no se puede volver — el posteo de Instagram (desde B-95) y la página indexada
+(desde B-227)—, así que se podía seguir el procedimiento al pie de la letra y
+filtrar un campo nuevo a cualquiera de las dos. Es el documento que de verdad se
+ejecuta cuando alguien toca el modelo, y la ficha del `auditor-privacidad` ya había
+tenido exactamente el mismo agujero un día antes (B-216).
+
+El resto era **drift de «el sitio todavía no existe»**, repartido en siete lugares
+que este cierre no había tocado: el `README.md` de la raíz, `01-arquitectura.md`
+(la frase, el diagrama y el mapa del código, que no listaba ninguno de los archivos
+nuevos), `09-analitica.md`, `11-ideas-de-producto.md`, `13-agentes.md` y dos ítems
+del backlog (B-121 y B-122). Más el conteo de «cinco salidas» que quedó en el cuerpo
+de dos documentos cuando sus tablas ya decían seis, y **B-27**, que estaba hecho
+desde B-212 y nadie había marcado.
+
+#### Lo que NO entra en este cambio
+
+- **El sitio no está desplegado.** Sin dominio no hay `site`, y sin `site` no hay
+  canonical, ni Open Graph, ni sitemap (**B-109**). Inventar una URL absoluta ahora
+  es peor que no ponerla.
+- **`novedades.ts` y `ayuda.ts` no se tocan**, y es deliberado: el panel no cambió,
+  y los dos textos de la ayuda que dicen «el sitio todavía no está publicado» hoy
+  **son ciertos**. Cambiarlos ahora convertiría una ayuda cierta en una que miente.
+  Van con el deploy, y quedaron anotados en **B-233**.
+- Abiertos en el camino: **B-229** (la hoja de filtros y el CTA fijo de móvil),
+  **B-230** (el peso del runtime de React en la home, medido), **B-231** (la casilla
+  dice «publicar el link en el sitio» y el sitio no lo publica), **B-232** (el
+  fixture del gate de build es anterior a B-224).
+
+#### El contraste, medido — y cuatro niveles de gris que no pasaban
+
+El §10 del diseño dejaba una pregunta abierta: «el acento sobre papel hay que
+medirlo antes de usarlo en texto chico». La respuesta es **5,63:1**, o sea que sí
+se puede. Pero medirlo encontró lo que la pregunta no anticipaba: la primera
+versión de este frente usaba `text-tinta/45`, `/50`, `/55` y `/60` para el texto
+secundario, que sobre papel dan **2,86 · 3,30 · 3,84 · 4,49** — los cuatro por
+debajo del 4,5 de AA, y el primero por debajo del 3 que pide hasta el texto grande.
+Eran 35 usos en seis archivos.
+
+El piso quedó en `tinta/65` (5,29) y lo sostiene `tests/contraste.test.ts`, que
+calcula los ratios desde los tokens de `global.css` —no copiados, parseados— y
+**además falla si algún componente del sitio escribe una clase por debajo del
+piso**: la paleta puede estar perfecta y el componente siguiente bajarla igual, que
+es justo lo que había pasado. Con su control negativo: un escalón más abajo del
+piso tiene que **no** pasar, si no el número no significaría nada.
+
+#### Números
+
+1.665 tests en 70 archivos —eran 1.423—, todos verdes con los emuladores; 79 los
+necesitan. La lógica pura vive en `src/lib/`, testeada aparte de los componentes:
+`listadoPublico.ts` (58 casos), `detallePublico.ts` (51), `fechasPublicas.ts` (15),
+`contraste.test.ts` (8).
+
 ## 1.5.0 — 2026-08-28
 
 **Dos frentes en paralelo, integrados en una sola versión:** «Dónde» pasó a ser una

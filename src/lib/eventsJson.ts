@@ -89,6 +89,11 @@ export interface EntradaDeIndice {
   tallerista: string | null;
   tags: string[];
   destacado: boolean;
+  /**
+   * El ISO de cuándo se cargó — D-134. Es la clave del orden «Recién agregadas»
+   * del listado, que es lo único que la usa: la tarjeta no muestra esta fecha.
+   */
+  creadoEn: string;
   esCiclo: boolean;
   /** Solo la plataforma, para el filtro de modalidad. */
   online: { plataforma: string } | null;
@@ -187,6 +192,7 @@ export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
   tallerista: a.tallerista?.nombre ?? null,
   tags: a.tags,
   destacado: a.destacado,
+  creadoEn: a.creadoEn,
   esCiclo: a.esCiclo,
   online: a.online ? { plataforma: a.online.plataforma } : null,
   sesiones: sesionesDeIndice(a),

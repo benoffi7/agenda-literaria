@@ -147,6 +147,41 @@ export interface ActividadPublica {
   tags: string[];
   destacado: boolean;
   searchText: string;
+  /**
+   * **`AAAA-MM-DD`** de cuándo se cargó la actividad — B-227 y **D-134**.
+   *
+   * Existe por un orden del listado: «Recién agregadas» contesta «¿qué se sumó
+   * desde la última vez que miré?», y esa pregunta no se puede contestar con las
+   * fechas de los encuentros — una actividad cargada hoy para diciembre queda al
+   * fondo del orden cronológico.
+   *
+   * ── Por qué el día y no el instante ───────────────────────────────────
+   * La primera versión publicaba el ISO completo, y el `auditor-privacidad` lo
+   * marcó: **con un solo admin, un `events.json` con
+   * `"creadoEn":"2026-08-27T03:14:52.881Z"` en cada actividad no es una fecha, es
+   * la agenda de trabajo de una persona identificada** — a qué hora carga, qué
+   * noches, en qué tandas. Es el mismo razonamiento por el que D-57 rechaza el
+   * hash del mail y por el que D-27 saca `huellaCreador` de la salida: el dato no
+   * nombra a nadie, pero con un universo de una persona la desanonimización es
+   * gratis.
+   *
+   * Y el único consumidor no necesita nada de eso: ordenar por día alcanza, y dos
+   * actividades cargadas el mismo día desempatan por título. Es la regla de
+   * siempre —se publica lo que el sitio necesita, no lo que el documento tiene—
+   * aplicada a la **precisión** y no al campo.
+   *
+   * **Es una fecha, no una persona.** Lo que el §5.1 mantiene afuera del creador
+   * es su identidad (`createdBy`, y hasta la `huellaCreador` de una opción de
+   * taxonomía, D-27); *qué día* se cargó algo que ya es público no dice nada de
+   * nadie. El §11.2 del diseño del sitio ya contemplaba publicar `updatedAt` con
+   * el mismo criterio, para el `lastmod` del sitemap.
+   *
+   * **`updatedAt` NO sale, y es deliberado:** el orden que se pidió es por alta y
+   * no por última edición, y una fecha de modificación publicada convierte cada
+   * corrección de un typo en «actualizado hoy». Cuando el sitemap la necesite
+   * (§11.2 #3) va a ser una línea, con su propia decisión.
+   */
+  creadoEn: string;
   arancel: Actividad['arancel'];
   organizador: Actividad['organizador'];
   tallerista: Actividad['tallerista'];
@@ -194,6 +229,29 @@ export interface ActividadPublica {
 /** Serializa un Timestamp a ISO. Acepta Date por comodidad en tests. */
 const aIso = (t: { toDate(): Date } | Date): string =>
   t instanceof Date ? t.toISOString() : t.toDate().toISOString();
+
+/**
+ * Lo mismo, pero **tolerante**: devuelve `''` con cualquier cosa que no sea una
+ * fecha usable.
+ *
+ * Es para los campos de auditoría (`createdAt`), que a diferencia de las fechas
+ * de las sesiones **no siempre son un `Timestamp` cuando esto corre**: un
+ * documento recién armado por `formADocumento` los tiene como el sentinel de
+ * `serverTimestamp()`, que no tiene `toDate()` y que el servidor recién resuelve
+ * al escribir. Un documento leído de Firestore sí trae el `Timestamp`.
+ *
+ * Es además el default de lectura del §"un campo nuevo se lee con el default que
+ * preserva lo anterior": un documento sembrado a mano sin `createdAt` publica una
+ * cadena vacía, que ordena al fondo de «Recién agregadas» y no rompe nada.
+ */
+const aIsoSeguro = (t: unknown): string => {
+  if (t instanceof Date) return t.toISOString();
+  if (t && typeof (t as { toDate?: unknown }).toDate === 'function') {
+    const d = (t as { toDate(): Date }).toDate();
+    return d instanceof Date && !Number.isNaN(d.getTime()) ? d.toISOString() : '';
+  }
+  return '';
+};
 
 const aMillis = (t: { toMillis(): number } | Date): number =>
   t instanceof Date ? t.getTime() : t.toMillis();
@@ -368,6 +426,15 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   tags: a.tags ?? [],
   destacado: a.destacado ?? false,
   searchText: a.searchText ?? '',
+  /*
+   * D-134 — la fecha de alta, para el orden «Recién agregadas».
+   *
+   * **`slice(0, 10)` recorta al día**, y no es cosmético: publicar el instante
+   * exacto de cada carga dibuja la agenda de trabajo del dueño (ver el docblock
+   * del campo). Ordena igual, y una cadena vacía —el default cuando `createdAt`
+   * todavía es el sentinel de `serverTimestamp()`— sigue ordenando al fondo.
+   */
+  creadoEn: aIsoSeguro(a.createdAt).slice(0, 10),
   arancel: a.arancel,
   organizador: a.organizador,
   tallerista: a.tallerista ?? null,

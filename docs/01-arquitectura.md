@@ -3,7 +3,9 @@
 ## Las tres piezas
 
 1. **Panel de admin** — SPA React en `/admin`, escribe a Firestore.
-2. **Sitio público** — Astro estático (SSG). **Todavía no existe.**
+2. **Sitio público** — Astro estático (SSG). Listado con búsqueda y filtros, y
+   página de detalle por actividad (**B-227**). **Todavía no está desplegado:**
+   falta elegir el dominio (B-109), y con él el canonical y el sitemap.
 3. **Google Calendar público** — espejo de solo lectura.
 
 ## Flujo de datos
@@ -28,7 +30,7 @@ Es unidireccional. Firestore es la única fuente de verdad (§2.1).
                          ▼        ▼
               ┌──────────────┐  ┌──────────────────┐
               │ syncCalendar │  │  build de Astro  │
-              │  Function    │  │  (paso 3, falta) │
+              │  Function    │  │  (paso 3, B-227) │
               └──────┬───────┘  └────────┬─────────┘
                      │                   │
                      ▼                   ▼
@@ -144,13 +146,25 @@ src/
     firebase-client.ts      app y auth del panel — sin Firestore (B-09)
     firestore-client.ts     db() del panel, aparte para no cargarlo en el login
     firebase-admin.ts       SOLO build time (§5.4)
+    contenidoDelSitio.ts    SOLO build time — el ÚNICO lector de Firestore del
+                            sitio: el where del §5.3, y una lectura para los
+                            tres artefactos (B-227)
+    listadoPublico.ts       filtros, orden y búsqueda del listado — puro
+    detallePublico.ts       qué muestra la página de detalle, y su JSON-LD —
+                            puro, y es la frontera de privacidad de esa salida
+    fechasPublicas.ts       las fechas del sitio, siempre con timeZone (trampa 1)
+    rutasPublicas.ts        /actividad/{slug} escrito una sola vez
   components/admin/         el panel entero
+  components/publico/       el sitio: Tarjeta, ListaDeActividades, GrupoDeChips
+                            y Buscador (la única island del sitio)
   layouts/Base.astro        head, fuentes, viewport
   pages/
     admin.astro             island client:only
     version.json.ts         /version.json — qué versión está publicada
-    events.json.ts          /events.json — lee Firestore en el build (B-106)
-    index.astro             placeholder del sitio público
+    events.json.ts          /events.json — serializa lo que lee contenidoDelSitio
+    index.astro             la home: listado en HTML + island de filtros (B-227)
+    actividad/[slug].astro  el detalle, SSG y con CERO JavaScript. No ve el
+                            documento: recibe un view-model (D-136)
 functions/
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario

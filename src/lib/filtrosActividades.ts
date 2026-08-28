@@ -17,7 +17,7 @@
  */
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { normalize } from '@/lib/normalize';
-import { instanteDeTimestamp as instante } from '@/lib/sesiones';
+import { instanteDeTimestamp as instante, proximaVentana } from '@/lib/sesiones';
 import { ESTADOS, MODALIDADES } from '@/types/actividad';
 import type { ActividadConId, Estado, Modalidad } from '@/types/actividad';
 
@@ -119,18 +119,23 @@ const millis = (valor: unknown): number => instante(valor)?.getTime() ?? 0;
  * **Los cancelados no cuentan:** un encuentro cancelado no va a pasar, y si
  * contara, un ciclo cancelado a mitad de camino seguiría apareciendo arriba del
  * listado como si fuera lo más urgente.
+ *
+ * **La aritmética no vive acá desde B-227**: es `proximaVentana` de
+ * `lib/sesiones.ts`, compartida con el sitio público, que tiene las mismas
+ * sesiones en ISO en vez de `Timestamp`. Lo que queda de este lado es la
+ * conversión del formato. Si el cálculo estuviera dos veces, el listado del panel
+ * y la tarjeta del sitio podrían contestar distinto sobre la misma actividad y
+ * nada fallaría.
  */
-export const proximoEncuentro = (actividad: ActividadConId, ahora: Date): Date | null => {
-  let proximo: Date | null = null;
-  for (const sesion of actividad.sesiones ?? []) {
-    if (sesion.cancelada) continue;
-    const inicio = instante(sesion.inicio);
-    const fin = instante(sesion.fin) ?? inicio;
-    if (!inicio || !fin || fin.getTime() < ahora.getTime()) continue;
-    if (!proximo || inicio.getTime() < proximo.getTime()) proximo = inicio;
-  }
-  return proximo;
-};
+export const proximoEncuentro = (actividad: ActividadConId, ahora: Date): Date | null =>
+  proximaVentana(
+    (actividad.sesiones ?? []).map((s) => ({
+      inicio: instante(s.inicio),
+      fin: instante(s.fin),
+      cancelada: s.cancelada,
+    })),
+    ahora,
+  );
 
 /** ¿Le queda algo por pasar? Es el filtro "con algo por venir". */
 export const tieneFuturo = (actividad: ActividadConId, ahora: Date): boolean =>

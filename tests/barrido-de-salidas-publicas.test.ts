@@ -46,6 +46,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { opcionesPublicas, toPublic } from '@/lib/toPublic';
 import { construirIndice } from '@/lib/eventsJson';
+import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
+import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
 import {
@@ -968,5 +970,293 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
     expect(mensaje, 'el barrido NO detectó la falta de recorte').not.toBe('');
     expect(mensaje).toContain('FUGA');
     expect(mensaje).toContain('inscripcion.destino');
+  });
+});
+
+/**
+ * §4.3 del diseño — barrido de la **página de detalle** — B-227.
+ *
+ * Es la **cuarta** proyección en serie sobre el mismo documento, y la primera que
+ * es una *página* y no un archivo de datos: `toPublic` decide qué puede ser
+ * público, `entradaDeIndice` qué necesita el listado, `opcionesPublicas` las
+ * taxonomías, y `detalleDeActividad` qué muestra el detalle — que es **más** que
+ * el índice y **menos** que `toPublic`.
+ *
+ * ── Por qué se barre el view-model y no el HTML ───────────────────────────
+ * Porque el HTML no se puede barrer desde vitest: un `.astro` no se importa. La
+ * respuesta de este cambio no fue «entonces no lo cubrimos», fue mover la
+ * decisión a un módulo puro (**D-136**): la plantilla recibe **solo** este objeto,
+ * así que lo que no esté acá no puede aparecer en la página — no porque nadie lo
+ * escriba, sino porque no lo tiene.
+ *
+ * La otra mitad de esa afirmación —que la plantilla no reciba nada más— la fija
+ * `tests/pagina-de-detalle.test.ts`, leyendo el `.astro`. Las dos juntas son la
+ * cobertura; ninguna sola alcanza.
+ *
+ * ── Y el JSON-LD se barre aparte ──────────────────────────────────────────
+ * Se arma con otra función y termina en un `<script>` de la misma página, o sea
+ * que es una superficie propia: el §5.4 del diseño tiene una regla que **solo**
+ * aplica ahí (el link de la reunión no va al JSON-LD ni con el flag), y una regla
+ * que solo aplica a un lado necesita su propio caso.
+ *
+ * ── El barrido va insensible a mayúsculas, y hay un motivo ────────────────
+ * `urlSegura` pasa las URLs por `new URL()`, que **normaliza el host a
+ * minúscula**: el centinela `CENTINELA.material.url.publico` sale como
+ * `centinela.material.url.publico`. Comparar sensible daría «dejó de publicar»
+ * sobre algo que sí se publicó. Insensible es además estrictamente más estricto
+ * para la dirección que importa: una fuga en otra caja también se atrapa.
+ */
+describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
+  const ETIQUETAS = mapaDeEtiquetas({
+    tipo: [{ slug: 'presentacion', label: CENTINELA['labels.tipo'] }],
+    barrio: [{ slug: CENTINELA['sede.barrio'], label: CENTINELA['labels.barrio'] }],
+    plataforma: [
+      { slug: CENTINELA['online.plataforma'], label: CENTINELA['labels.plataforma'] },
+    ],
+    arancel: [{ slug: CENTINELA['arancel.tipo'], label: CENTINELA['labels.arancel'] }],
+    tags: [{ slug: CENTINELA.tags, label: CENTINELA['labels.tags'] }],
+  });
+
+  /*
+   * **Antes de la primera sesión y antes del cierre de inscripción**, a
+   * propósito: es el estado en el que la página publica **más** —hay CTA, hay
+   * `offers` en el JSON-LD, no hay franja de «ya pasó»—, y un barrido tiene que
+   * correr sobre la superficie más grande. Con un «ahora» posterior, media lista
+   * de excepciones pasaría por ausente sin que nadie lo note.
+   */
+  const AHORA = new Date('2026-08-20T15:00:00Z');
+  const detalleDe = (over = {}) =>
+    detalleDeActividad(toPublic(actividadCentinela(over), 'act_centinela'), ETIQUETAS, AHORA);
+
+  const PERMITIDO_EN_EL_DETALLE: readonly Excepcion[] = [
+    {
+      nombre: 'identidad',
+      centinelas: ['titulo', 'slug', 'descripcion'],
+      porque:
+        'es la actividad: el título y la descripción **completa** son la razón por la que ' +
+        'existe esta página (el índice lleva solo el resumen), y el slug es su propia URL. ' +
+        'El `searchText` NO está: es el índice de la búsqueda del listado y en el detalle no ' +
+        'lo usa nadie — publicarlo sería la descripción por segunda vez.',
+    },
+    {
+      nombre: 'la galería',
+      centinelas: ['imagenes.url', 'imagenes.epigrafe'],
+      porque:
+        'la URL es lo que el navegador va a pedir igual y el epígrafe se muestra debajo de la ' +
+        'foto (D-125). `imagenes.id` NO está —es el handle de la fila, y en una página no ' +
+        'identifica nada— y `storagePath` tampoco (§5.1).',
+    },
+    {
+      nombre: 'quién',
+      centinelas: [
+        'organizador.nombre',
+        'organizador.instagram',
+        'organizador.web',
+        'tallerista.nombre',
+        'tallerista.bio',
+        'tallerista.instagram',
+      ],
+      porque:
+        'el bloque «Quién lo da» y el «Organiza»: la bio del tallerista es justamente lo que ' +
+        'el índice recorta y el detalle sí muestra. Los handles y la web salen como **texto** ' +
+        'aunque no se pueda armar un link válido — perder el dato por un formato raro es peor ' +
+        'que no linkearlo.',
+    },
+    {
+      nombre: 'la obra presentada',
+      centinelas: ['libro.titulo', 'libro.autor'],
+      porque: 'DEC-1 / D-126 — es el dato central de una presentación.',
+    },
+    {
+      nombre: 'los encuentros, con su contenido',
+      centinelas: ['sesiones.id', 'sesiones.tema', 'sesiones.lectura'],
+      porque:
+        'el tema y la lectura de cada encuentro son la mitad del valor de un ciclo (§2.2) y ' +
+        'son lo que el índice deja afuera. El id es el uuid del §3.1 y acá tiene un uso ' +
+        'concreto: es el ancla `#ses_…` de la fila. `calendarEventId` NO está: es interno.',
+    },
+    {
+      nombre: 'dónde, completo',
+      centinelas: [
+        'modalidades.id',
+        'sede.nombre',
+        'sede.direccion',
+        'sede.ciudad',
+        'sede.indicaciones',
+      ],
+      porque:
+        'sin la dirección y el «timbre del fondo» nadie llega: es el punto de una actividad ' +
+        'presencial y es lo que el índice no lleva. La dirección sale además dentro del link ' +
+        'de Google Maps, escapada — el mismo `construirLinkMapa` que usa el evento (D-20).',
+    },
+    {
+      nombre: 'las etiquetas de /opciones, no los slugs',
+      centinelas: [
+        'labels.tipo',
+        'labels.barrio',
+        'labels.plataforma',
+        'labels.arancel',
+        'labels.tags',
+      ],
+      porque:
+        '§4.1 — la actividad guarda el slug y la página muestra la **etiqueta**: «a-la-gorra» ' +
+        'crudo en una página pública se ve roto. Es la misma decisión que el evento de ' +
+        'Calendar. Los slugs correspondientes NO están permitidos: si aparecen, la resolución ' +
+        'se salteó.',
+    },
+    {
+      nombre: 'inscripción y arancel',
+      centinelas: ['inscripcion.destino', 'arancel.notas'],
+      porque:
+        'el destino es el canal de inscripción y sale incluso con el cupo completo (D-127); ' +
+        'las notas del arancel son las condiciones. Acá el destino del fixture no es un mail ' +
+        'válido, así que no hay botón y se muestra como texto — que es el comportamiento ' +
+        'buscado, no un accidente.',
+    },
+    {
+      nombre: 'material',
+      centinelas: ['material.titulo.publico', 'material.titulo.privado', 'material.url.publico'],
+      porque:
+        '§5.2 — de un item sobreviven siempre tipo y título; la URL solo con `publico: true`. ' +
+        'La URL del privado NO está, y es la celda que importa.',
+    },
+  ];
+
+  it('sobreviven exactamente los centinelas que el detalle necesita', () => {
+    barrer('página de detalle', JSON.stringify(detalleDe()), PERMITIDO_EN_EL_DETALLE, {
+      insensible: true,
+    });
+  });
+
+  it('con `urlPublica: true` el link de la reunión TAMPOCO sale al detalle (D-135)', () => {
+    /*
+     * **Es más estricto que D-15**, que permite el link en las salidas 1 y 2, y
+     * es la decisión de este cambio: la página de detalle es la superficie que
+     * Google indexa y la que un bot cosecha primero. La lista de permitidos va
+     * **sin agregar `online.url`**, y eso es la afirmación.
+     *
+     * Es el mismo criterio que D-129 aplicó al índice, con más razón acá: en el
+     * índice el argumento era «servirlo en lote»; en el detalle es que queda en
+     * un HTML indexado para siempre.
+     */
+    barrer(
+      'página de detalle (link de reunión publicado a mano)',
+      JSON.stringify(detalleDe(conLinkPublico())),
+      PERMITIDO_EN_EL_DETALLE,
+      { insensible: true },
+    );
+  });
+
+  it('con dos formas de cursar salen las dos, y el link de ninguna', () => {
+    barrer(
+      'página de detalle (dos formas de cursar)',
+      JSON.stringify(detalleDe(conDosFormasDeCursar())),
+      [
+        ...PERMITIDO_EN_EL_DETALLE,
+        {
+          nombre: 'la segunda forma de cursar',
+          centinelas: ['modalidades.2.id', 'modalidades.2.online.plataforma'],
+          porque:
+            'B-224 — el detalle es donde se dice «los martes presencial, los jueves por Meet»: ' +
+            'las dos filas salen con su plataforma. La de esta fila sale **como slug** porque ' +
+            'no está registrada en `/opciones/plataforma` del fixture, y ahí `desSlug` es el ' +
+            'último recurso del §4.1 — el mismo dato público con otra tipografía. Su **link** ' +
+            'NO está en esta lista aunque esa fila tenga `urlPublica: true`: ese es el punto ' +
+            'de D-135.',
+        },
+      ],
+      { insensible: true },
+    );
+  });
+
+  it('con dos sedes salen las dos direcciones', () => {
+    barrer(
+      'página de detalle (dos sedes)',
+      JSON.stringify(detalleDe(conDosSedes())),
+      [
+        ...PERMITIDO_EN_EL_DETALLE,
+        {
+          nombre: 'la segunda sede',
+          centinelas: [
+            'modalidades.2.id',
+            'modalidades.2.sede.nombre',
+            'modalidades.2.sede.direccion',
+          ],
+          porque:
+            'B-224 — sin la dirección de la segunda forma de cursar, la mitad de la gente no ' +
+            'sabe a dónde ir. El índice lleva una sola sede; el detalle, todas.',
+        },
+      ],
+      { insensible: true },
+    );
+  });
+
+  it('el JSON-LD publica menos que la página, y nunca el link de la reunión (§5.4)', () => {
+    /*
+     * Superficie propia: lo leen máquinas y es lo primero que cosecha un bot. La
+     * regla del §5.4 del diseño es explícita —«el HTML muestra lo que el dueño
+     * eligió; el JSON-LD no»— y acá se afirma con la lista más corta de todo el
+     * archivo.
+     */
+    const PERMITIDO_EN_EL_JSON_LD: readonly Excepcion[] = [
+      {
+        nombre: 'lo que Google necesita para el resultado enriquecido',
+        centinelas: [
+          'titulo',
+          'descripcion',
+          'organizador.nombre',
+          'organizador.web',
+          'tallerista.nombre',
+          'sede.nombre',
+          'sede.direccion',
+          'sede.ciudad',
+          'sesiones.tema',
+          'imagenes.url',
+          'labels.plataforma',
+          'labels.arancel',
+        ],
+        porque:
+          '§5.2 — `name`, `description` (el resumen), `organizer`, `performer`, `location` con ' +
+          'su `PostalAddress`, el `name` de cada `subEvent` (que lleva el tema), la `image` y ' +
+          'la `category` del `Offer`. **El barrio NO está**: `PostalAddress` lleva ' +
+          '`addressLocality` (la ciudad) y no el barrio, así que no hay dónde ponerlo sin ' +
+          'inventar un campo. `inscripcion.destino`, las `indicaciones`, la `bio`, el ' +
+          '`material` y el `libro` tampoco: nada de eso es parte de un `Event` y publicarlo ' +
+          'en un formato que las máquinas cosechan es gratis para el que cosecha.',
+      },
+    ];
+
+    barrer(
+      'JSON-LD del detalle (link publicado a mano)',
+      JSON.stringify(datosEstructurados(detalleDe(conLinkPublico()))),
+      PERMITIDO_EN_EL_JSON_LD,
+      { insensible: true },
+    );
+  });
+
+  it('CONTROL NEGATIVO: si el detalle copiara la actividad entera, el barrido lo dice', () => {
+    /*
+     * El atajo que este barrido existe para frenar, y el más plausible de todos
+     * en una plantilla: pasarle la `ActividadPublica` a la página «así tiene todo
+     * a mano». Compila, se ve bien, y publica el link de la reunión en cuanto una
+     * actividad tenga el flag.
+     *
+     * Se exige que falle **nombrando** el link, que es el campo de la trampa 5.
+     */
+    let mensaje = '';
+    try {
+      barrer(
+        'página de detalle (mutación: la plantilla recibe la actividad entera)',
+        JSON.stringify(toPublic(actividadCentinela(conLinkPublico()), 'act_centinela')),
+        PERMITIDO_EN_EL_DETALLE,
+        { insensible: true },
+      );
+    } catch (e) {
+      mensaje = e instanceof Error ? e.message : String(e);
+    }
+
+    expect(mensaje, 'el barrido NO detectó que se publicó la actividad entera').not.toBe('');
+    expect(mensaje).toContain('FUGA');
+    expect(mensaje).toContain('online.url');
   });
 });

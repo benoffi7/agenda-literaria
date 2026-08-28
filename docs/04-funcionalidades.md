@@ -621,15 +621,96 @@ probó disparando un `repository_dispatch` a mano: corrió el workflow y public�
 [`08-operacion.md`](08-operacion.md) es ahora el runbook para rearmarlo en un
 proyecto nuevo o para rotar el PAT, no la lista de lo que falta.
 
-## Sitio público — la primera pieza existe
+## Sitio público — el listado y el detalle
 
-`src/pages/index.astro` sigue siendo un placeholder. Falta el listado con filtros
-y las páginas de detalle por slug (B-105, B-107).
+Construido en **B-227**, el primer frente del diseño de
+[`12-sitio-publico.md`](12-sitio-publico.md). **Todavía no está desplegado:** el
+dominio no está elegido, así que no hay `site` en la config y por lo tanto no hay
+canonical, ni Open Graph, ni sitemap (**B-109**); y el rebuild automático sigue
+esperando el PAT (**B-20**).
 
-**Lo que ya está: `/events.json`** (B-106), el índice que el listado va a filtrar en
-memoria (§2.5). El build lo arma leyendo Firestore con el Admin SDK y sale como
-archivo estático; el público hace **un** fetch cacheado y **cero** lecturas de
-Firestore.
+### La home — `/`
+
+El build imprime en HTML **todas** las actividades vigentes, con su tarjeta,
+agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve Google y lo que
+ve alguien con JavaScript apagado.
+
+Encima va una island de React (`client:load`) que hace **un solo fetch** de
+`/events.json` y filtra, busca y ordena **en memoria** (§2.5). Cuando el índice
+llega, la island **saca del DOM la lista del build** y renderiza la suya con el
+mismo componente `Tarjeta` — una sola definición del markup, y como el estado
+inicial es el del build, no hay parpadeo. Si el fetch falla, la lista del build se
+queda donde está, los controles quedan deshabilitados y hay un aviso chico: nunca
+una pantalla vacía.
+
+| Control | Qué hace |
+|---|---|
+| **Buscar** | contra `searchText`, con el `normalize` del §6: acentos y mayúsculas dan igual. Dos palabras se exigen **las dos** |
+| **Cuándo** | Próximas (default) · Este mes · Próximos 3 meses · cada mes con actividad |
+| **Filtros** (colapsados, con el número de puestos al lado) | tipo, cómo se cursa, arancel, barrio, ciudad y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos» |
+| **Ordenar por** | Próximas primero (default) · Recién agregadas · Título (**D-133**) |
+
+Los chips **no tienen nada cableado**: salen de `opciones.*` del propio
+`events.json` (§4.4), con el número de actividades de cada uno, y el que daría cero
+no se muestra. AND entre grupos, OR adentro de cada grupo.
+
+Todo lo puesto viaja en la **query string**
+(`/?q=cronica&tipo=taller&barrio=boedo`), para poder compartir un filtro por
+WhatsApp y para que volver desde una página de detalle recupere lo que estaba
+filtrado.
+
+Cuando no queda nada, la pantalla vacía **dice qué filtro sacar** — y el que ofrece
+lo probó primero: sugerir «sacá el barrio» cuando sacarlo tampoco alcanza es peor
+que no sugerir nada.
+
+**Accesibilidad:** link «Saltar al listado» como primer elemento enfocable, un solo
+`h1`, los meses como `h2`, los chips como `<button aria-pressed>` dentro de
+`fieldset`/`legend` y navegables con las flechas (la misma aritmética de `foco.ts`
+que usa el panel), el contador de resultados en un `aria-live="polite"`, foco
+visible en todo, blancos táctiles de 44px y `prefers-reduced-motion` respetado.
+
+### El detalle — `/actividad/{slug}`
+
+Una página estática por actividad publicada, **con cero JavaScript**. Es la que
+recibe el tráfico: la mayoría cae acá desde Google o desde un link de Instagram, y
+tiene una sola pregunta — ¿esto me sirve y todavía puedo entrar?
+
+Arriba va «la ficha» —cuándo, dónde, cuánto, cómo me anoto— y el botón, con el
+verbo de la vía real: «Escribir por WhatsApp» a un `wa.me` con mensaje precargado,
+«Mandar un mail» a un `mailto:` con asunto, «Escribir por Instagram», «Anotarme en
+el formulario». Si el destino no sirve para esa vía no hay botón y el canal se
+muestra como texto: un botón que no lleva a ningún lado es peor que ninguno. Sin
+inscripción dice «Entrada libre». Con la actividad pasada tampoco hay botón — **el
+CTA se decide por fecha y no por `abierta`**, que sin fecha de cierre queda en true
+para siempre y mostraría «Anotate» en un taller de hace un año.
+
+Después: la imagen (no arriba — un flyer vertical empuja la fecha fuera de la
+pantalla en un teléfono, y quien vino de Instagram ya lo vio), la descripción
+completa respetando los saltos de línea, la lista de encuentros con su tema y su
+lectura —los pasados atenuados, los cancelados tachados—, quién lo da con su bio,
+el material, cada forma de cursar con su sede y su link al mapa, y quién organiza.
+
+**SEO:** `<title>` con el título de la actividad primero y el barrio adentro, `meta
+description` con el resumen, y datos estructurados de `schema.org` — un `Event`
+para una fecha suelta y un `EventSeries` con un `subEvent` por encuentro para un
+ciclo, con las fechas en offset de Buenos Aires y los cancelados marcados sin
+perder su fecha original. Con `arancel: gratis` se emite `price: "0"`; con
+cualquier otro **no se emite precio**, porque el arancel es un slug y no un monto.
+
+**Lo que la página NO muestra**, y es decisión y no olvido: el link de la reunión,
+ni siquiera con «publicar el link en el sitio» tildado (**D-135**).
+
+### `/events.json`
+
+El índice que la island filtra (B-106). El build lo arma leyendo Firestore con el
+Admin SDK y sale como archivo estático.
+
+Desde B-227 los tres artefactos del build —el índice, el HTML de la home y cada
+página de detalle— salen de **una sola lectura**, en
+`src/lib/contenidoDelSitio.ts`. Ahí vive también el
+`where('estado','==','publicado')` del §5.3, que antes estaba en el endpoint: con
+tres consumidores, tenerlo tres veces era tener dos copias que se pueden olvidar de
+actualizar. **Un borrador no entra al índice ni genera página.**
 
 Tres cosas del índice que conviene saber antes de consumirlo:
 
@@ -642,7 +723,10 @@ Tres cosas del índice que conviene saber antes de consumirlo:
 - **Lleva `cierraEn` y no `abierta`** (B-111): el booleano se calcula con el reloj
   del build y se congela hasta el rebuild siguiente.
 - **Las opciones de taxonomía viajan en el mismo archivo** (§4.4), así que los chips
-  de filtro no van a tener nada cableado.
+  de filtro no tienen nada cableado.
+- **Y desde B-227 lleva `creadoEn`**, la fecha de alta con precisión de día: es la
+  clave del orden «Recién agregadas» y lo único que se agregó a la frontera de
+  privacidad (**D-134**). La hora no sale, y `updatedAt` tampoco.
 
 `toPublic.ts` (la frontera de privacidad) y `normalize.ts` (la búsqueda) ya estaban
 escritos y testeados: eso es lo que hizo que esta pieza fuera corta.

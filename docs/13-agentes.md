@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las cinco salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las seis salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -105,17 +105,21 @@ código.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **cinco salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **seis salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
-para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño— y
+para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
 `textoRedes.ts` para el texto que se copia a redes, que es la más **irreversible**
-de todas: un posteo pegado en Instagram ya está copiado.
+de todas —un posteo pegado en Instagram ya está copiado— y, desde **B-227**,
+`detallePublico.ts` para la **página de detalle y su JSON-LD**, que es HTML
+indexado: la que un bot cosecha primero y la que se queda en Google.
 
-La primera —el `events.json` y las páginas— es la excepción: desde B-106 son
-**tres archivos en serie**, y hay que auditar los tres. `toPublic.ts` decide qué
-*puede* ser público, `eventsJson.ts` decide qué necesita el listado (que es
-menos), y `events.json.ts` decide *qué documentos* se leen — el `where` del §5.3.
+La primera —el `events.json` y el HTML del listado— es la excepción: desde B-106
+son **tres archivos en serie**, y hay que auditar los tres. `toPublic.ts` decide
+qué *puede* ser público, `eventsJson.ts` decide qué necesita el listado (que es
+menos), y `contenidoDelSitio.ts` decide *qué documentos* se leen — el `where` del
+§5.3, que se mudó ahí desde `events.json.ts` en B-227 porque ahora son tres los
+consumidores del build.
 La fila 1 de la tabla nombraba solo el primero hasta el 2026-08-27 (B-218), que es
 la forma de B-216 un archivo más adentro: con la tabla vieja, un cambio que tocara
 solo `eventsJson.ts` no despertaba a este agente por nombre de archivo.
@@ -141,7 +145,7 @@ para que Claude lo elija solo.
 
 **Qué agrega sobre los tests.** Los tests verifican los campos que conocen. Este
 agente verifica tres cosas que ningún test puede: que un **campo nuevo** tenga
-las cinco celdas decididas, que la **forma** de la proyección siga siendo una
+las seis celdas decididas, que la **forma** de la proyección siga siendo una
 whitelist (un `...actividad` no filtra nada hoy y publica el campo de mañana), y
 que exista un test que fije la decisión. No corre la suite: eso lo hace el CI.
 
@@ -150,7 +154,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las cinco salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las seis salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -248,7 +252,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las cinco salidas **antes** de escribir código, que
+arranca obligando a decidir las seis salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -323,7 +327,8 @@ arreglo, es el detector.
 | Que las reglas rechacen lo anónimo y lo que no es admin | `actividades.integracion.test.ts` y `reportes.integracion.test.ts`, con `EXIGIR_EMULADOR=1` en CI para que no se salteen en silencio. **Esta fila decía menos de lo que parecía hasta el 2026-08-27:** los casos anónimos eran de **escritura**, y del lado de la lectura había un `it('un anónimo lee lo publicado')` en verde que estaba fijando una fuga (B-208, D-128). Hoy hay tres `it` de lectura —por documento, por query, y un control positivo— y el archivo empuja las reglas del checkout al emulador con `cargarReglas`, que antes no hacía |
 | Que `storage.rules` rechace lo anónimo, lo que no es admin, el tipo, el tamaño de más, el nombre libre y el **listado** del prefijo | `storage-reglas.integracion.test.ts`, subiendo de verdad contra el emulador y con las reglas empujadas desde el checkout. Verificado por mutación: sacar `tamanoAceptado()` lo pone en rojo. El caso del `list` no es decorativo — con `allow read: if true` un `listAll()` anónimo devolvía el bucket entero, y así se encontró |
 | Que ningún archivo versionado publique un uid de Firebase ni una casilla de correo personal | `sin-datos-personales.test.ts` (B-209). Es **angosto a propósito**: mira la forma de un uid y los proveedores de correo gratuitos. Un mail en dominio propio puede ser un fixture inventado o el real de una sede, y el test no puede distinguirlos sin versionar la lista de dominios reales — o sea, el dato que no queremos versionar. **Esa mitad sí es del `auditor-privacidad`** |
-| Que ningún campo privado del modelo llegue al `events.json` ni al evento de Calendar cuando se agrega un campo nuevo | `barrido-de-salidas-publicas.test.ts` (B-196): inyecta centinelas y los busca en las dos salidas, en las dos direcciones, con un fixture que se autoexige actualizado campo por interfaz. **Le sacó trabajo al `auditor-privacidad`**, que ya no tiene que reportar la instancia — solo el campo nuevo que el fixture todavía no ancló |
+| Que ningún campo privado del modelo llegue al `events.json`, al evento de Calendar **ni a la página de detalle** cuando se agrega un campo nuevo | `barrido-de-salidas-publicas.test.ts` (B-196, extendido en B-227): inyecta centinelas y los busca en las **cuatro** salidas que proyecta —el `events.json`, el índice, el evento y la página de detalle con su JSON-LD—, en las dos direcciones, con un fixture que se autoexige actualizado campo por interfaz. **Le sacó trabajo al `auditor-privacidad`**, que ya no tiene que reportar la instancia — solo el campo nuevo que el fixture todavía no ancló |
+| Que ningún componente del sitio público use texto por debajo del piso de contraste de WCAG AA | `contraste.test.ts` (B-234): calcula los ratios desde los tokens de `global.css` —parseados, no copiados, así cambiar la paleta se nota— y falla si algún archivo del sitio escribe una clase de texto por debajo del piso, con control negativo para que el piso signifique algo. Es la clase, no la instancia: la paleta puede estar perfecta y el componente siguiente bajarla igual, que es justo lo que había pasado |
 | Que el `events.json` que se sube salga del `where('estado','==','publicado')` y no lleve los campos recortados | `events-json-endpoint.integracion.test.ts` (B-218) siembra una publicada y las tres que no son públicas —borrador, cancelada, pendiente— y afirma sobre el JSON que devuelve el endpoint. **De integración y no de texto a propósito:** un `grep` al fuente buscando la cláusula pasaría con la cláusula escrita mal (`'Publicado'`, `'!='`, el campo renombrado). Y `scripts/build-contra-emulador.mjs` (B-217) hace la misma afirmación sobre el `dist/events.json` de verdad, en el paso 4 del gate: entre el valor de retorno de `construirIndice` y el archivo que sube al Hosting están el `JSON.stringify` y la serialización del endpoint |
 | Que un trigger nuevo con efecto duplicable nazca sin guarda, y las demás clases de bug del repo | `clases-de-bug.test.ts` (B-135). Descubre los triggers **del fuente** en vez de listarlos, así que un trigger nuevo entra al chequeo solo |
 | Que las opciones de `/opciones/*` no publiquen la huella del creador ni los campos de gestión | `barrido-de-salidas-publicas.test.ts` (B-212): `ValorOpcion` dejó de estar en la lista de interfaces AJENAS y pasó a estar anclada, con centinelas propios. El control negativo está **codificado** (no verificado a mano): un `it` mete el spread y exige que el barrido falle nombrando `opcion.huellaCreador`. Y la clase de B-212 en `clases-de-bug.test.ts` ata los **tres** caminos que proyectan una opción —`opcionesPublicas`, `labelsDeOpciones` y el `cargarLabels` de la Function, que no puede importar de `src/` (D-20)— derivando del modelo qué campos están prohibidos |
@@ -355,8 +360,12 @@ arreglo, es el detector.
   cerrado el 2026-08-25). La mitad que decide —`comparar-infra.sh`— está separada y
   tiene tests, porque no necesita credenciales. Lo que queda del lado del dueño es
   correrlo.
-- **Un auditor del sitio público** (SEO, indexabilidad, accesibilidad): no se
-  puede escribir contra algo que todavía no existe (B-01). B-122.
+- **Un auditor del sitio público** (SEO, indexabilidad, accesibilidad): desde
+  B-227 ya hay HTML de verdad contra el que escribirlo, así que el motivo viejo
+  —«no existe»— caducó. Conviene esperar igual al SEO absoluto (canonical, Open
+  Graph, sitemap: todo depende del dominio, B-109) para no auditar dos veces lo
+  mismo. Y una parte ya está automatizada y no le corresponde: el contraste lo
+  calcula `tests/contraste.test.ts` (B-234). B-122.
 - **Un agente de code review genérico**: es exactamente lo que Claude hace sin
   ayuda. No agrega conocimiento del proyecto.
 

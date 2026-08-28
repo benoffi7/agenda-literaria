@@ -295,3 +295,61 @@ describe('toPublic — fechas', () => {
     expect(p.sesiones[0]!.fin).toBe('2026-09-04T00:00:00.000Z');
   });
 });
+
+/**
+ * `creadoEn` — la fecha de alta, **D-134** (B-227).
+ *
+ * Es el único campo que este cambio agregó a la frontera de privacidad, y tiene
+ * que tener sus casos nombrados acá porque **el barrido de centinelas no lo
+ * puede ver**: un `Timestamp` no admite un centinela adentro, igual que las
+ * fechas de las modalidades de B-224. Sin estos casos, el campo podría entrar o
+ * salir de la proyección sin que nada se ponga rojo.
+ */
+describe('toPublic — la fecha de alta (D-134)', () => {
+  it('sale con precisión de DÍA, no el instante de la carga', () => {
+    /*
+     * Lo marcó el `auditor-privacidad` sobre la primera versión, que publicaba el
+     * ISO completo: con **un solo admin**, un `events.json` con
+     * `"creadoEn":"2026-08-27T03:14:52.881Z"` por actividad no es una fecha, es la
+     * agenda de trabajo de una persona identificada. Es el razonamiento de D-57 y
+     * de D-27 aplicado a la precisión: con un universo de uno, el dato que «no
+     * nombra a nadie» igual lo describe.
+     *
+     * El orden no pierde nada: ordena por día y desempata por título.
+     */
+    const creado = toPublic(actividad(), 'id1').creadoEn;
+    expect(creado).toBe('2026-08-01');
+    expect(creado).not.toContain('T');
+  });
+
+  it('`updatedAt` NO sale, y es una decisión y no un olvido', () => {
+    /*
+     * El orden que se pidió es por **alta**, no por última edición. Publicar la
+     * fecha de modificación convertiría cada corrección de un typo en
+     * «actualizado hoy», y además es otro dato para otro consumidor: el §11.2 del
+     * diseño lo quiere para el `lastmod` del sitemap, que es su propia decisión.
+     *
+     * Se afirma por **valor** y no por nombre de clave: una proyección que lo
+     * emitiera con otro nombre —`modificadoEn`, `actualizadoEn`— también queda
+     * atrapada.
+     */
+    expect(JSON.stringify(toPublic(actividad(), 'id1'))).not.toContain('2026-08-02');
+  });
+
+  it('un documento sin la fecha publica una cadena vacía, no «Invalid Date»', () => {
+    /*
+     * El default de lectura del §"un campo nuevo se lee con el default que
+     * preserva lo anterior" (D-26). Dos casos reales, y el segundo es el que
+     * rompió al escribir esto: un documento recién armado por `formADocumento`
+     * tiene el **sentinel** de `serverTimestamp()` en `createdAt`, que no tiene
+     * `toDate()` — el `Timestamp` recién existe cuando el servidor lo resuelve al
+     * escribir. Sin el default, `toPublic` tiraba sobre un documento que el panel
+     * produce todo el tiempo (lo agarró `tests/modalidades.test.ts`).
+     */
+    const sinFecha = { ...actividad(), createdAt: undefined as never };
+    expect(toPublic(sinFecha, 'id1').creadoEn).toBe('');
+
+    const sentinel = { ...actividad(), createdAt: { _methodName: 'serverTimestamp' } as never };
+    expect(toPublic(sentinel, 'id1').creadoEn).toBe('');
+  });
+});

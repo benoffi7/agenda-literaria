@@ -18,7 +18,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
 | 10 | [`10-salud-del-codigo.md`](10-salud-del-codigo.md) | Diagnóstico medido: tamaño, acoplamiento, duplicación. Qué conviene arreglar, qué está bien y qué no hay que tocar. |
 | 11 | [`11-ideas-de-producto.md`](11-ideas-de-producto.md) | Propuestas de funcionalidad con su argumento en contra, y lo que se descartó a propósito. Se lee antes de decidir qué sigue. |
-| 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01): URLs, pantallas, SEO, filtros y casos borde. Lo que falta construir. |
+| 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01): URLs, pantallas, SEO, filtros y casos borde. Lo que falta construir, y una caja arriba con el estado de lo que ya se construyó (B-227). |
 | 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan, cuándo invocarlos, y qué se decidió **no** automatizar porque ya hay un test. |
 | 14 | [`14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) | Cómo se ataca el backlog acumulado sin que los frentes se pisen. Se reparte por archivo, no por tema. |
 | 15 | [`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) | Las trampas del `CLAUDE.md` §13, con qué test fija cada una — y cuál quedó sin red. Se verifica solo. |
@@ -28,14 +28,16 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 ## Estado en una línea
 
 Panel de carga funcionando en producción y sync a Google Calendar andando. Del
-sitio público —que es la razón de ser del proyecto— está construido el índice
-(`/events.json`) y falta todo lo que se ve.
+sitio público —que es la razón de ser del proyecto— ya están el **listado con
+búsqueda y filtros** y la **página de detalle** (B-227), además del índice
+`/events.json`. **Falta desplegarlo:** el dominio no está elegido, y de eso
+dependen el canonical, el Open Graph y el sitemap (B-109).
 
 | Paso (§10 del `CLAUDE.md`) | Estado |
 |---|---|
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ |
-| 3. Sitio público (SSG) | 🟡 **arrancó** — `/events.json` construido (B-106); faltan el listado, los hubs y el detalle. Diseñado en [`12-sitio-publico.md`](12-sitio-publico.md) |
+| 3. Sitio público (SSG) | 🟡 **la mitad** — `/events.json` (B-106), el listado con filtros y `/actividad/{slug}` (B-227). Faltan los hubs, el archivo de pasadas y el SEO absoluto, que depende del dominio (B-109). Diseñado en [`12-sitio-publico.md`](12-sitio-publico.md) |
 | 4. Sync a Google Calendar | ✅ |
 | 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 
@@ -49,10 +51,10 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 1.403 tests en 61 archivos. 61 de esos
-   tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
-   también **Storage**), repartidos en 6
-   archivos: cuatro se saltean enteros y de
+2. **Correr los tests.** `npm test` — 1.665 tests en 70 archivos (contados el
+   2026-08-28). 79 de esos tests necesitan los emuladores corriendo
+   (`npm run emu`, que desde B-167 levanta también **Storage**), repartidos en 7
+   archivos: seis se saltean enteros y de
    `events-json-endpoint.integracion.test.ts` se saltean 4 de sus 6, porque las
    dos ramas de credenciales no necesitan emulador. Si no están, se saltean
    solos — **salvo con `EXIGIR_EMULADOR=1`**, que es como los corre el CI
