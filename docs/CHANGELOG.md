@@ -48,7 +48,64 @@ Abiertos en el camino: **B-233** (el pie manda a un `mailto:` crudo en vez de a
 `/ayuda`, `/contacto` y `/suscribirse`) y **B-235** (la home atenúa texto por debajo
 de AA).
 
+## 2026-08-28 (después de 1.5.0) · llevarse la agenda al calendario propio
 
+**`/suscribirse` — la página que explica cómo suscribirse al calendario (B-230).**
+El Google Calendar del proyecto es un espejo de solo lectura de lo que se carga en el
+panel: un evento por encuentro, y quien se suscribe recibe los cambios sin hacer
+nada. Esa es la diferencia entre anotarse las fechas a mano y que las fechas te
+sigan, y es lo que la página existe para dejar claro.
+
+Cuatro caminos con sus pasos: **Google Calendar**, **iPhone/iPad/Mac** por `webcal:`
+—que abre la aplicación Calendario en vez de descargar un archivo que hay que ir a
+buscar a Archivos, y que copia las fechas una vez en lugar de suscribirse—, **Outlook
+y Thunderbird** con la dirección a la vista y botón de copiar, y **solo mirarlo** para
+quien no lo quiere en su calendario. Más lo que el calendario **no** hace, y cierra
+con Instagram.
+
+**Ninguna dirección se escribe en el markup**: salen todas de `enlaces.ts` (B-228).
+No es prolijidad — Google publica dos direcciones del mismo calendario y la que lleva
+`private-` le da acceso de lectura al calendario entero a quien la tenga. Ahora hay
+una página que muestra una dirección de calendario en pantalla, que es el lugar más
+probable donde alguien pegue la equivocada, así que el test barre el markup y exige
+que cada dirección sea **exactamente una** de las que `enlaces.ts` produce.
+
+**El texto es data testeada y no markup** (`src/lib/suscripcion.ts`, **D-133**): esta
+página no falla rompiéndose, falla dejando un camino a medias —un botón sin los pasos
+al lado, un quinto camino que nadie muestra— y todas esas formas dejan el build en
+verde.
+
+**Lo que encontró escribirla, y es lo que más importa del cambio:** el primer
+borrador decía que el evento **nunca** trae el link de la reunión, citando el §7.4.
+Es falso desde **D-15** — con `urlPublica: true` el link sale, por decisión del
+dueño. La página dice «casi nunca» y explica el caso, y las tres promesas que hace
+sobre el calendario se verifican ahora **contra `construirEvento`/`planificar`**, no
+contra el texto: es la lección de B-63 (un chequeo puede verificar que el texto esté,
+nunca que sea cierto), y acá pesa más porque esto lo lee gente de afuera que decide
+con eso si esperar un link o si presentarse a un encuentro.
+
+**La página es `/suscribirse` y no `/calendario`** como diseñaba
+`12-sitio-publico.md`: el encabezado ya publicaba ese enlace y el slug de una página
+pública es caro de mover (trampa 10). **D-134**.
+
+Diecinueve mutaciones probadas, las diecinueve fallan: URL escrita a mano, la
+variante privada del ICS, un camino sin ningún paso, el camino de copiar y pegar sin
+decir dónde se pega, un camino fuera del orden, una acción sin aviso para el lector
+de pantalla, `webcal:` anunciado como pestaña nueva, la clave del registro separada
+de su id, la advertencia de cancelación suavizada, jerga en el texto, la página
+declarando otra sección, una URL pegada en el markup, la página eligiendo un camino a
+mano, el botón de copiar visible sin poder copiar, un `aria-label` que pisa el texto
+del botón, la dirección que se copia ofrecida además como enlace, el componente
+volviendo a poner ese botón, y —sobre `functions/calendario.js`— publicar el link de
+la reunión siempre y dejar en pie el evento de un encuentro cancelado.
+
+Queda escrito y **sin cablear** el bloque corto para la home
+(`SuscribirseResumen.astro`): la home tiene otro dueño. Es **B-231**.
+
+Doc: `04-funcionalidades.md`, `06-decisiones.md` (**D-133**, **D-134**),
+`07-seguridad.md` (la página publica la dirección del calendario, y cuál),
+`12-sitio-publico.md` (el desvío de `/calendario`), `BACKLOG.md` (B-231 abierto, el
+«nunca» corregido en Cerrados).
 ## 2026-08-28 (después de 1.5.0) · el chrome compartido del sitio público
 
 **Encabezado y pie del sitio, con un solo dueño — B-229.** Navegación entre las

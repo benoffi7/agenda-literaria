@@ -515,6 +515,14 @@ el subconjunto ya filtrado.
   iCal, y cómo hacerlo desde el teléfono. **Solo la URL pública del calendario**
   (la que se arma con `GOOGLE_CALENDAR_ID`); la URL `private-…` del ICS es un
   secreto y no aparece nunca (§5.4).
+
+  > **Construida el 2026-08-28 como `/suscribirse`, no como `/calendario`** — B-230,
+  > el motivo del nombre está en **D-134**. Lo demás se cumplió y creció: son cuatro
+  > caminos y no tres (Google, `webcal:` para iPhone y Mac, la dirección del `.ics`
+  > para Outlook y Thunderbird, y abrir el calendario sin suscribirse), más una
+  > sección de lo que el calendario **no** hace. Lo de «solo la URL pública» dejó de
+  > depender de acordarse: las direcciones salen de `src/lib/enlaces.ts` (B-228) y hay
+  > un test que falla si alguna aparece escrita en el markup de la página.
 - **`/acerca`** — qué es, quién lo mantiene, cómo se carga una actividad, y el
   canal para proponer una. Es la página que le da a un buscador y a una persona
   con quién está tratando. Necesita un canal de contacto — ver

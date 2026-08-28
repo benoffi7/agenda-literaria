@@ -675,7 +675,36 @@ Tres cosas que no se ven mirando las páginas:
 - **Nada de `mailto:` escrito a mano.** La dirección y los asuntos salen de
   `enlaces.ts` (B-228); el test falla si aparecen en el marcado de una página.
 - **Sin acordeón y sin JavaScript.** Ver **D-136**.
+### `/suscribirse` — llevarse la agenda al calendario propio (B-230)
 
+La segunda página del sitio público. Explica cómo suscribirse al Google Calendar
+del proyecto, que es un **espejo de solo lectura** de lo que se carga en el panel
+(§2.1): un evento por encuentro, y quien se suscribe recibe los cambios sin hacer
+nada.
+
+Cuatro caminos, cada uno con su botón y sus pasos:
+
+| Camino | Adónde va | Por qué está |
+|---|---|---|
+| **Google Calendar** | el `cid` en base64 que arma `enlaces.ts` | es el calendario de quien usa Gmail o Android |
+| **iPhone, iPad y Mac** | el mismo calendario con esquema `webcal:` | **abre la aplicación Calendario**; con un `.ics` común el teléfono descarga un archivo que hay que ir a buscar a Archivos, y eso copia las fechas una vez en lugar de suscribirse |
+| **Outlook, Thunderbird y el resto** | la dirección pública del `.ics`, escrita y con botón de copiar | el paso que se falla es encontrar la opción que la acepta, así que los pasos nombran el menú de cada programa |
+| **Solo mirarlo** | el calendario en la web de Google | mirar sin suscribirse es un caso real, y decirlo evita que alguien crea que se suscribió |
+
+Y una sección de **lo que el calendario no hace**, que son las tres sorpresas que
+se descubren tarde: no inscribe (cada actividad se anota por su canal), casi nunca
+trae el link de la reunión —salvo que quien organiza haya elegido publicarlo, D-15—,
+y una actividad cancelada **desaparece** del calendario en vez de quedar tachada.
+Las tres se verifican contra `functions/calendario.js`, no solo contra el texto: si
+el comportamiento cambia, el test de la página se pone en rojo (ver D-133).
+
+Cierra con dónde seguir el proyecto: Instagram.
+
+**Todo el texto vive en `src/lib/suscripcion.ts`** y ninguna dirección se escribe en
+el markup: salen todas de `src/lib/enlaces.ts` (B-228). El motivo está en D-133.
+
+Queda escrito y **sin cablear** `src/components/sitio/SuscribirseResumen.astro`, el
+bloque corto para embeber en la home cuando el listado exista (**B-231**).
 ## Historial de versiones
 
 Cada vez que una edición pisa algo que cargó una persona, `guardarVersion`

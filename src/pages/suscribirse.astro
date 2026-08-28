@@ -1,0 +1,91 @@
+---
+/**
+ * «Suscribirse» — cómo llevarse la agenda al calendario propio (B-230).
+ *
+ * El calendario público es un espejo de solo lectura de lo que se carga en el
+ * panel: un evento por encuentro, que se corrige solo cuando la actividad
+ * cambia. Esa es la única idea que la página tiene que dejar clara, porque es
+ * la diferencia entre anotarse las fechas a mano y que las fechas te sigan.
+ *
+ * **Todo el texto vive en `src/lib/suscripcion.ts`** y todas las direcciones
+ * salen de `src/lib/enlaces.ts`. Acá no se escribe ni una URL: la variante
+ * `private-` del calendario está a un path de distancia de la pública y le da
+ * acceso de lectura a quien la tenga, así que el único lugar donde se arman es
+ * el que tiene el test que lo vigila. `tests/suscribirse.test.ts` falla si
+ * aparece una dirección escrita en esta página.
+ */
+import Base from '@/layouts/Base.astro';
+import SuscribirseCamino from '@/components/sitio/SuscribirseCamino.astro';
+import {
+  advertenciasEnOrden,
+  caminosEnOrden,
+  COMO_FUNCIONA,
+  DONDE_SEGUIR,
+} from '@/lib/suscripcion';
+import SuscribirseAccion from '@/components/sitio/SuscribirseAccion.astro';
+
+const caminos = caminosEnOrden();
+const advertencias = advertenciasEnOrden();
+---
+
+<Base
+  seccion="suscribirse"
+  titulo="Suscribirse al calendario — Agenda literaria"
+  descripcion="Sumá la agenda de talleres, clubes de lectura y encuentros literarios a tu Google Calendar, a tu iPhone o a Outlook. Los cambios te llegan solos."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+    <h1 class="font-serif text-3xl font-semibold text-tinta sm:text-4xl">
+      Llevate la agenda a tu calendario
+    </h1>
+    <p class="mt-4 max-w-prose text-lg text-tinta/80">{COMO_FUNCIONA.entrada}</p>
+
+    <section aria-labelledby="que-gana" class="mt-10">
+      <h2 id="que-gana" class="font-serif text-2xl font-semibold text-tinta">
+        {COMO_FUNCIONA.titulo}
+      </h2>
+      <ul class="mt-4 max-w-prose list-disc space-y-2 ps-5 text-tinta/80 marker:text-tinta/45">
+        {COMO_FUNCIONA.puntos.map((punto) => <li class="min-w-0">{punto}</li>)}
+      </ul>
+    </section>
+
+    <section aria-labelledby="como-se-hace" class="mt-12">
+      <h2 id="como-se-hace" class="font-serif text-2xl font-semibold text-tinta">
+        Cómo se hace
+      </h2>
+      <p class="mt-2 max-w-prose text-tinta/80">
+        Elegí el calendario que ya usás. Con uno alcanza.
+      </p>
+
+      <div class="mt-6 grid gap-4">
+        {caminos.map((camino) => <SuscribirseCamino camino={camino} />)}
+      </div>
+    </section>
+
+    <section aria-labelledby="lo-que-no-hace" class="mt-12">
+      <h2 id="lo-que-no-hace" class="font-serif text-2xl font-semibold text-tinta">
+        Lo que el calendario no hace
+      </h2>
+
+      <dl class="mt-4 max-w-prose space-y-5">
+        {
+          advertencias.map((advertencia) => (
+            <div>
+              <dt class="font-semibold text-tinta">{advertencia.titulo}</dt>
+              <dd class="mt-1 text-tinta/80">{advertencia.texto}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section aria-labelledby="donde-seguir" class="mt-12 border-t border-borde pt-8">
+      <h2 id="donde-seguir" class="font-serif text-2xl font-semibold text-tinta">
+        {DONDE_SEGUIR.titulo}
+      </h2>
+      <p class="mt-2 max-w-prose text-tinta/80">{DONDE_SEGUIR.texto}</p>
+      <div class="mt-4">
+        <SuscribirseAccion accion={DONDE_SEGUIR.accion} />
+      </div>
+    </section>
+  </main>
+</Base>
