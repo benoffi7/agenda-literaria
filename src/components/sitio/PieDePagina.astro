@@ -1,0 +1,52 @@
+---
+/**
+ * El pie del sitio público — B-229.
+ *
+ * Los destinos salen todos de `enlaces.ts` (B-228): es el único lugar donde
+ * viven, así que renombrar la cuenta de Instagram o rotar el calendario se hace
+ * una vez y no tres.
+ */
+import { urlDeContacto, urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
+---
+
+<footer class="mt-16 border-t border-borde">
+  <div
+    class="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-8 text-sm text-tinta/70 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <p>
+      Actividades literarias en Argentina. Se publican con
+      <a
+        class="underline decoration-borde underline-offset-4 hover:decoration-acento focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+        href="/ayuda">criterio y a mano</a
+      >.
+    </p>
+
+    <ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
+      <li>
+        <a
+          class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+          href={urlDeInstagram()}
+          rel="me noopener"
+          target="_blank"
+        >
+          {/* El @ va afuera del nombre para que un lector de pantalla no lo
+              deletree como parte del handle. */}
+          <span aria-hidden="true">@</span>{INSTAGRAM}
+          <span class="sr-only">(Instagram, se abre en una pestaña nueva)</span>
+        </a>
+      </li>
+      <li>
+        <a
+          class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+          href="/suscribirse">Suscribirse al calendario</a
+        >
+      </li>
+      <li>
+        <a
+          class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+          href={urlDeContacto('sugerencia')}>Sugerir una actividad</a
+        >
+      </li>
+    </ul>
+  </div>
+</footer>

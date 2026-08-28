@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-28 (después de 1.5.0) · el chrome compartido del sitio público
+
+**Encabezado y pie del sitio, con un solo dueño — B-229.** Navegación entre las
+cuatro secciones, salto al contenido, y un pie que sale entero de `enlaces.ts`
+(B-228). Lo escribe el orquestador y no un frente, por la misma razón que el
+contrato: es el archivo donde tres agentes en paralelo se pisan seguro.
+
+**`Base.astro` trae el chrome apagado por defecto** (`seccion="ninguna"`), porque
+`/admin` es una SPA con su propia navegación y dos barras compitiendo por el mismo
+lugar es peor que ninguna. Eso deja una trampa: **el default correcto para el panel
+es el default equivocado para el sitio**, y olvidarse de `seccion` no rompe nada —
+build verde, página que se ve bien sola, y quien entre no tiene cómo volver.
+
+Por eso va con `tests/chrome-del-sitio.test.ts`, que exige que toda página que use
+`Base` declare su sección, con las excepciones en una lista explícita y con motivo.
+Encontró una al escribirlo: la home. Tres mutaciones probadas —sacarle la sección a
+la home, dejar una excepción apuntando a un archivo que no existe, y el control
+positivo del barrido— y las tres fallan.
+
 ## 2026-08-28 (después de 1.5.0) · el contrato compartido del sitio público
 
 **`src/lib/enlaces.ts` — los destinos externos del sitio, en un solo lugar (B-228).**

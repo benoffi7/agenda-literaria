@@ -1,0 +1,71 @@
+---
+/**
+ * La barra de navegación del sitio público — B-229.
+ *
+ * Vive en `Base.astro` y no en cada página a propósito: es el punto donde tres
+ * frentes en paralelo se pisarían, así que tiene un solo dueño.
+ *
+ * `activa` marca dónde estás. Se pasa desde el layout en vez de deducirse de
+ * `Astro.url.pathname` porque la página de detalle (`/actividad/<slug>`) tiene
+ * que marcar «Agenda», y una comparación por path no lo sabría sin una regla
+ * más que se olvida de actualizar.
+ */
+export type Seccion = 'agenda' | 'suscribirse' | 'ayuda' | 'contacto';
+
+interface Props {
+  activa?: Seccion;
+}
+
+const { activa } = Astro.props;
+
+const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
+  { seccion: 'agenda', href: '/', texto: 'Agenda' },
+  { seccion: 'suscribirse', href: '/suscribirse', texto: 'Suscribirse' },
+  { seccion: 'ayuda', href: '/ayuda', texto: 'Ayuda' },
+  { seccion: 'contacto', href: '/contacto', texto: 'Contacto' },
+];
+---
+
+<header class="border-b border-borde bg-papel/85 backdrop-blur-sm">
+  <!-- El salto al contenido es el primer foco de la página: sin él, llegar al
+       listado con teclado obliga a pasar por los cuatro enlaces en cada página. -->
+  <a
+    href="#contenido"
+    class="sr-only rounded-md bg-tinta px-4 py-2 text-papel focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+  >
+    Saltar al contenido
+  </a>
+
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+    <a
+      href="/"
+      class="font-serif text-lg font-semibold tracking-tight text-tinta focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acento"
+    >
+      Agenda literaria
+    </a>
+
+    <nav aria-label="Secciones del sitio" class="ms-auto">
+      <ul class="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+        {
+          ENLACES.map(({ seccion, href, texto }) => (
+            <li>
+              <a
+                href={href}
+                aria-current={activa === seccion ? 'page' : undefined}
+                class:list={[
+                  'flex min-h-touch items-center rounded-md px-3',
+                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento',
+                  activa === seccion
+                    ? 'font-semibold text-acento'
+                    : 'text-tinta/70 hover:text-tinta',
+                ]}
+              >
+                {texto}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</header>

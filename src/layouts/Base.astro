@@ -1,13 +1,23 @@
 ---
 import '@/styles/global.css';
+import Encabezado, { type Seccion } from '@/components/sitio/Encabezado.astro';
+import PieDePagina from '@/components/sitio/PieDePagina.astro';
 
 interface Props {
   titulo: string;
   descripcion?: string;
   noIndex?: boolean;
+  /**
+   * Qué sección del sitio marcar como activa. **`'ninguna'` apaga el encabezado
+   * y el pie enteros**, que es lo que necesita `/admin`: el panel es una SPA con
+   * su propia navegación y meterle la del sitio público sería dos barras
+   * compitiendo por el mismo lugar.
+   */
+  seccion?: Seccion | 'ninguna';
 }
 
-const { titulo, descripcion, noIndex = false } = Astro.props;
+const { titulo, descripcion, noIndex = false, seccion = 'ninguna' } = Astro.props;
+const conChrome = seccion !== 'ninguna';
 ---
 
 <!doctype html>
@@ -32,7 +42,13 @@ const { titulo, descripcion, noIndex = false } = Astro.props;
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap"
     />
   </head>
-  <body class="min-h-dvh overflow-x-hidden font-sans antialiased">
-    <slot />
+  <body class="flex min-h-dvh flex-col overflow-x-hidden font-sans antialiased">
+    {conChrome && <Encabezado activa={seccion as Seccion} />}
+    {/* `flex-1` empuja el pie al fondo cuando la página es más corta que la
+        pantalla — un listado filtrado a cero resultados es el caso normal. */}
+    <div id="contenido" class="flex-1">
+      <slot />
+    </div>
+    {conChrome && <PieDePagina />}
   </body>
 </html>
