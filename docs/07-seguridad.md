@@ -615,28 +615,58 @@ La URL privada del ICS (`.../private-.../basic.ics`) da acceso de lectura al
 calendario entero a quien la tenga. Si aparece en un historial de comandos o un
 chat, conviene rotarla desde la configuración del calendario.
 
-**La key de `deploy-ci@` es la única key del proyecto**, y existe porque un
-runner de GitHub no tiene ADC. Por eso la cuenta es aparte de `calendar-sync@` y
-tiene lo mínimo: `roles/datastore.viewer` (leer, no escribir),
-`roles/firebasehosting.admin` y `roles/serviceusage.serviceUsageConsumer`
-(preguntar si una API está habilitada, que es lo que cualquier comando de
-`firebase` hace antes de empezar). Los nombres van completos, con el prefijo, para
-que el test que ata los dos documentos los pueda leer. Si se filtrara, el
-daño se limita a leer datos que ya son públicos y a desplegar el sitio — **no a
-modificar la base ni a cambiar qué es legible**.
+**La key de `deploy-ci@` es la única key del proyecto**, y existe porque un runner
+de GitHub no tiene ADC. Por eso la cuenta es aparte de `calendar-sync@`. Lo que
+tiene hoy:
 
-Esa última mitad **dejó de ser cierta durante una hora** el 2026-08-25, y vale
-escribir por qué: para habilitar el deploy de reglas por CI se le agregó
-`firebaserules.admin`, y las reglas del §5.3 son lo único que mantiene fuera de una
-lectura anónima los borradores, `difusion`, `online.url` y los uids. Con ese rol,
-una key filtrada pasaba de "leer lo que ya es público" a **hacer legible todo
-Firestore**. Se revirtió el mismo día (D-119) y las reglas se despliegan a mano.
+```
+roles/datastore.viewer                     leer Firestore en build time
+roles/firebasehosting.admin                desplegar el sitio y el panel
+roles/serviceusage.serviceUsageConsumer    preguntar si una API está habilitada
+roles/firebaserules.admin                  desplegar firestore.rules y storage.rules
+roles/datastore.indexAdmin                 desplegar firestore.indexes.json
+roles/firebase.developAdmin                leer la config del proyecto
+roles/secretmanager.viewer                 resolver los secrets que las Functions declaran
+roles/cloudfunctions.developer             desplegar las Functions
+roles/run.admin                            el Cloud Run que hay abajo de cada Function v2
+roles/cloudbuild.builds.editor             el build que empaqueta la Function
+roles/artifactregistry.writer              guardar la imagen de ese build
+roles/cloudscheduler.admin                 el job de onSchedule del rebuild
+roles/iam.serviceAccountUser               sobre las tres cuentas de runtime
+```
+
+**Esta key puede cambiar qué es legible, y hay que decirlo así.** Con
+`firebaserules.admin` alcanza para reescribir `firestore.rules` y dejar
+`/actividades` abierto a una lectura anónima — o sea, los borradores, `difusion`,
+`online.url` y los uids. Con `cloudfunctions.developer` + `run.admin` +
+`iam.serviceAccountUser` alcanza para desplegar código que corre como
+`calendar-sync@`. **No** puede leer el contenido de un secret (`secretmanager.viewer`
+ve los metadatos, no las versiones), **no** puede escribir datos en Firestore sin
+antes reescribir las reglas, y **no** puede tocar IAM.
+
+Hasta el 2026-08-28 tenía tres roles y esta sección decía lo contrario: *"el daño se
+limita a leer datos que ya son públicos y a desplegar el sitio — no a modificar la
+base ni a cambiar qué es legible"*. Eso **ya no es cierto**, y la frase quedó citada
+acá a propósito en vez de borrada: quien la haya leído antes tiene que poder
+encontrarla y ver que caducó. El cambio fue deliberado —**D-132**, que revierte D-119— para
+que los seis jobs de `push-main.yml` puedan terminar bien; el costo es exactamente
+el párrafo de arriba.
+
+**Nada en CI contiene a esta key.** El workflow corre los tests de reglas antes de
+desplegarlas, pero quien tenga la key no pasa por el workflow. La contención real es
+que viva en un solo lugar —un secret de Actions— y el orden de rotación:
+rotar → **redesplegar `firestore.rules` y `storage.rules` desde el repo** → recién
+ahí investigar. Redesplegar las reglas va segundo y no último, porque mientras no se
+haga no se sabe qué está publicado.
 
 **La lista de roles de esta sección y la de
-[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`" tienen
-que decir lo mismo**, y lo verifica `tests/roles-deploy-ci.test.ts`: el drift entre
-las dos es cómo esta afirmación quedó mintiendo una hora, y una afirmación de
-seguridad que miente es peor que no tenerla.
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`" tienen que
+decir lo mismo**, y lo verifica `tests/roles-deploy-ci.test.ts`: el drift entre las
+dos es cómo esta afirmación quedó mintiendo una hora el 2026-08-25, y una afirmación
+de seguridad que miente es peor que no tenerla. Ese test hoy hace además lo
+contrario de lo que hacía: en vez de exigir que no haya roles de escritura, exige
+que **mientras los haya**, acá no reaparezca la frase de que el daño se limita a
+leer.
 
 ## Cómo verificar — comandos
 

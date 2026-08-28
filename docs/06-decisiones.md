@@ -775,6 +775,10 @@ accidente. Si más adelante molesta, agregar `on: push` es una línea.
 - **Una service account propia (`deploy-ci@`) con `datastore.viewer` +
   `firebasehosting.admin`,** no la de las Functions. El workflow solo lee
   Firestore; si la key se filtrara, el daño se limita a datos ya públicos.
+  > **Esa última mitad caducó el 2026-08-28 (D-132).** La cuenta propia sigue
+  > siendo lo correcto, pero ya no tiene dos roles de lectura: hoy puede desplegar
+  > reglas y Functions. El radio real está en
+  > [`07-seguridad.md`](07-seguridad.md) § "La key".
 
 ---
 
@@ -2407,6 +2411,12 @@ la sección antes de que la lista mezcle cosas que no se revisan en el mismo mom
 
 ## D-119 · La única key del proyecto no puede cambiar qué es legible
 
+> **Revertida el 2026-08-28 — ver D-132.** La cuenta volvió a tener los roles que
+> esta decisión quita: `firebaserules.admin`, `datastore.indexAdmin` y los de
+> Functions. **El razonamiento de abajo no se refutó** —se decidió pagarlo, porque
+> el rojo permanente que esta decisión dejaba había hecho que una publicación
+> fallara en silencio—, así que se lee contra su original.
+
 **Contexto.** El 2026-08-25, para que el job de reglas de `push-main.yml` dejara de
 fallar, se le agregaron a `deploy-ci@` los roles `firebaserules.admin` y
 `datastore.indexAdmin`. Un rato después el auditor de privacidad encontró que
@@ -3396,3 +3406,74 @@ subir `VERSION_BORRADOR` —la forma del formulario no cambió, `imagenes` ya es
 es el criterio de D-127: se bumpea cuando hay una forma nueva que hace que lo viejo
 *parezca* bueno, no cuando cambia lo que se puede escribir adentro. **Si algún día
 B-221 empieza a borrar, esto se reabre**, y queda dicho en ese ítem.
+
+---
+
+## D-132 · La key de CI pasa a poder desplegar todo — se revierte D-119
+
+**Contexto.** D-119, del 2026-08-25, dejó a `deploy-ci@` con tres roles de lectura y
+Hosting, y asumió por escrito la contra: dos de los seis jobs de `push-main.yml`
+—«Reglas e índices» y «Cloud Functions»— **no podían terminar bien nunca**. Se
+anotó como B-194 y se dio por aceptado.
+
+En tres días la contra se cobró lo suyo. El 2026-08-28 se publicó `1.5.0` y el sitio
+seguía mostrando `1.4.0`: el job de reglas cortó con 403, el de Hosting tiene
+`needs.firestore.result != 'failure'`, y el deploy no ocurrió. **No hubo ninguna
+señal de que faltara publicar** —la corrida estaba roja "como siempre"—, así que el
+rojo permanente había dejado de significar algo. Lo encontró el dueño mirando la web,
+que es el peor lugar donde encontrarlo.
+
+**Decisión.** Se le otorgan a `deploy-ci@` los roles que faltaban para que los seis
+jobs terminen bien: reglas, índices, Functions (con su Cloud Run, su Cloud Build, su
+Artifact Registry y su Cloud Scheduler) y `iam.serviceAccountUser` sobre las tres
+cuentas de runtime. La lista completa está en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
+
+**Lo que esto cuesta, sin suavizar.** Todo lo que D-119 dijo sigue siendo cierto: con
+`firebaserules.admin`, una key filtrada **hace legible todo Firestore** —borradores,
+`difusion`, `online.url`, uids— porque las reglas del §5.3 son lo único que los
+mantiene afuera. Y con `cloudfunctions.developer` + `run.admin` +
+`iam.serviceAccountUser` puede desplegar código que corre como `calendar-sync@`. El
+argumento de D-119 no se refutó: **se decidió pagarlo**, y la decisión es del dueño
+del proyecto.
+
+**Por qué se paga.** Los dos lados del intercambio no son "seguridad contra
+comodidad", que sería una mala razón:
+
+| | Con D-119 | Con D-132 |
+|---|---|---|
+| Radio de la key filtrada | leer lo público, publicar el sitio | reescribir reglas, desplegar código |
+| Reglas en producción | las que alguien recordó desplegar a mano | las del repo, en cada push |
+| Un push que toca reglas y panel | no publica el panel | publica los dos, en orden |
+| Una corrida roja | el estado normal | algo pasó |
+
+Las filas 2 y 4 son las que dan vuelta el balance. Con las reglas a mano, **lo que
+protege a Firestore es que alguien se acuerde**, y ya falló una vez: el P0 de B-208
+—`/actividades` legible por un anónimo— vivió en producción hasta que un auditor lo
+encontró, con la regla correcta ya escrita en el repo. Un rojo que significa algo y
+unas reglas que se publican solas cubren un riesgo que ocurre seguido; el radio de la
+key cubre uno que requiere que la key se filtre.
+
+**Lo que se hace en consecuencia, y no es opcional.**
+
+- La afirmación de `07-seguridad.md` § "La key" se reescribió en el **mismo** cambio.
+  Es lo que D-119 dejó atado y es la mitad del valor de esta decisión: la vez
+  anterior el radio cambió y el documento no, y estuvo mintiendo una hora.
+- `tests/roles-deploy-ci.test.ts` cambió de propiedad. Ya no exige "ningún rol de
+  escritura" —sería exigir que D-132 no exista—, sino algo que sigue teniendo
+  sentido: **mientras haya un rol de escritura declarado, el documento de seguridad
+  no puede afirmar que el daño se limita a leer.** Las dos listas se siguen atando.
+- El runbook de rotación de [`08-operacion.md`](08-operacion.md) pasa a tener un paso
+  nuevo y ordenado segundo: **redesplegar `firestore.rules` y `storage.rules` desde
+  el repo**. Antes rotar alcanzaba; ahora, hasta que eso se haga, no se sabe qué
+  reglas están publicadas.
+
+**Lo que sigue sin tener.** No se otorgó `secretmanager.secretAccessor` (ve los
+metadatos, no las versiones), ni escritura de datos en Firestore, ni nada de IAM. No
+es una cuenta de owner: es la que hace falta para que el workflow que ya existe
+termine.
+
+**Lo que reabriría esto.** Si el proyecto suma gente con acceso al repo, el secret
+deja de tener un solo lector y el balance cambia: ahí corresponde volver a D-119 y
+partir la key en dos —una de lectura para el build, otra con permiso de deploy y
+`environment` con aprobación—. Está anotado como **B-225**.

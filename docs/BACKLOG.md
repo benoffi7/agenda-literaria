@@ -73,11 +73,15 @@ Lo que faltaba después de las credenciales era un bug, **B-188**, arreglado el 
 día.
 
 Lo que **sí** quedó funcionando: **un push a `main` publica el sitio y el panel
-solo**. Lo que no, y es una contra asumida: todo push que toque `functions/` deja
+solo**. Lo que no, y era una contra asumida: todo push que toque `functions/` deja
 la corrida roja, porque `deploy-ci@` no tiene —a propósito— los roles para
 desplegar Functions, y con la corrida roja se saltea también el job del tag de
 versión. El razonamiento está en
 [`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`".
+
+> **Se levantó el 2026-08-28 (D-132, B-194).** Los seis jobs terminan bien; un
+> push publica reglas, índices, sitio, panel, Functions y tag. Lo de arriba queda
+> como el estado del 2026-08-25.
 
 #### Lo que enseñó el camino, que valía más que los pasos
 
@@ -3530,7 +3534,7 @@ eso no lo dice ningún test. Vale mirar con el mismo ojo las otras funciones que
 viven detrás de un acordeón o de un menú: material, difusión, historial, y la
 pantalla de taxonomías.
 
-### B-194 · Dos jobs que no pueden terminar bien, y uno bloquea el deploy del panel · P1
+### B-194 · Dos jobs que no pueden terminar bien, y uno bloquea el deploy del panel — ✅ hecho (2026-08-28)
 
 Desde que el deploy por CI funciona (2026-08-25), `push-main.yml` tiene **dos** jobs
 que no pueden terminar bien con la credencial que hay:
@@ -3588,6 +3592,22 @@ Tres salidas, y la decisión es cuál:
 
 `que-deployar.sh` decide cuándo corre este job, así que la primera y la segunda
 opción se pueden probar con el script antes de tocar el YAML.
+
+**Se fue por la tercera: se otorgaron los roles (D-132, 2026-08-28).** Vale anotar
+que **no** es la que este ítem recomendaba —el job que solo avisa— y por qué se
+movió el balance: la consecuencia 3 se cobró en producción antes de que hubiera
+tiempo de elegir. La `1.5.0` se publicó, el job de reglas cortó con 403, Hosting se
+salteó, y la web siguió mostrando `1.4.0` **sin que nada lo dijera**: la corrida
+roja era la de siempre. La consecuencia 1 —"una corrida que se espera roja es la
+forma más rápida de que nadie mire las corridas"— dejó de ser una predicción.
+
+Con los roles, las tres consecuencias caen juntas: los seis jobs terminan bien, el
+tag se crea, y el rojo vuelve a significar algo.
+
+**Lo que este ítem proponía como forma menos mala —una segunda service account, para
+que el alcance no se acumule sobre la que publica— no se hizo**, y sigue siendo la
+buena idea. Está abierto como **B-225**, con el disparador escrito: parte la key el
+día que el repo tenga más de un lector del secret.
 
 ### B-196 · Los tests de privacidad del `events.json` y del evento son una lista, no una propiedad — ✅ hecho (2026-08-26)
 
@@ -3898,6 +3918,36 @@ arreglan en el mismo rato:
 componentes de chips (`TaxonomiaSelect`, `TagsInput`, `ChipsInput`) comparten
 markup y **se dejan como están** — son tres widgets distintos y la lógica pura ya
 se comparte (D-116).
+
+
+### B-225 · Partir la key de CI en dos el día que el secret tenga más de un lector · P2
+
+D-132 le dio a `deploy-ci@` los roles para desplegar reglas y Functions, y aceptó
+por escrito lo que eso significa: una key filtrada **hace legible todo Firestore** y
+puede desplegar código que corre como `calendar-sync@`. La decisión se apoya en un
+hecho del proyecto de hoy: **el secret tiene un solo lector**, el dueño del repo.
+
+**El disparador de este ítem es que eso deje de ser cierto.** Un colaborador con
+push a `main`, un fork con Actions habilitado, un runner de terceros: cualquiera de
+los tres multiplica los lugares desde donde esa key se puede usar, y ahí el balance
+de la tabla de D-132 se da vuelta.
+
+**Lo que hay que hacer cuando pase**, que es lo que B-194 ya proponía como forma
+menos mala y no se hizo:
+
+- **`build-ci@`** — `datastore.viewer` + `serviceusage.serviceUsageConsumer`. Es la
+  que usa el build de Astro para leer Firestore. Sin permiso de deploy de nada.
+- **`deploy-ci@`** — el resto de los roles, y su key **detrás de un `environment` de
+  GitHub con required reviewers**, para que desplegar reglas o Functions pida una
+  aprobación humana en vez de ser un efecto de cualquier push.
+
+El costo es un secret más y un `environment` que configurar; el beneficio es que el
+job que solo lee no cargue el alcance del que publica.
+
+**Mientras tanto, lo que sí está**: la rotación documentada en
+[`08-operacion.md`](08-operacion.md), con el paso de redesplegar las reglas desde el
+repo ordenado segundo, y `tests/roles-deploy-ci.test.ts`, que impide que el
+documento de seguridad vuelva a decir que el daño se limita a leer.
 
 ---
 
@@ -4932,6 +4982,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| El comparador de infraestructura reportaba que la doc mentía sobre `roles/iam.serviceAccountUser` cuando la que no miraba era él | `relevar-infra.sh` solo consultaba los bindings **del proyecto**, y `iam.serviceAccountUser` se otorga sobre **cada cuenta de runtime**. Salió a la luz al declarar los roles de D-132; es justo el rol que menos convenía no mirar, porque es la mitad de "puede desplegar código que corre como una identidad privilegiada" | B-226, `scripts/relevar-infra.sh` (2026-08-28) |
 
 | Editar un encuentro desde la vista calendario y volver por el encabezado mandaba al listado y perdía el mes que se estaba mirando | el botón "← Volver" hacía `setVista({tipo:'lista'})` fijo, mientras el "Cancelar" del formulario ya respetaba `volverA`: dos salidas del mismo formulario con dos criterios | B-35, `AdminApp.tsx` |
 | El listado y el calendario contestaban "¿ya pasó?" con campos distintos: un taller en curso desaparecía del listado a los minutos de empezar | `proximoEncuentro` filtraba por `inicio`, `yaPaso` por `fin`, y el fixture de los tests tenía `fin === inicio`, así que la diferencia era indetectable (patrón B-84) | auditoría del calendario, H1 |

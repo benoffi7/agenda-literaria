@@ -1,5 +1,62 @@
 # Changelog
 
+## 2026-08-28 (después de 1.5.0) · solo infraestructura y documentación
+
+**La key de CI pasó a poder desplegar todo, y la documentación dice qué cuesta eso
+— D-132, que revierte D-119.**
+
+El disparador fue la publicación de `1.5.0`: el job «Reglas e índices» cortó con
+403, el `if` del job de Hosting pide `needs.firestore.result != 'failure'`, y **la
+web siguió mostrando `1.4.0` sin que nada lo dijera**. La corrida estaba roja como
+todos los días desde D-119, así que el rojo había dejado de significar algo. Eso era
+la consecuencia 1 de **B-194**, escrita tres días antes como predicción.
+
+`deploy-ci@` pasó de 3 roles a 12 más `iam.serviceAccountUser` sobre las tres
+cuentas de runtime, otorgados de a un 403 por vez. **Los seis jobs de
+`push-main.yml` terminan bien**: reglas, índices, sitio, panel, Functions y tag.
+
+**Lo que se pagó, escrito sin suavizar** — es la mitad del trabajo de este cambio,
+porque la vez anterior el radio de la key cambió y el documento no, y estuvo
+mintiendo una hora:
+
+| Documento | Qué dice ahora |
+|---|---|
+| `07-seguridad.md` § "La key" | la lista completa, y que la key **puede hacer legible todo Firestore** y desplegar código que corre como `calendar-sync@` |
+| `02-infraestructura.md` § "Roles" | tabla de qué puede y qué no, y que **nada en CI la contiene** |
+| `08-operacion.md` | el paso 3 crea la cuenta con los 12 roles, y hay un runbook nuevo de **qué hacer si la key se filtra** |
+| `06-decisiones.md` | **D-132**, con la tabla del intercambio y qué lo reabriría |
+
+`tests/roles-deploy-ci.test.ts` **cambió de propiedad, no se aflojó**. Exigía que no
+hubiera ningún rol de escritura: eso era D-119 escrita como test, y sostenerlo sería
+exigir que la decisión del dueño no exista. Ahora exige lo que de verdad protegía —
+**mientras la lista declare un rol de escritura, `07-seguridad.md` no puede afirmar
+que el daño se limita a leer**— más el control negativo de que la sección sí diga
+qué puede hacer la key. Las cuatro mutaciones (devolver la frase falsa, sacar un rol
+de una de las dos listas, borrar el párrafo del radio, agregar un rol solo al
+inventario) se probaron y las cuatro fallan.
+
+**El comparador de infraestructura no sabía mirar el rol más importante — B-226.**
+`relevar-infra.sh` consultaba solo los bindings **del proyecto**, y
+`iam.serviceAccountUser` se otorga sobre **cada cuenta de runtime**: reportaba que
+la doc mentía cuando la que no miraba era él. Se arregló en este mismo cambio,
+porque un chequeo que da un falso positivo por corrida es un chequeo que se aprende
+a ignorar. Con el arreglo, `./scripts/relevar-infra.sh` confirma contra GCP que el
+inventario de los 13 roles dice la verdad.
+
+**El auditor de documentación encontró seis puntos más**, incluido uno que era el
+error de D-119 otra vez y adentro del mismo archivo: `08-operacion.md` afirmaba en
+la línea 327 que las Functions se despliegan a mano por falta de permisos, y 270
+líneas más abajo que desde D-132 el job las despliega solo. También quedó el aviso
+hacia adelante en la entrada de D-119, la fila de `13-agentes.md` con la mitad del
+test que faltaba, y una frase que decía que la cita vieja estaba «tachada» cuando no
+lo estaba.
+
+**Cerrado: B-194.** Se fue por la tercera de sus tres salidas, que no era la que el
+ítem recomendaba; por qué se movió el balance está en el ítem y en D-132.
+**Abierto: B-225** (P2) — partir la key en dos, `build-ci@` de solo lectura y
+`deploy-ci@` detrás de un `environment` con aprobación, el día que el secret tenga
+más de un lector. Es la mitigación que B-194 proponía y que no se hizo.
+
 ## 1.5.0 — 2026-08-28
 
 **Dos frentes en paralelo, integrados en una sola versión:** «Dónde» pasó a ser una

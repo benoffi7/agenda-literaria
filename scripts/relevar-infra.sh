@@ -49,6 +49,23 @@ estado() {
       while read -r rol; do printf 'rol=%s %s\n' "$SA" "$rol"; done
   done
 
+  # `iam.serviceAccountUser` NO es un binding del proyecto: se otorga sobre cada
+  # cuenta de runtime. Sin este bloque el relevamiento no lo ve y el comparador
+  # reporta que la doc miente cuando la que no mira es él (D-132).
+  #
+  # Y es justo el rol que menos conviene no mirar: es la mitad de "puede desplegar
+  # código que corre como una identidad privilegiada", que es el radio de daño que
+  # `07-seguridad.md` describe.
+  for RUNTIME in "calendar-sync@${PROYECTO}.iam.gserviceaccount.com" \
+                 "${PROYECTO}@appspot.gserviceaccount.com" \
+                 "1038157194972-compute@developer.gserviceaccount.com"; do
+    gcloud iam service-accounts get-iam-policy "$RUNTIME" --project "$PROYECTO" \
+      --flatten='bindings[].members' \
+      --filter="bindings.members:deploy-ci@${PROYECTO}.iam.gserviceaccount.com" \
+      --format='value(bindings.role)' 2>/dev/null |
+      while read -r rol; do printf 'rol=%s %s\n' deploy-ci "$rol"; done
+  done
+
   gcloud secrets list --project "$PROYECTO" --format='value(name)' 2>/dev/null |
     while read -r s; do printf 'secreto=%s\n' "$s"; done
 

@@ -16,10 +16,21 @@ import { describe, expect, it } from 'vitest';
  * Una afirmación de seguridad que miente es peor que no tenerla, porque se usa para
  * decidir. Así que las dos listas se atan acá.
  *
+ * **Qué cambió el 2026-08-28 (D-132).** Este test exigía además que no hubiera
+ * ningún rol de escritura. Esa exigencia era D-119 escrita como test, y D-119 se
+ * revirtió: hoy la cuenta despliega reglas y Functions a propósito. Mantener el
+ * aserto sería exigir que la decisión del dueño no exista, y aflojarlo a nada sería
+ * perder el único chequeo que hay.
+ *
+ * Así que se invirtió, conservando lo que de verdad protegía: **mientras la lista
+ * declare un rol de escritura, `07-seguridad.md` no puede afirmar que el daño se
+ * limita a leer.** El pecado del 2026-08-25 no fue tener el rol — fue tenerlo y
+ * seguir diciendo que no. Esto último es lo que queda prohibido.
+ *
  * **Lo que este test NO puede afirmar:** que la política real de IAM sea ésta. Eso
  * vive en GCP y se consulta con el comando que documenta `02-infraestructura.md`.
  * Acá se verifica lo que sí es verificable sin credenciales — que los dos
- * documentos digan lo mismo —, que es exactamente el drift que ocurrió.
+ * documentos digan lo mismo, y que la afirmación acompañe a la lista.
  */
 const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8');
@@ -29,28 +40,35 @@ const rolesDeclarados = (texto: string): string[] => [
   ...new Set([...texto.matchAll(/roles\/([a-zA-Z.]+)/g)].map((m) => m[1]!)),
 ];
 
-/**
- * El bloque de código de `02-infraestructura.md` § "Roles de `deploy-ci@`" — solo
- * el bloque, porque el texto de alrededor **nombra a propósito** los dos roles que
- * se quitaron, y contarlos como vigentes sería leer al revés.
- */
-const bloqueInventario = (): string => {
-  const md = fuente('docs/02-infraestructura.md');
-  const desde = md.indexOf('### Roles de `deploy-ci@`');
-  expect(desde, 'no se encontró la sección de roles en 02-infraestructura.md').toBeGreaterThan(-1);
+/** El primer bloque cercado que sigue a un encabezado dado. */
+const bloqueTras = (md: string, encabezado: string, archivo: string): string => {
+  const desde = md.indexOf(encabezado);
+  expect(desde, `no se encontró «${encabezado}» en ${archivo}`).toBeGreaterThan(-1);
   const abre = md.indexOf('```', desde);
   const cierra = md.indexOf('```', abre + 3);
+  expect(cierra, `bloque sin cerrar tras «${encabezado}» en ${archivo}`).toBeGreaterThan(-1);
   return md.slice(abre + 3, cierra);
 };
 
-/** El párrafo de `07-seguridad.md` que enumera lo que la cuenta tiene. */
-const parrafoSeguridad = (): string => {
-  const md = fuente('docs/07-seguridad.md');
-  const desde = md.indexOf('**La key de `deploy-ci@` es la única key del proyecto**');
-  expect(desde, 'no se encontró el párrafo de la key en 07-seguridad.md').toBeGreaterThan(-1);
-  // Hasta el fin del párrafo: es donde está la enumeración.
-  return md.slice(desde, md.indexOf('\n\n', desde));
-};
+/**
+ * El inventario de `02-infraestructura.md`: solo el bloque, porque el texto de
+ * alrededor **nombra a propósito** roles que la cuenta no tiene —los que se
+ * evaluaron y se descartaron—, y contarlos como vigentes sería leer al revés.
+ */
+const bloqueInventario = (): string =>
+  bloqueTras(fuente('docs/02-infraestructura.md'), '### Roles de `deploy-ci@`', '02-infraestructura.md');
+
+/** La enumeración de `07-seguridad.md`, en su propio bloque por el mismo motivo. */
+const bloqueSeguridad = (): string =>
+  bloqueTras(
+    fuente('docs/07-seguridad.md'),
+    '**La key de `deploy-ci@` es la única key del proyecto**',
+    '07-seguridad.md',
+  );
+
+/** Roles que permiten cambiar algo, no solo leerlo. */
+const deEscritura = (roles: string[]): string[] =>
+  roles.filter((r) => /(admin|editor|owner|writer|developer|serviceAccountUser)$/i.test(r));
 
 describe('los roles de deploy-ci@ se declaran igual en los dos documentos — B-195', () => {
   it('el inventario declara al menos los tres roles mínimos', () => {
@@ -59,18 +77,54 @@ describe('los roles de deploy-ci@ se declaran igual en los dos documentos — B-
   });
 
   it('07-seguridad enumera exactamente los roles del inventario', () => {
-    expect(rolesDeclarados(parrafoSeguridad()).sort()).toEqual(
+    expect(rolesDeclarados(bloqueSeguridad()).sort()).toEqual(
       rolesDeclarados(bloqueInventario()).sort(),
     );
   });
+});
 
-  it('ninguno de los dos declara un rol de escritura', () => {
-    // La propiedad que hace verdadera la afirmación del §5.4: si aparece un rol
-    // `admin`, `editor`, `owner` o `writer` que no sea el de Hosting, el radio de
-    // la key cambió y la afirmación de seguridad hay que volver a escribirla.
-    const escritura = (rs: string[]) =>
-      rs.filter((r) => /(admin|editor|owner|writer)$/i.test(r) && r !== 'firebasehosting.admin');
-    expect(escritura(rolesDeclarados(bloqueInventario())), 'inventario').toEqual([]);
-    expect(escritura(rolesDeclarados(parrafoSeguridad())), '07-seguridad').toEqual([]);
+describe('la afirmación de seguridad acompaña al radio real de la key — D-132', () => {
+  /**
+   * La frase exacta que estuvo mintiendo una hora, en la forma en que se escribió.
+   * Se busca sin el markdown intermedio para que reformatear el párrafo no la
+   * esconda: lo que se prohíbe es la afirmación, no una cadena literal.
+   */
+  const afirmaQueSoloLee = (md: string): boolean => {
+    const plano = md
+      .replace(/\*\*|`|—/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+    // Solo cuenta como afirmación vigente si no viene marcada como caducada.
+    return /el daño se limita a (leer|datos)/.test(plano) && !/ya no es cierto|caduc/.test(plano);
+  };
+
+  it('mientras la lista declare un rol de escritura, 07-seguridad no dice que solo se lee', () => {
+    const escritura = deEscritura(rolesDeclarados(bloqueInventario()));
+    if (escritura.length === 0) return; // Si algún día se vuelve a D-119, no aplica.
+
+    const md = fuente('docs/07-seguridad.md');
+    const desde = md.indexOf('**La key de `deploy-ci@` es la única key del proyecto**');
+    const seccion = md.slice(desde, md.indexOf('\n## ', desde));
+
+    expect(
+      afirmaQueSoloLee(seccion),
+      `la cuenta tiene ${escritura.join(', ')} y 07-seguridad sigue diciendo que el daño ` +
+        'se limita a leer. Es exactamente el drift del 2026-08-25 (D-119, D-132).',
+    ).toBe(false);
+  });
+
+  it('y sí nombra lo que la key puede cambiar', () => {
+    const escritura = deEscritura(rolesDeclarados(bloqueInventario()));
+    if (escritura.length === 0) return;
+
+    const md = fuente('docs/07-seguridad.md');
+    const desde = md.indexOf('**La key de `deploy-ci@` es la única key del proyecto**');
+    const seccion = md.slice(desde, md.indexOf('\n## ', desde));
+
+    // Control negativo del test de arriba: que no diga la frase falsa no alcanza,
+    // porque borrar el párrafo entero también lo cumpliría.
+    expect(seccion, 'la sección no dice qué puede hacer la key si se filtra').toMatch(
+      /puede cambiar qué es legible|hacer legible todo Firestore/i,
+    );
   });
 });

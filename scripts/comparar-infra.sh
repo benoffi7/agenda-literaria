@@ -59,8 +59,9 @@ doc_funciones_todas() {
     awk -F'|' 'NF>=4 { gsub(/[` ]/, "", $2); if ($2 != "") print $2 }'
 }
 
-# Roles de `deploy-ci@`: el bloque de código de su sección, y solo ese. El texto
-# de alrededor nombra a propósito los roles que se quitaron (D-119).
+# Roles de `deploy-ci@`: el bloque de código de su sección, y solo ese. El texto de
+# alrededor razona sobre roles que la cuenta NO tiene —los que se evaluaron y se
+# descartaron— y contarlos como vigentes sería leer al revés (D-119, D-132).
 doc_roles_deploy_ci() {
   awk '/^### Roles de `deploy-ci@`/ { dentro = 1 }
        dentro && /^```/ { bloque++; next }

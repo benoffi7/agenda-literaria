@@ -286,52 +286,52 @@ sobre el proyecto entero: es el único secreto que la Function necesita leer.
 roles/datastore.viewer                     leer Firestore en build time (§2.4)
 roles/firebasehosting.admin                desplegar el sitio y el panel
 roles/serviceusage.serviceUsageConsumer    el chequeo de "¿está la API habilitada?"
+roles/firebaserules.admin                  desplegar firestore.rules y storage.rules
+roles/datastore.indexAdmin                 desplegar firestore.indexes.json
+roles/firebase.developAdmin                leer la config del proyecto (buckets, apps)
+roles/secretmanager.viewer                 resolver los secrets que las Functions declaran
+roles/cloudfunctions.developer             desplegar las Functions
+roles/run.admin                            el servicio de Cloud Run que hay abajo de cada v2
+roles/cloudbuild.builds.editor             el build que empaqueta el código de la Function
+roles/artifactregistry.writer              guardar la imagen que ese build produce
+roles/cloudscheduler.admin                 el job de onSchedule del rebuild (§8)
+roles/iam.serviceAccountUser               actuar como las tres cuentas de runtime
 ```
 
-**Tuvo dos roles más durante una hora, y se los quitamos el mismo día.** Para
-habilitar el job de reglas se agregaron `firebaserules.admin` y
-`datastore.indexAdmin`; el auditor de privacidad señaló lo que eso implicaba y se
-revirtió. El razonamiento, porque es el que hay que volver a hacer si alguien
-propone agregarlos de nuevo (D-119):
+Ese último es sobre **cuentas**, no sobre el proyecto: `calendar-sync@`,
+`agenda-literaria@appspot` y `1038157194972-compute@developer`. Es lo que habilita
+desplegar código que después corre con la identidad de esas cuentas.
 
-**Las reglas del §5.3 son lo único que mantiene fuera de una lectura anónima los
-borradores, `difusion`, `online.url` y los uids.** Con `firebaserules.admin`, una
-key filtrada dejaba de poder "leer lo que ya es público" y pasaba a poder **hacer
-legible todo Firestore**. Es el mismo argumento con el que esta cuenta no tiene los
-roles de Functions, aplicado a los datos en vez de al cómputo — y era peor, porque
-los roles de Functions solo habilitan un deploy y éste cambia la visibilidad de lo
-que ya está guardado.
+**Esta lista era de tres roles hasta el 2026-08-28, y crecer así fue una decisión,
+no un descuido.** Está en **D-132**, que revierte a D-119. El resumen: con tres
+roles, dos de los seis jobs de `push-main.yml` no podían terminar bien nunca, y uno
+de ellos bloqueaba la publicación del panel (era B-194). Se eligió pagar el radio de
+la key a cambio de que el deploy sea una cosa sola y reproducible.
 
-`serviceUsageConsumer` se queda: lo único que habilita es preguntar si una API está
-habilitada. Sin él, cualquier comando de `firebase` corta con
-`403 Permission denied to get service [firestore.googleapis.com]` antes de intentar
-nada.
+**Lo que la key puede hacer hoy si se filtra.** Conviene tenerlo escrito sin
+suavizar, porque es lo que cambió:
 
-Deliberadamente **no** tiene escritura de ningún tipo: ni de datos, ni de reglas, ni
-de Functions. Si la key se filtrara, el daño se limita a leer datos que ya son
-públicos y a publicar el sitio.
+| Puede | Cómo |
+|---|---|
+| Hacer legible todo Firestore | `firebaserules.admin` reescribe `firestore.rules` |
+| Hacer legible todo Storage | el mismo rol cubre `storage.rules` |
+| Desplegar código arbitrario | `cloudfunctions.developer` + `run.admin` + `iam.serviceAccountUser` |
+| Correr ese código como `calendar-sync@` | `iam.serviceAccountUser` sobre esa cuenta |
+| Reemplazar el sitio publicado | `firebasehosting.admin` |
 
-**Por qué no tiene los roles de Functions:**
-el job «Cloud Functions» de `push-main.yml` falla con
-`iam.serviceAccounts.ActAs on agenda-literaria@appspot.gserviceaccount.com`, y
-habilitarlo pide ese `roles/iam.serviceAccountUser` más `cloudfunctions.developer`,
-`run.admin`, `eventarc.developer`, `artifactregistry.writer` y
-`cloudbuild.builds.editor`. Poder actuar como una identidad privilegiada **y**
-desplegar código que corre con ella es, junto, casi ejecución arbitraria en el
-proyecto — y ésta es la **única key que existe**. El argumento por el que esta
-cuenta es aparte de `calendar-sync@` se cae si se le agrega eso. Las Functions se
-despliegan de a una y a mano, con el runbook de
-[`08-operacion.md`](08-operacion.md), que es como se hizo siempre. **Y las reglas
-igual, por la misma razón** (arriba).
+No puede, todavía: **leer** el contenido de los secrets (`secretmanager.viewer` ve
+los metadatos, no las versiones), **escribir** datos en Firestore directamente
+(`datastore.viewer` es de lectura; para escribir tendría que reescribir las reglas
+primero, que es la primera fila) ni tocar IAM.
 
-La contra asumida, que es de las dos decisiones juntas: **el job de reglas y el de
-Functions no pueden terminar bien nunca.** Todo push que toque `firestore.rules`,
-`firestore.indexes.json` o `functions/` deja la corrida roja, y con ella se saltea el
-job del tag de versión. Peor: el `if` del job de Hosting pide
-`needs.firestore.result != 'failure'`, así que **un push que toque las reglas y el
-panel a la vez no publica el panel**. Eso es **B-194**, con las salidas escritas.
+**Nada en CI protege contra esto.** Los tests de reglas corren antes del deploy en
+el workflow, pero quien tiene la key no pasa por el workflow. La única contención
+real es que la key exista en un solo lugar —un secret de Actions del repo— y el
+runbook de rotación de [`08-operacion.md`](08-operacion.md). Si se filtra, el orden
+es: rotar la key, **redesplegar `firestore.rules` y `storage.rules` desde el repo**,
+y recién después mirar qué se tocó.
 
-Otorgados y verificados el 2026-08-25 — exactamente esos tres y nada más:
+Verificar la lista contra la realidad, que es de dónde salió esta tabla:
 
 ```bash
 gcloud projects get-iam-policy agenda-literaria --flatten="bindings[].members" \
@@ -339,11 +339,11 @@ gcloud projects get-iam-policy agenda-literaria --flatten="bindings[].members" \
   --format="value(bindings.role)"
 ```
 
-**Alcanzan para Hosting y nada más.** Los jobs de reglas y de Functions de
-`push-main.yml` usan el mismo secret y van a cortar con `Permission denied` el día
-que cambien esos paths; los roles que piden, y por qué se agregan de a uno leyendo
-el error en lugar de otorgarlos de entrada, están en
-[`08-operacion.md`](08-operacion.md) § "La key como secret de GitHub".
+**La lista de acá y la de [`07-seguridad.md`](07-seguridad.md) § "La key" tienen que
+decir lo mismo**, y lo ata `tests/roles-deploy-ci.test.ts`. Ese test además exige
+que, mientras haya un rol de escritura en la lista, el documento de seguridad **no**
+afirme que el daño se limita a leer: es la afirmación que estuvo mintiendo una hora
+el 2026-08-25, y el test existe para que no vuelva a poder.
 
 
 ## Google Calendar

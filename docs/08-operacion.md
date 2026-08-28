@@ -295,15 +295,10 @@ firebase deploy --only storage
 
 **Es su propio target y no entra en `--only firestore:rules`.** `que-deployar.sh`
 lo decide aparte (línea `storage=`) y el job «Reglas e índices» de
-`push-main.yml` arma el `--only` con lo que haya cambiado. Igual que con las
-reglas de Firestore, ese job **falla en CI**: `deploy-ci@` no tiene
-`firebaserules.admin` a propósito (ver `02-infraestructura.md` § «Roles de
-`deploy-ci@`»), así que en la práctica esto se corre a mano.
-
-**Nunca se desplegaron todavía**, porque el archivo es de este cambio. Sin
-desplegarlas, Storage deniega **todo** por default y el botón «Subir una imagen»
-del panel falla con un mensaje de red: es el primer paso a hacer al publicar esta
-versión.
+`push-main.yml` arma el `--only` con lo que haya cambiado. **Desde el 2026-08-28
+ese job termina bien** y despliega las reglas de Storage junto con las de
+Firestore: `deploy-ci@` tiene `firebaserules.admin` (D-132). Correrlo a mano
+sigue sirviendo para publicar una regla sin esperar un push.
 
 **Antes de desplegar, revisar que el bucket exista.** Si el proyecto nunca usó
 Storage, hay que inicializarlo una vez desde la consola de Firebase (elige la
@@ -329,10 +324,13 @@ puede duplicar un evento y `rebuildPorOpciones` sigue sin publicar `destacado`. 
 verificación después del deploy está más abajo, en "Verificar el sync después de
 redesplegar".
 
-**El deploy de Functions es a mano, por diseño y no por falta de trabajo**
-(§"Roles de `deploy-ci@`" de [`02-infraestructura.md`](02-infraestructura.md)): la
-única key del proyecto no tiene los roles para desplegarlas, y darlos sería casi
-ejecución arbitraria. Lo mismo vale para las reglas desde el 2026-08-25 (D-119).
+**El deploy de Functions fue a mano por necesidad hasta el 2026-08-28.**
+`deploy-ci@` no tenía los roles para desplegarlas (D-119) y darlos era casi
+ejecución arbitraria; **D-132** los otorgó, y hoy el job «Cloud Functions» de
+`push-main.yml` las despliega solo cuando cambia `functions/`. Lo mismo vale para
+las reglas. El comando de arriba sigue sirviendo para desplegar sin esperar un push
+y para el **primer** deploy de una función nueva, que además necesita los roles de
+`calendar-sync@` del principio de esta sección — ésos la CI no los toca.
 
 ### Reportes del panel → issues de GitHub (una sola vez)
 
@@ -537,25 +535,44 @@ redeployarla.
 
 ### 3 · Service account para el workflow
 
-El runner de GitHub no tiene ADC, así que necesita una key. Es la **única** key
-del proyecto, y por eso la cuenta es aparte de `calendar-sync@` y solo puede
-leer:
+El runner de GitHub no tiene ADC, así que necesita una key. Es la **única** key del
+proyecto, y por eso la cuenta es aparte de `calendar-sync@`. Los roles son los de
+**D-132**; el motivo de cada uno y lo que la key puede hacer si se filtra están en
+[`02-infraestructura.md`](02-infraestructura.md) § "Roles de `deploy-ci@`" —
+**leerlo antes de correr esto**, porque no es una cuenta de solo lectura.
 
 ```bash
+SA=deploy-ci@agenda-literaria.iam.gserviceaccount.com
+
 gcloud iam service-accounts create deploy-ci \
   --display-name="Deploy del sitio desde GitHub Actions" --project agenda-literaria
 
-for R in datastore.viewer firebasehosting.admin; do
+# A nivel proyecto.
+for R in datastore.viewer firebasehosting.admin serviceusage.serviceUsageConsumer \
+         firebaserules.admin datastore.indexAdmin firebase.developAdmin \
+         secretmanager.viewer cloudfunctions.developer run.admin \
+         cloudbuild.builds.editor artifactregistry.writer cloudscheduler.admin; do
   gcloud projects add-iam-policy-binding agenda-literaria \
-    --member="serviceAccount:deploy-ci@agenda-literaria.iam.gserviceaccount.com" \
-    --role="roles/$R" --condition=None
+    --member="serviceAccount:$SA" --role="roles/$R" --condition=None
+done
+
+# Y `actAs` sobre las tres identidades con las que corre el código desplegado.
+for RUNTIME in calendar-sync@agenda-literaria.iam.gserviceaccount.com \
+               agenda-literaria@appspot.gserviceaccount.com \
+               1038157194972-compute@developer.gserviceaccount.com; do
+  gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" \
+    --member="serviceAccount:$SA" --role="roles/iam.serviceAccountUser" \
+    --project agenda-literaria
 done
 
 # La key: se baja, se pega en GitHub y se borra del disco enseguida.
 gcloud iam service-accounts keys create /tmp/deploy-ci.json \
-  --iam-account=deploy-ci@agenda-literaria.iam.gserviceaccount.com \
-  --project agenda-literaria
+  --iam-account="$SA" --project agenda-literaria
 ```
+
+**Esta lista se armó de a un 403 por vez**, no de entrada, y esa sigue siendo la
+forma de agregarle uno nuevo: correr el job, leer qué permiso pide, otorgar ése.
+Cada rol de más es alcance que tiene la única key del proyecto.
 
 ### 4 · La key como secret de GitHub
 
@@ -581,10 +598,12 @@ workflow. **No** «Build y deploy del sitio»: ese es `deploy.yml`, que hoy **no
 arranca**… ya no: era B-188 y se arregló. Pero sigue sin servir para probar el
 secret, porque el que publica en un push es «Deploy desde main».
 
-Y sabé de antemano qué vas a ver: la corrida **va a quedar roja** y eso no significa
-que el secret esté mal. Un `workflow_dispatch` siempre intenta los tres deploys (ver
-abajo), y con los dos roles mínimos los de reglas y Functions no tienen permiso. Lo
-que hay que leer es el error de cada job, no el color de la corrida.
+Desde el 2026-08-28 (**D-132**) los seis jobs pueden terminar bien, así que **una
+corrida verde es la señal de que el secret está bien** y una roja hay que mirarla.
+No fue siempre así: hasta esa fecha `deploy-ci@` tenía tres roles y los jobs de
+reglas y de Functions cortaban con `Permission denied` en toda corrida, con el
+secret perfectamente bien puesto. Las dos tablas de abajo son de esa época y se
+dejan porque son el registro de cómo se llegó acá.
 
 #### Medido el 2026-08-25, con el secret ya puesto
 
@@ -646,38 +665,63 @@ curl -sL -o /dev/null -w '%{http_code}\n' https://agenda-literaria.web.app/admin
 **Y unas horas después los dos roles de reglas se revirtieron** (D-119): el auditor
 de privacidad mostró que `firebaserules.admin` convertía una key filtrada en "puede
 hacer legible todo Firestore", porque las reglas del §5.3 son lo único que mantiene
-fuera de una lectura anónima los borradores, `difusion` y los uids. Así que hoy el
-estado final es:
+fuera de una lectura anónima los borradores, `difusion` y los uids.
+
+#### Y el 2026-08-28 se otorgaron todos — D-132
+
+Tres días después la contra asumida se cobró lo suyo: la `1.5.0` se publicó, el job
+de reglas cortó con 403, el `if` de Hosting salteó el deploy, y **la web siguió
+mostrando `1.4.0` sin que nada lo dijera** — la corrida estaba roja "como siempre".
+El razonamiento completo del cambio está en **D-132**; el estado de hoy:
 
 | Cambia | Qué pasa |
 |---|---|
-| solo `src/` | ✅ **publica solo**, que es el caso normal |
+| solo `src/` | ✅ publica el sitio y el panel |
 | solo docs | ✅ verde sin deployar nada |
-| `firestore.rules` o `firestore.indexes.json` | ❌ el job corta con `Permission denied` — reglas a mano |
-| algo de `functions/` | ❌ el job corta con `iam.serviceAccounts.ActAs` — Functions a mano |
-| **reglas + `src/` en el mismo push** | ❌ y **el panel no se publica**: el `if` de Hosting pide `needs.firestore.result != 'failure'` |
+| `firestore.rules`, `storage.rules` o `firestore.indexes.json` | ✅ el job los despliega |
+| algo de `functions/` | ✅ el job las despliega |
+| reglas + `src/` en el mismo push | ✅ los dos, y en ese orden |
+| sube `version` en `package.json` | ✅ el job del tag lo crea |
 
-Las tres últimas filas son **B-194**, con las salidas escritas. La última es la que
-más incomoda: el `if` existe para que el panel nuevo no salga antes que las reglas
-que necesita, y con las reglas a mano ese orden pasó a ser responsabilidad de quien
-deploya, no del workflow.
+**Una corrida roja volvió a significar que algo anda mal**, que es la mitad del
+valor del cambio y lo que se había perdido.
 
-El de Functions es otra cosa y **conviene no otorgarlo**: pide
-`roles/iam.serviceAccountUser` sobre `agenda-literaria@appspot.gserviceaccount.com`
-más `cloudfunctions.developer`, `run.admin`, `eventarc.developer`,
-`artifactregistry.writer` y `cloudbuild.builds.editor`. Poder actuar como una
-identidad privilegiada y desplegar código que corre con ella es, junta, casi
-ejecución arbitraria en el proyecto — y esto es **la única key que existe**. El
-deploy de Functions es de a una y a mano, con el runbook de más arriba, que es como
-se hizo siempre.
+Lo que esto le costó a la key está escrito sin suavizar en
+[`07-seguridad.md`](07-seguridad.md) § "La key" y en la tabla de radio de daño de
+[`02-infraestructura.md`](02-infraestructura.md). En una línea: puede reescribir las
+reglas y desplegar código que corre como `calendar-sync@`. **La regla al otorgar
+sigue siendo agregar de a uno leyendo el error**, no la lista completa de entrada —
+así se armó esta lista, un 403 por vez— y **cada rol nuevo obliga a releer esos dos
+documentos en el mismo cambio**: `tests/roles-deploy-ci.test.ts` falla si no.
 
-**Con los dos roles de `deploy-ci@` alcanza para publicar el sitio y el panel, y
-nada más.** `push-main.yml` tiene además un job que despliega las reglas de
-Firestore y otro que despliega las Functions, y los dos usan este mismo secret con
-`npx firebase deploy`. El detalle de qué falla, con qué error y qué rol pide cada
-uno está medido abajo. La regla al otorgar es agregar **de a uno leyendo el error**
-y no la lista completa de entrada: cada rol de más es alcance que tiene la única
-key del proyecto.
+#### Si la key se filtra
+
+El orden importa y **redesplegar las reglas va segundo, no último** (D-132). Hasta
+que eso se haga, no se sabe qué reglas están publicadas: `firebaserules.admin`
+alcanza para dejar `/actividades` legible por un anónimo, y desde afuera eso no se
+distingue de un sitio sano.
+
+```bash
+SA=deploy-ci@agenda-literaria.iam.gserviceaccount.com
+
+# 1 · Cortar la key vieja. Listar primero: la que se borra es la comprometida.
+gcloud iam service-accounts keys list --iam-account="$SA" --project agenda-literaria
+gcloud iam service-accounts keys delete KEY_ID --iam-account="$SA" --project agenda-literaria
+
+# 2 · Volver a poner las reglas del repo, que son las buenas.
+firebase deploy --only firestore:rules,storage --project agenda-literaria
+
+# 3 · Key nueva al secret (pasos 3 y 4 de arriba).
+
+# 4 · Recién ahora, mirar qué se tocó.
+gcloud logging read \
+  'protoPayload.authenticationInfo.principalEmail="'"$SA"'"' \
+  --project agenda-literaria --freshness=7d --limit 100
+```
+
+Después de eso, verificar que la lectura anónima siga cerrada con el comando de
+[`07-seguridad.md`](07-seguridad.md) § "Cómo verificar": es la comprobación que
+demuestra que el paso 2 hizo efecto, y sale de B-208.
 
 ### 5 · Desplegar la Function
 
