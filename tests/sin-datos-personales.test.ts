@@ -79,8 +79,14 @@ const PROVEEDORES_PERSONALES = [
  * decorativo, que es lo que pasó con la tabla que lo hizo nacer.
  */
 const PERMITIDOS = new Set<string>([
-  // (vacía por ahora — si algún día hay que permitir una casilla personal,
-  // tiene que ser una línea con su motivo al lado, no un patrón)
+  // La casilla de contacto del proyecto (`src/lib/enlaces.ts`), que el sitio
+  // publica para que le sugieran actividades o le reporten errores. Es un gmail,
+  // pero **no es la casilla de una persona**: publicarla es el objetivo, no la
+  // fuga. B-228.
+  //
+  // Que sea esta dirección y no el dominio es el punto: si mañana aparece otro
+  // `@gmail.com` versionado, este test tiene que volver a fallar.
+  'latiahildita123@gmail.com',
 ]);
 
 const archivosVersionados = (): string[] =>

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-08-28 (después de 1.5.0) · el contrato compartido del sitio público
+
+**`src/lib/enlaces.ts` — los destinos externos del sitio, en un solo lugar (B-228).**
+El calendario público al que la gente se suscribe, la cuenta de Instagram y la
+casilla de contacto. Se escribe **antes** que las páginas que lo usan y a propósito:
+la home, la ayuda y el contacto lo necesitan los tres, y son tres frentes en
+paralelo — sin un contrato previo, cada uno derivaba lo suyo y al integrar había que
+elegir cuál de las tres versiones era la buena. Es la lección de la integración de
+`1.5.0`, aplicada antes en vez de después.
+
+Todo se deriva de `CALENDARIO_ID`, que es el único dato crudo: el `cid` de Google es
+ese ID en base64, y la URL del ICS es el mismo ID adentro de otro path. Pegar el
+base64 a mano habría dejado en el repo un string que nadie puede leer para verificar
+a qué calendario apunta.
+
+**La trampa que el módulo evita**, y es la razón de que sea un módulo: Google publica
+dos ICS para el mismo calendario, `.../public/basic.ics` y
+`.../private-<token>/basic.ics`. El segundo **da acceso de lectura al calendario
+entero a quien lo tenga** y no se revoca sin rotarlo (`07-seguridad.md`). Están a un
+path de distancia. `tests/enlaces.test.ts` falla si cualquiera de las siete URLs que
+el módulo produce contiene `private-`.
+
+**El chequeo de datos personales frenó el mail de contacto antes de dejarlo pasar**,
+que es exactamente para lo que está: `latiahildita123@gmail.com` es un gmail, y
+`tests/sin-datos-personales.test.ts` lo rechazó al versionarlo. Se agregó como
+excepción **con su motivo** —es la casilla que el proyecto publica, no la de una
+persona— y se verificó que la escotilla es angosta: cualquier otro `@gmail.com`
+versionado sigue rompiendo el test.
+
+Mutaciones probadas, las cinco fallan: ICS privado, `cid` apuntando a otro
+calendario, la zona horaria caída, los dos motivos de contacto compartiendo asunto,
+y `webcal:` quedándose en `https:`.
+
 ## 2026-08-28 (después de 1.5.0) · solo infraestructura y documentación
 
 **La key de CI pasó a poder desplegar todo, y la documentación dice qué cuesta eso

@@ -4982,6 +4982,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| Faltaba un lugar único para los destinos externos del sitio, y tres frentes en paralelo iban a derivarlos por separado | no era un bug todavía: es la clase B-72/B-88 —tres derivaciones de la misma regla— vista antes de que ocurra. Se cerró escribiendo el contrato primero, que es la lección de la integración de `1.5.0` | B-228, `src/lib/enlaces.ts` (2026-08-28) |
 | El comparador de infraestructura reportaba que la doc mentía sobre `roles/iam.serviceAccountUser` cuando la que no miraba era él | `relevar-infra.sh` solo consultaba los bindings **del proyecto**, y `iam.serviceAccountUser` se otorga sobre **cada cuenta de runtime**. Salió a la luz al declarar los roles de D-132; es justo el rol que menos convenía no mirar, porque es la mitad de "puede desplegar código que corre como una identidad privilegiada" | B-226, `scripts/relevar-infra.sh` (2026-08-28) |
 
 | Editar un encuentro desde la vista calendario y volver por el encabezado mandaba al listado y perdía el mes que se estaba mirando | el botón "← Volver" hacía `setVista({tipo:'lista'})` fijo, mientras el "Cancelar" del formulario ya respetaba `volverA`: dos salidas del mismo formulario con dos criterios | B-35, `AdminApp.tsx` |
