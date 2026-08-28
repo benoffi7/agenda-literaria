@@ -3,9 +3,9 @@ import {
   claseBotonFila,
   claseBotonPrimario,
   claseBotonSecundario,
-  claseBotonTinta,
   claseInput,
 } from '@/components/admin/campos/Campo';
+import { FilasEditor } from '@/components/admin/campos/FilasEditor';
 import { medirFuncion } from '@/lib/analytics';
 import {
   aDatetimeLocal,
@@ -162,6 +162,13 @@ export const resumirSesion = (s: SesionForm): ResumenSesion => {
   };
 };
 
+/** Las funciones que se miden, en el vocabulario cerrado de `analytics-eventos`. */
+const FUNCION = {
+  agregar: 'encuentro-agregar',
+  duplicar: 'encuentro-duplicar',
+  borrar: 'encuentro-borrar',
+} as const;
+
 /**
  * §11 — Editor de sesiones: filas dinámicas (agregar / duplicar / borrar),
  * cada una con su `id` generado al crearse.
@@ -169,6 +176,11 @@ export const resumirSesion = (s: SesionForm): ResumenSesion => {
  * "Generar N encuentros semanales" ahorra mucho tipeo, pero las fechas
  * resultantes quedan editables una por una: los ciclos siempre tienen
  * excepciones (§2.2 — sin RRULE, lista explícita).
+ *
+ * El chasis de la lista —agregar, duplicar, borrar por id, el contador y el
+ * estado vacío— es `FilasEditor`, compartido con el editor de modalidades
+ * (B-224). Acá queda lo propio de un encuentro: el generador de N, los saltos de
+ * fecha de B-186 y la cancelación.
  */
 export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Props) {
   const [abrirGenerador, setAbrirGenerador] = useState(false);
@@ -181,30 +193,6 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
   /** Reemplaza una fila por id, nunca por índice (trampa 2). */
   const reemplazar = (id: string, f: (s: SesionForm) => SesionForm) =>
     onChange(sesiones.map((s) => (s.id === id ? f(s) : s)));
-
-  const editar = (id: string, cambios: Partial<SesionForm>) =>
-    reemplazar(id, (s) => ({ ...s, ...cambios }));
-
-  const agregar = () => {
-    // Arranca una semana después de la última, que es el caso más común.
-    const ultima = sesiones[sesiones.length - 1];
-    const base = ultima ? deDatetimeLocal(ultima.inicio) : null;
-    const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : new Date();
-    medirFuncion('encuentro-agregar', undefined, sesiones.length + 1);
-    onChange([...sesiones, sesionVacia(siguiente, duracion * 60_000)]);
-  };
-
-  /** Borra por id, nunca por índice (trampa 2). */
-  const borrar = (id: string) => {
-    medirFuncion('encuentro-borrar', undefined, sesiones.length - 1);
-    onChange(sesiones.filter((s) => s.id !== id));
-  };
-
-  const duplicar = (id: string) => {
-    const s = sesiones.find((x) => x.id === id);
-    if (s) medirFuncion('encuentro-duplicar', undefined, sesiones.length + 1);
-    if (s) onChange([...sesiones, duplicarSesion(s, 7)]);
-  };
 
   const generar = () => {
     const inicio = primera?.inicio ?? aDatetimeLocal(new Date());
@@ -219,149 +207,127 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <button type="button" onClick={agregar} className={claseBotonTinta}>
-          + Agregar encuentro
-        </button>
-        <button
-          type="button"
-          onClick={() => setAbrirGenerador((v) => !v)}
-          className={claseBotonSecundario}
-          aria-expanded={abrirGenerador}
-        >
-          Generar N encuentros…
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            medirFuncion('encuentros-ordenar', undefined, sesiones.length);
-            onChange(ordenarPorInicio(sesiones));
-          }}
-          className={claseBotonSecundario}
-          disabled={sesiones.length < 2}
-        >
-          Ordenar por fecha
-        </button>
-        <span className="text-xs text-tinta/50 sm:ml-auto">
-          {sesiones.length} {sesiones.length === 1 ? 'encuentro' : 'encuentros'}
-        </span>
-      </div>
-
-      {abrirGenerador && (
-        <div className="rounded-md border border-acento/30 bg-acento/5 p-3">
-          <div className="flex flex-wrap items-end gap-3">
-            {/*
-              B-204 — decían «Cantidad» y «Cada (días)». Leídas una al lado de la
-              otra parecen dos cantidades, y un segundo admin cargando una feria
-              lo reportó así: «no entiendo porque hay 2 opciones, lo de cantidad y
-              cantidad de días». La segunda no es una cantidad de días: es el
-              salto. Con el default de 7, pedir 3 encuentros para una feria de tres
-              días seguidos generaba tres semanas — fechas válidas, no las que
-              quería, y sin que nada avise.
-            */}
-            <label className="flex flex-col gap-1 text-xs">
-              Cuántos encuentros
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={52}
-                value={cantidad}
-                onChange={(e) => setCantidad(Number(e.target.value))}
-                className={`${claseInput} w-32`}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Cada cuántos días
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={cadaDias}
-                onChange={(e) => setCadaDias(Number(e.target.value))}
-                className={`${claseInput} w-32`}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={generar}
-              className={`${claseBotonPrimario} w-full sm:w-auto`}
-            >
-              Generar
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-tinta/60">
-            <strong>7 es una vez por semana</strong>; para días seguidos —una feria
-            de tres jornadas— va 1. Recalcula <strong>solo las fechas</strong>: los
-            temas, las lecturas y las cancelaciones que ya cargaste se conservan.
-            Toma la fecha y duración del primer encuentro como base — después
-            ajustás las excepciones una por una.
-            {sesiones.some((s) => s.calendarEventId) && (
-              <>
-                {' '}
-                Los encuentros que ya están en el calendario se mueven de fecha:
-                no se borran ni se vuelven a crear, así que quien se suscribió los
-                conserva.
-              </>
-            )}
-          </p>
-        </div>
-      )}
-
-      {error && (
-        <p data-campo-con-error className="scroll-mt-16 text-xs font-medium text-acento">
-          {error}
-        </p>
-      )}
-
-      {sesiones.length === 0 && (
-        <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/50">
-          Todavía no hay encuentros.
-        </p>
-      )}
-
-      <ol className="flex flex-col gap-2">
-        {sesiones.map((s, i) => {
-          const resumen = resumirSesion(s);
-          return (
-          <li
-            key={s.id}
-            className={`rounded-md border p-3 ${
-              s.cancelada ? 'border-borde bg-black/[0.03] opacity-60' : 'border-borde bg-white'
-            }`}
+    <FilasEditor
+      filas={sesiones}
+      onChange={onChange}
+      singular="encuentro"
+      plural="encuentros"
+      nueva={(filas) => {
+        // Arranca una semana después de la última, que es el caso más común.
+        const ultima = filas[filas.length - 1];
+        const base = ultima ? deDatetimeLocal(ultima.inicio) : null;
+        const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : new Date();
+        return sesionVacia(siguiente, duracion * 60_000);
+      }}
+      duplicar={(s) => duplicarSesion(s, 7)}
+      alCambiarCantidad={(accion, cantidadResultante) =>
+        medirFuncion(FUNCION[accion], undefined, cantidadResultante)
+      }
+      error={error}
+      etiquetaBorrar={(s) => `Borrar encuentro ${s.inicio || ''}`}
+      claseFila={(s) =>
+        s.cancelada ? 'border-borde bg-black/[0.03] opacity-60' : 'border-borde bg-white'
+      }
+      insignias={(s) =>
+        s.calendarEventId ? (
+          <span
+            className="rounded-full bg-tinta/10 px-2 py-0.5 text-[11px] text-tinta/60"
+            title={`Evento de Calendar: ${s.calendarEventId}`}
           >
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="font-serif text-sm font-semibold text-tinta/70">
-                Encuentro {i + 1}
-              </span>
-              {s.calendarEventId && (
-                <span
-                  className="rounded-full bg-tinta/10 px-2 py-0.5 text-[11px] text-tinta/60"
-                  title={`Evento de Calendar: ${s.calendarEventId}`}
-                >
-                  en Calendar
-                </span>
-              )}
-              <div className="ml-auto flex shrink-0 gap-1">
-                <button
-                  type="button"
-                  onClick={() => duplicar(s.id)}
-                  className={`${claseBotonFila} text-tinta/60 hover:bg-black/5`}
-                >
-                  Duplicar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => borrar(s.id)}
-                  aria-label={`Borrar encuentro ${s.inicio || ''}`}
-                  className={`${claseBotonFila} text-acento hover:bg-acento/10`}
-                >
-                  Borrar
-                </button>
-              </div>
+            en Calendar
+          </span>
+        ) : null
+      }
+      acciones={
+        <>
+          <button
+            type="button"
+            onClick={() => setAbrirGenerador((v) => !v)}
+            className={claseBotonSecundario}
+            aria-expanded={abrirGenerador}
+          >
+            Generar N encuentros…
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              medirFuncion('encuentros-ordenar', undefined, sesiones.length);
+              onChange(ordenarPorInicio(sesiones));
+            }}
+            className={claseBotonSecundario}
+            disabled={sesiones.length < 2}
+          >
+            Ordenar por fecha
+          </button>
+        </>
+      }
+      bajoLaBarra={
+        abrirGenerador && (
+          <div className="rounded-md border border-acento/30 bg-acento/5 p-3">
+            <div className="flex flex-wrap items-end gap-3">
+              {/*
+                B-204 — decían «Cantidad» y «Cada (días)». Leídas una al lado de la
+                otra parecen dos cantidades, y un segundo admin cargando una feria
+                lo reportó así: «no entiendo porque hay 2 opciones, lo de cantidad y
+                cantidad de días». La segunda no es una cantidad de días: es el
+                salto. Con el default de 7, pedir 3 encuentros para una feria de tres
+                días seguidos generaba tres semanas — fechas válidas, no las que
+                quería, y sin que nada avise.
+              */}
+              <label className="flex flex-col gap-1 text-xs">
+                Cuántos encuentros
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={52}
+                  value={cantidad}
+                  onChange={(e) => setCantidad(Number(e.target.value))}
+                  className={`${claseInput} w-32`}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Cada cuántos días
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={cadaDias}
+                  onChange={(e) => setCadaDias(Number(e.target.value))}
+                  className={`${claseInput} w-32`}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={generar}
+                className={`${claseBotonPrimario} w-full sm:w-auto`}
+              >
+                Generar
+              </button>
             </div>
-
+            <p className="mt-2 text-xs text-tinta/60">
+              <strong>7 es una vez por semana</strong>; para días seguidos —una feria
+              de tres jornadas— va 1. Recalcula <strong>solo las fechas</strong>: los
+              temas, las lecturas y las cancelaciones que ya cargaste se conservan.
+              Toma la fecha y duración del primer encuentro como base — después
+              ajustás las excepciones una por una.
+              {sesiones.some((s) => s.calendarEventId) && (
+                <>
+                  {' '}
+                  Los encuentros que ya están en el calendario se mueven de fecha:
+                  no se borran ni se vuelven a crear, así que quien se suscribió los
+                  conserva.
+                </>
+              )}
+            </p>
+          </div>
+        )
+      }
+    >
+      {(s, i, editar) => {
+        const resumen = resumirSesion(s);
+        return (
+          <>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-xs">
                 Inicio
@@ -377,7 +343,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
                 <input
                   type="datetime-local"
                   value={s.fin}
-                  onChange={(e) => editar(s.id, { fin: e.target.value })}
+                  onChange={(e) => editar({ fin: e.target.value })}
                   className={claseInput}
                 />
               </label>
@@ -385,7 +351,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
                 Tema
                 <input
                   value={s.tema}
-                  onChange={(e) => editar(s.id, { tema: e.target.value })}
+                  onChange={(e) => editar({ tema: e.target.value })}
                   placeholder="Ejercicio de voz"
                   className={claseInput}
                 />
@@ -395,7 +361,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
                   Lectura asignada
                   <input
                     value={s.lectura}
-                    onChange={(e) => editar(s.id, { lectura: e.target.value })}
+                    onChange={(e) => editar({ lectura: e.target.value })}
                     placeholder="Cap. 1-4"
                     className={claseInput}
                   />
@@ -451,14 +417,13 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
               <input
                 type="checkbox"
                 checked={s.cancelada}
-                onChange={(e) => editar(s.id, { cancelada: e.target.checked })}
+                onChange={(e) => editar({ cancelada: e.target.checked })}
               />
               Cancelado — se borra del calendario público (§7.3)
             </label>
-          </li>
-          );
-        })}
-      </ol>
-    </div>
+          </>
+        );
+      }}
+    </FilasEditor>
   );
 }

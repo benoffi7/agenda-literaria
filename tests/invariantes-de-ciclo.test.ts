@@ -208,6 +208,26 @@ const paresInicioFin = (src: string): { linea: number; inicio: string; fin: stri
 };
 
 /**
+ * Las dos fechas vacías **no son duración cero**: son «sin fecha» (B-224).
+ *
+ * Es la forma de una fila de modalidad sin ventana, que es el caso normal y no
+ * un fixture flojo. Y en un encuentro, dos fechas vacías tampoco son el patrón
+ * de H1: son un documento roto, y lo rechaza el schema en los **dos** niveles
+ * (`sesiones.N.inicio` / `sesiones.N.fin`), que es una red más fuerte que este
+ * detector heurístico.
+ *
+ * La excepción es angosta a propósito: solo los dos literales que significan «sin
+ * fecha» (`''` en el formulario, `null` en el documento). Dos expresiones iguales
+ * con una fecha adentro, o un `fin` que cae en `inicio`, siguen siendo
+ * sospechosas.
+ */
+const sinFecha = (par: { inicio: string; fin: string }): boolean =>
+  SIN_FECHA.includes(par.inicio) && SIN_FECHA.includes(par.fin);
+
+/** Las dos formas de escribir «sin fecha»: el form usa `''`, el documento `null`. */
+const SIN_FECHA = ["''", 'null'];
+
+/**
  * Ratchet, no amnistía: las instancias que ya existen se nombran una por una
  * con su ítem de backlog, y cualquier instancia **nueva** falla. Sin la lista
  * el chequeo no podría entrar en verde y no protegería nada; con la lista
@@ -237,7 +257,7 @@ describe('detector de fixtures flojos — B-135', () => {
         // (b) `fin` cae por default en `inicio`: duración cero salvo que el
         //     caller se acuerde. Es el caso de H1.
         const porDefault = /\?\?[^\n]*inicio/.test(par.fin);
-        if ((identicas || porDefault) && !DURACION_CERO_CONOCIDA.includes(ubicacion)) {
+        if ((identicas || porDefault) && !sinFecha(par) && !DURACION_CERO_CONOCIDA.includes(ubicacion)) {
           sospechosos.push(`${ubicacion} — inicio: ${par.inicio} / fin: ${par.fin}`);
         }
       }
@@ -254,7 +274,7 @@ describe('detector de fixtures flojos — B-135', () => {
       if (archivo.endsWith('invariantes-de-ciclo.test.ts')) continue;
       const src = readFileSync(fileURLToPath(new URL(archivo, raiz)), 'utf8');
       for (const par of paresInicioFin(src)) {
-        if (par.inicio === par.fin || /\?\?[^\n]*inicio/.test(par.fin)) {
+        if ((par.inicio === par.fin || /\?\?[^\n]*inicio/.test(par.fin)) && !sinFecha(par)) {
           vivas.add(`${archivo}:${par.linea}`);
         }
       }

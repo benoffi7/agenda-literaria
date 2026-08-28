@@ -1,3 +1,4 @@
+import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
 import { colapsarIndices } from '@/lib/rutaCampo';
 import { slugify } from '@/lib/slugify';
 import {
@@ -116,6 +117,14 @@ export const FUNCIONES = [
   'encuentro-borrar',
   'encuentros-ordenar',
   'encuentros-generar',
+  /**
+   * B-224 — las formas de cursar. Contestan la pregunta que abre el campo: si
+   * nadie agrega nunca una segunda modalidad, la lista fue de más y el
+   * formulario se complicó a cambio de nada.
+   */
+  'modalidad-agregar',
+  'modalidad-duplicar',
+  'modalidad-borrar',
   'taxonomia-otro',
   'taxonomia-nueva',
   'taxonomia-reusada',
@@ -287,24 +296,33 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'material.items.N.titulo',
   'material.items.N.url',
   'material.tiene',
-  'modalidad',
-  'online',
-  'online.plataforma',
-  'online.url',
-  'online.urlPublica',
+  // B-224 — `sede` y `online` viven adentro de cada fila, así que sus rutas van
+  // colapsadas (`rutaCampo.ts`). Son **nombres de campo**, no contenido: ninguna
+  // dirección ni ningún link de reunión sale a la analítica (§7 de
+  // 07-seguridad.md). `modalidad` ya no está: no es un campo del formulario.
+  'modalidades',
+  'modalidades.N',
+  'modalidades.N.fin',
+  'modalidades.N.id',
+  'modalidades.N.inicio',
+  'modalidades.N.modalidad',
+  'modalidades.N.online',
+  'modalidades.N.online.plataforma',
+  'modalidades.N.online.url',
+  'modalidades.N.online.urlPublica',
+  'modalidades.N.sede',
+  'modalidades.N.sede.barrio',
+  'modalidades.N.sede.ciudad',
+  'modalidades.N.sede.direccion',
+  'modalidades.N.sede.geo',
+  'modalidades.N.sede.geo.lat',
+  'modalidades.N.sede.geo.lng',
+  'modalidades.N.sede.indicaciones',
+  'modalidades.N.sede.nombre',
   'organizador',
   'organizador.instagram',
   'organizador.nombre',
   'organizador.web',
-  'sede',
-  'sede.barrio',
-  'sede.ciudad',
-  'sede.direccion',
-  'sede.geo',
-  'sede.geo.lat',
-  'sede.geo.lng',
-  'sede.indicaciones',
-  'sede.nombre',
   'sesiones',
   'sesiones.N',
   'sesiones.N.calendarEventId',
@@ -495,6 +513,8 @@ export const EVENTOS = {
     intentos_validacion: { tipo: 'entero', max: 50 },
     encuentros: { tipo: 'entero', max: 200 },
     modalidad: { tipo: 'enum', valores: MODALIDADES_MEDIBLES },
+    // B-224 — cuántas formas de cursar tiene. Entero, no texto.
+    modalidades: { tipo: 'entero', max: 20 },
     es_ciclo: { tipo: 'booleano' },
     material_items: { tipo: 'entero', max: 100 },
     tags: { tipo: 'entero', max: 100 },
@@ -649,17 +669,23 @@ const tieneTexto = (s: string | null | undefined): boolean => Boolean(s && s.tri
 export const avanceDelFormulario = (
   form: ActividadForm,
 ): { completos: Grupo[]; faltantes: Grupo[] } => {
-  const necesitaSede = form.modalidad === 'presencial' || form.modalidad === 'hibrido';
-  const necesitaOnline = form.modalidad === 'virtual' || form.modalidad === 'hibrido';
-
   const listo: Record<Grupo, boolean> = {
     'que-es': tieneTexto(form.tipo) && tieneTexto(form.titulo) && tieneTexto(form.descripcion),
     encuentros:
       form.sesiones.length > 0 &&
       form.sesiones.every((s) => tieneTexto(s.inicio) && tieneTexto(s.fin)),
+    // B-224 — «Dónde» está completo cuando **cada** forma de cursar tiene su
+    // lugar: con una sola fila es la condición de siempre, y con dos no alcanza
+    // con que la primera esté llena. Los criterios son los mismos condicionales
+    // del §11 que valida el schema, fila por fila.
     donde:
-      (!necesitaSede || (tieneTexto(form.sede?.nombre) && tieneTexto(form.sede?.direccion))) &&
-      (!necesitaOnline || tieneTexto(form.online?.plataforma)),
+      form.modalidades.length > 0 &&
+      form.modalidades.every(
+        (m) =>
+          (!filaPideSede(m.modalidad) ||
+            (tieneTexto(m.sede?.nombre) && tieneTexto(m.sede?.direccion))) &&
+          (!filaPideOnline(m.modalidad) || tieneTexto(m.online?.plataforma)),
+      ),
     quien: tieneTexto(form.organizador?.nombre),
     arancel: tieneTexto(form.arancel?.tipo),
     inscripcion:
@@ -678,7 +704,13 @@ export const avanceDelFormulario = (
 export const formaDelFormulario = (form: ActividadForm): Record<string, unknown> => ({
   estado: form.estado,
   encuentros: form.sesiones.length,
-  modalidad: form.modalidad,
+  // B-224 — la modalidad resultante, que es el mismo escalar que se guarda en el
+  // documento y el que ya se venía midiendo: la serie histórica no se corta.
+  modalidad: modalidadResultante(form.modalidades),
+  // Y cuántas formas de cursar tiene, como **entero**. Es la pregunta que abre el
+  // campo: si nadie carga más de una, la lista fue de más. Un contador, nunca
+  // texto (§9).
+  modalidades: form.modalidades.length,
   es_ciclo: form.esCiclo,
   material_items: form.material.tiene ? form.material.items.length : 0,
   tags: form.tags.length,
@@ -688,5 +720,7 @@ export const formaDelFormulario = (form: ActividadForm): Record<string, unknown>
   tiene_libro: tieneTexto(form.libro?.titulo),
   // B-97 — «se llenó», tal como estaba en el momento del guardado.
   cupo_completo: form.inscripcion.completo,
-  url_publica: Boolean(form.online?.urlPublica && tieneTexto(form.online?.url)),
+  // B-224 — con N filas, alcanza con que **alguna** publique su link para que
+  // la respuesta sea sí: mirar solo la primera diría «no» con un link público.
+  url_publica: form.modalidades.some((m) => m.online?.urlPublica && tieneTexto(m.online?.url)),
 });

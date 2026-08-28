@@ -33,6 +33,7 @@ import {
 import {
   formVacio,
   geoVacia,
+  modalidadVacia,
   onlineVacio,
   personaVacia,
   sedeVacia,
@@ -52,7 +53,7 @@ import type { ActividadForm } from '@/types/actividad';
  * este número, así que agregar un campo falla hasta que alguien decida si el
  * borrador viejo sigue sirviendo.
  */
-export const VERSION_BORRADOR = 2;
+export const VERSION_BORRADOR = 3;
 
 /**
  * La clave, el almacén y el borrado viven en `borradoresDelNavegador.ts` y se
@@ -141,8 +142,24 @@ const esObjetoPlano = (v: unknown): v is Record<string, unknown> =>
 const moldeDelFormulario = (): Record<string, unknown> => ({
   ...formVacio(),
   tallerista: personaVacia(),
-  online: onlineVacio(),
-  sede: { ...sedeVacia(), geo: geoVacia() },
+  /*
+   * B-224 — `sede` y `online` ya no están a nivel formulario: viven adentro de
+   * cada fila de `modalidades`, que es un array y por lo tanto **no se poda**
+   * (ver `podarConMolde`). La fábrica de la fila se deja igual en el molde para
+   * que la forma quede escrita en un solo lugar, aunque hoy la poda no baje ahí.
+   *
+   * Que el array no se pode es lo que obliga a que `modalidadPublica` en
+   * `toPublic.ts` enumere la sede campo por campo. Si esa proyección se hiciera
+   * con un spread, una clave de más en un borrador recuperado llegaría al
+   * `events.json`.
+   */
+  modalidades: [
+    {
+      ...modalidadVacia('hibrido'),
+      online: onlineVacio(),
+      sede: { ...sedeVacia(), geo: geoVacia() },
+    },
+  ],
 });
 
 /**
@@ -187,13 +204,14 @@ const conFormaConocida = (form: unknown): ActividadForm => {
   const completo = mezclarProfundo(formVacio(), podado) as ActividadForm;
   return {
     ...completo,
-    // Los dos bloques que las cascadas crean y destruyen: si el borrador no los
-    // trae, la respuesta es `null` —que es valor legal y es lo que produce una
-    // actividad virtual— y no el bloque vacío. Completarlos con la fábrica
-    // fabricaría datos que nadie cargó, y `sedeVacia()` trae `ciudad: 'CABA'`,
-    // que `toPublic` proyecta dentro de `sede` y saldría a `events.json`. Es el
-    // mismo argumento del `{lat: 0, lng: 0}`, una capa más arriba.
-    sede: 'sede' in podado ? (completo.sede ?? null) : null,
+    // El bloque que la cascada de tipo crea y destruye: si el borrador no lo
+    // trae, la respuesta es `null` —que es valor legal— y no el bloque vacío.
+    // Completarlo con la fábrica fabricaría datos que nadie cargó, igual que el
+    // `{lat: 0, lng: 0}` del molde.
+    //
+    // `sede` y `online` ya no están acá desde B-224: viven adentro de las filas
+    // de `modalidades`, y un array se toma entero del borrador o entero del
+    // default, nunca mezclado.
     tallerista: 'tallerista' in podado ? (completo.tallerista ?? null) : null,
   };
 };
@@ -246,11 +264,17 @@ const mezclarProfundo = (defecto: unknown, valor: unknown): unknown => {
  * material es ruido, y el ruido se aprende a ignorar.
  */
 export const teniaFlagsDePublicacion = (f: ActividadForm): boolean =>
-  Boolean(f.online?.urlPublica) || f.material.items.some((i) => i.publico);
+  // B-224 — `urlPublica` es de la fila, así que se pregunta por **todas**: con
+  // dos modalidades virtuales alcanzaba con mirar la primera para no ver la
+  // segunda, y el link saldría igual.
+  f.modalidades.some((m) => m.online?.urlPublica) || f.material.items.some((i) => i.publico);
 
 export const sinFlagsDePublicacion = (f: ActividadForm): ActividadForm => ({
   ...f,
-  online: f.online ? { ...f.online, urlPublica: false } : f.online,
+  modalidades: f.modalidades.map((m) => ({
+    ...m,
+    online: m.online ? { ...m.online, urlPublica: false } : m.online,
+  })),
   material: {
     ...f.material,
     items: f.material.items.map((i) => ({ ...i, publico: false })),

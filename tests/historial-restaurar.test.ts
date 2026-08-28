@@ -154,11 +154,14 @@ describe('el searchText y la restauración no derivan por separado (B-88, B-72)'
       conCentinela[campo] =
         campo === 'sede'
           ? { nombre: 'CENTINELA', barrio: '' }
-          : campo === 'libro'
-            ? { titulo: 'CENTINELA', autor: '' }
-            : campo === 'organizador' || campo === 'tallerista'
-              ? { nombre: 'CENTINELA' }
-              : 'CENTINELA';
+          : // B-224 — las formas de cursar entran por la sede de cada fila.
+            campo === 'modalidades'
+            ? [{ sede: { nombre: 'CENTINELA', barrio: '' } }]
+            : campo === 'libro'
+              ? { titulo: 'CENTINELA', autor: '' }
+              : campo === 'organizador' || campo === 'tallerista'
+                ? { nombre: 'CENTINELA' }
+                : 'CENTINELA';
       expect(buildSearchText(conCentinela), `${campo} no llega al searchText`).toContain(
         'centinela',
       );
@@ -179,6 +182,54 @@ describe('el searchText y la restauración no derivan por separado (B-88, B-72)'
     }
     // Y que de verdad encontró algo: un regex que no matchea nada pasaría solo.
     expect(leidos.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it('restaurar las formas de cursar no deja el barrio viejo en el índice (B-224)', () => {
+    /**
+     * El bug: `buildSearchText` lee las sedes de `modalidades` **y** la `sede` de
+     * primer nivel, que es el derivado. Armando el índice sobre `actual` con el
+     * campo restaurado encima, el barrio viejo seguía adentro al lado del nuevo, y
+     * la actividad quedaba buscable por un barrio que ya no es suyo. Se corregía
+     * sola en la próxima edición completa: si alguien la busca no la encuentra
+     * donde está, y si no, no se entera nadie.
+     *
+     * Es la clase de B-88 en miniatura: dos consumidores del mismo dato derivando
+     * por caminos distintos. El arreglo es de orden — los derivados primero, el
+     * índice sobre lo que va a quedar.
+     */
+    const sede = (barrio: string, nombre: string) => ({
+      nombre,
+      direccion: 'Drago 236',
+      barrio,
+      ciudad: 'CABA',
+      indicaciones: '',
+      geo: null,
+    });
+    const fila = (barrio: string, nombre: string) => ({
+      id: 'mod_1',
+      modalidad: 'presencial' as const,
+      inicio: null,
+      fin: null,
+      sede: sede(barrio, nombre),
+      online: null,
+    });
+
+    const actual = actividad({
+      modalidades: [fila('palermo', 'Libreria Palermo')],
+      sede: sede('palermo', 'Libreria Palermo'),
+    } as unknown as Partial<Actividad>);
+    const version = {
+      ...versionAnteriorAB167(),
+      camposCambiados: ['modalidades'],
+      documento: { ...actual, modalidades: [fila('boedo', 'Casa Boedo')] },
+    };
+
+    const payload = payloadDeRestauracion('modalidades', version as never, actual, 'uid-a');
+    expect(payload.searchText).toContain('boedo');
+    expect(payload.searchText, 'el barrio viejo quedó en el índice').not.toContain('palermo');
+    // Y los tres derivados acompañan en la misma escritura.
+    expect((payload.sede as { barrio: string }).barrio).toBe('boedo');
+    expect(payload.modalidad).toBe('presencial');
   });
 
   it('restaurar un libro viejo recalcula el searchText (§6)', () => {

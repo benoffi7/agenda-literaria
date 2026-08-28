@@ -3,6 +3,11 @@
 Las trampas conocidas del [`CLAUDE.md`](../CLAUDE.md) §13, con **dónde vive
 la regla** y **qué test la fija**. Cierra B-119.
 
+> Desde B-224 la trampa 2 tiene una tercera lista con ids de cliente
+> (`modalidades`, además de `sesiones` e `imagenes`) y la trampa 9 tiene un caso
+> nuevo: cambiar la sede de la **segunda** forma de cursar también tiene que
+> propagar a los N eventos. Los dos están en `tests/modalidades.test.ts`.
+
 ## Para qué
 
 El `auditor-trampas` reconstruía esta tabla en cada corrida con `grep`. Funciona
@@ -28,15 +33,15 @@ palabras `trampa N`.
 
 | # | Trampa (§13) | Dónde vive la regla | Test que la fija |
 |---|---|---|---|
-| 1 | Timestamps sin timezone | `functions/calendario.js`, `src/lib/calendarioPanel.ts` | `tests/calendario.test.ts`, `tests/calendarioPanel.test.ts` |
-| 2 | Ids de sesión por índice | `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/formulario/autoguardado.ts` | `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts` |
+| 1 | Timestamps sin timezone | `functions/calendario.js`, `src/lib/calendarioPanel.ts` | `tests/calendario.test.ts`, `tests/calendarioPanel.test.ts`, `tests/modalidades.test.ts` |
+| 2 | Ids de sesión por índice | `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/modalidades.ts`, `src/lib/formulario/autoguardado.ts` | `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts`, `tests/modalidades.test.ts` |
 | 3 | Loop de escritura en la Function | `functions/index.js`, `functions/historial.js` | `tests/calendario.test.ts`, `tests/costuras.test.ts`, `tests/reportes.test.ts` |
 | 4 | `firebase-admin` en bundle cliente | `src/lib/firebase-admin.ts`, `src/pages/admin.astro` | `tests/bundle-panel.test.ts` |
 | 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/eventsJson.test.ts`, `tests/barrido-de-salidas-publicas.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
 | 6 | Taxonomías sin slugify | `src/lib/slugify.ts`, `src/lib/opciones.ts` | `tests/slugify.test.ts` |
 | 7 | Query pública sin `where('estado','==','publicado')` | `firestore.rules` | `tests/actividades.integracion.test.ts` |
 | 8 | Olvidar el rebuild al cambiar `/opciones/*` | `functions/index.js`, `functions/rebuild.js` | `tests/costuras.test.ts`, `tests/clases-de-bug.test.ts` |
-| 9 | Cambio de sede que no propaga a las N sesiones | `functions/calendario.js` | `tests/calendario.test.ts` |
+| 9 | Cambio de sede que no propaga a las N sesiones | `functions/calendario.js` | `tests/calendario.test.ts`, `tests/modalidades.test.ts` |
 | 10 | Slug mutable | `src/lib/schema.ts`, `src/lib/formulario/autoguardado.ts` | `tests/schema.test.ts`, `tests/autoguardado.test.ts` |
 | 11 | Workflow de Actions que no parsea | `.github/workflows/deploy.yml`, `.github/workflows/push-main.yml` | `tests/workflows.test.ts` |
 
@@ -63,7 +68,7 @@ documentos **crudos**. La auditoría de privacidad la encontró y se reprodujo
 contra el emulador: volvían `online.url` con `urlPublica:false`, `difusion`, la
 URL del material privado, los uids, el `calendarEventId` y el `storagePath` — la
 lista completa del §5.1, salteando `toPublic`. Se estaba esperando a B-01 para
-poner red sobre una regla que ya estaba filtrando (B-208, D-128).
+poner red sobre una regla que ya estaba filtrando (B-224, D-130).
 
 **Y acá el error, que duró una hora.** Al arreglar la fuga
 (`allow read: if esAdmin()`) se escribió una query anónima en el test de reglas,
@@ -86,7 +91,7 @@ mitades: la query con el `where` devuelve el subconjunto, la query sin el `where
 se rechaza entera. Tiene control positivo y **se verificó invirtiendo la
 aserción**. Queda independiente de cuál sea la regla viva en `/actividades`: el
 día que B-01 necesite lectura en vivo y alguien vuelva a condicionar por
-`resource.data` —la subcolección `privado/` de D-128 o cualquier otra forma—, el
+`resource.data` —la subcolección `privado/` de D-130 o cualquier otra forma—, el
 mecanismo ya está fijado. **Cierra B-172.**
 
 ### La trampa 11, que se descubrió en producción

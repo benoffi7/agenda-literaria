@@ -54,6 +54,9 @@ import {
   LABELS_CENTINELA,
   VOCABULARIO_CERRADO,
   actividadCentinela,
+  conDosFormasDeCursar,
+  conDosSedes,
+  conLinkPublico,
   opcionCentinela,
 } from './fixtures/centinelas';
 import { barrer, type Excepcion } from './fixtures/barrido';
@@ -122,7 +125,20 @@ const PERMITIDO_EN_EVENTS_JSON: readonly Excepcion[] = [
   {
     nombre: 'dónde',
     centinelas: ['sede.nombre', 'sede.direccion', 'sede.ciudad', 'sede.indicaciones'],
-    porque: 'sin la dirección y el cómo llegar nadie llega: es el punto de una actividad presencial.',
+    porque:
+      'sin la dirección y el cómo llegar nadie llega: es el punto de una actividad ' +
+      'presencial. Salen dos veces —adentro de su fila de `modalidades` y en la sede ' +
+      'derivada— porque son el mismo dato: el barrido cuenta presencia, no ocurrencias.',
+  },
+  {
+    nombre: 'formas de cursar',
+    centinelas: ['modalidades.id'],
+    porque:
+      'B-224 — el id es el uuid del §3.1 con el que el sitio identifica la fila, no ' +
+      'contenido; es lo mismo que `sesiones.id` e `imagenes.id`. Las **fechas** de la ' +
+      'fila NO están en esta lista y tampoco tienen centinela (un `Timestamp` no puede ' +
+      'llevarlo): que no salgan lo afirma `tests/modalidades.test.ts` buscándolas por su ' +
+      'valor.',
   },
   {
     nombre: 'taxonomías, como slug',
@@ -289,13 +305,7 @@ describe('barrido del events.json (§5.2, la proyección pública)', () => {
     // Desvío consciente del §5.2 decidido por el dueño: el modelo tiene el flag y
     // el formulario su casilla. El default sigue siendo `false` — el caso base de
     // arriba exige que el centinela del link NO salga.
-    const abierta = actividadCentinela({
-      online: {
-        plataforma: CENTINELA['online.plataforma'],
-        url: CENTINELA['online.url'],
-        urlPublica: true,
-      },
-    });
+    const abierta = actividadCentinela(conLinkPublico());
     barrer('events.json (link de reunión publicado a mano)', JSON.stringify(toPublic(abierta, 'act_abierta')), [
       ...PERMITIDO_EN_EVENTS_JSON,
       {
@@ -304,6 +314,56 @@ describe('barrido del events.json (§5.2, la proyección pública)', () => {
         porque:
           'trampa 5 — sale SOLO con `urlPublica: true`, que es una acción deliberada por ' +
           'actividad. El caso base de este mismo archivo exige que con el default no salga.',
+      },
+    ]);
+  });
+});
+
+describe('barrido del events.json con dos formas de cursar (B-224)', () => {
+  /**
+   * El caso que la lista hace posible y que una sola fila no puede ver: los tres
+   * derivados salen de la **primera** fila, así que un cambio que leyera el flag
+   * del derivado —o que copiara la fila con un spread— publicaría el link de la
+   * segunda sin que nada se ponga rojo.
+   */
+  it('sale el link de la fila que lo tildó, y NO el de la que no', () => {
+    const dos = actividadCentinela(conDosFormasDeCursar());
+    barrer('events.json (dos formas de cursar)', JSON.stringify(toPublic(dos, 'act_dos')), [
+      ...PERMITIDO_EN_EVENTS_JSON,
+      {
+        nombre: 'la segunda forma de cursar',
+        centinelas: ['modalidades.2.id', 'modalidades.2.online.plataforma'],
+        porque:
+          'B-224 — la segunda fila es una forma de cursar más: su plataforma es pública igual ' +
+          'que la de la primera, y el id es el uuid del §3.1. El **link** de esta fila entra en ' +
+          'el grupo de abajo, y el de la primera NO está en ninguna lista: ese es el punto.',
+      },
+      {
+        nombre: 'el link de la segunda fila, publicado a mano',
+        centinelas: ['modalidades.2.online.url'],
+        porque:
+          'trampa 5 — sale SOLO porque **esa fila** tiene `urlPublica: true`. El de la primera ' +
+          'sigue en `false` y el barrido lo exige ausente: si `onlinePublico` leyera el flag del ' +
+          'derivado en lugar del de la fila, saldrían los dos y esto fallaría.',
+      },
+    ]);
+  });
+
+  it('con dos sedes salen las dos direcciones', () => {
+    const dos = actividadCentinela(conDosSedes());
+    barrer('events.json (dos sedes)', JSON.stringify(toPublic(dos, 'act_sedes')), [
+      ...PERMITIDO_EN_EVENTS_JSON,
+      {
+        nombre: 'la segunda sede',
+        centinelas: [
+          'modalidades.2.id',
+          'modalidades.2.sede.nombre',
+          'modalidades.2.sede.direccion',
+        ],
+        porque:
+          'B-224 — sin la dirección de la segunda forma de cursar, la mitad de la gente no sabe ' +
+          'a dónde ir. La **derivada** sigue siendo la de la primera fila, que es la que va al ' +
+          'campo que dibuja el mapa.',
       },
     ]);
   });
@@ -328,13 +388,7 @@ describe('barrido del evento de Calendar (§5.1, §7.4)', () => {
   });
 
   it('con `urlPublica: true` el link entra a la lista, y solo así', () => {
-    const abierta = actividadCentinela({
-      online: {
-        plataforma: CENTINELA['online.plataforma'],
-        url: CENTINELA['online.url'],
-        urlPublica: true,
-      },
-    });
+    const abierta = actividadCentinela(conLinkPublico());
     barrer(
       'evento de Calendar (link de reunión publicado a mano)',
       JSON.stringify(construirEvento(abierta, abierta.sesiones[0], LABELS_CENTINELA)),
@@ -346,6 +400,43 @@ describe('barrido del evento de Calendar (§5.1, §7.4)', () => {
           porque:
             'trampa 5 — el §7.4 dice que el link no va nunca; se respeta el flag del modelo ' +
             'por decisión explícita del dueño, con default `false` y aviso en el formulario.',
+        },
+      ],
+    );
+  });
+
+  it('con dos formas de cursar sale el link de la que lo tildó, y solo ese (B-224)', () => {
+    const dos = actividadCentinela(conDosFormasDeCursar());
+    barrer(
+      'evento de Calendar (dos formas de cursar)',
+      JSON.stringify(construirEvento(dos, dos.sesiones[0], LABELS_CENTINELA)),
+      [
+        ...PERMITIDO_EN_EVENTO_DE_CALENDAR,
+        {
+          nombre: 'la segunda forma de cursar',
+          centinelas: ['modalidades.2.online.plataforma', 'modalidades.2.online.url'],
+          porque:
+            'B-224 — el bloque «Dónde» sale una vez por fila. La plataforma es pública siempre; ' +
+            'el link, solo porque **esa fila** tildó `urlPublica`. El de la primera sigue ' +
+            'ausente, que es lo que verifica que el flag se lee por fila y no del derivado.',
+        },
+      ],
+    );
+  });
+
+  it('con dos sedes el evento nombra las dos direcciones (B-224)', () => {
+    const dos = actividadCentinela(conDosSedes());
+    barrer(
+      'evento de Calendar (dos sedes)',
+      JSON.stringify(construirEvento(dos, dos.sesiones[0], LABELS_CENTINELA)),
+      [
+        ...PERMITIDO_EN_EVENTO_DE_CALENDAR,
+        {
+          nombre: 'la segunda sede',
+          centinelas: ['modalidades.2.sede.nombre', 'modalidades.2.sede.direccion'],
+          porque:
+            'B-224 — el evento nombra cada forma de cursar con su lugar. El campo `location`, en ' +
+            'cambio, lleva **una** dirección: la derivada, o sea la de la primera fila.',
         },
       ],
     );
@@ -480,6 +571,7 @@ describe('el fixture de centinelas no puede envejecer', () => {
     Libro: actividad.libro as unknown as Record<string, unknown>,
     Sesion: actividad.sesiones[0] as unknown as Record<string, unknown>,
     Imagen: actividad.imagenes![0] as unknown as Record<string, unknown>,
+    ModalidadFila: actividad.modalidades[0] as unknown as Record<string, unknown>,
     Sede: actividad.sede as unknown as Record<string, unknown>,
     Online: actividad.online as unknown as Record<string, unknown>,
     Inscripcion: actividad.inscripcion as unknown as Record<string, unknown>,
@@ -507,6 +599,7 @@ describe('el fixture de centinelas no puede envejecer', () => {
     'TimestampLike', // no tiene contenido: es la forma de un Timestamp
     'ActividadForm', // el formulario, cubierto por tests/fixtures/formulario.ts
     'SesionForm', // idem
+    'ModalidadFilaForm', // idem
     // `DocOpciones` es `{ valores: ValorOpcion[] }` y nada más: lo que hay que
     // decidir está en `ValorOpcion`, que ahora sí está anclada arriba.
     'DocOpciones',
@@ -774,6 +867,15 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       centinelas: ['opcion.slug', 'opcion.label'],
       porque: '§4.4 — es lo que hace que un chip nuevo aparezca solo. Ver B-212.',
     },
+    /*
+     * `modalidades` (B-224) **no está en esta lista y no le falta un centinela**:
+     * el índice lleva sus **valores** —`presencial`, `virtual`, `hibrido`—, que son
+     * enums del modelo y están en `VOCABULARIO_CERRADO`. Las sedes de cada fila y
+     * las fechas de la ventana no entran, y eso lo verifica el `it` de abajo
+     * nombrándolas: sin ese caso, el día que alguien mande la fila entera al índice
+     * el barrido no diría nada, porque la sede ya está permitida por la sede
+     * derivada.
+     */
   ];
 
   it('sobreviven exactamente los centinelas que el listado necesita', () => {
@@ -784,6 +886,30 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       generadoEn: '2026-08-27T00:00:00.000Z',
     });
     barrer('events.json (índice del listado)', JSON.stringify(indice), PERMITIDO_EN_EL_INDICE);
+  });
+
+  it('lleva los valores de las formas de cursar, no las filas (B-224)', () => {
+    /*
+     * La celda del campo nuevo en la tercera proyección. El filtro necesita saber
+     * que la actividad es presencial **y** virtual —si no, con la resultante sola
+     * el sitio la escondería de los dos chips que la describen mejor—, y eso son
+     * tres strings de enum. La **sede** de cada fila y las **fechas** de la
+     * ventana no: la primera es del detalle y las segundas no salen a ninguna
+     * salida todavía.
+     */
+    const dos = toPublic(actividadCentinela(conDosSedes()), 'act_dos');
+    const indice = construirIndice({
+      actividades: [dos],
+      opciones: {},
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    const entrada = indice.actividades[0]!;
+    expect(entrada.modalidades).toEqual(['hibrido', 'presencial']);
+    // La segunda sede no entra: la del índice es una sola, la derivada.
+    const json = JSON.stringify(indice);
+    expect(json).not.toContain(CENTINELA['modalidades.2.sede.nombre']);
+    expect(json).not.toContain(CENTINELA['modalidades.2.id']);
   });
 
   it('con `urlPublica: true` el link TAMPOCO entra al índice, a diferencia de las salidas 1 y 2', () => {

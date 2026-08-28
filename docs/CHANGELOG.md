@@ -1,5 +1,107 @@
 # Changelog
 
+## Sin publicar
+
+### B-224 · «Dónde» es una lista: N formas de cursar, cada una con su lugar
+
+Pedido del dueño: «Una actividad tiene N modalidades (mismo sistema que encuentro,
+misma UI). Cada modalidad puede ser presencial, virtual o híbrida, como está ahora.
+Solo hay que sumarle una fecha y hora de inicio y una fecha y hora de finalización.
+Ambas son opcionales.» Y, preguntado por el alcance: «el formulario de modalidad se
+mantiene tal cual + doble fecha… misma interfaz y funcionalidades» que los
+encuentros.
+
+`modalidad: 'presencial' | 'virtual' | 'hibrido'` + una `sede` + un `online` pasa a
+`modalidades: [{ id, modalidad, inicio, fin, sede, online }]`. El razonamiento
+completo está en **D-130**; lo que importa:
+
+- **Cada fila lleva su lugar adentro.** Es lo que permite decir «los martes
+  presencial en la librería, los jueves por Meet», que con una sede sola no se
+  podía. El id se genera en el cliente (`mod_<uuid>`), nunca por índice (trampa 2).
+- **Las fechas se guardan y no se publican.** Qué significan frente a
+  `sesiones[].inicio/fin` es **decisión pendiente del dueño** («sobre las fechas,
+  te lo consulto pero hacé el resto»), así que hasta que se resuelva no salen a
+  ninguna de las cinco salidas del §5. Un campo que no sale no puede decir algo
+  equivocado en el calendario de todos los suscriptos; agregarlo después es una
+  línea, sacarlo de algo ya publicado no. Lo fija `tests/modalidades.test.ts`,
+  buscando las fechas **por su valor** en las cinco.
+- **Quedan tres campos derivados** —`modalidad`, `sede`, `online`— que escribe
+  `formADocumento` en cada guardado, igual que `searchText`: hay salidas que solo
+  admiten un valor (el `location` del evento, el `searchText` del §6, el filtro por
+  barrio). `modalidad` es la **unión** de las filas y no «la primera», que
+  dependería del orden del array — la trampa 2 en otra forma.
+- **El filtro del panel busca por cualquiera de las filas.** Una actividad
+  presencial y virtual aparece bajo los tres chips, porque las tres cosas son
+  ciertas de ella.
+- **Sin migración y sin lectura de compatibilidad**: no hay documentos sin el
+  campo (decisión del dueño), así que solo queda un `?? []`. Hubo una
+  `modalidadesDe` que sintetizaba una fila con id determinístico `mod_compat` —se
+  escribió porque el `auditor-trampas` mostró que sin ella abrir y guardar le
+  borraba la sede a un documento así— y **se sacó igual**: dos auditores le
+  encontraron algo en una sesión (una rama de proyección pública sin barrido, y
+  una fila fantasma con la lista vacía a propósito) sobre una función que existía
+  para leer documentos que no existen. El arreglo más barato para una rama sin
+  barrido es no tener la rama.
+- **La lección de esa vuelta, que vale más que el arreglo:** la fila fantasma
+  nació de que `modalidadResultante([])` devuelve `'presencial'` y no vacío. Un
+  default razonable en un lugar volvió falsa la condición de otro, a distancia y
+  sin que nada fallara.
+- **`searchText` indexa la sede de todas las formas de cursar**, no solo la
+  principal: con dos filas en dos barrios, buscar por el segundo tiene que
+  encontrar la actividad.
+- **El índice del listado lleva los valores, no las filas.** `eventsJson.ts` es la
+  tercera proyección en serie y su celda quedó decidida: `modalidades: string[]`
+  con la unión, para que el filtro del sitio encuentre una actividad
+  presencial-y-virtual bajo los tres chips. Las sedes de cada fila son del detalle
+  y las fechas no salen.
+- **Restaurar del historial ya no ofrece los derivados sueltos.** `modalidad`,
+  `sede`, `online` y `searchText` salieron de la lista: restaurar uno por separado
+  deja el documento contradiciéndose hasta el próximo guardado, y en el medio eso
+  sale al `events.json` y al evento. Restaurar `modalidades` recalcula los tres
+  derivados en la misma escritura — B-207 con otro campo. Y el índice de búsqueda
+  se arma sobre **el documento que va a quedar**, derivados incluidos: armándolo
+  sobre el actual con el campo restaurado encima, el barrio **viejo** quedaba
+  adentro al lado del nuevo y la actividad seguía apareciendo al buscar un barrio
+  que ya no es suyo. Se corregía sola en la próxima edición completa, o sea nunca
+  para quien la busca. Lo encontró el `auditor-trampas` en su segunda pasada.
+- **La descripción del evento no cambió para una actividad de una sola modalidad**,
+  y es deliberado: si cambiara, la primera edición de cada actividad publicada
+  reescribiría sus N eventos en el calendario de todos los suscriptos sin que nada
+  hubiera cambiado para ellos (el argumento de D-95).
+- **La guarda de privacidad se mudó de lugar.** La poda de `autoguardado.ts` deja
+  pasar los arrays a propósito «porque sus proyecciones públicas enumeran campo por
+  campo»; al mudar `sede` adentro de `modalidades` esa frase dejaba de ser cierta.
+  Ahora enumeran `formADocumento` (más fuerte: la clave de más no llega ni a
+  Firestore) y `modalidadPublica`. Las dos con test, las dos verificadas por
+  mutación.
+- **`VERSION_BORRADOR` sube a 3**, y esta vez sí correspondía: un borrador de la
+  forma anterior *parece bueno* y volvería como presencial, con la sede y el link
+  perdidos.
+- **El chasis de la lista se extrajo** (`campos/FilasEditor.tsx`) y lo usan los dos
+  editores, el de modalidades y el de encuentros: agregar, duplicar y borrar **por
+  id** viven una sola vez.
+
+**Lo que encontraron los auditores, y no lo habría encontrado la suite.** Los tres
+corrieron sobre el cambio antes de cerrarlo:
+
+- `auditor-trampas` (2 hallazgos en dos pasadas): abrir y guardar un documento sin
+  `modalidades` le borraba la sede en silencio —de ahí salió, y después se sacó,
+  la lectura de compatibilidad—; y restaurar del historial dejaba el barrio viejo
+  en el índice de búsqueda.
+- `auditor-privacidad` (6 hallazgos, ninguno filtraba hoy): el barrido de
+  centinelas nunca veía **más de una fila**, así que el caso que el cambio hace
+  posible —el link tildado en la segunda y no en la primera— no estaba fijado por
+  nada; `tests/calendario.test.ts` había pasado entero a la rama de respaldo sin
+  que nadie lo notara; la sede **derivada** se publicaba con un spread mientras su
+  hermana de la fila se enumeraba; y `formADocumento` y el historial escribían dos
+  `searchText` distintos. Los cuatro arreglados, con su test.
+- `auditor-documentacion` (3): la doc contaba que se había descartado el default
+  de lectura, y para entonces el código ya lo tenía —con otro motivo—.
+
+Abre **B-209**: `un anónimo lee lo publicado` falla salteado en la corrida completa
+con los emuladores. Es anterior a este cambio —se reprodujo con el árbol limpio— y
+apunta a estado compartido del emulador entre archivos de test.
+
 ## 2026-08-27 (después de 1.4.0)
 
 Sin versión nueva: no cambia nada de lo que el panel o el sitio hacen. Es el gate

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
+import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esSlugDeCopia } from '@/lib/duplicar';
 import {
   ENTREGAS_MATERIAL,
@@ -123,6 +124,32 @@ const onlineSchema = z.object({
   urlPublica: z.boolean().default(false),
 });
 
+/**
+ * Una fila de modalidad (B-224): una forma de cursar, con su lugar y su ventana.
+ *
+ * Sigue el molde de `sesionSchema`: las reglas de forma —el id de cliente y que
+ * la ventana no esté al revés— van en **los dos niveles**, porque son las que
+ * harían ilegible el documento, no las que lo harían incompleto. Que la sede esté
+ * completa, en cambio, es completitud y va solo al publicar (abajo).
+ *
+ * Las dos fechas son opcionales: es lo que pidió el dueño, y `''` es lo que
+ * reporta un `<input type="datetime-local">` vacío. Por eso no hay `.min(1)`, a
+ * diferencia de las de un encuentro.
+ */
+const modalidadFilaSchema = z
+  .object({
+    id: z.string().regex(/^mod_/, 'El id de modalidad debe venir de nuevaModalidadId()'),
+    modalidad: z.enum(MODALIDADES),
+    inicio: opcional,
+    fin: opcional,
+    sede: sedeSchema.nullable().default(null),
+    online: onlineSchema.nullable().default(null),
+  })
+  .refine((m) => !m.inicio || !m.fin || new Date(m.fin) > new Date(m.inicio), {
+    message: 'La modalidad tiene que terminar después de empezar',
+    path: ['fin'],
+  });
+
 const itemMaterialSchema = z.object({
   tipo: z.enum(TIPOS_MATERIAL),
   // El título del material se exige al publicar: en el evento, un ítem sin
@@ -173,9 +200,15 @@ export const actividadFormSchema = z
     esCiclo: z.boolean().default(false),
     sesiones: z.array(sesionSchema),
 
-    modalidad: z.enum(MODALIDADES),
-    sede: sedeSchema.nullable().default(null),
-    online: onlineSchema.nullable().default(null),
+    /**
+     * B-224 — las formas de cursar, con su sede o su bloque online adentro.
+     *
+     * `modalidad`, `sede` y `online` **no están en el formulario**: son campos
+     * derivados de esta lista que escribe `formADocumento`, igual que
+     * `searchText`. Validarlos acá sería validar dos veces el mismo dato, y la
+     * copia se desincroniza.
+     */
+    modalidades: z.array(modalidadFilaSchema).default([]),
 
     inscripcion: z.object({
       requiere: z.boolean().default(false),
@@ -259,17 +292,37 @@ export const actividadFormSchema = z
     });
     if (v.sesiones.length === 0) falta(['sesiones'], 'Cargá al menos un encuentro');
 
-    // §11 — sede aparece en presencial e híbrido, y ahí es obligatoria.
-    const necesitaSede = v.modalidad === 'presencial' || v.modalidad === 'hibrido';
-    if (necesitaSede && !v.sede?.nombre) {
-      falta(['sede', 'nombre'], 'Una actividad presencial necesita sede');
-    }
-    if (necesitaSede && !v.sede?.direccion) falta(['sede', 'direccion'], 'Falta la dirección');
+    // B-224 — sin al menos una modalidad no se sabe si la actividad es
+    // presencial ni qué bloques pedirle. Se exige solo al publicar, como los
+    // encuentros: un borrador puede estar a medio armar.
+    if (v.modalidades.length === 0) falta(['modalidades'], 'Elegí al menos una modalidad');
 
-    const necesitaOnline = v.modalidad === 'virtual' || v.modalidad === 'hibrido';
-    if (necesitaOnline && !v.online?.plataforma) {
-      falta(['online', 'plataforma'], 'Elegí la plataforma');
-    }
+    /*
+     * §11 — la sede se pide en presencial e híbrido, y la plataforma en virtual
+     * e híbrido. Desde B-224 es **por fila**: cada forma de cursar tiene su
+     * lugar, así que una actividad presencial en una sede y virtual por Meet
+     * necesita las dos cosas completas y no una sola.
+     *
+     * La condición es la misma que decide si el bloque se **muestra**
+     * (`filaPideSede` / `filaPideOnline`, las que usa el editor): si se
+     * separaran, el schema exigiría un campo que no está en pantalla.
+     *
+     * El `path` lleva el índice de la fila para que el error caiga al lado del
+     * control correcto, como en `sesiones.N.fin`.
+     */
+    v.modalidades.forEach((m, i) => {
+      if (filaPideSede(m.modalidad)) {
+        if (!m.sede?.nombre) {
+          falta(['modalidades', i, 'sede', 'nombre'], 'Una modalidad presencial necesita sede');
+        }
+        if (!m.sede?.direccion) {
+          falta(['modalidades', i, 'sede', 'direccion'], 'Falta la dirección');
+        }
+      }
+      if (filaPideOnline(m.modalidad) && !m.online?.plataforma) {
+        falta(['modalidades', i, 'online', 'plataforma'], 'Elegí la plataforma');
+      }
+    });
 
     if (v.inscripcion.requiere && !v.inscripcion.via) {
       falta(['inscripcion', 'via'], '¿Por dónde se inscriben?');

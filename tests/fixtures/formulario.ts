@@ -98,16 +98,32 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
       calendarEventId: null,
     },
   ],
-  modalidad: 'presencial',
-  sede: {
-    nombre: CENTINELAS.sede,
-    direccion: CENTINELAS.direccion,
-    barrio: 'villa-crespo',
-    ciudad: 'CABA',
-    indicaciones: CENTINELAS.indicaciones,
-    geo: null,
-  },
-  online: { plataforma: 'zoom', url: CENTINELAS.linkReunion, urlPublica: false },
+  /*
+   * B-224 — una sola fila `hibrido`, que es la que arma **los dos** bloques de
+   * lugar: así el barrido de la analítica ve la sede y el link de la reunión, que
+   * son los dos que no pueden salir. `modalidad`, `sede` y `online` ya no están en
+   * el formulario: son derivados que escribe `formADocumento`.
+   *
+   * Las fechas van cargadas a propósito: son contenido nuevo del formulario y
+   * tienen que estar bajo el barrido de la analítica como todo lo demás.
+   */
+  modalidades: [
+    {
+      id: 'mod_1111',
+      modalidad: 'hibrido',
+      inicio: '2026-03-03T19:00',
+      fin: '2026-06-30T21:00',
+      sede: {
+        nombre: CENTINELAS.sede,
+        direccion: CENTINELAS.direccion,
+        barrio: 'villa-crespo',
+        ciudad: 'CABA',
+        indicaciones: CENTINELAS.indicaciones,
+        geo: null,
+      },
+      online: { plataforma: 'zoom', url: CENTINELAS.linkReunion, urlPublica: false },
+    },
+  ],
   inscripcion: {
     requiere: true,
     via: 'mail',

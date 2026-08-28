@@ -887,6 +887,37 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
     expect(src).toMatch(/from '@calendario'/);
     expect(src).not.toMatch(/timeZone:\s*'America/);
   });
+
+  /**
+   * Los tres pares de prefijo de id del modelo: quien **produce** el id de una
+   * fila y quien lo **valida** en el schema derivan cada uno por su cuenta.
+   *
+   * Es la clase, con tres instancias: `ses_`, `img_` y `mod_`. El día que un
+   * productor cambie de prefijo, el schema rechaza toda fila nueva y el guardado
+   * falla por un campo que nadie tocó; el día que se agregue una cuarta lista sin
+   * su regla, el id deja de verificarse y vuelve la trampa 2 por la puerta de
+   * atrás. Se lee del fuente porque el prefijo está en un template literal del
+   * productor y en un regex del validador: no hay valor que comparar.
+   *
+   * Se pide para los tres a la vez y no solo para el nuevo: una lista que nombra
+   * uno solo no protege a los otros dos, y agregarlos cuesta una línea.
+   */
+  it('cada lista con ids de cliente tiene su prefijo validado en el schema', () => {
+    const schema = fuente('src/lib/schema.ts');
+    const productores: [string, string][] = [
+      ['ses_', 'src/lib/sesiones.ts'],
+      ['img_', 'src/lib/imagenes.ts'],
+      ['mod_', 'src/lib/modalidades.ts'],
+    ];
+    for (const [prefijo, archivo] of productores) {
+      expect(fuente(archivo), `${archivo} ya no produce ids \`${prefijo}\``).toContain(
+        `\`${prefijo}`,
+      );
+      expect(schema, `el schema no valida el prefijo \`${prefijo}\``).toContain(
+        `/^${prefijo}/`,
+      );
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────

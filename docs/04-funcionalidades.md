@@ -181,6 +181,30 @@ lo conserva en el documento. **No renumera a los demás:** el número del evento
 cuenta también los cancelados (D-95), así que el que decía "Encuentro 6 de 8"
 sigue diciéndolo y su evento no se toca.
 
+### Editor de modalidades (B-224)
+
+**«Dónde» es una lista, con la misma interfaz que los encuentros.** Cada fila es
+una forma de cursar completa: el selector presencial / virtual / híbrido y, según
+lo que se elija, la sede o los datos de la reunión — o los dos. Así una actividad
+puede darse presencial en una librería **y** virtual por Meet, que con una sede
+sola no se podía decir.
+
+Cada fila lleva además **desde cuándo y hasta cuándo** rige, las dos opcionales.
+Hoy esas fechas **se guardan y no se publican en ningún lado**: qué significan
+frente a las fechas de los encuentros es una decisión pendiente del dueño (B-224),
+y hasta que se resuelva no salen ni al sitio ni al calendario. El resto de la fila
+—la modalidad y su lugar— sí sale como siempre.
+
+Agregar, duplicar y borrar funcionan igual que en los encuentros: el chasis es el
+mismo componente (`campos/FilasEditor.tsx`), extraído para que un arreglo en uno
+no haya que acordarse de aplicarlo en el otro.
+
+Lo que se publica cuando hay varias filas: el `events.json` lleva **la lista
+entera**, el evento de Calendar nombra cada forma de cursar con su lugar, y el
+filtro de modalidad del listado encuentra la actividad por **cualquiera** de
+ellas. Los detalles y los tres campos derivados están en
+[`03-modelo-de-datos.md`](03-modelo-de-datos.md) y en D-130.
+
 ### Vista previa del evento de Calendar
 
 Última sección del formulario, colapsada. Se elige un encuentro y se ve cómo va
@@ -512,7 +536,9 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 **Título:** el de la actividad, más el tema del encuentro si tiene.
 
 **Ubicación:** sede, calle, barrio, ciudad y país, para que Google pueda
-geolocalizar. Mandar solo la calle no alcanza.
+geolocalizar. Mandar solo la calle no alcanza. Con varias formas de cursar es la
+**sede principal** —la de la primera fila que tenga una—, porque el campo que
+dibuja el mapa admite una sola dirección; las demás salen en la descripción.
 
 **Mapa:** si la sede tiene coordenadas cargadas (`sede.geo`), el link de la
 descripción apunta al punto exacto; si no, a la búsqueda por el texto de la
@@ -520,8 +546,9 @@ ubicación (D-10, D-46).
 
 **Descripción:** todo lo cargado en el formulario que sea publicable —
 posición en el ciclo ("Encuentro 3 de 8", contando también los encuentros
-cancelados: D-95), descripción, tema y lectura del encuentro, modalidad,
-sede con "cómo llegar" y link a Google Maps, plataforma, arancel con notas,
+cancelados: D-95), descripción, tema y lectura del encuentro, **una entrada por
+forma de cursar** con su modalidad y su lugar (sede con "cómo llegar" y link a
+Google Maps, o plataforma), arancel con notas,
 inscripción con vía, cupo y cierre, material, organizador, tallerista con bio,
 y tags.
 

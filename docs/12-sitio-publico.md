@@ -200,6 +200,7 @@ Forma de una entrada de `events.json` (ilustrativo):
   "resumen": "Ocho encuentros para escribir una crónica de barrio…",
   "imagenUrl": "https://…/flyer.jpg",
   "modalidad": "presencial",
+  "modalidades": [{ "id": "mod_…", "modalidad": "presencial", "sede": { "…": "…" } }],
   "sede": { "nombre": "Casa Brandon", "barrio": "boedo", "ciudad": "CABA" },
   "arancel": { "tipo": "a-la-gorra" },
   "organizador": "Casa Brandon",
@@ -226,6 +227,12 @@ Notas que importan:
 - **`cierraEn` en vez de `abierta`.** Ver [§11.2](#112-cambios-a-topublicts): el
   booleano `abierta` que hoy calcula `toPublic` se congela en el momento del
   build y miente hasta el rebuild siguiente.
+- **`modalidad` es el derivado y `modalidades` es la lista** (B-224, D-130). El
+  índice del listado puede quedarse con el derivado —el chip del filtro es uno
+  solo— pero la **página de detalle necesita la lista**: es donde se dice «los
+  martes presencial en la librería, los jueves por Meet». Las **fechas** de cada
+  fila hoy no salen de `toPublic` (decisión pendiente del dueño en B-224), así que
+  cuando se decida hay que revisar si el detalle las quiere.
 - **`sesiones` viene ordenado por `inicio`.** El array del documento no garantiza
   orden (el formulario permite agregar filas en cualquier orden); ordenarlo es
   del build, una vez, y no de cada consumidor.
@@ -577,7 +584,7 @@ Google pide, para el resultado enriquecido de evento:
 | `endDate` | recomendado | sí — `sesiones[].fin` |
 | `description` | recomendado | sí |
 | `image` | recomendado | a veces — `imagenUrl` |
-| `eventAttendanceMode` | recomendado | sí — `modalidad` |
+| `eventAttendanceMode` | recomendado | sí — `modalidad`, el derivado de B-224 |
 | `eventStatus` | recomendado | **parcialmente** — falta `estado` en la proyección |
 | `organizer` | recomendado | sí |
 | `performer` | recomendado | sí — `tallerista` |
@@ -691,6 +698,11 @@ lo que el dueño eligió; el JSON-LD no.
 
 Híbrido → `eventAttendanceMode: MixedEventAttendanceMode` y `location` como
 array de `[Place, VirtualLocation]`.
+
+Con **varias formas de cursar** (B-224) el `location` array sale natural: una
+entrada por fila, con su `Place` o su `VirtualLocation`. El `eventAttendanceMode`
+sigue siendo uno solo y es el derivado — que para una actividad presencial y
+virtual ya da `hibrido`, o sea `Mixed`, que es lo correcto.
 
 ### 5.5 Los otros datos estructurados
 
@@ -1078,7 +1090,8 @@ son datos que ya se muestran en público por otros caminos.
 
 No hace falta decidirlas, pero conviene que estén dichas: `events.json`
 **no** lleva `descripcion`, `inscripcion.destino`, `sede.direccion`, `sede.geo`,
-`sede.indicaciones`, `material`, `tallerista.bio`, `sesiones[].tema` ni
+`sede.indicaciones`, `modalidades` (el índice se queda con el derivado
+`modalidad`), `material`, `tallerista.bio`, `sesiones[].tema` ni
 `sesiones[].lectura`. Todo eso sigue siendo público en el HTML de la página de
 detalle, que es donde se usa. `toPublic.ts` **no cambia** por esto: el recorte lo
 hace el build al armar el índice del listado

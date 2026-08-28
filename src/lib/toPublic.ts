@@ -11,6 +11,9 @@ import type {
   Imagen,
   ItemMaterial,
   Libro,
+  ModalidadFila,
+  Online,
+  Sede,
   Sesion,
   ValorOpcion,
 } from '@/types/actividad';
@@ -103,6 +106,28 @@ export interface OpcionPublica {
   label: string;
 }
 
+/**
+ * Qué de una forma de cursar es público (§5.1, B-224).
+ *
+ * **Se enumera campo por campo, incluida la sede.** No es cosmético: desde B-224
+ * la sede viaja **adentro de un array**, y la poda de `autoguardado.ts` deja pasar
+ * los arrays a propósito —«sus proyecciones públicas enumeran campo por campo, así
+ * que una clave de más no llega a ninguna salida»—. Si acá se copiara la sede con
+ * un spread, esa frase dejaría de ser cierta y una clave de más en un borrador
+ * recuperado terminaría en el `events.json`.
+ *
+ * **`inicio` y `fin` NO están**, y es la decisión conservadora de B-224: qué
+ * significan frente a `sesiones[].inicio/fin` sigue sin resolver, y un campo que
+ * no sale no puede filtrar nada por error. Agregarlo después es barato; sacarlo de
+ * algo ya publicado, no.
+ */
+export interface ModalidadPublica {
+  id: string;
+  modalidad: Actividad['modalidad'];
+  sede: Actividad['sede'];
+  online: { plataforma: string; url?: string } | null;
+}
+
 export interface ActividadPublica {
   id: string;
   titulo: string;
@@ -110,7 +135,14 @@ export interface ActividadPublica {
   tipo: Actividad['tipo'];
   descripcion: string;
   imagenes: ImagenPublica[];
+  /**
+   * B-224 — las formas de cursar, con su lugar. Es lo que el sitio necesita para
+   * decir «los martes presencial en Villa Crespo, los jueves por Meet».
+   */
+  modalidades: ModalidadPublica[];
+  /** La unión de las modalidades de arriba. Es el eje del filtro del listado. */
   modalidad: Actividad['modalidad'];
+  /** La sede principal: la de la primera fila que tenga una (B-224). */
   sede: Actividad['sede'];
   tags: string[];
   destacado: boolean;
@@ -196,6 +228,59 @@ const imagenPublica = (i: Imagen): ImagenPublica => ({
 const libroPublico = (l: Libro | null | undefined): LibroPublico | null =>
   l?.titulo ? { titulo: l.titulo, autor: l.autor ?? '' } : null;
 
+/**
+ * La plataforma siempre; la URL **solo** si `urlPublica` está en true.
+ *
+ * Desvío consciente del §5.2, que descarta la URL sin condición: el modelo del
+ * §3.1 tiene el flag y el formulario su casilla, así que ignorarlo era prometer
+ * algo que no pasaba. Decisión explícita del dueño (D-15).
+ *
+ * El default sigue siendo `false` y el formulario advierte que un link de reunión
+ * público habilita zoombombing (trampa 5). Es **una sola función** para la fila y
+ * para el bloque principal desde B-224: dos copias de esta condición son dos
+ * maneras de que una se olvide del flag.
+ */
+const onlinePublico = (online: Online | null): { plataforma: string; url?: string } | null =>
+  online
+    ? online.urlPublica && online.url
+      ? { plataforma: online.plataforma, url: online.url }
+      : { plataforma: online.plataforma }
+    : null;
+
+/**
+ * La sede, **enumerada campo por campo**.
+ *
+ * La diferencia con copiarla entera no es cosmética y va en las dos direcciones:
+ * el literal **rompe el build** el día que `Sede` gane una clave, y el spread la
+ * publicaría en silencio. Importa más desde B-224, porque la sede viaja adentro
+ * de un array —donde la poda de `autoguardado.ts` no llega— y porque
+ * `historial.ts` la escribe por un camino que no pasa por `formADocumento`
+ * (`payload.sede = sedePrincipal(filas)`, con el objeto tal como venía de una
+ * versión guardada).
+ *
+ * Es una sola función para la sede de la fila y para la derivada: dos copias son
+ * dos maneras de que una se quede sin enumerar.
+ */
+const sedePublica = (s: Sede | null | undefined): Sede | null =>
+  s
+    ? {
+        nombre: s.nombre,
+        direccion: s.direccion,
+        barrio: s.barrio,
+        ciudad: s.ciudad,
+        indicaciones: s.indicaciones,
+        geo: s.geo ? { lat: s.geo.lat, lng: s.geo.lng } : null,
+      }
+    : null;
+
+/** Ver `ModalidadPublica`: whitelist, sin spread, y sin las fechas. */
+const modalidadPublica = (m: ModalidadFila): ModalidadPublica => ({
+  id: m.id,
+  modalidad: m.modalidad,
+  sede: sedePublica(m.sede),
+  online: onlinePublico(m.online),
+});
+
 const sesionPublica = (s: Sesion): SesionPublica => ({
   id: s.id,
   inicio: aIso(s.inicio),
@@ -250,8 +335,9 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   tipo: a.tipo,
   descripcion: a.descripcion,
   imagenes: imagenesDe(a).map(imagenPublica),
+  modalidades: (a.modalidades ?? []).map(modalidadPublica),
   modalidad: a.modalidad,
-  sede: a.sede ?? null,
+  sede: sedePublica(a.sede),
   tags: a.tags ?? [],
   destacado: a.destacado ?? false,
   searchText: a.searchText ?? '',
@@ -286,22 +372,8 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
      */
     completo: a.inscripcion.completo ?? false,
   },
-  /**
-   * La plataforma siempre; la URL solo si `urlPublica` está en true.
-   *
-   * Desvío consciente del §5.2, que descarta la URL sin condición: el modelo
-   * del §3.1 tiene el flag `urlPublica` y el formulario su casilla, así que
-   * ignorarlo era prometer algo que no pasaba. Decisión explícita del dueño.
-   *
-   * El default sigue siendo `false` y el formulario advierte que un link de
-   * reunión público habilita zoombombing (trampa 5). Publicarlo es una acción
-   * deliberada por actividad, no el comportamiento por omisión.
-   */
-  online: a.online
-    ? a.online.urlPublica && a.online.url
-      ? { plataforma: a.online.plataforma, url: a.online.url }
-      : { plataforma: a.online.plataforma }
-    : null,
+  /** El bloque online principal. Ver `onlinePublico` para el flag del link. */
+  online: onlinePublico(a.online ?? null),
   material: {
     tiene: a.material?.tiene ?? false,
     items: (a.material?.items ?? []).map(itemPublico),

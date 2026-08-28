@@ -38,7 +38,14 @@
  * y con las dos claves que ninguna pantalla escribe (`calendarEventId`,
  * `storagePath`).
  */
-import type { Actividad, Imagen, Sede, ValorOpcion } from '@/types/actividad';
+import type {
+  Actividad,
+  Imagen,
+  ModalidadFila,
+  Online,
+  Sede,
+  ValorOpcion,
+} from '@/types/actividad';
 
 // B-211 — el doble de `Timestamp` sale de `./tiempo`, no de una copia por
 // fixture. Esta era la más completa de las cuatro formas que convivían, y es la
@@ -85,7 +92,19 @@ const RUTAS = [
   'sesiones.lectura',
   'sesiones.calendarEventId',
 
-  // Dónde.
+  // Dónde: la forma de cursar (B-224). `sede` y `online` viven adentro de la
+  // fila, y los de primer nivel son los **derivados** que escribe
+  // `formADocumento` — los mismos objetos, así que comparten centinela.
+  'modalidades.id',
+  // La **segunda** forma de cursar (B-224). Tiene centinelas propios porque el
+  // caso que el cambio hace posible —dos filas, con el flag del link distinto en
+  // cada una— no se puede ver con una sola: `onlinePrincipal` deriva del primero,
+  // así que un cambio que tratara distinto a la fila 2 no daría rojo.
+  'modalidades.2.id',
+  'modalidades.2.sede.nombre',
+  'modalidades.2.sede.direccion',
+  'modalidades.2.online.plataforma',
+  'modalidades.2.online.url',
   'sede.nombre',
   'sede.direccion',
   'sede.barrio',
@@ -219,6 +238,34 @@ const imagenCentinela = (): Imagen => ({
  * centinela sale escapado, y es lo que hace que la regla "todos URL-safe" sea
  * verificable en vez de decorativa.
  */
+const onlineCentinela = (): Online => ({
+  plataforma: CENTINELA['online.plataforma'],
+  url: CENTINELA['online.url'],
+  // El default del §5.1: el link de la reunión no se publica (trampa 5). El
+  // caso `urlPublica: true` es su propio caso del barrido.
+  urlPublica: false,
+});
+
+/**
+ * La forma de cursar (B-224). **Una sola fila, y `hibrido`**: con una sola, todo
+ * lo que sale es exactamente lo que salía antes de que las modalidades fueran una
+ * lista, así que el barrido sigue midiendo la misma superficie; y con `hibrido`
+ * la fila arma **los dos** bloques, sede y online.
+ *
+ * Lleva las dos fechas cargadas a propósito, aunque no tengan centinela —un
+ * `Timestamp` no puede llevarlo—: son las que **no** tienen que salir a ninguna
+ * salida pública, y `tests/modalidades.test.ts` lo afirma buscándolas por su
+ * valor.
+ */
+const modalidadCentinela = (): ModalidadFila => ({
+  id: `mod_${CENTINELA['modalidades.id']}`,
+  modalidad: 'hibrido',
+  inicio: ts('2026-03-03T22:00:00Z'),
+  fin: ts('2026-06-30T22:00:00Z'),
+  sede: sedeCentinela(),
+  online: onlineCentinela(),
+});
+
 const sedeCentinela = (): Sede => ({
   nombre: CENTINELA['sede.nombre'],
   direccion: CENTINELA['sede.direccion'],
@@ -256,15 +303,13 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
   libro: { titulo: CENTINELA['libro.titulo'], autor: CENTINELA['libro.autor'] },
   esCiclo: true,
   sesiones: sesionesCentinela(),
+  modalidades: [modalidadCentinela()],
+  // Los tres derivados que escribe `formADocumento` (B-224): con una sola fila
+  // son exactamente lo que la fila dice. Se arman con las mismas fábricas para
+  // que el fixture no pueda mentir sobre la derivación.
   modalidad: 'hibrido',
   sede: sedeCentinela(),
-  online: {
-    plataforma: CENTINELA['online.plataforma'],
-    url: CENTINELA['online.url'],
-    // El default del §5.1: el link de la reunión no se publica (trampa 5). El
-    // caso `urlPublica: true` es su propio caso del barrido.
-    urlPublica: false,
-  },
+  online: onlineCentinela(),
   inscripcion: {
     requiere: true,
     via: 'mail',
@@ -309,6 +354,74 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
   updatedBy: CENTINELA.updatedBy,
   ...over,
 });
+
+/**
+ * **Dos formas de cursar**, con el link de la segunda publicado a mano y el de la
+ * primera no (B-224).
+ *
+ * Es el caso que la lista hace posible y que una sola fila no puede ver: los
+ * derivados salen de la **primera** fila, así que un cambio que leyera el flag del
+ * derivado —o que copiara la fila con un spread— publicaría el link de la segunda
+ * sin que nada se ponga rojo. Acá el barrido lo exige: sale el link de la segunda
+ * y **no** el de la primera.
+ *
+ * La segunda fila es `virtual` a propósito: así los derivados siguen siendo los de
+ * la primera (`sedePrincipal` la encuentra ahí) y el contraste queda limpio.
+ */
+export const conDosFormasDeCursar = (): Partial<Actividad> => {
+  const segunda: ModalidadFila = {
+    id: `mod_${CENTINELA['modalidades.2.id']}`,
+    modalidad: 'virtual',
+    inicio: null,
+    fin: null,
+    sede: null,
+    online: {
+      plataforma: CENTINELA['modalidades.2.online.plataforma'],
+      url: CENTINELA['modalidades.2.online.url'],
+      // El que SÍ se publica. El de la primera fila queda en `false`.
+      urlPublica: true,
+    },
+  };
+  return { modalidades: [modalidadCentinela(), segunda] };
+};
+
+/**
+ * Una segunda fila **presencial**, con su propia sede. Sirve para el caso en que
+ * las dos filas tienen lugar y hay que ver que salen las dos direcciones.
+ */
+export const conDosSedes = (): Partial<Actividad> => {
+  const segunda: ModalidadFila = {
+    id: `mod_${CENTINELA['modalidades.2.id']}`,
+    modalidad: 'presencial',
+    inicio: null,
+    fin: null,
+    sede: {
+      nombre: CENTINELA['modalidades.2.sede.nombre'],
+      direccion: CENTINELA['modalidades.2.sede.direccion'],
+      barrio: CENTINELA['sede.barrio'],
+      ciudad: CENTINELA['sede.ciudad'],
+      indicaciones: CENTINELA['sede.indicaciones'],
+      geo: null,
+    },
+    online: null,
+  };
+  return { modalidades: [modalidadCentinela(), segunda] };
+};
+
+/**
+ * El caso «el dueño tildó publicar el link» (D-15), con la fila **y** el derivado
+ * a la vez.
+ *
+ * Existe como fábrica y no como dos overrides sueltos porque desde B-224 el flag
+ * vive adentro de la fila y `online` de primer nivel es su derivado: tocar uno
+ * solo arma un documento que `formADocumento` nunca produciría, y el barrido
+ * mediría una salida que no existe.
+ */
+export const conLinkPublico = (): Partial<Actividad> => {
+  const online: Online = { ...onlineCentinela(), urlPublica: true };
+  const fila = { ...modalidadCentinela(), online };
+  return { modalidades: [fila], online };
+};
 
 /**
  * Las etiquetas de `/opciones/*` que la Function recibe aparte (§4.1): la

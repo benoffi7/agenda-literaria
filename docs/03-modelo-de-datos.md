@@ -301,6 +301,85 @@ nueva en el historial por cada apertura.
 `imagenUrl` sigue en el tipo, marcado `@deprecated`: los documentos viejos lo
 tienen y el default lo lee. **Las escrituras nuevas no lo escriben.**
 
+## `modalidades` — las formas de cursar, y los tres derivados (B-224)
+
+Era `modalidad: 'presencial' | 'virtual' | 'hibrido'` con **una** `sede` y **un**
+bloque `online` al lado. Es una lista:
+
+```
+modalidades: [{ id, modalidad, inicio, fin, sede, online }]
+```
+
+Cada fila es **una forma de cursar completa**, con su lugar adentro: el bloque
+«Dónde» de siempre, repetido. Es lo que permite decir «los martes presencial en la
+librería, los jueves por Meet», que con una sede sola no se podía. Lo pidió el
+dueño así (D-130) y la UI es la misma que la de los encuentros: agregar, duplicar,
+borrar, con el chasis compartido `campos/FilasEditor.tsx`.
+
+Cuatro cosas que no se adivinan del tipo:
+
+- **El `id` se genera en el cliente** (`nuevaModalidadId()`, `mod_<uuid>`), nunca
+  por índice. Trampa 2, la misma de las sesiones y las imágenes.
+- **`inicio` y `fin` son opcionales** (`Timestamp | null`) y **hoy no salen a
+  ninguna salida pública**: qué significan frente a `sesiones[].inicio/fin` sigue
+  sin decidir (B-224). Un campo que no sale no puede decir algo equivocado en el
+  calendario de todos los suscriptos, y agregarlo después es barato.
+- **`sede` y `online` de la fila se guardan solo si la modalidad los pide** (§11):
+  una sede cargada en una fila que después pasó a virtual no viaja al documento.
+  Lo decide `formADocumento`, no la pantalla, porque las cascadas del formulario
+  no borran lo que alguien escribió.
+- **`formADocumento` enumera los campos de la fila** en vez de copiarla con un
+  spread. No es estilo: hasta B-224 a `sede` y `online` los cuidaba la poda de
+  `autoguardado.ts`, y esa poda **deja pasar los arrays** a propósito. Al mudarlos
+  adentro de `modalidades`, la enumeración pasó a ser la única red — y es más
+  fuerte, porque la clave de más no llega ni siquiera a Firestore.
+
+**Los tres derivados.** `modalidad`, `sede` y `online` siguen en el documento, y
+no son una segunda fuente de verdad: los escribe `formADocumento` en cada
+guardado, igual que `searchText`. Existen porque hay salidas que solo pueden decir
+**una** cosa.
+
+| Derivado | Cómo se calcula | Quién lo lee |
+|---|---|---|
+| `modalidad` | la **unión** de las filas: dos que difieren dan `hibrido` | el `events.json`, la analítica, el texto para redes |
+| `sede` | la de la **primera fila que tenga una** | el `location` del evento (el que dibuja el mapa), el `searchText` del §6, el filtro por barrio |
+| `online` | idem, con el bloque online | el texto para redes |
+
+La unión y no «la primera» porque lo segundo depende del orden del array —la
+trampa 2 en otra forma: reordenar las filas cambiaría lo que se publica—. `sede` y
+`online` sí son «la primera», porque una dirección hay que elegirla y ese orden lo
+decide quien carga y se ve en pantalla; si algún día importa distinguirla, la
+respuesta es un flag explícito como el `portada` de la galería.
+
+**El filtro del panel busca por cualquiera de las filas**, no solo por la
+resultante: una actividad presencial y virtual aparece bajo los tres chips, porque
+las tres cosas son ciertas de ella.
+
+**El `searchText` del §6 indexa la sede de todas las filas**, no solo la derivada:
+con dos barrios, buscar por el segundo tiene que encontrar la actividad. Es la
+misma fuente que usa la restauración del historial, así que el mismo documento no
+puede tener un índice distinto según por dónde se escribió.
+
+**El historial no ofrece los derivados para restaurar sueltos.** `modalidad`,
+`sede`, `online` y `searchText` salieron de la lista de campos restaurables:
+restaurar uno por separado deja el documento contradiciéndose —una sede que
+ninguna fila tiene— hasta el próximo guardado, y en el medio eso sale al
+`events.json`. Restaurar `modalidades` recalcula los tres en la misma escritura.
+
+**No hay migración ni lectura de compatibilidad**: no había nada en producción
+cuando el campo entró (decisión del dueño, 2026-08-27), así que un documento sin
+`modalidades` se lee como **cero filas** —`?? []`— y punto. Hubo una
+`modalidadesDe` que sintetizaba una fila con los campos viejos, y se sacó: existía
+para leer documentos que no existen, y era una rama más de las tres proyecciones
+públicas sin ningún centinela que la recorriera. El razonamiento entero, con lo
+que enseñó, está en D-130.
+
+**El índice del listado (`eventsJson.ts`) lleva los valores, no las filas.** Es la
+tercera proyección en serie: `modalidades: string[]` con la unión —lo único que el
+filtro del sitio necesita— más la `modalidad` resultante para la tarjeta. La sede
+de cada fila es del detalle, y las fechas de la ventana no salen a ninguna
+salida.
+
 ## `sede.geo` — el punto exacto
 
 ```
@@ -322,8 +401,12 @@ El rango lo validan las dos puntas —el parseo al pegar y `schema.ts` al
 guardar—, porque un lat/lng invertido manda el evento al otro lado del mundo.
 Que el punto caiga lejos de Argentina **no** bloquea: solo avisa.
 
-`geo` es público: viaja en `events.json` dentro de `sede` (§5.2). Es la misma
-información que ya publica el evento de Calendar.
+`geo` es público: viaja en `events.json` dentro de la sede de cada forma de
+cursar y de la sede derivada (§5.2). Es la misma información que ya publica el
+evento de Calendar.
+
+Desde B-224 `sede` vive **adentro de una fila de `modalidades`**: cada forma de
+cursar tiene la suya, y la de primer nivel es la derivada.
 
 ## `/reportes/{id}` — bugs y sugerencias del panel
 
@@ -424,6 +507,7 @@ puntos donde el modelo implementado ya no coincide, con su motivo:
 |---|---|---|---|
 | `tipo` | cinco valores (`taller`, `club-lectura`, `encuentro`, `presentacion`, `charla`) | **seis**: se agregó `feria` como opción base | El primer reporte real cargado desde el panel fue justamente eso: faltaba una **categoría del dominio**, no una función del software. En el circuito literario argentino una feria del libro no es un caso raro (B-129), el mismo argumento que el §4.1 usa con «a la gorra». |
 | `material.items[].tipo` | `lectura \| guia \| contexto \| autor \| otro` | **siete**: + `newsletter`, `playlist` | Cargando un club de lectura real aparecieron formatos que no entraban en ninguno (B-134). **No** se agregó `libro`: `lectura` ya es eso, y tener los dos partiría los datos existentes en dos valores que después no se pueden volver a juntar. Se cambió la etiqueta a "Libro o lectura", que es reversible. |
+| `modalidad` / `sede` / `online` | un escalar y dos objetos sueltos | **`modalidades: ModalidadFila[]`**, con `sede` y `online` adentro de cada fila; los tres de primer nivel siguen existiendo como **derivados** | Pedido del dueño (B-224, D-130): una actividad puede darse presencial en una librería y virtual por Meet, y con una sede sola eso no se puede decir. Los derivados quedan porque el `location` del evento, el `searchText` y el filtro por barrio solo admiten un valor. |
 | `material.items[].entrega` | `previo \| al-inscribirse \| en-el-encuentro` | **cuatro**: + `durante-el-mes` | Pedido concreto del dueño (B-134), y dice algo del dominio: la entrega no siempre es un instante, puede ser progresiva a lo largo del ciclo. Encaja con el §2.2 — ocho encuentros con su lectura cada uno. |
 
 `entrega` sigue siendo un **enum cerrado** a propósito, a diferencia de las cinco

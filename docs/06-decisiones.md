@@ -3088,3 +3088,121 @@ barrido y el índice era la única de las tres sin él. Una celda de la matriz s
 decidir se resuelve sola hacia el lado seguro **hasta que alguien escribe la
 línea que la resuelve para el otro** — que acá iba a ser cuando B-105 pinte la
 tarjeta.
+
+---
+
+## D-130 · Las modalidades son una lista con su lugar adentro, y las fechas todavía no salen
+
+**B-224.** Pedido del dueño, textual: «Una actividad tiene N modalidades (mismo
+sistema que encuentro, misma UI). Cada modalidad puede ser presencial, virtual o
+híbrida, como está ahora. Solo hay que sumarle una fecha y hora de inicio y una
+fecha y hora de finalización. Ambas son opcionales.»
+
+**`sede` y `online` se mudaron adentro de la fila**, y eso lo decidió él cuando se
+le preguntó: «el formulario de modalidad se mantiene tal cual + doble fecha. Y
+sobre eso es tener N modalidades así como N encuentros. Misma interfaz y
+funcionalidades». O sea que la fila no es solo un enum con dos fechas: es el
+bloque «Dónde» entero, repetido. Es lo que permite decir «los martes presencial en
+la librería, los jueves por Meet», que con una sede sola no se podía.
+
+**Quedan tres campos derivados en el documento: `modalidad`, `sede` y `online`.**
+No son una segunda fuente de verdad: los escribe `formADocumento` en cada
+guardado, igual que `searchText`, y existen porque hay salidas que **solo pueden
+decir una cosa** — el campo `location` del evento, que es el que dibuja el mapa;
+el `searchText` del §6; el filtro por barrio; la analítica. `modalidad` es la
+**unión** de las filas (dos que difieren dan `hibrido`) y no «la primera»: lo
+segundo depende del orden del array, que es la trampa 2 en otra forma —reordenar
+las filas cambiaría lo que publica el `events.json`—. `sede` y `online` sí son «la
+primera fila que tenga una», porque una dirección sola hay que elegirla y el orden
+de las filas lo decide quien carga y se ve en pantalla; si algún día importa
+distinguirla, la respuesta es un flag explícito como el `portada` de D-125.
+
+**El filtro del panel busca por *cualquiera* de las formas de cursar.** Una
+actividad con una fila presencial y otra virtual aparece bajo «Presencial», bajo
+«Virtual» **y** bajo «Presencial y virtual», porque las tres cosas son ciertas de
+ella. Filtrar solo por la resultante la escondería de los dos filtros que la
+describen mejor.
+
+**Las fechas de la ventana no salen a ninguna salida pública, y es a propósito.**
+El dueño dejó abierto qué significan frente a `sesiones[].inicio/fin` («sobre las
+fechas, te lo consulto pero hacé el resto»), así que se guardan y no se publican:
+un campo que no sale no puede decir algo equivocado en el calendario de todos los
+suscriptos, y agregarlo después es barato — sacarlo de algo ya publicado, no. La
+celda tiene su test, que las busca **por su valor** en las cinco salidas
+(`tests/modalidades.test.ts`).
+
+**No hay migración, y esa fue la otra respuesta del dueño**: «no te preocupes por
+hoy, no hay nada en producción». No hay backfill ni script: nada se escribe para
+convertir nada.
+
+**Y tampoco hay lectura de compatibilidad — pero la hubo, y sacarla fue la
+decisión.** Vale contarlo entero porque el camino enseña más que el resultado.
+
+El `auditor-trampas` mostró que con `?? []` a secas, abrir en el panel un
+documento que solo tuviera los campos viejos y guardarlo —aunque fuera para
+cambiar el título— derivaba `sede: null` y `online: null` sin que nada tirara
+error: la ubicación desaparecía del sitio y del calendario semanas después. El
+arreglo fue una `modalidadesDe` compartida por `@calendario` que sintetizaba una
+fila con id determinístico `mod_compat`, copiando `imagenesDe()` (D-125).
+
+Después le llegaron dos hallazgos más, de dos auditores distintos: el de
+privacidad, que es una **rama de proyección pública que ningún centinela
+recorre**; y el de trampas otra vez, que **fabrica una fila fantasma** cuando la
+lista está vacía a propósito —un borrador al que le borraron todas las
+modalidades— porque `modalidadResultante([])` devuelve `'presencial'` y hace
+falsa la condición de al lado.
+
+Dos hallazgos en una sesión sobre una función que existe **para leer documentos
+que no existen**. Se borró. De las dos salidas posibles para una rama de
+proyección sin barrido —escribirle el barrido o no tener la rama—, la segunda es
+más barata: una celda que no existe no hay que decidirla en cada una de las cinco
+salidas, ni mantenerle un fixture. Lo que queda es `?? []` donde el campo puede
+faltar, y `tests/calendario.test.ts` fija la consecuencia: un documento sin la
+lista no explota, no inventa una fila y **no dice dónde**.
+
+**La lección, que vale más que el arreglo:** el bug de la fila fantasma nació de
+que `modalidadResultante([])` devuelve `'presencial'` y no vacío. Un default
+razonable en un lugar volvió falsa la condición de otro, a distancia y sin que
+nada fallara. Es la familia del §13 aunque no esté en la lista: dos piezas
+correctas por separado que se contradicen en el medio.
+
+**La descripción del evento no cambió para una actividad de una sola modalidad, y
+es deliberado.** Si el texto cambiara, el diff del §7.2 vería un evento distinto y
+la primera edición de cada actividad publicada reescribiría sus N eventos en el
+calendario de todos los suscriptos sin que nada hubiera cambiado para ellos. Es el
+argumento de D-95, aplicado a un cambio de modelo.
+
+**La guarda que protegía a `sede` y `online` se mudó.** La poda de
+`autoguardado.ts` deja pasar los arrays a propósito, porque «sus proyecciones
+públicas enumeran campo por campo»; al mudar la sede adentro de `modalidades`, esa
+frase dejaba de ser cierta. Ahora la cuida `formADocumento`, que **enumera** los
+campos de la fila en vez de copiarla con un spread — más fuerte que la poda,
+porque la clave de más no llega ni siquiera a Firestore. Y `toPublic` enumera
+también la sede de la fila. Las dos tienen su test y las dos se verificaron por
+mutación.
+
+**`VERSION_BORRADOR` subió a 3, y esta vez sí correspondía.** Es el caso de B-167 y
+no el de `libro` o `inscripcion.completo`: un borrador de la forma anterior tiene
+`titulo` y `sesiones`, así que **parece bueno**, y la mezcla lo completaría con la
+fila presencial vacía de `formVacio()` — un taller virtual recuperado volvería como
+presencial, con la sede y el link perdidos y sin que nada avise.
+
+**El chasis de la lista se extrajo en vez de copiarse** (`campos/FilasEditor.tsx`),
+y lo usan el editor de modalidades y el de encuentros: dos listas con el cableado
+copiado terminan con el arreglo aplicado en una sola, que es una clase que este repo
+ya pagó. Lo que queda en
+cada editor es lo propio de su dominio (el generador de N encuentros, los saltos de
+fecha, el selector de modalidad); un chasis que intente cubrir eso deja de serlo.
+
+**Dos cosas más que arrastró, y las dos son de la misma clase que un derivado.**
+El `searchText` indexa la sede de **todas** las filas y no solo la principal: con
+dos barrios, buscar por el segundo tenía que encontrar la actividad. Y el
+historial dejó de ofrecer `modalidad`, `sede`, `online` y `searchText` para
+restaurar sueltos —restaurar un derivado por separado deja el documento
+contradiciéndose hasta el próximo guardado, y en el medio eso sale al
+`events.json`—; restaurar `modalidades` recalcula los tres derivados en la misma
+escritura, que es B-207 con otro campo.
+
+**Lo que esta decisión NO resuelve:** qué significan las fechas de una modalidad
+(sigue en B-224 como decisión pendiente del dueño), y si una «opción para sumarte»
+de DEC-8 lleva su propia modalidad — ahí los dos ejes se multiplicarían.

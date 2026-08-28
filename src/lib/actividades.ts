@@ -16,11 +16,20 @@ import { libroVacio } from '@/lib/formulario/estadoInicial';
 import { buildSearchText } from '@/lib/normalize';
 import { deDatetimeLocal, aDatetimeLocal } from '@/lib/sesiones';
 import { imagenesDe } from '@/lib/imagenes';
+import {
+  filaPideOnline,
+  filaPideSede,
+  modalidadAForm,
+  modalidadResultante,
+  onlinePrincipal,
+  sedePrincipal,
+} from '@/lib/modalidades';
 import { slugify } from '@/lib/slugify';
 import type {
   Actividad,
   ActividadConId,
   ActividadForm,
+  ModalidadFila,
   SesionForm,
 } from '@/types/actividad';
 
@@ -46,11 +55,55 @@ export const formADocumento = (
   uid: string,
   esNuevo: boolean,
 ): Record<string, unknown> => {
-  const necesitaSede = f.modalidad === 'presencial' || f.modalidad === 'hibrido';
-  const necesitaOnline = f.modalidad === 'virtual' || f.modalidad === 'hibrido';
+  /**
+   * B-224 — las formas de cursar, cada una con su lugar. Se enumeran las claves
+   * en lugar de copiar la fila con un spread: una clave de más que llegue de un
+   * borrador recuperado no puede entrar al documento, y desde acá `sede` y
+   * `online` viajan **adentro de un array**, donde la poda de `autoguardado.ts`
+   * no llega (deja pasar los arrays a propósito). Hasta B-224 esa poda era la que
+   * cuidaba a `sede` y `online`; ahora los cuida esta enumeración, que además es
+   * más fuerte: la clave de más no llega ni siquiera a Firestore.
+   *
+   * Los bloques de lugar se guardan solo si la fila los pide (§11): una sede que
+   * quedó cargada y después la fila pasó a virtual no viaja. Es lo que hacía la
+   * cascada de modalidad a nivel actividad, ahora por fila.
+   */
+  const modalidades: ModalidadFila[] = f.modalidades.map((m) => ({
+    id: m.id,
+    modalidad: m.modalidad,
+    // Trampa 1 — `Timestamp`, nunca strings de fecha. Vacío es `null`, que es
+    // «sin fecha»: las dos son opcionales.
+    inicio: m.inicio ? aTimestamp(m.inicio) : null,
+    fin: m.fin ? aTimestamp(m.fin) : null,
+    sede:
+      filaPideSede(m.modalidad) && m.sede
+        ? {
+            nombre: limpiar(m.sede.nombre),
+            direccion: limpiar(m.sede.direccion),
+            barrio: m.sede.barrio,
+            ciudad: limpiar(m.sede.ciudad),
+            indicaciones: limpiar(m.sede.indicaciones),
+            geo: m.sede.geo ? { lat: m.sede.geo.lat, lng: m.sede.geo.lng } : null,
+          }
+        : null,
+    online:
+      filaPideOnline(m.modalidad) && m.online
+        ? {
+            plataforma: m.online.plataforma,
+            url: limpiar(m.online.url),
+            urlPublica: m.online.urlPublica,
+          }
+        : null,
+  }));
 
-  const sede = necesitaSede && f.sede ? { ...f.sede } : null;
-  const online = necesitaOnline && f.online ? { ...f.online } : null;
+  /**
+   * Los tres derivados de la lista (B-224). Se escriben en cada guardado, igual
+   * que `searchText`: son lo que leen el filtro del panel, el `location` del
+   * evento, la búsqueda del §6 y la analítica, que solo admiten un valor.
+   */
+  const sede = sedePrincipal(modalidades);
+  const online = onlinePrincipal(modalidades);
+  const modalidad = modalidadResultante(modalidades);
 
   // El tallerista solo tiene sentido si tiene nombre.
   const tallerista = f.tallerista?.nombre?.trim() ? f.tallerista : null;
@@ -95,7 +148,8 @@ export const formADocumento = (
       calendarEventId: s.calendarEventId ?? null,
     })),
 
-    modalidad: f.modalidad,
+    modalidades,
+    modalidad,
     sede,
     online,
 
@@ -138,6 +192,11 @@ export const formADocumento = (
     searchText: buildSearchText({
       titulo: f.titulo,
       descripcion: f.descripcion,
+      // B-224 — **todas** las sedes, no solo la derivada: con dos filas en dos
+      // barrios, indexar una sola dejaría el segundo sin poder buscarse. Y es la
+      // misma fuente que usa `payloadDeRestauracion`, si no el mismo documento
+      // tendría un `searchText` distinto según por dónde se escribió.
+      modalidades,
       sede,
       organizador: f.organizador,
       tallerista,
@@ -184,9 +243,15 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
       calendarEventId: s.calendarEventId ?? null,
     }),
   ),
-  modalidad: a.modalidad,
-  sede: a.sede,
-  online: a.online,
+  /**
+   * B-224 — las formas de cursar. `?? []` y **ninguna lectura de compatibilidad**
+   * que sintetice una fila a partir del `modalidad`/`sede`/`online` viejo: no hay
+   * documentos sin el campo (decisión del dueño), y una rama de más en el camino
+   * de lectura es una rama más que barrer en las tres proyecciones públicas.
+   *
+   * `modalidad`, `sede` y `online` no vuelven al formulario: son derivados.
+   */
+  modalidades: (a.modalidades ?? []).map((m) => modalidadAForm(m, aDatetimeLocal)),
   inscripcion: {
     requiere: a.inscripcion.requiere,
     via: a.inscripcion.via,

@@ -15,6 +15,7 @@
  * **El reloj entra como parámetro** (`ahora`), como en `functions/rebuild.js`:
  * un test no puede depender de qué día es hoy.
  */
+import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { normalize } from '@/lib/normalize';
 import { instanteDeTimestamp as instante } from '@/lib/sesiones';
 import { ESTADOS, MODALIDADES } from '@/types/actividad';
@@ -152,7 +153,22 @@ export const filtrar = (
     if (texto && !(a.searchText ?? '').includes(texto)) return false;
     if (filtros.estado && a.estado !== filtros.estado) return false;
     if (filtros.tipo && a.tipo !== filtros.tipo) return false;
-    if (filtros.modalidad && a.modalidad !== filtros.modalidad) return false;
+    /*
+     * B-224 — matchea si **alguna** forma de cursar es la buscada, o si lo es la
+     * resultante. Con una sola modalidad es la condición de siempre; con dos, una
+     * actividad presencial y virtual aparece bajo «Presencial», bajo «Virtual» y
+     * bajo «Presencial y virtual», porque las tres cosas son ciertas de ella.
+     * Filtrar solo por la resultante la escondería de los dos filtros que la
+     * describen mejor.
+     */
+    if (
+      filtros.modalidad &&
+      !modalidadesQueOfrece(a.modalidades ?? [{ modalidad: a.modalidad }]).includes(
+        filtros.modalidad,
+      )
+    ) {
+      return false;
+    }
     if (filtros.barrio && (a.sede?.barrio ?? '') !== filtros.barrio) return false;
     if (filtros.cuando === 'por-venir' && !tieneFuturo(a, ahora)) return false;
     if (filtros.cuando === 'sin-futuro' && tieneFuturo(a, ahora)) return false;
@@ -267,7 +283,12 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
   for (const a of actividades) {
     estados.add(a.estado);
     if (a.tipo) tipos.add(a.tipo);
-    modalidades.add(a.modalidad);
+    // B-224 — se ofrece cada modalidad que la actividad tiene, no solo la
+    // resultante: si no, el desplegable no ofrecería «Virtual» aunque haya una
+    // actividad con una fila virtual, y el filtro de arriba sí la encontraría.
+    for (const m of modalidadesQueOfrece(a.modalidades ?? [{ modalidad: a.modalidad }])) {
+      modalidades.add(m);
+    }
     if (a.sede?.barrio) barrios.add(a.sede.barrio);
   }
 

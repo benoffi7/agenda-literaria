@@ -9,7 +9,7 @@
  * Todas son `form → form`: no tocan estado de React, así que se testean como
  * `lib/duplicar.ts`, sin emuladores y sin render.
  */
-import { onlineVacio, personaVacia, sedeVacia } from '@/lib/formulario/estadoInicial';
+import { personaVacia } from '@/lib/formulario/estadoInicial';
 import { slugify } from '@/lib/slugify';
 import type { ActividadForm } from '@/types/actividad';
 
@@ -81,18 +81,10 @@ export const cambiarTipo = (f: ActividadForm, tipo: string): ActividadForm => ({
  * §11 — la modalidad decide qué bloques existen: virtual no tiene sede,
  * presencial no tiene online, híbrido tiene los dos.
  *
- * A diferencia de `cambiarTipo`, acá sí se pone en `null` lo que dejó de
- * aplicar: el schema valida `sede` cuando la modalidad la pide (`superRefine`),
- * y una sede a medio llenar en una actividad virtual viajaría al documento y al
- * evento. Lo que ya estaba cargado se conserva si el bloque sigue existiendo
- * (`f.sede ?? sedeVacia()`).
+ * **Desde B-224 la regla es por fila y no por actividad**, porque `sede` y
+ * `online` viven adentro de cada modalidad. La función se llama
+ * `conModalidadDeFila` y vive en `estadoInicial.ts` —al lado de las fábricas que
+ * necesita, y porque `modalidadVacia` la usa— pero se reexporta desde acá, que es
+ * donde B-70 dice que están las cascadas del formulario.
  */
-export const cambiarModalidad = (
-  f: ActividadForm,
-  modalidad: ActividadForm['modalidad'],
-): ActividadForm => ({
-  ...f,
-  modalidad,
-  sede: modalidad === 'virtual' ? null : (f.sede ?? sedeVacia()),
-  online: modalidad === 'presencial' ? null : (f.online ?? onlineVacio()),
-});
+export { conModalidadDeFila } from '@/lib/formulario/estadoInicial';

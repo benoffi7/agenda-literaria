@@ -7,9 +7,19 @@
  * una actividad nueva, qué campos son `null` y cuáles objetos vacíos— y como no
  * necesitan red, van en un módulo puro (B-70, `docs/05-patrones.md`).
  */
+import { filaPideOnline, filaPideSede, nuevaModalidadId } from '@/lib/modalidades';
 import { OPCIONES_BASE, opcionesVisibles, ordenarValores } from '@/lib/opciones';
 import { sesionVacia } from '@/lib/sesiones';
-import type { ActividadForm, CampoTaxonomia, Libro, Online, Persona, Sede } from '@/types/actividad';
+import type {
+  ActividadForm,
+  CampoTaxonomia,
+  Libro,
+  Modalidad,
+  ModalidadFilaForm,
+  Online,
+  Persona,
+  Sede,
+} from '@/types/actividad';
 
 /** La sede que se crea al pasar a presencial o híbrido. `CABA` por defecto. */
 export const sedeVacia = (): Sede => ({
@@ -65,6 +75,50 @@ export const personaVacia = (): Persona => ({ nombre: '', bio: '', instagram: ''
 export const libroVacio = (): Libro => ({ titulo: '', autor: '' });
 
 /**
+ * Una fila del editor de modalidades (B-224), con el bloque de lugar que le
+ * corresponda: presencial trae sede, virtual trae el bloque online, híbrido los
+ * dos (§11).
+ *
+ * Nace **sin fechas**: las dos son opcionales, y darle un «hoy» guardaría una
+ * ventana que nadie cargó.
+ *
+ * Vive acá con las otras fábricas y no en `lib/modalidades.ts` por dos motivos:
+ * necesita `sedeVacia`/`onlineVacio` —y ese módulo no las puede importar sin
+ * cerrar un ciclo—, y el molde con el que `autoguardado.ts` poda lo recuperado
+ * necesita exactamente esta forma. Escribirla dos veces es la clase de B-88 y ya
+ * borró `tallerista.bio` una vez (D-124).
+ */
+export const modalidadVacia = (modalidad: Modalidad = 'presencial'): ModalidadFilaForm =>
+  conModalidadDeFila(
+    { id: nuevaModalidadId(), modalidad, inicio: '', fin: '', sede: null, online: null },
+    modalidad,
+  );
+
+/**
+ * La cascada de modalidad, ahora **por fila** (B-224): virtual no tiene sede,
+ * presencial no tiene online, híbrido tiene los dos.
+ *
+ * Es la de `cascadas.cambiarModalidad` movida adentro de la fila, con el mismo
+ * criterio: acá **sí** se pone en `null` lo que dejó de aplicar —el schema valida
+ * la sede cuando la fila la pide, y una sede a medio llenar en una fila virtual
+ * viajaría al documento y al evento—, y lo que ya estaba cargado se conserva si el
+ * bloque sigue existiendo (`f.sede ?? sedeVacia()`).
+ *
+ * Está acá y no en `cascadas.ts`, que es su casa por B-70, porque `modalidadVacia`
+ * la necesita y `cascadas.ts` importa este módulo. `cascadas.ts` la reexporta, así
+ * que quien busca las cascadas la encuentra donde espera.
+ */
+export const conModalidadDeFila = (
+  f: ModalidadFilaForm,
+  modalidad: Modalidad,
+): ModalidadFilaForm => ({
+  ...f,
+  modalidad,
+  sede: filaPideSede(modalidad) ? (f.sede ?? sedeVacia()) : null,
+  online: filaPideOnline(modalidad) ? (f.online ?? onlineVacio()) : null,
+});
+
+/**
  * Primera opción elegible de una taxonomía **según las opciones base**, que es
  * la que el desplegable va a mostrar arriba.
  *
@@ -106,9 +160,11 @@ export const formVacio = (): ActividadForm => ({
   libro: libroVacio(),
   esCiclo: false,
   sesiones: [sesionVacia()],
-  modalidad: 'presencial',
-  sede: sedeVacia(),
-  online: null,
+  // B-224 — una sola fila presencial, que es lo que el formulario mostraba antes
+  // de que las modalidades fueran una lista: el mismo default, en la forma nueva.
+  // `modalidad`, `sede` y `online` ya no están en el formulario: los deriva
+  // `formADocumento` de esta lista.
+  modalidades: [modalidadVacia('presencial')],
   // B-97 — `completo` nace en `false` y viaja en el formulario aunque no se edite
   // desde ahí: se prende desde el menú del listado, y si el formulario no lo
   // trajera, cada guardado lo apagaría (ver `formADocumento`).

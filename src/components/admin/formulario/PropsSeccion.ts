@@ -13,7 +13,10 @@ export interface PropsSeccion {
   form: ActividadForm;
   /** Reemplaza un campo de primer nivel del formulario. */
   set: <K extends keyof ActividadForm>(k: K, v: ActividadForm[K]) => void;
-  /** El error del schema para una ruta de campo (`'sede.nombre'`), si lo hay. */
+  /**
+   * El error del schema para una ruta de campo, si lo hay. La ruta lleva el
+   * índice cuando el campo vive en una lista: `'modalidades.0.sede.nombre'`.
+   */
   errorDe: (path: string) => string | undefined;
   /** Para las taxonomías: quién está cargando (§4.3, huella de autor). */
   uid: string;

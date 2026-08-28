@@ -106,7 +106,7 @@ describe('las secciones del diccionario son las del formulario', () => {
 
 describe('etiquetaDeCampo y seccionDeCampo', () => {
   it('nombra el campo, no la ruta', () => {
-    expect(etiquetaDeCampo('sede.direccion')).toBe('Dirección');
+    expect(etiquetaDeCampo('modalidades.0.sede.direccion')).toBe('Dirección');
     expect(etiquetaDeCampo('arancel.tipo')).toBe('Arancel');
   });
 
@@ -124,7 +124,7 @@ describe('etiquetaDeCampo y seccionDeCampo', () => {
 
 describe('resumirFaltantes', () => {
   it('agrupa por sección en el orden de la pantalla', () => {
-    const r = resumirFaltantes(['arancel.tipo', 'titulo', 'sede.direccion']);
+    const r = resumirFaltantes(['arancel.tipo', 'titulo', 'modalidades.0.sede.direccion']);
     expect(r.secciones.map((s) => s.id)).toEqual(['que-es', 'donde', 'arancel-inscripcion']);
     expect(r.total).toBe(3);
   });
@@ -157,7 +157,12 @@ describe('textoFaltantes — corto en mobile, accionable igual', () => {
   });
 
   it('con muchos, nombra las secciones con su cuenta', () => {
-    const rutas = ['sede.nombre', 'sede.direccion', 'arancel.tipo', 'titulo'];
+    const rutas = [
+      'modalidades.0.sede.nombre',
+      'modalidades.1.sede.direccion',
+      'arancel.tipo',
+      'titulo',
+    ];
     expect(rutas.length).toBeGreaterThan(MAX_CAMPOS_NOMBRADOS);
     const r = resumirFaltantes(rutas);
     expect(nombraSecciones(r)).toBe(true);

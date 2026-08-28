@@ -554,8 +554,18 @@ describe('privacidad — un posteo es más público que las otras dos salidas (�
     it(`${variante} — ningún centinela sale sin estar permitido por nombre (§5.1)`, () => {
       const salida = salidaDeForm(
         formularioLleno({
-          modalidad: 'hibrido',
-          online: { plataforma: 'zoom', url: CENTINELAS.linkReunion, urlPublica: true },
+          // El caso peor: el link de la reunión **tildado como publicable**. El
+          // desvío de D-15 vale para el JSON y el evento; a un posteo no llega.
+          modalidades: [
+            {
+              id: 'mod_h',
+              modalidad: 'hibrido',
+              inicio: '',
+              fin: '',
+              sede: formularioLleno().modalidades[0]!.sede,
+              online: { plataforma: 'zoom', url: CENTINELAS.linkReunion, urlPublica: true },
+            },
+          ],
         }),
         variante,
       );
@@ -629,7 +639,18 @@ describe('textoRedesDeForm — el camino del panel', () => {
     // El formulario conserva la sede al cambiar de modalidad, y es
     // `formADocumento` el que decide que no se escribe. Armar el texto desde el
     // formulario en crudo publicaría una dirección que la actividad no tiene.
-    const virtual = formularioLleno({ modalidad: 'virtual' });
+    const virtual = formularioLleno({
+      modalidades: [
+        {
+          ...formularioLleno().modalidades[0]!,
+          modalidad: 'virtual',
+          // La sede queda cargada en el formulario —la cascada agrega y no saca
+          // hasta que se toca el selector—: es `formADocumento` el que decide
+          // que no se escribe.
+          online: { plataforma: 'zoom', url: CENTINELAS.linkReunion, urlPublica: false },
+        },
+      ],
+    });
     const r = textoRedesDeForm(virtual, 'anuncio', ANTES, LABELS);
     expect(r.ok).toBe(true);
     if (r.ok) {

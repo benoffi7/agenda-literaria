@@ -57,6 +57,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'varias-formas-de-cursar',
+    fecha: '2026-08-27',
+    titulo: 'Una actividad puede tener varias formas de cursar, cada una con su lugar',
+    detalle:
+      '«Dónde» ahora es una lista, igual que los encuentros: agregás una fila por cada forma de ' +
+      'cursar y cada una lleva su propia dirección o plataforma. Sirve para el club que se da ' +
+      'presencial en la librería y también por videollamada. Cada fila tiene además un «desde» y ' +
+      'un «hasta» opcionales, que por ahora quedan guardados para vos y no se publican.',
+    donde: 'Formulario, sección «Dónde»',
+  },
+  {
     id: 'cierres-de-inscripcion-en-el-calendario',
     fecha: '2026-08-27',
     version: '1.3.0',

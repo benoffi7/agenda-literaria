@@ -81,14 +81,19 @@ export const labelsPendientesDe = (
  * que quedó escrito, no lo que se tipeó y después se cambió.
  */
 export const usosAContar = (
-  // `sede` y `online` son nulos según la modalidad (§11): un taller virtual no
-  // tiene barrio y uno presencial no tiene plataforma. El `?? ''` los descarta
-  // solo, porque `registrarUsos` ya ignora los slugs vacíos.
+  // B-224 — `sede` y `online` viven adentro de cada modalidad, y siguen siendo
+  // nulos según cuál sea (§11): una fila virtual no tiene barrio y una presencial
+  // no tiene plataforma. Se recorren **todas** las filas: con dos sedes en dos
+  // barrios, contar solo la primera dejaría al segundo barrio sin uso y ordenando
+  // último en el desplegable para siempre. Los vacíos los descarta el filtro de
+  // abajo, y `registrarUsos` ya ignora los slugs vacíos.
   guardado: {
     arancel: { tipo: string };
     tipo: string;
-    sede: { barrio: string } | null;
-    online: { plataforma: string } | null;
+    modalidades: readonly {
+      sede: { barrio: string } | null;
+      online: { plataforma: string } | null;
+    }[];
     tags: readonly string[];
   },
   labelsNuevos: readonly LabelNuevo[],
@@ -101,8 +106,9 @@ export const usosAContar = (
   const elegidos = {
     arancel: [guardado.arancel.tipo],
     tipo: [guardado.tipo],
-    barrio: [guardado.sede?.barrio ?? ''],
-    plataforma: [guardado.online?.plataforma ?? ''],
+    // Sin repetir: dos filas en el mismo barrio son un uso, no dos.
+    barrio: [...new Set(guardado.modalidades.map((m) => m.sede?.barrio ?? ''))],
+    plataforma: [...new Set(guardado.modalidades.map((m) => m.online?.plataforma ?? ''))],
     tags: [...guardado.tags],
   };
 

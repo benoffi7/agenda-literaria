@@ -12,7 +12,16 @@
  * condición: si se separan, el formulario esconde un campo que el schema exige
  * y el guardado falla por un campo que no está en pantalla.
  */
-import type { ActividadForm } from '@/types/actividad';
+import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
+import type { ActividadForm, Modalidad } from '@/types/actividad';
+
+/** ¿Alguna de estas filas pide el bloque de sede? */
+export const filasPidenSede = (filas: readonly { modalidad: Modalidad }[]): boolean =>
+  filas.some((f) => filaPideSede(f.modalidad));
+
+/** ¿Alguna de estas filas pide el bloque online? */
+export const filasPidenOnline = (filas: readonly { modalidad: Modalidad }[]): boolean =>
+  filas.some((f) => filaPideOnline(f.modalidad));
 
 export const esTaller = (f: ActividadForm): boolean => f.tipo === 'taller';
 
@@ -22,11 +31,17 @@ export const esClub = (f: ActividadForm): boolean => f.tipo === 'club-lectura';
 export const esCharla = (f: ActividadForm): boolean =>
   f.tipo === 'presentacion' || f.tipo === 'charla';
 
-export const necesitaSede = (f: ActividadForm): boolean =>
-  f.modalidad === 'presencial' || f.modalidad === 'hibrido';
+/**
+ * ¿Esta actividad tiene alguna forma de cursar presencial? (B-224)
+ *
+ * Desde que las modalidades son una lista, la pregunta «¿hay sede?» se contesta
+ * por fila —cada una tiene la suya— y esto es la vista de la actividad entera:
+ * lo que decide si la sección «Dónde» tiene algo presencial que mostrar y lo que
+ * el schema usa para exigir la dirección.
+ */
+export const necesitaSede = (f: ActividadForm): boolean => filasPidenSede(f.modalidades);
 
-export const necesitaOnline = (f: ActividadForm): boolean =>
-  f.modalidad === 'virtual' || f.modalidad === 'hibrido';
+export const necesitaOnline = (f: ActividadForm): boolean => filasPidenOnline(f.modalidades);
 
 /**
  * ¿Se muestra el bloque del libro presentado? (DEC-1)

@@ -103,12 +103,19 @@ const ETIQUETA_MODALIDAD = {
  * `sede.direccion` ("Drago 236") no alcanza: Google no tiene con qué
  * desambiguar y el evento queda sin mapa, o con el mapa en otra ciudad.
  */
-export const construirUbicacion = (actividad, labels = {}) => {
-  const sede = actividad.sede;
+/**
+ * La misma dirección, pero a partir de **una** sede suelta.
+ *
+ * B-224 partió `sede` en una por modalidad, así que la descripción arma la
+ * dirección de cada fila y el campo `location` la de la sede principal. Es una
+ * sola función para las dos, y no dos: si divergieran, el evento diría una
+ * dirección en el mapa y otra en el texto.
+ */
+const ubicacionDeSede = (sede, labels, modalidad) => {
   if (!sede) {
     // Virtual sin sede: la plataforma en el campo location hace que se lea en
     // la vista de agenda sin abrir el evento.
-    return actividad.modalidad === 'virtual' ? 'Encuentro virtual' : undefined;
+    return modalidad === 'virtual' ? 'Encuentro virtual' : undefined;
   }
 
   // El barrio se resuelve a su etiqueta: mandarle "villa-crespo" a Google
@@ -122,24 +129,29 @@ export const construirUbicacion = (actividad, labels = {}) => {
   return unicas.join(', ') || undefined;
 };
 
+export const construirUbicacion = (actividad, labels = {}) =>
+  ubicacionDeSede(actividad.sede, labels, actividad.modalidad);
+
 /**
  * Link al mapa. Si la sede tiene coordenadas se usan, que es exacto; si no, la
  * búsqueda por dirección, que es lo que Google resuelve igual de bien para una
  * dirección completa.
  */
-export const construirLinkMapa = (actividad, labels = {}) => {
-  const sede = actividad.sede;
+const linkMapaDeSede = (sede, labels, modalidad) => {
   if (!sede) return null;
 
   const geo = sede.geo;
   const query =
     geo && typeof geo.lat === 'number' && typeof geo.lng === 'number'
       ? `${geo.lat},${geo.lng}`
-      : construirUbicacion(actividad, labels);
+      : ubicacionDeSede(sede, labels, modalidad);
 
   if (!query) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 };
+
+export const construirLinkMapa = (actividad, labels = {}) =>
+  linkMapaDeSede(actividad.sede, labels, actividad.modalidad);
 
 /**
  * Numera el encuentro dentro del ciclo: "Encuentro 3 de 8".
@@ -219,32 +231,64 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   if (deEsteEncuentro.length) bloques.push(deEsteEncuentro.join('\n'));
 
   // ── Dónde ─────────────────────────────────────────────────────
-  const donde = [`Modalidad: ${ETIQUETA_MODALIDAD[actividad.modalidad] ?? actividad.modalidad}`];
-  if (actividad.sede) {
-    const s = actividad.sede;
-    if (s.nombre) donde.push(s.nombre);
-    const calle = [s.direccion, etiqueta(labels, 'barrio', s.barrio), s.ciudad]
-      .map((p) => (p ?? '').trim())
-      .filter(Boolean)
-      .join(', ');
-    if (calle) donde.push(calle);
-    if (s.indicaciones) donde.push(`Cómo llegar: ${s.indicaciones}`);
-    const mapa = construirLinkMapa(actividad, labels);
-    if (mapa) donde.push(`Mapa: ${mapa}`);
-  }
-  if (actividad.online?.plataforma) {
-    const plataforma = etiqueta(labels, 'plataforma', actividad.online.plataforma);
-    // El §7.4 dice que el link no va nunca. Se respeta el flag `urlPublica` del
-    // modelo (§3.1) por decisión explícita del dueño: sin eso, la casilla del
-    // formulario prometía algo que no pasaba. Default false, y el formulario
-    // advierte sobre el zoombombing.
-    if (actividad.online.urlPublica && actividad.online.url) {
-      donde.push(`Plataforma: ${plataforma}`, `Link: ${actividad.online.url}`);
-    } else {
-      donde.push(`Plataforma: ${plataforma} (el link se envía a quienes se inscriban)`);
+  /*
+   * B-224 — una entrada por **forma de cursar**, con su lugar: un club que se da
+   * presencial en una librería y virtual por Meet tiene que decir las dos cosas,
+   * y con una sede sola no se podía.
+   *
+   * Va **adentro** de `construirDescripcion` y no armado por fuera de
+   * `construirEvento`, como el libro y el cupo completo: así entra al payload que
+   * compara la guarda anti-loop, y cambiar una sede propaga solo a las N sesiones
+   * del ciclo (D-07, trampa 9). Armarlo afuera dejaría de propagarse en silencio.
+   *
+   * **Las fechas de la modalidad NO salen acá** (B-224, decisión pendiente del
+   * dueño): qué significan frente a las de los encuentros no está resuelto, y un
+   * campo que no sale no puede decir algo equivocado en el calendario de todos
+   * los suscriptos. Sacarlo después de publicado no se puede.
+   *
+   * Con **una sola fila** el texto es exactamente el de antes de B-224, y es
+   * deliberado: si cambiara, el diff del §7.2 vería un evento distinto y la
+   * primera edición de cada actividad publicada reescribiría sus N eventos sin
+   * que nada hubiera cambiado para quien los tiene agendados (el argumento de
+   * D-95).
+   *
+   * **`?? []` y no una rama de compatibilidad que sintetice una fila** con el
+   * `modalidad`/`sede`/`online` de primer nivel. La hubo, y se sacó: no hay
+   * documentos sin el campo —el dueño lo dijo: «no hay nada en producción»— así
+   * que esa rama era una superficie más de la proyección pública, sin ningún
+   * centinela que la recorriera. El arreglo más barato para una rama de
+   * proyección sin barrido es no tener la rama.
+   */
+  const filas = actividad.modalidades ?? [];
+
+  for (const fila of filas) {
+    const donde = [`Modalidad: ${ETIQUETA_MODALIDAD[fila.modalidad] ?? fila.modalidad}`];
+    if (fila.sede) {
+      const s = fila.sede;
+      if (s.nombre) donde.push(s.nombre);
+      const calle = [s.direccion, etiqueta(labels, 'barrio', s.barrio), s.ciudad]
+        .map((p) => (p ?? '').trim())
+        .filter(Boolean)
+        .join(', ');
+      if (calle) donde.push(calle);
+      if (s.indicaciones) donde.push(`Cómo llegar: ${s.indicaciones}`);
+      const mapa = linkMapaDeSede(s, labels, fila.modalidad);
+      if (mapa) donde.push(`Mapa: ${mapa}`);
     }
+    if (fila.online?.plataforma) {
+      const plataforma = etiqueta(labels, 'plataforma', fila.online.plataforma);
+      // El §7.4 dice que el link no va nunca. Se respeta el flag `urlPublica` del
+      // modelo (§3.1) por decisión explícita del dueño: sin eso, la casilla del
+      // formulario prometía algo que no pasaba. Default false, y el formulario
+      // advierte sobre el zoombombing.
+      if (fila.online.urlPublica && fila.online.url) {
+        donde.push(`Plataforma: ${plataforma}`, `Link: ${fila.online.url}`);
+      } else {
+        donde.push(`Plataforma: ${plataforma} (el link se envía a quienes se inscriban)`);
+      }
+    }
+    bloques.push(donde.join('\n'));
   }
-  bloques.push(donde.join('\n'));
 
   // ── Arancel ───────────────────────────────────────────────────
   const arancel = [];

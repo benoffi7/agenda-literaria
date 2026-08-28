@@ -50,16 +50,23 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
   libro: { titulo: '', autor: '' },
   esCiclo: true,
   sesiones: [sesion()],
-  modalidad: 'hibrido',
-  sede: {
-    nombre: 'Casa Brandon',
-    direccion: 'Luis María Drago 236',
-    barrio: 'villa-crespo',
-    ciudad: 'CABA',
-    indicaciones: 'Timbre 2, tocar fuerte',
-    geo: null,
-  },
-  online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+  modalidades: [
+    {
+      id: 'mod_1',
+      modalidad: 'hibrido',
+      inicio: '',
+      fin: '',
+      sede: {
+        nombre: 'Casa Brandon',
+        direccion: 'Luis María Drago 236',
+        barrio: 'villa-crespo',
+        ciudad: 'CABA',
+        indicaciones: 'Timbre 2, tocar fuerte',
+        geo: null,
+      },
+      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+    },
+  ],
   inscripcion: {
     requiere: true,
     via: 'mail',
@@ -275,7 +282,12 @@ describe('vistaPreviaEvento — no muestra lo que el evento no publica (§5.1, �
 
   it('con "publicar el link" tildado el link SÍ sale, y queda señalado (D-15)', () => {
     const f = form({
-      online: { plataforma: 'zoom', url: 'https://zoom.us/j/abierto', urlPublica: true },
+      modalidades: [
+        {
+          ...form().modalidades[0]!,
+          online: { plataforma: 'zoom', url: 'https://zoom.us/j/abierto', urlPublica: true },
+        },
+      ],
     });
     const e = previa(f);
     expect(e.descripcion).toContain('Link: https://zoom.us/j/abierto');
@@ -283,8 +295,50 @@ describe('vistaPreviaEvento — no muestra lo que el evento no publica (§5.1, �
     expect(e.linkReservado).toBe(false);
   });
 
+  it('con dos formas virtuales, un link público en la SEGUNDA también se avisa (§5.1, trampa 5)', () => {
+    /*
+     * B-224 — es la razón de ser del `.some()`: el `online` de primer nivel es el
+     * **derivado**, o sea el de la primera fila que tenga uno. Mirando solo ese, un
+     * link tildado en la segunda salía al evento y a la página **sin aviso**, y esta
+     * pantalla es el último lugar donde se puede notar antes de publicar.
+     */
+    const base = form();
+    const f = form({
+      modalidades: [
+        {
+          ...base.modalidades[0]!,
+          modalidad: 'virtual',
+          sede: null,
+          online: { plataforma: 'zoom', url: 'https://zoom.us/j/privado', urlPublica: false },
+        },
+        {
+          ...base.modalidades[0]!,
+          id: 'mod_2',
+          modalidad: 'virtual',
+          sede: null,
+          online: { plataforma: 'meet', url: 'https://meet.example/abierto', urlPublica: true },
+        },
+      ],
+    });
+    const e = previa(f);
+    expect(e.linkPublicado).toBe(true);
+    expect(e.descripcion).toContain('Link: https://meet.example/abierto');
+    // Y el de la primera fila sigue sin salir: el flag es de la fila, no de la
+    // actividad.
+    expect(e.descripcion).not.toContain('zoom.us/j/privado');
+    // También hay uno reservado, así que las dos señales conviven.
+    expect(e.linkReservado).toBe(true);
+  });
+
   it('urlPublica en true sin URL cargada no inventa el campo', () => {
-    const f = form({ online: { plataforma: 'zoom', url: '', urlPublica: true } });
+    const f = form({
+      modalidades: [
+        {
+          ...form().modalidades[0]!,
+          online: { plataforma: 'zoom', url: '', urlPublica: true },
+        },
+      ],
+    });
     const e = previa(f);
     expect(e.descripcion).not.toContain('Link:');
     expect(e.linkPublicado).toBe(false);

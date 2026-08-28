@@ -21,6 +21,7 @@ import {
 import {
   formVacio,
   geoVacia,
+  modalidadVacia,
   onlineVacio,
   personaVacia,
   sedeVacia,
@@ -474,7 +475,16 @@ describe('recuperar no puede publicar un link que estaba privado (§5.1, trampa 
    */
   const conFlagsPrendidos = () => ({
     ...formVacio(),
-    online: { ...onlineVacio(), plataforma: 'zoom', url: 'https://zoom.us/j/1', urlPublica: true },
+    // B-224 — el flag vive adentro de la fila. **Dos filas virtuales**, y el link
+    // público en la segunda: con una sola, mirar `modalidades[0]` alcanzaría y el
+    // chequeo pasaría por casualidad.
+    modalidades: [
+      modalidadVacia('presencial'),
+      {
+        ...modalidadVacia('virtual'),
+        online: { ...onlineVacio(), plataforma: 'zoom', url: 'https://zoom.us/j/1', urlPublica: true },
+      },
+    ],
     material: {
       tiene: true,
       items: [
@@ -486,20 +496,21 @@ describe('recuperar no puede publicar un link que estaba privado (§5.1, trampa 
 
   it('los dos flags vuelven al default privado', () => {
     const r = sinFlagsDePublicacion(conFlagsPrendidos());
-    expect(r.online?.urlPublica).toBe(false);
+    expect(r.modalidades.map((m) => m.online?.urlPublica ?? null)).toEqual([null, false]);
     expect(r.material.items.map((i) => i.publico)).toEqual([false, false]);
   });
 
   it('no pierde nada más: la URL sigue ahí, solo deja de mostrarse', () => {
     const r = sinFlagsDePublicacion(conFlagsPrendidos());
-    expect(r.online?.url).toBe('https://zoom.us/j/1');
+    expect(r.modalidades[1]!.online?.url).toBe('https://zoom.us/j/1');
     expect(r.material.items.map((i) => i.titulo)).toEqual(['Cap. 1', 'Guía']);
   });
 
   it('sin bloque online no inventa uno', () => {
-    // `online` nace en null y lo crean las cascadas de modalidad: fabricarlo acá
-    // haría aparecer una actividad virtual sin que nadie la haya hecho virtual.
-    expect(sinFlagsDePublicacion(formVacio()).online).toBeNull();
+    // `online` nace en null en una fila presencial y lo crea la cascada del §11:
+    // fabricarlo acá haría aparecer una actividad virtual sin que nadie la haya
+    // hecho virtual.
+    expect(sinFlagsDePublicacion(formVacio()).modalidades[0]!.online).toBeNull();
   });
 
   it('el aviso lo dice solo cuando hay algo que decir', () => {
@@ -550,16 +561,37 @@ describe('lo recuperado entra podado (§5.2)', () => {
     const { almacen } = almacenFalso();
     const conBasura = {
       ...formVacio(),
-      sede: { ...formVacio().sede!, apodoInterno: 'la casa de Ana' },
       organizador: { nombre: 'Casa Brandon', instagram: '', web: '', telefonoPrivado: '11' },
     };
     guardarBorradorLocal(almacen, CLAVE, conBasura as never, AHORA);
 
     const leido = leerBorradorLocal(almacen, CLAVE, AHORA);
-    expect(leido!.form.sede).not.toHaveProperty('apodoInterno');
     expect(leido!.form.organizador).not.toHaveProperty('telefonoPrivado');
     // Y lo que sí conoce llega intacto.
     expect(leido!.form.organizador.nombre).toBe('Casa Brandon');
+  });
+
+  /**
+   * B-224 — **`sede` y `online` ya no los cuida esta poda**, y hay que decirlo
+   * fuerte: viven adentro de `modalidades`, que es un array, y los arrays pasan
+   * enteros a propósito.
+   *
+   * Quien los cuida ahora es `formADocumento`, que enumera los campos de la fila
+   * en vez de copiarla con un spread — más fuerte que la poda, porque la clave de
+   * más no llega ni a Firestore. La afirmación vive en `tests/modalidades.test.ts`
+   * («una clave de más en la sede de una fila no llega al documento»), y este
+   * comentario está acá para que quien lea la poda no crea que sigue cubriendo lo
+   * que ya no cubre.
+   */
+  it('los arrays pasan enteros, modalidades incluida (la guarda se mudó)', () => {
+    const { almacen } = almacenFalso();
+    const conBasura = {
+      ...formVacio(),
+      modalidades: [{ ...formVacio().modalidades[0]!, apodoInterno: 'la casa de Ana' }],
+    };
+    guardarBorradorLocal(almacen, CLAVE, conBasura as never, AHORA);
+    const leido = leerBorradorLocal(almacen, CLAVE, AHORA)!.form;
+    expect(leido.modalidades[0]).toHaveProperty('apodoInterno');
   });
 
   it('no toca los arrays: sesiones y material tienen proyección campo por campo', () => {
@@ -705,48 +737,31 @@ describe('el molde de la poda no puede quedarse corto (B-88)', () => {
     );
   });
 
-  it('y las coordenadas de la sede, que el molde tiene que conocer para podar adentro', () => {
+  it('las coordenadas de la sede llegan enteras dentro de su fila (B-224)', () => {
     const { almacen } = almacenFalso();
-    const form = { ...formVacio(), sede: { ...sedeVacia(), geo: { lat: -34.6, lng: -58.4 } } };
+    const base = formVacio();
+    const form = {
+      ...base,
+      modalidades: [
+        { ...base.modalidades[0]!, sede: { ...sedeVacia(), geo: { lat: -34.6, lng: -58.4 } } },
+      ],
+    };
     guardarBorradorLocal(almacen, CLAVE, form, AHORA);
-    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.sede?.geo).toEqual({
+    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.modalidades[0]!.sede?.geo).toEqual({
       lat: -34.6,
       lng: -58.4,
     });
   });
 
-  it('una clave de más adentro de sede.geo tampoco pasa', () => {
-    const { almacen } = almacenFalso();
-    const form = {
-      ...formVacio(),
-      sede: { ...sedeVacia(), geo: { lat: -34.6, lng: -58.4, precision: 'exacta' } },
-    };
-    guardarBorradorLocal(almacen, CLAVE, form as never, AHORA);
-    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.sede!.geo).not.toHaveProperty(
-      'precision',
-    );
-  });
-
-  it('una clave de más en tallerista y en online tampoco', () => {
+  it('una clave de más en tallerista no pasa', () => {
     const { almacen } = almacenFalso();
     const form = {
       ...formVacio(),
       tallerista: { ...personaVacia(), telefonoPrivado: '11' },
-      online: { ...onlineVacio(), claveDeLaSala: '1234' },
     };
     guardarBorradorLocal(almacen, CLAVE, form as never, AHORA);
     const leido = leerBorradorLocal(almacen, CLAVE, AHORA)!.form;
     expect(leido.tallerista).not.toHaveProperty('telefonoPrivado');
-    expect(leido.online).not.toHaveProperty('claveDeLaSala');
-  });
-
-  it('sin sede no inventa coordenadas: el molde da la forma, no los defaults', () => {
-    // Usar el molde como default metería un {lat: 0, lng: 0} —el golfo de Guinea—
-    // en la sede de una actividad a la que le faltara el bloque.
-    const { almacen } = almacenFalso();
-    const { sede: _, ...sinSede } = formVacio();
-    guardarBorradorLocal(almacen, CLAVE, sinSede as never, AHORA);
-    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.sede?.geo ?? null).toBeNull();
   });
 
   it('un bloque a medias también se completa: material sin items no rompe la isla', () => {
@@ -761,14 +776,16 @@ describe('el molde de la poda no puede quedarse corto (B-88)', () => {
     expect(() => teniaFlagsDePublicacion(leido)).not.toThrow();
   });
 
-  it('sin sede no inventa ni coordenadas ni ciudad (§5.1)', () => {
-    // `sedeVacia()` trae `ciudad: 'CABA'`, y `toPublic` proyecta `sede` entera:
-    // completar con la fábrica publicaba una ubicación que nadie cargó. Es el
-    // mismo argumento del golfo de Guinea, una capa más arriba.
+  it('sin modalidades no inventa una sede: el molde da la forma, no los defaults', () => {
+    // `sedeVacia()` trae `ciudad: 'CABA'` y el molde trae `geo: {lat: 0, lng: 0}`
+    // —el golfo de Guinea—: completar con la fábrica publicaría una ubicación que
+    // nadie cargó. Los arrays se toman enteros del valor o enteros del default, y
+    // el default de `formVacio()` es una fila presencial **sin** coordenadas.
     const { almacen } = almacenFalso();
-    const { sede: _, ...sinSede } = formVacio();
-    guardarBorradorLocal(almacen, CLAVE, sinSede as never, AHORA);
-    expect(leerBorradorLocal(almacen, CLAVE, AHORA)!.form.sede).toBeNull();
+    const { modalidades: _, ...sinModalidades } = formVacio();
+    guardarBorradorLocal(almacen, CLAVE, sinModalidades as never, AHORA);
+    const leido = leerBorradorLocal(almacen, CLAVE, AHORA)!.form;
+    expect(leido.modalidades[0]!.sede?.geo ?? null).toBeNull();
   });
 
   it('sin tallerista tampoco lo inventa', () => {
@@ -814,12 +831,6 @@ describe('la versión del formato y la forma del formulario no derivan por separ
       rutas({
         ...formVacio(),
         tallerista: personaVacia(),
-        online: onlineVacio(),
-        // `sede.geo` va con su fábrica: con el `null` de `formVacio()` entraba
-        // como hoja y las claves de adentro no se enumeraban, así que un campo
-        // nuevo en las coordenadas lo tiraba la poda **en silencio** y este test
-        // quedaba verde afirmando la pérdida.
-        sede: { ...sedeVacia(), geo: geoVacia() },
       }).sort(),
     )
       .toEqual([
@@ -842,20 +853,14 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'libro.titulo',
         'material.items',
         'material.tiene',
-        'modalidad',
-        'online.plataforma',
-        'online.url',
-        'online.urlPublica',
+        // B-224 — `modalidades` es un array: entra como hoja, igual que
+        // `sesiones` e `imagenes`. Con él se fueron `modalidad`, `sede.*` y
+        // `online.*` de primer nivel: los dos últimos viven adentro de la fila y
+        // el primero es derivado.
+        'modalidades',
         'organizador.instagram',
         'organizador.nombre',
         'organizador.web',
-        'sede.barrio',
-        'sede.ciudad',
-        'sede.direccion',
-        'sede.geo.lat',
-        'sede.geo.lng',
-        'sede.indicaciones',
-        'sede.nombre',
         'sesiones',
         'slug',
         'tags',
@@ -889,6 +894,56 @@ describe('la versión del formato y la forma del formulario no derivan por separ
     // `estado` y `sesiones[].cancelada` en `conLoQueEsDelDocumento`. Subir la
     // versión no arregla eso: tiraría los borradores de hoy y los de mañana
     // volverían a tener la misma pregunta. Ver el reporte de B-97.
-    expect(VERSION_BORRADOR).toBe(2);
+    /*
+     * **B-224 la subió a 3, y esta vez sí correspondía.** Es el caso de B-167,
+     * no el de `libro` ni el de `inscripcion.completo`: `modalidad`, `sede` y
+     * `online` dejaron de estar en el formulario y pasaron a vivir adentro de
+     * `modalidades`. Un borrador de la forma anterior **parece bueno** —tiene
+     * `titulo` y `sesiones`, así que pasa la guarda de forma— y la mezcla lo
+     * completaría con la fila presencial vacía de `formVacio()`: un taller
+     * virtual recuperado volvería como presencial, con la sede y el link
+     * perdidos, sin que nada avise. Eso es exactamente lo que el bump existe
+     * para evitar.
+     */
+    expect(VERSION_BORRADOR).toBe(3);
+  });
+
+  /**
+   * B-224 — la forma **de adentro de una fila de modalidad**, que el chequeo de
+   * arriba ya no ve.
+   *
+   * `modalidades` es un array y entra como hoja, igual que `sesiones`. Hasta acá
+   * `sede` y `online` estaban en el primer nivel y sus claves se enumeraban
+   * solas; ahora hace falta este segundo chequeo, porque si no agregar
+   * `Sede.piso` u `Online.claveDeSala` dejaría de poner nada en rojo — que es
+   * justo la propiedad que el test de arriba dice tener.
+   *
+   * `sede.geo` va con su fábrica: con el `null` de `modalidadVacia()` entraría
+   * como hoja y las claves de adentro no se enumerarían, así que un campo nuevo
+   * en las coordenadas se perdería **en silencio**.
+   */
+  it('la forma de adentro de una fila de modalidad también está fijada (B-224)', () => {
+    expect(
+      rutas({
+        ...modalidadVacia('hibrido'),
+        online: onlineVacio(),
+        sede: { ...sedeVacia(), geo: geoVacia() },
+      }).sort(),
+    ).toEqual([
+      'fin',
+      'id',
+      'inicio',
+      'modalidad',
+      'online.plataforma',
+      'online.url',
+      'online.urlPublica',
+      'sede.barrio',
+      'sede.ciudad',
+      'sede.direccion',
+      'sede.geo.lat',
+      'sede.geo.lng',
+      'sede.indicaciones',
+      'sede.nombre',
+    ]);
   });
 });
