@@ -18,11 +18,28 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las cuatro salidas, una por una:
-   `events.json` (`src/lib/toPublic.ts`) · el evento de Calendar
-   (`functions/calendario.js`) · el issue de GitHub (`functions/reportes.js`) ·
-   GA4 (`src/lib/analytics-eventos.ts`). "No decidí" no es una opción: el default
-   de agregarlo al `pick` es publicar (§5.1).
+1. **¿Es público?** Resolvé las **seis** salidas, una por una:
+
+   | # | Salida | Quién la produce |
+   |---|---|---|
+   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts` |
+   | 2 | el evento de Calendar | `functions/calendario.js` |
+   | 3 | el issue de GitHub | `functions/reportes.js` |
+   | 4 | GA4 | `src/lib/analytics-eventos.ts` |
+   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
+   | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` |
+
+   "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
+   (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
+   `docs/07-seguridad.md`.
+
+   > **Esta lista decía cuatro hasta el 2026-08-28**, y le faltaban las dos más
+   > irreversibles: el **posteo** (desde B-95) y la **página indexada** (desde
+   > B-227). O sea que se podía seguir este skill al pie de la letra y publicar un
+   > campo nuevo en Instagram o en Google sin que nada lo frenara — que es
+   > exactamente la clase de bug que el skill existe para evitar. Lo encontró el
+   > `auditor-documentacion` (**B-244**). Si agregás una salida, **se agrega acá en
+   > el mismo cambio**.
 2. **¿Es un dato libre o una taxonomía?** Si es un valor de un conjunto que va a
    crecer, va como `/opciones/{campo}` con el patrón del §4 (slugify + upsert
    transaccional + aprobación), no como string libre.
@@ -74,11 +91,24 @@ que no se pierdan los ids de sesión.
   un slug que ya existe, avisa y **reusa** (§4.2). Las etiquetas nuevas se
   persisten **en el submit**, no al tipearlas.
 
-## 5 · Proyección pública
+## 5 · Proyecciones públicas
 
-`src/lib/toPublic.ts`, según la decisión 1. La proyección es una **whitelist**:
-se enumera lo que sale. No agregues un spread. Si el campo sale condicionado por
-un flag, el flag manda y sin dato no se inventa el campo (D-15).
+Según la decisión 1, y son **cuatro archivos en cadena**, no uno. Todas son
+**whitelist**: se enumera lo que sale, nunca un spread. Si el campo sale
+condicionado por un flag, el flag manda y sin dato no se inventa el campo (D-15).
+
+| Si el campo va a… | Tocá |
+|---|---|
+| la salida 1 | `src/lib/toPublic.ts` — qué *puede* ser público |
+| …y además lo necesita el **listado** (filtrar, ordenar, pintar la tarjeta) | `src/lib/eventsJson.ts` — el índice recorta más que `toPublic` a propósito |
+| la salida 6 | `src/lib/detallePublico.ts` — la página de detalle **no ve el documento**, solo este view-model (D-140), así que un campo que no se agregue acá no aparece aunque esté en `toPublic` |
+| la salida 5 | `src/lib/textoRedes.ts` — el `Pick` de `ActividadParaRedes` |
+
+**El barrido te va a decir si te olvidaste de decidir**: `tests/barrido-de-salidas-publicas.test.ts`
+exige que el fixture tenga el campo nuevo y falla en las **dos** direcciones —si
+sale sin estar permitido y si está permitido y no sale—. Cuando falle, la
+respuesta no es agregarlo a la lista de excepciones sin pensar: es contestar la
+celda.
 
 ## 6 · Evento de Calendar
 

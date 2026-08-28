@@ -431,6 +431,53 @@ el resultado:
 Los comandos están en [`07-seguridad.md`](07-seguridad.md) y
 [`08-operacion.md`](08-operacion.md).
 
+**Y esto no es una formalidad: en B-227 fue el build de verdad el que encontró el
+único bug de la tanda.** `scripts/build-contra-emulador.mjs` falló con
+`ahora.getTime is not a function` y **cero páginas de detalle generadas**, con los
+1.600 tests en verde: Astro llama a `getStaticPaths` con un argumento propio
+(`{ paginate, rss }`) y el alias `export const getStaticPaths = caminosDeDetalle`
+lo dejaba caer en el primer parámetro de la función. Ningún test unitario podía
+verlo, porque todos la llaman bien. Mirar el HTML que salió encontró además una
+segunda cosa: el tema de un encuentro suelto no aparecía en la página, así que la
+página pública decía **menos** que el evento de Calendar del mismo encuentro.
+
+## Una plantilla no recibe el documento: recibe un view-model
+
+Cuando una salida pública es una **página** y no un archivo de datos, la frontera
+de privacidad no puede ser la disciplina de quien escribe el `.astro`: tiene que
+ser un **tipo** (D-140).
+
+```astro
+---
+// mal — la plantilla tiene todo en la mano y publicar de más es un `{}`
+export const getStaticPaths = async () => (await leer()).map((a) => ({ props: { a } }));
+---
+<p>{a.online.url}</p>   <!-- compila, se ve bien, y es la trampa 5 -->
+```
+
+```astro
+---
+// bien — recibe lo que `detalleDeActividad` decidió, campo por campo, y nada más
+export const getStaticPaths = () => caminosDeDetalle();
+interface Props { detalle: DetallePublico }
+---
+```
+
+Dos cosas se ganan, y la segunda es la que no se ve venir:
+
+1. **La plantilla no puede publicar lo que no tiene.**
+2. **La salida se vuelve testeable.** Un `.astro` no se puede importar desde
+   vitest, así que sin el view-model no hay ningún valor sobre el cual correr el
+   barrido de centinelas. Con él, la página entra al barrido como cualquier otra
+   salida.
+
+La otra mitad —que la plantilla no reciba nada más— se afirma leyendo el archivo
+(`tests/pagina-de-detalle.test.ts`), y se afirma **por lista blanca**: qué importa
+del lector, no una lista negra de nombres prohibidos. La diferencia la encontró el
+`auditor-privacidad`: el atajo más corto no era ninguno de los cuatro nombres
+prohibidos, era `const { actividades } = await contenidoDelSitio()` con el import
+que la plantilla ya tenía.
+
 ## Estilo de UI
 
 Tailwind 4 con tokens en `src/styles/global.css`. Paleta de papel y tinta

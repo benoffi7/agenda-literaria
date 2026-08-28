@@ -310,7 +310,7 @@ cortos, no explicar mejor el campo.**
 | Cancelar un encuentro (la casilla "Cancelado") | Está en un `onChange` inline del JSX y medirlo exigía tocar el markup. Ver [B-58](BACKLOG.md) |
 | Tildar "publicar el link de la reunión" en el momento | Ídem. Se mide igual en `guardado_ok.url_publica`, que es el dato que importa |
 | El foco campo por campo (el embudo fino del formulario) | Exigiría instrumentar 30+ inputs, o refactorizar el formulario. `faltantes` da la ubicación gruesa sin tocar nada |
-| El sitio público | Todavía no existe (paso 3 del §10) |
+| El sitio público | Existe desde B-227, y **no se mide**: es la decisión 4 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), todavía abierta. Medirlo agrega JavaScript y una decisión de privacidad a un sitio que hoy no pone una sola cookie. La única métrica que valdría la pena es el clic en el CTA de inscripción |
 
 ---
 

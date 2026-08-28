@@ -306,18 +306,72 @@ nacer este test sobrevivió meses en un archivo que nadie sospechaba.
 
 ## P1 — bloquean el objetivo del proyecto
 
-El proyecto existe para que la gente encuentre los talleres en Google (§2.3).
-Hoy eso no pasa: no hay sitio público.
+El proyecto existe para que la gente encuentre los talleres en Google (§2.3). Hoy
+eso todavía no pasa, pero por un motivo distinto que antes: **el sitio existe y no
+está desplegado.** Falta elegir el dominio (B-109), sin el cual no hay canonical ni
+sitemap, y falta el rebuild automático (B-20).
+
+### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
+
+El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y
+construye el listado del §6 del diseño entero. El detalle está en
+[`04-funcionalidades.md`](04-funcionalidades.md) y el estado sección por sección,
+en la caja de arriba de [`12-sitio-publico.md`](12-sitio-publico.md).
+
+Lo que conviene tener anotado acá, que es lo que costó decidir:
+
+- **Cuatro decisiones nuevas** — **D-137** (hay selector de orden, contra el §6.1),
+  **D-138** (`creadoEn` es público, con precisión de día), **D-139** (el link de la
+  reunión tampoco sale al detalle) y **D-140** (la plantilla recibe un view-model,
+  no el documento).
+- **Una salida pública nueva**, la sexta: la página de detalle y su JSON-LD.
+  Entró al barrido de centinelas **en el mismo cambio que la creó**, que es la
+  lección de B-212 y de la salida 5 aplicada a tiempo.
+- **Dos bugs que ningún test podía ver** — **B-237** (lo encontró el build de
+  verdad) y **B-243** (lo encontró calcular el contraste, que nadie había
+  calculado).
+- **Cinco hallazgos del `auditor-privacidad`**, todos arreglados: el `url` del
+  organizador sin sanear en el JSON-LD, la hora exacta de carga en `creadoEn`, el
+  import del lector que dejaba a la plantilla recuperar el documento, las
+  etiquetas del detalle filtradas por aprobación (contra D-30) y la salida 6 sin
+  nombrar en el mapa de salidas.
+- **Abiertos en el camino:** B-238 (hoja de filtros y CTA fijo), B-239 (el peso de
+  React en la home), B-240 (la casilla del link dice algo que el sitio no hace),
+  B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
+  panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
+
+### B-244 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
+
+El skill que se invoca **cada vez que se agrega un campo al modelo**
+(`.claude/skills/campo-nuevo/SKILL.md`, decisión 1) nombraba `events.json`,
+Calendar, el issue de GitHub y GA4. No nombraba `textoRedes.ts` —la salida 5,
+desde **B-95**— ni `detallePublico.ts` —la 6, desde **B-227**—.
+
+O sea que se podía seguir el procedimiento al pie de la letra y terminar
+publicando un campo nuevo en el **posteo de Instagram** o en la **página que
+Google indexa**, sin que nada lo frenara: es exactamente la clase de bug que el
+skill existe para evitar, y las dos salidas que faltaban son las dos de las que no
+se puede volver.
+
+Lo encontró el `auditor-documentacion`. **La 5 llevaba tres años-persona de
+distancia con su propia lección:** la ficha del `auditor-privacidad` había tenido
+el mismo agujero, se arregló el 2026-08-27 (B-216) con un test que ata las dos
+tablas… y nadie miró el skill, que es el documento que de verdad se ejecuta.
+
+Arreglado con la tabla de las seis y una nota de por qué. El paso «Proyección
+pública» también se reescribió: eran cuatro archivos en cadena y nombraba uno.
 
 ### B-01 · Sitio público (paso 3 del §10)
 
 Lo que falta:
 
-- `src/pages/index.astro` — listado con la island de filtros.
-- `src/components/Filtros.tsx` — lee `events.json`, filtra en memoria (§2.5).
-- `src/pages/actividad/[slug].astro` — detalle por SSG con `getStaticPaths`.
-- Generación de `events.json` en build time con el Admin SDK, usando
-  `toPublic.ts` y las opciones del §4.4.
+- ~~`src/pages/index.astro` — listado con la island de filtros.~~ ✅ B-227
+- ~~La island que lee `events.json` y filtra en memoria (§2.5).~~ ✅ B-227
+  (`src/components/publico/Buscador.tsx`)
+- ~~`src/pages/actividad/[slug].astro` — detalle por SSG con `getStaticPaths`.~~
+  ✅ B-227
+- ~~Generación de `events.json` en build time con el Admin SDK.~~ ✅ B-106
+- Los hubs (B-108), `/pasadas` y el SEO absoluto (B-109), las canceladas (B-110).
 
 Ya está hecho y testeado: la proyección (`toPublic.ts`), la normalización de
 búsqueda (`normalize.ts`) y el acceso de build time (`firebase-admin.ts`).
@@ -330,7 +384,21 @@ pantallas, SEO, filtros y casos borde, decididos con su motivo. B-01 queda como
 el paraguas; lo construible son **B-105 a B-114**, en el orden del §13 de ese
 documento.
 
-### B-105 · El detalle y la home
+### B-105 · El detalle y la home — ✅ hecho (2026-08-28, en **B-227**)
+
+Construido con dos desvíos del plan de abajo, los dos anotados en la caja de
+estado de [`12-sitio-publico.md`](12-sitio-publico.md): el markup de la tarjeta se
+define una sola vez en un **componente React** que Astro renderiza sin hidratar
+(en vez de un componente Astro más un `<template>`), y la island **monta su propia
+lista sacando la del build del DOM** en vez de mostrar y ocultar por `data-id`. Se
+conservan las cuatro propiedades que el §6.3 perseguía —HTML completo del build,
+sin-JS servido, sin parpadeo, un solo markup— y el filtrado queda como lógica pura
+testeable (`src/lib/listadoPublico.ts`, 58 casos).
+
+Lo que queda afuera y tiene su ítem: la hoja inferior de filtros y el CTA fijo de
+móvil (**B-238**), el peso del runtime de React en la home (**B-239**).
+
+El plan original, como estaba escrito:
 
 `src/pages/actividad/[slug].astro` (SSG con `getStaticPaths`, **cero
 JavaScript**) y `src/pages/index.astro` con `src/components/Filtros.tsx` como
@@ -391,7 +459,23 @@ Tres cosas que no son obvias (§3 del diseño):
 - **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
   island lo pide con `?v={VERSION_APP}`.
 
-### B-107 · Meta, Open Graph y JSON-LD
+### B-107 · Meta, Open Graph y JSON-LD — 🟡 **la mitad hecha** (2026-08-28, en B-227)
+
+**Hecho:** `title` y `description` de la home y del detalle; el JSON-LD completo
+—`EducationEvent`/`LiteraryEvent`/`Event`, `EventSeries` con `subEvent` por sesión,
+fechas con offset, `offers` con precio solo si es gratis, `performer` solo si hay
+tallerista, cancelados marcados con su fecha original— y **el link de la reunión
+fuera del JSON-LD**, que ahora es más estricto de lo que decía este ítem: tampoco
+va la URL canónica, porque no existe (ver abajo). Fijado en
+`tests/detallePublico.test.ts` y en su `describe` del barrido de centinelas.
+
+**Falta, y todo por el mismo motivo — `site` no existe hasta que haya dominio
+(B-109):** `canonical`, Open Graph, `twitter:card`, las cinco imágenes de
+`public/og/`, el `url` de `VirtualLocation` y de `offers`, el `BreadcrumbList` y
+el `CollectionPage`/`ItemList`. Inventar una URL absoluta ahora es peor que no
+ponerla: una canónica equivocada le dice a Google que la página buena es otra.
+
+El plan original, como estaba escrito:
 
 Va pegado a B-105: una página de detalle sin datos estructurados no sirve para
 lo que existe el proyecto (§2.3).
@@ -1701,7 +1785,143 @@ Lo que enseñó: **la regla no se sostiene con atención.** Tres frentes en para
 rompieron dos veces en una tarde, y uno de ellos era el que la estaba documentando.
 
 
+### B-237 · Astro le pasa un argumento a `getStaticPaths` y el alias rompía el build entero — ✅ hecho (2026-08-28)
 
+**Qué se rompía.** `export const getStaticPaths = caminosDeDetalle;` — el alias,
+que es lo que uno escribe. Astro llama a `getStaticPaths` con un objeto propio
+(`{ paginate, rss }`), ese objeto caía en el primer parámetro de la función —el
+reloj— y la generación moría con `ahora.getTime is not a function`: **cero páginas
+de detalle**, con los 1.600 tests en verde.
+
+**Cómo apareció.** No lo vio ningún test unitario, porque todos la llaman bien. Lo
+encontró `scripts/build-contra-emulador.mjs`, o sea el build de verdad contra el
+emulador — el §"Verificar contra el sistema real" de
+[`05-patrones.md`](05-patrones.md) haciendo exactamente lo que promete, y el mejor
+argumento que tiene ese párrafo hasta ahora.
+
+**Arreglo, en dos capas.** La plantilla envuelve
+(`getStaticPaths = () => caminosDeDetalle()`), y `caminosDeDetalle` **ignora un
+`ahora` que no sea `Date`** — la segunda es la que sigue valiendo el día que
+alguien vuelva al alias. Red: `tests/pagina-de-detalle.test.ts` prohíbe el alias, y
+`tests/sitio-publico.integracion.test.ts` la llama **igual que Astro** y exige que
+devuelva sus caminos.
+
+### B-243 · El texto secundario del sitio no llegaba a AA — ✅ hecho (2026-08-28)
+
+**Qué se rompía.** La primera versión de B-227 usaba `text-tinta/45`, `/50`, `/55`
+y `/60` para todo el texto secundario —fechas, rótulos, contadores, el número de
+cada chip, los encuentros pasados—. Sobre `--color-papel` esos cuatro dan **2,86 ·
+3,30 · 3,84 · 4,49**: ninguno llega al 4,5 que pide WCAG AA para texto normal, y el
+primero no llega ni al 3 del texto grande. 35 usos en seis archivos.
+
+**Por qué no lo vio nadie.** El contraste no rompe ningún build, no tira ningún
+error y en una pantalla buena se ve bien. La única forma de saberlo es calcularlo,
+y el §10 del diseño pedía medir **el acento** —que sí pasa, 5,63— sin anticipar
+que el riesgo real estaba en la rampa de opacidad.
+
+**Arreglo.** Piso en `tinta/65` (5,29). Y `tests/contraste.test.ts`, que hace las
+dos mitades: calcula los ratios desde los tokens de `global.css` (parseados, no
+copiados, para que cambiar la paleta se note) y **falla si algún archivo del sitio
+público escribe una clase por debajo del piso**. Con control negativo: un escalón
+más abajo tiene que no pasar, o el piso no significaría nada.
+
+**Lo que queda afuera a propósito:** el panel. Es otra audiencia —se usa con sesión
+y en una pantalla elegida— y su rampa es anterior a esto; revisarla es su propio
+ítem, no éste.
+
+### B-238 · La hoja inferior de filtros y el CTA fijo de móvil · P2
+
+El §8 del diseño pide dos elementos fijos que B-227 no construyó, y los dos por el
+mismo motivo: son **capas modales**, y una capa modal mal hecha es peor que no
+tenerla — necesita trampa de foco, cierre con `Escape`, cierre tocando el fondo,
+devolver el foco al abridor y `pushState` para que el botón atrás del teléfono la
+cierre en vez de salir del sitio.
+
+Hoy el panel de filtros es un *disclosure* inline (`aria-expanded`/`aria-controls`)
+que no necesita nada de eso y no tiene cómo salir mal, y el CTA del detalle es el
+botón del flujo, sin barra fija.
+
+Cuando se haga, **la aritmética ya existe**: `src/lib/foco.ts` tiene
+`indiceDeTab`, `indiceDeTecla` e `indiceSiguiente`, escritos para el menú «⋯» y la
+capa de ayuda del panel (B-14, B-64). El §10 del diseño dice que el sitio público
+es el lugar donde ese componente se hace bien de entrada y que después puede
+resolver los dos del panel.
+
+### B-239 · La home baja el runtime de React por la island de filtros · P2
+
+Medido en el build del 2026-08-28: `client.BlZe1zq3.js` son **186 KB (58 KB
+gzip)**, más `Buscador` (16 KB / 5,8 KB gzip). El §8 del diseño fija el presupuesto
+de la home en «solo la island de filtros» y no dice cuánto pesa esa island.
+
+**La página de detalle no está afectada** —tiene cero JavaScript, y es la que
+recibe el tráfico— así que esto es P2 y no P1.
+
+Tres caminos, de menos a más trabajo:
+
+1. **`preact/compat`** como alias de `react`/`react-dom` **solo para el sitio
+   público**. Baja a ~10 KB gzip. El riesgo es el panel: comparte componentes con
+   el sitio (hoy ninguno, pero `Tarjeta` podría), y el panel usa React 19.
+2. **Reescribir la island sin framework.** La lógica ya es pura y está en
+   `src/lib/listadoPublico.ts` con sus tests; lo que se reescribe es solo el
+   render. Pero se pierde el «un solo markup de tarjeta», que es lo que el §6.3
+   pide y lo que este frente logró.
+3. **Dejarlo.** 58 KB gzip cacheados en CDN, en una página que no es la que recibe
+   el tráfico.
+
+Medir antes de elegir: con el sitio desplegado, cuánto tarda la home en un 3G
+simulado.
+
+### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica · P2
+
+**D-139** decidió que `online.url` no sale a la página de detalle ni con
+`urlPublica: true`, más estricto que D-15. Correcto para el link —un HTML indexado
+no se despublica— pero deja una inconsistencia visible: quien tilda la casilla
+espera ver el link en el sitio, y no aparece.
+
+Las dos salidas, y la conversación es del dueño:
+
+- **Cambiar el texto de la casilla** para que diga a dónde sale de verdad (hoy el
+  link va al `events.json` y a la descripción del evento de Calendar, que es donde
+  lo ve quien está suscripto).
+- **O publicarlo en el detalle** y aceptar el riesgo, que es el zoombombing de la
+  trampa 5 sobre una página que Google indexa.
+
+Mientras tanto la ayuda del panel dice «Solo sale al sitio y al evento del
+calendario si tildás…», que **también hay que corregir** en la salida que se elija.
+
+### B-241 · El fixture del gate de build es anterior a B-224, así que no ejercita el bloque «Dónde» · P2
+
+`scripts/build-contra-emulador.mjs` siembra una actividad con `modalidad`, `sede` y
+`online` de **primer nivel** y sin el array `modalidades`, que es la forma que el
+modelo tenía antes de B-224. Consecuencia, medida el 2026-08-28: en el HTML que
+genera el gate, la página de detalle **no pinta el bloque «Cómo se cursa» ni la
+sede**, y `datosEstructurados` devuelve `null` porque no hay ningún `location`.
+
+O sea: el gate que existe para mirar el artefacto de verdad no mira dos de sus
+secciones, y los centinelas `gate.sede.direccion` y `gate.sede.indicaciones` no
+aparecen en el HTML **por el fixture y no por la proyección**. Lo verifican igual
+el barrido de centinelas y `tests/sitio-publico.integracion.test.ts` —que sí usa el
+fixture con `modalidades`—, así que no hay hueco de cobertura; hay un gate que
+comprueba menos de lo que parece.
+
+Arreglo: darle `modalidades: [{ id, modalidad, inicio, fin, sede, online }]` al
+fixture del script, con los mismos centinelas.
+
+### B-242 · Cuando el sitio se publique hay que corregir la ayuda del panel · P2
+
+Dos textos de `src/lib/ayuda.ts` dicen hoy la verdad y van a dejar de decirla el
+día del deploy:
+
+- «Hoy el sitio todavía no está publicado: se está construyendo. Por ahora lo que
+  la gente ve de afuera es el calendario…»
+- «En el sitio va a aparecer cuando el sitio esté publicado.»
+
+**No se tocan ahora, a propósito:** el sitio está construido pero no desplegado
+—falta el dominio (B-109) y el rebuild automático (B-20)—, así que cambiarlos hoy
+convertiría una ayuda cierta en una que miente, que es peor. Va con el deploy, y
+en el mismo cambio va la entrada de `src/lib/novedades.ts`: «tus actividades ahora
+tienen su propia página pública» **sí** es una novedad para quien carga, pero solo
+cuando sea cierta.
 ### B-224 · Una actividad tiene N modalidades, cada una con su lugar — ✅ hecho (2026-08-27), con una decisión abierta
 
 Pedido del dueño (2026-08-27), textual:
@@ -4349,13 +4569,22 @@ que el §4.2 evita).
 Mínimo útil: un contador de pendientes en la cabecera del panel. Cuadra con
 B-25.
 
-### B-27 · El `events.json` tiene que publicar solo las opciones aprobadas
+### B-27 · El `events.json` tiene que publicar solo las opciones aprobadas — ✅ hecho (desde B-212, 2026-08-25)
 
-Parte de **B-01** (el sitio público, que todavía no existe). El generador tiene
-que armar `opciones.*` (§4.4) con `opcionesVisibles(valores)` **sin uid**, que
-devuelve exactamente las aprobadas. Queda anotado acá para que no se pierda: si
-se vuelca el array crudo, los chips de filtro del sitio muestran vocabulario sin
-validar.
+`opcionesPublicas` en `toPublic.ts` arma `opciones.*` con
+`opcionesVisibles(valores)` **sin uid**, que devuelve exactamente las aprobadas, y
+lo fija el barrido de `/opciones/*` en
+`tests/barrido-de-salidas-publicas.test.ts` —incluido el caso de la opción `fijo`
+con `aprobada: false`, que no puede desaparecer de los filtros—. **Quedó sin marcar
+al cerrar B-212**; lo encontró el `auditor-documentacion` durante B-227.
+
+Y el matiz que B-227 tuvo que resolver, porque este ítem no lo anticipaba: filtrar
+lo **elegible** es correcto para los chips, pero **no** para resolver la etiqueta de
+un slug que una actividad ya tiene guardado. Son dos mapas distintos — ver D-30 y
+la tabla de [`07-seguridad.md`](07-seguridad.md).
+
+El texto original decía «parte de B-01, el sitio público, que todavía no existe».
+El sitio existe desde B-227.
 
 ### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño
 
@@ -4980,8 +5209,17 @@ pendiente lo que este ítem pide de verdad:** la verificación sobre el
 **artefacto** — el `grep` a `dist/` buscando `difusion`, la URL de la reunión y
 los uids. Hoy eso lo hace el paso 4 del gate mecánico
 (`scripts/build-contra-emulador.mjs`, B-217) para el `events.json`, pero no para
-el HTML de las páginas de detalle, que todavía no existe. La cabecera de cache
-(B-37) ya se decidió.
+el HTML de las páginas de detalle, que **ya existe desde B-227**
+(`dist/actividad/{slug}/index.html`) y todavía no se barre ahí. El equivalente a
+nivel de view-model sí lo hace `tests/barrido-de-salidas-publicas.test.ts`
+(D-140), así que no hay hueco de cobertura sobre la decisión — lo que falta es la
+verificación sobre el **artefacto**, que es lo que este ítem pide. La cabecera de
+cache (B-37) ya se decidió.
+
+**Ojo con el fixture antes de escribirlo:** hoy el gate siembra una actividad
+anterior a B-224 (sin `modalidades[]`), así que su HTML sale sin el bloque «Cómo
+se cursa» y sin JSON-LD. Un grep sobre ese HTML daría verde sin mirar dos
+secciones. Va primero **B-241**.
 
 ### B-122 · Falta un auditor del sitio público · P2 (después de B-01)
 
@@ -4991,7 +5229,16 @@ eso se rompe en silencio: un `getStaticPaths` que se saltea una actividad, un
 contenido de prueba (DEC-4), datos estructurados que no validan, o el filtro en
 memoria que necesita JS y deja el listado vacío para un crawler.
 
-No se puede escribir todavía: `src/pages/index.astro` es un placeholder.
+**Ya se puede empezar:** B-227 construyó el listado y el detalle, así que hay HTML
+de verdad contra el que escribirlo. Conviene esperar igual al SEO absoluto
+—canonical, Open Graph, sitemap, todo colgado del dominio (**B-109**)— para no
+auditar dos veces lo mismo.
+
+Y una parte ya dejó de corresponderle: el **contraste** lo calcula
+`tests/contraste.test.ts` (B-243), que además falla si un componente del sitio
+baja del piso. Un auditor que lo revise a ojo estaría repitiendo lo que un test ya
+frena, que es justo lo que la tabla de «qué no automatizar» de
+[`13-agentes.md`](13-agentes.md) pide no hacer.
 
 ### B-123 · El inventario de infra no se re-releva solo — ✅ hecho (2026-08-25)
 

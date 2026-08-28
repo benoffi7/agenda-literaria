@@ -60,9 +60,12 @@ sin existir, porque el canal de difusión real de este circuito es Instagram, no
 Google.
 
 **Decisión del dueño.** Una sola: **si el texto lleva el link a la página de la
-actividad.** Hoy ese link no existe (el sitio es un placeholder), así que la
-primera versión no lo lleva, y cuando exista el sitio se agrega en una línea.
-Vale la pena decidirlo ahora para que el formato del texto no cambie después.
+actividad.** Desde B-227 la página existe, pero el link **entero** todavía no se
+puede armar: falta el dominio (B-109). `rutaDeDetalle` (`src/lib/rutasPublicas.ts`)
+da la ruta relativa y el comentario ya está escrito en `textoRedes.ts`; lo que
+falta es `site` en `astro.config.mjs`. Así que la primera versión no lo lleva, y
+cuando el dominio se decida se agrega en una línea. Vale la pena decidirlo ahora
+para que el formato del texto no cambie después.
 
 > **El contra.** En este circuito la voz importa: un texto generado suena a bot,
 > y quien publica lo va a reescribir igual. Si lo reescribe siempre y de cero, la

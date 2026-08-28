@@ -182,3 +182,66 @@ export const fechaHoraCorta = (d: Date): string =>
     timeStyle: 'short',
     timeZone: 'America/Argentina/Buenos_Aires',
   }).format(d);
+
+/**
+ * ISO → `Date`, o `null` si no hay una fecha usable — B-227.
+ *
+ * El gemelo de `instanteDeTimestamp` para el otro extremo del sistema: el
+ * documento de Firestore trae `Timestamp` y el `events.json` trae ISO (§3.1),
+ * pero **la aritmética de "cuál es el próximo encuentro" tiene que ser una
+ * sola** (ver `proximaVentana`). Cada consumidor convierte a `Date` con el
+ * conversor de su formato, y de ahí en adelante comparten el cálculo.
+ *
+ * Vive acá por lo mismo que su gemelo: este módulo es el hogar de las
+ * conversiones de fecha, y son las que evitan la trampa 1.
+ */
+export const instanteDeIso = (valor: unknown): Date | null => {
+  if (typeof valor !== 'string' || valor === '') return null;
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+};
+
+/** Un encuentro reducido a lo que decide si es "el próximo". */
+export interface VentanaDeEncuentro {
+  inicio: Date | null;
+  fin: Date | null;
+  cancelada?: boolean;
+}
+
+/**
+ * El próximo encuentro que todavía no terminó, o `null` si no queda ninguno.
+ *
+ * **Es la aritmética compartida entre el panel y el sitio público** (B-227). El
+ * panel la llama con los `Timestamp` del documento convertidos y el sitio con los
+ * ISO del `events.json`; el cálculo —que es donde están las tres decisiones— es
+ * uno solo. Antes existía una sola copia, privada en `filtrosActividades.ts`, y
+ * el sitio público iba a necesitar la suya: dos versiones de "¿cuál es el próximo
+ * encuentro?" son el listado del panel y la tarjeta del sitio contestando
+ * distinto sobre la misma actividad, sin que nada falle. Es la clase de B-72.
+ *
+ * Las tres decisiones, que se conservan tal cual estaban:
+ *
+ * 1. **Se descarta por el fin y se devuelve el inicio.** Un taller de 19 a 21, a
+ *    las 19:30, sigue siendo "lo próximo": todavía se puede entrar. Filtrar por
+ *    el inicio lo mandaba al fondo del listado justo durante las dos horas en que
+ *    alguien podría necesitar abrirlo.
+ * 2. **Sin `fin` se cae al `inicio`**, así una sesión a la que le falta la fecha
+ *    de cierre no desaparece del cálculo.
+ * 3. **Los cancelados no cuentan:** un encuentro cancelado no va a pasar, y si
+ *    contara, un ciclo cancelado a mitad de camino seguiría apareciendo arriba
+ *    del listado como si fuera lo más urgente.
+ */
+export const proximaVentana = (
+  encuentros: readonly VentanaDeEncuentro[],
+  ahora: Date,
+): Date | null => {
+  let proximo: Date | null = null;
+  for (const e of encuentros) {
+    if (e.cancelada) continue;
+    const inicio = e.inicio;
+    const fin = e.fin ?? inicio;
+    if (!inicio || !fin || fin.getTime() < ahora.getTime()) continue;
+    if (!proximo || inicio.getTime() < proximo.getTime()) proximo = inicio;
+  }
+  return proximo;
+};

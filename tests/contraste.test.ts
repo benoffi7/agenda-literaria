@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { AA_TEXTO, contraste, luminancia, mezclar, oklchASrgb } from '@/lib/contraste';
@@ -61,5 +63,51 @@ describe('la matemática de contraste — B-235', () => {
 
   it('AA_TEXTO es el 4,5 de la norma', () => {
     expect(AA_TEXTO).toBe(4.5);
+  });
+});
+
+/**
+ * El acento sobre el papel, en las dos direcciones — viene del frente del listado,
+ * que llegó a la misma necesidad por otro camino y midió algo que este archivo no
+ * miraba.
+ *
+ * El §10 del diseño dejaba la pregunta abierta —«el acento sobre papel hay que
+ * medirlo antes de usarlo en texto chico»— y de eso depende algo concreto: si no
+ * pasa, el acento sirve para bordes y no para un link. Y el botón de inscripción
+ * es el ratio **al revés**, papel sobre acento, que no es el mismo cálculo aunque
+ * lo parezca: la fórmula de WCAG es simétrica, pero **cuál de los dos es el fondo
+ * decide la mezcla** en cuanto aparece una opacidad.
+ */
+describe('el acento de la paleta — B-227', () => {
+  const paleta = () => {
+    const css = readFileSync(
+      fileURLToPath(new URL('../src/styles/global.css', import.meta.url)),
+      'utf8',
+    );
+    const token = (nombre: string) => {
+      const m = css.match(
+        new RegExp(`--color-${nombre}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`),
+      );
+      expect(m, `no se encontró --color-${nombre}`).not.toBeNull();
+      return oklchASrgb(Number(m![1]), Number(m![2]), Number(m![3]));
+    };
+    return { acento: token('acento'), papel: token('papel') };
+  };
+
+  it('los tokens se parsearon y no son el mismo color', () => {
+    // Control positivo: dos parseos fallidos darían negro sobre negro, o sea 1:1,
+    // y el test de abajo fallaría por el motivo equivocado.
+    const { acento, papel } = paleta();
+    expect(contraste(acento, papel)).toBeGreaterThan(1.5);
+  });
+
+  it('acento sobre papel pasa AA, y por eso se puede usar en texto chico', () => {
+    const { acento, papel } = paleta();
+    expect(contraste(acento, papel)).toBeGreaterThanOrEqual(AA_TEXTO);
+  });
+
+  it('papel sobre acento también — es el botón de inscripción', () => {
+    const { acento, papel } = paleta();
+    expect(contraste(papel, acento)).toBeGreaterThanOrEqual(AA_TEXTO);
   });
 });

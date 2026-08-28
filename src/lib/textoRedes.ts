@@ -442,10 +442,15 @@ export const construirTextoRedes = (
    * (hoy congelado, DEC-6). Es una línea, y este es su lugar: último antes de
    * los handles.
    *
-   *   if (baseDelSitio) bloques.push(`${baseDelSitio}/actividad/${actividad.slug}`);
+   *   if (baseDelSitio) bloques.push(`${baseDelSitio}${rutaDeDetalle(actividad.slug)}`);
    *
    * Haría falta agregar `slug` a `ActividadParaRedes` y la base del sitio como
    * parámetro (no se hardcodea: el dominio todavía no está elegido, DEC-6).
+   *
+   * **El path va por `rutaDeDetalle` (`lib/rutasPublicas.ts`) y no escrito a
+   * mano** — B-227: ésta sería la **tercera** derivación de la misma ruta, y es
+   * la única de las tres de la que no se puede volver. Un posteo con una URL
+   * rota ya está pegado en Instagram.
    */
 
   const handles = handlesDe(actividad);

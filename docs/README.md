@@ -49,10 +49,10 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 1.574 tests en 71 archivos. 71 de esos
+2. **Correr los tests.** `npm test` — 1.741 tests en 76 archivos. 79 de esos
    tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
-   también **Storage**), repartidos en 6
-   archivos: cinco se saltean enteros y de
+   también **Storage**), repartidos en 7
+   archivos: seis se saltean enteros y de
    `events-json-endpoint.integracion.test.ts` se saltean 4 de sus 6, porque las
    dos ramas de credenciales no necesitan emulador. Si no están, se saltean
    solos — **salvo con `EXIGIR_EMULADOR=1`**, que es como los corre el CI

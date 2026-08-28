@@ -1,22 +1,99 @@
 ---
-// Listado público. Todavía es un placeholder: el sitio público es el paso 3 del
-// orden de implementación (§10), después del panel de admin.
+/**
+ * La home: el listado público — B-227, §4.1 del diseño.
+ *
+ * **El HTML sale completo del build** (SSG): todas las actividades vigentes, con
+ * sus tarjetas, agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve
+ * el buscador y lo que ve alguien con JavaScript apagado (§2.3, §6.3).
+ *
+ * La island de arriba baja `/events.json` y, cuando lo tiene, saca esta lista del
+ * DOM y renderiza la suya con **el mismo componente**: una sola definición del
+ * markup de la tarjeta, que es lo que el §6.3 pide para que las dos vistas no se
+ * separen.
+ *
+ * `Buscador` es la única island de esta página, y es `client:load` porque un
+ * buscador que aparece tres segundos después no se usa. `ListaDeActividades` va
+ * **sin directiva**: Astro la renderiza a HTML y no manda un byte de JavaScript
+ * por ella.
+ */
 import Base from '@/layouts/Base.astro';
+import { Buscador } from '@/components/publico/Buscador';
+import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import { indiceDelSitio } from '@/lib/contenidoDelSitio';
+import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
+
+const indice = await indiceDelSitio();
+/*
+ * El reloj del build, y no `new Date()`: `generadoEn` es el instante que el
+ * propio índice declara, así que el HTML y el JSON que lo acompaña hablan del
+ * mismo momento. Con `new Date()` podrían diferir en los segundos que tarda el
+ * build y una actividad que termina justo ahí saldría en uno y no en el otro.
+ */
+const ahora = new Date(indice.generadoEn);
+const etiquetas = mapaDeEtiquetas(indice.opciones);
+const vigentes = vigentesDelIndice(indice, ahora);
+
+const ID_LISTADO = 'listado-del-build';
+
+const cuantas = vigentes.length;
+const descripcion =
+  `Talleres de escritura, clubes de lectura, encuentros y presentaciones en ` +
+  `Argentina. ${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima.`;
 ---
 
 <Base
   seccion="agenda"
-  titulo="Agenda de actividades literarias"
-  descripcion="Talleres de escritura, clubes de lectura, encuentros y presentaciones en Argentina."
+  titulo="Agenda de actividades literarias en Argentina"
+  descripcion={descripcion}
 >
-  <main class="mx-auto max-w-2xl px-4 py-24 text-center">
-    <h1 class="font-serif text-3xl font-semibold">Agenda literaria</h1>
-    <p class="mt-3 text-tinta/70">
-      Talleres, clubes de lectura, encuentros y presentaciones.
+  {/*
+    §10 — «Saltar al listado». Convive con el «Saltar al contenido» de
+    `Encabezado` y no lo repite: aquél salta al `<main>`, que arranca en el h1;
+    éste saltea además el buscador y los seis ejes de filtros, que en un teléfono
+    son media pantalla antes del primer resultado.
+  */}
+  <a
+    href="#listado"
+    class="sr-only rounded-md border border-acento bg-papel px-3 py-2 text-sm text-acento focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+  >
+    Saltar al listado
+  </a>
+
+  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <h1 class="font-serif text-2xl leading-tight font-semibold text-balance sm:text-4xl">
+      Talleres, clubes de lectura y encuentros literarios en Argentina
+    </h1>
+    <p class="mt-2 text-sm text-tinta/65">
+      {cuantas === 0
+        ? 'Todavía no hay actividades con fecha próxima.'
+        : `${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima.`}
     </p>
-    <p class="mt-8 text-sm text-tinta/70">
-      El sitio público es el paso 3 del orden de implementación. Por ahora, el
-      panel de carga vive en <a class="text-acento underline" href="/admin">/admin</a>.
-    </p>
+
+    {/*
+      **El `id="listado"` envuelve al buscador Y a la lista**, y no solo a la
+      lista: es el destino de «Saltar al listado», y la island **saca del DOM** la
+      lista del build para montar la suya adentro de su propio árbol. Con el `id`
+      puesto solo en el contenedor de abajo, después de hidratar ese contenedor
+      queda vacío y el link de salto mandaría a la nada — un link de accesibilidad
+      roto justo en la página que más se usa, y nada lo mostraría en el HTML del
+      build, que es lo único que se mira.
+    */}
+    <div id="listado" class="mt-6 scroll-mt-4">
+      <Buscador client:load version={indice.version} idListadoEstatico={ID_LISTADO} />
+
+      {/*
+        La lista del build. La island la saca del DOM cuando tiene el índice; si
+        el fetch falla, se queda — nunca una pantalla vacía (§6.3).
+      */}
+      <div id={ID_LISTADO} class="mt-6">
+        {cuantas === 0 ? (
+          <p class="rounded-lg border border-borde bg-white/60 px-4 py-8 text-center text-tinta/70">
+            Todavía no hay nada publicado con fecha próxima. Volvé en unos días.
+          </p>
+        ) : (
+          <ListaDeActividades entradas={vigentes} ahora={ahora} etiquetas={etiquetas} />
+        )}
+      </div>
+    </div>
   </main>
 </Base>

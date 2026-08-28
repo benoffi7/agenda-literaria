@@ -3628,3 +3628,163 @@ implementar mal. La página funciona igual con JavaScript apagado, que es lo que
 §2.3 pide del sitio público.
 ---
 
+## D-137 · El listado público **sí** tiene selector de orden — desvío del §6.1 del diseño
+
+`docs/12-sitio-publico.md` §6.1 cierra la lista de filtros con una línea tajante:
+«**No hay selector de orden**: no hay un segundo orden que alguien pida (¿por
+precio? no hay precio; ¿por relevancia? es una lista de 40 cosas)».
+
+El sitio construido en **B-227** tiene tres órdenes. El desvío es a pedido del
+dueño, y el argumento del diseño resulta incompleto por un motivo concreto: las
+dos alternativas que evaluó —precio y relevancia— son las dos que **derivan del
+contenido**, y la que falta deriva de **cuándo se cargó**.
+
+| Orden | Qué pregunta contesta | Por qué el orden cronológico no puede |
+|---|---|---|
+| `proxima` (**default**) | «¿qué se viene?» | — |
+| `nuevas` | «¿qué se sumó desde la última vez que miré?» | una actividad cargada hoy para diciembre queda **al fondo** de la lista cronológica: es la más nueva y la última que se ve |
+| `titulo` | «¿dónde estaba aquella que vi?» | volver a encontrar algo visto no tiene nada que ver con su fecha |
+
+El recorrido C del §1 —«el que vuelve»— es exactamente el que usa los filtros, y
+`nuevas` es la única forma de contestarle. Con 40 actividades el orden
+cronológico ya no alcanza para eso.
+
+**Lo que se conserva para que el desvío sea barato:**
+
+1. **El default sigue siendo `proxima`.** El HTML que imprime el build, lo que ve
+   Google y lo que ve alguien sin JavaScript no cambian: el selector es del
+   cliente y arranca en el orden de siempre.
+2. **La agrupación por mes se apaga con los otros dos órdenes.** Un separador
+   «Septiembre» encima de una lista alfabética miente, y mentir con una etiqueta
+   es peor que no tenerla. Lo decide quien llama a `agruparPorMes`, no la
+   función — así se testea por separado.
+3. **El orden viaja en la URL** (`?orden=nuevas`) como los filtros, y la home
+   sigue canonizando a `/` sin query.
+
+`nuevas` es la que obligó a agregar un campo a la proyección pública: ver
+**D-138**.
+
+## D-138 · `creadoEn` es público — la fecha de alta, no la de edición
+
+Para ordenar por «Recién agregadas» hace falta un dato que hasta B-227 no salía:
+cuándo se cargó la actividad. Se agrega `creadoEn` a `toPublic` y al índice, **como
+`AAAA-MM-DD`**.
+
+**Por qué es publicable.** Lo que el §5.1 mantiene afuera del creador es su
+**identidad**: `createdBy`/`updatedBy` son uids, y hasta la `huellaCreador` de una
+opción de taxonomía queda afuera aunque no sea un uid (D-27). *Qué día* se cargó
+algo que ya es público no dice nada de nadie: no identifica, no correlaciona y no
+se puede revertir a una persona. El §11.2 del diseño del sitio ya contemplaba
+publicar `updatedAt` con el mismo criterio, para el `lastmod` del sitemap.
+
+**Por qué el día y no el instante, que es la parte que se decidió mal primero.**
+La versión original publicaba el ISO completo, y el `auditor-privacidad` lo marcó:
+con **un solo admin**, un `events.json` con `"creadoEn":"2026-08-27T03:14:52.881Z"`
+en cada actividad **no es una fecha, es la agenda de trabajo de una persona
+identificada** — a qué hora carga, qué noches, en qué tandas. Es exactamente el
+razonamiento por el que D-57 rechaza el hash del mail («con dos admins conocidos,
+un hash se revierte probando dos entradas») y por el que D-27 saca `huellaCreador`
+de la salida: el dato no nombra a nadie, pero con un universo de una persona la
+desanonimización es gratis.
+
+Y el único consumidor no necesitaba nada de eso: ordenar por día alcanza, y dos
+actividades cargadas el mismo día desempatan por título. Vale anotar la forma del
+error, porque es la que se repite: **la decisión no era «¿sale este campo?» sino
+«¿con cuánta precisión sale?»**, y la primera se contestó con cuidado mientras la
+segunda no se contestó nunca. La regla de siempre —se publica lo que el sitio
+necesita, no lo que el documento tiene— aplica también a la precisión.
+
+**Por qué `updatedAt` NO sale, y esto es la mitad que importa.** Son dos datos
+distintos con dos consumidores distintos:
+
+| | Qué dice | Quién lo pide |
+|---|---|---|
+| `creadoEn` | cuándo entró al sitio | el orden «Recién agregadas» (D-137) |
+| `updatedAt` | cuándo se tocó por última vez | el `lastmod` del sitemap (§11.2 #3), que **todavía no existe** |
+
+Publicar el segundo «porque ya que estamos» convertiría cada corrección de un
+typo en «actualizado hoy», que es ruido presentado como información fresca. Y
+sería publicar un campo sin consumidor, que es exactamente lo que la whitelist de
+`toPublic` existe para evitar. Cuando el sitemap lo necesite va a ser una línea,
+con su propia decisión.
+
+**El default de lectura.** `aIsoSeguro` devuelve `''` con cualquier cosa que no
+sea una fecha usable, y no es paranoia: un documento **recién armado por
+`formADocumento`** tiene el *sentinel* de `serverTimestamp()` en `createdAt`, que
+no tiene `toDate()` porque el `Timestamp` recién existe cuando el servidor lo
+resuelve al escribir. Sin ese default, `toPublic` tiraba sobre un documento que el
+panel produce todo el tiempo — lo agarró `tests/modalidades.test.ts` en la primera
+corrida. Vacío ordena al fondo de «Recién agregadas», que es lo mismo que pasaba
+antes de que el orden existiera (D-26).
+
+Como el valor es una fecha, **el barrido de centinelas no lo puede ver** —un
+`Timestamp` no lleva un centinela adentro, igual que las fechas de las modalidades
+de B-224—, así que el campo tiene casos nombrados en `tests/toPublic.test.ts` y en
+`tests/eventsJson.test.ts`, en las dos direcciones: que `creadoEn` salga (con el
+día y sin la hora) y que la fecha de edición no. Y una celda más, que también
+estaba resuelta por omisión: **la página de detalle no publica ninguna de las dos**
+—no las necesita— y eso lo afirma `tests/detallePublico.test.ts` buscando los dos
+valores del fixture en la salida.
+
+## D-139 · El link de la reunión tampoco sale a la página de detalle
+
+**Es más estricto que D-15**, y conviene tener el mapa completo de una vez porque
+ahora son cinco celdas y ninguna se deduce de las otras:
+
+| Salida | ¿Sale `online.url` con `urlPublica: true`? | Por qué |
+|---|---|---|
+| 1a · `events.json` (proyección `toPublic`) | **sí** | D-15: el modelo tiene el flag y el formulario su casilla; ignorarlo era prometer algo que no pasaba |
+| 1b · el **índice** del listado | **no** | D-129: la tarjeta no tiene botón «Unirse», y servirlo en lote en un solo GET es lo que hace barato el zoombombing |
+| 1c · la **página de detalle** | **no** | **esta decisión** |
+| 1d · el **JSON-LD** de esa página | **no** | §5.4 del diseño: «el HTML muestra lo que el dueño eligió; el JSON-LD no» |
+| 2 · el evento de Calendar | **sí** | D-15, igual que 1a |
+| 3, 4, 5 · issue, GA4, posteo | **no, nunca** | cada una por su motivo (ver `07-seguridad.md`) |
+
+El argumento de D-129 para el índice era «en lote y en un solo GET». Acá es otro y
+es más fuerte: **la página de detalle es la superficie que Google indexa**. Un
+link de reunión en un HTML indexado no se despublica —queda en el índice, en la
+caché y en cualquier scraper que haya pasado— y el link se manda al inscribirse,
+que es para lo que está el botón que la página ya tiene arriba.
+
+**La contra, dicha:** el dueño tildó una casilla que dice «publicar el link en el
+sitio» y el sitio no lo publica. Es una inconsistencia entre lo que la casilla
+promete y lo que pasa, y se elige a propósito el lado del que se puede volver:
+mostrar el link mañana es una línea; sacarlo de Google no. Si el dueño lo quiere a
+la vista, la conversación es sobre el texto de la casilla —que hoy nombra «el
+sitio»— y no sobre agregar un `?.url` sin ruido. Queda anotado en **B-240**.
+
+## D-140 · La plantilla no recibe el documento: recibe un view-model
+
+La página de detalle (`src/pages/actividad/[slug].astro`) es la primera salida
+pública que es una **página** y no un archivo de datos, y eso rompe dos cosas que
+las otras cuatro daban por sentadas:
+
+1. **Un `.astro` no se puede importar desde vitest.** No hay forma de renderizarlo
+   en un test, así que el barrido de centinelas —que necesita un valor sobre el
+   cual afirmar— no tenía dónde agarrarse.
+2. **Una plantilla interpola.** Si tiene el documento en la mano, publicar un
+   campo de más es un `{a.online.url}` que se lee bien y que nada frena.
+
+La decisión: **la frontera de privacidad es un tipo, no la disciplina de quien
+escribe la plantilla.** `src/lib/detallePublico.ts` decide, campo por campo, qué
+muestra la página, y `getStaticPaths` le pasa **solo** ese `DetallePublico`. La
+plantilla no tiene la `ActividadPublica` ni el documento: no puede publicar
+`online.url` porque no lo tiene.
+
+Lo que eso compra, y que ninguna otra forma daba:
+
+| | Cómo |
+|---|---|
+| la salida es barrible | `tests/barrido-de-salidas-publicas.test.ts` corre sobre el view-model, con control negativo |
+| la plantilla no se escapa | `tests/pagina-de-detalle.test.ts` lee el `.astro` y falla si aparece una segunda prop o el nombre de un campo privado |
+| el `where` del §5.3 es testeable | `getStaticPaths` delega en `caminosDeDetalle` (`lib/contenidoDelSitio.ts`), que sí se importa desde un test de integración |
+
+Es la cuarta proyección en serie sobre el mismo documento —`toPublic` →
+`entradaDeIndice` → `opcionesPublicas` → **`detalleDeActividad`**— y como el
+índice, recorta una `ActividadPublica` y no una `Actividad`: no puede publicar
+algo que la frontera ya descartó, porque no lo recibe.
+
+**El costo, dicho:** hay un tipo más que mantener, y un campo nuevo que la página
+quiera mostrar hay que agregarlo en dos lugares (la proyección y la plantilla). Es
+el mismo costo que `toPublic` ya paga por enumerar en vez de hacer `pick`, y por
+el mismo motivo: se paga cuando se agrega algo, no cuando se filtra algo.

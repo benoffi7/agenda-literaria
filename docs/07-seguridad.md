@@ -4,20 +4,23 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
-**Son cinco salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+**Son seis salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
-esas:
+esas. La **6** nació con B-227 y es la primera que es una *página* y no un
+archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
+ve el documento (D-140).
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
-| 1 | `events.json` y las páginas del sitio — **actividades y también las opciones de taxonomía** (§4.4) | **Tres archivos en serie:** `src/lib/toPublic.ts` (`toPublic`, `opcionesPublicas`) decide qué *puede* ser público; `src/lib/eventsJson.ts` (`entradaDeIndice`, `construirIndice`, `resumenDe`) decide qué necesita el listado, que es menos; `src/pages/events.json.ts` elige *qué documentos* se leen (el `where` del §5.3) y serializa |
+| 1 | `events.json` y el HTML del listado — **actividades y también las opciones de taxonomía** (§4.4) | **Tres archivos en serie:** `src/lib/toPublic.ts` (`toPublic`, `opcionesPublicas`) decide qué *puede* ser público; `src/lib/eventsJson.ts` (`entradaDeIndice`, `construirIndice`, `resumenDe`) decide qué necesita el listado, que es menos; `src/lib/contenidoDelSitio.ts` elige *qué documentos* se leen (el `where` del §5.3, mudado ahí en B-227 porque ahora son **tres** los consumidores) y `src/pages/events.json.ts` solo serializa |
 | 2 | El evento de Google Calendar | `functions/calendario.js` |
 | 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
+| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y el `where`). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**) |
 
-Y una sexta que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
-Firestore por un anónimo, que no pasaba por ninguna de las cinco proyecciones.
+Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
+Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.
 Cerrada con D-128 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anotada
 acá porque el modo de falla —una puerta que ninguna proyección atraviesa— es el
 que hay que buscar al agregar una salida nueva.
@@ -40,22 +43,27 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 
 | Campo | Motivo | Dónde se filtra |
 |---|---|---|
-| `online.url` **con `urlPublica: false`** | el link de la reunión se manda al inscribirse; publicarlo habilita zoombombing (trampa 5). Es el default. | `toPublic.ts`, `calendario.js` |
+| `online.url` **con `urlPublica: false`** | el link de la reunión se manda al inscribirse; publicarlo habilita zoombombing (trampa 5). Es el default. **Y con `urlPublica: true` sale solo a las salidas 1 y 2** (D-15): al índice del listado no (D-129), y a la **página de detalle** ni a su **JSON-LD** tampoco (**D-139**), porque un HTML indexado no se despublica. El mapa completo de las cinco celdas está en D-139. | `toPublic.ts`, `calendario.js`, `eventsJson.ts`, `detallePublico.ts` |
+| `updatedAt` | se publica **cuándo se cargó** (`createdAt` → `creadoEn`, y solo `AAAA-MM-DD`: **D-138**) y no cuándo se editó. Una fecha de modificación convierte cada typo corregido en «actualizado hoy»; cuando el sitemap la necesite (§11.2 del diseño) es su propia decisión | `toPublic.ts` |
+| la **hora** de `createdAt` | el campo sale recortado al día: con **un solo admin**, el instante exacto de cada carga no es una fecha, es su agenda de trabajo — a qué hora carga y en qué tandas. Mismo razonamiento que D-57 y D-27: con un universo de una persona, el dato que «no nombra a nadie» igual la describe (D-138) | `toPublic.ts` |
 | `difusion` | trabajo interno | ambos |
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
-| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las cinco salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
+| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las seis salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los tres de abajo |
 
 **De `/opciones/{campo}` salen `slug` y `label`, y nada más** (§4.4). La proyección
-se escribió **antes** de su consumidor (B-106 no existe todavía) y eso es a
-propósito: el camino corto al implementarla es volcar `valores` tal cual, y con eso
-entran los cinco campos de arriba sin que nadie lo haya decidido. Escribir la
-whitelist primero es lo que evita que la decisión la tome un spread.
+se escribió **antes** que su consumidor —B-212 antes que B-106— y eso era a
+propósito: el camino corto al implementar el índice es volcar `valores` tal cual, y
+con eso entran los cinco campos de arriba sin que nadie lo haya decidido. Escribir
+la whitelist primero es lo que evita que la decisión la tome un spread.
+
+**Y funcionó**: cuando B-106 y después B-227 llegaron a consumirla, los chips del
+sitio salieron con `slug` y `label` porque no había otra cosa que consumir.
 
 **Ojo, y esto es lo que no se ve mirando un solo archivo: la misma decisión está
 escrita en TRES lugares**, porque el documento de taxonomía llega a tres salidas
@@ -82,6 +90,21 @@ Y las **no aprobadas no entran a los filtros** del sitio (§4.3). Se filtran con
 de D-30 sigue valiendo — se filtra lo *elegible*, nunca la lista con la que se
 *resuelve* un slug a su etiqueta, porque una actividad publicada puede tener
 guardada una opción pendiente y el sitio tiene que poder mostrar su nombre.
+
+**Y en el sitio eso son dos mapas de etiquetas, no uno** (B-227). La primera
+versión derivaba los dos del `events.json` —o sea, de la lista ya filtrada— y con
+eso la página de detalle de una actividad con una opción pendiente mostraba «Con
+Beca Parcial» desSlugeado en vez de «Con beca parcial»: exactamente el síntoma que
+D-30 existe para evitar, y que el evento de Calendar no tiene porque
+`cargarLabels` lee `/opciones/*` entero. Lo encontró el `auditor-privacidad`.
+
+| Quién resuelve | Con qué lista | Por qué |
+|---|---|---|
+| los **chips** del filtro y las tarjetas (`etiquetasDelListado`) | filtrada | §4.3 — ofrecer un chip *es* publicar vocabulario sin validar. Y tiene que ser el mismo mapa que usa la island, o la tarjeta cambiaría de texto al hidratar |
+| la **página de detalle** (`etiquetasDelDetalle`) | sin filtrar | D-30 — resolver no es ofrecer: acá se traduce un slug que esa actividad **ya tiene guardado**, igual que el evento de Calendar |
+
+No publica vocabulario de más: la página muestra la etiqueta del slug que usa esa
+actividad, no una lista de opciones elegibles.
 
 `libro` **sí** sale, título y autor, a las dos salidas públicas: es el dato central
 de una presentación, del mismo orden que el título de la actividad, y entra también
@@ -153,11 +176,16 @@ es su razón de existir — el campo se creó para este texto. Lo interno de
 
 ## El bucket de Storage es una salida pública más (B-167, DEC-7)
 
-Hasta acá el §5 tenía **cinco** salidas: el `events.json`, el evento de Calendar,
-el issue de GitHub, GA4 y el texto para redes. Desde la segunda tajada de B-167
-hay una **sexta**, y es distinta de las otras cinco en algo que conviene tener
+Hasta acá el §5 tenía **seis** salidas: el `events.json`, el evento de Calendar,
+el issue de GitHub, GA4, el texto para redes y la página de detalle. El bucket es
+una **séptima**, y es distinta de las otras seis en algo que conviene tener
 presente: no pasa por `toPublic` ni por ninguna proyección, porque **no son
 campos, son bytes**. Lo que se sube es lo que se publica.
+
+(No entra a la tabla numerada de arriba porque esa tabla enumera *proyecciones*
+—quién decide qué campo sale— y acá no hay ninguna: el objeto se sirve tal cual.
+Lo que la gobierna son `storage.rules` y lo que el panel le saca al archivo antes
+de subirlo.)
 
 Dos consecuencias que están decididas, no heredadas:
 

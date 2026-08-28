@@ -166,14 +166,27 @@ describe.skipIf(!vivo)('el endpoint /events.json publica solo lo publicado (§5.
  * sale con estado 1»), que es una verificación manual de una sola vez.
  */
 describe('sin credenciales: en CI falla, en local sigue vacío (D-123, B-189)', () => {
-  const sinCredenciales = () => {
+  const sinCredenciales = async () => {
     vi.stubEnv('FIRESTORE_EMULATOR_HOST', '');
     vi.stubEnv('FIREBASE_SERVICE_ACCOUNT', '');
     vi.stubEnv('GOOGLE_APPLICATION_CREDENTIALS', '');
+    /*
+     * B-227 — el lector memoriza la lectura del build, para que los tres
+     * artefactos salgan de **una sola** ida a Firestore (§3 del diseño). Acá eso
+     * se vuelve en contra: si el `describe` de arriba ya corrió con el emulador,
+     * este endpoint devolvería lo cacheado y estos dos casos pasarían por
+     * casualidad —o fallarían—, según si había emulador.
+     *
+     * Se olvida el caché a mano y no se saca la memoria: el caché es correcto
+     * para un build, que lee una vez; lo raro es un proceso que cambia el entorno
+     * a mitad de camino, y eso solo pasa en un test.
+     */
+    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    olvidarContenido();
   };
 
   it('en CI tira, y el mensaje dice qué secret falta', async () => {
-    sinCredenciales();
+    await sinCredenciales();
     vi.stubEnv('CI', 'true');
     const { GET } = await import('@/pages/events.json');
     await expect(GET({} as Parameters<typeof GET>[0])).rejects.toThrow(
@@ -183,7 +196,7 @@ describe('sin credenciales: en CI falla, en local sigue vacío (D-123, B-189)', 
   });
 
   it('en local sigue con lista vacía, para trabajar el CSS sin emuladores', async () => {
-    sinCredenciales();
+    await sinCredenciales();
     vi.stubEnv('CI', '');
     const { GET } = await import('@/pages/events.json');
     const res = (await GET({} as Parameters<typeof GET>[0])) as Response;

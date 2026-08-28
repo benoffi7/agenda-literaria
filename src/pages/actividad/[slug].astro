@@ -1,0 +1,462 @@
+---
+/**
+ * La página de detalle — B-227, §4.3 del diseño.
+ *
+ * **La pantalla más importante del sitio y la que no lleva JavaScript**: es HTML
+ * y CSS, cero islands, cero `events.json`, cero hidratación. El recorrido
+ * mayoritario cae acá desde Google o desde un link de Instagram (§1) y tiene una
+ * sola pregunta: ¿esto me sirve y todavía puedo entrar?
+ *
+ * ── Esta plantilla no ve la actividad, y es a propósito (D-140) ───────────
+ * `getStaticPaths` es `caminosDeDetalle` de `lib/contenidoDelSitio.ts`, que
+ * entrega **solo** un `DetallePublico`: el view-model que `lib/detallePublico.ts`
+ * armó enumerando campo por campo. Acá no hay una `ActividadPublica` ni un
+ * documento de Firestore, así que **no se puede interpolar `online.url`, ni
+ * `difusion`, ni un uid**: no están en el objeto. La frontera de privacidad es un
+ * tipo, no la disciplina de quien escribe la plantilla — que es lo que el §5 pide
+ * y lo que hace que la salida sea barrible desde un test (`.astro` no se importa
+ * desde vitest).
+ *
+ * `tests/pagina-de-detalle.test.ts` lo verifica leyendo este archivo: si algún
+ * día alguien pasa la actividad entera por `props`, falla.
+ */
+import Base from '@/layouts/Base.astro';
+import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
+import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
+
+export const prerender = true;
+
+/**
+ * Ver el docblock de `caminosDeDetalle`: vive en un `.ts` para poder testearse.
+ *
+ * **Va envuelta y no aliasada** (`= caminosDeDetalle`), y no es estilo: Astro
+ * llama a `getStaticPaths` con un argumento propio —`{ paginate, rss }`— y con
+ * el alias ese objeto caía en el primer parámetro de la función, pisaba el reloj
+ * del build y la generación entera moría con `ahora.getTime is not a function`.
+ * No lo vio ningún test unitario —todos la llaman bien—: lo encontró el build de
+ * verdad contra el emulador (B-237).
+ */
+export const getStaticPaths = () => caminosDeDetalle();
+
+interface Props {
+  detalle: DetallePublico;
+}
+
+const { detalle } = Astro.props as Props;
+const jsonLd = datosEstructurados(detalle);
+
+const portada = detalle.imagenes[0] ?? null;
+---
+
+<Base
+  seccion="agenda"
+  titulo={detalle.meta.titulo}
+  descripcion={detalle.meta.descripcion}
+>
+  {
+    /*
+      §5.2 — los datos estructurados. `set:html` con `JSON.stringify` es la forma
+      correcta para un `<script type="application/ld+json">`: Astro no escapa el
+      contenido de un script, y el JSON ya está serializado.
+
+      **No hay `canonical` ni Open Graph absolutos, y falta a propósito**: los dos
+      necesitan `site` en `astro.config.mjs`, que necesita que el dominio esté
+      decidido — es B-109. Inventar una URL ahora es peor que no ponerla: una
+      canónica equivocada le dice a Google que la página buena es otra.
+    */
+    jsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+    )
+  }
+
+  {/*
+    El salto al contenido y la navegación los pone `Base` (B-229). Esta página se
+    escribió antes de que existieran y traía los suyos; dejar los dos daría **dos
+    landmarks `banner`** y, peor, **dos `id="contenido"`** —el del layout y el de
+    este `<main>`—, con lo que el propio salto quedaba yendo al equivocado.
+
+    Lo que sí se queda es el «volver», porque el ítem «Agenda» del menú no dice lo
+    mismo: a esta página se llega desde un buscador tanto como desde el listado, y
+    ahí «volver» es la única pista de que hay un listado.
+  */}
+  <main class="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+    <p class="mb-6">
+      <a
+        href="/"
+        class="text-sm text-tinta/70 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+        >← Ver todas las actividades</a
+      >
+    </p>
+    {
+      /*
+        §7.1 — la franja de estado. No se puede perder de vista: quien llega de un
+        link de hace tres meses tiene que enterarse antes de leer nada.
+      */
+      detalle.yaPaso && (
+        <p class="mb-6 rounded-md border border-borde bg-tinta/5 px-3 py-2 text-sm font-medium text-tinta/75">
+          Esta actividad ya pasó. Muchas se repiten: seguí a quien la organiza.
+        </p>
+      )
+    }
+
+    <p class="text-xs font-semibold tracking-[0.15em] text-tinta/65 uppercase">
+      {detalle.tipoEtiqueta}
+    </p>
+    <h1 class="mt-1 font-serif text-2xl leading-tight font-semibold text-balance sm:text-4xl">
+      {detalle.titulo}
+    </h1>
+
+    {
+      detalle.libro && (
+        <p class="mt-2 text-tinta/75">
+          Se presenta <em class="font-serif">{detalle.libro.titulo}</em>
+          {detalle.libro.autor && <>, de {detalle.libro.autor}</>}
+        </p>
+      )
+    }
+
+    {/* ── La ficha: los cuatro datos que se miran para decidir (§4.3) ──── */}
+    <dl class="mt-6 flex flex-col gap-3 rounded-lg border border-borde bg-white/60 px-4 py-4 text-sm">
+      <div class="flex flex-col gap-0.5">
+        <dt class="text-xs tracking-wide text-tinta/65 uppercase">Cuándo</dt>
+        <dd class="text-tinta">
+          {
+            detalle.proxima ? (
+              <>
+                {detalle.proxima.fecha}, {detalle.proxima.desde}
+                {detalle.proxima.hasta && <> a {detalle.proxima.hasta}</>}
+                {detalle.yaEmpezo && (
+                  <span class="text-tinta/65"> · el ciclo ya empezó</span>
+                )}
+              </>
+            ) : (
+              'Sin fechas por venir'
+            )
+          }
+          {detalle.rotuloCiclo && <span class="block text-tinta/65">{detalle.rotuloCiclo}</span>}
+        </dd>
+      </div>
+
+      <div class="flex flex-col gap-0.5">
+        <dt class="text-xs tracking-wide text-tinta/65 uppercase">Dónde</dt>
+        <dd class="text-tinta">{detalle.donde}</dd>
+      </div>
+
+      <div class="flex flex-col gap-0.5">
+        <dt class="text-xs tracking-wide text-tinta/65 uppercase">Cuánto</dt>
+        <dd class={detalle.arancel.esGratis ? 'font-medium text-acento' : 'text-tinta'}>
+          {detalle.arancel.etiqueta}
+          {detalle.arancel.notas && <span class="text-tinta/70"> · {detalle.arancel.notas}</span>}
+        </dd>
+      </div>
+
+      <div class="flex flex-col gap-0.5">
+        <dt class="text-xs tracking-wide text-tinta/65 uppercase">Inscripción</dt>
+        <dd class="text-tinta">
+          {
+            !detalle.inscripcion.requiere
+              ? 'Entrada libre, no hace falta anotarse.'
+              : detalle.inscripcion.cerrada
+                ? `Las inscripciones cerraron${detalle.inscripcion.cierra ? ` el ${detalle.inscripcion.cierra}` : ''}.`
+                : detalle.inscripcion.cierra
+                  ? `Abierta hasta el ${detalle.inscripcion.cierra}.`
+                  : 'Abierta.'
+          }
+          {
+            detalle.inscripcion.cupo !== null && (
+              <span class="text-tinta/70"> Cupo: {detalle.inscripcion.cupo}.</span>
+            )
+          }
+          {
+            /*
+              D-127 — «se llenó» se muestra **al lado** del canal, no en su lugar:
+              siempre hay lista de espera y las bajas existen, así que esconder el
+              canal convierte una baja en un lugar que se pierde.
+            */
+            detalle.inscripcion.completo && (
+              <span class="block font-medium text-acento">
+                Cupo completo — se puede consultar por lista de espera.
+              </span>
+            )
+          }
+        </dd>
+      </div>
+    </dl>
+
+    {
+      /*
+        Un solo CTA, con el verbo de la vía real (§4.3). Con la actividad pasada
+        no hay botón: el CTA se decide **por fecha** y no por `abierta`, porque
+        una actividad sin fecha de cierre queda abierta para siempre y mostraría
+        «Anotate» en un taller de hace un año (§7.1).
+      */
+      detalle.inscripcion.accion && !detalle.yaPaso && !detalle.inscripcion.cerrada && (
+        <p class="mt-5">
+          <a
+            href={detalle.inscripcion.accion.href}
+            rel="noopener noreferrer"
+            class="inline-flex min-h-touch items-center justify-center rounded-full bg-acento px-6 py-2 font-medium text-papel transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+          >
+            {detalle.inscripcion.accion.texto}
+          </a>
+        </p>
+      )
+    }
+    {
+      detalle.inscripcion.requiere && !detalle.inscripcion.accion && (
+        <p class="mt-5 text-sm text-tinta/75">
+          Para anotarte: <span class="text-tinta">{detalle.inscripcion.destino}</span>
+        </p>
+      )
+    }
+
+    {
+      /*
+        §4.3 — la imagen va **acá**, después de la ficha y del botón, y no como
+        cabecera: un flyer vertical de Instagram arriba empuja la fecha fuera de
+        la pantalla en un teléfono, y quien vino de Instagram ya lo vio.
+
+        El texto alternativo sale del título de la actividad y no de un campo por
+        imagen (D-125): pedir uno terminaría diciendo «foto». El epígrafe, si
+        está, va debajo y es contenido.
+      */
+      portada && (
+        <figure class="mt-6">
+          <img
+            src={portada.url}
+            alt={`Imagen de ${detalle.titulo}`}
+            width={portada.ancho ?? undefined}
+            height={portada.alto ?? undefined}
+            loading="lazy"
+            decoding="async"
+            referrerpolicy="no-referrer"
+            class="w-full rounded-lg border border-borde object-cover"
+          />
+          {portada.epigrafe && (
+            <figcaption class="mt-1.5 text-xs text-tinta/65">{portada.epigrafe}</figcaption>
+          )}
+        </figure>
+      )
+    }
+
+    {
+      /*
+        La descripción se respeta como se cargó (`white-space: pre-line`): es
+        texto plano de un `<textarea>`, sin markdown y sin autolinkeo — decisión 6
+        del §11.1, todavía pendiente. Ancho de lectura acotado para que una
+        descripción de 4000 caracteres no salga a 100 caracteres por línea.
+      */
+      detalle.descripcion && (
+        <div class="mt-6 max-w-[65ch] leading-relaxed whitespace-pre-line text-tinta/90">
+          {detalle.descripcion}
+        </div>
+      )
+    }
+
+    {
+      /* Ver `mostrarEncuentros`: con una sola fecha sale igual si tiene tema,
+         lectura o está cancelada — si no, la página diría menos que el evento
+         de Calendar del mismo encuentro. */
+      detalle.mostrarEncuentros && (
+        <section class="mt-8">
+          <h2 class="mb-3 border-b border-borde pb-1 text-xs font-semibold tracking-[0.15em] text-tinta/65 uppercase">
+            {detalle.encuentros.length === 1
+              ? 'El encuentro'
+              : detalle.esCiclo
+                ? `Los ${detalle.encuentros.length} encuentros`
+                : 'Las fechas'}
+          </h2>
+          <ol class="flex flex-col gap-2">
+            {detalle.encuentros.map((e) => (
+              <li
+                id={e.id}
+                class:list={[
+                  'flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm',
+                  (e.paso || e.cancelada) && 'text-tinta/65',
+                ]}
+              >
+                <span class="w-6 shrink-0 tabular-nums text-tinta/65">{e.numero}</span>
+                <time datetime={e.inicioIso} class:list={[e.cancelada && 'line-through']}>
+                  {e.fecha} · {e.hora}
+                </time>
+                {e.tema && (
+                  <span class:list={['text-tinta/80', (e.paso || e.cancelada) && 'text-tinta/65']}>
+                    — {e.tema}
+                  </span>
+                )}
+                {e.lectura && <span class="text-tinta/65">({e.lectura})</span>}
+                {e.cancelada && <span class="font-medium text-acento">Cancelado</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+
+    {
+      detalle.tallerista && (
+        <section class="mt-8">
+          <h2 class="mb-2 border-b border-borde pb-1 text-xs font-semibold tracking-[0.15em] text-tinta/65 uppercase">
+            Quién lo da
+          </h2>
+          <p class="text-tinta">{detalle.tallerista.nombre}</p>
+          {detalle.tallerista.bio && (
+            <p class="mt-1 max-w-[65ch] text-sm whitespace-pre-line text-tinta/75">
+              {detalle.tallerista.bio}
+            </p>
+          )}
+          {detalle.tallerista.instagram &&
+            (detalle.tallerista.instagramUrl ? (
+              <p class="mt-1 text-sm">
+                <a
+                  href={detalle.tallerista.instagramUrl}
+                  rel="noopener noreferrer"
+                  class="text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+                >
+                  {detalle.tallerista.instagram}
+                </a>
+              </p>
+            ) : (
+              /* Sin link, pero el dato no se pierde: ver el docblock de `organizador`. */
+              <p class="mt-1 text-sm text-tinta/70">{detalle.tallerista.instagram}</p>
+            ))}
+        </section>
+      )
+    }
+
+    {
+      detalle.material.tiene && detalle.material.items.length > 0 && (
+        <section class="mt-8">
+          <h2 class="mb-2 border-b border-borde pb-1 text-xs font-semibold tracking-[0.15em] text-tinta/65 uppercase">
+            Material
+          </h2>
+          <ul class="flex flex-col gap-1.5 text-sm">
+            {detalle.material.items.map((m) => (
+              <li>
+                <span class="text-tinta/65">{m.tipoEtiqueta}: </span>
+                {
+                  /*
+                    §5.1 — de un item privado sobreviven tipo y título; la URL
+                    **no llega hasta acá**, así que no hay nada que decidir en la
+                    plantilla: si `url` es `null`, es texto.
+                  */
+                  m.url ? (
+                    <a
+                      href={m.url}
+                      rel="noopener noreferrer"
+                      class="text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+                    >
+                      {m.titulo}
+                    </a>
+                  ) : (
+                    <span class="text-tinta">{m.titulo}</span>
+                  )
+                }
+                <span class="text-tinta/65"> ({m.entrega})</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <section class="mt-8">
+      <h2 class="mb-2 border-b border-borde pb-1 text-xs font-semibold tracking-[0.15em] text-tinta/65 uppercase">
+        Cómo se cursa
+      </h2>
+      <ul class="flex flex-col gap-3 text-sm">
+        {
+          detalle.modalidades.map((m) => (
+            <li>
+              <p class="font-medium text-tinta">{m.etiqueta}</p>
+              {m.sede && (
+                <p class="text-tinta/75">
+                  {[m.sede.nombre, m.sede.direccion, m.sede.barrio, m.sede.ciudad]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
+              {m.sede?.indicaciones && (
+                <p class="text-tinta/65">{m.sede.indicaciones}</p>
+              )}
+              {m.sede?.mapa && (
+                <p>
+                  <a
+                    href={m.sede.mapa}
+                    rel="noopener noreferrer"
+                    class="text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+                    >Ver en el mapa</a
+                  >
+                </p>
+              )}
+              {
+                /*
+                  **La plataforma y nada más** (D-139). El link de la reunión no
+                  llega a esta plantilla ni con `urlPublica: true`: se manda al
+                  inscribirse, y un link de reunión en un HTML indexado es
+                  zoombombing barato (trampa 5).
+                */
+                m.plataforma && <p class="text-tinta/75">Por {m.plataforma}</p>
+              }
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mt-8">
+      <h2 class="mb-2 border-b border-borde pb-1 text-xs font-semibold tracking-[0.15em] text-tinta/65 uppercase">
+        Organiza
+      </h2>
+      <p class="text-tinta">{detalle.organizador.nombre}</p>
+      <p class="mt-1 flex flex-wrap gap-x-3 text-sm">
+        {
+          detalle.organizador.instagram &&
+            (detalle.organizador.instagramUrl ? (
+              <a
+                href={detalle.organizador.instagramUrl}
+                rel="noopener noreferrer"
+                class="text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+              >
+                {detalle.organizador.instagram}
+              </a>
+            ) : (
+              <span class="text-tinta/70">{detalle.organizador.instagram}</span>
+            ))
+        }
+        {
+          detalle.organizador.web &&
+            (detalle.organizador.webUrl ? (
+              <a
+                href={detalle.organizador.webUrl}
+                rel="noopener noreferrer"
+                class="text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+              >
+                {detalle.organizador.web}
+              </a>
+            ) : (
+              <span class="text-tinta/70">{detalle.organizador.web}</span>
+            ))
+        }
+      </p>
+    </section>
+
+    {
+      detalle.tags.length > 0 && (
+        <ul class="mt-8 flex flex-wrap gap-2">
+          {detalle.tags.map((t) => (
+            <li class="rounded-full border border-borde px-3 py-1 text-xs text-tinta/65">{t}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    <nav class="mt-10 border-t border-borde pt-4 text-sm" aria-label="Seguir mirando">
+      <a
+        href="/"
+        class="text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+        >Ver toda la agenda</a
+      >
+    </nav>
+  </main>
+</Base>

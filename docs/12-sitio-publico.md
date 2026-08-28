@@ -5,9 +5,46 @@ que la gente encuentra en Google. Es el ítem **B-01** del
 [backlog](BACKLOG.md), desarmado acá en piezas construibles
 (**B-105** a **B-114**).
 
-**Este documento es de diseño, no de implementación.** No hay código nuevo
-todavía: hay decisiones tomadas, con su motivo, para que quien lo construya no
-tenga que volver a decidir nada. Los fragmentos de código son ilustrativos.
+**Este documento es de diseño, no de implementación.** Hay decisiones tomadas, con
+su motivo, para que quien lo construya no tenga que volver a decidir nada. Los
+fragmentos de código son ilustrativos.
+
+> ## Qué de todo esto ya está construido (B-227, 2026-08-28)
+>
+> Salió el primer frente: **el listado con búsqueda, filtros y orden**, y **la
+> página de detalle**. Lo que hace hoy está en
+> [`04-funcionalidades.md`](04-funcionalidades.md); acá queda el diseño completo,
+> que sigue siendo la referencia de lo que falta.
+>
+> | Sección | Estado |
+> |---|---|
+> | §3 los datos · §3.2 credenciales | ✅ — y las tres salidas del build hacen **una sola** lectura, en `src/lib/contenidoDelSitio.ts` |
+> | §4.1 home · §4.2 tarjeta | ✅ |
+> | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
+> | §4.4 hubs · §4.5 pasadas, calendario, acerca, 404 | ❌ — frentes siguientes |
+> | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
+> | §6 filtros | ✅ — con los desvíos de abajo |
+> | §7 casos incómodos | ✅ menos §7.3 (canceladas, **B-110**) y la mitad de §7.1 que vive en `/pasadas` |
+> | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; la **hoja inferior** de filtros y el **CTA fijo** no (**B-238**) |
+> | §10 accesibilidad | ✅ |
+>
+> **Los cuatro desvíos, todos con su decisión escrita:**
+>
+> 1. **Hay selector de orden**, y §6.1 decía que no — **D-137**.
+> 2. **`online.url` no sale al detalle** ni con `urlPublica: true`, o sea más
+>    estricto que lo que dice §4.3 — **D-139**.
+> 3. **El panel de filtros es un *disclosure* inline y no una hoja modal** (§8).
+>    Un diálogo modal necesita trampa de foco, cierre con `Escape`, click en el
+>    fondo y `pushState`; un disclosure no necesita nada de eso y no tiene cómo
+>    salir mal. La hoja queda en **B-238**, para hacerla bien y de una vez.
+> 4. **La island renderiza su propia lista** en vez de mostrar y ocultar las
+>    tarjetas del HTML por `data-id` (§6.3). Se conserva todo lo que esa sección
+>    perseguía —el HTML completo del build, sin-JS servido, sin parpadeo, **un
+>    solo** markup de tarjeta— pero por otro camino: la island **saca del DOM** la
+>    lista del build cuando tiene el índice y monta la suya con el mismo
+>    componente React. Sin `<template>`, sin reordenar nodos a mano, y con el
+>    filtrado testeado como lógica pura. El costo, dicho: el runtime de React
+>    viaja a la home (**B-239**).
 
 Restricciones que **no** se revisitan acá: Astro estático (§2.3), el JSON lo
 genera el build y no una Function (§2.4), la búsqueda y el filtrado son en
@@ -1057,8 +1094,23 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
   **B-64** en el panel; en el sitio público se hace bien de entrada, y ese
   componente puede después resolver las dos.
 - Foco visible en todo lo enfocable, con el acento.
-- Contraste: `--color-tinta` sobre `--color-papel` pasa cómodo; **el acento sobre
-  papel hay que medirlo** antes de usarlo en texto chico.
+- Contraste: **medido en B-227**, y la respuesta a la pregunta abierta es que el
+  acento se puede usar en texto chico.
+
+  | | Ratio | Veredicto |
+  |---|---|---|
+  | `tinta` sobre `papel` | **16,59:1** | AAA de sobra |
+  | `acento` sobre `papel` | **5,63:1** | AA ✅ (no AAA) |
+  | `papel` sobre `acento` (el botón) | **5,63:1** | AA ✅ |
+
+  **Lo que sí falla es la rampa de opacidad**, que era el riesgo de verdad y no el
+  acento. Sobre papel, `tinta/65` da 5,29 y pasa; `tinta/60` da 4,49 y queda justo
+  abajo; `tinta/55` da 3,84 y `tinta/45` da 2,86, que no pasa ni para texto grande.
+  La primera versión del sitio usaba las cuatro. **El piso es `tinta/65`** y lo
+  verifica un test (`tests/contraste.test.ts`), que calcula los ratios y además
+  falla si aparece una clase de texto por debajo del piso — porque esto es
+  exactamente la clase de cosa que se afirma en una doc y se rompe en el componente
+  siguiente.
 - `prefers-reduced-motion` ya está respetado en `global.css`.
 
 ---
