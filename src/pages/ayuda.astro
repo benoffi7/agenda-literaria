@@ -1,0 +1,114 @@
+---
+/**
+ * `/ayuda` — B-232.
+ *
+ * Le habla a **quien busca una actividad**, no a quien la carga: la guía del
+ * panel es otra cosa y vive adentro del panel.
+ *
+ * ── Por qué está todo abierto y no en un acordeón ─────────────────────────
+ * Un acordeón de diecisiete preguntas se ve ordenado y se usa mal: hay que
+ * adivinar en cuál está la respuesta y abrir de a una, el buscador del navegador
+ * no encuentra lo que está cerrado en algunos navegadores, y quien llega desde
+ * Google a `/ayuda#a-la-gorra` aterriza sobre un título plegado. Acá el texto
+ * está entero en la página, con un índice arriba para saltar. También es lo que
+ * hace que la página sirva para lo que más se usa: mandarle a alguien el link de
+ * una respuesta puntual.
+ *
+ * El contenido es data (`src/lib/ayudaDelSitio.ts`) y no párrafos acá: es lo que
+ * permite testear que no falte una pregunta y que el glosario de tipos no se
+ * quede viejo cuando el modelo suma una categoría.
+ */
+import Base from '@/layouts/Base.astro';
+import { CIERRE_DE_AYUDA, ENTRADA_DE_AYUDA, GRUPOS_DE_AYUDA } from '@/lib/ayudaDelSitio';
+
+/** El anillo de foco del sitio, igual que en el encabezado y el pie. */
+const foco =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento';
+const claseEnlace = `text-acento underline decoration-borde underline-offset-4 hover:decoration-acento ${foco}`;
+---
+
+<Base
+  seccion="ayuda"
+  titulo="Ayuda — Agenda literaria"
+  descripcion="Cómo funciona la agenda: qué es cada tipo de actividad, qué quiere decir «a la gorra», cómo anotarse y cómo suscribirse al calendario."
+>
+  <main class="mx-auto max-w-2xl px-4 py-10 sm:py-14">
+    <h1 class="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">Ayuda</h1>
+    <p class="mt-4 text-lg text-tinta/70">{ENTRADA_DE_AYUDA}</p>
+
+    <nav aria-labelledby="indice" class="mt-8 border-y border-borde py-4">
+      <h2 id="indice" class="text-sm font-semibold tracking-wide text-tinta/70 uppercase">
+        En esta página
+      </h2>
+      <ul class="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+        {
+          GRUPOS_DE_AYUDA.map((grupo) => (
+            <li>
+              <a class={`flex min-h-touch items-center ${claseEnlace}`} href={`#${grupo.id}`}>
+                {grupo.titulo}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    {
+      GRUPOS_DE_AYUDA.map((grupo) => (
+        <section aria-labelledby={grupo.id} class="mt-12">
+          <h2
+            id={grupo.id}
+            class="scroll-mt-8 font-serif text-2xl font-semibold tracking-tight text-acento"
+          >
+            {grupo.titulo}
+          </h2>
+
+          {grupo.preguntas.map((p) => (
+            <article class="mt-8">
+              <h3 id={p.id} class="scroll-mt-8 font-serif text-xl font-semibold">
+                {p.pregunta}
+              </h3>
+
+              {p.respuesta.map((parrafo) => (
+                <p class="mt-3 text-tinta/80">{parrafo}</p>
+              ))}
+
+              {p.glosario && (
+                <dl class="mt-4 border-s-2 border-borde ps-4">
+                  {p.glosario.map((termino) => (
+                    <div class="mt-3 first:mt-0">
+                      <dt class="font-semibold">{termino.label}</dt>
+                      <dd class="mt-1 text-tinta/80">{termino.que}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              {p.enlaces && (
+                <ul class="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+                  {p.enlaces.map((e) => (
+                    <li>
+                      <a class={`flex min-h-touch items-center ${claseEnlace}`} href={e.href}>
+                        {e.texto}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          ))}
+        </section>
+      ))
+    }
+
+    <aside class="mt-14 rounded-lg border border-borde p-5">
+      <h2 class="font-serif text-xl font-semibold">{CIERRE_DE_AYUDA.titulo}</h2>
+      <p class="mt-2 text-tinta/80">{CIERRE_DE_AYUDA.texto}</p>
+      <p class="mt-3">
+        <a class={`flex min-h-touch items-center ${claseEnlace}`} href={CIERRE_DE_AYUDA.enlace.href}>
+          {CIERRE_DE_AYUDA.enlace.texto}
+        </a>
+      </p>
+    </aside>
+  </main>
+</Base>

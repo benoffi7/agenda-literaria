@@ -3477,3 +3477,67 @@ termine.
 deja de tener un solo lector y el balance cambia: ahí corresponde volver a D-119 y
 partir la key en dos —una de lectura para el build, otra con permiso de deploy y
 `environment` con aprobación—. Está anotado como **B-225**.
+
+## D-135 · La ayuda y el contacto del sitio son datos derivados, no párrafos en la página
+
+**Contexto.** `/ayuda` y `/contacto` (B-232) son las dos primeras páginas del sitio
+público que son **texto y nada más**: no leen `events.json`, no tienen island, no
+tocan Firestore. El camino corto era escribir los párrafos adentro del `.astro` y
+listo — son dos páginas estáticas.
+
+**Decisión.** El contenido vive en dos módulos (`src/lib/ayudaDelSitio.ts`,
+`src/lib/contactoDelSitio.ts`) y la página solo lo recorre. Y lo que se puede
+derivar, se deriva: el glosario de tipos y el de aranceles salen de
+`opciones-base.json`, los motivos de contacto salen de `MOTIVOS_DE_CONTACTO`, y las
+rutas a las que la ayuda linkea las verifica el test contra las que declara
+`Encabezado.astro`.
+
+**Por qué, y no es una preferencia de estilo.** Un texto en el marcado no se puede
+verificar, y acá hay tres cosas que verificar que no se ven mirando la página:
+
+| Riesgo | Qué lo frena |
+|---|---|
+| Se saca la respuesta que dice por qué el link de la reunión no se publica | la lista `OBLIGATORIAS` del test, con el motivo de cada una |
+| Se agrega una categoría base y la ayuda sigue enumerando las de antes | el glosario se deriva de `opciones-base.json`: el test nombra la que falta explicar |
+| Un ejemplo bien intencionado publica un link de reunión de verdad | el barrido de centinelas sobre todos los textos |
+
+La segunda ya ocurrió dos veces en el modelo antes de que estas páginas existieran:
+`feria` (B-129) y `libreria-a-la-calle` entraron como opción base después del
+`CLAUDE.md`, y una lista de cinco tipos escrita a mano en la ayuda habría quedado
+vieja **sin que nada fallara**. Es la clase que `05-patrones.md` llama «verificar la
+clase, no la instancia»: la lista se deriva del código y lo nuevo entra solo.
+
+**Lo que esto cuesta.** Una indirección para leer el texto: quien quiera cambiar una
+frase la busca en el módulo y no en la página. Se acepta porque es exactamente el
+mismo trato que ya tiene la guía del panel (`src/lib/ayuda.ts`) y por el mismo
+motivo.
+
+**Lo que NO se hizo, a propósito:** unificar los dos módulos con `src/lib/ayuda.ts`.
+Comparten la forma —texto como data, testeado— y no comparten nada más: uno le habla
+a quien carga actividades desde adentro del panel y el otro a quien busca un taller
+desde Google. Unificarlos obligaría a que un cambio de tono en uno pase por el otro.
+
+## D-136 · La ayuda se muestra entera, no en un acordeón
+
+**Contexto.** 20 preguntas en una página. El reflejo es un acordeón: se ve
+corto, prolijo y moderno.
+
+**Decisión.** Todo abierto, con encabezados jerárquicos, un índice arriba y un ancla
+estable por pregunta (`/ayuda#a-la-gorra`).
+
+**Por qué.** El uso principal de una página de ayuda **no es leerla entera**: es
+mandarle a alguien el link de una respuesta puntual, o caer en ella desde una
+búsqueda. Las dos cosas se rompen o se degradan con un acordeón — se aterriza sobre
+un título plegado — y encima hay que adivinar en cuál de los cinco grupos está la
+respuesta antes de poder buscarla. Con todo abierto, el buscador del navegador
+encuentra cualquier palabra y el ancla lleva al texto ya visible.
+
+**El argumento en contra, que es real:** en un teléfono la página es larga. Se
+compensa con el índice de cinco grupos arriba, que es un salto y no una lista de
+20. Si algún día las preguntas se duplican, lo que corresponde es partir la
+página por tema, no plegarla.
+
+**Consecuencia de accesibilidad, y es la mitad del motivo:** sin acordeón no hay nada
+que abrir, así que no hay estado, ni JavaScript, ni un patrón de `aria-expanded` que
+implementar mal. La página funciona igual con JavaScript apagado, que es lo que el
+§2.3 pide del sitio público.

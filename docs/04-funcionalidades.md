@@ -647,6 +647,35 @@ Tres cosas del índice que conviene saber antes de consumirlo:
 `toPublic.ts` (la frontera de privacidad) y `normalize.ts` (la búsqueda) ya estaban
 escritos y testeados: eso es lo que hizo que esta pieza fuera corta.
 
+### `/ayuda` y `/contacto` — las dos páginas de texto (B-232)
+
+Las primeras dos páginas del sitio público terminadas. No leen `events.json` ni
+Firestore: son texto, y por eso pudieron escribirse antes que el listado.
+
+**`/ayuda`** le habla a **quien busca una actividad**, no a quien la carga — la guía
+del panel es otra cosa y vive adentro del panel. 20 preguntas en cinco
+grupos, todas abiertas, con un ancla estable cada una (`/ayuda#a-la-gorra`) para
+poder mandar el link de una respuesta suelta. Contesta, entre otras: que esto **no
+es una plataforma de inscripción**, qué es cada tipo de actividad, qué quiere decir
+«a la gorra», por qué un ciclo es una tarjeta y no ocho, y **por qué el link de la
+reunión no está publicado** (§5.1, trampa 5).
+
+**`/contacto`** son dos `mailto:` con el asunto ya puesto, que es lo que permite
+separar una sugerencia de un error en la bandeja sin abrirlos. Cada motivo dice qué
+conviene contar, y la página cierra con qué pasa después: lo lee una persona y puede
+demorar.
+
+Tres cosas que no se ven mirando las páginas:
+
+- **El contenido es data, no marcado** (`src/lib/ayudaDelSitio.ts`,
+  `src/lib/contactoDelSitio.ts`), y lo que se puede derivar se deriva: el glosario de
+  tipos y el de aranceles salen de `opciones-base.json`, los motivos salen de
+  `MOTIVOS_DE_CONTACTO`. Agregar una categoría base deja la ayuda incompleta y el
+  test la nombra. Ver **D-135**.
+- **Nada de `mailto:` escrito a mano.** La dirección y los asuntos salen de
+  `enlaces.ts` (B-228); el test falla si aparecen en el marcado de una página.
+- **Sin acordeón y sin JavaScript.** Ver **D-136**.
+
 ## Historial de versiones
 
 Cada vez que una edición pisa algo que cargó una persona, `guardarVersion`
