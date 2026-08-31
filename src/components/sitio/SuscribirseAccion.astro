@@ -1,6 +1,6 @@
 ---
 /**
- * El botón de una acción de la página «Suscribirse» — B-230.
+ * El botón de una acción de la página «Suscribirse» — B-230, B-253.
  *
  * Existe como componente propio porque la parte delicada es la misma en las
  * cinco y no conviene escribirla cinco veces: **el aviso para quien no ve la
@@ -17,8 +17,14 @@
  *
  * `noopener` va siempre que se abra una pestaña nueva: sin él, la página que se
  * abre puede manipular a la que la abrió.
+ *
+ * **El color sale de `estilos.ts` desde B-253** y es el mismo terracota que el
+ * CTA de inscripción del detalle y los dos botones de `/contacto`: es la misma
+ * promesa —«esto es lo que viniste a hacer»— y hasta acá se veía de tres formas
+ * distintas en tres páginas del mismo sitio.
  */
 import type { Accion } from '@/lib/suscripcion';
+import { claseBotonPrimario } from '@/components/sitio/estilos';
 
 interface Props {
   accion: Accion;
@@ -31,7 +37,7 @@ const { accion } = Astro.props;
   href={accion.url}
   target={accion.nuevaPestana ? '_blank' : undefined}
   rel={accion.nuevaPestana ? 'noopener' : undefined}
-  class="inline-flex min-h-touch items-center justify-center rounded-md bg-tinta px-5 py-2 text-center font-medium text-papel transition-colors hover:bg-tinta/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+  class={`${claseBotonPrimario} w-full sm:w-auto`}
 >
   {accion.texto}<span class="sr-only"> ({accion.avisoLector})</span>
 </a>

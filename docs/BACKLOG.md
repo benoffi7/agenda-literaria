@@ -340,6 +340,38 @@ Lo que conviene tener anotado acá, que es lo que costó decidir:
   B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
   panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
 
+### B-253 · El detalle, el chrome y las tres páginas de texto, con la forma de Eventbrite — ✅ hecho (2026-08-31)
+
+Segundo frente del rediseño de **D-141**: el primero le dio nombre y paleta al sitio
+(B-245); éste aplica la **estructura** —portada arriba, jerarquía fuerte, tarjetas
+apiladas con superficie y borde y **ninguna sombra**— a la página de detalle, el
+encabezado, el pie y `/ayuda`, `/contacto` y `/suscribirse`. La home y el listado son
+de otro frente y no se tocaron.
+
+- **Dos decisiones nuevas.** **D-144** (la portada va arriba, con la relación de
+  aspecto de `--aspect-portada`; desvío del §4.3 del diseño) y **D-145** (el CTA fijo
+  de móvil sin una línea de JavaScript, que cierra la mitad «CTA fijo» de **B-238**).
+- **Un archivo nuevo**, `src/components/sitio/estilos.ts`, con el anillo de foco y las
+  clases de botón: estaban copiados doce y cinco veces. Lo sostiene **B-257**.
+- **El contraste pasa a medirse sobre las tres superficies** y no solo sobre `papel`
+  (**B-256**), que con la paleta de D-141 daba un número optimista.
+- **Tres cosas que arregló mirar el HTML del build**, ninguna visible para un test
+  unitario: **B-254** (todo cancelado no es «ya pasó»), **B-258** (la página daba dos
+  cuentas distintas de los mismos encuentros) y la sección «Cómo se cursa» que se
+  pintaba vacía sin `modalidades`.
+- **Dos cosas que encontró el `auditor-privacidad`**, las dos de red y ninguna de
+  fuga: el JSON-LD podía cerrar su propio `<script>` con un título que trajera
+  `</script>` (venía de B-227), y el barrido de centinelas ejercitaba **una** de las
+  cuatro ramas del aviso — justo no la que interpola un valor.
+
+**Lo que este frente necesita de otros archivos**, y no pudo tocar: `Base.astro` le
+pone `overflow-x-hidden` al `body`, que es lo que obliga a que la barra sea `fixed` y
+no `sticky` (ver D-145); y `src/pages/index.astro` con `src/components/publico/*`
+quedan fuera del alcance del chequeo del anillo de foco hasta que se los migre.
+
+**Sigue sin resolver, y no es nuevo:** una actividad `estado: 'cancelado'` no tiene
+página. Es **B-110**.
+
 ### B-244 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
 
 El skill que se invoca **cada vez que se agrega un campo al modelo**
@@ -539,6 +571,19 @@ Lo que hay que hacer (§7.3 del diseño): el build también trae
 las fechas intactas y `eventStatus: EventCancelled` — que es exactamente lo que
 Google pide. No entra al listado ni a `events.json`. Sale del sitemap a los 30
 días.
+
+**Sigue abierto después de B-253 (2026-08-31), y ahora hay una promesa esperándolo.**
+El rediseño de la página de detalle le dio forma al aviso de arriba —los cuatro
+estados con su prioridad, incluida la rama `cancelado`— pero el lector
+(`contenidoDelSitio.ts`) sigue trayendo solo `estado == 'publicado'`, así que esa rama
+solo se activa cuando **todos los encuentros** están cancelados y nunca cuando lo está
+la actividad. Nada de este punto cambió.
+
+Lo que sí cambió es que ahora se sabe que **`src/lib/ayudaDelSitio.ts` ya le promete
+esto a quien lee el sitio**: «si se cancela la actividad entera, la página no
+desaparece: queda con el aviso de que se canceló». Hoy devuelve 404. Lo encontró el
+`auditor-privacidad` mirando B-253. Al cerrar este ítem hay que verificar ese texto —
+o corregirlo antes, si esto se demora.
 
 **Solo si estuvo publicada alguna vez**, que hoy no es un dato del modelo. La
 heurística disponible es que alguna sesión tenga `calendarEventId` (el sync solo
@@ -1824,23 +1869,32 @@ que el riesgo real estaba en la rampa de opacidad.
 (parseados, no copiados, para que cambiar la paleta se note) y
 `tests/contraste-del-sitio.test.ts` **falla si algún archivo del sitio público
 escribe una clase por debajo del piso**. Con control negativo: un escalón
-más abajo tiene que no pasar, o el piso no significaría nada.
+**Arreglo.** Piso en `tinta/65` (5,29). Y `tests/contraste-del-sitio.test.ts`, que hace las
+dos mitades: calcula los ratios desde los tokens de `global.css` (parseados, no
+copiados, para que cambiar la paleta se note) y **falla si algún archivo del sitio
+público escribe una clase por debajo del piso**. Con control negativo: un escalónmás abajo tiene que no pasar, o el piso no significaría nada.
 
 **Lo que queda afuera a propósito:** el panel. Es otra audiencia —se usa con sesión
 y en una pantalla elegida— y su rampa es anterior a esto; revisarla es su propio
 ítem, no éste.
 
-### B-238 · La hoja inferior de filtros y el CTA fijo de móvil · P2
+### B-238 · La hoja inferior de filtros de móvil · P2 — la mitad del CTA cerrada en D-145
 
-El §8 del diseño pide dos elementos fijos que B-227 no construyó, y los dos por el
+El §8 del diseño pedía dos elementos fijos que B-227 no construyó, y los dos por el
 mismo motivo: son **capas modales**, y una capa modal mal hecha es peor que no
 tenerla — necesita trampa de foco, cierre con `Escape`, cierre tocando el fondo,
 devolver el foco al abridor y `pushState` para que el botón atrás del teléfono la
 cierre en vez de salir del sitio.
 
+**El CTA del detalle ya no es uno de los dos** (D-145, 2026-08-31). Se resolvió sin
+capa modal y sin JavaScript, cambiando la regla en vez de la herramienta: en el
+teléfono el botón del flujo **no se pinta** y la barra de abajo es el único CTA, así
+que no hay «desde que el otro sale de la pantalla» que calcular, ni foco que atrapar,
+ni `Escape` que cerrar. Queda **solo la hoja de filtros**, que sí es una capa modal de
+verdad.
+
 Hoy el panel de filtros es un *disclosure* inline (`aria-expanded`/`aria-controls`)
-que no necesita nada de eso y no tiene cómo salir mal, y el CTA del detalle es el
-botón del flujo, sin barra fija.
+que no necesita nada de eso y no tiene cómo salir mal.
 
 > **Alcance recortado el 2026-08-31 por B-247 (D-143).** El problema que la hoja
 > resolvía —cuántos píxeles hay entre el borde de arriba y la primera tarjeta— se
@@ -5258,7 +5312,9 @@ Y una parte ya dejó de corresponderle: el **contraste** lo calculan
 `tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio y
 `tests/tarjeta-del-listado.test.ts` (B-247) para la grilla del listado, que es la
 que tiene texto encima de algo que no es el papel. Un auditor que lo revise a ojo estaría repitiendo lo que un test ya
-frena, que es justo lo que la tabla de «qué no automatizar» de
+Y una parte ya dejó de corresponderle: el **contraste** lo calcula
+`tests/contraste-del-sitio.test.ts` (B-243), que además falla si un componente del sitio
+baja del piso. Un auditor que lo revise a ojo estaría repitiendo lo que un test yafrena, que es justo lo que la tabla de «qué no automatizar» de
 [`13-agentes.md`](13-agentes.md) pide no hacer.
 
 ### B-123 · El inventario de infra no se re-releva solo — ✅ hecho (2026-08-25)
@@ -5393,7 +5449,11 @@ Se dejan para que quede el rastro de qué se rompió.
 |---|---|---|
 | La grilla del listado se veía rota en la mitad de las tarjetas, y no había con qué medirlo | `imagenUrl` es opcional y en este circuito muchas actividades no van a tener foto. B-227 lo resolvía no reservando la columna, que funciona en una lista de una columna y no en una grilla: las celdas tienen el mismo alto, así que la mitad sin portada queda mocha. Cerrado con la portada generada (título sobre el color del tipo) y con `tests/tarjeta-del-listado.test.ts`, el chequeo de contraste que faltaba para texto que no está sobre `papel` | B-247, D-142, D-143 (2026-08-31) |
 | El motivo de la portada generada salía con todos los renglones iguales | se calculaba con `(semilla * (i + 7)) % 50` y los tonos asignados son redondos: con un tono múltiplo de 50 —«club de lectura» es 250— el resto daba cero para todos y la portada dibujaba tres barras idénticas, que es el gráfico de datos que el último renglón corto existe para evitar. **El test miraba que el último fuera el más corto y tres iguales le pasaban por al lado**: lo encontró mirar el HTML del build contra el emulador. Módulo primo, índice sumando, y un chequeo de la propiedad que faltaba | B-248, `src/lib/tarjetaPublica.ts` (2026-08-31) |
-| El sitio se presentaba con su categoría y no con su nombre, en ocho lugares | el nombre estaba decidido desde el 2026-08-27 (DEC-6) y no se había usado en ninguna parte. No rompía nada: se ve bien, el build queda verde, y el sitio entero queda sin identidad en la pestaña, en el historial y en Google. Cerrado con `identidad.ts` y un test que exige el nombre en cada título | B-245, D-141 (2026-08-31) |
+| La página de detalle decía «ya pasó» sobre una actividad cuyos encuentros se **cancelaron todos** | sin ninguna sesión en pie no hay próxima, así que `yaPaso` daba `true` por el mismo camino que una actividad terminada. Falso y de la peor manera: quien pregunta «¿se hace?» se va creyendo que llegó tarde a algo que no se hizo, con la fecha del mes que viene escrita más abajo en la misma pantalla. El dato para distinguirlos ya estaba en la mano (`encuentros.length > 0 && vivos.length === 0`). Cerrado con el `aviso` del view-model, que además ordena los cuatro estados por prioridad | B-254, `src/lib/detallePublico.ts` (2026-08-31) |
+| La página de detalle daba dos cuentas distintas de los mismos encuentros, en la misma pantalla | la ficha decía «Ciclo de 4 encuentros» (los que quedan en pie) y el título de abajo «Los 5 encuentros» (todos, porque el número es la identidad del encuentro dentro del ciclo, D-95). **Las dos cuentas están bien y ninguna se puede cambiar sin romper algo**: lo que sobraba era decir el número dos veces. Lo encontró mirar el HTML del build, no un test. Cerrado sacándole el número al título | B-258, `src/pages/actividad/[slug].astro` (2026-08-31) |
+| El anillo de foco del sitio estaba copiado doce veces, y la clase del enlace acentuado cinco | no es una duplicación estética: la copia que se escriba con un typo deja **un** control sin foco visible, no lo ve nadie que use el mouse, no lo dice el compilador y no lo dice ningún test de contraste. Cerrado con `src/components/sitio/estilos.ts` y `tests/estilos-del-sitio.test.ts`, que además exige que todo archivo con algo enfocable lo importe —porque «no lo escribe a mano» también lo cumple una página sin foco en ninguna parte— | B-257, `src/components/sitio/estilos.ts` (2026-08-31) |
+| El chequeo de contraste del sitio medía todo contra `papel`, y desde D-141 hay tres superficies | `contraste-del-sitio.test.ts` lo decía en su propio docblock («no puede ver texto sobre un fondo que no sea papel»), y era cierto mientras el sitio tuviera un fondo. Con `crema`, `hondo` y los tintes de acento el número viejo es **optimista**: `text-tinta/61` da 4,62 sobre papel —pasa— y 4,38 sobre la superficie más oscura —no pasa—, y el test viejo seguía verde. Cerrado con `tests/contraste-de-superficies.test.ts`, que **deriva** las superficies de `global.css` y del markup | B-256, `tests/contraste-de-superficies.test.ts` (2026-08-31) |
+| La sección «Cómo se cursa» del detalle se pintaba vacía cuando la actividad no tiene `modalidades` | un encabezado que promete algo y no entrega nada. Lo encontró el HTML del gate de build, cuyo fixture es anterior a B-224 (**B-241**, que sigue abierto). Cerrado no pintando la sección: la ficha ya dice «Lugar a confirmar», que es todo lo que se sabe | B-253, `src/pages/actividad/[slug].astro` (2026-08-31) || El sitio se presentaba con su categoría y no con su nombre, en ocho lugares | el nombre estaba decidido desde el 2026-08-27 (DEC-6) y no se había usado en ninguna parte. No rompía nada: se ve bien, el build queda verde, y el sitio entero queda sin identidad en la pestaña, en el historial y en Google. Cerrado con `identidad.ts` y un test que exige el nombre en cada título | B-245, D-141 (2026-08-31) |
 | La casilla de contacto versionada no era la del proyecto, y estuvo tres días publicada en un repo público | se cargó del canal equivocado el 2026-08-28. Se sacó del árbol en vez de habilitarse —del módulo, del CHANGELOG y del comentario del test—: una casilla ajena en un repo público no se conserva como registro. `sin-datos-personales.test.ts` sirvió dos veces acá: frenó la casilla al versionarla, y volvió a fallar sobre el rastro del CHANGELOG cuando se cambió solo el módulo | B-246, `src/lib/enlaces.ts` (2026-08-31) |
 | Una página del sitio público podía publicarse sin encabezado ni pie y nadie se enteraba | `Base.astro` trae el chrome apagado por defecto —lo correcto para `/admin`, lo equivocado para el sitio— así que olvidarse de `seccion` deja el build verde y la página sin salida. Cerrado con `tests/chrome-del-sitio.test.ts`, que encontró una al escribirlo | B-229, `src/components/sitio/` (2026-08-28) |
 | Faltaba un lugar único para los destinos externos del sitio, y tres frentes en paralelo iban a derivarlos por separado | no era un bug todavía: es la clase B-72/B-88 —tres derivaciones de la misma regla— vista antes de que ocurra. Se cerró escribiendo el contrato primero, que es la lección de la integración de `1.5.0` | B-228, `src/lib/enlaces.ts` (2026-08-28) |

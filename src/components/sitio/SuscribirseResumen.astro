@@ -17,6 +17,7 @@
  */
 import { CAMINOS, COMO_FUNCIONA } from '@/lib/suscripcion';
 import SuscribirseAccion from '@/components/sitio/SuscribirseAccion.astro';
+import { claseTarjeta, foco } from '@/components/sitio/estilos';
 
 interface Props {
   nivel?: 2 | 3;
@@ -34,10 +35,7 @@ const Titulo = `h${nivel}` as 'h2' | 'h3';
 const google = CAMINOS.google;
 ---
 
-<section
-  aria-labelledby={idTitulo}
-  class="rounded-lg border border-borde bg-white/60 p-5 sm:p-6"
->
+<section aria-labelledby={idTitulo} class={`p-5 sm:p-6 ${claseTarjeta}`}>
   <Titulo id={idTitulo} class="font-serif text-xl font-semibold text-tinta">
     Llevate la agenda a tu calendario
   </Titulo>
@@ -47,7 +45,7 @@ const google = CAMINOS.google;
     <SuscribirseAccion accion={google.accion} />
     <a
       href="/suscribirse"
-      class="inline-flex min-h-touch items-center justify-center rounded-md px-2 text-tinta/80 underline decoration-borde underline-offset-4 hover:text-tinta hover:decoration-acento focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+      class={`inline-flex min-h-touch items-center justify-center rounded-md px-2 text-tinta/80 underline decoration-borde underline-offset-4 hover:text-tinta hover:decoration-acento ${foco}`}
     >
       Otras formas de suscribirse
     </a>

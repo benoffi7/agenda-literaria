@@ -714,7 +714,20 @@ Una página estática por actividad publicada, **con cero JavaScript**. Es la qu
 recibe el tráfico: la mayoría cae acá desde Google o desde un link de Instagram, y
 tiene una sola pregunta — ¿esto me sirve y todavía puedo entrar?
 
-Arriba va «la ficha» —cuándo, dónde, cuánto, cómo me anoto— y el botón, con el
+**Arriba va la portada**, si hay imagen, con la relación de aspecto de
+`--aspect-portada` —la misma que la tarjeta del listado (B-249)— y no la del archivo
+que subió quien organiza: así un flyer vertical de Instagram se recorta en vez de
+empujar la fecha fuera de la pantalla. Es un desvío del §4.3 del diseño, que la ponía
+después de la ficha; el motivo de aquella decisión sigue valiendo y se resuelve de
+otra forma (**D-144**). Sin imagen no hay hueco: la ficha es lo primero.
+
+Antes que nada, si corresponde, **un solo aviso**: se canceló, ya pasó, la inscripción
+cerró o el cupo está completo. Los cuatro pueden valer a la vez y mostrarlos apilados
+es la forma de que no se lea ninguno, así que la prioridad —del más irreversible al
+menos— la decide el view-model y no una plantilla encadenando condiciones. Cerró un
+bug: una actividad con **todos** los encuentros cancelados decía «ya pasó» (**B-254**).
+
+Después va «la ficha» —cuándo, dónde, cuánto, cómo me anoto— y el botón, con el
 verbo de la vía real: «Escribir por WhatsApp» a un `wa.me` con mensaje precargado,
 «Mandar un mail» a un `mailto:` con asunto, «Escribir por Instagram», «Anotarme en
 el formulario». Si el destino no sirve para esa vía no hay botón y el canal se
@@ -723,11 +736,17 @@ inscripción dice «Entrada libre». Con la actividad pasada tampoco hay botón 
 CTA se decide por fecha y no por `abierta`**, que sin fecha de cierre queda en true
 para siempre y mostraría «Anotate» en un taller de hace un año.
 
-Después: la imagen (no arriba — un flyer vertical empuja la fecha fuera de la
-pantalla en un teléfono, y quien vino de Instagram ya lo vio), la descripción
-completa respetando los saltos de línea, la lista de encuentros con su tema y su
-lectura —los pasados atenuados, los cancelados tachados—, quién lo da con su bio,
-el material, cada forma de cursar con su sede y su link al mapa, y quién organiza.
+**En el teléfono ese es el único CTA de la pantalla, y está siempre a mano**: de `sm`
+para abajo el botón del flujo no se pinta y el mismo enlace vive en una barra fija
+abajo, **sin una línea de JavaScript** (**D-145**, que cierra la mitad «CTA fijo» de
+B-238). Uno y solo uno por pantalla: dos enlaces al mismo lugar hacen que quien
+escucha la página oiga el mismo botón dos veces.
+
+Después: la descripción completa respetando los saltos de línea, la lista de
+encuentros con su tema y su lectura —los pasados atenuados, los cancelados tachados,
+el próximo marcado, y el título **sin repetir la cuenta** que la ficha ya dio
+(**B-258**)—, quién lo da con su bio, el material, cada forma de cursar con su sede y
+su link al mapa, y quién organiza.
 
 **SEO:** `<title>` con el título de la actividad primero y el barrio adentro, `meta
 description` con el resumen, y datos estructurados de `schema.org` — un `Event`

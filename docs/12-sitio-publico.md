@@ -452,6 +452,14 @@ Es el componente que más se repite; lo que muestra está elegido, en este orden
 
 ### 4.3 Detalle — `/actividad/{slug}`
 
+> ⚠️ **La portada del diagrama y las dos primeras viñetas de abajo se desviaron — ver
+> D-144 en [`06-decisiones.md`](06-decisiones.md).** Desde B-253 (2026-08-31) la
+> portada va **arriba**, con relación de aspecto fija (`--aspect-portada`), y no
+> después de la ficha. El motivo original —un flyer vertical empuja la fecha fuera de
+> la pantalla— **sigue siendo válido**; lo que cambió es cómo se resuelve: acotando el
+> alto de la caja en vez de bajando la imagen. El diagrama y las viñetas quedan como
+> estaban, para que D-144 se lea contra su original.
+
 La pantalla más importante del sitio, y la que **no lleva JavaScript**: es HTML
 y CSS. Cero islands, cero `events.json`, cero hidratación.
 
@@ -509,12 +517,15 @@ y CSS. Cero islands, cero `events.json`, cero hidratación.
 
 Decisiones de esta pantalla:
 
-- **"La ficha" antes de todo lo lindo.** La imagen del flyer va después de la
-  ficha y del botón: es lo más pesado y lo menos informativo. Quien llegó de
-  Instagram ya la vio.
-- **La imagen no es hero.** Un flyer vertical de Instagram como cabecera empuja
-  la fecha fuera de la pantalla en un teléfono. Va en su lugar del flujo, con
-  `width`/`height` para no mover el layout al cargar.
+- ~~**"La ficha" antes de todo lo lindo.** La imagen del flyer va después de la
+  ficha y del botón.~~ **Desviado por D-144:** la portada va arriba. Sin imagen la
+  ficha sigue siendo lo primero y no queda ningún hueco, que era la otra mitad del
+  argumento.
+- ~~**La imagen no es hero.**~~ **Desviado por D-144**, y el motivo original es el que
+  se conserva: un flyer vertical **sí** empujaría la fecha fuera de la pantalla si su
+  alto lo decidiera el archivo. Con `--aspect-portada` y `object-cover` el alto lo
+  decide el ancho de la pantalla, así que el flyer se recorta. Los `width`/`height`
+  siguen puestos.
 - **Un solo CTA, con el verbo de la vía.** `inscripcion.via` dice el verbo:
   `whatsapp` → "Escribir por WhatsApp" a un `wa.me` con mensaje precargado
   ("Hola, quiero anotarme en Taller de crónica"); `mail` → `mailto:` con asunto
@@ -918,6 +929,11 @@ trampa 1 aplicada al frontend.
   **desaparece** y en su lugar van "Ver otros talleres", "Seguí a Casa Brandon"
   y "Toda la agenda". El bloque de encuentros muestra todas las fechas
   atenuadas.
+- **Desde B-253 esa franja es una sola y sirve para los cuatro estados** —cancelada,
+  ya pasó, inscripción cerrada, cupo completo— con una prioridad entre ellos decidida
+  en el view-model (`detalle.aviso`), del más irreversible al menos. Los cuatro pueden
+  valer a la vez, y apilarlos es la forma de que no se lea ninguno. El cupo completo
+  avisa pero **no** cierra el canal (D-127).
 - **El CTA se decide por fecha, no por `inscripcion.abierta`.** `abierta` solo
   mira `cierra`: una actividad sin fecha de cierre queda `abierta: true` para
   siempre y mostraría "Anotate" en un taller de hace un año.
@@ -1062,8 +1078,12 @@ link de Instagram, dentro de un navegador embebido.
   sitio.
 - **Chips en una fila con scroll horizontal** y desvanecido al borde. Nunca cuatro
   filas de chips comiéndose la pantalla.
-- **CTA fijo abajo en el detalle**, con `pb-segura`, desde que el botón original
-  sale de la pantalla. Es el único elemento fijo del sitio.
+- **CTA fijo abajo en el detalle**, con `pb-segura`. Es el único elemento fijo del
+  sitio. ~~desde que el botón original sale de la pantalla~~ — esa cláusula obliga a
+  medir el scroll, o sea JavaScript en la única página con presupuesto de 0 KB, y
+  **D-145** cambió la regla en vez de la herramienta: en el teléfono el botón del flujo
+  no se pinta y la barra es el único CTA, así que no hay nada que medir. Es `fixed` y
+  no `sticky` porque el `overflow-x-hidden` del `body` rompe `sticky` en silencio.
 - Blancos táctiles de `var(--spacing-touch)` (44px), que ya está definido; los
   `input` a 16px en pantallas chicas, que ya está resuelto en `global.css` (iOS
   hace zoom por debajo de eso y no vuelve).
@@ -1124,17 +1144,30 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
 - Contraste: **medido en B-227**, y la respuesta a la pregunta abierta es que el
   acento se puede usar en texto chico.
 
-  | | Ratio | Veredicto |
-  |---|---|---|
-  | `tinta` sobre `papel` | **16,59:1** | AAA de sobra |
-  | `acento` sobre `papel` | **5,63:1** | AA ✅ (no AAA) |
-  | `papel` sobre `acento` (el botón) | **5,63:1** | AA ✅ |
+  **Los números de abajo se remidieron el 2026-08-31**, después de que D-141 tocara la
+  paleta —el acento se profundizó a terracota— y B-253 sumara superficies. Los de
+  B-227 (16,59 / 5,63 / 5,29 / 4,49) eran de la paleta anterior y quedaron viejos sin
+  que nada lo dijera: son la clase de dato que hay que recalcular junto con el token,
+  no copiar. La columna nueva es la que importa, porque el sitio ya no tiene un solo
+  fondo.
+
+  | | Sobre `papel` | Sobre `hondo` (la más oscura) | Veredicto |
+  |---|---|---|---|
+  | `tinta` | **16,35:1** | **14,73:1** | AAA de sobra |
+  | `acento` | **5,59:1** | **5,04:1** | AA ✅ (no AAA) |
+  | `acento-hondo` | **8,55:1** | **7,71:1** | AAA en texto grande |
+  | `colorDeTipo`, el peor de los 360 tonos | **7,21:1** | **6,50:1** | AA ✅ |
+  | `papel` sobre `acento` (el botón) | **5,59:1** | — | AA ✅ |
 
   **Lo que sí falla es la rampa de opacidad**, que era el riesgo de verdad y no el
-  acento. Sobre papel, `tinta/65` da 5,29 y pasa; `tinta/60` da 4,49 y queda justo
-  abajo; `tinta/55` da 3,84 y `tinta/45` da 2,86, que no pasa ni para texto grande.
+  acento. Sobre papel, `tinta/65` da 5,26 y pasa; `tinta/60` da 4,47 y queda justo
+  abajo. **Sobre `hondo` el margen es menor todavía**: `tinta/65` da 5,04 y `tinta/61`
+  ya da 4,38 —o sea que hay un rango que pasa sobre papel y no sobre una tarjeta— y
+  ése es exactamente el hueco que `tests/contraste-de-superficies.test.ts` (B-256)
+  cerró. `tinta/55` da 3,84 y `tinta/45` da 2,86, que no pasa ni para texto grande.
   La primera versión del sitio usaba las cuatro. **El piso es `tinta/65`** y lo
-  verifica un test (`tests/contraste.test.ts`), que calcula los ratios y además
+  verifica un test (`tests/contraste-del-sitio.test.ts` — `contraste.test.ts` es la
+  matemática pura, otra cosa), que calcula los ratios y además
   falla si aparece una clase de texto por debajo del piso — porque esto es
   exactamente la clase de cosa que se afirma en una doc y se rompe en el componente
   siguiente.

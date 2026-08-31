@@ -6,6 +6,15 @@ commits después de la medición anterior (`13b9baa`). **Se remidió todo**: no 
 ningún número heredado sin volver a contarlo, que es la única forma de que la
 comparación signifique algo.
 
+> ⚠️ **Los números de este documento son del 2026-08-27 y ya quedaron viejos.** Entre
+> esa fecha y el 2026-08-31 entraron B-245/B-246 (identidad y paleta), B-249 y B-253
+> (la forma del detalle, el chrome y las tres páginas de texto): tres archivos de test
+> nuevos, un módulo nuevo (`src/components/sitio/estilos.ts`) y reescrituras grandes en
+> cinco `.astro`. **No se tocó ningún número acá a propósito** — el documento vale
+> porque cada cifra salió de contar, y estimarlas para que «queden actualizadas» es
+> exactamente lo que lo haría inútil. Hay que remedir con la misma metodología, en una
+> pasada propia.
+
 Metodología: `git ls-files` filtrado a `.ts`, `.tsx`, `.js`, `.mjs` y `.astro`.
 "Significativas" excluye líneas en blanco y comentarios. El grafo de imports
 resuelve `@/`, `@calendario`, `@historial` y los relativos, e incluye los

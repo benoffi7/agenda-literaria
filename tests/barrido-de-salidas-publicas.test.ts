@@ -1028,6 +1028,10 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
   const detalleDe = (over = {}) =>
     detalleDeActividad(toPublic(actividadCentinela(over), 'act_centinela'), ETIQUETAS, AHORA);
 
+  /** El mismo fixture con otro reloj, para activar las ramas que dependen del tiempo. */
+  const detalleDeCon = (ahora: Date) =>
+    detalleDeActividad(toPublic(actividadCentinela(), 'act_centinela'), ETIQUETAS, ahora);
+
   const PERMITIDO_EN_EL_DETALLE: readonly Excepcion[] = [
     {
       nombre: 'identidad',
@@ -1126,6 +1130,67 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     barrer('página de detalle', JSON.stringify(detalleDe()), PERMITIDO_EN_EL_DETALLE, {
       insensible: true,
     });
+  });
+
+  it('los CUATRO avisos barren igual: ninguno compone con un centinela prohibido', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre B-253, y el hueco es de forma.**
+     *
+     * `aviso.texto` (`detallePublico.ts`) es el primer campo del view-model que
+     * **compone** texto en vez de copiarlo: son cuatro ramas excluyentes y una de
+     * ellas interpola un valor (`inscripcion.cierra`). El barrido de arriba corre
+     * con un solo fixture, y con sus valores —`completo: true`, cierre el 1/9,
+     * primera sesión el 3/9, `AHORA` el 20/8— cae **siempre** en la rama
+     * `completo`, cuyo texto es una constante. O sea: tres de las cuatro ramas, y
+     * justo la única que interpola, no se ejecutaban en ningún `barrer()`.
+     *
+     * El modo de falla no es hipotético: alguien escribe mañana
+     * `Las inscripciones cerraron el ${cierra}. Escribile a ${destino}` en esa
+     * rama y el barrido sigue verde, porque el fixture nunca la activa.
+     *
+     * Se barre el **view-model entero** en cada estado, no solo el aviso: activar
+     * la rama cambia también qué más publica la página (sin CTA, sin `offers`),
+     * así que cada estado es una superficie distinta y merece su pasada.
+     *
+     * MUTACIÓN PROBADA: componer la rama `cerrado` con el `searchText` —el caso
+     * exacto que se teme, un dato prohibido interpolado en la rama que el fixture
+     * no activaba— hace fallar **este** `it` nombrando el estado («cerrado») y
+     * deja **verde** el `it` de arriba, que es el que existía. Esa diferencia es
+     * todo el valor de este caso.
+     */
+    const casos: [string, () => ReturnType<typeof detalleDe>][] = [
+      ['completo (el del fixture)', () => detalleDe()],
+      // Todos los encuentros cancelados → rama `cancelado` (B-254). Se cancelan
+      // **todos** y no se sacan: los centinelas de tema y lectura tienen que
+      // seguir saliendo, porque un encuentro cancelado conserva su contenido.
+      [
+        'cancelado',
+        () =>
+          detalleDe({
+            sesiones: actividadCentinela().sesiones.map((s) => ({ ...s, cancelada: true })),
+          }),
+      ],
+      // Un «ahora» posterior a la última sesión → rama `pasado`.
+      ['pasado', () => detalleDeCon(new Date('2027-01-01T15:00:00Z'))],
+      // Un «ahora» posterior al cierre pero anterior a la sesión → rama `cerrado`.
+      ['cerrado', () => detalleDeCon(new Date('2026-09-02T15:00:00Z'))],
+    ];
+
+    const tonos = new Set<string>();
+    for (const [nombre, armar] of casos) {
+      const d = armar();
+      tonos.add(d.aviso?.tono ?? 'ninguno');
+      barrer(`página de detalle (${nombre})`, JSON.stringify(d), PERMITIDO_EN_EL_DETALLE, {
+        insensible: true,
+      });
+    }
+
+    /*
+     * Control positivo, y es el que hace que esto valga: sin él, los cuatro casos
+     * podrían caer en la misma rama —que es exactamente el estado del que se
+     * viene— y el `barrer()` pasaría cuatro veces sobre lo mismo.
+     */
+    expect([...tonos].sort()).toEqual(['cancelado', 'cerrado', 'completo', 'pasado']);
   });
 
   it('con `urlPublica: true` el link de la reunión TAMPOCO sale al detalle (D-139)', () => {
