@@ -407,7 +407,62 @@ describe('la accesibilidad de la grilla', () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// 5 · La grilla
+// 5 · Qué campos de la entrada puede tocar el componente
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Los campos de `EntradaDeIndice` que la tarjeta lee **directo**.
+ *
+ * Todo lo demás lo decide `lib/tarjetaPublica.ts`, que es puro y testeado. Éstos
+ * cinco quedan afuera porque no hay nada que decidir sobre ellos: son un `href`,
+ * un color, un texto y dos banderas.
+ */
+const CAMPOS_QUE_LA_TARJETA_LEE = ['slug', 'tipo', 'titulo', 'imagenUrl', 'destacado'];
+
+describe('la tarjeta no lee de la entrada más de lo que necesita', () => {
+  /*
+   * Lo pidió el `auditor-privacidad`, y es la forma de D-140 aplicada a la otra
+   * mitad de la salida 1. La página de detalle no puede publicar de más porque
+   * recibe un view-model y no el documento; la tarjeta **sí** recibe la
+   * `EntradaDeIndice` entera, así que la garantía no la da el tipo: la da esto.
+   *
+   * El daño está acotado —`EntradaDeIndice` ya es un recorte y no tiene la
+   * dirección, ni el link de la reunión, ni el destino de inscripción— pero sí
+   * tiene `searchText` (la descripción entera, normalizada), `resumen` y
+   * `creadoEn`, que la tarjeta no muestra y que hoy nada impide imprimir.
+   *
+   * MUTACIÓN PROBADA: agregar `{entrada.searchText}` a la tarjeta hace fallar esto.
+   */
+  it('solo toca los campos que no necesitan ninguna decisión', () => {
+    const src = sinComentarios(readFileSync(raiz('src/components/publico/Tarjeta.tsx'), 'utf8'));
+    const leidos = [...src.matchAll(/\bentrada\.(\w+)/g)].map((m) => m[1]!);
+    // Control positivo: si el regex dejara de encontrar nada, la lista de
+    // sobrantes saldría vacía y el test pasaría sin mirar el archivo.
+    expect(new Set(leidos).size).toBeGreaterThanOrEqual(4);
+
+    const sobrantes = [...new Set(leidos)].filter((c) => !CAMPOS_QUE_LA_TARJETA_LEE.includes(c));
+    expect(
+      sobrantes,
+      'estos campos se leen directo del índice en el componente. Si el dato ' +
+        'necesita una decisión, va en `lib/tarjetaPublica.ts`, que se testea; si ' +
+        'no la necesita, sumalo acá con el motivo.',
+    ).toEqual([]);
+  });
+
+  it('y ningún otro componente del listado abre la entrada', () => {
+    // El resto recibe la entrada y la pasa entera a `Tarjeta`, o recibe strings.
+    // Que uno empiece a leerle campos es cómo la decisión se escapa del módulo
+    // puro sin que nadie lo note.
+    const otros = fuentes().filter((f) => !f.archivo.endsWith('Tarjeta.tsx'));
+    const malos = otros
+      .filter((f) => /\bentrada\.\w/.test(f.codigo))
+      .map((f) => f.archivo);
+    expect(malos).toEqual([]);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// 6 · La grilla
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('la grilla', () => {

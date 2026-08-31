@@ -9,7 +9,7 @@ que la gente encuentra en Google. Es el ítem **B-01** del
 su motivo, para que quien lo construya no tenga que volver a decidir nada. Los
 fragmentos de código son ilustrativos.
 
-> ## Qué de todo esto ya está construido (B-227, 2026-08-28)
+> ## Qué de todo esto ya está construido (B-227, 2026-08-28 · B-247, 2026-08-31)
 >
 > Salió el primer frente: **el listado con búsqueda, filtros y orden**, y **la
 > página de detalle**. Lo que hace hoy está en
@@ -19,16 +19,16 @@ fragmentos de código son ilustrativos.
 > | Sección | Estado |
 > |---|---|
 > | §3 los datos · §3.2 credenciales | ✅ — y las tres salidas del build hacen **una sola** lectura, en `src/lib/contenidoDelSitio.ts` |
-> | §4.1 home · §4.2 tarjeta | ✅ |
+> | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs · §4.5 pasadas, calendario, acerca, 404 | ❌ — frentes siguientes |
 > | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
-> | §7 casos incómodos | ✅ menos §7.3 (canceladas, **B-110**) y la mitad de §7.1 que vive en `/pasadas` |
-> | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; la **hoja inferior** de filtros y el **CTA fijo** no (**B-238**) |
+> | §7 casos incómodos | ✅ menos §7.3 (canceladas, **B-110**) y la mitad de §7.1 que vive en `/pasadas`; el §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
+> | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
 > | §10 accesibilidad | ✅ |
 >
-> **Los cuatro desvíos, todos con su decisión escrita:**
+> **Los seis desvíos, todos con su decisión escrita:**
 >
 > 1. **Hay selector de orden**, y §6.1 decía que no — **D-137**.
 > 2. **`online.url` no sale al detalle** ni con `urlPublica: true`, o sea más
@@ -45,6 +45,17 @@ fragmentos de código son ilustrativos.
 >    componente React. Sin `<template>`, sin reordenar nodos a mano, y con el
 >    filtrado testeado como lógica pura. El costo, dicho: el runtime de React
 >    viaja a la home (**B-239**).
+> 5. **Sin imagen, la tarjeta ya no deja el hueco: genera una portada** (§4.2,
+>    §7.6). Los dos apartados decían que la tarjeta sin `imagenUrl` no reserva la
+>    columna y que no hay placeholder — correcto para la tarjeta horizontal de una
+>    columna, falso desde que hay grilla: con las celdas a la misma altura, la
+>    mitad sin portada se ve rota y no distinta. Lo que **no** cambió es lo que esos
+>    apartados rechazaban: no hay placeholder gris, ni ícono, ni iniciales, ni foto
+>    de stock — hay una portada tipográfica sobre el color del tipo. **D-142**.
+> 6. **El panel de filtros de móvil sigue sin ser la hoja inferior** del §8 —sigue
+>    en **B-238**— pero dejó de comerse la pantalla: «Cuándo» se fue adentro,
+>    topea a `65svh` con scroll propio, y cierra desde abajo con «Ver N
+>    actividades» devolviendo el foco al abridor. **D-143**.
 
 Restricciones que **no** se revisitan acá: Astro estático (§2.3), el JSON lo
 genera el build y no una Function (§2.4), la búsqueda y el filtrado son en
@@ -406,6 +417,14 @@ Decisiones de esta pantalla:
   linkeo interno que hace que los hubs existan para Google.
 
 ### 4.2 Tarjeta del listado
+
+> ⚠️ **Este apartado quedó viejo el 2026-08-31 — ver D-142** en
+> [`06-decisiones.md`](06-decisiones.md). La tarjeta es **vertical, con portada
+> arriba**, dentro de una grilla de una, dos o tres columnas, y **cuando no hay
+> imagen la portada se genera** en vez de no reservar la columna. Se deja escrito como
+> estaba para que el desvío de D-142 se lea contra su original: lo que sigue vale
+> —el orden de los datos, la tarjeta entera como link, el arancel con acento solo
+> cuando no se paga, nada de «quedan 3 lugares»— salvo lo que dice de la imagen.
 
 Es el componente que más se repite; lo que muestra está elegido, en este orden:
 
@@ -986,6 +1005,13 @@ Una actividad, una tarjeta (§2.2). Sin excepciones y en todas las vistas.
 
 ### 7.6 Una actividad sin imagen
 
+> ⚠️ **La primera viñeta se revirtió el 2026-08-31 — ver D-142.** Hoy la tarjeta sin
+> imagen **sí** tiene portada: generada, con el título sobre el color del tipo. El
+> argumento de abajo era correcto para la tarjeta horizontal de una columna, donde
+> los dos ritmos conviven; en una grilla las celdas tienen el mismo alto y la mitad
+> sin portada queda mocha. Lo que **no** cambió es lo que la viñeta rechazaba: no hay
+> placeholder gris, ni ícono, ni iniciales, ni foto de stock.
+
 `imagenUrl: null` es frecuente y no es un error.
 
 - **La tarjeta no reserva el espacio de la imagen.** No hay placeholder gris, ni
@@ -1027,7 +1053,8 @@ Es el caso por defecto, no la adaptación: la mayoría entra del teléfono desde
 link de Instagram, dentro de un navegador embebido.
 
 - **Una columna siempre.** Nada de grilla de dos tarjetas en 375px.
-- **El panel de filtros es una hoja inferior.** En la home, en móvil, se ve el
+- **El panel de filtros es una hoja inferior.** *(Sigue siendo **B-238**; lo que se
+  construyó en su lugar, y por qué, está en **D-143**.)* En la home, en móvil, se ve el
   buscador y un botón `Filtrar (2)` con la cantidad activa; el resto de los
   controles viven en una hoja que sube desde abajo, con `pb-segura` para la barra
   de gestos y un botón "Ver 12 actividades" que la cierra. Abrir la hoja **sí**

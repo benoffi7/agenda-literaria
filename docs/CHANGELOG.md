@@ -66,9 +66,30 @@ para todos los renglones y la portada dibujaba tres barras idénticas. El test m
 que el último fuera el más corto, y tres iguales le pasaban por al lado. Es la tercera
 vez que el artefacto de verdad encuentra lo que la suite no podía ver (B-227, B-237).
 
+**Lo que dijeron los auditores.** El `auditor-privacidad` encontró que
+`formasDeCursar` **reescribía** tres reglas que ya viven en `lib/modalidades.ts`
+—`filaPideSede`, `filaPideOnline`, `modalidadResultante`—, que es el productor del
+array que el índice lleva: idénticas hoy, divergentes el día que aparezca un cuarto
+valor de modalidad, y el modo de falla es que el chip desaparece y el lugar cae a
+«Lugar a confirmar» con la sede cargada. Ahora se importan, y un test recorre
+`MODALIDADES` —el dominio del productor— para que ninguna quede sin clasificar.
+También señaló que el docblock prometía un componente «dumb» que no lo era: la
+tarjeta sigue recibiendo la `EntradaDeIndice` entera, así que hoy hay una **lista
+cerrada** de qué campos puede leer directo, verificada — sin ella nada impedía
+imprimir `searchText`, que es la descripción entera. Y que el índice de salidas de
+`07-seguridad.md` no nombraba al productor nuevo: agregado ahí, en la ficha del
+auditor y en el skill `campo-nuevo`, que es lo que hace que un cambio futuro a
+`tarjetaPublica.ts` dispare la auditoría por nombre de archivo.
+
+El `auditor-documentacion` pidió el bloque de estado de `12-sitio-publico.md` con la
+convención que ese archivo ya tiene —los desvíos numerados y la tabla por sección— y
+encontró **drift previo**: `13-agentes.md` y dos entradas del backlog atribuían el
+barrido de contraste del sitio a `contraste.test.ts`, que es solo la matemática. El
+barrido es `contraste-del-sitio.test.ts`. Corregido en las cuatro ubicaciones.
+
 **Peso:** `client.js` —el runtime de React que mide **B-239**— no se movió: 186.619 B
-/ 58.540 B gzip. La island `Buscador` pasó de 16.458 B / 5.925 B gzip a 20.285 B /
-7.431 B gzip, +1,5 KB gzip por la portada y los controles nuevos. Sin dependencias
+/ 58.540 B gzip. La island `Buscador` pasó de 16.458 B / 5.925 B gzip a 20.272 B /
+7.435 B gzip, +1,5 KB gzip por la portada y los controles nuevos. Sin dependencias
 nuevas: la lupa del buscador es un SVG inline de doce bytes.
 
 ## 2026-08-31 · el sitio tiene nombre y paleta

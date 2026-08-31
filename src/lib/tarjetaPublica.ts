@@ -9,10 +9,17 @@
  * puede decir mal: un ciclo no es una fecha, «a la gorra» no es gratis ni pago, y
  * una inscripción cerrada no se calcula en el build (B-111).
  *
- * Así que el componente queda dumb —recibe strings y los pinta— y todas las
- * decisiones viven acá, puras, con el reloj entrando como parámetro a través de
- * `EstadoDeEntrada`. Es el mismo corte que ya hay entre `listadoPublico.ts` y
- * `Buscador.tsx`.
+ * Así que **toda frase que haya que decidir** vive acá, pura, con el reloj entrando
+ * como parámetro a través de `EstadoDeEntrada`. Es el mismo corte que ya hay entre
+ * `listadoPublico.ts` y `Buscador.tsx`.
+ *
+ * Lo que el componente **sí** sigue leyendo del índice son los cinco campos sobre
+ * los que no hay nada que decidir —`slug`, `tipo`, `titulo`, `imagenUrl`,
+ * `destacado`—: un `href`, un color, un texto y dos banderas. No es una promesa de
+ * docblock, es una lista cerrada que verifica
+ * `tests/tarjeta-del-listado.test.ts`; sin ella nada impediría imprimir
+ * `searchText` —la descripción entera, normalizada— en una tarjeta. Es la forma de
+ * D-140 aplicada a la otra mitad de la salida 1, donde el tipo no puede darla.
  *
  * ── La portada generada ───────────────────────────────────────────────────
  * `imagenUrl` es opcional y en este circuito muchas actividades no van a tener
@@ -37,6 +44,8 @@ import { diaYMes, fechaCorta, hora } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { tonoDeTipo } from '@/lib/identidad';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
+import type { Modalidad } from '@/types/actividad';
 
 // ─────────────────────────────────────────────────────────────────
 // Arancel
@@ -118,16 +127,32 @@ export interface FormasDeCursar {
  * hay con qué: `'hibrido'` no distingue «un encuentro híbrido» de «dos filas, una
  * de cada tipo». Se cae al escalar solo si el índice viene sin el array, que es la
  * forma que el modelo tenía antes de B-224.
+ *
+ * ── Las tres reglas se importan, no se reescriben (clase de B-88) ─────────
+ * «Qué fila pide sede», «qué fila pide online» y «cuál es la resultante» son de
+ * `lib/modalidades.ts`, que es **el productor** del array y del escalar que el
+ * índice lleva. Escritas de nuevo acá quedaban idénticas hoy y divergentes el día
+ * que aparezca un cuarto valor de modalidad: el productor lo entiende, este
+ * consumidor lo clasifica como *ni presencial ni virtual*, el chip desaparece y el
+ * lugar cae a «Lugar a confirmar» aunque haya sede cargada — en silencio, que es
+ * la firma de la clase. Lo señaló el `auditor-privacidad`.
+ *
+ * El `as Modalidad` es la costura entre los dos: el índice es JSON, así que sus
+ * modalidades son `string`. El test recorre `MODALIDADES` —el dominio del
+ * productor— y exige que ninguna quede sin clasificar.
  */
 export const formasDeCursar = (entrada: EntradaDeIndice): FormasDeCursar => {
   const valores = entrada.modalidades.length > 0 ? entrada.modalidades : [entrada.modalidad];
-  const presencial = valores.some((v) => v === 'presencial' || v === 'hibrido');
-  const virtual = valores.some((v) => v === 'virtual' || v === 'hibrido');
+  const filas = valores.map((m) => ({ modalidad: m as Modalidad }));
+  const presencial = filas.some((f) => filaPideSede(f.modalidad));
+  const virtual = filas.some((f) => filaPideOnline(f.modalidad));
+  // Un índice sin ninguna modalidad reconocible no se completa con un default:
+  // `modalidadResultante([])` devuelve `'presencial'`, que acá sería afirmar algo
+  // sobre el mundo que nadie cargó.
   if (!presencial && !virtual) return { presencial: false, virtual: false, texto: '' };
-  const clave = presencial && virtual ? 'hibrido' : virtual ? 'virtual' : 'presencial';
   // El nombre se importa y no se escribe: «Presencial y virtual» tiene que
   // decirse igual en el sitio y en el panel.
-  return { presencial, virtual, texto: ETIQUETA_MODALIDAD[clave] };
+  return { presencial, virtual, texto: ETIQUETA_MODALIDAD[modalidadResultante(filas)] };
 };
 
 /**

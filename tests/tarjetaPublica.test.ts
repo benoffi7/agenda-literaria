@@ -26,6 +26,7 @@ import {
   lugarDeTarjeta,
   renglonesDePortada,
 } from '@/lib/tarjetaPublica';
+import { MODALIDADES } from '@/types/actividad';
 import { entradaDePrueba } from './fixtures/indice';
 
 /** Todo lo de este archivo se mide contra este instante. */
@@ -135,6 +136,29 @@ describe('las formas de cursar', () => {
     // build todavía la produce (B-241).
     const e = { ...entradaDePrueba({ modalidades: ['virtual'] }), modalidades: [] };
     expect(formasDeCursar(e).texto).toBe('Virtual');
+  });
+
+  it('clasifica TODA modalidad que el productor puede producir (clase de B-88)', () => {
+    /*
+     * **El aserto que pidió el `auditor-privacidad`.** `lib/modalidades.ts` es el
+     * productor del array y del escalar que el índice lleva; esto es el consumidor.
+     * El dominio se recorre desde `MODALIDADES` —la constante del productor— y no
+     * desde una lista escrita a mano: un cuarto valor de modalidad entra solo, y si
+     * este módulo no lo sabe clasificar, falla acá.
+     *
+     * Sin esto, un valor nuevo se clasificaría como *ni presencial ni virtual*: el
+     * chip desaparece y el lugar cae a «Lugar a confirmar» aunque haya sede
+     * cargada, sin que nada falle.
+     *
+     * MUTACIÓN PROBADA: volver a las tres comparaciones escritas a mano y sacarle
+     * `'hibrido'` a una de ellas hace fallar esto.
+     */
+    for (const m of MODALIDADES) {
+      const e = { ...entradaDePrueba(), modalidades: [m] };
+      const formas = formasDeCursar(e);
+      expect(formas.texto, `«${m}» quedó sin nombre`).not.toBe('');
+      expect(formas.presencial || formas.virtual, `«${m}» quedó sin clasificar`).toBe(true);
+    }
   });
 
   it('sin ninguna forma cargada no inventa «Presencial»', () => {
