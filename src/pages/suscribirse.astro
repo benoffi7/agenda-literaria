@@ -1,6 +1,6 @@
 ---
 /**
- * «Suscribirse» — cómo llevarse la agenda al calendario propio (B-230).
+ * «Suscribirse» — cómo llevarse la agenda al calendario propio (B-230, B-253).
  *
  * El calendario público es un espejo de solo lectura de lo que se carga en el
  * panel: un evento por encuentro, que se corrige solo cuando la actividad
@@ -13,6 +13,14 @@
  * acceso de lectura a quien la tenga, así que el único lugar donde se arman es
  * el que tiene el test que lo vigila. `tests/suscribirse.test.ts` falla si
  * aparece una dirección escrita en esta página.
+ *
+ * ── Lo que B-253 cambió, que es solo cómo se ve ───────────────────────────
+ * Los cuatro caminos son **una elección excluyente** —«con uno alcanza», dice la
+ * propia página— y venían apilados en una columna, que es la forma de leerlos
+ * como cuatro pasos a hacer en orden. Ahora van en una grilla de dos columnas de
+ * `sm` en adelante, y «lo que el calendario no hace» pasa a una superficie
+ * hundida: es la letra chica y tiene que verse como tal sin dejar de leerse
+ * (`tinta/80` sobre `hondo` da 8,23:1).
  */
 import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
@@ -24,6 +32,7 @@ import {
   DONDE_SEGUIR,
 } from '@/lib/suscripcion';
 import SuscribirseAccion from '@/components/sitio/SuscribirseAccion.astro';
+import { claseHundido, claseRotulo } from '@/components/sitio/estilos';
 
 const caminos = caminosEnOrden();
 const advertencias = advertenciasEnOrden();
@@ -34,40 +43,50 @@ const advertencias = advertenciasEnOrden();
   titulo={`Suscribirse al calendario — ${NOMBRE}`}
   descripcion="Sumá la agenda de talleres, clubes de lectura y encuentros literarios a tu Google Calendar, a tu iPhone o a Outlook. Los cambios te llegan solos."
 >
-  <main class="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-    <h1 class="font-serif text-3xl font-semibold text-tinta sm:text-4xl">
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <h1 class="font-serif text-3xl font-semibold tracking-tight text-balance text-tinta sm:text-4xl">
       Llevate la agenda a tu calendario
     </h1>
-    <p class="mt-4 max-w-prose text-lg text-tinta/80">{COMO_FUNCIONA.entrada}</p>
+    <p class="mt-4 max-w-[65ch] text-lg text-tinta/80">{COMO_FUNCIONA.entrada}</p>
 
     <section aria-labelledby="que-gana" class="mt-10">
-      <h2 id="que-gana" class="font-serif text-2xl font-semibold text-tinta">
+      <h2 id="que-gana" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
         {COMO_FUNCIONA.titulo}
       </h2>
-      <ul class="mt-4 max-w-prose list-disc space-y-2 ps-5 text-tinta/80 marker:text-tinta/70">
+      <ul class="mt-4 max-w-[65ch] list-disc space-y-2 ps-5 text-tinta/80 marker:text-acento">
         {COMO_FUNCIONA.puntos.map((punto) => <li class="min-w-0">{punto}</li>)}
       </ul>
     </section>
 
-    <section aria-labelledby="como-se-hace" class="mt-12">
-      <h2 id="como-se-hace" class="font-serif text-2xl font-semibold text-tinta">
+    <section aria-labelledby="como-se-hace" class="mt-14">
+      <h2
+        id="como-se-hace"
+        class="border-t-2 border-acento/40 pt-4 font-serif text-2xl font-semibold tracking-tight text-acento"
+      >
         Cómo se hace
       </h2>
-      <p class="mt-2 max-w-prose text-tinta/80">
-        Elegí el calendario que ya usás. Con uno alcanza.
-      </p>
+      <p class="mt-2 max-w-[65ch] text-tinta/80">Elegí el calendario que ya usás. Con uno alcanza.</p>
 
-      <div class="mt-6 grid gap-4">
+      {/*
+        Grilla y no columna: los cuatro caminos son alternativas y no pasos, y en
+        una columna se leen como una secuencia. `items-start` para que el camino
+        corto no se estire al alto del largo.
+      */}
+      <div class="mt-6 grid items-start gap-4 sm:grid-cols-2">
         {caminos.map((camino) => <SuscribirseCamino camino={camino} />)}
       </div>
     </section>
 
-    <section aria-labelledby="lo-que-no-hace" class="mt-12">
-      <h2 id="lo-que-no-hace" class="font-serif text-2xl font-semibold text-tinta">
+    <section aria-labelledby="lo-que-no-hace" class={`mt-14 p-5 sm:p-6 ${claseHundido}`}>
+      <p class={claseRotulo}>La letra chica</p>
+      <h2
+        id="lo-que-no-hace"
+        class="mt-2 font-serif text-2xl font-semibold tracking-tight text-tinta"
+      >
         Lo que el calendario no hace
       </h2>
 
-      <dl class="mt-4 max-w-prose space-y-5">
+      <dl class="mt-4 max-w-[65ch] space-y-5">
         {
           advertencias.map((advertencia) => (
             <div>
@@ -79,11 +98,11 @@ const advertencias = advertenciasEnOrden();
       </dl>
     </section>
 
-    <section aria-labelledby="donde-seguir" class="mt-12 border-t border-borde pt-8">
-      <h2 id="donde-seguir" class="font-serif text-2xl font-semibold text-tinta">
+    <section aria-labelledby="donde-seguir" class="mt-14 border-t border-borde pt-8">
+      <h2 id="donde-seguir" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
         {DONDE_SEGUIR.titulo}
       </h2>
-      <p class="mt-2 max-w-prose text-tinta/80">{DONDE_SEGUIR.texto}</p>
+      <p class="mt-2 max-w-[65ch] text-tinta/80">{DONDE_SEGUIR.texto}</p>
       <div class="mt-4">
         <SuscribirseAccion accion={DONDE_SEGUIR.accion} />
       </div>
