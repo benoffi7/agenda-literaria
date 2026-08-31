@@ -280,6 +280,157 @@ describe('cuándo se lista el bloque de encuentros', () => {
   });
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// El aviso de arriba: una prioridad, no un formato — B-253, B-254
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('el aviso que la página muestra antes de nada', () => {
+  /**
+   * Quien llega de un link de hace tres meses tiene que enterarse **antes de leer
+   * nada** (§7.1). Cuatro estados pueden valer a la vez, así que lo que se
+   * verifica acá es el **orden**, que es la parte que una plantilla encadenando
+   * `&&` decide sin querer y distinto cada vez que alguien la edita.
+   */
+  it('sin nada que avisar, no hay aviso', () => {
+    // Control positivo: si esto devolviera siempre algo, los casos de abajo
+    // pasarían por el motivo equivocado.
+    const d = detalleDe({ fechas: ['2026-09-24T22:00:00Z'] });
+    expect(d.aviso).toBeNull();
+  });
+
+  it('con todo cancelado dice que se canceló, y NO que ya pasó — B-254', () => {
+    /*
+     * **El bug que este cambio arregla.** Sin ningún encuentro en pie no hay
+     * próximo, así que `yaPaso` da `true` y la página decía «Esta actividad ya
+     * pasó» — falso, y de la peor manera: quien pregunta «¿se hace?» se va
+     * creyendo que llegó tarde a algo que no se hizo, con la fecha del mes que
+     * viene escrita más abajo en la misma pantalla.
+     *
+     * La fecha es **futura** a propósito: es lo que separa este caso del de una
+     * actividad que efectivamente terminó.
+     *
+     * MUTACIÓN PROBADA: reemplazar la condición de `todoCancelado` por `false`
+     * hace que este caso caiga en `pasado` y el test lo dice; pedirle
+     * `vivos.length === 0` sin el `encuentros.length > 0` hace fallar el caso de
+     * abajo, el de la actividad sin fechas.
+     */
+    const d = detalleDe({
+      fechas: ['2026-10-01T22:00:00Z', '2026-10-08T22:00:00Z'],
+      canceladas: [0, 1],
+    });
+    expect(d.yaPaso, 'sigue sin haber próximo encuentro').toBe(true);
+    expect(d.aviso?.tono).toBe('cancelado');
+    expect(d.aviso?.texto).toContain('cancelaron');
+  });
+
+  it('con todo pasado dice que pasó', () => {
+    const d = detalleDe({ fechas: ['2026-01-10T22:00:00Z'], cierra: null });
+    expect(d.aviso?.tono).toBe('pasado');
+  });
+
+  it('sin ninguna fecha no afirma nada: ni que pasó ni que se canceló', () => {
+    /*
+     * Una actividad publicada sin encuentros deja `yaPaso` en `true` por el mismo
+     * camino, y ahí «ya pasó» es tan falso como en el caso cancelado. La ficha
+     * dice «Sin fechas por venir», que es lo único que se sabe.
+     */
+    const d = detalleDe({ fechas: [] });
+    expect(d.yaPaso).toBe(true);
+    expect(d.aviso).toBeNull();
+  });
+
+  it('la inscripción cerrada avisa con la fecha, si la hay', () => {
+    const d = detalleDe({
+      fechas: ['2026-10-01T22:00:00Z'],
+      cierra: '2026-09-01T22:00:00Z',
+    });
+    expect(d.aviso?.tono).toBe('cerrado');
+    expect(d.aviso?.texto).toContain(d.inscripcion.cierra!);
+  });
+
+  it('el cupo completo avisa, y no esconde el canal (D-127)', () => {
+    const d = detalleDe({ fechas: ['2026-10-01T22:00:00Z'], completo: true });
+    expect(d.aviso?.tono).toBe('completo');
+    // La mitad que importa de D-127: el aviso no reemplaza al canal, va al lado.
+    expect(d.inscripcion.destino).toBe('hola@casabrandon.com');
+    expect(d.inscripcion.accion).not.toBeNull();
+  });
+
+  it('sin inscripción, ni «cerró» ni «completo» pueden aparecer', () => {
+    // `completo` y `cierra` son campos del formulario y pueden quedar cargados de
+    // antes; con `requiere: false` la página no puede anunciar que cerró algo que
+    // no existe.
+    const d = detalleDe({
+      fechas: ['2026-10-01T22:00:00Z'],
+      requiereInscripcion: false,
+      completo: true,
+      cierra: '2026-09-01T22:00:00Z',
+    });
+    expect(d.aviso).toBeNull();
+  });
+
+  it('el orden es del más irreversible al menos', () => {
+    /*
+     * Los cuatro estados a la vez. Es el caso que decide **cuál** se muestra, y
+     * es la razón por la que esto vive en el view-model y no en la plantilla.
+     *
+     * MUTACIÓN PROBADA: mover el bloque de `cerrado` arriba del de `cancelado`
+     * hace que esta actividad anuncie «las inscripciones cerraron» sobre una que
+     * directamente no se hace.
+     */
+    const d = detalleDe({
+      fechas: ['2026-01-10T22:00:00Z', '2026-01-17T22:00:00Z'],
+      canceladas: [0, 1],
+      cierra: '2026-01-01T22:00:00Z',
+      completo: true,
+    });
+    expect(d.aviso?.tono).toBe('cancelado');
+  });
+});
+
+describe('cuál es el próximo encuentro', () => {
+  it('es el primero que no pasó ni está cancelado, y es uno solo', () => {
+    /*
+     * Lo necesita la lista del ciclo para marcar una fila de las ocho. Se deriva
+     * acá y no en la plantilla por la razón de siempre: dos derivaciones de la
+     * misma idea se separan sin que nada falle.
+     */
+    const d = detalleDe({
+      esCiclo: true,
+      fechas: [
+        '2026-09-03T22:00:00Z', // pasó
+        '2026-09-17T22:00:00Z', // cancelado
+        '2026-09-24T22:00:00Z', // ← el próximo
+        '2026-10-01T22:00:00Z',
+      ],
+      canceladas: [1],
+    });
+    expect(d.encuentros.map((e) => e.esProximo)).toEqual([false, false, true, false]);
+    // Y coincide con lo que la ficha dice arriba: si divergieran, la página se
+    // contradiría consigo misma en la misma pantalla.
+    expect(d.proxima?.fecha).toBe(d.encuentros[2]!.fecha);
+  });
+
+  it('un encuentro cancelado nunca es el próximo, aunque sea el que viene', () => {
+    /*
+     * MUTACIÓN PROBADA: derivar `esProximo` de `!e.paso` a secas —sin mirar
+     * `cancelada`— marca el encuentro tachado como «El próximo», que es lo peor
+     * que puede decir esta página.
+     */
+    const d = detalleDe({
+      fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+      canceladas: [0],
+    });
+    expect(d.encuentros[0]!.esProximo).toBe(false);
+    expect(d.encuentros[1]!.esProximo).toBe(true);
+  });
+
+  it('sin ninguno por venir, ninguno queda marcado', () => {
+    const d = detalleDe({ fechas: ['2026-01-10T22:00:00Z'] });
+    expect(d.encuentros.some((e) => e.esProximo)).toBe(false);
+  });
+});
+
 describe('las fechas de auditoría no llegan al detalle', () => {
   it('ni la de alta ni la de edición: la celda 6 que estaba resuelta por omisión', () => {
     /*
