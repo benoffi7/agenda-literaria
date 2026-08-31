@@ -127,6 +127,8 @@ describe('el contraste de la grilla del listado — B-247', () => {
      * Así que la regla es de clase y no una medición caso por caso: `tinta` se
      * puede atenuar, todo lo demás va opaco.
      */
+    // MUTACIÓN PROBADA: `text-papel` → `text-papel/80` en el título de la
+    // portada generada hace fallar este caso, y solo este.
     const prohibidas = atenuaciones()
       .filter((a) => a.token !== 'tinta')
       .map((a) => `${a.donde} — ${a.clase}`);
@@ -147,6 +149,8 @@ describe('el contraste de la grilla del listado — B-247', () => {
      * sobre qué fondo», que es lo que se desactualiza cuando alguien mueve un
      * `<span>` de la tarjeta al chip.
      */
+    // MUTACIÓN PROBADA: bajar un `text-tinta/70` de la tarjeta a `/60` —el
+    // valor que da 4,49:1 sobre papel y 4,31:1 sobre hondo— hace fallar esto.
     const flojas = atenuaciones()
       .filter((a) => a.token === 'tinta')
       .map((a) => ({ ...a, ratio: contraste(mezclar(TINTA, HONDO, a.opacidad), HONDO) }))
@@ -245,6 +249,8 @@ describe('los pares de color que el listado pinta encima de algo que no es papel
      * chip elegido a otra combinación, el par viejo sigue midiendo 5,59:1 y el
      * test sigue verde midiendo algo que la pantalla ya no muestra.
      */
+    // MUTACIÓN PROBADA: volver el chip elegido a `bg-acento/10 text-acento`
+    // —la combinación de B-227, que da 4,38:1 sobre hondo— hace fallar esto.
     const perdidos = PARES.filter(
       (p) => !p.clase.test(sinComentarios(readFileSync(raiz(p.archivo), 'utf8'))),
     ).map((p) => `${p.que} — ya no está en ${p.archivo}`);
@@ -275,6 +281,12 @@ describe('la portada generada — el texto sobre el color del tipo', () => {
   ];
 
   it('el papel opaco pasa AA sobre el color de cualquier tipo, inventado o no', () => {
+    /*
+     * MUTACIÓN PROBADA: subir `L` de 0,42 a 0,56 en `identidad.ts` hace fallar
+     * esto. Es la mutación que importa de todo el archivo: es la única forma en
+     * que la portada de un tipo que todavía no existe puede quedar ilegible en
+     * producción, y no hay ninguna pantalla donde mirarla.
+     */
     const flojos = slugs
       .map((s) => ({ s, ratio: contraste(PAPEL, colorDeTipoSrgb(s)) }))
       .filter((x) => x.ratio < AA_TEXTO)
@@ -324,6 +336,8 @@ describe('la accesibilidad de la grilla', () => {
     const src = sinComentarios(
       readFileSync(raiz('src/components/publico/PortadaDeTarjeta.tsx'), 'utf8'),
     );
+    // MUTACIÓN PROBADA: sacarle el `aria-hidden` al bloque del arte hace
+    // fallar esto.
     expect(src).toContain('aria-hidden="true"');
     expect(src, 'la foto de portada va con `alt=""`').toMatch(/alt=""/);
     // Y el tipo, que **no** es decorativo, queda fuera del arte: si la píldora se
@@ -409,6 +423,8 @@ describe('la grilla', () => {
      * Es una decisión, no una preferencia de maquetación, así que se fija: sin
      * esto, «poné dos columnas que entran» se hace en una línea y nada lo dice.
      */
+    // MUTACIÓN PROBADA: cambiar `grid-cols-1` por `grid-cols-2` hace fallar
+    // este caso y el de la definición única.
     const clases = src();
     expect(clases).toContain('grid-cols-1');
     expect(clases).toContain('sm:grid-cols-2');
