@@ -255,22 +255,44 @@ describe('estrictamente plano: sin sombras, sin desenfoques, sin degradados', ()
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('la tipografía es la del sistema — B-260', () => {
-  it('`font-serif` no se usa: el token se borró y Tailwind trae el suyo', () => {
+  it('`font-serif` no se usa en el sitio: es el serif del panel', () => {
     /*
      * **El modo de falla más silencioso del rediseño.** La dirección anterior usaba
-     * `font-serif` (Lora) en veinte lugares. El token se borró de `@theme`, pero
-     * Tailwind **trae su propio** `font-serif` (`ui-serif, Georgia`): un
-     * `font-serif` que sobreviva no falla, no rompe el build, y pinta Georgia en el
-     * medio de una página en Bodoni y Archivo Narrow.
+     * `font-serif` (Lora) en el sitio **y en el panel**, que compartían el token. Al
+     * sacar a Lora, un `font-serif` que sobreviva en el sitio **no falla, no rompe
+     * el build y pinta un serif de sistema** en el medio de una página en Bodoni y
+     * Archivo Narrow.
+     *
+     * El token sigue existiendo porque el panel lo usa en 17 lugares y **no sigue
+     * el sistema visual del sitio** (es una herramienta interna, con su propio
+     * centralizador de clases). Lo que se prohíbe acá es usarlo **en el sitio**,
+     * que es lo que barre `fuentes()`.
      *
      * MUTACIÓN PROBADA: volver a poner `font-serif` en el título de una fila hace
      * fallar este caso — y el build sigue verde, que es el punto.
      */
     expect(
       buscar(/\bfont-serif\b/),
-      'el token `--font-serif` ya no existe; `font-serif` pinta el Georgia de ' +
-        'Tailwind. Usá `font-display` (Bodoni) o `font-titulo` (Archivo Narrow).',
+      '`font-serif` es el serif del panel, no del sitio. Usá `font-display` ' +
+        '(Bodoni) o `font-titulo` (Archivo Narrow).',
     ).toEqual([]);
+  });
+
+  it('y el serif del panel está declarado, no heredado del default de Tailwind', () => {
+    /*
+     * La otra mitad, y la que este cierre pagó: si `--font-serif` no está en el
+     * tema, el panel **no falla** — Tailwind tiene su propio `font-serif` y el
+     * panel pasa a esa face sin que nadie lo decida. Un token declarado convierte
+     * eso en una decisión que se puede leer y cambiar.
+     *
+     * MUTACIÓN PROBADA: borrar `--font-serif` de `@theme` hace fallar este caso,
+     * con el panel viéndose exactamente igual.
+     */
+    expect(
+      css,
+      'el panel usa `font-serif` en 17 lugares: si el token no está declarado, ' +
+        'hereda el default de Tailwind en silencio.',
+    ).toMatch(/--font-serif:\s*\S/);
   });
 
   it('las tres familias están declaradas y son las que dice el sistema', () => {

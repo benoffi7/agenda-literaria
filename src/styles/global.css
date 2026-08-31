@@ -53,14 +53,41 @@
    * Adiós a Inter y a Lora, y no por peso: son el par por defecto de todo sitio
    * hecho con IA, y eran la mitad de por qué esto se veía genérico.
    *
-   * **`--font-serif` ya no existe.** Se borró a propósito y no se reemplazó por
-   * un alias: Tailwind trae su propio `font-serif` (`ui-serif, Georgia`), así
-   * que un `font-serif` que sobreviva de la dirección anterior **no falla, se
-   * ve casi bien y pinta Georgia**. Lo prohíbe `tests/sistema-visual.test.ts`.
+   * **`font-serif` está prohibido en el sitio** (`tests/sistema-visual.test.ts`):
+   * los títulos van en `font-display` (Bodoni) o `font-titulo` (Archivo Narrow).
+   * El token sigue existiendo **para el panel**, y con un valor explícito — ver
+   * abajo.
    */
   --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
   --font-titulo: 'Archivo Narrow', 'Arial Narrow', ui-sans-serif, sans-serif;
   --font-display: 'Bodoni Moda', ui-serif, Georgia, 'Times New Roman', serif;
+
+  /*
+   * ── El serif del panel, y por qué está declarado ───────────────────────
+   *
+   * El panel usa `font-serif` en 17 lugares y **compartía Lora con el sitio**. Al
+   * sacar a Lora, el token quedó sin definir — y ahí está la trampa: Tailwind
+   * trae su propio `font-serif` (`ui-serif, Georgia`), así que el panel **no
+   * falló, no rompió el build y pasó a Georgia** sin que nadie lo decidiera. Lo
+   * levantó el `auditor-documentacion` al preguntar si el panel compartía
+   * tipografía con el sitio.
+   *
+   * La respuesta no es volver a bajar Lora: la hoja de fuentes es una sola y la
+   * comparten las cinco páginas públicas, así que 36,9 KB por los títulos de una
+   * herramienta interna que usan dos personas los pagaría el sitio entero.
+   *
+   * Así que Georgia se queda, **pero declarada**. Es una face del sistema —cero
+   * bytes, está en todas las máquinas— y es un serif de texto, que es lo que el
+   * panel quería de Lora. La diferencia con el estado accidental es que ahora es
+   * una decisión escrita y no el default de Tailwind: si mañana alguien retoca
+   * la tipografía, esto le dice que el panel depende de este token.
+   *
+   * **El panel no sigue el sistema visual del sitio** y eso es a propósito
+   * (`05-patrones.md` § Estilo de UI): es una herramienta interna, tiene su
+   * propio centralizador de clases en `campos/Campo.tsx`, y las reglas de radio 0
+   * y tintas planas no le aplican.
+   */
+  --font-serif: Georgia, 'Times New Roman', ui-serif, serif;
 
   /*
    * ── Las tintas ─────────────────────────────────────────────────────────

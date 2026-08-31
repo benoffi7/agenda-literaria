@@ -523,7 +523,12 @@ Las del **panel** están en
 `claseBotonPrimario`, `claseBotonSecundario`, `claseBotonTinta`,
 `claseBotonFila`, `claseBotonMenu`. El panel es una herramienta interna y **no
 sigue el sistema visual del sitio**: tiene su propio criterio y su propio
-centralizador.
+centralizador. Sus títulos usan `font-serif`, que es **su** token —Georgia, una
+face del sistema— y no el de ninguna de las tres familias del sitio.
+
+> Los dos comparten **una sola hoja de fuentes** (`Base.astro`), así que bajar una
+> familia solo para el panel se lo cobra a las cinco páginas públicas. Es el motivo
+> por el que el serif del panel es una face del sistema y no una webfont.
 
 `--spacing-touch` (44px) es el mínimo de un blanco táctil y se aplica con
 `min-h-touch`.

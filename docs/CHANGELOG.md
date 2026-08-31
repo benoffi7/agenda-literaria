@@ -83,6 +83,26 @@ Pasa a llamarse `sangria-de-riel`.
 
 Las dos con guarda nueva y mutación probada.
 
+### El panel cambió de tipografía sin que nadie lo decidiera, y ahora está decidido
+
+**El único efecto de este cambio fuera del sitio público.** El panel usa
+`font-serif` en 17 lugares y **compartía Lora con el sitio**; al sacar a Lora, el
+token quedó sin definir. Ahí está la trampa: Tailwind trae su propio `font-serif`,
+así que el panel **no falló, no rompió el build y pasó a un serif de sistema** sin
+que nadie lo eligiera. Lo levantó el `auditor-documentacion` al preguntar si el
+panel compartía tipografía con el sitio.
+
+No se vuelve a bajar Lora: la hoja de fuentes es una sola y la comparten las cinco
+páginas públicas, así que 36,9 KB por los títulos de una herramienta interna que
+usan dos personas los pagaría el sitio entero. **Georgia se queda, pero declarada**
+—cero bytes, está en todas las máquinas, y es un serif de texto, que es lo que el
+panel quería de Lora—. El cuerpo del panel pasa de Inter a Public Sans por el mismo
+camino, y las dos son grotescas neutras.
+
+Lo que cambia con la declaración: deja de ser el default de Tailwind y pasa a ser
+una línea que se puede leer y cambiar. Hay guarda con mutación probada — borrar el
+token deja el panel viéndose **exactamente igual** y el test en rojo.
+
 ### La red
 
 `tests/sistema-visual.test.ts`, nuevo: barre **todo** el markup del sitio y **ata
@@ -101,7 +121,7 @@ es justo el modo de falla que el índice existe para frenar. Cerrado con una gua
 `agentes-y-skills.test.ts` verificaba que existieran los **productores** de la tabla
 de salidas y no los **tests**; ahora verifica los dos.
 
-**1.880 tests en 83 archivos**, contados en esta corrida.
+**1.881 tests en 83 archivos**, contados en esta corrida.
 
 ## 2026-08-31 · el sitio con identidad, integrado
 
