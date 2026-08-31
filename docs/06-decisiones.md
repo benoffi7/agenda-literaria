@@ -3845,3 +3845,97 @@ está garantizada legible, y si algún día alguien aclara la banda, el test lo 
 **Lo que esto NO decide.** El dominio sigue sin registrar, así que no hay `site`, ni
 canonical, ni Open Graph, ni sitemap: es B-109 y sigue abierto. DEC-6 pedía además
 decidir **qué parte del nombre va en la URL**, y sigue pendiente.
+
+## D-142 · La tarjeta pasa a grilla con portada, y cuando no hay imagen la portada se genera
+
+**Contexto.** D-141 decidió la dirección —la estructura de Eventbrite con paleta
+propia— y dejó anotado que «cuando no hay imagen, la portada se genera». Esto es esa
+decisión bajada a la tarjeta, y **se desvía de dos párrafos del diseño de B-227** que
+conviene dejar escritos porque siguen ahí:
+
+> §4.2 de [`12-sitio-publico.md`](12-sitio-publico.md): «Sin imagen no hay hueco
+> gris. La tarjeta sin `imagenUrl` no reserva la columna: el texto ocupa todo el
+> ancho y el título sube un escalón de tamaño».
+>
+> §7.6: «No hay placeholder gris, ni ícono, ni iniciales. (…) La lista queda con dos
+> ritmos de tarjeta, y está bien: es una lista de papel, no una grilla de Instagram».
+
+**Eso era correcto y dejó de serlo, y el motivo es la grilla.** En una lista vertical
+de una columna, una tarjeta horizontal sin la columna de la imagen se lee como otra
+tarjeta: los dos ritmos conviven porque el ancho es el mismo y el ojo baja en línea
+recta. En una grilla de tres columnas no hay dos ritmos posibles — las celdas tienen
+el mismo alto —, así que la mitad sin portada queda como una fila de rectángulos
+mochos. La alternativa que el §7.6 rechaza («ni ícono, ni iniciales») sigue
+rechazada: **no se pone un placeholder, se pone una portada**.
+
+**Qué la hace una portada y no un relleno.** Tres cosas, y las tres son
+determinísticas a partir del tipo:
+
+| Qué | Cómo | Por qué |
+|---|---|---|
+| el color de fondo | `colorDeTipo(slug)` | derivado del slug, no de una tabla: `tipo` es taxonomía autogestionada (§4) y una tabla de siete queda vieja el día que aparece el octavo, en silencio (D-141) |
+| el cuerpo del título | `escalaDePortada`, cuatro escalones por largo | un título de una palabra y uno de doce no pueden ir al mismo cuerpo: con uno solo, el primero queda perdido en el medio del rectángulo y el segundo no entra |
+| el motivo | `renglonesDePortada`, renglones de anchos derivados del **mismo tono** | le da carácter propio a cada tipo sin inventar un segundo color, y sembrarlo con `tonoDeTipo` evita una segunda derivación de «qué le toca a este slug» (clase de B-88) |
+
+**Y el título aparece dos veces a propósito**: en la portada y en el `<h3>` del
+cuerpo. No es una duplicación que se pasó por alto — es lo que hace un afiche, y un
+afiche con el título es justamente lo que la tarjeta con foto también tendría. Para
+lector de pantalla **no** se dice dos veces: el arte va `aria-hidden` y la foto con
+`alt=""`, porque ninguno de los dos aporta nada que el texto de la tarjeta no diga
+ya. Lo que sí queda **fuera** del arte es la píldora del tipo, que es información y
+no decoración.
+
+**La jerarquía del cuerpo es qué / cuándo / dónde / cuánto**, que es lo que alguien
+decide mirando una tarjeta. La fecha sigue yendo primero y en Inter (§4.2), el
+arancel se apoya al pie con `mt-auto` para que quede a la misma altura en toda la
+fila —se compara de un barrido vertical—, y «a la gorra» se pinta con el acento
+igual que «gratis»: es la mitad de los casos del circuito y no entra en el binario
+gratis/pago (§4.1 del `CLAUDE.md`).
+
+**Lo que dice la tarjeta no vive en el componente.** Está en `src/lib/tarjetaPublica.ts`,
+puro y testeado, porque los componentes de React de este repo no tienen tests de
+render (`docs/05-patrones.md`): una frase escrita adentro del `.tsx` no se verifica en
+ninguna parte, y las frases en juego son del dominio —el verbo del ciclo cambia con el
+reloj de quien mira, el orden entre «cerraron» y «cupo completo» decide si se invita a
+una lista de espera que ya no existe—.
+
+**Una columna en el teléfono sigue en pie.** El §8 dice «nada de grilla de dos
+tarjetas en 375px» y eso no cambió: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`, con
+un test que lo fija.
+
+## D-143 · Los filtros de móvil: lo que se puede tener sin construir una capa modal
+
+**Contexto.** El §8 del diseño pide una **hoja inferior** para los filtros en móvil.
+**B-238** la dejó abierta con un argumento que sigue siendo bueno: una hoja es una
+capa modal, y una capa modal mal hecha es peor que no tenerla —necesita trampa de
+foco, `Escape`, cierre tocando el fondo, devolver el foco al abridor y `pushState`
+para que el botón atrás del teléfono la cierre en vez de salir del sitio—.
+
+**Decisión: no se construye la capa, se ataca el problema que la capa resolvía.** El
+problema es medible y no necesita una hoja: cuántos píxeles hay entre el borde de
+arriba y la primera tarjeta. Tres cambios, ninguno de los cuales puede salir mal:
+
+1. **Arriba queda el buscador y una fila de botones**, nada más. «Cuándo» era un
+   `select` con su etiqueta ocupando un tercio del ancho y se fue **adentro** del
+   panel, que es donde viven los otros filtros y donde el contador del botón ya lo
+   cuenta.
+2. **El panel abierto está topeado a `65svh` con scroll propio** en el teléfono, así
+   que el arranque de la grilla nunca queda fuera de la pantalla. `svh` y no `vh`:
+   en un navegador móvil con barra retráctil, `vh` mide la pantalla sin la barra y el
+   panel termina más alto que el hueco real.
+3. **Cierra desde abajo con «Ver N actividades»** y el foco vuelve al botón que lo
+   abrió. Es la parte de la hoja inferior que sí se puede tener sin ser modal: quien
+   terminó de tocar chips está al final del panel, y volver arriba a buscar el botón
+   es el paso que sobra.
+
+**B-238 sigue abierto** y con su alcance recortado a lo que de verdad falta: la capa
+modal y el CTA fijo del detalle.
+
+**Y de paso, el chip elegido dejó de mentir.** B-227 lo pintaba `bg-acento/10
+text-acento`, que sobre la superficie `hondo` da **4,38:1** contra un piso de 4,5 —y
+se ve perfecto, que es el modo de falla de B-235 otra vez—. Ahora va lleno
+(`bg-acento text-papel`, 5,59:1), que además es cómo se ve un control elegido en una
+plataforma y no un link subrayado. El número lo verifica
+`tests/tarjeta-del-listado.test.ts`, que es el chequeo que faltaba: el de B-235 barre
+`src/pages` y `src/components/sitio`, mide solo `text-tinta/NN` y solo sobre `papel`,
+y la grilla no cumple ninguna de las tres cosas.

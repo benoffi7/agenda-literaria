@@ -1,5 +1,76 @@
 # Changelog
 
+## 2026-08-31 · la tarjeta y la grilla del listado
+
+La bajada de **D-141** a la pieza que más se repite del sitio. La lista vertical de
+tarjetas horizontales pasa a **grilla** —una columna en el teléfono, dos en tablet,
+tres en escritorio— y cada tarjeta arranca con una **portada** de 16:9. B-247.
+
+**Cuando no hay imagen, la portada se genera** — D-142. Es la pieza nueva, y no es un
+placeholder: es el título sobre el color del tipo, con el cuerpo elegido según el
+largo (un título de una palabra y uno de doce no pueden ir al mismo tamaño) y un
+motivo de renglones cuyos anchos salen del **mismo tono** que el color. Sembrar el
+motivo con `tonoDeTipo` en vez de con un hash propio es lo que evita una segunda
+derivación de «qué le toca a este slug», que es la clase de B-88.
+
+Esto **se desvía del §4.2 y del §7.6 de `12-sitio-publico.md`**, que decían «sin
+imagen no hay hueco gris, la tarjeta no reserva la columna». Era correcto para la
+tarjeta horizontal y deja de serlo en una grilla: en una lista de una columna los dos
+ritmos conviven, en una grilla de tres la mitad sin portada queda como una fila de
+rectángulos mochos. El desvío, con el motivo, está en D-142.
+
+**El título aparece en la portada y en el `<h3>`, a propósito** — es lo que hace un
+afiche. Para lector de pantalla no se dice dos veces: el arte va `aria-hidden` y la
+foto con `alt=""`, porque ninguno aporta nada que el texto de la tarjeta no diga ya.
+La píldora del tipo queda **fuera** del arte: eso es información, no decoración.
+
+**La jerarquía del cuerpo es qué / cuándo / dónde / cuánto.** El arancel se apoya al
+pie con `mt-auto`, así que queda a la misma altura en toda la fila y se compara de un
+barrido vertical; y **«a la gorra» se pinta con el acento igual que «gratis»**, que es
+el §4.1 del `CLAUDE.md`: es la mitad de los casos del circuito y no entra en el
+binario gratis/pago. El ciclo dice «Ciclo de 4 encuentros · empieza el 9 de
+septiembre» y el verbo cambia con el reloj de quien mira, no con el del build.
+
+**Lo que dice la tarjeta se fue del componente a `src/lib/tarjetaPublica.ts`**, puro y
+con 42 tests. Los componentes de React de este repo no tienen tests de render
+(`05-patrones.md`), así que una frase escrita adentro del `.tsx` no se verifica en
+ninguna parte — y las frases en juego son del dominio: el orden entre «cerraron» y
+«cupo completo» decide si se invita a una lista de espera que ya no existe.
+
+**Los filtros de móvil dejan de comerse la pantalla sin construir una capa modal** —
+D-143. «Cuándo» se fue adentro del panel, el panel abierto está topeado a `65svh` con
+scroll propio, y cierra desde abajo con «Ver N actividades» devolviendo el foco al
+botón que lo abrió. **B-238** sigue abierto, con el alcance recortado a lo que de
+verdad falta: la hoja modal y el CTA fijo del detalle.
+
+**Un chequeo de contraste nuevo, porque el de B-235 no llega hasta acá** —
+`tests/tarjeta-del-listado.test.ts`. Aquél barre `src/pages` y `src/components/sitio`,
+mide solo `text-tinta/NN` y solo sobre `papel`; la grilla no cumple ninguna de las
+tres: vive en `src/components/publico`, la tarjeta es `crema` y los chips son `hondo`
+—donde el mismo `/65` pasa de 5,26:1 a 5,04:1—, y la portada pinta texto encima de un
+color que no es un token sino un `oklch` derivado del slug. El chequeo nuevo tiene una
+**regla de clase** (la única atenuación permitida es la de la tinta, medida contra la
+superficie más oscura) y una **lista de los pares que el arte declara**, cada uno con
+la clase que tiene que seguir estando en su archivo para que la lista no envejezca
+dando cobertura de mentira.
+
+Lo primero que encontró: **el chip elegido daba 4,38:1**. `bg-acento/10 text-acento`
+sobre `hondo`, con el piso en 4,5. Ahora va lleno (`bg-acento text-papel`, 5,59:1),
+que además es como se ve un control elegido en una plataforma.
+
+**Y el motivo de la portada salía con todos los renglones iguales** — B-248, cerrado
+en el camino. Lo encontró **mirar el HTML del build contra el emulador**, no un test:
+el motivo se calculaba con `(semilla * (i + 7)) % 50` y los tonos asignados son
+redondos, así que un tono múltiplo de 50 —«club de lectura» es 250— daba resto cero
+para todos los renglones y la portada dibujaba tres barras idénticas. El test miraba
+que el último fuera el más corto, y tres iguales le pasaban por al lado. Es la tercera
+vez que el artefacto de verdad encuentra lo que la suite no podía ver (B-227, B-237).
+
+**Peso:** `client.js` —el runtime de React que mide **B-239**— no se movió: 186.619 B
+/ 58.540 B gzip. La island `Buscador` pasó de 16.458 B / 5.925 B gzip a 20.285 B /
+7.431 B gzip, +1,5 KB gzip por la portada y los controles nuevos. Sin dependencias
+nuevas: la lupa del buscador es un SVG inline de doce bytes.
+
 ## 2026-08-31 · el sitio tiene nombre y paleta
 
 **«el nuestro no tiene identidad ni nada»**, dijo el dueño pidiendo que el sitio se
