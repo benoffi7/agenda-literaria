@@ -635,15 +635,29 @@ El build imprime en HTML **todas** las actividades vigentes, con su tarjeta,
 agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve Google y lo que
 ve alguien con JavaScript apagado.
 
-Desde **B-247** (D-141, D-142) es una **grilla**: una columna en el teléfono, dos en
-tablet, tres en escritorio. Una sola columna en 375px no se negocia (§8 del diseño):
-la mayoría entra desde un link de Instagram, en un navegador embebido.
+> ⚠️ **La grilla de tarjetas de B-247 se retiró el 2026-08-31 — ver D-146.** El
+> listado es ahora una lista de **filas** sin ninguna imagen. Lo de abajo describe
+> lo que dice cada entrada, que no cambió; lo que cambió es la forma.
 
-**La tarjeta.** Arriba una portada de 16:9 con la píldora del tipo en su color; abajo,
-en este orden, la fecha, el título, el ciclo, el lugar, el aviso de inscripción y —al
-pie, apoyado con `mt-auto` para que quede a la misma altura en toda la fila— el
-arancel y cómo se cursa. Es el orden en que se decide: qué es, cuándo, dónde y cuánto
-sale.
+Desde **B-260** (D-146) el listado son **filas cronológicas**, no tarjetas:
+«separadas por una regla fina», sobre la grilla de 12 columnas del sistema visual.
+En escritorio, la fecha y el tipo en las columnas 1-3, el título y los metadatos en
+4-9 y el arancel en 10-12; en el teléfono son dos —el bloque de fecha y el resto—.
+A igual ancho entran tres veces más actividades, que es la densidad que el sistema
+pide como principio.
+
+**La fila.** A la izquierda el **bloque de fecha**: un rectángulo de tinta plena con
+el día calado en el color del papel —el gesto central del sistema, y la misma pieza
+que abre cada encuentro en la página de detalle— con el tipo de actividad al lado, en
+una cajita con borde y en azul tinta. A la derecha, en este orden, el título, una
+línea de metadatos (hora · lugar · cómo se cursa), el ciclo y el aviso de
+inscripción. El arancel cierra la fila, alineado a la derecha. Es el orden en que se
+decide: cuándo, qué es, dónde y cuánto sale.
+
+**El listado no tiene imágenes** — ni foto real ni portada generada (D-146). Es una
+decisión de forma, no la ausencia de `imagenUrl`: la página no pide un solo byte de
+imagen, que es la mejora de rendimiento más grande del rediseño. La foto **sí** sigue
+en la página de detalle, cuando la actividad tiene una.
 
 Lo que la tarjeta tiene que decir bien es del dominio, y sale de
 `src/lib/tarjetaPublica.ts`, que es puro y testeado:
@@ -655,20 +669,13 @@ Lo que la tarjeta tiene que decir bien es del dominio, y sale de
 | inscripción cerrada | «Las inscripciones cerraron», calculado con el reloj de quien mira y no con el del build (B-111) |
 | cupo completo | «Cupo completo · consultá por lista de espera» — pero **después** de «cerraron»: con la inscripción cerrada, la lista de espera no va a ningún lado |
 | cómo se cursa | de `modalidades[]` y no del escalar (B-224): una presencial que además es online dice «y online» |
-| destacada | una píldora en la portada |
-
-**Cuando no hay imagen, la portada se genera** — D-142. El título sobre el color del
-tipo, con el cuerpo elegido según el largo y un motivo de renglones derivado del mismo
-tono. No es un placeholder y no hay foto de stock: `imagenUrl` es opcional y en este
-circuito muchas actividades no van a tener foto, así que la grilla tiene que verse
-entera igual. Para lector de pantalla la portada es decorativa —el arte va
-`aria-hidden`, la foto con `alt=""`— porque no aporta nada que el texto de la tarjeta
-no diga ya; la píldora del tipo, que sí es información, queda fuera del arte.
+| destacada | un rótulo en versalitas sobre el título |
+| la fecha | en tres piezas (`bloqueDeFecha`), para que el bloque las pinte a dos cuerpos: el día grande y el resto en versalitas |
 
 Encima va una island de React (`client:load`) que hace **un solo fetch** de
 `/events.json` y filtra, busca y ordena **en memoria** (§2.5). Cuando el índice
 llega, la island **saca del DOM la lista del build** y renderiza la suya con el
-mismo componente `Tarjeta` — una sola definición del markup, y como el estado
+mismo componente `FilaDeActividad` — una sola definición del markup, y como el estado
 inicial es el del build, no hay parpadeo. Si el fetch falla, la lista del build se
 queda donde está, los controles quedan deshabilitados y hay un aviso chico: nunca
 una pantalla vacía.

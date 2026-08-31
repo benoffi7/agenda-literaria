@@ -340,6 +340,39 @@ Lo que conviene tener anotado acá, que es lo que costó decidir:
   B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
   panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
 
+### B-260 · Brutalismo editorial: la tercera dirección visual — ✅ hecho (2026-08-31)
+
+**El dueño rechazó la dirección de D-141 al verla terminada.** B-247 y B-253 la
+dejaron completa y el rechazo no fue por la ejecución ni por la paleta: la
+estructura de Eventbrite es la estructura de una plataforma. Es el **segundo**
+rechazo, así que esta vez la referencia se aprobó **antes** de escribir código
+—`docs/referencias/sistema-visual.md` y `stitch-detalle.md`— y el contraste se midió
+antes de implementar. Decisión: **D-146**.
+
+- **Tres reglas nuevas para todo el sitio:** radio 0, estrictamente plano, y tintas
+  con nombre en vez de opacidades. La tercera deja el sitio con **cero** atenuaciones
+  de color y cierra la clase de B-235 de raíz.
+- **Tipografía:** Bodoni Moda + Archivo Narrow + Public Sans en lugar de Lora +
+  Inter, y **pesan menos** (58,8 KB contra 84,2 KB, medido sobre los woff2 que sirve
+  la URL del build). `--font-serif` y `--color-acento-hondo` se borraron.
+- **El listado pasa de grilla de tarjetas a filas y pierde toda imagen** — ni foto ni
+  portada generada. Se retiran `Tarjeta.tsx`, `PortadaDeTarjeta.tsx`,
+  `GrupoDeChips.tsx` y el color derivado por tipo de `identidad.ts`. Los filtros van
+  a un riel izquierdo **solo en escritorio**.
+- **La página de detalle** se rehízo sobre `stitch-detalle.md`, conservando los dos
+  casos que la referencia resolvió bien: el encuentro cancelado visible y tachado, y
+  el material distinguido sin iconos.
+- **Diez correcciones a la referencia**, todas con motivo en D-146.
+- **`tests/sistema-visual.test.ts`** (nuevo) ata cada token al hex de la referencia
+  aprobada y barre el sitio entero. **28 mutaciones probadas, las 28 atrapadas.**
+
+**Qué sigue abierto, sin cambios: B-238** — la hoja inferior de filtros de móvil
+sigue siendo una capa modal y no se construyó a medias. El disclosure de D-143 se
+conservó entero.
+
+**Lo que este cambio NO tocó:** el panel de admin, que tiene su propio criterio
+visual y su propio centralizador de clases.
+
 ### B-253 · El detalle, el chrome y las tres páginas de texto, con la forma de Eventbrite — ✅ hecho (2026-08-31)
 
 Segundo frente del rediseño de **D-141**: el primero le dio nombre y paleta al sitio
@@ -5362,6 +5395,23 @@ Dos detalles que valieron la pena:
   Lo escribí mal la primera vez y el propio script gritó en falso; la primera vez que
   un chequeo grita en falso se lo empieza a ignorar, así que también tiene test.
 
+### B-261 · D-145 sigue citando `overflow-x-hidden`, y el `body` pasó a `overflow-x: clip` · P3
+
+Lo encontró el `auditor-documentacion` al cerrar B-260, y **es anterior a ese
+cambio**: D-145 explica por qué la barra fija del detalle es `fixed` y no `sticky`
+diciendo que «`Base.astro` le pone `overflow-x-hidden` al `body`». Eso dejó de ser
+cierto con **B-259**, que lo cambió a `overflow-x: clip` justamente porque `hidden`
+crea un contenedor de scroll y rompe `sticky` en silencio.
+
+El razonamiento de D-145 sigue siendo válido en concepto —la barra es `fixed` y
+funciona— pero el disparador que cita ya no existe, así que quien lea la decisión
+va a buscar en `Base.astro` algo que no está. Es cosmético y no cambia
+comportamiento; entra acá para que quede el rastro.
+
+Arreglo: una nota en D-145 que apunte a B-259, en el estilo de los avisos apilados
+de `12-sitio-publico.md`. Cuidado con no reescribir el original: el valor de esas
+entradas es que se lean contra lo que decían.
+
 ### B-124 · Decisión del dueño: ¿cuándo corren los auditores? · P3
 
 Tres opciones, y la diferencia es plata y fricción:
@@ -5447,6 +5497,10 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| El bloque de fecha de un encuentro cancelado tenía **dos fondos** puestos, y cuál ganaba lo decidía el orden de emisión de Tailwind | `claseBloqueFecha` traía `bg-acento` y el llamador le sumaba `bg-super` encima. Dos utilidades de `background-color` en un elemento **no** las resuelve el orden del atributo: las resuelve el orden en que Tailwind las emitió en la hoja. Hoy ganaba la correcta **por casualidad**; un bump de Tailwind y el encuentro cancelado se pinta terracota, que es la tinta de «esto todavía se puede hacer». Lo encontró **mirar el HTML construido**. Cerrado sacando el fondo de la clase compartida —trae la forma, la tinta la pone el llamador, una sola— con un guard que expande el valor real de `estilos.ts` porque el conflicto vive en dos archivos | B-260, `src/components/sitio/estilos.ts` (2026-08-31) |
+| `ps-riel` le pisaba el nombre a una utilidad que Tailwind ya generaba sola, y **perdía** | `--spacing-riel` está en el espacio `--spacing-*`, así que Tailwind generaba su propio `ps-riel` sin el medianil. La regla salía con **las dos** declaraciones y ganaba la suya: la lista que imprime el build quedaba **corrida 40px** respecto de la columna de contenido — visible solo antes de que hidrate la island, o para siempre si el JavaScript no carga, o sea los dos momentos que nadie mira. Lo encontró **leer el CSS construido**. Pasa a llamarse `sangria-de-riel`, con un guard que prohíbe que un `@utility` propio se llame como uno generado desde un token | B-260, `src/styles/global.css` (2026-08-31) |
+| Ocho referencias muertas al test renombrado, repartidas entre `docs/`, `.claude/agents/` y `.claude/skills/` | B-260 renombró `tests/tarjeta-del-listado.test.ts` a `tests/listado-del-sitio.test.ts` y dejó el índice apuntando al archivo viejo. **No se perdió cobertura** —el test nuevo conserva la garantía— se perdió el índice, que es justo el modo de falla que el índice existe para frenar: quien busque «quién verifica esto» encuentra un archivo que no está y concluye que no lo verifica nadie. Lo encontró el `auditor-privacidad`. Cerrado con un caso nuevo en `agentes-y-skills.test.ts`, que verificaba los **productores** de la tabla de salidas y no los **tests** | B-260, `tests/agentes-y-skills.test.ts` (2026-08-31) |
+| `cuandoDeTarjeta` quedó sin ningún consumidor, y el índice de salidas seguía nombrándolo | la fila del listado pinta el bloque de fecha con `bloqueDeFecha`, así que la línea de fecha vieja solo la usaba su propio test — cobertura de algo que no se muestra en ninguna parte. Se retiró la función, su tipo y su test, y el índice pasa a nombrar al productor real | B-260, `src/lib/tarjetaPublica.ts` (2026-08-31) |
 | `overflow-x-hidden` en el `body` rompía `position: sticky` en silencio | `hidden` **crea un contenedor de scroll** y eso deshabilita `sticky` adentro sin error ni advertencia: el elemento simplemente nunca se pega. Costó un `fixed` con relleno al pie en la página de detalle. `clip` recorta igual y no crea el contenedor | B-259, `src/layouts/Base.astro` (2026-08-31) |
 | El anillo de foco estaba escrito a mano seis veces en los componentes del listado, y centralizarlo los dejó **sin foco** | la sustitución mecánica metió `${foco}` adentro de `'…'` y de `className="…"`, que **no interpolan**: la clase sale literal al HTML, Tailwind no genera nada y el control queda sin anillo — con el build y el typecheck en verde. Se vio mirando el HTML construido, no un test. Cerrado con el guard que exige que toda interpolación del anillo viva en un template literal | B-259, `src/components/publico/` (2026-08-31) |
 | La grilla del listado se veía rota en la mitad de las tarjetas, y no había con qué medirlo | `imagenUrl` es opcional y en este circuito muchas actividades no van a tener foto. B-227 lo resolvía no reservando la columna, que funciona en una lista de una columna y no en una grilla: las celdas tienen el mismo alto, así que la mitad sin portada queda mocha. Cerrado con la portada generada (título sobre el color del tipo) y con `tests/listado-del-sitio.test.ts`, el chequeo de contraste que faltaba para texto que no está sobre `papel` | B-247, D-142, D-143 (2026-08-31) |
