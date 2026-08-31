@@ -116,26 +116,42 @@ describe('la portada arriba no puede empujar la fecha fuera de la pantalla — D
      * cierto y lo que cambió es que el alto de la caja ya no depende del alto de
      * la imagen.
      *
-     * **La relación tiene que estar sin prefijo de breakpoint**, y eso lo enseñó
-     * la mutación: la primera versión de este aserto aceptaba cualquier
-     * `aspect-[…]`, así que borrar el `aspect-[16/9]` base y dejar solo el
-     * `sm:aspect-[2/1]` lo dejaba verde — con la caja sin recortar **justo en el
-     * teléfono**, que es el único lugar donde el problema existe. Un aserto que
-     * pasa en el caso que importa es peor que no tenerlo.
+     * **Y la proporción sale del token compartido `--aspect-portada`** (B-249), no
+     * de un número escrito acá: es la misma imagen que muestra la tarjeta del
+     * listado, y dos recortes distintos hacen que la foto que se veía bien en la
+     * grilla aparezca cortada al abrirla. Con la portada generada es peor —su
+     * título va dentro del recorte—, así que dos proporciones son dos tamaños de
+     * letra para el mismo texto. Por eso el aserto prohíbe el valor a mano en vez
+     * de exigir uno en particular: es la clase, no la instancia.
      *
-     * MUTACIÓN PROBADA: sacar `aspect-[16/9]` (dejando el `sm:`) deja la página
-     * igual con una imagen apaisada y rompe el caso del flyer vertical en móvil.
-     * Este test lo agarra.
+     * Una versión anterior de este chequeo aceptaba cualquier `aspect-[…]`
+     * —prefijado incluido—, así que dejar solo un `sm:aspect-…` lo pasaba **con la
+     * caja sin recortar justo en el teléfono**, que es el único lugar donde el
+     * problema existe. Lo enseñó la mutación; exigir el token lo cierra mejor,
+     * porque un token no tiene variantes por breakpoint.
+     *
+     * MUTACIÓN PROBADA: cambiar `aspect-portada` por `aspect-[16/9]` —el mismo
+     * valor, escrito a mano— deja la página **idéntica** y pone esto en rojo, que
+     * es exactamente la divergencia que se quiere frenar: el día que la tarjeta
+     * cambie su recorte, el detalle tiene que seguirla sola.
      */
     const codigo = sinComentarios(src());
     const img = /<img[\s\S]*?\/>/.exec(codigo)?.[0] ?? '';
     expect(img, 'no se encontró la portada').toContain('src={portada.url}');
     expect(
       img,
-      'la portada necesita una relación de aspecto **sin prefijo**: el caso que se ' +
-        'quiere evitar —el flyer vertical que empuja la fecha fuera de la pantalla— es el ' +
-        'del teléfono, y ahí no aplica ningún `sm:`',
-    ).toMatch(/["\s]aspect-\[\d+\/\d+\]/);
+      'la portada tiene que usar `aspect-portada`, el token que comparte con la tarjeta ' +
+        'del listado (B-249)',
+    ).toContain('aspect-portada');
+    expect(
+      img,
+      'la proporción no se escribe a mano: el mismo número en dos componentes es la ' +
+        'divergencia que `--aspect-portada` existe para evitar',
+    ).not.toMatch(/aspect-\[/);
+
+    // Y el token existe de verdad: sin esto, `aspect-portada` podría ser una clase
+    // inventada que Tailwind ignora y la caja no recortaría nada.
+    expect(readFileSync(raiz('src/styles/global.css'), 'utf8')).toContain('--aspect-portada:');
     expect(img, 'sin `object-cover` la imagen se deforma dentro de la caja').toContain(
       'object-cover',
     );

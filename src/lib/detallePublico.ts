@@ -286,7 +286,10 @@ export interface DetallePublico {
    *
    * El **estado `cancelado` de la actividad entera** (§7.3 del diseño) es otra
    * cosa y todavía no llega: el lector solo trae `estado == 'publicado'`, así que
-   * una actividad cancelada no tiene página. Queda anotado en B-255.
+   * una actividad cancelada no tiene página. Eso es **B-110**, abierto desde antes
+   * de este cambio — y hasta que se cierre, `ayudaDelSitio.ts` le promete a quien
+   * lee el sitio algo que todavía no pasa («si se cancela la actividad entera, la
+   * página no desaparece»).
    */
   aviso: AvisoDeEstado | null;
 

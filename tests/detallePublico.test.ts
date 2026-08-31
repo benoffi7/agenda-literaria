@@ -348,6 +348,33 @@ describe('el aviso que la página muestra antes de nada', () => {
     expect(d.aviso?.texto).toContain(d.inscripcion.cierra!);
   });
 
+  it('y esa fecha sale con precisión de día, nunca con la hora (D-138)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y el hueco es estructural.** El aserto de
+     * arriba compara el aviso **contra sí mismo**: fija que las dos superficies
+     * —el aviso y la ficha— usan la misma cadena, no qué contiene esa cadena.
+     *
+     * Y el barrido de centinelas no puede cubrirlo: su recorrido saltea los
+     * `Timestamp` a propósito («no tienen strings adentro»), así que **ninguna
+     * fecha del proyecto tiene centinela** y la precisión temporal es el punto
+     * ciego de todos los barridos. Es exactamente la clase de D-138 — `creadoEn`
+     * pasaba las seis celdas y publicaba el milisegundo igual.
+     *
+     * Hoy no filtra nada. El modo de falla es de una línea: alguien le agrega la
+     * hora a `fechaCompleta` porque «se ve mejor en la ficha», y el instante exacto
+     * de cierre queda publicado en un HTML indexado sin que nada se ponga rojo.
+     *
+     * MUTACIÓN PROBADA: pasar `cierra` por `fechaLarga` + `hora` en vez de
+     * `fechaCompleta` pone esto en rojo y deja verde todo lo demás.
+     */
+    const d = detalleDe({
+      fechas: ['2026-10-01T22:00:00Z'],
+      cierra: '2026-09-01T22:30:00Z',
+    });
+    expect(d.inscripcion.cierra).not.toMatch(/\d{1,2}:\d{2}/);
+    expect(d.aviso?.texto).not.toMatch(/\d{1,2}:\d{2}/);
+  });
+
   it('el cupo completo avisa, y no esconde el canal (D-127)', () => {
     const d = detalleDe({ fechas: ['2026-10-01T22:00:00Z'], completo: true });
     expect(d.aviso?.tono).toBe('completo');

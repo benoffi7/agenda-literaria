@@ -1,5 +1,99 @@
 # Changelog
 
+## 2026-08-31 · el detalle, el chrome y las páginas de texto toman la forma decidida
+
+D-141 decidió el nombre, la paleta y la dirección; **B-253** es donde se aplican. Este
+frente es la página de detalle, el encabezado, el pie y las tres páginas de texto
+(`/ayuda`, `/contacto`, `/suscribirse`). La home y el listado son de otro frente.
+
+**Estructura de Eventbrite, temperatura propia**, que es lo que D-141 pedía: portada
+arriba, título y datos duros juntos, un CTA que no se puede perder, y todo apilado con
+**superficie y borde** —`papel`, `crema`, `hondo`— sin una sola sombra. Las sombras
+son justo lo que da el aire de plataforma genérica.
+
+**El sitio tiene un solo lugar para sus clases compartidas**, igual que el panel ya
+tenía `campos/Campo.tsx`: `src/components/sitio/estilos.ts`. El anillo de foco estaba
+copiado **doce veces** y la clase del enlace acentuado cinco, y eso no es una
+duplicación estética — la copia que se escriba con un typo el mes que viene deja
+**un** control sin foco visible, y eso no lo ve nadie que use el mouse, no lo dice el
+compilador y no lo dice ningún chequeo de contraste. `estilos-del-sitio.test.ts`
+(**B-257**) lo sostiene con las dos mitades: que nadie lo escriba a mano, y que todo
+archivo con un enlace o un botón lo importe — porque «no lo escribe a mano» también lo
+cumple una página sin foco en ninguna parte.
+
+**La portada va arriba, con relación de aspecto fija** — **D-144**, desvío del §4.3
+del diseño. El argumento de aquella decisión —«un flyer vertical de Instagram empuja
+la fecha fuera de la pantalla»— sigue siendo cierto, y lo que se le saca es la
+premisa: lo que empuja no es que la imagen esté arriba, es que **su alto lo decida la
+imagen**. La proporción sale de `--aspect-portada` (B-249) y no se escribe acá: es la
+misma imagen que la tarjeta del listado, y dos recortes distintos hacen que la foto
+que se veía bien en la grilla aparezca cortada al abrirla.
+
+**El CTA fijo de móvil, sin una línea de JavaScript** — **D-145**, que cierra la mitad
+«CTA fijo» de **B-238**. El §8 lo pedía «desde que el botón original sale de la
+pantalla», y esa cláusula obliga a medir el scroll en la única página con presupuesto
+de 0 KB. Se cambió la regla y no la herramienta: en el teléfono el botón del flujo
+**no se pinta** y la barra de abajo es el único CTA, así que no hay nada que medir.
+Es `fixed` y no `sticky` porque `Base.astro` le pone `overflow-x-hidden` al `body`, y
+un ancestro con overflow recortado **rompe `sticky` en silencio** — el test deja ese
+cruce escrito como invariante condicional, para que el día que el layout use
+`overflow-x: clip` la opción vuelva a estar disponible sola. La hoja de filtros de la
+home sigue abierta y sin cambios: ésa sí es una capa modal.
+
+**El contraste se mide sobre las tres superficies y no solo sobre `papel`** —
+**B-256**. El chequeo que había lo decía en su propio docblock («no puede ver texto
+sobre un fondo que no sea papel»), y era cierto mientras el sitio tuviera un fondo.
+Con `crema`, `hondo` y los tintes de acento el número viejo es **optimista**:
+`text-tinta/61` da 4,62 sobre papel —pasa— y 4,38 sobre la más oscura —no pasa—, y el
+test viejo seguía verde. Las superficies ahora se **derivan** de `global.css` y del
+markup, así que una nueva y más oscura entra sola al cálculo. De paso quedaron
+remedidos los ratios del §10 del diseño, que eran de la paleta anterior a D-141.
+
+**Tres cosas que arregló mirar el HTML del build**, y ninguna la podía ver un test
+unitario — es el §«verificar contra el sistema real» de `05-patrones.md` otra vez:
+
+- **B-254** — una actividad con **todos** sus encuentros cancelados decía «Esta
+  actividad ya pasó». Sin ninguna sesión en pie no hay próxima, así que `yaPaso` da
+  `true` por el mismo camino que una actividad terminada. Es falso y de la peor
+  manera: quien pregunta «¿se hace?» se va creyendo que llegó tarde a algo que no se
+  hizo, con la fecha del mes que viene escrita más abajo. Ahora el aviso de arriba es
+  **una prioridad entre cuatro estados**, decidida en el view-model y no encadenada
+  con `&&` en la plantilla.
+- **B-258** — la página daba **dos cuentas distintas de los mismos encuentros en la
+  misma pantalla**: «Ciclo de 4 encuentros» en la ficha y «Los 5 encuentros» en el
+  título de abajo. Las dos están bien —una cuenta los que quedan en pie, la otra
+  numera sobre todos porque el número es la identidad del encuentro (D-95)— y ninguna
+  se puede cambiar. Sobraba decirlo dos veces.
+- La sección «Cómo se cursa» se pintaba **vacía** cuando la actividad no tiene
+  `modalidades`: un encabezado que promete algo y no entrega nada.
+
+**Y dos que encontró el `auditor-privacidad`**, las dos de red que faltaba y ninguna
+de fuga:
+
+- **El JSON-LD podía cerrar su propio `<script>`.** `JSON.stringify` escapa las
+  comillas y **no** el `<`, así que un `titulo`, una `sede.nombre` o un `tema` con
+  `</script>` adentro dejaba HTML ejecutable en una página pública e indexada. Los
+  tres son texto libre de un formulario. Venía de B-227.
+- **El barrido de centinelas ejercitaba una de las cuatro ramas del aviso**, y justo
+  no la que interpola un valor: el fixture caía siempre en `completo`. Ahora barre las
+  cuatro, con un control positivo que exige que sean cuatro tonos distintos.
+
+Mutaciones probadas, todas en rojo: `todoCancelado` en `false`, la guarda del caso sin
+fechas, el orden de prioridad del aviso invertido, `esProximo` ignorando `cancelada`,
+el `hidden` sacado del botón de escritorio, la barra sin su aire para el pie, la barra
+vuelta `sticky`, la proporción escrita a mano en vez del token, un `<script>` suelto,
+el anillo de foco a mano, el nombre del sitio literal, `text-tinta/61` —que pasa el
+chequeo viejo y no el nuevo—, la banda de color de tipo aclarada, y el título de
+encuentros con el número puesto.
+
+La mutación de la portada encontró además un aserto flojo **del test que se estaba
+escribiendo**: aceptaba el `sm:aspect-…` solo, o sea que pasaba justo en el teléfono,
+que es el único caso donde el flyer vertical es un problema.
+
+**Lo que esto no resuelve:** una actividad `estado: 'cancelado'` sigue sin página —es
+**B-110**, de antes— y hasta que se cierre, la ayuda del sitio le promete a quien lee
+algo que todavía no pasa. Queda anotado ahí.
+
 ## 2026-08-31 · el sitio tiene nombre y paleta
 
 **«el nuestro no tiene identidad ni nada»**, dijo el dueño pidiendo que el sitio se

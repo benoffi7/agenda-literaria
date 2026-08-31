@@ -199,6 +199,14 @@ const hayCta = detalle.inscripcion.mostrarAccion;
         depende del alto de la imagen, así que un flyer vertical de Instagram se
         recorta en vez de empujar la fecha fuera de la pantalla.
 
+        **La proporción sale de `--aspect-portada` y no se escribe acá** (B-249):
+        es la misma imagen que la tarjeta del listado, y dos recortes distintos
+        hacen que la foto que se veía bien en la grilla aparezca cortada al abrirla.
+        Con la portada generada es peor —su título va **dentro** del recorte— así
+        que dos proporciones son dos tamaños de letra para el mismo texto. Y por
+        eso tampoco hay una variante `sm:` más apaisada: sería el mismo número
+        escrito en dos componentes.
+
         El texto alternativo sale del título de la actividad y no de un campo por
         imagen (D-125): pedir uno terminaría diciendo «foto». El epígrafe, si
         está, va debajo y es contenido.
@@ -214,7 +222,7 @@ const hayCta = detalle.inscripcion.mostrarAccion;
             fetchpriority="high"
             decoding="async"
             referrerpolicy="no-referrer"
-            class="aspect-[16/9] w-full rounded-lg border border-borde bg-hondo object-cover sm:aspect-[2/1]"
+            class="aspect-portada w-full rounded-lg border border-borde bg-hondo object-cover"
           />
           {portada.epigrafe && (
             <figcaption class="mt-1.5 text-xs text-tinta/70">{portada.epigrafe}</figcaption>

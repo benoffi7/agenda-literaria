@@ -340,6 +340,38 @@ Lo que conviene tener anotado acá, que es lo que costó decidir:
   B-241 (el fixture del gate de build es anterior a B-224), B-242 (la ayuda del
   panel, cuando el sitio se publique). Cerrados en el camino: B-237 y B-243.
 
+### B-253 · El detalle, el chrome y las tres páginas de texto, con la forma de Eventbrite — ✅ hecho (2026-08-31)
+
+Segundo frente del rediseño de **D-141**: el primero le dio nombre y paleta al sitio
+(B-245); éste aplica la **estructura** —portada arriba, jerarquía fuerte, tarjetas
+apiladas con superficie y borde y **ninguna sombra**— a la página de detalle, el
+encabezado, el pie y `/ayuda`, `/contacto` y `/suscribirse`. La home y el listado son
+de otro frente y no se tocaron.
+
+- **Dos decisiones nuevas.** **D-144** (la portada va arriba, con la relación de
+  aspecto de `--aspect-portada`; desvío del §4.3 del diseño) y **D-145** (el CTA fijo
+  de móvil sin una línea de JavaScript, que cierra la mitad «CTA fijo» de **B-238**).
+- **Un archivo nuevo**, `src/components/sitio/estilos.ts`, con el anillo de foco y las
+  clases de botón: estaban copiados doce y cinco veces. Lo sostiene **B-257**.
+- **El contraste pasa a medirse sobre las tres superficies** y no solo sobre `papel`
+  (**B-256**), que con la paleta de D-141 daba un número optimista.
+- **Tres cosas que arregló mirar el HTML del build**, ninguna visible para un test
+  unitario: **B-254** (todo cancelado no es «ya pasó»), **B-258** (la página daba dos
+  cuentas distintas de los mismos encuentros) y la sección «Cómo se cursa» que se
+  pintaba vacía sin `modalidades`.
+- **Dos cosas que encontró el `auditor-privacidad`**, las dos de red y ninguna de
+  fuga: el JSON-LD podía cerrar su propio `<script>` con un título que trajera
+  `</script>` (venía de B-227), y el barrido de centinelas ejercitaba **una** de las
+  cuatro ramas del aviso — justo no la que interpola un valor.
+
+**Lo que este frente necesita de otros archivos**, y no pudo tocar: `Base.astro` le
+pone `overflow-x-hidden` al `body`, que es lo que obliga a que la barra sea `fixed` y
+no `sticky` (ver D-145); y `src/pages/index.astro` con `src/components/publico/*`
+quedan fuera del alcance del chequeo del anillo de foco hasta que se los migre.
+
+**Sigue sin resolver, y no es nuevo:** una actividad `estado: 'cancelado'` no tiene
+página. Es **B-110**.
+
 ### B-244 · `campo-nuevo` preguntaba por cuatro salidas, y son seis — ✅ hecho (2026-08-28)
 
 El skill que se invoca **cada vez que se agrega un campo al modelo**
@@ -539,6 +571,19 @@ Lo que hay que hacer (§7.3 del diseño): el build también trae
 las fechas intactas y `eventStatus: EventCancelled` — que es exactamente lo que
 Google pide. No entra al listado ni a `events.json`. Sale del sitemap a los 30
 días.
+
+**Sigue abierto después de B-253 (2026-08-31), y ahora hay una promesa esperándolo.**
+El rediseño de la página de detalle le dio forma al aviso de arriba —los cuatro
+estados con su prioridad, incluida la rama `cancelado`— pero el lector
+(`contenidoDelSitio.ts`) sigue trayendo solo `estado == 'publicado'`, así que esa rama
+solo se activa cuando **todos los encuentros** están cancelados y nunca cuando lo está
+la actividad. Nada de este punto cambió.
+
+Lo que sí cambió es que ahora se sabe que **`src/lib/ayudaDelSitio.ts` ya le promete
+esto a quien lee el sitio**: «si se cancela la actividad entera, la página no
+desaparece: queda con el aviso de que se canceló». Hoy devuelve 404. Lo encontró el
+`auditor-privacidad` mirando B-253. Al cerrar este ítem hay que verificar ese texto —
+o corregirlo antes, si esto se demora.
 
 **Solo si estuvo publicada alguna vez**, que hoy no es un dato del modelo. La
 heurística disponible es que alguna sesión tenga `calendarEventId` (el sync solo
@@ -1819,7 +1864,7 @@ error y en una pantalla buena se ve bien. La única forma de saberlo es calcular
 y el §10 del diseño pedía medir **el acento** —que sí pasa, 5,63— sin anticipar
 que el riesgo real estaba en la rampa de opacidad.
 
-**Arreglo.** Piso en `tinta/65` (5,29). Y `tests/contraste.test.ts`, que hace las
+**Arreglo.** Piso en `tinta/65` (5,29). Y `tests/contraste-del-sitio.test.ts`, que hace las
 dos mitades: calcula los ratios desde los tokens de `global.css` (parseados, no
 copiados, para que cambiar la paleta se note) y **falla si algún archivo del sitio
 público escribe una clase por debajo del piso**. Con control negativo: un escalón
@@ -1829,17 +1874,23 @@ más abajo tiene que no pasar, o el piso no significaría nada.
 y en una pantalla elegida— y su rampa es anterior a esto; revisarla es su propio
 ítem, no éste.
 
-### B-238 · La hoja inferior de filtros y el CTA fijo de móvil · P2
+### B-238 · La hoja inferior de filtros de móvil · P2 — la mitad del CTA cerrada en D-145
 
-El §8 del diseño pide dos elementos fijos que B-227 no construyó, y los dos por el
+El §8 del diseño pedía dos elementos fijos que B-227 no construyó, y los dos por el
 mismo motivo: son **capas modales**, y una capa modal mal hecha es peor que no
 tenerla — necesita trampa de foco, cierre con `Escape`, cierre tocando el fondo,
 devolver el foco al abridor y `pushState` para que el botón atrás del teléfono la
 cierre en vez de salir del sitio.
 
+**El CTA del detalle ya no es uno de los dos** (D-145, 2026-08-31). Se resolvió sin
+capa modal y sin JavaScript, cambiando la regla en vez de la herramienta: en el
+teléfono el botón del flujo **no se pinta** y la barra de abajo es el único CTA, así
+que no hay «desde que el otro sale de la pantalla» que calcular, ni foco que atrapar,
+ni `Escape` que cerrar. Queda **solo la hoja de filtros**, que sí es una capa modal de
+verdad.
+
 Hoy el panel de filtros es un *disclosure* inline (`aria-expanded`/`aria-controls`)
-que no necesita nada de eso y no tiene cómo salir mal, y el CTA del detalle es el
-botón del flujo, sin barra fija.
+que no necesita nada de eso y no tiene cómo salir mal.
 
 Cuando se haga, **la aritmética ya existe**: `src/lib/foco.ts` tiene
 `indiceDeTab`, `indiceDeTecla` e `indiceSiguiente`, escritos para el menú «⋯» y la
@@ -5235,7 +5286,7 @@ de verdad contra el que escribirlo. Conviene esperar igual al SEO absoluto
 auditar dos veces lo mismo.
 
 Y una parte ya dejó de corresponderle: el **contraste** lo calcula
-`tests/contraste.test.ts` (B-243), que además falla si un componente del sitio
+`tests/contraste-del-sitio.test.ts` (B-243), que además falla si un componente del sitio
 baja del piso. Un auditor que lo revise a ojo estaría repitiendo lo que un test ya
 frena, que es justo lo que la tabla de «qué no automatizar» de
 [`13-agentes.md`](13-agentes.md) pide no hacer.

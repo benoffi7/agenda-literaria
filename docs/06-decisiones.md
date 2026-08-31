@@ -3863,16 +3863,24 @@ empuja la fecha fuera de la pantalla no es que la imagen esté arriba — es que
 alto lo decida la imagen**. Un flyer de 1080×1350 en una pantalla de 375px de ancho
 mide 469px de alto y se come la mitad de un teléfono.
 
-**Decisión: la portada va arriba con relación de aspecto fija** (`aspect-[16/9]` en el
-teléfono, `sm:aspect-[2/1]` de ahí en adelante) y `object-cover`. El alto de la caja
-pasa a depender del ancho de la pantalla y no del archivo que subió quien organiza,
-así que un flyer vertical se recorta en vez de empujar. En 375px la portada mide
-211px y la ficha entra en la primera pantalla.
+**Decisión: la portada va arriba con relación de aspecto fija** —`aspect-portada`, el
+token `--aspect-portada` de B-249— y `object-cover`. El alto de la caja pasa a
+depender del ancho de la pantalla y no del archivo que subió quien organiza, así que
+un flyer vertical se recorta en vez de empujar. En 375px la portada mide 211px y la
+ficha entra en la primera pantalla.
+
+**La proporción sale del token y es la misma en todos los anchos, a propósito.** Es la
+misma imagen que muestra la tarjeta del listado: dos recortes distintos hacen que la
+foto que se veía bien en la grilla aparezca cortada al abrirla, y con la portada
+generada —cuyo título va **dentro** del recorte— serían además dos tamaños de letra
+para el mismo texto. Una portada más apaisada en escritorio era tentadora y se
+descartó por eso: habría sido el mismo número escrito en dos componentes. Si algún día
+se quiere, va como **segundo token** y no como una variante `sm:` acá.
 
 | | Antes (§4.3) | Ahora (D-144) |
 |---|---|---|
 | Dónde | después de la ficha y del botón | arriba, antes del título |
-| Alto | el de la imagen | el que decide la relación de aspecto |
+| Alto | el de la imagen | el que decide `--aspect-portada` |
 | Flyer vertical en 375px | 469px, la fecha se va de la pantalla | 211px, recortado |
 | `loading` | `lazy` | `eager` + `fetchpriority="high"` |
 
@@ -3880,12 +3888,13 @@ El `loading` cambia con la posición y no es un detalle suelto: arriba, la porta
 el elemento más grande de la primera pantalla, y pedirla tarde retrasa justo lo que
 mide un Largest Contentful Paint.
 
-**La condición está atada, no confiada.** `tests/detalle-visual.test.ts` exige la
-relación de aspecto **sin prefijo de breakpoint**, y esa precisión la enseñó una
-mutación: la primera versión del chequeo aceptaba cualquier `aspect-[…]`, así que
-borrar el de base y dejar solo el `sm:` lo dejaba verde —con la caja sin recortar
-**justo en el teléfono**, que es el único lugar donde el problema existe—. Un aserto
-que pasa en el caso que importa es peor que no tenerlo.
+**La condición está atada, no confiada.** `tests/detalle-visual.test.ts` exige
+`aspect-portada` y **prohíbe cualquier `aspect-[…]` escrito a mano**, que es la clase
+y no la instancia. Una versión anterior del chequeo aceptaba cualquier proporción
+—prefijada incluida—, así que dejar solo un `sm:aspect-…` lo pasaba con la caja sin
+recortar **justo en el teléfono**, que es el único lugar donde el problema existe. Lo
+enseñó una mutación; exigir el token lo cierra mejor, porque un token no tiene
+variantes por breakpoint.
 
 **Lo que no cambia:** sin imagen no hay hueco. El §7.6 sigue valiendo tal cual — la
 página simplemente no tiene portada, y la ficha ya es lo primero. La portada generada
