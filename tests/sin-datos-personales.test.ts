@@ -85,8 +85,16 @@ const PERMITIDOS = new Set<string>([
   // fuga. B-228.
   //
   // Que sea esta dirección y no el dominio es el punto: si mañana aparece otro
-  // `@gmail.com` versionado, este test tiene que volver a fallar.
-  'latiahildita123@gmail.com',
+  // `@gmail.com` versionado, este test tiene que volver a fallar. Y ya sirvió
+  // para eso dos veces: primero frenó la casilla al versionarla, y después —cuando
+  // resultó que la dirección cargada no era la del proyecto, corregida el
+  // 2026-08-31— **volvió a fallar sobre el rastro que quedaba en el CHANGELOG**.
+  // La equivocada no se anota acá ni allá: se sacó del repo en vez de habilitarse.
+  //
+  // Que la excepción sea **una dirección** y no un dominio es lo que hizo posible
+  // las dos cosas. Con `@gmail.com` permitido, ni el primer caso ni el segundo
+  // habrían dicho nada.
+  'agendaleh@gmail.com',
 ]);
 
 const archivosVersionados = (): string[] =>

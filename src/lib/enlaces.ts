@@ -48,7 +48,7 @@ export const INSTAGRAM = 'librosdelatiahildita';
  * excepción explícita en `tests/sin-datos-personales.test.ts` — con su motivo al
  * lado, no como un patrón que apague el chequeo.
  */
-export const CONTACTO = 'latiahildita123@gmail.com';
+export const CONTACTO = 'agendaleh@gmail.com';
 
 /**
  * Los dos motivos por los que alguien escribe, y el asunto con el que llega.

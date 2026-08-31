@@ -245,11 +245,18 @@ path de distancia. `tests/enlaces.test.ts` falla si cualquiera de las siete URLs
 el módulo produce contiene `private-`.
 
 **El chequeo de datos personales frenó el mail de contacto antes de dejarlo pasar**,
-que es exactamente para lo que está: `latiahildita123@gmail.com` es un gmail, y
-`tests/sin-datos-personales.test.ts` lo rechazó al versionarlo. Se agregó como
+que es exactamente para lo que está: la casilla es un gmail y
+`tests/sin-datos-personales.test.ts` la rechazó al versionarla. Se agregó como
 excepción **con su motivo** —es la casilla que el proyecto publica, no la de una
 persona— y se verificó que la escotilla es angosta: cualquier otro `@gmail.com`
 versionado sigue rompiendo el test.
+
+> **La dirección de este párrafo no era la del proyecto**, y por eso no figura acá.
+> El 2026-08-31, revisando la identidad, el dueño corrigió cuál era; la equivocada
+> había estado publicada tres días en un repo público. Se sacó del texto en vez de
+> habilitarla: la excepción del test es **una dirección** y no un dominio,
+> precisamente para que cambiarla obligue a pasar por ahí, y una casilla ajena en un
+> repo público no se conserva como registro.
 
 Mutaciones probadas, las cinco fallan: ICS privado, `cid` apuntando a otro
 calendario, la zona horaria caída, los dos motivos de contacto compartiendo asunto,
