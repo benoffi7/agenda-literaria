@@ -107,9 +107,17 @@ const FORMA_DEL_AVISO: Record<string, string> = {
   completo: 'border-acento/40 bg-acento/[0.07] text-tinta',
 };
 
-/** El CTA se muestra solo si hay a dónde ir y todavía tiene sentido ir (§7.1). */
-const hayCta =
-  detalle.inscripcion.accion !== null && !detalle.yaPaso && !detalle.inscripcion.cerrada;
+/**
+ * El CTA se muestra solo si hay a dónde ir y todavía tiene sentido ir (§7.1).
+ *
+ * **La regla la decide el view-model** (`inscripcion.mostrarAccion`), no esta
+ * plantilla: son tres condiciones, tiene dos consumidores —el botón del flujo y la
+ * barra fija— y un `.astro` no se puede importar desde vitest, así que escrita acá
+ * era una regla de una salida pública sin ningún test que pudiera evaluarla. Es el
+ * mismo argumento de D-140 que ya se había aplicado al aviso; lo señaló el
+ * `auditor-privacidad`. Acá solo se le pone nombre corto.
+ */
+const hayCta = detalle.inscripcion.mostrarAccion;
 ---
 
 <Base
@@ -119,9 +127,20 @@ const hayCta =
 >
   {
     /*
-      §5.2 — los datos estructurados. `set:html` con `JSON.stringify` es la forma
-      correcta para un `<script type="application/ld+json">`: Astro no escapa el
-      contenido de un script, y el JSON ya está serializado.
+      §5.2 — los datos estructurados.
+
+      **El `\\u003c` no es cosmético: sin él, el título de una actividad puede cerrar
+      este `<script>`.** `JSON.stringify` escapa las comillas y las barras invertidas
+      y **no** el `<`, y Astro no escapa el contenido de un script —para eso está
+      `set:html`—. Un `titulo`, una `sede.nombre` o un `tema` con `</script>` adentro
+      cierra el bloque y lo que sigue queda como HTML ejecutable en una página pública
+      e indexada. Los tres son texto libre de un formulario.
+
+      Escapado como `\\u003c` el JSON sigue siendo el mismo valor para cualquier
+      consumidor —es la forma escapada del mismo carácter— y Google lo lee igual. Es
+      la regla 2 del docblock de `detallePublico.ts` («ningún href sin `urlSegura`, y
+      el JSON-LD también es un href») aplicada al **contenedor** y no al valor. Lo
+      encontró el `auditor-privacidad` sobre esta reescritura; venía de B-227.
 
       **No hay `canonical` ni Open Graph absolutos, y falta a propósito**: los dos
       necesitan `site` en `astro.config.mjs`, que necesita que el dominio esté
@@ -129,7 +148,11 @@ const hayCta =
       canónica equivocada le dice a Google que la página buena es otra.
     */
     jsonLd && (
-      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+      <script
+        type="application/ld+json"
+        set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')}
+        is:inline
+      />
     )
   }
 

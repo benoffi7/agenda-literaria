@@ -3845,3 +3845,107 @@ está garantizada legible, y si algún día alguien aclara la banda, el test lo 
 **Lo que esto NO decide.** El dominio sigue sin registrar, así que no hay `site`, ni
 canonical, ni Open Graph, ni sitemap: es B-109 y sigue abierto. DEC-6 pedía además
 decidir **qué parte del nombre va en la URL**, y sigue pendiente.
+
+---
+
+## D-144 · La portada va arriba, y el §4.3 del diseño se desvía por una condición
+
+**Contexto.** D-141 adoptó la **estructura** de Eventbrite, y esa estructura empieza
+con la portada: imagen, después título y datos duros juntos. El §4.3 de
+[`12-sitio-publico.md`](12-sitio-publico.md) decía lo contrario, y con un buen
+argumento:
+
+> **La imagen no es hero.** Un flyer vertical de Instagram como cabecera empuja la
+> fecha fuera de la pantalla en un teléfono. Va en su lugar del flujo.
+
+**El argumento sigue siendo cierto, y no se descarta: se le saca la premisa.** Lo que
+empuja la fecha fuera de la pantalla no es que la imagen esté arriba — es que **su
+alto lo decida la imagen**. Un flyer de 1080×1350 en una pantalla de 375px de ancho
+mide 469px de alto y se come la mitad de un teléfono.
+
+**Decisión: la portada va arriba con relación de aspecto fija** (`aspect-[16/9]` en el
+teléfono, `sm:aspect-[2/1]` de ahí en adelante) y `object-cover`. El alto de la caja
+pasa a depender del ancho de la pantalla y no del archivo que subió quien organiza,
+así que un flyer vertical se recorta en vez de empujar. En 375px la portada mide
+211px y la ficha entra en la primera pantalla.
+
+| | Antes (§4.3) | Ahora (D-144) |
+|---|---|---|
+| Dónde | después de la ficha y del botón | arriba, antes del título |
+| Alto | el de la imagen | el que decide la relación de aspecto |
+| Flyer vertical en 375px | 469px, la fecha se va de la pantalla | 211px, recortado |
+| `loading` | `lazy` | `eager` + `fetchpriority="high"` |
+
+El `loading` cambia con la posición y no es un detalle suelto: arriba, la portada es
+el elemento más grande de la primera pantalla, y pedirla tarde retrasa justo lo que
+mide un Largest Contentful Paint.
+
+**La condición está atada, no confiada.** `tests/detalle-visual.test.ts` exige la
+relación de aspecto **sin prefijo de breakpoint**, y esa precisión la enseñó una
+mutación: la primera versión del chequeo aceptaba cualquier `aspect-[…]`, así que
+borrar el de base y dejar solo el `sm:` lo dejaba verde —con la caja sin recortar
+**justo en el teléfono**, que es el único lugar donde el problema existe—. Un aserto
+que pasa en el caso que importa es peor que no tenerlo.
+
+**Lo que no cambia:** sin imagen no hay hueco. El §7.6 sigue valiendo tal cual — la
+página simplemente no tiene portada, y la ficha ya es lo primero. La portada generada
+con el color del tipo (D-141, decisión 3) es de la **tarjeta del listado**, donde el
+hueco rompe una grilla; en una página sola no hay grilla que romper. Lo que el detalle
+sí toma de ahí es el **cintillo del tipo**: una barra fina y el nombre del tipo en
+`colorDeTipo(slug)`, que es identidad por un dato que ya estaba.
+
+## D-145 · El CTA fijo de móvil no lleva JavaScript, y es `fixed` y no `sticky`
+
+**Contexto.** El §8 del diseño pedía «CTA fijo abajo en el detalle, con `pb-segura`,
+**desde que el botón original sale de la pantalla**». B-238 no lo construyó y anotó
+por qué: esa cláusula —«desde que sale de la pantalla»— obliga a medir el scroll, o
+sea JavaScript, en la única página del sitio que tiene un presupuesto de **0 KB**.
+
+**Decisión 1 — se cambia la regla, no la herramienta.** En el teléfono el botón del
+flujo **no se pinta** (`hidden sm:block`) y la barra de abajo es el único CTA
+(`sm:hidden`). Sin dos botones no hay «desde que el otro sale de la pantalla» que
+calcular: hay uno y está siempre a mano. En `sm` y arriba, al revés — el botón del
+flujo se ve sin scrollear y la barra sería una franja comiéndose pantalla sin motivo.
+
+**Uno y solo uno por pantalla**, y eso no es estética: dos enlaces al mismo destino
+hacen que quien escucha la página oiga el mismo botón dos veces.
+`tests/detalle-visual.test.ts` cuenta las dos apariciones y exige que cada una esté
+detrás de su corte.
+
+**Decisión 2 — `fixed`, aunque `sticky` sea mejor.** `position: sticky` con `bottom-0`
+al final del contenido habría sido más elegante: la barra se suelta sola al llegar al
+final y el pie no necesita ningún aire extra. **No se puede usar acá:** `Base.astro`
+le pone `overflow-x-hidden` al `body`, y un ancestro con `overflow` distinto de
+`visible` **rompe `position: sticky`** — el elemento nunca se pega, sin error, sin
+warning y sin que ningún test lo note.
+
+Ese cruce quedó escrito como un invariante condicional y no como una prohibición:
+
+```ts
+expect(usaSticky && bodyRecorta).toBe(false);
+```
+
+Así, el día que el layout pase a `overflow-x: clip` —que recorta igual y **no** crea
+contenedor de scroll—, el chequeo deja de oponerse solo y `sticky` vuelve a estar
+disponible. Es lo que necesito de otro frente: `Base.astro` no es de este.
+
+**Decisión 3 — el aire del pie va en el `<style>` de esta ruta, no en el pie.** Una
+barra `fixed` tapa la última fila del pie al final del scroll, que es donde están
+«Sugerir una actividad» y el Instagram. El arreglo es un `padding-bottom` en el
+`body`, y va en un `<style is:global>` **de la página de detalle**: Astro empaqueta el
+CSS por ruta, así que ninguna otra lo hereda. La alternativa —dárselo al pie, que es
+de las cinco páginas— habría dejado 76px de aire permanente en las cuatro que no
+tienen barra.
+
+No va condicionado a que haya CTA, y el comentario lo dice: Astro extrae los `<style>`
+en compilación y los sirve para la ruta entera, así que un `{hayCta && …}` daría la
+impresión de no aplicarse cuando no hay botón y se aplicaría igual. Un poco de aire al
+final de una página sin botón no se ve; un comentario que miente sí se paga.
+
+**Las dos mitades solo sirven juntas** —la barra sin el aire tapa el pie, el aire sin
+la barra es un hueco— así que el test las exige de a dos.
+
+**Qué cierra y qué no.** Cierra la mitad «CTA fijo» de **B-238**. La otra mitad —la
+hoja inferior de filtros de la home— **sigue abierta**, y por el motivo que B-238 ya
+daba: es una capa modal, necesita trampa de foco, `Escape`, cierre tocando el fondo y
+`pushState`, y nada de eso lo resuelve una regla de CSS.

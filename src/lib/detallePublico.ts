@@ -216,6 +216,21 @@ export interface DetallePublico {
     accion: AccionDeInscripcion | null;
     cupo: number | null;
     completo: boolean;
+    /**
+     * ¿Se emite el botón? — B-253.
+     *
+     * Es la misma clase de decisión que `aviso` y por eso vive en el mismo lugar:
+     * son **tres condiciones** —hay a dónde ir, la actividad no pasó, la
+     * inscripción no cerró— y la plantilla las encadenaba con `&&` en una `const`
+     * suya. Con un solo consumidor eso pasaba; con dos —el botón del flujo y la
+     * barra fija de móvil— es una regla de una salida pública duplicada por
+     * referencia y que vitest no puede evaluar, porque un `.astro` no se importa.
+     *
+     * **El CTA se decide por fecha y no por `cierra`** (§7.1): una actividad sin
+     * fecha de cierre queda abierta para siempre y mostraría «Anotate» en un taller
+     * de hace un año. Lo señaló el `auditor-privacidad`.
+     */
+    mostrarAccion: boolean;
     /** «22 de septiembre de 2026», o `null` si no cierra. */
     cierra: string | null;
     /** Cerró, según el reloj del build. */
@@ -551,7 +566,7 @@ export const detalleDeActividad = (
   const tipoEtiqueta = etiquetaDe(etiquetas, 'tipo', a.tipo);
   const donde = dondeCorto(modalidades);
 
-  const inscripcion = {
+  const canal = {
     requiere: a.inscripcion.requiere,
     destino: a.inscripcion.destino,
     accion: a.inscripcion.requiere
@@ -567,6 +582,11 @@ export const detalleDeActividad = (
   // actividad **no pasó**, se canceló. Los dos casos llegaban a `yaPaso: true`.
   const todoCancelado = encuentros.length > 0 && vivos.length === 0;
   const yaPaso = proximos.length === 0;
+
+  const inscripcion = {
+    ...canal,
+    mostrarAccion: canal.accion !== null && !yaPaso && !canal.cerrada,
+  };
 
   return {
     slug: a.slug,
