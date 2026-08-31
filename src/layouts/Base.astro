@@ -17,6 +17,20 @@ interface Props {
 }
 
 const { titulo, descripcion, noIndex = false, seccion = 'ninguna' } = Astro.props;
+
+/*
+ * El `<body>` lleva `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan
+ * igual, pero `hidden` **crea un contenedor de scroll** y eso rompe
+ * `position: sticky` adentro, en silencio: el elemento simplemente nunca se pega,
+ * sin error ni advertencia. `clip` no crea el contenedor, así que `sticky` sigue
+ * disponible para quien lo necesite.
+ *
+ * **Esta nota vive acá y no al lado del `<body>` — B-261.** Un `{/* … *\/}` puesto
+ * entre `</head>` y `<body>` **no lo elimina Astro**: se emite como texto crudo, y
+ * este párrafo estuvo publicado dentro de la home. Los comentarios de plantilla
+ * solo se eliminan donde Astro parsea una expresión; en el frontmatter, que es
+ * código, nunca se emiten.
+ */
 const conChrome = seccion !== 'ninguna';
 ---
 
@@ -54,14 +68,6 @@ const conChrome = seccion !== 'ninguna';
       href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400..700&family=Bodoni+Moda:opsz,wght@48,800&family=Public+Sans:wght@400..700&display=swap"
     />
   </head>
-  {/*
-    `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan igual, pero `hidden`
-    **crea un contenedor de scroll** y eso rompe `position: sticky` adentro, en
-    silencio: el elemento simplemente nunca se pega, sin error ni advertencia. Lo
-    encontró el frente del detalle, que terminó usando `fixed` con un relleno al
-    pie para esquivarlo. `clip` no crea el contenedor, así que `sticky` vuelve a
-    estar disponible para quien lo necesite.
-  */}
   <body class="flex min-h-dvh flex-col overflow-x-clip font-sans antialiased">
     {conChrome && <Encabezado activa={seccion as Seccion} />}
     {/* `flex-1` empuja el pie al fondo cuando la página es más corta que la

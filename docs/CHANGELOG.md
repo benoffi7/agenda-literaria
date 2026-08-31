@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-08-31 · desplegado, y una nota mía que quedó publicada
+
+**El rediseño está en producción**: `1.5.0+c377029`, con las 23 actividades reales.
+Los seis jobs de `push-main.yml` terminaron bien y el sitio se publicó solo.
+
+**Y verificando el HTML de producción apareció B-261: un párrafo de notas internas
+estaba publicado dentro de la home.** Un `{/* … */}` puesto entre `</head>` y
+`<body>` **no lo elimina Astro** — solo elimina los comentarios donde parsea una
+expresión, o sea adentro de un elemento. Éste se emitió como **texto crudo** al
+documento y se sirvió a todo el que entrara.
+
+Nada lo dijo: build verde, typecheck verde, ningún test leía el HTML construido, y
+a simple vista no se nota porque el navegador reubica ese texto. Se encontró
+leyendo el HTML servido, no el fuente.
+
+La nota se movió al frontmatter, que es código y nunca se emite. Y queda
+`tests/sin-comentarios-en-el-html.test.ts`, que **lee el `dist/`** —la única fuente
+que sabe la verdad, porque saber si Astro elimina un comentario o no exigiría
+replicar su parser— y exige que no haya delimitadores sueltos fuera de `<script>` y
+`<style>`. Se muta reponiendo el error original y falla.
+
 ## 2026-08-31 · brutalismo editorial: el sitio público cambia de sistema visual
 
 **B-260, D-146.** La dirección de D-141 —«la estructura de Eventbrite con paleta
