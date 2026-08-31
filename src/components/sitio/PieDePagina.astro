@@ -1,6 +1,6 @@
 ---
 /**
- * El pie del sitio público — B-229.
+ * El pie del sitio público — B-229, B-253.
  *
  * Los destinos salen todos de `enlaces.ts` (B-228): es el único lugar donde
  * viven, así que renombrar la cuenta de Instagram o rotar el calendario se hace
@@ -12,48 +12,65 @@
  * mail que se saltea esa lista llega sin fecha o sin lugar: un ida y vuelta que
  * la página evita. El `mailto:` sigue existiendo, pero de este lado del texto que
  * lo prepara.
+ *
+ * ── Por qué el pie se presenta con el nombre completo (B-253) ─────────────
+ * Es el único lugar del sitio donde **siempre** hay lugar para las tres líneas
+ * —nombre, bajada y de qué habla el sitio—, y el único que se ve al terminar de
+ * leer, que es cuando alguien decide si vuelve. El encabezado muestra la bajada de
+ * `sm` en adelante (ahí la fila es angosta); acá va sin condición, así que en un
+ * teléfono la sigla igual se desarrolla en algún lado de cada página.
+ *
+ * Las tres salen de `identidad.ts` interpoladas y no escritas: eran ocho literales
+ * sueltos, y habían quedado viejos los ocho a la vez (D-141).
  */
+import { QUE_ES, BAJADA, NOMBRE } from '@/lib/identidad';
 import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
+import { claseEnlace, foco } from '@/components/sitio/estilos';
+
+/** Una fila de la columna de enlaces: blanco táctil completo y foco propio. */
+const claseFila = `flex min-h-touch items-center text-tinta/80 hover:text-tinta ${foco}`;
 ---
 
-<footer class="mt-16 border-t border-borde">
+<footer class="mt-16 border-t border-borde bg-crema">
   <div
-    class="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-8 text-sm text-tinta/70 sm:flex-row sm:items-center sm:justify-between"
+    class="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-12 sm:px-6"
   >
-    <p>
-      Actividades literarias en Argentina. Se publican con
-      <a
-        class="underline decoration-borde underline-offset-4 hover:decoration-acento focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
-        href="/ayuda">criterio y a mano</a
-      >.
-    </p>
+    <div class="min-w-0">
+      <p class="font-serif text-xl font-semibold tracking-tight text-tinta">{NOMBRE}</p>
+      <p class="mt-1 text-[0.68rem] font-medium tracking-[0.2em] text-tinta/70 uppercase">
+        {BAJADA}
+      </p>
+      <p class="mt-4 max-w-prose text-sm text-tinta/80">{QUE_ES}</p>
+      <p class="mt-2 max-w-prose text-sm text-tinta/80">
+        {/*
+          El «criterio y a mano» linkea a la ayuda a propósito: es la única frase
+          del sitio que promete algo sobre cómo se arma la agenda, y ahí está
+          explicado. Sin el link es una frase suelta que nadie puede verificar.
+        */}
+        Se publican con <a class={claseEnlace} href="/ayuda">criterio y a mano</a>.
+      </p>
+    </div>
 
-    <ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
-      <li>
-        <a
-          class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
-          href={urlDeInstagram()}
-          rel="me noopener"
-          target="_blank"
-        >
-          {/* El @ va afuera del nombre para que un lector de pantalla no lo
-              deletree como parte del handle. */}
-          <span aria-hidden="true">@</span>{INSTAGRAM}
-          <span class="sr-only">(Instagram, se abre en una pestaña nueva)</span>
-        </a>
-      </li>
-      <li>
-        <a
-          class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
-          href="/suscribirse">Suscribirse al calendario</a
-        >
-      </li>
-      <li>
-        <a
-          class="flex min-h-touch items-center hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
-          href="/contacto">Sugerir una actividad</a
-        >
-      </li>
-    </ul>
+    <nav aria-label="Enlaces del pie" class="min-w-0">
+      <ul class="flex flex-col gap-1 text-sm sm:text-end">
+        <li>
+          <a class={`${claseFila} sm:justify-end`} href={urlDeInstagram()} rel="me noopener" target="_blank">
+            {/* El @ va afuera del nombre para que un lector de pantalla no lo
+                deletree como parte del handle. */}
+            <span aria-hidden="true">@</span>{INSTAGRAM}
+            <span class="sr-only">(Instagram, se abre en una pestaña nueva)</span>
+          </a>
+        </li>
+        <li>
+          <a class={`${claseFila} sm:justify-end`} href="/suscribirse">Suscribirse al calendario</a>
+        </li>
+        <li>
+          <a class={`${claseFila} sm:justify-end`} href="/contacto">Sugerir una actividad</a>
+        </li>
+        <li>
+          <a class={`${claseFila} sm:justify-end`} href="/ayuda">Ayuda</a>
+        </li>
+      </ul>
+    </nav>
   </div>
 </footer>

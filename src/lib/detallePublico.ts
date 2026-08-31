@@ -114,6 +114,15 @@ export interface EncuentroDeDetalle {
   cancelada: boolean;
   /** Ya terminó, según el reloj del build. */
   paso: boolean;
+  /**
+   * Es **el próximo**: el primero que no está cancelado ni pasó.
+   *
+   * Derivado, no un dato nuevo: la página lo necesita para marcar una fila de las
+   * ocho, y la alternativa era que la plantilla lo recalculara con un
+   * `findIndex` — dos derivaciones de la misma idea, que es justo lo que este
+   * repo evita. En un ciclo empezado es la única fila que importa de la lista.
+   */
+  esProximo: boolean;
 }
 
 export interface SedeDeDetalle {
@@ -148,6 +157,20 @@ export interface AccionDeInscripcion {
   /** El verbo real de la vía: «Escribir por WhatsApp», «Mandar un mail»… */
   texto: string;
   href: string;
+}
+
+/**
+ * El motivo por el que la página arranca con un aviso, si arranca con uno.
+ *
+ * Es un vocabulario cerrado y no un texto suelto para que la plantilla pueda
+ * elegir la forma —el rojo del cancelado no es el gris del que ya pasó— sin
+ * volver a decidir el fondo.
+ */
+export type TonoDeAviso = 'cancelado' | 'pasado' | 'cerrado' | 'completo';
+
+export interface AvisoDeEstado {
+  tono: TonoDeAviso;
+  texto: string;
 }
 
 export interface DetallePublico {
@@ -224,6 +247,33 @@ export interface DetallePublico {
   material: { tiene: boolean; items: MaterialDeDetalle[] };
   /** Las **etiquetas** de los temas. El slug no se muestra ni linkea a nada todavía. */
   tags: string[];
+
+  /**
+   * **Lo primero que la página dice, o `null` si no hay nada que avisar** — B-253.
+   *
+   * ── Por qué se decide acá y no en la plantilla ────────────────────────
+   * Porque es una **prioridad**, no un formato: cuatro estados pueden valer a la
+   * vez —se cancelaron todos los encuentros, ya pasó, la inscripción cerró, el
+   * cupo está completo— y mostrar los cuatro apilados es la forma de que no se
+   * lea ninguno. La plantilla que los encadene con `&&` toma esa decisión sin
+   * quererlo y la toma distinto la próxima vez que alguien la edite.
+   *
+   * El orden es del más irreversible al menos: **no va a pasar** → **ya pasó** →
+   * **no te podés anotar** → **no hay lugar, pero hay lista de espera**.
+   *
+   * ── Y el caso que estaba mal (B-254) ──────────────────────────────────
+   * Una actividad con **todos** sus encuentros cancelados no tiene ninguno por
+   * venir, así que `yaPaso` da `true` y la página decía «Esta actividad ya pasó».
+   * Es falso y de la peor manera: quien pregunta «¿se hace?» se va creyendo que
+   * llegó tarde a algo que no se hizo, y encima la fecha que está más abajo puede
+   * ser del mes que viene. Se distingue con `encuentros.length > 0 &&
+   * vivos.length === 0`, que es un dato que ya estaba en la mano.
+   *
+   * El **estado `cancelado` de la actividad entera** (§7.3 del diseño) es otra
+   * cosa y todavía no llega: el lector solo trae `estado == 'publicado'`, así que
+   * una actividad cancelada no tiene página. Queda anotado en B-255.
+   */
+  aviso: AvisoDeEstado | null;
 
   /** `<title>` y `meta description` (§5.1 del diseño). */
   meta: { titulo: string; descripcion: string };
@@ -395,6 +445,56 @@ const rotuloDeCiclo = (esCiclo: boolean, vivos: EncuentroDeDetalle[]): string | 
 };
 
 /**
+ * El aviso de arriba, o `null`. Ver el docblock de `DetallePublico.aviso`.
+ *
+ * Es una función aparte y devuelve **uno** a propósito: la prioridad es la
+ * decisión, y una función que devuelve una lista invita a que la plantilla elija
+ * cuál mostrar, que es la decisión que se quería sacar de ahí.
+ */
+const avisoDeEstado = (
+  todoCancelado: boolean,
+  yaPaso: boolean,
+  hayEncuentros: boolean,
+  inscripcion: { requiere: boolean; cerrada: boolean; cierra: string | null; completo: boolean },
+): AvisoDeEstado | null => {
+  if (todoCancelado) {
+    return {
+      tono: 'cancelado',
+      texto: 'Se cancelaron todos los encuentros de esta actividad.',
+    };
+  }
+  /*
+   * `hayEncuentros` no es defensivo: una actividad publicada **sin ninguna
+   * fecha** también deja `yaPaso` en `true`, y ahí «ya pasó» es tan falso como en
+   * el caso cancelado. Sin encuentros no se afirma nada — la ficha ya dice «Sin
+   * fechas por venir», que es lo único que se sabe.
+   */
+  if (yaPaso && hayEncuentros) {
+    return {
+      tono: 'pasado',
+      texto: 'Esta actividad ya pasó. Muchas se repiten: seguí a quien la organiza.',
+    };
+  }
+  if (inscripcion.requiere && inscripcion.cerrada) {
+    return {
+      tono: 'cerrado',
+      texto: inscripcion.cierra
+        ? `Las inscripciones cerraron el ${inscripcion.cierra}.`
+        : 'Las inscripciones cerraron.',
+    };
+  }
+  // D-127 — el cupo completo avisa, pero **no** cierra la puerta: el canal sigue
+  // más abajo porque siempre hay lista de espera y las bajas existen.
+  if (inscripcion.requiere && inscripcion.completo) {
+    return {
+      tono: 'completo',
+      texto: 'Cupo completo. Se puede consultar por lista de espera.',
+    };
+  }
+  return null;
+};
+
+/**
  * El view-model completo de una página de detalle.
  *
  * `ahora` es el reloj del **build**, y hay que saberlo: la página no lleva
@@ -410,7 +510,7 @@ export const detalleDeActividad = (
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
-  const encuentros: EncuentroDeDetalle[] = ordenadas.map((s, i) => {
+  const enOrden: EncuentroDeDetalle[] = ordenadas.map((s, i) => {
     const inicio = instanteDeIso(s.inicio);
     const fin = instanteDeIso(s.fin) ?? inicio;
     return {
@@ -429,18 +529,44 @@ export const detalleDeActividad = (
       lectura: s.lectura,
       cancelada: s.cancelada,
       paso: Boolean(fin && fin.getTime() < ahora.getTime()),
+      // Se resuelve en la segunda pasada: «el próximo» depende de todos.
+      esProximo: false,
     };
   });
 
-  const vivos = encuentros.filter((e) => !e.cancelada);
+  const vivos = enOrden.filter((e) => !e.cancelada);
   const proximos = vivos.filter((e) => !e.paso);
   const siguiente = proximos[0] ?? null;
+  // Segunda pasada: marcar el próximo por su id. Comparar por id y no por
+  // posición es la misma regla de siempre (§7.2, trampa 2): el índice del array
+  // cambia al cancelar una fila y el uuid no.
+  const encuentros: EncuentroDeDetalle[] = enOrden.map((e) => ({
+    ...e,
+    esProximo: e.id === siguiente?.id,
+  }));
 
   const modalidades = a.modalidades.map((m) => modalidadDeDetalle(m, etiquetas));
   const cierra = instanteDeIso(a.inscripcion.cierraEn);
 
   const tipoEtiqueta = etiquetaDe(etiquetas, 'tipo', a.tipo);
   const donde = dondeCorto(modalidades);
+
+  const inscripcion = {
+    requiere: a.inscripcion.requiere,
+    destino: a.inscripcion.destino,
+    accion: a.inscripcion.requiere
+      ? accionDeInscripcion(a.inscripcion.via, a.inscripcion.destino, a.titulo)
+      : null,
+    cupo: a.inscripcion.cupo,
+    completo: a.inscripcion.completo,
+    cierra: cierra ? fechaCompleta(cierra) : null,
+    cerrada: Boolean(cierra && cierra.getTime() <= ahora.getTime()),
+  };
+
+  // §7.3 del diseño con la corrección de B-254: sin ningún encuentro en pie la
+  // actividad **no pasó**, se canceló. Los dos casos llegaban a `yaPaso: true`.
+  const todoCancelado = encuentros.length > 0 && vivos.length === 0;
+  const yaPaso = proximos.length === 0;
 
   return {
     slug: a.slug,
@@ -464,7 +590,7 @@ export const detalleDeActividad = (
     proxima: siguiente
       ? { fecha: siguiente.fecha, desde: siguiente.hora, hasta: horaDeFin(siguiente) }
       : null,
-    yaPaso: proximos.length === 0,
+    yaPaso,
     // §7.2 — «ya empezó, se puede entrar»: quedan encuentros y el primero quedó
     // atrás. Es lo que evita que la página diga «empieza el 3 de septiembre» en
     // octubre.
@@ -482,17 +608,7 @@ export const detalleDeActividad = (
       esGratis: a.arancel.tipo === 'gratis',
     },
 
-    inscripcion: {
-      requiere: a.inscripcion.requiere,
-      destino: a.inscripcion.destino,
-      accion: a.inscripcion.requiere
-        ? accionDeInscripcion(a.inscripcion.via, a.inscripcion.destino, a.titulo)
-        : null,
-      cupo: a.inscripcion.cupo,
-      completo: a.inscripcion.completo,
-      cierra: cierra ? fechaCompleta(cierra) : null,
-      cerrada: Boolean(cierra && cierra.getTime() <= ahora.getTime()),
-    },
+    inscripcion,
 
     organizador: {
       nombre: a.organizador.nombre,
@@ -515,6 +631,8 @@ export const detalleDeActividad = (
       items: a.material.items.map(itemDeDetalle),
     },
     tags: a.tags.map((t) => etiquetaDe(etiquetas, 'tag', t)),
+
+    aviso: avisoDeEstado(todoCancelado, yaPaso, encuentros.length > 0, inscripcion),
 
     meta: {
       // §5.1 del diseño — el título de la actividad **primero**: Google recorta a

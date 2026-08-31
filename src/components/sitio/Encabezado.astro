@@ -1,7 +1,8 @@
 ---
-import { NOMBRE } from '@/lib/identidad';
+import { BAJADA, NOMBRE } from '@/lib/identidad';
+import { foco, focoAmplio } from '@/components/sitio/estilos';
 /**
- * La barra de navegación del sitio público — B-229.
+ * La barra de navegación del sitio público — B-229, B-253.
  *
  * Vive en `Base.astro` y no en cada página a propósito: es el punto donde tres
  * frentes en paralelo se pisarían, así que tiene un solo dueño.
@@ -10,6 +11,20 @@ import { NOMBRE } from '@/lib/identidad';
  * `Astro.url.pathname` porque la página de detalle (`/actividad/<slug>`) tiene
  * que marcar «Agenda», y una comparación por path no lo sabría sin una regla
  * más que se olvida de actualizar.
+ *
+ * ── La bajada va acá, y hay que justificarlo (B-253) ──────────────────────
+ * «Agenda LEH» es una sigla, y una sigla sin desarrollar es un nombre que no se
+ * puede leer en voz alta: quien entra por primera vez no tiene forma de saber qué
+ * es «LEH». `BAJADA` existe exactamente para eso (D-141), así que el lugar donde
+ * hace más trabajo es **el primer encuentro con el nombre**, que es esta barra.
+ *
+ * Y va **de `sm` en adelante**. En 375px la fila es el nombre más cuatro enlaces
+ * de 44px, que ya entra ajustada; sumarle una línea de texto la parte en tres
+ * renglones y empuja el contenido fuera de la pantalla en la página que recibe el
+ * tráfico. En el teléfono la bajada se lee en el pie, que la tiene siempre — así
+ * que la sigla nunca queda muda, solo se desarrolla más abajo. Es el mismo
+ * criterio de «mobile primero» de `05-patrones.md`: en la pantalla chica se
+ * decide qué **no** entra.
  */
 export type Seccion = 'agenda' | 'suscribirse' | 'ayuda' | 'contacto';
 
@@ -27,7 +42,16 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
 ];
 ---
 
-<header class="border-b border-borde bg-papel/85 backdrop-blur-sm">
+{/*
+  `bg-crema` y no `bg-papel`: la barra es una superficie apoyada sobre el fondo, y
+  con el borde de abajo alcanza para separarla. **Sin sombra** (D-141) — es lo que
+  le da a una página el aire de plataforma genérica.
+
+  Tampoco es fija: el §8 del diseño reserva el único elemento fijo del sitio para
+  el CTA del detalle, y una barra pegada arriba en un teléfono se come 56px de la
+  pantalla en la que hay que decidir si un taller sirve.
+*/}
+<header class="border-b border-borde bg-crema">
   <!-- El salto al contenido es el primer foco de la página: sin él, llegar al
        listado con teclado obliga a pasar por los cuatro enlaces en cada página. -->
   <a
@@ -37,12 +61,25 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
     Saltar al contenido
   </a>
 
-  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-    <a
-      href="/"
-      class="font-serif text-lg font-semibold tracking-tight text-tinta focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acento"
-    >
-      {NOMBRE}
+  <div
+    class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 sm:py-4"
+  >
+    <a href="/" class={`group flex min-w-0 flex-col ${focoAmplio}`}>
+      <span
+        class="font-serif text-xl leading-none font-semibold tracking-tight text-tinta group-hover:text-acento sm:text-2xl"
+      >
+        {NOMBRE}
+      </span>
+      {/*
+        Sin `aria-hidden`: es parte del nombre del sitio, y quien escucha la página
+        también necesita saber qué quiere decir la sigla. Queda dentro del enlace,
+        así que su nombre accesible es «Agenda LEH Leer, Escribir, Hacer».
+      */}
+      <span
+        class="mt-1 hidden text-[0.68rem] font-medium tracking-[0.2em] text-tinta/70 uppercase sm:block"
+      >
+        {BAJADA}
+      </span>
     </a>
 
     <nav aria-label="Secciones del sitio" class="ms-auto">
@@ -54,11 +91,17 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
                 href={href}
                 aria-current={activa === seccion ? 'page' : undefined}
                 class:list={[
-                  'flex min-h-touch items-center rounded-md px-3',
-                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento',
+                  'flex min-h-touch items-center rounded-md px-3 transition-colors',
+                  foco,
+                  /*
+                    La sección actual se marca con **superficie y color**, no solo
+                    con negrita: el peso de una sans a 14px es la diferencia más
+                    difícil de ver de las tres, y `aria-current` ya lo dice para
+                    quien escucha. `acento` sobre `hondo` da 5,04:1, o sea AA.
+                  */
                   activa === seccion
-                    ? 'font-semibold text-acento'
-                    : 'text-tinta/70 hover:text-tinta',
+                    ? 'bg-hondo font-semibold text-acento'
+                    : 'text-tinta/70 hover:bg-hondo hover:text-tinta',
                 ]}
               >
                 {texto}
