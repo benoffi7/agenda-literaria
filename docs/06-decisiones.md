@@ -3788,3 +3788,60 @@ algo que la frontera ya descartó, porque no lo recibe.
 quiera mostrar hay que agregarlo en dos lugares (la proyección y la plantilla). Es
 el mismo costo que `toPublic` ya paga por enumerar en vez de hacer `pick`, y por
 el mismo motivo: se paga cuando se agrega algo, no cuando se filtra algo.
+
+---
+
+## D-141 · El sitio se llama Agenda LEH, y el color del tipo se deriva del slug
+
+**Contexto.** El dueño lo dijo así: «el nuestro no tiene identidad ni nada», pidiendo
+que el sitio se parezca a Eventbrite. La causa no era del todo estética. El nombre
+estaba **decidido desde el 2026-08-27** —«Agenda LEH — Leer, Escribir, Hacer», DEC-6,
+elegido justamente para desbloquear el dominio y los metadatos— y **no se había usado
+en ninguna parte**: ocho lugares del sitio repetían «Agenda literaria», que es la
+categoría del sitio y no su nombre. Un sitio que se presenta con su categoría no
+puede tener identidad; el diseño encima de eso no la iba a dar.
+
+**Decisión 1 — el nombre vive en un módulo y se interpola.** `src/lib/identidad.ts`
+exporta `NOMBRE`, `BAJADA`, `NOMBRE_COMPLETO` y `QUE_ES`. Ocho literales sueltos son
+ocho lugares donde el nombre puede quedar viejo, y ya habían quedado viejos los ocho
+a la vez. `tests/identidad.test.ts` exige que toda página se titule con el nombre.
+
+En la home el nombre va **al final** del título y las palabras que se buscan
+adelante: quien tipea «taller de escritura buenos aires» no conoce el nombre todavía,
+y en un resultado de Google el título se corta por la derecha.
+
+**Decisión 2 — la dirección visual es la estructura de Eventbrite con paleta
+propia.** Se adoptan sus patrones —grilla de tarjetas con portada, chips de
+categoría, jerarquía fuerte, CTA fijo en móvil— y **no** su temperatura. El papel
+cálido y la tinta azulada eran una decisión, no un descuido: lo que faltaba era
+jerarquía y densidad, no saturación. La paleta se amplía con tres niveles de
+superficie (`papel`, `crema`, `hondo`) para poder apilar una tarjeta sobre el fondo
+**sin sombras**, que es lo que da el aire de plataforma genérica.
+
+**Decisión 3 — cuando no hay imagen, la portada se genera**, con el título sobre un
+color derivado del tipo. Es lo que evita el hueco gris: en este circuito muchas
+actividades no van a tener foto, y una grilla con la mitad de los huecos vacíos se ve
+rota. La alternativa —exigir imagen para publicar— se descartó: agrega fricción a
+quien carga y frena publicaciones.
+
+**Y el color del tipo se deriva del slug, no se elige de una tabla.** Acá está el
+razonamiento que importa, porque es el que no se ve. `tipo` es una **taxonomía
+autogestionada** (§4 del `CLAUDE.md`): quien carga puede crear un tipo nuevo desde la
+casilla «Otro». Una tabla de siete colores escritos a mano queda vieja **el mismo
+día** que alguien agregue el octavo, y el modo de falla es silencioso — el tipo nuevo
+cae en un gris de descarte, sus tarjetas se ven roídas, y nada falla.
+
+Entonces: los siete de hoy tienen tono asignado —para que «taller» sea siempre el
+mismo color y la gente lo aprenda— y cualquier otro **deriva su tono del slug**, de
+forma determinística y empujado para no caer a menos de 18° de un tono ya asignado.
+
+**La luminosidad y el croma son fijos para todos los tipos**, y eso no es estética:
+es lo que permite **garantizar el contraste de una sola vez**. Como varía solo el
+matiz, el test no verifica los siete tipos de hoy —eso dejaría la garantía en «los
+que ya vimos»— sino **los 360 tonos posibles**. El peor de los 360 da 7,21:1 contra
+un piso de 4,5. O sea: la portada de un tipo que alguien invente el año que viene
+está garantizada legible, y si algún día alguien aclara la banda, el test lo dice.
+
+**Lo que esto NO decide.** El dominio sigue sin registrar, así que no hay `site`, ni
+canonical, ni Open Graph, ni sitemap: es B-109 y sigue abierto. DEC-6 pedía además
+decidir **qué parte del nombre va en la URL**, y sigue pendiente.

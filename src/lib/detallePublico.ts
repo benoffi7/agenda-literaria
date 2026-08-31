@@ -37,6 +37,7 @@
  */
 // `resumenDe` vive en `eventsJson.ts` porque nació con el índice: se importa para
 // que la tarjeta del listado y la `meta description` del detalle recorten igual.
+import { NOMBRE } from '@/lib/identidad';
 import { resumenDe } from '@/lib/eventsJson';
 import { fechaCompleta, fechaLarga, hora, isoConOffset, rangoCorto } from '@/lib/fechasPublicas';
 import { etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -520,7 +521,7 @@ export const detalleDeActividad = (
       // ~60 caracteres y lo que importa es el nombre, no la marca. El barrio
       // entra porque es la palabra que hace match con «taller de escritura villa
       // crespo».
-      titulo: `${a.titulo} · ${tipoEtiqueta} en ${donde} — Agenda literaria`,
+      titulo: `${a.titulo} · ${tipoEtiqueta} en ${donde} — ${NOMBRE}`,
       // Con la descripción vacía cae al formato armado, que es más útil que una
       // frase trunca (§7.7).
       descripcion:

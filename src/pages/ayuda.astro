@@ -18,6 +18,7 @@
  * permite testear que no falte una pregunta y que el glosario de tipos no se
  * quede viejo cuando el modelo suma una categoría.
  */
+import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { CIERRE_DE_AYUDA, ENTRADA_DE_AYUDA, GRUPOS_DE_AYUDA } from '@/lib/ayudaDelSitio';
 
@@ -29,7 +30,7 @@ const claseEnlace = `text-acento underline decoration-borde underline-offset-4 h
 
 <Base
   seccion="ayuda"
-  titulo="Ayuda — Agenda literaria"
+  titulo={`Ayuda — ${NOMBRE}`}
   descripcion="Cómo funciona la agenda: qué es cada tipo de actividad, qué quiere decir «a la gorra», cómo anotarse y cómo suscribirse al calendario."
 >
   <main class="mx-auto max-w-2xl px-4 py-10 sm:py-14">

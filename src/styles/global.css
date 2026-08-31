@@ -4,11 +4,27 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-serif: 'Lora', ui-serif, Georgia, serif;
 
-  /* Paleta sobria de papel y tinta, acorde al dominio literario. */
-  --color-papel: oklch(0.985 0.005 85);
+  /*
+   * Paleta de papel y tinta, acorde al dominio literario — B-245.
+   *
+   * El papel es **cálido y no blanco**: un blanco puro sobre una pantalla es una
+   * hoja recién comprada, y esto es una agenda de talleres de escritura. Los tres
+   * niveles de superficie existen para poder apilar una tarjeta sobre el fondo sin
+   * usar sombras, que es lo que le da el aire de plataforma genérica.
+   */
+  --color-papel: oklch(0.98 0.008 80); /* el fondo */
+  --color-crema: oklch(0.965 0.012 80); /* una tarjeta sobre el fondo */
+  --color-hondo: oklch(0.945 0.014 78); /* una superficie hundida: chips, campos */
   --color-tinta: oklch(0.22 0.015 265);
-  --color-borde: oklch(0.9 0.008 85);
-  --color-acento: oklch(0.52 0.13 25);
+  --color-borde: oklch(0.9 0.01 80);
+
+  /*
+   * El acento es terracota y no un naranja saturado de plataforma. Está medido:
+   * pasa AA sobre el papel en las dos direcciones, así que se puede usar en texto
+   * chico y en el botón de inscripción — lo verifica `tests/contraste.test.ts`.
+   */
+  --color-acento: oklch(0.52 0.15 32);
+  --color-acento-hondo: oklch(0.42 0.14 32); /* el mismo, para hover y bordes */
 
   /* Altura mínima de un blanco táctil. 44px es el mínimo de las guías de
      Apple; Material pide 48. Se usa en todo control que se toque con el dedo. */

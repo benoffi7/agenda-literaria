@@ -2,10 +2,11 @@
 // §2.3 / §9 — el panel es una island `client:only` en /admin. El bundle pesado
 // queda aislado en esta ruta y no toca el sitio público.
 // `noIndex`: el panel no se indexa.
+import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { AdminApp } from '@/components/admin/AdminApp';
 ---
 
-<Base titulo="Panel · Agenda literaria" noIndex>
+<Base titulo={`Panel · ${NOMBRE}`} noIndex>
   <AdminApp client:only="react" />
 </Base>

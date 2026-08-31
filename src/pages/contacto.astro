@@ -16,6 +16,7 @@
  * y quien busca «cómo contactar la agenda literaria» tiene que encontrar esta
  * página. La protección contra el spam es filtrar, no esconderse.
  */
+import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import {
   ANTES_DE_ESCRIBIR,
@@ -32,7 +33,7 @@ const claseBoton = `inline-flex min-h-touch items-center justify-center rounded-
 
 <Base
   seccion="contacto"
-  titulo="Contacto — Agenda literaria"
+  titulo={`Contacto — ${NOMBRE}`}
   descripcion="Sugerir una actividad para la agenda o avisar de un dato mal publicado."
 >
   <main class="mx-auto max-w-2xl px-4 py-10 sm:py-14">

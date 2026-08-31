@@ -1,4 +1,5 @@
 ---
+import { NOMBRE } from '@/lib/identidad';
 /**
  * La barra de navegación del sitio público — B-229.
  *
@@ -41,7 +42,7 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
       href="/"
       class="font-serif text-lg font-semibold tracking-tight text-tinta focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acento"
     >
-      Agenda literaria
+      {NOMBRE}
     </a>
 
     <nav aria-label="Secciones del sitio" class="ms-auto">

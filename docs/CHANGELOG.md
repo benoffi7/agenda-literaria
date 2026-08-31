@@ -1,5 +1,63 @@
 # Changelog
 
+## 2026-08-31 · el sitio tiene nombre y paleta
+
+**«el nuestro no tiene identidad ni nada»**, dijo el dueño pidiendo que el sitio se
+parezca a Eventbrite. La causa no era del todo estética, y vale escribirla: el nombre
+estaba **decidido desde el 2026-08-27** —«Agenda LEH — Leer, Escribir, Hacer»,
+DEC-6— y **no se había usado en ninguna parte**. Ocho lugares del sitio repetían
+«Agenda literaria», que es su categoría y no su nombre. Un sitio que se presenta con
+su categoría no puede tener identidad, y ningún rediseño encima de eso la iba a dar.
+
+**El nombre vive en `src/lib/identidad.ts` y se interpola** — B-245, D-141. Ocho
+literales sueltos son ocho lugares donde el nombre queda viejo, y habían quedado
+viejos los ocho a la vez. `tests/identidad.test.ts` exige que toda página se titule
+con el nombre, y que la bajada siga **desarrollando la sigla**: si alguien cambia una
+de las dos y no la otra, «LEH» queda como una sigla muda y el test lo dice.
+
+En la home el nombre va **al final** del título: quien busca «taller de escritura
+buenos aires» todavía no conoce el sitio, y en un resultado de Google el título se
+corta por la derecha.
+
+**La paleta suma tres niveles de superficie** —`papel`, `crema`, `hondo`— para poder
+apilar una tarjeta sobre el fondo **sin sombras**, que es justo lo que da el aire de
+plataforma genérica. El acento se profundiza a terracota. Sigue siendo papel y tinta
+a propósito: se adopta la **estructura** de Eventbrite, no su temperatura. Lo que
+faltaba era jerarquía y densidad, no saturación.
+
+**El color del tipo se deriva del slug, y ahí está lo que no se ve.** `tipo` es una
+taxonomía autogestionada (§4): quien carga puede crear un tipo nuevo desde «Otro».
+Una tabla de siete colores a mano queda vieja **el mismo día** que aparezca el
+octavo, y falla en silencio — el tipo nuevo cae en un gris de descarte, sus tarjetas
+se ven roídas, y el build queda verde. Así que los siete de hoy tienen tono asignado
+—para que «taller» sea siempre el mismo color y se aprenda— y cualquier otro deriva
+el suyo del slug, determinístico y empujado para no caer a menos de 18° de un tono ya
+tomado.
+
+**La luminosidad y el croma son fijos para todos**, y eso no es estética: es lo que
+permite garantizar el contraste **de una sola vez**. Por eso el test no verifica los
+siete tipos de hoy —eso dejaría la garantía en «los que ya vimos»— sino **los 360
+tonos posibles**. El peor da 7,21:1 contra un piso de 4,5. La portada de un tipo que
+alguien invente el año que viene está garantizada legible, y si alguna vez se aclara
+la banda, el test lo dice antes.
+
+**La casilla de contacto era la equivocada** — B-246. La dirección versionada el
+2026-08-28 no era la del proyecto y estuvo tres días publicada en un repo público. Se
+sacó del árbol en vez de habilitarse: una casilla ajena no se conserva como registro.
+`sin-datos-personales.test.ts` sirvió **dos veces** acá — frenó la casilla al
+versionarla, y volvió a fallar sobre el rastro que quedaba en el CHANGELOG cuando se
+cambió solo el módulo. Que la excepción sea **una dirección** y no un dominio es lo
+que hizo posibles las dos: con `@gmail.com` permitido, ninguna habría dicho nada.
+
+Mutaciones probadas, las seis fallan: la banda aclarada (portadas ilegibles), la
+bajada que deja de desarrollar la sigla, dos tipos compartiendo tono, un tipo nuevo
+cayendo sobre uno asignado, el nombre volviendo a ser la categoría, y una página
+titulándose sin el nombre.
+
+**Lo que esto no resuelve:** el dominio sigue sin registrar, así que no hay
+canonical, ni Open Graph, ni sitemap (B-109). Y DEC-6 pedía decidir qué parte del
+nombre va en la URL.
+
 ## 2026-08-28 (después de 1.5.0) · el sitio público, integrado
 
 **Las cuatro páginas conviven.** `/` con listado, búsqueda, filtros y orden;

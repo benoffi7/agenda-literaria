@@ -16,6 +16,7 @@
  * **sin directiva**: Astro la renderiza a HTML y no manda un byte de JavaScript
  * por ella.
  */
+import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
@@ -43,7 +44,12 @@ const descripcion =
 
 <Base
   seccion="agenda"
-  titulo="Agenda de actividades literarias en Argentina"
+  {/*
+    Las palabras que se buscan van primero y la marca al final: quien tipea
+    «taller de escritura buenos aires» no conoce todavía el nombre del sitio, y en
+    un resultado de Google el título se corta por la derecha.
+  */}
+  titulo={`Talleres, clubes de lectura y encuentros literarios en Argentina · ${NOMBRE}`}
   descripcion={descripcion}
 >
   {/*
