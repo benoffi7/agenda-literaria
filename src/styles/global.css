@@ -26,6 +26,21 @@
   --color-acento: oklch(0.52 0.15 32);
   --color-acento-hondo: oklch(0.42 0.14 32); /* el mismo, para hover y bordes */
 
+  /*
+   * La proporción de una portada, en un solo lugar — B-249.
+   *
+   * La misma imagen se muestra en la tarjeta del listado y arriba de la página de
+   * detalle. Si cada una elige su recorte, la foto que se veía bien en la grilla
+   * aparece cortada al abrirla — y peor con la **portada generada**, cuyo título va
+   * dentro del recorte: dos proporciones distintas son dos tamaños de letra
+   * distintos para el mismo texto.
+   *
+   * Lo pidió el frente de la tarjeta al cerrar, antes de que el del detalle
+   * eligiera la suya. Es la clase de divergencia que no rompe nada y se nota
+   * enseguida.
+   */
+  --aspect-portada: 16 / 9;
+
   /* Altura mínima de un blanco táctil. 44px es el mínimo de las guías de
      Apple; Material pide 48. Se usa en todo control que se toque con el dedo. */
   --spacing-touch: 2.75rem;
