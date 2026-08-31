@@ -16,13 +16,18 @@
  * y quien busca «cómo contactar la agenda literaria» tiene que encontrar esta
  * página. La protección contra el spam es filtrar, no esconderse.
  *
- * ── Lo que B-253 cambió, que es solo cómo se ve ───────────────────────────
+ * ── La forma: B-253 y después B-260 ──────────────────────────────────────
  * Los dos motivos son **una decisión**: quien entra elige uno y se va. Con los
  * dos bloques en la misma columna y el mismo peso, esa decisión no se leía como
- * tal. Ahora son dos tarjetas que en pantalla ancha van una al lado de la otra —
- * la comparación que la página pide hacer, hecha de un vistazo— y el botón de
- * cada una es el primario terracota, que es el que el sitio usa en todas partes
- * para «esto es lo que viniste a hacer» (D-141).
+ * tal. Son dos bloques que en pantalla ancha van uno al lado del otro —la
+ * comparación que la página pide hacer, hecha de un vistazo— y el botón de cada
+ * uno es el primario terracota, que es el que el sitio usa en todas partes para
+ * «esto es lo que viniste a hacer».
+ *
+ * B-260 cambió **solo el lenguaje visual** (D-146): el título en Bodoni display,
+ * los bloques con esquina viva y regla en vez de tarjetas redondeadas, y las
+ * tintas con nombre en lugar de las opacidades. Ni una palabra del contenido, que
+ * sale entero de `lib/contactoDelSitio.ts`.
  */
 import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
@@ -33,10 +38,10 @@ import {
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
 import {
+  claseBloque,
   claseBotonPrimario,
   claseEnlace,
   claseRotulo,
-  claseTarjeta,
 } from '@/components/sitio/estilos';
 ---
 
@@ -46,17 +51,17 @@ import {
   descripcion="Sugerir una actividad para la agenda o avisar de un dato mal publicado."
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-    <h1 class="font-serif text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+    <h1 class="display-md text-balance text-acento">
       Contacto
     </h1>
 
     {
       INTRO_DE_CONTACTO.map((parrafo) => (
-        <p class="mt-4 max-w-[65ch] text-lg text-tinta/80">{parrafo}</p>
+        <p class="mt-4 max-w-[65ch] body-lectura text-super">{parrafo}</p>
       ))
     }
 
-    <p class="mt-4 max-w-[65ch] text-tinta/80">
+    <p class="body-lectura mt-4 max-w-[65ch] text-super">
       <a class={claseEnlace} href={ANTES_DE_ESCRIBIR.href}>{ANTES_DE_ESCRIBIR.texto}</a>.
     </p>
 
@@ -72,15 +77,15 @@ import {
         BLOQUES_DE_CONTACTO.map((bloque) => (
           <section
             aria-labelledby={`motivo-${bloque.motivo}`}
-            class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseTarjeta}`}
+            class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}
           >
-            <h2 id={`motivo-${bloque.motivo}`} class="font-serif text-2xl font-semibold text-tinta">
+            <h2 id={`motivo-${bloque.motivo}`} class="headline-sm text-tinta">
               {bloque.etiqueta}
             </h2>
-            <p class="mt-2 text-tinta/80">{bloque.ayuda}</p>
+            <p class="body-lectura mt-2 text-super">{bloque.ayuda}</p>
 
             <p class={`mt-5 ${claseRotulo}`}>Qué conviene contarnos</p>
-            <ul class="mt-2 list-disc space-y-1 ps-5 text-tinta/80 marker:text-tinta/70">
+            <ul class="body-md mt-2 list-disc space-y-1 ps-5 text-super marker:text-azul">
               {bloque.queIncluir.map((item) => (
                 <li class="min-w-0">{item}</li>
               ))}
@@ -93,20 +98,20 @@ import {
             </p>
             {/* El asunto se muestra para que se entienda por qué viene puesto, y
                 para que quien prefiera escribir desde otra casilla lo pueda copiar. */}
-            <p class="mt-2 text-sm text-tinta/70">Se manda con el asunto «{bloque.asunto}».</p>
+            <p class="mt-2 body-sm text-super">Se manda con el asunto «{bloque.asunto}».</p>
           </section>
         ))
       }
     </div>
 
-    <section aria-labelledby="que-pasa-despues" class="mt-14 border-t-2 border-acento/40 pt-4">
+    <section aria-labelledby="que-pasa-despues" class="mt-14 regla-gruesa-arriba pt-4">
       <h2
         id="que-pasa-despues"
-        class="font-serif text-2xl font-semibold tracking-tight text-acento"
+        class="headline-sm text-acento"
       >
         Qué pasa después
       </h2>
-      {QUE_PASA_DESPUES.map((parrafo) => <p class="mt-3 max-w-[65ch] text-tinta/80">{parrafo}</p>)}
+      {QUE_PASA_DESPUES.map((parrafo) => <p class="body-lectura mt-3 max-w-[65ch] text-super">{parrafo}</p>)}
     </section>
   </main>
 </Base>

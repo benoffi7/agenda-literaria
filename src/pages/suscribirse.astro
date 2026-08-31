@@ -14,13 +14,21 @@
  * el que tiene el test que lo vigila. `tests/suscribirse.test.ts` falla si
  * aparece una dirección escrita en esta página.
  *
- * ── Lo que B-253 cambió, que es solo cómo se ve ───────────────────────────
+ * ── La forma: B-253 y después B-260 ──────────────────────────────────────
  * Los cuatro caminos son **una elección excluyente** —«con uno alcanza», dice la
  * propia página— y venían apilados en una columna, que es la forma de leerlos
- * como cuatro pasos a hacer en orden. Ahora van en una grilla de dos columnas de
- * `sm` en adelante, y «lo que el calendario no hace» pasa a una superficie
- * hundida: es la letra chica y tiene que verse como tal sin dejar de leerse
- * (`tinta/80` sobre `hondo` da 8,23:1).
+ * como cuatro pasos a hacer en orden. Van en una grilla de dos columnas de `sm`
+ * en adelante, y «lo que el calendario no hace» sobre la capa tonal más honda:
+ * es la letra chica y tiene que verse como tal sin dejar de leerse.
+ *
+ * B-260 cambió **solo el lenguaje visual**, no el contenido ni la estructura: la
+ * tipografía y las tintas del sistema (D-146), radio 0 y reglas en vez de bordes
+ * redondeados. El texto sigue saliendo entero de `lib/suscripcion.ts`.
+ *
+ * La letra chica ya no se atenúa con una opacidad: va en `super`, la tinta de la
+ * superposición, que da **5,15:1 sobre `hondo`** —la superficie sobre la que está
+ * apoyada—. Antes era `tinta/80`, y una opacidad es una trama de medio tono que
+ * en una impresión a tintas planas no existe.
  */
 import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
@@ -44,16 +52,16 @@ const advertencias = advertenciasEnOrden();
   descripcion="Sumá la agenda de talleres, clubes de lectura y encuentros literarios a tu Google Calendar, a tu iPhone o a Outlook. Los cambios te llegan solos."
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-    <h1 class="font-serif text-3xl font-semibold tracking-tight text-balance text-tinta sm:text-4xl">
+    <h1 class="display-md text-balance text-acento">
       Llevate la agenda a tu calendario
     </h1>
-    <p class="mt-4 max-w-[65ch] text-lg text-tinta/80">{COMO_FUNCIONA.entrada}</p>
+    <p class="mt-4 max-w-[65ch] body-lectura text-super">{COMO_FUNCIONA.entrada}</p>
 
     <section aria-labelledby="que-gana" class="mt-10">
-      <h2 id="que-gana" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
+      <h2 id="que-gana" class="headline-sm text-tinta">
         {COMO_FUNCIONA.titulo}
       </h2>
-      <ul class="mt-4 max-w-[65ch] list-disc space-y-2 ps-5 text-tinta/80 marker:text-acento">
+      <ul class="body-lectura mt-4 max-w-[65ch] list-disc space-y-2 ps-5 text-super marker:text-acento">
         {COMO_FUNCIONA.puntos.map((punto) => <li class="min-w-0">{punto}</li>)}
       </ul>
     </section>
@@ -61,11 +69,11 @@ const advertencias = advertenciasEnOrden();
     <section aria-labelledby="como-se-hace" class="mt-14">
       <h2
         id="como-se-hace"
-        class="border-t-2 border-acento/40 pt-4 font-serif text-2xl font-semibold tracking-tight text-acento"
+        class="regla-gruesa-arriba pt-4 headline-sm text-acento"
       >
         Cómo se hace
       </h2>
-      <p class="mt-2 max-w-[65ch] text-tinta/80">Elegí el calendario que ya usás. Con uno alcanza.</p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">Elegí el calendario que ya usás. Con uno alcanza.</p>
 
       {/*
         Grilla y no columna: los cuatro caminos son alternativas y no pasos, y en
@@ -81,7 +89,7 @@ const advertencias = advertenciasEnOrden();
       <p class={claseRotulo}>La letra chica</p>
       <h2
         id="lo-que-no-hace"
-        class="mt-2 font-serif text-2xl font-semibold tracking-tight text-tinta"
+        class="mt-2 headline-sm text-tinta"
       >
         Lo que el calendario no hace
       </h2>
@@ -90,19 +98,19 @@ const advertencias = advertenciasEnOrden();
         {
           advertencias.map((advertencia) => (
             <div>
-              <dt class="font-semibold text-tinta">{advertencia.titulo}</dt>
-              <dd class="mt-1 text-tinta/80">{advertencia.texto}</dd>
+              <dt class="body-md font-semibold text-tinta">{advertencia.titulo}</dt>
+              <dd class="body-md mt-1 text-super">{advertencia.texto}</dd>
             </div>
           ))
         }
       </dl>
     </section>
 
-    <section aria-labelledby="donde-seguir" class="mt-14 border-t border-borde pt-8">
-      <h2 id="donde-seguir" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
+    <section aria-labelledby="donde-seguir" class="mt-14 regla-gruesa-arriba pt-8">
+      <h2 id="donde-seguir" class="headline-sm text-tinta">
         {DONDE_SEGUIR.titulo}
       </h2>
-      <p class="mt-2 max-w-[65ch] text-tinta/80">{DONDE_SEGUIR.texto}</p>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">{DONDE_SEGUIR.texto}</p>
       <div class="mt-4">
         <SuscribirseAccion accion={DONDE_SEGUIR.accion} />
       </div>
