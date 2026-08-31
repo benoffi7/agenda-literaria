@@ -61,27 +61,67 @@ const archivosDelSitio = (): string[] =>
     .split('\n')
     .filter((f) => f.endsWith('.astro') && f !== 'src/pages/admin.astro');
 
-/** Cada `text-tinta/NN` y `marker:text-tinta/NN` del markup, con su línea. */
-const atenuaciones = (): { donde: string; clase: string; opacidad: number }[] => {
-  const out: { donde: string; clase: string; opacidad: number }[] = [];
+/**
+ * Cada tinta de texto del markup, con su línea y su opacidad si la tiene.
+ *
+ * **Desde B-260 la lista de atenuaciones está vacía a propósito** y el chequeo
+ * sigue acá igual: el sistema visual es a tintas planas, así que una opacidad no
+ * debería aparecer nunca —lo prohíbe `tests/sistema-visual.test.ts`— y si alguna
+ * vuelve, ésta la mide en vez de dejarla pasar. Dos redes distintas sobre la
+ * misma clase de bug: una dice «no la pongas» y la otra «si la ponés, tiene que
+ * dar».
+ */
+const TOKENS = 'papel|crema|hondo|tinta|suave|acento|azul|super|borde|regla';
+
+const tintasDeTexto = (): { donde: string; clase: string; opacidad: number | null }[] => {
+  const out: { donde: string; clase: string; opacidad: number | null }[] = [];
   for (const f of archivosDelSitio()) {
     readFileSync(raiz(f), 'utf8')
       .split('\n')
       .forEach((linea, i) => {
-        for (const m of linea.matchAll(/((?:marker:)?text-tinta\/(\d{1,3}))/g)) {
-          out.push({ donde: `${f}:${i + 1}`, clase: m[1]!, opacidad: Number(m[2]) / 100 });
+        const re = new RegExp(`((?:marker:)?text-(?:${TOKENS})(?:\\/(\\d{1,3}))?)`, 'g');
+        for (const m of linea.matchAll(re)) {
+          out.push({
+            donde: `${f}:${i + 1}`,
+            clase: m[1]!,
+            opacidad: m[2] ? Number(m[2]) / 100 : null,
+          });
         }
       });
   }
   return out;
 };
 
+/** Solo las que llevan una opacidad. Desde B-260 tiene que estar vacía. */
+const atenuaciones = (): { donde: string; clase: string; opacidad: number }[] =>
+  tintasDeTexto()
+    .filter((t) => t.opacidad !== null)
+    .map((t) => ({ donde: t.donde, clase: t.clase, opacidad: t.opacidad! }));
+
 describe('el contraste del sitio público — B-235', () => {
-  it('el barrido encuentra markup y atenuaciones de verdad', () => {
-    // Control positivo: el test de abajo afirma que una lista está vacía, y una
-    // lista vacía es también lo que devuelve un barrido que no leyó nada.
+  it('el barrido encuentra markup y tintas de verdad', () => {
+    /*
+     * Control positivo: el test de abajo afirma que una lista está vacía, y una
+     * lista vacía es también lo que devuelve un barrido que no leyó nada.
+     *
+     * **Se cuentan las tintas, no las atenuaciones** — B-260. Hasta el rediseño
+     * este control pedía más de cinco `text-tinta/NN`, y era el control correcto
+     * mientras el sitio atenuaba. Con el sistema a tintas planas hay **cero**
+     * atenuaciones a propósito, así que pedirlas dejaría el archivo en rojo
+     * permanente por hacer lo correcto — y la salida fácil sería borrar el
+     * chequeo entero, que es el que sigue midiendo si alguna vuelve.
+     */
     expect(archivosDelSitio().length).toBeGreaterThan(3);
-    expect(atenuaciones().length).toBeGreaterThan(5);
+    expect(tintasDeTexto().length).toBeGreaterThan(10);
+  });
+
+  it('y hoy no hay ninguna atenuación, que es lo que el sistema pide', () => {
+    /*
+     * El estado esperado, escrito como aserto y no como suposición: si mañana
+     * aparece una, el mensaje dice dónde — y el caso de más abajo, que la mide,
+     * deja de estar midiendo el vacío.
+     */
+    expect(atenuaciones().map((a) => `${a.donde} — ${a.clase}`)).toEqual([]);
   });
 
   it('la paleta sale de global.css y el cálculo la reconoce', () => {

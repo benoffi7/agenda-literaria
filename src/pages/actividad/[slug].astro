@@ -348,7 +348,14 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                       class:list={[
                         claseBloqueFecha,
                         'self-start',
-                        (e.cancelada || e.paso) && 'bg-super',
+                        /*
+                          Una tinta y **solo una**: `class:list` concatena, así que
+                          con `bg-acento` en la clase compartida y `bg-super` acá
+                          encima, cuál gana lo decide el orden en que Tailwind
+                          emitió las dos utilidades, no este archivo. Ver el
+                          docblock de `claseBloqueFecha`.
+                        */
+                        e.cancelada || e.paso ? 'bg-super' : 'bg-acento',
                       ]}
                     >
                       <span class="label-caps">{e.bloque.diaSemana}</span>

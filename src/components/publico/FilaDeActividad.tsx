@@ -115,7 +115,7 @@ export function FilaDeActividad({ entrada, ahora, etiquetas }: Props) {
             */
             <p className={`${claseBloqueFecha} label-caps bg-super`}>{fecha.texto}</p>
           ) : (
-            <time dateTime={fecha.iso} className={claseBloqueFecha}>
+            <time dateTime={fecha.iso} className={`${claseBloqueFecha} bg-acento`}>
               <span className="label-caps">{fecha.diaSemana}</span>
               <span className="fecha-dia">{fecha.dia}</span>
               <span className="label-caps">{fecha.mes}</span>

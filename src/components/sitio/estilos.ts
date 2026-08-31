@@ -119,14 +119,32 @@ export const claseTituloSeccion = 'headline-sm text-tinta';
  * El bloque de fecha: **rectángulo de tinta plena con el texto calado en papel**.
  *
  * Es el gesto central del sistema, así que se escribe una sola vez: lo usan la
- * fila del listado y la ficha de la página de detalle, y dos definiciones serían
- * dos bloques de fecha distintos para el mismo dato.
+ * fila del listado y los encuentros de la página de detalle, y dos definiciones
+ * serían dos bloques de fecha distintos para el mismo dato.
  *
- * `text-papel` sobre `bg-acento` da 6,33:1 — el sistema lo midió y da cómodo
- * incluso para las versalitas de 11px, que es lo que va adentro junto al día.
+ * ── La tinta la pone quien lo usa, y eso no es pereza ─────────────────────
+ * Esta clase trae la **forma** y el texto calado, no el fondo. El bloque va en
+ * `acento` cuando la fecha todavía va a pasar y en `super` cuando ya pasó o se
+ * canceló —el terracota es la tinta de lo que se puede hacer—, así que hay dos
+ * fondos posibles.
+ *
+ * La primera versión traía `bg-acento` adentro y los llamadores le agregaban
+ * `bg-super` encima. **Eso salía mal en silencio**: dos utilidades de
+ * `background-color` en el mismo elemento no las resuelve el orden en que están
+ * escritas en el atributo, sino el orden en que Tailwind las emitió en la hoja.
+ * Hoy ganaba `bg-super` por casualidad alfabética; un cambio de versión de
+ * Tailwind, o una clase nueva que corra el orden, y el bloque de un encuentro
+ * cancelado se pinta terracota — sin que falle nada. Lo encontró **mirar el HTML
+ * construido**, no un test.
+ *
+ * Con el fondo afuera no hay conflicto que resolver: cada llamador pone una sola
+ * tinta. `tests/sistema-visual.test.ts` prohíbe que vuelvan a convivir dos.
+ *
+ * `text-papel` da 6,33:1 sobre `acento` y 6,34:1 sobre `super` — el sistema lo
+ * midió y da cómodo incluso para las versalitas de 11px que van adentro.
  */
 export const claseBloqueFecha =
-  'flex min-w-14 flex-col items-center justify-center bg-acento px-2 py-1.5 text-papel';
+  'flex min-w-14 flex-col items-center justify-center px-2 py-1.5 text-papel';
 
 /**
  * Un campo: **la etiqueta apoyada sobre una regla de 1px, sin caja**.

@@ -23,7 +23,7 @@
  * del DOM por `id` cuando toma el control y React no puede ser dueña de un nodo
  * que otro código elimina.
  *
- * Así que se alinea desde afuera con `lg:ps-riel`, una utilidad que sale del
+ * Así que se alinea desde afuera con `lg:sangria-de-riel`, una utilidad que sale del
  * **mismo** token `--spacing-riel` que la columna del riel. Escrito como un
  * número a mano en los dos lados, el día que el riel cambie de ancho esta lista
  * queda corrida — y solo se ve mientras el JavaScript no cargó, o para siempre si
@@ -119,7 +119,7 @@ const descripcion =
         La lista del build. La island la saca del DOM cuando tiene el índice; si
         el fetch falla, se queda — nunca una pantalla vacía (§6.3).
       */}
-      <div id={ID_LISTADO} class="mt-8 lg:ps-riel">
+      <div id={ID_LISTADO} class="mt-8 lg:sangria-de-riel">
         {cuantas === 0 ? (
           <p class="body-md regla-gruesa-arriba px-4 py-12 text-center text-super">
             Todavía no hay nada publicado con fecha próxima. Volvé en unos días.

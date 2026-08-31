@@ -459,7 +459,19 @@ html {
  * Sale del **mismo** token que el ancho del riel más el medianil, así que no
  * puede quedar corrido: es la clase de divergencia de B-88 aplicada a la
  * maqueta.
+ *
+ * ── Por qué NO se llama `ps-riel` ─────────────────────────────────────────
+ * Porque `--spacing-riel` está en el espacio de nombres `--spacing-*`, y eso hace
+ * que Tailwind **ya genere** un `ps-riel` propio con `padding-inline-start:
+ * var(--spacing-riel)`. Con los dos, la regla sale con las dos declaraciones y
+ * gana la que Tailwind emite última: la suya, sin el medianil.
+ *
+ * O sea: la lista quedaba corrida 40px, **el build en verde y sin una sola
+ * advertencia**. Y solo se ve antes de que hidrate la island, o para siempre si
+ * el JavaScript no carga — los dos momentos que nadie mira. Lo encontró leer el
+ * CSS construido, no un test. `tests/sistema-visual.test.ts` prohíbe que una
+ * utilidad propia vuelva a llamarse como una que Tailwind genera sola.
  */
-@utility ps-riel {
+@utility sangria-de-riel {
   padding-inline-start: calc(var(--spacing-riel) + 2.5rem);
 }

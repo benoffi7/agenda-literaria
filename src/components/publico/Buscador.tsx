@@ -51,7 +51,7 @@
  * ── Por qué la raíz de la island es la grilla ─────────────────────────────
  * Porque la lista que imprime el build vive **fuera** de este componente —la
  * island la borra del DOM por `id` cuando toma el control— así que no puede ser
- * hija de esta grilla. Se alinea desde afuera con `lg:ps-riel`, que sale del
+ * hija de esta grilla. Se alinea desde afuera con `lg:sangria-de-riel`, que sale del
  * **mismo** token `--spacing-riel` que la columna de acá: escrito dos veces, el
  * día que el riel cambie de ancho la lista del build queda corrida, y solo
  * mientras el JavaScript no cargó — que es justo cuando nadie mira.

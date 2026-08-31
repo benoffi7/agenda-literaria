@@ -376,6 +376,154 @@ describe('las tintas no se atenúan — B-260', () => {
   });
 });
 
+describe('ningún elemento lleva dos tintas del mismo tipo — B-260', () => {
+  it('una clase compartida y su llamador no aportan dos fondos al mismo elemento', () => {
+    /*
+     * **Lo encontró mirar el HTML construido, no un test.** El bloque de fecha de
+     * un encuentro cancelado salía con `bg-acento` (de `claseBloqueFecha`) y
+     * `bg-super` (del llamador) en el mismo elemento.
+     *
+     * Dos utilidades de `background-color` en un elemento **no** las resuelve el
+     * orden en que están escritas en el atributo: las resuelve el orden en que
+     * Tailwind las emitió en la hoja, que nadie controla desde acá. Hoy ganaba la
+     * correcta por casualidad —`.bg-super` sale después de `.bg-acento` en el CSS
+     * generado—; un cambio de versión de Tailwind, o una clase nueva que corra ese
+     * orden, y el bloque de un encuentro cancelado se pinta terracota —la tinta de
+     * «esto todavía se puede hacer»— **sin que falle nada**.
+     *
+     * ── Por qué el chequeo tiene que expandir, y no barrer texto ──────────
+     * El conflicto **vive en dos archivos**: la tinta la pone `estilos.ts` y la
+     * otra la pone el componente. Un barrido por línea no puede verlo. Así que
+     * acá se lee el valor real de cada `clase*` de `estilos.ts` y se lo sustituye
+     * en cada sitio que la compone, que es lo que el navegador termina viendo.
+     *
+     * Los ternarios se colapsan a una rama antes de contar: `cond ? 'bg-super' :
+     * 'bg-acento'` aporta **una** tinta, no dos, y contarlas como conflicto sería
+     * un falso positivo que termina apagando el chequeo.
+     *
+     * MUTACIÓN PROBADA: devolver `bg-acento` adentro de `claseBloqueFecha`
+     * —dejando el `bg-super` de los llamadores— hace fallar este caso.
+     */
+    const tokens = 'papel|crema|hondo|tinta|suave|acento|azul|super|borde|regla';
+
+    /** El valor real de cada `export const clase… = '…'` de `estilos.ts`. */
+    const estilos = readFileSync(raiz('src/components/sitio/estilos.ts'), 'utf8');
+    const valores = new Map<string, string>();
+    for (const m of estilos.matchAll(/export const (clase\w+|foco\w*)\s*=\s*[`']([\s\S]*?)[`'];/g)) {
+      valores.set(m[1]!, m[2]!);
+    }
+    // Control positivo: sin esto, un cambio de formato en `estilos.ts` dejaría el
+    // mapa vacío y la expansión de abajo no expandiría nada.
+    expect(valores.size).toBeGreaterThan(5);
+    expect(valores.get('claseBloqueFecha')).toBeDefined();
+
+    /** Colapsa `a ? 'x' : 'y'` a `'x'`: son ramas, no dos clases a la vez. */
+    const sinRamas = (t: string): string =>
+      t.replace(/\?\s*'([^']*)'\s*:\s*'([^']*)'/g, "'$1'");
+
+    /** Sustituye cada `${claseX}` por su valor, hasta dos niveles. */
+    const expandir = (t: string): string => {
+      let out = t;
+      for (let i = 0; i < 2; i++) {
+        out = out.replace(/\$\{(\w+)\}/g, (todo, n) => valores.get(n) ?? todo);
+      }
+      return out;
+    };
+
+    const conflictos: string[] = [];
+    for (const { archivo, codigo } of fuentes()) {
+      /*
+       * Cada sitio donde se compone una clase: un template literal, o el array de
+       * un `class:list`. Los dos terminan concatenados en el mismo atributo.
+       */
+      const sitios = [
+        ...[...codigo.matchAll(/`([^`]*)`/g)].map((m) => m[1]!),
+        ...[...codigo.matchAll(/class:list=\{\[([\s\S]*?)\]\}/g)].map((m) => m[1]!),
+        ...[...codigo.matchAll(/class(?:Name)?="([^"]*)"/g)].map((m) => m[1]!),
+      ];
+
+      for (const sitio of sitios) {
+        const texto = expandir(sinRamas(sitio));
+        for (const prefijo of ['bg', 'text']) {
+          const usadas = new Set(
+            [...texto.matchAll(new RegExp(`(?<![-\\w:])${prefijo}-(${tokens})(?![-\\w/])`, 'g'))].map(
+              (m) => m[1]!,
+            ),
+          );
+          if (usadas.size > 1) {
+            conflictos.push(`${archivo} — ${prefijo}: ${[...usadas].join(' + ')}`);
+          }
+        }
+      }
+    }
+
+    expect(
+      conflictos,
+      'dos tintas del mismo tipo en un elemento: cuál gana lo decide el orden de ' +
+        'emisión de Tailwind, no el markup. Que la clase compartida traiga la ' +
+        'forma y el llamador ponga la tinta, una sola.',
+    ).toEqual([]);
+  });
+});
+
+describe('ninguna utilidad propia le pisa el nombre a una de Tailwind — B-260', () => {
+  it('un `@utility` no puede llamarse `<prefijo>-<token>` de un espacio de nombres del tema', () => {
+    /*
+     * **Lo encontró leer el CSS construido, no un test.** La utilidad se llamaba
+     * `ps-riel` y el tema declara `--spacing-riel`, así que Tailwind **ya generaba
+     * un `ps-riel` propio** (`padding-inline-start: var(--spacing-riel)`). Con los
+     * dos, la regla salía con las dos declaraciones y ganaba la que Tailwind emite
+     * última — la suya, sin el medianil de 40px que la nuestra sumaba.
+     *
+     * Resultado: la lista que imprime el build quedaba corrida 40px respecto de la
+     * columna de contenido, **con el build en verde y sin una advertencia**. Y solo
+     * se ve antes de que hidrate la island, o para siempre si el JavaScript no
+     * carga: los dos momentos que nadie mira.
+     *
+     * La regla general: si el tema declara `--<espacio>-<nombre>`, Tailwind genera
+     * utilidades `<prefijo>-<nombre>` para cada prefijo de ese espacio. Una
+     * utilidad propia con ese nombre no gana ni pierde de forma predecible: depende
+     * del orden de emisión.
+     *
+     * MUTACIÓN PROBADA: renombrar `sangria-de-riel` de vuelta a `ps-riel` hace
+     * fallar este caso.
+     */
+    const propias = [...css.matchAll(/@utility\s+([\w-]+)\s*\{/g)].map((m) => m[1]!);
+    expect(propias.length, 'no se encontró ninguna @utility').toBeGreaterThan(8);
+
+    /** Los nombres que el tema declara por espacio, y los prefijos que generan. */
+    const espacios: Record<string, string[]> = {
+      spacing: ['p', 'px', 'py', 'ps', 'pe', 'pt', 'pr', 'pb', 'pl',
+                'm', 'mx', 'my', 'ms', 'me', 'mt', 'mr', 'mb', 'ml',
+                'w', 'h', 'size', 'min-w', 'min-h', 'max-w', 'max-h',
+                'gap', 'gap-x', 'gap-y', 'top', 'right', 'bottom', 'left',
+                'inset', 'start', 'end', 'space-x', 'space-y', 'basis', 'translate-x', 'translate-y'],
+      color: ['text', 'bg', 'border', 'outline', 'ring', 'fill', 'stroke', 'decoration', 'accent', 'caret', 'divide', 'from', 'via', 'to'],
+      font: ['font'],
+      aspect: ['aspect'],
+    };
+
+    const choques: string[] = [];
+    for (const [espacio, prefijos] of Object.entries(espacios)) {
+      const nombres = [...css.matchAll(new RegExp(`--${espacio}-([\\w-]+):`, 'g'))].map((m) => m[1]!);
+      for (const nombre of nombres) {
+        for (const prefijo of prefijos) {
+          if (propias.includes(`${prefijo}-${nombre}`)) {
+            choques.push(`@utility ${prefijo}-${nombre} choca con la que genera --${espacio}-${nombre}`);
+          }
+        }
+      }
+    }
+
+    expect(
+      choques,
+      'Tailwind genera esa utilidad sola a partir del token del tema, así que hay ' +
+        'dos reglas con el mismo nombre y gana la que se emita última — no la que ' +
+        'está escrita acá. Renombrá la propia.',
+    ).toEqual([]);
+  });
+});
+
 // ───────────────────────────────────────────────────────────────────────────
 // 6 · La grilla de base de 4px
 // ───────────────────────────────────────────────────────────────────────────

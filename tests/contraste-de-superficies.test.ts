@@ -116,17 +116,25 @@ const atenuaciones = (): { donde: string; clase: string; opacidad: number }[] =>
 };
 
 describe('el contraste del sitio sobre las tres superficies — B-256', () => {
-  it('el barrido encuentra markup, superficies y atenuaciones de verdad', () => {
+  it('el barrido encuentra markup y las tres superficies de verdad', () => {
     /*
      * Control positivo. Los asertos de abajo afirman que una lista está vacía, y
      * una lista vacía es también lo que devuelve un barrido que no leyó nada.
+     *
+     * **Ya no se piden atenuaciones** — B-260. Hasta el rediseño este control
+     * exigía más de veinte `text-tinta/NN`, y era correcto mientras el sitio
+     * atenuaba. El sistema visual es a tintas planas: hay **cero** a propósito, y
+     * los tintes de acento como fondo (`bg-acento/10`) se fueron con ellas. Lo que
+     * este archivo mide ahora son las **tintas con nombre** sobre cada superficie,
+     * que es el caso de abajo, y para eso el control que corresponde es que las
+     * tres superficies existan.
      */
     expect(archivosDelSitio().length).toBeGreaterThan(3);
-    expect(atenuaciones().length).toBeGreaterThan(20);
-    // Los tres tokens más al menos un tinte de acento: si el markup dejara de
-    // usarlos, este chequeo volvería a ser el de una sola superficie sin decirlo.
-    expect(superficies().length).toBeGreaterThan(3);
-    expect(tintesDeAcento().length).toBeGreaterThan(0);
+    // Los tres tokens de superficie: si el markup dejara de usarlos, este chequeo
+    // volvería a ser el de una sola superficie sin decirlo.
+    expect(superficies().length).toBeGreaterThanOrEqual(3);
+    // Y no queda ninguna atenuación, que es el estado que el sistema pide.
+    expect(atenuaciones()).toEqual([]);
   });
 
   it('la más oscura de las superficies es más oscura que el papel', () => {
