@@ -93,13 +93,18 @@ export function PortadaDeTarjeta({
           className="size-full object-cover"
         />
       ) : (
+        /*
+          El arte se apoya **abajo** (`justify-end`), no repartido: la píldora del
+          tipo flota arriba a la izquierda y el aire de arriba es el margen del
+          afiche. Repartir con `justify-between` obligaba a un `<span>` vacío para
+          reservarle lugar a la píldora, que es maqueta de más para el mismo
+          resultado.
+        */
         <div
           aria-hidden="true"
-          className="flex size-full flex-col justify-between gap-2 p-4"
+          className="flex size-full flex-col justify-end gap-3 p-4"
           style={{ background: color }}
         >
-          {/* Un renglón vacío arriba: la píldora del tipo se apoya ahí. */}
-          <span className="block h-3" />
           <p className={`min-w-0 font-serif font-semibold text-papel ${CUERPO[escalaDePortada(titulo)]}`}>
             {titulo}
           </p>

@@ -455,6 +455,29 @@ describe('el motivo de renglones de la portada', () => {
     }
   });
 
+  it('los renglones no salen todos iguales para ningún tipo — B-248', () => {
+    /*
+     * **El aserto que el test original no tenía, y que dejó pasar el bug.** La
+     * primera versión hacía `(semilla * (i + 7)) % 50`: con un tono múltiplo de
+     * 50 —«club de lectura» es 250— el resto daba cero para todos los renglones y
+     * el motivo salía con tres líneas idénticas. El último seguía siendo el más
+     * corto, así que el chequeo de arriba pasaba: lo encontró mirar el HTML del
+     * build.
+     *
+     * La propiedad que faltaba: entre los renglones largos tiene que haber más de
+     * un ancho. Tres barras iguales son un gráfico de datos, no un párrafo.
+     *
+     * MUTACIÓN PROBADA: volver a `(semilla * (i + 7)) % 50` hace fallar esto para
+     * «club de lectura» y «feria», y ninguno de los otros casos.
+     */
+    const chatos: string[] = [];
+    for (const s of slugs) {
+      const largos = renglonesDePortada(s).slice(0, -1);
+      if (new Set(largos).size === 1) chatos.push(`${s}: ${largos.join(', ')}`);
+    }
+    expect(chatos, 'estos tipos dibujan un gráfico de barras, no un párrafo').toEqual([]);
+  });
+
   it('un tipo que nadie escribió todavía igual tiene motivo', () => {
     // `tipo` es taxonomía autogestionada (§4): el octavo tipo lo crea quien carga
     // desde «Otro», y su portada no puede salir en blanco.

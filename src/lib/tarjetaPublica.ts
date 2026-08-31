@@ -277,12 +277,22 @@ export const RENGLONES_MIN = 3;
  *
  * La semilla es `tonoDeTipo`, así que dos tipos con el mismo color tienen el mismo
  * motivo —y eso es correcto: el motivo acompaña al color, no lo desmiente.
+ *
+ * **El módulo es primo y el índice entra sumando, no multiplicando** — B-248. La
+ * primera versión hacía `(semilla * (i + 7)) % 50`, y como los tonos asignados son
+ * redondos, un tono múltiplo de 50 daba resto cero para *todos* los renglones:
+ * «club de lectura» salía con tres líneas exactamente iguales, que es justo el
+ * gráfico de barras que el último renglón corto existe para evitar. Con 47 —primo,
+ * así que ningún tono lo divide— y el índice sumando un paso que tampoco lo
+ * divide, no hay tono que colapse el motivo. Lo encontró mirar el HTML del build,
+ * no un test: el test miraba el último renglón y los tres iguales le pasaban por
+ * al lado.
  */
 export const renglonesDePortada = (slugTipo: string): number[] => {
   const semilla = tonoDeTipo(slugTipo);
   const cantidad = RENGLONES_MIN + (semilla % 3);
   return Array.from({ length: cantidad }, (_, i) => {
-    const largo = 46 + ((semilla * (i + 7)) % 50);
+    const largo = 46 + ((semilla * 7 + i * 29) % 47);
     return i === cantidad - 1 ? Math.round(largo * 0.42) : largo;
   });
 };
