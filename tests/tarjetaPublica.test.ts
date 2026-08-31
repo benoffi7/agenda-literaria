@@ -17,7 +17,6 @@ import {
   bloqueDeFecha,
   avisoDeTarjeta,
   cicloDeTarjeta,
-  cuandoDeTarjeta,
   enCursoDeTarjeta,
   esSinCosto,
   formasDeCursar,
@@ -76,31 +75,6 @@ describe('el arancel de la tarjeta', () => {
 
 // ───────────────────────────────────────────────────────────────────────────
 // 2 · Cuándo
-// ───────────────────────────────────────────────────────────────────────────
-
-describe('la línea de fecha', () => {
-  it('dice el día y la hora de la próxima sesión, en la zona del proyecto', () => {
-    const e = entradaDePrueba({ fechas: ['2026-09-24T22:00:00Z'] });
-    const cuando = cuandoDeTarjeta(estadoDe(e, AHORA));
-    // 22:00 UTC son las 19:00 en Buenos Aires: la trampa 1 del lado del frontend.
-    expect(cuando.texto).toBe('jue 24 sep · 19:00');
-    expect(cuando.iso).toBe('2026-09-24T22:00:00.000Z');
-    expect(cuando.paso).toBe(false);
-  });
-
-  it('sin nada por venir dice «Ya pasó» y no marca ninguna fecha', () => {
-    const e = entradaDePrueba({ fechas: ['2026-08-01T22:00:00Z'] });
-    const cuando = cuandoDeTarjeta(estadoDe(e, AHORA));
-    expect(cuando.texto).toBe('Ya pasó');
-    // Sin `iso` el componente no emite un `<time datetime>` con una fecha que ya
-    // no es la de la actividad.
-    expect(cuando.iso).toBeNull();
-    expect(cuando.paso).toBe(true);
-  });
-});
-
-// ───────────────────────────────────────────────────────────────────────────
-// 3 · Dónde y cómo se cursa — se lee de `modalidades[]`, no del escalar
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('las formas de cursar', () => {

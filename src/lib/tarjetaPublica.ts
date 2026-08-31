@@ -16,7 +16,7 @@
  * Lo que el componente **sí** sigue leyendo del índice son los cuatro campos sobre
  * los que no hay nada que decidir —`slug`, `tipo`, `titulo`, `destacado`—: un `href`, un color, un texto y dos banderas. No es una promesa de
  * docblock, es una lista cerrada que verifica
- * `tests/tarjeta-del-listado.test.ts`; sin ella nada impediría imprimir
+ * `tests/listado-del-sitio.test.ts`; sin ella nada impediría imprimir
  * `searchText` —la descripción entera, normalizada— en una tarjeta. Es la forma de
  * D-140 aplicada a la otra mitad de la salida 1, donde el tipo no puede darla.
  *
@@ -30,7 +30,7 @@
  *
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
-import { diaYMes, fechaCorta, hora, partesDeFecha } from '@/lib/fechasPublicas';
+import { diaYMes, hora, partesDeFecha } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
@@ -67,33 +67,8 @@ export const arancelDeTarjeta = (
 });
 
 // ─────────────────────────────────────────────────────────────────
-// Cuándo
+// Cuándo — el bloque de fecha
 // ─────────────────────────────────────────────────────────────────
-
-export interface CuandoDeTarjeta {
-  /** `mié 24 sep · 19:00`, o `Ya pasó`. */
-  texto: string;
-  /** El ISO para el atributo `datetime`, o `null` si no hay fecha que marcar. */
-  iso: string | null;
-  paso: boolean;
-}
-
-/**
- * La línea de fecha. Es el primer dato de la tarjeta porque es el que decide
- * (§4.2 del diseño).
- *
- * Sale de `estado.proxima`, que ya resolvió las tres decisiones sutiles —el fin y
- * no el inicio, los cancelados, el fallback— en `proximaVentana`. Acá no se
- * recalcula nada: solo se escribe.
- */
-export const cuandoDeTarjeta = (estado: EstadoDeEntrada): CuandoDeTarjeta =>
-  estado.proxima
-    ? {
-        texto: `${fechaCorta(estado.proxima)} · ${hora(estado.proxima)}`,
-        iso: estado.proxima.toISOString(),
-        paso: false,
-      }
-    : { texto: 'Ya pasó', iso: null, paso: true };
 
 /**
  * El **bloque de fecha**: el rectángulo de tinta plena con el texto calado que es

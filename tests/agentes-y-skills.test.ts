@@ -284,4 +284,37 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
       .filter((archivo) => !existsSync(fileURLToPath(new URL(archivo, raiz))));
     expect(inexistentes).toEqual([]);
   });
+
+  it('y también los tests que la tabla nombra — B-260', () => {
+    /*
+     * **La otra columna, que no se miraba.** El chequeo de arriba verifica los
+     * productores (`src/`, `functions/`) y dejaba pasar los **tests**: B-260
+     * renombró `tests/tarjeta-del-listado.test.ts` a
+     * `tests/listado-del-sitio.test.ts` y dejó **ocho** referencias muertas
+     * repartidas entre `docs/` y `.claude/` — el índice apuntando a un archivo que
+     * no existe.
+     *
+     * No se perdió cobertura: el test nuevo conserva la garantía. Se perdió **el
+     * índice**, que es exactamente el modo de falla que este archivo existe para
+     * frenar — quien busque «quién verifica esto» encuentra un archivo que no está
+     * y concluye que no lo verifica nadie. Lo encontró el `auditor-privacidad`.
+     *
+     * MUTACIÓN PROBADA: volver a poner `tests/tarjeta-del-listado.test.ts` en la
+     * ficha hace fallar este caso.
+     */
+    const nombrados = [...fuente(FICHA).matchAll(/`(tests\/[\w.-]+\.ts)`/g)].map((m) => m[1]!);
+    // Control positivo: la ficha nombra tests de verdad, y si el regex dejara de
+    // encontrarlos la lista de inexistentes saldría vacía sin haber mirado nada.
+    expect(nombrados.length).toBeGreaterThan(5);
+
+    const inexistentes = [...new Set(nombrados)].filter(
+      (t) => !existsSync(fileURLToPath(new URL(t, raiz))),
+    );
+    expect(
+      inexistentes,
+      'la ficha nombra tests que no existen: el índice apunta a un archivo ' +
+        'borrado o renombrado, y quien lo consulte va a concluir que esa salida ' +
+        'no la verifica nadie.',
+    ).toEqual([]);
+  });
 });

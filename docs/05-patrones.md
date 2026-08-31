@@ -480,18 +480,68 @@ que la plantilla ya tenía.
 
 ## Estilo de UI
 
-Tailwind 4 con tokens en `src/styles/global.css`. Paleta de papel y tinta
-(`--color-papel`, `--color-tinta`, `--color-borde`, `--color-acento`) acorde al
-dominio literario. Serif (Lora) para títulos, sans (Inter) para el resto.
+Tailwind 4 con tokens en `src/styles/global.css`.
 
-Las clases de controles están centralizadas en
+**El sitio público sigue el sistema visual de
+[`docs/referencias/sistema-visual.md`](referencias/sistema-visual.md)** —
+«brutalismo editorial», aprobado por el dueño y bajado en
+[D-146](06-decisiones.md). Tres reglas que valen para todo lo que se escriba, y
+que tienen test (`tests/sistema-visual.test.ts`):
+
+| Regla | Qué significa al escribir |
+|---|---|
+| **Radio 0** | ningún `rounded-*`. Botones, campos y contenedores van con esquina viva |
+| **Estrictamente plano** | ningún `shadow-*`, ningún `blur`, ningún degradado. Lo que separa una superficie de otra es una **regla** o una **capa tonal** |
+| **Tintas con nombre, no opacidades** | nada de `text-tinta/70`. Hay una tinta para cada trabajo y cada una tiene su contraste medido |
+
+Las tintas son `papel` / `crema` / `hondo` (superficies), `tinta` y `suave`
+(texto), y las tres del sistema: `acento` (terracota, la principal), `azul` (lo
+funcional y las categorías) y `super` (la superposición: cuerpo denso, reglas, y
+**el hover de toda tinta plena**). `borde` y `regla` son **para reglas, nunca para
+texto** — dan 4,26:1 y 1,62:1, y el piso es 4,5.
+
+Tres familias: **Bodoni Moda** (`font-display`, el mes y la marca), **Archivo
+Narrow** (`font-titulo`, títulos y versalitas) y **Public Sans** (`font-sans`, el
+cuerpo). La escala está en `global.css` como utilidades —`display-lg`,
+`headline-md`, `label-caps`, `body-md`…— y **se usan esas, no tamaños sueltos**.
+
+> **`font-serif` no existe más.** El token se borró, pero Tailwind trae el suyo
+> (`ui-serif, Georgia`): un `font-serif` que sobreviva **no falla y pinta
+> Georgia**. Está prohibido por test.
+
+El espaciado se apoya en la **grilla de base de 4px**. La escala de Tailwind ya es
+de 4px por unidad, así que `p-4` y `gap-2` caen solos; lo que no entra son los
+valores arbitrarios (`p-[13px]`).
+
+Las clases compartidas del **sitio público** están en
+[`components/sitio/estilos.ts`](../src/components/sitio/estilos.ts): `foco`,
+`claseEnlace`, `claseBotonPrimario`, `claseBloque`, `claseRotulo`,
+`claseBloqueFecha`… **No escribir clases de botón ni el anillo de foco sueltos.**
+
+Las del **panel** están en
 [`campos/Campo.tsx`](../src/components/admin/campos/Campo.tsx): `claseInput`,
 `claseBotonPrimario`, `claseBotonSecundario`, `claseBotonTinta`,
-`claseBotonFila`, `claseBotonMenu`. **No escribir clases de botón sueltas** — si
-hace falta una variante, agregarla ahí.
+`claseBotonFila`, `claseBotonMenu`. El panel es una herramienta interna y **no
+sigue el sistema visual del sitio**: tiene su propio criterio y su propio
+centralizador.
 
 `--spacing-touch` (44px) es el mínimo de un blanco táctil y se aplica con
 `min-h-touch`.
+
+### Dos trampas de Tailwind que este repo ya pagó
+
+Las dos las encontró **mirar el HTML y el CSS construidos**, no un test, y las dos
+dejan el build en verde:
+
+1. **Dos utilidades del mismo tipo en un elemento no las resuelve el orden del
+   atributo**, sino el orden en que Tailwind las emitió en la hoja. Una clase
+   compartida con `bg-acento` adentro más un `bg-super` del llamador es una
+   apuesta. La clase compartida trae **la forma**; la tinta la pone quien la usa,
+   una sola.
+2. **Una utilidad propia (`@utility`) no puede llamarse como una que Tailwind
+   genera desde un token del tema.** `--spacing-riel` hace que exista un `ps-riel`
+   generado; declarar otro `ps-riel` propio produce dos declaraciones y gana la
+   que se emita última.
 
 ## Mobile primero en los layouts
 

@@ -524,6 +524,35 @@ describe('la fila no lee de la entrada más de lo que necesita', () => {
     ).toEqual([]);
   });
 
+  it('y no se puede esquivar la lista desestructurando la entrada', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`.** El aserto de arriba busca
+     * `entrada.<campo>` sobre el fuente, y eso deja dos puertas abiertas:
+     * `const { searchText } = entrada` y `const e = entrada` no matchean el
+     * patrón, así que la lista blanca se saltea sin tocarla.
+     *
+     * Importa más que antes: con D-140 la página de detalle no puede publicar de
+     * más porque **recibe un tipo recortado**, pero la fila recibe la
+     * `EntradaDeIndice` entera. Acá la garantía no la da el tipo — la da esta
+     * lista, y una lista que se puede esquivar no es una garantía.
+     *
+     * MUTACIÓN PROBADA: agregar `const { searchText } = entrada;` al cuerpo del
+     * componente hace fallar este caso, y **no** el de arriba.
+     */
+    const src = sinComentarios(
+      readFileSync(raiz('src/components/publico/FilaDeActividad.tsx'), 'utf8'),
+    );
+    expect(
+      src,
+      'desestructurar la entrada esquiva la lista blanca: leé `entrada.<campo>` ' +
+        'para que el barrido lo vea, o pasá el dato por `lib/tarjetaPublica.ts`.',
+    ).not.toMatch(/\}\s*=\s*entrada\b/);
+    expect(
+      src,
+      'aliasar la entrada esquiva la lista blanca por el mismo motivo.',
+    ).not.toMatch(/=\s*entrada\s*[;,)]/);
+  });
+
   it('y ningún otro componente del listado abre la entrada', () => {
     // El resto recibe la entrada y la pasa entera a `FilaDeActividad`, o recibe
     // strings. Que uno empiece a leerle campos es cómo la decisión se escapa del

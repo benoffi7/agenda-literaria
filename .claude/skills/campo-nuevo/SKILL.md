@@ -101,7 +101,7 @@ condicionado por un flag, el flag manda y sin dato no se inventa el campo (D-15)
 |---|---|
 | la salida 1 | `src/lib/toPublic.ts` — qué *puede* ser público |
 | …y además lo necesita el **listado** (filtrar, ordenar, pintar la tarjeta) | `src/lib/eventsJson.ts` — el índice recorta más que `toPublic` a propósito |
-| …y la **tarjeta** lo tiene que decir | `src/lib/tarjetaPublica.ts` — que esté en el índice no lo pone en la tarjeta. Ahí se decide la frase, y ahí se testea; el componente solo acomoda, y qué campos de la entrada puede tocar directo es una lista cerrada en `tests/tarjeta-del-listado.test.ts` |
+| …y la **tarjeta** lo tiene que decir | `src/lib/tarjetaPublica.ts` — que esté en el índice no lo pone en la tarjeta. Ahí se decide la frase, y ahí se testea; el componente solo acomoda, y qué campos de la entrada puede tocar directo es una lista cerrada en `tests/listado-del-sitio.test.ts` |
 | la salida 6 | `src/lib/detallePublico.ts` — la página de detalle **no ve el documento**, solo este view-model (D-140), así que un campo que no se agregue acá no aparece aunque esté en `toPublic` |
 | la salida 5 | `src/lib/textoRedes.ts` — el `Pick` de `ActividadParaRedes` |
 

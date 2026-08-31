@@ -3936,7 +3936,7 @@ text-acento`, que sobre la superficie `hondo` da **4,38:1** contra un piso de 4,
 se ve perfecto, que es el modo de falla de B-235 otra vez—. Ahora va lleno
 (`bg-acento text-papel`, 5,59:1), que además es cómo se ve un control elegido en una
 plataforma y no un link subrayado. El número lo verifica
-`tests/tarjeta-del-listado.test.ts`, que es el chequeo que faltaba: el de B-235 barre
+`tests/listado-del-sitio.test.ts`, que es el chequeo que faltaba: el de B-235 barre
 `src/pages` y `src/components/sitio`, mide solo `text-tinta/NN` y solo sobre `papel`,
 y la grilla no cumple ninguna de las tres cosas.
 ---
@@ -4051,3 +4051,194 @@ la barra es un hueco— así que el test las exige de a dos.
 hoja inferior de filtros de la home— **sigue abierta**, y por el motivo que B-238 ya
 daba: es una capa modal, necesita trampa de foco, `Escape`, cierre tocando el fondo y
 `pushState`, y nada de eso lo resuelve una regla de CSS.
+## D-146 · Brutalismo editorial: la tercera dirección visual, y la que se aprobó
+
+**Contexto.** El dueño rechazó **dos** direcciones por genéricas. La segunda fue
+D-141 —«la estructura de Eventbrite con paleta propia»— y su bajada a la tarjeta
+(D-142), al detalle (D-144) y al CTA móvil (D-145). No se rechazó por estar mal
+ejecutada: se rechazó porque *la estructura de Eventbrite es la estructura de una
+plataforma*, y un sitio que se ve como una plataforma se ve como cualquier otra.
+
+La tercera dirección la generó él en Stitch y está aprobada:
+[`docs/referencias/sistema-visual.md`](referencias/sistema-visual.md) y
+[`stitch-detalle.md`](referencias/stitch-detalle.md). **Se implementa, no se
+rediseña.** Es un **programa impreso** —efímera cultural en risografía— y no una
+plataforma: densidad antes que aire, reglas visibles antes que sombras, tintas
+planas antes que degradados.
+
+Esta entrada registra qué se implementó, **qué se le corrigió a la referencia**, y
+las tres cosas que el sistema mata de la dirección anterior.
+
+### Las tres reglas que atraviesan todo
+
+| | |
+|---|---|
+| **Radio 0** | esquina viva en botones, campos y contenedores. El sistema admite 1–2px en el contenedor más externo «para imitar el redondeo de una hoja física», y **acá no hay dónde aplicarla**: el papel *es* el fondo del viewport, así que la hoja no tiene un borde exterior visible |
+| **Estrictamente plano** | ninguna sombra, ningún desenfoque, ningún degradado. La profundidad sale de **superponer tintas** |
+| **Tintas con nombre, no opacidades** | una opacidad es una trama de medio tono, que en una impresión a tintas planas no existe |
+
+La tercera es la que más lejos llega, y no es estética. `text-tinta/60` da 4,49:1
+contra un piso de 4,5 —cuatro centésimas que no se ven y se calculan— y es la
+historia entera de B-235. Con tintas con nombre **no hay nada que calcular caso por
+caso**: cada una tiene un contraste y está medido. Hoy el sitio tiene **cero**
+atenuaciones de color.
+
+### La paleta: tres tintas y dos reglas
+
+Los valores salen del documento y están en `global.css` **en OKLCH**, porque los
+chequeos de contraste parsean los tokens de ahí en vez de copiarlos — que es lo que
+hace que aclarar una tinta ponga en rojo lo que dejó de alcanzar. La conversión es
+exacta: cada token vuelve a su hex al redondear a 8 bits, y
+`tests/sistema-visual.test.ts` lo verifica **contra la tabla del propio documento**,
+así que el código y la referencia no pueden separarse en silencio.
+
+| Token | Hex | Rol | Sobre papel |
+|---|---|---|---|
+| `papel` | `#fbf9f4` | el fondo. **Nunca blanco puro** | — |
+| `crema` / `hondo` | `#f5f3ee` / `#e4e2dd` | las capas tonales que separan secciones | — |
+| `tinta` | `#1b1c19` | el texto | 16,27:1 |
+| `suave` | `#58413c` | texto secundario | 8,92:1 |
+| `acento` | `#a7341c` | **la principal**: títulos, fechas, CTA | 6,33:1 |
+| `azul` | `#4f6073` | lo funcional: categorías, rótulos | 6,14:1 |
+| `super` | `#6c575a` | la superposición: cuerpo denso, reglas, **y el hover de toda tinta plena** | 6,34:1 |
+| `borde` | `#8c716b` | **regla, nunca texto** | 4,26:1 |
+| `regla` | `#e0bfb9` | regla decorativa; no llega ni al 3:1 de un borde | 1,62:1 |
+
+**Se midió todo de nuevo, no se asumió.** Las mediciones del documento se
+reprodujeron exactamente, y además se midió lo que el documento **no** cubría: cada
+tinta sobre las **tres** superficies. Ahí aparece el número que importa —`azul` da
+6,14 sobre el papel y **4,99 sobre `hondo`**—, o sea que el margen que sobra arriba
+casi no existe abajo. Aclarar `azul` a L=0,55 lo deja en 3,74 sobre `hondo` y sigue
+dando 4,60 sobre el papel: pasaría un chequeo que solo mire el papel. Por eso
+`contraste-de-superficies.test.ts` mide contra las tres.
+
+**`--color-acento-hondo` se borró.** El sistema dice que el hover de una tinta plena
+es la de superposición, así que `super` hace ese trabajo. Una tinta menos que
+mantener.
+
+**Sobre `primary-container` y `tertiary-container`:** están medidos (4,55:1 con su
+`on-*`, `#fffcff`, y **no** con el papel, que da 4,40 y no pasa) y **no se usaron**.
+La referencia del detalle los pone en la franja de estado, la etiqueta del tipo y el
+botón; acá esos tres van con `primary`, que da **6,33:1** en vez de 4,55. El motivo
+es doble: la paleta es limitada por definición y sumar un cuarto terracota va en
+contra, y un margen de cinco centésimas sobre el piso es una deuda —cualquier
+retoque de ese tono lo tira abajo—. Es reversible en una línea si el dueño prefiere
+el tono más claro.
+
+### La tipografía: tres familias que pesan menos que las dos anteriores
+
+**Adiós a Inter y a Lora**, que son el par por defecto de todo sitio hecho con IA y
+eran la mitad de por qué esto se veía genérico.
+
+| | antes | ahora |
+|---|---|---|
+| display | Lora 500;600 — 36,9 KB | **Bodoni Moda** 800 — 14,6 KB |
+| títulos densos | (no había) | **Archivo Narrow** 400..700 — 18,3 KB |
+| cuerpo | Inter 400;500;600 — 47,2 KB | **Public Sans** 400..700 — 26,0 KB |
+| **total** | **84,2 KB** | **58,8 KB** (−30 %) |
+
+Está **medido**, no estimado: son los woff2 del subset latin que Google sirve para
+la URL exacta que emite el build. Se pasa de dos familias a tres y aun así baja,
+porque Inter y Lora se bajaban como variables completos: pedir tres pesos de Inter
+traía el rango entero.
+
+Dos decisiones de peso, las dos con número:
+
+- **El eje `opsz` de la Bodoni va fijado en 48.** Abierto cuesta 26,5 KB; fijado,
+  14,6 KB. Y 48 es el punto óptico que corresponde: la Bodoni se usa entre 26px (la
+  marca) y 72px (el mes).
+- **No se carga la cursiva de Bodoni**, aunque `stitch-detalle.md` pide la lectura
+  de un club en cursiva. Son **+17 KB** —el 29% del presupuesto— para una línea que
+  aparece solo en las páginas de club de lectura y **nunca en la home**, que es la
+  que recibe el tráfico. Va en Bodoni redonda y en terracota, que ya la separa del
+  tema. Se revierte cambiando el `href` de la hoja de fuentes en `Base.astro`.
+
+**`--font-serif` se borró y no se aliaseó**, y eso hay que saberlo: Tailwind trae el
+suyo (`ui-serif, Georgia`), así que un `font-serif` que sobreviva de la dirección
+anterior **no falla, no rompe el build y pinta Georgia** en el medio de una página
+en Bodoni. Es el modo de falla más silencioso del rediseño y por eso está prohibido
+por test.
+
+### Las tres cosas que el sistema mata de D-141
+
+**1 · La portada generada (D-142) se retira.** El listado es **puramente
+tipográfico**: filas, sin foto, sin miniatura, sin portada generada. Una miniatura
+de 64px de un rectángulo de color no dice nada y devuelve la textura de plataforma
+que el rediseño existe para sacar. `PortadaDeTarjeta.tsx` se borró.
+
+Se evaluaron las tres opciones. **Conservarla para la página de detalle** era la más
+tentadora —no se borraba trabajo, y de hecho un bloque de tinta plena con el título
+calado *es* el gesto central del sistema— y se descartó por una razón concreta: en
+el detalle la portada queda **inmediatamente encima del `h1`**, así que sería el
+título dicho dos veces, a dos cuerpos, en la misma pantalla. El detalle muestra la
+foto cuando la hay y no muestra nada cuando no la hay, que es lo que la referencia
+pide («sin foto obligatoria»).
+
+**2 · El color derivado por tipo de actividad se retira.** D-141 daba un tono por
+tipo, derivado del slug para que un tipo nuevo no cayera en un gris de descarte. El
+razonamiento era bueno y la garantía estaba bien construida —contraste probado sobre
+los 360 tonos posibles, no sobre los siete que existían—. Lo que cambió es la
+premisa: la paleta ahora es **limitada, «como una impresión a tintas planas»**, y
+siete u ocho tintas —una por categoría— es exactamente lo contrario. El sistema
+además ya le asigna un lugar a la categoría: «azul tinta — texto funcional,
+**categorías**».
+
+Así que el tipo se escribe **todo en azul tinta** y lo que distingue un taller de un
+club de lectura vuelve a ser la palabra. Se borraron `colorDeTipo`, `tonoDeTipo`,
+`TIPOS_CON_TONO` y `contrasteSobreTipo` de `identidad.ts`, y con ellos
+`escalaDePortada` y `renglonesDePortada`. **Lo que queda de D-141 es lo que valía de
+fondo**: que el nombre del sitio viva en un módulo y se interpole.
+
+**Cómo volver, si hiciera falta:** está entero en el historial
+(`git show 41057d6 -- src/lib/identidad.ts src/components/publico/PortadaDeTarjeta.tsx`).
+
+**3 · La grilla de tarjetas pasa a filas.** «Filas cronológicas en lugar de
+tarjetas, separadas por una regla fina». A igual ancho entran tres veces más
+actividades —la densidad que el sistema pide como principio— y **la página no pide
+un solo byte de imagen**, que es la mejora de rendimiento más grande del rediseño y
+salió de una decisión de diseño, no de una optimización.
+
+### Lo que se le corrigió a la referencia, y por qué
+
+| # | Qué traía | Cómo quedó |
+|---|---|---|
+| 1 | Material Symbols | **ningún icono, ninguna librería.** Un `laptop_mac` al lado de «virtual» devuelve el sitio a Google al instante. La flecha del desplegable es un triángulo de tres bordes; la X de la casilla, dos pseudo-elementos |
+| 2 | la paleta Material 3 entera | solo las tintas que el documento nombra, mapeadas a los tokens del proyecto |
+| 3 | el nombre del sitio y el mes, los dos a 72px | **gana el mes.** Si dos cosas son la más grande, ninguna lo es. La marca usa `marca` (26/32px), la misma Bodoni un escalón y medio abajo |
+| 4 | cabecera fija de 72px | **fija solo de `sm` en adelante.** En 375px, 72px permanentes son el 12% de la única pantalla donde hay que decidir si un taller sirve. No se arregla achicándola |
+| 5 | filtros como `<a href="#">` | **controles de verdad**: multi-selección, conteo por faceta y sincronización con la URL, todo conservado. Cambió la piel, no la función |
+| 6 | bordes en `pt` | **px.** `0.5pt` se redondea a 0 o a 1 según el zoom y el `devicePixelRatio`: la misma regla aparece y desaparece. `1px` se ve igual en pantalla normal y en retina, y **siempre se ve** |
+| 7 | «Privacidad», «Términos», «© 2024», «entrada libre» | **fuera.** Las dos páginas no existen; el año estaba mal **y no se reemplazó por el correcto** (nadie pidió una línea de copyright); y el arancel es taxonomía de `/opciones/*`, no un literal |
+| 8 | la fecha entera en `label-caps` (11px) | el **bloque de fecha** lleva el día en un cuerpo propio de 28px y el resto en versalitas. En el resto del sistema `label-caps` es un *rótulo*; ahí sería *contenido*, y 11px queda por debajo del `body-sm` (12px) que el propio sistema fija como piso del contenido |
+| 9 | el encuentro cancelado mostraba el tema del siguiente | cada fila usa **su** dato, y tolera que el cancelado **no tenga tema** |
+| 10 | la ficha pegada con `top-24` | `top-encabezado`, del **mismo token** que da la altura de la cabecera. Un número suelto se desincroniza y no falla nada |
+
+Las tres imágenes de relleno en `googleusercontent.com`, el `lang="en"`, el
+«Suscribirse» duplicado, las clases fantasma, las `dark:` sin paleta oscura y el
+`transition-all duration-0` no llegaron nunca al código.
+
+### Lo que la referencia resolvió bien y se conserva tal cual
+
+**El encuentro cancelado sigue visible y tachado** —baja de tinta, número y tema
+tachados, y una regla que lo cruza entero— en vez de desaparecer o pintarse de rojo
+de alarma. Es lo correcto: quien tenía anotado el miércoles 17 necesita **ver** que
+esa fecha se movió. La regla que cruza va como pseudo-elemento, o sea decoración
+pura: lo que *dice* que está cancelado es la palabra «Cancelado», que es texto.
+
+**El material distingue con link de sin link por color y peso, sin un solo icono.**
+Con link va en la tinta principal, subrayado y grueso; sin link, en gris y sin nada.
+La diferencia entre «esto lo podés leer ahora» y «esto te llega al inscribirte» se
+lee sin candaditos.
+
+### Qué NO cambió, y es deliberado
+
+- **La home imprime el listado completo en HTML desde el build** (SSG, sin JS) y la
+  island lo reemplaza al hidratar. El SEO es requisito del proyecto (§2.3).
+- **La página de detalle sigue sin una línea de JavaScript**: el único `<script>` es
+  el JSON-LD.
+- **La frontera de privacidad sigue siendo un tipo** (D-140): la plantilla recibe el
+  view-model y nada más.
+- **En el teléfono los filtros siguen siendo el disclosure de D-143**, con su tope
+  de 65svh y el foco que vuelve al abridor. Los tres argumentos de D-143 valen en la
+  pantalla chica; el riel los reemplaza **solo en escritorio**, donde hay una columna
+  entera. **B-238 sigue abierta** por el mismo motivo de siempre.

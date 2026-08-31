@@ -704,7 +704,7 @@ sigue siendo **B-238**: es una capa modal y no se construye a medias.
 `fieldset`/`legend` y navegables con las flechas (la misma aritmética de `foco.ts`
 que usa el panel), el contador de resultados en un `aria-live="polite"`, foco
 visible en todo, blancos táctiles de 44px y `prefers-reduced-motion` respetado.
-`tests/tarjeta-del-listado.test.ts` fija lo que se puede leer del markup —que ningún
+`tests/listado-del-sitio.test.ts` fija lo que se puede leer del markup —que ningún
 `div` lleve `onClick`, que nadie apague el anillo de foco, que la portada no aporte
 nombre accesible— además del contraste.
 

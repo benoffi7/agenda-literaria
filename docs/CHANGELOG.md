@@ -87,7 +87,7 @@ botón que lo abrió. **B-238** sigue abierto, con el alcance recortado a lo que
 verdad falta: la hoja modal y el CTA fijo del detalle.
 
 **Un chequeo de contraste nuevo, porque el de B-235 no llega hasta acá** —
-`tests/tarjeta-del-listado.test.ts`. Aquél barre `src/pages` y `src/components/sitio`,
+`tests/listado-del-sitio.test.ts`. Aquél barre `src/pages` y `src/components/sitio`,
 mide solo `text-tinta/NN` y solo sobre `papel`; la grilla no cumple ninguna de las
 tres: vive en `src/components/publico`, la tarjeta es `crema` y los chips son `hondo`
 —donde el mismo `/65` pasa de 5,26:1 a 5,04:1—, y la portada pinta texto encima de un

@@ -685,3 +685,53 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(texto).not.toContain('agenda-literaria.web.app');
   });
 });
+
+describe('el bloque de fecha de cada encuentro — B-260, D-146', () => {
+  /*
+   * **Lo pidió el `auditor-privacidad`.** El campo es nuevo en la salida 6 —la
+   * página de detalle indexada— y es la pieza **más visible** de cada encuentro:
+   * el rectángulo de tinta plena con el día calado.
+   *
+   * `bloque` es un objeto libre dentro del view-model, así que agregarle `hora`,
+   * `anio` o el `tema` no rompe nada y publica en la parte más grande de una
+   * página pública. Lo que se fija acá es que lleve **exactamente** las tres
+   * piezas que necesita y ninguna más.
+   */
+  it('lleva exactamente día, día de la semana y mes, y nada más', () => {
+    // MUTACIÓN PROBADA: sumarle `hora` al objeto `bloque` en `detallePublico.ts`
+    // hace fallar este caso.
+    const d = detalleDe({ fechas: ['2026-09-24T22:00:00Z'] });
+    const e = d.encuentros[0]!;
+    expect(Object.keys(e.bloque).sort()).toEqual(['dia', 'diaSemana', 'mes']);
+  });
+
+  it('sale de `inicio` y en la zona del proyecto, no en la de quien mira', () => {
+    /*
+     * Las 22:00 UTC del 24 son las 19:00 del 24 en Buenos Aires. Sin `timeZone`
+     * explícito, un build corrido en una máquina en otra zona escribiría el 25 —
+     * y quedaría **estampado en el HTML**, que es peor que un error de cliente:
+     * no se corrige solo al recargar. Es la trampa 1.
+     */
+    const d = detalleDe({ fechas: ['2026-09-24T22:00:00Z'] });
+    expect(d.encuentros[0]!.bloque).toEqual({ dia: '24', diaSemana: 'jue', mes: 'sep' });
+  });
+
+  it('sin fecha válida queda vacío, y no inventa un día', () => {
+    /*
+     * El otro modo de falla: un bloque de tinta plena con un «NaN» o un «1» de
+     * relleno adentro. Vacío se ve como lo que es —un dato que falta— y no miente.
+     *
+     * Se arma sobre la proyección pública y no con el fixture, porque el fixture
+     * construye `Timestamp`s y no puede producir una fecha rota: lo que se está
+     * probando es justamente qué hace el view-model cuando el ISO del índice no
+     * parsea.
+     */
+    const publica = toPublic(actividadDePrueba({}), 'act_1');
+    const rota = {
+      ...publica,
+      sesiones: [{ ...publica.sesiones[0]!, inicio: 'no-es-una-fecha', fin: 'no-es-una-fecha' }],
+    };
+    const d = detalleDeActividad(rota, ETIQUETAS, AHORA);
+    expect(d.encuentros[0]!.bloque).toEqual({ dia: '', diaSemana: '', mes: '' });
+  });
+});
