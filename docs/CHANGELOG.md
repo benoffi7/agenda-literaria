@@ -1,5 +1,128 @@
 # Changelog
 
+## 2026-08-31 · brutalismo editorial: el sitio público cambia de sistema visual
+
+**B-260, D-146.** La dirección de D-141 —«la estructura de Eventbrite con paleta
+propia»— quedó **completa** con B-247 y B-253, y el dueño la rechazó al verla
+terminada. Es el segundo rechazo, y el motivo no era la paleta: *la estructura de
+Eventbrite es la estructura de una plataforma*, y un sitio que se ve como una
+plataforma se ve como cualquier otra.
+
+La referencia nueva —`docs/referencias/sistema-visual.md` y `stitch-detalle.md`, un
+**programa impreso** en risografía— se aprobó **antes** de escribir una línea, y el
+contraste se midió antes de implementar. Se implementa, no se rediseña.
+
+**Tres reglas nuevas que atraviesan todo el sitio:** radio 0, estrictamente plano
+(sin sombras, sin desenfoques, sin degradados), y **tintas con nombre en vez de
+opacidades**. La tercera es la que más lejos llega y no es estética: hoy el sitio
+tiene **cero** atenuaciones de color, y eso cierra de raíz la clase de B-235 —
+`text-tinta/60` da 4,49:1 contra un piso de 4,5, cuatro centésimas que no se ven y
+se calculan. Sin opacidades no hay nada que calcular caso por caso.
+
+**Tipografía: tres familias que pesan menos que las dos anteriores.** Bodoni Moda +
+Archivo Narrow + Public Sans reemplazan a Lora + Inter, y bajan de **84,2 KB a
+58,8 KB** (−30 %). Está medido sobre los woff2 del subset latin que Google sirve
+para la URL exacta que emite el build, no estimado. Baja aun sumando una familia
+porque Inter y Lora se bajaban como variables completos. El eje óptico de la Bodoni
+va **fijado en 48**: abierto cuesta 26,5 KB en vez de 14,6 KB.
+
+> **`--font-serif` se borró y no se aliaseó.** Tailwind trae el suyo (`ui-serif,
+> Georgia`), así que un `font-serif` que sobreviva del rediseño anterior **no falla,
+> no rompe el build y pinta Georgia**. Es el modo de falla más silencioso del
+> cambio, y está prohibido por test.
+
+**El listado pasa de grilla de tarjetas a filas, sin ninguna imagen.** Se retiran
+`Tarjeta.tsx`, `PortadaDeTarjeta.tsx` y `GrupoDeChips.tsx`; los reemplazan
+`FilaDeActividad.tsx` y `EjeDeFiltro.tsx`, con el marcador de mes en Bodoni de 72px
+y los filtros en un riel izquierdo con el aspecto del índice de un libro. **La
+página no pide un solo byte de imagen** — la mejora de rendimiento más grande del
+rediseño, y salió de una decisión de diseño, no de una optimización.
+
+Con la portada generada se va también **el color derivado por tipo** de
+`identidad.ts`: la paleta es limitada por definición y siete u ocho tintas —una por
+categoría— es lo contrario. El tipo se escribe todo en azul tinta, que es lo que el
+sistema le asigna. Lo que queda de D-141 es lo que valía de fondo: que el nombre del
+sitio viva en un módulo.
+
+**En el teléfono los filtros no cambian**: sigue el disclosure de D-143 con su tope
+de 65svh y el foco que vuelve al abridor. El riel los reemplaza **solo en
+escritorio**. **B-238 sigue abierta**, con el mismo alcance.
+
+**La página de detalle se rehízo** sobre `stitch-detalle.md`: franja de estado en
+tinta plena, ficha técnica pegajosa con el CTA adentro, y los dos casos difíciles
+que la referencia resolvió bien y se conservan tal cual — el **encuentro cancelado
+sigue visible y tachado** (quien tenía anotada esa fecha necesita *ver* que se
+movió), y el **material distingue con link de sin link por color y peso, sin un solo
+icono**.
+
+**Se le corrigieron diez cosas a la referencia**, todas con motivo en D-146. Las que
+importan: ningún icono de Material Symbols, el nombre del sitio deja de competir con
+el mes por ser lo más grande, la cabecera fija **solo de `sm` en adelante** (72px
+permanentes son el 12% de la pantalla de un teléfono), bordes en px y no en pt, y
+fuera «Privacidad», «Términos», el «© 2024» —que **no** se reemplazó por el año
+correcto: nadie pidió una línea de copyright— y «entrada libre» como si fuera un
+arancel.
+
+### Dos bugs que ningún test veía, encontrados leyendo el HTML y el CSS construidos
+
+Los dos tienen la misma forma: **algo que gana por orden de emisión de CSS y no por
+lo que dice el markup.** Ninguno lo ve el compilador, el build ni una captura.
+
+**El bloque de fecha de un encuentro cancelado tenía dos fondos.** `claseBloqueFecha`
+traía `bg-acento` y el llamador le sumaba `bg-super` encima; cuál gana lo decide el
+orden en que Tailwind emitió las dos utilidades. Hoy ganaba la correcta **por
+casualidad**. Un bump de Tailwind y el encuentro cancelado se pinta terracota, que
+es la tinta de «esto todavía se puede hacer».
+
+**`ps-riel` le pisaba el nombre a una utilidad que Tailwind ya generaba sola** desde
+`--spacing-riel`, y perdía: la regla salía con las dos declaraciones y ganaba la de
+Tailwind, sin el medianil. La lista que imprime el build quedaba **corrida 40px**
+respecto de la columna de contenido — visible solo antes de que hidrate la island, o
+para siempre si el JavaScript no carga, que son los dos momentos que nadie mira.
+Pasa a llamarse `sangria-de-riel`.
+
+Las dos con guarda nueva y mutación probada.
+
+### El panel cambió de tipografía sin que nadie lo decidiera, y ahora está decidido
+
+**El único efecto de este cambio fuera del sitio público.** El panel usa
+`font-serif` en 17 lugares y **compartía Lora con el sitio**; al sacar a Lora, el
+token quedó sin definir. Ahí está la trampa: Tailwind trae su propio `font-serif`,
+así que el panel **no falló, no rompió el build y pasó a un serif de sistema** sin
+que nadie lo eligiera. Lo levantó el `auditor-documentacion` al preguntar si el
+panel compartía tipografía con el sitio.
+
+No se vuelve a bajar Lora: la hoja de fuentes es una sola y la comparten las cinco
+páginas públicas, así que 36,9 KB por los títulos de una herramienta interna que
+usan dos personas los pagaría el sitio entero. **Georgia se queda, pero declarada**
+—cero bytes, está en todas las máquinas, y es un serif de texto, que es lo que el
+panel quería de Lora—. El cuerpo del panel pasa de Inter a Public Sans por el mismo
+camino, y las dos son grotescas neutras.
+
+Lo que cambia con la declaración: deja de ser el default de Tailwind y pasa a ser
+una línea que se puede leer y cambiar. Hay guarda con mutación probada — borrar el
+token deja el panel viéndose **exactamente igual** y el test en rojo.
+
+### La red
+
+`tests/sistema-visual.test.ts`, nuevo: barre **todo** el markup del sitio y **ata
+cada token de `global.css` al hex exacto de la referencia aprobada**, en las dos
+direcciones — si alguien retoca una tinta o cambia el documento, el otro lado lo
+dice. `tests/tarjeta-del-listado.test.ts` pasa a `tests/listado-del-sitio.test.ts`,
+rehecho para la fila.
+
+**28 mutaciones probadas una por una, las 28 atrapadas.**
+
+Los cuatro hallazgos del `auditor-privacidad` entraron en el mismo cambio, y ninguno
+filtraba un dato: eran de índice y de verificación. El que más valía: **ocho
+referencias muertas** al test renombrado, repartidas entre `docs/`, `.claude/agents/`
+y `.claude/skills/`. No se había perdido cobertura, se había perdido el índice — que
+es justo el modo de falla que el índice existe para frenar. Cerrado con una guarda:
+`agentes-y-skills.test.ts` verificaba que existieran los **productores** de la tabla
+de salidas y no los **tests**; ahora verifica los dos.
+
+**1.881 tests en 83 archivos**, contados en esta corrida.
+
 ## 2026-08-31 · el sitio con identidad, integrado
 
 **Las cinco páginas comparten un lenguaje visual.** El listado con portadas y
@@ -87,7 +210,7 @@ botón que lo abrió. **B-238** sigue abierto, con el alcance recortado a lo que
 verdad falta: la hoja modal y el CTA fijo del detalle.
 
 **Un chequeo de contraste nuevo, porque el de B-235 no llega hasta acá** —
-`tests/tarjeta-del-listado.test.ts`. Aquél barre `src/pages` y `src/components/sitio`,
+`tests/listado-del-sitio.test.ts`. Aquél barre `src/pages` y `src/components/sitio`,
 mide solo `text-tinta/NN` y solo sobre `papel`; la grilla no cumple ninguna de las
 tres: vive en `src/components/publico`, la tarjeta es `crema` y los chips son `hondo`
 —donde el mismo `/65` pasa de 5,26:1 a 5,04:1—, y la portada pinta texto encima de un

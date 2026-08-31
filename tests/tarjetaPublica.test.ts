@@ -1,5 +1,5 @@
 /**
- * Lo que dice una tarjeta del listado, y cómo se dibuja su portada — B-247.
+ * Lo que dice una **fila** del listado — B-247, recortado en B-260.
  *
  * Todo lo de acá es lógica pura sobre el `events.json`: se testea sin DOM, sin
  * emulador y sin testing-library. Es exactamente el motivo de que estas
@@ -12,19 +12,15 @@
  */
 import { describe, expect, it } from 'vitest';
 import { estadoDe, mapaDeEtiquetas } from '@/lib/listadoPublico';
-import { TIPOS_CON_TONO, tonoDeTipo } from '@/lib/identidad';
 import {
-  RENGLONES_MIN,
   arancelDeTarjeta,
+  bloqueDeFecha,
   avisoDeTarjeta,
   cicloDeTarjeta,
-  cuandoDeTarjeta,
   enCursoDeTarjeta,
-  escalaDePortada,
   esSinCosto,
   formasDeCursar,
   lugarDeTarjeta,
-  renglonesDePortada,
 } from '@/lib/tarjetaPublica';
 import { MODALIDADES } from '@/types/actividad';
 import { entradaDePrueba } from './fixtures/indice';
@@ -79,31 +75,6 @@ describe('el arancel de la tarjeta', () => {
 
 // ───────────────────────────────────────────────────────────────────────────
 // 2 · Cuándo
-// ───────────────────────────────────────────────────────────────────────────
-
-describe('la línea de fecha', () => {
-  it('dice el día y la hora de la próxima sesión, en la zona del proyecto', () => {
-    const e = entradaDePrueba({ fechas: ['2026-09-24T22:00:00Z'] });
-    const cuando = cuandoDeTarjeta(estadoDe(e, AHORA));
-    // 22:00 UTC son las 19:00 en Buenos Aires: la trampa 1 del lado del frontend.
-    expect(cuando.texto).toBe('jue 24 sep · 19:00');
-    expect(cuando.iso).toBe('2026-09-24T22:00:00.000Z');
-    expect(cuando.paso).toBe(false);
-  });
-
-  it('sin nada por venir dice «Ya pasó» y no marca ninguna fecha', () => {
-    const e = entradaDePrueba({ fechas: ['2026-08-01T22:00:00Z'] });
-    const cuando = cuandoDeTarjeta(estadoDe(e, AHORA));
-    expect(cuando.texto).toBe('Ya pasó');
-    // Sin `iso` el componente no emite un `<time datetime>` con una fecha que ya
-    // no es la de la actividad.
-    expect(cuando.iso).toBeNull();
-    expect(cuando.paso).toBe(true);
-  });
-});
-
-// ───────────────────────────────────────────────────────────────────────────
-// 3 · Dónde y cómo se cursa — se lee de `modalidades[]`, no del escalar
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('las formas de cursar', () => {
@@ -372,141 +343,69 @@ describe('el aviso de inscripción', () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// 6 · La portada generada
+// 6 · El bloque de fecha — B-260
 // ───────────────────────────────────────────────────────────────────────────
 
-/**
- * Un título de exactamente `n` caracteres, en palabras de tres letras.
- *
- * El último carácter nunca es un espacio: `escalaDePortada` hace `trim()`, así que
- * un título terminado en espacio mediría uno menos y el test estaría comprobando
- * el corte de al lado.
- */
-const tituloDe = (n: number): string => {
-  const bruto = 'abc '.repeat(40).slice(0, n);
-  return bruto.endsWith(' ') ? `${bruto.slice(0, -1)}x` : bruto;
-};
-
-describe('la escala del título en la portada generada', () => {
-  it('una palabra corta va en cuerpo de sello', () => {
-    // Con el cuerpo de un título largo, «Cronopios» queda perdido en el medio del
-    // rectángulo y la portada se lee como un error de maquetación.
-    expect(escalaDePortada('Cronopios')).toBe('sello');
-    expect(escalaDePortada('  Micrófono  ')).toBe('sello');
+describe('el bloque de fecha', () => {
+  /*
+   * Es el gesto central del sistema visual y el dato más grande de la fila, así
+   * que lo que se verifica no es el formato sino **la forma**: que las tres piezas
+   * lleguen separadas y que el caso «ya pasó» no se pueda leer como si tuviera
+   * fecha.
+   */
+  it('devuelve el día, el día de la semana y el mes por separado', () => {
+    const e = entradaDePrueba({ fechas: ['2026-09-24T22:00:00.000Z'] });
+    const b = bloqueDeFecha(estadoDe(e, AHORA));
+    expect(b.paso).toBe(false);
+    if (b.paso) return;
+    // 22:00 UTC es el 24 a las 19:00 en Buenos Aires. Si el bloque leyera el
+    // reloj de quien mira en vez de la zona del proyecto, en Madrid diría 25.
+    expect(b.dia).toBe('24');
+    expect(b.diaSemana).toBe('jue');
+    expect(b.mes).toBe('sep');
+    expect(b.hora).toBe('19:00');
   });
 
-  it('una sola palabra larga NO va en sello: no entraría', () => {
-    // MUTACIÓN PROBADA: sacar la condición de largo de la rama `sello` hace que
-    // este caso devuelva 'sello'.
-    expect(escalaDePortada('Antropologismos')).toBe('grande');
-  });
-
-  it('dos palabras cortas no son un sello aunque midan poco', () => {
-    expect(escalaDePortada('Voz alta')).toBe('grande');
-  });
-
-  it('los cortes de largo están donde dicen estar', () => {
+  it('septiembre se abrevia igual que en el resto del sitio', () => {
     /*
-     * Se afirman los dos lados de cada corte. Un test de un solo lado pasa igual
-     * con el umbral movido en uno, que es la mutación más fácil de dejar sin ver.
+     * `es-AR` devuelve `sept` —el único mes de cuatro letras— y en un rectángulo
+     * de 56px eso desalinea la única fila del año que lo tenga. `fechaCorta` ya lo
+     * recortaba; esto afirma que el bloque no volvió a inventar su propia
+     * abreviatura, que es la clase de B-88.
      *
-     * MUTACIÓN PROBADA: mover `<= 26` a `<= 27` hace fallar el segundo par.
+     * MUTACIÓN PROBADA: sacar el `.replace(/\bsept\b/, 'sep')` de `partesDeFecha`
+     * hace fallar este caso y solo éste.
      */
-    expect(escalaDePortada(tituloDe(26))).toBe('grande');
-    expect(escalaDePortada(tituloDe(27))).toBe('media');
-    expect(escalaDePortada(tituloDe(64))).toBe('media');
-    expect(escalaDePortada(tituloDe(65))).toBe('chica');
+    const e = entradaDePrueba({ fechas: ['2026-09-24T22:00:00.000Z'] });
+    const b = bloqueDeFecha(estadoDe(e, AHORA));
+    if (b.paso) throw new Error('debería tener fecha');
+    expect(b.mes).toBe('sep');
+    expect(b.mes.length).toBeLessThanOrEqual(3);
   });
 
-  it('los espacios de más no cambian la escala', () => {
-    // Un título tipeado con dos espacios entre palabras mediría más y bajaría de
-    // escala por un dato que no se ve en pantalla.
-    expect(escalaDePortada('Taller   de    crónica')).toBe(escalaDePortada('Taller de crónica'));
+  it('el día de la semana viene sin el punto de la abreviatura', () => {
+    // `es-AR` devuelve `jue.`; en versalitas el punto es una mancha.
+    const e = entradaDePrueba({ fechas: ['2026-10-05T22:00:00.000Z'] });
+    const b = bloqueDeFecha(estadoDe(e, AHORA));
+    if (b.paso) throw new Error('debería tener fecha');
+    expect(b.diaSemana).not.toContain('.');
+    expect(b.mes).not.toContain('.');
   });
 
-  it('un título vacío no rompe', () => {
-    expect(escalaDePortada('')).toBe('sello');
-  });
-});
-
-describe('el motivo de renglones de la portada', () => {
-  const slugs = [...TIPOS_CON_TONO, 'microrrelato-en-voz-alta', 'zzz', 'a', 'club'];
-
-  it('es el mismo siempre para el mismo tipo', () => {
-    // Si cambiara entre renders, el HTML del build y el de la island dibujarían
-    // portadas distintas para la misma actividad y se vería como un parpadeo.
-    for (const s of slugs) expect(renglonesDePortada(s)).toEqual(renglonesDePortada(s));
-  });
-
-  it('se siembra con el tono del tipo y no con un hash nuevo', () => {
+  it('sin fecha por venir devuelve el caso «pasó», y no un día vacío', () => {
     /*
-     * Dos derivaciones de «qué le toca a este slug» se separan sin que nada falle
-     * (clase de B-88). Acá se afirma que hay una sola: dos slugs con el mismo tono
-     * tienen el mismo motivo.
-     */
-    const conMismoTono = slugs.filter((s) => tonoDeTipo(s) === tonoDeTipo('taller'));
-    for (const s of conMismoTono) {
-      expect(renglonesDePortada(s)).toEqual(renglonesDePortada('taller'));
-    }
-    // Control positivo del propio aserto: hay al menos un tipo en la lista.
-    expect(conMismoTono).toContain('taller');
-  });
-
-  it('tiene entre 3 y 5 renglones, y todos con ancho visible', () => {
-    for (const s of slugs) {
-      const r = renglonesDePortada(s);
-      expect(r.length, s).toBeGreaterThanOrEqual(RENGLONES_MIN);
-      expect(r.length, s).toBeLessThanOrEqual(RENGLONES_MIN + 2);
-      for (const ancho of r) {
-        expect(ancho, `${s}: ${ancho}%`).toBeGreaterThan(0);
-        expect(ancho, `${s}: ${ancho}%`).toBeLessThanOrEqual(100);
-      }
-    }
-  });
-
-  it('el último renglón es siempre el más corto', () => {
-    /*
-     * **Es lo que hace que se lea como un párrafo que termina** y no como un
-     * gráfico de barras: tres líneas parejas parecen datos.
+     * **El aserto que justifica el discriminante.** Con un `dia: string | null`,
+     * cada consumidor tiene que acordarse de chequearlo, y el que se olvide pinta
+     * un bloque de fecha vacío en producción — un rectángulo de tinta plena sin
+     * nada adentro, que es peor que no ponerlo.
      *
-     * MUTACIÓN PROBADA: sacar el factor del último renglón hace fallar esto para
-     * todos los tipos.
+     * MUTACIÓN PROBADA: devolver `{ paso: false, dia: '', ... }` en vez del caso
+     * `paso` deja de compilar en `FilaDeActividad`, que es el punto.
      */
-    for (const s of slugs) {
-      const r = renglonesDePortada(s);
-      const ultimo = r[r.length - 1]!;
-      for (const otro of r.slice(0, -1)) expect(ultimo, s).toBeLessThan(otro);
-    }
-  });
-
-  it('los renglones no salen todos iguales para ningún tipo — B-248', () => {
-    /*
-     * **El aserto que el test original no tenía, y que dejó pasar el bug.** La
-     * primera versión hacía `(semilla * (i + 7)) % 50`: con un tono múltiplo de
-     * 50 —«club de lectura» es 250— el resto daba cero para todos los renglones y
-     * el motivo salía con tres líneas idénticas. El último seguía siendo el más
-     * corto, así que el chequeo de arriba pasaba: lo encontró mirar el HTML del
-     * build.
-     *
-     * La propiedad que faltaba: entre los renglones largos tiene que haber más de
-     * un ancho. Tres barras iguales son un gráfico de datos, no un párrafo.
-     *
-     * MUTACIÓN PROBADA: volver a `(semilla * (i + 7)) % 50` hace fallar esto para
-     * «club de lectura» y «feria», y ninguno de los otros casos.
-     */
-    const chatos: string[] = [];
-    for (const s of slugs) {
-      const largos = renglonesDePortada(s).slice(0, -1);
-      if (new Set(largos).size === 1) chatos.push(`${s}: ${largos.join(', ')}`);
-    }
-    expect(chatos, 'estos tipos dibujan un gráfico de barras, no un párrafo').toEqual([]);
-  });
-
-  it('un tipo que nadie escribió todavía igual tiene motivo', () => {
-    // `tipo` es taxonomía autogestionada (§4): el octavo tipo lo crea quien carga
-    // desde «Otro», y su portada no puede salir en blanco.
-    expect(renglonesDePortada('feria-de-fanzines-2027').length).toBeGreaterThanOrEqual(
-      RENGLONES_MIN,
-    );
+    const e = entradaDePrueba({ fechas: ['2026-01-05T22:00:00.000Z'] });
+    const b = bloqueDeFecha(estadoDe(e, AHORA));
+    expect(b.paso).toBe(true);
+    if (!b.paso) return;
+    expect(b.texto).toBeTruthy();
   });
 });

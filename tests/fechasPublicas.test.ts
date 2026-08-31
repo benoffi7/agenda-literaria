@@ -21,6 +21,8 @@ import {
   hora,
   isoConOffset,
   nombreDeMes,
+  partesDeFecha,
+  partesDeMes,
   rangoCorto,
 } from '@/lib/fechasPublicas';
 
@@ -142,5 +144,69 @@ describe('isoConOffset — el ISO del JSON-LD (regla 1 del §5.3)', () => {
     expect(new Date(isoConOffset(MIERCOLES)).getTime()).toBe(MIERCOLES.getTime());
     const otro = new Date('2026-02-05T03:30:00Z');
     expect(new Date(isoConOffset(otro)).getTime()).toBe(otro.getTime());
+  });
+});
+
+describe('las piezas del marcador de mes y del bloque de fecha — B-260', () => {
+  /*
+   * Las dos funciones existen porque el sistema visual pinta el mes y la fecha a
+   * **dos cuerpos tipográficos distintos en el mismo elemento**, y para eso hacen
+   * falta las piezas por separado. El riesgo que cubren estos casos es el de
+   * siempre en este módulo: que alguien las derive partiendo una cadena ya
+   * formateada, que se rompe con el idioma, o sin `timeZone`, que es la trampa 1.
+   */
+  it('`partesDeMes` separa el mes del año, sin el «de» del idioma', () => {
+    // MUTACIÓN PROBADA: derivarlo con `nombreDeMes(clave).split(' de ')` da
+    // `['Septiembre', '2026']` hoy y se rompe con el primer cambio de formato.
+    expect(partesDeMes('2026-09')).toEqual({ mes: 'Septiembre', anio: '2026' });
+    expect(partesDeMes('2026-01')).toEqual({ mes: 'Enero', anio: '2026' });
+    expect(partesDeMes('2027-12')).toEqual({ mes: 'Diciembre', anio: '2027' });
+  });
+
+  it('y el mes va con mayúscula inicial, como el marcador lo pinta', () => {
+    // `es-AR` devuelve «septiembre» en minúscula. El marcador va en versalitas por
+    // CSS, pero el dato tiene que servir también fuera de ese contexto.
+    expect(partesDeMes('2026-09').mes[0]).toBe('S');
+  });
+
+  it('una clave rota no rompe la página: devuelve la clave y ningún año', () => {
+    // El listado agrupa con la clave `sin-fecha` cuando una actividad no tiene
+    // ninguna. Un `NaN` en el marcador sería un «NaN» de 72px en la home.
+    expect(partesDeMes('sin-fecha')).toEqual({ mes: 'sin-fecha', anio: '' });
+  });
+
+  it('`partesDeFecha` da las tres piezas en la zona del proyecto', () => {
+    /*
+     * **La trampa 1 del lado del frontend.** Las 22:00 UTC del 24 son las 19:00
+     * del 24 en Buenos Aires; sin `timeZone` explícito, un navegador en Madrid
+     * formatea el 25 — y el número del día es lo más grande de la fila.
+     *
+     * MUTACIÓN PROBADA: usar `d.getDate()` en vez de `formatToParts` con la zona
+     * hace fallar este caso en cualquier máquina que no esté en -03:00.
+     */
+    expect(partesDeFecha(new Date('2026-09-24T22:00:00Z'))).toEqual({
+      dia: '24',
+      diaSemana: 'jue',
+      mes: 'sep',
+    });
+  });
+
+  it('sin el punto de la abreviatura, que en versalitas es una mancha', () => {
+    const p = partesDeFecha(new Date('2026-10-05T22:00:00Z'));
+    expect(p.diaSemana).not.toContain('.');
+    expect(p.mes).not.toContain('.');
+    expect(p.diaSemana).toBe('lun');
+  });
+
+  it('y ningún mes se pasa de tres letras', () => {
+    /*
+     * El bloque de fecha mide 56px: un mes de cuatro letras («sept») desalinea la
+     * única fila del año que lo tenga. Se recorren los doce en vez de probar
+     * septiembre, que es el que hoy falla — un idioma nuevo podría traer otro.
+     */
+    for (let m = 1; m <= 12; m++) {
+      const d = new Date(Date.UTC(2026, m - 1, 15, 15));
+      expect(partesDeFecha(d).mes.length, `mes ${m}`).toBeLessThanOrEqual(3);
+    }
   });
 });

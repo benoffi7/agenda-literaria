@@ -23,21 +23,27 @@
  * permite testear que no falte una pregunta y que el glosario de tipos no se
  * quede viejo cuando el modelo suma una categoría.
  *
- * ── Lo que B-253 cambió, que es solo cómo se ve ───────────────────────────
+ * ── La forma: B-253 y después B-260 ──────────────────────────────────────
  * Veinte preguntas seguidas en una columna de texto son un documento, no una
  * página: sin superficie ni borde, la respuesta larga y la corta pesan lo mismo y
- * no hay dónde apoyar la vista. Ahora cada pregunta es una tarjeta sobre el
- * fondo, cada grupo abre con su regla acentuada, y el índice es una superficie
- * hundida — las tres con los tokens de D-141 y **ninguna sombra**.
+ * no hay dónde apoyar la vista. Cada pregunta es un bloque sobre el fondo, cada
+ * grupo abre con su regla, y el índice va sobre la capa tonal más honda.
+ *
+ * B-260 cambió **solo el lenguaje visual** (D-146): esquina viva, reglas de 2px
+ * para cortar cada grupo, y las tintas con nombre. **Ni una palabra del
+ * contenido, y ninguna de las veinte anclas** — salen de `p.id`, que sale del
+ * archivo de datos, así que un link que alguien mandó por WhatsApp hace tres
+ * meses sigue aterrizando donde aterrizaba. Lo verifica
+ * `tests/sistema-visual.test.ts` sobre el HTML construido.
  */
 import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { CIERRE_DE_AYUDA, ENTRADA_DE_AYUDA, GRUPOS_DE_AYUDA } from '@/lib/ayudaDelSitio';
 import {
+  claseBloque,
   claseEnlace,
   claseHundido,
   claseRotulo,
-  claseTarjeta,
   foco,
 } from '@/components/sitio/estilos';
 ---
@@ -48,10 +54,10 @@ import {
   descripcion="Cómo funciona la agenda: qué es cada tipo de actividad, qué quiere decir «a la gorra», cómo anotarse y cómo suscribirse al calendario."
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-    <h1 class="font-serif text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+    <h1 class="display-md text-balance text-acento">
       Ayuda
     </h1>
-    <p class="mt-4 max-w-[65ch] text-lg text-tinta/80">{ENTRADA_DE_AYUDA}</p>
+    <p class="mt-4 max-w-[65ch] body-lectura text-super">{ENTRADA_DE_AYUDA}</p>
 
     {/*
       El índice, sobre la superficie hundida: es un panel de navegación y no una
@@ -65,7 +71,7 @@ import {
           GRUPOS_DE_AYUDA.map((grupo) => (
             <li>
               <a
-                class={`flex min-h-touch items-center rounded-md border border-borde bg-papel px-3 text-sm text-tinta transition-colors hover:border-acento hover:text-acento ${foco}`}
+                class={`label-caps flex min-h-touch items-center border border-borde bg-papel px-3 text-tinta transition-colors hover:border-acento hover:text-acento ${foco}`}
                 href={`#${grupo.id}`}
               >
                 {grupo.titulo}
@@ -81,7 +87,7 @@ import {
         <section aria-labelledby={grupo.id} class="mt-14">
           <h2
             id={grupo.id}
-            class="scroll-mt-6 border-t-2 border-acento/40 pt-4 font-serif text-2xl font-semibold tracking-tight text-acento"
+            class="scroll-mt-6 regla-gruesa-arriba pt-4 headline-sm text-acento"
           >
             {grupo.titulo}
           </h2>
@@ -94,21 +100,21 @@ import {
               `scroll-mt` es para que al aterrizar el título no quede pegado al
               borde de arriba de la pantalla.
             */
-            <article class={`mt-4 p-5 sm:p-6 ${claseTarjeta}`}>
-              <h3 id={p.id} class="scroll-mt-6 font-serif text-xl font-semibold text-tinta">
+            <article class={`mt-4 p-5 sm:p-6 ${claseBloque}`}>
+              <h3 id={p.id} class="scroll-mt-6 headline-sm text-tinta">
                 {p.pregunta}
               </h3>
 
               {p.respuesta.map((parrafo) => (
-                <p class="mt-3 max-w-[65ch] text-tinta/80">{parrafo}</p>
+                <p class="body-lectura mt-3 max-w-[65ch] text-super">{parrafo}</p>
               ))}
 
               {p.glosario && (
-                <dl class="mt-5 border-s-2 border-acento/30 ps-4">
+                <dl class="mt-5 border-s-2 border-acento ps-4">
                   {p.glosario.map((termino) => (
                     <div class="mt-4 first:mt-0">
                       <dt class="font-semibold text-tinta">{termino.label}</dt>
-                      <dd class="mt-1 max-w-[65ch] text-tinta/80">{termino.que}</dd>
+                      <dd class="body-lectura mt-1 max-w-[65ch] text-super">{termino.que}</dd>
                     </div>
                   ))}
                 </dl>
@@ -131,9 +137,9 @@ import {
       ))
     }
 
-    <aside class={`mt-16 p-5 sm:p-6 ${claseTarjeta}`}>
-      <h2 class="font-serif text-xl font-semibold text-tinta">{CIERRE_DE_AYUDA.titulo}</h2>
-      <p class="mt-2 max-w-[65ch] text-tinta/80">{CIERRE_DE_AYUDA.texto}</p>
+    <aside class={`mt-16 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 class="headline-sm text-tinta">{CIERRE_DE_AYUDA.titulo}</h2>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">{CIERRE_DE_AYUDA.texto}</p>
       <p class="mt-3">
         <a class={`flex min-h-touch items-center ${claseEnlace}`} href={CIERRE_DE_AYUDA.enlace.href}>
           {CIERRE_DE_AYUDA.enlace.texto}

@@ -2,7 +2,7 @@
 import { BAJADA, NOMBRE } from '@/lib/identidad';
 import { foco, focoAmplio } from '@/components/sitio/estilos';
 /**
- * La barra de navegación del sitio público — B-229, B-253.
+ * La barra de navegación del sitio público — B-229, B-253, rehecha en B-260.
  *
  * Vive en `Base.astro` y no en cada página a propósito: es el punto donde tres
  * frentes en paralelo se pisarían, así que tiene un solo dueño.
@@ -12,19 +12,40 @@ import { foco, focoAmplio } from '@/components/sitio/estilos';
  * que marcar «Agenda», y una comparación por path no lo sabría sin una regla
  * más que se olvida de actualizar.
  *
+ * ── El encabezado del sistema, y las dos cosas que hubo que corregirle ────
+ * La referencia (`docs/referencias/stitch-home.html`) pide una cabecera **fija**
+ * con la marca a la izquierda, la navegación en versalitas a la derecha, una
+ * regla debajo y la bajada centrada. Dos correcciones, las dos con motivo:
+ *
+ * **1 · El nombre del sitio no puede ser tan grande como el mes.** En la
+ * referencia los dos van a 72px (`display-lg`) y compiten: si dos cosas son la
+ * más grande de la página, ninguna lo es. El marcador de mes es lo que
+ * estructura el listado —es *el* gesto— así que el mes se queda con
+ * `display-lg` y la marca usa `marca`, que es la misma Bodoni un escalón y medio
+ * abajo (26px en el teléfono, 32px de `sm`). Sigue siendo lo más grande del
+ * encabezado, que es lo único que necesita ser.
+ *
+ * **2 · Una cabecera fija de 72px se come el viewport en un teléfono.** El
+ * problema es real y no se arregla achicándola: en 375px la pantalla útil son
+ * ~600px, y 72px fijos son el 12% de la única pantalla donde hay que decidir si
+ * un taller sirve — más la bajada, más la regla. La solución es **fijarla solo
+ * de `sm` en adelante** (`sm:sticky sm:top-0`): en el escritorio hay alto de
+ * sobra y la navegación persistente es lo que el sistema pide; en el teléfono la
+ * cabecera se va con el scroll como cualquier contenido y la pantalla queda
+ * entera para el listado. Es el mismo criterio de «mobile primero» de
+ * `05-patrones.md`: en la pantalla chica se decide qué **no** entra.
+ *
  * ── La bajada va acá, y hay que justificarlo (B-253) ──────────────────────
  * «Agenda LEH» es una sigla, y una sigla sin desarrollar es un nombre que no se
  * puede leer en voz alta: quien entra por primera vez no tiene forma de saber qué
  * es «LEH». `BAJADA` existe exactamente para eso (D-141), así que el lugar donde
  * hace más trabajo es **el primer encuentro con el nombre**, que es esta barra.
  *
- * Y va **de `sm` en adelante**. En 375px la fila es el nombre más cuatro enlaces
- * de 44px, que ya entra ajustada; sumarle una línea de texto la parte en tres
- * renglones y empuja el contenido fuera de la pantalla en la página que recibe el
- * tráfico. En el teléfono la bajada se lee en el pie, que la tiene siempre — así
- * que la sigla nunca queda muda, solo se desarrolla más abajo. Es el mismo
- * criterio de «mobile primero» de `05-patrones.md`: en la pantalla chica se
- * decide qué **no** entra.
+ * En B-253 la bajada aparecía recién de `sm` porque competía por el ancho de la
+ * fila. El sistema la resuelve mejor: va en **su propia franja**, debajo de la
+ * regla y centrada en versalitas, así que ya no pelea con nada y puede estar en
+ * todos los tamaños. Es además la «marca de registro» que el sistema pide —una
+ * línea de imprenta que cruza la página entera.
  */
 export type Seccion = 'agenda' | 'suscribirse' | 'ayuda' | 'contacto';
 
@@ -43,47 +64,46 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
 ---
 
 {/*
-  `bg-crema` y no `bg-papel`: la barra es una superficie apoyada sobre el fondo, y
-  con el borde de abajo alcanza para separarla. **Sin sombra** (D-141) — es lo que
-  le da a una página el aire de plataforma genérica.
+  `bg-papel` y no una superficie propia: en una impresión a tintas planas la
+  cabecera **es** la parte de arriba de la hoja, no una barra apoyada encima. Lo
+  que la separa del contenido es la regla, que es la física que el sistema pide.
 
-  Tampoco es fija: el §8 del diseño reserva el único elemento fijo del sitio para
-  el CTA del detalle, y una barra pegada arriba en un teléfono se come 56px de la
-  pantalla en la que hay que decidir si un taller sirve.
+  **Sin sombra y sin radio**, que son las reglas 1 y 2 de `global.css`. Una
+  cabecera fija con sombra es exactamente el gesto de plataforma del que se viene.
 */}
-<header class="border-b border-borde bg-crema">
+<header class="regla-fina sticky-desde-sm bg-papel">
   <!-- El salto al contenido es el primer foco de la página: sin él, llegar al
        listado con teclado obliga a pasar por los cuatro enlaces en cada página. -->
   <a
     href="#contenido"
-    class="sr-only rounded-md bg-tinta px-4 py-2 text-papel focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+    class="sr-only bg-tinta px-4 py-2 text-papel focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
   >
     Saltar al contenido
   </a>
 
-  <div
-    class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 sm:py-4"
-  >
-    <a href="/" class={`group flex min-w-0 flex-col ${focoAmplio}`}>
-      <span
-        class="font-serif text-xl leading-none font-semibold tracking-tight text-tinta group-hover:text-acento sm:text-2xl"
-      >
-        {NOMBRE}
-      </span>
-      {/*
-        Sin `aria-hidden`: es parte del nombre del sitio, y quien escucha la página
-        también necesita saber qué quiere decir la sigla. Queda dentro del enlace,
-        así que su nombre accesible es «Agenda LEH Leer, Escribir, Hacer».
-      */}
-      <span
-        class="mt-1 hidden text-[0.68rem] font-medium tracking-[0.2em] text-tinta/70 uppercase sm:block"
-      >
-        {BAJADA}
-      </span>
+  {/*
+    Los márgenes del sistema: 16px en móvil, 40px en escritorio («el área segura
+    de impresión de un afiche»). El ancho máximo existe para que en un monitor de
+    27" las filas del listado no midan 2000px, no para centrar una columna: el
+    sistema es de página completa, no de contenedor angosto.
+  */}
+  <div class="mx-auto flex max-w-[90rem] items-end justify-between gap-4 px-4 py-3 sm:min-h-encabezado sm:px-10 sm:py-4">
+    <a href="/" class={`group flex min-w-0 items-end ${focoAmplio}`}>
+      <span class="marca text-tinta group-hover:text-acento">{NOMBRE}</span>
     </a>
 
-    <nav aria-label="Secciones del sitio" class="ms-auto">
-      <ul class="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+    <nav aria-label="Secciones del sitio" class="min-w-0">
+      {/*
+        En versalitas y en fila, con la sección actual subrayada por una regla de
+        2px. **La regla va abajo y con `border` y no con `underline`**: es la
+        misma física que el resto de la página —una regla que marca— y no la
+        decoración de un enlace.
+
+        Un `-mb-px` de más no hace falta: la fila tiene su propio `pb`, así que la
+        regla de la sección activa queda por encima de la regla del encabezado sin
+        pisarla.
+      */}
+      <ul class="-me-2 flex flex-wrap items-end justify-end gap-x-1">
         {
           ENLACES.map(({ seccion, href, texto }) => (
             <li>
@@ -91,17 +111,18 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
                 href={href}
                 aria-current={activa === seccion ? 'page' : undefined}
                 class:list={[
-                  'flex min-h-touch items-center rounded-md px-3 transition-colors',
+                  'label-caps flex min-h-touch items-end px-2 pb-1 transition-colors',
                   foco,
                   /*
-                    La sección actual se marca con **superficie y color**, no solo
-                    con negrita: el peso de una sans a 14px es la diferencia más
-                    difícil de ver de las tres, y `aria-current` ya lo dice para
-                    quien escucha. `acento` sobre `hondo` da 5,04:1, o sea AA.
+                    La sección actual se marca con **regla y tinta**, no solo con
+                    color: `aria-current` ya lo dice para quien escucha, y la
+                    regla de 2px lo dice para quien no distingue el terracota del
+                    azul. `acento` sobre `papel` da 6,33:1 y `azul` 6,14:1 — los
+                    dos AA, que es lo que hay que exigirle a 11px en versalitas.
                   */
                   activa === seccion
-                    ? 'bg-hondo font-semibold text-acento'
-                    : 'text-tinta/70 hover:bg-hondo hover:text-tinta',
+                    ? 'border-b-2 border-acento text-acento'
+                    : 'border-b-2 border-transparent text-azul hover:border-super hover:text-super',
                 ]}
               >
                 {texto}
@@ -113,3 +134,42 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
     </nav>
   </div>
 </header>
+
+{/*
+  La franja de la bajada: la «marca de registro» que cruza la página.
+
+  Va **fuera** del `<header>` sticky a propósito. Si fuera parte de la barra fija
+  sumaría otros 28px permanentes en escritorio, y lo que tiene que quedar fijo es
+  la navegación, no el eslogan: la bajada se lee una vez, al entrar.
+
+  Sin `aria-hidden`: es parte del nombre del sitio y quien escucha la página
+  también necesita saber qué quiere decir la sigla.
+*/}
+<p class="regla-fina label-caps bg-crema px-4 py-2 text-center tracking-[0.28em] text-super sm:px-10">
+  {BAJADA}
+</p>
+
+<style>
+  /*
+    La cabecera se fija **solo cuando hay alto de sobra**. Va en un `<style>` y no
+    en `sm:sticky` por una razón concreta: `position: sticky` se rompe en silencio
+    si un ancestro recorta el overflow, y tenerlo escrito acá —junto al comentario
+    que lo explica— es lo que hace que el día que alguien vuelva a poner
+    `overflow-x: hidden` en el `body` se encuentre con la advertencia. `Base.astro`
+    usa `overflow-x: clip`, que no crea contenedor de scroll (B-259).
+  */
+  @media (width >= 40rem) {
+    .sticky-desde-sm {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+  }
+
+  /*
+    Y su altura sale del token `--spacing-encabezado`, que es el mismo del que
+    sale el `top` de todo lo que se pega debajo (el riel de filtros del listado y
+    la ficha de la página de detalle). Corrección 10 de `stitch-detalle.md`: la
+    referencia usaba un `top-24` que nadie ató a esta altura.
+  */
+</style>

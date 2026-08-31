@@ -418,6 +418,15 @@ Decisiones de esta pantalla:
 
 ### 4.2 Tarjeta del listado
 
+> ⚠️ **Y quedó viejo otra vez el mismo día — ver D-146.** La tarjeta ya no es una
+> tarjeta: es una **fila** (`FilaDeActividad.tsx`) sobre una grilla de 12 columnas,
+> **sin imagen en ningún caso** — ni foto real ni portada generada. Se retiraron
+> `Tarjeta.tsx` y `PortadaDeTarjeta.tsx`, y con ellos el color derivado por tipo.
+> Lo que **sigue valiendo** es el contenido: el orden de los datos, la entrada
+> entera como un solo link, el arancel con acento solo cuando no se paga, y nada
+> de «quedan 3 lugares». Los dos avisos quedan apilados a propósito, para que cada
+> desvío se lea contra el original que corrigió.
+
 > ⚠️ **Este apartado quedó viejo el 2026-08-31 — ver D-142** en
 > [`06-decisiones.md`](06-decisiones.md). La tarjeta es **vertical, con portada
 > arriba**, dentro de una grilla de una, dos o tres columnas, y **cuando no hay
@@ -1021,6 +1030,14 @@ Una actividad, una tarjeta (§2.2). Sin excepciones y en todas las vistas.
 
 ### 7.6 Una actividad sin imagen
 
+> ⚠️ **Y se volvió a dar vuelta el mismo día — ver D-146.** Hoy **el listado no
+> tiene imagen bajo ninguna forma**: ni foto real ni portada generada. O sea que la
+> viñeta original vuelve a ser cierta en su conclusión —no hay hueco que llenar—
+> pero por otro motivo: no es que la tarjeta sin imagen se adapte, es que **ninguna
+> entrada del listado lleva imagen**, y eso es una decisión de forma («el listado es
+> puramente tipográfico»), no una respuesta a que falte `imagenUrl`. La foto **sí**
+> sigue en la página de detalle, con `--aspect-portada`.
+
 > ⚠️ **La primera viñeta se revirtió el 2026-08-31 — ver D-142.** Hoy la tarjeta sin
 > imagen **sí** tiene portada: generada, con el título sobre el color del tipo. El
 > argumento de abajo era correcto para la tarjeta horizontal de una columna, donde
@@ -1150,6 +1167,18 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
   que nada lo dijera: son la clase de dato que hay que recalcular junto con el token,
   no copiar. La columna nueva es la que importa, porque el sitio ya no tiene un solo
   fondo.
+
+  > ⚠️ **Esta tabla es de la paleta de D-141 y quedó vieja el 2026-08-31 — ver
+  > D-146.** `acento-hondo` y `colorDeTipo` **ya no existen**, y los tres tokens que
+  > quedan cambiaron de valor. Los números de abajo son los de aquella paleta y se
+  > dejan escritos para que el cambio se lea contra su original. **La tabla vigente
+  > está en D-146**, y la calculan `tests/contraste-de-superficies.test.ts` y
+  > `tests/sistema-visual.test.ts` sobre los tokens de `global.css` — que es lo que
+  > hace que no haya que mantener una tabla a mano en dos lugares.
+  >
+  > El número que conviene recordar de la paleta nueva: **`azul` da 6,14:1 sobre el
+  > papel y 4,99:1 sobre `hondo`**, así que el margen que sobra arriba casi no
+  > existe abajo — y eso solo se ve midiendo contra las tres superficies.
 
   | | Sobre `papel` | Sobre `hondo` (la más oscura) | Veredicto |
   |---|---|---|---|

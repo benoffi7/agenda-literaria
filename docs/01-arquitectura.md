@@ -161,7 +161,7 @@ src/
     rutasPublicas.ts        /actividad/{slug} escrito una sola vez
   components/admin/         el panel entero
   components/sitio/         el chrome del sitio público y sus piezas (B-229)
-  components/publico/       el sitio: Tarjeta, ListaDeActividades, GrupoDeChips
+  components/publico/       el sitio: FilaDeActividad, ListaDeActividades, EjeDeFiltro
                             y Buscador (la única island del sitio)
   layouts/Base.astro        head, fuentes, viewport, y el chrome — apagado por
                             defecto, porque /admin no lo lleva (B-229)

@@ -1,25 +1,33 @@
 /**
- * Las clases compartidas del sitio público — B-253.
+ * Las clases compartidas del sitio público — B-253, reescritas en B-260.
  *
  * ── Por qué existe ────────────────────────────────────────────────────────
  * El panel ya tiene esto resuelto: `campos/Campo.tsx` centraliza `claseInput`,
  * `claseBotonPrimario` y compañía, y el §«Estilo de UI» de `05-patrones.md` dice
  * con todas las letras **«no escribir clases de botón sueltas»**. El sitio
- * público no tenía el equivalente, y se notaba: el anillo de foco
- * —`focus-visible:outline-2 focus-visible:outline-offset-2
- * focus-visible:outline-acento`— estaba copiado **doce veces** entre la página de
- * detalle, `/ayuda`, `/contacto` y el chrome, y la clase del enlace acentuado,
- * cinco.
+ * público no tenía el equivalente, y se notaba: el anillo de foco estaba copiado
+ * **doce veces** entre la página de detalle, `/ayuda`, `/contacto` y el chrome.
  *
  * Doce copias de un anillo de foco no son doce copias de una decoración: la copia
  * que se escriba mal el mes que viene deja **un** control sin foco visible, y eso
- * no se ve mirando la pantalla con el mouse. Es la misma forma de bug que este
- * repo persigue en otros lados —dos derivaciones de la misma idea que se separan
- * sin que nada falle (§«si hay un skill, se usa» de `05-patrones.md`)— aplicada a
- * la accesibilidad.
+ * no se ve mirando la pantalla con el mouse.
  *
  * `tests/estilos-del-sitio.test.ts` falla si un `.astro` del sitio vuelve a
  * escribir el anillo a mano.
+ *
+ * ── Lo que B-260 cambió ───────────────────────────────────────────────────
+ * El sistema visual es **brutalismo editorial** (`docs/referencias/sistema-visual.md`,
+ * D-146), y eso toca todas las clases de este archivo por tres reglas que no son
+ * negociables ni caso por caso:
+ *
+ * 1. **Radio 0.** No hay `rounded-*` en ninguna clase de acá. El lenguaje es
+ *    filoso: botones, campos y contenedores tienen esquina viva.
+ * 2. **Estrictamente plano.** Ninguna sombra, ningún degradado. Lo que separa una
+ *    superficie de otra es una **regla** o una **capa tonal**, nunca una sombra.
+ * 3. **Tintas con nombre, no opacidades.** Donde antes había `text-tinta/70` hoy
+ *    va `text-super` o `text-suave`, que son tintas del sistema con su contraste
+ *    medido. Una opacidad es una trama de medio tono: en una impresión a tintas
+ *    planas no existe, y además es por donde se cae el contraste (B-235).
  *
  * ── Y por qué es un `.ts` y no un componente ──────────────────────────────
  * Porque lo que se comparte son **clases**, no markup: el enlace acentuado a
@@ -31,57 +39,129 @@
  * El anillo de foco del sitio, y el único.
  *
  * Va con el acento —no con la tinta— porque es el color que el sitio usa para
- * «esto es interactivo», y está medido: `acento` sobre las tres superficies de la
- * paleta pasa AA (5,59 sobre `papel`, 5,04 sobre `hondo`, que es la peor).
+ * «esto es interactivo», y está medido: `acento` (#a7341c) sobre las tres
+ * superficies da 6,33 / 6,01 / 5,15, o sea AA en la peor.
+ *
+ * **`outline-offset` positivo y no `0`**: con radio 0 y reglas por todos lados,
+ * un anillo pegado al borde se lee como parte del marco y deja de decir dónde
+ * está el foco. Es la contrapartida de que ya no haya esquinas redondeadas.
  */
 export const foco =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento';
 
 /**
  * El mismo anillo, más separado. Para lo que se apoya contra un borde o contra el
- * fondo de una superficie propia, donde un offset de 2px se pega al borde y el
- * foco se lee como parte del marco.
+ * fondo de una superficie propia, donde un offset de 2px se pega al borde.
  */
 export const focoAmplio =
   'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acento';
 
-/** Un enlace dentro de un párrafo: acentuado y subrayado, nunca solo por color. */
-export const claseEnlace = `text-acento underline decoration-borde underline-offset-4 hover:decoration-acento ${foco}`;
+/**
+ * Un enlace dentro de un párrafo.
+ *
+ * **Subrayado grueso, no fino** (`decoration-2`): es el mismo gesto que el botón
+ * de texto del sistema —«texto con un subrayado grueso»— y hace que el enlace se
+ * lea como enlace sin depender solo del color, que es el requisito de
+ * accesibilidad de siempre.
+ */
+export const claseEnlace = `text-acento underline decoration-2 underline-offset-4 hover:text-super hover:decoration-super ${foco}`;
 
 /**
- * La acción principal de una pantalla. Hay **una sola** por pantalla y siempre es
- * terracota: el CTA de inscripción del detalle, «Agregar a mi Google Calendar» y
- * los dos de `/contacto` son la misma promesa —«esto es lo que viniste a hacer»—
- * y hasta B-253 se veían de tres formas distintas.
+ * La acción principal de una pantalla: **un bloque rectangular macizo**.
  *
- * `text-papel` sobre `bg-acento` da 5,59:1, y sobre `acento-hondo` (el hover)
- * 8,55:1. Los dos pasan AA.
+ * Hay una sola por pantalla y siempre es terracota. `text-papel` sobre
+ * `bg-acento` da 6,33:1; el hover pasa a `super` —la tinta de superposición, que
+ * es lo que el sistema pide para el hover de una tinta plena— y ahí da 6,34:1.
+ * Los dos pasan AA con margen.
+ *
+ * Sin `rounded-*` y sin `shadow-*`, y no es un olvido: es la regla 1 y la 2.
  */
-export const claseBotonPrimario = `inline-flex min-h-touch items-center justify-center rounded-md bg-acento px-6 py-2 text-center font-medium text-papel transition-colors hover:bg-acento-hondo ${foco}`;
-
-/** La acción de al lado: mismo peso de caja, sin el color. */
-export const claseBotonSecundario = `inline-flex min-h-touch items-center justify-center rounded-md border border-borde bg-papel px-5 py-2 text-center font-medium text-tinta transition-colors hover:bg-hondo ${foco}`;
+export const claseBotonPrimario = `inline-flex min-h-touch items-center justify-center bg-acento px-6 py-2 text-center font-medium text-papel transition-colors hover:bg-super ${foco}`;
 
 /**
- * Una tarjeta apoyada sobre el fondo.
+ * La acción de al lado: **texto con el subrayado grueso**, no una segunda caja.
  *
- * **Superficie y borde, nunca una sombra** (D-141): las sombras son exactamente
- * lo que le da a una página el aire de plataforma genérica, y `crema` sobre
- * `papel` alcanza para que la caja se separe.
+ * El sistema da dos formas de botón —bloque macizo o texto subrayado— y usar la
+ * segunda para lo secundario es lo que hace que la principal se distinga sin
+ * inventar una tercera. `text-acento` sobre las tres superficies pasa AA.
  */
-export const claseTarjeta = 'rounded-lg border border-borde bg-crema';
+export const claseBotonSecundario = `inline-flex min-h-touch items-center justify-center px-2 py-2 text-center font-medium text-acento underline decoration-2 underline-offset-4 transition-colors hover:text-super hover:decoration-super ${foco}`;
 
-/** Una superficie hundida: el índice de `/ayuda`, un chip, la caja de una cita. */
-export const claseHundido = 'rounded-lg border border-borde bg-hondo';
+/**
+ * Un bloque apoyado sobre el papel: **regla y capa tonal, nunca una sombra**.
+ *
+ * Sustituye a la `claseTarjeta` de D-141. No se llama «tarjeta» a propósito: en
+ * este sistema no hay tarjetas —hay bloques separados por reglas—, y el nombre
+ * viejo invitaba a volver a apilarlas con sombra.
+ */
+export const claseBloque = 'border border-borde bg-crema';
+
+/** Una superficie hundida: el índice de `/ayuda`, la caja de una cita. */
+export const claseHundido = 'border border-borde bg-hondo';
 
 /**
  * El rótulo de un dato: «CUÁNDO», «DÓNDE», «MATERIAL».
  *
- * Es lo que hace la jerarquía sin subir de tamaño —el patrón que se le copia a
- * Eventbrite— y `tinta/70` sobre la más oscura de las tres superficies da 5,92:1.
+ * Es `label-caps` del sistema —Archivo Narrow 11/12, versalitas— con la tinta
+ * azul, que es la que el sistema reserva para lo funcional y las categorías.
+ * `azul` da 6,14 / 5,82 / 4,99 sobre las tres superficies: AA en la peor, que es
+ * lo que hay que exigirle a 11px.
  */
-export const claseRotulo =
-  'text-[0.7rem] font-semibold tracking-[0.16em] text-tinta/70 uppercase';
+export const claseRotulo = 'label-caps text-azul';
+
+/** El mismo rótulo cuando va calado sobre una tinta plena. */
+export const claseRotuloCalado = 'label-caps text-papel';
 
 /** El título de una sección de contenido largo. */
-export const claseTituloSeccion = 'font-serif text-2xl font-semibold tracking-tight text-tinta';
+export const claseTituloSeccion = 'headline-sm text-tinta';
+
+/**
+ * El bloque de fecha: **rectángulo de tinta plena con el texto calado en papel**.
+ *
+ * Es el gesto central del sistema, así que se escribe una sola vez: lo usan la
+ * fila del listado y los encuentros de la página de detalle, y dos definiciones
+ * serían dos bloques de fecha distintos para el mismo dato.
+ *
+ * ── La tinta la pone quien lo usa, y eso no es pereza ─────────────────────
+ * Esta clase trae la **forma** y el texto calado, no el fondo. El bloque va en
+ * `acento` cuando la fecha todavía va a pasar y en `super` cuando ya pasó o se
+ * canceló —el terracota es la tinta de lo que se puede hacer—, así que hay dos
+ * fondos posibles.
+ *
+ * La primera versión traía `bg-acento` adentro y los llamadores le agregaban
+ * `bg-super` encima. **Eso salía mal en silencio**: dos utilidades de
+ * `background-color` en el mismo elemento no las resuelve el orden en que están
+ * escritas en el atributo, sino el orden en que Tailwind las emitió en la hoja.
+ * Hoy ganaba `bg-super` por casualidad alfabética; un cambio de versión de
+ * Tailwind, o una clase nueva que corra el orden, y el bloque de un encuentro
+ * cancelado se pinta terracota — sin que falle nada. Lo encontró **mirar el HTML
+ * construido**, no un test.
+ *
+ * Con el fondo afuera no hay conflicto que resolver: cada llamador pone una sola
+ * tinta. `tests/sistema-visual.test.ts` prohíbe que vuelvan a convivir dos.
+ *
+ * `text-papel` da 6,33:1 sobre `acento` y 6,34:1 sobre `super` — el sistema lo
+ * midió y da cómodo incluso para las versalitas de 11px que van adentro.
+ */
+export const claseBloqueFecha =
+  'flex min-w-14 flex-col items-center justify-center px-2 py-1.5 text-papel';
+
+/**
+ * Un campo: **la etiqueta apoyada sobre una regla de 1px, sin caja**.
+ *
+ * La caja aparece solo al enfocar, que es lo que el sistema pide. Se consigue con
+ * el borde de abajo siempre presente y el anillo de foco haciendo el resto: no
+ * hace falta cambiar el `border` en `:focus`, porque el `outline` ya dibuja la
+ * caja y además es el único que un lector de pantalla y el modo de alto
+ * contraste respetan.
+ */
+export const claseCampo = `w-full border-0 border-b border-borde bg-transparent px-0 py-2 text-tinta placeholder:text-super ${foco}`;
+
+/**
+ * Una casilla cuadrada con la X maciza en azul — ver `@utility casilla` en
+ * `global.css`, que es donde se dibuja.
+ *
+ * `accent-color` no sirve acá: pinta el tilde nativo del sistema operativo, que
+ * es redondeado en macOS y no es una X. La casilla del sistema hay que dibujarla.
+ */
+export const claseCasilla = `casilla ${foco}`;

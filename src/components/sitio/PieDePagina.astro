@@ -1,6 +1,6 @@
 ---
 /**
- * El pie del sitio público — B-229, B-253.
+ * El pie del sitio público — B-229, B-253, rehecho en B-260.
  *
  * Los destinos salen todos de `enlaces.ts` (B-228): es el único lugar donde
  * viven, así que renombrar la cuenta de Instagram o rotar el calendario se hace
@@ -10,38 +10,59 @@
  * Mandaba al mail directo cuando `/contacto` no existía, y estaba bien entonces.
  * Ahora esa página dice qué conviene contar —quién la da, cuándo y dónde—, y un
  * mail que se saltea esa lista llega sin fecha o sin lugar: un ida y vuelta que
- * la página evita. El `mailto:` sigue existiendo, pero de este lado del texto que
- * lo prepara.
+ * la página evita.
  *
  * ── Por qué el pie se presenta con el nombre completo (B-253) ─────────────
  * Es el único lugar del sitio donde **siempre** hay lugar para las tres líneas
  * —nombre, bajada y de qué habla el sitio—, y el único que se ve al terminar de
- * leer, que es cuando alguien decide si vuelve. El encabezado muestra la bajada de
- * `sm` en adelante (ahí la fila es angosta); acá va sin condición, así que en un
- * teléfono la sigla igual se desarrolla en algún lado de cada página.
+ * leer, que es cuando alguien decide si vuelve.
  *
  * Las tres salen de `identidad.ts` interpoladas y no escritas: eran ocho literales
  * sueltos, y habían quedado viejos los ocho a la vez (D-141).
+ *
+ * ── Lo que B-260 cambió, y lo que sacó ────────────────────────────────────
+ * La forma es la del sistema: fondo en la capa tonal más honda, **regla gruesa de
+ * 2px arriba** para cortar la sección mayor, radio 0 y ninguna sombra.
+ *
+ * Y se saca lo que la referencia traía inventado. El pie de
+ * `docs/referencias/stitch-home.html` lleva «Privacidad», «Términos» y «© 2024»:
+ *
+ * - **«Privacidad» y «Términos» no existen.** No hay esas páginas y no las va a
+ *   haber pronto: un sitio que no guarda un solo dato personal de un tercero
+ *   (B-102) no tiene de qué hacer una política. Un enlace a una página que no
+ *   existe es peor que no tener el enlace.
+ * - **El año estaba mal, y tampoco se reemplaza por el correcto.** Poner
+ *   «© 2026» sería inventar contenido en un pie que hoy no lo tiene: nadie pidió
+ *   una línea de copyright y no dice nada que el sitio necesite decir. Lo que la
+ *   referencia pone en esa columna —la cuenta de Instagram— sí es real y ya
+ *   estaba.
+ *
+ * La marca va en **Bodoni** y no en `headline-md` como pedía la referencia. Un
+ * logotipo que cambia de tipografía entre el encabezado y el pie deja de ser un
+ * logotipo; es la misma `marca` de arriba, en terracota.
  */
 import { QUE_ES, BAJADA, NOMBRE } from '@/lib/identidad';
 import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
-import { claseEnlace, foco } from '@/components/sitio/estilos';
+import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
 
-/** Una fila de la columna de enlaces: blanco táctil completo y foco propio. */
-const claseFila = `flex min-h-touch items-center text-tinta/80 hover:text-tinta ${foco}`;
+/**
+ * Una fila de la columna de enlaces: blanco táctil completo, versalitas y foco
+ * propio. El subrayado aparece al pasar el mouse y no antes — con cuatro filas
+ * seguidas, cuatro subrayados permanentes son cuatro reglas más en una página
+ * que ya está hecha de reglas.
+ */
+const claseFila = `label-caps flex min-h-touch items-center text-tinta underline decoration-2 decoration-transparent underline-offset-4 transition-colors hover:decoration-acento hover:text-acento ${foco}`;
 ---
 
-<footer class="mt-16 border-t border-borde bg-crema">
+<footer class="regla-gruesa-arriba mt-16 bg-hondo">
   <div
-    class="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-12 sm:px-6"
+    class="mx-auto grid max-w-[90rem] gap-8 px-4 py-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-12 sm:px-10"
   >
     <div class="min-w-0">
-      <p class="font-serif text-xl font-semibold tracking-tight text-tinta">{NOMBRE}</p>
-      <p class="mt-1 text-[0.68rem] font-medium tracking-[0.2em] text-tinta/70 uppercase">
-        {BAJADA}
-      </p>
-      <p class="mt-4 max-w-prose text-sm text-tinta/80">{QUE_ES}</p>
-      <p class="mt-2 max-w-prose text-sm text-tinta/80">
+      <p class="marca text-acento">{NOMBRE}</p>
+      <p class="label-caps mt-2 tracking-[0.28em] text-super">{BAJADA}</p>
+      <p class="body-md mt-4 max-w-[60ch] text-tinta">{QUE_ES}</p>
+      <p class="body-md mt-2 max-w-[60ch] text-tinta">
         {/*
           El «criterio y a mano» linkea a la ayuda a propósito: es la única frase
           del sitio que promete algo sobre cómo se arma la agenda, y ahí está
@@ -52,7 +73,8 @@ const claseFila = `flex min-h-touch items-center text-tinta/80 hover:text-tinta 
     </div>
 
     <nav aria-label="Enlaces del pie" class="min-w-0">
-      <ul class="flex flex-col gap-1 text-sm sm:text-end">
+      <p class={claseRotulo}>Ir a</p>
+      <ul class="mt-2 flex flex-col sm:text-end">
         <li>
           <a class={`${claseFila} sm:justify-end`} href={urlDeInstagram()} rel="me noopener" target="_blank">
             {/* El @ va afuera del nombre para que un lector de pantalla no lo

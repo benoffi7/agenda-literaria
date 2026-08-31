@@ -1,49 +1,373 @@
 @import 'tailwindcss';
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  Brutalismo editorial — B-260, D-146
+ *  Referencia: `docs/referencias/sistema-visual.md` (aprobada el 2026-08-31)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * La dirección anterior (D-141: «la estructura de Eventbrite con paleta propia»)
+ * se rechazó por genérica. Ésta no es un ajuste de aquélla: es otra cosa. Un
+ * **programa impreso** —efímera cultural en risografía— y no una plataforma:
+ * densidad antes que aire, reglas visibles antes que sombras, tintas planas
+ * antes que degradados.
+ *
+ * Tres reglas que se aplican a TODO lo que se escriba de acá en adelante, y que
+ * hay tests que sostienen (`tests/sistema-visual.test.ts`):
+ *
+ * 1. **Radio 0.** Nada de `rounded-*` en botones, campos ni contenedores. El
+ *    lenguaje es filoso. La única excepción que el sistema admite es 1–2px en el
+ *    contenedor más externo de la página, y en esta implementación no hay dónde
+ *    aplicarla: el papel **es** el fondo del viewport, así que la hoja no tiene
+ *    un borde exterior visible que redondear.
+ * 2. **Estrictamente plano.** Sin `shadow-*`, sin `blur`, sin degradados. La
+ *    profundidad sale de **superponer tintas**, no de simular luz.
+ * 3. **Las tintas tienen nombre y son pocas.** No se atenúa con `/NN` para
+ *    inventar un gris: se elige la tinta que corresponde. Una opacidad es una
+ *    trama de medio tono, y una trama distinta por línea es lo contrario de una
+ *    impresión a tintas planas — además de ser por donde se cae el contraste
+ *    (B-235).
+ */
+
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'Lora', ui-serif, Georgia, serif;
-
   /*
-   * Paleta de papel y tinta, acorde al dominio literario — B-245.
+   * ── Tipografía ─────────────────────────────────────────────────────────
    *
-   * El papel es **cálido y no blanco**: un blanco puro sobre una pantalla es una
-   * hoja recién comprada, y esto es una agenda de talleres de escritura. Los tres
-   * niveles de superficie existen para poder apilar una tarjeta sobre el fondo sin
-   * usar sombras, que es lo que le da el aire de plataforma genérica.
+   * Tres familias, y **pesan menos que las dos que había** — está medido, no
+   * estimado (subset latin, woff2, tal cual lo sirve Google Fonts):
+   *
+   * | | antes | ahora |
+   * |---|---|---|
+   * | display / títulos | Lora 500;600 — 36,9 KB | Bodoni Moda 800 — 14,6 KB |
+   * | títulos densos | (no había) | Archivo Narrow 400..700 — 18,3 KB |
+   * | cuerpo | Inter 400;500;600 — 47,2 KB | Public Sans 400..700 — 26,0 KB |
+   * | **total** | **84,2 KB** | **58,8 KB** (−30 %) |
+   *
+   * Se pasa de dos familias a tres y aun así baja, porque Inter y Lora se
+   * bajaban como archivos **variables completos**: pedir tres pesos de Inter
+   * traía el rango entero. Bodoni Moda, que es la más pesada de las tres, se
+   * pide con el eje `opsz` **fijado en 48** y eso la deja en 14,6 KB en vez de
+   * los 26,5 KB que cuesta con el eje abierto — y 48 es el punto óptico que
+   * corresponde: la Bodoni se usa entre 30px (la marca) y 72px (el mes).
+   *
+   * Adiós a Inter y a Lora, y no por peso: son el par por defecto de todo sitio
+   * hecho con IA, y eran la mitad de por qué esto se veía genérico.
+   *
+   * **`font-serif` está prohibido en el sitio** (`tests/sistema-visual.test.ts`):
+   * los títulos van en `font-display` (Bodoni) o `font-titulo` (Archivo Narrow).
+   * El token sigue existiendo **para el panel**, y con un valor explícito — ver
+   * abajo.
    */
-  --color-papel: oklch(0.98 0.008 80); /* el fondo */
-  --color-crema: oklch(0.965 0.012 80); /* una tarjeta sobre el fondo */
-  --color-hondo: oklch(0.945 0.014 78); /* una superficie hundida: chips, campos */
-  --color-tinta: oklch(0.22 0.015 265);
-  --color-borde: oklch(0.9 0.01 80);
+  --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-titulo: 'Archivo Narrow', 'Arial Narrow', ui-sans-serif, sans-serif;
+  --font-display: 'Bodoni Moda', ui-serif, Georgia, 'Times New Roman', serif;
 
   /*
-   * El acento es terracota y no un naranja saturado de plataforma. Está medido:
-   * pasa AA sobre el papel en las dos direcciones, así que se puede usar en texto
-   * chico y en el botón de inscripción — lo verifica `tests/contraste.test.ts`.
+   * ── El serif del panel, y por qué está declarado ───────────────────────
+   *
+   * El panel usa `font-serif` en 17 lugares y **compartía Lora con el sitio**. Al
+   * sacar a Lora, el token quedó sin definir — y ahí está la trampa: Tailwind
+   * trae su propio `font-serif` (`ui-serif, Georgia`), así que el panel **no
+   * falló, no rompió el build y pasó a Georgia** sin que nadie lo decidiera. Lo
+   * levantó el `auditor-documentacion` al preguntar si el panel compartía
+   * tipografía con el sitio.
+   *
+   * La respuesta no es volver a bajar Lora: la hoja de fuentes es una sola y la
+   * comparten las cinco páginas públicas, así que 36,9 KB por los títulos de una
+   * herramienta interna que usan dos personas los pagaría el sitio entero.
+   *
+   * Así que Georgia se queda, **pero declarada**. Es una face del sistema —cero
+   * bytes, está en todas las máquinas— y es un serif de texto, que es lo que el
+   * panel quería de Lora. La diferencia con el estado accidental es que ahora es
+   * una decisión escrita y no el default de Tailwind: si mañana alguien retoca
+   * la tipografía, esto le dice que el panel depende de este token.
+   *
+   * **El panel no sigue el sistema visual del sitio** y eso es a propósito
+   * (`05-patrones.md` § Estilo de UI): es una herramienta interna, tiene su
+   * propio centralizador de clases en `campos/Campo.tsx`, y las reglas de radio 0
+   * y tintas planas no le aplican.
    */
-  --color-acento: oklch(0.52 0.15 32);
-  --color-acento-hondo: oklch(0.42 0.14 32); /* el mismo, para hover y bordes */
+  --font-serif: Georgia, 'Times New Roman', ui-serif, serif;
 
   /*
-   * La proporción de una portada, en un solo lugar — B-249.
+   * ── Las tintas ─────────────────────────────────────────────────────────
    *
-   * La misma imagen se muestra en la tarjeta del listado y arriba de la página de
-   * detalle. Si cada una elige su recorte, la foto que se veía bien en la grilla
-   * aparece cortada al abrirla — y peor con la **portada generada**, cuyo título va
-   * dentro del recorte: dos proporciones distintas son dos tamaños de letra
-   * distintos para el mismo texto.
+   * Paleta limitada, como una impresión a tintas planas sobre papel sin
+   * estucar. Los valores salen de `sistema-visual.md` y están escritos en
+   * **OKLCH y no en hex** por dos motivos, en este orden:
    *
-   * Lo pidió el frente de la tarjeta al cerrar, antes de que el del detalle
-   * eligiera la suya. Es la clase de divergencia que no rompe nada y se nota
-   * enseguida.
+   * 1. Los chequeos de contraste (`tests/contraste-del-sitio.test.ts`,
+   *    `tests/sistema-visual.test.ts`) **leen los tokens de este archivo** en
+   *    vez de copiarlos, que es lo que hace que aclarar una tinta ponga en rojo
+   *    lo que dejó de alcanzar. El parser que ya existía lee `oklch(L C H)`.
+   * 2. OKLCH es perceptualmente uniforme, así que «la misma tinta un punto más
+   *    oscura» es una resta y no una prueba y error.
+   *
+   * La conversión es **exacta**: cada uno de estos diez valores vuelve al hex
+   * del sistema al redondear a 8 bits, y `tests/sistema-visual.test.ts` lo
+   * verifica contra la tabla del documento — si alguien retoca una tinta acá,
+   * el token y la referencia dejan de coincidir y el test lo dice.
+   */
+
+  /* Las superficies. El papel **nunca es blanco puro**. */
+  --color-papel: oklch(0.9823 0.0069 88.64); /* #fbf9f4 — el fondo global */
+  --color-crema: oklch(0.9643 0.007 88.64); /* #f5f3ee — separa una sección */
+  --color-hondo: oklch(0.9129 0.0071 88.65); /* #e4e2dd — la capa tonal más honda */
+
+  /* Las tintas de texto. */
+  --color-tinta: oklch(0.2242 0.0059 121.92); /* #1b1c19 — 16,27:1 sobre papel */
+  --color-suave: oklch(0.3989 0.0334 32.5); /* #58413c — 8,92:1, texto secundario */
+
+  /*
+   * Las tres tintas con nombre del sistema. `acento` es la principal —títulos,
+   * fechas, llamados a la acción—; `azul` es la funcional —categorías, metadatos
+   * que contrastan—; y `super` es «la superposición», el color que daría
+   * multiplicar las otras dos: cuerpo denso, reglas, y **el hover de todo lo que
+   * es una tinta plena**.
+   */
+  --color-acento: oklch(0.4931 0.1551 33.47); /* #a7341c — terracota, 6,33:1 */
+  --color-azul: oklch(0.4822 0.0372 251.44); /* #4f6073 — azul tinta, 6,14:1 */
+  --color-super: oklch(0.4789 0.028 8.53); /* #6c575a — superposición, 6,34:1 */
+
+  /*
+   * Las dos tintas de **regla**, y no de texto. Está medido y es la primera de
+   * las tres reglas que salen de la medición: `borde` da 4,26:1 sobre el papel
+   * —alcanza para un borde (3:1), no para texto— y `regla` da 1,62:1, que no
+   * alcanza ni para un borde de control: es una regla decorativa y nada más.
+   * `tests/sistema-visual.test.ts` falla si alguna aparece como `text-*`.
+   */
+  --color-borde: oklch(0.5729 0.0355 32.67); /* #8c716b — outline, la regla que estructura */
+  --color-regla: oklch(0.8313 0.0388 30.05); /* #e0bfb9 — outline-variant, decorativa */
+
+  /*
+   * La proporción de una portada, en un solo lugar — B-249. Sobrevive al
+   * rediseño porque la página de detalle sigue mostrando la foto cuando la hay;
+   * lo que ya no existe es la portada **generada** (ver D-146).
    */
   --aspect-portada: 16 / 9;
 
   /* Altura mínima de un blanco táctil. 44px es el mínimo de las guías de
      Apple; Material pide 48. Se usa en todo control que se toque con el dedo. */
   --spacing-touch: 2.75rem;
+
+  /*
+   * La altura del encabezado, **en un solo lugar** — corrección 10 de
+   * `docs/referencias/stitch-detalle.md`.
+   *
+   * La referencia pega la ficha del detalle con un `top-24` suelto, que es un
+   * número que nadie ató a la altura real de la cabecera: si el encabezado
+   * cambia, la ficha queda tapada o flotando, y no falla nada. Acá el token es la
+   * fuente única — el encabezado lo usa como `min-height` y **todo lo que se pega
+   * debajo lo usa como `top`**, así que el número no puede desincronizarse porque
+   * hay uno solo.
+   *
+   * Es `min-height` y no `height`: si el contenido de la barra creciera, se pasa
+   * de largo en vez de recortarse. Un desfase de unos píxeles hacia abajo no tapa
+   * nada; recortar la navegación sí.
+   */
+  --spacing-encabezado: 4.5rem;
+
+  /*
+   * El ancho del riel de filtros, **en un solo lugar**: lo usan la columna
+   * izquierda del listado y el desplazamiento con el que el HTML del build
+   * alinea su lista debajo de la columna de contenido. Escrito dos veces, el
+   * día que el riel cambie de ancho la lista del build queda corrida —y solo
+   * mientras el JavaScript no cargó, que es justo cuando nadie mira.
+   */
+  --spacing-riel: 15rem;
+}
+
+/*
+ * ── La grilla de base de 4px ───────────────────────────────────────────────
+ *
+ * No hace falta un token: la escala de espaciado de Tailwind ya es de 0,25rem
+ * = 4px por unidad, así que `p-4`, `gap-2` y `mt-6` **caen todos** en la grilla
+ * de base del sistema. Lo que sí hace falta es no salirse: nada de `p-[13px]`.
+ * El ritmo vertical importa más que el espacio en blanco.
+ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   La escala tipográfica del sistema, en un solo lugar
+
+   Son utilidades y no clases sueltas por el mismo motivo por el que el anillo
+   de foco vive en `estilos.ts`: la escala se aplica en cinco páginas y dos
+   componentes, y una copia escrita mal deja un tamaño fuera de la escala sin
+   que nada falle. Acá están los seis roles de `sistema-visual.md` y ninguno más.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * `display-lg` — el marcador de mes y nada más. Es el gesto más fuerte de la
+ * página y por eso está solo: si dos cosas van a 72px, ninguna es la más
+ * grande. El nombre del sitio usa `marca`, que es deliberadamente menor.
+ */
+@utility display-lg {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 48px;
+  line-height: 44px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+
+  @media (width >= 40rem) {
+    font-size: 72px;
+    line-height: 64px;
+    letter-spacing: -0.02em;
+  }
+}
+
+/*
+ * La marca. **El nombre del sitio no puede ser tan grande como el mes**: en la
+ * referencia los dos iban a 72px y competían. El mes gana, porque es lo que
+ * estructura la página; el nombre se dice una vez y se aprende.
+ */
+@utility marca {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 26px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+
+  @media (width >= 40rem) {
+    font-size: 32px;
+    line-height: 30px;
+  }
+}
+
+/*
+ * `display-md` — el título de la página de detalle, y **solo ése**.
+ *
+ * `stitch-detalle.md` pide «el título en Bodoni display», y ahí no hay marcador
+ * de mes con el que competir: la página de detalle es la única del sitio donde el
+ * `h1` es lo más grande que hay. Pero 72px es del mes, así que esto es un escalón
+ * abajo — sigue siendo Bodoni de display, y entra un título largo («Presentación:
+ * Las malas, de Camila Sosa Villada») sin partirse en cinco renglones.
+ */
+@utility display-md {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 36px;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+
+  @media (width >= 40rem) {
+    font-size: 52px;
+    line-height: 48px;
+  }
+}
+
+/* `headline-md` — títulos. Archivo Narrow, condensada y utilitaria. */
+@utility headline-md {
+  font-family: var(--font-titulo);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+}
+
+/* El mismo rol un escalón abajo, para el título de una fila del listado y los
+   `h2` de las secciones internas: 32px en cada fila de una lista densa deja de
+   ser densa. Sigue en la grilla de 4px. */
+@utility headline-sm {
+  font-family: var(--font-titulo);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * `label-caps` — metadatos y navegación chica. Es el rol más delicado del
+ * sistema: 11px en versalitas es exactamente donde el contraste se cae, así que
+ * **toda tinta que se le ponga encima está medida** y ninguna de las dos tintas
+ * de regla puede usarse acá.
+ */
+@utility label-caps {
+  font-family: var(--font-titulo);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/*
+ * El día del bloque de fecha. **Es la única adición a la escala del sistema**, y
+ * tiene motivo: la referencia pone la fecha entera en `label-caps`, o sea el
+ * dato que decide una actividad a 11px. En el resto del sistema `label-caps` es
+ * un **rótulo**; acá sería **contenido**, y 11px queda por debajo del `body-sm`
+ * (12px) que el propio sistema fija como el piso del contenido.
+ *
+ * Se resuelve sin salirse de la escala: el bloque de fecha lleva el número del
+ * día en este cuerpo y el resto —día de la semana y mes— en `label-caps`, que
+ * ahí sí son rótulos. Ver D-146.
+ */
+@utility fecha-dia {
+  font-family: var(--font-titulo);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 28px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* `body-md` — el cuerpo. Chico y con interlínea ajustada, para densidad. */
+@utility body-md {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+/* `body-sm` — el piso del contenido. Nada de texto por debajo de esto. */
+@utility body-sm {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/*
+ * El único cuerpo largo del sitio: la descripción de una actividad y los
+ * párrafos de las páginas de texto. 14/18 es la densidad de una ficha, no de un
+ * párrafo de cuatro mil caracteres; acá la interlínea se abre sin salirse de la
+ * grilla de 4px (16/24).
+ */
+@utility body-lectura {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Las reglas — la física de la página
+
+   «La jerarquía sale del grosor y la frecuencia de las reglas: 2pt corta una
+   sección mayor, 0,5pt separa un ítem de lista».
+
+   **En px y no en pt** (la referencia venía en pt): `0.5pt` no es una línea
+   fina confiable entre navegadores —se redondea a 0 o a 1 según el zoom y el
+   `devicePixelRatio`, así que la misma regla aparece y desaparece— y `pt` en
+   pantalla es una unidad prestada de la imprenta que el navegador convierte a
+   px igual. `1px` es la hairline: en una pantalla normal es un píxel físico y
+   en retina son dos, o sea que se ve igual de fina en las dos y **siempre se
+   ve**, que es lo que `0.5pt` no garantiza.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* La regla que separa un ítem de una lista. */
+@utility regla-fina {
+  border-bottom: 1px solid var(--color-borde);
+}
+
+/* La regla que cierra un bloque: el mes, una sección mayor. */
+@utility regla-gruesa {
+  border-bottom: 2px solid var(--color-tinta);
+}
+
+/* La misma, arriba. */
+@utility regla-gruesa-arriba {
+  border-top: 2px solid var(--color-tinta);
 }
 
 html {
@@ -101,4 +425,80 @@ html {
 @utility px-segura {
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/*
+ * ── La casilla del sistema: cuadrada, radio 0, con una X maciza en azul ────
+ *
+ * Se dibuja acá y no con un icono, porque **no hay librería de iconos en el
+ * proyecto y no se agrega una** (D-146). Tampoco con una imagen: una X es dos
+ * barras, y dos barras son dos pseudo-elementos.
+ *
+ * `appearance: none` es lo que permite pintarla: sin eso el navegador dibuja el
+ * tilde del sistema operativo —redondeado en macOS, azul de Windows en Windows—
+ * y `accent-color` solo puede cambiarle el color, no la forma.
+ *
+ * El estado marcado deja el fondo en papel y la X en `azul`, que es la tinta que
+ * el sistema reserva para lo funcional. Fondo lleno con la X calada sería la otra
+ * lectura posible; se eligió ésta porque el sistema dice «una X maciza en tinta
+ * azul», o sea que **la X** es lo que lleva la tinta.
+ */
+@utility casilla {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--color-borde);
+  background: var(--color-papel);
+  cursor: pointer;
+
+  &:checked {
+    border-color: var(--color-azul);
+  }
+
+  /* Las dos barras de la X. Solo existen cuando está marcada. */
+  &:checked::before,
+  &:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.75rem;
+    height: 2px;
+    background: var(--color-azul);
+  }
+
+  &:checked::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  &:checked::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+}
+
+/*
+ * El desplazamiento con el que la lista que imprime el build se alinea debajo
+ * de la columna de contenido, mientras el riel de filtros todavía está vacío
+ * porque el JavaScript no cargó (y para siempre, si no carga nunca).
+ *
+ * Sale del **mismo** token que el ancho del riel más el medianil, así que no
+ * puede quedar corrido: es la clase de divergencia de B-88 aplicada a la
+ * maqueta.
+ *
+ * ── Por qué NO se llama `ps-riel` ─────────────────────────────────────────
+ * Porque `--spacing-riel` está en el espacio de nombres `--spacing-*`, y eso hace
+ * que Tailwind **ya genere** un `ps-riel` propio con `padding-inline-start:
+ * var(--spacing-riel)`. Con los dos, la regla sale con las dos declaraciones y
+ * gana la que Tailwind emite última: la suya, sin el medianil.
+ *
+ * O sea: la lista quedaba corrida 40px, **el build en verde y sin una sola
+ * advertencia**. Y solo se ve antes de que hidrate la island, o para siempre si
+ * el JavaScript no carga — los dos momentos que nadie mira. Lo encontró leer el
+ * CSS construido, no un test. `tests/sistema-visual.test.ts` prohíbe que una
+ * utilidad propia vuelva a llamarse como una que Tailwind genera sola.
+ */
+@utility sangria-de-riel {
+  padding-inline-start: calc(var(--spacing-riel) + 2.5rem);
 }
