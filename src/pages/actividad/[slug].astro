@@ -35,10 +35,18 @@
  * nunca se va de la pantalla. Ver D-144.
  *
  * ── El CTA fijo de móvil no lleva JavaScript (B-238, D-145) ──────────────
- * `position: sticky` con `bottom-0` sobre un contenedor puesto al **final** del
- * contenido: la barra queda pegada abajo mientras se lee y se suelta sola al
- * llegar al final, así que el pie nunca queda tapado. Es CSS y son cero bytes;
- * la barra fija con JavaScript que pedía el §8 se quedó sin motivo para existir.
+ * `position: fixed` abajo, con `pb-segura` para la barra de gestos y un
+ * `padding-bottom` en el `body` —de esta ruta sola— para que no tape el pie. Son
+ * cero bytes: la barra que el §8 pedía «desde que el botón original sale de la
+ * pantalla» necesitaba medir el scroll, y lo que cambió es la regla y no la
+ * herramienta — en el teléfono el botón del flujo directamente no se pinta, así
+ * que hay **uno** y está siempre a mano.
+ *
+ * `sticky` habría sido más elegante (se suelta sola al final del contenido y no
+ * haría falta el aire), pero `Base.astro` le pone `overflow-x-hidden` al `body` y
+ * un ancestro con overflow recortado **rompe `position: sticky` en silencio**.
+ * `tests/detalle-visual.test.ts` deja escrito ese cruce para que volver a
+ * `sticky` no pase inadvertido.
  */
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
@@ -367,11 +375,25 @@ const hayCta =
          fila es una fila de verdad y no una fecha en una línea corrida. */
       detalle.mostrarEncuentros && (
         <section aria-labelledby="encuentros" class="mt-10">
+          {/*
+            **El título no lleva número, y eso lo encontró el HTML de verdad**
+            (B-258). Con `Los ${length} encuentros` la página se contradecía sola
+            en la misma pantalla: la ficha decía «Ciclo de 4 encuentros» —que
+            cuenta los que quedan en pie— y el título de abajo «Los 5 encuentros»
+            —que cuenta todos, cancelados incluidos, porque el número de cada uno
+            es su identidad dentro del ciclo (D-95)—.
+
+            Las dos cuentas están bien por separado y **ninguna de las dos se
+            puede cambiar**: la de la ficha es la que le sirve a quien decide si
+            se anota, y la de la lista es la que hace que el «encuentro 4» de la
+            página sea el «encuentro 4» del calendario. Lo que sobra es decir el
+            número dos veces: la lista los tiene numerados abajo.
+          */}
           <h2 id="encuentros" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
             {detalle.encuentros.length === 1
               ? 'El encuentro'
               : detalle.esCiclo
-                ? `Los ${detalle.encuentros.length} encuentros`
+                ? 'Los encuentros del ciclo'
                 : 'Las fechas'}
           </h2>
 
@@ -473,15 +495,23 @@ const hayCta =
         actividad puede ser presencial en dos sedes y virtual a la vez, así que
         cada fila es una tarjeta con su dirección y su mapa — no una lista de
         palabras separadas por puntos.
+
+        Sin ninguna forma cargada **no se pinta la sección**, y no es una defensa
+        teórica: lo mostró el HTML de verdad. El fixture del gate de build es
+        anterior a B-224 y no trae el array (B-241), así que la página salía con
+        el título «Cómo se cursa» y la lista vacía debajo — un encabezado que
+        promete algo y no lo entrega. Lo que la ficha dice en ese caso («Lugar a
+        confirmar») es todo lo que se sabe, y alcanza.
       */
     }
-    <section aria-labelledby="como-se-cursa" class="mt-10">
-      <h2 id="como-se-cursa" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
-        {detalle.modalidades.length > 1 ? 'Formas de cursar' : 'Cómo se cursa'}
-      </h2>
-      <ul class="mt-4 grid gap-3 sm:grid-cols-2">
-        {
-          detalle.modalidades.map((m) => (
+    {
+      detalle.modalidades.length > 0 && (
+        <section aria-labelledby="como-se-cursa" class="mt-10">
+          <h2 id="como-se-cursa" class="font-serif text-2xl font-semibold tracking-tight text-tinta">
+            {detalle.modalidades.length > 1 ? 'Formas de cursar' : 'Cómo se cursa'}
+          </h2>
+          <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+            {detalle.modalidades.map((m) => (
             <li class={`flex min-w-0 flex-col gap-1 p-4 text-sm ${claseTarjeta}`}>
               <p class={claseRotulo}>{m.etiqueta}</p>
               {m.sede && (
@@ -511,10 +541,11 @@ const hayCta =
               }
               {!m.sede && !m.plataforma && <p class="text-tinta/70">Lugar a confirmar</p>}
             </li>
-          ))
-        }
-      </ul>
-    </section>
+            ))}
+          </ul>
+        </section>
+      )
+    }
 
     {
       detalle.material.tiene && detalle.material.items.length > 0 && (

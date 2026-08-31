@@ -150,6 +150,30 @@ describe('la portada arriba no puede empujar la fecha fuera de la pantalla — D
   });
 });
 
+describe('la página no dice dos cuentas distintas de lo mismo — B-258', () => {
+  it('el título de la lista de encuentros no lleva número', () => {
+    /*
+     * Lo encontró **mirar el HTML del build**, no un test: la ficha decía «Ciclo
+     * de 4 encuentros» y el título de abajo «Los 5 encuentros», en la misma
+     * pantalla. Las dos cuentas están bien por separado —la ficha cuenta los que
+     * quedan en pie, la lista numera sobre todos porque el número es la identidad
+     * del encuentro dentro del ciclo (D-95)— y ninguna se puede cambiar sin
+     * romper algo. Lo que sobraba era decir el número dos veces.
+     *
+     * MUTACIÓN PROBADA: volver a `Los ${detalle.encuentros.length} encuentros`
+     * pone esto en rojo.
+     */
+    const codigo = sinComentarios(src());
+    const h2 = /<h2 id="encuentros"[\s\S]*?<\/h2>/.exec(codigo)?.[0] ?? '';
+    expect(h2, 'no se encontró el título de la lista de encuentros').toContain('El encuentro');
+    expect(
+      h2,
+      'el título de la lista no puede llevar la cuenta de encuentros: la ficha ya da una ' +
+        'cuenta distinta —y correcta— unas líneas más arriba',
+    ).not.toContain('encuentros.length}');
+  });
+});
+
 describe('la página sigue sin JavaScript — §4.3, presupuesto de 0 KB', () => {
   it('el único `<script>` es el de los datos estructurados', () => {
     /*
