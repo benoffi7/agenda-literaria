@@ -169,50 +169,68 @@ describe('el contraste del sitio sobre las tres superficies — B-256', () => {
     expect(flojas, 'el acento no se puede usar como texto sobre estas superficies').toEqual([]);
   });
 
-  it('el color de CUALQUIER tipo de actividad pasa AA como texto sobre cualquier superficie', () => {
+  it('las tres tintas del sistema pasan AA como texto sobre cualquier superficie', () => {
     /*
-     * La página de detalle escribe el nombre del tipo con `colorDeTipo(slug)`, y
-     * `tipo` es una **taxonomía autogestionada** (§4): el tono de un tipo que
-     * alguien cree el año que viene se deriva de su slug y hoy no existe.
+     * **Reemplaza al barrido de los 360 tonos de B-256.** Aquél existía porque
+     * D-141 derivaba un color por tipo de actividad desde el slug, así que había
+     * tonos que nadie iba a mirar nunca. D-146 pasa a una **paleta limitada de
+     * tres tintas** y esa derivación se retiró: ya no hay un color imprevisible
+     * que verificar, hay tres tintas con nombre.
      *
-     * `tests/identidad.test.ts` ya recorre los 360 tonos **sobre papel**, que es
-     * lo que la portada generada del listado necesita. Acá se recorren los mismos
-     * 360 sobre **todas** las superficies, porque el cintillo del detalle podría
-     * mudarse a una tarjeta mañana y el modo de falla sería un rótulo ilegible
-     * para un tipo que nadie inventó todavía — o sea, invisible en la revisión.
+     * Lo que sí sigue haciendo falta es medirlas sobre **las tres superficies** y
+     * no solo sobre el papel, que es el aporte de este archivo: `azul` da 6,14
+     * sobre papel y **4,99 sobre `hondo`**, o sea que el margen que sobra arriba
+     * casi no existe abajo.
      *
-     * La luminosidad y el croma de la banda se leen de `identidad.ts` por la
-     * misma razón por la que los colores se leen de `global.css`: copiarlos acá
-     * los dejaría mintiendo con la primera banda nueva.
+     * MUTACIÓN PROBADA: aclarar `--color-azul` de L=0,4822 a L=0,55 lo deja en
+     * **3,74:1 sobre `hondo`** y hace fallar este caso — mientras que sobre el
+     * papel sigue dando 4,60 y pasaría. Es exactamente el punto ciego que este
+     * archivo existe para cubrir.
      */
-    const identidad = readFileSync(raiz('src/lib/identidad.ts'), 'utf8');
-    const L = Number(/^const L = ([\d.]+);/m.exec(identidad)?.[1]);
-    const C = Number(/^const C = ([\d.]+);/m.exec(identidad)?.[1]);
-    expect(L, 'no se pudo leer la luminosidad de la banda en identidad.ts').toBeGreaterThan(0);
-    expect(C, 'no se pudo leer el croma de la banda en identidad.ts').toBeGreaterThan(0);
-
-    const flojos: string[] = [];
-    for (const s of superficies()) {
-      for (let h = 0; h < 360; h++) {
-        const r = contraste(oklchASrgb(L, C, h), s.color);
-        if (r < AA_TEXTO) flojos.push(`${s.nombre}, tono ${h}: ${r.toFixed(2)}:1`);
+    const flojas: string[] = [];
+    for (const tinta of ['tinta', 'suave', 'acento', 'azul', 'super']) {
+      for (const s of superficies()) {
+        const r = contraste(token(tinta), s.color);
+        if (r < AA_TEXTO) flojas.push(`${tinta} sobre ${s.nombre}: ${r.toFixed(2)}:1`);
       }
     }
-
     expect(
-      flojos.slice(0, 5),
-      'hay tonos de tipo que quedan ilegibles sobre alguna superficie. Como el tono ' +
-        'de un tipo nuevo se deriva de su slug, no se arregla caso por caso: hay que ' +
-        'bajar la luminosidad de la banda entera en `identidad.ts`.',
+      flojas,
+      'estas tintas del sistema no llegan al piso sobre alguna superficie. No se ' +
+        'arregla caso por caso: hay que oscurecer la tinta en `global.css`, y ' +
+        'después volver a medir contra `docs/referencias/sistema-visual.md`.',
     ).toEqual([]);
   });
 
-  it('el texto del botón primario pasa AA sobre el acento y sobre su hover', () => {
-    // El único texto claro sobre fondo oscuro del sitio, y el que más se toca.
+  it('y las dos tintas de regla NO pasan, que es por lo que no son texto', () => {
+    /*
+     * Control negativo del caso de arriba: si la aritmética se rompiera y
+     * devolviera siempre un número alto, aquella lista saldría vacía igual. Estas
+     * dos son las que el sistema declara insuficientes —4,26 y 1,62 sobre el
+     * papel— así que tienen que dar por debajo del piso en alguna superficie.
+     */
+    for (const regla of ['borde', 'regla']) {
+      const peor = Math.min(...superficies().map((s) => contraste(token(regla), s.color)));
+      expect(peor, `${regla} no debería alcanzar el piso de texto`).toBeLessThan(AA_TEXTO);
+    }
+  });
+
+  it('el texto calado pasa AA sobre cada tinta plena que el sitio pinta', () => {
+    /*
+     * El gesto central del sistema —«bloques de tinta plena con el texto calado en
+     * el color del papel»— y el que más se repite: el bloque de fecha, el botón
+     * primario, el valor de filtro elegido, la franja de estado del detalle.
+     *
+     * **El hover de una tinta plena es `super` y no un `acento-hondo`** (D-146):
+     * el sistema dice «al pasar el mouse, la tinta de superposición», así que el
+     * token de hover propio del acento se retiró. Una tinta menos que mantener, y
+     * la que queda ya estaba medida para otra cosa.
+     */
     const papel = token('papel');
-    expect(contraste(papel, token('acento'))).toBeGreaterThanOrEqual(AA_TEXTO);
-    expect(contraste(papel, token('acento-hondo'))).toBeGreaterThanOrEqual(AA_TEXTO);
-    // El salto al contenido, que es el primer foco de cada página.
-    expect(contraste(papel, token('tinta'))).toBeGreaterThanOrEqual(AA_TEXTO);
+    for (const tinta of ['acento', 'super', 'azul', 'tinta']) {
+      expect(contraste(papel, token(tinta)), `papel calado sobre ${tinta}`).toBeGreaterThanOrEqual(
+        AA_TEXTO,
+      );
+    }
   });
 });

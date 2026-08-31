@@ -3,29 +3,22 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { AA_TEXTO, contraste, oklchASrgb } from '@/lib/contraste';
-import {
-  BAJADA,
-  NOMBRE,
-  NOMBRE_COMPLETO,
-  TIPOS_CON_TONO,
-  colorDeTipo,
-  colorDeTipoSrgb,
-  tonoDeTipo,
-} from '@/lib/identidad';
+import { BAJADA, NOMBRE, NOMBRE_COMPLETO } from '@/lib/identidad';
 
 /**
- * La identidad del sitio — B-245.
+ * La identidad del sitio — B-245, recortado en B-260.
+ *
+ * **La mitad del color se fue con D-146.** B-245 derivaba un tono por tipo de
+ * actividad y este archivo lo verificaba sobre los 360 tonos posibles; el sistema
+ * visual de B-260 pasa a una paleta de tres tintas y la categoría se escribe toda
+ * en azul tinta, así que no hay tono que verificar. Lo que se conserva —y es lo
+ * que D-141 vino a arreglar de fondo— es que el nombre viva en un módulo y que
+ * toda página se titule con él.
+ *
+ * El contraste de las tintas que reemplazaron a aquel color lo verifica
+ * `tests/sistema-visual.test.ts`, que además ata cada token de `global.css` al
+ * hex de `docs/referencias/sistema-visual.md`.
  */
-const papel = () => {
-  const css = readFileSync(
-    fileURLToPath(new URL('../src/styles/global.css', import.meta.url)),
-    'utf8',
-  );
-  const m = css.match(/--color-papel:\s*oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/);
-  expect(m, 'no se encontró --color-papel').not.toBeNull();
-  return oklchASrgb(Number(m![1]), Number(m![2]), Number(m![3]));
-};
 
 describe('el nombre del sitio', () => {
   it('el nombre completo se arma del nombre y la bajada', () => {
@@ -93,81 +86,5 @@ describe('el nombre está en el título de cada página', () => {
       'estas páginas se titulan sin el nombre del sitio: en la pestaña, en el ' +
         'historial y en Google quedan sin identidad.',
     ).toEqual([]);
-  });
-});
-
-describe('el color de cada tipo de actividad', () => {
-  it('los tipos de hoy tienen tono propio y son todos distintos', () => {
-    expect(TIPOS_CON_TONO.length).toBeGreaterThanOrEqual(7);
-    const tonos = TIPOS_CON_TONO.map(tonoDeTipo);
-    expect(new Set(tonos).size, 'dos tipos comparten tono').toBe(tonos.length);
-  });
-
-  it('un tipo desconocido igual recibe un tono, y siempre el mismo', () => {
-    /*
-     * `tipo` es una taxonomía autogestionada (§4): quien carga puede crear uno
-     * nuevo desde «Otro». Esta es la propiedad que evita que la tarjeta de ese
-     * tipo salga sin color y nadie se entere.
-     */
-    const a = tonoDeTipo('microrrelato-en-voz-alta');
-    const b = tonoDeTipo('microrrelato-en-voz-alta');
-    expect(a).toBe(b);
-    expect(a).toBeGreaterThanOrEqual(0);
-    expect(a).toBeLessThan(360);
-  });
-
-  it('y no se confunde con el tono de un tipo conocido', () => {
-    // Si un tipo nuevo cae encima de «taller», la grilla miente: dos colores
-    // iguales para dos cosas distintas.
-    for (const slug of ['feria-del-libro-2', 'club', 'taller-de-poesia', 'zzz', 'a']) {
-      const t = tonoDeTipo(slug);
-      if (TIPOS_CON_TONO.includes(slug)) continue;
-      for (const conocido of TIPOS_CON_TONO.map(tonoDeTipo)) {
-        const d = Math.min(Math.abs(t - conocido), 360 - Math.abs(t - conocido));
-        expect(d, `${slug} cayó a ${d}° de un tono asignado`).toBeGreaterThan(18);
-      }
-    }
-  });
-
-  it('el color sale como oklch válido', () => {
-    expect(colorDeTipo('taller')).toMatch(/^oklch\([\d.]+ [\d.]+ [\d.]+\)$/);
-  });
-
-  /**
-   * **El aserto que importa.** La portada generada pone el título del taller
-   * encima de este color, así que un tono que no contraste es una tarjeta
-   * ilegible en producción.
-   *
-   * Y no se verifican los siete tipos de hoy: se verifican **los 360 tonos
-   * posibles**, porque el tono de un tipo nuevo lo decide un slug que todavía no
-   * existe. Comprobar la muestra dejaría la garantía en «los que ya vimos»; la
-   * propiedad real es que la luminosidad y el croma son fijos, y con eso el
-   * contraste no depende del matiz.
-   */
-  it('el texto claro pasa AA sobre CUALQUIER tono posible, no solo los de hoy', () => {
-    const claro = papel();
-    const flojos: string[] = [];
-
-    for (let h = 0; h < 360; h++) {
-      const color = oklchASrgb(0.42, 0.105, h);
-      const r = contraste(claro, color);
-      if (r < AA_TEXTO) flojos.push(`tono ${h}: ${r.toFixed(2)}:1`);
-    }
-
-    expect(
-      flojos,
-      'hay tonos donde la portada generada queda ilegible. Como el tono de un ' +
-        'tipo nuevo se deriva de su slug, esto no se puede arreglar caso por caso: ' +
-        'hay que bajar la luminosidad de la banda entera en `identidad.ts`.',
-    ).toEqual([]);
-  });
-
-  it('y los siete de hoy pasan con margen', () => {
-    // Control concreto además del barrido: si el barrido se rompiera y diera
-    // lista vacía por otro motivo, esto lo agarra.
-    const claro = papel();
-    for (const slug of TIPOS_CON_TONO) {
-      expect(contraste(claro, colorDeTipoSrgb(slug)), slug).toBeGreaterThan(AA_TEXTO);
-    }
   });
 });

@@ -1,13 +1,13 @@
 /**
- * La island del listado: búsqueda, filtros y orden — B-227, §6 del diseño.
+ * La island del listado: búsqueda, filtros y orden — B-227, rehecha en B-260.
  *
  * ── El HTML es la verdad; `events.json` es el índice (§6.3) ───────────────
- * El build imprime **todas** las tarjetas vigentes en el HTML, así que la página
+ * El build imprime **todas** las filas vigentes en el HTML, así que la página
  * sirve completa con JavaScript apagado y el buscador la ve entera. Esta island
  * hace **un solo fetch** de `/events.json` (§2.5) y, recién cuando lo tiene,
  * **saca del DOM la lista del build** y pasa a renderizar la suya con el mismo
- * componente `Tarjeta`. Como el estado inicial es el del build —sin filtros,
- * orden por próxima— lo que aparece es idéntico a lo que había: no hay
+ * componente `FilaDeActividad`. Como el estado inicial es el del build —sin
+ * filtros, orden por próxima— lo que aparece es idéntico a lo que había: no hay
  * parpadeo, que es el peor defecto del patrón «island que re-renderiza todo».
  *
  * Si el fetch falla (offline, CDN caída) **no se saca nada**: la lista del build
@@ -22,31 +22,43 @@
  *
  * ── La URL ────────────────────────────────────────────────────────────────
  * Los filtros se serializan a la query string con `replaceState`, no con
- * `pushState` (§6.2): veinte toques de chip no son veinte entradas del
+ * `pushState` (§6.2): veinte toques de filtro no son veinte entradas del
  * historial. Sirve para compartir un filtro por WhatsApp y para que volver desde
- * una página de detalle recupere lo que estaba filtrado. El `popstate` se escucha
- * igual, para el caso de que el navegador restaure otra URL.
+ * una página de detalle recupere lo que estaba filtrado.
  *
- * ── Cuánto ocupan los controles antes del primer resultado (B-238) ────────
- * El pedido de móvil del §8 es una **hoja inferior**, y sigue abierto en B-238 a
- * propósito: una capa modal necesita trampa de foco, `Escape`, cierre tocando el
- * fondo, devolver el foco al abridor y `pushState` para que el botón atrás la
- * cierre en vez de salir del sitio, y una capa modal mal hecha es peor que no
- * tenerla. Lo que B-247 sí hizo es que el *disclosure* de hoy no coma la pantalla,
- * y con tres cambios que no necesitan una capa (**D-143**):
+ * ── El riel de filtros: el índice del programa (B-260, D-146) ─────────────
+ * El sistema visual pide «una barra de índice: una lista persistente de
+ * categorías, con el aspecto del índice de un libro», y la referencia la dibuja
+ * como una **columna izquierda fija de 256px**. Eso reemplaza al disclosure de
+ * D-143 **en escritorio y solo ahí**:
  *
- * 1. **Arriba queda una sola fila**: el buscador y, debajo, la fila de botones.
- *    «Cuándo» —que era un `select` con su etiqueta ocupando un tercio del ancho—
- *    se fue adentro del panel, que es donde viven los otros filtros y donde el
- *    contador del botón ya lo cuenta.
- * 2. **El panel abierto está topeado a 65svh con scroll propio** en el teléfono,
- *    así que las primeras tarjetas nunca quedan fuera de la pantalla.
- * 3. **Cierra con «Ver N actividades»** y el foco vuelve al botón que lo abrió,
- *    que es la parte de la hoja inferior que sí se puede tener sin ser modal.
+ * | | teléfono | escritorio (`lg`) |
+ * |---|---|---|
+ * | los ejes | detrás del botón «Filtros (N)», como en D-143 | siempre visibles en el riel |
+ * | el riel | no existe: todo apilado | columna de `--spacing-riel`, pegada al scroll |
+ * | cerrar | «Ver N actividades», y el foco vuelve al botón | no hace falta: nunca se cierra |
+ *
+ * **Los tres argumentos de D-143 siguen vigentes en el teléfono** y por eso el
+ * disclosure no se tocó: en 360px seis ejes abiertos empujan el listado abajo del
+ * pliegue, el panel sigue topeado a 65svh con scroll propio, y sigue cerrando
+ * desde abajo devolviendo el foco. Lo que cambió es que en escritorio ese
+ * compromiso ya no hace falta, porque hay una columna entera para el índice.
+ *
+ * **B-238 sigue abierto igual**: la hoja inferior modal del §8 no se construyó, y
+ * el motivo es el mismo (trampa de foco, `Escape`, cierre por el fondo,
+ * `pushState`; una capa modal mal hecha es peor que no tenerla).
+ *
+ * ── Por qué la raíz de la island es la grilla ─────────────────────────────
+ * Porque la lista que imprime el build vive **fuera** de este componente —la
+ * island la borra del DOM por `id` cuando toma el control— así que no puede ser
+ * hija de esta grilla. Se alinea desde afuera con `lg:ps-riel`, que sale del
+ * **mismo** token `--spacing-riel` que la columna de acá: escrito dos veces, el
+ * día que el riel cambie de ancho la lista del build queda corrida, y solo
+ * mientras el JavaScript no cargó — que es justo cuando nadie mira.
  */
-import { foco } from '@/components/sitio/estilos';
+import { claseBotonPrimario, claseCampo, claseCasilla, foco } from '@/components/sitio/estilos';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { GrupoDeChips } from '@/components/publico/GrupoDeChips';
+import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { nombreDeMes } from '@/lib/fechasPublicas';
 import {
@@ -83,20 +95,39 @@ interface Props {
   version: string;
   /**
    * El id del contenedor con la lista que imprimió el build. Se saca del DOM
-   * cuando esta island toma el control, para no tener las tarjetas dos veces.
+   * cuando esta island toma el control, para no tener las filas dos veces.
    */
   idListadoEstatico: string;
 }
 
 type Carga = { estado: 'cargando' } | { estado: 'listo'; indice: Indice } | { estado: 'error' };
 
-const claseSelect =
-  `min-h-touch w-full rounded-lg border border-borde bg-hondo px-2.5 py-1.5 text-sm text-tinta ${foco} disabled:opacity-60`;
+/** Un `select` del sistema: sin caja, apoyado sobre su regla, y **sin radio**. */
+const claseSelect = `${claseCampo} appearance-none pe-6 body-md disabled:opacity-60`;
 
-const claseEtiqueta = 'mb-1.5 block text-xs font-semibold tracking-[0.12em] text-tinta/70 uppercase';
+/** El rótulo de un control, en versalitas y azul tinta. */
+const claseEtiqueta = 'label-caps mb-1 block text-azul';
 
-const claseBotonPildora =
-  `inline-flex min-h-touch shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${foco} disabled:opacity-60`;
+/** Un botón rectangular macizo, la otra forma de botón del sistema. */
+const claseBotonBloque = `label-caps inline-flex min-h-touch shrink-0 items-center justify-center gap-2 border border-borde px-4 transition-colors ${foco} disabled:opacity-60`;
+
+/**
+ * La flecha del desplegable, dibujada con bordes.
+ *
+ * `appearance-none` es lo que saca las esquinas redondeadas que el sistema
+ * operativo le pone al `select` —radio 0 es la regla 1— pero también le saca la
+ * flecha, y sin flecha un `select` se lee como texto estático. Se repone con un
+ * **triángulo de CSS puro**: tres bordes, dos transparentes. Ni librería de
+ * iconos ni SVG ni una imagen para doce píxeles de decoración.
+ */
+function Flecha() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute end-1 bottom-3 size-0 border-x-4 border-t-4 border-x-transparent border-t-azul"
+    />
+  );
+}
 
 export function Buscador({ version, idListadoEstatico }: Props) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
@@ -196,35 +227,26 @@ export function Buscador({ version, idListadoEstatico }: Props) {
   const deshabilitado = carga.estado !== 'listo';
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* ── Controles ──────────────────────────────────────────────────── */}
+    <div className="lg:grid lg:grid-cols-[var(--spacing-riel)_minmax(0,1fr)] lg:items-start lg:gap-x-10">
+      {/* ══ El riel: el índice del programa ═══════════════════════════════ */}
       {/*
-        `role="search"` sobre un `div` y no el elemento `<search>`: el rol es lo
-        que anuncia el lector de pantalla, y no depende de qué versión de React ni
-        de qué navegador esté del otro lado.
+        `lg:sticky` con `top` a la altura del encabezado, que también se pega de
+        `sm` en adelante. Sin el `top` el riel se metería debajo de la cabecera al
+        scrollear. Y `max-h`/`overflow-y-auto` para que un índice con muchos
+        barrios no quede con la mitad fuera de la pantalla y sin forma de llegar.
       */}
-      <div role="search">
-        <label htmlFor={`${id}-q`} className="sr-only">
-          Buscar actividades
-        </label>
-        {/*
-          El campo con la lupa adentro. La lupa es un SVG inline y `aria-hidden`:
-          no hay librería de iconos en el proyecto y no se agrega una por un
-          dibujo de doce bytes, y el campo ya tiene su etiqueta.
-        */}
-        <div className="relative">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-tinta/70"
-          >
-            <circle cx="8.5" cy="8.5" r="5.5" />
-            <path d="M12.5 12.5 17 17" />
-          </svg>
+      <aside className="regla-gruesa-arriba pt-3 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-4">
+        <div role="search" className="relative">
+          {/*
+            La etiqueta es **visible**, no `sr-only`: el sistema dice «campos: una
+            etiqueta de texto apoyada sobre una regla de 1pt, sin caja». Con la
+            etiqueta a la vista sobra la lupa que había antes —un SVG inline de
+            doce bytes— así que el campo queda con una pieza menos y sin ningún
+            icono, que es lo que D-146 pide.
+          */}
+          <label htmlFor={`${id}-q`} className={claseEtiqueta}>
+            Buscar
+          </label>
           {/*
             El buscador **no roba el foco al cargar**: en un teléfono abriría el
             teclado y taparía la lista, que es lo que se vino a ver (§4.1).
@@ -235,222 +257,251 @@ export function Buscador({ version, idListadoEstatico }: Props) {
             value={filtros.q}
             disabled={deshabilitado}
             onChange={(e) => setFiltros({ ...filtros, q: e.target.value })}
-            placeholder="Buscar por título, barrio o tallerista…"
-            className={`min-h-touch w-full rounded-full border border-borde bg-crema py-2 pr-4 pl-10 text-tinta placeholder:text-tinta/70 ${foco} disabled:opacity-60`}
+            placeholder="Título, barrio, tallerista…"
+            className={`${claseCampo} body-md disabled:opacity-60`}
           />
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
         {/*
-          Los filtros arrancan colapsados detrás de un botón que dice cuántos hay
-          puestos: en 360px seis grupos de chips abiertos empujan el listado
-          abajo del pliegue. El número es lo que impide que un filtro olvidado
-          explique un listado que parece vacío — mismo criterio que el panel.
+          El botón que abre los ejes, **solo en el teléfono**: en `lg` el riel los
+          muestra siempre, así que un botón para desplegar lo que ya está
+          desplegado es un control que miente. El número es lo que impide que un
+          filtro olvidado explique un listado que parece vacío.
         */}
-        <button
-          ref={botonFiltros}
-          type="button"
-          aria-expanded={abierto}
-          aria-controls={`${id}-filtros`}
-          disabled={deshabilitado}
-          onClick={() => setAbierto((v) => !v)}
-          className={
-            puestos > 0
-              ? `${claseBotonPildora} border-acento-hondo bg-acento text-papel`
-              : `${claseBotonPildora} border-borde bg-crema text-tinta hover:border-acento`
-          }
-        >
-          Filtros
-          {puestos > 0 && (
-            <span className="rounded-full bg-papel px-1.5 text-xs font-semibold text-acento-hondo">
-              {puestos}
-            </span>
-          )}
-        </button>
-
-        {hayFiltrosPublicos(filtros) && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 lg:hidden">
           <button
+            ref={botonFiltros}
             type="button"
-            onClick={limpiar}
-            className={`${claseBotonPildora} border-transparent text-acento-hondo hover:border-borde`}
-          >
-            Limpiar
-          </button>
-        )}
-
-        <div className="ms-auto flex items-center gap-2">
-          <label htmlFor={`${id}-orden`} className="sr-only">
-            Ordenar por
-          </label>
-          <select
-            id={`${id}-orden`}
-            className={`min-h-touch max-w-48 rounded-full border border-borde bg-crema px-3 text-sm text-tinta ${foco} disabled:opacity-60`}
-            value={orden}
+            aria-expanded={abierto}
+            aria-controls={`${id}-filtros`}
             disabled={deshabilitado}
-            onChange={(e) => setOrden(e.target.value as OrdenPublico)}
+            onClick={() => setAbierto((v) => !v)}
+            className={
+              puestos > 0
+                ? `${claseBotonBloque} border-acento bg-acento text-papel`
+                : `${claseBotonBloque} bg-papel text-tinta hover:bg-crema`
+            }
           >
-            {ORDENES_PUBLICOS.map((o) => (
-              <option key={o} value={o}>
-                {ETIQUETA_ORDEN_PUBLICO[o]}
-              </option>
-            ))}
-          </select>
+            Filtros
+            {puestos > 0 && <span className="tabular-nums">({puestos})</span>}
+          </button>
+
+          {hayFiltrosPublicos(filtros) && (
+            <button
+              type="button"
+              onClick={limpiar}
+              className={`${claseBotonBloque} border-transparent text-acento hover:bg-crema`}
+            >
+              Limpiar
+            </button>
+          )}
         </div>
-      </div>
 
-      {/*
-        §10 — el contador va en un `aria-live="polite"`: quien usa lector de
-        pantalla tiene que enterarse de que la lista cambió sin tener que ir a
-        buscarla. `atomic` para que lea la frase entera y no solo el número.
-      */}
-      <p aria-live="polite" aria-atomic="true" className="text-sm text-tinta/70">
-        {carga.estado === 'cargando' && 'Cargando el buscador…'}
-        {carga.estado === 'error' && 'No se pudo cargar el buscador'}
-        {carga.estado === 'listo' &&
-          (visibles.length === entradas.length
-            ? `${entradas.length} ${entradas.length === 1 ? 'actividad' : 'actividades'}`
-            : `${visibles.length} de ${entradas.length} actividades`)}
-      </p>
+        {indice && (
+          /*
+            Los ejes. En el teléfono viven detrás del disclosure y con el tope de
+            65svh de D-143 —`svh` y no `vh` porque en un navegador móvil con barra
+            retráctil `vh` mide la pantalla sin la barra y el panel termina más
+            alto que el hueco real—. En `lg` están siempre y sin tope propio: el
+            `aside` ya tiene el suyo.
 
-      {carga.estado === 'error' && (
-        <p className="rounded-lg border border-borde bg-crema px-3 py-2 text-sm text-tinta/70">
-          No pudimos cargar el buscador. La lista completa sigue abajo; probá
-          recargar la página.
-        </p>
-      )}
+            Se renderiza siempre (no `abierto && …`) y se esconde con clases: así
+            en `lg` está sin depender del estado del disclosure, que allá no se usa.
+          */
+          <div
+            id={`${id}-filtros`}
+            className={`mt-4 flex-col gap-5 overflow-y-auto lg:mt-6 lg:flex lg:max-h-none lg:overflow-visible ${
+              abierto ? 'flex max-h-[65svh]' : 'hidden'
+            }`}
+          >
+            <div>
+              <label htmlFor={`${id}-cuando`} className={claseEtiqueta}>
+                Cuándo
+              </label>
+              <div className="relative">
+                <select
+                  id={`${id}-cuando`}
+                  className={claseSelect}
+                  value={filtros.cuando}
+                  onChange={(e) => setFiltros({ ...filtros, cuando: e.target.value })}
+                >
+                  <option value={CUANDO_PROXIMAS}>Próximas</option>
+                  <option value={CUANDO_ESTE_MES}>Este mes</option>
+                  <option value={CUANDO_TRES_MESES}>Próximos 3 meses</option>
+                  {meses.map((m) => (
+                    <option key={m} value={m}>
+                      {nombreDeMes(m)}
+                    </option>
+                  ))}
+                </select>
+                <Flecha />
+              </div>
+            </div>
 
-      {abierto && indice && (
-        /*
-          El tope de alto es del teléfono y no del escritorio: `max-h-[65svh]` con
-          scroll propio deja siempre a la vista el arranque de la grilla, que es lo
-          que la hoja inferior del §8 iba a resolver. `svh` y no `vh` porque en un
-          navegador móvil con barra retráctil `vh` mide la pantalla sin la barra y
-          el panel termina más alto que el hueco real.
-        */
-        <div
-          id={`${id}-filtros`}
-          className="flex max-h-[65svh] flex-col gap-5 overflow-y-auto rounded-xl border border-borde bg-crema px-3 py-4 sm:max-h-none sm:overflow-visible sm:px-5 sm:py-5"
-        >
-          <div className="max-w-64">
-            <label htmlFor={`${id}-cuando`} className={claseEtiqueta}>
-              Cuándo
+            {EJES.map((eje) => (
+              <EjeDeFiltro
+                key={eje}
+                leyenda={ETIQUETA_EJE[eje]}
+                chips={chipsDe(eje, entradas, filtros, etiquetas, ahora)}
+                onAlternar={(valor) => setFiltros(alternarValor(filtros, eje, valor))}
+              />
+            ))}
+
+            <fieldset className="border-0 p-0">
+              <legend className="label-caps regla-fina mb-1 w-full pb-1 text-azul">Otros</legend>
+              <div className="flex flex-col gap-2">
+                <label className="body-md flex min-h-touch items-center gap-2 text-tinta">
+                  <input
+                    type="checkbox"
+                    checked={filtros.soloAbierta}
+                    onChange={(e) => setFiltros({ ...filtros, soloAbierta: e.target.checked })}
+                    className={claseCasilla}
+                  />
+                  Solo con inscripción abierta
+                </label>
+                <div>
+                  <label htmlFor={`${id}-cursada`} className={claseEtiqueta}>
+                    Tipo de cursada
+                  </label>
+                  <div className="relative">
+                    <select
+                      id={`${id}-cursada`}
+                      className={claseSelect}
+                      value={filtros.cursada}
+                      onChange={(e) =>
+                        setFiltros({
+                          ...filtros,
+                          cursada: e.target.value as FiltrosPublicos['cursada'],
+                        })
+                      }
+                    >
+                      <option value="">Cualquiera</option>
+                      <option value="ciclos">Solo ciclos</option>
+                      <option value="unicos">Solo encuentros únicos</option>
+                    </select>
+                    <Flecha />
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+
+            {/*
+              Cerrar desde abajo es la mitad útil de la hoja inferior del §8: quien
+              terminó de tocar filtros está al final del panel, y volver arriba a
+              buscar el botón que lo abrió es el paso que sobra. Devuelve el foco
+              al abridor, que es lo que una capa modal también tendría que hacer.
+
+              `lg:hidden` porque allá el panel no se cierra nunca.
+            */}
+            <button
+              type="button"
+              onClick={cerrarPanel}
+              className={`${claseBotonPrimario} label-caps sticky bottom-0 lg:hidden`}
+            >
+              {visibles.length === 1 ? 'Ver 1 actividad' : `Ver ${visibles.length} actividades`}
+            </button>
+          </div>
+        )}
+      </aside>
+
+      {/* ══ La columna de contenido ═══════════════════════════════════════ */}
+      <div className="min-w-0">
+        {/*
+          La fila de estado: el contador y el orden. `regla-gruesa-arriba` para que
+          la columna arranque contra la misma regla que el riel y las dos empiecen
+          a la misma altura.
+        */}
+        <div className="regla-gruesa-arriba flex flex-wrap items-end justify-between gap-3 pt-3">
+          {/*
+            §10 — el contador va en un `aria-live="polite"`: quien usa lector de
+            pantalla tiene que enterarse de que la lista cambió sin tener que ir a
+            buscarla. `atomic` para que lea la frase entera y no solo el número.
+          */}
+          <p aria-live="polite" aria-atomic="true" className="label-caps text-super">
+            {carga.estado === 'cargando' && 'Cargando el buscador…'}
+            {carga.estado === 'error' && 'No se pudo cargar el buscador'}
+            {carga.estado === 'listo' &&
+              (visibles.length === entradas.length
+                ? `${entradas.length} ${entradas.length === 1 ? 'actividad' : 'actividades'}`
+                : `${visibles.length} de ${entradas.length} actividades`)}
+          </p>
+
+          <div className="relative">
+            <label htmlFor={`${id}-orden`} className="sr-only">
+              Ordenar por
             </label>
             <select
-              id={`${id}-cuando`}
-              className={claseSelect}
-              value={filtros.cuando}
-              onChange={(e) => setFiltros({ ...filtros, cuando: e.target.value })}
+              id={`${id}-orden`}
+              className={`${claseSelect} label-caps max-w-56 text-azul`}
+              value={orden}
+              disabled={deshabilitado}
+              onChange={(e) => setOrden(e.target.value as OrdenPublico)}
             >
-              <option value={CUANDO_PROXIMAS}>Próximas</option>
-              <option value={CUANDO_ESTE_MES}>Este mes</option>
-              <option value={CUANDO_TRES_MESES}>Próximos 3 meses</option>
-              {meses.map((m) => (
-                <option key={m} value={m}>
-                  {nombreDeMes(m)}
+              {ORDENES_PUBLICOS.map((o) => (
+                <option key={o} value={o}>
+                  {ETIQUETA_ORDEN_PUBLICO[o]}
                 </option>
               ))}
             </select>
+            <Flecha />
           </div>
-
-          {EJES.map((eje) => (
-            <GrupoDeChips
-              key={eje}
-              leyenda={ETIQUETA_EJE[eje]}
-              chips={chipsDe(eje, entradas, filtros, etiquetas, ahora)}
-              onAlternar={(valor) => setFiltros(alternarValor(filtros, eje, valor))}
-            />
-          ))}
-
-          <fieldset className="border-0 p-0">
-            <legend className={claseEtiqueta}>Otros</legend>
-            <div className="flex flex-col gap-2">
-              <label className="flex min-h-touch items-center gap-2 text-sm text-tinta/80">
-                <input
-                  type="checkbox"
-                  checked={filtros.soloAbierta}
-                  onChange={(e) => setFiltros({ ...filtros, soloAbierta: e.target.checked })}
-                  className="size-4 accent-acento"
-                />
-                Solo con inscripción abierta
-              </label>
-              <label className="flex min-h-touch items-center gap-2 text-sm text-tinta/80">
-                Tipo de cursada
-                <select
-                  className={`${claseSelect} max-w-56`}
-                  value={filtros.cursada}
-                  onChange={(e) =>
-                    setFiltros({ ...filtros, cursada: e.target.value as FiltrosPublicos['cursada'] })
-                  }
-                >
-                  <option value="">Cualquiera</option>
-                  <option value="ciclos">Solo ciclos</option>
-                  <option value="unicos">Solo encuentros únicos</option>
-                </select>
-              </label>
-            </div>
-          </fieldset>
-
-          {/*
-            Cerrar desde abajo es la mitad útil de la hoja inferior del §8: quien
-            terminó de tocar chips está al final del panel, y volver arriba a
-            buscar el botón que lo abrió es el paso que sobra. Devuelve el foco al
-            abridor, que es lo que una capa modal también tendría que hacer.
-          */}
-          <button
-            type="button"
-            onClick={cerrarPanel}
-            className={`${claseBotonPildora} sticky bottom-0 justify-center border-acento-hondo bg-acento text-papel sm:static sm:self-start`}
-          >
-            {visibles.length === 1 ? 'Ver 1 actividad' : `Ver ${visibles.length} actividades`}
-          </button>
         </div>
-      )}
 
-      {/* ── El listado, una vez que la island tomó el control ───────────── */}
-      {indice &&
-        (visibles.length > 0 ? (
-          <ListaDeActividades
-            entradas={visibles}
-            ahora={ahora}
-            etiquetas={etiquetas}
-            agrupar={orden === 'proxima'}
-          />
-        ) : (
-          /*
-            §6.1 — cero resultados no es una pantalla vacía: dice qué sacar. El
-            eje que se ofrece se **probó** (ver `ejeQueSobra`), no se adivinó por
-            un orden de prioridad: sugerir «sacá el barrio» cuando sacarlo tampoco
-            alcanza es peor que no sugerir nada.
-          */
-          <div className="rounded-xl border border-borde bg-crema px-4 py-10 text-center">
-            {/*
-              Y distingue «no hay nada publicado» de «tus filtros no dejan pasar
-              nada»: son dos situaciones distintas y la segunda tiene arreglo. La
-              island borró la lista del build, así que el aviso que esa lista tenía
-              para el caso vacío tiene que existir también acá.
-            */}
-            <p className="font-serif text-lg text-tinta">
-              {entradas.length === 0
-                ? 'Todavía no hay nada publicado. Volvé en unos días.'
-                : 'No hay actividades con estos filtros.'}
-            </p>
-            {sobra && (
-              <p className="mt-2 text-sm text-tinta/70">
-                Probá sin el filtro de <strong>{ETIQUETA_EJE[sobra].toLowerCase()}</strong>.
-              </p>
-            )}
-            {hayFiltrosPublicos(filtros) && (
-              <button
-                type="button"
-                onClick={limpiar}
-                className={`${claseBotonPildora} mt-5 border-acento-hondo bg-acento text-papel`}
-              >
-                Limpiar todos los filtros
-              </button>
+        {carga.estado === 'error' && (
+          <p className="body-md regla-fina mt-3 border-borde px-3 py-2 text-super">
+            No pudimos cargar el buscador. La lista completa sigue abajo; probá
+            recargar la página.
+          </p>
+        )}
+
+        {/* ── El listado, una vez que la island tomó el control ─────────── */}
+        {indice && (
+          <div className="mt-6">
+            {visibles.length > 0 ? (
+              <ListaDeActividades
+                entradas={visibles}
+                ahora={ahora}
+                etiquetas={etiquetas}
+                agrupar={orden === 'proxima'}
+              />
+            ) : (
+              /*
+                §6.1 — cero resultados no es una pantalla vacía: dice qué sacar. El
+                eje que se ofrece se **probó** (ver `ejeQueSobra`), no se adivinó
+                por un orden de prioridad: sugerir «sacá el barrio» cuando sacarlo
+                tampoco alcanza es peor que no sugerir nada.
+              */
+              <div className="regla-gruesa-arriba px-4 py-12 text-center">
+                {/*
+                  Y distingue «no hay nada publicado» de «tus filtros no dejan
+                  pasar nada»: son dos situaciones distintas y la segunda tiene
+                  arreglo. La island borró la lista del build, así que el aviso que
+                  esa lista tenía para el caso vacío tiene que existir también acá.
+                */}
+                <p className="headline-sm text-tinta">
+                  {entradas.length === 0
+                    ? 'Todavía no hay nada publicado. Volvé en unos días.'
+                    : 'No hay actividades con estos filtros.'}
+                </p>
+                {sobra && (
+                  <p className="body-md mt-2 text-super">
+                    Probá sin el filtro de <strong>{ETIQUETA_EJE[sobra].toLowerCase()}</strong>.
+                  </p>
+                )}
+                {hayFiltrosPublicos(filtros) && (
+                  <button
+                    type="button"
+                    onClick={limpiar}
+                    className={`${claseBotonPrimario} label-caps mt-6`}
+                  >
+                    Limpiar todos los filtros
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        ))}
+        )}
+      </div>
     </div>
   );
 }

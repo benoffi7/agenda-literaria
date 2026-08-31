@@ -1,14 +1,15 @@
 ---
 /**
- * La home: el listado público — B-227, §4.1 del diseño. Regrillada en B-247.
+ * La home: el listado público — B-227, §4.1 del diseño. Rehecha en B-260 (D-146).
  *
  * **El HTML sale completo del build** (SSG): todas las actividades vigentes, con
- * sus tarjetas, agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve
- * el buscador y lo que ve alguien con JavaScript apagado (§2.3, §6.3).
+ * sus filas, agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve el
+ * buscador y lo que ve alguien con JavaScript apagado (§2.3, §6.3). Esto **no se
+ * puede romper**: el SEO es requisito del proyecto.
  *
  * La island de arriba baja `/events.json` y, cuando lo tiene, saca esta lista del
  * DOM y renderiza la suya con **el mismo componente**: una sola definición del
- * markup de la tarjeta, que es lo que el §6.3 pide para que las dos vistas no se
+ * markup de la fila, que es lo que el §6.3 pide para que las dos vistas no se
  * separen.
  *
  * `Buscador` es la única island de esta página, y es `client:load` porque un
@@ -16,10 +17,25 @@
  * **sin directiva**: Astro la renderiza a HTML y no manda un byte de JavaScript
  * por ella.
  *
- * **El ancho es `max-w-5xl`, el mismo del encabezado** (B-247): la grilla de tres
- * columnas necesita ese ancho y, cuando el contenido era más angosto que la barra
- * de navegación, el título de la página arrancaba corrido respecto del nombre del
- * sitio, que está justo arriba.
+ * ── Cómo se alinea la lista del build con la columna de contenido ─────────
+ * La island es una grilla de dos columnas en `lg` —el riel de filtros y el
+ * contenido— y esta lista vive **fuera** de la island, porque la island la borra
+ * del DOM por `id` cuando toma el control y React no puede ser dueña de un nodo
+ * que otro código elimina.
+ *
+ * Así que se alinea desde afuera con `lg:ps-riel`, una utilidad que sale del
+ * **mismo** token `--spacing-riel` que la columna del riel. Escrito como un
+ * número a mano en los dos lados, el día que el riel cambie de ancho esta lista
+ * queda corrida — y solo se ve mientras el JavaScript no cargó, o para siempre si
+ * nunca carga, que son justo los dos momentos que nadie mira.
+ *
+ * ── El ancho ──────────────────────────────────────────────────────────────
+ * `max-w-[90rem]` con los márgenes del sistema (16px en móvil, 40px en
+ * escritorio: «el área segura de impresión de un afiche»). Es el mismo ancho del
+ * encabezado y del pie, así que el marcador de mes arranca en la misma vertical
+ * que el nombre del sitio. El tope existe para que en un monitor de 27" las filas
+ * no midan 2000px, no para centrar una columna angosta: el sistema es de página
+ * completa.
  */
 import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
@@ -65,23 +81,22 @@ const descripcion =
   */}
   <a
     href="#listado"
-    class="sr-only rounded-md border border-acento bg-papel px-3 py-2 text-sm text-acento-hondo focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+    class="body-md sr-only border border-acento bg-papel px-3 py-2 text-acento focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
   >
     Saltar al listado
   </a>
 
-  <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
     {/*
-      El encabezado de la página, angosto a propósito: un `h1` a todo el ancho de
-      la grilla de tres columnas se lee peor, porque la línea pasa de los 90
-      caracteres. `max-w-2xl` lo deja en medida de lectura sin tocar el ancho de
-      la grilla que viene abajo.
+      El encabezado de la página. El `h1` va en `headline-md` —Archivo Narrow de
+      32px— y **no** en `display-lg`: el cuerpo de 72px es del marcador de mes, y
+      dos cosas al mismo tamaño máximo es ninguna.
     */}
-    <div class="max-w-2xl">
-      <h1 class="font-serif text-3xl leading-tight font-semibold text-balance sm:text-5xl">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">
         Talleres, clubes de lectura y encuentros literarios en Argentina
       </h1>
-      <p class="mt-3 text-base text-tinta/70 sm:text-lg">
+      <p class="body-md mt-3 text-super">
         {cuantas === 0
           ? 'Todavía no hay actividades con fecha próxima.'
           : `${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima. Buscá por barrio, por tema o por lo que salga.`}
@@ -104,9 +119,9 @@ const descripcion =
         La lista del build. La island la saca del DOM cuando tiene el índice; si
         el fetch falla, se queda — nunca una pantalla vacía (§6.3).
       */}
-      <div id={ID_LISTADO} class="mt-6">
+      <div id={ID_LISTADO} class="mt-8 lg:ps-riel">
         {cuantas === 0 ? (
-          <p class="rounded-xl border border-borde bg-crema px-4 py-10 text-center text-tinta/70">
+          <p class="body-md regla-gruesa-arriba px-4 py-12 text-center text-super">
             Todavía no hay nada publicado con fecha próxima. Volvé en unos días.
           </p>
         ) : (

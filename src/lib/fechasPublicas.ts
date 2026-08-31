@@ -99,7 +99,56 @@ export const claveDeMes = (d: Date): string => {
   return `${p.year}-${p.month}`;
 };
 
-/** `Septiembre de 2026` — el separador de mes del listado. */
+/**
+ * `{ mes: 'Septiembre', anio: '2026' }` — el marcador de mes del listado, **en
+ * dos piezas** — B-260.
+ *
+ * El sistema visual pinta el mes en `display-lg`: Bodoni de 72px en versalitas.
+ * `nombreDeMes` devuelve «Septiembre de 2026», y esa cadena entera a 72px no
+ * entra en un teléfono ni en la mitad de los escritorios — y lo que hay que
+ * agrandar es **el mes**, que es lo que estructura la lista; el año es un dato de
+ * desambiguación que casi siempre es el corriente.
+ *
+ * Así que se parte, y se parte **acá y no en el componente**: el corte depende del
+ * idioma (`es-AR` mete un «de» en el medio) y partir una cadena formateada con un
+ * `split(' de ')` en el markup es exactamente la clase de derivación que se rompe
+ * el día que cambie el `Intl`. Acá sale de las partes, no de deshacer el formato.
+ */
+export const partesDeMes = (clave: string): { mes: string; anio: string } => {
+  const [anio, mes] = clave.split('-').map(Number);
+  if (!anio || !mes) return { mes: clave, anio: '' };
+  const d = new Date(Date.UTC(anio, mes - 1, 15, 12));
+  const texto = fmt({ month: 'long' }).format(d);
+  return { mes: texto.charAt(0).toUpperCase() + texto.slice(1), anio: String(anio) };
+};
+
+/**
+ * `{ dia: '4', diaSemana: 'jue', mes: 'sep' }` — las tres piezas del **bloque de
+ * fecha**, que es el gesto central del sistema visual (B-260).
+ *
+ * Va acá y no en el componente por el mismo motivo que todo lo demás de este
+ * módulo: **el `timeZone` explícito** (trampa 1). `d.getDate()` devuelve el día
+ * del reloj de quien mira, así que un encuentro del 1 de septiembre a las 00:30
+ * de Buenos Aires sale «31» en un navegador en Madrid — y el bloque de fecha es
+ * justamente el dato más grande de la fila.
+ */
+export const partesDeFecha = (d: Date): { dia: string; diaSemana: string; mes: string } => {
+  const p = Object.fromEntries(
+    fmt({ weekday: 'short', day: 'numeric', month: 'short' })
+      .formatToParts(d)
+      .map((x) => [x.type, x.value]),
+  );
+  return {
+    dia: p.day ?? '',
+    // `es-AR` devuelve `jue.` con el punto; en versalitas el punto sobra.
+    diaSemana: (p.weekday ?? '').replace('.', ''),
+    // Y `sept` para septiembre, que es el único de cuatro letras: se recorta acá
+    // igual que en `fechaCorta`, para que las dos digan el mes del mismo largo.
+    mes: (p.month ?? '').replace('.', '').replace(/\bsept\b/, 'sep'),
+  };
+};
+
+/** `Septiembre de 2026` — el nombre completo del mes, para textos en prosa. */
 export const nombreDeMes = (clave: string): string => {
   const [anio, mes] = clave.split('-').map(Number);
   if (!anio || !mes) return clave;

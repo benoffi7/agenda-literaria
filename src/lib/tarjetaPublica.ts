@@ -1,5 +1,5 @@
 /**
- * Lo que dice una tarjeta del listado, y cómo se dibuja su portada — B-247.
+ * Lo que dice una **fila** del listado — B-247, rehecho en B-260.
  *
  * ── Por qué es un módulo y no está dentro del componente ──────────────────
  * `docs/05-patrones.md` dice que los componentes de React de este repo no tienen
@@ -13,36 +13,25 @@
  * como parámetro a través de `EstadoDeEntrada`. Es el mismo corte que ya hay entre
  * `listadoPublico.ts` y `Buscador.tsx`.
  *
- * Lo que el componente **sí** sigue leyendo del índice son los cinco campos sobre
- * los que no hay nada que decidir —`slug`, `tipo`, `titulo`, `imagenUrl`,
- * `destacado`—: un `href`, un color, un texto y dos banderas. No es una promesa de
+ * Lo que el componente **sí** sigue leyendo del índice son los cuatro campos sobre
+ * los que no hay nada que decidir —`slug`, `tipo`, `titulo`, `destacado`—: un `href`, un color, un texto y dos banderas. No es una promesa de
  * docblock, es una lista cerrada que verifica
  * `tests/tarjeta-del-listado.test.ts`; sin ella nada impediría imprimir
  * `searchText` —la descripción entera, normalizada— en una tarjeta. Es la forma de
  * D-140 aplicada a la otra mitad de la salida 1, donde el tipo no puede darla.
  *
- * ── La portada generada ───────────────────────────────────────────────────
- * `imagenUrl` es opcional y en este circuito muchas actividades no van a tener
- * foto (D-141, decisión 3). Lo que se dibuja en su lugar **no es un placeholder**:
- * es una portada tipográfica, el título sobre el color del tipo, con dos cosas
- * derivadas de forma determinística para que se vea elegida y no rellenada:
+ * ── Lo que B-260 sacó: la portada generada ────────────────────────────────
+ * D-141 decidió que una tarjeta sin foto llevara una **portada generada** —el
+ * título sobre un color derivado del tipo—, y `escalaDePortada` y
+ * `renglonesDePortada` vivían acá para dibujarla. El sistema visual de B-260 la
+ * retira entera: el listado pasa a ser **filas tipográficas sin ninguna imagen**,
+ * y la paleta pasa a ser de tres tintas, así que un color por tipo ya no existe.
+ * El razonamiento completo, y qué se conserva de aquella decisión, está en D-146.
  *
- * | Qué | De dónde sale | Por qué así |
- * |---|---|---|
- * | el color | `colorDeTipo` (`lib/identidad.ts`) | se deriva del slug, no de una tabla: `tipo` es taxonomía autogestionada (§4) y una tabla queda vieja el día que alguien agrega el octavo tipo |
- * | la escala del título | `escalaDePortada` | un título de una palabra y uno de doce no pueden ir al mismo cuerpo; con un solo tamaño, el primero se ve perdido y el segundo se corta |
- * | el motivo gráfico | `renglonesDePortada` | le da carácter propio a cada tipo sin inventar un segundo color |
- *
- * **El motivo se siembra con `tonoDeTipo` y no con un hash nuevo.** Es la misma
- * derivación que ya decide el color, así que un tipo tiene siempre la misma
- * portada y no hay dos funciones que respondan «qué le toca a este slug» —que es
- * exactamente la clase de B-88, dos derivaciones de la misma idea separándose sin
- * que nada falle.
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
-import { diaYMes, fechaCorta, hora } from '@/lib/fechasPublicas';
+import { diaYMes, fechaCorta, hora, partesDeFecha } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
-import { tonoDeTipo } from '@/lib/identidad';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
 import type { Modalidad } from '@/types/actividad';
@@ -105,6 +94,43 @@ export const cuandoDeTarjeta = (estado: EstadoDeEntrada): CuandoDeTarjeta =>
         paso: false,
       }
     : { texto: 'Ya pasó', iso: null, paso: true };
+
+/**
+ * El **bloque de fecha**: el rectángulo de tinta plena con el texto calado que es
+ * el gesto central del sistema visual (B-260, D-146).
+ *
+ * Devuelve las piezas por separado y no una cadena, porque el bloque las pinta a
+ * cuerpos distintos: el número del día grande y el día de la semana y el mes en
+ * versalitas. Armar una cadena y volver a partirla en el componente sería la
+ * derivación de ida y vuelta que este módulo existe para evitar.
+ *
+ * **Por qué `paso` es un discriminante** y no un objeto con campos en `null`:
+ * cuando la actividad ya pasó no hay día que poner, y un `dia: null` obliga a cada
+ * consumidor a acordarse de chequearlo — que es cómo termina saliendo un bloque de
+ * fecha vacío en producción. Con el discriminante, el compilador no deja leer
+ * `dia` sin haber preguntado antes.
+ *
+ * La hora **no** se pinta adentro del bloque: el bloque es la fecha, y meter
+ * `19:00` ahí dentro obliga a un tercer cuerpo tipográfico en un rectángulo de
+ * 56px, con lo que deja de leerse de un golpe de vista — que es lo único que tiene
+ * que hacer. Viaja igual, para la línea de metadatos de al lado.
+ */
+export type BloqueDeFecha =
+  | { paso: true; texto: string }
+  | { paso: false; dia: string; diaSemana: string; mes: string; hora: string; iso: string };
+
+export const bloqueDeFecha = (estado: EstadoDeEntrada): BloqueDeFecha => {
+  if (!estado.proxima) return { paso: true, texto: 'Pasó' };
+  const { dia, diaSemana, mes } = partesDeFecha(estado.proxima);
+  return {
+    paso: false,
+    dia,
+    diaSemana,
+    mes,
+    hora: hora(estado.proxima),
+    iso: estado.proxima.toISOString(),
+  };
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Dónde y cómo se cursa
@@ -263,61 +289,4 @@ export const avisoDeTarjeta = (
     return { texto: `Inscripción abierta · cupo ${entrada.inscripcion.cupo}`, tono: 'apagado' };
   }
   return { texto: 'Inscripción abierta', tono: 'apagado' };
-};
-
-// ─────────────────────────────────────────────────────────────────
-// La portada generada
-// ─────────────────────────────────────────────────────────────────
-
-/**
- * El cuerpo del título en la portada generada.
- *
- * `sello` es el título de una sola palabra corta —«Micrófono», «Cronopios»—, que
- * con el cuerpo de un título largo se ve perdido en el medio del rectángulo y
- * parece un error de maquetación. Al revés, un título de doce palabras con el
- * cuerpo del sello no entra ni recortado.
- */
-export type EscalaDePortada = 'sello' | 'grande' | 'media' | 'chica';
-
-/** Los cortes están en caracteres visibles, con los espacios ya normalizados. */
-export const escalaDePortada = (titulo: string): EscalaDePortada => {
-  const limpio = titulo.trim().replace(/\s+/g, ' ');
-  const palabras = limpio === '' ? 0 : limpio.split(' ').length;
-  if (palabras <= 1 && limpio.length <= 14) return 'sello';
-  if (limpio.length <= 26) return 'grande';
-  if (limpio.length <= 64) return 'media';
-  return 'chica';
-};
-
-/** Cuántos renglones tiene la portada, como mínimo. */
-export const RENGLONES_MIN = 3;
-
-/**
- * El motivo gráfico de la portada: renglones de anchos distintos, como el final
- * de un párrafo escrito a mano.
- *
- * Devuelve porcentajes del ancho de la portada. **El último es siempre el más
- * corto**, que es lo que hace que se lea como un párrafo que termina y no como
- * una grilla de barras: sin eso, tres líneas parejas parecen un gráfico de datos.
- *
- * La semilla es `tonoDeTipo`, así que dos tipos con el mismo color tienen el mismo
- * motivo —y eso es correcto: el motivo acompaña al color, no lo desmiente.
- *
- * **El módulo es primo y el índice entra sumando, no multiplicando** — B-248. La
- * primera versión hacía `(semilla * (i + 7)) % 50`, y como los tonos asignados son
- * redondos, un tono múltiplo de 50 daba resto cero para *todos* los renglones:
- * «club de lectura» salía con tres líneas exactamente iguales, que es justo el
- * gráfico de barras que el último renglón corto existe para evitar. Con 47 —primo,
- * así que ningún tono lo divide— y el índice sumando un paso que tampoco lo
- * divide, no hay tono que colapse el motivo. Lo encontró mirar el HTML del build,
- * no un test: el test miraba el último renglón y los tres iguales le pasaban por
- * al lado.
- */
-export const renglonesDePortada = (slugTipo: string): number[] => {
-  const semilla = tonoDeTipo(slugTipo);
-  const cantidad = RENGLONES_MIN + (semilla % 3);
-  return Array.from({ length: cantidad }, (_, i) => {
-    const largo = 46 + ((semilla * 7 + i * 29) % 47);
-    return i === cantidad - 1 ? Math.round(largo * 0.42) : largo;
-  });
 };
