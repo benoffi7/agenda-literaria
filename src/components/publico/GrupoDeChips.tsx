@@ -24,6 +24,7 @@
  * 5,59:1 sobre cualquier fondo, porque el fondo deja de participar. Lo verifica
  * `tests/tarjeta-del-listado.test.ts`.
  */
+import { foco } from '@/components/sitio/estilos';
 import { useRef } from 'react';
 import { indiceDeTecla } from '@/lib/foco';
 import type { Chip } from '@/lib/listadoPublico';
@@ -35,7 +36,7 @@ interface Props {
 }
 
 const base =
-  'inline-flex min-h-touch shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento';
+  `inline-flex min-h-touch shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-colors ${foco}`;
 const apagado = `${base} border-borde bg-hondo text-tinta/75 hover:border-acento hover:text-tinta`;
 const encendido = `${base} border-acento-hondo bg-acento font-medium text-papel`;
 

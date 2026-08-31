@@ -42,7 +42,15 @@ const conChrome = seccion !== 'ninguna';
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap"
     />
   </head>
-  <body class="flex min-h-dvh flex-col overflow-x-hidden font-sans antialiased">
+  {/*
+    `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan igual, pero `hidden`
+    **crea un contenedor de scroll** y eso rompe `position: sticky` adentro, en
+    silencio: el elemento simplemente nunca se pega, sin error ni advertencia. Lo
+    encontró el frente del detalle, que terminó usando `fixed` con un relleno al
+    pie para esquivarlo. `clip` no crea el contenedor, así que `sticky` vuelve a
+    estar disponible para quien lo necesite.
+  */}
+  <body class="flex min-h-dvh flex-col overflow-x-clip font-sans antialiased">
     {conChrome && <Encabezado activa={seccion as Seccion} />}
     {/* `flex-1` empuja el pie al fondo cuando la página es más corta que la
         pantalla — un listado filtrado a cero resultados es el caso normal. */}

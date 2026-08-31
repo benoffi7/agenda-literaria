@@ -44,6 +44,7 @@
  * 3. **Cierra con «Ver N actividades»** y el foco vuelve al botón que lo abrió,
  *    que es la parte de la hoja inferior que sí se puede tener sin ser modal.
  */
+import { foco } from '@/components/sitio/estilos';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { GrupoDeChips } from '@/components/publico/GrupoDeChips';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
@@ -90,12 +91,12 @@ interface Props {
 type Carga = { estado: 'cargando' } | { estado: 'listo'; indice: Indice } | { estado: 'error' };
 
 const claseSelect =
-  'min-h-touch w-full rounded-lg border border-borde bg-hondo px-2.5 py-1.5 text-sm text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60';
+  `min-h-touch w-full rounded-lg border border-borde bg-hondo px-2.5 py-1.5 text-sm text-tinta ${foco} disabled:opacity-60`;
 
 const claseEtiqueta = 'mb-1.5 block text-xs font-semibold tracking-[0.12em] text-tinta/70 uppercase';
 
 const claseBotonPildora =
-  'inline-flex min-h-touch shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60';
+  `inline-flex min-h-touch shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${foco} disabled:opacity-60`;
 
 export function Buscador({ version, idListadoEstatico }: Props) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
@@ -235,7 +236,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
             disabled={deshabilitado}
             onChange={(e) => setFiltros({ ...filtros, q: e.target.value })}
             placeholder="Buscar por título, barrio o tallerista…"
-            className="min-h-touch w-full rounded-full border border-borde bg-crema py-2 pr-4 pl-10 text-tinta placeholder:text-tinta/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60"
+            className={`min-h-touch w-full rounded-full border border-borde bg-crema py-2 pr-4 pl-10 text-tinta placeholder:text-tinta/70 ${foco} disabled:opacity-60`}
           />
         </div>
       </div>
@@ -284,7 +285,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
           </label>
           <select
             id={`${id}-orden`}
-            className="min-h-touch max-w-48 rounded-full border border-borde bg-crema px-3 text-sm text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60"
+            className={`min-h-touch max-w-48 rounded-full border border-borde bg-crema px-3 text-sm text-tinta ${foco} disabled:opacity-60`}
             value={orden}
             disabled={deshabilitado}
             onChange={(e) => setOrden(e.target.value as OrdenPublico)}

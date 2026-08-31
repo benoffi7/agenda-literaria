@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-08-31 · el sitio con identidad, integrado
+
+**Las cinco páginas comparten un lenguaje visual.** El listado con portadas y
+tarjetas (**B-247**) y el detalle, el chrome y las páginas de texto (**B-253**),
+escritos en paralelo sobre la identidad de D-141. Cada frente tiene su entrada
+abajo; acá va lo que apareció **al juntarlos**.
+
+**Un XSS real en una página indexada, heredado de B-227.** `JSON.stringify` no
+escapa `<`, así que un título con `</script>` adentro **cerraba el bloque de
+JSON-LD** y lo que seguía era HTML ejecutable. Lo encontró el auditor de privacidad
+del frente del detalle. Se verificó **atacándolo**: se sembró una actividad cuyo
+título, descripción, sede, dirección, tema y organizador eran todos
+`</script><img src=x onerror=…>`, se construyó el sitio y se leyó el HTML — el
+bloque queda con `\u003c`, el JSON sigue parseando, y en la página hay **un solo
+`<script>`**. El `<img>` crudo que queda en la `meta description` **no es
+explotable**: vive dentro de un atributo entrecomillado y Astro escapa las
+comillas, así que no hay forma de salir.
+
+**`--aspect-portada`, para que la misma imagen no tenga dos recortes** — B-249. Lo
+pidió el frente de la tarjeta al cerrar, antes de que el del detalle eligiera la
+suya. No es cosmético: con la **portada generada**, el título va *dentro* del
+recorte, así que dos proporciones son dos tamaños de letra para el mismo texto.
+
+**`overflow-x-hidden` → `overflow-x-clip`** — B-259. `hidden` **crea un contenedor
+de scroll**, y eso deshabilita `position: sticky` adentro sin error ni advertencia:
+el elemento nunca se pega. Le costó al frente del detalle un `fixed` con relleno al
+pie. `clip` recorta igual sin crear el contenedor. El test que lo cubría estaba
+escrito como **invariante condicional** —«no vuelve a ser sticky *mientras* el body
+recorte con hidden»— así que se destrabó solo al cambiarlo, que es exactamente para
+lo que sirve escribirlo así.
+
+**El anillo de foco estaba seis veces a mano, y centralizarlo dejó los controles sin
+foco.** La sustitución metió `${foco}` adentro de `'…'` y de `className="…"`, que
+**no interpolan**: la clase sale literal al HTML, Tailwind no genera nada y el
+control se queda sin anillo — con el build **y** el typecheck en verde. Se vio
+mirando el HTML construido, no un test; y la primera verificación dio **verde en
+falso** porque `grep '${foco}'` no matchea con BSD grep. Cerrado con dos cosas: el
+chequeo del anillo ahora acepta el import además del literal —castigar la
+deduplicación empuja a copiar— y hay un guard nuevo que exige que **toda
+interpolación del anillo viva en un template literal**. Las dos mutaciones fallan.
+
+**1.849 tests en 82 archivos**, contados en esta corrida.
+
 ## 2026-08-31 · la tarjeta y la grilla del listado
 
 La bajada de **D-141** a la pieza que más se repite del sitio. La lista vertical de

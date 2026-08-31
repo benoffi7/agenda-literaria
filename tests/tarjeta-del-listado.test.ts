@@ -373,14 +373,58 @@ describe('la accesibilidad de la grilla', () => {
   });
 
   it('nadie apaga el anillo de foco, y todo componente con botones lo declara', () => {
+    /*
+     * **Vale el literal o el `foco` de `components/sitio/estilos.ts`** — B-259.
+     * La primera versión pedía la clase escrita, y eso ponía en rojo justamente
+     * al componente que hace lo correcto: importar el anillo canónico en vez de
+     * repetirlo. Un chequeo que castiga la deduplicación empuja a copiar.
+     *
+     * Lo que se sigue exigiendo es la propiedad: **que el componente tenga un
+     * anillo**, venga de donde venga. Y que nadie lo apague.
+     *
+     * Ojo con el modo de falla que esto tuvo mientras se migraba: `${'$'}{foco}` metido
+     * en un string de comillas simples o en un atributo JSX **no interpola**, así
+     * que la clase sale literal al HTML y el control queda sin foco, en silencio.
+     * Por eso el aserto de abajo pide el import además de la mención: mencionar
+     * `foco` sin importarlo es exactamente esa falla.
+     */
     const sinFoco: string[] = [];
     for (const { archivo, codigo } of fuentes()) {
       if (/outline-none/.test(codigo)) sinFoco.push(`${archivo} — apaga el outline`);
-      if (/<button|<input|<select/.test(codigo) && !/focus-visible:outline-acento/.test(codigo)) {
+      if (!/<button|<input|<select/.test(codigo)) continue;
+
+      const literal = /focus-visible:outline-acento/.test(codigo);
+      const importado =
+        /import \{[^}]*\bfoco\b[^}]*\} from '@\/components\/sitio\/estilos'/.test(codigo) &&
+        /\$\{foco\}/.test(codigo);
+
+      if (!literal && !importado) {
         sinFoco.push(`${archivo} — tiene controles sin foco visible`);
       }
     }
     expect(sinFoco).toEqual([]);
+  });
+
+  it('y ninguna interpolación del anillo quedó en un string que no interpola', () => {
+    /*
+     * El modo de falla que apareció al centralizar el anillo, y que ningún test
+     * veía: `${'$'}{foco}` adentro de `'…'` o de `className="…"` sale **literal** al
+     * HTML. La clase no existe, Tailwind no genera nada, y el control se queda sin
+     * foco sin que falle el build ni el typecheck. Se vio mirando el HTML.
+     */
+    const rotos: string[] = [];
+    for (const { archivo, codigo } of fuentes()) {
+      for (const linea of codigo.split('\n')) {
+        if (!linea.includes('${foco}')) continue;
+        // Tiene que estar adentro de un template literal.
+        if (!linea.includes('`')) rotos.push(`${archivo} — ${linea.trim().slice(0, 60)}`);
+      }
+    }
+    expect(
+      rotos,
+      'estas líneas interpolan el anillo en un string que no interpola: la clase ' +
+        'sale literal al HTML y el control queda sin foco visible.',
+    ).toEqual([]);
   });
 
   it('el resultado del filtrado se anuncia en una live region', () => {

@@ -32,6 +32,7 @@
  * este repo no tienen tests de render (`docs/05-patrones.md`), así que lo que
  * quede acá adentro no se verifica en ninguna parte.
  */
+import { foco } from '@/components/sitio/estilos';
 import { PortadaDeTarjeta } from '@/components/publico/PortadaDeTarjeta';
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { estadoDe, etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -82,7 +83,7 @@ export function Tarjeta({ entrada, ahora, etiquetas, prioridad = false }: Props)
       */}
       <a
         href={rutaDeDetalle(entrada.slug)}
-        className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-borde bg-crema transition-colors hover:border-acento focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+        className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-borde bg-crema transition-colors hover:border-acento ${foco}`}
       >
         <PortadaDeTarjeta
           tipo={entrada.tipo}
