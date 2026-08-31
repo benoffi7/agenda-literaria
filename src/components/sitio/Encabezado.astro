@@ -87,7 +87,7 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
     27" las filas del listado no midan 2000px, no para centrar una columna: el
     sistema es de página completa, no de contenedor angosto.
   */}
-  <div class="mx-auto flex max-w-[90rem] items-end justify-between gap-4 px-4 py-3 sm:px-10 sm:py-4">
+  <div class="mx-auto flex max-w-[90rem] items-end justify-between gap-4 px-4 py-3 sm:min-h-encabezado sm:px-10 sm:py-4">
     <a href="/" class={`group flex min-w-0 items-end ${focoAmplio}`}>
       <span class="marca text-tinta group-hover:text-acento">{NOMBRE}</span>
     </a>
@@ -165,4 +165,11 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
       z-index: 30;
     }
   }
+
+  /*
+    Y su altura sale del token `--spacing-encabezado`, que es el mismo del que
+    sale el `top` de todo lo que se pega debajo (el riel de filtros del listado y
+    la ficha de la página de detalle). Corrección 10 de `stitch-detalle.md`: la
+    referencia usaba un `top-24` que nadie ató a esta altura.
+  */
 </style>

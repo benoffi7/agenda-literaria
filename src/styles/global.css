@@ -124,6 +124,23 @@
   --spacing-touch: 2.75rem;
 
   /*
+   * La altura del encabezado, **en un solo lugar** — corrección 10 de
+   * `docs/referencias/stitch-detalle.md`.
+   *
+   * La referencia pega la ficha del detalle con un `top-24` suelto, que es un
+   * número que nadie ató a la altura real de la cabecera: si el encabezado
+   * cambia, la ficha queda tapada o flotando, y no falla nada. Acá el token es la
+   * fuente única — el encabezado lo usa como `min-height` y **todo lo que se pega
+   * debajo lo usa como `top`**, así que el número no puede desincronizarse porque
+   * hay uno solo.
+   *
+   * Es `min-height` y no `height`: si el contenido de la barra creciera, se pasa
+   * de largo en vez de recortarse. Un desfase de unos píxeles hacia abajo no tapa
+   * nada; recortar la navegación sí.
+   */
+  --spacing-encabezado: 4.5rem;
+
+  /*
    * El ancho del riel de filtros, **en un solo lugar**: lo usan la columna
    * izquierda del listado y el desplazamiento con el que el HTML del build
    * alinea su lista debajo de la columna de contenido. Escrito dos veces, el
@@ -187,6 +204,28 @@
   @media (width >= 40rem) {
     font-size: 32px;
     line-height: 30px;
+  }
+}
+
+/*
+ * `display-md` — el título de la página de detalle, y **solo ése**.
+ *
+ * `stitch-detalle.md` pide «el título en Bodoni display», y ahí no hay marcador
+ * de mes con el que competir: la página de detalle es la única del sitio donde el
+ * `h1` es lo más grande que hay. Pero 72px es del mes, así que esto es un escalón
+ * abajo — sigue siendo Bodoni de display, y entra un título largo («Presentación:
+ * Las malas, de Camila Sosa Villada») sin partirse en cinco renglones.
+ */
+@utility display-md {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 36px;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+
+  @media (width >= 40rem) {
+    font-size: 52px;
+    line-height: 48px;
   }
 }
 

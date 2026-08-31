@@ -39,7 +39,14 @@
 // que la tarjeta del listado y la `meta description` del detalle recorten igual.
 import { NOMBRE } from '@/lib/identidad';
 import { resumenDe } from '@/lib/eventsJson';
-import { fechaCompleta, fechaLarga, hora, isoConOffset, rangoCorto } from '@/lib/fechasPublicas';
+import {
+  fechaCompleta,
+  fechaLarga,
+  hora,
+  isoConOffset,
+  partesDeFecha,
+  rangoCorto,
+} from '@/lib/fechasPublicas';
 import { etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ItemMaterialPublico } from '@/lib/toPublic';
@@ -109,6 +116,19 @@ export interface EncuentroDeDetalle {
   finIso: string;
   fecha: string;
   hora: string;
+  /**
+   * Las tres piezas del **bloque de fecha** —día de la semana, número y mes— para
+   * el rectángulo de tinta plena con el texto calado que abre cada encuentro
+   * (B-260, D-146).
+   *
+   * Viaja armado y no se deriva en la plantilla por lo mismo que todo lo demás de
+   * este view-model: un `.astro` no se puede importar desde vitest, así que un
+   * `fecha.split(' ')` en el markup sería una derivación de la fecha **sin ningún
+   * test que pudiera evaluarla** — y encima una segunda, porque la fila del
+   * listado ya tiene la suya (`bloqueDeFecha`). Las dos salen de `partesDeFecha`,
+   * que es la única que sabe formatear en la zona del proyecto (trampa 1).
+   */
+  bloque: { dia: string; diaSemana: string; mes: string };
   tema: string | null;
   lectura: string | null;
   cancelada: boolean;
@@ -543,6 +563,7 @@ export const detalleDeActividad = (
       finIso: fin ? isoConOffset(fin) : '',
       fecha: inicio ? fechaLarga(inicio) : '',
       hora: inicio ? hora(inicio) : '',
+      bloque: inicio ? partesDeFecha(inicio) : { dia: '', diaSemana: '', mes: '' },
       tema: s.tema,
       lectura: s.lectura,
       cancelada: s.cancelada,

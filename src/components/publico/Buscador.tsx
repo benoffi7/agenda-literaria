@@ -230,12 +230,14 @@ export function Buscador({ version, idListadoEstatico }: Props) {
     <div className="lg:grid lg:grid-cols-[var(--spacing-riel)_minmax(0,1fr)] lg:items-start lg:gap-x-10">
       {/* ══ El riel: el índice del programa ═══════════════════════════════ */}
       {/*
-        `lg:sticky` con `top` a la altura del encabezado, que también se pega de
-        `sm` en adelante. Sin el `top` el riel se metería debajo de la cabecera al
-        scrollear. Y `max-h`/`overflow-y-auto` para que un índice con muchos
+        `lg:sticky` con el `top` en `--spacing-encabezado`, que es **el mismo
+        token** del que sale la altura de la cabecera. Sin el `top` el riel se
+        metería debajo de ella al scrollear, y con un número escrito a mano se
+        desincroniza el día que la cabecera cambie, sin que falle nada
+        (corrección 10 de `stitch-detalle.md`). Y `max-h`/`overflow-y-auto` para que un índice con muchos
         barrios no quede con la mitad fuera de la pantalla y sin forma de llegar.
       */}
-      <aside className="regla-gruesa-arriba pt-3 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pb-4">
+      <aside className="regla-gruesa-arriba pt-3 lg:sticky lg:top-encabezado lg:max-h-[calc(100dvh-var(--spacing-encabezado)-2rem)] lg:overflow-y-auto lg:pb-4">
         <div role="search" className="relative">
           {/*
             La etiqueta es **visible**, no `sr-only`: el sistema dice «campos: una
