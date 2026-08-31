@@ -121,16 +121,36 @@ solo**, y define qué se puede usar dónde.
 | `primary` `#a7341c` | 6,33:1 | ✅ el bloque de fecha entra cómodo |
 | `tertiary` `#6c575a` | 6,34:1 | ✅ |
 | `secondary` `#4f6073` | 6,14:1 | ✅ |
-| `primary-container` `#c84c32` | 4,40:1 | ❌ falla en las versalitas de 11px |
-| `tertiary-container` `#866f72` | 4,41:1 | ❌ ídem |
+| `primary-container` `#c84c32` | 4,40:1 | ⚠️ **con el papel**, falla por cuatro centésimas |
+| `tertiary-container` `#866f72` | 4,41:1 | ⚠️ ídem |
+
+**Corrección del 2026-08-31, y vale escribirla porque casi manda a evitar una
+combinación buena.** Las dos filas de arriba miden **el papel** encima de los
+`*-container`, y ese no es el par que el sistema define: para cada uno hay un
+`on-*` propio, que es un blanco casi puro (`#fffcff`) y no el papel cálido. Con el
+par correcto:
+
+| Fondo | Su `on-*` encima | |
+|---|---|---|
+| `primary-container` `#c84c32` | `#fffcff` → **4,55:1** | ✅ pasa, incluso en versalitas de 11px |
+| `tertiary-container` `#866f72` | `#fffcff` → **4,56:1** | ✅ |
+
+O sea: **los `*-container` sí llevan texto chico, siempre que sea su `on-*` y no el
+papel.** La diferencia son quince centésimas y decide entre poder usarlos o no.
+Poner papel encima de un `*-container` sigue estando mal.
+
+Y el margen es finito: 4,55 contra un piso de 4,5. **Cualquier retoque de esos dos
+tonos hacia el claro los tira abajo del piso**, así que si se ajustan, se vuelve a
+medir.
 
 **Las tres reglas que salen de la medición:**
 
 1. `outline` y `outline-variant` son **para reglas y bordes, nunca para texto**.
    `outline-variant` ni siquiera llega al 3:1 de un borde de control.
-2. Los dos `*-container` **no llevan texto chico calado**. Sirven de fondo de un
-   título grande o de un estado al pasar el mouse; una etiqueta de 11px encima es
-   ilegible por cuatro centésimas.
+2. Los dos `*-container` **llevan texto chico solo con su `on-*`** (`#fffcff`),
+   nunca con el papel: 4,55:1 contra 4,40:1, y el piso está en 4,5. Ver la
+   corrección de más abajo — la primera versión de esta regla decía lo contrario y
+   habría hecho evitar una combinación válida.
 3. Todo lo demás entra con margen, incluido el bloque de fecha en tinta plena.
 
 **Discrepancia de la fuente:** el YAML de tokens dice `surface: #fbf9f4` y la prosa
