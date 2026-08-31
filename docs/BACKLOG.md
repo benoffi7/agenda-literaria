@@ -1819,10 +1819,11 @@ error y en una pantalla buena se ve bien. La única forma de saberlo es calcular
 y el §10 del diseño pedía medir **el acento** —que sí pasa, 5,63— sin anticipar
 que el riesgo real estaba en la rampa de opacidad.
 
-**Arreglo.** Piso en `tinta/65` (5,29). Y `tests/contraste.test.ts`, que hace las
-dos mitades: calcula los ratios desde los tokens de `global.css` (parseados, no
-copiados, para que cambiar la paleta se note) y **falla si algún archivo del sitio
-público escribe una clase por debajo del piso**. Con control negativo: un escalón
+**Arreglo.** Piso en `tinta/65` (5,29). Y dos archivos, que hacen las dos mitades:
+`tests/contraste.test.ts` calcula los ratios desde los tokens de `global.css`
+(parseados, no copiados, para que cambiar la paleta se note) y
+`tests/contraste-del-sitio.test.ts` **falla si algún archivo del sitio público
+escribe una clase por debajo del piso**. Con control negativo: un escalón
 más abajo tiene que no pasar, o el piso no significaría nada.
 
 **Lo que queda afuera a propósito:** el panel. Es otra audiencia —se usa con sesión
@@ -1840,6 +1841,13 @@ cierre en vez de salir del sitio.
 Hoy el panel de filtros es un *disclosure* inline (`aria-expanded`/`aria-controls`)
 que no necesita nada de eso y no tiene cómo salir mal, y el CTA del detalle es el
 botón del flujo, sin barra fija.
+
+> **Alcance recortado el 2026-08-31 por B-247 (D-143).** El problema que la hoja
+> resolvía —cuántos píxeles hay entre el borde de arriba y la primera tarjeta— se
+> atacó sin construir la capa: «Cuándo» se fue adentro del panel, el panel abierto
+> está topeado a `65svh` con scroll propio, y cierra desde abajo con «Ver N
+> actividades» devolviendo el foco al abridor. **Lo que queda abierto acá es la capa
+> modal en sí y el CTA fijo del detalle**, no el apretado de los controles.
 
 Cuando se haga, **la aritmética ya existe**: `src/lib/foco.ts` tiene
 `indiceDeTab`, `indiceDeTecla` e `indiceSiguiente`, escritos para el menú «⋯» y la
@@ -1870,6 +1878,18 @@ Tres caminos, de menos a más trabajo:
 
 Medir antes de elegir: con el sitio desplegado, cuánto tarda la home en un 3G
 simulado.
+
+> **Medido de nuevo el 2026-08-31, al cerrar B-247.** `client.BlZe1zq3.js` **no se
+> movió**: sigue en 186.619 B / 58.540 B gzip, que es el número del que habla este
+> ítem. La island `Buscador` pasó de 16.458 B / 5.925 B gzip a 20.272 B / 7.435 B
+> gzip —**+1,5 KB gzip**— por la portada generada y los controles nuevos; sin
+> dependencias nuevas (la lupa del buscador es un SVG inline).
+>
+> Y el camino 1 se abarató: `Tarjeta` **sigue sin compartirse con el panel**, y ahora
+> además todo lo que decide qué dice vive en `src/lib/tarjetaPublica.ts`, que es puro
+> y no importa React. El camino 2 —reescribir la island sin framework— se encareció
+> por lo mismo que se ganó: la portada es un componente más que habría que rehacer a
+> mano y volvería a haber dos markups de tarjeta.
 
 ### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica · P2
 
@@ -5234,9 +5254,10 @@ de verdad contra el que escribirlo. Conviene esperar igual al SEO absoluto
 —canonical, Open Graph, sitemap, todo colgado del dominio (**B-109**)— para no
 auditar dos veces lo mismo.
 
-Y una parte ya dejó de corresponderle: el **contraste** lo calcula
-`tests/contraste.test.ts` (B-243), que además falla si un componente del sitio
-baja del piso. Un auditor que lo revise a ojo estaría repitiendo lo que un test ya
+Y una parte ya dejó de corresponderle: el **contraste** lo calculan
+`tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio y
+`tests/tarjeta-del-listado.test.ts` (B-247) para la grilla del listado, que es la
+que tiene texto encima de algo que no es el papel. Un auditor que lo revise a ojo estaría repitiendo lo que un test ya
 frena, que es justo lo que la tabla de «qué no automatizar» de
 [`13-agentes.md`](13-agentes.md) pide no hacer.
 
@@ -5370,6 +5391,8 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| La grilla del listado se veía rota en la mitad de las tarjetas, y no había con qué medirlo | `imagenUrl` es opcional y en este circuito muchas actividades no van a tener foto. B-227 lo resolvía no reservando la columna, que funciona en una lista de una columna y no en una grilla: las celdas tienen el mismo alto, así que la mitad sin portada queda mocha. Cerrado con la portada generada (título sobre el color del tipo) y con `tests/tarjeta-del-listado.test.ts`, el chequeo de contraste que faltaba para texto que no está sobre `papel` | B-247, D-142, D-143 (2026-08-31) |
+| El motivo de la portada generada salía con todos los renglones iguales | se calculaba con `(semilla * (i + 7)) % 50` y los tonos asignados son redondos: con un tono múltiplo de 50 —«club de lectura» es 250— el resto daba cero para todos y la portada dibujaba tres barras idénticas, que es el gráfico de datos que el último renglón corto existe para evitar. **El test miraba que el último fuera el más corto y tres iguales le pasaban por al lado**: lo encontró mirar el HTML del build contra el emulador. Módulo primo, índice sumando, y un chequeo de la propiedad que faltaba | B-248, `src/lib/tarjetaPublica.ts` (2026-08-31) |
 | El sitio se presentaba con su categoría y no con su nombre, en ocho lugares | el nombre estaba decidido desde el 2026-08-27 (DEC-6) y no se había usado en ninguna parte. No rompía nada: se ve bien, el build queda verde, y el sitio entero queda sin identidad en la pestaña, en el historial y en Google. Cerrado con `identidad.ts` y un test que exige el nombre en cada título | B-245, D-141 (2026-08-31) |
 | La casilla de contacto versionada no era la del proyecto, y estuvo tres días publicada en un repo público | se cargó del canal equivocado el 2026-08-28. Se sacó del árbol en vez de habilitarse —del módulo, del CHANGELOG y del comentario del test—: una casilla ajena en un repo público no se conserva como registro. `sin-datos-personales.test.ts` sirvió dos veces acá: frenó la casilla al versionarla, y volvió a fallar sobre el rastro del CHANGELOG cuando se cambió solo el módulo | B-246, `src/lib/enlaces.ts` (2026-08-31) |
 | Una página del sitio público podía publicarse sin encabezado ni pie y nadie se enteraba | `Base.astro` trae el chrome apagado por defecto —lo correcto para `/admin`, lo equivocado para el sitio— así que olvidarse de `seccion` deja el build verde y la página sin salida. Cerrado con `tests/chrome-del-sitio.test.ts`, que encontró una al escribirlo | B-229, `src/components/sitio/` (2026-08-28) |

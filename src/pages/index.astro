@@ -1,6 +1,6 @@
 ---
 /**
- * La home: el listado público — B-227, §4.1 del diseño.
+ * La home: el listado público — B-227, §4.1 del diseño. Regrillada en B-247.
  *
  * **El HTML sale completo del build** (SSG): todas las actividades vigentes, con
  * sus tarjetas, agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve
@@ -15,6 +15,11 @@
  * buscador que aparece tres segundos después no se usa. `ListaDeActividades` va
  * **sin directiva**: Astro la renderiza a HTML y no manda un byte de JavaScript
  * por ella.
+ *
+ * **El ancho es `max-w-5xl`, el mismo del encabezado** (B-247): la grilla de tres
+ * columnas necesita ese ancho y, cuando el contenido era más angosto que la barra
+ * de navegación, el título de la página arrancaba corrido respecto del nombre del
+ * sitio, que está justo arriba.
  */
 import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
@@ -55,25 +60,33 @@ const descripcion =
   {/*
     §10 — «Saltar al listado». Convive con el «Saltar al contenido» de
     `Encabezado` y no lo repite: aquél salta al `<main>`, que arranca en el h1;
-    éste saltea además el buscador y los seis ejes de filtros, que en un teléfono
-    son media pantalla antes del primer resultado.
+    éste saltea además el buscador y los filtros, que en un teléfono son la
+    pantalla que hay antes del primer resultado.
   */}
   <a
     href="#listado"
-    class="sr-only rounded-md border border-acento bg-papel px-3 py-2 text-sm text-acento focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+    class="sr-only rounded-md border border-acento bg-papel px-3 py-2 text-sm text-acento-hondo focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
   >
     Saltar al listado
   </a>
 
-  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-    <h1 class="font-serif text-2xl leading-tight font-semibold text-balance sm:text-4xl">
-      Talleres, clubes de lectura y encuentros literarios en Argentina
-    </h1>
-    <p class="mt-2 text-sm text-tinta/65">
-      {cuantas === 0
-        ? 'Todavía no hay actividades con fecha próxima.'
-        : `${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima.`}
-    </p>
+  <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    {/*
+      El encabezado de la página, angosto a propósito: un `h1` a todo el ancho de
+      la grilla de tres columnas se lee peor, porque la línea pasa de los 90
+      caracteres. `max-w-2xl` lo deja en medida de lectura sin tocar el ancho de
+      la grilla que viene abajo.
+    */}
+    <div class="max-w-2xl">
+      <h1 class="font-serif text-3xl leading-tight font-semibold text-balance sm:text-5xl">
+        Talleres, clubes de lectura y encuentros literarios en Argentina
+      </h1>
+      <p class="mt-3 text-base text-tinta/70 sm:text-lg">
+        {cuantas === 0
+          ? 'Todavía no hay actividades con fecha próxima.'
+          : `${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima. Buscá por barrio, por tema o por lo que salga.`}
+      </p>
+    </div>
 
     {/*
       **El `id="listado"` envuelve al buscador Y a la lista**, y no solo a la
@@ -84,7 +97,7 @@ const descripcion =
       roto justo en la página que más se usa, y nada lo mostraría en el HTML del
       build, que es lo único que se mira.
     */}
-    <div id="listado" class="mt-6 scroll-mt-4">
+    <div id="listado" class="mt-8 scroll-mt-4 sm:mt-10">
       <Buscador client:load version={indice.version} idListadoEstatico={ID_LISTADO} />
 
       {/*
@@ -93,7 +106,7 @@ const descripcion =
       */}
       <div id={ID_LISTADO} class="mt-6">
         {cuantas === 0 ? (
-          <p class="rounded-lg border border-borde bg-white/60 px-4 py-8 text-center text-tinta/70">
+          <p class="rounded-xl border border-borde bg-crema px-4 py-10 text-center text-tinta/70">
             Todavía no hay nada publicado con fecha próxima. Volvé en unos días.
           </p>
         ) : (

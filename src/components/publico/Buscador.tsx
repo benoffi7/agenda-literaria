@@ -26,6 +26,23 @@
  * historial. Sirve para compartir un filtro por WhatsApp y para que volver desde
  * una página de detalle recupere lo que estaba filtrado. El `popstate` se escucha
  * igual, para el caso de que el navegador restaure otra URL.
+ *
+ * ── Cuánto ocupan los controles antes del primer resultado (B-238) ────────
+ * El pedido de móvil del §8 es una **hoja inferior**, y sigue abierto en B-238 a
+ * propósito: una capa modal necesita trampa de foco, `Escape`, cierre tocando el
+ * fondo, devolver el foco al abridor y `pushState` para que el botón atrás la
+ * cierre en vez de salir del sitio, y una capa modal mal hecha es peor que no
+ * tenerla. Lo que B-247 sí hizo es que el *disclosure* de hoy no coma la pantalla,
+ * y con tres cambios que no necesitan una capa (**D-143**):
+ *
+ * 1. **Arriba queda una sola fila**: el buscador y, debajo, la fila de botones.
+ *    «Cuándo» —que era un `select` con su etiqueta ocupando un tercio del ancho—
+ *    se fue adentro del panel, que es donde viven los otros filtros y donde el
+ *    contador del botón ya lo cuenta.
+ * 2. **El panel abierto está topeado a 65svh con scroll propio** en el teléfono,
+ *    así que las primeras tarjetas nunca quedan fuera de la pantalla.
+ * 3. **Cierra con «Ver N actividades»** y el foco vuelve al botón que lo abrió,
+ *    que es la parte de la hoja inferior que sí se puede tener sin ser modal.
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { GrupoDeChips } from '@/components/publico/GrupoDeChips';
@@ -73,7 +90,12 @@ interface Props {
 type Carga = { estado: 'cargando' } | { estado: 'listo'; indice: Indice } | { estado: 'error' };
 
 const claseSelect =
-  'min-h-touch w-full rounded-md border border-borde bg-white/70 px-2.5 py-1.5 text-sm text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento';
+  'min-h-touch w-full rounded-lg border border-borde bg-hondo px-2.5 py-1.5 text-sm text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60';
+
+const claseEtiqueta = 'mb-1.5 block text-xs font-semibold tracking-[0.12em] text-tinta/70 uppercase';
+
+const claseBotonPildora =
+  'inline-flex min-h-touch shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60';
 
 export function Buscador({ version, idListadoEstatico }: Props) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
@@ -91,6 +113,12 @@ export function Buscador({ version, idListadoEstatico }: Props) {
   const [ahora] = useState(() => new Date());
   const id = useId();
   const primeraVez = useRef(true);
+  /**
+   * El botón que abre el panel. Se guarda para **devolverle el foco** al cerrar
+   * desde «Ver N actividades»: sin eso el foco se cae al `body` y quien navega
+   * con teclado vuelve a arrancar desde el principio de la página.
+   */
+  const botonFiltros = useRef<HTMLButtonElement | null>(null);
 
   // ── El fetch, una sola vez ──────────────────────────────────────────────
   useEffect(() => {
@@ -159,10 +187,15 @@ export function Buscador({ version, idListadoEstatico }: Props) {
     setOrden(ORDEN_PUBLICO_POR_DEFECTO);
   };
 
+  const cerrarPanel = () => {
+    setAbierto(false);
+    botonFiltros.current?.focus();
+  };
+
   const deshabilitado = carga.estado !== 'listo';
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* ── Controles ──────────────────────────────────────────────────── */}
       {/*
         `role="search"` sobre un `div` y no el elemento `<search>`: el rol es lo
@@ -170,35 +203,142 @@ export function Buscador({ version, idListadoEstatico }: Props) {
         de qué navegador esté del otro lado.
       */}
       <div role="search">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
-            <label htmlFor={`${id}-q`} className="mb-1 block text-xs font-semibold tracking-wide text-tinta/65 uppercase">
-              Buscar
-            </label>
-            {/*
-              El buscador **no roba el foco al cargar**: en un teléfono abriría el
-              teclado y taparía la lista, que es lo que se vino a ver (§4.1).
-            */}
-            <input
-              id={`${id}-q`}
-              type="search"
-              value={filtros.q}
-              disabled={deshabilitado}
-              onChange={(e) => setFiltros({ ...filtros, q: e.target.value })}
-              placeholder="Título, barrio, tallerista…"
-              className="min-h-touch w-full rounded-md border border-borde bg-white/70 px-3 py-2 text-tinta placeholder:text-tinta/65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60"
-            />
-          </div>
+        <label htmlFor={`${id}-q`} className="sr-only">
+          Buscar actividades
+        </label>
+        {/*
+          El campo con la lupa adentro. La lupa es un SVG inline y `aria-hidden`:
+          no hay librería de iconos en el proyecto y no se agrega una por un
+          dibujo de doce bytes, y el campo ya tiene su etiqueta.
+        */}
+        <div className="relative">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-tinta/70"
+          >
+            <circle cx="8.5" cy="8.5" r="5.5" />
+            <path d="M12.5 12.5 17 17" />
+          </svg>
+          {/*
+            El buscador **no roba el foco al cargar**: en un teléfono abriría el
+            teclado y taparía la lista, que es lo que se vino a ver (§4.1).
+          */}
+          <input
+            id={`${id}-q`}
+            type="search"
+            value={filtros.q}
+            disabled={deshabilitado}
+            onChange={(e) => setFiltros({ ...filtros, q: e.target.value })}
+            placeholder="Buscar por título, barrio o tallerista…"
+            className="min-h-touch w-full rounded-full border border-borde bg-crema py-2 pr-4 pl-10 text-tinta placeholder:text-tinta/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60"
+          />
+        </div>
+      </div>
 
-          <div className="w-full sm:w-44">
-            <label htmlFor={`${id}-cuando`} className="mb-1 block text-xs font-semibold tracking-wide text-tinta/65 uppercase">
+      <div className="flex flex-wrap items-center gap-2">
+        {/*
+          Los filtros arrancan colapsados detrás de un botón que dice cuántos hay
+          puestos: en 360px seis grupos de chips abiertos empujan el listado
+          abajo del pliegue. El número es lo que impide que un filtro olvidado
+          explique un listado que parece vacío — mismo criterio que el panel.
+        */}
+        <button
+          ref={botonFiltros}
+          type="button"
+          aria-expanded={abierto}
+          aria-controls={`${id}-filtros`}
+          disabled={deshabilitado}
+          onClick={() => setAbierto((v) => !v)}
+          className={
+            puestos > 0
+              ? `${claseBotonPildora} border-acento-hondo bg-acento text-papel`
+              : `${claseBotonPildora} border-borde bg-crema text-tinta hover:border-acento`
+          }
+        >
+          Filtros
+          {puestos > 0 && (
+            <span className="rounded-full bg-papel px-1.5 text-xs font-semibold text-acento-hondo">
+              {puestos}
+            </span>
+          )}
+        </button>
+
+        {hayFiltrosPublicos(filtros) && (
+          <button
+            type="button"
+            onClick={limpiar}
+            className={`${claseBotonPildora} border-transparent text-acento-hondo hover:border-borde`}
+          >
+            Limpiar
+          </button>
+        )}
+
+        <div className="ms-auto flex items-center gap-2">
+          <label htmlFor={`${id}-orden`} className="sr-only">
+            Ordenar por
+          </label>
+          <select
+            id={`${id}-orden`}
+            className="min-h-touch max-w-48 rounded-full border border-borde bg-crema px-3 text-sm text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60"
+            value={orden}
+            disabled={deshabilitado}
+            onChange={(e) => setOrden(e.target.value as OrdenPublico)}
+          >
+            {ORDENES_PUBLICOS.map((o) => (
+              <option key={o} value={o}>
+                {ETIQUETA_ORDEN_PUBLICO[o]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/*
+        §10 — el contador va en un `aria-live="polite"`: quien usa lector de
+        pantalla tiene que enterarse de que la lista cambió sin tener que ir a
+        buscarla. `atomic` para que lea la frase entera y no solo el número.
+      */}
+      <p aria-live="polite" aria-atomic="true" className="text-sm text-tinta/70">
+        {carga.estado === 'cargando' && 'Cargando el buscador…'}
+        {carga.estado === 'error' && 'No se pudo cargar el buscador'}
+        {carga.estado === 'listo' &&
+          (visibles.length === entradas.length
+            ? `${entradas.length} ${entradas.length === 1 ? 'actividad' : 'actividades'}`
+            : `${visibles.length} de ${entradas.length} actividades`)}
+      </p>
+
+      {carga.estado === 'error' && (
+        <p className="rounded-lg border border-borde bg-crema px-3 py-2 text-sm text-tinta/70">
+          No pudimos cargar el buscador. La lista completa sigue abajo; probá
+          recargar la página.
+        </p>
+      )}
+
+      {abierto && indice && (
+        /*
+          El tope de alto es del teléfono y no del escritorio: `max-h-[65svh]` con
+          scroll propio deja siempre a la vista el arranque de la grilla, que es lo
+          que la hoja inferior del §8 iba a resolver. `svh` y no `vh` porque en un
+          navegador móvil con barra retráctil `vh` mide la pantalla sin la barra y
+          el panel termina más alto que el hueco real.
+        */
+        <div
+          id={`${id}-filtros`}
+          className="flex max-h-[65svh] flex-col gap-5 overflow-y-auto rounded-xl border border-borde bg-crema px-3 py-4 sm:max-h-none sm:overflow-visible sm:px-5 sm:py-5"
+        >
+          <div className="max-w-64">
+            <label htmlFor={`${id}-cuando`} className={claseEtiqueta}>
               Cuándo
             </label>
             <select
               id={`${id}-cuando`}
               className={claseSelect}
               value={filtros.cuando}
-              disabled={deshabilitado}
               onChange={(e) => setFiltros({ ...filtros, cuando: e.target.value })}
             >
               <option value={CUANDO_PROXIMAS}>Próximas</option>
@@ -212,86 +352,6 @@ export function Buscador({ version, idListadoEstatico }: Props) {
             </select>
           </div>
 
-          <div className="w-full sm:w-52">
-            <label htmlFor={`${id}-orden`} className="mb-1 block text-xs font-semibold tracking-wide text-tinta/65 uppercase">
-              Ordenar por
-            </label>
-            <select
-              id={`${id}-orden`}
-              className={claseSelect}
-              value={orden}
-              disabled={deshabilitado}
-              onChange={(e) => setOrden(e.target.value as OrdenPublico)}
-            >
-              {ORDENES_PUBLICOS.map((o) => (
-                <option key={o} value={o}>
-                  {ETIQUETA_ORDEN_PUBLICO[o]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {/*
-          Los filtros arrancan colapsados detrás de un botón que dice cuántos hay
-          puestos: en 360px seis grupos de chips abiertos empujan el listado
-          abajo del pliegue. El número es lo que impide que un filtro olvidado
-          explique un listado que parece vacío — mismo criterio que el panel.
-        */}
-        <button
-          type="button"
-          aria-expanded={abierto}
-          aria-controls={`${id}-filtros`}
-          disabled={deshabilitado}
-          onClick={() => setAbierto((v) => !v)}
-          className="min-h-touch rounded-full border border-borde bg-white/60 px-4 text-sm font-medium text-tinta transition-colors hover:border-tinta/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento disabled:opacity-60"
-        >
-          Filtros{puestos > 0 ? ` (${puestos})` : ''}
-        </button>
-
-        {hayFiltrosPublicos(filtros) && (
-          <button
-            type="button"
-            onClick={limpiar}
-            className="min-h-touch rounded-full px-3 text-sm text-acento underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
-          >
-            Limpiar filtros
-          </button>
-        )}
-
-        {/*
-          §10 — el contador va en un `aria-live="polite"`: quien usa lector de
-          pantalla tiene que enterarse de que la lista cambió sin tener que ir a
-          buscarla. `atomic` para que lea la frase entera y no solo el número.
-        */}
-        <p
-          aria-live="polite"
-          aria-atomic="true"
-          className="ml-auto text-sm text-tinta/65"
-        >
-          {carga.estado === 'cargando' && 'Cargando el buscador…'}
-          {carga.estado === 'error' && 'No se pudo cargar el buscador'}
-          {carga.estado === 'listo' &&
-            (visibles.length === entradas.length
-              ? `${entradas.length} ${entradas.length === 1 ? 'actividad' : 'actividades'}`
-              : `${visibles.length} de ${entradas.length} actividades`)}
-        </p>
-      </div>
-
-      {carga.estado === 'error' && (
-        <p className="rounded-md border border-borde bg-white/60 px-3 py-2 text-sm text-tinta/70">
-          No pudimos cargar el buscador. La lista completa sigue abajo; probá
-          recargar la página.
-        </p>
-      )}
-
-      {abierto && indice && (
-        <div
-          id={`${id}-filtros`}
-          className="flex flex-col gap-4 rounded-lg border border-borde bg-white/50 px-3 py-4 sm:px-4"
-        >
           {EJES.map((eje) => (
             <GrupoDeChips
               key={eje}
@@ -302,9 +362,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
           ))}
 
           <fieldset className="border-0 p-0">
-            <legend className="mb-1.5 text-xs font-semibold tracking-wide text-tinta/65 uppercase">
-              Otros
-            </legend>
+            <legend className={claseEtiqueta}>Otros</legend>
             <div className="flex flex-col gap-2">
               <label className="flex min-h-touch items-center gap-2 text-sm text-tinta/80">
                 <input
@@ -331,6 +389,20 @@ export function Buscador({ version, idListadoEstatico }: Props) {
               </label>
             </div>
           </fieldset>
+
+          {/*
+            Cerrar desde abajo es la mitad útil de la hoja inferior del §8: quien
+            terminó de tocar chips está al final del panel, y volver arriba a
+            buscar el botón que lo abrió es el paso que sobra. Devuelve el foco al
+            abridor, que es lo que una capa modal también tendría que hacer.
+          */}
+          <button
+            type="button"
+            onClick={cerrarPanel}
+            className={`${claseBotonPildora} sticky bottom-0 justify-center border-acento-hondo bg-acento text-papel sm:static sm:self-start`}
+          >
+            {visibles.length === 1 ? 'Ver 1 actividad' : `Ver ${visibles.length} actividades`}
+          </button>
         </div>
       )}
 
@@ -350,7 +422,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
             un orden de prioridad: sugerir «sacá el barrio» cuando sacarlo tampoco
             alcanza es peor que no sugerir nada.
           */
-          <div className="rounded-lg border border-borde bg-white/60 px-4 py-8 text-center">
+          <div className="rounded-xl border border-borde bg-crema px-4 py-10 text-center">
             {/*
               Y distingue «no hay nada publicado» de «tus filtros no dejan pasar
               nada»: son dos situaciones distintas y la segunda tiene arreglo. La
@@ -371,7 +443,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
               <button
                 type="button"
                 onClick={limpiar}
-                className="mt-4 min-h-touch rounded-full border border-acento px-4 text-sm font-medium text-acento transition-colors hover:bg-acento/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+                className={`${claseBotonPildora} mt-5 border-acento-hondo bg-acento text-papel`}
               >
                 Limpiar todos los filtros
               </button>

@@ -635,6 +635,36 @@ El build imprime en HTML **todas** las actividades vigentes, con su tarjeta,
 agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve Google y lo que
 ve alguien con JavaScript apagado.
 
+Desde **B-247** (D-141, D-142) es una **grilla**: una columna en el teléfono, dos en
+tablet, tres en escritorio. Una sola columna en 375px no se negocia (§8 del diseño):
+la mayoría entra desde un link de Instagram, en un navegador embebido.
+
+**La tarjeta.** Arriba una portada de 16:9 con la píldora del tipo en su color; abajo,
+en este orden, la fecha, el título, el ciclo, el lugar, el aviso de inscripción y —al
+pie, apoyado con `mt-auto` para que quede a la misma altura en toda la fila— el
+arancel y cómo se cursa. Es el orden en que se decide: qué es, cuándo, dónde y cuánto
+sale.
+
+Lo que la tarjeta tiene que decir bien es del dominio, y sale de
+`src/lib/tarjetaPublica.ts`, que es puro y testeado:
+
+| Caso | Qué dice |
+|---|---|
+| un ciclo | «Ciclo de 4 encuentros · empieza el 9 de septiembre», y el verbo cambia con el reloj de quien mira: «empezó» si ya arrancó, «terminó» si pasó |
+| «a la gorra» | con el acento y con peso, igual que «gratis». Es la mitad de los casos del circuito y no entra en el binario gratis/pago (§4.1 del `CLAUDE.md`) |
+| inscripción cerrada | «Las inscripciones cerraron», calculado con el reloj de quien mira y no con el del build (B-111) |
+| cupo completo | «Cupo completo · consultá por lista de espera» — pero **después** de «cerraron»: con la inscripción cerrada, la lista de espera no va a ningún lado |
+| cómo se cursa | de `modalidades[]` y no del escalar (B-224): una presencial que además es online dice «y online» |
+| destacada | una píldora en la portada |
+
+**Cuando no hay imagen, la portada se genera** — D-142. El título sobre el color del
+tipo, con el cuerpo elegido según el largo y un motivo de renglones derivado del mismo
+tono. No es un placeholder y no hay foto de stock: `imagenUrl` es opcional y en este
+circuito muchas actividades no van a tener foto, así que la grilla tiene que verse
+entera igual. Para lector de pantalla la portada es decorativa —el arte va
+`aria-hidden`, la foto con `alt=""`— porque no aporta nada que el texto de la tarjeta
+no diga ya; la píldora del tipo, que sí es información, queda fuera del arte.
+
 Encima va una island de React (`client:load`) que hace **un solo fetch** de
 `/events.json` y filtra, busca y ordena **en memoria** (§2.5). Cuando el índice
 llega, la island **saca del DOM la lista del build** y renderiza la suya con el
@@ -663,11 +693,20 @@ Cuando no queda nada, la pantalla vacía **dice qué filtro sacar** — y el que
 lo probó primero: sugerir «sacá el barrio» cuando sacarlo tampoco alcanza es peor
 que no sugerir nada.
 
+**En el teléfono los controles no se comen la pantalla** (D-143): arriba quedan el
+buscador y una fila con «Filtros (N)» y el orden; «Cuándo» vive adentro del panel; el
+panel abierto está topeado a `65svh` con scroll propio y cierra desde abajo con «Ver N
+actividades», devolviendo el foco al botón que lo abrió. La **hoja inferior** del §8
+sigue siendo **B-238**: es una capa modal y no se construye a medias.
+
 **Accesibilidad:** link «Saltar al listado» como primer elemento enfocable, un solo
 `h1`, los meses como `h2`, los chips como `<button aria-pressed>` dentro de
 `fieldset`/`legend` y navegables con las flechas (la misma aritmética de `foco.ts`
 que usa el panel), el contador de resultados en un `aria-live="polite"`, foco
 visible en todo, blancos táctiles de 44px y `prefers-reduced-motion` respetado.
+`tests/tarjeta-del-listado.test.ts` fija lo que se puede leer del markup —que ningún
+`div` lleve `onClick`, que nadie apague el anillo de foco, que la portada no aporte
+nombre accesible— además del contraste.
 
 ### El detalle — `/actividad/{slug}`
 
