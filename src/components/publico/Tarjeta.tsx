@@ -1,5 +1,5 @@
 /**
- * La tarjeta del listado — B-227, §4.2 del diseño.
+ * La tarjeta del listado — B-227, reescrita en B-247 (D-141, D-142).
  *
  * **Hay una sola definición del markup de la tarjeta, y es ésta.** La usa el
  * HTML que arma el build (Astro renderiza este componente sin hidratar, así que
@@ -8,130 +8,162 @@
  * y otro en React— se separan en el primer cambio y nadie se entera, porque los
  * dos se ven bien por separado.
  *
- * Es puramente presentacional: sin hooks, sin estado, sin fetch. Lo que decide
- * qué dice sale de `estadoDe`, que es lo que se testea.
+ * ── La jerarquía, y por qué es ésa ────────────────────────────────────────
+ * Lo que alguien decide mirando una tarjeta es **qué es, cuándo, dónde y cuánto
+ * sale**. En ese orden manda el diseño de la tarjeta:
+ *
+ * 1. **qué es** — la píldora del tipo, en su color, arriba en la portada;
+ * 2. **cuándo** — la fecha, primera línea del cuerpo y en Inter, no el título
+ *    (§4.2: es el dato que decide);
+ * 3. **el título**, en serif, que es la identidad;
+ * 4. **dónde** — sede y barrio, o online, leídos de `modalidades[]`;
+ * 5. **cuánto** — el arancel, en el pie y con su propio peso.
+ *
+ * El resto (el ciclo, el aviso de inscripción) es secundario y va atenuado.
+ *
+ * ── Apilado con superficie y borde, sin sombras (D-141) ───────────────────
+ * La tarjeta es `bg-crema` sobre el `papel` de la página, con un borde. Las
+ * sombras son exactamente lo que da el aire de plataforma genérica; el papel
+ * apilado es la idea del sitio.
+ *
+ * ── Es presentacional, y a propósito ──────────────────────────────────────
+ * Sin hooks, sin estado, sin fetch, y **sin decidir qué dice**: cada frase sale
+ * de `lib/tarjetaPublica.ts`, que es puro y está testeado. Los componentes de
+ * este repo no tienen tests de render (`docs/05-patrones.md`), así que lo que
+ * quede acá adentro no se verifica en ninguna parte.
  */
-import {
-  estadoDe,
-  etiquetaDe,
-  type MapaDeEtiquetas,
-} from '@/lib/listadoPublico';
-import { diaYMes, fechaCorta, hora, rangoCorto } from '@/lib/fechasPublicas';
+import { PortadaDeTarjeta } from '@/components/publico/PortadaDeTarjeta';
+import type { EntradaDeIndice } from '@/lib/eventsJson';
+import { estadoDe, etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 // La ruta no se arma acá: la produce `caminosDeDetalle` y la linkea esto, y son
 // dos derivaciones del mismo formato (clase de B-88). Ver `rutasPublicas.ts`.
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
-import type { EntradaDeIndice } from '@/lib/eventsJson';
+import {
+  arancelDeTarjeta,
+  avisoDeTarjeta,
+  cicloDeTarjeta,
+  cuandoDeTarjeta,
+  enCursoDeTarjeta,
+  formasDeCursar,
+  lugarDeTarjeta,
+} from '@/lib/tarjetaPublica';
 
 interface Props {
   entrada: EntradaDeIndice;
   /** El reloj con el que se decide «próxima» y «cerró» (§6.4). */
   ahora: Date;
   etiquetas: MapaDeEtiquetas;
+  /** Las primeras de la grilla cargan su portada sin `lazy`. Ver `PortadaDeTarjeta`. */
+  prioridad?: boolean;
 }
 
-/** El arancel se pinta con el acento solo cuando no se paga (§4.2). */
-const SIN_COSTO = ['gratis', 'a-la-gorra'];
-
-export function Tarjeta({ entrada, ahora, etiquetas }: Props) {
-  const e = estadoDe(entrada, ahora);
-  const tipo = etiquetaDe(etiquetas, 'tipo', entrada.tipo);
-  const arancel = etiquetaDe(etiquetas, 'arancel', entrada.arancel.tipo);
-  const gratis = SIN_COSTO.includes(entrada.arancel.tipo);
-
-  const lugar = entrada.sede
-    ? [entrada.sede.nombre, entrada.sede.barrio ? etiquetaDe(etiquetas, 'barrio', entrada.sede.barrio) : '', entrada.sede.ciudad]
-        .filter(Boolean)
-        .join(' · ')
-    : entrada.online
-      ? `Online por ${etiquetaDe(etiquetas, 'plataforma', entrada.online.plataforma)}`
-      : 'Lugar a confirmar';
-
-  /*
-   * §7.2 — «empezó el 3 de sep» y no «empieza el 3 de sep»: decir lo segundo en
-   * octubre es información falsa. Y §7.5: un ciclo es una tarjeta, con su rango.
-   */
-  const lineaCiclo =
-    e.encuentros > 1 && e.desde && e.hasta
-      ? `${entrada.esCiclo ? 'Ciclo de ' : ''}${e.encuentros} encuentros · ${rangoCorto(e.desde, e.hasta)}`
-      : null;
-
-  const lineaInscripcion = !entrada.inscripcion.requiere
-    ? 'Entrada libre'
-    : e.inscripcionCerrada
-      ? 'Las inscripciones cerraron'
-      : entrada.inscripcion.completo
-        ? 'Cupo completo · consultá por lista de espera'
-        : e.cierra
-          ? `Inscripción abierta hasta el ${diaYMes(e.cierra)}`
-          : entrada.inscripcion.cupo
-            ? `Inscripción abierta · cupo ${entrada.inscripcion.cupo}`
-            : 'Inscripción abierta';
+export function Tarjeta({ entrada, ahora, etiquetas, prioridad = false }: Props) {
+  const estado = estadoDe(entrada, ahora);
+  const cuando = cuandoDeTarjeta(estado);
+  const ciclo = cicloDeTarjeta(entrada, estado);
+  const enCurso = enCursoDeTarjeta(estado);
+  const aviso = avisoDeTarjeta(entrada, estado);
+  const arancel = arancelDeTarjeta(entrada, etiquetas);
+  const formas = formasDeCursar(entrada);
 
   return (
-    <li>
+    // `min-w-0` para que un título largo no estire la celda de la grilla.
+    <li className="min-w-0">
       {/*
         Toda la tarjeta es un link y no hay botones adentro: en móvil un botón
         dentro de un link es un blanco ambiguo (§4.2). El nombre accesible sale
-        del contenido completo —título, fecha y lugar—, no de un «leer más» (§10).
+        del contenido completo —tipo, fecha, título, lugar y arancel—, no de un
+        «leer más» (§10), y por eso la portada no aporta texto.
+
+        `h-full` + `flex-col` es lo que iguala el alto de las tarjetas de una
+        fila de la grilla; el `mt-auto` del pie apoya el arancel abajo, así que
+        el precio queda alineado entre tarjetas vecinas y se puede comparar de un
+        barrido vertical.
       */}
       <a
         href={rutaDeDetalle(entrada.slug)}
-        className="group flex gap-3 rounded-lg border border-borde bg-white/50 p-3 transition-colors hover:border-tinta/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento sm:gap-4 sm:p-4"
+        className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-borde bg-crema transition-colors hover:border-acento focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
       >
-        {/*
-          §7.6 — sin imagen **no hay hueco gris**: la columna no se reserva y el
-          texto usa todo el ancho. Es una tarjeta distinta, no una rota.
-          `width`/`height` y `loading="lazy"` para que la lista no salte al
-          cargar y no se toque la tarjeta equivocada (§8).
-        */}
-        {entrada.imagenUrl && (
-          <img
-            src={entrada.imagenUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            width={320}
-            height={180}
-            referrerPolicy="no-referrer"
-            className="h-16 w-24 shrink-0 rounded-md border border-borde object-cover sm:h-24 sm:w-40"
-          />
-        )}
+        <PortadaDeTarjeta
+          tipo={entrada.tipo}
+          tipoLabel={etiquetaDe(etiquetas, 'tipo', entrada.tipo)}
+          titulo={entrada.titulo}
+          imagenUrl={entrada.imagenUrl}
+          destacado={entrada.destacado}
+          prioridad={prioridad}
+        />
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            {/* La fecha va primero y en Inter: es el dato que decide (§4.2). */}
-            {e.proxima ? (
-              <time dateTime={e.proxima.toISOString()} className="text-sm font-medium text-tinta">
-                {fechaCorta(e.proxima)} · {hora(e.proxima)}
-              </time>
-            ) : (
-              <span className="text-sm font-medium text-tinta/65">Ya pasó</span>
-            )}
-            <span className="ml-auto flex shrink-0 flex-wrap items-center gap-2 text-[0.7rem] uppercase tracking-wide">
-              <span className="text-tinta/65">{tipo}</span>
-              <span className={gratis ? 'font-semibold text-acento' : 'text-tinta/65'}>
-                {arancel}
-              </span>
-            </span>
-          </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-4 py-3.5">
+          {/* 2 · cuándo. Primero, y en Inter. */}
+          {cuando.iso ? (
+            <time
+              dateTime={cuando.iso}
+              className="text-sm font-semibold tracking-wide text-acento-hondo"
+            >
+              {cuando.texto}
+            </time>
+          ) : (
+            <span className="text-sm font-semibold tracking-wide text-tinta/70">{cuando.texto}</span>
+          )}
 
-          <h3 className="font-serif text-lg leading-snug font-semibold text-tinta group-hover:underline sm:text-xl">
+          {/* 3 · el título. */}
+          <h3 className="line-clamp-2 font-serif text-lg leading-snug font-semibold text-tinta group-hover:underline">
             {entrada.titulo}
           </h3>
 
-          <p className="text-sm text-tinta/70">{lugar}</p>
-          {lineaCiclo && <p className="text-sm text-tinta/65">{lineaCiclo}</p>}
+          {ciclo && <p className="text-sm text-tinta/70">{ciclo}</p>}
+
+          {/* 4 · dónde. Una línea: si no entra, se corta y está en el detalle. */}
+          <p className="line-clamp-1 text-sm text-tinta/70">{lugarDeTarjeta(entrada, etiquetas)}</p>
+
+          {enCurso && <p className="text-sm font-medium text-acento-hondo">{enCurso}</p>}
+
           {/*
-            §7.2 — el aviso sale **solo si además la inscripción está abierta**.
-            Es lo más cerca que estamos del dato real: no hay un campo «acepta
-            incorporaciones tardías», y un cierre posterior a la primera sesión es
-            la forma en que el dueño lo expresa hoy. Decir «se puede entrar» con la
-            inscripción cerrada sería inventarlo.
+            El aviso de inscripción, en su propia línea. **Va antes del pie y no
+            al lado del arancel**: «Las inscripciones cerraron» no entra en la
+            misma fila en 360px, y compartir la fila dejaba el precio bailando de
+            una tarjeta a otra según cuánto ocupara el aviso — justo lo que el pie
+            existe para evitar.
           */}
-          {e.enCurso && !e.inscripcionCerrada && (
-            <p className="text-sm font-medium text-acento">Ya empezó — se puede entrar</p>
-          )}
-          <p className="text-xs text-tinta/65">{lineaInscripcion}</p>
+          <p
+            className={
+              aviso.tono === 'alerta'
+                ? 'text-xs font-medium text-acento-hondo'
+                : 'text-xs text-tinta/70'
+            }
+          >
+            {aviso.texto}
+          </p>
+
+          {/*
+            5 · cuánto, y cómo se cursa. El pie va **último y con `mt-auto`**, así
+            que el arancel queda a la misma altura en todas las tarjetas de la
+            fila y se puede comparar de un barrido vertical.
+          */}
+          <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-2.5">
+            {arancel.texto && (
+              /*
+                «A la gorra» es la mitad de los casos del circuito y no entra en
+                el binario gratis/pago (§4.1 del `CLAUDE.md`): va con el acento y
+                con peso, no escondido entre chips grises. Lo decide
+                `esSinCosto`, no una comparación suelta acá.
+              */
+              <span
+                className={
+                  arancel.sinCosto
+                    ? 'text-sm font-semibold text-acento-hondo'
+                    : 'text-sm font-semibold text-tinta'
+                }
+              >
+                {arancel.texto}
+              </span>
+            )}
+            {formas.texto && (
+              <span className="rounded-full bg-hondo px-2 py-0.5 text-xs text-tinta/70">
+                {formas.texto}
+              </span>
+            )}
+          </div>
         </div>
       </a>
     </li>
