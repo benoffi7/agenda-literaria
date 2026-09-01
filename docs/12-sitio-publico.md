@@ -285,7 +285,9 @@ Notas que importan:
   orden (el formulario permite agregar filas en cualquier orden); ordenarlo es
   del build, una vez, y no de cada consumidor.
 - **Las opciones viajan en el mismo archivo** (§4.4), con `slug` y `label`, para
-  que los chips de filtro no tengan nada cableado.
+  que los chips de filtro no tengan nada cableado. Y con `tono` cuando alguien le
+  eligió color a esa categoría (**D-150**): el caso normal es que no esté, porque el
+  color se deriva del slug con la misma función en el build y en el cliente.
 
 ```json
 {

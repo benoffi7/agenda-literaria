@@ -53,17 +53,20 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las seis salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
-| `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
-| `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los tres de abajo |
+| `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
+| `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los cuatro de abajo |
 
-**De `/opciones/{campo}` salen `slug` y `label`, y nada más** (§4.4). La proyección
+**De `/opciones/{campo}` salen `slug`, `label` y —desde D-150— `tono`** (§4.4). La proyección
 se escribió **antes** que su consumidor —B-212 antes que B-106— y eso era a
 propósito: el camino corto al implementar el índice es volcar `valores` tal cual, y
 con eso entran los cinco campos de arriba sin que nadie lo haya decidido. Escribir
 la whitelist primero es lo que evita que la decisión la tome un spread.
 
 **Y funcionó**: cuando B-106 y después B-227 llegaron a consumirla, los chips del
-sitio salieron con `slug` y `label` porque no había otra cosa que consumir.
+sitio salieron con `slug` y `label` porque no había otra cosa que consumir. El
+tercer campo, `tono`, entró **decidido** —con su motivo escrito en D-150, su guarda
+en el productor y su fila en el barrido de centinelas—, que es la diferencia entre
+agregar un campo público y que se agregue solo.
 
 **Ojo, y esto es lo que no se ve mirando un solo archivo: la misma decisión está
 escrita en CUATRO lugares**, porque el documento de taxonomía llega a cuatro
