@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-09-01 · la display pasa a Fraunces
+
+**El dueño rechazó la Bodoni** —«no me cierra la fuente que tiene "Agenda LEH", el
+mes y el título del evento»— y eligió **Fraunces** entre siete alternativas
+puestas en la pantalla real del sitio. B-262.
+
+Vale anotar el método, porque es lo que destrabó una decisión que venía trabada
+desde dos rechazos: en vez de describir tipografías con palabras, se armó un
+**espécimen navegable** con la marca, el marcador de mes y títulos reales de
+producción, y una maqueta del sitio que cambia de fuente al tocar cada candidata.
+La tipografía no se juzga leyendo su descripción.
+
+**Es un solo token.** `--font-display` gobierna las tres cosas que el dueño nombró
+—la marca del encabezado, el marcador de mes y el título de cada actividad— y nada
+más: las etiquetas siguen en Archivo Narrow y el cuerpo en Public Sans.
+
+**El eje `opsz` va fijado en 72**, con el mismo criterio con el que la Bodoni
+estaba fijada en 48: es el punto óptico del rango de uso real, que va de 30px la
+marca a 72px el mes. Abierto, Fraunces cuesta **31,1 KB** contra los **17,7 KB**
+de la instancia fija.
+
+| | antes | ahora |
+|---|---|---|
+| display | Bodoni Moda 800 `opsz` 48 — 8,2 KB | Fraunces 900 `opsz` 72 — 17,7 KB |
+| total de fuentes | 58,8 KB | **62,0 KB** |
+
+**Se remidieron los argumentos en vez de arrastrarlos.** El más caro era el de la
+cursiva: la página de detalle no pone la lectura de un club en itálica porque es
+un archivo aparte, y ese número era «17 KB con Bodoni». Con Fraunces la itálica
+cuesta **21,8 KB** —más que la redonda—, así que la conclusión no cambia pero el
+número sí, y quedó corregido donde estaba escrito. Lo mismo con las dieciocho
+menciones a «Bodoni» repartidas por el código: las que nombraban a la display
+pasan a decir «la display», las que razonaban sobre una propiedad de la Bodoni se
+reescribieron, y las cuatro que quedan son referencias históricas a propósito.
+
+`tests/sistema-visual.test.ts` ató las tres cosas: qué familia declara el token,
+qué familias pide la hoja de fuentes —ninguna de más— y que el eje óptico siga
+fijado. Los tres asertos fallaron al cambiar la fuente, que es exactamente para lo
+que estaban.
+
 ## 2026-08-31 · desplegado, y una nota mía que quedó publicada
 
 **El rediseño está en producción**: `1.5.0+c377029`, con las 23 actividades reales.

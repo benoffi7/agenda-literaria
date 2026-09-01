@@ -54,18 +54,18 @@ const conChrome = seccion !== 'ninguna';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*
       Las tres familias de `docs/referencias/sistema-visual.md`, en **una sola**
-      petición — B-260. Pesan 58,8 KB contra los 84,2 KB de Inter + Lora, y eso
+      petición — B-260. Pesan 62,0 KB contra los 84,2 KB de Inter + Lora, y eso
       está medido sobre los woff2 que Google sirve para el subset latin, no
       estimado. El detalle de la medición está en `src/styles/global.css`.
 
-      **`opsz` va fijado en 48 y no abierto**: con el eje óptico abierto, Bodoni
-      Moda pasa de 14,6 KB a 26,5 KB —casi el doble de la familia entera— y no
-      hace falta, porque acá se usa en un rango angosto: 26px la marca y 72px el
-      mes. 48 es el punto óptico del medio de ese rango.
+      **`opsz` va fijado en 72 y no abierto** — B-262: con el eje óptico abierto,
+      Fraunces pasa de 17,7 KB a **31,1 KB**, casi el doble, y no hace falta,
+      porque acá se usa en un rango angosto: 30px la marca y 72px el mes. 72 es
+      el punto óptico de ese rango.
     */}
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400..700&family=Bodoni+Moda:opsz,wght@48,800&family=Public+Sans:wght@400..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400..700&family=Fraunces:opsz,wght@72,900&family=Public+Sans:wght@400..700&display=swap"
     />
   </head>
   <body class="flex min-h-dvh flex-col overflow-x-clip font-sans antialiased">

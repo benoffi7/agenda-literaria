@@ -274,7 +274,7 @@ describe('la tipografía es la del sistema — B-260', () => {
     expect(
       buscar(/\bfont-serif\b/),
       '`font-serif` es el serif del panel, no del sitio. Usá `font-display` ' +
-        '(Bodoni) o `font-titulo` (Archivo Narrow).',
+        '(Fraunces) o `font-titulo` (Archivo Narrow).',
     ).toEqual([]);
   });
 
@@ -296,7 +296,7 @@ describe('la tipografía es la del sistema — B-260', () => {
   });
 
   it('las tres familias están declaradas y son las que dice el sistema', () => {
-    expect(css).toContain("--font-display: 'Bodoni Moda'");
+    expect(css).toContain("--font-display: 'Fraunces'");
     expect(css).toContain("--font-titulo: 'Archivo Narrow'");
     expect(css).toContain("--font-sans: 'Public Sans'");
     /*
@@ -330,11 +330,18 @@ describe('la tipografía es la del sistema — B-260', () => {
     const familias = [...links[0]![1]!.matchAll(/family=([^:&]+)/g)].map((m) =>
       decodeURIComponent(m[1]!.replace(/\+/g, ' ')),
     );
-    expect(familias.sort()).toEqual(['Archivo Narrow', 'Bodoni Moda', 'Public Sans']);
+    expect(familias.sort()).toEqual(['Archivo Narrow', 'Fraunces', 'Public Sans']);
 
-    // El eje óptico de la Bodoni va **fijado**: abierto cuesta 26,5 KB en vez de
-    // 14,6 KB, y el rango de uso real del sitio es de 26px a 72px.
-    expect(links[0]![1]).toContain('Bodoni+Moda:opsz,wght@48,800');
+    /*
+     * El eje óptico de la display va **fijado**, y no es una micro-optimización:
+     * abierto, Fraunces cuesta **31,1 KB** contra los **17,7 KB** de la instancia
+     * fija. Se fija en **72**, que es el punto óptico del rango de uso real —la
+     * display va de 30px (la marca) a 72px (el mes)—, el mismo criterio con el
+     * que la Bodoni estaba fijada en 48.
+     *
+     * MUTACIÓN PROBADA: abrir el eje (`opsz,wght@9..144,900`) hace fallar esto.
+     */
+    expect(links[0]![1]).toContain('Fraunces:opsz,wght@72,900');
   });
 
   it('no hay ninguna librería de iconos', () => {
@@ -654,7 +661,7 @@ describe('lo que se le corrigió a la referencia no vuelve', () => {
     /*
      * Corrección 3 del encargo: en la referencia los dos van a 72px. El mes gana
      * porque es lo que estructura el listado; la marca usa `marca`, que es la
-     * misma Bodoni un escalón y medio abajo.
+     * misma display un escalón y medio abajo.
      */
     const encabezado = sinComentarios(
       readFileSync(raiz('src/components/sitio/Encabezado.astro'), 'utf8'),

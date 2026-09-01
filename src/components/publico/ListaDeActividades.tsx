@@ -5,7 +5,7 @@
  * (sin hidratar, sin JavaScript) y el re-render de la island después de filtrar.
  *
  * ── El marcador de mes es el gesto más fuerte de la página ────────────────
- * «SEPTIEMBRE» en Bodoni de 72px con una regla gruesa debajo. No es un separador
+ * «SEPTIEMBRE» en la display a 72px con una regla gruesa debajo. No es un separador
  * decorativo: es lo que convierte una lista de 38 fechas en un **programa**, y es
  * la única cosa de la página que va a `display-lg`. Por eso el nombre del sitio,
  * que en la referencia iba al mismo cuerpo, bajó un escalón (ver `Encabezado`).

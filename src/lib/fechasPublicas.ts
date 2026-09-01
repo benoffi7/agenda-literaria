@@ -103,7 +103,7 @@ export const claveDeMes = (d: Date): string => {
  * `{ mes: 'Septiembre', anio: '2026' }` — el marcador de mes del listado, **en
  * dos piezas** — B-260.
  *
- * El sistema visual pinta el mes en `display-lg`: Bodoni de 72px en versalitas.
+ * El sistema visual pinta el mes en `display-lg`: la display a 72px en versalitas.
  * `nombreDeMes` devuelve «Septiembre de 2026», y esa cadena entera a 72px no
  * entra en un teléfono ni en la mitad de los escritorios — y lo que hay que
  * agrandar es **el mes**, que es lo que estructura la lista; el año es un dato de

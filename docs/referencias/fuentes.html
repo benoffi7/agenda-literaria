@@ -1,0 +1,462 @@
+<title>Fuentes para Agenda LEH</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Archivo+Narrow:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,700;6..96,800&family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Fraunces:opsz,wght@9..144,700..900&family=Instrument+Serif&family=Libre+Caslon+Display&family=Public+Sans:wght@400;600&family=Syne:wght@700;800&display=swap">
+
+<style>
+  /*
+   * Un mundo visual único y a propósito: el sitio es papel, siempre. No hay
+   * variante oscura porque una tipografía sobre fondo negro no diría nada sobre
+   * cómo va a verse en producción, que es la única pregunta de esta página.
+   * Todos los colores se pintan explícitos para que no herede el fondo del host.
+   */
+  :root {
+    --papel: #fbf9f4;
+    --crema: #f5f3ee;
+    --hondo: #e9e6df;
+    --tinta: #1b1c19;
+    --tenue: #58413c;
+    --terracota: #a7341c;
+    --azul: #4f6073;
+    --regla: #6c575a;
+
+    --chrome: 'Archivo Narrow', 'Arial Narrow', ui-sans-serif, sans-serif;
+    --cuerpo: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+
+    --margen: clamp(1rem, 4vw, 2.5rem);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: var(--cuerpo);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .rotulo {
+    font-family: var(--chrome);
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--regla);
+  }
+
+  /* ── Cabecera ─────────────────────────────────────────────── */
+
+  .portada {
+    border-bottom: 2px solid var(--tinta);
+    padding: var(--margen) var(--margen) 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .portada h1 {
+    font-family: var(--chrome);
+    font-weight: 700;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.015em;
+    text-transform: uppercase;
+    margin: 0;
+    text-wrap: balance;
+    color: var(--terracota);
+  }
+  .portada p {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--tenue);
+  }
+  .portada strong { color: var(--tinta); font-weight: 600; }
+
+  /* ── El armazón de dos columnas ───────────────────────────── */
+
+  .armazon {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 1000px) {
+    .armazon { grid-template-columns: minmax(0, 1fr) 27rem; }
+    .maqueta-col { border-left: 1px solid var(--regla); }
+  }
+
+  /* ── La maqueta en vivo ───────────────────────────────────── */
+
+  .maqueta-col { position: relative; }
+  .maqueta {
+    position: sticky;
+    top: 0;
+    background: var(--papel);
+    border-bottom: 1px solid var(--regla);
+    z-index: 5;
+  }
+  @media (min-width: 1000px) {
+    .maqueta { border-bottom: 0; }
+  }
+
+  .maqueta-titulo {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem var(--margen);
+    border-bottom: 1px solid var(--regla);
+    background: var(--hondo);
+  }
+  .maqueta-titulo .cual {
+    font-family: var(--chrome);
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--terracota);
+  }
+
+  .sitio { padding: 1rem var(--margen) 1.5rem; }
+
+  .sitio-barra {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--regla);
+  }
+  .sitio-marca {
+    font-family: var(--face, 'Bodoni Moda'), ui-serif, Georgia, serif;
+    font-weight: var(--peso, 800);
+    font-size: clamp(1.4rem, 3.2vw, 1.9rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--terracota);
+  }
+  .sitio-nav {
+    display: flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .sitio-mes {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid var(--tinta);
+  }
+  .sitio-mes b {
+    font-family: var(--face, 'Bodoni Moda'), ui-serif, Georgia, serif;
+    font-weight: var(--peso, 800);
+    font-size: clamp(2.6rem, 8vw, 4rem);
+    line-height: 0.85;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    color: var(--terracota);
+  }
+
+  .fila {
+    display: grid;
+    grid-template-columns: 3.6rem 1fr;
+    gap: 0.9rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--regla);
+    align-items: start;
+  }
+  .fecha {
+    background: var(--terracota);
+    color: var(--papel);
+    text-align: center;
+    padding: 0.35rem 0.2rem 0.4rem;
+    font-family: var(--chrome);
+    line-height: 1;
+  }
+  .fecha span { display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .fecha b { display: block; font-size: 1.6rem; font-weight: 700; margin: 0.1rem 0; font-variant-numeric: tabular-nums; }
+
+  .fila h4 {
+    font-family: var(--face, 'Bodoni Moda'), ui-serif, Georgia, serif;
+    font-weight: var(--peso, 800);
+    font-size: 1.15rem;
+    line-height: 1.1;
+    margin: 0 0 0.3rem;
+    text-wrap: balance;
+    color: var(--tinta);
+  }
+  .fila .meta { font-size: 12px; color: var(--tenue); line-height: 1.35; }
+
+  /* ── Los especímenes ──────────────────────────────────────── */
+
+  .lista { padding-bottom: 4rem; }
+
+  .espec {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--papel);
+    border: 0;
+    border-bottom: 1px solid var(--regla);
+    padding: 1.5rem var(--margen);
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    transition: background 90ms linear;
+  }
+  .espec:hover { background: var(--crema); }
+  .espec:focus-visible {
+    outline: 2px solid var(--terracota);
+    outline-offset: -4px;
+  }
+  .espec[aria-pressed="true"] {
+    background: var(--crema);
+    border-left: 5px solid var(--terracota);
+    padding-left: calc(var(--margen) - 5px);
+  }
+
+  .espec-cabeza {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+  }
+  .espec-nombre {
+    font-family: var(--chrome);
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .espec-nota { font-size: 13px; color: var(--tenue); }
+
+  .marca-actual {
+    background: var(--tinta);
+    color: var(--papel);
+    padding: 0.15rem 0.4rem;
+    font-family: var(--chrome);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .muestra { display: flex; flex-direction: column; gap: 0.55rem; }
+  .muestra-marca {
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--terracota);
+  }
+  .muestra-mes {
+    font-size: clamp(2.4rem, 8vw, 4.2rem);
+    line-height: 0.85;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    color: var(--terracota);
+  }
+  .muestra-titulo {
+    font-size: clamp(1.05rem, 2.6vw, 1.4rem);
+    line-height: 1.15;
+    text-wrap: balance;
+    color: var(--tinta);
+    max-width: 30ch;
+  }
+
+  /* ── Pie ──────────────────────────────────────────────────── */
+
+  .pie {
+    border-top: 2px solid var(--tinta);
+    padding: 1.5rem var(--margen) 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    color: var(--tenue);
+    font-size: 13px;
+  }
+  .pie p { max-width: 64ch; margin: 0 0 0.75rem; }
+  .pie code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--hondo);
+    padding: 0.05rem 0.3rem;
+    font-size: 0.92em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<header class="portada">
+  <span class="rotulo">Agenda LEH · decisión de tipografía</span>
+  <h1>La fuente de los títulos</h1>
+  <p>
+    Hoy los títulos van en <strong>Bodoni Moda</strong>: la marca del encabezado, el
+    marcador de mes y el título de cada actividad. Es una sola variable
+    —<code style="font-family:ui-monospace,monospace">--font-display</code>— y
+    cambiarla es una línea. Abajo, la misma pantalla en siete alternativas.
+    <strong>Tocá cualquiera</strong> para verla puesta en el sitio.
+  </p>
+</header>
+
+<div class="armazon">
+  <div class="lista" id="lista"></div>
+
+  <div class="maqueta-col">
+    <div class="maqueta">
+      <div class="maqueta-titulo">
+        <span class="rotulo">En el sitio</span>
+        <span class="cual" id="cual">Bodoni Moda</span>
+      </div>
+      <div class="sitio" id="sitio">
+        <div class="sitio-barra">
+          <span class="sitio-marca">Agenda LEH</span>
+          <span class="sitio-nav rotulo">Agenda · Ayuda</span>
+        </div>
+        <div class="sitio-mes">
+          <b>Septiembre</b>
+          <span class="rotulo">2026</span>
+        </div>
+        <div class="fila">
+          <span class="fecha"><span>vie</span><b>05</b><span>sep</span></span>
+          <span>
+            <h4>Club de lectura: Jane Austen</h4>
+            <span class="meta">15:00 · Virtual por Meet · A la gorra</span>
+          </span>
+        </div>
+        <div class="fila">
+          <span class="fecha"><span>sáb</span><b>12</b><span>sep</span></span>
+          <span>
+            <h4>Clásicos en alpargatas — Spiderman</h4>
+            <span class="meta">16:00 · Villa Crespo, CABA · Gratis</span>
+          </span>
+        </div>
+        <div class="fila" style="border-bottom:0">
+          <span class="fecha"><span>jue</span><b>17</b><span>sep</span></span>
+          <span>
+            <h4>FINDE — Feria de editores independientes</h4>
+            <span class="meta">Ciclo de 3 jornadas · Parque Centenario · Gratis</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="pie">
+  <p>
+    Las siete están en Google Fonts, así que cualquiera entra sin sumar
+    infraestructura. Lo que sí cambia entre una y otra es el peso del archivo:
+    <strong>lo mido cuando elijas</strong>, no antes — depende de los grosores que
+    terminemos usando.
+  </p>
+  <p>
+    Las etiquetas, los metadatos y el bloque de fecha <strong>no se tocan</strong>:
+    siguen en Archivo Narrow y Public Sans. Lo único que cambia es
+    <code>--font-display</code>.
+  </p>
+</footer>
+
+<script>
+  const FUENTES = [
+    {
+      nombre: 'Bodoni Moda',
+      css: "'Bodoni Moda', ui-serif, Georgia, serif",
+      peso: 800,
+      nota: 'La de ahora. Didona de alto contraste: elegante, pero de revista de moda.',
+      actual: true,
+    },
+    {
+      nombre: 'Archivo Black',
+      css: "'Archivo Black', ui-sans-serif, sans-serif",
+      peso: 400,
+      nota: 'Grotesca de afiche, maciza. De la misma familia que las etiquetas del sitio.',
+    },
+    {
+      nombre: 'Anton',
+      css: "'Anton', ui-sans-serif, sans-serif",
+      peso: 400,
+      nota: 'Condensada extrema. Cartelera de festival: mucho título en poco ancho.',
+    },
+    {
+      nombre: 'Fraunces',
+      css: "'Fraunces', ui-serif, Georgia, serif",
+      peso: 900,
+      nota: 'Serif con rarezas a propósito. Literaria pero con carácter, no de libro de texto.',
+    },
+    {
+      nombre: 'Instrument Serif',
+      css: "'Instrument Serif', ui-serif, Georgia, serif",
+      peso: 400,
+      nota: 'Editorial contemporánea. Contraste alto como la Bodoni, pero más cálida.',
+    },
+    {
+      nombre: 'Libre Caslon Display',
+      css: "'Libre Caslon Display', ui-serif, Georgia, serif",
+      peso: 400,
+      nota: 'De libro, sin disfraz. La más sobria de las siete.',
+    },
+    {
+      nombre: 'Syne',
+      css: "'Syne', ui-sans-serif, sans-serif",
+      peso: 800,
+      nota: 'Geométrica con proporciones raras. De centro cultural, de bienal.',
+    },
+    {
+      nombre: 'Bricolage Grotesque',
+      css: "'Bricolage Grotesque', ui-sans-serif, sans-serif",
+      peso: 800,
+      nota: 'Grotesca torcida a mano. Fanzine, hecha por alguien y no por un sistema.',
+    },
+  ];
+
+  const TITULO = 'Clásicos en alpargatas — Spiderman';
+
+  const lista = document.getElementById('lista');
+  const sitio = document.getElementById('sitio');
+  const cual = document.getElementById('cual');
+
+  const elegir = (f, boton) => {
+    sitio.style.setProperty('--face', f.css);
+    sitio.style.setProperty('--peso', f.peso);
+    cual.textContent = f.nombre;
+    for (const b of lista.querySelectorAll('.espec')) {
+      b.setAttribute('aria-pressed', String(b === boton));
+    }
+  };
+
+  FUENTES.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'espec';
+    b.setAttribute('aria-pressed', String(i === 0));
+
+    const estilo = `font-family:${f.css};font-weight:${f.peso}`;
+    b.innerHTML = `
+      <span class="espec-cabeza">
+        <span class="espec-nombre">${f.nombre}</span>
+        ${f.actual ? '<span class="marca-actual">La de ahora</span>' : ''}
+        <span class="espec-nota">${f.nota}</span>
+      </span>
+      <span class="muestra">
+        <span class="muestra-marca" style="${estilo}">Agenda LEH</span>
+        <span class="muestra-mes" style="${estilo}">Septiembre</span>
+        <span class="muestra-titulo" style="${estilo}">${TITULO}</span>
+      </span>`;
+
+    b.addEventListener('click', () => elegir(f, b));
+    lista.appendChild(b);
+  });
+
+  elegir(FUENTES[0], lista.querySelector('.espec'));
+</script>

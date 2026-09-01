@@ -23,7 +23,7 @@
  *
  * ── La forma, del sistema visual (D-146) ─────────────────────────────────
  * De arriba abajo: **franja de estado** en tinta plena a ancho completo, la
- * **cabecera** con el tipo en una cajita y el título en Bodoni display, y después
+ * **cabecera** con el tipo en una cajita y el título en la display display, y después
  * dos columnas — el contenido a la izquierda y la **ficha técnica pegajosa** a la
  * derecha, con su borde de 2px y el llamado a la acción adentro.
  *
@@ -55,13 +55,16 @@
  * | 9 | el cancelado mostraba el tema del encuentro siguiente | cada fila usa **su** dato, y tolera que no haya tema |
  * | 10 | la ficha pegada con un `top-24` suelto | `top-encabezado`, del mismo token que da la altura de la cabecera |
  *
- * Y una corrección propia: **la lectura no va en Bodoni cursiva**. La referencia
- * la pide así y es una buena idea, pero la cursiva de Bodoni Moda es un archivo
- * aparte que cuesta **17 KB** —el 29% de todo el presupuesto de fuentes— para una
- * línea que aparece solo en las páginas de club de lectura y nunca en la home,
- * que es la que recibe el tráfico. Va en Bodoni redonda y en terracota, que ya la
- * separa del tema. Está medido y se revierte cambiando el `href` de la hoja de
- * fuentes en `Base.astro`.
+ * Y una corrección propia: **la lectura no va en cursiva**. La referencia la pide
+ * así y es una buena idea, pero la cursiva es un archivo **aparte** de la
+ * redonda, y con Fraunces cuesta **21,8 KB** —más que la redonda, que son 17,7—
+ * para una línea que aparece solo en las páginas de club de lectura y nunca en la
+ * home, que es la que recibe el tráfico. Va en redonda y en terracota, que ya la
+ * separa del tema.
+ *
+ * El argumento se remidió al cambiar la display (B-262) en vez de arrastrarlo:
+ * con Bodoni la cursiva costaba 17 KB, con Fraunces cuesta 21,8. La conclusión no
+ * cambia, el número sí. Se revierte cambiando el `href` de `Base.astro`.
  *
  * ── El CTA fijo de móvil no lleva JavaScript (B-238, D-145) ──────────────
  * `position: fixed` abajo, con `pb-segura` para la barra de gestos y un
@@ -219,7 +222,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
     {/* ══ Cabecera ═══════════════════════════════════════════════════════ */}
     {/*
       El tipo en una cajita de tinta plena con el texto calado, y debajo el título
-      en Bodoni. La cajita va en **azul tinta**, que es lo que el sistema le asigna
+      en la display. La cajita va en **azul tinta**, que es lo que el sistema le asigna
       a las categorías, y es la misma que abre cada fila del listado: quien viene
       del listado reconoce la pieza.
     */}
@@ -399,10 +402,10 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
 
                       {
                         /*
-                          La lectura, en Bodoni. La referencia la pide en **cursiva**
-                          y va redonda: la itálica de Bodoni Moda es un archivo
-                          aparte de 17 KB —el 29% del presupuesto de fuentes— para
-                          una línea que solo aparece en los clubes de lectura. El
+                          La lectura, en la display. La referencia la pide en **cursiva**
+                          y va redonda: la itálica es un archivo aparte y con
+                          Fraunces cuesta 21,8 KB —más que la redonda— para una
+                          línea que solo aparece en los clubes de lectura. El
                           terracota ya la separa del tema.
                         */
                         e.lectura && (

@@ -38,29 +38,34 @@
    *
    * | | antes | ahora |
    * |---|---|---|
-   * | display / títulos | Lora 500;600 — 36,9 KB | Bodoni Moda 800 — 14,6 KB |
+   * | display / títulos | Lora 500;600 — 36,9 KB | Fraunces 900 `opsz` 72 — 17,7 KB |
    * | títulos densos | (no había) | Archivo Narrow 400..700 — 18,3 KB |
    * | cuerpo | Inter 400;500;600 — 47,2 KB | Public Sans 400..700 — 26,0 KB |
-   * | **total** | **84,2 KB** | **58,8 KB** (−30 %) |
+   * | **total** | **84,2 KB** | **62,0 KB** (−26 %) |
    *
    * Se pasa de dos familias a tres y aun así baja, porque Inter y Lora se
    * bajaban como archivos **variables completos**: pedir tres pesos de Inter
-   * traía el rango entero. Bodoni Moda, que es la más pesada de las tres, se
-   * pide con el eje `opsz` **fijado en 48** y eso la deja en 14,6 KB en vez de
-   * los 26,5 KB que cuesta con el eje abierto — y 48 es el punto óptico que
-   * corresponde: la Bodoni se usa entre 30px (la marca) y 72px (el mes).
+   * traía el rango entero.
+   *
+   * **El eje `opsz` de la display va fijado en 72**, y no es una
+   * micro-optimización: abierto, Fraunces cuesta **31,1 KB** contra los 17,7 KB
+   * de la instancia fija. Y 72 es el punto óptico que corresponde, porque la
+   * display se usa entre 30px (la marca) y 72px (el mes). Es el mismo criterio
+   * con el que estaba fijada en 48 la Bodoni que había antes — la cambió el
+   * dueño el 2026-09-01, eligiendo entre siete alternativas puestas en la
+   * pantalla real del sitio.
    *
    * Adiós a Inter y a Lora, y no por peso: son el par por defecto de todo sitio
    * hecho con IA, y eran la mitad de por qué esto se veía genérico.
    *
    * **`font-serif` está prohibido en el sitio** (`tests/sistema-visual.test.ts`):
-   * los títulos van en `font-display` (Bodoni) o `font-titulo` (Archivo Narrow).
+   * los títulos van en `font-display` (Fraunces) o `font-titulo` (Archivo Narrow).
    * El token sigue existiendo **para el panel**, y con un valor explícito — ver
    * abajo.
    */
   --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
   --font-titulo: 'Archivo Narrow', 'Arial Narrow', ui-sans-serif, sans-serif;
-  --font-display: 'Bodoni Moda', ui-serif, Georgia, 'Times New Roman', serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
 
   /*
    * ── El serif del panel, y por qué está declarado ───────────────────────
@@ -237,10 +242,10 @@
 /*
  * `display-md` — el título de la página de detalle, y **solo ése**.
  *
- * `stitch-detalle.md` pide «el título en Bodoni display», y ahí no hay marcador
+ * `stitch-detalle.md` pide «el título en la display», y ahí no hay marcador
  * de mes con el que competir: la página de detalle es la única del sitio donde el
  * `h1` es lo más grande que hay. Pero 72px es del mes, así que esto es un escalón
- * abajo — sigue siendo Bodoni de display, y entra un título largo («Presentación:
+ * abajo — sigue siendo la display, y entra un título largo («Presentación:
  * Las malas, de Camila Sosa Villada») sin partirse en cinco renglones.
  */
 @utility display-md {
