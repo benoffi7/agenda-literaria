@@ -452,3 +452,107 @@ describe('la página /suscribirse', () => {
     expect(DONDE_SEGUIR.accion.url).toBe(urlDeInstagram());
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// El bloque corto, embebido en la home — B-231
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * `SuscribirseResumen` es el bloque corto —el botón de Google y un enlace a la
+ * página entera— y nació **escrito y sin cablear** (B-230, D-134): la home la
+ * construía otro frente. B-231 lo cableó abajo del listado.
+ *
+ * ── Qué se rompe acá, que no es que se rompa ──────────────────────────────
+ * Nada de esto pone el build en rojo, y las tres cosas dejan la conversión en
+ * cero o la página peor de lo que estaba:
+ *
+ * 1. **Que se descablee.** Un componente sin usar no falla: sigue compilando,
+ *    sigue teniendo sus tests, y la home vuelve a no ofrecer suscribirse. Es
+ *    exactamente el estado del que B-231 salió, y volvería sin que nada avise.
+ * 2. **Que quede adentro del contenedor que la island borra.** La island saca
+ *    del DOM la lista del build por su `id` para montar la suya; un bloque
+ *    adentro de ese contenedor lo ve solo quien tiene el JavaScript apagado.
+ *    Con el JavaScript prendido —o sea, casi todo el mundo— desaparece, y el
+ *    HTML del build, que es lo único que se mira, lo muestra igual.
+ * 3. **Que se duplique.** El día que la cartelera —o cualquier otra página—
+ *    quiera el mismo bloque, la forma de equivocarse es ponerlo dos veces en la
+ *    misma página: dos encabezados con el mismo `id`, y un lector de pantalla
+ *    que salta siempre al primero.
+ */
+const RESUMEN = 'src/components/sitio/SuscribirseResumen.astro';
+const HOME = 'src/pages/index.astro';
+
+const paginasDelSitio = (): string[] =>
+  execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
+    .split('\n')
+    .filter((f) => f.endsWith('.astro'));
+
+/** Cuántas veces una página **renderiza** el bloque (el import no cuenta). */
+const vecesQueLoUsa = (rel: string): number =>
+  (fuente(rel).match(/<SuscribirseResumen[\s/>]/g) ?? []).length;
+
+describe('el bloque corto de «suscribirse» en la home — B-231', () => {
+  it('el barrido encuentra las páginas y el componente existe', () => {
+    // Control positivo: casi todo lo de abajo cuenta ocurrencias, y contar sobre
+    // un barrido vacío da los mismos números que contar sobre un sitio correcto.
+    expect(paginasDelSitio()).toContain(HOME);
+    expect(paginasDelSitio().length).toBeGreaterThan(4);
+    expect(fuente(RESUMEN)).toContain('<SuscribirseAccion');
+  });
+
+  it('la home lo importa y lo renderiza, una sola vez', () => {
+    const src = fuente(HOME);
+    expect(
+      src,
+      'la home dejó de importar el bloque: vuelve a no ofrecer suscribirse y nada falla',
+    ).toContain("from '@/components/sitio/SuscribirseResumen.astro'");
+    expect(vecesQueLoUsa(HOME)).toBe(1);
+  });
+
+  it('va después del listado y adentro del contenido de la página', () => {
+    /*
+     * Se cuentan los `<div>` abiertos y cerrados entre el contenedor del listado
+     * y el bloque: si están parejos, el bloque quedó **fuera** de ese contenedor,
+     * que es lo único que hace falta para que la island no se lo lleve. Contar
+     * en vez de mirar la indentación resiste que alguien reacomode el markup.
+     */
+    const src = fuente(HOME);
+    const desde = src.indexOf('<div id="listado"');
+    const hasta = src.indexOf('<SuscribirseResumen');
+    expect(desde, 'no se encontró el contenedor del listado').toBeGreaterThan(-1);
+    expect(hasta, 'no se encontró el bloque en la home').toBeGreaterThan(desde);
+    expect(hasta).toBeLessThan(src.indexOf('</main>'));
+
+    const tramo = src.slice(desde, hasta);
+    expect(
+      (tramo.match(/<div\b/g) ?? []).length,
+      'el bloque quedó adentro del contenedor que la island borra al hidratar: con ' +
+        'JavaScript prendido no lo ve nadie, y el HTML del build lo muestra igual.',
+    ).toBe((tramo.match(/<\/div>/g) ?? []).length);
+  });
+
+  it('cuelga del `h1` de la página, sin saltear un nivel', () => {
+    /*
+     * `nivel` existe para esto y su default es `2`. La home tiene un `h1` y los
+     * marcadores de mes son `h2`, así que el bloque va de `h2` hermano. Si algún
+     * día la home pasa a tener el bloque anidado bajo otra sección, hay que
+     * pasarle `nivel={3}` — y este aserto es el que obliga a venir a pensarlo.
+     */
+    const src = fuente(HOME);
+    expect((src.match(/<h1[\s>]/g) ?? []).length).toBe(1);
+    expect(src).toMatch(/<SuscribirseResumen\s*\/>/);
+    expect(fuente(RESUMEN)).toContain('nivel = 2');
+  });
+
+  it('ninguna página lo pone dos veces, y la propia «Suscribirse» no lo pone', () => {
+    /*
+     * El `id` del encabezado es una prop justamente para poder embeberlo dos
+     * veces en la misma página; lo que no puede pasar es que se embeba dos veces
+     * **sin** distinguirlos, y hoy nadie pasa `idTitulo`. Y en `/suscribirse` el
+     * bloque sería el resumen de la página en la que ya estás.
+     */
+    const repetido = paginasDelSitio().filter((f) => vecesQueLoUsa(f) > 1);
+    expect(repetido, 'estas páginas renderizan el bloque más de una vez').toEqual([]);
+    expect(vecesQueLoUsa(PAGINA), '/suscribirse no se resume a sí misma').toBe(0);
+  });
+});
