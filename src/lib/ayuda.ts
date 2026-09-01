@@ -630,8 +630,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Los tipos de actividad tienen además un botón «Color», que decide con qué tinta ' +
-          'escribe el sitio esa categoría en el listado. Es la única cosa que se puede cambiar ' +
-          'de una opción base: «Taller» y «Charla» no se pueden renombrar ni borrar, pero sí ' +
+          'escribe el sitio esa categoría: en el listado y en la ficha de cada actividad, que ' +
+          'llevan la misma etiqueta del mismo color. Es la única cosa que se puede cambiar de ' +
+          'una opción base: «Taller» y «Charla» no se pueden renombrar ni borrar, pero sí ' +
           'pintar.',
       },
       {

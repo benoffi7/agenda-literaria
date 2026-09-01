@@ -346,8 +346,11 @@ después. Al lado de cada tipo hay una muestra del color y la línea dice cuál 
 desde «Otro» nace con color propio en vez de nacer sin color, que es el modo de
 falla silencioso que el §4 tiene en todos lados. «Automático» vuelve a ese estado.
 
-Hoy el color se ve en **la cajita de la categoría de cada fila del listado
-público**. La ficha de la página de detalle sigue en azul tinta: es **B-273**.
+El color se ve en **la cajita de la categoría de cada fila del listado público** y,
+desde B-273 (**D-153**), también en **la cajita de la cabecera de la página de
+detalle**: es la misma pieza en las dos pantallas y con el mismo matiz, que es lo
+que hace que quien llega desde la agenda reconozca dónde cayó. Hasta B-273 el
+detalle la pintaba en azul tinta fijo y la cajita saltaba de color al navegar.
 
 Dos avisos que la pantalla da porque son las consecuencias que no se adivinan:
 
@@ -692,7 +695,8 @@ pide como principio.
 **La fila.** A la izquierda el **bloque de fecha**: un rectángulo de tinta plena con
 el día calado en el color del papel —el gesto central del sistema, y la misma pieza
 que abre cada encuentro en la página de detalle— con el tipo de actividad al lado, en
-una cajita con borde y en azul tinta. A la derecha, en este orden, el título, una
+una cajita con borde, **en la tinta de su categoría** (D-150). A la derecha, en este
+orden, el título, una
 línea de metadatos (hora · lugar · cómo se cursa), el ciclo y el aviso de
 inscripción. El arancel cierra la fila, alineado a la derecha. Es el orden en que se
 decide: cuándo, qué es, dónde y cuánto sale.
@@ -742,7 +746,10 @@ El filtro estaba y funcionaba: lo que no se podía era encontrarlo.
 
 **La cajita de la categoría lleva el color de su tipo** (B-270, **D-150**), derivado
 del nombre interno o elegido desde Opciones. Es lo único de color variable de la
-página: el resto sigue siendo la paleta de tres tintas del sistema.
+página: el resto sigue siendo la paleta de tres tintas del sistema. Desde B-273
+(**D-153**) la cabecera del detalle lleva **el mismo** color, y lo lleva al revés
+—tinta plena con el texto calado—, que es un par de contraste distinto y medido
+aparte.
 
 Todo lo puesto viaja en la **query string**
 (`/?q=cronica&tipo=taller&barrio=boedo`), para poder compartir un filtro por

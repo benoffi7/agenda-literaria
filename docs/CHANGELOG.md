@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-09-01 · la ficha del detalle deja el azul fijo y lleva el color de su categoría
+
+**B-273, [D-153](06-decisiones.md).** Cierra la mitad que D-150 había dejado afuera
+a propósito. La cajita del tipo en `/actividad/{slug}` iba en `bg-azul` fijo, con un
+comentario al lado que afirmaba «es la misma que abre cada fila del listado» — y
+desde B-270 eso era falso: **quien navegaba del listado al detalle veía la cajita
+saltar de color**, que es lo contrario de reconocer la pieza. Lo había encontrado el
+`auditor-trampas` al cerrar B-270.
+
+El color llega **ya resuelto** en el view-model (`DetallePublico.tipoColor`) y sale
+de `colorDeTipo`, la misma función que pinta la fila: la plantilla no ve las opciones
+(D-140), así que no puede derivarlo ni equivocarse de lista. Va por `style` y no por
+clase, por lo mismo que en el listado.
+
+**`tonosDelSitio()` es ahora el único lugar del build que arma el mapa de matices**,
+y lo usan la home y el detalle — dos derivaciones habrían sido dos maneras de que el
+color se separe otra vez, que es la clase de B-88 y el bug mismo. Sale de las
+opciones **filtradas por aprobación**, la asimetría opuesta a `etiquetasDelDetalle`
+(D-30) y con su motivo: la etiqueta se resuelve sin filtrar porque una actividad
+puede tener guardada una opción pendiente, pero el color tiene que coincidir con el
+del listado, que solo puede usar la filtrada. El cuarto parámetro de
+`detalleDeActividad` es **obligatorio** y no tiene default: un `{}` habría
+reproducido el bug en silencio, solo para los tipos pintados a mano.
+
+**Y el par de contraste no es el mismo.** En la fila la cajita es el color **como
+texto** sobre el papel; en la cabecera es tinta plena con el **papel calado encima**.
+Son dos mediciones distintas y la garantía de D-150 —los 360 matices contra las tres
+superficies— solo cubría la primera. `contrasteCaladoDelTono` mide la segunda sobre
+los mismos 360: el peor es el tono 191 con **7,27:1** contra un piso de 4,5 — mejor
+que los 5,90:1 de la dirección de texto y mejor que el 6,14:1 del `azul` que había,
+así que el cambio no gasta contraste, lo gana.
+
+**No existía ningún test que comparara el color entre las dos pantallas**, y por eso
+el bug pasó por dos cierres sin que nada fallara. Ahora sí: el cruce en
+`color-de-tipo.test.ts` compara **los dos valores producidos**, el describe del
+calado recorre los 360, y `detalle-visual.test.ts` guarda que ninguna clase de fondo
+sobreviva al lado del `style` inline. Nueve mutaciones probadas.
+
+**Cuatro hallazgos del `auditor-privacidad`**, los cuatro cerrados: la elección de la
+lista filtrada no la fijaba ningún test (va un caso de integración con un tipo
+pendiente de aprobar), el registro de caminos de una opción pasó de cuatro a cinco
+—el quinto no lee el documento, recibe la lista ya proyectada—, la home no tenía
+lista blanca de imports del lector, y un comentario del barrido sobredeclaraba lo que
+su fixture cubre.
+
+**Abierto en el camino:** B-275 (el rótulo de la cartelera, que se miró y **no** es el
+mismo bug) y B-276 (los tests de integración que barren Firestore entero son
+sensibles al orden).
+
 ## 2026-09-01 · los flyers: dejan de recortarse, dejan de estar escondidos, y tienen pared propia
 
 Tres cambios que son uno solo, y arrancan de un número: **42 actividades

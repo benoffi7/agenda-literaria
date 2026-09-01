@@ -523,7 +523,7 @@ El porqué completo está en **D-150**; lo que conviene tener anotado acá:
   el `auditor-privacidad`.
 - **Abierto en el camino:** **B-273** (la ficha del detalle sigue en azul fijo).
 
-### B-273 · La ficha del detalle pinta el tipo en azul fijo, y su comentario dice que es el mismo color que el listado · P1
+### B-273 · La ficha del detalle pinta el tipo en azul fijo, y su comentario dice que es el mismo color que el listado — ✅ hecho (2026-09-01)
 
 **Lo encontró el `auditor-trampas` al cerrar B-270**, y es la otra mitad de D-150
 que no se pudo hacer.
@@ -555,6 +555,29 @@ que no pasa.
 **Sin red:** no existe ningún test que compare el color del tipo en las dos
 pantallas. Vale escribirlo con el arreglo, porque es la clase de B-88 —dos
 derivaciones del mismo valor separándose— con las dos mitades a la vista.
+
+**Arreglado — D-153.** El color llega ya resuelto en `DetallePublico.tipoColor`,
+derivado con `colorDeTipo`, la misma función que pinta la fila; `tonosDelSitio()` es
+el único lugar del build que arma el mapa de matices y lo usan las dos pantallas; y
+el cuarto parámetro de `detalleDeActividad` es **obligatorio**, porque un default
+`{}` habría reproducido el bug en silencio y solo para los tipos pintados a mano.
+
+El par de contraste de la cabecera es **el papel calado encima del color** y no el
+del listado: `contrasteCaladoDelTono` lo mide sobre los 360 matices posibles y el
+peor —el tono 191— da **7,27:1** contra un piso de 4,5, mejor que los 5,90:1 de la
+dirección de texto y que el 6,14:1 del `azul` que había.
+
+La red que faltaba, escrita: el cruce listado/detalle en `tests/color-de-tipo.test.ts`
+compara los dos valores producidos; el guard de markup en
+`tests/detalle-visual.test.ts` impide que una clase de fondo sobreviva al lado del
+`style`; y un caso de integración fija que el color salga de la lista **filtrada por
+aprobación** —la asimetría opuesta a la de la etiqueta (D-30)—, que era la única
+decisión de privacidad nueva del cambio y no tenía test. Cuatro hallazgos del
+`auditor-privacidad`, los cuatro cerrados.
+
+**Se miró si había más de lo mismo y no había** — el detalle es la única otra pieza
+que el listado pinta con el color de la categoría. El rótulo de la cartelera se
+evaluó y **no es el mismo bug**: queda como **B-275**.
 ### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
 
 El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y
@@ -4700,6 +4723,65 @@ Queda P2 y no P1 porque la página funciona y es alcanzable desde las cuatro
 secciones del sitio. Lo que se pierde mientras tanto es conversión, no acceso.
 
 ## P3 — cuando sobre tiempo
+
+### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo · P3
+
+**Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
+vuelva a discutir desde cero.**
+
+`src/pages/cartelera.astro` pone `{tipoEtiqueta} · {cuando}` con `claseRotulo`
+(`label-caps text-azul`). Es la tercera pieza pública que nombra la categoría, después
+de la cajita del listado y la de la cabecera del detalle — que desde D-153 llevan las
+dos el color de su tipo.
+
+**Por qué no entró en B-273:**
+
+- **No es la misma pieza.** Las otras dos son una cajita con la categoría sola; ésta
+  es una **línea compuesta** donde el tipo comparte renglón con la fecha. Pintarla del
+  color de la categoría pintaría también el «jue 24 sep», que es exactamente lo que
+  D-150 dejó afuera con su motivo escrito: «extenderlo al resto de la fila lo
+  convierte en decoración y devuelve la textura de plataforma».
+- **No hay salto que arreglar.** Nadie ve una cajita cambiar de color al navegar: acá
+  no hay cajita, hay texto en `azul`, que es la tinta que el sistema visual le asigna
+  a lo funcional y a las categorías. Sigue siendo coherente con el sistema.
+- **Partir la línea para pintar solo el tipo** es una decisión de diseño nueva —dos
+  colores en un renglón de tres palabras— y no la corrección de una afirmación falsa,
+  que es lo que B-273 era.
+
+Qué haría falta para cerrarlo: que el dueño decida si la pared también tiene que
+identificar la categoría por color. Si dice que sí, el camino corto es una cajita
+como la del listado en vez de teñir la línea entera, y el par a medir es el mismo que
+ya mide `contrasteCaladoDelTono` (si va calada) o `contrasteDelTono` (si va con
+borde) — no hace falta medir nada nuevo.
+
+### B-276 · La suite completa falla a veces en los tests de integración, y es el orden · P3
+
+Apareció al cerrar B-273: sobre unas nueve corridas de `npx vitest run
+--no-file-parallelism`, **dos fallaron** con errores del tipo «el fixture dejó de
+tener a "taller" como base» o «La opción «taller» ya no está en tipo» en
+`opciones.integracion.test.ts`, y una vez además en `sitio-publico.integracion.test.ts`
+y `events-json-endpoint.integracion.test.ts`. Las mismas corridas aisladas —cada
+archivo solo, y los tres archivos de integración juntos— pasan siempre, y la suite
+completa pasó **seis veces seguidas** después. No se pudo reproducir a voluntad.
+
+**La sospecha:** varios `describe` de integración llaman a `limpiarFirestore()`, que
+hace un `DELETE` sobre **toda** la base del emulador, en `beforeAll` y en `afterAll`.
+Si alguno de esos borrados sigue en vuelo cuando el archivo siguiente ya sembró su
+fixture, el fixture desaparece y el error que se ve es «el dato base no está» — que
+es justo la forma que tuvieron los fallos. El emulador además es **compartido entre
+worktrees**, así que un build contra el emulador o una corrida en otro directorio
+alcanzarían para lo mismo.
+
+No es de B-273: el patrón de barrer entero en `beforeAll` es anterior (el describe de
+D-30 de `sitio-publico.integracion.test.ts` ya lo hacía) y la suite en `main` también
+pasa. Lo que B-273 hizo fue agregar un tercer `describe` que barre en ese archivo, o
+sea subir la frecuencia si la sospecha es correcta.
+
+Qué haría falta para cerrarlo: correr la suite en un loop hasta reproducirlo con el
+log del emulador a la vista. Si se confirma, la salida es dejar de barrer la base
+entera —borrar solo las colecciones que el archivo sembró— o darle a cada archivo de
+integración su propio `projectId`, que es lo que aísla de verdad y de paso protege
+del emulador compartido entre worktrees.
 
 ### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` · P3
 
