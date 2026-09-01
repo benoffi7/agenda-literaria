@@ -16,6 +16,7 @@ import {
   colorDelTonoSrgb,
   contrasteDelTono,
   esTonoElegible,
+  revisarTono,
   tonoDeTipo,
   tonoLegible,
 } from '@/lib/identidad';
@@ -201,6 +202,59 @@ describe('la guarda de lo que se puede guardar y de lo que se lee', () => {
     expect(tonoDeTipo('taller')).toBe(TONOS_DE_TIPO.taller);
     expect(tonoDeTipo('ciclo-de-cine')).not.toBeUndefined();
     expect(esTonoElegible(tonoDeTipo('ciclo-de-cine'))).toBe(true);
+  });
+});
+
+describe('`revisarTono` — la guarda de lo que se guarda', () => {
+  it('deja pasar cualquier matiz de la banda, y los doce del selector', () => {
+    /*
+     * Control positivo. Los casos de abajo afirman que la guarda **rechaza**, y
+     * una guarda que rechaza todo también los pasaría.
+     */
+    for (const t of [0, 25, 180, 359]) expect(revisarTono(t), `tono ${t}`).toBeNull();
+    for (const { tono, nombre } of TINTAS_DE_TIPO) expect(revisarTono(tono), nombre).toBeNull();
+  });
+
+  it('rechaza lo que no es un matiz, y dice por qué', () => {
+    for (const malo of [999, -1, 12.5, Number.NaN, '180', null, undefined, {}]) {
+      const motivo = revisarTono(malo);
+      expect(motivo, JSON.stringify(malo) ?? 'undefined').not.toBeNull();
+      expect(motivo).toContain('entero de 0 a 359');
+    }
+  });
+
+  it('rechaza un color que no llega al piso, y el mensaje lleva el ratio y el piso', () => {
+    /*
+     * **El caso que la banda vuelve inalcanzable, y por eso el piso es un
+     * parámetro** (ver el docblock de `revisarTono`). Con la banda de hoy ningún
+     * matiz elegible baja de 5,90:1, así que sin subir el piso este camino no se
+     * puede recorrer y sacarle el `throw` a `pintarOpcion` no rompería nada.
+     *
+     * Con el piso en 8 —arriba de lo que la banda puede dar— la guarda tiene que
+     * disparar sobre el mismo cálculo y el mismo texto que usa en producción. Y
+     * el mensaje tiene que **nombrar los dos números**: cuatro centésimas no se
+     * ven (B-235), así que «no se puede» sin el ratio no explica nada.
+     *
+     * MUTACIÓN PROBADA: cambiar `ratio < piso` por `ratio < 0` —o sea, dejar
+     * pasar cualquier color— hace fallar este caso; devolver un mensaje sin el
+     * `toFixed(2)` hace fallar el aserto del ratio.
+     */
+    const motivo = revisarTono(195, 8);
+    expect(motivo).not.toBeNull();
+    expect(motivo).toContain('5.91:1');
+    expect(motivo).toContain('8:1');
+  });
+
+  it('el piso por defecto es el de texto, no uno más flojo escrito al lado', () => {
+    /*
+     * Sin esto, `revisarTono` podría llamar con un piso propio de 3 —el de un
+     * borde— y seguir en verde: la cajita del tipo es texto de 11px y el piso es
+     * 4,5. Se afirma pidiendo un piso apenas por encima del peor de la banda.
+     */
+    expect(PISO_DEL_TIPO).toBe(AA_TEXTO);
+    const peor = Math.min(...TONOS.map(contrasteDelTono));
+    expect(revisarTono(195, peor + 0.01)).not.toBeNull();
+    expect(revisarTono(195, peor)).toBeNull();
   });
 });
 
