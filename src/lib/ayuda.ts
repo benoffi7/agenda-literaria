@@ -126,13 +126,16 @@ export const AVISOS: AvisoAyuda[] = [
   },
   {
     id: 'link-reunion',
-    titulo: 'El link de la reunión se publica solo si tildás la casilla',
+    titulo: 'El link de la reunión sale al calendario, nunca a la página de la actividad',
     texto:
       'En una actividad virtual el link se guarda siempre, pero no se publica: se lo mandás a cada ' +
-      'persona cuando se inscribe. Solo sale al sitio y al evento del calendario si tildás «Publicar ' +
-      'el link en el sitio». Si la actividad tiene cupo, publicarlo es dejar la puerta abierta: entra ' +
-      'cualquiera, el cupo deja de significar algo y alguien puede arruinar el encuentro. Tildalo ' +
-      'solo en encuentros abiertos, sin inscripción ni cupo.',
+      'persona cuando se inscribe. Si tildás «Publicar el link en el calendario», sale en el evento ' +
+      'del calendario público —donde lo ve quien está suscripto— y en ningún otro lado. En la ' +
+      'página de la actividad no sale nunca, ni tildado: esa página la indexa Google y una página ' +
+      'indexada no se despublica, mientras que un evento del calendario se borra. Si la actividad ' +
+      'tiene cupo, publicarlo es dejar la puerta abierta: entra cualquiera, el cupo deja de ' +
+      'significar algo y alguien puede arruinar el encuentro. Tildalo solo en encuentros abiertos, ' +
+      'sin inscripción ni cupo.',
     atadoA: [
       // Se guarda y no se publica, salvo que la casilla esté tildada — en el
       // evento del calendario y en el sitio, que son las dos salidas.
@@ -140,6 +143,12 @@ export const AVISOS: AvisoAyuda[] = [
       { archivo: 'tests/calendario.test.ts', it: 'publica el link SOLO si urlPublica está en true' },
       { archivo: 'tests/toPublic.test.ts', it: 'por defecto no filtra el link de la reunión, solo la plataforma' },
       { archivo: 'tests/toPublic.test.ts', it: 'publica el link si urlPublica está en true' },
+      // Y la mitad que la casilla ya no promete: en la página de detalle no sale
+      // ni con la casilla tildada (D-139, y el texto corregido por D-158).
+      {
+        archivo: 'tests/barrido-de-salidas-publicas.test.ts',
+        it: 'con `urlPublica: true` el link de la reunión TAMPOCO sale al detalle (D-139)',
+      },
     ],
   },
   {
@@ -693,6 +702,33 @@ export const CAPITULOS: CapituloAyuda[] = [
           '«publicado» sale al sitio y al calendario, «cancelado» saca los eventos del calendario ' +
           'pero conserva la actividad acá.',
         cuidado: true,
+      },
+      {
+        texto:
+          'Y si la actividad ya había estado publicada, «cancelado» tampoco borra su página del ' +
+          'sitio: la página queda, con el aviso de que se canceló arriba de todo y sin el botón ' +
+          'para anotarse, y las fechas siguen a la vista. Deja de aparecer en el listado, en la ' +
+          'búsqueda y en la cartelera, así que solo la ve quien todavía tiene el link. Es a ' +
+          'propósito: ese link circuló por Instagram y por WhatsApp, y quien lo abre tiene que ' +
+          'encontrar la respuesta a «¿se hace o no se hace?» y no una página de error. Una ' +
+          'actividad que nunca se publicó y se pasa directo a cancelada no genera ninguna página.',
+        cuidado: true,
+        atadoA: [
+          // La franja de la cancelada, con su texto propio y con prioridad sobre
+          // los otros avisos; y que la página exista solo si estuvo publicada.
+          {
+            archivo: 'tests/detallePublico.test.ts',
+            it: 'la franja lo dice, y con su propio texto: no es «se cancelaron los encuentros»',
+          },
+          {
+            archivo: 'tests/detallePublico.test.ts',
+            it: 'sin CTA: ni el botón ni el canal en texto',
+          },
+          {
+            archivo: 'tests/cartelera.test.ts',
+            it: 'una actividad CANCELADA no entra, aunque tenga flyer y fecha por venir — B-110',
+          },
+        ],
       },
       {
         texto:

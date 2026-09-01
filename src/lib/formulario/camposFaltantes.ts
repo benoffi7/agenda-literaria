@@ -137,7 +137,10 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'modalidades.N.online.plataforma': { etiqueta: 'Plataforma', seccion: 'donde' },
   'modalidades.N.online.url': { etiqueta: 'Link del encuentro', seccion: 'donde' },
   'modalidades.N.online.urlPublica': {
-    etiqueta: 'Publicar el link en el sitio',
+    // B-240 — el mismo texto que la casilla del formulario: si acá dijera «en el
+    // sitio» y la casilla «en el calendario», el aviso de campo faltante mandaría
+    // a buscar una casilla que no existe con ese nombre.
+    etiqueta: 'Publicar el link en el calendario',
     seccion: 'donde',
   },
 

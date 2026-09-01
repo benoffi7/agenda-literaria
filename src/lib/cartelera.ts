@@ -85,14 +85,24 @@ export interface Afiche {
  * es el título, para que dos actividades del mismo día no se ordenen distinto en
  * cada build —el orden de lectura de Firestore no está garantizado— y la página
  * no cambie sin que haya cambiado nada.
+ *
+ * **4 · Nada cancelado** — B-110, §7.3: una actividad cancelada tiene página y no
+ * entra a ninguna lista. Hoy el lector tampoco se las pasa (`detallesDelSitio` las
+ * incluye solo a pedido, y la pared no las pide), así que este filtro **no filtra
+ * nada** — y ése es justamente el motivo de escribirlo acá. La regla «la pared no
+ * muestra canceladas» es de la pared, y si vive únicamente en el lector, el día
+ * que el lector cambie de default la pared se rompe en silencio, publicando el
+ * afiche de algo que no se hace. Es la clase de B-265: la salida 7 heredaba el
+ * `where` de la 6 «por construcción», hasta que dejara de heredarlo.
  */
 export const carteleraDeDetalles = (detalles: readonly DetallePublico[]): Afiche[] =>
   detalles
     .flatMap((d) => {
       const portada = d.imagenes[0];
       // Sin imagen no hay afiche, y sin fecha próxima tampoco: las dos son la
-      // condición de entrar a la pared, no un caso de error.
-      if (!portada?.url || !d.proxima) return [];
+      // condición de entrar a la pared, no un caso de error. Y una cancelada no
+      // entra nunca (ver la regla 4 de arriba).
+      if (d.cancelada || !portada?.url || !d.proxima) return [];
       return [
         {
           slug: d.slug,

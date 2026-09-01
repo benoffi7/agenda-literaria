@@ -41,7 +41,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 |---|---|
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
-| `npm test` | los 460 tests |
+| `npm test` | la suite completa (2.006 tests en 88 archivos al 2026-09-01) |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
@@ -51,7 +51,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
-| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` que salió |
+| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` **y sobre el HTML de las páginas de detalle** que salieron (B-110) |
 
 `admin:claim` apunta al emulador por defecto; `admin:claim:prod` es un script
 aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
@@ -74,7 +74,7 @@ YAML.
 | 1 | marcadores de conflicto (`sin-marcadores-de-conflicto.test.ts`) | es el más barato y ya se commitearon dos veces |
 | 2 | `astro sync` + `tsc --noEmit` | sin `astro sync` el typecheck da doce errores que no son del cambio |
 | 3 | `npm test` con los emuladores arriba y `EXIGIR_EMULADOR=1` | sin eso los tests de integración se saltean **en silencio** y las reglas se pushean sin probar |
-| 4 | `./scripts/build-contra-emulador.mjs` con el emulador (el que ya está arriba, o uno efímero) | el build tiene que **leer Firestore de verdad**: siembra una actividad publicada y una en borrador, buildea, y afirma sobre el `dist/events.json` que la publicada está, la borrador no, y ningún campo recortado se coló (B-217) |
+| 4 | `./scripts/build-contra-emulador.mjs` con el emulador (el que ya está arriba, o uno efímero) | el build tiene que **leer Firestore de verdad**: siembra **cuatro** actividades —publicada, borrador, y las dos canceladas de B-110: una que estuvo publicada y una que nunca lo estuvo—, buildea, y afirma sobre los **dos** artefactos. Sobre el `dist/events.json`: la publicada está, la borrador y las dos canceladas no, y ningún campo recortado se coló (B-217). Sobre el **HTML**: la cancelada-que-estuvo-publicada tiene su página, con la franja, el `EventCancelled`, sin CTA y sin ningún campo privado (con `urlPublica: true` en el fixture); la que nunca se publicó y el borrador **no tienen archivo** (B-110, y de paso B-241) |
 | 5 | `./scripts/verificar-bundle.sh dist` | el gate del §5.4 / trampa 4; va después del build porque sin `dist/` no verifica nada |
 
 **El paso 4 se arregló el 2026-08-27 (B-217).** Nació apuntando

@@ -856,11 +856,51 @@ reglas de qué entra —90 días para las pasadas, 30 para las canceladas, meses
 3 o más— son nuestras. `lastmod` necesita B-112; sin eso se omite, que es mejor
 que estampar la fecha del build en todo.
 
+**Los 30 días de las canceladas, con el criterio escrito** (B-110 dejó la página;
+sacarla del sitemap es de acá). La regla del §7.3 es «30 días **desde que se
+canceló**», y *cuándo se canceló* no es un dato del modelo — igual que
+«estuvo publicada alguna vez» (B-285). Lo disponible:
+
+| Fecha | Sirve | Problema |
+|---|---|---|
+| `updatedAt` | es la edición que la canceló, si nadie la tocó después | cualquier corrección posterior corre el reloj; y **no está en la proyección** (es `actualizadoEn`, B-112) |
+| la versión de `/versiones` cuya edición cambió `estado` | es la fecha exacta | una lectura más por cancelada, y la retención de D-42 la puede podar |
+| `publicadaAlgunaVez` + un `canceladaEn` | exacto y barato de leer | dos campos nuevos |
+
+Lo razonable al escribir el sitemap es **`updatedAt` con el error dicho** —correr
+el reloj hacia adelante deja la URL un poco más de tiempo, que es el lado
+inofensivo— y no ir al historial por esto. La página **no se borra a los 30 días**:
+sigue existiendo para quien tenga el link, lo único que sale es la entrada del
+sitemap.
+
 `/pasadas` entra acá y no en B-108 porque su razón de ser es de indexación: sin
 esa página, cada actividad que pasa se convierte en una página huérfana que solo
 el sitemap enlaza.
 
-### B-110 · Una actividad cancelada no puede devolver 404
+### B-110 · Una actividad cancelada no puede devolver 404 — ✅ hecho (2026-09-01)
+
+**Hecho**, con [D-159](06-decisiones.md). El build trae también
+`estado == 'cancelado'` y genera la página si esa actividad **estuvo publicada
+alguna vez**: franja «Esta actividad se canceló» arriba de todos los otros avisos,
+sin CTA ni canal, fechas intactas, `eventStatus: EventCancelled` y sin `offers`. No
+entra al `events.json`, ni al listado, ni a la cartelera.
+
+El lector se amplió **sin tocar la query de las publicadas**: las canceladas entran
+por una segunda query con su propio `==` —un `in` convierte el estado en una lista,
+y a una lista alguien le agrega un elemento— y van a un campo aparte de
+`ContenidoDelSitio`, así que ninguna lista del sitio las recibe.
+
+**Y la heurística que este ítem proponía no sobrevive en producción.** Al cancelar,
+`syncCalendar` borra los eventos y escribe `calendarEventId: null` de vuelta en
+cada sesión (`reponerIds`, B-80): la prueba que el §7.3 pedía la borra el propio
+sync. Con esa heurística sola, esto habría pasado todos sus tests sin generar una
+sola página. Se resolvió leyendo `/actividades/{id}/versiones` —cancelar deja una
+versión con `documento.estado: 'publicado'`—, con `.limit(1).select()` para no
+traer ningún campo. El `publicadaAlgunaVez` explícito sigue siendo lo correcto y
+queda en **B-285**.
+
+El texto original, para que la decisión se lea contra él:
+
 
 Hoy el camino natural (`estado == 'publicado'`) hace que una actividad cancelada
 pierda su página. La URL estuvo tres semanas en Instagram y en Google, y a quien
@@ -2281,7 +2321,25 @@ simulado.
 > por lo mismo que se ganó: la portada es un componente más que habría que rehacer a
 > mano y volvería a haber dos markups de tarjeta.
 
-### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica · P2
+### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica — ✅ hecho (2026-09-01)
+
+**Se eligió la primera salida: cambiar el texto** ([D-158](06-decisiones.md)). El
+argumento de D-139 es asimétrico y por eso gana — un evento de Calendar se
+reescribe al destildar la casilla, un HTML indexado por Google no se despublica.
+La casilla dice ahora «Publicar el link en el evento del calendario, que es donde
+lo ve quien está suscripto», con la aclaración de que en la página de la actividad
+no aparece y de que ése es el único lugar a donde sale. Se corrigieron con ella la
+ayuda corta del campo, el punto `link-reunion` de la guía y la etiqueta del aviso
+de campo faltante. **El comportamiento no cambió.**
+
+**Y el ítem decía de más, lo marcó el `auditor-privacidad`:** «hoy el link va al
+`events.json` y a la descripción del evento» — al `events.json` **no** va.
+`toPublic` emite la URL (D-15) pero `entradaDeIndice` la descarta (D-129), así que
+muere en la proyección y no llega a ningún archivo publicado. La salida real es
+una sola.
+
+El texto original del ítem, para que la decisión se lea contra él:
+
 
 **D-139** decidió que `online.url` no sale a la página de detalle ni con
 `urlPublica: true`, más estricto que D-15. Correcto para el link —un HTML indexado
@@ -2299,7 +2357,14 @@ Las dos salidas, y la conversación es del dueño:
 Mientras tanto la ayuda del panel dice «Solo sale al sitio y al evento del
 calendario si tildás…», que **también hay que corregir** en la salida que se elija.
 
-### B-241 · El fixture del gate de build es anterior a B-224, así que no ejercita el bloque «Dónde» · P2
+### B-241 · El fixture del gate de build es anterior a B-224, así que no ejercita el bloque «Dónde» — ✅ hecho (2026-09-01)
+
+**Hecho al cerrar B-110, que lo necesitaba:** el aserto nuevo del gate es que la
+página de la cancelada lleva `eventStatus: EventCancelled`, y sin `location` no hay
+JSON-LD sobre el cual afirmarlo. El fixture tiene ahora su fila de `modalidades`
+con los mismos centinelas —el barrido cuenta presencia y no ocurrencias—, así que
+el gate pinta el bloque «Cómo se cursa», la sede y el JSON-LD.
+
 
 `scripts/build-contra-emulador.mjs` siembra una actividad con `modalidad`, `sede` y
 `online` de **primer nivel** y sin el array `modalidades`, que es la forma que el
@@ -2519,8 +2584,11 @@ worktree, o un `projectId` por worktree sobre el mismo emulador.
 Dos campos que el sitio público necesita y `toPublic.ts` no lleva
 ([`12-sitio-publico.md`](12-sitio-publico.md) §11.2):
 
-- **`estado`** (`'publicado' | 'cancelado'`) — sin esto el HTML no puede pintar
-  la franja CANCELADA ni emitir `eventStatus`. Lo necesita B-110.
+- ~~**`estado`** (`'publicado' | 'cancelado'`)~~ — **ya no hace falta**, y la
+  respuesta terminó siendo mejor: B-110 no proyecta el estado. La bandera llega
+  como **argumento** de `detalleDeActividad`, porque el único que sabe de qué query
+  salió cada documento es el lector (D-159). Así `toPublic` no gana un campo y el
+  `events.json` no puede publicar un estado por accidente.
 - **`actualizadoEn`** (ISO de `updatedAt`) — es el `lastmod` del sitemap y el
   "actualizado el …" del detalle. Sin él el sitemap va sin `lastmod`, que es
   mejor que estampar la fecha del build en todas las páginas: eso le enseña al
@@ -4799,6 +4867,39 @@ su razón.**
 Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, primero
 hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
 `EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
+
+### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda · P2
+
+B-110 necesita saber si una actividad cancelada estuvo publicada alguna vez —para
+no publicar la página de un borrador por otra puerta— y esa pregunta **no vive en
+el modelo**. Hoy se infiere en el build (`estuvoPublicada`,
+`contenidoDelSitio.ts`): primero por si alguna sesión conserva `calendarEventId`
+—la heurística del §7.3, que en la práctica no sobrevive porque el sync la borra al
+cancelar (D-159)— y si no, por si `/actividades/{id}/versiones` tiene una entrada
+con `documento.estado: 'publicado'`.
+
+Funciona y era lo correcto para cerrar B-110, porque **el historial funciona
+retroactivamente**: las actividades ya canceladas en producción recuperan su página
+sin que nadie las vuelva a guardar, que es justo lo que un campo nuevo no puede
+hacer. Lo que se paga:
+
+- una query extra por cancelada (son pocas, y solo ellas la pagan);
+- **la retención de D-42**: 20 versiones por actividad. Editar una cancelada veinte
+  veces empuja la versión publicada afuera del historial y la página vuelve a dar
+  404. Falla cerrado, que es el lado correcto del error, pero es un límite real;
+- el build depende de una subcolección interna para decidir qué HTML genera.
+
+Lo correcto a mediano plazo es `publicadaAlgunaVez: boolean` —ya era la decisión 4
+del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md)—: un booleano pegajoso
+que se prende al guardar con `estado: 'publicado'` y nunca vuelve a `false`. Toca
+el tipo, el schema, la conversión form ⇄ documento, `duplicar.ts` (**tiene que
+nacer en `false`**: un duplicado nunca estuvo publicado), `camposFaltantes.ts`, el
+fixture de centinelas y el barrido — o sea el recorrido completo del skill
+`campo-nuevo`. No se hizo con B-110 porque no lo bloqueaba y porque solo sirve
+hacia adelante.
+
+Cuando exista, `estuvoPublicada` se queda con el campo y las dos inferencias pasan
+a ser el default de lectura de los documentos anteriores.
 
 ### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` · P3
 

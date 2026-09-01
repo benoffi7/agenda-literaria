@@ -57,6 +57,30 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cancelada-conserva-pagina',
+    fecha: '2026-09-01',
+    version: '1.5.0',
+    titulo: 'Cancelar una actividad que ya se había publicado ya no borra su página',
+    detalle:
+      'Antes, cancelar una actividad publicada hacía que su página diera error para quien ' +
+      'todavía tuviera el link. Ahora la página queda, con el aviso de que se canceló arriba de ' +
+      'todo, sin el botón para anotarse y con las fechas a la vista. Sale del listado, de la ' +
+      'búsqueda y de la cartelera: solo la ve quien ya tenía el link.',
+    donde: 'Al poner el estado en «Cancelada», en la sección «Qué es».',
+  },
+  {
+    id: 'link-reunion-dice-el-calendario',
+    fecha: '2026-09-01',
+    version: '1.5.0',
+    titulo: 'La casilla del link de la reunión ahora dice a dónde sale de verdad',
+    detalle:
+      'Decía «Publicar el link en el sitio» y en la página de la actividad el link nunca ' +
+      'apareció: esa página la indexa Google y una página indexada ya no se puede despublicar. ' +
+      'Donde sí sale, y siempre salió, es en el evento del calendario público, y en ningún otro ' +
+      'lado. La casilla ahora lo dice así. No cambió nada de lo que pasa al tildarla.',
+    donde: 'Sección «Dónde», debajo del link del encuentro.',
+  },
+  {
     id: 'flyer-y-cartelera',
     fecha: '2026-09-01',
     version: '1.5.0',

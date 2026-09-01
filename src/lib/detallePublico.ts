@@ -194,6 +194,26 @@ export interface AvisoDeEstado {
 }
 
 export interface DetallePublico {
+  /**
+   * **La actividad entera está cancelada** — B-110, §7.3 del diseño.
+   *
+   * No sale de `ActividadPublica`: `estado` no se proyecta, y no tiene por qué
+   * hacerlo. Lo decide el **lector** (`contenidoDelSitio.ts`), que es el único
+   * que ve el documento crudo y el único que sabe de cuál de sus dos queries
+   * salió cada actividad — y lo pasa como argumento. Así `toPublic` no gana un
+   * campo nuevo y el `events.json` no puede publicar un estado por accidente.
+   *
+   * Es distinto de que **todos los encuentros** estén cancelados (B-254), que es
+   * un dato de las sesiones y ya estaba. Los dos terminan en la misma franja, con
+   * textos distintos: «se cancelaron todos los encuentros» deja abierta la idea
+   * de que la actividad existe y se reprograma; «esta actividad se canceló» no.
+   *
+   * Lo que este booleano cambia, y nada más: el texto de la franja, que no haya
+   * CTA de inscripción, y `eventStatus: EventCancelled` en el JSON-LD. **Las
+   * fechas quedan intactas** — quien mira necesita ver *qué* fecha se cayó, y
+   * Google necesita el `startDate` original para poder tachar el resultado.
+   */
+  cancelada: boolean;
   slug: string;
   titulo: string;
   tipo: string;
@@ -277,6 +297,23 @@ export interface DetallePublico {
      * de hace un año. Lo señaló el `auditor-privacidad`.
      */
     mostrarAccion: boolean;
+    /**
+     * ¿Se muestra el canal («Para anotarte: …») cuando no hay botón? — B-110.
+     *
+     * Es la **otra mitad** de `mostrarAccion`, y estaba escrita en la plantilla
+     * como `requiere && !accion`, que es la clase de regla que B-253 ya sacó de
+     * ahí: un `.astro` no se importa desde vitest, así que un `&&` en el markup
+     * es una decisión de una salida pública que nada puede evaluar.
+     *
+     * Lo que la trajo acá es la actividad cancelada: sin este campo, la página
+     * decía «se canceló» arriba y «Para anotarte: taller@…» en la ficha.
+     */
+    mostrarCanal: boolean;
+    /**
+     * La fila «Inscripción» de la ficha, ya resuelta — B-110. Ver
+     * `resumenDeInscripcion`.
+     */
+    resumen: string;
     /** «22 de septiembre de 2026», o `null` si no cierra. */
     cierra: string | null;
     /** Cerró, según el reloj del build. */
@@ -509,6 +546,28 @@ const rotuloDeCiclo = (esCiclo: boolean, vivos: EncuentroDeDetalle[]): string | 
 };
 
 /**
+ * La fila «Inscripción» de la ficha técnica, resuelta acá y no en el markup.
+ *
+ * Eran cuatro ramas encadenadas en la plantilla, y B-110 le agregó la quinta —la
+ * actividad cancelada— que es la que muestra por qué no podían vivir ahí: con la
+ * franja «Esta actividad se canceló» arriba, la ficha decía «Abierta hasta el 22
+ * de septiembre». Son dos afirmaciones contradictorias en la misma pantalla, y la
+ * que sobra no se puede sacar desde un `.astro` porque nada la evalúa.
+ *
+ * El orden es el mismo criterio que `avisoDeEstado`: del hecho más irreversible
+ * al más chico.
+ */
+const resumenDeInscripcion = (
+  cancelada: boolean,
+  canal: { requiere: boolean; cerrada: boolean; cierra: string | null },
+): string => {
+  if (cancelada) return 'La actividad se canceló';
+  if (!canal.requiere) return 'No hace falta anotarse';
+  if (canal.cerrada) return canal.cierra ? `Cerró el ${canal.cierra}` : 'Cerró';
+  return canal.cierra ? `Abierta hasta el ${canal.cierra}` : 'Abierta';
+};
+
+/**
  * El aviso de arriba, o `null`. Ver el docblock de `DetallePublico.aviso`.
  *
  * Es una función aparte y devuelve **uno** a propósito: la prioridad es la
@@ -516,11 +575,28 @@ const rotuloDeCiclo = (esCiclo: boolean, vivos: EncuentroDeDetalle[]): string | 
  * cuál mostrar, que es la decisión que se quería sacar de ahí.
  */
 const avisoDeEstado = (
+  cancelada: boolean,
   todoCancelado: boolean,
   yaPaso: boolean,
   hayEncuentros: boolean,
   inscripcion: { requiere: boolean; cerrada: boolean; cierra: string | null; completo: boolean },
 ): AvisoDeEstado | null => {
+  /*
+   * **B-110 — la actividad entera cancelada va primero de todo**, arriba incluso
+   * del caso de B-254.
+   *
+   * Va primero porque una actividad cancelada puede además tener todos sus
+   * encuentros cancelados, haber pasado, tener la inscripción cerrada y el cupo
+   * completo: los cinco valen a la vez y solo uno se muestra. Y es el único que
+   * contesta la pregunta con la que se entra a esta página desde un link de hace
+   * tres semanas — ¿se hace o no se hace?
+   */
+  if (cancelada) {
+    return {
+      tono: 'cancelado',
+      texto: 'Esta actividad se canceló. La página queda publicada para que se sepa.',
+    };
+  }
   if (todoCancelado) {
     return {
       tono: 'cancelado',
@@ -634,7 +710,27 @@ export const detalleDeActividad = (
   a: ActividadPublica,
   etiquetas: MapaDeEtiquetas,
   ahora: Date,
+  /**
+   * Los matices de cada tipo, ya resueltos — B-273.
+   *
+   * **Es obligatorio y no tiene default.** Un `{}` de cortesía habría reproducido
+   * en silencio el bug que este parámetro vino a cerrar —la cajita del detalle
+   * pintada de un color distinto que la del listado— y solo para los tipos con
+   * matiz elegido a mano, que es el subconjunto que menos se prueba.
+   */
   tonos: TonosDeTipo,
+  /**
+   * **La actividad está en `estado: 'cancelado'`** — B-110.
+   *
+   * Llega como argumento y no adentro de `a` porque `estado` **no se proyecta**:
+   * `toPublic` no lo emite y no tiene por qué hacerlo. El único que lo sabe es el
+   * lector, que ve el documento crudo y sabe de cuál de sus dos queries salió
+   * cada actividad (`contenidoDelSitio.ts`).
+   *
+   * El default es `false` a propósito: la respuesta segura para quien lo omita es
+   * «no está cancelada», que es lo que la página venía haciendo.
+   */
+  cancelada = false,
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -699,10 +795,15 @@ export const detalleDeActividad = (
 
   const inscripcion = {
     ...canal,
-    mostrarAccion: canal.accion !== null && !yaPaso && !canal.cerrada,
+    // B-110 — una actividad cancelada **no invita a anotarse**, ni con el botón
+    // ni con el canal en texto. Es la segunda de las tres cosas que pide el §7.3.
+    mostrarAccion: canal.accion !== null && !yaPaso && !canal.cerrada && !cancelada,
+    mostrarCanal: canal.requiere && canal.accion === null && !cancelada,
+    resumen: resumenDeInscripcion(cancelada, canal),
   };
 
   return {
+    cancelada,
     slug: a.slug,
     titulo: a.titulo,
     tipo: a.tipo,
@@ -766,7 +867,7 @@ export const detalleDeActividad = (
     },
     tags: a.tags.map((t) => etiquetaDe(etiquetas, 'tag', t)),
 
-    aviso: avisoDeEstado(todoCancelado, yaPaso, encuentros.length > 0, inscripcion),
+    aviso: avisoDeEstado(cancelada, todoCancelado, yaPaso, encuentros.length > 0, inscripcion),
 
     meta: {
       // §5.1 del diseño — el título de la actividad **primero**: Google recorta a
@@ -876,9 +977,23 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
 
   const conFecha = d.encuentros.filter((e) => e.inicioIso);
   const vivos = conFecha.filter((e) => !e.cancelada);
-  // Sin un solo encuentro en pie no hay evento que anunciar: emitir la serie
-  // entera cancelada sería marcar como agenda algo que no va a pasar.
-  if (vivos.length === 0) return null;
+
+  /*
+   * **De qué encuentros salen las fechas de la serie** — B-110.
+   *
+   * Con la actividad cancelada se usan **todos** los que tienen fecha y no solo
+   * los que están en pie, porque es justo el caso en el que Google necesita el
+   * `startDate` original: un `eventStatus: EventCancelled` sin fecha no le dice
+   * nada, y con la fecha puede tachar el resultado que ya tiene indexado. Es la
+   * regla 3 de este docblock un nivel más arriba — de la sesión cancelada a la
+   * actividad cancelada.
+   *
+   * Sin cancelar, sin un solo encuentro en pie no hay evento que anunciar: emitir
+   * la serie entera cancelada sería marcar como agenda algo que no va a pasar.
+   * Ése es el caso de B-254 y sigue devolviendo `null`.
+   */
+  const conFechas = d.cancelada ? conFecha : vivos;
+  if (conFechas.length === 0) return null;
 
   const subtipo = TIPO_SCHEMA[d.tipo] ?? 'Event';
   const modalidades = d.modalidades.map((m) => m.modalidad);
@@ -894,7 +1009,9 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     name: d.titulo,
     description: d.resumen,
     eventAttendanceMode: modo,
-    eventStatus: PROGRAMADO,
+    // B-110 / §7.3 — es exactamente lo que Google pide para dejar de mostrarla
+    // como vigente sin que la URL se caiga.
+    eventStatus: d.cancelada ? CANCELADO : PROGRAMADO,
     location: lugares.length === 1 ? lugares[0] : lugares,
     organizer: {
       '@type': 'Organization',
@@ -916,25 +1033,34 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     },
     ...(d.tallerista ? { performer: { '@type': 'Person', name: d.tallerista.nombre } } : {}),
     ...(d.imagenes[0] ? { image: d.imagenes[0].url } : {}),
-    ...(d.arancel.esGratis && !d.inscripcion.cerrada
-      ? {
-          offers: {
-            '@type': 'Offer',
-            price: '0',
-            priceCurrency: 'ARS',
-            availability: 'https://schema.org/InStock',
-            category: d.arancel.etiqueta,
-          },
-        }
-      : !d.inscripcion.cerrada
+    /*
+     * **Con la actividad cancelada no se emite `offers`** — B-110. Un `Offer` con
+     * `availability: InStock` en un evento cancelado marca como conseguible algo
+     * que no lo es, que es de las cosas que hacen que Google desconfíe del sitio
+     * entero (regla 6). Es la misma puerta que ya cerraba la inscripción cerrada,
+     * con un motivo más fuerte.
+     */
+    ...(d.cancelada
+      ? {}
+      : d.arancel.esGratis && !d.inscripcion.cerrada
         ? {
             offers: {
               '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'ARS',
               availability: 'https://schema.org/InStock',
               category: d.arancel.etiqueta,
             },
           }
-        : {}),
+        : !d.inscripcion.cerrada
+          ? {
+              offers: {
+                '@type': 'Offer',
+                availability: 'https://schema.org/InStock',
+                category: d.arancel.etiqueta,
+              },
+            }
+          : {}),
   };
 
   /*
@@ -951,8 +1077,8 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     return {
       ...comun,
       '@type': subtipo,
-      startDate: vivos[0]!.inicioIso,
-      endDate: vivos[0]!.finIso,
+      startDate: conFechas[0]!.inicioIso,
+      endDate: conFechas[0]!.finIso,
     };
   }
 
@@ -961,15 +1087,18 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     '@type': 'EventSeries',
     // La serie arranca en la fecha original, aunque ya haya empezado: no se
     // reescribe la historia para que parezca que empieza ahora (§7.2).
-    startDate: vivos[0]!.inicioIso,
-    endDate: vivos[vivos.length - 1]!.finIso,
+    startDate: conFechas[0]!.inicioIso,
+    endDate: conFechas[conFechas.length - 1]!.finIso,
     subEvent: conFecha
       .map((e) => ({
         '@type': subtipo,
         name: e.tema ? `${d.titulo} — ${e.tema}` : d.titulo,
         startDate: e.inicioIso,
         endDate: e.finIso,
-        eventStatus: e.cancelada ? CANCELADO : PROGRAMADO,
+        // Con la actividad cancelada lo están **todos** sus encuentros, aunque
+        // ninguna sesión tenga su propio flag: un subevento de una actividad
+        // cancelada no puede quedar en `EventScheduled`.
+        eventStatus: d.cancelada || e.cancelada ? CANCELADO : PROGRAMADO,
       })),
   };
 };

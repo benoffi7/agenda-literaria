@@ -4889,3 +4889,158 @@ dejó afuera («extenderlo al resto lo convierte en decoración»). Queda anotad
 | **Pasar el matiz (`tipoTono: number`) en vez del color** | Obliga a la plantilla a llamar a `colorDeTipo`, o sea a conocer la banda. Una segunda derivación del mismo color, que es la clase que este cambio cierra |
 | **`tonos` con default `{}`** | Ver arriba: reproduce el bug en silencio y solo para los tipos pintados a mano |
 | **Usar la lista sin filtrar, por simetría con `etiquetasDelDetalle`** | Ver la tabla de la asimetría: la simetría cómoda es el bug |
+## D-158 · Se corrige la casilla, no el comportamiento: el link de la reunión sale al calendario
+
+**B-240**, y es la conversación que D-139 dejó abierta con nombre y apellido: «la
+casilla dice *publicar el link en el sitio* y el sitio no lo publica». El ítem
+ofrecía dos salidas —cambiar el texto, o publicar el link en el detalle y aceptar
+el riesgo—. **Se elige cambiar el texto.**
+
+### El argumento de D-139 es asimétrico, y por eso gana
+
+Las dos salidas parecen simétricas —«que la casilla diga la verdad» vs. «que el
+sitio cumpla lo que la casilla dice»— y no lo son:
+
+| | ¿Se puede volver atrás? |
+|---|---|
+| link en la **descripción del evento** de Calendar | **sí**: se destilda la casilla, el sync reescribe el evento y el link deja de estar. Quien lo copió lo tiene, pero no queda publicado en ningún lado |
+| link en la **página de detalle** | **no**: es un HTML que Google indexa. Queda en el índice, en la caché de Google, en archive.org y en cualquier scrapeo que haya pasado. Sacarlo del repo no lo saca de ahí |
+
+Publicar un link de reunión en una página indexable es **irreversible de una forma
+en que ponerlo en el evento no lo es**. Entre una inconsistencia de texto —que se
+arregla escribiendo— y una publicación que no se puede deshacer, se elige la que
+tiene vuelta. Es el mismo criterio con el que D-139 se decidió; acá solo se lo
+lleva hasta su consecuencia en la UI.
+
+### A dónde sale de verdad, que es lo que el texto tiene que decir
+
+**A un solo lugar: la descripción del evento de Google Calendar**
+(`functions/calendario.js`, `Link: <url>`). Es donde lo ve quien está suscripto al
+calendario público, y es la única salida que la casilla gobierna.
+
+Y acá el ítem B-240 —y la primera versión de esta decisión— decían de más. Lo
+encontró el `auditor-privacidad`: el ítem afirma que «el link va al `events.json`
+y a la descripción del evento», y **al `events.json` no va**. La confusión está en
+que D-139 tiene dos filas distintas:
+
+| | ¿Lleva el link con `urlPublica: true`? | Qué es |
+|---|---|---|
+| 1a · la **proyección** `toPublic` | **sí** (D-15) | un valor en memoria del build |
+| 1b · el **índice**, que es el `events.json` que se sube | **no** (D-129) | el archivo público |
+
+`entradaDeIndice` emite `online: { plataforma }` y nada más, así que el link muere
+en la proyección y nunca llega a un artefacto. Lo fija el gate del build:
+`scripts/build-contra-emulador.mjs` siembra `urlPublica: true` con un centinela y
+falla si aparece en `dist/events.json`.
+
+Por eso el texto de la casilla dice «es el único lugar a donde sale» y no menciona
+ningún archivo de datos. Prometer una salida que no existe es peor que un texto
+vago: el arreglo natural de quien note la discrepancia es *hacer que el código
+coincida con el texto*, agregándole la `url` al índice — y eso es la trampa 5
+servida en lote, que es exactamente lo que D-129 cerró.
+
+La página de detalle **no** (D-139), el índice del listado **no** (D-129), el
+posteo para redes **no**, la analítica **no**, el issue de GitHub **no**. La tabla
+completa de las siete salidas está en D-139.
+
+### El texto nuevo
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| la casilla (`ModalidadesEditor.tsx`) | «Publicar el link en el sitio.» | «Publicar el link en el evento del calendario, que es donde lo ve quien está suscripto.» + «Es el único lugar a donde sale. En la página de la actividad **no** aparece, ni tildado: una página que Google indexa no se despublica.» |
+| el aviso al lado | zoombombing, y se queda | igual, sin tocar: sigue siendo lo que hay que saber antes de tildarla |
+| la ayuda del panel (`ayuda.ts`, `link-reunion`) | «Solo sale al sitio y al evento del calendario si tildás…» | «sale en el evento del calendario público —donde lo ve quien está suscripto— y en ningún otro lado», con el porqué de que la página quede afuera |
+| el campo faltante (`camposFaltantes.ts`) | «Publicar el link en el sitio» | «Publicar el link en el calendario» — es el nombre con el que hay que ir a buscarla |
+| el campo «Link del encuentro» | «No se publica: se manda al inscribirse.» | «**Por defecto** no se publica: se manda al inscribirse.» — era falso con la casilla tildada |
+
+### Lo que NO cambia, y es la mitad importante
+
+`online.url` **sigue sin salir a la página de detalle**, ni con `urlPublica: true`.
+El barrido de centinelas lo fija con su propio caso («con `urlPublica: true` el
+link de la reunión TAMPOCO sale al detalle»), que además es ahora uno de los
+`atadoA` del punto de la guía: si mañana alguien publica el link en el detalle, el
+test se pone rojo y la guía que promete lo contrario se rompe en el mismo commit.
+
+### Si el dueño prefiere la otra salida
+
+La conversación queda abierta y el lugar es este documento, no un `?.url` agregado
+sin ruido. Lo que hay que saber para decidirla es lo de la tabla de arriba: el
+costo de publicar el link en el detalle no se paga el día que se publica, se paga
+para siempre.
+
+
+---
+
+## D-159 · La heurística del §7.3 no sobrevive en producción: «estuvo publicada» se prueba por el historial
+
+**B-110.** Una actividad cancelada conserva su página **solo si estuvo publicada
+alguna vez** — una que nace y muere en `cancelado` nunca fue pública, y publicarla
+ahora es filtrar un borrador por otra puerta. Eso no es un dato del modelo, y el
+§7.3 del diseño proponía inferirlo: *«alguna sesión tenga `calendarEventId`: el
+sync solo crea eventos de Calendar para actividades publicadas, así que su
+presencia prueba que estuvo publicada»*.
+
+### El razonamiento es correcto y el dato se borra solo
+
+Al pasar a `cancelado`, `debeExistir` da `false` para todas las sesiones, el sync
+borra los N eventos y —esto es lo que el §7.3 no tuvo en cuenta— **escribe
+`calendarEventId: null` de vuelta en cada sesión**. Es `reponerIds`, y no es un
+detalle de implementación: es lo que B-80 arregló, para que una edición hecha
+sobre un snapshot viejo no cree un segundo evento.
+
+Para cuando el build lee el documento, la prueba que el §7.3 pedía la borró el
+propio sync. **Con esa heurística sola, B-110 no habría generado ni una página en
+producción** — habría pasado todos sus tests y no habría hecho nada, que es la
+peor forma de cerrar un ítem.
+
+### Lo que sí sobrevive
+
+`guardarVersion` (§12) guarda el documento **anterior** a cada edición de
+contenido en `/actividades/{id}/versiones/{version}`. Cancelar es un cambio de
+contenido —`estado` no está en `CAMPOS_DE_MAQUINA` (D-41)—, así que deja una
+versión cuyo `documento.estado` es `'publicado'`. Y una actividad que nunca lo
+estuvo no puede tener ninguna: es el mismo tipo de rastro que el §7.3 buscaba, en
+el único lugar donde nada lo borra.
+
+### Cómo queda `estuvoPublicada`
+
+```
+1 · ¿alguna sesión conserva su `calendarEventId`?   → sí: estuvo publicada
+    (la heurística del §7.3, primera porque es gratis y a veces alcanza —
+     un sync que no llegó a correr, un borrado que falló)
+2 · ¿hay una versión con `documento.estado == 'publicado'`?
+    `.limit(1).select()` — pregunta de existencia
+```
+
+**No se lee un solo campo de las versiones**, y eso importa: una versión es el
+documento **entero** de aquel momento —`difusion`, `online.url`, uids,
+`storagePath`— y nada de eso tiene por qué entrar al proceso que genera un HTML
+indexado. El `.select()` sin argumentos devuelve documentos con id y nada más, y
+el valor de retorno de la función es un booleano. `tests/pagina-de-detalle.test.ts`
+lo fija sobre el fuente, porque es una propiedad de la **forma**: sin el
+`.select()` la función devuelve exactamente lo mismo y la suite entera queda
+verde.
+
+### Lo que se paga, dicho
+
+| | |
+|---|---|
+| una query por cancelada | son un puñado de documentos, y solo las canceladas la pagan. Las publicadas no leen nada nuevo |
+| el build toca la subcolección `/versiones` | es el caso que `07-seguridad.md` tenía anotado como «lo que sí hay que no hacer», con la condición que pedía cumplida: la lectura queda afuera de todo lo que se proyecta |
+| la retención de D-42 | 20 versiones por actividad. Editar una **cancelada** 20 veces empuja la versión publicada afuera y la página vuelve a dar 404. **Falla cerrado**, que es el lado correcto del error |
+| el campo explícito sigue faltando | `publicadaAlgunaVez: boolean` es lo correcto y era la decisión 4 del §11.1 del diseño. Queda en **B-285**, y no bloqueaba: sin él, esto funciona hoy y para los documentos que ya existen — que es lo que un campo nuevo **no** puede hacer |
+
+Esa última fila es la que decidió el orden. Un `publicadaAlgunaVez` escrito por el
+panel solo sirve **hacia adelante**: una actividad ya cancelada en producción no
+lo tiene, y seguiría dando 404 hasta que alguien la vuelva a guardar. El historial
+funciona retroactivamente, que es donde está el problema que B-110 vino a
+resolver.
+
+### Y el estado no se proyecta
+
+`DetallePublico` gana un `cancelada: boolean` que llega **como argumento** de
+`detalleDeActividad`, no adentro de `ActividadPublica`. Es lo contrario de lo que
+B-112 anticipaba —«`estado` en la proyección pública, lo necesita B-110»— y es
+mejor: el único que sabe de qué query salió cada documento es el lector, `toPublic`
+no gana un campo, y el `events.json` no puede publicar un estado por accidente.
+B-112 se queda con `actualizadoEn`, que sigue haciendo falta para el `lastmod`.

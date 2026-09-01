@@ -18,18 +18,18 @@ fragmentos de código son ilustrativos.
 >
 > | Sección | Estado |
 > |---|---|
-> | §3 los datos · §3.2 credenciales | ✅ — y las tres salidas del build hacen **una sola** lectura, en `src/lib/contenidoDelSitio.ts` |
+> | §3 los datos · §3.2 credenciales | ✅ — las tres salidas del build salen de **un solo lector**, `src/lib/contenidoDelSitio.ts`. Desde B-110 son **dos queries** —una por estado— y no la lectura única que dibuja el §3; ver el desvío 7 |
 > | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs · §4.5 pasadas, calendario, acerca, 404 | ❌ — frentes siguientes |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
-> | §7 casos incómodos | ✅ menos §7.3 (canceladas, **B-110**) y la mitad de §7.1 que vive en `/pasadas`; el §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
+> | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo. Falta la mitad de §7.1 que vive en `/pasadas`; el §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
 > | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
 > | §10 accesibilidad | ✅ |
 >
-> **Los seis desvíos, todos con su decisión escrita:**
+> **Los siete desvíos, todos con su decisión escrita:**
 >
 > 1. **Hay selector de orden**, y §6.1 decía que no — **D-137**.
 > 2. **`online.url` no sale al detalle** ni con `urlPublica: true`, o sea más
@@ -57,6 +57,13 @@ fragmentos de código son ilustrativos.
 >    en **B-238**— pero dejó de comerse la pantalla: «Cuándo» se fue adentro,
 >    topea a `65svh` con scroll propio, y cierra desde abajo con «Ver N
 >    actividades» devolviendo el foco al abridor. **D-143**.
+> 7. **El lector hace dos queries y no una, y «estuvo publicada alguna vez» se
+>    prueba por el historial** (§3, §7.3). El diagrama del §3 dibuja un
+>    `where('estado','in',['publicado','cancelado'])`; el código lo evita a
+>    propósito, porque un `in` convierte el estado en una lista y a una lista
+>    alguien le agrega un elemento. Y la heurística que el §7.3 propone —que alguna
+>    sesión conserve `calendarEventId`— **no sobrevive en producción**: el sync la
+>    borra al cancelar. **D-159**.
 
 Restricciones que **no** se revisitan acá: Astro estático (§2.3), el JSON lo
 genera el build y no una Function (§2.4), la búsqueda y el filtrado son en
@@ -199,7 +206,16 @@ mirar la agenda, pero **acotada**:
 
 ## 3. Los datos
 
-Tres artefactos salen del build, con **una sola** lectura de Firestore.
+Tres artefactos salen del build, con **un solo lector** de Firestore.
+
+> ⚠️ **El `where('estado','in',[…])` del diagrama no es lo que se implementó, y es
+> a propósito — B-110, D-159.** Son **dos queries**, una con `== 'publicado'` y
+> otra con `== 'cancelado'`, y sus resultados van a dos campos distintos. Un `in`
+> convierte el estado en una lista, y a una lista alguien le agrega un elemento; con
+> dos `==` no hay lista que crecer, y lo peor que puede hacer un error en la
+> segunda es no generar ninguna página de cancelada. Hay además una tercera
+> lectura, **condicional y solo para las canceladas**, contra
+> `/actividades/{id}/versiones` — ver el §7.3.
 
 ```
                     ┌──────────────────────────────────┐
@@ -1009,6 +1025,21 @@ si esa actividad **estuvo publicada alguna vez**.
   `CLAUDE.md`), así que su presencia prueba que estuvo publicada. La heurística
   la puede leer el build (trabaja sobre el documento crudo, antes de proyectar) y
   alcanza para arrancar; el campo explícito es lo que hay que decidir.
+
+  > ⚠️ **La heurística de este punto NO sobrevive en producción — B-110, D-159.**
+  > El razonamiento es correcto y el dato se borra solo: al pasar a `cancelado`,
+  > `syncCalendar` borra los N eventos y **escribe `calendarEventId: null` de
+  > vuelta en cada sesión** (`reponerIds`, B-80). Para cuando el build lee el
+  > documento, la prueba que este punto pedía ya la borró el propio sync — con esa
+  > heurística sola, B-110 no habría generado ni una página.
+  >
+  > Lo que sí sobrevive es el **historial** (§12 del `CLAUDE.md`): cancelar es un
+  > cambio de contenido, así que `guardarVersion` deja una versión cuyo
+  > `documento.estado` es `'publicado'`, y una actividad que nunca lo estuvo no
+  > puede tener ninguna. `estuvoPublicada` (`contenidoDelSitio.ts`) prueba primero
+  > el `calendarEventId` —es gratis y a veces alcanza— y si no, consulta la
+  > existencia de esa versión con `.limit(1).select()`, sin traer ningún campo.
+  > El campo explícito sigue siendo lo correcto y queda en **B-285**.
 - Una actividad que nace y muere en `cancelado` no genera nada. Nunca estuvo
   pública y publicarla ahora sería filtrar un borrador.
 
@@ -1248,7 +1279,7 @@ son datos que ya se muestran en público por otros caminos.
 | 1 | **`inscripcion.cierraEn`** (ISO de `cierra`) | Dos cosas. Una: la página quiere decir "las inscripciones cierran el 22 de septiembre", que es lo que hace que alguien escriba hoy. Dos, y más grave: **`abierta` se calcula con `Date.now()` del build** y se congela. Una inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild siguiente, y con el rebuild automático todavía pendiente (**B-20**) eso puede ser días. Con la fecha, el HTML dice la verdad y el cliente la recalcula. **Es un bug, no una mejora** → **B-111** | alta |
 | 2 | **`estado`** (`'publicado' \| 'cancelado'`) | Para pintar la franja CANCELADA y emitir `eventStatus`. Hoy la proyección no lo lleva, así que el HTML no puede distinguirlo | alta |
 | 3 | **`actualizadoEn`** (ISO de `updatedAt`) | `lastmod` del sitemap y "actualizado el …" en el detalle. Sin él, el sitemap va sin `lastmod` | media |
-| 4 | **`publicadaAlgunaVez`** (o la heurística de `calendarEventId`) | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
+| 4 | ~~**`publicadaAlgunaVez`** (o la heurística de `calendarEventId`)~~ — **resuelto por ahora sin campo nuevo** (B-110, D-159): se prueba por el historial. El campo explícito queda en **B-285** | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
 | 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114** | baja |
 | 6 | **`sede.provincia`** | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
 | 7 | **`resumen` / copete escrito a mano** | Hoy se corta la descripción a 160 caracteres para la `meta description`. Una frase escrita a propósito rinde bastante más en el clic desde el buscador | baja |
@@ -1302,6 +1333,6 @@ que conviene construirlos:
    detalle sin `Event` no sirve para lo que existe el proyecto.
 5. **B-111** y **B-112** — los campos que faltan en la proyección. Antes de los
    hubs, porque el detalle ya los necesita para no mentir.
-6. **B-110** — las canceladas.
+6. ~~**B-110** — las canceladas.~~ **Hecho el 2026-09-01** (D-159).
 7. **B-108** — los hubs.
 8. **B-113**, **B-114** — meses y precio, cuando el resto esté en pie.

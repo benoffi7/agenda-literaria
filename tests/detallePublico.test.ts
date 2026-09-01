@@ -52,6 +52,26 @@ const detalleDe = (o: OpcionesDeEntrada = {}, over: Partial<Actividad> = {}, aho
     TONOS,
   );
 
+/**
+ * El mismo detalle pero **con la actividad cancelada** — B-110.
+ *
+ * La bandera es el cuarto argumento y no un campo de la actividad: `estado` no se
+ * proyecta, y el único que sabe de qué query salió cada documento es el lector
+ * (`contenidoDelSitio.ts`). Ver `DetallePublico.cancelada`.
+ */
+const detalleCancelado = (
+  o: OpcionesDeEntrada = {},
+  over: Partial<Actividad> = {},
+  ahora = AHORA,
+) =>
+  detalleDeActividad(
+    toPublic({ ...actividadDePrueba(o), ...over }, o.id ?? 'act_1'),
+    ETIQUETAS,
+    ahora,
+    TONOS,
+    true,
+  );
+
 // ───────────────────────────────────────────────────────────────────────────
 // 1 · Saneamiento de lo que va a un href
 // ───────────────────────────────────────────────────────────────────────────
@@ -422,6 +442,212 @@ describe('el aviso que la página muestra antes de nada', () => {
       completo: true,
     });
     expect(d.aviso?.tono).toBe('cancelado');
+  });
+});
+
+describe('la actividad cancelada conserva su página — B-110, §7.3', () => {
+  /**
+   * El caso entero del §7.3, que el diseño llama «la decisión menos obvia del
+   * documento»: la URL estuvo tres semanas en Instagram y en Google, se cancela,
+   * y un 404 le contesta «no existe» a quien pregunta si se hace. Lo que este
+   * bloque fija es qué dice la página en ese estado, campo por campo.
+   *
+   * Que la página **se genere** —o sea el lector, el «estuvo publicada alguna
+   * vez» y que no entre a ninguna lista— lo cubre
+   * `tests/sitio-publico.integracion.test.ts`, contra Firestore.
+   */
+  it('la franja lo dice, y con su propio texto: no es «se cancelaron los encuentros»', () => {
+    /*
+     * Las dos ramas comparten el tono y **no** el texto, y la diferencia importa:
+     * «se cancelaron todos los encuentros» (B-254) deja abierta la idea de que la
+     * actividad existe y se reprograma; «esta actividad se canceló» no.
+     *
+     * MUTACIÓN PROBADA: hacer que la rama de `cancelada` devuelva el mismo texto
+     * que la de `todoCancelado` deja verde todo lo demás del archivo y pone rojo
+     * este `it` — que es el único que distingue las dos respuestas.
+     */
+    const d = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z'] });
+    expect(d.cancelada).toBe(true);
+    expect(d.aviso?.tono).toBe('cancelado');
+    expect(d.aviso?.texto).toContain('Esta actividad se canceló');
+    expect(d.aviso?.texto, 'no es el texto de B-254').not.toContain('encuentros');
+  });
+
+  it('gana a los otros cuatro avisos, incluido el de todos los encuentros cancelados', () => {
+    /*
+     * Una actividad cancelada puede además tener todos sus encuentros cancelados,
+     * haber pasado y tener la inscripción cerrada. Los estados valen a la vez y
+     * **se muestra uno**: apilar los cinco es la forma de que no se lea ninguno.
+     *
+     * MUTACIÓN PROBADA: mover el `if (cancelada)` debajo del `if (todoCancelado)`
+     * hace que este caso conteste «se cancelaron todos los encuentros» —que es
+     * cierto y no es la respuesta— y el `it` de arriba sigue verde, porque ahí los
+     * encuentros no están cancelados.
+     */
+    const d = detalleCancelado({
+      fechas: ['2026-01-10T22:00:00Z'],
+      canceladas: [0],
+      cierra: '2026-01-01T00:00:00Z',
+    });
+    expect(d.yaPaso, 'también pasó').toBe(true);
+    expect(d.inscripcion.cerrada, 'y la inscripción cerró').toBe(true);
+    expect(d.aviso?.texto).toContain('Esta actividad se canceló');
+  });
+
+  it('sin CTA: ni el botón ni el canal en texto', () => {
+    /*
+     * La segunda de las tres cosas que pide el §7.3, y son **dos** campos porque
+     * son dos piezas de la pantalla: el botón de la ficha (que es también el de la
+     * barra fija de móvil) y el «Para anotarte: …» que aparece cuando no se pudo
+     * armar un link. Invitar a anotarse en algo que no se hace es la contradicción
+     * que este ítem vino a cerrar.
+     *
+     * MUTACIÓN PROBADA: sacar el `&& !cancelada` de `mostrarAccion` deja pasar el
+     * primer aserto; sacarlo de `mostrarCanal`, el segundo. Son dos mutaciones
+     * distintas y este `it` agarra las dos.
+     */
+    const conBoton = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z'] });
+    expect(conBoton.inscripcion.accion, 'el link se arma igual').not.toBeNull();
+    expect(conBoton.inscripcion.mostrarAccion, 'pero no se muestra').toBe(false);
+
+    /*
+     * Un destino que no sirve para la vía: no hay botón, y la página caía al canal
+     * en texto. Con la actividad cancelada, tampoco.
+     */
+    const base = actividadDePrueba({ fechas: ['2026-10-01T22:00:00Z'] });
+    const sinBoton = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z'] }, {
+      inscripcion: { ...base.inscripcion, destino: 'escribinos y te contamos' },
+    });
+    expect(sinBoton.inscripcion.accion).toBeNull();
+    expect(sinBoton.inscripcion.mostrarCanal).toBe(false);
+
+    // Control: la misma, sin cancelar, sí muestra el canal.
+    const viva = detalleDe({ fechas: ['2026-10-01T22:00:00Z'] }, {
+      inscripcion: { ...base.inscripcion, destino: 'escribinos y te contamos' },
+    });
+    expect(viva.inscripcion.mostrarCanal).toBe(true);
+  });
+
+  it('la ficha no dice «Abierta»: la fila de inscripción sale del view-model', () => {
+    /*
+     * Era un ternario de cuatro ramas en el `.astro`, o sea una regla de una
+     * salida pública que vitest no podía evaluar. La quinta rama es la que lo
+     * mudó: con la franja «Esta actividad se canceló» arriba, la ficha decía
+     * «Abierta hasta el 28 de septiembre» tres centímetros más abajo.
+     *
+     * MUTACIÓN PROBADA: sacar la primera línea de `resumenDeInscripcion` devuelve
+     * «Abierta hasta el …» y este `it` lo dice. El control de abajo es lo que
+     * evita que la función pase devolviendo siempre lo mismo.
+     */
+    const cancelada = detalleCancelado({
+      fechas: ['2026-10-01T22:00:00Z'],
+      cierra: '2026-09-28T00:00:00Z',
+    });
+    expect(cancelada.inscripcion.resumen).toBe('La actividad se canceló');
+
+    const viva = detalleDe({ fechas: ['2026-10-01T22:00:00Z'], cierra: '2026-09-28T00:00:00Z' });
+    expect(viva.inscripcion.resumen).toContain('Abierta hasta el');
+  });
+
+  it('las fechas quedan intactas: son lo que hay que ver', () => {
+    /*
+     * §7.3, y no es un detalle: quien mira necesita ver **qué** fecha se cayó. Una
+     * página cancelada sin fechas no contesta «¿era la del jueves?».
+     */
+    const d = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z', '2026-10-08T22:00:00Z'] });
+    expect(d.encuentros).toHaveLength(2);
+    expect(d.encuentros.map((e) => e.fecha)).toEqual([
+      'jueves 1 de octubre',
+      'jueves 8 de octubre',
+    ]);
+    expect(d.proxima?.fecha).toBe('jueves 1 de octubre');
+  });
+
+  it('el JSON-LD va con EventCancelled, que es lo que Google pide', () => {
+    /*
+     * La tercera de las tres cosas del §7.3. Un 404 no le comunica nada a Google:
+     * el resultado que ya tiene indexado se queda como está hasta que vuelva a
+     * pasar. Con la página viva y el evento marcado, lo tacha.
+     *
+     * MUTACIÓN PROBADA: volver `eventStatus` a la constante `PROGRAMADO` deja en
+     * verde los quince `it` del bloque del JSON-LD y pone rojo este.
+     */
+    const d = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z'] });
+    expect(datosEstructurados(d)!.eventStatus).toBe('https://schema.org/EventCancelled');
+
+    const viva = detalleDe({ fechas: ['2026-10-01T22:00:00Z'] });
+    expect(datosEstructurados(viva)!.eventStatus).toBe('https://schema.org/EventScheduled');
+  });
+
+  it('y sus subeventos también, aunque ninguna sesión tenga su propio flag', () => {
+    /*
+     * El caso que se pierde fácil: la actividad está cancelada pero las sesiones
+     * siguen con `cancelada: false`, porque se canceló la actividad entera y no
+     * una por una. Un `subEvent` en `EventScheduled` adentro de una serie
+     * `EventCancelled` es una contradicción publicada en un formato que las
+     * máquinas creen.
+     *
+     * MUTACIÓN PROBADA: dejar el `subEvent` con `e.cancelada ? … : PROGRAMADO`
+     * —la línea anterior a este cambio— hace fallar solo este `it`.
+     */
+    const d = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z', '2026-10-08T22:00:00Z'] });
+    const sub = datosEstructurados(d)!.subEvent as { eventStatus: string; startDate: string }[];
+    expect(sub).toHaveLength(2);
+    expect(sub.every((e) => e.eventStatus === 'https://schema.org/EventCancelled')).toBe(true);
+    // Con su fecha original: sin `startDate` Google no puede tachar nada.
+    expect(sub[0]!.startDate).toContain('2026-10-01');
+  });
+
+  it('con TODAS las sesiones canceladas sigue emitiendo JSON-LD, con las fechas', () => {
+    /*
+     * Sin cancelar, este caso devuelve `null` a propósito (B-254): sin un encuentro
+     * en pie no hay agenda que anunciar. Con la **actividad** cancelada es al revés
+     * — es justo cuando Google necesita el `startDate` original para tachar el
+     * resultado que ya indexó.
+     *
+     * MUTACIÓN PROBADA: usar `vivos` en lugar de `conFechas` devuelve `null` acá y
+     * la página cancelada se queda sin datos estructurados, sin que nada más falle.
+     */
+    const d = detalleCancelado({
+      fechas: ['2026-10-01T22:00:00Z', '2026-10-08T22:00:00Z'],
+      canceladas: [0, 1],
+    });
+    const ld = datosEstructurados(d);
+    expect(ld).not.toBeNull();
+    expect(ld!.startDate).toContain('2026-10-01');
+
+    const viva = detalleDe({
+      fechas: ['2026-10-01T22:00:00Z', '2026-10-08T22:00:00Z'],
+      canceladas: [0, 1],
+    });
+    expect(datosEstructurados(viva)).toBeNull();
+  });
+
+  it('no emite `offers`: no se puede conseguir algo que no va a pasar', () => {
+    /*
+     * Un `Offer` con `availability: InStock` en un evento cancelado marca como
+     * conseguible algo que no lo es, y eso es de las cosas que hacen que Google
+     * desconfíe del sitio entero (regla 6 del §5.3). La actividad va **gratis**,
+     * que es el caso en el que la página sí emite precio.
+     *
+     * MUTACIÓN PROBADA: sacar la rama `d.cancelada ? {}` emite el `Offer` de
+     * `price: "0"` y solo este `it` se pone rojo.
+     */
+    const d = detalleCancelado({ fechas: ['2026-10-01T22:00:00Z'], arancel: 'gratis' });
+    expect(datosEstructurados(d)!.offers).toBeUndefined();
+
+    const viva = detalleDe({ fechas: ['2026-10-01T22:00:00Z'], arancel: 'gratis' });
+    expect(datosEstructurados(viva)!.offers).toBeDefined();
+  });
+
+  it('el default es «no cancelada»: quien omita la bandera no cambia nada', () => {
+    /*
+     * La respuesta segura para quien llame a `detalleDeActividad` con tres
+     * argumentos —o sea todo el código anterior a B-110— es la de siempre.
+     */
+    const d = detalleDe({ fechas: ['2026-10-01T22:00:00Z'] });
+    expect(d.cancelada).toBe(false);
+    expect(d.aviso).toBeNull();
   });
 });
 
