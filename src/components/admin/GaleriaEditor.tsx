@@ -43,6 +43,36 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
 
+  /**
+   * Las filas cuya medida hay que tomar de la vista previa — B-263.
+   *
+   * ── Por qué medirlas, y por qué acá ───────────────────────────────────
+   * Una imagen **propia** trae `ancho` y `alto` desde que se sube:
+   * `subir-imagen.ts` los saca de los bytes. Una **externa** es una URL de otro
+   * lado y DEC-7d decidió que el build no las descarga, así que su forma solo se
+   * puede conocer en un navegador — y acá hay uno, con la imagen ya cargada para
+   * la vista previa. `naturalWidth`/`naturalHeight` se leen sin pedir permiso de
+   * CORS: no son datos de píxel.
+   *
+   * Con la medida guardada, la página de detalle y la cartelera reservan la caja
+   * exacta y la imagen no mueve el layout al cargar. Sin ella funciona igual,
+   * solo que con un salto.
+   *
+   * ── Por qué solo estas y no todas las que se ven ──────────────────────
+   * Porque medir al cargar la vista previa de una fila **que ya estaba guardada**
+   * escribiría en el formulario apenas se abre, y `useFormularioSucio` compara el
+   * estado contra el inicial: abrir una actividad sin tocar nada diría «tenés
+   * cambios sin guardar» y dispararía el autoguardado. Es la misma familia que la
+   * advertencia de D-125 sobre el id determinístico.
+   *
+   * Entonces se mide lo que **esta sesión** escribió: la fila recién agregada y
+   * la fila a la que se le cambió la dirección. En los dos casos ya hay un cambio
+   * en curso, así que la medida no inventa ninguno. Las filas viejas quedan sin
+   * medida hasta que alguien las vuelva a tocar, y eso está bien: el costo es un
+   * salto de layout, no un dato perdido.
+   */
+  const porMedir = useRef<Set<string>>(new Set());
+
   const marcarPrevia = (id: string, estado: EstadoPrevia) =>
     setPrevias((p) => ({ ...p, [id]: estado }));
 
@@ -51,7 +81,9 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
     if (!url) return;
     // La primera nace portada: si no, la lista arranca sin ninguna y B-107 se
     // queda sin imagen para compartir sin que nada falle.
-    onChange([...imagenes, imagenExterna(url, imagenes.length === 0)]);
+    const nueva = imagenExterna(url, imagenes.length === 0);
+    porMedir.current.add(nueva.id);
+    onChange([...imagenes, nueva]);
     setUrlNueva('');
   };
 
@@ -131,7 +163,16 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
                     */
                     referrerPolicy="no-referrer"
                     className="h-full w-full object-cover"
-                    onLoad={() => marcarPrevia(img.id, 'lista')}
+                    onLoad={(e) => {
+                      marcarPrevia(img.id, 'lista');
+                      // B-263 — ver el docblock de `porMedir`.
+                      if (!porMedir.current.has(img.id)) return;
+                      const { naturalWidth, naturalHeight } = e.currentTarget;
+                      porMedir.current.delete(img.id);
+                      if (naturalWidth > 0 && naturalHeight > 0) {
+                        editar(img.id, { ancho: naturalWidth, alto: naturalHeight });
+                      }
+                    }}
                     onError={() => marcarPrevia(img.id, 'rota')}
                   />
                 )}
@@ -158,7 +199,18 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
                   value={img.url}
                   onChange={(e) => {
                     marcarPrevia(img.id, 'cargando');
-                    editar(img.id, { url: e.target.value });
+                    /*
+                      B-263 — la dirección cambió, así que la medida guardada es
+                      de **otra** imagen. Se borra y se vuelve a pedir: dejarla
+                      puesta haría que la página de detalle reserve la caja de la
+                      imagen anterior, que es peor que no reservar ninguna.
+                    */
+                    porMedir.current.add(img.id);
+                    editar(img.id, {
+                      url: e.target.value,
+                      ancho: undefined,
+                      alto: undefined,
+                    });
                   }}
                   placeholder="https://…"
                   aria-label={
@@ -277,9 +329,20 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
         </>
       )}
 
+      {/*
+        B-264 — el texto de abajo era «sin imagen, la tarjeta del sitio no reserva
+        un hueco gris: se ve igual de bien», y desde D-146 el listado no tiene
+        tarjetas ni portadas, así que describía una pantalla que ya no existe **y
+        además tranquilizaba justo donde había que empujar**.
+
+        Ahora dice qué se pierde, con las dos consecuencias verificables mirando
+        el sitio: la cartelera se arma con las que tienen imagen y el `og:image`
+        del detalle sale de la portada.
+      */}
       <p className="text-xs text-tinta/55">
         {imagenes.length === 0
-          ? 'Sin imagen, la tarjeta del sitio no reserva un hueco gris: se ve igual de bien.'
+          ? 'Sin imagen la actividad se publica igual, pero no aparece en la cartelera del ' +
+            'sitio y el link se comparte sin nada que mirar.'
           : `Para quien no puede ver la imagen, y para Google, se usa el título de la actividad${
               tituloActividad ? ` («${tituloActividad}»)` : ''
             }. El epígrafe es aparte y se muestra debajo de la foto.`}

@@ -84,6 +84,24 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   slug: { etiqueta: 'Slug', seccion: 'que-es' },
   descripcion: { etiqueta: 'Descripción', seccion: 'que-es' },
 
+  // B-167 — todas las rutas de la galería dicen «Flyer e imágenes»: el mensaje de
+  // la barra nombra el campo que hay que ir a mirar, y ahí lo que se mira es la
+  // sección entera, no la clave `portada` de la tercera fila.
+  //
+  // B-264 — y la sección es «Qué es» y ya no «Opcional». Es lo que sostiene la
+  // mudanza del editor: si el mapa se quedaba apuntando a «Opcional», la barra
+  // abriría un acordeón donde el campo ya no está.
+  imagenes: { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.alto': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.ancho': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.epigrafe': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.id': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.origen': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.portada': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.storagePath': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  'imagenes.N.url': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+
   // ── Encuentros ──
   esCiclo: { etiqueta: 'Es un ciclo', seccion: 'encuentros' },
   sesiones: { etiqueta: 'Encuentros', seccion: 'encuentros' },
@@ -168,19 +186,6 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'material.items.N.publico': { etiqueta: 'Visibilidad del material', seccion: 'material' },
 
   // ── Opcional ──
-  // B-167 — todas las rutas de la galería dicen «Imágenes»: el mensaje de la
-  // barra nombra el campo que hay que ir a mirar, y ahí lo que se mira es la
-  // sección entera, no la clave `portada` de la tercera fila.
-  imagenes: { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.alto': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.ancho': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.epigrafe': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.id': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.origen': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.portada': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.storagePath': { etiqueta: 'Imágenes', seccion: 'opcional' },
-  'imagenes.N.url': { etiqueta: 'Imágenes', seccion: 'opcional' },
   tags: { etiqueta: 'Tags', seccion: 'opcional' },
   'tags.N': { etiqueta: 'Tags', seccion: 'opcional' },
   destacado: { etiqueta: 'Destacar en la portada', seccion: 'opcional' },

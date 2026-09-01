@@ -187,6 +187,7 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 | `es_ciclo` | 0 · 1 | |
 | `material_items` | 0–100 | ¿Se usa el material, o la sección está de adorno? |
 | `tags` | 0–100 | ¿Alguien pone tags? Alimentan los filtros del sitio público |
+| `imagenes` | 0–20 | **¿Qué proporción de lo que se publica lleva flyer?** (B-264). Se cruza con `estado`: `guardado_ok` con `estado = publicado` e `imagenes > 0`, sobre el total de `guardado_ok` con `estado = publicado`. Es la única forma de saber si mudar el campo de sección movió la aguja — al 2026-09-01 el punto de partida era **2 sobre 42**. Un entero, nunca la dirección ni el nombre del archivo |
 | `requiere_inscripcion` | 0 · 1 | |
 | `tiene_tallerista` | 0 · 1 | |
 | `tiene_libro` | 0 · 1 | ¿Se cargó la obra en una presentación o una charla? (DEC-1). El **título nunca** viaja: es texto libre |

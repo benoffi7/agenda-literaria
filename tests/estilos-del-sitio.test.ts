@@ -165,10 +165,14 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
     expect(readFileSync(raiz('src/layouts/Base.astro'), 'utf8')).toContain('id="contenido"');
   });
 
-  it('las cuatro secciones y `aria-current` siguen ahí', () => {
+  it('las cinco secciones y `aria-current` siguen ahí', () => {
     const src = encabezado();
     const hrefs = [...src.matchAll(/href:\s*'([^']+)'/g)].map((m) => m[1]);
-    expect(hrefs).toEqual(['/', '/suscribirse', '/ayuda', '/contacto']);
+    // B-265 — la cartelera entra segunda, pegada a la agenda: son las dos formas
+    // de mirar lo mismo. El orden se fija acá porque es una decisión y no un
+    // detalle: mover «Cartelera» al final la esconde detrás de tres enlaces de
+    // servicio.
+    expect(hrefs).toEqual(['/', '/cartelera', '/suscribirse', '/ayuda', '/contacto']);
     // `aria-current="page"` es lo que dice «estás acá» a quien no ve el color.
     expect(src).toMatch(/aria-current=\{activa === seccion \? 'page' : undefined\}/);
   });

@@ -549,6 +549,19 @@ export const EVENTOS = {
     modalidades: { tipo: 'entero', max: 20 },
     es_ciclo: { tipo: 'booleano' },
     material_items: { tipo: 'entero', max: 100 },
+    /*
+     * B-264 — cuántas imágenes tiene la actividad al guardarse. Un **entero**,
+     * como `tags` y `material_items`, y nunca la URL ni el nombre del archivo
+     * (§9).
+     *
+     * Es la única forma de contestar la pregunta que abrió el cambio: «¿qué
+     * proporción de lo que se publica lleva flyer?». Se cruza con `estado`, que
+     * este mismo evento ya manda: `guardado_ok` con `estado = publicado` y
+     * `imagenes > 0` sobre el total de `guardado_ok` con `estado = publicado`.
+     * Sin esto, mover el campo de sección es un cambio del que nunca vamos a
+     * saber si funcionó.
+     */
+    imagenes: { tipo: 'entero', max: 20 },
     tags: { tipo: 'entero', max: 100 },
     requiere_inscripcion: { tipo: 'booleano' },
     tiene_tallerista: { tipo: 'booleano' },
@@ -745,6 +758,8 @@ export const formaDelFormulario = (form: ActividadForm): Record<string, unknown>
   modalidades: form.modalidades.length,
   es_ciclo: form.esCiclo,
   material_items: form.material.tiene ? form.material.items.length : 0,
+  // B-264 — cuántas imágenes, nunca cuáles.
+  imagenes: form.imagenes.length,
   tags: form.tags.length,
   requiere_inscripcion: form.inscripcion.requiere,
   tiene_tallerista: tieneTexto(form.tallerista?.nombre),

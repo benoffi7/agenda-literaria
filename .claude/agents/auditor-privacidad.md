@@ -1,6 +1,6 @@
 ---
 name: auditor-privacidad
-description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/lib/listadoPublico.ts, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/textoRedes.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
+description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/cartelera.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/pages/cartelera.astro, src/lib/listadoPublico.ts, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/textoRedes.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -16,7 +16,7 @@ lo mismo que no haber publicado.
 Trabajás con `CLAUDE.md` §5 y §13 (trampas 4 y 5) y con `docs/07-seguridad.md`.
 Leelos antes de dictaminar: son la fuente, esto es el índice.
 
-## Las seis salidas, y de qué archivo sale cada una
+## Las siete salidas, y de qué archivo sale cada una
 
 | # | Salida | Quién la produce | Test que la fija |
 |---|---|---|---|
@@ -26,6 +26,20 @@ Leelos antes de dictaminar: son la fuente, esto es el índice.
 | 4 | GA4 (la más estricta: acá **no sale contenido nunca**, ni con permiso del dueño) | `src/lib/analytics-eventos.ts` — `construirEvento` y sus vocabularios | `tests/analytics-privacidad.test.ts` |
 | 5 | El texto para copiar a redes (**la más irreversible**: un posteo pegado en Instagram ya está copiado) | `src/lib/textoRedes.ts` — `construirTextoRedes` y el `Pick` de `ActividadParaRedes` | `tests/textoRedes.test.ts` |
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` — `detalleDeActividad` (el view-model), `datosEstructurados` (el JSON-LD), `urlSegura` y `handleInstagram` (todo href); `src/lib/contenidoDelSitio.ts` — `caminosDeDetalle`, el `where` y `etiquetasDelDetalle`. La plantilla `src/pages/actividad/[slug].astro` **solo acomoda**: recibe el view-model y nada más (D-140) | `tests/detallePublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (dos `describe`: la página y el JSON-LD), `tests/pagina-de-detalle.test.ts`, `tests/sitio-publico.integracion.test.ts` |
+| 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` — `carteleraDeDetalles`. **Su entrada es la salida 6 y no el documento**: proyecta `DetallePublico`, así que solo puede sacar campos. `src/lib/contenidoDelSitio.ts` — `carteleraDelSitio` y el `where`. La plantilla `src/pages/cartelera.astro` solo acomoda | `tests/cartelera.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la cartelera), `tests/afiche.test.ts` |
+
+**La 7 hereda la garantía de la 6, y ahí está lo que hay que mirar.**
+`carteleraDeDetalles` recibe `DetallePublico`, o sea que **no puede publicar un
+campo que la salida 6 no publique**: la proyección solo saca. El hallazgo, si
+aparece, es que alguien le pase otra cosa —la `ActividadPublica`, el documento—
+«para tener un dato que el view-model no trae». `tests/barrido-de-salidas-publicas.test.ts`
+lo ata afirmando que **todo string del afiche está en el JSON del detalle**.
+
+Y la trampa propia de una página de imágenes: **armar la pared listando el
+bucket**. Un `listAll()` sobre `imagenes/` no pasa por ninguna proyección y trae
+también los flyers de lo que está en borrador. Está cerrado en `storage.rules`
+(trampa 13) y hay un test que falla si la página menciona `listAll`, `getStorage`
+o `firebase/storage`.
 
 **La 6 nació con la tabla ya escrita, y eso es a propósito.** La 5 faltó acá hasta
 el 2026-08-27 y el diagnóstico de entonces fue que el agujero no era de cobertura
@@ -100,7 +114,7 @@ y saber hasta dónde llegan te dice qué reportar y qué no:
 | **El saneador aplicado campo por campo** (B-81). Mientras `redactar()` se llame una vez por campo, el campo que se agregue mañana arranca sin sanear | mete un centinela en **cada string** de la entrada del issue de GitHub y exige que no aparezca en la salida. Cubre el issue, hoy y mañana. `analytics-privacidad.test.ts` hace lo mismo con GA4, parámetro por parámetro | **cubierto por `tests/barrido-de-salidas-publicas.test.ts` (B-196): no lo reportes.** Ese test mete el barrido de centinelas que esta celda pedía, en las dos direcciones, para el `events.json` **y** para el evento de Calendar, con un fixture que se autoexige actualizado campo por interfaz. Tu hueco pasa a ser **el campo nuevo del modelo que el fixture de centinelas todavía no ancló** — el propio test obliga a decidirlo, así que lo que aportás es el criterio de si ese campo puede salir, no la detección |
 | **El productor de un formato y su consumidor derivan por separado** (B-88) | saca las tres formas de versión de `scripts/version.mjs` y las hace pasar por el sanitizador de la analítica; una forma nueva entra sola | **el par nuevo.** Si el cambio agrega un formato con dos lados —un id de evento de Calendar derivado del id de sesión, un slug con reglas propias, un nombre de evento de GA4— y cada lado lo deriva por su cuenta, el que valida va a rechazar en silencio lo que el otro produce. Pedí que el par se agregue al chequeo |
 
-Y una regla de forma que vale para las seis salidas: **si la salida se arma
+Y una regla de forma que vale para las siete salidas: **si la salida se arma
 interpolando texto, tiene que existir un barrido de centinelas.** "Se acordaron
 de sanear los cinco campos que había" no es una propiedad del código, es una
 propiedad del día en que se escribió.
@@ -170,7 +184,7 @@ propiedad del día en que se escribió.
 Un reporte corto, en español, accionable:
 
 1. **Veredicto en la primera línea:** `LIMPIO` o `HALLAZGOS: N`.
-2. **Tabla de campos tocados × las seis salidas** (`sale` / `no sale` /
+2. **Tabla de campos tocados × las siete salidas** (`sale` / `no sale` /
    `condicional (flag)` / `sin decidir`), solo con las filas que el cambio toca.
 3. **Un bloque por hallazgo**, en este orden:
    - severidad con el criterio del backlog: **P0** filtra o puede filtrar dato

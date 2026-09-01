@@ -45,7 +45,7 @@ palabras `trampa N`.
 | 10 | Slug mutable | `src/lib/schema.ts`, `src/lib/formulario/autoguardado.ts` | `tests/schema.test.ts`, `tests/autoguardado.test.ts` |
 | 11 | Workflow de Actions que no parsea | `.github/workflows/deploy.yml`, `.github/workflows/push-main.yml` | `tests/workflows.test.ts` |
 | 12 | Un trigger que escribe donde lo dispararon (también en Storage) | `functions/index.js`, `functions/historial-trigger.js` | `tests/clases-de-bug.test.ts` |
-| 13 | `allow read` de Storage incluye `list` | `storage.rules` | `tests/storage-reglas.integracion.test.ts` |
+| 13 | `allow read` de Storage incluye `list` | `storage.rules`, `src/lib/cartelera.ts` | `tests/storage-reglas.integracion.test.ts`, `tests/cartelera.test.ts` |
 
 ## Sin red
 

@@ -1,7 +1,10 @@
 /**
- * El acordeón del §11: tags, galería de imágenes y destacado.
+ * El acordeón del §11: tags y destacado.
+ *
+ * **La galería se fue a «Qué es» en B-264.** Estaba acá, en una sección cerrada
+ * por defecto y llamada «Opcional», y el resultado era 2 actividades con imagen
+ * sobre 42 publicadas. Lo que queda son dos cosas que sí son opcionales.
  */
-import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
 import { Campo } from '@/components/admin/campos/Campo';
 import { Seccion } from '@/components/admin/campos/Seccion';
 import { TagsInput } from '@/components/admin/campos/TagsInput';
@@ -31,7 +34,7 @@ export function SeccionOpcional({
       ancla="opcional"
       pedidoDeApertura={pedidoDeApertura}
       titulo="Opcional"
-      descripcion="Tags, imagen, destacado."
+      descripcion="Tags y destacado."
       colapsable
       abiertaPorDefecto={false}
     >
@@ -44,13 +47,6 @@ export function SeccionOpcional({
               set('tags', slugs);
               setTagsNuevos(nuevos);
             }}
-          />
-        </Campo>
-        <Campo label="Imágenes" error={errorDe('imagenes')}>
-          <GaleriaEditor
-            imagenes={form.imagenes}
-            onChange={(imagenes) => set('imagenes', imagenes)}
-            tituloActividad={form.titulo}
           />
         </Campo>
         <label className="flex items-center gap-2 text-sm">

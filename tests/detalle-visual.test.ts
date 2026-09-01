@@ -107,54 +107,59 @@ describe('el CTA de inscripción: uno por pantalla — B-238, D-145', () => {
   });
 });
 
-describe('la portada arriba no puede empujar la fecha fuera de la pantalla — D-144', () => {
-  it('la imagen tiene relación de aspecto fija y recorta', () => {
+describe('la portada arriba no puede empujar la fecha fuera de la pantalla — D-144, D-147', () => {
+  it('la caja topea el alto y la proporción sale de la imagen', () => {
     /*
      * Es **la** condición que hace válido el desvío del §4.3, que ponía la imagen
      * después de la ficha. El motivo de aquella decisión —«un flyer vertical de
      * Instagram como cabecera empuja la fecha fuera de la pantalla»— sigue siendo
-     * cierto y lo que cambió es que el alto de la caja ya no depende del alto de
-     * la imagen.
+     * cierto, y **lo que lo atiende cambió en B-263**.
      *
-     * **Y la proporción sale del token compartido `--aspect-portada`** (B-249), no
-     * de un número escrito acá: es la misma imagen que muestra la tarjeta del
-     * listado, y dos recortes distintos hacen que la foto que se veía bien en la
-     * grilla aparezca cortada al abrirla. Con la portada generada es peor —su
-     * título va dentro del recorte—, así que dos proporciones son dos tamaños de
-     * letra para el mismo texto. Por eso el aserto prohíbe el valor a mano en vez
-     * de exigir uno en particular: es la clase, no la instancia.
+     * Hasta D-144 lo atendía una proporción fija (`--aspect-portada`, 16/9) con
+     * `object-cover`. Eso cumplía la condición y rompía otra cosa: los flyers del
+     * circuito son verticales (0,87), así que la página perdía el 51 % de la
+     * imagen — el título, la fecha y cómo anotarse, que en un flyer están
+     * tipografiados adentro del JPEG.
      *
-     * Una versión anterior de este chequeo aceptaba cualquier `aspect-[…]`
-     * —prefijado incluido—, así que dejar solo un `sm:aspect-…` lo pasaba **con la
-     * caja sin recortar justo en el teléfono**, que es el único lugar donde el
-     * problema existe. Lo enseñó la mutación; exigir el token lo cierra mejor,
-     * porque un token no tiene variantes por breakpoint.
+     * Ahora lo atiende el **tope de alto** de `claseAfiche`, y la proporción sale
+     * de `ancho`/`alto` de cada imagen. Los dos asertos son la clase y no la
+     * instancia: no se exige un valor, se exige que el valor **no esté escrito
+     * acá**.
      *
-     * MUTACIÓN PROBADA: cambiar `aspect-portada` por `aspect-[16/9]` —el mismo
-     * valor, escrito a mano— deja la página **idéntica** y pone esto en rojo, que
-     * es exactamente la divergencia que se quiere frenar: el día que la tarjeta
-     * cambie su recorte, el detalle tiene que seguirla sola.
+     * MUTACIONES PROBADAS:
+     *  - cambiar `claseAfiche` por las mismas utilidades copiadas en el atributo
+     *    deja la página **idéntica** y pone esto en rojo: es la divergencia que
+     *    `--aspect-portada` frenaba y que la clase compartida frena mejor.
+     *  - agregar `object-cover` al lado de la clase la pisa (dos `object-fit` los
+     *    resuelve el orden de la hoja, no el del atributo) y vuelve el recorte
+     *    de B-263 sin que nada más falle. El aserto lo prohíbe.
+     *  - sacar `estiloDeAfiche` deja la imagen entera pero sin reservar la caja,
+     *    o sea con el salto de layout que la medida existe para evitar.
      */
     const codigo = sinComentarios(src());
     const img = /<img[\s\S]*?\/>/.exec(codigo)?.[0] ?? '';
     expect(img, 'no se encontró la portada').toContain('src={portada.url}');
     expect(
       img,
-      'la portada tiene que usar `aspect-portada`, el token que comparte con la tarjeta ' +
-        'del listado (B-249)',
-    ).toContain('aspect-portada');
+      'la portada usa `claseAfichePortada`: la regla compartida de que ninguna salida ' +
+        'recorta, más el tope de alto que hace válido el desvío del §4.3 (D-147)',
+    ).toContain('class={claseAfichePortada}');
     expect(
       img,
-      'la proporción no se escribe a mano: el mismo número en dos componentes es la ' +
-        'divergencia que `--aspect-portada` existe para evitar',
-    ).not.toMatch(/aspect-\[/);
-
-    // Y el token existe de verdad: sin esto, `aspect-portada` podría ser una clase
-    // inventada que Tailwind ignora y la caja no recortaría nada.
-    expect(readFileSync(raiz('src/styles/global.css'), 'utf8')).toContain('--aspect-portada:');
-    expect(img, 'sin `object-cover` la imagen se deforma dentro de la caja').toContain(
-      'object-cover',
+      'la proporción no se escribe a mano: sale de la imagen, con `estiloDeAfiche`',
+    ).not.toMatch(/aspect-\[|aspect-portada/);
+    expect(img, 'la caja se reserva con la medida de la imagen').toContain(
+      'style={estiloDeAfiche(portada)}',
     );
+    expect(
+      img,
+      'un `object-cover` al lado de la clase la pisa y devuelve el recorte de B-263',
+    ).not.toContain('object-cover');
+
+    // Y `--aspect-portada` no vuelve por la puerta de atrás: se retiró en D-147
+    // porque cualquier proporción única recorta alguna forma de imagen.
+    const css = readFileSync(raiz('src/styles/global.css'), 'utf8');
+    expect(css).not.toMatch(/^\s*--aspect-portada:/m);
   });
 
   it('y se pide temprano, porque ahora es lo primero que se ve', () => {

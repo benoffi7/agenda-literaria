@@ -47,7 +47,7 @@ import { foco, focoAmplio } from '@/components/sitio/estilos';
  * todos los tamaños. Es además la «marca de registro» que el sistema pide —una
  * línea de imprenta que cruza la página entera.
  */
-export type Seccion = 'agenda' | 'suscribirse' | 'ayuda' | 'contacto';
+export type Seccion = 'agenda' | 'cartelera' | 'suscribirse' | 'ayuda' | 'contacto';
 
 interface Props {
   activa?: Seccion;
@@ -57,6 +57,11 @@ const { activa } = Astro.props;
 
 const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
   { seccion: 'agenda', href: '/', texto: 'Agenda' },
+  // B-265 — la cartelera va **segunda**, pegada a la agenda: son las dos formas
+  // de mirar lo mismo (la lista y la pared de afiches), y quien entra por la
+  // agenda tiene que poder pasar a la otra sin buscar. «Suscribirse», «Ayuda» y
+  // «Contacto» son de después de haber encontrado algo.
+  { seccion: 'cartelera', href: '/cartelera', texto: 'Cartelera' },
   { seccion: 'suscribirse', href: '/suscribirse', texto: 'Suscribirse' },
   { seccion: 'ayuda', href: '/ayuda', texto: 'Ayuda' },
   { seccion: 'contacto', href: '/contacto', texto: 'Contacto' },

@@ -28,14 +28,16 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 ## Estado en una línea
 
 Panel de carga funcionando en producción y sync a Google Calendar andando. Del
-sitio público —que es la razón de ser del proyecto— está construido el índice
-(`/events.json`) y falta todo lo que se ve.
+sitio público —que es la razón de ser del proyecto— están construidos el índice,
+el listado, la página de detalle, la cartelera de flyers y las tres páginas de
+texto; falta desplegarlo (el dominio, **B-109**) y el rebuild automático
+(**B-20**).
 
 | Paso (§10 del `CLAUDE.md`) | Estado |
 |---|---|
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ |
-| 3. Sitio público (SSG) | 🟡 **arrancó** — `/events.json` construido (B-106); faltan el listado, los hubs y el detalle. Diseñado en [`12-sitio-publico.md`](12-sitio-publico.md) |
+| 3. Sitio público (SSG) | 🟡 **arrancó** — `/events.json`, el listado, el detalle, `/cartelera` (B-265), `/ayuda`, `/contacto` y `/suscribirse` construidos; faltan los hubs y las pasadas. Diseñado en [`12-sitio-publico.md`](12-sitio-publico.md) |
 | 4. Sync a Google Calendar | ✅ |
 | 5. Trigger de rebuild | 🟡 código y workflow listos; falta que el dueño cree el PAT y la key de CI (B-20 del backlog) |
 
@@ -49,7 +51,7 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 1.881 tests en 83 archivos. 79 de esos
+2. **Correr los tests.** `npm test` — 1.943 tests en 87 archivos. 79 de esos
    tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
    también **Storage**), repartidos en 7
    archivos: seis se saltean enteros y de

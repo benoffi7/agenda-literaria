@@ -14,6 +14,16 @@
  * con su cuenta (muchos), y cada nombre es un botón que abre la sección y
  * scrollea hasta el campo. El armado del texto vive en
  * `lib/formulario/camposFaltantes.ts`, que es donde se puede testear.
+ *
+ * ── B-264 · el tercer nivel, y por qué no es un cuarto rojo ───────────────
+ * La barra ya decía dos cosas: lo que **frena** el guardado (rojo) y lo que va a
+ * frenar la publicación (gris). El flyer no es ninguna de las dos —bloquear la
+ * publicación por una imagen agrega fricción justo donde hace falta lo
+ * contrario— pero el campo existía y no lo usaba nadie: 2 actividades de 42.
+ *
+ * Entonces entra un nivel más abajo del gris y con otra forma de decirlo: no
+ * nombra lo que falta, nombra **lo que se pierde**. El texto vive en
+ * `lib/formulario/recomendaciones.ts`, que es donde se testea.
  */
 import { claseBotonPrimario, claseBotonSecundario } from '@/components/admin/campos/Campo';
 import {
@@ -21,6 +31,7 @@ import {
   type IdSeccion,
   type ResumenFaltantes,
 } from '@/lib/formulario/camposFaltantes';
+import type { Recomendacion } from '@/lib/formulario/recomendaciones';
 
 interface Props {
   /** Hay un guardado en curso: los dos botones de guardar se apagan. */
@@ -35,6 +46,12 @@ interface Props {
    * vuelven una trampa y el bloqueo aparece recién al final.
    */
   pendientesParaPublicar: ResumenFaltantes;
+  /**
+   * Lo que conviene tener y **no** frena nada (B-264). Se muestra cuando no hay
+   * nada más urgente que decir, que es justo el momento en que alguien está por
+   * publicar.
+   */
+  recomendaciones: Recomendacion[];
   /** El formulario edita una actividad que ya existe. */
   esEdicion: boolean;
   onCancelar: () => void;
@@ -83,6 +100,7 @@ export function BarraAcciones({
   fallo,
   faltantes,
   pendientesParaPublicar,
+  recomendaciones,
   esEdicion,
   onCancelar,
   onGuardarBorrador,
@@ -90,6 +108,7 @@ export function BarraAcciones({
 }: Props) {
   const hayFaltantes = faltantes.total > 0;
   const hayPendientes = pendientesParaPublicar.total > 0;
+  const consejo = recomendaciones[0];
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-borde bg-papel/95 px-segura pt-3 pb-segura backdrop-blur">
@@ -110,6 +129,28 @@ export function BarraAcciones({
             <span className="text-tinta/60">
               Para publicar falta:{' '}
               <Nombres resumen={pendientesParaPublicar} onIrASeccion={onIrASeccion} />
+            </span>
+          ) : consejo ? (
+            /*
+              B-264 — el último nivel. Mismo gris que «para publicar falta»
+              porque tampoco frena nada, y con la misma forma de botón que lleva
+              hasta el campo: un aviso que no dice dónde arreglarlo se lee una
+              vez y se ignora.
+
+              Dice **qué se pierde** y no qué falta, que es la diferencia entre
+              «falta el flyer» —que no mueve a nadie— y «no entra en la
+              cartelera».
+            */
+            <span className="text-tinta/60">
+              Conviene cargar{' '}
+              <button
+                type="button"
+                onClick={() => onIrASeccion(consejo.seccion)}
+                className="underline decoration-dotted underline-offset-2"
+              >
+                {consejo.etiqueta}
+              </button>
+              : {consejo.porQue}.
             </span>
           ) : null}
         </div>

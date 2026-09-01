@@ -1,0 +1,154 @@
+---
+/**
+ * `/cartelera` — la pared de afiches. B-265, D-148.
+ *
+ * ── Qué es, y qué no ──────────────────────────────────────────────────────
+ * Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada
+ * uno enlazando a su actividad. Es **una pared de afiches pegados**, no un
+ * carrusel: «en continuado» quiere decir que no termina, no que se mueva solo.
+ * Nada de esta página avanza por su cuenta, y por eso tampoco hace falta
+ * `prefers-reduced-motion`: no hay movimiento que reducir.
+ *
+ * Es la página que le da sentido a cargar el flyer, y la otra mitad de B-264: el
+ * panel promete «sin imagen no entra en la cartelera» y esto es la cartelera.
+ *
+ * ── Cero JavaScript, como el detalle ──────────────────────────────────────
+ * No hay islands. Lo que hay es HTML del build, y la única decisión dinámica
+ * —cuántas columnas— la toma `columnasDeCartelera` en tiempo de build.
+ *
+ * ── Columnas de CSS y no una grilla ───────────────────────────────────────
+ * Una grilla alinea filas, y con afiches de altos distintos cada fila deja
+ * huecos debajo de los más bajos. Las columnas dejan que cada afiche mida lo que
+ * mide y el de abajo arranque donde terminó el anterior, que es literalmente
+ * cómo se pega un afiche sobre una pared.
+ *
+ * Lo que se paga es el orden de lectura: con columnas se lee de arriba hacia
+ * abajo por columna y no de izquierda a derecha por fila. Se acepta porque la
+ * lectura en orden cronológico es el trabajo de la **agenda**, que es la página
+ * de al lado y está ordenada; acá cada afiche lleva su fecha escrita al pie, y
+ * una pared se recorre con la vista, no en fila india.
+ *
+ * ── El peso, que es la parte que se puede medir ───────────────────────────
+ * Es la única página del sitio que pide imágenes: la home no pide **ninguna**
+ * (D-146) y el detalle pide una. Así que el presupuesto de bytes se decide acá,
+ * y con la Function de recompresión todavía sin construir (B-220) las tres
+ * palancas que quedan son:
+ *
+ * | Palanca | Qué compra |
+ * |---|---|
+ * | `loading="lazy"` en todos menos el primero | el navegador baja el afiche recién cuando se acerca al viewport. Con 30 flyers de 90 KB, la primera pantalla pide ~3 y no 2,7 MB |
+ * | `width`/`height` + `aspect-ratio` | la caja se reserva antes de que la imagen llegue, así que el lazy **no** hace saltar la página mientras se scrollea |
+ * | `decoding="async"` | decodificar un JPEG de 1080px no bloquea el hilo principal |
+ *
+ * **`sizes` no está, y es a propósito:** sin `srcset` no hace nada. Un `sizes`
+ * suelto es decoración que parece optimización, y la que haría falta —servir la
+ * imagen a 400px cuando la columna mide 400px— necesita variantes, o sea B-220.
+ * Los números y el punto en el que esto deja de sostenerse están en
+ * `docs/06-decisiones.md` (D-148).
+ */
+import Base from '@/layouts/Base.astro';
+import { carteleraDelSitio } from '@/lib/contenidoDelSitio';
+import { columnasDeCartelera, estiloDeAfiche } from '@/lib/afiche';
+import { NOMBRE } from '@/lib/identidad';
+import {
+  CLASES_DE_PARED,
+  claseAfiche,
+  claseAficheEnPared,
+  claseEnlace,
+  claseRotulo,
+} from '@/components/sitio/estilos';
+
+export const prerender = true;
+
+const afiches = await carteleraDelSitio();
+const cuantos = afiches.length;
+const pared = CLASES_DE_PARED[columnasDeCartelera(cuantos)];
+
+const descripcion =
+  cuantos === 0
+    ? 'Los flyers de las actividades literarias con fecha próxima en Argentina.'
+    : `${cuantos} ${cuantos === 1 ? 'flyer' : 'flyers'} de talleres, clubes de lectura, ` +
+      'encuentros y presentaciones con fecha próxima en Argentina.';
+---
+
+<Base
+  seccion="cartelera"
+  titulo={`Cartelera de actividades literarias · ${NOMBRE}`}
+  descripcion={descripcion}
+>
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">La cartelera</h1>
+      <p class="body-md mt-3 text-super">
+        {
+          cuantos === 0
+            ? 'Acá van a estar los flyers de las actividades. Todavía no hay ninguno cargado.'
+            : `${cuantos} ${cuantos === 1 ? 'flyer' : 'flyers'} de lo que está por pasar. Tocá cualquiera para ver la actividad.`
+        }
+      </p>
+    </div>
+
+    {
+      cuantos === 0 ? (
+        /*
+          El caso de cero, con dignidad y sin mentir. No se dibuja una grilla de
+          rectángulos vacíos ni un «próximamente»: se dice qué es esta página y
+          se manda a la agenda, que sí tiene contenido. Es el mismo criterio del
+          §7.6 con el hueco de la portada — no hay placeholder.
+        */
+        <div class="regla-gruesa-arriba mt-8 px-4 py-12 text-center">
+          <p class="body-md mx-auto max-w-[48ch] text-super">
+            La cartelera muestra el flyer de cada actividad con fecha próxima. Mientras tanto,
+            la <a class={claseEnlace} href="/">agenda</a> tiene todo lo que viene.
+          </p>
+        </div>
+      ) : (
+        <div class:list={['mt-8 gap-10', pared]}>
+          {afiches.map((afiche, n) => (
+            <a href={afiche.ruta} class={`group ${claseAficheEnPared}`}>
+              {/*
+                `alt=""` y no el título: el título está acá abajo como texto, así
+                que es el nombre accesible del enlace. DEC-7a decide **de dónde
+                sale** el texto alternativo —del título de la actividad, no de un
+                campo por imagen— y no que haya que decirlo dos veces; D-142 ya
+                había aplicado lo mismo donde la imagen convive con su título.
+
+                El primero va `eager`: es lo más grande de la primera pantalla y
+                pedirlo tarde retrasa el LCP. Los demás, `lazy` — es la palanca
+                que hace que una pared de 30 afiches no pese 2,7 MB al entrar.
+              */}
+              <img
+                src={afiche.url}
+                alt=""
+                width={afiche.ancho ?? undefined}
+                height={afiche.alto ?? undefined}
+                style={estiloDeAfiche(afiche)}
+                loading={n === 0 ? 'eager' : 'lazy'}
+                fetchpriority={n === 0 ? 'high' : undefined}
+                decoding="async"
+                referrerpolicy="no-referrer"
+                class={claseAfiche}
+              />
+
+              {/*
+                El pie: una regla fina y tres líneas. Es la ficha mínima que
+                convierte un afiche en algo accionable —qué es, cuándo y dónde—
+                sin repetir lo que el flyer ya dice a los gritos.
+              */}
+              <div class="regla-fina pt-2 pb-3">
+                <p class={claseRotulo}>
+                  {afiche.tipoEtiqueta} · {afiche.cuando}
+                </p>
+                <p class="headline-sm mt-1 text-acento group-hover:text-super">{afiche.titulo}</p>
+                {afiche.donde && <p class="body-sm mt-0.5 text-super">{afiche.donde}</p>}
+                {afiche.epigrafe && (
+                  <p class="body-sm mt-1 text-suave">{afiche.epigrafe}</p>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </main>
+</Base>

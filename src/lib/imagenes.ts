@@ -85,6 +85,20 @@ export const portadaDe = (imagenes: readonly Imagen[] = []): Imagen | null =>
   imagenes.find((i) => i.portada) ?? imagenes[0] ?? null;
 
 /**
+ * ¿A esta actividad le falta el flyer? — B-264.
+ *
+ * **Una sola derivación de la condición, usada por tres lados**: el aviso del
+ * formulario, la marca del listado del panel y la pared de `/cartelera`. Si cada
+ * uno la escribiera por su cuenta, el panel diría «tiene flyer» y la cartelera
+ * no lo mostraría, o al revés — que es la clase de B-88 con nombre y apellido.
+ *
+ * La condición es «no hay portada con dirección», y no «la lista está vacía»: una
+ * fila con la URL en blanco existe en el array y no pinta nada en ninguna parte.
+ */
+export const faltaElFlyer = (imagenes: readonly Imagen[] = []): boolean =>
+  !portadaDe(imagenes)?.url?.trim();
+
+/**
  * Marca una imagen como portada y desmarca las demás.
  *
  * Es una sola operación y no dos porque "exactamente una portada" es un

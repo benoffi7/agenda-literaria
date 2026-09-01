@@ -157,6 +157,10 @@ src/
     listadoPublico.ts       filtros, orden y búsqueda del listado — puro
     detallePublico.ts       qué muestra la página de detalle, y su JSON-LD —
                             puro, y es la frontera de privacidad de esa salida
+    cartelera.ts            qué afiches entran a /cartelera y en qué orden —
+                            puro, y proyecta el DetallePublico, no el documento
+    afiche.ts               la forma con la que se muestra una imagen: la
+                            proporción sale de la imagen y nadie recorta (D-147)
     fechasPublicas.ts       las fechas del sitio, siempre con timeZone (trampa 1)
     rutasPublicas.ts        /actividad/{slug} escrito una sola vez
   components/admin/         el panel entero
@@ -172,6 +176,7 @@ src/
     index.astro             la home: listado en HTML + island de filtros (B-227)
     actividad/[slug].astro  el detalle, SSG y con CERO JavaScript. No ve el
                             documento: recibe un view-model (D-140)
+    cartelera.astro         /cartelera — la pared de afiches, sin JS (B-265)
     ayuda.astro             /ayuda — texto, sin JS ni Firestore (B-232)
     contacto.astro          /contacto — dos mailto con asunto propio (B-232)
     suscribirse.astro       /suscribirse — llevarse la agenda (B-230)

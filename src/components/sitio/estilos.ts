@@ -147,6 +147,83 @@ export const claseBloqueFecha =
   'flex min-w-14 flex-col items-center justify-center px-2 py-1.5 text-papel';
 
 /**
+ * Un afiche: la imagen de una actividad, **entera y sin recortar** — B-263.
+ *
+ * Es la clase que reemplaza al token `--aspect-portada` de B-249, y lo sustituye
+ * por una garantía más fuerte. El token compartía **un número** entre los
+ * consumidores para que la misma imagen no tuviera dos recortes; esta clase
+ * comparte **la regla**: nadie recorta. Un token no impedía que un consumidor lo
+ * usara con `object-cover` y otro con `object-contain` —que es cómo la
+ * divergencia volvería— y esto sí, porque el `object-fit` viaja adentro.
+ *
+ * Las tres piezas, y ninguna es decorativa:
+ *
+ * | Pieza | Qué hace |
+ * |---|---|
+ * | `object-contain` | la red: si la caja y la imagen no coinciden, sobra papel a los costados, **nunca falta imagen** |
+ * | `w-full` | la imagen ocupa la columna. Una más angosta se agranda, y eso se acepta: los flyers del circuito salen de Instagram y vienen de 1080 de ancho |
+ *
+ * La proporción **no** está acá: es un dato de cada imagen y la pone
+ * `estiloDeAfiche` (`lib/afiche.ts`). Escribirla en la clase sería volver al
+ * número único para imágenes de formas distintas, que es el bug de B-263.
+ *
+ * El borde y la capa tonal son la física del sistema —una regla separa, no una
+ * sombra— y el fondo solo se ve si sobra caja.
+ */
+export const claseAfiche = 'block w-full border border-borde bg-hondo object-contain';
+
+/**
+ * El afiche **de la página de detalle**: el mismo, con el alto topeado.
+ *
+ * El tope es lo que hace válido el desvío del §4.3 (D-144): arriba de la ficha,
+ * un flyer vertical de 1080×1350 empujaría la fecha fuera de la primera
+ * pantalla. `svh` y no `vh` por lo mismo que el panel de filtros de D-143: con
+ * la barra retráctil de un navegador móvil, `vh` mide de más.
+ *
+ * **Y la cartelera no lo lleva, a propósito.** Ahí no hay ficha que quede
+ * abajo: el afiche *es* el contenido y la página se recorre scrolleando, que es
+ * lo que se hace frente a una pared de afiches. Topear el alto en una columna
+ * ancha además dejaría el flyer flotando entre dos bandas de papel, que es
+ * exactamente el aspecto que B-263 vino a sacar.
+ */
+export const claseAfichePortada = `${claseAfiche} max-h-[70svh]`;
+
+/**
+ * La pared de `/cartelera`, según cuántos afiches haya — B-265.
+ *
+ * El número lo decide `columnasDeCartelera` (`lib/afiche.ts`), que es la regla y
+ * está testeada; acá está el mapeo a clases, y vive en este archivo por una
+ * razón mecánica además de la de siempre: **Tailwind genera las utilidades
+ * leyendo el fuente**, así que un `columns-${n}` armado en tiempo de ejecución
+ * no existiría en la hoja. Los tres valores tienen que estar escritos literales
+ * en algún lado, y ese lado es el centralizador.
+ *
+ * Son **columnas de CSS** y no una grilla, y esa es la decisión: una grilla
+ * alinea filas, y una fila de afiches de altos distintos deja huecos debajo de
+ * los más bajos. Las columnas dejan que cada uno mida lo que mide y el de abajo
+ * arranque donde terminó el anterior — que es literalmente cómo se pega un
+ * afiche sobre una pared. Nada se mueve solo: es continuo porque no termina, no
+ * porque avance.
+ *
+ * Con **una** columna se agrega un tope de ancho: es el caso de hoy (dos flyers)
+ * y sin el tope el afiche mediría el ancho entero de un monitor de 27".
+ */
+export const CLASES_DE_PARED: Record<1 | 2 | 3, string> = {
+  1: 'mx-auto max-w-3xl',
+  2: 'sm:columns-2',
+  3: 'sm:columns-2 lg:columns-3',
+};
+
+/**
+ * Un afiche pegado en la pared: el bloque entero es el enlace.
+ *
+ * `break-inside-avoid` es la mitad que no se puede olvidar — sin él, CSS parte
+ * el bloque entre dos columnas y el epígrafe de un afiche aparece arriba del
+ * siguiente.
+ */
+export const claseAficheEnPared = `mb-10 block break-inside-avoid ${foco}`;
+
+/**
  * Un campo: **la etiqueta apoyada sobre una regla de 1px, sin caja**.
  *
  * La caja aparece solo al enfocar, que es lo que el sistema pide. Se consigue con

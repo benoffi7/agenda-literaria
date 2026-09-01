@@ -18,8 +18,11 @@ Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
 normalización que va a usar el sitio público. Cada fila muestra tipo, cantidad de
 encuentros, barrio y un badge de estado.
 
-Cada fila dice además cuándo es su próximo encuentro y, **si la cargó la otra
-cuenta, lo marca** (B-130). Lo propio no lleva marca: si todo lleva marca, la
+Cada fila dice además cuándo es su próximo encuentro y lleva hasta dos marcas
+más: **«Cupo completo»** (B-97) y **«Sin flyer»** (B-264), esta última solo en las
+**publicadas** que no tienen imagen — una publicada sin flyer ya está afuera de la
+cartelera, un borrador todavía no. Y, **si la cargó la otra cuenta, lo marca**
+(B-130). Lo propio no lleva marca: si todo lleva marca, la
 marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
 hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
 para saber quién; con tres deja de alcanzar y ahí hay que guardar el mail
@@ -92,6 +95,11 @@ Material · Opcional · Difusión · Vista previa del evento. Las cuatro última
 acordeones colapsados, y desde B-184 cada sección tiene un ancla propia para que
 el mensaje de campos faltantes pueda abrirla y llevar hasta el campo.
 
+**El cargador de imágenes vive en «Qué es» desde el 2026-09-01** (B-264). Estaba en
+«Opcional» —un acordeón cerrado y llamado literalmente así— y el resultado era
+medible: 2 actividades con imagen sobre 42 publicadas. En «Opcional» quedaron las
+etiquetas y «destacar».
+
 **Material** (§3.1) tiene siete formatos —libro o lectura, guía, contexto, sobre
 el autor, newsletter, playlist, otro— y cuatro momentos de entrega: previo al
 encuentro, al inscribirse, **durante el mes** y en el encuentro. «Durante el mes»
@@ -141,7 +149,10 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   lo que faltaba —un campo rechazado adentro de un acordeón colapsado no estaba
   en ninguna parte de la pantalla (B-184, D-121). Cuando el borrador se puede
   guardar pero le falta algo para publicar, la misma barra lo dice en gris: es
-  aviso, no bloqueo.
+  aviso, no bloqueo. Y **un tercer nivel, abajo de ese** (B-264): lo que conviene
+  tener y no frena nada. Hoy hay uno solo —el flyer— y está redactado al revés
+  que los otros dos: dice **qué se pierde** («sin imagen no entra en la cartelera
+  y el link se comparte sin nada que mirar»), no qué falta.
 - **El formulario se guarda solo en el navegador mientras se escribe**, y al
   abrirlo ofrece lo que haya quedado sin guardar, con la fecha y un botón para
   descartarlo. No toca la base: es del dispositivo donde se estaba cargando, se
@@ -621,7 +632,7 @@ probó disparando un `repository_dispatch` a mano: corrió el workflow y public�
 [`08-operacion.md`](08-operacion.md) es ahora el runbook para rearmarlo en un
 proyecto nuevo o para rotar el PAT, no la lista de lo que falta.
 
-## Sitio público — el listado y el detalle
+## Sitio público — el listado, el detalle y la cartelera
 
 Construido en **B-227**, el primer frente del diseño de
 [`12-sitio-publico.md`](12-sitio-publico.md). **Todavía no está desplegado:** el
@@ -721,12 +732,14 @@ Una página estática por actividad publicada, **con cero JavaScript**. Es la qu
 recibe el tráfico: la mayoría cae acá desde Google o desde un link de Instagram, y
 tiene una sola pregunta — ¿esto me sirve y todavía puedo entrar?
 
-**Arriba va la portada**, si hay imagen, con la relación de aspecto de
-`--aspect-portada` —la misma que la tarjeta del listado (B-249)— y no la del archivo
-que subió quien organiza: así un flyer vertical de Instagram se recorta en vez de
-empujar la fecha fuera de la pantalla. Es un desvío del §4.3 del diseño, que la ponía
-después de la ficha; el motivo de aquella decisión sigue valiendo y se resuelve de
-otra forma (**D-144**). Sin imagen no hay hueco: la ficha es lo primero.
+**Arriba va la portada**, si hay imagen, **entera y sin recortar** — con la
+proporción de esa imagen y el alto topeado en 70 % de la pantalla (**D-147**). Hasta
+el 2026-09-01 iba recortada a `--aspect-portada` (16/9) con `object-cover`, y como
+los flyers reales son verticales eso dejaba afuera el **51 %** de la imagen: el
+título y la fecha, que en un flyer están tipografiados adentro del JPEG. Lo que el
+§4.3 del diseño quería evitar —que un flyer empuje la fecha fuera de la pantalla— lo
+resuelve el tope de alto y no la proporción fija (**D-144**, corregido por D-147).
+Sin imagen no hay hueco: la ficha es lo primero.
 
 Antes que nada, si corresponde, **un solo aviso**: se canceló, ya pasó, la inscripción
 cerró o el cupo está completo. Los cuatro pueden valer a la vez y mostrarlos apilados
@@ -764,6 +777,35 @@ cualquier otro **no se emite precio**, porque el arancel es un slug y no un mont
 
 **Lo que la página NO muestra**, y es decisión y no olvido: el link de la reunión,
 ni siquiera con «publicar el link en el sitio» tildado (**D-139**).
+
+### `/cartelera` — la pared de afiches (B-265)
+
+Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada uno
+enlazando a su actividad. **Cero JavaScript**, como la página de detalle.
+
+Es la página que le da sentido a cargar el flyer, y la otra mitad de B-264: el
+panel dice «sin imagen no entra en la cartelera», y esto es la cartelera.
+
+**Una pared, no un carrusel.** Nada avanza solo — «en continuado» quiere decir que
+no termina, no que se mueva—, así que tampoco hay animación que reducir para quien
+pidió `prefers-reduced-motion`. Son **columnas de CSS** y no una grilla: una grilla
+alinea filas y con afiches de altos distintos cada fila deja huecos debajo de los
+más bajos.
+
+**El número de columnas está atado a la cantidad**, y eso resuelve el caso de
+pocos: con ≤2 afiches va **una** columna con tope de ancho —hoy, dos flyers
+grandes uno abajo del otro—, con ≤5 van dos y de ahí en más tres. Con **cero** no
+se dibuja una grilla vacía: se dice qué es la página y se manda a la agenda.
+
+Qué entra: **una imagen por actividad** (la portada, que es el flag de «esta es la
+que quiero que se vea al compartir») y **solo lo que todavía va a pasar**, la misma
+regla que la home. Ordenado por fecha próxima, con desempate por título.
+
+Cada afiche lleva al pie una regla fina y tres líneas —tipo y fecha, título,
+lugar— y el epígrafe si lo hay. El bloque entero es el enlace.
+
+Los detalles y las alternativas descartadas están en **D-148**; el peso medido, en
+**D-149** y **B-266**.
 
 ### `/events.json`
 

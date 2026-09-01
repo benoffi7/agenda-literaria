@@ -34,6 +34,7 @@
 import { adminDb, hayCredenciales } from '@/lib/firebase-admin';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
+import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
 import { mapaDeEtiquetas, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
@@ -226,20 +227,44 @@ export const etiquetasDelDetalle = async (): Promise<MapaDeEtiquetas> => {
  * alguien vuelve al alias —que es lo que uno escribe— el sitio se construye
  * igual, con el reloj del build, que es lo correcto.
  */
-export const caminosDeDetalle = async (
-  ahora?: unknown,
-): Promise<{ params: { slug: string }; props: { detalle: DetallePublico } }[]> => {
-  const instante = ahora instanceof Date ? ahora : new Date();
+const detallesDelSitio = async (instante: Date): Promise<DetallePublico[]> => {
   const { actividades } = await contenidoDelSitio();
   // Sin filtrar por aprobación: acá se **resuelve** el slug que la actividad ya
   // tiene guardado, no se ofrece un chip. Ver `etiquetasDelDetalle` (D-30).
   const etiquetas = await etiquetasDelDetalle();
-  return actividades
-    // Una actividad sin slug no puede tener URL. No debería pasar (el schema lo
-    // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
-    .filter((a) => a.slug)
-    .map((a) => ({
-      params: { slug: a.slug },
-      props: { detalle: detalleDeActividad(a, etiquetas, instante) },
-    }));
+  return (
+    actividades
+      // Una actividad sin slug no puede tener URL. No debería pasar (el schema lo
+      // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
+      .filter((a) => a.slug)
+      .map((a) => detalleDeActividad(a, etiquetas, instante))
+  );
+};
+
+export const caminosDeDetalle = async (
+  ahora?: unknown,
+): Promise<{ params: { slug: string }; props: { detalle: DetallePublico } }[]> => {
+  const instante = ahora instanceof Date ? ahora : new Date();
+  return (await detallesDelSitio(instante)).map((detalle) => ({
+    params: { slug: detalle.slug },
+    props: { detalle },
+  }));
+};
+
+/**
+ * Los afiches de `/cartelera` — B-265.
+ *
+ * Sale del **mismo** `DetallePublico` que genera cada página de detalle, y no de
+ * una proyección aparte: la pared muestra la misma imagen que la cabecera de la
+ * actividad, y con dos derivaciones eso sería una coincidencia que se rompe sola
+ * (la clase de B-88). La proyección a `Afiche` solo saca campos, así que no
+ * puede publicar nada que `detallePublico.ts` no haya decidido publicar.
+ *
+ * `ahora` es tolerante por lo mismo que `caminosDeDetalle`: una plantilla que la
+ * aliasee en vez de envolverla recibiría el `{ paginate, rss }` de Astro en el
+ * primer parámetro (B-237).
+ */
+export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
+  const instante = ahora instanceof Date ? ahora : new Date();
+  return carteleraDeDetalles(await detallesDelSitio(instante));
 };
