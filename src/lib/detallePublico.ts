@@ -37,7 +37,7 @@
  */
 // `resumenDe` vive en `eventsJson.ts` porque nació con el índice: se importa para
 // que la tarjeta del listado y la `meta description` del detalle recorten igual.
-import { NOMBRE } from '@/lib/identidad';
+import { NOMBRE, colorDeTipo } from '@/lib/identidad';
 import { resumenDe } from '@/lib/eventsJson';
 import {
   fechaCompleta,
@@ -47,7 +47,7 @@ import {
   partesDeFecha,
   rangoCorto,
 } from '@/lib/fechasPublicas';
-import { etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad } from '@/types/actividad';
@@ -198,6 +198,20 @@ export interface DetallePublico {
   titulo: string;
   tipo: string;
   tipoEtiqueta: string;
+  /**
+   * El color de la categoría, **ya resuelto** — B-273 (D-153).
+   *
+   * Viene resuelto y no como matiz suelto porque la plantilla no puede
+   * resolverlo: la derivación es `colorDeTipo(slug, elegido)` y el «elegido» vive
+   * en `/opciones/tipo`, que la página de detalle no ve (D-140). Con el color
+   * hecho, la cabecera del detalle y la cajita de cada fila del listado salen de
+   * **la misma** función, que es lo que B-273 vino a arreglar: hasta acá el
+   * detalle pintaba `bg-azul` fijo y la cajita saltaba de color al navegar.
+   *
+   * No publica nada nuevo: es una función del `tipo` —que ya sale en esta misma
+   * página— y del matiz, que ya viaja en el `events.json` (`OpcionPublica.tono`).
+   */
+  tipoColor: string;
   descripcion: string;
   resumen: string;
 
@@ -606,10 +620,21 @@ const imagenesDeDetalle = (
   return ordenadas.map(({ portada: _portada, ...resto }) => resto);
 };
 
+/**
+ * El view-model de la página de detalle.
+ *
+ * `tonos` es el mismo mapa con el que el listado pinta su cajita —los matices
+ * elegidos que viajan en el `events.json`—, y tiene que ser el mismo: es la
+ * condición de que las dos pantallas muestren un color y no dos (B-273, D-153).
+ * Es un parámetro obligatorio y no uno con default por eso mismo: un default
+ * `{}` dejaría al detalle derivando del slug mientras el listado usa lo elegido,
+ * o sea el bug de vuelta, en silencio y solo para los tipos pintados a mano.
+ */
 export const detalleDeActividad = (
   a: ActividadPublica,
   etiquetas: MapaDeEtiquetas,
   ahora: Date,
+  tonos: TonosDeTipo,
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -682,6 +707,7 @@ export const detalleDeActividad = (
     titulo: a.titulo,
     tipo: a.tipo,
     tipoEtiqueta,
+    tipoColor: colorDeTipo(a.tipo, tonos[a.tipo]),
     descripcion: a.descripcion,
     resumen: resumenDe(a.descripcion),
 

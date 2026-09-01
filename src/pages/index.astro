@@ -41,8 +41,8 @@ import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
-import { indiceDelSitio } from '@/lib/contenidoDelSitio';
-import { mapaDeEtiquetas, tonosDeTipo, vigentesDelIndice } from '@/lib/listadoPublico';
+import { indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
+import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
 
 const indice = await indiceDelSitio();
 /*
@@ -54,8 +54,10 @@ const indice = await indiceDelSitio();
 const ahora = new Date(indice.generadoEn);
 const etiquetas = mapaDeEtiquetas(indice.opciones);
 // D-150 — los matices elegidos para los tipos. El HTML del build y la island
-// pintan la categoría con el mismo color porque los dos salen de acá.
-const tonos = tonosDeTipo(indice.opciones);
+// pintan la categoría con el mismo color porque los dos salen de acá, y desde
+// D-153 la cabecera de la página de detalle también: `tonosDelSitio` es el único
+// lugar del build donde se arma este mapa.
+const tonos = await tonosDelSitio();
 const vigentes = vigentesDelIndice(indice, ahora);
 
 const ID_LISTADO = 'listado-del-build';

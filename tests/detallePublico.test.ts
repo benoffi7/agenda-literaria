@@ -14,7 +14,7 @@ import {
   handleInstagram,
   urlSegura,
 } from '@/lib/detallePublico';
-import { mapaDeEtiquetas } from '@/lib/listadoPublico';
+import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
@@ -36,11 +36,20 @@ const ETIQUETAS = mapaDeEtiquetas({
   tags: [{ slug: 'cronica', label: 'Crónica' }],
 });
 
+/**
+ * Los matices elegidos para los tipos (D-153). Vacío en casi todos los casos: el
+ * color derivado del slug es el camino normal, y el mapa con algo adentro se
+ * ejercita donde importa — `tests/color-de-tipo.test.ts`, que ata el color del
+ * detalle con el del listado.
+ */
+const TONOS: TonosDeTipo = {};
+
 const detalleDe = (o: OpcionesDeEntrada = {}, over: Partial<Actividad> = {}, ahora = AHORA) =>
   detalleDeActividad(
     toPublic({ ...actividadDePrueba(o), ...over }, o.id ?? 'act_1'),
     ETIQUETAS,
     ahora,
+    TONOS,
   );
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -264,6 +273,7 @@ describe('cuándo se lista el bloque de encuentros', () => {
       ),
       ETIQUETAS,
       AHORA,
+      TONOS,
     );
     expect(d.mostrarEncuentros).toBe(false);
   });
@@ -625,6 +635,7 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
       ),
       ETIQUETAS,
       AHORA,
+      TONOS,
     );
     expect(datosEstructurados(sinSede)).toBeNull();
   });
@@ -731,7 +742,7 @@ describe('el bloque de fecha de cada encuentro — B-260, D-146', () => {
       ...publica,
       sesiones: [{ ...publica.sesiones[0]!, inicio: 'no-es-una-fecha', fin: 'no-es-una-fecha' }],
     };
-    const d = detalleDeActividad(rota, ETIQUETAS, AHORA);
+    const d = detalleDeActividad(rota, ETIQUETAS, AHORA, TONOS);
     expect(d.encuentros[0]!.bloque).toEqual({ dia: '', diaSemana: '', mes: '' });
   });
 });

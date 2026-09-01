@@ -35,7 +35,12 @@ import { adminDb, hayCredenciales } from '@/lib/firebase-admin';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
 import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
-import { mapaDeEtiquetas, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import {
+  mapaDeEtiquetas,
+  tonosDeTipo,
+  type MapaDeEtiquetas,
+  type TonosDeTipo,
+} from '@/lib/listadoPublico';
 import { toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
 import {
@@ -160,6 +165,28 @@ export const etiquetasDelListado = async (): Promise<MapaDeEtiquetas> =>
   mapaDeEtiquetas((await indiceDelSitio()).opciones);
 
 /**
+ * `{ slug de tipo: matiz elegido }` — **uno solo para todo el build** (D-153).
+ *
+ * Lo usan la home y la página de detalle, y por eso está acá y no derivado en
+ * cada una: el color de la categoría tiene que ser **el mismo** en la cajita que
+ * abre la fila y en la cabecera del detalle, que es literalmente el arreglo de
+ * B-273. Dos llamadas sueltas a `tonosDeTipo` sobre dos listas distintas serían
+ * la clase de B-88 con las dos mitades a la vista.
+ *
+ * Sale del **índice**, o sea de las opciones ya filtradas por aprobación, y no de
+ * `contenidoDelSitio()` crudo. Es la asimetría opuesta a la de
+ * `etiquetasDelDetalle`, y a propósito: la **etiqueta** se resuelve sin filtrar
+ * porque una actividad puede tener guardada una opción pendiente y su nombre hay
+ * que mostrarlo (D-30), pero el **color** tiene que coincidir con el del listado,
+ * que solo puede usar la lista filtrada —es la que viaja en el `events.json` y la
+ * que la island vuelve a leer al hidratar—. Con la lista sin filtrar, un tipo
+ * pendiente de aprobar pintaría un color en el listado y otro en el detalle:
+ * exactamente el salto que este cambio saca.
+ */
+export const tonosDelSitio = async (): Promise<TonosDeTipo> =>
+  tonosDeTipo((await indiceDelSitio()).opciones);
+
+/**
  * `{ campo: { slug: etiqueta } }` para la **página de detalle** — sin filtrar.
  *
  * ── Por qué son dos mapas y no uno (D-30) ─────────────────────────────────
@@ -232,12 +259,16 @@ const detallesDelSitio = async (instante: Date): Promise<DetallePublico[]> => {
   // Sin filtrar por aprobación: acá se **resuelve** el slug que la actividad ya
   // tiene guardado, no se ofrece un chip. Ver `etiquetasDelDetalle` (D-30).
   const etiquetas = await etiquetasDelDetalle();
+  // El color sí sale de la lista filtrada, que es la del listado. Ver
+  // `tonosDelSitio`: la etiqueta y el color no se resuelven con la misma lista, y
+  // cada mitad tiene su motivo.
+  const tonos = await tonosDelSitio();
   return (
     actividades
       // Una actividad sin slug no puede tener URL. No debería pasar (el schema lo
       // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
       .filter((a) => a.slug)
-      .map((a) => detalleDeActividad(a, etiquetas, instante))
+      .map((a) => detalleDeActividad(a, etiquetas, instante, tonos))
   );
 };
 

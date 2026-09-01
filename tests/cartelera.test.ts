@@ -57,6 +57,9 @@ const detalleDe = (o: OpcionesDeEntrada = {}, over: Partial<Actividad> = {}) =>
     toPublic({ ...actividadDePrueba(o), ...over }, o.id ?? 'act_1'),
     ETIQUETAS,
     AHORA,
+    // Sin matices elegidos: la pared no pinta la categoría (D-153), así que acá
+    // el color sale derivado y no cambia nada de lo que este archivo mira.
+    {},
   );
 
 /** Una actividad con flyer y con fecha próxima: el caso que sí entra. */

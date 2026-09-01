@@ -13,12 +13,12 @@ otra salida** en vez de derivar del documento.
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
-| 1 | `events.json` y el HTML del listado — **actividades y también las opciones de taxonomía** (§4.4) | **Tres archivos en serie:** `src/lib/toPublic.ts` (`toPublic`, `opcionesPublicas`) decide qué *puede* ser público; `src/lib/eventsJson.ts` (`entradaDeIndice`, `construirIndice`, `resumenDe`) decide qué necesita el listado, que es menos; `src/lib/contenidoDelSitio.ts` elige *qué documentos* se leen (el `where` del §5.3, mudado ahí en B-227 porque ahora son **tres** los consumidores) y `src/pages/events.json.ts` solo serializa. **La mitad HTML tiene un cuarto productor**, agregado en B-247: `src/lib/tarjetaPublica.ts` (`lugarDeTarjeta`, `avisoDeTarjeta`, `cicloDeTarjeta`, `arancelDeTarjeta`, `bloqueDeFecha`, `formasDeCursar`) decide **qué frases dice la fila** con los campos que el índice ya trae; los componentes de `src/components/publico/` **solo acomodan**, y qué campos de la entrada pueden tocar es una lista cerrada que verifica `tests/listado-del-sitio.test.ts` (la forma de D-140 donde el tipo no la puede dar) |
+| 1 | `events.json` y el HTML del listado — **actividades y también las opciones de taxonomía** (§4.4) | **Tres archivos en serie:** `src/lib/toPublic.ts` (`toPublic`, `opcionesPublicas`) decide qué *puede* ser público; `src/lib/eventsJson.ts` (`entradaDeIndice`, `construirIndice`, `resumenDe`) decide qué necesita el listado, que es menos; `src/lib/contenidoDelSitio.ts` elige *qué documentos* se leen (el `where` del §5.3, mudado ahí en B-227 porque ahora son **tres** los consumidores) y `src/pages/events.json.ts` solo serializa. **La mitad HTML tiene un cuarto productor**, agregado en B-247: `src/lib/tarjetaPublica.ts` (`lugarDeTarjeta`, `avisoDeTarjeta`, `cicloDeTarjeta`, `arancelDeTarjeta`, `bloqueDeFecha`, `formasDeCursar`) decide **qué frases dice la fila** con los campos que el índice ya trae; los componentes de `src/components/publico/` **solo acomodan**, y qué campos de la entrada pueden tocar es una lista cerrada que verifica `tests/listado-del-sitio.test.ts` (la forma de D-140 donde el tipo no la puede dar). Y un quinto desde B-270: `src/lib/identidad.ts` (`colorDeTipo`, `tonoDeTipo`) decide **de qué color** se escribe la categoría, con `src/lib/listadoPublico.ts` (`tonosDeTipo`, `estiloDeTipo`) leyendo el matiz del propio archivo |
 | 2 | El evento de Google Calendar | `functions/calendario.js` |
 | 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
-| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y el `where`). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**) |
+| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle`, `tonosDelSitio` y el `where`); y desde B-273 `src/lib/identidad.ts` (`colorDeTipo`), que resuelve el color de la categoría antes de que la plantilla lo vea. La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**) |
 | 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). La plantilla solo acomoda |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
@@ -80,8 +80,8 @@ en el productor y su fila en el barrido de centinelas—, que es la diferencia e
 agregar un campo público y que se agregue solo.
 
 **Ojo, y esto es lo que no se ve mirando un solo archivo: la misma decisión está
-escrita en CUATRO lugares**, porque el documento de taxonomía llega a cuatro
-salidas por cuatro caminos distintos.
+escrita en CINCO lugares**, porque el documento de taxonomía llega a cuatro
+salidas por cinco caminos distintos.
 
 | Camino | A qué salida | Qué puede leer | Por qué no se comparte |
 |---|---|---|---|
@@ -89,26 +89,38 @@ salidas por cuatro caminos distintos.
 | `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 (el posteo) y la vista previa del evento | `slug`, `label` | emite un `Record<slug, label>`, que es otra forma |
 | `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar de verdad | `slug`, `label` | `functions/` se despliega con su propio `package.json` y **no puede importar de `src/`** (D-20) |
 | `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`) | 6 — la página de detalle y su JSON-LD | `slug`, `label` | corre en el build y arma otro `Record<slug, label>` |
+| `tonosDeTipo` (`src/lib/listadoPublico.ts`), que en el build llama `tonosDelSitio` (`src/lib/contenidoDelSitio.ts`) | 1 (el HTML del listado) y 6 (la cabecera del detalle) | `slug`, **`tono`** | arma un `Record<slug, tono>`, que es la cuarta forma. Y es el único que **no lee el documento**: recibe `OpcionPublica[]`, o sea la salida de `opcionesPublicas` — la misma herencia que hace segura a la salida 7 |
 
-**Eran tres y son cuatro desde B-270.** El de la salida 6 lo encontró el
-`auditor-privacidad`: proyectaba bien, pero era el único de los cuatro sin nada que
-nombrara qué podía leer — y es la salida que un bot cosecha primero.
+**Eran tres, fueron cuatro desde B-270 y son cinco desde B-273.** El cuarto lo
+encontró el `auditor-privacidad`: proyectaba bien, pero era el único sin nada que
+nombrara qué podía leer — y es la salida que un bot cosecha primero. El quinto entró
+con B-273, cuando el color de la categoría pasó a pintarse también en el detalle, y
+**no es una decisión de privacidad nueva**: lee la salida 1 ya proyectada, no la
+taxonomía cruda, así que estructuralmente no puede alcanzar `huellaCreador`, `usos`
+ni `aprobada`. Se cuenta igual, porque un camino que no está en la tabla es uno que
+nadie mira el día que cambie de entrada.
 
-Son cuatro copias de una decisión de privacidad, y la tercera **no se puede
+Son cinco copias de una decisión de privacidad, y la tercera **no se puede
 unificar**: es el mismo caso que la copia de `CAMPOS_TAXONOMIA`, donde la respuesta
 del repo es «un test que compare las listas, no un import imposible». Ese test
 existe — `tests/clases-de-bug.test.ts`, clase de B-212 — y exige que cada camino lea
 exactamente lo que su salida publica y nada más.
 
-**`tono` es público, y de una sola salida** (D-150). Es el matiz de la categoría, un
+**`tono` es público, y de dos salidas** — era de una sola hasta B-273 (D-150, D-153). Es el matiz de la categoría, un
 entero de 0 a 359 elegido de una lista de doce colores; el sitio lo necesita porque
 pinta la cajita del tipo y **no lee Firestore** (§2.5), así que sin publicarlo la
 elección no llegaría a ninguna pantalla. No dice quién lo eligió ni cuándo. Que sea
-público **para el `events.json`** no lo vuelve legible para los otros tres caminos:
-ahí no tendría dónde ir, y leerlo sería el síntoma de que alguien está por
-publicarlo en una salida que no lo pidió. Por eso la lista de arriba es **por
-camino** y no una sola compartida — escribirla compartida habría abierto los cuatro
-de golpe por un campo que necesita uno.
+público **para el `events.json`** no lo vuelve legible para los tres caminos que
+resuelven una etiqueta: ahí no tendría dónde ir, y leerlo sería el síntoma de que
+alguien está por publicarlo en una salida que no lo pidió. Por eso la lista de
+arriba es **por camino** y no una sola compartida — escribirla compartida habría
+abierto los cinco de golpe por un campo que necesitan dos.
+
+**Y la segunda salida no lo publica como número: lo publica como color.** La
+cabecera del detalle recibe el `oklch(...)` ya resuelto en el view-model
+(`DetallePublico.tipoColor`, D-153), y esa es la forma correcta: la plantilla no ve
+las opciones, así que no puede derivarlo ni equivocarse de lista. El matiz crudo
+sigue saliendo por una sola puerta, el `events.json`.
 
 Dos guardas más del lado del que escribe, las dos del `auditor-privacidad`: solo
 sale si `esTonoElegible` (un `999` escrito a mano en la consola de Firestore no

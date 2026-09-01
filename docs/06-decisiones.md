@@ -4762,3 +4762,130 @@ es lo correcto, y no rompe el listado entero.
 | `tags` | **A medias, y se anota** (B-274). D-74 lo descartó porque «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera». **B-05 y B-06 existen desde hace semanas**, así que la condición que el propio D-74 puso se cumplió. Lo que sigue en pie es la otra mitad: es multivaluado y necesita un control de selección múltiple, que ninguno de los seis desplegables actuales tiene. No se agrega ahora porque no se pidió |
 | `destacado` | **Sí caducó, y se anota** (B-274). Era «un booleano que hoy no consume nadie: el sitio público todavía no existe». Hoy existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. No se agrega ahora porque no se pidió, y porque con pocas destacadas un filtro booleano compra menos que un orden |
 | quién la cargó | **No.** El motivo era que el dato es un identificador de usuario y no un nombre, y que el §5.1 los mantiene fuera de todo lo que se muestre. Las dos cosas siguen igual |
+
+---
+
+## D-153 · El color del tipo también pinta la ficha del detalle, y ese es otro par de contraste
+
+**Contexto.** D-150 le devolvió el color a la cajita de la categoría, pero solo en el
+listado. La ficha de `/actividad/{slug}` seguía en `bg-azul` fijo, con un comentario
+al lado que decía «es la misma que abre cada fila del listado: quien viene del
+listado reconoce la pieza». D-150 volvió falsa esa frase el mismo día: quien navegaba
+del listado al detalle **veía la cajita saltar de color**, que es exactamente lo
+contrario de reconocer la pieza. Lo encontró el `auditor-trampas` al cerrar B-270 y
+quedó anotado como **B-273**; la propia D-150 lo dejó escrito en su tabla de «lo que
+queda afuera», con la advertencia de que no era una omisión inofensiva.
+
+No se hizo ahí porque `[slug].astro` y `detallePublico.ts` los estaba tocando otro
+frente en paralelo (las imágenes), y tocar los mismos archivos desde dos lados es
+cómo se pierde trabajo.
+
+### El color llega resuelto, porque la plantilla no puede resolverlo
+
+`DetallePublico` gana `tipoColor: string` — el `oklch(...)` ya calculado con
+`colorDeTipo`, **la misma función que usa la fila**. No es una comodidad: la página
+de detalle recibe el view-model y nada más (D-140), así que no tiene las opciones en
+la mano y no puede saber qué matiz se eligió. Derivarlo en la plantilla habría
+significado darle acceso a la taxonomía, que es justo lo que D-140 cerró.
+
+Va por `style` inline y no por clase de Tailwind, por lo mismo que en la fila:
+Tailwind solo genera lo que **ve escrito en el fuente**, y una clase por tipo dejaría
+sin color al tipo que alguien cree mañana desde «Otro».
+
+### `tonosDelSitio()` es el único lugar del build que arma el mapa
+
+La home lo derivaba por su cuenta (`tonosDeTipo(indice.opciones)`) y el detalle
+habría necesitado el suyo. Dos derivaciones del mismo valor son dos maneras de que
+una quede vieja —la clase de B-88— y acá el síntoma sería precisamente el bug que
+esta decisión arregla, así que el mapa se arma **una vez**, en
+`contenidoDelSitio.ts`, y lo consumen las dos pantallas.
+
+**Sale del índice, o sea de las opciones ya filtradas por aprobación**, y esa es la
+asimetría opuesta a `etiquetasDelDetalle` (D-30). Las dos mitades tienen su motivo y
+conviene tenerlas juntas:
+
+| | Qué lista | Por qué |
+|---|---|---|
+| la **etiqueta** del detalle | sin filtrar | D-30 — resolver no es ofrecer: una actividad publicada puede tener guardada una opción todavía pendiente, y su página tiene que poder decir «Con beca parcial» |
+| el **color** del detalle | filtrada | B-273 — tiene que coincidir con el del listado, y el listado solo puede usar la filtrada: es la que viaja en el `events.json` y la que la island vuelve a leer al hidratar. Con la lista sin filtrar, un tipo pendiente pintaría el matiz elegido en el detalle y el derivado en la fila — el salto de color de vuelta, ahora **solo para los tipos pendientes**, o sea invisible |
+
+Lo pidió el `auditor-privacidad` y quedó atado con un test de integración: un
+`opciones/tipo` con un tipo pendiente que tiene matiz elegido, y la afirmación de que
+el detalle pinta el derivado y **lo mismo** que la fila.
+
+### El cuarto parámetro de `detalleDeActividad` es obligatorio, no opcional
+
+`tonos` podría haber tenido un default `{}` y no lo tiene. Un default deja al detalle
+derivando del slug mientras el listado usa lo elegido: el mismo bug, en silencio, y
+**solo para los tipos que alguien pintó a mano** desde Opciones — o sea invisible
+hasta que se usa la pantalla que existe para eso. Obligándolo, un llamador que se
+olvide no compila.
+
+### El par de contraste no es el mismo, y hay que medirlo aparte
+
+Esta es la parte que no era obvia. En la fila, la cajita es **el color como texto y
+borde sobre el papel**; en la cabecera del detalle es **tinta plena con el papel
+calado encima**. Son dos pares distintos, y el sistema visual los tabula por separado
+(`docs/referencias/sistema-visual.md`, «Y el texto calado sobre las tintas»)
+justamente porque un color puede pasar en uno y no en el otro. La garantía de D-150
+—los 360 matices contra las tres superficies— cubre el primero y no dice nada del
+segundo.
+
+`contrasteCaladoDelTono` (`identidad.ts`) mide el segundo, y `color-de-tipo.test.ts`
+lo recorre sobre **los mismos 360** y no sobre los siete tipos de hoy: el matiz de un
+tipo nuevo lo decide un slug que todavía no existe.
+
+| Dirección | Dónde | El peor de los 360 |
+|---|---|---|
+| el color **como texto**, contra las tres superficies | la cajita del listado | **5,90:1** |
+| el **papel calado** encima del color | la cabecera del detalle | **7,27:1** (tono 191) |
+
+Contra un piso de 4,5. Y contra el `azul` fijo que había antes, que calado daba
+**6,14:1**: el cambio no gasta contraste, lo gana.
+
+**`revisarTono` sigue midiendo solo la dirección de texto, y no es un olvido.**
+`contrasteDelTono` es el **mínimo** contra las tres superficies y `papel` es una de
+las tres, así que el calado —que es el contraste contra `papel` a secas— nunca puede
+dar menos. Una guarda que sumara este par rechazaría exactamente lo mismo con dos
+mensajes distintos. Lo que sí se puede romper es la premisa —que el papel esté entre
+las superficies del mínimo— y eso es lo que el test fija.
+
+### La red que faltaba
+
+**No existía ningún test que comparara el color del tipo entre las dos pantallas.**
+Es la clase de B-88 —dos derivaciones del mismo valor separándose— con las dos
+mitades a la vista, y por eso el bug pasó por dos cierres sin que nada fallara. Ahora
+hay tres cosas:
+
+- el caso cruzado en `color-de-tipo.test.ts`, que compara **los dos valores
+  producidos** y no las dos funciones (es lo que sigue siendo cierto el día que
+  alguna cambie de forma);
+- el describe del calado sobre los 360;
+- el guard de markup en `detalle-visual.test.ts`, gemelo del que ya tenía el listado:
+  una clase de fondo sobreviviente le gana al `style` inline, y el resultado es la
+  cabecera pintada de un color que no es el de su categoría.
+
+`tono` pasa a llegar a **dos** salidas —el `events.json` y, como color ya resuelto,
+la página de detalle— y el registro de caminos de una opción pasa de cuatro a cinco.
+El quinto (`tonosDeTipo`) **no lee el documento**: recibe `OpcionPublica[]`, o sea la
+salida de `opcionesPublicas`, así que estructuralmente no puede alcanzar
+`huellaCreador`, `usos` ni `aprobada`. Es la misma herencia que hace segura a la
+salida 7.
+
+### Lo que se miró y no era el mismo bug
+
+**El rótulo de la cartelera** (`{tipo} · {cuándo}`, en `azul`) es la otra pieza
+pública que nombra la categoría, y **se deja como está**. No es la misma pieza: no es
+una cajita, es una línea compuesta donde el tipo comparte renglón con la fecha, y
+pintarla de la categoría pintaría también la fecha — que es exactamente lo que D-150
+dejó afuera («extenderlo al resto lo convierte en decoración»). Queda anotado como
+**B-275**, en P3, para que la decisión no se vuelva a discutir desde cero.
+
+### Alternativas descartadas
+
+| Alternativa | Por qué no |
+|---|---|
+| **Dejarlo en azul y arreglar solo el comentario** | Era la salida barata y B-273 la contemplaba explícitamente. Se descarta porque la tabla de D-150 ya había marcado el detalle como «la otra candidata obvia, y **corresponde**»: el problema no era el comentario, era que la pieza se comportaba distinto en dos pantallas |
+| **Pasar el matiz (`tipoTono: number`) en vez del color** | Obliga a la plantilla a llamar a `colorDeTipo`, o sea a conocer la banda. Una segunda derivación del mismo color, que es la clase que este cambio cierra |
+| **`tonos` con default `{}`** | Ver arriba: reproduce el bug en silencio y solo para los tipos pintados a mano |
+| **Usar la lista sin filtrar, por simetría con `etiquetasDelDetalle`** | Ver la tabla de la asimetría: la simetría cómoda es el bug |

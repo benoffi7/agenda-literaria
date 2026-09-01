@@ -40,6 +40,48 @@ const sinComentarios = (s: string): string =>
     .replace(/^\s*\/\/.*$/gm, '')
     .replace(/<!--[\s\S]*?-->/g, '');
 
+/**
+ * La cajita del tipo en la cabecera — B-273 (D-153).
+ *
+ * Es el gemelo de `tests/listado-del-sitio.test.ts` («la cajita del tipo no lleva
+ * ninguna tinta escrita»), y hace falta de los dos lados por lo mismo que el
+ * chequeo del otro lado: una clase de fondo sobreviviente **gana** sobre el
+ * `style` inline o lo empata, y el resultado es una cabecera pintada de un color
+ * que no es el de su categoría. No rompe nada, no lo ve el typecheck, y devuelve
+ * exactamente el bug que este cambio saca.
+ */
+describe('la cajita del tipo lleva el color de su categoría — B-273 (D-153)', () => {
+  const cajita = (): string => {
+    const m = /<p\n\s*class="label-caps inline-block[\s\S]*?>/.exec(sinComentarios(src()));
+    expect(m, 'no encontré la cajita del tipo en la cabecera del detalle').not.toBeNull();
+    return m![0];
+  };
+
+  it('el color sale del view-model y no de una clase de Tailwind', () => {
+    /*
+     * Por `style` y no por clase por lo mismo que en la fila: Tailwind solo genera
+     * las clases que **ve escritas en el fuente**, así que una clase por tipo
+     * dejaría sin color al tipo que alguien cree mañana desde «Otro» — el modo de
+     * falla silencioso que D-150 existe para evitar.
+     *
+     * MUTACIÓN PROBADA: devolverle el `bg-azul` a la cajita hace fallar este caso;
+     * cambiar `detalle.tipoColor` por un `oklch(...)` escrito a mano también.
+     */
+    expect(cajita()).toContain('detalle.tipoColor');
+    expect(cajita()).toContain('background-color');
+    expect(cajita()).not.toMatch(/\bbg-(?:papel|crema|hondo|tinta|suave|acento|azul|super|borde)\b/);
+  });
+
+  it('y el texto sí es una tinta fija: es el papel calado, que es lo que se midió', () => {
+    /*
+     * La otra mitad del par. El contraste verificado en `color-de-tipo.test.ts` es
+     * **papel encima del color**; si el texto pasara a `text-tinta`, el número
+     * medido dejaría de ser el de la pantalla y nadie se enteraría.
+     */
+    expect(cajita()).toContain('text-papel');
+  });
+});
+
 describe('el CTA de inscripción: uno por pantalla — B-238, D-145', () => {
   it('control positivo: la página tiene el botón y la barra', () => {
     const codigo = sinComentarios(src());
