@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las siete salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las ocho salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -105,7 +105,7 @@ código.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **siete salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **ocho salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
 para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
@@ -113,6 +113,13 @@ para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño�
 de todas —un posteo pegado en Instagram ya está copiado— y, desde **B-227**,
 `detallePublico.ts` para la **página de detalle y su JSON-LD**, que es HTML
 indexado: la que un bot cosecha primero y la que se queda en Google.
+
+Desde **B-113** hay una octava, `mesPublico.ts` para la **página de mes**
+`/agenda/{aaaa-mm}`: no publica ni un campo que la primera no publique ya —es el
+mismo índice reagrupado— pero es una página indexada más y una de sus tres frases
+**interpola títulos de actividades** en la `meta description`, que es justo la
+clase que este agente persigue. Está contada porque lo que decide si el agente
+mira un archivo es que la tabla lo nombre, no que hoy filtre algo.
 
 La primera —el `events.json` y el HTML del listado— es la excepción: desde B-106
 son **tres archivos en serie**, y hay que auditar los tres. `toPublic.ts` decide
@@ -145,7 +152,7 @@ para que Claude lo elija solo.
 
 **Qué agrega sobre los tests.** Los tests verifican los campos que conocen. Este
 agente verifica tres cosas que ningún test puede: que un **campo nuevo** tenga
-las siete celdas decididas, que la **forma** de la proyección siga siendo una
+las ocho celdas decididas, que la **forma** de la proyección siga siendo una
 whitelist (un `...actividad` no filtra nada hoy y publica el campo de mañana), y
 que exista un test que fije la decisión. No corre la suite: eso lo hace el CI.
 
@@ -154,7 +161,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las siete salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las ocho salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -252,7 +259,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las siete salidas **antes** de escribir código, que
+arranca obligando a decidir las ocho salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -333,7 +340,7 @@ arreglo, es el detector.
 | Que el sitio público se salga del **sistema visual** aprobado — radio, sombra, degradado, una tipografía vieja, una opacidad, dos tintas del mismo tipo sobre un elemento, o una utilidad propia que le pise el nombre a una de Tailwind | `sistema-visual.test.ts` (**B-260**, D-146). Barre **todo** el markup del sitio, no el que alguien se acordó de revisar, y **ata cada token de `global.css` al hex exacto de `docs/referencias/sistema-visual.md`** —ida y vuelta por OKLCH, y en las dos direcciones: el hex que el test afirma también tiene que estar escrito en el documento—. Son reglas que se rompen de a una sin que falle nada: un `rounded-lg` se ve bien solo, y un `font-serif` sobreviviente **pinta Georgia con el build en verde**, porque el token del proyecto se borró y Tailwind trae el suyo. Las dos guardas más finas salieron de **leer el HTML y el CSS construidos**, no de un test: dos utilidades del mismo tipo en un elemento las resuelve el orden de emisión de Tailwind y no el markup, y un `@utility` propio que se llame como uno generado desde un token pierde en silencio |
 | Que ningún componente del sitio público use texto por debajo del piso de contraste de WCAG AA, **sobre cualquiera de sus superficies** | `contraste-del-sitio.test.ts` (B-235/B-243): calcula los ratios desde los tokens de `global.css` —parseados, no copiados, así cambiar la paleta se nota— y falla si algún archivo del sitio escribe una clase por debajo del piso, con control negativo para que el piso signifique algo. **Medía solo contra `papel`**, y con las tres superficies de D-141 eso da un número optimista: `text-tinta/61` pasa sobre papel (4,62) y no sobre la más oscura (4,38). `contraste-de-superficies.test.ts` (**B-256**) mide lo mismo contra las tres, **derivadas de la hoja de estilos** en vez de enumeradas, así que una superficie nueva y más oscura entra sola al cálculo. **Desde B-260 mide las cinco tintas del sistema** en vez de los 360 tonos por tipo, que se habían retirado con el color derivado del slug (D-146) — y ahí aparece el número que importa: `azul` da 6,14:1 sobre el papel y **4,99:1 sobre `hondo`**, o sea que el margen que sobra arriba casi no existe abajo. Tiene control negativo: las dos tintas de regla **tienen** que dar por debajo del piso, si no la aritmética no está midiendo. Es la clase, no la instancia: la paleta puede estar perfecta y el componente siguiente bajarla igual, que es justo lo que había pasado |
 | Que el **color del tipo de actividad** —el único color del sitio que sale de un dato y no de la paleta— deje ilegible el nombre de la categoría | `color-de-tipo.test.ts` (**B-270**, D-150). Recupera el barrido de los **360 tonos** que D-146 había retirado, y lo mide contra las **tres** superficies en vez de contra el papel: el peor da 5,90:1 contra un piso de 4,5. Es la garantía que hace posible que alguien elija el color desde el panel sin poder equivocarse — y solo se puede dar porque la luminosidad y el croma son fijos, o sea que el espacio tiene **una** dimensión y se recorre entero. Cubre además las tres guardas que la sostienen el día que la banda se afloje (`revisarTono` al guardar, `esTonoElegible` al leer, el filtro al proyectar), que la tabla de tonos de arranque no nombre tipos que ya no existen, y que el build y el cliente deriven el color de **un solo lugar**. Dos casos se afirman sobre el fuente y no ejecutando, con el motivo escrito: con la banda de hoy no se pueden disparar, y un test que no puede activar una guarda no la verifica |
-| Que el sitio público vuelva a copiar el anillo de foco a mano, o escriba el nombre del sitio literal | `estilos-del-sitio.test.ts` (**B-257**). El anillo estaba copiado **doce veces** y la clase del enlace acentuado cinco: la copia que se escriba con un typo deja **un** control sin foco visible, y eso no lo ve nadie que use el mouse, no lo dice el compilador y no lo dice ningún chequeo de contraste. Ahora sale de `src/components/sitio/estilos.ts` y esto lo sostiene, **con las dos mitades**: que nadie lo escriba a mano, y que todo archivo con un enlace o un botón lo importe — porque «no lo escribe a mano» también lo cumple una página sin foco en ninguna parte. La segunda mitad barre `NOMBRE` y `BAJADA` literales (D-141). `src/pages/index.astro` y `src/components/publico/*` quedan fuera de alcance **a propósito y con motivo escrito**: son de otro frente, y un test que nace fallando se apaga || Que el `events.json` que se sube salga del `where('estado','==','publicado')` y no lleve los campos recortados | `events-json-endpoint.integracion.test.ts` (B-218) siembra una publicada y las tres que no son públicas —borrador, cancelada, pendiente— y afirma sobre el JSON que devuelve el endpoint. **De integración y no de texto a propósito:** un `grep` al fuente buscando la cláusula pasaría con la cláusula escrita mal (`'Publicado'`, `'!='`, el campo renombrado). Y `scripts/build-contra-emulador.mjs` (B-217) hace la misma afirmación sobre el `dist/events.json` de verdad, en el paso 4 del gate: entre el valor de retorno de `construirIndice` y el archivo que sube al Hosting están el `JSON.stringify` y la serialización del endpoint |
+| Que el sitio público vuelva a copiar el anillo de foco a mano, o escriba el nombre del sitio literal | `estilos-del-sitio.test.ts` (**B-257**). El anillo estaba copiado **doce veces** y la clase del enlace acentuado cinco: la copia que se escriba con un typo deja **un** control sin foco visible, y eso no lo ve nadie que use el mouse, no lo dice el compilador y no lo dice ningún chequeo de contraste. Ahora sale de `src/components/sitio/estilos.ts` y esto lo sostiene, **con las dos mitades**: que nadie lo escriba a mano, y que todo archivo con un enlace o un botón lo importe — porque «no lo escribe a mano» también lo cumple una página sin foco en ninguna parte. La segunda mitad barre `NOMBRE` y `BAJADA` literales (D-141). `src/components/publico/*` queda fuera de alcance **a propósito**: son componentes de React y esto barre markup `.astro`. `src/pages/index.astro` **entró al alcance en B-113**: la exclusión decía «es de otro frente» y dejó de serlo cuando la home empezó a importar `claseEnlace` para la tira de meses — una exclusión que ya no hace falta es una exclusión que tapa lo próximo que entre por ahí || Que el `events.json` que se sube salga del `where('estado','==','publicado')` y no lleve los campos recortados | `events-json-endpoint.integracion.test.ts` (B-218) siembra una publicada y las tres que no son públicas —borrador, cancelada, pendiente— y afirma sobre el JSON que devuelve el endpoint. **De integración y no de texto a propósito:** un `grep` al fuente buscando la cláusula pasaría con la cláusula escrita mal (`'Publicado'`, `'!='`, el campo renombrado). Y `scripts/build-contra-emulador.mjs` (B-217) hace la misma afirmación sobre el `dist/events.json` de verdad, en el paso 4 del gate: entre el valor de retorno de `construirIndice` y el archivo que sube al Hosting están el `JSON.stringify` y la serialización del endpoint |
 | Que **alguna salida del sitio vuelva a recortar una imagen** | `afiche.test.ts` (**B-263**, D-147). Reemplaza al aserto que ataba la página de detalle al token `--aspect-portada`, y es más fuerte por dos motivos: barre **todos** los `.astro` del sitio en vez de un archivo —así la página que se escriba el mes que viene entra sola— y prohíbe la **operación** (`object-cover`, una proporción escrita a mano) en vez de exigir un número. Un número compartido no impedía que un consumidor lo usara con `cover` y otro con `contain`, que es como volvería la divergencia que B-249 quería frenar. Cubre además la lógica pura: una medida corrupta (`alto: 0`) tiene que dar «no sé» y no `aspect-ratio: 720 / 0`, que es la imagen desaparecida con el build en verde |
 | Que la **cartelera** publique algo que la página de detalle no publique, o que se arme listando el bucket | `cartelera.test.ts` y el `describe` de la cartelera en `barrido-de-salidas-publicas.test.ts` (**B-265**). La salida 7 **deriva de la 6**, así que la afirmación de fondo es de forma y no una lista: **todo string del afiche tiene que estar en el JSON del detalle**. Si alguien le pasa a la pared la `ActividadPublica` o el documento «para tener un dato que el view-model no trae», se pone rojo aunque el barrido de centinelas siga pasando. Y la trampa propia de una página de imágenes —armarla con un `listAll()` sobre `imagenes/`, que no pasa por ninguna proyección y trae los flyers de lo que está en borrador (trampa 13)— tiene su aserto explícito. Fija además **cuál** imagen se muestra (**B-268**): la que tiene el flag `portada`, no la primera cargada. La versión anterior afirmaba el comportamiento —`imagenes[0]`— en vez del invariante, y por eso el bug pasó por dos salidas sin que nada fallara |
 | Que el flyer se vuelva **obligatorio** para publicar | `flyer-en-el-panel.test.ts` (**B-264**). Es la fila rara de esta tabla: no frena un bug, frena una *mejora* que sería un error. Todo el cambio empuja a cargar el flyer y el empujón se convierte en traba con una línea —agregar `imagenes` a la validación de publicación de D-120—; bloquear la publicación por una imagen frena que se carguen actividades, que es peor que una actividad sin flyer. El mismo archivo fija que el editor no vuelva a «Opcional» y que la ayuda no vuelva a describir pantallas que ya no existen (B-267) |

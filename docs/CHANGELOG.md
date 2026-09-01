@@ -1,5 +1,74 @@
 # Changelog
 
+## 2026-09-01 · qué hay este mes, y la home ofrece suscribirse
+
+Dos ítems independientes que salieron juntos y terminan en el mismo lugar: **el
+pie de la home**. B-113 y B-231.
+
+**1 · Las páginas de mes, `/agenda/{aaaa-mm}`** — B-113,
+[D-155](06-decisiones.md). «Qué hay este mes» es una forma real de mirar la
+agenda, y el §2.2 del diseño ya la había acotado. Las cuatro condiciones viven en
+`src/lib/mesPublico.ts`, que es puro y recibe el reloj por parámetro: solo el mes
+en curso y los siguientes, solo con **3 o más** actividades, fuera de la
+navegación, y cuando el mes termina se emite **una última vez** con aviso, salida
+y `noindex` en vez de devolver 404 sobre una URL que estuvo indexada.
+
+El corte de tres no es un número redondo: con una o dos actividades la página es
+un casi-duplicado de la home **compitiendo en Google con la página de detalle de
+cada una**, así que resta. Y el horizonte hacia adelante sale de los datos y no de
+un número de meses —un ciclo cargado para marzo del año que viene tiene su
+página—.
+
+**Cero lecturas nuevas de Firestore.** Todo sale del `indiceDelSitio()`
+memoizado, que ya arman la home y el `events.json`: el §3 del diseño dice «tres
+artefactos con una sola lectura» y las páginas de mes son un cuarto que no cambia
+el número. Quién entra en cada mes lo decide `filtrarPublico` con `cuando` puesto
+en la clave, o sea **el mismo filtro «Cuándo» de la home**, así que
+`/agenda/2026-09` y `/?cuando=2026-09` no pueden contestar distinto.
+
+**El ciclo que cruza dos meses** es la mitad difícil, y se resolvió recortando la
+**entrada** y no cada frase: `recorteDelMes` devuelve la misma actividad con solo
+las sesiones de ese mes, así que el bloque de fecha, «ya empezó» y el orden de la
+página hablan del mes sin que ninguna frase tenga que enterarse. Lo único que
+viaja aparte es el total de encuentros, porque «Ciclo de 4 encuentros» en
+septiembre cuando son ocho no es un recorte: es información falsa sobre lo que
+alguien está por decidir. La frase quedó «Ciclo de 8 encuentros · 4 en septiembre,
+del 3 al 24».
+
+Dos extracciones que el cambio pidió y no inventó: `MarcadorDeMes` sale de
+`ListaDeActividades` —la página de mes pinta el mismo marcador— y `mesDesplazado`
+sale a `fechasPublicas.ts`, donde `mesesDesde` lo reusa: la aritmética de meses
+estaba escrita a mano y la página vencida la necesitaba **hacia atrás**, donde la
+versión vieja se corría de mes.
+
+Queda afuera el enlace desde el detalle («más en septiembre» del §2.2): **B-280**,
+porque `[slug].astro` lo estaba tocando otro frente. Y el aviso del mes vencido
+tendrá que apuntar a `/pasadas` cuando exista: **B-281**.
+
+**2 · La home ofrece suscribirse** — B-231, y cierra [D-134](06-decisiones.md).
+`SuscribirseResumen` estaba escrito desde B-230 y sin cablear. Va abajo del
+listado, que es donde la decisión se toma, con tres detalles que tienen aserto:
+fuera del contenedor que la island reemplaza al hidratar, visible **también** con
+el listado vacío o filtrado a cero —que es cuando más sirve—, y a lo ancho de
+`main` porque habla de la agenda entera.
+
+**Y una salida pública nueva, que el `auditor-privacidad` contó antes del commit**
+— B-282. La página de mes no publica ni un campo que el `events.json` no publique
+ya, pero es una **página indexada más** y no estaba en ninguno de los tres índices
+de salidas (`07-seguridad.md`, la ficha del agente, el skill `campo-nuevo`): un
+cambio futuro a `mesPublico.ts` no habría despertado al auditor por nombre de
+archivo. Es el agujero de la salida 5 del 2026-08-27, repetido — de índice, no de
+cobertura. Ahora son **ocho** en los tres lugares, con `tests/agentes-y-skills.test.ts`
+atándolos. El mismo auditor pidió el barrido de centinelas de la salida nueva —una
+de sus frases interpola títulos de actividades, y `e.searchText` en lugar de
+`e.titulo` estaba a un carácter—, que la plantilla dejara de importar el lector del
+índice (D-140) y que su lista de campos permitidos fuera blanca y no negra.
+
+Cada guarda se probó cambiando el código: 22 mutaciones, todas mueren. Dos
+sobrevivieron en la primera vuelta y obligaron a arreglar **los tests**, no el
+código — el orden se probaba con un fixture donde las dos formas de ordenar daban
+lo mismo, y el cableado de `cicloDelMes` no lo miraba nadie.
+
 ## 2026-09-01 · los flyers: dejan de recortarse, dejan de estar escondidos, y tienen pared propia
 
 Tres cambios que son uno solo, y arrancan de un número: **42 actividades

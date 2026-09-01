@@ -21,7 +21,9 @@ fragmentos de código son ilustrativos.
 > | §3 los datos · §3.2 credenciales | ✅ — y las tres salidas del build hacen **una sola** lectura, en `src/lib/contenidoDelSitio.ts` |
 > | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
-> | §4.4 hubs · §4.5 pasadas, calendario, acerca, 404 | ❌ — frentes siguientes |
+> | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ❌ — frente siguiente (**B-108**) |
+> | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155** |
+> | §4.5 pasadas, calendario, acerca, 404 | 🟡 — `/suscribirse` es el «calendario» (**D-134**); `/pasadas`, `/acerca` y `/404` ❌ |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
@@ -182,6 +184,15 @@ mirar la agenda, pero **acotada**:
   rompe:** el build emite la página del mes pasado una última vez con un aviso
   "este mes ya pasó" y link a `/pasadas`, y sale del sitemap. Nunca un 404 sobre
   una URL que estuvo indexada.
+
+> ⚠️ **Construida el 2026-09-01 (B-113), con cuatro desvíos — ver D-155 en
+> [`06-decisiones.md`](06-decisiones.md).** Las cuatro condiciones de arriba se
+> cumplen tal cual. Lo que cambió es cómo se bajan tres cosas que este documento
+> da por construidas y todavía no lo están: el aviso del mes vencido manda a `/` y
+> no a `/pasadas` (no existe — B-109, y queda anotado como **B-281**), «sale del
+> sitemap» se implementó como `noindex` porque sitemap tampoco hay, y la tira de
+> la home incluye el **mes en curso** además de los siguientes, para que su página
+> no quede sin ningún link interno. El cuarto desvío es del §7.5 y está abajo.
 
 ### 2.3 Lo que decidimos que **no** es URL
 
@@ -1034,6 +1045,13 @@ Una actividad, una tarjeta (§2.2). Sin excepciones y en todas las vistas.
   cada uno muestra *las fechas de ese mes*: `/agenda/2026-09` dice "4 encuentros
   en septiembre, del 3 al 24". Es la misma tarjeta con el subtítulo recalculado,
   no una tarjeta distinta.
+
+  > ⚠️ **Construido en B-113 y con el total adelante — D-155.** La frase quedó
+  > «Ciclo de 8 encuentros · 4 en septiembre, del 3 al 24»: el literal de arriba
+  > pierde cuántos encuentros tiene el ciclo, que es el dato con el que alguien
+  > decide si se anota. Lo que sí se cumple entero es la mitad importante — la
+  > misma fila, el subtítulo recalculado, y las fechas, el bloque de fecha y el
+  > orden de la página salen del **recorte al mes** y no del ciclo entero.
 - En el filtro por mes desde la home, igual: un ciclo matchea el mes si alguna
   sesión cae ahí.
 - `esCiclo: true` con una sola sesión: se confía en el flag (el dueño puede estar

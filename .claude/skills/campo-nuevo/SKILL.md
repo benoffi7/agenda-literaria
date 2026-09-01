@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **siete** salidas, una por una:
+1. **¿Es público?** Resolvé las **ocho** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -29,6 +29,7 @@ no se pueden deshacer después.
    | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts` |
+   | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
@@ -105,6 +106,7 @@ condicionado por un flag, el flag manda y sin dato no se inventa el campo (D-15)
 | …y la **tarjeta** lo tiene que decir | `src/lib/tarjetaPublica.ts` — que esté en el índice no lo pone en la tarjeta. Ahí se decide la frase, y ahí se testea; el componente solo acomoda, y qué campos de la entrada puede tocar directo es una lista cerrada en `tests/listado-del-sitio.test.ts` |
 | la salida 6 | `src/lib/detallePublico.ts` — la página de detalle **no ve el documento**, solo este view-model (D-140), así que un campo que no se agregue acá no aparece aunque esté en `toPublic` |
 | la salida 5 | `src/lib/textoRedes.ts` — el `Pick` de `ActividadParaRedes` |
+| la salida 8 | nada: la página de mes recibe `EntradaDeIndice[]`, así que hereda lo que decidas en la salida 1. Lo único que se decide acá es si el campo tiene que entrar en alguna de las tres frases de `src/lib/mesPublico.ts` — y si entra, se suma al barrido de esa salida |
 
 **El barrido te va a decir si te olvidaste de decidir**: `tests/barrido-de-salidas-publicas.test.ts`
 exige que el fixture tenga el campo nuevo y falla en las **dos** direcciones —si
