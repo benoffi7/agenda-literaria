@@ -57,6 +57,29 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'color-por-tipo-de-actividad',
+    fecha: '2026-09-01',
+    version: '1.5.0',
+    titulo: 'Elegís de qué color escribe el sitio cada tipo de actividad',
+    detalle:
+      'En «Opciones», cada tipo de actividad tiene ahora un botón «Color» con doce tintas. El ' +
+      'color se ve en el sitio, en la cajita que abre cada fila del listado, así que un taller y ' +
+      'un club de lectura se distinguen de un vistazo. Si no elegís nada, sale solo del nombre ' +
+      'del tipo.',
+    donde: 'Botón «Opciones» arriba del listado, en «Tipo de actividad»',
+  },
+  {
+    id: 'filtro-de-arancel-en-el-listado',
+    fecha: '2026-09-01',
+    version: '1.5.0',
+    titulo: 'Podés filtrar el listado por arancel, y encontrar las gratis de una',
+    detalle:
+      'El botón «Filtros» tiene un desplegable nuevo de arancel, al lado de «Tipo». Contesta «¿qué ' +
+      'tengo publicado que sea gratis?», que el buscador no podía: el arancel no es parte del texto ' +
+      'que busca. «Gratis» y «A la gorra» aparecen primero, igual que en el sitio.',
+    donde: 'Listado, botón «Filtros»',
+  },
+  {
     id: 'varias-formas-de-cursar',
     fecha: '2026-08-28',
     version: '1.5.0',

@@ -561,9 +561,15 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'El botón «Filtros» abre cinco: estado, tipo, modalidad, barrio y fechas. Se cruzan ' +
-          'entre sí y se combinan con el buscador. El número al lado del botón dice cuántos hay ' +
-          'puestos, para que un filtro olvidado no parezca un listado vacío.',
+          'El botón «Filtros» abre seis: estado, tipo, arancel, modalidad, barrio y fechas. Se ' +
+          'cruzan entre sí y se combinan con el buscador. El número al lado del botón dice ' +
+          'cuántos hay puestos, para que un filtro olvidado no parezca un listado vacío.',
+      },
+      {
+        texto:
+          'El de arancel es el que contesta «¿qué tengo publicado que sea gratis?». Buscarlo por ' +
+          'texto no funciona: el buscador mira el título, la descripción, el lugar y los nombres, ' +
+          'no el arancel. «Gratis» y «A la gorra» aparecen primero, igual que en el sitio.',
       },
       {
         texto:
@@ -620,6 +626,25 @@ export const CAPITULOS: CapituloAyuda[] = [
           'Las opciones base —«Gratis», «A la gorra», «Arancelado» y las demás que vienen de ' +
           'fábrica— no se pueden renombrar ni borrar. Suelen estar cableadas en la lógica del ' +
           'sitio, así que cambiarlas rompería más de lo que arregla.',
+      },
+      {
+        texto:
+          'Los tipos de actividad tienen además un botón «Color», que decide con qué tinta ' +
+          'escribe el sitio esa categoría en el listado. Es la única cosa que se puede cambiar ' +
+          'de una opción base: «Taller» y «Charla» no se pueden renombrar ni borrar, pero sí ' +
+          'pintar.',
+      },
+      {
+        texto:
+          'Los doce colores que ofrece son todos los que hay, y es a propósito: cualquiera de ' +
+          'ellos se lee bien sobre el fondo del sitio. Por eso no hay un selector de color libre ' +
+          '— con uno se podría elegir un amarillo con el que el nombre de la categoría no se lea.',
+      },
+      {
+        texto:
+          'Si no elegís ninguno, el color sale del nombre interno del tipo. Eso vale también ' +
+          'para un tipo que crees vos con «Otro»: nace con su propio color en vez de nacer sin ' +
+          'color. «Automático» vuelve a ese estado.',
       },
       {
         texto:
