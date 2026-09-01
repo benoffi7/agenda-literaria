@@ -293,10 +293,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'En «Opcional» podés cargar hasta cuatro imágenes, cada una con un epígrafe si querés. ' +
-          'Una queda marcada como portada: esa es la que se ve al compartir el link de la ' +
-          'actividad. Por ahora se pegan direcciones de imágenes que ya estén publicadas en otro ' +
-          'lado; subir fotos desde el teléfono todavía no está.',
+          'En «Qué es» podés cargar hasta cuatro imágenes: el flyer y, si querés, fotos del ' +
+          'lugar o de ediciones anteriores. Una queda marcada como portada, y esa es la que se ' +
+          've al compartir el link y la que aparece en la cartelera. Se pueden pegar direcciones ' +
+          'de imágenes que ya estén en otro lado, o subir un archivo desde el teléfono.',
       },
       {
         texto:
@@ -633,7 +633,7 @@ export const CAPITULOS: CapituloAyuda[] = [
     id: 'que-es',
     titulo: 'Qué es',
     seccionFormulario: 'Qué es',
-    paraQue: 'El tipo, el título y la descripción. Va primero porque el resto del formulario se acomoda a lo que elijas acá.',
+    paraQue: 'El tipo, el título, la descripción y el flyer. Va primero porque el resto del formulario se acomoda a lo que elijas acá.',
     puntos: [
       {
         texto:
@@ -667,6 +667,43 @@ export const CAPITULOS: CapituloAyuda[] = [
           '«publicado» sale al sitio y al calendario, «cancelado» saca los eventos del calendario ' +
           'pero conserva la actividad acá.',
         cuidado: true,
+      },
+      {
+        texto:
+          'El flyer no es obligatorio y nunca frena la publicación, pero es lo que más cambia: ' +
+          'con imagen la actividad entra en la cartelera del sitio, que es la página donde están ' +
+          'todos los flyers uno al lado del otro, y el link se comparte con algo para mirar. Sin ' +
+          'imagen la actividad se publica igual, pero en la cartelera no está.',
+      },
+      {
+        texto:
+          'Se pueden cargar hasta cuatro imágenes: pegando la dirección de una que ya está en ' +
+          'otro sitio, o subiendo un archivo tuyo con «Subir una imagen». Las dos conviven en la ' +
+          'misma lista y se ven igual en el sitio.',
+      },
+      {
+        texto:
+          'Para subir: JPG o PNG, hasta 3 MB cada una y hasta cuatro por actividad. Una foto ' +
+          'sacada con el celular sin recortar casi siempre pasa los 3 MB; si el panel la ' +
+          'rechaza, te dice cuánto pesa y cuánto es el máximo.',
+      },
+      {
+        texto:
+          'Al subir una foto se le quitan los datos ocultos que traen las fotos, entre ellos ' +
+          'el lugar exacto donde se sacó. Si el taller es en una casa, esa dirección no se ' +
+          'publica sin que nadie se dé cuenta.',
+        cuidado: true,
+      },
+      {
+        texto:
+          '«Portada» es la que se ve al compartir el link y la que va a la cartelera. Es una ' +
+          'sola: elegir otra desmarca la anterior.',
+      },
+      {
+        texto:
+          'Las imágenes se muestran enteras y nunca recortadas, así que un flyer vertical se ve ' +
+          'completo: el título y la fecha que están escritos adentro no se pierden. Lo único que ' +
+          'se limita es el alto, para que la ficha de la actividad no quede fuera de la pantalla.',
       },
     ],
   },
@@ -913,7 +950,7 @@ export const CAPITULOS: CapituloAyuda[] = [
     id: 'opcional',
     titulo: 'Opcional',
     seccionFormulario: 'Opcional',
-    paraQue: 'Etiquetas, imágenes y destacado. Nada de esto es obligatorio, pero las etiquetas son las que hacen que la gente encuentre la actividad.',
+    paraQue: 'Etiquetas y destacado. Nada de esto es obligatorio, pero las etiquetas son las que hacen que la gente encuentre la actividad. Las imágenes se mudaron a «Qué es».',
     puntos: [
       {
         texto:
@@ -924,30 +961,6 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'Escribí la etiqueta como querés que se lea, con la mayúscula donde va: se muestra tal ' +
           'cual en el sitio y en el calendario.',
-      },
-      {
-        texto:
-          'Las imágenes se pueden cargar de dos maneras: pegando la dirección de una que ya ' +
-          'está en otro sitio, o subiendo un archivo tuyo con «Subir una imagen». Las dos ' +
-          'conviven en la misma lista y se ven igual en el sitio.',
-      },
-      {
-        texto:
-          'Para subir: JPG o PNG, hasta 3 MB cada una y hasta cuatro por actividad. Una foto ' +
-          'sacada con el celular sin recortar casi siempre pasa los 3 MB; si el panel la ' +
-          'rechaza, te dice cuánto pesa y cuánto es el máximo.',
-      },
-      {
-        texto:
-          'Al subir una foto se le quitan los datos ocultos que traen las fotos, entre ellos ' +
-          'el lugar exacto donde se sacó. Si el taller es en una casa, esa dirección no se ' +
-          'publica sin que nadie se dé cuenta.',
-        cuidado: true,
-      },
-      {
-        texto:
-          '«Portada» es la que se ve al compartir el link y en la tarjeta del listado. Es una ' +
-          'sola: elegir otra desmarca la anterior.',
       },
       { texto: '«Destacar» es para que la actividad salga en la portada del sitio.' },
     ],
@@ -1187,8 +1200,7 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'Las secciones «Material», «Opcional» y «Difusión» arrancan cerradas para que el ' +
           'formulario no sea infinito. Se abren tocando el título, y la que abras o cierres ' +
-          'queda así para la próxima.' +
-          'cerradas para que el formulario no sea infinito. Se abren tocando el título.',
+          'queda así para la próxima.',
       },
     ],
   },

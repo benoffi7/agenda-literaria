@@ -35,6 +35,7 @@ import {
 } from '@/lib/formulario/etiquetas';
 import { guardarActividad } from '@/lib/formulario/guardar';
 import { faltaParaPublicar } from '@/lib/schema';
+import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
 interface Props {
@@ -135,6 +136,13 @@ export function ActividadFormulario({
     () => resumirFaltantes(faltaParaPublicar(form).map((i) => i.path.join('.'))),
     [form],
   );
+
+  /**
+   * Y lo que **conviene** tener, que no frena nada — B-264. Es el tercer nivel
+   * de la barra: el flyer no entra ni en «no se puede guardar» ni en «no se va a
+   * poder publicar», y sin decir nada el campo se quedaba vacío (2 de 42).
+   */
+  const recomendaciones = useMemo(() => recomendacionesDelFormulario(form), [form]);
 
   const irASeccion = (id: IdSeccion) =>
     setAperturas((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
@@ -357,6 +365,7 @@ export function ActividadFormulario({
         fallo={fallo}
         faltantes={faltantes}
         pendientesParaPublicar={pendientesParaPublicar}
+        recomendaciones={recomendaciones}
         esEdicion={Boolean(inicial)}
         onCancelar={onCancelar}
         onGuardarBorrador={() => void guardar('borrador')}

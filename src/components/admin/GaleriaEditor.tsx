@@ -329,9 +329,20 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
         </>
       )}
 
+      {/*
+        B-264 — el texto de abajo era «sin imagen, la tarjeta del sitio no reserva
+        un hueco gris: se ve igual de bien», y desde D-146 el listado no tiene
+        tarjetas ni portadas, así que describía una pantalla que ya no existe **y
+        además tranquilizaba justo donde había que empujar**.
+
+        Ahora dice qué se pierde, con las dos consecuencias verificables mirando
+        el sitio: la cartelera se arma con las que tienen imagen y el `og:image`
+        del detalle sale de la portada.
+      */}
       <p className="text-xs text-tinta/55">
         {imagenes.length === 0
-          ? 'Sin imagen, la tarjeta del sitio no reserva un hueco gris: se ve igual de bien.'
+          ? 'Sin imagen la actividad se publica igual, pero no aparece en la cartelera del ' +
+            'sitio y el link se comparte sin nada que mirar.'
           : `Para quien no puede ver la imagen, y para Google, se usa el título de la actividad${
               tituloActividad ? ` («${tituloActividad}»)` : ''
             }. El epígrafe es aparte y se muestra debajo de la foto.`}
