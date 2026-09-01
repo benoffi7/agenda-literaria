@@ -145,11 +145,21 @@
   --color-regla: oklch(0.8313 0.0388 30.05); /* #e0bfb9 — outline-variant, decorativa */
 
   /*
-   * La proporción de una portada, en un solo lugar — B-249. Sobrevive al
-   * rediseño porque la página de detalle sigue mostrando la foto cuando la hay;
-   * lo que ya no existe es la portada **generada** (ver D-146).
+   * **`--aspect-portada` se retiró en B-263 (D-147), y no se reemplaza.**
+   *
+   * Existía desde B-249 para que la misma imagen no tuviera dos recortes en dos
+   * lugares. El problema que resolvía es real; la forma era la equivocada. Un
+   * número compartido igual recorta —valía 16/9 y los flyers del circuito son
+   * 0,87, así que la página de detalle perdía el 51 % de la imagen— y además no
+   * impedía que un consumidor lo usara con `object-cover` y otro con
+   * `object-contain`, que es como la divergencia volvería.
+   *
+   * Lo reemplaza `claseAfiche` en `components/sitio/estilos.ts`, que comparte la
+   * **regla** en vez del número: ninguna salida recorta, el alto se topea y la
+   * proporción sale de cada imagen (`lib/afiche.ts`). No se declara un token de
+   * proporción nuevo a propósito: cualquier valor único vuelve a ser un recorte
+   * para alguna forma de imagen.
    */
-  --aspect-portada: 16 / 9;
 
   /* Altura mínima de un blanco táctil. 44px es el mínimo de las guías de
      Apple; Material pide 48. Se usa en todo control que se toque con el dedo. */

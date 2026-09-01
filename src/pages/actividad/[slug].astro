@@ -81,7 +81,9 @@
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
+import { estiloDeAfiche } from '@/lib/afiche';
 import {
+  claseAfiche,
   claseBloque,
   claseBloqueFecha,
   claseBotonPrimario,
@@ -247,15 +249,23 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
       <div class="min-w-0 lg:col-span-8">
         {
           /*
-            La portada, con **relación de aspecto fija** (D-144). Es lo que permite
-            traerla arriba sin que un flyer vertical de Instagram empuje la fecha
-            fuera de la pantalla: el alto de la caja no depende del alto de la
-            imagen.
+            La portada, **entera y con el alto topeado** — B-263, D-147.
 
-            **La proporción sale de `--aspect-portada` y no se escribe acá**
-            (B-249). Hoy es la única imagen del sitio —el listado dejó de tener
-            portadas con D-146— pero el token se queda: es lo que impide que
-            alguien elija un recorte distinto al agregar la segunda.
+            Hasta acá iba en una caja de `--aspect-portada` (16/9) con
+            `object-cover`. Los flyers reales son verticales —0,87— así que se
+            perdía el 51 % de la imagen, arriba y abajo: justo el título, la fecha
+            y cómo anotarse, que en un flyer están tipografiados adentro del JPEG.
+
+            Lo que D-144 necesitaba no era fijar la **proporción** sino topear el
+            **alto**, y eso es lo que hace `claseAfiche` con su `max-h`. La
+            premisa del §4.3 —«un flyer vertical empuja la fecha fuera de la
+            pantalla»— sigue atendida, y ahora sin cortar nada.
+
+            La proporción la pone `estiloDeAfiche` desde `ancho`/`alto` de **esta**
+            imagen: reserva la caja exacta y no hay salto de layout. Cuando no se
+            conocen —una externa cargada antes de B-263— no se reserva nada, que
+            es preferible a inventar una caja que dejaría el flyer encogido para
+            siempre y no solo hasta que cargue.
 
             **Y es opcional de verdad** (corrección 1 de `stitch-detalle.md`): sin
             imagen no hay hueco, ni placeholder, ni portada generada. La página
@@ -268,11 +278,12 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                 alt={`Imagen de ${detalle.titulo}`}
                 width={portada.ancho ?? undefined}
                 height={portada.alto ?? undefined}
+                style={estiloDeAfiche(portada)}
                 loading="eager"
                 fetchpriority="high"
                 decoding="async"
                 referrerpolicy="no-referrer"
-                class="aspect-portada w-full border border-borde bg-hondo object-cover"
+                class={claseAfiche}
               />
               {portada.epigrafe && (
                 <figcaption class="body-sm mt-1.5 text-super">{portada.epigrafe}</figcaption>

@@ -147,6 +147,33 @@ export const claseBloqueFecha =
   'flex min-w-14 flex-col items-center justify-center px-2 py-1.5 text-papel';
 
 /**
+ * Un afiche: la imagen de una actividad, **entera y sin recortar** — B-263.
+ *
+ * Es la clase que reemplaza al token `--aspect-portada` de B-249, y lo sustituye
+ * por una garantía más fuerte. El token compartía **un número** entre los
+ * consumidores para que la misma imagen no tuviera dos recortes; esta clase
+ * comparte **la regla**: nadie recorta. Un token no impedía que un consumidor lo
+ * usara con `object-cover` y otro con `object-contain` —que es cómo la
+ * divergencia volvería— y esto sí, porque el `object-fit` viaja adentro.
+ *
+ * Las tres piezas, y ninguna es decorativa:
+ *
+ * | Pieza | Qué hace |
+ * |---|---|
+ * | `object-contain` | la red: si la caja y la imagen no coinciden, sobra papel a los costados, **nunca falta imagen** |
+ * | `max-h-[70svh]` | el tope de alto, que es lo que D-144 necesitaba de verdad. `svh` y no `vh` por lo mismo que el panel de filtros de D-143: con la barra retráctil de un navegador móvil, `vh` mide de más |
+ * | `w-full` | la imagen ocupa la columna. Una más angosta se agranda, y eso se acepta: los flyers del circuito salen de Instagram y vienen de 1080 de ancho |
+ *
+ * La proporción **no** está acá: es un dato de cada imagen y la pone
+ * `estiloDeAfiche` (`lib/afiche.ts`). Escribirla en la clase sería volver al
+ * número único para imágenes de formas distintas, que es el bug de B-263.
+ *
+ * El borde y la capa tonal son la física del sistema —una regla separa, no una
+ * sombra— y el fondo solo se ve cuando el tope de alto muerde.
+ */
+export const claseAfiche = 'block max-h-[70svh] w-full border border-borde bg-hondo object-contain';
+
+/**
  * Un campo: **la etiqueta apoyada sobre una regla de 1px, sin caja**.
  *
  * La caja aparece solo al enfocar, que es lo que el sistema pide. Se consigue con
