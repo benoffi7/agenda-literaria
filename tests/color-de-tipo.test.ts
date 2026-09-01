@@ -14,15 +14,19 @@ import {
   colorDeTipo,
   colorDelTono,
   colorDelTonoSrgb,
+  contrasteCaladoDelTono,
   contrasteDelTono,
   esTonoElegible,
   revisarTono,
   tonoDeTipo,
   tonoLegible,
 } from '@/lib/identidad';
-import { estiloDeTipo, tonosDeTipo } from '@/lib/listadoPublico';
+import { detalleDeActividad } from '@/lib/detallePublico';
+import { estiloDeTipo, tonosDeTipo, type TonosDeTipo } from '@/lib/listadoPublico';
 import baseCruda from '@/lib/opciones-base.json';
-import type { ValorOpcion } from '@/types/actividad';
+import { toPublic } from '@/lib/toPublic';
+import { TIPOS_ACTIVIDAD, type TipoActividad, type ValorOpcion } from '@/types/actividad';
+import { actividadDePrueba } from './fixtures/indice';
 
 /**
  * El color del tipo de actividad: que **ninguno de los posibles** sea ilegible
@@ -153,6 +157,134 @@ describe('los 360 tonos posibles del tipo de actividad pasan AA — D-150', () =
     const amarilloClaro = oklchASrgb(0.9, 0.15, 100);
     const peorSuperficie = srgb(tokenDeCss('hondo'));
     expect(contraste(amarilloClaro, peorSuperficie)).toBeLessThan(AA_TEXTO);
+  });
+});
+
+/**
+ * La **otra** dirección de la misma tinta — B-273 (D-153).
+ *
+ * En el listado la cajita del tipo es **el color como texto** sobre el papel; en
+ * la cabecera del detalle es tinta plena con **el papel calado encima**. Son dos
+ * pares de contraste distintos y el sistema visual los tabula por separado
+ * (`docs/referencias/sistema-visual.md`), justamente porque un color puede pasar
+ * en uno y no en el otro.
+ *
+ * Lo que el bloque de arriba garantiza es el primero. Éste es el segundo, y se
+ * recorre sobre los mismos **360** por el mismo motivo: el matiz de un tipo que
+ * todavía no existe lo va a decidir un slug que todavía no existe.
+ */
+describe('los 360 tonos sostienen el papel calado encima — B-273 (D-153)', () => {
+  const PAPEL = srgb(tokenDeCss('papel'));
+
+  it('el papel del cálculo es el token de la hoja, no un blanco cualquiera', () => {
+    /*
+     * Control de anclaje. El papel del sitio **no es blanco puro** (`#fbf9f4`), y
+     * medir contra `#ffffff` daría siempre un número un poco mejor que el real.
+     * `contrasteCaladoDelTono` usa la copia de `SUPERFICIES`, que el primer
+     * describe de este archivo ata a `global.css`; acá se cierra el círculo
+     * comparando el resultado contra el token leído de la hoja.
+     *
+     * MUTACIÓN PROBADA: hacer que `contrasteCaladoDelTono` mida contra
+     * `oklchASrgb(1, 0, 0)` —blanco puro— hace fallar este caso en varios tonos.
+     */
+    for (const t of [0, 90, 191, 250, 359]) {
+      expect(contrasteCaladoDelTono(t), `tono ${t}`).toBeCloseTo(
+        contraste(PAPEL, colorDelTonoSrgb(t)),
+        10,
+      );
+    }
+  });
+
+  it('ninguno de los 360 deja el texto calado por debajo del piso', () => {
+    /*
+     * El caso que B-273 necesitaba y no existía: hasta acá la cajita del detalle
+     * iba en `azul`, una tinta fija y ya medida (6,14:1 calado, en la tabla del
+     * sistema visual). Con el color de la categoría el par pasa a depender del
+     * matiz, o sea de algo que se elige desde Opciones y que mañana puede derivar
+     * de un slug nuevo.
+     *
+     * MUTACIÓN PROBADA: subir `L_DEL_TIPO` de 0,42 a **0,55** deja **112 de los
+     * 360** por debajo de 4,5 —el peor, el 192, en 4,31:1— y este caso los
+     * enumera. Con **0,53** todavía pasan los 360, así que la mutación localiza el
+     * borde y no es un «cualquier cambio lo rompe».
+     *
+     * Lo que este caso **no** hace es fallar solo: la dirección de texto es más
+     * estricta (ya se cae en L=0,50), así que una banda aflojada la pone en rojo
+     * primero. Su valor propio es otro y está en los dos casos de al lado — que el
+     * par medido sea el de la pantalla, y cuánto margen tiene *este* par, que el
+     * otro caso no puede decir.
+     */
+    const flojos = TONOS.map((t) => ({ t, ratio: contrasteCaladoDelTono(t) }))
+      .filter((x) => x.ratio < AA_TEXTO)
+      .map((x) => `tono ${x.t}: ${x.ratio.toFixed(2)}:1 con el papel encima`);
+
+    expect(
+      flojos,
+      `estos tonos no llegan a ${AA_TEXTO}:1 con el papel calado encima (la cabecera ` +
+        'del detalle). La banda (L y C de `identidad.ts`) es lo que hay que bajar.',
+    ).toEqual([]);
+  });
+
+  it('el margen del peor se mide, y hoy es más cómodo que el del listado', () => {
+    /*
+     * El número, escrito: el peor de los 360 calado es el **tono 191** con
+     * **7,27:1**. Es mejor que el 5,90:1 de la dirección de texto y mejor que el
+     * 6,14:1 que daba el `azul` fijo que había antes, así que el cambio de B-273
+     * no gasta contraste: lo gana.
+     *
+     * Se afirma un piso holgado y no el número exacto, como el caso gemelo de
+     * arriba, para no tener que tocar el test por una centésima de la conversión.
+     *
+     * MUTACIÓN PROBADA: `L_DEL_TIPO = 0,50` deja el peor calado en **5,25:1** —o
+     * sea que el caso del piso de arriba sigue en verde, los 360 pasan— y **éste**
+     * se pone rojo. Es la mutación que separa «pasa» de «pasa con margen», que es
+     * la lección de los `*-container` del sistema visual.
+     */
+    const peor = Math.min(...TONOS.map(contrasteCaladoDelTono));
+    expect(peor).toBeGreaterThan(7);
+  });
+
+  it('el calado nunca puede ser el par que falla primero, y por eso `revisarTono` alcanza', () => {
+    /*
+     * `revisarTono` mide **solo** la dirección de texto, y no es un olvido: no
+     * puede existir un tono que pase esa y falle ésta.
+     *
+     * El motivo es de construcción y no de medición. `contrasteDelTono` es el
+     * **mínimo** contra las tres superficies, y `papel` es una de las tres; el
+     * calado es el contraste contra `papel` a secas. Un mínimo de un conjunto
+     * nunca es mayor que uno de sus elementos, así que `calado ≥ texto` para
+     * cualquier color, cualquier `L` y cualquier `C`. Verificarlo con números
+     * sería un caso que no puede fallar.
+     *
+     * Lo que **sí** se puede romper es la premisa: que el papel esté entre las
+     * superficies que el mínimo recorre. Eso es lo que este caso fija.
+     *
+     * MUTACIÓN PROBADA: sacar la entrada `papel` de `SUPERFICIES` deja el archivo
+     * entero en rojo antes de correr un caso —`identidad.ts` no llega a cargar,
+     * porque busca el papel por nombre y no lo encuentra— con el mensaje apuntando
+     * a la línea. Es más ruidoso que un caso rojo y está bien que lo sea: sin
+     * papel entre las superficies, `revisarTono` deja de cubrir el calado y no hay
+     * un color «casi» correcto que salvar.
+     *
+     * Este caso queda igual, para las dos mutaciones más silenciosas: renombrar la
+     * entrada (`'papel-claro'`) o reordenar la lista y volver a tomar el primero
+     * por índice.
+     */
+    expect(SUPERFICIES.map((s) => s.nombre)).toContain('papel');
+    expect(
+      SUPERFICIES.map(({ oklch }) => srgb(oklch)),
+      'el papel del calado tiene que ser una de las superficies del mínimo',
+    ).toContainEqual(PAPEL);
+  });
+
+  it('el detector distingue: un color claro no sostiene el papel calado', () => {
+    /*
+     * Control negativo, el gemelo del que ya tiene la dirección de texto: los
+     * asertos de arriba afirman listas vacías, y una lista vacía es también lo que
+     * devuelve un cálculo que no calcula. Un ocre claro —el fondo sobre el que
+     * nadie calaría texto blanco— tiene que dar por debajo del piso.
+     */
+    expect(contraste(PAPEL, oklchASrgb(0.85, 0.12, 85))).toBeLessThan(AA_TEXTO);
   });
 });
 
@@ -420,6 +552,55 @@ describe('lo que el sitio pinta sale de un solo lugar', () => {
     expect(estiloDeTipo(mapa, 'taller').color).toBe(colorDelTono(195));
     expect(estiloDeTipo(mapa, 'charla').color).toBe(colorDelTono(TONOS_DE_TIPO.charla!));
     expect(estiloDeTipo(mapa, 'encuentro').color).toBe(colorDelTono(TONOS_DE_TIPO.encuentro!));
+  });
+
+  it('el detalle y el listado pintan la categoría con el mismo color — B-273', () => {
+    /*
+     * **El caso que B-273 no tenía.** La cajita del listado y la de la cabecera
+     * del detalle son la misma pieza para quien navega, y hasta este cambio eran
+     * dos derivaciones distintas: una llamaba a `estiloDeTipo` y la otra escribía
+     * `bg-azul` a mano. El síntoma no lo veía ningún test —las dos pantallas se
+     * verifican por separado— y sí lo veía cualquiera que tocara una fila.
+     *
+     * Se comparan los dos valores producidos, no las dos funciones: es lo que
+     * sigue siendo cierto el día que alguna de las dos cambie de forma.
+     *
+     * MUTACIÓN PROBADA: devolverle a `detalleDeActividad` un `tipoColor:
+     * 'var(--color-azul)'` fijo hace fallar este caso en los cinco tipos; hacer
+     * que ignore `tonos` —`colorDeTipo(a.tipo)` a secas, que es el bug con otra
+     * cara— lo hace fallar solo en el bloque del matiz elegido, que es justo el
+     * que existe para eso.
+     */
+    const AHORA = new Date('2026-09-01T12:00:00Z');
+    const detalleCon = (tipo: TipoActividad, tonos: TonosDeTipo) =>
+      detalleDeActividad(toPublic(actividadDePrueba({ tipo }), 'act_1'), {}, AHORA, tonos);
+
+    // 1 · sin nada elegido: los dos derivan, y derivan igual.
+    for (const tipo of TIPOS_ACTIVIDAD) {
+      expect(detalleCon(tipo, {}).tipoColor, tipo).toBe(estiloDeTipo({}, tipo).color);
+    }
+
+    /*
+     * 2 · con un matiz elegido. Es la mitad que importa: sin `tonos`, el detalle
+     * derivaría del slug mientras el listado usa lo elegido, y el salto de color
+     * volvería **solo para los tipos que alguien pintó a mano** — o sea invisible
+     * hasta que se usa la pantalla de Opciones, que es para lo que existe.
+     */
+    const elegidos: TonosDeTipo = { taller: 195 };
+    expect(detalleCon('taller', elegidos).tipoColor).toBe(estiloDeTipo(elegidos, 'taller').color);
+    expect(detalleCon('taller', elegidos).tipoColor).toBe(colorDelTono(195));
+    // Y un tipo que no está en el mapa sigue derivando, en las dos pantallas.
+    expect(detalleCon('charla', elegidos).tipoColor).toBe(estiloDeTipo(elegidos, 'charla').color);
+
+    /*
+     * 3 · un tipo creado desde «Otro», que es el modo de falla que D-150 persigue.
+     * El cast es deliberado: `TipoActividad` enumera los cinco del día uno, pero
+     * `tipo` es taxonomía autogestionada y en `/opciones/tipo` hay más (`feria`,
+     * `libreria-a-la-calle`) y mañana habrá otro.
+     */
+    const inventado = 'ciclo-de-cine' as TipoActividad;
+    expect(detalleCon(inventado, {}).tipoColor).toBe(estiloDeTipo({}, inventado).color);
+    expect(detalleCon(inventado, {}).tipoColor).toMatch(/^oklch\(/);
   });
 
   it('el color que se pinta y el que se mide son el mismo', () => {
