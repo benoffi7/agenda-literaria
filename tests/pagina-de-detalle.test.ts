@@ -237,6 +237,32 @@ describe('la home', () => {
     expect(islands).toEqual([['Buscador', 'load']]);
   });
 
+  it('del lector importa SOLO el índice y los tonos — lista blanca, como el detalle', () => {
+    /*
+     * La home tenía **solo** la lista negra de acá abajo, y no ataja el atajo más
+     * corto: `const { actividades, opciones } = await contenidoDelSitio()` compila,
+     * no nombra ningún prohibido, y entrega el array de `ActividadPublica` —con
+     * `online.url` cuando el flag está en true— más las opciones **crudas**, con
+     * `huellaCreador`, `usos` y `aprobada`. Es el mismo agujero que el detalle cerró
+     * con lista blanca en B-227, y del que la home se salvaba por tener un solo
+     * símbolo importado.
+     *
+     * Desde B-273 son dos (`tonosDelSitio`), que es cuando la lista blanca deja de
+     * ser gratis y empieza a servir. Lo pidió el `auditor-privacidad`.
+     *
+     * MUTACIÓN PROBADA: agregar `contenidoDelSitio` al import hace fallar este caso;
+     * la lista negra de abajo lo deja pasar.
+     */
+    const imp = /import \{([^}]*)\} from '@\/lib\/contenidoDelSitio'/.exec(src);
+    expect(imp, 'la home tiene que importar del lector con llaves').not.toBeNull();
+    expect(
+      imp![1]!
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean),
+    ).toEqual(['indiceDelSitio', 'tonosDelSitio']);
+  });
+
   it('tampoco ve el documento crudo', () => {
     const codigo = sinComentarios(src);
     for (const prohibido of ['firebase-admin', 'adminDb', 'toPublic', 'difusion', 'createdBy']) {

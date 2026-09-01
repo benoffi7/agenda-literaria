@@ -1061,10 +1061,14 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
    */
   const AHORA = new Date('2026-08-20T15:00:00Z');
   /*
-   * Los matices elegidos (D-153). Con centinela adentro **a propósito**: el
-   * `tipoColor` que sale al detalle se arma con este mapa, así que si algún día
-   * el color dejara de ser un `oklch(...)` derivado y empezara a copiar algo del
-   * documento, el barrido lo vería. El slug es el del centinela de tipo.
+   * Los matices elegidos (D-153). Con un matiz adentro y no vacío, para que el
+   * barrido corra sobre un `tipoColor` **elegido** y no sobre el derivado — que es
+   * la rama que la pantalla usa cuando alguien pintó el tipo desde Opciones.
+   *
+   * Acá no hay ningún centinela y no puede haberlo: `TonosDeTipo` es
+   * `Record<string, number>`, así que por este mapa no entra una cadena. Que el
+   * color no copie nada del documento lo detecta el barrido por el otro lado —los
+   * campos del documento **sí** son centinelas—, no por este fixture.
    */
   const TONOS = { presentacion: 195 };
   const detalleDe = (over = {}) =>

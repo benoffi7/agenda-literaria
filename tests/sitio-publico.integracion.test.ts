@@ -257,3 +257,76 @@ describe.skipIf(!vivo)('las etiquetas del detalle no se filtran por aprobación 
     expect(indice.opciones.arancel ?? []).toEqual([]);
   });
 });
+
+/**
+ * La otra mitad de la asimetría de D-30, y va al revés — **B-273 (D-153)**.
+ *
+ * Lo pidió el `auditor-privacidad` al cerrar B-273: la **etiqueta** del detalle se
+ * resuelve con la lista **sin filtrar** (el describe de arriba) y el **color** con
+ * la **filtrada**. Son dos decisiones opuestas sobre el mismo documento, y la de
+ * arriba tenía test y la de abajo no.
+ *
+ * Que el color vaya filtrado es el arreglo entero de B-273: la cajita del detalle
+ * tiene que pintar **lo mismo** que la del listado, y el listado solo puede usar la
+ * lista filtrada —es la que viaja en el `events.json` y la que la island vuelve a
+ * leer al hidratar—. Con la lista sin filtrar, un tipo pendiente de aprobar pintaría
+ * el matiz elegido en el detalle y el derivado en el listado: el salto de color de
+ * vuelta, ahora **solo para los tipos pendientes**, o sea invisible.
+ */
+describe.skipIf(!vivo)('el color del detalle sale de la lista filtrada (§4.3, D-153)', () => {
+  const SLUG = 'sitio-pendiente-color';
+  /** Un tipo que existe en la taxonomía, tiene matiz elegido y **no está aprobado**. */
+  const TIPO_PENDIENTE = { slug: 'ciclo-de-cine', label: 'Ciclo de cine', tono: 195 };
+
+  beforeAll(async () => {
+    await limpiarFirestore();
+    const db = getFirestore(initializeApp({ projectId: 'agenda-literaria' }, 'sitio-color'));
+    await db
+      .doc('actividades/sitio-color')
+      .set(documento({ slug: SLUG, estado: 'publicado', tipo: TIPO_PENDIENTE.slug as never }));
+    await db.doc('opciones/tipo').set({
+      valores: [{ ...TIPO_PENDIENTE, orden: 9, fijo: false, usos: 1, aprobada: false }],
+    });
+    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    olvidarContenido();
+  }, 30_000);
+
+  afterAll(async () => {
+    await limpiarFirestore();
+    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    olvidarContenido();
+  });
+
+  it('el detalle pinta el derivado del slug, no el matiz de la opción pendiente', async () => {
+    /*
+     * MUTACIÓN PROBADA: hacer que `tonosDelSitio` derive de `contenidoDelSitio()`
+     * crudo en vez del índice devuelve `oklch(0.42 0.105 195)`, o sea el matiz que
+     * la opción pendiente tiene guardado, y este caso lo dice.
+     */
+    const { caminosDeDetalle } = await import('@/lib/contenidoDelSitio');
+    const { colorDeTipo, colorDelTono } = await import('@/lib/identidad');
+    const [camino] = await caminosDeDetalle(new Date('2026-08-20T15:00:00Z'));
+
+    expect(camino!.props.detalle.tipoColor).toBe(colorDeTipo(TIPO_PENDIENTE.slug));
+    expect(camino!.props.detalle.tipoColor).not.toBe(colorDelTono(TIPO_PENDIENTE.tono));
+  });
+
+  it('y es exactamente el que pinta la fila del listado, que es de lo que se trata', async () => {
+    /*
+     * El aserto que cierra B-273 contra datos de verdad: los dos lados salen del
+     * **mismo** `indiceDelSitio()`, así que no puede haber dos colores. Sin este
+     * caso, el de arriba pasaría igual con un listado pintando otra cosa.
+     */
+    const { caminosDeDetalle, indiceDelSitio } = await import('@/lib/contenidoDelSitio');
+    const { estiloDeTipo, tonosDeTipo } = await import('@/lib/listadoPublico');
+    const [camino] = await caminosDeDetalle(new Date('2026-08-20T15:00:00Z'));
+    const indice = await indiceDelSitio();
+
+    expect(camino!.props.detalle.tipoColor).toBe(
+      estiloDeTipo(tonosDeTipo(indice.opciones), TIPO_PENDIENTE.slug).color,
+    );
+    // Control positivo: la opción pendiente **no** está en los chips (§4.3), así que
+    // lo de arriba no pasa por casualidad de que sí estuviera.
+    expect(indice.opciones.tipo ?? []).toEqual([]);
+  });
+});

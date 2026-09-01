@@ -1305,9 +1305,20 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
  * | `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 y la vista previa | `Record<slug, label>` |
  * | `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar | `Record<slug, label>` |
  * | `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`) | 6 — el detalle y su JSON-LD | `Record<slug, label>` |
+ * | `tonosDeTipo` (`src/lib/listadoPublico.ts`) | 1 (el HTML del listado) y 6 (la cabecera del detalle) | `Record<slug, tono>` |
  *
- * **Eran tres y son cuatro** (B-270): el de la salida 6 lo encontró el
- * `auditor-privacidad`, y era el único sin nada que nombrara qué puede leer.
+ * **Eran tres, fueron cuatro (B-270) y son cinco (B-273).** El de la salida 6 lo
+ * encontró el `auditor-privacidad` y era el único sin nada que nombrara qué puede
+ * leer; el quinto entró con B-273, cuando el color de la categoría pasó a pintarse
+ * también en el detalle.
+ *
+ * ── El quinto no lee el documento, y por eso es seguro ────────────────────
+ * `tonosDeTipo` recibe `OpcionPublica[]`, o sea la **salida** de `opcionesPublicas`
+ * y no la taxonomía cruda: estructuralmente no puede alcanzar `huellaCreador`,
+ * `usos` ni `aprobada`, porque no están en lo que recibe. Es la misma herencia que
+ * hace segura a la salida 7 (la cartelera proyecta el `DetallePublico`, no el
+ * documento). Está en la lista igual, porque un camino que no se cuenta es uno que
+ * nadie mira el día que cambie de entrada.
  *
  * ── Por qué no se unifican ────────────────────────────────────────────────
  * Los dos primeros podrían compartir algo; el tercero **no puede**, y eso es lo
@@ -1322,19 +1333,20 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
  * publica**. Si alguno agrega `.usos` para ordenar los chips, o `.huellaCreador`
  * para «mostrar quién la creó», este test lo nombra. Lo pidió el
  * `auditor-privacidad` al notar que la tabla de `07-seguridad.md` atribuía todo a
- * `opcionesPublicas`, que no interviene en dos de los tres caminos.
+ * `opcionesPublicas`, que no interviene en tres de los cinco caminos.
  *
- * ── `tono` es de uno solo de los tres, y por eso la lista es por camino ───
+ * ── `tono` es de dos de los cinco, y por eso la lista es por camino ──────
  * D-150 agregó el matiz de la categoría, que **sí es público** —el sitio lo
- * necesita para pintar el color— pero solo lo lleva el `events.json`. Los otros
- * dos caminos producen un `Record<slug, label>` para resolver una etiqueta: un
+ * necesita para pintar el color— y lo llevan **dos**: `opcionPublica`, que lo
+ * emite al `events.json`, y `tonosDeTipo`, que lo consume de ahí para pintar (B-273).
+ * Los otros tres producen un `Record<slug, label>` para resolver una etiqueta: un
  * color ahí no tendría dónde ir, así que leerlo sería el síntoma de que alguien
  * está por publicarlo en una salida que no lo pidió.
  *
  * Escribir `PERMITIDAS` como una lista sola habría sido lo cómodo, y habría
- * abierto los tres caminos de una vez por un campo que necesita uno.
+ * abierto todos los caminos de una vez por un campo que necesita dos.
  */
-describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () => {
+describe('clase de B-212 · los cinco caminos de una opción leen lo mismo', () => {
   const CAMINOS = [
     // El `events.json` es el único que publica el color de la categoría (D-150).
     { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica', permitidas: ['slug', 'label', 'tono'] },
@@ -1357,6 +1369,14 @@ describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () =
       funcion: 'etiquetasDelDetalle',
       permitidas: ['slug', 'label'],
     },
+    /*
+     * El quinto, de B-273. Es el que el docblock de arriba anticipaba —«el reflejo
+     * del próximo cambio: pintemos la categoría también en el detalle»— y entró por
+     * donde correspondía: `etiquetasDelDetalle` sigue leyendo `['slug','label']` y
+     * el color va por su propio camino, que además parte de la lista **ya
+     * proyectada**. Se cuenta igual: lo que no está en esta lista no lo mira nadie.
+     */
+    { archivo: 'src/lib/listadoPublico.ts', funcion: 'tonosDeTipo', permitidas: ['slug', 'tono'] },
   ];
 
   /** Lo que **algún** camino puede leer. Lo que ninguno puede sale de restarlo. */
@@ -1397,7 +1417,7 @@ describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () =
     return corte === -1 ? resto : resto.slice(0, corte + 1);
   };
 
-  it('los tres caminos existen, y la lista de campos prohibidos salió del modelo', () => {
+  it('los cinco caminos existen, y la lista de campos prohibidos salió del modelo', () => {
     /*
      * Control positivo en las dos mitades. Sin la primera, el `it` de abajo
      * recorrería cuerpos vacíos; sin la segunda, compararía contra una lista
