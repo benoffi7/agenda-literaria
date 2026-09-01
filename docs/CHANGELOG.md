@@ -90,10 +90,29 @@ quedan en **B-274**: un descarte no puede sobrevivir a su razón sin que nadie l
 
 ### Mutaciones
 
-**Veinticinco, todas atrapadas**, y una que se escapó a la primera pasada: bajar el
-piso por defecto de `revisarTono` de 4,5 a 3 no rompía ningún test, porque con la
-banda de hoy ningún matiz baja de 5,90 y el cambio no altera ninguna llamada posible.
-Se cerró afirmando el default **sobre el fuente**, con el motivo escrito al lado.
+**Treinta y cuatro, todas atrapadas** — pero una recién después de escribirle el
+test que le faltaba: bajar el piso por defecto de `revisarTono` de 4,5 a 3 **no
+rompía nada**, porque con la banda de hoy ningún matiz baja de 5,90 y el cambio no
+altera ninguna llamada posible. Es el mismo agujero que el parámetro `piso` vino a
+tapar, un nivel más arriba. Se cerró afirmando el default **sobre el fuente**, con
+el motivo de por qué ese caso no se puede ejecutar escrito al lado.
+
+Las otras treinta y tres, por grupo: nueve sobre la banda y la derivación (subir la
+`L`, romper la copia de las superficies, aflojar `esTonoElegible` de tres maneras,
+confiar en el tono guardado, meter un matiz de otra banda en el selector, escribir
+la `L` a mano en el color, poner un tipo inexistente en la tabla); cinco sobre lo
+que se publica y lo que se pinta (el `tono` sin validar, el `tono` siempre, el borde
+de otro color, el filtro del consumidor, la cajita volviendo a `text-azul`); cuatro
+sobre el guardado (saltear el chequeo, no poder tocar una base, guardar `null` en vez
+de borrar la clave, dejar `tocaFijas` abierto por default); cuatro sobre el mensaje y
+el piso; cuatro sobre los filtros del sitio (el eje al tercer puesto, el orden por
+cantidad, el desempate, sacar «a la gorra»); cinco sobre el filtro del panel; y dos
+sobre los arreglos de los auditores.
+
+Una de las cuatro del sitio **también se escapó al principio**, y no por el test sino
+por el fixture: los dos «Gratis» entraban antes que «A la gorra», así que perder el
+desempate por cantidad daba igual el orden correcto por casualidad. Se arregló dando
+vuelta el orden de llegada, con el motivo anotado al lado del array.
 
 ## 2026-09-01 · la display pasa a Fraunces
 
