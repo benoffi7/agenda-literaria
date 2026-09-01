@@ -18,7 +18,7 @@ otra salida** en vez de derivar del documento.
 | 3 | El issue en el repo público de GitHub | `functions/reportes.js` |
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
-| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y el `where`). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**) |
+| 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y, desde **B-110**, sus **dos** cláusulas de estado —publicado y cancelado— más `estuvoPublicada`, que resuelve contra `/versiones` cuando el id del evento ya se borró). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**). Es la única salida donde un documento que no está publicado produce HTML, y lo hace bajo la condición del §7.3 del diseño: solo si estuvo publicada alguna vez (**D-159**) |
 | 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). La plantilla solo acomoda |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
@@ -388,6 +388,14 @@ sitio», y en la página de detalle el link **no** sale ni con el flag en true
 (D-139): la casilla prometía una pantalla que nunca lo muestra. Se corrigió el
 texto y no el comportamiento, porque el argumento de D-139 es asimétrico — un
 evento de Calendar se reescribe al destildar, un HTML indexado no se despublica.
+
+**Y la cancelada que estuvo publicada es la misma salida 6, con el mismo barrido**
+(B-110): `tests/barrido-de-salidas-publicas.test.ts` corre el barrido de centinelas
+sobre ese caso con el link de la reunión publicado a mano —el peor combinado:
+casilla tildada, actividad cancelada, página indexada para siempre— y con **la
+misma** lista de permitidos, que es la afirmación: una cancelada publica ni más ni
+menos que una viva. Mutación probada: copiar `online.url` en el view-model hace
+fallar ese `it` igual que el de la actividad viva.
 
 **Y la salida real es una sola: la descripción del evento de Calendar.** El ítem
 B-240 decía «al `events.json` y al evento», y al `events.json` no va: `toPublic`
@@ -926,7 +934,7 @@ que la del documento padre**, y no hay camino desde ahí a una salida pública:
 |---|---|
 | Quién puede leerla | solo un admin — `allow read: if esAdmin()` |
 | Quién puede escribirla | nadie desde el cliente — `allow write: if false`, solo el Admin SDK |
-| ¿Llega al `events.json`? | **no.** El build lee la colección `/actividades`, y una query de colección **no** trae subcolecciones. `toPublic.ts` nunca la ve. |
+| ¿Llega al `events.json`? | **no.** `toPublic.ts` nunca ve una versión. El build **sí** consulta la subcolección desde B-110, pero solo su existencia — ver abajo. |
 | ¿Llega a Google Calendar? | **no.** `calendario.js` recibe el documento de la actividad, no sus versiones. |
 
 O sea: un admin que lee una versión ya podía leer los mismos campos en el
@@ -938,6 +946,36 @@ subcolecciones (`getCollections()`, `collectionGroup('versiones')`), pasaría a
 tener en mano documentos con `difusion` y `online.url` de todas las actividades.
 Cualquier lectura nueva ahí tiene que quedar afuera de lo que se proyecta al
 JSON.
+
+**Y desde B-110 el build sí toca esta subcolección** — es exactamente el caso que
+el párrafo de arriba anticipaba, con la condición que pedía, cumplida.
+`contenidoDelSitio.ts` necesita saber si una actividad cancelada **estuvo
+publicada alguna vez** (la heurística del `calendarEventId` que propone el §7.3 del
+diseño no sobrevive: el sync la borra al cancelar — **D-159**). La lectura es:
+
+```js
+ref.collection('versiones')
+   .where('documento.estado', '==', 'publicado')
+   .limit(1)
+   .select()      // ← sin argumentos: devuelve el id y NINGÚN campo
+   .get();
+```
+
+y lo que sale de ahí es un `boolean`. `difusion` y `online.url` de esas versiones
+no llegan a la memoria del build, y mucho menos a una proyección.
+
+**Se verifica sobre el fuente y no sobre el comportamiento, porque el
+comportamiento no lo distingue:** sin el `.select()` la función devuelve
+exactamente lo mismo y la suite entera queda verde mientras el documento completo
+entra al proceso que genera el HTML. `tests/pagina-de-detalle.test.ts` exige el
+`.select()` y el `.limit(1)` en el lector, junto al chequeo que ya vigilaba el
+`where`. Mutación probada: borrarlo deja los nueve `it` de integración en verde y
+solo ese en rojo.
+
+El pedido que viene después de B-110 —«poné *cancelada el 19 de agosto* en la
+franja»— es el que rompe esto: para eso hay que sacar el `.select()` o pedir
+`guardadoEn`. Si llega, la respuesta es proyectar ese único campo, no traer el
+documento.
 
 Las reglas ya contemplaban esta subcolección desde antes de que existiera la
 Function, así que no hubo que cambiarlas.

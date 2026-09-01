@@ -704,6 +704,33 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Y si la actividad ya había estado publicada, «cancelado» tampoco borra su página del ' +
+          'sitio: la página queda, con el aviso de que se canceló arriba de todo y sin el botón ' +
+          'para anotarse, y las fechas siguen a la vista. Deja de aparecer en el listado, en la ' +
+          'búsqueda y en la cartelera, así que solo la ve quien todavía tiene el link. Es a ' +
+          'propósito: ese link circuló por Instagram y por WhatsApp, y quien lo abre tiene que ' +
+          'encontrar la respuesta a «¿se hace o no se hace?» y no una página de error. Una ' +
+          'actividad que nunca se publicó y se pasa directo a cancelada no genera ninguna página.',
+        cuidado: true,
+        atadoA: [
+          // La franja de la cancelada, con su texto propio y con prioridad sobre
+          // los otros avisos; y que la página exista solo si estuvo publicada.
+          {
+            archivo: 'tests/detallePublico.test.ts',
+            it: 'la franja lo dice, y con su propio texto: no es «se cancelaron los encuentros»',
+          },
+          {
+            archivo: 'tests/detallePublico.test.ts',
+            it: 'sin CTA: ni el botón ni el canal en texto',
+          },
+          {
+            archivo: 'tests/cartelera.test.ts',
+            it: 'una actividad CANCELADA no entra, aunque tenga flyer y fecha por venir — B-110',
+          },
+        ],
+      },
+      {
+        texto:
           'El flyer no es obligatorio y nunca frena la publicación, pero es lo que más cambia: ' +
           'con imagen la actividad entra en la cartelera del sitio, que es la página donde están ' +
           'todos los flyers uno al lado del otro, y el link se comparte con algo para mirar. Sin ' +

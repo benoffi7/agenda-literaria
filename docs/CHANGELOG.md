@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-09-01 · una actividad cancelada conserva su página, y el gate del build por fin la mira
+
+**B-110**, [D-159](06-decisiones.md). El camino ingenuo —`estado == 'publicado'`—
+hacía que cancelar una actividad que ya estaba publicada la borrara del sitio: la
+URL que estuvo tres semanas en Instagram y en Google empezaba a dar **404**, que es
+la peor respuesta posible a «¿se hace o no se hace?» — da a entender que el
+problema es de quien pregunta. Y `ayudaDelSitio.ts` ya le prometía a quien lee el
+sitio que eso no pasaba.
+
+Ahora el build también trae `estado == 'cancelado'` y, si esa actividad **estuvo
+publicada alguna vez**, genera su página con la franja «Esta actividad se canceló»
+—arriba de todos los otros avisos, incluido el de B-254—, sin CTA ni canal de
+inscripción, con las **fechas intactas** y `eventStatus: EventCancelled` en el
+JSON-LD, sin `offers`. No entra al `events.json`, ni al listado, ni a la cartelera.
+
+**El lector se amplió sin abrir la puerta a los borradores, y esa es la parte que
+importa.** La query de las publicadas no se tocó: las canceladas entran por una
+**segunda** query con su propio `==`, en vez de pasar la primera a
+`where('estado','in',[…])`. Un `in` convierte el estado en una lista, y a una lista
+alguien le agrega un elemento; con dos `==` no hay lista que crecer y lo peor que
+puede hacer un error en la query nueva es no generar ninguna página de cancelada.
+Los resultados tampoco se mezclan —`ContenidoDelSitio` gana un campo `canceladas`
+aparte—, así que el índice, los chips, el listado y la cartelera **no las reciben**
+y no pueden publicarlas aunque se olviden de filtrar.
+
+**Y apareció la parte que el diseño no había puesto a prueba.** «Estuvo publicada»
+no es un campo del modelo, y el §7.3 proponía inferirlo de que alguna sesión
+conserve `calendarEventId`. El razonamiento es correcto y el dato **se borra
+solo**: al cancelar, `syncCalendar` borra los N eventos y escribe
+`calendarEventId: null` de vuelta en cada sesión (`reponerIds`, B-80). Con esa
+heurística sola, B-110 habría pasado todos sus tests y no habría generado ni una
+página en producción. Lo que sí sobrevive es el **historial**: cancelar es un
+cambio de contenido, así que queda una versión con `documento.estado: 'publicado'`,
+y una actividad que nunca lo estuvo no puede tener ninguna. Se consulta su
+existencia con `.limit(1).select()` —id y ningún campo: una versión es el documento
+entero de aquel momento—. Falla cerrado en los dos bordes.
+
+`estado` **no** se proyecta, a diferencia de lo que B-112 anticipaba: la bandera
+llega como argumento de `detalleDeActividad`, así que `toPublic` no gana un campo y
+el `events.json` no puede publicar un estado por accidente. De paso salieron de la
+plantilla las dos últimas reglas que vivían ahí como `&&` —`mostrarCanal` y el
+texto de la fila «Inscripción»—, que con la actividad cancelada decía «Abierta
+hasta el 22 de septiembre» debajo de la franja que dice que se canceló.
+
+**El gate del build mira ahora el HTML** y no solo el `events.json`, porque el modo
+de falla de este ítem es un archivo que se genera o no se genera —y eso ningún
+unitario puede verlo: `caminosDeDetalle` devuelve rutas, Astro escribe los
+archivos—. Siembra cuatro actividades y afirma que la cancelada que estuvo
+publicada tiene su página con la franja, el `EventCancelled`, sin CTA y sin ningún
+campo privado (con `urlPublica: true` en el fixture, el peor caso combinado), y que
+la que nunca se publicó no tiene archivo.
+
+**De paso B-241**, porque B-110 lo necesitaba: el fixture del gate era anterior a
+B-224 y traía solo `modalidad`/`sede`/`online` de primer nivel, que son los
+derivados. Sin el array `modalidades` no hay `location`, sin `location` no hay
+JSON-LD, y sin JSON-LD no había sobre qué afirmar el `EventCancelled`.
+
+Lo abierto: **B-285**, el `publicadaAlgunaVez` explícito.
+
 ## 2026-09-01 · la casilla del link de la reunión dice a dónde sale
 
 **B-240**, [D-158](06-decisiones.md). La casilla del formulario decía «Publicar el

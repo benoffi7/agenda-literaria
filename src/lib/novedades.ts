@@ -57,6 +57,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cancelada-conserva-pagina',
+    fecha: '2026-09-01',
+    version: '1.5.0',
+    titulo: 'Cancelar una actividad que ya se había publicado ya no borra su página',
+    detalle:
+      'Antes, cancelar una actividad publicada hacía que su página diera error para quien ' +
+      'todavía tuviera el link. Ahora la página queda, con el aviso de que se canceló arriba de ' +
+      'todo, sin el botón para anotarse y con las fechas a la vista. Sale del listado, de la ' +
+      'búsqueda y de la cartelera: solo la ve quien ya tenía el link.',
+    donde: 'Al poner el estado en «Cancelada», en la sección «Qué es».',
+  },
+  {
     id: 'link-reunion-dice-el-calendario',
     fecha: '2026-09-01',
     version: '1.5.0',

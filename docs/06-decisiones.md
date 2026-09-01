@@ -4843,3 +4843,80 @@ La conversación queda abierta y el lugar es este documento, no un `?.url` agreg
 sin ruido. Lo que hay que saber para decidirla es lo de la tabla de arriba: el
 costo de publicar el link en el detalle no se paga el día que se publica, se paga
 para siempre.
+
+
+---
+
+## D-159 · La heurística del §7.3 no sobrevive en producción: «estuvo publicada» se prueba por el historial
+
+**B-110.** Una actividad cancelada conserva su página **solo si estuvo publicada
+alguna vez** — una que nace y muere en `cancelado` nunca fue pública, y publicarla
+ahora es filtrar un borrador por otra puerta. Eso no es un dato del modelo, y el
+§7.3 del diseño proponía inferirlo: *«alguna sesión tenga `calendarEventId`: el
+sync solo crea eventos de Calendar para actividades publicadas, así que su
+presencia prueba que estuvo publicada»*.
+
+### El razonamiento es correcto y el dato se borra solo
+
+Al pasar a `cancelado`, `debeExistir` da `false` para todas las sesiones, el sync
+borra los N eventos y —esto es lo que el §7.3 no tuvo en cuenta— **escribe
+`calendarEventId: null` de vuelta en cada sesión**. Es `reponerIds`, y no es un
+detalle de implementación: es lo que B-80 arregló, para que una edición hecha
+sobre un snapshot viejo no cree un segundo evento.
+
+Para cuando el build lee el documento, la prueba que el §7.3 pedía la borró el
+propio sync. **Con esa heurística sola, B-110 no habría generado ni una página en
+producción** — habría pasado todos sus tests y no habría hecho nada, que es la
+peor forma de cerrar un ítem.
+
+### Lo que sí sobrevive
+
+`guardarVersion` (§12) guarda el documento **anterior** a cada edición de
+contenido en `/actividades/{id}/versiones/{version}`. Cancelar es un cambio de
+contenido —`estado` no está en `CAMPOS_DE_MAQUINA` (D-41)—, así que deja una
+versión cuyo `documento.estado` es `'publicado'`. Y una actividad que nunca lo
+estuvo no puede tener ninguna: es el mismo tipo de rastro que el §7.3 buscaba, en
+el único lugar donde nada lo borra.
+
+### Cómo queda `estuvoPublicada`
+
+```
+1 · ¿alguna sesión conserva su `calendarEventId`?   → sí: estuvo publicada
+    (la heurística del §7.3, primera porque es gratis y a veces alcanza —
+     un sync que no llegó a correr, un borrado que falló)
+2 · ¿hay una versión con `documento.estado == 'publicado'`?
+    `.limit(1).select()` — pregunta de existencia
+```
+
+**No se lee un solo campo de las versiones**, y eso importa: una versión es el
+documento **entero** de aquel momento —`difusion`, `online.url`, uids,
+`storagePath`— y nada de eso tiene por qué entrar al proceso que genera un HTML
+indexado. El `.select()` sin argumentos devuelve documentos con id y nada más, y
+el valor de retorno de la función es un booleano. `tests/pagina-de-detalle.test.ts`
+lo fija sobre el fuente, porque es una propiedad de la **forma**: sin el
+`.select()` la función devuelve exactamente lo mismo y la suite entera queda
+verde.
+
+### Lo que se paga, dicho
+
+| | |
+|---|---|
+| una query por cancelada | son un puñado de documentos, y solo las canceladas la pagan. Las publicadas no leen nada nuevo |
+| el build toca la subcolección `/versiones` | es el caso que `07-seguridad.md` tenía anotado como «lo que sí hay que no hacer», con la condición que pedía cumplida: la lectura queda afuera de todo lo que se proyecta |
+| la retención de D-42 | 20 versiones por actividad. Editar una **cancelada** 20 veces empuja la versión publicada afuera y la página vuelve a dar 404. **Falla cerrado**, que es el lado correcto del error |
+| el campo explícito sigue faltando | `publicadaAlgunaVez: boolean` es lo correcto y era la decisión 4 del §11.1 del diseño. Queda en **B-285**, y no bloqueaba: sin él, esto funciona hoy y para los documentos que ya existen — que es lo que un campo nuevo **no** puede hacer |
+
+Esa última fila es la que decidió el orden. Un `publicadaAlgunaVez` escrito por el
+panel solo sirve **hacia adelante**: una actividad ya cancelada en producción no
+lo tiene, y seguiría dando 404 hasta que alguien la vuelva a guardar. El historial
+funciona retroactivamente, que es donde está el problema que B-110 vino a
+resolver.
+
+### Y el estado no se proyecta
+
+`DetallePublico` gana un `cancelada: boolean` que llega **como argumento** de
+`detalleDeActividad`, no adentro de `ActividadPublica`. Es lo contrario de lo que
+B-112 anticipaba —«`estado` en la proyección pública, lo necesita B-110»— y es
+mejor: el único que sabe de qué query salió cada documento es el lector, `toPublic`
+no gana un campo, y el `events.json` no puede publicar un estado por accidente.
+B-112 se queda con `actualizadoEn`, que sigue haciendo falta para el `lastmod`.

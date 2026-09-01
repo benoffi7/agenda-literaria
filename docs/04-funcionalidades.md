@@ -770,8 +770,8 @@ nombre accesible— además del contraste.
 
 ### El detalle — `/actividad/{slug}`
 
-Una página estática por actividad publicada, **con cero JavaScript**. Es la que
-recibe el tráfico: la mayoría cae acá desde Google o desde un link de Instagram, y
+Una página estática por actividad publicada —y por cada cancelada que llegó a
+estarlo (**B-110**)—, **con cero JavaScript**. Es la que recibe el tráfico: la mayoría cae acá desde Google o desde un link de Instagram, y
 tiene una sola pregunta — ¿esto me sirve y todavía puedo entrar?
 
 **Arriba va la portada**, si hay imagen, **entera y sin recortar** — con la
@@ -788,6 +788,20 @@ cerró o el cupo está completo. Los cuatro pueden valer a la vez y mostrarlos a
 es la forma de que no se lea ninguno, así que la prioridad —del más irreversible al
 menos— la decide el view-model y no una plantilla encadenando condiciones. Cerró un
 bug: una actividad con **todos** los encuentros cancelados decía «ya pasó» (**B-254**).
+
+**Una actividad cancelada no devuelve 404 si llegó a publicarse** (**B-110**, §7.3
+del diseño). La página se conserva, con la franja «Esta actividad se canceló»
+arriba de todo —por delante de cualquier otro aviso, porque es la única que
+contesta la pregunta con la que se entra desde un link de hace tres semanas—, sin
+botón ni canal de inscripción, con las **fechas intactas** y `eventStatus:
+EventCancelled` en el JSON-LD, sin `offers`. No entra al `events.json`, ni al
+listado, ni a la cartelera: existe solo para quien tiene el link.
+
+«Estuvo publicada alguna vez» no es un campo del modelo. Se prueba primero por que
+alguna sesión conserve `calendarEventId` —la heurística que propone el §7.3— y,
+como el propio sync la borra al cancelar, en la práctica se resuelve leyendo
+`/actividades/{id}/versiones`: si hay una versión con `estado: 'publicado'`, la
+actividad estuvo pública. Ver **D-159**.
 
 Después va «la ficha» —cuándo, dónde, cuánto, cómo me anoto— y el botón, con el
 verbo de la vía real: «Escribir por WhatsApp» a un `wa.me` con mensaje precargado,
