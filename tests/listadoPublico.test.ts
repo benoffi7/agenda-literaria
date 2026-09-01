@@ -31,7 +31,9 @@ import {
   mesesConActividad,
   ordenarPublico,
   valoresDe,
+  type Eje,
 } from '@/lib/listadoPublico';
+import { SIN_COSTO, esSinCosto, primeroSinCosto } from '@/lib/arancel';
 import { entradaDePrueba } from './fixtures/indice';
 
 /** Todo lo de este archivo se mide contra este instante. */
@@ -390,6 +392,108 @@ describe('los tres órdenes', () => {
 // ───────────────────────────────────────────────────────────────────────────
 // 5 · Chips y etiquetas
 // ───────────────────────────────────────────────────────────────────────────
+
+describe('el eje de arancel: dónde está y en qué orden — B-271, D-151', () => {
+  const gratis1 = entradaDePrueba({ slug: 'g1', arancel: 'gratis' });
+  const gratis2 = entradaDePrueba({ slug: 'g2', arancel: 'gratis' });
+  const gorra = entradaDePrueba({ slug: 'gg', arancel: 'a-la-gorra' });
+  const pagos = Array.from({ length: 9 }, (_, i) =>
+    entradaDePrueba({ slug: `p${i}`, arancel: 'arancelado' }),
+  );
+  /*
+   * El orden del array importa para el caso del desempate: «A la gorra» entra
+   * **antes** que los dos «Gratis», así que si el orden por cantidad se perdiera,
+   * el orden de llegada dejaría la gorra primera y el aserto lo vería. Con los
+   * gratis primero el bug pasaría desapercibido, que fue lo que pasó al mutarlo.
+   */
+  const todas = [...pagos, gorra, gratis1, gratis2];
+
+  it('«Gratis» y «A la gorra» van primero aunque sean minoría', () => {
+    /*
+     * §6.1 del diseño: «`Gratis` y `A la gorra` primero, siempre». Con la regla
+     * general —por cantidad— «Arancelado» (9) tapaba a «Gratis» (2), que es el
+     * chip que alguien viene a buscar. En producción la desproporción es peor:
+     * 33 arancelados contra 8 gratis.
+     *
+     * MUTACIÓN PROBADA: sacar el bloque de `eje === 'arancel'` de `chipsDe`
+     * devuelve `['Arancelado', 'Gratis', 'A la gorra']` y hace fallar este caso.
+     */
+    const chips = chipsDe('arancel', todas, filtrosVacios(), ETIQUETAS, AHORA);
+    expect(chips.map((c) => c.valor)).toEqual(['gratis', 'a-la-gorra', 'arancelado']);
+    // Y los números siguen siendo los de verdad: se reordena, no se recuenta.
+    expect(chips.map((c) => c.cantidad)).toEqual([2, 1, 9]);
+  });
+
+  it('entre los que no se pagan sigue mandando la cantidad', () => {
+    /*
+     * La regla nueva es un **primer** criterio, no un reemplazo: adentro de cada
+     * grupo se mantiene la frecuencia real (§4.3).
+     *
+     * MUTACIÓN PROBADA: devolver `sa - sb` sin caer al orden por cantidad deja
+     * `['a-la-gorra', 'gratis', …]` (el orden de llegada) y hace fallar esto.
+     */
+    const chips = chipsDe('arancel', todas, filtrosVacios(), ETIQUETAS, AHORA);
+    expect(chips.slice(0, 2).map((c) => c.cantidad)).toEqual([2, 1]);
+  });
+
+  it('la regla es solo del eje de arancel: los demás ordenan por cantidad', () => {
+    /*
+     * Control de que la excepción no se derramó. `gratis` no es un valor de
+     * `tipo`, así que ahí el orden tiene que seguir siendo el de siempre.
+     */
+    const chips = chipsDe(
+      'tipo',
+      [
+        entradaDePrueba({ slug: 'a', tipo: 'club-lectura' }),
+        entradaDePrueba({ slug: 'b', tipo: 'club-lectura' }),
+        entradaDePrueba({ slug: 'c', tipo: 'taller' }),
+      ],
+      filtrosVacios(),
+      ETIQUETAS,
+      AHORA,
+    );
+    expect(chips.map((c) => c.valor)).toEqual(['club-lectura', 'taller']);
+  });
+
+  it('lo que no se paga sale de `esSinCosto`, no de una lista escrita al lado', () => {
+    /*
+     * Dos listas de «lo que no se paga» son dos maneras de que una se olvide de
+     * «a la gorra», que es la mitad de los casos del circuito (§4.1). La fila del
+     * listado ya pinta el arancel con el acento usando esta misma función.
+     */
+    expect(SIN_COSTO).toEqual(['gratis', 'a-la-gorra']);
+    expect(esSinCosto('gratis')).toBe(true);
+    expect(esSinCosto('a-la-gorra')).toBe(true);
+    expect(esSinCosto('arancelado')).toBe(false);
+    expect(esSinCosto('')).toBe(false);
+  });
+
+  it('el arancel es el segundo eje, y el grupo de «dónde» queda entero', () => {
+    /*
+     * `Buscador` recorre `EJES` para pintar el riel, así que este array **es** el
+     * orden de la pantalla. Las dos mitades de la decisión, como dos asertos:
+     * el precio arriba (que es lo que se pidió) y las tres de lugar contiguas
+     * (que es lo que su lugar anterior rompía).
+     *
+     * MUTACIÓN PROBADA: volver `arancel` al tercer puesto hace fallar los dos.
+     */
+    expect(EJES.indexOf('arancel')).toBe(1);
+    const lugar = ['modalidad', 'barrio', 'ciudad'].map((e) => EJES.indexOf(e as Eje));
+    expect(lugar).toEqual([2, 3, 4]);
+  });
+
+  it('y el orden de la pantalla no cambia lo que la URL entiende', () => {
+    /*
+     * `aQuery` recorre `EJES`, así que reordenarlos reordena los parámetros. Una
+     * URL vieja compartida por WhatsApp tiene que seguir dando lo mismo: los
+     * parámetros son con nombre, no posicionales, y esto lo fija.
+     */
+    const { filtros } = desdeQuery('arancel=gratis&tipo=taller&modalidad=virtual');
+    expect(filtros.valores.arancel).toEqual(['gratis']);
+    expect(filtros.valores.tipo).toEqual(['taller']);
+    expect(filtros.valores.modalidad).toEqual(['virtual']);
+  });
+});
 
 describe('los chips salen de las opciones del JSON, con su número', () => {
   const taller1 = entradaDePrueba({ slug: 't1', tipo: 'taller', barrio: 'villa-crespo' });

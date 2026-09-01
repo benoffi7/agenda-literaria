@@ -15,6 +15,7 @@
  * **El reloj entra como parámetro** (`ahora`), como en `functions/rebuild.js`:
  * un test no puede depender de qué día es hoy.
  */
+import { primeroSinCosto } from '@/lib/arancel';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { normalize } from '@/lib/normalize';
 import { instanteDeTimestamp as instante, proximaVentana } from '@/lib/sesiones';
@@ -52,19 +53,33 @@ export const ETIQUETA_CUANDO: Record<Cuando, string> = {
 };
 
 /**
- * Los cinco ejes que se pueden cruzar, más el texto.
+ * Los seis ejes que se pueden cruzar, más el texto.
  *
  * `''` es "sin filtrar" en todos los que son un valor suelto. Los que guardan
- * slugs de taxonomía (`tipo`, `barrio`) guardan el slug: la etiqueta la resuelve
- * quien pinta, con las opciones que el panel ya tiene cargadas (§4.1).
+ * slugs de taxonomía (`tipo`, `barrio`, `arancel`) guardan el slug: la etiqueta la
+ * resuelve quien pinta, con las opciones que el panel ya tiene cargadas (§4.1).
  *
- * Qué **no** está y por qué, en D-74: `arancel`, `tags`, `destacado` y quién la
- * cargó.
+ * Qué **no** está y por qué, en D-74: `tags`, `destacado` y quién la cargó.
+ *
+ * ── `arancel` estaba descartado, y se revierte (B-272, D-152) ─────────────
+ * D-74 lo dejó afuera con este argumento: «es un atributo de publicación, no una
+ * forma de recordar una actividad: nadie busca "el taller arancelado"». **El
+ * argumento sigue siendo bueno para la pregunta que contestaba** —recordar cuál
+ * era— y no es esa la que se pide ahora: la pregunta es «¿qué tengo publicado que
+ * sea gratis?», que es de repaso y no de búsqueda, y esa no la contesta el
+ * buscador de texto.
+ *
+ * Lo que cambió, y está en D-152: el sitio público existe (D-74 razonaba en parte
+ * sobre que no), el arancel es un eje **del sitio** desde B-227, y quien carga
+ * necesita ver el panel como se ve el sitio para revisarlo. Lo que se paga por
+ * revertir está escrito allá: un desplegable más en una pantalla que ya tiene
+ * cinco.
  */
 export interface Filtros {
   texto: string;
   estado: Estado | '';
   tipo: string;
+  arancel: string;
   modalidad: Modalidad | '';
   barrio: string;
   cuando: Cuando;
@@ -74,6 +89,7 @@ export const FILTROS_VACIOS: Filtros = {
   texto: '',
   estado: '',
   tipo: '',
+  arancel: '',
   modalidad: '',
   barrio: '',
   cuando: 'cualquiera',
@@ -88,6 +104,7 @@ export const FILTROS_VACIOS: Filtros = {
 export const cantidadDeFiltros = (f: Filtros): number =>
   (f.estado ? 1 : 0) +
   (f.tipo ? 1 : 0) +
+  (f.arancel ? 1 : 0) +
   (f.modalidad ? 1 : 0) +
   (f.barrio ? 1 : 0) +
   (f.cuando !== 'cualquiera' ? 1 : 0);
@@ -158,6 +175,13 @@ export const filtrar = (
     if (texto && !(a.searchText ?? '').includes(texto)) return false;
     if (filtros.estado && a.estado !== filtros.estado) return false;
     if (filtros.tipo && a.tipo !== filtros.tipo) return false;
+    /*
+     * B-272 — el arancel se compara con el default de lectura puesto: una
+     * actividad vieja sin `arancel` cargado tiene `''`, y `'' !== 'gratis'` la deja
+     * afuera, que es lo correcto. Sin el `?? ''`, un documento sin el objeto
+     * `arancel` rompería el listado entero al filtrar.
+     */
+    if (filtros.arancel && (a.arancel?.tipo ?? '') !== filtros.arancel) return false;
     /*
      * B-224 — matchea si **alguna** forma de cursar es la buscada, o si lo es la
      * resultante. Con una sola modalidad es la condición de siempre; con dos, una
@@ -236,6 +260,8 @@ export const listaVisible = (
 export interface OpcionesPresentes {
   estados: Estado[];
   tipos: string[];
+  /** Slugs de arancel, con los que no se pagan primero (B-272). */
+  aranceles: string[];
   modalidades: Modalidad[];
   /** Slugs de barrio. La etiqueta la resuelve quien pinta (§4.1). */
   barrios: string[];
@@ -282,12 +308,14 @@ export { desSlug as legible } from '@calendario';
 export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresentes => {
   const estados = new Set<Estado>();
   const tipos = new Set<string>();
+  const aranceles = new Set<string>();
   const modalidades = new Set<Modalidad>();
   const barrios = new Set<string>();
 
   for (const a of actividades) {
     estados.add(a.estado);
     if (a.tipo) tipos.add(a.tipo);
+    if (a.arancel?.tipo) aranceles.add(a.arancel.tipo);
     // B-224 — se ofrece cada modalidad que la actividad tiene, no solo la
     // resultante: si no, el desplegable no ofrecería «Virtual» aunque haya una
     // actividad con una fila virtual, y el filtro de arriba sí la encontraría.
@@ -309,6 +337,16 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
     estados: [...estados].sort(porDeclaracion(ESTADOS)),
     // Es taxonomía abierta (§4): alfabético, como los barrios.
     tipos: [...tipos].sort((a, b) => a.localeCompare(b, 'es')),
+    /*
+     * B-272 — **lo que no se paga primero**, y adentro de cada grupo alfabético.
+     * Es el mismo criterio que los chips del sitio (D-151) y con el mismo
+     * comparador: si el panel ordenara alfabético a secas, «Arancelado» quedaría
+     * arriba de «Gratis» acá y abajo allá, y son la misma lista mirada por dos
+     * personas que hablan entre ellas.
+     */
+    aranceles: [...aranceles].sort(
+      (a, b) => primeroSinCosto(a, b) || a.localeCompare(b, 'es'),
+    ),
     modalidades: [...modalidades].sort(porDeclaracion(MODALIDADES)),
     barrios: [...barrios].sort((a, b) => a.localeCompare(b, 'es')),
   };

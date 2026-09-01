@@ -29,6 +29,7 @@
  * acá además hay una segunda razón — el HTML lo arma el build con **su** reloj y
  * la island lo recalcula con el de quien mira (§6.4 del diseño).
  */
+import { primeroSinCosto } from '@/lib/arancel';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { claveDeMes, nombreDeMes } from '@/lib/fechasPublicas';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
@@ -147,15 +148,37 @@ export const ORDEN_PUBLICO_POR_DEFECTO: OrdenPublico = 'proxima';
  * cada chip, la serialización a la URL y el "sacá este filtro" del estado vacío
  * los recorren: con cinco campos sueltos, agregar el sexto eje obliga a acordarse
  * de tres lugares.
+ *
+ * ── El orden es el de la pantalla, y por eso importa (B-271, D-151) ───────
+ * `Buscador` recorre esta lista para pintar el riel, así que **este array es el
+ * orden en que se ven los filtros**. Hasta B-271 `arancel` iba tercero, detrás de
+ * `modalidad`, y eso tenía dos problemas:
+ *
+ * 1. Partía el grupo de «dónde» al medio: `modalidad`, después el precio, después
+ *    `barrio` y `ciudad`. Las tres contestan la misma pregunta y estaban separadas
+ *    por una que no.
+ * 2. En el teléfono los ejes viven detrás del disclosure de D-143, topeado a
+ *    65svh con scroll propio. Con los datos de producción, arriba de `arancel`
+ *    había el select de «Cuándo» más **ocho** filas de 44px (seis tipos y dos
+ *    modalidades): su rótulo caía cerca de los 520px y «Gratis» —que es el segundo
+ *    chip, porque los chips se ordenan por cantidad y hay 33 arancelados— quedaba
+ *    abajo del corte del panel en una pantalla de 390px de ancho. El filtro estaba
+ *    y funcionaba; había que scrollear adentro del panel para encontrarlo, que es
+ *    la forma que tiene una funcionalidad de no existir.
+ *
+ * Con `arancel` segundo, el grupo de lugar queda entero y el precio entra sin
+ * scroll. El §6.1 del diseño lo ponía quinto «en orden de importancia»; el desvío
+ * está escrito en D-151.
  */
-export const EJES = ['tipo', 'modalidad', 'arancel', 'barrio', 'ciudad', 'tag'] as const;
+export const EJES = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'] as const;
 export type Eje = (typeof EJES)[number];
+
 
 /** Cómo se llama cada eje en la pantalla. Es el texto del `<legend>`. */
 export const ETIQUETA_EJE: Record<Eje, string> = {
   tipo: 'Tipo de actividad',
-  modalidad: 'Cómo se cursa',
   arancel: 'Arancel',
+  modalidad: 'Cómo se cursa',
   barrio: 'Barrio',
   ciudad: 'Ciudad',
   tag: 'Temas',
@@ -184,7 +207,7 @@ export interface FiltrosPublicos {
 export const FILTROS_PUBLICOS_VACIOS: FiltrosPublicos = {
   q: '',
   cuando: CUANDO_PROXIMAS,
-  valores: { tipo: [], modalidad: [], arancel: [], barrio: [], ciudad: [], tag: [] },
+  valores: { tipo: [], arancel: [], modalidad: [], barrio: [], ciudad: [], tag: [] },
   soloAbierta: false,
   cursada: '',
 };
@@ -192,7 +215,7 @@ export const FILTROS_PUBLICOS_VACIOS: FiltrosPublicos = {
 /** Copia con los ejes clonados: el objeto de arriba es una constante compartida. */
 export const filtrosVacios = (): FiltrosPublicos => ({
   ...FILTROS_PUBLICOS_VACIOS,
-  valores: { tipo: [], modalidad: [], arancel: [], barrio: [], ciudad: [], tag: [] },
+  valores: { tipo: [], arancel: [], modalidad: [], barrio: [], ciudad: [], tag: [] },
 });
 
 /**
@@ -480,6 +503,16 @@ export interface Chip {
  *    es lo mismo que hace el desplegable del panel con `usos` (§4.3), y con el
  *    desempate estable para que dos chips empatados no se intercambien entre
  *    renders.
+ * 4. **En `arancel`, lo que no se paga va primero** — B-271, y es el §6.1 del
+ *    diseño («`Gratis` y `A la gorra` primero, siempre») que la implementación
+ *    original no había bajado. Con la regla de frecuencia sola, «Gratis» quedaba
+ *    **segundo** detrás de «Arancelado», que en producción tiene 33 de 42: el
+ *    chip que más se busca escondido detrás del que más aparece. Y no es solo
+ *    frecuencia — «gratis» y «a la gorra» son la pregunta que alguien trae, y
+ *    «arancelado» es el resto. Lo decide `esSinCosto`, la misma función con la
+ *    que la fila pinta el arancel con el acento: dos listas de «lo que no se
+ *    paga» son dos maneras de que una se olvide de «a la gorra». El
+ *    desplegable del panel usa el **mismo** comparador (D-152).
  */
 export const chipsDe = (
   eje: Eje,
@@ -503,7 +536,13 @@ export const chipsDe = (
       elegido: filtros.valores[eje].includes(valor),
     }))
     .filter((c) => c.cantidad > 0 || c.elegido)
-    .sort((a, b) => b.cantidad - a.cantidad || a.label.localeCompare(b.label, 'es'));
+    .sort((a, b) => {
+      if (eje === 'arancel') {
+        const grupo = primeroSinCosto(a.valor, b.valor);
+        if (grupo !== 0) return grupo;
+      }
+      return b.cantidad - a.cantidad || a.label.localeCompare(b.label, 'es');
+    });
 };
 
 /** Prende o apaga un valor de un eje. Devuelve filtros nuevos, no muta. */

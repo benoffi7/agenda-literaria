@@ -32,6 +32,7 @@
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { diaYMes, hora, partesDeFecha } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
+import { esSinCosto } from '@/lib/arancel';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
 import type { Modalidad } from '@/types/actividad';
@@ -41,16 +42,15 @@ import type { Modalidad } from '@/types/actividad';
 // ─────────────────────────────────────────────────────────────────
 
 /**
- * Los aranceles que no se pagan.
+ * Los aranceles que no se pagan — **definidos en `lib/arancel.ts`** desde B-271,
+ * y re-exportados acá para que nadie tenga que cambiar de import (B-72).
  *
- * `'a-la-gorra'` está acá y **no es un caso raro**: el §4.1 del `CLAUDE.md` dice
- * que en el circuito literario es la mitad de los casos y que no entra en el
- * binario gratis/pago. Por eso la tarjeta lo pinta con el acento igual que
- * «Gratis» en vez de dejarlo en el gris del resto.
+ * Se mudaron porque los usan tres módulos y no uno: el acento de esta fila, el
+ * orden de los chips del sitio (D-151) y el del desplegable del panel (D-152).
+ * El motivo de que sea un módulo propio y no cualquiera de los tres está escrito
+ * allá.
  */
-export const SIN_COSTO: readonly string[] = ['gratis', 'a-la-gorra'];
-
-export const esSinCosto = (slugArancel: string): boolean => SIN_COSTO.includes(slugArancel);
+export { SIN_COSTO, esSinCosto } from '@/lib/arancel';
 
 export interface ArancelDeTarjeta {
   /** La etiqueta cargada en `/opciones/arancel`. Vacío si el slug no está puesto. */
