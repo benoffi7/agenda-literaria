@@ -51,7 +51,7 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 1.985 tests en 88 archivos. 79 de esos
+2. **Correr los tests.** `npm test` — 1.996 tests en 88 archivos. 79 de esos
    tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
    también **Storage**), repartidos en 7
    archivos: seis se saltean enteros y de
