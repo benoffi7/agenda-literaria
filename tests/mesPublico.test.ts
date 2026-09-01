@@ -503,7 +503,7 @@ describe('el texto de la página', () => {
   it('y la salida apunta a una página que existe', () => {
     /*
      * **El aserto que hay que mirar el día que se construya `/pasadas`.** El §2.2
-     * manda el aviso a `/pasadas`, que todavía no existe (B-109 / B-282):
+     * manda el aviso a `/pasadas`, que todavía no existe (B-109 / B-281):
      * enlazarla sería poner un 404 en la única salida que ofrece la página
      * vencida, que es peor que el problema que la página vencida resuelve.
      *
@@ -599,15 +599,88 @@ describe('la página `/agenda/[mes]`', () => {
     expect(src()).not.toMatch(/["'`]\/agenda\//);
   });
 
-  it('no le abre los campos a la entrada del índice', () => {
+  it('recibe su view-model y no importa el lector de Firestore — D-140', () => {
     /*
-     * La plantilla recibe `PaginaDeMes`, que lleva `EntradaDeIndice[]` — o sea el
-     * recorte público, pero con `searchText` adentro (la descripción entera,
-     * normalizada). Quien decide qué se muestra de una entrada es
-     * `lib/tarjetaPublica.ts`, y la fila tiene su lista blanca en
-     * `listado-del-sitio.test.ts`. Acá no se lee ni un campo.
+     * **Lo pidió el `auditor-privacidad`.** La primera versión recibía la página
+     * por props y además hacía `const indice = await indiceDelSitio()` acá para
+     * sacar las etiquetas, los matices y los otros meses. No filtraba nada, pero
+     * dejaba el índice entero —las actividades publicadas con su `searchText` y
+     * su `creadoEn`— al alcance de un `{}` en la plantilla, que es exactamente la
+     * puerta de al lado que D-140 cerró para la página de detalle: la garantía
+     * dejaba de darla el tipo y pasaba a darla un `grep` en un test.
+     *
+     * Es el mismo aserto que `pagina-de-detalle.test.ts` hace por lista blanca de
+     * imports, y se escribe igual: qué importa del lector, no qué nombres prohíbe.
+     *
+     * MUTACIÓN PROBADA: agregar `indiceDelSitio` al import de
+     * `@/lib/contenidoDelSitio` pone esto en rojo.
      */
-    expect(src()).not.toMatch(/\.entradas\[\d+\]|\bentrada\.\w|\.searchText\b/);
+    const importados = [
+      ...src().matchAll(/import\s+\{([^}]*)\}\s+from\s+'@\/lib\/contenidoDelSitio'/g),
+    ].flatMap((m) => m[1]!.split(',').map((x) => x.trim().replace(/^type\s+/, '')));
+    expect(importados.length, 'la plantilla dejó de importar el lector').toBeGreaterThan(0);
+    expect(
+      importados.sort(),
+      'la plantilla solo puede traer del lector su `getStaticPaths` y el tipo de su ' +
+        'view-model: cualquier otra cosa le pone el índice entero al alcance.',
+    ).toEqual(['VistaDeMes', 'caminosDeMes']);
+  });
+
+  it('y no le abre los campos a la entrada del índice: la lista blanca es cerrada', () => {
+    /*
+     * `VistaDeMes` no es un recorte campo por campo como `DetallePublico`: lleva
+     * `EntradaDeIndice[]` adentro, porque la fila necesita la entrada entera y ya
+     * tiene su propia lista blanca (`listado-del-sitio.test.ts`). O sea que acá la
+     * garantía **no la da el tipo**, la da esta lista — y una lista negra de tres
+     * nombres no es una garantía: `{e.resumen}` o `{e.creadoEn}` la pasan limpios.
+     * Lo señaló el `auditor-privacidad`.
+     *
+     * Se enumera al revés: **qué puede sacar la plantilla del view-model**, con la
+     * exigencia de que `entradas` viaje entera a la lista y no se abra acá.
+     *
+     * MUTACIÓN PROBADA: agregar `{pagina.entradas[0].resumen}` pone en rojo el
+     * segundo aserto; `{vista.generadoEn}` de más, el primero.
+     */
+    const LO_QUE_LA_PLANTILLA_SACA = {
+      vista: ['pagina', 'etiquetas', 'tonos', 'otros', 'generadoEn'],
+      pagina: ['clave', 'vencido', 'entradas'],
+    };
+
+    const leidosDe = (objeto: string): string[] => {
+      const puntos = [...src().matchAll(new RegExp(`\\b${objeto}\\.(\\w+)`, 'g'))].map((m) => m[1]!);
+      const desestructurados = [
+        ...src().matchAll(new RegExp(`\\{([^}]*)\\}\\s*=\\s*${objeto}\\b`, 'g')),
+      ].flatMap((m) => m[1]!.split(',').map((x) => x.trim()).filter(Boolean));
+      return [...new Set([...puntos, ...desestructurados])];
+    };
+
+    for (const [objeto, permitidos] of Object.entries(LO_QUE_LA_PLANTILLA_SACA)) {
+      const leidos = leidosDe(objeto);
+      // Control positivo: un barrido que no encuentra nada da la misma lista
+      // vacía de sobrantes que una plantilla correcta.
+      expect(leidos.length, `el barrido no encontró lecturas de \`${objeto}\``).toBeGreaterThan(1);
+      expect(
+        leidos.filter((c) => !permitidos.includes(c)),
+        `la plantilla saca esto de \`${objeto}\` y no está en la lista. Si el dato ` +
+          'necesita una decisión, va en `lib/mesPublico.ts` o en `lib/tarjetaPublica.ts`, ' +
+          'que se testean; si no, sumalo acá con el motivo.',
+      ).toEqual([]);
+    }
+
+    /*
+     * Y la mitad que la lista no puede dar: `entradas` viaja entera a la lista y
+     * **no se abre**. Sin esto, `pagina.entradas` está en la lista blanca y
+     * `pagina.entradas.map((e) => e.searchText)` la cumple.
+     */
+    expect(src()).toContain('entradas={pagina.entradas}');
+    expect(
+      src(),
+      'la plantilla abre `entradas`: indexarla, recorrerla o desestructurarla ' +
+        'esquiva la lista blanca de la fila.',
+    ).not.toMatch(/entradas\s*(\[|\.\s*(map|slice|filter|at|forEach|find))/);
+    expect(src(), 'desestructurar `entradas` esquiva la lista blanca por el mismo camino').not.toMatch(
+      /\{[^}]*\}\s*=\s*(pagina\.)?entradas\b/,
+    );
   });
 });
 

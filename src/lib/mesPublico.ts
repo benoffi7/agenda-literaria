@@ -53,7 +53,7 @@ export const MINIMO_DE_ACTIVIDADES = 3;
 /**
  * A dónde manda el aviso de un mes que ya terminó.
  *
- * El §2.2 dice `/pasadas`, **que todavía no existe** (es parte de B-109 / B-282).
+ * El §2.2 dice `/pasadas`, **que todavía no existe** (es parte de B-109 / B-281).
  * Enlazarla sería poner un 404 en la única salida que la página vencida ofrece,
  * que es peor que el problema que la página vencida resuelve. Hasta que exista,
  * manda a la home; el día que exista se cambia esta línea y nada más.

@@ -35,8 +35,8 @@ import { adminDb, hayCredenciales } from '@/lib/firebase-admin';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
 import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
-import { mesesDelSitio, type PaginaDeMes } from '@/lib/mesPublico';
-import { mapaDeEtiquetas, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
+import { mapaDeEtiquetas, tonosDeTipo, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
 import {
@@ -271,6 +271,38 @@ export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
 };
 
 /**
+ * Todo lo que la página de un mes necesita, y **nada más** — el view-model de
+ * `/agenda/[mes]` (B-113, D-140).
+ *
+ * ── Por qué la plantilla no se lee el índice ──────────────────────────────
+ * La primera versión recibía `pagina` por props y además hacía
+ * `const indice = await indiceDelSitio()` en el frontmatter, para sacar de ahí
+ * las etiquetas, los matices y los otros meses. Se veía inocente y no filtraba
+ * nada, pero dejaba **el índice entero en el alcance de la plantilla** —las
+ * actividades publicadas con su `searchText` y su `creadoEn`—, o sea justo la
+ * puerta de al lado que D-140 cerró para la página de detalle: la garantía
+ * dejaba de darla el tipo y pasaba a darla un `grep` en un test. Lo encontró el
+ * `auditor-privacidad`.
+ *
+ * Con esto, la plantilla importa **una sola función** y lo que recibe es lo que
+ * acá se decidió darle, campo por campo. No puede publicar lo que no tiene.
+ *
+ * `otros` son los meses enlazables **menos el propio**, ya recortados a lo que la
+ * navegación usa: la clave y el nombre. Mandar las `PaginaDeMes` enteras metería
+ * en cada página las entradas de todos los demás meses, que es contenido que esa
+ * página no muestra.
+ */
+export interface VistaDeMes {
+  pagina: PaginaDeMes;
+  etiquetas: MapaDeEtiquetas;
+  tonos: TonosDeTipo;
+  /** El reloj del build, en ISO. La plantilla lo reconstituye a `Date`. */
+  generadoEn: string;
+  /** Los otros meses que se pueden enlazar: solo la clave y el nombre. */
+  otros: { clave: string; nombre: string }[];
+}
+
+/**
  * Los caminos de `/agenda/[mes]`, uno por mes que pasa el corte del §2.2 — B-113.
  *
  * **No agrega una lectura de Firestore.** Sale del mismo `indiceDelSitio()` que
@@ -292,11 +324,31 @@ export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
  */
 export const caminosDeMes = async (
   ahora?: unknown,
-): Promise<{ params: { mes: string }; props: { pagina: PaginaDeMes } }[]> => {
+): Promise<{ params: { mes: string }; props: { vista: VistaDeMes } }[]> => {
   const indice = await indiceDelSitio();
   const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+
+  // Las mismas etiquetas y los mismos matices que la home: salen del índice, o
+  // sea de las opciones ya filtradas por aprobación. Ver `etiquetasDelListado`.
+  const etiquetas = mapaDeEtiquetas(indice.opciones);
+  const tonos = tonosDeTipo(indice.opciones);
+  const enlazables = mesesEnlazables(indice.actividades, instante).map((m) => ({
+    clave: m.clave,
+    nombre: m.nombre,
+  }));
+
   return mesesDelSitio(indice.actividades, instante).map((pagina) => ({
     params: { mes: pagina.clave },
-    props: { pagina },
+    props: {
+      vista: {
+        pagina,
+        etiquetas,
+        tonos,
+        generadoEn: indice.generadoEn,
+        // Una página vencida no linkea a otra vencida, y ninguna se linkea a sí
+        // misma: mandar de un mes que pasó a otro que pasó es un callejón.
+        otros: enlazables.filter((m) => m.clave !== pagina.clave),
+      },
+    },
   }));
 };

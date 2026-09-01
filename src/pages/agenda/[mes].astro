@@ -27,6 +27,15 @@
  * grande de la página— y eso deja las filas colgando de un `h1` con un `h2` de
  * por medio que no existe, más un `<title>` sin las palabras que alguien busca.
  *
+ * ── La plantilla no ve el índice: recibe su view-model (D-140) ────────────
+ * `caminosDeMes` le arma un `VistaDeMes` con **lo que muestra y nada más** — la
+ * página, las etiquetas, los matices, el reloj del build y los otros meses ya
+ * recortados a clave y nombre. La primera versión recibía la página por props y
+ * además hacía `indiceDelSitio()` acá para sacar el resto: no filtraba nada, pero
+ * dejaba el índice entero —con `searchText` y `creadoEn`— al alcance de un `{}`,
+ * que es justo la puerta que D-140 cerró para la página de detalle. Lo encontró
+ * el `auditor-privacidad`.
+ *
  * ── Sin canonical, y a propósito ──────────────────────────────────────────
  * El sitio todavía no tiene dominio (**B-109**), así que no hay URL absoluta que
  * escribir. Inventar una es la trampa que el propio B-109 advierte: una canonical
@@ -43,18 +52,15 @@
 import Base from '@/layouts/Base.astro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseBloque, claseEnlace } from '@/components/sitio/estilos';
-import { caminosDeMes, indiceDelSitio } from '@/lib/contenidoDelSitio';
+import { caminosDeMes, type VistaDeMes } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
-import { mapaDeEtiquetas, tonosDeTipo } from '@/lib/listadoPublico';
 import {
   AVISO_DEL_MES_VENCIDO,
   DESTINO_DEL_MES_VENCIDO,
   SALIDA_DEL_MES_VENCIDO,
   bajadaDelMes,
   descripcionDelMes,
-  mesesEnlazables,
   tituloDelMes,
-  type PaginaDeMes,
 } from '@/lib/mesPublico';
 import { rutaDeMes } from '@/lib/rutasPublicas';
 
@@ -69,23 +75,16 @@ export const prerender = true;
 export const getStaticPaths = () => caminosDeMes();
 
 interface Props {
-  pagina: PaginaDeMes;
+  vista: VistaDeMes;
 }
 
-const { pagina } = Astro.props;
+const { vista } = Astro.props;
+const { pagina, etiquetas, tonos, otros } = vista;
 
-const indice = await indiceDelSitio();
 // El reloj del índice, el mismo con el que `caminosDeMes` decidió qué páginas
 // emitir: con dos relojes distintos, un build a caballo de la medianoche del
 // último día del mes emite una página que la propia página considera vencida.
-const ahora = new Date(indice.generadoEn);
-const etiquetas = mapaDeEtiquetas(indice.opciones);
-const tonos = tonosDeTipo(indice.opciones);
-
-// Los otros meses que sí se pueden enlazar. La vencida no linkea a otra vencida:
-// mandar a alguien de un mes que pasó a otro que pasó es la definición de un
-// callejón. Y la lista es la misma que arma la tira de la home.
-const otros = mesesEnlazables(indice.actividades, ahora).filter((m) => m.clave !== pagina.clave);
+const ahora = new Date(vista.generadoEn);
 ---
 
 <Base
