@@ -208,6 +208,45 @@ export const tonoLegible = (tono: unknown): tono is number =>
   esTonoElegible(tono) && contrasteDelTono(tono) >= PISO_DEL_TIPO;
 
 /**
+ * El chequeo de lo que se va a guardar: `null` si el matiz sirve, y el motivo
+ * escrito si no.
+ *
+ * ── Por qué devuelve el texto y no un booleano ────────────────────────────
+ * Porque el motivo hay que decirlo. Cuatro centésimas no se ven (B-235), así que
+ * quien vea rechazado un color que en la pantalla se veía bien necesita **el
+ * ratio y el piso** para entender qué pasó. Un `false` obligaría a rearmar la
+ * frase en cada llamador, que es como nacen dos mensajes distintos para el mismo
+ * rechazo.
+ *
+ * ── Por qué el piso es un parámetro con default ───────────────────────────
+ * Es el patrón de `functions/rebuild.js` («los límites también son parámetros
+ * con default, así que un test puede bajar el máximo a 2 sin reescribir nada»),
+ * y acá hace falta por una razón puntual: **con la banda de hoy esta guarda no
+ * se puede disparar**. Los 360 matices elegibles pasan AA con margen, así que no
+ * existe un valor válido que la active, y un test que no puede activarla no
+ * verifica nada — sacarle el `throw` a esta función pasaría desapercibido.
+ *
+ * Subiendo el piso, el test recorre el camino de rechazo de verdad: el mismo
+ * cálculo, el mismo mensaje, la misma función. Y eso es exactamente lo que la
+ * guarda existe para cubrir, porque el día que se afloje la banda —una `L` más
+ * alta para que los colores se vean más vivos, un matiz de otra banda en la
+ * lista— el piso deja de ser inalcanzable sin que nadie lo haya decidido.
+ */
+export const revisarTono = (tono: unknown, piso: number = PISO_DEL_TIPO): string | null => {
+  if (!esTonoElegible(tono)) {
+    return `«${String(tono)}» no es un matiz: tiene que ser un entero de 0 a 359.`;
+  }
+  const ratio = contrasteDelTono(tono);
+  if (ratio < piso) {
+    return (
+      `Ese color da ${ratio.toFixed(2)}:1 sobre el fondo del sitio y el mínimo es ` +
+      `${piso}:1. Elegí otro: así el nombre de la categoría no se lee.`
+    );
+  }
+  return null;
+};
+
+/**
  * La banda que ofrece el selector de Opciones — doce matices con nombre.
  *
  * ── Por qué una lista de matices y no un selector de color ────────────────

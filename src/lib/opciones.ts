@@ -10,7 +10,7 @@ import base from '@/lib/opciones-base.json';
 // Firestore del chunk de login. Importarlo del módulo de auth lo trae de vuelta.
 import { db } from '@/lib/firestore-client';
 import { huellaCreador } from '@/lib/huella';
-import { PISO_DEL_TIPO, contrasteDelTono, esTonoElegible } from '@/lib/identidad';
+import { revisarTono } from '@/lib/identidad';
 import { slugify } from '@/lib/slugify';
 import {
   estaAprobada,
@@ -342,17 +342,13 @@ export const pintarOpcion = async (
     );
   }
 
-  if (!esTonoElegible(tono)) {
-    throw new Error(`«${tono}» no es un matiz: tiene que ser un entero de 0 a 359.`);
-  }
-
-  const ratio = contrasteDelTono(tono);
-  if (ratio < PISO_DEL_TIPO) {
-    throw new Error(
-      `Ese color da ${ratio.toFixed(2)}:1 sobre el fondo del sitio y el mínimo es ` +
-        `${PISO_DEL_TIPO}:1. Elegí otro: así el nombre de la categoría no se lee.`,
-    );
-  }
+  /*
+   * Un solo chequeo, y **antes** de abrir la transacción: si el color no sirve no
+   * hay nada que escribir, y fallar adentro de la transacción la haría reintentar
+   * cuatro veces antes de propagar el mismo error.
+   */
+  const mal = revisarTono(tono);
+  if (mal) throw new Error(mal);
 
   return editarValor(campo, slug, (v) => ({ ...v, tono }), { tocaFijas: true });
 };
