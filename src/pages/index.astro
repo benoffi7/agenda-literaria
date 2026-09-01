@@ -42,8 +42,11 @@ import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
+import { claseEnlace } from '@/components/sitio/estilos';
 import { indiceDelSitio } from '@/lib/contenidoDelSitio';
 import { mapaDeEtiquetas, tonosDeTipo, vigentesDelIndice } from '@/lib/listadoPublico';
+import { mesesEnlazables } from '@/lib/mesPublico';
+import { rutaDeMes } from '@/lib/rutasPublicas';
 
 const indice = await indiceDelSitio();
 /*
@@ -60,6 +63,13 @@ const tonos = tonosDeTipo(indice.opciones);
 const vigentes = vigentesDelIndice(indice, ahora);
 
 const ID_LISTADO = 'listado-del-build';
+
+/*
+ * Los meses con página propia — B-113. Sale del **mismo** índice que el listado,
+ * sin una lectura más: `mesesEnlazables` deja afuera la del mes vencido, que se
+ * emite solo para que su URL no devuelva 404 y no es algo a lo que mandar gente.
+ */
+const meses = mesesEnlazables(indice.actividades, ahora);
 
 const cuantas = vigentes.length;
 const descripcion =
@@ -138,6 +148,38 @@ const descripcion =
         )}
       </div>
     </div>
+
+    {/*
+      **La tira de meses** — B-113, §2.2 del diseño: «no va en la navegación; se
+      llega desde una tira al pie de la home».
+
+      Es la única entrada a `/agenda/{aaaa-mm}` que hay hoy, así que sin esto esas
+      páginas quedan huérfanas: sin links internos, una página estática vale casi
+      nada para un buscador aunque esté en el sitemap. El §2.2 nombra además el
+      detalle («más en septiembre») y esa mitad todavía no está — B-281.
+
+      **Incluye el mes en curso** y no solo los siguientes, que es un desvío chico
+      del «Próximos meses» del diseño: su página se genera igual, y dejarla fuera
+      de la tira sería generar una página a la que nada apunta.
+    */}
+    {
+      meses.length > 0 && (
+        <nav aria-labelledby="por-mes" class="mt-12 sm:mt-16">
+          <h2 id="por-mes" class="regla-gruesa-arriba label-caps pt-4 text-azul">
+            La agenda mes por mes
+          </h2>
+          <ul class="body-md mt-4 flex flex-wrap gap-x-6 gap-y-3">
+            {meses.map((m) => (
+              <li>
+                <a class={claseEnlace} href={rutaDeMes(m.clave)}>
+                  {m.nombre}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
 
     {/*
       **El enganche de suscripción, y va acá abajo a propósito** — B-231.

@@ -590,6 +590,14 @@ describe('la estructura del listado — D-146', () => {
     sinComentarios(readFileSync(raiz('src/components/publico/FilaDeActividad.tsx'), 'utf8'));
   const lista = () =>
     sinComentarios(readFileSync(raiz('src/components/publico/ListaDeActividades.tsx'), 'utf8'));
+  /*
+   * El marcador se extrajo a su propio archivo en B-113: la página de mes
+   * (`/agenda/2026-09`) pinta el mismo. Los tres casos de abajo siguen mirando el
+   * marcador, que ahora está acá; el de `regla-gruesa-arriba` sigue mirando la
+   * lista, porque esa regla es de la lista y no del marcador.
+   */
+  const marcador = () =>
+    sinComentarios(readFileSync(raiz('src/components/publico/MarcadorDeMes.tsx'), 'utf8'));
 
   it('la fila es una grilla de 12 columnas en escritorio', () => {
     /*
@@ -620,7 +628,7 @@ describe('la estructura del listado — D-146', () => {
      * MUTACIÓN PROBADA: poner `display-lg` en la marca del encabezado hace fallar
      * este caso.
      */
-    expect(lista()).toContain('display-lg');
+    expect(marcador()).toContain('display-lg');
 
     /*
      * Se mira el fuente **sin comentarios**: los docblocks de `Encabezado` y de
@@ -646,13 +654,13 @@ describe('la estructura del listado — D-146', () => {
       conDisplay,
       'solo el marcador de mes usa `display-lg`: es el único cuerpo de 72px de la ' +
         'página, y dos cosas al tamaño máximo es ninguna.',
-    ).toEqual(['src/components/publico/ListaDeActividades.tsx']);
+    ).toEqual(['src/components/publico/MarcadorDeMes.tsx']);
   });
 
   it('el mes cierra con la regla gruesa, que es lo que lo hace un corte', () => {
     // «2pt corta una sección mayor». La regla va en el `h2` y no en un `<hr>`
     // suelto: es el borde de abajo del marcador, así que no puede quedar separada.
-    expect(lista()).toMatch(/regla-gruesa(?!-)/);
+    expect(marcador()).toMatch(/regla-gruesa(?!-)/);
   });
 
   it('el año va aparte del mes, y no partiendo una cadena ya formateada', () => {
@@ -661,8 +669,8 @@ describe('la estructura del listado — D-146', () => {
      * lo hace `partesDeMes`, que sale de las partes de `Intl`; un `split(' de ')`
      * en el componente se rompe el día que cambie el formato del idioma.
      */
-    expect(lista()).toContain('partesDeMes');
-    expect(lista()).not.toMatch(/\.split\(/);
+    expect(marcador()).toContain('partesDeMes');
+    expect(marcador()).not.toMatch(/\.split\(/);
   });
 
   it('hay una sola definición de la regla que abre la lista', () => {

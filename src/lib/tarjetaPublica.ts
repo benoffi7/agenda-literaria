@@ -30,7 +30,7 @@
  *
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
-import { diaYMes, hora, partesDeFecha } from '@/lib/fechasPublicas';
+import { diaYMes, hora, partesDeFecha, partesDeMes } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { esSinCosto } from '@/lib/arancel';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -214,6 +214,67 @@ export const cicloDeTarjeta = (
   if (estado.paso) return estado.hasta ? `${cabeza} · terminó el ${diaYMes(estado.hasta)}` : cabeza;
   if (estado.enCurso) return estado.desde ? `${cabeza} · empezó el ${diaYMes(estado.desde)}` : cabeza;
   return estado.desde ? `${cabeza} · empieza el ${diaYMes(estado.desde)}` : cabeza;
+};
+
+/**
+ * La línea del ciclo **en una página de mes** — B-113, §7.5 del diseño.
+ *
+ * «Un ciclo que cruza dos meses aparece en los dos, y en cada uno muestra *las
+ * fechas de ese mes*». Eso es lo que dice esta frase, y es la única diferencia
+ * entre una fila de la home y la misma fila en `/agenda/2026-09`: no es otra
+ * tarjeta, es el subtítulo recalculado.
+ *
+ * ── Por qué viajan los dos estados ────────────────────────────────────────
+ * `estadoDelMes` sale del **recorte** (`recorteDelMes`), así que sus fechas y su
+ * conteo son los del mes. `estadoTotal` sale de la entrada entera, y hace falta
+ * por una sola cosa que no se puede perder: **cuántos encuentros tiene el ciclo**.
+ * Decir «Ciclo de 4 encuentros» en la página de septiembre, cuando son 8, no es
+ * un recorte: es información falsa, y es justo el error que el recorte invita a
+ * cometer.
+ *
+ * Así que la cabeza dice el total —el mismo texto que en la home— y la cola dice
+ * cuántos y cuándo caen en este mes:
+ *
+ * | Caso | Qué dice |
+ * |---|---|
+ * | ciclo de 8, 4 en septiembre | `Ciclo de 8 encuentros · 4 en septiembre, del 3 al 24` |
+ * | ciclo de 4, los 4 en septiembre | `Ciclo de 4 encuentros · del 3 al 24` |
+ * | 3 encuentros sueltos, 1 en septiembre | `3 encuentros · 1 en septiembre, el 12` |
+ * | uno solo, y no es ciclo | nada — el bloque de fecha ya lo dijo |
+ *
+ * Cuando el mes tiene todas las fechas no se repite el número: «Ciclo de 4
+ * encuentros · 4 en septiembre» le hace dudar a quien lee si son cuatro u ocho.
+ *
+ * El día del mes sale de `partesDeFecha`, con el `timeZone` del proyecto: un
+ * encuentro del 1 a las 00:30 de Buenos Aires es «31» para un navegador en UTC
+ * (trampa 1), y acá el día es el dato entero de la frase.
+ */
+export const cicloDelMes = (
+  entrada: EntradaDeIndice,
+  estadoDelMes: EstadoDeEntrada,
+  estadoTotal: EstadoDeEntrada,
+  clave: string,
+): string | null => {
+  if (estadoDelMes.encuentros === 0) return null;
+  // La misma regla que en la home: una actividad de un solo encuentro que no se
+  // declara ciclo no gana nada repitiendo la fecha que ya está en el bloque.
+  if (estadoTotal.encuentros === 1 && !entrada.esCiclo) return null;
+
+  const total = estadoTotal.encuentros;
+  const cabeza = `${entrada.esCiclo ? 'Ciclo de ' : ''}${total} ${
+    total === 1 ? 'encuentro' : 'encuentros'
+  }`;
+
+  const dia = (d: Date): string => partesDeFecha(d).dia;
+  const { desde, hasta } = estadoDelMes;
+  const tramo =
+    desde && hasta ? (dia(desde) === dia(hasta) ? `el ${dia(desde)}` : `del ${dia(desde)} al ${dia(hasta)}`) : '';
+
+  if (estadoDelMes.encuentros === total) return tramo ? `${cabeza} · ${tramo}` : cabeza;
+
+  const mes = partesDeMes(clave).mes.toLowerCase();
+  const cuantos = `${estadoDelMes.encuentros} en ${mes}`;
+  return tramo ? `${cabeza} · ${cuantos}, ${tramo}` : `${cabeza} · ${cuantos}`;
 };
 
 /**

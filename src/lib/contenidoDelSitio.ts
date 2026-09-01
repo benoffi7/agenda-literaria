@@ -35,6 +35,7 @@ import { adminDb, hayCredenciales } from '@/lib/firebase-admin';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
 import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
+import { mesesDelSitio, type PaginaDeMes } from '@/lib/mesPublico';
 import { mapaDeEtiquetas, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
@@ -267,4 +268,35 @@ export const caminosDeDetalle = async (
 export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
   const instante = ahora instanceof Date ? ahora : new Date();
   return carteleraDeDetalles(await detallesDelSitio(instante));
+};
+
+/**
+ * Los caminos de `/agenda/[mes]`, uno por mes que pasa el corte del §2.2 — B-113.
+ *
+ * **No agrega una lectura de Firestore.** Sale del mismo `indiceDelSitio()` que
+ * ya usan la home y el `events.json`, que está memoizado: el §3 del diseño dice
+ * «tres artefactos con una sola lectura», y las páginas de mes son un cuarto que
+ * no cambia el número.
+ *
+ * ── El reloj es el del índice, y eso importa acá más que en otras páginas ──
+ * `new Date(indice.generadoEn)` y no `new Date()`: cuáles meses se emiten y qué
+ * entra en cada uno se decide con **el mismo instante** que decide qué muestra la
+ * home y qué dice el `events.json`. Con dos relojes, un build que arranca a las
+ * 23:59:58 del último día del mes puede emitir la página de septiembre como
+ * vigente y la home ya en octubre — y eso se ve una vez cada treinta días, que es
+ * exactamente la frecuencia con la que nadie lo reproduce.
+ *
+ * `ahora` es tolerante por lo mismo que `caminosDeDetalle`: Astro llama a
+ * `getStaticPaths` con un argumento propio (`{ paginate, rss }`), y una plantilla
+ * que aliasee esta función en vez de envolverla lo recibiría acá (B-237).
+ */
+export const caminosDeMes = async (
+  ahora?: unknown,
+): Promise<{ params: { mes: string }; props: { pagina: PaginaDeMes } }[]> => {
+  const indice = await indiceDelSitio();
+  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+  return mesesDelSitio(indice.actividades, instante).map((pagina) => ({
+    params: { mes: pagina.clave },
+    props: { pagina },
+  }));
 };

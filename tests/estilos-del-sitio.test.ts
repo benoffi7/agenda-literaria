@@ -33,13 +33,17 @@ const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.
 /**
  * El alcance, explícito y con motivo.
  *
- * `src/pages/index.astro` y `src/components/publico/*` **no entran**: son de otro
- * frente y se estaban editando en paralelo cuando esto se escribió. La regla vale
- * igual para ellos y sumarlos es una línea; lo que no se puede es marcarlos en
- * rojo sin haberlos migrado, porque un test que nace fallando se apaga.
+ * `src/components/publico/*` **no entra**: son componentes de React y este
+ * barrido mira el markup `.astro` del sitio.
+ *
+ * **`src/pages/index.astro` entró en B-113.** Estaba excluida porque «la home es
+ * de otro frente» y no se la había migrado; hoy importa `claseEnlace` de
+ * `estilos.ts` para la tira de meses y no escribe ningún anillo a mano, así que
+ * la exclusión pasó de proteger una migración pendiente a tapar la página más
+ * mirada del sitio. Una exclusión que ya no hace falta es una exclusión que deja
+ * pasar lo próximo que entre por ahí.
  */
 const FUERA_DE_ALCANCE: Record<string, string> = {
-  'src/pages/index.astro': 'la home es de otro frente — migrarla es sumarla acá',
   'src/pages/admin.astro': 'el panel tiene su propio centralizador en campos/Campo.tsx',
 };
 
