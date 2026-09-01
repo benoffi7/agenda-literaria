@@ -1379,6 +1379,13 @@ días — queda anotado en B-128.
 
 ## D-74 · Cinco filtros, y cuatro descartados con su motivo
 
+> ⚠️ **El descarte de `arancel` se revirtió el 2026-09-01 — ver D-152.** Hoy los
+> filtros son **seis**. El argumento de abajo no se borra ni se corrige: sigue
+> siendo cierto para la pregunta que contestaba («nadie *busca* el taller
+> arancelado»), y lo que cambió es que se pide contestar otra. D-152 dice cuál, qué
+> se paga por revertir, y qué pasó con los otros tres descartes — el de `tags`
+> caducó a medias y el de `destacado` entero (**B-274**).
+
 **Decisión:** el listado filtra por **estado, tipo, modalidad, barrio y fechas**
 ("con algo por venir" / "sin fechas por venir"), y todo se cruza con el buscador
 de texto que ya existía. Los desplegables ofrecen **solo los valores que alguna
@@ -4053,6 +4060,14 @@ daba: es una capa modal, necesita trampa de foco, `Escape`, cierre tocando el fo
 `pushState`, y nada de eso lo resuelve una regla de CSS.
 ## D-146 · Brutalismo editorial: la tercera dirección visual, y la que se aprobó
 
+> ⚠️ **El punto 2 de «las tres cosas que el sistema mata de D-141» se revirtió el
+> 2026-09-01 — ver D-150.** El color por tipo de actividad volvió, y con la misma
+> banda de luminosidad y croma que se describe más abajo. Lo que cambió no es el
+> argumento —una paleta *impuesta por el sistema* sigue sin poder tener ocho
+> tintas— sino de quién es la paleta: ahora la administra el sitio desde Opciones.
+> El resto de esta entrada, incluidos los otros dos puntos (la portada generada y
+> la grilla que pasa a filas), **sigue vigente**.
+
 **Contexto.** El dueño rechazó **dos** direcciones por genéricas. La segunda fue
 D-141 —«la estructura de Eventbrite con paleta propia»— y su bajada a la tarjeta
 (D-142), al detalle (D-144) y al CTA móvil (D-145). No se rechazó por estar mal
@@ -4483,6 +4498,6 @@ es lo correcto, y no rompe el listado entero.
 
 | Filtro | ¿Caducó el motivo? |
 |---|---|
-| `tags` | **A medias, y se anota** (B-274). D-74 lo descartó porque «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera». **B-05 y B-06 existen desde hace semanas**, así que la condición que el propio D-74 puso se cumplió. Lo que sigue en pie es la otra mitad: es multivaluado y necesita un control de selección múltiple, que ninguno de los cinco desplegables actuales tiene. No se agrega ahora porque no se pidió |
+| `tags` | **A medias, y se anota** (B-274). D-74 lo descartó porque «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera». **B-05 y B-06 existen desde hace semanas**, así que la condición que el propio D-74 puso se cumplió. Lo que sigue en pie es la otra mitad: es multivaluado y necesita un control de selección múltiple, que ninguno de los seis desplegables actuales tiene. No se agrega ahora porque no se pidió |
 | `destacado` | **Sí caducó, y se anota** (B-274). Era «un booleano que hoy no consume nadie: el sitio público todavía no existe». Hoy existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. No se agrega ahora porque no se pidió, y porque con pocas destacadas un filtro booleano compra menos que un orden |
 | quién la cargó | **No.** El motivo era que el dato es un identificador de usuario y no un nombre, y que el §5.1 los mantiene fuera de todo lo que se muestre. Las dos cosas siguen igual |
