@@ -12,8 +12,11 @@ import { huellaCreador } from '@/lib/huella';
 import {
   OPCIONES_BASE,
   estaAprobada,
+  borrarOpcion,
   leerOpciones,
   opcionesVisibles,
+  pintarOpcion,
+  renombrarOpcion,
   upsertOpcion,
   upsertOpciones,
 } from '@/lib/opciones';
@@ -229,6 +232,80 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
     expect(salida).toContain('narrativa');
     // Ya aprobada: no puede seguir apareciendo como pendiente.
     expect(salida).not.toContain('con-beca-parcial');
+  });
+
+  /*
+   * ── El color del tipo de actividad (D-150) ──────────────────────────────
+   *
+   * Lo que solo se puede ver contra el emulador: que la transacción de
+   * `pintarOpcion` escriba el matiz en una opción **base**, que sacarlo borre la
+   * clave en vez de guardar un `null`, y —sobre todo— que la llave `tocaFijas`
+   * no se haya derramado a renombrar y borrar, que siguen prohibidas.
+   */
+  it('elige el color de una opción base, que es el único caso que existe hoy', async () => {
+    /*
+     * Los siete tipos de `/opciones/tipo` son `fijo: true`, así que si
+     * `pintarOpcion` respetara la guarda del §4.3 no se podría elegir el color de
+     * **ninguno de los que hay**. Lo que `fijo` protege es la identidad —el slug
+     * cableado, la etiqueta con la que se reconoce—, y el matiz no es identidad.
+     *
+     * MUTACIÓN PROBADA: sacarle `{ tocaFijas: true }` a `pintarOpcion` hace fallar
+     * este caso con «es una opción base».
+     */
+    const antes = (await valoresCrudos('tipo')).find((v) => v.slug === 'taller')!;
+    expect(antes.fijo, 'el fixture dejó de tener a «taller» como base').toBe(true);
+    expect(antes.tono).toBeUndefined();
+
+    await pintarOpcion('tipo', 'taller', 290);
+
+    const despues = (await valoresCrudos('tipo')).find((v) => v.slug === 'taller')!;
+    expect(despues.tono).toBe(290);
+    // Y no tocó nada más de la opción: el matiz es presentación, no identidad.
+    expect(despues).toMatchObject({ slug: 'taller', label: antes.label, fijo: true, usos: antes.usos });
+  });
+
+  it('«Automático» borra la clave en vez de guardar un `null`', async () => {
+    /*
+     * Ausente es «derivado del slug», que es el default de lectura. Un `null`
+     * guardado sería un tercer estado que significa lo mismo, y `tonoDeTipo` lo
+     * trataría igual solo porque su guarda lo rechaza — o sea, funcionaría por
+     * accidente.
+     *
+     * MUTACIÓN PROBADA: guardar `{ ...v, tono: null }` deja la clave presente y
+     * hace fallar el `toBe(false)` de abajo.
+     */
+    await pintarOpcion('tipo', 'taller', 195);
+    expect((await valoresCrudos('tipo')).find((v) => v.slug === 'taller')!.tono).toBe(195);
+
+    await pintarOpcion('tipo', 'taller', null);
+
+    const despues = (await valoresCrudos('tipo')).find((v) => v.slug === 'taller')!;
+    expect(Object.prototype.hasOwnProperty.call(despues, 'tono')).toBe(false);
+  });
+
+  it('un matiz que no es un matiz no se escribe: falla antes de la transacción', async () => {
+    await pintarOpcion('tipo', 'charla', 250);
+    for (const malo of [999, -1, 12.5]) {
+      await expect(pintarOpcion('tipo', 'charla', malo)).rejects.toThrow('entero de 0 a 359');
+    }
+    // Y el valor que estaba quedó intacto: no se escribió a medias.
+    expect((await valoresCrudos('tipo')).find((v) => v.slug === 'charla')!.tono).toBe(250);
+  });
+
+  it('la llave de las opciones base no se derramó: renombrar y borrar siguen prohibidos', async () => {
+    /*
+     * El control que hace que `tocaFijas` sea una llave y no una puerta abierta.
+     * Sin esto, el parámetro nuevo podría ir quedando en `true` por default —o
+     * pasarse «por las dudas» desde otro llamador— y la guarda del §4.3 se
+     * apagaría sin que nada lo diga.
+     *
+     * MUTACIÓN PROBADA: poner `tocaFijas = true` como default de `editarValor`
+     * hace fallar los dos asertos.
+     */
+    await expect(renombrarOpcion('tipo', 'taller', 'Tallercito')).rejects.toThrow('opción base');
+    await expect(borrarOpcion('tipo', 'taller')).rejects.toThrow('opción base');
+    // Y la opción quedó como estaba.
+    expect((await valoresCrudos('tipo')).find((v) => v.slug === 'taller')!.label).toBe('Taller');
   });
 
   /**
