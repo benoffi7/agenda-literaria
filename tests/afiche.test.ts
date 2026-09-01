@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { columnasDeCartelera, estiloDeAfiche, proporcionDeAfiche } from '@/lib/afiche';
-import { claseAfiche } from '@/components/sitio/estilos';
+import { claseAfiche, claseAfichePortada } from '@/components/sitio/estilos';
 
 /**
  * La forma de una imagen del sitio — B-263, D-147.
@@ -136,6 +136,9 @@ describe('ninguna salida del sitio recorta una imagen — D-147', () => {
     const paginas = paginasDelSitio();
     expect(paginas.length).toBeGreaterThan(3);
     expect(paginas).toContain('src/pages/actividad/[slug].astro');
+    expect(paginas, 'la cartelera es la otra salida con imágenes').toContain(
+      'src/pages/cartelera.astro',
+    );
   });
 
   it('ninguna escribe `object-cover` ni una proporción a mano', () => {
@@ -194,9 +197,18 @@ describe('ninguna salida del sitio recorta una imagen — D-147', () => {
      * es la condición que hace válido el desvío del §4.3 (D-144).
      */
     expect(claseAfiche, 'la red contra el recorte').toContain('object-contain');
-    expect(claseAfiche, 'el tope de alto es lo que D-144 necesitaba de verdad').toMatch(/max-h-/);
-    expect(claseAfiche, 'el tope se mide en `svh`: `vh` mide de más en un móvil').toContain('svh');
     expect(claseAfiche, 'la proporción no puede estar en la clase: es un dato de cada imagen')
       .not.toMatch(/aspect-/);
+    // El tope de alto vive en la variante de la portada y no en la base: la
+    // pared de la cartelera no lo lleva a propósito (ahí el afiche es el
+    // contenido y la página se recorre scrolleando).
+    expect(claseAfichePortada, 'el tope de alto es lo que D-144 necesitaba de verdad').toMatch(
+      /max-h-/,
+    );
+    expect(claseAfichePortada, 'el tope se mide en `svh`: `vh` mide de más en un móvil').toContain(
+      'svh',
+    );
+    expect(claseAfichePortada, 'la variante es la base más el tope').toContain(claseAfiche);
+    expect(claseAfiche, 'la pared no topea el alto').not.toMatch(/max-h-/);
   });
 });

@@ -141,9 +141,9 @@ describe('la portada arriba no puede empujar la fecha fuera de la pantalla — D
     expect(img, 'no se encontró la portada').toContain('src={portada.url}');
     expect(
       img,
-      'la portada usa `claseAfiche`, que es donde vive la regla compartida de que ' +
-        'ninguna salida recorta (D-147)',
-    ).toContain('class={claseAfiche}');
+      'la portada usa `claseAfichePortada`: la regla compartida de que ninguna salida ' +
+        'recorta, más el tope de alto que hace válido el desvío del §4.3 (D-147)',
+    ).toContain('class={claseAfichePortada}');
     expect(
       img,
       'la proporción no se escribe a mano: sale de la imagen, con `estiloDeAfiche`',

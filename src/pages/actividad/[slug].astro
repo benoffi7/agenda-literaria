@@ -83,7 +83,7 @@ import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
 import { estiloDeAfiche } from '@/lib/afiche';
 import {
-  claseAfiche,
+  claseAfichePortada,
   claseBloque,
   claseBloqueFecha,
   claseBotonPrimario,
@@ -257,7 +257,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
             y cómo anotarse, que en un flyer están tipografiados adentro del JPEG.
 
             Lo que D-144 necesitaba no era fijar la **proporción** sino topear el
-            **alto**, y eso es lo que hace `claseAfiche` con su `max-h`. La
+            **alto**, y eso es lo que hace `claseAfichePortada` con su `max-h`. La
             premisa del §4.3 —«un flyer vertical empuja la fecha fuera de la
             pantalla»— sigue atendida, y ahora sin cortar nada.
 
@@ -283,7 +283,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                 fetchpriority="high"
                 decoding="async"
                 referrerpolicy="no-referrer"
-                class={claseAfiche}
+                class={claseAfichePortada}
               />
               {portada.epigrafe && (
                 <figcaption class="body-sm mt-1.5 text-super">{portada.epigrafe}</figcaption>

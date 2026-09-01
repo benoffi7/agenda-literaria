@@ -207,8 +207,20 @@ export interface DetallePublico {
   /** `Ciclo de 8 encuentros`, o `null` si no hay nada que decir. */
   rotuloCiclo: string | null;
   encuentros: EncuentroDeDetalle[];
-  /** La próxima fecha en palabras, o `null` si ya pasó todo. */
-  proxima: { fecha: string; desde: string; hasta: string } | null;
+  /**
+   * La próxima fecha, o `null` si ya pasó todo.
+   *
+   * `fecha`, `desde` y `hasta` son las palabras que se pintan; `iso` es la misma
+   * fecha ordenable — **B-265**, y va acá y no se recalcula afuera porque la
+   * cartelera se ordena por «cuándo es la próxima» y esa pregunta ya la contestó
+   * este módulo. Derivarla de nuevo del array de encuentros sería la clase de
+   * B-88: dos respuestas a la misma pregunta que se separan cuando cambie la
+   * regla de qué encuentro cuenta (los cancelados no, por ejemplo).
+   *
+   * No agrega nada público: `inicioIso` de cada encuentro ya sale en la página y
+   * en el JSON-LD.
+   */
+  proxima: { fecha: string; desde: string; hasta: string; iso: string } | null;
   yaPaso: boolean;
   yaEmpezo: boolean;
   /**
@@ -632,7 +644,12 @@ export const detalleDeActividad = (
     rotuloCiclo: rotuloDeCiclo(a.esCiclo, vivos),
     encuentros,
     proxima: siguiente
-      ? { fecha: siguiente.fecha, desde: siguiente.hora, hasta: horaDeFin(siguiente) }
+      ? {
+          fecha: siguiente.fecha,
+          desde: siguiente.hora,
+          hasta: horaDeFin(siguiente),
+          iso: siguiente.inicioIso,
+        }
       : null,
     yaPaso,
     // §7.2 — «ya empezó, se puede entrar»: quedan encuentros y el primero quedó
