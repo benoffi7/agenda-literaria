@@ -423,7 +423,10 @@ Decisiones de esta pantalla:
 > ⚠️ **Y quedó viejo otra vez el mismo día — ver D-146.** La tarjeta ya no es una
 > tarjeta: es una **fila** (`FilaDeActividad.tsx`) sobre una grilla de 12 columnas,
 > **sin imagen en ningún caso** — ni foto real ni portada generada. Se retiraron
-> `Tarjeta.tsx` y `PortadaDeTarjeta.tsx`, y con ellos el color derivado por tipo.
+> `Tarjeta.tsx` y `PortadaDeTarjeta.tsx`. **El color derivado por tipo volvió el
+> 2026-09-01 con D-150**, pero no ahí: hoy lo pinta `estiloDeTipo`/`colorDeTipo`
+> (`src/lib/listadoPublico.ts`, `src/lib/identidad.ts`) por `style` en la cajita de
+> la categoría, y es elegible desde Opciones.
 > Lo que **sigue valiendo** es el contenido: el orden de los datos, la entrada
 > entera como un solo link, el arancel con acento solo cuando no se paga, y nada
 > de «quedan 3 lugares». Los dos avisos quedan apilados a propósito, para que cada

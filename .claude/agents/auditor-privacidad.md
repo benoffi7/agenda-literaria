@@ -78,8 +78,9 @@ quien carga (D-122).
   hasheados (con dos admins conocidos, un hash se revierte probando dos
   entradas; D-57). El creador de una opción de taxonomía se guarda como huella
   de 8 hex (`src/lib/huella.ts`, D-27) **y esa huella tampoco sale**:
-  `opcionesPublicas` emite solo `slug` y `label` (B-212). Que sea una huella y
-  no un uid la hace aceptable **en el documento**, no publicable.
+  `opcionesPublicas` emite `slug`, `label` y —desde **D-150**, solo para `tipo` y
+  solo si el matiz es elegible— `tono` (B-212). Que sea una huella y no un uid la
+  hace aceptable **en el documento**, no publicable.
 - `sesion.calendarEventId` — interno.
 - Cualquier **valor de cualquier campo** hacia GA4. Se mide *que* un campo falló
   y *cuál*, nunca qué se escribió. El mensaje de un error de zod **es**
