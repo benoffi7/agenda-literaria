@@ -1829,6 +1829,35 @@ contra el árbol.
 
 ## P2 — mejoras reales
 
+### B-271 · Los eventos gratis en los filtros del sitio — ✅ hecho (2026-09-01)
+
+El pedido fue «revisar filtros para que estén los eventos gratis (tanto web como
+admin)». **En la web ya estaban.** Corrido contra el `events.json` de producción
+con la misma función que usa la island (`chipsDe`), el eje «Arancel» devolvía
+`Gratis (8)`, `A la gorra (1)` y `Arancelado (32)`.
+
+O sea que no faltaba código: faltaba **encontrarlo**, por dos motivos que se
+sumaban y que D-151 explica. El eje estaba tercero, detrás de «Cómo se cursa» —lo
+que en el teléfono lo dejaba abajo del corte del panel de 65svh de D-143— y dentro
+del eje «Gratis» era el segundo chip, porque los chips se ordenan por cantidad y
+hay 33 arancelados.
+
+Se arregló subiendo el eje al segundo puesto y poniendo primero lo que no se paga,
+que además es **una línea del §6.1 del diseño que la implementación no había
+bajado** («Gratis y A la gorra primero, siempre»).
+
+Vale anotar el método, porque es reusable: **los chips no se ven en el `dist`** —los
+pinta la island— así que para comprobarlo no alcanza con leer el HTML del build. Se
+bajó el `events.json` de producción y se corrió `chipsDe` sobre él. Es más barato
+que levantar el sitio y usa los datos de verdad.
+
+### B-272 · El filtro de arancel en el panel — ✅ hecho (2026-09-01)
+
+**No era un bug: era revertir D-74**, que lo había descartado a propósito. Escrito
+como el patrón de D-119 → D-132: el argumento viejo sigue siendo cierto para la
+pregunta que contestaba, la que se pide ahora es otra, y lo que se paga queda
+escrito. Está entero en **D-152**.
+
 ### B-232 · `/ayuda` y `/contacto` — ✅ hecho (2026-08-28)
 
 Las dos primeras páginas terminadas del sitio público. Son texto y nada más: no leen
@@ -4477,6 +4506,23 @@ Queda P2 y no P1 porque la página funciona y es alcanzable desde las cuatro
 secciones del sitio. Lo que se pierde mientras tanto es conversión, no acceso.
 
 ## P3 — cuando sobre tiempo
+
+### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` · P3
+
+Al revertir D-74 para el arancel (B-272, D-152) se revisaron sus otros tres
+descartes uno por uno. **No se agregó ninguno —no se pidieron— pero dos de los tres
+motivos ya no son ciertos, y eso tiene que quedar anotado o el descarte sobrevive a
+su razón.**
+
+| Filtro | Qué decía D-74 | Qué pasó |
+|---|---|---|
+| `tags` | «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. **Cuando exista B-06, se reconsidera**» | **B-05 y B-06 existen.** La condición que el propio D-74 puso para reconsiderarlo se cumplió. Lo que sigue en pie es la otra mitad del argumento: es multivaluado y necesita un control de selección múltiple, que ninguno de los cinco desplegables del panel tiene. O sea que el costo es real pero ya no es «la lista está sucia» |
+| `destacado` | «un booleano que hoy no consume nadie: **el sitio público todavía no existe** (B-01)» | El sitio existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. El motivo caducó entero. Lo que queda como argumento es otro y más débil: con pocas destacadas, un filtro booleano compra menos que un orden |
+| quién la cargó | «el dato es un identificador de usuario y no un nombre, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre» | **Sigue valiendo igual.** No hay nada que revisar acá |
+
+Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, primero
+hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
+`EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
 
 ### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` · P3
 
