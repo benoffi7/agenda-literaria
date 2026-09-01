@@ -188,7 +188,9 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     const filas: { n: string; archivo: string; funciones: string[] }[] = [];
     let empezo = false;
     for (const linea of fuente(relativo).split('\n')) {
-      const m = /^\|\s*(\d)\s*\|(.+)$/.exec(linea);
+      // El `\s*` inicial es por el skill `campo-nuevo`, donde la tabla va sangrada
+      // adentro de un ítem de lista. En los otros dos archivos no cambia nada.
+      const m = /^\s*\|\s*(\d)\s*\|(.+)$/.exec(linea);
       if (!m) {
         if (empezo) break;
         continue;
@@ -264,6 +266,40 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     expect(salidas(SEGURIDAD).map((s) => `${s.n} ${s.archivo}`)).toEqual(
       salidas(FICHA).map((s) => `${s.n} ${s.archivo}`),
     );
+  });
+
+  it('y el skill `campo-nuevo` enumera las mismas — B-265', () => {
+    /*
+     * **Son tres lugares y este chequeo ataba dos.** Lo encontró el
+     * `auditor-privacidad` sobre B-265: la tabla de `07-seguridad.md` y la ficha
+     * del agente pasaron a siete salidas, y `.claude/skills/campo-nuevo/SKILL.md`
+     * —que es **el** lugar donde alguien decide si un campo nuevo es público—
+     * se quedó en seis. El skill tiene escrito «si agregás una salida, se agrega
+     * acá en el mismo cambio», y eso es exactamente lo que un test tiene que
+     * sostener en vez de pedirlo.
+     *
+     * Es la repetición de B-244, cuando la lista decía cuatro y faltaban el
+     * posteo y la página indexada. La diferencia es el modo de falla: acá no se
+     * filtra nada hoy, se rompe **el mecanismo que impide filtrar mañana** —el
+     * campo nuevo se decide contra seis celdas y nadie decide la séptima.
+     *
+     * Se comparan los **números** y no los archivos: el skill nombra un solo
+     * productor por fila a propósito (es un checklist, no un índice), así que
+     * exigir la misma celda de archivo lo obligaría a repetir los cuatro de la
+     * salida 1.
+     *
+     * MUTACIÓN PROBADA: sacar la fila 7 de la tabla del skill deja los otros dos
+     * `it` de este describe en verde y este en rojo.
+     */
+    const SKILL = '.claude/skills/campo-nuevo/SKILL.md';
+    const numeros = (rel: string) => salidas(rel).map((s) => s.n);
+    expect(numeros(SKILL).length, 'no se parseó la tabla del skill').toBeGreaterThanOrEqual(4);
+    expect(
+      numeros(SKILL),
+      'el skill `campo-nuevo` no enumera las mismas salidas que 07-seguridad.md: quien ' +
+        'agregue un campo va a decidir una celda de menos, y el default de no decidir es ' +
+        'publicar (§5.1)',
+    ).toEqual(numeros(SEGURIDAD));
   });
 
   it('el description del agente nombra todos los archivos productores', () => {

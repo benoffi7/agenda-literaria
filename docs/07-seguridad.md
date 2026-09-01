@@ -4,11 +4,12 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
-**Son seis salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+**Son siete salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
 esas. La **6** nació con B-227 y es la primera que es una *página* y no un
 archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
-ve el documento (D-140).
+ve el documento (D-140). La **7** nació con B-265 y es la primera que **deriva de
+otra salida** en vez de derivar del documento.
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
@@ -18,6 +19,7 @@ ve el documento (D-140).
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle` y el `where`). La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**) |
+| 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). La plantilla solo acomoda |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.
@@ -25,7 +27,16 @@ Cerrada con D-128 (ver [Reglas de Firestore](#reglas-de-firestore)). Está anota
 acá porque el modo de falla —una puerta que ninguna proyección atraviesa— es el
 que hay que buscar al agregar una salida nueva.
 
-**Las páginas de texto del sitio no son una sexta salida, y conviene tenerlo
+**Y en la salida 7 esa puerta tiene nombre: `listAll()` sobre el bucket.** Armar
+una pared de afiches listando `imagenes/` es más corto de escribir que armarla
+desde el índice, no pasa por ninguna proyección, y traería también los flyers de
+las actividades **en borrador**. Está cerrado en `storage.rules` desde D-131
+(`allow get: if true`, `allow list: if esAdmin()` — la **trampa 13**) y además
+`tests/cartelera.test.ts` falla si la página menciona `listAll`, `getStorage` o
+`firebase/storage`. Las dos mitades: la regla que lo impide y el test que dice
+que nadie lo intentó.
+
+**Las páginas de texto del sitio no son una salida más, y conviene tenerlo
 escrito** para que nadie las cuente ni las deje de mirar. `/ayuda` y `/contacto`
 (B-232) no proyectan ningún documento: su contenido está escrito a mano en
 `src/lib/ayudaDelSitio.ts` y `src/lib/contactoDelSitio.ts`. No hay campo que se pueda
@@ -50,7 +61,7 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
-| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las seis salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
+| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las siete salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
@@ -176,10 +187,10 @@ es su razón de existir — el campo se creó para este texto. Lo interno de
 
 ## El bucket de Storage es una salida pública más (B-167, DEC-7)
 
-Hasta acá el §5 tenía **seis** salidas: el `events.json`, el evento de Calendar,
-el issue de GitHub, GA4, el texto para redes y la página de detalle. El bucket es
-una **séptima**, y es distinta de las otras seis en algo que conviene tener
-presente: no pasa por `toPublic` ni por ninguna proyección, porque **no son
+Hasta acá el §5 tenía **siete** salidas: el `events.json`, el evento de Calendar,
+el issue de GitHub, GA4, el texto para redes, la página de detalle y la cartelera.
+El bucket es una **octava**, y es distinta de las otras siete en algo que conviene
+tener presente: no pasa por `toPublic` ni por ninguna proyección, porque **no son
 campos, son bytes**. Lo que se sube es lo que se publica.
 
 (No entra a la tabla numerada de arriba porque esa tabla enumera *proyecciones*

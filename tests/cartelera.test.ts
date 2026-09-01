@@ -23,6 +23,15 @@ import type { Actividad, Imagen } from '@/types/actividad';
  */
 const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 
+
+/** El `.astro` sin comentarios: los docblocks explican justo lo que se prohíbe. */
+const sinComentariosAstro = (s: string): string =>
+  s
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+
 const AHORA = new Date('2026-09-10T15:00:00Z');
 
 const ETIQUETAS = mapaDeEtiquetas({
@@ -123,6 +132,50 @@ describe('qué entra a la pared', () => {
     ]);
     expect(pared).toHaveLength(1);
     expect(pared[0]!.url).toBe('https://ejemplo.com/portada.jpg');
+  });
+
+  it('la portada elegida a mano, y no la primera cargada — B-268', () => {
+    /*
+     * **El caso al revés, y es el que fallaba.** Lo encontró el
+     * `auditor-trampas`: `detalleDeActividad` tiraba el flag `portada` y dejaba
+     * el array en el orden de carga, así que quien subía una foto del lugar,
+     * después el flyer, y marcaba el flyer con el radio del panel —que existe
+     * exactamente para eso— seguía viendo la foto.
+     *
+     * No fallaba nada y encima fallaba **coherente**: la cabecera de la actividad
+     * y la pared mostraban la misma imagen equivocada, así que compararlas no lo
+     * delataba. La versión anterior de este archivo tenía solo el caso de arriba
+     * —con la portada ya en el índice 0— y por eso pasaba.
+     *
+     * MUTACIÓN PROBADA: volver a `a.imagenes.map(...)` sin reordenar en
+     * `detallePublico.ts`. El `it` de arriba sigue verde y éste se pone rojo.
+     */
+    const detalle = conFlyer({}, [
+      imagen({ id: 'img_1', url: 'https://ejemplo.com/patio.jpg', portada: false }),
+      imagen({ id: 'img_2', url: 'https://ejemplo.com/el-flyer.jpg', portada: true }),
+    ]);
+    expect(detalle.imagenes[0]!.url, 'la cabecera de la actividad muestra la primera').toBe(
+      'https://ejemplo.com/el-flyer.jpg',
+    );
+    expect(carteleraDeDetalles([detalle])[0]!.url).toBe('https://ejemplo.com/el-flyer.jpg');
+    // Y las demás no se pierden: la galería del detalle las sigue mostrando.
+    expect(detalle.imagenes.map((i) => i.url)).toEqual([
+      'https://ejemplo.com/el-flyer.jpg',
+      'https://ejemplo.com/patio.jpg',
+    ]);
+  });
+
+  it('si la portada marcada tiene una URL que no sirve, gana la siguiente válida', () => {
+    /*
+     * `urlSegura` descarta `javascript:` y compañía. Buscar el flag **antes** de
+     * filtrar dejaría la página sin imagen habiendo otras válidas; buscarlo
+     * después es lo mismo que hace `portadaDe` con una lista sin ninguna marcada.
+     */
+    const detalle = conFlyer({}, [
+      imagen({ id: 'img_1', url: 'https://ejemplo.com/patio.jpg', portada: false }),
+      imagen({ id: 'img_2', url: 'javascript:alert(1)', portada: true }),
+    ]);
+    expect(carteleraDeDetalles([detalle])[0]!.url).toBe('https://ejemplo.com/patio.jpg');
   });
 
   it('la que muestra es la misma que la cabecera de la actividad', () => {
@@ -305,5 +358,69 @@ describe('las clases de la pared existen para los tres tamaños', () => {
     // columna y un tope de ancho son dos afiches grandes, uno abajo del otro.
     expect(CLASES_DE_PARED[columnasDeCartelera(2)]).toContain('max-w');
     expect(CLASES_DE_PARED[columnasDeCartelera(2)]).not.toContain('columns-');
+  });
+});
+
+describe('la plantilla de la cartelera no ve el documento — D-140, salida 7', () => {
+  /*
+   * **Lo pidió el `auditor-privacidad` sobre B-265, y el hueco era de forma.**
+   * La página de detalle tiene estas tres guardas desde B-227
+   * (`tests/pagina-de-detalle.test.ts`); la cartelera nació sin ellas, con la
+   * doc prometiendo «la plantilla solo acomoda» y nada sosteniéndolo.
+   *
+   * El camino que quedaba abierto no es hipotético y es **más corto que
+   * cualquier nombre prohibido**: `cartelera.astro` ya importa de
+   * `@/lib/contenidoDelSitio`, que también exporta `contenidoDelSitio()` →
+   * `ActividadPublica[]`, o sea `online.url` con `urlPublica: true`,
+   * `sede.indicaciones` y la URL del material privado. Agregar una palabra a esa
+   * llave de import y un `{a.online.url}` al pie del afiche compila, se ve bien
+   * y lo publica en HTML indexado.
+   */
+  const cabecera = readFileSync(raiz('src/pages/cartelera.astro'), 'utf8');
+  const codigo = sinComentariosAstro(cabecera);
+
+  it('del lector importa SOLO `carteleraDelSitio`', () => {
+    /*
+     * Lista blanca y no lista negra: lo que no está acá no entra, y agregar algo
+     * obliga a venir a este archivo a justificarlo.
+     *
+     * MUTACIÓN PROBADA: agregar `contenidoDelSitio` a la llave del import —sin
+     * usarlo siquiera— pone esto en rojo. Con la lista negra de abajo sola,
+     * pasaba.
+     */
+    const imp = /import \{([^}]*)\} from '@\/lib\/contenidoDelSitio'/.exec(cabecera);
+    expect(imp, 'la plantilla tiene que importar del lector con llaves').not.toBeNull();
+    expect(
+      imp![1]!
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ).toEqual(['carteleraDelSitio']);
+  });
+
+  it('no ve el documento ni la proyección completa', () => {
+    for (const prohibido of ['firebase-admin', 'adminDb', 'toPublic', 'ActividadPublica']) {
+      expect(codigo, `la plantilla no puede nombrar ${prohibido}`).not.toContain(prohibido);
+    }
+  });
+
+  it('no nombra ninguno de los campos que el §5.1 mantiene privados', () => {
+    /*
+     * Barrido por **nombre de campo**, que es lo que el de centinelas no puede
+     * ver: aquél corre sobre el valor de `carteleraDeDetalles`, y una plantilla
+     * que interpolara un dato que hoy no existe en el view-model no aparecería
+     * ahí hasta que el campo existiera. Acá se prohíbe el nombre.
+     */
+    for (const prohibido of [
+      'difusion',
+      'createdBy',
+      'updatedBy',
+      'storagePath',
+      'calendarEventId',
+      'searchText',
+      'urlPublica',
+    ]) {
+      expect(codigo, `la plantilla no puede nombrar ${prohibido}`).not.toContain(prohibido);
+    }
   });
 });

@@ -22,6 +22,7 @@ fragmentos de código son ilustrativos.
 > | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs · §4.5 pasadas, calendario, acerca, 404 | ❌ — frentes siguientes |
+> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ menos §7.3 (canceladas, **B-110**) y la mitad de §7.1 que vive en `/pasadas`; el §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
@@ -462,12 +463,18 @@ Es el componente que más se repite; lo que muestra está elegido, en este orden
 ### 4.3 Detalle — `/actividad/{slug}`
 
 > ⚠️ **La portada del diagrama y las dos primeras viñetas de abajo se desviaron — ver
-> D-144 en [`06-decisiones.md`](06-decisiones.md).** Desde B-253 (2026-08-31) la
-> portada va **arriba**, con relación de aspecto fija (`--aspect-portada`), y no
-> después de la ficha. El motivo original —un flyer vertical empuja la fecha fuera de
-> la pantalla— **sigue siendo válido**; lo que cambió es cómo se resuelve: acotando el
-> alto de la caja en vez de bajando la imagen. El diagrama y las viñetas quedan como
-> estaban, para que D-144 se lea contra su original.
+> D-144 y D-147 en [`06-decisiones.md`](06-decisiones.md).** Desde B-253 (2026-08-31)
+> la portada va **arriba**, y no después de la ficha. El motivo original —un flyer
+> vertical empuja la fecha fuera de la pantalla— **sigue siendo válido**; lo que
+> cambió es cómo se resuelve.
+>
+> **Y la primera respuesta estuvo mal, corregida el 2026-09-01 (B-263, D-147):** se
+> resolvió con relación de aspecto fija (`--aspect-portada`, 16/9) y `object-cover`,
+> y como los flyers reales son verticales eso recortaba el **51 %** de la imagen —o
+> sea el título y la fecha, que en un flyer están escritos adentro—. Lo que hacía
+> falta era topear el **alto**, no fijar la proporción. Hoy la imagen se muestra
+> entera, con su propia proporción y el alto acotado. El diagrama y las viñetas
+> quedan como estaban, para que las dos decisiones se lean contra su original.
 
 La pantalla más importante del sitio, y la que **no lleva JavaScript**: es HTML
 y CSS. Cero islands, cero `events.json`, cero hidratación.
@@ -530,11 +537,13 @@ Decisiones de esta pantalla:
   ficha y del botón.~~ **Desviado por D-144:** la portada va arriba. Sin imagen la
   ficha sigue siendo lo primero y no queda ningún hueco, que era la otra mitad del
   argumento.
-- ~~**La imagen no es hero.**~~ **Desviado por D-144**, y el motivo original es el que
-  se conserva: un flyer vertical **sí** empujaría la fecha fuera de la pantalla si su
-  alto lo decidiera el archivo. Con `--aspect-portada` y `object-cover` el alto lo
-  decide el ancho de la pantalla, así que el flyer se recorta. Los `width`/`height`
-  siguen puestos.
+- ~~**La imagen no es hero.**~~ **Desviado por D-144 y corregido por D-147**, y el
+  motivo original es el que se conserva: un flyer vertical **sí** empujaría la fecha
+  fuera de la pantalla si su alto lo decidiera el archivo. Lo que acota el alto es un
+  tope (`max-h`), **no** una proporción fija: con `--aspect-portada` y `object-cover`
+  el flyer se recortaba y perdía justamente los datos que trae escritos. Los
+  `width`/`height` siguen puestos, y ahora también los tienen las imágenes externas
+  (el panel las mide).
 - **Un solo CTA, con el verbo de la vía.** `inscripcion.via` dice el verbo:
   `whatsapp` → "Escribir por WhatsApp" a un `wa.me` con mensaje precargado
   ("Hola, quiero anotarme en Taller de crónica"); `mail` → `mailto:` con asunto
@@ -1036,7 +1045,9 @@ Una actividad, una tarjeta (§2.2). Sin excepciones y en todas las vistas.
 > pero por otro motivo: no es que la tarjeta sin imagen se adapte, es que **ninguna
 > entrada del listado lleva imagen**, y eso es una decisión de forma («el listado es
 > puramente tipográfico»), no una respuesta a que falte `imagenUrl`. La foto **sí**
-> sigue en la página de detalle, con `--aspect-portada`.
+> sigue en la página de detalle —entera desde D-147, ya no recortada— y desde B-265
+> también en `/cartelera`, que es una página **de** imágenes: ahí una actividad sin
+> imagen simplemente no aparece.
 
 > ⚠️ **La primera viñeta se revirtió el 2026-08-31 — ver D-142.** Hoy la tarjeta sin
 > imagen **sí** tiene portada: generada, con el título sobre el color del tipo. El

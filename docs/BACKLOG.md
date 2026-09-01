@@ -311,6 +311,195 @@ eso todavía no pasa, pero por un motivo distinto que antes: **el sitio existe y
 está desplegado.** Falta elegir el dominio (B-109), sin el cual no hay canonical ni
 sitemap, y falta el rebuild automático (B-20).
 
+Y desde el 2026-09-01 hay un segundo frente medido: **el flyer**. B-263, B-264 y
+B-265 arreglaron el recorte, sacaron el campo de donde estaba escondido y le dieron
+pared propia; lo que queda abierto es el **peso** (B-266), que depende de B-220.
+
+### B-263 · La portada recortaba el 51 % del flyer — ✅ hecho (2026-09-01)
+
+**El bug con el que arranca toda la tanda.** `src/pages/actividad/[slug].astro`
+pintaba la portada con `class="aspect-portada … object-cover"` y
+`--aspect-portada` valía **16/9**. Los dos flyers que hay cargados en producción
+miden **720 × 826** —verticales, tipo historia de Instagram, 0,87— así que con
+`cover` sobre una caja apaisada se perdía el **51 %** de la imagen, mitad arriba
+y mitad abajo.
+
+Y no era margen lo que se perdía: **un flyer es texto metido adentro de un
+JPEG**. El título, la fecha y cómo anotarse están tipografiados ahí. El recorte
+se llevaba justo los datos.
+
+La decisión completa —incluidas las tres alternativas descartadas y qué pasa con
+el motivo por el que existía el token— está en **D-147**. En una línea: el token
+se retira, no se reemplaza por otro número, y lo sustituye una **regla
+compartida** («ninguna salida recorta») con un barrido sobre todos los `.astro`
+del sitio.
+
+**Lo que se hizo de paso, y que era la condición para poder reservar la caja:**
+el panel ahora **mide** la imagen externa en su vista previa
+(`naturalWidth`/`naturalHeight`) y guarda `ancho`/`alto`. Solo las filas que la
+sesión agregó o cuya dirección cambió — medir las ya guardadas escribiría en el
+formulario apenas se abre y `useFormularioSucio` diría «tenés cambios sin
+guardar» sin que nadie tocara nada.
+
+Siete mutaciones probadas, todas rojas: sin la guarda de medidas corruptas, la
+clase copiada a mano, `object-cover` al lado de la clase, sin `estiloDeAfiche`,
+la clase sin `max-h`, sin `object-contain`, y el token volviendo a `global.css`.
+
+### B-264 · Nadie cargaba el flyer, y el panel no lo pedía — ✅ hecho (2026-09-01)
+
+**El cuello de botella real, y es medible:** 42 actividades publicadas, **2 con
+imagen**. El 4 % es bajo en parte porque subir archivos existe hace cuatro días
+—casi todas se cargaron cuando lo único posible era pegar una URL— pero sobre
+todo porque el campo estaba escondido y nada lo pedía nunca:
+
+- vivía en **«Opcional»**, un acordeón **cerrado por defecto** y llamado
+  literalmente así;
+- la descripción de la sección era «Tags, imagen, destacado»;
+- y la única frase que acompañaba al editor **tranquilizaba**: «sin imagen, la
+  tarjeta del sitio no reserva un hueco gris: se ve igual de bien».
+
+Cuatro mitades, y ninguna bloquea:
+
+1. **El editor se muda a «Qué es»**, la primera sección y la que no colapsa. Es
+   donde ya viven el título y la descripción, y un flyer es eso mismo contado en
+   una imagen. En «Opcional» quedan las etiquetas y «destacar», que sí lo son.
+2. **La barra de acciones gana un tercer nivel**, abajo del gris de «para
+   publicar falta». Dice **qué se pierde** y no qué falta —«falta el flyer» no
+   mueve a nadie; «no entra en la cartelera» sí— y lleva hasta el campo. Vive en
+   `lib/formulario/recomendaciones.ts`, que es donde se puede testear.
+3. **El listado marca «Sin flyer»**, y solo en las publicadas que no lo tienen.
+   Es la misma regla que la marca de autoría de B-130: si todo lleva marca, la
+   marca deja de avisar.
+4. **`guardado_ok` manda `imagenes` como entero.** Cruzado con `estado`, que ese
+   evento ya mandaba, contesta la pregunta que abrió el cambio: qué proporción de
+   lo que se publica lleva flyer. Sin eso, el cambio se hace a ciegas.
+
+**No se puso traba, y hay un test que lo fija.** El empujón se convierte en
+bloqueo con una línea —agregar `imagenes` a la validación de publicación de
+D-120— y el pedido fue explícito: frenar la publicación por una imagen frena que
+se carguen actividades, que es peor que una actividad sin flyer. La mutación que
+agrega esa exigencia pone el test en rojo y ningún otro se entera.
+
+La condición sale de `faltaElFlyer`, **una sola derivación** para el aviso, la
+marca del listado y la cartelera: tres lugares que tienen que decir lo mismo.
+
+Nueve mutaciones probadas, todas rojas.
+
+### B-265 · `/cartelera`, la pared de afiches — ✅ hecho (2026-09-01)
+
+La página que hace que valga la pena cargar el flyer, y la otra mitad de B-264:
+el panel promete «sin imagen no entra en la cartelera» y esto es la cartelera.
+Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada
+uno enlazando a su actividad.
+
+Las decisiones están en **D-148**. Las que conviene tener a mano:
+
+- **Una pared, no un carrusel.** «En continuado» es que no termina, no que se
+  mueva. Nada avanza solo, así que no hay `prefers-reduced-motion` que respetar.
+- **Columnas de CSS y no una grilla**, con el número de columnas **atado a la
+  cantidad**: con los dos flyers de hoy sale una sola columna con tope de ancho y
+  la pared se densifica sola. Con cero no se dibuja una grilla vacía.
+- **Se arma desde el mismo `DetallePublico`** que genera cada página de detalle,
+  **nunca** desde un listado de Storage (trampa 13, con test propio).
+- Entra **segunda** en la navegación, pegada a «Agenda».
+
+Diez mutaciones probadas, todas rojas.
+
+### B-267 · Tres textos del panel describían pantallas que ya no existen — ✅ hecho (2026-09-01)
+
+Aparecieron al mudar el editor de imágenes (B-264) y los tres son de la misma
+familia: **texto de interfaz que quedó viejo cuando cambió lo que describe, sin
+que nada fallara**.
+
+| Dónde | Qué decía | Desde cuándo era falso |
+|---|---|---|
+| `src/lib/ayuda.ts`, capítulo del flujo | «Por ahora se pegan direcciones… subir fotos desde el teléfono todavía no está» | **D-131** (2026-08-27), que trajo la subida |
+| `src/components/admin/GaleriaEditor.tsx` | «Sin imagen, la tarjeta del sitio no reserva un hueco gris: se ve igual de bien» | **D-146** (2026-08-31), que sacó las portadas del listado |
+| `src/lib/ayuda.ts`, capítulo del flujo | un punto con la frase duplicada a medias («…queda así para la próxima.» + «cerradas para que el formulario no sea infinito. Se abren tocando el título.») | arrastre de un merge |
+
+Los tres corregidos. El segundo es el que más costaba: no solo describía una
+pantalla inexistente, **tranquilizaba justo donde había que empujar** — es parte
+de por qué el campo estaba en 2 de 42.
+
+**Lo que esto deja abierto es la clase, no la instancia.** `tests/ayuda.test.ts`
+exige que cada sección del formulario tenga capítulo y que el texto no tenga
+jerga; no puede exigir que el capítulo **diga la verdad**. Un chequeo de esa
+clase tendría que atar cada afirmación a un test de comportamiento, que es lo que
+`atadoA` ya hace para los seis avisos irreversibles. Extenderlo al resto de los
+puntos es trabajo del `auditor-documentacion`, que hoy lo cubre a criterio.
+
+### B-268 · La portada que se elegía en el panel no era la que se mostraba — ✅ hecho (2026-09-01)
+
+**Lo encontró el `auditor-trampas` sobre B-265, y es preexistente**: la página de
+detalle lo tenía desde B-227 y este cambio lo iba a propagar a `/cartelera`
+—además de documentarlo como invariante decidido en vez de arreglarlo—.
+
+`detalleDeActividad` mapeaba `imagenes` en el orden del array y **tiraba el flag
+`portada`**, mientras los dos consumidores toman `imagenes[0]`. Entonces:
+
+1. se carga una foto del lugar → nace portada, porque es la primera;
+2. se carga el flyer → segunda;
+3. se marca el flyer como portada con el radio del panel, que existe exactamente
+   para eso (`conPortada` togglea el booleano y **no mueve la fila**, y está bien
+   que no la mueva: el orden del array es el orden de carga y es lo que la
+   galería respeta);
+4. la cabecera de la actividad y la cartelera siguen mostrando **la foto del
+   lugar**.
+
+**El modo de falla es el peor de los baratos: no falla nada y falla coherente.**
+Las dos páginas muestran la misma imagen equivocada, así que compararlas no lo
+delata; se nota semanas después, cuando alguien pregunta por qué el flyer que
+cargó no está en la cartelera.
+
+**Arreglado en la proyección y no en las plantillas.** «Cuál es la portada» es una
+decisión del dominio y ya tenía una sola respuesta escrita —`portadaDe` en
+`src/lib/imagenes.ts`, la que usan el panel y la vista previa—; ahora
+`detalleDeActividad` pone primera la que tiene el flag, y todo consumidor del
+view-model hereda la respuesta correcta sin acordarse. Se **ordena**, no se
+filtra: la galería del detalle sigue mostrando el resto.
+
+Un detalle que no se adivina: el flag se busca **después** de descartar las URLs
+que `urlSegura` rechaza. Buscarlo antes dejaría la página sin imagen habiendo
+otras válidas.
+
+**Por qué el test que había no lo vio:** `tests/cartelera.test.ts` afirmaba el
+caso con la portada ya en el índice 0, o sea el comportamiento actual y no el
+invariante. Ahora están los dos casos y el de la URL inválida, con la mutación
+probada (volver a `a.imagenes.map(...)` sin reordenar deja el caso viejo en verde
+y el nuevo en rojo).
+
+### B-266 · El peso de la cartelera sin la Function de recompresión · P1
+
+**Medido, no estimado** — los números y el método están en **D-149**.
+
+La cartelera es la **única** página del sitio que pide imágenes: la home no pide
+ninguna desde D-146 y el detalle pide una. Hoy, sin la Function de **B-220**, una
+imagen propia se sirve tal cual la subió quien organiza, hasta 3 MB.
+
+| | 2 flyers (hoy) | 30 flyers |
+|---|---|---|
+| HTML de la página | 8,2 KB | 30,8 KB |
+| bytes de imagen al entrar | ~120 KB | ~180–360 KB |
+| bytes al recorrerla entera | ~120 KB | **~2,6 MB** |
+
+**Por pantalla se sostiene y va a seguir sosteniéndose**: `loading="lazy"` más la
+caja reservada hacen que el costo de entrada no crezca con el total —es el mismo
+con 30 flyers que con 300—. **Por recorrido completo deja de sostenerse alrededor
+de los 20-25 flyers**, y el techo es peor que el promedio: un solo flyer de 3 MB
+pesa más que toda la pared medida.
+
+**No se construye nada más acá para taparlo**, porque no hay nada más que
+construir sin variantes de imagen: `sizes` sin `srcset` no hace nada, y las
+variantes son B-220. Lo que queda es el **disparador**:
+
+> Cuando la cartelera pase de **20 afiches**, o cuando alguna imagen propia
+> publicada pase de **500 KB**, B-220 deja de ser P1 y pasa a ser lo que bloquea
+> el sitio en un teléfono con datos.
+
+Mientras tanto, lo barato y no automatizado: al subir un flyer conviene
+recortarlo. El mensaje de rechazo de DEC-7b ya empuja en esa dirección, pero solo
+a partir de los 3 MB.
+
 ### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
 
 El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y
@@ -1390,6 +1579,13 @@ con entradas de otros worktrees, **no las limpies**. Son el trabajo en curso de 
 frente, y borrar una es la única forma de que esto sí pierda datos.
 
 ### B-220 · La Function que optimiza las imágenes propias (DEC-7d) · P1
+
+> **2026-09-01 — ahora hay números y un disparador.** Con `/cartelera` (B-265) las
+> imágenes dejaron de estar repartidas de a una por página: la pared las junta
+> todas. Lo medido y el punto en el que esto deja de sostenerse están en **B-266**
+> y **D-149** — por pantalla aguanta indefinidamente gracias al `lazy`, por
+> recorrido completo se cae alrededor de los 20-25 flyers. La mención de abajo a
+> «la tarjeta del listado» quedó vieja con D-146: el listado no muestra imágenes.
 
 **Es la mitad que la segunda tajada de B-167 dejó afuera a propósito**, y el criterio
 del corte fue el del repo: preferimos subir imágenes sin miniatura a no subir nada.

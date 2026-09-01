@@ -57,6 +57,7 @@ const documento = (over: Partial<Actividad>): Record<string, unknown> => {
 
 describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.3, §3.3)', () => {
   let caminos: { params: { slug: string }; props: { detalle: unknown } }[] = [];
+  let pared: { slug: string }[] = [];
 
   beforeAll(async () => {
     await limpiarFirestore();
@@ -77,9 +78,12 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
       .doc('actividades/sitio-pendiente')
       .set(documento({ slug: 'sitio-pendiente', estado: 'pendiente' }));
 
-    const { caminosDeDetalle, olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    const { caminosDeDetalle, carteleraDelSitio, olvidarContenido } = await import(
+      '@/lib/contenidoDelSitio'
+    );
     olvidarContenido();
     caminos = await caminosDeDetalle(new Date('2026-08-20T15:00:00Z'));
+    pared = await carteleraDelSitio(new Date('2026-08-20T15:00:00Z'));
   }, 30_000);
 
   /*
@@ -105,6 +109,34 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
       expect(slugs, `${slug} no puede tener página de detalle`).not.toContain(slug);
     }
     expect(caminos).toHaveLength(1);
+  });
+
+  it('el flyer de un borrador no entra a la cartelera — B-265', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre B-265.** La salida 7 comparte el
+     * `where` del §5.3 con la 6 —las dos salen de `detallesDelSitio`— así que
+     * hoy es cierto por construcción. Pero `detallesDelSitio` es una extracción
+     * **nueva**, y el modo de falla es el peor que hay para una pared de
+     * imágenes: el flyer de una actividad en borrador publicado en HTML
+     * indexado, que es exactamente lo que la trampa 13 cierra del lado de
+     * Storage y que entraría por esta otra puerta.
+     *
+     * El fixture de centinelas trae una imagen, así que las cuatro actividades
+     * sembradas tienen flyer y las tres no publicadas son candidatas de verdad.
+     *
+     * MUTACIÓN PROBADA: darle a `carteleraDelSitio` su propia lectura
+     * (`adminDb().collection('actividades').get()`, sin el `where`) en vez de
+     * compartir `detallesDelSitio`. Los otros ocho `it` de este describe quedan
+     * en verde y éste se pone rojo — que es todo el punto: el `where` de la
+     * salida 6 no protege a la 7 el día que dejen de compartir el lector.
+     */
+    // Control positivo: sin esto, una pared vacía pasaría el aserto de abajo.
+    expect(pared.map((a) => a.slug)).toEqual([SLUG_PUBLICADA]);
+
+    const texto = JSON.stringify(pared);
+    for (const slug of [SLUG_BORRADOR, 'sitio-cancelada', 'sitio-pendiente']) {
+      expect(texto, `${slug} no puede aparecer en la cartelera`).not.toContain(slug);
+    }
   });
 
   it('sobrevive al argumento que Astro le pasa a `getStaticPaths` — B-237', async () => {

@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **seis** salidas, una por una:
+1. **¿Es público?** Resolvé las **siete** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -28,6 +28,7 @@ no se pueden deshacer después.
    | 4 | GA4 | `src/lib/analytics-eventos.ts` |
    | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` |
+   | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

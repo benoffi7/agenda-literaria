@@ -66,9 +66,14 @@ export interface Afiche {
  * ser un álbum. `portada` es justamente el flag de «esta es la que quiero que se
  * vea al compartir» (D-125), o sea la que ya significa *afiche*.
  *
- * `DetallePublico.imagenes[0]` **es** la portada: `toPublic` conserva el orden y
- * la página de detalle usa el mismo índice para su cabecera. Que las dos páginas
- * muestren la misma imagen no es casualidad, es el punto.
+ * `DetallePublico.imagenes[0]` **es** la portada, y desde B-268 eso es cierto de
+ * verdad: `detalleDeActividad` pone primera la que tiene el flag, no la que se
+ * cargó primero. Hasta entonces tiraba el flag y confiaba en el orden del array,
+ * así que marcar el flyer como portada en el panel no cambiaba nada — ni acá ni
+ * en la cabecera de la actividad, coherentemente equivocadas las dos.
+ *
+ * Que las dos páginas muestren la misma imagen no es casualidad: las dos leen el
+ * mismo índice del mismo view-model.
  *
  * **2 · Solo lo que todavía va a pasar.** La misma regla que la home
  * (`vigentesDelIndice`). Una pared de afiches de cosas que ya ocurrieron es un

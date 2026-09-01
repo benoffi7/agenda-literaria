@@ -1,5 +1,97 @@
 # Changelog
 
+## 2026-09-01 · los flyers: dejan de recortarse, dejan de estar escondidos, y tienen pared propia
+
+Tres cambios que son uno solo, y arrancan de un número: **42 actividades
+publicadas, 2 con imagen**. No falta materia prima —en el circuito literario
+porteño el flyer *es* el medio de difusión— faltaba que llegara a la base y que
+el sitio hiciera algo con él. B-263, B-264, B-265, B-266.
+
+**1 · La portada dejaba afuera el 51 % del flyer** — B-263, [D-147](06-decisiones.md).
+El detalle la pintaba con `object-cover` sobre `--aspect-portada`, que valía
+16/9; los dos flyers reales son verticales (720 × 826, o sea 0,87). Y lo que se
+recortaba no era margen: **un flyer es texto metido adentro de un JPEG** —título,
+fecha, cómo anotarse—, así que el recorte se llevaba justo los datos.
+
+El token **se retira y no se reemplaza por otro número**: cualquier proporción
+única recorta alguna forma de imagen. Lo reemplaza `claseAfiche`, que comparte la
+**regla** en vez del valor —*ninguna salida del sitio recorta*— con un barrido
+sobre todos los `.astro` del sitio, no sobre un archivo. Es más fuerte que lo que
+había: el token no impedía usarlo con `object-cover` en una página y
+`object-contain` en otra, que es como la divergencia de B-249 volvería.
+
+Lo que D-144 necesitaba no era fijar la proporción sino **topear el alto**, y eso
+es lo que ahora hace `max-h-[70svh]`, solo en la variante del detalle. La
+proporción sale de `ancho`/`alto` de cada imagen. Para que las externas también
+la tengan, **el panel las mide en la vista previa** —solo las filas que la sesión
+tocó, porque medir las ya guardadas ensuciaría el formulario apenas se abre—.
+
+**2 · El flyer deja de estar escondido en el panel** — B-264.
+Vivía en «Opcional»: un acordeón **cerrado por defecto**, llamado literalmente
+así, y la única frase que lo acompañaba tranquilizaba («se ve igual de bien») en
+vez de decir qué se pierde. Ahora está en «Qué es», la primera sección y la que
+no colapsa; la barra de abajo gana un tercer nivel que dice **qué se pierde** y
+no qué falta; y el listado marca «Sin flyer» solo en las publicadas que no lo
+tienen —la misma regla que la marca de autoría de B-130: si todo lleva marca, no
+avisa nada—.
+
+**Sin traba, y hay un test que lo fija.** Bloquear la publicación por una imagen
+frena que se carguen actividades, que es peor que una actividad sin flyer. La
+mutación que agrega esa exigencia al schema pone el test en rojo.
+
+Y `guardado_ok` manda ahora `imagenes` como entero: cruzado con `estado`, es lo
+único que va a decir si esto funcionó. Sin la métrica, el cambio se hace a
+ciegas.
+
+**3 · `/cartelera`, la pared de afiches** — B-265, [D-148](06-decisiones.md).
+Todos los flyers de lo que está por pasar, grandes, uno al lado del otro, cada
+uno enlazando a su actividad. Es la mitad que hace que valga la pena cargarlos y
+la que vuelve verdadera la promesa que el panel escribe.
+
+Una **pared**, no un carrusel: «en continuado» es que no termina, no que se
+mueva. Nada avanza solo, así que no hay animación que reducir. Columnas de CSS y
+no una grilla, porque una grilla alinea filas y con afiches de altos distintos
+cada fila deja huecos. El número de columnas está **atado a la cantidad**: con
+los dos de hoy sale una sola columna con tope de ancho —dos afiches grandes, uno
+abajo del otro— y la pared se densifica sola. Con cero no se dibuja una grilla
+vacía.
+
+Se arma desde el **mismo** `DetallePublico` que genera cada página de detalle, así
+que la pared y la cabecera muestran la misma imagen por construcción. **Nunca
+desde un listado de Storage** —es la trampa 13 y hay un test que lo prohíbe—.
+
+**4 · El peso, medido** — B-266, [D-149](06-decisiones.md).
+La cartelera es la única página del sitio que pide imágenes: la home no pide
+ninguna (D-146) y el detalle pide una.
+
+| | 2 flyers (hoy) | 30 flyers |
+|---|---|---|
+| `dist/cartelera/index.html` | 8,2 KB | 30,8 KB |
+| `<img>` | 2 (1 `eager`) | 30 (1 `eager`, 29 `lazy`) |
+| bytes de imagen al entrar | ~120 KB | **~180–360 KB** |
+| bytes al recorrerla entera | ~120 KB | **~2,6 MB** |
+
+**Por pantalla se sostiene y va a seguir sosteniéndose** —`lazy` hace que el
+costo de entrada no crezca con el total—; **por recorrido completo deja de
+sostenerse alrededor de los 20-25 flyers**. `sizes` no se puso: sin `srcset` no
+hace nada, y las variantes son **B-220**, que sube de prioridad con el disparador
+escrito.
+
+**Y un bug preexistente que este cambio iba a propagar** — B-268. La página de
+detalle tiraba el flag `portada` y mostraba `imagenes[0]`, o sea la primera
+cargada: marcar el flyer como portada con el radio del panel no cambiaba nada, ni
+ahí ni —a partir de ahora— en la cartelera. No fallaba nada y fallaba
+**coherente**, las dos pantallas mostrando la misma imagen equivocada. Lo encontró
+el `auditor-trampas`; se arregló en la proyección, así que todo consumidor del
+view-model hereda la respuesta correcta.
+
+**Tres textos del panel que describían pantallas que ya no existen** — B-267,
+cerrado. La ayuda decía que subir archivos «todavía no está» (existe desde
+D-131), el editor tranquilizaba con «la tarjeta del sitio no reserva un hueco
+gris» (el listado no tiene portadas desde D-146) y un punto de la guía tenía una
+frase duplicada a medias, arrastre de un merge.
+
+
 ## 2026-09-01 · la display pasa a Fraunces
 
 **El dueño rechazó la Bodoni** —«no me cierra la fuente que tiene "Agenda LEH", el

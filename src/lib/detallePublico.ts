@@ -49,7 +49,7 @@ import {
 } from '@/lib/fechasPublicas';
 import { etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
-import type { ActividadPublica, ItemMaterialPublico } from '@/lib/toPublic';
+import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad } from '@/types/actividad';
 import { ETIQUETA_TIPO_MATERIAL, construirLinkMapa, desSlug } from '@calendario';
 
@@ -553,6 +553,59 @@ const avisoDeEstado = (
  * página muestra siempre **la fecha** de cierre además del estado: una fecha no
  * puede envejecer mal.
  */
+/**
+ * Las imágenes de la página, **con la portada primero** — B-268.
+ *
+ * ── El bug que esto arregla ───────────────────────────────────────────────
+ * Este mapeo tiraba el flag `portada` y dejaba el array en el orden en que se
+ * cargaron las filas, y los dos consumidores toman `imagenes[0]`: la cabecera de
+ * la página y la pared de `/cartelera`. Entonces quien cargaba una foto, después
+ * el flyer, y marcaba el flyer como portada con el radio del panel —que es
+ * exactamente para eso— seguía viendo la primera en las dos pantallas.
+ *
+ * No fallaba nada, y encima fallaba **coherente**: las dos páginas mostraban la
+ * misma imagen equivocada, así que ni siquiera se notaba comparándolas. Lo
+ * encontró el `auditor-trampas` cuando B-265 propagó el mismo `imagenes[0]` a una
+ * salida nueva.
+ *
+ * ── Por qué se ordena acá y no en la plantilla ────────────────────────────
+ * Porque «cuál es la portada» es una decisión del dominio y ya tiene una sola
+ * respuesta escrita: `portadaDe` (`lib/imagenes.ts`), que es la que usan el panel
+ * y la vista previa. Reordenar acá hace que **todo** consumidor del view-model
+ * herede la respuesta correcta sin acordarse: la pared, la cabecera y el
+ * `og:image` del día que exista. Filtrar en vez de ordenar sería peor — la
+ * galería del detalle muestra el resto, y perderlas sería un cambio de producto
+ * que nadie pidió.
+ *
+ * `conPortada` en el panel togglea el booleano y **no mueve la fila**, y eso está
+ * bien: el orden del array es el orden en que se cargaron y es lo que la galería
+ * respeta. Lo que no puede pasar es que ese orden decida cuál es la portada.
+ */
+const imagenesDeDetalle = (
+  imagenes: readonly ImagenPublica[],
+): { url: string; epigrafe: string; ancho: number | null; alto: number | null }[] => {
+  const saneadas = imagenes
+    .map((i) => ({
+      // Una imagen con URL inválida se descarta abajo; acá se sanea igual.
+      url: urlSegura(i.url) ?? '',
+      epigrafe: i.epigrafe,
+      ancho: i.ancho ?? null,
+      alto: i.alto ?? null,
+      portada: i.portada,
+    }))
+    .filter((i) => i.url !== '');
+
+  /*
+   * El índice de la portada **se busca después de filtrar**: si la marcada tiene
+   * una URL que `urlSegura` rechaza, la portada pasa a ser la primera que sí
+   * sirve, que es lo mismo que hace `portadaDe` con una lista sin ninguna
+   * marcada. Buscarlo antes dejaría la página sin imagen habiendo otras válidas.
+   */
+  const n = saneadas.findIndex((i) => i.portada);
+  const ordenadas = n > 0 ? [saneadas[n]!, ...saneadas.filter((_, i) => i !== n)] : saneadas;
+  return ordenadas.map(({ portada: _portada, ...resto }) => resto);
+};
+
 export const detalleDeActividad = (
   a: ActividadPublica,
   etiquetas: MapaDeEtiquetas,
@@ -632,13 +685,7 @@ export const detalleDeActividad = (
     descripcion: a.descripcion,
     resumen: resumenDe(a.descripcion),
 
-    imagenes: a.imagenes.map((i) => ({
-      // Una imagen con URL inválida se descarta abajo; acá se sanea igual.
-      url: urlSegura(i.url) ?? '',
-      epigrafe: i.epigrafe,
-      ancho: i.ancho ?? null,
-      alto: i.alto ?? null,
-    })).filter((i) => i.url !== ''),
+    imagenes: imagenesDeDetalle(a.imagenes),
 
     esCiclo: a.esCiclo,
     rotuloCiclo: rotuloDeCiclo(a.esCiclo, vivos),

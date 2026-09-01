@@ -3729,7 +3729,7 @@ valores del fixture en la salida.
 ## D-139 · El link de la reunión tampoco sale a la página de detalle
 
 **Es más estricto que D-15**, y conviene tener el mapa completo de una vez porque
-ahora son cinco celdas y ninguna se deduce de las otras:
+ahora son **seis** celdas y casi ninguna se deduce de las otras:
 
 | Salida | ¿Sale `online.url` con `urlPublica: true`? | Por qué |
 |---|---|---|
@@ -3739,6 +3739,7 @@ ahora son cinco celdas y ninguna se deduce de las otras:
 | 1d · el **JSON-LD** de esa página | **no** | §5.4 del diseño: «el HTML muestra lo que el dueño eligió; el JSON-LD no» |
 | 2 · el evento de Calendar | **sí** | D-15, igual que 1a |
 | 3, 4, 5 · issue, GA4, posteo | **no, nunca** | cada una por su motivo (ver `07-seguridad.md`) |
+| 7 · la **cartelera** | **no** | la única que **sí** se deduce, y por construcción: proyecta el `DetallePublico` de 1c, que ya lo descartó. Agregada en B-265; lo fija el barrido de la salida 7, que corre también con `urlPublica: true` |
 
 El argumento de D-129 para el índice era «en lote y en un solo GET». Acá es otro y
 es más fuerte: **la página de detalle es la superficie que Google indexa**. Un
@@ -4242,3 +4243,266 @@ lee sin candaditos.
   de 65svh y el foco que vuelve al abridor. Los tres argumentos de D-143 valen en la
   pantalla chica; el riel los reemplaza **solo en escritorio**, donde hay una columna
   entera. **B-238 sigue abierta** por el mismo motivo de siempre.
+
+---
+
+## D-147 · Ninguna salida del sitio recorta una imagen — se retira `--aspect-portada`
+
+**Contexto.** B-263. La página de detalle pintaba la portada con
+`class="aspect-portada … object-cover"`, y `--aspect-portada` valía **16/9**. Los
+flyers que de verdad se cargan son **verticales**: los dos que hay en producción
+miden 720 × 826, o sea **0,87**. Con esa combinación se perdía el **51 %** de la
+imagen, mitad arriba y mitad abajo.
+
+**Y lo que se perdía no era margen.** Un flyer no es una foto: es **texto metido
+adentro de un JPEG**. El título, la fecha, la sede y cómo anotarse están
+tipografiados ahí. Recortar arriba y abajo se lleva exactamente los datos y deja
+en pantalla la parte del medio, que suele ser la ilustración.
+
+### Las cuatro salidas, y por qué la elegida
+
+| Opción | Por qué no |
+|---|---|
+| un segundo token, para retrato | hay que **saber** que la imagen es retrato, y de una externa no se sabe. Y son dos números que mantener en vez de uno |
+| `object-contain` sobre una caja de proporción fija | no recorta, pero deja el flyer vertical encogido entre dos bandas de papel **siempre**, no solo mientras carga |
+| bajar el token a 3/4 | recorta menos y sigue recortando. Y rompe la foto apaisada del espacio, que es el otro uso real de la galería |
+| **respetar la proporción de cada imagen, con tope de alto** | **la elegida** |
+
+**La regla que se adopta es más fuerte que el número que reemplaza: ninguna
+salida del sitio recorta una imagen.** No es «16/9 estaba mal y otro valor está
+bien» — no hay proporción única que sirva a la vez para un flyer de historia, una
+foto apaisada del espacio y la tapa de un libro. Cualquier caja fija con
+`object-cover` recorta algo.
+
+### Qué pasa con el motivo por el que existía el token (B-249)
+
+B-249 creó `--aspect-portada` para que **la misma imagen no tuviera dos recortes
+en dos lugares distintos**. Ese problema es real y no se descarta: se resuelve
+mejor.
+
+| | el token | lo que lo reemplaza |
+|---|---|---|
+| qué se comparte | un **número** | la **regla** (`claseAfiche` en `components/sitio/estilos.ts`) |
+| qué impide | dos proporciones distintas | **recortar**, en cualquier página |
+| qué **no** impedía | usarlo con `object-cover` en una página y `object-contain` en otra | — el `object-fit` viaja adentro de la clase |
+| dónde se verifica | un aserto sobre la página de detalle | un barrido sobre **todos** los `.astro` del sitio (`tests/afiche.test.ts`) |
+
+Con «nadie recorta», dos consumidores no pueden diferir en el recorte: no hay
+recorte. Y el barrido cubre la página que se escriba el mes que viene, que el
+aserto anterior —atado a un archivo— no cubría.
+
+**No se declara un token de proporción nuevo**, y eso es parte de la decisión:
+cualquier valor único vuelve a ser un recorte para alguna forma de imagen.
+
+### El alto sí se topea, que era lo que D-144 necesitaba de verdad
+
+El §4.3 del diseño no quería la imagen arriba porque «un flyer vertical de
+Instagram como cabecera empuja la fecha fuera de la pantalla». D-144 le sacó la
+premisa fijando la **proporción**; lo que en realidad hacía falta era topear el
+**alto**. La diferencia importa: con proporción fija el flyer se ve cortado en
+todas las pantallas; con tope de alto se ve entero en casi todas, y encogido
+—nunca cortado— en las pocas donde no entra.
+
+El tope es `max-h-[70svh]` y vive en `claseAfichePortada`, **no** en la clase
+base. `svh` y no `vh` por lo mismo que el panel de filtros de D-143: con la barra
+retráctil de un navegador móvil, `vh` mide de más.
+
+**La cartelera no lleva el tope, a propósito.** Ahí no hay ficha que quede abajo:
+el afiche *es* el contenido y la página se recorre scrolleando. Topear el alto en
+una columna ancha dejaría el flyer flotando entre dos bandas de papel, que es
+justo el aspecto que este cambio vino a sacar.
+
+### No saber la forma de una imagen es un caso de primera clase
+
+La proporción se reserva con `aspect-ratio` sacado de `ancho`/`alto` de **esa**
+imagen (`lib/afiche.ts`). Una imagen **propia** los trae desde que se sube
+(`subir-imagen.ts` los mide sobre los bytes). Una **externa** es una URL de otro
+lado y DEC-7d decidió que el build no las descarga, así que su forma solo se
+puede conocer en un navegador.
+
+**Entonces el panel la mide.** La vista previa del editor ya carga la imagen;
+`naturalWidth`/`naturalHeight` se leen de ahí sin pedir permiso de CORS —no son
+datos de píxel— y se guardan en la fila. La medida viaja sola hasta la página
+porque `formADocumento` ya copiaba `ancho` y `alto` «si están» (D-131 §2) y
+`imagenPublica` ya los emitía.
+
+**Se miden solo las filas que esta sesión escribió** —la recién agregada y
+aquella a la que se le cambió la dirección— y no todas las que se ven. Medir al
+cargar la vista previa de una fila **ya guardada** escribiría en el formulario
+apenas se abre, y `useFormularioSucio` compara el estado contra el inicial: abrir
+una actividad sin tocar nada diría «tenés cambios sin guardar» y dispararía el
+autoguardado. Es la misma familia que la advertencia de D-125 sobre el id
+determinístico.
+
+Las filas viejas quedan sin medida hasta que alguien vuelva a tocarlas, y ahí
+**no se reserva ninguna caja**. Es preferible a inventar una: sin `aspect-ratio`
+el navegador usa la forma real al cargar y el costo es un salto de layout, una
+vez; con una caja inventada el flyer queda encogido **para siempre**.
+
+Y una medida corrupta —un `alto: 0` de un documento tocado a mano— se trata como
+«no sé» y no como cero: `aspect-ratio: 720 / 0` es una caja de alto cero, o sea
+la imagen desaparecida de la página con el build en verde.
+
+---
+
+## D-148 · La cartelera es una pared de afiches, y se arma desde el índice
+
+**Contexto.** B-265. El flyer es el medio de difusión del circuito literario y el
+sitio lo mostraba en un solo lugar —la cabecera de la página de cada actividad—,
+al que solo llega quien ya decidió entrar. `/cartelera` le da un lugar propio:
+todos los flyers, grandes, uno al lado del otro, cada uno enlazando a su
+actividad.
+
+Es además la otra mitad de B-264: el panel dice «sin imagen no entra en la
+cartelera», y esa frase tiene que ser verdad.
+
+### Una pared, no un carrusel
+
+El pedido fue «en continuado», y dentro del sistema visual eso se lee como
+**continuo porque no termina**, no porque se mueva. Nada de esta página avanza
+solo, así que tampoco hay `prefers-reduced-motion` que respetar: no hay
+movimiento que reducir. Un carrusel además **esconde** — con 30 flyers, 27
+quedarían fuera de pantalla esperando que alguien toque una flecha.
+
+### Columnas de CSS y no una grilla
+
+Una grilla alinea filas, y con afiches de altos distintos cada fila deja huecos
+debajo de los más bajos. Las columnas dejan que cada afiche mida lo que mide y
+que el de abajo arranque donde terminó el anterior, que es literalmente cómo se
+pega un afiche sobre una pared.
+
+**Lo que se paga es el orden de lectura**: con columnas se lee de arriba hacia
+abajo por columna y no de izquierda a derecha por fila. Se acepta porque la
+lectura en orden cronológico es el trabajo de la **agenda**, que es la página de
+al lado y está ordenada; acá cada afiche lleva su fecha escrita al pie.
+
+### El número de columnas está atado a la cantidad
+
+Hoy hay **dos** flyers. Con `columns-3` fijo, CSS reparte el alto y esos dos
+quedan del ancho de un tercio de pantalla, cada uno en su columna y con la
+tercera vacía: se ve como una plantilla a medio llenar, que es distinto de verse
+poco. Con el tope atado a la cantidad (`columnasDeCartelera`: ≤2 → una columna
+con tope de ancho, ≤5 → dos, más → tres) los dos de hoy salen grandes y uno abajo
+del otro, y la pared se densifica sola a medida que se carguen.
+
+**Con cero no se dibuja una grilla vacía.** Se dice qué es la página y se manda a
+la agenda, que sí tiene contenido — el mismo criterio del §7.6 con el hueco de la
+portada: no hay placeholder.
+
+### Qué entra a la pared
+
+- **Una imagen por actividad, la portada.** Una actividad puede tener cuatro y
+  las otras tres suelen ser fotos del espacio: con las cuatro, la pared deja de
+  ser una pared de flyers y pasa a ser un álbum. `portada` es justamente el flag
+  de «esta es la que quiero que se vea al compartir» (D-125).
+- **Solo lo que todavía va a pasar**, la misma regla que la home. Una pared de
+  afiches de cosas que ya ocurrieron es un museo, y el clic lleva a una página
+  que arranca con «esta actividad ya pasó».
+- **Ordenado por fecha próxima, y con desempate por título.** Firestore no
+  garantiza el orden de un `get()` de colección: sin desempate, dos actividades
+  del mismo día pueden salir distinto en cada build y la página cambia sin que
+  haya cambiado nada.
+
+### De dónde salen los datos, y de dónde no
+
+Del **mismo** `DetallePublico` que genera cada página de actividad, no de una
+segunda proyección. Así la pared y la cabecera muestran la misma imagen por
+construcción y no por coincidencia, que es la clase de B-88.
+
+Y trae la consecuencia que importa para el §5: la frontera de privacidad ya es un
+tipo (D-140) y ya está auditada, así que esta proyección solo puede **sacar**
+campos. `storagePath` no está en `DetallePublico`, entonces tampoco puede estar
+acá — se verificó además sobre el `dist/` construido.
+
+**Nunca desde un listado de Storage**, y hay un test que lo prohíbe explícito. Es
+la **trampa 13**: `allow list` está cerrado a propósito (`allow get: if true`,
+`allow list: if esAdmin()`), y un `listAll()` traería también los flyers de las
+actividades en borrador. La cartelera se arma desde el índice de lo publicado,
+igual que el resto del sitio.
+
+### El texto alternativo es `alt=""`, y eso **es** DEC-7a
+
+DEC-7a decide **de dónde sale** el texto alternativo de una imagen —del título de
+la actividad, no de un campo por imagen— y no que haya que decirlo dos veces. En
+la cartelera el título está ahí abajo como texto, dentro del mismo enlace, así
+que es el nombre accesible del enlace; repetirlo en el `alt` se escucharía dos
+veces seguidas. D-142 ya había aplicado exactamente esto donde la imagen convive
+con su título. En la página de detalle, donde la portada está sola arriba del
+`h1`, el `alt` sigue siendo `Imagen de {título}`.
+
+### Dónde entra en la navegación
+
+**Segunda, pegada a «Agenda».** Son las dos formas de mirar lo mismo —la lista y
+la pared— y quien entra por la agenda tiene que poder pasar a la otra sin buscar.
+«Suscribirse», «Ayuda» y «Contacto» son de después de haber encontrado algo. El
+orden está fijado en `tests/estilos-del-sitio.test.ts` porque es una decisión:
+mover «Cartelera» al final la esconde detrás de tres enlaces de servicio.
+
+---
+
+## D-149 · El peso de la cartelera sin la Function de recompresión, con los números
+
+**Contexto.** B-266. La cartelera es la **única** página del sitio que pide
+imágenes: la home no pide ninguna desde D-146 y el detalle pide una. Así que el
+presupuesto de bytes del sitio se decide ahí, y la Function que recomprime y
+deriva miniaturas (**B-220**, DEC-7d) todavía no existe: hoy una imagen propia se
+sirve **tal cual la subió quien organiza**, hasta 3 MB.
+
+### Lo medido
+
+Contra el emulador, con 42 actividades publicadas de la forma de las reales y
+flyers de 720 × 826 como los dos que hay cargados:
+
+| | 2 flyers (hoy) | 30 flyers |
+|---|---|---|
+| `dist/index.html` | 61,9 KB | 61,9 KB |
+| `dist/events.json` | 59,2 KB | 63,2 KB |
+| `dist/cartelera/index.html` | **8,2 KB** | **30,8 KB** |
+| `<img>` en la pared | 2 (1 `eager`, 1 `lazy`) | 30 (1 `eager`, 29 `lazy`) |
+| con la caja reservada | 2 de 2 | 30 de 30 |
+
+El markup cuesta **~0,75 KB por afiche**, o sea nada. Lo que pesa son los
+archivos, y ahí los números reales son 31 KB y 90 KB — **un solo flyer pesa más
+que el HTML entero de la home**.
+
+Para reproducirlo: sembrar N actividades publicadas con una imagen de 720 × 826 y
+`ancho`/`alto` puestos, correr el build contra el emulador y medir `dist/`.
+
+### El veredicto, en dos mitades
+
+**Por pantalla se sostiene, y va a seguir sosteniéndose.** Con `loading="lazy"`
+en todos menos el primero y la caja reservada por la medida de cada imagen, el
+navegador baja lo que está cerca del viewport y nada más:
+
+- en un teléfono de 390px, un afiche de 0,87 mide ~411px más ~90px de pie, así
+  que entra ~1,5 en pantalla y se piden 2 o 3 → **180–270 KB**;
+- en un escritorio de 1440px con tres columnas se ve una fila → **~270–360 KB**.
+
+Eso **no crece** con el total: es lo mismo con 30 flyers que con 300.
+
+**Por recorrido completo deja de sostenerse alrededor de los 20-25 flyers.**
+Scrollear la pared entera con 30 flyers de 90 KB baja **2,6 MB**; con 42 serían
+3,8 MB. Y el techo es peor que el promedio: el tope de subida son 3 MB por imagen
+(DEC-7b), o sea que **un solo flyer sin recortar puede pesar más que toda la
+pared medida acá**.
+
+### Qué se hizo, y qué no se puede hacer sin B-220
+
+Las tres palancas que existen sin variantes de imagen están puestas:
+`loading="lazy"` salvo el primero, `width`/`height` más `aspect-ratio` para que
+el diferido no haga saltar la página, y `decoding="async"`.
+
+**`sizes` no está, y es a propósito: sin `srcset` no hace nada.** Un `sizes`
+suelto es decoración que parece optimización. Lo que haría falta —servir la
+imagen a 430px cuando la columna mide 430px— necesita **variantes**, y las
+variantes son B-220.
+
+**Conclusión: sin la Function esto se sostiene mientras la pared se recorra de a
+pantallas, y no se sostiene para quien la recorra entera.** No se construye nada
+más acá para taparlo: sería trabajo que se cae con 30 actividades. B-220 sube de
+prioridad y el disparador queda escrito en B-266.
+
+**Y B-220 no se implementa de paso.** Arrastra una dependencia binaria en
+`functions/`, el write-back al documento y —sobre todo— la guarda anti-loop: un
+`onObjectFinalized` que escribe la miniatura en el **mismo bucket** se dispara a
+sí mismo, que es la trampa 3 con otra cara (trampa 12 del §13).

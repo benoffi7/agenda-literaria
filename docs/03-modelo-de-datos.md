@@ -295,6 +295,22 @@ Tres cosas que no se adivinan del tipo:
   handle autoritativo con el que el panel direcciona el objeto, que un consumidor
   del `events.json` no usa para nada—. Lo fija `tests/imagenes.test.ts`, y la
   decisión está en **D-131**.
+- **`portada` es un flag y no una posición, y desde B-268 eso es cierto de
+  verdad.** D-125 lo decidió así —«la imagen que uno quiere que aparezca al
+  compartir el link no siempre es la primera que cargó»— pero la proyección de la
+  página tiraba el flag y mostraba `imagenes[0]`, así que marcar la portada en el
+  panel no cambiaba nada. `conPortada` sigue **sin mover la fila** (el orden del
+  array es el orden de carga y es lo que respeta la galería); lo que cambió es que
+  `detalleDeActividad` pone primera la marcada. Ver **B-268**.
+- **`ancho` y `alto` ahora se llenan también en las externas** (B-263, D-147). Una
+  imagen **propia** los traía desde que se sube —`subir-imagen.ts` los mide sobre
+  los bytes—; una **externa** no los tenía nunca, porque el build no descarga las
+  imágenes de afuera (DEC-7d). Desde el 2026-09-01 los mide el **panel**, en la
+  vista previa del editor (`naturalWidth`/`naturalHeight`), y solo en las filas
+  que esa sesión agregó o cuya dirección cambió: medir las ya guardadas
+  ensuciaría el formulario apenas se abre. Sirven para reservar la caja de la
+  imagen en el sitio, así que **una fila sin ellos funciona igual**, con un salto
+  de layout al cargar. Los documentos anteriores no se migran.
 - **`storagePath`, `ancho` y `alto` son campos de máquina** (B-206 #2). Hoy los
   escribe la subida del panel y mañana los va a reescribir la Function de DEC-7d.
   Para que eso no sea `calendarEventId` dentro de `sesiones` otra vez,

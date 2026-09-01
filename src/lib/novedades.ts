@@ -57,6 +57,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'flyer-y-cartelera',
+    fecha: '2026-09-01',
+    version: '1.5.0',
+    titulo: 'El flyer sale entero, y ahora hay una cartelera con todos',
+    detalle:
+      'La imagen de la actividad se muestra completa: antes se recortaba arriba y abajo, que es ' +
+      'donde suelen estar el título y la fecha del flyer. Y el sitio tiene una página nueva, la ' +
+      'cartelera, con los flyers de todo lo que viene, uno al lado del otro. La actividad que no ' +
+      'tenga imagen se publica igual, pero ahí no aparece.',
+    donde: 'Formulario, sección «Qué es» — el cargador de imágenes se mudó ahí',
+  },
+  {
     id: 'varias-formas-de-cursar',
     fecha: '2026-08-28',
     version: '1.5.0',

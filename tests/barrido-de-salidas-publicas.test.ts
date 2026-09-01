@@ -47,6 +47,7 @@ import { describe, expect, it } from 'vitest';
 import { opcionesPublicas, toPublic } from '@/lib/toPublic';
 import { construirIndice } from '@/lib/eventsJson';
 import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
+import { carteleraDeDetalles } from '@/lib/cartelera';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
@@ -1323,5 +1324,160 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     expect(mensaje, 'el barrido NO detectó que se publicó la actividad entera').not.toBe('');
     expect(mensaje).toContain('FUGA');
     expect(mensaje).toContain('online.url');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Salida 7 — la cartelera (B-265)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
+  /*
+   * **Entra al barrido en el mismo cambio que la creó**, que es la lección de
+   * B-212 y de la salida 5.
+   *
+   * Y hay algo que la distingue de las otras seis: **su entrada no es el
+   * documento, es la salida 6**. `carteleraDeDetalles` proyecta `DetallePublico`,
+   * así que solo puede sacar campos y no agregar ninguno que aquella no haya
+   * decidido publicar. Eso hace que la lista de permitidos de acá tenga que ser
+   * un **subconjunto** de la del detalle, y es lo que se afirma abajo: si algún
+   * día alguien le pasa a la pared el documento en vez del view-model, la lista
+   * deja de ser subconjunto y este archivo lo dice.
+   */
+  const ETIQUETAS = mapaDeEtiquetas({
+    tipo: [{ slug: 'presentacion', label: CENTINELA['labels.tipo'] }],
+    barrio: [{ slug: CENTINELA['sede.barrio'], label: CENTINELA['labels.barrio'] }],
+    plataforma: [
+      { slug: CENTINELA['online.plataforma'], label: CENTINELA['labels.plataforma'] },
+    ],
+    arancel: [{ slug: CENTINELA['arancel.tipo'], label: CENTINELA['labels.arancel'] }],
+    tags: [{ slug: CENTINELA.tags, label: CENTINELA['labels.tags'] }],
+  });
+
+  // El mismo instante que el barrido del detalle: antes de la primera sesión, que
+  // es el único estado en el que la actividad **entra** a la pared.
+  const AHORA = new Date('2026-08-20T15:00:00Z');
+  const pared = () =>
+    carteleraDeDetalles([
+      detalleDeActividad(toPublic(actividadCentinela(), 'act_centinela'), ETIQUETAS, AHORA),
+    ]);
+
+  const PERMITIDO_EN_LA_CARTELERA: readonly Excepcion[] = [
+    {
+      nombre: 'identidad',
+      centinelas: ['titulo', 'slug'],
+      porque:
+        'el título es el pie del afiche y el slug es el enlace a la actividad. La ' +
+        '**descripción no está**: en una pared de afiches no entra un párrafo, y publicarla ' +
+        'acá sería la tercera copia del mismo texto.',
+    },
+    {
+      nombre: 'el afiche',
+      centinelas: ['imagenes.url', 'imagenes.epigrafe'],
+      porque:
+        'es la página entera. `storagePath` NO está —y no puede estar, porque tampoco está ' +
+        'en `DetallePublico`— y `imagenes.id` tampoco: en una pared no identifica nada.',
+    },
+    {
+      nombre: 'dónde y de qué tipo',
+      centinelas: ['sede.nombre', 'labels.barrio', 'labels.tipo'],
+      porque:
+        'la ficha mínima que convierte un afiche en algo accionable: qué es, cuándo y dónde. ' +
+        'La **dirección exacta NO está** —eso es del detalle, donde alguien ya decidió ir— y ' +
+        'las indicaciones tampoco.',
+    },
+  ];
+
+  it('sobreviven exactamente los centinelas que la pared necesita', () => {
+    barrer('cartelera', JSON.stringify(pared()), PERMITIDO_EN_LA_CARTELERA, {
+      insensible: true,
+    });
+  });
+
+  it('con el link de la reunión publicado a mano, la pared sigue sin él (D-139)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y el hueco era del fixture.**
+     * `actividadCentinela()` a secas trae `urlPublica: false`, así que el
+     * centinela del link **no estaba en la entrada** del barrido de arriba: ese
+     * `it` no podía detectar una fuga del link ni aunque la hubiera. La salida 6
+     * sí corre las dos ramas; la 7 quedaba cubierta solo de refilón.
+     *
+     * La rama que importa es ésta: D-15 deja pasar el link a las salidas 1 y 2,
+     * y D-139 lo prohíbe en HTML indexado. La pared es HTML indexado.
+     */
+    const conLink = detalleDeActividad(
+      toPublic(actividadCentinela(conLinkPublico()), 'act_link'),
+      ETIQUETAS,
+      AHORA,
+    );
+    // Dos controles positivos, y hacen falta los dos: que la rama esté activada
+    // de verdad, y que la pared **no** haya quedado vacía —un `barrer()` sobre
+    // `[]` pasa sin haber mirado nada—.
+    expect(conLink.modalidades.some((m) => m.plataforma !== null)).toBe(true);
+    const paredConLink = carteleraDeDetalles([conLink]);
+    expect(paredConLink).toHaveLength(1);
+    barrer(
+      'cartelera (link de reunión publicado a mano)',
+      JSON.stringify(paredConLink),
+      PERMITIDO_EN_LA_CARTELERA,
+      { insensible: true },
+    );
+  });
+
+  it('todo lo que publica ya lo publicaba el detalle', () => {
+    /*
+     * La afirmación de **forma**, y la que sobrevive a que cambien las dos
+     * listas: una salida derivada no puede publicar un texto que aquella de la
+     * que deriva no publique. Se afirma sobre los valores y no sobre la lista de
+     * permitidos, así que no hay nada que mantener.
+     *
+     * **Y no es el mismo chequeo que el de arriba.** Las dos mutaciones lo
+     * muestran:
+     *
+     *  - agregarle a la pared un campo que el detalle **sí** publica
+     *    (`descripcion`, «para el `title` del enlace») → lo caza el barrido de
+     *    centinelas de arriba, y éste lo deja pasar, que es correcto: si el
+     *    detalle lo publica, está auditado;
+     *  - hacer que la pared **componga** en vez de copiar
+     *    (`titulo: d.titulo.toUpperCase()`) → lo caza **este** y no el de
+     *    arriba, porque `barrer` corre con `insensible: true` y encuentra el
+     *    centinela igual. Componer es el primer paso de publicar algo que la
+     *    salida 6 no publicó, y es como entró el `aviso.texto` del detalle.
+     *
+     * Las dos mutaciones se corrieron y las dos dieron rojo en su chequeo.
+     *
+     * `ruta` queda afuera y se verifica aparte: es lo único que la pared
+     * **compone** en vez de copiar, y lo compone con el slug (B-227).
+     */
+    const detalle = detalleDeActividad(
+      toPublic(actividadCentinela(), 'act_centinela'),
+      ETIQUETAS,
+      AHORA,
+    );
+    const afiche = carteleraDeDetalles([detalle])[0]!;
+    const delDetalle = JSON.stringify(detalle);
+
+    for (const [campo, valor] of Object.entries(afiche)) {
+      if (campo === 'ruta' || typeof valor !== 'string' || valor === '') continue;
+      expect(
+        delDetalle.includes(valor),
+        `la cartelera publica \`${campo}\` y la página de detalle no: o dejó de derivar de ` +
+          '`DetallePublico`, o alguien le pasó el documento',
+      ).toBe(true);
+    }
+
+    expect(afiche.ruta).toBe(`/actividad/${detalle.slug}`);
+  });
+
+  it('una actividad sin afiche no aporta nada a la pared', () => {
+    // Control negativo del barrido: sin este caso, una pared vacía pasaría el
+    // aserto de arriba habiendo barrido un `[]`.
+    expect(pared()).toHaveLength(1);
+    const sinImagen = detalleDeActividad(
+      toPublic(actividadCentinela({ imagenes: [] }), 'act_sin_imagen'),
+      ETIQUETAS,
+      AHORA,
+    );
+    expect(carteleraDeDetalles([sinImagen])).toEqual([]);
   });
 });
