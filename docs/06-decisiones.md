@@ -4762,3 +4762,68 @@ es lo correcto, y no rompe el listado entero.
 | `tags` | **A medias, y se anota** (B-274). D-74 lo descartó porque «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera». **B-05 y B-06 existen desde hace semanas**, así que la condición que el propio D-74 puso se cumplió. Lo que sigue en pie es la otra mitad: es multivaluado y necesita un control de selección múltiple, que ninguno de los seis desplegables actuales tiene. No se agrega ahora porque no se pidió |
 | `destacado` | **Sí caducó, y se anota** (B-274). Era «un booleano que hoy no consume nadie: el sitio público todavía no existe». Hoy existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. No se agrega ahora porque no se pidió, y porque con pocas destacadas un filtro booleano compra menos que un orden |
 | quién la cargó | **No.** El motivo era que el dato es un identificador de usuario y no un nombre, y que el §5.1 los mantiene fuera de todo lo que se muestre. Las dos cosas siguen igual |
+
+---
+
+## D-158 · Se corrige la casilla, no el comportamiento: el link de la reunión sale al calendario
+
+**B-240**, y es la conversación que D-139 dejó abierta con nombre y apellido: «la
+casilla dice *publicar el link en el sitio* y el sitio no lo publica». El ítem
+ofrecía dos salidas —cambiar el texto, o publicar el link en el detalle y aceptar
+el riesgo—. **Se elige cambiar el texto.**
+
+### El argumento de D-139 es asimétrico, y por eso gana
+
+Las dos salidas parecen simétricas —«que la casilla diga la verdad» vs. «que el
+sitio cumpla lo que la casilla dice»— y no lo son:
+
+| | ¿Se puede volver atrás? |
+|---|---|
+| link en la **descripción del evento** de Calendar | **sí**: se destilda la casilla, el sync reescribe el evento y el link deja de estar. Quien lo copió lo tiene, pero no queda publicado en ningún lado |
+| link en la **página de detalle** | **no**: es un HTML que Google indexa. Queda en el índice, en la caché de Google, en archive.org y en cualquier scrapeo que haya pasado. Sacarlo del repo no lo saca de ahí |
+
+Publicar un link de reunión en una página indexable es **irreversible de una forma
+en que ponerlo en el evento no lo es**. Entre una inconsistencia de texto —que se
+arregla escribiendo— y una publicación que no se puede deshacer, se elige la que
+tiene vuelta. Es el mismo criterio con el que D-139 se decidió; acá solo se lo
+lleva hasta su consecuencia en la UI.
+
+### A dónde sale de verdad, que es lo que el texto tiene que decir
+
+Con `urlPublica: true` (D-15) el link sale a **dos** lugares, y ninguno es la
+página de la actividad:
+
+1. **La descripción del evento de Google Calendar** (`functions/calendario.js`):
+   `Link: <url>`. Es donde lo ve quien está suscripto al calendario público, y es
+   la salida que la casilla de verdad gobierna.
+2. **El `events.json`** (`toPublic`): el archivo de datos abiertos que el sitio
+   publica y que cualquiera puede pedir.
+
+La página de detalle **no** (D-139), el índice del listado **no** (D-129), el
+posteo para redes **no**, la analítica **no**, el issue de GitHub **no**. La tabla
+completa de las siete salidas está en D-139.
+
+### El texto nuevo
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| la casilla (`ModalidadesEditor.tsx`) | «Publicar el link en el sitio.» | «Publicar el link en el evento del calendario, que es donde lo ve quien está suscripto.» + «En la página de la actividad **no** sale: una página que Google indexa no se despublica. Sí viaja en los datos abiertos del sitio, que cualquiera puede leer.» |
+| el aviso al lado | zoombombing, y se queda | igual, sin tocar: sigue siendo lo que hay que saber antes de tildarla |
+| la ayuda del panel (`ayuda.ts`, `link-reunion`) | «Solo sale al sitio y al evento del calendario si tildás…» | dice las dos salidas reales y por qué la página queda afuera |
+| el campo faltante (`camposFaltantes.ts`) | «Publicar el link en el sitio» | «Publicar el link en el calendario» — es el nombre con el que hay que ir a buscarla |
+| el campo «Link del encuentro» | «No se publica: se manda al inscribirse.» | «**Por defecto** no se publica: se manda al inscribirse.» — era falso con la casilla tildada |
+
+### Lo que NO cambia, y es la mitad importante
+
+`online.url` **sigue sin salir a la página de detalle**, ni con `urlPublica: true`.
+El barrido de centinelas lo fija con su propio caso («con `urlPublica: true` el
+link de la reunión TAMPOCO sale al detalle»), que además es ahora uno de los
+`atadoA` del punto de la guía: si mañana alguien publica el link en el detalle, el
+test se pone rojo y la guía que promete lo contrario se rompe en el mismo commit.
+
+### Si el dueño prefiere la otra salida
+
+La conversación queda abierta y el lugar es este documento, no un `?.url` agregado
+sin ruido. Lo que hay que saber para decidirla es lo de la tabla de arriba: el
+costo de publicar el link en el detalle no se paga el día que se publica, se paga
+para siempre.

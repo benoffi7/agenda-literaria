@@ -383,6 +383,14 @@ Tres cosas se mantienen porque son las que hacen que el desvío sea aceptable:
 Si la actividad es un encuentro abierto sin inscripción, publicar el link tiene
 sentido. Si tiene cupo, no: el link circula y el cupo deja de existir.
 
+**Y la casilla dice a dónde sale** (B-240, D-158). Decía «Publicar el link en el
+sitio», y en la página de detalle el link **no** sale ni con el flag en true
+(D-139): la casilla prometía una pantalla que nunca lo muestra. Se corrigió el
+texto y no el comportamiento, porque el argumento de D-139 es asimétrico — un
+evento de Calendar se reescribe al destildar, un HTML indexado no se despublica.
+Las dos salidas reales son la **descripción del evento** y el **`events.json`**, y
+son las dos que la casilla, la guía y el aviso de campo faltante nombran ahora.
+
 ## La página «Suscribirse» publica la dirección del calendario — la pública
 
 `/suscribirse` (B-230) imprime la dirección del `.ics` **a la vista**, para que se

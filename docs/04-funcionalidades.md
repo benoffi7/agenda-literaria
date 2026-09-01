@@ -818,7 +818,9 @@ perder su fecha original. Con `arancel: gratis` se emite `price: "0"`; con
 cualquier otro **no se emite precio**, porque el arancel es un slug y no un monto.
 
 **Lo que la página NO muestra**, y es decisión y no olvido: el link de la reunión,
-ni siquiera con «publicar el link en el sitio» tildado (**D-139**).
+ni siquiera con la casilla tildada (**D-139**). Desde **B-240** / **D-158** la
+casilla lo dice: se llama «Publicar el link en el evento del calendario», porque
+ese —y el `events.json`— es el único lugar a donde sale.
 
 ### `/cartelera` — la pared de afiches (B-265)
 

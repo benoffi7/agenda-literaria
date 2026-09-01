@@ -208,7 +208,10 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                     autoSeleccionarPrimera
                   />
                 </Campo>
-                <Campo label="Link del encuentro" ayuda="No se publica: se manda al inscribirse.">
+                <Campo
+                  label="Link del encuentro"
+                  ayuda="Por defecto no se publica: se manda al inscribirse."
+                >
                   <input
                     type="url"
                     inputMode="url"
@@ -231,9 +234,23 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                         editar({ online: { ...fila.online!, urlPublica: e.target.checked } })
                       }
                     />
+                    {/*
+                      B-240 / D-158 — **el texto dice a dónde sale de verdad.** Decía
+                      «Publicar el link en el sitio» y el sitio no lo publica: D-139 lo
+                      dejó afuera de la página de detalle, así que la casilla prometía
+                      una pantalla que nunca lo muestra. Se corrige el texto y no el
+                      comportamiento, porque el argumento de D-139 es asimétrico: un
+                      evento de calendar se borra, una página indexada no se despublica.
+                    */}
                     <span>
-                      Publicar el link en el sitio.
-                      <strong className="block text-acento">
+                      Publicar el link en el evento del calendario, que es donde lo ve quien
+                      está suscripto.
+                      <span className="mt-1 block">
+                        En la página de la actividad <strong>no</strong> sale: una página que
+                        Google indexa no se despublica. Sí viaja en los datos abiertos del
+                        sitio, que cualquiera puede leer.
+                      </span>
+                      <strong className="mt-1 block text-acento">
                         Dejalo destildado salvo que sea un encuentro abierto: un link de Zoom
                         público habilita zoombombing.
                       </strong>

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-09-01 · la casilla del link de la reunión dice a dónde sale
+
+**B-240**, [D-158](06-decisiones.md). La casilla del formulario decía «Publicar el
+link en el sitio» y el sitio **no** lo publica: [D-139](06-decisiones.md) dejó
+`online.url` afuera de la página de detalle, así que la casilla prometía una
+pantalla que nunca lo muestra.
+
+El ítem ofrecía dos salidas y se elige la del texto, porque **el argumento de
+D-139 es asimétrico**: un evento de Calendar se reescribe al destildar la casilla,
+y un HTML indexado por Google no se despublica —queda en la caché, en archive.org
+y en cualquier scrapeo—. Publicar un link de reunión en una página indexable es
+irreversible de una forma en que ponerlo en el evento no lo es.
+
+A dónde sale de verdad con `urlPublica: true`, que es lo que el texto ahora dice:
+la **descripción del evento de Calendar** —donde lo ve quien está suscripto— y el
+**`events.json`**. Se corrigieron los cuatro textos que decían otra cosa: la
+casilla, la ayuda corta del campo «Link del encuentro» («**por defecto** no se
+publica»), el punto `link-reunion` de la guía del panel y la etiqueta del aviso de
+campo faltante. **El comportamiento no cambió**, y el barrido de centinelas que lo
+fija es ahora uno de los `atadoA` de la guía: si mañana el link sale al detalle, el
+test se pone rojo y el texto que promete lo contrario se rompe en el mismo commit.
+
 ## 2026-09-01 · los flyers: dejan de recortarse, dejan de estar escondidos, y tienen pared propia
 
 Tres cambios que son uno solo, y arrancan de un número: **42 actividades

@@ -2258,7 +2258,19 @@ simulado.
 > por lo mismo que se ganó: la portada es un componente más que habría que rehacer a
 > mano y volvería a haber dos markups de tarjeta.
 
-### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica · P2
+### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica — ✅ hecho (2026-09-01)
+
+**Se eligió la primera salida: cambiar el texto** ([D-158](06-decisiones.md)). El
+argumento de D-139 es asimétrico y por eso gana — un evento de Calendar se
+reescribe al destildar la casilla, un HTML indexado por Google no se despublica.
+La casilla dice ahora «Publicar el link en el evento del calendario, que es donde
+lo ve quien está suscripto», con la aclaración de que en la página de la actividad
+no sale y de que sí viaja en los datos abiertos del sitio. Se corrigieron con ella
+la ayuda corta del campo, el punto `link-reunion` de la guía y la etiqueta del
+aviso de campo faltante. **El comportamiento no cambió.**
+
+El texto original del ítem, para que la decisión se lea contra él:
+
 
 **D-139** decidió que `online.url` no sale a la página de detalle ni con
 `urlPublica: true`, más estricto que D-15. Correcto para el link —un HTML indexado
