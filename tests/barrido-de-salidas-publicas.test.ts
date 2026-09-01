@@ -1060,12 +1060,29 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
    * de excepciones pasaría por ausente sin que nadie lo note.
    */
   const AHORA = new Date('2026-08-20T15:00:00Z');
+  /*
+   * Los matices elegidos (D-153). Con centinela adentro **a propósito**: el
+   * `tipoColor` que sale al detalle se arma con este mapa, así que si algún día
+   * el color dejara de ser un `oklch(...)` derivado y empezara a copiar algo del
+   * documento, el barrido lo vería. El slug es el del centinela de tipo.
+   */
+  const TONOS = { presentacion: 195 };
   const detalleDe = (over = {}) =>
-    detalleDeActividad(toPublic(actividadCentinela(over), 'act_centinela'), ETIQUETAS, AHORA);
+    detalleDeActividad(
+      toPublic(actividadCentinela(over), 'act_centinela'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+    );
 
   /** El mismo fixture con otro reloj, para activar las ramas que dependen del tiempo. */
   const detalleDeCon = (ahora: Date) =>
-    detalleDeActividad(toPublic(actividadCentinela(), 'act_centinela'), ETIQUETAS, ahora);
+    detalleDeActividad(
+      toPublic(actividadCentinela(), 'act_centinela'),
+      ETIQUETAS,
+      ahora,
+      TONOS,
+    );
 
   const PERMITIDO_EN_EL_DETALLE: readonly Excepcion[] = [
     {
@@ -1391,9 +1408,15 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
   // El mismo instante que el barrido del detalle: antes de la primera sesión, que
   // es el único estado en el que la actividad **entra** a la pared.
   const AHORA = new Date('2026-08-20T15:00:00Z');
+  const TONOS = { presentacion: 195 };
   const pared = () =>
     carteleraDeDetalles([
-      detalleDeActividad(toPublic(actividadCentinela(), 'act_centinela'), ETIQUETAS, AHORA),
+      detalleDeActividad(
+        toPublic(actividadCentinela(), 'act_centinela'),
+        ETIQUETAS,
+        AHORA,
+        TONOS,
+      ),
     ]);
 
   const PERMITIDO_EN_LA_CARTELERA: readonly Excepcion[] = [
@@ -1443,6 +1466,7 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       toPublic(actividadCentinela(conLinkPublico()), 'act_link'),
       ETIQUETAS,
       AHORA,
+      TONOS,
     );
     // Dos controles positivos, y hacen falta los dos: que la rama esté activada
     // de verdad, y que la pared **no** haya quedado vacía —un `barrer()` sobre
@@ -1487,6 +1511,7 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       toPublic(actividadCentinela(), 'act_centinela'),
       ETIQUETAS,
       AHORA,
+      TONOS,
     );
     const afiche = carteleraDeDetalles([detalle])[0]!;
     const delDetalle = JSON.stringify(detalle);
@@ -1511,6 +1536,7 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       toPublic(actividadCentinela({ imagenes: [] }), 'act_sin_imagen'),
       ETIQUETAS,
       AHORA,
+      TONOS,
     );
     expect(carteleraDeDetalles([sinImagen])).toEqual([]);
   });

@@ -21,10 +21,14 @@
  *    quien carga puede crear uno desde «Otro». Si el color se asignara solo a
  *    mano, ese tipo nacería sin color y nadie se enteraría — el modo de falla es
  *    silencioso. Se **deriva del slug** y lo elegido es la excepción.
- * 2. **Ningún color elegible puede quedar ilegible.** La luminosidad y el croma
- *    son fijos; lo único que varía —y lo único que se puede elegir— es el
- *    **matiz**. Así el contraste se garantiza sobre los 360 tonos posibles y no
- *    sobre los que alguien ya miró (ver `contrasteDelTono`).
+ * 2. **Ningún color elegible puede quedar ilegible, en ninguna de las dos
+ *    direcciones.** La luminosidad y el croma son fijos; lo único que varía —y
+ *    lo único que se puede elegir— es el **matiz**. Así el contraste se
+ *    garantiza sobre los 360 tonos posibles y no sobre los que alguien ya miró.
+ *    Y son dos garantías, porque la misma tinta se usa dada vuelta: el color
+ *    **como texto** sobre las superficies (`contrasteDelTono`, la cajita del
+ *    listado) y el papel **calado encima del color** (`contrasteCaladoDelTono`,
+ *    la cabecera del detalle — B-273).
  * 3. **Un tono guardado que no sea elegible se ignora.** Un documento editado a
  *    mano en la consola de Firestore no puede pintar una fila ilegible: se cae al
  *    derivado, que sí está garantizado (`tonoDeTipo`).
@@ -207,6 +211,42 @@ export const contrasteDelTono = (tono: number): number => {
     ...SUPERFICIES.map(({ oklch }) => contraste(color, oklchASrgb(oklch[0], oklch[1], oklch[2]))),
   );
 };
+
+/**
+ * El papel, para medir el par **calado**. Se busca por nombre y no por índice:
+ * el orden de `SUPERFICIES` lo fija un test, y un `SUPERFICIES[0]` mediría
+ * `crema` sin decirlo el día que alguien las reordene.
+ */
+const PAPEL = SUPERFICIES.find((s) => s.nombre === 'papel')!.oklch;
+
+/**
+ * El contraste del **papel encima del color** — B-273 (D-153).
+ *
+ * ── Por qué es una medición distinta y no la de arriba ────────────────────
+ * `contrasteDelTono` mide el color **como texto**, apoyado en las superficies
+ * del sitio: es la cajita del listado, que va con el texto y el borde del color
+ * sobre el papel. La cabecera del detalle usa la **misma** tinta al revés —tinta
+ * plena con el texto calado— y ése es otro par: el papel encima del color.
+ *
+ * El sistema visual tiene la tabla de las dos direcciones por separado
+ * (`docs/referencias/sistema-visual.md`, «Y el texto calado sobre las tintas»)
+ * justamente porque un color puede pasar en una y no en la otra. La garantía de
+ * D-150 —los 360 contra las tres superficies— cubre la primera; ésta cubre la
+ * segunda, y `tests/color-de-tipo.test.ts` la recorre sobre los mismos 360.
+ *
+ * ── Por qué las guardas de guardado no la miran ───────────────────────────
+ * Porque **no puede ser la que falle primero mientras el color sea más oscuro
+ * que las tres superficies**: `contrasteDelTono` mide contra `hondo`, la más
+ * oscura, y ésta contra `papel`, la más clara, así que ésta da siempre más. Un
+ * `revisarTono` que sumara este par rechazaría exactamente lo mismo y daría dos
+ * mensajes para el mismo motivo.
+ *
+ * Eso es una consecuencia de la banda, no una ley, así que se afirma: el test
+ * exige `calado ≥ texto` en los 360. El día que la banda se aclare hasta cruzar
+ * las superficies, ese caso se pone en rojo y hay que venir a decidir acá.
+ */
+export const contrasteCaladoDelTono = (tono: number): number =>
+  contraste(oklchASrgb(PAPEL[0], PAPEL[1], PAPEL[2]), colorDelTonoSrgb(tono));
 
 /** El piso que tiene que pasar un color de tipo: es texto chico, así que AA. */
 export const PISO_DEL_TIPO = AA_TEXTO;

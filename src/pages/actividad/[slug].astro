@@ -224,12 +224,33 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
     {/* ══ Cabecera ═══════════════════════════════════════════════════════ */}
     {/*
       El tipo en una cajita de tinta plena con el texto calado, y debajo el título
-      en la display. La cajita va en **azul tinta**, que es lo que el sistema le asigna
-      a las categorías, y es la misma que abre cada fila del listado: quien viene
-      del listado reconoce la pieza.
+      en la display.
+
+      La cajita va **en la tinta de su categoría** (D-150), y es la misma cajita
+      que abre cada fila del listado: quien llega desde la agenda encuentra el
+      mismo color en el mismo lugar, y esa continuidad es la que le dice «sí, es
+      la que toqué». Hasta B-273 esto era `bg-azul` fijo y el color saltaba al
+      navegar — el comentario que había acá afirmaba lo contrario de lo que
+      pasaba.
+
+      El color viene resuelto en `detalle.tipoColor` y no se deriva acá: la
+      plantilla no ve las opciones (D-140), así que no puede saber qué matiz se
+      eligió. Va por `style` y no por clase por lo mismo que en la fila —Tailwind
+      solo genera las clases que ve escritas, y una clase por tipo dejaría sin
+      color al tipo que alguien cree mañana—.
+
+      Acá el par de contraste es **el papel encima del color**, que no es el de la
+      fila (ahí el color es texto sobre el papel). Son dos mediciones distintas y
+      las dos están: `contrasteCaladoDelTono` recorre los 360 matices posibles en
+      `tests/color-de-tipo.test.ts`.
     */}
     <div class="regla-gruesa mt-4 pb-4">
-      <p class="label-caps inline-block bg-azul px-2 py-1 text-papel">{detalle.tipoEtiqueta}</p>
+      <p
+        class="label-caps inline-block px-2 py-1 text-papel"
+        style={`background-color: ${detalle.tipoColor}`}
+      >
+        {detalle.tipoEtiqueta}
+      </p>
 
       <h1 class="display-md mt-3 text-balance text-acento">{detalle.titulo}</h1>
 
