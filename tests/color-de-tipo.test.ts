@@ -245,16 +245,34 @@ describe('`revisarTono` — la guarda de lo que se guarda', () => {
     expect(motivo).toContain('8:1');
   });
 
-  it('el piso por defecto es el de texto, no uno más flojo escrito al lado', () => {
+  it('el piso responde al parámetro, y el de texto es el que la banda tiene que pasar', () => {
     /*
-     * Sin esto, `revisarTono` podría llamar con un piso propio de 3 —el de un
-     * borde— y seguir en verde: la cajita del tipo es texto de 11px y el piso es
-     * 4,5. Se afirma pidiendo un piso apenas por encima del peor de la banda.
+     * Que el piso sea de verdad el que se pasa, y no un número escrito adentro:
+     * apenas por encima del peor de la banda rechaza, exactamente en él acepta.
      */
     expect(PISO_DEL_TIPO).toBe(AA_TEXTO);
     const peor = Math.min(...TONOS.map(contrasteDelTono));
     expect(revisarTono(195, peor + 0.01)).not.toBeNull();
     expect(revisarTono(195, peor)).toBeNull();
+  });
+
+  it('y el default del parámetro es el piso de texto, afirmado sobre el fuente', () => {
+    /*
+     * ── Por qué este se afirma leyendo el código y no ejecutándolo ────────
+     * Porque **no se puede ejecutar**: los 360 matices de la banda están arriba
+     * de 5,90:1, o sea arriba tanto del 4,5 de texto como del 3 de un borde. Bajar
+     * el default a 3 no cambia el resultado de ninguna llamada posible, así que
+     * un test de comportamiento lo dejaría pasar — y lo dejó: la mutación se
+     * escapó, y por eso este caso existe.
+     *
+     * Lo que está en juego no es hoy sino el día que la banda se afloje: con el
+     * piso en 3 la guarda aceptaría un color que no se lee, y la cajita del tipo
+     * es texto de 11px, no un borde.
+     *
+     * MUTACIÓN PROBADA: cambiar el default a `3` hace fallar este caso.
+     */
+    const src = readFileSync(raiz('src/lib/identidad.ts'), 'utf8');
+    expect(src).toContain('revisarTono = (tono: unknown, piso: number = PISO_DEL_TIPO)');
   });
 });
 
