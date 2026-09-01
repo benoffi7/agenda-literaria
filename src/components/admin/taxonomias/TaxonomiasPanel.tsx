@@ -10,6 +10,7 @@ import {
   useTodasLasOpciones,
 } from '@/components/admin/useOpciones';
 import {
+  CAMPO_CON_COLOR,
   aprobarOpcion,
   borrarOpcion,
   estaAprobada,
@@ -134,7 +135,7 @@ export function TaxonomiasPanel() {
      * Lo que `fijo` protege es la identidad —el slug cableado, la etiqueta con la
      * que se la reconoce—, y el matiz no es identidad (ver `pintarOpcion`).
      */
-    const pintable = campo === 'tipo';
+    const pintable = campo === CAMPO_CON_COLOR;
     const propio = esTonoElegible(v.tono);
 
     return (

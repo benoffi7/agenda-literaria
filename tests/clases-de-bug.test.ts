@@ -1296,14 +1296,18 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
 /**
  * Clase de B-212 · la misma decisión de privacidad, escrita en tres lugares.
  *
- * El documento de `/opciones/{campo}` llega a **tres** salidas por tres caminos
+ * El documento de `/opciones/{campo}` llega a varias salidas por caminos
  * distintos, y cada uno decide por su cuenta qué de un `ValorOpcion` es público:
  *
  * | Camino | Salida | Forma |
  * |---|---|---|
- * | `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | objetos `{ slug, label }` |
+ * | `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | objetos `{ slug, label, tono? }` |
  * | `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 y la vista previa | `Record<slug, label>` |
  * | `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar | `Record<slug, label>` |
+ * | `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`) | 6 — el detalle y su JSON-LD | `Record<slug, label>` |
+ *
+ * **Eran tres y son cuatro** (B-270): el de la salida 6 lo encontró el
+ * `auditor-privacidad`, y era el único sin nada que nombrara qué puede leer.
  *
  * ── Por qué no se unifican ────────────────────────────────────────────────
  * Los dos primeros podrían compartir algo; el tercero **no puede**, y eso es lo
@@ -1336,6 +1340,23 @@ describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () =
     { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica', permitidas: ['slug', 'label', 'tono'] },
     { archivo: 'src/lib/vistaPreviaEvento.ts', funcion: 'labelsDeOpciones', permitidas: ['slug', 'label'] },
     { archivo: 'functions/index.js', funcion: 'cargarLabels', permitidas: ['slug', 'label'] },
+    /*
+     * El cuarto, que faltaba — lo encontró el `auditor-privacidad` al cerrar
+     * B-270. Alimenta la salida 6 (la página de detalle y su JSON-LD), que es la
+     * que un bot cosecha primero y la que se queda en Google, y era el único de
+     * los cuatro sin nada que nombrara qué puede leer.
+     *
+     * El agujero se volvió consecuente justo con D-150: es el primer campo de
+     * `ValorOpcion` que **sí** es público pero **de una sola salida**, así que el
+     * reflejo del próximo cambio —«pintemos la categoría también en el detalle»—
+     * escribiría `.tono` acá sin que nada lo dijera. Y el que venga después con un
+     * campo que no sea publicable pasaría por el mismo hueco.
+     */
+    {
+      archivo: 'src/lib/contenidoDelSitio.ts',
+      funcion: 'etiquetasDelDetalle',
+      permitidas: ['slug', 'label'],
+    },
   ];
 
   /** Lo que **algún** camino puede leer. Lo que ninguno puede sale de restarlo. */

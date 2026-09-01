@@ -298,6 +298,27 @@ describe('un tipo nuevo nace con color, y siempre el mismo', () => {
     }
   });
 
+  it('un slug que choca con una clave del prototipo deriva, no hereda', () => {
+    /*
+     * Lo encontró el `auditor-privacidad`. `TONOS_DE_TIPO` es un objeto literal,
+     * así que `TONOS_DE_TIPO['constructor']` devuelve la función `Object` heredada
+     * del prototipo: **no es nullish**, así que un `??` no la ataja, y el color
+     * salía `oklch(0.42 0.105 function Object() { [native code] })`.
+     *
+     * No es una inyección —React escapa el atributo y el CSS inválido se
+     * descarta— pero rompía la garantía que este módulo promete en su encabezado:
+     * que lo que no sea elegible se cae al derivado.
+     *
+     * MUTACIÓN PROBADA: volver a `TONOS_DE_TIPO[slug] ?? tonoDerivado(slug)` hace
+     * fallar este caso con `constructor`.
+     */
+    for (const slug of ['constructor', 'hasownproperty', 'proto', '__proto__']) {
+      const tono = tonoDeTipo(slug);
+      expect(esTonoElegible(tono), slug).toBe(true);
+      expect(colorDeTipo(slug), slug).toMatch(/^oklch\(0\.42 0\.105 \d+\)$/);
+    }
+  });
+
   it('la derivación es estable: el mismo slug da siempre el mismo color', () => {
     /*
      * El build y el cliente derivan por separado y **no se pasan el color**: el

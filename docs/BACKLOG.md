@@ -311,6 +311,63 @@ eso todavía no pasa, pero por un motivo distinto que antes: **el sitio existe y
 está desplegado.** Falta elegir el dominio (B-109), sin el cual no hay canonical ni
 sitemap, y falta el rebuild automático (B-20).
 
+### B-270 · El color del tipo de actividad, elegible desde Opciones — ✅ hecho (2026-09-01)
+
+Recupera lo que **D-146** había retirado de **D-141** y le agrega la mitad que
+faltaba: el color ya no lo impone el sistema visual, lo administra el sitio.
+El porqué completo está en **D-150**; lo que conviene tener anotado acá:
+
+- **Se deriva del slug y lo elegido es la excepción.** `tipo` es taxonomía
+  autogestionada: si el color se asignara solo a mano, el tipo creado desde «Otro»
+  nacería sin color y nadie se enteraría.
+- **El selector ofrece la banda, no un color.** Luminosidad y croma fijos, doce
+  matices con nombre. Así *cualquier cosa que se pueda elegir* pasa AA: los 360
+  tonos posibles están medidos contra las tres superficies del sitio y el peor da
+  **5,90:1** contra un piso de 4,5 (`tests/color-de-tipo.test.ts`).
+- **Tres guardas más**, las tres mutadas: `revisarTono` al guardar (con el ratio y
+  el piso en el mensaje), `esTonoElegible` al leer, y el mismo filtro al proyectar
+  al `events.json`.
+- **`pintarOpcion` es la única operación que puede tocar una opción base**, y tiene
+  que serlo: los siete tipos son `fijo: true`. Renombrar y borrar la siguen
+  respetando, con un test de integración que lo fija.
+- **Campo nuevo:** `tono?: number` en `/opciones/{campo}`, opcional, y `tono?` en
+  `OpcionPublica`. Salida pública tocada → pasó por el barrido de centinelas y por
+  el `auditor-privacidad`.
+- **Abierto en el camino:** **B-273** (la ficha del detalle sigue en azul fijo).
+
+### B-273 · La ficha del detalle pinta el tipo en azul fijo, y su comentario dice que es el mismo color que el listado · P1
+
+**Lo encontró el `auditor-trampas` al cerrar B-270**, y es la otra mitad de D-150
+que no se pudo hacer.
+
+`src/pages/actividad/[slug].astro` pinta la cajita del tipo con `bg-azul` y el
+texto calado, con este comentario al lado:
+
+> «La cajita va en **azul tinta**, que es lo que el sistema le asigna a las
+> categorías, y es **la misma que abre cada fila del listado**: quien viene del
+> listado reconoce la pieza.»
+
+B-270 volvió falsa esa última frase: en el listado la cajita ahora lleva el color
+de su categoría. **Quien navegue del listado al detalle ve la cajita saltar de
+color**, que es justo lo contrario de «reconoce la pieza».
+
+No se arregló en B-270 porque `[slug].astro` y `detallePublico.ts` los estaba
+tocando otro frente en paralelo (las imágenes), y tocar los mismos archivos desde
+dos lados es cómo se pierde trabajo.
+
+**Arreglo:** `detallePublico.ts` hoy expone solo `tipoEtiqueta` (el label), así que
+la ficha no tiene con qué derivar el color. Hay que sumar el slug —o el tono ya
+resuelto— al view-model y usar `estiloDeTipo`/`colorDeTipo` en la plantilla. Ojo con
+que ahí la cajita es **tinta plena con el texto en papel**, no texto sobre papel:
+el par a medir es el papel encima del color, no el color sobre el papel, así que el
+test nuevo no es el mismo que el del listado. Si se decide dejarlo en azul, la
+corrección es igual de obligatoria: **arreglar el comentario**, que hoy afirma algo
+que no pasa.
+
+**Sin red:** no existe ningún test que compare el color del tipo en las dos
+pantallas. Vale escribirlo con el arreglo, porque es la clase de B-88 —dos
+derivaciones del mismo valor separándose— con las dos mitades a la vista.
+
 ### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
 
 El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y

@@ -324,11 +324,33 @@ export const aprobarOpcion = async (campo: CampoTaxonomia, slug: string): Promis
  * `fijo: true`, así que sin eso no se podría elegir el color de ninguno. Ver la
  * nota de `editarValor`.
  */
+export const CAMPO_CON_COLOR: CampoTaxonomia = 'tipo';
+
 export const pintarOpcion = async (
   campo: CampoTaxonomia,
   slug: string,
   tono: number | null,
 ): Promise<void> => {
+  /*
+   * **Solo `tipo`**, que es la única taxonomía que el sitio pinta (D-150). Lo
+   * encontró el `auditor-privacidad`: sin esta guarda `opcionPublica` publicaría
+   * el matiz de un barrio o de una etiqueta, y ahí el `events.json` llevaría un
+   * dato que **ninguna salida consume**, que es la definición de publicar sin
+   * decidir. La razón por la que el campo sale —«el color de la categoría se
+   * pinta en el listado»— no aplica a los otros cuatro.
+   *
+   * Va del lado del que escribe y no en la proyección, como `revisarTono`:
+   * `opcionPublica` recibe un `ValorOpcion` suelto y no sabe de qué campo es, así
+   * que ahí la guarda no se puede poner sin pasarle el campo a una función que
+   * hoy no lo necesita. La pantalla ya ofrece el color solo para `tipo`; esto es
+   * lo que hace que eso sea una regla y no una casualidad de la UI.
+   */
+  if (campo !== CAMPO_CON_COLOR) {
+    throw new Error(
+      `El color solo se elige para «${CAMPO_CON_COLOR}»: es la única lista que el sitio pinta.`,
+    );
+  }
+
   if (tono === null) {
     // Sacar el campo y no guardar un `null`: ausente es «derivado del slug», que
     // es el default de lectura, y un `null` guardado sería un tercer estado que

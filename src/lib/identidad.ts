@@ -136,8 +136,24 @@ export const esTonoElegible = (tono: unknown): tono is number =>
  * derivado del slug si no. **En ese orden**, que es la regla del §4 escrita en
  * una línea: se deriva por defecto y lo elegido es la excepción.
  */
-export const tonoDeTipo = (slug: string, elegido?: unknown): number =>
-  esTonoElegible(elegido) ? elegido : (TONOS_DE_TIPO[slug] ?? tonoDerivado(slug));
+export const tonoDeTipo = (slug: string, elegido?: unknown): number => {
+  if (esTonoElegible(elegido)) return elegido;
+  /*
+   * `Object.hasOwn` y no `?? `: `TONOS_DE_TIPO` es un objeto literal, así que
+   * `TONOS_DE_TIPO['constructor']` devuelve la función `Object` heredada del
+   * prototipo — que no es nullish, así que el `??` no la ataja — y el color
+   * terminaba siendo `oklch(0.42 0.105 function Object() { [native code] })`.
+   *
+   * Un slug `constructor` es rebuscado (`slugify` baja a minúsculas, así que
+   * `toString` y `valueOf` no llegan) y **no es una inyección**: React escapa el
+   * atributo y el CSS inválido se descarta. Lo que rompía es la promesa que este
+   * módulo escribe en su encabezado —«un tono que no sea elegible se cae al
+   * derivado, que sí está garantizado»—, y una garantía con una excepción sin
+   * documentar es peor que no tenerla. Lo encontró el `auditor-privacidad`.
+   */
+  if (Object.hasOwn(TONOS_DE_TIPO, slug)) return TONOS_DE_TIPO[slug]!;
+  return tonoDerivado(slug);
+};
 
 /** El color del tipo, listo para un `color` o un `border-color` de CSS. */
 export const colorDeTipo = (slug: string, elegido?: unknown): string =>

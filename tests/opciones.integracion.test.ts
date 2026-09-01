@@ -292,6 +292,23 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
     expect((await valoresCrudos('tipo')).find((v) => v.slug === 'charla')!.tono).toBe(250);
   });
 
+  it('el color solo se puede elegir en la lista que el sitio pinta', async () => {
+    /*
+     * Lo encontró el `auditor-privacidad`. Sin esta guarda se podía guardar el
+     * matiz de un barrio o de una etiqueta, y `opcionPublica` lo publicaría: el
+     * `events.json` llevaría un dato que **ninguna salida consume**, que es la
+     * definición de publicar sin decidir. La pantalla ya ofrecía el color solo
+     * para `tipo`; esto es lo que lo vuelve una regla y no una casualidad de la UI.
+     *
+     * MUTACIÓN PROBADA: sacar la guarda de `campo !== CAMPO_CON_COLOR` hace fallar
+     * este caso, y el barrio queda con `tono` guardado.
+     */
+    for (const campo of ['arancel', 'barrio', 'plataforma', 'tags'] as const) {
+      await expect(pintarOpcion(campo, 'gratis', 195)).rejects.toThrow('solo se elige');
+    }
+    expect((await valoresCrudos('arancel')).some((v) => 'tono' in v)).toBe(false);
+  });
+
   it('la llave de las opciones base no se derramó: renombrar y borrar siguen prohibidos', async () => {
     /*
      * El control que hace que `tocaFijas` sea una llave y no una puerta abierta.
