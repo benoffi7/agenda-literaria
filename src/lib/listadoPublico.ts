@@ -31,7 +31,7 @@
  */
 import { primeroSinCosto } from '@/lib/arancel';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
-import { claveDeMes, nombreDeMes } from '@/lib/fechasPublicas';
+import { claveDeMes, mesDesplazado, nombreDeMes } from '@/lib/fechasPublicas';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
@@ -273,13 +273,13 @@ const pasaEje = (e: EntradaDeIndice, eje: Eje, elegidos: string[]): boolean => {
  * mostraría el mes equivocado. Es la trampa 1 del lado del filtro.
  */
 const mesesDesde = (ahora: Date, cantidad: number): string[] => {
-  const [anio, mes] = claveDeMes(ahora).split('-').map(Number);
-  if (!anio || !mes) return [];
-  return Array.from({ length: cantidad }, (_, i) => {
-    const corrido = mes - 1 + i;
-    const a = anio + Math.floor(corrido / 12);
-    return `${a}-${String((corrido % 12) + 1).padStart(2, '0')}`;
-  });
+  // La aritmética de meses la hace `mesDesplazado` (`lib/fechasPublicas.ts`), que
+  // es donde vive todo lo que sabe leer una clave `aaaa-mm`: acá estaba escrita a
+  // mano y la página de mes (B-113) necesitaba la misma cuenta hacia atrás. Dos
+  // copias de una aritmética de calendario es cómo se cuela un mes corrido en una
+  // sola de las dos.
+  const base = claveDeMes(ahora);
+  return Array.from({ length: cantidad }, (_, i) => mesDesplazado(base, i));
 };
 
 /**

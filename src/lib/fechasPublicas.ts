@@ -148,6 +148,29 @@ export const partesDeFecha = (d: Date): { dia: string; diaSemana: string; mes: s
   };
 };
 
+/**
+ * La clave del mes corrido `n` meses — `mesDesplazado('2026-01', -1) === '2025-12'`.
+ *
+ * Vive acá, con `claveDeMes` y `nombreDeMes`, porque es aritmética **sobre la
+ * clave** y no sobre una fecha: hacerla con `new Date(...).setMonth()` es lo que
+ * mete la trampa 1 por la puerta de atrás —el 31 de enero menos un mes da el 3 de
+ * marzo, y una medianoche del 1 se corre de mes por el offset de -3—. Sobre la
+ * clave no hay ni día ni hora que se puedan correr.
+ *
+ * Cuenta en **meses absolutos** y no en `mes - 1 + n`: con `n` negativo el resto
+ * de la división queda negativo y el mes sale corrido: es el único borde que esto
+ * tiene, y es justo el que usa la página del mes vencido (B-113).
+ *
+ * Una clave que no se puede leer se devuelve tal cual: quien la trajo ya está en
+ * un camino de error y correrle el mes no lo mejora.
+ */
+export const mesDesplazado = (clave: string, meses: number): string => {
+  const [anio, mes] = clave.split('-').map(Number);
+  if (!anio || !mes) return clave;
+  const absolutos = anio * 12 + (mes - 1) + meses;
+  return `${Math.floor(absolutos / 12)}-${String((absolutos % 12) + 1).padStart(2, '0')}`;
+};
+
 /** `Septiembre de 2026` — el nombre completo del mes, para textos en prosa. */
 export const nombreDeMes = (clave: string): string => {
   const [anio, mes] = clave.split('-').map(Number);

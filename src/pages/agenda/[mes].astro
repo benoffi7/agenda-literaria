@@ -1,0 +1,165 @@
+---
+/**
+ * `/agenda/{aaaa-mm}` — qué hay en un mes. B-113, §2.2 y §4.4 del diseño.
+ *
+ * ── La sección más floja del sitio, y por eso viene acotada ───────────────
+ * Su contenido es un subconjunto de la home y su consulta es de volumen bajo. Se
+ * incluye igual porque «qué hay este mes» es una forma real de mirar la agenda,
+ * pero con las cuatro condiciones del §2.2 — y las cuatro las decide
+ * `lib/mesPublico.ts`, no esta plantilla: solo meses vigentes, solo con **3 o
+ * más** actividades, fuera de la navegación, y sin romper la URL cuando el mes
+ * termina.
+ *
+ * ── Cero JavaScript, como `/cartelera` y como el detalle ──────────────────
+ * No hay islands. El buscador y los filtros viven en la home; acá el filtro ya
+ * está aplicado y es el que da nombre a la página. Un buscador de más sería
+ * bajar el bundle de la island para filtrar veinte filas.
+ *
+ * ── Y **cero lecturas nuevas de Firestore** ───────────────────────────────
+ * `indiceDelSitio()` está memoizada: es la misma lectura que ya hicieron la home,
+ * el `events.json` y las páginas de detalle (§2.4, §3 del diseño). Doce páginas
+ * de mes no cuestan doce lecturas, cuestan cero.
+ *
+ * ── La jerarquía de encabezados, que acá es fácil de romper ───────────────
+ * `h1` la frase descriptiva, `h2` el marcador de mes que abre la lista (lo pone
+ * `ListaDeActividades`), `h3` el título de cada fila. Es exactamente la de la
+ * home, con un solo grupo. La tentación es hacer del marcador el `h1` —es lo más
+ * grande de la página— y eso deja las filas colgando de un `h1` con un `h2` de
+ * por medio que no existe, más un `<title>` sin las palabras que alguien busca.
+ *
+ * ── La plantilla no ve el índice: recibe su view-model (D-140) ────────────
+ * `caminosDeMes` le arma un `VistaDeMes` con **lo que muestra y nada más** — la
+ * página, las etiquetas, los matices, el reloj del build y los otros meses ya
+ * recortados a clave y nombre. La primera versión recibía la página por props y
+ * además hacía `indiceDelSitio()` acá para sacar el resto: no filtraba nada, pero
+ * dejaba el índice entero —con `searchText` y `creadoEn`— al alcance de un `{}`,
+ * que es justo la puerta que D-140 cerró para la página de detalle. Lo encontró
+ * el `auditor-privacidad`.
+ *
+ * ── Sin canonical, y a propósito ──────────────────────────────────────────
+ * El sitio todavía no tiene dominio (**B-109**), así que no hay URL absoluta que
+ * escribir. Inventar una es la trampa que el propio B-109 advierte: una canonical
+ * a un dominio equivocado saca la página de Google entera. Cuando el dominio
+ * exista, esta página entra al mismo mecanismo que todas.
+ *
+ * ── El mes vencido ────────────────────────────────────────────────────────
+ * Se emite **una última vez** con un aviso y una salida, y con `noindex`. El
+ * §2.2 dice «sale del sitemap»; sitemap todavía no hay (B-109), y el gesto
+ * equivalente que sí existe hoy es dejar de ofrecérsela al buscador sin dejar de
+ * responderle a quien tenga el link. Nunca un 404 sobre una URL que estuvo
+ * indexada.
+ */
+import Base from '@/layouts/Base.astro';
+import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import { claseBloque, claseEnlace } from '@/components/sitio/estilos';
+import { caminosDeMes, type VistaDeMes } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+import {
+  AVISO_DEL_MES_VENCIDO,
+  DESTINO_DEL_MES_VENCIDO,
+  SALIDA_DEL_MES_VENCIDO,
+  bajadaDelMes,
+  descripcionDelMes,
+  tituloDelMes,
+} from '@/lib/mesPublico';
+import { rutaDeMes } from '@/lib/rutasPublicas';
+
+export const prerender = true;
+
+/*
+ * Envuelta y no aliasada (B-237): Astro llama a `getStaticPaths` con un argumento
+ * propio —`{ paginate, rss }`— y con el alias ese objeto caería en el parámetro
+ * `ahora` de `caminosDeMes`. Ningún test unitario lo ve, porque todos la llaman
+ * bien; lo encuentra el build de verdad, y tarde.
+ */
+export const getStaticPaths = () => caminosDeMes();
+
+interface Props {
+  vista: VistaDeMes;
+}
+
+const { vista } = Astro.props;
+const { pagina, etiquetas, tonos, otros } = vista;
+
+// El reloj del índice, el mismo con el que `caminosDeMes` decidió qué páginas
+// emitir: con dos relojes distintos, un build a caballo de la medianoche del
+// último día del mes emite una página que la propia página considera vencida.
+const ahora = new Date(vista.generadoEn);
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${tituloDelMes(pagina)} · ${NOMBRE}`}
+  descripcion={descripcionDelMes(pagina)}
+  noIndex={pagina.vencido}
+>
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">{tituloDelMes(pagina)}</h1>
+      <p class="body-md mt-3 text-super">{bajadaDelMes(pagina)}</p>
+
+      {
+        pagina.vencido && (
+          <div class={`mt-6 p-5 sm:p-6 ${claseBloque}`}>
+            <p class="body-md text-super">
+              {AVISO_DEL_MES_VENCIDO}{' '}
+              <a class={claseEnlace} href={DESTINO_DEL_MES_VENCIDO}>
+                {SALIDA_DEL_MES_VENCIDO}
+              </a>
+              .
+            </p>
+          </div>
+        )
+      }
+    </div>
+
+    {/*
+      La lista con `mes` puesto: un solo grupo con el marcador de este mes, y cada
+      fila recalculada contra él. Es lo que hace que un ciclo del 3 de septiembre
+      al 22 de octubre diga «4 en septiembre, del 3 al 24» acá y «4 en octubre,
+      del 1 al 22» en la página de al lado — la misma fila, el subtítulo
+      recalculado (§7.5).
+    */}
+    <div class="mt-10 sm:mt-12">
+      <ListaDeActividades
+        entradas={pagina.entradas}
+        ahora={ahora}
+        etiquetas={etiquetas}
+        tonos={tonos}
+        mes={pagina.clave}
+      />
+    </div>
+
+    <nav aria-labelledby="otros-meses" class="mt-12 sm:mt-16">
+      {/*
+        La navegación entre meses. **Siempre está**, aunque no haya otro mes que
+        ofrecer: una página de mes no va en la barra del sitio (§2.2), así que si
+        acá no hubiera una salida, la única forma de volver a la agenda entera
+        sería el encabezado — y en un teléfono el encabezado ya se fue con el
+        scroll cuando alguien llega al final de la lista.
+
+        El `h2` cuelga del `h1` igual que el marcador de mes: son hermanos, y los
+        títulos de las filas son `h3` colgando del marcador.
+      */}
+      <h2 id="otros-meses" class="regla-gruesa-arriba label-caps pt-4 text-azul">
+        Seguir mirando
+      </h2>
+
+      <ul class="body-md mt-4 flex flex-wrap gap-x-6 gap-y-3">
+        <li>
+          <a class={claseEnlace} href="/">Toda la agenda</a>
+        </li>
+        {
+          otros.map((m) => (
+            <li>
+              <a class={claseEnlace} href={rutaDeMes(m.clave)}>
+                {m.nombre}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+  </main>
+</Base>

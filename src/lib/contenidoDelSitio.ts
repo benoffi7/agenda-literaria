@@ -53,6 +53,7 @@ import {
   type MapaDeEtiquetas,
   type TonosDeTipo,
 } from '@/lib/listadoPublico';
+import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
 import { toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
 import {
@@ -466,4 +467,87 @@ export const caminosDeDetalle = async (
 export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
   const instante = ahora instanceof Date ? ahora : new Date();
   return carteleraDeDetalles(await detallesDelSitio(instante));
+};
+
+/**
+ * Todo lo que la página de un mes necesita, y **nada más** — el view-model de
+ * `/agenda/[mes]` (B-113, D-140).
+ *
+ * ── Por qué la plantilla no se lee el índice ──────────────────────────────
+ * La primera versión recibía `pagina` por props y además hacía
+ * `const indice = await indiceDelSitio()` en el frontmatter, para sacar de ahí
+ * las etiquetas, los matices y los otros meses. Se veía inocente y no filtraba
+ * nada, pero dejaba **el índice entero en el alcance de la plantilla** —las
+ * actividades publicadas con su `searchText` y su `creadoEn`—, o sea justo la
+ * puerta de al lado que D-140 cerró para la página de detalle: la garantía
+ * dejaba de darla el tipo y pasaba a darla un `grep` en un test. Lo encontró el
+ * `auditor-privacidad`.
+ *
+ * Con esto, la plantilla importa **una sola función** y lo que recibe es lo que
+ * acá se decidió darle, campo por campo. No puede publicar lo que no tiene.
+ *
+ * `otros` son los meses enlazables **menos el propio**, ya recortados a lo que la
+ * navegación usa: la clave y el nombre. Mandar las `PaginaDeMes` enteras metería
+ * en cada página las entradas de todos los demás meses, que es contenido que esa
+ * página no muestra.
+ */
+export interface VistaDeMes {
+  pagina: PaginaDeMes;
+  etiquetas: MapaDeEtiquetas;
+  tonos: TonosDeTipo;
+  /** El reloj del build, en ISO. La plantilla lo reconstituye a `Date`. */
+  generadoEn: string;
+  /** Los otros meses que se pueden enlazar: solo la clave y el nombre. */
+  otros: { clave: string; nombre: string }[];
+}
+
+/**
+ * Los caminos de `/agenda/[mes]`, uno por mes que pasa el corte del §2.2 — B-113.
+ *
+ * **No agrega una lectura de Firestore.** Sale del mismo `indiceDelSitio()` que
+ * ya usan la home y el `events.json`, que está memoizado: el §3 del diseño dice
+ * «tres artefactos con una sola lectura», y las páginas de mes son un cuarto que
+ * no cambia el número.
+ *
+ * ── El reloj es el del índice, y eso importa acá más que en otras páginas ──
+ * `new Date(indice.generadoEn)` y no `new Date()`: cuáles meses se emiten y qué
+ * entra en cada uno se decide con **el mismo instante** que decide qué muestra la
+ * home y qué dice el `events.json`. Con dos relojes, un build que arranca a las
+ * 23:59:58 del último día del mes puede emitir la página de septiembre como
+ * vigente y la home ya en octubre — y eso se ve una vez cada treinta días, que es
+ * exactamente la frecuencia con la que nadie lo reproduce.
+ *
+ * `ahora` es tolerante por lo mismo que `caminosDeDetalle`: Astro llama a
+ * `getStaticPaths` con un argumento propio (`{ paginate, rss }`), y una plantilla
+ * que aliasee esta función en vez de envolverla lo recibiría acá (B-237).
+ */
+export const caminosDeMes = async (
+  ahora?: unknown,
+): Promise<{ params: { mes: string }; props: { vista: VistaDeMes } }[]> => {
+  const indice = await indiceDelSitio();
+  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+
+  // Las mismas etiquetas y los mismos matices que la home: salen del índice, o
+  // sea de las opciones ya filtradas por aprobación. Ver `etiquetasDelListado`.
+  const etiquetas = mapaDeEtiquetas(indice.opciones);
+  const tonos = tonosDeTipo(indice.opciones);
+  const enlazables = mesesEnlazables(indice.actividades, instante).map((m) => ({
+    clave: m.clave,
+    nombre: m.nombre,
+  }));
+
+  return mesesDelSitio(indice.actividades, instante).map((pagina) => ({
+    params: { mes: pagina.clave },
+    props: {
+      vista: {
+        pagina,
+        etiquetas,
+        tonos,
+        generadoEn: indice.generadoEn,
+        // Una página vencida no linkea a otra vencida, y ninguna se linkea a sí
+        // misma: mandar de un mes que pasó a otro que pasó es un callejón.
+        otros: enlazables.filter((m) => m.clave !== pagina.clave),
+      },
+    },
+  }));
 };

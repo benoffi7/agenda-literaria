@@ -2596,7 +2596,7 @@ Dos campos que el sitio público necesita y `toPublic.ts` no lleva
 
 Ninguno de los dos publica nada nuevo: son datos que la página ya muestra.
 
-### B-113 · Páginas de mes — `/agenda/{aaaa-mm}`
+### B-113 · Páginas de mes — `/agenda/{aaaa-mm}` — ✅ hecho (2026-09-01), con una punta afuera
 
 "Qué hay este mes" es una forma real de mirar la agenda, pero la página es un
 subconjunto de la home y la consulta es de volumen bajo. Por eso va acotada
@@ -2606,6 +2606,31 @@ vez con aviso y link a `/pasadas`.
 
 Un ciclo que cruza dos meses aparece en los dos, y en cada uno muestra las
 fechas de ese mes. Es la misma tarjeta con el subtítulo recalculado.
+
+**Cómo quedó.** Las cuatro condiciones del §2.2 viven en `src/lib/mesPublico.ts`,
+que es puro y recibe el reloj por parámetro, y las páginas no agregan **ni una
+lectura** de Firestore: salen del `indiceDelSitio()` memoizado que ya usan la home
+y el `events.json`. Quién entra en cada mes lo decide `filtrarPublico` con
+`cuando` puesto en la clave —o sea el mismo filtro «Cuándo» de la home—, así que
+`/agenda/2026-09` y `/?cuando=2026-09` no pueden contestar distinto.
+
+El ciclo a caballo se resolvió con `recorteDelMes`: la misma entrada con solo las
+sesiones de ese mes. Recortando la entrada en vez de cada frase, el bloque de
+fecha, «ya empezó» y el orden de la página hablan del mes sin que ninguna tenga
+que enterarse; lo único que viaja aparte es el total de encuentros, porque «Ciclo
+de 4 encuentros» en septiembre cuando son ocho no es un recorte, es información
+falsa. Verificado sobre el HTML del build contra el emulador: la página de octubre
+muestra «jue 1 oct» en el bloque y «Ciclo de 8 encuentros · 4 en octubre, del 1 al
+22», y la de septiembre la frase equivalente.
+
+**Cuatro desvíos, todos en D-155:** el aviso del mes vencido manda a `/` y no a
+`/pasadas` (no existe — **B-281**), «sale del sitemap» se implementó como
+`noindex` porque sitemap tampoco hay (B-109), la tira de la home incluye el mes en
+curso para que su página no quede huérfana, y el subtítulo del ciclo a caballo
+lleva el total adelante en vez del literal del §7.5.
+
+**Lo que no entró:** el enlace desde la página de detalle («más en septiembre» del
+§2.2) — queda **B-280**.
 
 ### B-40 · UI para ver y restaurar versiones
 
@@ -4770,7 +4795,7 @@ documento de seguridad vuelva a decir que el daño se limita a leer.
 
 ---
 
-### B-231 · La home no ofrece suscribirse al calendario, y el bloque ya está escrito · P2
+### B-231 · La home no ofrece suscribirse al calendario, y el bloque ya está escrito · P2 — ✅ hecho (2026-09-01)
 
 `/suscribirse` existe (B-230) y se llega por el encabezado. Lo que falta es el
 enganche donde la decisión se toma de verdad: **abajo del listado**, cuando alguien
@@ -4789,6 +4814,34 @@ import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
 
 Queda P2 y no P1 porque la página funciona y es alcanzable desde las cuatro
 secciones del sitio. Lo que se pierde mientras tanto es conversión, no acceso.
+
+**Cómo quedó.** Cableado abajo del listado, después de la tira de meses de B-113.
+La línea era una, pero tenía tres decisiones adentro y las tres tienen aserto en
+`tests/suscribirse.test.ts`: va **fuera** del contenedor que la island reemplaza al
+hidratar —adentro lo vería solo quien tiene el JavaScript apagado, y el HTML del
+build, que es lo único que se mira, lo mostraría igual—, aparece **también con el
+listado vacío o filtrado a cero** —que es cuando más sirve: lo que se ofrece hoy en
+ese caso es «volvé en unos días», que le deja el trabajo a quien llega— y va a lo
+ancho de `main`, sin la sangría del riel, porque habla de la agenda entera y no del
+listado filtrado. El quinto aserto frena la duplicación el día que otra página
+quiera el mismo bloque. Ver **D-134**.
+
+### B-280 · El detalle no enlaza «más en septiembre» hacia su página de mes · P2
+
+El §2.2 del diseño pide dos entradas a `/agenda/{aaaa-mm}`: la tira al pie de la
+home —que B-113 construyó— y un enlace desde la página de detalle. La segunda no
+se hizo: `src/pages/actividad/[slug].astro` lo estaba tocando otro frente en
+paralelo y B-113 no lo pisó.
+
+No es solo simetría. Quien cae en una página de detalle desde Google o desde
+Instagram no tiene hoy ninguna forma de ver qué más hay ese mes sin volver a la
+home y filtrar; y del lado del buscador, un segundo link interno hacia la página
+de mes es exactamente lo que la hace valer algo.
+
+Está todo listo para que sea corto: `rutaDeMes` (`src/lib/rutasPublicas.ts`) arma
+la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe —el
+enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
+Falta el enlace y su test.
 
 ## P3 — cuando sobre tiempo
 
@@ -4850,7 +4903,34 @@ log del emulador a la vista. Si se confirma, la salida es dejar de barrer la bas
 entera —borrar solo las colecciones que el archivo sembró— o darle a cada archivo de
 integración su propio `projectId`, que es lo que aísla de verdad y de paso protege
 del emulador compartido entre worktrees.
+### B-281 · El aviso del mes vencido manda a `/` y no a `/pasadas` · P3
 
+El §2.2 dice que la página de un mes que terminó se emite una última vez «con un
+aviso "este mes ya pasó" y link a `/pasadas`». `/pasadas` es parte de **B-109** y
+todavía no existe, así que enlazarla sería poner un 404 en la única salida que esa
+página ofrece — peor que el problema que la página vencida resuelve. Hoy manda a la
+home.
+
+Es P3 porque no rompe nada y el arreglo es una línea: el destino vive en
+`DESTINO_DEL_MES_VENCIDO` (`src/lib/mesPublico.ts`) y no escrito en la plantilla.
+`tests/mesPublico.test.ts` verifica que apunte a **una ruta que el sitio sirve de
+verdad**, así que también frena el error inverso —apuntarla a `/pasadas` antes de
+construirla— y deja de hacer ruido solo cuando esa página exista. Ver **D-155**.
+
+### B-282 · Cuatro cosas que el `auditor-privacidad` encontró en la salida nueva de B-113 — ✅ hecho (2026-09-01)
+
+Entran acá porque la regla es que todo lo que aparece en el camino quede anotado,
+incluso arreglado en el momento. Las cuatro son de la misma familia: **ninguna
+filtraba nada hoy y ninguna dejaba el build en rojo**.
+
+| # | Qué | Cómo quedó |
+|---|---|---|
+| P1 | La página de mes es una **salida pública nueva** y no estaba en ninguno de los tres índices —`docs/07-seguridad.md`, la ficha del agente y el skill `campo-nuevo`—, así que un cambio futuro a `mesPublico.ts` no despertaba al auditor por nombre de archivo. Es el agujero de la salida 5 del 2026-08-27, repetido: no de cobertura, de índice | Fila **8** en las tres tablas, «siete» → «ocho» en los cuatro lugares. `tests/agentes-y-skills.test.ts` (B-216) las ata solas desde ahora |
+| P1 | La salida se arma **interpolando texto** (`descripcionDelMes` mete tres títulos en la `meta description`) y no tenía barrido de centinelas. El peor caso estaba a un carácter: `e.searchText` en lugar de `e.titulo` publica tres descripciones enteras normalizadas | `describe` propio en `tests/barrido-de-salidas-publicas.test.ts`, sobre las tres frases y en sus dos ramas (mes vigente y vencido) |
+| P2 | La plantilla recibía la página por props **y además** hacía `indiceDelSitio()` en el frontmatter, o sea que se traía el índice entero —con `searchText` y `creadoEn`— por la puerta de al lado. La garantía dejaba de darla el tipo (D-140) y pasaba a darla un grep | `caminosDeMes` arma un `VistaDeMes` con lo que la página muestra y nada más; la plantilla importa una sola función, y hay aserto por lista blanca de imports |
+| P2 | El aserto que cerraba la plantilla era **lista negra** de tres nombres: `{e.resumen}` o `{e.creadoEn}` pasaban limpios | Invertido a lista blanca —qué puede sacar del view-model, campo por campo— más la mitad que la lista no da: `entradas` viaja entera a la lista y no se abre (ni indexar, ni recorrer, ni desestructurar) |
+
+Las cinco mutaciones de los arreglos mueren.
 ### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` · P3
 
 Al revertir D-74 para el arancel (B-272, D-152) se revisaron sus otros tres

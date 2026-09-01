@@ -33,7 +33,7 @@ palabras `trampa N`.
 
 | # | Trampa (§13) | Dónde vive la regla | Test que la fija |
 |---|---|---|---|
-| 1 | Timestamps sin timezone | `functions/calendario.js`, `src/lib/calendarioPanel.ts`, `src/lib/fechasPublicas.ts` | `tests/calendario.test.ts`, `tests/calendarioPanel.test.ts`, `tests/modalidades.test.ts`, `tests/fechasPublicas.test.ts` |
+| 1 | Timestamps sin timezone | `functions/calendario.js`, `src/lib/calendarioPanel.ts`, `src/lib/fechasPublicas.ts`, `src/lib/mesPublico.ts` | `tests/calendario.test.ts`, `tests/calendarioPanel.test.ts`, `tests/modalidades.test.ts`, `tests/fechasPublicas.test.ts`, `tests/mesPublico.test.ts` |
 | 2 | Ids de sesión por índice | `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/modalidades.ts`, `src/lib/formulario/autoguardado.ts` | `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts`, `tests/modalidades.test.ts` |
 | 3 | Loop de escritura en la Function | `functions/index.js`, `functions/historial.js` | `tests/calendario.test.ts`, `tests/costuras.test.ts`, `tests/reportes.test.ts` |
 | 4 | `firebase-admin` en bundle cliente | `src/lib/firebase-admin.ts`, `src/pages/admin.astro` | `tests/bundle-panel.test.ts` |

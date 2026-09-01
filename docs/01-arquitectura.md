@@ -161,12 +161,15 @@ src/
                             puro, y proyecta el DetallePublico, no el documento
     afiche.ts               la forma con la que se muestra una imagen: la
                             proporción sale de la imagen y nadie recorta (D-147)
+    mesPublico.ts           qué meses tienen página, qué entra en cada uno y el
+                            recorte de una actividad a un mes — puro (B-113)
     fechasPublicas.ts       las fechas del sitio, siempre con timeZone (trampa 1)
-    rutasPublicas.ts        /actividad/{slug} escrito una sola vez
+    rutasPublicas.ts        /actividad/{slug} y /agenda/{aaaa-mm}, una sola vez
   components/admin/         el panel entero
   components/sitio/         el chrome del sitio público y sus piezas (B-229)
-  components/publico/       el sitio: FilaDeActividad, ListaDeActividades, EjeDeFiltro
-                            y Buscador (la única island del sitio)
+  components/publico/       el sitio: FilaDeActividad, ListaDeActividades,
+                            MarcadorDeMes, EjeDeFiltro y Buscador (la única
+                            island del sitio)
   layouts/Base.astro        head, fuentes, viewport, y el chrome — apagado por
                             defecto, porque /admin no lo lleva (B-229)
   pages/
@@ -177,6 +180,8 @@ src/
     actividad/[slug].astro  el detalle, SSG y con CERO JavaScript. No ve el
                             documento: recibe un view-model (D-140)
     cartelera.astro         /cartelera — la pared de afiches, sin JS (B-265)
+    agenda/[mes].astro      /agenda/{aaaa-mm} — qué hay en un mes, sin JS. Como
+                            el detalle, recibe un view-model (B-113, D-140)
     ayuda.astro             /ayuda — texto, sin JS ni Firestore (B-232)
     contacto.astro          /contacto — dos mailto con asunto propio (B-232)
     suscribirse.astro       /suscribirse — llevarse la agenda (B-230)

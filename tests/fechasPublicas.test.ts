@@ -20,6 +20,7 @@ import {
   fechaLarga,
   hora,
   isoConOffset,
+  mesDesplazado,
   nombreDeMes,
   partesDeFecha,
   partesDeMes,
@@ -208,5 +209,40 @@ describe('las piezas del marcador de mes y del bloque de fecha — B-260', () =>
       const d = new Date(Date.UTC(2026, m - 1, 15, 15));
       expect(partesDeFecha(d).mes.length, `mes ${m}`).toBeLessThanOrEqual(3);
     }
+  });
+});
+
+describe('mesDesplazado — la aritmética de meses sobre la clave', () => {
+  /*
+   * Existe porque la página del mes vencido (B-113) necesita **restar** un mes, y
+   * la cuenta que había escrita a mano en `listadoPublico.ts` solo iba hacia
+   * adelante: `mes - 1 + n` con `n` negativo deja el resto de la división en
+   * negativo y el mes sale corrido. Y hacerla con `Date` en vez de sobre la clave
+   * es meter la trampa 1 por la puerta de atrás.
+   */
+  it('suma y resta dentro del mismo año', () => {
+    expect(mesDesplazado('2026-09', 1)).toBe('2026-10');
+    expect(mesDesplazado('2026-09', -1)).toBe('2026-08');
+    expect(mesDesplazado('2026-09', 0)).toBe('2026-09');
+  });
+
+  it('cruza el año en las dos direcciones', () => {
+    /*
+     * MUTACIÓN PROBADA: volver a `anio + Math.floor((mes - 1 + meses) / 12)` con el
+     * resto sin normalizar da `2026-00` para el primer caso — un mes que no existe,
+     * o sea una página de mes que no se emite el 1 de enero, que es justo el día en
+     * que hace falta.
+     */
+    expect(mesDesplazado('2026-01', -1)).toBe('2025-12');
+    expect(mesDesplazado('2026-12', 1)).toBe('2027-01');
+    expect(mesDesplazado('2026-01', -13)).toBe('2024-12');
+    expect(mesDesplazado('2026-12', 13)).toBe('2028-01');
+  });
+
+  it('una clave que no se puede leer vuelve tal cual', () => {
+    // Quien la trajo ya está en un camino de error; correrle el mes no lo mejora,
+    // y devolver `NaN-NaN` produciría una URL con esa cadena adentro.
+    expect(mesDesplazado('sin-fecha', 1)).toBe('sin-fecha');
+    expect(mesDesplazado('', -1)).toBe('');
   });
 });

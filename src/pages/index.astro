@@ -41,8 +41,12 @@ import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
+import { claseEnlace } from '@/components/sitio/estilos';
 import { indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
 import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
+import { mesesEnlazables } from '@/lib/mesPublico';
+import { rutaDeMes } from '@/lib/rutasPublicas';
 
 const indice = await indiceDelSitio();
 /*
@@ -61,6 +65,13 @@ const tonos = await tonosDelSitio();
 const vigentes = vigentesDelIndice(indice, ahora);
 
 const ID_LISTADO = 'listado-del-build';
+
+/*
+ * Los meses con página propia — B-113. Sale del **mismo** índice que el listado,
+ * sin una lectura más: `mesesEnlazables` deja afuera la del mes vencido, que se
+ * emite solo para que su URL no devuelva 404 y no es algo a lo que mandar gente.
+ */
+const meses = mesesEnlazables(indice.actividades, ahora);
 
 const cuantas = vigentes.length;
 const descripcion =
@@ -139,5 +150,70 @@ const descripcion =
         )}
       </div>
     </div>
+
+    {/*
+      **La tira de meses** — B-113, §2.2 del diseño: «no va en la navegación; se
+      llega desde una tira al pie de la home».
+
+      Es la única entrada a `/agenda/{aaaa-mm}` que hay hoy, así que sin esto esas
+      páginas quedan huérfanas: sin links internos, una página estática vale casi
+      nada para un buscador aunque esté en el sitemap. El §2.2 nombra además el
+      detalle («más en septiembre») y esa mitad todavía no está — B-280.
+
+      **Incluye el mes en curso** y no solo los siguientes, que es un desvío chico
+      del «Próximos meses» del diseño: su página se genera igual, y dejarla fuera
+      de la tira sería generar una página a la que nada apunta.
+    */}
+    {
+      meses.length > 0 && (
+        <nav aria-labelledby="por-mes" class="mt-12 sm:mt-16">
+          <h2 id="por-mes" class="regla-gruesa-arriba label-caps pt-4 text-azul">
+            La agenda mes por mes
+          </h2>
+          <ul class="body-md mt-4 flex flex-wrap gap-x-6 gap-y-3">
+            {meses.map((m) => (
+              <li>
+                <a class={claseEnlace} href={rutaDeMes(m.clave)}>
+                  {m.nombre}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )
+    }
+
+    {/*
+      **El enganche de suscripción, y va acá abajo a propósito** — B-231.
+
+      `/suscribirse` está en el encabezado desde B-230, pero entrar a una página
+      aparte para suscribirse lo hace quien ya decidió. El resto decide **acá**:
+      después de haber visto que hay actividades y de no querer perdérselas. El
+      bloque es el corto (`SuscribirseResumen`), no la página entera.
+
+      Tres decisiones de dónde exactamente:
+
+      1 · **Fuera del `id="listado"`.** La island borra del DOM la lista del build
+      por su `id` y monta la suya; un bloque adentro de ese contenedor
+      desaparecería al hidratar, o sea que lo vería solo quien tiene el
+      JavaScript apagado — justo al revés de lo que hace falta.
+
+      2 · **Aparece también con el listado vacío**, y ahí es cuando más sirve: la
+      alternativa que se le ofrece hoy a quien llega y no encuentra nada es
+      «volvé en unos días», que le deja el trabajo a él. Suscribirse es la forma
+      de que lo que entre mañana lo encuentre a él. Y con el listado filtrado a
+      cero pasa lo mismo, sin que haya que hacer nada: este bloque vive fuera de
+      la island, así que ningún filtro lo saca.
+
+      3 · **A lo ancho de `main`, sin la sangría del riel.** La lista se corre con
+      `lg:sangria-de-riel` para alinearse con la columna de contenido de la
+      island; esto no, porque no habla del listado filtrado sino de la agenda
+      entera. Es la banda de cierre de la página, no el último resultado.
+
+      `nivel` queda en su default (`2`): en esta página el encabezado del bloque
+      cuelga del `h1` de arriba, y los marcadores de mes de la lista son `h2`
+      hermanos. Saltear a `h3` dejaría el índice de la página con un hueco.
+    */}
+    <SuscribirseResumen />
   </main>
 </Base>

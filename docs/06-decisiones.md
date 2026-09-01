@@ -3565,11 +3565,22 @@ pisaran) ya enlaza **`/suscribirse`**, y el pie también.
 - **El slug de una página pública es caro de mover** (trampa 10): mejor decidirlo
   antes de que se indexe, que es ahora.
 
-**Lo que queda pendiente y por qué no se hizo acá.** El bloque corto para la home
+**Lo que quedó pendiente y por qué no se hizo acá.** El bloque corto para la home
 —`src/components/sitio/SuscribirseResumen.astro`, con el botón de Google y un enlace
-a la página entera— está escrito y **no está cableado**: la home la construye otro
-frente y este no la toca. Queda como **B-231**, con el componente ya hecho para que
-sea una línea.
+a la página entera— quedó escrito y **sin cablear**: la home la construía otro
+frente y este no la tocó. Era **B-231**, con el componente ya hecho para que fuera
+una línea.
+
+> **Cableado el 2026-09-01 — B-231.** `src/pages/index.astro` lo importa y lo
+> renderiza abajo del listado, después de la tira de meses. La línea era una, pero
+> el ítem tenía tres decisiones adentro y las tres están en la sección de la home
+> de [`04-funcionalidades.md`](04-funcionalidades.md): fuera del contenedor que la
+> island reemplaza —adentro lo vería solo quien tiene JavaScript apagado—, visible
+> también con el listado vacío o filtrado a cero —que es cuando más sirve: la
+> alternativa que se ofrece hoy es «volvé en unos días»— y a lo ancho de `main`,
+> sin la sangría del riel, porque habla de la agenda entera y no del listado
+> filtrado. `tests/suscribirse.test.ts` las fija, incluida la que frena la
+> duplicación el día que otra página quiera el mismo bloque.
 ## D-135 · La ayuda y el contacto del sitio son datos derivados, no párrafos en la página
 
 **Contexto.** `/ayuda` y `/contacto` (B-232) son las dos primeras páginas del sitio
@@ -5044,3 +5055,57 @@ B-112 anticipaba —«`estado` en la proyección pública, lo necesita B-110»�
 mejor: el único que sabe de qué query salió cada documento es el lector, `toPublic`
 no gana un campo, y el `events.json` no puede publicar un estado por accidente.
 B-112 se queda con `actualizadoEn`, que sigue haciendo falta para el `lastmod`.
+## D-155 · Las páginas de mes se desvían del §2.2 y el §7.5 en cuatro puntos
+
+**Contexto.** B-113, 2026-09-01. El §2.2 de [`12-sitio-publico.md`](12-sitio-publico.md)
+diseñó `/agenda/{aaaa-mm}` con condiciones precisas, y las cuatro se
+implementaron tal cual: solo meses vigentes, solo con **3 o más** actividades,
+fuera de la navegación, y la URL que no se rompe cuando el mes termina.
+
+Lo que sigue son los cuatro puntos donde el diseño **describe el estado final**
+—dominio elegido, sitemap armado, `/pasadas` construida— y B-113 se escribió
+antes de esas tres cosas. Van juntos y no en cuatro entradas justamente por eso:
+tienen una sola causa, y separados alguien resuelve el primero sin darse cuenta
+de que el segundo se destraba con lo mismo.
+
+**1 · El aviso del mes vencido manda a `/`, no a `/pasadas`.**
+`/pasadas` es parte de **B-109** y todavía no existe. Enlazarla sería poner un 404
+en la única salida que ofrece la página vencida, que es peor que el problema que
+esa página resuelve. El destino vive en una constante —`DESTINO_DEL_MES_VENCIDO`,
+`src/lib/mesPublico.ts`— y no escrito en la plantilla, así que el día que
+`/pasadas` exista el cambio es una línea; y `tests/mesPublico.test.ts` verifica
+que apunte a **una ruta que el sitio sirve de verdad**, o sea que falla si alguien
+la apunta a `/pasadas` antes de construirla. Queda anotado como **B-281**.
+
+**2 · «Sale del sitemap» se implementó como `noindex`.**
+No hay sitemap todavía (B-109): no hay de dónde sacar la página. El gesto
+equivalente que sí existe hoy es dejar de ofrecérsela al buscador sin dejar de
+responderle a quien tenga el link — que es exactamente lo que el §2.2 quiere. El
+día que el sitemap exista, las dos cosas conviven: la vencida no entra al sitemap
+**y** sigue con `noindex`.
+
+**3 · La tira de la home incluye el mes en curso, no solo «los siguientes».**
+El §2.2 la llama «Próximos meses». Si el mes en curso quedara afuera, su página
+—que el build genera igual, porque el §2.2 lo pide— no tendría **ningún** link
+interno: una página estática que solo enlaza el sitemap vale casi nada para un
+buscador, y es el mismo argumento con el que el propio §2.1 justifica la
+existencia de `/pasadas`. Se prefiere que la tira no se llame como el diseño la
+llamó antes que dejar una página huérfana.
+
+**4 · El subtítulo del ciclo a caballo no repite el literal del §7.5.**
+El diseño da el ejemplo «4 encuentros en septiembre, del 3 al 24». Un ciclo de
+ocho mostrando solo esa frase en la página de septiembre **pierde el total**, y
+para quien está decidiendo si se anota a un ciclo, cuántos encuentros son es el
+dato. La frase quedó «Ciclo de 8 encuentros · 4 en septiembre, del 3 al 24»: la
+cabeza es el total —la misma que dice la home— y la cola es el recorte al mes.
+Cuando todas las fechas caen en ese mes no se repite el número, porque «Ciclo de
+4 encuentros · 4 en septiembre» hace dudar de si son cuatro u ocho. Lo decide
+`cicloDelMes` (`src/lib/tarjetaPublica.ts`), que es puro y está testeado.
+
+**Y una decisión de forma que no es un desvío, pero explica el resto.** Lo que
+hace que las tres frases del mes hablen del mes no es un parámetro más en cada
+una: es `recorteDelMes`, que devuelve **la misma entrada con solo las sesiones de
+ese mes**. Recortando la entrada, todo lo que deriva de las sesiones —el bloque de
+fecha, «ya empezó», el orden de la página— habla del mes sin que ninguna frase
+tenga que enterarse. Lo único que viaja aparte es el total de encuentros, que es
+justo el dato que el recorte no puede perder (punto 4).

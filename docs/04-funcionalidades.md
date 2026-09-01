@@ -775,6 +775,26 @@ visible en todo, blancos táctiles de 44px y `prefers-reduced-motion` respetado.
 `div` lleve `onClick`, que nadie apague el anillo de foco, que la portada no aporte
 nombre accesible— además del contraste.
 
+**Al pie de la home van dos cosas más, y en este orden** (B-113 y B-231).
+
+Primero la tira **«La agenda mes por mes»**: un enlace por cada página de mes que
+el build generó. Es la única entrada a esas páginas hoy, así que sin la tira
+quedarían huérfanas —una página estática sin links internos vale casi nada para un
+buscador—. Incluye el **mes en curso** además de los siguientes, por lo mismo: su
+página se genera igual, y dejarla afuera de la tira sería generar una página a la
+que nada apunta. El mes vencido no se enlaza nunca: existe para quien tenga la
+URL, no para mandarle gente.
+
+Después, el bloque corto de `/suscribirse` (`SuscribirseResumen`): el botón de
+Google y un enlace a la página entera. Va ahí porque es donde la decisión se toma
+—quien ya vio que hay actividades y no quiere perdérselas—; entrar a una página
+aparte para suscribirse lo hace quien ya decidió. Tres detalles que no se ven:
+va **fuera** del contenedor que la island reemplaza al hidratar (adentro lo vería
+solo quien tiene JavaScript apagado), aparece **también con el listado vacío o
+filtrado a cero**, que es cuando más sirve —la alternativa que se ofrece hoy es
+«volvé en unos días», que le deja el trabajo a quien llega—, y su encabezado
+cuelga del `h1` de la página sin saltear un nivel.
+
 ### El detalle — `/actividad/{slug}`
 
 Una página estática por actividad publicada —y por cada cancelada que llegó a
@@ -872,6 +892,40 @@ lugar— y el epígrafe si lo hay. El bloque entero es el enlace.
 Los detalles y las alternativas descartadas están en **D-148**; el peso medido, en
 **D-149** y **B-266**.
 
+### `/agenda/{aaaa-mm}` — qué hay en un mes (B-113)
+
+Una página por mes, con **cero JavaScript** como el detalle y la cartelera, y
+**cero lecturas nuevas** de Firestore: sale del mismo índice memoizado que ya
+arman la home y el `events.json`.
+
+Es la sección más acotada del sitio, y las cuatro condiciones son del §2.2 del
+diseño:
+
+| Condición | Por qué |
+|---|---|
+| solo el mes en curso y los siguientes | un archivo de meses viejos es trabajo de `/pasadas`, no de acá |
+| solo meses con **3 o más** actividades | con menos, la página es un casi-duplicado de la home compitiendo en Google con la página de detalle de cada una: resta en vez de sumar |
+| no va en la navegación | se llega desde la tira de la home |
+| cuando el mes termina, la URL no se rompe | se emite **una última vez**, con un aviso, una salida y `noindex`. Nunca un 404 sobre una URL que estuvo indexada |
+
+El horizonte hacia adelante **sale de los datos** y no de un número de meses: un
+ciclo cargado para marzo del año que viene tiene su página. Un horizonte fijo
+—«los próximos seis»— la dejaría afuera en silencio.
+
+**Un ciclo que cruza dos meses aparece en los dos**, con la fila recalculada para
+cada uno (§7.5): el bloque de fecha muestra un encuentro de *ese* mes, el orden
+sale de las fechas de *ese* mes, y el subtítulo dice cuántos caen ahí. Lo que **no**
+se recorta es el total: «Ciclo de 8 encuentros · 4 en septiembre, del 3 al 24».
+Decir «Ciclo de 4 encuentros» en septiembre cuando son ocho no sería un recorte,
+sería información falsa sobre lo que alguien está por decidir.
+
+El título y la bajada cambian de verbo cuando el mes pasó («Qué hubo en agosto de
+2026»), por lo mismo que la tarjeta dice «empezó» y no «empieza» (§7.2).
+
+Lo que falta: el enlace desde la página de detalle («más en septiembre» del §2.2)
+es **B-280**, y el aviso del mes vencido tendrá que apuntar a `/pasadas` cuando esa
+página exista — **B-281**. Los desvíos del diseño están en **D-155**.
+
 ### `/events.json`
 
 El índice que la island filtra (B-106). El build lo arma leyendo Firestore con el
@@ -963,8 +1017,9 @@ Cierra con dónde seguir el proyecto: Instagram.
 **Todo el texto vive en `src/lib/suscripcion.ts`** y ninguna dirección se escribe en
 el markup: salen todas de `src/lib/enlaces.ts` (B-228). El motivo está en D-133.
 
-Queda escrito y **sin cablear** `src/components/sitio/SuscribirseResumen.astro`, el
-bloque corto para embeber en la home cuando el listado exista (**B-231**).
+`src/components/sitio/SuscribirseResumen.astro` —el bloque corto, el botón de
+Google más un enlace a esta página— **está cableado en la home desde B-231**
+(2026-09-01), abajo del listado. Ver la sección de la home y **D-134**.
 ## Historial de versiones
 
 Cada vez que una edición pisa algo que cargó una persona, `guardarVersion`

@@ -54,10 +54,12 @@ import {
 // La ruta no se arma acá: la produce `caminosDeDetalle` y la linkea esto, y son
 // dos derivaciones del mismo formato (clase de B-88). Ver `rutasPublicas.ts`.
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
+import { recorteDelMes } from '@/lib/mesPublico';
 import {
   arancelDeTarjeta,
   avisoDeTarjeta,
   bloqueDeFecha,
+  cicloDelMes,
   cicloDeTarjeta,
   enCursoDeTarjeta,
   formasDeCursar,
@@ -71,12 +73,37 @@ interface Props {
   etiquetas: MapaDeEtiquetas;
   /** Los matices elegidos para los tipos (D-150). Vacío es «todos derivados». */
   tonos: TonosDeTipo;
+  /**
+   * La clave del mes cuando la fila se muestra en una **página de mes** —
+   * `/agenda/2026-09`, B-113.
+   *
+   * Con ella la fila deriva su estado del **recorte** de la actividad a ese mes,
+   * y no de la actividad entera: un ciclo del 3 de septiembre al 22 de octubre
+   * aparece en las dos páginas (§7.5) y en cada una tiene que mostrar las fechas
+   * de esa página — el bloque de fecha, «ya empezó» y la línea del ciclo, las
+   * tres. Sin la prop, la fila es exactamente la de la home.
+   */
+  mes?: string;
 }
 
-export function FilaDeActividad({ entrada, ahora, etiquetas, tonos }: Props) {
-  const estado = estadoDe(entrada, ahora);
+export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes }: Props) {
+  /*
+   * En una página de mes todo lo que sale de las sesiones se calcula sobre el
+   * recorte, así que habla de ese mes **sin que ninguna frase tenga que
+   * enterarse**: el bloque de fecha muestra el próximo encuentro de septiembre y
+   * no el de octubre, «ya empezó» mira la primera fecha de septiembre, y el orden
+   * de la página ya se decidió con el mismo criterio (`entradasDelMes`).
+   *
+   * El estado de la actividad **entera** se calcula solo cuando hace falta, y
+   * hace falta para una sola cosa: cuántos encuentros tiene el ciclo. Decir
+   * «Ciclo de 4 encuentros» en septiembre cuando son 8 es información falsa, y es
+   * justo el error que el recorte invita a cometer.
+   */
+  const estado = estadoDe(mes ? recorteDelMes(entrada, mes) : entrada, ahora);
   const fecha = bloqueDeFecha(estado);
-  const ciclo = cicloDeTarjeta(entrada, estado);
+  const ciclo = mes
+    ? cicloDelMes(entrada, estado, estadoDe(entrada, ahora), mes)
+    : cicloDeTarjeta(entrada, estado);
   const enCurso = enCursoDeTarjeta(estado);
   const aviso = avisoDeTarjeta(entrada, estado);
   const arancel = arancelDeTarjeta(entrada, etiquetas);

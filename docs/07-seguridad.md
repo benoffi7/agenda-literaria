@@ -4,12 +4,17 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
-**Son siete salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+**Son ocho salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
 esas. La **6** nació con B-227 y es la primera que es una *página* y no un
 archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
 ve el documento (D-140). La **7** nació con B-265 y es la primera que **deriva de
-otra salida** en vez de derivar del documento.
+otra salida** en vez de derivar del documento. La **8** nació con B-113 y no
+publica ni un campo que la 1 no publique ya —es el mismo índice reagrupado por
+mes— pero es una **página indexada más**, con tres frases propias, y una de ellas
+interpola títulos de actividades. Está contada por eso: lo que decide si el
+`auditor-privacidad` mira un archivo es que alguna de estas tres tablas lo nombre,
+no que hoy filtre algo.
 
 | # | Salida | Quién decide qué sale |
 |---|---|---|
@@ -20,6 +25,7 @@ otra salida** en vez de derivar del documento.
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle`, `tonosDelSitio`, y desde **B-110** sus **dos** cláusulas de estado —publicado y cancelado— más `estuvoPublicada`, que resuelve contra `/versiones` cuando el id del evento ya se borró); y desde **B-273** `src/lib/identidad.ts` (`colorDeTipo`), que resuelve el color de la categoría antes de que la plantilla lo vea. La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**). Es la única salida donde un documento que no está publicado produce HTML, y lo hace bajo la condición del §7.3 del diseño: solo si estuvo publicada alguna vez (**D-159**) |
 | 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). La plantilla solo acomoda |
+| 8 | La **página de mes** `/agenda/{aaaa-mm}` — HTML indexado, una por mes con 3 o más actividades (B-113) | `src/lib/mesPublico.ts` (`mesesDelSitio` decide qué meses se emiten, `entradasDelMes` qué entra en cada uno, `recorteDelMes` recorta la entrada al mes, y `tituloDelMes`, `descripcionDelMes` y `bajadaDelMes` arman las tres frases que van al `<title>`, a la `meta description` y a la bajada); `src/lib/tarjetaPublica.ts` (`cicloDelMes`); `src/lib/contenidoDelSitio.ts` (`caminosDeMes`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. La plantilla recibe el view-model y nada más (**D-140**) |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.
@@ -61,7 +67,7 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
-| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las siete salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
+| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las ocho salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
