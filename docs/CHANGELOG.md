@@ -1,5 +1,100 @@
 # Changelog
 
+## 2026-09-01 · el color del tipo de actividad y los eventos gratis en los filtros
+
+Dos pedidos del dueño, independientes entre sí.
+
+### El color del tipo se elige desde Opciones — B-270, D-150
+
+Recupera lo que **D-146** había retirado de **D-141**, con la mitad que faltaba: el
+color ya no lo impone el sistema visual, **lo administra el sitio**. D-146 no decía
+que el color por tipo estuviera mal; decía que una paleta *impuesta por el sistema*
+no puede tener ocho tintas, y eso sigue en pie. Lo que se paga —la home pasa de tres
+tintas a tres más una por tipo presente— está escrito en D-150, y se acota: el color
+aparece solo en la cajita de la categoría, y todos los tonos comparten luminosidad y
+croma.
+
+Las tres cosas que había que resolver bien:
+
+**Se deriva del slug y lo elegido es la excepción.** `tipo` es taxonomía
+autogestionada: si el color se asignara solo a mano, el tipo creado desde «Otro»
+nacería sin color y **nadie se enteraría**. `tonoDeTipo` resuelve en tres escalones —
+lo elegido, el tono de arranque, el derivado— y el campo guardado (`tono`, en
+`/opciones/tipo`) es la excepción.
+
+**El contraste no depende de quién elige.** El selector ofrece la **banda**, no un
+color: luminosidad y croma fijos, doce matices con nombre. Así el espacio de colores
+tiene una dimensión y se puede recorrer entero — `tests/color-de-tipo.test.ts` mide
+**los 360** contra las **tres** superficies del sitio, y el peor da **5,90:1** contra
+un piso de 4,5. Un selector libre habría degradado la garantía a «los que alguien ya
+miró».
+
+Tres guardas más, porque la banda es una promesa sobre el presente: `revisarTono` al
+guardar (con el ratio y el piso en el mensaje), `esTonoElegible` al leer, y el mismo
+filtro al proyectar al `events.json`. El piso de `revisarTono` es un **parámetro con
+default** —el patrón de los límites de `rebuild.js`— porque con la banda de hoy la
+guarda no se puede disparar, y un test que no pueda subir el piso no la verifica.
+
+**Dónde se ve:** la cajita de la categoría de cada fila del listado público, y la
+muestra de la pantalla de Opciones. Va por `style` y no por clase, porque Tailwind
+solo genera lo que ve escrito y una clase por tipo dejaría sin color al tipo que
+alguien cree mañana.
+
+Y `pintarOpcion` es **la única operación que puede tocar una opción base**: los siete
+tipos son `fijo: true`, así que la regla del §4.3 dejaría la pantalla sin nada que
+configurar. Lo que `fijo` protege es la identidad, y el matiz es presentación.
+
+### Los eventos gratis en los filtros — B-271, B-272, D-151, D-152
+
+**En la web el filtro ya funcionaba.** Corrido contra el `events.json` de producción
+con la misma función que usa la island, el eje «Arancel» devolvía `Gratis (8)`,
+`A la gorra (1)` y `Arancelado (32)`. No faltaba código: faltaba **encontrarlo**.
+
+El eje estaba tercero, detrás de «Cómo se cursa» —lo que partía el grupo de «dónde»
+al medio y, en el teléfono, lo dejaba abajo del corte del panel de 65svh— y adentro
+«Gratis» era el segundo chip, porque los chips se ordenan por cantidad y hay 33
+arancelados. **El §6.1 del diseño ya pedía «Gratis y A la gorra primero, siempre»** y
+la implementación no lo había bajado. Ahora el eje es el segundo y lo que no se paga
+va arriba, decidido por `esSinCosto` — la misma función con la que la fila pinta el
+arancel con el acento.
+
+En el panel **no era un bug: era revertir D-74**, que lo había descartado a propósito
+(«nadie busca el taller arancelado»). Escrito como el patrón de D-119 → D-132: ese
+argumento sigue siendo cierto para la pregunta que contestaba, y la que se pide ahora
+es otra —«¿qué tengo publicado que sea gratis?»— que el buscador de texto no puede
+contestar porque el arancel no está en el `searchText`. Más el dato objetivo: D-74
+razonaba en parte sobre que el sitio público no existía.
+
+Los otros tres descartes de D-74 se revisaron uno por uno y **dos motivos ya
+caducaron** (`tags` a medias, `destacado` entero). No se agregan —no se pidieron— pero
+quedan en **B-274**: un descarte no puede sobrevivir a su razón sin que nadie lo note.
+
+### Lo que encontraron los auditores
+
+- **`auditor-privacidad`, H1 (P1):** los lectores de un `ValorOpcion` crudo **eran
+  tres y son cuatro** — el de la página de detalle no estaba en la clase de B-212 y
+  era el único sin nada que nombrara qué podía leer. Se agregó, y la lista pasa a ser
+  **por camino**: `tono` es público *de una sola salida*, y una lista compartida
+  habría abierto los cuatro de golpe por un campo que necesita uno.
+- **`auditor-privacidad`, H3:** `TONOS_DE_TIPO['constructor']` devolvía la función
+  `Object` heredada del prototipo — no es nullish, así que el `??` no la atajaba.
+  Pasa a `Object.hasOwn`.
+- **`auditor-privacidad`, H4:** se podía elegir el color de cualquier taxonomía, y
+  `opcionPublica` lo publicaría: el matiz de un barrio en el `events.json` es un dato
+  que ninguna salida consume. La guarda va del lado del que escribe.
+- **`auditor-trampas` (P1, no arreglado):** la ficha del detalle sigue pintando el
+  tipo en azul fijo, con un comentario que dice «es la misma que abre cada fila del
+  listado» y que este cambio volvió falso — quien navegue del listado al detalle ve
+  la cajita saltar de color. No se tocó porque esos archivos los está tocando otro
+  frente; queda como **B-273**.
+
+### Mutaciones
+
+**Veinticinco, todas atrapadas**, y una que se escapó a la primera pasada: bajar el
+piso por defecto de `revisarTono` de 4,5 a 3 no rompía ningún test, porque con la
+banda de hoy ningún matiz baja de 5,90 y el cambio no altera ninguna llamada posible.
+Se cerró afirmando el default **sobre el fuente**, con el motivo escrito al lado.
+
 ## 2026-09-01 · la display pasa a Fraunces
 
 **El dueño rechazó la Bodoni** —«no me cierra la fuente que tiene "Agenda LEH", el
