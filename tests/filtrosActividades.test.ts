@@ -104,6 +104,7 @@ describe('filtrar sobre lo que ya está en memoria', () => {
       tipo: 'club-lectura',
       estado: 'borrador',
       modalidad: 'virtual',
+      arancel: { tipo: 'arancelado', notas: '' },
       sesiones: [sesion('2026-09-10T22:00:00Z')],
     }),
     acto({
@@ -113,6 +114,7 @@ describe('filtrar sobre lo que ya está en memoria', () => {
       estado: 'publicado',
       modalidad: 'presencial',
       sede: sedeEn('villa-crespo'),
+      arancel: { tipo: 'gratis', notas: '' },
       sesiones: [sesion('2026-08-10T22:00:00Z')],
     }),
     acto({
@@ -122,6 +124,7 @@ describe('filtrar sobre lo que ya está en memoria', () => {
       estado: 'publicado',
       modalidad: 'presencial',
       sede: sedeEn('palermo'),
+      arancel: { tipo: 'a-la-gorra', notas: '' },
       sesiones: [sesion('2026-10-10T22:00:00Z')],
     }),
   ] as ActividadConId[];
@@ -153,6 +156,36 @@ describe('filtrar sobre lo que ya está en memoria', () => {
     expect(ids(filtrar(datos, con({ barrio: 'villa-crespo' }), ahora))).toEqual(['taller']);
   });
 
+  it('filtra por arancel, que D-74 había descartado y D-152 repone', () => {
+    /*
+     * B-272 — «¿qué tengo publicado que sea gratis?» es de repaso, no de
+     * búsqueda: el buscador de texto no la contesta porque el arancel no está en
+     * el `searchText` (§6, que lleva título, descripción, sede, barrio,
+     * organizador y tallerista).
+     *
+     * MUTACIÓN PROBADA: sacar la línea de `arancel` de `filtrar` devuelve las
+     * tres y hace fallar este caso.
+     */
+    expect(ids(filtrar(datos, con({ arancel: 'gratis' }), ahora))).toEqual(['taller']);
+    expect(ids(filtrar(datos, con({ arancel: 'a-la-gorra' }), ahora))).toEqual(['charla']);
+    expect(ids(filtrar(datos, con({ arancel: 'arancelado' }), ahora))).toEqual(['club']);
+  });
+
+  it('una actividad sin arancel cargado no entra en ningún arancel', () => {
+    /*
+     * El default de lectura: los documentos anteriores al campo no tienen el
+     * objeto `arancel`, y el filtro tiene que **dejarlos afuera** de cualquier
+     * valor concreto sin romperse. Sin el `?? ''` esto tira sobre `undefined`.
+     *
+     * MUTACIÓN PROBADA: cambiar `(a.arancel?.tipo ?? '')` por `a.arancel.tipo`
+     * hace fallar este caso con un TypeError.
+     */
+    const sinArancel = [...datos, acto({ id: 'viejo', arancel: undefined })];
+    expect(ids(filtrar(sinArancel, con({ arancel: 'gratis' }), ahora))).toEqual(['taller']);
+    // Y sigue apareciendo cuando no se filtra por arancel.
+    expect(ids(filtrar(sinArancel, FILTROS_VACIOS, ahora))).toContain('viejo');
+  });
+
   it('«con algo por venir» y su complemento parten el listado en dos', () => {
     expect(ids(filtrar(datos, con({ cuando: 'por-venir' }), ahora))).toEqual(['club', 'charla']);
     expect(ids(filtrar(datos, con({ cuando: 'sin-futuro' }), ahora))).toEqual(['taller']);
@@ -171,6 +204,10 @@ describe('filtrar sobre lo que ya está en memoria', () => {
     expect(cantidadDeFiltros(FILTROS_VACIOS)).toBe(0);
     expect(cantidadDeFiltros(con({ texto: 'algo' }))).toBe(0);
     expect(cantidadDeFiltros(con({ estado: 'borrador', cuando: 'por-venir' }))).toBe(2);
+    // B-272 — el arancel cuenta como los otros cinco: un filtro puesto y
+    // olvidado detrás del panel colapsado no puede explicar un listado vacío.
+    expect(cantidadDeFiltros(con({ arancel: 'gratis' }))).toBe(1);
+    expect(cantidadDeFiltros(con({ arancel: 'gratis', tipo: 'taller' }))).toBe(2);
     // Para el mensaje del listado vacío sí cuenta el texto.
     expect(hayFiltros(con({ texto: 'algo' }))).toBe(true);
     expect(hayFiltros(FILTROS_VACIOS)).toBe(false);
@@ -273,13 +310,20 @@ describe('los desplegables muestran etiquetas, nunca el valor guardado (§4.1)',
 
 describe('los desplegables ofrecen lo que existe en los datos', () => {
   const datos = [
-    acto({ id: 'a', tipo: 'taller', estado: 'borrador', modalidad: 'virtual' }),
+    acto({
+      id: 'a',
+      tipo: 'taller',
+      estado: 'borrador',
+      modalidad: 'virtual',
+      arancel: { tipo: 'arancelado', notas: '' },
+    }),
     acto({
       id: 'b',
       tipo: 'taller',
       estado: 'publicado',
       modalidad: 'presencial',
       sede: sedeEn('villa-crespo'),
+      arancel: { tipo: 'gratis', notas: '' },
     }),
     acto({
       id: 'c',
@@ -287,6 +331,7 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
       estado: 'publicado',
       modalidad: 'presencial',
       sede: sedeEn('almagro'),
+      arancel: { tipo: 'a-la-gorra', notas: '' },
     }),
   ] as ActividadConId[];
 
@@ -303,6 +348,28 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
     expect(opciones.estados).toEqual(['borrador', 'publicado']);
     expect(opciones.modalidades).toEqual(['presencial', 'virtual']);
     expect(opciones.barrios).toEqual(['almagro', 'villa-crespo']);
+  });
+
+  it('el arancel ofrece primero lo que no se paga, como los chips del sitio', () => {
+    /*
+     * B-272 · D-152 — el mismo comparador que el sitio (`primeroSinCosto`), que es
+     * lo que fija **qué va arriba**. El desempate adentro de cada grupo sí es
+     * distinto y a propósito: el sitio ordena por cantidad de actividades y el
+     * panel alfabético, como sus otros cuatro desplegables. Lo que no puede pasar
+     * es que «Arancelado» quede arriba de «Gratis» acá y abajo allá, que es lo que
+     * daba el alfabético a secas.
+     *
+     * MUTACIÓN PROBADA: sacar `primeroSinCosto(a, b) ||` deja
+     * `['a-la-gorra', 'arancelado', 'gratis']` y hace fallar este caso.
+     */
+    expect(opcionesPresentes(datos).aranceles).toEqual(['a-la-gorra', 'gratis', 'arancelado']);
+  });
+
+  it('no ofrece un arancel que ninguna actividad usa', () => {
+    // Misma regla que el barrio: un desplegable con valores que dan cero es un
+    // callejón. `/opciones/arancel` puede tener «Con beca parcial» sin que
+    // ninguna actividad lo use todavía.
+    expect(opcionesPresentes(datos).aranceles).not.toContain('con-beca-parcial');
   });
 
   it('el orden es el mismo aunque los datos lleguen al revés', () => {
@@ -328,6 +395,7 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
     expect(opcionesPresentes([])).toEqual({
       estados: [],
       tipos: [],
+      aranceles: [],
       modalidades: [],
       barrios: [],
     });

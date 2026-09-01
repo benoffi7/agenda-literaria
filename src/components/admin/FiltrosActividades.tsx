@@ -32,12 +32,16 @@ interface Props {
 }
 
 /**
- * Orden y filtros del listado (B-126, D-73, D-74).
+ * Orden y filtros del listado (B-126, D-73, D-74, D-152).
  *
  * **Los filtros arrancan colapsados detrás de un botón** que muestra cuántos hay
- * puestos. En 360px cinco desplegables abiertos empujan el listado abajo del
+ * puestos. En 360px seis desplegables abiertos empujan el listado abajo del
  * pliegue, y el listado es lo que se vino a ver. El número del botón es lo que
  * impide que un filtro olvidado explique un listado que parece vacío.
+ *
+ * El sexto es **«Arancel»**, que D-74 había descartado y D-152 repone: no es un
+ * bug que se arregla, es una decisión que se da vuelta, y el motivo está escrito
+ * en las dos entradas.
  *
  * **No hay una sola query nueva:** todo sale de las actividades que el listado ya
  * tiene en memoria (§2.5).
@@ -60,7 +64,7 @@ export function FiltrosActividades({
     onFiltros({ ...filtros, [campo]: valor });
 
   /** La etiqueta de un valor de taxonomía, con la legibilización como respaldo. */
-  const etiqueta = (campo: 'tipo' | 'barrio', valor: string) =>
+  const etiqueta = (campo: 'tipo' | 'barrio' | 'arancel', valor: string) =>
     labels[campo]?.[valor] ?? legible(valor);
 
   return (
@@ -135,6 +139,32 @@ export function FiltrosActividades({
                 ))}
               </select>
             </Campo>
+
+            {/*
+              B-272 · D-152 — el arancel, que D-74 había descartado a propósito.
+              Va **pegado a «Tipo»** y antes de modalidad, por lo mismo que en el
+              sitio (D-151): es la segunda pregunta y no parte el grupo de dónde.
+
+              Solo aparece si alguna actividad lo tiene cargado, como el barrio:
+              un desplegable con una única opción «Cualquiera» es ruido.
+            */}
+            {opciones.aranceles.length > 0 && (
+              <Campo label="Arancel" htmlFor={`${id}-arancel`}>
+                <select
+                  id={`${id}-arancel`}
+                  className={claseInput}
+                  value={filtros.arancel}
+                  onChange={(e) => cambiar('arancel', e.target.value)}
+                >
+                  <option value="">Cualquiera</option>
+                  {opciones.aranceles.map((v) => (
+                    <option key={v} value={v}>
+                      {etiqueta('arancel', v)}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
 
             <Campo label="Modalidad" htmlFor={`${id}-modalidad`}>
               <select

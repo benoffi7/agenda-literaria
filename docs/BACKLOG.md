@@ -499,7 +499,62 @@ variantes son B-220. Lo que queda es el **disparador**:
 Mientras tanto, lo barato y no automatizado: al subir un flyer conviene
 recortarlo. El mensaje de rechazo de DEC-7b ya empuja en esa dirección, pero solo
 a partir de los 3 MB.
+### B-270 · El color del tipo de actividad, elegible desde Opciones — ✅ hecho (2026-09-01)
 
+Recupera lo que **D-146** había retirado de **D-141** y le agrega la mitad que
+faltaba: el color ya no lo impone el sistema visual, lo administra el sitio.
+El porqué completo está en **D-150**; lo que conviene tener anotado acá:
+
+- **Se deriva del slug y lo elegido es la excepción.** `tipo` es taxonomía
+  autogestionada: si el color se asignara solo a mano, el tipo creado desde «Otro»
+  nacería sin color y nadie se enteraría.
+- **El selector ofrece la banda, no un color.** Luminosidad y croma fijos, doce
+  matices con nombre. Así *cualquier cosa que se pueda elegir* pasa AA: los 360
+  tonos posibles están medidos contra las tres superficies del sitio y el peor da
+  **5,90:1** contra un piso de 4,5 (`tests/color-de-tipo.test.ts`).
+- **Tres guardas más**, las tres mutadas: `revisarTono` al guardar (con el ratio y
+  el piso en el mensaje), `esTonoElegible` al leer, y el mismo filtro al proyectar
+  al `events.json`.
+- **`pintarOpcion` es la única operación que puede tocar una opción base**, y tiene
+  que serlo: los siete tipos son `fijo: true`. Renombrar y borrar la siguen
+  respetando, con un test de integración que lo fija.
+- **Campo nuevo:** `tono?: number` en `/opciones/{campo}`, opcional, y `tono?` en
+  `OpcionPublica`. Salida pública tocada → pasó por el barrido de centinelas y por
+  el `auditor-privacidad`.
+- **Abierto en el camino:** **B-273** (la ficha del detalle sigue en azul fijo).
+
+### B-273 · La ficha del detalle pinta el tipo en azul fijo, y su comentario dice que es el mismo color que el listado · P1
+
+**Lo encontró el `auditor-trampas` al cerrar B-270**, y es la otra mitad de D-150
+que no se pudo hacer.
+
+`src/pages/actividad/[slug].astro` pinta la cajita del tipo con `bg-azul` y el
+texto calado, con este comentario al lado:
+
+> «La cajita va en **azul tinta**, que es lo que el sistema le asigna a las
+> categorías, y es **la misma que abre cada fila del listado**: quien viene del
+> listado reconoce la pieza.»
+
+B-270 volvió falsa esa última frase: en el listado la cajita ahora lleva el color
+de su categoría. **Quien navegue del listado al detalle ve la cajita saltar de
+color**, que es justo lo contrario de «reconoce la pieza».
+
+No se arregló en B-270 porque `[slug].astro` y `detallePublico.ts` los estaba
+tocando otro frente en paralelo (las imágenes), y tocar los mismos archivos desde
+dos lados es cómo se pierde trabajo.
+
+**Arreglo:** `detallePublico.ts` hoy expone solo `tipoEtiqueta` (el label), así que
+la ficha no tiene con qué derivar el color. Hay que sumar el slug —o el tono ya
+resuelto— al view-model y usar `estiloDeTipo`/`colorDeTipo` en la plantilla. Ojo con
+que ahí la cajita es **tinta plena con el texto en papel**, no texto sobre papel:
+el par a medir es el papel encima del color, no el color sobre el papel, así que el
+test nuevo no es el mismo que el del listado. Si se decide dejarlo en azul, la
+corrección es igual de obligatoria: **arreglar el comentario**, que hoy afirma algo
+que no pasa.
+
+**Sin red:** no existe ningún test que compare el color del tipo en las dos
+pantallas. Vale escribirlo con el arreglo, porque es la clase de B-88 —dos
+derivaciones del mismo valor separándose— con las dos mitades a la vista.
 ### B-227 · El listado con filtros y la página de detalle — ✅ hecho (2026-08-28)
 
 El primer frente del sitio público: cierra **B-105**, la mitad de **B-107**, y
@@ -1967,6 +2022,35 @@ Lo que el auditor reportó y **no** se acató: nada — los cuatro resultaron ci
 contra el árbol.
 
 ## P2 — mejoras reales
+
+### B-271 · Los eventos gratis en los filtros del sitio — ✅ hecho (2026-09-01)
+
+El pedido fue «revisar filtros para que estén los eventos gratis (tanto web como
+admin)». **En la web ya estaban.** Corrido contra el `events.json` de producción
+con la misma función que usa la island (`chipsDe`), el eje «Arancel» devolvía
+`Gratis (8)`, `A la gorra (1)` y `Arancelado (32)`.
+
+O sea que no faltaba código: faltaba **encontrarlo**, por dos motivos que se
+sumaban y que D-151 explica. El eje estaba tercero, detrás de «Cómo se cursa» —lo
+que en el teléfono lo dejaba abajo del corte del panel de 65svh de D-143— y dentro
+del eje «Gratis» era el segundo chip, porque los chips se ordenan por cantidad y
+hay 33 arancelados.
+
+Se arregló subiendo el eje al segundo puesto y poniendo primero lo que no se paga,
+que además es **una línea del §6.1 del diseño que la implementación no había
+bajado** («Gratis y A la gorra primero, siempre»).
+
+Vale anotar el método, porque es reusable: **los chips no se ven en el `dist`** —los
+pinta la island— así que para comprobarlo no alcanza con leer el HTML del build. Se
+bajó el `events.json` de producción y se corrió `chipsDe` sobre él. Es más barato
+que levantar el sitio y usa los datos de verdad.
+
+### B-272 · El filtro de arancel en el panel — ✅ hecho (2026-09-01)
+
+**No era un bug: era revertir D-74**, que lo había descartado a propósito. Escrito
+como el patrón de D-119 → D-132: el argumento viejo sigue siendo cierto para la
+pregunta que contestaba, la que se pide ahora es otra, y lo que se paga queda
+escrito. Está entero en **D-152**.
 
 ### B-232 · `/ayuda` y `/contacto` — ✅ hecho (2026-08-28)
 
@@ -4616,6 +4700,23 @@ Queda P2 y no P1 porque la página funciona y es alcanzable desde las cuatro
 secciones del sitio. Lo que se pierde mientras tanto es conversión, no acceso.
 
 ## P3 — cuando sobre tiempo
+
+### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` · P3
+
+Al revertir D-74 para el arancel (B-272, D-152) se revisaron sus otros tres
+descartes uno por uno. **No se agregó ninguno —no se pidieron— pero dos de los tres
+motivos ya no son ciertos, y eso tiene que quedar anotado o el descarte sobrevive a
+su razón.**
+
+| Filtro | Qué decía D-74 | Qué pasó |
+|---|---|---|
+| `tags` | «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. **Cuando exista B-06, se reconsidera**» | **B-05 y B-06 existen.** La condición que el propio D-74 puso para reconsiderarlo se cumplió. Lo que sigue en pie es la otra mitad del argumento: es multivaluado y necesita un control de selección múltiple, que ninguno de los cinco desplegables del panel tiene. O sea que el costo es real pero ya no es «la lista está sucia» |
+| `destacado` | «un booleano que hoy no consume nadie: **el sitio público todavía no existe** (B-01)» | El sitio existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. El motivo caducó entero. Lo que queda como argumento es otro y más débil: con pocas destacadas, un filtro booleano compra menos que un orden |
+| quién la cargó | «el dato es un identificador de usuario y no un nombre, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre» | **Sigue valiendo igual.** No hay nada que revisar acá |
+
+Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, primero
+hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
+`EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
 
 ### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` · P3
 

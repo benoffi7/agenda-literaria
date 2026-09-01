@@ -31,12 +31,14 @@
 import { FilaDeActividad } from '@/components/publico/FilaDeActividad';
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { partesDeMes } from '@/lib/fechasPublicas';
-import { agruparPorMes, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import { agruparPorMes, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 
 interface Props {
   entradas: readonly EntradaDeIndice[];
   ahora: Date;
   etiquetas: MapaDeEtiquetas;
+  /** Los matices elegidos para los tipos (D-150). Se pasan a cada fila. */
+  tonos: TonosDeTipo;
   /** Con `false` sale una lista corrida, sin marcadores de mes. */
   agrupar?: boolean;
 }
@@ -52,12 +54,18 @@ interface Props {
  */
 const CLASE_LISTA = 'regla-gruesa-arriba flex flex-col';
 
-export function ListaDeActividades({ entradas, ahora, etiquetas, agrupar = true }: Props) {
+export function ListaDeActividades({ entradas, ahora, etiquetas, tonos, agrupar = true }: Props) {
   if (!agrupar) {
     return (
       <ul className={CLASE_LISTA}>
         {entradas.map((e) => (
-          <FilaDeActividad key={e.id} entrada={e} ahora={ahora} etiquetas={etiquetas} />
+          <FilaDeActividad
+            key={e.id}
+            entrada={e}
+            ahora={ahora}
+            etiquetas={etiquetas}
+            tonos={tonos}
+          />
         ))}
       </ul>
     );
@@ -97,7 +105,13 @@ export function ListaDeActividades({ entradas, ahora, etiquetas, agrupar = true 
             */}
             <ul className="flex flex-col">
               {grupo.entradas.map((e) => (
-                <FilaDeActividad key={e.id} entrada={e} ahora={ahora} etiquetas={etiquetas} />
+                <FilaDeActividad
+            key={e.id}
+            entrada={e}
+            ahora={ahora}
+            etiquetas={etiquetas}
+            tonos={tonos}
+          />
               ))}
             </ul>
           </section>

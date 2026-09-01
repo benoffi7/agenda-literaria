@@ -474,6 +474,22 @@ export interface ValorOpcion {
    * pública (§5.3) y los uids no salen al público (§5.1). Ver `lib/huella.ts`.
    */
   huellaCreador?: string;
+  /**
+   * §4.1 · D-150 — el **matiz** elegido para esta opción, en grados de OKLCH
+   * (entero de 0 a 359). Hoy solo lo pinta `tipo`, en la cajita de la categoría
+   * del listado público.
+   *
+   * **Opcional, y ausente es el caso normal.** Sin valor el color se **deriva del
+   * slug** (`tonoDeTipo` en `lib/identidad.ts`), que es lo que hace que un tipo
+   * creado desde «Otro» nazca con color en vez de nacer sin color y sin que nadie
+   * se entere. Esto es la excepción: lo que alguien eligió a mano desde Opciones.
+   *
+   * **Es un matiz, no un color.** La luminosidad y el croma son fijos para todos
+   * los tipos, y eso es lo que permite garantizar el contraste sobre los 360
+   * valores posibles en vez de sobre los que alguien ya miró. Un valor fuera de
+   * rango, con decimales o de otro tipo se ignora al leer.
+   */
+  tono?: number;
 }
 
 export interface DocOpciones {

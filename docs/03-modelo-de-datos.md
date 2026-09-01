@@ -134,6 +134,13 @@ Un patrón genérico resuelve cinco campos: desplegable enumerado + casilla
     { slug: 'bono-social',  label: 'Bono social',      orden: 99, fijo: false, usos: 1,
       aprobada: false, huellaCreador: '3f9a1c07' }
   ]
+
+/opciones/tipo
+  valores: [
+    // `tono` solo en las que alguien pintó a mano: ausente es «derivado del slug».
+    { slug: 'taller', label: 'Taller', orden: 1, fijo: true, usos: 11, aprobada: true, tono: 290 },
+    { slug: 'charla', label: 'Charla', orden: 5, fijo: true, usos: 1,  aprobada: true }
+  ]
 ```
 
 Un documento con array, no una subcolección: son pocas opciones y se leen todas
@@ -172,6 +179,37 @@ las creadas con "Otro" por uso descendente. **Ese orden decide cuál opción
 preselecciona el formulario**, así que está fijado con tests en
 `tests/opciones-orden.test.ts`.
 
+### `tono` — el color de la categoría (D-150)
+
+**Opcional, y ausente es el caso normal.** Es el **matiz** con el que el sitio
+escribe la categoría, en grados de OKLCH: un entero de 0 a 359.
+
+| | |
+|---|---|
+| Tipo | `number` opcional, entero de 0 a 359 |
+| Ausente significa | **derivado del slug** (`tonoDeTipo` en `src/lib/identidad.ts`), no «sin color» |
+| Quién lo escribe | el admin, desde la pantalla de Opciones (`pintarOpcion`) |
+| Dónde aplica | **solo `/opciones/tipo`**: es la única lista que el sitio pinta, y `pintarOpcion` rechaza cualquier otro campo |
+| Sale al `events.json` | **sí**, y solo si es elegible — ver abajo |
+
+**Es un matiz, no un color, y esa es la decisión.** La luminosidad y el croma son
+fijos para todos los tipos, así que lo único que se puede elegir es la posición en
+la rueda. Eso es lo que permite **garantizar el contraste sobre los 360 valores
+posibles** en vez de sobre los que alguien ya miró: el peor de los 360 da 5,90:1
+sobre la más oscura de las tres superficies del sitio, contra un piso de 4,5
+(`tests/color-de-tipo.test.ts`). Guardar el color entero volvería editable la
+luminosidad y la garantía se perdería en el primer documento escrito a mano.
+
+**Un valor fuera de rango, con decimales o de otro tipo se ignora al leer** y no
+sale al `events.json`: `/opciones/*` se puede editar desde la consola de Firestore,
+y un color ilegible no se puede colar por ninguno de los dos caminos. Todo el
+razonamiento está en [D-150](06-decisiones.md).
+
+**Se puede cambiar en una opción `fijo: true`**, y es el único campo que se puede:
+los siete tipos que existen son base, así que la regla de arriba dejaría la pantalla
+sin nada que configurar. Lo que `fijo` protege es la identidad —el slug, la
+etiqueta—, y el matiz es presentación.
+
 ### `aprobada` y `huellaCreador`
 
 Desde que hay **dos cuentas con claim `admin`** cargando actividades, una
@@ -205,8 +243,9 @@ este documento es de **lectura pública** (§5.3) y el §5.1 dice que los uids n
 salen al público. La visibilidad solo necesita comparar igualdad. Ver
 [D-27](06-decisiones.md) y [`07-seguridad.md`](07-seguridad.md).
 
-**Qué sale al `events.json`:** solo `slug` y `label` (§4.4). `orden`, `fijo`, `usos`,
-`aprobada` y `huellaCreador` **no** — la proyección es `opcionesPublicas` en
+**Qué sale al `events.json`:** `slug`, `label` y —cuando está y es válido— `tono`
+(§4.4). `orden`, `fijo`, `usos`, `aprobada` y `huellaCreador` **no** — la proyección
+es `opcionesPublicas` en
 `src/lib/toPublic.ts`, con la tabla de por qué cada uno se queda adentro en
 [`07-seguridad.md`](07-seguridad.md). Está escrita desde antes de que exista el
 `events.json` (B-212), para que el default no lo decida un spread.

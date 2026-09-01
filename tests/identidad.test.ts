@@ -6,18 +6,21 @@ import { describe, expect, it } from 'vitest';
 import { BAJADA, NOMBRE, NOMBRE_COMPLETO } from '@/lib/identidad';
 
 /**
- * La identidad del sitio — B-245, recortado en B-260.
+ * La identidad del sitio: **el nombre** — B-245, recortado en B-260.
  *
- * **La mitad del color se fue con D-146.** B-245 derivaba un tono por tipo de
- * actividad y este archivo lo verificaba sobre los 360 tonos posibles; el sistema
- * visual de B-260 pasa a una paleta de tres tintas y la categoría se escribe toda
- * en azul tinta, así que no hay tono que verificar. Lo que se conserva —y es lo
- * que D-141 vino a arreglar de fondo— es que el nombre viva en un módulo y que
- * toda página se titule con él.
+ * **Acá está solo el nombre, y el color tiene archivo propio.** B-245 derivaba un
+ * tono por tipo de actividad y este archivo lo verificaba sobre los 360 tonos
+ * posibles; D-146 lo retiró y **D-150 lo trajo de vuelta**, ahora elegible desde
+ * Opciones. El barrido de los 360 y las guardas del matiz viven en
+ * `tests/color-de-tipo.test.ts`, que es donde corresponde: son bastante más que un
+ * caso, y este archivo es sobre cómo se llama el sitio.
  *
- * El contraste de las tintas que reemplazaron a aquel color lo verifica
- * `tests/sistema-visual.test.ts`, que además ata cada token de `global.css` al
- * hex de `docs/referencias/sistema-visual.md`.
+ * Lo que se conserva acá —y es lo que D-141 vino a arreglar de fondo— es que el
+ * nombre viva en un módulo y que toda página se titule con él.
+ *
+ * El contraste de las tintas con nombre lo verifica `tests/sistema-visual.test.ts`,
+ * que además ata cada token de `global.css` al hex de
+ * `docs/referencias/sistema-visual.md`.
  */
 
 describe('el nombre del sitio', () => {

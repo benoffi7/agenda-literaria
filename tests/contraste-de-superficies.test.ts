@@ -179,11 +179,13 @@ describe('el contraste del sitio sobre las tres superficies — B-256', () => {
 
   it('las tres tintas del sistema pasan AA como texto sobre cualquier superficie', () => {
     /*
-     * **Reemplaza al barrido de los 360 tonos de B-256.** Aquél existía porque
-     * D-141 derivaba un color por tipo de actividad desde el slug, así que había
-     * tonos que nadie iba a mirar nunca. D-146 pasa a una **paleta limitada de
-     * tres tintas** y esa derivación se retiró: ya no hay un color imprevisible
-     * que verificar, hay tres tintas con nombre.
+     * **Este caso mide las tintas con nombre, no los tonos por tipo.** El barrido
+     * de los 360 vivía acá cuando D-141 derivaba un color por tipo desde el slug;
+     * D-146 lo retiró al pasar a la paleta limitada, y **D-150 lo trajo de vuelta**
+     * — pero a su propio archivo, `tests/color-de-tipo.test.ts`, porque ahora el
+     * color sale de un dato que alguien elige y tiene sus propias guardas que
+     * verificar. Acá quedan las tintas del sistema, que es de lo que habla este
+     * archivo.
      *
      * Lo que sí sigue haciendo falta es medirlas sobre **las tres superficies** y
      * no solo sobre el papel, que es el aporte de este archivo: `azul` da 6,14

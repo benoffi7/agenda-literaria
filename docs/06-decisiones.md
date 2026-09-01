@@ -1379,6 +1379,13 @@ días — queda anotado en B-128.
 
 ## D-74 · Cinco filtros, y cuatro descartados con su motivo
 
+> ⚠️ **El descarte de `arancel` se revirtió el 2026-09-01 — ver D-152.** Hoy los
+> filtros son **seis**. El argumento de abajo no se borra ni se corrige: sigue
+> siendo cierto para la pregunta que contestaba («nadie *busca* el taller
+> arancelado»), y lo que cambió es que se pide contestar otra. D-152 dice cuál, qué
+> se paga por revertir, y qué pasó con los otros tres descartes — el de `tags`
+> caducó a medias y el de `destacado` entero (**B-274**).
+
 **Decisión:** el listado filtra por **estado, tipo, modalidad, barrio y fechas**
 ("con algo por venir" / "sin fechas por venir"), y todo se cruza con el buscador
 de texto que ya existía. Los desplegables ofrecen **solo los valores que alguna
@@ -4054,6 +4061,14 @@ daba: es una capa modal, necesita trampa de foco, `Escape`, cierre tocando el fo
 `pushState`, y nada de eso lo resuelve una regla de CSS.
 ## D-146 · Brutalismo editorial: la tercera dirección visual, y la que se aprobó
 
+> ⚠️ **El punto 2 de «las tres cosas que el sistema mata de D-141» se revirtió el
+> 2026-09-01 — ver D-150.** El color por tipo de actividad volvió, y con la misma
+> banda de luminosidad y croma que se describe más abajo. Lo que cambió no es el
+> argumento —una paleta *impuesta por el sistema* sigue sin poder tener ocho
+> tintas— sino de quién es la paleta: ahora la administra el sitio desde Opciones.
+> El resto de esta entrada, incluidos los otros dos puntos (la portada generada y
+> la grilla que pasa a filas), **sigue vigente**.
+
 **Contexto.** El dueño rechazó **dos** direcciones por genéricas. La segunda fue
 D-141 —«la estructura de Eventbrite con paleta propia»— y su bajada a la tarjeta
 (D-142), al detalle (D-144) y al CTA móvil (D-145). No se rechazó por estar mal
@@ -4506,3 +4521,244 @@ prioridad y el disparador queda escrito en B-266.
 `functions/`, el write-back al documento y —sobre todo— la guarda anti-loop: un
 `onObjectFinalized` que escribe la miniatura en el **mismo bucket** se dispara a
 sí mismo, que es la trampa 3 con otra cara (trampa 12 del §13).
+## D-150 · El color del tipo de actividad vuelve, y se elige desde Opciones — revierte el punto 2 de D-146
+
+**Contexto.** D-141 le dio a cada tipo de actividad su propio tono, derivado del
+slug para que un tipo creado desde «Otro» no cayera en un gris de descarte. D-146
+lo retiró, y su argumento era bueno: la paleta del sistema visual es **limitada,
+«como una impresión a tintas planas»**, y siete u ocho tintas —una por categoría—
+es exactamente lo contrario. El tipo pasó a escribirse todo en azul tinta.
+
+El dueño pide el color de vuelta, y con una diferencia que es la que cambia la
+decisión: **quiere poder elegirlo desde la sección de opciones del panel.**
+
+### Qué cambia respecto de D-146, y qué no
+
+D-146 no decía «el color por tipo está mal»: decía que **una paleta impuesta por
+el sistema** no puede tener ocho tintas. Eso sigue siendo cierto. Lo que cambia es
+de quién es la paleta: ya no la fija el sistema visual, la administra el sitio,
+igual que administra las etiquetas y los barrios. Un color por categoría elegido
+por quien publica es una decisión editorial del programa, no una ampliación de la
+paleta del sistema — y el sistema le asigna a la categoría un lugar propio («azul
+tinta — texto funcional, **categorías**»), que es el que ahora se puede pintar.
+
+**Lo que se paga, y hay que decirlo:** la home deja de tener tres tintas y pasa a
+tener tres más una por tipo presente. Es la contradicción con la «paleta limitada»,
+y es deliberada. Se acota con dos cosas: el color aparece **solo en la cajita de la
+categoría** (no en el bloque de fecha, no en el título, no en el arancel) y todos
+los tonos comparten luminosidad y croma, así que la página se sigue leyendo de una
+pieza — varía el matiz, no el peso.
+
+### Las tres decisiones
+
+**1 · Se deriva del slug; lo elegido es la excepción.** `tipo` es una taxonomía
+autogestionada (§4 del `CLAUDE.md`): quien carga puede crear un tipo nuevo desde la
+casilla «Otro» y ese tipo aparece solo en los filtros. Si el color se asignara
+**solo** a mano, el tipo nuevo nacería sin color y **nadie se enteraría** — el modo
+de falla es silencioso, que es el mismo argumento con el que D-141 rechazó la tabla
+de siete. Así que `tonoDeTipo(slug, elegido)` resuelve en tres escalones: lo elegido
+si es elegible, el tono de arranque del tipo si lo tiene, y el derivado del slug si
+no. El campo guardado (`tono`, en `/opciones/tipo`) es la excepción, no la regla.
+
+La tabla `TONOS_DE_TIPO` de los siete tipos de hoy sobrevive como **default**, no
+como fuente de verdad: existe para que los que están desde el día uno arranquen con
+colores elegidos y no con siete matices repartidos por una función de hash. Puede
+quedarse corta —un tipo que no esté deriva el suyo— pero no puede envejecer
+nombrando tipos que ya no existen, y eso lo fija un test contra `opciones-base.json`.
+
+**2 · El contraste no depende del gusto de quien elige.** Esta es la parte que hace
+posible todo lo demás.
+
+La derivación de D-141 fijaba la **luminosidad y el croma** y variaba **solo el
+matiz**, y por eso podía garantizar los 360 tonos posibles de una vez. Un selector
+de color libre destruye esa garantía: el espacio pasa de 360 valores a millones, y
+la promesa se degrada a «los que alguien ya miró». Alguien elige un amarillo, el
+nombre de la categoría queda ilegible, y **no falla nada**.
+
+Así que **el selector ofrece la banda**: lo que se elige es el matiz, no el color.
+`L = 0,42` y `C = 0,105` para todos, y el panel muestra doce matices con nombre —
+Terracota, Ocre, Petróleo, Azul tinta, Ciruela…—. Con eso, *cualquier cosa que se
+pueda elegir* pasa AA, y no hay error que explicar después.
+
+Medido, no supuesto: `tests/color-de-tipo.test.ts` recorre **los 360** contra las
+**tres** superficies del sitio (`papel`, `crema`, `hondo` — el hover de la fila es
+`crema`, y medir solo contra el papel da un número optimista, que es la lección de
+B-256). El peor de los 360 da **5,90:1** contra un piso de 4,5.
+
+Y hay tres guardas más, porque la banda sola es una promesa sobre el presente:
+
+| Guarda | Qué ataja | Dónde |
+|---|---|---|
+| `revisarTono` al guardar | que aflojar la banda pase en silencio: si mañana se sube la `L` para que los colores se vean más vivos, el guardado empieza a rechazar lo que dejó de alcanzar, con **el ratio y el piso** en el mensaje | `identidad.ts`, llamada desde `pintarOpcion` |
+| `esTonoElegible` al leer | un `tono: 999` o un `tono: 12.5` escritos a mano en la consola de Firestore: se ignoran y se cae al derivado, que sí está garantizado | `tonoDeTipo` |
+| el mismo filtro al proyectar | que un valor así llegue al `events.json` | `opcionPublica` |
+
+El piso de `revisarTono` es un **parámetro con default** —el patrón de los límites
+de `functions/rebuild.js`— y no por elegancia: con la banda de hoy la guarda **no se
+puede disparar**, así que un test que no pueda subir el piso no la verifica, y
+sacarle el `throw` quedaría en verde. Es exactamente lo que pasó con su default,
+que se escapó a la primera pasada de mutación y terminó afirmado sobre el fuente.
+
+**3 · Dónde se ve.** Un ajuste que no se ve en ninguna parte es una pantalla de
+configuración que no configura nada. El color vuelve a **la cajita del tipo en cada
+fila del listado público** —texto y borde, el mismo color en los dos, porque el
+chequeo lo mide como texto (4,5:1) que es más exigente que el 3:1 de un borde— y se
+muestra además en la pantalla de Opciones, al lado de cada tipo, que es donde se
+elige.
+
+Va por `style` inline y no por clase de Tailwind, y eso no es descuido: Tailwind
+solo genera las clases que **ve escritas en el fuente**, así que una clase por tipo
+dejaría sin color al tipo que alguien cree mañana — el mismo modo de falla
+silencioso que la decisión 1 evita.
+
+**Lo que queda afuera, con su motivo:**
+
+| Dónde | Por qué no |
+|---|---|
+| la etiqueta del tipo en la cabecera del **detalle** | es la otra candidata obvia y **corresponde**; no se hizo porque `[slug].astro` y `detallePublico.ts` los está tocando otro frente en paralelo. Queda como **B-273**, y no es una omisión inofensiva: la ficha del detalle sigue pintando el tipo en `bg-azul` con un comentario que dice «es la misma que abre cada fila del listado», y esta decisión lo volvió falso. Quien navegue del listado al detalle ve la cajita saltar de color. Lo encontró el `auditor-trampas` |
+| los chips del eje «Tipo de actividad» en los filtros | son controles, y su estado activo ya es `bg-acento` con el texto calado. Pintarlos de doce colores pelea con lo que el control tiene que comunicar, que es si está puesto o no |
+| el bloque de fecha, el título, el arancel | el color dice «de qué categoría es esto». Extenderlo al resto de la fila lo convierte en decoración y devuelve la textura de plataforma que D-146 vino a sacar |
+
+### Y el color de una opción base sí se puede cambiar
+
+Los siete tipos de `/opciones/tipo` son `fijo: true`, así que la guarda del §4.3
+—«las base no se editan desde la UI»— dejaría la pantalla sin nada que configurar:
+no se podría elegir el color de **ninguno de los tipos que existen**. `pintarOpcion`
+la saltea con una llave explícita (`tocaFijas`) y es la **única** operación que la
+tiene: renombrar y borrar la siguen respetando, con un test de integración que lo
+fija.
+
+El razonamiento: lo que `fijo` protege de una opción base es su **identidad** —el
+slug que puede estar cableado en la lógica, la etiqueta con la que se la reconoce—.
+El matiz no es identidad, es presentación, y es justo lo que se pidió poder cambiar.
+
+### Alternativas descartadas
+
+| Alternativa | Por qué no |
+|---|---|
+| **Selector de color libre**, validando el contraste al guardar | Es la que el pedido admitía explícitamente, y funciona: se mide con `contraste.ts` y no se deja guardar lo que no pasa. Pero deja a alguien eligiendo un amarillo, viéndolo bien en el selector, y recibiendo un rechazo con un número — cuando el problema se puede **no tener**. La banda convierte «avisar del error» en «que el error no exista». La validación quedó igual, abajo, para el día que la banda se afloje |
+| **Solo elección manual**, sin derivar | El tipo nuevo nace sin color y nadie se entera (§4). Es el modo de falla silencioso que D-141 ya había identificado |
+| **Guardar el color entero** (`oklch(...)` o un hex) en la taxonomía | Publica en el dato lo que hoy es una función, y con eso la luminosidad se vuelve editable: la garantía de los 360 se pierde en el primer documento escrito a mano. Guardando el matiz, la banda vive en el código y el dato solo tiene la dimensión que se puede elegir |
+| **Volver a la portada generada de D-142** | No se pidió, y D-146 la retiró con su propio argumento, que sigue en pie: el listado es puramente tipográfico y no pide un byte de imagen |
+
+---
+
+## D-151 · El arancel sube al segundo eje del sitio, y lo que no se paga va primero
+
+**Contexto.** El pedido fue «revisar filtros para que estén los eventos gratis
+(tanto web como admin)». En la web **ya estaban**: corrido contra el `events.json`
+de producción con la misma función que usa la island (`chipsDe`), el eje «Arancel»
+devuelve `Gratis (8)`, `A la gorra (1)` y `Arancelado (32)`. No faltaba código.
+
+Lo que faltaba era encontrarlo, y por dos motivos que se suman.
+
+**1 · El eje estaba tercero, detrás de «Cómo se cursa».** Eso partía el grupo de
+«dónde» al medio —modalidad, precio, barrio, ciudad— cuando las tres primeras
+contestan la misma pregunta y el precio no. Y en el teléfono los ejes viven detrás
+del disclosure de D-143, topeado a **65svh** con scroll propio: arriba del arancel
+había el select de «Cuándo» más **ocho filas de 44px** (los seis tipos y las dos
+modalidades que hay en producción), así que su rótulo caía cerca de los **520px**,
+por debajo del corte del panel en una pantalla de 390px. El filtro estaba y
+funcionaba; había que scrollear adentro del panel para llegar. Es la forma que
+tiene una funcionalidad de no existir.
+
+**2 · Dentro del eje, «Gratis» era el segundo chip.** Los chips se ordenan por
+cantidad, y en producción hay 33 arancelados contra 8 gratis: el chip que alguien
+viene a buscar quedaba tapado por el que más aparece. El **§6.1 del diseño ya decía
+«`Gratis` y `A la gorra` primero, siempre»** y la implementación no lo había bajado
+— o sea que esto no es una idea nueva, es una línea del diseño que faltaba.
+
+**Decisión.** `arancel` pasa al **segundo** puesto de `EJES` (después de «Tipo»,
+antes del grupo de lugar), y dentro del eje los chips se ordenan **primero por si se
+paga o no** y después por cantidad, como siempre. Lo decide `esSinCosto`, la misma
+función con la que la fila del listado pinta el arancel con el acento: dos listas de
+«lo que no se paga» son dos maneras de que una se olvide de «a la gorra», que es la
+mitad de los casos del circuito (§4.1).
+
+Con eso, en producción el eje queda `Gratis (8) · A la gorra (1) · Arancelado (32)`
+y su rótulo entra sin scroll en el panel del teléfono.
+
+**Desvío del §6.1 del diseño**, que lo ponía **quinto** «en orden de importancia»,
+detrás de «Dónde». Se desvía por lo de arriba: en la lista del diseño «Dónde» es un
+solo filtro y en la implementación son tres ejes, así que respetar el orden
+literalmente empuja el precio ocho filas abajo. Lo que el diseño quería —que el
+precio importe— se cumple mejor subiéndolo.
+
+**Lo que el reordenamiento no cambia:** los parámetros de la URL son con nombre y no
+posicionales, así que un filtro compartido por WhatsApp hace meses sigue dando lo
+mismo. `ejeQueSobra` sí cambia de resultado en un empate —recorre `EJES` al revés—
+y eso es una sugerencia, no un filtro.
+
+**`SIN_COSTO` se muda a `src/lib/arancel.ts`.** Nació en `tarjetaPublica.ts`, donde
+lo usaba una sola cosa; ahora lo usan tres, y no puede vivir en ninguna de ellas
+porque `tarjetaPublica` importa de `listadoPublico`, que importa de
+`filtrosActividades`. Un módulo puro sin dependencias, como `slugify` y `normalize`.
+
+---
+
+## D-152 · El panel gana el filtro de arancel — se revierte D-74
+
+**Contexto.** D-74 eligió cinco filtros para el listado del panel y **descartó
+`arancel` a propósito**, con este argumento:
+
+> «Es un atributo de publicación, no una forma de recordar una actividad: nadie
+> busca "el taller arancelado". Y su riesgo real —publicar un taller pago como
+> gratuito (D-16)— se previene en el formulario, que es donde se carga, no en el
+> listado.»
+
+El dueño pide el filtro. **Eso solo no refuta el argumento**, así que —como en
+D-119 → D-132— lo que corresponde no es borrar la decisión vieja sino decidir
+pagarla y escribir por qué.
+
+### El argumento de D-74 sigue siendo cierto, para la pregunta que contestaba
+
+«Nadie busca el taller arancelado» es verdad **como búsqueda**: para volver a
+encontrar una actividad que ya se vio, el arancel no es el dato con el que se la
+recuerda — se la recuerda por el título, el tallerista o el barrio, que es lo que el
+buscador de texto ya cubre. Ese filtro no se agrega porque D-74 se haya equivocado.
+
+### Lo que cambió, que es la pregunta
+
+La que se pide contestar no es «¿cuál era?» sino **«¿qué tengo publicado que sea
+gratis?»**. Es de **repaso**, no de búsqueda: se hace sobre el listado entero y no
+sobre una actividad, y aparece cuando alguien quiere saber si la agenda tiene
+suficiente oferta sin costo, o revisar que las ocho gratis estén bien cargadas antes
+de difundirlas. Esa pregunta **el buscador de texto no la puede contestar**: el
+arancel no está en el `searchText` (§6, que lleva título, descripción, sede, barrio,
+organizador y tallerista), y aunque estuviera, tipear «gratis» traería también las
+que lo digan en la descripción.
+
+Y hay un dato objetivo que D-74 no podía tener: **razonaba en parte sobre que «el
+sitio público todavía no existe»** (lo dice en la fila de `destacado`). Hoy existe, y
+el arancel es un **eje de filtro del sitio** desde B-227, y el segundo desde D-151.
+Cuando el público filtra por algo, quien publica necesita poder mirar su listado por
+lo mismo: si no, revisa una lista distinta de la que la gente ve.
+
+### Qué se paga
+
+Un desplegable más en un panel que ya tenía cinco, en una pantalla que D-74 dejó
+colapsada justamente porque en 360px cinco desplegables abiertos empujan el listado
+abajo del pliegue. Se acota igual que el barrio: **el filtro solo aparece si alguna
+actividad tiene arancel cargado**, y sigue todo detrás del botón «Filtros» con su
+contador — que ahora puede llegar a seis.
+
+### Detalles
+
+Va **pegado a «Tipo»** y antes de modalidad, por lo mismo que en el sitio (D-151), y
+ordena con el **mismo comparador** (`primeroSinCosto`): lo que no se paga arriba. El
+desempate adentro de cada grupo sí difiere y a propósito — el sitio por cantidad de
+actividades, el panel alfabético como sus otros cuatro desplegables. Lo que no puede
+pasar es que «Arancelado» quede arriba de «Gratis» en una pantalla y abajo en la
+otra: es la misma lista mirada por dos personas que hablan entre ellas.
+
+El filtro compara con el default de lectura puesto (`a.arancel?.tipo ?? ''`): una
+actividad vieja sin el objeto cargado queda afuera de cualquier valor concreto, que
+es lo correcto, y no rompe el listado entero.
+
+### Los otros tres descartes de D-74
+
+| Filtro | ¿Caducó el motivo? |
+|---|---|
+| `tags` | **A medias, y se anota** (B-274). D-74 lo descartó porque «hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera». **B-05 y B-06 existen desde hace semanas**, así que la condición que el propio D-74 puso se cumplió. Lo que sigue en pie es la otra mitad: es multivaluado y necesita un control de selección múltiple, que ninguno de los seis desplegables actuales tiene. No se agrega ahora porque no se pidió |
+| `destacado` | **Sí caducó, y se anota** (B-274). Era «un booleano que hoy no consume nadie: el sitio público todavía no existe». Hoy existe y la fila del listado pinta «Destacada», así que el booleano lo consume alguien. No se agrega ahora porque no se pidió, y porque con pocas destacadas un filtro booleano compra menos que un orden |
+| quién la cargó | **No.** El motivo era que el dato es un identificador de usuario y no un nombre, y que el §5.1 los mantiene fuera de todo lo que se muestre. Las dos cosas siguen igual |

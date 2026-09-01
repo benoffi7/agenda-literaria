@@ -64,34 +64,57 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las siete salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
-| `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los tres de abajo |
-| `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los tres de abajo |
+| `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
+| `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los cuatro de abajo |
 
-**De `/opciones/{campo}` salen `slug` y `label`, y nada más** (§4.4). La proyección
+**De `/opciones/{campo}` salen `slug`, `label` y —desde D-150— `tono`** (§4.4). La proyección
 se escribió **antes** que su consumidor —B-212 antes que B-106— y eso era a
 propósito: el camino corto al implementar el índice es volcar `valores` tal cual, y
 con eso entran los cinco campos de arriba sin que nadie lo haya decidido. Escribir
 la whitelist primero es lo que evita que la decisión la tome un spread.
 
 **Y funcionó**: cuando B-106 y después B-227 llegaron a consumirla, los chips del
-sitio salieron con `slug` y `label` porque no había otra cosa que consumir.
+sitio salieron con `slug` y `label` porque no había otra cosa que consumir. El
+tercer campo, `tono`, entró **decidido** —con su motivo escrito en D-150, su guarda
+en el productor y su fila en el barrido de centinelas—, que es la diferencia entre
+agregar un campo público y que se agregue solo.
 
 **Ojo, y esto es lo que no se ve mirando un solo archivo: la misma decisión está
-escrita en TRES lugares**, porque el documento de taxonomía llega a tres salidas
-por tres caminos distintos.
+escrita en CUATRO lugares**, porque el documento de taxonomía llega a cuatro
+salidas por cuatro caminos distintos.
 
-| Camino | A qué salida | Por qué no se comparte |
-|---|---|---|
-| `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | emite objetos `{ slug, label }` |
-| `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 (el posteo) y la vista previa del evento | emite un `Record<slug, label>`, que es otra forma |
-| `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar de verdad | `functions/` se despliega con su propio `package.json` y **no puede importar de `src/`** (D-20) |
+| Camino | A qué salida | Qué puede leer | Por qué no se comparte |
+|---|---|---|---|
+| `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | `slug`, `label`, **`tono`** | emite objetos |
+| `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 (el posteo) y la vista previa del evento | `slug`, `label` | emite un `Record<slug, label>`, que es otra forma |
+| `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar de verdad | `slug`, `label` | `functions/` se despliega con su propio `package.json` y **no puede importar de `src/`** (D-20) |
+| `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`) | 6 — la página de detalle y su JSON-LD | `slug`, `label` | corre en el build y arma otro `Record<slug, label>` |
 
-Los tres hacen `[v.slug, v.label]` y ninguno filtra hoy. Pero son tres copias de
-una decisión de privacidad, y la tercera **no se puede unificar**: es el mismo caso
-que la copia de `CAMPOS_TAXONOMIA`, donde la respuesta del repo es «un test que
-compare las listas, no un import imposible». Ese test existe —
-`tests/clases-de-bug.test.ts`, clase de B-212 — y exige que los tres lean
-exactamente esas dos propiedades de un `ValorOpcion` y ninguna más.
+**Eran tres y son cuatro desde B-270.** El de la salida 6 lo encontró el
+`auditor-privacidad`: proyectaba bien, pero era el único de los cuatro sin nada que
+nombrara qué podía leer — y es la salida que un bot cosecha primero.
+
+Son cuatro copias de una decisión de privacidad, y la tercera **no se puede
+unificar**: es el mismo caso que la copia de `CAMPOS_TAXONOMIA`, donde la respuesta
+del repo es «un test que compare las listas, no un import imposible». Ese test
+existe — `tests/clases-de-bug.test.ts`, clase de B-212 — y exige que cada camino lea
+exactamente lo que su salida publica y nada más.
+
+**`tono` es público, y de una sola salida** (D-150). Es el matiz de la categoría, un
+entero de 0 a 359 elegido de una lista de doce colores; el sitio lo necesita porque
+pinta la cajita del tipo y **no lee Firestore** (§2.5), así que sin publicarlo la
+elección no llegaría a ninguna pantalla. No dice quién lo eligió ni cuándo. Que sea
+público **para el `events.json`** no lo vuelve legible para los otros tres caminos:
+ahí no tendría dónde ir, y leerlo sería el síntoma de que alguien está por
+publicarlo en una salida que no lo pidió. Por eso la lista de arriba es **por
+camino** y no una sola compartida — escribirla compartida habría abierto los cuatro
+de golpe por un campo que necesita uno.
+
+Dos guardas más del lado del que escribe, las dos del `auditor-privacidad`: solo
+sale si `esTonoElegible` (un `999` escrito a mano en la consola de Firestore no
+llega al archivo) y **solo se puede elegir para `tipo`**, que es la única lista que
+el sitio pinta — el matiz de un barrio en el `events.json` sería un dato que ninguna
+salida consume.
 
 Quien mañana busque por qué `usos` no aparece en el evento de Calendar va a mirar
 `opcionesPublicas`, que **no interviene en ese camino**. Por eso está la tabla.

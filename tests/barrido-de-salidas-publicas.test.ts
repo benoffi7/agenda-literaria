@@ -737,8 +737,42 @@ describe('barrido de las opciones públicas (§4.4, B-212)', () => {
     // `orden`, `fijo`, `usos` y `aprobada` son números y booleanos: no hay
     // string donde esconder contenido, así que el barrido de centinelas no los
     // ve. Se comparan las claves de la salida contra la lista permitida.
+    //
+    // `tono` es el único de los cinco que sale (D-150): el color de la categoría
+    // lo pinta el sitio, y el sitio no lee Firestore. Es la lista de claves —y no
+    // el barrido de cadenas— lo que lo fija, porque es un número.
     const [publica] = opcionesPublicas([opcionCentinela()]);
+    expect(Object.keys(publica!).sort()).toEqual(['label', 'slug', 'tono']);
+  });
+
+  it('sin matiz elegido no se emite la clave: el color se deriva del slug', () => {
+    /*
+     * D-150 — el caso normal es que nadie haya elegido color, y entonces el JSON
+     * no lleva nada: el consumidor deriva el mismo color del slug con la misma
+     * función que el build. Emitir el derivado convertiría en dato publicado algo
+     * que hoy es una función, y el día que la derivación cambie el archivo viejo
+     * mandaría el color viejo.
+     */
+    const [publica] = opcionesPublicas([opcionCentinela({ tono: undefined })]);
     expect(Object.keys(publica!).sort()).toEqual(['label', 'slug']);
+  });
+
+  it('un matiz que no es elegible no sale, aunque esté guardado', () => {
+    /*
+     * La guarda del lado del que escribe. `/opciones/*` se puede editar a mano
+     * desde la consola de Firestore, así que un `tono: 999` o un `tono: 12.5` son
+     * posibles; publicarlos pintaría un color fuera de la banda medida, o
+     * directamente nada. Es la misma guarda que `tonoDeTipo` aplica al leer: el
+     * color ilegible no se puede colar por ninguno de los dos caminos.
+     *
+     * MUTACIÓN PROBADA: sacar el `esTonoElegible` de `opcionPublica` y dejar el
+     * spread condicional a `v.tono !== undefined` hace fallar este caso con
+     * `['label','slug','tono']`.
+     */
+    for (const malo of [999, -1, 12.5, Number.NaN]) {
+      const [publica] = opcionesPublicas([opcionCentinela({ tono: malo })]);
+      expect(Object.keys(publica!).sort(), `tono ${malo}`).toEqual(['label', 'slug']);
+    }
   });
 
   it('una opción sin aprobar no entra a los filtros del sitio', () => {

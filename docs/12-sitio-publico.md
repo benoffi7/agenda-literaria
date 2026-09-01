@@ -286,7 +286,9 @@ Notas que importan:
   orden (el formulario permite agregar filas en cualquier orden); ordenarlo es
   del build, una vez, y no de cada consumidor.
 - **Las opciones viajan en el mismo archivo** (§4.4), con `slug` y `label`, para
-  que los chips de filtro no tengan nada cableado.
+  que los chips de filtro no tengan nada cableado. Y con `tono` cuando alguien le
+  eligió color a esa categoría (**D-150**): el caso normal es que no esté, porque el
+  color se deriva del slug con la misma función en el build y en el cliente.
 
 ```json
 {
@@ -422,7 +424,10 @@ Decisiones de esta pantalla:
 > ⚠️ **Y quedó viejo otra vez el mismo día — ver D-146.** La tarjeta ya no es una
 > tarjeta: es una **fila** (`FilaDeActividad.tsx`) sobre una grilla de 12 columnas,
 > **sin imagen en ningún caso** — ni foto real ni portada generada. Se retiraron
-> `Tarjeta.tsx` y `PortadaDeTarjeta.tsx`, y con ellos el color derivado por tipo.
+> `Tarjeta.tsx` y `PortadaDeTarjeta.tsx`. **El color derivado por tipo volvió el
+> 2026-09-01 con D-150**, pero no ahí: hoy lo pinta `estiloDeTipo`/`colorDeTipo`
+> (`src/lib/listadoPublico.ts`, `src/lib/identidad.ts`) por `style` en la cajita de
+> la categoría, y es elegible desde Opciones.
 > Lo que **sigue valiendo** es el contenido: el orden de los datos, la entrada
 > entera como un solo link, el arancel con acento solo cuando no se paga, y nada
 > de «quedan 3 lugares». Los dos avisos quedan apilados a propósito, para que cada
@@ -1180,8 +1185,11 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
   fondo.
 
   > ⚠️ **Esta tabla es de la paleta de D-141 y quedó vieja el 2026-08-31 — ver
-  > D-146.** `acento-hondo` y `colorDeTipo` **ya no existen**, y los tres tokens que
-  > quedan cambiaron de valor. Los números de abajo son los de aquella paleta y se
+  > D-146.** `acento-hondo` ya no existe y los tres tokens que quedan cambiaron de
+  > valor. **`colorDeTipo` sí volvió**, el 2026-09-01 y con la misma banda de
+  > luminosidad y croma — pero elegible desde Opciones (**D-150**), y sus números de
+  > hoy salen de `tests/color-de-tipo.test.ts`: el peor de los 360 da **5,90:1**
+  > sobre la más oscura de las **tres** superficies, no las dos de esta tabla. Los números de abajo son los de aquella paleta y se
   > dejan escritos para que el cambio se lea contra su original. **La tabla vigente
   > está en D-146**, y la calculan `tests/contraste-de-superficies.test.ts` y
   > `tests/sistema-visual.test.ts` sobre los tokens de `global.css` — que es lo que
@@ -1196,7 +1204,7 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
   | `tinta` | **16,35:1** | **14,73:1** | AAA de sobra |
   | `acento` | **5,59:1** | **5,04:1** | AA ✅ (no AAA) |
   | `acento-hondo` | **8,55:1** | **7,71:1** | AAA en texto grande |
-  | `colorDeTipo`, el peor de los 360 tonos | **7,21:1** | **6,50:1** | AA ✅ |
+  | `colorDeTipo`, el peor de los 360 tonos | **7,21:1** | **6,50:1** | AA ✅ (número de aquella paleta; hoy ver D-150) |
   | `papel` sobre `acento` (el botón) | **5,59:1** | — | AA ✅ |
 
   **Lo que sí falla es la rampa de opacidad**, que era el riesgo de verdad y no el

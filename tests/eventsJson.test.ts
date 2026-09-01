@@ -227,7 +227,9 @@ describe('el archivo entero (§4.4)', () => {
     // §4.4 — al agregar una etiqueta aparece sola en los filtros. Es también el
     // motivo por el que el rebuild se dispara al cambiar `/opciones/*` (trampa 8).
     expect(indice().opciones.arancel).toEqual([
-      { slug: CENTINELA['opcion.slug'], label: CENTINELA['opcion.label'] },
+      // El `tono` sale del fixture, que lo trae desde D-150: el índice no lo
+      // agrega ni lo saca, pasa lo que `opcionesPublicas` proyecta.
+      { slug: CENTINELA['opcion.slug'], label: CENTINELA['opcion.label'], tono: 195 },
     ]);
   });
 

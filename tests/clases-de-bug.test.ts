@@ -1296,14 +1296,18 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
 /**
  * Clase de B-212 · la misma decisión de privacidad, escrita en tres lugares.
  *
- * El documento de `/opciones/{campo}` llega a **tres** salidas por tres caminos
+ * El documento de `/opciones/{campo}` llega a varias salidas por caminos
  * distintos, y cada uno decide por su cuenta qué de un `ValorOpcion` es público:
  *
  * | Camino | Salida | Forma |
  * |---|---|---|
- * | `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | objetos `{ slug, label }` |
+ * | `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | objetos `{ slug, label, tono? }` |
  * | `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 y la vista previa | `Record<slug, label>` |
  * | `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar | `Record<slug, label>` |
+ * | `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`) | 6 — el detalle y su JSON-LD | `Record<slug, label>` |
+ *
+ * **Eran tres y son cuatro** (B-270): el de la salida 6 lo encontró el
+ * `auditor-privacidad`, y era el único sin nada que nombrara qué puede leer.
  *
  * ── Por qué no se unifican ────────────────────────────────────────────────
  * Los dos primeros podrían compartir algo; el tercero **no puede**, y eso es lo
@@ -1314,20 +1318,49 @@ describe('clase de B-211 · el doble de Timestamp vive en un solo lugar', () => 
  * respuesta es un test que compare las dos listas, no un import imposible».
  *
  * ── Qué se afirma ─────────────────────────────────────────────────────────
- * Que cada camino lea de un `ValorOpcion` **exactamente `slug` y `label`**. Si
- * alguno agrega `.usos` para ordenar los chips, o `.huellaCreador` para «mostrar
- * quién la creó», este test lo nombra. Lo pidió el `auditor-privacidad` al notar
- * que la tabla de `07-seguridad.md` atribuía todo a `opcionesPublicas`, que no
- * interviene en dos de los tres caminos.
+ * Que cada camino lea de un `ValorOpcion` **exactamente lo que su salida
+ * publica**. Si alguno agrega `.usos` para ordenar los chips, o `.huellaCreador`
+ * para «mostrar quién la creó», este test lo nombra. Lo pidió el
+ * `auditor-privacidad` al notar que la tabla de `07-seguridad.md` atribuía todo a
+ * `opcionesPublicas`, que no interviene en dos de los tres caminos.
+ *
+ * ── `tono` es de uno solo de los tres, y por eso la lista es por camino ───
+ * D-150 agregó el matiz de la categoría, que **sí es público** —el sitio lo
+ * necesita para pintar el color— pero solo lo lleva el `events.json`. Los otros
+ * dos caminos producen un `Record<slug, label>` para resolver una etiqueta: un
+ * color ahí no tendría dónde ir, así que leerlo sería el síntoma de que alguien
+ * está por publicarlo en una salida que no lo pidió.
+ *
+ * Escribir `PERMITIDAS` como una lista sola habría sido lo cómodo, y habría
+ * abierto los tres caminos de una vez por un campo que necesita uno.
  */
 describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () => {
   const CAMINOS = [
-    { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica' },
-    { archivo: 'src/lib/vistaPreviaEvento.ts', funcion: 'labelsDeOpciones' },
-    { archivo: 'functions/index.js', funcion: 'cargarLabels' },
+    // El `events.json` es el único que publica el color de la categoría (D-150).
+    { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica', permitidas: ['slug', 'label', 'tono'] },
+    { archivo: 'src/lib/vistaPreviaEvento.ts', funcion: 'labelsDeOpciones', permitidas: ['slug', 'label'] },
+    { archivo: 'functions/index.js', funcion: 'cargarLabels', permitidas: ['slug', 'label'] },
+    /*
+     * El cuarto, que faltaba — lo encontró el `auditor-privacidad` al cerrar
+     * B-270. Alimenta la salida 6 (la página de detalle y su JSON-LD), que es la
+     * que un bot cosecha primero y la que se queda en Google, y era el único de
+     * los cuatro sin nada que nombrara qué puede leer.
+     *
+     * El agujero se volvió consecuente justo con D-150: es el primer campo de
+     * `ValorOpcion` que **sí** es público pero **de una sola salida**, así que el
+     * reflejo del próximo cambio —«pintemos la categoría también en el detalle»—
+     * escribiría `.tono` acá sin que nada lo dijera. Y el que venga después con un
+     * campo que no sea publicable pasaría por el mismo hueco.
+     */
+    {
+      archivo: 'src/lib/contenidoDelSitio.ts',
+      funcion: 'etiquetasDelDetalle',
+      permitidas: ['slug', 'label'],
+    },
   ];
 
-  const PERMITIDAS = ['slug', 'label'];
+  /** Lo que **algún** camino puede leer. Lo que ninguno puede sale de restarlo. */
+  const PERMITIDAS = [...new Set(CAMINOS.flatMap((c) => c.permitidas))];
 
   /**
    * Los campos de `ValorOpcion` que **no** son públicos, derivados del modelo y
@@ -1370,12 +1403,12 @@ describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () =
      * recorrería cuerpos vacíos; sin la segunda, compararía contra una lista
      * vacía de campos prohibidos y no podría fallar nunca.
      */
-    for (const { archivo, funcion } of CAMINOS) {
+    for (const { archivo, funcion, permitidas } of CAMINOS) {
       const src = cuerpo(archivo, funcion);
       expect(src.length, `${funcion} salió vacío`).toBeGreaterThan(20);
-      // Y que cada camino lea de verdad las dos permitidas: si no, no es el
-      // camino que creemos y el chequeo de abajo mira otra cosa.
-      for (const permitida of PERMITIDAS) {
+      // Y que cada camino lea de verdad **las suyas**: si no, no es el camino que
+      // creemos y el chequeo de abajo mira otra cosa.
+      for (const permitida of permitidas) {
         expect(src, `${funcion} no lee \`${permitida}\``).toContain(`.${permitida}`);
       }
     }
@@ -1390,9 +1423,11 @@ describe('clase de B-212 · los tres caminos de una opción leen lo mismo', () =
   it('ninguno menciona un campo de la opción que no sea público', () => {
     const deMas: string[] = [];
 
-    for (const { archivo, funcion } of CAMINOS) {
+    for (const { archivo, funcion, permitidas } of CAMINOS) {
       const src = cuerpo(archivo, funcion);
-      for (const prop of PROHIBIDAS) {
+      // Lo prohibido para **este** camino: lo que no es público más lo que es
+      // público pero de otra salida (`tono` fuera del `events.json`).
+      for (const prop of [...PROHIBIDAS, ...PERMITIDAS.filter((p) => !permitidas.includes(p))]) {
         // `.usos` y no `usos`: se busca el **acceso**, sin importar de qué
         // variable. Así `b.usos` dentro de un `sort` cuenta igual que `v.usos`.
         if (src.includes(`.${prop}`)) deMas.push(`${archivo} · ${funcion} lee \`${prop}\``);
