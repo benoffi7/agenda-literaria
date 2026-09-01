@@ -388,8 +388,15 @@ sitio», y en la página de detalle el link **no** sale ni con el flag en true
 (D-139): la casilla prometía una pantalla que nunca lo muestra. Se corrigió el
 texto y no el comportamiento, porque el argumento de D-139 es asimétrico — un
 evento de Calendar se reescribe al destildar, un HTML indexado no se despublica.
-Las dos salidas reales son la **descripción del evento** y el **`events.json`**, y
-son las dos que la casilla, la guía y el aviso de campo faltante nombran ahora.
+
+**Y la salida real es una sola: la descripción del evento de Calendar.** El ítem
+B-240 decía «al `events.json` y al evento», y al `events.json` no va: `toPublic`
+emite la URL (D-15) pero `entradaDeIndice` la descarta (D-129), así que el link
+muere en la proyección y no llega a ningún archivo que el sitio publique — lo
+fija el gate del build, que siembra `urlPublica: true` con un centinela y falla si
+aparece en `dist/events.json`. La casilla, la guía y el aviso de campo faltante
+dicen eso y nada más: prometer una salida que no existe invita al arreglo
+equivocado, que sería agregarle la `url` al índice.
 
 ## La página «Suscribirse» publica la dirección del calendario — la pública
 

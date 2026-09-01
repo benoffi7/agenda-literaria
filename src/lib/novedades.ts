@@ -64,8 +64,8 @@ export const NOVEDADES: Novedad[] = [
     detalle:
       'Decía «Publicar el link en el sitio» y en la página de la actividad el link nunca ' +
       'apareció: esa página la indexa Google y una página indexada ya no se puede despublicar. ' +
-      'Donde sí sale, y siempre salió, es en el evento del calendario público. La casilla ahora ' +
-      'lo dice así. No cambió nada de lo que pasa al tildarla.',
+      'Donde sí sale, y siempre salió, es en el evento del calendario público, y en ningún otro ' +
+      'lado. La casilla ahora lo dice así. No cambió nada de lo que pasa al tildarla.',
     donde: 'Sección «Dónde», debajo del link del encuentro.',
   },
   {

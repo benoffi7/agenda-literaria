@@ -118,6 +118,37 @@ describe('qué entra a la pared', () => {
     expect(carteleraDeDetalles([cancelada])).toEqual([]);
   });
 
+  it('una actividad CANCELADA no entra, aunque tenga flyer y fecha por venir — B-110', () => {
+    /*
+     * **Es el filtro que ningún test ejercitaba, y lo pidió el
+     * `auditor-privacidad`.** La regla «la pared no muestra canceladas» está
+     * escrita dos veces —el lector no se las pasa, y esta función las descarta—
+     * y hasta acá solo la primera mitad tenía prueba: el `it` de arriba, el del
+     * ciclo entero cancelado, pasa por `proxima === null` y no por este filtro.
+     *
+     * El segundo filtro existe porque la regla es **de la pared**: si vive solo
+     * en el lector, el día que su default cambie la pared publica el afiche de
+     * algo que no se hace, y nada se pone rojo. Es la clase de B-265, donde la
+     * salida 7 heredaba el `where` de la 6 «por construcción» hasta que dejara
+     * de heredarlo.
+     *
+     * El caso es el que la otra mitad no cubre: la actividad está cancelada pero
+     * sus encuentros **no**, así que tiene fecha próxima y flyer válido — o sea,
+     * todo lo que hace falta para entrar a la pared.
+     *
+     * MUTACIÓN PROBADA: sacar el `d.cancelada ||` de `carteleraDeDetalles` deja
+     * este `it` en rojo y todos los demás en verde.
+     */
+    const viva = conFlyer({ fechas: ['2026-09-24T22:00:00Z'] });
+    // Control positivo: sin cancelar, esta misma actividad sí entra.
+    expect(carteleraDeDetalles([viva])).toHaveLength(1);
+
+    const cancelada = { ...viva, cancelada: true };
+    expect(cancelada.proxima, 'tiene fecha por venir').not.toBeNull();
+    expect(cancelada.imagenes[0]?.url, 'y flyer').toBeTruthy();
+    expect(carteleraDeDetalles([cancelada])).toEqual([]);
+  });
+
   it('una sola por actividad, y es la portada', () => {
     /*
      * Una actividad puede tener cuatro imágenes, y las otras tres suelen ser

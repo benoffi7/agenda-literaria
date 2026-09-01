@@ -130,12 +130,12 @@ export const AVISOS: AvisoAyuda[] = [
     texto:
       'En una actividad virtual el link se guarda siempre, pero no se publica: se lo mandás a cada ' +
       'persona cuando se inscribe. Si tildás «Publicar el link en el calendario», sale en el evento ' +
-      'del calendario público —donde lo ve quien está suscripto— y en los datos abiertos del sitio. ' +
-      'En la página de la actividad no sale nunca, ni tildado: esa página la indexa Google y una ' +
-      'página indexada no se despublica, mientras que un evento del calendario se borra. Si la ' +
-      'actividad tiene cupo, publicarlo es dejar la puerta abierta: entra cualquiera, el cupo deja ' +
-      'de significar algo y alguien puede arruinar el encuentro. Tildalo solo en encuentros ' +
-      'abiertos, sin inscripción ni cupo.',
+      'del calendario público —donde lo ve quien está suscripto— y en ningún otro lado. En la ' +
+      'página de la actividad no sale nunca, ni tildado: esa página la indexa Google y una página ' +
+      'indexada no se despublica, mientras que un evento del calendario se borra. Si la actividad ' +
+      'tiene cupo, publicarlo es dejar la puerta abierta: entra cualquiera, el cupo deja de ' +
+      'significar algo y alguien puede arruinar el encuentro. Tildalo solo en encuentros abiertos, ' +
+      'sin inscripción ni cupo.',
     atadoA: [
       // Se guarda y no se publica, salvo que la casilla esté tildada — en el
       // evento del calendario y en el sitio, que son las dos salidas.

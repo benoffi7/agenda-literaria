@@ -2265,9 +2265,15 @@ argumento de D-139 es asimétrico y por eso gana — un evento de Calendar se
 reescribe al destildar la casilla, un HTML indexado por Google no se despublica.
 La casilla dice ahora «Publicar el link en el evento del calendario, que es donde
 lo ve quien está suscripto», con la aclaración de que en la página de la actividad
-no sale y de que sí viaja en los datos abiertos del sitio. Se corrigieron con ella
-la ayuda corta del campo, el punto `link-reunion` de la guía y la etiqueta del
-aviso de campo faltante. **El comportamiento no cambió.**
+no aparece y de que ése es el único lugar a donde sale. Se corrigieron con ella la
+ayuda corta del campo, el punto `link-reunion` de la guía y la etiqueta del aviso
+de campo faltante. **El comportamiento no cambió.**
+
+**Y el ítem decía de más, lo marcó el `auditor-privacidad`:** «hoy el link va al
+`events.json` y a la descripción del evento» — al `events.json` **no** va.
+`toPublic` emite la URL (D-15) pero `entradaDeIndice` la descarta (D-129), así que
+muere en la proyección y no llega a ningún archivo publicado. La salida real es
+una sola.
 
 El texto original del ítem, para que la decisión se lea contra él:
 

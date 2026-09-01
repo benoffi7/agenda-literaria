@@ -175,6 +175,20 @@ const estuvoPublicada = async (
  * Su propia query con su propio `==`, deliberadamente separada de `publicadas()`:
  * ver el docblock de aquélla. Lo que devuelve no entra a `actividades`, así que no
  * puede aparecer en el `events.json`, en el listado, en los chips ni en la pared.
+ *
+ * ── Se publica el documento de HOY, no la última versión publicada ────────
+ * `estuvoPublicada` contesta «¿estuvo publicada **alguna vez**?», y la página sale
+ * del documento actual. El camino `publicado → borrador → (se edita) → cancelado`
+ * genera entonces HTML con ediciones que nunca pasaron por `publicado`.
+ *
+ * Se acepta, y por una razón concreta: **la superficie es la misma**. Lo que sale
+ * pasa por `toPublic` y por `detalleDeActividad` igual que cualquier otra página,
+ * así que no puede publicar un campo que la frontera no permita — el barrido de
+ * centinelas corre sobre la cancelada con la misma lista de permitidos. Lo que
+ * puede quedar publicado es un *texto* más nuevo que el último que se publicó, que
+ * es lo que el dueño escribió y no un dato ajeno. La alternativa —reconstruir la
+ * página desde la última versión publicada— publicaría datos viejos a propósito y
+ * duplicaría la proyección sobre un documento de otra forma.
  */
 const canceladas = async (): Promise<ActividadPublica[]> => {
   const snap = await adminDb()

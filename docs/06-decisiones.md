@@ -4790,14 +4790,30 @@ lleva hasta su consecuencia en la UI.
 
 ### A dónde sale de verdad, que es lo que el texto tiene que decir
 
-Con `urlPublica: true` (D-15) el link sale a **dos** lugares, y ninguno es la
-página de la actividad:
+**A un solo lugar: la descripción del evento de Google Calendar**
+(`functions/calendario.js`, `Link: <url>`). Es donde lo ve quien está suscripto al
+calendario público, y es la única salida que la casilla gobierna.
 
-1. **La descripción del evento de Google Calendar** (`functions/calendario.js`):
-   `Link: <url>`. Es donde lo ve quien está suscripto al calendario público, y es
-   la salida que la casilla de verdad gobierna.
-2. **El `events.json`** (`toPublic`): el archivo de datos abiertos que el sitio
-   publica y que cualquiera puede pedir.
+Y acá el ítem B-240 —y la primera versión de esta decisión— decían de más. Lo
+encontró el `auditor-privacidad`: el ítem afirma que «el link va al `events.json`
+y a la descripción del evento», y **al `events.json` no va**. La confusión está en
+que D-139 tiene dos filas distintas:
+
+| | ¿Lleva el link con `urlPublica: true`? | Qué es |
+|---|---|---|
+| 1a · la **proyección** `toPublic` | **sí** (D-15) | un valor en memoria del build |
+| 1b · el **índice**, que es el `events.json` que se sube | **no** (D-129) | el archivo público |
+
+`entradaDeIndice` emite `online: { plataforma }` y nada más, así que el link muere
+en la proyección y nunca llega a un artefacto. Lo fija el gate del build:
+`scripts/build-contra-emulador.mjs` siembra `urlPublica: true` con un centinela y
+falla si aparece en `dist/events.json`.
+
+Por eso el texto de la casilla dice «es el único lugar a donde sale» y no menciona
+ningún archivo de datos. Prometer una salida que no existe es peor que un texto
+vago: el arreglo natural de quien note la discrepancia es *hacer que el código
+coincida con el texto*, agregándole la `url` al índice — y eso es la trampa 5
+servida en lote, que es exactamente lo que D-129 cerró.
 
 La página de detalle **no** (D-139), el índice del listado **no** (D-129), el
 posteo para redes **no**, la analítica **no**, el issue de GitHub **no**. La tabla
@@ -4807,9 +4823,9 @@ completa de las siete salidas está en D-139.
 
 | Dónde | Antes | Ahora |
 |---|---|---|
-| la casilla (`ModalidadesEditor.tsx`) | «Publicar el link en el sitio.» | «Publicar el link en el evento del calendario, que es donde lo ve quien está suscripto.» + «En la página de la actividad **no** sale: una página que Google indexa no se despublica. Sí viaja en los datos abiertos del sitio, que cualquiera puede leer.» |
+| la casilla (`ModalidadesEditor.tsx`) | «Publicar el link en el sitio.» | «Publicar el link en el evento del calendario, que es donde lo ve quien está suscripto.» + «Es el único lugar a donde sale. En la página de la actividad **no** aparece, ni tildado: una página que Google indexa no se despublica.» |
 | el aviso al lado | zoombombing, y se queda | igual, sin tocar: sigue siendo lo que hay que saber antes de tildarla |
-| la ayuda del panel (`ayuda.ts`, `link-reunion`) | «Solo sale al sitio y al evento del calendario si tildás…» | dice las dos salidas reales y por qué la página queda afuera |
+| la ayuda del panel (`ayuda.ts`, `link-reunion`) | «Solo sale al sitio y al evento del calendario si tildás…» | «sale en el evento del calendario público —donde lo ve quien está suscripto— y en ningún otro lado», con el porqué de que la página quede afuera |
 | el campo faltante (`camposFaltantes.ts`) | «Publicar el link en el sitio» | «Publicar el link en el calendario» — es el nombre con el que hay que ir a buscarla |
 | el campo «Link del encuentro» | «No se publica: se manda al inscribirse.» | «**Por defecto** no se publica: se manda al inscribirse.» — era falso con la casilla tildada |
 

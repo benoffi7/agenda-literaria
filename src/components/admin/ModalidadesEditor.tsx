@@ -246,9 +246,9 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                       Publicar el link en el evento del calendario, que es donde lo ve quien
                       está suscripto.
                       <span className="mt-1 block">
-                        En la página de la actividad <strong>no</strong> sale: una página que
-                        Google indexa no se despublica. Sí viaja en los datos abiertos del
-                        sitio, que cualquiera puede leer.
+                        Es el único lugar a donde sale. En la página de la actividad{' '}
+                        <strong>no</strong> aparece, ni tildado: una página que Google indexa no
+                        se despublica.
                       </span>
                       <strong className="mt-1 block text-acento">
                         Dejalo destildado salvo que sea un encuentro abierto: un link de Zoom

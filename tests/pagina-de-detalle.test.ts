@@ -346,4 +346,49 @@ describe('la puerta a Firestore del sitio es una sola (§5.3)', () => {
     expect(src).toContain(".where('estado', '==', ESTADO_PUBLICO)");
     expect(src).toContain("const ESTADO_PUBLICO = 'publicado'");
   });
+
+  it('las canceladas entran por su propia query, no ampliando la de las publicadas', () => {
+    /*
+     * B-110. Leer los dos estados con un `where('estado','in',[…])` convertiría el
+     * escalar en una **lista**, y a una lista alguien le agrega un elemento — que
+     * es cómo un borrador termina con página. Con dos `==` no hay lista que
+     * crecer, y lo peor que puede hacer un error en la query nueva es no generar
+     * ninguna página de cancelada.
+     *
+     * Es una propiedad de la **forma** del código y no de su comportamiento: un
+     * `in` con los dos estados correctos pasaría todos los tests de integración.
+     * Por eso se afirma acá y no allá.
+     */
+    const src = fuente(LECTOR);
+    expect(src).toContain(".where('estado', '==', ESTADO_CANCELADO)");
+    expect(src).toContain("const ESTADO_CANCELADO = 'cancelado'");
+    expect(src, 'el `in` es lo que este chequeo existe para impedir').not.toContain("'estado', 'in'");
+  });
+
+  it('la lectura del historial pregunta existencia y no trae contenido (§12)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`.** `estuvoPublicada` consulta
+     * `/actividades/{id}/versiones`, y una versión es el documento **entero** de
+     * aquel momento: `difusion`, `online.url`, uids, `storagePath`. Hoy no entra
+     * nada de eso al build porque la query pide **existencia** —`.limit(1)` y un
+     * `.select()` sin argumentos, que devuelve documentos sin ningún campo— y el
+     * valor de retorno es un booleano.
+     *
+     * El modo de falla no es hipotético: el pedido que viene después de B-110 es
+     * «poné *cancelada el 19 de agosto* en la franja», y para eso alguien saca el
+     * `.select()` o pide `guardadoEn`. Ahí el proceso que genera el HTML pasa a
+     * tener el documento entero en la mano, a un `${}` de la página indexada.
+     *
+     * Es un chequeo de forma sobre el fuente porque el comportamiento no lo
+     * distingue: sin el `.select()` la función devuelve exactamente lo mismo.
+     *
+     * MUTACIÓN PROBADA: borrar el `.select()` deja verde la suite entera —
+     * incluidos los nueve `it` de `sitio-publico.integracion.test.ts`— y solo
+     * este se pone rojo.
+     */
+    const src = sinComentarios(fuente(LECTOR));
+    expect(src, 'el lector consulta el historial').toContain("collection('versiones')");
+    expect(src, 'y lo hace sin pedir ningún campo').toContain('.select()');
+    expect(src, 'y de a un documento').toContain('.limit(1)');
+  });
 });

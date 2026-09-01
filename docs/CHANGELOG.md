@@ -13,12 +13,14 @@ y un HTML indexado por Google no se despublica —queda en la caché, en archive
 y en cualquier scrapeo—. Publicar un link de reunión en una página indexable es
 irreversible de una forma en que ponerlo en el evento no lo es.
 
-A dónde sale de verdad con `urlPublica: true`, que es lo que el texto ahora dice:
-la **descripción del evento de Calendar** —donde lo ve quien está suscripto— y el
-**`events.json`**. Se corrigieron los cuatro textos que decían otra cosa: la
-casilla, la ayuda corta del campo «Link del encuentro» («**por defecto** no se
-publica»), el punto `link-reunion` de la guía del panel y la etiqueta del aviso de
-campo faltante. **El comportamiento no cambió**, y el barrido de centinelas que lo
+A dónde sale de verdad con `urlPublica: true`: **solo a la descripción del evento
+de Calendar**, que es donde lo ve quien está suscripto. El ítem decía «al
+`events.json` y al evento», y al `events.json` no va —lo marcó el
+`auditor-privacidad`—: `toPublic` emite la URL (D-15) y `entradaDeIndice` la
+descarta (D-129), así que muere en la proyección. Se corrigieron los cuatro
+textos: la casilla, la ayuda corta del campo «Link del encuentro» («**por
+defecto** no se publica»), el punto `link-reunion` de la guía del panel y la
+etiqueta del aviso de campo faltante. **El comportamiento no cambió**, y el barrido de centinelas que lo
 fija es ahora uno de los `atadoA` de la guía: si mañana el link sale al detalle, el
 test se pone rojo y el texto que promete lo contrario se rompe en el mismo commit.
 
