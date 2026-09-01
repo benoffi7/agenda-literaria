@@ -31,6 +31,7 @@
  */
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { claveDeMes, nombreDeMes } from '@/lib/fechasPublicas';
+import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
 import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
@@ -375,6 +376,49 @@ export type MapaDeEtiquetas = Record<string, Record<string, string>>;
  * cableado**: al agregar una opción nueva aparece sola en los filtros, y
  * renombrarla la renombra en el sitio sin tocar código.
  */
+/** `{ slug de tipo: matiz elegido }`. Solo los que alguien eligió a mano. */
+export type TonosDeTipo = Record<string, number>;
+
+/**
+ * §4.4 · D-150 — los matices elegidos para los tipos de actividad, sacados de
+ * las mismas `opciones` que viajan en el JSON.
+ *
+ * **Solo lleva las excepciones**, que es lo que el archivo trae: el color por
+ * defecto lo deriva `colorDeTipo` del slug, con la misma función en el build y en
+ * el cliente. Un tipo que no esté en este mapa no es un tipo sin color, es un
+ * tipo con el color que le toca.
+ *
+ * Se filtra por `esTonoElegible` aunque `opcionPublica` ya filtre: éste es el
+ * lado que **consume** el archivo, y un `events.json` servido por un CDN puede ser
+ * de un build anterior a esa guarda. Es la misma razón por la que `desdeQuery` no
+ * se cree nada de lo que viene en la URL.
+ */
+export const tonosDeTipo = (opciones: Record<string, OpcionPublica[]>): TonosDeTipo =>
+  Object.fromEntries(
+    (opciones.tipo ?? [])
+      .filter((o) => esTonoElegible(o.tono))
+      .map((o) => [o.slug, o.tono as number]),
+  );
+
+/**
+ * El color con el que se escribe una categoría, **texto y borde el mismo**.
+ *
+ * Que sean el mismo no es una comodidad: el chequeo de contraste mide el color
+ * como **texto**, que es el piso más exigente (4,5:1 contra el 3:1 de un borde).
+ * Si el borde pudiera ser otro tono, habría un segundo color sin medir.
+ *
+ * Va en un solo lugar porque lo pintan el HTML del build y la island después de
+ * filtrar, y dos derivaciones del mismo color son dos maneras de que una se quede
+ * vieja (la clase de B-88).
+ */
+export const estiloDeTipo = (
+  tonos: TonosDeTipo,
+  slug: string,
+): { color: string; borderColor: string } => {
+  const color = colorDeTipo(slug, tonos[slug]);
+  return { color, borderColor: color };
+};
+
 export const mapaDeEtiquetas = (opciones: Record<string, OpcionPublica[]>): MapaDeEtiquetas =>
   Object.fromEntries(
     Object.entries(opciones).map(([campo, valores]) => [

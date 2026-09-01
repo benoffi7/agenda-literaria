@@ -42,7 +42,7 @@ import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { indiceDelSitio } from '@/lib/contenidoDelSitio';
-import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
+import { mapaDeEtiquetas, tonosDeTipo, vigentesDelIndice } from '@/lib/listadoPublico';
 
 const indice = await indiceDelSitio();
 /*
@@ -53,6 +53,9 @@ const indice = await indiceDelSitio();
  */
 const ahora = new Date(indice.generadoEn);
 const etiquetas = mapaDeEtiquetas(indice.opciones);
+// D-150 — los matices elegidos para los tipos. El HTML del build y la island
+// pintan la categoría con el mismo color porque los dos salen de acá.
+const tonos = tonosDeTipo(indice.opciones);
 const vigentes = vigentesDelIndice(indice, ahora);
 
 const ID_LISTADO = 'listado-del-build';
@@ -125,7 +128,12 @@ const descripcion =
             Todavía no hay nada publicado con fecha próxima. Volvé en unos días.
           </p>
         ) : (
-          <ListaDeActividades entradas={vigentes} ahora={ahora} etiquetas={etiquetas} />
+          <ListaDeActividades
+            entradas={vigentes}
+            ahora={ahora}
+            etiquetas={etiquetas}
+            tonos={tonos}
+          />
         )}
       </div>
     </div>

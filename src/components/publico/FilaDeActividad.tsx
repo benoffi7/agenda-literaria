@@ -44,7 +44,13 @@
  */
 import { claseBloqueFecha, foco } from '@/components/sitio/estilos';
 import type { EntradaDeIndice } from '@/lib/eventsJson';
-import { estadoDe, etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import {
+  estadoDe,
+  estiloDeTipo,
+  etiquetaDe,
+  type MapaDeEtiquetas,
+  type TonosDeTipo,
+} from '@/lib/listadoPublico';
 // La ruta no se arma acá: la produce `caminosDeDetalle` y la linkea esto, y son
 // dos derivaciones del mismo formato (clase de B-88). Ver `rutasPublicas.ts`.
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
@@ -63,9 +69,11 @@ interface Props {
   /** El reloj con el que se decide «próxima» y «cerró» (§6.4). */
   ahora: Date;
   etiquetas: MapaDeEtiquetas;
+  /** Los matices elegidos para los tipos (D-150). Vacío es «todos derivados». */
+  tonos: TonosDeTipo;
 }
 
-export function FilaDeActividad({ entrada, ahora, etiquetas }: Props) {
+export function FilaDeActividad({ entrada, ahora, etiquetas, tonos }: Props) {
   const estado = estadoDe(entrada, ahora);
   const fecha = bloqueDeFecha(estado);
   const ciclo = cicloDeTarjeta(entrada, estado);
@@ -123,12 +131,24 @@ export function FilaDeActividad({ entrada, ahora, etiquetas }: Props) {
           )}
 
           {/*
-            El tipo en una cajita con borde, en azul tinta. **Una sola tinta para
-            todas las categorías** (D-146): la paleta del sistema es limitada, así
-            que lo que distingue un taller de un club de lectura es la palabra y no
-            un color por tipo.
+            El tipo en una cajita con borde, **en la tinta de su categoría**
+            (D-150, que revierte el punto 2 de D-146).
+
+            El color no se escribe acá ni sale de una clase de Tailwind: sale de
+            `estiloDeTipo`, que lo deriva del slug o toma el matiz elegido desde
+            Opciones. Va por `style` y no por clase porque el valor es un dato —
+            Tailwind solo genera las clases que ve escritas en el fuente, así que
+            una clase por tipo dejaría sin color al tipo que alguien cree mañana,
+            que es exactamente el modo de falla que D-150 evita.
+
+            El texto y el borde llevan **el mismo** color: el chequeo lo mide como
+            texto (4,5:1), que es más exigente que el 3:1 de un borde, así que
+            medir uno cubre los dos.
           */}
-          <p className="label-caps border border-borde px-1.5 py-1 text-azul">
+          <p
+            className="label-caps border px-1.5 py-1"
+            style={estiloDeTipo(tonos, entrada.tipo)}
+          >
             {etiquetaDe(etiquetas, 'tipo', entrada.tipo)}
           </p>
         </div>

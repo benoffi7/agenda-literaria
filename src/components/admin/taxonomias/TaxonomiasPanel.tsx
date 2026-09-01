@@ -13,8 +13,15 @@ import {
   aprobarOpcion,
   borrarOpcion,
   estaAprobada,
+  pintarOpcion,
   renombrarOpcion,
 } from '@/lib/opciones';
+import {
+  TINTAS_DE_TIPO,
+  colorDeTipo,
+  colorDelTono,
+  esTonoElegible,
+} from '@/lib/identidad';
 import { etiquetaPresentable } from '@/lib/taxonomia';
 // D-20 — el mismo des-slug que usa la descripción del evento público: lo que se
 // avisa antes de borrar tiene que decir exactamente lo que se va a ver.
@@ -32,11 +39,20 @@ const TITULO: Record<CampoTaxonomia, string> = {
 
 const DONDE: Record<CampoTaxonomia, string> = {
   arancel: 'Se elige en «Arancel e inscripción».',
-  tipo: 'Es lo primero que se elige al cargar una actividad.',
+  tipo: 'Es lo primero que se elige al cargar una actividad, y su color es el que el sitio le pone a la categoría.',
   barrio: 'Se elige en «Dónde», y viaja al evento del calendario.',
   plataforma: 'Se elige en «Dónde» cuando la actividad es virtual.',
   tags: 'Se escriben en «Opcional». Son los filtros del sitio público.',
 };
+
+/**
+ * Cómo se llama el matiz guardado, para poder decirlo en texto y no solo en color
+ * (D-150). Un tono que no está entre los doce que ofrece el selector —guardado a
+ * mano, o sobreviviente de una lista anterior— se nombra por su número antes que
+ * mentir con el nombre del vecino.
+ */
+const nombreDelTono = (tono: number): string =>
+  TINTAS_DE_TIPO.find((t) => t.tono === tono)?.nombre ?? `matiz ${tono}`;
 
 /**
  * §4.3 · B-06 — pantalla para administrar las taxonomías autogestionadas.
@@ -57,7 +73,13 @@ const DONDE: Record<CampoTaxonomia, string> = {
  *   guardadas en minúscula (B-05);
  * - **borrar no toca las actividades**: la que la tenga guardada sigue
  *   mostrando la etiqueta des-slugueada (D-11). Por eso borrar algo con usos se
- *   confirma aparte.
+ *   confirma aparte;
+ * - **el color de un tipo de actividad sí se elige, incluso en las base**
+ *   (D-150). Es la única acción que una opción `fijo` acepta, y tiene que serlo:
+ *   los siete tipos que existen son base, así que la regla de arriba aplicada al
+ *   color dejaría la pantalla sin nada que configurar. Lo que se ofrece es una
+ *   **banda de matices**, no un selector de color: así ninguna elección posible
+ *   puede dejar el nombre de la categoría ilegible.
  *
  * Es autocontenida a propósito: no sabe nada del router del panel, así que
  * montarla es una línea en `AdminApp` (B-170).
@@ -70,6 +92,8 @@ export function TaxonomiasPanel() {
   const [texto, setTexto] = useState('');
   /** Qué fila está esperando la confirmación de borrado. */
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  /** Qué fila tiene abierto el selector de color (D-150). */
+  const [pintando, setPintando] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const pendientes = CAMPOS_TAXONOMIA.reduce(
@@ -85,6 +109,7 @@ export function TaxonomiasPanel() {
       await accion();
       setEditando(null);
       setConfirmando(null);
+      setPintando(null);
       setTexto('');
     } catch (e) {
       setFallo(e instanceof Error ? e.message : 'No se pudo guardar el cambio.');
@@ -98,12 +123,37 @@ export function TaxonomiasPanel() {
     const pendiente = !estaAprobada(v);
     // §4.3 — la señal de basura: creada con "Otro" y sin uso real todavía.
     const sospechosa = !v.fijo && v.usos <= 1;
+    /*
+     * D-150 — el color se administra **solo para `tipo`**, que es la única
+     * taxonomía que el sitio pinta. Ofrecerlo en «Barrios» sería una pantalla de
+     * configuración que no configura nada.
+     *
+     * Y se ofrece **también para las opciones base**, que es lo contrario de lo
+     * que hace el resto de la fila: los siete tipos que existen son `fijo: true`,
+     * así que sin esto el color no se podría elegir para ninguno de los que hay.
+     * Lo que `fijo` protege es la identidad —el slug cableado, la etiqueta con la
+     * que se la reconoce—, y el matiz no es identidad (ver `pintarOpcion`).
+     */
+    const pintable = campo === 'tipo';
+    const propio = esTonoElegible(v.tono);
 
     return (
       <li key={v.slug} className="rounded-md border border-borde bg-white px-3 py-2.5">
         <div className="sm:flex sm:items-baseline sm:gap-3">
           <div className="min-w-0 sm:flex-1">
             <p className="font-serif font-semibold">
+              {pintable && (
+                /*
+                  La muestra. `aria-hidden` porque lo que dice el color ya lo dice
+                  el texto de abajo («Color: Petróleo» / «Color automático»): un
+                  cuadradito sin nombre anunciado como imagen es ruido.
+                */
+                <span
+                  aria-hidden="true"
+                  className="mr-2 inline-block h-3 w-3 align-middle"
+                  style={{ backgroundColor: colorDeTipo(v.slug, v.tono) }}
+                />
+              )}
               {v.label}
               {v.fijo && (
                 <span
@@ -122,13 +172,34 @@ export function TaxonomiasPanel() {
             <p className="text-xs text-tinta/55">
               <code>{v.slug}</code> · {v.usos === 1 ? '1 uso' : `${v.usos} usos`}
               {sospechosa && ' · casi sin usar, puede ser un typo'}
+              {pintable &&
+                (propio
+                  ? ` · color ${nombreDelTono(v.tono!)}`
+                  : ' · color automático')}
             </p>
           </div>
 
-          {/* §4.3 — a una opción base no se le ofrece ninguna acción. */}
-          {!v.fijo && editando !== clave && confirmando !== clave && (
+          {/*
+            §4.3 — a una opción base no se le ofrece ninguna acción **de
+            identidad**. El color sí (D-150): ver la nota de `pintable`.
+          */}
+          {(!v.fijo || pintable) && editando !== clave && confirmando !== clave && (
             <div className="mt-2 flex flex-wrap gap-2 sm:mt-0 sm:shrink-0">
-              {pendiente && (
+              {pintable && (
+                <button
+                  type="button"
+                  className={claseBotonFila}
+                  disabled={ocupado}
+                  aria-expanded={pintando === clave}
+                  onClick={() => {
+                    setPintando(pintando === clave ? null : clave);
+                    setFallo(null);
+                  }}
+                >
+                  Color
+                </button>
+              )}
+              {!v.fijo && pendiente && (
                 <button
                   type="button"
                   className={claseBotonFila}
@@ -138,29 +209,33 @@ export function TaxonomiasPanel() {
                   Aprobar
                 </button>
               )}
-              <button
-                type="button"
-                className={claseBotonFila}
-                disabled={ocupado}
-                onClick={() => {
-                  setEditando(clave);
-                  setTexto(v.label);
-                  setFallo(null);
-                }}
-              >
-                Renombrar
-              </button>
-              <button
-                type="button"
-                className={claseBotonFila}
-                disabled={ocupado}
-                onClick={() => {
-                  setConfirmando(clave);
-                  setFallo(null);
-                }}
-              >
-                Borrar
-              </button>
+              {!v.fijo && (
+                <button
+                  type="button"
+                  className={claseBotonFila}
+                  disabled={ocupado}
+                  onClick={() => {
+                    setEditando(clave);
+                    setTexto(v.label);
+                    setFallo(null);
+                  }}
+                >
+                  Renombrar
+                </button>
+              )}
+              {!v.fijo && (
+                <button
+                  type="button"
+                  className={claseBotonFila}
+                  disabled={ocupado}
+                  onClick={() => {
+                    setConfirmando(clave);
+                    setFallo(null);
+                  }}
+                >
+                  Borrar
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -208,6 +283,66 @@ export function TaxonomiasPanel() {
             Cambia solo cómo se ve. Las actividades que ya la usan la siguen usando, y su
             dirección en el sitio no se mueve.
           </p>
+        )}
+
+        {pintando === clave && (
+          /*
+            El selector: **doce matices con nombre y el automático**, y ningún
+            control de color libre.
+
+            Es la decisión de fondo de D-150 y no una simplificación: un selector
+            de color deja elegir la luminosidad, y ahí se pierde la garantía de que
+            el nombre de la categoría se lea. Ofreciendo la banda —luminosidad y
+            croma fijos, varía el matiz— **cualquier cosa que se pueda elegir
+            pasa AA**, así que no hay forma de guardar algo ilegible ni un error
+            que explicar después. La guarda numérica sigue estando en
+            `pintarOpcion`, por si algún día la banda se afloja.
+          */
+          <div className="mt-2 rounded-md border border-borde bg-tinta/3 px-3 py-2">
+            <p className="text-xs text-tinta/55">
+              Con qué color escribe el sitio esta categoría. Todos se leen bien sobre el
+              fondo del sitio; el automático sale del nombre de la categoría.
+            </p>
+            <div
+              role="group"
+              aria-label={`Color de ${v.label}`}
+              className="mt-2 flex flex-wrap gap-1.5"
+            >
+              {TINTAS_DE_TIPO.map((t) => (
+                <button
+                  key={t.tono}
+                  type="button"
+                  title={t.nombre}
+                  aria-label={t.nombre}
+                  aria-pressed={v.tono === t.tono}
+                  disabled={ocupado}
+                  onClick={() => void correr(() => pintarOpcion(campo, v.slug, t.tono))}
+                  className={`h-8 w-8 border-2 ${
+                    v.tono === t.tono ? 'border-tinta' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: colorDelTono(t.tono) }}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={claseBotonFila}
+                aria-pressed={!propio}
+                disabled={ocupado || !propio}
+                onClick={() => void correr(() => pintarOpcion(campo, v.slug, null))}
+              >
+                Automático
+              </button>
+              <button
+                type="button"
+                className={claseBotonSecundario}
+                onClick={() => setPintando(null)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         )}
 
         {confirmando === clave && (

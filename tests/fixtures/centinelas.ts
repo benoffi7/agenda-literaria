@@ -464,5 +464,13 @@ export const opcionCentinela = (over: Partial<ValorOpcion> = {}): ValorOpcion =>
   usos: 3,
   aprobada: true,
   huellaCreador: CENTINELA['opcion.huellaCreador'],
+  /*
+   * D-150 — el matiz elegido. No lleva centinela porque es un número: el barrido
+   * de cadenas no lo puede ver, así que lo fija el chequeo de claves del
+   * `barrido-de-salidas-publicas` (`['label', 'slug', 'tono']`). Está en el
+   * fixture igual, y por la razón de siempre: un campo que el fixture no tiene no
+   * lo mira ningún barrido.
+   */
+  tono: 195,
   ...over,
 });

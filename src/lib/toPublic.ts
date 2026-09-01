@@ -1,3 +1,4 @@
+import { esTonoElegible } from '@/lib/identidad';
 import { imagenesDe } from '@/lib/imagenes';
 /*
  * De `taxonomia` y no de `opciones`: las dos exportan `opcionesVisibles` —la
@@ -104,6 +105,23 @@ export interface LibroPublico {
 export interface OpcionPublica {
   slug: string;
   label: string;
+  /**
+   * §4.4 · D-150 — el matiz elegido para esta opción, si alguien eligió uno.
+   *
+   * **Sale, y hace falta que salga:** el color de la categoría se pinta en el
+   * listado, o sea del lado del sitio, y el sitio no lee Firestore (§2.5). Sin
+   * esto la elección se quedaría guardada sin llegar a ninguna pantalla.
+   *
+   * **Solo viaja la excepción.** El caso normal es que no esté: el color se
+   * deriva del slug con la misma función en el build y en el cliente
+   * (`tonoDeTipo`), así que publicar el derivado sería publicar algo que el
+   * consumidor ya puede calcular. Y un valor no elegible ni siquiera se emite —
+   * ver `opcionPublica`.
+   *
+   * No expone nada: es un número entre 0 y 359 que alguien eligió de una lista de
+   * doce colores. No dice quién lo eligió ni cuándo.
+   */
+  tono?: number;
 }
 
 /**
@@ -384,13 +402,26 @@ const itemPublico = (i: ItemMaterial): ItemMaterialPublico =>
 /**
  * §4.4 — una opción de taxonomía, proyectada. Ver `OpcionPublica`.
  *
- * Enumera los dos campos y no hace `pick`: si mañana se agrega una clave a
- * `ValorOpcion`, esto sigue emitiendo dos y el compilador no se queja de nada —
- * que es exactamente el comportamiento que se quiere de una whitelist.
+ * Enumera los campos y no hace `pick`: si mañana se agrega una clave a
+ * `ValorOpcion`, esto sigue emitiendo los mismos y el compilador no se queja de
+ * nada — que es exactamente el comportamiento que se quiere de una whitelist.
+ *
+ * **El `tono` se emite solo si es elegible, y solo si está** (D-150). Las dos
+ * mitades importan y son distintas:
+ *
+ * - *solo si está*: el default es derivar del slug, así que emitir el derivado
+ *   sería mandar en cada build un número que el consumidor ya calcula igual, y
+ *   convertiría en dato publicado algo que hoy es una función. El día que se
+ *   cambie la derivación, el JSON viejo mandaría el color viejo.
+ * - *solo si es elegible*: un `tono` fuera de rango escrito a mano en la consola
+ *   de Firestore no llega a ninguna pantalla. Es la misma guarda que aplica
+ *   `tonoDeTipo` al leer, puesta también del lado del que escribe: el color
+ *   ilegible no se puede colar por ninguno de los dos caminos.
  */
 export const opcionPublica = (v: ValorOpcion): OpcionPublica => ({
   slug: v.slug,
   label: v.label,
+  ...(esTonoElegible(v.tono) ? { tono: v.tono } : {}),
 });
 
 /**

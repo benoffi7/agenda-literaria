@@ -10,6 +10,7 @@ import base from '@/lib/opciones-base.json';
 // Firestore del chunk de login. Importarlo del módulo de auth lo trae de vuelta.
 import { db } from '@/lib/firestore-client';
 import { huellaCreador } from '@/lib/huella';
+import { PISO_DEL_TIPO, contrasteDelTono, esTonoElegible } from '@/lib/identidad';
 import { slugify } from '@/lib/slugify';
 import {
   estaAprobada,
@@ -208,15 +209,27 @@ export const registrarUsos = async (
  * Cambia un valor del array de un campo, en transacción, con las dos guardas
  * del §4.3: la opción tiene que existir y no puede ser `fijo`.
  *
- * Es la base de las tres operaciones de la pantalla de taxonomías (B-06). Está
+ * Es la base de las cuatro operaciones de la pantalla de taxonomías (B-06). Está
  * en un solo lugar porque la guarda de `fijo` es lo único que separa "renombré
  * una etiqueta" de "rompí el badge verde de «Gratis» que está cableado en la
  * lógica", y una guarda copiada tres veces se olvida en la cuarta.
+ *
+ * ── `tocaFijas`, y por qué existe una llave para esa guarda (D-150) ───────
+ * `pintarOpcion` **sí** puede tocar una opción base, y no es una excepción
+ * cómoda: sin eso el color no se podría elegir para ninguno de los siete tipos
+ * que existen —los siete son `fijo: true`— o sea para todos los que hay. Lo que
+ * el §4.3 protege de una opción base es su **identidad**: el slug con el que está
+ * cableada y la etiqueta con la que se la reconoce. El matiz no es identidad, es
+ * presentación, y el pedido fue justamente poder cambiarlo.
+ *
+ * La llave es explícita y de un solo llamador a propósito: renombrar y borrar la
+ * siguen teniendo prohibida, y `tests/opciones.integracion.test.ts` lo fija.
  */
 const editarValor = async (
   campo: CampoTaxonomia,
   slug: string,
   cambio: (v: ValorOpcion) => ValorOpcion | null,
+  { tocaFijas = false }: { tocaFijas?: boolean } = {},
 ): Promise<void> => {
   const ref = refOpciones(campo);
   await runTransaction(db(), async (tx) => {
@@ -224,7 +237,7 @@ const editarValor = async (
     const valores = snap.exists() ? ((snap.data() as DocOpciones).valores ?? []) : [];
     const actual = valores.find((v) => v.slug === slug);
     if (!actual) throw new Error(`La opción «${slug}» ya no está en ${campo}.`);
-    if (actual.fijo) {
+    if (actual.fijo && !tocaFijas) {
       throw new Error(
         `«${actual.label}» es una opción base: no se puede editar ni borrar desde el panel (§4.3).`,
       );
@@ -289,6 +302,60 @@ export const borrarOpcion = async (campo: CampoTaxonomia, slug: string): Promise
  */
 export const aprobarOpcion = async (campo: CampoTaxonomia, slug: string): Promise<void> =>
   editarValor(campo, slug, (v) => ({ ...v, aprobada: true }));
+
+/**
+ * §4.1 · D-150 — elige el **matiz** de una opción, o lo saca para volver al
+ * automático (`tono === null`).
+ *
+ * ── La guarda de contraste, y por qué está acá y no solo en la pantalla ───
+ * El selector ofrece una banda de matices y **todos** pasan AA con margen, así
+ * que en el uso normal esta guarda nunca dispara. Existe igual, y no es
+ * decorativa: es lo que hace que **aflojar la banda no pueda pasar en
+ * silencio**. Si alguien sube la luminosidad de los colores de tipo para que se
+ * vean más vivos, o agrega a la lista un matiz de otra banda, el guardado empieza
+ * a rechazar lo que dejó de alcanzar en lugar de publicarlo — que es el modo de
+ * falla de B-235 aplicado a un color que elige una persona.
+ *
+ * El mensaje dice **el ratio y el piso**, no «no se puede»: cuatro centésimas no
+ * se ven, así que quien lo lea tiene que poder entender por qué se rechazó algo
+ * que en la pantalla se veía bien.
+ *
+ * **Toca opciones base** (`tocaFijas`): los siete tipos que existen hoy son
+ * `fijo: true`, así que sin eso no se podría elegir el color de ninguno. Ver la
+ * nota de `editarValor`.
+ */
+export const pintarOpcion = async (
+  campo: CampoTaxonomia,
+  slug: string,
+  tono: number | null,
+): Promise<void> => {
+  if (tono === null) {
+    // Sacar el campo y no guardar un `null`: ausente es «derivado del slug», que
+    // es el default de lectura, y un `null` guardado sería un tercer estado que
+    // significa lo mismo (§"un campo nuevo se lee con el default que preserva lo
+    // anterior").
+    return editarValor(
+      campo,
+      slug,
+      ({ tono: _fuera, ...resto }) => resto,
+      { tocaFijas: true },
+    );
+  }
+
+  if (!esTonoElegible(tono)) {
+    throw new Error(`«${tono}» no es un matiz: tiene que ser un entero de 0 a 359.`);
+  }
+
+  const ratio = contrasteDelTono(tono);
+  if (ratio < PISO_DEL_TIPO) {
+    throw new Error(
+      `Ese color da ${ratio.toFixed(2)}:1 sobre el fondo del sitio y el mínimo es ` +
+        `${PISO_DEL_TIPO}:1. Elegí otro: así el nombre de la categoría no se lee.`,
+    );
+  }
+
+  return editarValor(campo, slug, (v) => ({ ...v, tono }), { tocaFijas: true });
+};
 
 /** Siembra las opciones base si el documento no existe (idempotente). */
 export const sembrarOpciones = async (campo: CampoTaxonomia): Promise<void> => {

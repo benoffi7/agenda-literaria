@@ -269,13 +269,6 @@ const PARES: { que: string; archivo: string; clase: RegExp; frente: Srgb; fondo:
     frente: TINTA,
     fondo: CREMA,
   },
-  {
-    que: 'el tipo de actividad en azul tinta, en su cajita con borde',
-    archivo: 'src/components/publico/FilaDeActividad.tsx',
-    clase: /border border-borde px-1\.5 py-1 text-azul/,
-    frente: AZUL,
-    fondo: PAPEL,
-  },
 ];
 
 describe('los pares de tinta sobre tinta que el listado pinta', () => {
@@ -300,6 +293,31 @@ describe('los pares de tinta sobre tinta que el listado pinta', () => {
       (p) => !p.clase.test(sinComentarios(readFileSync(raiz(p.archivo), 'utf8'))),
     ).map((p) => `${p.que} — ya no está en ${p.archivo}`);
     expect(perdidos).toEqual([]);
+  });
+
+  it('la cajita del tipo no lleva ninguna tinta escrita: la pone `estiloDeTipo`', () => {
+    /*
+     * D-150 — el tipo de actividad **dejo de tener un color fijo**. Hasta B-260
+     * era una fila mas de `PARES` (`border border-borde … text-azul`, 6,14:1) y
+     * eso se podia medir aca; ahora el color sale de un dato —el matiz derivado
+     * del slug, o el elegido desde Opciones— asi que lo que hay que medir son los
+     * **360 posibles**, y eso vive en `tests/color-de-tipo.test.ts`.
+     *
+     * Lo que si corresponde verificar aca es que no vuelva a haber una tinta
+     * escrita a mano en esa cajita: una clase `text-azul` sobreviviente ganaria o
+     * perderia contra el `style` segun el orden de las hojas, y en cualquiera de
+     * los dos casos habria **dos** colores para el mismo elemento — que es la
+     * clase de bug de B-260 (`claseBloqueFecha` con dos fondos).
+     *
+     * MUTACION PROBADA: devolverle `text-azul` a la cajita hace fallar este caso.
+     */
+    const src = sinComentarios(
+      readFileSync(raiz('src/components/publico/FilaDeActividad.tsx'), 'utf8'),
+    );
+    const cajita = src.match(/<p\s*\n?\s*className="label-caps border[\s\S]*?>/);
+    expect(cajita, 'no encontre la cajita del tipo en la fila').not.toBeNull();
+    expect(cajita![0]).toContain('estiloDeTipo(tonos, entrada.tipo)');
+    expect(cajita![0]).not.toMatch(/text-(?:papel|crema|hondo|tinta|suave|acento|azul|super)/);
   });
 
   it('el bloque de fecha se define una sola vez, y en `estilos.ts`', () => {

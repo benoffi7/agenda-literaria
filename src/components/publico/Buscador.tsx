@@ -80,6 +80,7 @@ import {
   hayFiltrosPublicos,
   listaPublica,
   mapaDeEtiquetas,
+  tonosDeTipo,
   mesesConActividad,
   type FiltrosPublicos,
   type OrdenPublico,
@@ -201,6 +202,9 @@ export function Buscador({ version, idListadoEstatico }: Props) {
   const indice = carga.estado === 'listo' ? carga.indice : null;
   const entradas = useMemo(() => indice?.actividades ?? [], [indice]);
   const etiquetas = useMemo(() => mapaDeEtiquetas(indice?.opciones ?? {}), [indice]);
+  /* D-150 — los matices elegidos para los tipos. Del mismo archivo que las
+     etiquetas: el color de la categoría es taxonomía, como su nombre. */
+  const tonos = useMemo(() => tonosDeTipo(indice?.opciones ?? {}), [indice]);
 
   const visibles = useMemo(
     () => (indice ? listaPublica(entradas, filtros, orden, ahora) : []),
@@ -464,6 +468,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
                 entradas={visibles}
                 ahora={ahora}
                 etiquetas={etiquetas}
+                tonos={tonos}
                 agrupar={orden === 'proxima'}
               />
             ) : (
