@@ -9,6 +9,18 @@
  * documentos de `/opciones/*`— y cuando el `events.json` era el único consumidor
  * esa lectura vivía adentro de su endpoint.
  *
+ * ── Dos queries y no una, desde B-110 ─────────────────────────────────────
+ * El sitio lee **dos** estados: `publicado` para todo, y `cancelado` para generar
+ * su página y nada más (§7.3 del diseño). Son dos queries con dos `==` y no un
+ * `where('estado','in',[…])`, y la diferencia es la garantía: **un `in` convierte
+ * el estado en una lista, y a una lista alguien le agrega un elemento**. Con dos
+ * queries separadas la de las publicadas quedó intacta, y lo peor que puede hacer
+ * un error en la nueva es no generar ninguna página de cancelada.
+ *
+ * Los resultados **no se mezclan**: `actividades` y `canceladas` son dos campos
+ * distintos de `ContenidoDelSitio`, así que ninguna lista del sitio puede ver una
+ * cancelada aunque se olvide de filtrarla — no la recibe.
+ *
  * Copiarla dos veces más habría sido la clase de bug que este repo ya tiene
  * nombrada (B-72, B-88): **tres derivaciones de la misma regla**, donde la que se
  * olvida de actualizar el `where('estado','==','publicado')` publica los
@@ -48,8 +60,34 @@ import {
 /** El `where` del §5.3: solo lo publicado entra al sitio (§3.3 del diseño). */
 const ESTADO_PUBLICO = 'publicado';
 
+/**
+ * El segundo estado que el build lee, y **solo para generar su página** (B-110).
+ *
+ * Ver `canceladas`. No entra a `actividades`, así que no llega al `events.json`,
+ * ni al listado, ni a los chips, ni a la cartelera.
+ */
+const ESTADO_CANCELADO = 'cancelado';
+
 export interface ContenidoDelSitio {
+  /** **Las publicadas, y nada más.** Es lo que alimenta todas las listas. */
   actividades: ActividadPublica[];
+  /**
+   * Las **canceladas que estuvieron publicadas** — B-110, §7.3 del diseño.
+   *
+   * ── Por qué es un array aparte y no un flag adentro de `actividades` ──────
+   * Porque la propiedad que hay que garantizar es «una cancelada no aparece en
+   * ninguna lista», y con las dos mezcladas eso pasa a depender de que **cada**
+   * consumidor se acuerde de filtrar: el índice, los chips, el listado, la
+   * cartelera y lo que se agregue después. Es la clase de bug que este repo ya
+   * tiene nombrada (B-72, B-88): N derivaciones de la misma regla, y la que se
+   * olvida publica una cancelada en el listado sin que nada falle.
+   *
+   * Separadas, el olvido es imposible por construcción: `indiceDelSitio`,
+   * `etiquetasDelListado` y `etiquetasDelDetalle` leen `actividades` y **no
+   * pueden ver** las canceladas. El único que las une es `detallesDelSitio`, y
+   * solo cuando se lo piden.
+   */
+  canceladas: ActividadPublica[];
   opciones: Partial<Record<CampoTaxonomia, ValorOpcion[]>>;
 }
 
@@ -60,10 +98,12 @@ export interface ContenidoDelSitio {
  * define que entra al sitio — y no por las reglas de Firestore: el Admin SDK las
  * saltea. Vale decirlo porque la trampa 7 del §13 habla del caso contrario.
  *
- * **Las canceladas no entran todavía** (§7.3 del diseño, B-110): una actividad
- * cancelada que estuvo publicada tendría que conservar su página con la franja
- * CANCELADA en vez de devolver 404. Es su propio ítem porque necesita saber si
- * *estuvo* publicada alguna vez, que no es un dato del modelo.
+ * **Esta query no se tocó al cerrar B-110, y ése es el punto.** Las canceladas
+ * entran por `canceladas()`, que es una segunda query con su propio `==`: leer
+ * dos estados con un `where('estado','in',[...])` habría convertido este escalar
+ * en una lista, y una lista es algo a lo que alguien le agrega un elemento. Con
+ * dos `==` no hay lista que crecer, y un error en la query nueva solo puede
+ * producir cero páginas de canceladas — nunca una página de un borrador.
  */
 const publicadas = async (): Promise<ActividadPublica[]> => {
   const snap = await adminDb()
@@ -71,6 +111,84 @@ const publicadas = async (): Promise<ActividadPublica[]> => {
     .where('estado', '==', ESTADO_PUBLICO)
     .get();
   return snap.docs.map((d) => toPublic(d.data() as Actividad, d.id));
+};
+
+/**
+ * ¿Esta actividad **estuvo publicada alguna vez**? — B-110, §7.3 del diseño.
+ *
+ * Es la condición que separa «se canceló algo que la gente tenía anotado» de «un
+ * borrador que nació y murió sin ver la luz». Sin ella, poner una actividad en
+ * `cancelado` la publicaría, que es exactamente lo que el §5.3 impide: *«Una
+ * actividad que nace y muere en `cancelado` no genera nada. Nunca estuvo pública
+ * y publicarla ahora sería filtrar un borrador.»*
+ *
+ * ── La heurística que el §7.3 propone está muerta, y hay que decirlo ───────
+ * El diseño propone mirar si **alguna sesión tiene `calendarEventId`**, porque el
+ * sync solo crea eventos de actividades publicadas. El razonamiento es correcto y
+ * el dato no sobrevive: al pasar a `cancelado`, `syncCalendar` borra los N eventos
+ * y **escribe `calendarEventId: null` de vuelta en cada sesión** (`reponerIds`, y
+ * es lo que B-80 arregló). O sea que para cuando el build lee el documento, la
+ * prueba de que estuvo publicada la borró el propio sync. Con esa heurística sola,
+ * B-110 no habría generado ni una página en producción.
+ *
+ * ── Lo que sí sobrevive: el historial ─────────────────────────────────────
+ * `guardarVersion` (§12) guarda el documento **anterior** a cada edición de
+ * contenido en `/actividades/{id}/versiones/{version}`. Cancelar es una edición de
+ * contenido, así que deja una versión cuyo `documento.estado` es `'publicado'` —
+ * y una actividad que nunca lo estuvo no puede tener ninguna. Es el mismo
+ * razonamiento del §7.3 sobre un rastro que no se borra solo.
+ *
+ * Lo que se paga, dicho:
+ *
+ * | | |
+ * |---|---|
+ * | una query por cancelada | son un puñado de documentos, y solo las canceladas la pagan. Las publicadas no leen nada nuevo |
+ * | la retención de D-42 | 20 versiones por actividad. Editar una **cancelada** 20 veces empuja la versión publicada afuera y la página vuelve a dar 404. Falla cerrado, que es el lado correcto del error |
+ * | el campo explícito sigue faltando | `publicadaAlgunaVez: boolean` es lo correcto y es una decisión del §11.1 del diseño — queda en **B-285** |
+ *
+ * **No se lee un solo campo de las versiones.** El `.select()` sin argumentos
+ * devuelve documentos con id y nada más, y `limit(1)` corta en el primero: la
+ * pregunta es de existencia. Importa porque una versión es el documento **entero**
+ * de aquel momento —`difusion`, `online.url`, uids—, y nada de eso tiene por qué
+ * entrar al proceso que genera el sitio.
+ */
+const estuvoPublicada = async (
+  ref: FirebaseFirestore.DocumentReference,
+  a: Actividad,
+): Promise<boolean> => {
+  // §7.3 tal cual, primero y sin costo: si el id sobrevivió —un sync que no llegó
+  // a correr, un borrado que falló— alcanza y no hace falta ir al historial.
+  if ((a.sesiones ?? []).some((s) => s.calendarEventId)) return true;
+
+  const versiones = await ref
+    .collection('versiones')
+    .where('documento.estado', '==', ESTADO_PUBLICO)
+    .limit(1)
+    .select()
+    .get();
+  return !versiones.empty;
+};
+
+/**
+ * Las canceladas **que estuvieron publicadas**, proyectadas — B-110.
+ *
+ * Su propia query con su propio `==`, deliberadamente separada de `publicadas()`:
+ * ver el docblock de aquélla. Lo que devuelve no entra a `actividades`, así que no
+ * puede aparecer en el `events.json`, en el listado, en los chips ni en la pared.
+ */
+const canceladas = async (): Promise<ActividadPublica[]> => {
+  const snap = await adminDb()
+    .collection('actividades')
+    .where('estado', '==', ESTADO_CANCELADO)
+    .get();
+
+  const conPagina = await Promise.all(
+    snap.docs.map(async (d) => {
+      const a = d.data() as Actividad;
+      return (await estuvoPublicada(d.ref, a)) ? toPublic(a, d.id) : null;
+    }),
+  );
+  return conPagina.filter((a): a is ActividadPublica => a !== null);
 };
 
 /** Los cinco documentos de `/opciones/*`, en una sola ida (§4.1). */
@@ -86,8 +204,12 @@ const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, Val
 
 const leer = async (): Promise<ContenidoDelSitio> => {
   if (hayCredenciales()) {
-    const [actividades, opciones] = await Promise.all([publicadas(), opcionesDeTaxonomia()]);
-    return { actividades, opciones };
+    const [actividades, canceladasConPagina, opciones] = await Promise.all([
+      publicadas(),
+      canceladas(),
+      opcionesDeTaxonomia(),
+    ]);
+    return { actividades, canceladas: canceladasConPagina, opciones };
   }
 
   /*
@@ -111,7 +233,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     '[sitio] build sin credenciales: 0 actividades. ' +
       'Levantá el emulador (npm run emu) para ver datos.',
   );
-  return { actividades: [], opciones: {} };
+  return { actividades: [], canceladas: [], opciones: {} };
 };
 
 let cache: Promise<ContenidoDelSitio> | null = null;
@@ -227,17 +349,42 @@ export const etiquetasDelDetalle = async (): Promise<MapaDeEtiquetas> => {
  * alguien vuelve al alias —que es lo que uno escribe— el sitio se construye
  * igual, con el reloj del build, que es lo correcto.
  */
-const detallesDelSitio = async (instante: Date): Promise<DetallePublico[]> => {
-  const { actividades } = await contenidoDelSitio();
+const detallesDelSitio = async (
+  instante: Date,
+  /**
+   * ¿Se incluyen las canceladas? — B-110.
+   *
+   * **El default es `false`, y eso es la decisión.** Una cancelada existe solo
+   * para quien tiene el link: no entra a ninguna lista (§7.3). Con el default al
+   * revés, cada consumidor nuevo de esta función heredaría las canceladas sin
+   * enterarse, que es exactamente cómo la pared de `/cartelera` terminaría
+   * mostrando el afiche de algo que no se hace.
+   *
+   * Solo `caminosDeDetalle` lo pide, y lo pide escrito.
+   */
+  conCanceladas = false,
+): Promise<DetallePublico[]> => {
+  const { actividades, canceladas: conFranja } = await contenidoDelSitio();
   // Sin filtrar por aprobación: acá se **resuelve** el slug que la actividad ya
   // tiene guardado, no se ofrece un chip. Ver `etiquetasDelDetalle` (D-30).
   const etiquetas = await etiquetasDelDetalle();
+
+  /*
+   * La bandera viaja **pegada a cada actividad y desde su origen**, no se deduce
+   * después con un `includes`: de qué query salió cada una es lo único que este
+   * módulo sabe y el view-model no puede recalcular. Ver `DetallePublico.cancelada`.
+   */
+  const marcadas: [ActividadPublica, boolean][] = [
+    ...actividades.map((a): [ActividadPublica, boolean] => [a, false]),
+    ...(conCanceladas ? conFranja.map((a): [ActividadPublica, boolean] => [a, true]) : []),
+  ];
+
   return (
-    actividades
+    marcadas
       // Una actividad sin slug no puede tener URL. No debería pasar (el schema lo
       // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
-      .filter((a) => a.slug)
-      .map((a) => detalleDeActividad(a, etiquetas, instante))
+      .filter(([a]) => a.slug)
+      .map(([a, cancelada]) => detalleDeActividad(a, etiquetas, instante, cancelada))
   );
 };
 
@@ -245,7 +392,9 @@ export const caminosDeDetalle = async (
   ahora?: unknown,
 ): Promise<{ params: { slug: string }; props: { detalle: DetallePublico } }[]> => {
   const instante = ahora instanceof Date ? ahora : new Date();
-  return (await detallesDelSitio(instante)).map((detalle) => ({
+  // B-110 — **el único consumidor que pide las canceladas**, y lo pide escrito:
+  // una cancelada tiene página y no aparece en ninguna lista (§7.3).
+  return (await detallesDelSitio(instante, true)).map((detalle) => ({
     params: { slug: detalle.slug },
     props: { detalle },
   }));
@@ -263,6 +412,11 @@ export const caminosDeDetalle = async (
  * `ahora` es tolerante por lo mismo que `caminosDeDetalle`: una plantilla que la
  * aliasee en vez de envolverla recibiría el `{ paginate, rss }` de Astro en el
  * primer parámetro (B-237).
+ *
+ * **No pide las canceladas** (B-110): la pared es una lista y una cancelada no
+ * entra a ninguna. No hace falta que lo diga —el default de `detallesDelSitio` ya
+ * es ése— y se deja implícito a propósito: pasarle `false` sugeriría que hay algo
+ * que decidir acá, cuando la decisión es del §7.3 y vale para toda lista.
  */
 export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
   const instante = ahora instanceof Date ? ahora : new Date();

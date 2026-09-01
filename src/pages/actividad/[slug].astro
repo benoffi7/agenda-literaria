@@ -670,13 +670,14 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
             <dt class={claseRotulo}>Inscripción</dt>
             <dd class="body-md min-w-0 text-end text-tinta">
               {
-                !detalle.inscripcion.requiere
-                  ? 'No hace falta anotarse'
-                  : detalle.inscripcion.cerrada
-                    ? `Cerró${detalle.inscripcion.cierra ? ` el ${detalle.inscripcion.cierra}` : ''}`
-                    : detalle.inscripcion.cierra
-                      ? `Abierta hasta el ${detalle.inscripcion.cierra}`
-                      : 'Abierta'
+                /*
+                  B-110 — el texto lo arma el view-model (`inscripcion.resumen`).
+                  Acá había un ternario de cuatro ramas, y la quinta —la actividad
+                  cancelada— es la que mostró por qué no podía quedarse: con la
+                  franja «Esta actividad se canceló» arriba, esta fila decía
+                  «Abierta hasta el 22 de septiembre».
+                */
+                detalle.inscripcion.resumen
               }
               {
                 /*
@@ -731,7 +732,12 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
           )
         }
         {
-          detalle.inscripcion.requiere && !detalle.inscripcion.accion && (
+          /*
+            El canal en texto cuando no se pudo armar un botón. La condición la
+            decide el view-model (`mostrarCanal`, B-110) y no un `&&` acá: con la
+            actividad cancelada esto decía «Para anotarte: …» debajo de la franja.
+          */
+          detalle.inscripcion.mostrarCanal && (
             <p class="body-md px-4 pt-2 pb-4 text-super">
               Para anotarte: <span class="font-semibold text-tinta">{detalle.inscripcion.destino}</span>
             </p>
