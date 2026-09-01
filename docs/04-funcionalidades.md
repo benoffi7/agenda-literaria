@@ -34,6 +34,20 @@ el primero o en el último ítem, se recorre con las flechas dando la vuelta, co
 `Home`/`End` va a los extremos, y al cerrarse con `Escape` **devuelve el foco al
 "⋯"** — sin eso había que re-tabular el listado entero para volver a la fila.
 
+**Ordenar y filtrar** viven detrás del botón «Filtros», con el número de puestos al
+lado. Son **seis**: estado, tipo, **arancel**, modalidad, barrio y fechas, cruzados
+entre sí y con el buscador. El de arancel lo agregó **B-272** revirtiendo **D-74**,
+que lo había descartado a propósito: la pregunta que contesta no es «¿cuál era?»
+—esa la cubre el buscador— sino «¿qué tengo publicado que sea gratis?», que es de
+repaso y que el buscador no puede contestar porque el arancel no está en el
+`searchText`. El motivo completo, y qué se paga por revertir una decisión escrita,
+en [D-152](06-decisiones.md).
+
+Los desplegables de tipo, arancel y barrio ofrecen **solo los valores que alguna
+actividad usa**, así que ninguno devuelve cero, y el de arancel pone **primero lo
+que no se paga** — con el mismo comparador que los chips del sitio (D-151), para que
+«Gratis» no quede arriba en una pantalla y abajo en la otra.
+
 ### Duplicar una actividad
 
 Abre el formulario precargado con una copia del original, para editar y guardar
@@ -302,9 +316,27 @@ está aprobada. Es donde el §4.3 se vuelve accionable (D-102):
 | **Renombrar** | corrige cómo se ve la etiqueta, **sin mover el slug** | las creadas con "Otro" |
 | **Borrar** | la saca de las listas | las creadas con "Otro" |
 | **Aprobar** | la hace visible para la otra cuenta | las que quedaron pendientes |
+| **Color** | elige con qué matiz escribe el sitio esa categoría | **los tipos de actividad, incluidas las base** |
 
-Las opciones **base** están marcadas y no tienen acciones: son las que puede
-haber cableadas en la lógica (§4.3).
+Las opciones **base** están marcadas y no tienen acciones de identidad: son las que
+puede haber cableadas en la lógica (§4.3). **El color es la excepción, y tiene que
+serlo** (D-150): los siete tipos que existen son base, así que la regla dejaría la
+pantalla sin nada que configurar. Lo que `fijo` protege es la identidad —el slug, la
+etiqueta—, y el matiz es presentación.
+
+**El selector ofrece doce matices con nombre, y no un color libre.** No es una
+simplificación: con luminosidad y croma fijos, *cualquier cosa que se pueda elegir*
+pasa AA sobre las tres superficies del sitio, así que no hay forma de guardar un
+color con el que el nombre de la categoría no se lea — ni error que explicar
+después. Al lado de cada tipo hay una muestra del color y la línea dice cuál es
+(«color Petróleo», «color automático»).
+
+**Sin elegir nada, el color se deriva del nombre interno del tipo.** Un tipo creado
+desde «Otro» nace con color propio en vez de nacer sin color, que es el modo de
+falla silencioso que el §4 tiene en todos lados. «Automático» vuelve a ese estado.
+
+Hoy el color se ve en **la cajita de la categoría de cada fila del listado
+público**. La ficha de la página de detalle sigue en azul tinta: es **B-273**.
 
 Dos avisos que la pantalla da porque son las consecuencias que no se adivinan:
 
@@ -684,12 +716,22 @@ una pantalla vacía.
 |---|---|
 | **Buscar** | contra `searchText`, con el `normalize` del §6: acentos y mayúsculas dan igual. Dos palabras se exigen **las dos** |
 | **Cuándo** | Próximas (default) · Este mes · Próximos 3 meses · cada mes con actividad |
-| **Filtros** (colapsados, con el número de puestos al lado) | tipo, cómo se cursa, arancel, barrio, ciudad y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos» |
+| **Filtros** (colapsados, con el número de puestos al lado) | tipo, **arancel**, cómo se cursa, barrio, ciudad y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos» |
 | **Ordenar por** | Próximas primero (default) · Recién agregadas · Título (**D-137**) |
 
 Los chips **no tienen nada cableado**: salen de `opciones.*` del propio
 `events.json` (§4.4), con el número de actividades de cada uno, y el que daría cero
 no se muestra. AND entre grupos, OR adentro de cada grupo.
+
+**El arancel es el segundo eje, y adentro «Gratis» y «A la gorra» van primero**
+(B-271, **D-151**). Los chips se ordenan por cantidad, y con 33 arancelados contra 8
+gratis el que la gente busca quedaba tapado por el que más aparece; y el eje, tercero
+detrás de «Cómo se cursa», caía abajo del corte del panel de `65svh` en el teléfono.
+El filtro estaba y funcionaba: lo que no se podía era encontrarlo.
+
+**La cajita de la categoría lleva el color de su tipo** (B-270, **D-150**), derivado
+del nombre interno o elegido desde Opciones. Es lo único de color variable de la
+página: el resto sigue siendo la paleta de tres tintas del sistema.
 
 Todo lo puesto viaja en la **query string**
 (`/?q=cronica&tipo=taller&barrio=boedo`), para poder compartir un filtro por
@@ -788,7 +830,11 @@ Tres cosas del índice que conviene saber antes de consumirlo:
 - **Lleva `cierraEn` y no `abierta`** (B-111): el booleano se calcula con el reloj
   del build y se congela hasta el rebuild siguiente.
 - **Las opciones de taxonomía viajan en el mismo archivo** (§4.4), así que los chips
-  de filtro no tienen nada cableado.
+  de filtro no tienen nada cableado. Desde B-270 una opción puede llevar además
+  `tono`, el matiz de la categoría, **solo si alguien lo eligió a mano y solo si es
+  un entero de 0 a 359**: el caso normal es que no esté, porque el color se deriva
+  del slug con la misma función en el build y en el cliente. Publicar el derivado
+  sería mandar en cada build un número que el consumidor ya calcula (**D-150**).
 - **Y desde B-227 lleva `creadoEn`**, la fecha de alta con precisión de día: es la
   clave del orden «Recién agregadas» y lo único que se agregó a la frontera de
   privacidad (**D-138**). La hora no sale, y `updatedAt` tampoco.
