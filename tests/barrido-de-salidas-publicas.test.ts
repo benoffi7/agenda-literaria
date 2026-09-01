@@ -1067,6 +1067,20 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
   const detalleDeCon = (ahora: Date) =>
     detalleDeActividad(toPublic(actividadCentinela(), 'act_centinela'), ETIQUETAS, ahora);
 
+  /**
+   * El mismo fixture con la **actividad cancelada** — B-110.
+   *
+   * La bandera es el cuarto argumento: `estado` no se proyecta, así que quien
+   * sabe de qué query salió el documento es el lector y no la actividad.
+   */
+  const detalleCanceladoDe = (over = {}) =>
+    detalleDeActividad(
+      toPublic(actividadCentinela(over), 'act_centinela'),
+      ETIQUETAS,
+      AHORA,
+      true,
+    );
+
   const PERMITIDO_EN_EL_DETALLE: readonly Excepcion[] = [
     {
       nombre: 'identidad',
@@ -1158,6 +1172,34 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
       porque:
         '§5.2 — de un item sobreviven siempre tipo y título; la URL solo con `publico: true`. ' +
         'La URL del privado NO está, y es la celda que importa.',
+    },
+  ];
+
+  const PERMITIDO_EN_EL_JSON_LD: readonly Excepcion[] = [
+    {
+      nombre: 'lo que Google necesita para el resultado enriquecido',
+      centinelas: [
+        'titulo',
+        'descripcion',
+        'organizador.nombre',
+        'organizador.web',
+        'tallerista.nombre',
+        'sede.nombre',
+        'sede.direccion',
+        'sede.ciudad',
+        'sesiones.tema',
+        'imagenes.url',
+        'labels.plataforma',
+        'labels.arancel',
+      ],
+      porque:
+        '§5.2 — `name`, `description` (el resumen), `organizer`, `performer`, `location` con ' +
+        'su `PostalAddress`, el `name` de cada `subEvent` (que lleva el tema), la `image` y ' +
+        'la `category` del `Offer`. **El barrio NO está**: `PostalAddress` lleva ' +
+        '`addressLocality` (la ciudad) y no el barrio, así que no hay dónde ponerlo sin ' +
+        'inventar un campo. `inscripcion.destino`, las `indicaciones`, la `bio`, el ' +
+        '`material` y el `libro` tampoco: nada de eso es parte de un `Event` y publicarlo ' +
+        'en un formato que las máquinas cosechan es gratis para el que cosecha.',
     },
   ];
 
@@ -1296,40 +1338,62 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
      * Superficie propia: lo leen máquinas y es lo primero que cosecha un bot. La
      * regla del §5.4 del diseño es explícita —«el HTML muestra lo que el dueño
      * eligió; el JSON-LD no»— y acá se afirma con la lista más corta de todo el
-     * archivo.
+     * archivo. La lista vive en el scope del `describe` porque la usa también el
+     * barrido de la actividad cancelada (B-110).
      */
-    const PERMITIDO_EN_EL_JSON_LD: readonly Excepcion[] = [
-      {
-        nombre: 'lo que Google necesita para el resultado enriquecido',
-        centinelas: [
-          'titulo',
-          'descripcion',
-          'organizador.nombre',
-          'organizador.web',
-          'tallerista.nombre',
-          'sede.nombre',
-          'sede.direccion',
-          'sede.ciudad',
-          'sesiones.tema',
-          'imagenes.url',
-          'labels.plataforma',
-          'labels.arancel',
-        ],
-        porque:
-          '§5.2 — `name`, `description` (el resumen), `organizer`, `performer`, `location` con ' +
-          'su `PostalAddress`, el `name` de cada `subEvent` (que lleva el tema), la `image` y ' +
-          'la `category` del `Offer`. **El barrio NO está**: `PostalAddress` lleva ' +
-          '`addressLocality` (la ciudad) y no el barrio, así que no hay dónde ponerlo sin ' +
-          'inventar un campo. `inscripcion.destino`, las `indicaciones`, la `bio`, el ' +
-          '`material` y el `libro` tampoco: nada de eso es parte de un `Event` y publicarlo ' +
-          'en un formato que las máquinas cosechan es gratis para el que cosecha.',
-      },
-    ];
-
     barrer(
       'JSON-LD del detalle (link publicado a mano)',
       JSON.stringify(datosEstructurados(detalleDe(conLinkPublico()))),
       PERMITIDO_EN_EL_JSON_LD,
+      { insensible: true },
+    );
+  });
+
+  it('la página de una actividad CANCELADA barre igual — B-110, salida nueva', () => {
+    /*
+     * **Es una salida pública nueva y por eso tiene su propia pasada.** Hasta
+     * B-110 una actividad en `estado: 'cancelado'` no generaba HTML: su página es
+     * la primera que el build produce a partir de un documento que el `where` del
+     * §5.3 dejaba afuera, y eso la vuelve exactamente el tipo de superficie que
+     * este archivo existe para barrer.
+     *
+     * La lista de permitidos es **la misma** y eso es la afirmación: una cancelada
+     * publica ni más ni menos que una viva. Lo que cambia es la franja, el CTA y
+     * el `eventStatus`, y ninguno de los tres es un campo del documento.
+     *
+     * Va con el link de la reunión **publicado a mano** (`conLinkPublico`) porque
+     * es el peor caso combinado: el dueño tildó la casilla, canceló la actividad,
+     * y la página queda indexada para siempre. Si `online.url` se escapara por
+     * esta puerta, la fuga no se despublica nunca (D-139).
+     *
+     * MUTACIÓN PROBADA: copiar `m.online?.url` en `modalidadDeDetalle` hace fallar
+     * este `it` **y** el de la actividad viva; borrar la rama de `cancelada` del
+     * aviso no hace fallar ninguno de los dos, que es correcto — el texto del
+     * aviso es de `detallePublico.test.ts` y acá se mide qué **datos** salen.
+     */
+    barrer(
+      'página de detalle (actividad cancelada, con link publicado a mano)',
+      JSON.stringify(detalleCanceladoDe(conLinkPublico())),
+      PERMITIDO_EN_EL_DETALLE,
+      { insensible: true },
+    );
+
+    /*
+     * Y su JSON-LD, que es la otra superficie de la misma página.
+     *
+     * La lista es la misma **menos `labels.arancel`**, y esa resta es la
+     * dirección «de menos» del barrido haciendo su trabajo: la etiqueta del
+     * arancel sale del JSON-LD como la `category` del `Offer`, y una actividad
+     * cancelada no emite `offers` (no se puede conseguir algo que no va a pasar).
+     * Escrito así, si mañana el `Offer` vuelve, este `it` lo dice.
+     */
+    barrer(
+      'JSON-LD (actividad cancelada)',
+      JSON.stringify(datosEstructurados(detalleCanceladoDe(conLinkPublico()))),
+      PERMITIDO_EN_EL_JSON_LD.map((e) => ({
+        ...e,
+        centinelas: e.centinelas.filter((c) => c !== 'labels.arancel'),
+      })),
       { insensible: true },
     );
   });
