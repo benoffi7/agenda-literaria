@@ -6417,6 +6417,42 @@ de lo que depende no necesitar write-back (D-175).
 **La tercera es la buena**, y por eso este ítem probablemente se cierre con B-322 y
 no por su cuenta. Anotado aparte porque el síntoma que ve una persona no es «hay
 una ventana de privacidad», es «mi foto salió acostada».
+
+> **2026-09-02 — verificado contra el árbol, sin tocar código.** El estado
+> sigue siendo exactamente el de arriba: `sinMetadatos` (`src/lib/imagenes-archivo.ts`)
+> trata el APP1 entero como opaco y lo tira completo —no parsea `Orientation`
+> por separado—, y `tests/imagenes-function.test.ts` (línea ~716) sigue
+> afirmando los dos lados: con el tag `.rotate()` transpone, sin el tag no.
+>
+> **Una cuarta salida que no estaba anotada, sin implementar — para que quien
+> retome esto no la descubra de cero.** No hace falta emitir un bloque EXIF
+> (la primera fila) para que la Function sepa rotar: `uploadBytes` (usado en
+> `src/lib/subir-imagen.ts`) acepta `customMetadata`, que es metadato de
+> **Storage**, no del archivo — no viaja adentro del JPEG y no lo ve
+> `quedanMetadatos`. El panel podría leer el valor numérico de `Orientation`
+> (1 a 8) antes de tirar el APP1 —no el bloque, un entero— y subirlo como
+> `customMetadata.orientacion`; la Function, con el EXIF ya ausente, llamaría
+> `sharp().rotate(anguloDe(orientacion))` en vez de `.rotate()` a secas.
+>
+> **Por qué no se implementa acá y no por falta de tiempo.** Tres motivos: (1)
+> las orientaciones 2, 4, 5 y 7 llevan además un espejado, y `sharp().rotate(N)`
+> con un ángulo explícito no lo aplica —haría falta `.flop()`/`.flip()`
+> combinado, y un mapeo mal hecho publica una foto invertida en vez de girada,
+> que es peor y más difícil de notar—; para las cuatro que sí importan en la
+> práctica (1, 3, 6, 8, las que produce una cámara de teléfono) el mapeo es
+> simple, pero cubrir menos de los 8 casos hay que decidirlo, no asumirlo. (2)
+> toca `sinMetadatos`/`quedanMetadatos`, que el propio ítem llama «el corazón
+> de la privacidad de este módulo» — es zona para proponer antes de tocar, no
+> para cambiar de enfoque por cuenta propia. (3) el dueño del repo ya tiene
+> escrito el criterio de cuándo B-322 se hace («al final, cuando el modelo no
+> se mueva» ya pasó para las imágenes; falta la ventana de tiempo), y
+> resolver esto con un camino nuevo mientras B-322 sigue pendiente arriesga
+> dos implementaciones de la misma cosa.
+>
+> Queda **anotado y no implementado**: si el dueño prefiere esta cuarta
+> salida en vez de esperar a B-322, es una propuesta chica (un campo de
+> metadata, una función de mapeo con 4 casos y un `else` que no rota, sus
+> tests) y no un cambio de arquitectura.
 **Hecho**, y el ítem tenía razón en que era corto — pero **no en dónde iba la
 decisión**. «El enlace solo se puede pintar si el mes pasó el corte» no lo puede
 evaluar la plantilla: `mesesEnlazables` recorre el índice **entero**, y la página
