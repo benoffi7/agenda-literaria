@@ -175,7 +175,7 @@ las dos cosas son irreversibles.
 
 ### 🪤 `auditor-trampas`
 
-**Para qué.** Las once trampas del §13 más los patrones de
+**Para qué.** Las trece trampas del §13 más los patrones de
 [`05-patrones.md`](05-patrones.md) que comparten una propiedad: **se rompen sin
 que nada falle**. El cuerpo del agente es una tabla de trampa → dónde vive hoy →
 qué test la nombra → **dónde ese test no mira**. Esa última columna es el aporte:

@@ -32,6 +32,18 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-354 — «las once trampas del §13», corregido y ahora con red
+
+`docs/13-agentes.md:178` decía «las once trampas» cuando el §13 tiene trece
+desde que se sumaron la 12 y la 13. Corregido a «trece», y agregado el
+chequeo que faltaba (copiando el patrón de B-216 en
+`tests/agentes-y-skills.test.ts`): `tests/mapa-de-trampas.test.ts` compara «N
+trampas» en la prosa contra `TRAMPAS_DEL_CLAUDE_MD.length`, que ya se leía del
+§13 para otra cosa.
+
+Mutado: volver a escribir «las once trampas» tira rojo el caso nuevo,
+restaurado después.
+
 ### B-364 — los tres 120 del título de un reporte pasan a ser un solo límite
 
 `firestore.rules`, `reporte-schema.ts` y el `maxLength` de

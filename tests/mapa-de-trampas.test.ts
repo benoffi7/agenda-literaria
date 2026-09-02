@@ -133,3 +133,50 @@ describe('el mapa dice la verdad sobre la red que hay — B-119', () => {
     expect(conRed.length).toBeGreaterThanOrEqual(TRAMPAS_DEL_CLAUDE_MD.length - 2);
   });
 });
+
+/**
+ * La prosa de `13-agentes.md` no puede nombrar otro número de trampas que el
+ * §13 — B-354.
+ *
+ * **El mismo patrón que `tests/agentes-y-skills.test.ts` usa para «la prosa de
+ * la ficha no nombra otro número de salidas que su propia tabla» (B-216),
+ * copiado acá porque es la misma clase: un conteo dicho en una oración, y
+ * ningún test lo comparaba contra la fuente.** El §13 pasó de once a trece
+ * trampas (se sumaron la 12 y la 13, ambas de Storage) y
+ * `docs/13-agentes.md:178` («Para qué. Las once trampas del §13…») se quedó
+ * diciendo «once» — nadie lo notó porque `tests/mapa-de-trampas.test.ts`
+ * compara la **lista** de trampas contra la tabla y contra las trampas sin
+ * red, y ninguna de esas dos cosas es el número que aparece en una oración.
+ *
+ * A diferencia de la lista y de las filas sin red, el número en prosa **no se
+ * puede derivar del código real**: es un conteo escrito para que se lea de
+ * corrido, así que la única forma de que no envejezca es compararlo contra
+ * `TRAMPAS_DEL_CLAUDE_MD.length`, que si sale del §13 mismo.
+ *
+ * MUTACIÓN PROBADA: volver a escribir «las once trampas» en
+ * `docs/13-agentes.md` pone este caso en rojo nombrando la frase.
+ */
+describe('la prosa de 13-agentes.md no nombra otro número de trampas que el §13 — B-354', () => {
+  const PALABRAS: Record<number, string> = {
+    5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho', 9: 'nueve', 10: 'diez',
+    11: 'once', 12: 'doce', 13: 'trece', 14: 'catorce', 15: 'quince',
+  };
+
+  it('"N trampas" en 13-agentes.md coincide con el §13 de hoy', () => {
+    const cuantas = TRAMPAS_DEL_CLAUDE_MD.length;
+    const correcta = PALABRAS[cuantas];
+    expect(correcta, `no hay palabra para ${cuantas} trampas — agregala a PALABRAS`).toBeDefined();
+
+    const texto = fuente('docs/13-agentes.md');
+    const equivocadas = Object.entries(PALABRAS)
+      .filter(([n]) => Number(n) !== cuantas)
+      .map(([, palabra]) => palabra)
+      .filter((palabra) => new RegExp(`${palabra} trampas`, 'i').test(texto));
+
+    expect(
+      equivocadas,
+      `13-agentes.md dice «${equivocadas.join(', ')} trampas» y el §13 tiene ${cuantas}: ` +
+        'la prosa y la fuente del mismo conteo se contradicen',
+    ).toEqual([]);
+  });
+});

@@ -4519,7 +4519,28 @@ cuando `cancelada` es `true`, con un parámetro para el caso de la transición. 
 prolijidad de fixture y toca un archivo muy tocado, así que P3 — pero el patrón
 es el de B-135, que ya costó caro una vez.
 
-### B-354 · «Las once trampas del §13» — el conteo en prosa quedó viejo y nadie lo verifica · P3
+### B-354 · «Las once trampas del §13» — el conteo en prosa quedó viejo y nadie lo verifica — ✅ hecho (2026-09-02) · P3
+
+**Se hicieron las dos cosas que el ítem dejaba a elegir: se corrigió el número
+Y el test lo empezó a contar**, copiando el patrón de
+`tests/agentes-y-skills.test.ts` («la prosa de la ficha no nombra otro número
+de salidas que su propia tabla», B-216) tal como se pedía.
+
+`docs/13-agentes.md:178` decía «Las once trampas del §13»; el §13 tiene trece
+desde que se sumaron la 12 y la 13. Corregido a «trece».
+
+El chequeo nuevo va en `tests/mapa-de-trampas.test.ts`, que ya calculaba
+`TRAMPAS_DEL_CLAUDE_MD` leyendo el §13 — la misma fuente, así que el número no
+se copia una vez más. Compara «N trampas» en la prosa de `13-agentes.md`
+contra ese conteo, con la misma lista de palabras-número que B-216 y el mismo
+recorte: solo palabras de cinco para arriba, porque de ahí abajo sí hay
+subconjuntos legítimos de los que hablar.
+
+**Mutado, no solo verde:** se volvió a escribir «las once trampas» en
+`docs/13-agentes.md` y el caso nuevo dio rojo, nombrando la frase exacta.
+Restaurado después.
+
+El texto original queda abajo.
 
 El §13 del `CLAUDE.md` lista **trece** trampas desde que se sumaron la 12 (un
 trigger que escribe donde lo dispararon, también en Storage) y la 13 (`allow
