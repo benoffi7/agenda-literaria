@@ -33,7 +33,7 @@ const ETIQUETAS = mapaDeEtiquetas({
     { slug: 'gratis', label: 'Gratis' },
     { slug: 'a-la-gorra', label: 'A la gorra' },
   ],
-  plataforma: [{ slug: 'meet', label: 'Google Meet' }],
+  plataforma: [{ slug: 'meet', label: 'Google Meet' }, { slug: 'a-confirmar', label: 'A confirmar' }],
   tags: [{ slug: 'cronica', label: 'Crónica' }],
 });
 
@@ -737,6 +737,33 @@ describe('la meta description y el título', () => {
     expect(d.meta.descripcion.length).toBeLessThanOrEqual(161);
     expect(d.meta.descripcion.endsWith('…')).toBe(true);
   });
+
+  it('B-190 — «a confirmar» no se lee como el nombre de una plataforma', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el chequeo de `plataformaAConfirmar` en
+     * `dondeCorto` y volver siempre a `Online por ${m.plataforma}`. Pasa el
+     * resto de la suite (que solo prueba plataformas reales) y acá sale
+     * «Online por A confirmar», que se lee como si «A confirmar» fuera el
+     * nombre de una plataforma.
+     */
+    const d = detalleDe(
+      { titulo: 'Club sin plataforma' },
+      {
+        modalidades: [
+          {
+            id: 'mod_0',
+            modalidad: 'virtual',
+            inicio: null,
+            fin: null,
+            sede: null,
+            online: { plataforma: 'a-confirmar', url: '', urlPublica: false },
+          },
+        ],
+      },
+    );
+    expect(d.meta.titulo).toContain('Online, plataforma a confirmar');
+    expect(d.meta.titulo).not.toContain('Online por A confirmar');
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -872,6 +899,41 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
       online: { plataforma: 'meet', url: 'https://meet.google.com/abc-defg-hij', urlPublica: true },
     });
     expect(JSON.stringify(datosEstructurados(conLink))).not.toContain('meet.google.com');
+  });
+
+  it('B-190 — la plataforma «a confirmar» no sale como nombre de plataforma en el JSON-LD', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el spread condicional y volver a `name:
+     * m.plataforma` siempre. Ese cambio pasa todos los tests de arriba —siguen
+     * pidiendo un `meet`/`zoom` real— y solo se ve acá: el `VirtualLocation`
+     * emitiría `name: "A confirmar"`, una plataforma inventada en los datos
+     * estructurados que indexa Google.
+     */
+    const d = detalleDe(
+      {},
+      {
+        modalidades: [
+          {
+            id: 'mod_0',
+            modalidad: 'virtual',
+            inicio: null,
+            fin: null,
+            sede: null,
+            online: { plataforma: 'a-confirmar', url: '', urlPublica: false },
+          },
+        ],
+      },
+    );
+    const location = datosEstructurados(d)!.location;
+    const lugares = (Array.isArray(location) ? location : [location]) as Record<
+      string,
+      unknown
+    >[];
+    const virtual = lugares.find((l) => l['@type'] === 'VirtualLocation')!;
+    expect(virtual.name).toBeUndefined();
+    // El `url` (la canónica de la actividad) sigue estando: `VirtualLocation`
+    // no deja de ser válido por no tener `name`.
+    expect(virtual.url).toBe(urlDeDetalle(d.slug));
   });
 
   it('una presencial sin sede no emite JSON-LD (§7.7)', () => {

@@ -108,6 +108,14 @@
       "fijo": true,
       "usos": 0,
       "aprobada": true
+    },
+    {
+      "slug": "a-confirmar",
+      "label": "A confirmar",
+      "orden": 9,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
     }
   ],
   "tags": []

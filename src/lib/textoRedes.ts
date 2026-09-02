@@ -227,7 +227,13 @@ const bloqueDonde = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): st
 
   const online = actividad.online;
   if (online) {
-    const plataforma = etiqueta(labels, 'plataforma', online.plataforma);
+    // B-190 — «Por A confirmar» se lee como si «A confirmar» fuera el nombre
+    // de una plataforma. Se mira el slug (no el label, que se puede renombrar
+    // sin que esto deje de aplicar) para publicar lo que se sabe de verdad.
+    const plataforma =
+      online.plataforma === 'a-confirmar'
+        ? null
+        : etiqueta(labels, 'plataforma', online.plataforma);
     lineas.push(
       `${plataforma ? `Por ${plataforma}` : 'Encuentro virtual'} · el link se envía a quienes se inscriban`,
     );
