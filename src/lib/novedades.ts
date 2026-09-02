@@ -22,6 +22,7 @@
  * usar el panel, no va: esta lista no es un registro de trabajo.
  */
 
+import { nombreDeMes } from '@/lib/meses';
 import { DOMINIO } from '@/lib/rutasPublicas';
 
 export interface Novedad {
@@ -795,21 +796,6 @@ export function guardarVisto(id: string): void {
   }
 }
 
-const MESES = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
-
 /**
  * `'2026-08-21'` → `'21 de agosto de 2026'`.
  *
@@ -820,7 +806,7 @@ const MESES = [
  */
 export function fechaLegible(fecha: string): string {
   const [anio, mes, dia] = fecha.split('-');
-  const nombre = MESES[Number(mes) - 1];
+  const nombre = nombreDeMes(mes!);
   if (!anio || !dia || !nombre) return fecha;
   return `${Number(dia)} de ${nombre} de ${anio}`;
 }

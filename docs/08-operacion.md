@@ -41,7 +41,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 |---|---|
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
-| `npm test` | la suite completa (2.006 tests en 88 archivos al 2026-09-01) |
+| `npm test` | la suite completa (2.208 tests en 97 archivos al 2026-09-02, contados en esta corrida) |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
@@ -52,6 +52,36 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
 | `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` **y sobre el HTML de las páginas de detalle** que salieron (B-110) |
+| `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
+| `node scripts/project-id-emulador.mjs` | la **base de emulador de este checkout** (`agenda-literaria-<8 hex>`). Es de dónde salen el `projectId` de los tests y el del gate (B-219) |
+| `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
+
+### Cada checkout tiene su propia base en el emulador (B-219)
+
+El emulador es de la **máquina**, no del checkout: escucha en `127.0.0.1:8080` y
+le pega cualquier worktree. Como todo test de integración empieza por
+`limpiarFirestore()` —que borra la base entera— dos corridas en paralelo se
+vaciaban el fixture entre sí a mitad de un `it`, y el rojo salía en un archivo
+que no tenía nada que ver con el cambio.
+
+Desde B-219 los tests corren contra `agenda-literaria-<8 hex>`, derivado de la
+**ruta del working-tree** (`scripts/project-id-emulador.mjs`). El emulador de
+Firestore es multi-proyecto, así que el borrado, la carga de reglas y los
+documentos quedan acotados a esa base. Lo que hay que saber para operar:
+
+- **El `npm run dev` y el `npm run seed` no cambiaron**: siguen usando
+  `agenda-literaria` (el de `.env.development`), o sea que los datos que uno
+  carga a mano en el panel local ya no los borra ninguna corrida de tests. Eso
+  es un efecto lateral bienvenido.
+- **`npm test` no requiere nada**: el valor lo calcula `vitest.config.ts`. Para
+  apuntar una corrida a otra base —por ejemplo la de dev, para mirarla en la UI
+  del emulador— se exporta `PUBLIC_FIREBASE_PROJECT_ID`.
+- **Lo que NO separa son los puertos.** Sigue habiendo una sola tanda de
+  emuladores por máquina, y de ahí sale el problema conocido de abajo: una tanda
+  puede quedar **a medias** (Firestore huérfano vivo, Auth muerto).
+- **Reproducir el bug a pedido**: `./scripts/probar-concurrencia.sh --misma-base`.
+  Sirve para verificar el arreglo y para mutarlo — si con la bandera da verde,
+  la corrida sin la bandera no prueba nada.
 
 `admin:claim` apunta al emulador por defecto; `admin:claim:prod` es un script
 aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
@@ -1112,7 +1142,9 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | El formulario hace zoom en iPhone al enfocar un campo | un input con menos de 16px | ya resuelto en `global.css`; no bajar el tamaño de los campos en mobile |
 | El reporte del panel queda en "no se pudo publicar" con 401 o 403 | el PAT venció o no tiene permiso de Issues sobre el repo | rotar el secreto y reencolar el reporte (arriba) |
 | El reporte del panel da *permission denied* al guardar | las reglas de `/reportes` no están desplegadas — deberían estarlo, ver arriba | `firebase deploy --only firestore:rules` |
-| `tests/reportes.integracion.test.ts` falla entero contra el emulador | el emulador se arrancó en otro checkout y sirve otras reglas | reiniciar `npm run emu` en este checkout |
+| `tests/reportes.integracion.test.ts` falla entero contra el emulador | ~~el emulador se arrancó en otro checkout y sirve otras reglas~~ — **ya no puede ser eso** (B-174): los cuatro archivos de integración empujan el `firestore.rules` de su propio checkout con `cargarReglas()` | mirar la fila de abajo: lo más probable es una tanda de emuladores a medias |
+| Varios `beforeAll` de integración en rojo con `connect ECONNREFUSED 127.0.0.1:9099` | **una tanda de emuladores a medias** (B-365): el proceso padre murió y dejó a su hijo de Firestore huérfano escuchando en el 8080, mientras Auth y el hub se fueron con él. Pasa cuando otro worktree levanta su propia tanda | `ps aux \| grep emulator` para ver los huérfanos, matarlos, y `npm run emu` de nuevo. Desde B-365 el mensaje lo dice: `EXIGIR_EMULADOR=1 pero el emulador de Auth no responde` |
+| Un test de integración falla una de cada N corridas, con «el fixture dejó de tener…» o «No existe(n) en `opciones/arancel`» | otra corrida contra la **misma base** del emulador. No debería pasar desde B-219; si pasa, es que algo está usando `agenda-literaria` en vez de la base del checkout | `node scripts/project-id-emulador.mjs` para ver cuál es la propia, y `./scripts/probar-concurrencia.sh` para confirmar que el aislamiento está en pie |
 
 | `sistema/rebuild.ultimoError` dice `HTTP 401 Bad credentials` | el PAT venció o se revocó | rotar el secreto (`gcloud secrets versions add GITHUB_TOKEN`); el contador se rearma con el próximo cambio |
 | `ultimoError` dice `HTTP 404` | el PAT no ve el repo, o `GITHUB_REPO` está mal | revisar el repository access del token y `functions/.env` |

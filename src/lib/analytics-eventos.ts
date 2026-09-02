@@ -1,6 +1,8 @@
 import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
 import { colapsarIndices } from '@/lib/rutaCampo';
 import { slugify } from '@/lib/slugify';
+// B-166 — el valor de "sin versión estampada" sale de su productor.
+import { VERSION_DESCONOCIDA } from '@/lib/version';
 import {
   CAMPOS_TAXONOMIA,
   ESTADOS,
@@ -37,6 +39,26 @@ import {
 
 /** Valor de reemplazo cuando un string no está en su vocabulario. */
 export const FUERA_DE_VOCABULARIO = 'otro';
+
+/**
+ * «El build no estampó ninguna versión» — B-166.
+ *
+ * `VERSION_APP` vale `'desconocida'` cuando no hay versión estampada (dev
+ * server, tests), y hasta acá el sanitizador lo mandaba como `'otro'`: **el
+ * mismo valor que usa para "el formato no lo reconozco"**. Después de B-88 el
+ * segundo caso no debería ocurrir nunca, así que un `version: otro` con volumen
+ * es una alarma —el productor estrenó una forma que el consumidor no acepta— y
+ * se confundía con el ruido de dev.
+ *
+ * Son dos hechos distintos y ahora tienen dos valores distintos. No es una
+ * fuga ni un bug de código: es un bug de **datos**, y el costo de tenerlo es
+ * que la única alarma que este parámetro puede dar es inútil.
+ *
+ * Se importa de `@/lib/version` y no se copia el literal: que el consumidor
+ * derive por su cuenta un valor del productor es la clase de B-88, y este
+ * archivo ya es el que la vigila.
+ */
+export const SIN_VERSION_ESTAMPADA = VERSION_DESCONOCIDA;
 
 export const DISPOSITIVOS = ['mobile', 'tablet', 'escritorio'] as const;
 
@@ -443,6 +465,10 @@ export const FORMATO_VERSION =
 const sanitizar = (san: Sanitizador, valor: unknown): string | number | undefined => {
   switch (san.tipo) {
     case 'version':
+      // B-166 — «no hay versión estampada» es un valor del vocabulario, no un
+      // formato que no se reconoce. Va primero porque `'desconocida'` no matchea
+      // `FORMATO_VERSION` y caería en la bolsa de `'otro'`.
+      if (valor === SIN_VERSION_ESTAMPADA) return SIN_VERSION_ESTAMPADA;
       return typeof valor === 'string' && FORMATO_VERSION.test(valor)
         ? valor
         : FUERA_DE_VOCABULARIO;

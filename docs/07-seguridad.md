@@ -517,6 +517,38 @@ filtro: la tabla de arriba decía "filtrados" y valía para la descripción y lo
 pasos nada más (B-81 en [`BACKLOG.md`](BACKLOG.md) → Cerrados). Los tests que lo
 sostienen están en `tests/costuras.test.ts`.
 
+**Desde el 2026-09-02 el filtro no se aplica campo por campo, sino sobre la
+salida armada** — el `title` y el `body` ya construidos, una vez cada uno
+(B-137, D-197). Antes iba en cinco lugares sobre la entrada, y eso hacía que la
+garantía dependiera de que quien agregara una interpolación se acordara: cuatro
+valores ya se colaban crudos (el id del reporte, `actividad.slug`,
+`reporte.actividad.id` y `severidad`). Ninguno filtraba nada —son ids y enums
+acotados por `reporteValido()`— pero B-81 fue exactamente esa clase, y quedaba
+abierta.
+
+**Ojo con qué garantiza el filtro y qué no.** `redactar()` tapa dos patrones. Las
+dos filas que dicen **no** en la tabla de arriba —`reportadoPor.uid` y
+`reportadoPor.email`— no las protege el filtro: las protege la **enumeración**
+del cuerpo, o sea que el issue elige qué interpola. Un uid interpolado saldría
+entero. Eso lo sostiene `tests/clases-de-bug.test.ts` con un centinela que el
+saneador **no** tapa (B-361), y hace falta que sea así: con un centinela
+saneable, un campo que se cuela y se tapa deja el test verde igual que uno que no
+se cuela, y los dos hechos se confunden. Se comprobó por mutación.
+
+**Y el orden es sanear y después recortar** el título a 200 (B-362). No es
+cosmético: `redactar` no acorta, **expande** —«link de reunión oculto» son 24
+caracteres contra los 12 de un `http://wa.me`— así que un título al tope que las
+reglas permiten (120) puede pasar de 200 al redactarse. Con el orden invertido,
+ese caso publicaría un `https://us02web.zoom` cortado antes del dominio: medio
+link de reunión, legible.
+
+**Un camino queda abierto y está anotado (B-363):** `desSlug()` corre **aguas
+arriba** del filtro para `contexto.pantalla` y `severidad`, y le mete un espacio
+al medio del patrón, así que `https://mi-org.zoom.us/j/x` sobrevive legible. Hoy
+la única defensa de esos dos valores es que sean enums —y `severidad` está
+acotada **por valor** en las reglas, pero `contexto.pantalla` no: las reglas
+validan el juego de claves del contexto, no sus valores.
+
 La decisión sobre la actividad la toma la Function leyendo el documento, no el
 panel: si dependiera del cliente, un panel viejo o modificado podría publicar el
 título de un borrador.
@@ -781,6 +813,30 @@ bundle** (trampa 4, §5.4). Tres defensas:
 | Nombre del repo (`GITHUB_REPO`) | `functions/.env`, versionado — no es secreto | — |
 | Id del calendario (`GOOGLE_CALENDAR_ID`) | `functions/.env`, versionado — **no es secreto**: es la dirección de suscripción de un calendario público, y publicarla es el punto del proyecto | — |
 | Config del SDK web (`PUBLIC_*`) | `.env.development` / `.env.production`, versionadas — pública por diseño, va al bundle | — |
+
+**Esa columna «versionado — no es secreto» tiene gate automático desde el
+2026-09-02** (B-213). Era la única puerta del proyecto que no lo tenía —
+`verificar-bundle.sh` corre en los dos workflows, `build-credenciales.test.ts`
+recorre `src/`, `ssr.external` está en la config de Astro— y es la que publica de
+la forma más irreversible que hay: un commit a un repo público.
+`tests/env-versionados.test.ts` descubre los `.env` del índice de git (no los
+lista) y exige que toda clave sea `PUBLIC_*`, una excepción nombrada
+(`GOOGLE_CALENDAR_ID`, `GITHUB_REPO`, `FIRESTORE_EMULATOR_HOST`) o esté vacía, y
+que ningún **valor** tenga forma de secreto. Nunca imprime un valor: un test que
+falla mostrando el secreto lo copia al log de CI, que también es público.
+
+Dos cosas que salieron de escribirlo:
+
+- **Son cuatro archivos versionados, no tres.** El que faltaba en la cuenta es
+  `.env.example`, y es el que más importa: es el único que **nombra**
+  `FIREBASE_SERVICE_ACCOUNT`, `GOOGLE_APPLICATION_CREDENTIALS` y
+  `GOOGLE_CALENDAR_ICS_PRIVADO`, con el `=` puesto y el valor vacío. El camino
+  más corto a la fuga no es agregar una clave: es **rellenar una que ya está
+  esperando** para probar algo local. Por eso el gate tiene un aserto propio que
+  exige que las tres sigan nombradas y vacías.
+- **`AIza…` no está en los patrones de secreto**, a propósito: la API key del SDK
+  web tiene esa forma y es el valor que este proyecto versiona deliberadamente.
+  Un gate que grita por el caso legítimo enseña a apagarlo.
 
 > La tabla estaba **partida en tres** por dos líneas en blanco, con `Service
 > account key` y `PAT de GitHub` en dos redacciones distintas cada uno, así que

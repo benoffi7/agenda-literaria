@@ -92,9 +92,26 @@ describe('el ciclo de Tab de una capa', () => {
 
 describe('las dos pantallas usan la misma implementación (B-14, B-64)', () => {
   it('el menú del listado navega con teclas y devuelve el foco al disparador', () => {
+    /*
+     * B-202 — el aserto del medio decía `toContain('indiceDeTecla')`, y eso lo
+     * satisfacía el `import` de la línea 3: borrar la llamada dejaba el test
+     * verde mientras el `it` seguía prometiendo «navega con teclas».
+     *
+     * Lo que se verifica ahora es que **se llame**, y con el resultado usado para
+     * algo. No se aprieta a la forma exacta de la línea de hoy
+     * (`const destino = indiceDeTecla(e.key, enfocado, acciones.length)`) porque
+     * eso volvería a ser un test de ortografía: renombrar la variable local lo
+     * rompería sin que el comportamiento cambie, y eso es el test mal escrito.
+     * El punto medio es «hay una llamada con tres argumentos cuyo valor se
+     * guarda o se devuelve», que es lo único que este módulo puede hacer con él.
+     */
     const src = fuente('components/admin/MenuAcciones.tsx');
     expect(src).toContain("from '@/lib/foco'");
-    expect(src).toContain('indiceDeTecla');
+    expect(src, 'el nombre aparece pero no se llama').toMatch(
+      /(?:=|return)\s*indiceDeTecla\([^)]*,[^)]*,[^)]*\)/,
+    );
+    // Y el `keydown` que la alimenta: sin manejador, la llamada no ocurre nunca.
+    expect(src).toMatch(/onKeyDown=/);
     // Sin esto, cerrar con Escape obliga a re-tabular el listado entero.
     expect(src).toContain('disparador.current?.focus()');
   });

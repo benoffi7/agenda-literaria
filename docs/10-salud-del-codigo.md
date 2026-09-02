@@ -447,9 +447,13 @@ cuatro `it` en rojo por mejorar el código.
 Los tres P1 que esta medición abrió se cerraron el mismo día: B-210 (el cableado
 de capa modal, ahora compartido), B-211 (los trece `ts()`, ahora uno con guarda) y
 B-212 (la proyección de `/opciones/*`, escrita antes de su consumidor). Queda
-chico y nombrado: la duplicación menor (B-215), Astro sin parche en la 5.x
-(B-214), dos vocabularios para «modalidad» (B-175), el saneador campo por campo
-(B-137), los `.env` sin gate (B-213) y la prosa que pertenece al CHANGELOG (B-78).
+chico y nombrado. Al 2026-09-02 se cerraron tres de esos seis: el saneador campo
+por campo (**B-137** — hoy va en un punto de paso único sobre la salida armada,
+D-197), los `.env` sin gate (**B-213** — `tests/env-versionados.test.ts`) y la
+mitad de la duplicación menor (**B-215** — `MESES` unificado en
+`src/lib/meses.ts`; siguen abiertos el `useEffect` de carga y la adopción de
+`tests/fixtures/`). Quedan Astro sin parche en la 5.x (B-214), dos vocabularios
+para «modalidad» (B-175) y la prosa que pertenece al CHANGELOG (B-78).
 
 Nada de eso bloquea el sitio público. B-208 sí lo habría hecho, y ese es el
 argumento para correr los auditores antes de construirlo y no después.

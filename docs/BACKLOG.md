@@ -2948,7 +2948,52 @@ dice «elegí una», dice «de marzo a junio es presencial, en la librería». S
 día se implementa DEC-8, la pregunta que aparece es si una opción lleva su propia
 modalidad — y ahí sí las dos listas se multiplican. Queda anotado, no resuelto.
 
-### B-219 · Dos worktrees corriendo tests comparten el emulador y se pisan · P2
+### B-219 · Dos worktrees corriendo tests comparten el emulador y se pisan — ✅ hecho (2026-09-02)
+
+**Cómo quedó (D-195).** Un `projectId` por working-tree sobre el mismo emulador,
+derivado de la ruta del checkout (`scripts/project-id-emulador.mjs`, 25
+caracteres: `agenda-literaria-<8 hex>`). Se eligió sobre la otra candidata —un
+puerto por worktree— porque el puerto obliga a hacer configurable el host del
+emulador en **código de producción** (`firestore-client.ts` y `firebase-client.ts`
+lo tienen escrito) y a coordinar cuatro puertos por checkout; el `projectId` no
+toca nada de producción.
+
+**Lo primero que se hizo no fue el arreglo: fue la reproducción.**
+`scripts/probar-concurrencia.sh` corre dos suites de integración a la vez y con
+`--misma-base` la falla aparece **6 de 6 veces** (2 a 10 tests rojos por corrida,
+distintos cada vez, con los mensajes de las cinco observaciones). Sin la bandera,
+las mismas seis corridas dan verde. Cinco observaciones en dos días no habían
+podido reproducirla a voluntad, y eso es lo que la dejó abierta una semana: un
+arreglo que no se puede mutar no se sabe si arregló.
+
+**La objeción de la opción 1 era falsa, y se verificó en vez de suponerse.** Este
+ítem decía que «choca con `singleProjectMode: true`». No choca: con el emulador
+levantado con `--single_project_mode true` se cargaron reglas para dos projectIds
+inventados, se escribió en cada uno, se borró **uno** entero y el otro siguió ahí
+(200 contra 404). El modo de proyecto único **avisa; no aísla ni impide**. Está
+fijado en `tests/emulador-aislado.test.ts`, no escrito en un comentario.
+
+**Y probando el arreglo apareció el mismo bug un nivel más abajo:** dos tests
+tenían un proyecto **auxiliar** con nombre literal (`'trampa-7-mecanismo'`, que ya
+estaba en el repo, y el vecino del test nuevo). Las bases principales quedaban
+separadas y las auxiliares no, así que dos corridas concurrentes se pisaban igual.
+Se resolvió con `proyectoAparte()`, y hay un aserto que recorre las URLs de la API
+del emulador en todo `tests/` y exige que **cualquier** projectId derive de
+`PROJECT_ID`.
+
+**Lo que NO resuelve, dicho explícito:** no separa los **puertos**. De ahí salió
+**B-365** (una tanda de emuladores a medias). Y `fileParallelism: false` se queda:
+particiona por checkout, no por archivo. Las reglas de **Storage** tampoco se
+pueden particionar (**B-366**).
+
+**Efecto lateral bienvenido:** `npm run dev` y `npm run seed` siguen en
+`agenda-literaria`, así que los datos que uno carga a mano en el panel local ya no
+los borra ninguna corrida de tests.
+
+Verificación: seis corridas concurrentes en verde, y la suite completa **tres
+veces** con 2.206 tests en verde, con cinco frentes más trabajando contra el mismo
+emulador. El texto original queda abajo.
+
 
 > **Visto otra vez el 2026-09-02, y esta vez el síntoma quedó medido** (frente
 > del calendario). Con otro worktree corriendo su suite contra el mismo
@@ -3303,7 +3348,56 @@ USD 5/mes.
 **Queda afuera a propósito** el link corto `maps.app.goo.gl` (redirect + CORS):
 el campo lo detecta y explica cómo salir del paso. Anotado en B-45.
 
-### B-08 · Sin tests de componentes
+### B-08 · Sin tests de componentes — **camino propuesto, decisión del dueño (2026-09-02)**
+
+> **No se agregó ninguna dependencia.** Una librería de render es una decisión de
+> arquitectura y el ítem se relevó para que se decida con el costo a la vista.
+> Abajo está el argumento; el ítem queda **abierto** hasta que el dueño elija.
+
+**Lo que costaría.** Cuatro dependencias de desarrollo
+(`@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`
+y `jsdom` o `happy-dom`), más `environmentMatchGlobs` en `vitest.config.ts`
+—hoy el entorno es `node` para toda la suite— y el tiempo de CI de arrancar un
+DOM por archivo.
+
+**Lo que hay que saber antes de decidir, y es lo que cambia la respuesta: de las
+cuatro cosas que este ítem pide, jsdom solo puede verificar dos.**
+
+| Lo que el ítem pide | ¿Lo cubre un test de render? |
+|---|---|
+| El placeholder de `TaxonomiaSelect` que se veía como opción elegida | **No hace falta**: es una pregunta pura —dado el valor actual y las opciones, qué valor y qué label le corresponden al `select`— y se testea hoy sin nada. Parte ya salió con D-116 |
+| El editor de sesiones (agregar / duplicar / borrar con id generado) | **No hace falta**: `src/lib/sesiones.ts` es puro y está cubierto |
+| `MenuAcciones`: cierre por clic afuera y por `Escape`, foco devuelto al disparador | **Sí, y es el caso genuino.** Es cableado de DOM: `addEventListener`, `document.activeElement`, el ciclo de Tab. Hoy lo único que lo vigila es `foco.test.ts` **leyendo el fuente**, y esa técnica ya produjo dos falsos verdes en el repo (B-202 es literalmente uno) |
+| `VistaPreviaEvento`: que el aviso del link público se muestre, y que la descripción tenga **su propio scroll** | **A medias.** El aviso es puro (su adaptador ya está testeado). El scroll **no se puede**: jsdom no hace layout, así que `scrollHeight`, `clientHeight` y `overflow` efectivo no existen. Un test de render que afirme eso estaría afirmando una constante |
+
+**La recomendación, entonces, es angosta y no la del ítem.** Vale la pena **si y
+solo si** el objetivo es el cableado de las capas modales y del menú, que es
+donde el repo ya se quemó dos veces: B-210 encontró ~40 líneas copiadas entre dos
+capas que **habían divergido en lo que importa**, y la red que quedó es un grep
+al fuente. Ahí un test de render compra algo que nada más compra.
+
+Para el resto, el camino que este repo viene usando es **más barato y más
+fuerte**: extraer la decisión a un módulo puro y testearla sin DOM
+(`foco.ts`, `salida-del-panel.ts`, `formulario-dominio.ts`, `sesiones.ts`). No es
+una preferencia estética — un test puro no necesita jsdom, no depende de la
+implementación del markup, y no se rompe con un refactor de JSX.
+
+**Lo que NO hay que esperar del cambio**, y conviene decirlo porque es la mitad
+del ítem: agregar la librería **no** cubre el placeholder que se veía como opción
+elegida (eso es apariencia, y jsdom no pinta) ni el scroll propio de la
+descripción. Los dos se seguirían verificando a mano, o con un navegador de
+verdad — que es otra decisión, más cara, y de otro ítem.
+
+**Prueba de concepto:** se dejó sin hacer a propósito, porque no se puede escribir
+sin instalar la dependencia primero, y eso es exactamente lo que hay que decidir
+antes. El día que se apruebe, el primer archivo es `MenuAcciones` con los tres
+casos de arriba (clic afuera, `Escape`, foco devuelto), que es el que mide si la
+inversión rinde: si esos tres salen limpios, el resto de las capas modales sigue
+el mismo molde.
+
+---
+
+Texto original:
 
 No hay testing-library instalada. La lógica pura está muy cubierta (460 tests),
 pero el render y la interacción del formulario se verificaron a mano.
@@ -4810,7 +4904,23 @@ Sale junto con la maquinaria de aprobación que B-131 dejó dormida: las dos esp
 el mismo momento, que es cuando haya más de dos personas cargando.
 
 
-### B-180 · La detección de emuladores de `verificar-todo.sh` no tiene test · P3
+### B-180 · La detección de emuladores de `verificar-todo.sh` no tiene test — ✅ hecho (2026-09-02)
+
+**Cómo quedó (D-196).** La decisión salió a `scripts/emuladores-arriba.sh` y la
+prueba `tests/emuladores-arriba.test.ts` con un servidor HTTP de dos líneas
+apuntado por `FIREBASE_EMULATOR_HUB`: hub que contesta, hub que no contesta, hub
+que contesta 503, los defaults de los cuatro hosts y los valores del entorno.
+
+Dos cosas que el ítem no pedía y valen:
+
+- **Un aserto de que el gate consume el script** y no tiene su propia copia.
+  Extraer la decisión y dejar la copia adentro es peor que no extraerla: habría
+  dos, y la que se testea no sería la que corre.
+- **El 503 tiene su caso**, y es el que hace que el `-f` de `curl -sf` signifique
+  algo: sin él, cambiar `curl -sf` por `curl -s` pasa los otros dos tests.
+
+Las dos mutaciones mueren. El texto original queda abajo.
+
 
 El paso 3 del gate detecta si los emuladores ya están arriba y usa esos en
 lugar de levantar otros (antes cortaba con "port taken" y **el gate fallaba por
@@ -5605,7 +5715,30 @@ auditor del mismo trío.
 **tres** lugares —el documento de seguridad, el cuerpo del agente y su
 `description`— y el tercero es el que decide si el agente se entera.
 
-### B-137 · `construirIssue` sanea campo por campo, no la salida armada · P2
+### B-137 · `construirIssue` sanea campo por campo, no la salida armada — ✅ hecho (2026-09-02)
+
+**Cómo quedó (D-197).** `redactar()` se aplica una vez sobre el `title` y una vez
+sobre el `body` ya armados. Los dos `it.fails` pasaron a `it` solos, como el ítem
+predecía. El `.trim()` que el saneador daba de rebote se mudó a `bloque()`.
+
+**Y el `auditor-privacidad` encontró tres cosas sobre el propio arreglo**, las
+tres cerradas acá:
+
+1. **El barrido no barría los campos privados del reporte** (B-361): el fixture
+   tenía 8 de las 13 claves de `reporteValido()` y las que faltaban eran las que
+   el §5.1 prohíbe publicar. La lista ahora se lee de `firestore.rules`.
+2. **El centinela no alcanzaba para esos campos.** Es un link de zoom, o sea justo
+   lo que el saneador tapa: un campo que se cuela y se sanea deja el barrido en
+   verde igual que uno que no se cuela. **Se comprobó por mutación** — interpolar
+   el mail del reportante sobrevive a un aserto contra el mail del fixture. Hay un
+   segundo barrido con un centinela que el saneador no tapa.
+3. **El orden sanear→recortar no lo fijaba ningún test** (B-362), y el recorte es
+   alcanzable porque `redactar` **expande**.
+
+Quedan abiertos **B-363** (el límite real del punto de paso único: `desSlug` corre
+aguas arriba) y **B-364** (cuatro topes del título derivados por separado). El
+texto original queda abajo.
+
 
 **Este ítem existía solo dentro de un comentario de test.**
 `tests/clases-de-bug.test.ts` tiene `it.fails('B-137: el saneador se aplica sobre
@@ -5626,7 +5759,37 @@ Arreglo: mover `redactar()` a un único punto de paso obligado, sobre el
 `title`/`body` armados, en vez de por campo de la entrada. Los dos `it.fails`
 (B-81 y B-137) pasan a `it` solos.
 
-### B-213 · Los tres `.env` versionados no tienen ningún gate · P2
+### B-213 · Los tres `.env` versionados no tienen ningún gate — ✅ hecho (2026-09-02) — y son cuatro
+
+**Cómo quedó (D-198).** `tests/env-versionados.test.ts`, con las dos mitades que
+el ítem pedía (lista blanca de claves, y formas de secreto en los valores) y sin
+imprimir nunca un valor.
+
+**Y el título de este ítem estaba mal: son cuatro archivos, no tres.** El que
+faltaba en la cuenta es `.env.example`, y es el que más importa: es el único que
+**nombra** `FIREBASE_SERVICE_ACCOUNT`, `GOOGLE_APPLICATION_CREDENTIALS` y
+`GOOGLE_CALENDAR_ICS_PRIVADO` —las tres claves secretas del proyecto— con el `=`
+puesto y el valor vacío. O sea que el camino más corto a la fuga no es agregar una
+clave: es **rellenar una que ya está esperando** para probar algo local, y
+commitear sin mirar. Por eso el gate **descubre** los archivos con `git ls-files`
+en vez de listarlos: un quinto entra solo, que es exactamente lo que le pasó al
+cuarto.
+
+Dos decisiones más: `AIza…` **no** entra en los patrones de secreto (es la forma
+de la API key del SDK web, que se versiona a propósito, y un gate que grita por el
+caso legítimo enseña a apagarlo), y hay un aserto propio que exige que las tres
+claves secretas sigan nombradas y **vacías** en la plantilla.
+
+**Verificado a mano antes de tocar nada**, que es lo que el ítem pedía: los cuatro
+archivos solo tienen `PUBLIC_*` más `GOOGLE_CALENDAR_ID`, `GITHUB_REPO` y
+`FIRESTORE_EMULATOR_HOST`. No había nada que no debiera estar versionado.
+
+La tercera excepción (`FIRESTORE_EMULATOR_HOST`, una dirección de loopback) la
+encontró el gate en su primera corrida y entró a la lista con su motivo escrito.
+La mutación muere: cargarle a `GOOGLE_CALENDAR_ICS_PRIVADO` una URL con forma
+`private-<hex>` pone tres de los cinco asertos en rojo. El texto original queda
+abajo.
+
 
 `.gitignore` versiona `.env.development`, `.env.production` y `functions/.env`
 como excepciones deliberadas y bien argumentadas: la config del SDK web es pública
@@ -5673,7 +5836,31 @@ upgrade son tres páginas.
 `functions/` aparte: 10 moderadas, ninguna alta, todas transitivas de
 `firebase-admin`/`googleapis`.
 
-### B-215 · Tres duplicaciones chicas en producción y una en los tests · P2
+### B-215 · Tres duplicaciones chicas en producción y una en los tests · P2 — parcial (2026-09-02)
+
+**Hecha una de las tres: `MESES`** (D-200). Los doce nombres salieron a
+`src/lib/meses.ts`, con `nombreDeMes` y una guarda que exige que la lista se
+declare en un solo archivo.
+
+La copia tenía un comentario que la justificaba y **el argumento no se sostiene**,
+así que quedó escrito por qué en vez de borrado: los doce nombres no son de
+ninguno de los dos dominios, son un hecho del castellano. Lo que estaba a un typo
+de distancia es un acento corregido en un archivo y no en el otro, con las dos
+pantallas a un clic — la divergencia de B-175, exactamente.
+
+**Siguen abiertas las otras dos, y el motivo no es que no valgan:**
+
+- **El `useEffect` de carga de actividades** (`CalendarioActividades.tsx` y
+  `ListaActividades.tsx`). Toca `src/components/`, que en la tanda del 2026-09-02
+  era de otro frente. Un `useActividades(version)` lo borra y le da un solo lugar
+  al manejo de error, que hoy son dos.
+- **La adopción de `tests/fixtures/`** (7 archivos sobre 59, con cuatro firmas
+  distintas de builder). Es un cambio **ancho** sobre archivos de test que varios
+  frentes estaban tocando a la vez; migrarlo en paralelo es pedir un conflicto por
+  archivo. Vale la pena hacerlo cuando el backlog se trabaje de a un frente, y el
+  argumento del ítem sigue en pie: no falta el fixture, está escrito y no se usa.
+
+El texto original queda abajo.
 
 Salidas del barrido de duplicación del 2026-08-27 (ventanas de 8 líneas
 significativas idénticas entre archivos). Ninguna es urgente; van juntas porque se
@@ -5801,7 +5988,140 @@ línea a un texto que quien publica ya reescribe. **El costo de decidirlo tarde 
 es el código: es que el formato del texto cambie después de que alguien se
 acostumbró a él**, que es lo que el ítem original quería evitar cuando pedía
 decidirlo antes.
+### B-363 · `desSlug()` corre aguas arriba del saneador y le desafina los patrones · P2
 
+Lo encontró el `auditor-privacidad` sobre B-137, y es el **límite real** del punto
+de paso único que ese ítem instaló: con una transformación en el medio, la garantía
+sigue dependiendo de quién agregue la interpolación.
+
+`desSlug()` reemplaza `-` por espacios, y se aplica a `contexto.pantalla` y a
+`severidad` **antes** de que el saneador vea el texto. `LINK_REUNION` exige
+`https?://` seguido de `\S*?` antes del dominio, y `\S*?` no cruza un espacio;
+`MAIL` exige `@[\w-]+(?:\.[\w-]+)+`. Entonces:
+
+| Entrada | Después de `desSlug` | ¿Lo tapa el saneador? |
+|---|---|---|
+| `https://mi-org.zoom.us/j/x` | `Https://mi org.zoom.us/j/x` | **no** — se publica legible |
+| `hola@casa-brandon.example` | `Hola@casa brandon.example` | **no** — se publica legible |
+
+**El centinela del test no lo detecta**, y el motivo es la posición del guion:
+`https://zoom.us/j/CENTINELA-9` tiene el guion *después* del dominio, así que el
+prefijo sigue matcheando y el barrido pasa con la clase abierta.
+
+**Qué tan expuesto está hoy.** `severidad` está acotada **por valor** en las
+reglas (`d.severidad in ['me-bloquea','molesta','menor']`), así que por ahí no
+entra nada. `contexto.pantalla` **no**: `firestore.rules` valida el juego de claves
+del contexto (`d.contexto.keys().hasOnly([...])`) pero no sus valores. La única
+defensa es el `z.enum` del cliente, o sea el lado que no manda.
+
+**El arreglo**, y el orden importa: acotar `d.contexto.pantalla in [...]` en
+`reporteValido()`. La alternativa —aplicar `desSlug` sobre el texto ya saneado— es
+peor de lo que parece, porque el saneador corre sobre el cuerpo **entero** y
+`desSlug` sobre un campo: habría que reordenar el armado. Lo que **no** hay que
+hacer es volver a poner `redactar` por celda: rompe el invariante de D-197 y su
+guarda.
+
+### B-367 · La tabla de la red de contención tiene filas duplicadas y fusionadas por merges · P2
+
+Lo encontró el `auditor-documentacion` el 2026-09-02, auditando otra cosa. Es
+**preexistente** y no lo causó ningún cambio de esa tanda, pero está justo donde
+hay que insertar filas nuevas, así que cada frente que agrega una fila trabaja
+sobre una tabla que ya está roída.
+
+En `docs/13-agentes.md`, sección «Qué se decidió no automatizar»:
+
+| Qué | Dónde |
+|---|---|
+| Tres copias casi idénticas de la fila «color del tipo de actividad» | líneas ~347, ~349, ~352. **Solo una está al día**: la 347 tiene el agregado de B-273/D-153 y las otras dos quedaron atrás |
+| La fila «anillo de foco» **fusionada** con la de `events.json` por un `\|\|`, o sea dos filas aplastadas en una línea física sin el separador que las divide | líneas ~348, ~350, ~353. La 350 arrastra además un tercer fragmento, de la fila «afiche» |
+| Dos versiones distintas de la fila «cartelera», una de ellas fusionada con «flyer obligatorio» | líneas ~351 y ~356 |
+
+**Por qué es P2 y no P3.** El daño no es cosmético: una fila fusionada **no
+renderiza como fila**, así que la mitad de su contenido deja de leerse en la
+tabla; y de tres copias de la misma fila, dos afirman una cobertura vieja. Esa
+tabla es lo que el `auditor-trampas` y el `auditor-privacidad` consultan para no
+reportar lo que un test ya frena — o sea que una copia desactualizada les hace
+reportar de más o de menos.
+
+**Y es exactamente la clase que el repo ya tiene nombrada**: «la corrección hecha
+en un lugar y no en su gemelo» (commit `5cbb428`), más la de B-175 (un párrafo que
+se perdió de un ítem y apareció en otro durante una renumeración). Los merges de
+varios frentes en paralelo sobre una tabla de 45 filas de una línea cada una son
+el caldo de cultivo.
+
+**Qué haría falta para cerrarlo.** Desenredar la sección a mano: no se puede con
+`sed` sin criterio, porque hay que decidir cuál de las tres copias sobrevive
+(la 347) y dónde termina cada fila fusionada. Y de paso valdría un test que frene
+la reincidencia: en esa tabla, ninguna línea puede tener `||` ni empezar sin `|`,
+y ninguna celda de la primera columna puede repetirse. Eso último es barato y
+habría atajado las tres copias.
+
+### B-364 · Cuatro topes del mismo título, derivados por separado · P3
+
+Salió del `auditor-privacidad` sobre B-137, como candidato a la clase de B-88 («el
+productor y su consumidor derivan el mismo dato por separado»).
+
+| Dónde | Tope |
+|---|---|
+| `functions/reportes.js` — `.slice(0, 200)` | 200 |
+| `firestore.rules` — `d.titulo.size() <= 120` | 120 |
+| `src/lib/reporte-schema.ts` — `.max(120)` | 120 |
+| `src/components/admin/ReporteFormulario.tsx` — `maxLength={120}` | 120 |
+| el límite real de GitHub | 256 |
+
+Ninguno referencia a otro y el chequeo de la clase de B-88 no los mira. **No
+filtra** —el recorte solo puede partir un placeholder, y desde B-362 el orden
+garantiza que lo partido no sea un link— pero el día que el tope de las reglas
+suba a 300, el `.slice(0, 200)` recorta en silencio y nadie lo relaciona con ese
+cambio.
+
+Los tres 120 son el par que vale atar: son el **mismo** límite dicho en tres
+lugares (regla, schema, input). El 200 y el 256 son otra cosa —el margen que el
+saneador necesita para expandir, y el límite de la API— y atarlos sería falso.
+
+### B-365 · Una tanda de emuladores a medias se leía como «está todo» — ✅ hecho (2026-09-02) · P2
+
+Apareció probando B-219, y es una cara nueva de su **quinta** observación: el
+emulador no solo aparece y desaparece — puede aparecer **a medias**.
+
+Otro worktree levantó su propia tanda de emuladores y el proceso padre de la
+primera murió. Su hijo de Firestore quedó **huérfano y escuchando** en el 8080; el
+hub y Auth se fueron con el padre. `emuladorVivo()` le pregunta solo a Firestore,
+así que dijo «está arriba», los cuatro archivos que hacen login corrieron, y lo
+que se vio fueron cinco `beforeAll` en rojo con
+`Error while making request: connect ECONNREFUSED 127.0.0.1:9099` desde el fondo
+del SDK, sin una palabra sobre qué emulador faltaba.
+
+**Cómo quedó.** `emuladorAuthVivo()`, aparte de `emuladorVivo()` por el mismo
+motivo que `emuladorStorageVivo()` —que ya existía con el argumento escrito: «son
+dos emuladores distintos y el modo de falla que importa es el asimétrico»—. Auth
+tenía la misma exposición y no tenía la guarda. Los cuatro archivos que hacen login
+preguntan por los dos; con `EXIGIR_EMULADOR=1` el mensaje nombra el puerto, el
+`--only` que falta y la pista del huérfano.
+
+**No lo arregla B-219 y conviene que quede dicho:** el `projectId` por checkout
+separa las **bases**, no los **puertos**. «Media tanda viva» sigue siendo posible;
+lo que cambia es que se nombra en vez de salir por abajo.
+
+### B-366 · Las reglas de Storage no se pueden particionar por proyecto · P3
+
+Residual conocido de B-219, anotado en el docblock de `cargarReglasStorage`.
+
+A diferencia de Firestore —que tiene
+`/emulator/v1/projects/{p}:securityRules`— el emulador de Storage expone
+`/internal/setRules`, que es **global**: la última carga gana para todos los
+proyectos. Así que el aislamiento por `projectId` no llega hasta ahí.
+
+**Hoy no muerde**, y vale decir por qué para no sobreestimarlo: los objetos van con
+nombre único por caso (`img_test-<base36>-<n>`), nadie barre el bucket, y dos
+checkouts empujando el mismo `storage.rules` cargan lo mismo. Muerde el día que dos
+worktrees corran a la vez **con `storage.rules` distinto** — o sea, cuando alguien
+esté cambiando esas reglas, que es justo cuando el test importa.
+
+No hay arreglo dentro del emulador: sería un puerto de Storage por checkout, que es
+la candidata que D-195 descartó. Si esto llega a molestar de verdad, el camino más
+corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
+—serializa un solo archivo, no la suite.
 ## P3 — cuando sobre tiempo
 
 ### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
@@ -5937,7 +6257,19 @@ como la del listado en vez de teñir la línea entera, y el par a medir es el mi
 ya mide `contrasteCaladoDelTono` (si va calada) o `contrasteDelTono` (si va con
 borde) — no hace falta medir nada nuevo.
 
-### B-276 · La suite completa falla a veces en los tests de integración, y es el orden · P3
+### B-276 · La suite completa falla a veces en los tests de integración, y es el orden — ✅ hecho (2026-09-02, con B-219)
+
+**Cerrado por B-219 (D-195), y era la misma familia**, como este ítem sospechaba.
+Su párrafo final decía la salida correcta: «darle a cada archivo de integración su
+propio `projectId`, que es lo que aísla de verdad y de paso protege del emulador
+compartido entre worktrees». Se hizo por **checkout** y no por archivo, y el
+motivo es que la otra mitad ya estaba cubierta: `fileParallelism: false` serializa
+los archivos de una corrida. Los dos mecanismos juntos cubren los dos casos.
+
+Y lo que este ítem pedía para cerrarlo —«correr la suite en un loop hasta
+reproducirlo»— ahora es un script: `scripts/probar-concurrencia.sh --misma-base`
+lo reproduce a pedido, 6 de 6.
+
 
 Apareció al cerrar B-273: sobre unas nueve corridas de `npx vitest run
 --no-file-parallelism`, **dos fallaron** con errores del tipo «el fixture dejó de
@@ -6056,7 +6388,26 @@ hacia adelante.
 Cuando exista, `estuvoPublicada` se queda con el campo y las dos inferencias pasan
 a ser el default de lectura de los documentos anteriores.
 
-### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` · P3
+### B-202 · Dos asertos de `foco.test.ts` los satisface el `import` — ✅ hecho (2026-09-02)
+
+**Cómo quedó.** El aserto verifica que `indiceDeTecla` **se llame** y que su
+resultado se use, más el `onKeyDown` que la alimenta: sin manejador la llamada no
+ocurre nunca, así que son las dos mitades de lo que el `it` promete.
+
+Lo que a propósito **no** se hizo: apretar el aserto a la línea exacta de hoy. Eso
+volvería a ser un test de ortografía —renombrar la variable local lo rompería sin
+que el comportamiento cambie— y un test que se rompe por un renombre está mal
+escrito, no es el código el que está mal.
+
+**De los dos, quedaba uno.** La segunda instancia que este ítem nombraba
+(`toContain('SELECTOR_ENFOCABLE')` sobre `CentroAyuda.tsx`) ya no existe: el
+refactor de B-210 mudó el cableado al hook, y el aserto que quedó en su lugar es
+la lista negra invertida —ninguna capa puede nombrar `SELECTOR_ENFOCABLE` por su
+cuenta—, que un import haría **fallar** en vez de pasar.
+
+La mutación muere: reemplazar la llamada por `null` pone el `it` en rojo. Antes
+pasaba.
+
 
 Los encontró el `auditor-privacidad` en el cierre de `1.2.0`, buscando otras
 instancias de la clase que apareció ahí. `tests/foco.test.ts:97` y `:105`:
@@ -6221,6 +6572,19 @@ alguien meta red, `crypto` o una regla cuadrática en el camino del tecleo, no u
 20 % de variación de máquina.
 
 ### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa · P3
+### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-02, con B-219)
+
+**Cerrado por B-219 (D-195).** La sospecha de este ítem apuntaba a la interacción
+entre el script y «el estado que dejan los otros archivos de integración», y era
+correcta pero le faltaba el sujeto: el estado lo dejaba **otro checkout**, no otro
+archivo — por eso `fileParallelism: false` no lo tapaba, como el ítem notaba.
+
+Los tres tests son los que ejecutan `scripts/aprobar-opciones.mjs` de verdad, y el
+script resolvía el proyecto por su cuenta (`process.env.PUBLIC_FIREBASE_PROJECT_ID
+?? 'agenda-literaria'`). Ahora se le pasa por el entorno, así que el script y el
+test miran la misma base. Sin eso, el síntoma habría sido el de la cuarta
+observación de B-219: «No existe(n) en `opciones/arancel`», que parece un script
+roto y son dos bases distintas mirándose.
 
 Corriendo `npx vitest run` entero, tres tests de
 `tests/opciones.integracion.test.ts` fallaron —«aprobar dos veces no rompe nada»,
@@ -6744,7 +7108,25 @@ string vacío pasa sin haber mirado nada.
 > Este párrafo estuvo pegado por error al final de **B-175** entre la
 > renumeración B-167→B-175 y el 2026-08-27. Volvió acá.
 
-### B-174 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado · P2
+### B-174 · Los tests de reglas verifican el `firestore.rules` del checkout equivocado — ✅ hecho (2026-09-02)
+
+**Cómo quedó.** Los cuatro archivos que faltaban empujan el `firestore.rules` de
+su propio checkout con `cargarReglas()` en el `beforeAll`. Y con la base por
+checkout de B-219 **dejó de ser una mejora y pasó a ser obligatorio**: una base
+nueva arranca sin ninguna regla cargada, así que un archivo que use el SDK de
+cliente sin llamarla no está probando nada.
+
+Eso también resolvió la advertencia con la que este ítem terminaba —«corriendo dos
+suites en paralelo, la última que carga gana»—: con el proyecto particionado, la
+carga de reglas es por base. Está verificado contra el emulador, no supuesto
+(`emulador-aislado.test.ts`: se cargan reglas cerradas en la base propia y las del
+vecino siguen abiertas).
+
+`emulador-aislado.test.ts` deriva además la lista en vez de nombrar los cuatro
+archivos: **todo** archivo de integración que use el SDK de cliente tiene que
+cargarlas, así que el que se escriba mañana entra solo. El texto original queda
+abajo.
+
 
 El emulador sirve las reglas **del directorio desde el que se lo arrancó**, no las
 del checkout donde corren los tests. Con un solo repo no se nota. Con varios
@@ -6798,7 +7180,22 @@ prosa del evento público, no etiquetas de UI (el motivo, en B-76).
 > abierta** —su `it.fails('las modalidades coinciden')` sigue en rojo— y B-79
 > quedó sin su cierre. El párrafo volvió a B-79.
 
-### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` · P3
+### B-165 · `analytics-privacidad.test.ts` tiene su propia copia de `FORMATO_VERSION` — ✅ hecho (2026-09-02)
+
+**Cómo quedó.** Se importa de `@/lib/analytics-eventos` y la copia se fue.
+
+Lo que se agregó además: una guarda en la clase de B-88 que cuenta las
+declaraciones de `FORMATO_VERSION` en el repo y exige que haya **una**. Sin eso,
+la próxima copia nace sin que nada falle — es un modo de falla silencioso, porque
+el test sigue verde con el regex viejo.
+
+**Y esa guarda enseñó algo que vale para todas las de su clase:** el primer
+intento usaba `git grep`, y está mal. `git grep` solo mira el índice, así que un
+archivo nuevo **todavía sin agregar** —el estado exacto de una copia recién
+escrita— es invisible: la guarda daba verde justo en el momento en que tenía que
+hablar. Va con `grep -r` sobre el disco. La guarda de `MESES` (B-215) nació con el
+mismo error y se corrigió igual.
+
 
 La tercera copia del formato de versión está en el test de privacidad
 (`tests/analytics-privacidad.test.ts:60`), que la usa como predicado de
@@ -6816,7 +7213,18 @@ No se hizo junto con B-88 a propósito: ese cambio tenía que dejar los 11 tests
 privacidad en verde **sin tocarlos**, que es la única forma de que la garantía
 signifique algo.
 
-### B-166 · Un build sin versión estampada es indistinguible de un formato inválido · P3
+### B-166 · Un build sin versión estampada es indistinguible de un formato inválido — ✅ hecho (2026-09-02)
+
+**Cómo quedó (D-199).** `'desconocida'` es un valor propio del vocabulario
+(`SIN_VERSION_ESTAMPADA`), que es lo que este ítem proponía. Se **importa** de
+`src/lib/version.ts` en vez de escribir el literal: que el consumidor derive por su
+cuenta un valor del productor es la clase de B-88, la misma que este parámetro ya
+tenía del lado del formato.
+
+Tres asertos, que son las tres mitades: sale entero, **no** cae en la bolsa de
+`otro`, y la bolsa sigue existiendo para lo que sí es un formato ilegible. La
+mutación muere.
+
 
 `VERSION_APP` vale `'desconocida'` cuando no hay versión estampada (dev server,
 tests), y el sanitizador lo manda como `'otro'` — el mismo valor que usa para "el
@@ -7210,7 +7618,72 @@ cifras se pueden automatizar**. Tamaño, concentración y ciclos son un script;
 fan-out y prosa dependen de qué cuenta como módulo de dominio y como comentario,
 y ahí el criterio hay que escribirlo una vez. Un documento que se remide a mano
 cada cuarenta commits vuelve a quedar viejo solo.
+### B-360 · Dos asertos de `reportes.test.ts` que no podían fallar — ✅ hecho (2026-09-02) · P3
 
+Los encontró el `auditor-privacidad` sobre B-137. `tests/reportes.test.ts:129` y
+`:350` decían `expect(...).not.toContain('librosdelatiahilda')`, y ese string **no
+existe en ningún fixture** — el mail del fixture es `tia-hilda@ejemplo.com`. Las
+dos aserciones no podían fallar nunca, y leerlas daba una cobertura que no existía.
+
+La mitad «el uid no sale» sí estaba viva (`uid_tia_hilda` no matchea ningún patrón
+del saneador, así que si se interpola, aparece).
+
+**Lo que costó ver:** comparar contra el mail del fixture **tampoco sirve**.
+`redactar` tapa los mails, así que interpolar `reportadoPor.email` en el cuerpo
+deja ese aserto en verde igual. Se probó con la mutación y sobrevivió. O sea que el
+arreglo obvio —usar el valor real del fixture— habría cambiado una tautología por
+un aserto casi tan débil.
+
+**Cómo quedó:** los dos preguntan por la **forma** (que en el cuerpo no quede
+ningún mail, de nadie), que sí es falsable — muere si un mail entra por un camino
+que el saneador no cubre, y hay uno abierto: **B-363**. Y la garantía de que esos
+dos campos no están interpolados la da el barrido de B-361, no estos asertos.
+
+### B-361 · El barrido de centinelas del issue no barría los campos privados — ✅ hecho (2026-09-02) · P1
+
+Lo encontró el `auditor-privacidad` sobre B-137, y es el modo de falla más caro que
+puede tener un barrido por centinelas: **parece cobertura y no lo es**.
+
+El fixture `REPORTE` de `tests/clases-de-bug.test.ts` tenía 8 de las 13 claves que
+`reporteValido()` enumera en `firestore.rules`, y las que faltaban eran justo las
+que el §5.1 prohíbe publicar: `reportadoPor.uid`, `reportadoPor.email`, más
+`estado`, `intentos`, `github` y `error`. El `it` promete «ningún string de la
+entrada llega crudo al issue público» y no barría los strings privados del reporte.
+
+**Y hay una segunda mitad que era peor.** El `CENTINELA` del archivo es un link de
+zoom, o sea **justo una de las dos cosas que el saneador tapa**. Eso lo hace
+perfecto para verificar que el saneador corre, e **inútil** para verificar que un
+campo no está interpolado: un campo que se cuela y se sanea deja el barrido en
+verde igual que uno que no se cuela. Los dos hechos se confunden.
+
+Se comprobó por mutación: interpolar el mail del reportante en el encabezado del
+issue **sobrevive** a un aserto contra el mail del fixture.
+
+**Cómo quedó.** Las cinco claves entraron al fixture (sigue verde: ninguna está
+interpolada hoy, y ése es el punto — entran a la garantía desde ahora), la lista de
+claves se **lee de `firestore.rules`** para que una clave nueva del modelo entre
+sola, y hay un segundo barrido con `CENTINELA_CRUDO`, un valor que el saneador deja
+pasar. Ése sí muere con la mutación.
+
+### B-362 · El orden sanear→recortar del título no lo fijaba ningún test — ✅ hecho (2026-09-02) · P2
+
+Lo encontró el `auditor-privacidad` sobre B-137. El docblock de `construirIssue`
+afirma que el orden importa, y era la única parte del repo donde esa regla estaba
+escrita.
+
+**Y el recorte es alcanzable**, que es la mitad que hacía falta para que valga la
+pena: `redactar` no acorta, **expande** — «link de reunión oculto» son 24
+caracteres contra los 12 de un `http://wa.me`. Así que un título al tope que las
+reglas permiten (120) lleno de links cortos pasa de 200 al redactarse.
+
+Con el orden invertido, ese caso publicaría un `https://us02web.zoom` cortado antes
+del dominio: un prefijo que ya no matchea el patrón, o sea **medio link de reunión,
+legible, en un repo público**.
+
+**Cómo quedó.** Un caso con nueve `http://wa.me` (116 caracteres, dentro del tope
+de las reglas), con control positivo de que llega al recorte —el primer intento usó
+links **largos** y no llegaba: 106 caracteres, porque con un link largo el saneador
+**acorta**— y los dos asertos de que no sobrevive nada del link. La mutación muere.
 ## Agentes y automatización del flujo (B-115 a B-124)
 
 Lo que quedó pendiente al definir los agentes y skills de `.claude/`. El qué hay

@@ -22,16 +22,24 @@ import { fileURLToPath } from 'node:url';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { reintentarReporte } from '@/lib/reportes';
-import { cargarReglas, emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  PROJECT_ID,
+  cargarReglas,
+  emuladorAuthVivo,
+  emuladorVivo,
+  limpiarFirestore,
+} from './emulador';
 
-const vivo = await emuladorVivo();
+// B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
+// abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 const UID = 'uid_reintento_admin';
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 /** Cliente Admin: escribe saltándose las reglas, como hace la Function. */
 const adminDb = () => {
-  const app = initAdmin({ projectId: 'agenda-literaria' }, `reint-${Date.now()}-${Math.random()}`);
+  const app = initAdmin({ projectId: PROJECT_ID }, `reint-${Date.now()}-${Math.random()}`);
   return { db: getAdminFirestore(app), cerrar: () => deleteAdminApp(app) };
 };
 
@@ -69,7 +77,7 @@ const sembrarReporte = async (id: string, over: Record<string, unknown> = {}) =>
 };
 
 const tokenAdmin = async (uid: string) => {
-  const app = initAdmin({ projectId: 'agenda-literaria' }, `t-${uid}-${Date.now()}`);
+  const app = initAdmin({ projectId: PROJECT_ID }, `t-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
   try {
     await a.createUser({ uid });

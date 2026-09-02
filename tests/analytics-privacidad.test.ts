@@ -9,6 +9,7 @@ import {
   DISPOSITIVOS,
   ESTADOS_DESTINO,
   EVENTOS,
+  FORMATO_VERSION,
   FUERA_DE_VOCABULARIO,
   FUNCIONES,
   GRUPOS,
@@ -16,6 +17,7 @@ import {
   MODOS,
   MOTIVOS_FALLO,
   NOMBRES_EVENTOS,
+  SIN_VERSION_ESTAMPADA,
   avanceDelFormulario,
   clasificarFalloGuardado,
   construirEvento,
@@ -53,12 +55,25 @@ const VOCABULARIO = new Set<string>([
   ...DETALLES,
   ...GRUPOS,
   FUERA_DE_VOCABULARIO,
+  SIN_VERSION_ESTAMPADA,
   '',
 ]);
 
-/** Un valor de parámetro es admisible si es un número, o texto de vocabulario. */
-const FORMATO_VERSION = /^\d{1,3}\.\d{1,3}\.\d{1,3}(?:[-+][0-9A-Za-z.]{1,20})?$/;
-
+/**
+ * Un valor de parámetro es admisible si es un número, o texto de vocabulario.
+ *
+ * B-165 — `FORMATO_VERSION` se **importa** del código que sanea, no se copia.
+ * Acá había una tercera copia del formato, y B-88 amplió el real sin tocarla:
+ * quedó estrictamente más angosta que la que el código acepta. Eso no podía
+ * volverse una fuga —al ser más angosta, lo único que podía hacer era rechazar
+ * un valor que el código sí acepta, o sea dar una falsa alarma— pero un
+ * predicado de admisibilidad que no es el del productor no está verificando lo
+ * que dice verificar.
+ *
+ * Que el consumidor derive por su cuenta el formato del productor es la clase de
+ * B-88, y este archivo era una instancia con la red puesta al lado. La guarda
+ * contra la próxima copia está en `tests/clases-de-bug.test.ts`.
+ */
 const esAdmisible = (valor: unknown): boolean => {
   if (typeof valor === 'number') return Number.isFinite(valor);
   if (typeof valor !== 'string') return false;

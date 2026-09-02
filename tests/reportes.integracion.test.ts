@@ -1,12 +1,12 @@
 /**
  * Reglas y escritura de `/reportes/{id}` contra el emulador.
  *
- * Se saltean solos si el emulador no está. **Ojo:** el emulador sirve las
- * reglas del directorio desde el que se lo arrancó, así que hay que arrancarlo
- * en este checkout (`npm run emu`) o las reglas de `/reportes` no existen y
- * todo se deniega.
+ * Se saltean solos si el emulador no está. Las reglas que se verifican son las
+ * de **este** checkout: se empujan por la API del emulador en el `beforeAll`
+ * (B-174), así que da igual desde qué directorio se lo arrancó.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
@@ -16,14 +16,29 @@ import { db } from '@/lib/firestore-client';
 import { formAReporte } from '@/lib/reporte-schema';
 import { crearReporte } from '@/lib/reportes';
 import type { ContextoReporte, ReporteForm } from '@/types/reporte';
-import { emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  PROJECT_ID,
+  cargarReglas,
+  emuladorAuthVivo,
+  emuladorVivo,
+  limpiarFirestore,
+} from './emulador';
 
-const vivo = await emuladorVivo();
+// B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
+// abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
+
+/*
+ * B-174 — el `firestore.rules` de ESTE checkout. El docblock de arriba decía
+ * que había que arrancar el emulador en este directorio; ya no hace falta,
+ * porque las reglas se empujan desde acá.
+ */
+const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 const UID = 'uid_reportes_admin';
 
 const tokenAdmin = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: 'agenda-literaria' }, `r-${uid}-${Date.now()}`);
+  const app = initAdmin({ projectId: PROJECT_ID }, `r-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
   try {
     await a.createUser({ uid });
@@ -66,6 +81,11 @@ const documento = (uid: string, over: Record<string, unknown> = {}) => ({
 describe.skipIf(!vivo)('reportes contra el emulador', () => {
   beforeAll(async () => {
     await limpiarFirestore();
+    // B-174 / B-219 — las reglas se empujan desde este checkout, y ahora es
+    // obligatorio: la base de este working-tree arranca **sin reglas**, así que
+    // sin esta línea el SDK de cliente correría contra lo que el emulador tenga
+    // cargado por default (o sea, el `firestore.rules` de otra rama).
+    await cargarReglas(REGLAS);
     await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
   }, 30_000);
 

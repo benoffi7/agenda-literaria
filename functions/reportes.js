@@ -106,7 +106,20 @@ export const esReintentable = (status) => {
 export const estadoTrasFallo = (intento, status) =>
   esReintentable(status) && intento < MAX_INTENTOS ? 'pendiente' : 'error';
 
-const bloque = (titulo, cuerpo) => (cuerpo ? `### ${titulo}\n\n${cuerpo}\n` : '');
+/**
+ * Un bloque del cuerpo, o nada si no hay contenido.
+ *
+ * El `trim` lo hace acá y no el saneador: cuando `redactar()` se aplicaba campo
+ * por campo, era su `.trim()` el que convertía unos pasos con solo espacios en
+ * cadena vacía y hacía desaparecer el bloque. Al mover el saneador a la salida
+ * (B-137) ese efecto se habría perdido en silencio, y un `### Cómo reproducirlo`
+ * vacío en un issue público es ruido. Normalizar el formato es de acá; tapar lo
+ * que no puede salir es de `redactar`, y son dos responsabilidades distintas.
+ */
+const bloque = (titulo, cuerpo) => {
+  const texto = String(cuerpo ?? '').trim();
+  return texto ? `### ${titulo}\n\n${texto}\n` : '';
+};
 
 /**
  * Arma el issue. `actividad` ya viene filtrada por el llamador: es
@@ -117,12 +130,9 @@ const bloque = (titulo, cuerpo) => (cuerpo ? `### ${titulo}\n\n${cuerpo}\n` : ''
  */
 export const construirIssue = ({ id, reporte, actividad = null }) => {
   const tipo = reporte.tipo === 'sugerencia' ? 'sugerencia' : 'bug';
-  // `redactar` también acá: el título va al `title` del issue, que es lo primero
-  // que se ve desde internet. El formulario del panel promete que "si se cuela
-  // un mail o un link de reunión, el panel lo tapa antes de publicar" — sin esta
-  // llamada la promesa valía para la descripción y los pasos, pero no para el
-  // renglón más visible de los tres (§5.1, trampa 5).
-  const titulo = redactar(reporte.titulo) || '(sin título)';
+  // Sin sanear acá: lo hace el punto de paso obligado del `return` (B-137). Lo
+  // único que se resuelve es el reemplazo del título vacío.
+  const titulo = String(reporte.titulo ?? '').trim() || '(sin título)';
   const c = reporte.contexto ?? {};
 
   const contexto = [
@@ -136,12 +146,12 @@ export const construirIssue = ({ id, reporte, actividad = null }) => {
     // se puede diagnosticar.
     ['Zona horaria', c.zonaHoraria || '—'],
   ]
-    .map(([k, v]) => `| ${k} | ${redactar(v)} |`)
+    .map(([k, v]) => `| ${k} | ${v} |`)
     .join('\n');
 
   const referencia = reporte.actividad?.id
     ? actividad
-      ? `\`${reporte.actividad.id}\` — **${redactar(actividad.titulo)}** (\`/${actividad.slug}\`)`
+      ? `\`${reporte.actividad.id}\` — **${actividad.titulo}** (\`/${actividad.slug}\`)`
       : `\`${reporte.actividad.id}\` — sin publicar todavía, así que el título no ` +
         'se copia acá: se ve en el panel.'
     : '';
@@ -164,8 +174,8 @@ export const construirIssue = ({ id, reporte, actividad = null }) => {
 
   const cuerpo = [
     encabezado,
-    bloque(tipo === 'bug' ? 'Qué pasa' : 'La idea', redactar(reporte.descripcion)),
-    bloque('Cómo reproducirlo', redactar(reporte.pasos)),
+    bloque(tipo === 'bug' ? 'Qué pasa' : 'La idea', reporte.descripcion),
+    bloque('Cómo reproducirlo', reporte.pasos),
     bloque('Actividad referida', referencia),
     `### Contexto\n\n| | |\n|---|---|\n${contexto}\n`,
     pie,
@@ -173,9 +183,35 @@ export const construirIssue = ({ id, reporte, actividad = null }) => {
     .filter(Boolean)
     .join('\n');
 
+  /*
+   * B-137 — el saneador se aplica ACÁ, sobre la salida armada, y en ningún otro
+   * lugar de esta función.
+   *
+   * Antes iba campo por campo, en cinco lugares sobre la **entrada** (diez
+   * ejecuciones, porque uno estaba dentro del `.map` de las seis filas del
+   * cuadro de contexto). B-81 fue una instancia de eso: el `title` era el único
+   * de los tres textos libres que no pasaba por `redactar`, o sea el renglón más
+   * visible del issue. Se arregló con una línea, y la clase quedó abierta: mientras el saneador esté repartido,
+   * el campo que se agregue mañana arranca sin sanear y nadie se entera hasta que
+   * el issue ya está publicado en un repo público.
+   *
+   * Cuatro valores se colaban ya: el `id` del reporte, `actividad.slug`,
+   * `reporte.actividad.id` y `severidad`. Ninguno filtraba nada —son ids o enums
+   * que `reporteValido()` acota en las reglas, y no pueden traer un link— pero la
+   * próxima interpolación no tiene por qué serlo.
+   *
+   * Con un solo punto de paso, la garantía deja de depender de que quien agregue
+   * una interpolación se acuerde: el `title` y el `body` son los dos únicos
+   * caminos hacia GitHub y los dos pasan por el saneador. `tests/clases-de-bug.test.ts`
+   * lo sostiene desde los dos lados — un centinela en cada string de la entrada,
+   * y un tope de dos aplicaciones de `redactar` en el cuerpo de esta función.
+   *
+   * El orden importa: se sanea y DESPUÉS se recorta a 200. Al revés, el recorte
+   * podría partir un link justo donde el patrón deja de reconocerlo.
+   */
   return {
-    title: `[${tipo}] ${titulo}`.slice(0, 200),
-    body: cuerpo,
+    title: redactar(`[${tipo}] ${titulo}`).slice(0, 200),
+    body: redactar(cuerpo),
     // GitHub crea las etiquetas que no existan al crear el issue, pero conviene
     // tenerlas creadas antes para que queden con color y descripción.
     labels: ['reporte-panel', tipo],

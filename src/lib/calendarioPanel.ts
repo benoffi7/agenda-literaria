@@ -30,6 +30,7 @@
  * fecha.
  */
 import { TIMEZONE, debeExistir, numeroDeEncuentro } from '@calendario';
+import { nombreDeMes } from '@/lib/meses';
 import { instanteDeTimestamp as instante } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, Estado, Sesion } from '@/types/actividad';
 
@@ -83,25 +84,7 @@ export const horaLegible = (instante: Date): string =>
 export const fechaHoraLegible = (instante: Date): string =>
   `${diaLegible(claveDia(instante))} · ${horaLegible(instante)}`;
 
-/**
- * Nombres de los meses. Duplicados a propósito respecto de `novedades.ts`: ahí
- * son contenido de una lista de novedades y acá son la navegación del
- * calendario; atar los dos módulos por una constante de texto no compra nada.
- */
-const MESES = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
+
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
@@ -111,7 +94,7 @@ export const INICIALES_SEMANA = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 /** `'2026-08'` → `'agosto de 2026'`. */
 export const nombreMes = (mes: string): string => {
   const [anio, numero] = mes.split('-');
-  const nombre = MESES[Number(numero) - 1];
+  const nombre = nombreDeMes(numero!);
   return nombre && anio ? `${nombre} de ${anio}` : mes;
 };
 
@@ -143,7 +126,7 @@ const diaSemana = (dia: string): number => {
 /** `'lunes 24 de agosto'` — el encabezado de un día en la vista agenda. */
 export const diaLegible = (dia: string): string => {
   const [, mes, numero] = dia.split('-');
-  const nombre = MESES[Number(mes) - 1];
+  const nombre = nombreDeMes(mes!);
   if (!nombre || !numero) return dia;
   return `${DIAS_SEMANA[diaSemana(dia)]} ${Number(numero)} de ${nombre}`;
 };

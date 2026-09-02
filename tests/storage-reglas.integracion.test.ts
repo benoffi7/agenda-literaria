@@ -13,7 +13,7 @@ import {
 import { app, auth } from '@/lib/firebase-client';
 import { MAXIMO_BYTES } from '@/lib/imagenes';
 import { rutaDeImagen } from '@/lib/imagenes-archivo';
-import { cargarReglasStorage, emuladorStorageVivo } from './emulador';
+import { PROJECT_ID, cargarReglasStorage, emuladorStorageVivo } from './emulador';
 
 /**
  * `storage.rules` — la mitad de DEC-7b que el schema no puede dar.
@@ -36,7 +36,7 @@ const UID = 'uid_test_storage';
 const BUCKET = 'agenda-literaria.firebasestorage.app';
 
 const tokenPara = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: 'agenda-literaria' }, `s-${uid}-${Date.now()}`);
+  const app = initAdmin({ projectId: PROJECT_ID }, `s-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
   try {
     await a.createUser({ uid });

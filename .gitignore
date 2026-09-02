@@ -12,6 +12,11 @@ ui-debug.log
 # .env.production y .env.development SÍ están versionados: la config del SDK
 # web es pública por diseño (viaja en el bundle). Lo que no se versiona es
 # cualquier archivo con la service account key.
+#
+# B-213 — esa excepción ya no depende de la memoria: `tests/env-versionados.test.ts`
+# recorre TODOS los `.env` del índice de git (los descubre, no los lista) y exige
+# que cada clave sea `PUBLIC_*`, una excepción nombrada o esté vacía, y que
+# ningún valor tenga forma de secreto. Nunca imprime un valor.
 .env
 .env.local
 .env.*.local

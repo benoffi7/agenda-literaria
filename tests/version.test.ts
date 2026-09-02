@@ -12,7 +12,12 @@ import {
   marcarCambiosSinGuardar,
   observarCambiosSinGuardar,
 } from '@/lib/formulario-sucio';
-import { FORMATO_VERSION, construirEvento } from '@/lib/analytics-eventos';
+import {
+  FORMATO_VERSION,
+  FUERA_DE_VOCABULARIO,
+  SIN_VERSION_ESTAMPADA,
+  construirEvento,
+} from '@/lib/analytics-eventos';
 import {
   ENTRADAS_DE_BUILD,
   componerVersion,
@@ -312,6 +317,36 @@ describe('el formato de versión que produce el build es el que la analítica ac
 
   it('`versionBase` sale del package.json, que es la parte que mueve una persona', () => {
     expect(versionBase()).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('B-166: «no hay versión estampada» es su propio valor, no la bolsa de `otro`', () => {
+    /*
+     * `VERSION_APP` vale `'desconocida'` en un dev server y en los tests, y el
+     * sanitizador lo mandaba como `'otro'` — el mismo valor con el que reporta
+     * «este formato no lo reconozco».
+     *
+     * Los dos hechos son distintos y el segundo, después de B-88, **no debería
+     * ocurrir nunca**: un `version: otro` con volumen quiere decir que el build
+     * estrenó una forma que el consumidor no acepta, o sea que es una alarma. Con
+     * los dos hechos compartiendo valor, esa alarma no se podía distinguir del
+     * ruido de dev, y era la única cosa útil que este parámetro podía decir.
+     *
+     * Los tres asertos son las tres mitades del asunto: sale entero, NO cae en la
+     * bolsa, y la bolsa sigue existiendo para lo que sí es un formato ilegible.
+     */
+    expect(medida(VERSION_DESCONOCIDA)).toBe(VERSION_DESCONOCIDA);
+    expect(medida(VERSION_DESCONOCIDA)).not.toBe(FUERA_DE_VOCABULARIO);
+    expect(medida('1.0.1 con texto libre')).toBe(FUERA_DE_VOCABULARIO);
+  });
+
+  it('y el valor lo declara el productor de la versión, no la analítica', () => {
+    /*
+     * La clase de B-88 otra vez, del lado de un literal en vez de un formato:
+     * si la analítica escribiera `'desconocida'` por su cuenta, el día que
+     * `src/lib/version.ts` cambiara el texto los eventos empezarían a viajar como
+     * `'otro'` sin que nada se ponga rojo. Por eso se importa.
+     */
+    expect(SIN_VERSION_ESTAMPADA).toBe(VERSION_DESCONOCIDA);
   });
 
   it('aceptar el guion no abrió la puerta al texto libre', () => {
