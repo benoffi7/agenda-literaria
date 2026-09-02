@@ -60,7 +60,7 @@ Van en **todos** los eventos.
 |---|---|---|
 | `dispositivo` | `mobile` · `tablet` · `escritorio` | La mitad del análisis. Se deriva del ancho y de `pointer: coarse`, no del user agent |
 | `ancho` | `xs` (<400) · `sm` (<768) · `md` (<1024) · `lg` | Los cortes del layout. El ancho exacto no aporta y es una huella |
-| `version` | `1.0.1+5e2cb50` · `1.0.1+5e2cb50-sucio.20260821-2124` · `1.0.1+sin-git.20260821-2124` | Atribuir un pico a un deploy. Formato verificado contra el productor; cualquier otra cosa viaja como `otro` |
+| `version` | `1.0.1+5e2cb50` · `1.0.1+5e2cb50-sucio.20260821-2124` · `1.0.1+sin-git.20260821-2124` · `desconocida` | Atribuir un pico a un deploy. Formato verificado contra el productor; cualquier otra cosa viaja como `otro` |
 
 **Las tres formas de `version` son las tres que el build puede estampar** y las
 tres viajan enteras (B-88 · D-98). El sufijo `-sucio.` avisa que lo publicado no
@@ -73,6 +73,24 @@ otro en el navegador— los ata `tests/version.test.ts`: recorre el dominio
 completo de entradas de un build y mete cada salida en el sanitizador real. En
 producción no se ve ninguna de las dos con sufijo de tiempo: el workflow de
 deploy falla si la versión del build sale `-sucio` o `sin-git`.
+
+**Hay un cuarto valor, `desconocida`, y tener el suyo propio es el punto**
+(B-166 · D-199). Es lo que vale `VERSION_APP` cuando el build no estampó nada —el
+dev server, los tests— y hasta el 2026-09-02 el sanitizador lo mandaba como
+`otro`: **el mismo valor con el que reporta «este formato no lo reconozco»**.
+
+Después de B-88 el segundo caso no debería ocurrir nunca, así que un `version:
+otro` con volumen **es una alarma**: quiere decir que el build estrenó una forma
+que el consumidor no acepta. Compartiendo valor, esa alarma no se podía
+distinguir del ruido de dev, y era lo único útil que este parámetro podía decir.
+
+En producción no debería aparecer ninguno de los dos: en dev no se mide
+(`PUBLIC_USE_EMULATORS` es uno de los tres portones de `debeMedir`). Si aparece
+`desconocida` con volumen, lo que hay que mirar es el estampado del build, no el
+vocabulario. El valor lo declara `src/lib/version.ts` y la analítica lo
+**importa** en vez de escribir el literal: que el consumidor derive por su cuenta
+un valor del productor es la clase de B-88, la misma que este parámetro ya
+tenía.
 
 ---
 

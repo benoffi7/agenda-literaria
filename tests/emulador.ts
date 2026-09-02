@@ -215,7 +215,7 @@ export const emuladorStorageVivo = async (): Promise<boolean> => {
  * desde el que se lo arrancó, y un test podría dar verde habiendo probado las
  * reglas de otra rama.
  *
- * **Residual conocido (B-360).** A diferencia de Firestore, el emulador de
+ * **Residual conocido (B-366).** A diferencia de Firestore, el emulador de
  * Storage no tiene endpoint de reglas por proyecto: `/internal/setRules` es
  * global y la última carga gana para todos. Así que el aislamiento por
  * `projectId` de B-219 **no llega hasta acá**. Hoy no muerde —los objetos van

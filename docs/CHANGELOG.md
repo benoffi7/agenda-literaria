@@ -1,5 +1,229 @@
 # Changelog
 
+## 2026-09-02 · la deuda de tests y de infraestructura de desarrollo
+
+Nueve cambios que no se ven en el sitio y hacen que lo demás sea confiable. El
+primero es el que más vale.
+
+### Una base de emulador por checkout — B-219, B-276, B-169, B-174 (D-195)
+
+**El flaky que mordió cinco veces en dos días, cerrado, y la reproducción
+versionada.** Los tests de integración fallaban una de cada N corridas, con cinco
+observaciones independientes desde tres worktrees y ninguna reproducible a
+voluntad. La causa es que el emulador es estado compartido de la **máquina** y no
+del checkout: escucha en `127.0.0.1:8080`, le pega cualquier working-tree, y todo
+archivo de integración empieza por `limpiarFirestore()`, que borra la base
+entera. Dos corridas concurrentes se vaciaban el fixture entre sí a mitad de un
+`it`.
+
+**Lo primero no fue el arreglo: fue dejar de adivinar.**
+`scripts/probar-concurrencia.sh` corre dos suites de integración a la vez y con
+`--misma-base` reproduce la falla **6 de 6 veces** (2 a 10 tests rojos por
+corrida, distintos cada vez, con los mensajes exactos de las cinco
+observaciones). Sin la bandera, las mismas seis corridas dan verde. Un arreglo que
+no se puede mutar no se sabe si arregló, y eso es lo que dejó este ítem abierto
+una semana.
+
+El arreglo es un `projectId` por working-tree, derivado de la ruta del checkout.
+Se eligió sobre la otra candidata —un puerto por worktree— porque el puerto
+obliga a hacer configurable el host del emulador en **código de producción**
+(`firestore-client.ts` y `firebase-client.ts` lo tienen escrito) y a coordinar
+cuatro puertos por checkout; el `projectId` no toca nada de producción, porque la
+API REST del emulador ya está parametrizada por proyecto en las tres operaciones
+que importan.
+
+**La objeción que el ítem anotaba era falsa, y se verificó en vez de suponerse.**
+Decía «choca con `singleProjectMode: true`». No choca: con el emulador levantado
+con `--single_project_mode true` se cargaron reglas para dos projectIds
+inventados, se escribió en cada uno, se borró **uno** entero y el otro siguió ahí
+—200 contra 404—. El modo de proyecto único **avisa; no aísla ni impide**. Eso
+quedó fijado en `tests/emulador-aislado.test.ts`, no escrito en un comentario:
+es la premisa de la que depende todo el resto.
+
+**Y probando el arreglo apareció el mismo bug un nivel más abajo.** Dos tests
+tenían un proyecto **auxiliar** con nombre literal —`'trampa-7-mecanismo'`, que ya
+estaba en el repo, y el vecino del test nuevo—. Las bases principales quedaban
+separadas y las auxiliares no, así que dos corridas concurrentes se pisaban igual.
+Se resolvió con `proyectoAparte()`, y hay un aserto que recorre las URLs de la API
+del emulador en todo `tests/` y exige que **cualquier** projectId derive de
+`PROJECT_ID`.
+
+De arrastre quedaron cerrados **B-276** (la misma familia) y **B-169** (los tres
+tests que ejecutan `aprobar-opciones.mjs` de verdad: el script resolvía el
+proyecto por su cuenta, ahora se le pasa por el entorno).
+
+Y **B-174**, que dejó de ser una mejora para volverse obligatorio: una base nueva
+arranca **sin reglas**, así que los cuatro archivos que faltaban ahora empujan el
+`firestore.rules` de su propio checkout. Eso también desactivó la advertencia con
+la que ese ítem terminaba —«corriendo dos suites en paralelo, la última que carga
+gana»—, y está verificado contra el emulador: se cargan reglas cerradas en la base
+propia y las del vecino siguen abiertas.
+
+**Lo que NO resuelve, dicho explícito.** No separa los **puertos** (de ahí salió
+B-365), `fileParallelism: false` se queda porque particiona por checkout y no por
+archivo, y las reglas de **Storage** no se pueden particionar (B-366).
+
+**Efecto lateral bienvenido:** `npm run dev` y `npm run seed` siguen en
+`agenda-literaria`, así que los datos que uno carga a mano en el panel local ya no
+los borra ninguna corrida de tests.
+
+### Una tanda de emuladores a medias — B-365
+
+Salió probando lo anterior, y es una cara nueva de la quinta observación de
+B-219: el emulador no solo aparece y desaparece — puede aparecer **a medias**.
+
+Otro worktree levantó su tanda y el proceso padre de la primera murió: su hijo de
+Firestore quedó **huérfano y escuchando** en el 8080, mientras el hub y Auth se
+fueron con el padre. `emuladorVivo()` le pregunta solo a Firestore, así que dijo
+«está arriba», los cuatro archivos que hacen login corrieron, y lo que se vio
+fueron cinco `beforeAll` en rojo con un `ECONNREFUSED 127.0.0.1:9099` desde el
+fondo del SDK, sin una palabra sobre qué emulador faltaba.
+
+`emuladorAuthVivo()` va aparte por el mismo motivo que `emuladorStorageVivo()`,
+que ya existía con el argumento escrito: «son dos emuladores distintos y el modo
+de falla que importa es el asimétrico». Auth tenía la misma exposición y no tenía
+la guarda.
+
+### La decisión de plomería del gate sale del gate — B-180 (D-196)
+
+El paso 3 de `verificar-todo.sh` decide entre usar los emuladores que están y
+levantar unos efímeros, y era un `if` en bash sin test que desde B-217 decide
+**dos** ramas. Salió a `scripts/emuladores-arriba.sh`, por el mismo argumento que
+sacó `que-deployar.sh` del YAML: una decisión que no se puede probar se prueba en
+producción, y acá «producción» es el momento de pushear — donde el modo de falla
+es un gate que corta por su propia plomería, lo cual enseña a saltearlo.
+
+Se prueba con un servidor HTTP de dos líneas apuntado por
+`FIREBASE_EMULATOR_HUB`. Dos detalles que valen: hay un aserto de que el gate
+**consuma** el script y no tenga su propia copia —extraer la decisión y dejar la
+copia adentro es peor que no extraerla—, y el caso del 503 es el que hace que el
+`-f` de `curl -sf` signifique algo (sin él, cambiarlo por `curl -s` pasa los otros
+dos tests).
+
+**Y ojo con `execFileSync` en un test así**, que costó un rato: el servidor de
+mentira vive en el mismo proceso, así que una llamada sincrónica bloquea el event
+loop, el servidor no llega a contestar y el caso «arriba» da `false`. El test
+mediría el bloqueo y no la decisión.
+
+### Un gate para los `.env` versionados — B-213 (D-198)
+
+Versionar algunos `.env` es una excepción deliberada y bien argumentada, pero la
+única defensa era la memoria, y es la puerta que publica de la forma más
+irreversible que hay: un commit a un repo público. Todas las otras puertas del
+proyecto ya tenían gate automático; ésta no.
+
+`tests/env-versionados.test.ts` exige que toda clave sea `PUBLIC_*`, una excepción
+nombrada o esté vacía, y que ningún **valor** tenga forma de secreto. **Nunca
+imprime un valor**: un test que falla mostrando el secreto lo copia al log de CI,
+que también es público.
+
+**Dos cosas que salieron de escribirlo.** El ítem decía «los tres `.env`
+versionados» y **son cuatro**: el que faltaba en la cuenta es `.env.example`, y es
+el que más importa, porque es el único que **nombra** las tres claves secretas del
+proyecto con el `=` puesto y el valor vacío — el camino corto a la fuga no es
+agregar una clave, es rellenar una que ya está esperando. Por eso el gate
+descubre los archivos con `git ls-files` en vez de listarlos: un quinto entra
+solo, que es exactamente lo que le pasó al cuarto. Y `AIza…` **no** está en los
+patrones de secreto a propósito: es la forma de la API key del SDK web, que se
+versiona deliberadamente, y un gate que grita por el caso legítimo enseña a
+apagarlo.
+
+Verificado a mano antes de tocar nada: los cuatro archivos solo tienen `PUBLIC_*`
+más `GOOGLE_CALENDAR_ID`, `GITHUB_REPO` y `FIRESTORE_EMULATOR_HOST`. No había nada
+que no debiera estar versionado.
+
+### El saneador del issue va en un punto de paso obligado — B-137 (D-197)
+
+`construirIssue` aplicaba `redactar()` campo por campo, en cinco lugares sobre la
+entrada. B-81 fue una instancia de eso y se arregló con una línea; la clase quedó
+abierta. Ahora se sanea una vez sobre el `title` y el `body` ya armados.
+
+**El `auditor-privacidad` encontró tres cosas sobre el propio arreglo**, y la
+segunda es la que más enseña:
+
+1. **El barrido no barría los campos privados del reporte** (B-361): el fixture
+   tenía 8 de las 13 claves de `reporteValido()`, y las que faltaban eran las que
+   el §5.1 prohíbe publicar. La lista ahora se **lee de `firestore.rules`**.
+2. **El centinela no alcanzaba para esos campos.** Es un link de zoom, o sea justo
+   lo que el saneador tapa, así que un campo que se cuela y se sanea deja el
+   barrido en verde igual que uno que no se cuela: los dos hechos se confunden.
+   **Se comprobó por mutación** — interpolar el mail del reportante en el
+   encabezado **sobrevive** a un aserto contra el mail del fixture. Hay un segundo
+   barrido con un centinela que el saneador deja pasar.
+3. **El orden sanear→recortar no lo fijaba ningún test** (B-362), y el recorte es
+   alcanzable porque `redactar` no acorta, **expande**: «link de reunión oculto»
+   son 24 caracteres contra los 12 de un `http://wa.me`. Con el orden invertido,
+   un título al tope publicaría medio link de reunión, legible.
+
+Además **B-360**: dos asertos de `reportes.test.ts` que no podían fallar, porque
+comparaban contra un literal que no está en ningún fixture. Y el arreglo obvio
+—usar el mail real del fixture— **tampoco sirve**, por el motivo del punto 2.
+Ahora preguntan por la forma.
+
+Quedan abiertos **B-363** (el límite real del punto de paso único: `desSlug` corre
+aguas arriba y le mete un espacio al medio del patrón) y **B-364**.
+
+### Tres copias que dejaron de ser copias — B-165, B-215 (D-200), B-166 (D-199)
+
+- **`FORMATO_VERSION`** se importa en el test de privacidad en vez de copiarse
+  (B-165). B-88 había ampliado el formato real sin tocar esa copia, así que el
+  predicado de admisibilidad era más angosto que el del código.
+- **Los doce nombres de los meses** salieron a `src/lib/meses.ts` (B-215 parcial).
+  La copia tenía un comentario que la justificaba y el argumento no se sostiene:
+  los nombres no son de ninguno de los dos dominios, son un hecho del castellano.
+  Queda escrito por qué, en vez de borrado.
+- **`'desconocida'`** es un valor propio del vocabulario de analítica y ya no cae
+  en la bolsa de `'otro'` (B-166). Después de B-88 un `version: otro` con volumen
+  **es una alarma**, y compartiendo valor no se podía distinguir del ruido de dev:
+  era lo único útil que ese parámetro podía decir.
+
+**Y las dos guardas nuevas enseñaron algo que vale para todas las de su clase:**
+el primer intento usó `git grep`, y está mal. `git grep` solo mira el índice, así
+que un archivo nuevo **todavía sin agregar** —el estado exacto de una copia recién
+escrita— es invisible, y la guarda daba verde justo en el momento en que tenía que
+hablar. Van con `grep -r` sobre el disco.
+
+### Un aserto que verificaba el `import` — B-202
+
+`tests/foco.test.ts` pedía que `indiceDeTecla` **apareciera** en
+`MenuAcciones.tsx`, y eso lo satisfacía el import de la línea 3: borrar la llamada
+dejaba el test verde mientras el `it` prometía «navega con teclas». Ahora verifica
+que se llame y que el resultado se use.
+
+Lo que a propósito **no** se hizo: apretar el aserto a la línea exacta de hoy. Eso
+volvería a ser un test de ortografía —renombrar la variable local lo rompería sin
+que el comportamiento cambie— y un test que se rompe por un renombre está mal
+escrito, no es el código el que está mal.
+
+De las dos instancias que el ítem nombraba quedaba una: la segunda ya no existe
+desde el refactor de B-210.
+
+### Cómo se verificó
+
+- **Dos corridas concurrentes**, tres rondas: verde en las seis. Contra **6 de 6
+  rojas** con `--misma-base`, que es la mutación del arreglo.
+- **La suite completa tres veces**: 2.208 tests en 97 archivos, idéntico en las
+  tres (2.206 más los 2 de Storage, que se saltean si ese emulador no está), **con cinco frentes más trabajando contra el mismo emulador** — que es la
+  condición exacta que disparaba el bug.
+- **Once mutaciones**, una por guarda nueva, y todas mueren: reintroducir un
+  `redactar` por campo, sacarlo de la salida, interpolar el mail del reportante,
+  invertir el orden sanear/recortar, quitar una clave del fixture del reporte,
+  cargar un secreto en `.env.example`, borrar la llamada a `indiceDeTecla`, quitar
+  el caso de `'desconocida'`, reintroducir una copia de `FORMATO_VERSION`, agregar
+  una segunda lista de meses, y —la más importante— apagar el aislamiento del
+  emulador. La única que **sobrevivió** está anotada arriba, y es la que cambió el
+  diseño del test: comparar contra el mail del fixture no verifica nada porque el
+  saneador lo tapa.
+- `npm run build` verde.
+
+**Lo que no se hizo, y por qué.** De **B-215** quedan abiertas dos de las tres
+duplicaciones: el `useEffect` de carga toca `src/components/`, que era de otro
+frente, y la adopción de `tests/fixtures/` es un cambio ancho sobre archivos que
+varios frentes estaban tocando a la vez. De **B-08** (sin tests de componentes) no
+se hizo nada de código: agregar una librería de render es una decisión de
+arquitectura y una dependencia nueva, así que va con argumento y a decisión del
+dueño — está en el ítem del BACKLOG.
+
 ## 2026-09-02 · fuera la entrada de /contacto
 
 **Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**

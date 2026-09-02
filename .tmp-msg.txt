@@ -1,0 +1,72 @@
+doc: cierre de los nueve ítems de tests e infraestructura
+
+La regla de proceso del `CLAUDE.md`: un cambio no está terminado hasta que la
+documentación lo refleja. Nueve commits de tests, scripts y gates, cerrados acá.
+
+**Qué se tocó, y por qué cada uno:**
+
+- `docs/CHANGELOG.md` — la entrada del día, con los nueve cambios, las once
+  mutaciones y la única que **sobrevivió** (comparar contra el mail del fixture
+  no verifica nada porque el saneador lo tapa: cambió el diseño del test).
+- `docs/BACKLOG.md` — diez ítems a ✅ hecho (B-219, B-276, B-169, B-174, B-180,
+  B-213, B-202, B-137, B-165, B-166), B-215 marcado **parcial** con el motivo de
+  lo que queda, y ocho nuevos: B-360 a B-362 cerrados, B-363, B-364, B-366 y
+  B-367 abiertos, B-365 cerrado. **No se borró ningún texto original**: cada
+  cierre va arriba del suyo.
+- `docs/06-decisiones.md` — **D-195 a D-200**. La que más importa es D-195, con
+  la tabla de las dos candidatas para B-219 y por qué el `projectId` le gana al
+  puerto. Más una nota de hueco de numeración (D-169 a D-194 están reservados
+  por otros frentes), porque la ausencia de una `D-xx` intermedia se lee como
+  «acá había algo y se borró» — la misma sospecha que el BACKLOG ya tuvo que
+  desactivar con su nota de B-297 a B-299.
+- `docs/07-seguridad.md` — el punto de paso único del saneador y qué **no**
+  garantiza (los dos campos que protege la enumeración y no el filtro), el orden
+  sanear→recortar, el camino que queda abierto (B-363), y el gate de los `.env`.
+- `docs/08-operacion.md` — sección nueva «Cada checkout tiene su propia base en
+  el emulador», los tres scripts nuevos en la tabla de comandos, y tres filas de
+  problemas conocidos. Una de las que ya estaba **afirmaba algo que dejó de ser
+  cierto** —«el emulador se arrancó en otro checkout y sirve otras reglas»— y
+  quedó tachada con la nota de por qué ya no puede ser eso (B-174).
+- `docs/09-analitica.md` — el cuarto valor de `version` y por qué tener el suyo
+  propio es el punto.
+- `docs/10-salud-del-codigo.md` — la lista de «lo que quedó chico» tenía seis
+  ítems y tres se cerraron.
+- `docs/13-agentes.md` — **siete filas nuevas** en la tabla de la red de
+  contención, cada una con qué frena y qué no.
+- `.claude/agents/auditor-privacidad.md` y `.claude/agents/auditor-trampas.md` —
+  dos filas que **afirmaban una cobertura que dejó de ser cierta**. La de
+  trampas decía «no hay red» para el saneador del issue, y ahora hay tres
+  asertos. La de privacidad daba por hueco lo que B-361 cerró — y en su lugar
+  quedó el hueco que esa misma auditoría destapó, que sí es criterio: **si el
+  centinela puede distinguir «no se cuela» de «se cuela y se tapa»**.
+
+**Los conteos se contaron**, como pide el skill: 2.208 tests en 97 archivos, en
+esta corrida. (2.206 más los 2 de Storage, que se saltean si ese emulador no
+está — así se explica la diferencia con la cifra de las tres corridas de
+estabilidad.)
+
+**Lo que NO se tocó, con motivo:** `src/lib/novedades.ts` (nada de esto se nota
+cargando una actividad; meterlo ahí es la entrada inútil que hace que esa lista
+se deje de leer), `src/lib/ayuda.ts` (no hay sección nueva del panel),
+`04-funcionalidades.md` (nada visible cambió), `03-modelo-de-datos.md` (ningún
+campo ni colección) y `02-infraestructura.md` (B-213 es un gate de CI, no infra).
+
+**Y un ítem que se relevó sin implementar: B-08.** Agregar una librería de render
+es una decisión de arquitectura y una dependencia nueva, así que va con argumento
+y a decisión del dueño. El hallazgo que cambia la respuesta está en el ítem: de
+las cuatro cosas que pide, **jsdom solo puede verificar dos** —el placeholder que
+se veía como opción elegida es apariencia y el scroll propio necesita layout, y
+jsdom no hace ninguno de los dos—. La recomendación queda angosta: vale para el
+cableado de las capas modales y el menú, donde hoy la única red es un grep al
+fuente y esa técnica ya dio dos falsos verdes (B-202 es uno).
+
+El `auditor-documentacion` corrió sobre los nueve commits y sus nueve hallazgos
+están aplicados, incluida una colisión de numeración que había cometido yo
+—`B-360` usado para dos cosas distintas—, resuelta renumerando el residual de
+Storage a **B-366**. El único que queda abierto es **B-367**, que es daño
+preexistente de merges en la tabla de `13-agentes.md` y necesita criterio humano
+para desenredar.
+
+Verificación: 2.208 tests en verde, `tsc --noEmit` limpio, `npm run build` verde.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>

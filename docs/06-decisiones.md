@@ -1898,7 +1898,9 @@ duplicada (B-05). Ya había pasado: `/opciones/tags` tiene `narrativa="narrativa
 **Lo decidido:** `etiquetaPresentable` —trim, colapsar espacios internos y
 **primera letra en mayúscula, nada más**— aplicada en `upsertOpcion`, que es el
 punto de paso obligado de toda creación. No en cada componente: es la lección de
-B-81, el saneador va en la salida y no campo por campo.
+B-81, el saneador va en la salida y no campo por campo. (Y desde **B-137** /
+D-197 esa lección está aplicada también donde nació: `construirIssue` sanea el
+`title` y el `body` ya armados, no los cinco campos de la entrada.)
 
 **Solo la primera letra**, y es la parte que importa:
 
@@ -5518,3 +5520,261 @@ markup nuevo solo.
 
 Las 18 mutaciones con las que se validaron esos asertos están en el CHANGELOG del
 2026-09-02.
+
+---
+
+> **Hueco de numeración: D-169 a D-194 están reservados.**
+> El backlog de septiembre se reparte **entre worktrees en paralelo**, y a cada
+> frente se le asigna un rango de números para que dos no escriban la misma
+> `D-xx` sobre la misma línea. Los que faltan no se perdieron ni se descartaron:
+> los está usando otro frente, o quedaron sin usar cuando su tanda cerró con
+> menos decisiones que números asignados.
+>
+> Se anota porque la ausencia de una `D-xx` intermedia se lee como «acá había
+> algo y se borró», que es justo la sospecha que `docs/BACKLOG.md` ya tuvo que
+> desactivar con su propia nota de hueco (B-297 a B-299).
+
+## D-195 · Una base de emulador por checkout, no un puerto por checkout
+
+**El problema.** El emulador de Firestore es estado compartido de la **máquina**,
+no del checkout: escucha en `127.0.0.1:8080` y le pega cualquier working-tree.
+`src/lib/firestore-client.ts` tiene el host escrito
+(`connectFirestoreEmulator(_db, '127.0.0.1', 8080)`) y `vitest.config.ts` caía al
+`?? '127.0.0.1:8080'` cuando la variable no venía exportada. Como **todo** archivo
+de integración empieza por `limpiarFirestore()` —un `DELETE` sobre la base
+entera— dos corridas concurrentes se vaciaban el fixture entre sí a mitad de un
+`it`.
+
+Cinco observaciones independientes de eso, de tres worktrees y dos días, están en
+B-219. Lo que las hacía caras no era la falla sino que **no se reproducía**: un
+rojo que aparece una de cada N corridas enseña a re-correr en vez de mirar.
+
+**Lo primero fue dejar de adivinar.** `scripts/probar-concurrencia.sh` corre dos
+suites de integración a la vez y reproduce la falla **6 de 6 veces** con
+`--misma-base` (2 a 10 tests rojos por corrida, distintos cada vez, con los
+mensajes de siempre: «el fixture dejó de tener "taller" como base», «No existe(n)
+en `opciones/arancel`»). Recién con eso el arreglo pasó a ser verificable — y
+mutable, que es la mitad que faltaba.
+
+### Las dos candidatas
+
+| | Un **puerto** de emulador por worktree | Un **`projectId`** por worktree |
+|---|---|---|
+| Qué hay que tocar | el host del emulador tiene que volverse configurable en **código de producción** (`firestore-client.ts`, `firebase-client.ts`), más coordinar cuatro puertos por checkout (auth, firestore, storage, hub) y un `firebase.json` por checkout | nada de producción: la API REST del emulador ya está parametrizada por proyecto en las tres operaciones que importan — el borrado, la carga de reglas y los documentos |
+| Costo en recursos | una JVM por worktree (el emulador de Firestore son ~300 MB) | una |
+| Qué aísla | bases **y** puertos | bases |
+| Riesgo | cambiar el panel para arreglar los tests | ninguno visible |
+
+**Lo decidido: el `projectId`.** Es más barato, no toca producción, y el argumento
+de fondo es que el problema es de **datos compartidos**, no de puertos
+compartidos: dos suites pueden convivir en un puerto sin molestarse si no se
+tocan los documentos.
+
+**La objeción que B-219 anotaba era falsa, y se verificó en vez de suponerse.**
+Decía «choca con `singleProjectMode: true` de `firebase.json`, que habría que
+apagar». No choca: con el emulador levantado por el checkout principal (o sea con
+`--single_project_mode true` en su línea de comandos) se cargaron reglas para dos
+projectIds inventados, se escribió un documento en cada uno, se borró **uno**
+entero y el documento del otro siguió ahí — 200 contra 404. El modo de proyecto
+único **avisa; no aísla ni impide**. Eso quedó fijado en
+`tests/emulador-aislado.test.ts` en vez de escrito en un comentario, porque es la
+premisa de la que depende todo el resto.
+
+### La huella sale de la ruta, y no de un azar
+
+Tiene que ser **estable entre corridas del mismo checkout**: el emulador persiste
+con `--export-on-exit`, así que un projectId nuevo por corrida dejaría una base
+huérfana por vez. Y tiene que ser **distinta entre checkouts sin que nadie
+configure nada**, porque el modo de falla apareció en worktrees creados al vuelo.
+La ruta absoluta del working-tree cumple las dos: es lo único que distingue a dos
+checkouts del mismo repo.
+
+`agenda-literaria-<8 hex de sha256 de la ruta>` — 25 caracteres, dentro de los 30
+que acepta un project id de Firebase.
+
+### Un solo lugar deriva el valor
+
+Tres tipos de consumidor lo necesitan: `vitest.config.ts` (por import), el gate en
+bash (por CLI) y los scripts que un test ejecuta (por entorno). Los tres lo toman
+de `scripts/project-id-emulador.mjs`. Que cada uno lo derive por su cuenta es la
+clase de B-88, y acá el síntoma sería del peor tipo: el paso 4 del gate sembrando
+en una base y el paso 3 borrando otra. La normalización de la barra final del path
+existe justamente por eso — `new URL('..', …)` termina en `/` y
+`git rev-parse --show-toplevel` no.
+
+### Qué NO resuelve, dicho explícito
+
+- **No separa los puertos.** Sigue habiendo una tanda de emuladores por máquina, y
+  de ahí salió **B-365**: una tanda puede quedar **a medias** —el hijo de Firestore
+  huérfano y vivo, Auth muerto con su padre— y eso el `projectId` no lo toca.
+- **`fileParallelism: false` se queda.** Particiona por *checkout*, no por
+  archivo, así que los archivos de una corrida siguen compartiendo base. Los dos
+  mecanismos cubren mitades distintas y sacar cualquiera reabre la suya: es lo que
+  dicen la segunda y la cuarta observación de B-219.
+- **Las reglas de Storage no se pueden particionar**: el `/internal/setRules` del
+  emulador de Storage es global y no tiene endpoint por proyecto. Hoy no muerde
+  —los objetos van con nombre único y nadie barre el bucket— y muerde el día que
+  dos worktrees corran con `storage.rules` distinto.
+
+### El efecto lateral bienvenido
+
+`npm run dev` y `npm run seed` siguen en `agenda-literaria` (el de
+`.env.development`), así que **los datos que uno carga a mano en el panel local ya
+no los borra ninguna corrida de tests**. Antes cada `npm test` vaciaba la base de
+desarrollo del dueño.
+
+---
+
+## D-196 · La decisión de plomería del gate sale del gate
+
+El paso 3 de `verificar-todo.sh` decide entre usar los emuladores que ya están y
+levantar unos efímeros. Era un `if` en bash sin ningún test, y desde B-217 decide
+**dos** ramas y no una (la comparten los pasos 3 y 4).
+
+**Lo decidido:** sacarla a `scripts/emuladores-arriba.sh`, por el mismo argumento
+que sacó `que-deployar.sh` del YAML — una decisión que no se puede probar se
+prueba en producción, y acá «producción» es el momento de pushear. El modo de
+falla es el que ya se vio: con los emuladores arriba, `emulators:exec` corta con
+«port taken» y el gate falla **por su propia plomería**, lo cual enseña a
+saltearlo, y ahí deja de ser un gate.
+
+Se prueba con un servidor HTTP de dos líneas apuntado por
+`FIREBASE_EMULATOR_HUB`, así que las tres respuestas quedan ejercitadas sin
+arrancar ningún Java. Que el 503 **no** cuente como «arriba» es una decisión y no
+un accidente de `curl -sf`: correr la suite contra algo que contesta un error en
+`/emulators` es correrla contra un proceso que no sabemos qué es, y levantar unos
+propios falla ruidoso en vez de silencioso.
+
+Y se pregunta por el **hub** y no por Firestore: el hub es lo que
+`emulators:exec` va a querer para sí, o sea la respuesta a la pregunta que de
+verdad se está haciendo («¿puedo levantar los míos?»).
+
+---
+
+## D-197 · El saneador del issue va sobre la salida armada, no sobre la entrada
+
+`construirIssue` aplicaba `redactar()` campo por campo, en cinco lugares sobre la
+**entrada**. B-81 fue una instancia de eso —el `title` era el único de los tres
+textos libres que no pasaba por el filtro, o sea el renglón más visible de un
+issue en un repo público—, se arregló con una línea, y la clase quedó abierta.
+
+**Lo decidido:** un único punto de paso, sobre el `title` y el `body` ya
+construidos. Cuatro valores se colaban crudos (el id del reporte,
+`actividad.slug`, `reporte.actividad.id` y `severidad`); ninguno filtraba nada
+—son ids y enums acotados por `reporteValido()`— pero el punto es que la próxima
+interpolación no tiene por qué serlo.
+
+**Lo que se paga, y por qué se acepta:** el saneador deja de trimear cada celda
+del cuadro de contexto. Ese `.trim()` se mudó a `bloque()`, donde corresponde
+—normalizar el formato y tapar lo que no puede salir son dos responsabilidades— y
+lo que queda sin cubrir es escapar un `|` dentro de una celda, que hoy no es
+alcanzable: los seis valores los arma `contextoTecnico` de
+`navigator`/`window`/`Intl`/`location.pathname`. Cuando el contexto gane una celda
+de texto libre, lo que hay que hacer es **escapar ahí**, no volver a `redactar`
+por celda.
+
+### Tres cosas que el `auditor-privacidad` encontró sobre este cambio
+
+1. **El barrido no barría los campos privados del reporte** (B-361): el fixture
+   tenía 8 de las 13 claves de `reporteValido()`, y las que faltaban eran las que
+   el §5.1 prohíbe publicar. La lista de claves ahora se **lee de
+   `firestore.rules`**.
+2. **Y el centinela no alcanzaba para esos campos.** El centinela del archivo es
+   un link de zoom, o sea justo lo que el saneador tapa: un campo que se cuela y
+   se sanea deja el barrido en verde igual que uno que no se cuela, y los dos
+   hechos se confunden. Se comprobó por mutación — interpolar el mail del
+   reportante **sobrevive** a un aserto contra el mail del fixture. El barrido
+   nuevo usa un centinela que el saneador deja pasar.
+3. **El orden sanear→recortar no lo fijaba ningún test** (B-362), y el recorte es
+   alcanzable porque `redactar` **expande**: «link de reunión oculto» son 24
+   caracteres contra los 12 de un `http://wa.me`.
+
+**Y el límite del punto de paso único, anotado como B-363:** `desSlug()` corre
+**aguas arriba** del filtro y le mete un espacio al medio del patrón, así que
+`https://mi-org.zoom.us/j/x` sobrevive legible. Con una transformación en el
+medio, la garantía sigue dependiendo de quién agregue la interpolación — que es
+exactamente lo que este punto de paso venía a resolver.
+
+---
+
+## D-198 · Los `.env` versionados se verifican por lista blanca de claves, no de archivos
+
+Versionar `.env.development`, `.env.production` y `functions/.env` es una
+excepción deliberada y bien argumentada (la config del SDK web es pública por
+diseño). Lo que no tenía era gate: la única defensa era la memoria, y es la puerta
+que publica de la forma más irreversible que hay.
+
+**Lo decidido:** un test que **descubre** los archivos con `git ls-files` y valida
+las claves por lista blanca (`^PUBLIC_`, más tres excepciones nombradas) más las
+**formas** de los valores. Dos elecciones de diseño que importan:
+
+- **Descubrir en vez de listar.** Eran **cuatro** archivos y el ítem decía tres.
+  El que faltaba en la cuenta es `.env.example`, y es el que más importa: es el
+  único que **nombra** `FIREBASE_SERVICE_ACCOUNT`,
+  `GOOGLE_APPLICATION_CREDENTIALS` y `GOOGLE_CALENDAR_ICS_PRIVADO`, con el `=`
+  puesto y el valor vacío. El camino más corto a la fuga no es agregar una clave:
+  es **rellenar una que ya está esperando** para probar algo local. Un archivo con
+  la lista escrita a mano habría repetido el error que este mismo ítem cometió.
+- **`AIza…` no entra en los patrones de secreto.** La API key del SDK web tiene
+  esa forma y es el valor que este proyecto versiona a propósito. Un gate que
+  grita por el caso legítimo enseña a apagarlo.
+
+**Nunca imprime un valor.** Los mensajes nombran archivo, clave y qué patrón
+matcheó: un test que falla mostrando el secreto lo copia al log de CI, que también
+es público.
+
+La tercera excepción la encontró el gate en su primera corrida
+(`FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` en `.env.example`): una dirección de
+loopback, que no identifica ni autoriza nada. Entró a la lista con su motivo
+escrito, que es la forma en que esa lista tiene que crecer.
+
+---
+
+## D-199 · «Sin versión estampada» es un valor del vocabulario, no la bolsa de `otro`
+
+`VERSION_APP` vale `'desconocida'` cuando el build no estampó nada (dev server,
+tests), y el sanitizador de analítica lo mandaba como `'otro'` — el mismo valor
+con el que reporta «este formato no lo reconozco».
+
+**Lo decidido:** un valor propio. Después de B-88 el segundo caso no debería
+ocurrir nunca, así que un `version: otro` con volumen **es una alarma** —el
+productor estrenó una forma que el consumidor no acepta— y compartiendo valor esa
+alarma no se podía distinguir del ruido de dev. Era lo único útil que este
+parámetro podía decir.
+
+Es un bug de **datos**, no de código, y su costo es exactamente ése: nada se
+rompe, y la única señal que el parámetro sabe dar queda inservible.
+
+**Se importa de `src/lib/version.ts` en vez de escribir el literal.** Que el
+consumidor derive por su cuenta un valor del productor es la clase de B-88, y este
+parámetro ya la tenía del lado del formato: si la analítica escribiera
+`'desconocida'` por su cuenta, el día que el productor cambie el texto los eventos
+empezarían a viajar como `'otro'` sin que nada se ponga rojo.
+
+---
+
+## D-200 · Los nombres de los meses se comparten; el argumento para duplicarlos no se sostiene
+
+`calendarioPanel.ts` tenía los doce nombres con un comentario que justificaba la
+copia: «duplicados a propósito respecto de `novedades.ts`: ahí son contenido de
+una lista de novedades y acá son la navegación del calendario; atar los dos
+módulos por una constante de texto no compra nada».
+
+**El argumento es razonable y es falso**, y vale escribir por qué en vez de
+borrarlo: los doce nombres **no son de ninguno de los dos dominios**. Son un hecho
+del castellano. Atar dos módulos por una constante de dominio los acopla —si
+mañana el calendario quiere «Ene» y las novedades «enero», la constante
+compartida estorba—; atarlos por el nombre de un mes no, porque no hay ninguna
+versión del futuro en la que agosto se llame distinto en una pantalla y no en la
+otra. Si hace falta otra forma, es un **formateo** sobre esta lista, no otra
+lista.
+
+Y lo que sí puede pasar con dos copias es que **una se arregle**: un acento
+corregido en un archivo y no en el otro, con las dos pantallas a un clic de
+distancia. Es la divergencia de B-175 —«Híbrido» en el formulario y «Presencial y
+virtual» en los filtros—, que también nació de dos mapas separados a propósito.
+
+`nombreDeMes` devuelve `null` y no cadena vacía para un número que no es un mes, y
+eso es load-bearing: los tres llamadores usan ese `null` para caer en la clave
+cruda (`'2026-13'`), y una cadena vacía se colaría al HTML como un hueco
+silencioso — «de 2026» sin mes.
