@@ -2481,7 +2481,7 @@ desajustes, con su motivo al lado en el documento:
 | `/404` | **no existe**: responde el 404 por defecto de Firebase → **B-310** |
 
 Tocados el mapa del §2 —con el conteo real, que además estaba mal desde antes:
-dice «nueve patrones» y son **doce**, ocho construidos y los cuatro hubs de
+decía «nueve patrones» y son **doce**, ocho construidos y los cuatro hubs de
 B-108—, el título y los bullets del §4.5, la tabla de etiquetas del §5.1 (que
 ganó las cuatro páginas que le faltaban, con el `<title>` que emiten hoy), la
 fila `Organization` del §5.5 y el bloque del sitemap del §5.6.

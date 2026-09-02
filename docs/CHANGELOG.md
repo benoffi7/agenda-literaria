@@ -1,16 +1,23 @@
 # Changelog
 
-## 2026-09-02 · el backlog vuelve a significar algo: seis cierres, un descarte y ocho afirmaciones falsas
+## 2026-09-02 · el backlog vuelve a significar algo: seis cierres, un descarte y nueve afirmaciones falsas
 
 **Barrido de backlog y de drift de documentación. Cero cambios en `src/` y en
 `functions/`** — el único fuente que se tocó es prosa: dos avisos en el
 `CLAUDE.md`.
 
-El problema era de aritmética: **76 ítems abiertos, doce de ellos en la sección
+El problema era de aritmética: **86 ítems abiertos, doce de ellos en la sección
 P1, y varios ya estaban hechos.** Un ítem cerrado en falso es peor que uno
 abierto —el abierto se revisa, el cerrado no— así que la regla del barrido fue
 una sola: **nada se cierra sin reproducirlo contra el código**, y lo que no está
 hecho se corrige y se deja abierto.
+
+> El 86 está contado, y vale decir cómo, porque el número con el que arrancó el
+> frente era **76** y no cerraba —lo marcó el `auditor-documentacion`—:
+> `git show main:docs/BACKLOG.md | grep '^### ' | grep -v '✅\|❌\|~~'` da
+> **86** sobre 211 ítems en total. La cifra de la sección P1 sí cerraba exacta.
+> Queda escrito para que la próxima vez que alguien diga «hay N abiertos» se
+> pueda recontar con una línea.
 
 ### Lo que se cerró, y con qué evidencia
 
@@ -34,7 +41,7 @@ de detalle sin datos estructurados no sirve para lo que existe el proyecto», y
 esa mitad está. Lo que queda mejora cómo Google entiende la **navegación**, no
 si la página entra al índice.
 
-### El drift: ocho afirmaciones que el trabajo de estos días volvió falsas
+### El drift: nueve afirmaciones que el trabajo de estos días volvió falsas
 
 Es lo que más valor tuvo de todo el frente, porque son las que hacen que alguien
 escriba código contra algo que no existe.
