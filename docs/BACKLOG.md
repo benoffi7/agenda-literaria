@@ -2133,6 +2133,19 @@ capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
 > **Y mientras tanto el problema no crece solo**: no se borra nada de Storage, así
 > que un huérfano aparece únicamente cuando alguien quita una fila de la galería o
 > abandona una subida a medias. Sigue costando centavos.
+>
+> **2026-09-02 — verificado, la condición de arriba todavía no se cumple.**
+> `docs/08-operacion.md` § «Permisos que necesita `optimizarImagen`» sigue
+> listando los tres pasos de IAM como pendientes del dueño («hasta que estén,
+> el trigger falla o no se crea»), y el barrido de `scripts/optimizar-imagenes.mjs`
+> —el que reprocesa las imágenes que ya estaban antes de la Function— todavía
+> no corrió contra el bucket real. O sea que **B-220 sigue mergeado y no
+> desplegado**, que es exactamente la condición que este ítem pone como
+> bloqueante. Sigue sin implementarse acá por el mismo motivo escrito arriba,
+> no por falta de tiempo: escribir el barrido de huérfanos ahora sería
+> estrenarlo contra un bucket donde el reescritor de B-220 todavía no corrió,
+> así que no podría distinguir «huérfano» de «original sin optimizar
+> todavía».
 
 **Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
 actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
