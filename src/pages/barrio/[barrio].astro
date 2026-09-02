@@ -1,0 +1,55 @@
+---
+/**
+ * `/barrio/{slug}` — el hub de un barrio. B-108, §2.1 y §4.4 del diseño.
+ *
+ * ── Es la long tail que más importa ───────────────────────────────────────
+ * §2.1: «`taller de escritura villa crespo` es una consulta con intención
+ * altísima y competencia baja. Un filtro no puede ganarla porque no tiene título,
+ * ni `h1`, ni URL». De los cuatro hubs, éste es el que más páginas produce y el
+ * que cada página tiene más chances de ganar: nadie compite por «club de lectura
+ * en Boedo».
+ *
+ * ── Un barrio nuevo trae su hub solo ──────────────────────────────────────
+ * `barrio` es taxonomía autogestionada (§4) y **arranca vacía** en
+ * `opciones-base.json`: todos los barrios que existen los creó alguien cargando
+ * una actividad. Estas páginas se generan recorriendo las opciones **aprobadas
+ * que tienen alguna actividad publicada**, así que el vocabulario del barrio
+ * crece con el uso y las páginas lo siguen.
+ *
+ * Que se pida **aprobada** es la regla de los chips (§4.3): ofrecer un hub es
+ * publicar vocabulario, y un barrio recién tipeado puede ser un typo. Un typo con
+ * página propia es una URL indexada para siempre — es literalmente el argumento
+ * con el que el §2.3 dejó afuera los hubs de tema (B-05, B-06).
+ *
+ * ── El resto está en dos lugares, y ninguno es este archivo ───────────────
+ * `lib/hubsPublicos.ts` decide qué se emite, qué entra y qué dice;
+ * `components/sitio/CuerpoDeHub.astro` es el markup, compartido con las otras
+ * tres clases de hub. Acá quedan el `<Base>`, el `<title>` y el `noIndex` — ver
+ * el docblock de `src/pages/tipo/[tipo].astro`, que explica los tres.
+ */
+import Base from '@/layouts/Base.astro';
+import CuerpoDeHub from '@/components/sitio/CuerpoDeHub.astro';
+import { caminosDeBarrio, type VistaDeHub } from '@/lib/contenidoDelSitio';
+import { esIndexable } from '@/lib/hubsPublicos';
+import { NOMBRE } from '@/lib/identidad';
+
+export const prerender = true;
+
+// Envuelta y no aliasada (B-237): ver `src/pages/tipo/[tipo].astro`.
+export const getStaticPaths = () => caminosDeBarrio();
+
+interface Props {
+  vista: VistaDeHub;
+}
+
+const { vista } = Astro.props;
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${vista.hub.titulo} · ${NOMBRE}`}
+  descripcion={vista.hub.descripcion}
+  noIndex={!esIndexable(vista.hub)}
+>
+  <CuerpoDeHub vista={vista} />
+</Base>

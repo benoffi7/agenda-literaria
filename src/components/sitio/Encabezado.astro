@@ -1,6 +1,6 @@
 ---
 import { BAJADA, NOMBRE } from '@/lib/identidad';
-import { foco, focoAmplio } from '@/components/sitio/estilos';
+import { claseSalto, foco, focoAmplio } from '@/components/sitio/estilos';
 import {
   RUTA_AGENDA,
   RUTA_AYUDA,
@@ -96,7 +96,7 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
        listado con teclado obliga a pasar por los cuatro enlaces en cada página. -->
   <a
     href="#contenido"
-    class="sr-only bg-tinta px-4 py-2 text-papel focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+    class={`bg-tinta px-4 py-2 text-papel ${claseSalto}`}
   >
     Saltar al contenido
   </a>

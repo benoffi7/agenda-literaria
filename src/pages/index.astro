@@ -42,11 +42,10 @@ import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
-import { claseEnlace } from '@/components/sitio/estilos';
-import { indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
+import ExploraPor from '@/components/sitio/ExploraPor.astro';
+import { claseSalto } from '@/components/sitio/estilos';
+import { exploracionDeLaHome, indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
 import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
-import { mesesEnlazables } from '@/lib/mesPublico';
-import { rutaDeMes } from '@/lib/rutasPublicas';
 
 const indice = await indiceDelSitio();
 /*
@@ -67,11 +66,15 @@ const vigentes = vigentesDelIndice(indice, ahora);
 const ID_LISTADO = 'listado-del-build';
 
 /*
- * Los meses con página propia — B-113. Sale del **mismo** índice que el listado,
- * sin una lectura más: `mesesEnlazables` deja afuera la del mes vencido, que se
- * emite solo para que su URL no devuelva 404 y no es algo a lo que mandar gente.
+ * La tira «Explorá por» — B-108. Sale del **mismo** índice memoizado que el
+ * listado, sin una lectura más, y viene ya recortada: sin los hubs vacíos (que
+ * llevan `noindex` y no se enlazan) y sin los meses vencidos, que se emiten solo
+ * para que su URL no devuelva 404 y no son algo a lo que mandar gente.
+ *
+ * La home no pasa `rutaActual`: no es un hub, así que no hay nada que sacar de su
+ * propia tira.
  */
-const meses = mesesEnlazables(indice.actividades, ahora);
+const exploracion = await exploracionDeLaHome(ahora);
 
 const cuantas = vigentes.length;
 const descripcion =
@@ -97,7 +100,7 @@ const descripcion =
   */}
   <a
     href="#listado"
-    class="body-md sr-only border border-acento bg-papel px-3 py-2 text-acento focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+    class={`body-md border border-acento bg-papel px-3 py-2 text-acento ${claseSalto}`}
   >
     Saltar al listado
   </a>
@@ -152,37 +155,31 @@ const descripcion =
     </div>
 
     {/*
-      **La tira de meses** — B-113, §2.2 del diseño: «no va en la navegación; se
-      llega desde una tira al pie de la home».
+      **La tira «Explorá por»** — B-108, §4.1 del diseño, que la pide con estas
+      palabras:
 
-      Es la única entrada a `/agenda/{aaaa-mm}` que hay hoy, así que sin esto esas
-      páginas quedan huérfanas: sin links internos, una página estática vale casi
-      nada para un buscador aunque esté en el sitemap. El §2.2 nombra además el
-      detalle («más en septiembre»), y esa mitad entró con **B-280**: hoy son dos
-      las entradas a esas páginas, que es lo que el §2.2 pedía.
+      > «"Explorá por" no es decorativo. Es la navegación sin JavaScript, y es el
+      > linkeo interno que hace que los hubs existan para Google.»
 
-      **Incluye el mes en curso** y no solo los siguientes, que es un desvío chico
-      del «Próximos meses» del diseño: su página se genera igual, y dejarla fuera
-      de la tira sería generar una página a la que nada apunta.
+      Reemplaza a la tira «La agenda mes por mes» que B-113 había puesto acá, y no
+      la pierde: los meses son **un grupo** de esta tira, que es como el §4.1 los
+      dibuja («Online · Gratis · Septiembre · Octubre»). Para quien mira son la
+      misma pregunta —«qué otras formas hay de recorrer esto»— y dos tiras
+      seguidas con el mismo aspecto se leen como una repetida.
+
+      Sin esto, los hubs y las páginas de mes estarían en el sitemap **sin un solo
+      enlace interno**, y una página sin enlaces internos vale casi nada para un
+      buscador aunque responda (es el mismo argumento del §2.1 sobre `/pasadas`).
+      Las páginas de mes tienen además la segunda entrada que el §2.2 pedía, desde
+      **B-280**: el «Más en septiembre» del detalle.
+
+      **Los grupos los decide `exploracionDeLaHome`, no esta plantilla**: recibe la
+      lista armada, sin los hubs vacíos y sin los meses vencidos. Los meses
+      incluyen el **mes en curso** y no solo los siguientes, que es el desvío chico
+      de B-113: su página se genera igual, y dejarla fuera de la tira sería generar
+      una página a la que nada apunta.
     */}
-    {
-      meses.length > 0 && (
-        <nav aria-labelledby="por-mes" class="mt-12 sm:mt-16">
-          <h2 id="por-mes" class="regla-gruesa-arriba label-caps pt-4 text-azul">
-            La agenda mes por mes
-          </h2>
-          <ul class="body-md mt-4 flex flex-wrap gap-x-6 gap-y-3">
-            {meses.map((m) => (
-              <li>
-                <a class={claseEnlace} href={rutaDeMes(m.clave)}>
-                  {m.nombre}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )
-    }
+    <ExploraPor grupos={exploracion} />
 
     {/*
       **El enganche de suscripción, y va acá abajo a propósito** — B-231.

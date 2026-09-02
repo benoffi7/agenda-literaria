@@ -298,6 +298,12 @@ describe('la home', () => {
      * Desde B-273 son dos (`tonosDelSitio`), que es cuando la lista blanca deja de
      * ser gratis y empieza a servir. Lo pidió el `auditor-privacidad`.
      *
+     * **Y desde B-108 son tres**: `exploracionDeLaHome`, la tira «Explorá por». La
+     * lista blanca hizo exactamente lo que tenía que hacer —el símbolo nuevo puso
+     * este caso en rojo y obligó a venir a decidirlo— así que conviene dejar dicho
+     * qué entrega: `GrupoDeExploracion[]`, o sea pares de ruta y texto ya armados,
+     * sin una sola entrada de índice adentro. No es una puerta al documento.
+     *
      * MUTACIÓN PROBADA: agregar `contenidoDelSitio` al import hace fallar este caso;
      * la lista negra de abajo lo deja pasar.
      */
@@ -307,8 +313,9 @@ describe('la home', () => {
       imp![1]!
         .split(',')
         .map((x) => x.trim())
-        .filter(Boolean),
-    ).toEqual(['indiceDelSitio', 'tonosDelSitio']);
+        .filter(Boolean)
+        .sort(),
+    ).toEqual(['exploracionDeLaHome', 'indiceDelSitio', 'tonosDelSitio']);
   });
 
   it('tampoco ve el documento crudo', () => {

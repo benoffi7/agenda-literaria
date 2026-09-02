@@ -1,0 +1,78 @@
+---
+/**
+ * `/tipo/{slug}` — el hub de un tipo de actividad. B-108, §2.1 y §4.4 del diseño.
+ *
+ * ── Es *la* consulta del dominio ──────────────────────────────────────────
+ * §2.1: «`taller de escritura`, `club de lectura` son *la* consulta del dominio,
+ * no un refinamiento de otra». Y la razón por la que necesita ser una página y no
+ * un chip está en la misma sección: un filtro **no tiene URL, ni `<title>`, ni
+ * `h1`**, así que no puede ganar esa búsqueda por más que muestre exactamente lo
+ * mismo.
+ *
+ * ── Un tipo nuevo trae su hub solo ────────────────────────────────────────
+ * `tipo` es taxonomía autogestionada (§4), y estas páginas se generan recorriendo
+ * las opciones que **tienen alguna actividad publicada**. El día que alguien
+ * cargue una actividad de un tipo nuevo, ese tipo tiene su página y su entrada de
+ * sitemap en el build siguiente, sin tocar código.
+ *
+ * **El segmento de la URL es el `slug`, nunca el label** (§2.1, trampa 10): el
+ * label se renombra y una URL no.
+ *
+ * ── Todo lo demás vive en dos lugares, y ninguno es este archivo ──────────
+ * | Qué | Dónde |
+ * |---|---|
+ * | qué hubs se emiten, qué entra en cada uno, y sus frases | `lib/hubsPublicos.ts` |
+ * | el markup, igual para las cuatro clases de hub | `components/sitio/CuerpoDeHub.astro` |
+ *
+ * Acá quedan las tres cosas que son de la **página**: el `<Base>` con su
+ * `seccion`, el `<title>` y el `noIndex`.
+ *
+ * ── `seccion="agenda"`, y hay que justificarlo ────────────────────────────
+ * Un hub **no es una sección del menú** —el §2.2 lo dice de las páginas de mes y
+ * vale igual acá: no van en la navegación— pero `Base.astro` necesita una
+ * `seccion` para pintar el encabezado y el pie, y el default (`'ninguna'`) los
+ * apaga, que es lo que necesita `/admin`. La respuesta correcta es `agenda`,
+ * igual que el detalle, `/pasadas` y `/agenda/{mes}`: **un hub es la agenda
+ * filtrada**, y sacar el filtro navega a `/` (§4.4). Marcar «Agenda» en la barra
+ * dice exactamente dónde estás parado.
+ *
+ * ── El `noIndex` del hub vacío ────────────────────────────────────────────
+ * Un hub sin nada vigente **existe** (§4.4: un 404 sobre una URL indexada es peor
+ * que una página honesta y vacía) y sale con `noindex`, fuera del sitemap. Las dos
+ * mitades de la misma señal, igual que la página de un mes vencido: el sitemap
+ * dice qué se ofrece, el `noindex` dice qué no se indexa si alguien llega igual.
+ * La condición la decide `esIndexable` (`lib/hubsPublicos.ts`), no esta
+ * plantilla — y `tests/hubsPublicos.test.ts` fija que las dos mitades no puedan
+ * separarse.
+ */
+import Base from '@/layouts/Base.astro';
+import CuerpoDeHub from '@/components/sitio/CuerpoDeHub.astro';
+import { caminosDeTipo, type VistaDeHub } from '@/lib/contenidoDelSitio';
+import { esIndexable } from '@/lib/hubsPublicos';
+import { NOMBRE } from '@/lib/identidad';
+
+export const prerender = true;
+
+/*
+ * Envuelta y no aliasada (B-237): Astro llama a `getStaticPaths` con un argumento
+ * propio —`{ paginate, rss }`— y con el alias ese objeto caería en el parámetro
+ * `ahora`. Ningún test unitario lo ve, porque todos la llaman bien; lo encuentra
+ * el build de verdad, y tarde.
+ */
+export const getStaticPaths = () => caminosDeTipo();
+
+interface Props {
+  vista: VistaDeHub;
+}
+
+const { vista } = Astro.props;
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${vista.hub.titulo} · ${NOMBRE}`}
+  descripcion={vista.hub.descripcion}
+  noIndex={!esIndexable(vista.hub)}
+>
+  <CuerpoDeHub vista={vista} />
+</Base>

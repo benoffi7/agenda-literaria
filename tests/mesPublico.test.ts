@@ -693,20 +693,51 @@ describe('la página `/agenda/[mes]`', () => {
   });
 });
 
-describe('la tira de meses de la home — §2.2', () => {
-  it('la home enlaza los meses, y solo los enlazables', () => {
+describe('los meses se enlazan desde la home, y solo los enlazables — §2.2', () => {
+  /*
+   * ── Dónde vive esto desde B-108 ──────────────────────────────────────────
+   * La tira de la home dejó de armarse en `index.astro`: es un grupo de la tira
+   * «Explorá por», que la comparten la home y los cuatro hubs (§4.1 los dibuja
+   * juntos). Así que la derivación se mudó al lector —`exploracionDeLaHome`— y
+   * estos dos casos la siguen ahí, con la **misma** propiedad: que se enlacen
+   * solo los meses que tienen página, y que la ruta la arme `rutasPublicas`.
+   *
+   * Mudarlos y no borrarlos es el punto: el modo de falla no cambió de forma
+   * —enlazar un mes sin página es un 404— solo cambió de archivo.
+   */
+  const LECTOR = 'src/lib/contenidoDelSitio.ts';
+
+  it('el lector enlaza los meses, y solo los enlazables', () => {
     /*
-     * Es la única entrada a `/agenda/{aaaa-mm}` que hay hoy: sin ella esas
-     * páginas quedan huérfanas, y una página estática sin links internos vale
-     * casi nada para un buscador aunque esté en el sitemap.
+     * Es una de las dos entradas a `/agenda/{aaaa-mm}` —la otra es el «Más en
+     * septiembre» del detalle, B-280—: sin ellas esas páginas quedan huérfanas, y
+     * una página estática sin links internos vale casi nada para un buscador
+     * aunque esté en el sitemap.
      *
-     * MUTACIÓN PROBADA: cambiar `mesesEnlazables` por `mesesDelSitio` en la home
-     * pone esto en rojo — y en la página, un enlace a un mes que ya pasó.
+     * MUTACIÓN PROBADA: cambiar `mesesEnlazables` por `mesesDelSitio` en
+     * `hubsConContexto` pone esto en rojo — y en la página, un enlace a un mes que
+     * ya pasó, o sea a un aviso de que llegaste tarde.
+     */
+    const src = sinComentarios(fuente(LECTOR));
+    expect(src).toContain('mesesEnlazables');
+    expect(src).toContain('exploracionDelSitio');
+    // `mesesDelSitio` **sí** está en el lector: es lo que emite las páginas de mes
+    // (`caminosDeMes`). Lo que se afirma es que la tira no salga de ahí, y eso se
+    // ve en la llamada.
+    expect(src).not.toMatch(/exploracionDelSitio\([^)]*mesesDelSitio/);
+  });
+
+  it('la home muestra la tira y no la deriva', () => {
+    /*
+     * La plantilla recibe los grupos armados (D-140). Con la derivación acá, un
+     * `.astro` no se puede importar desde vitest y esta propiedad no la podría
+     * evaluar nada.
      */
     const src = sinComentarios(fuente(HOME));
-    expect(src).toContain('mesesEnlazables');
+    expect(src).toContain('exploracionDeLaHome');
+    expect(src).toContain('ExploraPor');
     expect(src).not.toContain('mesesDelSitio');
-    expect(src).toContain('rutaDeMes(m.clave)');
+    expect(src).not.toContain('mesesEnlazables');
   });
 
   it('y la ruta la arma `rutasPublicas`, no una plantilla', () => {
@@ -715,9 +746,11 @@ describe('la tira de meses de la home — §2.2', () => {
     // Con barra final desde B-330: es la forma que Firebase contesta con un 200,
     // y desde ese cambio es la única forma que este módulo produce (B-293).
     expect(rutaDeMes('2026-09')).toBe('/agenda/2026-09/');
-    for (const archivo of [HOME, PAGINA_DE_MES]) {
+    for (const archivo of [LECTOR, PAGINA_DE_MES]) {
       expect(sinComentarios(fuente(archivo))).toContain("from '@/lib/rutasPublicas'");
     }
+    // Y la tira le pasa la función, no un formato escrito a mano.
+    expect(sinComentarios(fuente(LECTOR))).toMatch(/exploracionDelSitio\([^)]*rutaDeMes/);
   });
 });
 
