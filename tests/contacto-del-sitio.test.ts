@@ -6,7 +6,6 @@ import { CONTACTO, MOTIVOS_DE_CONTACTO, urlDeContacto } from '@/lib/enlaces';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
-  INTRO_DE_CONTACTO,
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
 
@@ -36,7 +35,6 @@ const paginas = ['src/pages/contacto.astro', 'src/pages/ayuda.astro'];
 
 /** Todo el texto que la página muestra. */
 const TEXTOS = (): string[] => [
-  ...INTRO_DE_CONTACTO,
   ...QUE_PASA_DESPUES,
   ANTES_DE_ESCRIBIR.texto,
   ...BLOQUES_DE_CONTACTO.flatMap((b) => [b.etiqueta, b.ayuda, b.asunto, ...b.queIncluir]),
@@ -142,11 +140,6 @@ describe('la página de contacto — B-232', () => {
     expect(texto).toContain('persona');
     expect(texto).toMatch(/demor|tard/);
     expect(QUE_PASA_DESPUES.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('la intro aclara que no hay formulario', () => {
-    // Es la pregunta que se hace quien busca un campo de texto y no lo encuentra.
-    expect(INTRO_DE_CONTACTO.join(' ').toLowerCase()).toContain('formulario');
   });
 
   it('manda a la ayuda antes de escribir', () => {

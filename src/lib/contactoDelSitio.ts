@@ -73,13 +73,17 @@ export const BLOQUES_DE_CONTACTO: BloqueDeContacto[] = (
   queIncluir: [...(QUE_INCLUIR[motivo] ?? [])],
 }));
 
-/** La entrada de la página: qué es esto y qué no. */
-export const INTRO_DE_CONTACTO: string[] = [
-  'Se escribe por mail. No hay formulario porque no hay nada del otro lado que lo reciba: el ' +
-    'botón abre tu programa de correo con el asunto puesto y vos escribís lo que quieras.',
-  'El asunto viene puesto a propósito, y conviene dejarlo: es lo que hace que un dato mal ' +
-    'publicado no quede atrás de veinte sugerencias sin leer.',
-];
+/*
+ * ── La página no lleva entrada, y es una decisión ─────────────────────────
+ * B-301. Había dos párrafos que explicaban que no hay formulario y por qué el
+ * asunto viene puesto. Los sacó el dueño: **le explicaban al visitante las
+ * decisiones de diseño del sitio**, que es algo que a nadie que entra a una
+ * página de contacto le interesa.
+ *
+ * Lo que ocupaba su lugar lo dicen los dos botones: cada uno se llama por lo
+ * que hace —«Sugerir una actividad», «Reportar un error»— y abre el correo. Una
+ * página que se explica sola no necesita presentarse.
+ */
 
 /** Qué pasa después de mandar el mail. Corto y honesto. */
 export const QUE_PASA_DESPUES: string[] = [

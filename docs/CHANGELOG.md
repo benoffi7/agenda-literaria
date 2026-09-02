@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-02 · fuera la entrada de /contacto
+
+**Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**
+Decían que no hay formulario porque no hay nada del otro lado que lo reciba, y que
+el asunto viene puesto a propósito y conviene dejarlo. El dueño los sacó, textual:
+«quedó muy IA».
+
+Tiene razón, y vale nombrar el patrón porque va a volver a aparecer: **el texto
+justificaba el sitio ante quien lo usa.** A nadie que entra a una página de
+contacto le interesa por qué no hay un formulario — quiere escribir. Lo que
+ocupaba ese lugar ya lo dicen los dos botones, que se llaman por lo que hacen.
+
+**Y se sacó el test que lo verificaba**, no solo el texto. Había un aserto que
+pedía que la entrada mencionara «formulario», con el motivo escrito: «es la
+pregunta que se hace quien busca un campo de texto y no lo encuentra». Sin el
+texto, ese aserto no puede ser cierto, y dejarlo apuntando a otra cosa habría sido
+peor que borrarlo. Lo que se pierde queda dicho: quien busque un campo de texto ya
+no encuentra una explicación, encuentra dos botones.
+
 ## 2026-09-02 · el dominio propio y la marca
 
 **`https://agendaleh.ar` es el sitio.** B-109, que estaba bloqueado esperando el

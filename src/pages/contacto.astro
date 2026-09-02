@@ -34,7 +34,6 @@ import Base from '@/layouts/Base.astro';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
-  INTRO_DE_CONTACTO,
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
 import {
@@ -55,13 +54,7 @@ import {
       Contacto
     </h1>
 
-    {
-      INTRO_DE_CONTACTO.map((parrafo) => (
-        <p class="mt-4 max-w-[65ch] body-lectura text-super">{parrafo}</p>
-      ))
-    }
-
-    <p class="body-lectura mt-4 max-w-[65ch] text-super">
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">
       <a class={claseEnlace} href={ANTES_DE_ESCRIBIR.href}>{ANTES_DE_ESCRIBIR.texto}</a>.
     </p>
 
