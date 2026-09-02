@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-09-02 · B-107: el marcado de navegación, apoyado en los hubs de B-108
+
+**`BreadcrumbList` en el detalle y `CollectionPage`/`ItemList` en la home y los
+cuatro hubs** — lo último que le quedaba a B-107, y era el momento: con los
+hubs recién construidos (B-108) ya había una jerarquía real que declarar. Una
+sola función por caso, compartida entre las cinco páginas que la usan
+(`migasDeDetalle` en `src/lib/detallePublico.ts`, `coleccionSchema` en
+`src/lib/hubsPublicos.ts`), para que escribirla cinco veces no sea la próxima
+clase de bug de B-88.
+
+**Un caso que el diseño no había anticipado:** el hub de tipo de una miga de
+pan no siempre existe. `/tipo/{slug}` se emite si alguna actividad
+**publicada** usó ese tipo alguna vez, y una cancelada no entra a esa cuenta
+(D-159) — así que la miga de una actividad cancelada cuyo tipo nadie más usa
+podía terminar apuntando a un `/tipo/{slug}` que el build nunca generó. Se
+resolvió con `DetallePublico.tipoTieneHub`, que calcula el lector
+(`contenidoDelSitio.ts`) sobre el índice entero — con default `false`, el lado
+que no publica un link roto, mismo criterio que ya tenían `cancelada` y
+`mesesConPagina`. Verificado con un build real contra el emulador: sin hub, la
+miga sale con dos niveles en vez de tres.
+
 ## 2026-09-02 · cierre de B-108: los hubs quedan documentados y el backlog al día
 
 El código, los tests y la salida 11 del índice de salidas públicas ya habían

@@ -57,6 +57,7 @@ import {
   esIndexable,
   exploracionDelSitio,
   hubsDelSitio,
+  slugsConHub,
   type GrupoDeExploracion,
   type Hub,
 } from '@/lib/hubsPublicos';
@@ -498,6 +499,17 @@ const detallesDelSitio = async (
   );
 
   /*
+   * **Qué tipos tienen hub, para el `BreadcrumbList`** — B-107.
+   *
+   * Mismo motivo que `mesesConPagina`: solo `hubsPublicos.ts` sabe si **alguna**
+   * actividad publicada de un tipo entró al índice alguna vez, y esta función
+   * recorre actividad por actividad, no puede preguntárselo a cada una. Una
+   * cancelada no entra al índice (D-159), así que sin esto su miga de pan podría
+   * apuntar a un `/tipo/{slug}` que no se generó.
+   */
+  const tiposConHub = new Set(slugsConHub('tipo', indice.actividades, indice.opciones));
+
+  /*
    * La bandera viaja **pegada a cada actividad y desde su origen**, no se deduce
    * después con un `includes`: de qué query salió cada una es lo único que este
    * módulo sabe y el view-model no puede recalcular. Ver `DetallePublico.cancelada`.
@@ -513,7 +525,15 @@ const detallesDelSitio = async (
       // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
       .filter(([a]) => a.slug)
       .map(([a, cancelada]) =>
-        detalleDeActividad(a, etiquetas, instante, tonos, cancelada, mesesConPagina),
+        detalleDeActividad(
+          a,
+          etiquetas,
+          instante,
+          tonos,
+          cancelada,
+          mesesConPagina,
+          tiposConHub.has(a.tipo),
+        ),
       )
   );
 };

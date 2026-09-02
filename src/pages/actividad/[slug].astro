@@ -80,7 +80,7 @@
  */
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
-import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
+import { datosEstructurados, migasDeDetalle, type DetallePublico } from '@/lib/detallePublico';
 import { ROTULO_DE_GALERIA, columnasDeGaleria, estiloDeAfiche } from '@/lib/afiche';
 import {
   claseAfiche,
@@ -116,6 +116,7 @@ interface Props {
 
 const { detalle } = Astro.props as Props;
 const jsonLd = datosEstructurados(detalle);
+const migas = migasDeDetalle(detalle);
 
 const portada = detalle.imagenes[0] ?? null;
 
@@ -208,6 +209,21 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
         is:inline
       />
     )
+  }
+
+  {
+    /*
+      §5.5 — el `BreadcrumbList`, B-107. Agenda → {Tipo} → {título}, o Agenda →
+      {título} cuando el tipo no tiene hub (`migasDeDetalle`, `detallePublico.ts`).
+      Va siempre: a diferencia del `Event`, una miga de pan no depende de tener
+      sede cargada. Mismo escape de `<` que el bloque de arriba, y por el mismo
+      motivo: el título es texto libre de un formulario.
+    */
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(migas).replace(/</g, '\\u003c')}
+      is:inline
+    />
   }
 
   {

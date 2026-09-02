@@ -45,7 +45,9 @@ import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
 import ExploraPor from '@/components/sitio/ExploraPor.astro';
 import { claseSalto } from '@/components/sitio/estilos';
 import { exploracionDeLaHome, indiceDelSitio, tonosDelSitio } from '@/lib/contenidoDelSitio';
+import { coleccionSchema } from '@/lib/hubsPublicos';
 import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
+import { RUTA_AGENDA } from '@/lib/rutasPublicas';
 
 const indice = await indiceDelSitio();
 /*
@@ -80,6 +82,21 @@ const cuantas = vigentes.length;
 const descripcion =
   `Talleres de escritura, clubes de lectura, encuentros y presentaciones en ` +
   `Argentina. ${cuantas} ${cuantas === 1 ? 'actividad' : 'actividades'} con fecha próxima.`;
+
+/**
+ * El nombre de la home, en un solo lugar — lo usan el título, el titular
+ * principal y el `name` del `CollectionPage` (B-107). Escrito tres veces, el
+ * día que se edite uno de los tres el `CollectionPage` le diría a Google que la
+ * página se llama otra cosa: el auditor de privacidad lo encontró sobre este
+ * mismo cambio.
+ */
+const TITULO_DE_LA_HOME = 'Talleres, clubes de lectura y encuentros literarios en Argentina';
+
+/*
+ * §5.5 — `CollectionPage` + `ItemList`, B-107. `null` con cero vigentes: sin
+ * nada que listar no hay `ItemList` honesta que declarar.
+ */
+const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
 ---
 
 <Base
@@ -89,9 +106,24 @@ const descripcion =
     «taller de escritura buenos aires» no conoce todavía el nombre del sitio, y en
     un resultado de Google el título se corta por la derecha.
   */}
-  titulo={`Talleres, clubes de lectura y encuentros literarios en Argentina · ${NOMBRE}`}
+  titulo={`${TITULO_DE_LA_HOME} · ${NOMBRE}`}
   descripcion={descripcion}
 >
+  {
+    /*
+      §5.5 — `CollectionPage` + `ItemList`, B-107. El mismo escape de `<` que usa
+      el detalle (`datosEstructurados`) y por el mismo motivo: un título con
+      `</script>` adentro es texto libre de un formulario.
+    */
+    schemaHome && (
+      <script
+        type="application/ld+json"
+        set:html={JSON.stringify(schemaHome).replace(/</g, '\\u003c')}
+        is:inline
+      />
+    )
+  }
+
   {/*
     §10 — «Saltar al listado». Convive con el «Saltar al contenido» de
     `Encabezado` y no lo repite: aquél salta al `<main>`, que arranca en el h1;
@@ -112,9 +144,7 @@ const descripcion =
       dos cosas al mismo tamaño máximo es ninguna.
     */}
     <div class="max-w-3xl">
-      <h1 class="headline-md text-balance text-tinta">
-        Talleres, clubes de lectura y encuentros literarios en Argentina
-      </h1>
+      <h1 class="headline-md text-balance text-tinta">{TITULO_DE_LA_HOME}</h1>
       <p class="body-md mt-3 text-super">
         {cuantas === 0
           ? 'Todavía no hay actividades con fecha próxima.'

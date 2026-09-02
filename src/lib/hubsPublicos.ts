@@ -115,6 +115,8 @@ import {
   RUTA_ONLINE,
   rutaDeBarrio,
   rutaDeTipo,
+  urlAbsoluta,
+  urlDeDetalle,
 } from '@/lib/rutasPublicas';
 
 // ─────────────────────────────────────────────────────────────────
@@ -677,4 +679,45 @@ export const exploracionDelSitio = (
   // Un grupo sin enlaces no se pinta: un rótulo «Por barrio» sin barrios es una
   // sección vacía que se lee como algo que falta.
   return grupos.filter((g) => g.enlaces.length > 0);
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Datos estructurados — `CollectionPage` + `ItemList` (§5.5 del diseño, B-107)
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * `CollectionPage` con un `ItemList`, para la home y para cada hub — **son las
+ * páginas de colección de verdad** (§5.5). Le dice a Google que la página es un
+ * listado y no un texto suelto, y en qué orden seguir los links.
+ *
+ * Una sola función y no una por página, por el mismo motivo que `frasesDelHub`:
+ * la home y los cuatro hubs comparten la forma —un nombre, una URL propia y un
+ * subconjunto de `EntradaDeIndice`— y escribirla cinco veces es la clase de bug
+ * que este módulo entero existe para evitar (B-88).
+ *
+ * `null` con la lista vacía: un `ItemList` sin `itemListElement` no ayuda a
+ * entender la página, y un hub vacío ya lleva `noindex` — nada la va a leer con
+ * intención de indexarla.
+ */
+export const coleccionSchema = (
+  nombre: string,
+  ruta: string,
+  entradas: readonly EntradaDeIndice[],
+): Record<string, unknown> | null => {
+  if (entradas.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: nombre,
+    url: urlAbsoluta(ruta),
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: entradas.map((e, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: urlDeDetalle(e.slug),
+        name: e.titulo,
+      })),
+    },
+  };
 };

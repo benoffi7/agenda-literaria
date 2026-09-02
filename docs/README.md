@@ -18,7 +18,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 9 | [`09-analitica.md`](09-analitica.md) | Taxonomía de eventos del panel: qué se mide, con qué nombre, y qué no sale nunca. |
 | 10 | [`10-salud-del-codigo.md`](10-salud-del-codigo.md) | Diagnóstico medido: tamaño, acoplamiento, duplicación. Qué conviene arreglar, qué está bien y qué no hay que tocar. |
 | 11 | [`11-ideas-de-producto.md`](11-ideas-de-producto.md) | Propuestas de funcionalidad con su argumento en contra, y lo que se descartó a propósito. Se lee antes de decidir qué sigue. |
-| 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01, cerrado): URLs, pantallas, SEO, filtros y casos borde, cada sección con su estado y sus desvíos. Los hubs (B-108) ya se construyeron; lo que queda es marcado de navegación (B-107) y detalles menores. |
+| 12 | [`12-sitio-publico.md`](12-sitio-publico.md) | Diseño del sitio público (B-01, cerrado): URLs, pantallas, SEO, filtros y casos borde, cada sección con su estado y sus desvíos. Los hubs (B-108) y el marcado de navegación (B-107) ya se construyeron; lo que queda son detalles menores. |
 | 13 | [`13-agentes.md`](13-agentes.md) | Los agentes y skills de `.claude/`: qué automatizan, cuándo invocarlos, y qué se decidió **no** automatizar porque ya hay un test. |
 | 14 | [`14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) | Cómo se ataca el backlog acumulado sin que los frentes se pisen. Se reparte por archivo, no por tema. |
 | 15 | [`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) | Las trampas del `CLAUDE.md` §13, con qué test fija cada una — y cuál quedó sin red. Se verifica solo. |
@@ -33,9 +33,9 @@ sitio público —que es la razón de ser del proyecto— **está publicado en
 `agendaleh.ar`** con su índice, el listado, la página de detalle, la cartelera de
 flyers, las páginas de mes, el archivo de lo que pasó y las tres páginas de texto;
 y desde **B-109** tiene `canonical`, Open Graph, `sitemap.xml` y `robots.txt`, así
-que se puede indexar. Los hubs (**B-108**) se cerraron el 2026-09-02. Lo que
-queda del sitio son las cinco imágenes de Open Graph (**B-291**) y el marcado de
-navegación de **B-107**.
+que se puede indexar. Los hubs (**B-108**) y el marcado de navegación
+(**B-107**) se cerraron el 2026-09-02. Lo que queda del sitio son las cinco
+imágenes de Open Graph (**B-291**).
 
 | Paso (§10 del `CLAUDE.md`) | Estado |
 |---|---|

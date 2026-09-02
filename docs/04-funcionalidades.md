@@ -719,9 +719,14 @@ Construido en **B-227**, el primer frente del diseño de
 **Desde B-109 el sitio es indexable.** El dominio existe —`agendaleh.ar`, D-165—
 y con él llegaron `site` en la config, el `canonical` absoluto y el Open Graph de
 todas las páginas, las URLs del JSON-LD, `sitemap.xml`, `robots.txt` y el archivo
-`/pasadas`. Lo que sigue faltando del §5.1 del diseño son las cinco imágenes de
-Open Graph por tipo (**B-291**) y el `lastmod` del sitemap, que necesita **B-112**.
-El rebuild automático anda desde el 2026-08-25 (**B-20**).
+`/pasadas`. **Desde B-107 (2026-09-02)** el detalle lleva además un
+`BreadcrumbList` (Agenda → Tipo → título, o Agenda → título si el tipo no tiene
+hub — B-108) y la home y los cuatro hubs llevan un `CollectionPage` con
+`ItemList`, ambos con una sola función compartida (`migasDeDetalle` y
+`coleccionSchema`) entre las cinco páginas que los usan. Lo que sigue faltando
+del §5.1 del diseño son las cinco imágenes de Open Graph por tipo (**B-291**) y
+el `lastmod` del sitemap, que necesita **B-112**. El rebuild automático anda
+desde el 2026-08-25 (**B-20**).
 
 ### La home — `/`
 

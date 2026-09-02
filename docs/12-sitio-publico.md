@@ -24,7 +24,7 @@ fragmentos de código son ilustrativos.
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
 > | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
-> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. Falta solo lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto), el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los hubs del §5.5 (los dos quedan enteros en **B-107** — los hubs de **B-108** ya existen para que el `ItemList` los recorra, pero el marcado en sí no se escribió), y el `lastmod`, que necesita **B-112** |
+> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5. Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) y el `lastmod`, que necesita **B-112** |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
 > | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
@@ -957,6 +957,24 @@ virtual ya da `hibrido`, o sea `Mixed`, que es lo correcto.
 
 No se usa `WebSite` + `SearchAction`: Google retiró el sitelinks searchbox y hoy
 no hace nada.
+
+> ✅ **Construidas las dos filas de arriba el 2026-09-02 (B-107).** Una sola
+> función por caso, compartida entre las cinco páginas que la necesitan —
+> `migasDeDetalle` (`detallePublico.ts`) y `coleccionSchema` (`hubsPublicos.ts`),
+> que arma la home y los cuatro hubs con la misma llamada— por el mismo motivo
+> por el que este documento entero insiste en eso: escrita cinco veces sería la
+> clase de bug de B-88 el día que una de las cinco quede afuera de un cambio.
+>
+> **Un caso que el diseño no anticipaba:** el segundo nivel del `BreadcrumbList`
+> (el hub de tipo) no siempre existe. Un hub de `/tipo/{slug}` se emite si
+> **alguna actividad publicada** usó ese tipo alguna vez (B-108), y una
+> cancelada no entra a esa cuenta (D-159) — así que la miga de una cancelada
+> cuyo tipo nadie más usa se resuelve con **dos** niveles (Agenda → título) y no
+> tres, para no enlazar un `/tipo/{slug}` que el build nunca generó. Lo decide
+> el lector (`contenidoDelSitio.ts`, campo `tipoTieneHub`), no la plantilla —
+> D-140 de siempre—, con el mismo default `false` («no publiques un link que
+> puede no existir») que ya usaban `cancelada` y `mesesConPagina`. Verificado
+> contra un build real con el emulador.
 
 ### 5.6 `sitemap.xml` y `robots.txt`
 

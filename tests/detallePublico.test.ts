@@ -12,10 +12,11 @@ import {
   datosEstructurados,
   detalleDeActividad,
   handleInstagram,
+  migasDeDetalle,
   urlSegura,
 } from '@/lib/detallePublico';
 import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
-import { urlDeDetalle } from '@/lib/rutasPublicas';
+import { rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
@@ -70,6 +71,25 @@ const detalleCancelado = (
     ETIQUETAS,
     ahora,
     TONOS,
+    true,
+  );
+
+/**
+ * El mismo detalle pero **con el hub de su tipo existiendo** — B-107.
+ *
+ * `tipoTieneHub` es el séptimo argumento, con default `false`: solo el lector
+ * (`contenidoDelSitio.ts`) sabe si alguna otra actividad publicada comparte el
+ * tipo, así que los tests que quieren la miga con sus tres niveles lo piden
+ * explícito acá.
+ */
+const detalleConHub = (o: OpcionesDeEntrada = {}, over: Partial<Actividad> = {}, ahora = AHORA) =>
+  detalleDeActividad(
+    toPublic({ ...actividadDePrueba(o), ...over }, o.id ?? 'act_1'),
+    ETIQUETAS,
+    ahora,
+    TONOS,
+    false,
+    {},
     true,
   );
 
@@ -1155,5 +1175,88 @@ describe('el enlace «más en septiembre» — B-280', () => {
       canceladas: [0],
     });
     expect(d.mes?.clave).toBe('2026-10');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// N · El BreadcrumbList — B-107
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('migasDeDetalle — Agenda → Tipo → título', () => {
+  it('con hub, son tres niveles y el del medio apunta a /tipo/{slug}', () => {
+    const d = detalleConHub({ tipo: 'taller' });
+    const migas = migasDeDetalle(d) as {
+      '@type': string;
+      itemListElement: { position: number; name: string; item: string }[];
+    };
+    expect(migas['@type']).toBe('BreadcrumbList');
+    expect(migas.itemListElement).toHaveLength(3);
+    expect(migas.itemListElement[1]).toMatchObject({
+      position: 2,
+      name: 'Talleres',
+      item: urlAbsoluta(rutaDeTipo('taller')),
+    });
+    expect(migas.itemListElement[2]).toMatchObject({
+      position: 3,
+      name: d.titulo,
+      item: urlDeDetalle(d.slug),
+    });
+  });
+
+  it('sin hub, son dos niveles y el título queda en la posición 2', () => {
+    /*
+     * MUTACIÓN PROBADA: ignorar `tipoTieneHub` y armar siempre los tres niveles
+     * deja este caso en rojo — el segundo nivel apuntaría a un `/tipo/{slug}`
+     * que el build nunca generó.
+     */
+    const d = detalleDe({ tipo: 'taller' }); // default: tipoTieneHub = false
+    const migas = migasDeDetalle(d) as { itemListElement: { position: number; name: string }[] };
+    expect(migas.itemListElement).toHaveLength(2);
+    expect(migas.itemListElement[1]).toMatchObject({ position: 2, name: d.titulo });
+  });
+
+  it('el default de tipoTieneHub en detalleDeActividad es false: el lado que no publica un link roto', () => {
+    /*
+     * MUTACIÓN PROBADA: cambiar el default a `true` en `detalleDeActividad`
+     * publicaría, para cualquier llamador que se olvide del séptimo argumento,
+     * una miga de pan a un hub que puede no existir. Es el mismo criterio que
+     * `cancelada` y `mesesConPagina`.
+     */
+    const sinArgumento = detalleDeActividad(
+      toPublic({ ...actividadDePrueba({ tipo: 'taller' }) }, 'act_1'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+    );
+    expect(sinArgumento.tipoTieneHub).toBe(false);
+  });
+
+  it('siempre se emite, incluso cuando datosEstructurados devuelve null', () => {
+    // Una actividad presencial sin sede no tiene `Event` honesto (§7.7), pero
+    // sigue teniendo un lugar en la navegación del sitio.
+    const sinSede = detalleDeActividad(
+      toPublic({ ...actividadDePrueba({}), modalidades: [] }, 'act_1'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+    );
+    expect(datosEstructurados(sinSede)).toBeNull();
+    expect(migasDeDetalle(sinSede)['@type']).toBe('BreadcrumbList');
+  });
+
+  it('el título hostil sigue necesitando el mismo escape de < que datosEstructurados', () => {
+    /*
+     * `migasDeDetalle` no escapa nada — es la plantilla la que aplica
+     * `.replace(/</g, '\\u003c')`, igual que con `datosEstructurados` (misma
+     * trampa: `JSON.stringify` no toca `<`). Esto prueba que un título con
+     * `</script>` sigue cerrando el bloque **sin** ese paso, y deja de hacerlo
+     * **con** él — o sea que el escape de la plantilla es necesario y suficiente
+     * para esta salida también, y no algo que la forma del BreadcrumbList vuelva
+     * innecesario.
+     */
+    const hostil = detalleConHub({}, { titulo: 'Taller</script><script>alert(1)' });
+    const crudo = JSON.stringify(migasDeDetalle(hostil));
+    expect(crudo).toContain('</script>');
+    expect(crudo.replace(/</g, '\\u003c')).not.toContain('</script>');
   });
 });

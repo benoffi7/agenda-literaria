@@ -22,17 +22,17 @@ no se pueden deshacer después.
 
    | # | Salida | Quién la produce |
    |---|---|---|
-   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, y para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts` |
+   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts`, y para el `CollectionPage`/`ItemList` de la home `src/lib/hubsPublicos.ts` (`coleccionSchema`, B-107) |
    | 2 | el evento de Calendar | `functions/calendario.js` |
    | 3 | el issue de GitHub | `functions/reportes.js` |
    | 4 | GA4 | `src/lib/analytics-eventos.ts` |
    | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
-   | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts`, y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
+   | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` (incluido `migasDeDetalle`, el `BreadcrumbList`, B-107), y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts`, `src/lib/imagenes.ts` (`urlDeMiniatura`, B-220) |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
    | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts` |
    | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
-   | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108) |
+   | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108), incluido `coleccionSchema` (B-107) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en

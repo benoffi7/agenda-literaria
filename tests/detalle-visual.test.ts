@@ -238,7 +238,7 @@ describe('la página no dice dos cuentas distintas de lo mismo — B-258', () =>
 });
 
 describe('la página sigue sin JavaScript — §4.3, presupuesto de 0 KB', () => {
-  it('el único `<script>` es el de los datos estructurados', () => {
+  it('todos los `<script>` son de datos estructurados, nunca de comportamiento', () => {
     /*
      * `tests/pagina-de-detalle.test.ts` prohíbe las islands (`client:`), que es la
      * forma en que entraría React. Esto cierra la otra puerta, que es la que B-253
@@ -247,11 +247,37 @@ describe('la página sigue sin JavaScript — §4.3, presupuesto de 0 KB', () =>
      * habría sido un `<script>` suelto, sin island y sin que aquel test dijera
      * nada.
      *
+     * **Son dos desde B-107** (el `Event` y el `BreadcrumbList`, cada uno su
+     * propio bloque — dos `<script type="application/ld+json">` es la forma
+     * estándar de declarar más de un objeto en la misma página, y evita el
+     * `@graph` que ninguno de los dos necesitaba). Lo que este test sigue
+     * fijando no es la cuenta, es que **cada uno** sea de datos estructurados:
+     *
      * MUTACIÓN PROBADA: agregar un `<script>` de dos líneas para el scroll deja
-     * verde el test de islands y rojo éste.
+     * verde el test de islands y rojo éste, porque no todos los scripts serían
+     * `application/ld+json`.
      */
     const scripts = [...sinComentarios(src()).matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]!);
-    expect(scripts).toHaveLength(1);
-    expect(scripts[0]).toContain('application/ld+json');
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) expect(script).toContain('application/ld+json');
+  });
+
+  it('todo bloque ld+json escapa el < antes del set:html (§5.5, trampa 5)', () => {
+    /*
+     * `JSON.stringify` escapa comillas y barras invertidas, y **no** el `<`
+     * (`docs/12-sitio-publico.md` §5.2). Un `titulo` con `</script>` adentro —
+     * texto libre de un formulario— cierra el bloque y lo que sigue queda como
+     * HTML ejecutable en una página pública e indexada. El auditor de
+     * privacidad lo señaló sobre B-107: nada fijaba que el escape siguiera
+     * puesto en los DOS bloques nuevos y no solo en el que ya existía.
+     *
+     * MUTACIÓN PROBADA: borrar `.replace(/</g, '\\u003c')` de cualquiera de los
+     * dos `<script>` deja este caso en rojo nombrando cuál.
+     */
+    const scripts = [...sinComentarios(src()).matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]!);
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const [i, script] of scripts.entries()) {
+      expect(script, `script #${i + 1} sin el escape de <`).toContain("replace(/</g, '\\\\u003c')");
+    }
   });
 });

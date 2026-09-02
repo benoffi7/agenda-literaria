@@ -906,7 +906,7 @@ Tres cosas que no son obvias (§3 del diseño):
 - **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
   island lo pide con `?v={VERSION_APP}`.
 
-### B-107 · Meta, Open Graph y JSON-LD — 🟡 **queda el marcado de navegación** · P2
+### B-107 · Meta, Open Graph y JSON-LD — ✅ hecho (2026-09-02)
 
 > ✅ **Reverificado el 2026-09-02, línea por línea contra el código.** De lo que
 > este ítem enumeraba **falta una sola cosa suya**, y no es lo que el texto de
@@ -991,6 +991,35 @@ lo que existe el proyecto (§2.3).
   es lo primero que cosecha un bot (trampa 5).
 - Además: `BreadcrumbList` en el detalle, `CollectionPage` + `ItemList` en la
   home y los hubs, `Organization` en `/acerca`.
+
+> ✅ **Lo último que le quedaba a este ítem —el marcado de navegación— se cerró
+> el 2026-09-02, apoyado en los hubs de B-108.** `migasDeDetalle`
+> (`src/lib/detallePublico.ts`) arma el `BreadcrumbList` del detalle —Agenda →
+> {Tipo} → {título}—, y `coleccionSchema` (`src/lib/hubsPublicos.ts`) arma el
+> `CollectionPage`/`ItemList` de la home y de los cuatro hubs, compartiendo una
+> sola función entre las cinco páginas.
+>
+> **Un caso que no estaba escrito en el diseño:** el segundo nivel de la miga
+> —el hub de tipo— no siempre existe. Un `/tipo/{slug}` se emite si alguna
+> actividad **publicada** usó ese tipo alguna vez, y una cancelada no entra a
+> esa cuenta (D-159, B-108). Una actividad cancelada cuyo tipo nadie más usa
+> podría quedar con una miga apuntando a un 404. Se resolvió con un campo
+> nuevo, `DetallePublico.tipoTieneHub`, que calcula el lector
+> (`contenidoDelSitio.ts`) sobre el índice entero —la página de detalle sola no
+> puede saberlo— y que por default es `false`: el lado que no publica un link
+> que puede no existir, mismo criterio que ya usaban `cancelada` y
+> `mesesConPagina`. Con `tipoTieneHub: false` la miga sale con dos niveles
+> (Agenda → título) en vez de tres.
+>
+> `Organization` en `/contacto` sigue afuera: nadie la pidió, y no tiene ítem
+> propio (§4.5 del diseño).
+>
+> Verificado con `npx vitest run` (mutación probada en el default de
+> `tipoTieneHub` y en el caso de lista vacía de `coleccionSchema`) y con un
+> build real contra el emulador (`scripts/build-contra-emulador.mjs`): los dos
+> bloques nuevos de `<script type="application/ld+json">` salen bien formados,
+> con el mismo escape de `<` que ya usaba el `Event`, y sin el segundo nivel de
+> la miga cuando el hub de tipo no se generó.
 
 ### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis` — ✅ hecho (2026-09-02)
 
