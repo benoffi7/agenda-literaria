@@ -1438,7 +1438,28 @@ Calendar responde que el evento ya no existía.
 evento borrado a mano en Calendar (§2.1: el calendario es un espejo) sigue
 figurando como `en-calendario` hasta la próxima edición. Verificar contra la API
 sería una lectura de red por sesión en una pantalla de solo lectura, y contradice
-que Firestore es la única fuente de verdad. Anotado en B-127.
+que Firestore es la única fuente de verdad. Anotado en **B-125**.
+
+> **Dos correcciones, del 2026-09-02.**
+>
+> La primera es de referencia: acá decía "anotado en B-127", que es otro ítem
+> (las cinco suscripciones de `useLabelsTaxonomia`). El ítem de este límite
+> siempre fue **B-125**.
+>
+> La segunda es del límite en sí, y es la que importa: **"hasta la próxima
+> edición" era falso cuando se escribió.** El párrafo prometía que el estado se
+> curaba solo al editar la actividad, y no se curaba: el `catch` de
+> `syncCalendar` no limpiaba el id de un `actualizar` que fallaba, así que cada
+> edición volvía a emitir la misma operación contra un evento inexistente y el
+> encuentro quedaba fuera del calendario público **para siempre** (ver D-191).
+> Desde ese arreglo la frase es cierta —el evento se recrea en la próxima
+> escritura— así que el límite quedó reducido a lo que dice el título: el panel
+> muestra lo que cree Firestore, y **sin editar nada** nadie se entera.
+>
+> Vale como patrón, porque es peor que un drift común: la doc no describía el
+> comportamiento con optimismo, describía un comportamiento que **no existía**, y
+> era justo la mitad tranquilizadora de un límite conocido. Un límite que se
+> escribe junto con su consuelo es un lugar donde conviene verificar el consuelo.
 
 **Segundo límite, deliberado:** `sobra-en-calendario` es transitorio durante los
 segundos que tarda el sync después de guardar. El aviso lo dice en lugar de

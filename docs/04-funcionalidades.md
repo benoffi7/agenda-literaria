@@ -585,6 +585,7 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 | Pasa a borrador, pendiente o cancelado | se borran todos sus eventos |
 | Se borra la actividad | se borran todos sus eventos |
 | Se vuelve a publicar | se crean de nuevo |
+| Alguien **borra un evento a mano** en Google Calendar | vuelve en la próxima escritura de la actividad: el sync lo recrea (B-125, D-191). Antes el id colgado hacía que cada edición reintentara actualizar un evento inexistente, así que el encuentro se perdía para siempre |
 
 ### Qué lleva el evento
 
@@ -601,7 +602,9 @@ ubicación (D-10, D-46).
 
 **Descripción:** todo lo cargado en el formulario que sea publicable —
 posición en el ciclo ("Encuentro 3 de 8", contando también los encuentros
-cancelados: D-95), descripción, tema y lectura del encuentro, **una entrada por
+cancelados: D-95, y con la **misma cuenta** que el "3 de 8" de la vista
+calendario del panel, que la importa de `@calendario`: D-190), descripción, tema
+y lectura del encuentro, **una entrada por
 forma de cursar** con su modalidad y su lugar (sede con "cómo llegar" y link a
 Google Maps, o plataforma), arancel con notas,
 inscripción con vía, cupo y cierre, material, organizador, tallerista con bio,

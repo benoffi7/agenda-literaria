@@ -223,7 +223,8 @@ export const AVISOS: AvisoAyuda[] = [
     texto:
       'Todo lo que se ve en el calendario público sale de este panel. Si entrás a Google Calendar y ' +
       'cambiás a mano una hora, un título o una dirección, ese cambio se pierde la próxima vez que ' +
-      'se toque la actividad acá, sin avisar. Lo que haya que cambiar, se cambia en el panel.',
+      'se toque la actividad acá, sin avisar. Y si borrás un encuentro desde ahí, vuelve a aparecer ' +
+      'la próxima vez que guardes la actividad. Lo que haya que cambiar, se cambia en el panel.',
     atadoA: [
       /*
        * Lo que se puede atar es la mitad verificable del aviso: cuando la
@@ -231,11 +232,21 @@ export const AVISOS: AvisoAyuda[] = [
        * panel —de ahí que el cambio hecho a mano se pierda—, y un solo cambio
        * de la actividad reescribe los eventos de sus ocho encuentros.
        *
+       * La frase del borrado se agregó con B-125 y también es verificable: antes
+       * de eso era **falsa al revés** —un evento borrado a mano no volvía nunca,
+       * porque el id colgado hacía que cada edición reintentara actualizar un
+       * evento inexistente— así que el aviso decía "el calendario es un espejo"
+       * mientras el espejo tenía un agujero permanente.
+       *
        * La otra mitad —que nada lee de vuelta del calendario— no tiene test que
        * la fije, porque no hay código que hacerlo fallar: está anotada en B-63.
        */
       { archivo: 'tests/calendario.test.ts', it: 'un cambio de sede propaga a las ocho sesiones del ciclo' },
       { archivo: 'tests/calendario.test.ts', it: 'un cambio de título también propaga a todas' },
+      {
+        archivo: 'tests/sincronizacion.test.ts',
+        it: 'recrea el evento que faltaba y deja su id nuevo en el documento',
+      },
     ],
   },
 ];

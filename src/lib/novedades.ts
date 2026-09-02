@@ -59,6 +59,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'evento-borrado-a-mano-vuelve',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'Si borrás un encuentro desde Google Calendar, vuelve al guardar la actividad',
+    detalle:
+      'El calendario es un espejo de lo que cargás acá, así que borrar un encuentro allá no era ' +
+      'una forma de sacarlo — pero hasta ahora ese encuentro quedaba afuera del calendario para ' +
+      'siempre, incluso después de editar la actividad. Ahora vuelve solo en el próximo guardado, ' +
+      'con sus recordatorios. Para saltear un encuentro de verdad, marcalo como cancelado acá.',
+    donde: 'No hay nada que hacer en el panel: pasa al guardar la actividad.',
+  },
+  {
     id: 'las-demas-imagenes-se-ven',
     fecha: '2026-09-02',
     version: '1.5.0',
