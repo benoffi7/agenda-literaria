@@ -5081,6 +5081,19 @@ antes de esas tres cosas. Van juntos y no en cuatro entradas justamente por eso:
 tienen una sola causa, y separados alguien resuelve el primero sin darse cuenta
 de que el segundo se destraba con lo mismo.
 
+> ✅ **Y se destrabaron con lo mismo, al día siguiente: B-109 (2026-09-02).** Los
+> puntos 1 y 2 de abajo dicen «`/pasadas` todavía no existe» y «no hay sitemap
+> todavía», y las dos cosas existen. Lo que pasó con cada uno:
+>
+> - **el punto 1 se cerró como estaba previsto** —una línea en
+>   `DESTINO_DEL_MES_VENCIDO`— y es **B-281**, hecho el 2026-09-02;
+> - **el punto 2 quedó como este texto anticipaba**: las dos cosas conviven. La
+>   vencida no entra al sitemap (`mesesEnlazables`, no `mesesDelSitio`) **y**
+>   sigue emitiéndose con `noindex` para que su URL no se rompa.
+>
+> Los puntos 3 y 4 no dependían del dominio y siguen valiendo tal cual. Esta
+> entrada no se reescribe: la predicción y su cumplimiento valen más juntos.
+
 **1 · El aviso del mes vencido manda a `/`, no a `/pasadas`.**
 `/pasadas` es parte de **B-109** y todavía no existe. Enlazarla sería poner un 404
 en la única salida que ofrece la página vencida, que es peor que el problema que
@@ -5518,3 +5531,97 @@ markup nuevo solo.
 
 Las 18 mutaciones con las que se validaron esos asertos están en el CHANGELOG del
 2026-09-02.
+
+
+---
+
+## D-170 · Cuándo se cierra un ítem paraguas, y cuándo se descarta uno que espera al dueño
+
+**Contexto.** El barrido de backlog del 2026-09-02. El backlog tenía 76 ítems
+abiertos y doce en la sección P1, y varios ya estaban hechos: los números habían
+dejado de significar algo. Al recorrerlos aparecieron dos preguntas que no eran
+sobre ningún ítem en particular y que van a volver cada vez que se haga un
+barrido, así que se contestan una vez acá.
+
+La regla de fondo, de la que salen las dos: **un ítem cerrado en falso es peor
+que uno abierto.** El abierto se revisa; el cerrado no lo mira nadie nunca más.
+Por eso nada se cierra sin reproducirlo contra el código, y por eso las dos
+respuestas de abajo son restrictivas.
+
+### 1 · Un ítem paraguas se cierra cuando su promesa está cumplida, no cuando no le quedan hijos
+
+**El caso.** **B-01** era «Sitio público (paso 3 del §10)» y su cuerpo decía «lo
+construible son **B-105 a B-114**». De esos, B-108 (los hubs), B-112 y B-114
+siguen abiertos, y B-107 quedó a medias. La pregunta es si un paraguas con
+hijos abiertos se puede cerrar.
+
+**Se cierra.** El criterio es que **el paso 3 del §10 del `CLAUDE.md` pedía que
+el sitio público exista, se indexe y se use**, y eso se puede verificar: ocho
+salidas indexables, dominio propio, canónica absoluta, sitemap y robots. Los
+hijos que quedan son mejoras de indexación y de peso, cada uno con su número y
+su prioridad — ninguno hace que el sitio no exista.
+
+**Y la razón por la que no se deja abierto «hasta que no quede ninguno»:** un
+paraguas que sobrevive a todos sus hijos deja de ser un ítem y pasa a ser una
+categoría. Nadie lo puede tomar —no hay nada que hacer que no esté en otro
+número— y sin embargo cuenta como trabajo pendiente, y en la sección P1 cuenta
+como trabajo que bloquea el objetivo del proyecto. Eso es exactamente lo que
+hacía que la lista mintiera.
+
+**Las dos condiciones, para que esto no sea una licencia:**
+
+1. **La promesa del paraguas tiene que ser verificable y estar verificada** — no
+   «el sitio está bastante bien», sino un build verde y los artefactos leídos.
+2. **Cada cosa que queda tiene que tener número propio antes de cerrar.** Si al
+   cerrar el paraguas algo queda sin ítem, lo que se hizo no fue cerrar: fue
+   perder el pendiente. En B-01 eso obligó a crear **B-310**, porque la página
+   `/404` estaba diseñada y no tenía ítem.
+
+### 2 · Un ítem que espera una decisión que nadie pidió se descarta, no se deja abierto
+
+**El caso.** **B-275** — el rótulo de `/cartelera` nombra la categoría en azul
+fijo y no en el color de su tipo. El ítem estaba bien escrito: se había mirado
+al cerrar B-273, tenía los tres argumentos de por qué no entró y terminaba con
+«qué haría falta para cerrarlo: que el dueño decida si la pared también tiene
+que identificar la categoría por color».
+
+**Se descarta.** La distinción que decide es **si hay una afirmación falsa que
+corregir**. En B-273 la había: la ficha del detalle pintaba el tipo en azul fijo
+**y su comentario decía que era el mismo color que el listado**. Eso es un bug de
+verdad —el código y su propia documentación discrepaban— y se arregla sin
+preguntarle a nadie. En B-275 no hay nada falso: hay una propuesta de diseño
+nueva, coherente con el sistema visual como está, cuyo único camino a ejecución
+es un pedido que no existe.
+
+**Y lo que hace que descartarlo no pierda nada** —que es la condición—: **el
+texto no se borra**. Queda el razonamiento y queda el camino corto por si el
+pedido llega (una cajita como la del listado en vez de teñir la línea entera,
+medida con `contrasteCaladoDelTono` o `contrasteDelTono`, sin nada nuevo que
+medir). Reabrirlo es gratis y arranca con el trabajo ya hecho, que era el
+propósito de haberlo anotado. Lo que se recupera al cerrarlo es que deje de
+contarse como trabajo.
+
+**El límite, dicho:** esto **no** aplica a un ítem que espera una decisión que
+el dueño ya pidió o que bloquea algo. Esos son las `DEC-*` de la cabecera del
+backlog y la sección «Pendiente de acción manual del dueño», y siguen abiertos
+justamente porque hay alguien esperando del otro lado.
+
+### 3 · Y una tercera, más chica: un número viejo se remide o se marca como no medido
+
+**El caso.** **B-201** — el §1.3 de [`10-salud-del-codigo.md`](10-salud-del-codigo.md)
+citaba cifras del 2026-08-27. El ítem ya traía el criterio y conviene dejarlo
+escrito como regla: **ponerle un número estimado es peor que dejarlo viejo,
+porque el viejo al menos se sabe viejo.**
+
+De ahí las dos únicas salidas legítimas: **remedirlo con el criterio del conteo
+escrito al lado** —que es lo que se hizo, y por eso el §1.3 ahora define sus tres
+cifras arriba de la tabla— o **marcar el bloque como no medido**. La segunda es
+la que aplica al resto de ese documento, que tiene el aviso en el encabezado y su
+propio ítem (**B-311**).
+
+Y el corolario que salió de remedirlo: **el «puesto en la lista» es la peor de
+las tres cifras para seguir un archivo.** `ActividadFormulario.tsx` cayó de 14º a
+28º sin que nadie lo tocara —catorce archivos le pasaron por arriba, seis de
+ellos nacidos con el sitio público— así que baja cuando el repo crece y sube
+cuando el repo se encoge, sin decir nada del archivo. Se mira junto a LOC y
+fan-out, que son las que dependen de él.

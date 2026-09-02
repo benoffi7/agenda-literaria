@@ -3,9 +3,13 @@
 ## Las tres piezas
 
 1. **Panel de admin** — SPA React en `/admin`, escribe a Firestore.
-2. **Sitio público** — Astro estático (SSG). Listado con búsqueda y filtros, y
-   página de detalle por actividad (**B-227**). **Todavía no está desplegado:**
-   falta elegir el dominio (B-109), y con él el canonical y el sitemap.
+2. **Sitio público** — Astro estático (SSG). **Publicado en
+   [`agendaleh.ar`](https://agendaleh.ar)** (D-165): el listado con búsqueda y
+   filtros y la página de detalle (**B-227**), la cartelera de flyers
+   (**B-265**), las páginas de mes (**B-113**), el archivo `/pasadas`, las tres
+   páginas de texto (`/ayuda`, `/contacto`, `/suscribirse`) y el `canonical`
+   absoluto + Open Graph + `sitemap.xml` + `robots.txt` de **B-109**. Lo que
+   queda son los hubs de taxonomía (**B-108**).
 3. **Google Calendar público** — espejo de solo lectura.
 
 ## Flujo de datos

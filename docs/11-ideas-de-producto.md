@@ -17,6 +17,22 @@ Hoy el sistema no guarda ni un nombre ni un teléfono de nadie que se inscriba, 
 eso hace que los §5 y §7 sean cortos y verificables. Varias ideas que parecían
 obvias mueren ahí, y están al final con el motivo.
 
+> ✅ **Tres de las cuatro propuestas se construyeron, y este documento seguía
+> leyéndose como si ninguna existiera. Corregido el 2026-09-02.** Cada una lleva
+> su caja de estado arriba; el texto original queda entero abajo, porque el valor
+> de este documento es el argumento y no el estado.
+>
+> | # | Idea | Estado |
+> |---|---|---|
+> | 1 | El texto para publicar en redes | ✅ **B-95** (2026-08-26) |
+> | 2 | «Esta semana» arriba del listado | ✅ **B-96** (2026-08-24) |
+> | 3 | «Completo» después de publicar | ✅ **B-97** (2026-08-26) |
+> | 4 | Cancelar un encuentro sin que desaparezca | 🟡 **B-98** — aprobado el 2026-08-26, sin implementar |
+>
+> Y una cosa más que este documento daba por futura y ya pasó: **el sitio público
+> existe y está publicado en `agendaleh.ar`** desde B-109 (D-165). Donde el texto
+> de abajo dice «cuando exista el sitio» o «falta el dominio», leer «ya existe».
+
 ---
 
 ## 1 · El texto para publicar en redes
@@ -54,6 +70,15 @@ porque acá justamente es su lugar—. Una función pura nueva
 reglas, ni las Functions, ni el sitio.** Es la propuesta más barata de todas y
 la única que aprovecha un campo que hoy está muerto.
 
+> ✅ **Construida el 2026-08-26 — B-95.** Es `src/lib/textoRedes.ts`, función
+> pura, con su sección colapsada en el formulario. **Lo que sigue abierto es la
+> decisión del link, y su motivo caducó:** el texto todavía no lo lleva porque
+> «falta el dominio», y el dominio existe desde el 2026-09-02 (`agendaleh.ar`,
+> D-165). Hoy alcanza `urlDeDetalle(slug)` (`src/lib/rutasPublicas.ts`), que
+> devuelve la URL absoluta con la barra final que Firebase sirve con un 200. El
+> lugar donde entra está escrito y comentado en `textoRedes.ts`: sigue siendo
+> una línea, y ahora sin nada esperando. Falta solo que el dueño diga sí.
+
 **Por qué ahora.** Porque el trabajo que ahorra se hace hoy, todos los meses, a
 mano. No depende del sitio público (B-01): funciona igual de bien con el sitio
 sin existir, porque el canal de difusión real de este circuito es Instagram, no
@@ -82,6 +107,8 @@ para que el formato del texto no cambie después.
 ---
 
 ## 2 · "Esta semana" arriba del listado
+
+> ✅ **Construida el 2026-08-24 — B-96.**
 
 **El problema, como pasa.** El club de lectura es mañana y la lectura del
 encuentro nunca se cargó. La inscripción del taller cierra hoy y la actividad
@@ -125,6 +152,13 @@ parámetro.
 ---
 
 ## 3 · "Completo": lo único que hay que poder decir después de publicar
+
+> ✅ **Construida el 2026-08-26 — B-97.** El campo es `inscripcion.completo`
+> (`src/types/actividad.ts`), se prende desde el menú de la fila del listado como
+> proponía este texto, y **el botón de inscripción se queda** con el cartel «Cupo
+> completo» al lado — la decisión 2 del dueño salió como la recomendaba el final
+> de esta sección. La parte del sitio público, que acá figuraba como «cuando
+> exista», **también está**: el cartel se ve en la tarjeta y en el detalle.
 
 **El problema, como pasa.** El taller se llenó. La gente sigue mandando DM y hay
 que contestarle una por una que ya no hay lugar. Y el sitio y el calendario
@@ -196,6 +230,14 @@ tiene que ir con B-01. Hacerlo antes de B-01 tiene una ventaja concreta: el
 ---
 
 ## 4 · Cancelar un encuentro sin que desaparezca en silencio
+
+> 🟡 **Aprobada el 2026-08-26 y sin implementar — B-98.** Es la única de las
+> cuatro que sigue siendo una propuesta. Y una parte del problema se resolvió por
+> otro lado desde entonces: **la actividad cancelada ya no desaparece del sitio**
+> —conserva su página, con la franja y el `EventCancelled` del JSON-LD (B-110)—,
+> pero eso es la actividad entera. Lo que este texto propone es el **encuentro**
+> suelto dentro de un ciclo, y ahí el comportamiento sigue siendo el del §7.3:
+> se borra del calendario.
 
 **Esto contradice una decisión cerrada.** El §7.3 del `CLAUDE.md` dice que
 `sesion.cancelada === true` **borra** el evento del calendario, y la guía del
@@ -276,6 +318,14 @@ molesta a nadie y es la prueba de que ese día estaba previsto.
 ---
 
 ## Una nota para cuando se haga el sitio (B-01)
+
+> ⚠️ **El sitio ya se hizo, así que esta nota llegó tarde — y sigue valiendo.**
+> El listado público existe desde B-227 y `events.json` desde B-106, los dos
+> **sin** el eje de encuentros que esta nota pedía decidir antes. O sea que pasó
+> exactamente lo que anticipaba: hoy agregarlo es más caro que entonces. Sigue
+> anotado como **B-99**, y el «más caro» tiene un número: el índice ya es una
+> salida pública con su fixture de centinelas, así que un eje nuevo entra por
+> ahí y no por un `map` en el generador.
 
 No es una propuesta, es algo que conviene decidir antes de escribir el listado
 público, porque después es más caro.

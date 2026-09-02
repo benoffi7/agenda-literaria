@@ -18,7 +18,7 @@ bug van al [backlog](./docs/BACKLOG.md) por prioridad. Detalle en
 |---|---|
 | 1. Modelo + reglas + emuladores | ✅ |
 | 2. Panel de admin (React) | ✅ formulario completo |
-| 3. Sitio público (SSG) | 🟡 la mitad — listado con filtros y `/actividad/{slug}` (B-227), más el índice `/events.json` (B-106). Falta desplegarlo: el dominio (B-109) y los hubs (B-108) |
+| 3. Sitio público (SSG) | ✅ **publicado en [`agendaleh.ar`](https://agendaleh.ar)** — listado con filtros, `/actividad/{slug}`, `/cartelera`, `/agenda/{aaaa-mm}`, `/pasadas`, `/ayuda`, `/contacto`, `/suscribirse`, el índice `/events.json` y el SEO absoluto (canonical, Open Graph, `sitemap.xml`, `robots.txt`). Quedan los hubs de taxonomía (B-108) |
 | 4. Sync a Google Calendar | ✅ |
 | 5. Trigger de rebuild | 🟡 código y workflow listos; faltan las credenciales del dueño |
 

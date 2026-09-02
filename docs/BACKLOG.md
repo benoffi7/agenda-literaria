@@ -12,6 +12,11 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > **B-300** por reserva de números entre frentes en paralelo. Queda escrito acá para
 > que el salto no se lea como una entrada perdida. Ningún chequeo del repo exige
 > numeración contigua.
+>
+> **Y un segundo hueco por el mismo motivo: `B-303` a `B-309`.** El frente del
+> barrido de backlog y drift tenía reservado el rango **B-310 a B-319** y usó los
+> tres primeros (**B-310**, **B-311**, **B-312**); los números del medio son de
+> otros frentes de la misma tanda.
 
 ---
 
@@ -740,7 +745,51 @@ tablas… y nadie miró el skill, que es el documento que de verdad se ejecuta.
 Arreglado con la tabla de las seis y una nota de por qué. El paso «Proyección
 pública» también se reescribió: eran cuatro archivos en cadena y nombraba uno.
 
-### B-01 · Sitio público (paso 3 del §10)
+### B-01 · Sitio público (paso 3 del §10) — ✅ hecho (2026-09-02)
+
+**El paso 3 está terminado y el sitio está publicado en
+[`agendaleh.ar`](https://agendaleh.ar).** Verificado contra el código y contra el
+build del 2026-09-02, no contra el recuerdo. Qué lo compone — **ocho salidas
+indexables**, todas en `src/pages/`:
+
+| # | Ruta | Qué es | Con qué entró |
+|---|---|---|---|
+| 1 | `/` | el listado de lo vigente, completo en HTML, con la island de filtros encima | **B-227** |
+| 2 | `/actividad/{slug}` | el detalle, SSG por `getStaticPaths`, cero JavaScript | **B-227**, **B-110** (las canceladas), **B-296** (la galería) |
+| 3 | `/cartelera` | la pared de afiches: solo las que tienen flyer, la imagen entera | **B-265** |
+| 4 | `/agenda/{aaaa-mm}` | qué hay en un mes, solo los vigentes con 3 o más | **B-113** |
+| 5 | `/pasadas` | el archivo, y el único link interno permanente de lo que ya pasó | **B-109** |
+| 6 | `/ayuda` | qué es cada tipo de actividad y cómo se lee una ficha | **B-232** |
+| 7 | `/contacto` | el canal para proponer una, con qué conviene contar | **B-232**, **B-233** |
+| 8 | `/suscribirse` | los cuatro caminos para sumar la agenda a tu calendario | **B-230** |
+
+Más lo que las sostiene y no es una página: **el dominio propio** —`SITIO` en
+`src/lib/rutasPublicas.ts`, la única vez que se escribe, y `astro.config.mjs` lo
+importa (**B-109**, D-165)—, el `canonical` absoluto y el Open Graph que pone
+`Base.astro` para todas de una vez, el **`/events.json`** que la island filtra en
+memoria (**B-106**) y los endpoints `/sitemap.xml` y `/robots.txt` (**B-109**).
+
+**Cómo se verificó, para que el cierre no sea una afirmación:**
+
+- `npm run build` verde, emitiendo las páginas y los cuatro endpoints;
+- `dist/sitemap.xml` sale con las seis rutas fijas bajo `https://agendaleh.ar/` y
+  con barra final, y `dist/robots.txt` bloquea solo `/admin`;
+- el único `noIndex` fijo del sitio es `/admin`; el de `/agenda/{mes}` es
+  condicional y solo aplica al mes vencido (§2.2);
+- la suite completa en verde: **2.173 tests en 93 archivos**, con los de
+  emuladores incluidos.
+
+**Lo que queda abierto tiene número propio y no es el paso 3.** Los hubs de
+taxonomía (**B-108**) son la pieza de indexación que falta; el marcado de
+navegación del JSON-LD es **B-107**; las cinco imágenes de Open Graph, **B-291**;
+la búsqueda de `/pasadas`, **B-292**; el `lastmod`, **B-112**; el precio real del
+JSON-LD, **B-114**; el eje de encuentros del índice, **B-99**; el peso de las
+imágenes, **B-266**, **B-300** y **B-220**; la hoja de filtros de móvil y el
+runtime de React, **B-238** y **B-239**; y los auditores del sitio, **B-121** y
+**B-122**. Ninguno impide que el sitio exista, se indexe y se use, que es lo que
+el paso 3 pedía.
+
+El texto original, con su lista de pendientes tal como estaba:
 
 Lo que falta:
 
@@ -838,7 +887,40 @@ Tres cosas que no son obvias (§3 del diseño):
 - **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
   island lo pide con `?v={VERSION_APP}`.
 
-### B-107 · Meta, Open Graph y JSON-LD — 🟡 **la mitad hecha** (2026-08-28, en B-227)
+### B-107 · Meta, Open Graph y JSON-LD — 🟡 **queda el marcado de navegación** · P2
+
+> ✅ **Reverificado el 2026-09-02, línea por línea contra el código.** De lo que
+> este ítem enumeraba **falta una sola cosa suya**, y no es lo que el texto de
+> abajo hacía suponer:
+>
+> | Qué pedía el ítem | Estado |
+> |---|---|
+> | `title` / `description` por tipo de página | ✅ B-227 |
+> | JSON-LD `Event` completo (subtipos, `EventSeries`, offset, `offers`, `performer`, cancelados) | ✅ B-227 |
+> | el link de la reunión fuera del JSON-LD | ✅ B-227, y más estricto |
+> | `canonical` absoluto | ✅ B-109 — lo pone `Base.astro`, `urlAbsoluta` |
+> | Open Graph completo + `twitter:card` | ✅ B-109 — `Base.astro:161-168` |
+> | el `url` del evento, del `VirtualLocation` y de `offers` | ✅ B-109 — `detallePublico.ts:919, 1053-1077` |
+> | las cinco imágenes de `public/og/` | ❌ pero **no es de acá**: es **B-291**. Hoy `public/` tiene `compartir.png`, la marca, y `Base.astro` la usa de respaldo (B-295); el detalle manda el flyer |
+> | `BreadcrumbList` en el detalle | ❌ **lo que le queda a este ítem** |
+> | `CollectionPage` + `ItemList` en la home y los hubs | ❌ **lo otro**, y va con **B-108** |
+>
+> Comprobado con `grep -rn "BreadcrumbList\|CollectionPage\|ItemList" src/`:
+> **cero apariciones**. Las dos cosas que faltan son marcado de navegación y
+> ninguna dependía del dominio: el `BreadcrumbList` necesita **decidir la
+> jerarquía** —¿la actividad cuelga de la home, del tipo o del barrio?— y el
+> `ItemList` conviene hacerlo con los hubs, que son las páginas de colección de
+> verdad.
+>
+> **Y por eso baja a P2.** Era P1 porque «una página de detalle sin datos
+> estructurados no sirve para lo que existe el proyecto», y esa mitad está: el
+> sitio se indexa, el `Event` sale completo y la canónica es absoluta. Lo que
+> queda mejora cómo Google entiende la **navegación**, no si la página entra al
+> índice. La marca explícita `· P2` es la que vale por encima de la sección,
+> igual que en B-221 y B-222 — el bloque no se mueve para no pisar a los frentes
+> en paralelo.
+
+El texto original, con la caja de B-109 que lo dejó a mitad de camino:
 
 **Hecho:** `title` y `description` de la home y del detalle; el JSON-LD completo
 —`EducationEvent`/`LiteraryEvent`/`Event`, `EventSeries` con `subEvent` por sesión,
@@ -1989,7 +2071,26 @@ Firebase Hosting **no** tiene rewrite directo a un bucket de GCS: hay que poner 
 Cloud Function o un Cloud Run que haga de proxy, y eso agrega cold start al camino de
 una imagen. Conviene hacerlo junto con B-220, que ya va a tocar esa zona.
 
-### B-223 · `12-sitio-publico.md` sigue diseñando contra `imagenUrl`, que ya no existe · P2
+### B-223 · `12-sitio-publico.md` sigue diseñando contra `imagenUrl`, que ya no existe — ✅ hecho (2026-09-02)
+
+**Corregidos los seis lugares**, más dos que el ítem no contaba. El §4.2 y el
+§7.6 pasan a hablar de la **portada** y de la **lista vacía** (`imagenes: []`),
+el `og:image` del §5.1 y la fila `image` del §5.2 salen de `portadaDe()`, la
+caja de estado dejó de citar el campo viejo, y el §9 se rehízo entero: había un
+consejo —«es una URL externa que no controlamos»— que hoy vale para **una de las
+dos clases** de imagen, así que ahora distingue la externa (que puede caerse
+mañana, el riesgo que el §7.6 daba para todas) de la propia (que vive en nuestro
+Storage y **trae `ancho` y `alto`**).
+
+Las dos puntas que el ítem pedía que no se perdieran quedaron escritas donde se
+van a leer: que el índice recorta a `imagenUrl: portadaDe(...)` **sin las
+medidas** —y que meterlas es agrandar una salida pública, o sea el fixture de
+centinelas— está en el §9 y en una nota nueva del §3, que además aclara que el
+`imagenUrl` **del JSON** sí existe y es un derivado con el nombre del diseño.
+
+Se hizo junto con **B-234**, como el propio B-234 pedía: los dos son drift del
+mismo documento y arreglarlos desde dos frentes produce dos versiones del mismo
+párrafo.
 
 Lo encontró el `auditor-documentacion` en el cierre de la segunda tajada de B-167.
 El diseño del sitio público modela la imagen como **un campo único**
@@ -2367,7 +2468,27 @@ archivo es del frente del chrome del sitio y no se toca desde otro (B-229).
 Lo mismo aplica a cualquier otro lugar que en el futuro ofrezca «sugerir» sin pasar
 por la página.
 
-### B-234 · El mapa de URLs de `12-sitio-publico.md` diseñó páginas que se llaman de otra manera · P2
+### B-234 · El mapa de URLs de `12-sitio-publico.md` diseñó páginas que se llaman de otra manera — ✅ hecho (2026-09-02)
+
+**Corregido contra `src/pages/`, que es lo que se publica.** Los cuatro
+desajustes, con su motivo al lado en el documento:
+
+| El diseño decía | La ruta real |
+|---|---|
+| `/calendario` | **`/suscribirse`** (D-134) |
+| `/acerca` | **`/ayuda`** + **`/contacto`** — el rol se repartió en dos (B-232, B-233) |
+| *(no estaba)* | **`/cartelera`** (D-148) |
+| `/404` | **no existe**: responde el 404 por defecto de Firebase → **B-310** |
+
+Tocados el mapa del §2 —con el conteo real, que además estaba mal desde antes:
+decía «nueve patrones» y son **doce**, ocho construidos y los cuatro hubs de
+B-108—, el título y los bullets del §4.5, la tabla de etiquetas del §5.1 (que
+ganó las cuatro páginas que le faltaban, con el `<title>` que emiten hoy), la
+fila `Organization` del §5.5 y el bloque del sitemap del §5.6.
+
+De paso, dos decisiones del §11.1 que seguían abiertas y ya estaban tomadas: el
+**canal de contacto** (es lo que publica `/contacto`) y el **nombre del sitio**
+(«Agenda LEH», `src/lib/identidad.ts`, D-141).
 
 El §4.5 del diseño lista `/pasadas`, `/calendario`, `/acerca` y `/404`. El sitio que
 se está construyendo tiene `/`, `/suscribirse`, `/ayuda` y `/contacto` —así lo
@@ -5163,9 +5284,53 @@ la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe 
 enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
 Falta el enlace y su test.
 
+### B-312 · El texto para redes no lleva el link, y el motivo caducó · P2 — decisión del dueño
+
+**Salió del barrido de drift del 2026-09-02.** `src/lib/textoRedes.ts` (B-95) no
+incluye la URL de la actividad, y el motivo escrito en
+[`11-ideas-de-producto.md`](11-ideas-de-producto.md) § 1 era **«falta el
+dominio»**. El dominio existe desde el mismo día (`agendaleh.ar`, D-165), así que
+lo único que queda es la decisión: **¿el posteo lleva el link o no?**
+
+Está todo listo y es una línea. `urlDeDetalle(slug)`
+(`src/lib/rutasPublicas.ts`) devuelve la URL absoluta con la barra final que
+Firebase contesta con un 200, el lugar exacto donde entra está **escrito y
+comentado** en `textoRedes.ts` desde que se escribió el módulo, y el dominio no
+se copia: sale de `SITIO`, que es la única aparición en el repo (`canonico.test.ts`
+lo exige).
+
+Por qué es una decisión y no una tarea: quien publica en Instagram no puede poner
+links clickeables en el pie de una foto, así que el link se lee y se tipea, o se
+ignora. El argumento a favor es que el posteo deja de ser la única salida que no
+manda a la página que existe para eso; el argumento en contra es que suma una
+línea a un texto que quien publica ya reescribe. **El costo de decidirlo tarde no
+es el código: es que el formato del texto cambie después de que alguien se
+acostumbró a él**, que es lo que el ítem original quería evitar cuando pedía
+decidirlo antes.
+
 ## P3 — cuando sobre tiempo
 
-### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo · P3
+### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
+
+**La conclusión es «no se toca», y se cierra para que deje de contarse como
+trabajo pendiente.** El texto de abajo ya tenía los tres argumentos y se
+verificaron contra el código: `src/pages/cartelera.astro:139` pinta
+`{tipoEtiqueta} · {cuando}` con `claseRotulo`, que es
+`'label-caps text-azul'` (`src/components/sitio/estilos.ts:110`) — exactamente
+lo que el ítem describe.
+
+Por qué se descarta en vez de dejarse abierto: **no hay ninguna afirmación falsa
+que corregir**, que es lo que sí había en B-273. Es una **propuesta de diseño
+nueva** —dos colores en un renglón de tres palabras— cuyo único camino a
+ejecución es que el dueño decida que la pared también tiene que identificar la
+categoría por color, y nadie lo pidió. Un ítem que espera un pedido que no
+existe es exactamente lo que hace que la lista deje de significar algo.
+
+**No se pierde nada al cerrarlo**, que es la condición: el razonamiento sigue
+escrito acá, y el camino corto —una cajita como la del listado en vez de teñir
+la línea entera, medida con `contrasteCaladoDelTono` o `contrasteDelTono`, sin
+nada nuevo que medir— también. Si el dueño lo pide, se reabre con eso ya
+resuelto, que era el propósito de haberlo anotado.
 
 **Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
 vuelva a discutir desde cero.**
@@ -5359,7 +5524,34 @@ hace un minuto. El arreglo natural es que el `refine` de `sesionSchema` valide q
 la fecha se pueda convertir —que es lo que `formADocumento` ya hace, o sea la
 tercera copia de la misma regla si no se comparte (B-72, B-75)—.
 
-### B-201 · El conteo de líneas de `10-salud-del-codigo.md` §1.3 quedó viejo · P3
+### B-201 · El conteo de líneas de `10-salud-del-codigo.md` §1.3 quedó viejo — ✅ hecho (2026-09-02)
+
+**Remedido, no estimado**, que era la condición del ítem. Y con el criterio del
+conteo escrito al lado, que era la otra:
+
+| | 2026-08-27 | Hoy |
+|---|---:|---:|
+| `ActividadFormulario.tsx` | 379 LOC | **376** |
+| Su fan-out | 25 | **26** |
+| Su puesto en la lista | 14º | **28º** |
+
+El criterio, en la sección: LOC por `wc -l`; fan-out = imports distintos **del
+proyecto**, sin `node_modules` y sin `react`, como el grafo del §1.4 (y no hay
+`import()` diferido en el archivo); puesto sobre el corpus del §1.1, hoy 156
+archivos.
+
+**Lo que la medición dice, que es el trabajo que el ítem no podía hacer:** el
+número que se venía siguiendo dejó de subir —tres líneas menos y un import más
+en seis días, sigue siendo un composer, y el umbral escrito entonces (550 LOC
+con fan-out 30) no se movió— y el que se movió no significa lo que parece. El
+salto de 14º a 28º es que **catorce archivos le pasaron por arriba sin que él
+cambiara**: seis nacieron con el sitio público, uno el mismo día de la medición
+anterior y siete ya estaban y crecieron. De ahí la conclusión que quedó escrita:
+el puesto es la peor de las tres cifras para seguir un archivo.
+
+**Lo que sigue viejo, y ahora está dicho con una vara:** el resto del documento
+es del 2026-08-27. El §1.1 declara 111 archivos de producción y hoy son 156. La
+pasada completa es **B-311**.
 
 Lo marcó el `auditor-documentacion` en el cierre de `1.2.0`. La tabla dice
 `ActividadFormulario.tsx | 858 LOC | 258 LOC` y "6 módulos de dominio puros", y hoy
@@ -5992,7 +6184,29 @@ Arreglado siguiendo la llamada (D-102) y con nueve tests del propio detector
 contra cuerpos sintéticos, que es lo que faltaba la primera vez. El `it.skip`
 volvió a `it` y el `it.fails` de B-82 pasó a `it`.
 
-### B-173 · `npx tsc --noEmit` sale con doce errores de `ImportMeta` · P3
+### B-173 · `npx tsc --noEmit` sale con doce errores de `ImportMeta` — ✅ hecho (2026-09-02)
+
+**El arreglo que el ítem proponía está aplicado en los dos lugares que nombraba**,
+y se verificó reproduciendo el bug primero, en este worktree recién creado —o sea
+en el entorno limpio donde el ítem decía que el hallazgo es más grave:
+
+```
+$ ls .astro                → No such file or directory
+$ npx tsc --noEmit         → los 12 `Property 'env' does not exist on type 'ImportMeta'`
+$ npx astro sync && npx tsc --noEmit   → limpio, exit 0
+```
+
+Dónde está el `astro sync`: `scripts/verificar-todo.sh:49` (el comando que corren
+todos los frentes) y `.github/workflows/push-main.yml:109` (el CI). O sea que el
+modo de falla que el ítem describía —«el comando de verificación sale siempre en
+rojo, así que un error nuevo de verdad se esconde entre los doce»— no existe más
+en ninguno de los dos lugares donde el comando decide algo.
+
+**La condición, dicha para que nadie la descubra de nuevo:** `npm run typecheck`
+a secas sigue siendo `tsc --noEmit` y sigue saliendo en rojo en un checkout sin
+`.astro/`. Es a propósito y está documentado en
+[`08-operacion.md`](08-operacion.md) § «Verificar»: el `astro sync` va antes. Si
+alguna vez molesta, la respuesta es el script del `package.json`, no este ítem.
 
 Verificación de la fase 4: `npx tsc --noEmit` termina con doce
 `Property 'env' does not exist on type 'ImportMeta'` en `src/lib/analytics.ts`,
@@ -6161,7 +6375,31 @@ las dos mitades**, y por eso `tests/canonico.test.ts` afirma hoy que `cleanUrls`
 `trailingSlash` y `build.format` siguen sin tocarse, con el motivo escrito: el par
 lo señaló el `auditor-privacidad`.
 
-### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas · P2
+### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas — ✅ hecho (2026-09-02)
+
+**Catorce filas pasaron a once, eligiendo texto** — que era el trabajo que nadie
+quería hacer, porque las versiones no eran iguales: se contradecían. Qué quedó y
+con qué evidencia:
+
+| Fila | Qué versión quedó | Cómo se decidió |
+|---|---|---|
+| `estilos-del-sitio.test.ts` | la que dice que `index.astro` **entró** al alcance en B-113 y que `publico/*` queda afuera por ser React | el docblock del test documenta el alcance con ese mismo motivo |
+| `cartelera.test.ts` | la que cubre la **cancelada** (B-110) | `tests/cartelera.test.ts:124` tiene el `it`, con la mutación anotada |
+| `events-json-endpoint...` | la que agrega el aserto sobre el **HTML** que salió | `scripts/build-contra-emulador.mjs`, paso 4 |
+| `color-de-tipo.test.ts` | la que mide **las dos direcciones** de la tinta (B-273, D-153) | es la más nueva y contiene a la otra |
+| `afiche.test.ts` | cualquiera | las dos copias eran idénticas |
+
+Y una cicatriz más del mismo tipo que el ítem no nombraba: la fila de
+`suscribirse.test.ts` tenía pegada la de `sin-marcadores-de-conflicto.test.ts`
+detrás de un `||`. Separadas. **Hoy el archivo tiene cero `||`.**
+
+Revisado lo que el ítem pedía de paso: los 41 nombres de test que la tabla cita
+existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
+
+**Y una corrección al párrafo de abajo:** dice que `docs/README.md` quedó con
+«2.175 tests en 93 archivos». El archivo dice 2.173, y 2.173 es lo que mide la
+suite hoy — así que el número del documento está bien y el de esta nota estaba
+mal.
 
 **Drift de documentación, no de código.** En la tabla «Porque ya hay un test, y
 duplicarlo daría falsa cobertura» hay filas concatenadas con `||` dentro de una
@@ -6186,6 +6424,50 @@ frase pegada al final de una de las líneas. Se colapsó a una sola, con el cont
 medido en esa corrida: **2.175 tests en 93 archivos**. Lo de `13-agentes.md` sigue
 abierto: son ocho filas y hay que **elegir** cuál texto queda en cada una, que es
 trabajo de criterio y no de merge.
+
+### B-310 · La página `/404` está diseñada y no existe · P3
+
+**Salió del barrido de B-234.** El §4.5 y el §5.1 de
+[`12-sitio-publico.md`](12-sitio-publico.md) diseñan un `/404` con buscador, los
+hubs y «quizá la actividad que buscás ya pasó: mirá el archivo». No se construyó
+y **no tenía ítem**, así que era un pendiente que solo existía en un documento de
+diseño — que es exactamente el drift que B-234 vino a cerrar. Hoy responde el 404
+por defecto de Firebase Hosting.
+
+Es P3 y el motivo importa, porque explica por qué nunca subió: **mientras el slug
+sea inmutable (trampa 10) ninguna URL nuestra se rompe sola**, así que el 404 lo
+ven sobre todo los bots y quien tipea mal una dirección. Lo que sí gana la página
+es el caso del link viejo de Instagram hacia algo que se renombró antes de la
+regla, y el destino natural de esos es `/pasadas`, no una pared blanca.
+
+Cuando se haga, dos cosas que el diseño ya decidió: lleva `noindex` (§5.1) y no
+entra al `sitemap.xml`, así que va a la **lista de excepciones** de
+`tests/sitemap.test.ts` con su motivo — el test exige que toda página estática
+esté en `RUTAS_FIJAS` o exceptuada, y no deja nacer una página fuera del sitemap
+sin que alguien lo decida.
+
+### B-311 · Remedir `10-salud-del-codigo.md` completo, con la metodología escrita · P3
+
+**Sale de B-201**, que remidió solo el §1.3 porque era lo único que el backlog
+pedía. Todo el resto del documento es del **2026-08-27** y quedó viejo por el
+sitio público: el §1.1 declara **111** archivos de producción y hoy son **156**,
+o sea un 40 % más de código que ningún número de ahí refleja.
+
+Qué hay que recontar: el tamaño por área (§1.1), la concentración y la lista de
+los quince más grandes (§1.2), el fan-in/fan-out (§1.4), los ciclos (§1.5) y la
+prosa (§1.6). Y el §0, que es el que compara contra la medición anterior.
+
+**La condición es la misma que puso B-201 y que sigue valiendo:** el número
+depende de la metodología, así que se recuenta con el criterio escrito al lado y
+no se estima ninguno. El encabezado del documento ya lo dice —«estimarlas para
+que queden actualizadas es exactamente lo que lo haría inútil»— y el §1.3 quedó
+como el modelo de cómo se escribe: las tres definiciones arriba de la tabla.
+
+Lo que conviene decidir en esa pasada, y es la mitad del valor: **cuáles de estas
+cifras se pueden automatizar**. Tamaño, concentración y ciclos son un script;
+fan-out y prosa dependen de qué cuenta como módulo de dominio y como comentario,
+y ahí el criterio hay que escribirlo una vez. Un documento que se remide a mano
+cada cuarenta commits vuelve a quedar viejo solo.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 
@@ -6334,6 +6616,26 @@ cache (B-37) ya se decidió.
 anterior a B-224 (sin `modalidades[]`), así que su HTML sale sin el bloque «Cómo
 se cursa» y sin JSON-LD. Un grep sobre ese HTML daría verde sin mirar dos
 secciones. Va primero **B-241**.
+
+> 🟢 **Candidato a cierre: las dos condiciones que faltaban están cumplidas.**
+> Lo verificó el barrido del 2026-09-02 y **no se cierra acá** porque el ítem es
+> del frente de los auditores, no de este; queda la evidencia para que quien lo
+> tome no la busque de nuevo:
+>
+> - **el barrido sobre el artefacto existe**, y sobre el HTML de detalle que es
+>   lo que faltaba: `scripts/build-contra-emulador.mjs` **paso 4** corre los
+>   centinelas de `CENTINELA` —que incluyen `difusion.notas`,
+>   `difusion.arrobar`, `online.url`, `createdBy` y `storagePath`— sobre
+>   `dist/actividad/{slug}/index.html`, y el **paso 8g** hace lo mismo sobre la
+>   página **con galería**, que es el caso que el paso 4 no ve (la cancelada
+>   tiene una sola imagen, así que no genera la sección);
+> - **el fixture ya no es el de antes de B-224**: siembra `modalidades[]` con
+>   sede y online, o sea que ese HTML sí trae el bloque «Cómo se cursa» y el
+>   JSON-LD. **B-241** cerró el 2026-09-01.
+>
+> Lo que hay que decidir para cerrarlo es si con eso alcanza o si el ítem quería
+> además que el **agente** —y no solo el gate— mire `dist/`. Los dos pasos ya
+> están nombrados en la ficha del `auditor-privacidad`.
 
 ### B-122 · Falta un auditor del sitio público · P2 (después de B-01)
 

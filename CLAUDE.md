@@ -114,12 +114,28 @@ consentimiento, sin tokens que expiran.
 
 ### 3.1 `/actividades/{id}`
 
+> ⚠️ **El `imagenUrl` de este bloque ya no es el campo del modelo — ver D-125 en
+> [`docs/06-decisiones.md`](docs/06-decisiones.md).** Hoy es
+> `imagenes: Imagen[]`, una **lista** con un flag `portada`, un epígrafe opcional
+> por imagen y —cuando la imagen es propia y no un link de afuera— su
+> `storagePath`, `ancho` y `alto`. **No lo restaures.** El campo único no
+> alcanzaba: una actividad tiene el flyer más las fotos de la edición anterior, y
+> Open Graph necesita **una** de ellas señalada (de ahí `portada`). `imagenUrl`
+> sigue en el tipo marcado `@deprecated` porque los documentos anteriores a
+> B-167 lo tienen y se leen con un default; nada nuevo lo escribe. La forma
+> completa está en [`docs/03-modelo-de-datos.md`](docs/03-modelo-de-datos.md) §
+> «La galería», y las salidas que la consumen son la página de detalle —desde
+> B-296 muestra **todas** las imágenes, no solo la portada— y `/cartelera`.
+>
+> El bloque de abajo queda como estaba escrito, para que la entrada de D-125 se
+> lea contra su original.
+
 ```
 tipo: 'taller' | 'club-lectura' | 'encuentro' | 'presentacion' | 'charla'
 titulo: string
 slug: string                    // único, inmutable — ver §7
 descripcion: string
-imagenUrl: string | null
+imagenUrl: string | null        // ← D-125: hoy es `imagenes: Imagen[]`
 organizador: { nombre, instagram, web }
 tallerista: { nombre, bio, instagram } | null    // o autor invitado
 
@@ -319,6 +335,15 @@ vuelca el documento entero: lo **proyecta**.
 de trabajo o publicar un `wa.me` con mensaje precargado.
 
 ### 5.2 Proyección
+
+> ⚠️ **Dos campos de este bloque ya no son lo que dice, y el criterio sí.**
+> `imagenUrl` es hoy `imagenes` (D-125, ver el aviso del §3.1). Y `sede` sigue
+> existiendo pero pasó a ser un **derivado** —«la primera fila que tenga sede»—:
+> la lista real es `modalidades[]`, una fila por lugar, porque una actividad
+> puede ser presencial los martes y por Meet los jueves (**D-130**, B-224). La
+> proyección de verdad está en `src/lib/toPublic.ts` y sigue siendo una
+> **whitelist**, que es lo que este bloque decide y lo que no se toca: si un
+> campo nuevo no se agrega a mano, no sale. El bloque queda como estaba escrito.
 
 ```js
 const toPublic = (a) => ({

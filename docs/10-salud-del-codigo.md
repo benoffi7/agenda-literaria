@@ -14,6 +14,12 @@ comparación signifique algo.
 > porque cada cifra salió de contar, y estimarlas para que «queden actualizadas» es
 > exactamente lo que lo haría inútil. Hay que remedir con la misma metodología, en una
 > pasada propia.
+>
+> **La única excepción es el §1.3, remedido el 2026-09-02 (B-201)**, con el criterio
+> del conteo escrito al lado. Se remidió solo porque era el único número que el
+> backlog pedía recontar; el resto del documento sigue esperando esa pasada. Para
+> calibrar cuánto quedó viejo el resto: el §1.1 dice **111** archivos de producción
+> y hoy son **156**.
 
 Metodología: `git ls-files` filtrado a `.ts`, `.tsx`, `.js`, `.mjs` y `.astro`.
 "Significativas" excluye líneas en blanco y comentarios. El grafo de imports
@@ -95,22 +101,59 @@ de su tamaño (`ayuda.ts` pasó de 789 a 1.153). Que la cima siga siendo copy en
 lugar de reglas de negocio es lo que hace que "el archivo más grande" no sea una
 señal de alarma acá.
 
-### 1.3 El formulario, tres mediciones después
+### 1.3 El formulario, cuatro mediciones después
 
-Es el que más conviene seguir, porque es el que ya se hipertrofió una vez:
+Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 
-| | Antes del saneamiento | `13b9baa` | Hoy |
-|---|---:|---:|---:|
-| `ActividadFormulario.tsx` | 858 LOC | 258 | **379** |
-| Su fan-out | 12 | 19 | **25** |
-| Su puesto en la lista | 1º | 15º | **14º** |
+> ✅ **Esta sección se remidió el 2026-09-02 (B-201) y es la única del documento
+> con números de hoy.** El resto sigue siendo del 2026-08-27, con el aviso del
+> encabezado. Se remidió sola porque era el único número que el backlog pedía
+> recontar, y porque el criterio del conteo cabe en tres líneas — que es la
+> condición que B-201 ponía para no inventarlo:
+>
+> - **LOC:** líneas del archivo (`wc -l`), igual que el resto del documento. La
+>   columna «significativas» del §1.1 es otra medida y no se usa acá.
+> - **Fan-out:** módulos distintos que el archivo importa, contando solo los del
+>   proyecto —`@/`, `@calendario`, `@historial` y los relativos— y no los paquetes
+>   de `node_modules`. `react` queda afuera, como en el grafo del §1.4. No hay
+>   ningún `import()` diferido en este archivo.
+> - **Puesto:** su lugar en la lista de archivos de producción ordenada por LOC,
+>   sobre el mismo corpus del §1.1 (`git ls-files` filtrado a `.ts`, `.tsx`,
+>   `.js`, `.mjs` y `.astro`, sin `tests/`) — hoy **156** archivos.
 
-**Creció un 47 % desde el saneamiento, y esto es lo que hay que mirar.** El
-razonamiento de la medición anterior sigue siendo correcto —fan-out alto con LOC
-bajo es un composer, y la señal de alarma sería fan-out alto **con LOC alto**—,
-pero las dos cifras subieron juntas. 379 LOC con fan-out 25 todavía es un
-composer; 550 con fan-out 30 ya no. No es un problema hoy: es el número a mirar
-en la próxima medición, y el único de este documento que apunta hacia atrás.
+| | Antes del saneamiento | `13b9baa` | 2026-08-27 | Hoy (2026-09-02) |
+|---|---:|---:|---:|---:|
+| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | **376** |
+| Su fan-out | 12 | 19 | 25 | **26** |
+| Su puesto en la lista | 1º | 15º | 14º | **28º** |
+
+**El número que se venía mirando dejó de subir, y el que se movió no dice lo que
+parece.** El razonamiento de las mediciones anteriores sigue siendo correcto
+—fan-out alto con LOC bajo es un composer, y la señal de alarma sería fan-out
+alto **con LOC alto**—, y en seis días el archivo perdió 3 líneas y ganó un
+import: 376 LOC con fan-out 26 sigue siendo un composer. El umbral escrito
+entonces no se movió: 550 con fan-out 30 ya no lo sería.
+
+**El salto de 14º a 28º no es que el formulario se encogiera, es que el sitio
+público nació.** Catorce archivos le pasaron por arriba sin que él cambiara, y
+se reparten en tres grupos:
+
+- **Seis nacieron con el sitio**, todos el 2026-08-28 o después:
+  `detallePublico.ts` (1.124), `actividad/[slug].astro` (945),
+  `listadoPublico.ts` (701), `contenidoDelSitio.ts` (686), `Buscador.tsx` (514)
+  y `ayudaDelSitio.ts` (413).
+- **Uno nació el mismo día de la medición y no llegó a contarse:**
+  `build-contra-emulador.mjs` (949), el gate de build. El §1.1 le da a
+  `scripts/` **5 archivos y 515 LOC en total**, así que este archivo —que hoy
+  solo él son 949— entró después de ese conteo.
+- **Siete ya estaban y crecieron:** `toPublic.ts` (514, y era el ejemplo del §2
+  de una proyección sin consumidor), `TaxonomiasPanel.tsx`, `actividades.ts`,
+  `schema.ts`, `ListaActividades.tsx`, `imagenes-archivo.ts` y `opciones.ts`.
+
+Es el recordatorio de por qué el puesto es la peor de las tres cifras para
+seguir un archivo —depende enteramente de lo que hagan los demás, así que baja
+sin que nadie toque el archivo y sube sin que nadie lo arregle— y por qué se
+mira junto a las otras dos. Las que hay que seguir son LOC y fan-out.
 
 ### 1.4 Acoplamiento
 
@@ -309,8 +352,13 @@ hace que partirlo más agregue paths sin resolver nada. Se anota, no se hace.
 `sharp`. **Ninguno explotable hoy** —verificado feature por feature: no se usa
 `define:vars`, `transition:*`, `server:defer`, spread props, slots con nombre ni
 `set:html`, y `output: 'static'`—, pero **no hay parche en la 5.x**: todas las
-versiones corregidas son ≥6. Es B-214, y lo que importa es el momento: conviene
-subir **antes** de B-01, cuando el blast radius son tres páginas.
+versiones corregidas son ≥6. Es B-214, y lo que importa es el momento: la
+recomendación era subir **antes** de B-01, «cuando el blast radius son tres
+páginas», y **ese momento pasó** — el sitio público está publicado y son ocho
+páginas más los cuatro endpoints. El ítem no cambia de prioridad por eso (sigue
+sin nada explotable), pero la ventana barata se cerró. Lo que sí hay ahora y no
+había entonces es la red para subir de mayor con confianza:
+`scripts/build-contra-emulador.mjs` afirma sobre el HTML construido de verdad.
 
 ---
 

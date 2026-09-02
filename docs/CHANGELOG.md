@@ -1,5 +1,103 @@
 # Changelog
 
+## 2026-09-02 · el backlog vuelve a significar algo: seis cierres, un descarte y nueve afirmaciones falsas
+
+**Barrido de backlog y de drift de documentación. Cero cambios en `src/` y en
+`functions/`** — el único fuente que se tocó es prosa: dos avisos en el
+`CLAUDE.md`.
+
+El problema era de aritmética: **86 ítems abiertos, doce de ellos en la sección
+P1, y varios ya estaban hechos.** Un ítem cerrado en falso es peor que uno
+abierto —el abierto se revisa, el cerrado no— así que la regla del barrido fue
+una sola: **nada se cierra sin reproducirlo contra el código**, y lo que no está
+hecho se corrige y se deja abierto.
+
+> El 86 está contado, y vale decir cómo, porque el número con el que arrancó el
+> frente era **76** y no cerraba —lo marcó el `auditor-documentacion`—:
+> `git show main:docs/BACKLOG.md | grep '^### ' | grep -v '✅\|❌\|~~'` da
+> **86** sobre 211 ítems en total. La cifra de la sección P1 sí cerraba exacta.
+> Queda escrito para que la próxima vez que alguien diga «hay N abiertos» se
+> pueda recontar con una línea.
+
+### Lo que se cerró, y con qué evidencia
+
+| Ítem | Evidencia |
+|---|---|
+| **B-01** · Sitio público (paso 3) ✅ | **ocho salidas indexables** en `src/pages/`, `npm run build` verde, `dist/sitemap.xml` con las seis rutas fijas bajo `https://agendaleh.ar/`, `dist/robots.txt` bloqueando solo `/admin`, y el único `noIndex` fijo del sitio en `/admin` |
+| **B-223** · `12-sitio-publico.md` contra `imagenUrl` ✅ | los seis lugares del ítem, más dos que no contaba |
+| **B-234** · el mapa de URLs con nombres viejos ✅ | corregido contra `src/pages/`, que es lo que se publica |
+| **B-201** · el conteo del §1.3 ✅ | remedido: **376 LOC, fan-out 26, 28º**, con el criterio del conteo escrito al lado |
+| **B-294** · la tabla «no automatizar» ✅ | 14 filas → 11, **cero `||`** en el archivo |
+| **B-173** · `tsc` con doce errores de `ImportMeta` ✅ | reproducido y arreglado: sin `astro sync` salen los doce, con `astro sync` antes sale **exit 0** |
+| **B-275** · el rótulo de la cartelera en azul ❌ | descartado: la conclusión era «no se toca» y estaba escrita desde B-273 |
+
+Y uno que **no** se cerró, que es la mitad del trabajo: **B-107** se
+reverificó línea por línea y de las nueve cosas que enumeraba **falta una sola
+suya** —el `BreadcrumbList` del detalle, más el `CollectionPage`/`ItemList` que
+va con los hubs—. Comprobado con un `grep` sobre `src/`: cero apariciones. Las
+cinco imágenes de Open Graph que el ítem también pedía son **B-291** y no de
+acá. Con eso **baja de P1 a P2**, y el motivo importa: era P1 porque «una página
+de detalle sin datos estructurados no sirve para lo que existe el proyecto», y
+esa mitad está. Lo que queda mejora cómo Google entiende la **navegación**, no
+si la página entra al índice.
+
+### El drift: nueve afirmaciones que el trabajo de estos días volvió falsas
+
+Es lo que más valor tuvo de todo el frente, porque son las que hacen que alguien
+escriba código contra algo que no existe.
+
+**Las dos peores estaban en lo primero que se lee.** `docs/01-arquitectura.md`
+decía del sitio público **«todavía no está desplegado: falta elegir el
+dominio»**, y el `README.md` daba el paso 3 como **«🟡 la mitad… falta
+desplegarlo»**. Está publicado en `agendaleh.ar` desde B-109.
+
+**La tercera es la que nadie miraba:** `docs/11-ideas-de-producto.md` tiene
+cuatro propuestas y **tres están construidas** (B-95, B-96, B-97), y el
+documento se leía como si ninguna existiera. Ahora cada una lleva su estado y el
+argumento original queda entero, porque es el valor del archivo. De ahí salió
+además un ítem nuevo: el texto para redes no lleva el link **porque «falta el
+dominio»**, y el dominio existe — es **B-312**, y lo único que queda es que el
+dueño diga sí.
+
+**Y la que estaba en el peor lugar posible:** el `CLAUDE.md` §3.1 y §5.2 seguían
+modelando la imagen como un campo único `imagenUrl`, cuando el modelo es
+`imagenes: Imagen[]` con un flag `portada` desde D-125 y está en producción hace
+días. Se siguió el precedente de **D-128** en ese mismo archivo: **el bloque
+original no se toca** —para que la decisión se lea contra él— y arriba va el
+aviso con el «no lo restaures» y el motivo. El §5.2 se llevó de paso el otro
+campo que dejó de ser lo que dice: `sede` sigue existiendo pero es un
+**derivado**, y la lista real es `modalidades[]` (D-130).
+
+Las otras: `14-plan-de-saneamiento.md` («el sitio público va aparte y después» ya
+pasó), `07-seguridad.md` (un comando «una vez que exista el sitio público»),
+`04-funcionalidades.md` (dos usos de `imagenUrl`, y el detalle ya no muestra una
+sola imagen) y la entrada **D-155** de `06-decisiones.md`, cuyos puntos 1 y 2
+decían «`/pasadas` todavía no existe» y «no hay sitemap todavía» — **se
+destrabaron al día siguiente con B-109, tal como la entrada predecía**, así que
+no se reescribió: se anotó. La predicción y su cumplimiento valen más juntos.
+
+### Tres ítems nuevos, y el criterio con el que se cerró
+
+**B-310** (la página `/404`, diseñada y sin existir — no tenía ítem, así que era
+un pendiente que solo vivía en un documento de diseño), **B-311** (remedir
+`10-salud-del-codigo.md` completo: el §1.1 declara 111 archivos de producción y
+hoy son 156) y **B-312**, el link del texto para redes.
+
+El criterio de cierre está en **D-170**, porque las dos preguntas que este
+barrido tuvo que contestar van a volver: **cuándo se cierra un ítem paraguas** si
+le quedan hijos abiertos, y **cuándo un ítem que espera una decisión que nadie
+pidió se descarta** en vez de quedarse esperando.
+
+**La cuenta, que era el objetivo:** de los doce ítems de la sección P1 quedan
+**seis** que son P1 de verdad —B-266, B-108, B-205, B-236, B-300 y B-220—, más
+B-295 y B-121 fuera de la sección. Los otros seis eran dos cierres (B-01 y
+B-223), una baja de prioridad (B-107) y tres que ya tenían marca P2 o P3 y
+seguían viviendo ahí.
+
+Verificado antes de commitear: `astro sync` + `npm run typecheck` + la suite
+completa (**2.173 tests en 93 archivos, todos en verde**, con los de emuladores
+incluidos) + `npm run build`.
+
 ## 2026-09-02 · fuera la entrada de /contacto
 
 **Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**

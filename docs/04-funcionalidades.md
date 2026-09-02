@@ -626,7 +626,9 @@ Con SSG una actividad nueva no existe hasta que se rebuildea (§8). El lazo es:
    `sistema/rebuild.pendiente = true` con el motivo. `syncCalendar` lo marca
    **antes** de hablar con Calendar y por haber cambiado el contenido editable
    de la actividad, no por haber generado operaciones de calendario (B-83,
-   D-92): `destacado` e `imagenUrl` van al sitio y no al evento.
+   D-92): `destacado` y las `imagenes` van al sitio y no al evento. (El ejemplo
+   se escribió cuando la imagen era el campo único `imagenUrl`, que dejó de
+   existir con D-125 — B-223.)
 2. `dispararRebuild` (schedule cada 5 minutos) ve el flag y manda un
    `repository_dispatch` con `event_type: rebuild` a `benoffi7/agenda-literaria`.
 3. `.github/workflows/deploy.yml` corre los tests, buildea el sitio y lo
@@ -706,9 +708,10 @@ inscripción. El arancel cierra la fila, alineado a la derecha. Es el orden en q
 decide: cuándo, qué es, dónde y cuánto sale.
 
 **El listado no tiene imágenes** — ni foto real ni portada generada (D-146). Es una
-decisión de forma, no la ausencia de `imagenUrl`: la página no pide un solo byte de
+decisión de forma, no la ausencia de una portada: la página no pide un solo byte de
 imagen, que es la mejora de rendimiento más grande del rediseño. La foto **sí** sigue
-en la página de detalle, cuando la actividad tiene una.
+en la página de detalle, cuando la actividad tiene una — y desde **B-296** son todas
+las que tenga, no solo la portada.
 
 Lo que la tarjeta tiene que decir bien es del dominio, y sale de
 `src/lib/tarjetaPublica.ts`, que es puro y testeado:

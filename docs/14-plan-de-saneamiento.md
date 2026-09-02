@@ -25,6 +25,13 @@ sin que los frentes se pisen entre ellos.
 (`B-105`…`B-114`, `B-99`, `B-27`, `B-101`, `B-121`, `B-122`) va aparte y después.
 Su diseño ya está en [`12-sitio-publico.md`](12-sitio-publico.md).
 
+> ✅ **Ese «aparte y después» ya pasó.** El sitio público se construyó y está
+> publicado en `agendaleh.ar`; **B-01 se cerró el 2026-09-02**. De la lista de
+> arriba siguen abiertos **B-108** (los hubs), **B-112**, **B-99**, **B-121** y
+> **B-122**. Lo que no caducó es el criterio de este documento —se reparte por
+> archivo y no por tema—: es con lo que se corrieron las tandas del sitio, y es
+> lo que sigue valiendo para lo que queda.
+
 ## El criterio: se reparte por archivo, no por tema
 
 Nueve agentes en paralelo sobre este repo ya dejaron una lección: los conflictos
