@@ -1892,7 +1892,35 @@ alert del §2.3 está puesto **solo para Functions**. Storage se paga por
 almacenamiento y por egreso, y una galería en un sitio indexado es egreso real.
 Conviene extenderlo antes, no después de la factura.
 
-### B-236 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes · P1
+### B-236 · `git stash` es compartido entre worktrees, y ya se llevó puesto el trabajo de dos frentes — ✅ hecho (2026-09-02) · P1
+
+**Se hizo la salida de fondo #2 de la lista de abajo**: el helper
+`scripts/wip.sh`. `guardar` commitea todo (staged y no) con un mensaje
+reconocible, para dejar el árbol limpio antes de rebasear o cambiar de rama
+sin tocar `refs/stash`; `restaurar` deshace **ese mismo** commit —comprobando
+antes que el HEAD sea de verdad un commit del script, no un `reset --soft`
+a ciegas— y los cambios vuelven al árbol.
+
+`tests/wip.test.ts` corre contra un repo git temporal y descartable, nunca
+contra este checkout: seis casos, incluido el árbol limpio (no hace nada) y
+un commit real cuyo mensaje empieza parecido a la marca del script (no
+engaña el chequeo de `restaurar`). **Mutado, no solo verde**: sacar la
+verificación del mensaje en `restaurar` tira rojo los dos tests que la
+sostienen, y sacar el chequeo de árbol limpio en `guardar` tira rojo el suyo.
+Las tres mutaciones se restauraron después.
+
+Además, la salida #3: una regla nueva en
+[`docs/14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) («Regla para
+cualquiera que ejecute una fase», punto 7) que explica el mecanismo, nombra
+`wip.sh` y recuerda no borrar una entrada ajena del stash si aparece una.
+
+**Lo que no se hizo, a propósito**: nada obliga a usar `wip.sh` en vez de
+`git stash` — es un gesto interactivo y, como dice el texto original, "un test
+no lo puede atajar". La red es que exista y esté documentado, no un hook que
+lo fuerce.
+
+El texto original queda abajo.
+
 
 **Pasó dos veces el 2026-08-27/28, en dos worktrees distintos**, y la segunda quedó
 grabada en el propio `git stash list`: una entrada se llama literalmente

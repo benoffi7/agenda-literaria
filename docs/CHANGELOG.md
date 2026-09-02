@@ -32,6 +32,22 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-236 — `scripts/wip.sh`, la alternativa a `git stash` que no cruza worktrees
+
+`git stash` vive en `refs/stash`, del repositorio y no del working-tree: con
+varios frentes en paralelo, un `pop` puede traerse encima el trabajo de otro
+worktree — pasó dos veces el 2026-08-27/28, la segunda sin conflicto (el modo
+malo). `scripts/wip.sh guardar` deja el árbol limpio con un commit temporal
+—por-worktree de verdad— y `restaurar` lo deshace, verificando antes que el
+HEAD sea un commit del propio script.
+
+`tests/wip.test.ts` corre contra un repo git temporal, con seis casos.
+Mutado: sacar la verificación del mensaje en `restaurar`, y sacar el chequeo
+de árbol limpio en `guardar` — las dos tiran rojo, restauradas después.
+
+Nueva regla en `docs/14-plan-de-saneamiento.md` (punto 7 de "Regla para
+cualquiera que ejecute una fase") que nombra el mecanismo y el helper.
+
 ### B-08 — el dueño aprobó el camino angosto: testing-library, solo para MenuAcciones
 
 Instalados `@testing-library/react`, `@testing-library/dom`,

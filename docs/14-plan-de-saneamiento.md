@@ -263,3 +263,16 @@ repo), B-116 (verificación contra el sistema real), B-123 (re-relevar la infra)
 6. **Y revisá si el ítem que estás cerrando ya existe con otro número.** Si dos
    frentes describen el mismo bug desde ángulos distintos, se funde en uno con lo
    que cada uno aporta — no se cierran los dos ni se deja el segundo vivo.
+7. **Nunca `git stash` en un worktree — B-236.** El stash vive en `refs/stash`,
+   que es del repositorio y no del working-tree: con varios frentes corriendo
+   en paralelo (que es exactamente el modo de trabajo de este plan), un
+   `stash push` de un worktree corre la pila de todos, y un `pop` puede
+   traerse encima el trabajo de otro — pasó dos veces el 2026-08-27/28, la
+   segunda sin conflicto, que es el modo malo: el `pop` borra la entrada y el
+   trabajo ajeno queda mezclado en tu árbol, sin rastro en el stash y sin que
+   nadie lo esté buscando. Para dejar el árbol limpio a mitad de un rebase,
+   `./scripts/wip.sh guardar` (commit temporal, por-worktree de verdad) y
+   `./scripts/wip.sh restaurar` para volver. Si ya te encontraste con esto —
+   `git stash list` con una entrada que no es tuya —, **no la borres**: es el
+   trabajo en curso de otro frente; `git stash apply <sha>` (nunca `pop`) para
+   mirarla sin tocar la pila.
