@@ -19,6 +19,7 @@
  * dato mal o conoce una actividad que falta, no a quien mantiene el sitio.
  */
 import { MOTIVOS_DE_CONTACTO, urlDeContacto, type MotivoDeContacto } from '@/lib/enlaces';
+import { RUTA_AYUDA } from '@/lib/rutasPublicas';
 
 export interface BloqueDeContacto {
   motivo: MotivoDeContacto;
@@ -97,6 +98,6 @@ export const QUE_PASA_DESPUES: string[] = [
 
 /** Adónde mandar a quien en realidad venía con una pregunta. */
 export const ANTES_DE_ESCRIBIR: { href: string; texto: string } = {
-  href: '/ayuda',
+  href: RUTA_AYUDA,
   texto: 'Muchas preguntas ya están contestadas en la ayuda',
 };

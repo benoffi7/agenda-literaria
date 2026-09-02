@@ -1610,7 +1610,7 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       ).toBe(true);
     }
 
-    expect(afiche.ruta).toBe(`/actividad/${detalle.slug}`);
+    expect(afiche.ruta).toBe(`/actividad/${detalle.slug}/`);
   });
 
   it('una actividad sin afiche no aporta nada a la pared', () => {

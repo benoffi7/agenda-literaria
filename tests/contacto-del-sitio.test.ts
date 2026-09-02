@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { CONTACTO, MOTIVOS_DE_CONTACTO, urlDeContacto } from '@/lib/enlaces';
+import { RUTA_AYUDA } from '@/lib/rutasPublicas';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
@@ -145,7 +146,10 @@ describe('la página de contacto — B-232', () => {
   it('manda a la ayuda antes de escribir', () => {
     // La mitad de los mails son preguntas ya contestadas, y contestarlas de nuevo
     // a mano es lo que hace que las otras tarden.
-    expect(ANTES_DE_ESCRIBIR.href).toBe('/ayuda');
+    // La ruta sale de `RUTA_AYUDA` desde B-330, o sea con la barra final que
+    // Firebase contesta con un 200 (B-293).
+    expect(ANTES_DE_ESCRIBIR.href).toBe(RUTA_AYUDA);
+    expect(RUTA_AYUDA).toBe('/ayuda/');
     expect(ANTES_DE_ESCRIBIR.texto.length).toBeGreaterThan(10);
   });
 

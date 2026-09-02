@@ -18,7 +18,7 @@ import {
 } from '@/lib/mesPublico';
 import { estadoDe, filtrarPublico, filtrosVacios } from '@/lib/listadoPublico';
 import { bloqueDeFecha, cicloDelMes, cicloDeTarjeta } from '@/lib/tarjetaPublica';
-import { rutaDeMes } from '@/lib/rutasPublicas';
+import { rutaCanonica, rutaDeMes } from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
 
 /**
@@ -518,7 +518,11 @@ describe('el texto de la página', () => {
     const rutas = new Set(
       paginas
         .filter((f) => f.endsWith('.astro') && !f.includes('['))
-        .map((f) => f.replace(/^src\/pages/, '').replace(/(\/index)?\.astro$/, '') || '/'),
+        // En la forma que contesta 200 (B-330): es la que guardan las constantes
+        // de `rutasPublicas.ts`, y `DESTINO_DEL_MES_VENCIDO` es una de ellas.
+        .map((f) =>
+          rutaCanonica(f.replace(/^src\/pages/, '').replace(/(\/index)?\.astro$/, '') || '/'),
+        ),
     );
     expect(rutas).toContain(DESTINO_DEL_MES_VENCIDO);
   });
@@ -708,7 +712,9 @@ describe('la tira de meses de la home — §2.2', () => {
   it('y la ruta la arma `rutasPublicas`, no una plantilla', () => {
     // Un productor y dos consumidores derivando el mismo formato por separado es
     // la clase de B-88, y acá el modo de falla es un 404.
-    expect(rutaDeMes('2026-09')).toBe('/agenda/2026-09');
+    // Con barra final desde B-330: es la forma que Firebase contesta con un 200,
+    // y desde ese cambio es la única forma que este módulo produce (B-293).
+    expect(rutaDeMes('2026-09')).toBe('/agenda/2026-09/');
     for (const archivo of [HOME, PAGINA_DE_MES]) {
       expect(sinComentarios(fuente(archivo))).toContain("from '@/lib/rutasPublicas'");
     }

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import opcionesBase from '@/lib/opciones-base.json';
+import * as RUTAS from '@/lib/rutasPublicas';
 import {
   CIERRE_DE_AYUDA,
   ENTRADA_DE_AYUDA,
@@ -76,8 +77,21 @@ const OBLIGATORIAS: Record<string, string> = {
  * página que nadie escribió (y evita una segunda lista que se desincroniza).
  */
 const rutasDelSitio = (): string[] => {
+  /*
+   * Desde B-330 el encabezado declara los destinos como **constantes** de
+   * `rutasPublicas.ts` y no como literales (era B-293: un `href` sin la barra
+   * final se come un 301). Así que se lee el nombre y se resuelve contra el
+   * módulo: sigue siendo «las secciones que el encabezado declara», y encima
+   * ahora falla si alguien nombra una constante que no existe.
+   */
   const src = readFileSync(raiz('src/components/sitio/Encabezado.astro'), 'utf8');
-  return [...src.matchAll(/href:\s*'([^']+)'/g)].map((m) => m[1]!);
+  return [...src.matchAll(/href:\s*([A-Z_]+),/g)].map((m) => {
+    const valor = (RUTAS as Record<string, unknown>)[m[1]!];
+    expect(typeof valor, `el encabezado nombra ${m[1]} y rutasPublicas no lo exporta`).toBe(
+      'string',
+    );
+    return valor as string;
+  });
 };
 
 /** Jerga que no le dice nada a quien busca un taller. */
@@ -105,7 +119,7 @@ describe('la ayuda del sitio público — B-232', () => {
     expect(GRUPOS_DE_AYUDA.length).toBeGreaterThanOrEqual(5);
     expect(PREGUNTAS_DE_AYUDA.length).toBeGreaterThanOrEqual(15);
     expect(TEXTOS().length).toBeGreaterThanOrEqual(60);
-    expect(rutasDelSitio()).toContain('/contacto');
+    expect(rutasDelSitio()).toContain(RUTAS.RUTA_CONTACTO);
   });
 
   it('cada pregunta tiene un ancla estable y única', () => {
@@ -198,8 +212,8 @@ describe('la ayuda del sitio público — B-232', () => {
     );
     // El encargo pide que estas dos salidas existan: la página de suscripción la
     // escribe otro frente y contacto es la única forma de avisar de un error.
-    expect(destinos).toContain('/suscribirse');
-    expect(destinos).toContain('/contacto');
+    expect(destinos).toContain(RUTAS.RUTA_SUSCRIBIRSE);
+    expect(destinos).toContain(RUTAS.RUTA_CONTACTO);
   });
 
   it('el texto no tiene jerga', () => {

@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-09-02 · una sola forma de la ruta, la que contesta 200
+
+**B-293, con [D-180](06-decisiones.md).** Firebase responde `/cartelera` con un
+**301** a `/cartelera/` —medido contra producción el 2026-09-02, porque Astro emite
+una carpeta con `index.html` por página—. La canónica y el sitemap ya salían **con**
+la barra desde D-165; los `href` del propio sitio seguían sin ella y pagaban un
+viaje de ida y vuelta por click.
+
+**De las dos salidas posibles se eligió la segunda**, la que no toca producción:
+agregarle la barra a los `href` en vez de poner `"trailingSlash": false` en
+`firebase.json`. El motivo está en D-180, y lo que importa del cómo es que ahora
+**hay una sola forma de la ruta y la produce `rutaCanonica`**:
+
+| | Antes | Ahora |
+|---|---|---|
+| la canónica y el sitemap | `/cartelera/` | igual |
+| el `href` del encabezado, del pie, de la ayuda | `/cartelera` → 301 | `/cartelera/` |
+| dónde se escribe | un literal por plantilla | `RUTA_CARTELERA` en `src/lib/rutasPublicas.ts` |
+
+`rutasPublicas.ts` gana las seis constantes de las páginas fijas
+(`RUTA_AGENDA`, `RUTA_CARTELERA`, `RUTA_SUSCRIBIRSE`, `RUTA_AYUDA`,
+`RUTA_CONTACTO`, `RUTA_PASADAS`) más las dos de los hubs temáticos y los
+constructores `rutaDeTipo` / `rutaDeBarrio` que **B-330** va a necesitar — así el
+frente de los hubs no puede introducir una segunda forma. Y las constantes están
+definidas **pasándolas por `rutaCanonica`**, o sea que no hay forma de escribir acá
+la variante que redirige.
+
+Dejaron de tener literales el encabezado, el pie, `SuscribirseResumen`,
+`ayudaDelSitio.ts` y `contactoDelSitio.ts` —los dos últimos eran los que faltaban
+en el relevamiento del ítem, que solo nombraba el markup—.
+
+**El chequeo nuevo** (`tests/canonico.test.ts`): un barrido de **todo `src/`** que
+falla si algún archivo escribe un `href` interno que no está en la forma canónica.
+Lo que se permite no es una lista de este test —la raíz, las anclas, los archivos
+de la raíz como `/marca.svg`— sino lo que `rutaCanonica` ya decide: lo que se
+compara es `ruta === rutaCanonica(ruta)`.
+
+**Y el barrido nació con un agujero que encontró la mutación, no la revisión.** La
+primera versión miraba solo `href="/…"` —el atributo de un `.astro`— sobre
+`src/pages`, `src/components` y `src/layouts`. Al probar la mutación que su propio
+comentario prometía (volver a poner `href: '/cartelera'` en `ENLACES` del
+encabezado) **pasó en verde**: el bug vivía en la forma `href: '/…'`, la de una
+lista de enlaces en JavaScript, que era justo la que el regex no leía. Y el alcance
+por carpeta dejaba afuera `src/lib/`, donde estaban ocho de los nueve literales.
+Hoy son cuatro formas (`href="…"`, `href: '…'`, `href: "…"`, `href={'…'}`) sobre
+`src/` entero, con un control positivo que cuenta cuántos `href` vio: si los cuatro
+regex dejaran de matchear, el barrido volvería a pasar sin haber mirado ninguno,
+que es exactamente lo que estuvo haciendo.
+
+Las tres mutaciones quedaron probadas: el literal en `ENLACES`, el literal en
+`ayudaDelSitio.ts` y `export const RUTA_CARTELERA = '/cartelera'` escrito a mano.
+Verificado además sobre el HTML construido: los `href` internos de
+`dist/index.html` salen todos con la barra (`/ayuda/`, `/cartelera/`, `/contacto/`,
+`/pasadas/`, `/suscribirse/`), y los dos archivos de la raíz sin ella.
+
 ## 2026-09-02 · fuera la entrada de /contacto
 
 **Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**

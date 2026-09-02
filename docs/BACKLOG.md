@@ -938,7 +938,7 @@ construyó, en cuatro tramos:
   que apunta a una redirección es un aviso en Search Console y una entrada de
   sitemap que redirige es una URL menos rastreada, así que las dos la llevan
   (`rutaCanonica`). Que los `href` internos sigan sin barra —y coman el 301 al
-  navegar— quedó como **B-293**.
+  navegar— quedó como **B-293**, cerrado el 2026-09-02 con **D-180**.
 - **El canonical tiene que ser absoluto y no relativo**, y no por prolijidad:
   `agenda-literaria.web.app` **no se apaga nunca** y sirve este mismo HTML. Uno
   relativo se resuelve contra el host que lo sirvió, o sea que en el espejo diría
@@ -6139,7 +6139,7 @@ Mientras tanto la página enlaza la búsqueda de la agenda, que es lo que sí ex
 y quien busca una actividad vieja por su nombre la encuentra por Google —que es
 para lo que la página está indexada.
 
-### B-293 · Los `href` internos pagan el 301 de la barra final · P3
+### B-293 · Los `href` internos pagan el 301 de la barra final — ✅ hecho (2026-09-02)
 
 Firebase Hosting responde `/cartelera` con un **301** a `/cartelera/` —Astro emite
 una carpeta con `index.html` por página—, medido contra producción el 2026-09-02.
@@ -6160,6 +6160,25 @@ deja URLs con barra a la vista. **Lo que no se puede hacer es tocar una sola de
 las dos mitades**, y por eso `tests/canonico.test.ts` afirma hoy que `cleanUrls`,
 `trailingSlash` y `build.format` siguen sin tocarse, con el motivo escrito: el par
 lo señaló el `auditor-privacidad`.
+
+**Hecho**, con [D-180](06-decisiones.md), y salió la **segunda**: la barra en los
+`href`. El argumento decisorio no fue el estético — la primera pone la corrección
+de un lado del par (`firebase.json`) y la comprobación del otro (`rutaCanonica`),
+y este repo no puede verificar la config del host sin deployar.
+
+Lo que quedó, y es más que el 301: **una sola forma de la ruta, y la produce
+`rutaCanonica`.** Las seis constantes de las páginas fijas viven en
+`src/lib/rutasPublicas.ts` definidas pasándolas por ella, así que el literal que
+redirige no se puede escribir. Entraron en el mismo cambio los constructores de los
+hubs (`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`) para que B-330 no
+pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
+
+**Y el relevamiento de este ítem estaba corto:** decía «un barrido de los literales
+del markup», y los literales no estaban solo en el markup — `ayudaDelSitio.ts`
+tenía siete y `contactoDelSitio.ts` uno, y esos textos se renderizan en dos páginas
+públicas. El chequeo nuevo de `tests/canonico.test.ts` barre `.astro` y `.tsx` de
+`src/pages`, `src/components` y `src/layouts`; los dos módulos de texto pasaron a
+importar las constantes.
 
 ### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas · P2
 

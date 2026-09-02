@@ -18,6 +18,7 @@
 import { CAMINOS, COMO_FUNCIONA } from '@/lib/suscripcion';
 import SuscribirseAccion from '@/components/sitio/SuscribirseAccion.astro';
 import { claseBloque, foco } from '@/components/sitio/estilos';
+import { RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
 
 interface Props {
   nivel?: 2 | 3;
@@ -44,7 +45,7 @@ const google = CAMINOS.google;
   <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
     <SuscribirseAccion accion={google.accion} />
     <a
-      href="/suscribirse"
+      href={RUTA_SUSCRIBIRSE}
       class={`label-caps inline-flex min-h-touch items-center justify-center px-2 text-acento underline decoration-2 underline-offset-4 hover:text-super ${foco}`}
     >
       Otras formas de suscribirse

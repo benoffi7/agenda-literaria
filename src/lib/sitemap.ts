@@ -48,7 +48,17 @@
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { estadoDe } from '@/lib/listadoPublico';
 import { mesesEnlazables } from '@/lib/mesPublico';
-import { RUTA_PASADAS, rutaDeDetalle, rutaDeMes, urlAbsoluta } from '@/lib/rutasPublicas';
+import {
+  RUTA_AGENDA,
+  RUTA_AYUDA,
+  RUTA_CARTELERA,
+  RUTA_CONTACTO,
+  RUTA_PASADAS,
+  RUTA_SUSCRIBIRSE,
+  rutaDeDetalle,
+  rutaDeMes,
+  urlAbsoluta,
+} from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 
 const UN_DIA = 24 * 60 * 60 * 1000;
@@ -120,12 +130,12 @@ export interface CanceladaDelSitemap {
  * excepciones con su motivo.
  */
 export const RUTAS_FIJAS: readonly string[] = [
-  '/',
-  '/cartelera',
+  RUTA_AGENDA,
+  RUTA_CARTELERA,
   RUTA_PASADAS,
-  '/suscribirse',
-  '/ayuda',
-  '/contacto',
+  RUTA_SUSCRIBIRSE,
+  RUTA_AYUDA,
+  RUTA_CONTACTO,
 ];
 
 /** ¿Esta fecha está dentro de la ventana de `dias` contada desde `ahora`? */

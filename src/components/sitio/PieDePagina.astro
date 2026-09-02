@@ -43,7 +43,7 @@
  */
 import { QUE_ES, BAJADA, NOMBRE } from '@/lib/identidad';
 import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
-import { RUTA_PASADAS } from '@/lib/rutasPublicas';
+import { RUTA_AYUDA, RUTA_CONTACTO, RUTA_PASADAS, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
 import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
 
 /**
@@ -69,7 +69,7 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
           del sitio que promete algo sobre cómo se arma la agenda, y ahí está
           explicado. Sin el link es una frase suelta que nadie puede verificar.
         */}
-        Se publican con <a class={claseEnlace} href="/ayuda">criterio y a mano</a>.
+        Se publican con <a class={claseEnlace} href={RUTA_AYUDA}>criterio y a mano</a>.
       </p>
     </div>
 
@@ -101,13 +101,13 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
           <a class={`${claseFila} sm:justify-end`} href={RUTA_PASADAS}>Lo que ya pasó</a>
         </li>
         <li>
-          <a class={`${claseFila} sm:justify-end`} href="/suscribirse">Suscribirse al calendario</a>
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_SUSCRIBIRSE}>Suscribirse al calendario</a>
         </li>
         <li>
-          <a class={`${claseFila} sm:justify-end`} href="/contacto">Sugerir una actividad</a>
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_CONTACTO}>Sugerir una actividad</a>
         </li>
         <li>
-          <a class={`${claseFila} sm:justify-end`} href="/ayuda">Ayuda</a>
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_AYUDA}>Ayuda</a>
         </li>
       </ul>
     </nav>

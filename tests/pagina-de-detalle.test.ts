@@ -319,7 +319,9 @@ describe('la ruta de la página de detalle no se deriva dos veces (B-88)', () =>
      * ésa. Mover la página sin tocar `rutasPublicas.ts` pone esto en rojo.
      */
     expect(existsSync(`src/pages${PREFIJO_ACTIVIDAD}/[slug].astro`)).toBe(true);
-    expect(rutaDeDetalle('taller-de-cronica')).toBe('/actividad/taller-de-cronica');
+    // Con barra final desde B-330: es la forma que Firebase contesta con un 200
+    // (B-293), y el directorio de la página es el mismo.
+    expect(rutaDeDetalle('taller-de-cronica')).toBe('/actividad/taller-de-cronica/');
   });
 
   it('nadie más arma el path a mano', () => {

@@ -706,6 +706,10 @@ Open Graph completo, `twitter:card = summary_large_image`.
 > imagen se dibuja como un rectángulo vacío—. La carencia son las cinco imágenes
 > de `public/og/`, que siguen sin existir: hoy solo la página de detalle manda
 > `og:image`, con el flyer de la actividad. Es **B-291**.
+>
+> **Y desde el 2026-09-02 la barra final no es solo de la canónica** (B-293,
+> **D-180**): los `href` internos del sitio salen por `rutaCanonica` igual que
+> ella, así que hay una sola forma de cada ruta y ningún click paga el 301.
 
 | Página | `<title>` | `meta description` | `canonical` |
 |---|---|---|---|
