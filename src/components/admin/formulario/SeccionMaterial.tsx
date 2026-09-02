@@ -39,7 +39,9 @@ export function SeccionMaterial({ form, set, errorDe, esClub, pedidoDeApertura }
         <MaterialEditor
           items={form.material.items}
           onChange={(items) => set('material', { ...form.material, items })}
-          error={errorDe('material.items')}
+          // B-197 — el mapa entero, no solo el error de la lista: con dos filas
+          // cargadas y una sin título, el editor tiene que poder decir cuál.
+          errorDe={errorDe}
         />
       )}
     </Seccion>
