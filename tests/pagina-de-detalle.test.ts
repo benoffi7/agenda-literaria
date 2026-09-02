@@ -179,15 +179,37 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(src).toContain('datosEstructurados');
   });
 
-  it('no inventa una URL absoluta mientras el dominio no esté decidido (B-109)', () => {
+  it('la canónica y el Open Graph los pone el layout, y esta página no escribe ninguna URL (B-109)', () => {
     /*
-     * `canonical` y Open Graph necesitan `site` en `astro.config.mjs`, que
-     * necesita el dominio. Una canónica equivocada le dice a Google que la página
-     * buena es otra, que es peor que no tener canónica.
+     * **Este caso estaba escrito al revés y era correcto que lo estuviera.**
+     * Hasta B-109 exigía la *ausencia* de `rel="canonical"`, de `og:` y de
+     * cualquier `https://agenda-literaria…`, porque las tres necesitaban `site`
+     * en `astro.config.mjs` y `site` necesitaba el dominio: una canónica a un
+     * dominio equivocado le dice a Google que la página buena es otra, que es
+     * peor que no tener canónica.
+     *
+     * **La condición se cumplió** (el dominio existe, D-165), así que se da
+     * vuelta: la canónica y el Open Graph tienen que estar, y **no acá**. Los
+     * pone `Base.astro` una sola vez para todas las páginas, así que lo que se
+     * afirma de esta plantilla es que sigue sin escribir el dominio — ni el
+     * bueno ni el del espejo.
+     *
+     * MUTACIÓN PROBADA: pegar un `<link rel="canonical" href="https://agendaleh.ar/…">`
+     * en esta plantilla pone este caso en rojo, aunque el HTML resultante se vea
+     * bien: dos canónicas en la misma página es una canónica indefinida.
      */
-    expect(src).not.toContain('rel="canonical"');
-    expect(src).not.toContain('og:');
-    expect(src).not.toContain('https://agenda-literaria');
+    // Sobre el código y no sobre el archivo crudo: los comentarios de esta
+     // plantilla nombran `og:image` justamente para explicar de dónde sale, y un
+     // barrido sobre el texto crudo fallaría contra su propia documentación —
+     // el mismo recorte que el resto de este archivo.
+    const codigo = sinComentarios(src);
+    expect(codigo).not.toContain('rel="canonical"');
+    expect(codigo).not.toContain('og:');
+    expect(codigo).not.toContain('https://agenda-literaria');
+    expect(codigo).not.toContain('agendaleh');
+    // Y la mitad positiva: la portada viaja al layout como `og:image`, que es lo
+    // que hace que el link pegado en Instagram se vea con el flyer.
+    expect(codigo).toMatch(/imagen=\{portada\?\.url/);
   });
 });
 

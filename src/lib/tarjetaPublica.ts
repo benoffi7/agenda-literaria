@@ -305,16 +305,36 @@ export interface AvisoDeTarjeta {
  *
  * El orden es la decisión: `cerraron` va antes que `cupo completo` porque cuando
  * las dos son ciertas la segunda invita a una acción —«consultá por lista de
- * espera»— que ya no tiene a dónde ir. Y `requiere: false` va primero de todo:
- * ninguna de las otras frases tiene sentido si no hay inscripción.
+ * espera»— que ya no tiene a dónde ir. Y `requiere: false` va primero de las
+ * frases de inscripción: ninguna de las otras tiene sentido si no hay
+ * inscripción.
  *
  * Nada de «quedan 3 lugares» (§4.2): no sabemos cuántas inscripciones hay. `cupo`
  * es el cupo total y se dice así.
+ *
+ * ── Lo que pasó no tiene línea de inscripción — B-290 ─────────────────────
+ * **Primero de todo se mira `paso`**, y devuelve `null`: una actividad que ya
+ * terminó no se puede seguir ofreciendo. Sin esta rama, un taller de mayo **sin
+ * fecha de cierre cargada** cae en el default y la fila dice «Inscripción
+ * abierta», que es exactamente el modo de falla que el §7.1 nombra —«`abierta`
+ * solo mira `cierra`: una actividad sin fecha de cierre queda `abierta: true`
+ * para siempre y mostraría *Anotate* en un taller de hace un año»— y que la
+ * página de detalle ya evitaba decidiendo el CTA **por fecha**.
+ *
+ * No era teórico y no lo trajo `/pasadas`: la fila de una pasada ya se renderiza
+ * en la página de un mes vencido (B-113) y con el filtro «Cuándo» puesto en un
+ * mes que pasó. `/pasadas` es lo que lo puso a la vista, porque es una página
+ * entera de filas pasadas.
+ *
+ * Devuelve `null` y no una frase propia porque no hay nada que agregar: el bloque
+ * de fecha ya dice «Pasó» y la línea del ciclo dice «terminó el 20 de agosto».
+ * Una frase más sería repetir en un tercer lugar.
  */
 export const avisoDeTarjeta = (
   entrada: EntradaDeIndice,
   estado: EstadoDeEntrada,
-): AvisoDeTarjeta => {
+): AvisoDeTarjeta | null => {
+  if (estado.paso) return null;
   if (!entrada.inscripcion.requiere) return { texto: 'Entrada libre, sin inscripción', tono: 'apagado' };
   if (estado.inscripcionCerrada) return { texto: 'Las inscripciones cerraron', tono: 'alerta' };
   if (entrada.inscripcion.completo) {

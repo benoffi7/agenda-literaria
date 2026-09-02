@@ -333,12 +333,40 @@ describe('el aviso de inscripción', () => {
     // §4.2 — no sabemos cuántas inscripciones hay. «Quedan 3 lugares» sería un
     // dato que el modelo no tiene.
     const r = aviso({ cupo: 12 });
-    expect(r.texto).toBe('Inscripción abierta · cupo 12');
-    expect(r.texto).not.toMatch(/quedan|lugares/i);
+    expect(r!.texto).toBe('Inscripción abierta · cupo 12');
+    expect(r!.texto).not.toMatch(/quedan|lugares/i);
   });
 
   it('sin cupo no se inventa «cupos limitados»', () => {
     expect(aviso({})).toEqual({ texto: 'Inscripción abierta', tono: 'apagado' });
+  });
+
+  it('lo que ya pasó NO tiene línea de inscripción — B-290', () => {
+    /*
+     * **El bug que `/pasadas` puso a la vista.** Un taller que terminó y que no
+     * tiene fecha de cierre cargada caía en el default y la fila decía
+     * «Inscripción abierta»: es el modo de falla que el §7.1 nombra con estas
+     * palabras —«`abierta` solo mira `cierra`: sin fecha de cierre queda
+     * `abierta: true` para siempre y mostraría *Anotate* en un taller de hace un
+     * año»— y que la página de detalle ya evitaba decidiendo el CTA por fecha.
+     *
+     * Y no lo trajo `/pasadas`: la fila de una pasada ya se renderizaba en la
+     * página de un mes vencido (B-113) y con el filtro «Cuándo» en un mes que
+     * pasó. `/pasadas` es una página entera de estas filas, así que lo puso a la
+     * vista.
+     *
+     * MUTACIÓN PROBADA: sacar la rama de `paso` deja los otros seis casos de este
+     * `describe` en verde y este en rojo, diciendo «Inscripción abierta».
+     */
+    expect(aviso({ fechas: ['2026-05-10T22:00:00Z'], cierra: null })).toBeNull();
+    // Y tampoco con el cupo completo o la inscripción cerrada: ninguna de las
+    // tres frases dice algo cierto de algo que ya terminó.
+    expect(aviso({ fechas: ['2026-05-10T22:00:00Z'], completo: true })).toBeNull();
+    expect(
+      aviso({ fechas: ['2026-05-10T22:00:00Z'], cierra: '2026-05-01T22:00:00Z' }),
+    ).toBeNull();
+    // Control: la misma actividad con fecha futura sí la tiene.
+    expect(aviso({ fechas: ['2026-09-24T22:00:00Z'], cierra: null })).not.toBeNull();
   });
 });
 

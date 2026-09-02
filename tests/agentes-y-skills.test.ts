@@ -178,6 +178,7 @@ describe('docs/13-agentes.md dice lo que hay — cierra B-120', () => {
 describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
   const FICHA = '.claude/agents/auditor-privacidad.md';
   const SEGURIDAD = 'docs/07-seguridad.md';
+  const SKILL_CAMPO_NUEVO = '.claude/skills/campo-nuevo/SKILL.md';
 
   /**
    * Las filas numeradas de la primera tabla del documento, con el archivo
@@ -188,9 +189,18 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     const filas: { n: string; archivo: string; funciones: string[] }[] = [];
     let empezo = false;
     for (const linea of fuente(relativo).split('\n')) {
-      // El `\s*` inicial es por el skill `campo-nuevo`, donde la tabla va sangrada
-      // adentro de un ítem de lista. En los otros dos archivos no cambia nada.
-      const m = /^\s*\|\s*(\d)\s*\|(.+)$/.exec(linea);
+      /*
+       * El `\s*` inicial es por el skill `campo-nuevo`, donde la tabla va sangrada
+       * adentro de un ítem de lista. En los otros dos archivos no cambia nada.
+       *
+       * **`\d+` y no `\d`** — B-109. Con un solo dígito, la fila `| 10 |` no
+       * matcheaba y el barrido **cortaba ahí** (el `break` de abajo): las tres
+       * tablas seguían coincidiendo entre sí porque las tres se cortaban en la
+       * 9, así que la salida 10 quedaba sin atar y nada lo decía. Es el mismo
+       * modo de falla que este describe existe para cerrar —un índice que
+       * envejece en silencio— escondido en el parseo.
+       */
+      const m = /^\s*\|\s*(\d+)\s*\|(.+)$/.exec(linea);
       if (!m) {
         if (empezo) break;
         continue;
@@ -219,6 +229,67 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     // Y que el extractor de funciones encuentre algo: si devolviera siempre
     // vacío, el `it` de abajo compararía dos listas vacías fila por fila.
     expect(salidas(FICHA).some((s) => s.funciones.length > 0)).toBe(true);
+  });
+
+  /**
+   * Las filas de la primera tabla contadas **con otra implementación**: desde la
+   * primera línea que arranca con `| <número>` y mientras las líneas sigan siendo
+   * de tabla. Existe para comparar contra el parseo de arriba: si el regex de
+   * aquél deja de reconocer una fila, el loop **corta** y la lista sale más
+   * corta, sin fallar.
+   */
+  const filasCrudas = (relativo: string): number => {
+    const lineas = fuente(relativo).split('\n');
+    const primera = lineas.findIndex((l) => /^\s*\|\s*\d/.test(l));
+    if (primera === -1) return 0;
+    let n = 0;
+    for (let i = primera; i < lineas.length && /^\s*\|/.test(lineas[i] ?? ''); i++) n++;
+    return n;
+  };
+
+  it('el parseo no se come ninguna fila de la tabla', () => {
+    /*
+     * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
+     * línea que no reconoce (para no mezclar una segunda tabla numerada más
+     * abajo), así que una fila que el regex no entiende **no falla: acorta la
+     * lista**. Con `(\d)` en vez de `(\d+)`, la fila `| 10 |` no matcheaba y las
+     * tres tablas seguían coincidiendo entre sí, cortadas todas en la 9 — la
+     * salida 10 sin atar y ningún test en rojo. La numeración consecutiva
+     * tampoco lo veía: 1..9 es consecutivo.
+     *
+     * Contar las filas con otra implementación sí lo ve, y ve cualquier fila que
+     * el parseo deje de reconocer, no solo los dos dígitos.
+     *
+     * MUTACIÓN PROBADA: volver a `(\d)` pone este caso en rojo en los tres
+     * archivos.
+     */
+    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
+      expect(
+        salidas(archivo).length,
+        `la tabla de ${archivo} tiene filas que el parseo no reconoce: el barrido cortó antes`,
+      ).toBe(filasCrudas(archivo));
+    }
+  });
+
+  it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {
+    /*
+     * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
+     * línea que no es fila (para no mezclar una segunda tabla numerada de más
+     * abajo), así que una fila que el regex no reconoce **no falla: acorta la
+     * lista**. Con `(\d)` en vez de `(\d+)`, la fila `| 10 |` no matcheaba y las
+     * tres tablas seguían coincidiendo entre sí, cortadas todas en la 9 — la
+     * salida 10 sin atar y ningún test en rojo.
+     *
+     * Exigir la secuencia completa lo cierra para cualquier fila que el parseo no
+     * entienda, no solo para los dos dígitos.
+     */
+    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
+      const numeros = salidas(archivo).map((s) => s.n);
+      expect(
+        numeros,
+        `la tabla de ${archivo} se parseó con saltos: el barrido cortó antes de la última fila`,
+      ).toEqual(numeros.map((_, i) => String(i + 1)));
+    }
   });
 
   it('la ficha conoce toda función productora que nombra el documento de seguridad', () => {
@@ -291,7 +362,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * MUTACIÓN PROBADA: sacar la fila 7 de la tabla del skill deja los otros dos
      * `it` de este describe en verde y este en rojo.
      */
-    const SKILL = '.claude/skills/campo-nuevo/SKILL.md';
+    const SKILL = SKILL_CAMPO_NUEVO;
     const numeros = (rel: string) => salidas(rel).map((s) => s.n);
     expect(numeros(SKILL).length, 'no se parseó la tabla del skill').toBeGreaterThanOrEqual(4);
     expect(

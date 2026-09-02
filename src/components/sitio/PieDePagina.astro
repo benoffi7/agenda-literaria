@@ -43,6 +43,7 @@
  */
 import { QUE_ES, BAJADA, NOMBRE } from '@/lib/identidad';
 import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
+import { RUTA_PASADAS } from '@/lib/rutasPublicas';
 import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
 
 /**
@@ -82,6 +83,22 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             <span aria-hidden="true">@</span>{INSTAGRAM}
             <span class="sr-only">(Instagram, se abre en una pestaña nueva)</span>
           </a>
+        </li>
+        <li>
+          {/*
+            **`/pasadas` se enlaza desde el pie y no desde el encabezado** —
+            B-109. El §2.1 dice para qué existe: que ninguna página de detalle
+            quede huérfana. Para eso alcanza **un** link permanente desde todas
+            las páginas, y el pie lo es; una sexta pestaña arriba le daría a un
+            archivo el mismo peso que a la agenda, cuando nadie entra al sitio a
+            ver lo que ya pasó.
+
+            Es además el único lugar de la navegación donde la frase entra
+            entera: en versalitas y en una fila propia, «Lo que ya pasó» se lee;
+            en la barra, al lado de «Cartelera» y «Suscribirse», compite por el
+            ancho con lo que sí se busca.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_PASADAS}>Lo que ya pasó</a>
         </li>
         <li>
           <a class={`${claseFila} sm:justify-end`} href="/suscribirse">Suscribirse al calendario</a>

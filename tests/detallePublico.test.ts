@@ -15,6 +15,7 @@ import {
   urlSegura,
 } from '@/lib/detallePublico';
 import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
+import { urlDeDetalle } from '@/lib/rutasPublicas';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
@@ -841,6 +842,38 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(lugares.map((l) => l['@type'])).toEqual(['Place', 'VirtualLocation']);
   });
 
+  it('el `url` del VirtualLocation es la canónica de la actividad, no el link de la reunión (§5.4)', () => {
+    /*
+     * **La regla del §5.4, que hasta B-109 no se podía cumplir.** Google pide en
+     * `VirtualLocation.url` la URL donde se consigue el acceso, y ésa es **esta
+     * página**: nunca `online.url`, ni con `urlPublica: true` (D-139). El JSON-LD
+     * es lo primero que cosecha un bot, así que el link de la reunión no llega
+     * ahí por ningún camino (trampa 5). Antes del dominio salía sin `url`, porque
+     * una relativa no es válida ahí y una absoluta inventada es peor que nada.
+     *
+     * MUTACIÓN PROBADA: cambiar ese `urlDeDetalle` por `rutaDeDetalle` —la
+     * relativa, que es lo que uno escribe— pone este caso en rojo. Y **el caso de
+     * más abajo no lo veía**, porque el detalle por defecto es presencial y no
+     * emite `VirtualLocation`: lo encontró el barrido de mutaciones de B-109.
+     */
+    const d = detalleDe({ modalidades: ['virtual'] });
+    // Con un solo lugar, `location` es el objeto y no un array (así lo emite el
+    // schema): se normaliza acá para que el caso valga en los dos.
+    const location = datosEstructurados(d)!.location;
+    const lugares = (Array.isArray(location) ? location : [location]) as Record<
+      string,
+      unknown
+    >[];
+    const virtual = lugares.find((l) => l['@type'] === 'VirtualLocation')!;
+    expect(virtual.url).toBe(urlDeDetalle(d.slug));
+    expect(String(virtual.url)).toMatch(/^https:\/\//);
+    // Y no el link de la reunión, ni con la casilla de D-15 tildada.
+    const conLink = detalleDe({ modalidades: ['virtual'] }, {
+      online: { plataforma: 'meet', url: 'https://meet.google.com/abc-defg-hij', urlPublica: true },
+    });
+    expect(JSON.stringify(datosEstructurados(conLink))).not.toContain('meet.google.com');
+  });
+
   it('una presencial sin sede no emite JSON-LD (§7.7)', () => {
     /*
      * `location` es obligatorio para el resultado enriquecido y un `Place`
@@ -911,13 +944,37 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     );
   });
 
-  it('el JSON-LD no lleva URLs absolutas inventadas (B-109 todavía abierto)', () => {
+  it('el JSON-LD lleva la canónica de la actividad, derivada y no escrita (B-109 cerrado)', () => {
     /*
-     * `canonical`, `og:` y `url` necesitan `site` en la config, que necesita el
-     * dominio decidido. Inventar una URL ahora es peor que no ponerla: una
-     * canónica equivocada le dice a Google que la página buena es otra.
+     * **Este caso estaba escrito al revés, a propósito.** Hasta B-109 exigía que
+     * el JSON-LD **no** llevara ninguna URL absoluta: `canonical`, `og:` y `url`
+     * necesitaban `site` en la config, y `site` necesitaba el dominio decidido.
+     * Inventar una URL era peor que no ponerla.
+     *
+     * **La condición se cumplió** (D-165), así que se da vuelta: el `url` del
+     * evento, el del `VirtualLocation` (§5.4) y el de `offers` tienen que estar,
+     * y tienen que salir de `urlDeDetalle` — no escritos a mano. Se comparan
+     * contra la función, no contra el dominio literal: un test con el dominio
+     * pegado sería la segunda copia que este cambio vino a evitar.
+     *
+     * Y quedan dos ausencias, las dos con motivo:
+     *
+     * - **ninguna URL relativa** (`"url":"/…"`): en un JSON-LD no es válida, y
+     *   un consumidor que la resuelva contra el host que la sirvió apunta al
+     *   espejo;
+     * - **ninguna URL del espejo** `agenda-literaria.web.app`, que sigue
+     *   sirviendo este mismo HTML para siempre porque Firebase no lo apaga. La
+     *   canónica no puede ser la del espejo: eso es justo el contenido duplicado
+     *   que B-109 cerró.
+     *
+     * MUTACIÓN PROBADA: cambiar `urlDeDetalle(d.slug)` por `rutaDeDetalle(d.slug)`
+     * en `datosEstructurados` deja el HTML igual y pone este caso en rojo por la
+     * URL relativa.
      */
-    const texto = JSON.stringify(datosEstructurados(detalleDe())!);
+    const d = detalleDe();
+    const texto = JSON.stringify(datosEstructurados(d)!);
+    expect(texto).toContain(urlDeDetalle(d.slug));
+    expect(urlDeDetalle(d.slug)).toMatch(/^https:\/\//);
     expect(texto).not.toContain('"url":"/');
     expect(texto).not.toContain('agenda-literaria.web.app');
   });

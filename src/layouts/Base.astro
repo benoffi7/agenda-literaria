@@ -2,11 +2,24 @@
 import '@/styles/global.css';
 import Encabezado, { type Seccion } from '@/components/sitio/Encabezado.astro';
 import PieDePagina from '@/components/sitio/PieDePagina.astro';
+import { NOMBRE } from '@/lib/identidad';
+import { urlAbsoluta } from '@/lib/rutasPublicas';
 
 interface Props {
   titulo: string;
   descripcion?: string;
   noIndex?: boolean;
+  /**
+   * La imagen para el preview de un link compartido (`og:image`) — B-109.
+   *
+   * **Absoluta y real, o nada.** Solo la pasa la página de detalle, con la
+   * portada de la actividad: un flyer es literalmente la imagen de esa actividad
+   * y es la que hace que el link pegado en Instagram o en WhatsApp se vea. Las
+   * cinco imágenes estáticas por tipo que pide el §5.1 del diseño —para las
+   * actividades sin flyer— siguen sin existir: son **B-291**, y hasta que estén
+   * es mejor un preview sin imagen que un `og:image` a un archivo que da 404.
+   */
+  imagen?: string | null;
   /**
    * Qué sección del sitio marcar como activa. **`'ninguna'` apaga el encabezado
    * y el pie enteros**, que es lo que necesita `/admin`: el panel es una SPA con
@@ -16,7 +29,33 @@ interface Props {
   seccion?: Seccion | 'ninguna';
 }
 
-const { titulo, descripcion, noIndex = false, seccion = 'ninguna' } = Astro.props;
+const { titulo, descripcion, noIndex = false, seccion = 'ninguna', imagen = null } = Astro.props;
+
+/*
+ * ── La canónica, y por qué se arma acá una sola vez — B-109 ───────────────
+ *
+ * Sale de `Astro.url.pathname` y no de una prop por página: con una prop, la
+ * página que se olvide de pasarla se publica sin canónica y nada falla — y con
+ * seis páginas más los hubs de B-108 en camino, eso pasa. El path lo sabe Astro,
+ * el origen lo sabe `SITIO` (`lib/rutasPublicas.ts`), y `urlAbsoluta` es la que
+ * los junta: **ninguna salida del sitio escribe el dominio a mano**.
+ *
+ * Y sale del `pathname`, no de `Astro.url.href`: el `href` lleva el origen del
+ * servidor que esté corriendo, que en el dev server es `localhost:4321`. Lo que
+ * tiene que quedar en el HTML es el origen canónico, siempre el mismo, sin
+ * depender de dónde se construyó.
+ *
+ * **Absoluta y no relativa**, que es la mitad que importa: `agenda-literaria.web.app`
+ * y `agendaleh.com.ar` sirven este mismo HTML —el primero para siempre, porque
+ * Firebase no lo apaga— y una canónica relativa se resuelve contra el host que la
+ * sirvió, o sea que en el espejo diría que la página buena es la del espejo. El
+ * canonical absoluto es lo único que corta el contenido duplicado.
+ *
+ * `urlAbsoluta` agrega la barra final cuando corresponde: es la forma que
+ * contesta 200 en Firebase (ver su docblock). La canónica no puede apuntar a una
+ * redirección.
+ */
+const canonical = urlAbsoluta(Astro.url.pathname);
 
 /*
  * El `<body>` lleva `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan
@@ -50,6 +89,37 @@ const conChrome = seccion !== 'ninguna';
     <title>{titulo}</title>
     {descripcion && <meta name="description" content={descripcion} />}
     {noIndex && <meta name="robots" content="noindex, nofollow" />}
+
+    {/*
+      §5.1 del diseño — la canónica y el Open Graph, **en todas las páginas**
+      (B-109). Faltaban a propósito hasta que el dominio existiera: una canónica
+      a un dominio equivocado le dice a Google que la página buena es otra, que
+      es peor que no tener canónica.
+
+      Van acá y no en cada página por lo mismo que el chrome (B-229): olvidarse
+      no rompe nada visible. Una página sin `og:` se comparte en Instagram como
+      un link pelado, y eso se descubre compartiéndolo.
+
+      **También en las `noindex`** —el panel y la página de un mes vencido—: el
+      `noindex` decide si se indexa y el Open Graph decide cómo se ve el link
+      cuando alguien lo pega en un chat. Son dos preguntas distintas, y una
+      página que no queremos en Google igual se comparte por WhatsApp.
+    */}
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={NOMBRE} />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:title" content={titulo} />
+    <meta property="og:url" content={canonical} />
+    {descripcion && <meta property="og:description" content={descripcion} />}
+    {imagen && <meta property="og:image" content={imagen} />}
+    {/*
+      `summary_large_image` **solo si hay imagen**: la tarjeta grande sin imagen
+      se dibuja como un rectángulo vacío con el título abajo, que se ve peor que
+      la chica. Es la misma regla del §7.6 con el hueco de la portada — no hay
+      placeholder.
+    */}
+    <meta name="twitter:card" content={imagen ? 'summary_large_image' : 'summary'} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*

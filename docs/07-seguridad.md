@@ -4,7 +4,7 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
-**Son ocho salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+**Son diez salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
 esas. La **6** nació con B-227 y es la primera que es una *página* y no un
 archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
@@ -16,6 +16,16 @@ interpola títulos de actividades. Está contada por eso: lo que decide si el
 `auditor-privacidad` mira un archivo es que alguna de estas tres tablas lo nombre,
 no que hoy filtre algo.
 
+Las **9** y la **10** nacieron con B-109, el día que el sitio tuvo dominio. Son
+las dos primeras salidas que existen *para el buscador* y no para una persona: la
+9 publica **solo rutas** —ni un título, ni una fecha, ni un campo— y la 10 es una
+página que reagrupa el mismo índice de la 1, como la 8. Están contadas igual, y
+por el mismo criterio: lo que decide si el `auditor-privacidad` mira un archivo
+es que alguna de estas tablas lo nombre. En la 9 además el error caro es al revés
+del habitual —no filtrar de más, sino **ofrecerle al buscador la URL de algo que
+no tendría que estar en Google**: `/admin`, un borrador, la página de un mes
+vencido.
+
 | # | Salida | Quién decide qué sale |
 |---|---|---|
 | 1 | `events.json` y el HTML del listado — **actividades y también las opciones de taxonomía** (§4.4) | **Tres archivos en serie:** `src/lib/toPublic.ts` (`toPublic`, `opcionesPublicas`) decide qué *puede* ser público; `src/lib/eventsJson.ts` (`entradaDeIndice`, `construirIndice`, `resumenDe`) decide qué necesita el listado, que es menos; `src/lib/contenidoDelSitio.ts` elige *qué documentos* se leen (el `where` del §5.3, mudado ahí en B-227 porque ahora son **tres** los consumidores) y `src/pages/events.json.ts` solo serializa. **La mitad HTML tiene un cuarto productor**, agregado en B-247: `src/lib/tarjetaPublica.ts` (`lugarDeTarjeta`, `avisoDeTarjeta`, `cicloDeTarjeta`, `arancelDeTarjeta`, `bloqueDeFecha`, `formasDeCursar`) decide **qué frases dice la fila** con los campos que el índice ya trae; los componentes de `src/components/publico/` **solo acomodan**, y qué campos de la entrada pueden tocar es una lista cerrada que verifica `tests/listado-del-sitio.test.ts` (la forma de D-140 donde el tipo no la puede dar). Y un quinto desde B-270: `src/lib/identidad.ts` (`colorDeTipo`, `tonoDeTipo`) decide **de qué color** se escribe la categoría, con `src/lib/listadoPublico.ts` (`tonosDeTipo`, `estiloDeTipo`) leyendo el matiz del propio archivo |
@@ -26,6 +36,8 @@ no que hoy filtre algo.
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle`, `tonosDelSitio`, y desde **B-110** sus **dos** cláusulas de estado —publicado y cancelado— más `estuvoPublicada`, que resuelve contra `/versiones` cuando el id del evento ya se borró); y desde **B-273** `src/lib/identidad.ts` (`colorDeTipo`), que resuelve el color de la categoría antes de que la plantilla lo vea. La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**). Es la única salida donde un documento que no está publicado produce HTML, y lo hace bajo la condición del §7.3 del diseño: solo si estuvo publicada alguna vez (**D-159**) |
 | 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). La plantilla solo acomoda |
 | 8 | La **página de mes** `/agenda/{aaaa-mm}` — HTML indexado, una por mes con 3 o más actividades (B-113) | `src/lib/mesPublico.ts` (`mesesDelSitio` decide qué meses se emiten, `entradasDelMes` qué entra en cada uno, `recorteDelMes` recorta la entrada al mes, y `tituloDelMes`, `descripcionDelMes` y `bajadaDelMes` arman las tres frases que van al `<title>`, a la `meta description` y a la bajada); `src/lib/tarjetaPublica.ts` (`cicloDelMes`); `src/lib/contenidoDelSitio.ts` (`caminosDeMes`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. La plantilla recibe el view-model y nada más (**D-140**) |
+| 9 | El **`sitemap.xml`** y el **`robots.txt`** — lo que se le ofrece al buscador (B-109) | `src/lib/sitemap.ts` (`rutasDelSitemap` decide qué URLs entran —las páginas fijas de `RUTAS_FIJAS`, los meses enlazables, las publicadas hasta 90 días después de su última fecha y las canceladas hasta 30 días después de su última edición—, `xmlDelSitemap` serializa y `textoDeRobots` arma el `robots.txt` con `RUTA_BLOQUEADA`); `src/lib/rutasPublicas.ts` (`SITIO`, `rutaCanonica`, `urlAbsoluta`, `urlDeDetalle`, `urlDeMes` — el origen y la forma de toda URL absoluta del sitio, canonical y Open Graph incluidos); `src/lib/contenidoDelSitio.ts` (`sitemapDelSitio`, que aporta el reloj del índice y el `updatedAt` de las canceladas leído del documento crudo). **Publica solo rutas**: `lastmod` no se emite hasta que exista B-112, así que `updatedAt` sigue sin salir a ninguna salida — acá es un predicado, no un dato. Los endpoints (`src/pages/sitemap.xml.ts`, `src/pages/robots.txt.ts`) solo serializan |
+| 10 | El **archivo** `/pasadas` — HTML indexado, y el único link interno permanente de cada actividad que ya pasó (B-109) | `src/lib/pasadasPublicas.ts` (`pasadasDelSitio` decide qué entra y en qué orden; `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS` y `descripcionDePasadas` son sus frases); `src/lib/contenidoDelSitio.ts` (`vistaDePasadas`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar — y las canceladas no le llegan ni queriendo, porque nunca entran al índice (B-110). Ninguna de sus frases interpola datos de una actividad, a diferencia de la 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (**D-140**) |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.

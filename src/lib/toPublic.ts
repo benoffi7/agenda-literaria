@@ -261,8 +261,16 @@ const aIso = (t: { toDate(): Date } | Date): string =>
  * Es además el default de lectura del §"un campo nuevo se lee con el default que
  * preserva lo anterior": un documento sembrado a mano sin `createdAt` publica una
  * cadena vacía, que ordena al fondo de «Recién agregadas» y no rompe nada.
+ *
+ * **Se exporta desde B-109**, para el `updatedAt` que el lector del sitio lee del
+ * documento crudo (`contenidoDelSitio.ts`, la ventana de 30 días de las
+ * canceladas en el sitemap). Exportarla y no copiarla es la lección de B-211: el
+ * manejo del `Timestamp` de Firestore estaba escrito trece veces en cuatro formas
+ * y una de las cuatro mentía. Que salga de acá **no** significa que el campo se
+ * proyecte: esta función convierte, `toPublic` decide qué se publica, y
+ * `updatedAt` sigue sin entrar a `ActividadPublica`.
  */
-const aIsoSeguro = (t: unknown): string => {
+export const aIsoSeguro = (t: unknown): string => {
   if (t instanceof Date) return t.toISOString();
   if (t && typeof (t as { toDate?: unknown }).toDate === 'function') {
     const d = (t as { toDate(): Date }).toDate();
