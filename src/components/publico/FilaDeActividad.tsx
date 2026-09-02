@@ -200,16 +200,22 @@ export function FilaDeActividad({ entrada, ahora, etiquetas, tonos, mes }: Props
             El aviso de inscripción. `alerta` frena y va en terracota; `apagado`
             informa y va en la tinta de superposición. Las dos están medidas: 6,33
             y 6,34 sobre el papel, y 5,15 sobre la capa tonal del hover.
+
+            **Puede no haber** (B-290): una actividad que ya pasó no tiene línea de
+            inscripción, porque no se puede ofrecer. Lo decide `avisoDeTarjeta`,
+            que devuelve `null` — acá no se compara ninguna fecha.
           */}
-          <p
-            className={
-              aviso.tono === 'alerta'
-                ? 'body-sm mt-1 font-semibold text-acento'
-                : 'body-sm mt-1 text-super'
-            }
-          >
-            {aviso.texto}
-          </p>
+          {aviso && (
+            <p
+              className={
+                aviso.tono === 'alerta'
+                  ? 'body-sm mt-1 font-semibold text-acento'
+                  : 'body-sm mt-1 text-super'
+              }
+            >
+              {aviso.texto}
+            </p>
+          )}
         </div>
 
         {/* ── Columnas 10-12 · el arancel ─────────────────────────────── */}

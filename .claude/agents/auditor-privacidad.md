@@ -1,6 +1,6 @@
 ---
 name: auditor-privacidad
-description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/cartelera.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/pages/cartelera.astro, src/lib/listadoPublico.ts, src/lib/mesPublico.ts, src/lib/tarjetaPublica.ts, src/pages/agenda/[mes].astro, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/textoRedes.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
+description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/cartelera.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/pages/cartelera.astro, src/lib/listadoPublico.ts, src/lib/mesPublico.ts, src/lib/tarjetaPublica.ts, src/pages/agenda/[mes].astro, src/lib/sitemap.ts, src/lib/pasadasPublicas.ts, src/lib/rutasPublicas.ts, src/layouts/Base.astro, src/pages/sitemap.xml.ts, src/pages/robots.txt.ts, src/pages/pasadas.astro, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/textoRedes.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -16,7 +16,7 @@ lo mismo que no haber publicado.
 Trabajás con `CLAUDE.md` §5 y §13 (trampas 4 y 5) y con `docs/07-seguridad.md`.
 Leelos antes de dictaminar: son la fuente, esto es el índice.
 
-## Las ocho salidas, y de qué archivo sale cada una
+## Las diez salidas, y de qué archivo sale cada una
 
 | # | Salida | Quién la produce | Test que la fija |
 |---|---|---|---|
@@ -28,6 +28,8 @@ Leelos antes de dictaminar: son la fuente, esto es el índice.
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` — `detalleDeActividad` (el view-model), `datosEstructurados` (el JSON-LD), `urlSegura` y `handleInstagram` (todo href); `src/lib/contenidoDelSitio.ts` — `caminosDeDetalle`, `etiquetasDelDetalle`, `tonosDelSitio`, y desde B-110 **dos** cláusulas de estado (publicado y cancelado, dos queries y no un `in`) más `estuvoPublicada`, que decide si una cancelada tiene página consultando la existencia de una versión publicada en `/versiones` — la única lectura del build fuera de `/actividades`, y con `.select()` para no traer ningún campo (D-159); y desde B-273 (D-153) `src/lib/identidad.ts` — `colorDeTipo`, que resuelve el color de la categoría antes de que la plantilla lo vea. La plantilla `src/pages/actividad/[slug].astro` **solo acomoda**: recibe el view-model y nada más (D-140) | `tests/detallePublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (dos `describe`: la página y el JSON-LD), `tests/pagina-de-detalle.test.ts`, `tests/sitio-publico.integracion.test.ts`, `tests/color-de-tipo.test.ts`, `tests/detalle-visual.test.ts` |
 | 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` — `carteleraDeDetalles`. **Su entrada es la salida 6 y no el documento**: proyecta `DetallePublico`, así que solo puede sacar campos. `src/lib/contenidoDelSitio.ts` — `carteleraDelSitio` y el `where`. La plantilla `src/pages/cartelera.astro` solo acomoda | `tests/cartelera.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la cartelera), `tests/afiche.test.ts` |
 | 8 | La **página de mes** `/agenda/{aaaa-mm}` — HTML indexado, una por mes con 3 o más actividades (B-113) | `src/lib/mesPublico.ts` — `mesesDelSitio` (qué meses se emiten), `entradasDelMes` (qué entra en cada uno), `recorteDelMes` (la entrada recortada al mes) y las tres frases: `tituloDelMes`, `descripcionDelMes`, `bajadaDelMes`. `src/lib/tarjetaPublica.ts` — `cicloDelMes`. `src/lib/contenidoDelSitio.ts` — `caminosDeMes`, que arma el view-model. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. La plantilla `src/pages/agenda/[mes].astro` recibe el view-model y nada más (D-140) | `tests/mesPublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la página de mes), `tests/listado-del-sitio.test.ts` (la lista blanca de la fila) |
+| 9 | El **`sitemap.xml`** y el **`robots.txt`** — qué páginas se le ofrecen al buscador (B-109). Publica **solo rutas**: ni un título, ni una descripción, ni una fecha | `src/lib/sitemap.ts` — `rutasDelSitemap` (qué URLs entran: `RUTAS_FIJAS`, los meses enlazables, las publicadas hasta 90 días después de su última fecha y las canceladas hasta 30 después de su última edición), `xmlDelSitemap` (serializa, y escapa el XML), `textoDeRobots` (con `RUTA_BLOQUEADA` = `/admin`); `src/lib/rutasPublicas.ts` — `SITIO`, `rutaCanonica`, `urlAbsoluta`, `urlDeDetalle`, `urlDeMes`: el origen y la forma de **toda** URL absoluta del sitio, o sea también el `canonical` y el `og:url` que pone `src/layouts/Base.astro` y el `url` del JSON-LD de la salida 6; `src/lib/contenidoDelSitio.ts` — `sitemapDelSitio`, que aporta el reloj del índice y el `updatedAt` de cada cancelada leído del documento crudo. **`lastmod` no se emite** (necesita B-112), así que `updatedAt` sigue sin salir a ninguna salida: acá es un predicado —decide si la URL entra— y no un dato. Los endpoints `src/pages/sitemap.xml.ts` y `src/pages/robots.txt.ts` solo serializan | `tests/sitemap.test.ts`, `tests/canonico.test.ts` |
+| 10 | El **archivo** `/pasadas` — HTML indexado, y el **único link interno permanente** de cada actividad que ya pasó una vez que su entrada del sitemap vence a los 90 días (B-109) | `src/lib/pasadasPublicas.ts` — `pasadasDelSitio` (qué entra y en qué orden) y sus frases: `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS`, `descripcionDePasadas`; `src/lib/contenidoDelSitio.ts` — `vistaDePasadas`, que arma el view-model. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar, y las canceladas no le llegan ni queriendo porque nunca entran al índice (B-110). **Ninguna de sus frases interpola datos de una actividad**, a diferencia de `descripcionDelMes` de la salida 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (D-140) | `tests/pasadas.test.ts`, `tests/listado-del-sitio.test.ts` (la lista blanca de la fila) |
 
 **La 7 hereda la garantía de la 6, y ahí está lo que hay que mirar.**
 `carteleraDeDetalles` recibe `DetallePublico`, o sea que **no puede publicar un
@@ -72,6 +74,23 @@ mostrar de más ni de menos que la salida 2. Si un cambio reimplementa ahí la
 descripción en vez de importarla, **eso es un hallazgo**: es la copia que se
 desactualiza. El borrador autoguardado tampoco es salida: vive en el navegador de
 quien carga (D-122).
+
+**Las dos nuevas —la 9 y la 10— son las primeras que existen para el buscador y
+no para una persona**, y cada una tiene su arista.
+
+En la **9** el error caro es al revés del habitual: no filtrar de más, sino
+**ofrecerle al buscador la URL de algo que no tendría que estar en Google**. Lo
+que hay que mirar es la lista de qué entra —`/admin` no está, los endpoints de
+datos no están, la página de un mes vencido no está— y que nadie escriba una URL
+absoluta a mano en vez de derivarla de `SITIO`: con el dominio copiado, la mitad
+del sitemap puede terminar apuntando a otro host. Lo publicado son rutas, así que
+no hay campo que se pueda colar; lo que se puede colar es una **página**.
+
+La **10** hereda de la 1 igual que la 8, con una diferencia a favor: ninguna de
+sus frases interpola datos de una actividad, así que no tiene la superficie que
+obligó a barrer la 8 con centinelas. Si mañana alguien mete un título o un
+resumen en su `meta description`, eso **es** un hallazgo y hay que pedir el
+barrido.
 
 **La 8 hereda de la 1 por el mismo mecanismo, y tiene una arista propia.** Sus
 entradas son `EntradaDeIndice`, o sea la proyección más angosta del repo, y el

@@ -105,12 +105,26 @@ describe('rutaCanonica — la forma que contesta 200', () => {
   });
 
   it('un archivo NO lleva barra final', () => {
-    // `/sitemap.xml/` es un 404. Se detectan por el punto del último segmento,
-    // que es la regla más chica que separa los dos casos sin una lista que
-    // mantener.
+    // `/sitemap.xml/` es un 404. Los cuatro endpoints del sitio viven en la raíz.
     expect(rutaCanonica('/sitemap.xml')).toBe('/sitemap.xml');
     expect(rutaCanonica('/robots.txt')).toBe('/robots.txt');
     expect(rutaCanonica('/events.json')).toBe('/events.json');
+    expect(rutaCanonica('/version.json')).toBe('/version.json');
+  });
+
+  it('pero una página de más de un segmento sí, aunque tenga un punto', () => {
+    /*
+     * **La regla es «un solo segmento con un punto», no «tiene un punto»**, y
+     * este caso es el que lo fija. `slugify` no produce puntos, pero un documento
+     * editado a mano en la consola de Firestore sí puede tener un `slug` con uno
+     * —el mismo razonamiento por el que `esTonoElegible` valida lo que se lee— y
+     * con la regla laxa esa página quedaría sin la barra, o sea con una canónica
+     * que redirige.
+     *
+     * Lo encontró el barrido de centinelas, cuyo slug de prueba es literalmente
+     * `CENTINELA.slug`.
+     */
+    expect(rutaCanonica('/actividad/taller.de.cronica')).toBe('/actividad/taller.de.cronica/');
   });
 
   it('descarta query y fragmento', () => {

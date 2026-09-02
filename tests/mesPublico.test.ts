@@ -502,13 +502,15 @@ describe('el texto de la página', () => {
 
   it('y la salida apunta a una página que existe', () => {
     /*
-     * **El aserto que hay que mirar el día que se construya `/pasadas`.** El §2.2
-     * manda el aviso a `/pasadas`, que todavía no existe (B-109 / B-281):
-     * enlazarla sería poner un 404 en la única salida que ofrece la página
-     * vencida, que es peor que el problema que la página vencida resuelve.
+     * **Este aserto era el que había que mirar el día que se construyera
+     * `/pasadas`, y ese día llegó** (B-109, cierra B-281). El §2.2 manda el aviso
+     * del mes vencido a `/pasadas`; mientras esa página no existía el destino era
+     * la home, porque enlazar un 404 en la única salida que ofrece la página
+     * vencida es peor que el problema que esa página resuelve.
      *
-     * Esto falla el día que alguien apunte el destino a una ruta que el sitio no
-     * tiene, y **deja de fallar solo** cuando esa ruta exista de verdad.
+     * El caso no cambió ni una línea: verifica que el destino sea una ruta que el
+     * sitio tiene, así que sostuvo el `/` de antes y sostiene el `/pasadas` de
+     * ahora — y falla el día que alguien lo apunte a algo que no existe.
      */
     const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
       .split('\n')
@@ -564,9 +566,11 @@ describe('la página `/agenda/[mes]`', () => {
 
   it('el mes vencido sale del índice de los buscadores', () => {
     /*
-     * §2.2: «sale del sitemap». Sitemap todavía no hay (B-109), y el gesto
-     * equivalente que sí existe es `noindex`: se deja de ofrecer la página sin
-     * dejar de responderle a quien tenga el link.
+     * §2.2: «sale del sitemap», y desde B-109 eso es literal —el sitemap sale de
+     * `mesesEnlazables`, que deja afuera las vencidas (`tests/sitemap.test.ts`)—.
+     * El `noindex` de acá es la otra mitad y no sobra: el sitemap dice qué se
+     * ofrece, el `noindex` dice qué no se indexa si alguien llega igual, y a una
+     * página vencida se llega con el link que ya tenía.
      *
      * MUTACIÓN PROBADA: sacar el `noIndex` deja a Google indexando una página que
      * dice «este mes ya pasó».
@@ -591,9 +595,10 @@ describe('la página `/agenda/[mes]`', () => {
   it('no arma ninguna URL a mano', () => {
     /*
      * La ruta de un mes la produce `caminosDeMes` y la linkean tres lugares
-     * (`rutasPublicas.ts`). Y una URL absoluta escrita acá es la trampa que B-109
-     * advierte: sin dominio decidido, cualquier absoluta que se escriba hoy queda
-     * mal el día que se registre el dominio.
+     * (`rutasPublicas.ts`). Y ninguna URL **absoluta**: con el dominio ya decidido
+     * (B-109), el origen se escribe una sola vez en `SITIO` y la canónica la pone
+     * `Base.astro` — una absoluta escrita acá sería la copia que queda vieja, que
+     * es lo que `tests/canonico.test.ts` barre para todo `src/`.
      */
     expect(src()).not.toMatch(/https?:\/\//);
     expect(src()).not.toMatch(/["'`]\/agenda\//);

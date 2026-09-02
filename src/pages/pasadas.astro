@@ -1,0 +1,110 @@
+---
+/**
+ * `/pasadas` — el archivo. B-109, §4.5 y §7.1 del diseño.
+ *
+ * ── Para qué existe, que no es lo que parece ──────────────────────────────
+ * No es una sección más del sitio: es **la que hace que ninguna página de
+ * detalle quede huérfana** (§2.1). Una actividad que pasó sale del listado, de
+ * los hubs y de las páginas de mes; su entrada del sitemap se acaba a los 90
+ * días (`lib/sitemap.ts`), así que a partir de ahí ésta es la única página del
+ * sitio que la enlaza. Una página sin links internos vale casi nada para un
+ * buscador, aunque responda.
+ *
+ * Y para quien entra: casi todo el circuito literario es cíclico. La cabecera lo
+ * dice —«muchas de estas actividades se repiten: si te interesa una, seguí a
+ * quien la organiza»— y eso convierte «llegué tarde» en algo que se puede hacer.
+ *
+ * ── Cero JavaScript, y el buscador vive en la home ────────────────────────
+ * El §4.5 pide «sin filtros salvo la búsqueda», y la búsqueda que hay es la
+ * island de la home, que filtra el índice de lo **vigente** (`vigentesDelIndice`)
+ * y no sabe de pasadas. Traerla acá sería enseñarle un modo nuevo, que es un
+ * cambio de la island y no de esta página — queda anotado como **B-292**. Hasta
+ * entonces esta página es HTML plano, como el detalle y la cartelera, y el enlace
+ * de arriba manda a la búsqueda de la agenda.
+ *
+ * ── Sin atenuar, y es un desvío del §4.5 con motivo ───────────────────────
+ * El diseño pedía «las mismas tarjetas, **atenuadas**». La fila es la misma y no
+ * está atenuada: el sistema visual (D-146) prohíbe las opacidades —«tintas con
+ * nombre, no opacidades: una opacidad es una trama de medio tono, y es por donde
+ * se cae el contraste» (B-235)— y ese requisito se escribió antes del rediseño.
+ * Lo que el sistema sí da, y la fila ya usa, es la **tinta**: el bloque de fecha
+ * de una pasada va en `super` y no en terracota, que es la tinta de lo que se
+ * puede hacer. La distinción está, sin bajarle el contraste a nadie. Está en
+ * D-167.
+ *
+ * ── La plantilla no ve el índice: recibe su view-model (D-140) ────────────
+ * `vistaDePasadas()` le arma lo que muestra y nada más. La tentación es hacer
+ * `indiceDelSitio()` acá para sacar las etiquetas: no filtra nada, y deja el
+ * índice entero —con `searchText` y `creadoEn`— al alcance de un `{}`. Es la
+ * puerta que el `auditor-privacidad` encontró abierta en la primera versión de la
+ * página de mes.
+ *
+ * ── La jerarquía de encabezados ───────────────────────────────────────────
+ * `h1` el título de la página, `h2` cada marcador de mes (lo pone
+ * `ListaDeActividades`), `h3` el título de cada fila. La misma de la home.
+ */
+import Base from '@/layouts/Base.astro';
+import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import { claseEnlace } from '@/components/sitio/estilos';
+import { vistaDePasadas } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+import {
+  BAJADA_DE_PASADAS,
+  TITULO_DE_PASADAS,
+  VACIO_DE_PASADAS,
+  descripcionDePasadas,
+} from '@/lib/pasadasPublicas';
+
+export const prerender = true;
+
+const { entradas, etiquetas, tonos, generadoEn } = await vistaDePasadas();
+// El reloj del índice, el mismo con el que se decidió qué actividad ya pasó: con
+// dos relojes, una que termina mientras corre el build puede no aparecer ni acá
+// ni en la home.
+const ahora = new Date(generadoEn);
+const cuantas = entradas.length;
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${TITULO_DE_PASADAS} · ${NOMBRE}`}
+  descripcion={descripcionDePasadas(cuantas)}
+>
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">{TITULO_DE_PASADAS}</h1>
+      <p class="body-md mt-3 text-super">{BAJADA_DE_PASADAS}</p>
+      <p class="body-md mt-3 text-super">
+        {/*
+          La salida hacia lo que sí se puede hacer. Va arriba y no al pie: quien
+          entra acá desde Google a una actividad de hace tres meses tiene que
+          poder pasar a la agenda sin recorrer el archivo entero.
+        */}
+        <a class={claseEnlace} href="/">Mirá lo que viene en la agenda</a>.
+      </p>
+    </div>
+
+    <div class="mt-10 sm:mt-12">
+      {
+        cuantas === 0 ? (
+          <p class="body-md regla-gruesa-arriba px-4 py-12 text-center text-super">
+            {VACIO_DE_PASADAS}
+          </p>
+        ) : (
+          /*
+            Agrupada por mes, de lo más reciente a lo más antiguo — el orden lo
+            decide `pasadasDelSitio` y los marcadores salen de ese mismo orden
+            (`agruparPorMes` agrupa por `proxima ?? hasta`, y en una pasada
+            `proxima` es siempre `null`).
+          */
+          <ListaDeActividades
+            entradas={entradas}
+            ahora={ahora}
+            etiquetas={etiquetas}
+            tonos={tonos}
+          />
+        )
+      }
+    </div>
+  </main>
+</Base>

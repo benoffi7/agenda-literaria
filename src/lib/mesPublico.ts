@@ -34,6 +34,7 @@
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { claveDeMes, mesDesplazado, nombreDeMes } from '@/lib/fechasPublicas';
+import { RUTA_PASADAS } from '@/lib/rutasPublicas';
 import {
   filtrarPublico,
   filtrosVacios,
@@ -51,16 +52,20 @@ import { instanteDeIso } from '@/lib/sesiones';
 export const MINIMO_DE_ACTIVIDADES = 3;
 
 /**
- * A dónde manda el aviso de un mes que ya terminó.
+ * A dónde manda el aviso de un mes que ya terminó: **`/pasadas`** — cierra
+ * B-281.
  *
- * El §2.2 dice `/pasadas`, **que todavía no existe** (es parte de B-109 / B-281).
- * Enlazarla sería poner un 404 en la única salida que la página vencida ofrece,
- * que es peor que el problema que la página vencida resuelve. Hasta que exista,
- * manda a la home; el día que exista se cambia esta línea y nada más.
+ * Es lo que el §2.2 pedía desde el día uno. Hasta B-109 mandaba a la home porque
+ * `/pasadas` no existía, y enlazar un 404 en la única salida que la página
+ * vencida ofrece era peor que el problema que esa página resuelve. Ahora existe,
+ * y es el destino correcto: quien llega a septiembre en noviembre no quiere lo
+ * que viene, quiere lo que hubo.
  *
- * `tests/mesPublico.test.ts` verifica que apunte a una página que el sitio tiene.
+ * Se cambió **una línea**, que es lo que este módulo prometía. Y sigue siendo una
+ * constante y no un literal en el markup: `tests/mesPublico.test.ts` verifica que
+ * apunte a una página que el sitio tiene de verdad.
  */
-export const DESTINO_DEL_MES_VENCIDO = '/';
+export const DESTINO_DEL_MES_VENCIDO = RUTA_PASADAS;
 
 export interface PaginaDeMes {
   /** `2026-09` — la clave, que es también el segmento de la URL. */
@@ -247,4 +252,10 @@ export const bajadaDelMes = (pagina: PaginaDeMes): string =>
  * diciendo la verdad cuando `/pasadas` exista.
  */
 export const AVISO_DEL_MES_VENCIDO = 'Este mes ya pasó.';
-export const SALIDA_DEL_MES_VENCIDO = 'Mirá lo que viene en la agenda';
+/*
+ * El texto acompaña al destino — B-109. Mientras mandaba a la home decía «mirá lo
+ * que viene en la agenda», que era cierto de la home y no de `/pasadas`: un link
+ * cuyo texto promete otra cosa que la página a la que lleva es peor que no
+ * tenerlo. Los dos se cambian juntos porque son una sola frase.
+ */
+export const SALIDA_DEL_MES_VENCIDO = 'Mirá todo lo que ya pasó';

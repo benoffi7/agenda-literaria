@@ -44,7 +44,7 @@
  * cambia el entorno entre dos llamadas vería la respuesta de la corrida anterior.
  */
 import { adminDb, hayCredenciales } from '@/lib/firebase-admin';
-import { construirIndice, type Indice } from '@/lib/eventsJson';
+import { construirIndice, type EntradaDeIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
 import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
 import {
@@ -54,6 +54,7 @@ import {
   type TonosDeTipo,
 } from '@/lib/listadoPublico';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
+import { pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { rutasDelSitemap } from '@/lib/sitemap';
 import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
@@ -640,4 +641,46 @@ export const sitemapDelSitio = async (ahora?: unknown): Promise<string[]> => {
     })),
     ahora: instante,
   });
+};
+
+/**
+ * Todo lo que `/pasadas` necesita, y **nada más** — el view-model del archivo
+ * (B-109, D-140).
+ *
+ * La misma forma que `caminosDeMes`: la plantilla importa **una** función y
+ * recibe lo que acá se decidió darle, campo por campo. No ve el índice, así que
+ * no puede publicar el `searchText` ni el `creadoEn` de nadie por un `{}` de más
+ * — que es la puerta que D-140 cerró para la página de detalle y que el
+ * `auditor-privacidad` volvió a encontrar abierta en la primera versión de la
+ * página de mes.
+ *
+ * **Cero lecturas nuevas de Firestore**: sale del mismo `indiceDelSitio()`
+ * memoizado que la home, el `events.json`, las páginas de mes y el sitemap.
+ *
+ * El reloj es el del índice y no `new Date()`, por lo mismo que en `caminosDeMes`:
+ * qué actividad «ya pasó» tiene que decidirse con el **mismo** instante que decidió
+ * qué muestra la home. Con dos relojes, una actividad que termina mientras corre
+ * el build puede quedar afuera de las dos páginas — y ésa es exactamente la
+ * página huérfana que este archivo existe para que no exista.
+ */
+export interface VistaDePasadas {
+  entradas: EntradaDeIndice[];
+  etiquetas: MapaDeEtiquetas;
+  tonos: TonosDeTipo;
+  /** El reloj del build, en ISO. La plantilla lo reconstituye a `Date`. */
+  generadoEn: string;
+}
+
+export const vistaDePasadas = async (ahora?: unknown): Promise<VistaDePasadas> => {
+  const indice = await indiceDelSitio();
+  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+
+  return {
+    entradas: pasadasDelSitio(indice.actividades, instante),
+    // Las mismas etiquetas y los mismos matices que la home y las páginas de mes:
+    // salen del índice, o sea de las opciones ya filtradas por aprobación.
+    etiquetas: mapaDeEtiquetas(indice.opciones),
+    tonos: tonosDeTipo(indice.opciones),
+    generadoEn: indice.generadoEn,
+  };
 };

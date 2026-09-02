@@ -57,6 +57,14 @@ import {
   tituloDelMes,
 } from '@/lib/mesPublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
+import {
+  BAJADA_DE_PASADAS,
+  TITULO_DE_PASADAS,
+  VACIO_DE_PASADAS,
+  descripcionDePasadas,
+  pasadasDelSitio,
+} from '@/lib/pasadasPublicas';
+import { rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
 import {
@@ -1737,5 +1745,125 @@ describe('barrido de la página de mes (§5, salida 8, B-113)', () => {
     const [original] = entradas();
     const enLaPagina = paginaDeSeptiembre().entradas[0]!;
     expect(Object.keys(enLaPagina).sort()).toEqual(Object.keys(original!).sort());
+  });
+});
+
+describe('barrido del sitemap (§5, salida 9, B-109)', () => {
+  /*
+   * **La salida más chica del repo, y por eso el barrido es al revés.**
+   *
+   * Lo que el sitemap publica son **rutas**: ni un título, ni una descripción, ni
+   * una fecha. Así que la lista de permitidos tiene **un** centinela —el slug, que
+   * *es* la URL— y la dirección que importa es la de las fugas: cualquier otro
+   * centinela que aparezca en el XML llegó por un campo que alguien interpoló.
+   *
+   * El caso plausible no es rebuscado: un `<lastmod>` sacado de `updatedAt`
+   * (B-112) o el título de la actividad al lado de cada `<loc>` «para poder
+   * revisar el archivo a ojo». Con eso, el sitemap dejaría de ser una lista de
+   * URLs y sería una segunda proyección del documento, sin proyección.
+   *
+   * MUTACIÓN PROBADA: emitir un comentario XML con el título al lado de cada
+   * `<loc>` hace fallar este `describe` nombrando el centinela del título.
+   */
+  const AHORA = new Date('2026-08-20T15:00:00Z');
+
+  const entradas = () => [entradaDeIndice(toPublic(actividadCentinela(), 'act_sitemap'))];
+
+  const xml = () =>
+    xmlDelSitemap(
+      rutasDelSitemap({
+        entradas: entradas(),
+        canceladas: [{ slug: CENTINELA.slug, editadaEn: AHORA.toISOString() }],
+        ahora: AHORA,
+      }),
+    );
+
+  const PERMITIDO_EN_EL_SITEMAP: readonly Excepcion[] = [
+    {
+      nombre: 'el slug, que es la URL',
+      centinelas: ['slug'],
+      porque:
+        '§5.6 — una entrada del sitemap **es** la URL de la página: el origen más ' +
+        '`/actividad/{slug}/`. El slug es la URL pública de la actividad desde B-227 ' +
+        '(trampa 10: inmutable después de publicar) y ya sale en el `events.json`, en el ' +
+        '`href` de cada fila y en el JSON-LD. Es el único centinela que puede aparecer ' +
+        'acá: todo lo demás sería un campo interpolado en una lista de URLs.',
+    },
+  ];
+
+  it('control positivo: el XML tiene la URL de la actividad', () => {
+    // Sin esto, un sitemap vacío pasaría la dirección «no sobra nada» sin haber
+    // mirado una sola URL.
+    expect(xml()).toContain(`/actividad/${CENTINELA.slug}/`);
+  });
+
+  it('en el sitemap sobrevive solo el slug', () => {
+    barrer('sitemap.xml', xml(), PERMITIDO_EN_EL_SITEMAP, { insensible: true });
+  });
+
+  it('y el robots.txt no publica ni el slug', () => {
+    /*
+     * Tres líneas fijas y una URL: la del propio sitemap. No toca los datos —no
+     * recibe ninguno— y eso es lo que se afirma, porque el atajo tentador sería
+     * listar ahí algo «para que Google lo encuentre antes».
+     */
+    barrer('robots.txt', textoDeRobots(), [], { insensible: true });
+  });
+});
+
+describe('barrido de `/pasadas` (§5, salida 10, B-109)', () => {
+  /*
+   * **Entra al barrido en el mismo cambio que la creó**, como la 7 y la 8.
+   *
+   * De la página, las filas las pinta `FilaDeActividad` con los campos que ya
+   * barre el índice del listado y que fija por lista blanca
+   * `tests/listado-del-sitio.test.ts`. Lo **nuevo** de esta salida son sus cuatro
+   * frases (`pasadasPublicas.ts`), y la propiedad que se afirma acá es más fuerte
+   * que la de la salida 8: **ninguna interpola un dato de una actividad**.
+   *
+   * Por eso la lista de permitidos está **vacía**, y eso es el aserto: la
+   * `meta description` de la página de mes mete tres títulos —y por eso su
+   * barrido los permite—; acá no entra ni uno. Si mañana alguien agrega «Lo que
+   * ya pasó: Taller de crónica, Club de lectura…», este `describe` lo dice y hay
+   * que decidirlo.
+   *
+   * MUTACIÓN PROBADA: interpolar el título de la primera entrada en
+   * `descripcionDePasadas` hace fallar este `it` nombrando ese centinela.
+   */
+  const AHORA = new Date('2026-08-20T15:00:00Z');
+
+  const entradas = () =>
+    ['act_pasada_1', 'act_pasada_2'].map((id) =>
+      entradaDeIndice(toPublic(actividadCentinela(), id)),
+    );
+
+  /** El texto que esta salida agrega, y nada más. */
+  const textoDeLaPagina = (): string =>
+    [
+      TITULO_DE_PASADAS,
+      BAJADA_DE_PASADAS,
+      VACIO_DE_PASADAS,
+      descripcionDePasadas(pasadasDelSitio(entradas(), AHORA).length),
+      descripcionDePasadas(0),
+    ].join(' | ');
+
+  it('control positivo: hay texto que barrer', () => {
+    expect(textoDeLaPagina().length).toBeGreaterThan(120);
+  });
+
+  it('ninguna frase de la página publica un dato de una actividad', () => {
+    barrer('/pasadas', textoDeLaPagina(), [], { insensible: true });
+  });
+
+  it('y lo que entra a la lista es la misma entrada del índice, sin un campo más', () => {
+    /*
+     * La afirmación de **forma**, igual que en la salida 8: esta página deriva de
+     * la 1 y por construcción solo puede sacar. Si algún día alguien le pasa el
+     * documento en vez de la entrada del índice, las claves dejan de coincidir.
+     */
+    const conFechaVieja = entradaDeIndice(toPublic(actividadCentinela(), 'act_pasada_vieja'));
+    const [enLaPagina] = pasadasDelSitio([conFechaVieja], new Date('2030-01-01T00:00:00Z'));
+    expect(enLaPagina, 'el fixture dejó de producir una pasada').toBeDefined();
+    expect(Object.keys(enLaPagina!).sort()).toEqual(Object.keys(conFechaVieja).sort());
   });
 });

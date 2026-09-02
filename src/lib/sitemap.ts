@@ -43,7 +43,7 @@
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { estadoDe } from '@/lib/listadoPublico';
 import { mesesEnlazables } from '@/lib/mesPublico';
-import { rutaDeDetalle, rutaDeMes, urlAbsoluta } from '@/lib/rutasPublicas';
+import { RUTA_PASADAS, rutaDeDetalle, rutaDeMes, urlAbsoluta } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 
 const UN_DIA = 24 * 60 * 60 * 1000;
@@ -117,6 +117,7 @@ export interface CanceladaDelSitemap {
 export const RUTAS_FIJAS: readonly string[] = [
   '/',
   '/cartelera',
+  RUTA_PASADAS,
   '/suscribirse',
   '/ayuda',
   '/contacto',

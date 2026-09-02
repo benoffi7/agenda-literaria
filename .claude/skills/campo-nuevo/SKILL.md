@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **ocho** salidas, una por una:
+1. **¿Es público?** Resolvé las **diez** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -30,6 +30,8 @@ no se pueden deshacer después.
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts` |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
+   | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts` |
+   | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
@@ -42,6 +44,11 @@ no se pueden deshacer después.
    > exactamente la clase de bug que el skill existe para evitar. Lo encontró el
    > `auditor-documentacion` (**B-244**). Si agregás una salida, **se agrega acá en
    > el mismo cambio**.
+   >
+   > Pasó de siete a **diez** con B-265, B-113 y B-109. Las tres veces las ató el
+   > mismo test (`tests/agentes-y-skills.test.ts`), que compara los números de las
+   > tres tablas: la de `docs/07-seguridad.md`, la de la ficha del
+   > `auditor-privacidad` y ésta.
 2. **¿Es un dato libre o una taxonomía?** Si es un valor de un conjunto que va a
    crecer, va como `/opciones/{campo}` con el patrón del §4 (slugify + upsert
    transaccional + aprobación), no como string libre.
@@ -107,6 +114,8 @@ condicionado por un flag, el flag manda y sin dato no se inventa el campo (D-15)
 | la salida 6 | `src/lib/detallePublico.ts` — la página de detalle **no ve el documento**, solo este view-model (D-140), así que un campo que no se agregue acá no aparece aunque esté en `toPublic` |
 | la salida 5 | `src/lib/textoRedes.ts` — el `Pick` de `ActividadParaRedes` |
 | la salida 8 | nada: la página de mes recibe `EntradaDeIndice[]`, así que hereda lo que decidas en la salida 1. Lo único que se decide acá es si el campo tiene que entrar en alguna de las tres frases de `src/lib/mesPublico.ts` — y si entra, se suma al barrido de esa salida |
+| la salida 9 | **nada, y conviene saber por qué**: el sitemap publica rutas, no campos, así que ningún campo del modelo puede entrar ahí. Lo único que se decide en esa salida es *qué páginas* se ofrecen — y eso cambia si el campo nuevo hace nacer una página nueva |
+| la salida 10 | nada: `/pasadas` recibe `EntradaDeIndice[]` y hereda la salida 1, como la 8. Sus frases no interpolan ningún dato de actividad, y si alguna empieza a hacerlo hay que agregarle barrido de centinelas |
 
 **El barrido te va a decir si te olvidaste de decidir**: `tests/barrido-de-salidas-publicas.test.ts`
 exige que el fixture tenga el campo nuevo y falla en las **dos** direcciones —si

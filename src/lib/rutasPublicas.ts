@@ -116,8 +116,15 @@ export const SITIO = 'https://agendaleh.ar';
  *
  * **El caso del archivo:** `/robots.txt`, `/sitemap.xml`, `/events.json` y
  * `/version.json` son archivos, no directorios, y una barra al final los
- * convierte en un 404. Se detectan por el punto en el último segmento, que es la
- * regla más chica que separa los dos casos sin una lista que mantener.
+ * convierte en un 404.
+ *
+ * Se detectan por **un solo segmento con un punto**, no por «tiene un punto»: los
+ * cuatro endpoints del sitio viven en la raíz, y las rutas de más de un segmento
+ * son siempre páginas (`/actividad/{slug}`, `/agenda/{aaaa-mm}`). Con la regla
+ * laxa, un slug con un punto —que `slugify` no produce, pero un documento editado
+ * a mano en la consola sí puede tener— dejaría a esa página sin la barra, o sea
+ * con una canónica que redirige. Es la regla más chica que separa los dos casos
+ * sin una lista de endpoints que mantener.
  *
  * La raíz queda en `/` — no hay barra que agregar ni sacar.
  */
@@ -140,8 +147,9 @@ export const rutaCanonica = (ruta: string): string => {
   const conBarra = limpia.startsWith('/') ? limpia : `/${limpia}`;
   const sinBarraFinal = conBarra.replace(/\/+$/, '');
   if (sinBarraFinal === '') return '/';
-  const ultimo = sinBarraFinal.slice(sinBarraFinal.lastIndexOf('/') + 1);
-  return ultimo.includes('.') ? sinBarraFinal : `${sinBarraFinal}/`;
+  const segmentos = sinBarraFinal.slice(1).split('/');
+  const esArchivo = segmentos.length === 1 && segmentos[0]!.includes('.');
+  return esArchivo ? sinBarraFinal : `${sinBarraFinal}/`;
 };
 
 /**
