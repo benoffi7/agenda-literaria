@@ -514,6 +514,11 @@ Es el componente que más se repite; lo que muestra está elegido, en este orden
 > falta era topear el **alto**, no fijar la proporción. Hoy la imagen se muestra
 > entera, con su propia proporción y el alto acotado. El diagrama y las viñetas
 > quedan como estaban, para que las dos decisiones se lean contra su original.
+>
+> **Y una tercera vuelta, el 2026-09-02 (B-296, D-168):** arriba va **una sola**
+> imagen —la portada—, y las demás que la actividad tenga (hasta cuatro, DEC-7b)
+> salen en una tira **al final** del contenido, entre «Cómo llegar» y «Organiza».
+> Hasta ese día no salían a ninguna parte del sitio.
 
 La pantalla más importante del sitio, y la que **no lleva JavaScript**: es HTML
 y CSS. Cero islands, cero `events.json`, cero hidratación.
@@ -583,6 +588,17 @@ Decisiones de esta pantalla:
   el flyer se recortaba y perdía justamente los datos que trae escritos. Los
   `width`/`height` siguen puestos, y ahora también los tienen las imágenes externas
   (el panel las mide).
+- **Las demás imágenes van al final, y no pegadas a la portada** (**B-296**,
+  **D-168**). Grilla de dos columnas —tres cuando son tres—, cada una con su propia
+  proporción y sin recortar, diferidas con `loading="lazy"`. La posición es parte de
+  la optimización y no una preferencia: `lazy` solo sirve si están de verdad abajo
+  del pliegue. **Con una sola imagen la sección no existe** —ni encabezado, ni
+  hueco—, y eso es el 87 % de las actividades que tienen alguna (26 de 30, medido el
+  2026-09-02). El texto alternativo de las secundarias queda **vacío a propósito**:
+  DEC-7a lo deriva del título de la actividad, y repetirlo en tres imágenes es peor
+  que no decir nada, así que la cuenta se dice una vez en el encabezado («Dos
+  imágenes más») y el epígrafe, cuando está cargado, es el `figcaption` de su imagen
+  y lo único que la describe. Sin lightbox: no agrega ninguna parada de tabulación.
 - **Un solo CTA, con el verbo de la vía.** `inscripcion.via` dice el verbo:
   `whatsapp` → "Escribir por WhatsApp" a un `wa.me` con mensaje precargado
   ("Hola, quiero anotarme en Taller de crónica"); `mail` → `mailto:` con asunto

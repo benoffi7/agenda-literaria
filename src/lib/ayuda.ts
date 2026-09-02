@@ -306,15 +306,20 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'En «Qué es» podés cargar hasta cuatro imágenes: el flyer y, si querés, fotos del ' +
-          'lugar o de ediciones anteriores. Una queda marcada como portada, y esa es la que se ' +
-          've al compartir el link y la que aparece en la cartelera. Se pueden pegar direcciones ' +
-          'de imágenes que ya estén en otro lado, o subir un archivo desde el teléfono.',
+          'lugar o de ediciones anteriores. Una queda marcada como portada, y esa es la que va ' +
+          'arriba de la página, la que se ve al compartir el link y la que aparece en la ' +
+          'cartelera. Las demás se muestran al final de la página de la actividad. Se pueden ' +
+          'pegar direcciones de imágenes que ya estén en otro lado, o subir un archivo desde el ' +
+          'teléfono.',
       },
       {
         texto:
-          'El epígrafe es lo que se muestra debajo de la foto, y es opcional. Lo que leen quienes ' +
-          'usan un lector de pantalla, y lo que lee Google, es el título de la actividad — así que ' +
-          'un título que describa bien lo que es sirve para las dos cosas.',
+          'El epígrafe es lo que se muestra debajo de la foto, y es opcional. Para la portada, ' +
+          'quien usa un lector de pantalla y Google leen el título de la actividad, así que un ' +
+          'título que describa bien lo que es alcanza. Para las otras imágenes el epígrafe es lo ' +
+          'único que las describe: si no le ponés ninguno, quien no puede ver la foto no se ' +
+          'entera de qué es. Repetir el título en las cuatro sería peor, porque se leería cuatro ' +
+          'veces lo mismo.',
       },
       {
         texto:
@@ -762,8 +767,20 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          '«Portada» es la que se ve al compartir el link y la que va a la cartelera. Es una ' +
-          'sola: elegir otra desmarca la anterior.',
+          '«Portada» es la que va arriba de la página, la que se ve al compartir el link y la ' +
+          'que va a la cartelera. Es una sola: elegir otra desmarca la anterior.',
+      },
+      {
+        texto:
+          'Las que no son la portada se muestran al final de la página de la actividad, en una ' +
+          'tira, en el orden en que las cargaste. En la cartelera va solo la portada: si fueran ' +
+          'las cuatro, la pared de flyers pasaría a ser un álbum de fotos.',
+      },
+      {
+        texto:
+          'Cuando cargás más de una, el epígrafe de cada una pasa a importar más: es lo único ' +
+          'que describe esa foto para quien usa un lector de pantalla. La portada se describe ' +
+          'con el título de la actividad; las otras, solo con su epígrafe.',
       },
       {
         texto:

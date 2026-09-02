@@ -4479,6 +4479,14 @@ presupuesto de bytes del sitio se decide ahí, y la Function que recomprime y
 deriva miniaturas (**B-220**, DEC-7d) todavía no existe: hoy una imagen propia se
 sirve **tal cual la subió quien organiza**, hasta 3 MB.
 
+> **Corregido el 2026-09-02 (B-296, D-168):** el detalle pide **una si no tiene
+> galería y hasta cuatro si la tiene**, no una fija. No cambia el diagnóstico de
+> abajo —la cartelera sigue siendo la única página que muestra **muchas** imágenes
+> a la vez, y el presupuesto por recorrido se decide ahí—, pero el peor caso **por
+> página** ya no es la pared: es un detalle con cuatro imágenes. Los números de esa
+> página están en D-168 §3, y el techo que se movió, en **B-300**. La premisa queda
+> escrita como estaba para que D-168 se lea contra su original.
+
 ### Lo medido
 
 Contra el emulador, con 42 actividades publicadas de la forma de las reales y
@@ -5291,3 +5299,222 @@ archivo el mismo peso que a la agenda.
 
 El invariante que lo sostiene está en un test: **la home y `/pasadas` parten en
 dos el conjunto de las publicadas** — ninguna en las dos, ninguna en ninguna.
+
+---
+
+## D-168 · Las secundarias del detalle son decorativas, y la cuenta se dice una vez en el encabezado
+
+**Contexto.** B-296. La página de detalle hacía `detalle.imagenes[0]` y pintaba
+**una sola** imagen. No era un olvido: se decidió así al escribir la página, con
+el argumento de que «la actividad tiene una portada opcional» (la corrección 1 de
+[`referencias/stitch-detalle.md`](referencias/stitch-detalle.md), que sacaba una
+grilla de tres fotos de relleno). Lo que cambió es el dato: hay galerías cargadas
+y esas imágenes **no se veían en ninguna salida del sitio**.
+
+**Medido contra producción el 2026-09-02**, leyendo Firestore, 46 publicadas:
+
+| Imágenes | Actividades |
+|---|---|
+| 0 | 16 |
+| 1 | **26** |
+| 2 | 3 |
+| 3 | 1 |
+
+Las 30 imágenes son **todas propias** (Firebase Storage); no hay ni una externa.
+
+**Eso decide la forma antes que cualquier consideración estética: el caso normal
+es una sola imagen.** Una galería que se ve bien con tres y rara con una está mal
+resuelta, porque con una es el 87 % de las páginas que tienen imagen. De ahí la
+primera decisión, que es la que ningún markup deja ver: **con una sola imagen la
+sección no existe en el HTML** — ni el encabezado, ni un hueco, ni una segunda
+copia de la portada. La página de las 26 es la de antes.
+
+### 1 · El texto alternativo, que es el problema real
+
+DEC-7a (**D-125**) decidió que hay **un solo campo opcional** por imagen —el
+epígrafe— y que el texto alternativo sale del **título de la actividad**. Fue una
+decisión de accesibilidad tomada a propósito, con su contra asumida por escrito:
+«las cuatro imágenes de una actividad comparten el mismo alternativo, que para un
+lector de pantalla es repetición».
+
+Con una imagen eso funciona y es lo correcto: «Imagen de *Usted está aquí*»
+describe el afiche mejor que el «foto» que produce un campo obligatorio en un
+panel de una persona. **Con tres, el mismo alt tres veces es peor que no
+tenerlo**: se anuncia lo mismo tres veces seguidas y no se distingue ninguna de
+las tres.
+
+B-296 dejó las cuatro salidas escritas. La elegida y por qué las otras no:
+
+| Salida | Por qué no |
+|---|---|
+| el epígrafe, cuando está, es el alt | **es el que menos hace de los cuatro, y eso está medido**: de las 4 imágenes secundarias que hay en producción, **ninguna** tiene epígrafe cargado. O sea que hoy describiría cero imágenes y dejaría igual el caso «sin epígrafe», que hay que decidir de todas formas. Y donde sí hubiera epígrafe, ponerlo en el `alt` **además** del `figcaption` lo hace anunciar dos veces |
+| enumerar: «Imagen 2 de 3 de *X*» | dice la misma frase tres veces para transmitir un dato —cuántas hay— que se dice una sola vez. Y describe la **estructura de la página**, no la imagen: no hay nada ahí que sirva para decidir si ir al taller |
+| un campo de texto alternativo por imagen | es lo correcto en abstracto y **reabre DEC-7a**, que lo descartó explícitamente. No es una decisión de implementación: es del dueño. Queda anotada en **B-301** |
+| **las secundarias son decorativas (`alt=""`), y la cuenta va en el encabezado** | **la elegida** |
+
+**La decisión, en tres reglas:**
+
+1. **La portada conserva su alt del título.** Es una sola, es el afiche, y es la
+   que alimenta el `og:image`. DEC-7a no se toca donde funciona.
+2. **Las secundarias van con `alt=""`.** Es lo que declara «decorativa», y es
+   honesto: la información con la que se decide ir —qué, cuándo, dónde, cómo
+   anotarse— está en el texto de la página, y de esas fotos no tenemos nada que
+   decir que no sea el título que la portada ya dijo.
+3. **Lo que se calla en el `alt` lo dice el `<h2>`, una vez y en prosa:** «Dos
+   imágenes más» (`rotuloDeGaleria`, en `lib/afiche.ts`).
+
+**La tercera es la que hace aceptables a las otras dos**, y es lo que separa esta
+decisión de «no poner alt y listo». Sin encabezado, `alt=""` en todas deja el
+grupo entero fuera del árbol de accesibilidad: quien escucha la página no se
+entera de que hay más imágenes, y no puede ni saber que no se está perdiendo
+nada. Con el encabezado se entera, se entera **una vez**, y se entera en una
+frase escrita por una persona en vez de un contador. Es la salida de enumerar,
+subida un nivel: del `alt` de cada imagen al nombre del grupo.
+
+Y el número va en palabras —«Una», «Dos», «Tres»— porque es un encabezado de
+sección al lado de «Material» y «Quién lo da». El texto vive en `lib/` y está
+testeado, por lo mismo que el de «Suscribirse» (**D-133**): un rótulo escrito en
+la plantilla no tiene forma de probar que diga «Una imagen más» y no «1 imágenes
+más».
+
+**El epígrafe es el `figcaption` de su imagen y nunca el `alt`.** Cada secundaria
+es su propia `<figure>`, así que el pie queda atado a la imagen que describe y no
+suelto debajo de la fila; y como el `figcaption` ya lo lee un lector de pantalla,
+copiarlo al `alt` solo agrega una repetición. Encima el `figcaption` lo ve **todo
+el mundo**, que es más de lo que consigue un `alt`.
+
+**Lo que esta decisión renuncia, dicho explícito:** una foto secundaria con
+contenido —la fachada del lugar, la tapa del libro— no se describe. Es la contra
+de la salida elegida, y es lo que el dueño tiene que mirar (B-301).
+
+### 2 · La forma: al final del contenido, en grilla, y sin recortar
+
+**Va al final de la columna de contenido, antes del colofón «Organiza», y no
+debajo de la portada.** Tres razones que apuntan al mismo lugar:
+
+1. **La pregunta de la página se contesta arriba.** El recorrido mayoritario cae
+   desde Google o Instagram y pregunta «¿esto me sirve y todavía puedo entrar?»
+   (§1 del diseño). Una tira de fotos entre la portada y la descripción empuja la
+   respuesta hacia abajo justo en el teléfono, donde la portada ya puede medir
+   70svh.
+2. **`loading="lazy"` solo sirve si de verdad están abajo.** No es una promesa: es
+   una pista que el navegador atiende según la distancia al viewport. Pegadas a la
+   portada entran en la primera pantalla de un escritorio y se piden igual. **La
+   posición es parte de la optimización, no una preferencia de diseño**, y por eso
+   hay un test que la fija.
+3. **Son de apoyo, y el orden lo dice.** El afiche es la portada; las secundarias
+   reales son fotos del espacio o de ediciones anteriores. Arriba las ascendería a
+   algo que no son.
+
+**Grilla de dos columnas, tres en `sm` cuando son tres** (`CLASES_DE_GALERIA` en
+`components/sitio/estilos.ts`, con el tope en `columnasDeGaleria`). Dos cosas que
+se pueden discutir mirando esas dos piezas:
+
+- **Con una sola secundaria son dos columnas y no una**, o sea media columna de
+  ancho. A ancho completo la página tendría dos imágenes protagonistas y ninguna
+  portada. Y una sola secundaria es el caso frecuente: 3 de las 4 actividades con
+  galería tienen exactamente dos imágenes.
+- **Grilla acá y columnas de CSS en la cartelera** (**D-148**), y no es
+  inconsistencia. Allá una fila de afiches de altos distintos deja huecos debajo
+  de los más bajos, y las columnas lo resuelven; acá la fila tiene dos o tres
+  elementos y **una sola línea**, así que no hay «debajo» que rellenar, y la
+  grilla da lo que las columnas no dan: cada celda mide lo mismo de ancho, o sea
+  que dos imágenes de formas distintas salen a la misma escala en vez de una
+  grande y una chica según cómo CSS reparta el alto.
+
+**Ninguna se recorta, y esa era la parte difícil** (**D-147**). Tres imágenes de
+proporciones distintas sin recortar y sin que la página quede a los saltos se
+resuelve con lo que ya estaba: `claseAfiche` trae `object-contain` y cada imagen
+reserva **su** caja con `estiloDeAfiche(imagen)` desde su `ancho`/`alto`. Las tres
+imágenes de «Usted está aquí» son cuadrada (1024 × 1024), apaisada (1408 × 768) y
+apaisada chica (548 × 364) — el caso que rompe una caja fija, y el que el gate
+mecánico siembra.
+
+**Y la celda no lleva el `max-h-[70svh]` de `claseAfichePortada`**, a propósito:
+en una celda que mide la mitad o un tercio de la columna, el ancho ya limita el
+alto. El tope además dejaría una foto vertical encogida entre dos bandas de papel,
+que es el aspecto que B-263 vino a sacar.
+
+### 3 · El peso, con los números, y el techo que se movió
+
+La Function que recomprime (**B-220**, DEC-7d) no existe, así que una imagen
+propia se sirve **tal cual la subió quien organiza**. Medido el 2026-09-02 con el
+`Content-Length` real de las 30 portadas de producción: mediana **92,6 KB**, p90
+**124,2 KB**, máximo **1091,5 KB**.
+
+Las cuatro páginas que ganan imágenes, con los bytes exactos:
+
+| Actividad | Portada | Secundarias | Total | Delta |
+|---|---|---|---|---|
+| 2do Festival Literario San Isidro | 106,8 KB | 107,5 KB | 214,3 KB | +107,5 KB |
+| Desayuno epistolar | 60,9 KB | 51,0 KB | 111,9 KB | +51,0 KB |
+| Taller de cuento (Lamberti) | 34,0 KB | 96,8 KB | 130,8 KB | +96,8 KB |
+| **Usted está aquí** | **1091,5 KB** | 1808,5 + 326,7 KB | **3226,7 KB** | **+2135,2 KB** |
+
+El markup no cuesta nada: medido sobre `dist/`, dos secundarias agregan **867 B**
+en crudo y **165 B gzippeados**, o sea ~83 B por imagen. Es el mismo orden que
+D-149 midió para la cartelera.
+
+**El veredicto, en tres mitades.**
+
+**Las 42 páginas que no ganan imágenes no cambian un byte**, y son la enorme
+mayoría: 16 sin imagen y 26 con una.
+
+**Tres de las cuatro se sostienen sin discusión.** +51 a +108 KB, por debajo de la
+mediana de una sola portada, diferidas y al final de la página.
+
+**La cuarta no se sostiene — y no se sostiene ya hoy, sin galería.** «Usted está
+aquí» tiene una portada de **1,07 MB**, que es **11,8 veces** la mediana del
+sitio, y una secundaria de **1,77 MB**, que es el 59 % del tope de 3 MB de DEC-7b.
+La galería no crea ese problema: lo hace visible, y le agrega 2,1 MB que se bajan
+solo si alguien scrollea hasta el final. **Lo que arregla esa página es B-220**, y
+mientras no exista, volver a subir esas dos imágenes recomprimidas — un JPEG de
+1408 × 768 no tiene por qué pesar 1,77 MB.
+
+**Lo que sí se movió es el techo, y hay que decirlo:** con una sola imagen
+servida, el peor caso legal de una página de detalle era **3 MB** (el tope de
+DEC-7b). Con la galería son cuatro imágenes de 3 MB, o sea **12 MB**. Está
+mitigado —`lazy`, al final, con la caja reservada— pero el techo es el techo, y es
+el argumento más fuerte que tiene B-220 para subir de prioridad. Queda escrito en
+**B-300**.
+
+**`sizes` sigue sin estar, y por lo mismo que en D-149:** sin `srcset` no hace
+nada, y las variantes son B-220. Un `sizes` suelto es decoración que parece
+optimización — y acá se notaría más, porque servir una imagen de 1080 de ancho en
+una celda de 105px es exactamente el desperdicio que las variantes arreglarían.
+
+### 4 · Sin JavaScript, y sin una parada de tabulación más
+
+**No hay lightbox.** La página de detalle tiene un presupuesto de **0 KB de
+JavaScript** (§4.3 del diseño) y un visor modal accesible —foco atrapado, cierre
+con Escape, foco devuelto al disparador— es bastante más de lo que este ítem
+pedía. Sin él, la tira **no agrega ni una parada al orden de tabulación**: no hay
+enlaces, no hay `tabindex`, no hay island. Se recorre con el scroll, como el resto
+de la página.
+
+Y un enlace al JPEG suelto habría sido peor que nada: con `alt=""` el enlace se
+anuncia **sin nombre**, y saca a quien lo sigue del sitio a un archivo sin
+navegación.
+
+No hay ningún par de contraste nuevo: el `<h2>` es `text-tinta` sobre papel
+(16,27:1) y el `figcaption` es `text-super` (6,34:1), los dos ya medidos en el
+sistema visual, y el barrido de `tests/contraste-del-sitio.test.ts` cubre el
+markup nuevo solo.
+
+### 5 · Qué queda atado, y dónde
+
+| Lo que se rompe sin que se note | Qué lo frena |
+|---|---|
+| una secundaria heredando el `alt` del título | `tests/galeria-del-detalle.test.ts` + paso 8d del gate mecánico |
+| el epígrafe promovido a `alt` | el mismo test, **y solo ahí**: con los datos de hoy el epígrafe está vacío, así que la mutación es invisible en el HTML construido |
+| un `loading="eager"` en una secundaria | el test + paso 8c del gate |
+| la tira subiendo a la primera pantalla | el aserto de posición del test |
+| la portada dejando de ser la primera | `tests/cartelera.test.ts` (B-268), el test nuevo, y el paso 8b del gate — cuyo fixture pone la portada **segunda** a propósito |
+| la página de una sola imagen cambiando | el paso 8h del gate, sobre el HTML de verdad |
+| tres proporciones saliendo con una sola caja | el paso 8e, que exige las tres `aspect-ratio` distintas |
+| un `object-cover` en cualquier salida | el barrido de `tests/afiche.test.ts` (D-147), que ya cubría esto |
+| un campo interno de la imagen colándose por la salida nueva (`id`, `origen`, `storagePath`) | el paso 8g: el barrido de centinelas sobre el HTML de la página **con** galería. **Faltaba**, y lo encontró el `auditor-privacidad`: el barrido de HTML que ya existía corría sobre la cancelada, que tiene una sola imagen y por lo tanto no genera la sección |
+| la tira armándose con un `listAll()` del bucket (trampa 13) | el aserto que `/cartelera` ya tenía, ahora también sobre el detalle. El detalle **pasó a ser** una página de varias imágenes, así que heredó la trampa propia de esa clase |
+
+Las 18 mutaciones con las que se validaron esos asertos están en el CHANGELOG del
+2026-09-02.

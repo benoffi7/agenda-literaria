@@ -35,6 +35,14 @@ podés leer ahora» y «esto te llega al inscribirte» se lee sin candaditos.
    fotos alojadas en `googleusercontent.com`. No existen en el modelo, son
    externas, y el prompt pedía explícitamente que la página funcionara sin
    ninguna. La actividad tiene **una** portada opcional, o ninguna.
+
+   > ⚠️ **La última frase se corrigió — ver B-296 y D-168.** La actividad puede
+   > tener **hasta cuatro** imágenes (DEC-7b), y desde el 2026-09-02 las que no
+   > son la portada se muestran en una tira al final del contenido. Lo que sigue
+   > valiendo de esta corrección es todo lo demás: no hay ninguna imagen de
+   > relleno, no hay grilla de tres arriba, y sin imagen la página no muestra
+   > hueco. La frase queda como estaba escrita para que D-168 se lea contra su
+   > original.
 2. **Sacar el link a Material Symbols.** Sigue en el `<head>` aunque no se usa
    ningún icono en el marcado. Es peso muerto y es el archivo que nos devuelve a
    Google.
