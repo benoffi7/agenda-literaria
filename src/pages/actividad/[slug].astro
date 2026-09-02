@@ -82,6 +82,7 @@ import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
 import { ROTULO_DE_GALERIA, columnasDeGaleria, estiloDeAfiche } from '@/lib/afiche';
+import { srcsetDeMiniatura, urlDeMiniatura } from '@/lib/imagenes';
 import {
   claseAfiche,
   claseAfichePortada,
@@ -118,6 +119,31 @@ const { detalle } = Astro.props as Props;
 const jsonLd = datosEstructurados(detalle);
 
 const portada = detalle.imagenes[0] ?? null;
+
+/**
+ * La miniatura de la Function (B-220, D-175) como candidato chico del `srcset`
+ * de la portada — B-321.
+ *
+ * **Derivada acá y no en `detallePublico.ts`.** `urlDeMiniatura` es una
+ * función pura de la URL, sin dato guardado (igual razón que `estiloDeAfiche`
+ * más arriba: es cálculo de presentación, no una decisión del dominio), así
+ * que no hace falta agregarle un campo a `DetallePublico` ni al barrido de
+ * salidas públicas — es la misma URL ya pública, solo con otro path.
+ *
+ * **Por qué la miniatura de 480px no la deja borrosa en una pantalla retina, y
+ * es lo que B-321 dejaba sin decidir.** El navegador no elige el candidato por
+ * el ancho del slot solo: lo pesa contra el *density descriptor* (`Nw` /
+ * ancho-del-slot) y busca el que alcance el `devicePixelRatio` del dispositivo.
+ * La portada mide como mucho ~960px de ancho de slot (columna de contenido en
+ * escritorio); a 1×, 480px alcanza y se elige (downscale, no upscale: se ve
+ * bien). A 2× o 3×, la densidad de la miniatura (480 / ancho-del-slot) queda
+ * **por debajo** de lo que el dispositivo pide, así que el único candidato que
+ * alcanza es el original de 1600px — el navegador cae ahí solo, sin que nada
+ * en este código lo fuerce. La miniatura nunca se estira en una pantalla de
+ * alta densidad: eso solo pasaría si el original no estuviera en el `srcset`
+ * como candidato grande, y acá siempre está.
+ */
+const urlMiniaturaPortada = urlDeMiniatura(portada?.url ?? null);
 
 /**
  * Las demás imágenes de la actividad — B-296, D-168.
@@ -321,11 +347,21 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
             **Y es opcional de verdad** (corrección 1 de `stitch-detalle.md`): sin
             imagen no hay hueco, ni placeholder, ni portada generada. La página
             arranca en el título.
+
+            **`srcset` con la miniatura de B-220 — B-321.** Mismo criterio que
+            `cartelera.astro` (B-320): el `src` queda en el ORIGINAL siempre —una
+            imagen subida antes de que la Function estuviera desplegada no tiene
+            miniatura, y un `srcset` cuyo candidato no existe degrada solo al
+            `src`— y `urlMiniaturaPortada` (ver más arriba, con el porqué de que
+            esto no la deje borrosa en retina) sale `null` para las externas
+            (DEC-7d), así que el atributo sale ausente y no vacío.
           */
           portada && (
             <figure class="mt-6">
               <img
                 src={portada.url}
+                srcset={srcsetDeMiniatura(urlMiniaturaPortada, portada.url)}
+                sizes="(min-width: 1024px) 60vw, 100vw"
                 alt={`Imagen de ${detalle.titulo}`}
                 width={portada.ancho ?? undefined}
                 height={portada.alto ?? undefined}

@@ -48,6 +48,7 @@ import { opcionesPublicas, toPublic } from '@/lib/toPublic';
 import { construirIndice, entradaDeIndice } from '@/lib/eventsJson';
 import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
 import { carteleraDeDetalles } from '@/lib/cartelera';
+import { urlDeMiniatura } from '@/lib/imagenes';
 import {
   AVISO_DEL_MES_VENCIDO,
   SALIDA_DEL_MES_VENCIDO,
@@ -1521,7 +1522,11 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       centinelas: ['imagenes.url', 'imagenes.epigrafe'],
       porque:
         'es la página entera. `storagePath` NO está —y no puede estar, porque tampoco está ' +
-        'en `DetallePublico`— y `imagenes.id` tampoco: en una pared no identifica nada.',
+        'en `DetallePublico`— y `imagenes.id` tampoco **como campo propio**: en una pared no ' +
+        'identifica nada. Sí viaja adentro de `imagenes.url` (ya lo hacía) y, desde B-320, ' +
+        'también adentro de `urlMiniatura` —es el mismo id con otro prefijo, `miniaturas/` en ' +
+        'vez de `imagenes/`, y B-206 #1 ya decidió que el path es público de hecho y opaco a ' +
+        'propósito—, así que no es una fuga nueva.',
     },
     {
       nombre: 'dónde y de qué tipo',
@@ -1594,6 +1599,16 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
      *
      * `ruta` queda afuera y se verifica aparte: es lo único que la pared
      * **compone** en vez de copiar, y lo compone con el slug (B-227).
+     *
+     * `urlMiniatura` queda afuera de este `for` **por nombre**, y no por
+     * casualidad del fixture — lo encontró el `auditor-privacidad` auditando
+     * B-320. `CENTINELA['imagenes.url']` no es una URL de verdad (`new URL()`
+     * tira dentro de `urlDeMiniatura`), así que en este fixture el campo da
+     * `null` y el `typeof valor !== 'string'` lo saltea solo: el `for` nunca
+     * ejercitó la rama no nula. Es exactamente lo que sí publica el afiche y el
+     * detalle no —es un **derivado** de `imagenes.url`, no una proyección de
+     * `DetallePublico`— así que no puede pasar por el mismo criterio que el
+     * resto de los campos; se verifica aparte, con una URL real, más abajo.
      */
     const detalle = detalleDeActividad(
       toPublic(actividadCentinela(), 'act_centinela'),
@@ -1605,7 +1620,8 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
     const delDetalle = JSON.stringify(detalle);
 
     for (const [campo, valor] of Object.entries(afiche)) {
-      if (campo === 'ruta' || typeof valor !== 'string' || valor === '') continue;
+      if (campo === 'ruta' || campo === 'urlMiniatura' || typeof valor !== 'string' || valor === '')
+        continue;
       expect(
         delDetalle.includes(valor),
         `la cartelera publica \`${campo}\` y la página de detalle no: o dejó de derivar de ` +
@@ -1614,6 +1630,50 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
     }
 
     expect(afiche.ruta).toBe(`/actividad/${detalle.slug}/`);
+  });
+
+  it('la miniatura es lo único que la pared publica y el detalle no, y es una derivación pura del original', () => {
+    /*
+     * El caso que el `it` de arriba no puede cubrir: con una URL real de
+     * Storage, `urlMiniatura` **sí** es un string no vacío, y sin este test la
+     * afirmación de forma de arriba se pondría roja el día que alguien haga el
+     * fixture realista — un caso legítimo, no una fuga — y la tentación va a
+     * ser aflojar ese `for` en vez de escribir este caso.
+     *
+     * Lo que hace aceptable que la pared publique algo que el detalle no: es
+     * una función **pura** de `imagenes.url` (que el detalle sí publica), sin
+     * `storagePath` ni ningún dato que no esté ya en esa misma URL — y sin el
+     * token del original, que sería un dato que la miniatura no necesita para
+     * autorizar su lectura (`allow get: if true`, D-175).
+     */
+    const conFotoPropia = detalleDeActividad(
+      toPublic(
+        actividadCentinela({
+          imagenes: [
+            {
+              id: 'img_1',
+              url:
+                'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/' +
+                'imagenes%2Fimg_1.jpg?alt=media&token=tok',
+              epigrafe: '',
+              origen: 'propia',
+              portada: true,
+              storagePath: 'imagenes/img_1.jpg',
+            },
+          ],
+        }),
+        'act_miniatura',
+      ),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+    );
+    const afiche = carteleraDeDetalles([conFotoPropia])[0]!;
+    expect(afiche.urlMiniatura).toBe(urlDeMiniatura(afiche.url));
+    expect(afiche.urlMiniatura).toContain('miniaturas%2Fimg_1.jpg');
+    expect(afiche.urlMiniatura, 'la miniatura no lleva el token del original').not.toContain(
+      'token=',
+    );
   });
 
   it('una actividad sin afiche no aporta nada a la pared', () => {

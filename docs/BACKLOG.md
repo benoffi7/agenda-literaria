@@ -363,11 +363,11 @@ sitemap, y falta el rebuild automático (B-20).
 
 Y desde el 2026-09-01 hay un segundo frente medido: **el flyer**. B-263, B-264 y
 B-265 arreglaron el recorte, sacaron el campo de donde estaba escondido y le dieron
-pared propia. El **peso** era B-266 y **quedó resuelto el 2026-09-02** con la
-Function de B-220 (D-175): la página más pesada del sitio pasó de 3226,7 KB a
-184,3 KB y el recorrido de la cartelera de 3518,5 KB a 1032,4 KB. Lo que queda de
-ese frente es una línea de markup (**B-320**) y un paso manual del dueño: los
-permisos de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
+pared propia. El **peso** era B-266 y **quedó resuelto del todo el 2026-09-02**
+con la Function de B-220 (D-175) y el `srcset` de **B-320**: la página más pesada
+del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5 KB
+a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
+de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
 ### B-263 · La portada recortaba el 51 % del flyer — ✅ hecho (2026-09-01)
 
@@ -522,22 +522,18 @@ invariante. Ahora están los dos casos y el de la URL inválida, con la mutació
 probada (volver a `a.imagenes.map(...)` sin reordenar deja el caso viejo en verde
 y el nuevo en rojo).
 
-### B-266 · El peso de la cartelera sin la Function de recompresión — ✅ resuelto, falta el `srcset` (2026-09-02) · P1
+### B-266 · El peso de la cartelera sin la Function de recompresión — ✅ resuelto del todo (2026-09-02)
 
-> **La miniatura existe** (B-220 / D-175). Medido sobre las 30 imágenes de
-> producción: recorrer la pared entera pasa de **3518,5 KB a 1032,4 KB (−71 %)**
-> con miniaturas de 480 px. El disparador escrito abajo —«cuando la cartelera pase
-> de 20 afiches»— deja de aplicar: 30 miniaturas pesan menos de la mitad de lo que
-> este ítem midió para 30 originales.
+> **La miniatura existe** (B-220 / D-175) **y desde B-320 la pared la pinta.**
+> Medido sobre las 30 imágenes de producción: recorrer la pared entera pasa de
+> **3518,5 KB a 1032,4 KB (−71 %)** con miniaturas de 480 px. El disparador
+> escrito abajo —«cuando la cartelera pase de 20 afiches»— deja de aplicar: 30
+> miniaturas pesan menos de la mitad de lo que este ítem midió para 30
+> originales.
 >
 > **480 px y no 320** (que daba −84 %) porque la pared es de flyers y un flyer es
 > texto metido adentro de un JPEG (D-147): bajarle la resolución es bajarle la
 > legibilidad, no el peso de una foto.
->
-> **Lo que falta es de una línea y es de otro frente**: `Afiche.urlMiniatura` está
-> puesto, probado y **no lo pinta nadie** — falta el `srcset` en
-> `src/pages/cartelera.astro`. Es **B-320**. Hasta entonces la pared sigue
-> sirviendo los originales, que ahora al menos están optimizados.
 
 **Medido, no estimado** — los números y el método están en **D-149**.
 
@@ -2497,7 +2493,31 @@ propósito y se confirmó el rojo antes de darlos por buenos.
 Lo que el auditor reportó y **no** se acató: nada — los cuatro resultaron ciertos
 contra el árbol.
 
-### B-320 · La cartelera todavía no pinta la miniatura: falta el `srcset` · P1
+### B-320 · La cartelera todavía no pinta la miniatura: falta el `srcset` — ✅ hecho (2026-09-02)
+
+**Hecho, tal cual estaba escrito abajo.** `src/pages/cartelera.astro` ahora
+pide la miniatura de 480px como candidato chico de `srcset`, con el original
+siempre en `src` y como candidato grande, y `sizes` a su lado. Verificado por
+mutación en `tests/cartelera.test.ts` (`src={afiche.urlMiniatura ?? afiche.url}`
+en vez de `src={afiche.url}` pone el test en rojo). Con esto, **B-266 queda
+resuelto del todo**.
+
+**Y el `auditor-trampas` encontró un B-88 de paso:** el `480w` era un literal
+sin atar a `ANCHO_MINIATURA` de `functions/imagenes.js` (el que `sharp` usa de
+verdad). Se movió a una constante propia en `src/lib/imagenes.ts`, atada por
+`tests/imagenes-function.test.ts` — mutación probada: subir un valor sin el
+otro pone ese test en rojo.
+
+**Y el `auditor-privacidad` encontró dos cosas más:** el `srcset` se armaba con
+un template en la plantilla, sobre `afiche.url` crudo del documento —una coma
+ahí partiría la lista de candidatos, y nada lo impedía—; se movió a
+`srcsetDeMiniatura` en `src/lib/imagenes.ts`, probada por valor. Y el `for` de
+`tests/barrido-de-salidas-publicas.test.ts` que afirma «todo lo que la pared
+publica ya lo publicaba el detalle» saltaba `urlMiniatura` en silencio, sin
+ejercitar nunca la rama no nula; ahora se saltea por nombre y hay un test
+dedicado con una URL real. Las dos mutaciones probadas.
+
+El texto original queda abajo, para que quede el rastro de cómo tenía que ser.
 
 **El campo está, probado, y no lo usa nadie.** `Afiche.urlMiniatura`
 (`src/lib/cartelera.ts`) trae la URL de la miniatura de 480 px que deriva la
@@ -6288,7 +6308,31 @@ No hay arreglo dentro del emulador: sería un puerto de Storage por checkout, qu
 la candidata que D-195 descartó. Si esto llega a molestar de verdad, el camino más
 corto es un lock de archivo alrededor de `storage-reglas.integracion.test.ts`
 —serializa un solo archivo, no la suite.
-### B-321 · La portada del detalle también podría usar la miniatura · P2
+### B-321 · La portada del detalle también podría usar la miniatura — ✅ hecho (2026-09-02)
+
+**Hecho, y la objeción que frenaba este ítem no se sostuvo — verificado, no
+creído.** Decía que una miniatura de 480px «estirada a 343px CSS en una
+pantalla 3× se ve blanda» porque la portada es `loading="eager"` (el LCP de la
+página), y que probablemente hiciera falta una variante intermedia (¿900px?)
+antes de reusar la de la cartelera.
+
+**Eso da por sentado que el navegador elegiría la miniatura en una pantalla de
+alta densidad, y no es así con dos candidatos en el `srcset`.** El algoritmo de
+selección de candidatos pesa cada uno contra el `devicePixelRatio` real: a 1×
+la miniatura alcanza y se elige (downscale, se ve bien); a 2× o 3× su densidad
+(480 / ancho-del-slot) queda por debajo de lo que el dispositivo pide, y el
+**único** candidato que la alcanza es el original de 1600px que siempre está
+en la lista — el navegador cae ahí solo, sin que nada en el código lo fuerce.
+La miniatura solo se elige cuando el slot es lo bastante chico para que 480px
+ya sea suficiente, que es exactamente el caso en el que no hace falta más.
+
+**Conclusión: no hizo falta ninguna variante nueva.** `src/pages/actividad/[slug].astro`
+deriva `urlDeMiniatura(portada.url)` en el frontmatter (cálculo de
+presentación, no un campo nuevo de `DetallePublico`) y usa el mismo
+`srcsetDeMiniatura` de `src/lib/imagenes.ts` que B-320. Verificado por mutación
+en `tests/galeria-del-detalle.test.ts`.
+
+El texto original queda abajo, para que quede el rastro de la objeción.
 
 Sale del mismo frente que B-320, y va aparte porque el caso es distinto y más
 flojo: la página de detalle sirve **una** portada, grande, arriba, y con B-220 ya
