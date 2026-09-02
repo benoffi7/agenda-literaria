@@ -125,8 +125,29 @@ describe('construirIssue', () => {
 
   it('NO publica quién lo cargó: ni el uid ni el mail (§5.1)', () => {
     const i = construirIssue({ id: 'rep1', reporte: reporte() });
+    // Éste es el que carga el peso: `uid_tia_hilda` no matchea ningún patrón de
+    // `redactar`, así que si alguien lo interpola, aparece y el test falla.
     expect(i.body).not.toContain('uid_tia_hilda');
-    expect(i.body).not.toContain('librosdelatiahilda');
+    /*
+     * B-360 — acá había un `not.toContain` con un literal que no aparece en
+     * ningún fixture: no podía fallar nunca. Lo encontró el `auditor-privacidad`
+     * sobre B-137.
+     *
+     * Y comparar contra el mail del fixture **tampoco sirve**, que es la parte
+     * que costó ver: `redactar` tapa los mails, así que interpolar
+     * `reportadoPor.email` en el cuerpo dejaría el aserto en verde igual. Se
+     * probó con la mutación y sobrevivió.
+     *
+     * Lo que sí puede fallar es preguntar por la **forma**: que en el cuerpo no
+     * quede ningún mail, de nadie. Eso muere si un mail entra por un camino que
+     * el saneador no cubre, y hay uno abierto (B-363: `desSlug` corre antes del
+     * saneador y le mete un espacio al medio del patrón).
+     *
+     * La garantía de que estos dos campos no están interpolados la da el barrido
+     * de `clases-de-bug.test.ts` con un centinela que el saneador no tapa
+     * (B-361), no este aserto.
+     */
+    expect(i.body).not.toMatch(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/);
     // La trazabilidad queda en Firestore, que solo leen los admins.
     expect(i.body).toContain('reportes/rep1');
   });
@@ -346,8 +367,10 @@ describe('formAReporte', () => {
     const d = formAReporte(form(), contexto(), usuario);
     const i = construirIssue({ id: 'rep9', reporte: { ...d, creadoEn: ts('2026-08-21T18:30:00Z') } });
     const json = JSON.stringify(i);
-    expect(json).not.toContain('uid_tia_hilda');
-    expect(json).not.toContain('librosdelatiahilda');
+    expect(json).not.toContain(usuario.uid);
+    // B-360 — mismo arreglo que arriba, y por el mismo motivo: se pregunta por la
+    // forma, porque comparar contra el mail del fixture lo tapa `redactar`.
+    expect(json).not.toMatch(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/);
   });
 });
 

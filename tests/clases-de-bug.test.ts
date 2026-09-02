@@ -1029,6 +1029,36 @@ const conCentinelas = (valor: unknown, clave = ''): unknown => {
   return valor;
 };
 
+/**
+ * Un centinela que `redactar()` **no** tapa — B-361.
+ *
+ * El `CENTINELA` de arriba es un link de zoom, o sea justo una de las dos cosas
+ * que el saneador reemplaza. Eso lo hace perfecto para verificar que el saneador
+ * corre, y **inútil** para verificar que un campo no está interpolado: un campo
+ * que se cuela y se sanea deja el barrido en verde igual que uno que no se cuela.
+ * Los dos hechos se confunden.
+ *
+ * Para `reportadoPor.uid` y `reportadoPor.email` —que el §5.1 prohíbe publicar—
+ * lo que hace falta es lo contrario: un valor que el saneador deje pasar, para
+ * que si aparece en la salida, aparezca. Se probó con la mutación: interpolar el
+ * mail del reportante en el encabezado **sobrevive** a un aserto contra el mail
+ * del fixture, y muere contra éste.
+ */
+const CENTINELA_CRUDO = 'CENTINELA_QUE_EL_SANEADOR_NO_TAPA';
+
+/**
+ * El documento de `/reportes/{id}` **completo** — B-361.
+ *
+ * Tenía 8 de las 13 claves que `reporteValido()` enumera en `firestore.rules`, y
+ * las que faltaban eran justo las que el §5.1 prohíbe publicar:
+ * `reportadoPor.uid`, `reportadoPor.email`, más `estado`, `intentos`, `github` y
+ * `error`. O sea que el barrido que promete «ningún string de la entrada llega
+ * crudo al issue público» no barría los strings privados del reporte. Lo
+ * encontró el `auditor-privacidad` sobre B-137.
+ *
+ * Con las cinco agregadas el barrido de centinelas sigue verde —ninguna está
+ * interpolada hoy— y eso es el punto: entran a la garantía desde ahora.
+ */
 const REPORTE = {
   tipo: 'bug',
   titulo: 'No me deja guardar el borrador',
@@ -1045,6 +1075,30 @@ const REPORTE = {
     zonaHoraria: 'America/Argentina/Buenos_Aires',
   },
   actividad: { id: 'act1' },
+  reportadoPor: { uid: 'uid_test', email: 'admin@ejemplo.com' },
+  // Las cinco que faltaban. Las dos primeras son las que el §5.1 nombra.
+
+  estado: 'pendiente',
+  intentos: 0,
+  github: null,
+  error: null,
+};
+
+/**
+ * Las claves que `reporteValido()` exige, leídas de las reglas.
+ *
+ * El fixture de arriba tiene que cubrirlas todas, y esta lista es la que lo
+ * obliga: derivarla del archivo en vez de escribirla acá es lo que hace que una
+ * clave nueva en el modelo del reporte entre sola al barrido, sin que nadie se
+ * acuerde. Es el mismo autoexigirse de `tests/fixtures/centinelas.ts` contra
+ * `src/types/actividad.ts`.
+ */
+const clavesDelReporteEnLasReglas = (): string[] => {
+  const reglas = fuente('firestore.rules');
+  const desde = reglas.indexOf('function reporteValido()');
+  const lista = /let campos = \[([\s\S]*?)\];/.exec(reglas.slice(desde));
+  if (!lista) throw new Error('no se encontró la lista `campos` de reporteValido()');
+  return [...lista[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
 };
 
 const ACTIVIDAD = { titulo: 'Taller de crónica', slug: 'taller-de-cronica' };
@@ -1062,14 +1116,20 @@ describe('clase de B-81 · el saneador va en un punto de paso obligado', () => {
   });
 
   /**
-   * **Qué lo haría pasar:** que `construirIssue` sanee su salida en un punto
-   * único (el `title` y el `body` ya armados) en vez de campo por campo. Los
-   * cuatro que hoy se cuelan —`id` del reporte, `actividad.slug`,
-   * `reporte.actividad.id` y `severidad`— son valores de máquina o enums del
-   * schema, así que **hoy** no pueden traer un link; el punto es que la próxima
-   * interpolación no tiene por qué serlo. Ver B-137.
+   * **Cerrado por B-137** (2026-09-02): `construirIssue` sanea su salida en un
+   * punto único —el `title` y el `body` ya armados— en vez de campo por campo.
+   *
+   * Los cuatro valores que se colaban —`id` del reporte, `actividad.slug`,
+   * `reporte.actividad.id` y `severidad`— eran ids o enums que `reporteValido()`
+   * acota en las reglas, así que no filtraban nada; lo que se cerró es la clase,
+   * no una fuga. El aserto de acá es el que mira desde afuera (ningún centinela
+   * sobrevive) y el de abajo el que mira la forma (a lo sumo dos aplicaciones).
+   * Hacen falta los dos: el primero solo pasa si nada se escapa, el segundo solo
+   * pasa si el saneador está en un lugar y no en siete, y ninguno implica al
+   * otro — se podría sanear siete veces y no filtrar nada, que es justo el estado
+   * del que se venía.
    */
-  it.fails('B-81: ningún string de la entrada llega crudo al issue público', () => {
+  it('B-81: ningún string de la entrada llega crudo al issue público', () => {
     const issue = construirIssue({
       id: CENTINELA,
       reporte: conCentinelas(REPORTE) as Record<string, unknown>,
@@ -1078,13 +1138,92 @@ describe('clase de B-81 · el saneador va en un punto de paso obligado', () => {
     expect(JSON.stringify(issue)).not.toContain('zoom.us');
   });
 
-  it.fails('B-137: el saneador se aplica sobre la salida, no en cada campo', () => {
+  it('B-137: el saneador se aplica sobre la salida, no en cada campo', () => {
     const src = fuente('functions/reportes.js');
     const desde = src.indexOf('export const construirIssue');
     const cuerpo = src.slice(desde);
     const aplicaciones = [...cuerpo.matchAll(/\bredactar\(/g)].length;
     // Dos como máximo: el `title` y el `body`, una vez cada uno.
     expect(aplicaciones).toBeLessThanOrEqual(2);
+  });
+
+  it('B-361: la identidad de quien reporta no está interpolada, con o sin saneador', () => {
+    /*
+     * La garantía que ningún otro aserto daba. `reportadoPor.uid` y
+     * `reportadoPor.email` no se publican por **enumeración** —el cuerpo elige
+     * qué interpola— y no por el saneador, que solo tapa mails y links. Así que
+     * se prueba con un centinela que el saneador deja pasar: si el campo se cuela,
+     * sale entero y el test falla.
+     */
+    const issue = construirIssue({
+      id: 'rep1',
+      reporte: {
+        ...REPORTE,
+        reportadoPor: { uid: `${CENTINELA_CRUDO}_uid`, email: `${CENTINELA_CRUDO}_mail` },
+        estado: `${CENTINELA_CRUDO}_estado`,
+        github: { numero: 7, url: `${CENTINELA_CRUDO}_url` },
+        error: `${CENTINELA_CRUDO}_error`,
+      },
+      actividad: ACTIVIDAD,
+    });
+    // Control positivo: el issue se armó de verdad y tiene contenido.
+    expect(issue.body).toContain('reportes/rep1');
+    expect(JSON.stringify(issue), 'un campo privado del reporte llegó al issue')
+      .not.toContain(CENTINELA_CRUDO);
+  });
+
+  it('B-361: el fixture de centinelas cubre todas las claves de /reportes/{id}', () => {
+    /*
+     * La mitad que un barrido no puede dar por sí solo: barre lo que el fixture
+     * tiene, así que una clave del modelo que no esté en el fixture queda fuera
+     * de la garantía **y el test sigue verde**. Es el modo de falla más caro que
+     * puede tener un barrido por centinelas — parece cobertura y no lo es.
+     */
+    const claves = clavesDelReporteEnLasReglas();
+    // Control positivo: si el parseo de las reglas devuelve poco, el aserto de
+    // abajo pasa sin haber comparado nada.
+    expect(claves.length).toBeGreaterThanOrEqual(13);
+    expect(claves).toContain('reportadoPor');
+
+    const faltan = claves.filter((k) => !(k in REPORTE));
+    expect(faltan, 'claves del reporte que el barrido no está mirando').toEqual([]);
+  });
+
+  it('B-362: sanea ANTES de recortar, así un link cerca de los 200 no sale partido', () => {
+    /*
+     * El docblock de `construirIssue` afirma que el orden importa, y era la única
+     * parte del repo donde esa regla estaba escrita. Lo señaló el
+     * `auditor-privacidad` sobre B-137, con el argumento de por qué el recorte es
+     * **alcanzable**: `redactar` no acorta, expande — «link de reunión oculto» son
+     * 24 caracteres contra los 12 de un `wa.me/…`— así que un título al tope que
+     * las reglas permiten (120) lleno de links cortos pasa de 200 al redactarse.
+     *
+     * Con el orden invertido, ese caso publicaría un `https://us02web.zoom`
+     * cortado antes del dominio: un prefijo que ya no matchea el patrón, o sea la
+     * mitad de un link de reunión, legible, en un repo público.
+     */
+    /*
+     * Nueve links **cortos**, y la brevedad es el punto: `redactar` cambia cada
+     * uno por «link de reunión oculto», que son 24 caracteres. Un `http://wa.me`
+     * son 12, así que cada reemplazo suma 12 — con un link largo el saneador
+     * acorta y el caso no llega nunca al recorte (se probó: 106 caracteres).
+     */
+    const titulo = Array(9).fill('http://wa.me').join(' ');
+    // El título que se prueba es uno que las reglas aceptan: 120 es el tope.
+    expect(titulo.length).toBeLessThanOrEqual(120);
+
+    const issue = construirIssue({
+      id: 'rep1',
+      reporte: { ...REPORTE, titulo },
+      actividad: ACTIVIDAD,
+    });
+
+    // Control positivo: el caso llega de verdad al recorte. Sin esto el test
+    // pasaría sobre un título que nunca lo alcanza, y no probaría el orden.
+    expect(issue.title.length, 'el caso no alcanza el recorte de 200').toBe(200);
+    // Y no sobrevive nada del link, ni entero ni en pedazos.
+    expect(issue.title).not.toContain('wa.me');
+    expect(issue.title).toContain('link de reunión oculto');
   });
 });
 
