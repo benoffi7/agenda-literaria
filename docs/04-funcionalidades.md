@@ -208,7 +208,7 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
   tipearlas: abandonar el formulario no debe dejar basura en la taxonomía.
 - **Y si esa persistencia falla, ahora se ve** (B-177, D-187). Son dos
-  escrituras: primero la actividad, después la etiqueta nueva (D-100). La segunda
+  escrituras: primero la actividad, después la etiqueta nueva (D-111). La segunda
   puede fallar sola, y hasta acá el guardado se veía **exactamente igual** que uno
   perfecto. Al volver del formulario aparece una franja arriba que **nombra la
   etiqueta** que no quedó —no "alguna etiqueta", que con cinco campos de taxonomía

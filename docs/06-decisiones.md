@@ -2068,6 +2068,14 @@ realidad se guardó bien. El caso de uso lo informa en su resultado
 como **B-177** (decía «B-167» hasta el 2026-08-27; ese número se reasignó a la
 galería de imágenes).
 
+> **Resuelto en B-177 (D-187, 2026-09-02): el párrafo de arriba ya no es cierto y
+> se deja para que se lea contra su original.** El aviso se muestra en pantalla,
+> arriba de la vista, y **nombra la etiqueta** que no quedó — para eso
+> `etiquetasSinRegistrar` pasó de `boolean` a la lista de labels. Lo encontró el
+> `auditor-documentacion`, y es el patrón de B-56: una decisión que describe el
+> estado del mundo («hoy nadie lo muestra») envejece cuando el ítem que nombra se
+> cierra, y nada falla.
+
 **Alternativa descartada:** las dos escrituras en una sola transacción. Son
 documentos de colecciones distintas y `upsertOpcion` ya corre su propia
 transacción por etiqueta (§4.2); envolver todo pedía rehacer esa función para un
@@ -2110,10 +2118,16 @@ está sucio de verdad.
 
 ## D-113 · Las escrituras del caso de uso de guardado entran como puertos
 
-**Decisión:** `src/lib/formulario/guardar.ts` recibe sus cinco escrituras
-(`slugDisponible`, `upsertOpcion`, `upsertOpciones`, `crearActividad`,
-`actualizarActividad`) como un objeto de puertos, con `puertosFirestore` como
-default.
+**Decisión:** `src/lib/formulario/guardar.ts` recibe sus seis escrituras
+(`slugDisponible`, `upsertOpcion`, `upsertOpciones`, `registrarUsos`,
+`crearActividad`, `actualizarActividad`) como un objeto de puertos, con
+`puertosFirestore` como default.
+
+> Decía «cinco» y no listaba `registrarUsos`, que entró con B-168/B-86 el
+> 2026-08-25. Corregido el 2026-09-02, lo encontró el `auditor-documentacion`.
+> Que el número quedara viejo importa más de lo que parece: este documento es lo
+> que se lee para saber **qué escrituras** hay que poder falsear al testear el
+> orden, y un puerto que no figura es un puerto que un test nuevo no va a mockear.
 
 **Motivo:** el bug que se estaba arreglando (B-71) **es un orden de
 escrituras**, y un orden no se afirma mirando el resultado: hay que ver la
@@ -5632,7 +5646,7 @@ versión que a uno se le ocurre) se come «-34, -58», un par legítimo.
 
 ## D-187 · El aviso de la etiqueta sin registrar vive en el chasis del panel, y nombra la etiqueta
 
-**B-177.** Con el orden de escritura de D-100 son **dos** escrituras: primero la
+**B-177.** Con el orden de escritura de D-111 son **dos** escrituras: primero la
 actividad, después la etiqueta nueva en `/opciones/*`. La segunda puede fallar
 sola, y ese modo de falla se eligió a propósito (al revés se perdía la actividad
 entera, B-71). Lo que faltaba: `guardarActividad` devolvía `etiquetasSinRegistrar`
