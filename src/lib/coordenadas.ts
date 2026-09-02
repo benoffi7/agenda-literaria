@@ -10,7 +10,15 @@
  * Los links cortos (`maps.app.goo.gl`) **no** se pueden resolver: son un
  * redirect y desde el navegador lo bloquea CORS. Se detectan y se explican en
  * lugar de fallar en silencio.
+ *
+ * Cada fallo sale además con su `motivo`, del vocabulario cerrado de la
+ * analítica (B-55). Vive **acá adentro y no en el componente** por la lección de
+ * B-88 y de `MOTIVOS_IMAGEN`: el productor y el consumidor del vocabulario tienen
+ * que ser el mismo. Clasificar el fallo mirando el texto del mensaje desde el
+ * componente es la variante silenciosa del mismo bug — el día que se mejore una
+ * redacción, el evento empieza a llegar como otra cosa y nada falla.
  */
+import { FALLOS_COORDENADAS } from '@/lib/analytics-eventos';
 
 export interface Geo {
   lat: number;
@@ -27,9 +35,20 @@ export interface CoordenadasOk {
   advertencia: string | null;
 }
 
+/**
+ * Por qué falló, para la analítica. Es una etiqueta de la causa: **nunca** el
+ * link pegado ni el mensaje, que son contenido (§9).
+ *
+ * `coordenadas-fallo` contesta una pregunta con consecuencia directa: si el 80 %
+ * de los fallos es `coord-link-corto`, lo que hay que hacer es resolver los
+ * links cortos y no explicar mejor el campo (B-45).
+ */
+export type FalloCoordenadas = (typeof FALLOS_COORDENADAS)[number];
+
 export interface CoordenadasError {
   ok: false;
   error: string;
+  motivo: FalloCoordenadas;
 }
 
 export type ResultadoCoordenadas = CoordenadasOk | CoordenadasError;
@@ -52,6 +71,21 @@ const NUM = String.raw`-?\d{1,3}(?:\.\d+)?`;
 
 /** Par pegado a mano: "-34.5989, -58.4392", con o sin paréntesis. */
 const RE_PAR = new RegExp(String.raw`^\(?\s*(${NUM})\s*(?:,|;|\s)\s*(${NUM})\s*\)?$`);
+
+/**
+ * Par con **coma decimal** en lugar de punto: "-34,5989, -58,4392". Es lo que
+ * copia un Windows o un Android configurado en español.
+ *
+ * **Exige la coma pegada a un dígito en los dos números**, y eso es lo que lo
+ * mantiene disjunto de `RE_PAR`: para que `RE_PAR` matchee el string entero, la
+ * única coma posible es la del separador —sus números no llevan coma adentro—,
+ * así que un string que matchee los dos tendría que tener dos comas-con-dígito y
+ * una sola coma a la vez. Un par de enteros legítimo ("-34, -58") no lo matchea,
+ * y por eso el orden entre los dos es defensivo y no la garantía. La garantía es
+ * el regex, y `tests/coordenadas.test.ts` la fija: un regex más flojo —
+ * `-?\d{1,3},\s*-?\d{1,3}`— se comería ese par y lo volvería un fallo.
+ */
+const RE_COMA_DECIMAL = /^\(?\s*(-?\d{1,3},\d+)\s*[,;]?\s*(-?\d{1,3},\d+)\s*\)?$/;
 
 /** Links cortos y de app: redirigen, y el redirect no se puede seguir por CORS. */
 const RE_CORTO = /(?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)/i;
@@ -103,15 +137,23 @@ const advertir = (lat: number, lng: number): string | null => {
 
 const validar = (lat: number, lng: number): ResultadoCoordenadas => {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return { ok: false, error: 'No pude leer las coordenadas.' };
+    return { ok: false, error: 'No pude leer las coordenadas.', motivo: 'coord-formato' };
   }
   // Fuera de rango no es un punto del planeta: confundir lat con lng manda el
   // evento al otro lado del mundo, y una latitud de 200 no existe.
   if (Math.abs(lat) > 90) {
-    return { ok: false, error: `La latitud tiene que estar entre -90 y 90, y llegó ${lat}.` };
+    return {
+      ok: false,
+      error: `La latitud tiene que estar entre -90 y 90, y llegó ${lat}.`,
+      motivo: 'coord-formato',
+    };
   }
   if (Math.abs(lng) > 180) {
-    return { ok: false, error: `La longitud tiene que estar entre -180 y 180, y llegó ${lng}.` };
+    return {
+      ok: false,
+      error: `La longitud tiene que estar entre -180 y 180, y llegó ${lng}.`,
+      motivo: 'coord-formato',
+    };
   }
   const geo = { lat: redondear(lat), lng: redondear(lng) };
   return { ok: true, geo, advertencia: advertir(geo.lat, geo.lng) };
@@ -130,17 +172,42 @@ const validar = (lat: number, lng: number): ResultadoCoordenadas => {
 export const parsearCoordenadas = (entrada: string): ResultadoCoordenadas => {
   const texto = (entrada ?? '').trim();
   if (!texto) {
-    return { ok: false, error: 'Pegá el link de Google Maps del lugar, o un par "lat, lng".' };
+    return {
+      ok: false,
+      error: 'Pegá el link de Google Maps del lugar, o un par "lat, lng".',
+      // El campo vacío no es un fallo de nadie, y el componente ni llega acá:
+      // corta antes. Lleva motivo igual porque el tipo lo exige, y que no se
+      // emita es lo correcto (ver `CoordenadasSede`).
+      motivo: 'coord-formato',
+    };
   }
 
   const par = RE_PAR.exec(texto);
   if (par) return validar(Number(par[1]), Number(par[2]));
+
+  if (RE_COMA_DECIMAL.test(texto)) {
+    /*
+     * B-55 — la coma decimal de la configuración regional en español. Ya se
+     * rechazaba, pero caía en «no parece un link ni un par de coordenadas», que
+     * es falso y no dice qué corregir: el par **está**, con el separador de otro
+     * idioma. No se adivina a propósito —"-34,5989 -58,4392" podría ser dos
+     * números o cuatro, y equivocarse manda el evento a otro lado del planeta—,
+     * así que se nombra y se pide el punto.
+     */
+    return {
+      ok: false,
+      error:
+        'Eso parece un par de coordenadas con coma decimal ("-34,5989"), y así es ambiguo: no se sabe si son dos números o cuatro. Escribilo con punto: -34.5989, -58.4392.',
+      motivo: 'coord-coma-decimal',
+    };
+  }
 
   if (!pareceLink(texto)) {
     return {
       ok: false,
       error:
         'No parece un link de Google Maps ni un par de coordenadas. Buscá el lugar en Maps, copiá el link de la barra de direcciones y pegalo acá.',
+      motivo: 'coord-formato',
     };
   }
 
@@ -149,6 +216,7 @@ export const parsearCoordenadas = (entrada: string): ResultadoCoordenadas => {
       ok: false,
       error:
         'Ese es un link corto (el del botón "Compartir") y no trae las coordenadas: hay que abrirlo primero. Abrilo en el navegador y pegá el link largo que queda en la barra de direcciones.',
+      motivo: 'coord-link-corto',
     };
   }
 
@@ -160,6 +228,7 @@ export const parsearCoordenadas = (entrada: string): ResultadoCoordenadas => {
     ok: false,
     error:
       'Ese link no trae coordenadas. En Google Maps hacé clic derecho sobre el punto exacto → la primera opción copia "lat, lng", y eso se puede pegar acá.',
+    motivo: 'coord-sin-coordenadas',
   };
 };
 
