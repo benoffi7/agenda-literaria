@@ -59,11 +59,10 @@ export function AvisoEtiquetas({ etiquetas, onIrAOpciones, onCerrar }: Props) {
           calendario lo muestran deducido del valor y pueden cambiarle las
           mayúsculas (D-11).
         */}
-        La actividad quedó guardada con {una ? 'ella' : 'ellas'}, y el sitio y el
-        calendario {una ? 'la' : 'las'} muestran igual —puede aparecer con las
-        mayúsculas distintas de como {una ? 'la' : 'las'} escribiste—. Lo que no
-        pasó es que se {una ? 'sume' : 'sumen'} a la lista de opciones para la
-        próxima vez.
+        La actividad quedó guardada con {una ? 'ella' : 'ellas'}, así que donde se
+        publique va a aparecer igual —puede que con las mayúsculas distintas de
+        como {una ? 'la' : 'las'} escribiste—. Lo que no pasó es que se{' '}
+        {una ? 'sume' : 'sumen'} a la lista de opciones para la próxima vez.
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <button
