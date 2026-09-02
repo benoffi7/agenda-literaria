@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Campo,
   claseBotonFila,
   claseBotonSecundario,
   claseInput,
 } from '@/components/admin/campos/Campo';
+import { medirFuncion } from '@/lib/analytics';
 import { formatearGeo, linkMapa, parsearCoordenadas, type Geo } from '@/lib/coordenadas';
 
 interface Props {
@@ -26,24 +27,57 @@ const AYUDA =
  *
  * El parseo vive en `lib/coordenadas.ts` (puro y testeado). Acá solo el
  * control: pegar, ver qué se cargó, y poder borrarlo para volver a `null`.
+ *
+ * ── Qué se mide, y por qué (B-55, §9) ──────────────────────────────────────
+ * `coordenadas-pegar` es el **denominador**: un intento de resolver lo que hay
+ * en el campo, salga o no. `coordenadas-fallo` es el numerador, con el `motivo`
+ * que devuelve el parseo —no una clasificación hecha acá mirando el texto del
+ * mensaje, que se rompería sola con la próxima corrección de redacción (B-88).
+ *
+ * Sin el denominador la pregunta no se contesta: "el 80 % de los fallos es un
+ * link corto" no dice nada si no se sabe cuántos intentos hubo en total. Es lo
+ * que decide **B-45** — si casi todo lo que se pega es un link corto, lo que hay
+ * que hacer es resolverlos y no explicar mejor el campo.
+ *
+ * **Nunca viaja lo pegado.** El link es contenido: puede llevar el nombre del
+ * lugar, y el `detalle` es un enum cerrado de cuatro etiquetas de causa.
  */
 export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
   const [texto, setTexto] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [advertencia, setAdvertencia] = useState<string | null>(null);
+  /**
+   * Lo último que se midió, para no contar dos veces lo mismo.
+   *
+   * Hace falta porque hay **cuatro** disparadores sobre el mismo texto —pegar,
+   * Enter, el botón "Usar" y el blur— y uno se encadena con otro: pegar aplica y
+   * deja el texto en el campo, así que salir del campo vuelve a aplicarlo. Sin
+   * esto, un solo link corto pegado llega a GA4 como dos o tres fallos y la
+   * proporción que decide B-45 sale inflada justo en el modo de fallo más
+   * frecuente. Un `useRef` y no estado: no se pinta nada con esto, y un
+   * `setState` acá provocaría un render por tecla de más.
+   */
+  const medido = useRef<string | null>(null);
 
   /** `entrada` explícita porque al pegar se lee del portapapeles, no del state. */
   const aplicar = (entrada: string) => {
     if (!entrada.trim()) {
-      // Campo vacío no es un error: es que todavía no cargó nada.
+      // Campo vacío no es un error: es que todavía no cargó nada. Y no se mide:
+      // no hubo intento.
       setError(null);
       setAdvertencia(null);
       return;
     }
     const r = parsearCoordenadas(entrada);
+    // Un intento es un intento aunque falle: `coordenadas-pegar` es el
+    // denominador de `coordenadas-fallo` (§9).
+    const yaMedido = medido.current === entrada;
+    medido.current = entrada;
+    if (!yaMedido) medirFuncion('coordenadas-pegar');
     if (!r.ok) {
       // Falla visible y con instrucción: el silencio acá se paga cuando alguien
       // no encuentra el lugar.
+      if (!yaMedido) medirFuncion('coordenadas-fallo', r.motivo);
       setError(r.error);
       setAdvertencia(null);
       return;
@@ -51,6 +85,10 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
     setError(null);
     setAdvertencia(r.advertencia);
     setTexto('');
+    // El campo queda vacío, así que el próximo intento es uno nuevo aunque se
+    // pegue el mismo link: sin esto, corregir a mano y volver a pegar lo mismo
+    // no contaría.
+    medido.current = null;
     onChange(r.geo);
   };
 
@@ -58,6 +96,7 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
     setError(null);
     setAdvertencia(null);
     setTexto('');
+    medido.current = null;
     onChange(null);
   };
 

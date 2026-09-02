@@ -236,7 +236,286 @@ de quien cierra la mitad del ítem— en vez de cambiar el rótulo por cuenta pr
 | **B-125** · detectar sin editar nada | Pide una identidad contra la API de Calendar que el panel no tiene (D-06) |
 | **B-163** · qué criterio de numeración gana | Decisión de producto: una de las dos salidas reescribe eventos publicados |
 | **B-150** · el panel sigue siendo dueño de `calendarEventId` | Toca el archivo más disputado del repo. **Y el ítem ofrecía una salida que no sirve**: `formADocumento` no puede *dejar de emitir* el campo, porque `updateDoc` reemplaza el array `sesiones` entero y eso borraría **todos** los ids — la próxima pasada crearía un evento nuevo por encuentro. Es el mismo argumento que el comentario de `completo` (B-97) dos bloques más abajo. Queda la otra: releer y fusionar por id de sesión antes de escribir |
+## 2026-09-02 · cinco ítems chicos del panel: los errores que no se veían, y una medición que dijo que no
 
+Cinco de los nueve ítems chicos del panel. Los cuatro que no entraron, y por qué,
+al final — ninguno por falta de tiempo.
+
+### B-197 · el error de una fila de material se ve al lado del campo
+
+`MaterialEditor` recibía un solo `error` —el de la lista— así que el rechazo de una
+fila puntual solo se leía en la barra de abajo («Título del material»): con dos
+filas cargadas y una sin título, el mensaje **no decía cuál de las dos**. Era la
+única familia de campos del formulario que no mostraba su propio error.
+
+Ahora recibe `errorDe`, la misma prop que `ModalidadesEditor`, y cada campo lee el
+suyo con `ruta()` — el índice en el medio, como lo emite el `path` del
+`superRefine`. Armada distinto, el error existe en el mapa y **no se pinta nunca**,
+sin que nada falle: `errorDe` de una clave que no existe devuelve `undefined`.
+
+Los cuatro campos pasaron a usar `Campo`, y eso no es prolijidad: `Campo` es quien
+marca `data-campo-con-error`, y sin eso el scroll de un guardado fallido (B-184)
+seguía cayendo en la línea de la lista o en el principio de la sección. El error se
+veía y seguía sin llevar a ningún lado.
+
+**El test destapó el campo que se habría saltado.** `tests/errores-de-fila.test.ts`
+deriva los sufijos de `CAMPOS_VALIDABLES` en lugar de listarlos, y así apareció
+`material.items.N.publico` —la casilla, que no usa `Campo` porque su etiqueta va al
+lado y no arriba—: una ruta que el schema puede rechazar y que no tenía dónde
+mostrarse. Pinta su error a mano. Escrita a mano, la lista habría sido «título y
+url» y ese cuarto no aparecía.
+
+**Cinco mutaciones, las cinco mueren:** volver a pasar el error de la lista, armar
+la ruta con el índice al final, sacarle el `errorDe` a un campo, sacar el error de
+la lista, y renombrar el label de «Título».
+
+**La clase sigue viva en otros dos editores**, y quedó anotada en lugar de tocar
+archivos de otros frentes: **B-341** (la galería, donde la prop `error` existe y
+**nadie la pasa**, o sea que la línea que la pinta es código muerto) y **B-343**
+(los encuentros, donde el caso caro ya está cubierto por una derivación paralela).
+El chasis de filas también: **B-342**.
+
+### B-198 · medido el aviso por tecla, y no se debouncea
+
+El ítem pedía **medir antes de optimizar**. Medido (D-185):
+
+| Encuentros | `faltaParaPublicar` | `JSON.stringify` del mismo form |
+|---|---|---|
+| 1 | 0,107 ms | 0,001 ms |
+| 8 | 0,107 ms | 0,007 ms |
+| 20 | 0,123 ms | 0,012 ms |
+| 50 | 0,205 ms | 0,025 ms |
+
+**Las dos frases del ítem eran falsas, y en direcciones opuestas.** No es «del
+mismo orden que el `JSON.stringify`»: es ~10× más caro. Y da igual, porque el costo
+es **fijo del schema y no escala con los encuentros** —con uno ya cuesta 0,107 ms—,
+así que el «ciclo de 20 encuentros en un teléfono viejo» que el ítem temía es
+indistinguible del caso chico. A diez veces más lento sigue siendo una octava parte
+de un frame.
+
+Así que no se debouncea, y tampoco entró `useDeferredValue`: no hay nada que
+diferir cuando el trabajo no llega a un frame, y las dos opciones compran una
+ventana en la que el aviso dice algo que ya no es cierto — justo lo que un aviso de
+«esto no se puede publicar» no puede tener.
+
+Lo que queda es la medición, en `tests/costo-por-tecla.test.ts`, con **dos**
+asertos: el costo por tecla y **que no escale con los encuentros**, que es el
+hallazgo que decide todo. El techo es de dos órdenes de magnitud a propósito: no es
+un objetivo de performance, es el piso de lo absurdo — detecta que alguien meta
+red, `crypto` o una regla cuadrática en el camino del tecleo, no un 20 % de
+variación de máquina. Un techo ajustado sería un test que falla en una máquina
+cargada, y **un test que falla por su propia plomería enseña a saltearlo**. Tres
+mutaciones, las tres mueren: la regla cuadrática, un trabajo fijo de 25 ms, y
+`faltaParaPublicar` devolviendo `[]` — que hace pasar los dos asertos de costo y lo
+mata el control positivo.
+
+### B-55 · el pegado de coordenadas se mide, y la coma decimal tiene nombre
+
+El vocabulario estaba declarado desde antes y `CoordenadasSede` se mergeó después,
+así que los dos eventos **nunca se emitieron**: sus cruces vacíos en GA4 se leían
+como «nadie pega coordenadas». El ítem prometía «una línea por rama». Son tres
+decisiones (D-186):
+
+1. **`coordenadas-pegar` es el denominador**, no «se pegó un link bueno». Cuatro
+   fallos son muchos sobre cinco intentos y ninguno sobre cuatrocientos.
+2. **Un intento no se cuenta dos veces.** Hay cuatro disparadores sobre el mismo
+   texto —pegar, Enter, «Usar» y salir del campo— y pegar **deja el texto puesto**,
+   así que el blur lo vuelve a aplicar. Sin guarda, un link corto pegado llegaba
+   como dos o tres fallos, y el sesgo no es parejo: **infla justo
+   `coord-link-corto`**, que es el número que decide B-45. Era el modo de falla más
+   caro que esta instrumentación podía tener — habría contestado «sí, resolvelos»
+   con datos inventados.
+3. **El `motivo` lo devuelve `parsearCoordenadas`, no el componente** (lección de
+   B-88 y de `MOTIVOS_IMAGEN`): deducirlo del texto del mensaje se rompe solo con la
+   próxima corrección de redacción, y en silencio.
+
+**`coord-coma-decimal` era vocabulario sin rama.** Los cuatro valores estaban
+declarados y ninguna ruta del código producía ese: su cruce vacío se leía como «eso
+no pasa nunca». Ahora existe la rama. Un par con coma decimal —«-34,5989,
+-58,4392», lo que copia una máquina configurada en español— **se sigue rechazando**,
+porque es genuinamente ambiguo (podrían ser dos números o cuatro, y equivocarse
+manda el evento al otro lado del planeta), pero con nombre propio y un mensaje que
+dice qué corregir. Antes caía en «no parece un link de Google Maps ni un par de
+coordenadas», que es **falso**: el par está, con el separador de otro idioma.
+
+Un test que se escribió mal y se corrigió: el aserto del orden entre los dos regex
+decía proteger que «-34, -58» siguiera leyéndose como par, y la mutación que
+invierte el orden **pasó** — los dos regex son disjuntos por construcción, así que
+el orden es defensivo y no la garantía. El aserto quedó, con lo que sí protege
+escrito: un regex más flojo se come ese par. Siete mutaciones en total, las siete
+mueren.
+
+### B-177 · el aviso de la etiqueta que se guardó y no quedó registrada
+
+Con el orden de escritura de D-111 son dos escrituras: la actividad primero, la
+etiqueta nueva después. La segunda puede fallar sola —y ese modo de falla se eligió
+a propósito, porque al revés se perdía la actividad entera (B-71)— pero
+`guardarActividad` devolvía `etiquetasSinRegistrar` y **nadie lo miraba**: un
+guardado con la etiqueta perdida se veía exactamente igual que uno perfecto.
+
+Tres decisiones (D-187):
+
+- **Dice cuál.** El resultado pasó de `boolean` a la lista de labels: con un
+  booleano el aviso solo puede decir «alguna etiqueta nueva no se registró», y con
+  cinco campos de taxonomía eso no es accionable. Se descuenta cada alta que sale
+  bien, así que con dos etiquetas y la segunda fallando nombra la segunda — mandar a
+  re-tipear una que ya quedó es trabajo inventado.
+- **`registrarUsos` salió del `catch` compartido, y eso cambia lo que el flag
+  significa.** Un fallo al **contar el uso** se reportaba como «la etiqueta no se
+  registró», que es mentira: la etiqueta está. Con el aviso en pantalla habría
+  mandado a arreglar algo que no está roto. Ahora tiene su propio `try` y su fallo
+  no se reporta: lo único que se pierde es una posición en el orden del desplegable.
+- **El aviso vive en `AdminApp`, no en el formulario**, que se desmonta al guardar,
+  y **afuera de la vista**, porque del formulario se vuelve al listado o al
+  calendario según de dónde se entró. Se limpia en las cuatro entradas a un
+  formulario: un aviso viejo arriba de una carga nueva manda a arreglar la etiqueta
+  de otra actividad.
+
+Vale ahora y no antes porque la pantalla de «Opciones» existe (B-06 / B-170): el
+aviso tiene a dónde mandar y no es solo una mala noticia.
+
+`tests/senales-del-guardado.test.ts` verifica la **clase**: deriva del fuente los
+campos de la variante `estado: 'ok'` y exige que la pantalla consuma cada uno.
+Agregar un campo al resultado y no consumirlo lo pone en rojo nombrándolo. **Una de
+las seis mutaciones sobrevivió a la primera versión del test** y vale escribirlo: el
+aserto de «cada entrada limpia el aviso» miraba una ventana de 200 caracteres antes
+del `setVista`, y los handlers están pegados, así que la ventana se comía la
+limpieza **del handler de al lado** — sacar la limpieza de «duplicar» pasaba en
+verde. El corte ahora es por el cuerpo del handler.
+
+### B-86 · estaba cerrado desde el 2026-08-25 y la entrada decía «parcial»
+
+Lo cerró B-168, que lo dice en su propio texto. Verificado leyendo el código:
+`usosAContar` arma los slugs por campo, `guardarActividad` los pasa a
+`registrarUsos` después del alta de opciones, y `ordenarValores` ordena las
+no-fijas por `usos`. Con tests en los dos lados.
+
+**Y verificarlo destapó un ítem nuevo: B-340.** `registrarUsos` suma **1 por
+guardado**, así que `usos` mide *veces guardado* y no *cuántas actividades usan la
+opción*. Eso rompe los dos trabajos que el §4.3 le da, y el segundo en la dirección
+que lo esconde: un typo creado y re-guardado cuatro veces tiene `usos: 5` y **deja
+de parecer basura**, que es justo el caso que el número existe para encontrar.
+
+### Los tres hallazgos de los auditores
+
+**`auditor-trampas` (P2) — un bug que introduje y que no habría fallado nunca.**
+`etiquetasSinRegistrar` juntaba los labels en un `Set<string>`, así que un arancel
+«Nuevo» y un barrio «Nuevo» —lo que pasa cuando alguien duda y escribe lo mismo en
+dos campos— eran **una** entrada: si el alta del primero salía bien y la del segundo
+fallaba, el éxito del primero borraba la entrada compartida y **el fallo del segundo
+desaparecía**. El aviso decía que todo salió bien y quedaba una taxonomía sin
+registrar que nadie sabía que había que volver a tipear. La clave pasa a ser el par
+`campo\0label`; lo que se **muestra** se sigue deduplicando por label. Y el auditor
+señaló por qué mis tests no lo agarraban: el fixture usaba labels distintos entre
+campos.
+
+**`auditor-privacidad` (P2) — la red del campo de coordenadas barría lo que no
+importa.** El aserto «nunca manda lo pegado» miraba `entrada|texto|pegado` y dejaba
+afuera los dos candidatos más a mano: `r.error` —hermano de `r.motivo` en el mismo
+`if (!r.ok)`, y dos de sus ramas **interpolan la coordenada de la persona**— y
+`geo`/`lat`/`lng`. Un `medirFuncion('coordenadas-fallo', r.error)` lo pasaba sin
+chistar. No filtraba igual (el sanitizador de `detalle` lo habría convertido en
+`otro`), pero la red decía verificar el criterio en el productor y no lo hacía.
+
+**`auditor-privacidad` (nota) — un cambio de comportamiento sin test.** Separar
+`registrarUsos` en su propio `try` hizo que ahora corra aunque un alta haya
+fallado; antes el throw lo salteaba. Es lo que se quiere —las otras etiquetas sí
+están y su uso tiene que contarse, y sobre la que falló es un no-op por D-103— pero
+nada lo fijaba.
+
+Los tres arreglados, con cinco mutaciones más. Y el auditor de trampas confirmó lo
+que había que confirmar: el orden de escritura de B-71/D-100 sigue intacto y el
+chequeo de clase lo sigue viendo; el import nuevo de `analytics-eventos` dentro de
+`coordenadas.ts` no arrastra Firebase al chunk del panel; y el `key={i}` de las
+filas de material **no** es una instancia nueva de la trampa 2 —el array no
+sincroniza con Calendar— que es justo el razonamiento que quedó escrito en B-342.
+
+### Y los cinco del `auditor-documentacion`
+
+Los cuatro primeros son de trazabilidad, y **dos los causó este mismo cambio**:
+
+1. **D-111 quedó afirmando algo que este cambio volvió falso.** Decía «el caso de
+   uso lo informa en su resultado (`etiquetasSinRegistrar`) y **hoy nadie lo
+   muestra en pantalla** — queda anotado como B-177». B-177 se cerró acá. Es el
+   patrón de B-56 exacto: una decisión que describe el estado del mundo envejece
+   cuando el ítem que nombra se cierra, y **nada falla**. Corregida con la nota, y
+   el párrafo original se deja para que se lea contra él.
+2. **La cita del orden de escritura es D-111, no D-100.** D-100 es «la mitad
+   cliente del §4.2 vive en un módulo puro» y no habla de orden de escrituras.
+   Este cambio repetía una cita ya cruzada y la propagaba a tres lugares nuevos
+   (D-187, `04-funcionalidades.md` y este CHANGELOG): los tres corregidos. Las
+   heredadas quedan como **B-345**, y ahí queda escrito cuáles citas de D-100
+   **sí** están bien, para que corregirlas no se pase de largo.
+3. **D-113 decía «cinco escrituras» y hoy son seis**: le faltaba `registrarUsos`,
+   que entró con B-168 el 2026-08-25. Preexistente, y justo el puerto cuyo
+   `try/catch` este cambio movió. Importa más que un número: ese documento es lo
+   que se lee para saber qué hay que poder falsear al testear el orden, y un
+   puerto que no figura es uno que un test nuevo no va a mockear.
+4. **Un merge mal resuelto en el BACKLOG, preexistente.** `### B-12` (la vista
+   previa del evento) estaba **sin cuerpo**, y su cuerpo colgaba debajo del
+   encabezado de `### B-13` (los reintentos del rebuild), que es otro tema.
+   `tests/sin-marcadores-de-conflicto.test.ts` no lo agarra porque no hay
+   marcadores de git, solo texto en el lugar equivocado. Movido a su lugar.
+
+**El quinto queda sin hacer, a propósito:** el conteo de tests de
+`docs/README.md` («2.173 tests en 93 archivos») y de `docs/08-operacion.md`
+(«2.006 en 88 al 2026-09-01») quedó viejo. Contado en esta corrida son **96
+archivos y 2.213 tests**, pero hay cinco frentes más agregando tests en paralelo,
+así que cualquier número que se escriba hoy va a estar mal a la tarde **y va a
+chocar en el merge**. El número se pone una vez, después de juntar los frentes,
+corriendo la suite entera.
+
+### Los cuatro que no entraron
+
+- **B-185** (el copy de «DM al Instagram») — el ítem dice literal que «el arreglo
+  son las dos líneas, o ninguna», y una de las dos vive en `functions/calendario.js`,
+  que es de otro frente. Cambiar sola la del panel **crea** la divergencia B-76 con
+  el build en verde, que es exactamente lo que el ítem prohíbe. Al buscarlas
+  apareció además que son dos y no cuatro: los otros dos mapas con la vía `dm` no
+  dicen «de Instagram» y no entran.
+- **B-190** (la plataforma «a confirmar») — «una entrada, cero código» no sobrevive
+  al contacto con los consumidores. El ítem revisó uno de cuatro. Con la entrada
+  puesta, el detalle diría «Online por A confirmar» y el **JSON-LD** emitiría un
+  `VirtualLocation { name: "A confirmar" }`, o sea una plataforma inventada en los
+  datos estructurados que indexa Google. No hay label que funcione en los cuatro a
+  la vez: hace falta código en `detallePublico.ts` y en `functions/`, los dos de
+  otros frentes. El razonamiento del ítem sigue en pie; lo que falta es
+  secuenciarlo.
+- **B-45** (los links cortos de Maps) — la resolución desde el cliente no es una
+  opción caedible: es una que **no funciona**. En `cors` el `fetch` tira antes de
+  ver el redirect, con `redirect: 'manual'` el `Location` no se puede leer, y en
+  `no-cors` la respuesta es opaca. La única salida es la Function, y su costo es más
+  que «otro endpoint»: es un fetcher de URLs arbitrarias, o sea superficie de SSRF.
+  Y ahora hay con qué decidirlo, porque B-55 cerró el mismo día: el criterio del
+  propio ítem pasó de hipótesis a consulta a GA4.
+- **B-100** (prellenar la sede) — el criterio que el ítem se puso no se cumple:
+  nadie midió si las sedes se repiten. Y una corrección: el ítem dice que «el
+  vocabulario del §9 puede contestarlo», y no puede — `sede.nombre` es texto libre,
+  no una taxonomía, así que ningún evento lo lleva ni debe. Lo que sí está medido es
+  `actividad-duplicar` (el competidor que el ítem nombra) y, desde B-168,
+  `barrio.usos`. Si algún día se hace, va **explícito** —un botón «copiar de la
+  última»— porque prellenar sin que nadie revise publica la sede de otra actividad.
+
+### Documentación
+
+`04-funcionalidades.md`; **D-185**, **D-186** y **D-187** en `06-decisiones.md`;
+`09-analitica.md` (los tres puntos de la instrumentación y por qué
+`coord-coma-decimal` era vocabulario sin rama); **tres** entradas en `novedades.ts`
+—los errores del material en la fila, el aviso de la opción que no quedó, y las
+coordenadas con coma— y **un punto** en `ayuda.ts`, en «Las listas que crecen
+solas», atado a dos tests: que son dos escrituras y que la segunda puede fallar
+sola es lo único de los cinco que no se adivina mirando la pantalla.
+
+Sin entrada en `02`, `03`, `07` y `08`: no se toca infra, ni colecciones ni campos,
+ni qué es público —el `detalle` de la analítica sigue siendo un enum cerrado de
+etiquetas de causa, y nada de lo pegado en el campo de coordenadas viaja—, ni cómo
+se corre o se despliega.
+
+**Seis ítems nuevos**, todos encontrados haciendo o auditando esto: **B-340** (`usos`
+cuenta guardados y no actividades), **B-341** (la galería y su prop `error` muerta),
+**B-344** (nadie sondea el emulador de Auth) en P2; **B-342** (las filas de material
+fuera del chasis), **B-343** (los errores por fila de los encuentros) y **B-345**
+(las citas heredadas a D-100) en P3.
 ## 2026-09-02 · fuera la entrada de /contacto
 
 **Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**

@@ -300,6 +300,31 @@ faltaban: `tags` era el único campo de taxonomía invisible en GA4 (B-73).
 80% de los fallos es `coord-link-corto`, la solución es resolver los links
 cortos, no explicar mejor el campo.**
 
+**Enchufado el 2026-09-02 (B-55).** El vocabulario existía desde antes y
+`CoordenadasSede` se mergeó después, así que los dos eventos estaban declarados y
+nunca se emitían: los cruces vacíos de GA4 se leían como "nadie pega
+coordenadas". Tres cosas que quedaron escritas al enchufarlo:
+
+- **`coordenadas-pegar` es el denominador**, no "se pegó un link bueno": cuenta
+  cada intento de resolver lo que hay en el campo, salga o no. Sin eso, "el 80 %
+  de los fallos es un link corto" no tiene con qué compararse.
+- **Un intento no se cuenta dos veces.** Hay cuatro disparadores sobre el mismo
+  texto —pegar, Enter, el botón "Usar" y salir del campo— y uno encadena con
+  otro: pegar deja el texto puesto, así que el blur vuelve a aplicarlo. La guarda
+  vive en el componente; sin ella, un link corto pegado llegaba como dos o tres
+  fallos e **inflaba justo el modo de fallo más frecuente**, que es el que decide
+  B-45.
+- **El `motivo` lo pone `parsearCoordenadas`, no el componente.** Es la lección de
+  B-88 (`MOTIVOS_IMAGEN`): el productor y el consumidor del vocabulario tienen
+  que ser el mismo. Deducirlo del texto del mensaje habría hecho que la próxima
+  corrección de redacción cambiara el evento sin que nada falle.
+
+`coord-coma-decimal` era **vocabulario sin rama**: ninguna ruta del código lo
+producía, así que su cruce vacío tampoco significaba nada. Ahora existe la rama
+—un par con coma decimal ("-34,5989, -58,4392"), lo que copia un Windows en
+español— y se sigue rechazando (es ambiguo: podrían ser dos números o cuatro),
+pero con nombre propio y con un mensaje que dice qué corregir.
+
 ---
 
 ## Qué NO se mide, y por qué

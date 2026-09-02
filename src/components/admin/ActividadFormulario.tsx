@@ -52,7 +52,13 @@ interface Props {
   copia?: ActividadForm;
   /** Título del original, solo para el aviso de la copia. */
   tituloOrigen?: string;
-  onGuardado: (id: string) => void;
+  /**
+   * B-177 — el segundo argumento son las etiquetas nuevas que **no** llegaron a
+   * la taxonomía. Va acá y no queda en el formulario porque al guardar el
+   * formulario se desmonta: el aviso lo pinta el chasis del panel, que es lo
+   * único que sobrevive al cambio de vista.
+   */
+  onGuardado: (id: string, etiquetasSinRegistrar?: readonly string[]) => void;
   onCancelar: () => void;
 }
 
@@ -129,8 +135,16 @@ export function ActividadFormulario({
   /**
    * Lo que le va a faltar para publicar, aunque el borrador ya se pueda guardar
    * (B-183). Se recalcula con cada tecla: es un `safeParse` de zod sobre un
-   * objeto de treinta campos, del mismo orden que el `JSON.stringify` que ya
-   * corre en cada tecleo para saber si hay cambios sin guardar.
+   * objeto de treinta campos.
+   *
+   * **Medido, no supuesto (B-198).** Acá decía "del mismo orden que el
+   * `JSON.stringify` que ya corre en cada tecleo", y es falso: cuesta ~10× más.
+   * Lo que lo deja igual de barato es la otra mitad de la medición —el costo es
+   * fijo del schema y **no escala con los encuentros**: 0,107 ms con uno,
+   * 0,205 ms con cincuenta—, así que el escenario que el ítem temía (un ciclo de
+   * 20 encuentros en un teléfono viejo) no existe. Sin debounce a propósito: un
+   * número mágico y una ventana en la que el aviso miente, a cambio de nada
+   * medible. Los números y el techo viven en `tests/costo-por-tecla.test.ts`.
    */
   const pendientesParaPublicar = useMemo(
     () => resumirFaltantes(faltaParaPublicar(form).map((i) => i.path.join('.'))),
@@ -226,7 +240,7 @@ export function ActividadFormulario({
       // El borrador del navegador ya no tiene sentido: lo guardado es esto
       // mismo, y dejarlo haría que reapareciera encima de la versión buena.
       autoguardado.limpiar();
-      onGuardado(r.id);
+      onGuardado(r.id, r.etiquetasSinRegistrar);
     } finally {
       setGuardando(false);
     }

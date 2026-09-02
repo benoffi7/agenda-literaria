@@ -2212,6 +2212,14 @@ realidad se guardó bien. El caso de uso lo informa en su resultado
 como **B-177** (decía «B-167» hasta el 2026-08-27; ese número se reasignó a la
 galería de imágenes).
 
+> **Resuelto en B-177 (D-187, 2026-09-02): el párrafo de arriba ya no es cierto y
+> se deja para que se lea contra su original.** El aviso se muestra en pantalla,
+> arriba de la vista, y **nombra la etiqueta** que no quedó — para eso
+> `etiquetasSinRegistrar` pasó de `boolean` a la lista de labels. Lo encontró el
+> `auditor-documentacion`, y es el patrón de B-56: una decisión que describe el
+> estado del mundo («hoy nadie lo muestra») envejece cuando el ítem que nombra se
+> cierra, y nada falla.
+
 **Alternativa descartada:** las dos escrituras en una sola transacción. Son
 documentos de colecciones distintas y `upsertOpcion` ya corre su propia
 transacción por etiqueta (§4.2); envolver todo pedía rehacer esa función para un
@@ -2254,10 +2262,16 @@ está sucio de verdad.
 
 ## D-113 · Las escrituras del caso de uso de guardado entran como puertos
 
-**Decisión:** `src/lib/formulario/guardar.ts` recibe sus cinco escrituras
-(`slugDisponible`, `upsertOpcion`, `upsertOpciones`, `crearActividad`,
-`actualizarActividad`) como un objeto de puertos, con `puertosFirestore` como
-default.
+**Decisión:** `src/lib/formulario/guardar.ts` recibe sus seis escrituras
+(`slugDisponible`, `upsertOpcion`, `upsertOpciones`, `registrarUsos`,
+`crearActividad`, `actualizarActividad`) como un objeto de puertos, con
+`puertosFirestore` como default.
+
+> Decía «cinco» y no listaba `registrarUsos`, que entró con B-168/B-86 el
+> 2026-08-25. Corregido el 2026-09-02, lo encontró el `auditor-documentacion`.
+> Que el número quedara viejo importa más de lo que parece: este documento es lo
+> que se lee para saber **qué escrituras** hay que poder falsear al testear el
+> orden, y un puerto que no figura es un puerto que un test nuevo no va a mockear.
 
 **Motivo:** el bug que se estaba arreglando (B-71) **es un orden de
 escrituras**, y un orden no se afirma mirando el resultado: hay que ver la
@@ -5769,3 +5783,171 @@ las tres cifras para seguir un archivo.** `ActividadFormulario.tsx` cayó de 14�
 ellos nacidos con el sitio público— así que baja cuando el repo crece y sube
 cuando el repo se encoge, sin decir nada del archivo. Se mira junto a LOC y
 fan-out, que son las que dependen de él.
+## D-185 · El aviso de «lo que falta para publicar» no se debouncea, y la medición dice por qué
+
+**B-198.** El aviso de B-183 es un `useMemo` sobre `form`, y `setForm` devuelve un
+objeto nuevo en cada tecleo: **cada tecla dispara un `safeParse` de zod sobre el
+formulario entero**. El ítem lo dejó sin optimizar a propósito, con dos frases: que
+era "del mismo orden que el `JSON.stringify` que ya corre en cada tecla" y que "en
+un teléfono viejo con un ciclo de 20 encuentros es lo primero que se notaría". Y
+pedía **medir antes de tocar**.
+
+### Lo medido
+
+| Encuentros | `faltaParaPublicar` | `JSON.stringify` del mismo form |
+|---|---|---|
+| 1 | 0,107 ms | 0,001 ms |
+| 8 | 0,107 ms | 0,007 ms |
+| 20 | 0,123 ms | 0,012 ms |
+| 50 | 0,205 ms | 0,025 ms |
+
+**Las dos frases del ítem eran falsas, y en direcciones opuestas.**
+
+1. **No es del mismo orden que el `stringify`: es ~10× más caro.** La premisa con
+   la que el ítem se tranquilizaba no se sostiene.
+2. **Y el escenario que temía no existe.** Con **un** encuentro ya cuesta
+   0,107 ms: lo que se paga es el costo fijo del schema, no el ciclo. Cincuenta
+   encuentros lo duplican, no lo multiplican por cincuenta. El "ciclo de 20
+   encuentros" no es el caso malo — es indistinguible del caso chico.
+
+### La decisión
+
+**No se debouncea.** Con 0,2 ms en el peor caso medido, un dispositivo diez veces
+más lento sigue en ~2 ms: una octava parte de un frame de 16 ms. Un debounce
+compraría eso a cambio de un número mágico y de una ventana en la que el aviso
+dice algo que ya no es cierto — y el aviso existe para que no se publique algo
+incompleto, así que una ventana de mentira es justo lo que no puede tener.
+
+También se descartó `useDeferredValue`, que era la versión sin número mágico: no
+hay nada que diferir cuando el trabajo no llega a un frame, y agrega un render de
+baja prioridad por tecla que hay que entender para leer el componente.
+
+### Qué queda atado
+
+`tests/costo-por-tecla.test.ts`, con **dos** asertos y un techo deliberadamente
+grosero (20 ms, dos órdenes de magnitud arriba de lo medido):
+
+- que un ciclo de 20 encuentros se valide muy por debajo de un frame;
+- que **el costo no escale con la cantidad de encuentros**, que es el hallazgo que
+  decide todo esto. Si un día una regla nueva comparara cada encuentro con todos
+  los demás, el escenario que el ítem temía volvería a ser real y esto lo diría.
+
+El techo no es un objetivo de performance: es el piso de lo absurdo. Un techo
+ajustado a lo medido sería un test que falla en una máquina cargada, y **un test
+que falla por su propia plomería enseña a saltearlo** — la lección del gate de
+`verificar-todo.sh`. Lo que tiene que detectar es que alguien meta red, `crypto` o
+una regla cuadrática en el camino del tecleo.
+
+---
+
+## D-186 · El motivo del fallo lo produce el parseo, no la pantalla — y el denominador se mide
+
+**B-55.** El vocabulario de `coordenadas-pegar` / `coordenadas-fallo` estaba
+declarado en `analytics-eventos.ts` desde antes y `CoordenadasSede` se mergeó
+después, así que los dos eventos **nunca se emitieron**: sus cruces vacíos en GA4
+se leían como "nadie pega coordenadas". El ítem prometía "una línea por rama". Son
+tres decisiones.
+
+**1 · `coordenadas-pegar` es el denominador, no "se pegó un link bueno".** Cuenta
+cada intento de resolver lo que hay en el campo, salga o no. Sin eso la pregunta
+que el ítem quiere contestar —"si el 80 % de los fallos es un link corto, hay que
+resolverlos"— no tiene con qué compararse: cuatro fallos son muchos sobre cinco
+intentos y ninguno sobre cuatrocientos.
+
+**2 · Un intento no se cuenta dos veces.** Hay **cuatro** disparadores sobre el
+mismo texto —pegar, Enter, el botón "Usar" y salir del campo— y uno encadena con
+otro: pegar aplica y **deja el texto puesto**, así que el blur lo vuelve a
+aplicar. Sin guarda, un solo link corto pegado llega como dos o tres fallos, y el
+sesgo no es parejo: **infla justo el modo de fallo más frecuente**, que es el que
+decide B-45. La guarda es un `useRef` con lo último medido, y se limpia al
+resolver bien (el campo queda vacío, así que el próximo intento es uno nuevo).
+
+**3 · El `motivo` lo devuelve `parsearCoordenadas`, no el componente.** Es la
+lección de B-88, la misma por la que `MOTIVOS_IMAGEN` vive con el vocabulario y no
+en el subidor: el productor y el consumidor tienen que ser el mismo. La
+alternativa —que el componente deduzca el motivo del texto del mensaje— es la
+variante silenciosa del bug: el día que se mejore una redacción el evento empieza
+a llegar como otra cosa, nada falla, y el número que decide B-45 queda mal para
+siempre.
+
+### `coord-coma-decimal` era vocabulario sin rama
+
+Los cuatro valores de `FALLOS_COORDENADAS` estaban declarados, y **ninguna ruta
+del código producía `coord-coma-decimal`**. Un `detalle` declarado que nadie emite
+es peor que uno que falta: su cruce vacío en GA4 se lee como "eso no pasa nunca".
+
+Ahora existe la rama. Un par con coma decimal ("-34,5989, -58,4392" — lo que copia
+una máquina configurada en español) **se sigue rechazando**, porque es
+genuinamente ambiguo: podrían ser dos números o cuatro, y equivocarse manda el
+evento al otro lado del planeta. Lo que cambió es que se nombra: antes caía en «no
+parece un link de Google Maps ni un par de coordenadas», que es **falso** —el par
+está, con el separador de otro idioma— y no dice qué corregir.
+
+El regex exige la coma **pegada a un dígito en los dos números**, y eso es lo que
+lo mantiene disjunto del par: para que `RE_PAR` matchee el string entero la única
+coma posible es la del separador, así que un string que matcheara los dos
+necesitaría dos comas-con-dígito y una sola coma a la vez. El orden entre los dos
+regex es defensivo, no la garantía — la garantía es el regex, y el test la fija con
+la mutación puesta: escrito más flojo (`-?\d{1,3},\s*-?\d{1,3}`, que es la primera
+versión que a uno se le ocurre) se come «-34, -58», un par legítimo.
+
+---
+
+## D-187 · El aviso de la etiqueta sin registrar vive en el chasis del panel, y nombra la etiqueta
+
+**B-177.** Con el orden de escritura de D-111 son **dos** escrituras: primero la
+actividad, después la etiqueta nueva en `/opciones/*`. La segunda puede fallar
+sola, y ese modo de falla se eligió a propósito (al revés se perdía la actividad
+entera, B-71). Lo que faltaba: `guardarActividad` devolvía `etiquetasSinRegistrar`
+y **nadie lo miraba**, así que un guardado con la etiqueta perdida se veía
+exactamente igual que uno perfecto.
+
+**1 · Dice cuál, no que hubo alguna.** El resultado pasó de `boolean` a la lista de
+labels. Con un booleano el aviso solo puede decir "alguna etiqueta nueva no se
+registró", y eso no es accionable: hay cinco campos con taxonomía y el arreglo es
+volver a tipear **esa**. Se descuenta cada alta que sale bien, así que con dos
+etiquetas nuevas y la segunda fallando el aviso nombra la segunda y no las dos —
+mandar a re-tipear una que ya quedó es trabajo inventado.
+
+**2 · `registrarUsos` salió del `catch` compartido, y eso cambia lo que el flag
+significa.** Antes compartía el `try` con las altas, así que un fallo al **contar
+el uso** se reportaba como "la etiqueta no se registró". Es mentira: la etiqueta
+está, lo que no se contó es el uso. Con el aviso en pantalla eso mandaría a
+arreglar algo que no está roto. Un fallo al contar **no se reporta**: lo único que
+se pierde es una posición en el orden del desplegable, y avisar de eso gasta la
+atención que el aviso necesita para lo que sí importa.
+
+**3 · El aviso vive en `AdminApp`, no en el formulario.** Al guardar, el formulario
+se desmonta. El ítem nombraba dos salidas —una franja en el listado o quedarse en
+el formulario con el aviso— y la segunda es peor: la actividad **ya está escrita**,
+así que un formulario que se queda abierto invita a un segundo guardado que choca
+contra su propio slug. Y la franja va **afuera de la vista**, no adentro del
+listado, porque del formulario se puede volver al listado o al calendario según de
+dónde se entró; adentro del listado, editar desde el calendario se comería el
+aviso.
+
+Se limpia al abrir **cualquiera** de las cuatro entradas a un formulario (nueva,
+editar desde el listado, editar desde el calendario, duplicar): un aviso del
+guardado anterior colgado arriba de una carga nueva se lee como si fuera de esta,
+y manda a arreglar la etiqueta de otra actividad.
+
+**Por qué recién ahora vale la pena.** El ítem decía "vale poco por sí solo; vale
+más el día que exista la UI de taxonomías (B-06), que es donde la etiqueta faltante
+se arregla en un clic". Ese día llegó con B-170, así que el aviso tiene a dónde
+mandar y no es solo una mala noticia.
+
+### Qué queda atado, y la clase
+
+`tests/senales-del-guardado.test.ts` no verifica la instancia: **deriva del fuente
+los campos de la variante `estado: 'ok'`** de `ResultadoGuardado` y exige que la
+pantalla consuma cada uno. La clase de B-177 no es "este booleano": es *un campo
+del resultado que nadie mira*, y una señal nueva que la pantalla ignore falla acá.
+Se verificó con la mutación: agregar un `usosSinContar` al resultado y no
+consumirlo pone el test en rojo nombrándolo.
+
+**Una mutación sobrevivió a la primera versión del test**, y vale escribirla: el
+aserto de "cada entrada a un formulario limpia el aviso" miraba una ventana de 200
+caracteres antes del `setVista`, y los handlers están pegados, así que la ventana
+se comía la limpieza **del handler de al lado**. Sacar la limpieza de «duplicar»
+pasaba en verde. El corte ahora es por el cuerpo del handler (`=> {` más cercano
+hacia atrás).

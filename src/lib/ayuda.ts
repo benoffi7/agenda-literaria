@@ -1086,6 +1086,27 @@ export const CAPITULOS: CapituloAyuda[] = [
           'abandonás el formulario a mitad de camino, no queda nada dando vueltas.',
       },
       {
+        // B-177 — esto no se adivina mirando la pantalla: son **dos** escrituras,
+        // primero la actividad y después la opción nueva, y la segunda puede
+        // fallar sola. Hasta que existió el aviso, el guardado se veía perfecto.
+        texto:
+          'Son dos pasos, primero la actividad y después la opción nueva, así que muy de vez en ' +
+          'cuando la actividad se guarda bien y la opción no llega a la lista. Cuando pasa, el ' +
+          'panel te avisa arriba y te dice cuál: la actividad quedó igual con esa opción, lo ' +
+          'único que falta es agregarla a la lista para la próxima. Se arregla eligiéndola otra ' +
+          'vez y guardando, o creándola en «Opciones».',
+        atadoA: [
+          {
+            archivo: 'tests/formulario-dominio.test.ts',
+            it: 'si falla el registro de la etiqueta, el guardado igual es ok',
+          },
+          {
+            archivo: 'tests/senales-del-guardado.test.ts',
+            it: 'el formulario le pasa las etiquetas a quien sobrevive al guardado',
+          },
+        ],
+      },
+      {
         texto:
           'Las opciones de fábrica (los tipos de actividad, «Gratis», «A la gorra») no se pueden ' +
           'borrar ni renombrar desde acá.',

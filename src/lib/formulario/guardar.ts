@@ -51,10 +51,16 @@ export type ResultadoGuardado =
       /** El formulario tal como se guardó, ya con el slug normalizado. */
       guardado: ActividadForm;
       /**
-       * La actividad se escribió pero alguna etiqueta nueva no llegó a
-       * `/opciones/*`. Ver el comentario de orden de escritura, abajo.
+       * Las etiquetas nuevas que **no** llegaron a `/opciones/*`. Vacío es lo
+       * esperable. Ver el comentario de orden de escritura, abajo.
+       *
+       * B-177 — era un booleano, y con un booleano el aviso solo podía decir
+       * "alguna etiqueta no se registró", que no es accionable: hay hasta cinco
+       * campos con taxonomía y el arreglo es volver a tipear **esa**. Son los
+       * labels tal como se escribieron, no los slugs: es lo que la persona
+       * reconoce de lo que acaba de cargar.
        */
-      etiquetasSinRegistrar: boolean;
+      etiquetasSinRegistrar: readonly string[];
     }
   | { estado: 'error'; error: unknown };
 
@@ -145,27 +151,77 @@ export const guardarActividad = async (
     // escrita, y reportar error haría que el segundo intento choque contra su
     // propio slug (`slugDisponible` ya lo ve tomado) sobre un formulario que
     // en realidad se guardó bien.
-    let etiquetasSinRegistrar = false;
+    const labelsTags = guardado.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
+
+    /*
+     * B-177 — qué etiquetas quedaron sin registrar, no si quedó alguna.
+     *
+     * Se arranca del conjunto completo y cada alta que sale bien se descuenta,
+     * así que lo que queda al salir por el `catch` es exactamente lo que no
+     * llegó. Con un booleano el aviso decía "alguna etiqueta nueva no se
+     * registró" y no cuál, y volver a tipear la que falta implica adivinar entre
+     * cinco campos.
+     *
+     * **La clave es el par `campo|label`, no el label.** Lo encontró el
+     * `auditor-trampas`: con un `Set` de labels, dos "Otro" tipeados igual en dos
+     * campos distintos —un arancel "Nuevo" y un barrio "Nuevo", que es
+     * exactamente lo que pasa cuando alguien duda y escribe lo mismo dos veces—
+     * son **una** entrada. Si el alta del primero sale bien y la del segundo
+     * falla, el éxito del primero borra la entrada compartida y el fallo del
+     * segundo **desaparece**: el aviso dice que todo salió bien y queda una
+     * taxonomía sin registrar que nadie sabe que hay que volver a tipear. El
+     * separador es un `\0` porque no puede aparecer en un label.
+     *
+     * Lo que se **muestra** sí se deduplica por label: dos campos que fallaron
+     * con el mismo texto son un solo nombre en pantalla, porque nombrarlo dos
+     * veces no agrega información — es el mismo criterio que `resumirFaltantes`.
+     */
+    const clave = (campo: string, label: string) => `${campo}\0${label}`;
+    const restantes = new Map<string, string>([
+      ...labelsNuevos.map((l) => [clave(l.campo, l.label), l.label] as const),
+      ...labelsTags.map((l) => [clave('tags', l), l] as const),
+    ]);
     try {
       for (const { campo, label } of labelsNuevos) {
         await upsertOpcion(campo, label, uid);
+        restantes.delete(clave(campo, label));
       }
-      const labelsTags = guardado.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
-      if (labelsTags.length) await upsertOpciones('tags', labelsTags, uid);
+      if (labelsTags.length) {
+        // Una sola llamada para todos los tags, así que es todo o nada: si
+        // `upsertOpciones` falla, ninguno quedó registrado.
+        await upsertOpciones('tags', labelsTags, uid);
+        for (const l of labelsTags) restantes.delete(clave('tags', l));
+      }
+    } catch {
+      // Se sale con lo que quedó en `restantes`. No se reintenta acá: la
+      // transacción del §4.2 ya reusa por slug, así que el reintento útil es el
+      // de la persona volviendo a tipear la etiqueta, y eso lo habilita el aviso.
+    }
 
-      // §4.3 — recién acá se cuenta el uso, y va después del alta a propósito:
-      // `registrarUsos` no crea el documento de opciones si no existe, así que
-      // contar antes de sembrar no contaría nada. B-168 / D-103.
+    /*
+     * §4.3 — recién acá se cuenta el uso, y va después del alta a propósito:
+     * `registrarUsos` no crea el documento de opciones si no existe, así que
+     * contar antes de sembrar no contaría nada. B-168 / D-103.
+     *
+     * En su propio `try` desde B-177, y eso **cambia lo que el flag significa**.
+     * Antes compartía el `catch` con las altas, así que un fallo al contar el uso
+     * se reportaba como "la etiqueta no se registró" —y es mentira: la etiqueta
+     * está, lo que no se contó es el uso—. El aviso de pantalla mandaría a
+     * arreglar algo que no está roto. Un fallo acá **no se reporta**: lo único
+     * que se pierde es una posición en el orden del desplegable, y avisar de eso
+     * gasta la atención que el aviso necesita para lo que sí importa.
+     */
+    try {
       for (const [campo, slugs] of Object.entries(
         usosAContar(guardado, labelsNuevos, tagsNuevos),
       ) as [CampoTaxonomia, string[]][]) {
         await registrarUsos(campo, slugs);
       }
     } catch {
-      etiquetasSinRegistrar = true;
+      // Ver arriba: silencioso a propósito.
     }
 
-    return { estado: 'ok', id, guardado, etiquetasSinRegistrar };
+    return { estado: 'ok', id, guardado, etiquetasSinRegistrar: [...new Set(restantes.values())] };
   } catch (error) {
     return { estado: 'error', error };
   }

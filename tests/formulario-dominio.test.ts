@@ -578,7 +578,156 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
     });
     const r = ok(await guardarActividad(entrada(), puertos));
     expect(r.id).toBe('act1');
-    expect(r.etiquetasSinRegistrar).toBe(true);
+    // B-177 — dice **cuál**, no que hubo alguna: es el label tal como se tipeó,
+    // que es lo que la persona reconoce de lo que acaba de cargar.
+    expect(r.etiquetasSinRegistrar).toEqual(['Con beca parcial']);
+  });
+
+  /**
+   * B-177 — el aviso de pantalla necesita nombrar la etiqueta, así que lo que se
+   * verifica acá es que el resultado diga **cuál** y no que hubo alguna.
+   */
+  describe('qué etiquetas quedaron sin registrar (B-177)', () => {
+    it('en el caso feliz no queda ninguna', async () => {
+      const { puertos } = puertosFalsos();
+      expect(ok(await guardarActividad(entrada(), puertos)).etiquetasSinRegistrar).toEqual([]);
+    });
+
+    it('las que ya se alcanzaron a escribir no se reportan', async () => {
+      // El alta es una por campo y en serie: si la segunda falla, la primera
+      // está. Reportar las dos mandaría a volver a tipear una etiqueta que ya
+      // quedó registrada — y volver a tipearla es lo que el aviso pide hacer.
+      let vueltas = 0;
+      const { puertos } = puertosFalsos({
+        upsertOpcion: async () => {
+          vueltas += 1;
+          if (vueltas > 1) throw new Error('offline');
+          return 'slug';
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            labelsNuevos: [
+              { campo: 'arancel' as const, label: 'Con beca parcial' },
+              { campo: 'barrio' as const, label: 'Villa Crespo' },
+            ],
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Villa Crespo']);
+    });
+
+    it('un fallo al contar el uso no se reporta como etiqueta sin registrar', async () => {
+      /*
+       * Antes de B-177 `registrarUsos` compartía el `catch` con las altas, así
+       * que un fallo al contar el uso se reportaba como "la etiqueta no se
+       * registró" — y es mentira: la etiqueta está. Con el aviso en pantalla eso
+       * mandaría a arreglar algo que no está roto. Lo único que se pierde es una
+       * posición en el orden del desplegable, y por eso es silencioso.
+       */
+      const { puertos } = puertosFalsos({
+        registrarUsos: async () => {
+          throw new Error('offline');
+        },
+      });
+      const r = ok(await guardarActividad(entrada(), puertos));
+      expect(r.etiquetasSinRegistrar).toEqual([]);
+    });
+
+    it('no dedupea dos etiquetas distintas que comparten el mismo texto', async () => {
+      /*
+       * Lo encontró el `auditor-trampas`. La primera versión juntaba los labels
+       * en un `Set<string>`, así que un arancel «Nuevo» y un barrio «Nuevo»
+       * —que es exactamente lo que pasa cuando alguien duda y escribe lo mismo
+       * en dos campos— eran **una** entrada: el éxito del primero borraba la
+       * entrada compartida y el fallo del segundo desaparecía. El aviso decía
+       * que todo salió bien y quedaba una taxonomía sin registrar que nadie
+       * sabía que había que volver a tipear.
+       */
+      const { puertos } = puertosFalsos({
+        upsertOpcion: async (campo) => {
+          if (campo === 'barrio') throw new Error('offline');
+          return 'nuevo';
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            labelsNuevos: [
+              { campo: 'arancel' as const, label: 'Nuevo' },
+              { campo: 'barrio' as const, label: 'Nuevo' },
+            ],
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Nuevo']);
+    });
+
+    it('dos campos que fallan con el mismo texto se nombran una sola vez', async () => {
+      // La otra mitad: la clave interna distingue por campo, pero lo que se
+      // **muestra** se deduplica por label. Nombrar dos veces el mismo texto no
+      // agrega información — el mismo criterio que `resumirFaltantes`.
+      const { puertos } = puertosFalsos({
+        upsertOpcion: async () => {
+          throw new Error('offline');
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            labelsNuevos: [
+              { campo: 'arancel' as const, label: 'Nuevo' },
+              { campo: 'barrio' as const, label: 'Nuevo' },
+            ],
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Nuevo']);
+    });
+
+    it('un fallo al dar de alta la etiqueta no impide contar los usos de las que sí están', async () => {
+      /*
+       * Lo pidió el `auditor-privacidad`, y es un cambio de comportamiento real
+       * de B-177 que ningún test fijaba: antes `registrarUsos` compartía el
+       * `try` con las altas, así que un throw en `upsertOpcion` lo salteaba
+       * también. Ahora corre igual.
+       *
+       * Es lo que se quiere: las otras etiquetas de la actividad **sí** están
+       * registradas y su uso tiene que contarse. Y sobre la que no se dio de
+       * alta es un no-op, porque `registrarUsos` ignora los slugs que no
+       * existen (D-103).
+       */
+      const { puertos, llamadas } = puertosFalsos({
+        upsertOpcion: async () => {
+          throw new Error('offline');
+        },
+      });
+      await guardarActividad(entrada(), puertos);
+      expect(llamadas.filter((l) => l.startsWith('registrarUsos:')).length).toBeGreaterThan(0);
+    });
+
+    it('las etiquetas de tags también se nombran', async () => {
+      const { puertos } = puertosFalsos({
+        upsertOpciones: async () => {
+          throw new Error('offline');
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            form: formularioLleno({ tags: ['poesia-contemporanea'] }),
+            labelsNuevos: [],
+            tagsNuevos: { 'poesia-contemporanea': 'Poesía contemporánea' },
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Poesía contemporánea']);
+    });
   });
 
   it('sin etiquetas nuevas no se toca la taxonomía', async () => {
