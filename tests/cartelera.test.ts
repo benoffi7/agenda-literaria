@@ -279,6 +279,40 @@ describe('lo que cada afiche lleva, y lo que no', () => {
     expect([sinMedida.ancho, sinMedida.alto]).toEqual([null, null]);
   });
 
+  it('la miniatura de la Function se deriva, y solo para las propias — B-220', () => {
+    /*
+     * D-175. La cartelera es la salida elegida para la miniatura porque es la
+     * **única** página que pide muchas imágenes a la vez: con las 30 de
+     * producción, recorrerla entera pasa de 3518,5 KB a 1032,4 KB (−71 %).
+     *
+     * Y se **deriva** de la URL del original en vez de leerse de un campo: la
+     * Function no escribe nada en el documento, que es lo que hacía inviable a
+     * B-220 mientras el write-back parecía obligatorio.
+     */
+    const propia = carteleraDeDetalles([
+      conFlyer({}, [
+        imagen({
+          origen: 'propia',
+          storagePath: 'imagenes/img_1.jpg',
+          url:
+            'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/' +
+            'imagenes%2Fimg_1.jpg?alt=media&token=tok',
+        }),
+      ]),
+    ])[0]!;
+    expect(propia.urlMiniatura).toContain('miniaturas%2Fimg_1.jpg');
+    // Sin el token: lo que autoriza la lectura es `allow get: if true`, y el de
+    // la miniatura es otro que no conocemos.
+    expect(propia.urlMiniatura).not.toContain('token=');
+
+    // Una externa no se toca ni se descarga (DEC-7d), así que no tiene
+    // miniatura. Mutación: derivarla igual — el `srcset` de la pared apuntaría a
+    // una dirección de nuestro bucket que no existe.
+    const externa = carteleraDeDetalles([conFlyer()])[0]!;
+    expect(externa.url).toContain('ejemplo.com');
+    expect(externa.urlMiniatura).toBeNull();
+  });
+
   it('no lleva `storagePath` ni ningún campo interno', () => {
     /*
      * La pared se arma desde `DetallePublico`, que ya es la proyección auditada

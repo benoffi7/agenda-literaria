@@ -519,6 +519,7 @@ export function AdminApp() {
             // calendario: se llegó acá desde un aviso, y lo más probable es que
             // haya más de uno para atender en la misma sentada.
             setVolverA('estadisticas');
+            setEtiquetasSinRegistrar([]);
             setVista({ tipo: 'editar', actividad: a });
           }}
         />

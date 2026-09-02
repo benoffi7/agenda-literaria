@@ -53,8 +53,8 @@ con `firebase deploy --only firestore:rules,firestore:indexes`.
 |---|---|
 | Bucket | `agenda-literaria.firebasestorage.app` (el default del proyecto) |
 | Declarado en | `PUBLIC_FIREBASE_STORAGE_BUCKET`, en los tres `.env.*` |
-| Reglas | `storage.rules` — **escritas, sin desplegar** |
-| Prefijo en uso | `imagenes/img_<uuid>.{jpg,png}` — la galería de B-167 |
+| Reglas | `storage.rules` — **desplegadas y funcionando** (ver abajo) |
+| Prefijos en uso | `imagenes/img_<uuid>.{jpg,png}` (la galería de B-167) y `miniaturas/img_<uuid>.jpg` (B-220, D-175) |
 
 **Lo único que hay ahí son las imágenes propias de la galería** (B-167, DEC-7c):
 las que se suben desde el panel, en oposición a las externas, que son una URL de
@@ -70,11 +70,35 @@ Se despliegan con `firebase deploy --only storage`, que es un target **aparte** 
 `firestore:rules`. `scripts/que-deployar.sh` lo decide en su propia línea; ver
 `08-operacion.md` § «Reglas de Storage».
 
+**Están desplegadas — verificado contra producción el 2026-09-02**, y la doc
+decía lo contrario. Las dos mitades se comprobaron sin credenciales, porque las dos
+son observables desde afuera:
+
+- un objeto de `imagenes/` responde **200** a un `GET` anónimo, así que
+  `allow get: if true` está activo;
+- `GET /v0/b/<bucket>/o?prefix=imagenes/` anónimo responde **403**, así que
+  `allow list: if esAdmin()` también. La trampa 13 está cerrada en producción y
+  no solo en el emulador.
+
+**Y un dato que cambia cómo hay que leer las URLs de descarga:** el mismo objeto
+responde 200 **con** su token, **sin** token y con un token inventado. O sea que
+el `?token=` de `getDownloadURL()` **no protege nada** mientras la regla sea
+pública — lo que autoriza es la regla. Es lo que B-206 #1 ya había decidido
+(«el token deja de ser lo que protege el objeto»), ahora medido; y es lo que
+permite que el sitio **derive** la URL de la miniatura sin conocer su token
+(D-175).
+
 **Lo que estas reglas hacen** (DEC-7b): lectura pública bajo `imagenes/` —son
 imágenes que van al sitio y a `og:image`—, escritura solo con el claim `admin`, y
 un tope de 3 MB y de tipo (`image/jpeg`, `image/png`) verificado del lado del
 servidor porque el cliente se puede saltear. Lo que **no** pueden hacer es contar
 las imágenes de una actividad: ese tope vive en el schema.
+
+**`miniaturas/` es su hermano, no su hijo** (B-220, D-175): `allow get: if true`,
+`allow list: if esAdmin()` y `allow write: if false` — ahí escribe solo la
+Function, con el Admin SDK, que pasa por encima de las reglas. Anidarlo bajo
+`imagenes/` habría obligado a escribir `{ruta=**}`, y ése es el patrón con el que
+la trampa 13 se reabre.
 
 ## Authentication
 
@@ -156,6 +180,7 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | ACTIVE — desplegada a mano el 2026-08-25 |
 | `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
+| `optimizarImagen` | `onObjectFinalized` (bucket entero) | **escrita, sin desplegar** — B-220, D-175. Su primer deploy necesita IAM que el dueño tiene que otorgar: ver `08-operacion.md` § «Permisos que necesita `optimizarImagen`» |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
 solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
@@ -276,6 +301,17 @@ roles/eventarc.eventReceiver   recibir el trigger de Firestore
 roles/run.invoker              ser invocada como servicio de Cloud Run
 roles/artifactregistry.reader  leer su propia imagen al arrancar
 ```
+
+**Falta uno, y lo necesita `optimizarImagen`** (B-220, D-175): ningún rol de
+Storage está en esa lista, así que hoy la Function no podría ni bajar la imagen
+que la disparó. Hace falta `roles/storage.objectUser` **sobre el bucket** (no
+sobre el proyecto; `objectAdmin` agregaría el IAM por objeto, que es un canal que
+`storage.rules` no audita y que la Function no usa), más un binding de `roles/pubsub.publisher` para el service
+agent de Cloud Storage —que es de Google y no nuestro, y es el requisito que
+sorprende: los triggers de Storage v2 llegan por Eventarc y Eventarc los recibe
+de una notificación de Pub/Sub—. Los comandos exactos están en
+`08-operacion.md`; **los otorga el dueño**, porque `deploy-ci@` no tiene
+`setIamPolicy` y darle eso sería casi ejecución arbitraria (D-119).
 
 **Los últimos tres hay que otorgarlos a mano.** La service account por defecto
 de Compute los trae de fábrica; una propia no. Es la causa de que el primer

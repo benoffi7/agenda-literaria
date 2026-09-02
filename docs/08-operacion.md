@@ -467,6 +467,151 @@ las reglas. El comando de arriba sigue sirviendo para desplegar sin esperar un p
 y para el **primer** deploy de una función nueva, que además necesita los roles de
 `calendar-sync@` del principio de esta sección — ésos la CI no los toca.
 
+### `optimizarImagen` — la Function de imágenes (B-220, D-175)
+
+Es el **primer trigger de Storage** del proyecto y el primero con una dependencia
+binaria (`sharp`), así que su primer deploy no es como los otros.
+
+```bash
+firebase deploy --only functions:optimizarImagen
+```
+
+#### Permisos que necesita `optimizarImagen`, y los otorga el dueño
+
+**No se pueden otorgar desde el repo ni desde la CI** (`deploy-ci@` no tiene
+`resourcemanager.projects.setIamPolicy`, y darle eso sería casi ejecución
+arbitraria — el mismo argumento de D-119). Son tres cosas, y **hasta que estén,
+el trigger falla o no se crea**:
+
+**1 · `calendar-sync@` tiene que poder leer y escribir el bucket.**
+
+La Function corre como `calendar-sync@` (D-06, se reusa a propósito: una service
+account nueva necesitaría otra vez los tres roles que la default de Compute trae
+de fábrica, y eso ya hizo fallar dos deploys). Sus roles actuales
+—`datastore.user`, `logging.logWriter`, `eventarc.eventReceiver`, `run.invoker`,
+`artifactregistry.reader`— **no incluyen ninguno de Storage**, así que hoy no
+puede ni bajar la imagen que la disparó.
+
+```bash
+# Sobre el bucket y no sobre el proyecto: es el único que necesita tocar.
+gcloud storage buckets add-iam-policy-binding gs://agenda-literaria.firebasestorage.app \
+  --member=serviceAccount:calendar-sync@agenda-literaria.iam.gserviceaccount.com \
+  --role=roles/storage.objectUser
+```
+
+**`objectUser` y no `objectAdmin`, y la diferencia importa** — lo corrigió el
+`auditor-privacidad`, y la primera versión de esta sección tenía el motivo al
+revés. `objectUser` ya incluye `storage.objects.create`, `.delete`, `.get`,
+`.list` y **`.update`**, o sea que alcanza para el `save()` encima del original y
+para el `setMetadata()`. Lo único que `objectAdmin` agrega es
+`getIamPolicy`/`setIamPolicy` sobre los objetos: el canal de permisos **por
+objeto**, que **no pasa por `storage.rules`** y que por lo tanto no lo audita nada
+de este repo. Es la facultad de hacer público o privado un objeto por afuera de
+todo lo que miramos, y la Function no la usa nunca.
+
+Ninguno de los dos incluye `storage.buckets.*`: no puede borrar el bucket ni
+cambiar sus reglas.
+
+**Y una consecuencia de IAM que conviene tener al lado de la trampa 13:**
+cualquier rol de lectura de objetos concede `storage.objects.list`, así que
+`calendar-sync@` va a poder enumerar el bucket por la **API de GCS**. Eso no abre
+el agujero de la trampa 13 —que es sobre el canal de reglas, el que ve un anónimo
+con el SDK web— pero sí significa que `allow list: if esAdmin()` protege **un
+canal y no el bucket**, y que ahora hay un principal más del otro lado.
+
+**2 · El service agent de Cloud Storage tiene que poder publicar en Pub/Sub.**
+
+Es el requisito que sorprende, porque no es de *nuestra* service account: los
+triggers de Storage v2 llegan por Eventarc, y Eventarc los recibe de una
+notificación de Pub/Sub que publica el **service agent de GCS**. Sin este
+binding, el deploy falla con un error que no dice esto.
+
+```bash
+SA=$(gcloud storage service-agent --project=agenda-literaria)
+gcloud projects add-iam-policy-binding agenda-literaria \
+  --member="serviceAccount:${SA}" --role=roles/pubsub.publisher
+```
+
+Es **una sola vez por proyecto**, no por Function.
+
+**3 · Las APIs de Eventarc y Pub/Sub, si no estaban.**
+
+```bash
+gcloud services enable eventarc.googleapis.com pubsub.googleapis.com \
+  --project agenda-literaria
+```
+
+`eventarc` ya está habilitada por los triggers de Firestore; `pubsub` conviene
+confirmarla.
+
+#### Después del deploy: el barrido de las que ya estaban
+
+`onObjectFinalized` corre cuando un objeto **se escribe**, así que las 30
+imágenes que ya están en el bucket no pasaron por el pipeline: no tienen
+miniatura y siguen pesando lo que pesaban. Es lo que arregla el barrido, y es
+**el paso que cierra B-300 en producción**.
+
+```bash
+# 1 · Ver qué haría (no escribe nada). El default es este.
+node scripts/optimizar-imagenes.mjs
+
+# 2 · Aplicarlo.
+node scripts/optimizar-imagenes.mjs --aplicar
+
+# 3 · Un minuto después, volver a correr el paso 1: si algún objeto sigue
+#     apareciendo en la lista, la Function no está desplegada, no tiene los
+#     permisos de arriba, o falló. Los logs lo dicen.
+node scripts/optimizar-imagenes.mjs
+```
+
+El script **no reimplementa el pipeline**: reescribe los mismos bytes y deja que
+la Function haga el trabajo. Una segunda copia de `sharp` produciría objetos
+distintos el día que una de las dos cambie —media galería optimizada de una
+manera y media de otra—, y este camino además **verifica el deploy de verdad**.
+Es idempotente: lo que ya tiene `customMetadata.optimizada` se saltea.
+
+Ensayarlo contra el emulador antes (`FIREBASE_STORAGE_EMULATOR_HOST` seteado
+apunta ahí; sin eso apunta a producción, y lo anuncia antes de escribir).
+
+#### Verificar que anduvo
+
+```bash
+# Los logs de una imagen optimizada dicen antes, después y qué formato salió.
+gcloud functions logs read optimizarImagen --region southamerica-east1 --limit 20
+
+# Y el resultado se mira sin credenciales, porque la imagen es pública:
+#   Content-Length tiene que haber bajado, y Cache-Control decir immutable.
+curl -sI 'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/imagenes%2F<id>.png?alt=media' \
+  | grep -iE 'content-type|content-length|cache-control'
+```
+
+En los logs, `"motivo":"ya-optimizada"` y `"motivo":"fuera-del-prefijo"` en
+`DEBUG` **son lo esperado**: son las dos guardas anti-recursión cortando. Aparecen
+dos o tres veces por imagen subida. Lo que **no** es esperado es que crezcan sin
+parar — eso sería el lazo, y no hay tope de plataforma que lo pare (D-175).
+
+#### Probar el trigger con los emuladores
+
+El `npm run emu` de siempre arranca `--only auth,firestore,storage`: **sin el
+emulador de Functions no hay trigger que probar.** Y hacen falta dos cosas más:
+
+```bash
+# 1 · `functions/` necesita su propio node_modules: `sharp` no se hereda del
+#     root, igual que en el deploy. Es una compilación nativa, tarda.
+cd functions && npm install && cd ..
+
+# 2 · El emulador de Functions tiene que estar en el `--only`.
+JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home" \
+  npx firebase emulators:start --only auth,firestore,storage,functions
+```
+
+**El emulador de Functions cachea el módulo cargado**: al cambiar
+`functions/imagenes.js` hay que **reiniciarlo**, o se sigue ejecutando el código
+viejo. Es cómo se pierde media hora creyendo que una mutación no hace nada.
+
+Si hay otra suite de emuladores corriendo (otro worktree), los puertos chocan:
+copiar `firebase.json` con puertos alternativos y pasarlo con `-c`.
+
 ### Reportes del panel → issues de GitHub (una sola vez)
 
 Cinco pasos manuales, en este orden. Los tres primeros los hace el dueño de la

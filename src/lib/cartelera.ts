@@ -30,6 +30,7 @@
  * desde vitest, así que lo que decida qué entra a la pared tiene que vivir acá.
  */
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
+import { urlDeMiniatura } from '@/lib/imagenes';
 import type { DetallePublico } from '@/lib/detallePublico';
 
 /** Un afiche pegado en la pared. */
@@ -40,6 +41,30 @@ export interface Afiche {
   titulo: string;
   tipoEtiqueta: string;
   url: string;
+  /**
+   * La miniatura de 480px que deriva la Function de B-220, o `null` si la imagen
+   * es **externa** (no la tocamos, DEC-7d) — B-220, D-175.
+   *
+   * ── Por qué la cartelera y no otra salida ─────────────────────────────
+   * Es la **única** página del sitio que pide muchas imágenes a la vez, y por eso
+   * es la que B-266 mide: por pantalla se sostiene indefinidamente gracias al
+   * `lazy`, pero **recorrerla entera** se cae alrededor de los 20-25 flyers y hoy
+   * hay 29 con imagen. Con las 30 imágenes de producción, el recorrido completo
+   * pasa de **3518,5 KB a 1032,4 KB (−71 %)**.
+   *
+   * ── Lo que este campo NO garantiza ───────────────────────────────────
+   * Que el objeto exista. Es una URL **derivada** (`urlDeMiniatura`), no un dato
+   * guardado: la imagen que se subió antes de que la Function estuviera
+   * desplegada no tiene miniatura, y el que la produce para las que ya están es
+   * `scripts/optimizar-imagenes.mjs`. Por eso el consumidor tiene que usarla como
+   * el candidato chico de un `srcset` **con el original como `src`**, que es lo
+   * único que degrada bien: un `srcset` cuyo candidato no existe hace que el
+   * navegador caiga al `src`.
+   *
+   * `sizes` sin `srcset` no hace nada (D-149), y por eso este campo entra antes
+   * que cualquier `sizes`.
+   */
+  urlMiniatura: string | null;
   /**
    * El pie de foto que cargó quien organiza, si lo cargó. Se muestra tal cual;
    * **no** es el texto alternativo (DEC-7a, D-125).
@@ -110,6 +135,11 @@ export const carteleraDeDetalles = (detalles: readonly DetallePublico[]): Afiche
           titulo: d.titulo,
           tipoEtiqueta: d.tipoEtiqueta,
           url: portada.url,
+          // Derivada del path que la URL del original lleva adentro: la Function
+          // no escribe nada en el documento, así que no hay campo que leer. Da
+          // `null` para una externa, que es lo correcto — DEC-7d decidió que las
+          // externas se sirven tal cual y no se descargan.
+          urlMiniatura: urlDeMiniatura(portada.url),
           epigrafe: portada.epigrafe,
           ancho: portada.ancho,
           alto: portada.alto,

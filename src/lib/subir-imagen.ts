@@ -16,6 +16,7 @@
 import { getStorage, connectStorageEmulator, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { FirebaseStorage } from 'firebase/storage';
 import { app, usarEmuladores } from '@/lib/firebase-client';
+import { CACHE_AL_SUBIR } from '@/lib/imagenes';
 import {
   dimensiones,
   esDelTipoDeclarado,
@@ -130,10 +131,17 @@ export const subirImagen = async (archivo: File, id: string): Promise<Imagen> =>
     const destino = ref(storage(), ruta);
     await uploadBytes(destino, limpio, {
       contentType: tipo,
-      // El nombre del objeto es un uuid y nunca se reescribe (cada subida crea
-      // una fila nueva), así que el contenido de esta URL no puede cambiar:
-      // `immutable` es literal, no optimista.
-      cacheControl: 'public, max-age=31536000, immutable',
+      // **Corto, y el `immutable` lo pone la Function** — B-220, D-175.
+      //
+      // Hasta acá el comentario decía que el contenido de esta URL no puede
+      // cambiar porque cada subida crea una fila nueva, y eso dejó de ser
+      // cierto: la Function de DEC-7d escribe la imagen optimizada **encima de
+      // este objeto**. Marcarlo `immutable` ahora sería pedirle al CDN y al
+      // navegador que se queden un año con los bytes que están por ser
+      // reemplazados, y un `immutable` es literal.
+      //
+      // El razonamiento completo y el modo de falla están en `CACHE_AL_SUBIR`.
+      cacheControl: CACHE_AL_SUBIR,
     });
     const url = await getDownloadURL(destino);
     return {

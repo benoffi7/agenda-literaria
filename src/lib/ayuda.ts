@@ -778,6 +778,14 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Unos segundos después de subirla, el servidor la vuelve a guardar más liviana, así ' +
+          'que el archivo que se publica no es exactamente el que elegiste. Casi nunca se nota: ' +
+          'los flyers que salen de Instagram quedan igual, y los que sí bajan mucho son los ' +
+          'PNG, que suelen pesar diez veces más de lo necesario. El máximo de 3 MB para subir ' +
+          'no cambia, así que si una foto no entra, hay que recortarla igual.',
+      },
+      {
+        texto:
           '«Portada» es la que va arriba de la página, la que se ve al compartir el link y la ' +
           'que va a la cartelera. Es una sola: elegir otra desmarca la anterior.',
       },
