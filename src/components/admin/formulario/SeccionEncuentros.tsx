@@ -31,7 +31,7 @@ export function SeccionEncuentros({ form, set, errorDe, esClub }: Props) {
         sesiones={form.sesiones}
         onChange={(s) => set('sesiones', s)}
         mostrarLectura={esClub || form.esCiclo}
-        error={errorDe('sesiones')}
+        errorDe={errorDe}
       />
     </Seccion>
   );

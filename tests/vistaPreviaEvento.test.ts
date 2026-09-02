@@ -83,6 +83,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
     tiene: true,
     items: [
       {
+        id: 'mat_1',
         tipo: 'lectura',
         titulo: 'Pedro Páramo',
         url: 'https://drive/publico',
@@ -90,6 +91,7 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
         publico: true,
       },
       {
+        id: 'mat_2',
         tipo: 'guia',
         titulo: 'Guía de lectura',
         url: 'https://drive/privado',

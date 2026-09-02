@@ -250,6 +250,12 @@ export interface Arancel {
 }
 
 export interface ItemMaterial {
+  /**
+   * `mat_<uuid>` — generado en cliente, NUNCA por índice (B-342, trampa 2).
+   * Un documento anterior a B-342 puede no traerlo: se completa al leer con
+   * `idItemMaterialMigrado()` (`lib/material.ts`).
+   */
+  id: string;
   tipo: TipoMaterial;
   titulo: string;
   url: string;

@@ -141,6 +141,8 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
     tiene: true,
     items: [
       {
+        // B-342 — id de cliente, nunca por índice (trampa 2).
+        id: 'mat_1111',
         tipo: 'guia',
         titulo: CENTINELAS.tituloMaterial,
         url: CENTINELAS.urlMaterial,

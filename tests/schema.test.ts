@@ -285,7 +285,7 @@ describe('schema — material (al publicar)', () => {
     const v = publicado();
     v.material = {
       tiene: true,
-      items: [{ tipo: 'lectura', titulo: '', url: '', entrega: 'previo', publico: false }],
+      items: [{ id: 'mat_1', tipo: 'lectura', titulo: '', url: '', entrega: 'previo', publico: false }],
     };
     expect(errores(v)).toContain('material.items.0.titulo');
   });
@@ -295,8 +295,8 @@ describe('schema — material (al publicar)', () => {
     v.material = {
       tiene: true,
       items: [
-        { tipo: 'lectura', titulo: 'Pedro Páramo', url: '', entrega: 'previo', publico: false },
-        { tipo: 'guia', titulo: '', url: '', entrega: 'previo', publico: false },
+        { id: 'mat_1', tipo: 'lectura', titulo: 'Pedro Páramo', url: '', entrega: 'previo', publico: false },
+        { id: 'mat_2', tipo: 'guia', titulo: '', url: '', entrega: 'previo', publico: false },
       ],
     };
     expect(errores(v)).toContain('material.items.1.titulo');

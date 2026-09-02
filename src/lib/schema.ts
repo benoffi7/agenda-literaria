@@ -157,6 +157,8 @@ const modalidadFilaSchema = z
   });
 
 const itemMaterialSchema = z.object({
+  // B-342 — trampa 2: el id se genera en el cliente, nunca por índice.
+  id: z.string().regex(/^mat_/, 'El id de material debe venir de nuevaItemMaterialId()'),
   tipo: z.enum(TIPOS_MATERIAL),
   // El título del material se exige al publicar: en el evento, un ítem sin
   // título sale como una línea vacía. A medio cargar puede estar en blanco.

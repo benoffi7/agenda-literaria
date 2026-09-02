@@ -149,7 +149,7 @@ const formCompleto = (): ActividadForm => ({
   material: {
     tiene: true,
     items: [
-      { tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
+      { id: 'mat_1', tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
     ],
   },
   difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },

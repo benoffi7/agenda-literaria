@@ -63,8 +63,8 @@ const actividad = (over: Partial<Actividad> = {}): Actividad => ({
   material: {
     tiene: true,
     items: [
-      { tipo: 'lectura', titulo: 'Pedro Páramo', url: 'https://drive/publico', entrega: 'previo', publico: true },
-      { tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
+      { id: 'mat_1', tipo: 'lectura', titulo: 'Pedro Páramo', url: 'https://drive/publico', entrega: 'previo', publico: true },
+      { id: 'mat_2', tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
     ],
   },
   difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },

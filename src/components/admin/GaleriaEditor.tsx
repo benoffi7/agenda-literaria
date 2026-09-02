@@ -30,13 +30,27 @@ interface Props {
   onChange: (imagenes: Imagen[]) => void;
   /** El título de la actividad: es el texto alternativo de todas (DEC-7a, D-125). */
   tituloActividad: string;
-  error?: string;
+  /**
+   * B-341 — el mapa entero, no un solo `error?: string`.
+   *
+   * Antes este editor declaraba `error?: string` y lo pintaba, pero
+   * `SeccionQueEs` lo montaba sin ese atributo: la línea que pinta el error
+   * era código muerto y todo lo que el schema rechaza de `imagenes` se veía
+   * solo en la barra de abajo. Es la misma clase que B-197 (material) y B-343
+   * (encuentros): el editor de filas no recibía con qué mostrar su propio
+   * rechazo.
+   *
+   * `errorDe('imagenes')` es el de la lista entera («Hasta 4 imágenes por
+   * actividad», «Elegí una sola imagen como portada») y `errorDe('imagenes.N.url')`
+   * es el de una fila puntual («URL inválida», al publicar).
+   */
+  errorDe: (path: string) => string | undefined;
 }
 
 /** Estado de la vista previa de cada fila, por id. */
 type EstadoPrevia = 'cargando' | 'lista' | 'rota';
 
-export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Props) {
+export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: Props) {
   const [previas, setPrevias] = useState<Record<string, EstadoPrevia>>({});
   const [urlNueva, setUrlNueva] = useState('');
   const [subiendo, setSubiendo] = useState(false);
@@ -135,10 +149,24 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
 
   return (
     <div className="flex flex-col gap-3">
-      {error && <p className="text-xs text-acento">{error}</p>}
+      {/*
+        B-341 — el error de la lista entera («Hasta 4 imágenes», «Elegí una
+        sola portada»). `data-campo-con-error` es lo que hace que un guardado
+        fallido scrollee hasta acá (B-184); antes no lo tenía ningún elemento
+        de esta sección.
+      */}
+      {errorDe('imagenes') && (
+        <p data-campo-con-error role="alert" className="scroll-mt-16 text-xs font-medium text-acento">
+          {errorDe('imagenes')}
+        </p>
+      )}
 
-      {imagenes.map((img) => {
+      {imagenes.map((img, i) => {
         const estado = previas[img.id] ?? 'cargando';
+        // B-341 — la ruta de esta fila, con el índice en el medio: es donde lo
+        // pone el `path` del `superRefine` (`imagenes.2.url`). Armada distinto,
+        // el error existe en el mapa y no se pinta nunca.
+        const errorUrl = errorDe(`imagenes.${i}.url`);
         return (
           <div key={img.id} className="rounded-md border border-borde p-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -219,6 +247,18 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, error }: Pr
                       : 'Dirección de la imagen'
                   }
                 />
+                {/*
+                  B-341 — «URL inválida» / «La dirección tiene que empezar con
+                  https://», al publicar. Sin `Campo` alrededor del input (acá
+                  el label es el `aria-label`, no uno visible), así que el
+                  error se pinta a mano, igual que la casilla de material
+                  (B-197).
+                */}
+                {errorUrl && (
+                  <p data-campo-con-error role="alert" className="-mt-1 text-xs font-medium text-acento">
+                    {errorUrl}
+                  </p>
+                )}
                 <input
                   type="text"
                   className={claseInput}
