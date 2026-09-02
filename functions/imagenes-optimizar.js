@@ -48,6 +48,7 @@ const FONDO = { r: 255, g: 255, b: 255 };
  * `comments` entra igual que el EXIF: el comentario libre de un JPEG es texto que
  * escribió el programa que lo exportó y no tiene por qué viajar.
  */
+/** @param {{ exif?: unknown, xmp?: unknown, iptc?: unknown, icc?: unknown, comments?: unknown[] }} meta */
 export const traeMetadatos = (meta = {}) =>
   Boolean(meta.exif || meta.xmp || meta.iptc || (meta.comments && meta.comments.length));
 
@@ -69,6 +70,7 @@ const codificar = (tubo, formato, calidad) =>
  * `sharp` avise, y abortar por eso dejaría sin optimizar justamente a la foto de
  * teléfono, que es la que más lo necesita.
  */
+/** @param {Buffer | Uint8Array} bytes */
 export const optimizar = async (bytes) => {
   const original = sharp(bytes, { failOn: 'none' });
   const meta = await original.metadata();

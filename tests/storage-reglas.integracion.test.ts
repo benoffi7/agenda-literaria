@@ -142,6 +142,18 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
         await rechaza(subir('imagenes/sub/img_x.jpg', bytes(512), 'image/jpeg')),
       ).toBe(true);
     });
+
+    it('ni un admin puede escribir en miniaturas/: ahí escribe solo la Function', async () => {
+      // B-220, D-175. El prefijo lo escribe `optimizarImagen` con el Admin SDK,
+      // que pasa por encima de estas reglas. Cerrarlo también para el admin no es
+      // simetría: la dirección de una miniatura la **calcula** el sitio
+      // (`rutaDeMiniatura`), así que dejar escribir ahí sería dejar elegir qué se
+      // muestra en la cartelera sin pasar por ninguna validación de tipo ni de
+      // tamaño — y sin pasar por el pipeline que le saca los metadatos.
+      expect(
+        await rechaza(subir('miniaturas/img_x.jpg', bytes(512), 'image/jpeg')),
+      ).toBe(true);
+    });
   });
 
   describe('sin el claim de admin', () => {
@@ -158,8 +170,27 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
       // natural, y el que va a hacer falta si mañana hay `imagenes/miniaturas/`—
       // la lectura sigue andando, todo lo demás sigue verde, y esto se abre sin
       // que nada avise. Por eso se afirma acá y no se deja implícito.
+      //
+      // **Y ese día llegó, con la respuesta puesta** (B-220, D-175): la
+      // miniatura de la Function no vive en `imagenes/miniaturas/` sino en
+      // `miniaturas/`, hermana. Este comentario es la razón por la que el
+      // prefijo es hermano y no hijo — la advertencia estaba escrita antes de que
+      // hubiera Function, y se le hizo caso.
       await signOut(auth());
       await expect(listAll(ref(almacen(), 'imagenes'))).rejects.toThrow();
+    });
+
+    it('tampoco se puede LISTAR miniaturas/, y ahí importa más (trampa 13)', async () => {
+      // El nombre de una miniatura se **deriva** del del original
+      // (`rutaDeMiniatura`), así que enumerar `miniaturas/` es enumerar
+      // `imagenes/` con otro nombre: la opacidad del path de B-206 #1 se
+      // perdería por la puerta de al lado, y adentro están también los flyers de
+      // las actividades en borrador.
+      //
+      // Verificado con `allow get: if true` puesto en la misma regla, que es el
+      // caso en el que la trampa 13 muerde: `read` incluye las dos.
+      await signOut(auth());
+      await expect(listAll(ref(almacen(), 'miniaturas'))).rejects.toThrow();
     });
 
     it('una sesión sin el claim no puede subir', async () => {

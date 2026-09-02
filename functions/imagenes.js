@@ -138,6 +138,7 @@ export const CACHE_OPTIMIZADO = 'public, max-age=31536000, immutable';
 export const TIPOS_QUE_SE_OPTIMIZAN = ['image/jpeg', 'image/png'];
 
 /** El id de la fila de galería a partir del nombre del objeto. `null` si no tiene forma de id. */
+/** @param {string} nombre @returns {string | null} */
 export const idDeObjeto = (nombre = '') => {
   if (!nombre.startsWith(PREFIJO_ORIGINALES)) return null;
   const archivo = nombre.slice(PREFIJO_ORIGINALES.length);
@@ -154,6 +155,7 @@ export const idDeObjeto = (nombre = '') => {
  * documento (`urlDeMiniatura` en `src/lib/imagenes.ts`, que la reimplementa sobre
  * la URL pública; las dos derivaciones están atadas por test — clase de B-88).
  */
+/** @param {string} nombre @returns {string | null} */
 export const rutaDeMiniatura = (nombre = '') => {
   const id = idDeObjeto(nombre);
   return id ? `${PREFIJO_MINIATURAS}${id}.jpg` : null;
@@ -177,6 +179,7 @@ export const rutaDeMiniatura = (nombre = '') => {
  *  4. nombre que no tiene forma de id de galería → las reglas no lo dejarían
  *     entrar, pero el Admin SDK sí, y sin id no hay dónde poner la miniatura.
  */
+/** @param {{ nombre?: string, contentType?: string, metadatos?: Record<string, string> }} objeto */
 export const decidirOptimizacion = (objeto = {}) => {
   const nombre = objeto.nombre ?? '';
   const metadatos = objeto.metadatos ?? {};
@@ -218,6 +221,7 @@ export const decidirOptimizacion = (objeto = {}) => {
  * `cambioDeFormato` **no** es un motivo por sí solo: si un PNG con
  * transparencia real se deja en PNG y el PNG optimizado no ahorra, no se toca.
  */
+/** @param {{ bytesAntes?: number, bytesDespues?: number, conMetadatos?: boolean }} _ */
 export const convieneReemplazar = ({ bytesAntes, bytesDespues, conMetadatos = false } = {}) => {
   if (conMetadatos) return true;
   if (!Number.isFinite(bytesAntes) || !Number.isFinite(bytesDespues)) return false;
@@ -239,10 +243,12 @@ export const convieneReemplazar = ({ bytesAntes, bytesDespues, conMetadatos = fa
  * fondo de la página — y el sitio tiene tema claro y oscuro, así que no hay color
  * de fondo correcto que elegir.
  */
+/** @param {{ formato?: string, opaca?: boolean }} _ @returns {'jpeg' | 'png'} */
 export const formatoDeSalida = ({ formato, opaca } = {}) =>
   formato === 'png' && opaca === false ? 'png' : 'jpeg';
 
 /** `image/jpeg` para el formato de salida. */
+/** @param {string} formato */
 export const contentTypeDe = (formato) => (formato === 'png' ? 'image/png' : 'image/jpeg');
 
 /**
@@ -254,6 +260,10 @@ export const contentTypeDe = (formato) => (formato === 'png' ? 'image/png' : 'im
  * token, sin token y con un token inventado— pero la URL que quedó guardada en el
  * documento lo lleva adentro, y volver a escribir el objeto sin él sería cambiar
  * el estado del que esa URL depende sin necesidad. Cuesta una línea.
+ */
+/**
+ * @param {{ token?: string | null, version?: string }} _
+ * @returns {Record<string, string>}
  */
 export const metadatosDeSalida = ({ token = null, version = VERSION_PIPELINE } = {}) => ({
   [MARCA_OPTIMIZADA]: version,

@@ -79,6 +79,37 @@ service firebase.storage {
       allow delete: if esAdmin();
     }
 
+    // ── Las miniaturas que deriva la Function de B-220 (DEC-7d) ─────
+    //
+    // **Hermano de `imagenes/` y no `imagenes/miniaturas/`, y es una decisión.**
+    // La regla de arriba matchea `match /imagenes/{archivo}` —un solo
+    // segmento—, así que un `list` de ese prefijo cae en el `deny` del
+    // catch-all. Anidar acá abajo obligaría a escribir `{ruta=**}`, y el test de
+    // integración de estas reglas tiene anotado, desde antes de que la Function
+    // existiera, que ése es el día en que la trampa 13 se reabre sin que nada
+    // avise: «el día que alguien escriba `{ruta=**}` —el patrón más natural, y
+    // el que va a hacer falta si mañana hay `imagenes/miniaturas/`— la lectura
+    // sigue andando, todo lo demás sigue verde, y esto se abre».
+    match /miniaturas/{archivo} {
+      // Mismo criterio que el original: `get` abierto porque la miniatura va al
+      // sitio, `list` cerrado porque enumerar el prefijo entrega también las
+      // imágenes de las actividades en borrador (trampa 13). Y acá el `list`
+      // importa **más** que en `imagenes/`: el nombre de la miniatura se
+      // **deriva** del del original (`rutaDeMiniatura`), así que enumerar
+      // `miniaturas/` es enumerar `imagenes/` con otro nombre.
+      allow get: if true;
+      allow list: if esAdmin();
+
+      // **Nadie escribe acá desde un cliente, ni siquiera un admin.** El único
+      // que escribe es la Function, con el Admin SDK, que pasa por encima de las
+      // reglas. Cerrarlo no es simetría: una miniatura la deriva la Function de
+      // un original que ya validamos, y dejar que un cliente ponga bytes
+      // arbitrarios en una dirección que el sitio **calcula** sería dejar que
+      // elija qué se muestra en la cartelera sin pasar por ninguna validación de
+      // tipo ni de tamaño.
+      allow write: if false;
+    }
+
     // Todo lo demás cerrado. Sin esto, un prefijo nuevo que alguien invente
     // mañana no tiene ninguna regla y Storage deniega — pero deniega también la
     // lectura, y el modo de falla sería una imagen rota sin explicación. Que

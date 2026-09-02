@@ -135,10 +135,22 @@ describe('la recursión termina — trampa 12, B-220', () => {
     //
     // Mutación 1 — sacar el corte por `MARCA_OPTIMIZADA` de
     // `decidirOptimizacion`: la reescritura del original vuelve a optimizar, y
-    // esa reescritura vuelve a disparar. Llega al tope de 200.
-    // Mutación 2 — sacar el corte por prefijo: la miniatura entra al handler y
-    // produce otra miniatura, que produce otra. Llega al tope.
-    // Las dos mueren, y por caminos distintos.
+    // esa reescritura vuelve a disparar. Da **`expected 200 to be 3`**, que es
+    // la recursión corriendo de verdad hasta el tope.
+    //
+    // Mutación 2 — sacar el corte por prefijo: muere en la lista de `motivo`,
+    // **no** en el conteo de vueltas, y eso hay que decirlo porque es un
+    // hallazgo y no un detalle del test. Sin el corte por prefijo la miniatura
+    // igual se corta, pero **por otro motivo**: `idDeObjeto` exige el prefijo de
+    // originales para poder devolver un id, así que devuelve `null` y el cuarto
+    // corte la para. O sea que hoy hay un segundo cortafuegos accidental.
+    //
+    // Se afirma el `motivo` de cada vuelta justamente para no depender de ese
+    // accidente: lo que se fija no es «el lazo termina» sino **qué guarda lo
+    // terminó**. El día que `idDeObjeto` deje de mirar el prefijo —parsear el id
+    // sin él es un refactor razonable— el conteo de vueltas seguiría en verde y
+    // la única red sería esta lista. Es la clase de B-265: heredar un filtro
+    // «por construcción» hasta que se deje de heredar.
     const b = bucketSimulado();
     b.subir(subido());
     const vueltas = b.drenar();
