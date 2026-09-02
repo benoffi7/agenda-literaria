@@ -57,13 +57,7 @@ import {
   tituloDelMes,
 } from '@/lib/mesPublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
-import {
-  BAJADA_DE_PASADAS,
-  TITULO_DE_PASADAS,
-  VACIO_DE_PASADAS,
-  descripcionDePasadas,
-  pasadasDelSitio,
-} from '@/lib/pasadasPublicas';
+import { frasesDePasadas, pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
@@ -1827,8 +1821,14 @@ describe('barrido de `/pasadas` (§5, salida 10, B-109)', () => {
    * ya pasó: Taller de crónica, Club de lectura…», este `describe` lo dice y hay
    * que decidirlo.
    *
-   * MUTACIÓN PROBADA: interpolar el título de la primera entrada en
-   * `descripcionDePasadas` hace fallar este `it` nombrando ese centinela.
+   * Y el barrido puede afirmarlo porque `frasesDePasadas` **recibe las
+   * entradas**: la función que arma el texto tiene los datos a mano y no los usa,
+   * así que meter un título adentro es una línea y el barrido la ve sin que haya
+   * que tocar este archivo. Con las frases sueltas y sin datos, la interpolación
+   * se agregaría por un parámetro nuevo y el barrido no vería nada.
+   *
+   * MUTACIÓN PROBADA: interpolar `pasadas[0]?.titulo` en la `descripcion` de
+   * `frasesDePasadas` hace fallar este `it` nombrando el centinela del título.
    */
   const AHORA = new Date('2026-08-20T15:00:00Z');
 
@@ -1837,15 +1837,12 @@ describe('barrido de `/pasadas` (§5, salida 10, B-109)', () => {
       entradaDeIndice(toPublic(actividadCentinela(), id)),
     );
 
-  /** El texto que esta salida agrega, y nada más. */
-  const textoDeLaPagina = (): string =>
-    [
-      TITULO_DE_PASADAS,
-      BAJADA_DE_PASADAS,
-      VACIO_DE_PASADAS,
-      descripcionDePasadas(pasadasDelSitio(entradas(), AHORA).length),
-      descripcionDePasadas(0),
-    ].join(' | ');
+  /** El texto que esta salida agrega, y nada más: sus cuatro frases. */
+  const textoDeLaPagina = (): string => {
+    const conPasadas = frasesDePasadas(pasadasDelSitio(entradas(), AHORA));
+    const vacia = frasesDePasadas([]);
+    return [...Object.values(conPasadas), ...Object.values(vacia)].join(' | ');
+  };
 
   it('control positivo: hay texto que barrer', () => {
     expect(textoDeLaPagina().length).toBeGreaterThan(120);

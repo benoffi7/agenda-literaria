@@ -115,3 +115,37 @@ export const descripcionDePasadas = (cuantasPasaron: number): string =>
     ? 'El archivo de actividades literarias de la agenda: talleres, clubes de lectura, encuentros y presentaciones que ya pasaron.'
     : `${cuantas(cuantasPasaron)} literarias que ya pasaron: talleres, clubes de lectura, ` +
       'encuentros y presentaciones. Muchas se repiten.';
+
+/**
+ * **Las cuatro frases de la página, armadas a partir de las entradas.**
+ *
+ * ── Por qué recibe las entradas si ninguna frase las usa ──────────────────
+ * Justamente por eso. Que la función que arma el texto **tenga los datos a mano
+ * y no los use** es lo que convierte «acá no se interpola nada» en algo que un
+ * test puede sostener: `tests/barrido-de-salidas-publicas.test.ts` barre esta
+ * salida con la lista de permitidos **vacía**, y el barrido corre sobre el
+ * fixture de centinelas. El día que alguien meta un título en la
+ * `meta description` —que es lo que hace la página de mes, y por eso su barrido
+ * los permite— el barrido lo dice sin que haya que tocar el test.
+ *
+ * Con las frases sueltas y sin este punto de entrada, ese cambio se haría
+ * agregándole un parámetro a `descripcionDePasadas`, y el barrido no vería nada
+ * porque seguiría llamándola sin datos.
+ *
+ * Es además el mismo corte que `mesPublico.ts`, donde las tres frases reciben la
+ * `PaginaDeMes` entera: la plantilla no arma texto, lo pide.
+ */
+export interface FrasesDePasadas {
+  titulo: string;
+  bajada: string;
+  descripcion: string;
+  /** Qué se muestra cuando la lista está vacía. */
+  vacio: string;
+}
+
+export const frasesDePasadas = (pasadas: readonly EntradaDeIndice[]): FrasesDePasadas => ({
+  titulo: TITULO_DE_PASADAS,
+  bajada: BAJADA_DE_PASADAS,
+  descripcion: descripcionDePasadas(pasadas.length),
+  vacio: VACIO_DE_PASADAS,
+});

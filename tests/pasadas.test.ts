@@ -8,6 +8,7 @@ import {
   TITULO_DE_PASADAS,
   VACIO_DE_PASADAS,
   descripcionDePasadas,
+  frasesDePasadas,
   pasadasDelSitio,
 } from '@/lib/pasadasPublicas';
 import { agruparPorMes, estadoDe, vigentesDelIndice } from '@/lib/listadoPublico';
@@ -192,6 +193,29 @@ describe('lo que la página dice', () => {
     expect(BAJADA_DE_PASADAS).toContain('se repiten');
     expect(BAJADA_DE_PASADAS).toContain('seguí a quien la organiza');
     expect(VACIO_DE_PASADAS.trim()).not.toBe('');
+  });
+
+  it('las cuatro frases salen de una función que recibe las entradas', () => {
+    /*
+     * Que `frasesDePasadas` **tenga los datos a mano y no los use** es lo que hace
+     * verificable el «acá no se interpola nada»: el barrido de centinelas de esta
+     * salida corre sobre su salida con la lista de permitidos **vacía**, así que el
+     * día que una frase meta un título el barrido lo dice sin tocar ningún test.
+     *
+     * Con las frases sueltas, esa interpolación se agregaría por un parámetro
+     * nuevo y el barrido seguiría llamándolas sin datos: verde y publicando.
+     */
+    const frases = frasesDePasadas(pasadasDelSitio(TODAS, AHORA));
+    expect(frases).toEqual({
+      titulo: TITULO_DE_PASADAS,
+      bajada: BAJADA_DE_PASADAS,
+      descripcion: descripcionDePasadas(3),
+      vacio: VACIO_DE_PASADAS,
+    });
+    // Y la página las pide, no las arma.
+    expect(sinComentarios(fuente('src/pages/pasadas.astro'))).toContain(
+      'frasesDePasadas(entradas)',
+    );
   });
 
   it('la descripción lleva la cuenta y ningún título de actividad', () => {

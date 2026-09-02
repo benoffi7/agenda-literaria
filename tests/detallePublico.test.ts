@@ -842,6 +842,38 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(lugares.map((l) => l['@type'])).toEqual(['Place', 'VirtualLocation']);
   });
 
+  it('el `url` del VirtualLocation es la canónica de la actividad, no el link de la reunión (§5.4)', () => {
+    /*
+     * **La regla del §5.4, que hasta B-109 no se podía cumplir.** Google pide en
+     * `VirtualLocation.url` la URL donde se consigue el acceso, y ésa es **esta
+     * página**: nunca `online.url`, ni con `urlPublica: true` (D-139). El JSON-LD
+     * es lo primero que cosecha un bot, así que el link de la reunión no llega
+     * ahí por ningún camino (trampa 5). Antes del dominio salía sin `url`, porque
+     * una relativa no es válida ahí y una absoluta inventada es peor que nada.
+     *
+     * MUTACIÓN PROBADA: cambiar ese `urlDeDetalle` por `rutaDeDetalle` —la
+     * relativa, que es lo que uno escribe— pone este caso en rojo. Y **el caso de
+     * más abajo no lo veía**, porque el detalle por defecto es presencial y no
+     * emite `VirtualLocation`: lo encontró el barrido de mutaciones de B-109.
+     */
+    const d = detalleDe({ modalidades: ['virtual'] });
+    // Con un solo lugar, `location` es el objeto y no un array (así lo emite el
+    // schema): se normaliza acá para que el caso valga en los dos.
+    const location = datosEstructurados(d)!.location;
+    const lugares = (Array.isArray(location) ? location : [location]) as Record<
+      string,
+      unknown
+    >[];
+    const virtual = lugares.find((l) => l['@type'] === 'VirtualLocation')!;
+    expect(virtual.url).toBe(urlDeDetalle(d.slug));
+    expect(String(virtual.url)).toMatch(/^https:\/\//);
+    // Y no el link de la reunión, ni con la casilla de D-15 tildada.
+    const conLink = detalleDe({ modalidades: ['virtual'] }, {
+      online: { plataforma: 'meet', url: 'https://meet.google.com/abc-defg-hij', urlPublica: true },
+    });
+    expect(JSON.stringify(datosEstructurados(conLink))).not.toContain('meet.google.com');
+  });
+
   it('una presencial sin sede no emite JSON-LD (§7.7)', () => {
     /*
      * `location` es obligatorio para el resultado enriquecido y un `Place`

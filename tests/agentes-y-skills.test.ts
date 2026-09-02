@@ -178,6 +178,7 @@ describe('docs/13-agentes.md dice lo que hay — cierra B-120', () => {
 describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
   const FICHA = '.claude/agents/auditor-privacidad.md';
   const SEGURIDAD = 'docs/07-seguridad.md';
+  const SKILL_CAMPO_NUEVO = '.claude/skills/campo-nuevo/SKILL.md';
 
   /**
    * Las filas numeradas de la primera tabla del documento, con el archivo
@@ -230,6 +231,46 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     expect(salidas(FICHA).some((s) => s.funciones.length > 0)).toBe(true);
   });
 
+  /**
+   * Las filas de la primera tabla contadas **con otra implementación**: desde la
+   * primera línea que arranca con `| <número>` y mientras las líneas sigan siendo
+   * de tabla. Existe para comparar contra el parseo de arriba: si el regex de
+   * aquél deja de reconocer una fila, el loop **corta** y la lista sale más
+   * corta, sin fallar.
+   */
+  const filasCrudas = (relativo: string): number => {
+    const lineas = fuente(relativo).split('\n');
+    const primera = lineas.findIndex((l) => /^\s*\|\s*\d/.test(l));
+    if (primera === -1) return 0;
+    let n = 0;
+    for (let i = primera; i < lineas.length && /^\s*\|/.test(lineas[i] ?? ''); i++) n++;
+    return n;
+  };
+
+  it('el parseo no se come ninguna fila de la tabla', () => {
+    /*
+     * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
+     * línea que no reconoce (para no mezclar una segunda tabla numerada más
+     * abajo), así que una fila que el regex no entiende **no falla: acorta la
+     * lista**. Con `(\d)` en vez de `(\d+)`, la fila `| 10 |` no matcheaba y las
+     * tres tablas seguían coincidiendo entre sí, cortadas todas en la 9 — la
+     * salida 10 sin atar y ningún test en rojo. La numeración consecutiva
+     * tampoco lo veía: 1..9 es consecutivo.
+     *
+     * Contar las filas con otra implementación sí lo ve, y ve cualquier fila que
+     * el parseo deje de reconocer, no solo los dos dígitos.
+     *
+     * MUTACIÓN PROBADA: volver a `(\d)` pone este caso en rojo en los tres
+     * archivos.
+     */
+    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
+      expect(
+        salidas(archivo).length,
+        `la tabla de ${archivo} tiene filas que el parseo no reconoce: el barrido cortó antes`,
+      ).toBe(filasCrudas(archivo));
+    }
+  });
+
   it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {
     /*
      * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
@@ -242,7 +283,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * Exigir la secuencia completa lo cierra para cualquier fila que el parseo no
      * entienda, no solo para los dos dígitos.
      */
-    for (const archivo of [FICHA, SEGURIDAD, '.claude/skills/campo-nuevo/SKILL.md']) {
+    for (const archivo of [FICHA, SEGURIDAD, SKILL_CAMPO_NUEVO]) {
       const numeros = salidas(archivo).map((s) => s.n);
       expect(
         numeros,
@@ -321,7 +362,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * MUTACIÓN PROBADA: sacar la fila 7 de la tabla del skill deja los otros dos
      * `it` de este describe en verde y este en rojo.
      */
-    const SKILL = '.claude/skills/campo-nuevo/SKILL.md';
+    const SKILL = SKILL_CAMPO_NUEVO;
     const numeros = (rel: string) => salidas(rel).map((s) => s.n);
     expect(numeros(SKILL).length, 'no se parseó la tabla del skill').toBeGreaterThanOrEqual(4);
     expect(

@@ -48,12 +48,7 @@ import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseEnlace } from '@/components/sitio/estilos';
 import { vistaDePasadas } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
-import {
-  BAJADA_DE_PASADAS,
-  TITULO_DE_PASADAS,
-  VACIO_DE_PASADAS,
-  descripcionDePasadas,
-} from '@/lib/pasadasPublicas';
+import { frasesDePasadas } from '@/lib/pasadasPublicas';
 
 export const prerender = true;
 
@@ -63,17 +58,23 @@ const { entradas, etiquetas, tonos, generadoEn } = await vistaDePasadas();
 // ni en la home.
 const ahora = new Date(generadoEn);
 const cuantas = entradas.length;
+/*
+ * Las cuatro frases salen de una sola función, que **recibe las entradas**: es lo
+ * que hace que el barrido de centinelas de esta salida signifique algo (ver su
+ * docblock). La plantilla no arma texto.
+ */
+const frases = frasesDePasadas(entradas);
 ---
 
 <Base
   seccion="agenda"
-  titulo={`${TITULO_DE_PASADAS} · ${NOMBRE}`}
-  descripcion={descripcionDePasadas(cuantas)}
+  titulo={`${frases.titulo} · ${NOMBRE}`}
+  descripcion={frases.descripcion}
 >
   <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
     <div class="max-w-3xl">
-      <h1 class="headline-md text-balance text-tinta">{TITULO_DE_PASADAS}</h1>
-      <p class="body-md mt-3 text-super">{BAJADA_DE_PASADAS}</p>
+      <h1 class="headline-md text-balance text-tinta">{frases.titulo}</h1>
+      <p class="body-md mt-3 text-super">{frases.bajada}</p>
       <p class="body-md mt-3 text-super">
         {/*
           La salida hacia lo que sí se puede hacer. Va arriba y no al pie: quien
@@ -88,7 +89,7 @@ const cuantas = entradas.length;
       {
         cuantas === 0 ? (
           <p class="body-md regla-gruesa-arriba px-4 py-12 text-center text-super">
-            {VACIO_DE_PASADAS}
+            {frases.vacio}
           </p>
         ) : (
           /*

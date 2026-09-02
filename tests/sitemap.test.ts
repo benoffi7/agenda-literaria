@@ -420,9 +420,12 @@ describe('robots.txt', () => {
      * lo que cubre ese caso.
      *
      * MUTACIÓN PROBADA: sacarle el `noIndex` a `admin.astro` «porque ya está en
-     * el robots.txt» pone este caso en rojo.
+     * el robots.txt» pone este caso en rojo. Se mira **el atributo del `<Base>`**
+     * y no el archivo entero: su comentario nombra el `noIndex` para explicarlo,
+     * así que un `toContain` crudo pasaba con la etiqueta ya borrada — lo
+     * encontró el barrido de mutaciones de B-109.
      */
-    expect(fuente('src/pages/admin.astro')).toContain('noIndex');
+    expect(fuente('src/pages/admin.astro')).toMatch(/<Base[^>]*\bnoIndex\b/s);
   });
 });
 
