@@ -210,6 +210,11 @@ export function ActividadFormulario({
         uid,
         estadoDestino,
         idActual: inicial?.id,
+        // B-340 — el documento antes de esta edición, para que `usosAContar`
+        // no vuelva a sumar en cada guardado lo que ya estaba ahí. `inicial`
+        // es exactamente eso: lo que el formulario cargó al abrirse, sin
+        // pedir una lectura de más.
+        anterior: inicial,
         labelsNuevos,
         tagsNuevos,
       });

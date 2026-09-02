@@ -36,6 +36,22 @@ export interface EntradaGuardado {
   estadoDestino?: ActividadForm['estado'];
   /** Id de la actividad que se está editando. Ausente = creación. */
   idActual?: string;
+  /**
+   * B-340 — el documento tal como estaba antes de esta edición, para que
+   * `usosAContar` cuente solo lo que cambió y no vuelva a sumar en cada
+   * guardado un tipo, un arancel, un barrio o una etiqueta que ya estaban ahí.
+   * Es el `inicial` que el formulario ya tiene al abrirse: ausente en una
+   * actividad nueva, donde no hay nada previo que restar.
+   */
+  anterior?: {
+    arancel: { tipo: string };
+    tipo: string;
+    modalidades: readonly {
+      sede: { barrio: string } | null;
+      online: { plataforma: string } | null;
+    }[];
+    tags: readonly string[];
+  };
   /** Etiquetas tipeadas en "Otro" que todavía no están en `/opciones/*` (D-02). */
   labelsNuevos: readonly LabelNuevo[];
   /** Ídem para tags, que son multivalor: `slug → label`. */
@@ -94,7 +110,7 @@ export const guardarActividad = async (
   entrada: EntradaGuardado,
   puertos: PuertosGuardado = puertosFirestore,
 ): Promise<ResultadoGuardado> => {
-  const { form, uid, estadoDestino, idActual, labelsNuevos, tagsNuevos } = entrada;
+  const { form, uid, estadoDestino, idActual, labelsNuevos, tagsNuevos, anterior } = entrada;
   // Desestructurados a propósito: el chequeo de clase de B-71
   // (`tests/clases-de-bug.test.ts`) busca las dos escrituras **por nombre en
   // todo `src/`** —el alta de opciones y la de la actividad, cada una precedida
@@ -213,7 +229,7 @@ export const guardarActividad = async (
      */
     try {
       for (const [campo, slugs] of Object.entries(
-        usosAContar(guardado, labelsNuevos, tagsNuevos),
+        usosAContar(guardado, labelsNuevos, tagsNuevos, anterior),
       ) as [CampoTaxonomia, string[]][]) {
         await registrarUsos(campo, slugs);
       }
