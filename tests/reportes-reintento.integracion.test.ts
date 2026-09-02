@@ -22,9 +22,17 @@ import { fileURLToPath } from 'node:url';
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { reintentarReporte } from '@/lib/reportes';
-import { PROJECT_ID, cargarReglas, emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  PROJECT_ID,
+  cargarReglas,
+  emuladorAuthVivo,
+  emuladorVivo,
+  limpiarFirestore,
+} from './emulador';
 
-const vivo = await emuladorVivo();
+// B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
+// abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 const UID = 'uid_reintento_admin';
 const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));

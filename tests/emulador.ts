@@ -53,6 +53,57 @@ export const emuladorVivo = async (): Promise<boolean> => {
   return vivo;
 };
 
+export const HOST_AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099';
+
+/**
+ * ¿Está el emulador de **Auth** arriba? — B-365.
+ *
+ * Va aparte de `emuladorVivo()` por el mismo motivo que
+ * `emuladorStorageVivo()`: son emuladores distintos y el modo de falla que
+ * importa es el **asimétrico**. Y acá no es una hipótesis, es lo que pasó el
+ * 2026-09-02 mientras se probaba B-219:
+ *
+ * Otro worktree levantó su propia tanda de emuladores, y el proceso padre de la
+ * primera murió. Su hijo de Firestore quedó **huérfano y escuchando** en el 8080;
+ * el hub y Auth se fueron con el padre. O sea: media tanda viva. `emuladorVivo()`
+ * le pregunta solo a Firestore, así que dijo «está arriba», los cuatro archivos
+ * que hacen login corrieron, y lo que se vio fue un
+ * `Error while making request: connect ECONNREFUSED 127.0.0.1:9099` desde el
+ * fondo del SDK, en un `beforeAll`, sin una palabra sobre qué emulador faltaba.
+ *
+ * Con esto, el mismo caso dice qué pasa y qué hacer. **No lo arregla B-219**: el
+ * `projectId` por checkout separa las bases, no los puertos, así que "media
+ * tanda viva" sigue siendo posible — lo que cambia es que se nombra en vez de
+ * salir por abajo. Es la quinta observación de B-219 (el emulador como estado
+ * compartido que aparece y desaparece) con una cara más: **que aparezca a
+ * medias**.
+ */
+export const emuladorAuthVivo = async (): Promise<boolean> => {
+  let vivo = false;
+  try {
+    // El emulador de Auth contesta su página de configuración en la raíz. Se
+    // pregunta por el endpoint de config del proyecto, que devuelve 200 con el
+    // emulador arriba y no depende de que exista ningún usuario.
+    const r = await fetch(`http://${HOST_AUTH}/emulator/v1/projects/${PROJECT_ID}/config`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    vivo = r.status < 500;
+  } catch {
+    vivo = false;
+  }
+
+  if (!vivo && process.env.EXIGIR_EMULADOR === '1') {
+    throw new Error(
+      `EXIGIR_EMULADOR=1 pero el emulador de Auth no responde en ${HOST_AUTH}. ` +
+        'Los tests que hacen login se habrían salteado en silencio. ' +
+        '¿Arrancaste los emuladores con `auth` en el `--only`? ' +
+        'Ojo con la tanda a medias: si Firestore contesta y Auth no, puede haber ' +
+        'un hijo huérfano de una tanda cuyo padre murió (B-365).',
+    );
+  }
+  return vivo;
+};
+
 /**
  * Carga en el emulador **las reglas de este checkout**.
  *

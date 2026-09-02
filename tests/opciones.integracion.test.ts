@@ -25,6 +25,7 @@ import {
   HOST_FIRESTORE,
   PROJECT_ID,
   cargarReglas,
+  emuladorAuthVivo,
   emuladorVivo,
   limpiarFirestore,
 } from './emulador';
@@ -42,7 +43,9 @@ const UID = 'uid_test_admin';
 /** La otra cuenta con claim admin (§4.3): no debería ver lo pendiente de UID. */
 const UID_OTRO = 'uid_test_admin_2';
 
-const vivo = await emuladorVivo();
+// B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
+// abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 /** Loguea al panel con el claim `admin`, como lo haría scripts/set-admin-claim.mjs. */
 const entrarComoAdmin = async (uid: string) => {

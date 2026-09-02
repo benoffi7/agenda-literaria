@@ -33,12 +33,15 @@ import {
   HOST_FIRESTORE,
   PROJECT_ID,
   cargarReglas,
+  emuladorAuthVivo,
   emuladorVivo,
   limpiarFirestore,
   proyectoAparte,
 } from './emulador';
 
-const vivo = await emuladorVivo();
+// B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
+// abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 const UID = 'uid_test_admin';
 

@@ -16,9 +16,17 @@ import { db } from '@/lib/firestore-client';
 import { formAReporte } from '@/lib/reporte-schema';
 import { crearReporte } from '@/lib/reportes';
 import type { ContextoReporte, ReporteForm } from '@/types/reporte';
-import { PROJECT_ID, cargarReglas, emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  PROJECT_ID,
+  cargarReglas,
+  emuladorAuthVivo,
+  emuladorVivo,
+  limpiarFirestore,
+} from './emulador';
 
-const vivo = await emuladorVivo();
+// B-365 — los dos: este archivo hace login, así que Firestore arriba y Auth
+// abajo (una tanda de emuladores a medias) no puede leerse como «está todo».
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
 
 /*
  * B-174 — el `firestore.rules` de ESTE checkout. El docblock de arriba decía
