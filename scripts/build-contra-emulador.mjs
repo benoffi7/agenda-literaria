@@ -458,12 +458,194 @@ try {
       salida = 1;
     }
 
+    /*
+     * 7 · B-109 — **el sitemap, el robots.txt y la canónica, sobre los archivos
+     * que se suben.**
+     *
+     * Los unitarios afirman sobre el valor de retorno de `rutasDelSitemap` y
+     * sobre el texto de las plantillas; acá se mira lo que quedó en `dist/`, que
+     * es lo único que ve Google. Es la misma diferencia que el punto 3: «la
+     * proyección recorta» contra «el archivo que se sube no lo tiene».
+     *
+     * **El dominio no se escribe en este archivo**, y eso es a propósito: `SITIO`
+     * (`src/lib/rutasPublicas.ts`) es la única aparición del dominio en el repo y
+     * un `.mjs` no puede importar un `.ts`. Así que lo que se afirma es la
+     * **forma** —absoluta, con barra final— y, sobre todo, que las cuatro salidas
+     * coincidan en un solo origen: el del `Sitemap:` del robots, el de cada `loc`
+     * del sitemap y el de la canónica de la página. Si alguien copia el dominio a
+     * mano en una de las cuatro, empiezan a discrepar.
+     */
+    const leerDist = async (ruta) => {
+      try {
+        return await readFile(new URL(`../dist/${ruta}`, import.meta.url), 'utf8');
+      } catch {
+        return null;
+      }
+    };
+
+    const robots = await leerDist('robots.txt');
+    const sitemap = await leerDist('sitemap.xml');
+    const htmlPublicada = await htmlDe(SLUG_PUBLICADA);
+
+    if (robots === null || sitemap === null) {
+      fallo(
+        'no se generó dist/robots.txt o dist/sitemap.xml.\n' +
+          '  Son los dos endpoints de B-109: sin ellos el sitio no se le ofrece a ningún buscador.',
+      );
+      salida = 1;
+    } else if (htmlPublicada === null) {
+      fallo(`no se generó dist/actividad/${SLUG_PUBLICADA}/index.html.`);
+      salida = 1;
+    } else {
+      const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+      const origenDe = (url) => {
+        try {
+          return new URL(url).origin;
+        } catch {
+          return null;
+        }
+      };
+
+      // 7a · La publicada está, con la URL absoluta y con la barra final, que es
+      // la forma que contesta 200 en Firebase (`/x` redirige a `/x/`).
+      const suUrl = locs.find((u) => u.includes(`/actividad/${SLUG_PUBLICADA}/`));
+      if (!suUrl) {
+        fallo(
+          `el sitemap.xml no lista /actividad/${SLUG_PUBLICADA}/.\n` +
+            `  Salió con ${locs.length} URL(s) y ninguna es la de la actividad sembrada:\n` +
+            '  el sitemap no vio los datos, o la ruta de detalle dejó de entrar.',
+        );
+        salida = 1;
+      }
+
+      const malFormadas = locs.filter((u) => !/^https:\/\/[^/]+\//.test(u) || !u.endsWith('/'));
+      if (malFormadas.length > 0) {
+        fallo(
+          'el sitemap.xml tiene URLs que no son absolutas o no llevan la barra final:\n' +
+            malFormadas.map((u) => `    ${u}`).join('\n') +
+            '\n  El protocolo las exige absolutas, y sin la barra Firebase contesta un 301:\n' +
+            '  una entrada de sitemap que apunta a una redirección es una URL menos rastreada.',
+        );
+        salida = 1;
+      }
+
+      // 7b · Los controles negativos: ni el borrador, ni la cancelada que nunca
+      // se publicó, ni el panel.
+      const queNoVan = [
+        [SLUG_BORRADOR, 'un borrador'],
+        [SLUG_CANCELADA_NUNCA, 'una cancelada que nunca estuvo publicada'],
+      ].filter(([slug]) => sitemap.includes(slug));
+      if (queNoVan.length > 0) {
+        fallo(
+          'el sitemap.xml ofrece páginas que no existen:\n' +
+            queNoVan.map(([slug, qué]) => `    ${slug} → ${qué}`).join('\n'),
+        );
+        salida = 1;
+      }
+      if (sitemap.includes('/admin')) {
+        fallo('el sitemap.xml lista /admin: el panel no se indexa.');
+        salida = 1;
+      }
+      if (sitemap.includes('lastmod')) {
+        fallo(
+          'el sitemap.xml lleva `lastmod`.\n' +
+            '  Sale de `updatedAt`, que no está en la proyección pública (B-112). La fecha\n' +
+            '  del build en las N entradas le enseña a Google que nuestras fechas mienten.',
+        );
+        salida = 1;
+      }
+
+      // 7c · La cancelada **reciente** sí está: el fixture tiene `updatedAt` de
+      // ahora, o sea dentro de la ventana de 30 días del §7.3.
+      if (!sitemap.includes(`/actividad/${SLUG_CANCELADA}/`)) {
+        fallo(
+          `el sitemap.xml no lista la cancelada reciente (/actividad/${SLUG_CANCELADA}/).\n` +
+            '  Se canceló hoy (updatedAt del fixture), así que está dentro de los 30 días\n' +
+            '  del §7.3: su URL se sigue ofreciendo para que Google la relea y la tache.',
+        );
+        salida = 1;
+      }
+
+      // 7d · El robots.txt: bloquea el panel y anuncia el sitemap.
+      if (!/^Disallow: \/admin$/m.test(robots)) {
+        fallo('el robots.txt no bloquea /admin.');
+        salida = 1;
+      }
+      const anuncio = /^Sitemap: (\S+)$/m.exec(robots);
+      if (!anuncio) {
+        fallo('el robots.txt no anuncia el sitemap.');
+        salida = 1;
+      }
+
+      // 7e · **Las cuatro salidas, un solo origen.**
+      const canonical = /<link rel="canonical" href="([^"]+)"/.exec(htmlPublicada);
+      if (!canonical) {
+        fallo(
+          `dist/actividad/${SLUG_PUBLICADA}/index.html no lleva <link rel="canonical">.\n` +
+            '  Es lo único que le dice a Google cuál de los tres nombres del sitio es el bueno.',
+        );
+        salida = 1;
+      }
+      const origenes = new Set(
+        [anuncio?.[1], canonical?.[1], suUrl].filter(Boolean).map(origenDe),
+      );
+      if (origenes.size !== 1 || origenes.has(null)) {
+        fallo(
+          'el robots.txt, el sitemap.xml y la canónica de la página no coinciden en un ' +
+            `origen: ${[...origenes].join(', ')}.\n` +
+            '  Las cuatro salidas absolutas salen de `SITIO`; si discrepan, alguna copió el ' +
+            'dominio a mano.',
+        );
+        salida = 1;
+      }
+
+      // 7f · Y la canónica de la página es **exactamente** su URL del sitemap:
+      // dos formas distintas de la misma página son dos URLs para Google.
+      if (canonical && suUrl && canonical[1] !== suUrl) {
+        fallo(
+          `la canónica de la página (${canonical[1]}) no es la URL que el sitemap ofrece ` +
+            `(${suUrl}).`,
+        );
+        salida = 1;
+      }
+
+      // 7g · El Open Graph, que es la otra mitad de B-107: un link pegado en
+      // Instagram sin `og:` se ve como un link pelado.
+      for (const propiedad of ['og:title', 'og:url', 'og:site_name']) {
+        if (!htmlPublicada.includes(`property="${propiedad}"`)) {
+          fallo(`la página de la publicada no lleva ${propiedad}.`);
+          salida = 1;
+        }
+      }
+
+      // 7h · `/pasadas` existe y no publica el borrador. El fixture publicado es
+      // de mañana, así que el archivo sale vacío — y eso también se afirma.
+      const htmlPasadas = await leerDist('pasadas/index.html');
+      if (htmlPasadas === null) {
+        fallo(
+          'no se generó dist/pasadas/index.html.\n' +
+            '  Es la única página que enlaza una actividad que ya pasó una vez que su\n' +
+            '  entrada del sitemap venció a los 90 días (§2.1).',
+        );
+        salida = 1;
+      } else if (htmlPasadas.includes(SLUG_BORRADOR) || htmlPasadas.includes(SLUG_CANCELADA)) {
+        fallo(
+          '/pasadas publica un borrador o una cancelada.\n' +
+            '  Recibe `EntradaDeIndice[]`, así que ninguno de los dos debería poder llegar (§7.3).',
+        );
+        salida = 1;
+      }
+    }
+
     if (salida === 0) {
       console.log(
         `\n  ✓ el build leyó Firestore: ${slugs.length} actividad(es) en el events.json, ` +
           'sin la borrador y sin ningún campo recortado.\n' +
           '  ✓ la cancelada que estuvo publicada conserva su página, con la franja y el ' +
-          'EventCancelled; la que nunca lo estuvo no existe (B-110).',
+          'EventCancelled; la que nunca lo estuvo no existe (B-110).\n' +
+          '  ✓ el sitemap ofrece la publicada y la cancelada reciente con URL absoluta y ' +
+          'barra final, sin el borrador, sin /admin y sin lastmod; el robots.txt bloquea el ' +
+          'panel; y el robots, el sitemap y la canónica coinciden en un solo origen (B-109).',
       );
     }
   }
