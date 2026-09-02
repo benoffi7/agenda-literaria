@@ -55,7 +55,7 @@ jobs:
       - name: Qué archivos cambiaron
         id: q
         env:
-          ANTES: ${{ github.event.before }}
+          EVENT_BEFORE: ${{ github.event.before }}
           FORZAR: ${{ inputs.forzar_todo }}
         run: |
           set -euo pipefail
@@ -65,14 +65,30 @@ jobs:
             echo "::notice::se deploya todo (pedido manual)"; exit 0
           fi
 
-          # Primer push, force-push, o `before` inaccesible: no se puede saber
+          # B-205 — diffear contra lo PUBLICADO, no contra el push anterior.
+          #
+          # `github.event.before` es el head del push previo. Si esa corrida no
+          # llegó a deployar nada (falló al arrancar, se canceló, GitHub
+          # Actions tuvo un `major_outage`), el push siguiente diffea desde un
+          # commit que YA está en `main` pero nunca se publicó — y esos
+          # cambios quedan fuera del diff para siempre, sin ningún síntoma de
+          # este lado. La decisión de contra qué commit diffear vive en un
+          # script (`scripts/commit-base-deploy.sh`) para poder testearla, con
+          # la misma razón que `que-deployar.sh`: un `if` en YAML no se puede
+          # probar hasta que ya deployó mal.
+          eval "$(./scripts/commit-base-deploy.sh)"
+          if [ -n "$ANTES" ] && [ "$ANTES" != "${EVENT_BEFORE:-}" ]; then
+            echo "::notice::se diffea contra lo publicado ($ANTES), no contra el push anterior"
+          fi
+
+          # Primer push, force-push, o base inaccesible: no se puede saber
           # qué cambió, así que se deploya todo. Falla hacia el lado de
           # deployar: quedarse corto deja producción con código viejo en
           # silencio, que es peor que un deploy de más.
-          if [ -z "${ANTES:-}" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ] \
-             || ! git cat-file -e "$ANTES^{commit}" 2>/dev/null; then
+          if [ -z "$ANTES" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "${ANTES}^{commit}" 2>/dev/null; then
             printf 'hosting=true\nfunctions=true\nfirestore=true\nstorage=true\n' >> "$GITHUB_OUTPUT"
-            echo "::notice::se deploya todo (no se puede diffear contra el commit anterior)"; exit 0
+            echo "::notice::se deploya todo (no se puede diffear contra ningún commit anterior)"; exit 0
           fi
 
           CAMBIOS=$(git diff --name-only "$ANTES" "${{ github.sha }}")

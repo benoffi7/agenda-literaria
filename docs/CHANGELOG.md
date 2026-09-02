@@ -10,6 +10,28 @@ el propio documento ya traía —GA4 como la vara que un anunciante conoce— si
 agregar razones nuevas, y dejando explícito qué **no** decide (B-371 y B-376
 siguen esperando al dueño).
 
+### B-205 — un push que no deploya ya se repara solo en el siguiente
+
+`decidir` (el primer job de `push-main.yml`) diffeaba contra
+`github.event.before`, el head del push anterior. Si esa corrida no llegaba a
+deployar nada —falló al arrancar, se canceló, un `major_outage` de GitHub
+Actions como el del 2026-08-26—, el push siguiente diffeaba desde un commit
+que ya estaba en `main` pero nunca se había publicado, y esos cambios
+quedaban fuera del diff **para siempre**, sin ningún síntoma de este lado.
+
+Ahora `decidir` prefiere lo que `/version.json` dice publicado de verdad
+(`INFO_VERSION.sha`) y solo cae al `before` del push cuando esa fuente no
+sirve. La decisión pasó a `scripts/commit-base-deploy.sh`, con
+`tests/commit-base-deploy.test.ts` cubriendo las cinco formas en que la fuente
+preferida puede fallar y el caso feliz, contra un servidor de mentira y
+commits reales del propio checkout. Dos mutaciones probadas y restauradas:
+deshacer la preferencia por lo publicado, y saltear la validación contra el
+historial — las dos tiran rojo.
+
+Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
+`startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
+de "deployar todo".
+
 ### B-344 cerrado — ya estaba resuelto, verificado y no solo leído
 
 El guard de Auth para los tests de integración (`emuladorAuthVivo()`) ya existía

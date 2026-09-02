@@ -1689,7 +1689,33 @@ composición con los espacios colapsados, y se verificó que caen. Es la clase d
 "chequeo que no chequea", y vale para cualquier test que lea un fuente buscando un
 nombre.
 
-### B-205 · Un push cuya corrida no arranca no se deploya nunca, y el push siguiente no lo repara · P1
+### B-205 · Un push cuya corrida no arranca no se deploya nunca, y el push siguiente no lo repara · ✅ hecho (2026-09-02) · P1
+
+**Se hizo el arreglo de raíz, el primero de los dos que el ítem proponía.**
+`decidir` ya no diffea contra `github.event.before`: prefiere lo que
+`/version.json` dice que está PUBLICADO (`INFO_VERSION.sha`), y solo cae al
+`before` del push cuando esa fuente no sirve (el sitio no contesta, no trae
+`sha`, o ese commit no está en el historial del checkout).
+
+La decisión vive en `scripts/commit-base-deploy.sh`, por el mismo motivo que
+`que-deployar.sh`: para poder probarla sin pegarle al sitio real ni depender de
+qué esté publicado en el momento de correr el test.
+`tests/commit-base-deploy.test.ts` apunta `VERSION_JSON_URL` a un servidor de
+mentira y cubre las cinco formas en que la fuente preferida puede fallar (sha
+inexistente en el historial, campo ausente, 5xx, sin respuesta, ninguna de las
+dos fuentes) más el caso feliz — y un sexto test que el workflow consuma el
+script y no repita el `curl` por su cuenta.
+
+**Mutado, no solo verde.** Deshacer la preferencia por lo publicado (dejar que
+`ANTES` nazca del `before` y no del `sha`) tira roja la primera prueba; saltear
+la validación `git cat-file -e` contra el sha publicado tira roja la segunda.
+Las dos mutaciones se probaron y se restauraron.
+
+**Lo que no se hizo, a propósito:** el segundo arreglo que el ítem proponía —un
+chequeo que compare lo publicado con `main` y avise si difieren— sigue sin
+existir. El primero ya cierra el agujero (la recuperación es automática en el
+push siguiente); el segundo queda para si hace falta hacerlo *visible* además
+de corregido. El texto original queda abajo.
 
 Pasó el 2026-08-26 con el push de la `1.2.0` (`9fd50f3`): la corrida de
 «Deploy desde main» terminó en **`startup_failure` a los 0 segundos**, sin ningún
