@@ -145,15 +145,26 @@ export const columnasDeGaleria = (n: number): 2 | 3 => (n >= 3 ? 3 : 2);
  * un lector de pantalla anuncia tres veces lo mismo y no distingue ninguna.
  *
  * Las secundarias pasan a `alt=""` —decorativas— y lo que se perdería con eso
- * («¿cuántas hay?, ¿me estoy perdiendo algo?») lo dice **este título, una sola
- * vez y en prosa**. Enumerar imagen por imagen («Imagen 2 de 3 de X») decía lo
- * mismo tres veces y sonaba a máquina; dicho en el encabezado del grupo se dice
- * una vez y se lee como algo escrito por una persona.
+ * («¿me estoy perdiendo algo?») lo dice **este título**: quien escucha la página
+ * se entera de que el grupo existe. Enumerar imagen por imagen («Imagen 2 de 3 de
+ * X») decía lo mismo tres veces y sonaba a máquina.
  *
- * El número va en palabras y no en dígito porque es un encabezado de sección al
- * lado de «Material» y «Quién lo da», no un contador. El `${n}` del final es
- * inalcanzable con el tope de cuatro imágenes de DEC-7b y está por si el tope
- * sube: mejor un plural correcto que un `undefined` en un `<h2>`.
+ * ── Antes decía la cantidad, y el dueño la sacó — B-302 ───────────────────
+ * La primera versión era una función de la cantidad: «Una imagen más», «Dos
+ * imágenes más». Se cambió por un rótulo fijo a pedido del dueño.
+ *
+ * **Qué se pierde, dicho para que no se descubra después:** quien usa un lector
+ * de pantalla se entera de que hay más imágenes pero **no de cuántas**. El
+ * requisito de accesibilidad era saber que el grupo existe, y eso se sigue
+ * cumpliendo; la cantidad era una cortesía.
+ *
+ * **Y qué se gana**, que es de lo que se quejaba: la concordancia de número era
+ * la mitad de la lógica —tres tablas de palabras y un plural que hay que
+ * mantener— para un encabezado de dos palabras. Un rótulo fijo no puede decir
+ * «Una imágenes más».
+ *
+ * Sigue siendo una constante y no un literal en la plantilla, por el mismo
+ * criterio que el texto de «Suscribirse» (D-133): el texto del sitio es dato y se
+ * prueba, no se escribe en el markup.
  */
-export const rotuloDeGaleria = (n: number): string =>
-  n === 1 ? 'Una imagen más' : `${['', 'Una', 'Dos', 'Tres'][n] ?? n} imágenes más`;
+export const ROTULO_DE_GALERIA = 'Más imágenes';

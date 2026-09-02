@@ -828,7 +828,7 @@ try {
         salida = 1;
       }
 
-      // 8f · La sección: el rótulo con la cuenta en prosa, el epígrafe como
+      // 8f · La sección: el rótulo que anuncia el grupo, el epígrafe como
       // `figcaption` de su imagen, y ni un enlace que agregue una parada de
       // tabulación.
       const seccion = /<section[^>]*aria-labelledby="mas-imagenes"[\s\S]*?<\/section>/.exec(
@@ -838,11 +838,15 @@ try {
         fallo('la página con tres imágenes no lleva la sección de las secundarias.');
         salida = 1;
       } else {
-        if (!seccion.includes('Dos imágenes más')) {
+        if (!/imágenes/i.test(seccion)) {
           fallo(
-            'la sección no dice cuántas imágenes más hay.\n' +
-              '  Es la mitad que hace aceptable el `alt=""`: lo que las imágenes no dicen,\n' +
-              '  lo dice el encabezado una sola vez y en prosa (D-168).',
+            'la sección no anuncia que hay más imágenes.\n' +
+              '  Es la mitad que hace aceptable el `alt=""`: las secundarias son\n' +
+              '  decorativas, así que **este encabezado es lo único** que le dice a quien\n' +
+              '  escucha la página que el grupo existe (D-168). Sin él, el grupo desaparece\n' +
+              '  del árbol de accesibilidad.\n' +
+              '  Se afirma el plural y no el texto exacto: B-302 cambió «Dos imágenes más»\n' +
+              '  por «Más imágenes» y esta comprobación no tenía por qué caerse con eso.',
           );
           salida = 1;
         }

@@ -81,7 +81,7 @@
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
-import { columnasDeGaleria, estiloDeAfiche, rotuloDeGaleria } from '@/lib/afiche';
+import { ROTULO_DE_GALERIA, columnasDeGaleria, estiloDeAfiche } from '@/lib/afiche';
 import {
   claseAfiche,
   claseAfichePortada,
@@ -637,7 +637,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
             ninguna, que es **peor** que no anunciarlas. La portada conserva su
             alt —es una sola, es el afiche y es el `og:image`— y lo que se
             perdería al callar las otras lo dice el `<h2>` una sola vez y en
-            prosa: «Dos imágenes más» (`rotuloDeGaleria`).
+            prosa: «Más imágenes» (`ROTULO_DE_GALERIA`).
 
             **El epígrafe no se promueve a `alt`.** Cuando está, se muestra como
             `figcaption` de **su** imagen, que un lector de pantalla ya lee; en el
@@ -654,7 +654,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
           secundarias.length > 0 && (
             <section aria-labelledby="mas-imagenes" class="mt-12">
               <h2 id="mas-imagenes" class={`regla-gruesa pb-2 ${claseTituloSeccion}`}>
-                {rotuloDeGaleria(secundarias.length)}
+                {ROTULO_DE_GALERIA}
               </h2>
               <div class={`mt-4 ${CLASES_DE_GALERIA[columnasDeGaleria(secundarias.length)]}`}>
                 {secundarias.map((imagen) => (

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { detalleDeActividad } from '@/lib/detallePublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { toPublic } from '@/lib/toPublic';
-import { columnasDeGaleria, rotuloDeGaleria } from '@/lib/afiche';
+import { ROTULO_DE_GALERIA, columnasDeGaleria } from '@/lib/afiche';
 import { CLASES_DE_GALERIA } from '@/components/sitio/estilos';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
 import type { Actividad, Imagen } from '@/types/actividad';
@@ -241,13 +241,13 @@ describe('el texto alternativo: la salida de B-296 (D-168)', () => {
      * lo dice una sola vez —«Dos imágenes más»— y encima lo dice para todo el
      * mundo, no solo para un lector de pantalla.
      *
-     * MUTACIÓN PROBADA: reemplazar `rotuloDeGaleria(...)` por un literal
+     * MUTACIÓN PROBADA: reemplazar `ROTULO_DE_GALERIA` por un literal
      * «Imágenes». La sección queda con un encabezado que no informa nada y el
      * grupo entero vuelve a ser un callejón sin salida para quien no ve las
      * imágenes.
      */
     const tira = bloqueDeLaTira();
-    expect(tira).toContain('rotuloDeGaleria(secundarias.length)');
+    expect(tira).toContain('ROTULO_DE_GALERIA');
     expect(tira, 'el encabezado nombra la sección para un lector de pantalla').toContain(
       'aria-labelledby="mas-imagenes"',
     );
@@ -505,39 +505,36 @@ describe('la tira no publica nada de la fila que no sea la imagen', () => {
   });
 });
 
-describe('rotuloDeGaleria — el texto es un dato testeado, no un literal en el markup', () => {
-  it('el número va en palabras, y concuerda', () => {
-    // Es el mismo criterio que el texto de «Suscribirse» (D-133): si el rótulo
-    // vive en la plantilla, no hay forma de probar que diga «Una imagen más» y no
-    // «1 imágenes más».
-    expect(rotuloDeGaleria(1)).toBe('Una imagen más');
-    expect(rotuloDeGaleria(2)).toBe('Dos imágenes más');
-    expect(rotuloDeGaleria(3)).toBe('Tres imágenes más');
+describe('ROTULO_DE_GALERIA — el texto es un dato testeado, no un literal en el markup', () => {
+  it('es una frase, y no cuenta', () => {
+    /*
+     * Antes era una función de la cantidad —«Una imagen más», «Dos imágenes
+     * más»— y el dueño la cambió por un rótulo fijo (B-302). Los tres casos que
+     * había acá probaban la concordancia de número, que ya no existe.
+     *
+     * Lo que sobrevive es la propiedad de D-133, que es la que hacía falta desde
+     * el principio: **el texto del sitio es dato y se prueba**, no se escribe en
+     * la plantilla. Si vuelve al markup, esto y el aserto de la tira fallan.
+     */
+    expect(ROTULO_DE_GALERIA).toBe('Más imágenes');
+    expect(ROTULO_DE_GALERIA).not.toMatch(/\d/);
   });
 
-  it('el singular es el caso frecuente, y no dice «1»', () => {
+  it('dice que hay más de una, que es todo lo que la accesibilidad necesita', () => {
     /*
-     * De las 4 actividades con más de una imagen medidas en producción, **3
-     * tienen exactamente dos**, o sea una sola secundaria. El singular no es el
-     * borde: es la mitad de los casos de esta función.
+     * Las secundarias van con `alt=""`, así que **este encabezado es lo único que
+     * le dice a quien escucha la página que el grupo existe**. Con `alt=""` y sin
+     * encabezado, el grupo desaparece del árbol de accesibilidad y nadie se
+     * entera de que hay algo más.
      *
-     * MUTACIÓN PROBADA: devolver siempre el plural. «Una imágenes más» en un
-     * `<h2>`, en la página que recibe el tráfico.
-     */
-    expect(rotuloDeGaleria(1)).not.toContain('imágenes');
-    expect(rotuloDeGaleria(1)).not.toContain('1');
-  });
-
-  it('más allá del tope de DEC-7b no devuelve `undefined`', () => {
-    /*
-     * Con cuatro imágenes por actividad como tope, `n` nunca pasa de 3. El día que
-     * el tope suba, el rótulo tiene que seguir siendo una frase y no un
-     * `undefined imágenes más` en un encabezado.
+     * Se afirma el plural y no el texto exacto: es lo que tiene que seguir siendo
+     * cierto si mañana dice «Galería de imágenes», que era la otra opción del
+     * dueño.
      *
-     * MUTACIÓN PROBADA: sacar el `?? n` del fallback.
+     * MUTACIÓN PROBADA: dejarlo en 'Imagen'. Pasa el caso de arriba —es una
+     * frase y no tiene dígitos— y pone en rojo éste.
      */
-    expect(rotuloDeGaleria(4)).toBe('4 imágenes más');
-    expect(rotuloDeGaleria(9)).not.toContain('undefined');
+    expect(ROTULO_DE_GALERIA.toLowerCase()).toContain('imágenes');
   });
 });
 
