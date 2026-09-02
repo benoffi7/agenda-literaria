@@ -967,9 +967,22 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
    * puede nacer en cualquier lado.
    */
   it('FORMATO_VERSION se declara una sola vez en todo el repo', () => {
+    /*
+     * Con `grep -r` sobre el disco y no con `git grep`: éste último solo mira el
+     * índice, así que un archivo nuevo sin agregar —el estado de una copia recién
+     * escrita— no lo ve. El guarda daría verde justo cuando tiene que hablar.
+     */
     const declaraciones = execFileSync(
-      'git',
-      ['grep', '-n', '-E', '(const|export const|let) FORMATO_VERSION', '--', 'src', 'tests', 'scripts', 'functions'],
+      'grep',
+      [
+        '-rnE',
+        '--exclude-dir=node_modules',
+        '(const|export const|let) FORMATO_VERSION',
+        'src',
+        'tests',
+        'scripts',
+        'functions',
+      ],
       { cwd: fileURLToPath(raiz), encoding: 'utf8' },
     )
       .trim()
