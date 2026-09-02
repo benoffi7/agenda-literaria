@@ -225,6 +225,49 @@ describe('los metadatos se van, y los píxeles no se tocan', () => {
     expect(contiene(limpio, [0x49, 0x45, 0x4e, 0x44])).toBe(true); // IEND
   });
 
+  it('PNG: el chunk caBX de las credenciales C2PA se va, y el barrido lo ve — B-220', () => {
+    /*
+     * **El caso es real y estaba publicado.** La portada de una actividad de
+     * producción trae un chunk `caBX` de **13,6 KB**: es la caja JUMBF donde
+     * viven las credenciales de contenido C2PA, y ahí adentro había un
+     * manifiesto **firmado por Google LLC** («Google C2PA Media Services») con la
+     * herramienta que generó la imagen, un certificado y un `urn:c2pa:` que
+     * identifica esa copia.
+     *
+     * No lo tiraba `CHUNKS_A_TIRAR` y no lo veía `quedanMetadatos`, así que pasó
+     * las dos capas de este módulo. Lo encontró B-220 al medir por qué esa imagen
+     * pesaba 1091 KB, y es la mejor prueba de que una lista **negra** de chunks no
+     * alcanza: el bloque llegó después de que la lista se escribiera (B-323).
+     *
+     * Mutación: sacar `'caBX'` de `CHUNKS_A_TIRAR` — el primer aserto se pone
+     * rojo. Sacar `'jumdc2pa'` de `MARCAS_DE_METADATOS` — el segundo también.
+     */
+    const CA_BX = [0x63, 0x61, 0x42, 0x58]; // 'caBX'
+    // `jumdc2pa` es la caja de descripción del manifiesto, y es lo que el
+    // centinela busca.
+    const MANIFIESTO = [...'jumdc2pa'].map((c) => c.charCodeAt(0));
+    const conC2pa = new Uint8Array([
+      ...png().slice(0, 8),
+      ...[...png().slice(8)].slice(0, 0),
+      ...png().slice(8, 33),
+      ...chunk('caBX', MANIFIESTO),
+      ...png().slice(33),
+    ]);
+    expect(contiene(conC2pa, CA_BX)).toBe(true);
+    expect(contiene(conC2pa, MANIFIESTO)).toBe(true);
+
+    const limpio = sinMetadatos('image/png', conC2pa);
+    expect(contiene(limpio, CA_BX), 'el chunk caBX tiene que irse').toBe(false);
+    expect(contiene(limpio, MANIFIESTO)).toBe(false);
+    // Y el IDAT sigue: no se tiró la imagen con el manifiesto.
+    expect(contiene(limpio, [0x49, 0x44, 0x41, 0x54])).toBe(true);
+
+    // La segunda capa, que es la que falla cerrado: si el chunk sobreviviera por
+    // cualquier camino, el barrido corta la subida.
+    expect(quedanMetadatos(conC2pa), 'el barrido tiene que ver el manifiesto').toBe(true);
+    expect(quedanMetadatos(limpio)).toBe(false);
+  });
+
   it('JPEG: lo apendado DESPUÉS del EOI no sobrevive', () => {
     // El caso real: la imagen secundaria MPF de un Samsung es **un JPEG entero
     // con su propio APP1 y su propio GPS**, pegado después del EOI del primero.

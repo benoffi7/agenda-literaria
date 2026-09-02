@@ -71,10 +71,34 @@ service firebase.storage {
       // `create` y `update` separados de `delete` a propósito: en un borrado
       // `request.resource` es null y `request.resource.size` sería un evaluation
       // error, o sea un borrado legítimo denegado por un motivo confuso.
+      // **La marca de la Function no se puede subir desde un cliente** — B-220,
+      // D-175, y lo encontró el `auditor-privacidad`.
+      //
+      // `optimizarImagen` corta cuando el objeto ya trae `optimizada` en su
+      // `customMetadata`: es la guarda anti-recursión (trampa 12). Pero ese mapa
+      // lo elige **quien sube**, así que sin esta línea alcanzaba un
+      //
+      //   uploadBytes(ref, archivo, { customMetadata: { optimizada: '1' } })
+      //
+      // desde la consola del navegador para que el trigger se salteara entero, y
+      // el JPEG quedara público **con su APP1 y su GPS adentro**. La capa que
+      // este frente presenta como «la que no se puede saltear» se salteaba con
+      // una línea en la misma consola que motiva su existencia.
+      //
+      // Es la tercera defensa del mismo párrafo de DEC-7b: el tamaño y el tipo
+      // se verifican acá porque el cliente se puede saltear, y la marca también.
+      //
+      // **No reabre el loop:** la Function escribe con el Admin SDK, que pasa por
+      // encima de las reglas, así que sigue pudiendo poner la marca. Lo ata
+      // `tests/imagenes-function.test.ts`, que lee `MARCA_OPTIMIZADA` del fuente
+      // de la Function y la busca acá — dos lados que derivan el mismo nombre por
+      // separado son la clase de B-88.
       allow create, update: if esAdmin()
         && tipoAceptado()
         && tamanoAceptado()
-        && archivo.matches('^img_[A-Za-z0-9_-]+[.](jpg|png)$');
+        && archivo.matches('^img_[A-Za-z0-9_-]+[.](jpg|png)$')
+        && (request.resource.metadata == null
+            || !('optimizada' in request.resource.metadata));
 
       allow delete: if esAdmin();
     }

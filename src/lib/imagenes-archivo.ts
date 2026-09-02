@@ -156,8 +156,23 @@ const esPng = (b: Uint8Array): boolean =>
 /**
  * Los chunks PNG que se tiran: los que llevan texto o EXIF. `tIME` también, que
  * es la fecha de la última modificación.
+ *
+ * **`caBX` lo agregó B-220, y lo encontró un PNG que ya estaba publicado.** Es la
+ * caja JUMBF donde viven las **credenciales de contenido C2PA**, y en la portada
+ * de una actividad real de producción medía **13,6 KB** con un manifiesto
+ * **firmado por Google LLC** («Google C2PA Media Services»): la herramienta con la
+ * que se generó la imagen, un certificado y un `urn:c2pa:` que identifica esa
+ * copia. Ni esta lista lo tiraba ni `quedanMetadatos` lo veía, así que estuvo
+ * público desde que se subió.
+ *
+ * **Y la lección es sobre la forma de la lista, no sobre el chunk.** Esta lista es
+ * negra: enumera lo que se tira y deja pasar todo lo que no conoce, o sea lo
+ * contrario de lo que hace falta acá. Los chunks PNG seguros **son enumerables**
+ * (los enumera `estructuraConocida` en `functions/imagenes-optimizar.js`), así que
+ * lo correcto es invertirla. No se hizo en este cambio para no tocar la subida del
+ * panel en el mismo commit que estrena la Function: es **B-323**.
  */
-const CHUNKS_A_TIRAR = new Set(['eXIf', 'tEXt', 'iTXt', 'zTXt', 'tIME']);
+const CHUNKS_A_TIRAR = new Set(['eXIf', 'tEXt', 'iTXt', 'zTXt', 'tIME', 'caBX']);
 
 /**
  * Dónde termina **de verdad** el JPEG: el índice justo después de su `FF D9`.
@@ -226,6 +241,19 @@ const MARCAS_DE_METADATOS: readonly string[] = [
   'Exif\u0000\u0000',
   'http://ns.adobe.com/xap/',
   'Photoshop 3.0',
+  // **Las dos que siguen las agrego B-220, y este barrido las necesitaba: no vio
+  // pasar un bloque de 13,6 KB que ya esta publicado.** Son las credenciales de
+  // contenido C2PA, que viajan en una caja JUMBF —chunk `caBX` en PNG, marcador
+  // APP11 en JPEG— y llevan la herramienta con la que se genero la imagen, un
+  // certificado y un identificador de esa copia. En la portada de una actividad
+  // real el manifiesto estaba **firmado por Google LLC**.
+  //
+  // Van las dos y no una: `jumdc2pa` es la caja de descripcion, o sea la
+  // estructura, y `urn:c2pa:` es el identificador — asi el centinela sobrevive a
+  // que el perfil cambie de una a la otra. Ocho y nueve bytes, con los mismos
+  // numeros de falso positivo que las de arriba.
+  'jumdc2pa',
+  'urn:c2pa:',
 ];
 
 const contieneCadena = (b: Uint8Array, cadena: string): boolean => {

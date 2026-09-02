@@ -13,6 +13,7 @@ import {
 import { app, auth } from '@/lib/firebase-client';
 import { MAXIMO_BYTES } from '@/lib/imagenes';
 import { rutaDeImagen } from '@/lib/imagenes-archivo';
+import { MARCA_OPTIMIZADA } from '../functions/imagenes.js';
 import { cargarReglasStorage, emuladorStorageVivo } from './emulador';
 
 /**
@@ -141,6 +142,41 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
       expect(
         await rechaza(subir('imagenes/sub/img_x.jpg', bytes(512), 'image/jpeg')),
       ).toBe(true);
+    });
+
+    it('ni un admin puede subir con la marca de la Function puesta — B-220, trampa 12', async () => {
+      // **Lo encontró el `auditor-privacidad`, y era un P0.** La guarda
+      // anti-recursión de `optimizarImagen` corta cuando el objeto trae
+      // `optimizada` en su `customMetadata`… y ese mapa lo elige quien sube. Sin
+      // esta regla alcanzaba un `uploadBytes` con `customMetadata` desde la
+      // consola del navegador para saltear el trigger entero y dejar el JPEG
+      // público **con su APP1 y su GPS adentro** — o sea para saltear justamente
+      // la capa que existe porque el panel se puede saltear.
+      //
+      // Es la tercera defensa del mismo párrafo de DEC-7b, al lado del tamaño y
+      // del tipo.
+      const ruta = rutaDeImagen(idNuevo(), 'image/jpeg');
+      expect(
+        await rechaza(
+          uploadBytes(ref(almacen(), ruta), bytes(512), {
+            contentType: 'image/jpeg',
+            customMetadata: { [MARCA_OPTIMIZADA]: '1' },
+          }),
+        ),
+      ).toBe(true);
+
+      // El control positivo: **con cualquier otro** `customMetadata` la subida
+      // pasa. Sin esto, una regla que rechazara toda subida con metadatos
+      // —o toda subida— también pasaría el aserto de arriba.
+      const otra = rutaDeImagen(idNuevo(), 'image/jpeg');
+      expect(
+        await rechaza(
+          uploadBytes(ref(almacen(), otra), bytes(512), {
+            contentType: 'image/jpeg',
+            customMetadata: { firebaseStorageDownloadTokens: 'tok' },
+          }),
+        ),
+      ).toBe(false);
     });
 
     it('ni un admin puede escribir en miniaturas/: ahí escribe solo la Function', async () => {

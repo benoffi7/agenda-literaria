@@ -350,13 +350,29 @@ Tres cosas que no se adivinan del tipo:
   ensuciaría el formulario apenas se abre. Sirven para reservar la caja de la
   imagen en el sitio, así que **una fila sin ellos funciona igual**, con un salto
   de layout al cargar. Los documentos anteriores no se migran.
-- **`storagePath`, `ancho` y `alto` son campos de máquina** (B-206 #2). Hoy los
-  escribe la subida del panel y mañana los va a reescribir la Function de DEC-7d.
-  Para que eso no sea `calendarEventId` dentro de `sesiones` otra vez,
-  `formADocumento` **enumera** las claves de cada imagen en vez de spreadear la
-  fila, y `functions/historial.js` los declara en `CAMPOS_DE_MAQUINA_IMAGEN` —sin
-  eso, cada write-back de la Function dejaría una versión de historial y un
-  rebuild del sitio por imagen optimizada.
+- **`storagePath`, `ancho` y `alto` son campos de máquina** (B-206 #2). Los
+  escribe la subida del panel. `formADocumento` **enumera** las claves de cada
+  imagen en vez de spreadear la fila, y `functions/historial.js` los declara en
+  `CAMPOS_DE_MAQUINA_IMAGEN`, para que no sea `calendarEventId` dentro de
+  `sesiones` otra vez.
+- **La Function de DEC-7d resultó no escribir ninguno de los tres** (B-220,
+  **D-175**), y eso hay que leerlo al derecho: la protección de arriba se queda
+  igual, pero **no está en uso**. La Function escribe la imagen optimizada
+  **encima del original**, así que la `url`, el `storagePath` y la ruta de la
+  miniatura siguen siendo válidos sin tocar el documento — es justamente lo que
+  hizo viable a B-220, que estaba bloqueado en «cómo encuentro la actividad que
+  referencia este objeto».
+
+  **La consecuencia que no se adivina: `ancho` y `alto` pueden quedar viejos.** Si
+  la Function reescala (solo si el lado mayor pasa de 1600 px, que hoy no le pasa a
+  ninguna de las 30 de producción), el objeto queda más chico y el documento sigue
+  diciendo la medida original. **No es un bug y no hay que "arreglarlo" escribiendo
+  el documento**: los dos números se usan como **razón** —`proporcionDeAfiche`
+  reserva la caja con `aspect-ratio`— y el reescalado conserva la proporción, así
+  que `4032 / 3024` y `1600 / 1200` reservan exactamente la misma. Hay un test que
+  fija que la proporción se conserva, porque de eso depende este párrafo entero.
+  Si alguna vez hace falta el valor **absoluto** para algo, ahí sí hay que volver
+  a mirar el write-back.
 
 **Los documentos que ya están en producción no tienen `imagenes`.** Los lee
 `imagenesDe()`, que convierte `imagenUrl` en una lista de un elemento marcada como

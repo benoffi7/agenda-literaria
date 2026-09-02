@@ -188,8 +188,24 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   con el rechazo diciendo cuánto pesa el archivo y cuánto es el máximo. **Al subir
   se le quitan los metadatos**, y eso no es cosmético: una foto de celular lleva las
   coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares
-  (D-131). Lo que todavía no está es la recompresión y la miniatura del lado de la
-  Function: es **B-220**, y hasta entonces una foto de 3 MB pesa 3 MB en la tarjeta.
+  (D-131).
+- **Y después de subirla, el servidor la optimiza sola** (B-220, **D-175**). No se
+  ve ni se elige: unos segundos después de subir, una Function le vuelve a sacar
+  los metadatos —esta vez del lado que no se puede saltear—, la recomprime si eso
+  ahorra algo, y le deriva una miniatura para la cartelera. Tres cosas que conviene
+  saber porque no se adivinan mirando la pantalla:
+  - **Un PNG se convierte a JPEG**, si no tiene transparencia. Es de lejos el
+    cambio más grande: el PNG más pesado del sitio pasó de 1091 KB a **34 KB**, y
+    la página más pesada de 3226 KB a **184 KB**.
+  - **Un JPEG que ya está bien comprimido se deja tal cual.** Medido: 29 de las 30
+    imágenes de producción no ganan nada recomprimidas, y dos incluso pesarían más.
+    No se pierde calidad para no ahorrar nada.
+  - **El archivo publicado no es byte por byte el que se subió.** Lo dice la ayuda
+    del panel; el tope de 3 MB al subir **no cambia**, así que conviene seguir
+    recortando antes.
+  Lo que **no** cambió: las imágenes de otros sitios no se tocan ni se descargan
+  (DEC-7d). Y sigue habiendo un paso manual pendiente para las 30 que ya estaban en
+  el bucket antes de la Function: `scripts/optimizar-imagenes.mjs`.
 - **Duplicar no copia las imágenes subidas al panel**, solo las que son un link a
   otro sitio: la copia y el original compartirían el mismo archivo, y borrar una le
   rompería las imágenes a la otra. Lo dice la letra chica del modal de duplicar.

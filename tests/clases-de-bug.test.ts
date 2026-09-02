@@ -875,8 +875,18 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
  */
 const deStorage = TRIGGERS.filter((t) => t.clase.startsWith('onObject'));
 
-/** ¿Este trigger escribe en el bucket? */
-const RE_ESCRIBE_EN_STORAGE = /\.(?:save|setMetadata|copy|move|delete)\(|\bbucket\.file\(/;
+/**
+ * ¿Este trigger **escribe** en el bucket?
+ *
+ * Pide el verbo de escritura, y no alcanza con nombrar `bucket.file(`. Lo
+ * corrigió el `auditor-trampas`: `bucket.file(nombre).download()` es una
+ * **lectura**, y con el regex anterior un trigger de Storage que solo leyera
+ * quedaba clasificado como «escribe» y se le exigía una guarda que no necesita.
+ * Hoy no cambiaba ningún resultado —`optimizarImagen` escribe de verdad— y por
+ * eso se aprieta ahora, que es cuando es gratis. Es el error inverso a los otros
+ * dos falsos positivos de este bloque: más seguro, igual de impreciso.
+ */
+const RE_ESCRIBE_EN_STORAGE = /\.(?:save|setMetadata|copy|move)\(|\.file\([^)]*\)\s*\.delete\(/;
 const escribeEnElBucket = (t: Trigger): boolean =>
   trazaDe(t).cuerpos.some((c) => RE_ESCRIBE_EN_STORAGE.test(c));
 

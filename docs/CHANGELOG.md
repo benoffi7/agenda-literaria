@@ -1,5 +1,156 @@
 # Changelog
 
+## 2026-09-02 · la Function que optimiza las imágenes propias (B-220, DEC-7d)
+
+Cierra **B-220**, y con él **B-300** y **B-266**. El porqué completo está en
+**D-175**; acá lo que cambió y los números.
+
+**La página más pesada del sitio pasó de 3226,7 KB a 184,3 KB** —17,5 veces más
+liviana— **sin tocar una sola plantilla**, y recorrer `/cartelera` entera pasa de
+3518,5 KB a 1032,4 KB (−71 %). Los dos medidos contra las 30 imágenes de
+producción, antes y después, corriendo el pipeline sobre los bytes reales.
+
+**La medición cambió el diseño dos veces**, y las dos vale tenerlas anotadas:
+
+- **Recomprimir los JPEG no servía para nada.** 29 de las 30 imágenes son JPEG
+  exportados de Instagram: el total baja un 11 %, casi todo aportado por la única
+  que no es JPEG, y **en dos casos el resultado pesa más** que el original. De ahí
+  `AHORRO_MINIMO`: un JPEG se reemplaza solo si ahorra más del 5 %. Recomprimir
+  todo habría sido perder calidad a cambio de nada.
+- **El peor caso del sitio era un PNG.** La imagen de 1091,5 KB —11,8 veces la
+  mediana— es un PNG de 1024 × 1024, y las **tres** de la página de 3226,7 KB
+  también. B-300 decía «un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB»: no
+  era un JPEG. La palanca no era la compresión, era el **formato**: 1091,5 → 34,0
+  KB pasándolo a JPEG, contra 752,6 KB dejándolo en PNG optimizado.
+
+**La salida se escribe encima del original**, y eso disuelve el write-back que
+B-220 daba por bloqueante: la `url` del documento sigue valiendo, así que no hay
+nada que escribir y no hace falta ni la query `array-contains` que Firestore no
+sabe hacer ni el documento puente. `ancho`/`alto` siguen siendo verdad como
+**razón**, que es lo único para lo que se usan.
+
+### La guarda anti-recursión, que era lo único que no se podía arreglar después
+
+Es la **trampa 12** (la 3 con otra cara). DEC-7d pedía elegir una de las dos formas
+conocidas; van **las dos**, y cada una tapa un agujero que la otra no puede:
+`customMetadata` es obligatoria porque con la derivada en la **misma dirección** que
+el disparador una guarda por prefijo es imposible, y la del prefijo cubre el objeto
+que aparezca en otro prefijo **sin** marca.
+
+**Storage no corta la recursión** como Firestore corta la suya a las ~20 (§7.1), y
+eso se midió contra el emulador desde una subida de 2,6 KB:
+
+| | ejecuciones del trigger |
+|---|---|
+| con la guarda | **3**, y para |
+| sin la guarda por marca | **4**, y para — pero **no** por ninguna guarda |
+| sin la guarda y con `convieneReemplazar` en `true` | **5077 en 40 s, y subiendo** |
+
+**El del medio es un hallazgo, no un detalle.** Hoy hay un **freno accidental**: la
+segunda pasada recomprime un JPEG que ya está en su punto fijo, no conviene
+reemplazar, y se escribe con `setMetadata` — que dispara
+`onObjectMetadataUpdated` y no `onObjectFinalized`. Eso no es una guarda: es la
+casualidad de que recomprimir sea una contracción y que el umbral sea mayor que
+cero. Por eso la simulación del test modela el **peor** caso y no el
+comportamiento amable de hoy, y por eso afirma **qué guarda cortó cada vuelta** en
+vez de solo que el lazo terminó.
+
+**14 mutaciones probadas, las 14 mueren** (dos de ellas corridas también contra la
+regla de clase, que es otro test): las dos guardas por separado, el `return` de
+corte, el corte por metadatos, el umbral de ahorro, el aplanado de un PNG
+transparente, el `.rotate()`, `keepMetadata()`, la extensión de la miniatura, el
+cache inmutable al subir, anidar `miniaturas/` bajo `imagenes/`, `allow read` en vez
+de `get`+`list`, abrirle el `write` al admin y la marca subible desde el cliente.
+
+Y **dos falsos positivos del detector nuevo**, encontrados mutándolo, que son la
+lección de B-171 otra vez: `guardaPorMarca` daba `true` con la guarda ya sacada
+porque la Function también **escribe** la marca, y `guardaPorPrefijo` daba `true`
+por `idDeObjeto`, que compara el prefijo para parsear un nombre y no para ignorar un
+objeto.
+
+### Los auditores encontraron un P0 y dos P1, y ahí estuvo la mitad del valor
+
+Tres de los cuatro son cosas que ningún test de este repo podía ver. Detalle
+completo en D-175 § auditoría.
+
+- **P0 · la guarda era escribible desde el cliente.** El `customMetadata` lo elige
+  quien sube, y `storage.rules` no lo validaba: un `uploadBytes` con
+  `customMetadata: { optimizada: '1' }` desde la consola salteaba el trigger
+  **entero** y dejaba el JPEG público con su GPS. La capa que este frente presenta
+  como «la que no se puede saltear» se salteaba desde la misma consola que motiva
+  su existencia. Es la tercera defensa del párrafo de DEC-7b, al lado del tamaño y
+  del tipo.
+- **P1 · `sharp` no reporta todos los metadatos**, y la rama que **no** recomprime
+  los dejaba pasar **para siempre**: sin ver el bloque, el criterio cae al ahorro,
+  un JPEG ya comprimido no ahorra, los bytes no se tocan… y se les escribe la
+  marca igual, así que el objeto quedaba exento del trigger y del barrido. Un
+  archivo que nunca se saneó, marcado como saneado. Lo cierra
+  `estructuraConocida`: si no podemos dar cuenta de todos los bytes, se
+  recomprime. **Costo medido: cero imágenes más** de las 30 que ya están.
+- **Y buscándolo apareció un bloque de 13,6 KB ya publicado.** La portada de
+  «Usted está aquí» trae un chunk PNG `caBX` con las **credenciales de contenido
+  C2PA**: un manifiesto **firmado por Google LLC** con la herramienta que generó
+  la imagen, un certificado y un `urn:c2pa:` que identifica esa copia. Lo dejaron
+  pasar las **dos** capas del panel. Tapado en las dos (`caBX` a la lista,
+  `jumdc2pa` y `urn:c2pa:` a los centinelas), con el caso real como test. La
+  lección es sobre la **forma** de la lista y quedó como **B-323**.
+- **P1 · `.rotate()` transpone**, y «conserva la proporción» no lo cubría. Hoy las
+  dos medidas coinciden, pero por el orden de `subirImagen` y no por casualidad:
+  el panel saca el EXIF antes de medir y antes de subir. La propiedad pasó de
+  accidental a afirmada, con dos `it` que cruzan los dos lados. **Y de paso quedó
+  al descubierto un bug anterior**: el panel saca la orientación sin rotar los
+  píxeles, así que una foto tomada de costado **se publica de costado** — es
+  **B-324**.
+- Tres correcciones más: `roles/storage.objectAdmin` bajó a `objectUser` (lo único
+  que agregaba era el IAM **por objeto**, el canal que `storage.rules` no audita),
+  `escribeEnElBucket` dejó de contar un `bucket.file(...).download()` como una
+  escritura, y `src/lib/imagenes.ts` entró al índice de productores de la salida 7
+  — no estaba, así que un cambio a `urlDeMiniatura` **no disparaba la auditoría**.
+
+### Lo demás
+
+- **`sharp` declarada en `functions/package.json`.** Ya estaba en el árbol como
+  dependencia opcional de Astro —así que pasa por el `npm audit` del proyecto—
+  pero heredarla del root no alcanza: `functions/` tiene su propio
+  `node_modules` en el deploy. Es la primera dependencia binaria del proyecto y
+  cambia el tiempo de deploy de las Functions.
+- **`miniaturas/` es hermano de `imagenes/`, no hijo**, y el motivo estaba escrito
+  de antemano en el test de integración de `storage.rules`: «el día que alguien
+  escriba `{ruta=**}` —el que va a hacer falta si mañana hay
+  `imagenes/miniaturas/`— la lectura sigue andando, todo lo demás sigue verde, y
+  esto se abre sin que nada avise». Se le hizo caso. `allow get: if true`,
+  `allow list: if esAdmin()` y `allow write: if false` — ni un admin escribe ahí.
+- **El `Cache-Control` de la subida se acortó a 5 minutos** y el `immutable` de un
+  año lo pone la Function al terminar: el original vive unos segundos antes de ser
+  reemplazado, y marcarlo `immutable` en esa ventana sería pedirle al CDN que se
+  quede un año con los bytes que están por reemplazarse.
+- **WebP y AVIF no volvieron a `TIPOS_SUBIBLES`**, contra lo que B-220 decía: el
+  objeto es público desde el instante en que se sube y la Function corre unos
+  segundos después. Vuelven con una zona de subida privada, **B-322**.
+- **`scripts/optimizar-imagenes.mjs`** para las 30 que ya están en el bucket.
+  Reescribe los mismos bytes y deja que la Function haga el trabajo: una segunda
+  copia de `sharp` produciría objetos distintos el día que una de las dos cambie.
+  El default es no escribir, es idempotente, y sirve para verificar el deploy.
+- **B-221 no se resolvió, y quedó dicho por qué**: no es aceptable estrenar un
+  trigger que **borra** objetos en el mismo cambio que estrena uno que **reescribe
+  todos** los objetos de ese bucket. Lo que sí quedó anotado es que este cambio
+  duplica la cantidad de objetos y que el barrido tiene que conocer los dos
+  prefijos — con la ruta derivada, sin índice nuevo.
+- **Doc:** D-175 (la decisión completa, con la medición y la auditoría), los
+  permisos que necesita el dueño y el barrido en `08-operacion.md`, el prefijo
+  nuevo y la corrección de «reglas sin desplegar» en `02-infraestructura.md`
+  —**están desplegadas**, verificado contra producción—, las dos capas del EXIF y
+  el dato del token en `07-seguridad.md`, la nota de `ancho`/`alto` en
+  `03-modelo-de-datos.md`, el comportamiento en `04-funcionalidades.md`, la fila 12
+  del mapa de trampas, una entrada de ayuda, una de novedades, y B-320 a B-325.
+
+**Verificado de punta a punta contra los emuladores** (Storage + Functions, en
+puertos aparte para no pisar la suite de otro frente), subiendo dos imágenes reales
+de producción: el PNG de 1091,5 KB quedó en 34,0 KB con `contentType: image/jpeg`,
+el JPEG de 101,9 KB no se tocó, las dos miniaturas se escribieron, **la URL vieja
+con su token sigue devolviendo 200** con los bytes nuevos, y el trigger corrió 5
+veces en total — 2 optimizando y 3 cortando — sin que el bucket creciera.
+
 ## 2026-09-02 · fuera la entrada de /contacto
 
 **Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**

@@ -42,13 +42,17 @@ import {
   metadatosDeSalida,
   rutaDeMiniatura,
 } from '../functions/imagenes.js';
-import { optimizar, traeMetadatos } from '../functions/imagenes-optimizar.js';
+import {
+  estructuraConocida,
+  optimizar,
+  traeMetadatos,
+} from '../functions/imagenes-optimizar.js';
 import {
   CACHE_AL_SUBIR,
   rutaDeMiniatura as rutaDeMiniaturaDelSitio,
   urlDeMiniatura,
 } from '@/lib/imagenes';
-import { rutaDeImagen } from '@/lib/imagenes-archivo';
+import { dimensiones, rutaDeImagen, sinMetadatos } from '@/lib/imagenes-archivo';
 
 const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8');
@@ -155,17 +159,25 @@ describe('la recursión termina — trampa 12, B-220', () => {
     //
     // Mutación 2 — sacar el corte por prefijo: muere en la lista de `motivo`,
     // **no** en el conteo de vueltas, y eso hay que decirlo porque es un
-    // hallazgo y no un detalle del test. Sin el corte por prefijo la miniatura
-    // igual se corta, pero **por otro motivo**: `idDeObjeto` exige el prefijo de
-    // originales para poder devolver un id, así que devuelve `null` y el cuarto
-    // corte la para. O sea que hoy hay un segundo cortafuegos accidental.
+    // hallazgo y no un detalle del test.
     //
-    // Se afirma el `motivo` de cada vuelta justamente para no depender de ese
-    // accidente: lo que se fija no es «el lazo termina» sino **qué guarda lo
-    // terminó**. El día que `idDeObjeto` deje de mirar el prefijo —parsear el id
-    // sin él es un refactor razonable— el conteo de vueltas seguiría en verde y
-    // la única red sería esta lista. Es la clase de B-265: heredar un filtro
-    // «por construcción» hasta que se deje de heredar.
+    // **La atribución correcta la puso el `auditor-trampas`, y la primera versión
+    // de este comentario estaba equivocada.** Sin el corte por prefijo la
+    // miniatura igual se corta, y no la corta `idDeObjeto`: la corta **la
+    // marca**, porque el trigger escribe la miniatura marcada igual que la
+    // salida principal. `idDeObjeto` es un tercer cortafuegos, y solo manda
+    // cuando faltan las dos guardas a la vez.
+    //
+    // O sea que la guarda por prefijo **no es la que corta la miniatura de hoy**:
+    // es la que cubre un objeto que aparezca en otro prefijo **sin** la marca —
+    // el prefijo que alguien invente mañana, o esta misma miniatura el día que
+    // alguien escriba una derivada y se olvide de marcarla. Eso es lo que fija el
+    // `it` de más abajo, con la miniatura sin marca.
+    //
+    // Se afirma el `motivo` de cada vuelta justamente para no depender de qué
+    // corte llega primero: lo que se fija no es «el lazo termina» sino **qué
+    // guarda lo terminó**. Es la clase de B-265: heredar un filtro «por
+    // construcción» hasta que se deje de heredar.
     const b = bucketSimulado();
     b.subir(subido());
     const vueltas = b.drenar();
@@ -207,6 +219,26 @@ describe('la recursión termina — trampa 12, B-220', () => {
         metadatos: {},
       }).motivo,
     ).toBe('fuera-del-prefijo');
+  });
+
+  it('una derivada sin marca la corta el prefijo, y es para lo que existe esa guarda', () => {
+    // **El `it` que faltaba, y lo pidió la corrección del `auditor-trampas`.** La
+    // miniatura de hoy la corta la marca, porque el trigger la escribe marcada.
+    // La guarda por prefijo existe para el objeto que aparezca en otro prefijo
+    // **sin** marca: el prefijo que alguien invente mañana, o esta misma
+    // miniatura el día que alguien escriba una derivada y se olvide de marcarla.
+    //
+    // Sin ese caso afirmado, la guarda por prefijo se podría sacar sin que nada
+    // se pusiera rojo por el motivo correcto.
+    const b = bucketSimulado();
+    b.subir({
+      nombre: `${PREFIJO_MINIATURAS}img_abc-123.jpg`,
+      contentType: 'image/jpeg',
+      metadatos: {},
+      bytes: 20_000,
+    });
+    expect(b.drenar()).toBe(1);
+    expect(b.invocaciones[0]!.motivo).toBe('fuera-del-prefijo');
   });
 
   it('la marca se detecta por presencia y no por valor', () => {
@@ -591,6 +623,127 @@ describe('el pipeline saca los metadatos y comprime — DEC-7d', () => {
     const salida = await optimizar(acostada);
     const meta = await sharp(salida.principal.datos).metadata();
     expect([meta.width, meta.height]).toEqual([1200, 900]);
+  });
+
+  it('un JPEG con otro JPEG apendado se reemplaza aunque no ahorre — lo pidió el auditor-privacidad', async () => {
+    /*
+     * **El agujero que esto cierra era permanente, no un caso perdido.**
+     * `sharp.metadata()` no reporta lo que hay **después del EOI real** —la imagen
+     * secundaria MPF de los Samsung, que es un JPEG completo con su propio APP1 y
+     * su propio GPS—, así que `conMetadatos` daba `false`, `convieneReemplazar`
+     * caía al criterio de ahorro, un JPEG ya comprimido no ahorraba el 5 %, **los
+     * bytes originales no se tocaban… y se les escribía la marca igual**. Como la
+     * guarda anti-recursión es por presencia de la marca, ese objeto quedaba
+     * exento para siempre del trigger y del barrido: un archivo que nunca se
+     * saneó, marcado como saneado.
+     *
+     * Mutación: sacar `|| !estructuraConocida(...)` de `optimizar()`. Este caso se
+     * pone rojo.
+     */
+    const limpio = await sharp({
+      create: { width: 300, height: 300, channels: 3, background: { r: 5, g: 5, b: 5 } },
+    })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    const conCola = Buffer.concat([limpio, await jpegConExif()]);
+
+    expect(estructuraConocida(limpio, 'jpeg'), 'el control: un JPEG limpio sí se entiende').toBe(
+      true,
+    );
+    expect(estructuraConocida(conCola, 'jpeg')).toBe(false);
+
+    const salida = await optimizar(conCola);
+    expect(salida.conMetadatos, 'la cola tiene que forzar el reemplazo').toBe(true);
+    // Y el centinela del secundario no sobrevive.
+    expect(contiene(salida.principal.datos, 'agenda-literaria')).toBe(false);
+  });
+
+  it('un PNG con un chunk que no conocemos tampoco se entiende', async () => {
+    // **El caso real, y estaba publicado**: la portada de una actividad de
+    // producción trae un chunk `caBX` de 13,6 KB con las credenciales de contenido
+    // C2PA —un manifiesto firmado por Google LLC—, y `sharp` no reporta ni `exif`
+    // ni `xmp` ni `iptc` ni `comments` para él. Acá se reconstruye la forma.
+    const png = await sharp({
+      create: { width: 200, height: 200, channels: 3, background: { r: 3, g: 3, b: 3 } },
+    })
+      .png()
+      .toBuffer();
+    expect(estructuraConocida(png, 'png'), 'el control: un PNG limpio sí se entiende').toBe(true);
+    // Una cola apendada después del IEND.
+    expect(estructuraConocida(Buffer.concat([png, Buffer.from('basura')]), 'png')).toBe(false);
+  });
+
+  it('los formatos y las colas que no se entienden fallan cerrado', () => {
+    // Ante un dato que no sabemos leer, la respuesta es «recomprimí», no «dejalo
+    // como está». Es la misma elección de `quedanMetadatos` en el panel.
+    expect(estructuraConocida(Buffer.from('no soy una imagen'), 'jpeg')).toBe(false);
+    expect(estructuraConocida(Buffer.alloc(0), 'jpeg')).toBe(false);
+    expect(estructuraConocida(Buffer.alloc(0), 'png')).toBe(false);
+    expect(estructuraConocida(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), 'webp')).toBe(false);
+  });
+
+  it('una foto de costado: la medida del documento y la que publica la Function coinciden', async () => {
+    /*
+     * **Lo pidió el `auditor-trampas`, y era el aserto que faltaba** — la clase de
+     * la trampa 3 con otra cara. D-175 justifica no escribir `ancho`/`alto` de
+     * vuelta diciendo que «el reescalado conserva la proporción», y eso cubre el
+     * `resize`… pero el pipeline también hace `.rotate()`, que para orientación
+     * 5/6/7/8 **transpone** ancho y alto. Si el documento guardara la medida cruda
+     * y la Function publicara la rotada, la proporción quedaría **invertida**, no
+     * vieja, y la caja que el sitio reserva sería la contraria.
+     *
+     * Este test cruza los dos lados con el **mismo** buffer, que es lo que ningún
+     * otro hacía: el de rotación probaba la Function sola y el de proporción
+     * probaba una imagen ya derecha.
+     *
+     * Y verifica de paso lo que hace que hoy coincidan, que **no** es una
+     * casualidad feliz sino una consecuencia del orden de `subirImagen`: el panel
+     * saca el EXIF **antes** de medir y antes de subir, así que la orientación ya
+     * no está cuando `dimensiones()` mide **ni** cuando la Function abre el
+     * archivo. `.rotate()` no encuentra nada que rotar y no transpone.
+     */
+    const cruda = await sharp({
+      create: { width: 900, height: 1200, channels: 3, background: { r: 90, g: 20, b: 20 } },
+    })
+      .withMetadata({ orientation: 6 })
+      .jpeg()
+      .toBuffer();
+    expect((await sharp(cruda).metadata()).orientation, 'el caso no quedó armado').toBe(6);
+
+    // El orden real de `subirImagen`: limpiar, después medir, después subir.
+    const limpio = sinMetadatos('image/jpeg', new Uint8Array(cruda));
+    const medida = dimensiones('image/jpeg', limpio)!;
+    const salida = await optimizar(Buffer.from(limpio));
+    const publicada = await sharp(salida.principal.datos).metadata();
+
+    // La propiedad, y es la que sostiene «no hace falta write-back».
+    expect(medida.ancho / medida.alto).toBeCloseTo(publicada.width! / publicada.height!, 2);
+
+    // Y el porqué, afirmado para que se rompa si alguien cambia el orden: al
+    // objeto que sube el panel ya no le queda orientación.
+    expect((await sharp(Buffer.from(limpio)).metadata()).orientation).toBeUndefined();
+  });
+
+  it('si el EXIF llega intacto, la Function sí transpone — y por eso el orden del panel importa', async () => {
+    // El otro lado del anterior. Un objeto que llegue al bucket **con** su
+    // orientación —alguien salteando el panel, o un backfill futuro que suba
+    // bytes crudos— sale rotado, y su `ancho`/`alto` en el documento (si
+    // existiera) quedaría con la proporción **invertida**.
+    //
+    // Hoy eso no puede pasar por el orden de `subirImagen`, y este test es el que
+    // lo deja escrito: no es que la transposición no exista, es que no la
+    // alcanzamos. Está anotado en `03-modelo-de-datos.md` y en B-324.
+    const cruda = await sharp({
+      create: { width: 900, height: 1200, channels: 3, background: { r: 1, g: 2, b: 3 } },
+    })
+      .withMetadata({ orientation: 6 })
+      .jpeg()
+      .toBuffer();
+    const salida = await optimizar(cruda);
+    const publicada = await sharp(salida.principal.datos).metadata();
+    expect([publicada.width, publicada.height]).toEqual([1200, 900]);
+    // Y trae metadatos, así que se reemplaza: la rotación no se pierde.
+    expect(salida.conMetadatos).toBe(true);
   });
 
   it('traeMetadatos mira los cuatro bloques y no solo el EXIF', () => {

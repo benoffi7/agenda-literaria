@@ -358,7 +358,11 @@ sitemap, y falta el rebuild automático (B-20).
 
 Y desde el 2026-09-01 hay un segundo frente medido: **el flyer**. B-263, B-264 y
 B-265 arreglaron el recorte, sacaron el campo de donde estaba escondido y le dieron
-pared propia; lo que queda abierto es el **peso** (B-266), que depende de B-220.
+pared propia. El **peso** era B-266 y **quedó resuelto el 2026-09-02** con la
+Function de B-220 (D-175): la página más pesada del sitio pasó de 3226,7 KB a
+184,3 KB y el recorrido de la cartelera de 3518,5 KB a 1032,4 KB. Lo que queda de
+ese frente es una línea de markup (**B-320**) y un paso manual del dueño: los
+permisos de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
 ### B-263 · La portada recortaba el 51 % del flyer — ✅ hecho (2026-09-01)
 
@@ -513,7 +517,22 @@ invariante. Ahora están los dos casos y el de la URL inválida, con la mutació
 probada (volver a `a.imagenes.map(...)` sin reordenar deja el caso viejo en verde
 y el nuevo en rojo).
 
-### B-266 · El peso de la cartelera sin la Function de recompresión · P1
+### B-266 · El peso de la cartelera sin la Function de recompresión — ✅ resuelto, falta el `srcset` (2026-09-02) · P1
+
+> **La miniatura existe** (B-220 / D-175). Medido sobre las 30 imágenes de
+> producción: recorrer la pared entera pasa de **3518,5 KB a 1032,4 KB (−71 %)**
+> con miniaturas de 480 px. El disparador escrito abajo —«cuando la cartelera pase
+> de 20 afiches»— deja de aplicar: 30 miniaturas pesan menos de la mitad de lo que
+> este ítem midió para 30 originales.
+>
+> **480 px y no 320** (que daba −84 %) porque la pared es de flyers y un flyer es
+> texto metido adentro de un JPEG (D-147): bajarle la resolución es bajarle la
+> legibilidad, no el peso de una foto.
+>
+> **Lo que falta es de una línea y es de otro frente**: `Afiche.urlMiniatura` está
+> puesto, probado y **no lo pinta nadie** — falta el `srcset` en
+> `src/pages/cartelera.astro`. Es **B-320**. Hasta entonces la pared sigue
+> sirviendo los originales, que ahora al menos están optimizados.
 
 **Medido, no estimado** — los números y el método están en **D-149**.
 
@@ -1828,7 +1847,36 @@ solos cuando otro worktree stashea).
 con entradas de otros worktrees, **no las limpies**. Son el trabajo en curso de otro
 frente, y borrar una es la única forma de que esto sí pierda datos.
 
-### B-300 · Con la galería, el techo de peso de una página de detalle pasó de 3 MB a 12 MB · P1
+### B-300 · Con la galería, el techo de peso de una página de detalle pasó de 3 MB a 12 MB — ✅ cerrado (2026-09-02) · P1
+
+> **Cerrado por B-220 / D-175, con el número medido en vez de supuesto.** La
+> página de «Usted está aquí» —el caso, y el único— pasa de **3226,7 KB a 184,3
+> KB**, 17,5 veces más liviana, **sin tocar una sola plantilla**: la Function
+> escribe la imagen optimizada encima del original, así que la misma URL de
+> siempre devuelve los bytes nuevos.
+>
+> **Y el diagnóstico de abajo estaba errado en un punto que importa.** Este ítem
+> decía «un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB»: no era un JPEG.
+> Las **tres** imágenes de esa página son **PNG**, y ahí estaba todo el problema.
+> Un PNG de una ilustración pesa diez o treinta veces lo que el mismo contenido en
+> JPEG, y los tres resultaron completamente opacos —declaran canal alfa y no lo
+> usan—, así que convertirlos no cambia un píxel.
+>
+> Las dos cosas para hacer que decía abajo:
+>
+> 1. **La barata ya no hace falta.** «Volver a subir las dos imágenes
+>    recomprimidas» era un gesto manual del dueño; ahora lo hace el servidor. Lo
+>    que sí hay que correr una vez es `scripts/optimizar-imagenes.mjs`, porque el
+>    trigger solo corre cuando un objeto **se escribe** y esas tres ya estaban.
+> 2. **La cara está hecha**, y salió más barata de lo previsto: no hizo falta
+>    `srcset` para cerrar esto. El `srcset` sigue teniendo sentido y queda en
+>    **B-320** (cartelera) y **B-321** (la portada del detalle), pero ya no como lo
+>    que bloquea.
+>
+> **El techo legal sigue siendo 12 MB al subir** (4 × 3 MB, DEC-7b), a propósito:
+> el tope de subida es lo que empuja a recortar. Lo que cambió es el techo
+> **servido** — cuatro imágenes optimizadas de una actividad real quedan en el
+> orden de los 200-400 KB.
 
 Salió de auditar **B-296** (**D-168** §3), no de un reporte aparte. Y no es trabajo
 nuevo: es el mismo **B-220** de siempre, con un número más fuerte para adelantarlo.
@@ -1898,7 +1946,36 @@ dice que sí, el cambio es chico: un campo en el schema, uno en la fila del edit
 de imágenes, y en la plantilla `alt={imagen.textoAlternativo || ''}` — la tira ya
 está armada para recibirlo.
 
-### B-220 · La Function que optimiza las imágenes propias (DEC-7d) · P1
+### B-220 · La Function que optimiza las imágenes propias (DEC-7d) — ✅ hecha (2026-09-02) · P1
+
+> **Hecha. El porqué completo está en D-175**, y conviene leerlo porque la
+> medición cambió el diseño respecto de lo que este ítem daba por sentado:
+>
+> - **La salida se escribe encima del original**, y eso **disuelve el write-back**
+>   que este ítem daba por bloqueante: la `url` del documento sigue valiendo, así
+>   que no hay nada que escribir y no hace falta ni la query `array-contains` ni el
+>   documento puente. `ancho`/`alto` siguen siendo verdad como **razón**, que es lo
+>   único para lo que se usan.
+> - **La guarda anti-recursión son las dos**, no una: `customMetadata` es
+>   obligatoria (con la derivada en la misma dirección que el disparador, la del
+>   prefijo es imposible) y la del prefijo hace falta igual (un trigger de Storage
+>   v2 no se filtra por prefijo en la declaración). **Y Storage no corta la
+>   recursión** como Firestore corta la suya a las ~20: medido contra el emulador,
+>   5077 ejecuciones en 40 s desde una subida de 2,6 KB.
+> - **Recomprimir los JPEG no servía para nada** —29 de 30 ahorran entre 0 y 5 %,
+>   y dos pesan más— y **el peor caso del sitio era un PNG**: 1091,5 → 34,0 KB. La
+>   palanca no era la compresión, era el formato.
+> - **WebP y AVIF no volvieron a `TIPOS_SUBIBLES`.** El argumento de abajo («la
+>   Function que recomprime todo los vuelve seguros») no alcanza: el objeto es
+>   público desde el instante en que se sube y la Function corre unos segundos
+>   después. Queda como **B-322**.
+> - **Falta un paso manual del dueño**: los permisos de IAM sobre el bucket, y
+>   después el barrido de las 30 que ya estaban
+>   (`scripts/optimizar-imagenes.mjs`). Ver `08-operacion.md`.
+> - Lo que queda de código es el **consumidor** de la miniatura: **B-320**.
+>
+> El texto original queda abajo, para que D-175 se lea contra lo que este ítem
+> suponía.
 
 > **2026-09-01 — ahora hay números y un disparador.** Con `/cartelera` (B-265) las
 > imágenes dejaron de estar repartidas de a una por página: la pared las junta
@@ -1952,6 +2029,32 @@ verificado sobre los bytes. La Function lo va a sacar otra vez, y eso está bien
 capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
 
 ### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2
+
+> **2026-09-02 — B-220 no lo resolvió, y le sumó la mitad de un problema.** Está
+> dicho explícito porque el frente de B-220 lo tenía en su alcance y decidió no
+> hacerlo.
+>
+> **Qué le agrega.** Ahora cada imagen propia son **dos** objetos: el original en
+> `imagenes/` y su miniatura en `miniaturas/`. El bucket crece al doble de
+> velocidad, y el barrido —cuando se escriba— **tiene que conocer los dos
+> prefijos**. Lo que sí quedó resuelto es que eso sea barato: la ruta de la
+> miniatura es una función pura del nombre del original (`rutaDeMiniatura`,
+> exportada de `functions/imagenes.js`), así que el barrido no necesita ningún
+> índice nuevo — cruza los `storagePath` de las actividades contra los dos
+> prefijos derivando uno del otro.
+>
+> **Por qué no ahora, y no es que no se sepa cómo.** El barrido del primer camino
+> de abajo está claro y el margen de gracia lo hace seguro. Lo que no es aceptable
+> es **estrenar un trigger que borra objetos en el mismo cambio que estrena un
+> trigger que reescribe todos los objetos de ese bucket**: si el barrido tiene un
+> bug se lleva imágenes de producción y no hay papelera de la que sacarlas, y
+> mientras el reescritor todavía no corrió en producción un barrido no puede
+> distinguir «huérfano» de «todavía no procesado». Va en su propio cambio, con su
+> propia verificación contra el bucket real, después de que B-220 esté desplegado.
+>
+> **Y mientras tanto el problema no crece solo**: no se borra nada de Storage, así
+> que un huérfano aparece únicamente cuando alguien quita una fila de la galería o
+> abandona una subida a medias. Sigue costando centavos.
 
 **Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
 actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
@@ -2292,6 +2395,45 @@ propósito y se confirmó el rojo antes de darlos por buenos.
 
 Lo que el auditor reportó y **no** se acató: nada — los cuatro resultaron ciertos
 contra el árbol.
+
+### B-320 · La cartelera todavía no pinta la miniatura: falta el `srcset` · P1
+
+**El campo está, probado, y no lo usa nadie.** `Afiche.urlMiniatura`
+(`src/lib/cartelera.ts`) trae la URL de la miniatura de 480 px que deriva la
+Function de B-220, y `src/pages/cartelera.astro` sigue pidiendo el original. Es
+lo único que falta para cobrar los números de **B-266**: recorrer la pared entera
+pasa de 3518,5 KB a **1032,4 KB (−71 %)** con las 30 imágenes de producción.
+
+**Es de otro frente y por eso está acá y no hecho:** `src/pages/` lo estaba
+tocando otra rama en paralelo el 2026-09-02.
+
+**Cómo tiene que ser, y esto no es opcional:** la miniatura va como candidato de
+`srcset` **con el original como `src`**.
+
+```astro
+<img
+  src={afiche.url}
+  srcset={afiche.urlMiniatura ? `${afiche.urlMiniatura} 480w, ${afiche.url} 1600w` : undefined}
+  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+  ...
+/>
+```
+
+Tres cosas que se pierden si se hace distinto:
+
+- **El `src` tiene que quedar en el original.** `urlMiniatura` es una URL
+  **derivada**, no un dato guardado: una imagen subida antes de que la Function
+  estuviera desplegada **no tiene miniatura** hasta que corra
+  `scripts/optimizar-imagenes.mjs`. Un `srcset` cuyo candidato no existe hace que
+  el navegador caiga al `src`, y eso degrada bien; un `src` apuntando a la
+  miniatura degrada a imagen rota.
+- **`urlMiniatura` es `null` para las externas** (DEC-7d no las toca), así que el
+  atributo tiene que salir ausente y no vacío.
+- **`sizes` recién sirve acá.** Sin `srcset` era decoración que parece
+  optimización (D-149); con `srcset` es lo que decide qué candidato baja.
+
+El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
+puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
@@ -5163,6 +5305,92 @@ la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe 
 enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
 Falta el enlace y su test.
 
+### B-321 · La portada del detalle también podría usar la miniatura · P2
+
+Sale del mismo frente que B-320, y va aparte porque el caso es distinto y más
+flojo: la página de detalle sirve **una** portada, grande, arriba, y con B-220 ya
+pasó de 1091 KB a 34 KB. O sea que **B-300 está cerrado sin esto**.
+
+Lo que compraría: en un teléfono la portada se pinta a ~343 px CSS y hoy baja el
+archivo de 1600 px. Con un `srcset` de dos candidatos —480 y el original— se
+ahorran unos 100-150 KB por visita móvil a una página de detalle, que es la que
+recibe el tráfico de Google y de Instagram.
+
+Lo que hay que decidir, y por eso no es mecánico: la portada es **`loading="eager"`**
+(es el LCP de la página), así que el candidato que elija el navegador es el que
+mide el Largest Contentful Paint. Una miniatura de 480 px estirada a 343 px CSS en
+una pantalla 3× se ve blanda, y **un flyer es texto metido adentro de un JPEG**
+(D-147). Probablemente haga falta una variante intermedia (¿900 px?) antes que
+reusar la de la cartelera, y eso es una constante más en `functions/imagenes.js` y
+un objeto más por imagen en el bucket.
+
+### B-323 · `CHUNKS_A_TIRAR` es una lista negra, y ya se le escapó un bloque · P2
+
+**Encontrado el 2026-09-02, con un caso real y publicado** (D-175 § auditoría). La
+portada de «Usted está aquí» traía un chunk PNG **`caBX` de 13,6 KB** con las
+credenciales de contenido C2PA: un manifiesto **firmado por Google LLC** con la
+herramienta que generó la imagen, un certificado y un `urn:c2pa:` que identifica
+esa copia. Lo dejaron pasar las **dos** capas del panel —`CHUNKS_A_TIRAR` no lo
+enumeraba y las tres marcas de `quedanMetadatos` no lo describían— y estuvo público
+desde que se subió.
+
+Se tapó el caso (`caBX` en la lista, `jumdc2pa` y `urn:c2pa:` en los centinelas),
+pero **el caso no es el problema**: el problema es la forma de la lista.
+`CHUNKS_A_TIRAR` es **negra**, o sea que enumera lo que se tira y deja pasar todo
+lo que no conoce — al revés de lo que hace falta en un saneador. Y el formato PNG
+sigue creciendo: `caBX` llegó años después de que la lista se escribiera, y va a
+llegar otro.
+
+**Lo que hay que hacer:** invertirla a lista **blanca**. Los chunks PNG seguros son
+enumerables, y ya están enumerados: `estructuraConocida` en
+`functions/imagenes-optimizar.js` tiene los catorce (`IHDR`, `PLTE`, `IDAT`,
+`IEND`, `tRNS`, `gAMA`, `cHRM`, `sRGB`, `iCCP`, `sBIT`, `bKGD`, `pHYs`, `hIST`,
+`sPLT`).
+
+**Y hay que resolver una cosa antes**, que es por lo que no se hizo en el mismo
+cambio: si la lista vive en los dos lados se separan (clase de B-88), y
+`functions/` no se puede importar desde `src/` sin arrastrar `sharp` al árbol del
+panel. Las salidas son un alias más (`@calendario`, `@historial` ya existen, pero
+apuntan a módulos sin dependencias binarias), o un JSON compartido como
+`opciones-base.json` (D-03), o un test que ate las dos listas leyendo los dos
+fuentes.
+
+**El JPEG queda como está, y a propósito:** ahí `APP_A_TIRAR` es negra por una
+razón escrita —quedarse corto tira un bloque de más, que es una imagen que se ve
+igual— y la lista blanca de APPn sí se queda corta seguido. Lo que cubre ese lado
+es `estructuraConocida`, que ahora rechaza todo APPn que no reconozca.
+
+### B-324 · Una foto sacada de costado se publica de costado · P2
+
+**Anterior a B-220 y encontrado por el `auditor-trampas` mientras lo auditaba**
+(D-175 § auditoría). El panel saca el bloque APP1 sin recomprimir (`sinMetadatos`,
+D-131 §3), y ahí adentro viaja **también** el tag `Orientation`. Sacarlo sin rotar
+los píxeles deja la foto como la vio el sensor: **una foto tomada con el teléfono
+de costado se publica girada 90 grados.**
+
+No es un problema de flyers —un flyer exportado de Instagram siempre viene
+derecho— sino de las fotos del espacio, que son justo las que alguien saca con el
+teléfono en la mano.
+
+**Y `.rotate()` de la Function no lo arregla**, aunque parezca: cuando el objeto
+llega al bucket el tag ya no está, así que `sharp` no encuentra nada que rotar.
+Está afirmado en `tests/imagenes-function.test.ts` por los dos lados —con el tag
+la Function transpone, sin el tag no— y esa es la razón por la que hoy
+`ancho`/`alto` del documento y la imagen publicada coinciden en proporción, que es
+de lo que depende no necesitar write-back (D-175).
+
+**Las tres salidas, y ninguna es gratis:**
+
+| | qué cuesta |
+|---|---|
+| El panel conserva **solo** `Orientation` y tira todo el resto de APP1 | Hay que emitir un bloque EXIF desde el panel, y `quedanMetadatos` está puesto justamente para rechazar eso. Habría que exceptuar un EXIF mínimo y verificar por bytes que no lleva nada más — es delicado y es el corazón de la privacidad de este módulo |
+| El panel rota los píxeles | Recomprimir en un `canvas`, que D-131 §3 descartó con tres motivos escritos (pierde calidad, rompe el significado del tope de 3 MB, no se puede testear sin navegador) |
+| Se sube a un prefijo privado y la Function hace todo | Es **B-322**, y de paso resuelve esto: la Function vería el EXIF intacto y `.rotate()` haría lo que dice hacer |
+
+**La tercera es la buena**, y por eso este ítem probablemente se cierre con B-322 y
+no por su cuenta. Anotado aparte porque el síntoma que ve una persona no es «hay
+una ventana de privacidad», es «mi foto salió acostada».
+
 ## P3 — cuando sobre tiempo
 
 ### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo · P3
@@ -6186,6 +6414,50 @@ frase pegada al final de una de las líneas. Se colapsó a una sola, con el cont
 medido en esa corrida: **2.175 tests en 93 archivos**. Lo de `13-agentes.md` sigue
 abierto: son ocho filas y hay que **elegir** cuál texto queda en cada una, que es
 trabajo de criterio y no de merge.
+
+### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver · P3
+
+**B-220 decía que volvían con la Function y no volvieron** (D-175). El argumento
+de B-220 era que la Function recomprime todo y por lo tanto los hace seguros, y no
+alcanza: el objeto es público **desde el instante en que se sube**
+(`allow get: if true`) y la Function corre unos segundos después. En esa ventana un
+WebP con GPS es una URL pública con las coordenadas de una casa particular. Y el
+panel no puede taparlo, porque justamente no sabe limpiar esos contenedores: por
+eso están afuera.
+
+**Lo que lo desbloquea es otra forma, no otro parser.** Subir a un prefijo
+`entrada/` con `allow get: if esAdmin()`, que la Function lea de ahí, escriba el
+resultado saneado en `imagenes/` y borre la entrada. Con eso:
+
+- WebP y AVIF vuelven a `TIPOS_SUBIBLES` sin que el panel tenga que saber
+  limpiarlos, que es la promesa que B-220 no podía cumplir;
+- **la ventana desaparece para todos los formatos**, incluidos JPG y PNG: hoy la
+  foto cruda es pública durante los segundos que tarda el trigger, y eso es cierto
+  aunque el panel ya le haya sacado los metadatos;
+- deja de hacer falta sobreescribir el original, así que la guarda por
+  `customMetadata` pasaría a ser opcional en vez de obligatoria (D-175).
+
+El precio es el que B-220 evitó: al escribir en un path distinto del de entrada
+**vuelve el problema del write-back** —hay que decirle al documento dónde quedó la
+imagen—, y esa es la pregunta que D-175 disolvió en vez de resolver. Con
+`allow list` cerrado y el path derivado del id de la fila puede alcanzar con
+derivarlo, igual que la miniatura; hay que mirarlo.
+
+### B-325 · El `package-lock.json` decía 1.1.0 con el `package.json` en 1.5.0 · P3
+
+Encontrado de paso al instalar dependencias en un worktree nuevo el 2026-09-02
+(B-220): `npm install` cambió **dos líneas** del lock, las dos el campo `version`
+de la raíz, de `1.1.0` a `1.5.0`. O sea que nadie corrió `npm install` en cuatro
+publicaciones de versión.
+
+**No rompe nada** —el `version` de la raíz del lock es informativo, y las
+dependencias resueltas estaban al día— así que es P3 y va anotado solo para que no
+se descubra otra vez. El arreglo es correr `npm install` y commitear el lock; lo
+que conviene mirar es si vale la pena que el bump de versión lo haga.
+
+**Por qué no entró en el commit de B-220:** ese frente lo revirtió a propósito
+para que sus commits fueran atómicos. Un lock que cambia por un motivo ajeno al
+cambio es exactamente el ruido que hace que después nadie lea un diff de lock.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 

@@ -59,6 +59,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'las-imagenes-se-alivianan-solas',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'Ya no hace falta alivianar una imagen antes de subirla',
+    detalle:
+      'Cuando subís un archivo tuyo, unos segundos después el servidor lo vuelve a guardar más ' +
+      'liviano y le prepara una versión chica para la cartelera. El que más cambia es el PNG: uno ' +
+      'de los que ya estaban cargados pesaba treinta veces más de lo necesario. Los flyers que ' +
+      'salen de Instagram quedan igual, porque ya vienen bien.',
+    donde: 'Formulario, sección «Qué es» — el cargador de imágenes. No hay nada que tocar.',
+  },
+  {
     id: 'las-demas-imagenes-se-ven',
     fecha: '2026-09-02',
     version: '1.5.0',

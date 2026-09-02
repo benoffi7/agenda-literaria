@@ -28,11 +28,19 @@
  *     derivada en la misma dirección que el disparador, **una guarda por prefijo
  *     es estructuralmente imposible**: no hay prefijo que distinguirlas.
  *
- *  2. **Prefijo separado que el trigger ignora** (`PREFIJO_MINIATURAS`) — para
- *     la miniatura, que sí es un objeto nuevo. Hace falta igual porque un trigger
- *     de Storage v2 **no se puede filtrar por prefijo en la declaración**: se
- *     suscribe al bucket entero, así que escribir `miniaturas/…` lo vuelve a
- *     disparar y el corte lo tiene que hacer el handler.
+ *  2. **Prefijo separado que el trigger ignora** (`PREFIJO_MINIATURAS`). Hace
+ *     falta porque un trigger de Storage v2 **no se puede filtrar por prefijo en
+ *     la declaración**: se suscribe al bucket entero, así que cualquier objeto
+ *     que aparezca ahí entra al handler y el corte lo tiene que hacer él.
+ *
+ *     **Pero no es la que corta la miniatura de hoy**, y la primera versión de
+ *     este comentario lo decía mal — lo corrigió el `auditor-trampas`. El trigger
+ *     escribe la miniatura **marcada**, igual que la salida principal, así que la
+ *     corta la marca. Lo que esta guarda cubre es el objeto que aparezca en otro
+ *     prefijo **sin** marca: el prefijo que alguien invente mañana, o esta misma
+ *     miniatura el día que alguien escriba una derivada y se olvide de marcarla.
+ *     Es la guarda que no depende de que nos acordemos de marcar lo que
+ *     escribimos, y tiene su propio caso afirmado en el test.
  *
  * Las dos viven en `decidirOptimizacion`, en ese orden, y las dos están probadas
  * en `tests/imagenes-function.test.ts` — incluido el test que **simula la

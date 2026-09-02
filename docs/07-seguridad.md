@@ -34,7 +34,7 @@ vencido.
 | 4 | La analítica del panel (GA4) | `src/lib/analytics-eventos.ts` |
 | 5 | El texto para copiar a redes | `src/lib/textoRedes.ts` |
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` (`detalleDeActividad` arma el view-model, `datosEstructurados` el JSON-LD, `urlSegura` sanea todo href); `src/lib/contenidoDelSitio.ts` (`caminosDeDetalle`, `tonosDelSitio`, y desde **B-110** sus **dos** cláusulas de estado —publicado y cancelado— más `estuvoPublicada`, que resuelve contra `/versiones` cuando el id del evento ya se borró); y desde **B-273** `src/lib/identidad.ts` (`colorDeTipo`), que resuelve el color de la categoría antes de que la plantilla lo vea; y desde **B-296** `src/lib/afiche.ts` (`rotuloDeGaleria` arma el `<h2>` de la tira de imágenes secundarias, `columnasDeGaleria` y `estiloDeAfiche` su forma). **Ese último es un productor de texto de esta salida, igual que las tres frases de la página de mes lo son de la salida 8**, y lo señaló el `auditor-privacidad`: hoy interpola solo la **cuenta** de imágenes y ningún dato de la actividad, y hay que volver acá el día que interpole el título o un epígrafe. La plantilla **solo acomoda**: recibe el view-model y nada más (**D-140**). Es la única salida donde un documento que no está publicado produce HTML, y lo hace bajo la condición del §7.3 del diseño: solo si estuvo publicada alguna vez (**D-159**) |
-| 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). La plantilla solo acomoda |
+| 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` (`carteleraDeDetalles`), y **su entrada es la salida 6, no el documento**: proyecta `DetallePublico` y por construcción solo puede **sacar** campos, nunca agregar uno que aquella no haya decidido publicar. `src/lib/contenidoDelSitio.ts` (`carteleraDelSitio` y el `where`). **Y desde B-220 hay un segundo productor de texto: `src/lib/imagenes.ts` (`urlDeMiniatura`, `rutaDeMiniatura`)**, que deriva la URL de la miniatura de la del original ya publicada — lo agregó el `auditor-privacidad`, porque un productor que no está en esta fila es un cambio que no dispara la auditoría. La plantilla solo acomoda |
 | 8 | La **página de mes** `/agenda/{aaaa-mm}` — HTML indexado, una por mes con 3 o más actividades (B-113) | `src/lib/mesPublico.ts` (`mesesDelSitio` decide qué meses se emiten, `entradasDelMes` qué entra en cada uno, `recorteDelMes` recorta la entrada al mes, y `tituloDelMes`, `descripcionDelMes` y `bajadaDelMes` arman las tres frases que van al `<title>`, a la `meta description` y a la bajada); `src/lib/tarjetaPublica.ts` (`cicloDelMes`); `src/lib/contenidoDelSitio.ts` (`caminosDeMes`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. La plantilla recibe el view-model y nada más (**D-140**) |
 | 9 | El **`sitemap.xml`** y el **`robots.txt`** — lo que se le ofrece al buscador (B-109) | `src/lib/sitemap.ts` (`rutasDelSitemap` decide qué URLs entran —las páginas fijas de `RUTAS_FIJAS`, los meses enlazables, las publicadas hasta 90 días después de su última fecha y las canceladas hasta 30 días después de su última edición—, `xmlDelSitemap` serializa y `textoDeRobots` arma el `robots.txt` con `RUTA_BLOQUEADA`); `src/lib/rutasPublicas.ts` (`SITIO`, `rutaCanonica`, `urlAbsoluta`, `urlDeDetalle`, `urlDeMes` — el origen y la forma de toda URL absoluta del sitio, canonical y Open Graph incluidos); `src/lib/contenidoDelSitio.ts` (`sitemapDelSitio`, que aporta el reloj del índice y el `updatedAt` de las canceladas leído del documento crudo). **Y los dos que deciden qué página se ofrece y no viven acá:** `src/lib/mesPublico.ts` (`mesesEnlazables` — qué meses se le ofrecen al buscador, o sea todos menos el vencido) y `src/lib/listadoPublico.ts` (`estadoDe` — de ahí salen `paso` y `hasta`, que son la ventana de 90 días). Lo señaló el `auditor-privacidad`: la fila describía las reglas sin nombrar a sus dueños, y en esta salida *lo que se puede colar es una página*. **Publica solo rutas**: `lastmod` no se emite hasta que exista B-112, así que `updatedAt` sigue sin salir a ninguna salida — acá es un predicado, no un dato. Los endpoints (`src/pages/sitemap.xml.ts`, `src/pages/robots.txt.ts`) solo serializan |
 | 10 | El **archivo** `/pasadas` — HTML indexado, y el único link interno permanente de cada actividad que ya pasó (B-109) | `src/lib/pasadasPublicas.ts` (`pasadasDelSitio` decide qué entra y en qué orden; `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS` y `descripcionDePasadas` son sus frases); `src/lib/contenidoDelSitio.ts` (`vistaDePasadas`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar — y las canceladas no le llegan ni queriendo, porque nunca entran al índice (B-110). Ninguna de sus frases interpola datos de una actividad, a diferencia de la 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (**D-140**) |
@@ -93,7 +93,8 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las diez salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
-| `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**) | `toPublic.ts` |
+| `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**; **medido contra producción el 2026-09-02** — el mismo objeto responde 200 con su token, sin token y con un token inventado) | `toPublic.ts` |
+| `imagenes[].storagePath`, por la puerta de la miniatura | la miniatura de B-220 vive en `miniaturas/<id>.jpg`, **derivado** del path del original, así que su URL se puede calcular sin conocer el path… y al revés: el path del original se puede calcular desde la URL de la miniatura. No agrega exposición —las dos URLs son públicas y el nombre sigue siendo opaco— pero sí agrega una razón más para que `allow list` siga cerrado en **los dos** prefijos: enumerar uno es enumerar el otro (**D-175**) | `imagenes.ts` (`urlDeMiniatura`), `storage.rules` |
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los cuatro de abajo |
 
@@ -308,10 +309,35 @@ Y tres cosas más que hacen que no filtre nada de más:
   es la que no se puede saltear, igual que las reglas frente al schema. Lo que se
   agregó acá es la primera capa, porque entre las dos tajadas hay imágenes propias
   públicas y el hueco no podía quedar abierto.
+- **Y desde el 2026-09-02 existe la segunda capa: la Function** (`optimizarImagen`,
+  B-220 / D-175). Las dos se quedan, y no es duplicación: el panel se puede
+  saltear abriendo la consola del navegador, la Function no. Tres cosas que
+  conviene tener escritas de cómo saca los metadatos:
+  - **`sharp` descarta todo por defecto.** No hay que pedirle que saque el EXIF;
+    hay que tener cuidado de **no pedirle que lo deje** (`withMetadata`,
+    `keepExif`, `keepMetadata`). La mutación que cambia `.keepIccProfile()` por
+    `.keepMetadata()` está probada y muere.
+  - **`.rotate()` sin argumentos, y es obligatorio.** Aplica la orientación del
+    EXIF **antes** de descartarlo. Sin eso, sacarle el EXIF a una foto sacada con
+    el teléfono de costado la publica girada 90 grados: el dato que decía cómo
+    mostrarla se fue y el píxel nunca se movió. Es un bug de privacidad que se
+    disfraza de bug visual.
+  - **El perfil ICC se conserva**, misma decisión que el panel toma con el
+    marcador `0xE2`: descartarlo cambia los colores, y un perfil de color no
+    lleva ubicación, autor ni fecha.
+  - **Se reemplaza el original aunque no ahorre un byte** si traía metadatos. El
+    corte por ahorro de bytes es una optimización; el de metadatos es una
+    garantía y manda sobre el otro.
 - **Solo JPG y PNG se pueden subir**, aunque la galería sepa mostrar también WebP
   y AVIF de otros sitios. Esos dos contenedores llevan EXIF/XMP y todavía no hay
-  quien se lo saque: aceptarlos sería justamente publicar las coordenadas. Vuelven
-  con la Function de DEC-7d, que recomprime todo.
+  quien se lo saque: aceptarlos sería justamente publicar las coordenadas.
+
+  **B-220 decía que volvían con la Function, y no volvieron** (D-175). El
+  argumento del ítem era que la Function recomprime todo y por lo tanto los hace
+  seguros, y no alcanza: el objeto es público **desde el instante en que se sube**
+  (`allow get: if true`) y la Function corre unos segundos después. En esa ventana
+  un WebP con GPS es una URL pública con las coordenadas de una casa particular.
+  Vuelven recién con una zona de subida privada — **B-322**.
 
 ## La vista previa del panel no es una tercera salida
 
