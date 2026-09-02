@@ -73,6 +73,16 @@ fi
 # La detección se hace UNA vez y la contestan los pasos 3 y 4: los dos necesitan
 # lo mismo, y tenerla escrita dos veces fue justamente lo que dejó al paso 4
 # apuntando a un puerto que el paso 3 había apagado.
+# B-219 — la base del emulador de ESTE checkout. El emulador es de la máquina,
+# no del working-tree: sin esto, el gate de un worktree vacía la base del vecino
+# a mitad de su corrida (y viceversa). El valor lo calcula un solo lugar,
+# `scripts/project-id-emulador.mjs`, que es de donde lo lee también
+# `vitest.config.ts` — dos derivaciones del mismo dato es la clase de B-88, y acá
+# el síntoma sería que el paso 4 siembra en una base y el paso 3 borra otra.
+PROJECT_ID_EMU=$(node scripts/project-id-emulador.mjs)
+export PUBLIC_FIREBASE_PROJECT_ID="$PROJECT_ID_EMU"
+printf '  (base del emulador para este checkout: %s)\n' "$PROJECT_ID_EMU"
+
 EMU_HUB="${FIREBASE_EMULATOR_HUB:-127.0.0.1:4400}"
 HOST_FIRESTORE="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}"
 if curl -sf --max-time 2 "http://${EMU_HUB}/emulators" >/dev/null 2>&1; then

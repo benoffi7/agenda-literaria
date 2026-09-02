@@ -23,7 +23,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Actividad } from '@/types/actividad';
 import { CENTINELA, actividadCentinela } from './fixtures/centinelas';
-import { emuladorVivo, limpiarFirestore } from './emulador';
+import { PROJECT_ID, emuladorVivo, limpiarFirestore } from './emulador';
 
 const vivo = await emuladorVivo();
 
@@ -103,7 +103,7 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
 
   beforeAll(async () => {
     await limpiarFirestore();
-    const db = getFirestore(initializeApp({ projectId: 'agenda-literaria' }, 'sitio-test'));
+    const db = getFirestore(initializeApp({ projectId: PROJECT_ID }, 'sitio-test'));
 
     await db
       .doc('actividades/sitio-publicada')
@@ -399,7 +399,7 @@ describe.skipIf(!vivo)('las etiquetas del detalle no se filtran por aprobación 
 
   beforeAll(async () => {
     await limpiarFirestore();
-    const db = getFirestore(initializeApp({ projectId: 'agenda-literaria' }, 'sitio-etiquetas'));
+    const db = getFirestore(initializeApp({ projectId: PROJECT_ID }, 'sitio-etiquetas'));
     await db.doc('actividades/sitio-etiqueta').set(
       documento({ slug: SLUG, estado: 'publicado', arancel: { tipo: OPCION_PENDIENTE.slug, notas: '' } }),
     );
@@ -460,7 +460,7 @@ describe.skipIf(!vivo)('el color del detalle sale de la lista filtrada (§4.3, D
 
   beforeAll(async () => {
     await limpiarFirestore();
-    const db = getFirestore(initializeApp({ projectId: 'agenda-literaria' }, 'sitio-color'));
+    const db = getFirestore(initializeApp({ projectId: PROJECT_ID }, 'sitio-color'));
     await db
       .doc('actividades/sitio-color')
       .set(documento({ slug: SLUG, estado: 'publicado', tipo: TIPO_PENDIENTE.slug as never }));

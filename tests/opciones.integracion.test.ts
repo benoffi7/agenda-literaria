@@ -21,7 +21,21 @@ import {
   upsertOpciones,
 } from '@/lib/opciones';
 import type { ValorOpcion } from '@/types/actividad';
-import { HOST_FIRESTORE, emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  HOST_FIRESTORE,
+  PROJECT_ID,
+  cargarReglas,
+  emuladorVivo,
+  limpiarFirestore,
+} from './emulador';
+
+/*
+ * B-174 — el `firestore.rules` de ESTE checkout, empujado por la API del
+ * emulador. Antes este archivo dependía del directorio desde el que se
+ * arrancó el emulador, así que podía estar verificando las reglas de
+ * `/opciones` de otra rama y dar verde sin haber probado el cambio.
+ */
+const REGLAS = fileURLToPath(new URL('../firestore.rules', import.meta.url));
 
 /** El uid que crea las opciones en estos tests (el usuario logueado más abajo). */
 const UID = 'uid_test_admin';
@@ -32,7 +46,7 @@ const vivo = await emuladorVivo();
 
 /** Loguea al panel con el claim `admin`, como lo haría scripts/set-admin-claim.mjs. */
 const entrarComoAdmin = async (uid: string) => {
-  const adminApp = initAdmin({ projectId: 'agenda-literaria' }, `test-${Date.now()}`);
+  const adminApp = initAdmin({ projectId: PROJECT_ID }, `test-${Date.now()}`);
   const adminAuth = getAdminAuth(adminApp);
   try {
     await adminAuth.createUser({ uid, email: `${uid}@test.local` });
@@ -68,6 +82,11 @@ const valoresCrudos = async (campo: string): Promise<ValorOpcion[]> => {
 describe.skipIf(!vivo)('taxonomías contra el emulador — §4.2', () => {
   beforeAll(async () => {
     await limpiarFirestore();
+    // B-174 / B-219 — las reglas se empujan desde este checkout, y ahora es
+    // obligatorio: la base de este working-tree arranca **sin reglas**, así que
+    // sin esta línea el SDK de cliente correría contra lo que el emulador tenga
+    // cargado por default (o sea, el `firestore.rules` de otra rama).
+    await cargarReglas(REGLAS);
     await entrarComoAdmin(UID);
     await sembrarBase();
   }, 30_000);
@@ -155,12 +174,32 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
   const correrScript = (...args: string[]) =>
     execFileSync('node', ['scripts/aprobar-opciones.mjs', ...args], {
       cwd: fileURLToPath(new URL('..', import.meta.url)),
-      env: { ...process.env, FIRESTORE_EMULATOR_HOST: HOST_FIRESTORE },
+      /*
+       * B-169 / B-219 — el `projectId` viaja explícito.
+       *
+       * `aprobar-opciones.mjs` abre su propia app de firebase-admin y resuelve
+       * el proyecto con `process.env.PUBLIC_FIREBASE_PROJECT_ID ??
+       * 'agenda-literaria'`. Sin pasárselo, el script trabajaría sobre la base
+       * compartida mientras el test siembra y afirma sobre la de este
+       * working-tree: el síntoma sería «no existe(n) en `opciones/arancel`»,
+       * que es exactamente la cara con la que apareció la cuarta observación
+       * de B-219 — parece un script roto y es que se están mirando dos bases.
+       */
+      env: {
+        ...process.env,
+        FIRESTORE_EMULATOR_HOST: HOST_FIRESTORE,
+        PUBLIC_FIREBASE_PROJECT_ID: PROJECT_ID,
+      },
       encoding: 'utf8',
     });
 
   beforeAll(async () => {
     await limpiarFirestore();
+    // B-174 / B-219 — las reglas se empujan desde este checkout, y ahora es
+    // obligatorio: la base de este working-tree arranca **sin reglas**, así que
+    // sin esta línea el SDK de cliente correría contra lo que el emulador tenga
+    // cargado por default (o sea, el `firestore.rules` de otra rama).
+    await cargarReglas(REGLAS);
     await entrarComoAdmin(UID);
     await sembrarBase();
   }, 30_000);

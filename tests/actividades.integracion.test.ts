@@ -29,7 +29,14 @@ import { duplicarActividadForm } from '@/lib/duplicar';
 import { toPublic } from '@/lib/toPublic';
 import { sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
-import { HOST_FIRESTORE, cargarReglas, emuladorVivo, limpiarFirestore } from './emulador';
+import {
+  HOST_FIRESTORE,
+  PROJECT_ID,
+  cargarReglas,
+  emuladorVivo,
+  limpiarFirestore,
+  proyectoAparte,
+} from './emulador';
 
 const vivo = await emuladorVivo();
 
@@ -78,7 +85,7 @@ const rechazadaPorPermisos = async (lectura: Promise<unknown>, que: string) => {
 };
 
 const tokenAdmin = async (uid: string, esAdmin: boolean) => {
-  const app = initAdmin({ projectId: 'agenda-literaria' }, `t-${uid}-${Date.now()}`);
+  const app = initAdmin({ projectId: PROJECT_ID }, `t-${uid}-${Date.now()}`);
   const a = getAdminAuth(app);
   try {
     await a.createUser({ uid });
@@ -151,6 +158,11 @@ const formCompleto = (): ActividadForm => ({
 describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
   beforeAll(async () => {
     await limpiarFirestore();
+    // B-174 / B-219 — las reglas se empujan desde este checkout, y ahora es
+    // obligatorio: la base de este working-tree arranca **sin reglas**, así que
+    // sin esta línea el SDK de cliente correría contra lo que el emulador tenga
+    // cargado por default (o sea, el `firestore.rules` de otra rama).
+    await cargarReglas(REGLAS);
     await signInWithCustomToken(auth(), await tokenAdmin(UID, true));
   }, 30_000);
 
@@ -519,7 +531,11 @@ describe.skipIf(!vivo)('reglas de Firestore — §5.3', () => {
  * de D-128, o cualquier otra forma—, el mecanismo ya está fijado.
  */
 describe.skipIf(!vivo)('trampa 7 — el mecanismo, con una regla condicionada', () => {
-  const PID = 'trampa-7-mecanismo';
+  // B-219 — cuelga del projectId de este checkout y no es un literal: con dos
+  // worktrees corriendo a la vez, un nombre fijo hace que las dos corridas
+  // carguen su ruleset y siembren sus documentos en la MISMA base auxiliar.
+  // Se reprodujo así, en rojo, probando el arreglo de B-219.
+  const PID = proyectoAparte('trampa-7');
   const BASE = `http://${HOST_FIRESTORE}/v1/projects/${PID}/databases/(default)/documents`;
 
   // La regla que el §5.3 del CLAUDE.md prescribía, aislada en su propio

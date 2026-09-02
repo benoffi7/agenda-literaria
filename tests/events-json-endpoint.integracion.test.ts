@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Actividad } from '@/types/actividad';
 import { CENTINELA, actividadCentinela } from './fixtures/centinelas';
-import { emuladorVivo, limpiarFirestore } from './emulador';
+import { PROJECT_ID, emuladorVivo, limpiarFirestore } from './emulador';
 
 /**
  * `/events.json` — **el endpoint**, no la librería — B-106, B-218.
@@ -77,7 +77,7 @@ describe.skipIf(!vivo)('el endpoint /events.json publica solo lo publicado (§5.
   beforeAll(async () => {
     await limpiarFirestore();
 
-    const db = getFirestore(initializeApp({ projectId: 'agenda-literaria' }, 'endpoint-test'));
+    const db = getFirestore(initializeApp({ projectId: PROJECT_ID }, 'endpoint-test'));
     await db.doc('actividades/endpoint-publicada').set(
       documento({ slug: SLUG_PUBLICADA, estado: 'publicado' }),
     );
