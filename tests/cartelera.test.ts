@@ -389,6 +389,51 @@ describe('la página, y las dos cosas que no se pueden romper', () => {
     // finge que hay algo. Se dice qué es la página y se manda a la agenda.
     expect(pagina()).toContain('cuantos === 0');
   });
+
+  it('pinta la miniatura como candidato de srcset, con el original como src — B-320', () => {
+    /*
+     * El campo `urlMiniatura` existe desde B-220/D-175, está probado en
+     * `afiche.test.ts` (más abajo, «la miniatura de la Function se deriva») y
+     * hasta B-320 nadie lo leía acá: la pared servía el original siempre. Esta
+     * es la mitad que faltaba para cobrar los números de B-266
+     * (3518,5 KB → 1032,4 KB recorriendo la pared entera).
+     *
+     * **La composición del `srcset` vive en `srcsetDeMiniatura`
+     * (`src/lib/imagenes.ts`) y no en un template acá** — lo pidió el
+     * `auditor-privacidad` auditando B-320: `afiche.url` sale del documento tal
+     * cual lo guardó quien organiza, y una coma o un espacio adentro partiría
+     * la lista de candidatos. Sus reglas (el `src` siempre en el original, el
+     * candidato ausente y no vacío para una externa, el ancho atado a
+     * `ANCHO_MINIATURA`) están probadas por **valor** en
+     * `tests/imagenes.test.ts` y no acá: acá solo se afirma que la plantilla
+     * llama a esa función y no arma la lista por su cuenta.
+     *
+     * `sizes` solo tiene sentido puesto junto con `srcset` (D-149).
+     *
+     * MUTACIÓN PROBADA: cambiar `src={afiche.url}` por
+     * `src={afiche.urlMiniatura ?? afiche.url}` — se ve igual en desarrollo (casi
+     * todas las imágenes de prueba ya tienen miniatura) y degrada a una imagen
+     * rota el día que alguna no la tenga. El `toMatch` de `src=\{afiche\.url\}`
+     * de abajo cae con esa mutación.
+     *
+     * Se afirma sobre el código **sin comentarios**: el docblock de más arriba
+     * explica el `srcset` en prosa, y un `toMatch` contra el archivo crudo
+     * podría seguir en verde leyendo el comentario aunque el código real ya no
+     * dijera lo mismo.
+     */
+    const codigo = sinComentariosAstro(pagina());
+    expect(codigo, 'el src tiene que ser el original, no la miniatura').toMatch(
+      /src=\{afiche\.url\}/,
+    );
+    expect(
+      codigo,
+      'la plantilla no arma la lista de candidatos por su cuenta: llama a srcsetDeMiniatura',
+    ).toMatch(/srcset=\{srcsetDeMiniatura\(afiche\.urlMiniatura, afiche\.url\)\}/);
+    expect(codigo).toContain("import { srcsetDeMiniatura } from '@/lib/imagenes'");
+    expect(codigo).toContain(
+      'sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"',
+    );
+  });
 });
 
 describe('las clases de la pared existen para los tres tamaños', () => {

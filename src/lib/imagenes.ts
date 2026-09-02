@@ -82,6 +82,60 @@ export const CACHE_AL_SUBIR = 'public, max-age=300';
  */
 export const PREFIJO_MINIATURAS = 'miniaturas/';
 
+/**
+ * Ancho de la miniatura que deriva la Function, en píxeles — B-220, B-320.
+ *
+ * **El mismo número está en `functions/imagenes.js`** (`ANCHO_MINIATURA`, que es
+ * el que de verdad usa `sharp` para producir el archivo), y los ata
+ * `tests/imagenes-function.test.ts` comparando los dos. Sin esa atadura son dos
+ * literales que dicen lo mismo por casualidad: el consumidor (`srcset` de
+ * `cartelera.astro`) le informa al navegador un ancho que nadie garantiza que
+ * coincida con el del archivo real (clase de B-88, la encontró el
+ * `auditor-trampas` auditando B-320).
+ */
+export const ANCHO_MINIATURA = 480;
+
+/**
+ * Lado máximo del original que produce la Function, en píxeles — B-220, B-321.
+ *
+ * **El mismo número está en `functions/imagenes.js`** (`LADO_MAXIMO`, el que
+ * `sharp` usa para el `resize` del original), atado por
+ * `tests/imagenes-function.test.ts` por el mismo motivo que `ANCHO_MINIATURA`.
+ * Es el candidato **grande** del `srcset` de `srcsetDeMiniatura`: no describe
+ * el ancho real de cada imagen —`withoutEnlargement` deja las más chicas sin
+ * tocar— pero es el tope que sí es cierto para todas.
+ */
+export const LADO_MAXIMO = 1600;
+
+/**
+ * El `srcset` de dos candidatos —la miniatura de la Function y el original—
+ * para un `<img>` que sirve una imagen propia. `undefined` si no hay
+ * miniatura: una externa (DEC-7d) o una imagen subida antes de que la Function
+ * estuviera desplegada, en cuyo caso el atributo tiene que salir **ausente y
+ * no vacío** — B-320, B-321.
+ *
+ * ── Por qué es una función y no un template armado en cada plantilla ───────
+ * Lo encontró el `auditor-privacidad` auditando B-320: `urlOriginal` sale del
+ * documento tal cual lo guardó quien organiza —`imagenSchema` solo valida
+ * `z.string().url()`, nada descarta una coma o un espacio— y una lista de
+ * candidatos de `srcset` los usa como separador. Una URL guardada a mano con
+ * una coma en la query partiría la lista, y el navegador leería el resto del
+ * string como una URL relativa a **nuestro propio origen**. Componer acá, una
+ * sola vez, permite blindarlo con un test por **valor** en vez de una
+ * afirmación por regex sobre el markup de cada consumidor (hoy dos:
+ * `cartelera.astro` y `[slug].astro`).
+ *
+ * `urlMiniatura` no necesita el mismo blindaje: es una URL que armamos
+ * nosotros con `encodeURIComponent` (`urlDeMiniatura`), no texto libre.
+ */
+export const srcsetDeMiniatura = (
+  urlMiniatura: string | null,
+  urlOriginal: string,
+): string | undefined => {
+  if (!urlMiniatura || /[,\s]/.test(urlOriginal)) return undefined;
+  return `${urlMiniatura} ${ANCHO_MINIATURA}w, ${urlOriginal} ${LADO_MAXIMO}w`;
+};
+
 /** La forma de un nombre de objeto de la galería: `imagenes/img_<uuid>.{jpg,png}`. */
 const NOMBRE_DE_IMAGEN = /^imagenes\/(img_[A-Za-z0-9_-]+)\.(?:jpg|png)$/;
 

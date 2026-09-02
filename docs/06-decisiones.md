@@ -4647,6 +4647,12 @@ sirve **tal cual la subió quien organiza**, hasta 3 MB.
 > página están en D-168 §3, y el techo que se movió, en **B-300**. La premisa queda
 > escrita como estaba para que D-168 se lea contra su original.
 
+> **Cerrado del todo el 2026-09-02 (B-220, B-320).** La Function de B-220 derivó
+> la miniatura que esta decisión pedía, y B-320 le puso el `srcset` que faltaba
+> del lado de la plantilla. El «no se puede hacer sin B-220» de más abajo ya no
+> aplica: recorrer la pared entera con las 30 imágenes de producción pasa de
+> 3518,5 KB a 1032,4 KB (−71 %).
+
 ### Lo medido
 
 Contra el emulador, con 42 actividades publicadas de la forma de las reales y

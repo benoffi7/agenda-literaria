@@ -375,6 +375,67 @@ describe('el peso: la tira no puede pagarse en la primera pantalla', () => {
   });
 });
 
+describe('la portada pinta la miniatura como candidato de srcset — B-321', () => {
+  it('el src queda en el original, la miniatura solo como candidato chico', () => {
+    /*
+     * Mismo criterio que `cartelera.astro` (B-320): el `src` **nunca** es la
+     * miniatura —una imagen subida antes de que la Function de B-220 estuviera
+     * desplegada no la tiene todavía, y un `src` ahí sería una imagen rota—, y
+     * el candidato chico va condicionado a que exista (`urlMiniaturaPortada`
+     * sale `null` para las externas, DEC-7d).
+     *
+     * A diferencia de la cartelera, acá **no** hace falta una variante nueva
+     * (900px u otra intermedia): con solo dos candidatos —480 y el original de
+     * 1600— el algoritmo de selección de densidad del navegador ya descarta la
+     * miniatura en una pantalla de alta densidad, porque su densidad
+     * (480 / ancho-del-slot) queda por debajo del `devicePixelRatio` que pide
+     * el dispositivo y el único candidato que la alcanza es el original. Eso
+     * es lo que dejaba a B-321 "no mecánico": la objeción de que la miniatura
+     * se vería borrosa en retina no se sostiene con dos candidatos siempre y
+     * cuando el original grande siga en el `srcset` — que es justo lo que este
+     * `<img>` hace.
+     *
+     * **La composición del `srcset` vive en `srcsetDeMiniatura`
+     * (`src/lib/imagenes.ts`), no en un template acá** — mismo motivo que
+     * `cartelera.astro`: `portada.url` sale del documento tal cual lo guardó
+     * quien organiza, y ese archivo ya tiene el test por valor de sus reglas
+     * (`tests/imagenes.test.ts`). Acá solo se afirma que la plantilla llama a
+     * esa función y no arma la lista por su cuenta.
+     *
+     * MUTACIÓN PROBADA: cambiar `src={portada.url}` por
+     * `src={urlMiniaturaPortada ?? portada.url}` — se ve igual en desarrollo y
+     * degrada a imagen rota el día que la portada no tenga miniatura todavía.
+     */
+    const portadaImg = imagenesDelMarkup()[0]!;
+    expect(portadaImg, 'el src tiene que ser el original, no la miniatura').toContain(
+      'src={portada.url}',
+    );
+    expect(
+      portadaImg,
+      'la plantilla no arma la lista de candidatos por su cuenta: llama a srcsetDeMiniatura',
+    ).toContain('srcset={srcsetDeMiniatura(urlMiniaturaPortada, portada.url)}');
+    expect(portadaImg).toContain('sizes="(min-width: 1024px) 60vw, 100vw"');
+  });
+
+  it('la secundaria NO lleva srcset: la miniatura es un candidato del `eager`, no de la tira', () => {
+    // La tira ya se paga con `lazy` (ver el describe de arriba). Sumarle un
+    // `srcset` que nadie pidió sería agregar superficie sin comprarse nada —
+    // B-321 es explícitamente sobre la portada, que es el LCP de la página.
+    const secundaria = imagenesDelMarkup()[1]!;
+    expect(secundaria).not.toContain('srcset');
+  });
+
+  it('importa la composición del srcset en vez de reimplementarla — clase de B-88', () => {
+    // Mismo hallazgo que B-320 (auditor-trampas y auditor-privacidad): un
+    // `srcset` armado a mano en cada plantilla es una regla —el ancho de la
+    // miniatura, el orden de los candidatos, el blindaje contra comas— con dos
+    // consumidores que podrían divergir. `srcsetDeMiniatura` es la única
+    // implementación, y sus reglas están probadas por valor en
+    // `tests/imagenes.test.ts`, no acá.
+    expect(src()).toContain("import { srcsetDeMiniatura, urlDeMiniatura } from '@/lib/imagenes'");
+  });
+});
+
 describe('la forma de la tira', () => {
   it('ninguna imagen se recorta: la clase compartida, sin el tope de la portada', () => {
     /*

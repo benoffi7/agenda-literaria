@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ANCHO_MINIATURA,
   ID_IMAGEN_MIGRADA,
+  LADO_MAXIMO,
   MAXIMO_IMAGENES,
   conPortada,
   imagenExterna,
@@ -8,6 +10,7 @@ import {
   nuevaImagenId,
   portadaDe,
   sinImagen,
+  srcsetDeMiniatura,
 } from '@/lib/imagenes';
 import { toPublic } from '@/lib/toPublic';
 import { duplicarActividadForm } from '@/lib/duplicar';
@@ -213,5 +216,42 @@ describe('duplicar (B-11, B-167)', () => {
     };
     const copia = duplicarActividadForm(origen, { tomados: [] });
     expect(copia.imagenes.filter((i) => i.portada)).toHaveLength(1);
+  });
+});
+
+describe('srcsetDeMiniatura — el srcset de dos candidatos (B-320, B-321)', () => {
+  const MINIATURA = 'https://firebasestorage.googleapis.com/v0/b/x/o/miniaturas%2Fimg_1.jpg?alt=media';
+  const ORIGINAL = 'https://firebasestorage.googleapis.com/v0/b/x/o/imagenes%2Fimg_1.jpg?alt=media&token=t';
+
+  it('con miniatura: dos candidatos, el original siempre el grande', () => {
+    expect(srcsetDeMiniatura(MINIATURA, ORIGINAL)).toBe(
+      `${MINIATURA} ${ANCHO_MINIATURA}w, ${ORIGINAL} ${LADO_MAXIMO}w`,
+    );
+  });
+
+  it('sin miniatura (externa, o subida antes de que la Function existiera): undefined, no vacío', () => {
+    // Un `srcset=""` es distinto de que el atributo no exista: Astro omite el
+    // atributo con `undefined` y lo emite vacío con `''`, y un `srcset` vacío
+    // no es lo mismo que ausente para algunos navegadores.
+    expect(srcsetDeMiniatura(null, ORIGINAL)).toBeUndefined();
+  });
+
+  it('una coma o un espacio en el original no compone: partiría la lista de candidatos', () => {
+    /*
+     * Lo encontró el `auditor-privacidad` auditando B-320: `imagenSchema` solo
+     * valida `z.string().url()`, así que nada impide guardar una URL con una
+     * coma en la query. Un `srcset` con esa coma sin escapar haría que el
+     * navegador interprete el resto del string como una URL relativa a
+     * **nuestro propio origen** — no una fuga de dato, pero sí un `srcset`
+     * roto en una salida pública.
+     *
+     * MUTACIÓN PROBADA: sacar el `if` y componer siempre. Este test es el que
+     * cae — sin él, una URL con coma compone un string que **parece** un
+     * srcset válido y nada más lo distingue.
+     */
+    const conComa = 'https://firebasestorage.googleapis.com/v0/b/x/o/imagenes%2Fa.jpg?alt=media,x=y';
+    expect(srcsetDeMiniatura(MINIATURA, conComa)).toBeUndefined();
+    const conEspacio = 'https://ejemplo.com/foto raro.jpg';
+    expect(srcsetDeMiniatura(MINIATURA, conEspacio)).toBeUndefined();
   });
 });

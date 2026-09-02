@@ -31,24 +31,26 @@
  * ── El peso, que es la parte que se puede medir ───────────────────────────
  * Es la única página del sitio que pide imágenes: la home no pide **ninguna**
  * (D-146) y el detalle pide una. Así que el presupuesto de bytes se decide acá,
- * y con la Function de recompresión todavía sin construir (B-220) las tres
- * palancas que quedan son:
+ * y las palancas son:
  *
  * | Palanca | Qué compra |
  * |---|---|
  * | `loading="lazy"` en todos menos el primero | el navegador baja el afiche recién cuando se acerca al viewport. Con 30 flyers de 90 KB, la primera pantalla pide ~3 y no 2,7 MB |
  * | `width`/`height` + `aspect-ratio` | la caja se reserva antes de que la imagen llegue, así que el lazy **no** hace saltar la página mientras se scrollea |
  * | `decoding="async"` | decodificar un JPEG de 1080px no bloquea el hilo principal |
+ * | `srcset`/`sizes` con la miniatura de 480px (B-220/B-320) | recorrer la pared entera pasa de 3518,5 KB a 1032,4 KB (−71 %) con las 30 imágenes de producción — D-149 |
  *
- * **`sizes` no está, y es a propósito:** sin `srcset` no hace nada. Un `sizes`
- * suelto es decoración que parece optimización, y la que haría falta —servir la
- * imagen a 400px cuando la columna mide 400px— necesita variantes, o sea B-220.
- * Los números y el punto en el que esto deja de sostenerse están en
- * `docs/06-decisiones.md` (D-148).
+ * **`sizes` sin `srcset` no hace nada** (D-149) y por eso van siempre juntos: el
+ * `srcset` es `{miniatura} 480w, {original} 1600w` con el original **siempre**
+ * como `src` (una miniatura ausente degrada al original, no a una imagen rota) y
+ * `null` para las imágenes externas, que DEC-7d no toca. Los números y el punto
+ * en el que el peso sin miniatura dejaba de sostenerse están en
+ * `docs/06-decisiones.md` (D-148, D-149).
  */
 import Base from '@/layouts/Base.astro';
 import { carteleraDelSitio } from '@/lib/contenidoDelSitio';
 import { columnasDeCartelera, estiloDeAfiche } from '@/lib/afiche';
+import { srcsetDeMiniatura } from '@/lib/imagenes';
 import { NOMBRE } from '@/lib/identidad';
 import {
   CLASES_DE_PARED,
@@ -116,9 +118,29 @@ const descripcion =
                 El primero va `eager`: es lo más grande de la primera pantalla y
                 pedirlo tarde retrasa el LCP. Los demás, `lazy` — es la palanca
                 que hace que una pared de 30 afiches no pese 2,7 MB al entrar.
+
+                `src` queda en el ORIGINAL a propósito — B-320/B-266/D-149. La
+                miniatura es un candidato de `srcset`, no el `src`: es una URL
+                derivada (no un dato guardado), así que una imagen subida antes
+                de que la Function de B-220 estuviera desplegada no la tiene
+                todavía, y `urlMiniatura` da `null`. Con el candidato ausente el
+                `srcset` degrada solo al original; con la miniatura en `src` la
+                imagen se rompe. Y para las externas (DEC-7d no las toca)
+                `urlMiniatura` es siempre `null`, así que el atributo sale
+                ausente y no vacío. `sizes` recién sirve con `srcset` puesto: sin
+                candidato es decoración que parece optimización (D-149).
+
+                `srcsetDeMiniatura` compone la lista de candidatos y no un
+                template acá: `afiche.url` sale del documento tal cual lo guardó
+                quien organiza, y una coma o un espacio adentro partiría el
+                `srcset` (lo encontró el `auditor-privacidad` auditando B-320).
+                Componer en `src/lib/imagenes.ts` permite blindarlo con un test
+                por valor en vez de una afirmación por regex sobre este markup.
               */}
               <img
                 src={afiche.url}
+                srcset={srcsetDeMiniatura(afiche.urlMiniatura, afiche.url)}
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                 alt=""
                 width={afiche.ancho ?? undefined}
                 height={afiche.alto ?? undefined}

@@ -1,5 +1,67 @@
 # Changelog
 
+## 2026-09-02 · la portada del detalle también pinta la miniatura — B-321
+
+**La objeción que traía el ítem no se sostuvo, y por eso terminó siendo
+mecánico.** B-321 decía que la miniatura de 480px podía verse «blanda» en la
+portada del detalle en una pantalla retina, porque ahí la imagen es
+`loading="eager"` (el LCP de la página) y no un afiche chico de una pared. La
+razón para dudar era real, pero el mecanismo de selección de candidatos del
+navegador ya la cubre: con dos candidatos en el `srcset` —la miniatura y el
+original de 1600px, nunca solo la miniatura— el navegador compara la densidad
+de cada uno contra el `devicePixelRatio` real del dispositivo. A 1× la
+miniatura alcanza y se elige (downscale, se ve bien); a 2× o 3× su densidad
+queda por debajo de lo que el dispositivo pide y el único candidato que la
+alcanza es el original, así que el navegador cae ahí solo. La miniatura nunca
+se estira: eso solo pasaría si el original no estuviera en la lista, y siempre
+está. No hizo falta ninguna variante nueva (900px u otra intermedia) ni tocar
+`functions/`.
+
+`src/pages/actividad/[slug].astro` deriva `urlDeMiniatura(portada.url)` en el
+frontmatter (cálculo de presentación, igual criterio que `estiloDeAfiche`, sin
+agregar un campo a `DetallePublico` ni al barrido de salidas públicas) y el
+`<img>` de la portada usa el mismo `srcsetDeMiniatura` que `cartelera.astro`
+(B-320).
+
+## 2026-09-02 · la cartelera por fin pinta la miniatura — B-266 resuelto del todo
+
+**B-320.** `src/pages/cartelera.astro` pedía el original de cada flyer aunque la
+Function de B-220 ya derivaba una miniatura de 480px, probada y sin consumidor
+desde el 2026-09-02. Ahora el `<img>` de cada afiche lleva `srcset` con la
+miniatura como candidato chico y el original —**siempre**— como `src` y como
+candidato grande: una imagen subida antes de que la Function estuviera
+desplegada no tiene miniatura todavía, y un `srcset` cuyo candidato no existe
+degrada solo al `src` (un `src` apuntando a la miniatura degradaría a imagen
+rota). Para las externas (DEC-7d no las toca) `urlMiniatura` es `null` y el
+atributo sale ausente.
+
+Medido sobre las 30 imágenes de producción: recorrer la pared entera pasa de
+**3518,5 KB a 1032,4 KB (−71 %)**. Con esto, **B-266 queda resuelto del todo** —
+era la única pieza que le faltaba desde que se cerró la Function.
+
+**Y el `auditor-trampas` encontró un B-88 de paso:** el `480w` del descriptor
+era un literal copiado a mano, sin nada que lo atara al `ANCHO_MINIATURA` real
+de `functions/imagenes.js` — el que `sharp` usa para producir el archivo. Ahora
+`src/lib/imagenes.ts` exporta su propio `ANCHO_MINIATURA` y `LADO_MAXIMO` (mismo
+patrón que `CACHE_AL_SUBIR`/`CACHE_OPTIMIZADO`), atados a los de la Function por
+`tests/imagenes-function.test.ts`.
+
+**Y el `auditor-privacidad` encontró un segundo problema, real aunque no de
+fuga:** el candidato grande del `srcset` era `afiche.url` crudo, interpolado en
+el markup — una coma en esa URL (el schema no la prohíbe) partiría la lista de
+candidatos. Se movió la composición a `srcsetDeMiniatura` en
+`src/lib/imagenes.ts`, una función pura que blinda el caso y que ahora usan las
+dos plantillas con imágenes (`cartelera.astro` y `[slug].astro`, ver B-321 más
+abajo), probada por valor en `tests/imagenes.test.ts`.
+
+**Y un tercer hallazgo, en la red y no en el código:** el `for` de
+`tests/barrido-de-salidas-publicas.test.ts` que afirma «todo lo que la pared
+publica ya lo publicaba el detalle» saltaba `urlMiniatura` en silencio —el
+fixture de centinelas no es una URL real, así que el campo daba `null` y nunca
+ejercitó la rama que importa—. Se saltea ahora **por nombre**, con un test
+nuevo que sí usa una URL real y verifica que la miniatura es una derivación
+pura del original, sin token.
+
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 
 **Y los cuatro hubs de búsqueda entraron al índice de salidas públicas como la

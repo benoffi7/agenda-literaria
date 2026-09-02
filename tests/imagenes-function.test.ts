@@ -48,7 +48,9 @@ import {
   traeMetadatos,
 } from '../functions/imagenes-optimizar.js';
 import {
+  ANCHO_MINIATURA as ANCHO_MINIATURA_DEL_SITIO,
   CACHE_AL_SUBIR,
+  LADO_MAXIMO as LADO_MAXIMO_DEL_SITIO,
   rutaDeMiniatura as rutaDeMiniaturaDelSitio,
   urlDeMiniatura,
 } from '@/lib/imagenes';
@@ -327,6 +329,30 @@ describe('lo que está escrito dos veces, atado', () => {
       expect(rutaDeMiniaturaDelSitio(path)).toBe(rutaDeMiniatura(path));
       expect(rutaDeMiniaturaDelSitio(path)).toBeNull();
     }
+  });
+
+  it('el ancho de miniatura que la Function produce es el que el srcset le informa al navegador — B-320', () => {
+    /*
+     * Lo encontró el `auditor-trampas` auditando B-320: el `srcset` de
+     * `cartelera.astro` decía `480w` como literal, y nada lo atava al
+     * `ANCHO_MINIATURA` real de `functions/imagenes.js` — el que `sharp` usa de
+     * verdad para producir el archivo. Un descriptor de ancho que no coincide
+     * con el archivo no rompe nada (el navegador sigue sirviendo la miniatura),
+     * solo hace que elija candidato con el número equivocado, y nada lo avisa.
+     *
+     * MUTACIÓN PROBADA: subir `ANCHO_MINIATURA` en `src/lib/imagenes.ts` a 600
+     * sin tocar el de `functions/imagenes.js` (o viceversa) pone este test en
+     * rojo.
+     */
+    expect(ANCHO_MINIATURA_DEL_SITIO).toBe(ANCHO_MINIATURA);
+  });
+
+  it('el lado máximo del original que la Function produce es el candidato grande del srcset — B-321', () => {
+    // Mismo motivo que el test de arriba, y mismo hallazgo aplicado al otro
+    // candidato: `LADO_MAXIMO` de `src/lib/imagenes.ts` (el `1600w` del
+    // `srcset` de `srcsetDeMiniatura`) tiene que ser el mismo que usa `sharp`
+    // para el `resize` del original.
+    expect(LADO_MAXIMO_DEL_SITIO).toBe(LADO_MAXIMO);
   });
 
   it('el cache corto de la subida y el largo de la Function encajan', () => {

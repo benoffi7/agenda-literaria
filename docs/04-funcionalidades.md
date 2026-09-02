@@ -859,6 +859,14 @@ título y la fecha, que en un flyer están tipografiados adentro del JPEG. Lo qu
 resuelve el tope de alto y no la proporción fija (**D-144**, corregido por D-147).
 Sin imagen no hay hueco: la ficha es lo primero.
 
+**Desde B-321, la portada también pide la miniatura de 480px (B-220) como
+candidato chico de `srcset`, con el original como candidato grande y como
+`src`.** En un teléfono, donde la portada se pinta a ~343px CSS, eso baja el
+archivo de 480px en vez del de 1600px — y en una pantalla de alta densidad el
+navegador elige solo el original, porque la densidad de la miniatura queda por
+debajo de lo que el dispositivo pide: nunca se ve borrosa (ver B-321 en
+`docs/BACKLOG.md` para el porqué completo).
+
 **Arriba va una sola imagen: la portada.** Una actividad puede tener hasta cuatro
 (DEC-7b) y las demás salen **al final del contenido** — ver «Las demás imágenes»
 más abajo. Hasta el 2026-09-02 no salían a ninguna parte (**B-296**).
@@ -971,6 +979,14 @@ lugar— y el epígrafe si lo hay. El bloque entero es el enlace.
 
 Los detalles y las alternativas descartadas están en **D-148**; el peso medido, en
 **D-149** y **B-266**.
+
+**Desde B-320, cada afiche pide la miniatura de 480px (B-220) y no el original.**
+El `<img>` lleva `srcset` con la miniatura como candidato chico y el original
+como grande, y el original queda siempre en `src` —una imagen subida antes de
+que la Function estuviera desplegada no tiene miniatura todavía, y un `srcset`
+cuyo candidato no existe degrada solo al `src`—. Recorrer la pared entera pasa
+de 3518,5 KB a 1032,4 KB (−71 %) con las 30 imágenes de producción, y con eso
+**B-266 queda resuelto del todo**: lo único que faltaba era este `srcset`.
 
 ### `/agenda/{aaaa-mm}` — qué hay en un mes (B-113)
 
