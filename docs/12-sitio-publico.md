@@ -23,9 +23,9 @@ fragmentos de código son ilustrativos.
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ❌ — frente siguiente (**B-108**) |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155** |
-> | §4.5 pasadas, calendario, acerca, 404 | 🟡 — `/suscribirse` es el «calendario» (**D-134**) y `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**); `/acerca` y `/404` ❌ |
+> | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
-> | §5 SEO | ✅ — `<title>`, `meta description`, JSON-LD, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. Falta solo lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291**) y el `lastmod`, que necesita **B-112** |
+> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. Falta solo lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto), el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los hubs del §5.5 (los dos siguen en **B-107**, y el segundo va con **B-108**), y el `lastmod`, que necesita **B-112** |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
 > | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
@@ -49,7 +49,7 @@ fragmentos de código son ilustrativos.
 >    filtrado testeado como lógica pura. El costo, dicho: el runtime de React
 >    viaja a la home (**B-239**).
 > 5. **Sin imagen, la tarjeta ya no deja el hueco: genera una portada** (§4.2,
->    §7.6). Los dos apartados decían que la tarjeta sin `imagenUrl` no reserva la
+>    §7.6). Los dos apartados decían que la tarjeta sin portada no reserva la
 >    columna y que no hay placeholder — correcto para la tarjeta horizontal de una
 >    columna, falso desde que hay grilla: con las celdas a la misma altura, la
 >    mitad sin portada se ve rota y no distinta. Lo que **no** cambió es lo que esos
@@ -127,7 +127,24 @@ que exista.
 
 ## 2. Mapa de URLs
 
-Nueve patrones de ruta, todos estáticos. Ninguno se genera si quedaría vacío.
+> ⚠️ **Corregido el 2026-09-02 contra las rutas reales — B-234.** Este mapa
+> nombraba tres páginas que se construyeron con otro nombre o con otro reparto, y
+> se le había caído una que nació después:
+>
+> | El diseño decía | La ruta real | Dónde está el motivo |
+> |---|---|---|
+> | `/calendario` | **`/suscribirse`** | **D-134** (B-230) |
+> | `/acerca` | **`/ayuda`** + **`/contacto`** — el rol se repartió en dos | B-232, B-233 |
+> | *(no estaba)* | **`/cartelera`**, la pared de afiches | **D-148** (B-265) |
+> | `/404` | **no existe todavía** | sin ítem: Firebase sirve su 404 por defecto |
+>
+> La fuente de verdad de qué páginas hay es `src/pages/`, y la de qué se le ofrece
+> al buscador es `RUTAS_FIJAS` (`src/lib/sitemap.ts`) — con un test que exige que
+> toda página estática esté en esa lista **o** exceptuada con su motivo, así que la
+> próxima no se puede olvidar (B-109).
+
+**Doce patrones de ruta de página, todos estáticos: ocho construidos y los cuatro
+hubs de B-108.** Ninguno se genera si quedaría vacío.
 
 | URL | Qué renderiza | De dónde salen los datos |
 |---|---|---|
@@ -139,11 +156,13 @@ Nueve patrones de ruta, todos estáticos. Ninguno se genera si quedaría vacío.
 | `/gratis` | Hub de lo que no se paga (`gratis` + `a-la-gorra`) | Build |
 | `/agenda/{aaaa-mm}` | Qué hay en un mes | Build. Solo meses vigentes con **3 o más** actividades |
 | `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo | Build |
-| `/calendario` | Cómo suscribirse al Google Calendar público | Estático, escrito a mano |
-| `/acerca` | Qué es esto, quién lo hace, cómo publicar una actividad | Estático, escrito a mano |
+| `/cartelera` | La pared de afiches: solo las actividades con flyer, la imagen entera | Build. **No estaba en este diseño** — D-148 |
+| `/suscribirse` | Cómo suscribirse al Google Calendar público. **Era `/calendario`** — D-134 | Estático, escrito a mano (`src/lib/enlaces.ts` pone las direcciones) |
+| `/ayuda` | Qué es esto, qué tipos de actividad hay, cómo se lee una ficha | Estático (`src/lib/ayudaDelSitio.ts`) |
+| `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
-| `/sitemap.xml` · `/robots.txt` | Para el buscador | Build |
-| `/404.html` | No encontrado, con búsqueda y links a los hubs | Estático |
+| `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
+| ~~`/404.html`~~ | **No se construyó.** Hoy responde el 404 por defecto de Firebase Hosting | — |
 
 Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
 
@@ -307,6 +326,14 @@ Notas que importan:
   Sirve para la tarjeta y como `meta description` de la página de detalle.
 - **`organizador` y `tallerista` son strings** en el JSON (solo el nombre): el
   Instagram y la bio son de la página de detalle.
+- **`imagenUrl` en el índice es un derivado, no el campo del modelo** (B-223). El
+  modelo no tiene un campo único de imagen desde **D-125**: tiene
+  `imagenes: Imagen[]` con un flag `portada`. El índice lleva **una** URL porque
+  el listado necesita una sola imagen, y la saca de la portada
+  —`imagenUrl: portadaDe(a.imagenes)?.url ?? null`, `src/lib/eventsJson.ts`—
+  conservando el nombre que este documento le había puesto. O sea que el nombre
+  del campo del JSON es correcto y el del modelo ya no existe: donde este
+  documento dice «imagen de la actividad», leer «la portada de su galería».
 - **`cierraEn` en vez de `abierta`.** Ver [§11.2](#112-cambios-a-topublicts): el
   booleano `abierta` que hoy calcula `toPublic` se congela en el momento del
   build y miente hasta el rebuild siguiente.
@@ -490,10 +517,13 @@ Es el componente que más se repite; lo que muestra está elegido, en este orden
 - **La fecha va arriba y en Inter**, no el título. Es el dato que decide.
 - Toda la tarjeta es un link (`<a>` envolviendo el `<article>`), sin botones
   internos: en móvil un botón dentro de un link es un blanco ambiguo.
-- **Sin imagen no hay hueco gris.** La tarjeta sin `imagenUrl` no reserva la
+- **Sin imagen no hay hueco gris.** La tarjeta sin portada —o sea con
+  `imagenes: []`, que es la forma que tiene «no hay imagen» desde **D-125**; el
+  campo único `imagenUrl` ya no existe (**B-167**, **B-223**)— no reserva la
   columna: el texto ocupa todo el ancho y el título sube un escalón de tamaño.
   Es una tarjeta distinta, no una tarjeta rota. Ver
-  [§7.6](#76-una-actividad-sin-imagen).
+  [§7.6](#76-una-actividad-sin-imagen), y el desvío 5 de la caja de estado: hoy
+  esa tarjeta **genera** una portada tipográfica (D-142).
 - El badge de arancel solo se pinta con el acento cuando es `gratis` o
   `a-la-gorra`; el resto va en gris. Es el único color de la lista.
 - Nada de "quedan 3 lugares": no sabemos cuántas inscripciones hay. `cupo` es el
@@ -645,7 +675,11 @@ el subconjunto ya filtrado.
   aviso "Ahora no hay talleres con fecha próxima" y links a los demás hubs y al
   archivo. Un 404 sobre una URL indexada es peor que una página honesta y vacía.
 
-### 4.5 `/pasadas`, `/calendario`, `/acerca`, `/404`
+### 4.5 `/pasadas`, `/suscribirse`, `/ayuda` + `/contacto`, `/404`
+
+> **Los nombres de esta sección son los del diseño y tres cambiaron — B-234.** El
+> reparto real está en la caja del [§2](#2-mapa-de-urls); cada bullet de abajo
+> lleva el suyo.
 
 - **`/pasadas`** — mismas tarjetas, atenuadas, agrupadas por mes de más reciente
   a más antiguo, sin filtros salvo la búsqueda. Cabecera honesta: "Lo que ya
@@ -681,8 +715,28 @@ el subconjunto ya filtrado.
   canal para proponer una. Es la página que le da a un buscador y a una persona
   con quién está tratando. Necesita un canal de contacto — ver
   [§11.1](#111-decisiones-del-dueño).
+
+  > **Construida el 2026-08-28 como dos páginas y no una** — B-232 y B-233. El
+  > rol se partió por lo que cada mitad contesta: **`/ayuda`** es «qué es esto y
+  > cómo se lee» (qué tipos de actividad hay, qué significa cada dato de una
+  > ficha, cómo funciona el calendario) y **`/contacto`** es «cómo propongo una»,
+  > con la lista de qué conviene contar. Partirlas es lo que dejó a cada una con
+  > un `<title>` y una `meta description` que dicen algo distinto —una sola página
+  > con los dos temas no puede— y lo que hizo que el pie deje de mandar a un
+  > `mailto:` crudo que se salteaba esa lista (B-233).
+  >
+  > El canal de contacto que este bullet pedía **se decidió**: es el que
+  > `/contacto` publica. Lo que sigue afuera es la página de identidad
+  > institucional —quién lo mantiene, el `Organization` del §5.5— que no tiene
+  > ítem propio porque nadie la pidió.
 - **`/404`** — buscador, los hubs, y "quizá la actividad que buscás ya pasó:
   mirá el archivo".
+
+  > ❌ **No se construyó, y no tiene ítem.** Hoy responde el 404 por defecto de
+  > Firebase Hosting. Se deja escrito acá porque la página tiene sentido —el
+  > destino natural de un slug viejo es el archivo, no una pared blanca— pero
+  > mientras el slug sea inmutable (trampa 10) ninguna URL nuestra se rompe
+  > sola, así que el 404 lo ven sobre todo los bots.
 
 ---
 
@@ -717,7 +771,18 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | `/gratis` | `Actividades literarias gratis y a la gorra — Agenda literaria` | escrita a mano | la propia |
 | `/agenda/{aaaa-mm}` | `Qué hay en {mes} de {año} — Agenda literaria` | `{N} actividades literarias en {mes}: {tres títulos}.` | la propia |
 | `/pasadas` | `Actividades que ya pasaron — Agenda literaria` | escrita a mano | la propia |
-| `/404` | `No encontramos esa página` | — | — · `noindex` |
+| `/cartelera` | `Cartelera de actividades literarias · {NOMBRE}` | armada con la cuenta de afiches | la propia |
+| `/suscribirse` | `Suscribirse al calendario — {NOMBRE}` | escrita a mano | la propia |
+| `/ayuda` | `Ayuda — {NOMBRE}` | escrita a mano | la propia |
+| `/contacto` | `Contacto — {NOMBRE}` | escrita a mano | la propia |
+| ~~`/404`~~ | `No encontramos esa página` | — | — · `noindex` |
+
+> **Las cuatro filas del medio se agregaron el 2026-09-02 (B-234)**: son páginas
+> reales que este documento no tenía —dos porque nacieron con otro nombre, una
+> porque no estaba diseñada—, y el `<title>` de cada una es el que emite hoy, no
+> el que este documento hubiera propuesto. `{NOMBRE}` sale de
+> `src/lib/identidad.ts`, que es la única vez que el nombre del sitio se escribe
+> (un test lo exige). La fila de `/404` queda tachada: la página no se construyó.
 
 Reglas:
 
@@ -729,7 +794,9 @@ Reglas:
   (`/?tipo=taller&barrio=boedo`), y sin canonical fijo Google indexaría
   combinaciones infinitas del mismo contenido, compitiendo con los hubs que sí
   queremos posicionar.
-- **`og:image`**: `imagenUrl` cuando hay. Cuando no, una imagen estática de
+- **`og:image`**: la **portada** de la galería cuando hay —`portadaDe(a.imagenes)`
+  (`src/lib/imagenes.ts`), la que lleva el flag `portada`, no la primera cargada
+  (B-268). Cuando no, una imagen estática de
   1200×630 en papel y tinta con el nombre del sitio, distinta por tipo de
   actividad (cinco archivos en `public/og/`). Sin generación de imágenes en el
   build: es complejidad grande para una ganancia chica, y una imagen tipográfica
@@ -756,7 +823,7 @@ Google pide, para el resultado enriquecido de evento:
 | `location` como `VirtualLocation` con `url` | **sí** (online) | **no exactamente** — ver [5.4](#54-el-caso-online) |
 | `endDate` | recomendado | sí — `sesiones[].fin` |
 | `description` | recomendado | sí |
-| `image` | recomendado | a veces — `imagenUrl` |
+| `image` | recomendado | a veces — la **portada** de `imagenes` (`portadaDe`) |
 | `eventAttendanceMode` | recomendado | sí — `modalidad`, el derivado de B-224 |
 | `eventStatus` | recomendado | **parcialmente** — falta `estado` en la proyección |
 | `organizer` | recomendado | sí |
@@ -883,7 +950,7 @@ virtual ya da `hibrido`, o sea `Mixed`, que es lo correcto.
 |---|---|
 | `/actividad/{slug}` | `BreadcrumbList`: Agenda → {Tipo} → {título} |
 | Home y hubs | `CollectionPage` con `ItemList` de `ListItem { position, url, name }`, en el orden en que se ven. Ayuda a que Google entienda que la página es un listado y siga los links |
-| `/acerca` | `Organization` con `name`, `url`, `logo`, `sameAs` (Instagram) |
+| ~~`/acerca`~~ | `Organization` con `name`, `url`, `logo`, `sameAs` (Instagram). **`/acerca` no existe** (B-234): el rol se repartió entre `/ayuda` y `/contacto`, y ninguna de las dos emite `Organization` todavía. Si se agrega, va en `/contacto`, que es la que dice con quién estás tratando |
 
 No se usa `WebSite` + `SearchAction`: Google retiró el sitelinks searchbox y hoy
 no hace nada.
@@ -892,8 +959,13 @@ no hace nada.
 
 ```
 sitemap.xml   →  /  ·  hubs (tipo, barrio, online, gratis)  ·  meses vigentes
-                 ·  /pasadas  ·  /calendario  ·  /acerca
+                 ·  /pasadas  ·  /cartelera  ·  /suscribirse
+                 ·  /ayuda  ·  /contacto
                  ·  cada /actividad/{slug} con <lastmod>
+
+                 (los nombres corregidos contra las rutas reales — B-234;
+                  la lista de verdad es RUTAS_FIJAS en src/lib/sitemap.ts,
+                  y los hubs entran cuando existan — B-108)
 
 robots.txt    →  User-agent: *
                  Disallow: /admin
@@ -1178,7 +1250,7 @@ Una actividad, una tarjeta (§2.2). Sin excepciones y en todas las vistas.
 > viñeta original vuelve a ser cierta en su conclusión —no hay hueco que llenar—
 > pero por otro motivo: no es que la tarjeta sin imagen se adapte, es que **ninguna
 > entrada del listado lleva imagen**, y eso es una decisión de forma («el listado es
-> puramente tipográfico»), no una respuesta a que falte `imagenUrl`. La foto **sí**
+> puramente tipográfico»), no una respuesta a que falte la portada. La foto **sí**
 > sigue en la página de detalle —entera desde D-147, ya no recortada— y desde B-265
 > también en `/cartelera`, que es una página **de** imágenes: ahí una actividad sin
 > imagen simplemente no aparece.
@@ -1190,7 +1262,11 @@ Una actividad, una tarjeta (§2.2). Sin excepciones y en todas las vistas.
 > sin portada queda mocha. Lo que **no** cambió es lo que la viñeta rechazaba: no hay
 > placeholder gris, ni ícono, ni iniciales, ni foto de stock.
 
-`imagenUrl: null` es frecuente y no es un error.
+**El caso es `imagenes: []`, la lista vacía — no `imagenUrl: null`.** El campo
+único que este documento diseñaba lo reemplazó `imagenes: Imagen[]` con un flag
+`portada` en la primera tajada de **B-167** (**D-125**), y sigue en el tipo solo
+como `@deprecated` para leer los documentos viejos: nada nuevo lo escribe. La
+lista vacía es frecuente y no es un error.
 
 - **La tarjeta no reserva el espacio de la imagen.** No hay placeholder gris, ni
   ícono, ni iniciales: el texto usa todo el ancho y el título sube un tamaño. La
@@ -1280,9 +1356,26 @@ Otras reglas:
 
 - Fuentes: ya vienen de Google Fonts con `preconnect` y `display=swap` en
   `Base.astro`. No vale la pena self-hostear todavía.
-- `imagenUrl` es una URL externa (Instagram, Drive, lo que cargó el dueño). No se
-  optimiza en el build porque no la controlamos. Se le pone `referrerpolicy` y un
-  `onerror` que la esconde: una imagen rota es peor que ninguna.
+- **Hay dos clases de imagen y no una, y el consejo de abajo vale solo para una.**
+  Desde la segunda tajada de **B-167** una `Imagen` puede ser **propia** —subida
+  desde el panel, con `storagePath`, `ancho` y `alto`— o **externa** (Instagram,
+  Drive, un link que pegó quien organiza), y se distinguen por `origen`.
+  - La **externa** es la que este bloque describía: no se optimiza en el build
+    porque no la controlamos, y se le pone `referrerpolicy` más un `onerror` que
+    la esconde, porque una imagen rota es peor que ninguna. Y **puede caerse
+    mañana** sin que nos enteremos, que es el riesgo que el §7.6 nombraba para
+    todas las imágenes y hoy es de la mitad de los casos.
+  - La **propia** vive en nuestro Storage, así que no se cae sola, y **trae sus
+    medidas**: `ancho` y `alto` son exactamente lo que hace falta para reservar
+    el hueco con `aspect-ratio` y que la página no salte al cargar. **Ojo con
+    dónde entra eso:** hoy `src/lib/eventsJson.ts` recorta el índice a
+    `imagenUrl: portadaDe(a.imagenes)?.url ?? null` —conserva el nombre del
+    diseño a propósito, ver su docblock— y **no lleva las medidas**. No está
+    roto; pero el día que una tarjeta las quiera, el campo tiene que entrar al
+    índice, y eso es agrandar una salida pública: pasa por el fixture de
+    centinelas como cualquier otro campo nuevo. Y **la recompresión sigue sin
+    existir** (B-220, DEC-7d), así que hoy se sirve el original: es B-266 y
+    B-300.
 - La home no bloquea nada esperando `events.json`: el HTML ya está completo.
 
 ---
@@ -1359,8 +1452,8 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
 | # | Decisión | Por qué bloquea |
 |---|---|---|
 | 1 | ~~**El dominio final.**~~ **Resuelta el 2026-09-02: `https://agendaleh.ar`** (D-165). Se registró un dominio propio y también responde `agendaleh.com.ar`, que va a redirigir con un 301 en cuanto el dueño lo configure en la consola; `agenda-literaria.web.app` sigue sirviendo el mismo HTML para siempre, y el `canonical` absoluto es lo que evita que eso sea contenido duplicado. Con esto se cerró **B-109**: `site`, canonical, Open Graph, sitemap, robots y `/pasadas` | ✅ |
-| 2 | **Canal de contacto público.** ¿Un mail? ¿El DM de una cuenta de Instagram? | `/acerca` y el pie dicen "¿Organizás algo?" y necesitan a dónde mandarlo. Sin esto el sitio no tiene forma de crecer con contenido de otros |
-| 3 | **Nombre del sitio y una línea de qué es.** | Va en el `<title>` de todas las páginas, en el `og:site_name`, en el `Organization` y en las cinco imágenes de OG. Cambiarlo después es tocar todo |
+| 2 | ~~**Canal de contacto público.**~~ **Resuelta**: es lo que publica `/contacto` (**B-232**, **B-233**), con la lista de qué conviene contar — que es lo que el `mailto:` crudo del pie se salteaba. El bullet del §4.5 pedía «un canal» y hoy existe | ✅ |
+| 3 | ~~**Nombre del sitio y una línea de qué es.**~~ **Resuelta: «Agenda LEH»** (**B-245**, D-141). Vive en `src/lib/identidad.ts` (`NOMBRE`, `BAJADA`) y es la única vez que se escribe: un test falla si alguna página lo pega literal. Antes el sitio se presentaba con su categoría —«Agenda literaria»—, que es lo contrario de tener nombre | ✅ |
 | 4 | **¿Se mide el sitio público?** | Hoy la analítica es solo del panel ([`09-analitica.md`](09-analitica.md)). La única métrica que importa acá es el clic en el CTA de inscripción. Medirlo agrega JS y una decisión de privacidad a un sitio que hoy no pone una sola cookie |
 | 5 | **¿Un campo "acepta incorporaciones tardías"?** | Hoy "se puede entrar a un ciclo empezado" se deduce de `inscripcion.cierra` ([7.2](#72-un-ciclo-en-curso)). Un booleano lo diría sin ambigüedad |
 | 6 | **¿La descripción admite formato?** | Hoy es texto plano: un link pegado no es clickeable y no hay negritas ni listas. Opciones: dejarlo así, autolinkear las URLs (barato, y hay que escapar bien), o markdown acotado (cambia el formulario, la vista previa y el evento de Calendar) |
