@@ -48,7 +48,7 @@
  *
  * | # | Qué | Cómo queda |
  * |---|---|---|
- * | 1 | tres fotos de relleno en `googleusercontent.com` | no hay ninguna: la actividad tiene **una** portada opcional, y si no la tiene la página no muestra ningún hueco |
+ * | 1 | tres fotos de relleno en `googleusercontent.com` | ninguna es de relleno: arriba va la **portada**, y las que la actividad tenga además van al final del contenido (B-296). Sin imagen no hay hueco |
  * | 2 | el `<link>` a Material Symbols | no existe, y no hay ningún icono en el markup |
  * | 3 | «Privacidad» y «Términos» en el pie | los saca `PieDePagina` |
  * | 4 | `<html lang="en">` | `Base.astro` siempre emitió `es` |
@@ -81,9 +81,11 @@
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, type DetallePublico } from '@/lib/detallePublico';
-import { estiloDeAfiche } from '@/lib/afiche';
+import { columnasDeGaleria, estiloDeAfiche, rotuloDeGaleria } from '@/lib/afiche';
 import {
+  claseAfiche,
   claseAfichePortada,
+  CLASES_DE_GALERIA,
   claseBloque,
   claseBloqueFecha,
   claseBotonPrimario,
@@ -115,6 +117,21 @@ const { detalle } = Astro.props as Props;
 const jsonLd = datosEstructurados(detalle);
 
 const portada = detalle.imagenes[0] ?? null;
+
+/**
+ * Las demás imágenes de la actividad — B-296, D-168.
+ *
+ * **`slice(1)` y no un filtro por el flag**, porque la portada ya no es «la que
+ * tiene el flag» a esta altura: `detalleDeActividad` la puso primera y le sacó el
+ * flag al proyectar (B-268). El view-model es el que sabe cuál es la portada, y
+ * acá se le cree — es la misma razón por la que la cabecera toma `imagenes[0]`.
+ *
+ * Con una sola imagen esto es `[]` y la tira **no existe en el HTML**: ni la
+ * sección, ni el título, ni un hueco. Es el caso del 87 % de las actividades con
+ * imagen (26 de 30 medidas el 2026-09-02) y no puede empeorar por una galería que
+ * casi nunca tiene qué mostrar.
+ */
+const secundarias = detalle.imagenes.slice(1);
 
 /**
  * La tinta de la franja de estado, según su motivo. **El texto y la prioridad los
@@ -580,6 +597,84 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                     /* Sin link, pero el dato no se pierde: ver el docblock de `organizador`. */
                     <p class="body-md mt-2 text-super">{detalle.tallerista.instagram}</p>
                   ))}
+              </div>
+            </section>
+          )
+        }
+
+        {
+          /*
+            ══ Las demás imágenes de la actividad — B-296, D-168 ══════════════
+
+            Hasta acá la página pintaba `imagenes[0]` y nada más, así que las
+            actividades con dos o tres imágenes cargadas tenían imágenes que **no
+            se veían en ninguna parte del sitio**. Medido contra producción el
+            2026-09-02, sobre 46 publicadas: 16 sin imagen, 26 con una, 3 con dos
+            y 1 con tres.
+
+            ── Por qué acá abajo, y no debajo de la portada ─────────────────
+            Tres razones que apuntan al mismo lugar:
+
+            1. **La pregunta de la página se contesta arriba.** El recorrido cae
+               desde Google o Instagram y pregunta «¿esto me sirve y todavía puedo
+               entrar?» (§1). Una tira de fotos entre la portada y la descripción
+               empuja la respuesta hacia abajo en el teléfono, que es donde la
+               portada ya puede medir 70svh.
+            2. **`loading="lazy"` solo sirve si de verdad están abajo.** Pegadas a
+               la portada entran en la primera pantalla de un escritorio y el
+               navegador las pide igual. Al final de la columna, en la actividad
+               peor medida, son 2,1 MB que solo se bajan si alguien llega hasta
+               ahí — ver D-168 para los números por archivo.
+            3. **Son de apoyo, y el orden lo dice.** Las secundarias reales son
+               fotos del espacio o de ediciones anteriores; el afiche es la
+               portada. Ponerlas arriba las asciende a algo que no son.
+
+            ── El texto alternativo: la salida de B-296 (D-168) ─────────────
+            `alt=""` en **todas** las secundarias, a propósito y no por olvido.
+            DEC-7a (D-125) derivó el texto alternativo del título de la actividad,
+            y con tres imágenes eso son tres «Imagen de Usted está aquí» seguidos:
+            un lector de pantalla anuncia tres veces lo mismo y no distingue
+            ninguna, que es **peor** que no anunciarlas. La portada conserva su
+            alt —es una sola, es el afiche y es el `og:image`— y lo que se
+            perdería al callar las otras lo dice el `<h2>` una sola vez y en
+            prosa: «Dos imágenes más» (`rotuloDeGaleria`).
+
+            **El epígrafe no se promueve a `alt`.** Cuando está, se muestra como
+            `figcaption` de **su** imagen, que un lector de pantalla ya lee; en el
+            `alt` además, se anunciaría dos veces el mismo texto. Y hoy no hay
+            ninguno cargado: las cuatro secundarias de producción tienen el
+            epígrafe vacío, así que «el epígrafe es el alt» no habría descrito ni
+            una sola imagen.
+
+            ── Sin JavaScript, y sin agregar una parada de tabulación ──────
+            No hay lightbox, no hay enlaces y no hay `tabindex`: la tira no suma
+            ni un elemento al orden de tabulación de la página. Es la mitad
+            barata de la accesibilidad, y la que un visor modal habría gastado.
+          */
+          secundarias.length > 0 && (
+            <section aria-labelledby="mas-imagenes" class="mt-12">
+              <h2 id="mas-imagenes" class={`regla-gruesa pb-2 ${claseTituloSeccion}`}>
+                {rotuloDeGaleria(secundarias.length)}
+              </h2>
+              <div class={`mt-4 ${CLASES_DE_GALERIA[columnasDeGaleria(secundarias.length)]}`}>
+                {secundarias.map((imagen) => (
+                  <figure>
+                    <img
+                      src={imagen.url}
+                      alt=""
+                      width={imagen.ancho ?? undefined}
+                      height={imagen.alto ?? undefined}
+                      style={estiloDeAfiche(imagen)}
+                      loading="lazy"
+                      decoding="async"
+                      referrerpolicy="no-referrer"
+                      class={claseAfiche}
+                    />
+                    {imagen.epigrafe && (
+                      <figcaption class="body-sm mt-1.5 text-super">{imagen.epigrafe}</figcaption>
+                    )}
+                  </figure>
+                ))}
               </div>
             </section>
           )

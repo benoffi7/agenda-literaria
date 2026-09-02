@@ -110,3 +110,50 @@ export const columnasDeCartelera = (n: number): 1 | 2 | 3 => {
   if (n <= 5) return 2;
   return 3;
 };
+
+/**
+ * Cuántas columnas lleva la tira de imágenes secundarias del detalle — B-296.
+ *
+ * ── Por qué la tira y no una imagen más, grande ───────────────────────────
+ * Las secundarias son **una minoría con un techo bajo**: medido contra
+ * producción el 2026-09-02, de 46 publicadas hay 26 con una imagen, 3 con dos y
+ * 1 con tres, y el tope del schema son cuatro (DEC-7b). O sea que esta función
+ * recibe 1, 2 o 3 y nunca más — y el caso frecuente es **1**.
+ *
+ * Con una sola secundaria a lo ancho de la columna, la página tendría dos
+ * portadas y ninguna sería la portada. Con dos columnas mide la mitad: se lee
+ * como lo que es, una imagen de apoyo debajo del afiche.
+ *
+ * Es el mismo razonamiento de `columnasDeCartelera` —el tope atado a la
+ * cantidad, para que pocas no se vean *mal armadas*— con el número al revés: la
+ * pared abre columnas a medida que hay más afiches, y acá la tira nunca pasa de
+ * tres porque nunca hay más de tres.
+ *
+ * Es el tope: el mapeo a clases (`CLASES_DE_GALERIA`) igual deja dos columnas en
+ * el teléfono, donde un tercio de 343px es una estampilla.
+ */
+export const columnasDeGaleria = (n: number): 2 | 3 => (n >= 3 ? 3 : 2);
+
+/**
+ * El título de la tira, y **es la salida de accesibilidad de B-296** — no un
+ * rótulo decorativo.
+ *
+ * ── El problema que resuelve ──────────────────────────────────────────────
+ * DEC-7a (D-125) decidió que el texto alternativo de una imagen sale del
+ * **título de la actividad**, y con una imagen funciona: «Imagen de *Usted está
+ * aquí*». Con tres, el mismo alt repetido tres veces es **peor que no tenerlo**:
+ * un lector de pantalla anuncia tres veces lo mismo y no distingue ninguna.
+ *
+ * Las secundarias pasan a `alt=""` —decorativas— y lo que se perdería con eso
+ * («¿cuántas hay?, ¿me estoy perdiendo algo?») lo dice **este título, una sola
+ * vez y en prosa**. Enumerar imagen por imagen («Imagen 2 de 3 de X») decía lo
+ * mismo tres veces y sonaba a máquina; dicho en el encabezado del grupo se dice
+ * una vez y se lee como algo escrito por una persona.
+ *
+ * El número va en palabras y no en dígito porque es un encabezado de sección al
+ * lado de «Material» y «Quién lo da», no un contador. El `${n}` del final es
+ * inalcanzable con el tope de cuatro imágenes de DEC-7b y está por si el tope
+ * sube: mejor un plural correcto que un `undefined` en un `<h2>`.
+ */
+export const rotuloDeGaleria = (n: number): string =>
+  n === 1 ? 'Una imagen más' : `${['', 'Una', 'Dos', 'Tres'][n] ?? n} imágenes más`;

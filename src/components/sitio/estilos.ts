@@ -242,3 +242,37 @@ export const claseCampo = `w-full border-0 border-b border-borde bg-transparent 
  * es redondeado en macOS y no es una X. La casilla del sistema hay que dibujarla.
  */
 export const claseCasilla = `casilla ${foco}`;
+
+/**
+ * La tira de imágenes secundarias de la página de detalle — B-296.
+ *
+ * El número de columnas lo decide `columnasDeGaleria` (`lib/afiche.ts`), que es
+ * la regla y está testeada; acá está el mapeo a clases, y vive en este archivo
+ * por la misma razón mecánica que `CLASES_DE_PARED`: **Tailwind genera las
+ * utilidades leyendo el fuente**, así que un número de columnas armado en tiempo
+ * de ejecución no existiría en la hoja.
+ *
+ * ── Grilla acá, columnas de CSS en la pared: son problemas distintos ──────
+ * D-148 eligió columnas para `/cartelera` porque una fila de afiches de altos
+ * distintos deja huecos debajo de los más bajos. Acá la fila tiene **dos o tres
+ * elementos y una sola línea**, así que no hay «debajo» que rellenar, y la grilla
+ * da lo que las columnas no dan: cada celda mide lo mismo de ancho, o sea que dos
+ * secundarias de formas distintas salen a la misma escala en vez de una grande y
+ * una chica según cómo CSS reparta el alto.
+ *
+ * `items-start` es la mitad que no se puede olvidar: sin él la celda se estira al
+ * alto de la más alta y el epígrafe de la más baja queda flotando lejos de su
+ * imagen, que es justo lo que un `figcaption` no puede hacer.
+ *
+ * **Dos columnas en el teléfono también con tres imágenes** (2 + 1): un tercio de
+ * 343px son 105px, que para una foto es una estampilla. `sm:grid-cols-3` es el
+ * refinamiento donde hay ancho de sobra.
+ *
+ * El `gap-4` es el medianil de 16px del sistema visual, no un número elegido acá.
+ * El contenedor no lleva borde ni fondo: el borde lo trae cada imagen desde
+ * `claseAfiche`, y dos reglas pegadas serían una regla doble.
+ */
+export const CLASES_DE_GALERIA: Record<2 | 3, string> = {
+  2: 'grid grid-cols-2 items-start gap-4',
+  3: 'grid grid-cols-2 items-start gap-4 sm:grid-cols-3',
+};
