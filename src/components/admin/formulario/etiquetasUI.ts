@@ -4,7 +4,7 @@
  *
  * Vive acá porque después de B-79 lo comparten varias secciones. **No es el
  * vocabulario del evento público**: los `ETIQUETA_*` de `functions/calendario.js`
- * son prosa para el calendario ("Presencial y virtual", "por DM de Instagram") y
+ * son prosa para el calendario ("Presencial y virtual", "por DM al Instagram") y
  * unificarlos haría que un cambio de copy del panel cambie lo que se publica.
  *
  * **`ETIQUETA_ESTADO` ya no vive acá: se reexporta.** Era idéntico palabra por
@@ -28,6 +28,7 @@ export const ETIQUETA_MODALIDAD = {
 export const ETIQUETA_VIA = {
   mail: 'Mail',
   whatsapp: 'WhatsApp',
-  dm: 'DM de Instagram',
+  // B-185 — «al Instagram», no «de Instagram»: reporte del dueño (2026-08-25).
+  dm: 'DM al Instagram',
   formulario: 'Formulario',
 };
