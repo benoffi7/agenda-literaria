@@ -93,19 +93,40 @@ const actividadSinModalidades = (over: Record<string, unknown> = {}) => {
  * que se quiere proteger no se ejercita: es lo que hacía pasar el test de
  * B-84.
  */
+/**
+ * B-352 — una sesión cancelada no conserva su `calendarEventId`: al borrar el
+ * evento, `syncCalendar` repone `null` en esa sesión. Un fixture con
+ * `cancelada: true` y un id de evento vivo describe un estado que el sistema
+ * no puede tener asentado, y le hace emitir un `borrar` de más a `planificar`
+ * en cada escritura posterior — la misma advertencia que `tests/fixtures/ciclo.ts`
+ * dejó escrita para el fixture compartido (B-135).
+ *
+ * Por default, entonces, una fila que `over(i)` marca `cancelada: true` nace
+ * con `calendarEventId: null` — el estado ya asentado. La única excepción real
+ * es la **transición**: el instante en que se acaba de cancelar y el diff
+ * todavía tiene que ver el id viejo para poder emitir el `borrar` que lo saca
+ * ("cancelar el tercero de ocho borra solo el suyo", más abajo). Para ese caso
+ * se pasa `{ enTransicion: true }`, y solo para ese caso: el default sigue
+ * siendo el estado asentado, así que un test nuevo que cancele una fila sin
+ * pensarlo no puede pisar la misma trampa. Un `over(i)` que fije
+ * `calendarEventId` a mano sigue ganando siempre, como antes.
+ */
 const sesionesSemanales = (
   cuantas: number,
   over: (i: number) => Record<string, unknown> = () => ({}),
+  { enTransicion = false }: { enTransicion?: boolean } = {},
 ) =>
-  Array.from({ length: cuantas }, (_, i) =>
-    sesion({
+  Array.from({ length: cuantas }, (_, i) => {
+    const cambios = over(i);
+    const canceladaSinPedirTransicion = cambios.cancelada === true && !enTransicion;
+    return sesion({
       id: `ses_${i}`,
       inicio: ts(new Date(Date.UTC(2026, 8, 3, 22) + i * 7 * 86_400_000).toISOString()),
       fin: ts(new Date(Date.UTC(2026, 8, 4, 0) + i * 7 * 86_400_000).toISOString()),
-      calendarEventId: `evt_${i}`,
-      ...over(i),
-    }),
-  );
+      calendarEventId: canceladaSinPedirTransicion ? null : `evt_${i}`,
+      ...cambios,
+    });
+  });
 
 const ciclo = (over: Record<string, unknown> = {}) =>
   actividad({ esCiclo: true, sesiones: sesionesSemanales(8), ...over });
@@ -343,8 +364,15 @@ describe('planificar — despublicar y cancelar (§7.3)', () => {
    * roto, porque la numeración del evento no entraba en juego (§2.2).
    */
   it('cancelar el tercero de ocho borra solo el suyo (B-84)', () => {
+    // B-352 — este SÍ es el caso de la transición: recién se cancela, el id
+    // todavía está vivo, y es justo lo que el diff tiene que ver para emitir
+    // el `borrar`.
     const despues = ciclo({
-      sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
+      sesiones: sesionesSemanales(
+        8,
+        (i) => (i === 2 ? { cancelada: true } : {}),
+        { enTransicion: true },
+      ),
     });
     const ops = planificar(ciclo(), despues);
     expect(ops).toHaveLength(1);
@@ -555,13 +583,14 @@ describe('la guarda compara payloads recalculados, no lo que Calendar tiene (B-1
    * un borrado de más a `planificar` en cada escritura posterior — es la misma
    * advertencia que `tests/fixtures/ciclo.ts` dejó escrita (B-135). El caso de
    * la transición ya tiene su test en «cancelar el tercero de ocho borra solo el
-   * suyo».
+   * suyo». Desde B-352 esto ya no hace falta pedirlo a mano —`sesionesSemanales`
+   * pone `null` por default en cuanto `cancelada` es `true`—, así que no queda
+   * ningún `calendarEventId: null` explícito acá: el helper no deja pisar la
+   * trampa aunque alguien se olvide.
    */
   const conTercerCancelado = () =>
     ciclo({
-      sesiones: sesionesSemanales(8, (i) =>
-        i === 2 ? { cancelada: true, calendarEventId: null } : {},
-      ),
+      sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
     });
 
   it('el código de hoy numera distinto de lo que ese ciclo tiene publicado', () => {

@@ -4467,7 +4467,38 @@ bloques duplicados de merges.
 Corregido: el cuerpo volvió abajo del encabezado de B-12, y B-13 quedó con su
 propio encabezado marcado como hecho, citando D-23 y sus tests.
 
-### B-352 · El helper de sesiones de `calendario.test.ts` deja el `calendarEventId` vivo en una sesión cancelada · P3
+### B-352 · El helper de sesiones de `calendario.test.ts` deja el `calendarEventId` vivo en una sesión cancelada — ✅ hecho (2026-09-02) · P3
+
+**Se hizo exactamente lo que el ítem pedía**: `sesionesSemanales` ahora pone
+`calendarEventId: null` por default en cuanto `over(i)` marca
+`cancelada: true`, con un parámetro `{ enTransicion: true }` para el único
+caso real que necesita conservarlo vivo — el instante en que se acaba de
+cancelar («cancelar el tercero de ocho borra solo el suyo», B-84). Un
+`over(i)` que fije `calendarEventId` a mano sigue ganando, como antes.
+
+El fixture de B-162 (`conTercerCancelado`) perdió el `calendarEventId: null`
+que había que pasarle a mano: ya no hace falta, el helper no deja pisar la
+trampa.
+
+**Mutado, no solo verde.** Se volvió al comportamiento viejo (siempre
+`evt_${i}`, ignorando `cancelada`) y cuatro tests de la describe de B-162
+dieron rojo — exactamente los que dependen de que el estado asentado no tenga
+un id vivo (la guarda emitiendo un `borrar` de más al reusar el fixture como
+las dos puntas de un diff). Restaurado después.
+
+**Un detalle que valía la pena verificar y no suponer:** el test de la
+transición («cancelar el tercero de ocho borra solo el suyo») **no** necesita
+en la práctica el `calendarEventId` vivo del lado `despues` para pasar —
+`planificar()` (`functions/calendario.js:551`) resuelve el id primero desde
+`previa` (el lado `antes`, que en ese test siempre está vivo) y solo cae al de
+`despues` si `antes` no tiene sesión. Se comprobó sacando el
+`{ enTransicion: true }` de ese único call site: los 101 tests siguieron en
+verde. Se dejó igual, a propósito: describe con precisión el estado real del
+documento en el instante de la transición (el campo todavía no se limpió,
+porque eso lo hace el sync después), así que es la representación correcta
+aunque hoy ningún aserto dependa de ese valor puntual.
+
+El texto original queda abajo.
 
 `sesionesSemanales` (el helper local de `tests/calendario.test.ts`) asigna
 `calendarEventId: evt_<i>` a **todas** las sesiones, incluidas las que el caso

@@ -32,6 +32,24 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-352 — el helper de sesiones de `calendario.test.ts` ya no describe un estado imposible
+
+`sesionesSemanales` asignaba `calendarEventId: evt_<i>` incluso a las
+sesiones que un caso marca `cancelada: true`, algo que el sistema no puede
+tener asentado (al borrar el evento, `syncCalendar` repone `null`). Ahora
+pone `null` por default en ese caso, con `{ enTransicion: true }` para el
+único momento real en que conservarlo vivo es correcto — recién cancelada, un
+instante antes de que el sync corra. El fixture de B-162 perdió el
+`calendarEventId: null` que había que pasarle a mano.
+
+Mutado: volver al comportamiento viejo tira rojo cuatro tests de la describe
+de B-162 (la guarda emitiendo un `borrar` de más al reusar el fixture como
+las dos puntas de un diff). Restaurado después. De paso se verificó, en vez
+de suponerse, que el único test de transición existente no depende del valor
+puntual — `planificar()` resuelve el id desde `antes` primero — así que se
+dejó `enTransicion: true` igual, por precisión del fixture y no porque algún
+aserto lo necesite hoy.
+
 ### B-363 — `contexto.pantalla` deja de ser el único enum sin acotar en `reporteValido()`
 
 `desSlug()` (`functions/reportes.js`) reemplaza `-` por espacios en
