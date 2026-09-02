@@ -1,6 +1,13 @@
 ---
 import { BAJADA, NOMBRE } from '@/lib/identidad';
-import { foco, focoAmplio } from '@/components/sitio/estilos';
+import { claseSalto, foco, focoAmplio } from '@/components/sitio/estilos';
+import {
+  RUTA_AGENDA,
+  RUTA_AYUDA,
+  RUTA_CARTELERA,
+  RUTA_CONTACTO,
+  RUTA_SUSCRIBIRSE,
+} from '@/lib/rutasPublicas';
 /**
  * La barra de navegación del sitio público — B-229, B-253, rehecha en B-260.
  *
@@ -55,16 +62,24 @@ interface Props {
 
 const { activa } = Astro.props;
 
+/*
+ * Los destinos salen de `rutasPublicas.ts` y no escritos acá — B-330. Es la misma
+ * regla que el pie ya aplicaba con `enlaces.ts` para lo externo, y lo que la
+ * trajo es la barra final: `/cartelera` responde un 301 a `/cartelera/`, así que
+ * un `href` escrito a mano cuesta un viaje de ida y vuelta por click y deja dos
+ * textos para la misma página (era **B-293**). Las constantes las produce
+ * `rutaCanonica`, o sea que no hay forma de escribir la variante que redirige.
+ */
 const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
-  { seccion: 'agenda', href: '/', texto: 'Agenda' },
+  { seccion: 'agenda', href: RUTA_AGENDA, texto: 'Agenda' },
   // B-265 — la cartelera va **segunda**, pegada a la agenda: son las dos formas
   // de mirar lo mismo (la lista y la pared de afiches), y quien entra por la
   // agenda tiene que poder pasar a la otra sin buscar. «Suscribirse», «Ayuda» y
   // «Contacto» son de después de haber encontrado algo.
-  { seccion: 'cartelera', href: '/cartelera', texto: 'Cartelera' },
-  { seccion: 'suscribirse', href: '/suscribirse', texto: 'Suscribirse' },
-  { seccion: 'ayuda', href: '/ayuda', texto: 'Ayuda' },
-  { seccion: 'contacto', href: '/contacto', texto: 'Contacto' },
+  { seccion: 'cartelera', href: RUTA_CARTELERA, texto: 'Cartelera' },
+  { seccion: 'suscribirse', href: RUTA_SUSCRIBIRSE, texto: 'Suscribirse' },
+  { seccion: 'ayuda', href: RUTA_AYUDA, texto: 'Ayuda' },
+  { seccion: 'contacto', href: RUTA_CONTACTO, texto: 'Contacto' },
 ];
 ---
 
@@ -81,7 +96,7 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
        listado con teclado obliga a pasar por los cuatro enlaces en cada página. -->
   <a
     href="#contenido"
-    class="sr-only bg-tinta px-4 py-2 text-papel focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+    class={`bg-tinta px-4 py-2 text-papel ${claseSalto}`}
   >
     Saltar al contenido
   </a>
@@ -93,7 +108,7 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
     sistema es de página completa, no de contenedor angosto.
   */}
   <div class="mx-auto flex max-w-[90rem] items-end justify-between gap-4 px-4 py-3 sm:min-h-encabezado sm:px-10 sm:py-4">
-    <a href="/" class={`group flex min-w-0 items-end ${focoAmplio}`}>
+    <a href={RUTA_AGENDA} class={`group flex min-w-0 items-end ${focoAmplio}`}>
       <span class="marca text-tinta group-hover:text-acento">{NOMBRE}</span>
     </a>
 

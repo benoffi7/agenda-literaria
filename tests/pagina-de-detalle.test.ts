@@ -211,6 +211,32 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     // que hace que el link pegado en Instagram se vea con el flyer.
     expect(codigo).toMatch(/imagen=\{portada\?\.url/);
   });
+
+  it('el enlace al mes sale de `detalle.mes` y no de la fecha — B-280', () => {
+    /*
+     * **La mitad de B-280 que vive en la plantilla, y el único lugar donde este
+     * ítem puede producir un 404.**
+     *
+     * La página de mes existe solo para los meses vigentes con 3 o más
+     * actividades (§2.2). La plantilla tiene `detalle.proxima.iso` en la mano, así
+     * que el atajo —`rutaDeMes(detalle.proxima.iso.slice(0, 7))`— compila, se lee
+     * bien y arma una URL válida; lo que no puede saber es si esa página se
+     * generó, porque eso depende de **las otras** actividades del mes. El
+     * view-model ya trae la respuesta en `detalle.mes`, que viene `null` cuando no
+     * hay nada que enlazar.
+     *
+     * MUTACIÓN PROBADA: reemplazar `detalle.mes` por un recorte de
+     * `detalle.proxima.iso` pone este caso en rojo, y el HTML se ve idéntico
+     * mientras el mes tenga tres actividades — que es lo que hace que este bug
+     * aparezca recién en el build de un mes flojo.
+     */
+    expect(codigo).toContain('detalle.mes');
+    expect(codigo).toMatch(/rutaDeMes\(detalle\.mes\.clave\)/);
+    // El atajo prohibido: la plantilla no puede armar una clave de mes por su
+    // cuenta, ni de `proxima.iso` ni de ninguna otra fecha.
+    expect(codigo).not.toMatch(/proxima[^\n]*slice/);
+    expect(codigo).not.toContain('claveDeMes');
+  });
 });
 
 describe('la home', () => {
@@ -272,6 +298,12 @@ describe('la home', () => {
      * Desde B-273 son dos (`tonosDelSitio`), que es cuando la lista blanca deja de
      * ser gratis y empieza a servir. Lo pidió el `auditor-privacidad`.
      *
+     * **Y desde B-108 son tres**: `exploracionDeLaHome`, la tira «Explorá por». La
+     * lista blanca hizo exactamente lo que tenía que hacer —el símbolo nuevo puso
+     * este caso en rojo y obligó a venir a decidirlo— así que conviene dejar dicho
+     * qué entrega: `GrupoDeExploracion[]`, o sea pares de ruta y texto ya armados,
+     * sin una sola entrada de índice adentro. No es una puerta al documento.
+     *
      * MUTACIÓN PROBADA: agregar `contenidoDelSitio` al import hace fallar este caso;
      * la lista negra de abajo lo deja pasar.
      */
@@ -281,8 +313,9 @@ describe('la home', () => {
       imp![1]!
         .split(',')
         .map((x) => x.trim())
-        .filter(Boolean),
-    ).toEqual(['indiceDelSitio', 'tonosDelSitio']);
+        .filter(Boolean)
+        .sort(),
+    ).toEqual(['exploracionDeLaHome', 'indiceDelSitio', 'tonosDelSitio']);
   });
 
   it('tampoco ve el documento crudo', () => {
@@ -319,7 +352,9 @@ describe('la ruta de la página de detalle no se deriva dos veces (B-88)', () =>
      * ésa. Mover la página sin tocar `rutasPublicas.ts` pone esto en rojo.
      */
     expect(existsSync(`src/pages${PREFIJO_ACTIVIDAD}/[slug].astro`)).toBe(true);
-    expect(rutaDeDetalle('taller-de-cronica')).toBe('/actividad/taller-de-cronica');
+    // Con barra final desde B-330: es la forma que Firebase contesta con un 200
+    // (B-293), y el directorio de la página es el mismo.
+    expect(rutaDeDetalle('taller-de-cronica')).toBe('/actividad/taller-de-cronica/');
   });
 
   it('nadie más arma el path a mano', () => {

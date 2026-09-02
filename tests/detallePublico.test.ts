@@ -1029,3 +1029,131 @@ describe('el bloque de fecha de cada encuentro — B-260, D-146', () => {
     expect(d.encuentros[0]!.bloque).toEqual({ dia: '', diaSemana: '', mes: '' });
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// «Más en septiembre»: el enlace a la página de mes — B-331, cierra B-280
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * **El enlace desde el detalle hacia `/agenda/{aaaa-mm}`** — B-280, §2.2 del
+ * diseño.
+ *
+ * ── Qué se puede romper acá, que es un 404 en la página que más se ve ─────
+ * La tentación es derivar la clave del mes de `proxima.iso` en la plantilla, y se
+ * ve perfecto: `/agenda/2026-09` es una URL bien formada. Lo que no se ve es que
+ * **esa página puede no existir**: el §2.2 la genera solo para los meses vigentes
+ * con 3 o más actividades. Con dos, el enlace es un 404 servido desde la página
+ * que recibe el tráfico de Google.
+ *
+ * Y no se puede decidir mirando la actividad: depende de **cuántas otras** caen en
+ * su mes. Por eso el mapa de meses con página llega como argumento (lo arma
+ * `mesesEnlazables` en el lector) y por eso el default es «no enlazar nada»: quien
+ * omita el argumento pierde un enlace interno, no publica un 404.
+ *
+ * Los casos de abajo son las respuestas posibles, y cada uno tiene su mutación.
+ */
+describe('el enlace «más en septiembre» — B-280', () => {
+  /** Las páginas de mes que existen en este build, como las arma el lector. */
+  const CON_PAGINA = { '2026-09': 'Septiembre de 2026', '2026-10': 'Octubre de 2026' };
+
+  const conMeses = (
+    o: OpcionesDeEntrada,
+    meses: Record<string, string> = CON_PAGINA,
+    ahora = AHORA,
+  ) =>
+    detalleDeActividad(
+      toPublic(actividadDePrueba(o), o.id ?? 'act_1'),
+      ETIQUETAS,
+      ahora,
+      TONOS,
+      false,
+      meses,
+    );
+
+  it('enlaza el mes de la próxima fecha, con el nombre que le puso el lector', () => {
+    const d = conMeses({ fechas: ['2026-09-24T22:00:00Z'] });
+    expect(d.mes).toEqual({ clave: '2026-09', nombre: 'Septiembre de 2026' });
+  });
+
+  it('el nombre sale del mapa y no se vuelve a derivar', () => {
+    /*
+     * MUTACIÓN PROBADA: devolver `{ clave, nombre: nombreDeMes(clave) }` en vez de
+     * tomar el nombre del mapa pone este caso en rojo. Con dos derivaciones el
+     * enlace podría decir «Septiembre» y la página de destino «Septiembre de
+     * 2026» — la clase de B-88 en su versión más chica, y la que nadie mira porque
+     * las dos frases se leen bien por separado.
+     */
+    const d = conMeses({ fechas: ['2026-09-24T22:00:00Z'] }, { '2026-09': 'EL MES DE PRUEBA' });
+    expect(d.mes?.nombre).toBe('EL MES DE PRUEBA');
+  });
+
+  it('si ese mes NO tiene página, no enlaza nada', () => {
+    /*
+     * El caso que importa, y el único que produce un 404 si se hace mal: el mes de
+     * la actividad no pasó el corte de tres del §2.2.
+     *
+     * MUTACIÓN PROBADA: devolver `{ clave, nombre: nombreDeMes(clave) }` sin
+     * consultar el mapa —o sea derivar el mes de la fecha, que es lo que uno
+     * escribe— pone este caso en rojo y deja los otros en verde.
+     */
+    const d = conMeses({ fechas: ['2026-11-24T22:00:00Z'] });
+    expect(d.mes).toBeNull();
+  });
+
+  it('una actividad que ya pasó no enlaza ningún mes', () => {
+    /*
+     * Su mes ya venció, y la página de un mes vencido **no es enlazable**: se emite
+     * una última vez con `noindex` para que su URL no devuelva 404 (§2.2), no para
+     * mandarle gente. La salida de una pasada es `/pasadas`, que el pie ya da.
+     *
+     * MUTACIÓN PROBADA: usar el **último** encuentro en vez del próximo —que es la
+     * variante razonable, «el mes al que pertenece»— pone este caso en rojo.
+     */
+    const d = conMeses({ fechas: ['2026-09-01T22:00:00Z'] }, { '2026-09': 'Septiembre de 2026' });
+    expect(d.yaPaso).toBe(true);
+    expect(d.mes).toBeNull();
+  });
+
+  it('un ciclo a caballo de dos meses enlaza el de su próxima fecha', () => {
+    /*
+     * §7.5 — un ciclo del 3 de septiembre al 22 de octubre cae en las **dos**
+     * páginas de mes. El enlace es uno solo y contesta «qué más hay cuando voy a
+     * esto», no «en qué meses ocurre este ciclo»: mirado el 10 de septiembre,
+     * septiembre.
+     *
+     * Con la fecha de septiembre ya pasada el enlace se corre a octubre solo, sin
+     * ninguna regla más — que es la propiedad que hace que esto no envejezca.
+     */
+    const fechas = ['2026-09-24T22:00:00Z', '2026-10-22T22:00:00Z'];
+    expect(conMeses({ fechas, esCiclo: true }).mes?.clave).toBe('2026-09');
+
+    const yaEnOctubre = conMeses(
+      { fechas, esCiclo: true },
+      CON_PAGINA,
+      new Date('2026-10-01T15:00:00Z'),
+    );
+    expect(yaEnOctubre.mes?.clave).toBe('2026-10');
+  });
+
+  it('el default es no enlazar: quien omita el mapa pierde un link, no publica un 404', () => {
+    /*
+     * MUTACIÓN PROBADA: poner el default en «derivar de la fecha» —o cualquier cosa
+     * que no sea vacío— pone este caso en rojo. Es el mismo criterio del default
+     * `false` de `cancelada`: la respuesta segura para quien lo omite.
+     */
+    expect(detalleDe({ fechas: ['2026-09-24T22:00:00Z'] }).mes).toBeNull();
+  });
+
+  it('un encuentro cancelado no cuenta como próxima fecha', () => {
+    /*
+     * Sale gratis —`siguiente` ya se calcula sobre los que están en pie— y se
+     * afirma porque es la diferencia entre enlazar el mes de una fecha que no va a
+     * ocurrir y enlazar el de la que sí.
+     */
+    const d = conMeses({
+      fechas: ['2026-09-24T22:00:00Z', '2026-10-22T22:00:00Z'],
+      canceladas: [0],
+    });
+    expect(d.mes?.clave).toBe('2026-10');
+  });
+});

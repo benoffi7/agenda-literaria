@@ -1039,7 +1039,7 @@ construyó, en cuatro tramos:
   que apunta a una redirección es un aviso en Search Console y una entrada de
   sitemap que redirige es una URL menos rastreada, así que las dos la llevan
   (`rutaCanonica`). Que los `href` internos sigan sin barra —y coman el 301 al
-  navegar— quedó como **B-293**.
+  navegar— quedó como **B-293**, cerrado el 2026-09-02 con **D-180**.
 - **El canonical tiene que ser absoluto y no relativo**, y no por prolijidad:
   `agenda-literaria.web.app` **no se apaga nunca** y sirve este mismo HTML. Uno
   relativo se resuelve contra el host que lo sirvió, o sea que en el espejo diría
@@ -6114,7 +6114,7 @@ ancho de `main`, sin la sangría del riel, porque habla de la agenda entera y no
 listado filtrado. El quinto aserto frena la duplicación el día que otra página
 quiera el mismo bloque. Ver **D-134**.
 
-### B-280 · El detalle no enlaza «más en septiembre» hacia su página de mes · P2
+### B-280 · El detalle no enlaza «más en septiembre» hacia su página de mes — ✅ hecho (2026-09-02)
 
 El §2.2 del diseño pide dos entradas a `/agenda/{aaaa-mm}`: la tira al pie de la
 home —que B-113 construyó— y un enlace desde la página de detalle. La segunda no
@@ -6373,6 +6373,26 @@ de lo que depende no necesitar write-back (D-175).
 **La tercera es la buena**, y por eso este ítem probablemente se cierre con B-322 y
 no por su cuenta. Anotado aparte porque el síntoma que ve una persona no es «hay
 una ventana de privacidad», es «mi foto salió acostada».
+**Hecho**, y el ítem tenía razón en que era corto — pero **no en dónde iba la
+decisión**. «El enlace solo se puede pintar si el mes pasó el corte» no lo puede
+evaluar la plantilla: `mesesEnlazables` recorre el índice **entero**, y la página
+de detalle no lo ve (D-140). Así que el mes viaja en el view-model —
+`DetallePublico.mes`, `{ clave, nombre } | null`— y lo decide el lector, que es el
+mismo patrón con el que B-110 resolvió `cancelada` y B-109 la fecha de las
+canceladas: **lo decide quien tiene el dato, y llega como argumento**.
+
+El default de ese argumento es `{}`, o sea «no enlazar nada»: quien lo omita
+pierde un enlace interno, no publica un 404 desde la página que más tráfico
+recibe.
+
+Verificado sobre HTML construido contra el emulador, con los cuatro casos: un mes
+con 3+ enlaza («Más en septiembre» → `/agenda/2026-09/`), un mes con 2 no enlaza
+nada, una pasada no enlaza nada, y un ciclo de septiembre a octubre enlaza
+**septiembre** —el mes de su próxima fecha— y se corre solo a octubre cuando
+septiembre pasa. Siete casos con mutación en `tests/detallePublico.test.ts` y uno
+en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la clave
+del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
+tenga dos actividades).
 ## P3 — cuando sobre tiempo
 
 ### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
@@ -7754,7 +7774,7 @@ Mientras tanto la página enlaza la búsqueda de la agenda, que es lo que sí ex
 y quien busca una actividad vieja por su nombre la encuentra por Google —que es
 para lo que la página está indexada.
 
-### B-293 · Los `href` internos pagan el 301 de la barra final · P3
+### B-293 · Los `href` internos pagan el 301 de la barra final — ✅ hecho (2026-09-02)
 
 Firebase Hosting responde `/cartelera` con un **301** a `/cartelera/` —Astro emite
 una carpeta con `index.html` por página—, medido contra producción el 2026-09-02.
@@ -7801,7 +7821,26 @@ existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
 «2.175 tests en 93 archivos». El archivo dice 2.173, y 2.173 es lo que mide la
 suite hoy — así que el número del documento está bien y el de esta nota estaba
 mal.
+**Hecho**, con [D-180](06-decisiones.md), y salió la **segunda**: la barra en los
+`href`. El argumento decisorio no fue el estético — la primera pone la corrección
+de un lado del par (`firebase.json`) y la comprobación del otro (`rutaCanonica`),
+y este repo no puede verificar la config del host sin deployar.
 
+Lo que quedó, y es más que el 301: **una sola forma de la ruta, y la produce
+`rutaCanonica`.** Las seis constantes de las páginas fijas viven en
+`src/lib/rutasPublicas.ts` definidas pasándolas por ella, así que el literal que
+redirige no se puede escribir. Entraron en el mismo cambio los constructores de los
+hubs (`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`) para que B-330 no
+pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
+
+**Y el relevamiento de este ítem estaba corto:** decía «un barrido de los literales
+del markup», y los literales no estaban solo en el markup — `ayudaDelSitio.ts`
+tenía siete y `contactoDelSitio.ts` uno, y esos textos se renderizan en dos páginas
+públicas. El chequeo nuevo de `tests/canonico.test.ts` barre `.astro` y `.tsx` de
+`src/pages`, `src/components` y `src/layouts`; los dos módulos de texto pasaron a
+importar las constantes.
+
+### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas · P2
 **Drift de documentación, no de código.** En la tabla «Porque ya hay un test, y
 duplicarlo daría falsa cobertura» hay filas concatenadas con `||` dentro de una
 celda en vez de separadas por salto de línea, y por eso hay filas **repetidas dos

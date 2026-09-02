@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **diez** salidas, una por una:
+1. **¿Es público?** Resolvé las **once** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -32,6 +32,7 @@ no se pueden deshacer después.
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
    | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts` |
    | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
+   | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
@@ -45,7 +46,7 @@ no se pueden deshacer después.
    > `auditor-documentacion` (**B-244**). Si agregás una salida, **se agrega acá en
    > el mismo cambio**.
    >
-   > Pasó de siete a **diez** con B-265, B-113 y B-109. Las tres veces las ató el
+   > Pasó de siete a **once** con B-265, B-113, B-109 y B-108. Las tres veces las ató el
    > mismo test (`tests/agentes-y-skills.test.ts`), que compara los números de las
    > tres tablas: la de `docs/07-seguridad.md`, la de la ficha del
    > `auditor-privacidad` y ésta.

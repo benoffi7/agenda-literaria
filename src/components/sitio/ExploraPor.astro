@@ -1,0 +1,78 @@
+---
+/**
+ * La tira «Explorá por» — B-108, §4.1 del diseño.
+ *
+ * ── No es decorativa, y el diseño lo dice con estas palabras ──────────────
+ * > «"Explorá por" no es decorativo. Es la navegación sin JavaScript, y es el
+ * > linkeo interno que hace que los hubs existan para Google.»
+ *
+ * Sin esta tira, los hubs serían páginas en el sitemap **sin un solo enlace
+ * interno**, y una página sin enlaces internos vale casi nada para un buscador
+ * aunque responda — es el mismo argumento con el que el §2.1 justifica
+ * `/pasadas`. Así que este componente no es una comodidad de navegación: es la
+ * mitad del valor de B-108.
+ *
+ * ── Un componente y no dos tiras ──────────────────────────────────────────
+ * La usan la home y **cada hub**, o sea seis clases de página. Escrita en cada
+ * una, la que se olvide de un grupo deja esos hubs huérfanos y la página se ve
+ * bien igual. Además reemplaza a la tira «La agenda mes por mes» que B-113 había
+ * puesto en la home: el §4.1 dibuja los meses **en esta misma tira** («Online ·
+ * Gratis · Septiembre · Octubre») porque para quien mira son la misma pregunta.
+ *
+ * ── Qué grupos hay lo decide `exploracionDelSitio`, no esta plantilla ─────
+ * Recibe los grupos ya armados, ya recortados (sin la página actual) y ya
+ * filtrados (un grupo sin enlaces no llega acá). Es la forma de D-140 aplicada a
+ * un componente: la plantilla acomoda, no decide — y así lo que decide se puede
+ * testear desde vitest, que no puede importar un `.astro`.
+ *
+ * ── La forma, del sistema visual ──────────────────────────────────────────
+ * Una **barra de índice**: «una lista persistente de categorías con el aspecto
+ * del índice de un libro». Rótulo en versalitas azules, enlaces en fila
+ * envolvente, regla gruesa arriba para cortar la sección. Radio 0, sin sombras,
+ * densa.
+ *
+ * El `h2` cuelga del `h1` de la página; cada grupo lleva un `h3`. En la home los
+ * marcadores de mes del listado son `h2` hermanos, así que la jerarquía cierra.
+ */
+import { claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+import type { GrupoDeExploracion } from '@/lib/hubsPublicos';
+
+interface Props {
+  grupos: GrupoDeExploracion[];
+}
+
+const { grupos } = Astro.props;
+---
+
+{
+  grupos.length > 0 && (
+    <nav aria-labelledby="explora-por" class="mt-12 sm:mt-16">
+      <h2 id="explora-por" class="regla-gruesa-arriba label-caps pt-4 text-azul">
+        Explorá por
+      </h2>
+
+      <div class="mt-4 flex flex-col gap-4">
+        {grupos.map((grupo) => (
+          <div class="sm:grid sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-x-6">
+            {/*
+              El rótulo del grupo va en una columna propia de `sm` en adelante
+              —el índice de un libro tiene la sección a la izquierda— y arriba en
+              el teléfono, donde 8rem de las 4 columnas no dejarían nada para los
+              enlaces.
+            */}
+            <h3 class={`${claseRotulo} pt-1`}>{grupo.rotulo}</h3>
+            <ul class="body-md mt-1 flex flex-wrap gap-x-5 gap-y-2 sm:mt-0">
+              {grupo.enlaces.map((enlace) => (
+                <li>
+                  <a class={claseEnlace} href={enlace.ruta}>
+                    {enlace.texto}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </nav>
+  )
+}

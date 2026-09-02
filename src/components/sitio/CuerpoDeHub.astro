@@ -1,0 +1,125 @@
+---
+/**
+ * El cuerpo de un hub — B-108, §4.4 del diseño.
+ *
+ * ── Un componente para las cuatro páginas, y eso es lo que el §4.4 pide ───
+ * > «Un solo componente de página con tres variables: título, párrafo de
+ * > contexto y el subconjunto ya filtrado.»
+ *
+ * Las cuatro rutas de hub (`/tipo/[tipo]`, `/barrio/[barrio]`, `/online`,
+ * `/gratis`) son plantillas de diez líneas que pasan su `<Base>` y montan esto.
+ * Escrito cuatro veces, la copia que se edite el mes que viene deja tres páginas
+ * distintas de la misma clase — y las cuatro se ven bien por separado, que es la
+ * firma de esa clase de bug (B-88).
+ *
+ * **Cada página conserva su propio `<Base>`** en vez de que este componente lo
+ * incluya, y no es por gusto: `tests/chrome-del-sitio.test.ts` solo mira las
+ * páginas que usan el layout, así que una página sin `<Base>` se saltearía ese
+ * chequeo en silencio — y lo mismo con `identidad.test.ts`, que exige el nombre
+ * del sitio en el título de cada página.
+ *
+ * ── Cero JavaScript, y es una regla y no una omisión ──────────────────────
+ * No hay islands. El §4.4 dibuja el filtro «visible como chip» y un «buscar
+ * dentro», y las dos cosas están **sin bajar un byte**:
+ *
+ * | El diseño pide | Cómo sale sin JavaScript |
+ * |---|---|
+ * | el filtro visible como chip | el rótulo del filtro, en un bloque, arriba de la lista |
+ * | «sacar el chip navega a `/`» | «Ver toda la agenda», al lado |
+ * | «🔍 buscar dentro» | un enlace a la home **con el filtro preaplicado** (`/?tipo=taller`), que es donde vive el buscador (§2.5) |
+ *
+ * Montar la island acá para filtrar veinte filas sería bajar el runtime de React
+ * a la página que existe para ser rápida en un resultado de Google. La island
+ * vive en la home, que es donde alguien va a combinar filtros.
+ *
+ * ── El hub vacío se pinta, no se esconde ─────────────────────────────────
+ * §4.4: «un hub que se queda sin actividades vigentes no se borra: se genera con
+ * el aviso y links a los demás. Un 404 sobre una URL indexada es peor que una
+ * página honesta y vacía». El aviso lo escribe `hubsPublicos.ts` (`avisoVacio`) y
+ * los links son la tira de abajo, que en ese caso es lo único que la página
+ * ofrece — por eso va siempre, con lista o sin ella.
+ *
+ * ── La jerarquía de encabezados ──────────────────────────────────────────
+ * `h1` el nombre del hub, `h2` el marcador de mes que abre cada grupo (lo pone
+ * `ListaDeActividades`) y el de «Explorá por», `h3` el título de cada fila y el
+ * rótulo de cada grupo de la tira. La misma de la home.
+ */
+import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import ExploraPor from '@/components/sitio/ExploraPor.astro';
+import { claseBloque, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+import type { VistaDeHub } from '@/lib/contenidoDelSitio';
+import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
+
+interface Props {
+  vista: VistaDeHub;
+}
+
+const { vista } = Astro.props;
+const { hub, etiquetas, tonos, exploracion } = vista;
+
+// El reloj del índice, el mismo con el que se decidió qué entra en este hub: con
+// dos relojes, una actividad que termina mientras corre el build puede aparecer
+// en la lista y no en la cuenta que dice el `h1`.
+const ahora = new Date(vista.generadoEn);
+---
+
+<main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+  <div class="max-w-3xl">
+    <h1 class="headline-md text-balance text-tinta">{hub.titulo}</h1>
+    <p class="body-md mt-3 text-super">{hub.bajada}</p>
+  </div>
+
+  {/*
+    **El filtro, hecho visible.** Es el chip del §4.4 en su versión sin
+    JavaScript: dice qué recorte estás viendo —que es lo que diferencia esta
+    página de la home— y ofrece las dos salidas que el diseño pide, la de sacar
+    el filtro y la de buscar dentro.
+
+    El rótulo va en `label-caps` azul, que es la tinta que el sistema reserva
+    para lo funcional y las categorías, y el bloque es `claseBloque`: borde y
+    capa tonal, nunca una sombra.
+  */}
+  <div class={`mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 p-4 sm:p-5 ${claseBloque}`}>
+    <p class={claseRotulo}>{hub.rotuloDelFiltro}</p>
+    <p class="body-md flex flex-wrap gap-x-5 gap-y-2 text-super">
+      <a class={claseEnlace} href={`${RUTA_AGENDA}${hub.queryEnLaAgenda}`}>
+        Buscar dentro de esta selección
+      </a>
+      <a class={claseEnlace} href={RUTA_AGENDA}>Ver toda la agenda</a>
+    </p>
+  </div>
+
+  <div class="mt-10 sm:mt-12">
+    {
+      hub.vacio ? (
+        <div class="regla-gruesa-arriba px-4 py-12 text-center">
+          <p class="body-md text-super">{hub.avisoVacio}</p>
+          {/*
+            La salida hacia lo que sí se puede hacer. El archivo va acá y no en la
+            tira porque en un hub vacío es la respuesta más útil: si no hay nada
+            ahora, lo que hubo dice quién organiza en ese barrio o de ese tipo, y
+            «muchas de estas actividades se repiten» (§4.5).
+          */}
+          <p class="body-md mt-3 text-super">
+            <a class={claseEnlace} href={RUTA_PASADAS}>Mirá lo que ya pasó</a> o{' '}
+            <a class={claseEnlace} href={RUTA_AGENDA}>toda la agenda</a>.
+          </p>
+        </div>
+      ) : (
+        <ListaDeActividades
+          entradas={hub.entradas}
+          ahora={ahora}
+          etiquetas={etiquetas}
+          tonos={tonos}
+        />
+      )
+    }
+  </div>
+
+  {/*
+    La tira va **siempre**, con lista o sin ella: es el linkeo interno que hace
+    que los demás hubs existan para Google (§4.1) y, en un hub vacío, casi la
+    única cosa que la página ofrece.
+  */}
+  <ExploraPor grupos={exploracion} />
+</main>

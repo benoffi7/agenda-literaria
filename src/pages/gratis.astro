@@ -1,0 +1,51 @@
+---
+/**
+ * `/gratis` — lo que no se paga. B-108, §2.1 y §4.4 del diseño.
+ *
+ * ── «Qué hay gratis» es una intención propia y estable ────────────────────
+ * §2.1. No es un refinamiento de otra búsqueda: es la primera pregunta de quien
+ * no sabe todavía si esto es para él.
+ *
+ * ── Junta `gratis` y `a-la-gorra`, y la página aclara la diferencia ───────
+ * §2.1, textual: «junta `gratis` y `a-la-gorra` a propósito: en el circuito
+ * literario "a la gorra" es la mitad de los casos (§4.1) y para quien busca cae
+ * del mismo lado. **El texto de la página aclara la diferencia**».
+ *
+ * Las dos mitades están y las dos importan. Juntarlas es correcto para quien
+ * busca —nadie teclea «actividades a la gorra»— y **no son lo mismo**: en una a
+ * la gorra se deja lo que se puede al terminar, y eso es lo que sostiene el
+ * circuito. Por eso la bajada lo dice en vez de dejar que la página prometa
+ * gratis y cobre a la salida. La frase vive en `lib/hubsPublicos.ts` y no en este
+ * markup, por lo de siempre: un `.astro` no se puede importar desde vitest, así
+ * que una frase escrita acá no la verifica nadie.
+ *
+ * `'a-la-gorra'` es opción de primera clase del modelo y no un caso raro (§4.1),
+ * y esta página es el único lugar del sitio público donde eso se explica.
+ *
+ * ── Es una página escrita y no generada ───────────────────────────────────
+ * Como `/online`: es una **sección del sitio**, no un valor de taxonomía, así que
+ * se emite siempre, vive en `RUTAS_FIJAS` y no lleva `noIndex`. El razonamiento
+ * está en el encabezado de `lib/hubsPublicos.ts`, y el resto —qué entra, qué
+ * dice, y el markup— en ese módulo y en `CuerpoDeHub.astro`.
+ *
+ * **Lo que este hub NO es: un hub por cada tipo de arancel.** El §2.3 lo dejó
+ * afuera con su motivo: `arancelado`, `beca-parcial` o «bono social» no son
+ * consultas. Solo «gratis» lo es.
+ */
+import Base from '@/layouts/Base.astro';
+import CuerpoDeHub from '@/components/sitio/CuerpoDeHub.astro';
+import { vistaDeHubTematico } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+
+export const prerender = true;
+
+const vista = await vistaDeHubTematico('gratis');
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${vista.hub.titulo} · ${NOMBRE}`}
+  descripcion={vista.hub.descripcion}
+>
+  <CuerpoDeHub vista={vista} />
+</Base>

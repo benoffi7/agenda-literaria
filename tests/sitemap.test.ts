@@ -13,7 +13,7 @@ import {
   xmlDelSitemap,
 } from '@/lib/sitemap';
 import { MINIMO_DE_ACTIVIDADES } from '@/lib/mesPublico';
-import { SITIO, rutaCanonica, rutaDeDetalle, urlAbsoluta } from '@/lib/rutasPublicas';
+import { SITIO, rutaCanonica, rutaDeDetalle, rutaDeMes, urlAbsoluta } from '@/lib/rutasPublicas';
 import { entradaDePrueba } from './fixtures/indice';
 
 /**
@@ -93,10 +93,18 @@ describe('las páginas fijas', () => {
      * le ofrece al buscador y que le contesta que no existe. El chequeo mira el
      * disco porque es lo único que no se puede desincronizar.
      */
-    const archivoDe = (ruta: string): string[] =>
-      ruta === '/'
+    /*
+     * El `replace` de la barra final es de **B-330**: desde ahí `RUTAS_FIJAS`
+     * guarda las rutas en la forma que contesta 200 (`/cartelera/`) porque es la
+     * misma que usan los `href` del sitio, y el nombre del archivo en disco no
+     * la lleva.
+     */
+    const archivoDe = (ruta: string): string[] => {
+      const sinBarra = ruta.replace(/\/+$/, '');
+      return sinBarra === ''
         ? ['src/pages/index.astro']
-        : [`src/pages${ruta}.astro`, `src/pages${ruta}/index.astro`];
+        : [`src/pages${sinBarra}.astro`, `src/pages${sinBarra}/index.astro`];
+    };
 
     const sinPagina = RUTAS_FIJAS.filter((r) => !archivoDe(r).some((f) => existsSync(raiz(f))));
     expect(
@@ -116,7 +124,7 @@ describe('las páginas fijas', () => {
      * decida.
      */
     const EXCEPTUADAS: Record<string, string> = {
-      '/admin': 'el panel no se indexa: `noIndex` en la página y `Disallow` en el robots.txt',
+      '/admin/': 'el panel no se indexa: `noIndex` en la página y `Disallow` en el robots.txt',
     };
 
     const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
@@ -127,8 +135,10 @@ describe('las páginas fijas', () => {
       .filter((f) => !f.includes('['));
     expect(paginas.length).toBeGreaterThan(3);
 
+    // La ruta en la **forma que contesta 200** (B-330), que es la que guarda
+    // `RUTAS_FIJAS`: se compara lo mismo contra lo mismo.
     const rutaDe = (archivo: string): string =>
-      archivo.replace(/^src\/pages/, '').replace(/(\/index)?\.astro$/, '') || '/';
+      rutaCanonica(archivo.replace(/^src\/pages/, '').replace(/(\/index)?\.astro$/, '') || '/');
 
     const faltantes = paginas
       .map(rutaDe)
@@ -266,7 +276,7 @@ describe('los meses: solo los enlazables (§2.2)', () => {
 
   it('un mes con 3 o más entra', () => {
     const salida = rutas({ entradas: delMes(MINIMO_DE_ACTIVIDADES, '2026-10') });
-    expect(salida).toContain('/agenda/2026-10');
+    expect(salida).toContain(rutaDeMes('2026-10'));
   });
 
   it('un mes con 2 NO entra', () => {
@@ -281,7 +291,7 @@ describe('los meses: solo los enlazables (§2.2)', () => {
      * ofrecería páginas que no existen.
      */
     const salida = rutas({ entradas: delMes(MINIMO_DE_ACTIVIDADES - 1, '2026-10') });
-    expect(salida).not.toContain('/agenda/2026-10');
+    expect(salida).not.toContain(rutaDeMes('2026-10'));
     expect(salida.filter((r) => r.startsWith('/agenda/'))).toEqual([]);
   });
 
@@ -296,7 +306,7 @@ describe('los meses: solo los enlazables (§2.2)', () => {
      * `rutasDelSitemap` pone este caso en rojo y deja los otros dos en verde.
      */
     const salida = rutas({ entradas: delMes(MINIMO_DE_ACTIVIDADES, '2026-08') });
-    expect(salida).not.toContain('/agenda/2026-08');
+    expect(salida).not.toContain(rutaDeMes('2026-08'));
   });
 });
 

@@ -609,9 +609,10 @@ describe('lo que se le corrigió a la referencia no vuelve', () => {
      */
     const pie = sinComentarios(readFileSync(raiz('src/components/sitio/PieDePagina.astro'), 'utf8'));
     expect(pie).not.toMatch(/>\s*(Privacidad|Términos|Terminos)\s*</);
-    // Control positivo: el pie sí tiene los enlaces reales.
-    expect(pie).toContain('/suscribirse');
-    expect(pie).toContain('/contacto');
+    // Control positivo: el pie sí tiene los enlaces reales. Desde B-330 los
+    // nombra por su constante de `rutasPublicas.ts` y no por el literal (B-293).
+    expect(pie).toContain('RUTA_SUSCRIBIRSE');
+    expect(pie).toContain('RUTA_CONTACTO');
   });
 
   it('no hay un año de copyright escrito a mano', () => {

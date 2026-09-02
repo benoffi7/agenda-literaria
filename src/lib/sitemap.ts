@@ -47,8 +47,21 @@
  */
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { estadoDe } from '@/lib/listadoPublico';
+import { hubsOfrecidos } from '@/lib/hubsPublicos';
 import { mesesEnlazables } from '@/lib/mesPublico';
-import { RUTA_PASADAS, rutaDeDetalle, rutaDeMes, urlAbsoluta } from '@/lib/rutasPublicas';
+import {
+  RUTA_AGENDA,
+  RUTA_AYUDA,
+  RUTA_CARTELERA,
+  RUTA_CONTACTO,
+  RUTA_GRATIS,
+  RUTA_ONLINE,
+  RUTA_PASADAS,
+  RUTA_SUSCRIBIRSE,
+  rutaDeDetalle,
+  rutaDeMes,
+  urlAbsoluta,
+} from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 
 const UN_DIA = 24 * 60 * 60 * 1000;
@@ -120,12 +133,27 @@ export interface CanceladaDelSitemap {
  * excepciones con su motivo.
  */
 export const RUTAS_FIJAS: readonly string[] = [
-  '/',
-  '/cartelera',
+  RUTA_AGENDA,
+  RUTA_CARTELERA,
   RUTA_PASADAS,
-  '/suscribirse',
-  '/ayuda',
-  '/contacto',
+  /*
+   * Los dos hubs temáticos entran acá y no por `hubsOfrecidos` — B-108. Son
+   * **secciones del sitio** y no valores de una taxonomía: «lo que se hace a
+   * distancia» y «lo que no se paga» siempre quieren decir algo en una agenda
+   * literaria, así que su vacío es un estado pasajero de los datos, igual que el
+   * de `/pasadas` el día que se lanzó o el de `/cartelera` sin ningún flyer, que
+   * están en esta lista y pueden estar vacías.
+   *
+   * Los de `/tipo/*` y `/barrio/*` son al revés: un `/barrio/x` sin nada vigente
+   * es una página sobre un lugar donde no hay nada, y puede haber decenas. Ésos
+   * entran solo si tienen algo (`hubsOfrecidos`) y si no, salen con `noindex`.
+   * El razonamiento completo está en `lib/hubsPublicos.ts`.
+   */
+  RUTA_ONLINE,
+  RUTA_GRATIS,
+  RUTA_SUSCRIBIRSE,
+  RUTA_AYUDA,
+  RUTA_CONTACTO,
 ];
 
 /** ¿Esta fecha está dentro de la ventana de `dias` contada desde `ahora`? */
@@ -173,6 +201,20 @@ const rutasDeCanceladas = (canceladas: readonly CanceladaDelSitemap[], ahora: Da
 export interface EntradaDelSitio {
   entradas: readonly EntradaDeIndice[];
   canceladas: readonly CanceladaDelSitemap[];
+  /**
+   * Las opciones de taxonomía del índice, **para los hubs** — B-108.
+   *
+   * Las necesita `hubsOfrecidos` por dos motivos: para saber qué slugs existen y
+   * en qué orden, y porque son las opciones **ya filtradas por aprobación** —
+   * ofrecerle a Google la URL de un barrio que todavía es un typo sin revisar es
+   * exactamente el error caro de esta salida (§4.3, y el argumento con el que el
+   * §2.3 dejó afuera los hubs de tema).
+   *
+   * Es opcional para que un llamador que no le importan los hubs —un test de otra
+   * regla— no tenga que armarlas, y el default es «ninguna», o sea ningún hub de
+   * taxonomía en el sitemap. El lado inofensivo del error.
+   */
+  opciones?: Readonly<Record<string, readonly { slug: string }[]>>;
   ahora: Date;
 }
 
@@ -192,9 +234,33 @@ export interface EntradaDelSitio {
  * y cancelada a la vez—, pero la garantía se afirma acá en vez de suponerse,
  * porque las dos listas vienen de dos queries distintas.
  */
-export const rutasDelSitemap = ({ entradas, canceladas, ahora }: EntradaDelSitio): string[] => [
+export const rutasDelSitemap = ({
+  entradas,
+  canceladas,
+  opciones = {},
+  ahora,
+}: EntradaDelSitio): string[] => [
   ...new Set([
     ...RUTAS_FIJAS,
+    /*
+     * **Los hubs de taxonomía: los que tienen algo vigente** — B-108. Los dos
+     * temáticos ya están en `RUTAS_FIJAS`, así que acá entran solo `/tipo/*` y
+     * `/barrio/*`; el `Set` de afuera cubriría el solapamiento igual.
+     *
+     * Sale de `hubsOfrecidos` y **no** de `hubsDelSitio`, que es la misma
+     * distinción que `mesesEnlazables` contra `mesesDelSitio` una línea más
+     * abajo: el build emite un hub vacío para que su URL no devuelva 404 (§4.4) y
+     * lo emite con `noindex`. Ofrecerlo en el sitemap y pedirle a la vez que no
+     * lo indexe es mandarle dos señales opuestas a Google.
+     *
+     * `etiquetas` va en `{}` a propósito: acá solo se necesitan las **rutas**, y
+     * la ruta no depende de la etiqueta —depende del slug, que es lo único que no
+     * se renombra (§2.1)—. Pasarle el mapa real armaría los títulos de ochenta
+     * hubs para tirarlos.
+     */
+    ...hubsOfrecidos(entradas, opciones, {}, ahora)
+      .filter((h) => h.clase === 'tipo' || h.clase === 'barrio')
+      .map((h) => h.ruta),
     ...mesesEnlazables(entradas, ahora).map((m) => rutaDeMes(m.clave)),
     ...rutasDePublicadas(entradas, ahora),
     ...rutasDeCanceladas(canceladas, ahora),

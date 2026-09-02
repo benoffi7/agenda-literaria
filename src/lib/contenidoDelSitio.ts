@@ -53,8 +53,16 @@ import {
   type MapaDeEtiquetas,
   type TonosDeTipo,
 } from '@/lib/listadoPublico';
+import {
+  esIndexable,
+  exploracionDelSitio,
+  hubsDelSitio,
+  type GrupoDeExploracion,
+  type Hub,
+} from '@/lib/hubsPublicos';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
 import { pasadasDelSitio } from '@/lib/pasadasPublicas';
+import { rutaDeMes } from '@/lib/rutasPublicas';
 import { rutasDelSitemap } from '@/lib/sitemap';
 import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
@@ -472,6 +480,24 @@ const detallesDelSitio = async (
   const tonos = await tonosDelSitio();
 
   /*
+   * **Qué páginas de mes existen, para el enlace «Más en septiembre»** — B-331,
+   * cierra B-280.
+   *
+   * Se calcula **una vez para todo el build** y no por página: `mesesEnlazables`
+   * recorre el índice entero, y hacerlo por actividad serían N recorridas para
+   * obtener siempre la misma respuesta. Es la misma forma que `tonos` y
+   * `etiquetas`, que ya viven acá por lo mismo.
+   *
+   * Y sale del **mismo** `indiceDelSitio()` memoizado que la home, el
+   * `events.json`, las páginas de mes, el sitemap y `/pasadas`: cero lecturas
+   * nuevas de Firestore (§2.4, §3 del diseño).
+   */
+  const indice = await indiceDelSitio();
+  const mesesConPagina = Object.fromEntries(
+    mesesEnlazables(indice.actividades, instante).map((m) => [m.clave, m.nombre]),
+  );
+
+  /*
    * La bandera viaja **pegada a cada actividad y desde su origen**, no se deduce
    * después con un `includes`: de qué query salió cada una es lo único que este
    * módulo sabe y el view-model no puede recalcular. Ver `DetallePublico.cancelada`.
@@ -486,7 +512,9 @@ const detallesDelSitio = async (
       // Una actividad sin slug no puede tener URL. No debería pasar (el schema lo
       // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
       .filter(([a]) => a.slug)
-      .map(([a, cancelada]) => detalleDeActividad(a, etiquetas, instante, tonos, cancelada))
+      .map(([a, cancelada]) =>
+        detalleDeActividad(a, etiquetas, instante, tonos, cancelada, mesesConPagina),
+      )
   );
 };
 
@@ -639,6 +667,10 @@ export const sitemapDelSitio = async (ahora?: unknown): Promise<string[]> => {
       slug: a.slug,
       editadaEn: canceladasEditadasEn[a.slug] ?? null,
     })),
+    // B-108 — las opciones **del índice**, o sea las ya filtradas por aprobación:
+    // ofrecerle al buscador la URL de un barrio que todavía es un typo sin
+    // revisar es el error caro de esta salida.
+    opciones: indice.opciones,
     ahora: instante,
   });
 };
@@ -683,4 +715,156 @@ export const vistaDePasadas = async (ahora?: unknown): Promise<VistaDePasadas> =
     tonos: tonosDeTipo(indice.opciones),
     generadoEn: indice.generadoEn,
   };
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Los hubs — B-108
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Todo lo que la página de un hub necesita, y **nada más** — el view-model de
+ * `/tipo/*`, `/barrio/*`, `/online` y `/gratis` (B-108, D-140).
+ *
+ * La misma forma que `caminosDeMes` y `vistaDePasadas`: la plantilla importa
+ * **una** función y recibe lo que acá se decidió darle, campo por campo. No ve el
+ * índice, así que no puede publicar el `searchText` ni el `creadoEn` de nadie por
+ * un `{}` de más — que es la puerta que D-140 cerró para la página de detalle y
+ * que el `auditor-privacidad` encontró abierta en la primera versión de la página
+ * de mes.
+ *
+ * `exploracion` viene **armada y recortada**: los grupos de la tira «Explorá
+ * por», sin la página actual y sin los grupos vacíos. Mandar los hubs enteros
+ * metería en cada página las entradas de todos los demás hubs, que es contenido
+ * que esa página no muestra — el mismo motivo por el que `caminosDeMes` recorta
+ * `otros` a la clave y el nombre.
+ */
+export interface VistaDeHub {
+  hub: Hub;
+  etiquetas: MapaDeEtiquetas;
+  tonos: TonosDeTipo;
+  /** El reloj del build, en ISO. La plantilla lo reconstituye a `Date`. */
+  generadoEn: string;
+  /** Los grupos de la tira «Explorá por», ya sin esta página. */
+  exploracion: GrupoDeExploracion[];
+}
+
+/**
+ * Los hubs del build con todo lo que hace falta para armar sus vistas, **de una
+ * sola pasada**.
+ *
+ * ── Por qué existe esta función intermedia ────────────────────────────────
+ * Porque `caminosDeTipo`, `caminosDeBarrio`, `vistaDeHub('online')` y
+ * `vistaDeHub('gratis')` necesitan **los mismos** cuatro insumos: los hubs
+ * emitidos, los ofrecidos (que son los que se enlazan), las etiquetas y los
+ * matices. Derivados en cada una serían cuatro derivaciones de la misma cosa, y
+ * la que se olvide de filtrar por `esIndexable` enlaza hubs vacíos desde las
+ * otras tres — sin que nada falle.
+ *
+ * **No agrega una lectura de Firestore.** Sale del mismo `indiceDelSitio()`
+ * memoizado que la home, el `events.json`, las páginas de mes, el sitemap y
+ * `/pasadas`: el §3 del diseño dice «tres artefactos con una sola lectura», y ya
+ * van siete sin cambiar el número.
+ *
+ * El reloj es el del índice por lo mismo que en `caminosDeMes`: qué entra en cada
+ * hub tiene que decidirse con el **mismo** instante que decidió qué muestra la
+ * home. Con dos relojes, un build a caballo de una medianoche puede poner una
+ * actividad en el hub y no en la home, y eso se ve una vez cada tanto — o sea
+ * nunca en un test.
+ */
+const hubsConContexto = async (ahora?: unknown) => {
+  const indice = await indiceDelSitio();
+  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+
+  // Las mismas etiquetas y los mismos matices que la home y las páginas de mes:
+  // salen del índice, o sea de las opciones ya filtradas por aprobación. Ver
+  // `etiquetasDelListado`.
+  const etiquetas = mapaDeEtiquetas(indice.opciones);
+  const tonos = tonosDeTipo(indice.opciones);
+
+  const todos = hubsDelSitio(indice.actividades, indice.opciones, etiquetas, instante);
+  /*
+   * Los que se enlazan son los **indexables**, o sea los mismos que entran al
+   * sitemap. No es una coincidencia que sea la misma condición: enlazar una
+   * página que le pedimos a Google no indexar es mandarle dos señales opuestas, y
+   * enlazar un hub vacío es mandar a alguien a una lista sin nada.
+   */
+  const enlazables = todos.filter(esIndexable);
+  const meses = mesesEnlazables(indice.actividades, instante).map((m) => ({
+    clave: m.clave,
+    nombre: m.nombre,
+  }));
+
+  return { indice, instante, etiquetas, tonos, todos, enlazables, meses };
+};
+
+/** La vista de un hub puntual, con su tira ya recortada. */
+const vistaDelHub = (
+  hub: Hub,
+  ctx: Awaited<ReturnType<typeof hubsConContexto>>,
+): VistaDeHub => ({
+  hub,
+  etiquetas: ctx.etiquetas,
+  tonos: ctx.tonos,
+  generadoEn: ctx.indice.generadoEn,
+  exploracion: exploracionDelSitio(ctx.enlazables, ctx.meses, rutaDeMes, hub.ruta),
+});
+
+/**
+ * Los caminos de `/tipo/[tipo]`, uno por tipo con actividad publicada — B-108.
+ *
+ * `ahora` es tolerante por lo mismo que `caminosDeDetalle` y `caminosDeMes`:
+ * Astro llama a `getStaticPaths` con un argumento propio (`{ paginate, rss }`), y
+ * una plantilla que aliasee esta función en vez de envolverla lo recibiría acá
+ * (B-237). Con el alias, el build muere con `ahora.getTime is not a function` y
+ * ningún test unitario lo ve.
+ */
+export const caminosDeTipo = async (
+  ahora?: unknown,
+): Promise<{ params: { tipo: string }; props: { vista: VistaDeHub } }[]> => {
+  const ctx = await hubsConContexto(ahora);
+  return ctx.todos
+    .filter((h) => h.clase === 'tipo')
+    .map((hub) => ({ params: { tipo: hub.slug }, props: { vista: vistaDelHub(hub, ctx) } }));
+};
+
+/** Los caminos de `/barrio/[barrio]`, uno por barrio con actividad publicada. */
+export const caminosDeBarrio = async (
+  ahora?: unknown,
+): Promise<{ params: { barrio: string }; props: { vista: VistaDeHub } }[]> => {
+  const ctx = await hubsConContexto(ahora);
+  return ctx.todos
+    .filter((h) => h.clase === 'barrio')
+    .map((hub) => ({ params: { barrio: hub.slug }, props: { vista: vistaDelHub(hub, ctx) } }));
+};
+
+/**
+ * La vista de uno de los dos hubs temáticos, que son páginas escritas y no
+ * generadas — ver el encabezado de `hubsPublicos.ts`.
+ */
+export const vistaDeHubTematico = async (
+  clase: 'online' | 'gratis',
+  ahora?: unknown,
+): Promise<VistaDeHub> => {
+  const ctx = await hubsConContexto(ahora);
+  const hub = ctx.todos.find((h) => h.clase === clase);
+  /*
+   * No puede faltar —`hubsDelSitio` los emite siempre— y se afirma igual: si
+   * alguien los volviera condicionales, el build moriría acá con el motivo
+   * escrito en vez de emitir una página sin contenido.
+   */
+  if (!hub) throw new Error(`El hub temático «${clase}» no se generó, y siempre debería.`);
+  return vistaDelHub(hub, ctx);
+};
+
+/**
+ * La tira «Explorá por» **de la home**, que es la única página que la muestra sin
+ * ser un hub — B-108, §4.1.
+ *
+ * Sale de la misma función que la de los hubs, sin `rutaActual`: la home no es un
+ * hub, así que no hay nada que sacar de la tira. Con dos derivaciones, la tira de
+ * la home podría ofrecer un hub vacío que las de los hubs no ofrecen.
+ */
+export const exploracionDeLaHome = async (ahora?: unknown): Promise<GrupoDeExploracion[]> => {
+  const ctx = await hubsConContexto(ahora);
+  return exploracionDelSitio(ctx.enlazables, ctx.meses, rutaDeMes);
 };

@@ -22,9 +22,8 @@ fragmentos de código son ilustrativos.
 > | §4.1 home · §4.2 tarjeta | ✅ — la tarjeta se regrilló en B-247, con el desvío 5 de abajo (**D-142**) |
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ❌ — frente siguiente (**B-108**) |
-> | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155** |
-> | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
-> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
+> | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
+> | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. Falta solo lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto), el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los hubs del §5.5 (los dos siguen en **B-107**, y el segundo va con **B-108**), y el `lastmod`, que necesita **B-112** |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
@@ -760,6 +759,10 @@ Open Graph completo, `twitter:card = summary_large_image`.
 > imagen se dibuja como un rectángulo vacío—. La carencia son las cinco imágenes
 > de `public/og/`, que siguen sin existir: hoy solo la página de detalle manda
 > `og:image`, con el flyer de la actividad. Es **B-291**.
+>
+> **Y desde el 2026-09-02 la barra final no es solo de la canónica** (B-293,
+> **D-180**): los `href` internos del sitio salen por `rutaCanonica` igual que
+> ella, así que hay una sola forma de cada ruta y ningún click paga el 301.
 
 | Página | `<title>` | `meta description` | `canonical` |
 |---|---|---|---|

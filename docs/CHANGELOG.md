@@ -2,6 +2,17 @@
 
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 
+**Y los cuatro hubs de búsqueda entraron al índice de salidas públicas como la
+salida 11** (B-108). No estaban en ninguna de las tres listas: ni en la ficha del
+`auditor-privacidad`, ni en `07-seguridad.md`, ni en el skill `campo-nuevo` —
+así que el auditor no se disparaba al tocarlos y el barrido de centinelas no los
+recorría. **La suite estaba verde igual**, porque el índice solo se compara
+consigo mismo: es el hueco de índice del 2026-08-27 por cuarta vez. Se cerró con
+el `describe` que faltaba, y ahí apareció lo que valía la pena escribir: las
+frases y la URL de un hub se barren **por separado**, porque en el título tiene
+que estar la etiqueta y en la ruta el slug (trampa 10). En un solo barrido, el
+slug pasaba por permitido en el título nada más porque está en la URL.
+
 **Se juntan en `main` la analítica del sitio (B-370 a B-379, D-200, D-201), las
 imágenes que se optimizan solas (B-220, B-300, B-266, D-175) y la deuda de tests
 e infra (B-219 y nueve más).** Cada uno venía verde en su worktree.
@@ -908,6 +919,104 @@ de producción: el PNG de 1091,5 KB quedó en 34,0 KB con `contentType: image/jp
 el JPEG de 101,9 KB no se tocó, las dos miniaturas se escribieron, **la URL vieja
 con su token sigue devolviendo 200** con los bytes nuevos, y el trigger corrió 5
 veces en total — 2 optimizando y 3 cortando — sin que el bucket creciera.
+## 2026-09-02 · «Más en septiembre» en la página de detalle
+
+**B-280.** El §2.2 del diseño pide dos entradas a `/agenda/{aaaa-mm}`: la tira al
+pie de la home —que B-113 construyó— y un enlace desde el detalle. La segunda
+faltaba, y no era simetría: quien cae en una página de detalle desde Google o
+desde Instagram no tenía **ninguna** forma de ver qué más hay ese mes sin volver a
+la home y filtrar. Y del lado del buscador, un segundo link interno hacia la
+página de mes es lo que la hace valer algo.
+
+**Dónde vive la decisión, que es lo que el ítem no preveía.** El ítem decía «el
+enlace solo se puede pintar si el mes pasó el corte de tres», y eso la plantilla
+no lo puede evaluar: `mesesEnlazables` recorre el índice entero y la página de
+detalle no lo ve (D-140). El atajo que uno escribe —`rutaDeMes(detalle.proxima.iso.slice(0, 7))`—
+compila, se lee bien y arma una URL válida; lo que no puede saber es si esa página
+se generó, porque depende de **cuántas otras** actividades caen en ese mes. El
+resultado sería un 404 servido desde la página que más tráfico recibe, y recién el
+mes que tenga dos actividades.
+
+Así que el mes viaja en el view-model: `DetallePublico.mes` es
+`{ clave, nombre } | null` y lo decide el lector, con el mapa de meses enlazables
+que ya calcula una vez para todo el build. Es el mismo patrón con el que B-110
+resolvió `cancelada` y B-109 la fecha de las canceladas: **lo decide quien tiene
+el dato**. El default del argumento es `{}` —no enlazar nada—, que es el lado
+correcto del error.
+
+Dos detalles del cómo:
+
+- **Cuál mes, cuando hay dos.** El de la **próxima** fecha en pie. Un ciclo del 3
+  de septiembre al 22 de octubre cae en las dos páginas de mes (§7.5); el enlace
+  contesta «qué más hay cuando voy a esto», no «en qué meses ocurre el ciclo». Se
+  corre a octubre solo cuando septiembre pasa, sin ninguna regla más.
+- **El nombre sale del mapa**, no de un segundo `nombreDeMes`. Con dos
+  derivaciones el enlace podría decir «Septiembre» y la página «Septiembre de
+  2026» — la clase de B-88 en su versión más chica, y la que nadie mira porque las
+  dos frases se leen bien por separado.
+
+**Verificado sobre HTML construido** contra el emulador, con datos sembrados a
+propósito (13 actividades: 5 en septiembre, 4 en octubre, 2 en noviembre, 2
+pasadas). Los cuatro casos: septiembre enlaza `/agenda/2026-09/`, noviembre —dos
+actividades, sin página— no enlaza nada, una pasada tampoco, y el ciclo enlaza
+septiembre. Siete casos con mutación en `tests/detallePublico.test.ts` y uno en
+`tests/pagina-de-detalle.test.ts`, que prohíbe el atajo de derivar la clave del
+mes en la plantilla.
+
+## 2026-09-02 · una sola forma de la ruta, la que contesta 200
+
+**B-293, con [D-180](06-decisiones.md).** Firebase responde `/cartelera` con un
+**301** a `/cartelera/` —medido contra producción el 2026-09-02, porque Astro emite
+una carpeta con `index.html` por página—. La canónica y el sitemap ya salían **con**
+la barra desde D-165; los `href` del propio sitio seguían sin ella y pagaban un
+viaje de ida y vuelta por click.
+
+**De las dos salidas posibles se eligió la segunda**, la que no toca producción:
+agregarle la barra a los `href` en vez de poner `"trailingSlash": false` en
+`firebase.json`. El motivo está en D-180, y lo que importa del cómo es que ahora
+**hay una sola forma de la ruta y la produce `rutaCanonica`**:
+
+| | Antes | Ahora |
+|---|---|---|
+| la canónica y el sitemap | `/cartelera/` | igual |
+| el `href` del encabezado, del pie, de la ayuda | `/cartelera` → 301 | `/cartelera/` |
+| dónde se escribe | un literal por plantilla | `RUTA_CARTELERA` en `src/lib/rutasPublicas.ts` |
+
+`rutasPublicas.ts` gana las seis constantes de las páginas fijas
+(`RUTA_AGENDA`, `RUTA_CARTELERA`, `RUTA_SUSCRIBIRSE`, `RUTA_AYUDA`,
+`RUTA_CONTACTO`, `RUTA_PASADAS`) más las dos de los hubs temáticos y los
+constructores `rutaDeTipo` / `rutaDeBarrio` que **B-330** va a necesitar — así el
+frente de los hubs no puede introducir una segunda forma. Y las constantes están
+definidas **pasándolas por `rutaCanonica`**, o sea que no hay forma de escribir acá
+la variante que redirige.
+
+Dejaron de tener literales el encabezado, el pie, `SuscribirseResumen`,
+`ayudaDelSitio.ts` y `contactoDelSitio.ts` —los dos últimos eran los que faltaban
+en el relevamiento del ítem, que solo nombraba el markup—.
+
+**El chequeo nuevo** (`tests/canonico.test.ts`): un barrido de **todo `src/`** que
+falla si algún archivo escribe un `href` interno que no está en la forma canónica.
+Lo que se permite no es una lista de este test —la raíz, las anclas, los archivos
+de la raíz como `/marca.svg`— sino lo que `rutaCanonica` ya decide: lo que se
+compara es `ruta === rutaCanonica(ruta)`.
+
+**Y el barrido nació con un agujero que encontró la mutación, no la revisión.** La
+primera versión miraba solo `href="/…"` —el atributo de un `.astro`— sobre
+`src/pages`, `src/components` y `src/layouts`. Al probar la mutación que su propio
+comentario prometía (volver a poner `href: '/cartelera'` en `ENLACES` del
+encabezado) **pasó en verde**: el bug vivía en la forma `href: '/…'`, la de una
+lista de enlaces en JavaScript, que era justo la que el regex no leía. Y el alcance
+por carpeta dejaba afuera `src/lib/`, donde estaban ocho de los nueve literales.
+Hoy son cuatro formas (`href="…"`, `href: '…'`, `href: "…"`, `href={'…'}`) sobre
+`src/` entero, con un control positivo que cuenta cuántos `href` vio: si los cuatro
+regex dejaran de matchear, el barrido volvería a pasar sin haber mirado ninguno,
+que es exactamente lo que estuvo haciendo.
+
+Las tres mutaciones quedaron probadas: el literal en `ENLACES`, el literal en
+`ayudaDelSitio.ts` y `export const RUTA_CARTELERA = '/cartelera'` escrito a mano.
+Verificado además sobre el HTML construido: los `href` internos de
+`dist/index.html` salen todos con la barra (`/ayuda/`, `/cartelera/`, `/contacto/`,
+`/pasadas/`, `/suscribirse/`), y los dos archivos de la raíz sin ella.
 ## 2026-09-02 · fuera la entrada de /contacto
 
 **Dos párrafos que le explicaban al visitante las decisiones de diseño del sitio.**

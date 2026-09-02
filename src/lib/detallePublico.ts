@@ -40,6 +40,7 @@
 import { NOMBRE, colorDeTipo } from '@/lib/identidad';
 import { resumenDe } from '@/lib/eventsJson';
 import {
+  claveDeMes,
   fechaCompleta,
   fechaLarga,
   hora,
@@ -377,6 +378,34 @@ export interface DetallePublico {
    */
   aviso: AvisoDeEstado | null;
 
+  /**
+   * **«Más en septiembre»: la página de mes a la que esta actividad pertenece**,
+   * o `null` si no hay ninguna que enlazar — B-331, cierra B-280.
+   *
+   * ── Por qué es una decisión y no una derivación de la fecha ───────────────
+   * Porque la página de mes **puede no existir**. El §2.2 la genera solo para los
+   * meses vigentes con 3 o más actividades, así que derivarla acá de
+   * `proxima.iso` produciría un enlace a un 404 en cuanto el mes tenga dos. Y un
+   * 404 desde una página que recibe tráfico de Google es peor que no tener el
+   * enlace: `mesesEnlazables` (`lib/mesPublico.ts`) es quien sabe si esa página
+   * existe, y no lo puede saber esta actividad sola — depende de **las otras**.
+   *
+   * Por eso llega como argumento, igual que `cancelada`: lo decide quien tiene el
+   * índice entero a la vista, que es el lector (`contenidoDelSitio.ts`).
+   *
+   * ── Cuál mes, cuando hay dos ─────────────────────────────────────────────
+   * El de la **próxima** fecha en pie. Un ciclo del 3 de septiembre al 22 de
+   * octubre cae en las dos páginas de mes (§7.5) y mirado en septiembre enlaza
+   * septiembre: es «qué más hay cuando voy a esto», no un índice de los meses que
+   * el ciclo cruza. Sin ninguna fecha por venir no enlaza nada — el mes ya pasó,
+   * su página no es enlazable, y la salida de una pasada es `/pasadas`.
+   *
+   * **No publica nada nuevo**: la clave del mes es una función de `inicioIso`, que
+   * ya sale en esta página y en su JSON-LD, y el nombre del mes lo escribe
+   * `nombreDeMes`.
+   */
+  mes: { clave: string; nombre: string } | null;
+
   /** `<title>` y `meta description` (§5.1 del diseño). */
   meta: { titulo: string; descripcion: string };
 }
@@ -698,6 +727,33 @@ const imagenesDeDetalle = (
 };
 
 /**
+ * El mes que esta página puede enlazar, o `null` — B-331, cierra B-280.
+ *
+ * Dos condiciones, y las dos tienen que valer:
+ *
+ * 1. **hay una próxima fecha en pie.** Sin ella el mes ya pasó, y la página de un
+ *    mes vencido no es enlazable (se emite con `noindex` solo para que su URL no
+ *    devuelva 404, §2.2). La salida de una pasada es `/pasadas`, que el pie ya da.
+ * 2. **ese mes tiene página**, o sea que pasó el corte de tres del §2.2. Es lo que
+ *    `mesesConPagina` contesta, y por eso viene de afuera: depende de las otras
+ *    actividades, no de ésta.
+ *
+ * El nombre sale del mapa y no de `nombreDeMes` acá: el que lo armó es
+ * `mesesEnlazables`, y con dos derivaciones el enlace podría decir «Septiembre» y
+ * la página «septiembre de 2026». Es la clase de B-88 en su versión más chica.
+ */
+const mesEnlazable = (
+  siguiente: EncuentroDeDetalle | null,
+  mesesConPagina: Readonly<Record<string, string>>,
+): { clave: string; nombre: string } | null => {
+  const inicio = instanteDeIso(siguiente?.inicioIso ?? null);
+  if (!inicio) return null;
+  const clave = claveDeMes(inicio);
+  const nombre = mesesConPagina[clave];
+  return nombre ? { clave, nombre } : null;
+};
+
+/**
  * El view-model de la página de detalle.
  *
  * `tonos` es el mismo mapa con el que el listado pinta su cajita —los matices
@@ -732,6 +788,19 @@ export const detalleDeActividad = (
    * «no está cancelada», que es lo que la página venía haciendo.
    */
   cancelada = false,
+  /**
+   * **Las páginas de mes que existen y se pueden enlazar**, como `{ clave: nombre }`
+   * — B-331, cierra B-280. Ver `DetallePublico.mes`.
+   *
+   * Llega como argumento por lo mismo que `cancelada`: quién tiene página de mes
+   * lo decide `mesesEnlazables` sobre el índice **entero**, y esta actividad sola
+   * no puede saberlo — depende de cuántas otras caen en su mes.
+   *
+   * **El default es `{}`, o sea «no enlazar nada»**, y es el lado correcto del
+   * error: quien omita el argumento pierde un enlace interno, no publica un 404
+   * desde la página que más tráfico recibe.
+   */
+  mesesConPagina: Readonly<Record<string, string>> = {},
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -869,6 +938,8 @@ export const detalleDeActividad = (
     tags: a.tags.map((t) => etiquetaDe(etiquetas, 'tag', t)),
 
     aviso: avisoDeEstado(cancelada, todoCancelado, yaPaso, encuentros.length > 0, inscripcion),
+
+    mes: mesEnlazable(siguiente, mesesConPagina),
 
     meta: {
       // §5.1 del diseño — el título de la actividad **primero**: Google recorta a

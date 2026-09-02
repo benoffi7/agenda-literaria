@@ -171,12 +171,25 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
 
   it('las cinco secciones y `aria-current` siguen ahí', () => {
     const src = encabezado();
-    const hrefs = [...src.matchAll(/href:\s*'([^']+)'/g)].map((m) => m[1]);
-    // B-265 — la cartelera entra segunda, pegada a la agenda: son las dos formas
-    // de mirar lo mismo. El orden se fija acá porque es una decisión y no un
-    // detalle: mover «Cartelera» al final la esconde detrás de tres enlaces de
-    // servicio.
-    expect(hrefs).toEqual(['/', '/cartelera', '/suscribirse', '/ayuda', '/contacto']);
+    /*
+     * Los destinos son **constantes** desde B-330 y no literales: `/cartelera`
+     * responde un 301 a `/cartelera/`, así que el `href` sale de
+     * `rutasPublicas.ts` (B-293). Lo que se fija acá sigue siendo el orden, que
+     * es la decisión; que cada constante tenga la forma buena lo verifica
+     * `tests/canonico.test.ts`.
+     *
+     * B-265 — la cartelera entra segunda, pegada a la agenda: son las dos formas
+     * de mirar lo mismo. Mover «Cartelera» al final la esconde detrás de tres
+     * enlaces de servicio.
+     */
+    const hrefs = [...src.matchAll(/href:\s*([A-Z_]+),/g)].map((m) => m[1]);
+    expect(hrefs).toEqual([
+      'RUTA_AGENDA',
+      'RUTA_CARTELERA',
+      'RUTA_SUSCRIBIRSE',
+      'RUTA_AYUDA',
+      'RUTA_CONTACTO',
+    ]);
     // `aria-current="page"` es lo que dice «estás acá» a quien no ve el color.
     expect(src).toMatch(/aria-current=\{activa === seccion \? 'page' : undefined\}/);
   });

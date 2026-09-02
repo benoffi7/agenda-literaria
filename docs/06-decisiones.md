@@ -5349,6 +5349,11 @@ final es un 404.
 Que los `href` internos del sitio sigan sin barra —y por lo tanto coman un 301 al
 navegar— es una deuda chica y anotada: **B-293**.
 
+> ✅ **Cerrada el 2026-09-02 — D-180.** Los `href` internos van hoy por
+> `rutaCanonica` igual que la canónica, así que hay **una sola forma** de la ruta y
+> un solo lugar donde darla vuelta. Se eligió eso antes que `"trailingSlash": false`
+> en `firebase.json`, y el motivo está abajo.
+
 ### Lo que no se decidió acá
 
 El **301 de `agendaleh.com.ar`** y el `www` se configuran en la consola de
@@ -6606,3 +6611,77 @@ está puesto para rechazar.
   de `07-seguridad.md`, ni en la ficha del `auditor-privacidad`, ni en el skill
   `campo-nuevo`. O sea que un cambio futuro a esa derivación **no dispararía la
   auditoría**. Agregado a los tres.
+---
+
+## D-180 · La barra final va en los `href`, no en la config del host
+
+**Contexto.** B-293, cerrado el 2026-09-02. Medido contra producción:
+
+```
+curl -I https://agendaleh.ar/cartelera   → 301 → /cartelera/
+curl -I https://agendaleh.ar/cartelera/  → 200
+```
+
+Es el comportamiento por defecto de Firebase Hosting con las páginas que Astro
+emite como `carpeta/index.html`. D-165 ya lo había resuelto **para la mitad que
+Google mira**: `rutaCanonica` agrega la barra, así que el `canonical`, el
+`og:url`, el JSON-LD y el `<loc>` del sitemap salen con la forma que contesta 200
+—una canónica que apunta a una redirección es un aviso en Search Console y una
+entrada de sitemap que redirige es una URL menos rastreada—.
+
+La otra mitad quedó anotada como deuda: los `href` del propio sitio iban **sin** la
+barra y se comían un 301 por click. No rompe nada y no se ve —el navegador sigue la
+redirección sin decir nada— y eso es justo lo que lo hacía crónico.
+
+### Las dos salidas, y por qué se eligió la fea
+
+El ítem las dejó escritas y decía, con razón, que **ninguna es obvia**:
+
+| | Qué implica | Por qué no / por qué sí |
+|---|---|---|
+| `"trailingSlash": false` en `firebase.json` | Firebase sirve `/cartelera` directo y redirige `/cartelera/`. URLs más limpias a la vista | **Da vuelta la dirección del 301**, así que hay que invertir `rutaCanonica` en el mismo commit; y la mitad que decide es la **config del host**, que este repo no puede verificar sin deployar |
+| la barra en los `href` | una línea en `rutasPublicas.ts` y un barrido de los literales del markup | URLs con barra a la vista, que es más feo. Pero es la que se puede **verificar acá**: `npm run build` y `grep href="/` sobre `dist/` |
+
+**Se eligió la segunda**, y el argumento decisorio no es estético: es que la
+primera pone la corrección de un lado de un par y la comprobación del otro. La
+predicción de `rutaCanonica` la hace cierta la config de Firebase más el formato
+de salida de Astro, y ninguno de los dos está en un test de este repo — por eso
+`tests/canonico.test.ts` afirma que `cleanUrls`, `trailingSlash` y `build.format`
+siguen sin tocarse, con el motivo escrito. Cambiar la config habría sido tocar
+exactamente la mitad que ese test protege, para ganar URLs más lindas.
+
+**Lo que no se puede hacer es tocar una sola de las dos mitades**, y sigue siendo
+cierto en la dirección contraria: el día que alguien quiera `cleanUrls`, ese test
+lo manda a dar vuelta `rutaCanonica` en el mismo commit, y ahora también todos los
+`href` — que salen del mismo lugar, así que es una línea.
+
+### Y la parte que vale más que el 301: una sola forma escrita
+
+El síntoma era un salto por click. El problema de fondo era que **había dos textos
+para la misma página** conviviendo en el repo: uno para enlazar y otro para
+indexar, cada uno derivado por su lado. Es la clase de B-88 con el agravante de que
+las dos formas *funcionan*.
+
+Hoy hay una y la produce `rutaCanonica`. Las constantes de las páginas fijas están
+definidas **pasándolas por ella**:
+
+```ts
+export const RUTA_CARTELERA = rutaCanonica('/cartelera');
+```
+
+No es un detalle de estilo: escrito `'/cartelera/'` a mano, el literal correcto de
+hoy es el literal equivocado del día que la config cambie, y nada lo diría. Con
+esta forma, dar vuelta la decisión es editar `rutaCanonica` y nada más.
+
+Entraron en el mismo cambio los constructores que **B-330** iba a necesitar
+(`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`), para que el frente de
+los hubs no pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
+
+### Lo que faltaba en el relevamiento del ítem
+
+B-293 hablaba de «un barrido de los literales del markup». Los literales no estaban
+solo en el markup: `src/lib/ayudaDelSitio.ts` tenía **siete** (`/contacto`,
+`/suscribirse`, `/`) y `src/lib/contactoDelSitio.ts` uno (`/ayuda`), y esos textos
+se renderizan en dos páginas públicas. Por eso el barrido nuevo mira `.astro` y
+`.tsx`, y los dos módulos de texto pasaron a importar las constantes: un `href`
+interno es una ruta del sitio, no un dato de la página que lo muestra.

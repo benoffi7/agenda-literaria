@@ -30,6 +30,7 @@
  * Cómo se ve. La página elige el marcado; acá está qué dice y en qué orden.
  */
 import opcionesBase from '@/lib/opciones-base.json';
+import { RUTA_AGENDA, RUTA_CONTACTO, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
 
 /** Un destino del propio sitio que una respuesta ofrece al final. */
 export interface EnlaceDeAyuda {
@@ -184,7 +185,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
             'recomendemos: quiere decir que existe, que se entiende cuándo y dónde es, y que hay ' +
             'una forma de anotarse.',
         ],
-        enlaces: [{ href: '/contacto', texto: 'Sugerir una actividad' }],
+        enlaces: [{ href: RUTA_CONTACTO, texto: 'Sugerir una actividad' }],
       },
     ],
   },
@@ -324,7 +325,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
             'y si cambia la fecha o se cancela, se actualiza solo.',
           'No te suscribe a nada más ni te manda mails: es un calendario de solo lectura.',
         ],
-        enlaces: [{ href: '/suscribirse', texto: 'Cómo suscribirse al calendario' }],
+        enlaces: [{ href: RUTA_SUSCRIBIRSE, texto: 'Cómo suscribirse al calendario' }],
       },
       {
         id: 'buscar',
@@ -336,7 +337,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
           'Los filtros se combinan entre sí, así que se puede pedir taller, a la gorra y virtual a ' +
             'la vez.',
         ],
-        enlaces: [{ href: '/', texto: 'Ir a la agenda' }],
+        enlaces: [{ href: RUTA_AGENDA, texto: 'Ir a la agenda' }],
       },
       {
         id: 'no-esta',
@@ -347,7 +348,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
           'Si pasó un día y sigue sin estar, lo más probable es que no la hayamos visto. Contanos ' +
             'y la cargamos.',
         ],
-        enlaces: [{ href: '/contacto', texto: 'Sugerir una actividad' }],
+        enlaces: [{ href: RUTA_CONTACTO, texto: 'Sugerir una actividad' }],
       },
     ],
   },
@@ -362,7 +363,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
           'Escribinos con quién la da, cuándo y dónde. Con eso alcanza para empezar; si falta ' +
             'algo, lo buscamos.',
         ],
-        enlaces: [{ href: '/contacto', texto: 'Sugerir una actividad' }],
+        enlaces: [{ href: RUTA_CONTACTO, texto: 'Sugerir una actividad' }],
       },
       {
         id: 'hay-un-error',
@@ -371,7 +372,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
           'Pasa, y preferimos enterarnos por vos antes que dejarlo mal. Contanos qué viste mal y ' +
             'en qué página estabas.',
         ],
-        enlaces: [{ href: '/contacto', texto: 'Reportar un error' }],
+        enlaces: [{ href: RUTA_CONTACTO, texto: 'Reportar un error' }],
       },
       {
         id: 'soy-quien-organiza',
@@ -382,7 +383,7 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
             'funcionar. Es lo esperable, y por eso conviene avisarnos antes de que el link circule ' +
             'mucho.',
         ],
-        enlaces: [{ href: '/contacto', texto: 'Escribirnos' }],
+        enlaces: [{ href: RUTA_CONTACTO, texto: 'Escribirnos' }],
       },
     ],
   },
@@ -406,7 +407,7 @@ export const CIERRE_DE_AYUDA: {
   texto:
     'Escribinos. Lo lee una persona, así que también sirve para decirnos que algo de esta ' +
     'página se entiende mal.',
-  enlace: { href: '/contacto', texto: 'Ir a contacto' },
+  enlace: { href: RUTA_CONTACTO, texto: 'Ir a contacto' },
 };
 
 /** Todas las preguntas en una lista, para el índice y para los tests. */

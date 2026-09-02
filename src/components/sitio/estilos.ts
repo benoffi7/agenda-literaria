@@ -57,6 +57,25 @@ export const focoAmplio =
   'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acento';
 
 /**
+ * **El enlace de salto**: invisible hasta que recibe el foco — B-108.
+ *
+ * Lo que se comparte es la **mecánica**, no la piel: `sr-only` más el
+ * `focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50` que lo
+ * saca del lector de pantalla al viewport en la esquina, por encima de todo. La
+ * tinta la pone cada uno, porque el «Saltar al contenido» del encabezado va
+ * calado en tinta plena y el «Saltar al listado» de la home va en papel con
+ * borde de acento — el primero abre la página y el segundo cae encima de ella.
+ *
+ * Estaba copiado en los dos, con los cinco `focus:` escritos a mano cada vez, y
+ * es la clase de copia que este archivo existe para cerrar: **si una de las dos
+ * se escribe con un typo, ese enlace de accesibilidad deja de aparecer al
+ * enfocarlo** — no lo ve nadie que use el mouse, no falla nada, y quien navega
+ * con teclado se queda sin el salto.
+ */
+export const claseSalto =
+  'sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50';
+
+/**
  * Un enlace dentro de un párrafo.
  *
  * **Subrayado grueso, no fino** (`decoration-2`): es el mismo gesto que el botón

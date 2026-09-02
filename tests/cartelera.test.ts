@@ -257,7 +257,8 @@ describe('lo que cada afiche lleva, y lo que no', () => {
     expect(afiche.tipoEtiqueta).toBe('Taller');
     expect(afiche.cuando).toBeTruthy();
     expect(afiche.donde).toBeTruthy();
-    expect(afiche.ruta).toBe(`/actividad/${afiche.slug}`);
+    // Con barra final desde B-330 (B-293): la forma que contesta 200.
+    expect(afiche.ruta).toBe(`/actividad/${afiche.slug}/`);
   });
 
   it('la ruta sale de `rutasPublicas`, no se arma acá', () => {

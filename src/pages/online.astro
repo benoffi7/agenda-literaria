@@ -1,0 +1,55 @@
+---
+/**
+ * `/online` — lo que se hace a distancia. B-108, §2.1 y §4.4 del diseño.
+ *
+ * ── Es el hub con más alcance posible ─────────────────────────────────────
+ * §2.1: «`club de lectura online` es la consulta que trae gente de todo el país,
+ * no solo de una ciudad. Es el hub con más alcance posible». Los de barrio ganan
+ * intención altísima en un radio de veinte cuadras; éste no tiene radio.
+ *
+ * ── Junta virtual **e híbrido**, y es una decisión ────────────────────────
+ * `modalidad ∈ {virtual, hibrido}`, y la mitad que se olvidaría es la segunda:
+ * quien busca desde otra provincia quiere poder entrar, y a una híbrida —que
+ * tiene sede pero se sigue por videollamada— puede. Dejarla afuera esconde
+ * justamente las que resuelven el caso.
+ *
+ * Sale del filtro «Cómo se cursa» de la home con dos valores puestos, no de una
+ * regla propia: es `filtrarPublico` con `modalidad: ['virtual', 'hibrido']`, y por
+ * eso `/online` y `/?modalidad=virtual,hibrido` no pueden contestar distinto (la
+ * clase de B-88). Y por B-224 el filtro cruza **todas** las formas de cursar que
+ * la actividad ofrece, no el escalar derivado.
+ *
+ * ── Es una página escrita y no generada, a diferencia de los otros dos ────
+ * `/tipo/*` y `/barrio/*` salen de una taxonomía; esto no. Es una **sección del
+ * sitio** cuyo significado no depende de los datos, así que se emite siempre y
+ * vive en `RUTAS_FIJAS` (`lib/sitemap.ts`) incluso vacía — igual que `/pasadas` o
+ * `/cartelera`, que también pueden estar vacías y son secciones igual. El
+ * razonamiento completo está en el encabezado de `lib/hubsPublicos.ts`.
+ *
+ * Por eso **no lleva `noIndex`**: no puede quedar «sin nada estructuralmente», y
+ * el par sitemap/`noindex` se mantiene coherente sin ninguna condición acá.
+ *
+ * ── El link de la reunión no está, y la página lo dice ────────────────────
+ * D-139: `online.url` no sale al HTML indexado ni con `urlPublica: true`. Lo que
+ * esta página muestra de cada actividad es lo mismo que la home —la fila del
+ * listado— y su bajada aclara que el link lo manda quien organiza al anotarse.
+ * Que no se pueda filtrar acá no es disciplina de esta plantilla: el view-model no
+ * trae la URL (D-140).
+ */
+import Base from '@/layouts/Base.astro';
+import CuerpoDeHub from '@/components/sitio/CuerpoDeHub.astro';
+import { vistaDeHubTematico } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+
+export const prerender = true;
+
+const vista = await vistaDeHubTematico('online');
+---
+
+<Base
+  seccion="agenda"
+  titulo={`${vista.hub.titulo} · ${NOMBRE}`}
+  descripcion={vista.hub.descripcion}
+>
+  <CuerpoDeHub vista={vista} />
+</Base>

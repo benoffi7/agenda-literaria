@@ -1,6 +1,6 @@
 /**
  * Las URLs del sitio público, en un solo lugar — B-227, con el dominio desde
- * B-109.
+ * B-109 y **la barra final desde B-330**.
  *
  * ── Por qué un módulo para dos líneas ─────────────────────────────────────
  * Porque la ruta de una actividad ya se derivaba en **dos** lados y el tercero
@@ -9,13 +9,18 @@
  * | Quién | Dónde |
  * |---|---|
  * | el que **produce** las páginas | `caminosDeDetalle` (`lib/contenidoDelSitio.ts`) |
- * | el que **linkea** desde el listado | `Tarjeta.tsx` |
+ * | el que **linkea** desde el listado | `FilaDeActividad.tsx` |
  * | el que **linkeará** desde el posteo | `textoRedes.ts`, hoy comentado, con `${base}/actividad/${slug}` escrito |
  *
  * Desde B-113 hay un segundo par igual: la página de mes (`/agenda/{aaaa-mm}`) la
  * **produce** `caminosDeMes` y la **linkean** la tira de la home y la navegación
  * entre meses. Tres lugares escribiendo `/agenda/${clave}` es la misma clase, con
  * el agravante de que un mes sin página es un 404 que solo se ve en producción.
+ *
+ * Y desde B-108 hay un tercero, con **cuatro** patrones más: los hubs
+ * (`/tipo/*`, `/barrio/*`, `/online`, `/gratis`), que los produce
+ * `caminosDeTipo`/`caminosDeBarrio` y los linkean la tira de la home, la tira de
+ * cada hub y el sitemap.
  *
  * Es la clase de B-88 con nombre y apellido: un productor y un consumidor
  * derivando el mismo formato por separado. Lo señaló el `auditor-privacidad`
@@ -38,44 +43,24 @@
  *
  * `astro.config.mjs` importa `SITIO` de acá para su `site`, así que no hay dos
  * copias del dominio ni siquiera entre la config y el código.
- */
-
-/** El prefijo de la ruta de una actividad. Astro lo deriva del nombre del archivo. */
-export const PREFIJO_ACTIVIDAD = '/actividad';
-
-/**
- * La ruta **relativa** de la página de una actividad: `/actividad/{slug}`.
  *
- * Relativa, y la absoluta se arma con `urlAbsoluta` — que es la que necesitan el
- * canonical, el Open Graph y el sitemap (B-109). Sigue habiendo **un solo lugar**
- * donde el path se escribe, y ahora también uno donde se escribe el origen.
- */
-export const rutaDeDetalle = (slug: string): string => `${PREFIJO_ACTIVIDAD}/${slug}`;
-
-/** El prefijo de la ruta de una página de mes — B-113, §2.2 del diseño. */
-export const PREFIJO_MES = '/agenda';
-
-/**
- * La ruta **relativa** de la página de un mes: `/agenda/2026-09`.
+ * ── Y desde B-330, **una sola forma de la ruta**: la que contesta 200 ──────
+ * Hasta B-330 este módulo tenía dos formas de la misma ruta y las repartía por
+ * consumidor: `rutaCanonica` agregaba la barra final —porque es lo que Firebase
+ * contesta con un 200— y los `href` del sitio iban sin ella, comiéndose un 301
+ * por click. Estaba anotado como **B-293** y medido: `curl -I /cartelera` →
+ * `301 → /cartelera/`.
  *
- * El segmento es la **clave** del mes (`aaaa-mm`) y no el nombre: es ordenable
- * como texto, no depende del idioma y no se renombra. El mismo criterio que hace
- * que los hubs vayan por slug de taxonomía y no por label (§2.1).
+ * Hoy **hay una sola forma y la produce `rutaCanonica`**: los constructores de
+ * abajo la aplican, así que un `href`, una entrada del sitemap y una canónica de
+ * la misma página son el mismo texto. El día que la config del host cambie
+ * (`cleanUrls`) hay **un** lugar donde darla vuelta, y `tests/canonico.test.ts`
+ * afirma que esa config sigue sin tocarse justamente para que el par no se rompa
+ * por la mitad.
  */
-export const rutaDeMes = (clave: string): string => `${PREFIJO_MES}/${clave}`;
-
-/**
- * El archivo: `/pasadas` — B-109, §4.5 del diseño.
- *
- * Vive acá y no como literal en cada llamador porque tiene **tres** consumidores
- * el día uno: el pie del sitio, el aviso de la página de un mes vencido
- * (`mesPublico.ts`, que hasta B-109 mandaba a la home porque esta página no
- * existía) y el sitemap. Es la misma regla que hizo nacer este módulo.
- */
-export const RUTA_PASADAS = '/pasadas';
 
 // ─────────────────────────────────────────────────────────────────
-// El origen — B-109, D-165
+// El origen y la forma — B-109, D-165
 // ─────────────────────────────────────────────────────────────────
 
 /**
@@ -112,7 +97,7 @@ export const DOMINIO = SITIO.replace(/^https?:\/\//, '');
 /**
  * La ruta como la sirve Firebase Hosting: **con barra final**, salvo un archivo.
  *
- * ── Por qué la barra, si todos los `href` del sitio van sin ella ──────────
+ * ── Por qué la barra ──────────────────────────────────────────────────────
  * Porque es la forma que contesta **200**. Astro emite `cartelera/index.html` y
  * Firebase, con su comportamiento por defecto, redirige `/cartelera` a
  * `/cartelera/` con un 301 — está medido contra producción el 2026-09-02:
@@ -122,9 +107,14 @@ export const DOMINIO = SITIO.replace(/^https?:\/\//, '');
  *
  * Una canónica que apunta a una redirección es un aviso en Search Console
  * («la URL canónica alternativa es una redirección») y una entrada de sitemap
- * que apunta a una redirección es una URL menos rastreada. Los `href` internos
- * pueden pagar el salto —lo pagan hoy, y se ve como un 301 en el navegador—;
- * la canónica y el sitemap no, porque son lo que Google indexa.
+ * que apunta a una redirección es una URL menos rastreada.
+ *
+ * **Desde B-330 los `href` internos también van por acá** (era **B-293**): un
+ * enlace sin la barra costaba un viaje de ida y vuelta por click, no se veía, y
+ * dejaba dos textos para la misma página conviviendo en el repo. La otra salida
+ * posible era `"trailingSlash": false` en `firebase.json`, que es más linda y
+ * toca producción; se eligió ésta porque es la que se puede verificar sin
+ * deployar y porque deja **una sola** forma escrita en un solo lugar.
  *
  * **El caso del archivo:** `/robots.txt`, `/sitemap.xml`, `/events.json` y
  * `/version.json` son archivos, no directorios, y una barra al final los
@@ -132,11 +122,15 @@ export const DOMINIO = SITIO.replace(/^https?:\/\//, '');
  *
  * Se detectan por **un solo segmento con un punto**, no por «tiene un punto»: los
  * cuatro endpoints del sitio viven en la raíz, y las rutas de más de un segmento
- * son siempre páginas (`/actividad/{slug}`, `/agenda/{aaaa-mm}`). Con la regla
- * laxa, un slug con un punto —que `slugify` no produce, pero un documento editado
- * a mano en la consola sí puede tener— dejaría a esa página sin la barra, o sea
- * con una canónica que redirige. Es la regla más chica que separa los dos casos
- * sin una lista de endpoints que mantener.
+ * son siempre páginas (`/actividad/{slug}`, `/agenda/{aaaa-mm}`, `/barrio/{slug}`).
+ * Con la regla laxa, un slug con un punto —que `slugify` no produce, pero un
+ * documento editado a mano en la consola sí puede tener— dejaría a esa página sin
+ * la barra, o sea con una canónica que redirige. Es la regla más chica que separa
+ * los dos casos sin una lista de endpoints que mantener.
+ *
+ * **Es idempotente**, y eso importa desde B-330: las constantes de abajo ya
+ * vienen con la barra, y el layout las vuelve a pasar por acá para armar la
+ * canónica.
  *
  * La raíz queda en `/` — no hay barra que agregar ni sacar.
  */
@@ -163,6 +157,96 @@ export const rutaCanonica = (ruta: string): string => {
   const esArchivo = segmentos.length === 1 && segmentos[0]!.includes('.');
   return esArchivo ? sinBarraFinal : `${sinBarraFinal}/`;
 };
+
+// ─────────────────────────────────────────────────────────────────
+// Las páginas escritas a mano
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Las rutas fijas del sitio, **en la forma que contesta 200** — B-330.
+ *
+ * Están definidas pasándolas por `rutaCanonica` y no escritas con la barra a
+ * mano, y eso es la garantía: no hay forma de escribir acá una variante que el
+ * host redirija. Son las que `RUTAS_FIJAS` (`lib/sitemap.ts`) le ofrece al
+ * buscador y las que el encabezado y el pie usan como `href` — un solo texto por
+ * página, y no uno para el enlace y otro para el sitemap.
+ */
+export const RUTA_AGENDA = rutaCanonica('/');
+export const RUTA_CARTELERA = rutaCanonica('/cartelera');
+export const RUTA_SUSCRIBIRSE = rutaCanonica('/suscribirse');
+export const RUTA_AYUDA = rutaCanonica('/ayuda');
+export const RUTA_CONTACTO = rutaCanonica('/contacto');
+
+/**
+ * El archivo: `/pasadas/` — B-109, §4.5 del diseño.
+ *
+ * Vive acá y no como literal en cada llamador porque tiene **tres** consumidores
+ * el día uno: el pie del sitio, el aviso de la página de un mes vencido
+ * (`mesPublico.ts`, que hasta B-109 mandaba a la home porque esta página no
+ * existía) y el sitemap. Es la misma regla que hizo nacer este módulo.
+ */
+export const RUTA_PASADAS = rutaCanonica('/pasadas');
+
+// ─────────────────────────────────────────────────────────────────
+// Las páginas generadas
+// ─────────────────────────────────────────────────────────────────
+
+/** El prefijo de la ruta de una actividad. Astro lo deriva del nombre del archivo. */
+export const PREFIJO_ACTIVIDAD = '/actividad';
+
+/**
+ * La ruta **relativa** de la página de una actividad: `/actividad/{slug}/`.
+ *
+ * Relativa, y la absoluta se arma con `urlAbsoluta` — que es la que necesitan el
+ * canonical, el Open Graph y el sitemap (B-109). Sigue habiendo **un solo lugar**
+ * donde el path se escribe, y ahora también uno donde se escribe el origen.
+ */
+export const rutaDeDetalle = (slug: string): string =>
+  rutaCanonica(`${PREFIJO_ACTIVIDAD}/${slug}`);
+
+/** El prefijo de la ruta de una página de mes — B-113, §2.2 del diseño. */
+export const PREFIJO_MES = '/agenda';
+
+/**
+ * La ruta **relativa** de la página de un mes: `/agenda/2026-09/`.
+ *
+ * El segmento es la **clave** del mes (`aaaa-mm`) y no el nombre: es ordenable
+ * como texto, no depende del idioma y no se renombra. El mismo criterio que hace
+ * que los hubs vayan por slug de taxonomía y no por label (§2.1).
+ */
+export const rutaDeMes = (clave: string): string => rutaCanonica(`${PREFIJO_MES}/${clave}`);
+
+/**
+ * Los prefijos de los hubs de taxonomía — B-108, §2.1 del diseño.
+ *
+ * **El segmento es el `slug` de la taxonomía, nunca el label.** El label se
+ * renombra (§4.1: renombrar «Con Beca Parcial» a «Con beca parcial» no toca
+ * ningún documento) y una URL no (trampa 10). Es la misma razón por la que la
+ * página de mes va por clave `aaaa-mm` y no por «Septiembre».
+ */
+export const PREFIJO_TIPO = '/tipo';
+export const PREFIJO_BARRIO = '/barrio';
+
+/** `/tipo/club-lectura/` — el hub de un tipo de actividad. */
+export const rutaDeTipo = (slug: string): string => rutaCanonica(`${PREFIJO_TIPO}/${slug}`);
+
+/** `/barrio/villa-crespo/` — el hub de un barrio. */
+export const rutaDeBarrio = (slug: string): string => rutaCanonica(`${PREFIJO_BARRIO}/${slug}`);
+
+/**
+ * Los dos hubs temáticos: `/online/` y `/gratis/` — B-108.
+ *
+ * No salen de ninguna taxonomía: juntan varios slugs a propósito («virtual» +
+ * «híbrido», «gratis» + «a la gorra») porque para quien busca caen del mismo
+ * lado. Por eso son dos páginas escritas y no dos rutas generadas, y por eso
+ * están en `RUTAS_FIJAS`.
+ */
+export const RUTA_ONLINE = rutaCanonica('/online');
+export const RUTA_GRATIS = rutaCanonica('/gratis');
+
+// ─────────────────────────────────────────────────────────────────
+// Las URLs absolutas
+// ─────────────────────────────────────────────────────────────────
 
 /**
  * La URL absoluta de una ruta del sitio: `https://agendaleh.ar/pasadas/`.
