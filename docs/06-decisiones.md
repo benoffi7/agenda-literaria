@@ -6685,3 +6685,116 @@ solo en el markup: `src/lib/ayudaDelSitio.ts` tenía **siete** (`/contacto`,
 se renderizan en dos páginas públicas. Por eso el barrido nuevo mira `.astro` y
 `.tsx`, y los dos módulos de texto pasaron a importar las constantes: un `href`
 interno es una ruta del sitio, no un dato de la página que lo muestra.
+
+---
+
+## D-250 · B-376 — el banner es C3, y «rechazar» no manda ni un byte
+
+**Contexto:** `docs/16-analitica-del-sitio.md` §7 dejaba tres caminos (C1 nada,
+C2 una página de privacidad, C3 un banner) y recomendaba C2 por ser la que no
+le cobra nada al número que se vende. **El dueño eligió C3** — un banner con
+«aceptar» o «rechazar», el patrón que hoy es estándar.
+
+**Decisión, en tres partes:**
+
+1. **Sin Consent Mode v2 con default denegado.** El patrón «hoy estándar» que
+   `gtag.js` documenta es cargar el tag siempre, con
+   `analytics_storage: 'denied'` por defecto, y solo actualizar el consentimiento
+   cuando la persona decide. **No se implementó así**, porque en modo denegado
+   GA4 igual manda pings sin cookies — y eso hace que el botón «Rechazar»
+   mienta: alguien que lo aprieta espera que no se mande nada, no que se mande
+   igual sin una cookie. Acá **si rechaza, no se carga el tag**: no hay
+   `gtag('consent', ...)`, hay «se instala o no se instala» (`debeCargarGA` /
+   `debeMedirSitio`, `src/lib/analyticsSitio.ts`).
+2. **Hasta que la persona decide, no se mide.** No hay un tercer estado
+   «mientras tanto, sin cookies»: `debeMostrarBanner`/`debeCargarGA` solo
+   conocen `'sin-decidir'`, `'aceptado'` y `'rechazado'`, y el tag **nunca**
+   se carga en el primero.
+3. **La preferencia se guarda en el navegador de cada uno, nunca en
+   Firestore.** No hay nada que guardar del lado nuestro y no queremos
+   empezar a tener datos de visitantes — el §4 de `07-seguridad.md` es
+   explícito en que del público no se guarda nada. Vive en una sola clave de
+   `localStorage` (`CLAVE_CONSENTIMIENTO`, `analyticsSitio.ts`) y se puede
+   revisar y cambiar después con el control «Cookies» que el propio banner
+   deja siempre disponible una vez decidido — un banner sin forma de revisar
+   la decisión es peor que no tenerlo.
+
+**Lo que se pierde, y hay que poder defenderlo:** el número que se le vende a
+un anunciante **baja por lo que rechace la gente**. Es la consecuencia que el
+§7 del diseño ya anticipaba al describir C3 («la métrica que se vende cae por
+lo que rechace la gente») y que el dueño aceptó al elegirlo. Un número que
+subestima se puede defender frente a un anunciante — uno que se infla con
+tráfico no consentido, no.
+
+**Costo de UI:** los dos botones —«Aceptar» y «Rechazar»— son dos bloques del
+mismo tamaño, el mismo padding y el mismo peso de fuente (uno macizo en
+`acento`, el otro con borde de `tinta`), nunca un botón contra un link de
+texto: es la garantía explícita contra dark patterns que el pedido puso por
+escrito.
+
+---
+
+## D-251 · B-371 — se acepta el costo de JavaScript en la página de detalle
+
+**Decisión:** instalar el snippet de GA4 (`gtag.js`, forma 1 del §6.2 del
+diseño) en **todas** las páginas públicas, la de detalle incluida, y nunca en
+`/admin`.
+
+**El número, tal como lo midió el §6.1 del diseño y como el dueño lo vio antes
+de decidir:** `gtag.js` pesa **155.578 bytes transferidos** (gzip) contra los
+**18.341 bytes** de HTML de la página de detalle — el tag es **8,5 veces la
+página**, y con un `cache-control: private, max-age=900` (15 minutos) no se
+amortiza: es un costo de casi cada visita, no solo de la primera.
+
+**Motivo para aceptarlo igual, y no una de las formas más baratas del §6.2:**
+las alternativas que ahorran bytes —cargarlo diferido, o solo en la home—
+pagan con **credibilidad**, que es el requisito de la mitad que motiva el
+pedido (vender publicidad con un número de GA4). Un número que subestima **no
+se sabe por cuánto** subestima, y eso no se puede defender frente a un
+anunciante. Se aceptó el costo entero a cambio de un número entero.
+
+**Lo que sí se aplicó del §6.3 sin costo:** `gtag.js` directo y nunca Google
+Tag Manager (ahorra ~100 KB por no perder nada), `async` de verdad, y nunca en
+`/admin` — el panel ya mide con su propia proyección y ahí el `page_view`
+automático sí sería una fuga.
+
+**Falta medir de nuevo tras el deploy real** (el número de este documento sale
+de pegarle al tag en producción desde `curl`, no del build de este repo): si
+en un año el tag pesa distinto, la decisión se revisa con el número nuevo, no
+con este.
+
+---
+
+## D-252 · B-372/B-375 — la analítica del sitio público no hereda la del panel
+
+Tres decisiones de implementación, ninguna heredada de `analytics-eventos.ts`
+(el panel): «la proyección que hace segura la analítica del panel no se
+hereda», dice el §5.4 del diseño, y hay que construirla de nuevo con sus
+propios tests.
+
+1. **El `page_location` que se manda a GA4 recorta la query entera, no un
+   parámetro a la vez** (`ubicacionSinQuery`, `analyticsSitio.ts`). El
+   `page_view` automático de `gtag.js` manda la URL completa, y la island de
+   filtros escribe el texto del buscador en la query (`?q=...`, `aQuery` de
+   `listadoPublico.ts`): sin este recorte, lo que alguien tipeó en el
+   buscador de un sitio de actividades literarias se habría convertido en
+   telemetría hacia un tercero por el solo hecho de instalar el tag. Se
+   recorta la query **entera** y no un parámetro con nombre, porque es más
+   simple de auditar y no depende de acordarse de sumar un eje nuevo el día
+   que se agregue uno a la query.
+2. **El clic de inscripción manda la vía, nunca el destino** — `via` se
+   agregó a `AccionDeInscripcion` (`detallePublico.ts`) para que la plantilla
+   pueda poner un `data-via="mail"` sin tener que derivarlo del `href`
+   (`mailto:`, `wa.me/`, `instagram.com/`, o una URL de formulario), que sí
+   podría tentar a alguien a leer el destino real más adelante.
+3. **El filtro sin resultados manda el eje que `ejeQueSobra` ya identifica,
+   no todos los ejes activos.** Es la misma señal que la pantalla ya
+   muestra («Probá sin el filtro de…»): el único eje que, sacado, deja de dar
+   cero. Cuando ninguno lo explica solo, el evento se manda igual pero sin
+   `eje` ni `slug` — sigue siendo una señal válida y no hace falta inventar
+   un valor «combinado» fuera de vocabulario.
+
+Y una guarda que no es nueva pero se repitió a propósito: **el `slug` de ese
+evento pasa por un formato de slug** (`^[a-z0-9]+(-[a-z0-9]+)*$`), no por un
+vocabulario cerrado enumerado a mano — un texto de buscador con mayúsculas,
+acentos o espacios no matchea y se descarta entero, en vez de viajar.
