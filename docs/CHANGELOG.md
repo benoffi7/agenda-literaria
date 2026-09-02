@@ -32,6 +32,21 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-363 — `contexto.pantalla` deja de ser el único enum sin acotar en `reporteValido()`
+
+`desSlug()` (`functions/reportes.js`) reemplaza `-` por espacios en
+`contexto.pantalla` y `severidad` ANTES de que el saneador vea el texto, y eso
+le desafina el patrón de `LINK_REUNION` — un link de reunión con guion en el
+dominio sobreviviría legible. `severidad` ya estaba acotada por valor en las
+reglas; `contexto.pantalla` no. Ahora `reporteValido()` (`firestore.rules`)
+exige que valga una de las cinco pantallas reales, con `.get('pantalla',
+'listado')` porque `contexto` no fuerza esa clave con `hasAll`.
+
+`tests/reportes.integracion.test.ts` suma los dos casos contra el emulador:
+el propio ejemplo del ítem rechazado, y las cinco pantallas reales aceptadas.
+Mutado: sacar la línea nueva de las reglas tira roja la primera prueba.
+Actualizado `docs/07-seguridad.md`.
+
 ### B-367 cerrado como duplicado de B-294, con el chequeo que faltaba — y B-460
 
 B-367 describía exactamente el bug que B-294 ya había arreglado horas antes

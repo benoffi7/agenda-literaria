@@ -173,6 +173,36 @@ describe.skipIf(!vivo)('reportes contra el emulador', () => {
     ).rejects.toThrow(/permission|insufficient/i);
   });
 
+  describe('contexto.pantalla acotado — B-363', () => {
+    /*
+     * `desSlug()` (functions/reportes.js) corre sobre `contexto.pantalla`
+     * ANTES del saneador, y reemplaza `-` por espacios. Eso le desafina el
+     * patrón de `LINK_REUNION` al saneador: un link con guion en el dominio
+     * deja de matchear después de `desSlug` y se publicaría legible en el
+     * issue. La única defensa del lado del cliente era un `z.enum` — que no
+     * corre si alguien escribe directo con el SDK, saltando el formulario.
+     * Estos dos tests verifican que ahora también lo frenan las reglas.
+     */
+    it('rechaza un valor que no es ninguna de las cinco pantallas', async () => {
+      await expect(
+        setDoc(
+          doc(db(), 'reportes', 'trucho-pantalla-1'),
+          documento(UID, { contexto: { ...contexto(), pantalla: 'https://mi-org.zoom.us/j/x' } }),
+        ),
+      ).rejects.toThrow(/permission|insufficient/i);
+    });
+
+    it('acepta las cinco pantallas reales, una por una', async () => {
+      const PANTALLAS = ['listado', 'nueva-actividad', 'editar-actividad', 'encuentros', 'otra'];
+      for (const p of PANTALLAS) {
+        const id = `ok-pantalla-${p}`;
+        await expect(
+          setDoc(doc(db(), 'reportes', id), documento(UID, { contexto: { ...contexto(), pantalla: p } })),
+        ).resolves.not.toThrow();
+      }
+    });
+  });
+
   it('el cliente no puede tocar un reporte ya creado: el estado lo mueve la Function', async () => {
     const id = await crearReporte(form(), contexto(), { uid: UID, email: 'admin@test.com' });
     await expect(

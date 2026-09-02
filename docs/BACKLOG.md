@@ -6215,7 +6215,26 @@ línea a un texto que quien publica ya reescribe. **El costo de decidirlo tarde 
 es el código: es que el formato del texto cambie después de que alguien se
 acostumbró a él**, que es lo que el ítem original quería evitar cuando pedía
 decidirlo antes.
-### B-363 · `desSlug()` corre aguas arriba del saneador y le desafina los patrones · P2
+### B-363 · `desSlug()` corre aguas arriba del saneador y le desafina los patrones — ✅ hecho (2026-09-02) · P2
+
+**Se hizo el arreglo que el ítem señalaba como el correcto**: acotar
+`d.contexto.pantalla in [...]` en `reporteValido()` (`firestore.rules`), y no
+tocar el orden del armado del issue. `contexto.pantalla` es el único subcampo
+de `contexto` que `desSlug()` toca antes del saneador; `severidad` ya estaba
+acotado por `in [...]` desde antes, así que no corría el mismo riesgo.
+
+Con `contexto` sin `hasAll` (puede venir sin `pantalla`), la condición usa
+`.get('pantalla', 'listado')` — el mismo idioma que ya usa `reintentoValido()`
+en el archivo, para no convertir una clave ausente en un evaluation error.
+
+`tests/reportes.integracion.test.ts` suma dos casos contra el emulador: uno
+que intenta colar el propio ejemplo del ítem (`https://mi-org.zoom.us/j/x`
+como `pantalla`) y lo ve rechazado, y otro que confirma que las cinco
+pantallas reales (`PANTALLAS` de `src/types/reporte.ts`) se siguen aceptando.
+**Mutado, no solo verde**: sacar la línea nueva de `firestore.rules` tira roja
+la primera prueba; se restauró después.
+
+El texto original queda abajo.
 
 Lo encontró el `auditor-privacidad` sobre B-137, y es el **límite real** del punto
 de paso único que ese ítem instaló: con una transformación en el medio, la garantía
