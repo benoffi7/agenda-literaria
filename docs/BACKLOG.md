@@ -5146,7 +5146,7 @@ ancho de `main`, sin la sangría del riel, porque habla de la agenda entera y no
 listado filtrado. El quinto aserto frena la duplicación el día que otra página
 quiera el mismo bloque. Ver **D-134**.
 
-### B-280 · El detalle no enlaza «más en septiembre» hacia su página de mes · P2
+### B-280 · El detalle no enlaza «más en septiembre» hacia su página de mes — ✅ hecho (2026-09-02)
 
 El §2.2 del diseño pide dos entradas a `/agenda/{aaaa-mm}`: la tira al pie de la
 home —que B-113 construyó— y un enlace desde la página de detalle. La segunda no
@@ -5162,6 +5162,27 @@ Está todo listo para que sea corto: `rutaDeMes` (`src/lib/rutasPublicas.ts`) ar
 la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe —el
 enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
 Falta el enlace y su test.
+
+**Hecho**, y el ítem tenía razón en que era corto — pero **no en dónde iba la
+decisión**. «El enlace solo se puede pintar si el mes pasó el corte» no lo puede
+evaluar la plantilla: `mesesEnlazables` recorre el índice **entero**, y la página
+de detalle no lo ve (D-140). Así que el mes viaja en el view-model —
+`DetallePublico.mes`, `{ clave, nombre } | null`— y lo decide el lector, que es el
+mismo patrón con el que B-110 resolvió `cancelada` y B-109 la fecha de las
+canceladas: **lo decide quien tiene el dato, y llega como argumento**.
+
+El default de ese argumento es `{}`, o sea «no enlazar nada»: quien lo omita
+pierde un enlace interno, no publica un 404 desde la página que más tráfico
+recibe.
+
+Verificado sobre HTML construido contra el emulador, con los cuatro casos: un mes
+con 3+ enlaza («Más en septiembre» → `/agenda/2026-09/`), un mes con 2 no enlaza
+nada, una pasada no enlaza nada, y un ciclo de septiembre a octubre enlaza
+**septiembre** —el mes de su próxima fecha— y se corre solo a octubre cuando
+septiembre pasa. Siete casos con mutación en `tests/detallePublico.test.ts` y uno
+en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la clave
+del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
+tenga dos actividades).
 
 ## P3 — cuando sobre tiempo
 

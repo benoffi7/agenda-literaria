@@ -94,6 +94,7 @@ import {
   claseTituloSeccion,
   foco,
 } from '@/components/sitio/estilos';
+import { RUTA_AGENDA, rutaDeMes } from '@/lib/rutasPublicas';
 
 export const prerender = true;
 
@@ -243,7 +244,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
   <main class="mx-auto max-w-[90rem] px-4 pt-4 pb-8 sm:px-10 sm:pt-6 sm:pb-12">
     <p>
       <a
-        href="/"
+        href={RUTA_AGENDA}
         class={`label-caps inline-flex min-h-touch items-center text-azul hover:text-acento ${foco}`}
       >
         ← Ver todas las actividades
@@ -721,8 +722,41 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
           )
         }
 
+        {/*
+          **Las dos salidas de la página, y la segunda es B-280.**
+
+          El §2.2 del diseño pide dos entradas a `/agenda/{aaaa-mm}`: la tira al
+          pie de la home —que B-113 construyó— y un enlace desde acá. La segunda
+          faltaba, y no era solo simetría: quien cae en una página de detalle
+          desde Google o desde Instagram no tenía **ninguna** forma de ver qué más
+          hay ese mes sin volver a la home y filtrar. Y del lado del buscador, un
+          segundo link interno hacia la página de mes es lo que la hace valer algo.
+
+          **Solo se pinta si esa página existe**, y eso no lo decide esta
+          plantilla: `detalle.mes` viene en `null` cuando el mes no pasó el corte
+          de tres del §2.2 o cuando ya pasó (ver `DetallePublico.mes`). Derivar la
+          clave del mes acá, de `detalle.proxima.iso`, sería un enlace a un 404 en
+          cuanto el mes tenga dos actividades — y desde la página que más tráfico
+          recibe.
+
+          Va **primero** cuando está: es la salida más específica —«qué más hay
+          cuando voy a esto»— y «toda la agenda» es la general.
+        */}
         <nav class="regla-gruesa-arriba mt-12 pt-4" aria-label="Seguir mirando">
-          <a href="/" class={`label-caps ${claseEnlace}`}>Ver toda la agenda</a>
+          <ul class="flex flex-wrap gap-x-6 gap-y-3">
+            {
+              detalle.mes && (
+                <li>
+                  <a href={rutaDeMes(detalle.mes.clave)} class={`label-caps ${claseEnlace}`}>
+                    Más en {detalle.mes.nombre.toLowerCase()}
+                  </a>
+                </li>
+              )
+            }
+            <li>
+              <a href={RUTA_AGENDA} class={`label-caps ${claseEnlace}`}>Ver toda la agenda</a>
+            </li>
+          </ul>
         </nav>
       </div>
 

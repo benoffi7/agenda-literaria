@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-09-02 · «Más en septiembre» en la página de detalle
+
+**B-280.** El §2.2 del diseño pide dos entradas a `/agenda/{aaaa-mm}`: la tira al
+pie de la home —que B-113 construyó— y un enlace desde el detalle. La segunda
+faltaba, y no era simetría: quien cae en una página de detalle desde Google o
+desde Instagram no tenía **ninguna** forma de ver qué más hay ese mes sin volver a
+la home y filtrar. Y del lado del buscador, un segundo link interno hacia la
+página de mes es lo que la hace valer algo.
+
+**Dónde vive la decisión, que es lo que el ítem no preveía.** El ítem decía «el
+enlace solo se puede pintar si el mes pasó el corte de tres», y eso la plantilla
+no lo puede evaluar: `mesesEnlazables` recorre el índice entero y la página de
+detalle no lo ve (D-140). El atajo que uno escribe —`rutaDeMes(detalle.proxima.iso.slice(0, 7))`—
+compila, se lee bien y arma una URL válida; lo que no puede saber es si esa página
+se generó, porque depende de **cuántas otras** actividades caen en ese mes. El
+resultado sería un 404 servido desde la página que más tráfico recibe, y recién el
+mes que tenga dos actividades.
+
+Así que el mes viaja en el view-model: `DetallePublico.mes` es
+`{ clave, nombre } | null` y lo decide el lector, con el mapa de meses enlazables
+que ya calcula una vez para todo el build. Es el mismo patrón con el que B-110
+resolvió `cancelada` y B-109 la fecha de las canceladas: **lo decide quien tiene
+el dato**. El default del argumento es `{}` —no enlazar nada—, que es el lado
+correcto del error.
+
+Dos detalles del cómo:
+
+- **Cuál mes, cuando hay dos.** El de la **próxima** fecha en pie. Un ciclo del 3
+  de septiembre al 22 de octubre cae en las dos páginas de mes (§7.5); el enlace
+  contesta «qué más hay cuando voy a esto», no «en qué meses ocurre el ciclo». Se
+  corre a octubre solo cuando septiembre pasa, sin ninguna regla más.
+- **El nombre sale del mapa**, no de un segundo `nombreDeMes`. Con dos
+  derivaciones el enlace podría decir «Septiembre» y la página «Septiembre de
+  2026» — la clase de B-88 en su versión más chica, y la que nadie mira porque las
+  dos frases se leen bien por separado.
+
+**Verificado sobre HTML construido** contra el emulador, con datos sembrados a
+propósito (13 actividades: 5 en septiembre, 4 en octubre, 2 en noviembre, 2
+pasadas). Los cuatro casos: septiembre enlaza `/agenda/2026-09/`, noviembre —dos
+actividades, sin página— no enlaza nada, una pasada tampoco, y el ciclo enlaza
+septiembre. Siete casos con mutación en `tests/detallePublico.test.ts` y uno en
+`tests/pagina-de-detalle.test.ts`, que prohíbe el atajo de derivar la clave del
+mes en la plantilla.
+
 ## 2026-09-02 · una sola forma de la ruta, la que contesta 200
 
 **B-293, con [D-180](06-decisiones.md).** Firebase responde `/cartelera` con un

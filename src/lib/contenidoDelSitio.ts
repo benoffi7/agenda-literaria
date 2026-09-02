@@ -472,6 +472,24 @@ const detallesDelSitio = async (
   const tonos = await tonosDelSitio();
 
   /*
+   * **Qué páginas de mes existen, para el enlace «Más en septiembre»** — B-331,
+   * cierra B-280.
+   *
+   * Se calcula **una vez para todo el build** y no por página: `mesesEnlazables`
+   * recorre el índice entero, y hacerlo por actividad serían N recorridas para
+   * obtener siempre la misma respuesta. Es la misma forma que `tonos` y
+   * `etiquetas`, que ya viven acá por lo mismo.
+   *
+   * Y sale del **mismo** `indiceDelSitio()` memoizado que la home, el
+   * `events.json`, las páginas de mes, el sitemap y `/pasadas`: cero lecturas
+   * nuevas de Firestore (§2.4, §3 del diseño).
+   */
+  const indice = await indiceDelSitio();
+  const mesesConPagina = Object.fromEntries(
+    mesesEnlazables(indice.actividades, instante).map((m) => [m.clave, m.nombre]),
+  );
+
+  /*
    * La bandera viaja **pegada a cada actividad y desde su origen**, no se deduce
    * después con un `includes`: de qué query salió cada una es lo único que este
    * módulo sabe y el view-model no puede recalcular. Ver `DetallePublico.cancelada`.
@@ -486,7 +504,9 @@ const detallesDelSitio = async (
       // Una actividad sin slug no puede tener URL. No debería pasar (el schema lo
       // exige), y si pasa es mejor una página menos que una ruta `/actividad/`.
       .filter(([a]) => a.slug)
-      .map(([a, cancelada]) => detalleDeActividad(a, etiquetas, instante, tonos, cancelada))
+      .map(([a, cancelada]) =>
+        detalleDeActividad(a, etiquetas, instante, tonos, cancelada, mesesConPagina),
+      )
   );
 };
 

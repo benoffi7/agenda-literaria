@@ -211,6 +211,32 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     // que hace que el link pegado en Instagram se vea con el flyer.
     expect(codigo).toMatch(/imagen=\{portada\?\.url/);
   });
+
+  it('el enlace al mes sale de `detalle.mes` y no de la fecha — B-280', () => {
+    /*
+     * **La mitad de B-280 que vive en la plantilla, y el único lugar donde este
+     * ítem puede producir un 404.**
+     *
+     * La página de mes existe solo para los meses vigentes con 3 o más
+     * actividades (§2.2). La plantilla tiene `detalle.proxima.iso` en la mano, así
+     * que el atajo —`rutaDeMes(detalle.proxima.iso.slice(0, 7))`— compila, se lee
+     * bien y arma una URL válida; lo que no puede saber es si esa página se
+     * generó, porque eso depende de **las otras** actividades del mes. El
+     * view-model ya trae la respuesta en `detalle.mes`, que viene `null` cuando no
+     * hay nada que enlazar.
+     *
+     * MUTACIÓN PROBADA: reemplazar `detalle.mes` por un recorte de
+     * `detalle.proxima.iso` pone este caso en rojo, y el HTML se ve idéntico
+     * mientras el mes tenga tres actividades — que es lo que hace que este bug
+     * aparezca recién en el build de un mes flojo.
+     */
+    expect(codigo).toContain('detalle.mes');
+    expect(codigo).toMatch(/rutaDeMes\(detalle\.mes\.clave\)/);
+    // El atajo prohibido: la plantilla no puede armar una clave de mes por su
+    // cuenta, ni de `proxima.iso` ni de ninguna otra fecha.
+    expect(codigo).not.toMatch(/proxima[^\n]*slice/);
+    expect(codigo).not.toContain('claveDeMes');
+  });
 });
 
 describe('la home', () => {
