@@ -2562,7 +2562,42 @@ los tenía: la tabla del §9 de ese documento es la que manda para el detalle.
 Console no muestra histórico anterior a la conexión, así que cada día que pasa
 sin conectarlo es un día de datos que no se recupera.
 
-### B-344 · Nadie sondea el emulador de Auth, y cuatro archivos de integración lo usan · P2
+### B-344 · Nadie sondea el emulador de Auth, y cuatro archivos de integración lo usan · ✅ hecho (2026-09-02) · P2
+
+**Resuelto como efecto lateral del arreglo de B-365, verificado y no solo
+supuesto.** `emuladorAuthVivo()` (`tests/emulador.ts`) ya existe —con su propio
+docblock, que la nombra por B-365 y no por este ítem— y los cuatro archivos que
+faltaban ya la usan:
+
+```
+const vivo = (await emuladorVivo()) && (await emuladorAuthVivo());
+```
+
+en `tests/actividades.integracion.test.ts`, `tests/opciones.integracion.test.ts`,
+`tests/reportes.integracion.test.ts` y `tests/reportes-reintento.integracion.test.ts`,
+cada `describe.skipIf(!vivo)` colgando de esa variable. El guard también respeta
+`EXIGIR_EMULADOR=1`: si Auth no contesta, tira con un mensaje que nombra el
+emulador que falta (incluida la pista del hijo huérfano de B-365), no un
+`ECONNREFUSED` sin contexto.
+
+**Verificado, no solo leído.** Con Firestore arriba y `FIREBASE_AUTH_EMULATOR_HOST`
+apuntando a un puerto muerto:
+
+```
+firestore vivo: true
+auth vivo (puerto muerto): false
+```
+
+`vivo` da `false` y los cuatro `describe.skipIf(!vivo)` saltean en vez de fallar
+rojo — que es exactamente el síntoma que este ítem pedía cortar. Con los
+emuladores completos arriba, los cuatro archivos corren y pasan (63 tests).
+
+**Lo que sigue sin hacerse, y queda igual de barato para quien lo agarre:** que
+la lista de puertos salga de `firebase.json` en vez de estar escrita a mano en
+`tests/emulador.ts` (`auth: 9099`, `firestore: 8080`, `storage: 9199`). No se
+hizo porque no hacía falta para cerrar el síntoma, y es prolijidad, no bug.
+
+El texto original queda abajo.
 
 **Encontrado el 2026-09-02 corriendo la suite con seis frentes en paralelo, y es
 probablemente la causa real de B-169.**

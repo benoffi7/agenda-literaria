@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-02 · segunda tanda de deuda de tests, doc e infra
+
+### D-201 escrita — la cita huérfana de la analítica del sitio
+
+`docs/16-analitica-del-sitio.md` citaba **D-201** dos veces sin que existiera: el
+frente de analítica se cayó antes de escribirla. Se redactó con el argumento que
+el propio documento ya traía —GA4 como la vara que un anunciante conoce— sin
+agregar razones nuevas, y dejando explícito qué **no** decide (B-371 y B-376
+siguen esperando al dueño).
+
+### B-344 cerrado — ya estaba resuelto, verificado y no solo leído
+
+El guard de Auth para los tests de integración (`emuladorAuthVivo()`) ya existía
+como efecto lateral del arreglo de B-365, y los cuatro archivos que lo
+necesitaban ya lo usaban. Se verificó apagando el emulador de Auth a mano
+(puerto muerto con Firestore arriba): el guard combinado da `false` y los cuatro
+`describe.skipIf` saltean en vez de fallar rojo. Se cerró en el backlog con esa
+evidencia.
+
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 
 **Y los cuatro hubs de búsqueda entraron al índice de salidas públicas como la
