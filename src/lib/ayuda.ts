@@ -49,6 +49,8 @@
  */
 
 /** Un comportamiento que no se ve, dentro de un capítulo. */
+import { DOMINIO } from '@/lib/rutasPublicas';
+
 export interface PuntoAyuda {
   texto: string;
   /** Se destaca: equivocarse acá cuesta caro o no se deshace. */
@@ -270,8 +272,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Hoy el sitio todavía no está publicado: se está construyendo. Por ahora lo que la gente ' +
-          've de afuera es el calendario, así que lo que cargues acá igual sale al mundo.',
+          `El sitio ya está publicado en ${DOMINIO}, y Google puede encontrarlo: cada actividad ` +
+          'que publicás tiene su propia dirección, permanente, con su fecha, su lugar y cómo ' +
+          'anotarse. No hay que hacer nada para que aparezca — sale sola.',
       },
       {
         texto:
@@ -356,7 +359,8 @@ export const CAPITULOS: CapituloAyuda[] = [
           'Cuando una actividad se llena, «Marcar cupo completo» lo dice en el evento del ' +
           'calendario de cada encuentro: quien ya se había suscripto al calendario se entera sin ' +
           'que le avises. Es un toque desde el listado, sin abrir el formulario. Si se libera un ' +
-          'lugar, el mismo menú lo saca. En el sitio va a aparecer cuando el sitio esté publicado.',
+          'lugar, el mismo menú lo saca. En el sitio también se ve, con el cartel al lado del ' +
+          'contacto de inscripción.',
       },
       {
         texto:

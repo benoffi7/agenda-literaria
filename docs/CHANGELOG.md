@@ -1,5 +1,115 @@
 # Changelog
 
+## 2026-09-02 · el sitio tiene dominio: canonical, Open Graph, sitemap.xml, robots.txt y /pasadas
+
+**B-109, [D-165](06-decisiones.md), [D-166](06-decisiones.md),
+[D-167](06-decisiones.md).** El dueño eligió el dominio —**`agendaleh.ar`**— y con
+eso se cerró el ítem que bloqueaba la cadena desde que el sitio existe. Estaba
+esperando desde el 2026-08-27 (DEC-6).
+
+**El dominio se escribe una sola vez.** `SITIO`, en `src/lib/rutasPublicas.ts`, y
+`astro.config.mjs` lo **importa** para su `site`. De esa constante salen los
+cuatro consumidores que necesitan URL absoluta —el `canonical`, el `og:url`, el
+`<loc>` del sitemap y el `url` del JSON-LD— y las cuatro copias fallan en
+silencio: un canonical viejo hace que Google indexe otro dominio, un `og:url`
+viejo manda a otra parte el link pegado en Instagram. `tests/canonico.test.ts`
+barre **todo** `src/` y falla si el dominio aparece escrito en cualquier archivo
+que no sea el que lo define.
+
+**El canonical es absoluto, y eso es la mitad del cambio.** Los tres hostnames que
+responden hoy —`agendaleh.ar`, `agendaleh.com.ar` y `agenda-literaria.web.app`—
+sirven contenido **idéntico**, y el último no se apaga nunca porque Firebase no lo
+permite. Un canonical relativo se resuelve contra el host que lo sirvió, así que
+en el espejo diría que la página buena es la del espejo. Con el absoluto, los tres
+le dicen a Google lo mismo. Se arregló ahora porque **todavía no había nada
+indexado**: mudar un canónico después cuesta meses de posicionamiento.
+
+**Con barra final**, que salió de medir y no de suponer: `curl -I
+https://agendaleh.ar/cartelera` devuelve un **301** a `/cartelera/`. Una canónica
+que apunta a una redirección es un aviso en Search Console y una entrada de
+sitemap que redirige es una URL menos rastreada.
+
+**El sitemap y el `robots.txt` se generan a mano**, no con `@astrojs/sitemap`: las
+reglas de qué entra son propias —90 días para las pasadas desde su última fecha,
+30 para las canceladas desde su última edición, meses con 3 o más y sin la del mes
+vencido— y el integrador armaría el sitemap **de lo que hay en `dist/`**, que es
+justo donde están, a propósito, todas las páginas que no tienen que estar en el
+sitemap. Salir del sitemap no es dejar de existir: las tres siguen respondiendo.
+
+**`updatedAt` se resolvió sin agregarlo a la proyección.** La ventana de 30 días
+necesita saber cuándo se canceló algo, que no es un dato del modelo. Lo lee **el
+lector** del documento crudo y viaja **al lado** de la proyección
+(`canceladasEditadasEn`), igual que la bandera `cancelada` de B-110 — y es un
+**predicado**: decide si la URL entra y no se emite en ninguna parte. El sitemap
+va sin `lastmod`, así que `updatedAt` sigue sin salir a ninguna salida (D-166).
+
+**`/pasadas`** es la otra pieza, y no es una sección más: es la que hace que
+ninguna página de detalle quede huérfana. Con la entrada del sitemap venciendo a
+los 90 días, a partir de ese día es el **único** link interno que le queda a una
+actividad que pasó. Se llega desde el pie de todas las páginas, y **cierra B-281**
+de paso: el aviso de un mes vencido ahora manda ahí y no a la home. Dos desvíos
+del §4.5, los dos en D-167: sin atenuar (el sistema visual prohíbe las opacidades)
+y sin buscador propio (**B-292**).
+
+**Un bug que ya estaba en producción, encontrado en el camino (B-290):** la fila
+de una actividad que ya pasó decía «Inscripción abierta» si no tenía fecha de
+cierre cargada — el modo de falla que el §7.1 nombra con esas palabras, y que la
+página de detalle ya evitaba decidiendo el CTA por fecha. Se veía en la página de
+un mes vencido y con el filtro «Cuándo» en un mes que pasó; `/pasadas`, que es
+cuarenta filas pasadas, lo puso a la vista. `avisoDeTarjeta` no dice nada cuando
+la actividad terminó.
+
+**Dos salidas públicas nuevas** —la 9 (`sitemap.xml` + `robots.txt`) y la 10
+(`/pasadas`)— entraron a las tres tablas que las atan y al barrido de centinelas
+**en el mismo cambio que las creó**. Y el parseo que compara esas tres tablas se
+podía acortar sin fallar: leía `(\d)`, así que la fila `| 10 |` no matcheaba, el
+barrido cortaba en la 9 y las tres seguían coincidiendo entre sí sin cubrirla.
+
+**Catorce mutaciones probadas, todas rojas** — las seis que pedía el ítem y ocho
+más. **Tres guardas pasaron en verde con la mutación puesta**, que es el hallazgo
+más útil del barrido: el `noindex` del panel se verificaba con un `toContain` sobre
+el archivo entero y su propio comentario lo nombraba; el `url` del
+`VirtualLocation` (§5.4) no lo miraba nadie porque el detalle por defecto es
+presencial y no emite ese lugar; y el parseo de la tabla de salidas. Las tres se
+arreglaron.
+
+**El gate del emulador mira los archivos que se suben** (paso 7 de
+`scripts/build-contra-emulador.mjs`): que el sitemap ofrezca la publicada y la
+cancelada reciente con URL absoluta y barra final, sin el borrador, sin `/admin` y
+sin `lastmod`; que el `robots.txt` bloquee el panel; y —el que más cubre— que el
+robots, el sitemap y la canónica de la página **coincidan en un solo origen**. El
+dominio no se escribe en el script: se afirma que las tres salidas concuerdan, así
+que si alguna lo copia a mano, discrepan.
+
+**Y el `auditor-privacidad` encontró cinco cosas sobre este mismo cambio**, todas
+arregladas acá: la decisión de B-112 estaba pre-escrita al revés (un `lastmod` con
+el ISO completo publica el instante de cada edición, que con un solo admin es su
+agenda de trabajo — D-138; queda decidido que sale recortado al día), la prosa de
+su propia ficha seguía diciendo «las ocho salidas» mientras su tabla decía diez
+(ahora hay un test que compara las dos), la fila 9 no nombraba a los dos que
+deciden qué página se ofrece (`mesesEnlazables` y `estadoDe`), la barra final
+dependía de dos cosas que el repo no ataba (`cleanUrls`/`trailingSlash` de
+`firebase.json` y el `build.format` de Astro: agregar `cleanUrls: true` invertiría
+la redirección y convertiría **toda** canónica en un puntero a un 301), y el
+`og:image` prometía «absoluta o nada» sin que nada lo verificara — ahora se
+absolutiza sola, que es lo que **B-291** va a necesitar.
+
+**La ayuda del panel dejó de mentir el día que dejó de ser cierta**, que es lo que
+B-242 pedía: dos textos decían que el sitio no estaba publicado. Y entró la
+novedad que ese ítem reservaba, con lo único que le importa a quien carga: que el
+link se puede pegar en Instagram y sale con el flyer.
+
+**Lo que queda afuera, a propósito:** las cinco imágenes de Open Graph por tipo
+(**B-291**), el `lastmod` (**B-112**), el buscador de `/pasadas` (**B-292**), que
+los `href` internos dejen de pagar el 301 (**B-293**) y los hubs (**B-108**), que
+cuando existan entran a `RUTAS_FIJAS` porque el test de la lista lo va a pedir. Y
+**del lado del dueño**, en la consola de Firebase: el 301 de `agendaleh.com.ar`,
+la decisión sobre el `www` y el alta en Search Console — **B-295**, con el paso a
+paso en [`08-operacion.md`](08-operacion.md) § «El dominio», donde quedaron
+escritas además las dos trampas de falla diferida del dominio (el TXT de
+verificación es permanente; la renovación de NIC.ar no es automática y la
+delegación se apaga el día 31).
+
 ## 2026-09-01 · la ficha del detalle deja el azul fijo y lleva el color de su categoría
 
 **B-273, [D-153](06-decisiones.md).** Cierra la mitad que D-150 había dejado afuera

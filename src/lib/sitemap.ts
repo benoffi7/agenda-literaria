@@ -25,7 +25,12 @@
  * estampar la fecha del build en todas las entradas, y eso es peor que no poner
  * nada: le enseña a Google que nuestras fechas mienten —cada rebuild por una
  * coma en una actividad diría que las 40 cambiaron— y a partir de ahí deja de
- * mirarlas. Cuando exista B-112 se agrega, y va a ser una línea.
+ * mirarlas. Cuando exista B-112 se agrega, y va a ser una línea — **con la fecha
+ * recortada al día** (`AAAA-MM-DD`), que es la precisión con la que sale
+ * `creadoEn` y por el mismo motivo (D-138): con un solo admin, el instante exacto
+ * de cada edición publicado en N entradas es su agenda de trabajo, no una fecha.
+ * Lo dejó anotado el `auditor-privacidad` sobre este cambio, y está escrito en
+ * B-112 para que la línea que falta no salga con el ISO completo.
  *
  * ── Cero lecturas nuevas de Firestore ─────────────────────────────────────
  * Este módulo es **puro**: recibe las entradas del índice, la lista de canceladas

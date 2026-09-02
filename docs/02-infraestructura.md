@@ -82,7 +82,7 @@ las imágenes de una actividad: ese tope vive en el schema.
 |---|---|
 | Proveedor | Google (habilitado) |
 | Una cuenta por email | sí (`allowDuplicateEmails: false`) |
-| Dominios autorizados | `agenda-literaria.firebaseapp.com`, `agenda-literaria.web.app` |
+| Dominios autorizados | `agenda-literaria.firebaseapp.com`, `agenda-literaria.web.app`. **Ojo:** el panel se entra por `agendaleh.ar/admin`, y el login de Auth funciona porque Firebase agrega solo el dominio propio al agregarlo en Hosting; si algún día un login falla con `auth/unauthorized-domain`, es acá donde se agrega |
 
 **Habilitar el proveedor Google requiere la consola.** Por API pide un
 `client_id` que no existe hasta que el toggle de Firebase auto-crea el OAuth
@@ -114,9 +114,20 @@ Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
 | | |
 |---|---|
 | Site | `agenda-literaria` |
-| URL | https://agenda-literaria.web.app |
-| Panel | https://agenda-literaria.web.app/admin |
+| **URL canónica** | **https://agendaleh.ar** — la decisión del dueño (**D-165**), y la única aparición del dominio en el repo: `SITIO`, en `src/lib/rutasPublicas.ts` |
+| Alias | `https://agendaleh.com.ar` (sirve el mismo contenido; **falta el 301**, es acción del dueño — ver [`08-operacion.md`](08-operacion.md) § «El dominio») y `https://agenda-literaria.web.app`, el nombre de Firebase, que **no se apaga nunca** |
+| Panel | https://agendaleh.ar/admin |
 | Origen | `dist/` (build de Astro) |
+
+**Los tres nombres sirven el mismo HTML**, y lo que evita que eso sea contenido
+duplicado es el `canonical` **absoluto** que ese HTML lleva (B-109): apunta al
+canónico incluso cuando lo sirve un alias. Un canonical relativo se resolvería
+contra el host que lo sirvió y diría que la página buena es la del espejo.
+
+**Firebase agrega la barra final con un 301**: `/cartelera` redirige a
+`/cartelera/`. Por eso la canónica y el sitemap la llevan (`rutaCanonica`) —
+apuntar a una redirección es un aviso en Search Console y una URL menos
+rastreada. Que los `href` internos la paguen es una deuda chica: **B-293**.
 
 Rewrite de `/admin/**` a `/admin/index.html` para el router propio de la SPA.
 

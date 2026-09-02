@@ -158,6 +158,111 @@ diferencia real es `PUBLIC_USE_EMULATORS`.
 **No crear un `.env` sin sufijo:** se carga en los dos modos y pisa a los otros
 dos. Está en el `.gitignore` a propósito.
 
+## El dominio (B-109, D-165)
+
+**El canónico es `https://agendaleh.ar`.** Lo decidió el dueño y es la única
+aparición del dominio en el repo: `SITIO`, en `src/lib/rutasPublicas.ts`. De ahí
+salen `site` de `astro.config.mjs`, el `canonical` y el Open Graph de cada
+página, las URLs del JSON-LD y el `sitemap.xml`. **No copiarlo a ningún otro
+lado** — `tests/canonico.test.ts` falla si aparece escrito en cualquier archivo
+de `src/`, y el gate del emulador falla si el robots, el sitemap y la canónica no
+coinciden en un solo origen.
+
+### Los tres nombres que responden hoy
+
+Verificado el 2026-09-02:
+
+| Hostname | Qué hace | Qué debería hacer |
+|---|---|---|
+| `https://agendaleh.ar` | 200, sirve el sitio | **es el canónico** — nada que cambiar |
+| `https://agendaleh.com.ar` | 200, **el mismo contenido** | un **301** al canónico ← falta, ver abajo |
+| `https://agenda-literaria.web.app` | 200, **el mismo contenido** | queda así: Firebase **no lo apaga**, y el `canonical` absoluto que sirve es lo que le dice a Google que la buena es la otra |
+| `www.` de los dos | no configurado | decidir: o se agrega y redirige, o se deja sin configurar |
+
+Tres nombres sirviendo lo mismo es contenido duplicado, y por eso el `canonical`
+es **absoluto**: uno relativo se resuelve contra el host que lo sirvió, así que en
+el espejo diría que la página buena es la del espejo. Con el canonical absoluto,
+el espejo puede seguir respondiendo para siempre sin costo de posicionamiento.
+
+### Lo que falta, y lo hace el dueño en la consola
+
+**No se puede hacer desde el repo**: los dominios de Hosting se configuran en la
+consola de Firebase, no en `firebase.json`.
+
+1. **El 301 de `agendaleh.com.ar` al canónico.**
+   Consola → **Hosting** → la fila de `agendaleh.com.ar` → **⋮** → *Ver
+   configuración* (o *Editar*). Ahí la consola ofrece la casilla
+   **«Redireccionar este dominio a otro»** / *Redirect this domain to another
+   domain*: hay que tildarla y elegir `agendaleh.ar`, con el tipo de redirección
+   **permanente (301)**.
+   Si esa fila no ofrece la casilla —pasa cuando el dominio se agregó como sitio
+   y no como redirección—, la salida es borrar la entrada de `agendaleh.com.ar` y
+   volver a agregarla con **Agregar dominio personalizado → «Redireccionar a un
+   dominio existente»**. La verificación del dominio no se pierde: el TXT sigue
+   en la zona.
+   **Verificar después:** `curl -sI https://agendaleh.com.ar/ | head -3` tiene
+   que decir `301` y `location: https://agendaleh.ar/`.
+
+2. **El `www`.** Hoy `www.agendaleh.ar` y `www.agendaleh.com.ar` **no están
+   configurados**, o sea que no responden. Son dos caminos y los dos válidos:
+   - **dejarlo así** —nadie tipea `www` desde un teléfono, y un hostname que no
+     existe no puede duplicar contenido—, o
+   - **agregarlo redirigiendo**: Hosting → *Agregar dominio personalizado* →
+     `www.agendaleh.ar` → «Redireccionar a un dominio existente» → `agendaleh.ar`.
+     Es un CNAME más en la zona y el mismo 301 del punto 1.
+
+   Lo que **no** hay que hacer es agregarlo como sitio: sería un cuarto nombre
+   sirviendo el mismo contenido.
+
+3. **Search Console.** Con el sitemap publicado, el paso que lo activa es
+   registrar la propiedad de `agendaleh.ar` y mandarle
+   `https://agendaleh.ar/sitemap.xml`. Hasta que eso pase, el sitemap existe y
+   nadie lo lee: Google lo encuentra solo por la línea `Sitemap:` del
+   `robots.txt`, que es más lento.
+
+### Las dos trampas del dominio, que fallan tarde
+
+Las dos son de **falla diferida**: el día que se hacen mal no se rompe nada, y el
+sitio se cae semanas después.
+
+- **El TXT de verificación es permanente, no un paso.** Firebase pide un registro
+  `TXT` en la zona para verificar la propiedad, y **lo relee para renovar el
+  certificado**. Si alguien lo borra «porque ya verificó», ese día no pasa nada:
+  el certificado vigente sigue sirviendo. **~90 días después** deja de renovarse y
+  el sitio empieza a dar error de certificado, que para un visitante es
+  indistinguible de un sitio caído. El TXT se queda donde está para siempre.
+
+- **La renovación de NIC.ar no es automática.** Un `.ar` no se renueva solo ni
+  con tarjeta guardada: hay que pagarlo a mano en nic.ar. Hay **45 días de
+  gracia** después del vencimiento para recuperarlo sin perder el nombre, pero
+  **desde el día 31 la delegación se apaga**: los DNS dejan de responder y el
+  sitio se cae aunque el dominio siga siendo del dueño. O sea que el margen real
+  es de 30 días, no de 45. Conviene un recordatorio en el calendario **un mes
+  antes** del vencimiento, no el día.
+
+### Verificar el dominio a mano
+
+```bash
+# el canónico responde y sirve el sitio
+curl -sI https://agendaleh.ar/ | head -3
+
+# el espejo de Firebase sigue respondiendo, y su HTML apunta al canónico
+curl -s https://agenda-literaria.web.app/ | grep -o '<link rel="canonical"[^>]*>'
+
+# el sitemap y el robots
+curl -s https://agendaleh.ar/robots.txt
+curl -s https://agendaleh.ar/sitemap.xml | grep -c '<loc>'
+
+# y la forma que contesta 200: Firebase agrega la barra final con un 301
+curl -sI https://agendaleh.ar/cartelera | head -2   # 301 → /cartelera/
+curl -sI https://agendaleh.ar/cartelera/ | head -2  # 200
+```
+
+Ese último par es el motivo de que la canónica y el sitemap lleven **barra
+final** (`rutaCanonica`): una canónica que apunta a una redirección es un aviso
+en Search Console, y una entrada de sitemap que redirige es una URL menos
+rastreada.
+
 ## Deploy automático desde main
 
 Un push a `main` deploya lo que haga falta y nada más
@@ -209,7 +314,7 @@ arrastra dos cosas que no son automáticas:
 
    ```bash
    # Qué versión está en producción, y con qué commit se armó
-   curl -s https://agenda-literaria.web.app/version.json
+   curl -s https://agendaleh.ar/version.json
    # Qué novedades tiene ese commit (las de más arriba son las que no salieron)
    git show <sha>:src/lib/novedades.ts | grep "id: "
    ```
@@ -232,7 +337,7 @@ Verificar después:
 
 ```bash
 grep -rl "firebase-admin\|private_key" dist/ && echo "FUGA" || echo "limpio"
-curl -sL -o /dev/null -w "%{http_code}\n" https://agenda-literaria.web.app/admin
+curl -sL -o /dev/null -w "%{http_code}\n" https://agendaleh.ar/admin
 ```
 
 ### Qué versión está publicada
@@ -248,8 +353,8 @@ node -e "import('./scripts/version.mjs').then(m => console.log(m.infoVersion().v
 cat dist/version.json
 
 # 3. Lo que está publicado, y con qué cabeceras se sirve
-curl -s https://agenda-literaria.web.app/version.json
-curl -sI https://agenda-literaria.web.app/version.json | grep -i cache-control
+curl -s https://agendaleh.ar/version.json
+curl -sI https://agendaleh.ar/version.json | grep -i cache-control
 ```
 
 Un `+…-sucio.…` en la versión avisa que se buildeó con cambios sin commitear:
@@ -267,10 +372,10 @@ son la mitad del mecanismo (D-38):
 ```bash
 for RUTA in / /admin /version.json; do
   echo -n "$RUTA -> "
-  curl -sI "https://agenda-literaria.web.app$RUTA" | grep -i "^cache-control" || echo "(sin cabecera)"
+  curl -sI "https://agendaleh.ar$RUTA" | grep -i "^cache-control" || echo "(sin cabecera)"
 done
 # y un asset con hash, que tiene que decir immutable
-curl -sI "https://agenda-literaria.web.app/_astro/$(ls dist/_astro | grep '\.js$' | head -1)" \
+curl -sI "https://agendaleh.ar/_astro/$(ls dist/_astro | grep '\.js$' | head -1)" \
   | grep -i "^cache-control"
 ```
 
@@ -996,7 +1101,7 @@ Correrlo **desde la raíz del repo**: necesita resolver `firebase-admin` de
 | El deploy del workflow falla con `Permission denied` sobre Hosting | a `deploy-ci@` le falta `roles/firebasehosting.admin` | otorgarlo (paso 3) |
 | El build del workflow no encuentra actividades | falta el secret `FIREBASE_SERVICE_ACCOUNT`, o `deploy-ci@` no tiene `datastore.viewer` | pasos 3-4 |
 | El schedule corre pero nunca dispara nada | `agotado: true` en `sistema/rebuild` | ver "El sitio no se actualiza…" |
-| Un push a `main` no publicó nada y la corrida figura `startup_failure` en 0s sin jobs | casi siempre es GitHub, no el repo. **Chequear primero** `curl -s https://www.githubstatus.com/api/v2/summary.json`: el 2026-08-26 fue un `major_outage` de Actions. Dos workflows distintos fallando al arrancar sin cambios en `.github/` es afuera. Recién después mirar el YAML, `gh workflow list` y `gh api …/actions/permissions` | **no se puede reintentar** esa corrida, y el push siguiente **no lo repara** porque `decidir` diffea desde el commit ya subido (**B-205**). Republicar con `gh workflow run deploy.yml --ref main`, que es Hosting solo; y confirmar con `curl -s https://agenda-literaria.web.app/version.json`, no con el color de la corrida |
+| Un push a `main` no publicó nada y la corrida figura `startup_failure` en 0s sin jobs | casi siempre es GitHub, no el repo. **Chequear primero** `curl -s https://www.githubstatus.com/api/v2/summary.json`: el 2026-08-26 fue un `major_outage` de Actions. Dos workflows distintos fallando al arrancar sin cambios en `.github/` es afuera. Recién después mirar el YAML, `gh workflow list` y `gh api …/actions/permissions` | **no se puede reintentar** esa corrida, y el push siguiente **no lo repara** porque `decidir` diffea desde el commit ya subido (**B-205**). Republicar con `gh workflow run deploy.yml --ref main`, que es Hosting solo; y confirmar con `curl -s https://agendaleh.ar/version.json`, no con el color de la corrida |
 | El deploy de `syncCalendar` se queja de que falta el secreto `GITHUB_TOKEN` | `dispararRebuild` lo declara con `defineSecret`, y según la versión de `firebase-tools` la validación puede correr sobre todo el codebase y no solo sobre la función filtrada | crear el secreto (paso 2 de "Activar el rebuild automático"); existe aunque la Function no esté desplegada |
 
 

@@ -240,6 +240,52 @@ describe('la canónica del HTML la pone el layout, una sola vez', () => {
     expect(base).not.toMatch(/rel="canonical"\s+href=\{Astro\.url/);
   });
 
+  it('el `og:image` sale absoluto aunque la prop venga relativa', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`.** El docblock de la prop decía
+     * «absoluta o nada» y nada lo verificaba: hoy llega la portada de la
+     * actividad, que es absoluta, pero **B-291** —las cinco imágenes por tipo—
+     * va a llegar como `/og/taller.png`. Un `og:image` relativo lo ignoran los
+     * scrapers en silencio: no hay preview y no hay error.
+     *
+     * MUTACIÓN PROBADA: emitir `content={imagen}` en vez de `content={imagenAbsoluta}`
+     * deja la página igual, el preview del flyer sigue andando, y pone esto en
+     * rojo — que es cuándo hay que mirarlo, o sea antes de B-291.
+     */
+    expect(base).toContain('const imagenAbsoluta = imagen');
+    expect(base).toContain('urlAbsoluta(imagen)');
+    expect(base).toContain('<meta property="og:image" content={imagenAbsoluta} />');
+    expect(base).not.toMatch(/property="og:image" content=\{imagen\}/);
+  });
+
+  it('la barra final depende del host: `cleanUrls` y `trailingSlash` siguen sin tocarse', () => {
+    /*
+     * **La otra mitad del par, y la pidió el `auditor-privacidad`.**
+     * `rutaCanonica` **predice** el comportamiento de Firebase —`/cartelera`
+     * responde 301 a `/cartelera/`, medido contra producción el 2026-09-02— y
+     * quien hace cierta esa predicción no es este repo: es la config del host más
+     * el formato de salida de Astro.
+     *
+     * Con `"cleanUrls": true` en `firebase.json` —el cambio más natural del
+     * mundo, «URLs más lindas»— la redirección se **invierte**: `/cartelera/`
+     * pasa a redirigir a `/cartelera`, y entonces **toda** canónica y **todo**
+     * `<loc>` del sitemap apuntan a un 301. En silencio: los tests de acá y de
+     * `tests/sitemap.test.ts` afirman sobre la forma que producimos, no sobre la
+     * que el host sirve. Lo mismo con `build.format: 'file'` en Astro, que emite
+     * `cartelera.html` en vez de `cartelera/index.html`.
+     *
+     * Así que se afirma la ausencia de las tres, con el motivo: el día que
+     * alguien las quiera tocar, este caso lo manda a cambiar `rutaCanonica` en el
+     * mismo commit.
+     */
+    const hosting = fuente('firebase.json');
+    expect(hosting).not.toContain('cleanUrls');
+    expect(hosting).not.toContain('trailingSlash');
+    expect(fuente('astro.config.mjs')).not.toContain('build:');
+    // Control positivo: se está leyendo el archivo que se cree.
+    expect(hosting).toContain('"hosting"');
+  });
+
   it('el Open Graph mínimo está, y su `og:url` es la misma canónica', () => {
     for (const propiedad of ['og:type', 'og:site_name', 'og:title', 'og:url', 'og:description']) {
       expect(base, `falta ${propiedad}`).toContain(`property="${propiedad}"`);

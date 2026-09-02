@@ -12,12 +12,19 @@ interface Props {
   /**
    * La imagen para el preview de un link compartido (`og:image`) — B-109.
    *
-   * **Absoluta y real, o nada.** Solo la pasa la página de detalle, con la
-   * portada de la actividad: un flyer es literalmente la imagen de esa actividad
-   * y es la que hace que el link pegado en Instagram o en WhatsApp se vea. Las
-   * cinco imágenes estáticas por tipo que pide el §5.1 del diseño —para las
-   * actividades sin flyer— siguen sin existir: son **B-291**, y hasta que estén
-   * es mejor un preview sin imagen que un `og:image` a un archivo que da 404.
+   * **Real, o nada.** Hoy solo la pasa la página de detalle, con la portada de la
+   * actividad: un flyer es literalmente la imagen de esa actividad y es la que
+   * hace que el link pegado en Instagram o en WhatsApp se vea. Las cinco imágenes
+   * estáticas por tipo que pide el §5.1 del diseño —para las actividades sin
+   * flyer— siguen sin existir: son **B-291**, y hasta que estén es mejor un
+   * preview sin imagen que un `og:image` a un archivo que da 404.
+   *
+   * **Puede venir relativa**, y por eso no se emite tal cual: un `og:image`
+   * relativo lo ignoran los scrapers **en silencio** —no hay preview, no hay
+   * error—, y B-291 va a llegar justamente con una ruta local (`/og/taller.png`).
+   * Se la pasa por `urlAbsoluta`, que es la misma que arma la canónica. Lo
+   * señaló el `auditor-privacidad`: el docblock decía «absoluta o nada» y nada lo
+   * verificaba.
    */
   imagen?: string | null;
   /**
@@ -56,6 +63,18 @@ const { titulo, descripcion, noIndex = false, seccion = 'ninguna', imagen = null
  * redirección.
  */
 const canonical = urlAbsoluta(Astro.url.pathname);
+
+/*
+ * El `og:image`, **siempre absoluto** — la prop puede venir relativa (ver su
+ * docblock). Una URL externa —el flyer de una actividad, que vive en Storage o en
+ * el servidor de quien organiza— se emite tal cual; una ruta del sitio se
+ * completa con el mismo origen que la canónica.
+ */
+const imagenAbsoluta = imagen
+  ? /^https?:\/\//i.test(imagen)
+    ? imagen
+    : urlAbsoluta(imagen)
+  : null;
 
 /*
  * El `<body>` lleva `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan
@@ -112,14 +131,14 @@ const conChrome = seccion !== 'ninguna';
     <meta property="og:title" content={titulo} />
     <meta property="og:url" content={canonical} />
     {descripcion && <meta property="og:description" content={descripcion} />}
-    {imagen && <meta property="og:image" content={imagen} />}
+    {imagenAbsoluta && <meta property="og:image" content={imagenAbsoluta} />}
     {/*
       `summary_large_image` **solo si hay imagen**: la tarjeta grande sin imagen
       se dibuja como un rectángulo vacío con el título abajo, que se ve peor que
       la chica. Es la misma regla del §7.6 con el hueco de la portada — no hay
       placeholder.
     */}
-    <meta name="twitter:card" content={imagen ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:card" content={imagenAbsoluta ? 'summary_large_image' : 'summary'} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*
