@@ -670,10 +670,14 @@ proyecto nuevo o para rotar el PAT, no la lista de lo que falta.
 ## Sitio público — el listado, el detalle y la cartelera
 
 Construido en **B-227**, el primer frente del diseño de
-[`12-sitio-publico.md`](12-sitio-publico.md). **Todavía no está desplegado:** el
-dominio no está elegido, así que no hay `site` en la config y por lo tanto no hay
-canonical, ni Open Graph, ni sitemap (**B-109**); y el rebuild automático sigue
-esperando el PAT (**B-20**).
+[`12-sitio-publico.md`](12-sitio-publico.md).
+
+**Desde B-109 el sitio es indexable.** El dominio existe —`agendaleh.ar`, D-165—
+y con él llegaron `site` en la config, el `canonical` absoluto y el Open Graph de
+todas las páginas, las URLs del JSON-LD, `sitemap.xml`, `robots.txt` y el archivo
+`/pasadas`. Lo que sigue faltando del §5.1 del diseño son las cinco imágenes de
+Open Graph por tipo (**B-291**) y el `lastmod` del sitemap, que necesita **B-112**.
+El rebuild automático anda desde el 2026-08-25 (**B-20**).
 
 ### La home — `/`
 
@@ -923,8 +927,74 @@ El título y la bajada cambian de verbo cuando el mes pasó («Qué hubo en agos
 2026»), por lo mismo que la tarjeta dice «empezó» y no «empieza» (§7.2).
 
 Lo que falta: el enlace desde la página de detalle («más en septiembre» del §2.2)
-es **B-280**, y el aviso del mes vencido tendrá que apuntar a `/pasadas` cuando esa
-página exista — **B-281**. Los desvíos del diseño están en **D-155**.
+es **B-280**. El aviso del mes vencido ya apunta a `/pasadas` —**B-281**, cerrado
+con B-109— y «sale del sitemap» dejó de ser un `noindex` como sustituto: el
+sitemap existe y la vencida no entra, así que las dos mitades del §2.2 están
+puestas. Los desvíos que quedan están en **D-155**.
+
+### `/pasadas` — el archivo (B-109)
+
+Todo lo publicado que ya pasó, agrupado por mes y **de lo más reciente a lo más
+antiguo**, con cero JavaScript y cero lecturas nuevas de Firestore.
+
+**No es una sección más: es lo que hace que ninguna página de detalle quede
+huérfana** (§2.1 del diseño). Una actividad que pasó sale del listado, de los
+hubs y de las páginas de mes, y su entrada del sitemap **se acaba a los 90
+días**: a partir de ahí ésta es la única página del sitio que la enlaza, y una
+página sin links internos vale casi nada para un buscador aunque responda.
+
+Para quien entra hace otro trabajo, y es el que explica la cabecera: casi todo el
+circuito literario es cíclico, así que la respuesta a «llegué tarde» no es un
+cartel de error sino **a quién seguir** — «muchas de estas actividades se
+repiten: si te interesa una, seguí a quien la organiza».
+
+| | |
+|---|---|
+| qué entra | todo lo **publicado** que ya pasó, para siempre. «Pasó» es la misma definición del filtro «Cuándo» de la home (`estadoDe`), no una segunda |
+| qué **no** entra | las canceladas (§7.3: no son algo a lo que se pueda ir). No hace falta filtrarlas: la página recibe `EntradaDeIndice[]` y una cancelada nunca entra al índice |
+| el invariante | **la home y `/pasadas` parten en dos las publicadas**: ninguna en las dos, ninguna en ninguna. Es lo que fija `tests/pasadas.test.ts`, y la forma de que no aparezca una página huérfana sin que nada lo diga |
+| cómo se llega | desde el pie de **todas** las páginas y desde el aviso de un mes vencido (que hasta B-109 mandaba a la home — **B-281**) |
+
+Dos desvíos del §4.5, los dos en **D-167**: no tiene buscador —la island filtra
+lo vigente y enseñarle un modo nuevo es un cambio de la island, **B-292**— y las
+filas **no van atenuadas**, porque el sistema visual prohíbe las opacidades
+(B-235) y la fila ya distingue una pasada por la tinta del bloque de fecha.
+
+### `sitemap.xml` y `robots.txt` (B-109)
+
+Dos endpoints estáticos escritos a mano, **no `@astrojs/sitemap`**: las reglas de
+qué entra son propias, y el integrador armaría el sitemap **de lo que hay en
+`dist/`** — donde están, a propósito, todas las páginas que no tienen que estar en
+el sitemap.
+
+| Qué | Entra al sitemap |
+|---|---|
+| las páginas fijas (`/`, `/cartelera`, `/pasadas`, `/suscribirse`, `/ayuda`, `/contacto`) | siempre |
+| una publicada con fechas por venir | siempre |
+| una publicada que ya pasó | hasta **90 días** después de su última fecha |
+| una cancelada que estuvo publicada | hasta **30 días** después de su última edición |
+| un mes | solo si tiene 3 o más actividades **y no venció** |
+| `/admin`, `/events.json`, `/version.json` | nunca |
+
+**Salir del sitemap no es dejar de existir.** Las tres páginas que salen siguen
+respondiendo: la de una pasada porque está linkeada de Instagram y de grupos de
+WhatsApp (trampa 10) y sigue en `/pasadas` para siempre; la de una cancelada
+porque existe para quien tiene el link y para que Google pueda tachar el
+resultado que ya indexó; la de un mes vencido porque su URL estuvo indexada.
+Nunca un 404 sobre algo que estuvo publicado.
+
+**Sin `lastmod`**, y es una decisión: sale de `updatedAt`, que no está en la
+proyección pública (**B-112**). La alternativa disponible era estampar la fecha
+del build en las N entradas, y eso le enseña a Google que nuestras fechas mienten
+—cada rebuild por una coma diría que cambiaron todas— y a partir de ahí deja de
+mirarlas.
+
+El `robots.txt` bloquea `/admin` y anuncia el sitemap. **El `Disallow` no
+reemplaza al `noindex` de la página**: un `Disallow` impide el rastreo y por eso
+mismo impide *leer* el `noindex`, así que Google puede listar una URL bloqueada
+si alguien la enlaza. Son dos mitades de cosas distintas y están las dos. Los
+endpoints de datos **no** se bloquean: son públicos y se sirven igual, y una línea
+de `robots.txt` que no protege nada es una línea que hay que mantener.
 
 ### `/events.json`
 

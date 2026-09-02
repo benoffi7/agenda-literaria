@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las ocho salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las diez salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -105,7 +105,7 @@ código.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **ocho salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **diez salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
 para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
@@ -156,7 +156,7 @@ para que Claude lo elija solo.
 
 **Qué agrega sobre los tests.** Los tests verifican los campos que conocen. Este
 agente verifica tres cosas que ningún test puede: que un **campo nuevo** tenga
-las ocho celdas decididas, que la **forma** de la proyección siga siendo una
+las celdas decididas, que la **forma** de la proyección siga siendo una
 whitelist (un `...actividad` no filtra nada hoy y publica el campo de mañana), y
 que exista un test que fije la decisión. No corre la suite: eso lo hace el CI.
 
@@ -165,7 +165,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las ocho salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las diez salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -263,7 +263,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las ocho salidas **antes** de escribir código, que
+arranca obligando a decidir las diez salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -358,6 +358,9 @@ arreglo, es el detector.
 | Que ninguna capa modal reimplemente el atrapar-el-Tab, el scroll y el foco | `foco.test.ts` (B-210). Afirma la **propiedad** (que la capa use `useCapaModal` y no tenga cableado propio), no el string de una implementación: la versión anterior buscaba `e.key==='Escape'` dentro de un `.tsx` y un refactor la ponía en rojo |
 | Que nadie escriba un catorceavo doble de `Timestamp` | `clases-de-bug.test.ts` (B-211). Busca la **forma** —`toDate` y `toMillis` juntos— y no el nombre, así que también caza al que se llame `stamp` o `t`. Existe porque el fixture compartido ya se había escrito y **no se había adoptado**, que es un modo de falla que no tenía red |
 | Que el mapa de trampas → test → archivo diga la verdad | `mapa-de-trampas.test.ts` (B-119). Lee la lista de trampas del propio `CLAUDE.md` §13 y **calcula del repo** cuáles quedaron sin red, en las dos direcciones. Es el motivo por el que el `auditor-trampas` ya no reconstruye esa tabla con `grep` |
+| Que el **dominio del sitio** vuelva a escribirse en más de un lugar, o que la canónica salga relativa | `canonico.test.ts` (**B-109**, D-165). Cuatro salidas necesitan la URL absoluta —el `canonical`, el `og:url`, el `<loc>` del sitemap y el `url` del JSON-LD— y las cuatro copias fallan en silencio: un canonical viejo hace que Google indexe otro dominio. Barre **todo `src/`** buscando el dominio y exige que solo lo escriba el archivo que lo define, que `astro.config.mjs` lo **importe** en vez de copiarlo, y que la canónica sea absoluta y salga del layout una sola vez —una relativa se resuelve contra el host que la sirvió, o sea que en el espejo de Firebase diría que la página buena es la del espejo—. Cubre además el par que el repo no controla: `cleanUrls` y `trailingSlash` de `firebase.json` y el `build.format` de Astro, que son los que hacen cierta la barra final que `rutaCanonica` predice |
+| Que el **sitemap** ofrezca al buscador una página que no debería estar en Google | `sitemap.test.ts` (**B-109**, D-166). Es la salida donde el error caro es al revés del habitual: no filtrar de más, sino **ofrecer**. Los cinco modos de falla tienen su caso con la mutación anotada —la pasada de más de 90 días, la cancelada de más de 30, el mes con dos actividades, `/admin` colándose y la URL relativa—, más dos guardas de lista que son las que envejecen: **toda ruta fija tiene que tener una página en disco** (si no se le ofrece un 404 al buscador) y **toda página estática del sitio tiene que estar en la lista o exceptuada con su motivo**, así que la página que nazca no entra sola ni se olvida. Fija también que no se emita `lastmod` con la fecha del build y que el `robots.txt` no reemplace el `noindex` del panel |
+| Que `/pasadas` deje una actividad publicada sin ninguna página que la enlace | `pasadas.test.ts` (**B-109**, D-167). El aserto que importa es un **invariante**: la home y `/pasadas` parten en dos el conjunto de las publicadas — ninguna en las dos, ninguna en ninguna. Una que quede afuera de las dos es una página huérfana, y desde B-109 eso es literal y medible: su entrada del sitemap vence a los 90 días, así que a partir de ese día no la enlaza nada. Cubre además el orden del archivo (de lo más reciente a lo más antiguo, que es lo que hace útil la cabecera) y que las canceladas no puedan entrar ni queriendo |
 | Qué deployar según lo que cambió | `que-deployar.test.ts`. El skill **usa** el script, no reimplementa la decisión |
 | Que `firebase-admin` no se importe fuera de su propia puerta | `build-credenciales.test.ts`, que recorre todo `src/`. Se le sacó la línea al `auditor-privacidad` cuando ese test existió (`1.2.0`): el agente ahora mira solo lo que el barrido no ve — imports dinámicos y el `ssr.external` de la config |
 | Que el borrador autoguardado no salga del navegador ni pase por la analítica | `autoguardado.test.ts`, que lee el código del módulo y del hook con los comentarios afuera. **Ojo con la forma del aserto:** buscar un nombre con `toContain` lo satisface el `import`, así que los dos que fijan los saneadores del punto de recuperación afirman la **llamada**, con los espacios colapsados (D-124) |
@@ -388,9 +391,19 @@ arreglo, es el detector.
   correrlo.
 - **Un auditor del sitio público** (SEO, indexabilidad, accesibilidad): desde
   B-227 ya hay HTML de verdad contra el que escribirlo, así que el motivo viejo
-  —«no existe»— caducó. Conviene esperar igual al SEO absoluto (canonical, Open
-  Graph, sitemap: todo depende del dominio, B-109) para no auditar dos veces lo
-  mismo. Y una parte ya está automatizada y no le corresponde: el contraste lo
+  —«no existe»— caducó. **Y el segundo motivo también caducó el 2026-09-02:** el
+  SEO absoluto existe (B-109), así que ya no hay nada que esperar. Lo que cambió
+  es el alcance de lo que quedaría por auditar, porque tres tests nuevos se
+  llevaron la parte mecánica —`canonico.test.ts` (que el dominio se escriba una
+  vez y la canónica sea absoluta), `sitemap.test.ts` (qué se le ofrece al
+  buscador) y `pasadas.test.ts` (que ninguna publicada quede huérfana)— más el
+  paso 7 de `scripts/build-contra-emulador.mjs`, que verifica sobre los archivos
+  de `dist/` que el robots, el sitemap y la canónica coincidan en un solo origen.
+  Lo que sigue sin red y sería el trabajo del agente: la **accesibilidad** más
+  allá del contraste (orden de encabezados, nombres accesibles, foco en un
+  recorrido real) y la **calidad** del contenido indexable —que un `<title>` diga
+  algo distinto en cada página, que la `meta description` no se corte a mitad de
+  palabra—, que son juicios y no propiedades. Y una parte ya está automatizada y no le corresponde: el contraste lo
   calculan `tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio,
   `tests/listado-del-sitio.test.ts` (B-247, B-260) para el listado —que es donde
   hay texto encima de algo que no es el papel— y, sobre las tres superficies,

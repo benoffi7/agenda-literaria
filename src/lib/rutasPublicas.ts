@@ -98,6 +98,18 @@ export const RUTA_PASADAS = '/pasadas';
 export const SITIO = 'https://agendaleh.ar';
 
 /**
+ * El dominio **sin el esquema**, para escribirlo en una frase.
+ *
+ * `agendaleh.ar` es lo que se lee bien en un texto —«el sitio está en
+ * agendaleh.ar»— y es lo que la ayuda del panel y las novedades necesitan. Sale
+ * de `SITIO` y no escrito otra vez: son textos que le prometen algo a quien
+ * carga, y el día que el dominio cambie una promesa vieja manda a alguien a un
+ * sitio que no existe. Es la razón por la que `tests/canonico.test.ts` barre
+ * **todo** `src/` y no solo el markup del sitio público.
+ */
+export const DOMINIO = SITIO.replace(/^https?:\/\//, '');
+
+/**
  * La ruta como la sirve Firebase Hosting: **con barra final**, salvo un archivo.
  *
  * ── Por qué la barra, si todos los `href` del sitio van sin ella ──────────

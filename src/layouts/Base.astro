@@ -12,18 +12,23 @@ interface Props {
   /**
    * La imagen para el preview de un link compartido (`og:image`) — B-109.
    *
-   * **Absoluta y real, o nada.** Solo la pasa la página de detalle, con la
-   * portada de la actividad: un flyer es literalmente la imagen de esa actividad
-   * y es la que hace que el link pegado en Instagram o en WhatsApp se vea. Las
-   * cinco imágenes estáticas por tipo que pide el §5.1 del diseño —para las
-   * actividades sin flyer— siguen sin existir: son **B-291**.
+   * **Real, o la marca.** Hoy solo la pasa la página de detalle, con la portada
+   * de la actividad: un flyer es literalmente la imagen de esa actividad y es la
+   * que hace que el link pegado en Instagram o en WhatsApp se vea. Las cinco
+   * imágenes estáticas por tipo que pide el §5.1 del diseño —para las actividades
+   * sin flyer— siguen sin existir: son **B-291**.
    *
-   * **Y desde B-295 hay un respaldo**: si nadie pasa imagen, va la marca
-   * (`/compartir.png`). Se cambió el criterio porque cambió el hecho — antes no
-   * había ninguna imagen que ofrecer y un `og:image` roto era peor que ninguno;
-   * ahora existe una, cuadrada, de 13 KB y con los tokens del sitio. Un link
-   * compartido sin imagen se ve como un link pelado, y eso también es una
-   * decisión de diseño que nadie tomó.
+   * **Desde B-295 hay respaldo**: si nadie pasa imagen, va la marca
+   * (`/compartir.png`). Se cambió el criterio de B-109 —que prefería un preview
+   * sin imagen a un `og:image` roto— porque **cambió el hecho**: antes no había
+   * ninguna imagen que ofrecer, ahora hay una, cuadrada, de 13 KB y con los
+   * tokens del sitio. Un link compartido sin imagen se ve como un link pelado, y
+   * eso también es una decisión que nadie tomó.
+   *
+   * **Puede venir relativa**, y por eso no se emite tal cual: B-291 va a llegar
+   * justamente con una ruta local (`/og/taller.png`). Lo señaló el
+   * `auditor-privacidad`: el docblock decía «absoluta o nada» y nada lo
+   * verificaba.
    */
   imagen?: string | null;
   /**
@@ -64,14 +69,22 @@ const { titulo, descripcion, noIndex = false, seccion = 'ninguna', imagen = null
 const canonical = urlAbsoluta(Astro.url.pathname);
 
 /*
- * La imagen del preview: la que pase la página, y si no, la marca — B-295.
+ * El `og:image`: la que pase la página, y si no, la marca — B-295 sobre B-109.
  *
- * **Absoluta**, como la canónica: un `og:image` relativo no lo resuelve ningún
- * lector de links. Y con `??` y no con `||`: una cadena vacía es un dato mal
- * cargado y tiene que caer al respaldo igual que un `null`, pero un `0` o un
- * `false` no llegan nunca acá y no hay por qué tratarlos.
+ * **Siempre absoluto**, y el orden importa. Una URL **externa** —el flyer de una
+ * actividad, que vive en Storage o en el servidor de quien organiza— se emite tal
+ * cual. Una ruta **del sitio** se completa con el mismo origen que la canónica,
+ * porque un `og:image` relativo lo ignoran los scrapers en silencio: no hay
+ * preview y no hay error. Lo señaló el `auditor-privacidad`.
+ *
+ * El respaldo va **adentro** de esa absolutización y no al lado: `/compartir.png`
+ * es una ruta del sitio y necesita el mismo tratamiento que cualquier otra.
+ *
+ * Con `??` y no con `||`: una cadena vacía es un dato mal cargado y tiene que
+ * caer al respaldo igual que un `null`.
  */
-const ogImagen = imagen ?? urlAbsoluta('/compartir.png');
+const paraOg = imagen ?? '/compartir.png';
+const ogImagen = /^https?:\/\//i.test(paraOg) ? paraOg : urlAbsoluta(paraOg);
 
 /*
  * El `<body>` lleva `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan

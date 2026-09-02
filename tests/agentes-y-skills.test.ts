@@ -271,6 +271,60 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     }
   });
 
+  it('la prosa de la ficha no nombra otro número de salidas que su propia tabla', () => {
+    /*
+     * **Lo encontró el `auditor-privacidad` sobre B-109, auditándose a sí mismo.**
+     * Las tres tablas pasaron a diez filas y el test de arriba lo sostiene, pero
+     * el **cuerpo** del contrato seguía diciendo «las ocho salidas», «son seis hoy
+     * y una séptima cambia el mapa» y «tabla de campos tocados × las ocho
+     * salidas» — que es el formato del reporte, o sea que el agente iba a resolver
+     * menos celdas de las que hay. Ningún test barría la prosa, así que la
+     * contradicción vivía en el mismo archivo que la tabla.
+     *
+     * Es la regla de B-244 aplicada a medias: si el índice envejece, el auditor
+     * audita de menos.
+     *
+     * Lo que se afirma es la propiedad, no el número: **ninguna frase del archivo
+     * puede decir «N salidas» con un N distinto al de su tabla**. Se exceptúan las
+     * menciones a un subconjunto explicado (las «seis primeras celdas», que son
+     * las salidas que reciben campos), porque ahí el número no habla del total.
+     *
+     * MUTACIÓN PROBADA: volver a poner «las ocho salidas» en cualquiera de los dos
+     * archivos pone este caso en rojo nombrando la frase.
+     */
+    /*
+     * **Se miran los números de cinco para arriba**, y esa es la única concesión
+     * que este chequeo hace: «las dos salidas» es una frase legítima y frecuente
+     * en `07-seguridad.md` —el `events.json` y el evento de Calendar son un par
+     * del que se habla todo el tiempo— igual que «las dos salidas borran de
+     * verdad» o «contaba cuatro salidas y hay más». De cinco para arriba, en
+     * cambio, no hay subconjunto del que se hable: un número así solo puede estar
+     * hablando del total.
+     */
+    const PALABRAS: Record<number, string> = {
+      5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho',
+      9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
+    };
+
+    for (const archivo of [FICHA, SEGURIDAD]) {
+      const cuantas = salidas(archivo).length;
+      const correcta = PALABRAS[cuantas];
+      expect(correcta, `no hay palabra para ${cuantas} salidas`).toBeDefined();
+
+      const texto = fuente(archivo);
+      const equivocadas = Object.entries(PALABRAS)
+        .filter(([n]) => Number(n) !== cuantas)
+        .map(([, palabra]) => palabra)
+        .filter((palabra) => new RegExp(`${palabra} salidas`, 'i').test(texto));
+
+      expect(
+        equivocadas,
+        `${archivo} dice «${equivocadas.join(', ')} salidas» y su tabla tiene ${cuantas} filas: ` +
+          'el índice y la prosa del mismo archivo se contradicen, y el agente audita de menos',
+      ).toEqual([]);
+    }
+  });
+
   it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {
     /*
      * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera

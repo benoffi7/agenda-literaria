@@ -3865,6 +3865,11 @@ está garantizada legible, y si algún día alguien aclara la banda, el test lo 
 canonical, ni Open Graph, ni sitemap: es B-109 y sigue abierto. DEC-6 pedía además
 decidir **qué parte del nombre va en la URL**, y sigue pendiente.
 
+> ✅ **Las dos cosas se resolvieron el 2026-09-02.** «Qué parte del nombre va en la
+> URL» es `agendaleh` —el dominio es `agendaleh.ar`— y con él se cerró B-109:
+> `site`, canonical absoluto, Open Graph, sitemap, robots y `/pasadas`. Ver
+> **D-165**.
+
 ## D-142 · La tarjeta pasa a grilla con portada, y cuando no hay imagen la portada se genera
 
 **Contexto.** D-141 decidió la dirección —la estructura de Eventbrite con paleta
@@ -5109,3 +5114,180 @@ ese mes**. Recortando la entrada, todo lo que deriva de las sesiones —el bloqu
 fecha, «ya empezó», el orden de la página— habla del mes sin que ninguna frase
 tenga que enterarse. Lo único que viaja aparte es el total de encuentros, que es
 justo el dato que el recorte no puede perder (punto 4).
+---
+
+## D-165 · El canónico es `agendaleh.ar`, y el dominio se escribe una sola vez
+
+**La decisión del dueño, y la que desbloqueó la cadena entera** (B-109, DEC-6).
+
+### Qué se decidió
+
+**`https://agendaleh.ar`** es el canónico. El dominio se registró junto con
+`agendaleh.com.ar`, y `agenda-literaria.web.app` —el nombre que Firebase le da a
+todo proyecto— sigue existiendo. O sea que el 2026-09-02, medido con `curl`, había
+**tres hostnames sirviendo contenido idéntico**, sin canonical y sin redirección:
+contenido duplicado de manual.
+
+Se arregló ahora porque era gratis: **todavía no había nada indexado** (no existían
+ni `robots.txt` ni sitemap). Mudar un canónico después de indexar cuesta meses de
+posicionamiento; antes de indexar no cuesta nada.
+
+### Las tres cosas que hacen que la decisión se sostenga
+
+**1 · Una sola constante.** `SITIO`, en `src/lib/rutasPublicas.ts`, es la única
+aparición del dominio en todo el repo. De ella salen `site` de `astro.config.mjs`
+—que la **importa**, no la copia—, el `canonical`, el `og:url`, las URLs del
+JSON-LD y el `sitemap.xml`.
+
+Son **cuatro** consumidores, y las cuatro copias fallan en silencio: un canonical
+viejo hace que Google indexe otro dominio, un `og:url` viejo manda a otra parte el
+link pegado en Instagram, un sitemap viejo ofrece URLs que no responden, un JSON-LD
+viejo apunta el resultado enriquecido a otro sitio. Ninguna se ve mirando la
+página. Es la clase de B-88 con cuatro consumidores, y por eso `tests/canonico.test.ts`
+falla si el dominio aparece escrito en cualquier archivo de `src/` que no sea el
+que lo define.
+
+**2 · El canonical es absoluto.** Es lo que hace que los otros dos nombres puedan
+seguir respondiendo sin costo: `agenda-literaria.web.app` **no se apaga nunca**
+—Firebase no lo permite— y sirve este mismo HTML. Un canonical relativo se
+resuelve contra el host que lo sirvió, así que en el espejo diría que la página
+buena es la del espejo, que es exactamente el contenido duplicado que esto viene a
+cerrar. Con el absoluto, los tres nombres le dicen a Google lo mismo: la buena es
+`agendaleh.ar`.
+
+**3 · Con barra final, salvo los archivos.** Medido contra producción:
+`curl -I https://agendaleh.ar/cartelera` devuelve **301** a `/cartelera/`, que es
+el comportamiento por defecto de Firebase Hosting con las páginas que Astro emite
+como `carpeta/index.html`. Una canónica que apunta a una redirección es un aviso
+en Search Console («la URL canónica alternativa es una redirección») y una entrada
+de sitemap que redirige es una URL menos rastreada. Así que `rutaCanonica` agrega
+la barra — y **no** la agrega cuando la ruta es un archivo de la raíz
+(`/sitemap.xml`, `/robots.txt`, `/events.json`, `/version.json`), donde una barra
+final es un 404.
+
+Que los `href` internos del sitio sigan sin barra —y por lo tanto coman un 301 al
+navegar— es una deuda chica y anotada: **B-293**.
+
+### Lo que no se decidió acá
+
+El **301 de `agendaleh.com.ar`** y el `www` se configuran en la consola de
+Firebase, no en el repo: son acción del dueño y están escritos paso por paso en
+[`08-operacion.md`](08-operacion.md) § «El dominio», junto con las dos trampas de
+falla diferida que la investigación del dominio encontró (el TXT de verificación
+es permanente; la renovación de NIC.ar no es automática y la delegación se apaga
+el día 31).
+
+---
+
+## D-166 · El sitemap se genera a mano, y `updatedAt` viaja al lado de la proyección
+
+**Decisión:** `sitemap.xml` y `robots.txt` son **endpoints propios**
+(`src/lib/sitemap.ts` decide, `src/pages/sitemap.xml.ts` y
+`src/pages/robots.txt.ts` serializan), no `@astrojs/sitemap`.
+
+### Por qué no el integrador
+
+No es por evitar una dependencia —aunque también: agregar una es una decisión que
+este cambio no necesitaba tomar—. Es que el integrador arma el sitemap **de lo que
+hay en `dist/`**, y lo que hay en `dist/` incluye, a propósito, todo lo que **no**
+tiene que estar en el sitemap:
+
+| En `dist/` | En el sitemap |
+|---|---|
+| la página de la actividad de hace dos años | no (90 días desde su última fecha) |
+| la página de la cancelada de marzo | no (30 días desde su última edición) |
+| la página del mes vencido | no (se emite con `noindex` para que su URL no se rompa) |
+| `/admin` | no |
+
+Son **dos preguntas distintas** —«¿esta URL responde?» y «¿le pido a Google que la
+rastree?»— y confundirlas es lo que llena el índice de páginas muertas. Las reglas
+de qué entra son del §5.6 del diseño y no se expresan en la configuración de un
+integrador.
+
+### La fecha de las canceladas: `updatedAt`, y como predicado
+
+El §7.3 dice «30 días **desde que se canceló**», y *cuándo se canceló* no es un
+dato del modelo (igual que «estuvo publicada alguna vez», B-285). Las tres opciones
+las había razonado el propio ítem B-109:
+
+| Fecha | Sirve | Problema |
+|---|---|---|
+| `updatedAt` | es la edición que la canceló, si nadie la tocó después | cualquier corrección posterior corre el reloj; y **no está en la proyección** |
+| la versión de `/versiones` cuya edición cambió `estado` | es la fecha exacta | una lectura más por cancelada, y la retención de D-42 la puede podar |
+| `publicadaAlgunaVez` + un `canceladaEn` | exacto y barato de leer | dos campos nuevos |
+
+**Se eligió `updatedAt`**, con su error dicho: correr el reloj hacia adelante deja
+la URL un poco más de tiempo en el sitemap, que es el lado inofensivo del error.
+
+Y la parte que importa: **no se agregó a la proyección.** `toPublic` deja
+`updatedAt` afuera a propósito —publicar una fecha de modificación convierte cada
+corrección de un typo en «actualizado hoy»— y `07-seguridad.md` promete que no sale
+a ninguna salida. Así que el dato lo lee **el lector** (`contenidoDelSitio.ts`),
+que es el único que ve el documento crudo, y viaja **al lado** de la proyección en
+un mapa `slug → ISO` (`canceladasEditadasEn`). Es el mismo patrón con el que B-110
+resolvió la bandera `cancelada`: lo decide quien tiene el dato, y se pasa como
+argumento en vez de agregarle un campo a la frontera de privacidad.
+
+Lo que hace que esto **no** agrande la superficie pública es que la fecha es un
+**predicado y no un dato de salida**: decide si la URL entra al sitemap y no se
+emite en ninguna parte. El sitemap va **sin `lastmod`** —estampar la fecha del
+build en las N entradas le enseña a Google que nuestras fechas mienten, y a partir
+de ahí deja de mirarlas—, así que `updatedAt` sigue sin salir. El `lastmod` de
+verdad necesita **B-112**, y el test lo fija para que agregarlo sea una decisión.
+
+### Y `robots.txt` es un endpoint por la misma razón que todo lo demás
+
+Un archivo en `public/robots.txt` habría sido la segunda copia del dominio: su
+línea `Sitemap:` lleva la URL absoluta. La que quede vieja el día que el dominio
+cambie apunta el sitemap a un host que no responde, sin que nada falle de este
+lado.
+
+Sobre `/admin` hay una sutileza que conviene tener escrita: **el `Disallow` no
+reemplaza al `noindex` de la página**. Un `Disallow` impide el rastreo, y por eso
+mismo impide *leer* el `noindex`, así que Google puede listar una URL bloqueada si
+alguien la enlaza («indexada aunque bloqueada»). Se acepta porque `/admin` no está
+enlazada desde ninguna página pública y lo que se gana es que ningún rastreador
+baje el bundle del panel; si algún día apareciera indexada, la respuesta es
+**sacar el `Disallow`** y dejar el `noindex`, no agregar nada.
+
+---
+
+## D-167 · `/pasadas` sin atenuar y sin buscador — dos desvíos del §4.5
+
+**Decisión:** la página del archivo se construyó con las filas **iguales** a las
+del listado y **sin** buscador, contra las dos cosas que el §4.5 pedía («mismas
+tarjetas, atenuadas… sin filtros salvo la búsqueda»).
+
+**1 · Sin atenuar, porque el sistema visual lo prohíbe.** El §4.5 se escribió
+antes del rediseño de D-146, cuyo tercer principio es «tintas con nombre, no
+opacidades: una opacidad es una trama de medio tono, y además es por donde se cae
+el contraste» (B-235). Atenuar cuarenta filas sería bajarle el contraste a la
+página entera.
+
+Y no hace falta: la fila **ya** distingue una pasada, con la herramienta que el
+sistema sí da. El bloque de fecha va en `super` y no en terracota —«el terracota
+es la tinta de lo que se puede hacer, y un bloque terracota en algo que ya pasó
+promete una acción que no existe»— y dice «Pasó» en vez de la fecha. La distinción
+está, sin tocar el contraste de nadie.
+
+**2 · Sin buscador, porque es un cambio de la island.** La búsqueda del sitio es
+la island de la home, que filtra `vigentesDelIndice` — o sea el índice de lo
+**vigente**, que por definición no incluye una pasada. Enseñarle un modo nuevo es
+un cambio de la island y de su contrato con el `events.json`, no de esta página.
+Queda como **B-292**; mientras tanto la página enlaza la búsqueda de la agenda,
+que es lo que sí existe.
+
+**Lo que sí se cumplió del §4.5, palabra por palabra:** la cabecera («Lo que ya
+pasó. Muchas de estas actividades se repiten: si te interesa una, seguí a quien la
+organiza»), la agrupación por mes y el orden de más reciente a más antiguo.
+
+**Y una razón de ser que el diseño no le daba.** El §2.1 justifica `/pasadas`
+porque «ninguna página de detalle puede quedar huérfana». Con B-109 eso se volvió
+literal y medible: la entrada del sitemap de una pasada **vence a los 90 días**,
+así que a partir de ese día esta página es el **único** link interno que la
+apunta. Por eso se enlaza desde el pie de todas las páginas y no desde una sexta
+pestaña del encabezado: alcanza un link permanente, y una pestaña le daría a un
+archivo el mismo peso que a la agenda.
+
+El invariante que lo sostiene está en un test: **la home y `/pasadas` parten en
+dos el conjunto de las publicadas** — ninguna en las dos, ninguna en ninguna.

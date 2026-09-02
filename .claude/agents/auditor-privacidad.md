@@ -28,7 +28,7 @@ Leelos antes de dictaminar: son la fuente, esto es el índice.
 | 6 | La **página de detalle** `/actividad/{slug}` y su **JSON-LD** — HTML indexado: es la que un bot cosecha primero y la que se queda en Google | `src/lib/detallePublico.ts` — `detalleDeActividad` (el view-model), `datosEstructurados` (el JSON-LD), `urlSegura` y `handleInstagram` (todo href); `src/lib/contenidoDelSitio.ts` — `caminosDeDetalle`, `etiquetasDelDetalle`, `tonosDelSitio`, y desde B-110 **dos** cláusulas de estado (publicado y cancelado, dos queries y no un `in`) más `estuvoPublicada`, que decide si una cancelada tiene página consultando la existencia de una versión publicada en `/versiones` — la única lectura del build fuera de `/actividades`, y con `.select()` para no traer ningún campo (D-159); y desde B-273 (D-153) `src/lib/identidad.ts` — `colorDeTipo`, que resuelve el color de la categoría antes de que la plantilla lo vea. La plantilla `src/pages/actividad/[slug].astro` **solo acomoda**: recibe el view-model y nada más (D-140) | `tests/detallePublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (dos `describe`: la página y el JSON-LD), `tests/pagina-de-detalle.test.ts`, `tests/sitio-publico.integracion.test.ts`, `tests/color-de-tipo.test.ts`, `tests/detalle-visual.test.ts` |
 | 7 | La **cartelera** `/cartelera` — la pared de afiches, HTML indexado (B-265) | `src/lib/cartelera.ts` — `carteleraDeDetalles`. **Su entrada es la salida 6 y no el documento**: proyecta `DetallePublico`, así que solo puede sacar campos. `src/lib/contenidoDelSitio.ts` — `carteleraDelSitio` y el `where`. La plantilla `src/pages/cartelera.astro` solo acomoda | `tests/cartelera.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la cartelera), `tests/afiche.test.ts` |
 | 8 | La **página de mes** `/agenda/{aaaa-mm}` — HTML indexado, una por mes con 3 o más actividades (B-113) | `src/lib/mesPublico.ts` — `mesesDelSitio` (qué meses se emiten), `entradasDelMes` (qué entra en cada uno), `recorteDelMes` (la entrada recortada al mes) y las tres frases: `tituloDelMes`, `descripcionDelMes`, `bajadaDelMes`. `src/lib/tarjetaPublica.ts` — `cicloDelMes`. `src/lib/contenidoDelSitio.ts` — `caminosDeMes`, que arma el view-model. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar. La plantilla `src/pages/agenda/[mes].astro` recibe el view-model y nada más (D-140) | `tests/mesPublico.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` (el `describe` de la página de mes), `tests/listado-del-sitio.test.ts` (la lista blanca de la fila) |
-| 9 | El **`sitemap.xml`** y el **`robots.txt`** — qué páginas se le ofrecen al buscador (B-109). Publica **solo rutas**: ni un título, ni una descripción, ni una fecha | `src/lib/sitemap.ts` — `rutasDelSitemap` (qué URLs entran: `RUTAS_FIJAS`, los meses enlazables, las publicadas hasta 90 días después de su última fecha y las canceladas hasta 30 después de su última edición), `xmlDelSitemap` (serializa, y escapa el XML), `textoDeRobots` (con `RUTA_BLOQUEADA` = `/admin`); `src/lib/rutasPublicas.ts` — `SITIO`, `rutaCanonica`, `urlAbsoluta`, `urlDeDetalle`, `urlDeMes`: el origen y la forma de **toda** URL absoluta del sitio, o sea también el `canonical` y el `og:url` que pone `src/layouts/Base.astro` y el `url` del JSON-LD de la salida 6; `src/lib/contenidoDelSitio.ts` — `sitemapDelSitio`, que aporta el reloj del índice y el `updatedAt` de cada cancelada leído del documento crudo. **`lastmod` no se emite** (necesita B-112), así que `updatedAt` sigue sin salir a ninguna salida: acá es un predicado —decide si la URL entra— y no un dato. Los endpoints `src/pages/sitemap.xml.ts` y `src/pages/robots.txt.ts` solo serializan | `tests/sitemap.test.ts`, `tests/canonico.test.ts` |
+| 9 | El **`sitemap.xml`** y el **`robots.txt`** — qué páginas se le ofrecen al buscador (B-109). Publica **solo rutas**: ni un título, ni una descripción, ni una fecha | `src/lib/sitemap.ts` — `rutasDelSitemap` (qué URLs entran: `RUTAS_FIJAS`, los meses enlazables, las publicadas hasta 90 días después de su última fecha y las canceladas hasta 30 después de su última edición), `xmlDelSitemap` (serializa, y escapa el XML), `textoDeRobots` (con `RUTA_BLOQUEADA` = `/admin`); `src/lib/rutasPublicas.ts` — `SITIO`, `rutaCanonica`, `urlAbsoluta`, `urlDeDetalle`, `urlDeMes`: el origen y la forma de **toda** URL absoluta del sitio, o sea también el `canonical` y el `og:url` que pone `src/layouts/Base.astro` y el `url` del JSON-LD de la salida 6; `src/lib/contenidoDelSitio.ts` — `sitemapDelSitio`, que aporta el reloj del índice y el `updatedAt` de cada cancelada leído del documento crudo. **Y los dos que deciden qué página se ofrece y no viven en `sitemap.ts`:** `src/lib/mesPublico.ts` — `mesesEnlazables` (qué meses se le ofrecen al buscador: todos los que pasan el corte de tres **menos el vencido**, que sale con `noindex`); y `src/lib/listadoPublico.ts` — `estadoDe`, de donde salen `paso` y `hasta`, o sea la ventana de 90 días. En esta salida *lo que se puede colar es una página*, así que los dueños de esa decisión van nombrados. **`lastmod` no se emite** (necesita B-112), así que `updatedAt` sigue sin salir a ninguna salida: acá es un predicado —decide si la URL entra— y no un dato. Los endpoints `src/pages/sitemap.xml.ts` y `src/pages/robots.txt.ts` solo serializan | `tests/sitemap.test.ts`, `tests/canonico.test.ts` |
 | 10 | El **archivo** `/pasadas` — HTML indexado, y el **único link interno permanente** de cada actividad que ya pasó una vez que su entrada del sitemap vence a los 90 días (B-109) | `src/lib/pasadasPublicas.ts` — `pasadasDelSitio` (qué entra y en qué orden) y sus frases: `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS`, `descripcionDePasadas`; `src/lib/contenidoDelSitio.ts` — `vistaDePasadas`, que arma el view-model. **Su entrada es la salida 1 y no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar, y las canceladas no le llegan ni queriendo porque nunca entran al índice (B-110). **Ninguna de sus frases interpola datos de una actividad**, a diferencia de `descripcionDelMes` de la salida 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (D-140) | `tests/pasadas.test.ts`, `tests/listado-del-sitio.test.ts` (la lista blanca de la fila) |
 
 **La 7 hereda la garantía de la 6, y ahí está lo que hay que mirar.**
@@ -146,7 +146,7 @@ y saber hasta dónde llegan te dice qué reportar y qué no:
 | **El saneador aplicado campo por campo** (B-81). Mientras `redactar()` se llame una vez por campo, el campo que se agregue mañana arranca sin sanear | mete un centinela en **cada string** de la entrada del issue de GitHub y exige que no aparezca en la salida. Cubre el issue, hoy y mañana. `analytics-privacidad.test.ts` hace lo mismo con GA4, parámetro por parámetro | **cubierto por `tests/barrido-de-salidas-publicas.test.ts` (B-196): no lo reportes.** Ese test mete el barrido de centinelas que esta celda pedía, en las dos direcciones, para el `events.json` **y** para el evento de Calendar, con un fixture que se autoexige actualizado campo por interfaz. Tu hueco pasa a ser **el campo nuevo del modelo que el fixture de centinelas todavía no ancló** — el propio test obliga a decidirlo, así que lo que aportás es el criterio de si ese campo puede salir, no la detección |
 | **El productor de un formato y su consumidor derivan por separado** (B-88) | saca las tres formas de versión de `scripts/version.mjs` y las hace pasar por el sanitizador de la analítica; una forma nueva entra sola | **el par nuevo.** Si el cambio agrega un formato con dos lados —un id de evento de Calendar derivado del id de sesión, un slug con reglas propias, un nombre de evento de GA4— y cada lado lo deriva por su cuenta, el que valida va a rechazar en silencio lo que el otro produce. Pedí que el par se agregue al chequeo |
 
-Y una regla de forma que vale para las ocho salidas: **si la salida se arma
+Y una regla de forma que vale para las diez salidas: **si la salida se arma
 interpolando texto, tiene que existir un barrido de centinelas.** "Se acordaron
 de sanear los cinco campos que había" no es una propiedad del código, es una
 propiedad del día en que se escribió.
@@ -154,13 +154,21 @@ propiedad del día en que se escribió.
 ## Cómo auditás
 
 1. Mirá el cambio: `git diff --stat` y `git diff` (o los archivos que te
-   nombren). Si no hay diff, auditá los seis archivos productores completos.
-2. **Por cada campo nuevo o modificado del modelo**, resolvé las seis celdas:
-   ¿va a 1? ¿a 2? ¿a 3? ¿a 4? ¿a 5? ¿a 6? Un campo sin las seis respuestas es un
-   hallazgo por sí mismo: nadie decidió, y el default de "lo agrego al `pick`"
-   publica. **Y con qué precisión sale también es una celda**: `creadoEn` pasó las
-   seis y publicaba igual el milisegundo exacto de cada carga, que con un solo
-   admin es su agenda de trabajo (D-138).
+   nombren). Si no hay diff, auditá los archivos productores de la tabla completos.
+2. **Por cada campo nuevo o modificado del modelo**, resolvé las **seis primeras**
+   celdas: ¿va a 1? ¿a 2? ¿a 3? ¿a 4? ¿a 5? ¿a 6? Un campo sin las seis respuestas
+   es un hallazgo por sí mismo: nadie decidió, y el default de "lo agrego al
+   `pick`" publica. **Y con qué precisión sale también es una celda**: `creadoEn`
+   pasó las seis y publicaba igual el milisegundo exacto de cada carga, que con un
+   solo admin es su agenda de trabajo (D-138).
+
+   **Son seis y no diez porque las cuatro últimas heredan** y no reciben campos:
+   la 7 proyecta la 6; la 8 y la 10 reciben `EntradaDeIndice[]`, o sea la 1; y la
+   9 publica **rutas**, así que ningún campo del modelo puede entrar. Lo que sí
+   hay que decidir en esas cuatro es si el campo entra en alguna de sus **frases**
+   —el título, la bajada, la `meta description`— y, en la 9, si hace nacer una
+   página nueva. Un campo en una frase interpolada necesita barrido de
+   centinelas.
    Y una **séptima** pregunta, que es la que decide si el campo es interno: **quién
    lo escribe.** Si lo escribe una Cloud Function, es candidato a no salir a
    ninguna de las seis (como `calendarEventId`), y su conflicto de dueños con
@@ -191,10 +199,15 @@ propiedad del día en que se escribió.
    tenga ningún test que hable de él. Ese vacío es tu hallazgo más valioso: los
    tests cubren los campos que ya conocen.
 7. Si el cambio agrega una **salida nueva** (un endpoint, un webhook, un log
-   con contenido, un mail, un JSON más, **una página**), decilo fuerte: son seis
-   hoy y una séptima cambia el mapa y la doc — esta tabla, la de
+   con contenido, un mail, un JSON más, **una página**), decilo fuerte: son **diez**
+   hoy y una undécima cambia el mapa y la doc — esta tabla, la de
    `docs/07-seguridad.md` y la del skill `campo-nuevo`, que es el que se ejecuta
-   cuando alguien agrega un campo (B-244).
+   cuando alguien agrega un campo (B-244). Las tres las ata
+   `tests/agentes-y-skills.test.ts`, que compara los números y las funciones
+   productoras de las tres, exige que el parseo no se coma ninguna fila y —desde
+   B-109— que **la prosa de este archivo no nombre otro número que su propia
+   tabla**: fue el hallazgo del propio auditor sobre B-109, que dejó la tabla en
+   diez y estos párrafos en ocho.
 
 ## Qué NO hacés
 
@@ -216,7 +229,7 @@ propiedad del día en que se escribió.
 Un reporte corto, en español, accionable:
 
 1. **Veredicto en la primera línea:** `LIMPIO` o `HALLAZGOS: N`.
-2. **Tabla de campos tocados × las ocho salidas** (`sale` / `no sale` /
+2. **Tabla de campos tocados × las diez salidas** (`sale` / `no sale` /
    `condicional (flag)` / `sin decidir`), solo con las filas que el cambio toca.
 3. **Un bloque por hallazgo**, en este orden:
    - severidad con el criterio del backlog: **P0** filtra o puede filtrar dato

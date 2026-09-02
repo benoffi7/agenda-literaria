@@ -23,11 +23,11 @@ fragmentos de código son ilustrativos.
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ❌ — frente siguiente (**B-108**) |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155** |
-> | §4.5 pasadas, calendario, acerca, 404 | 🟡 — `/suscribirse` es el «calendario» (**D-134**); `/pasadas`, `/acerca` y `/404` ❌ |
+> | §4.5 pasadas, calendario, acerca, 404 | 🟡 — `/suscribirse` es el «calendario» (**D-134**) y `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**); `/acerca` y `/404` ❌ |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
-> | §5 SEO | 🟡 — `<title>`, `meta description` y JSON-LD ✅; **canonical, Open Graph y sitemap no**, porque dependen de `site` y del dominio (**B-109**) |
+> | §5 SEO | ✅ — `<title>`, `meta description`, JSON-LD, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. Falta solo lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291**) y el `lastmod`, que necesita **B-112** |
 > | §6 filtros | ✅ — con los desvíos de abajo |
-> | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo. Falta la mitad de §7.1 que vive en `/pasadas`; el §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
+> | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
 > | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
 > | §10 accesibilidad | ✅ |
 >
@@ -200,6 +200,13 @@ mirar la agenda, pero **acotada**:
 > sitemap» se implementó como `noindex` porque sitemap tampoco hay, y la tira de
 > la home incluye el **mes en curso** además de los siguientes, para que su página
 > no quede sin ningún link interno. El cuarto desvío es del §7.5 y está abajo.
+>
+> **Dos de esos tres se cerraron el 2026-09-02 con B-109:** el aviso del mes
+> vencido manda a `/pasadas`, que ya existe (era **B-281**), y «sale del sitemap»
+> es literal — el sitemap sale de `mesesEnlazables`, que deja afuera las vencidas.
+> El `noindex` **se queda**: no era el sustituto, es la otra mitad. El sitemap dice
+> qué se ofrece y el `noindex` dice qué no se indexa si alguien llega igual, y a
+> una página vencida se llega con el link que ya tenía.
 
 ### 2.3 Lo que decidimos que **no** es URL
 
@@ -628,6 +635,20 @@ el subconjunto ya filtrado.
   a más antiguo, sin filtros salvo la búsqueda. Cabecera honesta: "Lo que ya
   pasó. Muchas de estas actividades se repiten: si te interesa una, seguí a quien
   la organiza."
+
+  > ✅ **Construida el 2026-09-02 (B-109), con dos desvíos — ver D-167.** La
+  > cabecera es esa, palabra por palabra, y el orden es el de acá. Lo que cambió:
+  > **no está atenuada** —el sistema visual de D-146 prohíbe las opacidades
+  > (B-235) y la fila ya distingue una pasada por la tinta del bloque de fecha,
+  > que va en `super` y no en el terracota de lo que se puede hacer— y **no tiene
+  > buscador**: la island filtra el índice de lo vigente, así que enseñarle un
+  > modo nuevo es un cambio de la island y no de esta página (**B-292**). Mientras
+  > tanto la página enlaza la búsqueda de la agenda.
+  >
+  > Y ganó una razón de ser que este documento no le daba: la entrada del sitemap
+  > de una pasada **vence a los 90 días** (§7.1), así que a partir de ahí ésta es
+  > la única página que la enlaza. Sin ella, cada actividad que pasa se queda sin
+  > un solo link interno tres meses después.
 - **`/calendario`** — tres botones: agregar a Google Calendar, suscribirse por
   iCal, y cómo hacerlo desde el teléfono. **Solo la URL pública del calendario**
   (la que se arma con `GOOGLE_CALENDAR_ID`); la URL `private-…` del ICS es un
@@ -658,6 +679,17 @@ que el contenido esté en el HTML (que es lo que garantiza el SSG).
 
 En todas: `<html lang="es">` (ya está en `Base.astro`), `canonical` absoluto,
 Open Graph completo, `twitter:card = summary_large_image`.
+
+> ✅ **Construido el 2026-09-02 (B-109), con dos precisiones y una carencia.** El
+> `canonical` absoluto y el Open Graph los pone `Base.astro` **para todas las
+> páginas de una sola vez**, con `urlAbsoluta` (`lib/rutasPublicas.ts`): con una
+> prop por página, la que se olvidara de pasarla se publicaría sin canónica y
+> nada fallaría. Las dos precisiones: la canónica lleva **barra final** porque es
+> la forma que contesta 200 en Firebase (`/x` da un 301 a `/x/`), y `twitter:card`
+> es `summary_large_image` **solo cuando hay imagen** —la tarjeta grande sin
+> imagen se dibuja como un rectángulo vacío—. La carencia son las cinco imágenes
+> de `public/og/`, que siguen sin existir: hoy solo la página de detalle manda
+> `og:image`, con el flyer de la actividad. Es **B-291**.
 
 | Página | `<title>` | `meta description` | `canonical` |
 |---|---|---|---|
@@ -860,10 +892,27 @@ robots.txt    →  User-agent: *
   `@astrojs/sitemap`: las reglas de qué entra y qué no (90 días para pasadas, 30
   para canceladas, meses con 3 o más) son nuestras y no se expresan en la
   configuración del integrador.
-- **Todo esto necesita `site` en `astro.config.mjs`**, que hoy no está: sin él no
-  hay URL absoluta para canonical, Open Graph ni sitemap. Y `site` necesita que
-  el dominio esté decidido — es la decisión que bloquea más cosas
-  ([§11.1](#111-decisiones-del-dueño)).
+- ~~**Todo esto necesita `site` en `astro.config.mjs`**, que hoy no está~~ —
+  **`site` existe desde B-109** (D-165): sale de `SITIO`, la única aparición del
+  dominio en el repo, y la config lo **importa** en vez de copiarlo.
+
+> ✅ **Construido el 2026-09-02 (B-109).** Lo que salió distinto de este bloque,
+> y todo con motivo:
+>
+> - **el `robots.txt` es un endpoint y no un archivo en `public/`**: su línea
+>   `Sitemap:` lleva el dominio, y el dominio se escribe una sola vez;
+> - **las URLs llevan barra final** (`rutaCanonica`), que es la forma que contesta
+>   200 en Firebase — una entrada que apunta a un 301 es una URL menos rastreada;
+> - **los hubs todavía no están en el sitemap** porque todavía no existen (B-108);
+>   la lista de páginas fijas es explícita y un test exige que cada página del
+>   sitio esté en ella **o** exceptuada con su motivo, así que la que nazca no
+>   entra sola ni se olvida;
+> - **la ventana de las canceladas se mide con `updatedAt` leído del documento
+>   crudo**, que el lector pasa **al lado** de la proyección (`canceladasEditadasEn`):
+>   es un predicado —decide si la URL entra— y no un dato de salida, así que
+>   `updatedAt` sigue sin salir a ninguna salida. El razonamiento está en **D-166**;
+> - `lastmod` **se omite**, tal cual lo dice este bloque, y el test lo fija para
+>   que agregarlo con la fecha del build sea una decisión y no un descuido.
 
 ---
 
@@ -991,6 +1040,13 @@ trampa 1 aplicada al frontend.
   siendo la mejor respuesta a quien busca ese taller por nombre.
 - Aparece en `/pasadas` para siempre.
 
+> ✅ **Las dos cosas, construidas el 2026-09-02 (B-109).** Y son una sola: la
+> entrada del sitemap vence a los 90 días, así que a partir de ese día `/pasadas`
+> es el **único** link interno que le queda a esa página. La ventana se mide desde
+> `hasta` —la última sesión no cancelada— y una actividad **sin ninguna fecha
+> usable entra igual**: no hay reloj contra el que medirla y excluirla sería
+> decidir que es vieja sin ningún dato que lo diga.
+
 ### 7.2 Un ciclo en curso
 
 Un club de lectura que arrancó el 3 y va hasta el 22 de octubre, al que todavía
@@ -1029,6 +1085,14 @@ si esa actividad **estuvo publicada alguna vez**.
 - **No entra a `events.json`** ni al listado ni a los hubs ni a `/pasadas`: no es
   algo a lo que se pueda ir. Solo existe para quien tiene el link.
 - Sale del sitemap 30 días después de cancelarse.
+
+  > ✅ **Construido el 2026-09-02 (B-109), con el criterio de la fecha escrito en
+  > D-166.** «Cuándo se canceló» no es un dato del modelo, así que la ventana se
+  > mide con **`updatedAt`**: cualquier edición posterior corre el reloj hacia
+  > adelante, o sea que la URL se queda un poco más de tiempo — el lado inofensivo
+  > del error. El dato lo lee el lector del documento crudo y viaja **al lado** de
+  > la proyección, como predicado: no se emite en ninguna parte, y por eso
+  > `updatedAt` sigue sin salir a ninguna salida.
 - **"Estuvo publicada alguna vez"** no es un dato del modelo. Dos salidas:
   agregar `publicadaAlgunaVez: boolean` (explícito, correcto) o, mientras no
   exista, usar la heurística de que **alguna sesión tenga `calendarEventId`**: el
@@ -1278,7 +1342,7 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
 
 | # | Decisión | Por qué bloquea |
 |---|---|---|
-| 1 | **El dominio final.** ¿`agenda-literaria.web.app` o un dominio propio? | Es lo primero. `site` en `astro.config.mjs` no existe hoy, y sin él no hay canonical, ni Open Graph, ni sitemap. Y mudar el dominio después de indexar cuesta meses de posicionamiento |
+| 1 | ~~**El dominio final.**~~ **Resuelta el 2026-09-02: `https://agendaleh.ar`** (D-165). Se registró un dominio propio y también responde `agendaleh.com.ar`, que va a redirigir con un 301 en cuanto el dueño lo configure en la consola; `agenda-literaria.web.app` sigue sirviendo el mismo HTML para siempre, y el `canonical` absoluto es lo que evita que eso sea contenido duplicado. Con esto se cerró **B-109**: `site`, canonical, Open Graph, sitemap, robots y `/pasadas` | ✅ |
 | 2 | **Canal de contacto público.** ¿Un mail? ¿El DM de una cuenta de Instagram? | `/acerca` y el pie dicen "¿Organizás algo?" y necesitan a dónde mandarlo. Sin esto el sitio no tiene forma de crecer con contenido de otros |
 | 3 | **Nombre del sitio y una línea de qué es.** | Va en el `<title>` de todas las páginas, en el `og:site_name`, en el `Organization` y en las cinco imágenes de OG. Cambiarlo después es tocar todo |
 | 4 | **¿Se mide el sitio público?** | Hoy la analítica es solo del panel ([`09-analitica.md`](09-analitica.md)). La única métrica que importa acá es el clic en el CTA de inscripción. Medirlo agrega JS y una decisión de privacidad a un sitio que hoy no pone una sola cookie |
@@ -1296,7 +1360,7 @@ son datos que ya se muestran en público por otros caminos.
 |---|---|---|---|
 | 1 | **`inscripcion.cierraEn`** (ISO de `cierra`) | Dos cosas. Una: la página quiere decir "las inscripciones cierran el 22 de septiembre", que es lo que hace que alguien escriba hoy. Dos, y más grave: **`abierta` se calcula con `Date.now()` del build** y se congela. Una inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild siguiente, y con el rebuild automático todavía pendiente (**B-20**) eso puede ser días. Con la fecha, el HTML dice la verdad y el cliente la recalcula. **Es un bug, no una mejora** → **B-111** | alta |
 | 2 | **`estado`** (`'publicado' \| 'cancelado'`) | Para pintar la franja CANCELADA y emitir `eventStatus`. Hoy la proyección no lo lleva, así que el HTML no puede distinguirlo | alta |
-| 3 | **`actualizadoEn`** (ISO de `updatedAt`) | `lastmod` del sitemap y "actualizado el …" en el detalle. Sin él, el sitemap va sin `lastmod` | media |
+| 3 | **`actualizadoEn`** (ISO de `updatedAt`) | `lastmod` del sitemap y "actualizado el …" en el detalle. Sin él, el sitemap va sin `lastmod` — y así salió (B-109): estampar la fecha del build en todas las entradas le enseña a Google que nuestras fechas mienten. **Ojo con el atajo:** el sitemap ya usa `updatedAt` para la ventana de 30 días de las canceladas, pero lo lee del documento crudo y **al lado** de la proyección, como predicado (D-166). Que esté disponible ahí no lo hace publicable acá: son dos decisiones distintas → **B-112** | media |
 | 4 | ~~**`publicadaAlgunaVez`** (o la heurística de `calendarEventId`)~~ — **resuelto por ahora sin campo nuevo** (B-110, D-159): se prueba por el historial. El campo explícito queda en **B-285** | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
 | 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114** | baja |
 | 6 | **`sede.provincia`** | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
@@ -1342,8 +1406,11 @@ Y por qué. Todo esto está pensado y descartado a propósito, no olvidado.
 Los ítems están en el [backlog](BACKLOG.md), **B-105** a **B-114**. El orden en
 que conviene construirlos:
 
-1. **B-109** — `site` en la config, `robots.txt`, `sitemap.xml`. Primero porque
-   depende de la decisión del dominio y todo lo demás asume URLs absolutas.
+1. ~~**B-109** — `site` en la config, `robots.txt`, `sitemap.xml`.~~ **Hecho el
+   2026-09-02** (D-165, D-166, D-167), y salió **último** en vez de primero: la
+   decisión del dominio tardó, y el resto del sitio se construyó sin URLs
+   absolutas a propósito —cada lugar que las necesitaba dejó escrito que faltaban,
+   con su ítem— en vez de inventar un dominio que después habría que mudar.
 2. **B-106** — la lectura de Firestore en build time y `events.json`.
 3. **B-105** — el detalle (`/actividad/{slug}`) y después la home. El detalle
    primero: es el que recibe el tráfico y no lleva JavaScript.

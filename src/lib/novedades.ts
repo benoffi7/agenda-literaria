@@ -22,6 +22,8 @@
  * usar el panel, no va: esta lista no es un registro de trabajo.
  */
 
+import { DOMINIO } from '@/lib/rutasPublicas';
+
 export interface Novedad {
   /**
    * Id estable y único. **No se reusa ni se renombra:** es la marca de "hasta
@@ -56,6 +58,18 @@ export interface Novedad {
  * que decide qué está sin leer, así que **las entradas nuevas van primero**.
  */
 export const NOVEDADES: Novedad[] = [
+  {
+    id: 'sitio-con-dominio-propio',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'El sitio ya tiene dirección propia, y Google puede encontrarlo',
+    detalle:
+      `La agenda vive en ${DOMINIO}. Cada actividad que publicás tiene ahí su propia página, ` +
+      'con una dirección permanente que podés pegar en Instagram o mandar por WhatsApp: el ' +
+      'preview sale con el flyer, el título y la fecha. Y hay una página nueva con todo lo que ' +
+      'ya pasó, así que una actividad vieja nunca queda sin dirección.',
+    donde: `En ${DOMINIO}. No hay nada que hacer en el panel: sale sola al publicar.`,
+  },
   {
     id: 'cancelada-conserva-pagina',
     fecha: '2026-09-01',
