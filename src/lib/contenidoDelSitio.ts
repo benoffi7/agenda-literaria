@@ -54,7 +54,8 @@ import {
   type TonosDeTipo,
 } from '@/lib/listadoPublico';
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
-import { toPublic, type ActividadPublica } from '@/lib/toPublic';
+import { rutasDelSitemap } from '@/lib/sitemap';
+import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
 import {
   CAMPOS_TAXONOMIA,
@@ -94,6 +95,34 @@ export interface ContenidoDelSitio {
    * solo cuando se lo piden.
    */
   canceladas: ActividadPublica[];
+  /**
+   * `{ slug: ISO de updatedAt }` de las canceladas — **solo para el sitemap**
+   * (B-109).
+   *
+   * ── Por qué viaja al lado y no adentro de la proyección ───────────────────
+   * Porque `updatedAt` **no se publica** y este cambio no lo cambia: `toPublic`
+   * lo deja afuera a propósito (una fecha de modificación publicada convierte
+   * cada corrección de un typo en «actualizado hoy») y `docs/07-seguridad.md`
+   * promete que no sale a ninguna salida. Lo que el sitemap necesita es la
+   * ventana de 30 días del §7.3 —«30 días desde que se canceló»—, y esa fecha no
+   * es un dato del modelo: `updatedAt` es la mejor aproximación disponible y
+   * B-109 ya eligió pagar su error (una edición posterior corre el reloj hacia
+   * adelante, o sea que la URL se queda un poco más: el lado inofensivo).
+   *
+   * Es el patrón exacto con el que B-110 resolvió `cancelada`: **lo decide el
+   * lector**, que es el único que ve el documento crudo, y se pasa como argumento
+   * en vez de agregarle un campo a la proyección. Así el `events.json` no puede
+   * publicar una fecha de modificación por accidente.
+   *
+   * Y lo que hace que no agrande la superficie pública es que es un **predicado**:
+   * decide si la URL entra al sitemap y no se emite en ninguna parte — el sitemap
+   * va sin `lastmod` hasta que exista B-112.
+   *
+   * Es un mapa por slug y no un campo del array de `canceladas` para que el tipo
+   * de aquél no cambie: `ActividadPublica` es la frontera de privacidad, y meterle
+   * un campo que no se publica invita a que algún consumidor lo publique.
+   */
+  canceladasEditadasEn: Record<string, string>;
   opciones: Partial<Record<CampoTaxonomia, ValorOpcion[]>>;
 }
 
@@ -196,7 +225,10 @@ const estuvoPublicada = async (
  * página desde la última versión publicada— publicaría datos viejos a propósito y
  * duplicaría la proyección sobre un documento de otra forma.
  */
-const canceladas = async (): Promise<ActividadPublica[]> => {
+const canceladas = async (): Promise<{
+  actividades: ActividadPublica[];
+  editadasEn: Record<string, string>;
+}> => {
   const snap = await adminDb()
     .collection('actividades')
     .where('estado', '==', ESTADO_CANCELADO)
@@ -205,10 +237,28 @@ const canceladas = async (): Promise<ActividadPublica[]> => {
   const conPagina = await Promise.all(
     snap.docs.map(async (d) => {
       const a = d.data() as Actividad;
-      return (await estuvoPublicada(d.ref, a)) ? toPublic(a, d.id) : null;
+      if (!(await estuvoPublicada(d.ref, a))) return null;
+      /*
+       * B-109 — la fecha de la última edición viaja **al lado** de la proyección,
+       * no adentro: es el predicado de la ventana de 30 días del sitemap y no un
+       * campo público. Ver `ContenidoDelSitio.canceladasEditadasEn`.
+       */
+      return { publica: toPublic(a, d.id), editadaEn: aIsoSeguro(a.updatedAt) };
     }),
   );
-  return conPagina.filter((a): a is ActividadPublica => a !== null);
+
+  const vivas = conPagina.filter((c): c is NonNullable<typeof c> => c !== null);
+  return {
+    actividades: vivas.map((c) => c.publica),
+    editadasEn: Object.fromEntries(
+      vivas
+        // Sin slug no hay URL que poner en el sitemap, y sin fecha no hay ventana
+        // que medir: en los dos casos la entrada no existe, que es más honesto que
+        // una clave vacía.
+        .filter((c) => c.publica.slug && c.editadaEn)
+        .map((c) => [c.publica.slug, c.editadaEn]),
+    ),
+  };
 };
 
 /** Los cinco documentos de `/opciones/*`, en una sola ida (§4.1). */
@@ -229,7 +279,12 @@ const leer = async (): Promise<ContenidoDelSitio> => {
       canceladas(),
       opcionesDeTaxonomia(),
     ]);
-    return { actividades, canceladas: canceladasConPagina, opciones };
+    return {
+      actividades,
+      canceladas: canceladasConPagina.actividades,
+      canceladasEditadasEn: canceladasConPagina.editadasEn,
+      opciones,
+    };
   }
 
   /*
@@ -253,7 +308,7 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     '[sitio] build sin credenciales: 0 actividades. ' +
       'Levantá el emulador (npm run emu) para ver datos.',
   );
-  return { actividades: [], canceladas: [], opciones: {} };
+  return { actividades: [], canceladas: [], canceladasEditadasEn: {}, opciones: {} };
 };
 
 let cache: Promise<ContenidoDelSitio> | null = null;
@@ -550,4 +605,39 @@ export const caminosDeMes = async (
       },
     },
   }));
+};
+
+/**
+ * Las rutas del `sitemap.xml` — B-109.
+ *
+ * **No agrega una lectura de Firestore**: sale del mismo `indiceDelSitio()`
+ * memoizado que la home, el `events.json` y las páginas de mes, más las
+ * canceladas que ya trajo la segunda query de B-110. Es el quinto consumidor de
+ * la misma lectura (§3 del diseño: «tres artefactos con una sola lectura», y ya
+ * van cinco sin cambiar el número).
+ *
+ * ── Las tres cosas que este módulo aporta y `lib/sitemap.ts` no puede ─────
+ * 1. **el reloj**, que es el del índice y no `new Date()`: cuáles meses se
+ *    emiten, qué actividad ya pasó y qué cancelada sigue siendo reciente se
+ *    deciden con el **mismo** instante que decidió qué muestra la home. Con dos
+ *    relojes, un build a caballo de la medianoche puede emitir una página que el
+ *    sitemap no lista, y eso se ve una vez cada tanto — o sea nunca en un test;
+ * 2. **el `updatedAt` de las canceladas**, que solo el lector ve porque solo él
+ *    toca el documento crudo (ver `canceladasEditadasEn`);
+ * 3. y que el endpoint reciba **una lista de rutas y nada más** (D-140): no ve el
+ *    índice, así que no puede publicar un campo aunque quiera.
+ */
+export const sitemapDelSitio = async (ahora?: unknown): Promise<string[]> => {
+  const indice = await indiceDelSitio();
+  const { canceladas, canceladasEditadasEn } = await contenidoDelSitio();
+  const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
+
+  return rutasDelSitemap({
+    entradas: indice.actividades,
+    canceladas: canceladas.map((a) => ({
+      slug: a.slug,
+      editadaEn: canceladasEditadasEn[a.slug] ?? null,
+    })),
+    ahora: instante,
+  });
 };
