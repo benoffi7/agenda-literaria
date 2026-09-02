@@ -237,21 +237,39 @@ describe('la página no dice dos cuentas distintas de lo mismo — B-258', () =>
   });
 });
 
-describe('la página sigue sin JavaScript — §4.3, presupuesto de 0 KB', () => {
-  it('el único `<script>` es el de los datos estructurados', () => {
-    /*
-     * `tests/pagina-de-detalle.test.ts` prohíbe las islands (`client:`), que es la
-     * forma en que entraría React. Esto cierra la otra puerta, que es la que B-253
-     * abría de verdad: **la barra fija con JavaScript** que pedía el §8 —medir el
-     * scroll para mostrarla recién cuando el botón original sale de la pantalla—
-     * habría sido un `<script>` suelto, sin island y sin que aquel test dijera
-     * nada.
-     *
-     * MUTACIÓN PROBADA: agregar un `<script>` de dos líneas para el scroll deja
-     * verde el test de islands y rojo éste.
-     */
-    const scripts = [...sinComentarios(src()).matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]!);
-    expect(scripts).toHaveLength(1);
-    expect(scripts[0]).toContain('application/ld+json');
+describe('los `<script>` de esta página están contados, uno por uno (B-371/B-375)', () => {
+  /*
+   * Hasta B-371 este describe se llamaba «la página sigue sin JavaScript —
+   * §4.3, presupuesto de 0 KB» y afirmaba que había **un solo** `<script>`,
+   * el del JSON-LD. Eso dejó de ser cierto **a propósito**: el dueño aceptó
+   * el costo de GA4 en esta página con el número del §6 de
+   * `docs/16-analitica-del-sitio.md` a la vista (D-251), y B-375 agregó el
+   * evento de clic de inscripción (D-252).
+   *
+   * Lo que este describe sigue garantizando no es «cero scripts»: es que
+   * **no aparezca un tercero sin que alguien venga a decidirlo acá**. Cada
+   * script nuevo tiene que declararse en esta lista, con su motivo — la
+   * misma idea que `tests/pagina-de-detalle.test.ts` aplica a los imports.
+   *
+   * MUTACIÓN PROBADA: agregar un `<script>` de dos líneas para medir el
+   * scroll (la barra que B-238/D-145 descartó) deja verde el test de islands
+   * de `pagina-de-detalle.test.ts` y pone este **en rojo** — sigue siendo la
+   * alarma barata para ese caso concreto.
+   */
+  it('son exactamente dos: el JSON-LD (self-closing) y el de la analítica de inscripción', () => {
+    const codigo = sinComentarios(src());
+    // Cuenta las etiquetas de **apertura**: el del JSON-LD es self-closing
+    // (`<script ... is:inline />`) y no tiene un `</script>` textual propio,
+    // así que un regex que exigiera el cierre lo dejaría afuera de la cuenta.
+    const aperturas = [...codigo.matchAll(/<script\b[^>]*>/g)];
+    expect(aperturas).toHaveLength(2);
+
+    expect(codigo).toContain('application/ld+json');
+
+    // El de la analítica: sin `type`, así que Astro lo procesa como módulo —
+    // no es `is:inline` ni una directiva `client:` (eso ya lo prohíbe
+    // `pagina-de-detalle.test.ts`) — y mide un solo evento declarado.
+    expect(codigo).toContain("medirSitio('clic_inscripcion'");
+    expect(codigo).toContain("from '@/lib/medicionSitio'");
   });
 });

@@ -886,6 +886,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
               <a
                 href={detalle.inscripcion.accion.href}
                 rel="noopener noreferrer"
+                data-via={detalle.inscripcion.accion.via}
                 class={`${claseBotonPrimario} w-full`}
               >
                 {detalle.inscripcion.accion.texto}
@@ -911,9 +912,10 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
 
   {
     /*
-      ── El CTA fijo de móvil, sin una línea de JavaScript (B-238, D-145) ──
-      Es el único elemento fijo del sitio (§8 del diseño) y va **fuera del
-      `main`**: la barra es un control de la pantalla, no un párrafo del contenido.
+      ── El CTA fijo de móvil, sin una barra de scroll con JavaScript (B-238,
+      D-145) ── Es el único elemento fijo del sitio (§8 del diseño) y va
+      **fuera del `main`**: la barra es un control de la pantalla, no un
+      párrafo del contenido.
 
       Va `sm:hidden` porque de `sm` en adelante el botón de la ficha se ve sin
       scrollear, y el de la ficha va `hidden sm:block`: **uno y solo uno por
@@ -924,12 +926,19 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
       `overflow` distinto de `visible` **rompe `position: sticky`** en silencio.
       Lo que `fixed` sí necesita es que el pie no quede tapado, y eso se resuelve
       abajo con el aire al final de la página.
+
+      **B-238/D-145 seguía siendo «sin una línea de JavaScript» hasta B-375.**
+      Lo que sigue sin existir es la barra que aquel ítem descartaba —medir el
+      scroll para mostrarla recién cuando el botón original sale de la
+      pantalla—; lo que sí existe ahora es el script de más abajo, que mide el
+      clic y no toca el scroll ni el layout.
     */
     hayCta && detalle.inscripcion.accion && (
       <div class="fixed inset-x-0 bottom-0 z-20 border-t-2 border-tinta bg-papel px-4 pt-3 pb-segura sm:hidden">
         <a
           href={detalle.inscripcion.accion.href}
           rel="noopener noreferrer"
+          data-via={detalle.inscripcion.accion.via}
           class={`${claseBotonPrimario} w-full`}
         >
           {detalle.inscripcion.accion.texto}
@@ -937,6 +946,36 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
       </div>
     )
   }
+
+  <script>
+    /*
+     * B-371/B-375 — el primer JavaScript de esta página, y a propósito el
+     * mínimo: sin framework, sin island (`docs/16-analitica-del-sitio.md`
+     * §5, `06-decisiones.md` D-251/D-252). Mide **un** evento: el clic en
+     * cualquiera de los dos botones de inscripción (el de la ficha y el de
+     * la barra fija de abajo — nunca los dos a la vez, porque uno de los dos
+     * está siempre `hidden` según el ancho).
+     *
+     * Delegado en `document` y no un listener por botón: son como máximo dos
+     * elementos y los dos comparten el mismo `data-via`, así que un solo
+     * listener alcanza y no hay que preocuparse de cuál de los dos existe en
+     * el DOM.
+     *
+     * `medirSitio` no manda nada si el consentimiento no es `'aceptado'`
+     * (B-376): este script corre siempre —es solo un `addEventListener`,
+     * cuesta nada mientras nadie hace clic—, pero el evento en sí queda mudo
+     * hasta que la persona aceptó el banner.
+     */
+    import { medirSitio } from '@/lib/medicionSitio';
+
+    document.addEventListener('click', (evento) => {
+      const objetivo = evento.target;
+      if (!(objetivo instanceof Element)) return;
+      const boton = objetivo.closest<HTMLElement>('[data-via]');
+      if (!boton) return;
+      medirSitio('clic_inscripcion', { via: boton.dataset.via });
+    });
+  </script>
 
   {/*
     Dos reglas locales de esta ruta. Astro empaqueta el CSS por página, así que no

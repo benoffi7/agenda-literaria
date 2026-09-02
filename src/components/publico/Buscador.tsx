@@ -61,6 +61,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { nombreDeMes } from '@/lib/fechasPublicas';
+import { medirSitio } from '@/lib/medicionSitio';
 import {
   CUANDO_ESTE_MES,
   CUANDO_PROXIMAS,
@@ -217,6 +218,52 @@ export function Buscador({ version, idListadoEstatico }: Props) {
     () => (visibles.length === 0 ? ejeQueSobra(entradas, filtros, ahora) : null),
     [visibles.length, entradas, filtros, ahora],
   );
+
+  /**
+   * B-375 — «¿qué filtro deja cero, y cuál sacar?» (pregunta 6 y fricción 7
+   * del §4 de `docs/16-analitica-del-sitio.md`).
+   *
+   * **Nunca `filtros.q`**: el texto del buscador es exactamente lo que la
+   * regla del §5.4 prohíbe mandar, así que la firma con la que se decide si
+   * "ya se midió esta combinación" deja `q` afuera adrede — si no, cada
+   * tecla de una búsqueda que sigue en cero dispararía el evento de nuevo.
+   *
+   * `sobra` es la misma señal que ya pinta la pantalla («Probá sin el filtro
+   * de…»): el único eje que, si se saca, deja de dar cero. Cuando ninguno lo
+   * explica por sí solo (`sobra === null`) el evento se manda igual, pero sin
+   * `eje` ni `slug` — sigue siendo una señal válida («hubo un cero que
+   * sacar un solo eje no arregla»), y `construirEventoSitio` la deja pasar.
+   */
+  const firmaDeFiltro = useMemo(
+    () =>
+      JSON.stringify({
+        v: filtros.valores,
+        cuando: filtros.cuando,
+        soloAbierta: filtros.soloAbierta,
+        cursada: filtros.cursada,
+      }),
+    [filtros.valores, filtros.cuando, filtros.soloAbierta, filtros.cursada],
+  );
+  const ultimaFirmaMedida = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!indice) return; // «sobra» solo es real una vez que hay datos.
+    const esUnCeroMedible =
+      visibles.length === 0 && entradas.length > 0 && hayFiltrosPublicos(filtros);
+    if (!esUnCeroMedible) {
+      // Al salir del cero se resetea: si más tarde se vuelve a caer en la
+      // misma combinación, es un intento nuevo y merece medirse de nuevo.
+      ultimaFirmaMedida.current = null;
+      return;
+    }
+    if (ultimaFirmaMedida.current === firmaDeFiltro) return;
+    ultimaFirmaMedida.current = firmaDeFiltro;
+    medirSitio(
+      'filtro_sin_resultados',
+      sobra ? { eje: sobra, slug: filtros.valores[sobra] } : {},
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indice, visibles.length, entradas.length, firmaDeFiltro, sobra]);
 
   const limpiar = () => {
     setFiltros(filtrosVacios());

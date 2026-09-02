@@ -52,7 +52,7 @@ import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listad
 import { urlDeDetalle } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
-import type { Modalidad } from '@/types/actividad';
+import type { Modalidad, ViaInscripcion } from '@/types/actividad';
 import { ETIQUETA_TIPO_MATERIAL, construirLinkMapa, desSlug } from '@calendario';
 
 // ─────────────────────────────────────────────────────────────────
@@ -179,6 +179,14 @@ export interface AccionDeInscripcion {
   /** El verbo real de la vía: «Escribir por WhatsApp», «Mandar un mail»… */
   texto: string;
   href: string;
+  /**
+   * La vía, **para la analítica del sitio** (B-375) — nunca para el markup ni
+   * para el `href`, que ya está armado. La plantilla la vuelca en un
+   * `data-via` del botón: el clic manda esto y nunca el `destino` real (un
+   * mail o un teléfono), que es exactamente la regla del §5.4 del diseño
+   * («la vía, y no el destino»).
+   */
+  via: ViaInscripcion;
 }
 
 /**
@@ -469,19 +477,28 @@ export const accionDeInscripcion = (
     return {
       texto,
       href: `mailto:${valor}?subject=${encodeURIComponent(`Inscripción: ${titulo}`)}`,
+      via: 'mail',
     };
   }
   if (via === 'whatsapp') {
     const digitos = valor.replace(/\D/g, '');
     if (digitos.length < 8) return null;
-    return { texto, href: `https://wa.me/${digitos}?text=${encodeURIComponent(mensaje)}` };
+    return {
+      texto,
+      href: `https://wa.me/${digitos}?text=${encodeURIComponent(mensaje)}`,
+      via: 'whatsapp',
+    };
   }
   if (via === 'dm') {
     const handle = handleInstagram(valor);
-    return handle ? { texto, href: `https://instagram.com/${handle}` } : null;
+    return handle ? { texto, href: `https://instagram.com/${handle}`, via: 'dm' } : null;
   }
+  // Llegar hasta acá con `texto` no nulo implica `via === 'formulario'`: es la
+  // cuarta y última clave de `ETIQUETA_VIA`, y las otras tres ya volvieron
+  // arriba. Mismo supuesto que ya tenía este `if`, solo que ahora hace falta
+  // nombrarlo para poder devolver la vía.
   const url = urlSegura(valor);
-  return url ? { texto, href: url } : null;
+  return url ? { texto, href: url, via: 'formulario' } : null;
 };
 
 /**
