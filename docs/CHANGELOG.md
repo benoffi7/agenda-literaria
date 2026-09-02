@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-09-02 · el dominio propio y la marca
+
+**`https://agendaleh.ar` es el sitio.** B-109, que estaba bloqueado esperando el
+dominio y desbloquea la cadena de indexación: `site`, canónica absoluta, Open
+Graph, `robots.txt`, `sitemap.xml` y `/pasadas`. El dueño registró **las dos
+zonas** —`.ar` y `.com.ar`— y eligió `.ar` como canónica.
+
+Vale anotar por qué la canónica urgía: **tres hostnames servían contenido
+idéntico** —las dos zonas más `agenda-literaria.web.app`, que Firebase no apaga
+nunca— sin canónica y sin redirección. Contenido duplicado de manual. Se resolvió
+antes de que hubiera algo indexado, que es cuando sale gratis.
+
+**Y la marca — B-295.** El logo salió de un generador como tres PNG de 1024×1024,
+y **ninguno era usable tal cual**: entre 707 KB y 1,5 MB, sin transparencia y con
+la textura de papel pegada. Un favicon que se baja entero para verse a 16 píxeles,
+y con un fondo de un blanco distinto del `papel` del sitio.
+
+**La sigla se trazó a SVG.** Es geometría pura: una descomposición del bitmap en
+rectángulos alineados al eje dio doce, y doce cubren el **99,9%** de la tinta.
+Descartando tres astillas de antialiasing quedan **nueve**. La traza se verificó
+**rasterizándola contra el original**: 99,69% de coincidencia, 41 píxeles de más y
+1023 de menos sobre 339.037.
+
+De 707 KB a **2,6 KB**, y nítida a cualquier tamaño. Y no es casualidad que
+aguante: todo cae en una retícula donde el trazo mide 82 y los brazos 102 sobre una
+caja de 820 — el trazo es exactamente el **10% del alto**, que es lo que le da
+1,3px de trazo y 1,3px de hueco a 16 píxeles. La pieza con bajada, medida igual,
+cae a 0,2px de trazo a 32px: por eso una es el favicon y la otra el encabezado.
+
+**El logotipo del encabezado no va como imagen.** El desfasaje de dos tintas se
+compone con `text-shadow` sobre el texto que ya está en Fraunces: cero bytes,
+nítido a cualquier cuerpo, y el desplazamiento en `em` escala con el tamaño. Las
+dos tintas van **para lados opuestos con una sola cantidad**, que es la corrección
+que costó dos vueltas de logo — un desfasaje donde cada tinta se corre para donde
+quiere deja de leerse como imprenta y pasa a ser decoración. Se apaga en
+`forced-colors`.
+
+**La imagen para compartir se cuantizó a los tokens del sitio**, no a los colores
+que el generador dibujó, y se aplanó la tarjeta redondeada, que contradecía el
+radio 0 del sistema. De 1.528 KB a **13 KB** con cuatro colores. Y con ella el
+`og:image` pasa a tener respaldo: **se cambió el criterio de B-109 porque cambió el
+hecho** — antes no había imagen que ofrecer y un `og:image` roto era peor que
+ninguno; ahora hay una.
+
+De paso, un typo propio: al cambiar la tipografía se había reemplazado media
+palabra y un comentario del encabezado decía «la misma **disploni**».
+
+**2.145 tests.**
+
 ## 2026-09-01 · la ficha del detalle deja el azul fijo y lleva el color de su categoría
 
 **B-273, [D-153](06-decisiones.md).** Cierra la mitad que D-150 había dejado afuera

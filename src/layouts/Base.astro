@@ -16,8 +16,14 @@ interface Props {
    * portada de la actividad: un flyer es literalmente la imagen de esa actividad
    * y es la que hace que el link pegado en Instagram o en WhatsApp se vea. Las
    * cinco imágenes estáticas por tipo que pide el §5.1 del diseño —para las
-   * actividades sin flyer— siguen sin existir: son **B-291**, y hasta que estén
-   * es mejor un preview sin imagen que un `og:image` a un archivo que da 404.
+   * actividades sin flyer— siguen sin existir: son **B-291**.
+   *
+   * **Y desde B-295 hay un respaldo**: si nadie pasa imagen, va la marca
+   * (`/compartir.png`). Se cambió el criterio porque cambió el hecho — antes no
+   * había ninguna imagen que ofrecer y un `og:image` roto era peor que ninguno;
+   * ahora existe una, cuadrada, de 13 KB y con los tokens del sitio. Un link
+   * compartido sin imagen se ve como un link pelado, y eso también es una
+   * decisión de diseño que nadie tomó.
    */
   imagen?: string | null;
   /**
@@ -56,6 +62,16 @@ const { titulo, descripcion, noIndex = false, seccion = 'ninguna', imagen = null
  * redirección.
  */
 const canonical = urlAbsoluta(Astro.url.pathname);
+
+/*
+ * La imagen del preview: la que pase la página, y si no, la marca — B-295.
+ *
+ * **Absoluta**, como la canónica: un `og:image` relativo no lo resuelve ningún
+ * lector de links. Y con `??` y no con `||`: una cadena vacía es un dato mal
+ * cargado y tiene que caer al respaldo igual que un `null`, pero un `0` o un
+ * `false` no llegan nunca acá y no hay por qué tratarlos.
+ */
+const ogImagen = imagen ?? urlAbsoluta('/compartir.png');
 
 /*
  * El `<body>` lleva `overflow-x-clip` y no `-hidden` — B-259. Los dos recortan
@@ -105,6 +121,23 @@ const conChrome = seccion !== 'ninguna';
       cuando alguien lo pega en un chat. Son dos preguntas distintas, y una
       página que no queremos en Google igual se comparte por WhatsApp.
     */}
+    {/*
+      El favicon — B-295. Tres declaraciones y ninguna de más:
+
+      · **`marca.svg`** es la principal. Nueve rectángulos, 2,6 KB, nítida a
+        cualquier tamaño. Lleva `color` en el `<link>` porque un SVG con
+        `currentColor` no tiene de quién heredar cuando lo pide el navegador
+        como icono: sin eso sale negro por defecto y no en la tinta del sitio.
+      · **`compartir.png`** cubre a Safari, que hasta hace poco ignoraba el SVG,
+        y a Android como icono de la pantalla de inicio.
+      · **`mask-icon`** es el pinned tab de Safari, que es monocromo por diseño.
+
+      No hay `.ico`: solo lo pide IE y buscarlo en la raíz da un 404 silencioso
+      que a nadie molesta.
+    */}
+    <link rel="icon" type="image/svg+xml" href="/marca.svg" color="#1B1C19" />
+    <link rel="apple-touch-icon" href="/compartir.png" />
+    <link rel="mask-icon" href="/marca.svg" color="#1B1C19" />
     <link rel="canonical" href={canonical} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={NOMBRE} />
@@ -112,14 +145,14 @@ const conChrome = seccion !== 'ninguna';
     <meta property="og:title" content={titulo} />
     <meta property="og:url" content={canonical} />
     {descripcion && <meta property="og:description" content={descripcion} />}
-    {imagen && <meta property="og:image" content={imagen} />}
+    <meta property="og:image" content={ogImagen} />
     {/*
       `summary_large_image` **solo si hay imagen**: la tarjeta grande sin imagen
       se dibuja como un rectángulo vacío con el título abajo, que se ve peor que
       la chica. Es la misma regla del §7.6 con el hueco de la portada — no hay
       placeholder.
     */}
-    <meta name="twitter:card" content={imagen ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*
