@@ -29,7 +29,7 @@
  * así un test puede pararse en cualquier momento sin esperar a que llegue la
  * fecha.
  */
-import { TIMEZONE, debeExistir } from '@calendario';
+import { TIMEZONE, debeExistir, numeroDeEncuentro } from '@calendario';
 import { instanteDeTimestamp as instante } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, Estado, Sesion } from '@/types/actividad';
 
@@ -316,15 +316,20 @@ export interface Encuentro {
    * actividad: "2 de 8". Es lo que evita que un ciclo se lea como ocho
    * actividades distintas.
    *
-   * Se numeran **todos** los encuentros, incluidos los cancelados, porque el
-   * panel los muestra todos y así el número coincide con la fila del
-   * formulario. Para un ciclo, el evento público usa el mismo criterio desde
-   * B-84 (`posicionEnCiclo`, D-95): antes salteaba los cancelados, así que el
-   * panel decía "6 de 8" y el evento "5 de 7" para el mismo encuentro.
+   * **La cuenta no se hace acá: sale de `numeroDeEncuentro` de `@calendario`**
+   * (B-163, D-20), la misma que arma el "Encuentro 2 de 8" del evento público.
+   * Antes cada lado ordenaba y contaba por su cuenta y coincidían porque los dos
+   * habían llegado al mismo criterio, no porque fuera el mismo código — que es
+   * la forma que D-71 y D-20 evitan, y que produjo B-84 (el panel decía "6 de 8"
+   * y el evento "5 de 7" para el mismo encuentro).
    *
-   * Donde todavía no coinciden es en una actividad de varias sesiones **sin**
-   * `esCiclo`: acá se numera igual y el evento no numera nada. Es anterior a
-   * B-84 y queda anotado en B-163.
+   * Se numeran **todos** los encuentros, incluidos los cancelados (D-95): el
+   * número es la fila del formulario, no un recuento de los que siguen en pie.
+   *
+   * Lo que **sigue** decidido por separado es *cuándo se muestra*: el evento
+   * numera solo si `esCiclo` está tildado (`elEventoNumeraElCiclo`) y esta vista
+   * numera cualquier actividad de más de una sesión. Es la mitad abierta de
+   * B-163, y es una decisión de producto, no una cuenta duplicada.
    */
   indice: number;
   total: number;
@@ -351,7 +356,12 @@ export const encuentrosDe = (actividades: ActividadConId[]): Encuentro[] => {
       .filter((s): s is { sesion: Sesion; inicio: Date } => s.inicio !== null)
       .sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
 
-    ordenadas.forEach(({ sesion, inicio }, i) => {
+    ordenadas.forEach(({ sesion, inicio }) => {
+      // B-163 — el número lo da `@calendario`, sobre el array **completo** de la
+      // actividad y no sobre `ordenadas`: `ordenadas` descarta las sesiones sin
+      // fecha usable para no vaciar la vista, y descontarlas del total le correría
+      // el número a todas las demás respecto de lo que dice el evento publicado.
+      const numero = numeroDeEncuentro(actividad, sesion);
       encuentros.push({
         actividadId: actividad.id,
         titulo: actividad.titulo,
@@ -364,8 +374,8 @@ export const encuentrosDe = (actividades: ActividadConId[]): Encuentro[] => {
         hora: horaLegible(inicio),
         tema: sesion.tema ?? null,
         cancelada: sesion.cancelada,
-        indice: i + 1,
-        total: ordenadas.length,
+        indice: numero?.indice ?? 1,
+        total: numero?.total ?? ordenadas.length,
         estado: estadoPublicacion(actividad, sesion),
       });
     });

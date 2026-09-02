@@ -154,39 +154,103 @@ export const construirLinkMapa = (actividad, labels = {}) =>
   linkMapaDeSede(actividad.sede, labels, actividad.modalidad);
 
 /**
- * Numera el encuentro dentro del ciclo: "Encuentro 3 de 8".
+ * Milisegundos de lo que puede venir como Timestamp de Firestore, Date, número
+ * o string. Mismo criterio que `fecha` de acá arriba y que `milis` de
+ * `rebuild.js`: el módulo lo comparte el panel por `@calendario` (D-20) y no
+ * puede suponer que del otro lado hay un Timestamp.
  *
- * Se numera sobre **todas** las sesiones del array, canceladas incluidas
- * (D-95). El número es la identidad del encuentro dentro del ciclo —con qué
- * lectura se corresponde, qué fila del formulario es—, no un recuento en vivo
- * de los que siguen en pie. Numerar sobre las no canceladas hacía que cancelar
- * el tercero de ocho convirtiera al sexto en "Encuentro 5 de 7": el diff
- * reescribía los otros siete eventos y a quien lo tenía agendado se le
- * renombraba sin que nada hubiera cambiado para él (B-84).
+ * Una sesión sin `inicio` usable cuenta como `0` y queda primera. Es lo que
+ * hacía la versión anterior y se conserva: el schema rechaza una sesión sin
+ * fechas en los dos niveles, así que es un documento roto a mano, y perder su
+ * número correría a todos los demás.
+ */
+const milisDe = (t) => {
+  if (t == null) return 0;
+  if (typeof t.toMillis === 'function') return t.toMillis();
+  if (t instanceof Date) return t.getTime();
+  if (typeof t === 'number') return Number.isFinite(t) ? t : 0;
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+/**
+ * Qué lugar ocupa un encuentro dentro de su actividad: `{ indice, total }`,
+ * base 1. `null` si la sesión no pertenece a la actividad.
  *
- * Es además el mismo criterio que usa el panel para el "2 de 8" de la vista
- * calendario (`encuentrosDe`, D-70): antes el panel decía "6 de 8" y el evento
- * público "5 de 7" para el mismo encuentro.
+ * ── La aritmética, una sola vez (B-163, D-20, D-71) ────────────────────────
+ * El número sale en dos pantallas: el "2 de 8" de la vista calendario del
+ * panel (`encuentrosDe`, D-70) y el "Encuentro 2 de 8" de la descripción del
+ * evento público. Hasta acá cada lado lo **calculaba por su cuenta** —el panel
+ * ordenaba y contaba en `encuentrosDe`, el evento ordenaba y contaba en
+ * `posicionEnCiclo`— y coincidían porque los dos habían llegado al mismo
+ * criterio, no porque fuera el mismo código. Es la forma que D-71 y D-20
+ * evitan: dos criterios para lo mismo derivado, que el día que uno se toque se
+ * separan sin que nada falle. B-84 fue exactamente eso (el panel decía "6 de
+ * 8" y el evento "5 de 7").
+ *
+ * Ahora la cuenta es esta función y el panel la importa. Lo que queda decidido
+ * por separado —a propósito— es **cuándo se muestra**, que es otra cosa: ver
+ * `elEventoNumeraElCiclo` abajo.
+ *
+ * ── Se cuentan también los cancelados (D-95) ───────────────────────────────
+ * El número es la identidad del encuentro dentro del ciclo —con qué lectura se
+ * corresponde, qué fila del formulario es—, no un recuento en vivo de los que
+ * siguen en pie. Numerar sobre las no canceladas hacía que cancelar el tercero
+ * de ocho convirtiera al sexto en "Encuentro 5 de 7": el diff reescribía los
+ * otros siete eventos y a quien lo tenía agendado se le renombraba sin que nada
+ * hubiera cambiado para él (B-84).
  *
  * El cancelado no tiene evento (§7.3), así que en el calendario queda un hueco
  * en la secuencia. Eso es información —hubo un encuentro y se canceló—, no un
  * error de conteo.
+ *
+ * Se numera **por fecha y no por posición en el array**: el array puede estar
+ * desordenado (el formulario deja mover las filas) y "Encuentro 5" tiene que
+ * ser el quinto en el tiempo.
  */
-const posicionEnCiclo = (actividad, sesion) => {
-  const sesiones = actividad.sesiones ?? [];
-  if (!actividad.esCiclo || sesiones.length < 2) return null;
+export const numeroDeEncuentro = (actividad, sesion) => {
+  const sesiones = actividad?.sesiones ?? [];
+  const ordenadas = [...sesiones].sort((a, b) => milisDe(a?.inicio) - milisDe(b?.inicio));
 
-  // Se numera por fecha, no por posición en el array: el array puede estar
-  // desordenado y "Encuentro 5" tiene que ser el quinto en el tiempo.
-  const ordenadas = [...sesiones].sort((a, b) => {
-    const ma = typeof a.inicio?.toMillis === 'function' ? a.inicio.toMillis() : 0;
-    const mb = typeof b.inicio?.toMillis === 'function' ? b.inicio.toMillis() : 0;
-    return ma - mb;
-  });
-
-  const i = ordenadas.findIndex((s) => s.id === sesion.id);
+  const i = ordenadas.findIndex((s) => s?.id === sesion?.id);
   if (i === -1) return null;
-  return `Encuentro ${i + 1} de ${ordenadas.length}`;
+  return { indice: i + 1, total: ordenadas.length };
+};
+
+/**
+ * ¿El evento público **dice** qué encuentro del ciclo es este?
+ *
+ * Solo si el dueño declaró que la actividad es un ciclo y hay más de un
+ * encuentro. El schema prohíbe `esCiclo` con menos de dos sesiones, pero no el
+ * recíproco: tres encuentros sin tildar el ciclo es un documento válido.
+ *
+ * **La regla de cuándo mostrar el número no está unificada con el panel, y esa
+ * es la mitad abierta de B-163.** La vista calendario numera cualquier
+ * actividad de más de una sesión (`total > 1` en `CalendarioActividades`),
+ * así que en un documento de tres sesiones sin `esCiclo` el panel numera y el
+ * evento no dice nada. La **aritmética** ya es una sola (`numeroDeEncuentro`);
+ * lo que sigue siendo una decisión de producto es qué criterio gana, y las dos
+ * salidas cuestan distinto:
+ *
+ *  - que el evento numere con más de una sesión aunque no sea ciclo → cambia el
+ *    texto de los eventos **ya publicados** de esas actividades, o sea el
+ *    argumento de D-95 y B-84 otra vez;
+ *  - que el panel deje de numerar sin `esCiclo` → no toca nada publicado, pero
+ *    devuelve el problema que la regla 1 de D-70 resuelve (varias filas con el
+ *    mismo título se leen como varias actividades).
+ *
+ * Se deja acá, exportada y con nombre, para que elegir sea una línea y para que
+ * el criterio del evento no vuelva a estar escrito inline en medio de la
+ * descripción.
+ */
+export const elEventoNumeraElCiclo = (actividad) =>
+  actividad?.esCiclo === true && (actividad?.sesiones ?? []).length >= 2;
+
+/** "Encuentro 3 de 8" para la descripción del evento, o `null`. */
+const posicionEnCiclo = (actividad, sesion) => {
+  if (!elEventoNumeraElCiclo(actividad)) return null;
+  const numero = numeroDeEncuentro(actividad, sesion);
+  return numero ? `Encuentro ${numero.indice} de ${numero.total}` : null;
 };
 
 /**

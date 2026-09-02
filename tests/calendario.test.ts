@@ -5,6 +5,8 @@ import {
   construirEvento,
   construirLinkMapa,
   construirUbicacion,
+  elEventoNumeraElCiclo,
+  numeroDeEncuentro,
   planificar,
   TIMEZONE,
 } from '../functions/calendario.js';
@@ -398,6 +400,114 @@ describe('numeración del ciclo — cancelar no renumera (B-84, D-95)', () => {
   it('el total no cambia por cancelar, así que ningún otro evento se toca', () => {
     const ops = planificar(ciclo(), conTercerCancelado);
     expect(ops.filter((o: { tipo: string }) => o.tipo === 'actualizar')).toHaveLength(0);
+  });
+});
+
+/**
+ * B-163 — la cuenta del encuentro, una sola vez.
+ *
+ * `numeroDeEncuentro` es la aritmética que comparten el "Encuentro 2 de 8" del
+ * evento público y el "2 de 8" de la vista calendario del panel
+ * (`encuentrosDe`, D-70), que la importa por `@calendario` (D-20). Antes cada
+ * lado ordenaba y contaba por su cuenta: coincidían porque los dos habían
+ * llegado al mismo criterio, no porque fuera el mismo código, y eso es lo que
+ * D-71 y D-20 evitan. B-84 fue exactamente esa separación.
+ *
+ * `elEventoNumeraElCiclo` es la otra mitad, y a propósito está aparte: es la
+ * **puerta**, o sea la decisión de si el evento muestra el número. Sigue siendo
+ * la del evento (`esCiclo` tildado y más de una sesión) y no la del panel, que
+ * es la mitad abierta de B-163.
+ */
+describe('numeroDeEncuentro — la cuenta que comparten el panel y el evento (B-163)', () => {
+  it('numera desde 1 sobre el total de sesiones del array', () => {
+    const a = ciclo();
+    expect(numeroDeEncuentro(a, a.sesiones[0]!)).toEqual({ indice: 1, total: 8 });
+    expect(numeroDeEncuentro(a, a.sesiones[7]!)).toEqual({ indice: 8, total: 8 });
+  });
+
+  it('cuenta por fecha y no por posición en el array (trampa 2)', () => {
+    // El formulario deja mover las filas: el array no está ordenado por fecha.
+    const alReves = ciclo({ sesiones: [...sesionesSemanales(8)].reverse() });
+    const primeraEnElTiempo = sesionesSemanales(8)[0]!;
+    expect(numeroDeEncuentro(alReves, primeraEnElTiempo)).toEqual({ indice: 1, total: 8 });
+  });
+
+  it('los cancelados ocupan su número (D-95)', () => {
+    const conTercerCancelado = ciclo({
+      sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
+    });
+    expect(numeroDeEncuentro(conTercerCancelado, conTercerCancelado.sesiones[2]!)).toEqual({
+      indice: 3,
+      total: 8,
+    });
+    // Y el que viene después no se corre.
+    expect(numeroDeEncuentro(conTercerCancelado, conTercerCancelado.sesiones[5]!)).toEqual({
+      indice: 6,
+      total: 8,
+    });
+  });
+
+  it('devuelve null si la sesión no es de esa actividad', () => {
+    expect(numeroDeEncuentro(ciclo(), sesion({ id: 'ses_de_otra' }))).toBeNull();
+    expect(numeroDeEncuentro(ciclo({ sesiones: [] }), sesion())).toBeNull();
+  });
+
+  it('tolera Timestamp, Date, número y string: el panel no manda Timestamps siempre', () => {
+    // El módulo lo comparte el panel (D-20) y `encuentrosDe` trabaja con lo que
+    // haya en memoria. Con un `inicio` que no fuera Timestamp, la versión
+    // anterior lo contaba como 0 y lo ponía primero.
+    const inicio = '2026-09-10T22:00:00Z';
+    const mezclado = ciclo({
+      sesiones: [
+        { ...sesion({ id: 'ses_b' }), inicio: new Date(inicio), fin: new Date(inicio) },
+        { ...sesion({ id: 'ses_a' }), inicio: '2026-09-03T22:00:00Z', fin: inicio },
+      ],
+    });
+    expect(numeroDeEncuentro(mezclado, mezclado.sesiones[1]!)).toEqual({ indice: 1, total: 2 });
+    expect(numeroDeEncuentro(mezclado, mezclado.sesiones[0]!)).toEqual({ indice: 2, total: 2 });
+  });
+
+  it('la descripción del evento dice exactamente lo que dice la cuenta', () => {
+    const desalineados: string[] = [];
+    for (const a of [ciclo(), ciclo({ sesiones: sesionesSemanales(2) }), ciclo({ sesiones: [...sesionesSemanales(8)].reverse() })]) {
+      for (const s of a.sesiones as { id: string }[]) {
+        const numero = numeroDeEncuentro(a, s)!;
+        const texto = construirDescripcion(a, s, LABELS);
+        if (!texto.includes(`Encuentro ${numero.indice} de ${numero.total}`)) {
+          desalineados.push(`${s.id}: la cuenta dice ${numero.indice}/${numero.total}`);
+        }
+      }
+    }
+    expect(desalineados).toEqual([]);
+  });
+});
+
+describe('elEventoNumeraElCiclo — la puerta, aparte de la cuenta (B-163)', () => {
+  it('numera un ciclo tildado de dos o más encuentros', () => {
+    expect(elEventoNumeraElCiclo(ciclo())).toBe(true);
+    expect(elEventoNumeraElCiclo(ciclo({ sesiones: sesionesSemanales(2) }))).toBe(true);
+  });
+
+  it('no numera sin `esCiclo`, aunque haya tres sesiones (la mitad abierta de B-163)', () => {
+    const tresSinCiclo = actividad({ esCiclo: false, sesiones: sesionesSemanales(3) });
+    expect(elEventoNumeraElCiclo(tresSinCiclo)).toBe(false);
+    expect(construirDescripcion(tresSinCiclo, tresSinCiclo.sesiones[1]!, LABELS)).not.toContain(
+      'Encuentro',
+    );
+    // Pero la cuenta existe igual: el panel la usa para su "2 de 3".
+    expect(numeroDeEncuentro(tresSinCiclo, tresSinCiclo.sesiones[1]!)).toEqual({
+      indice: 2,
+      total: 3,
+    });
+  });
+
+  it('no numera un ciclo de un solo encuentro', () => {
+    expect(elEventoNumeraElCiclo(ciclo({ sesiones: sesionesSemanales(1) }))).toBe(false);
+  });
+
+  it('no explota sin actividad ni sin sesiones', () => {
+    expect(elEventoNumeraElCiclo(null)).toBe(false);
+    expect(elEventoNumeraElCiclo({})).toBe(false);
   });
 });
 

@@ -961,6 +961,30 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
+   * La tercera instancia de la misma clase, y la que produjo B-84: el número
+   * del encuentro ("Encuentro 2 de 8") sale en dos pantallas —la descripción
+   * del evento público y el "2 de 8" de la vista calendario del panel— y cada
+   * lado lo **calculaba por su cuenta**. Coincidían porque los dos habían
+   * llegado al mismo criterio, no porque fuera el mismo código: el día que uno
+   * cambió, el panel dijo "6 de 8" y el evento "5 de 7" para el mismo
+   * encuentro, y nada falló.
+   *
+   * Desde B-163 la cuenta es `numeroDeEncuentro` de `@calendario` y el panel la
+   * importa. Este chequeo es lo que impide que vuelva a copiarse: se lee del
+   * fuente porque una copia que hoy da el mismo resultado no rompe ningún test
+   * de comportamiento — es justamente el modo de falla de la clase.
+   */
+  it('el número del encuentro se cuenta en un solo lugar (B-163, D-20)', () => {
+    const src = fuente('src/lib/calendarioPanel.ts');
+    expect(src).toMatch(/numeroDeEncuentro[^\n]*from '@calendario'|from '@calendario'/);
+    expect(src).toMatch(/numeroDeEncuentro\(/);
+    // La aritmética copiada: contar el largo de la lista ordenada, o numerar
+    // con el índice del recorrido, es la forma que tenía antes de B-163.
+    expect(src).not.toMatch(/total:\s*ordenadas\.length/);
+    expect(src).not.toMatch(/indice:\s*i \+ 1/);
+  });
+
+  /**
    * Los tres pares de prefijo de id del modelo: quien **produce** el id de una
    * fila y quien lo **valida** en el schema derivan cada uno por su cuenta.
    *
