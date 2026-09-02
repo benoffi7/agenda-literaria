@@ -54,6 +54,96 @@ export const MAXIMO_IMAGENES = 4;
 export const MAXIMO_BYTES = 3 * 1024 * 1024;
 
 /**
+ * `Cache-Control` con el que el panel sube una imagen propia — B-220, D-175.
+ *
+ * **Corto a propósito, y es la contracara de una decisión de la Function.** La
+ * Function de DEC-7d escribe la imagen optimizada **encima del original** (es lo
+ * que hace que no haga falta write-back al documento), así que el objeto que se
+ * acaba de subir va a ser reemplazado en unos segundos. Marcarlo `immutable` en
+ * esa ventana sería pedirle al CDN y al navegador que se queden **un año** con
+ * los bytes que estamos por reemplazar — y un `immutable` es literal, no
+ * optimista.
+ *
+ * Al terminar, la Function pone `CACHE_OPTIMIZADO` (un año, inmutable). Los dos
+ * valores están atados por `tests/imagenes-function.test.ts`, que los lee de
+ * este archivo y de `functions/imagenes.js`: dos constantes que tienen que
+ * encajar y nadie compara terminan divergiendo (clase de B-88).
+ *
+ * **Modo de falla si la Function no está desplegada:** las imágenes se cachean
+ * cinco minutos en vez de un año. Más egreso de GCS, no una imagen rota.
+ */
+export const CACHE_AL_SUBIR = 'public, max-age=300';
+
+/**
+ * El prefijo de las miniaturas que deriva la Function — B-220, D-175.
+ *
+ * Hermano de `imagenes/` y no anidado, por la trampa 13: ver el comentario de
+ * `match /miniaturas/{archivo}` en `storage.rules`.
+ */
+export const PREFIJO_MINIATURAS = 'miniaturas/';
+
+/** La forma de un nombre de objeto de la galería: `imagenes/img_<uuid>.{jpg,png}`. */
+const NOMBRE_DE_IMAGEN = /^imagenes\/(img_[A-Za-z0-9_-]+)\.(?:jpg|png)$/;
+
+/**
+ * La ruta de la miniatura de un original. `null` si el path no tiene la forma que
+ * produce `rutaDeImagen`.
+ *
+ * **Siempre `.jpg`**, sea el original JPG o PNG: la miniatura la produce la
+ * Function y el formato lo elige ella.
+ *
+ * Es la **misma derivación** que `rutaDeMiniatura` de `functions/imagenes.js`, y
+ * están atadas por test: son un productor y un consumidor que derivan por
+ * separado el mismo formato, que es la clase de B-88. La Function no se puede
+ * importar desde acá (arrastraría `sharp` al árbol del panel), así que la
+ * duplicación es inevitable y lo que se hace es fijarla.
+ */
+export const rutaDeMiniatura = (storagePath: string | null | undefined): string | null => {
+  const m = NOMBRE_DE_IMAGEN.exec((storagePath ?? '').trim());
+  return m ? `${PREFIJO_MINIATURAS}${m[1]}.jpg` : null;
+};
+
+/**
+ * La URL pública de la miniatura, derivada de la del original. `null` si la URL
+ * no es una imagen propia nuestra.
+ *
+ * ── Por qué se puede derivar, que es lo que hace innecesario el write-back ──
+ * La URL de descarga lleva el path del objeto URL-encodeado adentro (B-206 #1),
+ * y el path de la miniatura es una función pura del path del original. Así que el
+ * sitio puede pedir la miniatura **sin que nadie escriba nada en el documento**,
+ * que era la mitad de B-220 que quedaba bloqueada.
+ *
+ * **El token se descarta a propósito.** La miniatura tiene el suyo y no lo
+ * conocemos, pero no hace falta ninguno: lo que autoriza la lectura es
+ * `allow get: if true`. Verificado contra producción el 2026-09-02 — el mismo
+ * objeto responde 200 con su token, **sin token** y con un token inventado.
+ *
+ * ── Lo que esta función NO puede saber ─────────────────────────────────────
+ * Si la miniatura **existe**. Devuelve la URL que le correspondería; una imagen
+ * subida antes de que la Function estuviera desplegada no la tiene, y la
+ * respuesta a eso es el barrido de `scripts/optimizar-imagenes.mjs`, no un
+ * chequeo acá — el build no baja imágenes (DEC-7d) y desde el navegador
+ * significaría un pedido de más por afiche.
+ */
+export const urlDeMiniatura = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  let partes: URL;
+  try {
+    partes = new URL(url);
+  } catch {
+    return null;
+  }
+  if (partes.hostname !== 'firebasestorage.googleapis.com') return null;
+  // `/v0/b/<bucket>/o/<path encodeado>`. `pathname` conserva el `%2F`, así que el
+  // path del objeto es el último segmento.
+  const m = /^(\/v0\/b\/[^/]+\/o\/)(.+)$/.exec(partes.pathname);
+  if (!m) return null;
+  const ruta = rutaDeMiniatura(decodeURIComponent(m[2]!));
+  if (!ruta) return null;
+  return `${partes.origin}${m[1]}${encodeURIComponent(ruta)}?alt=media`;
+};
+
+/**
  * Los tipos que la galería sabe **mostrar**. **SVG no**: es un documento
  * ejecutable, y si algún día se sirve por un rewrite de Hosting pasa a ser mismo
  * origen que el panel.
