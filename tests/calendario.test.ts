@@ -511,6 +511,136 @@ describe('elEventoNumeraElCiclo — la puerta, aparte de la cuenta (B-163)', () 
   });
 });
 
+/**
+ * B-162 — la suposición que sostiene la guarda anti-loop, escrita.
+ *
+ * La guarda del §7.1 no compara una lista de campos: compara el **payload**
+ * que se le mandaría a Calendar antes y después (D-07). Eso es lo que la hace
+ * imposible de romper por olvido —agregar un dato a la descripción propaga
+ * solo, sin tocar ninguna lista— y es la decisión correcta.
+ *
+ * Su precio es una suposición que en ningún lado estaba dicha: **que lo que
+ * Calendar tiene es lo que este código habría escrito a partir de `antes`.**
+ * Los dos lados de la comparación se calculan con el código de **hoy**, así que
+ * un cambio en *cómo se arma* la descripción es invisible para la guarda: los
+ * eventos ya publicados se quedan con el texto viejo y no se emite ninguna
+ * operación.
+ *
+ * Pasó una vez y quedó asentado: antes de D-95, `posicionEnCiclo` numeraba
+ * sobre las sesiones **no canceladas**, así que un ciclo de ocho con el tercero
+ * cancelado publicó "Encuentro 5 de 7" para el sexto. Hoy el mismo documento
+ * calcula "Encuentro 6 de 8" a los dos lados de la guarda: idénticos, cero ops,
+ * y el suscripto sigue leyendo "de 7". La divergencia solo se ve desde afuera.
+ *
+ * **Esto no se arregla acá y es a propósito.** Reconciliar de verdad pide leer
+ * Calendar, que es B-125 y necesita una identidad que el panel no tiene (D-06).
+ * Lo que este bloque hace es dejar la propiedad **medida**, para que la próxima
+ * vez que alguien cambie cómo se arma la descripción sepa, antes de mergear,
+ * que los eventos viejos no se van a poner al día solos.
+ */
+describe('la guarda compara payloads recalculados, no lo que Calendar tiene (B-162)', () => {
+  /**
+   * El texto que un ciclo con un encuentro cancelado publicó **antes de D-95**,
+   * cuando la numeración salteaba los cancelados. Se escribe a mano porque es
+   * justamente lo que el código de hoy ya no sabe producir.
+   */
+  const NUMERO_VIEJO = 'Encuentro 5 de 7';
+
+  /**
+   * El ciclo **ya asentado** con el tercero cancelado, que no es lo mismo que el
+   * ciclo en el que se acaba de cancelar: una sesión cancelada no conserva su
+   * `calendarEventId`, porque al borrar el evento `syncCalendar` repone `null`
+   * en esa sesión. Un fixture con `cancelada: true` y un id de evento vivo
+   * describe un estado que el sistema no puede tener asentado, y le hace emitir
+   * un borrado de más a `planificar` en cada escritura posterior — es la misma
+   * advertencia que `tests/fixtures/ciclo.ts` dejó escrita (B-135). El caso de
+   * la transición ya tiene su test en «cancelar el tercero de ocho borra solo el
+   * suyo».
+   */
+  const conTercerCancelado = () =>
+    ciclo({
+      sesiones: sesionesSemanales(8, (i) =>
+        i === 2 ? { cancelada: true, calendarEventId: null } : {},
+      ),
+    });
+
+  it('el código de hoy numera distinto de lo que ese ciclo tiene publicado', () => {
+    const a = conTercerCancelado();
+    const sexto = a.sesiones[5]!;
+    expect(construirDescripcion(a, sexto, LABELS)).toContain('Encuentro 6 de 8');
+    expect(construirDescripcion(a, sexto, LABELS)).not.toContain(NUMERO_VIEJO);
+  });
+
+  it('y volver a guardarlo sin tocar nada no emite ninguna operación', () => {
+    // Los dos lados se recalculan con el código de hoy: idénticos. La guarda
+    // no tiene de dónde ver que el evento publicado dice otra cosa.
+    expect(planificar(conTercerCancelado(), conTercerCancelado(), LABELS)).toEqual([]);
+  });
+
+  it('tampoco la ve un cambio que no altera el payload (la difusión interna)', () => {
+    const antes = conTercerCancelado();
+    const despues = {
+      ...conTercerCancelado(),
+      difusion: { arrobar: ['@otro'], notas: 'otra cosa' },
+    };
+    expect(planificar(antes, despues, LABELS)).toEqual([]);
+  });
+
+  /**
+   * Cómo se cura hoy, y es el camino que el ítem describe: cualquier cambio que
+   * **sí** salga al evento reescribe esos eventos, y ahí el número se pone al
+   * día de paso. Para forzarlo hay que editar algo a mano en las actividades
+   * afectadas — pocas, y las lista la vista calendario (los cancelados se ven
+   * en gris).
+   */
+  it('un cambio que sí sale al evento los pone al día de paso', () => {
+    const antes = conTercerCancelado();
+    const despues = { ...conTercerCancelado(), titulo: 'Título corregido' };
+
+    const ops = planificar(antes, despues, LABELS) as {
+      tipo: string;
+      id: string;
+      evento: { description: string };
+    }[];
+
+    // Los siete que tienen evento: el cancelado no (§7.3).
+    expect(ops).toHaveLength(7);
+    expect(ops.every((o) => o.tipo === 'actualizar')).toBe(true);
+    for (const op of ops) {
+      expect(op.evento.description).toContain('de 8');
+      expect(op.evento.description).not.toContain(NUMERO_VIEJO);
+    }
+  });
+
+  /**
+   * La forma general de la suposición, para que no haya que volver a razonarla
+   * caso por caso: si `antes` y `despues` producen el mismo payload, no hay
+   * operaciones — **cualquiera sea el texto que Calendar tenga guardado**. Es
+   * la propiedad buena de D-07 y el límite de B-162 a la vez.
+   */
+  it('la propiedad, en general: mismo payload recalculado ⇒ cero operaciones', () => {
+    const conOps: string[] = [];
+    // Todos con sus eventos ya creados: una sesión sin `calendarEventId` emite
+    // `crear` y eso no es la guarda, es el diff haciendo su trabajo.
+    const conEvento = [sesion({ calendarEventId: 'evt_1' })];
+    for (const a of [
+      ciclo(),
+      conTercerCancelado(),
+      actividad({ sesiones: conEvento }),
+      completa({ sesiones: conEvento }),
+    ]) {
+      // Mismo contenido, distinta identidad de objeto en los dos niveles: la
+      // comparación es por valor y no por referencia.
+      const copia = {
+        ...a,
+        sesiones: (a.sesiones as Record<string, unknown>[]).map((s) => ({ ...s })),
+      };
+      if (planificar(a, copia, LABELS).length > 0) conOps.push(String(a.titulo));
+    }
+    expect(conOps).toEqual([]);
+  });
+});
+
 describe('construirEvento — §7.4', () => {
   it('manda timeZone explícito, siempre (trampa 1)', () => {
     const e = construirEvento(actividad(), sesion());
