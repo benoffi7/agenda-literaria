@@ -32,6 +32,17 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-215 — reverificada la adopción de `tests/fixtures/`: el número creció, no bajó
+
+Sin tocar código de test — el cambio ancho sigue sin ser seguro con cuatro
+frentes corriendo en paralelo (B-236), que es la misma precondición que el
+ítem ya pedía. Reverificado el estado real: `actividadCentinela` pasó de un
+consumidor a cuatro (adopción orgánica, efecto lateral de otro trabajo), pero
+los archivos que siguen construyendo su propia actividad de ciclo a mano son
+más que los siete originales — al menos una docena. Documentado en
+`docs/BACKLOG.md` para que la próxima medición no vuelva a partir de un
+número de hace una semana.
+
 ### B-236 — `scripts/wip.sh`, la alternativa a `git stash` que no cruza worktrees
 
 `git stash` vive en `refs/stash`, del repositorio y no del working-tree: con

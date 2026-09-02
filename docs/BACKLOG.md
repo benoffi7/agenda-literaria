@@ -6208,14 +6208,28 @@ pantallas a un clic — la divergencia de B-175, exactamente.
 **Siguen abiertas las otras dos, y el motivo no es que no valgan:**
 
 - **El `useEffect` de carga de actividades** (`CalendarioActividades.tsx` y
-  `ListaActividades.tsx`). Toca `src/components/`, que en la tanda del 2026-09-02
-  era de otro frente. Un `useActividades(version)` lo borra y le da un solo lugar
-  al manejo de error, que hoy son dos.
-- **La adopción de `tests/fixtures/`** (7 archivos sobre 59, con cuatro firmas
-  distintas de builder). Es un cambio **ancho** sobre archivos de test que varios
-  frentes estaban tocando a la vez; migrarlo en paralelo es pedir un conflicto por
-  archivo. Vale la pena hacerlo cuando el backlog se trabaje de a un frente, y el
-  argumento del ítem sigue en pie: no falta el fixture, está escrito y no se usa.
+  `ListaActividades.tsx`). Sigue en `src/components/admin/`, que tiene dueño y
+  no es este frente: la extracción a `useActividades(version)` sigue siendo
+  correcta y sigue sin hacerse.
+- **La adopción de `tests/fixtures/`** — **reverificado el 2026-09-02, y el
+  número creció en vez de bajar.** La foto original era «7 archivos sobre 59,
+  cuatro firmas». Hoy `actividadCentinela` (`tests/fixtures/centinelas.ts`) ya
+  tiene **cuatro** consumidores en vez de uno
+  (`events-json-endpoint.integracion.test.ts`, `sitio-publico.integracion.test.ts`,
+  `eventsJson.test.ts`, `barrido-de-salidas-publicas.test.ts` — la adopción
+  avanzó sola, como efecto lateral de otro trabajo) pero los archivos que
+  siguen sin usarlo y construyen su propia actividad de ciclo a mano son más:
+  al menos una docena tienen un builder local con `esCiclo`/`sesiones` propio
+  y no importado de `tests/fixtures/`.
+
+  **Sigue sin hacerse, y por el mismo motivo que antes, más fuerte hoy que
+  el 2026-08-27**: es un cambio ancho sobre archivos de test compartidos, y
+  hay **cuatro frentes corriendo en paralelo ahora mismo** (B-236) — la
+  precondición del ítem («cuando el backlog se trabaje de a un frente») sigue
+  sin cumplirse, y forzarlo en este momento es la forma más rápida de pisarle
+  el archivo a alguien. El argumento de fondo sigue en pie: no falta el
+  fixture, está escrito, y cada mes que pasa sin migrar es un archivo más que
+  hay que tocar cuando se haga.
 
 El texto original queda abajo.
 
