@@ -61,41 +61,36 @@ paso 'Tests con emuladores (EXIGIR_EMULADOR=1)'
 if [ -z "${JAVA_HOME:-}" ] && [ -d '/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home' ]; then
   export JAVA_HOME='/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home'
 fi
-# Si los emuladores YA están arriba —`npm run emu` en otra terminal, que es como
-# se trabaja— `emulators:exec` intenta arrancar los suyos, encuentra los puertos
-# tomados y corta con "port taken". El gate fallaba entonces por el motivo
-# equivocado: los emuladores estaban, la suite pasaba, y el push no salía.
+# La detección de "¿ya hay emuladores?" salió a `scripts/emuladores-arriba.sh`
+# (B-180): era un `if` en bash que decide dos ramas del gate y no tenía test, y
+# el argumento es el mismo que sacó `que-deployar.sh` del YAML — una decisión que
+# no se puede probar se prueba en producción, y acá "producción" es el momento de
+# pushear. El motivo por el que la decisión existe está en el script.
 #
-# Un gate que falla por su propia plomería enseña a saltearlo, y ahí deja de ser
-# un gate. Así que se detecta el hub del emulador y, si contesta, se usa el que
-# está en vez de levantar otro.
-#
-# La detección se hace UNA vez y la contestan los pasos 3 y 4: los dos necesitan
-# lo mismo, y tenerla escrita dos veces fue justamente lo que dejó al paso 4
-# apuntando a un puerto que el paso 3 había apagado.
+# Se hace UNA vez y la contestan los pasos 3 y 4: los dos necesitan lo mismo, y
+# tenerla escrita dos veces fue justamente lo que dejó al paso 4 apuntando a un
+# puerto que el paso 3 había apagado.
+EMU=$(./scripts/emuladores-arriba.sh)
+EMU_ARRIBA=$(printf '%s\n' "$EMU" | sed -n 's/^arriba=//p')
+EMU_HUB=$(printf '%s\n' "$EMU" | sed -n 's/^hub=//p')
+HOST_FIRESTORE=$(printf '%s\n' "$EMU" | sed -n 's/^firestore=//p')
+HOST_AUTH=$(printf '%s\n' "$EMU" | sed -n 's/^auth=//p')
+HOST_STORAGE=$(printf '%s\n' "$EMU" | sed -n 's/^storage=//p')
+
 # B-219 — la base del emulador de ESTE checkout. El emulador es de la máquina,
 # no del working-tree: sin esto, el gate de un worktree vacía la base del vecino
 # a mitad de su corrida (y viceversa). El valor lo calcula un solo lugar,
 # `scripts/project-id-emulador.mjs`, que es de donde lo lee también
-# `vitest.config.ts` — dos derivaciones del mismo dato es la clase de B-88, y acá
-# el síntoma sería que el paso 4 siembra en una base y el paso 3 borra otra.
+# `vitest.config.ts`.
 PROJECT_ID_EMU=$(node scripts/project-id-emulador.mjs)
 export PUBLIC_FIREBASE_PROJECT_ID="$PROJECT_ID_EMU"
 printf '  (base del emulador para este checkout: %s)\n' "$PROJECT_ID_EMU"
 
-EMU_HUB="${FIREBASE_EMULATOR_HUB:-127.0.0.1:4400}"
-HOST_FIRESTORE="${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080}"
-if curl -sf --max-time 2 "http://${EMU_HUB}/emulators" >/dev/null 2>&1; then
-  EMU_ARRIBA=1
-else
-  EMU_ARRIBA=0
-fi
-
-if [ "$EMU_ARRIBA" = 1 ]; then
+if [ "$EMU_ARRIBA" = true ]; then
   printf '  (emuladores ya arriba en %s: se usan esos)\n' "$EMU_HUB"
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
-    FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099}" \
-    FIREBASE_STORAGE_EMULATOR_HOST="${FIREBASE_STORAGE_EMULATOR_HOST:-127.0.0.1:9199}" \
+    FIREBASE_AUTH_EMULATOR_HOST="$HOST_AUTH" \
+    FIREBASE_STORAGE_EMULATOR_HOST="$HOST_STORAGE" \
     EXIGIR_EMULADOR=1 npm test \
     || fallo 'la suite no pasa con los emuladores arriba'
 else
@@ -121,7 +116,7 @@ fi
 # detalle está en el script; acá solo se decide contra qué emulador corre, con la
 # misma detección del paso 3: el que ya está arriba, o uno efímero.
 paso 'Build del sitio y del panel, leyendo Firestore de verdad'
-if [ "$EMU_ARRIBA" = 1 ]; then
+if [ "$EMU_ARRIBA" = true ]; then
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
     ./scripts/build-contra-emulador.mjs || fallo 'el build no pasa o no leyó Firestore'
 else
