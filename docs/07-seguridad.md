@@ -1033,7 +1033,7 @@ BASE="https://firestore.googleapis.com/v1/projects/agenda-literaria/databases/(d
 curl -s "$BASE/actividades/<id>/versiones?key=$K"
 ```
 
-Y sobre el JSON, una vez que exista el sitio público (B-01):
+Y sobre el JSON, que desde **B-106** lo emite el build de verdad:
 
 ```bash
 npm run build

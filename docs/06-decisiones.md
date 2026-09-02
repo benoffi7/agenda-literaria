@@ -5081,6 +5081,19 @@ antes de esas tres cosas. Van juntos y no en cuatro entradas justamente por eso:
 tienen una sola causa, y separados alguien resuelve el primero sin darse cuenta
 de que el segundo se destraba con lo mismo.
 
+> ✅ **Y se destrabaron con lo mismo, al día siguiente: B-109 (2026-09-02).** Los
+> puntos 1 y 2 de abajo dicen «`/pasadas` todavía no existe» y «no hay sitemap
+> todavía», y las dos cosas existen. Lo que pasó con cada uno:
+>
+> - **el punto 1 se cerró como estaba previsto** —una línea en
+>   `DESTINO_DEL_MES_VENCIDO`— y es **B-281**, hecho el 2026-09-02;
+> - **el punto 2 quedó como este texto anticipaba**: las dos cosas conviven. La
+>   vencida no entra al sitemap (`mesesEnlazables`, no `mesesDelSitio`) **y**
+>   sigue emitiéndose con `noindex` para que su URL no se rompa.
+>
+> Los puntos 3 y 4 no dependían del dominio y siguen valiendo tal cual. Esta
+> entrada no se reescribe: la predicción y su cumplimiento valen más juntos.
+
 **1 · El aviso del mes vencido manda a `/`, no a `/pasadas`.**
 `/pasadas` es parte de **B-109** y todavía no existe. Enlazarla sería poner un 404
 en la única salida que ofrece la página vencida, que es peor que el problema que
