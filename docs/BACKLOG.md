@@ -4153,7 +4153,7 @@ incluida una guardia de que la copia no vuelva a nacer. Los componentes no se
 unificaron, y las dos diferencias que quedan (tope y qué mostrar con el input
 vacío) son ahora parámetros con motivo escrito.
 
-**Resuelto así (D-100):** se invirtió el orden, en
+**Resuelto así (D-111):** se invirtió el orden, en
 `src/lib/formulario/guardar.ts` — el caso de uso que B-70 sacó del componente.
 Verificado el modo de falla que queda: el evento público resuelve la etiqueta no
 registrada con el des-slug de D-11, o sea "Con Beca Parcial" en lugar de "Con
@@ -6633,7 +6633,35 @@ escrito acá, y el camino corto —una cajita como la del listado en vez de teñ
 la línea entera, medida con `contrasteCaladoDelTono` o `contrasteDelTono`, sin
 nada nuevo que medir— también. Si el dueño lo pide, se reabre con eso ya
 resuelto, que era el propósito de haberlo anotado.
-### B-345 · Cinco citas apuntan a D-100 para una decisión que es D-111 · P3
+### B-345 · Cinco citas apuntan a D-100 para una decisión que es D-111 — ✅ hecho (2026-09-02) · P3
+
+**Corregidas las dos heredadas que el ítem nombraba**, más una tercera que
+apareció buscándolas: `docs/BACKLOG.md` cuerpo de **B-72** («Resuelto así
+(D-100)» → D-111), cuerpo de **B-177** («Con el orden de escritura de D-100»
+→ D-111), y `docs/CHANGELOG.md` («el orden de escritura de B-71/D-100» →
+D-111) — esta última es irónica: es la propia entrada del changelog que
+**anunciaba** haber corregido las tres apariciones nuevas de este cruce
+(«D-187, `04-funcionalidades.md` y este CHANGELOG: los tres corregidos»), y
+una de las tres no se había tocado. Verificado que las otras dos sí:
+`D-187` y `04-funcionalidades.md` ya decían D-111.
+
+**Verificadas y dejadas como estaban, por ser citas correctas**: las cuatro
+apariciones de D-100 que hablan de su tema real —`taxonomia.ts`, la mitad
+cliente del §4.2 (`docs/04-funcionalidades.md:314`, `docs/BACKLOG.md:4151`,
+`docs/CHANGELOG.md:5420`)— y la definición misma en `docs/06-decisiones.md`.
+
+**Lo que se dejó sin resolver, a propósito y por prudencia:** dos citas más de
+D-100 en `docs/BACKLOG.md` (cuerpos de B-50 y B-35) que tampoco hablan de
+`taxonomia.ts` ni del orden de escrituras, sino de un tercer patrón —derivar
+un chequeo del grafo de imports real en vez de comparar literales, y sacar una
+decisión a un módulo puro con un único punto de entrada—. No encajan en
+ninguno de los dos casos que este ítem resuelve (D-100 real vs. D-111
+correcto), y no hay ningún D-número que las nombre con precisión: inventar uno
+sería el mismo error al revés. Quedan anotadas acá para quien quiera
+formalizar esa decisión con su propio número, en vez de seguir citando D-100
+por analogía.
+
+El texto original queda abajo.
 
 **Lo encontró el `auditor-documentacion` el 2026-09-02**, y las tres que este
 cambio había agregado ya se corrigieron. Quedan las heredadas.
@@ -7871,7 +7899,7 @@ destructiva—. Sin lo segundo, el código y la pantalla podían separarse en si
 
 ### B-177 · Nadie avisa cuando una etiqueta nueva no se registró — ✅ hecho (2026-09-02)
 
-Con el orden de escritura de D-100, si la actividad se guarda pero falla el alta
+Con el orden de escritura de D-111, si la actividad se guarda pero falla el alta
 de la etiqueta en `/opciones/*`, el guardado es un éxito y la etiqueta queda sin
 registrar. Es el modo de falla que se eligió a propósito —es recuperable
 tipeándola otra vez— pero hoy **no se ve**: `guardarActividad` devuelve

@@ -32,6 +32,21 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-345 — cinco citas de D-100 que eran D-111, encontrada una tercera al buscarlas
+
+`docs/BACKLOG.md` (cuerpos de B-72 y B-177) seguía citando D-100 para «primero
+la actividad, después las etiquetas nuevas», que es D-111 — D-100 es otra cosa
+(`taxonomia.ts`). Corregidas las dos, y de paso apareció una tercera en
+`docs/CHANGELOG.md`: la propia entrada que anunciaba haber corregido las tres
+apariciones nuevas del cruce («D-187, `04-funcionalidades.md` y este
+CHANGELOG: los tres corregidos») no había tocado la de este mismo archivo.
+Verificado que D-187 y `04-funcionalidades.md` sí decían D-111.
+
+Dejadas sin tocar, a propósito, las citas correctas de D-100 (su tema real) y
+dos citas de un tercer patrón sin D-número propio (B-50, B-35) que no encajan
+en ninguno de los dos casos de este ítem — inventarles un número habría sido
+el mismo error al revés.
+
 ### B-354 — «las once trampas del §13», corregido y ahora con red
 
 `docs/13-agentes.md:178` decía «las once trampas» cuando el §13 tiene trece
@@ -574,7 +589,7 @@ están y su uso tiene que contarse, y sobre la que falló es un no-op por D-103�
 nada lo fijaba.
 
 Los tres arreglados, con cinco mutaciones más. Y el auditor de trampas confirmó lo
-que había que confirmar: el orden de escritura de B-71/D-100 sigue intacto y el
+que había que confirmar: el orden de escritura de B-71/D-111 sigue intacto y el
 chequeo de clase lo sigue viendo; el import nuevo de `analytics-eventos` dentro de
 `coordenadas.ts` no arrastra Firebase al chunk del panel; y el `key={i}` de las
 filas de material **no** es una instancia nueva de la trampa 2 —el array no
