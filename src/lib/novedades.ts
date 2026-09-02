@@ -59,6 +59,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'las-demas-imagenes-se-ven',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'Si cargás más de una imagen, ahora se ven todas',
+    detalle:
+      'La página de la actividad mostraba solo la portada, así que la segunda y la tercera no ' +
+      'aparecían en ninguna parte. Ahora salen al final de la página, enteras y sin recortar. ' +
+      'La portada no cambió: sigue arriba, y sigue siendo la del preview del link y la de la ' +
+      'cartelera. A las otras solo las describe el epígrafe que les pongas.',
+    donde: 'Formulario, sección «Qué es» — el cargador de imágenes.',
+  },
+  {
     id: 'sitio-con-dominio-propio',
     fecha: '2026-09-02',
     version: '1.5.0',

@@ -7,6 +7,12 @@ quede el rastro de qué se rompió y por qué.
 Prioridades: **P0** rompe algo o pierde datos · **P1** bloquea el objetivo del
 proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
+> **Hueco de numeración: `B-297`, `B-298` y `B-299` no existen y no se borró nada.**
+> El último ítem abierto era B-296 y la tanda del 2026-09-02 arrancó a numerar en
+> **B-300** por reserva de números entre frentes en paralelo. Queda escrito acá para
+> que el salto no se lea como una entrada perdida. Ningún chequeo del repo exige
+> numeración contigua.
+
 ---
 
 ## Decisiones pendientes del usuario
@@ -511,9 +517,11 @@ y el nuevo en rojo).
 
 **Medido, no estimado** — los números y el método están en **D-149**.
 
-La cartelera es la **única** página del sitio que pide imágenes: la home no pide
-ninguna desde D-146 y el detalle pide una. Hoy, sin la Function de **B-220**, una
-imagen propia se sirve tal cual la subió quien organiza, hasta 3 MB.
+La cartelera es la **única** página del sitio que pide **muchas** imágenes: la home
+no pide ninguna desde D-146, y el detalle pide una si la actividad no tiene galería
+y hasta cuatro si la tiene (**B-296**; el techo por página está en **B-300**). Hoy,
+sin la Function de **B-220**, una imagen propia se sirve tal cual la subió quien
+organiza, hasta 3 MB.
 
 | | 2 flyers (hoy) | 30 flyers |
 |---|---|---|
@@ -1820,6 +1828,76 @@ solos cuando otro worktree stashea).
 con entradas de otros worktrees, **no las limpies**. Son el trabajo en curso de otro
 frente, y borrar una es la única forma de que esto sí pierda datos.
 
+### B-300 · Con la galería, el techo de peso de una página de detalle pasó de 3 MB a 12 MB · P1
+
+Salió de auditar **B-296** (**D-168** §3), no de un reporte aparte. Y no es trabajo
+nuevo: es el mismo **B-220** de siempre, con un número más fuerte para adelantarlo.
+
+Hasta la galería, la página de detalle servía **una** imagen, así que su peor caso
+legal era el tope de subida de DEC-7b: **3 MB**. Con hasta cuatro imágenes por
+actividad, el techo pasa a **12 MB** en una sola página — la que recibe el tráfico
+de Google y de Instagram.
+
+**Medido contra producción el 2026-09-02**, con el `Content-Length` real de las 30
+imágenes que hay cargadas: mediana **92,6 KB**, p90 **124,2 KB**, máximo **1091,5
+KB**. Las cuatro páginas con galería:
+
+| Actividad | Portada | Secundarias | Total |
+|---|---|---|---|
+| 2do Festival Literario San Isidro | 106,8 KB | 107,5 KB | 214,3 KB |
+| Desayuno epistolar | 60,9 KB | 51,0 KB | 111,9 KB |
+| Taller de cuento (Lamberti) | 34,0 KB | 96,8 KB | 130,8 KB |
+| **Usted está aquí** | **1091,5 KB** | 1808,5 + 326,7 KB | **3226,7 KB** |
+
+**Tres de las cuatro no son un problema** —+51 a +108 KB, por debajo de la mediana
+de una sola portada— y las otras 42 páginas no cambian un byte. El caso es la
+cuarta, y **ya pesaba eso antes de la galería**: su portada sola son 1,07 MB, o sea
+**11,8 veces** la mediana del sitio. La galería no lo crea, lo hace visible, y le
+suma 2,1 MB que se bajan solo si alguien scrollea hasta el final (las secundarias
+van `lazy` y al final de la página, D-168 §2).
+
+**Dos cosas para hacer, una barata y una cara:**
+
+1. **Barata y ya:** volver a subir las dos imágenes de «Usted está aquí»
+   recomprimidas. Un JPEG de 1408 × 768 no tiene por qué pesar 1,77 MB — es el
+   **59 %** del tope de 3 MB en una imagen que en pantalla mide 105px de ancho.
+   Es un gesto del dueño en el panel, no código.
+2. **Cara y la de fondo: B-220.** Sin variantes de imagen no hay nada más que
+   hacer del lado del código: las tres palancas que existen ya están puestas
+   (`lazy` salvo la portada, `width`/`height` más `aspect-ratio`, `decoding`), y
+   `sizes` sin `srcset` es decoración que parece optimización (D-149).
+
+El disparador escrito de B-220 sigue en **B-266**; esto es el segundo, y el que
+mueve el peor caso de una página en vez del de un recorrido.
+
+### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño · P3
+
+Anotado al cerrar **B-296** (**D-168** §1). DEC-7a (**D-125**) decidió que hay **un
+solo campo opcional** por imagen —el epígrafe— y que el texto alternativo sale del
+**título de la actividad**, a propósito, y con la contra escrita: con varias
+imágenes el mismo alternativo se repite. B-296 tuvo que elegir cómo vivir con eso
+—las secundarias quedaron decorativas, `alt=""`, y la cuenta se dice una vez en el
+encabezado— **sin tocar la decisión de fondo**, porque no es una decisión de
+implementación.
+
+**Lo que se pierde con la salida elegida, dicho explícito:** una imagen secundaria
+con contenido propio —la fachada del lugar, la tapa de un libro, la foto de la
+edición anterior— no se describe para quien usa un lector de pantalla, salvo que
+quien la cargue le escriba un epígrafe. Y hoy **ninguna de las cuatro secundarias
+de producción tiene epígrafe**, así que en la práctica no se describe ninguna.
+
+**Por qué DEC-7a lo descartó, y sigue siendo un buen argumento:** un campo
+obligatorio por imagen en un panel de una persona produce «foto» como texto
+alternativo, que es peor que un título descriptivo. Un campo **opcional** por
+imagen no tiene ese problema, pero suma un campo por fila a un formulario de 30+
+campos y hay que decidir qué pasa cuando está vacío — que es exactamente el caso
+que D-168 ya resolvió con `alt=""`.
+
+Vuelve a esta lista para que no se pierda, no para resolverse sola. Si el dueño
+dice que sí, el cambio es chico: un campo en el schema, uno en la fila del editor
+de imágenes, y en la plantilla `alt={imagen.textoAlternativo || ''}` — la tira ya
+está armada para recibirlo.
+
 ### B-220 · La Function que optimiza las imágenes propias (DEC-7d) · P1
 
 > **2026-09-01 — ahora hay números y un disparador.** Con `/cartelera` (B-265) las
@@ -1828,6 +1906,13 @@ frente, y borrar una es la única forma de que esto sí pierda datos.
 > y **D-149** — por pantalla aguanta indefinidamente gracias al `lazy`, por
 > recorrido completo se cae alrededor de los 20-25 flyers. La mención de abajo a
 > «la tarjeta del listado» quedó vieja con D-146: el listado no muestra imágenes.
+>
+> **2026-09-02 — segundo disparador, y es peor que el primero.** Con la galería del
+> detalle (B-296, D-168) el peor caso de **una sola página** pasó de 3 MB a 12 MB, y
+> ya hay una página real de 3,15 MB con una imagen de 1,77 MB adentro. Los números
+> por archivo están en **B-300**. La diferencia con B-266: aquello movía el costo de
+> un *recorrido*, esto mueve el de *una página* — y la de detalle es la que recibe
+> el tráfico de Google y de Instagram.
 
 **Es la mitad que la segunda tajada de B-167 dejó afuera a propósito**, y el criterio
 del corte fue el del repo: preferimos subir imágenes sin miniatura a no subir nada.
@@ -3061,7 +3146,7 @@ es confirmarlo en GA4 (DebugView), que es un paso de consola del dueño.
 **B-92 y B-118 son la misma observación sobre esta entrada, duplicada**: las dos
 decían que B-56 estaba desactualizado. Quedan cerradas con esto.
 
-### B-296 · El detalle muestra una imagen y la actividad puede tener cuatro · P2
+### B-296 · El detalle muestra una imagen y la actividad puede tener cuatro — ✅ hecho (2026-09-02)
 
 Lo reportó el dueño el 2026-09-02: «tiene imágenes pero no se ven». El síntoma era
 otra cosa —el build tenía siete minutos menos que la edición, y el rebuild estaba
@@ -3106,6 +3191,32 @@ Las salidas, con su costo:
 
 **Y una que se decide de paso:** el `og:image` sigue siendo la portada y nada más
 (B-109, B-295). Una galería no cambia eso — un preview tiene una imagen.
+
+**Cómo quedó.** Se eligió la segunda salida, corregida en un punto: las secundarias
+son **decorativas** (`alt=""`), y lo que eso callaría lo dice el `<h2>` de la
+sección **una sola vez y en prosa** —«Dos imágenes más»—, que es la salida de
+enumerar subida un nivel: del `alt` de cada imagen al nombre del grupo. El
+epígrafe, cuando está, es el `figcaption` de **su** imagen y **no** se promueve a
+`alt`: con el mismo texto en los dos lugares se anunciaría dos veces.
+
+Lo que descartó la primera salida no fue el argumento sino el dato: **de las 4
+imágenes secundarias que hay en producción, ninguna tiene epígrafe cargado**, así
+que «el epígrafe es el alt» habría descrito cero imágenes y dejado igual el caso
+sin epígrafe. **No se reabre DEC-7a**: no hay ningún campo nuevo.
+
+La portada no cambió en nada: sigue arriba, sigue siendo la única con `alt` propio,
+la del `og:image` y la única que muestra la cartelera. Con **una sola** imagen la
+sección no existe en el HTML, y ese es el 87 % de las actividades que tienen imagen.
+
+La tira va al final de la columna de contenido —no debajo de la portada— y eso es
+parte de la optimización: `loading="lazy"` solo sirve si las imágenes están de
+verdad abajo del pliegue. Sin lightbox, sin enlaces y sin una parada de tabulación
+más.
+
+Todo el razonamiento, con las cuatro salidas evaluadas y los pesos medidos por
+archivo, en **D-168**. Dejó dos pendientes anotados aparte: **B-300** (el techo de
+peso de una página de detalle subió de 3 MB a 12 MB) y **B-301** (un campo de texto
+alternativo por imagen, que reabre DEC-7a y es decisión del dueño).
 
 ---
 
@@ -6067,6 +6178,14 @@ decidió no automatizar*, que es la que se consulta antes de escribir un agente
 nuevo. Quien lo arregle tiene que **elegir cuál versión de cada texto queda** —no
 concatenarlas— y de paso revisar si alguna fila quedó describiendo un test que ya
 cambió de trabajo.
+
+**Y la misma cicatriz estaba en `docs/README.md`, arreglada de paso el 2026-09-02
+(B-296).** El paso 2 de «Antes de tocar nada» aparecía **tres veces**, con tres
+conteos distintos —2.148/92, 2.006/88 y 2.039/89— y con la continuación de la
+frase pegada al final de una de las líneas. Se colapsó a una sola, con el conteo
+medido en esa corrida: **2.175 tests en 93 archivos**. Lo de `13-agentes.md` sigue
+abierto: son ocho filas y hay que **elegir** cuál texto queda en cada una, que es
+trabajo de criterio y no de merge.
 
 ## Agentes y automatización del flujo (B-115 a B-124)
 

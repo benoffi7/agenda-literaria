@@ -160,7 +160,9 @@ src/
     cartelera.ts            qué afiches entran a /cartelera y en qué orden —
                             puro, y proyecta el DetallePublico, no el documento
     afiche.ts               la forma con la que se muestra una imagen: la
-                            proporción sale de la imagen y nadie recorta (D-147)
+                            proporción sale de la imagen y nadie recorta (D-147),
+                            más las columnas y el rótulo de la tira de imágenes
+                            secundarias del detalle (B-296, D-168)
     mesPublico.ts           qué meses tienen página, qué entra en cada uno y el
                             recorte de una actividad a un mes — puro (B-113)
     fechasPublicas.ts       las fechas del sitio, siempre con timeZone (trampa 1)

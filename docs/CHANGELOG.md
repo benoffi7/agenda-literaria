@@ -1,5 +1,119 @@
 # Changelog
 
+## 2026-09-02 · las imágenes que la actividad tenía y la página no mostraba
+
+**B-296.** `src/pages/actividad/[slug].astro` hacía `detalle.imagenes[0]` y pintaba
+esa sola, así que las actividades con dos o tres imágenes cargadas tenían imágenes
+que **no aparecían en ninguna salida del sitio**. Lo reportó el dueño como «tiene
+imágenes pero no se ven»; el síntoma inmediato era otro —el build tenía siete
+minutos menos que la edición— pero al investigarlo apareció esto.
+
+**Medido contra producción, leyendo Firestore:** 46 publicadas — 16 sin imagen, 26
+con una, 3 con dos y 1 con tres. Las 30 imágenes son **todas propias**, ninguna
+externa. **Eso decidió la forma**: el caso normal es una sola imagen, así que **con
+una sola la sección nueva no existe en el HTML** y esa página es la de antes. Es el
+87 % de las que tienen imagen, y el gate mecánico lo verifica sobre el archivo de
+verdad.
+
+Las secundarias van al final de la columna de contenido, antes del colofón
+«Organiza»: grilla de dos columnas —tres en `sm` cuando son tres—, cada una con su
+propia proporción y sin recortar (D-147), `loading="lazy"`, `decoding="async"` y la
+caja reservada con `width`/`height` más el `aspect-ratio` de esa imagen. **La
+posición es parte de la optimización y no una preferencia de diseño**: `lazy` es una
+pista que el navegador atiende según la distancia al viewport, y pegadas a la
+portada se piden igual. La portada no cambia: sigue arriba, sigue siendo el
+`og:image` y sigue siendo la única que muestra la cartelera.
+
+### La decisión de accesibilidad es D-168, y era el problema real
+
+DEC-7a (D-125) deriva el texto alternativo del **título de la actividad**, a
+propósito. Con una imagen funciona; **con tres, el mismo alt tres veces es peor que
+no tenerlo** — se anuncia lo mismo tres veces y no se distingue ninguna. De las
+cuatro salidas que B-296 dejó planteadas:
+
+- **las secundarias van con `alt=""`** —decorativas—, y la portada conserva el suyo;
+- **lo que eso callaría lo dice el `<h2>` una sola vez y en prosa:** «Dos imágenes
+  más» (`rotuloDeGaleria`). Es la salida de *enumerar* subida un nivel: del `alt` de
+  cada imagen al nombre del grupo, así que se dice una vez en vez de tres y no suena
+  a contador;
+- **el epígrafe es el `figcaption` de su imagen y nunca el `alt`**: con el mismo
+  texto en los dos lugares se anunciaría dos veces, y encima el `figcaption` lo ve
+  todo el mundo.
+
+Lo que descartó la salida «el epígrafe es el alt» no fue el argumento sino el dato:
+**ninguna de las 4 secundarias de producción tiene epígrafe cargado**, así que habría
+descrito cero imágenes. **No se reabre DEC-7a** — no hay ningún campo nuevo. Lo que
+la salida elegida renuncia está escrito: una foto con contenido propio no se
+describe. Eso es **B-301**, y es decisión del dueño.
+
+**Sin lightbox**, y por eso la tira no agrega ni una parada al orden de tabulación:
+la página tiene un presupuesto de 0 KB de JavaScript y un visor modal accesible es
+mucho más de lo que este ítem pedía.
+
+### El peso, con los números
+
+Sin la Function de recompresión (B-220, DEC-7d) una imagen propia se sirve tal cual
+la subieron. `Content-Length` real de las 30: mediana **92,6 KB**, p90 **124,2 KB**,
+máximo **1091,5 KB**. Las cuatro páginas con galería suman 214,3 / 111,9 / 130,8 y
+**3226,7 KB**. El markup no cuesta nada: **+165 B gzippeados** por dos secundarias,
+medido sobre `dist/`.
+
+Tres de las cuatro se sostienen sin discusión y las otras 42 páginas no cambian un
+byte. **La cuarta no se sostiene, y no se sostenía ya antes de la galería:** «Usted
+está aquí» tiene una portada de 1,07 MB —11,8 veces la mediana— y una secundaria de
+1,77 MB, que es el 59 % del tope de 3 MB. Y **el techo se movió**: con una imagen
+servida el peor caso legal de una página de detalle era 3 MB, y con cuatro son 12
+MB. Eso es **B-300**, que es el segundo disparador de B-220 y el primero que mueve
+el costo de *una página* en vez de un recorrido.
+
+### La red
+
+`tests/galeria-del-detalle.test.ts` — 27 casos, en las dos mitades de D-140: qué
+decide el view-model sobre las funciones de verdad, y qué escribe la plantilla
+leyendo el `.astro`. Y `scripts/build-contra-emulador.mjs` gana una quinta actividad
+sembrada —tres imágenes de proporciones distintas, con la portada **segunda** en el
+array a propósito— y ocho pasos sobre el HTML construido, que es lo único que puede
+ver tres medidas atravesando una plantilla que vitest no renderiza.
+
+### Mutaciones
+
+18 aplicadas, 18 detectadas. Las cuatro que importan: **la portada dejando de ser
+la primera** (sacar el reordenamiento de `imagenesDeDetalle` — la cabecera muestra la
+foto del patio *y* el flyer baja a la tira con `alt=""`, que es B-268 con una segunda
+cara peor); **una secundaria heredando el `alt` de la portada**; **el `eager` en una
+secundaria** (idéntico en pantalla, 1,07 MB → 3,15 MB en la primera carga); y **el
+caso de una sola imagen** (`slice(0)` la pinta dos veces, con un `<h2>` que dice «Una
+imagen más» sobre la misma imagen — y en el gate mecánico eso pone en rojo cinco de
+los ocho pasos).
+
+Las otras catorce: el epígrafe promovido a `alt` —invisible en el HTML de hoy porque
+el epígrafe está vacío, así que **solo** la ve un aserto sobre el fuente—,
+`fetchpriority` en una secundaria, la caja sin reservar, el `referrerpolicy` borrado,
+el tope de alto de la portada aplicado a una celda, la imagen envuelta en un enlace
+al JPEG, el `<h2>` sin la cuenta, la grilla escrita a mano en la plantilla,
+`columnasDeGaleria` sin tope o siempre en 1, `rotuloDeGaleria` siempre en plural o
+sin fallback, la grilla sin `items-start` y el `object-cover`.
+
+### Lo que encontraron los auditores
+
+**Privacidad, cuatro hallazgos, uno P1.** El fixture nuevo sembraba `storagePath` en
+las tres imágenes «para que el barrido cubra la salida nueva» y **el barrido no
+estaba**: el único barrido de centinelas sobre HTML corría sobre la cancelada, que
+tiene una sola imagen y por lo tanto no genera la sección. Se agregó, sobre la página
+con galería **y** sobre la publicada, que tampoco se barría. Los otros tres: el
+centinela del epígrafe estaba en la imagen que el `events.json` ignora, así que ese
+aserto pasaba sin probar nada; la trampa 13 tenía red en la cartelera y no acá, y el
+detalle **pasó a ser** una página de varias imágenes; y `src/lib/afiche.ts` produce
+ahora texto de la salida 6 y no estaba en ninguna de las tres tablas de productores.
+
+**Documentación:** el checklist completo, más dos drift reales. `D-149` y `B-266`
+decían «el detalle pide una», premisa que sostiene su argumento y que dejó de ser
+cierta; las dos quedan corregidas sin reescribir el original. Y `docs/README.md`
+tenía el paso 2 de «Antes de tocar nada» **tres veces**, con tres conteos distintos:
+se colapsó a uno, con el conteo de esta corrida (2.175 tests en 93 archivos). La
+misma cicatriz en `13-agentes.md` sigue siendo **B-294** — ahí hay que *elegir* cuál
+texto queda en cada fila, y eso es criterio, no merge.
+
 ## 2026-09-02 · el dominio propio y la marca
 
 **`https://agendaleh.ar` es el sitio.** B-109, que estaba bloqueado esperando el

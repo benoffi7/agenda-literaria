@@ -814,6 +814,10 @@ título y la fecha, que en un flyer están tipografiados adentro del JPEG. Lo qu
 resuelve el tope de alto y no la proporción fija (**D-144**, corregido por D-147).
 Sin imagen no hay hueco: la ficha es lo primero.
 
+**Arriba va una sola imagen: la portada.** Una actividad puede tener hasta cuatro
+(DEC-7b) y las demás salen **al final del contenido** — ver «Las demás imágenes»
+más abajo. Hasta el 2026-09-02 no salían a ninguna parte (**B-296**).
+
 Antes que nada, si corresponde, **un solo aviso**: se canceló, ya pasó, la inscripción
 cerró o el cupo está completo. Los cuatro pueden valer a la vez y mostrarlos apilados
 es la forma de que no se lea ninguno, así que la prioridad —del más irreversible al
@@ -855,6 +859,29 @@ el próximo marcado, y el título **sin repetir la cuenta** que la ficha ya dio
 (**B-258**)—, quién lo da con su bio, el material, cada forma de cursar con su sede y
 su link al mapa, y quién organiza.
 
+**Las demás imágenes** (**B-296**, **D-168**). Al final del contenido, antes del
+colofón de quién organiza, una tira con las imágenes que no son la portada: dos
+columnas —tres en escritorio cuando son tres—, cada una entera y con **su** propia
+proporción, diferidas (`loading="lazy"`) y con la caja reservada para que no salte
+nada al cargar. **Con una sola imagen la sección no existe**, y ese es el caso del
+87 % de las actividades que tienen imagen (26 de 30, medido el 2026-09-02).
+
+Va al final y no debajo de la portada por tres motivos que apuntan al mismo lugar:
+la pregunta de la página se contesta arriba, `loading="lazy"` solo sirve si las
+imágenes están de verdad abajo del pliegue, y las secundarias son de apoyo — el
+afiche es la portada.
+
+**El texto alternativo de las secundarias está vacío a propósito**, y el
+encabezado dice cuántas hay: «Dos imágenes más». DEC-7a deriva el texto
+alternativo del título de la actividad, y repetido en tres imágenes es peor que no
+tenerlo — un lector de pantalla anuncia tres veces lo mismo y no distingue
+ninguna. El **epígrafe**, cuando está cargado, es el pie de **su** imagen y es lo
+único que la describe. Toda la discusión, con las cuatro salidas que se evaluaron
+y los pesos medidos, en **D-168**.
+
+**Sin lightbox:** la tira no lleva enlaces ni JavaScript, y no agrega ninguna
+parada al orden de tabulación.
+
 **SEO:** `<title>` con el título de la actividad primero y el barrio adentro, `meta
 description` con el resumen, y datos estructurados de `schema.org` — un `Event`
 para una fecha suelta y un `EventSeries` con un `subEvent` por encuentro para un
@@ -889,6 +916,10 @@ se dibuja una grilla vacía: se dice qué es la página y se manda a la agenda.
 Qué entra: **una imagen por actividad** (la portada, que es el flag de «esta es la
 que quiero que se vea al compartir») y **solo lo que todavía va a pasar**, la misma
 regla que la home. Ordenado por fecha próxima, con desempate por título.
+
+Eso **no cambió con B-296**: la pared sigue mostrando una sola por actividad. Las
+demás se ven en la página de la actividad, que es donde tiene sentido mirarlas; una
+pared con las cuatro deja de ser una pared de flyers y pasa a ser un álbum.
 
 Cada afiche lleva al pie una regla fina y tres líneas —tipo y fecha, título,
 lugar— y el epígrafe si lo hay. El bloque entero es el enlace.
