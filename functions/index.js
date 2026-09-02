@@ -13,6 +13,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
 import { planificar } from './calendario.js';
 import {
+  decidirAnteFallo,
   idDeEvento,
   mapaDeEtiquetas,
   mismasEtiquetas,
@@ -244,12 +245,35 @@ export const syncCalendar = onDocumentWritten('actividades/{id}', async (event) 
         logger.info('evento borrado', { id, sesion: op.id });
       }
     } catch (e) {
-      // 404 o 410 en un borrado: el evento ya no estaba. Es el resultado
-      // buscado, no un error — se marca igual para limpiar el id colgado.
+      // Qué significa el fallo lo decide `decidirAnteFallo` (B-125), que es
+      // pura y tiene su tabla testeada; acá solo se ejecuta el efecto.
       const code = e?.code ?? e?.response?.status;
-      if (op.tipo === 'borrar' && (code === 404 || code === 410)) {
+      const { accion, motivo } = decidirAnteFallo(op, code);
+
+      if (accion === 'limpiar-id') {
         ids.set(op.id, null);
-        logger.warn('el evento ya no existía en Calendar', { id, sesion: op.id });
+        logger.warn('el evento ya no existía en Calendar', { id, sesion: op.id, motivo });
+      } else if (accion === 'recrear') {
+        // B-125 — alguien borró el evento a mano y el encuentro sigue
+        // publicado: se repone. Sin esto el id colgado hacía que cada edición
+        // volviera a emitir `actualizar` contra un evento inexistente, así que
+        // el encuentro se perdía del calendario público para siempre.
+        try {
+          const eventId = await crearEvento(cal, op);
+          ids.set(op.id, eventId);
+          logger.warn('el evento no estaba en Calendar: se recreó', {
+            id,
+            sesion: op.id,
+            eventId,
+            motivo,
+          });
+        } catch (e2) {
+          logger.error('falló recrear un evento borrado a mano', {
+            id,
+            sesion: op.id,
+            error: e2?.message,
+          });
+        }
       } else {
         // No se corta el loop: un encuentro que falla no debe dejar los otros
         // siete sin sincronizar.
