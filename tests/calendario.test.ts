@@ -5,6 +5,8 @@ import {
   construirEvento,
   construirLinkMapa,
   construirUbicacion,
+  elEventoNumeraElCiclo,
+  numeroDeEncuentro,
   planificar,
   TIMEZONE,
 } from '../functions/calendario.js';
@@ -398,6 +400,244 @@ describe('numeración del ciclo — cancelar no renumera (B-84, D-95)', () => {
   it('el total no cambia por cancelar, así que ningún otro evento se toca', () => {
     const ops = planificar(ciclo(), conTercerCancelado);
     expect(ops.filter((o: { tipo: string }) => o.tipo === 'actualizar')).toHaveLength(0);
+  });
+});
+
+/**
+ * B-163 — la cuenta del encuentro, una sola vez.
+ *
+ * `numeroDeEncuentro` es la aritmética que comparten el "Encuentro 2 de 8" del
+ * evento público y el "2 de 8" de la vista calendario del panel
+ * (`encuentrosDe`, D-70), que la importa por `@calendario` (D-20). Antes cada
+ * lado ordenaba y contaba por su cuenta: coincidían porque los dos habían
+ * llegado al mismo criterio, no porque fuera el mismo código, y eso es lo que
+ * D-71 y D-20 evitan. B-84 fue exactamente esa separación.
+ *
+ * `elEventoNumeraElCiclo` es la otra mitad, y a propósito está aparte: es la
+ * **puerta**, o sea la decisión de si el evento muestra el número. Sigue siendo
+ * la del evento (`esCiclo` tildado y más de una sesión) y no la del panel, que
+ * es la mitad abierta de B-163.
+ */
+describe('numeroDeEncuentro — la cuenta que comparten el panel y el evento (B-163)', () => {
+  it('numera desde 1 sobre el total de sesiones del array', () => {
+    const a = ciclo();
+    expect(numeroDeEncuentro(a, a.sesiones[0]!)).toEqual({ indice: 1, total: 8 });
+    expect(numeroDeEncuentro(a, a.sesiones[7]!)).toEqual({ indice: 8, total: 8 });
+  });
+
+  it('cuenta por fecha y no por posición en el array (trampa 2)', () => {
+    // El formulario deja mover las filas: el array no está ordenado por fecha.
+    const alReves = ciclo({ sesiones: [...sesionesSemanales(8)].reverse() });
+    const primeraEnElTiempo = sesionesSemanales(8)[0]!;
+    expect(numeroDeEncuentro(alReves, primeraEnElTiempo)).toEqual({ indice: 1, total: 8 });
+  });
+
+  it('los cancelados ocupan su número (D-95)', () => {
+    const conTercerCancelado = ciclo({
+      sesiones: sesionesSemanales(8, (i) => (i === 2 ? { cancelada: true } : {})),
+    });
+    expect(numeroDeEncuentro(conTercerCancelado, conTercerCancelado.sesiones[2]!)).toEqual({
+      indice: 3,
+      total: 8,
+    });
+    // Y el que viene después no se corre.
+    expect(numeroDeEncuentro(conTercerCancelado, conTercerCancelado.sesiones[5]!)).toEqual({
+      indice: 6,
+      total: 8,
+    });
+  });
+
+  it('devuelve null si la sesión no es de esa actividad', () => {
+    expect(numeroDeEncuentro(ciclo(), sesion({ id: 'ses_de_otra' }))).toBeNull();
+    expect(numeroDeEncuentro(ciclo({ sesiones: [] }), sesion())).toBeNull();
+  });
+
+  it('tolera Timestamp, Date, número y string: el panel no manda Timestamps siempre', () => {
+    // El módulo lo comparte el panel (D-20) y `encuentrosDe` trabaja con lo que
+    // haya en memoria. Con un `inicio` que no fuera Timestamp, la versión
+    // anterior lo contaba como 0 y lo ponía primero.
+    const inicio = '2026-09-10T22:00:00Z';
+    const mezclado = ciclo({
+      sesiones: [
+        { ...sesion({ id: 'ses_b' }), inicio: new Date(inicio), fin: new Date(inicio) },
+        { ...sesion({ id: 'ses_a' }), inicio: '2026-09-03T22:00:00Z', fin: inicio },
+      ],
+    });
+    expect(numeroDeEncuentro(mezclado, mezclado.sesiones[1]!)).toEqual({ indice: 1, total: 2 });
+    expect(numeroDeEncuentro(mezclado, mezclado.sesiones[0]!)).toEqual({ indice: 2, total: 2 });
+  });
+
+  it('la descripción del evento dice exactamente lo que dice la cuenta', () => {
+    const desalineados: string[] = [];
+    for (const a of [ciclo(), ciclo({ sesiones: sesionesSemanales(2) }), ciclo({ sesiones: [...sesionesSemanales(8)].reverse() })]) {
+      for (const s of a.sesiones as { id: string }[]) {
+        const numero = numeroDeEncuentro(a, s)!;
+        const texto = construirDescripcion(a, s, LABELS);
+        if (!texto.includes(`Encuentro ${numero.indice} de ${numero.total}`)) {
+          desalineados.push(`${s.id}: la cuenta dice ${numero.indice}/${numero.total}`);
+        }
+      }
+    }
+    expect(desalineados).toEqual([]);
+  });
+});
+
+describe('elEventoNumeraElCiclo — la puerta, aparte de la cuenta (B-163)', () => {
+  it('numera un ciclo tildado de dos o más encuentros', () => {
+    expect(elEventoNumeraElCiclo(ciclo())).toBe(true);
+    expect(elEventoNumeraElCiclo(ciclo({ sesiones: sesionesSemanales(2) }))).toBe(true);
+  });
+
+  it('no numera sin `esCiclo`, aunque haya tres sesiones (la mitad abierta de B-163)', () => {
+    const tresSinCiclo = actividad({ esCiclo: false, sesiones: sesionesSemanales(3) });
+    expect(elEventoNumeraElCiclo(tresSinCiclo)).toBe(false);
+    expect(construirDescripcion(tresSinCiclo, tresSinCiclo.sesiones[1]!, LABELS)).not.toContain(
+      'Encuentro',
+    );
+    // Pero la cuenta existe igual: el panel la usa para su "2 de 3".
+    expect(numeroDeEncuentro(tresSinCiclo, tresSinCiclo.sesiones[1]!)).toEqual({
+      indice: 2,
+      total: 3,
+    });
+  });
+
+  it('no numera un ciclo de un solo encuentro', () => {
+    expect(elEventoNumeraElCiclo(ciclo({ sesiones: sesionesSemanales(1) }))).toBe(false);
+  });
+
+  it('no explota sin actividad ni sin sesiones', () => {
+    expect(elEventoNumeraElCiclo(null)).toBe(false);
+    expect(elEventoNumeraElCiclo({})).toBe(false);
+  });
+});
+
+/**
+ * B-162 — la suposición que sostiene la guarda anti-loop, escrita.
+ *
+ * La guarda del §7.1 no compara una lista de campos: compara el **payload**
+ * que se le mandaría a Calendar antes y después (D-07). Eso es lo que la hace
+ * imposible de romper por olvido —agregar un dato a la descripción propaga
+ * solo, sin tocar ninguna lista— y es la decisión correcta.
+ *
+ * Su precio es una suposición que en ningún lado estaba dicha: **que lo que
+ * Calendar tiene es lo que este código habría escrito a partir de `antes`.**
+ * Los dos lados de la comparación se calculan con el código de **hoy**, así que
+ * un cambio en *cómo se arma* la descripción es invisible para la guarda: los
+ * eventos ya publicados se quedan con el texto viejo y no se emite ninguna
+ * operación.
+ *
+ * Pasó una vez y quedó asentado: antes de D-95, `posicionEnCiclo` numeraba
+ * sobre las sesiones **no canceladas**, así que un ciclo de ocho con el tercero
+ * cancelado publicó "Encuentro 5 de 7" para el sexto. Hoy el mismo documento
+ * calcula "Encuentro 6 de 8" a los dos lados de la guarda: idénticos, cero ops,
+ * y el suscripto sigue leyendo "de 7". La divergencia solo se ve desde afuera.
+ *
+ * **Esto no se arregla acá y es a propósito.** Reconciliar de verdad pide leer
+ * Calendar, que es B-125 y necesita una identidad que el panel no tiene (D-06).
+ * Lo que este bloque hace es dejar la propiedad **medida**, para que la próxima
+ * vez que alguien cambie cómo se arma la descripción sepa, antes de mergear,
+ * que los eventos viejos no se van a poner al día solos.
+ */
+describe('la guarda compara payloads recalculados, no lo que Calendar tiene (B-162)', () => {
+  /**
+   * El texto que un ciclo con un encuentro cancelado publicó **antes de D-95**,
+   * cuando la numeración salteaba los cancelados. Se escribe a mano porque es
+   * justamente lo que el código de hoy ya no sabe producir.
+   */
+  const NUMERO_VIEJO = 'Encuentro 5 de 7';
+
+  /**
+   * El ciclo **ya asentado** con el tercero cancelado, que no es lo mismo que el
+   * ciclo en el que se acaba de cancelar: una sesión cancelada no conserva su
+   * `calendarEventId`, porque al borrar el evento `syncCalendar` repone `null`
+   * en esa sesión. Un fixture con `cancelada: true` y un id de evento vivo
+   * describe un estado que el sistema no puede tener asentado, y le hace emitir
+   * un borrado de más a `planificar` en cada escritura posterior — es la misma
+   * advertencia que `tests/fixtures/ciclo.ts` dejó escrita (B-135). El caso de
+   * la transición ya tiene su test en «cancelar el tercero de ocho borra solo el
+   * suyo».
+   */
+  const conTercerCancelado = () =>
+    ciclo({
+      sesiones: sesionesSemanales(8, (i) =>
+        i === 2 ? { cancelada: true, calendarEventId: null } : {},
+      ),
+    });
+
+  it('el código de hoy numera distinto de lo que ese ciclo tiene publicado', () => {
+    const a = conTercerCancelado();
+    const sexto = a.sesiones[5]!;
+    expect(construirDescripcion(a, sexto, LABELS)).toContain('Encuentro 6 de 8');
+    expect(construirDescripcion(a, sexto, LABELS)).not.toContain(NUMERO_VIEJO);
+  });
+
+  it('y volver a guardarlo sin tocar nada no emite ninguna operación', () => {
+    // Los dos lados se recalculan con el código de hoy: idénticos. La guarda
+    // no tiene de dónde ver que el evento publicado dice otra cosa.
+    expect(planificar(conTercerCancelado(), conTercerCancelado(), LABELS)).toEqual([]);
+  });
+
+  it('tampoco la ve un cambio que no altera el payload (la difusión interna)', () => {
+    const antes = conTercerCancelado();
+    const despues = {
+      ...conTercerCancelado(),
+      difusion: { arrobar: ['@otro'], notas: 'otra cosa' },
+    };
+    expect(planificar(antes, despues, LABELS)).toEqual([]);
+  });
+
+  /**
+   * Cómo se cura hoy, y es el camino que el ítem describe: cualquier cambio que
+   * **sí** salga al evento reescribe esos eventos, y ahí el número se pone al
+   * día de paso. Para forzarlo hay que editar algo a mano en las actividades
+   * afectadas — pocas, y las lista la vista calendario (los cancelados se ven
+   * en gris).
+   */
+  it('un cambio que sí sale al evento los pone al día de paso', () => {
+    const antes = conTercerCancelado();
+    const despues = { ...conTercerCancelado(), titulo: 'Título corregido' };
+
+    const ops = planificar(antes, despues, LABELS) as {
+      tipo: string;
+      id: string;
+      evento: { description: string };
+    }[];
+
+    // Los siete que tienen evento: el cancelado no (§7.3).
+    expect(ops).toHaveLength(7);
+    expect(ops.every((o) => o.tipo === 'actualizar')).toBe(true);
+    for (const op of ops) {
+      expect(op.evento.description).toContain('de 8');
+      expect(op.evento.description).not.toContain(NUMERO_VIEJO);
+    }
+  });
+
+  /**
+   * La forma general de la suposición, para que no haya que volver a razonarla
+   * caso por caso: si `antes` y `despues` producen el mismo payload, no hay
+   * operaciones — **cualquiera sea el texto que Calendar tenga guardado**. Es
+   * la propiedad buena de D-07 y el límite de B-162 a la vez.
+   */
+  it('la propiedad, en general: mismo payload recalculado ⇒ cero operaciones', () => {
+    const conOps: string[] = [];
+    // Todos con sus eventos ya creados: una sesión sin `calendarEventId` emite
+    // `crear` y eso no es la guarda, es el diff haciendo su trabajo.
+    const conEvento = [sesion({ calendarEventId: 'evt_1' })];
+    for (const a of [
+      ciclo(),
+      conTercerCancelado(),
+      actividad({ sesiones: conEvento }),
+      completa({ sesiones: conEvento }),
+    ]) {
+      // Mismo contenido, distinta identidad de objeto en los dos niveles: la
+      // comparación es por valor y no por referencia.
+      const copia = {
+        ...a,
+        sesiones: (a.sesiones as Record<string, unknown>[]).map((s) => ({ ...s })),
+      };
+      if (planificar(a, copia, LABELS).length > 0) conOps.push(String(a.titulo));
+    }
+    expect(conOps).toEqual([]);
   });
 });
 
@@ -867,6 +1107,359 @@ describe('planificar — el payload propaga los campos nuevos', () => {
     const antes = completa({ sesiones: [s], material: { tiene: false, items: [] } });
     const despues = completa({ sesiones: [s] });
     expect(planificar(antes, despues, LABELS)).toHaveLength(1);
+  });
+});
+
+/**
+ * B-161 — el costo de cada edición, medido sobre el ciclo de ocho.
+ *
+ * El bloque de arriba verifica *que* un campo propaga al evento; **no** verifica
+ * *a cuántos*. El ítem lo dejó así a propósito —sobre un ciclo, esos cinco tests
+ * pasarían a esperar ocho ops y dirían menos— y pidió releerlo con el mismo ojo
+ * cada vez que se toque el diff. Esta es esa relectura: los mismos campos, más
+ * los que ya tenían su test de trampa 9, medidos en una sola tabla sobre el
+ * fixture canónico del §2.2.
+ *
+ * **Por qué el número importa y no solo el "propaga".** El costo de una edición
+ * es cuántos eventos ya publicados se reescriben, y eso es el argumento que
+ * gobierna D-95, B-84, B-160 y B-162: a quien tiene el encuentro agendado se le
+ * mueve el evento. Un `actualizar` de más no rompe ningún test que solo
+ * pregunte "¿propagó?", y es justamente el daño que costó caro. Con la tabla, un
+ * cambio en cómo se arma la descripción no puede pasar sin que el número cambie.
+ *
+ * **`borrar` + `crear` nunca es una respuesta válida** (§7.2, trampa 2): pierde
+ * los recordatorios y las suscripciones. La tabla lo cuenta aparte para que un
+ * "arreglo" que recree eventos no pueda esconderse detrás del total.
+ */
+describe('planificar — cuántos eventos reescribe cada edición (B-161)', () => {
+  /** El ciclo del §2.2, con **todos** los campos cargados (`completa`). */
+  const cicloCompleto = (over: Record<string, unknown> = {}) =>
+    completa({ esCiclo: true, sesiones: sesionesSemanales(8), ...over });
+
+  const ENCUENTROS = 8;
+
+  type Costo = { crear: number; actualizar: number; borrar: number };
+
+  const costo = (antes: unknown, despues: unknown): Costo => {
+    const ops = planificar(antes, despues, LABELS) as { tipo: string }[];
+    return {
+      crear: ops.filter((o) => o.tipo === 'crear').length,
+      actualizar: ops.filter((o) => o.tipo === 'actualizar').length,
+      borrar: ops.filter((o) => o.tipo === 'borrar').length,
+    };
+  };
+
+  const nada: Costo = { crear: 0, actualizar: 0, borrar: 0 };
+  /** El ciclo entero: lo que cuesta cualquier cambio de la **actividad**. */
+  const todos: Costo = { crear: 0, actualizar: ENCUENTROS, borrar: 0 };
+  /** Un solo encuentro: lo que tiene que costar un cambio de **una** sesión. */
+  const uno: Costo = { crear: 0, actualizar: 1, borrar: 0 };
+
+  /** La misma sesión, editada por id: nunca por índice (§7.2, trampa 2). */
+  const editando = (id: string, cambio: Record<string, unknown>) =>
+    cicloCompleto({
+      sesiones: sesionesSemanales(8, (i) => (`ses_${i}` === id ? cambio : {})),
+    });
+
+  const CASOS: { nombre: string; antes: unknown; despues: unknown; esperado: Costo }[] = [
+    // ── de la actividad: se propagan a los ocho (trampa 9) ────────────
+    {
+      nombre: 'cambiar el título',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ titulo: 'Otro título' }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar la descripción',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ descripcion: 'Otra cosa' }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar la sede',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ sede: { ...sedeCompleta, direccion: 'Corrientes 1234' } }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar el arancel',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ arancel: { tipo: 'gratis', notas: '' } }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar el organizador',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ organizador: { nombre: 'Otro', instagram: '', web: '' } }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar la inscripción',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({
+        inscripcion: {
+          requiere: true,
+          via: 'whatsapp',
+          destino: 'https://wa.me/1',
+          cupo: 5,
+          cierra: null,
+        },
+      }),
+      esperado: todos,
+    },
+    {
+      nombre: 'marcar el cupo completo (B-97)',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({
+        inscripcion: {
+          requiere: true,
+          via: 'mail',
+          destino: 'hola@casabrandon.example',
+          cupo: 12,
+          completo: true,
+        },
+      }),
+      esperado: todos,
+    },
+    {
+      nombre: 'tildar «publicar el link» (D-15)',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({
+        online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: true },
+      }),
+      esperado: todos,
+    },
+    {
+      nombre: 'agregar material',
+      antes: cicloCompleto({ material: { tiene: false, items: [] } }),
+      despues: cicloCompleto(),
+      esperado: todos,
+    },
+    {
+      nombre: 'corregir el libro presentado (DEC-1)',
+      antes: cicloCompleto({ libro: { titulo: 'Los detectives salvages', autor: '' } }),
+      despues: cicloCompleto({ libro: { titulo: 'Los detectives salvajes', autor: '' } }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar los tags',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ tags: ['narrativa', 'poesia'] }),
+      esperado: todos,
+    },
+    {
+      nombre: 'cambiar el tipo de actividad',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ tipo: 'taller' }),
+      esperado: todos,
+    },
+
+    // ── de un encuentro: uno solo (§7.2) ──────────────────────────────
+    {
+      nombre: 'cambiar el tema del tercero',
+      antes: cicloCompleto(),
+      despues: editando('ses_2', { tema: 'Otro tema' }),
+      esperado: uno,
+    },
+    {
+      nombre: 'cambiar la lectura del tercero',
+      antes: cicloCompleto(),
+      despues: editando('ses_2', { lectura: 'Otra lectura' }),
+      esperado: uno,
+    },
+    {
+      nombre: 'correr la fecha del tercero un día',
+      antes: cicloCompleto(),
+      despues: editando('ses_2', {
+        inicio: ts('2026-09-18T22:00:00Z'),
+        fin: ts('2026-09-19T00:00:00Z'),
+      }),
+      esperado: uno,
+    },
+    {
+      nombre: 'cancelar el tercero (B-84, D-95)',
+      antes: cicloCompleto(),
+      despues: editando('ses_2', { cancelada: true }),
+      esperado: { crear: 0, actualizar: 0, borrar: 1 },
+    },
+
+    // ── nada que hacer ────────────────────────────────────────────────
+    {
+      nombre: 'editar la difusión interna',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ difusion: { arrobar: ['@otro'], notas: 'otra cosa' } }),
+      esperado: nada,
+    },
+    {
+      nombre: 'cambiar el link privado de la reunión (§5.1)',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({
+        online: { plataforma: 'zoom', url: 'https://zoom.us/j/otro', urlPublica: false },
+      }),
+      esperado: nada,
+    },
+    {
+      nombre: 'el write-back de los ocho calendarEventId (§7.1, trampa 3)',
+      antes: cicloCompleto({ sesiones: sesionesSemanales(8, () => ({ calendarEventId: null })) }),
+      despues: cicloCompleto(),
+      esperado: nada,
+    },
+
+    // ── el mismo ciclo, escrito de otra forma: la trampa 2 ────────────
+    /*
+     * El array de sesiones **no** está ordenado por fecha (§7.4, y el fixture
+     * `desordenadas` de `tests/fixtures/ciclo.ts`): el formulario deja mover
+     * las filas. Un diff por índice —la trampa 2— cruzaría el `calendarEventId`
+     * de un encuentro con el payload de otro y reescribiría los ocho eventos
+     * con el contenido equivocado. Por id, dar vuelta el array no es un cambio.
+     */
+    {
+      nombre: 'dar vuelta el array de sesiones sin tocar ningún dato',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ sesiones: [...sesionesSemanales(8)].reverse() }),
+      esperado: nada,
+    },
+
+    // ── el largo del ciclo cambió: B-160 ──────────────────────────────
+    {
+      nombre: 'intercalar un encuentro antes de los ocho (B-160)',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({
+        sesiones: [
+          sesion({
+            id: 'ses_cero',
+            inicio: ts('2026-08-27T22:00:00Z'),
+            fin: ts('2026-08-28T00:00:00Z'),
+            calendarEventId: null,
+          }),
+          ...sesionesSemanales(8),
+        ],
+      }),
+      esperado: { crear: 1, actualizar: ENCUENTROS, borrar: 0 },
+    },
+    {
+      nombre: 'agregar un noveno encuentro al final (B-160)',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({
+        sesiones: [
+          ...sesionesSemanales(8),
+          sesion({
+            id: 'ses_8',
+            inicio: ts('2026-10-22T22:00:00Z'),
+            fin: ts('2026-10-23T00:00:00Z'),
+            calendarEventId: null,
+          }),
+        ],
+      }),
+      esperado: { crear: 1, actualizar: ENCUENTROS, borrar: 0 },
+    },
+    {
+      nombre: 'borrar la fila del último encuentro (B-160)',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ sesiones: sesionesSemanales(8).slice(0, 7) }),
+      esperado: { crear: 0, actualizar: 7, borrar: 1 },
+    },
+
+    // ── §7.3 ──────────────────────────────────────────────────────────
+    {
+      nombre: 'pasar el ciclo a borrador',
+      antes: cicloCompleto(),
+      despues: cicloCompleto({ estado: 'borrador' }),
+      esperado: { crear: 0, actualizar: 0, borrar: ENCUENTROS },
+    },
+    {
+      nombre: 'borrar la actividad entera',
+      antes: cicloCompleto(),
+      despues: null,
+      esperado: { crear: 0, actualizar: 0, borrar: ENCUENTROS },
+    },
+  ];
+
+  it('la tabla mide sobre el ciclo del §2.2, y el fixture no se puede ablandar', () => {
+    const base = cicloCompleto() as unknown as { esCiclo: boolean; sesiones: unknown[] };
+    expect(base.esCiclo).toBe(true);
+    expect(base.sesiones).toHaveLength(ENCUENTROS);
+    expect(ENCUENTROS).toBeGreaterThan(2);
+    // Con todos los campos cargados: si el fixture fuera el mínimo, la mitad de
+    // las filas de la tabla no tendría de dónde propagar.
+    expect(
+      construirDescripcion(cicloCompleto(), sesionesSemanales(8)[0]!, LABELS).length,
+    ).toBeGreaterThan(300);
+  });
+
+  it('cada edición cuesta exactamente lo que dice la tabla', () => {
+    const divergencias: string[] = [];
+    for (const caso of CASOS) {
+      const medido = costo(caso.antes, caso.despues);
+      if (JSON.stringify(medido) !== JSON.stringify(caso.esperado)) {
+        divergencias.push(
+          `${caso.nombre}: ${JSON.stringify(medido)} en vez de ${JSON.stringify(caso.esperado)}`,
+        );
+      }
+    }
+    expect(divergencias).toEqual([]);
+  });
+
+  it('ninguna edición borra y recrea el mismo encuentro (§7.2, trampa 2)', () => {
+    const recreados: string[] = [];
+    for (const caso of CASOS) {
+      const ops = planificar(caso.antes, caso.despues, LABELS) as { tipo: string; id: string }[];
+      const borrados = new Set(ops.filter((o) => o.tipo === 'borrar').map((o) => o.id));
+      for (const op of ops) {
+        if (op.tipo === 'crear' && borrados.has(op.id)) recreados.push(`${caso.nombre} · ${op.id}`);
+      }
+    }
+    expect(recreados).toEqual([]);
+  });
+
+  it('todo evento que se manda a Calendar lleva su timeZone (trampa 1)', () => {
+    const sinZona: string[] = [];
+    for (const caso of CASOS) {
+      const ops = planificar(caso.antes, caso.despues, LABELS) as {
+        tipo: string;
+        id: string;
+        evento?: { start?: { timeZone?: string }; end?: { timeZone?: string } };
+      }[];
+      for (const op of ops) {
+        if (!op.evento) continue;
+        if (op.evento.start?.timeZone !== TIMEZONE || op.evento.end?.timeZone !== TIMEZONE) {
+          sinZona.push(`${caso.nombre} · ${op.id}`);
+        }
+      }
+    }
+    expect(sinZona).toEqual([]);
+  });
+
+  /**
+   * B-160, con el número a la vista. Es el residual de B-84 y es **por
+   * diseño** (D-95): el número del evento es "Encuentro 3 de 8", así que
+   * agregar un noveno encuentro hace falso el "de 8" de los otros ocho y el
+   * diff los pone al día. Son `actualizar`, nunca `borrar`+`crear`.
+   *
+   * El test no juzga: **mide**. La salida que el ítem propone —sacar el total y
+   * dejar "Encuentro 3"— haría que esta fila bajara a `crear: 1,
+   * actualizar: 0`, y esa es la decisión que B-160 deja para cuando haya uso
+   * real. Mientras no se tome, el costo queda escrito acá.
+   */
+  it('B-160: agregar un encuentro al final pone al día el «de N» de los otros ocho', () => {
+    const novena = sesion({
+      id: 'ses_8',
+      inicio: ts('2026-10-22T22:00:00Z'),
+      fin: ts('2026-10-23T00:00:00Z'),
+      calendarEventId: null,
+    });
+    const ops = planificar(
+      cicloCompleto(),
+      cicloCompleto({ sesiones: [...sesionesSemanales(8), novena] }),
+      LABELS,
+    ) as { tipo: string; evento: { description: string } }[];
+
+    const actualizaciones = ops.filter((o) => o.tipo === 'actualizar');
+    expect(actualizaciones).toHaveLength(ENCUENTROS);
+    for (const op of actualizaciones) {
+      expect(op.evento.description).toContain('de 9');
+    }
+    expect(ops.filter((o) => o.tipo === 'borrar')).toHaveLength(0);
   });
 });
 

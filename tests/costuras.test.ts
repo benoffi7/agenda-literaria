@@ -16,7 +16,12 @@ import { Timestamp } from 'firebase/firestore';
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue, redactar } from '../functions/reportes.js';
-import { construirDescripcion, planificar } from '../functions/calendario.js';
+import {
+  construirDescripcion,
+  elEventoNumeraElCiclo,
+  numeroDeEncuentro,
+  planificar,
+} from '../functions/calendario.js';
 import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
 import { huboCambioDeContenido } from '../functions/historial.js';
@@ -510,21 +515,47 @@ describe('B-84 · el número del encuentro es el mismo en el panel y en el event
   });
 
   /**
-   * Donde los dos criterios **no** coinciden, y es anterior a B-84: el panel
-   * numera cualquier actividad de más de una sesión y el evento solo numera si
-   * `esCiclo` está tildado. El schema prohíbe `esCiclo` con menos de dos
-   * sesiones, pero no el recíproco: tres encuentros sin tildar el ciclo es un
-   * documento válido y cargable. Queda fijado acá para que el día que se
-   * unifique se note (B-163).
+   * B-163 — **la cuenta ya es una sola** (`numeroDeEncuentro` de `@calendario`,
+   * que el panel importa): no hay dos aritméticas que puedan separarse en
+   * silencio, que es lo que D-71 y D-20 evitan y lo que produjo B-84.
+   *
+   * Lo que sigue decidido por separado es *cuándo se muestra el número*, y es
+   * una decisión de producto: el evento numera solo si `esCiclo` está tildado
+   * (`elEventoNumeraElCiclo`), el panel numera cualquier actividad de más de una
+   * sesión. El schema prohíbe `esCiclo` con menos de dos sesiones pero no el
+   * recíproco, así que tres encuentros sin tildar el ciclo es un documento
+   * válido: el panel numera y el evento no dice nada.
+   *
+   * Este test fija las dos cosas a la vez —que la cuenta coincide y que la
+   * puerta es lo único que difiere— para que el día que el dueño elija una de
+   * las dos salidas de B-163 se note acá y en un solo lugar.
    */
-  it('sin esCiclo el panel numera y el evento no: la divergencia que queda (B-163)', () => {
+  it('sin esCiclo la cuenta es la misma y solo difiere si se muestra (B-163)', () => {
     const sinCiclo = ciclo({ esCiclo: false, sesiones: ochoSesiones().slice(0, 3) });
     const encuentros = encuentrosDe([
       { ...(sinCiclo as unknown as ActividadConId), id: 'act2', tipo: 'taller' },
     ]);
 
+    // La aritmética: una sola, y el panel la toma de `@calendario`.
+    for (const encuentro of encuentros) {
+      const sesion = sinCiclo.sesiones.find((s) => s.id === encuentro.sesionId)!;
+      expect(numeroDeEncuentro(sinCiclo, sesion)).toEqual({
+        indice: encuentro.indice,
+        total: encuentro.total,
+      });
+    }
     expect(encuentros[1]).toMatchObject({ indice: 2, total: 3 });
+
+    // La puerta: el evento no numera sin `esCiclo`, y lo dice con nombre.
+    expect(elEventoNumeraElCiclo(sinCiclo)).toBe(false);
     expect(construirDescripcion(sinCiclo, sinCiclo.sesiones[1]!, {})).not.toContain('Encuentro');
+
+    // Con el ciclo tildado, la misma cuenta sí sale al evento.
+    const conCiclo = ciclo({ sesiones: ochoSesiones().slice(0, 3) });
+    expect(elEventoNumeraElCiclo(conCiclo)).toBe(true);
+    expect(construirDescripcion(conCiclo, conCiclo.sesiones[1]!, {})).toContain(
+      'Encuentro 2 de 3',
+    );
   });
 });
 

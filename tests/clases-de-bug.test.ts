@@ -961,6 +961,58 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
+   * La tercera instancia de la misma clase, y la que produjo B-84: el número
+   * del encuentro ("Encuentro 2 de 8") sale en dos pantallas —la descripción
+   * del evento público y el "2 de 8" de la vista calendario del panel— y cada
+   * lado lo **calculaba por su cuenta**. Coincidían porque los dos habían
+   * llegado al mismo criterio, no porque fuera el mismo código: el día que uno
+   * cambió, el panel dijo "6 de 8" y el evento "5 de 7" para el mismo
+   * encuentro, y nada falló.
+   *
+   * Desde B-163 la cuenta es `numeroDeEncuentro` de `@calendario` y el panel la
+   * importa. Este chequeo es lo que impide que vuelva a copiarse: se lee del
+   * fuente porque una copia que hoy da el mismo resultado no rompe ningún test
+   * de comportamiento — es justamente el modo de falla de la clase.
+   */
+  /**
+   * La cuarta instancia, y la encontró el `auditor-trampas` sobre el mismo
+   * commit que arregló la tercera: al compartir la aritmética del número de
+   * encuentro se introdujo `milisDe`, que era letra por letra la `milis` que
+   * `rebuild.js` ya tenía —salvo el respaldo—. Dos conversiones de fecha que hoy
+   * dan lo mismo: el día que alguien extienda una (un formato nuevo, un
+   * `toDate()` en vez de `toMillis`), el orden de las sesiones y el contador de
+   * reintentos del rebuild (D-23) divergen y nada falla.
+   *
+   * Quedó una sola, exportada de `calendario.js` —el archivo que ya comparte el
+   * panel— e importada por `rebuild.js`. Se lee del fuente por el mismo motivo
+   * que el chequeo de abajo: una copia que da el mismo resultado no rompe
+   * ningún test de comportamiento.
+   */
+  it('la conversión de fechas de functions vive en un solo lugar (D-20)', () => {
+    const rebuild = fuente('functions/rebuild.js');
+    expect(rebuild).toMatch(/import \{ milisDe \} from '\.\/calendario\.js';/);
+    // La copia, en cualquiera de las dos formas en que estaba escrita.
+    expect(rebuild).not.toMatch(/typeof t\.toMillis === 'function'/);
+    expect(rebuild).not.toMatch(/t instanceof Date/);
+
+    // Y sigue habiendo exactamente una definición en todo `functions/`.
+    const definiciones = ARCHIVOS_FUNCTIONS.filter((f) =>
+      /typeof t\?*\.toMillis === 'function'/.test(fuente(f)),
+    );
+    expect(definiciones).toEqual(['functions/calendario.js']);
+  });
+
+  it('el número del encuentro se cuenta en un solo lugar (B-163, D-20)', () => {
+    const src = fuente('src/lib/calendarioPanel.ts');
+    expect(src).toMatch(/numeroDeEncuentro[^\n]*from '@calendario'|from '@calendario'/);
+    expect(src).toMatch(/numeroDeEncuentro\(/);
+    // La aritmética copiada: contar el largo de la lista ordenada, o numerar
+    // con el índice del recorrido, es la forma que tenía antes de B-163.
+    expect(src).not.toMatch(/total:\s*ordenadas\.length/);
+    expect(src).not.toMatch(/indice:\s*i \+ 1/);
+  });
+
+  /**
    * Los tres pares de prefijo de id del modelo: quien **produce** el id de una
    * fila y quien lo **valida** en el schema derivan cada uno por su cuenta.
    *

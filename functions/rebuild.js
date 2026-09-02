@@ -5,7 +5,12 @@
  * Está separada de `index.js` por el mismo criterio que `calendario.js`: el
  * corte por intentos y el backoff son reglas de tiempo, y testearlas contra la
  * Function desplegada significaría esperar horas para ver un solo caso.
+ *
+ * Lo único que importa es `milisDe`, que es puro y vive en `calendario.js`
+ * porque de los dos archivos ese es el que ya comparte el panel (D-20). Acá
+ * había una copia idéntica salvo el respaldo; ver el comentario de `milisDe`.
  */
+import { milisDe } from './calendario.js';
 
 /**
  * Cuántos disparos fallidos consecutivos se toleran antes de rendirse.
@@ -31,16 +36,10 @@ const LARGO_MAX_ERROR = 300;
 
 /**
  * Normaliza a milis lo que puede venir como Timestamp de Firestore, Date,
- * número o nada. Mismo criterio que `calendario.js` con `toDate`.
+ * número o nada. Es `milisDe` de `calendario.js`, importada y no copiada: el
+ * alias local existe solo para no tocar los seis usos de abajo.
  */
-const milis = (t) => {
-  if (t == null) return null;
-  if (typeof t.toMillis === 'function') return t.toMillis();
-  if (t instanceof Date) return t.getTime();
-  if (typeof t === 'number') return Number.isFinite(t) ? t : null;
-  const d = new Date(t);
-  return Number.isNaN(d.getTime()) ? null : d.getTime();
-};
+const milis = milisDe;
 
 const intentosDe = (estado) => {
   const n = Number(estado?.intentos);

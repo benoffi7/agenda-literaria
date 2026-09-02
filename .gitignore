@@ -33,3 +33,7 @@ functions/.env.*.local
 # Worktrees de subagentes
 .claude/worktrees/
 .mdd/
+
+# Estado compartido entre los worktrees de los frentes en paralelo.
+# Un archivo por frente: seis agentes escribiendo el mismo archivo se pisan.
+.estado/

@@ -2811,6 +2811,22 @@ modalidad — y ahí sí las dos listas se multiplican. Queda anotado, no resuel
 
 ### B-219 · Dos worktrees corriendo tests comparten el emulador y se pisan · P2
 
+> **Visto otra vez el 2026-09-02, y esta vez el síntoma quedó medido** (frente
+> del calendario). Con otro worktree corriendo su suite contra el mismo
+> emulador, `npx vitest run --no-file-parallelism` falló **cuatro corridas
+> seguidas con un subconjunto distinto cada vez** —siempre de
+> `opciones.integracion.test.ts` y `actividades.integracion.test.ts`—, y cada
+> archivo pasó en verde corrido solo. Una vez fue `ECONNREFUSED` contra el
+> emulador de Auth (9099) mientras Firestore (8080) seguía arriba: el otro
+> worktree estaba levantando el suyo con `-c firebase-e2e.json`.
+>
+> La causa es la que el ítem ya dice, con nombre y apellido: los dos runs llaman
+> a `limpiarFirestore()`, así que **cada uno le borra los datos al otro a mitad
+> de un test**. Lo que agrega esta nota es el costo real: un rojo que no dice
+> nada sobre el cambio que se está haciendo, y que obliga a re-correr archivo
+> por archivo para saber si es propio o del vecino. Eso es exactamente lo que
+> hace que un rojo deje de significar algo.
+
 Apareció el 2026-08-27 cerrando B-217: una corrida de `npm test` dio **1 test en
 rojo sobre 1403** y otra **2**, con el árbol y el comando idénticos, y las otras
 trece de esa tanda dieron verde. Un rojo que no se reproduce es peor que uno que
@@ -3902,7 +3918,125 @@ tests corren el generador contra el `planificar` de verdad, porque lo que estaba
 roto era el par. Queda abierto **B-169**.
 
 
-### B-125 · Un evento borrado a mano en Calendar no se detecta · P2
+### B-350 · `milisDe` nació como copia de `milis`, en el mismo commit que unificaba la otra cuenta — ✅ hecho (2026-09-02)
+
+**Lo encontró el `auditor-trampas`**, corrido sobre el commit de B-163, y la
+gracia del hallazgo es que es **la misma clase que ese commit acababa de
+arreglar**: compartiendo la aritmética del número de encuentro se introdujo
+`milisDe` en `functions/calendario.js`, letra por letra la `milis` que
+`functions/rebuild.js` ya tenía —salvo el respaldo, `0` contra `null`—.
+
+Nada fallaba: las dos daban el mismo resultado. El día que alguien extendiera una
+—un formato de fecha nuevo, un `toDate()` en vez de `toMillis`— el orden de las
+sesiones del ciclo y el contador de reintentos del rebuild (D-23) divergen sin
+que ningún test lo note, porque ninguno comparaba las dos.
+
+**Cómo quedó, con dos decisiones que valen escribirse:**
+
+- **Una sola, exportada de `calendario.js`**, importada por `rebuild.js`. Y
+  **no** en un `functions/tiempo.js` nuevo, que era lo obvio: el motivo es de
+  deploy. `scripts/que-deployar.sh` trata `functions/calendario.js` como caso
+  especial porque entra al bundle del panel por `@calendario`; un módulo nuevo
+  importado desde ahí también estaría en el bundle, pero caería del lado de "es
+  de functions, no afecta a hosting" y un cambio suyo dejaría el panel viejo **en
+  silencio** — exactamente lo que la lista negra de ese script existe para
+  evitar. Es una trampa de la misma familia que la 11.
+- **El respaldo compartido es `null` y no `0`:** "no hay fecha" no es el 1 de
+  enero de 1970. Cada consumidor decide, y las dos decisiones son distintas y
+  las dos correctas — el orden de las sesiones manda las sin fecha primero
+  (`?? 0`, en un `paraOrdenar` de una línea), y el backoff sin `ultimoIntento` no
+  tiene de dónde medir y dispara.
+
+Red: chequeo estructural en `clases-de-bug.test.ts` que pide el import, prohíbe
+las dos formas de la copia y cuenta las definiciones en todo `functions/`, que
+tiene que dar exactamente una. Con la copia de vuelta, falla.
+
+### B-351 · El BACKLOG tenía el cuerpo de B-12 bajo el encabezado de B-13 — ✅ hecho (2026-09-02)
+
+Un merge dejó dos ítems pisados: el encabezado `### B-13` (el backoff del
+rebuild, cerrado en D-23) tenía debajo el **cuerpo de B-12** (la vista previa del
+evento de Calendar), y el bloque terminaba con la línea tachada
+`~~B-13 · …~~ → cerrado`. Arriba, el encabezado real de B-12 quedó sin cuerpo.
+
+**Se vio buscando B-13 para trabajarlo**: el título prometía un ítem abierto y el
+texto hablaba de otra cosa. No rompe nada, pero es la clase de drift que hace
+perder tiempo — y es lo que el `auditor-documentacion` busca cuando barre por
+bloques duplicados de merges.
+
+Corregido: el cuerpo volvió abajo del encabezado de B-12, y B-13 quedó con su
+propio encabezado marcado como hecho, citando D-23 y sus tests.
+
+### B-352 · El helper de sesiones de `calendario.test.ts` deja el `calendarEventId` vivo en una sesión cancelada · P3
+
+`sesionesSemanales` (el helper local de `tests/calendario.test.ts`) asigna
+`calendarEventId: evt_<i>` a **todas** las sesiones, incluidas las que el caso
+marca `cancelada: true`. Eso describe un estado que el sistema no puede tener
+asentado: al borrar el evento de un encuentro cancelado, `syncCalendar` repone
+`null` en esa sesión. Con el id vivo, `planificar` emite un `borrar` de más en
+cada escritura posterior.
+
+`tests/fixtures/ciclo.ts` ya resolvió esto y dejó la advertencia escrita (B-135);
+el helper local no la siguió. **Se topó con esto escribiendo los tests de B-162**,
+que necesitan un ciclo *ya asentado* con un cancelado: el fixture daba una `op`
+que no correspondía y hubo que pasarle `calendarEventId: null` a mano.
+
+Los tests que hoy usan el helper con un cancelado son de la **transición**
+—cancelar en el momento, donde conservar el id es correcto— así que ninguno está
+mal. Lo que falta es que el helper no deje pisar esa trampa: que ponga `null`
+cuando `cancelada` es `true`, con un parámetro para el caso de la transición. Es
+prolijidad de fixture y toca un archivo muy tocado, así que P3 — pero el patrón
+es el de B-135, que ya costó caro una vez.
+
+### B-354 · «Las once trampas del §13» — el conteo en prosa quedó viejo y nadie lo verifica · P3
+
+El §13 del `CLAUDE.md` lista **trece** trampas desde que se sumaron la 12 (un
+trigger que escribe donde lo dispararon, también en Storage) y la 13 (`allow
+read` de Storage incluye `list`). Pero dos lugares siguen diciendo "once":
+
+- `docs/15-mapa-de-trampas.md`, sección "Sin red" — **corregido el 2026-09-02**,
+  porque el frente del calendario ya estaba editando ese archivo;
+- `docs/13-agentes.md:178` («Para qué. Las once trampas del §13 más los
+  patrones de…») — **sin tocar**: es la doc de los agentes y hay otros frentes
+  corriendo. Ese es lo que queda de este ítem.
+
+**Por qué vale un ítem y no un `sed`.** El conteo en prosa **no lo verifica
+nadie**: `tests/mapa-de-trampas.test.ts` compara la lista del §13 contra las filas
+de la tabla y contra las trampas sin red —eso sí falla si falta una— pero el
+número escrito en una oración no es ninguna de las dos cosas. Así que cada trampa
+nueva deja atrás un "once" que sigue leyéndose como cierto. Es cosmético hoy y no
+afecta ninguna verificación; lo que conviene decidir es si el número se saca de la
+prosa (que es lo más barato y no vuelve a envejecer) o si el test lo empieza a
+contar.
+
+Lo encontró el `auditor-documentacion` cerrando el frente del calendario, buscando
+drift de otra cosa.
+
+### B-353 · D-71 prometía una recuperación que no existía, y citaba el ítem equivocado — ✅ hecho (2026-09-02)
+
+Dos cosas mal en el mismo párrafo de D-71 («Límite conocido»), encontradas
+mientras se cerraba **B-125**:
+
+1. **Citaba B-127** —las cinco suscripciones de `useLabelsTaxonomia`— cuando el
+   ítem de ese límite siempre fue **B-125**. Un dígito, pero es el que lleva de
+   la decisión al ítem.
+2. **Lo importante: «sigue figurando como `en-calendario` hasta la próxima
+   edición» era falso cuando se escribió.** El párrafo prometía que el estado se
+   curaba solo al editar la actividad. No se curaba: el `catch` de `syncCalendar`
+   no limpiaba el id de un `actualizar` que fallaba, así que cada edición volvía a
+   emitir la misma operación imposible y el encuentro quedaba fuera del calendario
+   público para siempre. Desde D-191 la frase **es** cierta.
+
+**Por qué vale como patrón y no solo como corrección.** No es doc optimista: es
+doc que describe un comportamiento **que no existe**, y encima en la mitad
+tranquilizadora de un límite que el propio autor estaba admitiendo. Un límite
+conocido se escribe casi siempre con su consuelo al lado («solo pasa hasta que…»,
+«se corrige con…»), y ese consuelo es exactamente lo que nadie vuelve a verificar
+— porque el párrafo ya suena honesto. **Cuando aparezca un "límite conocido" en
+la doc, el aserto a chequear es el consuelo, no el límite.**
+
+Corregido en D-71, con el patrón anotado ahí mismo.
+
+### B-125 · Un evento borrado a mano en Calendar no se detecta · 🟡 **la mitad hecha** (2026-09-02) · P2
 
 La vista calendario compara el `calendarEventId` guardado contra lo que
 **debería** existir, no contra lo que Google Calendar tiene de verdad. Si alguien
@@ -3913,6 +4047,34 @@ ese caso miente.
 
 Cerrarlo pide leer la API de Calendar desde el panel, que hoy no tiene forma de
 autenticarse contra ella (la identidad es de la Function, D-06).
+
+**Adentro había algo peor que lo reportado, y se arregló** (2026-09-02, D-191,
+ver **B-350** para el hallazgo del auditor sobre ese mismo commit). El ítem dice
+que la vista miente; lo que nadie había mirado es **qué pasaba después**. El
+`catch` de `syncCalendar` tenía una sola condición —404/410 **en un borrado**
+limpiaba el id, todo lo demás era `logger.error`—, así que con el evento borrado
+a mano el documento se quedaba con su `calendarEventId`, el diff seguía viendo un
+id y emitía `actualizar`, Calendar contestaba 404 y caía en el `else`. **El id no
+se limpiaba, así que cada edición siguiente repetía la misma operación
+imposible:** el encuentro desaparecía del calendario público **para siempre**, no
+solo quedaba sin detectar.
+
+Ahora el `catch` consume `decidirAnteFallo` (pura, en `sincronizacion.js`): un
+`actualizar` que no encuentra su evento lo **recrea**, porque `debeExistir` ya
+dijo que ese encuentro tiene que estar (§7.3). Un 404 al **crear** sigue siendo
+error a propósito: ahí "no está" habla del calendario y no del evento —un
+`GOOGLE_CALENDAR_ID` equivocado o un calendario sin compartir (D-06)— y recrear
+en loop no lo arregla.
+
+**Lo que queda es el ítem original, más angosto:** sin editar nada, nadie se
+entera. Sigue pidiendo leer la API. Lo que cambió es que el estado dejó de ser
+permanente — cualquier edición de la actividad lo repara.
+
+**Queda en P2, y la baja a P3 es del dueño.** El daño que justificaba el P2 era el
+peor de los dos —pérdida silenciosa de un encuentro publicado, para siempre— y
+eso ya no pasa; lo que queda es una vista que miente hasta el próximo guardado,
+que se parece más a un P3. No se baja acá porque la prioridad la ordena el dueño
+y no el que cierra la mitad del ítem.
 
 ### B-126 · La vista calendario no avisa de inscripciones que cierran — ✅ hecho (2026-08-26)
 
@@ -3955,6 +4117,20 @@ con uso real, no antes.
 Ojo con el orden: si la fila nueva se intercala **antes** de encuentros que ya
 existen, esos sí cambian de número con cualquier variante. Eso es correcto.
 
+**Sigue abierto, y ahora el costo está medido** (2026-09-02). No se decidió nada
+—el ítem dice "se decide con uso real, no antes" y eso es una decisión del dueño,
+no técnica— pero la tabla de fan-out de B-161 le puso el número: agregar un
+noveno encuentro al final son **1 `crear` + 8 `actualizar`**, y borrar la fila del
+último son **1 `borrar` + 7 `actualizar`**. Hay además un `it` propio que verifica
+que esos ocho `actualizar` dicen "de 9" y que no hay ningún `borrar`. Con la
+salida que el ítem propone —sacar el total— esa fila bajaría a `crear: 1,
+actualizar: 0`, y el test lo va a decir solo.
+
+**Y hay un motivo nuevo para tomar la decisión, que antes no estaba:** el cambio
+de texto que esta salida implica reescribe una vez los N eventos de todo ciclo
+publicado, y eso **cierra B-162 de paso** (le corrige el número viejo a los
+ciclos con un encuentro cancelado). El costo asumido compra dos cosas, no una.
+
 ### B-162 · Los ciclos ya publicados con un encuentro cancelado se quedan con el número viejo · P3
 
 Consecuencia de D-95 en lo que ya está en el calendario. La guarda del §7.1
@@ -3974,7 +4150,31 @@ Un resync de verdad —leer Calendar y reconciliar— es **B-125**, que necesita
 el panel o un script se pueda autenticar contra la API. Mientras eso no exista,
 esto es texto viejo en eventos ya publicados: molesta, no rompe.
 
-### B-163 · El panel numera encuentros que el evento no numera · P3
+**Queda medido, y sigue abierto** (2026-09-02). Lo que faltaba y ya está es que
+el mecanismo esté escrito en el código y con red: la guarda del §7.1 supone que
+**lo que Calendar tiene es lo que este código habría escrito a partir de
+`antes`**, porque calcula los dos lados con el código de hoy. Esa suposición no
+estaba dicha en ninguna parte, y este ítem es su modo de falla. Seis tests en
+`tests/calendario.test.ts` fijan la cadena entera: que el código de hoy numera
+distinto de lo publicado, que re-guardar no emite nada, que tampoco lo hace un
+cambio interno, que un cambio que **sí** sale al evento los pone al día de paso,
+y la propiedad general —mismo payload recalculado ⇒ cero operaciones, por valor y
+no por referencia—.
+
+**El camino gratis, que es el hallazgo que vale:** el día que se acepte la salida
+de **B-160** —sacar el total de la descripción— ese cambio de texto reescribe los
+N eventos de todo ciclo publicado, y **de paso les corrige el número viejo**. La
+migración que este ítem necesita viene incluida en la decisión del otro. Los dos
+se cierran juntos, o ninguno.
+
+De paso quedó anotado el fixture correcto para un ciclo **ya asentado** con un
+encuentro cancelado: sin `calendarEventId`, porque al borrar el evento el sync
+repone `null`. Con el id vivo, `planificar` emite un borrado de más en cada
+escritura posterior — la misma advertencia que `tests/fixtures/ciclo.ts` ya tenía
+escrita (B-135), y que el helper local de `calendario.test.ts` no respeta
+(**B-352**).
+
+### B-163 · El panel numera encuentros que el evento no numera · 🟡 **la mitad hecha** (2026-09-02) · P3
 
 `encuentrosDe` (D-70) y la vista calendario muestran "Encuentro 2 de 3" en
 **cualquier** actividad de más de una sesión, mientras `posicionEnCiclo` (D-95)
@@ -3990,7 +4190,37 @@ ciclo, o que el panel deje de numerar sin `esCiclo`. Hay un test en
 `costuras.test.ts` que fija el comportamiento actual, así que unificarlo se va a
 notar.
 
-### B-161 · Fixtures de `calendario.test.ts` que todavía no ejercitan el ciclo · P3
+**La mitad que se hizo: la aritmética** (D-190). Era la mitad que sí era un
+problema técnico, y es la que el ítem nombra al decir "dos criterios para lo
+mismo derivado". Cada lado ordenaba las sesiones y contaba por su cuenta:
+coincidían porque los dos habían llegado al mismo criterio, no porque fuera el
+mismo código. `numeroDeEncuentro` se exporta de `@calendario` y `encuentrosDe` la
+importa; la puerta sale a `elEventoNumeraElCiclo`, exportada y con nombre.
+**No cambia ningún texto publicado**, y hay un chequeo estructural en
+`clases-de-bug.test.ts` que impide volver a copiarla — una copia que hoy da el
+mismo resultado no rompe ningún test de comportamiento, que es el modo de falla
+de esta clase.
+
+**La mitad que queda: qué criterio gana.** Es una decisión de producto y no
+técnica, y las dos salidas no cuestan lo mismo:
+
+- *que el evento numere con más de una sesión aunque no sea ciclo* → cambia el
+  texto de los eventos **ya publicados** de esas actividades. Es el argumento de
+  D-95 y B-84 otra vez;
+- *que el panel deje de numerar sin `esCiclo`* → no toca nada publicado, pero
+  devuelve el problema que la regla 1 de D-70 resuelve: varias filas con el mismo
+  título se leen como varias actividades.
+
+El test de `costuras.test.ts` se reescribió: ahora fija **las dos cosas a la vez**
+—que la cuenta coincide y que la puerta es lo único que difiere— así que elegir
+es una línea en un solo lugar y se nota en un solo test.
+
+**De paso, un cambio de comportamiento chico en un caso que el schema rechaza:**
+una sesión sin fecha usable no se pinta en la vista calendario pero **cuenta**
+para el total, que es lo que dice el evento que la gente tiene agendado. Antes el
+panel decía "1 de 1" y el evento "2 de 2".
+
+### B-161 · Fixtures de `calendario.test.ts` que todavía no ejercitan el ciclo — ✅ hecho (2026-09-02)
 
 B-84 existió porque un test pasaba con el invariante roto: su fixture era una
 actividad de dos sesiones sin `esCiclo`, así que la numeración del evento no
@@ -4009,6 +4239,32 @@ semanales. Quedan con fixture de un solo encuentro, y a propósito:
 Vale releerlo con el mismo ojo cada vez que se toque el diff: el patrón —"el
 fixture no ejercita el caso central del §2.2"— es el que hay que cazar, no estos
 casos puntuales.
+
+**Cerrado por esa relectura, no por convertir los cinco tests** (2026-09-02).
+Antes de tocar B-160/B-162/B-163 se releyó, y el hueco que importaba era el que
+el ítem describe sin nombrarlo: esos tests verifican *que* un campo propaga y
+**nada** verifica *a cuántos*. Convertirlos habría dicho menos, como decía el
+ítem; lo que hacía falta era un bloque al lado.
+
+`tests/calendario.test.ts` tiene ahora una **tabla de fan-out**: 25 ediciones
+medidas en `crear`/`actualizar`/`borrar` sobre el ciclo canónico de ocho con
+todos los campos cargados. El número es el argumento de D-95 hecho aserto —
+cuántos eventos ya publicados se reescriben—, que es lo que ningún test que
+pregunte solo "¿propagó?" puede ver. Tres chequeos más sobre la misma tabla:
+
+- ninguna edición borra y recrea el mismo encuentro (§7.2, trampa 2);
+- todo evento que sale a Calendar lleva su `timeZone` (trampa 1);
+- **dar vuelta el array de sesiones no es un cambio** — el caso que separa un
+  diff por id de uno por índice cuando el orden se conserva, que es donde las
+  otras filas de la tabla no distinguen.
+
+Y el fan-out de B-160 quedó medido con su propio `it`, que es lo que le da un
+número a esa decisión.
+
+**Verificado con mutaciones**, que es lo que dice si la red sirve: con
+`mismoEvento` devolviendo `false` (guarda anti-loop desactivada, trampa 3), con
+`porId` indexando por posición (trampa 2) y sin `timeZone` en `start`/`end`
+(trampa 1), la tabla falla en las tres.
 
 ### B-129 · «Feria» falta en los tipos de actividad — ✅ hecho (2026-08-25)
 
@@ -5683,6 +5939,15 @@ Ver [CHANGELOG](CHANGELOG.md), D-17, D-18 y D-19. Lógica en
 
 ### B-12 · Vista previa de cómo queda el evento — ✅ hecho (2026-08-21)
 
+Sección colapsada al final del formulario: título, ubicación y descripción del
+evento para el encuentro que se elija, armados con `construirEvento` de
+`functions/calendario.js` —la misma función que publica el evento (D-20)—, así
+que no puede divergir de lo que sale. Ver el
+[changelog](CHANGELOG.md) y [`04-funcionalidades.md`](04-funcionalidades.md).
+
+Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
+mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
+
 ### B-45 · Los links cortos de Maps (`maps.app.goo.gl`) no se pueden pegar
 
 El campo de coordenadas (D-46) acepta el link largo y el par `lat, lng`, pero no
@@ -5693,20 +5958,18 @@ Hoy el campo lo detecta y explica que hay que abrirlo para copiar el link largo.
 Si molesta seguido, la salida es una Function que siga el redirect y devuelva la
 URL final — otro endpoint y otro deploy, así que no se hizo de entrada.
 
-### B-13 · El schedule de `dispararRebuild` no reintenta con backoff
+### B-13 · El schedule de `dispararRebuild` no reintenta con backoff — ✅ hecho (D-23), y el encabezado estaba pisado (B-351)
 
-Sección colapsada al final del formulario: título, ubicación y descripción del
-evento para el encuentro que se elija, armados con `construirEvento` de
-`functions/calendario.js` —la misma función que publica el evento (D-20)—, así
-que no puede divergir de lo que sale. Ver el
-[changelog](CHANGELOG.md) y [`04-funcionalidades.md`](04-funcionalidades.md).
+Cerrado hace tiempo: `dispararRebuild` reintenta con backoff exponencial (5, 10,
+20, 40 min) hasta cinco veces, deja `intentos`/`ultimoError`/`agotado` en
+`sistema/rebuild`, loguea `error` al agotarse y se rearma con el próximo cambio.
+Ver **D-23**, el [changelog](CHANGELOG.md) y `tests/rebuild.test.ts`. El debounce
+del §8 no cambió: el schedule sigue tickeando cada 5 minutos y el backoff solo
+decide en qué ticks se intenta.
 
-
-Quedó afuera, y no parece necesario: un botón para copiar la descripción, y
-mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
-
-~~B-13 · El schedule de `dispararRebuild` no reintenta con backoff~~ →
-[cerrado](#cerrados).
+Lo que estaba mal era el BACKLOG: este encabezado tenía debajo el **cuerpo de
+B-12** (la vista previa del evento) y la línea tachada de B-13 al final, o sea dos
+ítems pisados por un merge. Corregido el 2026-09-02 — el detalle en **B-351**.
 
 ### B-14 · El menú de acciones del listado no se navega con flechas — ✅ hecho (2026-08-24)
 
@@ -6297,6 +6560,20 @@ fusione los ids por id de sesión antes de escribir, o directamente que
 `formADocumento` no emita el campo. Toca `src/lib/actividades.ts` y el
 formulario, o sea el archivo más disputado del repo (fase 2 del plan de
 saneamiento).
+
+**Corrección: de las dos salidas, una no sirve** (2026-09-02, mirado sin
+implementar). Que `formADocumento` **no emita el campo** no es la opción barata,
+es un bug peor: `actualizarActividad` usa `updateDoc` y eso **reemplaza el array
+`sesiones` entero**, así que una clave ausente adentro de cada elemento borra el
+`calendarEventId` de **todas** las sesiones. La pasada siguiente del sync no ve
+ningún id y emite `crear` por encuentro: N eventos duplicados en el calendario
+público y los originales huérfanos, que es B-80 amplificado. Es literalmente el
+argumento que el comentario de `completo` (B-97) tiene escrito dos bloques más
+abajo en el mismo archivo — un objeto de contenido que se reemplaza entero no
+tolera omitir una clave que otro escribe.
+
+Queda entonces **una sola** salida: releer y fusionar por id de sesión antes de
+escribir. Sigue tocando el archivo más disputado del repo, así que sigue P3.
 
 
 ### B-290 · La fila de una actividad pasada decía «Inscripción abierta» — ✅ hecho (2026-09-02)

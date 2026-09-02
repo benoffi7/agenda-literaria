@@ -122,6 +122,56 @@ export const reponerIds = (sesiones = [], ids) => {
   return cambio ? repuestas : null;
 };
 
+/**
+ * Los códigos con que Calendar dice "ese evento no está": 404 si nunca existió
+ * o si el id se liberó, 410 si está borrado y todavía retenido.
+ */
+const NO_ESTA = [404, 410];
+
+/**
+ * B-125 — Qué hacer cuando una operación de Calendar falla.
+ *
+ * **El caso que arregla.** El §2.1 dice que el calendario es un espejo de solo
+ * lectura y que editarlo a mano no es un caso soportado; lo que no era el
+ * comportamiento esperado es que **no se recuperara nunca**. Si alguien borra a
+ * mano el evento de un encuentro publicado, el documento se queda con su
+ * `calendarEventId`: el diff sigue viendo un id y emite `actualizar`, Calendar
+ * contesta 404, y antes de esto eso caía en el `else` de «falló una operación» —
+ * se logueaba un error y el id quedaba intacto. La edición siguiente hacía
+ * exactamente lo mismo. El encuentro desaparecía del calendario público **para
+ * siempre**, y la vista calendario del panel seguía diciendo "En el calendario"
+ * porque el id estaba ahí (D-71).
+ *
+ * Ahora un `actualizar` que no encuentra su evento se resuelve **recreándolo**:
+ * `debeExistir` ya dijo que ese encuentro tiene que estar en el calendario
+ * (§7.3), así que reponerlo es lo que dice el espejo unidireccional. El id sale
+ * de `idDeEvento` como en cualquier creación, y el write-back deja el nuevo en
+ * el documento.
+ *
+ * **No cierra B-125**, que es la otra mitad: sin editar nada, nadie se entera.
+ * Detectar el borrado a mano *sin* una escritura de por medio pide leer la API
+ * de Calendar, y la identidad es de la Function (D-06).
+ *
+ * Es una función pura para poder testear la tabla sin emuladores ni un
+ * calendario real, igual que el resto de este módulo. `index.js` la consume y
+ * ejecuta el efecto.
+ */
+export const decidirAnteFallo = (op, code) => {
+  if (!NO_ESTA.includes(Number(code))) return { accion: 'registrar-error' };
+
+  // El resultado buscado: se quería borrar y ya no estaba. Se limpia el id
+  // colgado igual, para que la próxima edición no vuelva a intentar borrarlo.
+  if (op?.tipo === 'borrar') return { accion: 'limpiar-id', motivo: 'ya-no-estaba' };
+
+  // Alguien lo borró a mano en Calendar y el encuentro sigue publicado.
+  if (op?.tipo === 'actualizar') return { accion: 'recrear', motivo: 'borrado-a-mano' };
+
+  // Un 404 al **crear** no es "no está": es un calendario que no existe o al
+  // que la service account no tiene acceso (D-06). Eso no se arregla
+  // reintentando y tiene que quedar como error.
+  return { accion: 'registrar-error' };
+};
+
 /** `/opciones/{campo}.valores` → `{ slug: label }`, como lo espera `construirEvento`. */
 export const mapaDeEtiquetas = (valores = []) =>
   Object.fromEntries((valores ?? []).map((v) => [v.slug, v.label]));

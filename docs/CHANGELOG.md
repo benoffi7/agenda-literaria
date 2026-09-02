@@ -97,6 +97,145 @@ seguían viviendo ahí.
 Verificado antes de commitear: `astro sync` + `npm run typecheck` + la suite
 completa (**2.173 tests en 93 archivos, todos en verde**, con los de emuladores
 incluidos) + `npm run build`.
+## 2026-09-02 · el frente del calendario y los ciclos
+
+Siete ítems del backlog mirados de una vez, sobre la parte más frágil del
+sistema. **Cuatro cerrados o medio cerrados, tres abiertos con motivo.** El hilo
+que los une es el argumento de D-95: cambiar cómo se arma el texto del evento
+reescribe los N eventos de todas las actividades publicadas, y a quien los tiene
+agendados se le mueve el evento sin que nada haya cambiado para él. Cada ítem de
+abajo dice si lo hace o no.
+
+**Nada de lo que entró reescribe un evento ya publicado.** El único
+`actualizar` nuevo es la reposición de un evento que **ya no existía**.
+
+### B-161 · la tabla que mide cuántos eventos reescribe cada edición
+
+La red, y va primero a propósito. Los cinco tests de «el payload propaga los
+campos nuevos» corren sobre una sola sesión: verifican *que* un campo propaga,
+no *a cuántos*. El ítem los había dejado así con motivo, y pidió releerlo con el
+mismo ojo cada vez que se toque el diff.
+
+La tabla nueva mide, sobre el ciclo canónico de ocho con **todos** los campos
+cargados, el costo de 25 ediciones en `crear`/`actualizar`/`borrar`. Ese número
+es el argumento de D-95 hecho aserto: un `actualizar` de más no rompe ningún test
+que solo pregunte «¿propagó?», y es justamente el daño que costó caro en B-84.
+Tres chequeos más sobre la misma tabla: ninguna edición borra y recrea el mismo
+encuentro (§7.2, trampa 2), todo evento lleva su `timeZone` (trampa 1), y dar
+vuelta el array de sesiones **no es un cambio** — que es lo único que un diff por
+índice no puede decir.
+
+### B-163 · la cuenta del encuentro se hace una sola vez — D-190
+
+El «Encuentro 3 de 8» del evento y el «3 de 8» de la vista calendario del panel
+se calculaban cada uno por su cuenta. Coincidían, pero porque los dos habían
+llegado al mismo criterio, no porque fuera el mismo código: es la forma que D-71
+y D-20 evitan, y es la que produjo B-84.
+
+La aritmética pasa a `numeroDeEncuentro`, exportada de `@calendario`, y el panel
+la importa. La **puerta** —si el evento muestra el número— sale a
+`elEventoNumeraElCiclo`, exportada y con nombre. **No cambia ningún texto
+publicado.** La mitad de producto de B-163 queda abierta: elegir qué criterio
+gana es una decisión del dueño, y una de las dos salidas reescribe eventos ya
+publicados. Ahora elegir es una línea en un solo lugar.
+
+Un cambio de comportamiento chico, en un caso que el schema rechaza: una sesión
+sin fecha usable no se pinta en el calendario del panel pero **cuenta** para el
+total, que es lo que dice el evento que la gente tiene agendado. Antes el panel
+decía «1 de 1» y el evento «2 de 2».
+
+### B-125 · un evento borrado a mano vuelve, en vez de perderse para siempre — D-191
+
+**Apareció un bug peor que el reportado.** El ítem decía que la vista calendario
+miente cuando alguien borra un evento a mano. Lo que nadie había mirado es qué
+pasaba después: el documento se quedaba con su `calendarEventId`, el diff seguía
+emitiendo `actualizar`, Calendar contestaba 404, y eso caía en el `else` de «falló
+una operación» — el id no se limpiaba, así que **cada edición siguiente repetía la
+misma operación imposible.** El encuentro desaparecía del calendario público para
+siempre.
+
+El `catch` de `syncCalendar` ahora consume `decidirAnteFallo`, pura y con su tabla
+testeada: un `borrar` que no encuentra su evento limpia el id (como antes), un
+`actualizar` que no lo encuentra lo **recrea** —`debeExistir` ya dijo que ese
+encuentro tiene que estar—, y un 404 al **crear** sigue siendo error, porque ahí
+«no está» habla del calendario y no del evento (D-06).
+
+**No cierra B-125:** enterarse *sin editar nada* pide leer la API de Calendar, y
+la identidad es de la Function. Lo que cambia es que el estado dejó de ser
+permanente.
+
+### B-162 · queda medida la suposición que sostiene la guarda anti-loop
+
+Sin cambio de comportamiento, y el motivo está escrito: el arreglo de verdad pide
+una decisión que no es técnica. Lo que faltaba era que el mecanismo estuviera
+dicho.
+
+La guarda del §7.1 compara el payload de antes contra el de después (D-07), que es
+lo que la hace imposible de romper por olvido. Su precio es una suposición que en
+ningún lado estaba: **que lo que Calendar tiene es lo que este código habría
+escrito.** Los dos lados se calculan con el código de hoy, así que un cambio en
+*cómo se arma* la descripción es invisible para ella. Un ciclo con un encuentro
+cancelado publicado antes de D-95 sigue diciendo «de 7» y volver a guardarlo no
+emite nada. Seis tests fijan la cadena entera.
+
+**Y hay un camino gratis, que conviene tener anotado:** el día que se acepte la
+salida de B-160 —sacar el total de la descripción—, ese cambio de texto reescribe
+los N eventos de todo ciclo publicado, y de paso les corrige el número viejo. Los
+dos ítems se cierran juntos o ninguno.
+
+### B-350 · la conversión de fechas de functions, en un solo lugar
+
+Hallazgo del `auditor-trampas` sobre el commit de B-163, y la misma clase que ese
+commit acababa de arreglar: al compartir la aritmética se introdujo `milisDe`,
+letra por letra la `milis` que `rebuild.js` ya tenía. Queda una sola, en
+`calendario.js`, y **no** en un módulo nuevo: `scripts/que-deployar.sh` trata
+`calendario.js` como caso especial porque entra al bundle del panel, y un
+`functions/tiempo.js` importado desde ahí caería del lado de «no afecta a
+hosting» y dejaría el panel viejo en silencio.
+
+### B-13 · ya estaba hecho, y el BACKLOG no lo decía — B-351
+
+`dispararRebuild` reintenta con backoff exponencial desde D-23, con sus tests. Lo
+que había era un encabezado `### B-13` en el BACKLOG con el **cuerpo de B-12**
+debajo, más la línea tachada de B-13 al final del bloque: un merge que dejó dos
+ítems pisados. Corregido.
+
+### B-353 · D-71 prometía una recuperación que no existía
+
+Cerrando B-125 apareció que el «Límite conocido» de D-71 decía que un evento
+borrado a mano «sigue figurando como `en-calendario` **hasta la próxima
+edición**». Eso era falso cuando se escribió: no se curaba en la próxima edición
+ni en ninguna. Y de paso citaba B-127, que es otro ítem.
+
+**Vale como patrón:** no es doc optimista, es doc que describe un comportamiento
+que no existe, en la mitad tranquilizadora de un límite que el propio autor
+estaba admitiendo. Un límite conocido se escribe casi siempre con su consuelo al
+lado, y el consuelo es lo que nadie vuelve a verificar porque el párrafo ya suena
+honesto. **Ante un "límite conocido", el aserto a chequear es el consuelo.**
+
+### Lo que encontró el `auditor-documentacion` · B-354
+
+Dos cosas, ninguna del código. La que importa como patrón: **«las once trampas
+del §13» quedó viejo y nadie lo verifica.** Son trece desde las trampas 12 y 13.
+`tests/mapa-de-trampas.test.ts` compara la lista del §13 con las filas de la tabla
+y con las que no tienen red —eso sí falla— pero **el número escrito en una oración
+no es ninguna de las dos cosas**, así que cada trampa nueva deja atrás un conteo
+que sigue leyéndose como cierto. Corregido en `15-mapa-de-trampas.md`; el de
+`13-agentes.md` queda en B-354, que es de otro frente.
+
+La otra: el encabezado de B-125 dice `P2` y el cuerpo nuevo afirmaba que «la
+prioridad real bajó». Se reescribió como propuesta —la baja a P3 es del dueño, no
+de quien cierra la mitad del ítem— en vez de cambiar el rótulo por cuenta propia.
+
+### Lo que queda abierto, y por qué
+
+| Ítem | Por qué no se cerró |
+|---|---|
+| **B-160** · el largo del ciclo cambia y reescribe los otros N | Es por diseño (D-95) y el propio ítem dice «se decide con uso real, no antes». Lo que sí cambió es que **el costo está medido** (B-161), así que la decisión tiene un número |
+| **B-162** · el resync de los que ya están publicados | Pide leer Calendar (B-125) o un forzado del dueño. Se cura gratis con B-160 |
+| **B-125** · detectar sin editar nada | Pide una identidad contra la API de Calendar que el panel no tiene (D-06) |
+| **B-163** · qué criterio de numeración gana | Decisión de producto: una de las dos salidas reescribe eventos publicados |
+| **B-150** · el panel sigue siendo dueño de `calendarEventId` | Toca el archivo más disputado del repo. **Y el ítem ofrecía una salida que no sirve**: `formADocumento` no puede *dejar de emitir* el campo, porque `updateDoc` reemplaza el array `sesiones` entero y eso borraría **todos** los ids — la próxima pasada crearía un evento nuevo por encuentro. Es el mismo argumento que el comentario de `completo` (B-97) dos bloques más abajo. Queda la otra: releer y fusionar por id de sesión antes de escribir |
 
 ## 2026-09-02 · fuera la entrada de /contacto
 

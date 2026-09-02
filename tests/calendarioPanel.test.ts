@@ -265,7 +265,19 @@ describe('del eje de actividades al eje de encuentros (§2.2, D-70)', () => {
     ]);
   });
 
-  it('una sesión con la fecha rota no vacía la vista, se saltea', () => {
+  /**
+   * La fila rota no se pinta —eso es lo que evita que la vista quede vacía— pero
+   * **sí ocupa su número** (B-163): el total sale de `numeroDeEncuentro` de
+   * `@calendario`, que cuenta el array completo, y es el mismo número que la
+   * descripción del evento publicado. Antes acá decía "1 de 1" mientras el
+   * evento de ese encuentro decía "2 de 2", que es la clase de divergencia que
+   * D-71 y D-20 evitan y la que produjo B-84.
+   *
+   * El schema rechaza una sesión sin fechas en los dos niveles, así que un
+   * documento así solo se llega editando Firestore a mano. Cuando pasa, la
+   * respuesta correcta es la que coincide con lo que la gente tiene agendado.
+   */
+  it('una sesión con la fecha rota no vacía la vista: no se pinta, pero cuenta', () => {
     const rota = actividad({
       sesiones: [
         { id: 'ses_rota', inicio: null, fin: null, cancelada: false } as unknown as Sesion,
@@ -274,7 +286,7 @@ describe('del eje de actividades al eje de encuentros (§2.2, D-70)', () => {
     });
     const encuentros = encuentrosDe([rota]);
     expect(encuentros.map((e) => e.sesionId)).toEqual(['ses_ok']);
-    expect(encuentros[0]!.total).toBe(1);
+    expect(encuentros[0]).toMatchObject({ indice: 2, total: 2 });
   });
 
   it('una actividad sin encuentros no aporta nada', () => {

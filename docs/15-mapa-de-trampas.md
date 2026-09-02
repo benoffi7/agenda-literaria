@@ -7,6 +7,14 @@ la regla** y **qué test la fija**. Cierra B-119.
 > (`modalidades`, además de `sesiones` e `imagenes`) y la trampa 9 tiene un caso
 > nuevo: cambiar la sede de la **segunda** forma de cursar también tiene que
 > propagar a los N eventos. Los dos están en `tests/modalidades.test.ts`.
+>
+> Y desde B-161 las filas 1, 2 y 3 citan también `functions/calendario.js`, que es
+> donde vive el diff: `porId` es **la** instancia de la trampa 2 que más pesa —el
+> §7.2 entero cuelga de ahí— y `mismoEvento` es la guarda de la trampa 3. Que no
+> estuvieran nombradas era un hueco del mapa, no de la red: los tests ya las
+> cubrían. La tabla de fan-out de `tests/calendario.test.ts` (B-161) mide además
+> **cuántos** eventos reescribe cada edición, que es lo que las trampas 2 y 9
+> cuestan cuando fallan.
 
 ## Para qué
 
@@ -34,8 +42,8 @@ palabras `trampa N`.
 | # | Trampa (§13) | Dónde vive la regla | Test que la fija |
 |---|---|---|---|
 | 1 | Timestamps sin timezone | `functions/calendario.js`, `src/lib/calendarioPanel.ts`, `src/lib/fechasPublicas.ts`, `src/lib/mesPublico.ts` | `tests/calendario.test.ts`, `tests/calendarioPanel.test.ts`, `tests/modalidades.test.ts`, `tests/fechasPublicas.test.ts`, `tests/mesPublico.test.ts` |
-| 2 | Ids de sesión por índice | `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/modalidades.ts`, `src/lib/formulario/autoguardado.ts` | `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts`, `tests/modalidades.test.ts` |
-| 3 | Loop de escritura en la Function | `functions/index.js`, `functions/historial.js` | `tests/calendario.test.ts`, `tests/costuras.test.ts`, `tests/reportes.test.ts` |
+| 2 | Ids de sesión por índice | `functions/calendario.js`, `src/lib/sesiones.ts`, `src/lib/duplicar.ts`, `src/lib/modalidades.ts`, `src/lib/formulario/autoguardado.ts` | `tests/calendario.test.ts`, `tests/sesiones.test.ts`, `tests/duplicar.test.ts`, `tests/autoguardado.test.ts`, `tests/modalidades.test.ts` |
+| 3 | Loop de escritura en la Function | `functions/calendario.js`, `functions/index.js`, `functions/historial.js` | `tests/calendario.test.ts`, `tests/costuras.test.ts`, `tests/reportes.test.ts` |
 | 4 | `firebase-admin` en bundle cliente | `src/lib/firebase-admin.ts`, `src/pages/admin.astro` | `tests/bundle-panel.test.ts` |
 | 5 | Link de la reunión en lo público | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, `functions/calendario.js`, `src/lib/formulario/autoguardado.ts` | `tests/toPublic.test.ts`, `tests/eventsJson.test.ts`, `tests/barrido-de-salidas-publicas.test.ts`, `tests/calendario.test.ts`, `tests/autoguardado.test.ts` |
 | 6 | Taxonomías sin slugify | `src/lib/slugify.ts`, `src/lib/opciones.ts` | `tests/slugify.test.ts` |
@@ -49,9 +57,14 @@ palabras `trampa N`.
 
 ## Sin red
 
-**Ninguna.** Las once tienen al menos un test que las nombra, y el test de este
-mapa lo calcula del repo: si alguna se queda sin red, esta sección tiene que
+**Ninguna.** Las **trece** tienen al menos un test que las nombra, y el test de
+este mapa lo calcula del repo: si alguna se queda sin red, esta sección tiene que
 volver a decirlo o el `it` rompe.
+
+> Decía "las once" hasta el 2026-09-02, y eran trece desde que el §13 sumó las
+> trampas 12 y 13. El número en prosa **no** lo verifica nadie —el `it` compara la
+> lista de descubiertas, no el conteo—, así que quedó viejo en silencio. Mismo
+> patrón en `docs/13-agentes.md`, anotado en **B-354**.
 
 ### La trampa 7, y el intento de cerrarla que casi quedó en verde por el motivo equivocado
 

@@ -969,6 +969,20 @@ Los mensajes útiles: `evento creado`, `evento actualizado`, `evento borrado`,
 desde B-82 `el evento ya existía con el id derivado: se actualizó` (una
 reentrega, o un encuentro que volvió a publicarse: no es un error).
 
+Desde B-125 hay dos más, los dos del mismo caso —un evento que ya no está en
+Calendar (D-191)—:
+
+- `el evento no estaba en Calendar: se recreó` (**warn**). Alguien lo borró a
+  mano y el encuentro sigue publicado, así que el sync lo repuso. No es un error
+  y no hay nada que hacer, pero **sí es la señal de que alguien está editando el
+  calendario a mano**, que el §2.1 no soporta: si aparece seguido, conviene
+  averiguar quién y por qué.
+- `falló recrear un evento borrado a mano` (**error**). La reposición no salió.
+  Ahí sí hay que mirar: lo más probable es el acceso al calendario (D-06).
+
+`el evento ya no existía en Calendar` sigue siendo un warn normal: es un borrado
+que llegó a un evento que ya no estaba.
+
 ### Verificar el sync después de redesplegar (B-80, B-82, B-83, B-04)
 
 Cuatro pruebas sobre una actividad de prueba publicada, en este orden. Las tres
@@ -991,6 +1005,12 @@ primeras se miran en el calendario real (ver "Leer el calendario real"):
    etiqueta`, con la descripción del evento ya actualizada. Guardar el formulario
    sin renombrar nada tiene que loguear `sin etiquetas renombradas`: el `usos + 1`
    de cada guardado **no** re-sincroniza.
+5. **B-125** · borrar a mano, desde Google Calendar, el evento de **un** encuentro
+   de un ciclo publicado, y después editar cualquier cosa de esa actividad en el
+   panel. El evento tiene que **volver**, con el `calendarEventId` nuevo en el
+   documento, y los logs tienen que decir `el evento no estaba en Calendar: se
+   recreó` para esa sesión y nada raro para las otras siete. La pasada siguiente
+   —la del write-back— no tiene que generar ninguna operación.
 
 ### El sitio no se actualiza después de cargar una actividad
 
