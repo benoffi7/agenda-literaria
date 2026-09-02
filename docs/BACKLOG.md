@@ -6394,7 +6394,31 @@ frentes escriben a la vez (junto con `CHANGELOG.md` y `06-decisiones.md`), así
 que es donde más vale mirarlo dos veces después de cualquier merge con
 conflictos resueltos a mano.
 
-### B-364 · Cuatro topes del mismo título, derivados por separado · P3
+### B-364 · Cuatro topes del mismo título, derivados por separado — ✅ hecho (2026-09-02) · P3
+
+**Se ataron los tres 120, como el ítem recomendaba, y no los cuatro.** Nació
+`TOPE_TITULO_REPORTE` en `src/types/reporte.ts`, y lo importan
+`src/lib/reporte-schema.ts` (`.max(TOPE_TITULO_REPORTE, ...)`) y
+`src/components/admin/ReporteFormulario.tsx` (`maxLength={TOPE_TITULO_REPORTE}`
+— este último tocado al mínimo, un import y un valor, en un archivo que tiene
+dueño). `firestore.rules` no puede importar una constante de TypeScript: ese
+lado lo ata `tests/clases-de-bug.test.ts` → «B-364: los tres topes de 120 del
+título de un reporte son el mismo límite», que lee el número de
+`d.titulo.size() <= N` con una regexp y lo compara contra
+`TOPE_TITULO_REPORTE`.
+
+El `.slice(0, 200)` de `functions/reportes.js` y el límite de 256 de GitHub
+quedaron sin atar, a propósito: son otra cosa (el margen que el saneador
+necesita para expandir, y el techo de un tercero), y el propio ítem decía que
+atarlos sería falso.
+
+**Mutado en las tres direcciones, no solo verde:** se subió `firestore.rules`
+a 300 sin tocar el resto → rojo (el escenario exacto que el ítem describía);
+se volvió a escribir `.max(120, ...)` a mano en el schema → rojo; se
+restauraron las dos. El tercer lado (`ReporteFormulario.tsx`) queda cubierto
+por el mismo `expect` de regexp sobre el archivo.
+
+El texto original queda abajo.
 
 Salió del `auditor-privacidad` sobre B-137, como candidato a la clase de B-88 («el
 productor y su consumidor derivan el mismo dato por separado»).

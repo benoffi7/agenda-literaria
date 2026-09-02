@@ -22,6 +22,21 @@ export type Severidad = (typeof SEVERIDADES)[number];
  * Los slugs se convierten a texto en el issue con des-slug, así que agregar
  * uno no obliga a tocar la Function.
  */
+/**
+ * El tope de largo del título — B-364. Es el **mismo** límite dicho en tres
+ * lugares (`firestore.rules`, `reporte-schema.ts`, el `maxLength` del input
+ * de `ReporteFormulario.tsx`), a diferencia del `.slice(0, 200)` de
+ * `functions/reportes.js` o el límite de 256 de GitHub, que son otra cosa —
+ * el margen que el saneador necesita para expandir, y el techo de un
+ * tercero— y no hay que atarlos con este.
+ *
+ * `firestore.rules` no puede importarlo (es un runtime aparte), así que ese
+ * lado se ata con un test que lee el archivo y compara el número:
+ * `tests/clases-de-bug.test.ts` → «los tres topes de 120 son el mismo
+ * límite» (B-364).
+ */
+export const TOPE_TITULO_REPORTE = 120;
+
 export const PANTALLAS = [
   'listado',
   'nueva-actividad',

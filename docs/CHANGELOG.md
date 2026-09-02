@@ -32,6 +32,23 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-364 — los tres 120 del título de un reporte pasan a ser un solo límite
+
+`firestore.rules`, `reporte-schema.ts` y el `maxLength` de
+`ReporteFormulario.tsx` decían 120 cada uno por su cuenta. Nació
+`TOPE_TITULO_REPORTE` (`src/types/reporte.ts`) y los dos primeros lo importan;
+`firestore.rules` no puede (es otro runtime), así que ese lado lo ata
+`tests/clases-de-bug.test.ts` leyendo el número de la regla con una regexp y
+comparándolo contra la constante. El `.slice(0, 200)` de `functions/reportes.js`
+y el límite de 256 de GitHub quedan sin atar a propósito: son otra cosa.
+
+Tocado al mínimo `src/components/admin/ReporteFormulario.tsx` (un import y un
+valor) — archivo de otro frente, un solo `maxLength` cambiado.
+
+Mutado en dos direcciones: subir el número de las reglas sin tocar el resto, y
+volver a escribir `120` a mano en el schema. Las dos tiran rojo, restauradas
+después.
+
 ### B-352 — el helper de sesiones de `calendario.test.ts` ya no describe un estado imposible
 
 `sesionesSemanales` asignaba `calendarEventId: evt_<i>` incluso a las

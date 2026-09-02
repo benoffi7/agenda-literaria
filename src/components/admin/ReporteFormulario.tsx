@@ -11,7 +11,7 @@ import { listarActividades } from '@/lib/actividades';
 import { reporteFormSchema, reporteVacio } from '@/lib/reporte-schema';
 import { contextoTecnico, crearReporte } from '@/lib/reportes';
 import type { ActividadConId } from '@/types/actividad';
-import { PANTALLAS, SEVERIDADES, TIPOS_REPORTE } from '@/types/reporte';
+import { PANTALLAS, SEVERIDADES, TIPOS_REPORTE, TOPE_TITULO_REPORTE } from '@/types/reporte';
 import type { Pantalla, ReporteForm, Severidad, TipoReporte } from '@/types/reporte';
 
 interface Props {
@@ -146,7 +146,7 @@ export function ReporteFormulario({ usuario, onEnviado }: Props) {
               id="rep-titulo"
               className={claseInput}
               value={form.titulo}
-              maxLength={120}
+              maxLength={TOPE_TITULO_REPORTE}
               onChange={(e) => set('titulo', e.target.value)}
             />
           </Campo>
