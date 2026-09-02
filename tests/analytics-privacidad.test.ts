@@ -17,6 +17,7 @@ import {
   MODOS,
   MOTIVOS_FALLO,
   NOMBRES_EVENTOS,
+  SIN_VERSION_ESTAMPADA,
   avanceDelFormulario,
   clasificarFalloGuardado,
   construirEvento,
@@ -54,6 +55,7 @@ const VOCABULARIO = new Set<string>([
   ...DETALLES,
   ...GRUPOS,
   FUERA_DE_VOCABULARIO,
+  SIN_VERSION_ESTAMPADA,
   '',
 ]);
 
