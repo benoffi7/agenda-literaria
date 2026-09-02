@@ -459,6 +459,52 @@ describe('la tira no agrega una sola parada de tabulación', () => {
   });
 });
 
+describe('la tira no publica nada de la fila que no sea la imagen', () => {
+  it('el `<img>` nombra exactamente `url`, `epigrafe`, `ancho` y `alto`', () => {
+    /*
+     * Lo pidió el `auditor-privacidad` al mirar este cambio, y el motivo es que
+     * **esta es una salida nueva**: hasta B-296 las imágenes secundarias no
+     * aparecían en ninguna parte del sitio, así que ningún barrido las mira. El
+     * de `tests/barrido-de-salidas-publicas.test.ts` corre sobre el view-model y
+     * por construcción no puede ver nada que la plantilla emita **solo** para las
+     * secundarias.
+     *
+     * La frontera de verdad es el tipo —`DetallePublico.imagenes` es
+     * `{url, epigrafe, ancho, alto}[]`, así que `id`, `origen`, `portada` y
+     * `storagePath` no se pueden nombrar sin un `as`—, y esto es la red por si
+     * alguien lo fuerza: un `data-id={imagen.id}` o un
+     * `title={imagen.storagePath}` «para debuggear» no rompe nada, no lo ve el
+     * typecheck si viene con un cast, y publica el handle de la fila.
+     *
+     * El barrido sobre el HTML construido es la otra mitad: paso 8g del gate.
+     *
+     * MUTACIÓN PROBADA: agregar `data-origen={imagen.origen}` al `<img>` de la
+     * tira. `origen` no está en el tipo, así que el typecheck lo frena — pero con
+     * `(imagen as any).origen` pasa, y esto lo dice.
+     */
+    const tira = bloqueDeLaTira();
+    const campos = new Set([...tira.matchAll(/\bimagen\.(\w+)/g)].map((m) => m[1]!));
+    expect([...campos].sort()).toEqual(['alto', 'ancho', 'epigrafe', 'url']);
+  });
+
+  it('la tira no lista el bucket: sale del view-model — trampa 13', () => {
+    /*
+     * El detalle **pasó a ser** una página de varias imágenes, así que hereda la
+     * trampa propia de esa clase: «listo `imagenes/` y muestro todas» es corto de
+     * escribir y traería los flyers de las actividades **en borrador**.
+     * `/cartelera` tiene este aserto desde que se escribió (B-265); el detalle no
+     * lo tenía porque hasta acá pintaba una sola imagen que ya venía en el
+     * view-model.
+     *
+     * `storage.rules` cierra el `list` de verdad (`allow list: if esAdmin()`), así
+     * que esto falla acá antes que en producción.
+     */
+    const codigo = sinComentarios(src());
+    expect(codigo).not.toMatch(/listAll|firebase\/storage|getStorage/);
+    expect(codigo, 'las imágenes salen del lector del build').toContain('caminosDeDetalle');
+  });
+});
+
 describe('rotuloDeGaleria — el texto es un dato testeado, no un literal en el markup', () => {
   it('el número va en palabras, y concuerda', () => {
     // Es el mismo criterio que el texto de «Suscribirse» (D-133): si el rótulo

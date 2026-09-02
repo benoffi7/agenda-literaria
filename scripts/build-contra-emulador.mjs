@@ -186,7 +186,15 @@ const actividadDePrueba = (slug, estado) => ({
     {
       id: 'img_gate',
       url: 'https://example.invalid/gate.jpg',
-      epigrafe: 'Portada del fixture',
+      /*
+       * El centinela va en la **portada** y no en una secundaria, y eso lo
+       * encontró el `auditor-privacidad`: el `events.json` solo lleva la URL de
+       * la portada, así que un centinela puesto en otra fila hace pasar el paso 3
+       * sin haber probado nada. Con el epígrafe acá, el paso 3 prueba de verdad
+       * que el índice no lo publica, y el barrido de HTML del paso 4 prueba la
+       * otra dirección: que el `figcaption` de la página sí lo muestra.
+       */
+      epigrafe: CENTINELA.epigrafeImagen,
       origen: 'externa',
       portada: true,
       storagePath: CENTINELA.storagePath,
@@ -855,7 +863,39 @@ try {
         }
       }
 
-      // 8g · **El control de la mayoría**: con una sola imagen, la página es la
+      /*
+       * 8g · **El barrido de centinelas sobre la salida NUEVA.** Lo encontró el
+       * `auditor-privacidad`: el fixture pone `storagePath` en las tres imágenes
+       * y lo justifica diciendo «el barrido de abajo tiene que cubrir la salida
+       * nueva», y el barrido no estaba. El del paso 4 corre sobre la **cancelada**,
+       * que tiene una sola imagen y por lo tanto no genera la sección; y el de
+       * vitest corre sobre el view-model, así que por construcción no puede ver
+       * nada que la plantilla emita **solo para las secundarias**.
+       *
+       * Modo de falla concreto que esto ataja: un `data-id={imagen.id}` o un
+       * `title={imagen.storagePath}` agregado mañana al `<img>` de la tira.
+       *
+       * Va también sobre la **publicada**, que tampoco se barría: hasta acá el
+       * único HTML barrido era el de la cancelada.
+       */
+      for (const [nombre, html] of [
+        ['con tres imágenes', htmlGaleria],
+        ['publicada', htmlPublicada],
+      ]) {
+        if (!html) continue;
+        const filtrados = Object.entries(CENTINELA).filter(
+          ([campo, v]) => !CENTINELA_DEL_DETALLE.includes(campo) && html.includes(v),
+        );
+        if (filtrados.length > 0) {
+          fallo(
+            `la página ${nombre} publica campos privados:\n` +
+              filtrados.map(([campo, valor]) => `    ${campo} → ${valor}`).join('\n'),
+          );
+          salida = 1;
+        }
+      }
+
+      // 8h · **El control de la mayoría**: con una sola imagen, la página es la
       // de antes. Ni una imagen de más, ni una sección vacía.
       const imgsPublicada = (htmlPublicada?.match(/<img\b[^>]*>/g) ?? []).filter((i) =>
         i.includes('example.invalid/gate.jpg'),

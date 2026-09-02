@@ -27,7 +27,7 @@ no se pueden deshacer después.
    | 3 | el issue de GitHub | `functions/reportes.js` |
    | 4 | GA4 | `src/lib/analytics-eventos.ts` |
    | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
-   | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` |
+   | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts`, y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts` |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |
    | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts` |
