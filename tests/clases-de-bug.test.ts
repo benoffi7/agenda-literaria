@@ -949,6 +949,40 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
+   * **B-165** — el formato de versión se declara en UN lugar y el resto lo
+   * importa.
+   *
+   * La instancia: `tests/analytics-privacidad.test.ts` tenía su propia copia del
+   * regex y la usaba como predicado de admisibilidad. B-88 amplió el formato real
+   * y no tocó esa copia, así que quedó estrictamente más angosta que la del
+   * código — un consumidor que deriva el formato por su cuenta, o sea la clase de
+   * B-88 dentro del test que la vigila.
+   *
+   * No podía volverse una fuga (al ser más angosta solo podía dar falsa alarma),
+   * y por eso se pudo dejar abierta un rato. Lo que no se puede dejar abierto es
+   * que vuelva: una declaración nueva del mismo nombre en cualquier archivo pasa
+   * desapercibida, porque el test sigue verde con el regex viejo.
+   *
+   * Se cuenta sobre el repo entero y no sobre una lista de archivos: la copia
+   * puede nacer en cualquier lado.
+   */
+  it('FORMATO_VERSION se declara una sola vez en todo el repo', () => {
+    const declaraciones = execFileSync(
+      'git',
+      ['grep', '-n', '-E', '(const|export const|let) FORMATO_VERSION', '--', 'src', 'tests', 'scripts', 'functions'],
+      { cwd: fileURLToPath(raiz), encoding: 'utf8' },
+    )
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+
+    // Una, y es la del productor. El mensaje nombra las copias que aparezcan.
+    expect(declaraciones.join('\n')).toBe(
+      declaraciones.find((l) => l.startsWith('src/lib/analytics-eventos.ts:')) ?? '',
+    );
+  });
+
+  /**
    * El otro lado de la clase, ya resuelto y con guarda: el panel no
    * reimplementa la descripción del evento, importa la del sync por el alias
    * `@calendario` (D-20). Si alguien vuelve a copiarla, las dos versiones se
