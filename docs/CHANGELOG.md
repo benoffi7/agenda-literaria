@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-02 · cierre de B-108: los hubs quedan documentados y el backlog al día
+
+El código, los tests y la salida 11 del índice de salidas públicas ya habían
+entrado a `main` (ver la entrada de abajo, del mismo día). Lo que faltaba era el
+cierre en sí: **B-108 pasa a hecho** en `docs/BACKLOG.md`, y `04-funcionalidades.md`,
+`12-sitio-publico.md` y `docs/README.md` dejan de describir los hubs como "lo que
+falta" del sitio.
+
+De paso apareció **drift real, no solo un backlog desactualizado**: el §4.1 de
+`04-funcionalidades.md` seguía describiendo la tira «La agenda mes por mes» de
+B-113 como si existiera sola, cuando `ExploraPor.astro` (B-108) ya la había
+reemplazado por una tira más general que incluye los hubs y los meses juntos —
+el propio código lo dice en su comentario, la doc no. Corregido en el mismo
+cambio.
+
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 
 **Y los cuatro hubs de búsqueda entraron al índice de salidas públicas como la

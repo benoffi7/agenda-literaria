@@ -992,28 +992,51 @@ lo que existe el proyecto (§2.3).
 - Además: `BreadcrumbList` en el detalle, `CollectionPage` + `ItemList` en la
   home y los hubs, `Organization` en `/acerca`.
 
-### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis`
+### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis` — ✅ hecho (2026-09-02)
 
-Un solo componente de página con el subconjunto ya filtrado en HTML y la island
-montada con el filtro preaplicado y visible como chip. Es lo que gana
-`taller de escritura villa crespo` y `club de lectura online`: un filtro no
-puede, porque no tiene URL ni `h1` (§2.1 del diseño).
+**Hecho.** Un solo componente de página (`src/lib/hubsPublicos.ts` +
+`CuerpoDeHub.astro`) para las cuatro clases, con el subconjunto ya filtrado en
+HTML — **no una island**: el hub no lleva JavaScript, es HTML del build igual
+que el resto de las páginas nuevas del sitio. El «buscar dentro» del §4.4 es un
+link `?tipo=taller` a la home, que sí tiene la island. Es lo que gana `taller de
+escritura villa crespo` y `club de lectura online`: un filtro no puede, porque
+no tiene URL ni `h1` (§2.1 del diseño).
 
 Los de tipo y barrio se generan recorriendo `/opciones/{tipo,barrio}` — una
 opción nueva trae su hub sola. El slug de la URL es el **slug** de la taxonomía,
 nunca el label: el label se renombra (§4.1) y una URL no (trampa 10).
 
 Un hub que se queda sin actividades vigentes **no se borra**: se genera vacío,
-con aviso y links. Un 404 sobre una URL indexada es peor.
+con aviso y links, y sale con `noindex`. `esIndexable` fija que esa señal y "está
+en el sitemap" sean las dos mitades de una sola decisión, nunca una sin la otra
+— `tests/hubsPublicos.test.ts` lo prueba en las dos direcciones.
 
-**Y desde B-109 hay una cosa más que hacer, que el test va a pedir:** los hubs
-tienen que entrar a `RUTAS_FIJAS` (`src/lib/sitemap.ts`) o a la lista de
-excepciones con su motivo. `tests/sitemap.test.ts` exige que **toda** página
-estática del sitio esté en una de las dos, así que la página nueva no puede nacer
-fuera del sitemap sin que nadie lo decida — que es exactamente el modo de falla
-que este ítem tendría (un hub que existe, se ve bien y no se le ofrece a nadie).
-Los de tipo y barrio son dinámicos, así que van por su propia regla, como las
-actividades y los meses.
+**Los hubs entraron a `RUTAS_FIJAS`/`hubsOfrecidos`** (`src/lib/sitemap.ts`),
+como el ítem preveía: los dos temáticos por la lista fija, los de tipo y barrio
+por su propia regla dinámica, igual que las actividades y los meses.
+`tests/sitemap.test.ts` sigue exigiendo que toda página estática esté en una de
+las dos listas.
+
+La navegación es la tira **«Explorá por»** (`ExploraPor.astro`), que
+**reemplazó** a la tira «La agenda mes por mes» de B-113: los meses son ahora un
+grupo más, junto con los hubs. Sin esa tira los hubs serían páginas indexadas sin
+un solo enlace interno.
+
+**Lo que encontró la integración con los otros frentes, y no este ítem en
+soledad:** los cuatro hubs no habían entrado a las tres listas que atan una
+salida pública nueva —la ficha de `auditor-privacidad`, `docs/07-seguridad.md`
+y el skill `campo-nuevo`— así que el auditor no se disparaba al tocarlos. Se
+cerró como la **salida 11** del índice, con su `describe` en
+`tests/barrido-de-salidas-publicas.test.ts` (detalle en el CHANGELOG del
+2026-09-02). Y una precisión de ese mismo barrido: **las frases y la URL de un
+hub se recorren por separado**, porque en el título tiene que estar la etiqueta
+y en la ruta el slug (trampa 10) — un barrido único dejaba pasar el slug en el
+título nada más porque coincidía con el de la URL.
+
+**Lo que queda, y es de otro ítem:** el `CollectionPage`/`ItemList` de datos
+estructurados sobre la home y los hubs sigue en **B-107**, que es además donde
+va el `BreadcrumbList` del detalle — las dos piezas de marcado de navegación que
+faltaban.
 
 ### B-109 · `site`, `robots.txt`, `sitemap.xml` y `/pasadas` — ✅ hecho (2026-09-02)
 
