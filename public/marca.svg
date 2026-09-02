@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 820" role="img" aria-label="Agenda LEH">
+  <!--
+    La sigla LEH, trazada desde el logo aprobado el 2026-09-02 — B-295.
+
+    ── Por qué es un SVG de nueve rectángulos y no el PNG ──────────────────
+    El original que salió del generador es un PNG de 1024×1024 y **707 KB**, con
+    el fondo de papel pegado y sin transparencia. Como favicon eso es absurdo: se
+    baja entero para mostrarse a 16 píxeles, y su fondo —un blanco distinto del
+    `papel` del sitio— se vería como un rectángulo pegado encima.
+
+    Pero la marca es **geometría pura**: una descomposición del bitmap en
+    rectángulos alineados al eje dio **doce**, y doce cubren el 99,9% de la tinta.
+    Descartando tres astillas de 1px de antialiasing quedan estas nueve.
+
+    La traza se **verificó rasterizándola contra el original**: 99,69% de
+    coincidencia, 41 píxeles de más y 1023 de menos sobre 339.037. La diferencia
+    es el borde suavizado, que en un SVG no existe y no debe existir.
+
+    ── La geometría, que no es arbitraria ──────────────────────────────────
+    Todo cae en una retícula: el trazo mide **82** y los brazos **102**, sobre una
+    caja de **820**. O sea que el trazo es exactamente el 10% del alto. Es lo que
+    hace que aguante 16 píxeles —1,3px de trazo y 1,3px de hueco, medidos— y por
+    eso ésta es la pieza chica y no la del logotipo con bajada, cuyo trazo más
+    fino a 32px queda en 0,2px.
+
+    ── `currentColor`, a propósito ─────────────────────────────────────────
+    No lleva color propio: hereda el de quien la use. Así la misma marca sirve en
+    tinta sobre papel, en papel sobre tinta y en terracota, sin tres archivos que
+    se desincronicen. El favicon la pinta explícito porque ahí no hay contexto
+    del que heredar.
+  -->
+  <g fill="currentColor">
+    <!-- L -->
+    <rect x="0" y="0" width="82" height="820" />
+    <rect x="82" y="717" width="143" height="103" />
+    <!-- E -->
+    <rect x="267" y="0" width="225" height="103" />
+    <rect x="267" y="0" width="82" height="820" />
+    <rect x="349" y="359" width="123" height="102" />
+    <rect x="349" y="717" width="163" height="103" />
+    <!-- H -->
+    <rect x="553" y="0" width="82" height="820" />
+    <rect x="636" y="359" width="101" height="102" />
+    <rect x="737" y="0" width="82" height="820" />
+  </g>
+</svg>

@@ -247,6 +247,36 @@
     font-size: 32px;
     line-height: 30px;
   }
+
+  /*
+   * ── El registro desfasado, con dos tintas ────────────────────────────
+   * B-295. Es el gesto del logo aprobado, y acá no se dibuja: se compone.
+   *
+   * `text-shadow` pinta **detrás** del glifo, así que la tinta queda arriba y
+   * las otras dos asoman por los costados — exactamente una impresión donde la
+   * plancha se corrió. El desplazamiento va en **em**, así que escala con el
+   * cuerpo y se ve igual a 26px que a 32.
+   *
+   * **Las dos van para lados opuestos, y una sola cantidad.** Un desfasaje real
+   * corre toda la plancha en una dirección: si cada tinta se corre para donde
+   * quiere, deja de leerse como imprenta y pasa a ser decoración. Fue la
+   * corrección que costó dos vueltas de logo.
+   *
+   * El glifo legible es `tinta` sobre `papel` —16,3:1—, así que las tintas
+   * corridas son borde y no texto: no cargan contraste.
+   */
+  text-shadow:
+    -0.035em -0.035em 0 var(--color-acento),
+    0.035em 0.035em 0 var(--color-super);
+
+  /*
+   * En modo de colores forzados el sistema reemplaza la paleta, y dos sombras
+   * de colores que ya no controla se convierten en manchas alrededor de las
+   * letras. Se apaga.
+   */
+  @media (forced-colors: active) {
+    text-shadow: none;
+  }
 }
 
 /*
