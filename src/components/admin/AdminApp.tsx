@@ -34,6 +34,7 @@ import type { ActividadFormulario as TipoFormulario } from '@/components/admin/A
 import type { CalendarioActividades as TipoCalendario } from '@/components/admin/CalendarioActividades';
 import type { HistorialActividad as TipoHistorial } from '@/components/admin/HistorialActividad';
 import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
+import type { EstadisticasPanel as TipoEstadisticas } from '@/components/admin/EstadisticasPanel';
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { User } from 'firebase/auth';
@@ -55,7 +56,10 @@ type Vista =
   | { tipo: 'historial'; actividad: ActividadConId }
   // B-170 — administración de las taxonomías del §4. No lleva estado: la
   // pantalla lee `/opciones/*` sola.
-  | { tipo: 'taxonomias' };
+  | { tipo: 'taxonomias' }
+  // B-370 — «Estado del catálogo», el tablero de docs/16-analitica-del-sitio.md.
+  // No lleva estado: la pantalla lee `/actividades` sola, como el listado.
+  | { tipo: 'estadisticas' };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -125,6 +129,15 @@ const TaxonomiasPanel = diferido<object>(() =>
   })),
 );
 
+// B-370 — ídem: el tablero lee /actividades, así que arrastra Firestore. Y es
+// además la pantalla que se abre de a ratos y no en cada carga, así que es justo
+// la que no tiene por qué viajar en el chunk del login (B-09, D-51, B-117).
+const EstadisticasPanel = diferido<Parameters<typeof TipoEstadisticas>[0]>(() =>
+  import('@/components/admin/EstadisticasPanel').then((m) => ({
+    default: m.EstadisticasPanel,
+  })),
+);
+
 const PendientesBadge = diferido<object>(() =>
   import('@/components/admin/taxonomias/PendientesBadge').then((m) => ({
     default: m.PendientesBadge,
@@ -172,7 +185,7 @@ export function AdminApp() {
    * el calendario devolvía al listado y se perdía el mes que se estaba
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
-  const [volverA, setVolverA] = useState<'lista' | 'calendario'>('lista');
+  const [volverA, setVolverA] = useState<'lista' | 'calendario' | 'estadisticas'>('lista');
 
   /**
    * B-35 — toda salida del formulario pasa por acá.
@@ -340,7 +353,9 @@ export function AdminApp() {
                         ? `Historial de ${vista.actividad.titulo}`
                         : vista.tipo === 'taxonomias'
                           ? 'Opciones de los desplegables'
-                          : vista.actividad.titulo}
+                          : vista.tipo === 'estadisticas'
+                            ? 'Estado del catálogo'
+                            : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
         </div>
@@ -372,6 +387,15 @@ export function AdminApp() {
             <PendientesBadge />
           </button>
         )}
+        {vista.tipo === 'lista' && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'estadisticas' })}
+            className="min-h-touch shrink-0 rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Estadísticas
+          </button>
+        )}
         {vista.tipo !== 'reportes' && (
           <button
             type="button"
@@ -390,7 +414,7 @@ export function AdminApp() {
               ? 'lista'
               : vista.tipo === 'calendario'
                 ? 'calendario'
-                : vista.tipo === 'taxonomias'
+                : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
                   ? 'lista'
                   : 'formulario'
           }
@@ -457,6 +481,18 @@ export function AdminApp() {
       )}
 
       {vista.tipo === 'taxonomias' && <TaxonomiasPanel />}
+
+      {vista.tipo === 'estadisticas' && (
+        <EstadisticasPanel
+          onEditar={(a) => {
+            // Vuelve al tablero y no al listado, con el mismo criterio que el
+            // calendario: se llegó acá desde un aviso, y lo más probable es que
+            // haya más de uno para atender en la misma sentada.
+            setVolverA('estadisticas');
+            setVista({ tipo: 'editar', actividad: a });
+          }}
+        />
+      )}
 
       {vista.tipo === 'reportes' && (
         <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />

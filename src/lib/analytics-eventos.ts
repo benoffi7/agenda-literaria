@@ -174,6 +174,20 @@ export const FUNCIONES = [
    * nombre del archivo ni el tamaño real: eso es contenido (§9).
    */
   'imagen-rechazada',
+  /**
+   * B-370 / D-200 — se abrió «Estado del catálogo», con cuántas actividades
+   * tenía el catálogo en ese momento como `valor`.
+   *
+   * Contesta la única pregunta que decide si vale construir la otra mitad de
+   * `docs/16-analitica-del-sitio.md`: **¿alguien abre el tablero?** Si nadie lo
+   * abre, la Function que lee la Data API de GA4 (B-374) no vale lo que cuesta,
+   * y el tablero del catálogo se retira en vez de crecer.
+   *
+   * Un entero y nada más: ni un título, ni un slug, ni el nombre de un aviso
+   * (§9). Lo que se está midiendo es el uso del panel, no el catálogo — el
+   * catálogo se mira en la pantalla.
+   */
+  'estadisticas-abrir',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

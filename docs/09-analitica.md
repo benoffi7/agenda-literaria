@@ -259,6 +259,7 @@ evento por función.
 | `coordenadas-fallo` | ese link no se pudo resolver | el modo de fallo | — |
 | `imagen-subida` | una imagen propia terminó de subir a Storage | — | — |
 | `imagen-rechazada` | la subida no salió | por qué | — |
+| `estadisticas-abrir` | se abre «Estadísticas» en el listado | — | actividades del catálogo |
 
 Valores de `detalle`:
 
@@ -280,6 +281,14 @@ Function, no explicar mejor.
 **Nunca viaja el nombre del archivo ni su tamaño real**, aunque el mensaje que ve
 la persona sí los diga: eso es contenido, y `detalle` es un enum cerrado de tres
 valores.
+
+**`estadisticas-abrir` es el termómetro del tablero del catálogo** (B-370, D-200,
+[`16-analitica-del-sitio.md`](16-analitica-del-sitio.md)). Contesta la única
+pregunta que decide si vale construir la mitad que lee GA4 (**B-374**): *¿alguien
+abre el tablero?* Si nadie lo abre, esa Function no vale lo que cuesta y el
+tablero se retira en vez de crecer. `valor` es cuántas actividades tenía el
+catálogo al abrirlo — un entero, y nunca el nombre de un aviso ni el título de
+ninguna actividad señalada.
 
 `seccion-abrir` se instrumentó en el componente `Seccion`, así que **una sección
 nueva se mide sola** en cuanto existe. Cae en `detalle: otro` hasta que su slug
