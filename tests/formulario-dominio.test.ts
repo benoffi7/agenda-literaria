@@ -636,6 +636,80 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       expect(r.etiquetasSinRegistrar).toEqual([]);
     });
 
+    it('no dedupea dos etiquetas distintas que comparten el mismo texto', async () => {
+      /*
+       * Lo encontró el `auditor-trampas`. La primera versión juntaba los labels
+       * en un `Set<string>`, así que un arancel «Nuevo» y un barrio «Nuevo»
+       * —que es exactamente lo que pasa cuando alguien duda y escribe lo mismo
+       * en dos campos— eran **una** entrada: el éxito del primero borraba la
+       * entrada compartida y el fallo del segundo desaparecía. El aviso decía
+       * que todo salió bien y quedaba una taxonomía sin registrar que nadie
+       * sabía que había que volver a tipear.
+       */
+      const { puertos } = puertosFalsos({
+        upsertOpcion: async (campo) => {
+          if (campo === 'barrio') throw new Error('offline');
+          return 'nuevo';
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            labelsNuevos: [
+              { campo: 'arancel' as const, label: 'Nuevo' },
+              { campo: 'barrio' as const, label: 'Nuevo' },
+            ],
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Nuevo']);
+    });
+
+    it('dos campos que fallan con el mismo texto se nombran una sola vez', async () => {
+      // La otra mitad: la clave interna distingue por campo, pero lo que se
+      // **muestra** se deduplica por label. Nombrar dos veces el mismo texto no
+      // agrega información — el mismo criterio que `resumirFaltantes`.
+      const { puertos } = puertosFalsos({
+        upsertOpcion: async () => {
+          throw new Error('offline');
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            labelsNuevos: [
+              { campo: 'arancel' as const, label: 'Nuevo' },
+              { campo: 'barrio' as const, label: 'Nuevo' },
+            ],
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Nuevo']);
+    });
+
+    it('un fallo al dar de alta la etiqueta no impide contar los usos de las que sí están', async () => {
+      /*
+       * Lo pidió el `auditor-privacidad`, y es un cambio de comportamiento real
+       * de B-177 que ningún test fijaba: antes `registrarUsos` compartía el
+       * `try` con las altas, así que un throw en `upsertOpcion` lo salteaba
+       * también. Ahora corre igual.
+       *
+       * Es lo que se quiere: las otras etiquetas de la actividad **sí** están
+       * registradas y su uso tiene que contarse. Y sobre la que no se dio de
+       * alta es un no-op, porque `registrarUsos` ignora los slugs que no
+       * existen (D-103).
+       */
+      const { puertos, llamadas } = puertosFalsos({
+        upsertOpcion: async () => {
+          throw new Error('offline');
+        },
+      });
+      await guardarActividad(entrada(), puertos);
+      expect(llamadas.filter((l) => l.startsWith('registrarUsos:')).length).toBeGreaterThan(0);
+    });
+
     it('las etiquetas de tags también se nombran', async () => {
       const { puertos } = puertosFalsos({
         upsertOpciones: async () => {

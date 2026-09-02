@@ -161,16 +161,36 @@ export const guardarActividad = async (
      * llegó. Con un booleano el aviso decía "alguna etiqueta nueva no se
      * registró" y no cuál, y volver a tipear la que falta implica adivinar entre
      * cinco campos.
+     *
+     * **La clave es el par `campo|label`, no el label.** Lo encontró el
+     * `auditor-trampas`: con un `Set` de labels, dos "Otro" tipeados igual en dos
+     * campos distintos —un arancel "Nuevo" y un barrio "Nuevo", que es
+     * exactamente lo que pasa cuando alguien duda y escribe lo mismo dos veces—
+     * son **una** entrada. Si el alta del primero sale bien y la del segundo
+     * falla, el éxito del primero borra la entrada compartida y el fallo del
+     * segundo **desaparece**: el aviso dice que todo salió bien y queda una
+     * taxonomía sin registrar que nadie sabe que hay que volver a tipear. El
+     * separador es un `\0` porque no puede aparecer en un label.
+     *
+     * Lo que se **muestra** sí se deduplica por label: dos campos que fallaron
+     * con el mismo texto son un solo nombre en pantalla, porque nombrarlo dos
+     * veces no agrega información — es el mismo criterio que `resumirFaltantes`.
      */
-    const restantes = new Set<string>([...labelsNuevos.map((l) => l.label), ...labelsTags]);
+    const clave = (campo: string, label: string) => `${campo}\0${label}`;
+    const restantes = new Map<string, string>([
+      ...labelsNuevos.map((l) => [clave(l.campo, l.label), l.label] as const),
+      ...labelsTags.map((l) => [clave('tags', l), l] as const),
+    ]);
     try {
       for (const { campo, label } of labelsNuevos) {
         await upsertOpcion(campo, label, uid);
-        restantes.delete(label);
+        restantes.delete(clave(campo, label));
       }
       if (labelsTags.length) {
+        // Una sola llamada para todos los tags, así que es todo o nada: si
+        // `upsertOpciones` falla, ninguno quedó registrado.
         await upsertOpciones('tags', labelsTags, uid);
-        for (const l of labelsTags) restantes.delete(l);
+        for (const l of labelsTags) restantes.delete(clave('tags', l));
       }
     } catch {
       // Se sale con lo que quedó en `restantes`. No se reintenta acá: la
@@ -201,7 +221,7 @@ export const guardarActividad = async (
       // Ver arriba: silencioso a propósito.
     }
 
-    return { estado: 'ok', id, guardado, etiquetasSinRegistrar: [...restantes] };
+    return { estado: 'ok', id, guardado, etiquetasSinRegistrar: [...new Set(restantes.values())] };
   } catch (error) {
     return { estado: 'error', error };
   }

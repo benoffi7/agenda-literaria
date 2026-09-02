@@ -348,9 +348,26 @@ describe('el campo de coordenadas se mide (B-55)', () => {
     expect(FUENTE).toMatch(/if \(!yaMedido\) medirFuncion\('coordenadas-fallo'/);
   });
 
-  it('nunca manda lo pegado', () => {
-    // El link es contenido: puede llevar el nombre del lugar. `detalle` es un
-    // enum cerrado de cuatro etiquetas de causa.
-    expect(FUENTE).not.toMatch(/medirFuncion\([^)]*\b(entrada|texto|pegado)\b/);
+  it('nunca manda lo pegado, ni el mensaje, ni la coordenada', () => {
+    /*
+     * El link es contenido: lleva el nombre del lugar **y** la ubicación física
+     * de un taller que muchas veces pasa en una casa particular. `detalle` es un
+     * enum cerrado de cuatro etiquetas de causa.
+     *
+     * La lista la amplió el `auditor-privacidad`: la primera versión barría
+     * `entrada|texto|pegado` y dejaba afuera los dos candidatos **más a mano**.
+     * `r.error` es el hermano de `r.motivo` en el mismo `if (!r.ok)`, y dos de
+     * sus ramas **interpolan la coordenada de la persona** («…y llegó -34.5»).
+     * Un `medirFuncion('coordenadas-fallo', r.error)` pasaba el test anterior
+     * sin chistar.
+     *
+     * Hoy no filtraría igual —el sanitizador de `detalle` reemplaza por `otro`
+     * cualquier cosa fuera del vocabulario, y `valor` es un entero acotado— pero
+     * eso es la red del runtime. Lo que este test verifica es el criterio en el
+     * productor, que es lo que dice hacer.
+     */
+    expect(FUENTE).not.toMatch(
+      /medirFuncion\([^)]*\b(entrada|texto|pegado|error|geo|lat|lng|clipboardData)\b/,
+    );
   });
 });
