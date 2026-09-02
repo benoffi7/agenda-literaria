@@ -36,18 +36,17 @@
  * que es justo la puerta que D-140 cerró para la página de detalle. Lo encontró
  * el `auditor-privacidad`.
  *
- * ── Sin canonical, y a propósito ──────────────────────────────────────────
- * El sitio todavía no tiene dominio (**B-109**), así que no hay URL absoluta que
- * escribir. Inventar una es la trampa que el propio B-109 advierte: una canonical
- * a un dominio equivocado saca la página de Google entera. Cuando el dominio
- * exista, esta página entra al mismo mecanismo que todas.
+ * ── La canonical la pone el layout ────────────────────────────────────────
+ * Faltaba hasta que el dominio existiera (**B-109**, cerrado con D-165): hoy
+ * `Base.astro` la arma con `urlAbsoluta` para toda página, así que esta entró al
+ * mismo mecanismo que las demás sin escribir una URL acá.
  *
  * ── El mes vencido ────────────────────────────────────────────────────────
  * Se emite **una última vez** con un aviso y una salida, y con `noindex`. El
- * §2.2 dice «sale del sitemap»; sitemap todavía no hay (B-109), y el gesto
- * equivalente que sí existe hoy es dejar de ofrecérsela al buscador sin dejar de
- * responderle a quien tenga el link. Nunca un 404 sobre una URL que estuvo
- * indexada.
+ * §2.2 dice además «sale del sitemap», y desde B-109 eso es literal: el sitemap
+ * sale de `mesesEnlazables`, que deja afuera las vencidas. Las dos mitades
+ * puestas — no se la ofrece al buscador y se le sigue respondiendo a quien tenga
+ * el link. Nunca un 404 sobre una URL que estuvo indexada.
  */
 import Base from '@/layouts/Base.astro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';

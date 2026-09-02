@@ -15,6 +15,7 @@ import {
   urlSegura,
 } from '@/lib/detallePublico';
 import { mapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
+import { urlDeDetalle } from '@/lib/rutasPublicas';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
@@ -911,13 +912,37 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     );
   });
 
-  it('el JSON-LD no lleva URLs absolutas inventadas (B-109 todavía abierto)', () => {
+  it('el JSON-LD lleva la canónica de la actividad, derivada y no escrita (B-109 cerrado)', () => {
     /*
-     * `canonical`, `og:` y `url` necesitan `site` en la config, que necesita el
-     * dominio decidido. Inventar una URL ahora es peor que no ponerla: una
-     * canónica equivocada le dice a Google que la página buena es otra.
+     * **Este caso estaba escrito al revés, a propósito.** Hasta B-109 exigía que
+     * el JSON-LD **no** llevara ninguna URL absoluta: `canonical`, `og:` y `url`
+     * necesitaban `site` en la config, y `site` necesitaba el dominio decidido.
+     * Inventar una URL era peor que no ponerla.
+     *
+     * **La condición se cumplió** (D-165), así que se da vuelta: el `url` del
+     * evento, el del `VirtualLocation` (§5.4) y el de `offers` tienen que estar,
+     * y tienen que salir de `urlDeDetalle` — no escritos a mano. Se comparan
+     * contra la función, no contra el dominio literal: un test con el dominio
+     * pegado sería la segunda copia que este cambio vino a evitar.
+     *
+     * Y quedan dos ausencias, las dos con motivo:
+     *
+     * - **ninguna URL relativa** (`"url":"/…"`): en un JSON-LD no es válida, y
+     *   un consumidor que la resuelva contra el host que la sirvió apunta al
+     *   espejo;
+     * - **ninguna URL del espejo** `agenda-literaria.web.app`, que sigue
+     *   sirviendo este mismo HTML para siempre porque Firebase no lo apaga. La
+     *   canónica no puede ser la del espejo: eso es justo el contenido duplicado
+     *   que B-109 cerró.
+     *
+     * MUTACIÓN PROBADA: cambiar `urlDeDetalle(d.slug)` por `rutaDeDetalle(d.slug)`
+     * en `datosEstructurados` deja el HTML igual y pone este caso en rojo por la
+     * URL relativa.
      */
-    const texto = JSON.stringify(datosEstructurados(detalleDe())!);
+    const d = detalleDe();
+    const texto = JSON.stringify(datosEstructurados(d)!);
+    expect(texto).toContain(urlDeDetalle(d.slug));
+    expect(urlDeDetalle(d.slug)).toMatch(/^https:\/\//);
     expect(texto).not.toContain('"url":"/');
     expect(texto).not.toContain('agenda-literaria.web.app');
   });

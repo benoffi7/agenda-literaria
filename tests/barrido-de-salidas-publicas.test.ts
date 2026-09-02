@@ -1221,6 +1221,7 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'imagenes.url',
         'labels.plataforma',
         'labels.arancel',
+        'slug',
       ],
       porque:
         '§5.2 — `name`, `description` (el resumen), `organizer`, `performer`, `location` con ' +
@@ -1229,7 +1230,12 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         '`addressLocality` (la ciudad) y no el barrio, así que no hay dónde ponerlo sin ' +
         'inventar un campo. `inscripcion.destino`, las `indicaciones`, la `bio`, el ' +
         '`material` y el `libro` tampoco: nada de eso es parte de un `Event` y publicarlo ' +
-        'en un formato que las máquinas cosechan es gratis para el que cosecha.',
+        'en un formato que las máquinas cosechan es gratis para el que cosecha. ' +
+        '**El `slug` entró con B-109**: desde que el dominio existe, el JSON-LD lleva la ' +
+        'canónica de la actividad (`url`, el `url` del `VirtualLocation` del §5.4 y el del ' +
+        '`Offer`), y una canónica es el slug con el origen adelante. Es el mismo dato que ' +
+        'ya es la URL de la página y el `href` de cada fila del listado — no hay campo ' +
+        'nuevo, hay un dato público escrito completo.',
     },
   ];
 

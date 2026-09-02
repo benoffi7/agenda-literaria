@@ -152,6 +152,17 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
   seccion="agenda"
   titulo={detalle.meta.titulo}
   descripcion={detalle.meta.descripcion}
+  {/*
+    B-109 — la portada es el `og:image` de esta página, y es la única del sitio
+    que tiene uno: un flyer **es** la imagen de la actividad, así que el link
+    pegado en Instagram o en WhatsApp se ve con el afiche que la anuncia. Sin
+    flyer no se manda nada (las cinco imágenes por tipo del §5.1 son B-291), y
+    la tarjeta baja a `summary` sola — ver `Base.astro`.
+
+    La URL ya pasó por `urlSegura` en el view-model y ya es absoluta: es la misma
+    que el `<img>` de más abajo, no una segunda derivación.
+  */}
+  imagen={portada?.url ?? null}
 >
   {
     /*
@@ -167,9 +178,10 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
       Escapado como `<` el JSON sigue siendo el mismo valor para cualquier
       consumidor —es la forma escapada del mismo carácter— y Google lo lee igual.
 
-      **No hay `canonical` ni Open Graph absolutos, y falta a propósito**: los dos
-      necesitan `site` en `astro.config.mjs`, que necesita que el dominio esté
-      decidido — es B-109. Inventar una URL ahora es peor que no ponerla.
+      **La `canonical` y el Open Graph ya están, y los pone `Base.astro`** —
+      B-109, con el dominio decidido (D-165). Acá no se escribe ninguna URL: el
+      layout las arma con `urlAbsoluta`, y el `url` del propio JSON-LD lo arma
+      `datosEstructurados` con la misma función. Tres salidas, un solo origen.
     */
     jsonLd && (
       <script

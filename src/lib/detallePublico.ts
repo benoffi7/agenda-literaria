@@ -48,6 +48,7 @@ import {
   rangoCorto,
 } from '@/lib/fechasPublicas';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
+import { urlDeDetalle } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad } from '@/types/actividad';
@@ -915,13 +916,14 @@ const CANCELADO = 'https://schema.org/EventCancelled';
 /**
  * Los `location`: un `Place` por sede y un `VirtualLocation` por plataforma.
  *
- * **`VirtualLocation` sale sin `url`, y es una carencia consciente.** Google pide
- * ahí la URL donde se consigue el acceso, que según el §5.4 del diseño tiene que
- * ser **la canónica de la actividad** —nunca `online.url`, ni con `urlPublica`—.
- * La canónica es absoluta y hoy no existe: `site` de `astro.config.mjs` depende
- * del dominio, que es **B-109**. Emitir una URL relativa ahí sería inválido y
- * emitir el link de la reunión está prohibido, así que se emite el lugar sin URL
- * y se completa con B-109 (anotado como **B-237**).
+ * **El `url` del `VirtualLocation` es la canónica de la actividad** — §5.4 del
+ * diseño, completado en B-109 (D-165). Google pide ahí la URL donde se consigue
+ * el acceso, y esa es **esta página**: nunca `online.url`, ni con
+ * `urlPublica: true` (D-139). El JSON-LD es lo primero que cosecha un bot, así
+ * que el link de la reunión no llega ahí por ningún camino — la trampa 5.
+ *
+ * Hasta que el dominio existió el lugar salía sin `url`, porque una URL relativa
+ * ahí no es válida y una absoluta inventada es peor que nada.
  */
 const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
   d.modalidades.flatMap((m) => {
@@ -938,7 +940,13 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
         },
       });
     }
-    if (m.plataforma) salida.push({ '@type': 'VirtualLocation', name: m.plataforma });
+    if (m.plataforma) {
+      salida.push({
+        '@type': 'VirtualLocation',
+        name: m.plataforma,
+        url: urlDeDetalle(d.slug),
+      });
+    }
     return salida;
   });
 
@@ -1008,6 +1016,14 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     '@context': 'https://schema.org',
     name: d.titulo,
     description: d.resumen,
+    /*
+     * **La canónica del evento** — B-109 (D-165). Es lo que le dice a Google
+     * cuál es la página de esta actividad, y sale de `urlDeDetalle`, la misma
+     * función que arma el `href` del listado: el `url` del JSON-LD, el
+     * `canonical` del `<head>` y la entrada del sitemap no pueden ser tres URLs
+     * distintas de la misma página.
+     */
+    url: urlDeDetalle(d.slug),
     eventAttendanceMode: modo,
     // B-110 / §7.3 — es exactamente lo que Google pide para dejar de mostrarla
     // como vigente sin que la URL se caiga.
@@ -1050,6 +1066,9 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
               priceCurrency: 'ARS',
               availability: 'https://schema.org/InStock',
               category: d.arancel.etiqueta,
+              // §5.4 — dónde se consigue: **esta página**, nunca el canal de
+              // inscripción crudo ni el link de la reunión (B-109, D-165).
+              url: urlDeDetalle(d.slug),
             },
           }
         : !d.inscripcion.cerrada
@@ -1058,6 +1077,7 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
                 '@type': 'Offer',
                 availability: 'https://schema.org/InStock',
                 category: d.arancel.etiqueta,
+                url: urlDeDetalle(d.slug),
               },
             }
           : {}),

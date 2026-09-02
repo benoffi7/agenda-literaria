@@ -14,7 +14,7 @@ import { INFO_VERSION } from '@/lib/version';
  * desincronizan y el panel se recargaría en loop.
  *
  * También sirve para chequear a mano qué está publicado:
- *   curl -s https://agenda-literaria.web.app/version.json
+ *   curl -s https://agendaleh.ar/version.json
  */
 export const prerender = true;
 

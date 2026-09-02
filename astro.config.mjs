@@ -3,6 +3,18 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import { infoVersion } from './scripts/version.mjs';
+/*
+ * El dominio se **importa**, no se escribe — B-109 (D-165).
+ *
+ * `SITIO` es la única aparición del dominio en el repo: de ahí salen el
+ * `canonical`, el Open Graph, el sitemap y las URLs del JSON-LD. Copiarlo acá
+ * como literal sería un cuarto lugar donde puede quedar viejo, y el peor de
+ * todos: `site` es lo que Astro usa para resolver el resto.
+ *
+ * La extensión `.ts` va explícita porque este archivo es `.mjs` y lo carga Vite,
+ * que resuelve TypeScript sin problema (verificado con `astro sync`).
+ */
+import { SITIO } from './src/lib/rutasPublicas.ts';
 
 // La versión se estampa una sola vez por build y viaja al bundle como variable
 // `PUBLIC_*`, que es el mecanismo que Astro ya usa para la config del cliente.
@@ -15,6 +27,9 @@ process.env.PUBLIC_VERSION_GENERADO_EN = version.generadoEn;
 
 // Sitio estático (SSG) — SEO real es requisito (§2.3).
 export default defineConfig({
+  // B-109 — el origen canónico. Sin esto no hay URL absoluta que poner en el
+  // canonical, en el Open Graph ni en el sitemap, y era el bloqueo de la cadena.
+  site: SITIO,
   output: 'static',
   integrations: [react()],
   vite: {

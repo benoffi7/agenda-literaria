@@ -61,7 +61,7 @@ describe('redactar — el repo de GitHub es público (§5.1, trampa 5)', () => {
   });
 
   it('no toca un texto común ni un link inofensivo', () => {
-    const t = 'el botón de la home https://agenda-literaria.web.app/admin no responde';
+    const t = 'el botón de la home https://agendaleh.ar/admin no responde';
     expect(redactar(t)).toBe(t);
   });
 });
