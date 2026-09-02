@@ -3061,6 +3061,52 @@ es confirmarlo en GA4 (DebugView), que es un paso de consola del dueño.
 **B-92 y B-118 son la misma observación sobre esta entrada, duplicada**: las dos
 decían que B-56 estaba desactualizado. Quedan cerradas con esto.
 
+### B-296 · El detalle muestra una imagen y la actividad puede tener cuatro · P2
+
+Lo reportó el dueño el 2026-09-02: «tiene imágenes pero no se ven». El síntoma era
+otra cosa —el build tenía siete minutos menos que la edición, y el rebuild estaba
+justo corriendo— pero al investigarlo apareció esto: **«Usted está aquí» tiene tres
+imágenes cargadas y la página muestra una.**
+
+`src/pages/actividad/[slug].astro` hace `detalle.imagenes[0]` y pinta esa sola. No
+es un olvido: se decidió así cuando la página se escribió, con el argumento de que
+«la actividad tiene **una** portada opcional» (la corrección 1 de
+`stitch-detalle.md`, que sacaba la grilla de tres fotos de relleno). Lo que cambió
+es el dato: hoy hay galerías cargadas y las otras imágenes **no se ven en ninguna
+parte del sitio**.
+
+**El estado real, medido contra producción el 2026-09-02** (46 publicadas):
+
+| Imágenes | Actividades |
+|---|---|
+| 0 | 16 |
+| 1 | 26 |
+| 2 | 3 |
+| **3** | **1** |
+
+Cuatro de 46 hoy, y el schema permite hasta cuatro (DEC-7b). Es chico y va a crecer.
+
+**Lo que hay que resolver, y no es el markup.** DEC-7a decidió que hay **un solo
+campo opcional** por imagen —el epígrafe— y que **el texto alternativo sale del
+título de la actividad**, como decisión de accesibilidad tomada a propósito. Con
+una imagen eso funciona: «Imagen de *Usted está aquí*». Con tres, el mismo alt
+repetido tres veces es peor que no tenerlo — un lector de pantalla anuncia tres
+veces lo mismo y no distingue ninguna.
+
+Las salidas, con su costo:
+
+| Salida | Qué implica |
+|---|---|
+| El epígrafe, cuando está, es el alt | Es texto que quien carga ya escribe. Pero es **opcional**, así que hay que decidir el caso sin él |
+| Las secundarias son decorativas (`alt=""`) | Honesto —la portada es la que informa— y no pide nada nuevo. Pero renuncia a describirlas |
+| Enumerar: «Imagen 2 de 3 de *X*» | No miente y distingue. Suena a máquina |
+| Un campo de texto alternativo por imagen | Lo correcto, y **reabre DEC-7a**, que lo descartó explícitamente |
+
+**No decidir es la peor**: el default de repetir el alt es el que ya está.
+
+**Y una que se decide de paso:** el `og:image` sigue siendo la portada y nada más
+(B-109, B-295). Una galería no cambia eso — un preview tiene una imagen.
+
 ---
 
 ### B-62 · Ayuda contextual por sección del formulario
