@@ -782,6 +782,129 @@ accidente. Si más adelante molesta, agregar `on: push` es una línea.
 
 ---
 
+---
+
+## D-190 · La cuenta del encuentro se comparte; la puerta de si se muestra, no
+
+**Contexto (B-163).** El número del encuentro —"Encuentro 3 de 8"— sale en dos
+pantallas: la descripción del evento público (`posicionEnCiclo`) y el "3 de 8"
+de la vista calendario del panel (`encuentrosDe`, D-70). Cada lado **ordenaba
+las sesiones y contaba por su cuenta.** Coincidían, pero porque los dos habían
+llegado al mismo criterio, no porque fuera el mismo código: es la forma exacta
+que D-71 y D-20 evitan, y es la que produjo B-84 — el día que uno cambió, el
+panel dijo "6 de 8" y el evento "5 de 7" para el mismo encuentro, y no falló
+nada.
+
+**Decisión: se parte en dos, y solo una mitad se comparte.**
+
+| | Qué es | Dónde vive |
+|---|---|---|
+| **La aritmética** | `{ indice, total }` por fecha, contando todas las sesiones (D-95) | `numeroDeEncuentro`, exportada de `@calendario`, y el panel la importa |
+| **La puerta** | ¿el evento muestra el número? | `elEventoNumeraElCiclo`, exportada y con nombre: `esCiclo` tildado y ≥ 2 sesiones |
+
+**Motivo de compartir la aritmética:** es un derivado del documento, tiene una
+sola respuesta correcta, y la copia es indetectable — dos implementaciones que
+hoy dan lo mismo no rompen ningún test de comportamiento el día que una cambia.
+Por eso además de compartirla hay un chequeo **estructural** en
+`tests/clases-de-bug.test.ts` que lee el fuente del panel: pide que importe
+`numeroDeEncuentro` y prohíbe las dos formas de la copia vieja
+(`total: ordenadas.length`, `indice: i + 1`). Es la tercera instancia de la
+clase que ese archivo ya persigue.
+
+**Motivo de NO unificar la puerta:** las dos pantallas muestran el número con
+criterios distintos —el panel numera cualquier actividad de más de una sesión,
+el evento solo un ciclo declarado— y **elegir uno es una decisión de producto,
+no una cuenta duplicada.** Las dos salidas no cuestan lo mismo:
+
+- *que el evento numere con más de una sesión aunque no sea ciclo:* cambia el
+  texto de los eventos **ya publicados** de esas actividades. Es el argumento de
+  D-95 y B-84 otra vez: a quien los tiene agendados se le reescribe el evento sin
+  que nada haya cambiado para él;
+- *que el panel deje de numerar sin `esCiclo`:* no toca nada publicado, pero
+  devuelve el problema que la regla 1 de D-70 resuelve — varias filas con el mismo
+  título se leen como varias actividades.
+
+Queda en B-163, y ahora elegir es una línea en un solo lugar.
+
+**Un cambio de comportamiento, chico y en un caso que el schema rechaza.** La
+cuenta compartida mira el array **completo**; `encuentrosDe` descarta de la
+**vista** las sesiones sin fecha usable para no dejar el calendario en blanco.
+Antes esas sesiones tampoco entraban en el total y el panel decía "1 de 1"
+mientras el evento de ese mismo encuentro decía "2 de 2". Ahora no se pintan pero
+**cuentan**, que es lo que coincide con lo que la gente tiene agendado. Sesión sin
+fechas es un documento que el schema rechaza en los dos niveles, así que solo se
+llega editando Firestore a mano.
+
+`numeroDeEncuentro` además tolera Timestamp, `Date`, número y string (el helper
+`milisDe`, mismo criterio que `fecha` y que el `milis` de `rebuild.js`): el módulo
+lo comparte el panel por `@calendario` y no puede suponer que del otro lado hay un
+Timestamp de Firestore. La versión anterior contaba cualquier otra cosa como `0` y
+la ponía primera.
+
+**Alternativas descartadas:**
+
+- *Unificar también la puerta, eligiendo la del evento.* Es tomar la decisión de
+  producto de arriba por su lado técnico, y encima la barata para el código: el
+  panel pierde el número y nadie decidió eso.
+- *Guardar `indice`/`total` como campos de la sesión.* Estable ante cualquier
+  edición, pero es un cambio de modelo (§3.1) que se propaga al formulario, al
+  generador de encuentros y a la proyección pública, para algo que se resuelve
+  derivándolo en un solo lugar. Es la misma alternativa que D-95 ya descartó.
+
+---
+
+## D-191 · Un evento que falta en Calendar se repone; un 404 al crear es un error
+
+**Contexto (B-125).** El §2.1 dice que Calendar es un espejo de solo lectura y que
+editarlo a mano no es un caso soportado: un cambio hecho allá se pierde en el
+próximo sync, y eso es lo esperado. Lo que **no** era esperado es que un
+**borrado** hecho a mano no se recuperara nunca.
+
+El `catch` de `syncCalendar` tenía una sola condición: 404 o 410 **en un borrado**
+limpiaba el id; todo lo demás era `logger.error`. Así que si alguien borraba a mano
+el evento de un encuentro publicado, el documento se quedaba con su
+`calendarEventId`, el diff seguía viendo un id y emitía `actualizar`, Calendar
+contestaba 404 y eso caía en el `else`. **El id no se limpiaba, así que cada
+edición siguiente repetía la misma operación imposible:** el encuentro
+desaparecía del calendario público para siempre, y la vista calendario del panel
+seguía diciendo "En el calendario" porque el id estaba ahí (D-71).
+
+**Decisión:** el `catch` consume `decidirAnteFallo(op, code)` —pura, en
+`functions/sincronizacion.js`— con tres salidas:
+
+| Operación | 404 / 410 | Qué se hace |
+|---|---|---|
+| `borrar` | el evento ya no estaba | `limpiar-id`: es el resultado buscado, y se limpia el id colgado |
+| `actualizar` | lo borraron a mano | **`recrear`**: `debeExistir` ya dijo que ese encuentro tiene que estar (§7.3) |
+| `crear` | — | `registrar-error` |
+| cualquiera | cualquier otro código | `registrar-error` |
+
+**Por qué recrear y no solo limpiar el id.** Limpiar el id dejaría que la
+**siguiente** escritura emita `crear`, o sea que el encuentro volvería una edición
+más tarde. Recrear en el acto lo repone en la misma pasada y no depende de que
+alguien vuelva a guardar. Pasa por `crearEvento`, así que hereda el id derivado y
+el 409 de B-82: el evento vuelve con el id que le corresponde y el write-back lo
+deja en el documento.
+
+**Por qué un 404 al crear sigue siendo un error, y es la parte que importa de la
+tabla.** Ahí "no está" no habla del evento: habla del **calendario**. Es un
+`GOOGLE_CALENDAR_ID` equivocado, o un calendario que no está compartido con la
+service account (D-06). Recrear en loop no lo arregla, y taparlo como aviso
+esconde el único error que hay que mirar. Es el mismo criterio con el que el
+límite de reintentos del rebuild distingue "falló" de "no está configurado"
+(D-23).
+
+**No cierra B-125.** La otra mitad del ítem es enterarse **sin editar nada**, y
+eso pide leer la API de Calendar desde el panel o desde un script — que hoy no
+tiene con qué autenticarse, porque la identidad es de la Function (D-06). Lo que
+cambia es que el estado dejó de ser permanente: cualquier edición de la actividad
+lo repara.
+
+**No reescribe ningún evento ajeno:** repone el que faltaba y nada más. El
+`actualizar` que disparó la reposición ya iba a ocurrir por el cambio que lo
+originó.
+
+
 ## D-23 · El backoff del rebuild se rinde, y se rearma con el próximo cambio
 
 **Decisión (B-13):** ante un `repository_dispatch` fallido, el schedule

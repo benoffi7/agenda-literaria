@@ -154,24 +154,47 @@ export const construirLinkMapa = (actividad, labels = {}) =>
   linkMapaDeSede(actividad.sede, labels, actividad.modalidad);
 
 /**
- * Milisegundos de lo que puede venir como Timestamp de Firestore, Date, número
- * o string. Mismo criterio que `fecha` de acá arriba y que `milis` de
- * `rebuild.js`: el módulo lo comparte el panel por `@calendario` (D-20) y no
- * puede suponer que del otro lado hay un Timestamp.
+ * Milisegundos de lo que puede venir como Timestamp de Firestore, `Date`,
+ * número o string. `null` cuando no hay fecha usable.
  *
- * Una sesión sin `inicio` usable cuenta como `0` y queda primera. Es lo que
- * hacía la versión anterior y se conserva: el schema rechaza una sesión sin
- * fechas en los dos niveles, así que es un documento roto a mano, y perder su
- * número correría a todos los demás.
+ * **Vive acá y la importan los demás, en vez de estar dos veces (D-20).**
+ * `rebuild.js` tenía su propia copia idéntica salvo el respaldo, y el
+ * `auditor-trampas` la marcó: dos implementaciones que hoy dan lo mismo no
+ * rompen ningún test el día que una se extienda —un formato de fecha nuevo, un
+ * `toDate()` en vez de `toMillis`— y ahí el orden de las sesiones y el contador
+ * de reintentos del rebuild (D-23) divergen sin que nada falle. Es la misma
+ * clase que D-190 acababa de arreglar para el número del encuentro.
+ *
+ * **Está en este archivo y no en un módulo nuevo, a propósito**, y el motivo es
+ * de deploy: `scripts/que-deployar.sh` sabe que `functions/calendario.js` entra
+ * al bundle del panel por el alias `@calendario` y lo trata como caso especial.
+ * Un `functions/tiempo.js` importado desde acá también estaría en el bundle,
+ * pero caería del lado de "es de functions, no afecta a hosting" y un cambio
+ * suyo dejaría el panel viejo **en silencio** — que es justo lo que la lista
+ * negra de ese script existe para evitar.
+ *
+ * **El respaldo es `null` y no `0` porque `null` es el dato honesto:** "no hay
+ * fecha" no es "el 1 de enero de 1970". Cada consumidor decide qué hacer con
+ * eso, y las dos decisiones son distintas y las dos son correctas: el orden de
+ * las sesiones manda las sin fecha primero (`?? 0`), y el backoff del rebuild
+ * sin `ultimoIntento` no tiene de dónde medir y dispara.
  */
-const milisDe = (t) => {
-  if (t == null) return 0;
+export const milisDe = (t) => {
+  if (t == null) return null;
   if (typeof t.toMillis === 'function') return t.toMillis();
   if (t instanceof Date) return t.getTime();
-  if (typeof t === 'number') return Number.isFinite(t) ? t : 0;
+  if (typeof t === 'number') return Number.isFinite(t) ? t : null;
   const d = new Date(t);
-  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
 };
+
+/**
+ * Para ordenar: una sesión sin `inicio` usable cuenta como `0` y queda primera.
+ * El schema rechaza una sesión sin fechas en los dos niveles, así que es un
+ * documento roto a mano — y descontarla del total le correría el número a todas
+ * las demás (D-190).
+ */
+const paraOrdenar = (t) => milisDe(t) ?? 0;
 
 /**
  * Qué lugar ocupa un encuentro dentro de su actividad: `{ indice, total }`,
@@ -210,7 +233,7 @@ const milisDe = (t) => {
  */
 export const numeroDeEncuentro = (actividad, sesion) => {
   const sesiones = actividad?.sesiones ?? [];
-  const ordenadas = [...sesiones].sort((a, b) => milisDe(a?.inicio) - milisDe(b?.inicio));
+  const ordenadas = [...sesiones].sort((a, b) => paraOrdenar(a?.inicio) - paraOrdenar(b?.inicio));
 
   const i = ordenadas.findIndex((s) => s?.id === sesion?.id);
   if (i === -1) return null;

@@ -974,6 +974,34 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
    * fuente porque una copia que hoy da el mismo resultado no rompe ningún test
    * de comportamiento — es justamente el modo de falla de la clase.
    */
+  /**
+   * La cuarta instancia, y la encontró el `auditor-trampas` sobre el mismo
+   * commit que arregló la tercera: al compartir la aritmética del número de
+   * encuentro se introdujo `milisDe`, que era letra por letra la `milis` que
+   * `rebuild.js` ya tenía —salvo el respaldo—. Dos conversiones de fecha que hoy
+   * dan lo mismo: el día que alguien extienda una (un formato nuevo, un
+   * `toDate()` en vez de `toMillis`), el orden de las sesiones y el contador de
+   * reintentos del rebuild (D-23) divergen y nada falla.
+   *
+   * Quedó una sola, exportada de `calendario.js` —el archivo que ya comparte el
+   * panel— e importada por `rebuild.js`. Se lee del fuente por el mismo motivo
+   * que el chequeo de abajo: una copia que da el mismo resultado no rompe
+   * ningún test de comportamiento.
+   */
+  it('la conversión de fechas de functions vive en un solo lugar (D-20)', () => {
+    const rebuild = fuente('functions/rebuild.js');
+    expect(rebuild).toMatch(/import \{ milisDe \} from '\.\/calendario\.js';/);
+    // La copia, en cualquiera de las dos formas en que estaba escrita.
+    expect(rebuild).not.toMatch(/typeof t\.toMillis === 'function'/);
+    expect(rebuild).not.toMatch(/t instanceof Date/);
+
+    // Y sigue habiendo exactamente una definición en todo `functions/`.
+    const definiciones = ARCHIVOS_FUNCTIONS.filter((f) =>
+      /typeof t\?*\.toMillis === 'function'/.test(fuente(f)),
+    );
+    expect(definiciones).toEqual(['functions/calendario.js']);
+  });
+
   it('el número del encuentro se cuenta en un solo lugar (B-163, D-20)', () => {
     const src = fuente('src/lib/calendarioPanel.ts');
     expect(src).toMatch(/numeroDeEncuentro[^\n]*from '@calendario'|from '@calendario'/);
