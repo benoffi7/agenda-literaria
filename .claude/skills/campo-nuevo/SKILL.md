@@ -5,7 +5,7 @@ description: Agrega un campo al modelo de una actividad de punta a punta, en el 
 
 # Agregar un campo al modelo
 
-Un campo del modelo toca once lugares. Los que se olvidan siempre son los mismos
+Un campo del modelo toca doce lugares. Los que se olvidan siempre son los mismos
 tres: **la proyección pública**, **el default de lectura** y **la ayuda**. Los
 tres fallan sin que nada se ponga en rojo, y uno de ellos publica datos.
 
@@ -18,14 +18,14 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **once** salidas, una por una:
+1. **¿Es público?** Resolvé las **doce** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
    | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, y para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts` |
    | 2 | el evento de Calendar | `functions/calendario.js` |
    | 3 | el issue de GitHub | `functions/reportes.js` |
-   | 4 | GA4 | `src/lib/analytics-eventos.ts` |
+   | 4 | GA4 (panel) | `src/lib/analytics-eventos.ts` |
    | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts`, y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts`, `src/lib/imagenes.ts` (`urlDeMiniatura`, B-220) |
@@ -33,6 +33,7 @@ no se pueden deshacer después.
    | 9 | el `sitemap.xml` y el `robots.txt` | `src/lib/sitemap.ts` |
    | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
    | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108) |
+   | 12 | GA4 (sitio público) | `src/lib/analyticsSitio.ts` (B-372/B-375) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
@@ -46,7 +47,8 @@ no se pueden deshacer después.
    > `auditor-documentacion` (**B-244**). Si agregás una salida, **se agrega acá en
    > el mismo cambio**.
    >
-   > Pasó de siete a **once** con B-265, B-113, B-109 y B-108. Las tres veces las ató el
+   > Pasó de siete a **once** con B-265, B-113, B-109 y B-108, y a **doce** con
+   > B-372/B-375. Todas las veces las ató el
    > mismo test (`tests/agentes-y-skills.test.ts`), que compara los números de las
    > tres tablas: la de `docs/07-seguridad.md`, la de la ficha del
    > `auditor-privacidad` y ésta.

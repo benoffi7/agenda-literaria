@@ -6798,3 +6798,47 @@ Y una guarda que no es nueva pero se repitió a propósito: **el `slug` de ese
 evento pasa por un formato de slug** (`^[a-z0-9]+(-[a-z0-9]+)*$`), no por un
 vocabulario cerrado enumerado a mano — un texto de buscador con mayúsculas,
 acentos o espacios no matchea y se descarta entero, en vez de viajar.
+
+---
+
+## D-253 · B-372 — GA4 tiene un productor que este repo no controla, y hace falta un paso manual del dueño
+
+El `auditor-privacidad` encontró, sobre el mismo cambio que instala el tag, que
+recortar el `page_location` no alcanza: **GA4 manda cosas por su cuenta que
+ningún código de acá puede pisar.**
+
+**Lo que se arregló en código, y entra en el mismo cambio que D-252:**
+
+1. **El `page_referrer` también se recorta**, no solo el `page_location`.
+   Navegar de `/?q=...` a la página de detalle mandaba, sin este segundo
+   recorte, la URL de origen **entera** como referrer del `page_view` de
+   llegada — el mismo dato que el primer recorte ya sacaba, por una puerta
+   distinta. `ubicacionSinQuery` se reusa para las dos.
+2. **El shim de `gtag` usa `arguments`, no un array armado con rest params.**
+   `dataLayer.push(arguments)` es el snippet exacto que documenta Google;
+   `dataLayer.push([...args])` construye un array de otra forma, y el riesgo
+   —no verificado contra el `gtag.js` real, pero gratis de evitar— es que la
+   librería, una vez cargada, ignore en silencio las entradas que no
+   reconoce como `arguments`. Igualar el snippet real no cuesta nada y saca
+   la duda.
+
+**Lo que NO se puede arreglar en código, y queda como acción manual
+bloqueante (B-480):** una vez que `gtag.js` carga, su **Enhanced
+Measurement** —prendido por default en toda propiedad nueva— manda tres
+cosas que no pasan por `construirEventoSitio` ni por `ubicacionSinQuery`:
+
+| Qué manda solo | El dato que se escapa |
+|---|---|
+| **«Búsquedas en el sitio»** | lee parámetros de query con nombres típicos —`q` entre ellos— y los manda como `search_term`. Es el texto del buscador (`aQuery`, `listadoPublico.ts`), la misma fuga que el §5.3 del diseño ya había señalado, por una puerta que ningún recorte de `page_location` tapa |
+| **«Cambios de página según el historial del navegador»** | la island de filtros llama a `replaceState` en cada tecla; esta función de GA4 dispara un `page_view` nuevo por cada uno, leyendo la URL **en el momento** y no la recortada del `config` inicial |
+| **«Clics salientes»** | manda el `link_url` completo de un link a otro dominio — el botón de inscripción linkea a `wa.me/<teléfono>` o a `instagram.com/<handle>`, exactamente el **destino** que `via` existe para no mandar |
+
+**No hay un parámetro de `gtag('config', ...)` que las apague.** Son ajustes
+del flujo de datos en la consola de GA4 (Administrar → Flujos de datos → el
+flujo → Enhanced measurement), la misma clase de paso manual que
+`docs/09-analitica.md` ya documenta para el panel («qué tiene que hacer el
+dueño») — acá es **bloqueante**: instalar el tag sin apagar «Búsquedas en el
+sitio» y «Clics salientes» manda de más aunque todo el código de este repo
+esté bien. Documentado en `docs/07-seguridad.md` (salida 12) y anotado como
+**B-480** en el `BACKLOG`, bloqueando el cierre real de B-372 aunque el
+código y el enganche en `Base.astro` ya estén hechos.
