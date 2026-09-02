@@ -2025,7 +2025,9 @@ y ver la lista orienta; el input de tags está siempre visible y una lista
 desplegada sin que nadie escriba taparía el formulario.
 
 **Por qué un módulo puro y no un hook:** se testea sin emulador y sin
-testing-library, que no está instalada (B-08). `tests/taxonomia.test.ts` cubre
+testing-library — que en ese momento no estaba instalada; desde B-08 sí, pero
+angosta y para otro caso (el cableado de `MenuAcciones`), y esto sigue sin
+necesitarla: es una pregunta pura. `tests/taxonomia.test.ts` cubre
 las cuatro variantes de "a la gorra" del §4.2, el autocompletado sin acentos, el
 tope, la exclusión de lo ya elegido, y lleva una guardia de que la copia no
 vuelva a nacer (D-98: la guardia más barata que alcance).

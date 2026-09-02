@@ -32,6 +32,34 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-08 — el dueño aprobó el camino angosto: testing-library, solo para MenuAcciones
+
+Instalados `@testing-library/react`, `@testing-library/dom`,
+`@testing-library/user-event` y `jsdom`, con `environmentMatchGlobs` en
+`vitest.config.ts` acotado a `tests/**/*.render.test.tsx` — el resto de la
+suite sigue en `environment: 'node'`.
+
+Se hizo el único caso que el relevamiento de B-08 identificó como genuino:
+`tests/menu-acciones.render.test.tsx`, contra `MenuAcciones` renderizado de
+verdad (no leyendo el fuente con regex, que es lo que hacía
+`tests/foco.test.ts` hasta ahora). Cubre cierre por clic afuera —con control
+negativo—, cierre por `Escape` con el foco devuelto al "⋯", y abrir con ↓
+enfocando el primer ítem.
+
+Mutadas las cuatro aserciones contra el componente real, una por una: sacar
+el `focus()` de vuelta, comentar el listener de clic afuera, invertir la
+condición de "adentro/afuera", e ignorar la tecla al abrir. Las cuatro dieron
+rojo, restauradas después. De paso se corrigió el propio test: la primera
+versión de "Escape devuelve el foco" pasaba con la mutación adentro porque el
+foco nunca se había movido del disparador — se agregó un paso que lo mueve a
+un ítem primero.
+
+Los otros tres candidatos del relevamiento quedan sin tocar, como correspondía:
+son preguntas puras o algo que jsdom no puede medir (el scroll sin layout
+real). Actualizados `docs/05-patrones.md`, `docs/10-salud-del-codigo.md` y
+`docs/06-decisiones.md` donde afirmaban que testing-library no estaba
+instalada.
+
 ### B-345 — cinco citas de D-100 que eran D-111, encontrada una tercera al buscarlas
 
 `docs/BACKLOG.md` (cuerpos de B-72 y B-177) seguía citando D-100 para «primero

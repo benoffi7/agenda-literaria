@@ -367,9 +367,19 @@ emuladores no están (`describe.skipIf`).
   porque el orden del array decide qué opción preselecciona el formulario: sin
   ese test, reordenar el JSON cambia el default en silencio.
 
-**Qué no:** los componentes de React no tienen tests de render. No hay
-testing-library instalada. La verificación de la UI fue manual y contra
-producción.
+**Qué no:** casi ningún componente de React tiene tests de render — la
+verificación de la UI sigue siendo manual y contra producción. **Desde B-08 hay
+una excepción angosta y a propósito**: `@testing-library/react`,
+`@testing-library/dom`, `@testing-library/user-event` y `jsdom` están
+instalados, pero **solo** para el cableado real de DOM que un test que lee el
+fuente no puede verificar sin arriesgarse a un falso verde (B-202 fue
+exactamente eso) — hoy, `tests/menu-acciones.render.test.tsx`. Viven en
+`*.render.test.tsx` y `vitest.config.ts` monta jsdom nada más que para ese
+patrón (`environmentMatchGlobs`); el resto de la suite sigue en `node`. No es
+la puerta abierta a testear cualquier componente: el análisis de B-08 mostró
+que la mayoría de lo que parece pedir render en realidad es una pregunta pura
+(se testea sin DOM) o algo que jsdom no puede medir (el scroll no existe sin
+layout real).
 
 ### Verificar la clase, no la instancia
 

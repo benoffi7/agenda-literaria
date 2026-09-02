@@ -255,11 +255,27 @@ primero. Los auditores existen para el segundo, y esta vez encontraron lo que
 
 ### Problema 1 · 39 componentes y 7.045 LOC de `.tsx` sin un solo test de componente
 
-Sigue siendo **el** hueco de método, y creció: eran 34 archivos y 5.355 LOC.
+**Seguía siendo el hueco de método, y creció: eran 34 archivos y 5.355 LOC.**
 
-Confirmado que no hay forma de que existan: no hay `@testing-library/*`, ni
-`jsdom`, ni `happy-dom` en las dependencias, y `vitest.config.ts` fija
-`environment: 'node'`.
+> ⚠️ **La premisa de este problema cambió a medias — ver B-08 en
+> [`BACKLOG.md`](BACKLOG.md), «camino propuesto, decisión del dueño».**
+> `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`
+> y `jsdom` **sí están** en las dependencias desde entonces, y
+> `vitest.config.ts` monta jsdom para un patrón (`*.render.test.tsx`,
+> `environmentMatchGlobs`) — ya no es cierto que «no hay forma de que existan».
+> Lo que **no** cambió es el alcance: el relevamiento de B-08 mostró que de los
+> candidatos reales, la mayoría es una pregunta pura que no necesita DOM (y ya
+> está cubierta) o algo que jsdom no puede medir (el scroll, sin layout real).
+> El único caso genuino que se hizo es `MenuAcciones` (cierre por clic afuera,
+> por `Escape`, foco devuelto), con `tests/menu-acciones.render.test.tsx`. El
+> conteo de abajo —39 componentes, 7.045 LOC— sigue siendo la foto de cuando se
+> escribió este documento y no se remidió: bajaría en uno, no en un número que
+> cambie la conclusión.
+
+Antes de B-08, estaba confirmado que no había forma de que existieran render
+tests: no había `@testing-library/*`, ni `jsdom`, ni `happy-dom` en las
+dependencias, y `vitest.config.ts` fijaba `environment: 'node'` sin excepción.
+Ese razonamiento —el texto que sigue— se escribió con esa restricción vigente.
 
 Lo que hay en su lugar, medido: **32 de los 59 archivos de test usan
 `readFileSync`** para verificar leyendo el fuente con expresiones regulares. Más

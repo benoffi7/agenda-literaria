@@ -3575,11 +3575,61 @@ USD 5/mes.
 **Queda afuera a propósito** el link corto `maps.app.goo.gl` (redirect + CORS):
 el campo lo detecta y explica cómo salir del paso. Anotado en B-45.
 
-### B-08 · Sin tests de componentes — **camino propuesto, decisión del dueño (2026-09-02)**
+### B-08 · Sin tests de componentes — 🟡 hecho el alcance angosto que el dueño aprobó (2026-09-02)
 
-> **No se agregó ninguna dependencia.** Una librería de render es una decisión de
-> arquitectura y el ítem se relevó para que se decida con el costo a la vista.
-> Abajo está el argumento; el ítem queda **abierto** hasta que el dueño elija.
+**El dueño aprobó el camino angosto de abajo, no el ítem entero.** Instalado
+`@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`
+y `jsdom`, y `environmentMatchGlobs` en `vitest.config.ts` — pero **solo** para
+`tests/**/*.render.test.tsx`; el resto de la suite sigue en `environment: 'node'`,
+como el argumento de abajo recomendaba.
+
+**Se hizo el único caso genuino que el relevamiento identificó**:
+`tests/menu-acciones.render.test.tsx`, contra `MenuAcciones` de verdad (no
+leyendo el fuente): cierre por clic afuera (con su control negativo — un clic
+**adentro** no cierra), cierre por `Escape` con el foco devuelto al "⋯", y
+abrir con ↓ enfocando el primer ítem. Los otros tres candidatos quedan **sin
+tocar**, tal como el relevamiento decía que correspondía: el placeholder de
+`TaxonomiaSelect` y el editor de sesiones son preguntas puras que no necesitan
+DOM, y el scroll de `VistaPreviaEvento` jsdom no lo puede medir (no hace
+layout).
+
+**Mutado, no solo verde — las cuatro aserciones, una por una:**
+
+| Se mutó | Qué tiraba rojo |
+|---|---|
+| Se sacó `disparador.current?.focus()` de `cerrarYVolverAlDisparador` | «Escape cierra el menú Y devuelve el foco al ⋯» |
+| Se comentó el `addEventListener('pointerdown', afuera)` | «un clic afuera cierra el menú abierto» |
+| Se invirtió la condición de "afuera" (`setAbierto(false)` sin el `if`) | el control negativo, «un clic ADENTRO... no lo cierra» |
+| `abrir(-1)` en vez de `abrir(e.key === 'ArrowDown' ? 0 : ...)` | «abrir con ↓ enfoca el primer ítem» |
+
+Las cuatro se restauraron después de confirmar el rojo. Un detalle que valió la
+pena corregir en el camino: la primera versión del test de Escape pasaba
+**con la mutación adentro**, porque el foco nunca se había movido del
+disparador (el `click` que abre el menú no mueve el foco a ningún ítem) — la
+aserción "volvió al disparador" era trivialmente cierta. Se agregó un paso
+que primero mueve el foco a un ítem con ↓, así la aserción de vuelta mide algo
+real.
+
+**Documentación actualizada**: `docs/05-patrones.md` (la fila "Qué no" ya no
+dice categóricamente que no hay testing-library), `docs/10-salud-del-codigo.md`
+(el Problema 1 tenía "confirmado que no hay forma de que existan", que dejó de
+ser cierto — con una nota que no reclama haber resuelto el problema entero) y
+`docs/06-decisiones.md` (D-100, una frase que decía "no está instalada").
+
+**Lo que sigue exactamente igual que en el camino propuesto:** el resto del
+ítem —`ActividadFormulario.tsx` y los demás componentes grandes— sigue sin
+tests de render, y sigue siendo la decisión correcta no perseguirlos: la
+lógica que importa ya salió a módulos puros (D-100, `foco.ts`,
+`salida-del-panel.ts`). Este ítem no se cierra del todo porque el dueño no
+aprobó "instalarlo para todo", aprobó este caso.
+
+El texto original queda abajo.
+
+> **No se agregó ninguna dependencia — hasta este cambio.** Una librería de
+> render es una decisión de arquitectura y el ítem se relevó para que se decida
+> con el costo a la vista. Abajo está el argumento; el ítem quedó **abierto**
+> hasta que el dueño eligiera, y el 2026-09-02 aprobó el camino angosto de
+> arriba.
 
 **Lo que costaría.** Cuatro dependencias de desarrollo
 (`@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`
