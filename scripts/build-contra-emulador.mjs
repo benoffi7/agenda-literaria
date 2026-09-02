@@ -29,9 +29,10 @@
  * publica encima del sitio que sí tenía datos).
  *
  * ── Qué hace en cambio ────────────────────────────────────────────────────
- * Siembra cuatro actividades de prueba —una publicada, una en borrador y las dos
- * canceladas de B-110—, corre el build, y **afirma sobre los archivos que
- * salieron**: el `events.json` y el HTML de cada página.
+ * Siembra cinco actividades de prueba —una publicada, una en borrador, las dos
+ * canceladas de B-110 y la de tres imágenes de B-296—, corre el build, y
+ * **afirma sobre los archivos que salieron**: el `events.json` y el HTML de cada
+ * página.
  *
  *   1. La publicada está. Si el índice sale con cero actividades, esto falla:
  *      es la mitad que faltaba.
@@ -47,6 +48,14 @@
  *      `urlPublica: true` en el fixture. La que nunca se publicó **no** tiene
  *      archivo, igual que el borrador. Es la mitad que ningún unitario puede
  *      mirar: `caminosDeDetalle` devuelve rutas, Astro escribe los archivos.
+ *   5. **B-296** — la actividad con **tres imágenes de proporciones distintas**
+ *      (vertical, apaisada y cuadrada) pinta las tres, con la portada arriba
+ *      —que en el fixture es la **segunda** del array—, un solo `loading="eager"`,
+ *      un solo texto alternativo con contenido, tres cajas de proporción
+ *      distintas y ningún enlace. Y el control que sostiene el ítem: la de **una
+ *      sola** imagen sigue pintando una y no lleva sección de galería. Nada de
+ *      eso lo puede ver un unitario: son tres medidas atravesando una plantilla
+ *      que vitest no renderiza.
  *
  * Los dos documentos se borran al final, pase lo que pase (`finally`): el
  * emulador de quien está trabajando puede tener datos persistidos
@@ -98,11 +107,26 @@ const ID_BORRADOR = `${PREFIJO}borrador`;
  */
 const ID_CANCELADA = `${PREFIJO}cancelada`;
 const ID_CANCELADA_NUNCA = `${PREFIJO}cancelada-nunca`;
+/*
+ * B-296 — la actividad con **tres imágenes de proporciones distintas**, que es
+ * el caso que rompe: una vertical, una apaisada y una cuadrada. Ninguna salida
+ * del sitio recorta (D-147), así que las tres tienen que salir enteras y con su
+ * propia caja reservada, y eso solo se ve en el HTML construido: los unitarios
+ * afirman sobre el fuente de la plantilla, que no sabe nada de estas tres
+ * medidas.
+ *
+ * Y la portada va **segunda** en el array a propósito: así el artefacto prueba
+ * de punta a punta lo de B-268 —arriba va la marcada, no la primera cargada— y
+ * la consecuencia nueva que trae la tira, que es que el flyer no puede terminar
+ * de miniatura decorativa con `alt=""`.
+ */
+const ID_GALERIA = `${PREFIJO}galeria`;
 
 const SLUG_PUBLICADA = `${PREFIJO}publicada`;
 const SLUG_BORRADOR = `${PREFIJO}borrador`;
 const SLUG_CANCELADA = `${PREFIJO}cancelada`;
 const SLUG_CANCELADA_NUNCA = `${PREFIJO}cancelada-nunca`;
+const SLUG_GALERIA = `${PREFIJO}galeria`;
 
 /**
  * Los centinelas de los campos que el índice recorta (§3.1 del diseño de B-106).
@@ -132,6 +156,10 @@ const CENTINELA = {
   onlineUrl: 'gate.online.url',
   storagePath: 'gate.imagenes.storagePath',
   createdBy: 'gate.createdBy',
+  // B-296 — el epígrafe **sí** sale a la página de detalle (es el `figcaption` de
+  // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
+  // O sea que este centinela se afirma en las dos direcciones a la vez.
+  epigrafeImagen: 'gate.imagenes.epigrafe',
 };
 
 /**
@@ -293,6 +321,53 @@ const CENTINELA_DEL_DETALLE = [
   'arancelNotas',
   'materialTitulo',
   'materialUrl',
+  // B-296 — el epígrafe de una imagen se muestra debajo de esa imagen (D-125).
+  'epigrafeImagen',
+];
+
+/**
+ * Las tres imágenes del caso de B-296: **una vertical, una apaisada y una
+ * cuadrada**, con la portada en el medio del array.
+ *
+ * Las medidas no son inventadas: 1080 × 1350 es un flyer de Instagram, y
+ * 1408 × 768 y 1024 × 1024 son dos de las tres imágenes reales de «Usted está
+ * aquí», la única actividad de producción con tres cargadas (medido el
+ * 2026-09-02).
+ *
+ * El `storagePath` va en las tres: el barrido de abajo tiene que cubrir la salida
+ * **nueva**, no solo la portada que ya estaba.
+ */
+const TRES_IMAGENES = [
+  {
+    id: 'img_gate_apaisada',
+    url: 'https://example.invalid/gate-apaisada.jpg',
+    epigrafe: CENTINELA.epigrafeImagen,
+    origen: 'externa',
+    portada: false,
+    storagePath: CENTINELA.storagePath,
+    ancho: 1408,
+    alto: 768,
+  },
+  {
+    id: 'img_gate_vertical',
+    url: 'https://example.invalid/gate-vertical.jpg',
+    epigrafe: '',
+    origen: 'externa',
+    portada: true,
+    storagePath: CENTINELA.storagePath,
+    ancho: 1080,
+    alto: 1350,
+  },
+  {
+    id: 'img_gate_cuadrada',
+    url: 'https://example.invalid/gate-cuadrada.jpg',
+    epigrafe: '',
+    origen: 'externa',
+    portada: false,
+    storagePath: CENTINELA.storagePath,
+    ancho: 1024,
+    alto: 1024,
+  },
 ];
 
 initializeApp({ projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria' });
@@ -328,8 +403,15 @@ try {
     .doc(`actividades/${ID_CANCELADA_NUNCA}`)
     .set(actividadDePrueba(SLUG_CANCELADA_NUNCA, 'cancelado'));
 
+  // B-296 — la publicada con tres imágenes de proporciones distintas.
+  const galeria = actividadDePrueba(SLUG_GALERIA, 'publicado');
+  galeria.titulo = 'Gate mecanico — galeria de tres';
+  galeria.imagenes = TRES_IMAGENES;
+  await db.doc(`actividades/${ID_GALERIA}`).set(galeria);
+
   console.log(
-    `  (sembradas 4 actividades de prueba en ${host}: publicada, borrador y dos canceladas)`,
+    `  (sembradas 5 actividades de prueba en ${host}: publicada, borrador, dos canceladas y ` +
+      'una con tres imágenes)',
   );
 
   const build = spawnSync('npm', ['run', 'build'], {
@@ -637,6 +719,159 @@ try {
       }
     }
 
+    /*
+     * 8 · **B-296 — la galería de tres imágenes, sobre el HTML construido.**
+     *
+     * Los unitarios de `tests/galeria-del-detalle.test.ts` afirman sobre el
+     * fuente de la plantilla: que dice `alt=""`, que dice `loading="lazy"`, que
+     * la proporción sale de `estiloDeAfiche`. Ninguno puede ver el resultado de
+     * pasarle **tres medidas distintas** por ahí, porque la plantilla no se
+     * renderiza en vitest. Lo que se mira acá es lo que un navegador va a recibir:
+     * tres `<img>`, tres cajas distintas, un solo `eager`, un solo `alt` con
+     * texto, y el epígrafe donde tiene que estar.
+     *
+     * Y el control que sostiene todo el ítem: **la página de una sola imagen
+     * sigue teniendo una sola imagen y ninguna sección de galería**. Es el 87 % de
+     * las actividades con imagen y es lo primero que rompería un `slice(0)`.
+     */
+    const htmlGaleria = await htmlDe(SLUG_GALERIA);
+    if (htmlGaleria === null) {
+      fallo(
+        `no se generó dist/actividad/${SLUG_GALERIA}/index.html.\n` +
+          '  Es la actividad con tres imágenes de B-296.',
+      );
+      salida = 1;
+    } else {
+      const imgs = htmlGaleria.match(/<img\b[^>]*>/g) ?? [];
+      const delPanel = imgs.filter((i) => i.includes('example.invalid/gate-'));
+
+      // 8a · Las tres están. Antes de B-296 salía **una**.
+      if (delPanel.length !== 3) {
+        fallo(
+          `la página con tres imágenes cargadas pinta ${delPanel.length}.\n` +
+            '  Es el bug de B-296: `imagenes[0]` mostraba una sola y las otras no aparecían\n' +
+            '  en ninguna salida del sitio.',
+        );
+        salida = 1;
+      }
+
+      // 8b · Arriba va la **marcada** como portada, que en el fixture es la
+      // segunda del array (B-268, y su consecuencia nueva).
+      if (delPanel[0] && !delPanel[0].includes('gate-vertical')) {
+        fallo(
+          'la primera imagen de la página no es la marcada como portada.\n' +
+            '  El fixture la puso segunda en el array a propósito: si el orden del array\n' +
+            '  decide, el flyer baja a la tira como miniatura decorativa (B-268).',
+        );
+        salida = 1;
+      }
+
+      // 8c · Un solo `eager`, y es esa. Lo demás, diferido.
+      const eager = delPanel.filter((i) => i.includes('loading="eager"'));
+      const lazy = delPanel.filter((i) => i.includes('loading="lazy"'));
+      if (eager.length !== 1 || !eager[0]?.includes('gate-vertical') || lazy.length !== 2) {
+        fallo(
+          `la página pide ${eager.length} imagen(es) temprano y difiere ${lazy.length}.\n` +
+            '  Tiene que ser una sola `eager` —la portada— y las secundarias en `lazy`: sin\n' +
+            '  la Function de recompresión (B-220), la actividad peor medida de producción\n' +
+            '  suma 3,15 MB entre sus tres archivos y 2,1 MB de eso son secundarias.',
+        );
+        salida = 1;
+      }
+
+      // 8d · Un solo texto alternativo con contenido, y es el de la portada. Las
+      // secundarias van con `alt=""` (D-168): el mismo alt tres veces es peor
+      // que no tenerlo.
+      const conAlt = delPanel.filter((i) => /alt="[^"]+"/.test(i));
+      const vacios = delPanel.filter((i) => i.includes('alt=""'));
+      if (conAlt.length !== 1 || !conAlt[0]?.includes('gate-vertical') || vacios.length !== 2) {
+        fallo(
+          `la página tiene ${conAlt.length} imagen(es) con texto alternativo y ${vacios.length} ` +
+            'con `alt=""`.\n' +
+            '  Tiene que ser uno y dos: el título de la actividad describe la portada, y\n' +
+            '  repetido en las tres no distingue ninguna para un lector de pantalla (D-168).',
+        );
+        salida = 1;
+      }
+      if ((htmlGaleria.match(/alt="Imagen de /g) ?? []).length !== 1) {
+        fallo('el «Imagen de …» del texto alternativo aparece más de una vez en la página.');
+        salida = 1;
+      }
+
+      // 8e · **Tres cajas distintas, ninguna recortada** (D-147). Es lo que no
+      // puede ver ningún unitario: son tres medidas pasando por la misma
+      // plantilla, y el bug sería que todas salieran con la misma proporción.
+      const proporciones = [...htmlGaleria.matchAll(/aspect-ratio:\s*([^";]+)/g)].map((m) =>
+        m[1].trim(),
+      );
+      const esperadas = ['1080 / 1350', '1408 / 768', '1024 / 1024'];
+      const faltan = esperadas.filter((p) => !proporciones.includes(p));
+      if (faltan.length > 0) {
+        fallo(
+          `faltan cajas reservadas en la página: ${faltan.join(', ')}.\n` +
+            `  Salieron [${proporciones.join(', ')}]. Cada imagen reserva **su** proporción\n` +
+            '  (D-147): una sola para las tres es una caja fija, y una caja fija recorta o\n' +
+            '  encoge según la forma del archivo.',
+        );
+        salida = 1;
+      }
+      if (htmlGaleria.includes('object-cover')) {
+        fallo('la página con tres imágenes recorta alguna: apareció `object-cover` (D-147).');
+        salida = 1;
+      }
+
+      // 8f · La sección: el rótulo con la cuenta en prosa, el epígrafe como
+      // `figcaption` de su imagen, y ni un enlace que agregue una parada de
+      // tabulación.
+      const seccion = /<section[^>]*aria-labelledby="mas-imagenes"[\s\S]*?<\/section>/.exec(
+        htmlGaleria,
+      )?.[0];
+      if (!seccion) {
+        fallo('la página con tres imágenes no lleva la sección de las secundarias.');
+        salida = 1;
+      } else {
+        if (!seccion.includes('Dos imágenes más')) {
+          fallo(
+            'la sección no dice cuántas imágenes más hay.\n' +
+              '  Es la mitad que hace aceptable el `alt=""`: lo que las imágenes no dicen,\n' +
+              '  lo dice el encabezado una sola vez y en prosa (D-168).',
+          );
+          salida = 1;
+        }
+        if (!/<figcaption[^>]*>[^<]*gate\.imagenes\.epigrafe/.test(seccion)) {
+          fallo(
+            'el epígrafe de la secundaria no salió como `figcaption`.\n' +
+              '  Tiene que ser el pie de **su** imagen y no texto suelto debajo de la fila.',
+          );
+          salida = 1;
+        }
+        if (/<a\b/.test(seccion)) {
+          fallo(
+            'la sección de las secundarias tiene un enlace.\n' +
+              '  La página tiene un presupuesto de 0 KB de JavaScript y la tira no agrega\n' +
+              '  ninguna parada de tabulación: sin lightbox y sin enlaces al JPEG.',
+          );
+          salida = 1;
+        }
+      }
+
+      // 8g · **El control de la mayoría**: con una sola imagen, la página es la
+      // de antes. Ni una imagen de más, ni una sección vacía.
+      const imgsPublicada = (htmlPublicada?.match(/<img\b[^>]*>/g) ?? []).filter((i) =>
+        i.includes('example.invalid/gate.jpg'),
+      );
+      if (imgsPublicada.length !== 1 || htmlPublicada?.includes('mas-imagenes')) {
+        fallo(
+          `la página con UNA sola imagen pinta ${imgsPublicada.length} y ` +
+            `${htmlPublicada?.includes('mas-imagenes') ? 'sí' : 'no'} lleva la sección de galería.\n` +
+            '  26 de las 30 actividades con imagen tienen exactamente una (medido el\n' +
+            '  2026-09-02): ese caso no puede cambiar por una galería que casi nunca tiene\n' +
+            '  qué mostrar. Un `slice(0)` en vez de `slice(1)` la pinta dos veces.',
+        );
+        salida = 1;
+      }
+    }
+
     if (salida === 0) {
       console.log(
         `\n  ✓ el build leyó Firestore: ${slugs.length} actividad(es) en el events.json, ` +
@@ -645,7 +880,10 @@ try {
           'EventCancelled; la que nunca lo estuvo no existe (B-110).\n' +
           '  ✓ el sitemap ofrece la publicada y la cancelada reciente con URL absoluta y ' +
           'barra final, sin el borrador, sin /admin y sin lastmod; el robots.txt bloquea el ' +
-          'panel; y el robots, el sitemap y la canónica coinciden en un solo origen (B-109).',
+          'panel; y el robots, el sitemap y la canónica coinciden en un solo origen (B-109).\n' +
+          '  ✓ la actividad con tres imágenes pinta las tres, con la portada marcada arriba, ' +
+          'un solo `eager`, un solo texto alternativo y tres cajas de proporción distinta; y ' +
+          'la de una sola imagen sigue pintando una, sin sección de galería (B-296).',
       );
     }
   }
