@@ -32,6 +32,23 @@ Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
 `startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
 de "deployar todo".
 
+### B-367 cerrado como duplicado de B-294, con el chequeo que faltaba — y B-460
+
+B-367 describía exactamente el bug que B-294 ya había arreglado horas antes
+(commit `c9dec65`, mismo día): filas fusionadas con `||` y triplicadas en la
+tabla «no automatizar» de `docs/13-agentes.md`. Verificado de nuevo antes de
+cerrar: hoy la sección no tiene `||`, ninguna fila sin `|` inicial, y ninguna
+celda de la primera columna repetida. Se agregó `tests/red-de-contencion.test.ts`
+con las tres reglas que B-367 proponía y B-294 había dejado sin escribir,
+mutado contra la fusión real de B-294 y contra una fila duplicada — las dos
+tiran rojo.
+
+**Y de paso, B-460**: el párrafo de cierre de B-293 (la decisión D-180) había
+migrado al medio del bloque de B-294 en `docs/BACKLOG.md` — la misma clase de
+daño de merge que B-367 describía, pero en el archivo que registra los bugs,
+no en el que B-367 auditaba. Corregido: el párrafo vuelve a su lugar, sin
+tocar el resto de ninguno de los dos bloques.
+
 ### B-344 cerrado — ya estaba resuelto, verificado y no solo leído
 
 El guard de Auth para los tests de integración (`emuladorAuthVivo()`) ya existía

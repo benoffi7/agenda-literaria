@@ -6248,7 +6248,33 @@ peor de lo que parece, porque el saneador corre sobre el cuerpo **entero** y
 hacer es volver a poner `redactar` por celda: rompe el invariante de D-197 y su
 guarda.
 
-### B-367 · La tabla de la red de contención tiene filas duplicadas y fusionadas por merges · P2
+### B-367 · La tabla de la red de contención tiene filas duplicadas y fusionadas por merges · ✅ cerrado como duplicado de B-294 (2026-09-02) · P2
+
+**Es el mismo bug que B-294, encontrado el mismo día por dos frentes distintos
+sin que ninguno viera el ítem del otro.** B-294 ya lo había arreglado —catorce
+filas a once, cero `||`— en el commit `c9dec65`, horas antes de que este ítem
+se escribiera. Verificado de nuevo antes de cerrar, no solo leído: hoy la
+sección no tiene ninguna línea con `||`, ninguna línea sin el `|` inicial, y
+ninguna celda de la primera columna repetida (51 filas de datos).
+
+**Lo único que faltaba, y es lo que este ítem sí aporta:** el chequeo que
+frene la reincidencia. B-294 lo dejó verificado a mano («no quedó ninguna
+primera celda duplicada») pero no lo dejó escrito. Ahora existe:
+`tests/red-de-contencion.test.ts`, con las tres reglas que este ítem mismo
+proponía. **Mutado, no solo verde:** se reprodujo la fusión real de B-294 (dos
+filas pegadas con `||`) y se reprodujo una fila duplicada con una versión
+vieja — las dos tiran rojo, y se restauraron después.
+
+**Y de paso apareció una tercera cicatriz de la misma familia, en
+`docs/BACKLOG.md` y no en `13-agentes.md`:** el párrafo de cierre de **B-293**
+(la decisión D-180, «salió la segunda: la barra en los `href`») había quedado
+insertado en el medio del bloque de **B-294**, entre su nota de cierre y su
+texto original — un párrafo entero de un ítem apareciendo en el cuerpo de
+otro, la misma clase que B-175 y que este ítem describe. Corregido: el
+párrafo vuelve al final del bloque de B-293, que es adonde pertenece por
+tema. Ver **B-460** para el registro completo de este hallazgo.
+
+El texto original queda abajo.
 
 Lo encontró el `auditor-documentacion` el 2026-09-02, auditando otra cosa. Es
 **preexistente** y no lo causó ningún cambio de esa tanda, pero está justo donde
@@ -6282,6 +6308,41 @@ el caldo de cultivo.
 la reincidencia: en esa tabla, ninguna línea puede tener `||` ni empezar sin `|`,
 y ninguna celda de la primera columna puede repetirse. Eso último es barato y
 habría atajado las tres copias.
+
+### B-460 · El párrafo de cierre de B-293 había migrado al medio del bloque de B-294 — ✅ hecho (2026-09-02)
+
+**Se encontró cerrando B-367** (arriba), buscando si valía la pena escribir un
+chequeo para la clase de bug que ese ítem describe. La misma clase apareció de
+nuevo, pero en `docs/BACKLOG.md` y no en `13-agentes.md`.
+
+El párrafo que dice qué se eligió y por qué para **B-293** («Los `href`
+internos pagan el 301…») —`**Hecho**, con D-180, y salió la **segunda**: la
+barra en los \`href\`…» hasta «…los dos módulos de texto pasaron a importar
+las constantes»— estaba insertado **en el medio** del bloque de **B-294**
+(«La tabla «no automatizar»…»), entre su nota de cierre y la repetición de su
+texto original. Un párrafo entero de un ítem leyéndose como si fuera de otro:
+exactamente la clase que B-175 y el propio B-367 nombran, con una vuelta
+más — esta vez el daño está en el archivo que **registra** los bugs de
+merge, no en el que B-367 auditaba.
+
+**Por qué no es solo cosmético.** Quien lea el bloque de B-294 buscando qué
+tabla se arregló se encuentra en el medio una decisión sobre URLs y
+`trailingSlash` que no tiene nada que ver, y quien busque el argumento
+completo de B-293 lo encuentra cortado a la mitad, con el resto escondido tres
+ítems más abajo dentro de un tema ajeno.
+
+**Corregido**: el párrafo vuelve al final del bloque de B-293, en el orden en
+que se escribió. No se tocó ningún otro contenido de B-293 ni de B-294 — el
+texto es exactamente el mismo, solo cambió de lugar.
+
+**Cómo se originó, para que la próxima vez sea más rápido de reconocer.** Es
+la firma de un conflicto de merge resuelto tomando **fragmentos de las dos
+ramas intercalados** en vez de un bloque completo de cada una: el corte cae a
+mitad de un párrafo de un ítem y el fragmento sobrante queda flotando dentro
+del bloque vecino. `docs/BACKLOG.md` es de los tres archivos que los cuatro
+frentes escriben a la vez (junto con `CHANGELOG.md` y `06-decisiones.md`), así
+que es donde más vale mirarlo dos veces después de cualquier merge con
+conflictos resueltos a mano.
 
 ### B-364 · Cuatro topes del mismo título, derivados por separado · P3
 
@@ -7857,6 +7918,25 @@ las dos mitades**, y por eso `tests/canonico.test.ts` afirma hoy que `cleanUrls`
 `trailingSlash` y `build.format` siguen sin tocarse, con el motivo escrito: el par
 lo señaló el `auditor-privacidad`.
 
+**Hecho**, con [D-180](06-decisiones.md), y salió la **segunda**: la barra en los
+`href`. El argumento decisorio no fue el estético — la primera pone la corrección
+de un lado del par (`firebase.json`) y la comprobación del otro (`rutaCanonica`),
+y este repo no puede verificar la config del host sin deployar.
+
+Lo que quedó, y es más que el 301: **una sola forma de la ruta, y la produce
+`rutaCanonica`.** Las seis constantes de las páginas fijas viven en
+`src/lib/rutasPublicas.ts` definidas pasándolas por ella, así que el literal que
+redirige no se puede escribir. Entraron en el mismo cambio los constructores de los
+hubs (`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`) para que B-330 no
+pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
+
+**Y el relevamiento de este ítem estaba corto:** decía «un barrido de los literales
+del markup», y los literales no estaban solo en el markup — `ayudaDelSitio.ts`
+tenía siete y `contactoDelSitio.ts` uno, y esos textos se renderizan en dos páginas
+públicas. El chequeo nuevo de `tests/canonico.test.ts` barre `.astro` y `.tsx` de
+`src/pages`, `src/components` y `src/layouts`; los dos módulos de texto pasaron a
+importar las constantes.
+
 ### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas — ✅ hecho (2026-09-02)
 
 **Catorce filas pasaron a once, eligiendo texto** — que era el trabajo que nadie
@@ -7882,24 +7962,6 @@ existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
 «2.175 tests en 93 archivos». El archivo dice 2.173, y 2.173 es lo que mide la
 suite hoy — así que el número del documento está bien y el de esta nota estaba
 mal.
-**Hecho**, con [D-180](06-decisiones.md), y salió la **segunda**: la barra en los
-`href`. El argumento decisorio no fue el estético — la primera pone la corrección
-de un lado del par (`firebase.json`) y la comprobación del otro (`rutaCanonica`),
-y este repo no puede verificar la config del host sin deployar.
-
-Lo que quedó, y es más que el 301: **una sola forma de la ruta, y la produce
-`rutaCanonica`.** Las seis constantes de las páginas fijas viven en
-`src/lib/rutasPublicas.ts` definidas pasándolas por ella, así que el literal que
-redirige no se puede escribir. Entraron en el mismo cambio los constructores de los
-hubs (`rutaDeTipo`, `rutaDeBarrio`, `RUTA_ONLINE`, `RUTA_GRATIS`) para que B-330 no
-pudiera introducir una segunda forma en cuatro patrones de URL nuevos.
-
-**Y el relevamiento de este ítem estaba corto:** decía «un barrido de los literales
-del markup», y los literales no estaban solo en el markup — `ayudaDelSitio.ts`
-tenía siete y `contactoDelSitio.ts` uno, y esos textos se renderizan en dos páginas
-públicas. El chequeo nuevo de `tests/canonico.test.ts` barre `.astro` y `.tsx` de
-`src/pages`, `src/components` y `src/layouts`; los dos módulos de texto pasaron a
-importar las constantes.
 
 ### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas · P2
 **Drift de documentación, no de código.** En la tabla «Porque ya hay un test, y
