@@ -37,6 +37,32 @@
  * Las dos viven en `decidirOptimizacion`, en ese orden, y las dos están probadas
  * en `tests/imagenes-function.test.ts` — incluido el test que **simula la
  * reentrega en un loop** y muere si se saca cualquiera de las dos.
+ *
+ * ── Medido contra el emulador, y con un hallazgo que hay que tener escrito ──
+ * Se corrió el lazo de verdad (emuladores Storage + Functions, una subida real),
+ * con la guarda puesta y sacada:
+ *
+ *  - **con la guarda:** 3 ejecuciones y para — optimiza, se ignora la
+ *    reescritura por la marca, se ignora la miniatura por el prefijo.
+ *  - **sin la guarda, tal como está el resto del código:** 4 ejecuciones y
+ *    **también para**. No por la guarda: para porque la segunda pasada recomprime
+ *    un JPEG que ya está en su punto fijo, `convieneReemplazar` dice que no
+ *    conviene, y entonces se escribe con `setMetadata` — que dispara
+ *    `onObjectMetadataUpdated` y no `onObjectFinalized`.
+ *  - **sin la guarda y con `convieneReemplazar` devolviendo `true`:** **5077
+ *    ejecuciones en 40 segundos y subiendo**, a razón de ~120 por segundo, a
+ *    partir de una sola subida de 2,6 KB.
+ *
+ * O sea que hoy existe un **segundo freno accidental**, y es exactamente la clase
+ * de cosa que este repo no deja implícita: no es una guarda, es la casualidad de
+ * que recomprimir sea una contracción y que el umbral de ahorro sea > 0. Un día
+ * que `AHORRO_MINIMO` baje a cero, o que el formato de salida deje de converger,
+ * el freno desaparece **sin que nada avise**. La única guarda de la que hay que
+ * depender es la marca.
+ *
+ * Por eso la simulación del test halva los bytes en cada pasada y reemplaza
+ * siempre: modela el peor caso —«cada pasada produce bytes distintos»— y no el
+ * comportamiento amable de hoy.
  */
 
 /**

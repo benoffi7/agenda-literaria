@@ -4,16 +4,22 @@
  * ── Lo que este archivo existe para probar ────────────────────────────────
  * **La guarda anti-recursión, y probarla ejecutándola.** Es la trampa 12 del
  * §13 (la 3 con otra cara): el trigger es `onObjectFinalized` sobre el bucket y
- * escribe en ese mismo bucket, así que sin guarda se dispara a sí mismo y cada
- * imagen genera objetos hasta que la plataforma corta.
+ * escribe en ese mismo bucket, así que sin guarda se dispara a sí mismo.
+ *
+ * **Y acá no hay red de la plataforma.** El §7.1 dice que Firestore corta la
+ * recursión «a las ~20 iteraciones»; Storage **no corta**. Medido contra el
+ * emulador el 2026-09-02: con la guarda sacada y `convieneReemplazar` en `true`,
+ * una sola subida de 2,6 KB produjo **5077 ejecuciones en 40 segundos, y seguía
+ * subiendo** a razón de ~120 por segundo. Por eso este archivo es el que va
+ * primero y aparte.
  *
  * Un test que afirmara «`decidirOptimizacion` devuelve ignorar» probaría la
  * función, no la propiedad. Lo que se prueba acá es la propiedad:
  * `describe('la recursión termina')` **corre el lazo** —el trigger, sus dos
  * escrituras, y los disparos que esas escrituras producen— y afirma que
- * converge. Sacá cualquiera de las dos guardas y el lazo llega al tope.
+ * converge.
  *
- * Las dos mutaciones están anotadas en cada `it` y se corrieron una por una.
+ * Las mutaciones están anotadas en cada `it` y se corrieron una por una.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -76,9 +82,18 @@ const subido = (nombre = 'imagenes/img_abc-123.jpg'): Objeto => ({
  * quedarse vieja en silencio.
  *
  * `optimizar()` de verdad no entra acá: lo que se prueba es el lazo, no los
- * píxeles. Los bytes bajan en cada pasada para que una guarda del estilo «no
- * cambió nada» no pueda pasar por casualidad — en Storage cada recompresión
- * produce bytes distintos, que es justo por qué esa guarda no alcanzaría.
+ * píxeles. **Los bytes bajan en cada pasada y siempre se reemplaza, a propósito:
+ * es el peor caso, no el comportamiento de hoy.** Corrido contra el emulador, el
+ * lazo sin la guarda **igual** para a las 4 vueltas, porque la segunda pasada
+ * recomprime un JPEG que ya está en su punto fijo y `convieneReemplazar` dice
+ * que no conviene — y entonces se escribe con `setMetadata`, que no dispara
+ * `onObjectFinalized`. Con `convieneReemplazar` devolviendo `true` son **5077
+ * ejecuciones en 40 segundos y subiendo**, desde una sola subida de 2,6 KB.
+ *
+ * Ese freno accidental no se modela acá: la simulación tiene que fallar cuando
+ * falta la guarda de la que **sí** hay que depender, no cuando falta la
+ * casualidad de que recomprimir converja. El razonamiento completo está en el
+ * docblock de `functions/imagenes.js`.
  */
 const bucketSimulado = () => {
   const objetos = new Map<string, Objeto>();
