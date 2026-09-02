@@ -59,6 +59,41 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'errores-del-material-al-lado',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'El material que falta ahora te lo marca en la fila, no solo abajo',
+    detalle:
+      'Si cargaste dos lecturas y una quedó sin título, antes la barra de abajo decía «Título del ' +
+      'material» y no decía cuál de las dos. Ahora queda marcado en rojo al lado del campo, como ' +
+      'el resto del formulario, y al intentar guardar te lleva hasta ahí.',
+    donde: 'Formulario, sección «Material».',
+  },
+  {
+    id: 'aviso-de-opcion-que-no-quedo',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'Si una opción nueva no llega a la lista, ahora te enterás',
+    detalle:
+      'Cuando escribís una opción que no existía —un barrio, un arancel, una etiqueta— se guarda ' +
+      'en un segundo paso, después de la actividad, y ese paso puede fallar solo. Hasta ahora el ' +
+      'guardado se veía perfecto igual. Ahora aparece un aviso arriba que dice qué opción no ' +
+      'quedó, con un botón para ir a «Opciones» y crearla en un clic.',
+    donde: 'Arriba del listado, al volver de guardar una actividad.',
+  },
+  {
+    id: 'coordenadas-con-coma',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'Pegar coordenadas con coma ya te dice qué corregir',
+    detalle:
+      'Si pegabas «-34,5989, -58,4392» —con coma en lugar de punto, que es como las copia una ' +
+      'computadora en español— el campo respondía que no parecía un link ni un par de ' +
+      'coordenadas, y no era cierto. Ahora dice que el problema es la coma y te muestra cómo se ' +
+      'escribe. Se sigue rechazando: con comas no se sabe si son dos números o cuatro.',
+    donde: 'Formulario, sección «Dónde» — «Punto exacto en el mapa».',
+  },
+  {
     id: 'las-demas-imagenes-se-ven',
     fecha: '2026-09-02',
     version: '1.5.0',

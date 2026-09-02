@@ -150,6 +150,14 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   "sin coordenadas". Para confirmar que se cargó bien: el campo muestra la
   coordenada con un link al mapa, y la **vista previa del evento** muestra la
   ubicación y el link de Maps tal como van a salir.
+  Un par con **coma decimal** ("-34,5989, -58,4392" — lo que copia una máquina
+  configurada en español) tiene desde B-55 su propio mensaje: se sigue rechazando
+  —con comas no se distingue si son dos números o cuatro— pero el campo dice que
+  el problema es la coma y muestra la forma que sí funciona. Antes caía en «no
+  parece un link ni un par de coordenadas», que era falso.
+  **Los cuatro modos de fallo se miden** (B-55, `09-analitica.md`): es lo que
+  decide si vale la pena resolver los links cortos (B-45) o alcanza con explicar
+  mejor el campo.
 - **Guardar borrador pide lo mínimo: título y dirección web.** Nada más. Todo lo
   demás —tipo, descripción, organizador, arancel, encuentros, sede— se exige
   **al publicar**, que es lo que sale al sitio y al calendario (B-183, D-120).
@@ -199,6 +207,21 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   (trampa 10).
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
   tipearlas: abandonar el formulario no debe dejar basura en la taxonomía.
+- **Y si esa persistencia falla, ahora se ve** (B-177, D-187). Son dos
+  escrituras: primero la actividad, después la etiqueta nueva (D-100). La segunda
+  puede fallar sola, y hasta acá el guardado se veía **exactamente igual** que uno
+  perfecto. Al volver del formulario aparece una franja arriba que **nombra la
+  etiqueta** que no quedó —no "alguna etiqueta", que con cinco campos de taxonomía
+  no es accionable— y lleva a «Opciones», donde se crea en un clic. La actividad
+  quedó guardada con ella igual: lo único que se pierde es la escritura del
+  nombre, que el sitio y el calendario deducen del valor y pueden capitalizar
+  distinto (D-11).
+- **Cada campo de una fila de material marca su propio error** (B-197). Era la
+  única familia de campos del formulario que no lo hacía: el editor recibía un
+  solo error, el de la lista, así que con dos filas cargadas y una sin título el
+  mensaje de la barra decía «Título del material» y no decía cuál de las dos.
+  Ahora la fila lo marca en rojo, y el scroll de B-184 cae en el campo y no en el
+  principio de la sección.
 
 ### Editor de sesiones
 
