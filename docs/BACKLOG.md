@@ -2538,29 +2538,29 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-370 a B-379 · La analítica del sitio público · P2
+### B-370 a B-379, y B-480 · La analítica del sitio público · P2
 
 **Los diez ítems que salieron de la arquitectura de la analítica
-([`16-analitica-del-sitio.md`](16-analitica-del-sitio.md), D-201).** Se anotan
-acá porque el documento los cita por número y sin esta entrada el backlog no
-los tenía: la tabla del §9 de ese documento es la que manda para el detalle.
+([`16-analitica-del-sitio.md`](16-analitica-del-sitio.md), D-201), más uno que
+salió de auditar la implementación.** El dueño ya contestó las tres preguntas
+que bloqueaban este frente — **B-376 → C3** (banner con aceptar/rechazar),
+**B-371 → aceptado** (el costo de JS de la página de detalle) y **B-373 →
+diferido a propósito, para el final de todo**. El §12 de `16-analitica-del-sitio.md`
+tiene el detalle completo de cada uno.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | El ítem paraguas y el documento de arquitectura | 🟡 primera tajada hecha — el tablero «Estado del catálogo» |
-| **B-371** | **Decisión del dueño:** aceptar el costo de JavaScript en la página de detalle, que hoy tiene cero | ⛔ espera al dueño |
-| **B-372** | Instalar el tag de GA4 en las páginas públicas — la mitad vendible entera | ⛔ depende de B-371 y B-376 |
-| **B-373** | Search Console: conectar el dominio y leerlo. **Es el único que no depende de nada**, y el que sirve al objetivo del §2.3 | 🟢 libre |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen del panel | ⛔ depende de B-372 y de un mes de datos |
-| **B-375** | Los eventos propios: el clic en inscripción y el filtro que deja cero | ⛔ depende de B-372 |
-| **B-376** | **Decisión del dueño:** el aviso de privacidad y el consentimiento, entre las tres opciones del §7 | ⛔ espera al dueño |
+| **B-370** | El ítem paraguas y el documento de arquitectura | 🟡 el tablero, el banner, el tag y los eventos están; falta B-373, B-374 y B-480 |
+| **B-371** | **Decisión del dueño:** aceptar el costo de JavaScript en la página de detalle, que hoy tiene cero | ✅ resuelto — **aceptado** (D-251), con el número medido en el §6bis del documento |
+| **B-372** | Instalar el tag de GA4 en las páginas públicas — la mitad vendible entera | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** antes de medir en producción |
+| **B-373** | Search Console: conectar el dominio y leerlo | 🔵 **diferido a propósito por decisión del dueño**, para el final de todo. Motivo de calendario, no de prioridad: Search Console no muestra histórico anterior a la conexión, así que cada día sin conectarlo es un día que no se recupera — vale la pena no demorarlo demasiado aunque no sea lo próximo |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen del panel | ⛔ depende de B-372 (con B-480 resuelto) y de un mes de datos |
+| **B-375** | Los eventos propios: el clic en inscripción y el filtro que deja cero | ✅ construidos (`clic_inscripcion`, `filtro_sin_resultados`) — inertes hasta que B-372/B-480 midan de verdad |
+| **B-376** | **Decisión del dueño:** el aviso de privacidad y el consentimiento, entre las tres opciones del §7 | ✅ resuelto — **C3** (D-250), banner construido en `src/components/sitio/AvisoDeCookies.astro` |
 | **B-377** | El inventario publicitario: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
 | **B-378** | El tablero del catálogo es una foto y no una serie | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
-
-**Lo que hay que hacer primero es B-373**, y el motivo es de calendario: Search
-Console no muestra histórico anterior a la conexión, así que cada día que pasa
-sin conectarlo es un día de datos que no se recupera.
+| **B-480** | **Bloqueante para B-372.** El `auditor-privacidad` encontró que recortar el `page_location`/`page_referrer` no alcanza: el Enhanced Measurement de GA4 —prendido por default— manda «Búsquedas en el sitio» (el texto del buscador), «Clics salientes» (el destino real del botón de inscripción) y un `page_view` por cada cambio de historial, **sin pasar por ningún saneador de este repo**. No hay parámetro de código que los apague: hay que entrar a GA4 → Administrar → Flujos de datos → el flujo → Enhanced measurement y apagar «Búsquedas en el sitio» y «Clics salientes» antes de que el tag mida en producción. Detalle completo en D-253 (`06-decisiones.md`) y en la salida 12 de `07-seguridad.md` | ⛔ acción manual del dueño, no de código |
 
 ### B-344 · Nadie sondea el emulador de Auth, y cuatro archivos de integración lo usan · P2
 

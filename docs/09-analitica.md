@@ -13,7 +13,7 @@ mismo cambio.
 | Implementación | `src/lib/analytics-eventos.ts` (puro) + `src/lib/analytics.ts` (transporte) |
 | Instrumentación del formulario | `src/components/admin/useMedicionFormulario.ts` |
 | Tests | `tests/analytics-eventos.test.ts`, `tests/analytics-privacidad.test.ts`, `tests/analytics-campos.test.ts` (el vocabulario de campos contra el schema) y `tests/version.test.ts` (el formato de `version` contra el build) |
-| Alcance | solo el panel `/admin`. El sitio público no mide nada |
+| Alcance | solo el panel `/admin`. **Desde B-372/B-375 el sitio público también mide** — es una implementación propia, no heredada de ésta, y está documentada en [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) |
 
 ---
 
@@ -363,7 +363,7 @@ pero con nombre propio y con un mensaje que dice qué corregir.
 | Cancelar un encuentro (la casilla "Cancelado") | Está en un `onChange` inline del JSX y medirlo exigía tocar el markup. Ver [B-58](BACKLOG.md) |
 | Tildar "publicar el link de la reunión" en el momento | Ídem. Se mide igual en `guardado_ok.url_publica`, que es el dato que importa |
 | El foco campo por campo (el embudo fino del formulario) | Exigiría instrumentar 30+ inputs, o refactorizar el formulario. `faltantes` da la ubicación gruesa sin tocar nada |
-| El sitio público | Existe desde B-227, y **no se mide**: es la decisión 4 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), todavía abierta. Medirlo agrega JavaScript y una decisión de privacidad a un sitio que hoy no pone una sola cookie. La única métrica que valdría la pena es el clic en el CTA de inscripción |
+| El sitio público, **por este módulo** | La proyección de acá (`analytics-eventos.ts`) no se hereda: si el sitio público mide, tiene la suya propia. **Y desde B-372/B-375 la tiene** — ver [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). El clic en el CTA de inscripción, que era «la única métrica que valdría la pena», es uno de los dos eventos propios que ya existen |
 
 ---
 

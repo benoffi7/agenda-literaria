@@ -1457,7 +1457,7 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
 | 1 | ~~**El dominio final.**~~ **Resuelta el 2026-09-02: `https://agendaleh.ar`** (D-165). Se registró un dominio propio y también responde `agendaleh.com.ar`, que va a redirigir con un 301 en cuanto el dueño lo configure en la consola; `agenda-literaria.web.app` sigue sirviendo el mismo HTML para siempre, y el `canonical` absoluto es lo que evita que eso sea contenido duplicado. Con esto se cerró **B-109**: `site`, canonical, Open Graph, sitemap, robots y `/pasadas` | ✅ |
 | 2 | ~~**Canal de contacto público.**~~ **Resuelta**: es lo que publica `/contacto` (**B-232**, **B-233**), con la lista de qué conviene contar — que es lo que el `mailto:` crudo del pie se salteaba. El bullet del §4.5 pedía «un canal» y hoy existe | ✅ |
 | 3 | ~~**Nombre del sitio y una línea de qué es.**~~ **Resuelta: «Agenda LEH»** (**B-245**, D-141). Vive en `src/lib/identidad.ts` (`NOMBRE`, `BAJADA`) y es la única vez que se escribe: un test falla si alguna página lo pega literal. Antes el sitio se presentaba con su categoría —«Agenda literaria»—, que es lo contrario de tener nombre | ✅ |
-| 4 | **¿Se mide el sitio público?** | Hoy la analítica es solo del panel ([`09-analitica.md`](09-analitica.md)). La única métrica que importa acá es el clic en el CTA de inscripción. Medirlo agrega JS y una decisión de privacidad a un sitio que hoy no pone una sola cookie |
+| 4 | ~~**¿Se mide el sitio público?**~~ **Resuelta: sí, con un banner de consentimiento** (B-372/B-376, D-201, D-250, D-251). GA4 con `gtag.js` directo, condicionado a que la persona acepte — si rechaza, no se carga el tag y no se manda nada. El clic en el CTA de inscripción es uno de los dos eventos propios (B-375). Arquitectura completa en [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) | ✅ |
 | 5 | **¿Un campo "acepta incorporaciones tardías"?** | Hoy "se puede entrar a un ciclo empezado" se deduce de `inscripcion.cierra` ([7.2](#72-un-ciclo-en-curso)). Un booleano lo diría sin ambigüedad |
 | 6 | **¿La descripción admite formato?** | Hoy es texto plano: un link pegado no es clickeable y no hay negritas ni listas. Opciones: dejarlo así, autolinkear las URLs (barato, y hay que escapar bien), o markdown acotado (cambia el formulario, la vista previa y el evento de Calendar) |
 | 7 | **¿Cuánto vive una actividad pasada en el índice?** | La propuesta es para siempre, con 90 días en el sitemap ([7.1](#71-una-actividad-que-ya-pasó)). La alternativa es `noindex` al año, para que el sitio no crezca en páginas muertas |
@@ -1509,7 +1509,13 @@ Y por qué. Todo esto está pensado y descartado a propósito, no olvidado.
 | **Selector de orden** | No hay un segundo criterio que alguien pida ([§6.1](#61-cuáles-en-orden-de-importancia)) |
 | **Modo oscuro** | El lenguaje visual es papel y tinta. Un papel oscuro es otra decisión de marca, y no es de este documento |
 | **Traducción / hreflang** | Un solo idioma y un solo país |
-| **Analítica del sitio público** | Decisión 4 de [§11.1](#111-decisiones-del-dueño). Arrancar sin una sola cookie es un buen lugar donde estar |
+
+**«Analítica del sitio público» ya no va en esta lista.** Era la decisión 4 de
+[§11.1](#111-decisiones-del-dueño), y esa nota decía «arrancar sin una sola
+cookie es un buen lugar donde estar» — describía un estado de espera, no algo
+descartado a propósito, y la decisión 4 ya se resolvió: hay banner de
+consentimiento y GA4 mide con el permiso de quien visita
+([`16-analitica-del-sitio.md`](16-analitica-del-sitio.md)).
 
 ---
 
