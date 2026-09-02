@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type R
 // Estático a propósito: el aviso de versión nueva tiene que poder aparecer
 // desde el primer render, incluso en la pantalla de login. No arrastra
 // Firestore, así que no rompe el corte del bundle de D-51.
+import { AvisoEtiquetas } from '@/components/admin/AvisoEtiquetas';
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
 import { PieVersion } from '@/components/admin/PieVersion';
 import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
@@ -173,6 +174,17 @@ export function AdminApp() {
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
   const [volverA, setVolverA] = useState<'lista' | 'calendario'>('lista');
+
+  /**
+   * B-177 — las etiquetas nuevas que el último guardado no llegó a registrar.
+   *
+   * Vive acá y no en el formulario porque el formulario se desmonta al guardar:
+   * el aviso tiene que sobrevivir al cambio de vista, y este es el único
+   * componente que lo hace. Se limpia al abrir cualquier formulario de nuevo —un
+   * aviso del guardado anterior colgado arriba de una carga nueva se lee como si
+   * fuera de esta.
+   */
+  const [etiquetasSinRegistrar, setEtiquetasSinRegistrar] = useState<readonly string[]>([]);
 
   /**
    * B-35 — toda salida del formulario pasa por acá.
@@ -410,11 +422,26 @@ export function AdminApp() {
         </p>
       )}
 
+      {/*
+        B-177 — arriba de la vista y no adentro del listado: al volver del
+        formulario se puede caer en el listado o en el calendario (según de dónde
+        se entró), y el aviso tiene que estar en las dos.
+      */}
+      <AvisoEtiquetas
+        etiquetas={etiquetasSinRegistrar}
+        onIrAOpciones={() => {
+          setEtiquetasSinRegistrar([]);
+          setVista({ tipo: 'taxonomias' });
+        }}
+        onCerrar={() => setEtiquetasSinRegistrar([])}
+      />
+
       {vista.tipo === 'lista' && (
         <ListaActividades
           version={version}
           onNueva={() => {
             setVolverA('lista');
+            setEtiquetasSinRegistrar([]);
             setVista({ tipo: 'nueva' });
           }}
           onEditar={(a) => {
@@ -422,10 +449,12 @@ export function AdminApp() {
             // preferencia queda pegada y una edición desde el listado
             // devolvería al calendario.
             setVolverA('lista');
+            setEtiquetasSinRegistrar([]);
             setVista({ tipo: 'editar', actividad: a });
           }}
           onDuplicar={(copia, tituloOrigen) => {
             setVolverA('lista');
+            setEtiquetasSinRegistrar([]);
             setVista({ tipo: 'duplicar', copia, tituloOrigen });
           }}
           uid={usuario.uid}
@@ -451,6 +480,7 @@ export function AdminApp() {
           version={version}
           onEditar={(a) => {
             setVolverA('calendario');
+            setEtiquetasSinRegistrar([]);
             setVista({ tipo: 'editar', actividad: a });
           }}
         />
@@ -469,8 +499,9 @@ export function AdminApp() {
           copia={vista.tipo === 'duplicar' ? vista.copia : undefined}
           tituloOrigen={vista.tipo === 'duplicar' ? vista.tituloOrigen : undefined}
           onCancelar={() => salirDe(() => setVista({ tipo: volverA }))}
-          onGuardado={() => {
+          onGuardado={(_id, sinRegistrar) => {
             setVersion((v) => v + 1);
+            setEtiquetasSinRegistrar(sinRegistrar ?? []);
             setVista({ tipo: volverA });
           }}
         />

@@ -52,7 +52,13 @@ interface Props {
   copia?: ActividadForm;
   /** Título del original, solo para el aviso de la copia. */
   tituloOrigen?: string;
-  onGuardado: (id: string) => void;
+  /**
+   * B-177 — el segundo argumento son las etiquetas nuevas que **no** llegaron a
+   * la taxonomía. Va acá y no queda en el formulario porque al guardar el
+   * formulario se desmonta: el aviso lo pinta el chasis del panel, que es lo
+   * único que sobrevive al cambio de vista.
+   */
+  onGuardado: (id: string, etiquetasSinRegistrar?: readonly string[]) => void;
   onCancelar: () => void;
 }
 
@@ -234,7 +240,7 @@ export function ActividadFormulario({
       // El borrador del navegador ya no tiene sentido: lo guardado es esto
       // mismo, y dejarlo haría que reapareciera encima de la versión buena.
       autoguardado.limpiar();
-      onGuardado(r.id);
+      onGuardado(r.id, r.etiquetasSinRegistrar);
     } finally {
       setGuardando(false);
     }

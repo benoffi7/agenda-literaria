@@ -51,10 +51,16 @@ export type ResultadoGuardado =
       /** El formulario tal como se guardó, ya con el slug normalizado. */
       guardado: ActividadForm;
       /**
-       * La actividad se escribió pero alguna etiqueta nueva no llegó a
-       * `/opciones/*`. Ver el comentario de orden de escritura, abajo.
+       * Las etiquetas nuevas que **no** llegaron a `/opciones/*`. Vacío es lo
+       * esperable. Ver el comentario de orden de escritura, abajo.
+       *
+       * B-177 — era un booleano, y con un booleano el aviso solo podía decir
+       * "alguna etiqueta no se registró", que no es accionable: hay hasta cinco
+       * campos con taxonomía y el arreglo es volver a tipear **esa**. Son los
+       * labels tal como se escribieron, no los slugs: es lo que la persona
+       * reconoce de lo que acaba de cargar.
        */
-      etiquetasSinRegistrar: boolean;
+      etiquetasSinRegistrar: readonly string[];
     }
   | { estado: 'error'; error: unknown };
 
@@ -145,27 +151,57 @@ export const guardarActividad = async (
     // escrita, y reportar error haría que el segundo intento choque contra su
     // propio slug (`slugDisponible` ya lo ve tomado) sobre un formulario que
     // en realidad se guardó bien.
-    let etiquetasSinRegistrar = false;
+    const labelsTags = guardado.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
+
+    /*
+     * B-177 — qué etiquetas quedaron sin registrar, no si quedó alguna.
+     *
+     * Se arranca del conjunto completo y cada alta que sale bien se descuenta,
+     * así que lo que queda al salir por el `catch` es exactamente lo que no
+     * llegó. Con un booleano el aviso decía "alguna etiqueta nueva no se
+     * registró" y no cuál, y volver a tipear la que falta implica adivinar entre
+     * cinco campos.
+     */
+    const restantes = new Set<string>([...labelsNuevos.map((l) => l.label), ...labelsTags]);
     try {
       for (const { campo, label } of labelsNuevos) {
         await upsertOpcion(campo, label, uid);
+        restantes.delete(label);
       }
-      const labelsTags = guardado.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
-      if (labelsTags.length) await upsertOpciones('tags', labelsTags, uid);
+      if (labelsTags.length) {
+        await upsertOpciones('tags', labelsTags, uid);
+        for (const l of labelsTags) restantes.delete(l);
+      }
+    } catch {
+      // Se sale con lo que quedó en `restantes`. No se reintenta acá: la
+      // transacción del §4.2 ya reusa por slug, así que el reintento útil es el
+      // de la persona volviendo a tipear la etiqueta, y eso lo habilita el aviso.
+    }
 
-      // §4.3 — recién acá se cuenta el uso, y va después del alta a propósito:
-      // `registrarUsos` no crea el documento de opciones si no existe, así que
-      // contar antes de sembrar no contaría nada. B-168 / D-103.
+    /*
+     * §4.3 — recién acá se cuenta el uso, y va después del alta a propósito:
+     * `registrarUsos` no crea el documento de opciones si no existe, así que
+     * contar antes de sembrar no contaría nada. B-168 / D-103.
+     *
+     * En su propio `try` desde B-177, y eso **cambia lo que el flag significa**.
+     * Antes compartía el `catch` con las altas, así que un fallo al contar el uso
+     * se reportaba como "la etiqueta no se registró" —y es mentira: la etiqueta
+     * está, lo que no se contó es el uso—. El aviso de pantalla mandaría a
+     * arreglar algo que no está roto. Un fallo acá **no se reporta**: lo único
+     * que se pierde es una posición en el orden del desplegable, y avisar de eso
+     * gasta la atención que el aviso necesita para lo que sí importa.
+     */
+    try {
       for (const [campo, slugs] of Object.entries(
         usosAContar(guardado, labelsNuevos, tagsNuevos),
       ) as [CampoTaxonomia, string[]][]) {
         await registrarUsos(campo, slugs);
       }
     } catch {
-      etiquetasSinRegistrar = true;
+      // Ver arriba: silencioso a propósito.
     }
 
-    return { estado: 'ok', id, guardado, etiquetasSinRegistrar };
+    return { estado: 'ok', id, guardado, etiquetasSinRegistrar: [...restantes] };
   } catch (error) {
     return { estado: 'error', error };
   }

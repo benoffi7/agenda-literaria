@@ -578,7 +578,82 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
     });
     const r = ok(await guardarActividad(entrada(), puertos));
     expect(r.id).toBe('act1');
-    expect(r.etiquetasSinRegistrar).toBe(true);
+    // B-177 — dice **cuál**, no que hubo alguna: es el label tal como se tipeó,
+    // que es lo que la persona reconoce de lo que acaba de cargar.
+    expect(r.etiquetasSinRegistrar).toEqual(['Con beca parcial']);
+  });
+
+  /**
+   * B-177 — el aviso de pantalla necesita nombrar la etiqueta, así que lo que se
+   * verifica acá es que el resultado diga **cuál** y no que hubo alguna.
+   */
+  describe('qué etiquetas quedaron sin registrar (B-177)', () => {
+    it('en el caso feliz no queda ninguna', async () => {
+      const { puertos } = puertosFalsos();
+      expect(ok(await guardarActividad(entrada(), puertos)).etiquetasSinRegistrar).toEqual([]);
+    });
+
+    it('las que ya se alcanzaron a escribir no se reportan', async () => {
+      // El alta es una por campo y en serie: si la segunda falla, la primera
+      // está. Reportar las dos mandaría a volver a tipear una etiqueta que ya
+      // quedó registrada — y volver a tipearla es lo que el aviso pide hacer.
+      let vueltas = 0;
+      const { puertos } = puertosFalsos({
+        upsertOpcion: async () => {
+          vueltas += 1;
+          if (vueltas > 1) throw new Error('offline');
+          return 'slug';
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            labelsNuevos: [
+              { campo: 'arancel' as const, label: 'Con beca parcial' },
+              { campo: 'barrio' as const, label: 'Villa Crespo' },
+            ],
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Villa Crespo']);
+    });
+
+    it('un fallo al contar el uso no se reporta como etiqueta sin registrar', async () => {
+      /*
+       * Antes de B-177 `registrarUsos` compartía el `catch` con las altas, así
+       * que un fallo al contar el uso se reportaba como "la etiqueta no se
+       * registró" — y es mentira: la etiqueta está. Con el aviso en pantalla eso
+       * mandaría a arreglar algo que no está roto. Lo único que se pierde es una
+       * posición en el orden del desplegable, y por eso es silencioso.
+       */
+      const { puertos } = puertosFalsos({
+        registrarUsos: async () => {
+          throw new Error('offline');
+        },
+      });
+      const r = ok(await guardarActividad(entrada(), puertos));
+      expect(r.etiquetasSinRegistrar).toEqual([]);
+    });
+
+    it('las etiquetas de tags también se nombran', async () => {
+      const { puertos } = puertosFalsos({
+        upsertOpciones: async () => {
+          throw new Error('offline');
+        },
+      });
+      const r = ok(
+        await guardarActividad(
+          entrada({
+            form: formularioLleno({ tags: ['poesia-contemporanea'] }),
+            labelsNuevos: [],
+            tagsNuevos: { 'poesia-contemporanea': 'Poesía contemporánea' },
+          }),
+          puertos,
+        ),
+      );
+      expect(r.etiquetasSinRegistrar).toEqual(['Poesía contemporánea']);
+    });
   });
 
   it('sin etiquetas nuevas no se toca la taxonomía', async () => {
