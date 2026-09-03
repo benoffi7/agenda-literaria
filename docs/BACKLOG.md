@@ -2801,6 +2801,35 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-720 · La galería de una actividad no se puede recorrer ni ver en grande · P2
+
+**Pedido del dueño el 2026-09-03**, mirando el sitio publicado: que la galería sea
+**clickeable para recorrer las fotos y verlas en pantalla completa**.
+
+Hoy la página de detalle muestra **todas** las imágenes (B-296, D-147) en tres
+cajas de proporción distinta, y son estáticas: un flyer con la letra chica —que es
+la mitad de lo que se carga— se ve al tamaño que entró en la columna y no hay
+forma de agrandarlo.
+
+**Lo que hay que decidir al hacerlo**, y por qué no es «poner un lightbox»:
+
+- **Sin librería.** El repo tiene lista blanca de chunks y cero dependencias
+  nuevas; ya hay un precedente de capa modal propia hecha bien —`lib/capaModal.ts`,
+  de B-238—, con trampa de foco, cierre con `Escape`, cierre tocando el fondo y
+  `pushState` para que el botón atrás del teléfono cierre en vez de salir del
+  sitio. **Se reusa eso**, no se escribe una segunda.
+- **El sitio público casi no tiene JavaScript, y eso es una decisión** (§9 del
+  diseño): la página de detalle hoy manda cero bytes. Una galería interactiva es la
+  primera island de esa página, así que hay que medir el costo y decidirlo, como se
+  hizo con D-251.
+- **Con JavaScript apagado la galería tiene que seguir funcionando** como hoy: las
+  fotos se ven, en su tamaño, sin capa.
+- **La imagen grande es la original**, no la miniatura (D-210): es justo el caso en
+  que el peso se justifica.
+- El epígrafe (D-125) acompaña a la foto en la capa, y el texto alternativo sale
+  del título mientras B-301 no esté hecho.
+
+
 ### B-620 · El panel no usaba el ancho de la pantalla — ✅ hecho (2026-09-03) · P2
 
 El listado era una fila por actividad dentro de un contenedor de 896px

@@ -1027,6 +1027,19 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
             '--exclude-dir=node_modules',
             '--exclude-dir=dist',
             '--exclude-dir=.git',
+            /*
+             * **Y los worktrees**, que viven adentro de `.claude/` y son copias
+             * enteras del repo: sin esto el grep encuentra el mismo archivo ocho
+             * veces —una por frente en paralelo— y el caso falla diciendo que el
+             * marcador «dejó de ser exclusivo» cuando lo único que pasó es que hay
+             * otra copia del repo en el disco. Falló así al integrar la tanda del
+             * 2026-09-03, con ocho worktrees abiertos.
+             *
+             * No afloja lo que el caso verifica: lo que se está preguntando es si
+             * **este** árbol escribe el marcador en un solo lugar, y una copia de
+             * trabajo de otro frente no es parte de este árbol.
+             */
+            '--exclude-dir=worktrees',
             aguja,
             raiz('.'),
           ],
@@ -1034,7 +1047,14 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
         )
           .split('\n')
           .filter(Boolean)
-          .map((f) => f.replace(/.*\/agent-[^/]+\//, ''));
+          /*
+           * A ruta relativa del árbol. El recorte de `agent-<id>/` solo servía
+           * **adentro de un worktree**: en el árbol principal `grep` devuelve la
+           * ruta absoluta con el `./` del argumento, así que el caso no podía
+           * coincidir nunca y solo pasaba donde nació. Se normaliza contra la raíz
+           * de verdad.
+           */
+          .map((f) => f.replace(raiz('.'), '').replace(/^\.?\//, ''));
       } catch {
         // `grep` sale con 1 cuando no encuentra nada: eso es «el marcador
         // desapareció del fuente», que es un resultado y no un error de plomería.
