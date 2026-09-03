@@ -380,6 +380,7 @@ arreglo, es el detector.
 | Que los workflows de Actions parseen y tengan los triggers que el §8 necesita | `workflows.test.ts` (trampa 11, B-188): parsea en modo estricto, exige `name` y al menos un trigger, y ata el `event_type` que manda la Function con el `repository_dispatch` del workflow. Mira `doc.errors` y no el objeto parseado, porque el parser se recupera del error y devolvería `name` y `on` sobre un archivo que en GitHub no funciona |
 | Que ningún `run:` de un workflow interpole datos que no controlamos, y que el motivo del rebuild sea opaco | `workflows.test.ts` y `costuras.test.ts` (B-195). El segundo es una propiedad y no una lista: ninguna interpolación del motivo puede tener un punto, porque no hay forma de alcanzar un campo del documento sin un acceso a propiedad |
 | Que `02-infraestructura.md` y `07-seguridad.md` declaren los mismos roles de `deploy-ci@`, y que `07-seguridad.md` **no** afirme que el daño se limita a leer mientras la lista tenga un rol de escritura | `roles-deploy-ci.test.ts` (B-195, D-119, D-132). El drift entre las dos listas es cómo una afirmación de seguridad estuvo mintiendo una hora. El segundo chequeo lo agregó D-132, que le devolvió a la cuenta los roles de escritura: lo que queda prohibido no es tenerlos, es tenerlos y seguir diciendo que no |
+| Que **esta misma tabla** se rompa por un merge, o que su índice apunte a un test que ya no existe | `red-de-contencion.test.ts` (B-367, B-294 y **B-660**). Las tres primeras reglas son de forma —ninguna línea con dos barras verticales seguidas, ninguna que deje de empezar con una, ninguna primera celda repetida—; las tres de B-660 son de contenido: los cincuenta nombres de test que el documento cita existen todos, y ninguna línea de prosa pasa de 100 caracteres en un archivo envuelto a 80, que es la señal genérica de dos oraciones que un merge dejó pegadas. Es la única fila que se verifica a sí misma, y por eso está: la tabla es lo que los tres auditores consultan para no reportar lo que un test ya frena |
 
 ### Porque un agente no es la herramienta
 
@@ -410,8 +411,9 @@ arreglo, es el detector.
   allá del contraste (orden de encabezados, nombres accesibles, foco en un
   recorrido real) y la **calidad** del contenido indexable —que un `<title>` diga
   algo distinto en cada página, que la `meta description` no se corte a mitad de
-  palabra—, que son juicios y no propiedades. Y una parte ya está automatizada y no le corresponde: el contraste lo
-  calculan `tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio,
+  palabra—, que son juicios y no propiedades. Y una parte ya está automatizada
+  y no le corresponde: el contraste lo calculan
+  `tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio,
   `tests/listado-del-sitio.test.ts` (B-247, B-260) para el listado —que es donde
   hay texto encima de algo que no es el papel— y, sobre las tres superficies,
   `tests/contraste-de-superficies.test.ts` (B-243, B-256). Desde **B-260** se suma
