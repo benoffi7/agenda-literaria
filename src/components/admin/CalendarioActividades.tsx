@@ -200,9 +200,19 @@ function FilaEncuentro({
         <span className="block truncate text-sm font-medium">{encuentro.titulo}</span>
         <span className="block truncate text-xs text-tinta/55">
           {/* §2.2 — el "2 de 8" es lo que impide leer un ciclo como ocho
-              actividades distintas. */}
-          {encuentro.total > 1 ? `Encuentro ${encuentro.indice} de ${encuentro.total}` : 'Encuentro único'}
-          {encuentro.tema ? ` · ${encuentro.tema}` : ''}
+              actividades distintas. Se muestra con la misma puerta que el
+              evento público (B-163, D-292, `numeraElCiclo`): no un número que
+              el calendario que la gente ve no dice. */}
+          {[
+            encuentro.total > 1
+              ? encuentro.numeraElCiclo
+                ? `Encuentro ${encuentro.indice} de ${encuentro.total}`
+                : null
+              : 'Encuentro único',
+            encuentro.tema,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </span>
       </span>
       <ChipEstado estado={encuentro.estado} />

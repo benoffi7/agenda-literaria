@@ -4858,7 +4858,7 @@ escritura posterior — la misma advertencia que `tests/fixtures/ciclo.ts` ya te
 escrita (B-135), y que el helper local de `calendario.test.ts` no respeta
 (**B-352**).
 
-### B-163 · El panel numera encuentros que el evento no numera · 🟡 **la mitad hecha** (2026-09-02) · P3
+### B-163 · El panel numera encuentros que el evento no numera · ✅ hecho (2026-09-03) · P3
 
 `encuentrosDe` (D-70) y la vista calendario muestran "Encuentro 2 de 3" en
 **cualquier** actividad de más de una sesión, mientras `posicionEnCiclo` (D-95)
@@ -4903,6 +4903,31 @@ es una línea en un solo lugar y se nota en un solo test.
 una sesión sin fecha usable no se pinta en la vista calendario pero **cuenta**
 para el total, que es lo que dice el evento que la gente tiene agendado. Antes el
 panel decía "1 de 1" y el evento "2 de 2".
+
+**Cerrado (2026-09-03, D-292): se eligió "que el panel deje de numerar sin
+`esCiclo`".** De las dos salidas que quedaban, es la que **no reescribe ningún
+evento ya publicado** — la otra le cambia el texto a los eventos de quien ya
+los tiene agendados, el mismo argumento de D-95 y B-84 que atraviesa todo este
+cluster de decisiones. `numeraElCiclo: boolean` se agregó a `Encuentro`
+(`src/lib/calendarioPanel.ts`), calculado con la misma `elEventoNumeraElCiclo`
+que ya usa el evento; `CalendarioActividades.tsx` lo usa para decidir si pinta
+"Encuentro N de M". La aritmética (`indice`/`total`) se sigue calculando
+siempre, se muestre o no.
+
+**El costo, aceptado a propósito:** vuelve el problema que la regla 1 de D-70
+resuelve — una actividad de varias sesiones sin `esCiclo` tildado muestra sus
+filas sin número en el panel. Se acota porque es un caso de borde: `esCiclo` se
+tilda solo o como parte de la cascada de "club de lectura"/"feria" (§11 del
+CLAUDE.md), así que en la práctica casi toda actividad de más de una sesión ya
+llega con el ciclo tildado. Es una decisión reversible en una línea —
+`numeraElCiclo` es derivado, no se guarda— así que si el uso real dice lo
+contrario, se revisa sin ninguna migración.
+
+Tests: `tests/costuras.test.ts` fija la aritmética, la puerta compartida y que
+el panel la respeta, las tres a la vez (mutado: forzar `numeraElCiclo: true`
+tira tres tests en rojo, en `costuras.test.ts` y `calendarioPanel.test.ts`).
+`tests/calendarioPanel.test.ts` suma el caso de una sola sesión con `esCiclo`
+tildado (el schema no prohíbe el recíproco). Detalle completo en D-292.
 
 ### B-161 · Fixtures de `calendario.test.ts` que todavía no ejercitan el ciclo — ✅ hecho (2026-09-02)
 

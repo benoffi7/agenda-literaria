@@ -655,8 +655,10 @@ ubicación (D-10, D-46).
 
 **Descripción:** todo lo cargado en el formulario que sea publicable —
 posición en el ciclo ("Encuentro 3 de 8", contando también los encuentros
-cancelados: D-95, y con la **misma cuenta** que el "3 de 8" de la vista
-calendario del panel, que la importa de `@calendario`: D-190), descripción, tema
+cancelados: D-95, con la **misma cuenta** que el "3 de 8" de la vista
+calendario del panel —que la importa de `@calendario`, D-190— y **mostrada solo
+cuando el evento también la muestra**: `esCiclo` tildado y ≥ 2 sesiones, la
+misma puerta de los dos lados desde D-292), descripción, tema
 y lectura del encuentro, **una entrada por
 forma de cursar** con su modalidad y su lugar (sede con "cómo llegar" y link a
 Google Maps, o plataforma), arancel con notas,
