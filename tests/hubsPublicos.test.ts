@@ -9,6 +9,7 @@ import {
   CLASES_DE_TAXONOMIA,
   CONTEXTO_DE_TIPO,
   TIPO_EN_PLURAL,
+  coleccionSchema,
   esIndexable,
   exploracionDelSitio,
   filtrosDelHub,
@@ -21,7 +22,15 @@ import {
   type Hub,
 } from '@/lib/hubsPublicos';
 import { filtrarPublico, mapaDeEtiquetas, ordenarPublico, ORDEN_PUBLICO_POR_DEFECTO } from '@/lib/listadoPublico';
-import { RUTA_GRATIS, RUTA_ONLINE, rutaDeBarrio, rutaDeMes, rutaDeTipo } from '@/lib/rutasPublicas';
+import {
+  RUTA_GRATIS,
+  RUTA_ONLINE,
+  rutaDeBarrio,
+  rutaDeMes,
+  rutaDeTipo,
+  urlAbsoluta,
+  urlDeDetalle,
+} from '@/lib/rutasPublicas';
 import { RUTAS_FIJAS, rutasDelSitemap } from '@/lib/sitemap';
 import { entradaDePrueba } from './fixtures/indice';
 
@@ -768,6 +777,28 @@ describe('las cuatro páginas de hub', () => {
     }
   });
 
+  it('el CollectionPage de los cuatro hubs y de la home escapa el < antes del set:html (B-107)', () => {
+    /*
+     * Misma trampa que el `Event`/`BreadcrumbList` del detalle:
+     * `JSON.stringify` no escapa `<`, y el `titulo` de un hub —o el de una
+     * entrada del `ItemList`— es texto libre. Sin `.replace(/</g, '<')`
+     * un `</script>` colado cierra el bloque, en una página indexada.
+     *
+     * MUTACIÓN PROBADA: borrar ese `.replace(...)` de `CuerpoDeHub.astro` o de
+     * `index.astro` deja este caso en rojo nombrando el archivo.
+     */
+    for (const p of ['src/components/sitio/CuerpoDeHub.astro', 'src/pages/index.astro']) {
+      const src = sinComentarios(fuente(p));
+      const scripts = [...src.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]!);
+      expect(scripts.length, `${p} no tiene ningún <script>`).toBeGreaterThan(0);
+      for (const [i, script] of scripts.entries()) {
+        expect(script, `${p}, script #${i + 1} sin el escape de <`).toContain(
+          "replace(/</g, '\\\\u003c')",
+        );
+      }
+    }
+  });
+
   it('la home muestra la tira, y no la arma por su cuenta', () => {
     /*
      * §4.1: «"Explorá por" no es decorativo. Es la navegación sin JavaScript, y es
@@ -798,5 +829,46 @@ describe('las cuatro páginas de hub', () => {
     expect(estaticas).toContain('src/pages/gratis.astro');
     expect(RUTAS_FIJAS).toContain(RUTA_ONLINE);
     expect(RUTAS_FIJAS).toContain(RUTA_GRATIS);
+  });
+});
+
+describe('coleccionSchema — CollectionPage + ItemList, B-107', () => {
+  const entradas = [
+    entradaDePrueba({ id: 'a', slug: 'taller-de-cronica', titulo: 'Taller de crónica', fechas: [PROXIMA] }),
+    entradaDePrueba({ id: 'b', slug: 'club-de-saer', titulo: 'Club de Saer', fechas: [PROXIMA] }),
+  ];
+
+  it('arma un ItemList con posición, URL absoluta y nombre, en el orden recibido', () => {
+    const schema = coleccionSchema('Un hub cualquiera', rutaDeTipo('taller'), entradas) as {
+      '@type': string;
+      name: string;
+      url: string;
+      mainEntity: { '@type': string; itemListElement: { position: number; url: string; name: string }[] };
+    };
+    expect(schema['@type']).toBe('CollectionPage');
+    expect(schema.name).toBe('Un hub cualquiera');
+    expect(schema.url).toBe(urlAbsoluta(rutaDeTipo('taller')));
+    expect(schema.mainEntity['@type']).toBe('ItemList');
+    expect(schema.mainEntity.itemListElement).toEqual([
+      { '@type': 'ListItem', position: 1, url: urlDeDetalle('taller-de-cronica'), name: 'Taller de crónica' },
+      { '@type': 'ListItem', position: 2, url: urlDeDetalle('club-de-saer'), name: 'Club de Saer' },
+    ]);
+  });
+
+  it('con la lista vacía devuelve null: nada que declarar en un hub sin nada vigente', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el `if (entradas.length === 0) return null` deja
+     * este caso en rojo — publicaría un `ItemList` vacío en una página que ya
+     * lleva `noindex`.
+     */
+    expect(coleccionSchema('Un hub vacío', rutaDeTipo('feria'), [])).toBeNull();
+  });
+
+  it('la home y un hub comparten la función: mismo nombre y ruta propios, mismas entradas', () => {
+    // No es una coincidencia — es lo que hace que las cinco páginas de colección
+    // no puedan divergir en la forma sin que ambas dejen de compilar.
+    const home = coleccionSchema('La home', rutaDeMes('2026-09'), entradas);
+    const hub = coleccionSchema('Un hub', rutaDeTipo('taller'), entradas);
+    expect(Object.keys(home!).sort()).toEqual(Object.keys(hub!).sort());
   });
 });

@@ -733,9 +733,15 @@ Construido en **B-227**, el primer frente del diseño de
 **Desde B-109 el sitio es indexable.** El dominio existe —`agendaleh.ar`, D-165—
 y con él llegaron `site` en la config, el `canonical` absoluto y el Open Graph de
 todas las páginas, las URLs del JSON-LD, `sitemap.xml`, `robots.txt` y el archivo
-`/pasadas`. Lo que sigue faltando del §5.1 del diseño son las cinco imágenes de
-Open Graph por tipo (**B-291**) y el `lastmod` del sitemap, que necesita **B-112**.
-El rebuild automático anda desde el 2026-08-25 (**B-20**).
+`/pasadas`. **Desde B-107 (2026-09-02)** el detalle lleva además un
+`BreadcrumbList` (Agenda → Tipo → título, o Agenda → título si el tipo no tiene
+hub — B-108) y la home y los cuatro hubs llevan un `CollectionPage` con
+`ItemList`, ambos con una sola función compartida (`migasDeDetalle` y
+`coleccionSchema`) entre las cinco páginas que los usan. **Desde B-112
+(2026-09-03)** el sitemap lleva además el `lastmod` de cada actividad, recortado
+al día. Lo que sigue faltando del §5.1 del diseño son las cinco imágenes de Open
+Graph por tipo (**B-291**). El rebuild automático anda desde el 2026-08-25
+(**B-20**).
 
 ### El aviso de cookies (B-376, D-250)
 
@@ -837,8 +843,11 @@ que no sugerir nada.
 **En el teléfono los controles no se comen la pantalla** (D-143): arriba quedan el
 buscador y una fila con «Filtros (N)» y el orden; «Cuándo» vive adentro del panel; el
 panel abierto está topeado a `65svh` con scroll propio y cierra desde abajo con «Ver N
-actividades», devolviendo el foco al botón que lo abrió. La **hoja inferior** del §8
-sigue siendo **B-238**: es una capa modal y no se construye a medias.
+actividades». Y **desde B-238** (2026-09-03) es la **hoja inferior** de verdad que
+pide el §8: una capa modal con trampa de foco, cierre con `Escape`, cierre tocando el
+fondo, y `pushState` para que el botón atrás del teléfono la cierre en vez de sacar a
+la persona del sitio — las cuatro cosas por el mismo cableado que ya usan las dos
+capas del panel (`useCapaModal`, `src/lib/capaModal.ts`).
 
 **Accesibilidad:** link «Saltar al listado» como primer elemento enfocable, un solo
 `h1`, los meses como `h2`, los chips como `<button aria-pressed>` dentro de
@@ -851,13 +860,23 @@ nombre accesible— además del contraste.
 
 **Al pie de la home van dos cosas más, y en este orden** (B-113 y B-231).
 
-Primero la tira **«La agenda mes por mes»**: un enlace por cada página de mes que
-el build generó. Es la única entrada a esas páginas hoy, así que sin la tira
-quedarían huérfanas —una página estática sin links internos vale casi nada para un
-buscador—. Incluye el **mes en curso** además de los siguientes, por lo mismo: su
-página se genera igual, y dejarla afuera de la tira sería generar una página a la
-que nada apunta. El mes vencido no se enlaza nunca: existe para quien tenga la
-URL, no para mandarle gente.
+Primero la tira **«Explorá por»** (`ExploraPor.astro`, **B-108**), que **reemplazó**
+a la tira «La agenda mes por mes» que había puesto B-113: los meses son ahora
+**un grupo más** de esta tira, junto con los hubs de tipo, de barrio y los dos
+temáticos (`/online`, `/gratis`). El §4.1 del diseño los dibuja justo así, en una
+sola fila («Online · Gratis · Septiembre · Octubre»), porque para quien mira son
+la misma pregunta — «qué otras formas hay de recorrer esto» — y dos tiras
+seguidas con el mismo aspecto se leerían como una repetida.
+
+Sin esta tira los hubs y las páginas de mes serían URLs indexadas **sin un solo
+enlace interno**, y una página así vale casi nada para un buscador aunque
+responda (el mismo argumento con el que el §2.1 del diseño justifica
+`/pasadas`). Quién decide qué grupos aparecen es `exploracionDeLaHome`
+(`src/lib/hubsPublicos.ts`), no la plantilla: llega ya armada, sin los hubs
+vacíos y sin los meses vencidos. Los meses incluyen el **mes en curso** además de
+los siguientes, por lo mismo de siempre: su página se genera igual, y dejarla
+afuera de la tira sería generar una página a la que nada apunta. El mes vencido
+no se enlaza nunca: existe para quien tenga la URL, no para mandarle gente.
 
 Después, el bloque corto de `/suscribirse` (`SuscribirseResumen`): el botón de
 Google y un enlace a la página entera. Va ahí porque es donde la decisión se toma
@@ -971,6 +990,43 @@ cualquier otro **no se emite precio**, porque el arancel es un slug y no un mont
 ni siquiera con la casilla tildada (**D-139**). Desde **B-240** / **D-158** la
 casilla lo dice: se llama «Publicar el link en el evento del calendario», porque
 ese —y el `events.json`— es el único lugar a donde sale.
+
+### Los hubs — `/tipo/{slug}`, `/barrio/{slug}`, `/online`, `/gratis` (B-108)
+
+Cuatro clases de página, un solo componente (`CuerpoDeHub.astro` +
+`src/lib/hubsPublicos.ts`), **cero JavaScript** y **cero lecturas nuevas** de
+Firestore: salen del mismo índice memoizado que ya arman la home y
+`events.json`. Capturan las búsquedas que un filtro no puede ganar porque no
+tiene URL, `<title>` ni `h1` — «taller de escritura villa crespo», «club de
+lectura online», «actividades literarias gratis» — (§2.1 del diseño).
+
+**Un hub es el filtro de la home hecho página.** `/tipo/taller` aplica el mismo
+`filtrarPublico` que el chip «Taller», con el mismo `cuando` por defecto
+(«próximas»); los dos temáticos aplican **dos valores a la vez** del filtro que
+ya existe — `/online` es `modalidad ∈ {virtual, hibrido}`, `/gratis` es
+`arancel ∈ {gratis, a-la-gorra}` — así que no hay una segunda implementación del
+filtrado que pueda divergir de la de la home (la clase de bug de B-88).
+
+| | |
+|---|---|
+| `/tipo/{slug}`, `/barrio/{slug}` | Uno por cada slug de `/opciones/{tipo,barrio}` que tenga **al menos una actividad publicada** (vigente o pasada). Como una actividad publicada no sale nunca del índice (queda en `/pasadas`), el conjunto de hubs emitidos **solo puede crecer**: un hub que existió una vez no se vuelve un 404 |
+| `/online`, `/gratis` | Siempre existen, incluso sin nada vigente — son secciones fijas del sitio y no un valor de taxonomía que puede quedar sin uso |
+| slug de la URL | siempre el **slug** de la taxonomía, nunca el label (§4.1, trampa 10): el label se puede renombrar y una URL no |
+| sin nada vigente | la página **no se borra**: se genera con un aviso («Ahora no hay talleres con fecha próxima») y sale con `noindex`, fuera del sitemap — un 404 sobre una URL indexada es peor que una página honesta y vacía |
+
+**`noindex` y "está en el sitemap" son las dos mitades de la misma señal, nunca
+una sin la otra** (`esIndexable`, fijado en las dos direcciones por
+`tests/hubsPublicos.test.ts`): los dos temáticos son siempre indexables, los de
+tipo y barrio lo son si tienen algo vigente.
+
+Cada hub lleva un `<h1>`, una `meta description` con hasta tres títulos reales y
+un párrafo de contexto — escrito a mano para los cinco tipos y los dos
+temáticos, autogenerado con el nombre del barrio para los de barrio. El «buscar
+dentro» que pide el §4.4 del diseño no necesita una island propia: es el chip
+del filtro ya preaplicado, con un link `?tipo=taller` a la home para sacarlo.
+
+La navegación entre hubs —y hacia los meses— es la tira **«Explorá por»**, ver
+más abajo.
 
 ### `/cartelera` — la pared de afiches (B-265)
 
@@ -1100,11 +1156,12 @@ porque existe para quien tiene el link y para que Google pueda tachar el
 resultado que ya indexó; la de un mes vencido porque su URL estuvo indexada.
 Nunca un 404 sobre algo que estuvo publicado.
 
-**Sin `lastmod`**, y es una decisión: sale de `updatedAt`, que no está en la
-proyección pública (**B-112**). La alternativa disponible era estampar la fecha
-del build en las N entradas, y eso le enseña a Google que nuestras fechas mienten
-—cada rebuild por una coma diría que cambiaron todas— y a partir de ahí deja de
-mirarlas.
+**`lastmod`, desde B-112 (2026-09-03), y solo para las actividades.** Sale de
+`updatedAt`, recortado al día (D-138) — la fecha del build en las N entradas era
+la alternativa descartada, porque le enseña a Google que nuestras fechas mienten
+(cada rebuild por una coma diría que cambiaron todas). Los hubs, los meses y el
+resto de `RUTAS_FIJAS` siguen sin `lastmod`: no tienen una fecha de edición
+propia que declarar.
 
 El `robots.txt` bloquea `/admin` y anuncia el sitemap. **El `Disallow` no
 reemplaza al `noindex` de la página**: un `Disallow` impide el rastreo y por eso

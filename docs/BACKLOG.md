@@ -902,7 +902,7 @@ Tres cosas que no son obvias (§3 del diseño):
 - **Cabecera de cache `no-cache` para `/events.json`** → **cierra B-37**. La
   island lo pide con `?v={VERSION_APP}`.
 
-### B-107 · Meta, Open Graph y JSON-LD — 🟡 **queda el marcado de navegación** · P2
+### B-107 · Meta, Open Graph y JSON-LD — ✅ hecho (2026-09-02)
 
 > ✅ **Reverificado el 2026-09-02, línea por línea contra el código.** De lo que
 > este ítem enumeraba **falta una sola cosa suya**, y no es lo que el texto de
@@ -988,28 +988,80 @@ lo que existe el proyecto (§2.3).
 - Además: `BreadcrumbList` en el detalle, `CollectionPage` + `ItemList` en la
   home y los hubs, `Organization` en `/acerca`.
 
-### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis`
+> ✅ **Lo último que le quedaba a este ítem —el marcado de navegación— se cerró
+> el 2026-09-02, apoyado en los hubs de B-108.** `migasDeDetalle`
+> (`src/lib/detallePublico.ts`) arma el `BreadcrumbList` del detalle —Agenda →
+> {Tipo} → {título}—, y `coleccionSchema` (`src/lib/hubsPublicos.ts`) arma el
+> `CollectionPage`/`ItemList` de la home y de los cuatro hubs, compartiendo una
+> sola función entre las cinco páginas.
+>
+> **Un caso que no estaba escrito en el diseño:** el segundo nivel de la miga
+> —el hub de tipo— no siempre existe. Un `/tipo/{slug}` se emite si alguna
+> actividad **publicada** usó ese tipo alguna vez, y una cancelada no entra a
+> esa cuenta (D-159, B-108). Una actividad cancelada cuyo tipo nadie más usa
+> podría quedar con una miga apuntando a un 404. Se resolvió con un campo
+> nuevo, `DetallePublico.tipoTieneHub`, que calcula el lector
+> (`contenidoDelSitio.ts`) sobre el índice entero —la página de detalle sola no
+> puede saberlo— y que por default es `false`: el lado que no publica un link
+> que puede no existir, mismo criterio que ya usaban `cancelada` y
+> `mesesConPagina`. Con `tipoTieneHub: false` la miga sale con dos niveles
+> (Agenda → título) en vez de tres.
+>
+> `Organization` en `/contacto` sigue afuera: nadie la pidió, y no tiene ítem
+> propio (§4.5 del diseño).
+>
+> Verificado con `npx vitest run` (mutación probada en el default de
+> `tipoTieneHub` y en el caso de lista vacía de `coleccionSchema`) y con un
+> build real contra el emulador (`scripts/build-contra-emulador.mjs`): los dos
+> bloques nuevos de `<script type="application/ld+json">` salen bien formados,
+> con el mismo escape de `<` que ya usaba el `Event`, y sin el segundo nivel de
+> la miga cuando el hub de tipo no se generó.
 
-Un solo componente de página con el subconjunto ya filtrado en HTML y la island
-montada con el filtro preaplicado y visible como chip. Es lo que gana
-`taller de escritura villa crespo` y `club de lectura online`: un filtro no
-puede, porque no tiene URL ni `h1` (§2.1 del diseño).
+### B-108 · Los hubs: `/tipo/*`, `/barrio/*`, `/online`, `/gratis` — ✅ hecho (2026-09-02)
+
+**Hecho.** Un solo componente de página (`src/lib/hubsPublicos.ts` +
+`CuerpoDeHub.astro`) para las cuatro clases, con el subconjunto ya filtrado en
+HTML — **no una island**: el hub no lleva JavaScript, es HTML del build igual
+que el resto de las páginas nuevas del sitio. El «buscar dentro» del §4.4 es un
+link `?tipo=taller` a la home, que sí tiene la island. Es lo que gana `taller de
+escritura villa crespo` y `club de lectura online`: un filtro no puede, porque
+no tiene URL ni `h1` (§2.1 del diseño).
 
 Los de tipo y barrio se generan recorriendo `/opciones/{tipo,barrio}` — una
 opción nueva trae su hub sola. El slug de la URL es el **slug** de la taxonomía,
 nunca el label: el label se renombra (§4.1) y una URL no (trampa 10).
 
 Un hub que se queda sin actividades vigentes **no se borra**: se genera vacío,
-con aviso y links. Un 404 sobre una URL indexada es peor.
+con aviso y links, y sale con `noindex`. `esIndexable` fija que esa señal y "está
+en el sitemap" sean las dos mitades de una sola decisión, nunca una sin la otra
+— `tests/hubsPublicos.test.ts` lo prueba en las dos direcciones.
 
-**Y desde B-109 hay una cosa más que hacer, que el test va a pedir:** los hubs
-tienen que entrar a `RUTAS_FIJAS` (`src/lib/sitemap.ts`) o a la lista de
-excepciones con su motivo. `tests/sitemap.test.ts` exige que **toda** página
-estática del sitio esté en una de las dos, así que la página nueva no puede nacer
-fuera del sitemap sin que nadie lo decida — que es exactamente el modo de falla
-que este ítem tendría (un hub que existe, se ve bien y no se le ofrece a nadie).
-Los de tipo y barrio son dinámicos, así que van por su propia regla, como las
-actividades y los meses.
+**Los hubs entraron a `RUTAS_FIJAS`/`hubsOfrecidos`** (`src/lib/sitemap.ts`),
+como el ítem preveía: los dos temáticos por la lista fija, los de tipo y barrio
+por su propia regla dinámica, igual que las actividades y los meses.
+`tests/sitemap.test.ts` sigue exigiendo que toda página estática esté en una de
+las dos listas.
+
+La navegación es la tira **«Explorá por»** (`ExploraPor.astro`), que
+**reemplazó** a la tira «La agenda mes por mes» de B-113: los meses son ahora un
+grupo más, junto con los hubs. Sin esa tira los hubs serían páginas indexadas sin
+un solo enlace interno.
+
+**Lo que encontró la integración con los otros frentes, y no este ítem en
+soledad:** los cuatro hubs no habían entrado a las tres listas que atan una
+salida pública nueva —la ficha de `auditor-privacidad`, `docs/07-seguridad.md`
+y el skill `campo-nuevo`— así que el auditor no se disparaba al tocarlos. Se
+cerró como la **salida 11** del índice, con su `describe` en
+`tests/barrido-de-salidas-publicas.test.ts` (detalle en el CHANGELOG del
+2026-09-02). Y una precisión de ese mismo barrido: **las frases y la URL de un
+hub se recorren por separado**, porque en el título tiene que estar la etiqueta
+y en la ruta el slug (trampa 10) — un barrido único dejaba pasar el slug en el
+título nada más porque coincidía con el de la URL.
+
+**Lo que queda, y es de otro ítem:** el `CollectionPage`/`ItemList` de datos
+estructurados sobre la home y los hubs sigue en **B-107**, que es además donde
+va el `BreadcrumbList` del detalle — las dos piezas de marcado de navegación que
+faltaban.
 
 ### B-109 · `site`, `robots.txt`, `sitemap.xml` y `/pasadas` — ✅ hecho (2026-09-02)
 
@@ -3031,7 +3083,7 @@ público escribe una clase por debajo del piso**. Con control negativo: un escal
 y en una pantalla elegida— y su rampa es anterior a esto; revisarla es su propio
 ítem, no éste.
 
-### B-238 · La hoja inferior de filtros de móvil · P2 — la mitad del CTA cerrada en D-145
+### B-238 · La hoja inferior de filtros de móvil · P2 — la mitad del CTA cerrada en D-145 — ✅ hecho (2026-09-03)
 
 El §8 del diseño pedía dos elementos fijos que B-227 no construyó, y los dos por el
 mismo motivo: son **capas modales**, y una capa modal mal hecha es peor que no
@@ -3062,7 +3114,81 @@ capa de ayuda del panel (B-14, B-64). El §10 del diseño dice que el sitio púb
 es el lugar donde ese componente se hace bien de entrada y que después puede
 resolver los dos del panel.
 
-### B-239 · La home baja el runtime de React por la island de filtros · P2
+> ✅ **Hecho el 2026-09-03, y salió al revés de como este ítem lo predecía: el
+> panel llegó primero.** `useCapaModal` —el cableado de trampa de foco, `Escape`,
+> scroll bloqueado y devolución de foco, cerrado con B-210— ya existía en
+> `src/components/admin/useCapaModal.ts` para las dos capas del panel. Se mudó a
+> `src/lib/capaModal.ts` (es puro: React + DOM, cero Firebase) y la hoja de
+> filtros del sitio público es su tercer consumidor, en vez de escribir una
+> tercera copia del cableado — exactamente la clase de bug que ese hook existe
+> para cerrar (B-210, dos copias que habían divergido en el arreglo que importaba).
+>
+> **Un parámetro nuevo, `activo` (default `true`), y por qué hacía falta.** La
+> hoja de filtros llama al hook en **todos** sus renders, `lg` incluido, donde el
+> mismo `<div>` es un panel siempre visible del riel y no un diálogo. Sin el
+> parámetro, el hook bloquearía el scroll y atraparía el Tab en escritorio, donde
+> no hay ningún modal abierto — un bug invisible en el teléfono (donde `activo`
+> es `true` cuando importa) que rompería el escritorio en silencio. Las dos capas
+> del panel no pasan el tercer argumento y siguen exactamente igual que antes.
+>
+> **`pushState` al abrir, y un solo camino de cierre para las cuatro formas de
+> cerrar.** El botón «Ver N actividades», `Escape`, el click en el fondo y el
+> botón atrás del teléfono pasan todos por `cerrarPanel`, que llama a
+> `window.history.back()` en vez de `setAbierto(false)` directo — así los cuatro
+> dejan el historial en el mismo estado, y no hace falta duplicar el cierre en
+> cada control. Una guarda (`entradaPropia`, un ref booleano) evita el
+> `history.back()` si nunca se hizo el `pushState` correspondiente, para no
+> mandar a la persona a la página anterior del navegador por error.
+>
+> **Una salvedad que el diseño no preveía:** en un teléfono no se redimensiona
+> la ventana, pero en un navegador de escritorio angosto sí — si alguien la
+> agranda con la hoja abierta, un `matchMedia('(min-width: 1024px)')` la cierra
+> apenas se cruza el corte de `lg`, para no dejar un modal huérfano con el
+> scroll bloqueado detrás de un layout que ya se ve como escritorio.
+>
+> **El fondo es `bg-tinta` sólida, no atenuada.** El sistema visual no tiene
+> ninguna clase de color con opacidad en todo el sitio (B-235, `sistema-visual.test.ts`
+> lo fija) — se descartó `bg-tinta/40` en el primer intento, que el propio test
+> existente encontró.
+>
+> **El `auditor-trampas` encontró dos bugs reales sobre el primer borrador, los
+> dos reproducibles en el uso normal y no en un caso raro:**
+>
+> 1. **Cerrar la hoja con un filtro elegido adentro pisaba la selección.** La
+>    hoja empuja su propia entrada de historial, pero el componente ya tenía
+>    OTRO `popstate` montado desde siempre —el que sincroniza los filtros con
+>    la URL—. `history.back()` navega a la entrada de **antes** de abrir la
+>    hoja, sin el filtro recién elegido en su URL, y ese otro listener la leía
+>    y revertía la elección. Arreglo: una bandera (`cerrandoLaHoja`) prendida
+>    desde que se abre la hoja —no desde que se cierra, porque un botón atrás
+>    **real** tiene que respetar la selección igual que el cierre por UI— le
+>    dice al sync de URL que el próximo `popstate` es un cierre y no una
+>    navegación: en vez de leer la URL vieja, vuelve a escribir la de ahora con
+>    los filtros vigentes (guardados en un `ref` para no quedar pegado a los
+>    del primer render, el mismo patrón que ya usa `useCapaModal` para
+>    `alCerrar`).
+> 2. **Una segunda invocación de `cerrarPanel` en la ventana antes de que
+>    resuelva el `popstate`** —`Escape` mantenido, un doble toque en «Ver N
+>    actividades»— repetía `history.back()` y hacía retroceder al navegador una
+>    entrada de más, sacando a la persona del sitio. `history.back()` es
+>    asíncrono, así que la bandera `entradaPropia` seguía en `true` hasta la
+>    limpieza del efecto, que corre recién cuando React re-renderiza tras el
+>    `popstate` real. Arreglo: apagarla **antes** de llamar a `history.back()`,
+>    no después.
+>
+> Verificado con `npx vitest run` (mutación probada en la guarda `activo`, en el
+> camino único de cierre por `history.back()`, en que ningún control del sitio
+> público apague el `outline`, en que `cerrandoLaHoja` se prenda al abrir y se
+> consuma en `leer`, y en que `entradaPropia` se apague antes de `history.back()`
+> y no después) y con un build real, estático y contra el emulador. No se pudo
+> ejercitar la interacción del navegador de verdad —este repo no tiene
+> infraestructura de render de componentes (`environment: 'node'` en
+> `vitest.config.ts`, sin `jsdom` ni testing-library), y el propio auditor lo
+> señaló como un hueco estructural de la suite y no de este cambio en
+> particular—, así que la cobertura es la misma que ya usan las dos capas del
+> panel: afirmar el cableado por patrones de fuente, no por ejecución.
+
+### B-239 · La home baja el runtime de React por la island de filtros · P2 — descartado (2026-09-03), con el motivo escrito
 
 Medido en el build del 2026-08-28: `client.BlZe1zq3.js` son **186 KB (58 KB
 gzip)**, más `Buscador` (16 KB / 5,8 KB gzip). El §8 del diseño fija el presupuesto
@@ -3097,6 +3223,43 @@ simulado.
 > y no importa React. El camino 2 —reescribir la island sin framework— se encareció
 > por lo mismo que se ganó: la portada es un componente más que habría que rehacer a
 > mano y volvería a haber dos markups de tarjeta.
+
+> ❌ **Descartado el 2026-09-03, midiendo antes de decidir — como pedía este
+> ítem.** `client.BlZe1zq3.js` **sigue exactamente igual**: 186.619 B / 58.540 B
+> gzip, el mismo hash de contenido que en la medición de B-247. La home carga
+> ese chunk más `Buscador` (≈20 KB / 7 KB gzip) — nada más: un solo
+> `astro-island` en todo `dist/index.html`. En un 3G simulado (~400 kbps) son
+> ~1,3 s de descarga solo de JS, encima de ~17 KB de HTML — no es gratis, pero
+> tampoco es el cuadro completo.
+>
+> **Las dos rutas de acción siguen sin mejorar, y una empeoró:**
+>
+> - **Camino 1 (`preact/compat`)** — el riesgo que el ítem señalaba (compartir
+>   `Tarjeta` con el panel) ya no aplica, pero apareció uno más caro al mirarlo
+>   de cerca: Astro no tiene forma de aliasear `react`→`preact/compat` **por
+>   ruta**. El `resolve.alias` de Vite es un único bloque para todo
+>   `astro.config.mjs`, así que un alias global se lo llevaría puesto también a
+>   `AdminApp` (`217,91 KB`), que corre en **React 19**. `preact/compat` no
+>   garantiza paridad con las APIs más nuevas de React 19, y el panel es la
+>   herramienta de carga diaria: romperlo en silencio para bajar 48 KB gzip de
+>   una página que no es la que recibe tráfico es cambiar un riesgo chico por
+>   uno grande. Acotarlo de verdad pediría un segundo build o un plugin de Vite
+>   que resuelva por importer — trabajo real, no una línea.
+> - **Camino 2 (reescribir sin framework)** — sigue tan caro como en agosto: la
+>   portada generada y los controles nuevos son componentes que habría que
+>   rehacer a mano, y volvería a haber dos markups de tarjeta (lo que el §6.3
+>   del diseño pedía evitar).
+> - **Camino 3 (dejarlo)** — la página que recibe el tráfico real
+>   (`/actividad/{slug}`) sigue en cero JavaScript y no está afectada. 58 KB
+>   gzip cacheados en CDN, en el recorrido menos frecuente de los tres del §1
+>   del diseño (el propio documento lo dice: «el más importante no empieza en
+>   la home»).
+>
+> **Se elige el camino 3.** No porque el peso no importe, sino porque las dos
+> formas de bajarlo cambiaron de precio en la dirección equivocada desde la
+> última vez que se miró, y ninguna paga su costo hoy. Si el tráfico a la home
+> crece lo suficiente para que esto duela de verdad, la medición de arriba es
+> el punto de partida para retomarlo — no hay que volver a levantarla de cero.
 
 ### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica — ✅ hecho (2026-09-01)
 
@@ -3429,7 +3592,7 @@ comparten está en **B-236**: algo que uno supone aislado por worktree y es glob
 del repositorio. El arreglo de fondo probablemente sea un puerto de emulador por
 worktree, o un `projectId` por worktree sobre el mismo emulador.
 
-### B-112 · `estado` y `actualizadoEn` en la proyección pública
+### B-112 · `estado` y `actualizadoEn` en la proyección pública — ✅ hecho (2026-09-03), parcial a propósito
 
 Dos campos que el sitio público necesita y `toPublic.ts` no lleva
 ([`12-sitio-publico.md`](12-sitio-publico.md) §11.2):
@@ -3464,6 +3627,37 @@ Dos campos que el sitio público necesita y `toPublic.ts` no lleva
 > la ventana de 30 días de las canceladas, pero lo lee del documento crudo, viaja
 > al lado de la proyección y **no se emite** (D-166). Que el dato esté disponible
 > ahí no lo hace publicable acá: son dos decisiones distintas.
+
+> ✅ **Se implementó el `lastmod` del sitemap, con el criterio que este ítem ya
+> había decidido — `AAAA-MM-DD`, la misma precisión que `creadoEn` (D-138).**
+> `publicadasEditadasEn` (`ContenidoDelSitio`) viaja **al lado** de la
+> proyección, igual que `canceladasEditadasEn` de B-109: `toPublic` sigue sin
+> ganar un campo, así que `events.json` y el detalle no pueden publicar una
+> fecha de edición por accidente. `lastmodDelSitemap` (`src/lib/sitemap.ts`)
+> recorta al día **otra vez**, belt-and-suspenders, para que un llamador futuro
+> que le pase el ISO completo no filtre la hora igual — con su caso en
+> `tests/sitemap.test.ts` y el centinela de hora que este ítem pedía, en el
+> barrido de la salida 9.
+>
+> **No se implementó «actualizado el …» en el detalle, y es una reducción de
+> alcance deliberada, no un olvido.** El `lastmod` del sitemap es la mitad con
+> valor de SEO claro y sin ambigüedad de diseño — una fecha en el `<head>` que
+> nadie ve. Mostrar «Actualizado el 3 de septiembre» en la ficha técnica es una
+> decisión de **contenido visible**, no de plomería: qué tan prominente, si
+> también en un ciclo con sesiones editadas por separado, si vale la pena para
+> una corrección de tipeo. Ese alcance no estaba resuelto en el diseño y no se
+> decide acá; si se quiere, es un ítem propio y chico (el dato ya
+> existe del lado del lector, falta pasarlo al view-model del detalle y decidir
+> la UI).
+>
+> **`estado` sigue sin hacer falta**, como ya decía este ítem — B-110 resolvió
+> la franja de "cancelada" sin proyectarlo.
+>
+> Verificado con `npx vitest run` (mutación probada en el filtro de
+> rutas-ofrecidas de `lastmodDelSitemap`, en el recorte al día, y en el
+> default `{}` de `xmlDelSitemap`) y con un build real contra el emulador
+> (`scripts/build-contra-emulador.mjs`, actualizado para exigir el `lastmod`
+> en la actividad publicada y su ausencia en la home).
 
 ### B-113 · Páginas de mes — `/agenda/{aaaa-mm}` — ✅ hecho (2026-09-01), con una punta afuera
 

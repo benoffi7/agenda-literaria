@@ -6,7 +6,7 @@ import {
   type CasillaCopia,
   type QueCopiar,
 } from '@/lib/duplicar';
-import { useCapaModal } from '@/components/admin/useCapaModal';
+import { useCapaModal } from '@/lib/capaModal';
 
 interface Props {
   /** Título del original, para que se vea qué se está duplicando. */

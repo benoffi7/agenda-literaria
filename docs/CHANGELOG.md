@@ -595,6 +595,123 @@ Sin entrada en `ayuda.ts`: nada de lo cerrado hoy es un comportamiento que haga
 falta explicar aparte del propio campo — la opción «A confirmar» se explica
 sola en el desplegable, y el resto son mensajes de error que ya se leen donde
 aparecen.
+## 2026-09-03 · B-238: la hoja de filtros del teléfono es una capa modal de verdad
+
+**El panel de filtros de la home, en móvil, pasa de disclosure inline a hoja
+modal**: trampa de foco, cierre con `Escape`, cierre tocando el fondo, y
+`pushState` para que el botón atrás del teléfono la cierre en vez de sacar a la
+persona del sitio. Cierra el último pedazo de B-238 — la mitad del CTA fijo del
+detalle ya la había cerrado D-145.
+
+**Salió al revés de como el ítem lo predecía.** El plan original decía «el
+sitio público es donde este componente se hace bien de entrada, y después
+resuelve los dos del panel», pero el cableado de capa modal (`useCapaModal`)
+ya existía en `src/components/admin/useCapaModal.ts` desde B-210, para las dos
+capas del panel. Se mudó a `src/lib/capaModal.ts` —es puro, sin ninguna
+dependencia de Firebase ni del panel— y la hoja de filtros es su tercer
+consumidor en vez de una tercera copia del cableado, que es exactamente la
+clase de bug que ese hook existe para evitar.
+
+Un parámetro nuevo en el hook, `activo` (default `true`, sin tocar el
+comportamiento de los dos consumidores existentes): la hoja de filtros llama
+al hook en todos sus renders, también en escritorio, donde el mismo `<div>` es
+un panel siempre visible del riel y no un diálogo — sin la guarda, bloquearía
+el scroll y atraparía el Tab en una página sin ningún modal abierto.
+
+Un hallazgo del auditor de trampas y del propio `sistema-visual.test.ts`: el
+fondo de la hoja no puede ser `bg-tinta/40` — el sistema visual del sitio no
+tiene ninguna clase de color con opacidad en ningún lado. Quedó `bg-tinta`
+sólida.
+
+**Y dos bugs reales, los dos reproducibles en el uso normal**, que el mismo
+auditor encontró sobre el primer borrador: cerrar la hoja con un filtro
+elegido adentro pisaba la selección (el `popstate` del cierre y el `popstate`
+que ya sincronizaba filtros con la URL no se coordinaban), y una segunda
+invocación de `cerrarPanel` antes de que resolviera el `popstate` anterior
+—`Escape` mantenido, un doble toque— podía retroceder al navegador una entrada
+de más y sacar a la persona del sitio. Los dos cerrados con mutación probada;
+el detalle está en `docs/BACKLOG.md`.
+
+## 2026-09-03 · B-239 descartado: medido de nuevo, las dos rutas de acción empeoraron
+
+**Cero cambios en `src/`.** B-239 pedía medir antes de elegir entre tres
+caminos para bajar el peso de React en la home. Se midió: `client.BlZe1zq3.js`
+no se movió un byte desde B-247 (186.619 B / 58.540 B gzip, mismo hash), la
+home sigue cargando un solo `astro-island`.
+
+Los dos caminos de acción se reevaluaron y los dos salieron más caros que la
+última vez, no más baratos. El de `preact/compat` tenía un riesgo que ya no
+aplica (`Tarjeta` no se comparte con el panel) pero encontró uno peor al
+mirarlo de cerca: Astro no separa el `resolve.alias` de Vite por ruta, así que
+un alias global a nivel `astro.config.mjs` se lo llevaría puesto también al
+panel, que corre React 19 sin garantía de paridad con `preact/compat`. El de
+reescribir la island sin framework sigue tan caro como en agosto por la
+portada generada de D-142.
+
+Se elige dejarlo — la tercera opción que el propio ítem ofrecía —, con el
+razonamiento completo en `docs/BACKLOG.md`.
+
+## 2026-09-03 · B-112: el `lastmod` del sitemap, para las actividades publicadas
+
+**Solo la mitad que valía la pena, y la otra mitad quedó escrita como
+descarte.** El ítem pedía dos campos — `actualizadoEn` (el `lastmod`) y
+`estado`. El segundo ya no hacía falta desde B-110, que resolvió la franja de
+"cancelada" sin proyectar el estado. Del primero se implementó el `lastmod` en
+sí (la mitad con valor de SEO inequívoco); "actualizado el …" en la ficha del
+detalle quedó afuera a propósito — es una decisión de contenido visible, no de
+plomería, y no estaba resuelta en el diseño.
+
+`publicadasEditadasEn` (`ContenidoDelSitio`) viaja al lado de la proyección,
+igual que `canceladasEditadasEn` de B-109: el lector computa `updatedAt`
+recortado al día (D-138, la misma precisión que `creadoEn`) y `toPublic` no
+gana un campo. `lastmodDelSitemap` (`src/lib/sitemap.ts`) solo emite el
+`lastmod` para una ruta que `rutasDelSitemap` ya ofrece —dos derivaciones de la
+misma selección no pueden discreparse— y recorta al día **otra vez**, por las
+dudas: si algún llamador futuro le pasa el ISO completo, no filtra la hora
+igual. `xmlDelSitemap` lo recibe como segundo argumento opcional, default `{}`
+— el mismo criterio que ya usaban `cancelada` y `mesesConPagina`: el lado que
+no publica nada si alguien lo omite.
+
+Verificado con un build real contra el emulador
+(`scripts/build-contra-emulador.mjs`, que ahora exige el `lastmod` en la
+actividad publicada y su ausencia en la home) y con mutación probada en el
+filtro de rutas-ofrecidas, en el recorte al día, y en el gate del build.
+
+## 2026-09-02 · B-107: el marcado de navegación, apoyado en los hubs de B-108
+
+**`BreadcrumbList` en el detalle y `CollectionPage`/`ItemList` en la home y los
+cuatro hubs** — lo último que le quedaba a B-107, y era el momento: con los
+hubs recién construidos (B-108) ya había una jerarquía real que declarar. Una
+sola función por caso, compartida entre las cinco páginas que la usan
+(`migasDeDetalle` en `src/lib/detallePublico.ts`, `coleccionSchema` en
+`src/lib/hubsPublicos.ts`), para que escribirla cinco veces no sea la próxima
+clase de bug de B-88.
+
+**Un caso que el diseño no había anticipado:** el hub de tipo de una miga de
+pan no siempre existe. `/tipo/{slug}` se emite si alguna actividad
+**publicada** usó ese tipo alguna vez, y una cancelada no entra a esa cuenta
+(D-159) — así que la miga de una actividad cancelada cuyo tipo nadie más usa
+podía terminar apuntando a un `/tipo/{slug}` que el build nunca generó. Se
+resolvió con `DetallePublico.tipoTieneHub`, que calcula el lector
+(`contenidoDelSitio.ts`) sobre el índice entero — con default `false`, el lado
+que no publica un link roto, mismo criterio que ya tenían `cancelada` y
+`mesesConPagina`. Verificado con un build real contra el emulador: sin hub, la
+miga sale con dos niveles en vez de tres.
+
+## 2026-09-02 · cierre de B-108: los hubs quedan documentados y el backlog al día
+
+El código, los tests y la salida 11 del índice de salidas públicas ya habían
+entrado a `main` (ver la entrada de abajo, del mismo día). Lo que faltaba era el
+cierre en sí: **B-108 pasa a hecho** en `docs/BACKLOG.md`, y `04-funcionalidades.md`,
+`12-sitio-publico.md` y `docs/README.md` dejan de describir los hubs como "lo que
+falta" del sitio.
+
+De paso apareció **drift real, no solo un backlog desactualizado**: el §4.1 de
+`04-funcionalidades.md` seguía describiendo la tira «La agenda mes por mes» de
+B-113 como si existiera sola, cuando `ExploraPor.astro` (B-108) ya la había
+reemplazado por una tira más general que incluye los hubs y los meses juntos —
+el propio código lo dice en su comentario, la doc no. Corregido en el mismo
+cambio.
 
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 

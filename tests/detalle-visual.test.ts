@@ -237,39 +237,64 @@ describe('la página no dice dos cuentas distintas de lo mismo — B-258', () =>
   });
 });
 
-describe('los `<script>` de esta página están contados, uno por uno (B-371/B-375)', () => {
+describe('los `<script>` de esta página están contados, uno por uno (B-107/B-371/B-375)', () => {
   /*
-   * Hasta B-371 este describe se llamaba «la página sigue sin JavaScript —
-   * §4.3, presupuesto de 0 KB» y afirmaba que había **un solo** `<script>`,
-   * el del JSON-LD. Eso dejó de ser cierto **a propósito**: el dueño aceptó
-   * el costo de GA4 en esta página con el número del §6 de
-   * `docs/16-analitica-del-sitio.md` a la vista (D-251), y B-375 agregó el
-   * evento de clic de inscripción (D-252).
+   * Hasta B-371 este describe se llamaba «la página sigue sin JavaScript» y
+   * afirmaba que había un solo `<script>`. Dejó de ser cierto a propósito: el
+   * dueño aceptó el costo de GA4 acá (D-251) y B-375 sumó el evento de clic
+   * (D-252); y B-107 sumó un segundo bloque de datos estructurados, el
+   * `BreadcrumbList`. Hoy son **tres**: dos `application/ld+json` (los datos del
+   * evento y las migas de pan) y uno de comportamiento, el de la analítica.
    *
-   * Lo que este describe sigue garantizando no es «cero scripts»: es que
-   * **no aparezca un tercero sin que alguien venga a decidirlo acá**. Cada
-   * script nuevo tiene que declararse en esta lista, con su motivo — la
-   * misma idea que `tests/pagina-de-detalle.test.ts` aplica a los imports.
+   * Lo que este describe garantiza no es «cero scripts»: es que **no aparezca un
+   * cuarto sin que alguien venga a decidirlo acá**. Cada script nuevo se declara
+   * en esta lista, con su motivo — la misma idea que `pagina-de-detalle.test.ts`
+   * aplica a los imports.
    *
-   * MUTACIÓN PROBADA: agregar un `<script>` de dos líneas para medir el
-   * scroll (la barra que B-238/D-145 descartó) deja verde el test de islands
-   * de `pagina-de-detalle.test.ts` y pone este **en rojo** — sigue siendo la
-   * alarma barata para ese caso concreto.
+   * MUTACIÓN PROBADA: agregar un `<script>` de dos líneas para medir el scroll
+   * (la barra que B-238/D-145 descartó) deja verde el test de islands de
+   * `pagina-de-detalle.test.ts` y pone el primer caso de acá en rojo (cuenta 4).
    */
-  it('son exactamente dos: el JSON-LD (self-closing) y el de la analítica de inscripción', () => {
+  it('son exactamente tres: dos JSON-LD (datos + BreadcrumbList) y uno de analítica', () => {
     const codigo = sinComentarios(src());
-    // Cuenta las etiquetas de **apertura**: el del JSON-LD es self-closing
-    // (`<script ... is:inline />`) y no tiene un `</script>` textual propio,
-    // así que un regex que exigiera el cierre lo dejaría afuera de la cuenta.
-    const aperturas = [...codigo.matchAll(/<script\b[^>]*>/g)];
-    expect(aperturas).toHaveLength(2);
+    // Etiquetas de **apertura**: los dos JSON-LD son self-closing
+    // (`<script ... is:inline />`), sin `</script>` textual, así que un regex que
+    // exigiera el cierre los dejaría afuera de la cuenta.
+    const aperturas = [...codigo.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]!);
+    expect(aperturas).toHaveLength(3);
 
-    expect(codigo).toContain('application/ld+json');
+    // Dos son datos estructurados: el `Event` y el `BreadcrumbList` (B-107).
+    const ldjson = aperturas.filter((a) => a.includes('application/ld+json'));
+    expect(ldjson).toHaveLength(2);
 
-    // El de la analítica: sin `type`, así que Astro lo procesa como módulo —
-    // no es `is:inline` ni una directiva `client:` (eso ya lo prohíbe
+    // El tercero es la analítica: sin `type`, así que Astro lo procesa como
+    // módulo — no es `is:inline` ni una directiva `client:` (eso ya lo prohíbe
     // `pagina-de-detalle.test.ts`) — y mide un solo evento declarado.
     expect(codigo).toContain("medirSitio('clic_inscripcion'");
     expect(codigo).toContain("from '@/lib/medicionSitio'");
+  });
+
+  it('cada bloque ld+json escapa el < antes del set:html (§5.5, trampa 5)', () => {
+    /*
+     * `JSON.stringify` escapa comillas y barras invertidas, y **no** el `<`
+     * (`docs/12-sitio-publico.md` §5.2). Un `titulo` con `</script>` adentro —
+     * texto libre de un formulario— cerraría el bloque y lo que sigue quedaría
+     * como HTML ejecutable en una página pública e indexada. El auditor de
+     * privacidad lo señaló sobre B-107: nada fijaba que el escape siguiera puesto
+     * en los DOS bloques y no solo en el que ya existía. El de analítica no entra
+     * acá: no usa `set:html`, no interpola texto de la actividad.
+     *
+     * MUTACIÓN PROBADA: borrar `.replace(/</g, '<')` de cualquiera de los
+     * dos `<script>` de datos deja este caso en rojo nombrando cuál.
+     */
+    const ldjson = [...sinComentarios(src()).matchAll(/<script\b([^>]*)>/g)]
+      .map((m) => m[1]!)
+      .filter((a) => a.includes('application/ld+json'));
+    expect(ldjson).toHaveLength(2);
+    for (const [i, script] of ldjson.entries()) {
+      expect(script, `bloque ld+json #${i + 1} sin el escape de <`).toContain(
+        "replace(/</g, '\\\\u003c')",
+      );
+    }
   });
 });

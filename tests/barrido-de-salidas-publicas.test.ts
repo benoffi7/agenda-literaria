@@ -46,7 +46,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { opcionesPublicas, toPublic } from '@/lib/toPublic';
 import { construirIndice, entradaDeIndice } from '@/lib/eventsJson';
-import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
+import { datosEstructurados, detalleDeActividad, migasDeDetalle } from '@/lib/detallePublico';
 import { carteleraDeDetalles } from '@/lib/cartelera';
 import { urlDeMiniatura } from '@/lib/imagenes';
 import {
@@ -59,9 +59,11 @@ import {
 } from '@/lib/mesPublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import type { ClaseDeHub, Hub } from '@/lib/hubsPublicos';
-import { hubDelSitio } from '@/lib/hubsPublicos';
+import { coleccionSchema, hubDelSitio } from '@/lib/hubsPublicos';
 import { frasesDePasadas, pasadasDelSitio } from '@/lib/pasadasPublicas';
-import { rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
+import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import type { TipoActividad } from '@/types/actividad';
+import { lastmodDelSitemap, rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
 import {
@@ -1056,8 +1058,24 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
  * para la dirección que importa: una fuga en otra caja también se atrapa.
  */
 describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
+  /*
+   * Un tipo que NO está en `TIPO_EN_PLURAL` (`hubsPublicos.ts`) — a propósito,
+   * para el barrido de la miga: `pluralDeTipo('presentacion', …)` ignora la
+   * etiqueta y devuelve el plural fijo «Presentaciones», así que con el tipo
+   * del fixture (`presentacion`, fijo por B-227 más abajo) el centinela nunca
+   * llegaría a `migasDeDetalle`. Este slug SÍ cae al fallback (`?? etiqueta`).
+   *
+   * `TipoActividad` es el tipo cerrado del **formulario**; una taxonomía
+   * autogestionada (§4 del `CLAUDE.md`) admite valores que el form todavía no
+   * conoce, así que el cast es legítimo y no un escape del tipo real.
+   */
+  const TIPO_LIBRE = 'centinela-tipo-libre' as unknown as TipoActividad;
+
   const ETIQUETAS = mapaDeEtiquetas({
-    tipo: [{ slug: 'presentacion', label: CENTINELA['labels.tipo'] }],
+    tipo: [
+      { slug: 'presentacion', label: CENTINELA['labels.tipo'] },
+      { slug: TIPO_LIBRE, label: CENTINELA['labels.tipo'] },
+    ],
     barrio: [{ slug: CENTINELA['sede.barrio'], label: CENTINELA['labels.barrio'] }],
     plataforma: [
       { slug: CENTINELA['online.plataforma'], label: CENTINELA['labels.plataforma'] },
@@ -1114,6 +1132,24 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
       ETIQUETAS,
       AHORA,
       TONOS,
+      true,
+    );
+
+  /**
+   * El mismo fixture, pero **con el hub de su tipo existiendo** — B-107.
+   *
+   * `tipoTieneHub` es el séptimo argumento: solo el lector sabe si alguna otra
+   * actividad publicada comparte el tipo, así que el `barrer()` de la miga con
+   * sus tres niveles lo pide explícito.
+   */
+  const detalleConHubDe = (over = {}) =>
+    detalleDeActividad(
+      toPublic(actividadCentinela(over), 'act_centinela'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+      false,
+      {},
       true,
     );
 
@@ -1244,6 +1280,81 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'nuevo, hay un dato público escrito completo.',
     },
   ];
+
+  /**
+   * `migasDeDetalle` — B-107, el `BreadcrumbList`. Superficie propia por el
+   * mismo motivo que `PERMITIDO_EN_EL_JSON_LD`: se arma con otra función y
+   * termina en un `<script>` de la misma página.
+   *
+   * **`labels.tipo` entra acá y no en `PERMITIDO_EN_EL_JSON_LD`**: el `Event` no
+   * nombra el tipo en ninguna parte (el subtipo de schema.org es un `@type`, no
+   * un dato interpolado), y la miga sí — es el segundo nivel, «Agenda → Tipo →
+   * título». Ya viaja entero en el `events.json` para pintar los chips (salida
+   * 1), así que no agranda nada.
+   */
+  const PERMITIDO_EN_LA_MIGA: readonly Excepcion[] = [
+    {
+      nombre: 'identidad y el segundo nivel de la miga',
+      centinelas: ['titulo', 'slug', 'labels.tipo'],
+      porque:
+        '§5.5 — Agenda → {Tipo} → {título}. El título y el slug son la propia página; ' +
+        '`labels.tipo` es el plural resuelto del tipo (`pluralDeTipo`), el mismo texto que ' +
+        'ya nombra al hub de ese tipo. Nada del documento crudo: `migasDeDetalle` solo lee ' +
+        '`titulo`, `slug`, `tipo` y `tipoEtiqueta` del view-model.',
+    },
+  ];
+
+  it('la miga con hub publica el título, el slug y el plural del tipo — nada más (B-107)', () => {
+    /*
+     * MUTACIÓN PROBADA: agregar `descripcion` o `searchText` a un `ListItem` de
+     * `migasDeDetalle` deja este caso en rojo nombrando el centinela que se
+     * coló — el mismo modo de falla que el JSON-LD del `Event` ya tenía cubierto
+     * y que esta función, por ser nueva, no heredaba.
+     */
+    barrer(
+      'BreadcrumbList del detalle (con hub)',
+      JSON.stringify(migasDeDetalle(detalleConHubDe({ tipo: TIPO_LIBRE }))),
+      PERMITIDO_EN_LA_MIGA,
+      { insensible: true },
+    );
+  });
+
+  it('sin hub, la miga NO lleva la etiqueta del tipo — dos niveles y no tres', () => {
+    /*
+     * El complemento del caso de arriba: acá `labels.tipo` **no** puede aparecer,
+     * porque el segundo nivel no se arma (B-108: el hub de ese tipo puede no
+     * existir para una cancelada cuyo tipo nadie más usa). Declararlo como
+     * permitido sin que aparezca haría fallar `barrer` por sobra — la misma
+     * garantía que ya usa el hub vacío de la salida 11.
+     */
+    barrer(
+      'BreadcrumbList del detalle (sin hub)',
+      JSON.stringify(migasDeDetalle(detalleDe())),
+      [{ ...PERMITIDO_EN_LA_MIGA[0]!, centinelas: ['titulo', 'slug'] }],
+      { insensible: true },
+    );
+  });
+
+  it('la miga de una CANCELADA con hub publica lo mismo — B-110', () => {
+    // Misma superficie que el `Event`: cancelar no agrega ni saca un campo de
+    // la miga (`migasDeDetalle` ni siquiera mira `cancelada`), solo cambia si
+    // la página tiene franja y CTA — eso es de `detallePublico.test.ts`.
+    const canceladaConHub = detalleDeActividad(
+      toPublic(actividadCentinela({ tipo: TIPO_LIBRE }), 'act_centinela'),
+      ETIQUETAS,
+      AHORA,
+      TONOS,
+      true,
+      {},
+      true,
+    );
+    barrer(
+      'BreadcrumbList del detalle (cancelada, con hub)',
+      JSON.stringify(migasDeDetalle(canceladaConHub)),
+      PERMITIDO_EN_LA_MIGA,
+      { insensible: true },
+    );
+  });
 
   it('sobreviven exactamente los centinelas que el detalle necesita', () => {
     barrer('página de detalle', JSON.stringify(detalleDe()), PERMITIDO_EN_EL_DETALLE, {
@@ -1858,6 +1969,29 @@ describe('barrido del sitemap (§5, salida 9, B-109)', () => {
     barrer('sitemap.xml', xml(), PERMITIDO_EN_EL_SITEMAP, { insensible: true });
   });
 
+  it('el `lastmod` de B-112 nunca lleva la hora, ni aunque se lo pasen con ISO completo', () => {
+    /*
+     * El riesgo que el propio B-112 dejó anotado: «con un solo admin, un
+     * `<lastmod>2026-09-02T03:14:52.881Z</lastmod>` no es una fecha, es la
+     * agenda de trabajo de una persona identificada» (D-138). La fuente real
+     * del recorte es `contenidoDelSitio.ts` (`publicadasEditadasEn`, que ya
+     * guarda solo el día), pero `lastmodDelSitemap` recorta **de nuevo** —
+     * belt-and-suspenders— para que un llamador futuro que le pase el ISO
+     * completo por error no filtre la hora igual.
+     *
+     * MUTACIÓN PROBADA: sacar el `.slice(0, 10)` de `lastmodDelSitemap` deja
+     * este caso en rojo con el instante completo en el XML.
+     */
+    const rutasOfrecidas = rutasDelSitemap({ entradas: entradas(), canceladas: [], ahora: AHORA });
+    const lastmod = lastmodDelSitemap(rutasOfrecidas, {
+      [CENTINELA.slug]: '2026-09-02T03:14:52.881Z',
+    });
+    const xmlConFecha = xmlDelSitemap(rutasOfrecidas, lastmod);
+    expect(xmlConFecha).toContain('<lastmod>2026-09-02</lastmod>');
+    expect(xmlConFecha).not.toContain('03:14:52');
+    expect(xmlConFecha).not.toMatch(/<lastmod>[^<]*T[^<]*<\/lastmod>/);
+  });
+
   it('y el robots.txt no publica ni el slug', () => {
     /*
      * Tres líneas fijas y una URL: la del propio sitemap. No toca los datos —no
@@ -2129,5 +2263,97 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
         Object.keys(propias[0]!).sort(),
       );
     }
+  });
+
+  /*
+   * `coleccionSchema` — B-107, el `CollectionPage`/`ItemList`. Vive en
+   * `hubsPublicos.ts` (por eso el barrido va acá y no en un `describe` propio)
+   * pero lo usan **cinco** páginas: los cuatro hubs de este bloque y la home
+   * (salida 1) — `src/pages/index.astro:92`. Es la misma superficie que
+   * `frasesDelHub` ya cubre —un `name` que puede llevar la etiqueta de la
+   * taxonomía y un `itemListElement` con los títulos de las entradas— así que
+   * reusa los mismos `permitidos()` de arriba, sin agregar ninguna categoría.
+   */
+  /**
+   * `coleccionSchema` agrega una excepción propia sobre `permitidos()`: **el
+   * `slug` de cada entrada**, que va en el `url` de su `ListItem`. No es una
+   * fuga — es exactamente el mismo dato que ya es el `href` de cada fila del
+   * listado (§5.1) — pero `permitidos()` no lo declara porque `frasesDelHub`
+   * (arriba) nunca mira una URL. Mismo criterio que `PERMITIDO_EN_EL_JSON_LD`,
+   * que también agrega `slug` sobre lo que el `Event` necesita.
+   */
+  const CON_SLUG = (
+    etiquetas: readonly RutaCentinela[],
+    /**
+     * El slug **del propio hub** (no el de sus entradas): el `url` del
+     * `CollectionPage` es `h.ruta`, y un hub de barrio o de tipo direcciona con
+     * su slug (trampa 10) — la otra mitad de lo que ya afirma «y en la URL va
+     * el slug y no la etiqueta», dos describes más arriba.
+     */
+    rutaDelHub: readonly RutaCentinela[] = [],
+  ): readonly Excepcion[] => [
+    ...permitidos(etiquetas, true),
+    {
+      nombre: 'la URL de la página y de cada entrada',
+      centinelas: ['slug', ...rutaDelHub] as const,
+      porque:
+        'el `url` del `CollectionPage` es la ruta del propio hub o de la home, y el `url` de ' +
+        'cada `ListItem` es la URL de detalle — el slug con el origen adelante. El mismo dato ' +
+        'que ya es el `href` de cada fila y la propia URL de la página.',
+    },
+  ];
+
+  /**
+   * A diferencia de `frasesDelHub` (arriba), `coleccionSchema` recibe **solo**
+   * `h.titulo` — no ve `h.etiqueta` por separado. Para `barrio` eso no cambia
+   * nada: `titulo` es `Actividades literarias en ${etiqueta}`, la etiqueta cruda
+   * entra igual. Para `tipo` sí cambia: con un slug **fijo** (`presentacion`,
+   * en `TIPO_EN_PLURAL` de `hubsPublicos.ts`) el título usa el plural fijo
+   * («Presentaciones») e ignora la etiqueta que le pasaron — así que acá el
+   * centinela de tipo **no puede** sobrevivir con el fixture de este archivo, y
+   * declararlo haría fallar `barrer` por sobra. (Con un tipo creado desde
+   * «Otro» sí aparecería: no está en `TIPO_EN_PLURAL` y `pluralDeTipo` cae al
+   * `?? etiqueta`.)
+   */
+  const ETIQUETA_EN_EL_TITULO_DEL_HUB: Partial<Record<ClaseDeHub, readonly RutaCentinela[]>> = {
+    barrio: ['labels.barrio'],
+  };
+
+  /** El slug con el que direcciona cada clase (trampa 10) — solo `barrio` usa uno centinela. */
+  const SLUG_DEL_HUB: Partial<Record<ClaseDeHub, readonly RutaCentinela[]>> = {
+    barrio: ['sede.barrio'],
+  };
+
+  it('coleccionSchema de los cuatro hubs publica lo mismo que sus frases — nada más', () => {
+    /*
+     * MUTACIÓN PROBADA: agregar `e.tipo` o `e.searchText` a un `ListItem` de
+     * `coleccionSchema` deja este caso en rojo nombrando el centinela que se
+     * coló — la función solo debería tocar `slug` y `titulo` de cada entrada.
+     */
+    for (const { clase, slug, extra } of LOS_CUATRO) {
+      const h = hubDelSitio(clase, slug, entradas(extra), ETIQUETAS, AHORA);
+      const schema = coleccionSchema(h.titulo, h.ruta, h.entradas);
+      barrer(
+        `CollectionPage del hub ${clase}`,
+        JSON.stringify(schema),
+        CON_SLUG(ETIQUETA_EN_EL_TITULO_DEL_HUB[clase] ?? [], SLUG_DEL_HUB[clase] ?? []),
+        { insensible: true },
+      );
+    }
+  });
+
+  it('coleccionSchema de la home publica solo los títulos y las URLs, sin ninguna etiqueta', () => {
+    // La home no tiene taxonomía en su nombre —es un título escrito a mano—,
+    // así que acá la única excepción que puede sobrevivir además del slug es
+    // la de los títulos.
+    const propias = entradas();
+    const schema = coleccionSchema(
+      'Talleres, clubes de lectura y encuentros literarios en Argentina',
+      RUTA_AGENDA,
+      propias,
+    );
+    barrer('CollectionPage de la home', JSON.stringify(schema), CON_SLUG([]), {
+      insensible: true,
+    });
   });
 });

@@ -48,9 +48,10 @@ import {
   partesDeFecha,
   rangoCorto,
 } from '@/lib/fechasPublicas';
+import { pluralDeTipo } from '@/lib/hubsPublicos';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
-import { urlDeDetalle } from '@/lib/rutasPublicas';
+import { RUTA_AGENDA, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad, ViaInscripcion } from '@/types/actividad';
@@ -237,6 +238,21 @@ export interface DetallePublico {
   titulo: string;
   tipo: string;
   tipoEtiqueta: string;
+  /**
+   * ¿Existe `/tipo/{tipo}` para esta actividad? — B-107, el `BreadcrumbList`.
+   *
+   * **No siempre es cierto.** Un hub de tipo se emite si **alguna** actividad
+   * publicada de ese tipo entró alguna vez al índice (`hubsPublicos.ts`), y una
+   * cancelada **no** entra al índice (D-159) — así que una actividad cancelada
+   * cuyo tipo nadie más usa puede no tener hub, y `/tipo/{tipo}` sería un 404. El
+   * default es `false`, el lado que no publica un link roto: quien omita el
+   * argumento pierde el segundo nivel de la miga, no un 404 desde una página
+   * indexada.
+   *
+   * Lo decide el **lector** (`contenidoDelSitio.ts`), que ve el índice entero;
+   * esta página sola no puede saber si algo más comparte su tipo.
+   */
+  tipoTieneHub: boolean;
   /**
    * El color de la categoría, **ya resuelto** — B-273 (D-153).
    *
@@ -835,6 +851,13 @@ export const detalleDeActividad = (
    * desde la página que más tráfico recibe.
    */
   mesesConPagina: Readonly<Record<string, string>> = {},
+  /**
+   * ¿Este tipo tiene hub? — B-107. Ver `DetallePublico.tipoTieneHub`.
+   *
+   * Mismo patrón que `mesesConPagina`: el default es `false`, el lado que no
+   * publica un link que puede no existir.
+   */
+  tipoTieneHub = false,
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
@@ -912,6 +935,7 @@ export const detalleDeActividad = (
     titulo: a.titulo,
     tipo: a.tipo,
     tipoEtiqueta,
+    tipoTieneHub,
     tipoColor: colorDeTipo(a.tipo, tonos[a.tipo]),
     descripcion: a.descripcion,
     resumen: resumenDe(a.descripcion),
@@ -1233,5 +1257,51 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
         // cancelada no puede quedar en `EventScheduled`.
         eventStatus: d.cancelada || e.cancelada ? CANCELADO : PROGRAMADO,
       })),
+  };
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Datos estructurados — `BreadcrumbList` (§5.5 del diseño, B-107)
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * La miga de pan del detalle: Agenda → {Tipo} → {título}, o Agenda → {título}
+ * cuando el hub del tipo no existe (`tipoTieneHub`, ver el campo).
+ *
+ * **Siempre se emite**, a diferencia de `datosEstructurados`: una actividad
+ * presencial sin sede no tiene `Event` honesto que declarar, pero sigue
+ * teniendo una posición en la navegación del sitio.
+ *
+ * El nombre del segundo nivel es el **plural** del tipo (`pluralDeTipo`,
+ * `hubsPublicos.ts`) y no la etiqueta a secas: es literalmente el `<h1>` y el
+ * `textoEnLaTira` de esa página («Talleres», no «Taller»), así que la miga
+ * nombra la página a la que apunta con las mismas palabras que esa página usa
+ * para nombrarse.
+ */
+export const migasDeDetalle = (d: DetallePublico): Record<string, unknown> => {
+  const conTipo = d.tipoTieneHub
+    ? [
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: pluralDeTipo(d.tipo, d.tipoEtiqueta),
+          item: urlAbsoluta(rutaDeTipo(d.tipo)),
+        },
+      ]
+    : [];
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: NOMBRE, item: urlAbsoluta(RUTA_AGENDA) },
+      ...conTipo,
+      {
+        '@type': 'ListItem',
+        position: conTipo.length + 2,
+        name: d.titulo,
+        item: urlDeDetalle(d.slug),
+      },
+    ],
   };
 };

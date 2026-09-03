@@ -458,21 +458,118 @@ describe('la accesibilidad del listado', () => {
     expect(src).toContain('aria-atomic="true"');
   });
 
-  it('el panel de filtros del teléfono sigue siendo un disclosure declarado', () => {
+  it('el panel de filtros del teléfono es una hoja modal de verdad - B-238', () => {
     /*
-     * En `lg` el riel muestra los ejes siempre y el disclosure no se usa, pero en
-     * el teléfono sigue siendo el mismo de D-143 — y con lo que un disclosure
-     * debe: `aria-expanded`, `aria-controls`, y devolver el foco al abridor,
-     * porque el botón de cerrar está al final del panel y si no el foco se cae al
-     * `body`.
+     * Hasta B-238 esto era un *disclosure* declarado a mano. Desde B-238 es una
+     * capa modal -trampa de foco, Escape, cierre por el fondo, pushState- con
+     * el cableado compartido de useCapaModal (lib/capaModal.ts, el mismo hook
+     * del panel), y aria-expanded/aria-controls siguen porque el boton que la
+     * abre sigue siendo un disclosure trigger declarado.
      *
-     * MUTACIÓN PROBADA: borrar la línea de `botonFiltros.current?.focus()` hace
-     * fallar este caso.
+     * No se afirma la forma exacta del cableado -eso es de tests/foco.test.ts,
+     * que ya lo prueba una vez para todos los consumidores del hook- sino que
+     * este componente lo usa y no tiene una copia propia, el mismo criterio que
+     * tests/duplicar-modal.test.ts aplica a las capas del panel.
+     *
+     * MUTACION PROBADA: quitar la llamada a useCapaModal hace fallar este caso.
      */
     const src = sinComentarios(readFileSync(raiz('src/components/publico/Buscador.tsx'), 'utf8'));
     expect(src).toContain('aria-expanded={abierto}');
     expect(src).toContain('aria-controls=');
-    expect(src).toContain('botonFiltros.current?.focus()');
+    expect(src).toContain("from '@/lib/capaModal'");
+    expect(src).toMatch(/useCapaModal\(caja,\s*cerrarPanel,\s*abierto\)/);
+    // Y es un dialogo real solo mientras esta abierta, no siempre: en lg el
+    // mismo div es un panel de la pagina y anunciarlo como dialogo ahi seria
+    // un dato falso para quien usa lector de pantalla.
+    expect(src).toContain("role={abierto ? 'dialog' : undefined}");
+    expect(src).toContain('aria-modal={abierto ? true : undefined}');
+  });
+
+  it('abrir la hoja hace pushState, y cerrarla de cualquier forma lo deshace - B-238', () => {
+    /*
+     * SS8 del diseno, textual: "el boton atras del telefono tiene que cerrarla,
+     * no salir del sitio". Eso exige dos cosas a la vez: un pushState al abrir
+     * (para que haya algo que el boton atras deshaga) y que TODO cierre -el
+     * boton "Ver N actividades", Escape, el click en el fondo- pase por el
+     * mismo camino que el boton atras, o la entrada de historial queda
+     * huerfana y un futuro atras cierra el sitio en lugar de un modal que ya
+     * estaba cerrado.
+     *
+     * MUTACION PROBADA: hacer que cerrarPanel llame a setAbierto(false)
+     * directo (en vez de pasar por history.back()) deja este caso en rojo
+     * nombrando exactamente esa diferencia, aunque el resto de la hoja siga
+     * funcionando igual a simple vista.
+     */
+    const src = sinComentarios(readFileSync(raiz('src/components/publico/Buscador.tsx'), 'utf8'));
+    expect(src).toContain('window.history.pushState(');
+    expect(src).toContain("window.addEventListener('popstate'");
+    // El cierre por UI pasa por el mismo camino que el boton atras: ninguno
+    // de los dos llama a setAbierto(false) directo.
+    expect(src).toMatch(/const cerrarPanel = \(\) => \{[\s\S]*?window\.history\.back\(\)/);
+  });
+
+  it('cerrar la hoja con un filtro elegido adentro no lo pisa - hallazgo del auditor de trampas', () => {
+    /*
+     * Bug real que el auditor de trampas encontro sobre el primer borrador de
+     * B-238, reproducible en el uso normal (no un caso raro): la hoja tiene
+     * SU pushState/popstate para el boton atras, pero el componente YA tenia
+     * otro popstate -el que sincroniza filtros con la URL (aQuery/desdeQuery,
+     * "La URL, en los dos sentidos")- montado desde el principio. Cerrar la
+     * hoja hace history.back(), que navega a la entrada de ANTES de abrirla
+     * -sin el filtro recien elegido en su URL- y ese otro listener la leia y
+     * pisaba la seleccion.
+     *
+     * La reparacion: una bandera (cerrandoLaHoja) prendida desde que se abre
+     * la hoja le dice al sync de URL que el PROXIMO popstate es un cierre y
+     * no una navegacion real, asi que en vez de leer la URL vieja vuelve a
+     * escribir la de ahora con los filtros vigentes (guardados en un ref para
+     * no quedar con los del primer render).
+     *
+     * MUTACION PROBADA: que la funcion leer() ignore cerrandoLaHoja.current
+     * (o que la bandera nunca se ponga en true al abrir) deja este caso en
+     * rojo sin tocar el test de arriba, que solo mira que exista el
+     * pushState/history.back() y no que la seleccion sobreviva al cierre.
+     */
+    const src = sinComentarios(readFileSync(raiz('src/components/publico/Buscador.tsx'), 'utf8'));
+    expect(src).toContain('const cerrandoLaHoja = useRef(false)');
+    // Se prende al abrir (en el mismo efecto que el pushState), no en
+    // cerrarPanel: un boton atras REAL -no el que dispara cerrarPanel- tiene
+    // que dejar la seleccion igual de intacta.
+    expect(src).toMatch(
+      /window\.history\.pushState\([\s\S]*?cerrandoLaHoja\.current = true/,
+    );
+    // Y leer() la consume: si esta prendida, no lee la URL, la vuelve a
+    // escribir con los filtros vigentes.
+    expect(src).toMatch(
+      /const leer = \(\) => \{\s*if \(cerrandoLaHoja\.current\)/,
+    );
+    expect(src).toContain('window.history.replaceState(null,');
+  });
+
+  it('cerrar la hoja dos veces seguidas no retrocede dos entradas de historial - hallazgo del auditor de trampas', () => {
+    /*
+     * history.back() es asincrono: el popstate que dispara no es sincrono con
+     * la llamada, asi que hay una ventana en la que una segunda invocacion de
+     * cerrarPanel -Escape mantenido, un doble toque en "Ver N actividades"-
+     * podria repetir history.back() y hacer retroceder al navegador una
+     * entrada de mas, sacando a la persona del sitio en vez de solo cerrar la
+     * hoja. La reparacion es apagar la bandera entradaPropia ANTES de llamar
+     * a history.back(), no solo en la limpieza del efecto (que corre recien
+     * cuando React re-renderiza tras el popstate real).
+     *
+     * MUTACION PROBADA: mover `entradaPropia.current = false` a DESPUES de
+     * `window.history.back()` (o sacarla de cerrarPanel y dejarla solo en la
+     * limpieza del efecto) deja este caso en rojo.
+     */
+    const src = sinComentarios(readFileSync(raiz('src/components/publico/Buscador.tsx'), 'utf8'));
+    const m = /const cerrarPanel = \(\) => \{[\s\S]*?\n  \};/.exec(src);
+    expect(m, 'no se encontro la funcion cerrarPanel').not.toBeNull();
+    const cuerpo = m![0];
+    const posApagado = cuerpo.indexOf('entradaPropia.current = false');
+    const posBack = cuerpo.indexOf('window.history.back()');
+    expect(posApagado, 'cerrarPanel no apaga entradaPropia').toBeGreaterThan(-1);
+    expect(posBack, 'cerrarPanel no llama a history.back()').toBeGreaterThan(-1);
+    expect(posApagado, 'entradaPropia se apaga DESPUES de history.back()').toBeLessThan(posBack);
   });
 
   it('los filtros son controles con estado, no los `<a href="#">` de la referencia', () => {

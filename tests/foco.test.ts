@@ -146,7 +146,7 @@ describe('las dos pantallas usan la misma implementación (B-14, B-64)', () => {
  * `tests/duplicar-modal.test.ts`).
  */
 describe('el cableado de una capa modal está en un solo lugar — B-210', () => {
-  const HOOK = 'components/admin/useCapaModal.ts';
+  const HOOK = 'lib/capaModal.ts';
   const CAPAS = ['components/admin/DialogoDuplicar.tsx', 'components/admin/ayuda/CentroAyuda.tsx'];
 
   /** Sin comentarios ni espacios: afirma la llamada y no la prosa que la cita. */
@@ -200,9 +200,11 @@ describe('el cableado de una capa modal está en un solo lugar — B-210', () =>
     expect(src).toContain('cerrar=useRef(alCerrar)');
     expect(src).toContain('cerrar.current=alCerrar');
     expect(src).toContain('cerrar.current()');
-    // Las dependencias son solo el ref del contenedor, que es estable. Si acá
-    // apareciera `alCerrar`, el bug volvió.
-    expect(src).toContain('},[caja]);');
+    // Las dependencias son el ref del contenedor y el flag de actividad (B-238),
+    // ninguno inestable entre renders salvo cuando la capa se abre o se cierra,
+    // que es cuando el efecto DEBE reengancharse. Si acá apareciera `alCerrar`,
+    // el bug volvió.
+    expect(src).toContain('},[caja,activo]);');
     expect(src).not.toContain('alCerrar]);');
   });
 
@@ -218,5 +220,26 @@ describe('el cableado de una capa modal está en un solo lugar — B-210', () =>
     // Y restaura el overflow previo en vez de asumir que era vacío.
     expect(src).toContain('previo=document.body.style.overflow');
     expect(src).toContain('document.body.style.overflow=previo');
+  });
+
+  it('con `activo` en false, el hook no hace nada de eso — B-238', () => {
+    /*
+     * La hoja de filtros del sitio público llama a este hook en **todos** sus
+     * renders, `lg` incluido, donde su `caja` sigue montada como panel del riel
+     * y no como diálogo. Sin esta guarda, el hook atraparía el Tab y bloquearía
+     * el scroll de una página que no tiene ningún modal abierto — el bug sería
+     * invisible en el teléfono (donde `activo` sí es `true` cuando importa) y
+     * rompería silenciosamente el escritorio.
+     *
+     * MUTACIÓN PROBADA: borrar `if(!activo)return;` dentro del efecto deja este
+     * caso en rojo sin tocar ningún otro `it` de este archivo — es exactamente
+     * el modo de falla que un chequeo que solo mira las cuatro cosas del `it`
+     * de arriba no puede ver.
+     */
+    const src = codigo(HOOK);
+    expect(src).toContain('if(!activo)return;');
+    // Y activo tiene default `true`: las dos capas del panel no lo pasan y
+    // siguen andando exactamente igual que antes de B-238.
+    expect(src).toContain('activo=true');
   });
 });

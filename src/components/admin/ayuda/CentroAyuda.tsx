@@ -8,7 +8,7 @@ import {
   type ContextoAyuda,
   type PuntoAyuda,
 } from '@/lib/ayuda';
-import { useCapaModal } from '@/components/admin/useCapaModal';
+import { useCapaModal } from '@/lib/capaModal';
 import { NOVEDADES, fechaLegible, guardarVisto } from '@/lib/novedades';
 
 interface Props {
