@@ -209,6 +209,82 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     expect(a!.sesiones[1]!.id).toBe(sobreviviente);
   });
 
+  /**
+   * B-150 — el guardado del formulario **relee el documento** y toma de ahí el
+   * `calendarEventId` de cada sesión, emparejando por id.
+   *
+   * Es el único de los chequeos de B-150 que necesita emulador, y es el que
+   * verifica lo que los puros no pueden: que `actualizarActividad` haga la
+   * lectura. Los otros dos verifican que el payload, **una vez leído el
+   * documento**, ponga el valor correcto — pero un `payloadDeActualizacion`
+   * perfecto llamado con `[]` desde el panel dejaría el bug intacto.
+   *
+   * El escenario es el real: el listado se refrescó antes del write-back del
+   * sync, así que el form abre con `calendarEventId: null` mientras el documento
+   * ya tiene el id que la Function escribió.
+   */
+  it('B-150: guardar desde un snapshot viejo no pisa el calendarEventId del documento', async () => {
+    const form = formCompleto();
+    form.slug = 'club-dueno-del-id';
+    const id = await crearActividad(form, UID);
+
+    // La Function escribe los ids de vuelta (`reponerIds`). Se simula con una
+    // escritura directa, que es exactamente lo que hace el write-back.
+    const enDisco = (await leerActividad(id))!;
+    await setDoc(
+      doc(db(), 'actividades', id),
+      {
+        sesiones: enDisco.sesiones.map((s, i) => ({ ...s, calendarEventId: `evt_${i}` })),
+      },
+      { merge: true },
+    );
+
+    // El form que tiene el panel abierto: del snapshot anterior al write-back.
+    const desdeUnSnapshotViejo = {
+      ...form,
+      titulo: 'Club de lectura, con el título editado',
+      sesiones: form.sesiones.map((s) => ({ ...s, calendarEventId: null })),
+    };
+    await actualizarActividad(id, desdeUnSnapshotViejo, UID);
+
+    const despues = await leerActividad(id);
+    // El título editado sí se guardó: la fusión no bloquea la edición.
+    expect(despues!.titulo).toBe('Club de lectura, con el título editado');
+    // Y los ids siguen ahí. Sin la relectura, los tres quedaban en `null` y la
+    // pasada siguiente del sync creaba un segundo evento por encuentro.
+    expect(despues!.sesiones.map((s) => s.calendarEventId)).toEqual(
+      enDisco.sesiones.map((_, i) => `evt_${i}`),
+    );
+  });
+
+  it('B-150: una sesión agregada al ciclo nace sin calendarEventId', async () => {
+    // La otra mitad: la fusión no puede inventarle un id a una fila que el
+    // documento no tiene. Con `null`, el sync le crea su evento como si fuera
+    // nueva — que es lo que es.
+    const form = formCompleto();
+    form.slug = 'club-encuentro-nuevo';
+    const id = await crearActividad(form, UID);
+
+    const enDisco = (await leerActividad(id))!;
+    await setDoc(
+      doc(db(), 'actividades', id),
+      { sesiones: enDisco.sesiones.map((s, i) => ({ ...s, calendarEventId: `evt_${i}` })) },
+      { merge: true },
+    );
+
+    const novena = { ...sesionVacia(), inicio: '2026-11-05T19:00', fin: '2026-11-05T21:00' };
+    await actualizarActividad(id, { ...form, sesiones: [...form.sesiones, novena] }, UID);
+
+    const despues = await leerActividad(id);
+    const agregada = despues!.sesiones.find((s) => s.id === novena.id);
+    expect(agregada).toBeDefined();
+    expect(agregada!.calendarEventId).toBeNull();
+    // Y las que ya estaban conservan el suyo.
+    expect(despues!.sesiones.filter((s) => s.calendarEventId !== null)).toHaveLength(
+      enDisco.sesiones.length,
+    );
+  });
+
   it('calcula el searchText normalizado (§6)', async () => {
     const form = formCompleto();
     form.slug = 'club-search';

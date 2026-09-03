@@ -506,6 +506,11 @@ describe('«se llenó» tiene un solo dueño, y no es el formulario (B-97, clase
     const payload = payloadDeActualizacion(
       { ...formularioLleno(), inscripcion: { ...formularioLleno().inscripcion, completo: false } },
       'uid-a',
+      // B-150 — las sesiones que tiene el documento hoy. Acá no hay ninguna que
+      // importe para este chequeo; el tercer argumento es obligatorio a
+      // propósito, para que nadie pueda guardar sin decidir de dónde salen los
+      // campos de máquina.
+      [],
     );
     // Ni la clave punteada ni el objeto entero.
     expect(Object.keys(payload)).not.toContain('inscripcion.completo');
@@ -515,7 +520,7 @@ describe('«se llenó» tiene un solo dueño, y no es el formulario (B-97, clase
   it('pero el resto de la inscripción sí se guarda, por subcampo', () => {
     // Escribir `inscripcion` entero era lo que pisaba `completo`; escribir solo
     // `completo` afuera dejaría de guardar el destino, que es peor.
-    const payload = payloadDeActualizacion(formularioLleno(), 'uid-a');
+    const payload = payloadDeActualizacion(formularioLleno(), 'uid-a', []);
     expect(Object.keys(payload)).toContain('inscripcion.destino');
     expect(Object.keys(payload)).toContain('inscripcion.cupo');
     expect(Object.keys(payload)).toContain('inscripcion.requiere');

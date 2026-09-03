@@ -26,11 +26,17 @@ import {
   sedePrincipal,
 } from '@/lib/modalidades';
 import { slugify } from '@/lib/slugify';
+// B-150 — la MISMA lista que usa el trigger del historial para decidir qué
+// escribe la máquina (§12, D-41). Se importa por `@historial` y no se copia: dos
+// ideas de "qué campo es de la máquina" se separan sin que nada falle, que es
+// exactamente el acuerdo que el alias existe para no tener que mantener.
+import { CAMPOS_DE_MAQUINA_SESION } from '@historial';
 import type {
   Actividad,
   ActividadConId,
   ActividadForm,
   ModalidadFila,
+  Sesion,
   SesionForm,
 } from '@/types/actividad';
 
@@ -340,10 +346,72 @@ export const crearActividad = async (f: ActividadForm, uid: string): Promise<str
 };
 
 /**
+ * B-150 — Las sesiones que se van a escribir, con los campos de máquina que
+ * tiene el documento **de hoy**, emparejados por id de sesión.
+ *
+ * ── Qué arregla ───────────────────────────────────────────────────────────
+ * `formADocumento` emite `calendarEventId` en cada guardado, así que el
+ * formulario es co-dueño de un campo que escribe una Cloud Function. Si el
+ * listado se refrescó *antes* del write-back del sync, el form arranca con
+ * `null` y el guardado lo escribe: el documento se queda con una sesión sin id.
+ * D-91 hizo que la Function lo repusiera (`reponerIds` en **toda** operación),
+ * así que la ventana ya no dejaba daño permanente — pero seguía existiendo, y
+ * quien la abría era el panel. Esto la cierra del lado que la abre: hay **un
+ * solo dueño** por campo, y es la Function.
+ *
+ * ── Por qué fusionar y no dejar de emitir el campo ────────────────────────
+ * La otra salida de B-80 —que `formADocumento` no emita `calendarEventId`— es
+ * un bug peor, no un atajo: `actualizarActividad` usa `updateDoc`, que
+ * **reemplaza el array `sesiones` entero**, así que una clave ausente adentro de
+ * cada elemento borra el id de **todas** las sesiones. La pasada siguiente del
+ * sync no ve ningún id y emite `crear` por encuentro: N eventos duplicados en el
+ * calendario público y los originales huérfanos. Es el mismo argumento que el
+ * comentario de `completo` (B-97) tres bloques más abajo — un objeto de
+ * contenido que se reemplaza entero no tolera omitir una clave que otro escribe.
+ *
+ * ── La lista es negra, y esa dirección es la segura (D-41) ────────────────
+ * Se enumera lo que escribe la máquina, no lo que edita una persona, y la lista
+ * viene de `@historial` en lugar de estar acá. Con una lista blanca de campos
+ * editables, olvidarse de sumar un campo nuevo del formulario haría que su
+ * edición se descarte en silencio (pérdida de datos); con la lista negra,
+ * olvidarse de un campo de máquina nuevo devuelve el bug de B-80 — que tiene
+ * test de clase y se ve. Ante la duda, gana el formulario.
+ *
+ * Una sesión que el documento no tiene —una fila recién agregada— no tiene nada
+ * de máquina que preservar: se le repone el `null` explícito para no cambiar la
+ * forma del documento (`Sesion.calendarEventId` no es opcional, y `ausente` vs
+ * `null` no los unifica `huboCambioDeContenido`, así que la clave que falta
+ * costaría una versión de historial y un rebuild por guardado).
+ *
+ * Lo comparte la restauración del historial (`valorARestaurar`,
+ * `src/lib/historial.ts`), que tenía el mismo emparejamiento escrito aparte.
+ */
+export const fusionarSesiones = <T extends { id: string }>(
+  origen: readonly T[],
+  enDisco: readonly Pick<Sesion, 'id' | 'calendarEventId'>[] | undefined,
+): Record<string, unknown>[] => {
+  const porId = new Map(
+    (enDisco ?? []).map((s) => [s.id, s as unknown as Record<string, unknown>]),
+  );
+
+  return origen.map((sesion) => {
+    const enElDocumento = porId.get(sesion.id);
+    const deMaquina = Object.fromEntries(
+      CAMPOS_DE_MAQUINA_SESION.map((campo) => [
+        campo,
+        enElDocumento ? (enElDocumento[campo] ?? null) : null,
+      ]),
+    );
+    return { ...(sesion as unknown as Record<string, unknown>), ...deMaquina };
+  });
+};
+
+/**
  * Lo que se le manda a `updateDoc` al guardar el formulario.
  *
- * Es puro y está separado para poder verificar sin emuladores la única cosa que
- * importa acá: que **`inscripcion.completo` no viaje**.
+ * Es puro y está separado para poder verificar sin emuladores las dos cosas que
+ * importan acá: que **`inscripcion.completo` no viaje**, y que los campos de
+ * máquina de cada sesión salgan del documento y no del formulario (B-150).
  *
  * `inscripcion` se escribe **por subcampos punteados** y ese queda afuera (B-97).
  * Lo prende el menú del listado, no el formulario: escribir el objeto entero haría
@@ -355,16 +423,32 @@ export const crearActividad = async (f: ActividadForm, uid: string): Promise<str
 export const payloadDeActualizacion = (
   f: ActividadForm,
   uid: string,
+  sesionesEnDisco: readonly Pick<Sesion, 'id' | 'calendarEventId'>[],
 ): Record<string, unknown> => {
-  const { inscripcion, ...resto } = formADocumento(f, uid, false) as Record<string, unknown> & {
+  const { inscripcion, sesiones, ...resto } = formADocumento(f, uid, false) as Record<
+    string,
+    unknown
+  > & {
     inscripcion: Record<string, unknown>;
+    sesiones: { id: string }[];
   };
   const porSubcampo = Object.fromEntries(
     Object.entries(inscripcion)
       .filter(([clave]) => clave !== 'completo')
       .map(([clave, valor]) => [`inscripcion.${clave}`, valor]),
   );
-  return { ...resto, ...porSubcampo };
+  return {
+    ...resto,
+    // B-150 — los campos de máquina de cada sesión los pone el documento, no el
+    // formulario. El parámetro es **obligatorio** a propósito: con un default
+    // el arreglo volvería a ser un acuerdo que se rompe por olvido, y acá el
+    // olvido es justamente el bug. Pasar `[]` es una respuesta válida y
+    // explícita —"el documento no tiene ninguna de estas sesiones"— y deja los
+    // ids en `null`, que es lo correcto: el panel no puede *inventar* un id de
+    // evento, y el write-back del sync repone el que corresponda (D-91).
+    sesiones: fusionarSesiones(sesiones, sesionesEnDisco),
+    ...porSubcampo,
+  };
 };
 
 export const actualizarActividad = async (
@@ -372,6 +456,28 @@ export const actualizarActividad = async (
   f: ActividadForm,
   uid: string,
 ): Promise<void> => {
+  const ref = doc(db(), COL, id);
+
+  /**
+   * B-150 — se **relee** el documento antes de escribir, y los campos de
+   * máquina de cada sesión salen de ahí y no del formulario (`fusionarSesiones`).
+   *
+   * El form pudo haberse abierto desde un listado anterior al write-back del
+   * sync, así que su `calendarEventId` puede tener minutos de atraso; el
+   * documento, en cambio, es lo que la Function escribió. Es la misma relectura
+   * que hace `syncCalendar` antes de su propio write-back, y por el mismo
+   * motivo: entre que se armó el payload y este punto pudo pasar otra
+   * escritura.
+   *
+   * Queda una ventana del tamaño de este `updateDoc`, y es a propósito que no se
+   * cierre con una transacción: el sync repone el id en **toda** operación
+   * (D-91), así que esa ventana ya no deja daño permanente, y convertir el
+   * guardado del formulario —la acción más usada del panel— en una transacción
+   * de cliente le cambiaría los modos de falla por un P3.
+   */
+  const snap = await getDoc(ref);
+  const sesionesEnDisco = snap.exists() ? ((snap.data() as Actividad).sesiones ?? []) : [];
+
   // `updateDoc` y no `setDoc`: preserva `createdAt`/`createdBy`, y de todas
   // formas reemplaza el array `sesiones` completo, así que una sesión borrada
   // en el form desaparece del documento (que es lo que el diff de §7.2 espera).
@@ -382,7 +488,7 @@ export const actualizarActividad = async (
   // desde antes de marcarlo, **apague el cartel** del sitio y de los N eventos del
   // ciclo sin que nadie lo pida. Es la clase de B-80 —un campo con dos dueños
   // adentro de un objeto de contenido— y la respuesta es la misma: un solo dueño.
-  await updateDoc(doc(db(), COL, id), payloadDeActualizacion(f, uid));
+  await updateDoc(ref, payloadDeActualizacion(f, uid, sesionesEnDisco));
 };
 
 /**

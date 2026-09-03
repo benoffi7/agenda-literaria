@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { Timestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
-import { documentoAForm, formADocumento } from '@/lib/actividades';
+import { documentoAForm, formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue } from '../functions/reportes.js';
 import { versionesPosibles } from '../scripts/version.mjs';
@@ -592,34 +592,83 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
    * El chequeo de la clase. El formulario no puede ser dueño de un campo que
    * escribe una Function: si lo emite, lo emite con lo que tenía en el snapshot.
    *
-   * **Qué lo haría pasar:** que `formADocumento` deje de emitir el campo (y que
-   * el write-back de la Function sea el único que lo escribe), o que el camino
-   * de escritura del panel relea el documento y fusione — la primera y la
-   * segunda de las tres salidas de B-80.
+   * **Era `it.fails` y pasó a `it` con B-150** — que es lo que un `it.fails`
+   * existe para provocar. La salida elegida es la segunda de las tres de B-80:
+   * el camino de escritura del panel **relee el documento y fusiona** por id de
+   * sesión (`actualizarActividad` → `payloadDeActualizacion` →
+   * `fusionarSesiones`). La primera —que `formADocumento` deje de emitir el
+   * campo— se evaluó y es un bug peor: `updateDoc` reemplaza el array `sesiones`
+   * entero, así que la clave ausente borra el id de **todas** las sesiones y la
+   * pasada siguiente del sync crea N eventos duplicados.
+   *
+   * **La verificación se mudó de `formADocumento` al payload de escritura, y no
+   * es una concesión.** `formADocumento` sigue emitiendo el campo —tiene que
+   * emitirlo, por lo de arriba— así que preguntarle a él nunca podría dar
+   * verde con el arreglo correcto puesto. Lo que la clase afirma es que **lo que
+   * sale hacia Firestore** no lleva el valor del formulario, y eso se le
+   * pregunta al payload.
    *
    * **Qué NO lo haría pasar, a propósito:** que `syncCalendar` reponga el id
-   * también en las ops `actualizar` (la tercera salida). Eso tapa el síntoma
-   * conocido y deja la ventana abierta entre las dos escrituras, así que la
-   * clase sigue viva y este `it.fails` sigue fallando. Es información, no un
-   * falso positivo.
+   * también en las ops `actualizar` (la tercera salida, D-91). Eso tapa el
+   * síntoma conocido y deja la ventana abierta entre las dos escrituras. Sigue
+   * estando —es la red de abajo— pero no es lo que este chequeo mide.
    */
-  it.fails('B-80: el formulario no emite ningún campo que escriba una Function', () => {
+  it('B-80: el payload de escritura del panel no lleva ningún campo que escriba una Function', () => {
     const emitidos: string[] = [];
     for (const campo of CAMPOS_DE_MAQUINA_SESION) {
       const enFirestore = actividadCon({ [campo]: 'valor-escrito-por-la-function' });
       const viejo = actividadCon({ [campo]: null }); // snapshot previo al write-back
-      const escrito = formADocumento(documentoAForm(viejo), 'uid-admin', false) as {
-        sesiones: Record<string, unknown>[];
-      };
+      const escrito = payloadDeActualizacion(
+        documentoAForm(viejo),
+        'uid-admin',
+        // Lo que el documento tiene AHORA, que es lo que el panel relee.
+        enFirestore.sesiones,
+      ) as { sesiones: Record<string, unknown>[] };
       const enElDocumento = (enFirestore.sesiones as unknown as Record<string, unknown>[])[0]!;
-      if (
-        Object.prototype.hasOwnProperty.call(escrito.sesiones[0]!, campo) &&
-        escrito.sesiones[0]![campo] !== enElDocumento[campo]
-      ) {
+      if (escrito.sesiones[0]![campo] !== enElDocumento[campo]) {
         emitidos.push(`${campo}: el panel escribe ${JSON.stringify(escrito.sesiones[0]![campo])}`);
       }
     }
     expect(emitidos).toEqual([]);
+  });
+
+  /**
+   * La otra mitad, y la que hace que el chequeo de arriba no se pueda satisfacer
+   * de la forma barata y equivocada: **la clave sigue estando en el documento.**
+   *
+   * Sin esto, "que el panel no escriba el valor del formulario" se cumpliría
+   * también omitiendo la clave — y eso, con `updateDoc` reemplazando el array
+   * entero, borra el `calendarEventId` de todas las sesiones y le hace crear N
+   * eventos duplicados al sync. Es el bug que B-150 descartó explícitamente.
+   */
+  it('B-150: la clave del campo de máquina viaja igual, con el valor del documento', () => {
+    for (const campo of CAMPOS_DE_MAQUINA_SESION) {
+      const enFirestore = actividadCon({ [campo]: 'evt-de-la-function' });
+      const escrito = payloadDeActualizacion(
+        documentoAForm(actividadCon({ [campo]: null })),
+        'uid-admin',
+        enFirestore.sesiones,
+      ) as { sesiones: Record<string, unknown>[] };
+      expect(Object.keys(escrito.sesiones[0]!), campo).toContain(campo);
+      expect(escrito.sesiones[0]![campo], campo).toBe('evt-de-la-function');
+    }
+  });
+
+  /**
+   * Y la fila nueva: una sesión que el documento no tiene no puede heredar el
+   * campo de máquina de nadie. Con `[]` —el "no hay nada en el documento"
+   * explícito que el tercer argumento obliga a decidir— queda `null`, que es lo
+   * que hace que el sync le cree su evento como si fuera nueva.
+   */
+  it('B-150: una sesión que el documento no tiene queda con el campo de máquina en null', () => {
+    for (const campo of CAMPOS_DE_MAQUINA_SESION) {
+      const escrito = payloadDeActualizacion(
+        documentoAForm(actividadCon({ [campo]: 'evt-de-un-snapshot-viejo' })),
+        'uid-admin',
+        [],
+      ) as { sesiones: Record<string, unknown>[] };
+      expect(escrito.sesiones[0]![campo], campo).toBeNull();
+    }
   });
 });
 
