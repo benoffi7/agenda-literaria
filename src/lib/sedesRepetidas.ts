@@ -67,9 +67,16 @@ const claveDeSede = (nombre: string): string => normalize(nombre.trim()).replace
  * y el texto tal como se escribió.
  *
  * Lee las dos formas: `modalidades[].sede.nombre` (B-224) y el `sede.nombre`
- * suelto de los documentos anteriores. Es el default de lectura que preserva lo
- * anterior: sin la segunda rama, una actividad vieja contaría como sin sede y la
- * repetición saldría más chica.
+ * suelto, que es **el derivado** que publica `toPublic` —«la primera fila que
+ * tenga sede», D-130— y de paso la forma del modelo anterior a B-224.
+ *
+ * **No es una rama de compatibilidad**, aunque lo parezca, y conviene decirlo
+ * porque `modalidades.ts` dice lo contrario de su propia rama: ahí la
+ * compatibilidad se sacó a propósito, porque no hay nada en producción sin
+ * `modalidades[]`. Acá la segunda rama está por otra razón — el `Map` la vuelve
+ * un no-op cuando las dos formas coinciden, y **abarata al llamador**: esto se
+ * puede correr sobre un documento crudo o sobre una vista pública sin que quien
+ * llama tenga que saber cuál tiene en la mano.
  */
 const sedesDe = (a: ActividadConSedes): Map<string, string> => {
   const nombres = [
