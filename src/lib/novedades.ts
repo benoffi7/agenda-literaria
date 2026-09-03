@@ -60,6 +60,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'historial-restaurar-campo',
+    fecha: '2026-09-03',
+    version: '1.6.0',
+    titulo: 'Podés recuperar un campo que se pisó por error, desde «Historial»',
+    detalle:
+      'Cada edición que cambia algo en una actividad queda guardada. Si alguien pisó una ' +
+      'descripción larga sin querer, entrá al menú «⋯» de esa actividad, elegí «Historial» y ' +
+      'restaurá el campo que quieras: no hace falta volver todo el formulario para atrás, solo lo ' +
+      'que se perdió. Antes de traerlo de vuelta te lo confirma.',
+    donde: 'Panel → Listado → menú «⋯» de una actividad → Historial.',
+  },
+  {
     id: 'tablero-con-pestanias',
     fecha: '2026-09-03',
     version: '1.6.0',

@@ -25,6 +25,35 @@ sitio y calendario.
 
 El detalle de cada cambio está en las entradas dateadas de abajo.
 
+## 2026-09-03 (después de 1.6.0) · cerrar B-40: la pantalla de historial ya estaba, sin terminar de cerrarse
+
+**B-40 (la pantalla de "Historial" del listado) y B-03 (el guardado en sí) ya
+estaban hechos y en producción** — B-03 se mergeó el 21/08 y B-40, rescatado de
+un agente que murió a mitad de la respuesta, el 24/08 (0942a17). Lo que faltó
+en su momento fue la última parte de cerrarlo: `docs/BACKLOG.md` seguía
+diciendo "no hay pantalla" en la entrada de B-03 y el header de B-40 había
+quedado vacío, y no había entrada en `src/lib/novedades.ts` avisándole a quien
+carga actividades que la función existe.
+
+**Lo único que faltaba de verdad** era la cobertura del componente en sí: los
+dos únicos tests que lo tocaban (`tests/libro-presentado.test.ts`,
+`tests/cupo-completo.test.ts`) leen el fuente con `toMatch` para confirmar que
+el diccionario de nombres tiene una entrada — no que "Restaurar" pida
+confirmación antes de escribir, que es cableado real de DOM y la misma familia
+de trampa que B-202. Agregado `tests/historial-actividad.render.test.tsx`
+(jsdom, cuatro casos): la lista arranca colapsada y el botón no existe hasta
+abrirla, y sobre todo el **control negativo** — cancelar el `confirm()` no
+llama `restaurarCampo`. Mutación verificada a mano: sacar el
+`if (!confirm(...)) return` del componente pone ese control negativo en rojo
+y deja pasar los otros tres, que es exactamente lo que un `toMatch` sobre el
+texto no puede ver.
+
+Documentación al día: `docs/BACKLOG.md` (B-03 y B-40 marcados `✅ hecho`, sin
+la descripción de una pantalla que faltaba), `src/lib/ayuda.ts` (qué hace
+"Historial" y que la dirección web no se restaura sobre una actividad
+publicada — trampa 10), y la novedad `historial-restaurar-campo` en
+`src/lib/novedades.ts`.
+
 ## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
 
 El dueño pidió tres cosas para el tablero «Estado del catálogo»: pestañas en

@@ -3509,7 +3509,37 @@ lleva el total adelante en vez del literal del §7.5.
 **Lo que no entró:** el enlace desde la página de detalle («más en septiembre» del
 §2.2) — queda **B-280**.
 
-### B-40 · UI para ver y restaurar versiones
+### B-40 · UI para ver y restaurar versiones — ✅ hecho (2026-08-24)
+
+**«Historial»** en el menú «⋯» de cada fila del listado
+(`src/components/admin/HistorialActividad.tsx`, `src/lib/historial.ts`): lista
+las versiones guardadas (más nueva primero), muestra qué campos cambió cada
+una y ofrece **restaurar de a un campo**, no el documento entero — restaurar
+todo pisaría los cambios posteriores que sí se querían. Solo ofrece los campos
+que hoy siguen distintos: si ya volvió solo a su valor viejo, no hay nada que
+restaurar.
+
+Va **diferida** (`import()`), no en el chunk inicial: es la vista menos usada,
+así que no tiene por qué viajar en lo que se baja para mostrar «Entrar con
+Google» (B-09, D-51). `tests/bundle-panel.test.ts` lo verifica.
+
+**El slug queda afuera de lo restaurable** en una actividad `publicado`
+(trampa 10): traerlo de vuelta rompería el link ya indexado. El `dirección
+web` de la versión se muestra igual, solo que sin botón.
+
+**Restaurar es una escritura más al documento**, así que dispara
+`guardarVersion` y deja versión de lo restaurado — deshacer un «deshacer»
+tiene que ser posible, y lo es.
+
+Esta última entrada quedó pendiente de cerrar: el componente y la lógica se
+escribieron el 24/08 (rescatados de un agente que murió a mitad de la
+respuesta), pero la única cobertura del componente en sí eran dos `toMatch`
+sobre el fuente (`tests/libro-presentado.test.ts`,
+`tests/cupo-completo.test.ts`) — comprueban que el diccionario de nombres
+tiene la entrada, no que «Restaurar» pida confirmación antes de escribir.
+Cerrado ahora con `tests/historial-actividad.render.test.tsx` (DOM real,
+mutación verificada: sacar el `if (!confirm(...)) return` pone el control
+negativo en rojo).
 
 ### B-30 · Las respuestas del dueño no vuelven al panel
 
@@ -3553,28 +3583,15 @@ ya publicado, y borrar. Siete tests contra el emulador, en
 `tests/reportes-reintento.integracion.test.ts`. Ver **D-101** y §7 de
 [`07-seguridad.md`](07-seguridad.md).
 
-### B-03 · Historial de versiones (§12)
+### B-03 · Historial de versiones (§12) — ✅ hecho (2026-08-21)
 
+`guardarVersion` (`onDocumentUpdated`, `functions/historial-trigger.js`) deja
+el documento anterior en `/actividades/{id}/versiones/{version}` en cada
+edición que pisa contenido. Retención de las últimas 20 por actividad (D-42).
 
-El historial ya se guarda (B-03, §12), pero **no hay pantalla**: recuperar un
-campo pisado es abrir la consola de Firestore, buscar la subcolección
-`versiones` de la actividad, elegir un documento por su id (que es la fecha y
-hora) y copiar el valor a mano al formulario.
-
-**Sin UI el historial ya sirve, y por eso se cerró B-03 sin ella:** lo que no
-tenía arreglo era que el dato *no existiera*. Ahora existe, y recuperarlo es
-incómodo pero posible — y es una operación rara, que hace el dueño, no un
-usuario. Cada versión guarda `camposCambiados`, así que se puede ver de un
-pantallazo cuál abrir sin revisarlas de a una.
-
-Lo que haría falta: una pestaña "Historial" en el formulario que liste las
-versiones con fecha y qué campos pisó cada una, un diff contra el estado actual,
-y un "restaurar este campo" (mejor que restaurar el documento entero: restaurar
-todo pisaría cambios posteriores que sí se querían).
-
-**Ojo al implementarlo:** restaurar es una escritura más al documento, así que
-dispara `guardarVersion` y deja versión de lo restaurado. Eso es correcto —
-deshacer un "deshacer" tiene que ser posible— pero conviene verificarlo.
+**Se cerró originalmente sin pantalla** (lo que no tenía arreglo era que el
+dato *no existiera*; recuperarlo a mano desde la consola de Firestore era
+incómodo pero posible) y la pantalla llegó después, como **B-40**.
 
 ### B-41 · Borrar una actividad no guarda versión y no hay nada que recuperar — ✅ hecho (2026-08-24)
 
