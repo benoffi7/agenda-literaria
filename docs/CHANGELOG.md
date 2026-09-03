@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.7.0 — 2026-09-03
+
+**La tanda de cierre: el sitio se completa y el panel deja de acumular ruido.**
+Todo lo construido después de 1.6.0.
+
+- **Sitio público**: marcado de navegación con `BreadcrumbList` y
+  `CollectionPage`/`ItemList` (**B-107**), la hoja de filtros del móvil como capa
+  modal de verdad (**B-238**), `lastmod` en el sitemap (**B-112**); **B-239**
+  descartado con medición.
+- **Historial de versiones**: la pantalla para ver y restaurar quedó cerrada, con
+  su test de DOM y la trampa 10 cubierta en la restauración (**B-40**).
+- **Calendario y ciclos**: se detecta un evento borrado a mano en Calendar
+  (**B-125**) y el panel numera los encuentros con el mismo criterio que el
+  evento (**B-163**).
+- **Imágenes**: se desplegó la limpieza de huérfanas, con margen de gracia y
+  dry-run (**B-221**); lista blanca de chunks del bundle (**B-323**).
+- **Panel de reportes**: un reporte se puede marcar **resuelto** y el panel
+  muestra por defecto solo los abiertos, sin sync desde GitHub (**B-580**,
+  **D-310**). De paso se cerraron 15 issues ya implementados; quedan 2 abiertos
+  (agrupar actividades y varias vías de inscripción).
+- **El tablero** dejó de listar «ya pasó»: era el archivo entero y crecía sin
+  techo (**D-273**).
+- **Dos bugs de CI/infra** de la familia «verde en local, roto de verdad»: un
+  test que importaba un módulo con `firebase-functions` ausente en la raíz
+  (**B-561**), y el arreglo de B-205 que estaba inerte por leer un campo que
+  `version.json` no publica (**B-562**).
+
+El detalle de cada cambio está en las entradas dateadas de abajo.
+
 ## 2026-09-03 · Reportes: solo se muestran los abiertos (B-580, D-310)
 
 La pantalla de Reportes mostraba todos los reportes cargados alguna vez. Se

@@ -62,7 +62,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'reportes-solo-abiertos',
     fecha: '2026-09-03',
-    version: '1.6.0',
+    version: '1.7.0',
     titulo: 'La pantalla de Reportes ahora muestra solo los abiertos',
     detalle:
       'Antes quedaban ahí todos los reportes que se cargaron alguna vez. Cada uno tiene un botón ' +
@@ -73,7 +73,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'historial-restaurar-campo',
     fecha: '2026-09-03',
-    version: '1.6.0',
+    version: '1.7.0',
     titulo: 'Podés recuperar un campo que se pisó por error, desde «Historial»',
     detalle:
       'Cada edición que cambia algo en una actividad queda guardada. Si alguien pisó una ' +
