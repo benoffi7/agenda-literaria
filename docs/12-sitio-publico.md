@@ -27,7 +27,7 @@ fragmentos de código son ilustrativos.
 > | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
-> | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
+> | §8 mobile | ✅ — una columna, chips con scroll, 44px y `pb-segura`; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) y desde **B-238** (2026-09-03) es una hoja modal de verdad; el **CTA fijo** del detalle se resolvió sin capa modal en **D-145** |
 > | §10 accesibilidad | ✅ |
 >
 > **Los siete desvíos, todos con su decisión escrita:**
@@ -35,10 +35,12 @@ fragmentos de código son ilustrativos.
 > 1. **Hay selector de orden**, y §6.1 decía que no — **D-137**.
 > 2. **`online.url` no sale al detalle** ni con `urlPublica: true`, o sea más
 >    estricto que lo que dice §4.3 — **D-139**.
-> 3. **El panel de filtros es un *disclosure* inline y no una hoja modal** (§8).
->    Un diálogo modal necesita trampa de foco, cierre con `Escape`, click en el
->    fondo y `pushState`; un disclosure no necesita nada de eso y no tiene cómo
->    salir mal. La hoja queda en **B-238**, para hacerla bien y de una vez.
+> 3. ~~**El panel de filtros es un *disclosure* inline y no una hoja modal**
+>    (§8). Un diálogo modal necesita trampa de foco, cierre con `Escape`, click
+>    en el fondo y `pushState`; un disclosure no necesita nada de eso y no tiene
+>    cómo salir mal. La hoja queda en **B-238**, para hacerla bien y de una
+>    vez.~~ **Cerrado el 2026-09-03 — B-238.** Ya no es un desvío: el panel del
+>    teléfono es una hoja modal, con las cuatro cosas que ese párrafo pedía.
 > 4. **La island renderiza su propia lista** en vez de mostrar y ocultar las
 >    tarjetas del HTML por `data-id` (§6.3). Se conserva todo lo que esa sección
 >    perseguía —el HTML completo del build, sin-JS servido, sin parpadeo, **un
@@ -54,10 +56,13 @@ fragmentos de código son ilustrativos.
 >    mitad sin portada se ve rota y no distinta. Lo que **no** cambió es lo que esos
 >    apartados rechazaban: no hay placeholder gris, ni ícono, ni iniciales, ni foto
 >    de stock — hay una portada tipográfica sobre el color del tipo. **D-142**.
-> 6. **El panel de filtros de móvil sigue sin ser la hoja inferior** del §8 —sigue
->    en **B-238**— pero dejó de comerse la pantalla: «Cuándo» se fue adentro,
->    topea a `65svh` con scroll propio, y cierra desde abajo con «Ver N
->    actividades» devolviendo el foco al abridor. **D-143**.
+> 6. **El panel de filtros de móvil no era la hoja inferior** del §8 cuando se
+>    escribió esto —quedó en **B-238**, cerrado el 2026-09-03— pero ya entonces
+>    había dejado de comerse la pantalla: «Cuándo» se fue adentro, topea a
+>    `65svh` con scroll propio, y cierra desde abajo con «Ver N actividades»
+>    devolviendo el foco al abridor. Las tres cosas siguen valiendo tal cual:
+>    B-238 construyó la capa modal **encima** de este trabajo, no en su lugar.
+>    **D-143**.
 > 7. **El lector hace dos queries y no una, y «estuvo publicada alguna vez» se
 >    prueba por el historial** (§3, §7.3). El diagrama del §3 dibuja un
 >    `where('estado','in',['publicado','cancelado'])`; el código lo evita a
@@ -1344,13 +1349,15 @@ Es el caso por defecto, no la adaptación: la mayoría entra del teléfono desde
 link de Instagram, dentro de un navegador embebido.
 
 - **Una columna siempre.** Nada de grilla de dos tarjetas en 375px.
-- **El panel de filtros es una hoja inferior.** *(Sigue siendo **B-238**; lo que se
-  construyó en su lugar, y por qué, está en **D-143**.)* En la home, en móvil, se ve el
-  buscador y un botón `Filtrar (2)` con la cantidad activa; el resto de los
-  controles viven en una hoja que sube desde abajo, con `pb-segura` para la barra
-  de gestos y un botón "Ver 12 actividades" que la cierra. Abrir la hoja **sí**
-  hace `pushState`: el botón atrás del teléfono tiene que cerrarla, no salir del
-  sitio.
+- **El panel de filtros es una hoja inferior.** *(Hecho — **B-238**, 2026-09-03;
+  la base sobre la que se construyó, y por qué, está en **D-143**.)* En la home,
+  en móvil, se ve el buscador y un botón `Filtros (2)` con la cantidad activa; el
+  resto de los controles viven en una hoja que sube desde abajo, con `pb-segura`
+  para la barra de gestos y un botón "Ver N actividades" que la cierra. Abrir la
+  hoja **sí** hace `pushState`: el botón atrás del teléfono la cierra en vez de
+  sacar a la persona del sitio, con `Escape` y el click en el fondo por el mismo
+  camino (`useCapaModal`, compartido con las dos capas del panel desde este
+  mismo ítem — `src/lib/capaModal.ts`).
 - **Chips en una fila con scroll horizontal** y desvanecido al borde. Nunca cuatro
   filas de chips comiéndose la pantalla.
 - **CTA fijo abajo en el detalle**, con `pb-segura`. Es el único elemento fijo del

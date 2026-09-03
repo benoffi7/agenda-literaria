@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-09-03 · B-238: la hoja de filtros del teléfono es una capa modal de verdad
+
+**El panel de filtros de la home, en móvil, pasa de disclosure inline a hoja
+modal**: trampa de foco, cierre con `Escape`, cierre tocando el fondo, y
+`pushState` para que el botón atrás del teléfono la cierre en vez de sacar a la
+persona del sitio. Cierra el último pedazo de B-238 — la mitad del CTA fijo del
+detalle ya la había cerrado D-145.
+
+**Salió al revés de como el ítem lo predecía.** El plan original decía «el
+sitio público es donde este componente se hace bien de entrada, y después
+resuelve los dos del panel», pero el cableado de capa modal (`useCapaModal`)
+ya existía en `src/components/admin/useCapaModal.ts` desde B-210, para las dos
+capas del panel. Se mudó a `src/lib/capaModal.ts` —es puro, sin ninguna
+dependencia de Firebase ni del panel— y la hoja de filtros es su tercer
+consumidor en vez de una tercera copia del cableado, que es exactamente la
+clase de bug que ese hook existe para evitar.
+
+Un parámetro nuevo en el hook, `activo` (default `true`, sin tocar el
+comportamiento de los dos consumidores existentes): la hoja de filtros llama
+al hook en todos sus renders, también en escritorio, donde el mismo `<div>` es
+un panel siempre visible del riel y no un diálogo — sin la guarda, bloquearía
+el scroll y atraparía el Tab en una página sin ningún modal abierto.
+
+Un hallazgo del auditor de trampas y del propio `sistema-visual.test.ts`: el
+fondo de la hoja no puede ser `bg-tinta/40` — el sistema visual del sitio no
+tiene ninguna clase de color con opacidad en ningún lado. Quedó `bg-tinta`
+sólida.
+
+**Y dos bugs reales, los dos reproducibles en el uso normal**, que el mismo
+auditor encontró sobre el primer borrador: cerrar la hoja con un filtro
+elegido adentro pisaba la selección (el `popstate` del cierre y el `popstate`
+que ya sincronizaba filtros con la URL no se coordinaban), y una segunda
+invocación de `cerrarPanel` antes de que resolviera el `popstate` anterior
+—`Escape` mantenido, un doble toque— podía retroceder al navegador una entrada
+de más y sacar a la persona del sitio. Los dos cerrados con mutación probada;
+el detalle está en `docs/BACKLOG.md`.
+
 ## 2026-09-03 · B-239 descartado: medido de nuevo, las dos rutas de acción empeoraron
 
 **Cero cambios en `src/`.** B-239 pedía medir antes de elegir entre tres

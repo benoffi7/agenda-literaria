@@ -818,8 +818,11 @@ que no sugerir nada.
 **En el teléfono los controles no se comen la pantalla** (D-143): arriba quedan el
 buscador y una fila con «Filtros (N)» y el orden; «Cuándo» vive adentro del panel; el
 panel abierto está topeado a `65svh` con scroll propio y cierra desde abajo con «Ver N
-actividades», devolviendo el foco al botón que lo abrió. La **hoja inferior** del §8
-sigue siendo **B-238**: es una capa modal y no se construye a medias.
+actividades». Y **desde B-238** (2026-09-03) es la **hoja inferior** de verdad que
+pide el §8: una capa modal con trampa de foco, cierre con `Escape`, cierre tocando el
+fondo, y `pushState` para que el botón atrás del teléfono la cierre en vez de sacar a
+la persona del sitio — las cuatro cosas por el mismo cableado que ya usan las dos
+capas del panel (`useCapaModal`, `src/lib/capaModal.ts`).
 
 **Accesibilidad:** link «Saltar al listado» como primer elemento enfocable, un solo
 `h1`, los meses como `h2`, los chips como `<button aria-pressed>` dentro de

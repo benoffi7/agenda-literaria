@@ -100,7 +100,7 @@ describe('la capa de duplicar se cierra sin dejar el foco en la nada (B-14, B-64
   it('el cableado sale del hook compartido, no de una copia local', () => {
     const modal = codigoSinEspacios(MODAL);
     expect(modal).toContain('useCapaModal(caja,onCancelar)');
-    expect(modal).toContain("from'@/components/admin/useCapaModal'");
+    expect(modal).toContain("from'@/lib/capaModal'");
   });
 
   it('y ese «donde estaba» es el "⋯" de la fila, no el ítem del menú que se desmonta', () => {

@@ -2941,7 +2941,7 @@ público escribe una clase por debajo del piso**. Con control negativo: un escal
 y en una pantalla elegida— y su rampa es anterior a esto; revisarla es su propio
 ítem, no éste.
 
-### B-238 · La hoja inferior de filtros de móvil · P2 — la mitad del CTA cerrada en D-145
+### B-238 · La hoja inferior de filtros de móvil · P2 — la mitad del CTA cerrada en D-145 — ✅ hecho (2026-09-03)
 
 El §8 del diseño pedía dos elementos fijos que B-227 no construyó, y los dos por el
 mismo motivo: son **capas modales**, y una capa modal mal hecha es peor que no
@@ -2971,6 +2971,80 @@ Cuando se haga, **la aritmética ya existe**: `src/lib/foco.ts` tiene
 capa de ayuda del panel (B-14, B-64). El §10 del diseño dice que el sitio público
 es el lugar donde ese componente se hace bien de entrada y que después puede
 resolver los dos del panel.
+
+> ✅ **Hecho el 2026-09-03, y salió al revés de como este ítem lo predecía: el
+> panel llegó primero.** `useCapaModal` —el cableado de trampa de foco, `Escape`,
+> scroll bloqueado y devolución de foco, cerrado con B-210— ya existía en
+> `src/components/admin/useCapaModal.ts` para las dos capas del panel. Se mudó a
+> `src/lib/capaModal.ts` (es puro: React + DOM, cero Firebase) y la hoja de
+> filtros del sitio público es su tercer consumidor, en vez de escribir una
+> tercera copia del cableado — exactamente la clase de bug que ese hook existe
+> para cerrar (B-210, dos copias que habían divergido en el arreglo que importaba).
+>
+> **Un parámetro nuevo, `activo` (default `true`), y por qué hacía falta.** La
+> hoja de filtros llama al hook en **todos** sus renders, `lg` incluido, donde el
+> mismo `<div>` es un panel siempre visible del riel y no un diálogo. Sin el
+> parámetro, el hook bloquearía el scroll y atraparía el Tab en escritorio, donde
+> no hay ningún modal abierto — un bug invisible en el teléfono (donde `activo`
+> es `true` cuando importa) que rompería el escritorio en silencio. Las dos capas
+> del panel no pasan el tercer argumento y siguen exactamente igual que antes.
+>
+> **`pushState` al abrir, y un solo camino de cierre para las cuatro formas de
+> cerrar.** El botón «Ver N actividades», `Escape`, el click en el fondo y el
+> botón atrás del teléfono pasan todos por `cerrarPanel`, que llama a
+> `window.history.back()` en vez de `setAbierto(false)` directo — así los cuatro
+> dejan el historial en el mismo estado, y no hace falta duplicar el cierre en
+> cada control. Una guarda (`entradaPropia`, un ref booleano) evita el
+> `history.back()` si nunca se hizo el `pushState` correspondiente, para no
+> mandar a la persona a la página anterior del navegador por error.
+>
+> **Una salvedad que el diseño no preveía:** en un teléfono no se redimensiona
+> la ventana, pero en un navegador de escritorio angosto sí — si alguien la
+> agranda con la hoja abierta, un `matchMedia('(min-width: 1024px)')` la cierra
+> apenas se cruza el corte de `lg`, para no dejar un modal huérfano con el
+> scroll bloqueado detrás de un layout que ya se ve como escritorio.
+>
+> **El fondo es `bg-tinta` sólida, no atenuada.** El sistema visual no tiene
+> ninguna clase de color con opacidad en todo el sitio (B-235, `sistema-visual.test.ts`
+> lo fija) — se descartó `bg-tinta/40` en el primer intento, que el propio test
+> existente encontró.
+>
+> **El `auditor-trampas` encontró dos bugs reales sobre el primer borrador, los
+> dos reproducibles en el uso normal y no en un caso raro:**
+>
+> 1. **Cerrar la hoja con un filtro elegido adentro pisaba la selección.** La
+>    hoja empuja su propia entrada de historial, pero el componente ya tenía
+>    OTRO `popstate` montado desde siempre —el que sincroniza los filtros con
+>    la URL—. `history.back()` navega a la entrada de **antes** de abrir la
+>    hoja, sin el filtro recién elegido en su URL, y ese otro listener la leía
+>    y revertía la elección. Arreglo: una bandera (`cerrandoLaHoja`) prendida
+>    desde que se abre la hoja —no desde que se cierra, porque un botón atrás
+>    **real** tiene que respetar la selección igual que el cierre por UI— le
+>    dice al sync de URL que el próximo `popstate` es un cierre y no una
+>    navegación: en vez de leer la URL vieja, vuelve a escribir la de ahora con
+>    los filtros vigentes (guardados en un `ref` para no quedar pegado a los
+>    del primer render, el mismo patrón que ya usa `useCapaModal` para
+>    `alCerrar`).
+> 2. **Una segunda invocación de `cerrarPanel` en la ventana antes de que
+>    resuelva el `popstate`** —`Escape` mantenido, un doble toque en «Ver N
+>    actividades»— repetía `history.back()` y hacía retroceder al navegador una
+>    entrada de más, sacando a la persona del sitio. `history.back()` es
+>    asíncrono, así que la bandera `entradaPropia` seguía en `true` hasta la
+>    limpieza del efecto, que corre recién cuando React re-renderiza tras el
+>    `popstate` real. Arreglo: apagarla **antes** de llamar a `history.back()`,
+>    no después.
+>
+> Verificado con `npx vitest run` (mutación probada en la guarda `activo`, en el
+> camino único de cierre por `history.back()`, en que ningún control del sitio
+> público apague el `outline`, en que `cerrandoLaHoja` se prenda al abrir y se
+> consuma en `leer`, y en que `entradaPropia` se apague antes de `history.back()`
+> y no después) y con un build real, estático y contra el emulador. No se pudo
+> ejercitar la interacción del navegador de verdad —este repo no tiene
+> infraestructura de render de componentes (`environment: 'node'` en
+> `vitest.config.ts`, sin `jsdom` ni testing-library), y el propio auditor lo
+> señaló como un hueco estructural de la suite y no de este cambio en
+> particular—, así que la cobertura es la misma que ya usan las dos capas del
+> panel: afirmar el cableado por patrones de fuente, no por ejecución.
 
 ### B-239 · La home baja el runtime de React por la island de filtros · P2 — descartado (2026-09-03), con el motivo escrito
 
