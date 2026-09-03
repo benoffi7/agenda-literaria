@@ -50,7 +50,12 @@ export function AyudaDeSeccion({ seccion }: Props) {
         // hasta diez de estos botones y «Ayuda» repetido diez veces no ubica a
         // nadie que navegue por la lista de controles.
         aria-label={`Qué es «${seccion}»`}
-        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-borde bg-white text-sm text-tinta/60 hover:bg-black/[0.03]"
+        // `min-h-touch min-w-touch` y no un `size-8`: la regla del panel es que un
+        // blanco táctil son 44px, y este botón vive pegado al encabezado del
+        // acordeón —que es otro control— así que un blanco chico se erra hacia el
+        // vecino. La única excepción escrita a esa regla es `claseEnlaceCelda`, y
+        // no hace falta una segunda.
+        className="flex min-h-touch min-w-touch shrink-0 items-center justify-center rounded-full border border-borde bg-white text-sm text-tinta/60 hover:bg-black/[0.03]"
       >
         <span aria-hidden>?</span>
       </button>
