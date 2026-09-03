@@ -1790,8 +1790,10 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       TONOS,
     );
     // D-210: sin confirmar el path en `miniaturasConocidas`, `urlMiniatura`
-    // daría `null` — ver la entrada de B-320 en el BACKLOG. Acá se confirma a
-    // propósito porque lo que este `it` quiere ejercitar es el caso «no nulo».
+    // daría `null` — el argumento completo está en `docs/06-decisiones.md`
+    // § D-210, no en el BACKLOG (la entrada de B-320 todavía describe el
+    // diseño anterior). Acá se confirma a propósito porque lo que este `it`
+    // quiere ejercitar es el caso «no nulo».
     const afiche = carteleraDeDetalles(
       [conFotoPropia],
       new Set(['miniaturas/img_1.jpg']),

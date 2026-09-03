@@ -6435,6 +6435,15 @@ descarta porque **no autoriza nada**: verificado contra producción el
 2026-09-02, el mismo objeto responde 200 con su token, **sin token** y con un
 token inventado — lo que autoriza es `allow get: if true`.
 
+> ⚠️ **La última frase del párrafo de abajo es falsa — ver D-210.** «Un `srcset`
+> cuyo candidato no existe hace que el navegador caiga al `src`» **no** es
+> cierto: el candidato elegido *reemplaza* al `src` en el algoritmo de selección
+> de imagen, así que un 404 deja la imagen **rota**, no degradada. El `src` es el
+> respaldo para un navegador sin soporte de `srcset`, nada más. B-320 y B-321 se
+> construyeron sobre esa premisa, y D-210 es la corrección: la miniatura entra al
+> `srcset` solo si el build la **confirmó** contra Storage. El párrafo queda como
+> estaba escrito, para que D-210 se lea contra su original.
+
 `Afiche.urlMiniatura` está puesto y probado; **la plantilla todavía no lo
 pinta**, porque `src/pages/cartelera.astro` es de otro frente. Falta un `srcset`
 de una línea, con el original como `src` — que es lo único que degrada bien: un
@@ -7466,8 +7475,9 @@ contra `rutaDeMiniatura` de `functions/imagenes.js`. Lo que cambia es que
 **ninguna salida la llama**, y eso lo fija un test por regla y no por lista:
 `tests/imagenes.test.ts` recorre `src/**`, saca los comentarios, y falla si
 alguien que no sea `src/lib/imagenes.ts` la invoca. Los dos tests de las salidas
-de hoy —el valor de `Afiche.urlMiniatura`, el markup de `[slug].astro`— fijan
-las salidas que existen; ése fija la tercera que alguien agregue.
+de hoy —el valor de `Afiche.urlMiniatura`, y el markup de `[slug].astro`, que
+afirma que la plantilla **no deriva nada**— fijan las salidas que existen; ése
+fija la tercera que alguien agregue.
 
 ### Una lectura por build, no un pedido por imagen
 
@@ -7478,6 +7488,16 @@ byte. Se hace una vez, se memoiza en el módulo (mismo patrón que
 resultante viaja por referencia a los dos consumidores — como argumento de
 `carteleraDeDetalles` y como prop de cada página de detalle. Pasarlo a N páginas
 no cuesta N lecturas.
+
+**Y las dos puntas de la clave se comparan por test.** El set lo produce
+`@google-cloud/storage` (`o.name`) y la consulta la deriva `rutaDeMiniatura`:
+son dos strings que **nadie más compara**, o sea la clase de B-88. Si algún día
+el listado devolviera las claves con otra forma, `has()` daría `false` siempre,
+**todos** los `srcset` del sitio desaparecerían y la suite quedaría en verde —
+la optimización apagada en silencio, que es la familia de B-189 del lado de
+Storage. Lo ata `tests/miniaturas-storage.integracion.test.ts` contra el
+emulador; los tests de unidad no pueden, porque usan un `Set` escrito a mano, o
+sea el lado del consumidor duplicado.
 
 **Las alternativas y por qué no.** Un `HEAD` por imagen desde el build es
 exactamente el pedido de red por imagen que DEC-7d prohíbe (y 30 afiches son 30
@@ -7549,10 +7569,57 @@ cae al emulador por defecto. La variable no arregla una fuga vieja: es la
 - `carteleraDeDetalles` toma un segundo argumento con default `new Set()`: un
   llamador que no tenga la lectura a mano —la mayoría de los tests— obtiene el
   comportamiento **seguro**, nunca el de confiar y derivar a ciegas.
-- La página de detalle suma una segunda prop, `miniaturasConocidas`. Es
-  infraestructura de build y no datos de la actividad, y entra por lo mismo que
-  entraría cualquier otra: el `.astro` no puede ir a buscarla por su cuenta
-  (§5.4, solo `getStaticPaths` habla con el Admin SDK). `tests/pagina-de-detalle.test.ts`
-  sigue fijando la lista completa de props, así que una tercera obliga a
-  decidirla.
+- La página de detalle suma una segunda prop, `urlMiniaturaPortada:
+  string | null`, **ya resuelta**. Ver la sección siguiente: la primera versión
+  pasaba el `Set` y eso estaba mal por dos motivos.
+  `tests/pagina-de-detalle.test.ts` sigue fijando la lista completa de props,
+  así que una tercera obliga a decidirla.
+
+### La prop es una URL resuelta y no el set, y lo corrigió el `auditor-privacidad`
+
+La primera versión de esta decisión pasaba el `Set` de miniaturas confirmadas
+como prop de cada página de detalle y dejaba el `.has()` adentro de
+`[slug].astro`. Está mal por dos motivos, y el segundo es el que manda:
+
+1. **La plantilla dejaba de «solo acomodar»** (D-140): recibía una estructura de
+   infraestructura y derivaba con ella.
+2. **`getFiles({ prefix: 'miniaturas/' })` devuelve el prefijo entero**, y
+   `miniaturas/` es plano y compartido por todas las actividades: adentro están
+   también las miniaturas de las que están en **borrador**. O sea que la
+   enumeración que `allow list: if esAdmin()` existe para negarle a un anónimo
+   —la **trampa 13**— entraba al scope de render de una página HTML indexada.
+   Hoy no filtraba nada, porque solo se consultaba con `.has()`; el próximo
+   `map`, `size`, `<link rel=preload>` o comentario de debug sí.
+
+Y lo que cierra el argumento: **las dos redes que custodian esas props están
+ciegas a un `Set`.** Las dos (`tests/sitio-publico.integracion.test.ts`)
+serializan las props con `JSON.stringify` y buscan centinelas adentro, y
+`JSON.stringify(new Set(['miniaturas/img_x.jpg']))` es `{}`. Ningún centinela lo
+habría encontrado, ni ahora ni el que se agregue mañana. Es el modo de falla de
+B-580 —el barrido ciego a los campos post-creación— con otra causa: allá
+faltaban claves, acá **el tipo se come el contenido**.
+
+Así que la confirmación se hace en `caminosDeDetalle` y a la página llega un
+`string | null`: una URL que ya era pública (la de su propia portada, con otro
+path), que los dos barridos **sí** ven. Es además lo que la salida 7 ya hacía
+bien y sirvió de patrón — en `/cartelera` el `Set` muere adentro de
+`carteleraDeDetalles` y la plantilla nunca lo ve.
+
+De paso, la regla que `tests/pagina-de-detalle.test.ts` sostiene se volvió más
+fuerte: no solo **cuántas** props hay, sino que ninguna sea de un tipo que
+`JSON.stringify` no pueda mirar. Una prop que la red no puede auditar es peor
+que una prop de más.
+
+### Dos cachés, dos `olvidar`
+
+`contenidoDelSitio()` memoiza los documentos y `miniaturasConocidas()` memoiza
+el listado de Storage: son dos variables de módulo, y
+`tests/sitio-publico.integracion.test.ts` tiene tres bloques que siembran estados
+distintos y llamaban `olvidarContenido()` en cada uno. Con una sola caché
+olvidada, el segundo bloque siembra un estado nuevo y sigue leyendo el `Set` del
+primero. No rompía nada todavía —ningún `it` de ese archivo afirma sobre
+`urlMiniatura`— y por eso mismo el primero que lo afirme mentiría en verde. Lo
+encontró el `auditor-trampas`, y la regla que deja es la general: **una caché
+nueva se agrega al `olvidar` de todos los consumidores que ya tenían esa
+disciplina, en el mismo cambio.**
 

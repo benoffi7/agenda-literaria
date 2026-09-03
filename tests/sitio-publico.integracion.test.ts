@@ -162,10 +162,26 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
         documento: sinIdsDeCalendar(documento({ slug: SLUG_CANCELADA_NUNCA, estado: 'borrador' })),
       });
 
-    const { caminosDeDetalle, carteleraDelSitio, indiceDelSitio, olvidarContenido } = await import(
-      '@/lib/contenidoDelSitio'
-    );
+    const {
+      caminosDeDetalle,
+      carteleraDelSitio,
+      indiceDelSitio,
+      olvidarContenido,
+      olvidarMiniaturas,
+    } = await import('@/lib/contenidoDelSitio');
+    /*
+     * **Las DOS cachés, no una** — D-210. `contenidoDelSitio()` memoiza los
+     * documentos y `miniaturasConocidas()` memoiza el listado de Storage: son
+     * dos variables de módulo y este archivo no se reimporta entre `describe`s,
+     * así que olvidar solo la primera hace que el segundo bloque siembre un
+     * estado nuevo y siga leyendo el `Set` del primero. Hoy ningún `it` de acá
+     * afirma sobre `urlMiniatura`, así que no rompe nada — y por eso mismo un
+     * test futuro que sí lo afirme mentiría en verde. Lo encontró el
+     * `auditor-trampas`: una caché nueva sin su `olvidar` en el consumidor que
+     * ya tenía la disciplina.
+     */
     olvidarContenido();
+    olvidarMiniaturas();
     caminos = await caminosDeDetalle(new Date('2026-08-20T15:00:00Z'));
     pared = await carteleraDelSitio(new Date('2026-08-20T15:00:00Z'));
     indice = await indiceDelSitio();
@@ -178,8 +194,10 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
    */
   afterAll(async () => {
     await limpiarFirestore();
-    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    const { olvidarContenido, olvidarMiniaturas } = await import('@/lib/contenidoDelSitio');
+    // Las dos cachés — ver el `beforeAll` del primer bloque (D-210).
     olvidarContenido();
+    olvidarMiniaturas();
   });
 
   it('la publicada tiene su página: el lector leyó Firestore de verdad', () => {
@@ -407,14 +425,18 @@ describe.skipIf(!vivo)('las etiquetas del detalle no se filtran por aprobación 
     await db.doc('opciones/arancel').set({
       valores: [{ ...OPCION_PENDIENTE, orden: 9, fijo: false, usos: 1, aprobada: false }],
     });
-    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    const { olvidarContenido, olvidarMiniaturas } = await import('@/lib/contenidoDelSitio');
+    // Las dos cachés — ver el `beforeAll` del primer bloque (D-210).
     olvidarContenido();
+    olvidarMiniaturas();
   }, 30_000);
 
   afterAll(async () => {
     await limpiarFirestore();
-    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    const { olvidarContenido, olvidarMiniaturas } = await import('@/lib/contenidoDelSitio');
+    // Las dos cachés — ver el `beforeAll` del primer bloque (D-210).
     olvidarContenido();
+    olvidarMiniaturas();
   });
 
   it('el detalle muestra la etiqueta de la opción pendiente, no el slug desSlugeado', async () => {
@@ -467,14 +489,18 @@ describe.skipIf(!vivo)('el color del detalle sale de la lista filtrada (§4.3, D
     await db.doc('opciones/tipo').set({
       valores: [{ ...TIPO_PENDIENTE, orden: 9, fijo: false, usos: 1, aprobada: false }],
     });
-    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    const { olvidarContenido, olvidarMiniaturas } = await import('@/lib/contenidoDelSitio');
+    // Las dos cachés — ver el `beforeAll` del primer bloque (D-210).
     olvidarContenido();
+    olvidarMiniaturas();
   }, 30_000);
 
   afterAll(async () => {
     await limpiarFirestore();
-    const { olvidarContenido } = await import('@/lib/contenidoDelSitio');
+    const { olvidarContenido, olvidarMiniaturas } = await import('@/lib/contenidoDelSitio');
+    // Las dos cachés — ver el `beforeAll` del primer bloque (D-210).
     olvidarContenido();
+    olvidarMiniaturas();
   });
 
   it('el detalle pinta el derivado del slug, no el matiz de la opción pendiente', async () => {

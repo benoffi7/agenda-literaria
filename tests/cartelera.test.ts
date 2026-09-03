@@ -390,6 +390,39 @@ describe('lo que cada afiche lleva, y lo que no', () => {
     expect(serializado).not.toContain('imagenes/img_1.jpg');
     for (const centinela of VALORES_CENTINELA) expect(serializado).not.toContain(centinela);
   });
+
+  it('ningún campo del afiche es de un tipo que el barrido no pueda serializar — D-210', () => {
+    /*
+     * **El aserto de arriba tiene un punto ciego, y D-210 lo encontró del otro
+     * lado.** Todo barrido de esta salida —el de arriba y el de
+     * `tests/barrido-de-salidas-publicas.test.ts`— pasa por `JSON.stringify`, y
+     * `JSON.stringify(new Set(['miniaturas/img_x.jpg']))` es `{}`: un campo de
+     * tipo `Set` o `Map` es **invisible** para todos ellos, hoy y con cualquier
+     * centinela que se agregue mañana.
+     *
+     * No es hipotético: la primera versión de D-210 pasaba justamente un
+     * `Set<string>` con el listado de `miniaturas/` —el prefijo entero,
+     * borradores incluidos— como prop de la página de detalle, y ninguna red lo
+     * vio. Lo corrigió el `auditor-privacidad`, y `tests/pagina-de-detalle.test.ts`
+     * quedó con esta misma guarda para la salida 6.
+     *
+     * Acá hace falta igual, y más: la salida 7 es la que **recibe** ese `Set`
+     * como argumento de `carteleraDeDetalles`, así que es la que tiene el tipo a
+     * mano para guardárselo en un campo «para debug» o «para un `preload`».
+     *
+     * MUTACIÓN PROBADA: agregar `miniaturasUsadas: Set<string>` a `Afiche` deja
+     * este test en rojo y todos los barridos de la salida 7 en verde.
+     */
+    const fuente = readFileSync(raiz('src/lib/cartelera.ts'), 'utf8');
+    const bloque = /export interface Afiche \{\n([\s\S]*?)\n\}/.exec(fuente);
+    expect(bloque, 'no se encontró `export interface Afiche`').not.toBeNull();
+
+    expect(
+      sinComentariosAstro(bloque![1]!),
+      'un campo que `JSON.stringify` no puede ver es un campo que ningún barrido ' +
+        'de esta salida audita (D-210): nada de `Set`, `Map` ni funciones',
+    ).not.toMatch(/:\s*(Readonly)?(Set|Map)\s*</);
+  });
 });
 
 describe('la página, y las dos cosas que no se pueden romper', () => {

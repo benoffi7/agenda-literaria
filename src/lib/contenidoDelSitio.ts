@@ -47,7 +47,7 @@ import { adminBucket, adminDb, hayCredenciales } from '@/lib/firebase-admin';
 import { construirIndice, type EntradaDeIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
 import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
-import { PREFIJO_MINIATURAS } from '@/lib/imagenes';
+import { PREFIJO_MINIATURAS, urlDeMiniaturaSiExiste } from '@/lib/imagenes';
 import {
   mapaDeEtiquetas,
   tonosDeTipo,
@@ -681,18 +681,45 @@ const detallesDelSitio = async (
 };
 
 /**
- * `miniaturasConocidas` viaja como prop de **cada** página junto a `detalle` —
- * D-210 (B-320/B-321) — porque la portada de `[slug].astro` la necesita para
- * derivar su `srcset` sin adivinar si el objeto existe. Es el mismo `Set` por
- * referencia para todas las páginas (una sola lectura de Storage por build,
- * `miniaturasConocidas()`), así que pasarlo N veces no cuesta N lecturas.
+ * La segunda prop es `urlMiniaturaPortada: string | null` —**resuelta acá**— y
+ * no el `Set` de miniaturas confirmadas. D-210 (B-320/B-321).
+ *
+ * ── Por qué resuelta, y esto lo encontró el `auditor-privacidad` ───────────
+ * La primera versión pasaba el `Set` entero a cada página y dejaba que la
+ * plantilla hiciera el `.has()`. Dos problemas, y el segundo es el que manda:
+ *
+ * 1. La plantilla dejaba de «solo acomodar» (D-140): recibía una estructura de
+ *    infraestructura y derivaba con ella.
+ * 2. **`getFiles({ prefix: 'miniaturas/' })` devuelve el prefijo entero**, y
+ *    `miniaturas/` es plano y compartido: adentro están también las miniaturas
+ *    de las actividades en **borrador**. O sea que la enumeración que
+ *    `allow list: if esAdmin()` existe para negarle a un anónimo (trampa 13)
+ *    entraba al scope de render de una página HTML indexada. Hoy no filtraba
+ *    —solo se consultaba con `.has()`—, pero el próximo `map`, `size` o
+ *    `<link rel=preload>` sí, **y los dos barridos que custodian estas props
+ *    están ciegos al caso**: los dos serializan con `JSON.stringify`, y
+ *    `JSON.stringify(new Set([...]))` es `{}`. Ningún centinela lo habría
+ *    encontrado. Es el modo de falla de B-580 con otra causa: allá faltaban
+ *    claves, acá el tipo se come el contenido.
+ *
+ * Resuelta acá, la prop es un `string | null` que los dos barridos **sí** ven,
+ * y a la página llega una URL que ya era pública (la de su propia portada, con
+ * otro path). Es además lo que la salida 7 ya hacía bien: el `Set` muere en
+ * `carteleraDeDetalles` y `cartelera.astro` nunca lo ve.
+ *
+ * **Cuál es la portada: `imagenes[0]`**, el mismo índice que la plantilla usa
+ * para pintarla. No es una segunda derivación de la regla: desde B-268
+ * `detalleDeActividad` pone primera la marcada, y ese orden es la definición.
+ *
+ * Sigue siendo **una sola lectura de Storage por build** — el `Set` se pide una
+ * vez y se consulta N veces acá adentro.
  */
 export const caminosDeDetalle = async (
   ahora?: unknown,
 ): Promise<
   {
     params: { slug: string };
-    props: { detalle: DetallePublico; miniaturasConocidas: ReadonlySet<string> };
+    props: { detalle: DetallePublico; urlMiniaturaPortada: string | null };
   }[]
 > => {
   const instante = ahora instanceof Date ? ahora : new Date();
@@ -704,7 +731,10 @@ export const caminosDeDetalle = async (
   ]);
   return detalles.map((detalle) => ({
     params: { slug: detalle.slug },
-    props: { detalle, miniaturasConocidas: miniaturas },
+    props: {
+      detalle,
+      urlMiniaturaPortada: urlDeMiniaturaSiExiste(detalle.imagenes[0]?.url ?? null, miniaturas),
+    },
   }));
 };
 

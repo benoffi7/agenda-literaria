@@ -122,9 +122,11 @@ const BUCKET = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'agenda-literaria.f
  * de `deploy-ci@`»), y ese rol incluye `storage.objects.list` y
  * `storage.objects.get`. Verificado contra el proyecto el 2026-09-03.
  *
- * El único consumidor es `miniaturasConocidas()` de `contenidoDelSitio.ts`,
- * que **lista** un prefijo y no baja ni un byte: el build no descarga imágenes
- * (DEC-7d) y esto no lo cambia.
+ * El único consumidor del sitio es `miniaturasConocidas()` de
+ * `contenidoDelSitio.ts`, que **lista** un prefijo y no baja ni un byte: el
+ * build no descarga imágenes (DEC-7d) y esto no lo cambia. Lo usa además
+ * `tests/miniaturas-storage.integracion.test.ts`, que sí escribe — contra el
+ * emulador, y borra lo que sube.
  *
  * Respeta `FIREBASE_STORAGE_EMULATOR_HOST` para apuntar al emulador, igual que
  * `scripts/optimizar-imagenes.mjs` — es el cliente de `@google-cloud/storage`
