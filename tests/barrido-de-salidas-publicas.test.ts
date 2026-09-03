@@ -1789,7 +1789,13 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
       AHORA,
       TONOS,
     );
-    const afiche = carteleraDeDetalles([conFotoPropia])[0]!;
+    // D-210: sin confirmar el path en `miniaturasConocidas`, `urlMiniatura`
+    // daría `null` — ver la entrada de B-320 en el BACKLOG. Acá se confirma a
+    // propósito porque lo que este `it` quiere ejercitar es el caso «no nulo».
+    const afiche = carteleraDeDetalles(
+      [conFotoPropia],
+      new Set(['miniaturas/img_1.jpg']),
+    )[0]!;
     expect(afiche.urlMiniatura).toBe(urlDeMiniatura(afiche.url));
     expect(afiche.urlMiniatura).toContain('miniaturas%2Fimg_1.jpg');
     expect(afiche.urlMiniatura, 'la miniatura no lleva el token del original').not.toContain(

@@ -59,17 +59,24 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(cabecera).toContain('getStaticPaths');
   });
 
-  it('las props son solo `detalle`', () => {
+  it('las props son solo `detalle` y `miniaturasConocidas`', () => {
     /*
-     * La frontera de privacidad es un **tipo**. Si mañana aparece una segunda
+     * La frontera de privacidad es un **tipo**. Si mañana aparece una tercera
      * prop —la actividad, el índice, las opciones crudas— esto falla y hay que
      * venir a decidirlo, que es lo que se quiere: la decisión no puede tomarla
      * un `props:` agregado con apuro.
+     *
+     * `miniaturasConocidas` entró con D-210 (B-320/B-321) y no es una
+     * excepción a la regla: es infraestructura de build —el listado de
+     * Storage, un `Set<string>` de paths, no datos de la actividad— y viaja
+     * por la misma razón que cualquier otra prop de infra necesitaría entrar
+     * acá: el `.astro` no puede ir a buscarla por su cuenta (§5.4, solo
+     * `getStaticPaths` habla con el Admin SDK).
      */
     const props = /interface Props \{\n([\s\S]*?)\n\}/.exec(cabecera);
     expect(props, 'la plantilla tiene que declarar su `interface Props`').not.toBeNull();
     const campos = [...props![1]!.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
-    expect(campos).toEqual(['detalle']);
+    expect(campos).toEqual(['detalle', 'miniaturasConocidas']);
   });
 
   it('`getStaticPaths` delega en el módulo testeable, no arma los caminos acá', () => {

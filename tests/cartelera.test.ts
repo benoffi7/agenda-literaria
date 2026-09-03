@@ -280,7 +280,7 @@ describe('lo que cada afiche lleva, y lo que no', () => {
     expect([sinMedida.ancho, sinMedida.alto]).toEqual([null, null]);
   });
 
-  it('la miniatura de la Function se deriva, y solo para las propias — B-220', () => {
+  it('la miniatura de la Function se deriva, y solo para las propias y confirmadas — B-220, D-210', () => {
     /*
      * D-175. La cartelera es la salida elegida para la miniatura porque es la
      * **única** página que pide muchas imágenes a la vez: con las 30 de
@@ -289,7 +289,77 @@ describe('lo que cada afiche lleva, y lo que no', () => {
      * Y se **deriva** de la URL del original en vez de leerse de un campo: la
      * Function no escribe nada en el documento, que es lo que hacía inviable a
      * B-220 mientras el write-back parecía obligatorio.
+     *
+     * **Y solo si `miniaturasConocidas` la confirma — D-210.** La primera
+     * versión de B-320 derivaba con `urlDeMiniatura` a ciegas, sin este
+     * segundo argumento: publicaba un `srcset` cuyo candidato podía no
+     * existir, y eso **rompe** la imagen, no degrada al original. Acá se pasa
+     * el `Set` con el path exacto para ejercitar el caso confirmado, y más
+     * abajo el caso NO confirmado.
      */
+    const conocidas = new Set(['miniaturas/img_1.jpg']);
+    const propia = carteleraDeDetalles(
+      [
+        conFlyer({}, [
+          imagen({
+            origen: 'propia',
+            storagePath: 'imagenes/img_1.jpg',
+            url:
+              'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/' +
+              'imagenes%2Fimg_1.jpg?alt=media&token=tok',
+          }),
+        ]),
+      ],
+      conocidas,
+    )[0]!;
+    expect(propia.urlMiniatura).toContain('miniaturas%2Fimg_1.jpg');
+    // Sin el token: lo que autoriza la lectura es `allow get: if true`, y el de
+    // la miniatura es otro que no conocemos.
+    expect(propia.urlMiniatura).not.toContain('token=');
+
+    // Una externa no se toca ni se descarga (DEC-7d), así que no tiene
+    // miniatura. Mutación: derivarla igual — el `srcset` de la pared apuntaría a
+    // una dirección de nuestro bucket que no existe.
+    const externa = carteleraDeDetalles([conFlyer()], conocidas)[0]!;
+    expect(externa.url).toContain('ejemplo.com');
+    expect(externa.urlMiniatura).toBeNull();
+  });
+
+  it('sin confirmar en Storage, no hay urlMiniatura — D-210', () => {
+    /*
+     * El caso que rompía la imagen. Misma imagen propia que arriba, pero
+     * `miniaturasConocidas` **no** trae su path — que es lo que pasa en la
+     * ventana entre que el panel sube el objeto y `optimizarImagen` termina,
+     * y en cualquier corrida del trigger que falle. La Function está
+     * desplegada y el barrido corrió, así que no es el caso general; es el que
+     * atraviesa cada imagen nueva.
+     *
+     * MUTACIÓN PROBADA: volver a `urlDeMiniatura(portada.url)` sin el segundo
+     * argumento pone este test en rojo — devolvería la URL igual, confirmada o
+     * no.
+     */
+    const propia = carteleraDeDetalles(
+      [
+        conFlyer({}, [
+          imagen({
+            origen: 'propia',
+            storagePath: 'imagenes/img_1.jpg',
+            url:
+              'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/' +
+              'imagenes%2Fimg_1.jpg?alt=media&token=tok',
+          }),
+        ]),
+      ],
+      new Set(), // ninguna miniatura confirmada — ni siquiera la de otra imagen
+    )[0]!;
+    expect(propia.urlMiniatura).toBeNull();
+  });
+
+  it('el default sin segundo argumento es el mismo comportamiento seguro que antes de B-320', () => {
+    // Los llamadores que no tienen la lectura de Storage a mano (la mayoría de
+    // los tests de este archivo) siguen sin romper: el default es un set
+    // vacío, o sea «ninguna confirmada», o sea el estado del sitio antes de
+    // B-320. Nunca el default "confía y deriva a ciegas".
     const propia = carteleraDeDetalles([
       conFlyer({}, [
         imagen({
@@ -301,17 +371,7 @@ describe('lo que cada afiche lleva, y lo que no', () => {
         }),
       ]),
     ])[0]!;
-    expect(propia.urlMiniatura).toContain('miniaturas%2Fimg_1.jpg');
-    // Sin el token: lo que autoriza la lectura es `allow get: if true`, y el de
-    // la miniatura es otro que no conocemos.
-    expect(propia.urlMiniatura).not.toContain('token=');
-
-    // Una externa no se toca ni se descarga (DEC-7d), así que no tiene
-    // miniatura. Mutación: derivarla igual — el `srcset` de la pared apuntaría a
-    // una dirección de nuestro bucket que no existe.
-    const externa = carteleraDeDetalles([conFlyer()])[0]!;
-    expect(externa.url).toContain('ejemplo.com');
-    expect(externa.urlMiniatura).toBeNull();
+    expect(propia.urlMiniatura).toBeNull();
   });
 
   it('no lleva `storagePath` ni ningún campo interno', () => {

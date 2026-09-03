@@ -379,10 +379,11 @@ describe('la portada pinta la miniatura como candidato de srcset — B-321', () 
   it('el src queda en el original, la miniatura solo como candidato chico', () => {
     /*
      * Mismo criterio que `cartelera.astro` (B-320): el `src` **nunca** es la
-     * miniatura —una imagen subida antes de que la Function de B-220 estuviera
-     * desplegada no la tiene todavía, y un `src` ahí sería una imagen rota—, y
-     * el candidato chico va condicionado a que exista (`urlMiniaturaPortada`
-     * sale `null` para las externas, DEC-7d).
+     * miniatura —una imagen que el trigger todavía no procesó no la tiene, y
+     * un `src` ahí sería una imagen rota—, y el candidato chico va
+     * condicionado a que exista de verdad: `urlMiniaturaPortada` sale `null`
+     * para las externas (DEC-7d) y para las que `miniaturasConocidas` no
+     * confirma (D-210).
      *
      * A diferencia de la cartelera, acá **no** hace falta una variante nueva
      * (900px u otra intermedia): con solo dos candidatos —480 y el original de
@@ -432,7 +433,27 @@ describe('la portada pinta la miniatura como candidato de srcset — B-321', () 
     // consumidores que podrían divergir. `srcsetDeMiniatura` es la única
     // implementación, y sus reglas están probadas por valor en
     // `tests/imagenes.test.ts`, no acá.
-    expect(src()).toContain("import { srcsetDeMiniatura, urlDeMiniatura } from '@/lib/imagenes'");
+    expect(src()).toContain(
+      "import { srcsetDeMiniatura, urlDeMiniaturaSiExiste } from '@/lib/imagenes'",
+    );
+  });
+
+  it('deriva con urlDeMiniaturaSiExiste, nunca con urlDeMiniatura a ciegas — D-210', () => {
+    /*
+     * El defecto real de la primera versión: `urlDeMiniatura(portada.url)` sin
+     * confirmar contra Storage publica un `srcset` cuyo candidato puede no
+     * existir, y eso **rompe** la imagen —no degrada al original— porque una
+     * vez que el navegador elige un candidato del `srcset`, esa URL reemplaza
+     * al `src` en el algoritmo de selección de imagen.
+     *
+     * MUTACIÓN PROBADA: volver a `urlDeMiniatura(portada?.url ?? null)` deja
+     * este test en rojo y el de arriba (el import) también, porque
+     * `urlDeMiniatura` sigue existiendo para otros usos y el import cambiaría
+     * de nombre pero no de función.
+     */
+    expect(src()).toContain(
+      'const urlMiniaturaPortada = urlDeMiniaturaSiExiste(portada?.url ?? null, miniaturasConocidas);',
+    );
   });
 });
 

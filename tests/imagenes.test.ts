@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it, vi } from 'vitest';
 import {
   ANCHO_MINIATURA,
   ID_IMAGEN_MIGRADA,
@@ -11,11 +13,18 @@ import {
   portadaDe,
   sinImagen,
   srcsetDeMiniatura,
+  urlDeMiniatura,
+  urlDeMiniaturaSiExiste,
 } from '@/lib/imagenes';
 import { toPublic } from '@/lib/toPublic';
+import { carteleraDeDetalles } from '@/lib/cartelera';
+import { detalleDeActividad } from '@/lib/detallePublico';
+import { mapaDeEtiquetas } from '@/lib/listadoPublico';
+import { miniaturasConocidas, olvidarMiniaturas } from '@/lib/contenidoDelSitio';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { formVacio } from '@/lib/formulario/estadoInicial';
 import { actividadFormSchema } from '@/lib/schema';
+import { actividadDePrueba } from './fixtures/indice';
 import type { Actividad, Imagen } from '@/types/actividad';
 
 /**
@@ -216,6 +225,213 @@ describe('duplicar (B-11, B-167)', () => {
     };
     const copia = duplicarActividadForm(origen, { tomados: [] });
     expect(copia.imagenes.filter((i) => i.portada)).toHaveLength(1);
+  });
+});
+
+describe('urlDeMiniaturaSiExiste — la miniatura, solo si está confirmada (D-210)', () => {
+  /*
+   * El defecto que el coordinador encontró antes de integrar B-320/B-321:
+   * `urlDeMiniatura` deriva la URL de la miniatura **a ciegas**, sin saber si
+   * el objeto existe. Servirla en un `srcset` público sin confirmar rompe la
+   * imagen si no existe — no degrada al original, que es lo que la primera
+   * versión de B-320/B-321 daba por sentado: una vez que el navegador elige un
+   * candidato del `srcset`, esa URL reemplaza al `src` en el algoritmo de
+   * selección de imagen. El `src` es el respaldo para un navegador sin
+   * soporte de `srcset`, no para un candidato que da 404.
+   *
+   * `optimizarImagen` está desplegada desde el 2026-09-03 y el barrido corrió
+   * sobre el bucket entero, así que lo subido tiene su miniatura: la rotura no
+   * es el caso general. Lo que queda es la ventana entre la subida y el
+   * trigger —y cualquier corrida que falle—, que **cada** imagen nueva
+   * atraviesa; un build ahí adentro publica el afiche roto en la cartelera y
+   * en la portada de su propia página de detalle, hasta el rebuild siguiente.
+   */
+  const ORIGINAL =
+    'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/' +
+    'imagenes%2Fimg_1.jpg?alt=media&token=tok';
+  const RUTA_MINIATURA = 'miniaturas/img_1.jpg';
+
+  it('confirmada en el set: devuelve la misma URL que urlDeMiniatura', () => {
+    const conocidas = new Set([RUTA_MINIATURA]);
+    expect(urlDeMiniaturaSiExiste(ORIGINAL, conocidas)).toBe(urlDeMiniatura(ORIGINAL));
+    expect(urlDeMiniaturaSiExiste(ORIGINAL, conocidas)).toContain('miniaturas%2Fimg_1.jpg');
+  });
+
+  it('NO confirmada: null, aunque la URL se pudiera derivar igual — el caso que rompía la imagen', () => {
+    /*
+     * MUTACIÓN PROBADA: cambiar la implementación para ignorar
+     * `miniaturasConocidas` y devolver siempre `urlDeMiniatura(url)` (o sea,
+     * volver al comportamiento de antes de D-210). Este test es el primero en
+     * caer, antes que cualquier test de markup: afirma la función pura, no una
+     * plantilla.
+     */
+    expect(urlDeMiniaturaSiExiste(ORIGINAL, new Set())).toBeNull();
+    expect(urlDeMiniaturaSiExiste(ORIGINAL, new Set(['miniaturas/otra-imagen.jpg']))).toBeNull();
+  });
+
+  it('externa: null, tenga o no el set algo adentro — DEC-7d no la toca', () => {
+    const conocidas = new Set([RUTA_MINIATURA]);
+    expect(urlDeMiniaturaSiExiste('https://ejemplo.com/flyer.jpg', conocidas)).toBeNull();
+  });
+
+  it('URL inválida o vacía: null, no tira', () => {
+    const conocidas = new Set([RUTA_MINIATURA]);
+    expect(urlDeMiniaturaSiExiste(null, conocidas)).toBeNull();
+    expect(urlDeMiniaturaSiExiste('no-es-una-url', conocidas)).toBeNull();
+  });
+});
+
+/** Un detalle con una imagen **propia** y fecha próxima: el que sí lleva miniatura. */
+const detalleConFotoPropia = () =>
+  detalleDeActividad(
+    toPublic(
+      {
+        ...actividadDePrueba({ fechas: ['2027-09-24T22:00:00Z'] }),
+        imagenes: [
+          {
+            id: 'img_1',
+            url:
+              'https://firebasestorage.googleapis.com/v0/b/agenda-literaria.firebasestorage.app/o/' +
+              'imagenes%2Fimg_1.jpg?alt=media&token=tok',
+            epigrafe: '',
+            origen: 'propia',
+            portada: true,
+            storagePath: 'imagenes/img_1.jpg',
+          },
+        ],
+      },
+      'act_miniatura',
+    ),
+    mapaDeEtiquetas({ tipo: [{ slug: 'taller', label: 'Taller' }] }),
+    new Date('2027-09-10T15:00:00Z'),
+    {},
+  );
+
+describe('miniaturasConocidas — la lectura de Storage del build (D-210)', () => {
+  /*
+   * Lo que se fija acá es el **modo de falla**, que es la mitad de D-210 que
+   * puede romper el sitio entero si se hace mal.
+   *
+   * `contenidoDelSitio()` tira sin credenciales a propósito (B-189): un
+   * `events.json` vacío publicado encima del que tenía datos es un incidente.
+   * Esta lectura es la contraria y **nunca puede tirar**: si el build no puede
+   * confirmar las miniaturas, la respuesta correcta es servir los originales
+   * —el sitio exacto que había antes de B-320, más pesado y entero—, no
+   * quedarse sin portadas ni voltear el build. Un `throw` acá convertiría una
+   * optimización de peso en un bloqueante de publicación.
+   */
+  const guardar = (): Record<string, string | undefined> => ({
+    FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
+    FIREBASE_STORAGE_EMULATOR_HOST: process.env.FIREBASE_STORAGE_EMULATOR_HOST,
+    FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT,
+    GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  });
+
+  const restaurar = (previo: Record<string, string | undefined>): void => {
+    for (const [k, v] of Object.entries(previo)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  };
+
+  it('sin credenciales: set vacío, no tira, y el sitio se queda con los originales', async () => {
+    const previo = guardar();
+    const avisos = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      delete process.env.FIRESTORE_EMULATOR_HOST;
+      delete process.env.FIREBASE_STORAGE_EMULATOR_HOST;
+      delete process.env.FIREBASE_SERVICE_ACCOUNT;
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      olvidarMiniaturas();
+
+      const conocidas = await miniaturasConocidas();
+      expect(conocidas.size).toBe(0);
+
+      /*
+       * Y la consecuencia, dicha por valor y no por confianza: con el set
+       * vacío el afiche sigue existiendo —con su `url` original— y lo único
+       * que falta es el candidato chico del `srcset`. Sin esta afirmación, un
+       * cambio que hiciera `flatMap` sobre «tiene miniatura» dejaría la
+       * cartelera vacía en un build sin credenciales y los tests en verde.
+       */
+      const [afiche] = carteleraDeDetalles([detalleConFotoPropia()], conocidas);
+      expect(afiche?.url).toContain('imagenes%2Fimg_1.jpg');
+      expect(afiche?.urlMiniatura).toBeNull();
+      expect(srcsetDeMiniatura(afiche!.urlMiniatura, afiche!.url)).toBeUndefined();
+    } finally {
+      avisos.mockRestore();
+      restaurar(previo);
+      olvidarMiniaturas();
+    }
+  });
+
+  it('emulador de Firestore sin el de Storage: no sale a producción — set vacío y aviso', async () => {
+    /*
+     * `hayCredenciales()` dice que sí con solo `FIRESTORE_EMULATOR_HOST`, pero
+     * el cliente de `@google-cloud/storage` no mira esa variable: mira la
+     * suya. Sin la guarda, un build local contra el emulador en una máquina
+     * con credenciales de GCP listaría el bucket de **producción** y
+     * confirmaría paths de un bucket que no es el que el build está leyendo —
+     * daría verde, con datos de otro lado.
+     *
+     * MUTACIÓN PROBADA: sacar el `if` de `leerMiniaturas` deja este test en
+     * rojo (el aviso no sale) sin necesidad de red.
+     */
+    const previo = guardar();
+    const avisos = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+      delete process.env.FIREBASE_STORAGE_EMULATOR_HOST;
+      olvidarMiniaturas();
+
+      expect((await miniaturasConocidas()).size).toBe(0);
+      expect(avisos.mock.calls.flat().join(' ')).toContain('FIREBASE_STORAGE_EMULATOR_HOST');
+    } finally {
+      avisos.mockRestore();
+      restaurar(previo);
+      olvidarMiniaturas();
+    }
+  });
+});
+
+describe('ninguna salida pública deriva la miniatura a ciegas — D-210', () => {
+  /*
+   * La red que impide que el bug vuelva por otra puerta. Los tests de arriba
+   * fijan las dos salidas que existen hoy (`cartelera.astro` por valor,
+   * `[slug].astro` por markup en `galeria-del-detalle.test.ts`); esto fija la
+   * **regla**, que es lo que sobrevive a la tercera salida que alguien agregue.
+   *
+   * `urlDeMiniatura` sigue exportada porque hace falta la derivación pura —la
+   * usa `urlDeMiniaturaSiExiste` por dentro y los tests de paridad con
+   * `functions/imagenes.js`—, y ese es justamente el riesgo: está a mano, tiene
+   * la firma más cómoda de las dos, y llamarla produce una URL que se ve bien.
+   */
+  const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
+
+  /** Sin comentarios: los docblocks de D-210 nombran la función que prohíben. */
+  const sinComentarios = (s: string): string =>
+    s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  const archivos = (dir: string): string[] =>
+    readdirSync(raiz(dir), { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory()
+        ? archivos(`${dir}/${e.name}`)
+        : /\.(astro|ts|tsx)$/.test(e.name)
+          ? [`${dir}/${e.name}`]
+          : [],
+    );
+
+  it('solo `src/lib/imagenes.ts` la llama', () => {
+    const culpables = archivos('src')
+      .filter((f) => f !== 'src/lib/imagenes.ts')
+      .filter((f) => /\burlDeMiniatura\s*\(/.test(sinComentarios(readFileSync(raiz(f), 'utf8'))));
+
+    expect(
+      culpables,
+      'una salida pública que llama a `urlDeMiniatura` a ciegas publica un ' +
+        '`srcset` cuyo candidato puede dar 404, y eso ROMPE la imagen en vez de ' +
+        'degradar al `src` (D-210). Usar `urlDeMiniaturaSiExiste`.',
+    ).toEqual([]);
   });
 });
 
