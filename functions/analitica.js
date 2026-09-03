@@ -146,6 +146,59 @@ export const EVENTOS_PROPIOS = ['clic_inscripcion', 'filtro_sin_resultados', 'cl
 export const TOPE_DE_RANKING = 10;
 
 /**
+ * Las **únicas** dimensiones que este módulo le puede pedir a la Data API.
+ *
+ * ── Por qué es una lista blanca y no cinco strings sueltos ─────────────────
+ * Lo encontró el `auditor-privacidad`, y es el invariante del §5.3 de
+ * `docs/16-analitica-del-sitio.md` visto **del lado que lee**, que hasta acá no
+ * estaba protegido por nada. Del lado que emite sí lo está: `ubicacionSinQuery`
+ * recorta la query del `page_location` y del `page_referrer` (D-253), porque el
+ * texto que alguien tipeó en el buscador viaja en `?q=…` (`aQuery` de
+ * `listadoPublico.ts`).
+ *
+ * **`pagePath` no lleva la query; `pagePathPlusQueryString` sí.** Es una palabra
+ * de diferencia, y con la otra el ranking de páginas del panel mostraría
+ * `?q=<lo que alguien tipeó>`. El mismo descuido deja entrar `city`, `region`,
+ * `userAgeBracket`, `userGender` o `pageLocation`: son todas un
+ * `dimensions: [{ name: … }]` y ninguna verificación de forma las nota.
+ *
+ * Así que las dimensiones se declaran acá, `dimension()` es el único camino
+ * para emitir una, y `tests/analitica-del-sitio.test.ts` compara el conjunto
+ * exacto que sale de los seis informes contra esta lista. Agregar una dimensión
+ * es agregarla acá **y** al test — que es donde alguien la va a mirar dos veces.
+ *
+ * Las cinco son **agregados sin persona**: una ruta pública, un nombre de canal,
+ * una categoría de aparato, el nombre de un evento propio y una fecha.
+ */
+export const DIMENSIONES_PERMITIDAS = [
+  'pagePath',
+  'sessionDefaultChannelGroup',
+  'deviceCategory',
+  'eventName',
+  'date',
+];
+
+/**
+ * Una dimensión, o se corta.
+ *
+ * Tirar y no filtrar en silencio: una dimensión mal escrita tiene que ser un
+ * informe que no sale, no un informe que sale sin esa columna y un ranking que
+ * queda vacío sin decir por qué. El trigger atrapa la excepción y la mitad
+ * queda en `estado: 'falla'` con el motivo, que es exactamente lo que la
+ * pantalla sabe explicar.
+ */
+export const dimension = (nombre) => {
+  if (!DIMENSIONES_PERMITIDAS.includes(nombre)) {
+    throw new Error(
+      `dimensión de GA4 no permitida: ${nombre}. Las permitidas están en ` +
+        'DIMENSIONES_PERMITIDAS (functions/analitica.js) y son agregados sin persona: ' +
+        'agregar una es una decisión, no un detalle.',
+    );
+  }
+  return { name: nombre };
+};
+
+/**
  * Los cinco `runReport` de una ventana, en la forma que documenta la Data API
  * v1beta (`properties/{id}:runReport`).
  *
@@ -171,21 +224,21 @@ export const pedidosGa4 = (ventana) => {
     },
     paginas: {
       dateRanges,
-      dimensions: [{ name: 'pagePath' }],
+      dimensions: [dimension('pagePath')],
       metrics: [{ name: 'screenPageViews' }],
       orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
       limit: TOPE_DE_RANKING,
     },
     canales: {
       dateRanges,
-      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      dimensions: [dimension('sessionDefaultChannelGroup')],
       metrics: [{ name: 'sessions' }],
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: TOPE_DE_RANKING,
     },
     dispositivos: {
       dateRanges,
-      dimensions: [{ name: 'deviceCategory' }],
+      dimensions: [dimension('deviceCategory')],
       metrics: [{ name: 'sessions' }],
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
     },
@@ -197,7 +250,7 @@ export const pedidosGa4 = (ventana) => {
      */
     eventos: {
       dateRanges,
-      dimensions: [{ name: 'eventName' }],
+      dimensions: [dimension('eventName')],
       metrics: [{ name: 'eventCount' }],
       dimensionFilter: {
         filter: {
@@ -224,7 +277,7 @@ export const pedidosGa4 = (ventana) => {
  */
 export const pedidoPrimerDia = (ahora) => ({
   dateRanges: [{ startDate: sumarDias(claveDeDia(ahora), -365), endDate: claveDeDia(ahora) }],
-  dimensions: [{ name: 'date' }],
+  dimensions: [dimension('date')],
   metrics: [{ name: 'sessions' }],
   orderBys: [{ dimension: { dimensionName: 'date' } }],
   limit: 1,
@@ -338,6 +391,34 @@ export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
 // ─────────────────────────────────────────────────────────────────
 
 /**
+ * Las **únicas** dimensiones de Search Console que se piden, por el mismo
+ * motivo que `DIMENSIONES_PERMITIDAS` — y con una diferencia que importa: esta
+ * API tiene `country` y `device`, que suenan a agregados inocuos, y **no** las
+ * pedimos igual, porque `country` sobre un puñado de consultas de un sitio
+ * chico deja de ser un agregado. Lo que se necesita para la pregunta 7 son
+ * estas dos.
+ */
+export const DIMENSIONES_SC_PERMITIDAS = ['query', 'page'];
+
+/**
+ * Una dimensión de Search Console, o se corta.
+ *
+ * **De módulo y no local a `pedidosSearchConsole`**, igual que `dimension()`
+ * para GA4: local, un segundo constructor de pedidos podría no pasar por la
+ * lista y nadie lo notaría. Lo señaló el `auditor-privacidad` — la asimetría
+ * entre los dos guardas era la puerta.
+ */
+export const dimensionSc = (nombre) => {
+  if (!DIMENSIONES_SC_PERMITIDAS.includes(nombre)) {
+    throw new Error(
+      `dimensión de Search Console no permitida: ${nombre}. Las permitidas están en ` +
+        'DIMENSIONES_SC_PERMITIDAS (functions/analitica.js).',
+    );
+  }
+  return [nombre];
+};
+
+/**
  * Los dos pedidos a `sites/{siteUrl}/searchAnalytics/query`.
  *
  * `type: 'web'` deja afuera imágenes y video, que en este sitio no aportan y
@@ -350,11 +431,12 @@ export const pedidosSearchConsole = (ventana) => {
     rowLimit: TOPE_DE_RANKING,
     type: 'web',
   };
+  const dim = dimensionSc;
   return {
     /** Con qué busca la gente que llega — la pregunta 7 del §3. */
-    busquedas: { ...base, dimensions: ['query'] },
+    busquedas: { ...base, dimensions: dim('query') },
     /** Qué páginas rankean: dónde el trabajo de SEO de B-109 rindió. */
-    paginas: { ...base, dimensions: ['page'] },
+    paginas: { ...base, dimensions: dim('page') },
   };
 };
 
@@ -425,15 +507,74 @@ export const VERSION_DEL_RESUMEN = 1;
  * volcarle el cuerpo de una respuesta de Google es la clase de fuga por la que
  * este repo tiene un `auditor-privacidad`. La respuesta cruda va al log de la
  * Function, que no es una salida.
+ *
+ * **Y el recorte va acá, del lado que ESCRIBE.** Lo señaló el
+ * `auditor-privacidad`: el docblock afirmaba «nunca la respuesta cruda» y lo
+ * único que lo sostenía era `e.message`, cuya forma la decide `googleapis`, no
+ * este repo — con un cuerpo de error inesperado ese `message` puede arrastrar
+ * el cuerpo o el `statusText` del intermediario. El tope estaba solo en el
+ * lector del panel, o sea **después** de persistir. Y hay una consecuencia que
+ * no es de privacidad y muerde igual: un string enorme puede hacer fallar el
+ * `set()` entero justo el día en que algo anda mal, y el documento se queda con
+ * los números de ayer sin decirlo. El lector mantiene su propio tope como
+ * defensa en profundidad, no como única defensa.
  */
+export const MAX_MOTIVO = 200;
+
+const motivoRecortado = (motivo) => {
+  const t = typeof motivo === 'string' ? motivo.trim() : '';
+  if (t === '') return 'sin motivo';
+  return t.length <= MAX_MOTIVO ? t : `${t.slice(0, MAX_MOTIVO - 1)}…`;
+};
+
 export const documentoDeAnalitica = ({ ga4, searchConsole, generadoEn }) => ({
   version: VERSION_DEL_RESUMEN,
   generadoEn,
   zona: ZONA,
   ga4: ga4.ok
     ? { estado: 'ok', ...ga4.resumen }
-    : { estado: 'falla', motivo: ga4.motivo ?? 'sin motivo' },
+    : { estado: 'falla', motivo: motivoRecortado(ga4.motivo) },
   searchConsole: searchConsole.ok
     ? { estado: 'ok', ...searchConsole.resumen }
-    : { estado: 'falla', motivo: searchConsole.motivo ?? 'sin motivo' },
+    : { estado: 'falla', motivo: motivoRecortado(searchConsole.motivo) },
 });
+
+/**
+ * Las claves que cada mitad del documento puede tener, **exactamente**.
+ *
+ * No es documentación: es lo que `tests/analitica-del-sitio.test.ts` compara.
+ * `documentoDeAnalitica` esparce el resumen (`...ga4.resumen`), así que la
+ * frontera real no es esa función —que solo copia— sino `resumenGa4` y
+ * `resumenSearchConsole`. Hoy las dos son whitelist por construcción, porque
+ * devuelven objetos escritos campo por campo; pero un
+ * `return { ...respuesta, sesiones: … }` puesto adentro para «tener a mano un
+ * dato que falta» pasaría toda la suite en verde y publicaría la respuesta de
+ * la Data API entera al documento que lee el panel. Es la regla del protocolo
+ * de este repo: un spread en una proyección es hallazgo aunque hoy no filtre.
+ * Lo pidió el `auditor-privacidad`.
+ */
+export const CLAVES_DEL_RESUMEN = {
+  ga4Ok: [
+    'estado',
+    'ventana',
+    'hayDatos',
+    'desdeCuando',
+    'sesiones',
+    'personas',
+    'vistas',
+    'paginas',
+    'canales',
+    'dispositivos',
+    'eventos',
+  ],
+  searchConsoleOk: [
+    'estado',
+    'ventana',
+    'hayDatos',
+    'clicsEnElTope',
+    'impresionesEnElTope',
+    'busquedas',
+    'paginas',
+  ],
+  falla: ['estado', 'motivo'],
+};

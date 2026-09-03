@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 // La Function es JS plano; TS le infiere los tipos con allowJs.
 import {
+  CLAVES_DEL_RESUMEN,
   DIAS_DE_VENTANA,
+  DIMENSIONES_PERMITIDAS,
+  DIMENSIONES_SC_PERMITIDAS,
   EVENTOS_PROPIOS,
+  MAX_MOTIVO,
   RETRASO,
   TOPE_DE_RANKING,
   VERSION_DEL_RESUMEN,
   ZONA,
   claveDeDia,
+  dimension,
+  dimensionSc,
   documentoDeAnalitica,
   fechaDeGa4,
   numero,
@@ -227,6 +233,78 @@ describe('los pedidos a la Data API', () => {
     expect((p.dispositivos as { limit?: number }).limit).toBeUndefined();
   });
 
+  it('solo se le piden dimensiones de la lista blanca — nunca `pagePathPlusQueryString` ni una de persona', () => {
+    /*
+     * **El invariante del §5.3 del diseño, visto del lado que LEE.** Lo encontró
+     * el `auditor-privacidad`: del lado que emite está protegido
+     * (`ubicacionSinQuery` recorta la query del `page_location` y del
+     * `page_referrer`, D-253), y del lado que lee no lo estaba por nada.
+     *
+     * `pagePath` no lleva la query; **`pagePathPlusQueryString` sí**. Una palabra
+     * de diferencia, y el ranking de páginas del panel mostraría
+     * `?q=<lo que alguien tipeó en el buscador>`. Y por la misma puerta entran
+     * `city`, `region`, `userAgeBracket`, `userGender` o `pageLocation`: son
+     * todas un `dimensions: [{ name: … }]` y ninguna verificación de forma las
+     * distingue de las buenas.
+     *
+     * Se compara el conjunto **exacto** que sale de los seis informes contra la
+     * lista blanca: ni una de más (una dimensión nueva sin decidir) ni una de
+     * menos (una que se dejó de pedir y quedó en la lista sin que nadie lo
+     * note).
+     *
+     * MUTACIÓN PROBADA: se cambió `dimension('pagePath')` por
+     * `dimension('pagePathPlusQueryString')` en `functions/analitica.js`. El
+     * módulo tira al armar el pedido, así que este caso pasó a rojo con el
+     * nombre exacto de la dimensión en el mensaje — y el informe no sale, que es
+     * el modo de falla que se quiere: no un ranking sin columna.
+     */
+    const pedidas = new Set<string>();
+    for (const pedido of Object.values(pedidosGa4(v)) as { dimensions?: { name: string }[] }[]) {
+      for (const d of pedido.dimensions ?? []) pedidas.add(d.name);
+    }
+    for (const d of pedidoPrimerDia(new Date('2026-10-15T15:00:00-03:00')).dimensions ?? []) {
+      pedidas.add((d as { name: string }).name);
+    }
+    expect([...pedidas].sort()).toEqual([...DIMENSIONES_PERMITIDAS].sort());
+    // Y las que NO pueden estar, nombradas para que se lea qué se está evitando.
+    for (const prohibida of [
+      'pagePathPlusQueryString',
+      'pageLocation',
+      'city',
+      'region',
+      'country',
+      'userAgeBracket',
+      'userGender',
+      'streamId',
+    ]) {
+      expect(pedidas.has(prohibida), `${prohibida} no puede pedirse`).toBe(false);
+    }
+  });
+
+  it('una dimensión fuera de la lista blanca CORTA, no se filtra en silencio', () => {
+    /*
+     * El título prometía más de lo que probaba —afirmaba que `pedidosGa4` no
+     * tira y que la whitelist no tiene la mala—, así que ahora se ejercita el
+     * throw de verdad. Lo señaló el `auditor-privacidad`.
+     *
+     * **Tirar y no filtrar** es la decisión: una dimensión mal escrita tiene que
+     * ser un informe que no sale —el trigger lo atrapa y la mitad queda en
+     * `falla` con el motivo, que la pantalla sabe explicar— y no un informe que
+     * sale sin esa columna y un ranking que queda vacío sin decir por qué.
+     */
+    for (const mala of ['pagePathPlusQueryString', 'city', 'userGender', '']) {
+      expect(() => dimension(mala), mala).toThrow(/no permitida/);
+    }
+    for (const buena of DIMENSIONES_PERMITIDAS) {
+      expect(dimension(buena)).toEqual({ name: buena });
+    }
+    // Y su gemela de Search Console, que hasta el hallazgo era local a
+    // `pedidosSearchConsole` — o sea que un segundo constructor de pedidos
+    // podía no pasar por la lista.
+    expect(() => dimensionSc('country')).toThrow(/no permitida/);
+    expect(dimensionSc('query')).toEqual(['query']);
+  });
+
   it('el informe de eventos filtra por los eventos propios, no trae todos', () => {
     /*
      * Sin el filtro la respuesta la encabezan los automáticos de GA4
@@ -269,6 +347,14 @@ describe('los pedidos a Search Console — B-373', () => {
     const p = pedidosSearchConsole({ desde: '2026-09-15', hasta: '2026-10-12' });
     expect(p.busquedas.dimensions).toEqual(['query']);
     expect(p.paginas.dimensions).toEqual(['page']);
+    /*
+     * Las dos y ninguna más. Esta API tiene `country` y `device`, que suenan
+     * inocuas — y sobre un puñado de consultas de un sitio chico `country` deja
+     * de ser un agregado. Se pide lo que la pregunta 7 necesita.
+     */
+    const pedidas = new Set(Object.values(p).flatMap((x) => x.dimensions as string[]));
+    expect([...pedidas].sort()).toEqual([...DIMENSIONES_SC_PERMITIDAS].sort());
+    expect(pedidas.has('country')).toBe(false);
     for (const pedido of Object.values(p)) {
       // `type: 'web'` deja afuera imágenes y video: mezclar dos índices en el
       // mismo promedio de posición da un número que no significa nada.
@@ -541,6 +627,74 @@ describe('documentoDeAnalitica', () => {
       estado: 'falla',
       motivo: 'user does not have sufficient permission',
     });
+  });
+
+  it('el documento tiene exactamente estas claves — una respuesta cruda esparcida no pasa', () => {
+    /*
+     * **`documentoDeAnalitica` esparce el resumen**, así que la frontera real no
+     * es esa función —que solo copia— sino `resumenGa4` y
+     * `resumenSearchConsole`. Hoy las dos son whitelist por construcción, pero
+     * un `return { ...respuesta, sesiones: … }` puesto adentro para «tener a
+     * mano un dato que falta» pasaría el resto de la suite en verde y
+     * publicaría la respuesta de la Data API entera al documento que lee el
+     * panel. Lo pidió el `auditor-privacidad`, y es la regla del protocolo de
+     * este repo: un spread en una proyección es hallazgo aunque hoy no filtre.
+     *
+     * MUTACIÓN PROBADA: se agregó `...actual.totales` al objeto que devuelve
+     * `resumenGa4`; este caso pasó a rojo listando `metricHeaders`, `rows`,
+     * `rowCount`, `metadata` y `kind` como claves de más.
+     */
+    const doc = documentoDeAnalitica({
+      ga4: { ok: true, resumen: resumen() },
+      searchConsole: {
+        ok: true,
+        resumen: resumenSearchConsole({
+          busquedas: {},
+          paginas: {},
+          ventana: { desde: '2026-09-15', hasta: '2026-10-12' },
+        }),
+      },
+      generadoEn: '2026-10-15T10:00:00.000Z',
+    });
+    expect(Object.keys(doc.ga4).sort()).toEqual([...CLAVES_DEL_RESUMEN.ga4Ok].sort());
+    expect(Object.keys(doc.searchConsole).sort()).toEqual(
+      [...CLAVES_DEL_RESUMEN.searchConsoleOk].sort(),
+    );
+    // Y la rama de falla, que es la otra forma que puede tener cada mitad.
+    const roto = documentoDeAnalitica({
+      ga4: { ok: false, motivo: 'x' },
+      searchConsole: { ok: false, motivo: 'x' },
+      generadoEn: '2026-10-15T10:00:00.000Z',
+    });
+    expect(Object.keys(roto.ga4).sort()).toEqual([...CLAVES_DEL_RESUMEN.falla].sort());
+  });
+
+  it('el motivo que se GUARDA está topeado, no solo el que se lee', () => {
+    /*
+     * Lo encontró el `auditor-privacidad`. El docblock afirmaba «nunca la
+     * respuesta cruda» y lo único que lo sostenía era `e.message`, cuya forma la
+     * decide `googleapis` y no este repo: con un cuerpo de error inesperado ese
+     * `message` puede arrastrar el cuerpo entero. El único tope vivía en el
+     * lector del panel, o sea **después** de persistir.
+     *
+     * Y hay un modo de falla que no es de privacidad y muerde igual: un string
+     * enorme puede hacer fallar el `set()` justo el día en que algo anda mal, y
+     * el documento se queda con los números de ayer sin decirlo.
+     *
+     * MUTACIÓN PROBADA: se sacó `motivoRecortado` del `documentoDeAnalitica` y
+     * este caso pasó a rojo con la longitud entera.
+     */
+    const enorme = `403 Forbidden: ${'y'.repeat(5000)}`;
+    const doc = documentoDeAnalitica({
+      ga4: { ok: false, motivo: enorme },
+      searchConsole: { ok: false, motivo: enorme },
+      generadoEn: '2026-10-15T10:00:00.000Z',
+    });
+    expect(doc.ga4.motivo.length).toBe(MAX_MOTIVO);
+    expect(doc.ga4.motivo.endsWith('…')).toBe(true);
+    // Lo que se conserva es el principio, que es donde está el diagnóstico.
+    expect(doc.ga4.motivo.startsWith('403 Forbidden')).toBe(true);
+    expect(doc.searchConsole.motivo.length).toBe(MAX_MOTIVO);
   });
 
   it('una falla sin mensaje igual dice algo', () => {

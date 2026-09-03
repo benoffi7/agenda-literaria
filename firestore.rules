@@ -237,7 +237,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // §8 — flag de rebuild pendiente. Solo backend.
+    /*
+     * Lo que el backend calcula y el panel mira. Dos documentos hoy:
+     *
+     *  - `rebuild` — el flag de rebuild pendiente del §8;
+     *  - `analitica-sitio` — el resumen diario de GA4 y Search Console
+     *    (B-374/B-373), y **éste lleva contenido**: los rankings de páginas del
+     *    sitio y las consultas con las que Google nos muestra, o sea texto que
+     *    una persona tipeó. Por eso la lectura es de admin y no de cualquiera.
+     *
+     * `write: if false` para todos, incluido el admin: los dos los escribe el
+     * Admin SDK desde una Cloud Function, que no pasa por reglas. Así nadie
+     * puede pisarle al tablero un número inventado.
+     *
+     * `tests/sistema.integracion.test.ts` lo fija contra el emulador — era la
+     * única colección con contenido sin test de reglas, y aflojar esto a
+     * `if true` no rompía nada.
+     */
     match /sistema/{doc} {
       allow read: if esAdmin();
       allow write: if false;

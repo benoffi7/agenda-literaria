@@ -154,6 +154,16 @@ const EJES_MEDIBLES = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'
  * Los tres paneles del tríptico «¿Qué hay ahora?» — **B-601**, sobre el B-600
  * que construyó la sección.
  *
+ * ⚠️ **La fuente todavía no existe en esta rama.** `ClaveDePanel` vive en
+ * `@/lib/ahoraPublico`, que llega con B-600 desde otra rama, así que estas tres
+ * claves salen de leer **ese** módulo y no de importarlo — y hasta que se
+ * junten, el test de `tests/analyticsSitio.test.ts` compara esta lista contra
+ * una copia literal de sí misma, o sea que no la ata a nada. Lo señalaron los
+ * dos auditores. El caso límite que eso deja abierto: si las tres claves
+ * difirieran **desde el día uno**, el 100 % de los clics llegaría a GA4 como
+ * `panel=otro` con toda la suite en verde. El test que lo cierra va junto con
+ * el enganche (ver `.estado/analitica-sitio.md`).
+ *
  * **Copiado y no importado, por el mismo motivo que `EJES_MEDIBLES`**: la
  * fuente es `ClaveDePanel` de `@/lib/ahoraPublico`, y ese módulo trae el motor
  * que resuelve las tres ventanas contra el índice entero. Importarlo acá lo

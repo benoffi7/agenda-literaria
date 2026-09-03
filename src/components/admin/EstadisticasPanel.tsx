@@ -12,6 +12,13 @@ import {
 } from '@/lib/estadoDelCatalogo';
 import { ETIQUETA_ESTADO, ETIQUETA_MODALIDAD, legible } from '@/lib/filtrosActividades';
 import { leerAnaliticaDelSitio } from '@/lib/analiticaDelSitio';
+/*
+ * El vocabulario de los eventos del **sitio público**, no del panel. Es un
+ * `EVENTOS_SITIO` de puros tipos y strings: importarlo acá no arrastra nada del
+ * transporte (`medicionSitio.ts`), que es lo único que no puede aparecer del
+ * lado del panel.
+ */
+import { NOMBRES_EVENTOS_SITIO } from '@/lib/analyticsSitio';
 import {
   ctrLegible,
   diaLegible,
@@ -364,26 +371,6 @@ const METRICAS_PARA_VENDER: { titulo: string; detalle: string }[] = [
 ];
 
 /**
- * Eventos propios, diseñados uno por uno (mitad **b** del §2) — las
- * fricciones. **Estos dos ya están instalados** (B-375): lo que falta no es
- * escribirlos, es la conexión que los trae al panel (B-374).
- */
-const METRICAS_PARA_MEJORAR: { titulo: string; detalle: string }[] = [
-  {
-    titulo: 'Clics en inscripción',
-    detalle:
-      'Cuánta gente llega a escribirle al organizador — el único número que dice si una ' +
-      'actividad convierte. Mide la vía (mail, WhatsApp, DM, formulario), nunca el destino.',
-  },
-  {
-    titulo: 'Filtros que no encuentran nada',
-    detalle:
-      'Qué combinación de filtros deja la lista vacía, para saber qué etiqueta conviene ' +
-      'completar o retirar. Mide el filtro elegido, nunca lo que alguien escribió en el buscador.',
-  },
-];
-
-/**
  * Cómo se llama cada evento propio en la pantalla, y qué mide.
  *
  * El nombre técnico (`clic_inscripcion`) es el que viaja a GA4; acá va el
@@ -411,6 +398,25 @@ const NOMBRE_DE_EVENTO: Record<string, { titulo: string; detalle: string }> = {
       'directo al listado. Mide qué panel, nunca qué actividad se abrió.',
   },
 };
+
+/**
+ * Las filas de la mitad **b** cuando todavía no hay datos — y **derivadas del
+ * vocabulario real, no escritas al lado**.
+ *
+ * Antes eran una lista aparte con las dos que existían, y era una divergencia
+ * esperando: el evento que se agregue mañana aparece en la rama con datos —que
+ * recorre lo que GA4 devolvió— y no en la vacía, así que el tablero mostraría
+ * tres filas un día y dos el anterior sin que nada falle. Es la clase de bug
+ * que este repo persigue: dos listas de lo mismo, una de las cuales se
+ * actualiza.
+ *
+ * `NOMBRES_EVENTOS_SITIO` es la fuente y `NOMBRE_DE_EVENTO` el castellano: un
+ * evento nuevo aparece acá solo, con su nombre técnico de respaldo hasta que
+ * alguien le escriba el castellano.
+ */
+const METRICAS_PARA_MEJORAR: { titulo: string; detalle: string }[] = NOMBRES_EVENTOS_SITIO.map(
+  (nombre) => NOMBRE_DE_EVENTO[nombre] ?? { titulo: nombre, detalle: 'Sin descripción todavía.' },
+);
 
 /** El grupo de filas sin datos: la estructura, sin un número inventado (B-502). */
 function GrupoDeMetricas({
@@ -530,7 +536,12 @@ function QueFalta({
   if (situacion === 'ok') return null;
   const texto = {
     'sin-documento': `Todavía no llegó ningún resumen de ${fuente}. La lectura corre una vez por día: si la función se acaba de desplegar, aparece mañana.`,
-    'sin-configurar': `Falta un paso de configuración para ${fuente}: ${motivo ?? 'sin detalle'}. Está en el manual de operación, en «Conectar los números del sitio al panel».`,
+    /*
+     * El motivo dice **qué variable falta**, y la frase manda al lugar exacto
+     * donde están los pasos. Un «falta configurar algo» sin decir qué ni dónde
+     * es lo mismo que no decir nada.
+     */
+    'sin-configurar': `Falta un paso de configuración para ${fuente}: ${motivo ?? 'sin detalle'}. Los pasos están en docs/16-analitica-del-sitio.md, en «Los pasos de consola del dueño».`,
     falla: `${fuente} devolvió un error y por eso no hay números: ${motivo ?? 'sin detalle'}.`,
     'sin-datos': `${fuente} contestó bien y todavía no hay volumen: los números están en cero de verdad, no falta nada.`,
   }[situacion];

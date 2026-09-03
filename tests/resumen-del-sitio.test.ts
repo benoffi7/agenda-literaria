@@ -10,6 +10,7 @@ import {
 } from '@/lib/resumenDelSitio';
 import {
   MARCA_SIN_CONFIGURAR as MARCA_SIN_CONFIGURAR_FUNCTION,
+  MAX_MOTIVO as MAX_MOTIVO_FUNCTION,
   MOTIVOS_SIN_CONFIGURAR,
   documentoDeAnalitica,
   resumenGa4,
@@ -309,10 +310,24 @@ describe('un documento de otra versión no dibuja huecos', () => {
   });
 
   it('un motivo larguísimo se recorta, y se nota que se recortó', () => {
+    /*
+     * **Esto es defensa en profundidad, no la única defensa.** El recorte de
+     * verdad está del lado que escribe (`documentoDeAnalitica`, tras el
+     * hallazgo del `auditor-privacidad`), porque acá ya es tarde: el string
+     * está persistido. Este tope cubre el documento que escribió un deploy
+     * anterior al arreglo.
+     */
     const largo = 'x'.repeat(MAX_MOTIVO + 50);
     const r = leerResumenDelSitio({ ga4: { estado: 'falla', motivo: largo } });
     expect(r.ga4.motivo!.length).toBe(MAX_MOTIVO);
     expect(r.ga4.motivo!.endsWith('…')).toBe(true);
+  });
+
+  it('los dos topes del motivo son el mismo número', () => {
+    // Dos números distintos harían que el lector recortara un motivo que la
+    // Function ya recortó —dos elipsis— o que dejara pasar uno más largo del
+    // que la Function permite, que es la mitad que importa.
+    expect(MAX_MOTIVO).toBe(MAX_MOTIVO_FUNCTION);
   });
 
   it('una fila de ranking sin clave dice «(sin dato)» y no queda vacía', () => {

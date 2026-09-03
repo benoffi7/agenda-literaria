@@ -873,7 +873,7 @@ falta.
 | **Una cuenta de servicio con acceso a la propiedad** | **no se creó una nueva.** Es `calendar-sync@`, la que ya existe y a la que el proyecto ya le da permisos a mano en consolas de Google. Una identidad menos que rotar y un paso de consola menos |
 | **Autorizar la Function** | **no hay endpoint que autorizar.** El resumen se escribe en `sistema/analitica-sitio`, que en `firestore.rules` ya es `read: if esAdmin()` / `write: if false` |
 | **Caché** | es el mismo documento. Un `onCall` con un caché al lado eran dos piezas para el mismo fin |
-| **Tests** | `tests/analitica-del-sitio.test.ts` (el módulo de la Function, con fixtures de la forma real de cada respuesta) y `tests/resumen-del-sitio.test.ts` (el lector del panel). El §9.1 ya advertía qué prueban y qué no, y los dos archivos lo repiten en su cabecera |
+| **Tests** | `tests/analitica-del-sitio.test.ts` (el módulo de la Function, con fixtures de la forma real de cada respuesta), `tests/resumen-del-sitio.test.ts` (el lector del panel) y `tests/sistema.integracion.test.ts` (las reglas de `/sistema/*` contra el emulador — la colección era la única con contenido que no tenía ninguno, y desde este cambio ahí vive el texto de las búsquedas). El §9.1 ya advertía qué prueban y qué no, y los archivos lo repiten en su cabecera |
 | **La latencia** | la pantalla la dice: 24 a 48 h para GA4, 2 a 3 días para Search Console, y el último día de cada ventana queda afuera a propósito (`RETRASO`) |
 
 **Por qué un `onSchedule` que escribe Firestore y no un `onCall`.** Es el mismo
@@ -897,6 +897,12 @@ número— pero es un desvío del pedido y conviene tenerlo escrito.
    agregarlo de este lado, que es exactamente donde los números se rompen. Y sin
    usar los dos `dateRanges` que la API acepta, porque entonces GA4 agrega por su
    cuenta una dimensión `dateRange` y las filas se duplican con un valor extra.
+   **Las tres tandas van en serie**, y eso sí es obligatorio: son once informes
+   y la cuota de la Data API es de **10 pedidos concurrentes por propiedad**, así
+   que un `Promise.all` sobre los once devuelve `RESOURCE_EXHAUSTED` — y no
+   siempre, sino según cuáles terminen primero, que es la peor forma de fallar.
+   En serie el pico es de cinco, y el costo son tres round trips en una Function
+   que corre una vez por día.
 2. **La variación es `null`, no `0 %`, cuando la ventana anterior fue cero.**
    Dividir da infinito, y «+100 %» sobre una base de cero es el número que un
    anunciante pincha primero. Es el estado del **primer mes entero** de
@@ -912,7 +918,38 @@ número— pero es un desvío del pedido y conviene tenerlo escrito.
    ese documento; volcarle el cuerpo de una respuesta de Google es la clase de
    fuga que el `auditor-privacidad` busca. Al log sí, porque un 403 sin cuerpo no
    distingue «la property no existe» de «la cuenta de servicio no tiene acceso»,
-   que son dos pasos de consola distintos.
+   que son dos pasos de consola distintos. **El recorte del motivo va del lado
+   que escribe** y no solo del que lee: `e.message` lo arma `googleapis`, no
+   este repo, y el tope en el lector llega después de persistir.
+6. **Las dimensiones que se le piden a GA4 son una lista blanca.** Es el
+   invariante del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear)
+   visto **del lado que lee**, que hasta acá no lo protegía nada. `pagePath` no
+   lleva la query; **`pagePathPlusQueryString` sí** — una palabra de diferencia,
+   y el ranking de páginas del panel mostraría `?q=<lo que alguien tipeó>`. Por
+   la misma puerta entran `city`, `region`, `userAgeBracket`, `userGender` o
+   `pageLocation`. Las cinco permitidas son agregados sin persona (una ruta
+   pública, un canal, una categoría de aparato, el nombre de un evento propio,
+   una fecha), pedir otra **corta el informe** en vez de emitirlo, y el test
+   compara el conjunto exacto. Search Console tiene la suya, con dos: `query` y
+   `page` — se dejan afuera `country` y `device`, que sobre un puñado de
+   consultas de un sitio chico dejan de ser un agregado.
+
+**Y una decisión de privacidad que hay que escribir, porque este repo las
+escribe:** las **consultas de Search Console son texto que una persona tipeó**
+—en Google, no acá, pero tipeó—. Es el único campo de texto libre de procedencia
+desconocida que este frente trae al proyecto, y **se acepta**, por tres cosas que
+se sostienen juntas: Google ya descarta las consultas anonimizadas (las que
+hicieron muy pocos usuarios), el documento es `read: if esAdmin()` con su test
+de reglas, y la pantalla lo escapa como cualquier texto (React, sin
+`dangerouslySetInnerHTML`, sin armar un `href` con la consulta). **Lo que no
+puede pasar, y es la parte accionable:** ese texto no sale del panel. Ni a la
+analítica del panel (salida 4, donde la regla de contenido rige entera), ni a un
+export, ni a un issue de GitHub, ni a un mensaje de reporte. Es lo mismo que ya
+vale para el contenido del formulario, aplicado a un dato que entra en vez de
+uno que estaba. Lo mismo, más leve, para la dimensión `page`: devuelve URLs
+completas y **podría** traer query si Google llegara a indexar una URL con
+parámetros — hoy no puede (la canónica es sin query, `/admin` es `noindex` y
+está bloqueada en `robots.txt`), pero es el mismo canal.
 
 **Y lo que la pantalla hace con todo eso** — es la mitad que sostiene **D-272**.
 El andamiaje de B-502 era honesto por construcción, porque no leía nada. Con

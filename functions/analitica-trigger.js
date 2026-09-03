@@ -123,7 +123,13 @@ const clientes = async () => {
   return _clientes;
 };
 
-/** Ejecuta los cinco informes de una ventana. */
+/**
+ * Ejecuta los cinco informes de una ventana, en paralelo.
+ *
+ * Cinco y no once: el paralelismo se corta acá a propósito, porque la cuota de
+ * la Data API es de 10 pedidos concurrentes por propiedad. Ver el comentario de
+ * `leerGa4`.
+ */
 const informesDe = async (ga4, property, ventana) => {
   const pedidos = pedidosGa4(ventana);
   const nombres = Object.keys(pedidos);
@@ -145,13 +151,24 @@ const leerGa4 = async (ahora) => {
   const v = ventanas(ahora, RETRASO.ga4);
   try {
     const { ga4 } = await clientes();
-    const [actual, anterior, primerDia] = await Promise.all([
-      informesDe(ga4, property, v.actual),
-      informesDe(ga4, property, v.anterior),
-      ga4.properties
-        .runReport({ property, requestBody: pedidoPrimerDia(ahora) }, { timeout: TIMEOUT_MS })
-        .then((r) => r.data),
-    ]);
+    /*
+     * ── Las tres tandas van EN SERIE, y no es prolijidad ───────────────────
+     *
+     * Son once informes: cinco por ventana, dos ventanas, más el del primer
+     * día. La Data API tiene una cuota de **10 pedidos concurrentes por
+     * propiedad**, así que lanzarlos todos juntos con un `Promise.all` se pasa
+     * por uno y devuelve `RESOURCE_EXHAUSTED`. Y lo peor no es que falle: es
+     * que fallaría **de a ratos**, según cuáles terminen primero, dejando el
+     * documento con los números de ayer sin un motivo que se entienda.
+     *
+     * En serie el pico es de cinco concurrentes, con margen. El costo son tres
+     * round trips en vez de uno, en una Function que corre una vez por día.
+     */
+    const actual = await informesDe(ga4, property, v.actual);
+    const anterior = await informesDe(ga4, property, v.anterior);
+    const primerDia = await ga4.properties
+      .runReport({ property, requestBody: pedidoPrimerDia(ahora) }, { timeout: TIMEOUT_MS })
+      .then((r) => r.data);
     return {
       ok: true,
       resumen: resumenGa4({ actual, anterior, primerDia, ventana: v.actual }),
@@ -179,8 +196,19 @@ const leerSearchConsole = async (ahora) => {
     return { ok: false, motivo: MOTIVOS_SIN_CONFIGURAR.searchConsole };
   }
   const v = ventanas(ahora, RETRASO.searchConsole);
-  const pedidos = pedidosSearchConsole(v.actual);
   try {
+    /*
+     * **Adentro del `try`, y no arriba.** `pedidosSearchConsole` puede tirar
+     * —su lista blanca de dimensiones lo hace—, y afuera esa excepción escapaba
+     * de esta función, reventaba el `Promise.all` de abajo y abortaba la corrida
+     * entera. El docblock de la lista blanca promete que «el trigger la atrapa y
+     * la mitad queda en `falla` con el motivo»: era cierto para GA4 (que arma
+     * sus pedidos adentro de `informesDe`) y falso acá. Lo señaló el
+     * `auditor-privacidad`. Falla cerrada en los dos casos, pero un modo de
+     * falla que no es el documentado es un modo de falla que nadie va a
+     * reconocer.
+     */
+    const pedidos = pedidosSearchConsole(v.actual);
     const { searchConsole } = await clientes();
     const [busquedas, paginas] = await Promise.all(
       ['busquedas', 'paginas'].map((n) =>
