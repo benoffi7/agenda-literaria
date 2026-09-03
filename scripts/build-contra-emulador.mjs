@@ -143,7 +143,6 @@ const CENTINELA = {
   indicaciones: 'gate.sede.indicaciones',
   tema: 'gate.sesiones.tema',
   lectura: 'gate.sesiones.lectura',
-  sesionId: 'ses_gate.sesiones.id',
   bio: 'gate.tallerista.bio',
   talleristaInstagram: 'gate.tallerista.instagram',
   organizadorInstagram: 'gate.organizador.instagram',
@@ -161,6 +160,30 @@ const CENTINELA = {
   // O sea que este centinela se afirma en las dos direcciones a la vez.
   epigrafeImagen: 'gate.imagenes.epigrafe',
 };
+
+/**
+ * El id de sesión, que **sí sale** al `events.json` desde B-99 y por eso no está
+ * en `CENTINELA`.
+ *
+ * Estuvo en esa lista —la de los campos que el índice recorta— hasta hoy, y
+ * quedó vieja el día que B-99 metió el **eje plano de encuentros**
+ * (`{slug, sesionId, inicio}`) al archivo: ese eje es la razón de ser del
+ * tríptico «¿Qué hay ahora?» de la home. B-99 actualizó el barrido de
+ * `tests/barrido-de-salidas-publicas.test.ts` —donde `sesiones.id` figura
+ * permitido, con su motivo escrito— y **no** esta lista, así que este gate viene
+ * fallando desde `1.8.0` para cualquiera que lo corra. Lo encontró el propio
+ * gate al ir a pushear la tanda siguiente, que es exactamente lo que tiene que
+ * hacer.
+ *
+ * Se afirma **en la otra dirección**: el id tiene que aparecer. Sacarlo de
+ * `CENTINELA` sin poner nada en su lugar habría dejado el archivo sin nadie que
+ * mire ese campo, que es cómo un recorte se pierde en silencio. Es el mismo
+ * patrón de dos direcciones que ya usa `epigrafeImagen`.
+ *
+ * Que sea publicable no es una opinión de este script: es un uuid opaco generado
+ * en el cliente (trampa 2), sin PII, y ya público en la página de detalle.
+ */
+const ID_DE_SESION_QUE_SALE = 'ses_gate.sesiones.id';
 
 /**
  * La descripción del fixture: larga a propósito, para que `resumenDe` tenga que
@@ -214,7 +237,7 @@ const actividadDePrueba = (slug, estado) => ({
   esCiclo: false,
   sesiones: [
     {
-      id: CENTINELA.sesionId,
+      id: ID_DE_SESION_QUE_SALE,
       inicio: enUnaHora(24),
       fin: enUnaHora(26),
       tema: CENTINELA.tema,
@@ -463,6 +486,17 @@ try {
       fallo(
         `el events.json trae actividades CANCELADAS: ${canceladasEnElIndice.join(', ')}.\n` +
           '  Una cancelada conserva su página y no entra al listado (§7.3, B-110).',
+      );
+      salida = 1;
+    }
+
+    // 3b · El eje de encuentros de B-99 sí está, con su id de sesión. Es la
+    // dirección contraria del aserto de abajo, y hace falta: sin ella, el día
+    // que el eje deje de emitirse el archivo pasaría este gate en silencio.
+    if (!crudo.includes(ID_DE_SESION_QUE_SALE)) {
+      fallo(
+        'el events.json NO trae el eje de encuentros de B-99: falta el id de sesión.\n' +
+          '  Es lo que alimenta el tríptico «¿Qué hay ahora?» de la home (B-600).',
       );
       salida = 1;
     }

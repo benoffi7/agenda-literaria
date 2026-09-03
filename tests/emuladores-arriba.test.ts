@@ -71,6 +71,21 @@ const abiertos: (() => void)[] = [];
 afterAll(() => abiertos.forEach((cerrar) => cerrar()));
 
 describe('la detección de emuladores del gate — B-180', () => {
+/**
+ * Los tres puertos apuntados a un puerto muerto.
+ *
+ * Hace falta desde que la detección tiene **respaldo por puertos** (2026-09-03):
+ * los casos que prueban «no hay nada arriba» controlaban solo el hub, así que en
+ * una máquina con `npm run emu` corriendo el respaldo encontraba los emuladores
+ * de verdad y la rama negativa no se podía ejercitar. El test pasaba o fallaba
+ * según qué más estuviera abierto en la máquina, que es la peor clase de test.
+ */
+const SIN_EMULADORES = {
+  FIRESTORE_EMULATOR_HOST: '127.0.0.1:1',
+  FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:1',
+  FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:1',
+};
+
   it('un hub que contesta 200 es "arriba": el gate usa los que están', async () => {
     const { host, cerrar } = await servidor(200);
     abiertos.push(cerrar);
@@ -79,7 +94,9 @@ describe('la detección de emuladores del gate — B-180', () => {
 
   it('un hub que no contesta es "no arriba": el gate levanta los suyos', async () => {
     // Puerto 1: reservado y nadie lo escucha, así que el connect falla al toque.
-    expect((await detectar({ FIREBASE_EMULATOR_HUB: '127.0.0.1:1' })).arriba).toBe('false');
+    expect(
+      (await detectar({ FIREBASE_EMULATOR_HUB: '127.0.0.1:1', ...SIN_EMULADORES })).arriba,
+    ).toBe('false');
   });
 
   it('un hub que contesta un error de servidor NO cuenta como arriba', async () => {
@@ -94,7 +111,56 @@ describe('la detección de emuladores del gate — B-180', () => {
      */
     const { host, cerrar } = await servidor(503);
     abiertos.push(cerrar);
-    expect((await detectar({ FIREBASE_EMULATOR_HUB: host })).arriba).toBe('false');
+    expect((await detectar({ FIREBASE_EMULATOR_HUB: host, ...SIN_EMULADORES })).arriba).toBe(
+      'false',
+    );
+  });
+
+  it('sin hub pero con los tres puertos vivos, también es "arriba" — el caso de B-180', async () => {
+    /*
+     * El caso que rompía el push el 2026-09-03: un `emulators:exec` de otro
+     * checkout deja los tres emuladores escuchando y **no** deja hub en 4400.
+     * Con la detección preguntando solo por el hub, el gate decía «no hay», iba a
+     * levantar los suyos, chocaba de puertos y moría — o sea que en ese estado no
+     * podía pasar de ninguna manera.
+     *
+     * Se levantan tres servidores de dos líneas en los puertos que el gate usa, y
+     * el hub apuntado a uno muerto. MUTACIÓN PROBADA: sacar el `elif` del script
+     * deja este caso en rojo.
+     */
+    const firestore = await servidor(200);
+    const auth = await servidor(200);
+    // El emulador de Storage contesta 501 a un GET pelado en la raíz, así que el
+    // caso usa ese status a propósito: con `curl -sf` en el script, esta rama
+    // volvería a decir que no hay nada.
+    const storage = await servidor(501);
+    try {
+      const r = await detectar({
+        FIREBASE_EMULATOR_HUB: '127.0.0.1:1',
+        FIRESTORE_EMULATOR_HOST: firestore.host,
+        FIREBASE_AUTH_EMULATOR_HOST: auth.host,
+        FIREBASE_STORAGE_EMULATOR_HOST: storage.host,
+      });
+      expect(r.arriba).toBe('true');
+    } finally {
+      await Promise.all([firestore.cerrar(), auth.cerrar(), storage.cerrar()]);
+    }
+  });
+
+  it('con dos de los tres puertos vivos NO alcanza: falta uno y el exec fallaría igual', async () => {
+    const firestore = await servidor(200);
+    const auth = await servidor(200);
+    try {
+      const r = await detectar({
+        FIREBASE_EMULATOR_HUB: '127.0.0.1:1',
+        FIRESTORE_EMULATOR_HOST: firestore.host,
+        FIREBASE_AUTH_EMULATOR_HOST: auth.host,
+        FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:1',
+      });
+      expect(r.arriba).toBe('false');
+    } finally {
+      await Promise.all([firestore.cerrar(), auth.cerrar()]);
+    }
   });
 
   it('los cuatro hosts salen con el default del proyecto si no vienen del entorno', async () => {
