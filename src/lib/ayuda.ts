@@ -950,8 +950,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Los links cortos de Maps (los que empiezan con «maps.app.goo.gl») no sirven: no traen la ' +
-          'ubicación adentro. Abrilo en el navegador y pegá el link largo que queda en la barra de ' +
-          'direcciones, o hacé clic derecho sobre el punto en el mapa y pegá los dos números que ' +
+          'ubicación adentro. Si pegás uno, aparece un botón «Abrir el link» que lo abre en otra ' +
+          'pestaña: de ahí copiás el link largo de la barra de direcciones y lo pegás acá. La otra ' +
+          'salida es hacer clic derecho sobre el punto en el mapa y pegar los dos números que ' +
           'copia Google.',
       },
       {

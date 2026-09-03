@@ -60,6 +60,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'abrir-link-corto-de-maps',
+    fecha: '2026-09-03',
+    titulo: 'El link corto de Maps ahora se abre desde el mismo campo',
+    detalle:
+      'Cuando pegás el link del botón «Compartir» de Maps (el que empieza con maps.app.goo.gl), ' +
+      'el panel te sigue diciendo que no trae la ubicación adentro — pero ahora aparece al lado un ' +
+      'botón «Abrir el link» que lo abre en otra pestaña. De ahí copiás el link largo de la barra ' +
+      'de direcciones y lo pegás. Antes había que abrirlo a mano.',
+    donde: 'Formulario, sección «Dónde» — el campo del punto exacto en el mapa.',
+  },
+  {
     id: 'motivo-al-fallar-una-imagen',
     fecha: '2026-09-03',
     version: '1.8.0',

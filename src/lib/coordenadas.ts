@@ -87,8 +87,111 @@ const RE_PAR = new RegExp(String.raw`^\(?\s*(${NUM})\s*(?:,|;|\s)\s*(${NUM})\s*\
  */
 const RE_COMA_DECIMAL = /^\(?\s*(-?\d{1,3},\d+)\s*[,;]?\s*(-?\d{1,3},\d+)\s*\)?$/;
 
-/** Links cortos y de app: redirigen, y el redirect no se puede seguir por CORS. */
-const RE_CORTO = /(?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)/i;
+/**
+ * Las tres formas cortas que Google publica, **host y comienzo de camino**, en
+ * un solo lugar del que se derivan el reconocedor y la lista blanca.
+ *
+ * El camino es parte de la forma y no un adorno: `goo.gl` y `g.co` son
+ * acortadores **genéricos**, así que `goo.gl/loquesea` va a cualquier lado del
+ * planeta. Lo que identifica un link de mapas es `goo.gl/maps/…`, no `goo.gl`.
+ * Por eso no hay una lista de hosts escrita aparte: el `auditor-privacidad`
+ * mostró que dos derivaciones de «esto es un link corto» —un regex de texto para
+ * diagnosticar y una lista de hosts para habilitar— **no coinciden**, y que por
+ * la grieta pasaba `https://goo.gl/XYZ#maps.app.goo.gl`. Es la clase de B-88 en
+ * su forma más cara: la copia laxa decide qué se ofrece abrir.
+ */
+const FORMAS_CORTAS = ['maps.app.goo.gl', 'goo.gl/maps', 'g.co/kgs'] as const;
+
+const ALTERNATIVA_CORTA = FORMAS_CORTAS.map((f) => f.replace(/\./g, String.raw`\.`)).join('|');
+
+/** ¿`host/camino` es una de las formas cortas? Se aplica a la URL ya normalizada. */
+const RE_CORTO = new RegExp(String.raw`^(?:${ALTERNATIVA_CORTA})(?:/|$)`, 'i');
+
+/**
+ * La URL corta **adentro** del texto pegado.
+ *
+ * No se exige que el texto entero sea la URL, y eso es el caso normal y no el
+ * raro: la hoja de «Compartir» de Maps en el teléfono copia el **nombre del
+ * lugar y después el link**, que es exactamente el escenario que hizo existir a
+ * B-45. Exigir el texto completo dejaba sin botón justo a ese pegado, mientras
+ * el mensaje de error nombraba el botón.
+ *
+ * `[^\s"'<>]+` corta en el primer espacio o salto de línea, así que el texto que
+ * sobra alrededor no termina metido adentro del camino — que era la otra mitad
+ * del mismo hallazgo: `…/aBc - el lugar` abría `…/aBc%20-%20el%20lugar`, un 404
+ * que no es el link que la persona quiso abrir.
+ */
+const RE_CORTO_EN_TEXTO = new RegExp(
+  String.raw`(?:https?://)?(?:${ALTERNATIVA_CORTA})/[^\s"'<>]+`,
+  'i',
+);
+
+/**
+ * Los hosts habilitados. Es una lista blanca de **host exacto** y no un
+ * `includes` sobre el texto: `maps.app.goo.gl.ejemplo.com` es un host ajeno que
+ * contiene el nuestro, y ofrecer abrirlo sería prestarle nuestra pantalla a un
+ * link de cualquier lado. Se deriva de `FORMAS_CORTAS` para que agregar una
+ * forma no deje la lista atrás.
+ */
+const HOSTS_CORTOS = new Set(FORMAS_CORTAS.map((f) => f.split('/')[0]!));
+
+/**
+ * El link corto pegado, saneado y listo para abrirlo en otra pestaña — o `null`
+ * si lo que hay no es uno.
+ *
+ * ── B-45 · por qué esto y no resolver el redirect ─────────────────────────
+ * Seguir el redirect **desde el navegador no se puede**, y no es que falle a
+ * veces: en modo `cors` el host no manda `Access-Control-Allow-Origin` y el
+ * `fetch` tira antes de ver el redirect; con `redirect: 'manual'` la respuesta
+ * es un *opaque redirect* y el `Location` no se puede leer; en `no-cors` la
+ * respuesta es opaca y `response.url` viene vacío. La única salida que funciona
+ * es una Function que siga el redirect, y su costo no es «otro endpoint»: es un
+ * fetcher de URLs arbitrarias, o sea superficie de SSRF, con lista blanca de
+ * hosts, tope de saltos, timeout y sin devolver el body. Eso es diseño de
+ * seguridad y está anotado como lo que queda de B-45.
+ *
+ * Lo que **sí** se puede hacer sin nada de eso es que el navegador siga el
+ * redirect como sigue cualquier link: abriéndolo. Eso ya era lo que el mensaje
+ * pedía a mano («abrilo y pegá el link largo»), y acá pasa a ser un toque en vez
+ * de copiar, cambiar de pestaña, pegar y volver — que es justo el caso del
+ * teléfono, donde el botón «Compartir» de Maps entrega este link y no otro.
+ *
+ * **El esquema se fuerza a `https` y no se conserva el pegado.** Lo que hay en
+ * el campo es texto de un portapapeles, así que puede venir sin esquema
+ * (`maps.app.goo.gl/abc`) o con uno hostil (`javascript:…`): quedarse con el que
+ * traiga sería poner un `href` arbitrario en la pantalla del panel.
+ *
+ * **Y esta función es también el reconocedor**: `parsearCoordenadas` decide por
+ * ella si el mensaje habla de un link corto. Una sola derivación, así que el
+ * mensaje no puede volver a nombrar un botón que no está.
+ */
+export const linkCortoParaAbrir = (entrada: string): string | null => {
+  const encontrado = RE_CORTO_EN_TEXTO.exec((entrada ?? '').trim());
+  if (!encontrado) return null;
+  const sinEsquema = encontrado[0].replace(/^https?:\/\//i, '');
+  let url: URL;
+  try {
+    url = new URL(`https://${sinEsquema}`);
+  } catch {
+    return null;
+  }
+  /*
+   * No hace falta un chequeo de credenciales, y vale decir por qué en vez de
+   * dejar un `if` que no puede fallar: un `usuario:clave@` vive **entre** el
+   * esquema y el host, y la extracción de arriba arranca *en* el host (con a lo
+   * sumo un `https://` pegado justo antes), así que nunca queda adentro de lo
+   * que se sanea. `https://usuario:clave@maps.app.goo.gl/x` no devuelve `null`:
+   * devuelve el link limpio, sin las credenciales, que es mejor. Y
+   * `https://maps.app.goo.gl@otro.sitio/x` no matchea —después del host viene un
+   * `@` y no un `/`—, así que sigue dando `null`.
+   */
+  if (!HOSTS_CORTOS.has(url.hostname.toLowerCase())) return null;
+  // El host solo no alcanza: se vuelve a verificar la forma completa sobre la
+  // URL **ya normalizada** por el parser, que es donde `hostname` y `pathname`
+  // significan lo que parecen y no lo que un `#` o un `?` hagan parecer.
+  if (!RE_CORTO.test(`${url.hostname}${url.pathname}`)) return null;
+  return url.toString();
+};
 
 /** `?q=lat,lng`, `?query=lat,lng`, `?ll=`, `?destination=`, `?q=loc:lat,lng`. */
 const RE_PARAM = new RegExp(
@@ -211,11 +314,14 @@ export const parsearCoordenadas = (entrada: string): ResultadoCoordenadas => {
     };
   }
 
-  if (RE_CORTO.test(texto)) {
+  // El mismo reconocedor que arma el botón, y no un regex propio: el mensaje
+  // nombra el botón, así que si el mensaje puede aparecer sin él, miente. Ver
+  // `linkCortoParaAbrir`.
+  if (linkCortoParaAbrir(texto)) {
     return {
       ok: false,
       error:
-        'Ese es un link corto (el del botón "Compartir") y no trae las coordenadas: hay que abrirlo primero. Abrilo en el navegador y pegá el link largo que queda en la barra de direcciones.',
+        'Ese es un link corto (el del botón "Compartir") y no trae las coordenadas: hay que abrirlo primero. Tocá "Abrir el link" y, en la pestaña que se abre, copiá el link largo de la barra de direcciones.',
       motivo: 'coord-link-corto',
     };
   }
