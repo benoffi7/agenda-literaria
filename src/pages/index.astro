@@ -41,6 +41,8 @@ import { NOMBRE } from '@/lib/identidad';
 import Base from '@/layouts/Base.astro';
 import { Buscador } from '@/components/publico/Buscador';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import { PanelesDeAhora } from '@/components/publico/PanelesDeAhora';
+import { panelesDeAhora } from '@/lib/ahoraPublico';
 import SuscribirseResumen from '@/components/sitio/SuscribirseResumen.astro';
 import ExploraPor from '@/components/sitio/ExploraPor.astro';
 import { claseSalto } from '@/components/sitio/estilos';
@@ -66,6 +68,20 @@ const tonos = await tonosDelSitio();
 const vigentes = vigentesDelIndice(indice, ahora);
 
 const ID_LISTADO = 'listado-del-build';
+const ID_PANELES = 'ahora-del-build';
+
+/*
+ * **El tríptico de «¿Qué hay ahora?»** — B-600, la mitad de UI que B-99 dejó
+ * pendiente cuando metió el eje de encuentros en el `events.json`.
+ *
+ * Sale del reloj del build, como todo lo de esta página, y la island lo vuelve a
+ * calcular con el de quien mira: el rótulo «Hoy» es lo único de la home que
+ * envejece de un día para el otro sin que cambie ningún dato (§6.4, y el mismo
+ * argumento de B-111). Con `null` —ninguna de las tres ventanas tiene nada— la
+ * sección no se dibuja: un tríptico de tres «nada» ocupa el lugar de lo que sí
+ * hay.
+ */
+const programacion = panelesDeAhora(indice, ahora, etiquetas);
 
 /*
  * La tira «Explorá por» — B-108. Sale del **mismo** índice memoizado que el
@@ -153,16 +169,41 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
     </div>
 
     {/*
-      **El `id="listado"` envuelve al buscador Y a la lista**, y no solo a la
-      lista: es el destino de «Saltar al listado», y la island **saca del DOM** la
-      lista del build para montar la suya adentro de su propio árbol. Con el `id`
-      puesto solo en el contenedor de abajo, después de hidratar ese contenedor
-      queda vacío y el link de salto mandaría a la nada — un link de accesibilidad
-      roto justo en la página que más se usa, y nada lo mostraría en el HTML del
-      build, que es lo único que se mira.
+      **El `id="listado"` envuelve al tríptico, al buscador Y a la lista**, y no
+      solo a la lista: es el destino de «Saltar al listado», y la island **saca
+      del DOM** la lista del build para montar la suya adentro de su propio árbol.
+      Con el `id` puesto solo en el contenedor de abajo, después de hidratar ese
+      contenedor queda vacío y el link de salto mandaría a la nada — un link de
+      accesibilidad roto justo en la página que más se usa, y nada lo mostraría en
+      el HTML del build, que es lo único que se mira.
+
+      El tríptico de B-600 entra **adentro** del ancla, y por dos razones. Una:
+      la island lo renderiza como su primera hija, así que si el bloque del build
+      quedara afuera, el salto caería en un lugar distinto antes y después de
+      hidratar. Dos: saltar directo a «lo que hay hoy» es mejor destino que
+      saltar al buscador, que es lo que este link vino a saltear.
     */}
     <div id="listado" class="mt-8 scroll-mt-4 sm:mt-10">
-      <Buscador client:load version={indice.version} idListadoEstatico={ID_LISTADO} />
+      {/*
+        El tríptico que imprimió el build. La island lo saca del DOM por este
+        `id` cuando tiene el índice y monta el suyo —recalculado con el reloj de
+        quien mira— en el mismo lugar; si el fetch falla, este se queda (§6.3).
+
+        Va **arriba del buscador** y a todo el ancho: no es un resultado del
+        filtrado, es la banda de programación inmediata de la página.
+      */}
+      {programacion && (
+        <div id={ID_PANELES}>
+          <PanelesDeAhora programacion={programacion} tonos={tonos} />
+        </div>
+      )}
+
+      <Buscador
+        client:load
+        version={indice.version}
+        idListadoEstatico={ID_LISTADO}
+        idPanelesEstaticos={ID_PANELES}
+      />
 
       {/*
         La lista del build. La island la saca del DOM cuando tiene el índice; si

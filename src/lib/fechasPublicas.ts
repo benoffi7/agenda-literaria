@@ -100,6 +100,65 @@ export const claveDeMes = (d: Date): string => {
 };
 
 /**
+ * `2026-09-15` — el **día calendario** en la zona del proyecto, que es la clave
+ * con la que los paneles de «¿qué hay ahora?» agrupan (B-600).
+ *
+ * Es `claveDeMes` un escalón más abajo, y existe por el mismo motivo: un
+ * encuentro del 15 de septiembre a las 00:30 de Buenos Aires es el **14** para un
+ * navegador en UTC (trampa 1), y ahí el error no es cosmético — el encuentro
+ * aparecería bajo «Ayer», que es un panel que no existe.
+ */
+export const claveDeDia = (d: Date): string => {
+  const p = partes(d);
+  return `${p.year}-${p.month}-${p.day}`;
+};
+
+/**
+ * El **mediodía UTC** del día que nombra la clave, que es el ancla desde la que
+ * se hace toda la aritmética de días.
+ *
+ * El mediodía y no la medianoche: `2026-09-15T00:00:00Z` es el 14 de septiembre a
+ * las 21:00 en Buenos Aires, así que anclar ahí devuelve el día anterior en cada
+ * formateo. Con el mediodía sobra margen para cualquier offset que Argentina
+ * llegue a tener —tuvo horario de verano hasta 2009 y volver a tenerlo es una
+ * decisión política (ver `isoConOffset`)— y `claveDeDia(anclaDeDia(c)) === c`.
+ *
+ * La clave sale siempre de `claveDeDia`: no hay ningún camino desde la URL hasta
+ * acá, a diferencia de la clave de mes, que sí llega de `/agenda/{mes}` y por eso
+ * `mesDesplazado` se defiende de una clave ilegible.
+ */
+const anclaDeDia = (clave: string): Date => {
+  const [anio, mes, dia] = clave.split('-').map(Number);
+  return new Date(Date.UTC(anio ?? 1970, (mes ?? 1) - 1, dia ?? 1, 12));
+};
+
+/**
+ * La clave del día corrido `n` días — `diaDesplazado('2026-09-15', 1) === '2026-09-16'`.
+ *
+ * Corre sobre el **ancla de mediodía**, así que no hay medianoche que se pase de
+ * día por el offset de -3 ni fin de mes que haya que pensar: `setUTCDate` cruza
+ * meses y años solo. Es el mismo argumento de `mesDesplazado` un escalón abajo.
+ */
+export const diaDesplazado = (clave: string, dias: number): string => {
+  const d = anclaDeDia(clave);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return claveDeDia(d);
+};
+
+/**
+ * El día de la semana de una clave, `0` domingo … `6` sábado.
+ *
+ * `getUTCDay()` sobre el ancla de mediodía y **no** `getDay()` sobre una fecha
+ * cualquiera: aquél es el día de la semana del reloj de quien mira, y el 15 de
+ * septiembre a las 00:30 de Buenos Aires es lunes acá y domingo en UTC. Con el
+ * fin de semana calculado sobre eso, el panel del finde arrancaría un día antes.
+ */
+export const diaDeSemana = (clave: string): number => anclaDeDia(clave).getUTCDay();
+
+/** `vie 15 sep` — la misma forma que `fechaCorta`, a partir de la clave del día. */
+export const fechaCortaDeDia = (clave: string): string => fechaCorta(anclaDeDia(clave));
+
+/**
  * `{ mes: 'Septiembre', anio: '2026' }` — el marcador de mes del listado, **en
  * dos piezas** — B-260.
  *
