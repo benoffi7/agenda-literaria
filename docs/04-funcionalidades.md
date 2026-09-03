@@ -120,6 +120,14 @@ encuentro, al inscribirse, **durante el mes** y en el encuentro. «Durante el me
 salió de cargar un club de lectura real (B-134) y dice algo del dominio: la
 entrega no siempre es un instante, puede ser progresiva a lo largo del ciclo.
 
+**Desde el 2026-09-02 (B-342) usa el mismo chasis que Encuentros y Dónde**
+(`campos/FilasEditor.tsx`): Agregar, Duplicar, Borrar, contador y estado vacío
+son iguales en las tres listas, y cada ítem tiene su `id` de cliente (no la
+trampa 2 en sentido estricto —no sincroniza con Calendar— pero la misma familia:
+evita que borrar una fila mueva el foco a la de al lado). El error de una fila
+puntual (por ejemplo, un ítem sin título) se marca al lado del campo desde
+B-197; la galería y los encuentros ganaron lo mismo el mismo día (B-341, B-343).
+
 **Difusión → «Arrobar al publicar»** es una lista de chips: Enter o coma agrega,
 Backspace borra la última, y se puede pegar una lista entera. Antes era un
 `<input>` que hacía `join`/`split` en cada tecla, así que **la coma se borraba
@@ -271,6 +279,12 @@ y hasta que se resuelva no salen ni al sitio ni al calendario. El resto de la fi
 Agregar, duplicar y borrar funcionan igual que en los encuentros: el chasis es el
 mismo componente (`campos/FilasEditor.tsx`), extraído para que un arreglo en uno
 no haya que acordarse de aplicarlo en el otro.
+
+**La plataforma tiene una opción «A confirmar» (B-190, D-231)**, para cuando
+todavía no se decidió Zoom, Meet u otra: es una opción base más de la
+taxonomía del §4, no un caso especial del formulario. El sitio público la
+detecta por el **slug**, nunca por el label, y publica "Online, plataforma a
+confirmar" sin inventar un nombre en el JSON-LD.
 
 Lo que se publica cuando hay varias filas: el `events.json` lleva **la lista
 entera**, el evento de Calendar nombra cada forma de cursar con su lugar, y el

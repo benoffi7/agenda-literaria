@@ -6685,3 +6685,92 @@ solo en el markup: `src/lib/ayudaDelSitio.ts` tenía **siete** (`/contacto`,
 se renderizan en dos páginas públicas. Por eso el barrido nuevo mira `.astro` y
 `.tsx`, y los dos módulos de texto pasaron a importar las constantes: un `href`
 interno es una ruta del sitio, no un dato de la página que lo muestra.
+## D-230 · `usos` cuenta contra el documento anterior, no con una lectura extra
+
+**Problema (B-340):** `registrarUsos` sumaba 1 por guardado, así que editar (o
+re-guardar borrador, B-183) la misma actividad varias veces inflaba `usos` de su
+tipo, arancel, barrio y etiquetas sin que nadie hubiera vuelto a elegir esa
+opción. Rompe los dos trabajos del §4.3: ordenar por frecuencia real y detectar
+un `usos: 1` como typo colgado.
+
+**Las alternativas que el ítem dejaba abiertas:** una lectura extra a Firestore
+antes de guardar, que `actualizarActividad` devuelva el `before` que la Function
+de historial ya escribe, o descontar el uso viejo cuando una etiqueta se
+reemplaza.
+
+**Lo decidido:** ninguna lectura nueva. `ActividadFormulario` ya tiene `inicial`
+—el documento tal como estaba cuando el formulario se abrió, cargado una sola
+vez— y hasta ahora nadie lo usaba para esto. Se lo pasa a `guardarActividad`
+como `anterior`, y `usosAContar(guardado, labelsNuevos, tagsNuevos, anterior)`
+resta lo que ya estaba en `anterior` además de lo recién creado con "Otro"
+(B-168): las dos restas conviven, no se reemplazan.
+
+**Por qué alcanza sin tocar `actualizarActividad`:** el componente del
+formulario se desmonta después de **cualquier** guardado (`AdminApp.tsx` vuelve
+siempre a la vista anterior), así que dentro de una misma sesión de edición
+`inicial` nunca queda desactualizado por un guardado propio — no hay reintentos
+sobre la misma instancia que pudieran recontar un cambio ya contado. Reabrir la
+actividad más tarde trae un `inicial` fresco de Firestore, que es exactamente
+la comparación correcta.
+
+**Consecuencia en una actividad nueva:** sin `anterior` (no hay documento previo)
+se cuenta todo, igual que antes — no hay nada que restar.
+
+## D-231 · La plataforma «a confirmar» se detecta por slug, nunca por label
+
+**Problema (B-190):** con la opción base `a-confirmar` sola (`{slug:
+'a-confirmar', label: 'A confirmar'}`), el detalle público y el texto para
+redes leían el *label* igual que cualquier otra plataforma real — «Online por A
+confirmar», `VirtualLocation { name: "A confirmar" }` en el JSON-LD— y eso
+publica una plataforma que no existe, justo en el lugar que Google indexa
+primero.
+
+**Lo decidido:** `ModalidadDeDetalle.plataformaAConfirmar` (y su equivalente
+inline en `textoRedes.ts`) se calcula comparando `online.plataforma` —el
+**slug** guardado— contra `'a-confirmar'`, nunca comparando el label resuelto
+contra el string `"A confirmar"`. El label es texto editable desde la pantalla
+de Opciones (§4.3): si alguien lo renombra a «Por confirmar» o «TBD», una
+detección por label deja de disparar y el sitio vuelve a publicar el nombre
+inventado sin que nada avise. El slug es la identidad estable de la opción; el
+label es cosmético.
+
+**Consecuencia por consumidor**, tres, no cuatro (el cuarto, `functions/
+calendario.js`, ya leía bien con «Plataforma: {label}»):
+
+- `dondeCorto` (`detallePublico.ts`): "Online, plataforma a confirmar" en vez de
+  "Online por {label}".
+- El JSON-LD (`lugaresDe`, mismo archivo): el `VirtualLocation` sale **sin**
+  `name` — no hay plataforma que nombrar, y `VirtualLocation` no exige el campo.
+- `bloqueDonde` (`textoRedes.ts`): cae al genérico "Encuentro virtual", que ya
+  existía para el caso sin plataforma.
+
+## D-232 · Las fechas del formulario se validan con el mismo parser que las convierte, y `superRefine` en vez de `refine`
+
+**Problema (B-200):** `sesionSchema` y `modalidadFilaSchema` comparaban fechas
+con `new Date(a) > new Date(b)` sin verificar antes que fueran parseables.
+Medido antes de decidir nada: en `sesionSchema` (las dos fechas obligatorias)
+una fecha corrupta **ya** hacía fallar la comparación —cualquier comparación
+contra `NaN` da `false`—, pero con el mensaje equivocado. El agujero de verdad
+estaba en `modalidadFilaSchema`, donde las dos fechas son opcionales y el corto
+circuito `!m.inicio || !m.fin || …` corta antes de comparar nada: una ventana
+con una sola punta corrupta pasaba entero. Lo mismo en `inscripcion.cierra`, sin
+ninguna guarda. Los dos casos llegaban intactos a `formADocumento`, que recién
+ahí tiraba `Fecha inválida: "…"` — el crash real que B-200 reporta.
+
+**Lo decidido:**
+
+1. `fechaValida()` en `schema.ts` usa `deDatetimeLocal` de `lib/sesiones.ts` —el
+   mismo parser que `formADocumento`— en vez de reimplementar el chequeo
+   (B-72/B-75, D-20): antes solo `formADocumento` sabía distinguir una fecha
+   corrupta de una válida, y se enteraba después de que el schema ya había dado
+   el visto bueno.
+2. Los dos `.refine` pasan a `.superRefine`, para poder emitir un mensaje
+   distinto según cuál fecha falló («Fecha de inicio inválida» / «Fecha de fin
+   inválida») en vez de agrupar todo bajo «tiene que terminar después de
+   empezar», que es engañoso cuando el problema es que se tipeó cualquier cosa
+   y no que el orden está invertido.
+3. `inscripcion.cierra` gana su primera guarda de forma, en el `superRefine`
+   incondicional del schema (el mismo donde ya viven las dos reglas de la
+   galería que corren en los dos niveles, D-120): es forma, no completitud —
+   una fecha corrupta haría ilegible el documento, no lo dejaría incompleto.
+

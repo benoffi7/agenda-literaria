@@ -1,5 +1,93 @@
 # Changelog
 
+## 2026-09-02 · los cuatro ítems que quedaron abiertos de la tanda anterior, y B-340/342
+
+**Continúa el barrido de ítems chicos del panel** (ver más abajo, «cinco ítems
+chicos del panel»): los cuatro que esa tanda dejó sin cerrar —dos bloqueados a
+propósito, dos con recomendación pendiente de confirmar— más B-340 y B-342, que
+esa misma tanda había descubierto y anotado.
+
+### B-340 · `usos` cuenta actividades, no guardados
+
+`registrarUsos` sumaba 1 por guardado: editar (o re-guardar borrador, B-183) la
+misma actividad varias veces inflaba `usos` de su tipo, arancel, barrio y
+etiquetas, y con eso el §4.3 no podía ni ordenar por frecuencia real ni
+distinguir un `usos: 1` de typo colgado de uno de re-guardados. `usosAContar`
+gana un cuarto argumento, `anterior` —el `inicial` que el formulario ya carga
+al abrirse, sin lectura extra a Firestore— y descuenta lo que ya estaba ahí,
+además de lo recién creado con "Otro" (B-168). D-230 tiene el razonamiento
+completo, incluido por qué alcanza sin tocar `actualizarActividad`.
+
+### B-341 y B-343 · la galería y los encuentros tampoco pintaban su propio error
+
+La misma clase que B-197 (material), en los otros dos editores de filas que
+quedaron anotados ese día. `GaleriaEditor` declaraba una prop `error` que
+`SeccionQueEs` nunca pasaba —código muerto—; `SesionesEditor` recibía solo el
+error de la lista. Los dos pasan a recibir `errorDe` completo: `GaleriaEditor`
+pinta el de la lista y el de cada fila (`imagenes.N.url`, la única ruta de una
+imagen que el schema puede rechazar aparte de `id`/`origen`/`storagePath`, que
+son de máquina); `SesionesEditor` pasa Inicio y Fin a `Campo` y lee
+`sesiones.N.inicio`/`fin`. La derivación paralela de "fin antes del inicio"
+(`resumirSesion`, más rica: dice el día de la semana) se conserva a propósito.
+
+### B-342 · el material al chasis `FilasEditor`, con id de cliente
+
+`MaterialEditor` era el único editor de filas que no usaba `FilasEditor` (B-224)
+y editaba por índice. Ahora usa el chasis compartido (gana Duplicar, contador y
+estado vacío) e `ItemMaterial` tiene `id` de cliente (`mat_<uuid>`,
+`lib/material.ts`) — no es la trampa 2 en sentido estricto (un ítem de material
+no sincroniza con Calendar) pero sí su prima chica: `key={i}` movía el foco al
+borrar una fila. Los documentos anteriores a este cambio se leen con un id
+determinístico por posición (mismo criterio que `ID_IMAGEN_MIGRADA`, D-125), y
+duplicar una actividad regenera los ids del material igual que ya hacía con las
+modalidades. Campo nuevo → skill `campo-nuevo`: las doce salidas públicas, una
+por una — el `id` no sale en ninguna (`toPublic.ts` ya era whitelist sin él),
+confirmado con una mutación en `itemPublico` que el barrido de centinelas
+agarra nombrando `material.id`. Fila nueva en el «Qué NUNCA sale» de
+`07-seguridad.md`.
+
+### B-185 · «DM al Instagram»
+
+Las dos líneas del mismo valor guardado, en un solo commit:
+`etiquetasUI.ts` (panel) y `functions/calendario.js` (evento público). La tanda
+anterior lo había dejado abierto creyendo que `functions/` estaba vedado para
+el frente del panel; no lo está — solo `functions/imagenes*.js` lo es.
+
+### B-190 · la plataforma «a confirmar», con sus tres consumidores
+
+La tanda anterior había dejado la entrada de taxonomía sin implementar porque
+el label solo («A confirmar») ensuciaba el JSON-LD del detalle
+(`VirtualLocation { name: "A confirmar" }`, una plataforma inventada en datos
+estructurados). D-231: la detección pasa a mirar el **slug**, no el label, y
+con eso `dondeCorto` dice "Online, plataforma a confirmar", el JSON-LD omite
+`name`, y `textoRedes.ts` cae al genérico "Encuentro virtual".
+`functions/calendario.js` ya leía bien y no se tocó.
+
+### B-200 · las fechas se validan con el mismo parser que las convierte
+
+Medido antes de decidir nada: `sesionSchema` ya rechazaba una fecha corrupta
+(con el mensaje equivocado); el agujero real estaba en `modalidadFilaSchema`
+—cuyo corto circuito para las dos fechas opcionales dejaba pasar una ventana
+con una sola punta corrupta— y en `inscripcion.cierra`, sin ninguna guarda de
+forma. D-232 tiene el detalle completo.
+
+### Documentación
+
+`BACKLOG.md` (los siete ítems cerrados, con el cierre real escrito contra el
+análisis previo); **D-230**, **D-231** y **D-232** en `06-decisiones.md`; y
+**tres** entradas nuevas en `novedades.ts` —la plataforma «a confirmar»
+(B-190), que Duplicar y el contador de material (B-342), y el error en la fila
+de la galería y los encuentros (B-341/B-343)—, porque las tres cambian algo que
+se nota **usando** el panel. B-340 y B-200 no entran: son correcciones internas
+—conteo de `usos`, mensajes de error en un caso borde que el navegador no deja
+producir escribiendo normalmente— que no cambian qué puede hacer quien carga
+una actividad. B-185 tampoco: es copy de una línea, no una capacidad nueva.
+
+Sin entrada en `ayuda.ts`: nada de lo cerrado hoy es un comportamiento que haga
+falta explicar aparte del propio campo — la opción «A confirmar» se explica
+sola en el desplegable, y el resto son mensajes de error que ya se leen donde
+aparecen.
+
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 
 **Y los cuatro hubs de búsqueda entraron al índice de salidas públicas como la

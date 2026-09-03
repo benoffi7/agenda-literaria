@@ -90,6 +90,7 @@ marcado de ninguna página — sale de `enlaces.ts` o no sale.
 | la **hora** de `createdAt` | el campo sale recortado al día: con **un solo admin**, el instante exacto de cada carga no es una fecha, es su agenda de trabajo — a qué hora carga y en qué tandas. Mismo razonamiento que D-57 y D-27: con un universo de una persona, el dato que «no nombra a nadie» igual la describe (D-138) | `toPublic.ts` |
 | `difusion` | trabajo interno | ambos |
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
+| `material.items[].id` | id de cliente (B-342), de máquina — no dice nada sobre la actividad, pero tampoco aporta nada afuera: es la trampa 2 en miniatura, no un dato de contenido | `toPublic.ts` |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las once salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
