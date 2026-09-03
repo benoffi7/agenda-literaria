@@ -26,7 +26,7 @@ no se pueden deshacer después.
    | 2 | el evento de Calendar | `functions/calendario.js` |
    | 3 | el issue de GitHub | `functions/reportes.js` |
    | 4 | GA4 (panel) | `src/lib/analytics-eventos.ts` |
-   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
+   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts`, `src/lib/rutasPublicas.ts` (`urlDeDetalle`, B-312) |
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` (incluido `migasDeDetalle`, el `BreadcrumbList`, B-107), y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts`, `src/lib/imagenes.ts` (`urlDeMiniatura`, B-220) |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |

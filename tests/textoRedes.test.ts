@@ -27,6 +27,10 @@ import {
   type VarianteRedes,
 } from '@/lib/textoRedes';
 import { labelsDeOpciones } from '@/lib/vistaPreviaEvento';
+// B-312 — el link del posteo se compara contra la **misma** función que lo
+// produce, no contra una cadena escrita en el test: así el caso sigue siendo
+// cierto el día que cambie `rutaCanonica`.
+import { PREFIJO_ACTIVIDAD, SITIO, urlDeDetalle } from '@/lib/rutasPublicas';
 import { CENTINELAS, VALORES_CENTINELA, formularioLleno } from './fixtures/formulario';
 import type { ActividadForm, Sesion, ValorOpcion } from '@/types/actividad';
 import { ts, tsDe } from './fixtures/tiempo';
@@ -536,12 +540,122 @@ describe('privacidad — un posteo es más público que las otras dos salidas (�
     expect(salida).toContain('@editorialdelamona');
   });
 
-  it('el texto no lleva el link a la página de la actividad (decisión de B-95, DEC-6)', () => {
-    // Esa página no existe y el sitio está congelado: el slug no aparece en
-    // ninguna forma. Cuando exista, este test es el que hay que cambiar a mano.
-    const forma = formularioLleno();
+  it('el texto lleva el link a la página de la actividad, y sale de `urlDeDetalle` — B-312', () => {
+    /*
+     * **Este caso decía lo contrario hasta B-312**, y su comentario avisaba:
+     * «cuando la página exista, este test es el que hay que cambiar a mano». La
+     * página existe desde B-227 y el dominio se eligió en D-165, así que el
+     * motivo del descarte —un link a la nada— caducó.
+     *
+     * Lo que se verifica no es que haya *un* link: es que sea **el que produce
+     * `urlDeDetalle`**. Escrito a mano en el módulo sería la cuarta derivación de
+     * la misma ruta y la única de la que no se puede volver, porque un posteo con
+     * una URL rota ya está pegado en Instagram.
+     *
+     * MUTACIÓN PROBADA: componer la URL con una plantilla en `textoRedes.ts`
+     * —aunque hoy dé la misma cadena— deja de pasar por esa función, y este caso
+     * lo dice el día que cambie `rutaCanonica` (la barra final, por ejemplo).
+     */
+    const forma = formularioLleno({ estado: 'publicado' });
+    const esperado = urlDeDetalle(forma.slug);
     for (const variante of VARIANTES_REDES) {
-      expect(salidaDeForm(forma, variante)).not.toContain(CENTINELAS.slug);
+      expect(salidaDeForm(forma, variante, true)).toContain(esperado);
+    }
+  });
+
+  it('el select en «publicado» NO alcanza: hace falta que la página exista — B-312', () => {
+    /*
+     * **La segunda vuelta del `auditor-privacidad`**, y el hallazgo más fino de
+     * las dos pasadas. La corrección anterior miraba `actividad.estado`, que en
+     * este camino es el **select del formulario sin guardar**
+     * (`formADocumento` hace `estado: f.estado`). O sea que poner «Publicado» y
+     * copiar el posteo antes de guardar emitía el link igual — con el slug
+     * todavía re-derivándose del título, que es el agujero que la corrección
+     * decía cerrar.
+     *
+     * Este caso es la diferencia entre las dos afirmaciones que se confundían:
+     * «se quiere publicar» (el select) y «ya tiene página» (el documento).
+     *
+     * MUTACIÓN PROBADA: volver la guarda a `actividad.estado === 'publicado'`
+     * deja este caso en rojo y el de arriba en verde, que es exactamente el
+     * estado en el que el auditor lo encontró.
+     */
+    const forma = formularioLleno({ estado: 'publicado' });
+    for (const variante of VARIANTES_REDES) {
+      expect(salidaDeForm(forma, variante, false)).not.toContain(SITIO);
+    }
+  });
+
+  it('un borrador NO emite el link: su slug todavía se mueve con el título — B-312', () => {
+    /*
+     * **Lo encontró el `auditor-privacidad`** sobre la primera versión de B-312,
+     * que emitía el link siempre con el argumento de que «la página va a existir
+     * cuando el posteo se publique». Dos contraejemplos mecánicos del propio
+     * repo lo tiran abajo:
+     *
+     * 1. mientras `estado !== 'publicado'` el slug se **re-deriva del título con
+     *    cada tecla** (`slugBloqueado` en `formulario/cascadas.ts`), y el
+     *    borrador es justo cuando se copia el posteo;
+     * 2. una actividad duplicada nace en borrador con slug `…-copia`, y el
+     *    schema **prohíbe publicar con ese slug** — para esa clase la URL está
+     *    garantizada de no existir jamás.
+     *
+     * El fixture es `borrador` por defecto, así que este caso es el que corre
+     * con la forma tal cual sale de la fábrica.
+     *
+     * MUTACIÓN PROBADA: sacar `actividad.estado === 'publicado'` de la guarda
+     * deja este caso y el de la cancelada en rojo.
+     */
+    for (const variante of VARIANTES_REDES) {
+      expect(salidaDeForm(formularioLleno(), variante)).not.toContain(SITIO);
+    }
+  });
+
+  it('una actividad cancelada tampoco: su página puede no existir nunca (B-110)', () => {
+    /*
+     * El tercer caso del auditor, y el más sutil: lo que frena a
+     * `construirTextoRedes` es `sesion.cancelada`, **no** `estado`. Una
+     * actividad `cancelado` con un encuentro futuro sin cancelar devuelve
+     * `ok: true`; y por B-110 una cancelada solo tiene página si estuvo
+     * publicada alguna vez, así que una que nunca se publicó llevaría a una
+     * página que por diseño no va a existir.
+     */
+    for (const variante of VARIANTES_REDES) {
+      const salida = salidaDeForm(formularioLleno({ estado: 'cancelado' }), variante);
+      expect(salida).not.toContain(SITIO);
+    }
+  });
+
+  it('el slug sale solo dentro del link, nunca como dato suelto — B-312', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`.** Con el centinela del slug permitido
+     * en la lista de abajo, el barrido dejó de poder distinguir «salió dentro de
+     * la URL» de «salió suelto»: un `bloques.push(\`Slug: ${'$'}{actividad.slug}\`)`
+     * agregado mañana pasaría los otros casos sin que nada lo diga. La intención
+     * está escrita en el `Pick` del módulo —«no se imprime»— y esto la ejecuta.
+     */
+    const forma = formularioLleno({ estado: 'publicado' });
+    for (const variante of VARIANTES_REDES) {
+      const salida = salidaDeForm(forma, variante, true);
+      const partes = salida.split(forma.slug);
+      expect(partes, 'el slug aparece más de una vez: alguna no es el link').toHaveLength(2);
+      expect(partes[0]!.endsWith(`${SITIO}${PREFIJO_ACTIVIDAD}/`)).toBe(true);
+    }
+  });
+
+  it('sin slug no hay link, y no queda un link a la home', () => {
+    /*
+     * Una actividad sin slug no tiene página. `urlDeDetalle('')` devolvería la
+     * home, y mandar a la home a alguien que quería anotarse a un taller es peor
+     * que no poner nada.
+     */
+    for (const variante of VARIANTES_REDES) {
+      const salida = salidaDeForm(
+        formularioLleno({ slug: '', estado: 'publicado' }),
+        variante,
+        true,
+      );
+      expect(salida).not.toContain(SITIO);
     }
   });
 
@@ -565,16 +679,46 @@ describe('privacidad — un posteo es más público que las otras dos salidas (�
     CENTINELAS.lectura, // ídem
   ];
 
-  const salidaDeForm = (form: ActividadForm, variante: VarianteRedes): string => {
-    const r = textoRedesDeForm(form, variante, ANTES, LABELS);
+  /**
+   * Los permitidos **según haya link o no** — B-312, y lo pidió el
+   * `auditor-privacidad` en su segunda pasada.
+   *
+   * El slug entra solo cuando la actividad ya tiene página, que es cuando sale
+   * el link. Con una lista única para las dos corridas, el barrido del caso «sin
+   * página» **permitía** el slug aunque ahí nada debería emitirlo: un
+   * `bloques.push` del slug pelado condicionado a no-publicado habría pasado.
+   *
+   * El permiso en sí es correcto y está verificado: el slug ya es público en el
+   * `events.json`, el sitemap y la canónica. Lo que esto arregla es que el
+   * permiso diga **exactamente** lo que se decidió, y no un poco más.
+   */
+  const permitidosPara = (conPagina: boolean): string[] =>
+    conPagina ? [...PERMITIDOS, CENTINELAS.slug] : PERMITIDOS;
+
+  const salidaDeForm = (
+    form: ActividadForm,
+    variante: VarianteRedes,
+    yaTienePagina = false,
+  ): string => {
+    const r = textoRedesDeForm(form, variante, ANTES, LABELS, yaTienePagina);
     if (!r.ok) throw new Error(`esperaba texto y salió: ${r.motivo}`);
     return r.texto;
   };
 
+  /*
+   * El barrido corre sobre **las dos formas**, y no solo sobre el borrador que
+   * el fixture da por defecto: desde B-312 el link a la actividad existe **solo
+   * con la actividad publicada**, así que un barrido que mirara únicamente el
+   * borrador no vería nunca el bloque nuevo — que es justo el que agrega una
+   * salida. Es la misma trampa que el fixture del §0: no se puede verificar lo
+   * que el fixture no produce.
+   */
   for (const variante of VARIANTES_REDES) {
-    it(`${variante} — ningún centinela sale sin estar permitido por nombre (§5.1)`, () => {
+    for (const conPagina of [false, true]) {
+    it(`${variante} (${conPagina ? 'con página' : 'sin página'}) — ningún centinela sale sin estar permitido para ese caso (§5.1)`, () => {
       const salida = salidaDeForm(
         formularioLleno({
+          estado: conPagina ? 'publicado' : 'borrador',
           // El caso peor: el link de la reunión **tildado como publicable**. El
           // desvío de D-15 vale para el JSON y el evento; a un posteo no llega.
           modalidades: [
@@ -589,12 +733,14 @@ describe('privacidad — un posteo es más público que las otras dos salidas (�
           ],
         }),
         variante,
+        conPagina,
       );
       for (const valor of VALORES_CENTINELA) {
-        if (PERMITIDOS.includes(valor)) continue;
+        if (permitidosPara(conPagina).includes(valor)) continue;
         expect(salida, `se escapó un centinela al posteo: ${valor}`).not.toContain(valor);
       }
     });
+    }
   }
 
   it('lo que sí tiene que salir, sale: el canal de inscripción y el handle de arrobar', () => {

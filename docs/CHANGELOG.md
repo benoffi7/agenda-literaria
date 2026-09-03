@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **El texto para redes lleva el link a la actividad** — **B-312**. No lo llevaba
+  porque la página no existía y el dominio no estaba elegido; las dos cosas
+  pasaron, así que el motivo del descarte caducó. La URL sale de `urlDeDetalle`,
+  la misma función de la que salen la canónica, el sitemap y el JSON-LD, y
+  **solo se emite cuando la actividad guardada ya tiene página** — el select del
+  formulario no alcanza. Falta un paso para que se vea: el panel tiene que pasar
+  ese dato (una prop), y hasta entonces el posteo sale sin link.
 - **El panel de admin usa el ancho de la pantalla: el listado pasa de fila a
   grilla de tarjetas** (1 columna en el teléfono, 2/3/4 en `md`/`xl`/`2xl`) y el
   ancho del contenedor se decide por vista — **B-620**, **D-330**. La tarjeta dice
@@ -26,6 +33,42 @@
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
+
+## 2026-09-03 · el link de la actividad entra al texto para redes (B-312)
+
+El texto que se copia para Instagram terminaba en los handles y no decía a dónde
+ir a anotarse. El motivo estaba escrito en el propio módulo —«esa página todavía
+no existe y el sitio público está congelado»— y **caducó dos veces**: la página
+existe desde B-227 y el canónico es `agendaleh.ar` desde D-165. El ítem lo
+señalaba y el dueño lo confirmó: va el link del detalle, y sin UTM (un parámetro
+de medición en un texto que se pega a mano ensucia el posteo, y esa pregunta la
+contesta la analítica del sitio).
+
+El link va **último antes de los handles** —es la acción, y lo que sigue son las
+menciones— y sale de `urlDeDetalle`. Escrito a mano habría sido la **cuarta**
+derivación de la misma ruta y la única de la que no se puede volver: un posteo con
+una URL rota ya está pegado en Instagram. Sin slug no se emite nada, porque
+`urlDeDetalle('')` devolvería la home.
+
+**El `auditor-privacidad` tiró abajo dos versiones de la guarda, y las dos veces
+tenía razón.** La primera emitía el link siempre, con el argumento de que «la
+página va a existir cuando el posteo se publique»: falso para tres clases —en
+borrador el slug se re-deriva del título con cada tecla, un duplicado nace con un
+slug que el schema prohíbe publicar, y una cancelada que nunca se publicó no tiene
+página por diseño (B-110)—. La segunda miró `estado === 'publicado'`, que en este
+camino es **el select del formulario sin guardar**, así que los tres casos seguían
+alcanzables, más uno peor: si el guardado vuelve con `slug-tomado` y el admin
+cambia el slug, el link ya copiado apunta a la página de otra actividad.
+
+La guarda final es un parámetro explícito —«¿el documento **guardado** está
+publicado?»— con **default `false`**: el mismo predicado con el que el formulario
+congela el slug. Mientras el panel no lo pase, el posteo sale sin link, que es el
+lado barato de equivocarse.
+
+**El barrido de centinelas del posteo lo agarró solo**: al aparecer el link, el
+slug empezó a salir y el test quedó en rojo hasta que el permiso se escribió con
+su motivo. Es la mecánica que ese barrido existe para tener — la decisión de
+publicar un dato se toma en la lista, no en el módulo.
 
 ## 2026-09-03 · el panel a todo ancho: el listado es una grilla de tarjetas (B-620, D-330)
 

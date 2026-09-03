@@ -43,11 +43,21 @@
  * | `material` | **no** | la URL depende de `publico` por ítem y el material se entrega al inscribirse; en una caption es ruido con riesgo |
  * | `sede.indicaciones` | **no** | "timbre 3B" es para quien ya va: al evento sí, al posteo no |
  * | `createdBy` / `updatedBy` | **no** | uids |
+ * | `slug` | **sí**, dentro del link y **solo con la actividad publicada** | B-312: es la URL pública, la misma que ya sale al `events.json`, al sitemap y a la canónica. Nunca suelto: lo que se imprime es el link |
  *
- * **El link a la página de la actividad no va**, y es decisión del dueño: esa
- * página todavía no existe y el sitio público está congelado (DEC-6), así que
- * hoy sería un link a la nada. Dónde iría cuando exista está marcado abajo, en
- * `construirTextoRedes`, y es una línea.
+ * **El link a la página de la actividad sí va**, desde B-312 — y hasta hace
+ * unos días no iba, con un motivo que caducó: la página no existía y el dominio
+ * no estaba elegido (DEC-6). Las dos cosas pasaron —el sitio salió con B-227 y
+ * el canónico es `agendaleh.ar` desde D-165—, así que el posteo que se copia a
+ * Instagram lleva a dónde inscribirse en vez de terminar en un handle.
+ *
+ * **Pero solo con la actividad publicada**, y el porqué está abajo, en
+ * `construirTextoRedes`: en borrador el slug todavía se mueve con el título.
+ *
+ * **La URL sale de `urlDeDetalle` (`lib/rutasPublicas.ts`)**, que es la misma
+ * función de la que salen la canónica, el sitemap y el JSON-LD. Escrita a mano
+ * acá sería la cuarta derivación de la misma ruta y **la única de la que no se
+ * puede volver**: un posteo con una URL rota ya está pegado en Instagram.
  *
  * **La descripción tampoco va**, y no es un olvido: es la parte que quien
  * publica va a reescribir con su voz igual (el contra del §1 de
@@ -66,6 +76,10 @@ import { ETIQUETA_MODALIDAD, proximoEncuentro } from '@/lib/filtrosActividades';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { agregarChips } from '@/lib/formulario/chips';
 import { instanteDeTimestamp } from '@/lib/sesiones';
+// B-312 — la URL absoluta del detalle, de la misma función que la canónica y el
+// sitemap. `rutasPublicas` es puro y sin dependencias: entra al bundle del panel
+// sin arrastrar nada (§5.4).
+import { urlDeDetalle } from '@/lib/rutasPublicas';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type {
   Actividad,
@@ -112,6 +126,9 @@ export type ActividadParaRedes = Pick<
   Actividad,
   | 'tipo'
   | 'titulo'
+  // B-312 — el slug entra **solo** para armar el link con `urlDeDetalle`. No se
+  // imprime: un slug suelto en un posteo no le dice nada a nadie.
+  | 'slug'
   | 'esCiclo'
   | 'sesiones'
   | 'modalidad'
@@ -351,6 +368,14 @@ export const construirTextoRedes = (
   variante: VarianteRedes,
   ahora: Date,
   labels: LabelsTaxonomia = {},
+  /**
+   * ¿La actividad **guardada** está publicada, o sea que su página existe?
+   *
+   * Es lo que decide si sale el link (B-312), y **no** se deriva de
+   * `actividad.estado`: ése es el del formulario en curso. Ver el bloque del
+   * link, abajo. Default `false` — el lado barato de equivocarse.
+   */
+  yaTienePagina = false,
 ): ResultadoTextoRedes => {
   const encuentros = encuentrosDeLaActividad(actividad);
   const titulo = actividad.titulo?.trim() || 'Sin título';
@@ -444,21 +469,63 @@ export const construirTextoRedes = (
   const inscripcion = bloqueInscripcion(actividad, ahora);
   if (inscripcion) bloques.push(inscripcion);
 
-  /**
-   * Acá iría el link a la página de la actividad cuando el sitio público exista
-   * (hoy congelado, DEC-6). Es una línea, y este es su lugar: último antes de
-   * los handles.
+  /*
+   * El link a la página de la actividad — B-312. Va **último antes de los
+   * handles**: es la acción, y lo que sigue son las menciones.
    *
-   *   if (baseDelSitio) bloques.push(`${baseDelSitio}${rutaDeDetalle(actividad.slug)}`);
+   * ── Solo con la actividad publicada, y esto es la mitad del ítem ─────────
+   * La primera versión emitía el link siempre, con el argumento de que «la
+   * página va a existir cuando el posteo se publique». **El `auditor-privacidad`
+   * lo tiró abajo con dos contraejemplos mecánicos del propio repo**, y tenía
+   * razón:
    *
-   * Haría falta agregar `slug` a `ActividadParaRedes` y la base del sitio como
-   * parámetro (no se hardcodea: el dominio todavía no está elegido, DEC-6).
+   * 1. Mientras `estado !== 'publicado'` el slug **se re-deriva del título con
+   *    cada tecla** (`slugBloqueado` en `formulario/cascadas.ts` solo se activa
+   *    con la actividad publicada). O sea que en borrador el slug es provisorio
+   *    por construcción — y el borrador es justo cuando se copia el posteo.
+   * 2. Una actividad duplicada nace en borrador con slug `…-copia`, y el schema
+   *    **prohíbe publicar con ese slug** (`esSlugDeCopia`). Para esa clase la URL
+   *    emitida está garantizada de no existir jamás.
    *
-   * **El path va por `rutaDeDetalle` (`lib/rutasPublicas.ts`) y no escrito a
-   * mano** — B-227: ésta sería la **tercera** derivación de la misma ruta, y es
-   * la única de las tres de la que no se puede volver. Un posteo con una URL
-   * rota ya está pegado en Instagram.
+   * Y un tercero que ese mismo auditor encontró: una actividad con
+   * `estado: 'cancelado'` **no** la frena `construirTextoRedes` —lo que ahí se
+   * mira es `sesion.cancelada`, que es otra cosa— y por B-110 una cancelada solo
+   * tiene página si estuvo publicada alguna vez. Una cancelada que nunca se
+   * publicó llevaría a una página que por diseño no va a existir nunca.
+   *
+   * Los tres se cierran con lo mismo: **el link se emite solo cuando la
+   * actividad ya tiene página**, que es cuando su URL es una promesa que el
+   * sitio cumple. Es la trampa 10 aplicada a una salida de la que no se puede
+   * volver: un posteo con una URL rota ya está pegado en Instagram.
+   *
+   * ── Y «ya tiene página» NO es `estado === 'publicado'` ───────────────────
+   * La primera corrección usaba el `estado` del documento que arma
+   * `formADocumento`, y **el auditor volvió a tirarla abajo**: ese `estado` es
+   * el del **select del formulario**, sin guardar (`actividades.ts`,
+   * `estado: f.estado`). O sea que poner el select en «Publicado» y copiar el
+   * posteo antes de guardar emitía el link igual, con el slug todavía
+   * moviéndose — el mismo agujero, un paso más adentro. Y con un caso peor: si
+   * el guardado vuelve con `slug-tomado` y el admin cambia el slug, el link ya
+   * copiado apunta a la página **de otra actividad**.
+   *
+   * Por eso entra `yaTienePagina` como parámetro explícito y **su default es
+   * `false`**: quien llame tiene que afirmar que el documento **guardado** está
+   * publicado. Es el mismo predicado con el que `ActividadFormulario` congela el
+   * slug (`inicial?.estado === 'publicado'`) y con el que `historial.ts` decide
+   * si se puede restaurar — dos precedentes de que el que vale es el del
+   * documento y no el del formulario.
+   *
+   * El default conservador no es pereza: si mañana aparece un llamador nuevo que
+   * se olvida del parámetro, lo que pasa es que **no sale el link**, que es el
+   * lado barato de equivocarse.
+   *
+   * El slug vacío se descarta aparte: `urlDeDetalle('')` devolvería la home, y
+   * mandar a la home a alguien que quería anotarse a un taller es peor que no
+   * poner nada.
    */
+  if (yaTienePagina && actividad.slug?.trim()) {
+    bloques.push(urlDeDetalle(actividad.slug.trim()));
+  }
 
   const handles = handlesDe(actividad);
   if (handles.length) bloques.push(handles.join(' '));
@@ -487,6 +554,15 @@ export const textoRedesDeForm = (
   variante: VarianteRedes,
   ahora: Date,
   labels: LabelsTaxonomia = {},
+  /**
+   * ¿La actividad **guardada** está publicada? — B-312.
+   *
+   * Sale de `inicial?.estado === 'publicado'` en `ActividadFormulario`, que es
+   * el mismo booleano con el que ahí se congela el slug. Mientras el panel no lo
+   * pase, el default `false` deja el posteo **sin link**, que es exactamente lo
+   * que tiene que pasar: el formulario no sabe si la página existe.
+   */
+  yaTienePagina = false,
 ): ResultadoTextoRedes => {
   let documento: ActividadParaRedes;
   try {
@@ -500,5 +576,5 @@ export const textoRedesDeForm = (
       motivo: 'Completá las fechas de los encuentros para armar el texto.',
     };
   }
-  return construirTextoRedes(documento, variante, ahora, labels);
+  return construirTextoRedes(documento, variante, ahora, labels, yaTienePagina);
 };

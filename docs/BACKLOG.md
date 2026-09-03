@@ -40,7 +40,7 @@ trabajo.
 | # | Tema | Contexto |
 |---|---|---|
 | DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
-| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** Lo que sigue abierto de esta fila es el **handle de Instagram** (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
+| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. (El texto original decía que faltaba el handle (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
 
 Resueltas el 2026-08-26:
 
@@ -132,7 +132,25 @@ Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsi
   `hayCredenciales()`, **existía y no la llamaba nadie** (**B-189**, cerrado en
   `1.2.0`).
 
-### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) · P1
+### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) — ✅ hecho (2026-09-03) · P1
+
+**Cerrado el 2026-09-03: los tres pasos están resueltos.**
+
+1. **El 301 de `agendaleh.com.ar`** — hecho por el dueño, propagando. Medido a
+   las 18:40 todavía respondía 200, que es lo esperable mientras propaga:
+   **conviene reverificar** con `curl -sI https://agendaleh.com.ar/ | head -3`,
+   que tiene que decir `301` y `location: https://agendaleh.ar/`.
+2. **El `www`** — **descartado a propósito**: queda sin configurar. Un hostname
+   que no existe no puede duplicar contenido, y agregarlo como sitio hubiera sido
+   un cuarto nombre sirviendo lo mismo.
+3. **Search Console** — conectado y con el sitemap mandado: **descubrió 80
+   páginas**. Con eso el sitemap dejó de ser un archivo que nadie lee.
+
+Las dos trampas de falla diferida **siguen vigentes y no se cierran con este
+ítem**, porque no son pasos: el TXT de verificación es permanente (borrarlo tira
+el certificado ~90 días después) y la renovación de NIC.ar no es automática (la
+delegación se apaga el día 31, así que el margen real son 30 días).
+
 
 Código terminado y publicado; estos tres no se pueden hacer desde el repo porque
 los dominios de Hosting se configuran en la consola, no en `firebase.json`. El
@@ -171,7 +189,18 @@ buscar en esta lista:
   siga siendo del dueño. O sea que el margen real son 30 días: conviene un
   recordatorio un mes antes del vencimiento, no el día.
 
-### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño
+### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: no se hace.** La alerta de GCP queda sin
+configurar. El log sigue existiendo con nivel `error` y el motivo en
+`sistema/rebuild`, así que la información está: lo que no va a haber es un aviso
+que la empuje.
+
+Se cierra en vez de quedar abierto para siempre, que es lo honesto: un ítem que
+espera un click que nadie va a hacer es ruido en la lista. Si algún día el
+rebuild se cae sin que nadie lo note, el runbook de `08-operacion.md` tiene la
+configuración lista.
+
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
 `el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
@@ -2115,6 +2144,15 @@ El disparador escrito de B-220 sigue en **B-266**; esto es el segundo, y el que
 mueve el peor caso de una página en vez del de un recorrido.
 
 ### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño · P3
+
+**Decidido el 2026-09-03 por el dueño: obligatorio solo en la portada.** Ni un
+campo por imagen —nadie lo llenaría en las cuatro— ni seguir derivando todo del
+título: la portada es la que va a Open Graph y a la tarjeta, o sea la que se
+comparte, y es un campo solo.
+
+Es un cambio de modelo, así que va en la tanda de modelo junto con **B-285**,
+cuando aterricen los frentes que hoy tienen el schema y el formulario.
+
 
 Anotado al cerrar **B-296** (**D-168** §1). DEC-7a (**D-125**) decidió que hay **un
 solo campo opcional** por imagen —el epígrafe— y que el texto alternativo sale del
@@ -5869,6 +5907,16 @@ de arriba pesa el doble.
 
 ### B-181 · Un club puede ofrecer N opciones para sumarte, y el modelo solo sabe de N encuentros · P2
 
+**Decidido el 2026-09-03 por el dueño: completo, ahora.** No la versión mínima:
+el eje `opciones` entero, con el diff del calendario incluido.
+
+**Encolado y no despachado todavía, con motivo:** toca `src/lib/sesiones.ts`,
+`functions/calendario.js`, el schema y el formulario — exactamente los archivos
+que dos frentes están escribiendo en este momento. Un dispatch en paralelo
+produciría un conflicto de merge en el código más delicado del repo (el diff de
+sesiones contra Calendar, §7). Entra apenas aterricen esos dos.
+
+
 Reporte del dueño usando el panel de verdad (2026-08-25):
 
 > un club de lectura puede darte 4 opciones para sumarte. Pero no son 4
@@ -6760,6 +6808,15 @@ que ningún **valor** matchee `private-[0-9a-f]{10,}`, `BEGIN PRIVATE KEY`,
 
 ### B-214 · Astro 5.x no tiene parche para ocho avisos de seguridad: hay que subir a 6/7 antes de B-01 · P2
 
+**Decidido el 2026-09-03 por el dueño: después de esta tanda.** No se descarta —
+se secuencia. El upgrade toca el `package-lock.json`, que es de todos los frentes
+a la vez, así que arranca contra un árbol quieto y con la suite entera de
+testigo, que hoy son 2.778 tests.
+
+Con esto se cierra también el destino de **B-607** (`npm audit fix` de `uuid`):
+va en la misma tanda, porque toca el mismo archivo.
+
+
 `npm audit --omit=dev` da 2 altas en dependencias de producción: ocho avisos de
 Astro (instalado 5.18.2) más `sharp`, que viene de Astro. Los peores son un SSRF
 de CVSS 7.5 (`GHSA-2pvr-wf23-7pc7`, fetch de la página de error prerenderizada) y
@@ -6939,7 +6996,25 @@ la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe 
 enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
 Falta el enlace y su test.
 
-### B-312 · El texto para redes no lleva el link, y el motivo caducó · P2 — decisión del dueño
+### B-312 · El texto para redes no lleva el link, y el motivo caducó — ✅ hecho (2026-09-03) · P2
+
+**Decidido y hecho el 2026-09-03.** El dueño eligió el link del detalle, sin UTM:
+un parámetro de medición en un texto que se pega a mano ensucia el posteo, y la
+pregunta «cuánto trae Instagram» se contesta desde la analítica del sitio.
+
+El link va **último antes de los handles** —es la acción, y lo que sigue son las
+menciones— y sale de `urlDeDetalle` (`lib/rutasPublicas.ts`), la misma función de
+la que salen la canónica, el sitemap y el JSON-LD. Escrito a mano habría sido la
+cuarta derivación de la misma ruta y **la única de la que no se puede volver**:
+un posteo con una URL rota ya está pegado en Instagram.
+
+Sin slug no se emite nada: `urlDeDetalle('')` devolvería la home, y mandar a la
+home a alguien que quería anotarse a un taller es peor que no poner nada.
+
+**El barrido de centinelas lo detectó solo**, que es exactamente para lo que
+existe: al agregar el link, el slug empezó a salir al posteo y el test se puso en
+rojo hasta que la decisión de publicarlo se escribió en la lista de permitidos.
+
 
 **Salió del barrido de drift del 2026-09-02.** `src/lib/textoRedes.ts` (B-95) no
 incluye la URL de la actividad, y el motivo escrito en
@@ -7787,6 +7862,11 @@ hace falta el control de selección múltiple —el sitio ya tiene uno, los chip
 
 ### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda · P2
 
+**Decidido el 2026-09-03 por el dueño: guardarlo en el documento.** Un campo más,
+escrito una sola vez por el trigger, que saca la inferencia de los tres lugares
+donde hoy se rehace. Va en la tanda de modelo junto con **B-301**.
+
+
 B-110 necesita saber si una actividad cancelada estuvo publicada alguna vez —para
 no publicar la página de un borrador por otra puerta— y esa pregunta **no vive en
 el modelo**. Hoy se infiere en el build (`estuvoPublicada`,
@@ -8068,7 +8148,16 @@ etiquetas que no existan, pero sin color ni descripción. Crearlas a mano una ve
 (los comandos están en [`08-operacion.md`](08-operacion.md)) deja la lista
 prolija y filtrable.
 
-### B-34 · Nada limita cuántos reportes se pueden cargar
+### B-34 · Nada limita cuántos reportes se pueden cargar — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: nada por ahora.** Con dos cuentas de
+confianza no hay canilla que cerrar, y un tope mal puesto le rompe el reporte a
+quien sí lo necesita. La mitad que importa —que el límite de verdad va en las
+reglas y no en el cliente, porque el cliente se puede saltear— queda escrita
+arriba para quien lo agarre. **Vuelve cuando entre una tercera cuenta que no sea
+de confianza**, que es el mismo disparador de B-28 y no es casualidad: los dos
+ítems son el mismo cambio de contexto.
+
 
 Las reglas validan la forma del reporte y que quien lo carga sea admin, pero no
 la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
@@ -8286,7 +8375,15 @@ la tabla de [`07-seguridad.md`](07-seguridad.md).
 El texto original decía «parte de B-01, el sitio público, que todavía no existe».
 El sitio existe desde B-227.
 
-### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño
+### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Ratificado el 2026-09-03 por el dueño: no, queda como está.** Es la segunda vez
+que se decide lo mismo (la primera fue el 2026-08-26), así que el ítem se cierra
+en vez de quedar esperando una tercera. Con dos cuentas de confianza es
+maquinaria de permisos para un problema que no existe, y mover la aprobación a un
+campo propio toca reglas, modelo y la pantalla de taxonomías. Vuelve con la
+tercera cuenta.
+
 
 Hoy cualquiera de las dos cuentas con claim `admin` puede aprobar (D-28), y las
 opciones nuevas nacen pendientes **incluso las del dueño**, porque el código no
@@ -8481,7 +8578,16 @@ decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
 filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
 probablemente lo correcto?). Cuadra con B-96 y con B-01.
 
-### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño
+### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Ratificado el 2026-09-03 por el dueño: no.** El sistema no guarda ni un dato
+personal de un tercero, y por eso el §5 de seguridad cabe en una tabla. La
+inscripción sigue siendo un mail o un WhatsApp fuera del sistema.
+
+Lo que queda escrito para el día que haga falta es **el orden**, que es al revés
+del intuitivo: primero el aviso público (**B-98**), después el estado agregado
+(**B-97**), y la lista de personas solo si eso no alcanzó.
+
 
 Recomendación: **no**, y queda anotado para que la pregunta no vuelva a aparecer
 sin el razonamiento.
@@ -8944,6 +9050,12 @@ repetir. Con la mutación puesta (sacar la rama de `paso`) los otros seis casos 
 
 ### B-291 · Las cinco imágenes de Open Graph por tipo · P2
 
+**Decidido el 2026-09-03 por el dueño: generarlas en el build.** Tipográficas,
+con el sistema visual del sitio, en vez de cinco archivos que haya que rehacer el
+día que cambie la marca. Va con el frente de imágenes, que entra después del
+rescate de D-210.
+
+
 Lo último que le queda a **B-107**, y lo único del §5.1 del diseño que B-109 no
 pudo cerrar porque no depende del dominio: cinco archivos de 1200×630 en
 `public/og/`, uno por tipo de actividad, «en papel y tinta con el nombre del
@@ -9175,7 +9287,14 @@ legible, en un repo público**.
 de las reglas), con control positivo de que llega al recorte —el primer intento usó
 links **largos** y no llegaba: 106 caracteres, porque con un link largo el saneador
 **acorta**— y los dos asertos de que no sobrevive nada del link. La mutación muere.
-### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver · P3
+### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver — ✅ decidido: no se hace (2026-09-03) · P3
+
+**Decidido el 2026-09-03 por el dueño: queda anotado y no se hace.** Las
+miniaturas JPEG ya bajaron el peso del recorrido completo un 71 %, así que WebP y
+AVIF serían optimización sobre optimización — y arrastran construir la zona de
+subida privada, que es lo caro. **Lo que no se descarta es la trampa 13** (`allow
+read` en Storage incluye `list`): esa vale por sí sola y no depende de este ítem.
+
 
 **B-220 decía que volvían con la Function y no volvieron** (D-175). El argumento
 de B-220 era que la Function recomprime todo y por lo tanto los hace seguros, y no
