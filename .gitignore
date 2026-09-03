@@ -8,6 +8,13 @@ firestore-debug.log
 ui-debug.log
 .DS_Store
 
+# Borrador de mensaje de commit. Se ignora porque ya se coló al índice una
+# vez (`.tmp-msg.txt`, commiteado sin querer en f163e2b y dado de baja el
+# 2026-09-03): un `-F .tmp-msg.txt` es cómodo justamente porque el archivo
+# queda en la raíz, y sin esta línea vuelve a aparecer en `git status` y
+# tarde o temprano en un `add`.
+.tmp-msg.txt
+
 # Claves — NUNCA al repo (§5.4)
 # .env.production y .env.development SÍ están versionados: la config del SDK
 # web es pública por diseño (viaja en el bundle). Lo que no se versiona es
@@ -37,8 +44,8 @@ functions/.env.*.local
 
 # Worktrees de subagentes
 .claude/worktrees/
-.mdd/
 
 # Estado compartido entre los worktrees de los frentes en paralelo.
 # Un archivo por frente: seis agentes escribiendo el mismo archivo se pisan.
 .estado/
+.mdd/
