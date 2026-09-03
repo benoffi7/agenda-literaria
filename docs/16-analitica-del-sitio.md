@@ -7,7 +7,8 @@
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
 | Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
-| **Lo que falta antes de que mida en producción** | Nada de configuración: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta solo el deploy del código, que sale con el próximo push |
+| **Lo que falta antes de que mida en producción** | Nada de configuración para el tag: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta el deploy del código, y —para que los números lleguen al panel— los **pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño)**, que solo puede hacer el dueño |
+| También construido, el 2026-09-03 a la tarde | las **tipografías autoalojadas** ([§7.4ter](#74ter--las-tipografías-autoalojadas-b-481), B-481: cero terceros en el load), el **evento del tríptico** ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), B-601, sin enganche todavía) y la **lectura de GA4 + Search Console al panel** ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373), B-374/B-373) |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
 ---
@@ -379,7 +380,8 @@ red — sin cambios por D-254, que solo tocó HTML):
 **Y la cuenta que importa, la que compara con el §6.1:** para quien **rechaza**
 o no decidió, el costo de este frente es nada más que esto —**2.515 B gzip**
 (440 B de HTML + 2.075 B de JS)—, porque `gtag.js` nunca se descarga (§7.3) **y
-no hay ninguna conexión de red a un tercero mientras tanto** (D-254, §7.4bis).
+no hay ninguna conexión de red a un tercero mientras tanto** (D-254, §7.4bis;
+y desde B-481 eso es literal, sin la excepción de las tipografías — §7.4ter).
 Antes de D-254 esta frase era falsa: el `preconnect` abría una conexión a
 Google en el load, la persona hubiera rechazado o no. Para quien **acepta**, se
 suma el número entero del §6.1: 152 KB de `gtag.js` más los ~2,5 KB de acá,
@@ -524,18 +526,159 @@ que costaba.
 fuente — necesitaría reimplementar el parser de Astro) y falla si aparece un
 `<link>` de conexión (`preconnect`/`dns-prefetch`/`prefetch`/`preload`/
 `stylesheet`), un `<script src>` o un `<iframe src>` apuntando a un host que no
-esté en una lista blanca explícita, con motivo. Hoy esa lista tiene dos
-entradas — `fonts.googleapis.com` y `fonts.gstatic.com`, las tipografías del
-sistema visual (B-260), anteriores a todo esto — y **no** tiene
+esté en una lista blanca explícita, con motivo. Cuando este ítem cerró esa lista
+tenía dos entradas — `fonts.googleapis.com` y `fonts.gstatic.com`, las
+tipografías del sistema visual (B-260), anteriores a todo esto — y **no** tenía
 `googletagmanager.com`: si vuelve, el test lo dice, con el archivo y el host
 exactos. Mutación probada: se repuso el `preconnect` a mano, el test pasó a
-rojo nombrándolo, se sacó de nuevo.
+rojo nombrándolo, se sacó de nuevo. **Desde B-481 la lista está vacía** (las
+tipografías se sirven de este dominio, §7.4ter): la constante queda igual, y
+agregar un tercero es agregarle una entrada con el motivo escrito.
 
 **Y una idea que quedó anotada, no resuelta:** las tipografías son, hoy, la
 misma clase de conexión a un tercero en el load que este ítem acaba de sacar
 —solo que decidida antes y sin la lupa del consentimiento encima—.
 Autoalojarlas la eliminaría del todo. Es una decisión de otro día, pero con un
 banner ya construido conviene tenerla escrita: **B-481** en el `BACKLOG`.
+
+**Resuelto el 2026-09-03 — ver el [§7.4ter](#74ter--las-tipografías-autoalojadas-b-481).**
+La lista blanca de ese test quedó **vacía**.
+
+### 7.4ter · Las tipografías, autoalojadas (B-481)
+
+Era el último tercero que quedaba en el load de una página pública, y el único
+que el test de §7.4bis todavía permitía —anotado como pendiente y no como
+aceptado—. Se sacó del mismo modo que el `preconnect` de GA4: **no se
+condicionó, se eliminó la conexión.**
+
+Las tres familias del sistema visual (B-260/B-262) se sirven ahora desde
+`/fuentes/` de este dominio, con `@font-face` propias en
+`src/styles/global.css`. Son **los mismos archivos** que servía
+`fonts.gstatic.com`, copiados con la misma hoja de estilos que había en
+`Base.astro`, así que ni los pesos ni los ejes ni el `font-display: swap`
+cambiaron: la página se ve igual.
+
+**Los números, medidos igual que el §6bis** —build real, antes y después—:
+
+| | antes (Google) | ahora (propio) |
+|---|---|---|
+| Pedidos en el load de una página en castellano | **4** — 1 hoja de estilos + 3 `.woff2` | **3** — los `.woff2` |
+| Hosts de tercero contactados | **2** (`fonts.googleapis.com`, `fonts.gstatic.com`) | **0** |
+| Bytes de la hoja de fuentes | **677 B** gzip, en un pedido propio | **+351 B** gzip **adentro** del CSS del sitio, que ya se bajaba — cero pedidos |
+| Bytes de tipografía | 63.696 B (los tres subsets `latin`) | **63.696 B** — los mismos archivos |
+| Cache de la hoja de fuentes | `private, max-age=86400` — se rebajaba **cada día** | la del CSS del sitio: `/_astro/**`, un año, `immutable` |
+| Cache de los `.woff2` | `public, max-age=31536000` | `public, max-age=31536000, immutable` |
+| HTML de la home | 18.200 B / 5.545 B gzip | 18.232 B / **5.533 B** gzip |
+
+O sea **un pedido y dos handshakes TLS menos, 326 B menos en la visita fresca, y
+cero terceros** — y en la visita repetida la diferencia es mayor, porque la hoja
+de Google se rebajaba cada 24 horas y el CSS del sitio no se rebaja en un año.
+
+Tres cosas que hay que saber para no romperlo:
+
+1. **El `Cache-Control` de un año lo pone `firebase.json`** (`/fuentes/**`), y
+   no es opcional: sin esa regla Firebase sirve lo de `public/` con **una hora**
+   de cache, o sea que autoalojar sin tocar el hosting cambia una mejora por una
+   regresión. Es el mismo tipo de regla que ya existía para `/_astro/**`.
+2. **La versión va en el nombre del archivo** (`public-sans-v21-latin.woff2`),
+   que es lo que hace cierto el `immutable`: actualizar una familia cambia el
+   nombre, no el contenido de una URL cacheada por un año.
+3. **`latin-ext` está, y `vietnamese` no.** El `unicode-range` es el mismo que
+   mandaba Google, así que `latin-ext` **se baja solo si la página tiene una de
+   esas letras** — en castellano son cero bytes, exactamente como antes.
+   `vietnamese` se descartó: 20,3 KB de repositorio para un caso que este sitio
+   no tiene.
+
+**La red, y qué cambió en los dos tests que la tenían:**
+
+- `tests/terceros-antes-del-consentimiento.test.ts` tiene la lista blanca
+  **vacía**. Sigue existiendo como constante a propósito: agregar un tercero es
+  agregarle una entrada con el motivo escrito, y eso se lee en una review. Y se
+  le sumó lo que ese barrido no veía —**el CSS construido**: un
+  `@import url('https://fonts…')` o un `src: url('https://fonts.gstatic…')`
+  dentro de una `@font-face` salen a la red igual que un `<link>` y no aparecen
+  en ninguna etiqueta del HTML—, más el lado positivo (las seis `@font-face`
+  existen, apuntan a `/fuentes/` y el archivo está en el repo), porque un
+  chequeo que solo prohíbe pasa también con el archivo vacío.
+- `tests/sistema-visual.test.ts` verificaba «la hoja de fuentes pide exactamente
+  esas tres» leyendo los `family=` de la query de Google. Ese `<link>` ya no
+  existe, así que **el caso mira el lugar correcto**: las `font-family` de las
+  `@font-face`. Verifica lo mismo, en el archivo que hoy lo decide. Dejarlo
+  mirando el `<link>` habría sido peor que borrarlo: el regex no encontraría
+  nada y un caso en rojo empuja a reponer el `<link>` «para arreglar el test».
+
+Y un tercero que se llevó por delante, que conviene tener escrito porque no
+tenía nada que ver con las fuentes: el barrido de `tests/canonico.test.ts`
+—«ningún archivo de `src/` escribe un `href` interno a mano»— marcaba los tres
+`<link rel="preload">` nuevos. No era un hallazgo: un `<link>` de **recurso**
+lleva la ruta de un archivo, y un archivo con barra final es un 404. Pasaba
+inadvertido hasta acá porque los tres que había (`/marca.svg`,
+`/compartir.png`) están en la **raíz**, y para la raíz `rutaCanonica` ya
+devuelve el archivo tal cual; los `.woff2` viven en `/fuentes/`, dos segmentos,
+y ahí la única forma «canónica» es con barra. **No se tocó `rutaCanonica`** —
+tiene su propio caso decidido a propósito (una página de más de un segmento
+lleva barra *aunque tenga un punto*, porque un `slug` editado a mano puede tener
+uno): la ruta suelta no permite distinguir un archivo de una página con punto, y
+el barrido sí, porque mira la etiqueta donde está escrita. Se descartan los
+`<link>` con un `rel` de recurso, **nunca `canonical`**.
+
+### 7.5 · El tercer evento propio: el tríptico (B-601)
+
+**B-600** puso en la home el tríptico «¿Qué hay ahora?» —tres paneles **Hoy ·
+Mañana · Este finde**, arriba del buscador— y **no emitía nada**. Es una sección
+grande, en la página que recibe casi todo el tráfico, y sin un evento no hay
+forma de saber si se usa o si es un bloque que la gente saltea para bajar al
+listado. Es la misma pregunta que `estadisticas-abrir` contesta para el tablero
+del panel ([§8.3](#83--dos-cosas-que-no-hace-y-una-que-sí)): **¿alguien lo
+toca?** — y la que decide si la sección merece crecer o achicarse.
+
+| | |
+|---|---|
+| Nombre | `clic_triptico` |
+| Parámetro | **`panel`**, y nada más: `hoy` \| `manana` \| `finde` |
+| Dónde vive la especificación | `EVENTOS_SITIO` en `src/lib/analyticsSitio.ts`, con su saneador `enum` — el mismo camino que los otros dos, así que pasa por `construirEventoSitio` y por los centinelas |
+| Qué contesta | «¿se toca el tríptico, y qué panel?» |
+
+**Lo que no manda, y el motivo escrito para que nadie lo agregue después:**
+
+- **No manda la actividad** a la que el clic lleva —ni el slug, ni el título, ni
+  la ruta—. No es prudencia genérica: el `page_view` de la página de detalle a
+  la que ese clic **navega** ya manda la ruta, así que repetirla acá no agrega
+  una respuesta y sí agrega superficie. Es el tercer punto del
+  [§5.4](#54--lo-que-la-mitad-b-no-puede-hacer), aplicado. Hay un caso de test
+  que lo fija con centinelas en cinco parámetros a la vez.
+- **No manda el rótulo del panel.** «Este finde» y «El finde que viene» son la
+  misma clave (`finde`) con dos textos que decide `ahoraPublico.ts` según el
+  día: mandar el texto sería un valor abierto para contestar lo mismo.
+- **No mide impresiones.** «Se vio el tríptico» pediría un observador de
+  intersección en una sección que hoy no ejecuta JavaScript propio, y la
+  pregunta que decide algo es la del clic.
+
+**El vocabulario de los paneles está copiado, no importado**, por el mismo
+motivo que `EJES_MEDIBLES`: `ClaveDePanel` vive en `ahoraPublico.ts`, que trae
+el motor que resuelve las tres ventanas contra el índice entero, y este archivo
+entra por el banner de `Base.astro`, o sea **en todas las páginas** —la de
+detalle, que no tiene tríptico, pagaría el peso de calcularlo—. Si la copia se
+desactualiza, un panel nuevo cae en `otro`: el clic se cuenta y el desfase se ve
+en los datos, que es la degradación que este saneador está diseñado para dar.
+
+**Y la red que falta, nombrada por el `auditor-trampas`:** `PANELES_MEDIBLES`
+es una copia sin test, a diferencia de `EJES_MEDIBLES`, que sí está atado a
+`EJES` de `listadoPublico.ts`. No se puede escribir todavía porque el tipo del
+que se copia (`ClaveDePanel`) vive en un módulo que esta rama no tiene; el test
+—un `Record<ClaveDePanel, PanelMedible>`, que **no compila** si el tríptico gana
+un panel y el evento no— va junto con el enganche, y el parche está escrito en
+`.estado/analitica-sitio.md`. Mientras tanto la degradación es visible y no
+silenciosa: un panel nuevo llega a GA4 como `panel=otro`.
+
+> ⚠️ **Estado real al 2026-09-03: el evento está declarado y testeado, y el
+> enganche no está puesto.** Este frente trabajó sobre una rama que todavía no
+> tiene B-600 —`PanelesDeAhora.tsx` y `ahoraPublico.ts` viven en la rama de ese
+> otro frente—, así que instrumentar el componente habría sido escribirlo de
+> nuevo y garantizar un conflicto. Falta una prop opcional en
+> `PanelesDeAhora` y el handler en `Buscador.tsx`; el parche exacto quedó en
+> `.estado/analitica-sitio.md`. **Hasta que se aplique, `clic_triptico` no
+> emite.**
 
 ---
 
@@ -568,7 +711,7 @@ island `client:only`, sobra JavaScript para esto y no hace falta navegación:
 | Pestaña | Qué tiene | Mide a alguien que visita el sitio |
 |---|---|---|
 | **El catálogo** | lo que ya existía, reorganizado: los avisos siguen arriba a todo lo ancho, pero «Lo que se publica» y «Qué hay cargado» pasan a ir lado a lado desde `lg` en vez de apiladas | no |
-| **El sitio público** | el andamiaje de §8.1bis: la estructura de lo que va a mostrar cuando B-374 exista, sin un número inventado | todavía no mide nadie — el tablero tampoco |
+| **El sitio público** | lo de §8.1bis, y desde B-374/B-373 **con los números de verdad** cuando los hay: visitas/personas/vistas con su variación, las páginas más vistas, de dónde entra la gente, con qué aparato, los eventos propios, y lo que Search Console dice de las búsquedas. Sin datos sigue el estado vacío, ahora explicando **cuál** de las cuatro situaciones es ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)) | lee un resumen que la Function ya calculó: la pantalla no mide a nadie |
 
 Pestañas de verdad, con el patrón «tabs, automatic activation» de WAI-ARIA APG:
 `role="tablist"`/`"tab"`/`"tabpanel"`, roving `tabIndex` (solo la pestaña
@@ -603,12 +746,19 @@ Tres bloques, en el orden de lo que hay que hacer primero:
 
 ### 8.1bis · Qué muestra la pestaña «El sitio público» — el andamiaje, no los datos (B-502)
 
+> **Esta sección describe el estado del 2026-09-03 a la mañana, y sigue siendo
+> exacta para el caso «todavía no hay datos» — que es el caso normal el primer
+> mes.** A la tarde se construyó la lectura (**B-374/B-373**), así que cuando
+> hay datos la pestaña muestra números: eso está en el
+> [§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373). Lo que **no** cambió
+> es la decisión de esta sección —ni un número inventado— y lo que se agregó es
+> decir **cuál** de las cuatro situaciones explica el vacío.
+
 El pedido original quería vistas, páginas más vistas, secciones, clics y
-fricciones **en el panel**. Esa lectura es **B-374**, no está construida, y no
-lo va a estar hasta que haya un mes de datos (GA4 no mide retroactivo, §9.2).
-Mostrar cero o inventar un número habría sido peor que no construir nada: la
-pestaña existe para dejar la estructura escrita y honesta, no para simular que
-ya mide.
+fricciones **en el panel**. Esa lectura es **B-374**, y hasta que haya un mes de
+datos no va a tener nada que mostrar (GA4 no mide retroactivo, §9.2). Mostrar
+cero o inventar un número habría sido peor que no construir nada: la pestaña
+existe para dejar la estructura escrita y honesta, no para simular que ya mide.
 
 Lo que hay hoy, agrupado igual que el [§2](#2--dos-mitades-y-no-una) de este
 documento:
@@ -709,6 +859,226 @@ defender; el que sale del catálogo, no es comparable con el de nadie. Mezclarlo
 en la misma grilla sin decir cuál es cuál es cómo un número propio termina en un
 mail presentado como si fuera de Google.
 
+### 9.3bis · Cómo quedó construido (B-374 y B-373)
+
+**Se construyó, y con un desvío respecto de lo que el [§9.1](#91--las-piezas-una-por-una)
+listaba** — escrito como **D-341** en `06-decisiones.md`. Ese cuadro pedía siete
+piezas; se hicieron cinco, y las dos que no están no se saltearon: no hacían
+falta.
+
+| Pieza del §9.1 | Cómo quedó |
+|---|---|
+| **La Data API de GA4** | `functions/analitica.js` arma los pedidos (`runReport` v1beta) y `functions/analitica-trigger.js` los ejecuta |
+| **Una Cloud Function nueva** | `traerAnaliticaDelSitio`, un `onSchedule` diario a las 07:00 (`America/Argentina/Buenos_Aires`) |
+| **Una cuenta de servicio con acceso a la propiedad** | **no se creó una nueva.** Es `calendar-sync@`, la que ya existe y a la que el proyecto ya le da permisos a mano en consolas de Google. Una identidad menos que rotar y un paso de consola menos |
+| **Autorizar la Function** | **no hay endpoint que autorizar.** El resumen se escribe en `sistema/analitica-sitio`, que en `firestore.rules` ya es `read: if esAdmin()` / `write: if false` |
+| **Caché** | es el mismo documento. Un `onCall` con un caché al lado eran dos piezas para el mismo fin |
+| **Tests** | `tests/analitica-del-sitio.test.ts` (el módulo de la Function, con fixtures de la forma real de cada respuesta), `tests/resumen-del-sitio.test.ts` (el lector del panel) y `tests/sistema.integracion.test.ts` (las reglas de `/sistema/*` contra el emulador — la colección era la única con contenido que no tenía ninguno, y desde este cambio ahí vive el texto de las búsquedas). El §9.1 ya advertía qué prueban y qué no, y los archivos lo repiten en su cabecera |
+| **La latencia** | la pantalla la dice: 24 a 48 h para GA4, 2 a 3 días para Search Console, y el último día de cada ventana queda afuera a propósito (`RETRASO`) |
+
+**Por qué un `onSchedule` que escribe Firestore y no un `onCall`.** Es el mismo
+razonamiento que `reportes-trigger.js` ya había escrito para el reporte a issue:
+la autorización la hacen las reglas de Firestore, así que el panel lee con el
+permiso que ya tiene y un endpoint nuevo solo agregaría una superficie de
+autenticación que hay que escribir, testear y no equivocar. Y
+`reconciliacion.js` dejó el criterio general: no se agrega un `onCall` cuando la
+vía ya sancionada por la arquitectura alcanza.
+
+**Lo que se pierde, dicho de frente:** el panel no puede pedir «recalculá
+ahora». Ve el resumen de la última corrida. No es una pérdida real —los informes
+de GA4 tardan de 24 a 48 horas, así que un botón de refrescar traería el mismo
+número— pero es un desvío del pedido y conviene tenerlo escrito.
+
+**Cinco decisiones chicas que el diseño no tenía y ahora sí:**
+
+1. **Un informe por pregunta, y una ventana por llamada.** Cinco `runReport`
+   chicos en vez de uno con las dimensiones cruzadas: un `pagePath` ×
+   `deviceCategory` × canal devuelve el producto de las tres y hay que volver a
+   agregarlo de este lado, que es exactamente donde los números se rompen. Y sin
+   usar los dos `dateRanges` que la API acepta, porque entonces GA4 agrega por su
+   cuenta una dimensión `dateRange` y las filas se duplican con un valor extra.
+   **Las tres tandas van en serie**, y eso sí es obligatorio: son once informes
+   y la cuota de la Data API es de **10 pedidos concurrentes por propiedad**, así
+   que un `Promise.all` sobre los once devuelve `RESOURCE_EXHAUSTED` — y no
+   siempre, sino según cuáles terminen primero, que es la peor forma de fallar.
+   En serie el pico es de cinco, y el costo son tres round trips en una Function
+   que corre una vez por día.
+2. **La variación es `null`, no `0 %`, cuando la ventana anterior fue cero.**
+   Dividir da infinito, y «+100 %» sobre una base de cero es el número que un
+   anunciante pincha primero. Es el estado del **primer mes entero** de
+   medición, no un borde raro: la pantalla dice «sin comparación todavía».
+3. **Un evento propio que todavía no ocurrió sale en cero explícito.** GA4 no
+   devuelve fila para un evento con cero ocurrencias, y sin ese relleno la
+   pantalla no puede distinguir «cero clics de inscripción» —un dato— de «este
+   evento no está enganchado» —un bug—: las dos se ven como un hueco.
+4. **Cada fuente lleva su propio estado.** Las dos APIs fallan por separado, y
+   un resumen a medias es más útil que ninguno: si GA4 contesta y Search Console
+   no, la pantalla muestra GA4 y explica la otra.
+5. **La respuesta cruda de un error va al log, nunca al documento.** El panel lee
+   ese documento; volcarle el cuerpo de una respuesta de Google es la clase de
+   fuga que el `auditor-privacidad` busca. Al log sí, porque un 403 sin cuerpo no
+   distingue «la property no existe» de «la cuenta de servicio no tiene acceso»,
+   que son dos pasos de consola distintos. **El recorte del motivo va del lado
+   que escribe** y no solo del que lee: `e.message` lo arma `googleapis`, no
+   este repo, y el tope en el lector llega después de persistir.
+6. **Las dimensiones que se le piden a GA4 son una lista blanca.** Es el
+   invariante del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear)
+   visto **del lado que lee**, que hasta acá no lo protegía nada. `pagePath` no
+   lleva la query; **`pagePathPlusQueryString` sí** — una palabra de diferencia,
+   y el ranking de páginas del panel mostraría `?q=<lo que alguien tipeó>`. Por
+   la misma puerta entran `city`, `region`, `userAgeBracket`, `userGender` o
+   `pageLocation`. Las cinco permitidas son agregados sin persona (una ruta
+   pública, un canal, una categoría de aparato, el nombre de un evento propio,
+   una fecha), pedir otra **corta el informe** en vez de emitirlo, y el test
+   compara el conjunto exacto. Search Console tiene la suya, con dos: `query` y
+   `page` — se dejan afuera `country` y `device`, que sobre un puñado de
+   consultas de un sitio chico dejan de ser un agregado.
+
+**Y una decisión de privacidad que hay que escribir, porque este repo las
+escribe:** las **consultas de Search Console son texto que una persona tipeó**
+—en Google, no acá, pero tipeó—. Es el único campo de texto libre de procedencia
+desconocida que este frente trae al proyecto, y **se acepta**, por tres cosas que
+se sostienen juntas: Google ya descarta las consultas anonimizadas (las que
+hicieron muy pocos usuarios), el documento es `read: if esAdmin()` con su test
+de reglas, y la pantalla lo escapa como cualquier texto (React, sin
+`dangerouslySetInnerHTML`, sin armar un `href` con la consulta). **Lo que no
+puede pasar, y es la parte accionable:** ese texto no sale del panel. Ni a la
+analítica del panel (salida 4, donde la regla de contenido rige entera), ni a un
+export, ni a un issue de GitHub, ni a un mensaje de reporte. Es lo mismo que ya
+vale para el contenido del formulario, aplicado a un dato que entra en vez de
+uno que estaba. Lo mismo, más leve, para la dimensión `page`: devuelve URLs
+completas y **podría** traer query si Google llegara a indexar una URL con
+parámetros — hoy no puede (la canónica es sin query, `/admin` es `noindex` y
+está bloqueada en `robots.txt`), pero es el mismo canal.
+
+**Y lo que la pantalla hace con todo eso** — es la mitad que sostiene **D-272**.
+El andamiaje de B-502 era honesto por construcción, porque no leía nada. Con
+datos entrando aparecen **cuatro situaciones que se ven parecidas y piden
+acciones distintas**, y confundir dos es cómo un tablero empieza a mentir:
+
+| Situación | Qué pasó | Qué dice la pantalla |
+|---|---|---|
+| **sin documento** | la Function nunca corrió | «todavía no llegó ningún resumen; la lectura corre una vez por día» |
+| **sin configurar** | falta el `propertyId` o el sitio de Search Console | «falta un paso de configuración», y **cuál** |
+| **falla** | la API dijo no (permiso, cuota, property equivocada) | el motivo, en el acento |
+| **sin datos** | la API contestó bien y **el número es cero** | «contestó bien y todavía no hay volumen: los números están en cero de verdad, no falta nada» |
+
+La última es la que un tablero corriente muestra como «0 visitas», y es la que
+motivó D-272: un cero durante tres semanas parece un tablero roto, y el dueño no
+puede distinguirlo de un enganche que no funciona. Las distingue
+`src/lib/resumenDelSitio.ts`, que es puro y está testeado caso por caso.
+
+### 9.4 · Los pasos de consola del dueño
+
+**Un agente no puede hacer ninguno de estos, y no es una limitación técnica: es
+el §5.4 del `CLAUDE.md`.** Son credenciales y permisos sobre recursos del dueño.
+Hasta que estén, la Function está desplegada y la pantalla dice exactamente qué
+falta («falta un paso de configuración para Google Analytics: `GA4_PROPERTY_ID`
+sin configurar»), así que no hay nada roto mientras tanto.
+
+Van en este orden porque cada uno se verifica con el anterior hecho.
+
+**1 · Habilitar las dos APIs** (una vez, en el proyecto de Google Cloud)
+
+```bash
+gcloud services enable analyticsdata.googleapis.com \
+  searchconsole.googleapis.com --project agenda-literaria
+```
+
+*Cómo verificar:* `gcloud services list --enabled --project agenda-literaria | grep -E 'analyticsdata|searchconsole'`
+tiene que devolver las dos líneas. Sin esto, la Function loguea un 403 con
+`SERVICE_DISABLED` y un link para habilitarla — que es el error más fácil de
+leer de los cuatro que pueden pasar acá.
+
+**2 · Dar acceso de lectura a la cuenta de servicio en GA4**
+
+`calendar-sync@agenda-literaria.iam.gserviceaccount.com` — **la misma que ya
+tiene el calendario**, no una nueva.
+
+En Google Analytics: Administrar → (columna Propiedad) **Accesos a la
+propiedad** → **+** → Agregar usuarios → pegar ese mail → rol **Lector** →
+destildar «Notificar por correo» (una cuenta de servicio no lee mails) →
+Agregar.
+
+*Cómo verificar:* la cuenta aparece en esa misma lista con rol «Lector». Si el
+rol quedara en «Nadie», la Data API devuelve
+`User does not have sufficient permissions for this property` — que es lo que la
+pantalla del panel va a mostrar textualmente.
+
+**3 · Dar acceso de lectura a la misma cuenta en Search Console**
+
+En Search Console: la propiedad de `agendaleh.ar` → Configuración → **Usuarios y
+permisos** → Agregar usuario → pegar el mismo mail → permiso
+**Restringido** (alcanza: solo se lee) → Agregar.
+
+*Cómo verificar:* aparece en la lista. Con el permiso mal puesto la API devuelve
+403 con `User does not have sufficient permission for site`.
+
+**4 · Cargar los dos identificadores en `functions/.env` y desplegar**
+
+```
+GA4_PROPERTY_ID=<el id NUMÉRICO de la propiedad>
+SEARCH_CONSOLE_SITE=<sc-domain:agendaleh.ar   o   https://agendaleh.ar/>
+```
+
+> ⚠️ **El `propertyId` NO es el `G-9CFMHSSGRC`.** Ese es el *measurement id*, el
+> que va en el tag del navegador. La Data API pide el **id numérico** de la
+> propiedad, que está en Administrar → **Configuración de la propiedad** →
+> Detalles de la propiedad (arriba a la derecha, «ID de propiedad»).
+> Confundirlos devuelve un 403 que no dice cuál de los dos está mal, y es el
+> primer lugar donde este ítem se traba.
+
+> ⚠️ **`SEARCH_CONSOLE_SITE` es la propiedad tal cual se registró.** Si el
+> dominio se verificó **por DNS**, es `sc-domain:agendaleh.ar` (sin `https://`,
+> sin barra). Si se registró como **prefijo de URL**, es `https://agendaleh.ar/`
+> **con la barra final**. No son intercambiables: con la que no es, 403.
+
+Los dos son identificadores de recursos, no credenciales, y por eso pueden ir en
+un `.env` versionado — `tests/env-versionados.test.ts` los tiene como excepción
+nombrada, con el motivo escrito ahí.
+
+Después: `firebase deploy --only functions:traerAnaliticaDelSitio`.
+
+**5 · Confirmar que la zona horaria de la propiedad de GA4 es la del proyecto**
+
+Administrar → Configuración de la propiedad → **Zona horaria de los informes** →
+`(GMT-03:00) Buenos Aires`.
+
+*Por qué importa:* la Function manda fechas explícitas (`2026-09-17`) y GA4 las
+interpreta **en la zona de la propiedad**. Si no coincide, los números **no
+fallan**: se corren un día. Es la trampa 1 del §13 con otra cara, y no hay forma
+de detectarla desde el código.
+
+**6 · Cargar el `sitemap.xml` en Search Console** (opcional, y conviene)
+
+Search Console → Sitemaps → `https://agendaleh.ar/sitemap.xml` → Enviar. Ya
+existe desde B-109; cargarlo hace que Google descubra las páginas nuevas más
+rápido en vez de esperar a encontrarlas.
+
+**Cómo verificar que todo quedó bien, de punta a punta**
+
+1. Forzar una corrida sin esperar al día siguiente:
+   ```bash
+   gcloud scheduler jobs run firebase-schedule-traerAnaliticaDelSitio-southamerica-east1 \
+     --location southamerica-east1 --project agenda-literaria
+   ```
+2. Mirar el log: `firebase functions:log --only traerAnaliticaDelSitio`. La línea
+   buena dice `analítica del sitio actualizada` con `ga4: ok` y
+   `searchConsole: ok`.
+3. Abrir el panel → Estadísticas → pestaña **El sitio público**. Si los pasos
+   están bien y todavía no hay volumen, va a decir «contestó bien y todavía no
+   hay volumen», que es el resultado **correcto** durante el primer mes: la
+   diferencia con «falta un paso» está a la vista, que es todo el punto de §9.3bis.
+
+**Los cuatro errores que puede tirar, y qué es cada uno**
+
+| Lo que dice el log o la pantalla | Qué es | Qué hacer |
+|---|---|---|
+| `GA4_PROPERTY_ID sin configurar` | falta el paso 4 | cargar el `.env` y desplegar |
+| `SERVICE_DISABLED` / «has not been used in project» | falta el paso 1 | habilitar la API |
+| `User does not have sufficient permissions for this property` | falta el paso 2, o el `propertyId` es de otra propiedad | revisar los dos, en ese orden |
+| `User does not have sufficient permission for site` | falta el paso 3, o `SEARCH_CONSOLE_SITE` no es la forma con la que se registró la propiedad | revisar el paso 3 y la nota de `sc-domain:` |
+
 ---
 
 ## 10 · Lo que el propósito comercial abre y nadie nombró
@@ -748,7 +1118,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | 3 | **El banner y el consentimiento** (**B-376**, camino C3) | ✅ construido — es la pieza que hace que el tag esté informado desde el primer día en que mide de verdad |
 | 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **⛔ Bloqueado por B-480** antes de medir en producción — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480) |
 | 5 | **Los eventos propios** (**B-375**) | ✅ construidos: el clic en el botón de inscripción y el filtro que deja cero. Inertes hasta que B-480 se resuelva, igual que el resto de B-372 |
-| 6 | **El resumen vendible en el panel** (**B-374**) | recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre |
+| 6 | **El resumen vendible en el panel** (**B-374**) | ✅ construido (2026-09-03) — y con un desvío del criterio que decía «recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre». **El criterio era correcto para el orden y se cumplió por el otro lado:** lo que se construyó no muestra un cero ni un número inventado, sino cuál de las cuatro situaciones está pasando ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)), así que sirve **antes** de que haya datos — dice si los pasos de consola están bien. Lo que sigue esperando el mes de datos son los números, no la pantalla. Ver [§9.4](#94--los-pasos-de-consola-del-dueño) para lo que falta del lado del dueño |
 
 ---
 
@@ -756,22 +1126,22 @@ semana sin el tag es una semana de historia que no se recupera**.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 el tablero del catálogo y el banner/tag/eventos están; falta B-373, B-374 y B-480 |
+| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Lo que falta no es código: los **pasos de consola del dueño** del [§9.4](#94--los-pasos-de-consola-del-dueño), el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **enganche del evento del tríptico** (B-601). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
 | **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
 | **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** para medir en producción |
-| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 **conectado el 2026-09-03** — el histórico ya acumula; queda la lectura al panel, que va con la tanda de datos (B-374) |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | ⛔ depende de B-372 (con B-480 resuelto) y de un mes de datos |
+| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Falta el paso de consola del dueño: darle acceso de lectura a la cuenta de servicio y cargar `SEARCH_CONSOLE_SITE` ([§9.4](#94--los-pasos-de-consola-del-dueño), pasos 3 y 4) |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | 🟡 **construida** (2026-09-03): `traerAnaliticaDelSitio`, diaria, escribe `sistema/analitica-sitio`, y el panel la lee con estado vacío honesto por situación ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)). Falta lo que un agente no puede hacer: habilitar la Data API, dar acceso a la cuenta de servicio y cargar `GA4_PROPERTY_ID` ([§9.4](#94--los-pasos-de-consola-del-dueño)) — y **un mes de datos**, que es lo que la pantalla dice mientras no lo haya |
 | **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos — inertes hasta que B-372/B-480 midan de verdad |
 | **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
 | **B-377** | El **inventario publicitario**: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
 | **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
-| **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la eliminaría | 🔵 futuro, anotado por D-254 |
+| **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) eran una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la elimina | ✅ **hecho (2026-09-03)** — servidas desde `/fuentes/`, **cero terceros** en el load y un pedido menos, con los números en [§7.4ter](#74ter--las-tipografías-autoalojadas-b-481). D-340 |
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
-| **B-601** | **El tríptico «¿Qué hay ahora?» de la home no se mide** (B-600, D-320). Un clic en una fila del tríptico y uno en una fila del listado llevan al mismo lugar, así que hoy son indistinguibles: no se puede contestar si la sección se usa, cuál de los tres paneles, ni si el «+N más» —que a propósito no linkea— frustra. El evento tendría que viajar con el panel (`hoy`/`manana`/`finde`) y la posición de la fila, **nunca con el slug ni el título** | 🔵 futuro, anotado al construirlo |
+| **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | 🟡 el evento está declarado y testeado; **falta el enganche** en `PanelesDeAhora`/`Buscador` — el parche está en `.estado/analitica-sitio.md`, y hasta aplicarlo no emite |
 
 ---
 
@@ -791,5 +1161,9 @@ semana sin el tag es una semana de historia que no se recupera**.
   alcance de la regla de contenido), **D-250** (el banner es C3, y qué significa
   «rechazar» de verdad), **D-251** (el costo de JS aceptado, con el número),
   **D-252/D-253** (las decisiones técnicas de B-372/B-375, y lo que Enhanced
-  Measurement de GA4 no deja tapar desde el código) y **D-254** (por qué el
-  `preconnect` a GA4 se sacó en vez de condicionarlo, y la red que lo cubre).
+  Measurement de GA4 no deja tapar desde el código), **D-254** (por qué el
+  `preconnect` a GA4 se sacó en vez de condicionarlo, y la red que lo cubre),
+  **D-340** (las tipografías se autoalojan en vez de condicionarse — B-481, la
+  misma decisión que D-254 aplicada al último tercero que quedaba) y **D-341**
+  (por qué la lectura de GA4 va por un documento de Firestore y no por un
+  `onCall`, y las cuatro situaciones que la pantalla distingue).

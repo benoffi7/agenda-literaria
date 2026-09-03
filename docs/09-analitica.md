@@ -13,7 +13,7 @@ mismo cambio.
 | Implementación | `src/lib/analytics-eventos.ts` (puro) + `src/lib/analytics.ts` (transporte) |
 | Instrumentación del formulario | `src/components/admin/useMedicionFormulario.ts` |
 | Tests | `tests/analytics-eventos.test.ts`, `tests/analytics-privacidad.test.ts`, `tests/analytics-campos.test.ts` (el vocabulario de campos contra el schema) y `tests/version.test.ts` (el formato de `version` contra el build) |
-| Alcance | solo el panel `/admin`. **Desde B-372/B-375 el sitio público también mide** — es una implementación propia, no heredada de ésta, y está documentada en [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) |
+| Alcance | solo el panel `/admin`. **Desde B-372/B-375 el sitio público también mide** — es una implementación propia, no heredada de ésta, y está documentada en [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). Y desde B-374/B-373 **el panel además lee** los números del sitio, que es la dirección contraria: no los mide, los muestra, calculados por una Function que consulta GA4 y Search Console |
 
 ---
 
@@ -311,6 +311,15 @@ tablero se retira en vez de crecer. `valor` es cuántas actividades tenía el
 catálogo al abrirlo — un entero, y nunca el nombre de un aviso ni el título de
 ninguna actividad señalada.
 
+> **B-374 se construyó igual, el 2026-09-03, antes de que este termómetro
+> tuviera lecturas.** No es que la pregunta dejara de importar: la respuesta se
+> volvió menos decisiva cuando la pantalla pasó a servir **también sin datos**
+> —dice cuál de las cuatro situaciones explica el vacío, o sea si los pasos de
+> consola están bien—, así que el costo de construirla dejó de depender de que
+> alguien la abra. `estadisticas-abrir` sigue midiendo, y sigue siendo el número
+> que decide si el tablero **crece** (B-378, B-379) o se retira. Ver el §9.3bis
+> de [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md).
+
 `seccion-abrir` se instrumentó en el componente `Seccion`, así que **una sección
 nueva se mide sola** en cuanto existe. Cae en `detalle: otro` hasta que su slug
 entre en el vocabulario: si aparece un `otro` con volumen, lo que falta es una
@@ -366,7 +375,7 @@ pero con nombre propio y con un mensaje que dice qué corregir.
 | Cancelar un encuentro (la casilla "Cancelado") | Está en un `onChange` inline del JSX y medirlo exigía tocar el markup. Ver [B-58](BACKLOG.md) |
 | Tildar "publicar el link de la reunión" en el momento | Ídem. Se mide igual en `guardado_ok.url_publica`, que es el dato que importa |
 | El foco campo por campo (el embudo fino del formulario) | Exigiría instrumentar 30+ inputs, o refactorizar el formulario. `faltantes` da la ubicación gruesa sin tocar nada |
-| El sitio público, **por este módulo** | La proyección de acá (`analytics-eventos.ts`) no se hereda: si el sitio público mide, tiene la suya propia. **Y desde B-372/B-375 la tiene** — ver [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). El clic en el CTA de inscripción, que era «la única métrica que valdría la pena», es uno de los dos eventos propios que ya existen |
+| El sitio público, **por este módulo** | La proyección de acá (`analytics-eventos.ts`) no se hereda: si el sitio público mide, tiene la suya propia. **Y desde B-372/B-375 la tiene** — ver [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). El clic en el CTA de inscripción, que era «la única métrica que valdría la pena», es uno de los eventos propios que ya existen — hoy son **tres** declarados: `clic_inscripcion`, `filtro_sin_resultados` y, desde B-601, `clic_triptico` |
 
 ---
 

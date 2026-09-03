@@ -423,7 +423,39 @@ describe('los `href` internos van en la forma que contesta 200 — B-293', () =>
      * MUTACIONES PROBADAS: `href: '/cartelera'` en `Encabezado.astro` y
      * `href: '/contacto'` en `ayudaDelSitio.ts` ponen este caso en rojo
      * nombrando el archivo y la ruta. Las dos con el barrido viejo pasaban.
+     *
+     * ── Lo que el barrido NO mira, y por qué — B-481 ───────────────────────
+     * Un `<link>` de **recurso** no lleva la ruta de una página: lleva la de un
+     * archivo, y un archivo con barra final es un 404. Hasta B-481 esto no se
+     * notaba porque los tres que había (`/marca.svg`, `/compartir.png`) están en
+     * la raíz, y para la raíz `rutaCanonica` ya devuelve el archivo tal cual. Al
+     * autoalojar las tipografías aparecieron tres `href` a
+     * `/fuentes/…​.woff2` —dos segmentos— y ahí sí: la única forma «canónica» de
+     * un path de dos segmentos es con barra, así que el barrido los marcaba y
+     * pedía exactamente lo que rompería el pedido.
+     *
+     * **No se toca `rutaCanonica`**, que tiene su propio caso decidido a
+     * propósito: una página de más de un segmento lleva barra **aunque tenga un
+     * punto**, porque un `slug` editado a mano en la consola puede tener uno y
+     * ahí la página existe de verdad (ver el `it` de arriba). `rutaCanonica` no
+     * puede distinguir un archivo de una página con punto; **este barrido sí**,
+     * porque no mira una ruta suelta: mira la etiqueta donde está escrita.
+     *
+     * Así que se descartan los `<link>` cuyo `rel` es de recurso —`preload`,
+     * `preconnect`, `dns-prefetch`, `prefetch`, `icon`, `apple-touch-icon`,
+     * `mask-icon`, `stylesheet`, `manifest`—. **`canonical` no está en esa
+     * lista**, y es lo que importa: ése sí es la URL de una página y tiene que
+     * seguir pasando por acá.
      */
+    const RELS_DE_RECURSO =
+      /preload|preconnect|dns-prefetch|prefetch|icon|apple-touch-icon|mask-icon|stylesheet|manifest/i;
+    /** El fuente sin los `<link>` de recurso: lo que queda son destinos de página. */
+    const sinLinksDeRecurso = (codigo: string): string =>
+      codigo.replace(/<link\b[^>]*>/gi, (etiqueta) => {
+        const rel = /\brel=["']?([\w -]+)["']?/i.exec(etiqueta)?.[1] ?? '';
+        return RELS_DE_RECURSO.test(rel) ? '' : etiqueta;
+      });
+
     const FORMAS = [
       /href="(\/[^"]*)"/g,
       /href:\s*'(\/[^']*)'/g,
@@ -440,7 +472,7 @@ describe('los `href` internos van en la forma que contesta 200 — B-293', () =>
     const sinBarra: string[] = [];
     let vistos = 0;
     for (const f of archivos) {
-      const codigo = sinComentarios(fuente(f));
+      const codigo = sinLinksDeRecurso(sinComentarios(fuente(f)));
       for (const forma of FORMAS) {
         for (const m of codigo.matchAll(forma)) {
           vistos += 1;
@@ -457,10 +489,47 @@ describe('los `href` internos van en la forma que contesta 200 — B-293', () =>
      * renombre, un cambio de formato— el barrido pasaría sin haber mirado un
      * solo `href`, que es lo que estuvo pasando con la mitad de las formas.
      */
+    /*
+     * ── El control positivo cambió de forma, y no de exigencia — B-481 ─────
+     *
+     * Este `expect` pedía **más de 5** `href` vistos. Al descartar los `<link>`
+     * de recurso el número real bajó a **3** —los tres `href="/"` de
+     * `pasadas.astro`, `cartelera.astro` y `agenda/[mes].astro`—, y el resto de
+     * los destinos de página del sitio no son literales: salen de las
+     * constantes de `rutasPublicas.ts`, que es exactamente lo que este caso
+     * quiere lograr.
+     *
+     * O sea que **el umbral de 5 se sostenía contando los tres `<link>` de
+     * icono**, que no son destinos de página y pasaban de casualidad por estar
+     * en la raíz. Bajar el número a secas sería debilitar el control, así que se
+     * reemplaza por uno que no depende de cuántos literales queden en el sitio:
+     * un fuente **sintético** donde las cuatro formas están escritas y el
+     * stripper de `<link>` tiene que dejar pasar el `canonical` y comerse el
+     * `preload`. Si un regex se rompe, esto falla aunque `src/` no tenga ni un
+     * literal.
+     */
+    const fixture = `
+      <a href="/uno">x</a>
+      <link rel="canonical" href="/dos" />
+      <link rel="preload" as="font" href="/fuentes/tres.woff2" crossorigin />
+      <link rel="icon" href="/cuatro.svg" />
+      const enlaces = [{ href: '/cinco' }, { href: "/seis" }];
+      <Algo href={'/siete'} />
+    `;
+    const vistosEnFixture: string[] = [];
+    for (const forma of FORMAS) {
+      for (const m of sinLinksDeRecurso(fixture).matchAll(forma)) vistosEnFixture.push(m[1]!);
+    }
+    expect(
+      vistosEnFixture.sort(),
+      'los regex del barrido dejaron de leer alguna de las cuatro formas, o el ' +
+        'stripper de `<link>` se comió un `canonical`',
+    ).toEqual(['/cinco', '/dos', '/seis', '/siete', '/uno']);
+
     expect(
       vistos,
-      'el barrido no encontró ningún `href` interno: los regex no matchean nada',
-    ).toBeGreaterThan(5);
+      'el barrido no encontró ningún `href` interno en `src/`: los regex no matchean nada',
+    ).toBeGreaterThanOrEqual(3);
 
     expect(
       sinBarra,

@@ -167,23 +167,72 @@ const conChrome = seccion !== 'ninguna';
       placeholder.
     */}
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*
-      Las tres familias de `docs/referencias/sistema-visual.md`, en **una sola**
-      petición — B-260. Pesan 62,0 KB contra los 84,2 KB de Inter + Lora, y eso
-      está medido sobre los woff2 que Google sirve para el subset latin, no
-      estimado. El detalle de la medición está en `src/styles/global.css`.
+      ── Las tipografías, y por qué acá no hay ni un host de Google — B-481 ──
 
-      **`opsz` va fijado en 72 y no abierto** — B-262: con el eje óptico abierto,
-      Fraunces pasa de 17,7 KB a **31,1 KB**, casi el doble, y no hace falta,
-      porque acá se usa en un rango angosto: 30px la marca y 72px el mes. 72 es
-      el punto óptico de ese rango.
+      Hasta el 2026-09-03 acá vivían dos `<link rel="preconnect">` y un
+      `<link rel="stylesheet">` a `fonts.googleapis.com`, o sea **una conexión a
+      un tercero en el load de toda página pública**. Es la misma clase de
+      conexión que **D-254** sacó para `googletagmanager.com`, solo que decidida
+      en B-260, antes de que existiera el banner de consentimiento: pasaba antes
+      de que la persona decidiera y también para quien rechaza.
+
+      Ahora las tres familias salen de `/fuentes/`, este mismo dominio: las
+      `@font-face` están en `src/styles/global.css` (con los pesos, los ejes, los
+      `unicode-range` y los números del antes/después), y el `Cache-Control` de
+      un año va en `firebase.json` bajo `/fuentes/**`.
+
+      **Los tres `preload` no son decoración.** Antes el navegador descubría los
+      `.woff2` leyendo la hoja de Google, que era un `<link>` del `<head>` y por
+      lo tanto se pedía temprano. Ahora los descubre leyendo el CSS del sitio, un
+      paso más adentro de la cadena: sin el `preload`, el pedido de la fuente sale
+      después de que ese CSS llegó y se parseó, y con `font-display: swap` eso se
+      ve como un cambio de letra más tardío. Se precargan los **tres `latin`** y
+      ninguno más: son las tres familias que toda página pinta arriba del pliegue
+      (la marca en Fraunces, la navegación en Archivo Narrow, el cuerpo en Public
+      Sans), mientras que `latin-ext` **no se precarga a propósito** — el
+      navegador lo pide solo si la página tiene una letra de ese rango, y
+      precargarlo sería bajar 52 KB que casi ninguna página usa.
+
+      `crossorigin` va **aunque sea el mismo origen**: el navegador pide las
+      fuentes en modo CORS anónimo, y un `preload` sin ese atributo se descarga
+      igual pero **no se reusa** — dos veces el mismo archivo, que es el modo de
+      falla clásico de esta etiqueta.
+
+      **Y van con `conChrome`, igual que el banner**: `/admin` pinta su propia UI
+      con `font-serif` (Georgia, cero bytes) y `font-sans`, no usa la display ni
+      la de títulos, así que precargarle las tres sería bajarle 36 KB que no
+      dibuja. Las `@font-face` siguen valiendo ahí — el panel toma Public Sans
+      cuando el CSS llega, un instante más tarde, que en una herramienta interna
+      que usan dos personas no cambia nada.
     */}
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400..700&family=Fraunces:opsz,wght@72,900&family=Public+Sans:wght@400..700&display=swap"
-    />
+    {
+      conChrome && (
+        <Fragment>
+          <link
+            rel="preload"
+            href="/fuentes/public-sans-v21-latin.woff2"
+            as="font"
+            type="font/woff2"
+            crossorigin
+          />
+          <link
+            rel="preload"
+            href="/fuentes/archivo-narrow-v35-latin.woff2"
+            as="font"
+            type="font/woff2"
+            crossorigin
+          />
+          <link
+            rel="preload"
+            href="/fuentes/fraunces-v38-opsz72-latin.woff2"
+            as="font"
+            type="font/woff2"
+            crossorigin
+          />
+        </Fragment>
+      )
+    }
   </head>
   <body class="flex min-h-dvh flex-col overflow-x-clip font-sans antialiased">
     {conChrome && <Encabezado activa={seccion as Seccion} />}

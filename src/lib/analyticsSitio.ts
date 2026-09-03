@@ -150,6 +150,45 @@ export const FUERA_DE_VOCABULARIO_SITIO = 'otro';
  */
 const EJES_MEDIBLES = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'] as const;
 
+/**
+ * Los tres paneles del tríptico «¿Qué hay ahora?» — **B-601**, sobre el B-600
+ * que construyó la sección.
+ *
+ * ⚠️ **La fuente todavía no existe en esta rama.** `ClaveDePanel` vive en
+ * `@/lib/ahoraPublico`, que llega con B-600 desde otra rama, así que estas tres
+ * claves salen de leer **ese** módulo y no de importarlo — y hasta que se
+ * junten, el test de `tests/analyticsSitio.test.ts` compara esta lista contra
+ * una copia literal de sí misma, o sea que no la ata a nada. Lo señalaron los
+ * dos auditores. El caso límite que eso deja abierto: si las tres claves
+ * difirieran **desde el día uno**, el 100 % de los clics llegaría a GA4 como
+ * `panel=otro` con toda la suite en verde. El test que lo cierra va junto con
+ * el enganche (ver `.estado/analitica-sitio.md`).
+ *
+ * **Copiado y no importado, por el mismo motivo que `EJES_MEDIBLES`**: la
+ * fuente es `ClaveDePanel` de `@/lib/ahoraPublico`, y ese módulo trae el motor
+ * que resuelve las tres ventanas contra el índice entero. Importarlo acá lo
+ * arrastraría al chunk que carga en **todas** las páginas —este archivo entra
+ * por el banner de `Base.astro`— y la página de detalle, que no tiene tríptico,
+ * pagaría el peso de calcularlo. Es exactamente el costo que el §6 del diseño
+ * se comprometió a medir y a no dejar crecer de a poco.
+ *
+ * **Qué pasa si la copia se desactualiza**, dicho con precisión y no con una
+ * promesa: un panel nuevo cae en `FUERA_DE_VOCABULARIO_SITIO`, o sea que en
+ * GA4 aparece como `panel=otro` — no se pierde el clic y el desfase se **ve**
+ * en los datos, que es la misma degradación que tiene `via` en
+ * `clic_inscripcion` y la que este saneador está diseñado para dar. Lo que
+ * **no** hay todavía es la red que lo diga antes: un
+ * `Record<ClaveDePanel, …>` en `tests/analyticsSitio.test.ts` —que sí puede
+ * importar el tipo, porque un `import type` no deja rastro en el bundle— no
+ * compilaría si el tríptico ganara un panel y acá no se agregara. Está pendiente
+ * junto con el enganche de este evento, ver `.estado/analitica-sitio.md`.
+ */
+const PANELES_MEDIBLES = ['hoy', 'manana', 'finde'] as const;
+
+/** Los paneles que este módulo sabe medir. Lo usa quien arma el handler del
+ * tríptico, para no escribir las claves a mano dos veces. */
+export type PanelMedible = (typeof PANELES_MEDIBLES)[number];
+
 /** Formato de un slug de taxonomía — el que produce `slugify()`. Rechaza
  * cualquier cosa con mayúsculas, acentos o espacios, que es exactamente lo que
  * el texto de un buscador tendría y un slug nunca tiene. */
@@ -204,6 +243,34 @@ export const EVENTOS_SITIO = {
   filtro_sin_resultados: {
     eje: { tipo: 'enum', valores: EJES_MEDIBLES },
     slug: { tipo: 'lista-slugs' },
+  },
+  /**
+   * ¿Se toca el tríptico «¿Qué hay ahora?», y qué panel? — **B-601**.
+   *
+   * B-600 puso tres paneles (Hoy · Mañana · Este finde) arriba del buscador, en
+   * la home, y **no emitían nada**: no había forma de saber si la sección se usa
+   * o si es un bloque grande que la gente saltea para ir al listado. Es la misma
+   * pregunta que `estadisticas-abrir` contesta para el tablero del panel (§8.3
+   * del diseño) — «¿alguien lo abre?» — y la que decide si la sección merece
+   * crecer o achicarse.
+   *
+   * **Un solo parámetro, y es vocabulario cerrado: `panel`.** No va el título de
+   * la actividad, ni su slug, ni la URL de destino, y no por prudencia genérica:
+   * el `page_view` de la página de detalle a la que el clic lleva **ya manda la
+   * ruta**, así que mandarla también acá no agrega una respuesta y sí agrega
+   * superficie (§5.4 del diseño, tercer punto). Y el rótulo del panel («Este
+   * finde» / «El finde que viene») **tampoco** viaja: es texto que decide
+   * `ahoraPublico.ts` según el día, así que sería un valor abierto para
+   * contestar lo mismo que contesta la clave.
+   *
+   * **No mide «se vio el tríptico», mide «se tocó».** Una impresión pediría un
+   * observador de intersección en una sección que hoy no ejecuta JavaScript
+   * propio, y la pregunta que decide algo es la del clic: un panel que se ve y
+   * nadie toca y un panel que nadie ve se arreglan distinto, pero los dos
+   * empiezan por saber si alguien lo toca.
+   */
+  clic_triptico: {
+    panel: { tipo: 'enum', valores: PANELES_MEDIBLES },
   },
 } satisfies Record<string, EspecificacionSitio>;
 

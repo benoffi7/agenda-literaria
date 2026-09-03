@@ -29,6 +29,143 @@
  *    (B-235).
  */
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  Las tres familias, servidas desde este dominio — B-481
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Antes esto era un `<link rel="stylesheet">` a `fonts.googleapis.com` en
+ * `Base.astro`, con dos `preconnect` al lado. Se sacó, y el motivo es el mismo
+ * que **D-254** usó para sacar el `preconnect` a `googletagmanager.com`: un
+ * pedido a un tercero en el load de **toda** página pública le dice al borde de
+ * ese tercero que este navegador, desde esta IP, entró al sitio — y pasaba
+ * antes de que la persona tocara el banner de consentimiento, y también para
+ * quien **rechaza**. Con las fuentes acá no hay a quién avisarle: los `.woff2`
+ * salen de `/fuentes/`, el mismo origen que el HTML.
+ *
+ * No es la misma clase de dato que B-480 —una tipografía no manda nada de la
+ * persona— pero sí es la misma clase de **conexión**, y era la última que
+ * quedaba: `tests/terceros-antes-del-consentimiento.test.ts` tiene hoy la lista
+ * blanca **vacía** por esto.
+ *
+ * ── Qué se bajó, y qué no ─────────────────────────────────────────────────
+ * Los archivos son **los mismos que servía Google**, copiados tal cual de
+ * `fonts.gstatic.com` el 2026-09-03 con la hoja de estilos que había en
+ * `Base.astro` (de ahí la versión en cada nombre: `v35`, `v38`, `v21` — si
+ * alguna se actualiza, el nombre cambia y el `immutable` de `firebase.json`
+ * sigue siendo cierto). Se conservan **los mismos pesos y ejes** que pedía ese
+ * `<link>`, que son los que el sistema visual decidió y midió en B-260/B-262:
+ * `Archivo Narrow` 400..700, `Public Sans` 400..700 y `Fraunces` 900 con el eje
+ * óptico **fijado en 72** (abierto cuesta 31,1 KB contra 17,7 KB).
+ *
+ * De los tres subsets que Google sirve para estas familias se bajaron **dos**:
+ *
+ * · **`latin`** — es el que se usa. Cubre U+0000–00FF, o sea todo el castellano
+ *   acentuado (á é í ó ú ñ ü ¡ ¿) más las comillas y los guiones tipográficos.
+ * · **`latin-ext`** — nombres propios del circuito que se salen de ahí
+ *   (Sławomir, Ștefan, un macron). **No se baja solo**: el `unicode-range` de
+ *   abajo es el mismo que mandaba Google, así que el navegador lo pide **solo
+ *   si la página tiene una de esas letras**. En una página en castellano son
+ *   cero bytes, exactamente como antes.
+ * · **`vietnamese` no se bajó.** Google lo sirve porque las tres familias lo
+ *   tienen, no porque este sitio lo necesite: son 20,3 KB de repositorio para
+ *   un caso que no existe. Si algún día aparece, se agrega el archivo y su
+ *   `@font-face`.
+ *
+ * ── Los números, medidos y no estimados (2026-09-03) ──────────────────────
+ *
+ * | | antes (Google) | ahora (propio) |
+ * |---|---|---|
+ * | Pedidos en el load de una página en castellano | **4** (1 hoja + 3 woff2) | **3** (los woff2) |
+ * | Hosts de tercero contactados | **2** (`fonts.googleapis.com`, `fonts.gstatic.com`) | **0** |
+ * | Bytes de la hoja de fuentes | **677 B** gzip, en un pedido propio | **+351 B** gzip **adentro** del CSS del sitio, que ya se bajaba — cero pedidos |
+ * | Bytes de tipografía | 63.696 B (los tres `latin`) | **63.696 B** (los mismos archivos) |
+ * | Cache de la hoja de fuentes | `private, max-age=86400` — se rebajaba **cada día** | la del CSS del sitio: `/_astro/**`, un año, `immutable` |
+ * | Cache de los woff2 | `public, max-age=31536000` | `public, max-age=31536000, immutable` (`firebase.json`, `/fuentes/**`) |
+ * | HTML de la home | 18.200 B / 5.545 B gzip | 18.232 B / **5.533 B** gzip (3 `preload` en lugar de 2 `preconnect` + 1 `<link>`) |
+ *
+ * O sea: **un pedido y dos handshakes TLS menos, 326 B menos en la visita
+ * fresca, y los mismos bytes de tipografía** — más lo que de verdad se buscaba,
+ * que es **cero terceros**. En la visita repetida la diferencia es mayor que
+ * eso: la hoja de Google se rebajaba cada 24 h y el CSS del sitio no se rebaja
+ * en un año.
+ *
+ * El `max-age` de los woff2 se replica a mano en `firebase.json`, y eso **no es
+ * opcional**: sin esa regla Firebase sirve lo de `public/` con una hora de
+ * cache y las fuentes se rebajarían 24 veces más seguido que antes, que sería
+ * cambiar una mejora por una regresión.
+ *
+ * ── `font-display: swap`, igual que antes ─────────────────────────────────
+ * Es lo que pedía el `display=swap` del `<link>` que se sacó, y sigue siendo lo
+ * que corresponde: el texto se ve de entrada con la face de respaldo de cada
+ * token (`Arial Narrow`, `Georgia`, la sans del sistema) y se recompone cuando
+ * llega el archivo. Un `optional` o un `block` cambiarían cómo se ve la primera
+ * carga; esto no cambia nada respecto de lo que había.
+ */
+
+/* Archivo Narrow — `--font-titulo`. */
+@font-face {
+  font-family: 'Archivo Narrow';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fuentes/archivo-narrow-v35-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Archivo Narrow';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fuentes/archivo-narrow-v35-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Fraunces — `--font-display`, con `opsz` fijado en 72 (B-262). */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/fuentes/fraunces-v38-opsz72-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/fuentes/fraunces-v38-opsz72-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Public Sans — `--font-sans`, el cuerpo. */
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fuentes/public-sans-v21-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fuentes/public-sans-v21-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+    U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+
 @theme {
   /*
    * ── Tipografía ─────────────────────────────────────────────────────────
@@ -46,6 +183,11 @@
    * Se pasa de dos familias a tres y aun así baja, porque Inter y Lora se
    * bajaban como archivos **variables completos**: pedir tres pesos de Inter
    * traía el rango entero.
+   *
+   * **Esos 62,0 KB no cambiaron con B-481** — los archivos son los mismos, lo
+   * que cambió es de dónde salen: hoy los sirve este dominio desde
+   * `public/fuentes/`, no `fonts.gstatic.com`. Las `@font-face` están arriba de
+   * este bloque, con los números del antes y el después.
    *
    * **El eje `opsz` de la display va fijado en 72**, y no es una
    * micro-optimización: abierto, Fraunces cuesta **31,1 KB** contra los 17,7 KB
