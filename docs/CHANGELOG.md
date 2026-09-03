@@ -75,14 +75,35 @@ día calendario en `src/lib/fechasPublicas.ts` (`claveDeDia`, `diaDesplazado`,
 medianoche se corre de día con el offset de -3). El markup, en
 `src/components/publico/PanelesDeAhora.tsx`, no formatea una fecha, no decide una
 frase y no lee ninguna `EntradaDeIndice`. El tríptico entra al barrido de
-centinelas como salida propia, con su lista corta y justificada y su control
-negativo.
+centinelas como **séptimo productor de la salida 1** —no es una salida nueva: no
+agrega ninguna ruta indexable, es una sección del HTML de la home—, con su propia
+lista corta y justificada y su control negativo.
 
 Un bug encontrado al escribir los tests, arreglado en el mismo cambio: el módulo
 cortaba la ventana al tope y **después** resolvía cada encuentro contra su
 actividad, así que un slug sin actividad —el índice lo sirve un CDN y puede ser de
 un build anterior— caído entre los primeros cuatro dejaba el panel con tres filas
 y el pie prometiendo un cuarto que no existía.
+
+**Y un segundo bug, que encontró el `auditor-privacidad` sobre este mismo cambio
+(B-602):** el reloj del build salía de un `new Date(indice.generadoEn)` sin
+guarda, así que un `generadoEn` ilegible llegaba como `Invalid Date` a
+`claveDeDia` y tiraba `RangeError` **antes** de que corriera la guarda documentada
+del sello — la que dice «sin sello se pierde una línea de contexto, con una
+excepción se pierde la página entera», y acá se perdía la página. Dos derivaciones
+del mismo string con políticas de falla opuestas, y una documentada como si
+describiera las dos: la clase de B-88. Ahora pasa por el mismo `instanteDeIso` que
+usa el sello.
+
+Del `auditor-trampas`, que salió **limpio**, quedaron dos redes permanentes —
+ninguna sobre un bug de hoy: `diaDesplazado` cruzando un 29 de febrero, y el salto
+al finde siguiente **cruzando el año** (un domingo 27 de diciembre salta al 2 y 3
+de enero, que la tabla de los siete días no ejercitaba porque usa una sola semana
+de referencia). Y una tercera red que salió del error de rotulado: el número de
+salida que cada `describe` del barrido se atribuye ahora está **atado a su fila
+real del índice** (`tests/agentes-y-skills.test.ts`). El del tríptico nació
+rotulado «salida 12», que es la analítica del sitio público, y nada lo notaba: los
+chequeos que había comparan las tres tablas del índice **entre sí**.
 
 ## 2026-09-03 · el eje de encuentros en el events.json (B-99)
 

@@ -18,10 +18,11 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > tres primeros (**B-310**, **B-311**, **B-312**); los números del medio son de
 > otros frentes de la misma tanda.
 >
-> **Y un tercer hueco, con una renumeración adentro: `B-602` y `B-603`.** La tanda
-> del 2026-09-03 tuvo tres frentes en paralelo y dos numeraron a ciegas. El frente
-> del sitio reservó **B-600 a B-603** y usó los dos primeros (**B-600**, el
-> tríptico de la home; **B-601**, medirlo). El frente de salud del repo había
+> **Y un tercer hueco, con una renumeración adentro: `B-603`.** La tanda del
+> 2026-09-03 tuvo tres frentes en paralelo y dos numeraron a ciegas. El frente del
+> sitio reservó **B-600 a B-603** y usó tres (**B-600**, el tríptico de la home;
+> **B-601**, medirlo; **B-602**, el `RangeError` del reloj del build que salió de
+> auditarlo). El frente de salud del repo había
 > propuesto cuatro ítems con esos mismos números, y **se renumeraron a B-604 a
 > B-607** al integrarlos: `B-600(salud)`→**B-604**, `B-601(salud)`→**B-605**,
 > `B-602(salud)`→**B-606**, `B-603(salud)`→**B-607**. **B-600 se quedó como el
@@ -2762,6 +2763,41 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-602 · El reloj del build de la home salía de un `new Date()` sin guarda: un `generadoEn` ilegible tiraba `RangeError` — ✅ hecho (2026-09-03) · P2
+
+**Lo encontró el `auditor-privacidad` auditando B-600, y lo señaló el
+`auditor-documentacion` al ver que el arreglo se había commiteado sin ítem.**
+
+`src/pages/index.astro` armaba `ahora` con `new Date(indice.generadoEn)`, sin
+pasar por ningún parser defensivo. `selloDelIndice` (`src/lib/ahoraPublico.ts`)
+parsea **el mismo string** con `instanteDeIso` y sí se defiende, con el motivo
+escrito en su docblock y repetido en
+[`12-sitio-publico.md`](12-sitio-publico.md): «sin sello se pierde una línea de
+contexto, con una excepción se pierde la página entera».
+
+Pero con un `generadoEn` ilegible, `ahora` llegaba como `Invalid Date` a
+`claveDeDia`, que formatea con `Intl` y tira `RangeError`: **el build de la home
+se caía antes** de que la guarda del sello llegara a correr. O sea que la garantía
+documentada valía para el camino de la island —donde `ahora` es el reloj del
+cliente— y no para el del build, que es justo el que la frase describe. Dos
+derivaciones del mismo string con políticas de falla opuestas, y una documentada
+como si describiera las dos: **la clase de B-88**.
+
+Es además un bug que **nació con B-600**: la línea es anterior, pero antes su
+`Invalid Date` solo llegaba a comparaciones —que devuelven `false` y no rompen— y
+el tríptico fue lo que la conectó con un `Intl`.
+
+**Arreglado** con `instanteDeIso(indice.generadoEn) ?? new Date()`, el mismo
+parser que el sello.
+
+**Sin red hasta este cambio.** Ahora la fija
+[`tests/listado-del-sitio.test.ts`](../tests/listado-del-sitio.test.ts) («el reloj
+del build sale del mismo parser que el sello, no de un `new Date()` pelado», con
+mutación probada), y `tests/pagina-de-detalle.test.ts` actualizó su aserto del
+literal **sin tocar la afirmación de fondo** —el reloj sigue siendo el `generadoEn`
+y no el de la máquina de build—, con el aserto que mantiene la distinción entre eso
+y el respaldo del `??`.
+
 ### B-605 · `09-analitica.md` decía que `MOTIVOS_IMAGEN` tiene tres valores, y tiene seis — ✅ hecho (2026-09-03) · P2
 
 **Renumerado desde el `B-601` que propuso el frente de salud** (ver la nota de
@@ -4583,8 +4619,9 @@ detalle de su actividad. Sin ningún dato nuevo.
   `src/components/publico/PanelesDeAhora.tsx`, que no formatea una fecha, no decide
   una frase y no lee ninguna `EntradaDeIndice`.
 - Tests: [`tests/ahoraPublico.test.ts`](../tests/ahoraPublico.test.ts) (los siete
-  días de la semana table-driven, los dos casos de zona horaria), el `describe` de
-  la salida nueva en
+  días de la semana table-driven, los dos casos de zona horaria), el `describe` del
+  **séptimo productor de la salida 1** —no es una salida nueva, ver la fila 1 de
+  [`07-seguridad.md`](07-seguridad.md)— en
   [`tests/barrido-de-salidas-publicas.test.ts`](../tests/barrido-de-salidas-publicas.test.ts)
   y la parte 7 de
   [`tests/listado-del-sitio.test.ts`](../tests/listado-del-sitio.test.ts).
