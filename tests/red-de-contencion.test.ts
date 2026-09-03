@@ -138,9 +138,17 @@ describe('el índice de la tabla «no automatizar» no apunta al vacío — B-66
         enCodigo = !enCodigo;
         continue;
       }
-      // Fuera: bloques de código, filas de tabla y bloques indentados — los tres
-      // pasan de 100 legítimamente.
-      if (enCodigo || linea.startsWith('|') || linea.startsWith('    ')) continue;
+      /*
+       * Fuera: bloques de código, filas de tabla y bloques indentados — los tres
+       * pasan de 100 legítimamente.
+       *
+       * La fila de tabla se reconoce **después de recortar los espacios**: una
+       * tabla anidada dentro de una viñeta va indentada dos espacios y sigue
+       * siendo una tabla. Sin el `trim` este chequeo reportaba las tres filas de
+       * la tabla de B-122, que es reportar de más — o sea, el camino más corto a
+       * que alguien afloje el umbral en vez de mirar el hallazgo.
+       */
+      if (enCodigo || linea.trim().startsWith('|') || linea.startsWith('    ')) continue;
       if (linea.length > LIMITE) largas.push(`${i + 1}: (${linea.length}) ${linea.slice(0, 90)}…`);
     }
     expect(
