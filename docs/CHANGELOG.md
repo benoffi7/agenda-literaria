@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-03 · el aviso «ya pasó» del tablero se saca del todo (D-273)
+
+Ayer se reencuadró (D-270) para que no sonara a fricción; el dueño, al verlo,
+marcó el problema de fondo que el texto no tocaba: la lista crece sin techo —es el
+archivo entero— y para casi todo no pide ninguna acción. Se saca la clase de aviso
+`ya-paso` (título, filtro y su lugar en la lista). **Queda la cobertura acotada
+«cuántas publicadas tienen fecha futura»**, que dice lo mismo como número y no como
+lista que envejece. El tablero pasa de seis avisos a cinco, los cinco accionables.
+El archivo sigue donde estaba, en `/pasadas`.
+
 ## 1.6.0 — 2026-09-03
 
 **El release del sitio público y su analítica.** 1.5.0 fue el motor de carga —N

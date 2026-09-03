@@ -121,7 +121,7 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | # | La fricción | Cómo se detecta | Qué se hace con eso | ¿Hoy? |
 |---|---|---|---|---|
 | 1 | **Una actividad publicada a la que ya no se puede entrar** — la inscripción cerró y todavía tiene encuentros por venir | catálogo + reloj | cambiar el estado, correr la fecha de cierre, o avisarlo en la descripción | ✅ |
-| 2 | ~~Una actividad que ya pasó y sigue en `publicado`~~ — **reencuadrada, D-270**: eso es el archivo funcionando, no una fricción (§2.1 del `CLAUDE.md`, `/pasadas`). El tablero lo muestra como estado, no como problema, salvo la excepción real: un ciclo que vuelve necesita fechas nuevas | catálogo + reloj | si es un ciclo, cargar las fechas nuevas; si fue única, nada | ✅ |
+| 2 | ~~Una actividad que ya pasó y sigue en `publicado`~~ — **descartada como aviso, D-273**: no es una fricción (es el archivo funcionando, §2.1, `/pasadas`), la lista crecería sin techo y para casi nada hay acción. Lo cubre la cobertura acotada «cuántas tienen fecha futura», no un aviso | catálogo + reloj | nada como aviso; la excepción (un ciclo que vuelve) no se puede aislar hoy | ❌ sacada |
 | 3 | **Una actividad publicada sin imagen** | catálogo | conseguir el flyer: sin él no entra a la cartelera y el link compartido va con la marca genérica. Al 2026-09-01 eran **2 de 42** | ✅ |
 | 4 | **Una actividad publicada sin etiquetas** | catálogo | ponerle etiquetas: sin ellas existe en el sitio pero no se encuentra filtrando | ✅ |
 | 5 | **Una actividad publicada con descripción demasiado corta** | catálogo | escribir dos frases más: la `meta description` sale de ahí, y es la que decide el clic | ✅ |
@@ -555,8 +555,8 @@ Es además el único tramo claramente seguro:
 - **no manda nada a ningún tercero** — nada sale del navegador del dueño;
 - **no cuesta una lectura de Firestore de más** — es la misma lectura de
   `/actividades` que el listado ya hace, agrupada de otra manera;
-- **contesta las preguntas 8, 9 y 10 y seis de las ocho fricciones**, que son las
-  que se convierten en trabajo del día siguiente.
+- **contesta las preguntas 8, 9 y 10 y cinco de las ocho fricciones** (la de «ya
+  pasó» se sacó, D-273), que son las que se convierten en trabajo del día siguiente.
 
 ### 8.0 · Dos pestañas, no una página larga (B-501)
 
@@ -587,14 +587,13 @@ medir.
 
 Tres bloques, en el orden de lo que hay que hacer primero:
 
-1. **Los avisos** — las seis fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas), cada una con las
+1. **Los avisos** — las cinco fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas), cada una con las
    actividades que la disparan y un click para abrirlas. Van primero porque son
-   lo accionable. Si no hay ninguno, lo dice. **La segunda, «ya pasó», se
-   reencuadró (D-270, B-500):** que una actividad publicada siga publicada
-   después de pasar es el comportamiento correcto —se convierte en archivo,
-   §2.1 del `CLAUDE.md`— así que el título y el texto dejaron de sonar a
-   alarma, y pasó al final de la lista: es la que menos acción concentra de
-   las seis, no la más urgente.
+   lo accionable. Si no hay ninguno, lo dice. **No hay un aviso de «ya pasó»
+   (D-273):** se probó —reencuadrado y todo (D-270)— y se sacó, porque listaba el
+   archivo entero, que sólo crece y para casi nada pide acción. Lo que sí queda es
+   la cobertura acotada «cuántas publicadas tienen fecha futura» (punto 2), que
+   dice lo mismo sin ser una lista que envejece.
 2. **Lo que se publica, completo o no** — de las publicadas: cuántas con imagen,
    cuántas con etiquetas, cuántas con descripción suficiente, cuántas con
    encuentros por venir. Es el termómetro de B-264 («2 de 42 con imagen») **medido
@@ -769,7 +768,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
 | **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la eliminaría | 🔵 futuro, anotado por D-254 |
-| **B-500** | El aviso «ya-paso» reencuadrado: no es una fricción, es el archivo funcionando (D-270) | ✅ hecho (2026-09-03) |
+| **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
 

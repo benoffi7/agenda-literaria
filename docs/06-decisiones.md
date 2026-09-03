@@ -6965,7 +6965,39 @@ eliminaría del todo. Es una decisión de otro día: **B-481** en el `BACKLOG`.
 
 ---
 
+## D-273 · El aviso «ya-paso» se saca del todo (revierte D-270)
+
+**Contexto.** D-270 reescribió el aviso «ya pasó y sigue publicada» para que no
+sonara a fricción. El dueño, al verlo ya reformulado, marcó el problema de fondo,
+que el reencuadre no tocaba: **«en un año será enorme, no sirve para nada»**.
+
+**Tenía razón, y es estructural, no de texto.** El aviso listaba *toda* actividad
+publicada sin fecha futura — o sea el archivo entero, que sólo crece. Reformular
+el título no cambia que:
+
+- para la **mayoría** (las actividades únicas) no hay ninguna acción posible;
+- el **único** caso accionable —un ciclo que vuelve y necesita fechas nuevas— no
+  se puede distinguir del resto con los datos que hay;
+- el archivo **ya vive en `/pasadas`**, así que el tablero lo estaba duplicando
+  como lista de pendientes.
+
+Una lista que crece sin techo y que para casi todo no pide nada enseña a ignorar
+el tablero — el costo que D-270 ya nombraba, sin sacar la conclusión.
+
+**Decisión.** Se elimina la clase de aviso `ya-paso` (título, filtro y su lugar
+en `CLASES_DE_AVISO`). **Se conserva la cobertura «cuántas publicadas tienen
+fecha futura»** (`publicadas.conFuturo`): dice lo mismo —qué parte del catálogo
+sigue vigente— pero como **número acotado**, no como lista que crece. Quedan cinco
+avisos, los cinco accionables y de tamaño acotado.
+
+**Qué se pierde, y por qué está bien.** El recordatorio de «este ciclo terminó,
+¿le cargás fechas nuevas?». No se puede aislar ese caso hoy; si más adelante el
+modelo distingue «ciclo recurrente» de «actividad única», se puede reponer
+**acotado a eso**, que es lo que D-270 intentaba aproximar listando todo.
+
 ## D-270 · El aviso «ya-paso» se reencuadra: no es una fricción, es el archivo funcionando
+
+> **Superada por D-273 (2026-09-03):** el aviso se sacó del todo. Esta entrada queda por el rastro del razonamiento.
 
 **El dueño lo marcó textual: «los eventos siguen publicados como archivos, no
 entiendo el aviso».** Tenía razón. El tablero «Estado del catálogo» (B-370,

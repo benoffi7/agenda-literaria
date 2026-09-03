@@ -126,7 +126,9 @@ describe('el aviso de la inscripción cerrada — el peor de los seis', () => {
     expect(clases([a])).not.toContain('inscripcion-cerrada');
   });
 
-  it('NO la señala si ya no le quedan encuentros: ahí el problema es otro', () => {
+  it('NO señala «inscripción cerrada» si ya no le quedan encuentros por venir', () => {
+    // Sin futuro no hay a qué inscribirse: la fricción de «cerrada con encuentros
+    // por venir» no aplica. La actividad simplemente pasó, y eso no es un aviso.
     const a = acto({
       id: 'paso-y-cerrada',
       sesiones: [sesion('2026-08-01T19:00:00Z')],
@@ -139,7 +141,6 @@ describe('el aviso de la inscripción cerrada — el peor de los seis', () => {
         completo: false,
       },
     });
-    expect(clases([a])).toContain('ya-paso');
     expect(clases([a])).not.toContain('inscripcion-cerrada');
   });
 
@@ -198,56 +199,30 @@ describe('el aviso de la inscripción cerrada — el peor de los seis', () => {
   });
 });
 
-describe('el aviso de «ya pasó y sigue publicada»', () => {
-  it('señala una publicada sin encuentros por venir', () => {
-    const a = acto({ id: 'vieja', sesiones: [sesion('2026-08-01T19:00:00Z')] });
-    expect(clases([a])).toContain('ya-paso');
-  });
-
-  it('NO señala una publicada que todavía no tiene ningún encuentro cargado', () => {
-    // Esa está a medio cargar, no «ya pasó». Decir que pasó algo que nunca tuvo
-    // fecha es un aviso que enseña a desconfiar del tablero.
-    const a = acto({ id: 'sin-fechas', sesiones: [] });
-    expect(clases([a])).not.toContain('ya-paso');
-  });
-
-  it('usa el mismo criterio que el listado del panel, no uno propio', () => {
-    // Durante las dos horas de un taller de 19 a 21, a las 19:30, todavía se
-    // puede entrar: `proximaVentana` descarta por el fin. Si el tablero usara el
-    // inicio, diría «ya pasó» de algo que el listado muestra arriba.
+describe('la cobertura «cuántas publicadas tienen fecha futura»', () => {
+  // El número reemplaza al viejo aviso de «ya pasó»: dice lo mismo —qué parte del
+  // catálogo publicado sigue vigente— pero es un conteo acotado, no una lista que
+  // crece con cada actividad que termina (D-273). El archivo entero vive en
+  // /pasadas; el tablero no lo re-lista.
+  it('una actividad en curso cuenta como vigente, con el mismo criterio que el listado', () => {
+    // A las 11:30 de un encuentro de 11 a 13 todavía se puede entrar: cuenta por
+    // el fin, no por el inicio, igual que el listado del panel.
     const enCurso = acto({ id: 'en-curso', sesiones: [sesion('2026-09-02T11:30:00Z')] });
     expect(tieneFuturo(enCurso, AHORA)).toBe(true);
-    expect(clases([enCurso])).not.toContain('ya-paso');
     expect(estadoDelCatalogo([enCurso], AHORA).publicadas.conFuturo).toBe(1);
   });
 
-  it('un encuentro cancelado no cuenta como futuro', () => {
+  it('una actividad que ya pasó no cuenta como vigente', () => {
+    const vieja = acto({ id: 'vieja', sesiones: [sesion('2026-08-01T19:00:00Z')] });
+    expect(estadoDelCatalogo([vieja], AHORA).publicadas.conFuturo).toBe(0);
+  });
+
+  it('un encuentro cancelado no cuenta como fecha futura', () => {
     const a = acto({
       id: 'cancelado',
       sesiones: [sesion('2026-09-20T19:00:00Z', { cancelada: true })],
     });
-    expect(clases([a])).toContain('ya-paso');
-  });
-
-  // D-270 — que siga publicada es lo esperado (archivo, §2.1 del CLAUDE.md),
-  // así que este es el aviso menos accionable de los seis y va último. Si
-  // alguien lo vuelve a poner arriba —por ejemplo al lado de
-  // `inscripcion-cerrada`, que sí es una fricción real— este test lo dice.
-  it('es el último de la lista de gravedad, no el segundo', () => {
-    expect(CLASES_DE_AVISO[CLASES_DE_AVISO.length - 1]).toBe('ya-paso');
-    expect(CLASES_DE_AVISO.indexOf('ya-paso')).toBeGreaterThan(
-      CLASES_DE_AVISO.indexOf('inscripcion-cerrada'),
-    );
-  });
-
-  // D-270 — el texto no puede volver a sonar a fricción: una actividad que
-  // pasó y sigue publicada es el comportamiento correcto, no algo roto.
-  it('el texto no alarma: dice que es lo esperado y cuál es la única excepción accionable', () => {
-    const a = acto({ id: 'vieja', sesiones: [sesion('2026-08-01T19:00:00Z')] });
-    const av = aviso([a], 'ya-paso');
-    expect(av?.porque).toMatch(/es lo esperado/i);
-    expect(av?.porque).toMatch(/ciclo que vuelve/i);
-    expect(av?.porque).not.toMatch(/ya pasaron y siguen figurando/i);
+    expect(estadoDelCatalogo([a], AHORA).publicadas.conFuturo).toBe(0);
   });
 });
 

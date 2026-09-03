@@ -72,17 +72,6 @@ export const NOVEDADES: Novedad[] = [
     donde: 'Panel → Estadísticas.',
   },
   {
-    id: 'aviso-ya-paso-reencuadrado',
-    fecha: '2026-09-03',
-    version: '1.6.0',
-    titulo: 'El aviso de actividades que ya pasaron ahora explica qué hacer, en vez de alarmar',
-    detalle:
-      'Una actividad que ya pasó y sigue publicada está bien: queda como archivo en el sitio. El ' +
-      'aviso lo daba a entender como un problema. Ahora dice lo que realmente conviene hacer: si ' +
-      'es un ciclo que vuelve, cargale las fechas nuevas; si fue única, no hay nada que tocar.',
-    donde: 'Panel → Estadísticas → El catálogo → Qué conviene mirar.',
-  },
-  {
     id: 'plataforma-a-confirmar',
     fecha: '2026-09-02',
     version: '1.6.0',

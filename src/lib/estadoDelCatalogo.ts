@@ -71,17 +71,15 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
  * (escribir y que no le contesten), abajo lo que nos hace perder algo a nosotros
  * (trabajo hecho que no rinde).
  *
- * **`ya-paso` va último, y no es cosmético (D-270).** El dueño lo marcó
- * textual: «los eventos siguen publicados como archivos, no entiendo el
- * aviso». Tenía razón — una actividad publicada que ya pasó **es** el
- * comportamiento correcto (CLAUDE.md §2.1, `/pasadas` es justamente el
- * archivo), así que no es una fricción del mismo tipo que las otras cinco: no
- * hay nada roto que arreglar en la actividad en sí. Lo único que puede seguir
- * de acá es cargar las fechas nuevas de un ciclo que vuelve, y eso no aplica a
- * la mayoría de las actividades señaladas (una actividad única no tiene fechas
- * que cargar). Por eso queda al final, después de `esperando`: es la que
- * menos por-hacer concentra de las seis, no la que menos importa mirar de
- * vez en cuando.
+ * **No hay un aviso de «ya pasó» (D-273, sacaba lo que D-270 había reencuadrado).**
+ * Se probó —primero como fricción, después reformulado a «Terminaron y pasaron
+ * al archivo»— y no servía: listaba **toda** actividad publicada sin fecha
+ * futura, o sea el archivo entero, que sólo crece. Para la mayoría (las
+ * actividades únicas) no hay ninguna acción, y el único caso accionable —un
+ * ciclo que vuelve y necesita fechas nuevas— no se puede distinguir del resto
+ * con los datos que hay. El archivo ya vive en `/pasadas`; el tablero no lo
+ * re-lista como pendiente. La cobertura «cuántas publicadas tienen fecha
+ * futura» (un número acotado, no una lista) sí queda: dice lo mismo sin crecer.
  */
 export const CLASES_DE_AVISO = [
   'inscripcion-cerrada',
@@ -89,7 +87,6 @@ export const CLASES_DE_AVISO = [
   'sin-etiquetas',
   'descripcion-corta',
   'esperando',
-  'ya-paso',
 ] as const;
 export type ClaseDeAviso = (typeof CLASES_DE_AVISO)[number];
 
@@ -118,18 +115,6 @@ const TEXTO: Record<ClaseDeAviso, { titulo: string; porque: string }> = {
     titulo: 'Publicadas con la inscripción ya cerrada y encuentros por venir',
     porque:
       'El sitio las sigue ofreciendo. Alguien va a escribir y no va a poder entrar.',
-  },
-  'ya-paso': {
-    // D-270 — reencuadrado de «Ya pasaron y siguen figurando como
-    // publicadas», que sonaba a fricción a arreglar cuando es justo lo
-    // contrario: que sigan publicadas es correcto (se convierten en archivo,
-    // §2.1 del CLAUDE.md). Lo único accionable es la excepción: un ciclo que
-    // vuelve necesita fechas nuevas cargadas.
-    titulo: 'Terminaron y pasaron al archivo',
-    porque:
-      'Es lo esperado: siguen publicadas y su página sigue viva en /pasadas. ' +
-      'Si alguna es un ciclo que vuelve, cargale las fechas nuevas; si fue ' +
-      'una actividad única, no hay nada que hacer.',
   },
   'sin-flyer': {
     titulo: 'Publicadas sin imagen',
@@ -276,9 +261,6 @@ export const estadoDelCatalogo = (
     'inscripcion-cerrada': publicadas.filter(
       (a) => tieneFuturo(a, ahora) && inscripcionCerrada(a, ahora),
     ),
-    // Con al menos un encuentro cargado: una publicada sin encuentros todavía no
-    // «ya pasó», está a medio cargar — y eso lo dice otro aviso o ninguno.
-    'ya-paso': publicadas.filter((a) => (a.sesiones ?? []).length > 0 && !tieneFuturo(a, ahora)),
     'sin-flyer': publicadas.filter((a) => faltaElFlyer(imagenesDe(a))),
     'sin-etiquetas': publicadas.filter((a) => (a.tags ?? []).length === 0),
     'descripcion-corta': publicadas.filter(descripcionCorta),
