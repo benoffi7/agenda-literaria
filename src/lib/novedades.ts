@@ -62,7 +62,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'tablero-con-pestanias',
     fecha: '2026-09-03',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El tablero de estadísticas ahora tiene pestañas, y una sobre el sitio público',
     detalle:
       'Antes era una sola página larga. Ahora se divide en dos: «El catálogo», con lo que ya ' +
@@ -74,7 +74,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'aviso-ya-paso-reencuadrado',
     fecha: '2026-09-03',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El aviso de actividades que ya pasaron ahora explica qué hacer, en vez de alarmar',
     detalle:
       'Una actividad que ya pasó y sigue publicada está bien: queda como archivo en el sitio. El ' +
@@ -85,7 +85,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'plataforma-a-confirmar',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Si todavía no sabés por dónde va a ser el encuentro virtual, ya podés decirlo',
     detalle:
       'La plataforma era obligatoria para lo virtual, y a veces todavía no está decidido si va a ' +
@@ -96,7 +96,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'material-duplicar-y-contador',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El material ahora se puede duplicar, y te dice cuántos cargaste',
     detalle:
       'La sección de material no tenía botón «Duplicar» ni contador, a diferencia del resto de las ' +
@@ -107,7 +107,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'errores-de-galeria-y-encuentros-al-lado',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El flyer y los encuentros también te marcan el error en la fila',
     detalle:
       'Misma mejora que ya tenía el material (más abajo): si una imagen quedó con una dirección ' +
@@ -118,7 +118,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'evento-borrado-a-mano-vuelve',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Si borrás un encuentro desde Google Calendar, vuelve al guardar la actividad',
     detalle:
       'El calendario es un espejo de lo que cargás acá, así que borrar un encuentro allá no era ' +
@@ -130,7 +130,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'errores-del-material-al-lado',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El material que falta ahora te lo marca en la fila, no solo abajo',
     detalle:
       'Si cargaste dos lecturas y una quedó sin título, antes la barra de abajo decía «Título del ' +
@@ -141,7 +141,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'aviso-de-opcion-que-no-quedo',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Si una opción nueva no llega a la lista, ahora te enterás',
     detalle:
       'Cuando escribís una opción que no existía —un barrio, un arancel, una etiqueta— se guarda ' +
@@ -153,7 +153,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'coordenadas-con-coma',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Pegar coordenadas con coma ya te dice qué corregir',
     detalle:
       'Si pegabas «-34,5989, -58,4392» —con coma en lugar de punto, que es como las copia una ' +
@@ -164,7 +164,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'las-imagenes-se-alivianan-solas',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Ya no hace falta alivianar una imagen antes de subirla',
     detalle:
       'Cuando subís un archivo tuyo, unos segundos después el servidor lo vuelve a guardar más ' +
@@ -175,7 +175,7 @@ export const NOVEDADES: Novedad[] = [
   },
   {    id: 'las-demas-imagenes-se-ven',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Si cargás más de una imagen, ahora se ven todas',
     detalle:
       'La página de la actividad mostraba solo la portada, así que la segunda y la tercera no ' +
@@ -187,7 +187,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'sitio-con-dominio-propio',
     fecha: '2026-09-02',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El sitio ya tiene dirección propia, y Google puede encontrarlo',
     detalle:
       `La agenda vive en ${DOMINIO}. Cada actividad que publicás tiene ahí su propia página, ` +
@@ -199,7 +199,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'cancelada-conserva-pagina',
     fecha: '2026-09-01',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Cancelar una actividad que ya se había publicado ya no borra su página',
     detalle:
       'Antes, cancelar una actividad publicada hacía que su página diera error para quien ' +
@@ -211,7 +211,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'link-reunion-dice-el-calendario',
     fecha: '2026-09-01',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'La casilla del link de la reunión ahora dice a dónde sale de verdad',
     detalle:
       'Decía «Publicar el link en el sitio» y en la página de la actividad el link nunca ' +
@@ -223,7 +223,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'flyer-y-cartelera',
     fecha: '2026-09-01',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'El flyer sale entero, y ahora hay una cartelera con todos',
     detalle:
       'La imagen de la actividad se muestra completa: antes se recortaba arriba y abajo, que es ' +
@@ -235,7 +235,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'color-por-tipo-de-actividad',
     fecha: '2026-09-01',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Elegís de qué color escribe el sitio cada tipo de actividad',
     detalle:
       'En «Opciones», cada tipo de actividad tiene ahora un botón «Color» con doce tintas. El ' +
@@ -247,7 +247,7 @@ export const NOVEDADES: Novedad[] = [
   {
     id: 'filtro-de-arancel-en-el-listado',
     fecha: '2026-09-01',
-    version: '1.5.0',
+    version: '1.6.0',
     titulo: 'Podés filtrar el listado por arancel, y encontrar las gratis de una',
     detalle:
       'El botón «Filtros» tiene un desplegable nuevo de arancel, al lado de «Tipo». Contesta «¿qué ' +

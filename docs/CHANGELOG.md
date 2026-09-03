@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.6.0 — 2026-09-03
+
+**El release del sitio público y su analítica.** 1.5.0 fue el motor de carga —N
+modalidades y subir imágenes propias—; 1.6.0 es todo lo que se construyó encima
+desde entonces, y por primera vez el proyecto tiene sus tres piezas vivas: panel,
+sitio y calendario.
+
+- **El sitio público, con identidad.** Sistema visual propio (brutalismo
+  editorial, Fraunces de display), listado con búsqueda y filtros, página de
+  detalle con cero JavaScript, cartelera, páginas de mes, `/pasadas`, y los
+  **hubs** de búsqueda (`/tipo`, `/barrio`, `/gratis`, `/online`) — B-108.
+- **Dominio propio** `agendaleh.ar`, con canonical, Open Graph, `sitemap.xml` y
+  `robots.txt` (B-109).
+- **Analítica del sitio**, la mitad nueva: **banner de consentimiento** con
+  aceptar/rechazar (C3), el **tag de GA4** que solo carga si se acepta y cero
+  contacto con terceros antes (D-254), dos eventos propios, y el **tablero con
+  pestañas** en el panel —«El catálogo» y «El sitio público»— (B-370 a B-379,
+  B-500 a B-502).
+- **Imágenes propias optimizadas** en el servidor y servidas con `srcset`: la
+  página más pesada bajó de 3226,7 KB a 184,3 KB (B-220, B-320).
+- **Paga de deuda de tests e infra**: B-219 (el emulador compartido entre
+  worktrees), B-205 (un push que no deploya se repara solo), y una docena más.
+
+El detalle de cada cambio está en las entradas dateadas de abajo.
+
 ## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
 
 El dueño pidió tres cosas para el tablero «Estado del catálogo»: pestañas en
