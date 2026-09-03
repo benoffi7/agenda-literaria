@@ -547,8 +547,10 @@ campo a mano es copiar y pegar. Incluye `difusion` y `online.url`, que son
 internos — la subcolección solo la lee un admin y no hay camino al `events.json`.
 Ver [`07-seguridad.md`](07-seguridad.md).
 
-`camposCambiados` está para poder elegir qué versión abrir desde la consola de
-Firestore sin revisarlas de a una, mientras no exista UI de restauración (B-40).
+`camposCambiados` está para poder elegir qué versión abrir sin revisarlas de a
+una — antes desde la consola de Firestore, y desde B-40 es lo mismo que usa la
+pantalla de historial del panel para no mostrar las 20 versiones abiertas de
+entrada.
 
 ### Cuándo se guarda una versión — y cuándo no
 

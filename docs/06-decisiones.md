@@ -374,10 +374,13 @@ viene a evitar, así que no se puede dejar al azar del reloj.
   misma versión en lugar de duplicarla. Por eso el instante sale de `event.time`
   y no de `Date.now()`.
 
-**Por qué ISO y no milisegundos:** mientras no exista UI (B-40) el historial se
-lee desde la consola de Firestore, donde el id es todo lo que se ve de un
-documento. Y al ser de ancho fijo, el orden lexicográfico de los ids es el orden
-cronológico — de eso depende la poda de D-42.
+**Por qué ISO y no milisegundos:** antes de que existiera la pantalla de
+historial (B-40), el historial se leía desde la consola de Firestore, donde el
+id es todo lo que se ve de un documento — y el ancho fijo seguía importando
+igual una vez que hubo pantalla, porque `listarVersiones` ordena por el id del
+documento (D-43 en `src/lib/historial.ts`), no por un campo separado. Al ser de
+ancho fijo, el orden lexicográfico de los ids es el orden cronológico — de eso
+depende la poda de D-42 y el orden que ve la pantalla.
 
 ## D-31 · Los reportes van por trigger de Firestore, no por `onCall`
 
@@ -1919,9 +1922,10 @@ quince líneas, no cambia el modelo y guarda exactamente lo que se perdía.
 **Lo que queda pendiente, y ya estaba (B-89):** la subcolección sobrevive al
 documento padre, así que la versión del borrado queda huérfana — alcanzable por
 path desde la consola de Firestore, invisible desde el panel. Es a la vez lo que
-hace recuperable el borrado y lo que B-89 tiene que resolver cuando exista UI de
-restauración (B-40). Borrarla en el mismo trigger sería tirar justo lo que se
-acaba de guardar.
+hace recuperable el borrado y lo que B-89 sigue sin resolver: la pantalla de
+restauración (B-40) ya existe, pero se abre desde la fila de una actividad viva
+en el listado, y una actividad borrada no tiene fila. Borrarla en el mismo
+trigger sería tirar justo lo que se acaba de guardar.
 
 **Quién borró no se sabe:** el evento de borrado no trae uid, así que
 `actualizadoPor` guarda el último que editó. Es lo más cerca que se puede estar

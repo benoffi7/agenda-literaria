@@ -1225,7 +1225,7 @@ larga la perdía para siempre**.
 Se conservan las **últimas 20 versiones** por actividad; al pasarse, se borra la
 más vieja (D-42).
 
-**Hay pantalla** desde el 2026-08-25 (B-40): en el menú «⋯» de cada fila del
+**Hay pantalla** desde el 2026-08-24 (B-40): en el menú «⋯» de cada fila del
 listado, «Historial». Muestra las versiones de esa actividad, qué campos pisó
 cada edición y permite restaurar.
 
