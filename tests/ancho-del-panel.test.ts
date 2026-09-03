@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 import {
   ANCHO_DE_LECTURA,
   ANCHO_DE_TABLERO,
@@ -86,6 +90,44 @@ describe('el chasis y las pantallas anchas (B-621)', () => {
    */
   it('el calendario ya tenía la grilla que justifica el ancho', () => {
     expect(fuente('components/admin/CalendarioActividades.tsx')).toContain('grid grid-cols-7');
+  });
+
+  /**
+   * B-621 — que la clase **exista en el CSS construido**, no solo en el fuente.
+   *
+   * Es la trampa que este repo ya pagó dos veces y que el build no ve: Tailwind
+   * genera únicamente lo que **encuentra escrito** en el fuente, así que una
+   * utilidad armada por interpolación no sale, y el elemento queda sin esa regla
+   * con todo en verde. Acá el ancho llega por template literal
+   * (`${claseAnchoDePanel(...)}`), o sea que lo único que salva al chasis es que
+   * las clases estén escritas **completas** en `anchoDelPanel.ts` — y eso es una
+   * propiedad de cómo está escrito el módulo, no algo que el tipo garantice.
+   *
+   * Se lee el CSS construido, que es el único que sabe la verdad. Se saltea sin
+   * `dist/`, como los de emulador; en CI el build siempre corre.
+   */
+  it('las clases de ancho salen de verdad al CSS construido', () => {
+    let css = '';
+    try {
+      const archivos = execFileSync('find', [raiz('dist'), '-name', '*.css'], {
+        encoding: 'utf8',
+      })
+        .split('\n')
+        .filter(Boolean);
+      css = archivos.map((f) => readFileSync(f, 'utf8')).join('\n');
+    } catch {
+      css = '';
+    }
+    if (!css) return; // sin build no hay nada que mirar
+
+    // Cada utilidad de las dos medidas, con su prefijo de breakpoint escapado
+    // como lo emite Tailwind (`lg\:max-w-5xl`).
+    const utilidades = [...ANCHO_DE_LECTURA.split(' '), ...ANCHO_DE_TABLERO.split(' ')];
+    const faltan = utilidades.filter((u) => !css.includes(u.replace(':', '\\:')));
+    expect(
+      faltan,
+      `Tailwind no emitió estas clases: ${faltan.join(', ')}. Casi siempre significa que se armaron por interpolación en vez de estar escritas completas.`,
+    ).toEqual([]);
   });
 
   it('la lista de vistas anchas es corta y explícita, no una regla adivinada', () => {

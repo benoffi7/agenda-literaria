@@ -18,10 +18,22 @@ Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
 normalización que va a usar el sitio público. Cada fila muestra tipo, cantidad de
 encuentros, barrio y un badge de estado.
 
-Cada fila dice además cuándo es su próximo encuentro y lleva hasta dos marcas
-más: **«Cupo completo»** (B-97) y **«Sin flyer»** (B-264), esta última solo en las
-**publicadas** que no tienen imagen — una publicada sin flyer ya está afuera de la
-cartelera, un borrador todavía no. Y, **si la cargó la otra cuenta, lo marca**
+Cada fila dice además cuándo es su próximo encuentro y lleva hasta tres marcas
+más: **«Cupo completo»** (B-97), **«Destacada»** (B-622) y **«Sin flyer»**
+(B-264), esta última solo en las **publicadas** que no tienen imagen — una
+publicada sin flyer ya está afuera de la cartelera, un borrador todavía no.
+«Destacada», en cambio, se marca también en un borrador: destacar es deliberado y
+conviene poder revisarlo **antes** de publicar.
+
+**Cuáles son y por qué no hay más, en `src/lib/tarjetaDelPanel.ts`.** La regla es
+que solo se marca lo excepcional —poco frecuente, que cambie lo que se ve afuera, y
+que no se pueda leer de otra cosa que ya esté en la fila—, y por eso **las
+etiquetas no están** (decisión del dueño, B-622): son muchas y de largo variable,
+casi toda actividad tiene, y ya se encuentran con el buscador y se administran
+desde «Opciones». La decisión vive en un módulo puro y no en el JSX, que es cómo
+`destacado` se quedó sin mostrar durante meses.
+
+Y, **si la cargó la otra cuenta, lo marca**
 (B-130). Lo propio no lleva marca: si todo lleva marca, la
 marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
 hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
@@ -514,6 +526,12 @@ data tipada, no repartido en JSX (D-62):
   novedades y la carga desde el teléfono. Cada capítulo dice **para qué** sirve
   la sección y lista los comportamientos que no se ven; los puntos marcados como
   "cuidado" llevan una barra de acento.
+- Los capítulos de una sección del formulario tienen además **tres partes
+  obligatorias** (B-62, pedido del dueño después de un caso real): el *para qué*,
+  **qué sale de ahí** —al sitio, al calendario, a ningún lado— y **un ejemplo
+  concreto**. El ejemplo es la parte que resuelve la duda que motivó el ítem:
+  «una feria de tres días seguidos: Cuántos encuentros 3 y Cada cuántos días 1»
+  contesta lo que una definición no. `tests/ayuda.test.ts` exige las tres.
 - El capítulo que aparece desplegado depende de desde dónde se abrió: del
   listado abre "El listado de actividades"; del formulario, "Cómo llega una
   actividad a la gente".
