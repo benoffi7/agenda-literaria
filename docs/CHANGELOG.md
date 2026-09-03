@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-09-03 · los cinco hallazgos del `auditor-privacidad` sobre la tanda de ayer
+
+Corrido después de cerrar B-340/341/342/343/185/190/200 (ver más abajo). Cinco
+hallazgos, dos P1 y tres P2, los cinco reales y los cinco arreglados con
+mutación a mano.
+
+**P1 — `tarjetaPublica.ts` se había quedado afuera de B-190.** `lugarDeTarjeta`
+seguía publicando «Online por A confirmar» —el texto exacto que el análisis de
+B-190 marcó como el problema— en el listado, la página de mes, `/pasadas` y los
+hubs: cuatro salidas indexadas que la lista de consumidores corregidos nunca
+nombró. Corregido con el mismo criterio que `dondeCorto` (mirar el slug, no el
+label).
+
+**P1 — el cuarto par de prefijo de id quedó sin su guarda.**
+`tests/clases-de-bug.test.ts` tiene un chequeo de clase que enumera, productor
+y validador, cada lista del modelo con ids de cliente (`ses_`, `img_`, `mod_`).
+`mat_` (B-342, `lib/material.ts`) nació sin entrar a esa lista — el hueco que
+el propio docblock del test anticipaba palabra por palabra. Agregado.
+
+**P2 — `'a-confirmar'` no tenía dueño.** El slug se comparaba a mano en tres
+archivos (`detallePublico.ts`, `textoRedes.ts`, y el `tarjetaPublica.ts` de
+arriba), la misma clase B-88 —un productor sin declarar, consumidores que
+derivan por separado— que es la causa raíz del hallazgo P1. Ahora
+`SLUG_PLATAFORMA_A_CONFIRMAR` vive en `lib/modalidades.ts`, con un test que
+falla si alguien vuelve a copiarlo.
+
+**P2 — `anterior` viajaba entero.** `ActividadFormulario` pasaba `inicial` —el
+documento crudo, con `online.url`, `difusion`, `createdBy`/`updatedBy`— como
+`anterior` a `guardarActividad` (B-340). El tipo declarado en `guardar.ts` no
+impide que esos campos viajen, solo que se lean hoy; un `console.error` de
+debug o mandar el objeto entero a la medición de un fallo los publicaría. Ahora
+se proyectan los cuatro campos que `usosAContar` necesita en el propio call
+site.
+
+**P2 — `elegidosDe` sin el `?? []` defensivo del resto de los lectores.** Un
+`anterior` sin `modalidades` o `tags` tiraba un `TypeError` que el `catch`
+silencioso de `guardar.ts` traga — `usos` dejaba de contarse para las cinco
+taxonomías, no solo la que faltaba, sin ningún síntoma en pantalla. Agregado,
+mismo criterio que `actividades.ts` y `toPublic.ts`.
+
+El auditor confirmó además, de forma independiente, la hipótesis del cierre de
+ayer: `ItemMaterial.id` no sale a ninguna de las doce salidas públicas.
+
 ## 2026-09-02 · los cuatro ítems que quedaron abiertos de la tanda anterior, y B-340/342
 
 **Continúa el barrido de ítems chicos del panel** (ver más abajo, «cinco ítems
