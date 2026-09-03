@@ -23,6 +23,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 14 | [`14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) | Cómo se ataca el backlog acumulado sin que los frentes se pisen. Se reparte por archivo, no por tema. |
 | 15 | [`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) | Las trampas del `CLAUDE.md` §13, con qué test fija cada una — y cuál quedó sin red. Se verifica solo. |
 | 16 | [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) | Arquitectura de la analítica del **sitio público**, que hoy no mide nada: qué preguntas contestaría un tablero, de dónde saldría cada dato, las fricciones traducidas a algo medible, y las **dos decisiones del dueño** que lo bloquean. Lo único construido de acá es el tablero del catálogo. |
+| 17 | [`17-worktrees-pendientes.md`](17-worktrees-pendientes.md) | **Temporal, se borra cuando quede vacío.** Inventario de rescate de los 33 worktrees de `.claude/worktrees/` que dejaron las tandas de frentes en paralelo: qué se rescató, qué se borró, y los comandos que esperan la confirmación del dueño. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
