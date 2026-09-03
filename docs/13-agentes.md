@@ -212,6 +212,17 @@ los ítems del backlog ya resueltos, los bloques duplicados de merges mal
 resueltos, y los avisos de la guía del panel que describen un comportamiento que
 cambió. Eso es exactamente el hueco de B-63, y no lo puede cubrir un test.
 
+> **Su alcance sobre los duplicados de merge se recortó (B-606).** La ficha decía
+> que ningún test atrapaba esa clase, y desde B-367/B-660 sí atrapa una parte:
+> `red-de-contencion.test.ts` cubre, **solo en este archivo**, las filas
+> fusionadas de la tabla de abajo, las primeras celdas repetidas, los nombres de
+> test que ya no existen y las líneas de prosa pegadas. La ficha del agente ahora
+> lo dice y le pide no reportarlo. **Lo que le queda es lo que no es forma:** el
+> mismo drift en cualquier otro documento, y —acá— dos filas que se contradicen
+> entre sí, que ninguna regla mecánica distingue de dos filas que dicen cosas
+> distintas sobre temas distintos. Elegir cuál texto queda fue el trabajo de
+> criterio de B-294, y sigue siendo suyo.
+
 **Sirve, y hay prueba.** En la primera corrida sobre este repo encontró que
 **B-56 dice que nadie llama a `registrarVersion(VERSION_APP)`, y hoy se llama**
 en `src/components/admin/AdminApp.tsx`. Quedó anotado como B-118: no se tocó
