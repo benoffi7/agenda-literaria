@@ -43,9 +43,14 @@ printf '%s\n' "$CAMBIOS" | grep -qE '^storage\.rules$|^firebase\.json$' && STORA
 
 # ── Hosting: lista NEGRA, a propósito ─────────────────────────────
 # El bundle del panel depende de cosas que están fuera de `src/`: hoy
-# `functions/calendario.js` entra por el alias `@calendario`, y mañana puede ser
-# otra. Una lista blanca de rutas se pierde ese caso EN SILENCIO — el build
-# sigue verde y producción queda con el panel viejo.
+# `functions/calendario.js`, `functions/historial.js` y
+# `functions/png-chunks-seguros.js` entran por los alias `@calendario`,
+# `@historial` y `@png-chunks-seguros` (astro.config.mjs), y mañana puede ser
+# otro. Una lista blanca de rutas se pierde ese caso EN SILENCIO — el build
+# sigue verde y producción queda con el panel viejo. Es la trampa que
+# `docs/BACKLOG.md` (B-88, y el hallazgo del `auditor-privacidad` en B-323)
+# dejó escrita: agregar un alias nuevo a un archivo de `functions/` sin sumarlo
+# acá abajo dispara Functions pero no Hosting.
 #
 # Así que se invierte: hosting se deploya SIEMPRE salvo que todo lo que cambió
 # sea provablemente incapaz de afectarlo. Un archivo nuevo y desconocido cae del
@@ -62,7 +67,7 @@ NO_AFECTAN='^docs/|^tests/|^\.github/|\.md$|^\.gitignore$|^firestore\.(rules|ind
 RELEVANTES=$(
   printf '%s\n' "$CAMBIOS" \
     | grep -vE "$NO_AFECTAN" \
-    | awk '!/^functions\// || /^functions\/calendario\.js$/' \
+    | awk '!/^functions\// || /^functions\/(calendario|historial|png-chunks-seguros)\.js$/' \
     | grep -v '^$' || true
 )
 

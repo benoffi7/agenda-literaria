@@ -60,6 +60,30 @@ referenciaba una imagen ya barrida deja una `url` rota. Ver **B-560**.
 Detalle operativo completo en `docs/08-operacion.md` § «`limpiarImagenesHuerfanas`
 — el barrido de huérfanas».
 
+## 2026-09-03 · `CHUNKS_A_TIRAR` pasa a ser lista blanca — B-323
+
+Hasta hoy, qué chunk PNG se tira al limpiar una imagen antes de subirla lo
+decidía una lista **negra** (`CHUNKS_A_TIRAR`, en `src/lib/imagenes-archivo.ts`):
+enumeraba lo que se tira y dejaba pasar todo lo que no conocía. Fue como se le
+escapó `caBX` a producción (B-220, D-175): 13,6 KB de credenciales de contenido
+C2PA, firmadas por Google LLC, públicas en la portada de una actividad real.
+
+Se invirtió a lista **blanca**. La lista de los catorce chunks seguros —que ya
+existía adentro de `estructuraConocida` (`functions/imagenes-optimizar.js`,
+DEC-7d)— se sacó a `functions/png-chunks-seguros.js` (`CHUNKS_PNG_SEGUROS`, sin
+`sharp` ni `firebase-admin`), y **los dos lados la importan de un solo lugar**:
+la Function directo, y el panel por el alias nuevo `@png-chunks-seguros`
+(`astro.config.mjs`, `tsconfig.json`, `vitest.config.ts` — mismo patrón que
+`@calendario`/`@historial`, D-20). Con esto, un chunk PNG que el formato agregue
+mañana no puede repetir el caso de `caBX`: si no está enumerado, se tira.
+
+`tests/imagenes-archivo.test.ts` suma un caso con un chunk inventado
+(`'zzZZ'`, no enumerado en ningún lado) para fijar la propiedad de fondo y no
+solo el caso ya conocido de `caBX`. Mutado: agregar `'caBX'` a la lista blanca
+pone rojo el test de B-220; agregar un chunk inventado a una lista negra
+hipotética habría pasado de largo, que es justo el modo de falla que este
+cambio cierra.
+
 
 ## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
 

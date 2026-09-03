@@ -17,7 +17,11 @@
       // Ídem con el historial de versiones (§12): el panel compara una versión
       // contra el documento actual con la MISMA función que decide qué se
       // guarda, así no hay dos ideas de "qué campos escribe la máquina".
-      "@historial": ["functions/historial.js"]
+      "@historial": ["functions/historial.js"],
+      // Ídem con la lista blanca de chunks PNG seguros (B-323): el panel y la
+      // Function de optimización comparten la misma lista, así una lista
+      // negra desactualizada no vuelve a dejar pasar un chunk como `caBX`.
+      "@png-chunks-seguros": ["functions/png-chunks-seguros.js"]
     }
   }
 }

@@ -6569,6 +6569,13 @@ seguros **son enumerables** (los enumera `estructuraConocida`). Invertirla es
 **B-323**; no se hizo acá para no tocar la subida del panel en el mismo commit que
 estrena la Function.
 
+> ⚠️ **B-323 ya invirtió la lista.** `CHUNKS_A_TIRAR` no existe más:
+> `src/lib/imagenes-archivo.ts` importa `CHUNKS_PNG_SEGUROS` (lista blanca) del
+> alias `@png-chunks-seguros`, que apunta al mismo archivo nuevo,
+> `functions/png-chunks-seguros.js`, que `estructuraConocida` ya usaba. Es la
+> misma lista de los catorce, ahora en un solo lugar y no en dos. El párrafo de
+> arriba queda como estaba escrito, para que se lea contra el hallazgo original.
+
 #### P1 · `.rotate()` transpone, y el argumento de «conserva la proporción» no lo cubría
 
 El `auditor-trampas` lo vio y tiene razón en el fondo: `.rotate()` sin argumentos

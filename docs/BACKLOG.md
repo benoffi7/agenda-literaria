@@ -6787,7 +6787,7 @@ una pantalla 3× se ve blanda, y **un flyer es texto metido adentro de un JPEG**
 reusar la de la cartelera, y eso es una constante más en `functions/imagenes.js` y
 un objeto más por imagen en el bucket.
 
-### B-323 · `CHUNKS_A_TIRAR` es una lista negra, y ya se le escapó un bloque · P2
+### B-323 · `CHUNKS_A_TIRAR` es una lista negra, y ya se le escapó un bloque · P2 — ✅ hecho (2026-09-03)
 
 **Encontrado el 2026-09-02, con un caso real y publicado** (D-175 § auditoría). La
 portada de «Usted está aquí» traía un chunk PNG **`caBX` de 13,6 KB** con las
@@ -6822,6 +6822,31 @@ fuentes.
 razón escrita —quedarse corto tira un bloque de más, que es una imagen que se ve
 igual— y la lista blanca de APPn sí se queda corta seguido. Lo que cubre ese lado
 es `estructuraConocida`, que ahora rechaza todo APPn que no reconozca.
+
+> **2026-09-03 — hecho.** Se sacó la lista a `functions/png-chunks-seguros.js`
+> —cero dependencias binarias, ni `sharp` ni `firebase-admin`— exportando
+> `CHUNKS_PNG_SEGUROS` con los catorce chunks de siempre. `imagenes-optimizar.js`
+> (`estructuraConocida`) la importa directo, y el panel la importa por el alias
+> nuevo `@png-chunks-seguros` (`astro.config.mjs`, `tsconfig.json`,
+> `vitest.config.ts` — mismo patrón que `@calendario`/`@historial`, D-20).
+> **No hay dos copias**: es la salida que este ítem prefería sobre un JSON
+> compartido o un test que ate dos listas.
+>
+> `src/lib/imagenes-archivo.ts` invirtió su condición
+> (`if (CHUNKS_PNG_SEGUROS.has(tipoChunk))` en vez de `if (!CHUNKS_A_TIRAR.has(...))`)
+> — una línea, como anticipaba el ítem.
+>
+> **Probado con dos mutaciones, no solo verde.** Agregar `'caBX'` a la lista
+> blanca (simulando "olvidarse" de sacarlo) pone rojo el test de B-220 que fija
+> ese caso. Y se sumó un `it` nuevo en `tests/imagenes-archivo.test.ts` con un
+> chunk inventado (`'zzZZ'`, no enumerado en ningún lado) para fijar la
+> propiedad de fondo — la que el caso de `caBX` por sí solo no alcanza a
+> probar: **cualquier** chunk no enumerado se tira, lo haya visto alguien antes
+> o no. Con la lista negra que había hasta hoy ese `it` habría pasado de largo,
+> que es exactamente el modo de falla que dejó pasar `caBX` en producción.
+>
+> `npx tsc --noEmit` y la suite completa (2.537 tests) quedaron verdes con el
+> alias nuevo resuelto en los tres lugares.
 
 ### B-324 · Una foto sacada de costado se publica de costado · P2
 
