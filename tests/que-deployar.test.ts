@@ -166,6 +166,19 @@ describe('qué deployar — lo que no toca nada', () => {
     });
   });
 
+  /**
+   * B-125, D-293 — es un script de mantenimiento más (no lo importa ni el
+   * panel ni ninguna Function), así que entra a la misma lista negra. Sin
+   * esto caía en "archivo desconocido" y cada cambio a este script disparaba
+   * un deploy de hosting redundante (inofensivo, pero mentiroso — el mismo
+   * motivo que documenta el comentario de `que-deployar.sh`).
+   */
+  it('scripts/verificar-calendario.mjs tampoco deploya nada (B-125, D-293)', () => {
+    expect(decidir(['scripts/verificar-calendario.mjs'])).toEqual({
+      hosting: false, functions: false, firestore: false, storage: false,
+    });
+  });
+
   it('pero scripts/version.mjs SÍ deploya hosting', () => {
     // Calcula la versión que se estampa en el bundle.
     expect(decidir(['scripts/version.mjs']).hosting).toBe(true);

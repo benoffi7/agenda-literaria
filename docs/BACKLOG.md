@@ -4720,7 +4720,7 @@ la doc, el aserto a chequear es el consuelo, no el límite.**
 
 Corregido en D-71, con el patrón anotado ahí mismo.
 
-### B-125 · Un evento borrado a mano en Calendar no se detecta · 🟡 **la mitad hecha** (2026-09-02) · P2
+### B-125 · Un evento borrado a mano en Calendar no se detecta · ✅ hecho (2026-09-03) · P2
 
 La vista calendario compara el `calendarEventId` guardado contra lo que
 **debería** existir, no contra lo que Google Calendar tiene de verdad. Si alguien
@@ -4759,6 +4759,57 @@ peor de los dos —pérdida silenciosa de un encuentro publicado, para siempre�
 eso ya no pasa; lo que queda es una vista que miente hasta el próximo guardado,
 que se parece más a un P3. No se baja acá porque la prioridad la ordena el dueño
 y no el que cierra la mitad del ítem.
+
+**Cerrado (2026-09-03, D-293): `scripts/verificar-calendario.mjs`.** Cerrarlo
+pedía leer la API de Calendar, y la identidad es de la Function (D-06) — el
+script se autentica **impersonando** `calendar-sync@…` desde las ADC de quien
+lo corre, sin bajar ninguna key (mismo espíritu que D-06; pide un permiso IAM
+nuevo, otorgado una sola vez — runbook en `docs/08-operacion.md`). Lee las
+actividades publicadas de Firestore y le pregunta a Calendar, sesión por
+sesión, si el `calendarEventId` guardado existe de verdad:
+
+- Default de **solo lectura**: reporta los borrados a mano, no toca nada.
+- `--reparar`: además los **recrea** — mismo criterio que `decidirAnteFallo`
+  (D-191), reusando `construirEvento`/`idDeEvento`/`reponerIds` del sync real
+  en vez de reimplementarlos (la clase de bug de B-350).
+- Un código de error ambiguo (403, timeout, cuota) **nunca** se interpreta
+  como "borrado": se reporta aparte como "no se pudo verificar" y no se toca.
+  Afirmar un borrado sobre un error ambiguo repararía por las dudas, y un
+  evento duplicado es peor que no decir nada.
+
+**Se decidió un script y no un botón del panel** (`onCall`): las dos vías
+estaban sancionadas desde D-191, y un `onCall` suma una superficie de auth
+nueva para una tarea de mantenimiento ocasional. Detalle completo en D-293.
+
+**Qué se pudo testear y qué no.** No hay emulador de Calendar, así que el gate
+del §10 del CLAUDE.md no se puede aplicar tal cual acá. La lógica de
+**decisión** —qué verificar, qué significa cada respuesta— es pura
+(`functions/reconciliacion.js`) y está testeada sin red
+(`tests/reconciliacion.test.ts`, con mutaciones verificadas: sacar la guarda de
+`debeExistir` y tratar `'cancelled'` como `'existe'` tiran los tests
+correspondientes en rojo). La **orquestación** (Firestore + Calendar +
+escritura) se separó en `ejecutarVerificacion`, testeada con un `db` y un `cal`
+de mentira (`tests/verificar-calendario.test.ts`) — incluida la guarda de que
+el `calendarEventId` recreado se escribe de vuelta (mutada: comentar el
+`db.runTransaction` del write-back tira en rojo el test que compara el id
+nuevo, no solo "no es null"). Contra el calendario real no se corrió: es
+efecto puro, mismo criterio con el que `functions/index.js` tampoco se testea
+en forma directa.
+
+**Pasado por `auditor-trampas` antes de cerrar, con tres hallazgos, los tres
+arreglados** (detalle en D-293):
+
+1. **P1** — sin cursor real, "correr de nuevo" repetía siempre las mismas 200
+   primeras candidatas: una sesión más allá del tope no se verificaba jamás,
+   en el escenario exacto que este ítem existe para cubrir. Arreglado con un
+   cursor por actividad completa y `--desde`.
+2. **P2** — el cliente de Calendar mandaba `id: null` literal cuando
+   `idDeEvento` no podía derivar uno (sesiones legadas), en vez de omitir el
+   campo como hace `crearEvento` del sync real. Arreglado (`cuerpoDeCreacion`,
+   testeada sin red).
+3. **P2** — una tercera copia de la proyección `ValorOpcion → {slug, label}`
+   (la clase de bug de B-212). Arreglada reusando `mapaDeEtiquetas`
+   (`functions/sincronizacion.js`) en vez de reimplementar el `.map`.
 
 ### B-126 · La vista calendario no avisa de inscripciones que cierran — ✅ hecho (2026-08-26)
 

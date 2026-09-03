@@ -640,6 +640,14 @@ Automático: cualquier escritura en `/actividades/{id}` dispara `syncCalendar`.
 | Se vuelve a publicar | se crean de nuevo |
 | Alguien **borra un evento a mano** en Google Calendar | vuelve en la próxima escritura de la actividad: el sync lo recrea (B-125, D-191). Antes el id colgado hacía que cada edición reintentara actualizar un evento inexistente, así que el encuentro se perdía para siempre |
 
+**Sin editar nada, la vista calendario del panel puede seguir mintiendo un
+rato** (D-71): compara el `calendarEventId` guardado contra lo que *debería*
+existir, no contra lo que Calendar tiene de verdad, así que un borrado a mano
+recién se repara en la próxima edición de esa actividad. `npm run
+calendario:verificar` (B-125, D-293) le pregunta a la API de Calendar
+directamente y, con `--reparar`, recrea lo que encuentra borrado — ver
+[`08-operacion.md`](08-operacion.md) § "Verificar contra Calendar de verdad".
+
 ### Qué lleva el evento
 
 **Título:** el de la actividad, más el tema del encuentro si tiene.

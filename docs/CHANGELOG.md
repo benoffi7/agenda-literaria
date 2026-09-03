@@ -25,6 +25,49 @@ sitio y calendario.
 
 El detalle de cada cambio está en las entradas dateadas de abajo.
 
+## 2026-09-03 · el panel deja de numerar sin `esCiclo` — B-163, D-292
+
+Cierra la mitad de producto que había quedado abierta del frente del
+2026-09-02 ("el frente del calendario y los ciclos"): D-190 ya había unificado
+la aritmética del "Encuentro N de M", y quedaba elegir qué puerta gana — si el
+evento numera con más de una sesión aunque no sea ciclo (reescribiría el texto
+de eventos ya publicados) o si el panel deja de numerar sin `esCiclo` tildado
+(no toca nada publicado). Se eligió la segunda, la que no reescribe nada — el
+mismo argumento de D-95 y B-84 que atraviesa todo este cluster de decisiones.
+`Encuentro.numeraElCiclo` en `src/lib/calendarioPanel.ts` usa la misma
+`elEventoNumeraElCiclo` que ya usa el evento; la aritmética se sigue
+calculando siempre, se muestre o no.
+
+**Lo que queda abierto:** **B-160** y **B-162** siguen sin tocar. Los dos
+dependen de una decisión del dueño ("se decide con uso real, no antes", dice
+el propio ítem de B-160) que reescribiría el texto de todo evento ya
+publicado. No es una decisión técnica y no se tomó por cuenta propia.
+
+## 2026-09-03 · un script verifica Calendar de verdad — B-125, D-293
+
+Cierra la otra mitad que había quedado abierta del mismo frente: D-191 ya
+reparaba un evento borrado a mano cuando una escritura genuina lo
+descubría; lo que faltaba era enterarse **sin** editar nada — la vista
+calendario del panel comparaba el `calendarEventId` guardado contra lo que
+**debería** existir, nunca contra lo que Calendar tiene de verdad.
+
+`scripts/verificar-calendario.mjs` (`npm run calendario:verificar`, `--
+--reparar` para además recrear) le pregunta a la API de Calendar, sesión por
+sesión, autenticado **impersonando** `calendar-sync@…` desde las ADC de quien
+lo corre — sin bajar ninguna key, mismo espíritu que D-06. Se eligió un script
+y no un `onCall` nuevo del panel: las dos vías estaban sancionadas desde D-191,
+y un endpoint HTTPS nuevo es más superficie de auth para una tarea de
+mantenimiento ocasional. Nunca toca un evento que Calendar confirma que existe,
+ni interpreta un código de error ambiguo (403, timeout) como "borrado" — solo
+404/410, el mismo criterio de `decidirAnteFallo` (D-191). Cursor real por
+`--desde <id>` para las corridas que superan el tope de 200 sesiones.
+
+La lógica de qué verificar y qué decide cada respuesta es pura
+(`functions/reconciliacion.js`, `tests/reconciliacion.test.ts`); la
+orquestación se separó de las credenciales reales para poder testearla con un
+`db` y un `cal` de mentira (`tests/verificar-calendario.test.ts`) — no existe
+un emulador de Calendar contra el que probar esto de punta a punta.
+
 ## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
 
 El dueño pidió tres cosas para el tablero «Estado del catálogo»: pestañas en

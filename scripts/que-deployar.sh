@@ -57,7 +57,7 @@ printf '%s\n' "$CAMBIOS" | grep -qE '^storage\.rules$|^firebase\.json$' && STORA
 # puede entrar al bundle — y tiene su propia decisión más arriba. Sin esta
 # línea caería en "archivo desconocido" y arrastraría un deploy de hosting de
 # más, que es inofensivo pero mentiroso.
-NO_AFECTAN='^docs/|^tests/|^\.github/|\.md$|^\.gitignore$|^firestore\.(rules|indexes\.json)$|^storage\.rules$|^\.firebaserc$|^scripts/(seed-emulador|preparar-produccion|set-admin-claim|aprobar-opciones|optimizar-imagenes|que-deployar|verificar-bundle)\.(mjs|sh)$'
+NO_AFECTAN='^docs/|^tests/|^\.github/|\.md$|^\.gitignore$|^firestore\.(rules|indexes\.json)$|^storage\.rules$|^\.firebaserc$|^scripts/(seed-emulador|preparar-produccion|set-admin-claim|aprobar-opciones|optimizar-imagenes|que-deployar|verificar-bundle|verificar-calendario)\.(mjs|sh)$'
 
 RELEVANTES=$(
   printf '%s\n' "$CAMBIOS" \

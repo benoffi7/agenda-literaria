@@ -50,6 +50,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run admin:claim:prod -- <uid\|email>` | claim `admin` en producción |
 | `npm run opciones:aprobar -- --listar` | opciones pendientes de aprobar, en el emulador |
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
+| `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
 | `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` **y sobre el HTML de las páginas de detalle** que salieron (B-110) |
 | `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
@@ -1287,6 +1288,70 @@ for b in re.findall(r'BEGIN:VEVENT(.*?)END:VEVENT', raw, re.S):
     print(m.group(1) if m else '?')
 "
 ```
+
+### Verificar contra Calendar de verdad (B-125, D-293)
+
+La vista calendario del panel solo compara el `calendarEventId` guardado contra
+lo que **debería** existir (`debeExistir`) — nunca contra lo que Calendar tiene
+de verdad. Si alguien borra un evento a mano, la vista sigue diciendo "En el
+calendario" hasta la próxima edición de esa actividad (D-71). Esto es lo que
+cierra esa mitad de B-125: un script que le pregunta a la API.
+
+**Setup, una sola vez.** Leer Calendar pide la identidad de la Function
+(`calendar-sync@…`, D-06); el script la toma **impersonando** esa service
+account desde tus propias credenciales, sin bajar ninguna key:
+
+1. `gcloud auth application-default login` (si no lo hiciste ya para
+   `aprobar-opciones.mjs` o `set-admin-claim.mjs`).
+2. Alguien con permisos de IAM en el proyecto te da el rol
+   `roles/iam.serviceAccountTokenCreator` sobre
+   `calendar-sync@agenda-literaria.iam.gserviceaccount.com`:
+
+   ```bash
+   gcloud iam service-accounts add-iam-policy-binding \
+     calendar-sync@agenda-literaria.iam.gserviceaccount.com \
+     --member="user:<tu-mail>" \
+     --role="roles/iam.serviceAccountTokenCreator"
+   ```
+
+**Correrlo:**
+
+```bash
+npm run calendario:verificar              # reporta, no escribe nada
+npm run calendario:verificar -- --reparar # además recrea los borrados a mano
+```
+
+Lee las actividades **publicadas** de Firestore (producción, con las ADC —
+nunca hace falta bajar una key para esto) y le pregunta a Calendar, uno por
+uno, si cada `calendarEventId` sigue existiendo. **La llamada a Calendar es
+siempre contra el calendario real**, incluso si `FIRESTORE_EMULATOR_HOST` está
+seteado para leer Firestore del emulador — no hay forma de simular Calendar, así
+que mezclar un Firestore de mentira con un Calendar real no sirve para nada
+salvo probar que el script no explota.
+
+Qué hace con lo que encuentra:
+
+| Resultado de Calendar | Qué significa | Qué hace el script |
+|---|---|---|
+| el evento existe | todo en orden | nada |
+| 404 / 410 | lo borraron a mano | sin `--reparar`: lo reporta. Con `--reparar`: lo **recrea** (mismo criterio que `decidirAnteFallo`, D-191) y repone el `calendarEventId` nuevo en Firestore |
+| cualquier otro código (403, timeout, cuota) | ambiguo — no dice nada del evento puntual | lo reporta aparte como "no se pudo verificar" y **no lo toca**, con `--reparar` o sin él |
+
+Tope de 200 sesiones verificadas por corrida (`MAX_VERIFICACION_POR_CORRIDA` en
+`functions/reconciliacion.js`): son llamadas de a una, y una cuenta con muchas
+actividades publicadas se puede comer varios minutos. Si se truncó, el script
+imprime el comando exacto para seguir:
+
+```bash
+npm run calendario:verificar -- --desde act_xyz   # sigue después de esa actividad
+```
+
+El corte es por **actividad completa**, nunca a mitad de una: el cursor es el
+id de la última actividad que se terminó de verificar, la query se ordena por
+id de documento (`FieldPath.documentId()`) y arranca después de ese cursor
+(`startAfter`). Sin esto, correr el script de nuevo sin `--desde` repetía
+siempre las mismas primeras 200 candidatas — una sesión borrada a mano más
+allá del tope no se detectaba nunca, sin que nada lo dijera.
 
 ### Inspeccionar Firestore en producción
 

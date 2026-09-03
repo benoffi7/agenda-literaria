@@ -17,13 +17,15 @@
     "opciones:aprobar": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/aprobar-opciones.mjs",
     "opciones:aprobar:prod": "node scripts/aprobar-opciones.mjs",
     "admin:claim": "FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099} node scripts/set-admin-claim.mjs",
-    "admin:claim:prod": "node scripts/set-admin-claim.mjs"
+    "admin:claim:prod": "node scripts/set-admin-claim.mjs",
+    "calendario:verificar": "node scripts/verificar-calendario.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",
     "@tailwindcss/vite": "^4.0.0",
     "astro": "^5.2.0",
     "firebase": "^11.3.0",
+    "google-auth-library": "^9.15.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
