@@ -23,7 +23,8 @@ fragmentos de código son ilustrativos.
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
-> | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
+> | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
+> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
@@ -140,15 +141,16 @@ que exista.
 > | `/calendario` | **`/suscribirse`** | **D-134** (B-230) |
 > | `/acerca` | **`/ayuda`** + **`/contacto`** — el rol se repartió en dos | B-232, B-233 |
 > | *(no estaba)* | **`/cartelera`**, la pared de afiches | **D-148** (B-265) |
-> | `/404` | **no existe todavía** | sin ítem: Firebase sirve su 404 por defecto |
+> | `/404` | ~~**no existe todavía**~~ → **`/404.html`**, construida el 2026-09-03 | **B-310**, con **D-380** |
 >
 > La fuente de verdad de qué páginas hay es `src/pages/`, y la de qué se le ofrece
 > al buscador es `RUTAS_FIJAS` (`src/lib/sitemap.ts`) — con un test que exige que
 > toda página estática esté en esa lista **o** exceptuada con su motivo, así que la
 > próxima no se puede olvidar (B-109).
 
-**Doce patrones de ruta de página, todos estáticos: ocho construidos y los cuatro
-hubs de B-108.** Ninguno se genera si quedaría vacío.
+**Trece patrones de ruta de página, todos estáticos: ocho construidos, los cuatro
+hubs de B-108 y el `/404` de B-310.** Ninguno se genera si quedaría vacío — salvo
+el `/404`, que no puede quedar vacío porque no depende de los datos.
 
 | URL | Qué renderiza | De dónde salen los datos |
 |---|---|---|
@@ -166,9 +168,23 @@ hubs de B-108.** Ninguno se genera si quedaría vacío.
 | `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
-| ~~`/404.html`~~ | **No se construyó.** Hoy responde el 404 por defecto de Firebase Hosting | — |
+| `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310) | Build. La tira sale de `exploracionDeLaHome`; las frases, de `src/lib/noEncontrado.ts` |
 
 Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
+
+> ✅ **`/404` construida el 2026-09-03 — B-310.** Era la única fila tachada de esta
+> tabla. Astro emite la página como `dist/404.html` en la raíz —su caso especial
+> para 404 y 500, incluso con `build.format` en `directory`— que es exactamente
+> el nombre que Firebase Hosting busca, así que no hizo falta ninguna `rewrite`.
+> **Y eso vuelve al nombre del archivo el cableado entero:** renombrarlo apaga la
+> página sin romper el build ni ningún test de contenido, así que
+> `tests/no-encontrado.test.ts` lo verifica sobre `dist/`.
+>
+> Con esto el conteo de arriba pasó de **doce a trece**. Es el único patrón de la
+> tabla que va con `noindex` y fuera del `sitemap.xml` (§5.1), y las dos mitades
+> de esa señal están atadas: la excepción de `tests/sitemap.test.ts` lleva su
+> motivo escrito, que es lo que ese test exige para dejar nacer una página fuera
+> del sitemap.
 
 ### 2.1 Por qué cada hub es una URL y no un filtro
 
@@ -736,11 +752,37 @@ el subconjunto ya filtrado.
 - **`/404`** — buscador, los hubs, y "quizá la actividad que buscás ya pasó:
   mirá el archivo".
 
-  > ❌ **No se construyó, y no tiene ítem.** Hoy responde el 404 por defecto de
-  > Firebase Hosting. Se deja escrito acá porque la página tiene sentido —el
-  > destino natural de un slug viejo es el archivo, no una pared blanca— pero
-  > mientras el slug sea inmutable (trampa 10) ninguna URL nuestra se rompe
-  > sola, así que el 404 lo ven sobre todo los bots.
+  > ~~❌ **No se construyó, y no tiene ítem.**~~ **Construida el 2026-09-03 —
+  > B-310, con un desvío en D-380.** Están las tres cosas que este bullet pide:
+  > el buscador, la tira de hubs y el enlace al archivo. Lo que quedó dicho, y es
+  > el desvío:
+  >
+  > **El buscador es un `<form method="get">` a la home, no la island.** El §6.2
+  > ya define que la búsqueda vive en la query string de la home (`/?q=…`), así
+  > que un formulario GET con `name="q"` manda exactamente ahí: es *la misma*
+  > búsqueda, no una segunda implementación, y la página sale del build sin un
+  > byte de JavaScript. Montar `Buscador` acá habría traído la home entera —su
+  > listado completo, su riel de filtros y el fetch del `events.json`— a la
+  > página de error. El nombre del parámetro sale de una constante y hay un test
+  > que lo mete por `aQuery` y lo saca por `desdeQuery`: renombrarlo de un solo
+  > lado rompe eso en vez de publicar un formulario que no filtra nada.
+  >
+  > **Con JavaScript apagado el formulario llega a la agenda completa** y no
+  > aplica el texto, porque el filtrado es del cliente (§2.5). Es una degradación
+  > honesta —se llega a algo— y no un enlace roto.
+  >
+  > El motivo por el que tardó sigue valiendo tal cual y explica por qué es P3:
+  > mientras el slug sea inmutable (trampa 10) ninguna URL nuestra se rompe sola,
+  > así que este 404 lo ven sobre todo los bots y quien tipea mal una dirección.
+  > Lo que gana la página es el caso que B-310 nombra: **el link viejo de
+  > Instagram hacia algo que se renombró antes de la regla**, y el destino de esos
+  > es el archivo.
+  >
+  > Es la **salida pública 13**, y la más chica del repo: cuatro frases escritas a
+  > mano en `src/lib/noEncontrado.ts` y ningún dato de ninguna actividad. Como en
+  > `/pasadas`, la función que las arma **recibe** los únicos datos que la página
+  > ve —los grupos de la tira— y no los usa, así que el barrido de centinelas
+  > corre con la lista de permitidos **vacía**.
 
 ---
 
@@ -783,14 +825,28 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | `/suscribirse` | `Suscribirse al calendario — {NOMBRE}` | escrita a mano | la propia |
 | `/ayuda` | `Ayuda — {NOMBRE}` | escrita a mano | la propia |
 | `/contacto` | `Contacto — {NOMBRE}` | escrita a mano | la propia |
-| ~~`/404`~~ | `No encontramos esa página` | — | — · `noindex` |
+| `/404` | `No encontramos esa página · {NOMBRE}` | — | la propia · **`noindex`** |
 
 > **Las cuatro filas del medio se agregaron el 2026-09-02 (B-234)**: son páginas
 > reales que este documento no tenía —dos porque nacieron con otro nombre, una
 > porque no estaba diseñada—, y el `<title>` de cada una es el que emite hoy, no
 > el que este documento hubiera propuesto. `{NOMBRE}` sale de
 > `src/lib/identidad.ts`, que es la única vez que el nombre del sitio se escribe
-> (un test lo exige). La fila de `/404` queda tachada: la página no se construyó.
+> (un test lo exige). ~~La fila de `/404` queda tachada: la página no se
+> construyó.~~ **Destachada el 2026-09-03 — B-310**, con dos precisiones sobre lo
+> que esa fila decía:
+>
+> - **el `<title>` lleva el nombre del sitio**, como las otras doce. La fila lo
+>   omitía, y omitirlo es lo único que este documento no puede pedir: hay un test
+>   que exige que toda página se titule con `NOMBRE` (B-245, D-141), justamente
+>   porque una página sin identidad en la pestaña es cómo se llegó a que el sitio
+>   se llamara «Agenda literaria»;
+> - **la canónica se emite**, y la fila decía «—». No es un olvido: `Base.astro`
+>   la arma para **todas** las páginas de una sola vez (B-109) precisamente para
+>   que ninguna se publique sin ella, y abrirle una excepción a una página sería
+>   devolverle a cada plantilla la posibilidad de olvidarse. En esta página es
+>   inerte: Firebase la sirve con estado **404** y con `noindex, nofollow`, o sea
+>   que no hay nada que canonizar. Está en **D-380**.
 
 Reglas:
 

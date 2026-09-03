@@ -126,6 +126,18 @@ describe('las páginas fijas', () => {
      */
     const EXCEPTUADAS: Record<string, string> = {
       '/admin/': 'el panel no se indexa: `noIndex` en la página y `Disallow` en el robots.txt',
+      /*
+       * B-310, §5.1 del diseño: el 404 lleva `noindex` y **no** entra al sitemap.
+       * Ofrecerle a Google la URL de la página de error es pedirle que rastree
+       * la respuesta a «esto no existe», y el `noindex` es la otra mitad de esa
+       * misma señal —igual que en los hubs vacíos (B-108)—.
+       *
+       * Y no es una URL que se navegue: Firebase la sirve como cuerpo de
+       * cualquier dirección que no encuentre, con estado 404. `/404/` responde
+       * también, y de ahí que esta clave lleve la barra final que produce
+       * `rutaCanonica`; lo que se publica es el archivo `dist/404.html`.
+       */
+      '/404/': 'la página de error va con `noindex` y fuera del sitemap (§5.1, B-310)',
     };
 
     const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })
