@@ -26,7 +26,8 @@ para evitar. El ancho del panel también pasó a decidirse **por vista**: solo e
 listado usa la pantalla completa, el formulario y las demás pantallas se quedan en
 el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
 calendario y el tablero quedaron angostos a propósito— está en el docblock de
-[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts) y la decisión completa en
+**D-330** ([`06-decisiones.md`](06-decisiones.md)).
 
 Cada tarjeta dice, de arriba abajo: el **badge de estado** con las marcas al lado,
 el **título** (hasta dos renglones, no cortado con puntos suspensivos), **tipo y
@@ -812,6 +813,50 @@ esquina. Arquitectura completa en
 
 ### La home — `/`
 
+#### El tríptico «¿Qué hay ahora?» (B-600, D-320)
+
+Arriba del buscador y a todo el ancho, la home abre con tres paneles —**Hoy ·
+Mañana · Este finde**— con los encuentros de cada ventana: hora, título, lugar,
+la categoría en la tinta de su tipo (D-150) y el arancel, y toda la fila es un
+link a la página de la actividad.
+
+Contesta la pregunta que el listado no contesta de un vistazo. El listado
+ordena por próxima fecha de la **actividad** (§2.2 del `CLAUDE.md`: un club de
+ocho encuentros es una tarjeta), así que «¿qué hay el sábado?» —que es una
+pregunta sobre el **encuentro**— obligaba a abrir tarjetas. Sale del eje plano
+de encuentros que **B-99** ya metía en el `events.json`, sin ningún dato nuevo.
+
+| Panel | Qué agarra |
+|---|---|
+| **Hoy** | lo que **queda** de hoy — se mira el inicio, no el fin, así que lo que arrancó hace diez minutos ya no está acá (sigue en el listado) |
+| **Mañana** | el día siguiente, entero |
+| **Este finde** / **El finde que viene** | el sábado y el domingo, **menos** los días que ya contaron los dos primeros. Sin días —hoy es sábado o domingo— salta al finde siguiente y el rótulo lo dice (D-320) |
+
+- **No responde a los filtros.** Contesta una pregunta fija: un panel que dice
+  «Hoy» y esconde media programación porque quedó puesto un chip de barrio
+  miente con el rótulo puesto.
+- **Lo pintan el build y la island**, con el mismo componente y el mismo módulo
+  puro. Pesa más que en el listado: «Hoy» envejece de un día para el otro sin
+  que cambie ningún dato. Cada panel **escribe los días que abarca** («Hoy ·
+  vie 3 sep»), que es lo único que queda en pie con JavaScript apagado y lo que
+  impide que el rótulo mienta sin que se note.
+- **Tope de cuatro filas** por panel; lo que sobra se dice en palabras («+2 más
+  hoy») y **no es un enlace**: el día no es una URL de este sitio (§2.3), y el
+  listado completo está en la misma página más abajo.
+- **Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre»
+  es información. La sección entera **no** se dibuja solo si las tres ventanas
+  están vacías.
+- **El sello** («Actualizado: vie 3 sep, 14:30») explica por qué algo cargado
+  hace diez minutos todavía no está: el sitio es estático y se rehace con unos
+  minutos de latencia.
+
+El cálculo está en [`src/lib/ahoraPublico.ts`](../src/lib/ahoraPublico.ts), puro y
+testeado; el markup en
+[`src/components/publico/PanelesDeAhora.tsx`](../src/components/publico/PanelesDeAhora.tsx),
+que no formatea una fecha, no decide una frase y no lee ninguna `EntradaDeIndice`.
+
+#### El listado
+
 El build imprime en HTML **todas** las actividades vigentes, con su tarjeta,
 agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve Google y lo que
 ve alguien con JavaScript apagado.
@@ -857,8 +902,9 @@ Lo que la tarjeta tiene que decir bien es del dominio, y sale de
 
 Encima va una island de React (`client:load`) que hace **un solo fetch** de
 `/events.json` y filtra, busca y ordena **en memoria** (§2.5). Cuando el índice
-llega, la island **saca del DOM la lista del build** y renderiza la suya con el
-mismo componente `FilaDeActividad` — una sola definición del markup, y como el estado
+llega, la island **saca del DOM los dos bloques del build** —la lista y el
+tríptico— y renderiza los suyos con los mismos componentes (`FilaDeActividad` y
+`PanelesDeAhora`) — una sola definición del markup, y como el estado
 inicial es el del build, no hay parpadeo. Si el fetch falla, la lista del build se
 queda donde está, los controles quedan deshabilitados y hay un aviso chico: nunca
 una pantalla vacía.

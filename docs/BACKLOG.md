@@ -2763,6 +2763,36 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-620 · El panel no usaba el ancho de la pantalla — ✅ hecho (2026-09-03) · P2
+
+El listado era una fila por actividad dentro de un contenedor de 896px
+(`max-w-3xl lg:max-w-4xl`, el chasis lo fijaba para **todas** las vistas), así que
+en escritorio el panel se veía encajonado: en 1920px entraban seis actividades y
+había que scrollear veinte veces para recorrer cuarenta.
+
+**Hecho.** Grilla de tarjetas —1 columna en el teléfono, **2/3/4** en `md`-`lg` /
+`xl` / `2xl`— y **ancho por vista**: solo el listado usa la pantalla completa
+(`max-w-[100rem]`, con tope a propósito) y el resto se queda en el ancho de
+lectura. La decisión completa, con las tres exclusiones y por qué el default es
+angosto, está en **D-330**.
+
+De paso la tarjeta dice **dos datos que la fila no decía** —la modalidad y el
+arancel—, que eran ejes de filtro y no aparecían en el resultado: se podía filtrar
+por «Gratis» y después no ver cuál de las actividades era la gratuita.
+
+Y qué dice cada tarjeta salió del JSX a `src/lib/tarjetaDelPanel.ts`, puro: eran
+cinco cadenas de ternarios adentro del render, o sea siete decisiones de dominio
+sin ninguna red. `tests/lista-actividades.render.test.tsx` es el segundo test de
+render del panel después de B-08 y cubre lo que un test de fuente no puede: que
+ninguna acción se perdió al pasar de fila a tarjeta y que el menú de una tarjeta
+es el de esa tarjeta. Cinco mutaciones probadas a mano, las cinco en rojo.
+
+Cerrado en `b9f2606`, `2ccde59`, `6423fca`, `e7808a2`, `06fa091`, integrado en
+`d9b0230`. **Los títulos de los primeros cuatro commits dicen B-600**, que quedó
+tomado por el tríptico de la home mientras este frente trabajaba: el ticket es
+B-620, y así lo dicen el código, los tests y la doc. Quedan abiertos **B-621** y
+**B-622**.
+
 ### B-602 · El reloj del build de la home salía de un `new Date()` sin guarda: un `generadoEn` ilegible tiraba `RangeError` — ✅ hecho (2026-09-03) · P2
 
 **Lo encontró el `auditor-privacidad` auditando B-600, y lo señaló el
@@ -7361,6 +7391,37 @@ en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la cl
 del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
 tenga dos actividades).
 ## P3 — cuando sobre tiempo
+
+### B-621 · El calendario y el tablero del panel siguen angostos · P3
+
+**D-330** dejó el ancho del panel decidido **por vista** y solo ensanchó el
+listado. Las otras dos pantallas que se recorren de un barrido —la grilla del mes
+(`CalendarioActividades`) y «Estado del catálogo» (`EstadisticasPanel`)— siguen en
+`max-w-3xl lg:max-w-4xl`, y las dos ganarían: una grilla de siete columnas en
+896px da celdas de 120px, y el tablero apila paneles que podrían ir al lado.
+
+**No se hizo con B-620 a propósito:** ensanchar cada una es un cambio visual
+propio —qué crece, qué se reparte en columnas, qué queda con su ancho—, no el mismo
+cambio aplicado dos veces más. Y el tablero se estaba rehaciendo en paralelo.
+
+**El costo es una línea por pantalla**: agregar `'calendario'` y/o `'estadisticas'`
+a `VISTAS_A_TODO_ANCHO` en [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts),
+y después mirar la pantalla y repartir lo que corresponda. `tests/ancho-del-panel.test.ts`
+lista hoy esas dos vistas entre las que arrancan angostas, así que hay que moverlas
+de grupo en el mismo cambio — que es la señal de que la decisión se está tomando y
+no filtrando por descuido.
+
+### B-622 · La tarjeta del panel no muestra `destacado` ni los tags · P3
+
+La fila no los mostraba y la tarjeta tampoco, así que **no es una regresión**: es
+que la tarjeta ahora tiene lugar y sigue sin decirlos. `destacado` decide el orden
+en el sitio público y `tags` es el eje que D-74 dejó afuera de los filtros; desde
+el panel, «¿cuáles marqué como destacadas?» solo se contesta abriendo una por una.
+
+**Qué haría falta:** una marca más en la tarjeta para `destacado` (la píldora ya
+existe, `CLASE_MARCA`) y decidir si los tags entran — que es la parte que no es
+gratis: una actividad puede tener seis y la tarjeta se convierte en una nube de
+etiquetas. Recomendación: `destacado` sí, tags no hasta que alguien lo pida.
 
 ### B-601 · El tríptico de «¿Qué hay ahora?» no se mide · P3
 

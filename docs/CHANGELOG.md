@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El panel de admin usa el ancho de la pantalla: el listado pasa de fila a
+  grilla de tarjetas** (1 columna en el teléfono, 2/3/4 en `md`/`xl`/`2xl`) y el
+  ancho del contenedor se decide por vista — **B-620**, **D-330**. La tarjeta dice
+  además la **modalidad** y el **arancel**, que eran ejes de filtro y no
+  aparecían en el resultado.
 - **La home abre con «¿Qué hay ahora?»**: tres paneles **Hoy · Mañana · Este
   finde** con los encuentros de cada ventana, arriba del buscador y a todo el
   ancho — **B-600**, **D-320**. Es la mitad de UI que **B-99** había dejado
@@ -21,6 +26,46 @@
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
+
+## 2026-09-03 · el panel a todo ancho: el listado es una grilla de tarjetas (B-620, D-330)
+
+El listado del panel era una columna angosta en cualquier pantalla —el chasis
+fijaba `max-w-3xl lg:max-w-4xl` para todas las vistas—, así que en un monitor de
+1920px se veían seis actividades y había que scrollear veinte veces para llegar a
+cuarenta. Ahora es una grilla: una columna en el teléfono y **2/3/4** columnas en
+`md`-`lg` / `xl` / `2xl`, dentro de un contenedor que llega a 1600px.
+
+**El ancho es por vista y no universal** (D-330): `lib/anchoDelPanel.ts` lista qué
+pantallas se ensanchan —hoy solo el listado— y el resto se queda en el ancho de
+lectura de siempre. Un formulario de 30+ campos a 1900px separa la etiqueta de su
+error y pasa el límite de renglón cómodo, o sea que es *peor* que el panel
+angosto. El ancho completo tiene tope por la misma razón dada vuelta: sin él, en
+2560px las cuatro columnas darían tarjetas de 600px.
+
+La tarjeta dice **dos datos más** que la fila: la **modalidad** (la resultante de
+las filas de «Dónde», la misma derivación que el `events.json`) y el **arancel**
+(con el acento cuando no se paga, el criterio de `lib/arancel.ts`). Los dos eran
+ejes de filtro y no aparecían en el resultado, así que se podía filtrar por
+«Gratis» y después no ver cuál era la gratuita.
+
+Y qué dice cada tarjeta salió del JSX a `lib/tarjetaDelPanel.ts`, puro: eran cinco
+cadenas de ternarios adentro del render, o sea siete decisiones de dominio sin
+ninguna red —«qué dice una actividad sin encuentros por venir», «qué modalidad se
+lee con dos filas», «cuándo aparece Sin flyer»—. El chequeo de clase deriva los
+campos del view-model del fuente y exige que el componente pinte cada uno, así que
+un dato nuevo no puede quedarse afuera de la pantalla en silencio. El badge de
+estado se quedó en el componente a propósito (color y texto se eligen juntos).
+
+`tests/lista-actividades.render.test.tsx` es el segundo test de render del panel
+después de B-08, y cubre la mitad que un test de fuente no puede: que ninguna
+acción se perdió al pasar de fila a tarjeta, que el menú de una tarjeta es el de
+esa tarjeta y no el de la de al lado, que el recorrido del teclado es Editar → ⋯,
+y que nada clickeable es un `div` con `onClick`. La lista de acciones se deriva del
+fuente. Cinco mutaciones verificadas a mano, las cinco mueren.
+
+`tests/cupo-completo.test.ts` buscaba el literal «Cupo completo» en el JSX del
+listado; ahora lo busca donde se decide y exige del componente que pinte las
+marcas que recibe. El motivo está escrito en el test.
 
 ## 2026-09-03 · el tríptico «¿Qué hay ahora?» en la home (B-600, D-320)
 

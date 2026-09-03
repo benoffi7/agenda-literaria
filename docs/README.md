@@ -56,9 +56,10 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — **2.637 tests en 118 archivos**
-   (recontado el 2026-09-03; los 2.173 en 93 archivos que decía acá eran de
-   antes de B-108/B-109 y de la tanda del 2026-09-02). **107** de esos tests
+2. **Correr los tests.** `npm test` — **2.747 tests en 122 archivos**
+   (recontado el 2026-09-03 al integrar el tríptico de la home y la grilla del
+   panel; antes decía 2.637 en 118, y antes de eso 2.173 en 93, de antes de
+   B-108/B-109 y de la tanda del 2026-09-02). **107** de esos tests
    necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
    también **Storage**), repartidos en **9** archivos: siete se saltean enteros
    y dos parciales — de `events-json-endpoint.integracion.test.ts` se saltean 4

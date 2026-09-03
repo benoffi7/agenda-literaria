@@ -7487,3 +7487,55 @@ siete días de la semana table-driven). No vive en el componente por lo mismo qu
 ([`05-patrones.md`](05-patrones.md)), y lo que se decide acá es **aritmética de
 calendario en una zona con offset**, que es la trampa 1 del §13 en su versión más
 filosa.
+
+## D-330 · El ancho del panel se decide por vista, y el listado es una grilla de tarjetas
+
+**Problema (B-620):** el panel se veía encajonado en escritorio. El chasis fijaba
+`mx-auto max-w-3xl lg:max-w-4xl` para todas las vistas, o sea 896px como máximo en
+cualquier monitor, y el listado era una fila por actividad dentro de esa columna:
+en 1920px entraban seis actividades y el catálogo real son cuarenta y sigue
+creciendo. Un listado que obliga a scrollear veinte veces no contesta «¿qué tengo
+publicado?», que es para lo que existe.
+
+**Decisión 1: el listado pasa a grilla de tarjetas**, 1 columna hasta `md` y
+**2/3/4** en `md`-`lg` / `xl` / `2xl`. El tope es cuatro y no «todas las que
+entren»: con más, el título de un taller cae en dos renglones de seis caracteres y
+la grilla deja de leerse de un barrido, que es justo lo que se vino a ganar. `lg`
+hereda las dos columnas de `md` a propósito — una laptop de 1280 lógicos ya entra
+en `xl`, y la franja de 1024 a 1279 es donde la tercera columna empieza a apretar.
+
+**Decisión 2: el ancho es por vista, no universal.** «Aprovechar el ancho» no es
+una mejora que aplique a todo: un formulario de 30+ campos a 1900px separa la
+etiqueta de su error y pasa el límite de renglón cómodo, así que es *peor* que el
+panel angosto, no mejor. Lo que gana con el ancho es lo que se recorre de un
+barrido. `lib/anchoDelPanel.ts` tiene la lista explícita —hoy solo `lista`— y el
+**default es angosto**: la vista que se agregue mañana no aparece ahí y se comporta
+como hoy, que es el lado barato de equivocarse (mismo criterio que D-41).
+
+**Y el ancho completo tiene tope** (`max-w-[100rem]`, 1600px). `max-w-none` sería
+el problema original dado vuelta: en un monitor de 2560px las cuatro columnas
+darían tarjetas de 600px de ancho.
+
+**El calendario y el tablero quedan angostos**, y no es un olvido: las dos
+pantallas ganarían con el ancho —una grilla de mes y un tablero de métricas son
+exactamente lo que se recorre de un barrido— pero ensancharlas es un cambio visual
+propio de cada una, y este cambio no las mira. Entrar en la lista es una línea el
+día que se decida (B-621).
+
+**Decisión 3: qué dice la tarjeta vive afuera del componente**
+(`lib/tarjetaDelPanel.ts`), como `tarjetaPublica.ts` del otro lado y por el mismo
+motivo del §05: los componentes del panel no tienen tests de render salvo para el
+cableado de DOM, así que una frase decidida adentro del JSX no se puede verificar
+de ninguna manera. Eran cinco cadenas de ternarios, y la tarjeta agregaba dos datos
+más — siete decisiones sin red. El **badge de estado** se quedó en el componente:
+es lo único que lleva tinta además de texto (`COLOR_ESTADO`) y su etiqueta ya sale
+del mapa compartido con el formulario (B-76), así que pasarla por el view-model
+sería un salto más sin quitar ninguna decisión, y partiría en dos un badge cuyo
+color y cuyo texto se eligen juntos.
+
+**Por qué la modalidad y el arancel entran ahora.** Los dos eran ejes de filtro
+—modalidad desde siempre, arancel desde D-152— y no aparecían en el resultado: se
+podía filtrar por «Gratis» y después no ver cuál de las tarjetas era la gratuita.
+La modalidad que se muestra es la **resultante** de las filas de «Dónde» (B-224),
+no la de la primera fila: «la primera manda» dependería del orden del array, que es
+la trampa 2 con otra cara.
