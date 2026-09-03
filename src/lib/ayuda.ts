@@ -372,6 +372,21 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          '«Historial» lista lo que se guardó cada vez que alguien editó esa actividad, con la ' +
+          'fecha y qué campos cambió. Sirve para recuperar un dato pisado por error —una ' +
+          'descripción larga que alguien borró sin querer, por ejemplo—. Restaura de a un campo, ' +
+          'nunca la actividad entera: así no se pierden los cambios que se hicieron después. Solo ' +
+          'ofrece los campos que hoy siguen distintos de esa versión vieja, y antes de escribir ' +
+          'pide confirmación.',
+      },
+      {
+        texto:
+          'La dirección web no se puede restaurar desde el historial una vez que la actividad está ' +
+          'publicada: cambiarla rompería el link que ya está compartido e indexado.',
+        cuidado: true,
+      },
+      {
+        texto:
           'Cuando una actividad se llena, «Marcar cupo completo» lo dice en el evento del ' +
           'calendario de cada encuentro: quien ya se había suscripto al calendario se entera sin ' +
           'que le avises. Es un toque desde el listado, sin abrir el formulario. Si se libera un ' +
