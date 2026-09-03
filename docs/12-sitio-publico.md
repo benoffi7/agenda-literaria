@@ -501,10 +501,16 @@ los títulos y el nombre de la actividad, en Lora.
 >   apagado.
 > - **Tope de cuatro filas**, y lo que sobra se dice en palabras y **sin enlace**
 >   (D-320: el día no es una URL de este sitio, [§2.3](#23-lo-que-decidimos-que-no-es-url)).
-> - **Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre» es
+> - ~~**Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre» es
 >   información, y sacarlo dejaría un tríptico de dos columnas que se lee como si el
->   dato faltara. **La sección entera no se dibuja** solo si las tres ventanas están
->   vacías.
+>   dato faltara.~~ **Al revés desde el 2026-09-03: un panel vacío no se dibuja**, y
+>   lo decidió el dueño mirando el sitio publicado — un panel que dice que no hay
+>   nada ocupa un tercio de la banda para no decir nada, arriba del listado, que es
+>   el lugar más caro de la home. La sección sale entonces con **uno, dos o tres**
+>   paneles y la grilla se adapta (`CLASES_DEL_TRIPTICO`, un mapa de literales
+>   porque Tailwind no genera una clase compuesta en runtime). **La sección entera
+>   no se dibuja** cuando no queda ninguno, que es la misma regla una vez más. El
+>   desvío está escrito en **D-320**.
 > - **El sello** («Actualizado: vie 3 sep, 14:30», del `generadoEn` del índice)
 >   explica por qué algo cargado hace diez minutos todavía no está. Un `generadoEn`
 >   ilegible deja el sello vacío, no tira abajo la home.

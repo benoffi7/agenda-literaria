@@ -33,7 +33,7 @@
  * izquierda cuando están al lado— porque un separador horizontal entre columnas
  * no separa nada.
  */
-import { foco } from '@/components/sitio/estilos';
+import { CLASES_DEL_TRIPTICO, foco } from '@/components/sitio/estilos';
 import type { ProgramacionInmediata } from '@/lib/ahoraPublico';
 import { estiloDeTipo, type TonosDeTipo } from '@/lib/listadoPublico';
 
@@ -46,9 +46,22 @@ interface Props {
   id?: string;
 }
 
-/** El alto de las tres columnas no se iguala: cada panel mide lo que tiene. */
+/** El alto de las columnas no se iguala: cada panel mide lo que tiene. */
 export function PanelesDeAhora({ programacion, tonos, id = 'ahora' }: Props) {
   const { sello, paneles } = programacion;
+  /*
+   * Cuántas columnas: **las que hay**, topeadas a tres y con piso en una.
+   *
+   * El tope y el piso no son defensivos de más, son lo que hace que el índice sea
+   * del tipo que el mapa declara. El piso lo pidió el `auditor-privacidad`: con
+   * `paneles: []` el `Math.min` da **0**, `CLASES_DEL_TRIPTICO[0]` es `undefined`
+   * y el `div` saldría sin ninguna clase de grilla. Hoy es inalcanzable —
+   * `panelesDeAhora` devuelve `null` antes que una lista vacía— pero el `as` apaga
+   * al type-checker justo donde `ProgramacionInmediata` no codifica el «no
+   * vacío», así que el `|| 1` es lo que evita que un cambio de contrato allá se
+   * convierta acá en una grilla sin clase.
+   */
+  const columnas = (Math.min(paneles.length, 3) || 1) as 1 | 2 | 3;
 
   return (
     /*
@@ -78,7 +91,15 @@ export function PanelesDeAhora({ programacion, tonos, id = 'ahora' }: Props) {
         {sello && <p className="label-caps text-super">{sello}</p>}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3">
+      {/*
+        **La grilla se adapta a cuántos paneles quedaron** — D-320, 2026-09-03.
+        Desde que un panel sin encuentros no se dibuja pueden ser uno, dos o tres,
+        y `lg:grid-cols-3` fija dejaría columnas fantasma. El mapa de literales
+        vive en `components/sitio/estilos.ts` por una razón mecánica: Tailwind
+        genera las utilidades leyendo el fuente, así que una clase armada acá en
+        tiempo de ejecución no existiría en la hoja.
+      */}
+      <div className={CLASES_DEL_TRIPTICO[columnas]}>
         {paneles.map((panel, i) => (
           <article
             key={panel.clave}
@@ -103,89 +124,84 @@ export function PanelesDeAhora({ programacion, tonos, id = 'ahora' }: Props) {
               <p className="label-caps text-super">{panel.fechas}</p>
             </header>
 
-            {panel.encuentros.length === 0 ? (
-              /*
-                Un panel vacío dice que no hay nada, y eso es información: «el
-                sábado está libre». La frase la decide el módulo, que es donde se
-                puede testear que a las once de la noche diga «por hoy no queda
-                nada» y no «hoy no hay nada».
-              */
-              <p className="body-sm px-2 pb-4 text-super lg:px-4">{panel.vacio}</p>
-            ) : (
-              <ul className="flex flex-col">
-                {panel.encuentros.map((e) => (
-                  /*
-                    La regla fina va en el `<li>` y no en el `<a>`, como en la
-                    fila del listado: así el hover pinta hasta el borde sin
-                    comerse la regla.
-                  */
-                  <li key={e.clave} className="regla-fina min-w-0">
+            {/*
+              **No hay rama vacía**: un panel sin encuentros ya no llega hasta
+              acá — lo filtra `panelesDeAhora`, que es donde se puede testear. La
+              había, y la sacó el dueño mirando la pantalla (D-320).
+            */}
+            <ul className="flex flex-col">
+              {panel.encuentros.map((e) => (
+                /*
+                  La regla fina va en el `<li>` y no en el `<a>`, como en la
+                  fila del listado: así el hover pinta hasta el borde sin
+                  comerse la regla.
+                */
+                <li key={e.clave} className="regla-fina min-w-0">
+                  {/*
+                    Todo el encuentro es un link y no hay botones adentro: en
+                    móvil un botón dentro de un link es un blanco ambiguo
+                    (§4.2). Lleva a la actividad —no hay página por encuentro—,
+                    que es donde están las ocho fechas del ciclo, la sede y cómo
+                    anotarse.
+                  */}
+                  <a
+                    href={e.ruta}
+                    className={`group flex min-w-0 flex-col gap-1 px-2 py-3 transition-colors hover:bg-crema lg:px-4 ${foco}`}
+                  >
                     {/*
-                      Todo el encuentro es un link y no hay botones adentro: en
-                      móvil un botón dentro de un link es un blanco ambiguo
-                      (§4.2). Lleva a la actividad —no hay página por encuentro—,
-                      que es donde están las ocho fechas del ciclo, la sede y cómo
-                      anotarse.
+                      La hora, y el día solo cuando el panel abarca dos (el
+                      finde). En «Hoy» el día ya lo dijo el encabezado.
+
+                      En el panel de hoy va en el acento: es la tinta de lo que
+                      se puede hacer, y hoy es el único de los tres donde la
+                      hora es una decisión inmediata.
                     */}
-                    <a
-                      href={e.ruta}
-                      className={`group flex min-w-0 flex-col gap-1 px-2 py-3 transition-colors hover:bg-crema lg:px-4 ${foco}`}
+                    <time
+                      dateTime={e.iso}
+                      className={`label-caps ${panel.clave === 'hoy' ? 'text-acento' : 'text-tinta'}`}
                     >
+                      {e.dia ? `${e.dia} · ${e.hora}` : e.hora}
+                    </time>
+
+                    <h4 className="headline-sm text-tinta group-hover:text-acento">{e.titulo}</h4>
+
+                    <p className="body-sm text-super">{e.lugar}</p>
+
+                    <div className="flex flex-wrap items-center gap-2">
                       {/*
-                        La hora, y el día solo cuando el panel abarca dos (el
-                        finde). En «Hoy» el día ya lo dijo el encabezado.
-
-                        En el panel de hoy va en el acento: es la tinta de lo que
-                        se puede hacer, y hoy es el único de los tres donde la
-                        hora es una decisión inmediata.
+                        La categoría en la tinta de su tipo (D-150): el color
+                        sale de `estiloDeTipo` y va por `style`, porque es un
+                        dato —el matiz derivado del slug, o el elegido desde
+                        Opciones— y Tailwind solo genera las clases que ve
+                        escritas. Sin tinta escrita a mano acá: dos colores para
+                        el mismo elemento es la clase de bug de B-260.
                       */}
-                      <time
-                        dateTime={e.iso}
-                        className={`label-caps ${panel.clave === 'hoy' ? 'text-acento' : 'text-tinta'}`}
+                      <span
+                        className="label-caps border px-1.5 py-1"
+                        style={estiloDeTipo(tonos, e.tipo)}
                       >
-                        {e.dia ? `${e.dia} · ${e.hora}` : e.hora}
-                      </time>
-
-                      <h4 className="headline-sm text-tinta group-hover:text-acento">{e.titulo}</h4>
-
-                      <p className="body-sm text-super">{e.lugar}</p>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/*
-                          La categoría en la tinta de su tipo (D-150): el color
-                          sale de `estiloDeTipo` y va por `style`, porque es un
-                          dato —el matiz derivado del slug, o el elegido desde
-                          Opciones— y Tailwind solo genera las clases que ve
-                          escritas. Sin tinta escrita a mano acá: dos colores para
-                          el mismo elemento es la clase de bug de B-260.
-                        */}
+                        {e.tipoEtiqueta}
+                      </span>
+                      {e.arancel.texto && (
                         <span
-                          className="label-caps border px-1.5 py-1"
-                          style={estiloDeTipo(tonos, e.tipo)}
+                          className={`label-caps ${
+                            /*
+                              «A la gorra» es la mitad de los casos del circuito
+                              y no entra en el binario gratis/pago (§4.1 del
+                              `CLAUDE.md`): va con el acento. Lo decide
+                              `esSinCosto` en el módulo, no una comparación acá.
+                            */
+                            e.arancel.sinCosto ? 'text-acento' : 'text-tinta'
+                          }`}
                         >
-                          {e.tipoEtiqueta}
+                          {e.arancel.texto}
                         </span>
-                        {e.arancel.texto && (
-                          <span
-                            className={`label-caps ${
-                              /*
-                                «A la gorra» es la mitad de los casos del circuito
-                                y no entra en el binario gratis/pago (§4.1 del
-                                `CLAUDE.md`): va con el acento. Lo decide
-                                `esSinCosto` en el módulo, no una comparación acá.
-                              */
-                              e.arancel.sinCosto ? 'text-acento' : 'text-tinta'
-                            }`}
-                          >
-                            {e.arancel.texto}
-                          </span>
-                        )}
-                      </div>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
+                      )}
+                    </div>
+                  </a>
+                </li>
+              ))}
+            </ul>
 
             {/*
               Lo que el tope dejó afuera. Es texto y no un link a propósito: el

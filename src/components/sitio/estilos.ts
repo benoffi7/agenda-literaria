@@ -132,6 +132,33 @@ export const claseHundido = 'border border-borde bg-hondo';
 export const claseEtiquetaDeCampo = 'label-caps mb-1 block text-azul';
 
 /**
+ * La grilla del tríptico de «¿Qué hay ahora?», según cuántos paneles queden —
+ * B-600, con el cambio de D-320 del 2026-09-03.
+ *
+ * Desde que un panel sin encuentros no se dibuja, los paneles son **uno, dos o
+ * tres**, y una grilla de `lg:grid-cols-3` fija dejaría columnas fantasma: un
+ * solo panel ocuparía un tercio del ancho y los otros dos tercios quedarían en
+ * blanco, que se lee como que falta algo.
+ *
+ * ── Por qué un mapa de literales y no `lg:grid-cols-${n}` ─────────────────
+ * Porque **Tailwind genera las utilidades leyendo el fuente**: una clase armada
+ * en tiempo de ejecución no existe en la hoja, así que `lg:grid-cols-2` no se
+ * emitiría y la grilla se quedaría en una columna sin que nada falle. Es la misma
+ * razón —y el mismo patrón— que `CLASES_DE_PARED`, más abajo: los tres valores
+ * tienen que estar escritos literales en algún lado, y ese lado es este archivo.
+ *
+ * `tests/ahoraPublico.test.ts` verifica que las tres salgan **en el CSS
+ * construido**, que es lo único que sabe la verdad: un mapa de literales que
+ * Tailwind igual no ve —por vivir en un archivo fuera de su `content`— tendría
+ * exactamente el mismo aspecto en el fuente y el mismo bug en pantalla.
+ */
+export const CLASES_DEL_TRIPTICO: Record<1 | 2 | 3, string> = {
+  1: 'grid grid-cols-1',
+  2: 'grid grid-cols-1 lg:grid-cols-2',
+  3: 'grid grid-cols-1 lg:grid-cols-3',
+};
+
+/**
  * El rótulo de un dato: «CUÁNDO», «DÓNDE», «MATERIAL».
  *
  * Es `label-caps` del sistema —Archivo Narrow 11/12, versalitas— con la tinta

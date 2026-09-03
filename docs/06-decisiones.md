@@ -7415,6 +7415,48 @@ varios resueltos entre los más nuevos.
 
 ## D-320 · El tercer panel del tríptico resta los días ya contados, salta de semana con otro rótulo, y su «+N más» no es un enlace
 
+> ⚠️ **Un panel vacío ya no se dibuja — lo decidió el dueño el 2026-09-03,
+> mirando el sitio publicado.** Esta entrada y el §4.1 de
+> [`12-sitio-publico.md`](12-sitio-publico.md) decían lo contrario: que un panel
+> sin encuentros se dibujaba y decía que no había nada, porque «el sábado está
+> libre» es información y sacarlo dejaría un tríptico de dos columnas que se lee
+> como si el dato faltara.
+>
+> **En pantalla no se lee así.** Un panel que dice que no hay nada ocupa un tercio
+> de la banda para no decir nada, arriba del listado, que es el lugar más caro de
+> la home. El criterio del dueño gana sobre el argumento de acá.
+>
+> Qué cambió, en concreto:
+>
+> - `panelesDeAhora` devuelve **solo los paneles con encuentros**, así que la
+>   sección puede salir con uno, dos o tres. El `null` de «no se dibuja la
+>   sección» deja de ser una condición aparte: es la misma regla una vez más —si
+>   no sobrevive ninguno, no hay sección—;
+> - **las frases del caso vacío se borraron** (`vacio` del view-model y las tres de
+>   `FRASES`). Un campo que ningún componente pinta es peso que el próximo lector
+>   tiene que descartar, y además invita a reponer la rama que se acaba de sacar;
+>   `tests/listado-del-sitio.test.ts` sigue prohibiendo la frase en el markup para
+>   que nadie la escriba ahí;
+> - la grilla dejó de ser `lg:grid-cols-3` fija y sale de `CLASES_DEL_TRIPTICO`
+>   (`components/sitio/estilos.ts`), un **mapa de literales** —el patrón de
+>   `CLASES_DE_PARED`— porque Tailwind genera las utilidades leyendo el fuente y
+>   una clase compuesta en runtime no existiría en la hoja. Hay un caso que lo
+>   verifica **sobre el CSS construido**, que es lo único que sabe la verdad: un
+>   mapa que Tailwind igual no ve tiene el mismo aspecto en el fuente y el mismo
+>   bug en pantalla;
+> - la regla que separa los paneles se cuenta sobre la lista **ya filtrada**: el
+>   primero de los que quedan no lleva regla a la izquierda aunque no sea «Hoy».
+>   Por eso el filtro vive en el módulo y no en el `map` del componente.
+>
+> **Lo que esta entrada decidió sigue vigente entero**: la resta del tercer panel,
+> el salto de semana con su rótulo propio, y el «+N más» como texto. La fila
+> «Dejar el tercero vacío» de la tabla de abajo tampoco cambia de sentido —decía
+> que «Este finde: no hay nada» **un sábado** es falso, y eso sigue siendo
+> cierto—; lo que cambió es que ahora ese panel directamente no está.
+>
+> El resto de la entrada queda como estaba escrito, para que el desvío se lea
+> contra su original.
+
 **Problema (B-600).** El tríptico «¿Qué hay ahora?» de la home son tres paneles
 —**Hoy · Mañana · Este finde**— y los tres tienen que caber en una sola línea de
 lectura, uno al lado del otro. Eso obliga a decidir dos cosas que con paneles
