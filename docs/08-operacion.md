@@ -57,6 +57,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `node scripts/project-id-emulador.mjs` | la **base de emulador de este checkout** (`agenda-literaria-<8 hex>`). Es de dónde salen el `projectId` de los tests y el del gate (B-219) |
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
 | `node scripts/salud-del-codigo.mjs` | remide `docs/10-salud-del-codigo.md` (§1.1, §1.2, §1.4, §1.5, §1.6) e imprime las tablas en markdown listas para pegar. Con `--json`, para otro programa (B-311) |
+| `node scripts/etiquetas-github.mjs` | crea o actualiza en GitHub las etiquetas que el panel le pone a sus issues, derivándolas de `functions/reportes.js`. Idempotente y con verificación. Con `--dry-run` no toca nada (B-33) |
 
 > **El conteo de tests no se escribe a mano en ninguna parte, y es una decisión.**
 > Estuvo escrito en `docs/README.md` y en la tabla de arriba, y las dos copias
@@ -811,15 +812,37 @@ firebase deploy --only firestore:rules
 firebase deploy --only functions:reporteAIssue
 ```
 
-**5. Crear las etiquetas del issue** (opcional, para que queden con color):
+**5. Crear las etiquetas del issue** — **es un script desde B-33**, ya no dos
+comandos pegados a mano:
 
 ```bash
-gh label create reporte-panel --repo benoffi7/agenda-literaria \
-  --color 5319e7 --description "Cargado desde el panel de /admin"
-gh label create sugerencia --repo benoffi7/agenda-literaria \
-  --color 0e8a16 --description "Idea o mejora pedida desde el panel"
-# `bug` ya existe en todo repo de GitHub
+node scripts/etiquetas-github.mjs --dry-run   # qué haría, sin tocar nada
+node scripts/etiquetas-github.mjs             # crea o actualiza, y verifica
 ```
+
+Tres cosas que hacen que valga la pena que sea un script y no una línea del
+runbook:
+
+- **La lista no está escrita en ninguna parte.** El script corre
+  `construirIssue` de `functions/reportes.js` —la misma función que corre en la
+  Cloud Function— con cada `tipo` que `firestore.rules` permite, y junta lo que
+  devuelve en `labels`. O sea que crea **las que el productor aplica**, no las que
+  alguien creyó que aplica. La versión vieja de este paso era exactamente eso:
+  dos comandos que nombraban `reporte-panel` y `sugerencia`, con un comentario
+  diciendo que `bug` «ya existe en todo repo de GitHub» — y si mañana el
+  productor agrega una tercera, ningún comando pegado la iba a crear.
+- **Es idempotente.** `gh label create --force` crea si falta y actualiza color y
+  descripción si existe, así que correrlo dos veces no falla ni duplica. Es lo que
+  lo hace un paso repetible de un runbook y no una ceremonia de una sola vez.
+- **No pide ni crea credenciales** (§5.4): usa la sesión de `gh` que ya está en
+  la máquina. Y al terminar **lee de GitHub cómo quedaron**, para poder
+  confirmarlo sin abrir el navegador.
+
+Lo único a mano es el color y la descripción de cada etiqueta, que no se derivan
+de ninguna parte. Si el productor empieza a aplicar una que no tiene color
+elegido, el script **la crea igual** con el gris de default y avisa —una etiqueta
+sin color es mejor que una que no existe—, y `tests/etiquetas-github.test.ts` se
+pone rojo pidiendo que alguien decida cómo se ve.
 
 Verificación de punta a punta: entrar a `/admin`, cargar un reporte de prueba, y
 que en la lista "Últimos reportes" aparezca el número de issue en unos segundos.
