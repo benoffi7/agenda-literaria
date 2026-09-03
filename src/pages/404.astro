@@ -89,11 +89,11 @@ const frases = frasesDeNoEncontrado(exploracion);
           <label class={`${claseRotulo} mb-1 block`} for="q-404">{frases.buscar}</label>
           <input class={claseCampo} id="q-404" type="search" name={CLAVE_BUSQUEDA} />
         </div>
-        <button class={`${claseBotonPrimario} shrink-0`} type="submit">Buscar</button>
+        <button class={`${claseBotonPrimario} shrink-0`} type="submit">{frases.accion}</button>
       </form>
 
       <p class="body-md mt-8 text-super">
-        {frases.archivo} <a class={claseEnlace} href={RUTA_PASADAS}>Mirá el archivo</a>.
+        {frases.archivo} <a class={claseEnlace} href={RUTA_PASADAS}>{frases.enlace}</a>.
       </p>
     </div>
 

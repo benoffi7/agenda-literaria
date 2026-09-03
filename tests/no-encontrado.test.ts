@@ -3,10 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACCION_NO_ENCONTRADO,
   ARCHIVO_NO_ENCONTRADO,
   BAJADA_NO_ENCONTRADO,
   BUSCAR_NO_ENCONTRADO,
   CLAVE_BUSQUEDA,
+  ENLACE_NO_ENCONTRADO,
   TITULO_NO_ENCONTRADO,
   frasesDeNoEncontrado,
 } from '@/lib/noEncontrado';
@@ -56,6 +58,8 @@ describe('las frases de `/404` — B-310', () => {
       bajada: BAJADA_NO_ENCONTRADO,
       archivo: ARCHIVO_NO_ENCONTRADO,
       buscar: BUSCAR_NO_ENCONTRADO,
+      accion: ACCION_NO_ENCONTRADO,
+      enlace: ENLACE_NO_ENCONTRADO,
     });
   });
 
@@ -73,6 +77,38 @@ describe('las frases de `/404` — B-310', () => {
       expect(texto).not.toContain(grupo.rotulo);
       for (const enlace of grupo.enlaces) expect(texto).not.toContain(enlace.texto);
     }
+  });
+
+  it('todo el texto visible de la página sale de `frasesDeNoEncontrado`', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre este mismo cambio**, y es el
+     * alcance del barrido de centinelas, no su solidez: el barrido corre sobre lo
+     * que devuelve `frasesDeNoEncontrado`, así que **un texto escrito en el
+     * `.astro` queda afuera**. Los dos que había —«Buscar» y «Mirá el archivo»—
+     * no llevaban datos y no eran una fuga; el problema era el precedente, porque
+     * la frase siguiente se escribe donde ya hay una.
+     *
+     * Se verifica sobre el markup: ningún texto entre etiquetas que no sea una
+     * interpolación. La puntuación suelta sí puede quedar (el punto que cierra la
+     * oración después del enlace es del markup, no una frase).
+     *
+     * MUTACIÓN PROBADA: devolver «Buscar» al `<button>` como literal pone este
+     * caso en rojo nombrándolo.
+     */
+    const markup = fuente(PAGINA)
+      .replace(/^---[\s\S]*?^---/m, '') // el frontmatter, que es código
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, ''); // los comentarios de plantilla
+
+    const sueltos = [...markup.matchAll(/>([^<>{}]+)</g)]
+      .map((m) => m[1]!.trim())
+      // Puntuación y espacios: no son frases.
+      .filter((t) => /[\p{L}\p{N}]/u.test(t));
+
+    expect(
+      sueltos,
+      'estos textos están escritos en la plantilla y no en `noEncontrado.ts`, así ' +
+        'que el barrido de centinelas de la salida 13 no los mira.',
+    ).toEqual([]);
   });
 
   it('el título no habla del protocolo y la bajada no culpa a quien entró', () => {

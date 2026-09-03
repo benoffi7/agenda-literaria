@@ -76,11 +76,29 @@ export const ARCHIVO_NO_ENCONTRADO =
  */
 export const BUSCAR_NO_ENCONTRADO = 'Buscá en la agenda';
 
+/**
+ * Los dos textos que van **adentro** de un control: el botón que manda el
+ * formulario y el enlace al archivo.
+ *
+ * Viven acá y no escritos en la plantilla, y no es prolijidad — **lo encontró el
+ * `auditor-privacidad` sobre este mismo cambio**. El barrido de centinelas de esta
+ * salida corre sobre lo que devuelve `frasesDeNoEncontrado`, así que un texto
+ * escrito en el `.astro` queda **fuera del barrido**: hoy no llevan ningún dato y
+ * no hay fuga, pero la frase número siete se escribe donde ya hay seis, y el
+ * docblock de la página decía «la plantilla no arma texto» cuando ya no era
+ * cierto.
+ *
+ * Entran a la interfaz de abajo, así que entran solos al barrido, que recorre
+ * `Object.values`.
+ */
+export const ACCION_NO_ENCONTRADO = 'Buscar';
+export const ENLACE_NO_ENCONTRADO = 'Mirá el archivo';
+
 /** El nombre del parámetro con el que la búsqueda de la home lee el texto (§6.2). */
 export const CLAVE_BUSQUEDA = 'q';
 
 /**
- * Las cuatro frases de la página. Ver el docblock del archivo para por qué
+ * Las seis frases de la página. Ver el docblock del archivo para por qué
  * recibe los grupos de la tira sin usarlos.
  */
 export interface FrasesDeNoEncontrado {
@@ -88,6 +106,10 @@ export interface FrasesDeNoEncontrado {
   bajada: string;
   archivo: string;
   buscar: string;
+  /** El texto del botón que manda el formulario. */
+  accion: string;
+  /** El texto del enlace a `/pasadas`. */
+  enlace: string;
 }
 
 export const frasesDeNoEncontrado = (
@@ -103,4 +125,6 @@ export const frasesDeNoEncontrado = (
   bajada: BAJADA_NO_ENCONTRADO,
   archivo: ARCHIVO_NO_ENCONTRADO,
   buscar: BUSCAR_NO_ENCONTRADO,
+  accion: ACCION_NO_ENCONTRADO,
+  enlace: ENLACE_NO_ENCONTRADO,
 });
