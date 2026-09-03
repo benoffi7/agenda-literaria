@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { claseEnlaceCelda } from '@/components/admin/campos/Campo';
-import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
+import { Reparto } from '@/components/admin/estadisticas/Reparto';
+import { useLabelsTaxonomia, useOpciones } from '@/components/admin/useOpciones';
 import { listarActividades } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
 import {
@@ -8,8 +9,16 @@ import {
   estadoDelCatalogo,
   porcentaje,
   type EstadoDelCatalogo,
-  type Tajada,
 } from '@/lib/estadoDelCatalogo';
+import { porcentajeLegible } from '@/lib/tortaDelPanel';
+/*
+ * D-150 — los matices elegidos a mano salen de la **misma** función que los
+ * saca del `events.json` para el sitio público, no de un `filter` copiado acá:
+ * la promesa de D-150 es que el panel y el listado pinten la misma categoría
+ * del mismo color, y dos derivaciones de «qué tono cuenta» es exactamente la
+ * forma de que se separen sin que nada falle.
+ */
+import { tonosDeTipo } from '@/lib/listadoPublico';
 import { ETIQUETA_ESTADO, ETIQUETA_MODALIDAD, legible } from '@/lib/filtrosActividades';
 import { leerAnaliticaDelSitio } from '@/lib/analiticaDelSitio';
 /*
@@ -100,38 +109,27 @@ function Barra({ parte, total }: { parte: number; total: number }) {
   );
 }
 
-/** Un reparto con su título. No se dibuja si no hay nada que repartir. */
-function Reparto({
-  titulo,
-  nota,
-  tajadas,
-  referencia,
-  etiqueta,
-}: {
-  titulo: string;
-  nota?: string;
-  tajadas: Tajada[];
-  /** Contra qué se compara el ancho de la barra. */
-  referencia: number;
-  etiqueta: (valor: string) => string;
-}) {
-  if (tajadas.length === 0) return null;
+/**
+ * Una proporción sin «falta»: `N de M (x %)` y nada más — B-703.
+ *
+ * Es la hermana corta de `Cobertura`, para lo que **no** es una cobertura
+ * incompleta sino un dato: «12 de 20 piden inscripción» no tiene una acción
+ * pendiente detrás, «8 de 20 sin imagen» sí.
+ */
+function Proporcion({ que, cuantas, total }: { que: string; cuantas: number; total: number }) {
   return (
-    <section className="min-w-0">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</h3>
-      {nota && <p className="mt-0.5 text-xs text-tinta/45">{nota}</p>}
-      <ul className="mt-2 space-y-2">
-        {tajadas.map((t) => (
-          <li key={t.valor} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="truncate text-sm">{etiqueta(t.valor)}</span>
-              <span className="shrink-0 text-sm font-medium tabular-nums">{t.cantidad}</span>
-            </div>
-            <Barra parte={t.cantidad} total={referencia} />
-          </li>
-        ))}
-      </ul>
-    </section>
+    <li className="min-w-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="truncate text-sm">{que}</span>
+        <span className="shrink-0 text-sm font-medium tabular-nums">
+          {cuantas} de {total}
+          <span className="ml-1 font-normal text-tinta/50">
+            ({porcentajeLegible(cuantas, total)})
+          </span>
+        </span>
+      </div>
+      <Barra parte={cuantas} total={total} />
+    </li>
   );
 }
 
@@ -179,11 +177,14 @@ function PanelCatalogo({
   porId,
   onEditar,
   deTaxonomia,
+  tonosDeTipo,
 }: {
   estado: EstadoDelCatalogo;
   porId: Map<string, ActividadConId>;
   onEditar: (a: ActividadConId) => void;
   deTaxonomia: (campo: CampoTaxonomia) => (valor: string) => string;
+  /** D-150 — los matices elegidos a mano para los tipos, si hay alguno. */
+  tonosDeTipo: Record<string, number>;
 }) {
   if (estado.total === 0) {
     return (
@@ -304,44 +305,115 @@ function PanelCatalogo({
                 falta="Las demás ya pasaron y quedaron como archivo."
               />
             </ul>
+            {/*
+              B-703 — las tres de inscripción van acá y **no** son un gráfico:
+              son tres preguntas de sí/no independientes, no las partes de un
+              todo. Una torta sobre ellas sumaría porcentajes que se solapan
+              (una actividad puede estar en las tres) y dibujaría más de una
+              vuelta. El denominador de las dos últimas son las que piden
+              inscripción, no todas las publicadas.
+            */}
+            {estado.publicadas.conInscripcion > 0 && (
+              <ul className="mt-3 space-y-3 border-t border-borde pt-3">
+                <Proporcion
+                  que="Piden inscripción"
+                  cuantas={estado.publicadas.conInscripcion}
+                  total={estado.publicadas.total}
+                />
+                <Proporcion
+                  que="…y declaran cupo"
+                  cuantas={estado.publicadas.conCupo}
+                  total={estado.publicadas.conInscripcion}
+                />
+                <Proporcion
+                  que="…y están completas"
+                  cuantas={estado.publicadas.completas}
+                  total={estado.publicadas.conInscripcion}
+                />
+              </ul>
+            )}
           </section>
         )}
 
         <section>
           <h2 className="font-serif text-lg font-semibold">Qué hay cargado</h2>
-          <div className="mt-3 grid gap-6 sm:grid-cols-2">
+          {/*
+            B-700 · D-400 — cuatro repartos con torta o lista. A todo ancho van
+            de a cuatro desde `2xl`: una torta de 112px con su referencia al
+            lado entra en 380px, así que cuatro columnas caben en 1600 y ninguna
+            queda apretada. En `lg` van de a dos, que es donde la referencia
+            empieza a truncar títulos de barrio.
+          */}
+          <div className="mt-3 grid gap-x-8 gap-y-6 lg:grid-cols-2 2xl:grid-cols-4">
             <Reparto
               titulo="Por estado"
+              clave="estado"
+              unidad="actividades"
               tajadas={estado.porEstado}
-              referencia={estado.total}
               etiqueta={(v) => ETIQUETA_ESTADO[v as Estado] ?? legible(v)}
             />
             <Reparto
               titulo="Por tipo"
+              clave="tipo"
+              unidad="actividades"
               tajadas={estado.porTipo}
-              referencia={estado.total}
               etiqueta={deTaxonomia('tipo')}
+              tonos={tonosDeTipo}
             />
             <Reparto
               titulo="Por arancel"
+              clave="arancel"
+              unidad="actividades"
               tajadas={estado.porArancel}
-              referencia={estado.total}
               etiqueta={deTaxonomia('arancel')}
             />
             <Reparto
-              titulo="Por forma de cursar"
-              nota="Una actividad cuenta en cada forma que ofrece, así que suman más que el total."
-              tajadas={estado.porModalidad}
-              referencia={estado.total}
-              etiqueta={(v) => ETIQUETA_MODALIDAD[v as Modalidad] ?? legible(v)}
+              titulo="Por barrio"
+              clave="barrio"
+              unidad="barrios ofrecidos"
+              nota="Solo lo presencial, y una actividad en dos barrios cuenta en los dos."
+              /*
+                La lista por defecto y no la torta: es el único reparto que se
+                come el tope de seis cuñas de entrada —el circuito porteño tiene
+                veinte barrios— y donde la torta muestra «las cinco primeras y el
+                resto», que contesta menos que la lista entera.
+              */
+              porDefecto="lista"
+              tajadas={estado.porBarrio}
+              etiqueta={deTaxonomia('barrio')}
             />
           </div>
-          <p className="mt-4 text-sm text-tinta/60">
-            {estado.ciclos} {estado.ciclos === 1 ? 'ciclo' : 'ciclos'} y {estado.sueltas}{' '}
-            {estado.sueltas === 1 ? 'actividad suelta' : 'actividades sueltas'}, con{' '}
-            {estado.encuentros.total}{' '}
-            {estado.encuentros.total === 1 ? 'encuentro' : 'encuentros'} cargados en total.
-          </p>
+
+          {/*
+            B-224 — la forma de cursar va **abajo y sin torta**, a propósito. Es
+            el único reparto donde una actividad cuenta en más de una tajada por
+            razones que no son geográficas, y una torta que dibuja «47 formas»
+            al lado de tres tortas que dibujan «40 actividades» invita a
+            compararlas — que es justo lo que no se puede hacer. La lista dice el
+            número sin sugerir esa comparación.
+          */}
+          <div className="mt-6 grid gap-x-8 gap-y-6 lg:grid-cols-2">
+            <Reparto
+              titulo="Por forma de cursar"
+              clave="modalidad"
+              unidad="formas de cursar ofrecidas"
+              nota="Una actividad cuenta en cada forma que ofrece, así que suman más que el total."
+              porDefecto="lista"
+              tajadas={estado.porModalidad}
+              etiqueta={(v) => ETIQUETA_MODALIDAD[v as Modalidad] ?? legible(v)}
+            />
+            <p className="self-end text-sm text-tinta/60">
+              {estado.ciclos} {estado.ciclos === 1 ? 'ciclo' : 'ciclos'} y {estado.sueltas}{' '}
+              {estado.sueltas === 1 ? 'actividad suelta' : 'actividades sueltas'}, con{' '}
+              {estado.encuentros.total}{' '}
+              {estado.encuentros.total === 1 ? 'encuentro' : 'encuentros'} cargados en total.
+              {/*
+                Ciclos vs. sueltas se queda como frase y **no** pasa a gráfico:
+                son dos categorías, y una torta de dos cuñas no dice nada que
+                «12 ciclos y 28 sueltas» no diga mejor y en menos lugar.
+              */}
+            </p>
+          </div>
         </section>
       </div>
     </div>
@@ -864,6 +936,8 @@ export function EstadisticasPanel({ onEditar }: Props) {
    */
   const [resumenDelSitio, setResumenDelSitio] = useState<ResumenDelSitio | null>(null);
   const labels = useLabelsTaxonomia();
+  /** Los valores crudos de `tipo`, que son los que llevan el matiz elegido (D-150). */
+  const opcionesDeTipo = useOpciones('tipo');
   const idBase = useId();
 
   /** Un botón por pestaña, para poder moverle el foco con las flechas. */
@@ -929,6 +1003,20 @@ export function EstadisticasPanel({ onEditar }: Props) {
 
   const deTaxonomia = (campo: CampoTaxonomia) => (valor: string) =>
     labels[campo]?.[valor] ?? legible(valor);
+
+  /**
+   * D-150 — los matices que alguien eligió a mano desde Opciones.
+   *
+   * Se pasan **solo las excepciones**: un tipo que no esté en el mapa no es un
+   * tipo sin color, es un tipo con el color que `colorDeTipo` le deriva del
+   * slug. Y se saca con `tonosDeTipo`, la misma función que los saca del
+   * `events.json` para el sitio: la promesa de D-150 es que las dos pantallas
+   * pinten igual, y eso se sostiene compartiendo la función, no el criterio.
+   */
+  const tonos = useMemo(
+    () => tonosDeTipo({ tipo: opcionesDeTipo.valores }),
+    [opcionesDeTipo.valores],
+  );
 
   if (cargando) return <p className="text-sm text-tinta/50">Cargando…</p>;
 
@@ -1003,6 +1091,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
             porId={porId}
             onEditar={onEditar}
             deTaxonomia={deTaxonomia}
+            tonosDeTipo={tonos}
           />
         ) : resumenDelSitio ? (
           <PanelSitioPublico resumen={resumenDelSitio} />
