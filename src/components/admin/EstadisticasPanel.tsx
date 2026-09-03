@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { claseEnlaceCelda } from '@/components/admin/campos/Campo';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
 import { listarActividades } from '@/lib/actividades';
+import { resumenDeSedes, type ResumenDeSedes } from '@/lib/sedesRepetidas';
 import { medirFuncion } from '@/lib/analytics';
 import {
   DIAS_PROXIMOS,
@@ -157,11 +158,14 @@ function Cobertura({
  */
 function PanelCatalogo({
   estado,
+  sedes,
   porId,
   onEditar,
   deTaxonomia,
 }: {
   estado: EstadoDelCatalogo;
+  /** B-100 — ¿se repiten las sedes? Ver `lib/sedesRepetidas.ts`. */
+  sedes: ResumenDeSedes;
   porId: Map<string, ActividadConId>;
   onEditar: (a: ActividadConId) => void;
   deTaxonomia: (campo: CampoTaxonomia) => (valor: string) => string;
@@ -321,6 +325,23 @@ function PanelCatalogo({
               etiqueta={(v) => ETIQUETA_MODALIDAD[v as Modalidad] ?? legible(v)}
             />
           </div>
+          {/*
+            B-100 — la pregunta que ese ítem no puede contestar sin este número:
+            «¿se repiten las sedes?». Es la condición que él mismo se puso para
+            valer la pena, y nadie la medía. Va acá y no en un script porque el
+            tablero ya tiene la colección en memoria: cero lecturas, y la
+            respuesta la ve quien tiene que decidir.
+          */}
+          {sedes.conSede > 0 && (
+            <p className="mt-4 text-sm text-tinta/60">
+              {sedes.repetidas.length === 0
+                ? `Ninguna sede se repite: las ${sedes.conSede} actividades con lugar cargado están cada una en el suyo.`
+                : `${sedes.enSedeRepetida} de ${sedes.conSede} actividades con lugar cargado están en una sede que también usa otra: ${sedes.repetidas
+                    .slice(0, 3)
+                    .map((s) => `${s.nombre} (${s.actividades})`)
+                    .join(', ')}${sedes.repetidas.length > 3 ? ' y otras' : ''}.`}
+            </p>
+          )}
           <p className="mt-4 text-sm text-tinta/60">
             {estado.ciclos} {estado.ciclos === 1 ? 'ciclo' : 'ciclos'} y {estado.sueltas}{' '}
             {estado.sueltas === 1 ? 'actividad suelta' : 'actividades sueltas'}, con{' '}
@@ -530,6 +551,9 @@ export function EstadisticasPanel({ onEditar }: Props) {
     [actividades],
   );
 
+  // B-100 — puro sobre lo que ya está en memoria, como el resto del tablero.
+  const sedes = useMemo(() => resumenDeSedes(actividades), [actividades]);
+
   const deTaxonomia = (campo: CampoTaxonomia) => (valor: string) =>
     labels[campo]?.[valor] ?? legible(valor);
 
@@ -603,6 +627,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
         {pestania === 'catalogo' ? (
           <PanelCatalogo
             estado={estado}
+            sedes={sedes}
             porId={porId}
             onEditar={onEditar}
             deTaxonomia={deTaxonomia}
