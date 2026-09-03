@@ -9,6 +9,10 @@ import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
+// B-600 — qué vista usa todo el ancho. Puro y con su test, por lo mismo que
+// `salida-del-panel.ts`: la vista que se agregue mañana arranca angosta y quien
+// la escriba decide en una línea, en vez de heredar un `===` suelto en el JSX.
+import { ocupaTodoElAncho } from '@/lib/anchoDelPanel';
 // Store de módulo, sin Firestore ni React context (ver formulario-sucio.ts).
 import { hayCambiosSinGuardar, marcarCambiosSinGuardar } from '@/lib/formulario-sucio';
 import {
@@ -163,6 +167,19 @@ const cerrarSesion = () => {
   borrarTodosLosBorradores(almacenDelNavegador());
   return logout();
 };
+
+/**
+ * El ancho de una pantalla de lectura: el que el panel tuvo siempre. Es el
+ * default y lo usan todas las vistas menos las que `anchoDelPanel.ts` marca.
+ */
+const ANCHO_DE_LECTURA = 'max-w-3xl lg:max-w-4xl';
+
+/**
+ * El ancho para lo que se recorre de un barrido (B-600). Con tope, y no
+ * `max-w-none`: en un monitor de 2560px las cuatro columnas de la grilla darían
+ * tarjetas de 600px, que es el problema del panel encajonado dado vuelta.
+ */
+const ANCHO_COMPLETO = 'max-w-[100rem]';
 
 /**
  * SPA del panel, montada como island `client:only` en `/admin` (§2.3, §9).
@@ -346,7 +363,25 @@ export function AdminApp() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-segura py-6 lg:max-w-4xl">
+    <div
+      /*
+       * B-600 — el ancho lo decide la vista.
+       *
+       * `ANCHO_DE_LECTURA` es el de siempre y sigue siendo el default: un
+       * formulario de 30+ campos a 1900px separa la etiqueta del error y pasa el
+       * límite de renglón cómodo. `ANCHO_COMPLETO` es para lo que se recorre de
+       * un barrido —hoy la grilla de tarjetas del listado—, y tiene tope: sin él,
+       * en un monitor de 2560px las cuatro columnas darían tarjetas de 600px, o
+       * sea el mismo problema con otra cara.
+       *
+       * El encabezado va adentro a propósito, así que se ensancha con la vista:
+       * en el listado son siete controles que dejan de apretarse, y en el
+       * formulario queda alineado con los campos.
+       */
+      className={`mx-auto px-segura py-6 ${
+        ocupaTodoElAncho(vista.tipo) ? ANCHO_COMPLETO : ANCHO_DE_LECTURA
+      }`}
+    >
       <AvisoVersionNueva {...estadoVersion} />
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
         <div className="min-w-0 flex-1">
