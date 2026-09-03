@@ -1460,7 +1460,14 @@ link de Instagram, dentro de un navegador embebido.
   medir el scroll, o sea JavaScript en la única página con presupuesto de 0 KB, y
   **D-145** cambió la regla en vez de la herramienta: en el teléfono el botón del flujo
   no se pinta y la barra es el único CTA, así que no hay nada que medir. Es `fixed` y
-  no `sticky` porque el `overflow-x-hidden` del `body` rompe `sticky` en silencio.
+  no `sticky` porque ~~el `overflow-x-hidden` del `body` rompe `sticky` en
+  silencio~~ **— ese motivo caducó, B-261.** El `body` pasó a `overflow-x: clip` con
+  **B-259**, que recorta igual y **no** crea contenedor de scroll, así que `sticky`
+  volvió a estar disponible. La barra sigue siendo `fixed` y eso no es un olvido:
+  cambiarla son dos piezas y no una clase —el aire del pie (`<style is:global>` de
+  la ruta) es la otra mitad de D-145— y `fixed` funciona. Lo que sí quedó fijado es
+  el hecho, en `tests/detalle-visual.test.ts`: el invariante condicional de D-145
+  dejó de oponerse solo, que es para lo que se escribió condicional.
 - Blancos táctiles de `var(--spacing-touch)` (44px), que ya está definido; los
   `input` a 16px en pantallas chicas, que ya está resuelto en `global.css` (iOS
   hace zoom por debajo de eso y no vuelve).

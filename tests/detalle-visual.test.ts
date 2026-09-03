@@ -17,11 +17,17 @@ import { describe, expect, it } from 'vitest';
  *    del pie al llegar al final del scroll. El aire lo da un `<style>` de esta
  *    ruta, y son dos piezas que solo funcionan juntas: borrar una deja la otra
  *    verde.
- * 3. **`sticky` volviendo a entrar.** `Base.astro` le pone `overflow-x-hidden` al
- *    `body`, y un ancestro con `overflow` distinto de `visible` **rompe
+ * 3. **`sticky` volviendo a entrar mientras el `body` cree un contenedor de
+ *    scroll.** Un ancestro con `overflow` distinto de `visible` **rompe
  *    `position: sticky` en silencio** — el elemento simplemente nunca se pega, sin
- *    error ni warning. Es la razón por la que la barra es `fixed`, y es
+ *    error ni warning. Fue la razón por la que la barra es `fixed`, y es
  *    exactamente el tipo de cosa que alguien «mejora» seis meses después.
+ *
+ *    **Desde B-259 el `body` va con `overflow-x: clip`**, que recorta igual y
+ *    **no** crea contenedor de scroll (B-261). El invariante era condicional
+ *    justamente para esto —D-145: «el día que el layout pase a `overflow-x:
+ *    clip` … `sticky` vuelve a estar disponible»— así que dejó de oponerse solo,
+ *    sin tocarlo. Lo que sí hubo que tocar es **de qué se entera**: ver el caso.
  *
  * Es la misma familia que `tests/pagina-de-detalle.test.ts`: propiedades del
  * archivo que solo se ven leyéndolo, porque un `.astro` no se importa desde
@@ -128,24 +134,73 @@ describe('el CTA de inscripción: uno por pantalla — B-238, D-145', () => {
     expect(codigo).toContain('pb-segura');
   });
 
-  it('no vuelve a ser `sticky` mientras el `body` recorte el overflow', () => {
+  it('no vuelve a ser `sticky` mientras el `body` cree un contenedor de scroll', () => {
     /*
      * Un invariante condicional y no una prohibición: `sticky` sería **mejor**
      * —se suelta sola al final del contenido y no haría falta el aire de arriba—
-     * y el único motivo por el que no se usa es el `overflow-x-hidden` del `body`.
-     * El día que eso cambie (a `overflow-x: clip`, por ejemplo, que no crea
-     * contenedor de scroll), este test deja de oponerse solo.
+     * y el único motivo por el que no se usaba era el `overflow-x-hidden` del
+     * `body`. D-145 lo dejó escrito así a propósito: «el día que el layout pase a
+     * `overflow-x: clip` … el chequeo deja de oponerse solo».
+     *
+     * **Ese día llegó con B-259** y este caso pasa sin oponerse a nada — que es
+     * lo correcto. Lo que hubo que arreglar (**B-261**) es de qué se entera:
+     * `bodyRecorta` preguntaba por el literal `overflow-x-hidden`, así que con
+     * `clip` da `false` **igual que si alguien borrara la línea entera o moviera
+     * la clase a otro elemento**. Los tres casos se leían iguales y solo uno es
+     * seguro para `sticky`.
+     *
+     * Por eso ahora se lee **cuál** es el modo y se decide con la lista de los que
+     * crean contenedor de scroll. La lista es corta y es de CSS, no nuestra:
+     * `hidden`, `scroll` y `auto` lo crean; `clip` y `visible` no.
      */
-    const base = readFileSync(raiz('src/layouts/Base.astro'), 'utf8');
-    const bodyRecorta = /<body[^>]*overflow-x-hidden/.test(base);
+    /*
+     * Sin los comentarios, y no es un detalle: el docblock de `Base.astro`
+     * **nombra** `<body>` y `overflow-x-clip` explicando esta misma decisión
+     * (B-259, B-261). Leído con comentarios, un `<body>` de un párrafo se lee
+     * como la etiqueta y el chequeo mira prosa en vez de markup. Es la lección de
+     * B-202 aplicada acá: un test que busca un **nombre** lo satisface cualquier
+     * mención.
+     */
+    const base = sinComentarios(readFileSync(raiz('src/layouts/Base.astro'), 'utf8'));
+    // `\s` obligatorio: la etiqueta que interesa es la que lleva atributos.
+    const cuerpo = /<body\s[^>]*>/.exec(base)?.[0] ?? '';
+    const modo = /overflow-x-(\w+)/.exec(cuerpo)?.[1] ?? null;
+
+    // Control positivo: sin esto, un `Base.astro` reestructurado —o una clase
+    // movida a un contenedor de adentro— dejaría `modo` en `null` y este caso
+    // diría «sticky es seguro» sin haber mirado nada.
+    expect(
+      modo,
+      'no se encontró `overflow-x-*` en el `<body>` de Base.astro: o se movió, o ' +
+        'se borró. Hasta saber cuál de las dos, no se puede afirmar que `sticky` sea seguro.',
+    ).not.toBeNull();
+
+    const CREAN_CONTENEDOR = ['hidden', 'scroll', 'auto'];
+    const bodyRecorta = CREAN_CONTENEDOR.includes(modo!);
     const usaSticky = /sticky[^"']*bottom-0/.test(sinComentarios(src()));
 
     expect(
       usaSticky && bodyRecorta,
-      'la barra usa `position: sticky` y el `body` tiene `overflow-x-hidden`: un ancestro ' +
+      `la barra usa \`position: sticky\` y el \`body\` tiene \`overflow-x-${modo}\`: un ancestro ` +
         'con overflow recortado rompe sticky en silencio, así que la barra nunca se pega. ' +
         'O la barra vuelve a `fixed`, o el layout pasa a `overflow-x: clip`.',
     ).toBe(false);
+  });
+
+  it('y hoy el `body` va con `clip`, así que `sticky` está disponible — B-259, B-261', () => {
+    /*
+     * La otra mitad, y la que convierte el invariante de arriba en información en
+     * vez de en un silencio: **hoy la puerta está abierta**. D-145 eligió `fixed`
+     * por el `overflow-x-hidden` que ya no está, así que el motivo que la entrada
+     * cita caducó — quien la lea va a buscar en `Base.astro` algo que no está.
+     *
+     * Esto no obliga a migrar a `sticky`: la barra `fixed` funciona, y el aire del
+     * pie (`<style is:global>`) es la otra mitad de esa decisión, así que cambiarla
+     * es un cambio con dos piezas y no una clase. Lo que sí hace es dejar el hecho
+     * fijado donde se lo va a leer.
+     */
+    const base = sinComentarios(readFileSync(raiz('src/layouts/Base.astro'), 'utf8'));
+    expect(/<body\s[^>]*overflow-x-clip/.test(base)).toBe(true);
   });
 });
 
