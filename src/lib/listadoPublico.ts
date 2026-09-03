@@ -307,6 +307,44 @@ const pasaCuando = (e: EntradaDeIndice, estado: EstadoDeEntrada, cuando: string,
 };
 
 /**
+ * **La búsqueda de texto del sitio, y la única** — §6.
+ *
+ * Devuelve el predicado ya compilado (las palabras se normalizan una vez, no una
+ * por entrada) para no rehacer el `normalize` en cada fila de un listado de
+ * cuarenta.
+ *
+ * Las dos reglas, las dos con motivo:
+ *
+ * - **La misma normalización con la que se escribió el `searchText`**
+ *   (`lib/normalize.ts`, §6): acentos fuera de los dos lados, o «crónica» no
+ *   encuentra la crónica.
+ * - **Se parte en palabras y se exigen todas (AND)**: «cronica boedo» encuentra
+ *   la crónica de Boedo, que es lo que alguien espera al tipear dos palabras. Con
+ *   OR, la segunda palabra ampliaría el resultado en vez de acotarlo.
+ *
+ * ── Por qué está separada de `filtrarPublico` (B-292) ─────────────────────
+ * Porque **`/pasadas` busca sin filtrar** (§4.5: «sin filtros salvo la
+ * búsqueda»), y `filtrarPublico` no puede servirla: su eje «Cuándo» arranca en
+ * «Próximas», que por definición deja afuera todo lo que esa página muestra.
+ * Antes de esto la única forma de darle búsqueda al archivo era **escribir el
+ * match de nuevo**, y dos definiciones de «coincide» es que la home y el archivo
+ * contesten distinto a la misma consulta — la clase de B-88, en la única
+ * funcionalidad que la gente usa tipeando.
+ *
+ * Con esto hay **una** implementación y dos llamadores: `filtrarPublico` (la
+ * home, los hubs, las páginas de mes) y `buscarEnPasadas`
+ * (`lib/pasadasPublicas.ts`).
+ */
+export const coincideBusqueda = (q: string): ((e: EntradaDeIndice) => boolean) => {
+  const palabras = normalize(q.trim()).split(/\s+/).filter(Boolean);
+  if (palabras.length === 0) return () => true;
+  return (e) => {
+    const texto = e.searchText ?? '';
+    return palabras.every((p) => texto.includes(p));
+  };
+};
+
+/**
  * Filtra, con el reloj de quien mira.
  *
  * `omitir` deja un eje **sin aplicar**, y es lo que hace posible el conteo de los
@@ -320,16 +358,10 @@ export const filtrarPublico = (
   ahora: Date,
   omitir?: Eje,
 ): EntradaDeIndice[] => {
-  // §6 — la misma normalización con la que se escribió el `searchText`.
-  // Se parte en palabras y se exigen **todas** (AND): «cronica boedo» encuentra
-  // la crónica de Boedo, que es lo que alguien espera al tipear dos palabras.
-  const palabras = normalize(filtros.q.trim()).split(/\s+/).filter(Boolean);
+  const coincide = coincideBusqueda(filtros.q);
 
   return entradas.filter((e) => {
-    if (palabras.length > 0) {
-      const texto = e.searchText ?? '';
-      if (!palabras.every((p) => texto.includes(p))) return false;
-    }
+    if (!coincide(e)) return false;
     const estado = estadoDe(e, ahora);
     if (!pasaCuando(e, estado, filtros.cuando, ahora)) return false;
     if (filtros.soloAbierta && estado.inscripcionCerrada) return false;

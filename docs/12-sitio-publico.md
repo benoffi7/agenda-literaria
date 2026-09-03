@@ -23,7 +23,7 @@ fragmentos de código son ilustrativos.
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
-> | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
+> | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**, y **desde B-292 tiene su buscador** — D-381), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
@@ -161,7 +161,7 @@ el `/404`, que no puede quedar vacío porque no depende de los datos.
 | `/online` | Hub de lo que se hace a distancia (`virtual` + `hibrido`) | Build |
 | `/gratis` | Hub de lo que no se paga (`gratis` + `a-la-gorra`) | Build |
 | `/agenda/{aaaa-mm}` | Qué hay en un mes | Build. Solo meses vigentes con **3 o más** actividades |
-| `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo | Build |
+| `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo. **Con buscador desde B-292** (D-381) | Build. La island: `events.json` |
 | `/cartelera` | La pared de afiches: solo las actividades con flyer, la imagen entera | Build. **No estaba en este diseño** — D-148 |
 | `/suscribirse` | Cómo suscribirse al Google Calendar público. **Era `/calendario`** — D-134 | Estático, escrito a mano (`src/lib/enlaces.ts` pone las direcciones) |
 | `/ayuda` | Qué es esto, qué tipos de actividad hay, cómo se lee una ficha | Estático (`src/lib/ayudaDelSitio.ts`) |
@@ -719,6 +719,25 @@ el subconjunto ya filtrado.
   > de una pasada **vence a los 90 días** (§7.1), así que a partir de ahí ésta es
   > la única página que la enlaza. Sin ella, cada actividad que pasa se queda sin
   > un solo link interno tres meses después.
+  >
+  > ✅ **Y desde el 2026-09-03 sí tiene buscador — B-292, con D-381.** El segundo
+  > desvío se cerró, y **no** como el párrafo de arriba lo planteaba: no se le
+  > enseñó un modo nuevo a la island de la home. La página monta una island propia
+  > y chica, `BuscadorDePasadas`, con **una** dimensión —que es lo que el §4.5
+  > pide— y lo que reusa es lo único que podría contestar distinto: **el match**.
+  > `buscarEnPasadas` filtra con `coincideBusqueda` (`lib/listadoPublico.ts`), la
+  > misma función que usa `filtrarPublico` para la home, los hubs y los meses; y
+  > las filas las pinta el mismo `ListaDeActividades` que imprime el build. Dos
+  > definiciones de «coincide» serían la home y el archivo contestando distinto a
+  > la misma consulta, en lo único que la gente usa tipeando.
+  >
+  > Lo que la página **deja de ser** es de cero JavaScript, y está medido: el
+  > chunk propio son **2,9 KB**; el resto de lo que carga —el runtime de React y
+  > `ListaDeActividades`— ya lo trae quien pasó por la home, que es de donde se
+  > llega acá. El HTML del build sigue completo y sigue siendo la verdad (§6.3):
+  > la island saca la lista de abajo recién cuando tiene el índice, y **si el
+  > fetch falla no saca nada** — lo que se pierde es el buscador, no el archivo,
+  > que es la propiedad que esta página no puede perder.
 - **`/calendario`** — tres botones: agregar a Google Calendar, suscribirse por
   iCal, y cómo hacerlo desde el teléfono. **Solo la URL pública del calendario**
   (la que se arma con `GOOGLE_CALENDAR_ID`); la URL `private-…` del ICS es un

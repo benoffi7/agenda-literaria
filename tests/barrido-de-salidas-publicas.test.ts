@@ -61,7 +61,7 @@ import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import type { ClaseDeHub, GrupoDeExploracion, Hub } from '@/lib/hubsPublicos';
 import { coleccionSchema, hubDelSitio } from '@/lib/hubsPublicos';
 import { frasesDeNoEncontrado } from '@/lib/noEncontrado';
-import { frasesDePasadas, pasadasDelSitio } from '@/lib/pasadasPublicas';
+import { cuentaDePasadas, frasesDePasadas, pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { RUTA_AGENDA } from '@/lib/rutasPublicas';
 import type { TipoActividad } from '@/types/actividad';
 import { lastmodDelSitemap, rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
@@ -2045,11 +2045,24 @@ describe('barrido de `/pasadas` (§5, salida 10, B-109)', () => {
       entradaDeIndice(toPublic(actividadCentinela(), id)),
     );
 
-  /** El texto que esta salida agrega, y nada más: sus cuatro frases. */
+  /**
+   * El texto que esta salida agrega, y nada más: sus frases y el contador.
+   *
+   * El contador entra desde **B-292**: es texto que la página muestra y lo arma
+   * `cuentaDePasadas`, no la island — que es lo que lo deja adentro de este
+   * barrido. Armado con un template en el componente, quedaría afuera.
+   */
   const textoDeLaPagina = (): string => {
-    const conPasadas = frasesDePasadas(pasadasDelSitio(entradas(), AHORA));
+    const pasadas = pasadasDelSitio(entradas(), AHORA);
+    const conPasadas = frasesDePasadas(pasadas);
     const vacia = frasesDePasadas([]);
-    return [...Object.values(conPasadas), ...Object.values(vacia)].join(' | ');
+    return [
+      ...Object.values(conPasadas),
+      ...Object.values(vacia),
+      cuentaDePasadas(pasadas.length, pasadas.length),
+      cuentaDePasadas(1, pasadas.length),
+      cuentaDePasadas(0, 0),
+    ].join(' | ');
   };
 
   it('control positivo: hay texto que barrer', () => {

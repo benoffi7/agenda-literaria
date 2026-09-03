@@ -14,13 +14,23 @@
  * dice —«muchas de estas actividades se repiten: si te interesa una, seguí a
  * quien la organiza»— y eso convierte «llegué tarde» en algo que se puede hacer.
  *
- * ── Cero JavaScript, y el buscador vive en la home ────────────────────────
- * El §4.5 pide «sin filtros salvo la búsqueda», y la búsqueda que hay es la
+ * ── El buscador del archivo — B-292, y ya no vive en la home ──────────────
+ * El §4.5 pide «sin filtros salvo la búsqueda». Hasta el 2026-09-03 la página no
+ * la tenía y el motivo estaba escrito (**D-167**): la búsqueda del sitio era la
  * island de la home, que filtra el índice de lo **vigente** (`vigentesDelIndice`)
- * y no sabe de pasadas. Traerla acá sería enseñarle un modo nuevo, que es un
- * cambio de la island y no de esta página — queda anotado como **B-292**. Hasta
- * entonces esta página es HTML plano, como el detalle y la cartelera, y el enlace
- * de arriba manda a la búsqueda de la agenda.
+ * y no sabe de pasadas, así que traerla era enseñarle un modo nuevo.
+ *
+ * La salida fue **no traerla**: `BuscadorDePasadas` es una island propia y chica
+ * —una dimensión, la que el §4.5 pide— que reusa lo único que podría contestar
+ * distinto, **el match**: `buscarEnPasadas` filtra con `coincideBusqueda`, la
+ * misma función que usa `filtrarPublico` para la home, los hubs y los meses. Y
+ * las filas las pinta el mismo `ListaDeActividades` del build. No hay una segunda
+ * búsqueda ni un segundo markup; hay un conjunto distinto.
+ *
+ * **El HTML del build sigue completo y sigue siendo la verdad** (§6.3): la island
+ * saca la lista de abajo recién cuando tiene el índice, y si el fetch falla no
+ * saca nada. Lo que la página deja de ser es de cero JavaScript, y eso está
+ * medido y anotado en D-381.
  *
  * ── Sin atenuar, y es un desvío del §4.5 con motivo ───────────────────────
  * El diseño pedía «las mismas tarjetas, **atenuadas**». La fila es la misma y no
@@ -44,11 +54,13 @@
  * `ListaDeActividades`), `h3` el título de cada fila. La misma de la home.
  */
 import Base from '@/layouts/Base.astro';
+import { BuscadorDePasadas } from '@/components/publico/BuscadorDePasadas';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseEnlace } from '@/components/sitio/estilos';
 import { vistaDePasadas } from '@/lib/contenidoDelSitio';
 import { NOMBRE } from '@/lib/identidad';
 import { frasesDePasadas } from '@/lib/pasadasPublicas';
+import { INFO_VERSION } from '@/lib/version';
 
 export const prerender = true;
 
@@ -59,11 +71,32 @@ const { entradas, etiquetas, tonos, generadoEn } = await vistaDePasadas();
 const ahora = new Date(generadoEn);
 const cuantas = entradas.length;
 /*
- * Las cuatro frases salen de una sola función, que **recibe las entradas**: es lo
- * que hace que el barrido de centinelas de esta salida signifique algo (ver su
+ * Las frases salen de una sola función, que **recibe las entradas**: es lo que
+ * hace que el barrido de centinelas de esta salida signifique algo (ver su
  * docblock). La plantilla no arma texto.
  */
 const frases = frasesDePasadas(entradas);
+
+/**
+ * El id del archivo que imprime el build — B-292.
+ *
+ * La island lo saca del DOM cuando tiene el índice, igual que en la home: sin
+ * eso las filas quedarían dos veces. Y el `id` va en un contenedor que **envuelve
+ * solo la lista**, no al buscador: lo que se saca es el HTML del build, no el
+ * árbol de React.
+ */
+const ID_LISTADO = 'archivo-del-build';
+
+/**
+ * La versión del build, para el `?v=` del fetch — la misma que estampa el
+ * `events.json`.
+ *
+ * Sale de `INFO_VERSION` y no del índice porque esta página **no puede ver el
+ * índice**: `vistaDePasadas` le entrega su view-model y nada más (D-140, ver el
+ * docblock de arriba). Es el mismo valor —`indiceDelSitio` pone `INFO_VERSION.version`
+ * adentro del archivo— y lo fija `tests/pasadas.test.ts`.
+ */
+const version = INFO_VERSION.version;
 ---
 
 <Base
@@ -88,22 +121,42 @@ const frases = frasesDePasadas(entradas);
     <div class="mt-10 sm:mt-12">
       {
         cuantas === 0 ? (
+          /*
+            Sin nada en el archivo no hay buscador: un campo que no puede
+            encontrar nada es peor que ninguno, y el aviso ya dice lo que pasa.
+          */
           <p class="body-md regla-gruesa-arriba px-4 py-12 text-center text-super">
             {frases.vacio}
           </p>
         ) : (
-          /*
-            Agrupada por mes, de lo más reciente a lo más antiguo — el orden lo
-            decide `pasadasDelSitio` y los marcadores salen de ese mismo orden
-            (`agruparPorMes` agrupa por `proxima ?? hasta`, y en una pasada
-            `proxima` es siempre `null`).
-          */
-          <ListaDeActividades
-            entradas={entradas}
-            ahora={ahora}
-            etiquetas={etiquetas}
-            tonos={tonos}
-          />
+          <Fragment>
+            {/*
+              El buscador — B-292, §4.5 («sin filtros salvo la búsqueda»).
+              `client:load` y no `visible`: un buscador que aparece tres segundos
+              después no se usa, que es el mismo criterio de la home.
+
+              Cuando tiene el índice saca del DOM la lista de abajo y monta la
+              suya con el **mismo** componente. Si el fetch falla no saca nada:
+              el archivo completo se queda, que es lo que esta página existe para
+              garantizar (§2.1).
+            */}
+            <BuscadorDePasadas client:load version={version} idListadoEstatico={ID_LISTADO} />
+
+            {/*
+              El archivo del build. Agrupado por mes, de lo más reciente a lo más
+              antiguo — el orden lo decide `pasadasDelSitio` y los marcadores salen
+              de ese mismo orden (`agruparPorMes` agrupa por `proxima ?? hasta`, y
+              en una pasada `proxima` es siempre `null`).
+            */}
+            <div id={ID_LISTADO} class="mt-8 sm:mt-10">
+              <ListaDeActividades
+                entradas={entradas}
+                ahora={ahora}
+                etiquetas={etiquetas}
+                tonos={tonos}
+              />
+            </div>
+          </Fragment>
         )
       }
     </div>

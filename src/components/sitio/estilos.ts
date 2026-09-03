@@ -119,6 +119,19 @@ export const claseBloque = 'border border-borde bg-crema';
 export const claseHundido = 'border border-borde bg-hondo';
 
 /**
+ * El rótulo **de un control**: el `<label>` que va arriba de un campo o de un
+ * desplegable.
+ *
+ * Es `claseRotulo` (de abajo) más la separación y el `block` que necesita una
+ * etiqueta que se apoya sobre su campo. Vive acá desde **B-292**, que fue cuando
+ * apareció el segundo buscador del sitio y con él la segunda copia del mismo
+ * string: es exactamente lo que este archivo existe para evitar —el anillo de
+ * foco llegó a estar escrito doce veces— y el modo de falla es el mismo, una
+ * etiqueta que se separa del resto sin que nada falle.
+ */
+export const claseEtiquetaDeCampo = 'label-caps mb-1 block text-azul';
+
+/**
  * El rótulo de un dato: «CUÁNDO», «DÓNDE», «MATERIAL».
  *
  * Es `label-caps` del sistema —Archivo Narrow 11/12, versalitas— con la tinta
