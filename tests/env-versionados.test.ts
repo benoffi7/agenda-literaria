@@ -75,13 +75,29 @@ const TODAS = versionados().flatMap(claves);
  *   quien la lee. Esta tercera la encontró el gate en su primera corrida, en
  *   `.env.example`, que es el archivo que B-213 no había contado.
  *
- * Agregar una cuarta excepción es una decisión, no un descuido: hay que
+ * - `GA4_PROPERTY_ID` — el id **numérico** de la propiedad de Google Analytics
+ *   (B-374). No es una credencial y no autoriza nada: leer la Data API pide el
+ *   token de una cuenta de servicio a la que el dueño le dio acceso a mano en
+ *   la consola de GA4, y sin ese acceso el id no abre nada. Es la misma clase
+ *   que `GOOGLE_CALENDAR_ID` —el nombre de un recurso, no la llave— con una
+ *   diferencia que conviene anotar: el del calendario es público por diseño y
+ *   éste no lo es, simplemente **no es secreto**. Y es lo mismo que ya está
+ *   versionado en `.env.production` como `PUBLIC_FIREBASE_MEASUREMENT_ID`: el
+ *   otro identificador de la misma propiedad, que además viaja en el bundle.
+ * - `SEARCH_CONSOLE_SITE` — la propiedad de Search Console (B-373), que es
+ *   literalmente el dominio del sitio (`sc-domain:agendaleh.ar`). El dominio
+ *   está en el `sitemap.xml`, en la canónica de cada página y en
+ *   `lib/rutasPublicas.ts`.
+ *
+ * Agregar una excepción nueva es una decisión, no un descuido: hay que
  * escribirla en esta lista y explicar por qué el valor puede ser público.
  */
 const EXCEPCIONES = new Set([
   'GOOGLE_CALENDAR_ID',
   'GITHUB_REPO',
   'FIRESTORE_EMULATOR_HOST',
+  'GA4_PROPERTY_ID',
+  'SEARCH_CONSOLE_SITE',
 ]);
 
 /**
