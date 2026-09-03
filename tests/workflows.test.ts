@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseDocument } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { fuenteDelModulo } from './fixtures/functions';
 
 /**
  * Los workflows de Actions, como archivos YAML — **trampa 11** del `CLAUDE.md`
@@ -73,13 +74,12 @@ describe('los triggers de los que depende el §8', () => {
     const wf = parsear('deploy.yml').toJS() as {
       on: { repository_dispatch?: { types?: string[] } };
     };
-    // El otro lado de este acuerdo está en `functions/index.js`:
-    // `event_type: 'rebuild'`. Si alguno de los dos cambia y el otro no, el lazo
-    // del §8 se corta sin ningún error.
-    const enviado = readFileSync('functions/index.js', 'utf8').match(
-      /event_type:\s*'([^']+)'/,
-    )?.[1];
-    expect(enviado, 'no se encontró el event_type en functions/index.js').toBeTruthy();
+    // El otro lado de este acuerdo está en `functions/github.js`
+    // (`cuerpoDeDispatch`, desde B-77 — antes en `index.js`): `event_type:
+    // 'rebuild'`. Si alguno de los dos cambia y el otro no, el lazo del §8 se
+    // corta sin ningún error.
+    const enviado = fuenteDelModulo('github.js').match(/event_type:\s*'([^']+)'/)?.[1];
+    expect(enviado, 'no se encontró el event_type en functions/github.js').toBeTruthy();
     expect(wf.on.repository_dispatch?.types).toContain(enviado);
   });
 

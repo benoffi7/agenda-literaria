@@ -391,7 +391,14 @@ describe('B-74 · las dos llamadas a GitHub abortan por timeout', () => {
   const fuente = (relativo: string) =>
     readFileSync(fileURLToPath(new URL(`../${relativo}`, import.meta.url)), 'utf8');
 
-  it.each(['functions/reportes-trigger.js', 'functions/index.js'])(
+  /*
+   * B-77 sacó la segunda copia de `functions/index.js` y la puso en
+   * `functions/github.js`, con el `fetch` inyectable — así el timeout dejó de
+   * ser solo una línea que un test lee y pasó a poder verificarse por
+   * comportamiento (`tests/github.test.ts`). Este chequeo se queda igual: es el
+   * que ata **las dos** llamadas, y la de reportes sigue sin ser inyectable.
+   */
+  it.each(['functions/reportes-trigger.js', 'functions/github.js'])(
     '%s corta el fetch con AbortSignal.timeout',
     (archivo) => {
       expect(fuente(archivo)).toMatch(/signal: AbortSignal\.timeout\(/);

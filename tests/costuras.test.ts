@@ -25,6 +25,7 @@ import {
 import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
 import { huboCambioDeContenido } from '../functions/historial.js';
+import { fuenteDeLaFunction, fuenteDeLaFunctionYSusModulos } from './fixtures/functions';
 import { encuentrosDe } from '@/lib/calendarioPanel';
 import { generarSesiones } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, SesionForm } from '@/types/actividad';
@@ -289,8 +290,15 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
     expect(calendario.size).toBe(1);
   });
 
-  it('la réplica sigue siendo fiel: index.js decide con el payload del evento', () => {
-    const src = fuente('functions/index.js');
+  it('la réplica sigue siendo fiel: el sync decide con el payload del evento', () => {
+    // B-77 — se pregunta **qué archivo declara `syncCalendar`** en vez de
+    // cablear `functions/index.js`: el corte puro/trigger lo mudó una vez y
+    // volvería a mudarlo. Ver `tests/fixtures/functions.ts`.
+    // B-77 — el archivo del trigger **más los módulos que importa**: la guarda
+    // de idempotencia es el id derivado que elige `crearEvento`, que desde el
+    // corte puro/trigger vive en `calendario-api.js`. Preguntar solo por el
+    // archivo del trigger diría que la guarda no está.
+    const src = fuenteDeLaFunctionYSusModulos('syncCalendar');
     // Si esto deja de matchear, la réplica de arriba dejó de valer.
     expect(src).toContain('const antes = event.data?.before?.data() ?? null;');
     expect(src).toContain('const ops = planificar(antes, despues, labels);');
@@ -346,7 +354,9 @@ const marcaRebuild = (antes: unknown, despues: unknown) =>
  */
 describe('el motivo del rebuild es opaco — §5.1, B-195', () => {
   const argumentos = (): string[] => {
-    const src = fuente('functions/index.js');
+    // Los dos triggers que marcan el rebuild, cada uno en su archivo desde B-77.
+    // Se preguntan por nombre, no por path.
+    const src = ['syncCalendar', 'rebuildPorOpciones'].map(fuenteDeLaFunction).join('\n');
     return [...src.matchAll(/marcarRebuild\(([^)]*)\)/g)].map((m) => m[1]!);
   };
 
@@ -371,9 +381,9 @@ describe('el motivo del rebuild es opaco — §5.1, B-195', () => {
 });
 
 describe('B-83 · el rebuild ya no cuelga del sync a Calendar', () => {
-  it('index.js marca el rebuild antes de los dos cortes tempranos', () => {
-    const src = fuente('functions/index.js');
-    const marca = src.indexOf('await marcarRebuild(`actividad ${id}`)');
+  it('el sync marca el rebuild antes de los dos cortes tempranos', () => {
+    const src = fuenteDeLaFunction('syncCalendar');
+    const marca = src.indexOf('await marcarRebuild(db, `actividad ${id}`)');
     const corte = src.indexOf('if (ops.length === 0)');
     const sinCalendario = src.indexOf('if (!CALENDAR_ID)');
     expect(marca).toBeGreaterThan(-1);
@@ -774,8 +784,8 @@ describe('B-85 · registrarExito compara antes de bajar `pendiente`', () => {
     expect(doc).toMatchObject({ intentos: 0, ultimoError: null, agotado: false });
   });
 
-  it('index.js escribe el éxito en una transacción, comparando la marca', () => {
-    const src = fuente('functions/index.js');
+  it('el schedule escribe el éxito en una transacción, comparando la marca', () => {
+    const src = fuenteDeLaFunction('dispararRebuild');
     expect(src).toContain('marcaLeida: estado.actualizado ?? null,');
     expect(src).toMatch(/const exito = await db\.runTransaction\(/);
   });

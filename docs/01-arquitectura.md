@@ -191,15 +191,30 @@ src/
     ayuda.astro             /ayuda — texto, sin JS ni Firestore (B-232)
     contacto.astro          /contacto — dos mailto con asunto propio (B-232)
     suscribirse.astro       /suscribirse — llevarse la agenda (B-230)
-functions/
+functions/                  puro arriba, pegamento en el medio, *-trigger.js abajo
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario
+  sincronizacion.js         id del evento, write-back, resync por etiqueta — pura
   rebuild.js                backoff y corte por intentos — lógica pura (§8)
   historial.js              cuándo se guarda una versión (§12) — lógica pura
-  historial-trigger.js      el onDocumentUpdated del historial
+                            COMPARTIDA: el panel la importa como @historial
+  reconciliacion.js         qué verificar contra Calendar (B-125) — lógica pura
+  limpieza-imagenes.js      qué imagen quedó huérfana (B-221) — lógica pura
+  limpieza-versiones.js     qué subcolección quedó huérfana (B-89) — lógica pura
   reportes.js               armado del issue de GitHub — lógica pura
+  despliegue.js             región, cuenta de servicio y opciones comunes (D-35)
+  github.js                 el repository_dispatch, con el `fetch` inyectable
+  etiquetas.js              /opciones/* → { slug: label }, con su caché
+  calendario-api.js         auth de Calendar y creación de eventos (googleapis)
+  marca-de-rebuild.js       sube `sistema/rebuild.pendiente` (§8)
+  calendario-trigger.js     syncCalendar — el onDocumentWritten de actividades
+  opciones-trigger.js       rebuildPorOpciones — el de /opciones/*
+  rebuild-trigger.js        dispararRebuild — el schedule del §8
+  historial-trigger.js      el onDocumentUpdated y el onDocumentDeleted (§12)
+  versiones-limpieza-trigger.js  el barrido de versiones huérfanas (B-89)
+  imagenes-*-trigger.js     optimización y barrido de imágenes
   reportes-trigger.js       la Function que crea el issue
-  index.js                  triggers de Firestore y schedule del rebuild
+  index.js                  init del Admin SDK y re-exports. Nada más (B-77)
 .github/workflows/
   deploy.yml                build + deploy que dispara el rebuild (§8)
 scripts/
@@ -222,8 +237,8 @@ alias **`@calendario`** para la vista previa del evento (D-20).
                     functions/calendario.js
                     (JS puro, sin Firebase)
                        ╱                ╲
-        functions/index.js          src/lib/vistaPreviaEvento.ts
-        (sync a Calendar)           (vista previa del panel)
+   functions/calendario-trigger.js   src/lib/vistaPreviaEvento.ts
+        (sync a Calendar)            (vista previa del panel)
 ```
 
 El alias está declarado en los tres lugares que resuelven módulos:

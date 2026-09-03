@@ -472,10 +472,30 @@ const CAMPOS_QUE_ESCRIBE_EL_SYNC = listaLiteral(
   'CAMPOS_QUE_ESCRIBE_EL_SYNC',
 );
 
-/** Claves de primer nivel que la Function escribe en la actividad. */
+/**
+ * Claves de primer nivel que **el sync** escribe en la actividad.
+ *
+ * Sale de la traza de `syncCalendar` —su cuerpo más el de todo lo que llama— y
+ * no de un archivo nombrado: **el chequeo no puede depender de dónde vive el
+ * código.** Apuntar a `functions/index.js` ya se rompió dos veces, las dos por
+ * B-77: primero cuando el write-back se mudó a `sincronizacion.js`, y después
+ * cuando el corte terminó y `syncCalendar` se fue a `calendario-trigger.js`. Las
+ * dos veces el chequeo quedó recorriendo una lista vacía, o sea pasando en verde
+ * sin verificar nada.
+ *
+ * Y tampoco es `SRC_FUNCTIONS` entero, que fue el primer reflejo: ahí entran los
+ * `tx.update(ref, …)` de **otros** triggers —el de reportes tiene el suyo— y la
+ * pregunta de este chequeo es sobre el sync, no sobre cualquier escritura del
+ * proyecto. Un chequeo que mide de más también deja de medir lo que dice medir.
+ */
 const CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC = [
   ...new Set(
-    [...fuente('functions/index.js').matchAll(/tx\.update\(ref,\s*\{([^}]*)\}\)/g)].flatMap((m) =>
+    [
+      ...TRIGGERS.filter((t) => t.nombre === 'syncCalendar')
+        .flatMap((t) => trazaDe(t).cuerpos)
+        .join('\n')
+        .matchAll(/tx\.update\(ref,\s*\{([^}]*)\}\)/g),
+    ].flatMap((m) =>
       m[1]!
         .split(',')
         .map((c) => c.split(':')[0]!.trim())
@@ -587,6 +607,9 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
   });
 
   it('el sync no escribe ningún campo de primer nivel de la actividad', () => {
+    // Sin esto un `tx.update(ref, {...})` que se mude o se reescriba dejaría la
+    // lista vacía, y `[]` no contiene ningún campo prohibido: verde vacío.
+    expect(CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC.length).toBeGreaterThan(0);
     // Hoy escribe solo el contenedor `sesiones`. Un campo suelto acá —
     // `ultimoSync`, `calendarSyncedAt` — sería un dueño nuevo en disputa con el
     // formulario, y hay que decidirlo antes de escribirlo.
@@ -884,11 +907,44 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
    * **Qué lo haría pasar:** que la escritura del resultado ocurra dentro de una
    * transacción que verifique que el estado sigue siendo el que se leyó.
    */
+  /**
+   * Los nombres que, llamados desde este archivo, llegan a la red: los helpers
+   * locales **y los importados de otro archivo de `functions/`**.
+   *
+   * Lo segundo lo trajo B-77, y sin eso este chequeo se apagaba en silencio: el
+   * cliente HTTP de GitHub dejó de estar inline en el trigger y pasó a
+   * `github.js`, así que `helpersConRed` del archivo del trigger devolvía `[]`,
+   * la alternativa vacía del regex hacía que `red` cayera en el primer paréntesis
+   * del cuerpo, y `lectura < red` daba falso. Verde, sin haber mirado nada — que
+   * es el modo de falla exacto que este archivo persigue en el código ajeno.
+   */
+  const nombresConRed = (archivo: string): string[] => {
+    const locales = helpersConRed(fuente(archivo));
+    const importados = [...importesDe(archivo).keys()].filter((nombre) => {
+      const decl = enFunctions(archivo, nombre);
+      return !!decl && /\bfetch\(|cal\.events\.|google\.calendar\(/.test(decl.cuerpo);
+    });
+    return [...new Set([...locales, ...importados])];
+  };
+
+  const laRedDe = (t: Trigger) =>
+    primero(t.cuerpo, new RegExp(`\\b(${[...nombresConRed(t.archivo), 'fetch'].join('|')})\\(`));
+
+  it('el detector de red encuentra la llamada aunque viva en otro archivo', () => {
+    // El positivo que impide el verde vacío del chequeo de abajo: si ningún
+    // schedule tiene una llamada a la red detectable, ese chequeo no está
+    // midiendo nada. `dispararRebuild` la tiene, importada de `github.js`.
+    const conRed = TRIGGERS.filter((x) => x.clase === 'onSchedule').filter(
+      (t) => laRedDe(t) !== Infinity,
+    );
+    expect(conRed.map((t) => t.nombre)).toContain('dispararRebuild');
+  });
+
   it('B-85: ninguna función programada escribe el estado que leyó sin compararlo', () => {
     const pierden: string[] = [];
     for (const t of TRIGGERS.filter((x) => x.clase === 'onSchedule')) {
       const lectura = primero(t.cuerpo, /\.get\(\)/);
-      const red = primero(t.cuerpo, new RegExp(`\\b(${helpersConRed(fuente(t.archivo)).join('|')}|fetch)\\(`));
+      const red = laRedDe(t);
       const escritura = primero(t.cuerpo, /\.(set|update)\(/);
       const transaccion = primero(t.cuerpo, /runTransaction\(/);
       if (lectura < red && red < escritura && transaccion === Infinity) {
@@ -1900,7 +1956,9 @@ describe('clase de B-212 · los cinco caminos de una opción leen lo mismo', () 
     // El `events.json` es el único que publica el color de la categoría (D-150).
     { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica', permitidas: ['slug', 'label', 'tono'] },
     { archivo: 'src/lib/vistaPreviaEvento.ts', funcion: 'labelsDeOpciones', permitidas: ['slug', 'label'] },
-    { archivo: 'functions/index.js', funcion: 'cargarLabels', permitidas: ['slug', 'label'] },
+    // B-77 la mudó de `functions/index.js` a su propio módulo: el caché de
+    // etiquetas lo comparten los dos triggers del lado de Calendar.
+    { archivo: 'functions/etiquetas.js', funcion: 'cargarLabels', permitidas: ['slug', 'label'] },
     /*
      * El cuarto, que faltaba — lo encontró el `auditor-privacidad` al cerrar
      * B-270. Alimenta la salida 6 (la página de detalle y su JSON-LD), que es la
