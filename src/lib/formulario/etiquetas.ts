@@ -91,10 +91,16 @@ interface DatosDeUsos {
 const elegidosDe = (datos: DatosDeUsos) => ({
   arancel: [datos.arancel.tipo],
   tipo: [datos.tipo],
-  // Sin repetir: dos filas en el mismo barrio son un uso, no dos.
-  barrio: [...new Set(datos.modalidades.map((m) => m.sede?.barrio ?? ''))],
-  plataforma: [...new Set(datos.modalidades.map((m) => m.online?.plataforma ?? ''))],
-  tags: [...datos.tags],
+  // `?? []` — mismo criterio defensivo que el resto de los lectores del
+  // documento crudo (`actividades.ts`, `toPublic.ts`): `guardado` sale de
+  // `ActividadForm`, siempre completo, pero `anterior` (B-340) puede venir de
+  // cualquier llamador futuro. Sin esto, un `anterior` incompleto tira un
+  // `TypeError` que el `catch` silencioso de `guardar.ts` traga, y `usos` deja
+  // de contarse para las cinco taxonomías sin ningún síntoma (lo señaló el
+  // `auditor-privacidad`).
+  barrio: [...new Set((datos.modalidades ?? []).map((m) => m.sede?.barrio ?? ''))],
+  plataforma: [...new Set((datos.modalidades ?? []).map((m) => m.online?.plataforma ?? ''))],
+  tags: [...(datos.tags ?? [])],
 });
 
 /**

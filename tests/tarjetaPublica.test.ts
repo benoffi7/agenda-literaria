@@ -23,7 +23,9 @@ import {
   lugarDeTarjeta,
 } from '@/lib/tarjetaPublica';
 import { MODALIDADES } from '@/types/actividad';
-import { entradaDePrueba } from './fixtures/indice';
+import { toPublic } from '@/lib/toPublic';
+import { entradaDeIndice } from '@/lib/eventsJson';
+import { actividadDePrueba, entradaDePrueba } from './fixtures/indice';
 
 /** Todo lo de este archivo se mide contra este instante. */
 const AHORA = new Date('2026-09-10T15:00:00Z');
@@ -36,7 +38,7 @@ const ETIQUETAS = mapaDeEtiquetas({
     { slug: 'a-la-gorra', label: 'A la gorra' },
     { slug: 'arancelado', label: 'Arancelado' },
   ],
-  plataforma: [{ slug: 'meet', label: 'Google Meet' }],
+  plataforma: [{ slug: 'meet', label: 'Google Meet' }, { slug: 'a-confirmar', label: 'A confirmar' }],
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -172,6 +174,37 @@ describe('la línea de lugar', () => {
       sede: { nombre: 'Casa Brandon', barrio: '', ciudad: 'CABA' },
     };
     expect(lugarDeTarjeta(e, ETIQUETAS)).toBe('Casa Brandon · CABA');
+  });
+
+  /**
+   * B-190 — lo encontró el `auditor-privacidad`: esta salida (el listado, la
+   * página de mes, /pasadas y los hubs) había quedado afuera de los tres
+   * consumidores que B-190 corrigió, así que seguía publicando «Online por A
+   * confirmar» en cuatro páginas indexadas — el mismo texto que el propio
+   * análisis del ítem marcó como el problema.
+   *
+   * MUTACIÓN PROBADA: volver `enLinea` al `? … : 'Online'` original, sin el
+   * caso especial de arriba. Este test pasa a esperar 'Online por A confirmar'
+   * y falla.
+   */
+  it('B-190 — «a confirmar» no se nombra como si fuera una plataforma (§5, salida 1)', () => {
+    const a = actividadDePrueba({ modalidades: ['virtual'] });
+    const aConfirmar = { plataforma: 'a-confirmar', url: '', urlPublica: false };
+    const publica = toPublic(
+      {
+        ...a,
+        // El `online` de primer nivel es un derivado propio (`onlinePrincipal`),
+        // no algo que `toPublic` recalcule de `modalidades`: hay que overridear
+        // los dos o la salida sigue leyendo el de la fixture (`meet`).
+        online: aConfirmar,
+        modalidades: [{ ...a.modalidades[0]!, online: aConfirmar }],
+      },
+      'act_1',
+    );
+    const e = entradaDeIndice(publica);
+    const linea = lugarDeTarjeta(e, ETIQUETAS);
+    expect(linea).toBe('Online, plataforma a confirmar');
+    expect(linea).not.toContain('Online por A confirmar');
   });
 });
 

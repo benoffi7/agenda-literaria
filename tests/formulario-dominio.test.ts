@@ -632,6 +632,54 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       const contados = llamadas.filter((l) => l.startsWith('registrarUsos:'));
       expect(contados).toEqual([]);
     });
+
+    /**
+     * B-340 — lo señaló el `auditor-privacidad`. `elegidosDe` leía
+     * `datos.modalidades.map(...)` y `[...datos.tags]` sin default, mientras
+     * que todo otro lector del documento crudo (`actividades.ts`,
+     * `toPublic.ts`) se defiende con `?? []`. Sin el default, un `anterior`
+     * sin uno de los dos campos tira un `TypeError` que el `catch` silencioso
+     * de `guardar.ts` traga — y `usos` deja de contarse para las CINCO
+     * taxonomías, no solo la que faltaba, sin ningún síntoma en pantalla.
+     *
+     * MUTACIÓN PROBADA: sacar cualquiera de los dos `?? []` de `elegidosDe`
+     * (`etiquetas.ts`) y correr este test — tira antes de llegar al `expect`.
+     */
+    it('usosAContar sobrevive a un `anterior` sin modalidades ni tags', () => {
+      const anteriorIncompleto = {
+        tipo: 'club-lectura',
+        arancel: { tipo: 'gratis' },
+      } as Parameters<typeof usosAContar>[3];
+      expect(() => usosAContar(datos(), [], {}, anteriorIncompleto)).not.toThrow();
+      // Y sigue contando lo del form: no es que el chequeo se salteó entero.
+      const r = usosAContar(datos(), [], {}, anteriorIncompleto);
+      expect(r.tipo).toEqual(['taller']);
+      expect(r.barrio).toEqual(['villa-crespo']);
+      expect(r.tags).toEqual(['narrativa']);
+    });
+  });
+
+  /**
+   * B-340 — lo señaló el `auditor-privacidad`. `inicial` es el documento
+   * crudo —lleva `online.url`, `difusion`, `createdBy`/`updatedBy`,
+   * `sesiones[].calendarEventId`— y pasarlo entero como `anterior` deja esos
+   * campos viajando por el caso de uso sin necesidad, a un tipo que no evita
+   * que se LEAN, solo que se declaren. `ActividadFormulario` tiene que
+   * proyectar los cuatro campos de taxonomía en el propio call site, antes de
+   * que `inicial` cruce hacia `guardarActividad`.
+   */
+  it('B-340 — `anterior` se arma proyectado en el call site, no pasando `inicial` entero', () => {
+    const src = readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8');
+    expect(src).not.toMatch(/anterior:\s*inicial,/);
+    expect(src).toContain('anterior: inicial && {');
+    // Los cuatro campos que `usosAContar` de verdad mira, ni uno más.
+    for (const campo of ['tipo: inicial.tipo', 'arancel: { tipo: inicial.arancel.tipo }', 'modalidades: inicial.modalidades', 'tags: inicial.tags']) {
+      expect(src).toContain(campo);
+    }
+    // Y ninguno de los campos crudos que no debería cruzar.
+    for (const campoCrudo of ['online.url', 'difusion', 'createdBy', 'calendarEventId']) {
+      expect(src.slice(src.indexOf('anterior: inicial && {'), src.indexOf('anterior: inicial && {') + 500)).not.toContain(campoCrudo);
+    }
   });
 
   it('si la actividad no se puede escribir, no queda ninguna opción huérfana', async () => {

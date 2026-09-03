@@ -1131,6 +1131,29 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
+   * La misma clase, otra instancia — B-190 / D-231. `'a-confirmar'` (la
+   * plataforma "todavía no se decidió") se comparaba a mano en
+   * `detallePublico.ts` y `textoRedes.ts`, y el `auditor-privacidad` encontró
+   * que un tercer consumidor (`tarjetaPublica.ts`) directamente se había
+   * quedado afuera — el productor no tenía dueño, así que la lista de
+   * consumidores se enumeraba de memoria. Ahora `SLUG_PLATAFORMA_A_CONFIRMAR`
+   * vive en `lib/modalidades.ts` y los tres importan de ahí.
+   */
+  it('B-190 — el slug «a confirmar» no se copia a mano en otro archivo de producción', () => {
+    const declaraciones = execFileSync(
+      'grep',
+      ['-rn', "'a-confirmar'", 'src/lib', 'src/components', 'src/pages', 'functions'],
+      { cwd: fileURLToPath(raiz), encoding: 'utf8' },
+    )
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+
+    const copias = declaraciones.filter((l) => !l.startsWith('src/lib/modalidades.ts:'));
+    expect(copias, 'una copia a mano se desincroniza en silencio si el slug cambia').toEqual([]);
+  });
+
+  /**
    * El otro lado de la clase, ya resuelto y con guarda: el panel no
    * reimplementa la descripción del evento, importa la del sync por el alias
    * `@calendario` (D-20). Si alguien vuelve a copiarla, las dos versiones se
@@ -1195,18 +1218,21 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
   });
 
   /**
-   * Los tres pares de prefijo de id del modelo: quien **produce** el id de una
+   * Los cuatro pares de prefijo de id del modelo: quien **produce** el id de una
    * fila y quien lo **valida** en el schema derivan cada uno por su cuenta.
    *
-   * Es la clase, con tres instancias: `ses_`, `img_` y `mod_`. El día que un
-   * productor cambie de prefijo, el schema rechaza toda fila nueva y el guardado
-   * falla por un campo que nadie tocó; el día que se agregue una cuarta lista sin
-   * su regla, el id deja de verificarse y vuelve la trampa 2 por la puerta de
-   * atrás. Se lee del fuente porque el prefijo está en un template literal del
-   * productor y en un regex del validador: no hay valor que comparar.
+   * Es la clase, con cuatro instancias: `ses_`, `img_`, `mod_` y `mat_`
+   * (B-342 — lo encontró el `auditor-privacidad`: el cuarto par nació sin
+   * entrar a esta lista, exactamente el hueco que el párrafo de abajo
+   * anticipaba). El día que un productor cambie de prefijo, el schema rechaza
+   * toda fila nueva y el guardado falla por un campo que nadie tocó; el día
+   * que se agregue una quinta lista sin su regla, el id deja de verificarse y
+   * vuelve la trampa 2 por la puerta de atrás. Se lee del fuente porque el
+   * prefijo está en un template literal del productor y en un regex del
+   * validador: no hay valor que comparar.
    *
-   * Se pide para los tres a la vez y no solo para el nuevo: una lista que nombra
-   * uno solo no protege a los otros dos, y agregarlos cuesta una línea.
+   * Se pide para los cuatro a la vez y no solo para el nuevo: una lista que
+   * nombra uno solo no protege a los demás, y agregarlos cuesta una línea.
    */
   it('cada lista con ids de cliente tiene su prefijo validado en el schema', () => {
     const schema = fuente('src/lib/schema.ts');
@@ -1214,6 +1240,7 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
       ['ses_', 'src/lib/sesiones.ts'],
       ['img_', 'src/lib/imagenes.ts'],
       ['mod_', 'src/lib/modalidades.ts'],
+      ['mat_', 'src/lib/material.ts'],
     ];
     for (const [prefijo, archivo] of productores) {
       expect(fuente(archivo), `${archivo} ya no produce ids \`${prefijo}\``).toContain(

@@ -63,6 +63,7 @@ import { desSlug } from '@calendario';
 import { formADocumento } from '@/lib/actividades';
 import { encuentrosDe, fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_MODALIDAD, proximoEncuentro } from '@/lib/filtrosActividades';
+import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { agregarChips } from '@/lib/formulario/chips';
 import { instanteDeTimestamp } from '@/lib/sesiones';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
@@ -144,7 +145,7 @@ const etiqueta = (labels: LabelsTaxonomia, campo: CampoTaxonomia, slug: string):
  * Es un mapa propio y no el de `construirDescripcion`, por el mismo motivo por
  * el que ese archivo no exporta `ETIQUETA_ENTREGA`: acá es prosa de caption y
  * allá es una línea de un evento de calendario. `dm` es la diferencia que lo
- * justifica — "por DM de Instagram" en el calendario, donde hay que decir de qué
+ * justifica — "por DM al Instagram" en el calendario, donde hay que decir de qué
  * DM se habla, y "por DM" en Instagram, donde decirlo sobra.
  */
 const ETIQUETA_VIA: Record<ViaInscripcion, string> = {
@@ -231,7 +232,7 @@ const bloqueDonde = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): st
     // de una plataforma. Se mira el slug (no el label, que se puede renombrar
     // sin que esto deje de aplicar) para publicar lo que se sabe de verdad.
     const plataforma =
-      online.plataforma === 'a-confirmar'
+      online.plataforma === SLUG_PLATAFORMA_A_CONFIRMAR
         ? null
         : etiqueta(labels, 'plataforma', online.plataforma);
     lineas.push(

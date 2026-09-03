@@ -49,6 +49,7 @@ import {
   rangoCorto,
 } from '@/lib/fechasPublicas';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
+import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { urlDeDetalle } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
@@ -533,7 +534,7 @@ const modalidadDeDetalle = (
   // Enumerado: `m.online` puede traer `url` (D-15) y acá se descarta (D-139).
   plataforma: m.online ? etiquetaDe(etiquetas, 'plataforma', m.online.plataforma) : null,
   // B-190 — se mira el slug, no el label: ver el docblock de la interfaz.
-  plataformaAConfirmar: m.online?.plataforma === 'a-confirmar',
+  plataformaAConfirmar: m.online?.plataforma === SLUG_PLATAFORMA_A_CONFIRMAR,
 });
 
 const itemDeDetalle = (i: ItemMaterialPublico): MaterialDeDetalle => ({

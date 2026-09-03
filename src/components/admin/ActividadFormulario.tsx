@@ -214,7 +214,25 @@ export function ActividadFormulario({
         // no vuelva a sumar en cada guardado lo que ya estaba ahí. `inicial`
         // es exactamente eso: lo que el formulario cargó al abrirse, sin
         // pedir una lectura de más.
-        anterior: inicial,
+        //
+        // **Se proyecta acá, no se pasa `inicial` entero** (lo señaló el
+        // `auditor-privacidad`): `inicial` es el documento crudo —lleva
+        // `online.url`, `difusion`, `createdBy`/`updatedBy`,
+        // `calendarEventId`— y el tipo de `anterior` en `guardar.ts` no evita
+        // que viajen igual, solo que se lean. Un `console.error({ entrada })`
+        // de debug en el futuro, o mandar `entrada` entera a la medición de un
+        // fallo, publicaría el link de la reunión y los uids. Los cuatro
+        // campos que `usosAContar` de verdad mira son los únicos que cruzan
+        // el borde.
+        anterior: inicial && {
+          tipo: inicial.tipo,
+          arancel: { tipo: inicial.arancel.tipo },
+          modalidades: inicial.modalidades.map((m) => ({
+            sede: m.sede ? { barrio: m.sede.barrio } : null,
+            online: m.online ? { plataforma: m.online.plataforma } : null,
+          })),
+          tags: inicial.tags,
+        },
         labelsNuevos,
         tagsNuevos,
       });
