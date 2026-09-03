@@ -225,7 +225,15 @@ function PanelCatalogo({
             encuentros por venir.
           </p>
         ) : (
-          <ul className="mt-3 space-y-4">
+          /*
+            B-621 · D-400 — a todo ancho, los avisos se reparten en dos
+            columnas desde `xl`. Cada aviso es un título corto y una lista de
+            títulos de actividad que envuelve: a 1600px en una sola columna, la
+            tarjeta queda con más blanco que texto y los avisos se separan tanto
+            que dejan de leerse como una lista. Dos y no cuatro: el título de un
+            taller ya usa el ancho de media columna.
+          */
+          <ul className="mt-3 grid gap-4 xl:grid-cols-2">
             {estado.avisos.map((aviso) => (
               <li key={aviso.clase} className="rounded-md border border-borde bg-white p-3">
                 <div className="flex items-baseline justify-between gap-3">
