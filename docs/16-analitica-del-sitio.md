@@ -6,7 +6,7 @@
 | Alcance | el **sitio público** (`agendaleh.ar`). La analítica del **panel** ya existe y está en [`09-analitica.md`](09-analitica.md) |
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
-| Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó) **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
+| Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
 | **Lo que falta antes de que mida en producción** | Nada de configuración: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta solo el deploy del código, que sale con el próximo push |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
@@ -121,7 +121,7 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | # | La fricción | Cómo se detecta | Qué se hace con eso | ¿Hoy? |
 |---|---|---|---|---|
 | 1 | **Una actividad publicada a la que ya no se puede entrar** — la inscripción cerró y todavía tiene encuentros por venir | catálogo + reloj | cambiar el estado, correr la fecha de cierre, o avisarlo en la descripción | ✅ |
-| 2 | **Una actividad que ya pasó y sigue en `publicado`** | catálogo + reloj | pasarla a un estado que refleje que terminó (lo que B-101 discute) | ✅ |
+| 2 | ~~Una actividad que ya pasó y sigue en `publicado`~~ — **reencuadrada, D-270**: eso es el archivo funcionando, no una fricción (§2.1 del `CLAUDE.md`, `/pasadas`). El tablero lo muestra como estado, no como problema, salvo la excepción real: un ciclo que vuelve necesita fechas nuevas | catálogo + reloj | si es un ciclo, cargar las fechas nuevas; si fue única, nada | ✅ |
 | 3 | **Una actividad publicada sin imagen** | catálogo | conseguir el flyer: sin él no entra a la cartelera y el link compartido va con la marca genérica. Al 2026-09-01 eran **2 de 42** | ✅ |
 | 4 | **Una actividad publicada sin etiquetas** | catálogo | ponerle etiquetas: sin ellas existe en el sitio pero no se encuentra filtrando | ✅ |
 | 5 | **Una actividad publicada con descripción demasiado corta** | catálogo | escribir dos frases más: la `meta description` sale de ahí, y es la que decide el clic | ✅ |
@@ -558,13 +558,43 @@ Es además el único tramo claramente seguro:
 - **contesta las preguntas 8, 9 y 10 y seis de las ocho fricciones**, que son las
   que se convierten en trabajo del día siguiente.
 
-### 8.1 · Qué muestra
+### 8.0 · Dos pestañas, no una página larga (B-501)
+
+El tablero era una sola página apilada: avisos, cobertura y conteos, uno debajo
+del otro. Con la mitad nueva de abajo (§8.1bis) apilar una tercera cosa la
+volvía un scroll interminable, así que pasó a **pestañas internas** — es un
+island `client:only`, sobra JavaScript para esto y no hace falta navegación:
+
+| Pestaña | Qué tiene | Mide a alguien que visita el sitio |
+|---|---|---|
+| **El catálogo** | lo que ya existía, reorganizado: los avisos siguen arriba a todo lo ancho, pero «Lo que se publica» y «Qué hay cargado» pasan a ir lado a lado desde `lg` en vez de apiladas | no |
+| **El sitio público** | el andamiaje de §8.1bis: la estructura de lo que va a mostrar cuando B-374 exista, sin un número inventado | todavía no mide nadie — el tablero tampoco |
+
+Pestañas de verdad, con el patrón «tabs, automatic activation» de WAI-ARIA APG:
+`role="tablist"`/`"tab"`/`"tabpanel"`, roving `tabIndex` (solo la pestaña
+activa entra en el orden de `Tab`), y las flechas mueven el foco **y** activan
+la pestaña en el mismo gesto — `Home`/`End` van a los extremos. Es el mismo
+patrón que `CentroAyuda` ya usaba para Guía/Novedades, con la navegación por
+teclado que a `CentroAyuda` le faltaba.
+
+**No dispara un evento nuevo por cambiar de pestaña.** El §8.3 ya dice por qué
+`estadisticas-abrir` es el único evento de esta pantalla — «un entero y nada
+más» — y sigue siendo cierto: cuál pestaña mira alguien no cambia la respuesta
+a «¿vale construir B-374?», así que agregar telemetría acá sería medir por
+medir.
+
+### 8.1 · Qué muestra la pestaña «El catálogo»
 
 Tres bloques, en el orden de lo que hay que hacer primero:
 
 1. **Los avisos** — las seis fricciones detectables del [§4](#4--las-fricciones-a-detectar-traducidas), cada una con las
    actividades que la disparan y un click para abrirlas. Van primero porque son
-   lo accionable. Si no hay ninguno, lo dice.
+   lo accionable. Si no hay ninguno, lo dice. **La segunda, «ya pasó», se
+   reencuadró (D-270, B-500):** que una actividad publicada siga publicada
+   después de pasar es el comportamiento correcto —se convierte en archivo,
+   §2.1 del `CLAUDE.md`— así que el título y el texto dejaron de sonar a
+   alarma, y pasó al final de la lista: es la que menos acción concentra de
+   las seis, no la más urgente.
 2. **Lo que se publica, completo o no** — de las publicadas: cuántas con imagen,
    cuántas con etiquetas, cuántas con descripción suficiente, cuántas con
    encuentros por venir. Es el termómetro de B-264 («2 de 42 con imagen») **medido
@@ -572,15 +602,50 @@ Tres bloques, en el orden de lo que hay que hacer primero:
 3. **Qué hay cargado** — el reparto por estado, tipo, arancel y forma de cursar,
    más ciclos, sueltas y encuentros.
 
+### 8.1bis · Qué muestra la pestaña «El sitio público» — el andamiaje, no los datos (B-502)
+
+El pedido original quería vistas, páginas más vistas, secciones, clics y
+fricciones **en el panel**. Esa lectura es **B-374**, no está construida, y no
+lo va a estar hasta que haya un mes de datos (GA4 no mide retroactivo, §9.2).
+Mostrar cero o inventar un número habría sido peor que no construir nada: la
+pestaña existe para dejar la estructura escrita y honesta, no para simular que
+ya mide.
+
+Lo que hay hoy, agrupado igual que el [§2](#2--dos-mitades-y-no-una) de este
+documento:
+
+- **Una franja fija** con tres cosas: que esto todavía no tiene un solo número,
+  y es a propósito; la fecha exacta desde la que hay algo que medir (**el 3 de
+  septiembre de 2026** — antes de esa fecha el sitio no medía nada, y GA4 no
+  reconstruye ese vacío); y qué falta en concreto para que deje de estar vacío
+  (un mes de datos + la Function de B-374).
+- **«Para ofrecer a un anunciante»** — las cuatro filas de la mitad **a**:
+  visitas y personas, vistas de página, las páginas más vistas (agrupado como
+  «qué secciones se usan más» — inicio, cartelera, agenda por mes, detalle,
+  archivo — que es la misma pregunta 2 del §3, no una nueva), y de dónde entra
+  la gente. Cada fila con su «sin datos aún».
+- **«Para mejorar el sitio»** — las dos filas de la mitad **b**, y la única
+  diferencia real con la anterior: `clic_inscripcion` y `filtro_sin_resultados`
+  **ya están instalados** (B-375) y van a empezar a juntar volumen apenas el
+  tag mida en producción. Lo que falta para verlas acá es la misma Function,
+  no escribirlas de nuevo.
+
+**Lo que se decidió no hacer, para que quede escrito:** no se agregó «tiempo en
+página» ni «scroll» (el §3.1 ya los excluyó del diseño), y «secciones» no es
+una fila propia — es la misma pregunta que «páginas más vistas», agrupada, para
+no inventar una categoría nueva donde el documento de arquitectura ya la había
+retirado a propósito.
+
 ### 8.2 · Dónde vive
 
 | Pieza | Archivo | Qué es |
 |---|---|---|
 | El cálculo | `src/lib/estadoDelCatalogo.ts` | **puro**. Recibe `ActividadConId[]` y un reloj, devuelve el estado. No sabe de React, ni de Firestore, ni de pantallas |
-| La pantalla | `src/components/admin/EstadisticasPanel.tsx` | lee `/actividades` en vivo, como las otras vistas del panel, y acomoda |
+| La pantalla, las pestañas y el andamiaje de «El sitio público» | `src/components/admin/EstadisticasPanel.tsx` | lee `/actividades` en vivo, como las otras vistas del panel, y acomoda las dos pestañas |
 | Los gráficos | el mismo componente | **barras de CSS**, sin ninguna dependencia nueva. Cada barra lleva su número escrito al lado: el gráfico ayuda a comparar, no informa solo — de ahí que vaya `aria-hidden` |
 | La entrada | `src/components/admin/AdminApp.tsx` | una vista más del router propio, **diferida** por `import()` como las otras cinco (el corte de bundle de B-09 / B-117) |
-| Los tests | `tests/estado-del-catalogo.test.ts` | el módulo puro caso por caso, con los bordes de cada umbral, más el barrido de que nada de lo que la pantalla ve llega a la analítica |
+| Los tests del cálculo | `tests/estado-del-catalogo.test.ts` | el módulo puro caso por caso, con los bordes de cada umbral, más el barrido de que nada de lo que la pantalla ve llega a la analítica |
+| Los tests de las pestañas | `tests/estadisticas-pestanias.render.test.tsx` | renderizado real (jsdom): qué panel se ve al hacer click y al navegar con las flechas, y el roving `tabIndex` — cableado que un test del fuente no puede verificar sin arriesgar un falso verde |
 
 ### 8.3 · Dos cosas que no hace, y una que sí
 
@@ -704,6 +769,9 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
 | **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la eliminaría | 🔵 futuro, anotado por D-254 |
+| **B-500** | El aviso «ya-paso» reencuadrado: no es una fricción, es el archivo funcionando (D-270) | ✅ hecho (2026-09-03) |
+| **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
+| **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
 
 ---
 

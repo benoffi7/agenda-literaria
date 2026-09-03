@@ -70,14 +70,26 @@ const MS_POR_DIA = 24 * 60 * 60 * 1000;
  * no por cantidad: arriba está lo que le hace perder algo a alguien de afuera
  * (escribir y que no le contesten), abajo lo que nos hace perder algo a nosotros
  * (trabajo hecho que no rinde).
+ *
+ * **`ya-paso` va último, y no es cosmético (D-270).** El dueño lo marcó
+ * textual: «los eventos siguen publicados como archivos, no entiendo el
+ * aviso». Tenía razón — una actividad publicada que ya pasó **es** el
+ * comportamiento correcto (CLAUDE.md §2.1, `/pasadas` es justamente el
+ * archivo), así que no es una fricción del mismo tipo que las otras cinco: no
+ * hay nada roto que arreglar en la actividad en sí. Lo único que puede seguir
+ * de acá es cargar las fechas nuevas de un ciclo que vuelve, y eso no aplica a
+ * la mayoría de las actividades señaladas (una actividad única no tiene fechas
+ * que cargar). Por eso queda al final, después de `esperando`: es la que
+ * menos por-hacer concentra de las seis, no la que menos importa mirar de
+ * vez en cuando.
  */
 export const CLASES_DE_AVISO = [
   'inscripcion-cerrada',
-  'ya-paso',
   'sin-flyer',
   'sin-etiquetas',
   'descripcion-corta',
   'esperando',
+  'ya-paso',
 ] as const;
 export type ClaseDeAviso = (typeof CLASES_DE_AVISO)[number];
 
@@ -108,8 +120,16 @@ const TEXTO: Record<ClaseDeAviso, { titulo: string; porque: string }> = {
       'El sitio las sigue ofreciendo. Alguien va a escribir y no va a poder entrar.',
   },
   'ya-paso': {
-    titulo: 'Publicadas a las que no les queda ningún encuentro',
-    porque: 'Ya pasaron y siguen figurando como publicadas.',
+    // D-270 — reencuadrado de «Ya pasaron y siguen figurando como
+    // publicadas», que sonaba a fricción a arreglar cuando es justo lo
+    // contrario: que sigan publicadas es correcto (se convierten en archivo,
+    // §2.1 del CLAUDE.md). Lo único accionable es la excepción: un ciclo que
+    // vuelve necesita fechas nuevas cargadas.
+    titulo: 'Terminaron y pasaron al archivo',
+    porque:
+      'Es lo esperado: siguen publicadas y su página sigue viva en /pasadas. ' +
+      'Si alguna es un ciclo que vuelve, cargale las fechas nuevas; si fue ' +
+      'una actividad única, no hay nada que hacer.',
   },
   'sin-flyer': {
     titulo: 'Publicadas sin imagen',
