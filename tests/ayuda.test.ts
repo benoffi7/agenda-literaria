@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { AVISOS, CAPITULOS, CAPITULO_POR_CONTEXTO } from '@/lib/ayuda';
+import { AVISOS, CAPITULOS, CAPITULO_POR_CONTEXTO, capituloDeSeccion } from '@/lib/ayuda';
 import type { VinculoTest } from '@/lib/ayuda';
 
 /**
@@ -13,7 +13,16 @@ import type { VinculoTest } from '@/lib/ayuda';
 /** Todo el texto que le llega a la persona, en una sola cadena. */
 const corpus = [
   ...AVISOS.flatMap((a) => [a.titulo, a.texto]),
-  ...CAPITULOS.flatMap((c) => [c.titulo, c.paraQue, ...c.puntos.map((p) => p.texto)]),
+  // B-62 — `impacto` y `ejemplo` entran al corpus: es texto que le llega a la
+  // persona, así que le valen las mismas reglas de tono que al resto. Si no
+  // entraran, la parte más nueva de la guía sería justo la que puede tener jerga.
+  ...CAPITULOS.flatMap((c) => [
+    c.titulo,
+    c.paraQue,
+    c.impacto ?? '',
+    c.ejemplo ?? '',
+    ...c.puntos.map((p) => p.texto),
+  ]),
 ].join('\n');
 
 /**
@@ -89,10 +98,97 @@ describe('capítulos', () => {
     expect(new Set(CAPITULOS.map((c) => c.id)).size).toBe(CAPITULOS.length);
   });
 
+  /**
+   * B-62 — la forma que pidió el dueño: **qué hace, qué impacto tiene y un
+   * ejemplo**. Las tres partes, y las tres obligatorias en los capítulos que
+   * explican una sección del formulario, que son los que se abren desde el «?»
+   * de al lado del título mientras alguien está cargando.
+   *
+   * El «qué hace» ya existía (`paraQue`). Lo que faltaba —y es lo que agrandó el
+   * ítem— son los otros dos: el impacto, que es lo que no se adivina mirando la
+   * pantalla, y el ejemplo, que es lo que resolvió el caso real («no entiendo por
+   * qué hay 2 opciones… lo estoy probando en una feria»). Una definición no
+   * contesta eso.
+   */
+  it('cada capítulo de una sección del formulario dice qué sale y da un ejemplo', () => {
+    for (const c of CAPITULOS.filter((x) => x.seccionFormulario)) {
+      expect(c.impacto, `«${c.titulo}» no dice qué sale de ahí`).toBeTruthy();
+      expect(c.impacto!.length, `el impacto de «${c.titulo}» es demasiado corto`).toBeGreaterThan(
+        60,
+      );
+      expect(c.ejemplo, `«${c.titulo}» no da un ejemplo`).toBeTruthy();
+      expect(c.ejemplo!.length, `el ejemplo de «${c.titulo}» es demasiado corto`).toBeGreaterThan(
+        60,
+      );
+    }
+  });
+
+  /**
+   * El ejemplo tiene que ser **un caso**, no una definición reformulada. No hay
+   * forma de verificar eso automáticamente, pero sí de verificar el caso que hizo
+   * existir esta parte del ítem: la feria de varios días y los dos campos del
+   * generador que se leían como dos cantidades.
+   */
+  it('el ejemplo de «Encuentros» contesta el reporte que agrandó el ítem (B-62)', () => {
+    const encuentros = CAPITULOS.find((c) => c.id === 'encuentros');
+    expect(encuentros?.ejemplo).toContain('feria');
+    expect(encuentros?.ejemplo).toContain('Cuántos encuentros');
+    expect(encuentros?.ejemplo).toContain('Cada cuántos días');
+  });
+
+  it('capituloDeSeccion encuentra el capítulo de cada sección del formulario', () => {
+    for (const c of CAPITULOS.filter((x) => x.seccionFormulario)) {
+      expect(capituloDeSeccion(c.seccionFormulario!)?.id).toBe(c.id);
+    }
+    // Y un título que no es una sección no inventa nada: la capa se cae al
+    // capítulo de la pantalla en vez de abrir la guía sin nada desplegado.
+    expect(capituloDeSeccion('Una sección que no existe')).toBeNull();
+  });
+
   it('el capítulo que abre según la pantalla existe', () => {
     for (const id of Object.values(CAPITULO_POR_CONTEXTO)) {
       expect(CAPITULOS.some((c) => c.id === id), `no existe el capítulo «${id}»`).toBe(true);
     }
+  });
+
+  /**
+   * B-62 — el «?» al lado del título, en **todas** las secciones del formulario.
+   *
+   * Es la mitad de la clase, y la que se pierde sola: escribir el capítulo ya
+   * está cubierto (el `it` de arriba lo obliga), pero una sección nueva podía
+   * nacer con su capítulo escrito y sin la puerta para llegar a él, y eso no lo
+   * ve nadie — la ayuda existe y no se encuentra, que es exactamente el reporte
+   * de B-193 con otra cara.
+   *
+   * Se lee el fuente porque el panel no tiene tests de componentes: lo que se
+   * prueba es que la prop esté en el camino, no que el botón se vea.
+   */
+  it('cada sección del formulario ofrece el «?» que abre su capítulo (B-62)', () => {
+    const sinBoton: string[] = [];
+    for (const archivo of readdirSync('src/components/admin/formulario').filter((f) =>
+      f.endsWith('.tsx'),
+    )) {
+      const src = readFileSync(`src/components/admin/formulario/${archivo}`, 'utf8');
+      for (const m of src.matchAll(/\btitulo="([^"]+)"/g)) {
+        // El bloque de apertura de ese `<Seccion`, para no confundir dos
+        // secciones del mismo archivo.
+        const desde = src.lastIndexOf('<Seccion', m.index);
+        const hasta = src.indexOf('>', m.index);
+        if (!src.slice(desde, hasta).includes('conAyuda')) sinBoton.push(m[1]!);
+      }
+    }
+    expect(
+      sinBoton,
+      `secciones del formulario sin el «?» de la ayuda (falta la prop conAyuda): ${sinBoton.join(', ')}`,
+    ).toEqual([]);
+  });
+
+  it('y la ayuda no se pone un «?» a sí misma', () => {
+    // La guía se dibuja con el mismo componente `Seccion`, un acordeón por
+    // capítulo: si el botón fuera automático en vez de opt-in, habría un botón de
+    // ayuda adentro de la ayuda, abriendo otra capa encima.
+    const capa = readFileSync('src/components/admin/ayuda/CentroAyuda.tsx', 'utf8');
+    expect(capa).not.toContain('conAyuda');
   });
 
   it('hay capítulo para lo que no es una sección del formulario', () => {

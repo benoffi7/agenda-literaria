@@ -40,6 +40,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
     <Seccion
       ancla="que-es"
       titulo="Qué es"
+      conAyuda
       descripcion="Elegí el tipo primero: el resto del formulario se adapta."
     >
       <div className="grid gap-4 sm:grid-cols-2">

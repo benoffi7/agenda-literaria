@@ -21,6 +21,7 @@ export function SeccionDifusion({ form, set, pedidoDeApertura }: Props) {
       ancla="difusion"
       pedidoDeApertura={pedidoDeApertura}
       titulo="Difusión"
+      conAyuda
       descripcion="Uso interno. Nunca sale al sitio público ni al calendario."
       colapsable
       abiertaPorDefecto={false}

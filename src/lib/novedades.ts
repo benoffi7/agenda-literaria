@@ -60,6 +60,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'ayuda-por-seccion-del-formulario',
+    fecha: '2026-09-03',
+    titulo: 'Cada sección del formulario tiene su «?» al lado del título',
+    detalle:
+      'Antes la ayuda se abría desde el botón del encabezado y había que buscar el capítulo. Ahora ' +
+      'cada sección tiene un «?» que abre la guía justo en lo suyo. Y esos capítulos ahora dicen ' +
+      'tres cosas: para qué es la sección, qué sale de ahí al sitio y al calendario, y un ejemplo ' +
+      'concreto — como cargar una feria de tres días seguidos.',
+    donde: 'Formulario, al lado del título de cada sección.',
+  },
+  {
     id: 'calendario-y-tablero-mas-anchos',
     fecha: '2026-09-03',
     titulo: 'El calendario y las estadísticas usan toda la pantalla',

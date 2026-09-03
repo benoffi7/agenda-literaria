@@ -22,6 +22,7 @@ export function SeccionDonde({ form, set, errorDe, uid, anotarLabel }: Props) {
     <Seccion
       ancla="donde"
       titulo="Dónde"
+      conAyuda
       descripcion="Una fila por forma de cursar: la misma actividad puede darse presencial y virtual."
       insignia={form.modalidades.length > 1 ? `${form.modalidades.length} modalidades` : undefined}
     >

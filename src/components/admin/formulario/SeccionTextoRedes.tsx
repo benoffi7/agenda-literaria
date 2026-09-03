@@ -28,6 +28,7 @@ export function SeccionTextoRedes({ form, labelsPendientes }: Props) {
     <Seccion
       ancla="texto-redes"
       titulo="Texto para publicar"
+      conAyuda
       descripcion="Listo para pegar en Instagram, con los datos que ya cargaste."
       colapsable
       recuerdaComo="texto-redes"

@@ -34,6 +34,7 @@ export function SeccionOpcional({
       ancla="opcional"
       pedidoDeApertura={pedidoDeApertura}
       titulo="Opcional"
+      conAyuda
       descripcion="Tags y destacado."
       colapsable
       abiertaPorDefecto={false}

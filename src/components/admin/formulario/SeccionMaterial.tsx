@@ -22,6 +22,7 @@ export function SeccionMaterial({ form, set, errorDe, esClub, pedidoDeApertura }
       ancla="material"
       pedidoDeApertura={pedidoDeApertura}
       titulo="Material"
+      conAyuda
       descripcion="Lecturas, guías y contexto. Sobre todo en clubes de lectura."
       colapsable
       abiertaPorDefecto={esClub || form.material.tiene}
