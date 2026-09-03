@@ -34,6 +34,18 @@ URL="${VERSION_JSON_URL:-https://agendaleh.ar/version.json}"
 ANTES=""
 if RESPUESTA=$(curl -sf --max-time 10 "$URL" 2>/dev/null); then
   PUBLICADO=$(printf '%s' "$RESPUESTA" | jq -r '.sha // empty' 2>/dev/null || true)
+  # B-562 — `version.json` NO publica un campo `.sha` (`INFO_VERSION` es solo
+  # `{version, generadoEn}`), así que la lectura de arriba siempre daba vacío y
+  # B-205 caía al `before` del push: quedó inerte. El sha sí está, embebido en
+  # `version` como `<x.y.z>+<sha>` (`componerVersion`, `scripts/version.mjs`).
+  # Se extrae de ahí, y **solo** cuando es un build limpio: `+<7-40 hex>` y nada
+  # después. Un build sucio (`+<sha>-sucio.<sello>`) o sin git (`+sin-git.<sello>`)
+  # no termina en hex puro, así que no matchea y se cae al `before`, que es lo
+  # correcto — de un build sucio no se puede confiar el sha como base.
+  if [ -z "$PUBLICADO" ]; then
+    VERSION=$(printf '%s' "$RESPUESTA" | jq -r '.version // empty' 2>/dev/null || true)
+    PUBLICADO=$(printf '%s' "$VERSION" | sed -n 's/^[^+]*+\([0-9a-f]\{7,40\}\)$/\1/p')
+  fi
   if [ -n "$PUBLICADO" ] && git cat-file -e "${PUBLICADO}^{commit}" 2>/dev/null; then
     ANTES="$PUBLICADO"
   fi

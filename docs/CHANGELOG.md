@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-03 · el fix de B-205 estaba inerte, y dejó producción vieja (B-562)
+
+`scripts/commit-base-deploy.sh` (B-205) leía `.sha` de `/version.json` para
+diffear contra lo publicado en vez del push anterior. Pero `version.json` no
+publica `.sha` —es `{version, generadoEn}`—, así que siempre caía al `before`. Tras
+el deploy fallido de la tanda de fusiones, el push siguiente resolvió
+`hosting=false` y dejó sin publicar B-107, B-238, B-112 y la remoción del aviso.
+Se saca el sha del sufijo `+<sha>` de `version` (solo build limpio). El test de
+B-205 mockeaba un `.sha` inexistente; ahora cubre el formato real.
+
 ## 2026-09-03 · un test verde en local que rompía el deploy en CI (B-561)
 
 `tests/limpieza-imagenes.test.ts` importaba `referenciasEnUso` desde el trigger de

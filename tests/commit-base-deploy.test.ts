@@ -98,8 +98,31 @@ describe('contra qué commit diffear un deploy — B-205', () => {
     expect(antes).toBe(HEAD);
   });
 
-  it('si /version.json no trae "sha", cae al before', async () => {
+  it('si /version.json no trae "sha" ni un sufijo parseable, cae al before', async () => {
     const { url, cerrar } = await servidorVersion(JSON.stringify({ version: '1.2.0' }));
+    abiertos.push(cerrar);
+    const antes = await decidir({ VERSION_JSON_URL: url, EVENT_BEFORE: HEAD });
+    expect(antes).toBe(HEAD);
+  });
+
+  it('sin campo "sha", saca el sha del sufijo de "version" — el formato REAL (B-562)', async () => {
+    // `version.json` de producción es `{version, generadoEn}`, sin `.sha`
+    // (`INFO_VERSION`, `src/lib/version.ts`). El sha va embebido como
+    // `<x.y.z>+<sha>` (`componerVersion`). Sin este parseo, B-205 leía `.sha`,
+    // no lo encontraba y caía al before: quedaba inerte, que es lo que dejó
+    // producción vieja el 2026-09-03.
+    const { url, cerrar } = await servidorVersion(JSON.stringify({ version: `1.6.0+${HEAD}` }));
+    abiertos.push(cerrar);
+    const antes = await decidir({ VERSION_JSON_URL: url, EVENT_BEFORE: 'deadbee' });
+    expect(antes).toBe(HEAD);
+  });
+
+  it('un build sucio en el sufijo no se usa como base: cae al before', async () => {
+    // `<x.y.z>+<sha>-sucio.<sello>` o `+sin-git.<sello>` no terminan en hex puro,
+    // así que el sed no matchea y no se confía ese sha como base.
+    const { url, cerrar } = await servidorVersion(
+      JSON.stringify({ version: `1.6.0+${HEAD}-sucio.20260903` }),
+    );
     abiertos.push(cerrar);
     const antes = await decidir({ VERSION_JSON_URL: url, EVENT_BEFORE: HEAD });
     expect(antes).toBe(HEAD);
