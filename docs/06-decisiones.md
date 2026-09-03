@@ -7003,3 +7003,111 @@ lo que estaba mal era cómo se presentaba. Cerrado con `tests/estado-del-catalog
 mutación probada — revertir el cambio los pone en rojo).
 
 Ítem: **B-500**.
+
+---
+
+## D-271 · El tablero pasa a pestañas internas, con el patrón de teclado que a `CentroAyuda` le faltaba
+
+**Por qué.** El dueño pidió que el tablero «Estado del catálogo» (B-370,
+D-200) deje de ser una página larga, y con la mitad nueva de B-502 sumándose
+abajo, apilar una tercera sección la volvía un scroll interminable de verdad.
+`EstadisticasPanel.tsx` es un island `client:only`: sobra JavaScript para
+pestañas reales, así que no hace falta ninguna navegación ni un cambio de
+ruta — es estado de React, como ya lo es todo lo demás de la pantalla.
+
+**Dos pestañas de primer nivel: «El catálogo» y «El sitio público».** No tres
+ni cinco — son las dos mitades que el propio [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md)
+§2 ya distingue («los números para vender» y «los números para mejorar» son
+la mitad de abajo; «lo que hay cargado» es la de arriba), así que la pestaña
+no inventa una categoría nueva, refleja una que ya existía en el diseño.
+
+**El patrón: WAI-ARIA APG, «tabs con activación automática».** `role="tablist"`
+en el contenedor, `role="tab"` + `aria-selected` + `aria-controls` en cada
+botón, `role="tabpanel"` + `aria-labelledby` en el contenido, y roving
+`tabIndex` — solo el botón activo lleva `tabIndex=0`, los demás `-1`, así que
+`Tab` entra una sola vez a la pestaña activa y no obliga a tabular por las dos.
+Las flechas (`←`/`→`) mueven el foco **y** cambian la pestaña activa en el
+mismo gesto, sin esperar un `Enter` después; `Home`/`End` van a los extremos.
+
+**Por qué no reusar el patrón de `CentroAyuda` tal cual.** `CentroAyuda.tsx`
+(Guía/Novedades del centro de ayuda) ya usa `role="tablist"`/`"tab"`/`"tabpanel"`
+con la misma estética (`claseBotonTinta`/`claseBotonSecundario`), pero **solo
+cablea el click** — sin flechas, sin roving `tabIndex` (los dos botones llevan
+`tabIndex` implícito). Con dos pestañas y un mouse a mano nunca se notó. Este
+tablero copia la forma visual y agrega la navegación por teclado completa: es
+la pieza que faltaba, no una nueva. Queda anotado por si alguna vez conviene
+extraer un hook común — hoy son dos usos, no tres, y extraer con dos instancias
+suele producir la abstracción equivocada.
+
+**Reorganización de «El catálogo», no solo el nombre de pestaña.** «Lo que se
+publica» y «Qué hay cargado» pasan de estar apiladas a ir lado a lado desde
+`lg` (`grid gap-8 lg:grid-cols-2`). Los avisos siguen arriba y a todo lo ancho
+porque siguen siendo lo accionable — eso no cambia.
+
+**Sin telemetría nueva.** `estadisticas-abrir` sigue siendo el único evento de
+esta pantalla (§8.3 del documento): cuál pestaña mira alguien no cambia si vale
+construir B-374, así que medir el cambio de pestaña sería medir por medir —
+la misma disciplina de «diez eventos bien elegidos» de `09-analitica.md`.
+
+**Verificado con DOM real**, no con el fuente: `tests/estadisticas-pestanias.render.test.tsx`
+(qué panel se ve al hacer click, `ArrowRight`/`ArrowLeft` con wrap, y el roving
+`tabIndex`), con mutación probada — se fijó el panel mostrado en «catálogo» sin
+importar la pestaña activa, y dos tests pasaron a rojo señalando exactamente
+eso.
+
+Ítem: **B-501**.
+
+---
+
+## D-272 · La pestaña «El sitio público»: andamiaje honesto, ni un número inventado
+
+**El problema que esta decisión resuelve.** El pedido quería vistas, páginas
+más vistas, secciones, clics y fricciones **en el panel**. Esa lectura —la
+Data API de GA4 vía una Cloud Function— es **B-374**, y no se puede construir
+todavía: GA4 no mide retroactivo (§9.2 del documento) y hace falta al menos un
+mes de datos desde que el tag mide de verdad. Construir la pestaña sin esos
+datos deja dos caminos malos — no construir nada (el pedido de tres cosas queda
+en dos) o mostrar números de relleno (mentirle al dueño en la única pantalla
+que existe para no mentirle, justo la que el pedido original quería para
+vender confianza a un anunciante). Se eligió un tercer camino: **construir la
+estructura, con un estado vacío deliberado.**
+
+**Qué tiene la pestaña, concretamente:**
+
+1. Una franja fija que dice tres cosas sin adornos: que hoy no hay un solo
+   número y es a propósito; la fecha exacta desde la que hay algo que medir
+   —**el 3 de septiembre de 2026**, el día en que el tag de GA4 empieza a
+   medir en producción (B-372, B-480 ya resuelto)—; y qué falta en concreto
+   (un mes de datos + la Function de B-374), no un genérico «próximamente».
+2. Dos grupos de filas, calcados de la tabla del [§2](16-analitica-del-sitio.md#2--dos-mitades-y-no-una)
+   del documento de arquitectura: «Para ofrecer a un anunciante» (lo que GA4 da
+   solo) y «Para mejorar el sitio» (los dos eventos propios, `clic_inscripcion`
+   y `filtro_sin_resultados` — ya instalados por B-375, esperando volumen).
+   Cada fila con su explicación en el idioma del dueño y un «sin datos aún», en
+   vez de un número o un gráfico vacío que se puede confundir con un error.
+
+**Lo que se decidió no inventar.** El pedido nombraba «secciones» como una
+métrica propia. El documento de arquitectura ya la había retirado a propósito
+en su §3.1 —«categoría de herramienta, no pregunta»— y la convirtió en la
+pregunta 2 («¿qué páginas se miran más?»). Esta pestaña no la resucita como
+fila aparte: la fila «Las páginas más vistas» aclara que agrupar por sección
+(inicio, cartelera, agenda por mes, detalle, archivo) es la misma pregunta,
+vista agrupada — una decisión de presentación cuando B-374 exista, no una
+métrica nueva que este cambio esté prometiendo.
+
+**Diseño visual: se mantuvo el lenguaje ya establecido del panel** (bordes
+finos `border-borde`, sin sombras, densidad, la paleta `tinta`/`acento` que ya
+usa el resto de `EstadisticasPanel.tsx`), en vez de importar el sistema
+«Brutalismo editorial» de [`docs/referencias/sistema-visual.md`](referencias/sistema-visual.md)
+tal cual —radio 0 en todo, tipografía Bodoni Moda/Archivo Narrow— porque ese
+sistema está aprobado y aplicado para el **sitio público**, no para `/admin`,
+y el resto del panel (`Campo.tsx`, `CentroAyuda.tsx`, y el propio tablero) usa
+hoy bordes redondeados (`rounded-md`) de forma consistente. Mezclar dos
+lenguajes visuales en una sola pantalla —uno filoso y otro redondeado— habría
+sido peor que no aplicar ninguno de los dos a fondo. Lo nuevo de esta pestaña sí
+sigue el espíritu que pide el sistema —sin sombras, sin degradados, reglas
+finas, densidad— y no agrega radio nuevo donde antes no lo había. Si el panel
+entero adopta el sistema visual del sitio alguna vez, es un cambio consciente
+y parejo, no uno que empiece por una sola pestaña.
+
+Ítem: **B-502**.

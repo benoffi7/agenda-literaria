@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
+
+El dueño pidió tres cosas para el tablero «Estado del catálogo»: pestañas en
+vez de una página larga, la mitad que falta (el sitio público, hoy sin medir)
+y arreglar el aviso «ya pasó». Esta entrada cubre las dos primeras.
+
+**Pestañas internas**, con el patrón WAI-ARIA de tabs (`tablist`/`tab`/
+`tabpanel`, roving `tabIndex`, flechas que mueven el foco y activan la pestaña
+en el mismo gesto, `Home`/`End`) — la navegación por teclado que `CentroAyuda`
+todavía no tenía. «El catálogo» reorganiza lo que ya existía: los avisos
+siguen arriba a todo lo ancho, pero «Lo que se publica» y «Qué hay cargado»
+pasan a ir lado a lado desde pantallas grandes en vez de apiladas (D-271).
+
+**«El sitio público»** es la mitad nueva del pedido — vistas, páginas más
+vistas, clics en inscripción, filtros que dan cero — y **no trae un solo
+número inventado**: esa lectura de Google Analytics es B-374 y todavía no
+existe. La pestaña muestra la estructura de lo que va a aparecer, agrupada
+igual que `docs/16-analitica-del-sitio.md` §2, con la fecha exacta desde la
+que hay algo que medir (3 de septiembre de 2026) y qué falta para que deje de
+estar vacía. Es un estado vacío deliberado, no un error (D-272).
+
+Tests nuevos con DOM real: `tests/estadisticas-pestanias.render.test.tsx` —
+qué panel se muestra al hacer click y al navegar con las flechas, y el roving
+`tabIndex` —, con mutación probada.
+
 ## 2026-09-03 · el aviso «ya pasó» del tablero deja de sonar a fricción — B-500
 
 El dueño lo marcó textual: «los eventos siguen publicados como archivos, no
