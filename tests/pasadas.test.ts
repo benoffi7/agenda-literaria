@@ -438,11 +438,23 @@ describe('el buscador del archivo — B-292', () => {
       /[\p{L}\p{N}]/u.test(t) && !/[;(){}=]/.test(t);
 
     /*
-     * Los espacios se colapsan **antes** de decidir, y no se descarta lo que
-     * tenga un salto de línea: una frase larga la parte prettier en dos, y
-     * descartarla por eso dejaría pasar justo la que más se nota.
+     * **Los delimitadores son `>` o `}` de un lado y `<` o `{` del otro**, y ésa
+     * es la mitad que se olvida. Con `>…<` a secas, la forma **más natural** de
+     * escribir en JSX la frase que este caso existe para atrapar no matchea
+     * ninguna vez:
+     *
+     *     <p>{visibles.length} de {pasadas.length} actividades</p>
+     *
+     * porque el `>` de `<p>` va seguido de `{`, y « de » y « actividades» vienen
+     * detrás de un `}`. O sea que la mutación que el docblock nombra pasaba en
+     * verde con solo escribirla en JSX en vez de en un template. Lo encontró el
+     * `auditor-privacidad`.
+     *
+     * Y los espacios se colapsan **antes** de decidir, sin descartar lo que tenga
+     * un salto de línea: una frase larga la parte prettier en dos, y descartarla
+     * por eso dejaría pasar justo la que más se nota.
      */
-    const sueltos = [...markup.matchAll(/>([^<>{}]+)</g)]
+    const sueltos = [...markup.matchAll(/[>}]([^<>{}]+)[<{]/g)]
       .map((m) => m[1]!.replace(/\s+/g, ' ').trim())
       .filter(esTextoDeUi);
 
@@ -471,14 +483,45 @@ describe('el buscador del archivo — B-292', () => {
      * con el agravante de que el barrido de arriba, que mira `>…<`, no lo ve.
      * Tienen que salir de una expresión.
      */
-    const ATRIBUTOS_DE_TEXTO = ['placeholder', 'aria-label', 'title', 'alt'];
+    const ATRIBUTOS_DE_TEXTO = [
+      'placeholder',
+      'title',
+      'alt',
+      'label',
+      'value',
+      'aria-label',
+      'aria-description',
+      'aria-placeholder',
+      'aria-roledescription',
+      'aria-valuetext',
+    ];
     for (const attr of ATRIBUTOS_DE_TEXTO) {
-      const literales = markup.match(new RegExp(`${attr}="[^"]*[\\p{L}][^"]*"`, 'gu')) ?? [];
+      /*
+       * Las **dos** formas del literal, y la segunda es la que se escapaba:
+       * `placeholder="Buscá…"` y `placeholder={'Buscá…'}`. La segunda *es* una
+       * expresión, así que cumplía la letra de lo que este caso pide y no el
+       * espíritu — un literal es un literal esté o no adentro de llaves.
+       */
+      const literales =
+        markup.match(
+          new RegExp(`${attr}=(?:"[^"]*[\\p{L}]|\\{\\s*['"\`][^'"\`]*[\\p{L}])`, 'gu'),
+        ) ?? [];
       expect(
         literales,
         `\`${attr}\` con un literal: ese texto tampoco lo mira el barrido de la salida 10.`,
       ).toEqual([]);
     }
+
+    /*
+     * Y la tercera forma de escribir una frase acá: concatenar con `+`. Es la
+     * menos probable —el repo arma strings con templates en todos lados y este
+     * archivo no tiene un solo `+`— y por eso va como una regla sola y sin
+     * excepciones: hoy da vacío, así que entra en verde sin tocar el componente.
+     */
+    expect(
+      markup.match(/['"`][^'"`\n]*['"`]\s*\+|\+\s*['"`]/g) ?? [],
+      'la island concatena un literal: eso es una frase, y va a `pasadasPublicas.ts`.',
+    ).toEqual([]);
   });
 
   it('el fetch falla y la lista del build se queda: nunca una pantalla vacía', () => {

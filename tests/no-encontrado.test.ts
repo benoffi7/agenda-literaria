@@ -92,23 +92,59 @@ describe('las frases de `/404` — B-310', () => {
      * interpolación. La puntuación suelta sí puede quedar (el punto que cierra la
      * oración después del enlace es del markup, no una frase).
      *
-     * MUTACIÓN PROBADA: devolver «Buscar» al `<button>` como literal pone este
-     * caso en rojo nombrándolo.
+     * **Los delimitadores son `>` o `}` de un lado y `<` o `{` del otro**, y ésa
+     * es la mitad que se olvida: con `>…<` a secas, un texto pegado a una
+     * interpolación —`{frases.archivo} y algo más`— no matchea ninguna vez,
+     * porque viene detrás de un `}`. El mismo agujero lo encontró el
+     * `auditor-privacidad` en el caso gemelo de `tests/pasadas.test.ts`.
+     *
+     * MUTACIÓN PROBADA: devolver «Buscar» al `<button>` como literal, y escribir
+     * `{frases.archivo} en el archivo` pegado a la interpolación, ponen este caso
+     * en rojo nombrando el texto.
      */
     const markup = fuente(PAGINA)
       .replace(/^---[\s\S]*?^---/m, '') // el frontmatter, que es código
       .replace(/\{\/\*[\s\S]*?\*\/\}/g, ''); // los comentarios de plantilla
 
-    const sueltos = [...markup.matchAll(/>([^<>{}]+)</g)]
-      .map((m) => m[1]!.trim())
-      // Puntuación y espacios: no son frases.
-      .filter((t) => /[\p{L}\p{N}]/u.test(t));
+    /*
+     * Se descarta la puntuación suelta y **lo que es atributo y no texto**: entre
+     * el `}` que cierra una expresión y el `{` que abre la siguiente, adentro de
+     * una etiqueta, queda el pedazo de atributos del medio (`id="q-404"
+     * type="search" name=`). Un `=` es la marca de que eso no es una frase.
+     */
+    const esTextoDeUi = (t: string): boolean => /[\p{L}\p{N}]/u.test(t) && !/[;(){}=]/.test(t);
+
+    const sueltos = [...markup.matchAll(/[>}]([^<>{}]+)[<{]/g)]
+      .map((m) => m[1]!.replace(/\s+/g, ' ').trim())
+      .filter(esTextoDeUi);
 
     expect(
       sueltos,
       'estos textos están escritos en la plantilla y no en `noEncontrado.ts`, así ' +
         'que el barrido de centinelas de la salida 13 no los mira.',
     ).toEqual([]);
+
+    /*
+     * Y el texto que no va entre etiquetas: el de un atributo, en sus dos formas
+     * (con comillas y adentro de llaves). Mismo motivo que el caso gemelo.
+     */
+    for (const attr of [
+      'placeholder',
+      'title',
+      'alt',
+      'label',
+      'value',
+      'aria-label',
+      'aria-description',
+      'aria-placeholder',
+    ]) {
+      expect(
+        markup.match(
+          new RegExp(`${attr}=(?:"[^"]*[\\p{L}]|\\{\\s*['"\`][^'"\`]*[\\p{L}])`, 'gu'),
+        ) ?? [],
+        `\`${attr}\` con un literal: ese texto tampoco lo mira el barrido de la salida 13.`,
+      ).toEqual([]);
+    }
   });
 
   it('el título no habla del protocolo y la bajada no culpa a quien entró', () => {
