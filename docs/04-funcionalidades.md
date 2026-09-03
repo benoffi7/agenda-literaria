@@ -15,22 +15,54 @@ formas: la pantalla solo evita mostrar un panel inútil.
 ### Listado
 
 Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
-normalización que va a usar el sitio público. Cada fila muestra tipo, cantidad de
-encuentros, barrio y un badge de estado.
+normalización que va a usar el sitio público.
 
-Cada fila dice además cuándo es su próximo encuentro y lleva hasta dos marcas
-más: **«Cupo completo»** (B-97) y **«Sin flyer»** (B-264), esta última solo en las
-**publicadas** que no tienen imagen — una publicada sin flyer ya está afuera de la
-cartelera, un borrador todavía no. Y, **si la cargó la otra cuenta, lo marca**
-(B-130). Lo propio no lleva marca: si todo lleva marca, la
-marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
-hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
-para saber quién; con tres deja de alcanzar y ahí hay que guardar el mail
-(B-179).
+**Es una grilla de tarjetas y no una lista de filas** (B-600, D-320). Una columna
+en el teléfono; de `md` en adelante se abren columnas, y son **2 / 3 / 4** en
+`md`-`lg` / `xl` / `2xl`. Antes era una columna angosta en cualquier pantalla, así
+que en un monitor de 1920px el panel mostraba seis actividades y había que
+scrollear veinte veces para ver cuarenta — que es justo lo que un listado existe
+para evitar. El ancho del panel también pasó a decidirse **por vista**: solo el
+listado usa la pantalla completa, el formulario y las demás pantallas se quedan en
+el ancho de lectura de siempre. El motivo de cada exclusión está en
+[D-320](06-decisiones.md) y en el docblock de
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
 
-Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar**,
+Cada tarjeta dice, de arriba abajo: el **badge de estado** con las marcas al lado,
+el **título** (hasta dos renglones, no cortado con puntos suspensivos), **tipo y
+cantidad de encuentros**, **modalidad y barrio**, el **arancel** —con el acento
+cuando no se paga, el mismo criterio que la fila del sitio— y, al pie, **cuándo es
+su próximo encuentro**.
+
+**La modalidad y el arancel son nuevos de B-600**, y no son un adorno: los dos
+eran ejes de filtro y no aparecían en el resultado, o sea que se podía filtrar por
+«Gratis» y después no ver cuál de las tarjetas era la gratuita. La modalidad es la
+**resultante** de las filas de «Dónde» (B-224), la misma derivación que usa el
+`events.json`: con una fila presencial y otra virtual dice «Presencial y virtual».
+
+Las marcas son hasta dos: **«Cupo completo»** (B-97) y **«Sin flyer»** (B-264),
+esta última solo en las **publicadas** que no tienen imagen — una publicada sin
+flyer ya está afuera de la cartelera, un borrador todavía no. Y, **si la cargó la
+otra cuenta, lo marca** (B-130), en su propio renglón y en la tinta más apagada:
+dice de quién es, no algo que haya que atender. Lo propio no lleva marca: si todo
+lleva marca, la marca deja de avisar. No se muestra un nombre porque `createdBy`
+es un uid y no hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra
+cuenta" alcanza para saber quién; con tres deja de alcanzar y ahí hay que guardar
+el mail (B-179).
+
+**Qué dice cada tarjeta se decide afuera del componente**, en
+[`src/lib/tarjetaDelPanel.ts`](../src/lib/tarjetaDelPanel.ts), puro y con sus
+tests — el mismo corte que `tarjetaPublica.ts` hace del otro lado y por el mismo
+motivo (§05, «Lógica pura separada de la infraestructura»). El chequeo de clase de
+`tests/tarjeta-del-panel.test.ts` deriva los campos del view-model del fuente y
+exige que la tarjeta pinte cada uno, así que un dato nuevo no puede quedarse
+afuera de la pantalla en silencio.
+
+Acciones por tarjeta: **Editar** como botón, y un menú "⋯" con **Duplicar**,
 **Historial** y **Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
-táctiles de ~100px y se erra el toque (D-19).
+táctiles de ~100px y se erra el toque (D-19). Los dos controles van al pie de la
+tarjeta, separados por una regla, y en ese orden en el recorrido del teclado: la
+acción principal no puede quedar detrás del menú.
 
 El menú implementa el patrón de menú de ARIA (B-14): se abre con ↓ o ↑ cayendo en
 el primero o en el último ítem, se recorre con las flechas dando la vuelta, con
@@ -442,6 +474,12 @@ El formulario es usable en teléfono:
 - Lo que no cabe en 360px pasa a columna.
 - Teclados por campo: numérico en cupo, de URL en los links, sin autocapitalizar
   ni autocorregir en slug, handles y URLs.
+
+Y en la otra punta, **el escritorio también es un caso** (B-600): el listado abre
+columnas y usa el ancho de la pantalla, mientras el formulario se queda en el
+ancho de lectura. Las dos mitades son la misma idea —el ancho lo decide lo que se
+está haciendo— y la tabla de qué pantalla usa cuál está en
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
 
 ### La versión está siempre a la vista
 
