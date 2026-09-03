@@ -15,7 +15,7 @@ import {
   marcarCupoCompleto,
 } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
-import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
+import { insigniasDeActividad } from '@/lib/tarjetaDelPanel';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
 import {
@@ -302,34 +302,19 @@ export function ListaActividades({
                   {ETIQUETA_ESTADO[a.estado] ?? a.estado}
                 </span>
                 {/*
-                  B-97 — lo que se publica se ve desde el panel. Sin este cartel,
-                  «está marcada como completa» solo se sabría abriendo el menú, y
-                  el sitio y el calendario ya lo están diciendo.
+                  B-622 — cuáles son y por qué (incluido por qué los tags NO
+                  están) vive en `lib/tarjetaDelPanel.ts`, no acá: eran tres `&&`
+                  sueltos en el JSX, sin test y sin la regla escrita en ninguna
+                  parte, y así fue como `destacado` se quedó sin mostrar.
                 */}
-                {a.inscripcion?.completo === true && (
-                  <span className="whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70">
-                    Cupo completo
+                {insigniasDeActividad(a).map((i) => (
+                  <span
+                    key={i.id}
+                    className="whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70"
+                  >
+                    {i.texto}
                   </span>
-                )}
-                {/*
-                  B-264 — «se nota que falta». El aviso de la barra solo lo ve
-                  quien ya abrió esa actividad; el listado es donde se ve el
-                  conjunto, y el conjunto era 2 con imagen sobre 42.
-
-                  **Solo en las publicadas, y solo cuando falta** — es la misma
-                  regla que la marca de autoría de B-130: si todo lleva marca, la
-                  marca deja de avisar. Un borrador sin flyer no le falta nada
-                  todavía; una publicada sin flyer ya está afuera de la cartelera.
-
-                  La condición sale de `faltaElFlyer`, la misma que usan el aviso
-                  del formulario y la cartelera: tres lugares que tienen que
-                  decir lo mismo y una sola derivación.
-                */}
-                {a.estado === 'publicado' && faltaElFlyer(imagenesDe(a)) && (
-                  <span className="whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70">
-                    Sin flyer
-                  </span>
-                )}
+                ))}
               </div>
             </div>
             {/*

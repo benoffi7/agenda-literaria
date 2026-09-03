@@ -60,6 +60,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'destacada-se-ve-en-el-listado',
+    fecha: '2026-09-03',
+    titulo: 'El listado ahora te dice cuáles marcaste como destacadas',
+    detalle:
+      '«Destacada» se prende en el acordeón «Opcional» del formulario y decide que la actividad ' +
+      'aparezca arriba en el sitio, pero desde el listado no había forma de saber cuáles lo ' +
+      'estaban: había que abrirlas de a una. Ahora la fila lo dice, al lado de «Cupo completo» y ' +
+      '«Sin flyer».',
+    donde: 'Panel → Listado, a la derecha de cada fila.',
+  },
+  {
     id: 'una-sola-forma-de-nombrar-las-modalidades',
     fecha: '2026-09-03',
     titulo: 'El formulario y los filtros llaman igual a las formas de cursar',

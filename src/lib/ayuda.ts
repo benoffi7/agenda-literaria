@@ -380,6 +380,14 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'A la derecha de cada fila está el estado, y debajo los carteles de lo que se sale de lo ' +
+          'común: «Destacada» si la marcaste para que aparezca arriba en el sitio, «Cupo completo» ' +
+          'y «Sin flyer». Solo se muestra lo excepcional a propósito: si todas las filas llevaran ' +
+          'carteles, dejarían de avisar. Las etiquetas no aparecen ahí —son muchas y empujarían el ' +
+          'título en el teléfono—: se encuentran con el buscador y se administran desde «Opciones».',
+      },
+      {
+        texto:
           '«Historial» lista lo que se guardó cada vez que alguien editó esa actividad, con la ' +
           'fecha y qué campos cambió. Sirve para recuperar un dato pisado por error —una ' +
           'descripción larga que alguien borró sin querer, por ejemplo—. Restaura de a un campo, ' +

@@ -10,6 +10,7 @@ import { CAMPOS, etiquetaDeCampo, seccionDeCampo } from '@/lib/formulario/campos
 import { CAMPOS_VALIDABLES, FUNCIONES } from '@/lib/analytics-eventos';
 import { buildSearchText } from '@/lib/normalize';
 import { actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
+import { insigniasDeActividad } from '@/lib/tarjetaDelPanel';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad, ActividadForm } from '@/types/actividad';
 import { ts } from './fixtures/tiempo';
@@ -385,8 +386,18 @@ describe('se prende desde el menú del listado, no desde el formulario', () => {
   it('y la fila muestra que está marcada, sin abrir el menú', () => {
     // Lo que se publica se puede ver desde el panel: el cartel ya está en el
     // sitio y en los N eventos.
+    //
+    // B-622 movió el cartel de un `&&` suelto en el JSX a `lib/tarjetaDelPanel`,
+    // así que la garantía se verifica en dos mitades: que la insignia salga de la
+    // decisión, y que el listado pinte lo que esa decisión devuelve. Buscar el
+    // texto en el `.tsx` probaría solo que la cadena sigue escrita ahí.
+    expect(
+      insigniasDeActividad({ estado: 'publicado', inscripcion: { completo: true } }).map(
+        (i) => i.texto,
+      ),
+    ).toContain('Cupo completo');
     const listado = codigoSinEspacios('src/components/admin/ListaActividades.tsx');
-    expect(listado).toContain('Cupocompleto');
+    expect(listado).toContain('insigniasDeActividad(a)');
     // Y la sección del formulario lo avisa, aunque no lo edite.
     expect(codigoSinEspacios('src/components/admin/formulario/SeccionArancelInscripcion.tsx')).toContain(
       'form.inscripcion.completo&&',
