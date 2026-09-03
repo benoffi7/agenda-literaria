@@ -400,5 +400,25 @@ de verdad que se desincroniza, más el problema que B-04 ya tiene con las
 etiquetas renombradas, multiplicado.
 
 Queda anotada como P3 (B-100) con una condición: vale la pena **si los datos
-dicen que las sedes se repiten**, y hoy nadie lo está midiendo. El vocabulario de
-analítica del §9 podría contestarlo antes de escribir una línea.
+dicen que las sedes se repiten**.
+
+> **Actualizado el 2026-09-03: la condición ya se mide, y sigue sin cumplirse.**
+> Dos correcciones a lo que decía este párrafo.
+>
+> **Una:** «el vocabulario de analítica del §9 podría contestarlo» era falso, y
+> vale decirlo porque es el atajo que alguien iba a intentar. `sede.nombre` es
+> **texto libre**, no una taxonomía, así que ningún evento lo lleva — ni debe,
+> porque es contenido y el §9 lo prohíbe. Ninguna cantidad de analítica iba a
+> contestar esta pregunta.
+>
+> **Dos:** «hoy nadie lo está midiendo» dejó de ser cierto. El tablero
+> (**Estadísticas → El catálogo**) dice cuántas de las actividades con lugar
+> cargado están en una sede que también usa otra, con las tres más repetidas
+> (`src/lib/sedesRepetidas.ts`). Es puro sobre lo que el tablero ya tiene en
+> memoria: cero lecturas nuevas, y se actualiza solo.
+>
+> **Mientras el número no diga que la mayoría de lo que tiene sede está en sedes
+> repetidas, esto no se hace**, y el costo escondido de arriba sigue en pie tal
+> cual. Y si algún día se hace, va **explícito** —un botón «copiar de la última»,
+> nunca automático—: prellenar sin que nadie revise publica la sede de otra
+> actividad, y la sede es la línea que decide si alguien llega o no.

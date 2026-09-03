@@ -60,6 +60,39 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'copia-con-titulo-legitimo-se-publica',
+    fecha: '2026-09-03',
+    titulo: 'Un título que termina en «copia» ya se puede publicar',
+    detalle:
+      'Si tu actividad se llama de verdad algo que termina en esa palabra —«Taller de copia»— antes ' +
+      'el panel te la frenaba igual que a una copia recién hecha, y no había forma de seguir salvo ' +
+      'cambiarle el título. Ahora distingue: solo frena mientras la actividad todavía tenga las dos ' +
+      'marcas que le pone duplicar, el «(copia)» del título y la dirección terminada en «-copia».',
+    donde: 'Formulario, al pasar una actividad a «publicado».',
+  },
+  {
+    id: 'taxonomia-aprobada-por-reuso',
+    fecha: '2026-09-03',
+    titulo: 'Si la otra cuenta escribe una etiqueta que estaba esperando, queda aprobada',
+    detalle:
+      'Que dos personas escriban la misma palabra por separado es buena señal de que la palabra ' +
+      'existe. Ahora esa etiqueta se aprueba sola y queda marcada «la usaron las dos cuentas», para ' +
+      'que se note que no la revisó nadie: si las dos repitieron el mismo error de tipeo, se ' +
+      'renombra o se borra igual que cualquier otra. Y hay un botón «Ya la miré» para confirmarla.',
+    donde: 'Panel → Opciones.',
+  },
+  {
+    id: 'estadisticas-sedes-repetidas',
+    fecha: '2026-09-03',
+    titulo: 'El catálogo te dice si estás repitiendo sedes',
+    detalle:
+      'Un número nuevo cuenta cuántas de las actividades con lugar cargado están en una sede que ' +
+      'también usa otra, y nombra las tres más repetidas. Sirve para decidir algo que estaba ' +
+      'trabado por falta de dato: si conviene poder reusar una sede en vez de volver a cargarla ' +
+      'entera cada vez.',
+    donde: 'Panel → Estadísticas → El catálogo.',
+  },
+  {
     id: 'ayuda-por-seccion-del-formulario',
     fecha: '2026-09-03',
     titulo: 'Cada sección del formulario tiene su «?» al lado del título',

@@ -182,9 +182,12 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   —con comas no se distingue si son dos números o cuatro— pero el campo dice que
   el problema es la coma y muestra la forma que sí funciona. Antes caía en «no
   parece un link ni un par de coordenadas», que era falso.
-  **Los cuatro modos de fallo se miden** (B-55, `09-analitica.md`): es lo que
-  decide si vale la pena resolver los links cortos (B-45) o alcanza con explicar
-  mejor el campo.
+  **Los cuatro modos de fallo se miden** (B-55, `09-analitica.md`). Lo que ese
+  número decidía —si vale la pena resolver los links cortos o alcanza con explicar
+  mejor el campo— quedó **resuelto por el medio** en B-45: el campo no los
+  resuelve solo, pero ofrece el botón que los abre, que es lo que el mensaje ya
+  pedía hacer a mano. La medición sigue sirviendo para lo que queda: si aun así el
+  link corto es la mitad de los fallos, ahí sí se justifica la Function.
 - **Guardar borrador pide lo mínimo: título y dirección web.** Nada más. Todo lo
   demás —tipo, descripción, organizador, arancel, encuentros, sede— se exige
   **al publicar**, que es lo que sale al sitio y al calendario (B-183, D-120).
@@ -248,6 +251,13 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   Guardarlo como borrador sí, porque la copia nace justamente con ese slug: el
   bloqueo es solo al publicar, porque ahí el slug queda fijo para siempre
   (trampa 10).
+
+  **Desde B-91 la condición mira el par título+slug y no el slug solo**, que es
+  como `duplicar` escribe la marca: en las dos puntas a la vez. Antes se adivinaba
+  del texto del slug, así que una actividad legítima cuyo título terminara en esa
+  palabra —«Taller de copia»— quedaba **imposible de publicar**, con un mensaje
+  que hablaba de un sufijo que nadie había puesto. Ahora esa se publica sin
+  problema, y la copia recién hecha sigue frenada.
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
   tipearlas: abandonar el formulario no debe dejar basura en la taxonomía.
 - **Y si esa persistencia falla, ahora se ve** (B-177, D-187). Son dos
@@ -376,6 +386,20 @@ el evento de Calendar dice "Con beca parcial", no "con-beca-parcial").
 Si alguien tipea en "Otro" una etiqueta que ya existe como pendiente de la otra
 cuenta, el formulario avisa y **reusa** ese slug: la deduplicación del §4.2 gana
 sobre la visibilidad.
+
+**Y desde B-29 ese reuso además la aprueba**, decisión del dueño: que dos personas
+escriban la misma palabra por separado es la mejor señal automática de que la
+palabra existe, y hasta acá esa etiqueta quedaba en el peor estado posible —dos la
+usan y ninguna la ve en su desplegable—. No se aprueba sola si no se sabe de quién
+era (los documentos anteriores a que existiera la huella) ni si la reusa quien la
+creó: la señal es *dos personas*, no *dos veces*.
+
+Queda **marcada** «la usaron las dos cuentas» en la pantalla de taxonomías, y eso
+es lo que hace que aprobar sin revisión sea seguro: el contra —que las dos repitan
+el mismo error de tipeo— se corrige renombrando o borrando, como cualquier otra. La
+marca se limpia sola al renombrarla, y hay un botón **«Ya la miré»** para
+confirmarla sin cambiarle nada. Aprobar es también **publicar**: la etiqueta entra
+al `events.json` y a los chips del sitio aunque solo la usen borradores.
 
 Las opciones base (`fijo: true`) están aprobadas por definición, y **las que ya
 estaban cargadas antes de que existiera el campo siguen visibles** (D-26).

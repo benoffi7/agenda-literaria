@@ -38,6 +38,20 @@ interface Props {
   seccion: string;
 }
 
+/**
+ * Lo que este botón NO hace con las novedades, dicho para que no se lea como un
+ * olvido: abre la capa con `idsSinLeer: []`, así que **entra siempre por la
+ * guía** —que es lo que se pidió— y no marca nada como leído por abrirse.
+ *
+ * Si desde acá alguien toca la pestaña «Novedades», la capa sí las marca leídas
+ * (eso vive en `CentroAyuda` y está bien: verlas es haberlas visto), pero **el
+ * número del botón del encabezado no se apaga hasta el próximo montaje**: ese
+ * contador lo calcula `BotonAyuda` una vez, y los dos componentes no se ven entre
+ * sí. Es un número de más durante una sesión, se arregla solo al recargar, y
+ * cerrarlo del todo pedía un estado compartido para una capa que ya sabe abrirse
+ * sola. Si alguna vez molesta, el patrón del repo para eso es un store de módulo
+ * como `formulario-sucio.ts`.
+ */
 export function AyudaDeSeccion({ seccion }: Props) {
   const [abierto, setAbierto] = useState(false);
 
