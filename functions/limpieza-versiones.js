@@ -64,7 +64,7 @@ export const MARGEN_DE_RESCATE_MS = 30 * 24 * 60 * 60 * 1000;
  * subcolección huérfana es peor que la entera).
  *
  * Misma clase de salvaguarda que `MAX_BORRADOS_POR_CORRIDA` en
- * `limpieza-imagenes.js` y `MAX_EVENTOS_RESYNC` en `index.js`: un bug en la
+ * `limpieza-imagenes.js` y `MAX_EVENTOS_RESYNC` en `opciones-trigger.js`: un bug en la
  * lectura de qué actividades existen —una query que vino vacía, por ejemplo— no
  * puede borrar el historial de todas en una sola pasada. Lo que sobra queda para
  * la corrida siguiente, y lo dice el log.

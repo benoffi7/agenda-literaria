@@ -13,6 +13,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldPath } from 'firebase-admin/firestore';
+import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
 import {
   decidirPurga,
   MAX_ACTIVIDADES_POR_CORRIDA,
@@ -36,12 +37,16 @@ export const limpiarVersionesHuerfanas = onSchedule(
     // Opciones explícitas y no heredadas del `setGlobalOptions` de `index.js`,
     // por el orden de evaluación de ESM (D-35): cuando este módulo se carga,
     // `setGlobalOptions` todavía no corrió.
-    region: 'southamerica-east1',
+    // Se importan de `despliegue.js` y no se escriben literal: el mail de la
+    // service account estaba copiado en cinco archivos, y el día que cambie hay
+    // que acordarse de los cinco (B-77). No se usa `OPCIONES_BASE` entero
+    // porque `maxInstances` no aplica a un schedule — no concurre consigo mismo.
+    region: REGION,
     schedule: 'every 24 hours',
     timeZone: 'America/Argentina/Buenos_Aires',
     // La misma identidad del resto del deploy: solo necesita `datastore.user`,
-    // que `calendar-sync@` ya tiene (D-06). No hay IAM nuevo que otorgar.
-    serviceAccount: 'calendar-sync@agenda-literaria.iam.gserviceaccount.com',
+    // que ya tiene (D-06). No hay IAM nuevo que otorgar.
+    serviceAccount: CUENTA_DE_SERVICIO,
     memory: '256MiB',
     timeoutSeconds: 300,
   },

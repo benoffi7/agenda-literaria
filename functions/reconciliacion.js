@@ -22,7 +22,7 @@ import { debeExistir } from './calendario.js';
  * Tope de sesiones que se piden por corrida. Son llamadas de a una a
  * `events.get` (no hay un `batchGet` de Calendar v3 para leer), así que una
  * cuenta con muchas actividades publicadas se puede comer varios minutos —el
- * mismo motivo de `MAX_EVENTOS_RESYNC` en `index.js` (B-04). El resto queda
+ * mismo motivo de `MAX_EVENTOS_RESYNC` en `opciones-trigger.js` (B-04). El resto queda
  * para la corrida siguiente: no hay nada que se pierda por dividir en lotes,
  * a diferencia de una operación de escritura a mitad de camino.
  */

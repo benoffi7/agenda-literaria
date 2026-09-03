@@ -130,7 +130,7 @@ salidas por cinco caminos distintos.
 |---|---|---|---|
 | `opcionesPublicas` (`src/lib/toPublic.ts`) | 1 — `events.json` | `slug`, `label`, **`tono`** | emite objetos |
 | `labelsDeOpciones` (`src/lib/vistaPreviaEvento.ts`) | 5 (el posteo) y la vista previa del evento | `slug`, `label` | emite un `Record<slug, label>`, que es otra forma |
-| `cargarLabels` (`functions/index.js`) | 2 — el evento de Calendar de verdad | `slug`, `label` | `functions/` se despliega con su propio `package.json` y **no puede importar de `src/`** (D-20) |
+| `cargarLabels` (`functions/etiquetas.js`, desde B-77) | 2 — el evento de Calendar de verdad | `slug`, `label` | `functions/` se despliega con su propio `package.json` y **no puede importar de `src/`** (D-20) |
 | `etiquetasDelDetalle` (`src/lib/contenidoDelSitio.ts`) | 6 — la página de detalle y su JSON-LD | `slug`, `label` | corre en el build y arma otro `Record<slug, label>` |
 | `tonosDeTipo` (`src/lib/listadoPublico.ts`), que en el build llama `tonosDelSitio` (`src/lib/contenidoDelSitio.ts`) | 1 (el HTML del listado) y 6 (la cabecera del detalle) | `slug`, **`tono`** | arma un `Record<slug, tono>`, que es la cuarta forma. Y es el único que **no lee el documento**: recibe `OpcionPublica[]`, o sea la salida de `opcionesPublicas` — la misma herencia que hace segura a la salida 7 |
 
