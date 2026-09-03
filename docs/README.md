@@ -56,14 +56,18 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 2.173 tests en 93 archivos. 79 de esos
-   tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
-   también **Storage**), repartidos en 7
-   archivos: seis se saltean enteros y de
-   `events-json-endpoint.integracion.test.ts` se saltean 4 de sus 6, porque las
-   dos ramas de credenciales no necesitan emulador. Si no están, se saltean
-   solos — **salvo con `EXIGIR_EMULADOR=1`**, que es como los corre el CI
-   justamente para que no se salteen en silencio.
+2. **Correr los tests.** `npm test` — **2.637 tests en 118 archivos**
+   (recontado el 2026-09-03; los 2.173 en 93 archivos que decía acá eran de
+   antes de B-108/B-109 y de la tanda del 2026-09-02). **107** de esos tests
+   necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
+   también **Storage**), repartidos en **9** archivos: siete se saltean enteros
+   y dos parciales — de `events-json-endpoint.integracion.test.ts` se saltean 4
+   de sus 6 porque las dos ramas de credenciales no necesitan emulador, y de
+   `emulador-aislado.test.ts` 2 de sus 13 porque once chequean la configuración
+   y no el emulador. Si no están, se saltean solos — **salvo con
+   `EXIGIR_EMULADOR=1`**, que es como los corre el CI justamente para que no se
+   salteen en silencio. El desglose archivo por archivo está en
+   [`10-salud-del-codigo.md`](10-salud-del-codigo.md) § 6.1.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
 4. **Antes de cerrar un cambio, pasar los auditores** de

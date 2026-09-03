@@ -473,3 +473,111 @@ para «modalidad» (B-175) y la prosa que pertenece al CHANGELOG (B-78).
 
 Nada de eso bloquea el sitio público. B-208 sí lo habría hecho, y ese es el
 argumento para correr los auditores antes de construirlo y no después.
+
+---
+
+## 6. Chequeo de salud del 2026-09-03
+
+**Esto no es una remedición del documento.** Los §1 a §5 siguen esperando la
+pasada propia que pide el aviso de arriba. Esta sección es otra cosa: el estado
+verificado de las cosas que se pueden romper sin que ninguna métrica de forma se
+mueva —la suite, el type checker, las dependencias, la basura acumulada en la
+raíz— medido el **2026-09-03**, después de frenar la tanda de seis frentes del
+2026-09-02.
+
+Se hizo con los otros dos frentes escribiendo en paralelo, así que los números
+de la suite incluyen su trabajo en curso.
+
+### 6.1 La suite y el type checker: verde los dos
+
+| | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ **0 errores** |
+| `npm test` (con emuladores arriba) | ✅ **2.637 tests en 118 archivos, todos pasando** |
+| `npm test` (sin emuladores) | ✅ **2.530 pasan, 107 se saltean**, ninguno falla |
+
+**Nada estaba roto en `main`**, ni por los frentes en paralelo ni de antes. No
+hubo que arreglar nada acá.
+
+El desglose de los 107 que se saltean sin emuladores, medido apuntando las
+variables `*_EMULATOR_HOST` a un puerto muerto —**sin bajar los emuladores que
+estaba usando otro frente**, que es la única forma de medirlo durante una tanda—:
+**9 archivos**, siete enteros y dos parciales.
+
+| Archivo | Se saltean |
+|---|---|
+| `tests/actividades.integracion.test.ts` | 23 de 23 |
+| `tests/opciones.integracion.test.ts` | 21 de 21 |
+| `tests/sitio-publico.integracion.test.ts` | 14 de 14 |
+| `tests/reportes.integracion.test.ts` | 14 de 14 |
+| `tests/storage-reglas.integracion.test.ts` | 12 de 12 |
+| `tests/reportes-resuelto.integracion.test.ts` | 10 de 10 |
+| `tests/reportes-reintento.integracion.test.ts` | 7 de 7 |
+| `tests/events-json-endpoint.integracion.test.ts` | 4 de 6 |
+| `tests/emulador-aislado.test.ts` | 2 de 13 |
+
+Los dos parciales son correctos y no un olvido: en `events-json-endpoint` las
+dos ramas de credenciales no necesitan emulador, y en `emulador-aislado` once de
+los trece chequeos son sobre la configuración, no sobre el emulador. Con
+`EXIGIR_EMULADOR=1` —como los corre el CI— ninguno de los 107 se saltea en
+silencio.
+
+### 6.2 Dependencias: 5 vulnerabilidades en producción, ninguna accionable sin romper
+
+`npm audit --omit=dev`, sin actualizar nada. **Reportado, no tocado**: las tres
+que importan piden un salto mayor de Astro y eso no es un cambio de higiene.
+
+| Paquete | Severidad | Qué es | Camino de parche |
+|---|---|---|---|
+| `sharp` <0.35.0 | **alta** | vulnerabilidades heredadas de libvips (CVE-2026-33327/33328/35590/35591) | solo con `astro@7.3.1` — **breaking** |
+| `esbuild` 0.27.3–0.28.0 | baja | lectura de archivo arbitraria con el dev server **en Windows** | solo con `astro@7.3.1` — **breaking** |
+| `uuid` <11.1.1 (vía `gaxios`) | moderada | falta chequeo de límites de buffer en v3/v5/v6 cuando se pasa `buf` | `npm audit fix`, sin breaking |
+
+Las tres, leídas contra este proyecto:
+
+- **`esbuild` no aplica.** El aviso es del dev server en Windows; acá el dev
+  server corre local en macOS y el build de CI es Linux. No hay superficie.
+- **`sharp` es la única que vale mirar**, y es la que menos urge: `sharp` solo
+  corre en la Function de imágenes (`functions/imagenes.js`) sobre archivos que
+  ya subió un admin autenticado. No procesa nada que llegue de un anónimo.
+- **`uuid` se arregla sin romper nada** y es la única de las tres que se puede
+  cerrar con un `npm audit fix`. No se hizo acá a propósito: toca
+  `package-lock.json`, que es de todos los frentes, y en medio de una tanda un
+  lock reescrito es un conflicto garantizado. **Queda para cuando la tanda
+  cierre.**
+
+Contando también `devDependencies` son **18** (1 baja, 15 moderadas, 2 altas).
+Esa cuenta es la que hay que ignorar para decidir: una vulnerabilidad en una
+herramienta de build no está expuesta a nadie.
+
+**Esto confirma el Problema 4 de este documento** («dependencias sin camino de
+parche en la mayor instalada») con un caso nuevo: Astro está en 5.18.2 y la
+última es 7.3.1, dos mayores atrás, y ese atraso es lo que bloquea a `sharp` y a
+`esbuild`. No es que falte correr un comando: falta decidir el salto.
+
+Lo demás atrasado, para que quede el número: `@astrojs/react` 4.4.2 → 6.0.5,
+`firebase` 11.10.0 → 12.18.0, `firebase-admin` 13.10.0 → 14.3.0, `typescript`
+5.9.3 → 7.0.2, `vitest` 3.2.7 → 5.0.0, `zod` 3.25.76 → 4.5.4. Todos saltos
+mayores; ninguno urgente.
+
+### 6.3 La basura de la raíz, sacada
+
+Tres cosas que estaban en la raíz sin que nadie las hubiera decidido, resueltas
+el mismo día. El detalle de cada una está en el commit `861f0fd`; en una línea:
+
+- **`firestore-debug.log`, 12 MB** — sin trackear y ya ignorado. Borrado del
+  disco, sin tocar el historial. Vuelve a aparecer en cada corrida del emulador,
+  y está bien que vuelva.
+- **`.tmp-msg.txt`** — **estaba trackeado**: el borrador del mensaje de commit
+  se coló al índice en f163e2b. Dado de baja con `git rm` (un commit más, el
+  historial intacto) y agregado al `.gitignore` para que no vuelva.
+- **La línea `.mdd/` del `.gitignore`** — la puso un hook ajeno. Este repo **no
+  usa MDD**: el proceso es el del `CLAUDE.md`. Línea sacada y directorio borrado.
+
+### 6.4 Y los 33 worktrees
+
+El hallazgo más grande del día no es de código: eran **33 worktrees** en
+`.claude/worktrees/` de los que nadie sabía qué contenían, con un frente que
+había quedado con 14 archivos sin commitear. Tiene su propio archivo, porque es
+temporal y se borra cuando quede vacío:
+[`17-worktrees-pendientes.md`](17-worktrees-pendientes.md).
