@@ -859,6 +859,53 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(ld.offers).toBeUndefined();
   });
 
+  it('con la actividad ya pasada tampoco, aunque nunca haya cerrado (regla 4) — B-650', () => {
+    /*
+     * **La mitad de la regla 4 que faltaba.** El §5.3 la escribe así: «`InStock`
+     * si la inscripción está abierta **y hay sesiones por venir**», y lo segundo
+     * no se miraba: `inscripcion.cerrada` mira solo `cierra`, y una actividad sin
+     * fecha de cierre —el caso normal— queda abierta para siempre. El taller de
+     * enero publicaba `availability: InStock` en septiembre.
+     *
+     * Es la misma trampa que el §7.1 ya nombraba para el CTA («el CTA se decide
+     * por fecha, no por `inscripcion.abierta`»): la página apagaba el botón y el
+     * JSON-LD seguía ofreciendo. Acá se afirma que las dos superficies dicen lo
+     * mismo, que es lo que evita que vuelvan a separarse.
+     *
+     * MUTACIÓN PROBADA: sacar `!d.yaPaso` de `ofrecible` deja este caso en rojo
+     * y todos los demás de este `describe` en verde.
+     */
+    const como = { arancel: 'gratis', requiereInscripcion: true, cierra: null };
+    const pasada = detalleDe(
+      { ...como, fechas: ['2026-01-10T22:00:00Z'] },
+      {},
+      new Date('2026-09-20T15:00:00Z'),
+    );
+    expect(pasada.yaPaso, 'el fixture dejó de producir una pasada').toBe(true);
+    expect(pasada.inscripcion.cerrada, 'sin `cierra`, la inscripción figura abierta').toBe(false);
+    // La página ya apagaba el CTA por fecha (§7.1) — es la afirmación de que las
+    // dos superficies dicen lo mismo, no un aserto suelto: sin `requiereInscripcion`
+    // no habría acción que apagar y esto pasaría sin haber mirado nada.
+    expect(detalleDe({ ...como }).inscripcion.mostrarAccion).toBe(true);
+    expect(pasada.inscripcion.mostrarAccion).toBe(false);
+
+    const ld = datosEstructurados(pasada)!;
+    // La página sobrevive y conserva sus fechas (§7.1): lo único que no sale es
+    // la oferta.
+    expect(ld.startDate).toBeDefined();
+    expect(ld.offers).toBeUndefined();
+  });
+
+  it('y la que sí tiene fecha por venir sigue ofreciendo — control negativo', () => {
+    // Sin este caso, `ofrecible: false` a secas dejaría el anterior en verde y
+    // el sitio entero sin `offers`.
+    const viva = datosEstructurados(detalleDe({ arancel: 'gratis' }))!;
+    expect(viva.offers).toMatchObject({
+      availability: 'https://schema.org/InStock',
+      price: '0',
+    });
+  });
+
   it('performer solo si hay tallerista (regla 5)', () => {
     expect(datosEstructurados(detalleDe({ tallerista: 'Ana Ruiz' }))!.performer).toMatchObject({
       name: 'Ana Ruiz',

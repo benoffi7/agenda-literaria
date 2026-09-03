@@ -1101,11 +1101,13 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
  * 3. **Una sesión cancelada conserva su fecha** con `eventStatus:
  *    EventCancelled`. Google pide el `startDate` original: sin él no puede
  *    tacharlo en el resultado.
- * 4. **`offers` solo con precio real.** Con `gratis` se emite `price: "0"`; con
- *    cualquier otro arancel **no se emite precio**, porque `arancel.tipo` es un
- *    slug y no un monto — un `0` en un taller arancelado es un dato falso
- *    publicado en un formato que las máquinas creen. Con la inscripción cerrada
- *    no se emite `offers`.
+ * 4. **`offers` solo con precio real, y solo si todavía se puede conseguir.** Con
+ *    `gratis` se emite `price: "0"`; con cualquier otro arancel **no se emite
+ *    precio**, porque `arancel.tipo` es un slug y no un monto — un `0` en un
+ *    taller arancelado es un dato falso publicado en un formato que las máquinas
+ *    creen (**B-114** pide el campo de monto que falta). Y no se emite `offers`
+ *    con la actividad cancelada, con la inscripción cerrada, **ni con la
+ *    actividad ya pasada** (B-650): ver `ofrecible`, más abajo.
  * 5. **`performer` solo si hay tallerista.** No se inventa el organizador como
  *    performer.
  * 6. **Nada de `aggregateRating`, `review`, ni `Offer` sin respaldo.** Marcar lo
@@ -1149,6 +1151,24 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
         ? MODO_ASISTENCIA[modalidades[0]!]
         : MODO_ASISTENCIA.hibrido;
 
+  /**
+   * ¿Esto todavía se puede conseguir? — la regla 4 del §5.3, entera.
+   *
+   * El diseño la escribe así: «`InStock` si la inscripción está abierta **y hay
+   * sesiones por venir**». La segunda mitad no estaba (**B-650**), y era la que
+   * más pesa: `inscripcion.cerrada` mira solo `cierra`, y una actividad **sin
+   * fecha de cierre** —el caso normal— queda abierta para siempre. O sea que el
+   * taller de enero seguía publicando `availability: InStock` en septiembre, en
+   * el formato que Google lee como una afirmación.
+   *
+   * Es exactamente la trampa que el §7.1 ya nombraba para el CTA de la página
+   * —«el CTA se decide por fecha, no por `inscripcion.abierta`»— un nivel más
+   * abajo: el botón de la página ya se apagaba con `yaPaso` (`mostrarAccion`) y
+   * el JSON-LD no. Las dos superficies dicen lo mismo ahora, y salen del mismo
+   * campo del view-model.
+   */
+  const ofrecible = !d.cancelada && !d.yaPaso && !d.inscripcion.cerrada;
+
   const comun = {
     '@context': 'https://schema.org',
     name: d.titulo,
@@ -1187,37 +1207,35 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     ...(d.tallerista ? { performer: { '@type': 'Person', name: d.tallerista.nombre } } : {}),
     ...(d.imagenes[0] ? { image: d.imagenes[0].url } : {}),
     /*
-     * **Con la actividad cancelada no se emite `offers`** — B-110. Un `Offer` con
-     * `availability: InStock` en un evento cancelado marca como conseguible algo
-     * que no lo es, que es de las cosas que hacen que Google desconfíe del sitio
-     * entero (regla 6). Es la misma puerta que ya cerraba la inscripción cerrada,
-     * con un motivo más fuerte.
+     * **`offers` solo si esto todavía se puede conseguir** — las tres puertas de
+     * la regla 4, en una sola condición (`ofrecible`, arriba).
+     *
+     * Las tres dicen lo mismo con distinta cara: un `Offer` con
+     * `availability: InStock` afirma que hoy se puede entrar. Marcar como
+     * conseguible algo que no lo es es de lo que hace que Google desconfíe del
+     * sitio entero (regla 6), y las tres formas de que sea falso son la actividad
+     * cancelada (B-110), la inscripción cerrada, y **que ya haya pasado**
+     * (B-650) — la que faltaba.
+     *
+     * El precio es la cuarta puerta y es la de B-114: **solo `gratis` emite
+     * monto**. `arancel.tipo` es un slug de taxonomía y no un número, así que un
+     * `price: '0'` en un taller arancelado es un dato falso publicado en un
+     * formato que las máquinas creen. Para tener precio real hace falta un campo
+     * de monto en el modelo, que es lo que B-114 sigue pidiendo.
      */
-    ...(d.cancelada
-      ? {}
-      : d.arancel.esGratis && !d.inscripcion.cerrada
-        ? {
-            offers: {
-              '@type': 'Offer',
-              price: '0',
-              priceCurrency: 'ARS',
-              availability: 'https://schema.org/InStock',
-              category: d.arancel.etiqueta,
-              // §5.4 — dónde se consigue: **esta página**, nunca el canal de
-              // inscripción crudo ni el link de la reunión (B-109, D-165).
-              url: urlDeDetalle(d.slug),
-            },
-          }
-        : !d.inscripcion.cerrada
-          ? {
-              offers: {
-                '@type': 'Offer',
-                availability: 'https://schema.org/InStock',
-                category: d.arancel.etiqueta,
-                url: urlDeDetalle(d.slug),
-              },
-            }
-          : {}),
+    ...(ofrecible
+      ? {
+          offers: {
+            '@type': 'Offer',
+            ...(d.arancel.esGratis ? { price: '0', priceCurrency: 'ARS' } : {}),
+            availability: 'https://schema.org/InStock',
+            category: d.arancel.etiqueta,
+            // §5.4 — dónde se consigue: **esta página**, nunca el canal de
+            // inscripción crudo ni el link de la reunión (B-109, D-165).
+            url: urlDeDetalle(d.slug),
+          },
+        }
+      : {}),
   };
 
   /*

@@ -988,6 +988,26 @@ Reglas del armado, todas verificables:
    que la página no muestra es lo que hace que Google deje de confiar en el sitio
    entero.
 
+> ⚠️ **La regla 4 estaba implementada por la mitad, y la mitad que faltaba era la
+> que más pesa — corregido el 2026-09-03 (B-650).** «`InStock` si la inscripción
+> está abierta **y hay sesiones por venir**»: lo segundo no se miraba. El código
+> emitía `offers` mirando solo `inscripcion.cerrada`, que a su vez mira solo
+> `cierra` — así que una actividad **sin fecha de cierre**, que es el caso normal,
+> quedaba abierta para siempre y el taller de enero seguía publicando
+> `availability: InStock` en septiembre, en el formato que Google lee como una
+> afirmación.
+>
+> Es la misma trampa que el §7.1 ya nombraba para el CTA de la página —«el CTA se
+> decide por fecha, no por `inscripcion.abierta`; `abierta` solo mira `cierra`»—
+> un nivel más abajo: la página apagaba el botón y el JSON-LD seguía ofreciendo.
+> Las tres puertas —cancelada, inscripción cerrada, ya pasada— viven ahora en una
+> sola condición (`ofrecible`, `src/lib/detallePublico.ts`) y salen del mismo
+> view-model que el botón.
+>
+> **La regla 3 sigue igual y `offers` sigue sin precio real**: el campo de monto
+> del modelo es **B-114**, y no se puede abrir desde este frente (ver la nota del
+> §11.2 #5).
+
 ### 5.4 El caso online
 
 Google pide, para un evento online, `location` de tipo `VirtualLocation` con
@@ -1571,10 +1591,31 @@ son datos que ya se muestran en público por otros caminos.
 | 2 | **`estado`** (`'publicado' \| 'cancelado'`) | Para pintar la franja CANCELADA y emitir `eventStatus`. Hoy la proyección no lo lleva, así que el HTML no puede distinguirlo | alta |
 | 3 | ~~**`actualizadoEn`** (ISO de `updatedAt`)~~ — **hecho el 2026-09-03, la mitad del `lastmod`** (B-112). `lastmodDelSitemap` la arma desde `publicadasEditadasEn`, que sigue viajando **al lado** de la proyección y no adentro de `toPublic` — el mismo patrón que `canceladasEditadasEn` (D-166). La otra mitad, "actualizado el …" en el detalle, quedó afuera a propósito: es una decisión de contenido visible y no de plomería, y no la resolvía este ítem | `lastmod` del sitemap, con la fecha recortada al día (D-138) | hecha |
 | 4 | ~~**`publicadaAlgunaVez`** (o la heurística de `calendarEventId`)~~ — **resuelto por ahora sin campo nuevo** (B-110, D-159): se prueba por el historial. El campo explícito queda en **B-285** | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
-| 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114** | baja |
+| 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114**. **Mirado el 2026-09-03 y dejado sin hacer, con el motivo escrito abajo** | baja |
 | 6 | **`sede.provincia`** | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
 | 7 | **`resumen` / copete escrito a mano** | Hoy se corta la descripción a 160 caracteres para la `meta description`. Una frase escrita a propósito rinde bastante más en el clic desde el buscador | baja |
 | 8 | **`organizador.slug`** | Solo si se hacen páginas por organizador (decisión 8) | — |
+
+> **La fila 5 (B-114) no se puede abrir desde el sitio, y conviene que quede
+> dicho — 2026-09-03.** «Precio real en `Event.offers`» suena a un cambio del
+> JSON-LD y no lo es: es el recorrido completo del skill `campo-nuevo`, y **la
+> mayor parte de ese recorrido queda del lado del panel**, no del sitio. Lo que
+> hay que tocar, en orden: el tipo (`src/types/actividad.ts`), el schema de zod,
+> la conversión form ⇄ documento, **el formulario** (`src/components/admin/**`),
+> **la proyección pública** (`src/lib/toPublic.ts`) y recién ahí `offers`.
+>
+> El punto de decisión no es técnico y por eso el ítem sigue en P3: **hay que
+> definir qué significa el monto**, y `arancel.tipo` ya dice que el binario
+> gratis/pago no alcanza. «A la gorra» no tiene precio que publicar (§4.1 del
+> `CLAUDE.md`: en el circuito es la mitad de los casos), «arancelado» puede ser
+> por encuentro o por el ciclo entero, «con beca parcial» tiene dos, y el
+> `arancel.notas` de hoy —«2 cuotas», «incluye material»— es justamente el campo
+> donde eso se escribe en prosa. Un `offers.price` que no diga por cuál de esas
+> cosas se paga es tan falso como el `price: 0` que la regla 3 prohíbe.
+>
+> Mientras tanto lo que el sitio **sí** podía arreglar de esa regla se arregló:
+> la actividad que ya pasó dejó de publicar `availability: InStock` (B-650, ver
+> la nota del §5.3).
 
 ### 11.3 Cosas que este diseño **quita** del JSON
 
