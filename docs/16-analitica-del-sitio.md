@@ -7,7 +7,7 @@
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
 | Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó) **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
-| **Lo que falta antes de que mida en producción** | **B-480**, y es bloqueante: hay que apagar «Búsquedas en el sitio» y «Clics salientes» en el Enhanced Measurement de GA4 desde la consola — ningún override de código los tapa. Ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480) |
+| **Lo que falta antes de que mida en producción** | Nada de configuración: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta solo el deploy del código, que sale con el próximo push |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
 ---
@@ -473,6 +473,8 @@ de los eventos propios) y `src/lib/medicionSitio.ts` (el transporte: carga
 mide, sea cual sea el resto del entorno»— probada por mutación.
 
 ### 7.4 · Lo que el código no puede tapar (B-480)
+
+> **Resuelto el 2026-09-03.** El dueño apagó «Búsquedas en el sitio» y «Clics salientes», desactivó los `page_view` basados en el historial de navegación —el caso del buscador que reescribe la URL con `replaceState`— y agregó la clave **`q`** al borrado de «Ocultar datos». Lo que sigue describe por qué hacía falta.
 
 **Recortar el `page_location` y el `page_referrer` no alcanza.** El
 `auditor-privacidad` encontró, sobre este mismo cambio, que una vez que

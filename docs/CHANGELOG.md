@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-03 · GA4 configurado en la consola: B-480 y B-372 cerrados
+
+El dueño completó el paso manual que bloqueaba la analítica. En el flujo `G-9CFMHSSGRC`
+del Enhanced Measurement quedaron apagados **«Búsquedas en el sitio»** (mandaba el texto
+del buscador) y **«Clics salientes»** (mandaba el destino real del botón de inscripción),
+más **los `page_view` por cambio de historial** —el buscador reescribe la URL con
+`replaceState` en cada filtro, así que cada toque contaba una vista con `q` en la URL—, y
+en «Ocultar datos» se agregó la clave **`q`** al borrado, que es la red que aguanta
+cualquier camino futuro. Con esto **B-372 y B-480 quedan cerrados**; el tag mide en
+producción con el próximo deploy. Queda abierto de la analítica solo B-373 (Search Console,
+diferido por el dueño) y B-374 (espera un mes de datos).
+
 ## 2026-09-02 · la portada del detalle también pinta la miniatura — B-321
 
 **La objeción que traía el ítem no se sostuvo, y por eso terminó siendo
