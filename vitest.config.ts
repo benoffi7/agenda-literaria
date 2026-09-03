@@ -59,6 +59,26 @@ export default defineConfig({
       // EXIGIR_EMULADOR (el config pisaba la variable del shell).
       FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080',
       FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099',
+      /*
+       * D-210 (B-320/B-321) — **es una condición para que `miniaturasConocidas()`
+       * pueda entrar, no el arreglo de una fuga que ya existía.**
+       *
+       * Conviene decirlo así porque la primera versión de esta línea afirmaba
+       * lo contrario («los tests le hablaban a Storage de producción y nadie lo
+       * notaba»), y no es cierto: hasta D-210 nada de la suite tocaba Storage
+       * con el Admin SDK, y lo que sí lo toca —`tests/emulador.ts`— resuelve el
+       * host con `HOST_STORAGE`, que ya cae al emulador por defecto.
+       *
+       * El riesgo lo trae el código nuevo: `miniaturasConocidas()`
+       * (`src/lib/contenidoDelSitio.ts`) lee el bucket con el Admin SDK, y el
+       * cliente de `@google-cloud/storage` no mira `FIRESTORE_EMULATOR_HOST`
+       * —mira la suya—. Sin esta variable un test que lo ejercite saldría a
+       * `storage.googleapis.com`, y en una máquina con credenciales de GCP la
+       * corrida daría **verde** leyendo producción. Mismo default que
+       * `HOST_STORAGE` de `tests/emulador.ts`, y el módulo tiene además su
+       * propia guarda para el build (ver `leerMiniaturas`).
+       */
+      FIREBASE_STORAGE_EMULATOR_HOST: process.env.FIREBASE_STORAGE_EMULATOR_HOST ?? '127.0.0.1:9199',
     },
     /*
      * El emulador es estado compartido: los archivos no pueden pisarse entre sí.

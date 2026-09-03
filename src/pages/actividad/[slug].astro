@@ -82,7 +82,7 @@ import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, migasDeDetalle, type DetallePublico } from '@/lib/detallePublico';
 import { ROTULO_DE_GALERIA, columnasDeGaleria, estiloDeAfiche } from '@/lib/afiche';
-import { srcsetDeMiniatura, urlDeMiniatura } from '@/lib/imagenes';
+import { srcsetDeMiniatura, urlDeMiniaturaSiExiste } from '@/lib/imagenes';
 import {
   claseAfiche,
   claseAfichePortada,
@@ -113,9 +113,17 @@ export const getStaticPaths = () => caminosDeDetalle();
 
 interface Props {
   detalle: DetallePublico;
+  /**
+   * Los paths de `miniaturas/` confirmados en Storage — D-210 (B-320/B-321).
+   * Viene de `miniaturasConocidas()` (`src/lib/contenidoDelSitio.ts`), **una
+   * sola lectura de Storage por build**, el mismo `Set` para todas las
+   * páginas. Sin esto no hay forma de saber si el objeto que `urlDeMiniatura`
+   * derivaría existe de verdad — ver el porqué en `urlDeMiniaturaSiExiste`.
+   */
+  miniaturasConocidas: ReadonlySet<string>;
 }
 
-const { detalle } = Astro.props as Props;
+const { detalle, miniaturasConocidas } = Astro.props as Props;
 const jsonLd = datosEstructurados(detalle);
 const migas = migasDeDetalle(detalle);
 
@@ -125,11 +133,23 @@ const portada = detalle.imagenes[0] ?? null;
  * La miniatura de la Function (B-220, D-175) como candidato chico del `srcset`
  * de la portada — B-321.
  *
- * **Derivada acá y no en `detallePublico.ts`.** `urlDeMiniatura` es una
- * función pura de la URL, sin dato guardado (igual razón que `estiloDeAfiche`
- * más arriba: es cálculo de presentación, no una decisión del dominio), así
- * que no hace falta agregarle un campo a `DetallePublico` ni al barrido de
- * salidas públicas — es la misma URL ya pública, solo con otro path.
+ * **Derivada acá y no en `detallePublico.ts`.** `urlDeMiniaturaSiExiste` es
+ * una función pura de la URL y el set de confirmadas, sin dato guardado (igual
+ * razón que `estiloDeAfiche` más arriba: es cálculo de presentación, no una
+ * decisión del dominio), así que no hace falta agregarle un campo a
+ * `DetallePublico` ni al barrido de salidas públicas — es la misma URL ya
+ * pública, solo con otro path.
+ *
+ * ⚠️ **`urlDeMiniaturaSiExiste` y no `urlDeMiniatura` a secas — D-210.** La
+ * primera versión de este cambio llamaba a `urlDeMiniatura(portada.url)`
+ * directo: deriva la URL sin saber si el objeto existe, y un `srcset` cuyo
+ * candidato da 404 **rompe** la imagen, no degrada al original (el `src` es el
+ * respaldo para un navegador sin soporte de `srcset`, no para un candidato que
+ * 404, y una vez elegido el candidato reemplaza al `src`).
+ * `miniaturasConocidas` es la confirmación. Con `optimizarImagen` desplegada y
+ * el barrido corrido (`docs/08-operacion.md`) lo que queda abierto es la
+ * ventana entre la subida y el trigger — chica, permanente, y la atraviesa
+ * cada imagen nueva.
  *
  * **Por qué la miniatura de 480px no la deja borrosa en una pantalla retina, y
  * es lo que B-321 dejaba sin decidir.** El navegador no elige el candidato por
@@ -144,7 +164,7 @@ const portada = detalle.imagenes[0] ?? null;
  * alta densidad: eso solo pasaría si el original no estuviera en el `srcset`
  * como candidato grande, y acá siempre está.
  */
-const urlMiniaturaPortada = urlDeMiniatura(portada?.url ?? null);
+const urlMiniaturaPortada = urlDeMiniaturaSiExiste(portada?.url ?? null, miniaturasConocidas);
 
 /**
  * Las demás imágenes de la actividad — B-296, D-168.
@@ -365,12 +385,14 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
             arranca en el título.
 
             **`srcset` con la miniatura de B-220 — B-321.** Mismo criterio que
-            `cartelera.astro` (B-320): el `src` queda en el ORIGINAL siempre —una
-            imagen subida antes de que la Function estuviera desplegada no tiene
-            miniatura, y un `srcset` cuyo candidato no existe degrada solo al
-            `src`— y `urlMiniaturaPortada` (ver más arriba, con el porqué de que
-            esto no la deje borrosa en retina) sale `null` para las externas
-            (DEC-7d), así que el atributo sale ausente y no vacío.
+            `cartelera.astro` (B-320): el `src` queda en el ORIGINAL siempre, y
+            `urlMiniaturaPortada` (ver más arriba, con el porqué de que esto no
+            la deje borrosa en retina, y el porqué de `urlDeMiniaturaSiExiste`
+            y no `urlDeMiniatura` a secas — D-210) sale `null` para las
+            externas (DEC-7d) y para una que todavía no tiene la miniatura
+            **confirmada**, así que el atributo sale ausente y no vacío. No es
+            un detalle de prolijidad: un `srcset` cuyo candidato no existe
+            **rompe** la imagen, no degrada al original.
           */
           portada && (
             <figure class="mt-6">

@@ -43,10 +43,11 @@
  * lecturas de la colección en vez de una; cacheando también el fallo, un test que
  * cambia el entorno entre dos llamadas vería la respuesta de la corrida anterior.
  */
-import { adminDb, hayCredenciales } from '@/lib/firebase-admin';
+import { adminBucket, adminDb, hayCredenciales } from '@/lib/firebase-admin';
 import { construirIndice, type EntradaDeIndice, type Indice } from '@/lib/eventsJson';
 import { detalleDeActividad, type DetallePublico } from '@/lib/detallePublico';
 import { carteleraDeDetalles, type Afiche } from '@/lib/cartelera';
+import { PREFIJO_MINIATURAS } from '@/lib/imagenes';
 import {
   mapaDeEtiquetas,
   tonosDeTipo,
@@ -397,6 +398,91 @@ export const olvidarContenido = (): void => {
   cache = null;
 };
 
+/**
+ * Los paths de `miniaturas/` que existen de verdad en Storage — D-210
+ * (B-320/B-321).
+ *
+ * ── Por qué existe ─────────────────────────────────────────────────────────
+ * `urlDeMiniatura` (`src/lib/imagenes.ts`) deriva la URL de una miniatura **a
+ * ciegas**, sin saber si el objeto está. Servirla como candidato de `srcset`
+ * sin confirmar **rompe** la imagen si no existe —no degrada al original, que
+ * es lo que la primera versión de B-320/B-321 daba por sentado y era falso—.
+ * Esta es la confirmación: **una sola lectura de Storage por build**, igual
+ * patrón que `contenidoDelSitio()` para Firestore, así que ningún consumidor
+ * paga un pedido de red por imagen (lo que DEC-7d prohíbe) y no hace falta que
+ * la Function escriba nada en el documento (lo que B-220 evitó a propósito).
+ *
+ * **Cuál es hoy la ventana de rotura, dicho con precisión.** `optimizarImagen`
+ * está desplegada y el barrido corrió sobre el bucket entero el 2026-09-03
+ * (`docs/08-operacion.md` § «Estado: desplegada y barrida»), así que lo que
+ * está subido **sí** tiene miniatura: el `srcset` a ciegas ya no rompe *todo*.
+ * Lo que queda abierto son los segundos entre que el panel sube el objeto y el
+ * trigger termina —y cualquier corrida que falle o se saltee—, que es una
+ * ventana chica pero permanente: cada imagen nueva la atraviesa. Un build que
+ * caiga adentro publicaría ese afiche roto hasta el rebuild siguiente. Por eso
+ * la confirmación no es «hasta que se despliegue la Function»: es el contrato
+ * del campo.
+ *
+ * ── Por qué nunca tira, a diferencia de `contenidoDelSitio()` ──────────────
+ * Un sitio sin actividades es un incidente (B-189): se publicaría vacío encima
+ * de uno con datos. Un build sin `srcset` en la cartelera y la portada **no
+ * es un incidente**: es exactamente el estado en el que estuvo el sitio hasta
+ * B-320 — se sirve el original, que es más pesado y correcto. Así que
+ * cualquier falla acá —sin credenciales, sin permiso de listado, el emulador
+ * de Storage abajo— se degrada a «no hay miniaturas confirmadas» y se avisa
+ * por `console.warn`, nunca se propaga.
+ *
+ * ── El bypass de `storage.rules`, y por qué no hace falta un paso de IAM ───
+ * `adminBucket()` usa el Admin SDK: lo autoriza el IAM de la service account
+ * del build, no `allow list: if esAdmin()` de `storage.rules` —esas reglas son
+ * para el SDK de cliente—. Es el mismo bypass que `adminDb()` ya hace para
+ * Firestore. Y el permiso **ya está**: `deploy-ci@` tiene
+ * `roles/firebase.developAdmin` (`docs/02-infraestructura.md` § «Roles de
+ * `deploy-ci@`»), que incluye `storage.objects.list`; verificado contra el
+ * proyecto el 2026-09-03. No hay nada que otorgar antes de mergear esto.
+ *
+ * ── El emulador, y por qué la ausencia de su variable corta la lectura ─────
+ * `hayCredenciales()` dice que sí con solo `FIRESTORE_EMULATOR_HOST`, pero el
+ * cliente de `@google-cloud/storage` no mira esa variable: mira la suya. Un
+ * build local contra el emulador, en una máquina con credenciales de GCP,
+ * listaría **producción** y confirmaría paths de un bucket que no es el que el
+ * build está leyendo. Se corta explícito, con aviso — es el mismo modo de
+ * falla que D-210 encontró en `vitest.config.ts`.
+ */
+const leerMiniaturas = async (): Promise<ReadonlySet<string>> => {
+  if (!hayCredenciales()) return new Set();
+  if (process.env.FIRESTORE_EMULATOR_HOST && !process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
+    console.warn(
+      '[sitio] build contra el emulador de Firestore sin FIREBASE_STORAGE_EMULATOR_HOST: ' +
+        'no se lista miniaturas/ (listaría el bucket de producción). Se sirve sin srcset.',
+    );
+    return new Set();
+  }
+  try {
+    const [objetos] = await adminBucket().getFiles({ prefix: PREFIJO_MINIATURAS });
+    return new Set(objetos.map((o) => o.name));
+  } catch (e) {
+    console.warn(
+      '[sitio] no se pudo listar miniaturas/ en Storage: se sirve sin srcset ' +
+        `de miniatura hasta que se confirme. ${String(e)}`,
+    );
+    return new Set();
+  }
+};
+
+let cacheMiniaturas: Promise<ReadonlySet<string>> | null = null;
+
+/** Las miniaturas confirmadas, leídas una sola vez por build. */
+export const miniaturasConocidas = (): Promise<ReadonlySet<string>> => {
+  if (!cacheMiniaturas) cacheMiniaturas = leerMiniaturas();
+  return cacheMiniaturas;
+};
+
+/** Para los tests, que cambian el entorno entre dos lecturas. */
+export const olvidarMiniaturas = (): void => {
+  cacheMiniaturas = null;
+};
+
 /** El `events.json` completo (§4.4: las opciones viajan adentro). */
 export const indiceDelSitio = async (): Promise<Indice> => {
   const { actividades, opciones } = await contenidoDelSitio();
@@ -594,15 +680,31 @@ const detallesDelSitio = async (
   );
 };
 
+/**
+ * `miniaturasConocidas` viaja como prop de **cada** página junto a `detalle` —
+ * D-210 (B-320/B-321) — porque la portada de `[slug].astro` la necesita para
+ * derivar su `srcset` sin adivinar si el objeto existe. Es el mismo `Set` por
+ * referencia para todas las páginas (una sola lectura de Storage por build,
+ * `miniaturasConocidas()`), así que pasarlo N veces no cuesta N lecturas.
+ */
 export const caminosDeDetalle = async (
   ahora?: unknown,
-): Promise<{ params: { slug: string }; props: { detalle: DetallePublico } }[]> => {
+): Promise<
+  {
+    params: { slug: string };
+    props: { detalle: DetallePublico; miniaturasConocidas: ReadonlySet<string> };
+  }[]
+> => {
   const instante = ahora instanceof Date ? ahora : new Date();
   // B-110 — **el único consumidor que pide las canceladas**, y lo pide escrito:
   // una cancelada tiene página y no aparece en ninguna lista (§7.3).
-  return (await detallesDelSitio(instante, true)).map((detalle) => ({
+  const [detalles, miniaturas] = await Promise.all([
+    detallesDelSitio(instante, true),
+    miniaturasConocidas(),
+  ]);
+  return detalles.map((detalle) => ({
     params: { slug: detalle.slug },
-    props: { detalle },
+    props: { detalle, miniaturasConocidas: miniaturas },
   }));
 };
 
@@ -623,10 +725,17 @@ export const caminosDeDetalle = async (
  * entra a ninguna. No hace falta que lo diga —el default de `detallesDelSitio` ya
  * es ése— y se deja implícito a propósito: pasarle `false` sugeriría que hay algo
  * que decidir acá, cuando la decisión es del §7.3 y vale para toda lista.
+ *
+ * Pasa `miniaturasConocidas()` a `carteleraDeDetalles` —D-210— así que
+ * `Afiche.urlMiniatura` nunca sale de una URL sin confirmar.
  */
 export const carteleraDelSitio = async (ahora?: unknown): Promise<Afiche[]> => {
   const instante = ahora instanceof Date ? ahora : new Date();
-  return carteleraDeDetalles(await detallesDelSitio(instante));
+  const [detalles, miniaturas] = await Promise.all([
+    detallesDelSitio(instante),
+    miniaturasConocidas(),
+  ]);
+  return carteleraDeDetalles(detalles, miniaturas);
 };
 
 /**

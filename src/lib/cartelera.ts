@@ -30,7 +30,7 @@
  * desde vitest, así que lo que decida qué entra a la pared tiene que vivir acá.
  */
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
-import { urlDeMiniatura } from '@/lib/imagenes';
+import { urlDeMiniaturaSiExiste } from '@/lib/imagenes';
 import type { DetallePublico } from '@/lib/detallePublico';
 
 /** Un afiche pegado en la pared. */
@@ -42,8 +42,9 @@ export interface Afiche {
   tipoEtiqueta: string;
   url: string;
   /**
-   * La miniatura de 480px que deriva la Function de B-220, o `null` si la imagen
-   * es **externa** (no la tocamos, DEC-7d) — B-220, D-175.
+   * La miniatura de 480px que deriva la Function de B-220, o `null` si la
+   * imagen es **externa** (no la tocamos, DEC-7d) **o si el objeto no está
+   * confirmado en Storage todavía** — B-220, B-320/B-321, D-210.
    *
    * ── Por qué la cartelera y no otra salida ─────────────────────────────
    * Es la **única** página del sitio que pide muchas imágenes a la vez, y por eso
@@ -52,14 +53,26 @@ export interface Afiche {
    * hay 29 con imagen. Con las 30 imágenes de producción, el recorrido completo
    * pasa de **3518,5 KB a 1032,4 KB (−71 %)**.
    *
-   * ── Lo que este campo NO garantiza ───────────────────────────────────
-   * Que el objeto exista. Es una URL **derivada** (`urlDeMiniatura`), no un dato
-   * guardado: la imagen que se subió antes de que la Function estuviera
-   * desplegada no tiene miniatura, y el que la produce para las que ya están es
-   * `scripts/optimizar-imagenes.mjs`. Por eso el consumidor tiene que usarla como
-   * el candidato chico de un `srcset` **con el original como `src`**, que es lo
-   * único que degrada bien: un `srcset` cuyo candidato no existe hace que el
-   * navegador caiga al `src`.
+   * ── Por qué no es solo `urlDeMiniatura(url)`, y esto costó un incidente ──
+   * Se deriva con `urlDeMiniaturaSiExiste`, que solo devuelve la URL si el
+   * objeto está en el listado de `miniaturas/` que `carteleraDeDetalles` recibe
+   * — **una sola lectura de Storage por build**, no un pedido por afiche (eso
+   * es lo que DEC-7d prohíbe). La primera versión de este campo llamaba a
+   * `urlDeMiniatura` a ciegas, y el consumidor lo usaba como candidato chico de
+   * un `srcset` asumiendo que degradaba bien si el objeto no existía. **Eso es
+   * falso**: una vez que el navegador elige un candidato del `srcset`, esa URL
+   * reemplaza al `src` en el algoritmo de selección de imagen — el `src` es el
+   * respaldo para un navegador sin soporte de `srcset`, no para un candidato
+   * que da 404. La corrección completa está en D-210.
+   *
+   * **Qué tan seguido puede pasar hoy.** `optimizarImagen` está desplegada y
+   * el barrido corrió sobre el bucket entero (`docs/08-operacion.md`), así que
+   * lo que ya está subido tiene su miniatura: la rotura dejó de ser el caso
+   * general y pasó a ser la ventana entre la subida y el trigger, más
+   * cualquier corrida que falle. Es chica y es permanente —cada imagen nueva
+   * la atraviesa—, y un build que caiga adentro publica ese afiche roto hasta
+   * el rebuild siguiente. Confirmar cuesta **una** lectura por build; no
+   * confirmar cuesta un afiche roto en la página más visual del sitio.
    *
    * `sizes` sin `srcset` no hace nada (D-149), y por eso este campo entra antes
    * que cualquier `sizes`.
@@ -120,7 +133,19 @@ export interface Afiche {
  * afiche de algo que no se hace. Es la clase de B-265: la salida 7 heredaba el
  * `where` de la 6 «por construcción», hasta que dejara de heredarlo.
  */
-export const carteleraDeDetalles = (detalles: readonly DetallePublico[]): Afiche[] =>
+/**
+ * @param detalles Los view-models de las actividades, ya proyectados.
+ * @param miniaturasConocidas Los paths de `miniaturas/` que existen de verdad
+ *   en Storage — **una sola lectura por build**
+ *   (`miniaturasConocidas()` en `src/lib/contenidoDelSitio.ts`). El default
+ *   vacío es para los llamadores que no tienen esa lectura a mano (la mayoría
+ *   de los tests): con el set vacío, `urlMiniatura` da `null` para todo, que es
+ *   el mismo comportamiento —seguro— que tenía el sitio antes de B-320.
+ */
+export const carteleraDeDetalles = (
+  detalles: readonly DetallePublico[],
+  miniaturasConocidas: ReadonlySet<string> = new Set(),
+): Afiche[] =>
   detalles
     .flatMap((d) => {
       const portada = d.imagenes[0];
@@ -135,11 +160,10 @@ export const carteleraDeDetalles = (detalles: readonly DetallePublico[]): Afiche
           titulo: d.titulo,
           tipoEtiqueta: d.tipoEtiqueta,
           url: portada.url,
-          // Derivada del path que la URL del original lleva adentro: la Function
-          // no escribe nada en el documento, así que no hay campo que leer. Da
-          // `null` para una externa, que es lo correcto — DEC-7d decidió que las
-          // externas se sirven tal cual y no se descargan.
-          urlMiniatura: urlDeMiniatura(portada.url),
+          // `null` para una externa (DEC-7d) y también si el objeto no está
+          // confirmado en `miniaturasConocidas` — ver el docblock de
+          // `Afiche.urlMiniatura` (D-210). Nunca `urlDeMiniatura` a ciegas.
+          urlMiniatura: urlDeMiniaturaSiExiste(portada.url, miniaturasConocidas),
           epigrafe: portada.epigrafe,
           ancho: portada.ancho,
           alto: portada.alto,
