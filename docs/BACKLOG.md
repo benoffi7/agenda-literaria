@@ -17,6 +17,17 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > barrido de backlog y drift tenía reservado el rango **B-310 a B-319** y usó los
 > tres primeros (**B-310**, **B-311**, **B-312**); los números del medio son de
 > otros frentes de la misma tanda.
+>
+> **Y un tercer hueco, con una renumeración adentro: `B-602` y `B-603`.** La tanda
+> del 2026-09-03 tuvo tres frentes en paralelo y dos numeraron a ciegas. El frente
+> del sitio reservó **B-600 a B-603** y usó los dos primeros (**B-600**, el
+> tríptico de la home; **B-601**, medirlo). El frente de salud del repo había
+> propuesto cuatro ítems con esos mismos números, y **se renumeraron a B-604 a
+> B-607** al integrarlos: `B-600(salud)`→**B-604**, `B-601(salud)`→**B-605**,
+> `B-602(salud)`→**B-606**, `B-603(salud)`→**B-607**. **B-600 se quedó como el
+> tríptico** porque ya estaba escrito en el código y en los commits, que es lo que
+> no se puede renumerar. Si alguna nota de otro frente cita «B-601 · analítica»
+> o «B-603 · npm audit fix», está hablando de B-605 y B-607.
 
 ---
 
@@ -2751,6 +2762,27 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-605 · `09-analitica.md` decía que `MOTIVOS_IMAGEN` tiene tres valores, y tiene seis — ✅ hecho (2026-09-03) · P2
+
+**Renumerado desde el `B-601` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`docs/09-analitica.md` decía «**Motivos de rechazo de una imagen:** `tamano`,
+`tipo`, `red`» y, más abajo, «`detalle` es un enum cerrado de **tres** valores».
+`src/lib/analytics-eventos.ts` declara seis: `metadatos` faltaba de antes, y
+`permiso` y `servidor` los agregó **B-590** el mismo día.
+
+Es el punto ciego exacto que B-590 dejó: el commit actualizó `07-seguridad.md`,
+`BACKLOG.md` y `novedades.ts`, pero no `09-analitica.md`, que es donde la tabla de
+cierre de [`05-patrones.md`](05-patrones.md) manda cuando un cambio «toca qué se
+mide o con qué nombre». **Valores nuevos de un evento que ya existía cuentan**, y
+es la parte que se saltea sola: el evento no es nuevo, así que no se siente como
+analítica nueva.
+
+Lo encontró el `auditor-documentacion` en el barrido del 2026-09-03. **Corregidas
+las dos frases** (la lista completa, con el motivo de las dos últimas, y «seis
+valores»).
+
 ### B-370 a B-379, B-480 y B-481 · La analítica del sitio público · P2
 
 **Los diez ítems que salieron de la arquitectura de la analítica
@@ -4513,6 +4545,56 @@ No hace falta cambiar el modelo: que el `events.json` lleve **también** un índ
 plano de encuentros próximos (fecha, id de sesión, slug), derivado en build time,
 para que la island ofrezca "este fin de semana" sin aplanar los ciclos en el
 navegador en cada filtrado. Es barato al escribir el generador y caro después.
+
+> **Se cerró en dos mitades, y el `✅ hecho` de arriba era solo la primera.** El
+> commit que lo cierra (`d366f77`) dice con todas las letras «la UI de esos paneles
+> todavía no está: esto es solo el dato», y el texto del ítem pide el eje
+> **para que la island lo use**, así que hasta el 2026-09-03 a la tarde este ítem
+> estaba cerrado afirmando algo que no era cierto todavía. Lo señaló el
+> `auditor-documentacion`. **La segunda mitad es B-600**, abajo: la fecha del cierre
+> es la misma, así que no se corrige el encabezado — se deja dicho de qué mitad
+> hablaba y a dónde fue la otra.
+
+### B-600 · La home no usaba el eje de encuentros: falta «Hoy / Mañana / Este finde» — ✅ hecho (2026-09-03) · P2
+
+**Qué era.** La mitad de UI de **B-99**. El eje plano de encuentros próximos ya
+viajaba en el `events.json` (`{slug, sesionId, inicio}`) y **nadie lo consumía**: el
+listado de la home ordena por próxima fecha de la *actividad* (§2.2 del
+`CLAUDE.md`: un club de ocho encuentros es una tarjeta), así que un ciclo que
+arrancó en agosto aparece arriba con su próximo encuentro del 20 y había que abrir
+tarjetas para saber qué pasa hoy. La pregunta que se le hace a una agenda —«¿qué hay
+el sábado?»— es centrada en el **encuentro**, y la home no la contestaba.
+
+**Qué quedó.** Arriba del buscador y a todo el ancho, un tríptico de programación
+inmediata: banda de sección con el rótulo «¿Qué hay ahora?» y el sello de
+actualización, y debajo tres paneles —**Hoy · Mañana · Este finde**— con hora,
+título, lugar, categoría en su color (D-150) y arancel, cada fila linkeando al
+detalle de su actividad. Sin ningún dato nuevo.
+
+- **Las tres ventanas, la resta del finde y el salto de semana con rótulo
+  distinto**, más por qué el «+N más» del pie no es un enlace: **D-320**.
+- **No responde a los filtros**, a propósito: contesta una pregunta fija.
+- **Un solo markup, dos relojes**: lo pinta el build y lo repinta la island con el
+  reloj de quien mira, y cada panel escribe los días que abarca para que el rótulo
+  «Hoy» de un HTML de hace tres días no pueda mentir (§6.3, §6.4 del diseño; el
+  argumento de B-111 un escalón más arriba).
+- Cálculo en `src/lib/ahoraPublico.ts` (puro) + cuatro primitivas de día calendario
+  en `src/lib/fechasPublicas.ts`; markup en
+  `src/components/publico/PanelesDeAhora.tsx`, que no formatea una fecha, no decide
+  una frase y no lee ninguna `EntradaDeIndice`.
+- Tests: [`tests/ahoraPublico.test.ts`](../tests/ahoraPublico.test.ts) (los siete
+  días de la semana table-driven, los dos casos de zona horaria), el `describe` de
+  la salida nueva en
+  [`tests/barrido-de-salidas-publicas.test.ts`](../tests/barrido-de-salidas-publicas.test.ts)
+  y la parte 7 de
+  [`tests/listado-del-sitio.test.ts`](../tests/listado-del-sitio.test.ts).
+
+**Un bug encontrado al escribir los tests y arreglado en el mismo cambio:** el
+módulo cortaba la ventana al tope de cuatro y **después** resolvía cada encuentro
+contra su actividad, así que un slug sin actividad —el índice lo sirve un CDN y
+puede ser de un build anterior— caído entre los primeros cuatro dejaba el panel con
+tres filas y el pie prometiendo un cuarto que no existía. Ahora se resuelve toda la
+ventana y recién después se corta.
 
 ### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx` — ✅ hecho (2026-08-24)
 
@@ -7242,6 +7324,89 @@ en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la cl
 del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
 tenga dos actividades).
 ## P3 — cuando sobre tiempo
+
+### B-601 · El tríptico de «¿Qué hay ahora?» no se mide · P3
+
+El sitio público mide **dos** eventos propios —`busqueda` y `clic_inscripcion`
+(B-375, [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md))— y el tríptico de
+**B-600** no está en ninguno de los dos. Es deliberado y no un olvido: se decidió
+al construirlo, para no meter un evento nuevo en la misma tanda que la sección.
+
+Lo que no se puede contestar sin medirlo es justamente lo que decide si la sección
+se queda como está:
+
+- **¿Se usa?** Un clic en una fila del tríptico y un clic en una fila del listado
+  llevan al mismo lugar, así que hoy son indistinguibles. Si nadie toca el
+  tríptico, es una banda que empuja el listado abajo del pliegue por nada.
+- **¿Cuál de los tres paneles?** Si todo el uso es «Hoy», el tope de cuatro está
+  mal repartido y el finde podría ser un solo panel con más filas.
+- **¿El «+N más» frustra?** El pie dice que hay más y no linkea a ninguna parte
+  (D-320, y el motivo es bueno). Si se toca —o si scrollean al listado justo
+  después—, la decisión de que el día no sea una URL merece revisarse con un dato.
+
+**Cuidado con el default de no decidir** (§5.1 de [`07-seguridad.md`](07-seguridad.md)):
+un evento del tríptico tiene que viajar con el panel (`hoy`/`manana`/`finde`) y la
+posición de la fila, **nunca con el slug ni el título de la actividad** — eso es
+contenido, y `detalle` es un enum cerrado en todos los eventos de este proyecto.
+
+### B-604 · El comentario de B-190 estaba duplicado literal en `tarjetaPublica.ts` — ✅ hecho (2026-09-03) · P3
+
+**Renumerado desde el `B-600` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+En `src/lib/tarjetaPublica.ts`, el bloque de `lugarDeTarjeta` que explica B-190
+(«Online por A confirmar» se lee como si «A confirmar» fuera el nombre de una
+plataforma) estaba pegado **dos veces seguidas**, palabra por palabra. No venía de
+un merge: lo agregó duplicado un solo commit (`fix: 5 hallazgos del
+auditor-privacidad sobre B-190/B-340/B-342`).
+
+No afectaba comportamiento; el costo es que un lector futuro lo lee dos veces
+preguntándose si el segundo dice algo distinto — y en un repo donde el comentario
+**es** la documentación de la decisión, eso es exactamente el ruido que hace que se
+dejen de leer. **Cerrado borrando el segundo bloque.**
+
+Lo encontró el `auditor-documentacion` en el barrido del 2026-09-03, que además
+buscó otros duplicados de bloques de 4+ líneas en `src/**`, `functions/**` y
+`tests/**`: los demás candidatos son falsos positivos (código repetitivo por
+patrón). El frente de salud no lo tocó porque `src/**` era de otro frente.
+
+### B-606 · La definición del `auditor-documentacion` sobre-afirma que nada atrapa los duplicados de merge · P3
+
+**Renumerado desde el `B-602` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`.claude/agents/auditor-documentacion.md`, Parte 2 punto 3, dice que
+`tests/sin-marcadores-de-conflicto.test.ts` «no atrapa esto» hablando de bloques
+duplicados o fusionados por merges. Dejó de ser del todo cierto: desde **B-367**,
+`tests/red-de-contencion.test.ts` atrapa exactamente ese patrón — pero **solo** para
+la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`.
+
+Sin la aclaración, el próximo auditor reporta como hallazgo algo que el CI ya frena
+ahí. Es la clase que este repo ya conoce: un auditor que duplica lo que un test
+frena reporta ruido, y la tabla de `13-agentes.md` existe justamente para eso.
+
+Texto propuesto, al final del punto 3:
+
+    **Excepción:** la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`
+    sí tiene red desde B-367 (`tests/red-de-contencion.test.ts`, filas fusionadas
+    con `||` o duplicadas) — no lo reportes ahí, seguí buscando el patrón en el
+    resto de la documentación.
+
+### B-607 · `npm audit fix` de `uuid`, la única vulnerabilidad de producción sin breaking · P3
+
+**Renumerado desde el `B-603` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`uuid` <11.1.1 (vía `gaxios`; moderada: falta un chequeo de límites de buffer en
+v3/v5/v6 cuando se pasa `buf`) se cierra con un `npm audit fix` **sin cambios
+incompatibles**. No se hizo el 2026-09-03 a propósito: toca `package-lock.json`,
+que es de todos los frentes, y un lock reescrito en medio de una tanda de tres
+agentes en paralelo es un conflicto garantizado.
+
+Las otras cuatro vulnerabilidades de producción quedan **fuera** de este ítem:
+`sharp` (alta, libvips) y `esbuild` (baja) solo se cierran subiendo a `astro@7.3.1`,
+dos mayores arriba — eso es la decisión que ya vive en el Problema 4 de
+`docs/10-salud-del-codigo.md`, no un `audit fix`.
 
 ### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
 

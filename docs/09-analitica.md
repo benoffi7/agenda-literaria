@@ -286,7 +286,10 @@ Valores de `detalle`:
   `arancel-e-inscripcion`, `material`, `opcional`, `difusion`, `vista-previa`.
 - **Modos de fallo de coordenadas:** `coord-link-corto`,
   `coord-sin-coordenadas`, `coord-coma-decimal`, `coord-formato`.
-- **Motivos de rechazo de una imagen:** `tamano`, `tipo`, `red`.
+- **Motivos de rechazo de una imagen:** `tamano`, `tipo`, `metadatos`, `red`,
+  `permiso`, `servidor` — las dos últimas las sumó **B-590**: antes cualquier
+  `storage/unauthorized` (sesión vencida o sin permiso) o la cuota llena viajaban
+  como `red`, que era falso.
 
 **Las dos de imágenes son el termómetro de una decisión del dueño** (B-167,
 DEC-7b). `imagen-subida` contesta si la mitad cara de la galería se usa: si nadie
@@ -297,7 +300,7 @@ número está mal elegido y lo que hay que hacer es recomprimir del lado de la
 Function, no explicar mejor.
 
 **Nunca viaja el nombre del archivo ni su tamaño real**, aunque el mensaje que ve
-la persona sí los diga: eso es contenido, y `detalle` es un enum cerrado de tres
+la persona sí los diga: eso es contenido, y `detalle` es un enum cerrado de seis
 valores.
 
 **`estadisticas-abrir` es el termómetro del tablero del catálogo** (B-370, D-200,

@@ -7412,3 +7412,78 @@ subió el `limit()` del `onSnapshot` de 10 a 50 y se filtra del lado del
 cliente, para que el filtro no le coma cupo a los reportes abiertos cuando hay
 varios resueltos entre los más nuevos.
 
+
+## D-320 · El tercer panel del tríptico resta los días ya contados, salta de semana con otro rótulo, y su «+N más» no es un enlace
+
+**Problema (B-600).** El tríptico «¿Qué hay ahora?» de la home son tres paneles
+—**Hoy · Mañana · Este finde**— y los tres tienen que caber en una sola línea de
+lectura, uno al lado del otro. Eso obliga a decidir dos cosas que con paneles
+separados no harían falta: **qué días agarra el tercero** y **qué se hace con lo
+que no entra en el tope de cuatro filas**.
+
+### La resta: el finde es sábado y domingo **menos** lo que ya contaron los dos primeros
+
+Un viernes, «Mañana» **es** el sábado. Con el finde definido como «sábado y
+domingo de esta semana» a secas, el mismo encuentro sale en la segunda y en la
+tercera columna del mismo tríptico, a diez centímetros de distancia. Eso se lee
+como un error de software y no como dos lecturas del mismo dato.
+
+**No es el caso de la actividad destacada del §4.1**, que aparece en la tira de
+arriba y otra vez en su mes: ahí las dos apariciones están a media pantalla y
+contestan preguntas distintas («lo que recomendamos» / «lo que hay en
+septiembre»). Acá los tres paneles contestan **la misma** pregunta partida en
+ventanas, y ventanas que se solapan no son ventanas.
+
+Así que el tercero se queda con los días del finde que no estén ya en «Hoy» ni en
+«Mañana». Un viernes es solo el domingo; un jueves son los dos.
+
+### El salto de semana, y por qué cambia el rótulo
+
+Cuando la resta deja la ventana **sin días** —hoy es sábado, o es domingo— hay
+tres salidas posibles y dos son peores:
+
+| Salida | Por qué no |
+|---|---|
+| Dibujar dos paneles | El tríptico deja de ser un tríptico un día y medio de cada siete, y la página cambia de forma sin que nadie la haya cambiado |
+| Dejar el tercero vacío | «Este finde: no hay nada» **un sábado** es falso: el finde es hoy, y lo que hay está en el panel de al lado |
+| **Saltar al finde siguiente** | Es lo que alguien quiere saber un domingo a la tarde, y es lo que se hizo |
+
+Pero saltando, **el rótulo no puede seguir siendo «Este finde»**: un sábado, «este
+finde» es hoy, y el panel estaría hablando de algo que falta una semana. Con la
+fecha escrita al lado («sáb 26 sep y dom 27 sep») el desvío se vería, pero un
+rótulo que hay que desmentir con la letra chica de al lado es un rótulo mal
+elegido. Así que pasa a **«El finde que viene»**.
+
+**Y un domingo usa ese mismo rótulo por una razón distinta**, que es la parte que
+se equivoca sola si se implementa mirando el salto en vez del día de la semana: un
+domingo **no hay salto** —el sábado que viene está a seis días y no se solapa con
+nada— pero el finde de su propia semana se está terminando, así que tampoco es
+«este». Los dos casos comparten rótulo y no comparten causa; por eso la condición
+mira `dow === 0` además del salto.
+
+### El «+N más» es texto, no un enlace
+
+El tope es de cuatro filas por panel (un panel de doce filas deja de leerse de un
+vistazo y empuja el listado abajo del pliegue en un teléfono — el argumento de
+D-143 sobre los filtros). Lo que sobra se dice en palabras: «+2 más hoy».
+
+**Y no linkea a ninguna parte, a propósito.** El [§2.3](12-sitio-publico.md#23-lo-que-decidimos-que-no-es-url)
+decide qué es página y qué es filtro, y **el día no está en ninguna de las dos
+listas**: no existe un «cronograma de hoy» al que mandar. Inventar acá un
+`/dia/2026-09-15` sería decidir de paso una decena de URLs indexables nuevas —con
+su título, su `meta description`, su canónica y su lugar en el sitemap— en el pie
+de un panel, y contra la regla de las tres del [§2.2](12-sitio-publico.md#22-la-regla-de-las-tres):
+un día suelto casi nunca tiene tres actividades.
+
+Lo que sí hay es **el listado completo, en esta misma página y unos centímetros
+más abajo**, ya agrupado por mes. Un enlace a otro lugar sería peor que el texto:
+mandaría a buscar afuera lo que está debajo.
+
+### Dónde vive
+
+`src/lib/ahoraPublico.ts`, puro y testeado (`tests/ahoraPublico.test.ts`, con los
+siete días de la semana table-driven). No vive en el componente por lo mismo que
+`tarjetaPublica.ts`: los componentes de este repo no tienen tests de render
+([`05-patrones.md`](05-patrones.md)), y lo que se decide acá es **aritmética de
+calendario en una zona con offset**, que es la trampa 1 del §13 en su versión más
+filosa.

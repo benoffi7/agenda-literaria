@@ -1,5 +1,15 @@
 # Changelog
 
+## Sin publicar
+
+- **La home abre con «¿Qué hay ahora?»**: tres paneles **Hoy · Mañana · Este
+  finde** con los encuentros de cada ventana, arriba del buscador y a todo el
+  ancho — **B-600**, **D-320**. Es la mitad de UI que **B-99** había dejado
+  pendiente: el eje plano de encuentros ya estaba en el `events.json` y nadie lo
+  usaba. No responde a los filtros, lo pintan el build y la island (el rótulo
+  «Hoy» envejece de un día para el otro sin que cambie ningún dato), y cada panel
+  escribe los días que abarca para que ese rótulo no pueda mentir.
+
 ## 1.8.0 — 2026-09-03
 
 - **Al fallar la subida de una imagen, se muestra el motivo real** (permiso/sesión,
@@ -9,7 +19,70 @@
 - **El `events.json` lleva un eje plano de encuentros** (`{slug, sesionId, inicio}`,
   próximos, ordenados) — **B-99**. Es la base de datos para poder mostrar «Hoy /
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
-  esos paneles todavía no está: esto es solo el dato.
+  esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
+  día — ver «Sin publicar», arriba.)*
+
+## 2026-09-03 · el tríptico «¿Qué hay ahora?» en la home (B-600, D-320)
+
+La mitad de UI que B-99 dejó pendiente. El modelo es centrado en la **actividad**
+y eso está bien (§2.2 del `CLAUDE.md`: un club de ocho encuentros es una tarjeta),
+pero la pregunta que se le hace a una agenda es «¿qué hay el sábado?», que es
+centrada en el **encuentro**, y el listado de la home no la contestaba: ordena por
+próxima fecha de la actividad, así que un ciclo que arrancó en agosto aparece
+arriba con su próximo encuentro del 20 y había que abrir tarjetas para saber qué
+pasa hoy.
+
+Ahora la home abre, arriba del buscador y a todo el ancho, con tres paneles **Hoy
+· Mañana · Este finde**: hora, título, lugar, categoría con su color (D-150) y
+arancel, cada fila linkeando a la página de detalle de su actividad. Sin ningún
+dato nuevo: sale del eje plano de encuentros del `events.json` (B-99) cruzado
+contra las actividades del mismo índice.
+
+**Las tres ventanas.** «Hoy» es lo que **queda** de hoy —se filtra `inicio >=
+ahora`, y se mira el inicio y no el fin porque el eje de B-99 no lleva el fin: el
+costo declarado es que una actividad que empezó hace diez minutos desaparece del
+panel mientras sigue en el listado—. «Mañana» es el día siguiente entero. El
+tercero es el sábado y domingo de la semana en curso **menos los días que ya
+contaron los dos primeros**: sin la resta, un viernes el sábado sale en dos
+columnas pegadas del mismo tríptico y se lee como un error de software. Cuando la
+resta lo deja sin días —hoy es sábado o domingo— salta al finde siguiente y el
+rótulo pasa a «El finde que viene»; un domingo usa ese rótulo aunque no haya
+salto, por otra razón (el finde de su semana se está terminando), y por eso la
+condición mira el día de la semana y no la distancia. Todo eso es **D-320**, junto
+con por qué el «+N más» del pie no es un enlace: el día no es una URL de este
+sitio (§2.3), y el listado completo está en la misma página más abajo.
+
+**Un solo markup, dos relojes.** Lo pinta el build —SEO, sin un byte de
+JavaScript— y lo repinta la island con el reloj de quien mira (§6.3, §6.4). Acá
+pesa más que en el listado: «Hoy» envejece de un día para el otro **sin que cambie
+ningún dato**, y el sitio se rehace solo cuando cambia un dato (§8). Es el
+argumento de B-111 con `cierraEn`, un escalón más arriba. Y como respaldo, cada
+panel **escribe los días que abarca** («Hoy · vie 3 sep»): es lo único que queda
+en pie con JavaScript apagado, y lo que impide que un rótulo del build mienta sin
+que se note. El sello («Actualizado: vie 3 sep, 14:30», del `generadoEn`) explica
+por qué algo cargado hace diez minutos todavía no está.
+
+**No responde a los filtros**, a propósito: contesta una pregunta fija. Tope de
+cuatro filas por panel. Un panel vacío se dibuja y dice que no hay nada («el
+sábado está libre» es información); la sección entera no se dibuja solo si las
+tres ventanas están vacías, y esa condición vive en el módulo y no en cada
+llamador —el build y la island— porque dos condiciones escritas por separado son
+dos maneras de que una se quede vieja (la clase de B-88).
+
+El cálculo va en `src/lib/ahoraPublico.ts`, puro, más cuatro primitivas nuevas de
+día calendario en `src/lib/fechasPublicas.ts` (`claveDeDia`, `diaDesplazado`,
+`diaDeSemana`, `fechaCortaDeDia`, todas sobre un ancla de **mediodía UTC**: la
+medianoche se corre de día con el offset de -3). El markup, en
+`src/components/publico/PanelesDeAhora.tsx`, no formatea una fecha, no decide una
+frase y no lee ninguna `EntradaDeIndice`. El tríptico entra al barrido de
+centinelas como salida propia, con su lista corta y justificada y su control
+negativo.
+
+Un bug encontrado al escribir los tests, arreglado en el mismo cambio: el módulo
+cortaba la ventana al tope y **después** resolvía cada encuentro contra su
+actividad, así que un slug sin actividad —el índice lo sirve un CDN y puede ser de
+un build anterior— caído entre los primeros cuatro dejaba el panel con tres filas
+y el pie prometiendo un cuarto que no existía.
 
 ## 2026-09-03 · el eje de encuentros en el events.json (B-99)
 

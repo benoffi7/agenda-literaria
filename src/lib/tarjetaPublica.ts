@@ -181,14 +181,6 @@ export const lugarDeTarjeta = (entrada: EntradaDeIndice, etiquetas: MapaDeEtique
    * hubs — cuatro salidas indexadas). Se mira el slug, no el label resuelto,
    * mismo criterio que `dondeCorto` en `detallePublico.ts`.
    */
-  /*
-   * B-190 — «Online por A confirmar» se lee como si «A confirmar» fuera el
-   * nombre de una plataforma (lo señaló el `auditor-privacidad`: esta salida
-   * había quedado afuera de la lista de consumidores que B-190 corrigió, y
-   * `lugarDeTarjeta` alimenta el listado, la página de mes, /pasadas y los
-   * hubs — cuatro salidas indexadas). Se mira el slug, no el label resuelto,
-   * mismo criterio que `dondeCorto` en `detallePublico.ts`.
-   */
   const enLinea =
     entrada.online?.plataforma === SLUG_PLATAFORMA_A_CONFIRMAR
       ? 'Online, plataforma a confirmar'

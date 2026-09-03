@@ -22,7 +22,7 @@ no se pueden deshacer después.
 
    | # | Salida | Quién la produce |
    |---|---|---|
-   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts`, y para el `CollectionPage`/`ItemList` de la home `src/lib/hubsPublicos.ts` (`coleccionSchema`, B-107) |
+   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts`, y para el `CollectionPage`/`ItemList` de la home `src/lib/hubsPublicos.ts` (`coleccionSchema`, B-107) , y para el **tríptico «¿Qué hay ahora?»** de la home `src/lib/ahoraPublico.ts` (B-600) |
    | 2 | el evento de Calendar | `functions/calendario.js` |
    | 3 | el issue de GitHub | `functions/reportes.js` |
    | 4 | GA4 (panel) | `src/lib/analytics-eventos.ts` |
