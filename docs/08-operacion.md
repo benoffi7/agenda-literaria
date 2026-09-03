@@ -41,7 +41,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 |---|---|
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
-| `npm test` | la suite completa (2.208 tests en 97 archivos al 2026-09-02, contados en esta corrida) |
+| `npm test` | la suite completa. **El tamaño lo dice ella al terminar** (`Test Files` / `Tests`) y no se copia acá: el conteo escrito a mano quedó viejo cuatro veces en dos semanas — ver la nota de abajo |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
@@ -56,6 +56,42 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
 | `node scripts/project-id-emulador.mjs` | la **base de emulador de este checkout** (`agenda-literaria-<8 hex>`). Es de dónde salen el `projectId` de los tests y el del gate (B-219) |
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
+| `node scripts/salud-del-codigo.mjs` | remide `docs/10-salud-del-codigo.md` (§1.1, §1.2, §1.4, §1.5, §1.6) e imprime las tablas en markdown listas para pegar. Con `--json`, para otro programa (B-311) |
+
+> **El conteo de tests no se escribe a mano en ninguna parte, y es una decisión.**
+> Estuvo escrito en `docs/README.md` y en la tabla de arriba, y las dos copias
+> quedaron viejas —2.148, 2.006, 2.039, 2.173, 2.208 contra los 2.637 de hoy— con
+> el agravante de que `README.md` llegó a tener el mismo párrafo **tres veces** con
+> tres conteos distintos (B-296). Un número que hay que actualizar a mano en un
+> documento envejece siempre, y mientras tanto miente con autoridad. Lo dice la
+> suite al terminar; eso no puede quedar viejo. `tests/salud-del-codigo.test.ts`
+> lo hace cumplir (B-662): falla si `README.md` o este documento vuelven a
+> escribirlo. El `CHANGELOG`, el `BACKLOG` y `10-salud-del-codigo.md` quedan
+> afuera a propósito — ahí un conteo fechado es el dato, no un descuido.
+
+### Remedir la salud del código (B-311)
+
+`docs/10-salud-del-codigo.md` vale porque cada cifra salió de contar el árbol
+real, y su encabezado prohíbe estimarlas. El costo de esa regla era que remedir a
+mano son un par de horas, así que **no se remedía**: llegó a declarar 111 archivos
+de producción con 180 en el árbol.
+
+```bash
+node scripts/salud-del-codigo.mjs          # las tablas, en markdown
+node scripts/salud-del-codigo.mjs --json   # lo mismo, para otro programa
+```
+
+Tres cosas que conviene tener claras antes de correrlo:
+
+- **No escribe el documento y no decide nada.** Imprime las cifras; qué significa
+  que una se movió, qué entra en «lo que está bien» y qué problema abrió o cerró
+  sigue siendo trabajo de quien remide. Lo caro de ese documento nunca fue contar.
+- **No hay ningún test que compare esas cifras contra el árbol**, a propósito: se
+  mueven con cada commit de cualquier frente, y un chequeo que se pone rojo por
+  trabajo ajeno es el que enseña a saltearse los chequeos (B-180).
+- **Lo que sí está atado** vive en `tests/salud-del-codigo.test.ts`: cero ciclos
+  de import, que los archivos que las tablas nombran existan, y que el criterio
+  escrito en el documento sea el mismo que el script aplica.
 
 ### Cada checkout tiene su propia base en el emulador (B-219)
 

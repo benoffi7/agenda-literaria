@@ -55,14 +55,19 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 2.173 tests en 93 archivos. 79 de esos
-   tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
-   también **Storage**), repartidos en 7
-   archivos: seis se saltean enteros y de
-   `events-json-endpoint.integracion.test.ts` se saltean 4 de sus 6, porque las
-   dos ramas de credenciales no necesitan emulador. Si no están, se saltean
-   solos — **salvo con `EXIGIR_EMULADOR=1`**, que es como los corre el CI
-   justamente para que no se salteen en silencio.
+2. **Correr los tests.** `npm test`. **El tamaño de la suite lo dice ella al
+   terminar** (`Test Files` / `Tests`) y no está escrito acá a propósito: el
+   conteo a mano quedó viejo cinco veces en dos semanas, y en un merge este mismo
+   paso llegó a estar **tres veces** con tres números distintos (B-296). Un
+   número que hay que actualizar a mano miente con autoridad hasta que alguien lo
+   nota. `tests/salud-del-codigo.test.ts` lo hace cumplir (B-662).
+
+   Lo que sí conviene saber, porque no se ve en la salida: los archivos
+   `*.integracion.test.ts` necesitan los emuladores corriendo (`npm run emu`, que
+   desde B-167 levanta también **Storage**), y si no están **se saltean solos** —
+   salvo con `EXIGIR_EMULADOR=1`, que es como los corre el CI justamente para que
+   no se salteen en silencio. Dos archivos más se saltean sin un `dist/`
+   construido, y esos los cubre el paso 4 del gate.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
 4. **Antes de cerrar un cambio, pasar los auditores** de
