@@ -170,18 +170,30 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 ## Cloud Functions (v2)
 
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
+**Son ocho, y las ocho están ACTIVE.**
+
+> **Estado relevado contra GCP el 2026-09-03**, no deducido del árbol:
+> `gcloud functions list --project agenda-literaria --format='value(name,updateTime)'`.
+> Las ocho tienen `updateTime` de ese día — siete a las 16:14 (el job «Cloud
+> Functions» de `push-main.yml`, que despliega sin filtro) y
+> `limpiarImagenesHuerfanas` a las 16:37. Antes de este relevamiento esta tabla
+> decía que `syncCalendar` y `rebuildPorOpciones` «hay que redesplegar» y que
+> `limpiarImagenesHuerfanas` estaba «sin desplegar»: las tres afirmaciones eran
+> de antes de **D-132** (2026-08-28), que le dio a `deploy-ci@` los roles para
+> desplegar Functions desde CI. Desde entonces cada push que toca `functions/`
+> las redespliega solas, y nadie volvió a mirar la tabla.
 
 
 | Función | Trigger | Estado |
 |---|---|---|
-| `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — **hay que redesplegar** (B-80, B-82, B-83) |
-| `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — **hay que redesplegar** (B-04, `timeoutSeconds: 300`) |
+| `syncCalendar` | `onDocumentWritten actividades/{id}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; los cambios de B-80/B-82/B-83 están vivos |
+| `rebuildPorOpciones` | `onDocumentWritten opciones/{campo}` | ACTIVE — al día. Redesplegada por CI el 2026-09-03 16:14; el cambio de B-04 está vivo (`timeoutSeconds: 300`) |
 | `guardarVersion` | `onDocumentUpdated actividades/{id}` | ACTIVE |
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | ACTIVE — desplegada a mano el 2026-08-25 |
 | `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
 | `optimizarImagen` | `onObjectFinalized` (bucket entero) | ACTIVE — desplegada y barrida el 2026-09-03 (B-220, D-175). Ver `08-operacion.md` § «Estado: desplegada y barrida el 2026-09-03» |
-| `limpiarImagenesHuerfanas` | `onSchedule every 24 hours` | **escrita, sin desplegar** — B-221. Su primer deploy necesita el mismo IAM de `optimizarImagen` (nada nuevo: `roles/storage.objectUser` ya incluye `storage.objects.delete`). Ver `08-operacion.md` § «El barrido de huérfanas» |
+| `limpiarImagenesHuerfanas` | `onSchedule every 24 hours` | ACTIVE — desplegada el 2026-09-03 16:37 (041ab45), B-221 cerrado. El IAM que pedía era el mismo de `optimizarImagen` y no hacía falta nada nuevo: `roles/storage.objectUser` ya incluye `storage.objects.delete`. Ver `08-operacion.md` § «El barrido de huérfanas» |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
 solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
@@ -216,7 +228,9 @@ doc creía que faltaba trabajo que ya estaba hecho:
   2026-08-21**, o sea desde antes de que se escribiera que faltaba.
 - `guardarVersionAlBorrar` era la única de la tabla que la doc tenía bien… y se
   desplegó a mano ese mismo día, después de este relevo. **Las seis Functions del
-  proyecto están ACTIVE**, por primera vez.
+  proyecto están ACTIVE**, por primera vez. *(Seis eran las de ese día; hoy son
+  ocho — ver la tabla y el relevo del 2026-09-03 más arriba. Este bloque queda
+  fechado a propósito: es el registro de ese relevamiento, no el estado de hoy.)*
 
 Consecuencia para B-20: **los cinco pasos están hechos** desde el 2026-08-25. Un
 push a `main` publica el sitio y el panel solo. Lo que sigue sin funcionar es el
