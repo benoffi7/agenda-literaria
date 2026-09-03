@@ -52,7 +52,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
-| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` **y sobre el HTML de las páginas de detalle** que salieron (B-110) |
+| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json`, sobre el HTML de las páginas de detalle (B-110) y —desde B-121— sobre **todos** los archivos publicables del `dist/`, barriéndoles los centinelas |
 | `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
 | `node scripts/project-id-emulador.mjs` | la **base de emulador de este checkout** (`agenda-literaria-<8 hex>`). Es de dónde salen el `projectId` de los tests y el del gate (B-219) |
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |

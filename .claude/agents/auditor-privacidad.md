@@ -192,6 +192,27 @@ propiedad del día en que se escribió.
    dinámico, y que `ssr.external` siga en `astro.config.mjs`. Un import estático
    desde algo que no sea frontmatter de `.astro`, `getStaticPaths` o un script de
    build sigue siendo P0 si el test no lo cubriera.
+4-bis. **El artefacto construido (`dist/`) ya se barre entero, y no lo reportes
+   — B-121.** Era la parte del ítem que faltaba y se cerró el 2026-09-03: el
+   **paso 9** de `scripts/build-contra-emulador.mjs` recorre todo `.html`,
+   `.json`, `.xml` y `.txt` que el build escribió y busca los centinelas de
+   `difusion`, la URL de la reunión, los uids, el `storagePath` y el resto, con
+   las excepciones declaradas **por salida**. La lista de archivos se recorre, no
+   se enumera: una página nueva entra sola.
+
+   **Lo que sí te toca**, y es lo que ningún grep puede decidir: si una excepción
+   declarada está **bien** declarada. `CENTINELA_DEL_DETALLE`,
+   `CENTINELA_DEL_INDICE` y `CENTINELA_DE_LA_CARTELERA` son la frontera de
+   privacidad escrita como lista, y una entrada nueva ahí es una decisión de
+   publicar. Ese es tu hallazgo: no que el campo aparezca, sino que alguien lo
+   haya permitido sin decir por qué.
+
+   Y una segunda cosa, que ya falló: las excepciones se declaran **en los dos
+   barridos** —el de vitest sobre el view-model y el del gate sobre el
+   artefacto—, y B-99 declaró el id de sesión solo en el primero. El gate quedó
+   rojo por un campo público, que es cómo se aprende a saltear un gate (B-180).
+   Si ves una excepción en un solo lado, es hallazgo.
+
 5. **El historial de versiones guarda el documento entero sin proyectar**, a
    propósito (§12, D-41), y es aceptable porque su audiencia es la misma que la
    del documento padre. Se vuelve un hallazgo el día que el build lea
