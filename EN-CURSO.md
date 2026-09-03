@@ -34,6 +34,7 @@ de CHANGELOG/BACKLOG/decisiones listo para pegar en su archivo de `.estado/`.
 |---|---|---|---|
 | `worktree-agent-aba3611dce018e0a3` | 12 | Salud: B-294, B-606, B-169, B-311, B-116, B-78, B-121, B-122, B-33 | Su arreglo del gate **choca con `c095618` de `main`**: quedarse con el de main —afirma en las dos direcciones— y montar encima sus pasos 9 y 10 |
 | `worktree-agent-a435211a7fe919bfc` | 8 | Analítica: B-481 (fuentes propias), B-374/B-373, B-601 declarado | **No tiene B-600**: el enganche del evento del tríptico quedó como parche de 5 líneas en su `.estado` |
+| `worktree-agent-a41fecfce41a714a1` | 7 | Sitio: la `/404`, el buscador de `/pasadas`, B-650, B-261, y **el panel vacío del tríptico oculto** (pedido del dueño) | Ya trae `main` mergeado. Deja **B-654 (P1)** y **B-651**, que el propio frente introdujo: la `/404` manda a GA4 la dirección pedida |
 | `worktree-agent-afbc2e618dff083ad` | 14 | Panel: B-91, B-45, B-175, B-622, B-621 (el ancho), B-62, B-29 | **El calendario ya está ancho**; falta repartir su grilla por dentro. B-100, B-30 y B-179 **no se implementaron a propósito**, con el motivo escrito |
 | `worktree-agent-a3eed17892ac21287` | 4 | Ciclos: B-150, B-89, B-77 | Sus docs citan **D-361** y **B-630**, que viven en su `.estado`: sin pegarlos quedan dos enlaces colgados |
 | `worktree-agent-a7a0d08692493079a` | 4 | **D-210 integrado y auditado**: el `srcset` ya no promete una miniatura sin confirmar | Base `d366f77`, así que conflicto seguro en `docs/06` y `docs/12`, que `main` movió. Su `.estado/rescate.md` tiene el texto de las filas 6 y 7 de `07-seguridad.md` + la ficha del auditor, que es **atómico** y ya lo probó en seco |
@@ -46,7 +47,6 @@ de CHANGELOG/BACKLOG/decisiones listo para pegar en su archivo de `.estado/`.
 | Frente | Rama | Ítems |
 |---|---|---|
 | Tablero de estadísticas | `worktree-agent-a1e3f0ab2cf79ee12` | El ancho, los gráficos nuevos, torta/lista, mapa de calor. **Arranca mergeando la rama de analítica** |
-| Sitio público | `worktree-agent-a41fecfce41a714a1` | B-310, B-114, B-292, B-101, B-274, B-261 |
 
 Cada uno commitea por ítem y escribe una línea en su `.estado/<frente>.md` después
 de cada commit. **Si hay que frenar: mirar `git log main..HEAD` de cada worktree
