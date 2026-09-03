@@ -182,7 +182,9 @@ function PanelCatalogo({
         de nadie que visite el sitio.
       </p>
 
-      {/* ── El encabezado de números ── */}
+      {/* ── El encabezado de números ──
+          Cuatro y no más: son la línea que se lee de un vistazo, así que las
+          cuatro columnas se sostienen a cualquier ancho sin repartir de nuevo. */}
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { que: 'Actividades', valor: estado.total },
@@ -206,7 +208,17 @@ function PanelCatalogo({
             encuentros por venir.
           </p>
         ) : (
-          <ul className="mt-3 space-y-4">
+          /*
+           * B-621 — con el tablero a todo ancho, una pila de tarjetas de 1200px
+           * deja el título en una punta y el número en la otra, y leer un renglón
+           * es viajar con el ojo. Desde `xl` van de a dos, que es donde el chasis
+           * ancho tiene con qué (ver `lib/anchoDelPanel.ts`).
+           *
+           * Comentario de JS y no `{/* … *\/}`: acá adentro se está en una
+           * **expresión** (la rama del ternario), no entre los hijos de un
+           * elemento, y ahí el segundo no compila.
+           */
+          <ul className="mt-3 grid gap-4 xl:grid-cols-2">
             {estado.avisos.map((aviso) => (
               <li key={aviso.clase} className="rounded-md border border-borde bg-white p-3">
                 <div className="flex items-baseline justify-between gap-3">
@@ -439,16 +451,27 @@ function PanelSitioPublico() {
         </p>
       </div>
 
-      <GrupoDeMetricas
-        titulo="Para ofrecer a un anunciante"
-        nota="Lo que Google Analytics da solo, sin ningún evento propio."
-        items={METRICAS_PARA_VENDER}
-      />
-      <GrupoDeMetricas
-        titulo="Para mejorar el sitio"
-        nota="Fricciones concretas. Los eventos ya están instalados y esperando volumen."
-        items={METRICAS_PARA_MEJORAR}
-      />
+      {/*
+        B-621 — los dos grupos son listas de renglones «nombre … estado», así que
+        apilados a 1200px de ancho dejan el estado a media pantalla del nombre.
+        Desde `lg` van uno al lado del otro, que es además cómo se leen: las dos
+        mitades del §2 del documento de arquitectura, en paralelo.
+
+        `items-start` para que la columna corta no estire su borde hasta el largo
+        de la otra.
+      */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <GrupoDeMetricas
+          titulo="Para ofrecer a un anunciante"
+          nota="Lo que Google Analytics da solo, sin ningún evento propio."
+          items={METRICAS_PARA_VENDER}
+        />
+        <GrupoDeMetricas
+          titulo="Para mejorar el sitio"
+          nota="Fricciones concretas. Los eventos ya están instalados y esperando volumen."
+          items={METRICAS_PARA_MEJORAR}
+        />
+      </div>
     </div>
   );
 }

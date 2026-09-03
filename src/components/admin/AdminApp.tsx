@@ -16,6 +16,7 @@ import {
   debeConfirmarSalida,
   tieneFormulario,
 } from '@/lib/salida-del-panel';
+import { claseAnchoDePanel } from '@/lib/anchoDelPanel';
 import { VERSION_APP } from '@/lib/version';
 // Estático: la ayuda es solo datos y componentes, no toca Firestore.
 import { BotonAyuda } from '@/components/admin/ayuda/BotonAyuda';
@@ -346,7 +347,11 @@ export function AdminApp() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-segura py-6 lg:max-w-4xl">
+    // B-621 — el ancho lo decide la vista, no el chasis: la grilla de siete
+    // columnas del calendario y el tablero de métricas no entran en una medida
+    // de lectura, y el formulario no puede tener la de ellos. La decisión vive
+    // en `lib/anchoDelPanel.ts`.
+    <div className={`mx-auto ${claseAnchoDePanel(vista.tipo)} px-segura py-6`}>
       <AvisoVersionNueva {...estadoVersion} />
       <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-borde pb-4">
         <div className="min-w-0 flex-1">

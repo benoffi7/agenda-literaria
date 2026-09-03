@@ -60,6 +60,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'calendario-y-tablero-mas-anchos',
+    fecha: '2026-09-03',
+    titulo: 'El calendario y las estadísticas usan toda la pantalla',
+    detalle:
+      'En una computadora, esas dos pantallas quedaban encajadas en una columna angosta: el mes ' +
+      'no entraba y los números había que mirarlos de a uno. Ahora se ensanchan y los bloques se ' +
+      'acomodan de a dos. El formulario y el listado no cambian: ahí una columna angosta se lee ' +
+      'mejor. En el teléfono no cambia nada.',
+    donde: 'Panel → Calendario, y Panel → Estadísticas.',
+  },
+  {
     id: 'destacada-se-ve-en-el-listado',
     fecha: '2026-09-03',
     titulo: 'El listado ahora te dice cuáles marcaste como destacadas',
