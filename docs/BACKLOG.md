@@ -6433,6 +6433,19 @@ job que solo lee no cargue el alcance del que publica.
 repo ordenado segundo, y `tests/roles-deploy-ci.test.ts`, que impide que el
 documento de seguridad vuelva a decir que el daño se limita a leer.
 
+> **2026-09-03 — verificado, el disparador todavía no ocurrió.** Contra la API
+> de GitHub, con la cuenta dueña del repo (`gh api repos/benoffi7/agenda-literaria/…`):
+> **un solo colaborador** (`benoffi7`, admin), **cero forks**, **cero
+> colaboradores externos** (`?affiliation=outside`), **un solo secret de
+> Actions** (`FIREBASE_SERVICE_ACCOUNT`) y **cero `environments`** configurados.
+> El secret sigue teniendo un solo lector, así que la condición que dispara
+> este ítem sigue sin cumplirse — no se implementó el split de `build-ci@` /
+> `deploy-ci@` porque hacerlo ahora sería resolver un problema que todavía no
+> existe, en contra de lo que el ítem mismo pide ("el día que pase"). Queda
+> escrito para que la próxima vez que se agregue un colaborador con push, se
+> habilite un fork con Actions, o se sume un runner de terceros, sea la señal
+> de volver a este ítem.
+
 ---
 
 ### B-231 · La home no ofrece suscribirse al calendario, y el bloque ya está escrito · P2 — ✅ hecho (2026-09-01)

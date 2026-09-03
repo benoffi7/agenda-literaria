@@ -84,6 +84,14 @@ pone rojo el test de B-220; agregar un chunk inventado a una lista negra
 hipotética habría pasado de largo, que es justo el modo de falla que este
 cambio cierra.
 
+## 2026-09-03 · B-225 verificado — el disparador todavía no ocurrió
+
+Se revisó si partir la key de CI (`deploy-ci@`) en `build-ci@`/`deploy-ci@` ya
+hace falta. Contra la API de GitHub: un solo colaborador (el dueño), cero
+forks, cero colaboradores externos, un solo secret de Actions y cero
+`environments` configurados. El secret sigue con un solo lector, así que la
+condición que dispara el ítem (D-132) sigue sin cumplirse. Sin cambios de
+código; verificación dejada en `docs/BACKLOG.md`.
 
 ## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
 
