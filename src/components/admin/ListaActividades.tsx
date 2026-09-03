@@ -15,9 +15,6 @@ import {
   marcarCupoCompleto,
 } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
-import { faltaElFlyer, imagenesDe } from '@/lib/imagenes';
-import { fechaHoraLegible } from '@/lib/calendarioPanel';
-import { ETIQUETA_AUTORIA, autoriaDe } from '@/lib/formulario/autoria';
 import {
   casillasAplicables,
   duplicarActividadForm,
@@ -29,13 +26,14 @@ import {
   FILTROS_VACIOS,
   ORDEN_POR_DEFECTO,
   hayFiltros,
-  legible,
   listaVisible,
   opcionesPresentes,
-  proximoEncuentro,
   type Filtros,
   type Orden,
 } from '@/lib/filtrosActividades';
+// B-600 — qué dice cada tarjeta se decide afuera del JSX, en un módulo puro con
+// sus tests: acá quedan la maquetación y el cableado.
+import { datosDeTarjeta, type ContextoDeTarjeta } from '@/lib/tarjetaDelPanel';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
@@ -59,18 +57,35 @@ interface Props {
  */
 const SIN_PENDIENTES: LabelsTaxonomia = {};
 
-/** "Próximo: lunes 24 de agosto · 19:00", o que no queda nada por pasar. */
-const textoProximo = (a: ActividadConId, ahora: Date): string => {
-  const proximo = proximoEncuentro(a, ahora);
-  return proximo ? `Próximo: ${fechaHoraLegible(proximo)}` : 'Sin encuentros por venir';
-};
-
 const COLOR_ESTADO: Record<string, string> = {
   borrador: 'bg-tinta/10 text-tinta/70',
   pendiente: 'bg-amber-100 text-amber-800',
   publicado: 'bg-emerald-100 text-emerald-800',
   cancelado: 'bg-acento/10 text-acento',
 };
+
+/**
+ * B-600 — la grilla de tarjetas.
+ *
+ * **Una sola columna hasta `md`**, que es el pedido: en un teléfono la tarjeta
+ * ocupa el ancho y ya está. De `md` en adelante se abren columnas, y el tope es
+ * cuatro: con más, el título de un taller entra en dos renglones de seis
+ * caracteres y la grilla deja de leerse de un barrido.
+ *
+ * Los breakpoints son los de Tailwind sin tocar, así que las columnas cambian en
+ * 768 / 1280 / 1536 px — `lg` (1024) hereda las dos de `md` a propósito: una
+ * laptop de 1280 lógicos entra en `xl`, y la franja de 1024 a 1279 es donde una
+ * tercera columna ya empieza a apretar.
+ */
+const CLASE_GRILLA = 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
+
+/**
+ * Marca de una tarjeta: «Cupo completo», «Sin flyer». Es la misma píldora que
+ * traía la fila, y va acá y no en `Campo.tsx` porque no es un control — no se
+ * enfoca, no se toca y no tiene estado.
+ */
+const CLASE_MARCA =
+  'whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70';
 
 export function ListaActividades({
   onEditar,
@@ -133,6 +148,25 @@ export function ListaActividades({
   );
 
   const opciones = useMemo(() => opcionesPresentes(actividades), [actividades]);
+
+  /**
+   * B-600 — lo que dice cada tarjeta, resuelto de una vez para toda la lista.
+   *
+   * Va memoizado y no calculado dentro del `map` del render por lo que cuesta la
+   * parte que no depende de los filtros: `datosDeTarjeta` recorre las sesiones de
+   * cada actividad para encontrar la próxima, y sin el memo eso se repite en cada
+   * render que no cambió la lista —abrir el modal de duplicar, prender un cupo,
+   * un re-render del padre—. Las etiquetas están entre las dependencias porque
+   * llegan **después** que las actividades: `/opciones/*` se lee en vivo (§4.4),
+   * así que la primera pasada pinta el des-slug y la siguiente la etiqueta.
+   *
+   * El par viaja junto y no en dos listas paralelas indexadas por posición: dos
+   * arrays que hay que mantener alineados es la trampa 2 con otra cara.
+   */
+  const tarjetas = useMemo(() => {
+    const contexto: ContextoDeTarjeta = { labels, ahora, uid };
+    return filtradas.map((a) => ({ a, t: datosDeTarjeta(a, contexto) }));
+  }, [filtradas, labels, ahora, uid]);
 
   /**
    * B-11 — la copia se arma acá porque el listado ya tiene todos los slugs en
@@ -260,87 +294,91 @@ export function ListaActividades({
         </p>
       )}
 
-      <ul className="flex flex-col gap-2">
-        {filtradas.map((a) => (
+      {/*
+        B-600 — el listado es una **grilla de tarjetas** y no una fila por
+        actividad. Con la fila, el panel usaba una columna de 768px en una
+        pantalla de 1920 y había que scrollear veinte veces para ver cuarenta
+        actividades, que es justo lo que un listado tiene que evitar.
+
+        La tarjeta dice **más** que la fila, no menos: se suman la modalidad y el
+        arancel, que estaban en los filtros y no en el resultado —o sea que se
+        podía filtrar por «Gratis» y después no ver cuál era gratis—. Y no se
+        pierde nada de lo que la fila decía: el chequeo de clase de
+        `tests/tarjeta-del-panel.test.ts` exige que cada campo del view-model se
+        pinte.
+      */}
+      <ul className={CLASE_GRILLA}>
+        {tarjetas.map(({ a, t }) => (
           <li
             key={a.id}
-            className="rounded-md border border-borde bg-white px-3 py-2.5 sm:flex sm:items-center sm:gap-3"
+            className="flex min-w-0 flex-col gap-2 rounded-md border border-borde bg-white px-3 py-2.5"
           >
-            <div className="flex min-w-0 items-start gap-2 sm:flex-1">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-serif font-semibold">{a.titulo}</p>
-                <p className="text-xs text-tinta/55">
-                  {/* §4.1 — la etiqueta, nunca el valor guardado: en el panel
-                      "club-lectura" se lee "Club de lectura". */}
-                  {labels.tipo?.[a.tipo] ?? legible(a.tipo)} · {a.sesiones?.length ?? 0}{' '}
-                  {(a.sesiones?.length ?? 0) === 1 ? 'encuentro' : 'encuentros'}
-                  {a.sede?.barrio
-                    ? ` · ${labels.barrio?.[a.sede.barrio] ?? legible(a.sede.barrio)}`
-                    : ''}
-                </p>
-                {/* B-96 — la fecha que importa es la que viene, no la última
-                    modificación: es lo que hace accionable el listado. */}
-                <p className="text-xs text-tinta/45">
-                  {textoProximo(a, ahora)}
-                  {/*
-                    B-130 — `createdBy` se guardaba en cada documento y no se
-                    leía en ninguna parte, así que "¿esto lo cargué yo?" no se
-                    podía contestar mirando la pantalla. Solo se marca lo ajeno:
-                    si todo lleva marca, la marca deja de avisar.
-                  */}
-                  {ETIQUETA_AUTORIA[autoriaDe(a, uid)] && (
-                    <span className="ml-1.5 text-tinta/40">
-                      · {ETIQUETA_AUTORIA[autoriaDe(a, uid)]}
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}
-                >
-                  {ETIQUETA_ESTADO[a.estado] ?? a.estado}
+            {/* El estado y las marcas arriba: es lo que se busca de un barrido
+                cuando la grilla tiene doce tarjetas a la vista. */}
+            <div className="flex flex-wrap items-center gap-1">
+              <span className={`rounded-full px-2 py-0.5 text-xs ${COLOR_ESTADO[a.estado] ?? ''}`}>
+                {ETIQUETA_ESTADO[a.estado] ?? a.estado}
+              </span>
+              {/*
+                B-97 y B-264 — «Cupo completo» y «Sin flyer». Cuál corresponde lo
+                decide `datosDeTarjeta`; acá solo se pintan las que vinieron, así
+                que una marca nueva no necesita otra rama en el JSX.
+              */}
+              {t.marcas.map((marca) => (
+                <span key={marca} className={CLASE_MARCA}>
+                  {marca}
                 </span>
-                {/*
-                  B-97 — lo que se publica se ve desde el panel. Sin este cartel,
-                  «está marcada como completa» solo se sabría abriendo el menú, y
-                  el sitio y el calendario ya lo están diciendo.
-                */}
-                {a.inscripcion?.completo === true && (
-                  <span className="whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70">
-                    Cupo completo
-                  </span>
-                )}
-                {/*
-                  B-264 — «se nota que falta». El aviso de la barra solo lo ve
-                  quien ya abrió esa actividad; el listado es donde se ve el
-                  conjunto, y el conjunto era 2 con imagen sobre 42.
-
-                  **Solo en las publicadas, y solo cuando falta** — es la misma
-                  regla que la marca de autoría de B-130: si todo lleva marca, la
-                  marca deja de avisar. Un borrador sin flyer no le falta nada
-                  todavía; una publicada sin flyer ya está afuera de la cartelera.
-
-                  La condición sale de `faltaElFlyer`, la misma que usan el aviso
-                  del formulario y la cartelera: tres lugares que tienen que
-                  decir lo mismo y una sola derivación.
-                */}
-                {a.estado === 'publicado' && faltaElFlyer(imagenesDe(a)) && (
-                  <span className="whitespace-nowrap rounded-full border border-tinta/25 px-2 py-0.5 text-xs text-tinta/70">
-                    Sin flyer
-                  </span>
-                )}
-              </div>
+              ))}
             </div>
+
             {/*
-              Duplicar y borrar van en un menú y no en la fila: tres botones en
+              Dos renglones y no `truncate`: en una tarjeta de 320px un título de
+              taller no entra en uno, y cortarlo en «Taller de crónica bre…»
+              obliga a abrir la actividad para saber cuál es.
+            */}
+            <p className="line-clamp-2 font-serif font-semibold">{a.titulo}</p>
+
+            <div className="flex min-w-0 flex-col gap-0.5 text-xs text-tinta/55">
+              {/* §4.1 — las etiquetas, nunca el valor guardado: en el panel
+                  "club-lectura" se lee "Club de lectura". */}
+              <p>{t.identidad.join(' · ')}</p>
+              <p>{t.donde.join(' · ')}</p>
+              {/* El arancel con el acento cuando no se paga, con el mismo
+                  criterio que la fila del sitio público (lib/arancel.ts). */}
+              {t.arancel && (
+                <p className={t.sinCosto ? 'font-medium text-acento' : undefined}>{t.arancel}</p>
+              )}
+            </div>
+
+            {/*
+              B-96 — la fecha que importa es la que viene, no la última
+              modificación: es lo que hace accionable el listado.
+
+              `mt-auto` la empuja al pie de la tarjeta, así en una fila de la
+              grilla las fechas quedan alineadas entre sí aunque los títulos midan
+              distinto — que es lo que permite compararlas de un barrido.
+            */}
+            <p className={`mt-auto text-xs ${t.hayProximo ? 'text-tinta/45' : 'text-tinta/35'}`}>
+              {t.cuando}
+            </p>
+
+            {/*
+              B-130 — «¿esto lo cargué yo?». Solo se marca lo ajeno: si todo
+              llevara marca, la marca dejaría de avisar. Va en su propio renglón y
+              en la tinta más apagada de la tarjeta: dice de quién es, no algo que
+              haya que atender.
+            */}
+            {t.autoria && <p className="text-xs text-tinta/40">{t.autoria}</p>}
+
+            {/*
+              Duplicar y borrar van en un menú y no en la tarjeta: tres botones en
               360px dan blancos de ~100px y se erra el toque. Ver MenuAcciones.
             */}
-            <div className="mt-2 flex gap-2 sm:mt-0 sm:shrink-0">
+            <div className="flex gap-2 border-t border-borde pt-2">
               <button
                 type="button"
                 onClick={() => onEditar(a)}
-                className={`${claseBotonSecundario} flex-1 sm:flex-none`}
+                className={`${claseBotonSecundario} flex-1`}
               >
                 Editar
               </button>

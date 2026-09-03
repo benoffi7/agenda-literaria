@@ -382,11 +382,24 @@ describe('se prende desde el menú del listado, no desde el formulario', () => {
     expect(listado).toContain("'Marcarcupocompleto'");
   });
 
-  it('y la fila muestra que está marcada, sin abrir el menú', () => {
-    // Lo que se publica se puede ver desde el panel: el cartel ya está en el
-    // sitio y en los N eventos.
+  it('y la tarjeta muestra que está marcada, sin abrir el menú', () => {
+    /*
+     * Lo que se publica se puede ver desde el panel: el cartel ya está en el
+     * sitio y en los N eventos.
+     *
+     * **B-600 movió la mitad de este chequeo, y no lo que garantiza.** El literal
+     * «Cupo completo» estaba en el JSX de `ListaActividades.tsx`; al pasar el
+     * listado de fila a grilla de tarjetas, *qué marcas lleva una actividad* se
+     * decidió afuera, en `lib/tarjetaDelPanel.ts`, para poder testearlo puro. Así
+     * que el texto se busca donde se decide, y del componente se exige que pinte
+     * las marcas que recibe — que es lo que hace que una marca nueva aparezca sin
+     * tocar el JSX. Que efectivamente se vea en pantalla lo verifica
+     * `tests/lista-actividades.render.test.tsx` contra el DOM, que es más de lo
+     * que este `toContain` podía decir.
+     */
+    expect(codigoSinEspacios('src/lib/tarjetaDelPanel.ts')).toContain("'Cupocompleto'");
     const listado = codigoSinEspacios('src/components/admin/ListaActividades.tsx');
-    expect(listado).toContain('Cupocompleto');
+    expect(listado).toContain('t.marcas.map(');
     // Y la sección del formulario lo avisa, aunque no lo edite.
     expect(codigoSinEspacios('src/components/admin/formulario/SeccionArancelInscripcion.tsx')).toContain(
       'form.inscripcion.completo&&',
