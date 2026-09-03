@@ -44,8 +44,19 @@ import { ts } from './fixtures/tiempo';
 
 const DOS_HORAS = 2 * 60 * 60 * 1000;
 
-const sesion = (inicioIso: string, over: Partial<Sesion> = {}): Sesion =>
-  ({
+/**
+ * Un encuentro de **dos horas**, no de cero.
+ *
+ * El default se calcula aparte y con nombre en vez de `over.fin ?? …inicio…`,
+ * que es el patrón que `tests/invariantes-de-ciclo.test.ts` persigue (B-135, el
+ * patrón de H1): un `fin` que cae en `inicio` salvo que el caller se acuerde
+ * deja fixtures de duración cero, donde los dos criterios de «ya pasó» son
+ * indistinguibles y el caso deja de ejercitar lo que dice.
+ */
+const sesion = (inicioIso: string, over: Partial<Sesion> = {}): Sesion => {
+  const arranque = new Date(inicioIso);
+  const cierre = new Date(arranque.getTime() + DOS_HORAS);
+  return {
     id: `ses_${inicioIso}`,
     tema: null,
     lectura: null,
@@ -53,8 +64,9 @@ const sesion = (inicioIso: string, over: Partial<Sesion> = {}): Sesion =>
     calendarEventId: null,
     ...over,
     inicio: ts(inicioIso),
-    fin: over.fin ?? ts(new Date(new Date(inicioIso).getTime() + DOS_HORAS).toISOString()),
-  }) as unknown as Sesion;
+    fin: over.fin ?? ts(cierre.toISOString()),
+  } as unknown as Sesion;
+};
 
 const acto = (id: string, inicios: string[], over: Partial<ActividadConId> = {}): ActividadConId =>
   ({
