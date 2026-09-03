@@ -2972,7 +2972,7 @@ capa de ayuda del panel (B-14, B-64). El §10 del diseño dice que el sitio púb
 es el lugar donde ese componente se hace bien de entrada y que después puede
 resolver los dos del panel.
 
-### B-239 · La home baja el runtime de React por la island de filtros · P2
+### B-239 · La home baja el runtime de React por la island de filtros · P2 — descartado (2026-09-03), con el motivo escrito
 
 Medido en el build del 2026-08-28: `client.BlZe1zq3.js` son **186 KB (58 KB
 gzip)**, más `Buscador` (16 KB / 5,8 KB gzip). El §8 del diseño fija el presupuesto
@@ -3007,6 +3007,43 @@ simulado.
 > y no importa React. El camino 2 —reescribir la island sin framework— se encareció
 > por lo mismo que se ganó: la portada es un componente más que habría que rehacer a
 > mano y volvería a haber dos markups de tarjeta.
+
+> ❌ **Descartado el 2026-09-03, midiendo antes de decidir — como pedía este
+> ítem.** `client.BlZe1zq3.js` **sigue exactamente igual**: 186.619 B / 58.540 B
+> gzip, el mismo hash de contenido que en la medición de B-247. La home carga
+> ese chunk más `Buscador` (≈20 KB / 7 KB gzip) — nada más: un solo
+> `astro-island` en todo `dist/index.html`. En un 3G simulado (~400 kbps) son
+> ~1,3 s de descarga solo de JS, encima de ~17 KB de HTML — no es gratis, pero
+> tampoco es el cuadro completo.
+>
+> **Las dos rutas de acción siguen sin mejorar, y una empeoró:**
+>
+> - **Camino 1 (`preact/compat`)** — el riesgo que el ítem señalaba (compartir
+>   `Tarjeta` con el panel) ya no aplica, pero apareció uno más caro al mirarlo
+>   de cerca: Astro no tiene forma de aliasear `react`→`preact/compat` **por
+>   ruta**. El `resolve.alias` de Vite es un único bloque para todo
+>   `astro.config.mjs`, así que un alias global se lo llevaría puesto también a
+>   `AdminApp` (`217,91 KB`), que corre en **React 19**. `preact/compat` no
+>   garantiza paridad con las APIs más nuevas de React 19, y el panel es la
+>   herramienta de carga diaria: romperlo en silencio para bajar 48 KB gzip de
+>   una página que no es la que recibe tráfico es cambiar un riesgo chico por
+>   uno grande. Acotarlo de verdad pediría un segundo build o un plugin de Vite
+>   que resuelva por importer — trabajo real, no una línea.
+> - **Camino 2 (reescribir sin framework)** — sigue tan caro como en agosto: la
+>   portada generada y los controles nuevos son componentes que habría que
+>   rehacer a mano, y volvería a haber dos markups de tarjeta (lo que el §6.3
+>   del diseño pedía evitar).
+> - **Camino 3 (dejarlo)** — la página que recibe el tráfico real
+>   (`/actividad/{slug}`) sigue en cero JavaScript y no está afectada. 58 KB
+>   gzip cacheados en CDN, en el recorrido menos frecuente de los tres del §1
+>   del diseño (el propio documento lo dice: «el más importante no empieza en
+>   la home»).
+>
+> **Se elige el camino 3.** No porque el peso no importe, sino porque las dos
+> formas de bajarlo cambiaron de precio en la dirección equivocada desde la
+> última vez que se miró, y ninguna paga su costo hoy. Si el tráfico a la home
+> crece lo suficiente para que esto duela de verdad, la medición de arriba es
+> el punto de partida para retomarlo — no hay que volver a levantarla de cero.
 
 ### B-240 · La casilla dice «publicar el link en el sitio» y el sitio no lo publica — ✅ hecho (2026-09-01)
 

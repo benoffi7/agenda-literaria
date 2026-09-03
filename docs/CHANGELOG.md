@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-03 · B-239 descartado: medido de nuevo, las dos rutas de acción empeoraron
+
+**Cero cambios en `src/`.** B-239 pedía medir antes de elegir entre tres
+caminos para bajar el peso de React en la home. Se midió: `client.BlZe1zq3.js`
+no se movió un byte desde B-247 (186.619 B / 58.540 B gzip, mismo hash), la
+home sigue cargando un solo `astro-island`.
+
+Los dos caminos de acción se reevaluaron y los dos salieron más caros que la
+última vez, no más baratos. El de `preact/compat` tenía un riesgo que ya no
+aplica (`Tarjeta` no se comparte con el panel) pero encontró uno peor al
+mirarlo de cerca: Astro no separa el `resolve.alias` de Vite por ruta, así que
+un alias global a nivel `astro.config.mjs` se lo llevaría puesto también al
+panel, que corre React 19 sin garantía de paridad con `preact/compat`. El de
+reescribir la island sin framework sigue tan caro como en agosto por la
+portada generada de D-142.
+
+Se elige dejarlo — la tercera opción que el propio ítem ofrecía —, con el
+razonamiento completo en `docs/BACKLOG.md`.
+
 ## 2026-09-03 · B-112: el `lastmod` del sitemap, para las actividades publicadas
 
 **Solo la mitad que valía la pena, y la otra mitad quedó escrita como
