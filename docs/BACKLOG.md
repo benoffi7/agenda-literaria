@@ -3823,6 +3823,13 @@ mostrarlos en la pantalla de reportes. Con webhook hay que validar la firma
 
 Mientras no exista, el formulario y la lista lo dicen con todas las letras.
 
+**Reconsiderado en B-580 (2026-09-03):** al decidir cómo cerrar un reporte se
+evaluó de nuevo espejar el cierre del issue de GitHub y se descartó por el
+mismo motivo — Firestore es la única fuente de verdad. `resuelto` se
+implementó como flag local que marca un admin a mano. Ver D-310. Este ítem
+sigue abierto para el resto de B-30 (traer los *comentarios* del issue), que
+es un alcance distinto y no se decidió.
+
 ### B-31 · Un reporte en `error` no se puede reintentar desde el panel — ✅ hecho (2026-08-24)
 
 Si la creación del issue falla por configuración (token vencido, permiso, repo
