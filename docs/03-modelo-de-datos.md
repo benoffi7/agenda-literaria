@@ -571,6 +571,17 @@ campo a mano es copiar y pegar. Incluye `difusion` y `online.url`, que son
 internos — la subcolección solo la lee un admin y no hay camino al `events.json`.
 Ver [`07-seguridad.md`](07-seguridad.md).
 
+**La subcolección sobrevive al documento padre, y eso ahora tiene fecha de
+vencimiento** (B-89). `borrarActividad` es un `deleteDoc` y Firestore no borra
+subcolecciones, así que las versiones de una actividad borrada quedaban para
+siempre: basura que crece, y datos internos que sobreviven a la decisión de
+borrar. Que sobrevivan un tiempo **es la feature** —es lo que hace recuperable el
+borrado (B-41)—, así que no se purgan en el acto: `limpiarVersionesHuerfanas`
+(`onSchedule`, cada 24 horas) las borra cuando pasaron **30 días** desde la
+versión más nueva, o sea desde el borrado. Ver
+[`08-operacion.md`](08-operacion.md) § «El barrido de versiones huérfanas» y
+**D-361**.
+
 `camposCambiados` está para poder elegir qué versión abrir sin revisarlas de a
 una — antes desde la consola de Firestore, y desde B-40 es lo mismo que usa la
 pantalla de historial del panel para no mostrar las 20 versiones abiertas de

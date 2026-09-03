@@ -370,7 +370,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los ocho triggers del proyecto', () => {
+  it('encuentra los nueve triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -386,6 +386,11 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
       // `CLASES_DE_TRIGGER` desde el principio — este test se puso rojo por el
       // conteo, que es la parte que sí hay que confirmar a mano.
       'limpiarImagenesHuerfanas',
+      // El barrido de subcolecciones `versiones` huérfanas (B-89): otro
+      // `onSchedule`, y entró solo por la misma puerta que el anterior. Lo que
+      // sí hubo que confirmar a mano es el conteo — que es la parte del chequeo
+      // que no se puede derivar.
+      'limpiarVersionesHuerfanas',
       // **El primer trigger de Storage del proyecto** (B-220, D-175), y entró
       // solo: las cuatro clases `onObject*` se habían agregado a
       // `CLASES_DE_TRIGGER` el 2026-08-28 —antes de que existiera ninguno,

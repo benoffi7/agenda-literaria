@@ -182,6 +182,7 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
 | `optimizarImagen` | `onObjectFinalized` (bucket entero) | ACTIVE — desplegada y barrida el 2026-09-03 (B-220, D-175). Ver `08-operacion.md` § «Estado: desplegada y barrida el 2026-09-03» |
 | `limpiarImagenesHuerfanas` | `onSchedule every 24 hours` | **escrita, sin desplegar** — B-221. Su primer deploy necesita el mismo IAM de `optimizarImagen` (nada nuevo: `roles/storage.objectUser` ya incluye `storage.objects.delete`). Ver `08-operacion.md` § «El barrido de huérfanas» |
+| `limpiarVersionesHuerfanas` | `onSchedule every 24 hours` | **escrita, sin desplegar** — B-89. Sin IAM nuevo: corre con `calendar-sync@` y solo necesita `datastore.user`, que ya tiene. Ver `08-operacion.md` § «El barrido de versiones huérfanas» |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
 solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
