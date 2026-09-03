@@ -35,15 +35,17 @@ de CHANGELOG/BACKLOG/decisiones listo para pegar en su archivo de `.estado/`.
 | `worktree-agent-aba3611dce018e0a3` | 12 | Salud: B-294, B-606, B-169, B-311, B-116, B-78, B-121, B-122, B-33 | Su arreglo del gate **choca con `c095618` de `main`**: quedarse con el de main —afirma en las dos direcciones— y montar encima sus pasos 9 y 10 |
 | `worktree-agent-a435211a7fe919bfc` | 8 | Analítica: B-481 (fuentes propias), B-374/B-373, B-601 declarado | **No tiene B-600**: el enganche del evento del tríptico quedó como parche de 5 líneas en su `.estado` |
 | `worktree-agent-a3eed17892ac21287` | 4 | Ciclos: B-150, B-89, B-77 | Sus docs citan **D-361** y **B-630**, que viven en su `.estado`: sin pegarlos quedan dos enlaces colgados |
-| `worktree-agent-afaf97df7fb65b51f` | 1 | El rescate crudo de D-210 (`71f34d0`) | Lo está integrando el frente de abajo; no mergear este directamente |
+| `worktree-agent-a7a0d08692493079a` | 4 | **D-210 integrado y auditado**: el `srcset` ya no promete una miniatura sin confirmar | Base `d366f77`, así que conflicto seguro en `docs/06` y `docs/12`, que `main` movió. Su `.estado/rescate.md` tiene el texto de las filas 6 y 7 de `07-seguridad.md` + la ficha del auditor, que es **atómico** y ya lo probó en seco |
+| `worktree-agent-afaf97df7fb65b51f` | 1 | El rescate crudo (`71f34d0`) | **Ya no hace falta**: lo integró la rama de arriba. Borrable |
 
 ### Frentes corriendo
+
+*(El de rescate cerró: pasó a la tabla de arriba.)*
 
 | Frente | Rama | Ítems |
 |---|---|---|
 | Formulario y panel | `worktree-agent-afbc2e618dff083ad` | B-91, B-45, B-100, B-175, B-622, B-621, B-62, B-179, B-30, B-29, DEC-6 |
 | Sitio público | `worktree-agent-a41fecfce41a714a1` | B-310, B-114, B-292, B-101, B-274, B-261 |
-| Rescate D-210 | `worktree-agent-a7a0d08692493079a` | El `srcset` que rompe la portada, con D-210 escrita |
 
 Cada uno commitea por ítem y escribe una línea en su `.estado/<frente>.md` después
 de cada commit. **Si hay que frenar: mirar `git log main..HEAD` de cada worktree
