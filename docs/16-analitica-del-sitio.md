@@ -321,9 +321,15 @@ Lo que sí se puede hacer sin pagar nada:
   ahí el `page_view` automático **sí** sería una fuga de las de verdad.
 - **`async` de verdad**, sin `defer` y sin ponerlo antes del contenido: no cambia
   los bytes pero saca el tag del camino del primer render.
-- **Un `preconnect` a `www.googletagmanager.com`** en el `<head>`: no ahorra
+- ~~**Un `preconnect` a `www.googletagmanager.com`** en el `<head>`: no ahorra
   bytes, ahorra el ida y vuelta de DNS + TLS en el celular en la calle, que es
-  donde se nota.
+  donde se nota.~~ **Retractado — D-254.** Este documento lo recomendaba antes
+  de construirse, y era un error: en un sitio estático el `<head>` es el mismo
+  para todo el mundo, así que un `preconnect` acá no se puede condicionar al
+  consentimiento — y un `preconnect` sin condicionar abre TCP y completa el
+  handshake TLS con Google **para quien todavía no decidió, y también para
+  quien rechaza**. Se implementó, el coordinador lo encontró antes de
+  pushear, y se sacó. Ver [§7.4bis](#74bis--el-preconnect-que-se-sacó-d-254).
 - **Volver a medir después de instalarlo**, y anotar el número. Si el tag pasa a
   300 KB en un año, la decisión se toma de nuevo con el número nuevo, no con este.
 
@@ -340,21 +346,27 @@ azar, sino la más técnica—. Escrito como **D-251** en `06-decisiones.md`.
 que se construyó B-376 y B-375: había que medir también lo que este frente
 mismo agregó**, porque el banner y los dos eventos propios no son gratis.
 Medido contra un build real (`scripts/build-contra-emulador.mjs`), comparando
-el HTML de la página de detalle antes y después del cambio, byte por byte:
+el HTML de la página de detalle antes y después del cambio, byte por byte —y
+**re-medido después de D-254**, que sacó el `preconnect` a
+`googletagmanager.com`: los números de abajo son los de después, no los que se
+publicaron primero:
 
 | Qué | Antes | Después | Diferencia |
 |---|---|---|---|
-| HTML de la página, sin comprimir | 17.040 B | 18.693 B | **+1.653 B** |
-| HTML de la página, gzip | 4.279 B | 4.726 B | **+447 B** |
+| HTML de la página, sin comprimir | 17.040 B | 18.631 B | **+1.591 B** |
+| HTML de la página, gzip | 4.279 B | 4.719 B | **+440 B** |
 | `<script>` propios (sin contar el JSON-LD) | 0 | 2 | — |
 
 La diferencia de HTML es casi entera el **markup del banner** —la caja, los dos
 botones, el control «Cookies»—, que aparece en **todas** las páginas porque vive
-en `Base.astro`; el resto son las dos etiquetas `<script type="module" src="...">`
-y el `<link rel="preconnect">` a `googletagmanager.com`.
+en `Base.astro`; el resto son las dos etiquetas `<script type="module" src="...">`.
+**No hay ningún `<link rel="preconnect">` a `googletagmanager.com`** — hubo uno
+sin condicionar al consentimiento, D-254 lo sacó, y
+`tests/terceros-antes-del-consentimiento.test.ts` (§7.4bis) es la red para que
+no vuelva.
 
 Y el JavaScript, en bytes **transferidos** (gzip, que es lo que importa en la
-red):
+red — sin cambios por D-254, que solo tocó HTML):
 
 | Chunk | Qué es | Raw | Gzip |
 |---|---|---|---|
@@ -365,13 +377,16 @@ red):
 | **Total** | | **3.334 B** | **2.075 B** |
 
 **Y la cuenta que importa, la que compara con el §6.1:** para quien **rechaza**
-o no decidió, el costo de este frente es nada más que esto —**~2,5 KB gzip**,
-HTML más JS juntos—, porque `gtag.js` nunca se descarga (§7.3). Para quien
-**acepta**, se suma el número entero del §6.1: 152 KB de `gtag.js` más los
-~2,5 KB de acá, contra una página que ahora pesa 18,7 KB sin comprimir.
-La proporción del §6.1 («8,5 veces la página») sube apenas, a **8,6 veces**
-en bytes transferidos — el banner y los eventos propios no son lo que pesa acá,
-`gtag.js` sigue siendo el número que manda.
+o no decidió, el costo de este frente es nada más que esto —**2.515 B gzip**
+(440 B de HTML + 2.075 B de JS)—, porque `gtag.js` nunca se descarga (§7.3) **y
+no hay ninguna conexión de red a un tercero mientras tanto** (D-254, §7.4bis).
+Antes de D-254 esta frase era falsa: el `preconnect` abría una conexión a
+Google en el load, la persona hubiera rechazado o no. Para quien **acepta**, se
+suma el número entero del §6.1: 152 KB de `gtag.js` más los ~2,5 KB de acá,
+contra una página que ahora pesa 18,6 KB sin comprimir. La proporción del §6.1
+(«8,5 veces la página») sube apenas, a **8,6 veces** en bytes transferidos — el
+banner y los eventos propios no son lo que pesa acá, `gtag.js` sigue siendo el
+número que manda.
 
 **Lo que no se cuenta en esta tabla:** `gtag.js` mismo (152 KB), que es el
 mismo número del §6.1 y no cambió. Y lo que el propio `gtag.js` manda por su
@@ -479,6 +494,46 @@ sitio» y «Clics salientes» filtra aunque todo el código esté bien.
 Anotado como **B-480** en el `BACKLOG`, con el detalle completo en **D-253**
 (`06-decisiones.md`) y en la salida 12 de `07-seguridad.md`. Bloquea el cierre
 real de B-372 aunque el código y el enganche en `Base.astro` ya estén hechos.
+
+### 7.4bis · El `preconnect` que se sacó (D-254)
+
+**El §6.3 de este mismo documento recomendaba un `preconnect` a
+`www.googletagmanager.com`, y era un error.** Se implementó (con `conChrome`,
+para no ofrecerlo en `/admin`) y el coordinador lo encontró antes de
+pushear, leyendo `dist/index.html` de un build real.
+
+Un `preconnect` **no es una pista pasiva**: el navegador resuelve DNS, abre TCP
+y completa el handshake TLS con SNI para el host **en el load** — no manda la
+URL ni cookies, pero sí le dice al borde de Google que este navegador, desde
+esta IP, entró al sitio. Eso pasaba **antes** de que la persona tocara el
+banner, y también para quien **rechaza**: contradice la promesa central de
+D-250 («hasta que la persona decide, no se mide») y es exactamente lo primero
+que busca una auditoría de banner de cookies.
+
+**Y no había forma de condicionarlo.** En un sitio estático el HTML del
+`<head>` es el mismo para todo el mundo — la decisión de consentimiento vive en
+el `localStorage` de cada visitante, y el build no sabe cuál es. El arreglo fue
+sacarlo, no condicionarlo: lo que se pierde son unos milisegundos de DNS/TLS en
+la primera carga del tag **de quien ya aceptó**, que es barato al lado de lo
+que costaba.
+
+**La red que faltaba, ahora existe:**
+`tests/terceros-antes-del-consentimiento.test.ts` lee el HTML construido (no el
+fuente — necesitaría reimplementar el parser de Astro) y falla si aparece un
+`<link>` de conexión (`preconnect`/`dns-prefetch`/`prefetch`/`preload`/
+`stylesheet`), un `<script src>` o un `<iframe src>` apuntando a un host que no
+esté en una lista blanca explícita, con motivo. Hoy esa lista tiene dos
+entradas — `fonts.googleapis.com` y `fonts.gstatic.com`, las tipografías del
+sistema visual (B-260), anteriores a todo esto — y **no** tiene
+`googletagmanager.com`: si vuelve, el test lo dice, con el archivo y el host
+exactos. Mutación probada: se repuso el `preconnect` a mano, el test pasó a
+rojo nombrándolo, se sacó de nuevo.
+
+**Y una idea que quedó anotada, no resuelta:** las tipografías son, hoy, la
+misma clase de conexión a un tercero en el load que este ítem acaba de sacar
+—solo que decidida antes y sin la lupa del consentimiento encima—.
+Autoalojarlas la eliminaría del todo. Es una decisión de otro día, pero con un
+banner ya construido conviene tenerla escrita: **B-481** en el `BACKLOG`.
 
 ---
 
@@ -646,6 +701,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
+| **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la eliminaría | 🔵 futuro, anotado por D-254 |
 
 ---
 
@@ -663,6 +719,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 - [`06-decisiones.md`](06-decisiones.md) — **D-200** (por qué el tablero arranca
   por el catálogo), **D-201** (GA4 en el sitio público, con su costo medido y el
   alcance de la regla de contenido), **D-250** (el banner es C3, y qué significa
-  «rechazar» de verdad), **D-251** (el costo de JS aceptado, con el número) y
+  «rechazar» de verdad), **D-251** (el costo de JS aceptado, con el número),
   **D-252/D-253** (las decisiones técnicas de B-372/B-375, y lo que Enhanced
-  Measurement de GA4 no deja tapar desde el código).
+  Measurement de GA4 no deja tapar desde el código) y **D-254** (por qué el
+  `preconnect` a GA4 se sacó en vez de condicionarlo, y la red que lo cubre).

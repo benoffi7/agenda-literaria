@@ -2625,21 +2625,21 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-370 a B-379, y B-480 · La analítica del sitio público · P2
+### B-370 a B-379, B-480 y B-481 · La analítica del sitio público · P2
 
 **Los diez ítems que salieron de la arquitectura de la analítica
-([`16-analitica-del-sitio.md`](16-analitica-del-sitio.md), D-201), más uno que
-salió de auditar la implementación.** El dueño ya contestó las tres preguntas
-que bloqueaban este frente — **B-376 → C3** (banner con aceptar/rechazar),
-**B-371 → aceptado** (el costo de JS de la página de detalle) y **B-373 →
-diferido a propósito, para el final de todo**. El §12 de `16-analitica-del-sitio.md`
-tiene el detalle completo de cada uno.
+([`16-analitica-del-sitio.md`](16-analitica-del-sitio.md), D-201), más dos que
+salieron de auditar la implementación — uno antes de pushear.** El dueño ya
+contestó las tres preguntas que bloqueaban este frente — **B-376 → C3**
+(banner con aceptar/rechazar), **B-371 → aceptado** (el costo de JS de la
+página de detalle) y **B-373 → diferido a propósito, para el final de todo**.
+El §12 de `16-analitica-del-sitio.md` tiene el detalle completo de cada uno.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
 | **B-370** | El ítem paraguas y el documento de arquitectura | 🟡 el tablero, el banner, el tag y los eventos están; falta B-373, B-374 y B-480 |
 | **B-371** | **Decisión del dueño:** aceptar el costo de JavaScript en la página de detalle, que hoy tiene cero | ✅ resuelto — **aceptado** (D-251), con el número medido en el §6bis del documento |
-| **B-372** | Instalar el tag de GA4 en las páginas públicas — la mitad vendible entera | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** antes de medir en producción |
+| **B-372** | Instalar el tag de GA4 en las páginas públicas — la mitad vendible entera | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** antes de medir en producción. Encontrado y corregido antes de pushear: un `preconnect` a `googletagmanager.com` sin condicionar al consentimiento (D-254) — ver B-481 sobre lo que ese hallazgo dejó anotado |
 | **B-373** | Search Console: conectar el dominio y leerlo | 🔵 **diferido a propósito por decisión del dueño**, para el final de todo. Motivo de calendario, no de prioridad: Search Console no muestra histórico anterior a la conexión, así que cada día sin conectarlo es un día que no se recupera — vale la pena no demorarlo demasiado aunque no sea lo próximo |
 | **B-374** | La Function que lee la Data API de GA4 para el resumen del panel | ⛔ depende de B-372 (con B-480 resuelto) y de un mes de datos |
 | **B-375** | Los eventos propios: el clic en inscripción y el filtro que deja cero | ✅ construidos (`clic_inscripcion`, `filtro_sin_resultados`) — inertes hasta que B-372/B-480 midan de verdad |
@@ -2648,6 +2648,7 @@ tiene el detalle completo de cada uno.
 | **B-378** | El tablero del catálogo es una foto y no una serie | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Bloqueante para B-372.** El `auditor-privacidad` encontró que recortar el `page_location`/`page_referrer` no alcanza: el Enhanced Measurement de GA4 —prendido por default— manda «Búsquedas en el sitio» (el texto del buscador), «Clics salientes» (el destino real del botón de inscripción) y un `page_view` por cada cambio de historial, **sin pasar por ningún saneador de este repo**. No hay parámetro de código que los apague: hay que entrar a GA4 → Administrar → Flujos de datos → el flujo → Enhanced measurement y apagar «Búsquedas en el sitio» y «Clics salientes» antes de que el tag mida en producción. Detalle completo en D-253 (`06-decisiones.md`) y en la salida 12 de `07-seguridad.md` | ⛔ acción manual del dueño, no de código |
+| **B-481** | **Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son, hoy, una conexión a un tercero en el load** — el mismo `preconnect` que D-254 sacó para GA4, pero decidido antes de que hubiera un banner y sin la lupa del consentimiento encima. Autoalojarlas (servir los `.woff2` desde el propio dominio) la eliminaría del todo. No es privacidad en el mismo sentido que B-480 —una tipografía no manda datos de la persona—, es la misma clase de dato de red (que este navegador entró al sitio) que ya se decidió aceptar para las fuentes, y conviene tenerlo escrito ahora que el tema está sobre la mesa | 🔵 futuro, anotado a propósito por D-254 |
 
 ### B-344 · Nadie sondea el emulador de Auth, y cuatro archivos de integración lo usan · ✅ hecho (2026-09-02) · P2
 

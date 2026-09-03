@@ -167,12 +167,6 @@ const conChrome = seccion !== 'ninguna';
       placeholder.
     */}
     <meta name="twitter:card" content="summary_large_image" />
-    {/*
-      §6.3 del diseño de analítica — no ahorra un byte de `gtag.js`, ahorra el
-      viaje de DNS + TLS del celular en la calle, que es donde se nota. Con
-      `conChrome` para no ofrecerlo en `/admin`, que nunca carga el tag.
-    */}
-    {conChrome && <link rel="preconnect" href="https://www.googletagmanager.com" />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*
@@ -209,6 +203,18 @@ const conChrome = seccion !== 'ninguna';
       `/admin`: el panel ya mide, con su propia proyección»—. `/admin` pasa
       `seccion` sin definir, que cae a `'ninguna'`, así que `conChrome` es
       `false` ahí y el banner ni se pinta ni carga `gtag.js`.
+
+      **Y a propósito no hay un `<link rel="preconnect">` a
+      `googletagmanager.com` acá ni en ningún lado** (D-254). Hubo uno, sin
+      condición de consentimiento, y el coordinador lo encontró leyendo
+      `dist/index.html` antes de pushear: un `preconnect` no es una pista pasiva — el navegador
+      resuelve DNS, abre TCP y completa el handshake TLS con SNI **en el
+      load**, y eso le dice al borde de Google que este navegador entró al
+      sitio, antes de que la persona toque el banner y también para quien
+      **rechaza**. Y en un sitio estático no hay forma de condicionarlo: el
+      HTML es el mismo para todos, la decisión vive en el `localStorage` de
+      cada visitante. `tests/terceros-antes-del-consentimiento.test.ts` falla
+      si vuelve a aparecer.
     */}
     {conChrome && <AvisoDeCookies />}
   </body>
