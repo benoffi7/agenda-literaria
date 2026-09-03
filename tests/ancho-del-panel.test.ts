@@ -5,7 +5,7 @@ import { VISTAS_A_TODO_ANCHO, ocupaTodoElAncho } from '@/lib/anchoDelPanel';
 import { VISTAS_CON_FORMULARIO } from '@/lib/salida-del-panel';
 
 /**
- * Qué pantalla del panel usa todo el ancho — B-600.
+ * Qué pantalla del panel usa todo el ancho — B-620.
  *
  * La regla es pura y se testea directo. Lo que **no** se puede testear así es el
  * cableado, y es justo la mitad que se rompe sola: el panel volvería a quedar
@@ -17,7 +17,7 @@ import { VISTAS_CON_FORMULARIO } from '@/lib/salida-del-panel';
 const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../src/${rel}`, import.meta.url)), 'utf8');
 
-describe('el ancho lo decide la vista (B-600)', () => {
+describe('el ancho lo decide la vista (B-620)', () => {
   it('el listado usa todo el ancho: es la grilla de tarjetas', () => {
     expect(ocupaTodoElAncho('lista')).toBe(true);
   });
@@ -45,7 +45,7 @@ describe('el ancho lo decide la vista (B-600)', () => {
   });
 });
 
-describe('el chasis del panel respeta la decisión (B-600)', () => {
+describe('el chasis del panel respeta la decisión (B-620)', () => {
   const ADMIN_APP = fuente('components/admin/AdminApp.tsx');
 
   /**

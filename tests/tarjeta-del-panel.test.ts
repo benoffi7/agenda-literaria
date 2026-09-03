@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -5,12 +6,18 @@ import { SIN_COSTO } from '@/lib/arancel';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { datosDeTarjeta, type TarjetaDelPanel } from '@/lib/tarjetaDelPanel';
 import type { ActividadConId, Imagen, ModalidadFila, Sesion } from '@/types/actividad';
+import {
+  CENTINELA,
+  LABELS_CENTINELA,
+  RUTAS_CENTINELA,
+  actividadCentinela,
+} from './fixtures/centinelas';
 import { ts } from './fixtures/tiempo';
 
 /**
- * Qué dice una tarjeta del listado del panel — B-600.
+ * Qué dice una tarjeta del listado del panel — B-620.
  *
- * Antes de B-600 estas siete decisiones eran cadenas de ternarios adentro del
+ * Antes de B-620 estas siete decisiones eran cadenas de ternarios adentro del
  * JSX de `ListaActividades.tsx`, o sea que no había manera de verificarlas: el
  * panel no tiene tests de render salvo para el cableado de DOM
  * (`docs/05-patrones.md`). El pase de fila a tarjeta las sacó a un módulo puro
@@ -129,7 +136,9 @@ describe('la identidad de la tarjeta (§4.1)', () => {
   it('una pieza vacía no viaja: el componente une con «·» sin preguntar', () => {
     // Un documento a medio crear puede no tener `tipo`, y ahí la etiqueta sale
     // vacía. Si viajara, la línea empezaría con un separador colgado.
-    const t = de({ tipo: '' } as Partial<ActividadConId>);
+    // `as unknown as` y no un cast directo: el `tipo` vacío **no** es un valor
+    // válido del enum, y eso es justo el caso — un documento a medio crear.
+    const t = de({ tipo: '' } as unknown as Partial<ActividadConId>);
     expect(t.identidad).toEqual(['0 encuentros']);
     expect(t.identidad.join(' · ').startsWith('·')).toBe(false);
   });
@@ -142,7 +151,7 @@ describe('la identidad de la tarjeta (§4.1)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────
-// Dónde y cómo se cursa — el dato que la fila no decía (B-600)
+// Dónde y cómo se cursa — el dato que la fila no decía (B-620)
 // ─────────────────────────────────────────────────────────────────
 
 describe('dónde y cómo se cursa (B-224)', () => {
@@ -287,7 +296,7 @@ describe('las marcas de la tarjeta', () => {
 // La clase: ningún campo del view-model se queda sin pintar
 // ─────────────────────────────────────────────────────────────────
 
-describe('la tarjeta consume todo lo que el módulo decide (B-600)', () => {
+describe('la tarjeta consume todo lo que el módulo decide (B-620)', () => {
   const MODULO = readFileSync(raiz('src/lib/tarjetaDelPanel.ts'), 'utf8');
   const LISTADO = readFileSync(raiz('src/components/admin/ListaActividades.tsx'), 'utf8');
 
@@ -323,6 +332,121 @@ describe('la tarjeta consume todo lo que el módulo decide (B-600)', () => {
     );
     for (const frase of ['Sin encuentros por venir', 'Cupo completo', 'Sin flyer']) {
       expect(sinComentarios, frase).not.toContain(frase);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Privacidad: el módulo recibe el documento crudo (§5.1, trampa 5)
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * El barrido de centinelas del view-model del panel — lo pidió el
+ * `auditor-privacidad` sobre B-620.
+ *
+ * **Hoy no se filtra nada**, y el riesgo es de la clase «se filtra en el próximo
+ * cambio»: este es el único módulo de `src/lib/` que a la vez recibe el
+ * documento **crudo** y produce strings de pantalla. Su contraparte pública,
+ * `tarjetaPublica.ts`, recibe una entrada ya proyectada justamente para no poder
+ * publicar lo que `toPublic` no publicó (D-140), y acá esa barrera no existe
+ * porque quien mira el panel es un admin.
+ *
+ * El criterio del repo que aplica es el otro: «si la salida se arma
+ * interpolando texto, tiene que existir un barrido de centinelas». Va en el test
+ * del módulo y **no** en `tests/barrido-de-salidas-publicas.test.ts`: el panel no
+ * es una de las doce salidas, y sumarle una fila rompería la cuenta que
+ * `tests/agentes-y-skills.test.ts` compara entre el agente, `07-seguridad.md` y
+ * el skill `campo-nuevo` — y borraría el límite panel/público, que es lo que hace
+ * que esa tabla signifique algo.
+ */
+describe('ningún campo interno del documento llega al view-model (§5.1, trampa 5)', () => {
+  /**
+   * Los tres centinelas que **sí** sobreviven, y por qué: son las **etiquetas**
+   * de las tres taxonomías que la tarjeta muestra —tipo, barrio y arancel—, o
+   * sea `/opciones/*`, que es de lectura pública (§5.3) y ya viaja en el
+   * `events.json` (§4.4). Los tres slugs crudos **no** sobreviven, que es lo que
+   * exige el §4.1.
+   */
+  const PERMITIDOS: readonly string[] = ['labels.tipo', 'labels.barrio', 'labels.arancel'];
+
+  const salida = (): string =>
+    JSON.stringify(
+      datosDeTarjeta(actividadCentinela() as unknown as ActividadConId, {
+        labels: LABELS_CENTINELA,
+        ahora: new Date('2026-09-05T12:00:00Z'),
+        // A propósito distinto de `createdBy`: así el camino de B-130 se ejercita
+        // en su rama «ajena», que es la que produce texto.
+        uid: 'otra-cuenta-cualquiera',
+      }),
+    );
+
+  it('sobreviven exactamente las tres etiquetas de taxonomía, y nada más', () => {
+    const json = salida();
+    const sobrevivientes = RUTAS_CENTINELA.filter((r) => json.includes(CENTINELA[r]!));
+    expect([...sobrevivientes].sort()).toEqual([...PERMITIDOS].sort());
+  });
+
+  it('y en particular no llegan el link de la reunión, lo interno ni los uids', () => {
+    /*
+     * Redundante con el aserto de arriba a propósito: nombra los campos que el
+     * §5.1 marca uno por uno, así el mensaje de falla dice **qué** se escapó sin
+     * que haya que leer la lista completa. Es la mitad que se lee cuando el test
+     * se pone rojo.
+     */
+    const json = salida();
+    for (const ruta of [
+      'online.url',
+      'difusion.notas',
+      'difusion.arrobar',
+      'inscripcion.destino',
+      'createdBy',
+      'updatedBy',
+      'imagenes.storagePath',
+      'searchText',
+      'material.url.privado',
+      'arancel.notas',
+    ] as const) {
+      expect(json, `se escapó ${ruta}`).not.toContain(CENTINELA[ruta]!);
+    }
+  });
+
+  it('el control negativo: el barrido detecta el documento entero volcado en la salida', () => {
+    // Sin esto, un `sobrevivientes` vacío por un `includes` roto se leería como
+    // «no se filtra nada». Se afirma que la técnica ve la fuga más burda.
+    const crudo = JSON.stringify(actividadCentinela());
+    const detectados = RUTAS_CENTINELA.filter((r) => crudo.includes(CENTINELA[r]!));
+    expect(detectados).toContain('online.url');
+    expect(detectados.length).toBeGreaterThan(PERMITIDOS.length);
+  });
+
+  it('ninguna salida pública importa `tarjetaDelPanel`', () => {
+    /*
+     * La otra mitad de la barrera, y la que de verdad se puede romper: lo que
+     * este módulo calcula —modalidad resultante, etiqueta de arancel, próximo
+     * encuentro— es exactamente lo que la tarjeta del sitio necesita, así que
+     * reusarlo desde un productor público es la tentación probable. Si eso pasara
+     * se publicaría `autoria`, o sea cuántas cuentas cargan y qué cargó cada una
+     * (D-57, D-138), **sin ningún campo nuevo del modelo** que lo delate.
+     *
+     * Quién puede importarlo se deriva de la ruta y no se mantiene a mano: el
+     * panel, y nada más.
+     */
+    const rastreados = execFileSync('git', ['ls-files', 'src', 'functions', 'scripts'], {
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter(Boolean);
+
+    const importadores = rastreados.filter((f) =>
+      /tarjetaDelPanel/.test(readFileSync(raiz(f), 'utf8')),
+    );
+
+    // Sin esto el chequeo pasaría por vacío el día que el módulo se renombre.
+    expect(importadores.length, 'nadie menciona el módulo: ¿se renombró?').toBeGreaterThan(0);
+    for (const f of importadores) {
+      expect(f, `${f} menciona el view-model del panel`).toMatch(
+        /^src\/(lib\/tarjetaDelPanel\.ts|components\/admin\/)/,
+      );
     }
   });
 });

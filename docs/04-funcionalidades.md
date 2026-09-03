@@ -17,15 +17,15 @@ formas: la pantalla solo evita mostrar un panel inútil.
 Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
 normalización que va a usar el sitio público.
 
-**Es una grilla de tarjetas y no una lista de filas** (B-600, D-320). Una columna
+**Es una grilla de tarjetas y no una lista de filas** (B-620). Una columna
 en el teléfono; de `md` en adelante se abren columnas, y son **2 / 3 / 4** en
 `md`-`lg` / `xl` / `2xl`. Antes era una columna angosta en cualquier pantalla, así
 que en un monitor de 1920px el panel mostraba seis actividades y había que
 scrollear veinte veces para ver cuarenta — que es justo lo que un listado existe
 para evitar. El ancho del panel también pasó a decidirse **por vista**: solo el
 listado usa la pantalla completa, el formulario y las demás pantallas se quedan en
-el ancho de lectura de siempre. El motivo de cada exclusión está en
-[D-320](06-decisiones.md) y en el docblock de
+el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
+calendario y el tablero quedaron angostos a propósito— está en el docblock de
 [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
 
 Cada tarjeta dice, de arriba abajo: el **badge de estado** con las marcas al lado,
@@ -34,7 +34,7 @@ cantidad de encuentros**, **modalidad y barrio**, el **arancel** —con el acent
 cuando no se paga, el mismo criterio que la fila del sitio— y, al pie, **cuándo es
 su próximo encuentro**.
 
-**La modalidad y el arancel son nuevos de B-600**, y no son un adorno: los dos
+**La modalidad y el arancel son nuevos de B-620**, y no son un adorno: los dos
 eran ejes de filtro y no aparecían en el resultado, o sea que se podía filtrar por
 «Gratis» y después no ver cuál de las tarjetas era la gratuita. La modalidad es la
 **resultante** de las filas de «Dónde» (B-224), la misma derivación que usa el
@@ -475,7 +475,7 @@ El formulario es usable en teléfono:
 - Teclados por campo: numérico en cupo, de URL en los links, sin autocapitalizar
   ni autocorregir en slug, handles y URLs.
 
-Y en la otra punta, **el escritorio también es un caso** (B-600): el listado abre
+Y en la otra punta, **el escritorio también es un caso** (B-620): el listado abre
 columnas y usa el ancho de la pantalla, mientras el formulario se queda en el
 ancho de lectura. Las dos mitades son la misma idea —el ancho lo decide lo que se
 está haciendo— y la tabla de qué pantalla usa cuál está en

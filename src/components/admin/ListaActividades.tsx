@@ -31,7 +31,7 @@ import {
   type Filtros,
   type Orden,
 } from '@/lib/filtrosActividades';
-// B-600 — qué dice cada tarjeta se decide afuera del JSX, en un módulo puro con
+// B-620 — qué dice cada tarjeta se decide afuera del JSX, en un módulo puro con
 // sus tests: acá quedan la maquetación y el cableado.
 import { datosDeTarjeta, type ContextoDeTarjeta } from '@/lib/tarjetaDelPanel';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
@@ -65,7 +65,7 @@ const COLOR_ESTADO: Record<string, string> = {
 };
 
 /**
- * B-600 — la grilla de tarjetas.
+ * B-620 — la grilla de tarjetas.
  *
  * **Una sola columna hasta `md`**, que es el pedido: en un teléfono la tarjeta
  * ocupa el ancho y ya está. De `md` en adelante se abren columnas, y el tope es
@@ -150,7 +150,7 @@ export function ListaActividades({
   const opciones = useMemo(() => opcionesPresentes(actividades), [actividades]);
 
   /**
-   * B-600 — lo que dice cada tarjeta, resuelto de una vez para toda la lista.
+   * B-620 — lo que dice cada tarjeta, resuelto de una vez para toda la lista.
    *
    * Va memoizado y no calculado dentro del `map` del render por lo que cuesta la
    * parte que no depende de los filtros: `datosDeTarjeta` recorre las sesiones de
@@ -295,7 +295,7 @@ export function ListaActividades({
       )}
 
       {/*
-        B-600 — el listado es una **grilla de tarjetas** y no una fila por
+        B-620 — el listado es una **grilla de tarjetas** y no una fila por
         actividad. Con la fila, el panel usaba una columna de 768px en una
         pantalla de 1920 y había que scrollear veinte veces para ver cuarenta
         actividades, que es justo lo que un listado tiene que evitar.

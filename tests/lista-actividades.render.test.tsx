@@ -1,5 +1,5 @@
 /**
- * `ListaActividades` — la grilla de tarjetas, renderizada de verdad (B-600).
+ * `ListaActividades` — la grilla de tarjetas, renderizada de verdad (B-620).
  *
  * **Por qué este componente necesita DOM, y qué se deja afuera.** Lo que la
  * tarjeta *dice* ya está cubierto puro y sin DOM en
@@ -137,7 +137,7 @@ const tarjetaDe = (titulo: string): HTMLElement => {
   return item as HTMLElement;
 };
 
-describe('la grilla (B-600)', () => {
+describe('la grilla (B-620)', () => {
   it('hay una tarjeta por actividad, y son ítems de una lista', async () => {
     const lista = await montar();
     expect(within(lista).getAllByRole('listitem')).toHaveLength(ACTIVIDADES.length);
@@ -153,7 +153,7 @@ describe('la grilla (B-600)', () => {
   });
 });
 
-describe('ninguna acción se perdió al pasar de fila a tarjeta (B-600)', () => {
+describe('ninguna acción se perdió al pasar de fila a tarjeta (B-620)', () => {
   /**
    * Las etiquetas del menú salen del fuente del componente: mantenerlas a mano
    * acá daría un chequeo que envejece solo, y el punto es que la acción nueva
@@ -228,7 +228,7 @@ describe('ninguna acción se perdió al pasar de fila a tarjeta (B-600)', () => 
   });
 });
 
-describe('ningún dato de la fila se perdió, y hay dos más (B-600)', () => {
+describe('ningún dato de la fila se perdió, y hay dos más (B-620)', () => {
   it('la tarjeta cargada dice todo lo que la fila decía', async () => {
     await montar();
     const tarjeta = tarjetaDe('Club de lectura de Saer');
@@ -269,7 +269,7 @@ describe('ningún dato de la fila se perdió, y hay dos más (B-600)', () => {
   });
 });
 
-describe('accesibilidad de la tarjeta (B-600)', () => {
+describe('accesibilidad de la tarjeta (B-620)', () => {
   it('todo lo que se toca es un botón, no un `div` con `onClick`', async () => {
     const lista = await montar();
     // Un `div`/`span` con handler no aparece como `button` para el lector de

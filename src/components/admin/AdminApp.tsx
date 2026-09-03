@@ -9,7 +9,7 @@ import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
-// B-600 — qué vista usa todo el ancho. Puro y con su test, por lo mismo que
+// B-620 — qué vista usa todo el ancho. Puro y con su test, por lo mismo que
 // `salida-del-panel.ts`: la vista que se agregue mañana arranca angosta y quien
 // la escriba decide en una línea, en vez de heredar un `===` suelto en el JSX.
 import { ocupaTodoElAncho } from '@/lib/anchoDelPanel';
@@ -175,7 +175,7 @@ const cerrarSesion = () => {
 const ANCHO_DE_LECTURA = 'max-w-3xl lg:max-w-4xl';
 
 /**
- * El ancho para lo que se recorre de un barrido (B-600). Con tope, y no
+ * El ancho para lo que se recorre de un barrido (B-620). Con tope, y no
  * `max-w-none`: en un monitor de 2560px las cuatro columnas de la grilla darían
  * tarjetas de 600px, que es el problema del panel encajonado dado vuelta.
  */
@@ -365,7 +365,7 @@ export function AdminApp() {
   return (
     <div
       /*
-       * B-600 — el ancho lo decide la vista.
+       * B-620 — el ancho lo decide la vista.
        *
        * `ANCHO_DE_LECTURA` es el de siempre y sigue siendo el default: un
        * formulario de 30+ campos a 1900px separa la etiqueta del error y pasa el

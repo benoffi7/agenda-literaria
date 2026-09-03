@@ -387,7 +387,7 @@ describe('se prende desde el menú del listado, no desde el formulario', () => {
      * Lo que se publica se puede ver desde el panel: el cartel ya está en el
      * sitio y en los N eventos.
      *
-     * **B-600 movió la mitad de este chequeo, y no lo que garantiza.** El literal
+     * **B-620 movió la mitad de este chequeo, y no lo que garantiza.** El literal
      * «Cupo completo» estaba en el JSX de `ListaActividades.tsx`; al pasar el
      * listado de fila a grilla de tarjetas, *qué marcas lleva una actividad* se
      * decidió afuera, en `lib/tarjetaDelPanel.ts`, para poder testearlo puro. Así

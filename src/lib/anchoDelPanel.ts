@@ -1,5 +1,5 @@
 /**
- * Qué pantallas del panel usan todo el ancho de la pantalla — B-600.
+ * Qué pantallas del panel usan todo el ancho de la pantalla — B-620.
  *
  * ── Por qué no todas ──────────────────────────────────────────────────────
  * «Aprovechar el ancho» no es una mejora universal: un formulario de 30+ campos
@@ -13,7 +13,7 @@
  *
  * | Vista | Ancho | Por qué |
  * |---|---|---|
- * | `lista` | todo | es la grilla de tarjetas de B-600: lo que el ancho compra son columnas |
+ * | `lista` | todo | es la grilla de tarjetas de B-620: lo que el ancho compra son columnas |
  * | `nueva` / `editar` / `duplicar` | lectura | el formulario del §11; a 1900px la etiqueta y el error se separan del campo |
  * | `historial` | lectura | dos versiones enfrentadas, o sea texto: es el caso donde el renglón largo cansa |
  * | `reportes` | lectura | un formulario y una lista corta |

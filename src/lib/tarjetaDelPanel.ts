@@ -1,5 +1,5 @@
 /**
- * Lo que dice una **tarjeta** del listado del panel — B-600.
+ * Lo que dice una **tarjeta** del listado del panel — B-620.
  *
  * ── Por qué es un módulo y no está dentro del componente ──────────────────
  * Es el mismo corte que `lib/tarjetaPublica.ts` hace del otro lado, y por el
@@ -9,7 +9,7 @@
  * actividad sin encuentros por venir, qué modalidad se lee cuando hay dos filas,
  * cuándo aparece «Sin flyer»— tiene que vivir afuera para poder verificarse.
  *
- * Antes de B-600 esas decisiones eran cinco cadenas de ternarios adentro del JSX
+ * Antes de B-620 esas decisiones eran cinco cadenas de ternarios adentro del JSX
  * de `ListaActividades.tsx`, y ahí no se podían testear de ninguna manera. El
  * pase de fila a tarjeta era el momento de sacarlas: la tarjeta dice **dos datos
  * más** que la fila (la modalidad y el arancel), y agregarlos como dos ternarios
@@ -25,6 +25,22 @@
  * ── El reloj entra como parámetro ─────────────────────────────────────────
  * Igual que en `filtrosActividades.ts` y en `functions/rebuild.js`: un test no
  * puede depender de qué día es hoy.
+ *
+ * ── La entrada es el documento CRUDO, y eso no es un descuido ─────────────
+ * Este módulo es **del panel**, que ve el documento entero porque quien lo mira
+ * es un admin. Su equivalente público, `lib/tarjetaPublica.ts`, recibe en cambio
+ * una `EntradaDeIndice` ya proyectada, justamente para no poder publicar lo que
+ * `toPublic` decidió no publicar (D-140).
+ *
+ * De ahí la regla que lo acompaña, y que la trajo el `auditor-privacidad`:
+ * **ninguna salida pública puede importar este módulo.** Lo que calcula —la
+ * modalidad resultante, la etiqueta del arancel, el próximo encuentro— es
+ * exactamente lo que la tarjeta del sitio también necesita, así que reusarlo
+ * desde ahí es la tentación probable; y si pasara, se publicaría `autoria`, o
+ * sea cuántas cuentas cargan y qué cargó cada una (el razonamiento de D-57 y
+ * D-138), sin que ningún campo nuevo del modelo lo delate. Las dos mitades
+ * —ningún campo interno llega al view-model, y ningún productor público lo
+ * importa— las fija `tests/tarjeta-del-panel.test.ts`.
  */
 import { esSinCosto } from '@/lib/arancel';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
