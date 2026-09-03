@@ -540,7 +540,13 @@ describe('el bloque corto de «suscribirse» en la home — B-231', () => {
      */
     const src = fuente(HOME);
     expect((src.match(/<h1[\s>]/g) ?? []).length).toBe(1);
-    expect(src).toMatch(/<SuscribirseResumen\s*\/>/);
+    // La home puede pasarle `class` (el margen de posición, B-482), pero **no**
+    // `nivel`: cuelga del h1 como h2, que es el default. Se mira el tag entero y
+    // se exige que no mencione `nivel`, en vez de la forma desnuda —que rompía al
+    // agregar cualquier atributo legítimo—.
+    const tag = src.match(/<SuscribirseResumen\b[^>]*\/>/)?.[0] ?? '';
+    expect(tag, 'la home debería usar <SuscribirseResumen />').not.toBe('');
+    expect(tag, 'la home no debería pasar nivel: cuelga del h1 como h2').not.toMatch(/\bnivel\b/);
     expect(fuente(RESUMEN)).toContain('nivel = 2');
   });
 

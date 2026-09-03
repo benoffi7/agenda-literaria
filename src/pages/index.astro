@@ -213,14 +213,15 @@ const descripcion =
       hermanos. Saltear a `h3` dejaría el índice de la página con un hueco.
 
       4 · **Separado de la tira de arriba** con el mismo ritmo que `ExploraPor`
-      lleva sobre el listado (`mt-12 sm:mt-16`) — B-482. El componente no trae
-      margen propio (se reusa en `/suscribirse`, donde abre la columna y no
-      quiere ninguno), así que la separación va acá, en el sitio de uso, y no
-      adentro del componente compartido. Sin esto la caja caía pegada a la fila
-      «Mes por mes».
+      lleva sobre el listado (`mt-12 sm:mt-16`) — B-482. La separación viaja por
+      la prop `class`, no por un contenedor que lo envuelva: ese envoltorio
+      desbalanceaba el conteo de `tests/suscribirse.test.ts`, que verifica que el
+      bloque quede fuera del contenedor de la island contando etiquetas de
+      apertura y cierre (y las cuenta también dentro de los comentarios, así que
+      acá no se nombra la etiqueta literal). El componente no trae el margen de
+      fábrica porque en `/suscribirse` abre la columna y no lo quiere. Sin esto la
+      caja caía pegada a la fila «Mes por mes».
     */}
-    <div class="mt-12 sm:mt-16">
-      <SuscribirseResumen />
-    </div>
+    <SuscribirseResumen class="mt-12 sm:mt-16" />
   </main>
 </Base>

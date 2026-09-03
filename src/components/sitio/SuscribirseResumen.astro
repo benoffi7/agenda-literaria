@@ -29,14 +29,22 @@ interface Props {
    * siempre al primero.
    */
   idTitulo?: string;
+  /**
+   * Clases extra para el contenedor — pensada para el **margen de posición** en
+   * la página que lo usa (la home lo separa de la tira de arriba con
+   * `mt-12 sm:mt-16`, B-482). No trae margen de fábrica porque en `/suscribirse`
+   * abre la columna y no quiere ninguno. Va por prop y no por un `<div>` que lo
+   * envuelva: ese wrapper rompía el conteo de divs de `tests/suscribirse.test.ts`.
+   */
+  class?: string;
 }
 
-const { nivel = 2, idTitulo = 'suscribirse-resumen' } = Astro.props;
+const { nivel = 2, idTitulo = 'suscribirse-resumen', class: clase = '' } = Astro.props;
 const Titulo = `h${nivel}` as 'h2' | 'h3';
 const google = CAMINOS.google;
 ---
 
-<section aria-labelledby={idTitulo} class={`p-5 sm:p-6 ${claseBloque}`}>
+<section aria-labelledby={idTitulo} class={`p-5 sm:p-6 ${claseBloque} ${clase}`.trim()}>
   <Titulo id={idTitulo} class="headline-sm text-tinta">
     Llevate la agenda a tu calendario
   </Titulo>
