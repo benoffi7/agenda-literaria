@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — el script es .mjs sin tipos, igual que `scripts/version.mjs`.
 import { problemasDeJerarquia, tituloDe } from '../scripts/seo-del-artefacto.mjs';
 
 /**

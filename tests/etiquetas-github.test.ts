@@ -2,9 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — el productor es .js sin tipos, igual que en el resto de la suite.
 import { construirIssue } from '../functions/reportes.js';
-// @ts-expect-error — el script es .mjs sin tipos, igual que `scripts/version.mjs`.
 import { COSMETICA, etiquetasDelProductor, tiposDeReporte } from '../scripts/etiquetas-github.mjs';
 
 /**

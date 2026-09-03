@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — el script es .mjs sin tipos, igual que `scripts/version.mjs`.
 import { AREAS_PRODUCCION, ciclos, contarLineas, corpus, grafo } from '../scripts/salud-del-codigo.mjs';
 
 /**
