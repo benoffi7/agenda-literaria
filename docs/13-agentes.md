@@ -86,13 +86,21 @@ Cosas que importan y no son obvias:
   **Al agregar o editar un agente, parsealo antes de confiar en él**, o
   verificalo con `/context` (aparece bajo los subagentes), `/doctor` y `/agents`.
 
-Detalle chico con consecuencia real: `.claude/` no está en la lista negra de
-`scripts/que-deployar.sh`, así que **un cambio a estas definiciones hoy hace
-`hosting=true`** y republica el sitio. Es inofensivo (y es el lado barato del
-error, por diseño: lo desconocido se deploya), pero sumar `^\.claude/` a
-`NO_AFECTAN` es una línea en el script más su caso en
-`tests/que-deployar.test.ts`, y eso queda fuera de este cambio porque toca
-código.
+Detalle chico con consecuencia real, **cerrado el 2026-09-03 (B-215)**: `.claude/`
+no estaba en la lista negra de `scripts/que-deployar.sh`, así que un cambio a
+estas definiciones hacía `hosting=true` y republicaba el sitio. Las que terminan
+en `.md` ya caían por la regla de las extensiones; lo que caía en «archivo
+desconocido» era el `settings.json` —donde viven los hooks, o sea el archivo que
+más se toca— y `githooks/pre-push`, que no tiene extensión. Hoy los dos prefijos
+están en `NO_AFECTAN`, con sus casos en `tests/que-deployar.test.ts`.
+
+Y con una atadura, porque una lista negra falla al revés que una blanca —no se
+queda corta, se pasa de larga, y excluir algo que sí afecta al bundle deja
+producción con código viejo y el workflow en verde—: un caso **deriva del árbol**
+que ningún archivo de `src/` ni `astro.config.mjs` referencie `.claude/` ni
+`githooks/`. El día que alguien aliasee algo de ahí, la exclusión pasa a ser falsa
+y el test lo dice antes de que un cambio deje de deployar. Es la misma forma que
+el caso de B-88 para los alias a `functions/`.
 
 **Skills** — una carpeta por skill, con `SKILL.md` adentro:
 `.claude/skills/<name>/SKILL.md`. Un archivo suelto `.claude/skills/<name>.md`

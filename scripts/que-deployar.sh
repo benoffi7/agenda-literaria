@@ -62,7 +62,20 @@ printf '%s\n' "$CAMBIOS" | grep -qE '^storage\.rules$|^firebase\.json$' && STORA
 # puede entrar al bundle — y tiene su propia decisión más arriba. Sin esta
 # línea caería en "archivo desconocido" y arrastraría un deploy de hosting de
 # más, que es inofensivo pero mentiroso.
-NO_AFECTAN='^docs/|^tests/|^\.github/|\.md$|^\.gitignore$|^firestore\.(rules|indexes\.json)$|^storage\.rules$|^\.firebaserc$|^scripts/(seed-emulador|preparar-produccion|set-admin-claim|aprobar-opciones|optimizar-imagenes|que-deployar|verificar-bundle|verificar-calendario)\.(mjs|sh)$'
+#
+# B-215 — `^\.claude/` y `^githooks/` por el mismo motivo, y con la misma prueba:
+# nada de `src/` importa desde ninguno de los dos, así que no pueden entrar al
+# bundle. Son las definiciones de los agentes y skills (que se ejecutan en la
+# máquina de quien programa, no en el sitio) y el hook de git. Las que terminan
+# en `.md` ya caían por `\.md$`; lo que no caía es el `settings.json` de
+# `.claude/` ni `githooks/pre-push`, que no tiene extensión.
+#
+# **Por qué ahora y no antes:** hasta B-124 `.claude/` era tres agentes y seis
+# skills, todos `.md`. Con `settings.json` adentro —que se toca seguido, porque
+# es donde viven los hooks— cada edición de la configuración de los agentes
+# republicaba el sitio. `docs/13-agentes.md` lo tenía anotado como pendiente
+# «porque toca código»; esto es ese cambio.
+NO_AFECTAN='^docs/|^tests/|^\.github/|^\.claude/|^githooks/|\.md$|^\.gitignore$|^firestore\.(rules|indexes\.json)$|^storage\.rules$|^\.firebaserc$|^scripts/(seed-emulador|preparar-produccion|set-admin-claim|aprobar-opciones|optimizar-imagenes|que-deployar|verificar-bundle|verificar-calendario)\.(mjs|sh)$'
 
 RELEVANTES=$(
   printf '%s\n' "$CAMBIOS" \

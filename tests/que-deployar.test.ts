@@ -203,6 +203,70 @@ describe('qué deployar — lo que no toca nada', () => {
     // Calcula la versión que se estampa en el bundle.
     expect(decidir(['scripts/version.mjs']).hosting).toBe(true);
   });
+
+  /**
+   * B-215 — `.claude/` y `githooks/` son la máquina de quien programa, no el
+   * sitio.
+   *
+   * Las definiciones que terminan en `.md` ya caían por `\.md$`. Lo que caía en
+   * "archivo desconocido" y arrastraba un deploy de hosting era el
+   * `settings.json` de `.claude/` —donde viven los hooks, así que se toca
+   * seguido— y `githooks/pre-push`, que no tiene extensión.
+   *
+   * `docs/13-agentes.md` lo tenía anotado como pendiente «porque toca código».
+   */
+  it('la configuración de los agentes no deploya nada (B-215)', () => {
+    expect(decidir(['.claude/settings.json'])).toEqual({
+      hosting: false, functions: false, firestore: false, storage: false,
+    });
+    expect(
+      decidir(['.claude/agents/auditor-privacidad.md', '.claude/skills/cerrar-cambio/SKILL.md']),
+    ).toEqual({ hosting: false, functions: false, firestore: false, storage: false });
+  });
+
+  it('el hook de git tampoco (B-215)', () => {
+    expect(decidir(['githooks/pre-push'])).toEqual({
+      hosting: false, functions: false, firestore: false, storage: false,
+    });
+  });
+});
+
+describe('qué deployar — lo que se excluye tiene que ser demostrable (B-215)', () => {
+  /**
+   * La lista es NEGRA a propósito, y su modo de falla es el inverso al de una
+   * blanca: no se queda corta, se pasa de larga. Excluir algo que sí afecta al
+   * bundle deja producción con código viejo y el workflow en verde — que es el
+   * error caro y silencioso que el comentario del script describe.
+   *
+   * `functions/` ya tiene su atadura derivada (el bloque de B-88 de más abajo,
+   * que saca los alias de `astro.config.mjs`). Esta es la de los dos prefijos
+   * que entraron con B-215: se excluyen porque **nada del build los alcanza**, y
+   * eso se verifica en vez de afirmarse. El día que alguien aliasee o importe
+   * algo de `.claude/` o de `githooks/`, la exclusión pasa a ser falsa y este
+   * caso se pone rojo antes de que un cambio ahí deje de deployar.
+   *
+   * MUTACIÓN PROBADA: agregar `import x from '../../.claude/algo'` en cualquier
+   * archivo de `src/` hace fallar este caso.
+   */
+  it('nada de `src/` ni del config del build alcanza `.claude/` ni `githooks/`', () => {
+    const archivos = execFileSync('git', ['ls-files', '-z', 'src', 'astro.config.mjs'], {
+      encoding: 'utf8',
+    })
+      .split('\0')
+      .filter(Boolean);
+
+    // Control positivo: si el listado sale vacío, el `for` no compara nada.
+    expect(archivos.length).toBeGreaterThan(50);
+
+    const alcanzan = archivos.filter((f) => /['"`(][^'"`]*(?:\.claude|githooks)\//.test(
+      readFileSync(f, 'utf8'),
+    ));
+    expect(
+      alcanzan,
+      'estos archivos del build referencian `.claude/` o `githooks/`, así que ' +
+        'excluirlos de NO_AFECTAN en scripts/que-deployar.sh dejó de ser correcto',
+    ).toEqual([]);
+  });
 });
 
 describe('qué deployar — combinaciones', () => {
