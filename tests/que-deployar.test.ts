@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -66,8 +67,27 @@ describe('qué deployar — el caso que motiva el diseño', () => {
     });
   });
 
+  it('historial.js también deploya functions Y hosting', () => {
+    // Lo encontró el auditor-privacidad auditando B-323: el panel lo importa
+    // como @historial (comparación de versiones), y hasta acá el script no lo
+    // sabía — este `it` fallaba antes del arreglo.
+    expect(decidir(['functions/historial.js'])).toEqual({
+      hosting: true, functions: true, firestore: false, storage: false,
+    });
+  });
+
+  it('un cambio en la lista blanca de chunks PNG deploya functions Y hosting (B-323)', () => {
+    // El panel lo importa como @png-chunks-seguros (sanear una imagen antes de
+    // subirla) y la Function lo importa directo (estructuraConocida). Un
+    // cambio a los chunks seguros que solo redeployara Functions dejaría al
+    // panel subiendo con la lista vieja, en silencio.
+    expect(decidir(['functions/png-chunks-seguros.js'])).toEqual({
+      hosting: true, functions: true, firestore: false, storage: false,
+    });
+  });
+
   it('el resto de functions/ NO arrastra hosting', () => {
-    expect(decidir(['functions/historial.js', 'functions/index.js']).hosting).toBe(false);
+    expect(decidir(['functions/imagenes.js', 'functions/index.js']).hosting).toBe(false);
   });
 
   it('firebase.json deploya functions y hosting', () => {
@@ -196,5 +216,42 @@ describe('qué deployar — combinaciones', () => {
     expect(decidir(['docs/CHANGELOG.md', 'src/lib/toPublic.ts'])).toEqual({
       hosting: true, functions: false, firestore: false, storage: false,
     });
+  });
+});
+
+describe('qué deployar — el exento de functions/ no puede quedar corto (B-88)', () => {
+  it('todo alias del panel a un archivo de functions/ está en la lista exenta del script', () => {
+    /*
+     * La atadura que evita que este agujero se vuelva a abrir en silencio: si
+     * mañana se agrega un alias nuevo (`@algo-mas`) apuntando a
+     * `functions/<archivo>.js` en `astro.config.mjs` y no se lo suma al `awk`
+     * de `que-deployar.sh`, este test se pone rojo ANTES de que el próximo
+     * cambio a ese archivo deploye Functions sin deployar Hosting.
+     *
+     * Mutación: agregar un alias nuevo a `astro.config.mjs` sin tocar
+     * `que-deployar.sh` — este `it` lo atrapa. Sacar `historial.js` o
+     * `png-chunks-seguros.js` del `awk` — también.
+     */
+    const astroConfig = readFileSync('astro.config.mjs', 'utf8');
+    const alias = [
+      ...astroConfig.matchAll(/new URL\('\.\/functions\/([\w-]+)\.js',/g),
+    ].map((m) => m[1]);
+    // Control: que el propio regex encuentre algo, para que un cambio de forma
+    // en astro.config.mjs no vacíe la lista y haga pasar el test por nada que
+    // comparar.
+    expect(alias.length).toBeGreaterThan(0);
+
+    const script = readFileSync('scripts/que-deployar.sh', 'utf8');
+    const awk = /awk '!\/\^functions\\\/\/ \|\| \/\^functions\\\/\(([\w|-]+)\)\\\.js\$\/'/.exec(
+      script,
+    );
+    expect(awk, 'no se encontró el patrón awk esperado en que-deployar.sh').not.toBeNull();
+    const exentos = awk![1]!.split('|');
+
+    for (const nombre of alias) {
+      expect(exentos, `functions/${nombre}.js tiene alias de panel pero no está en el awk`).toContain(
+        nombre,
+      );
+    }
   });
 });

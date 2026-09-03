@@ -2212,7 +2212,7 @@ Lo que falta, y por qué cada parte es cara:
 verificado sobre los bytes. La Function lo va a sacar otra vez, y eso está bien —es la
 capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
 
-### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2
+### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2 — ✅ hecho (2026-09-03)
 
 > **2026-09-02 — B-220 no lo resolvió, y le sumó la mitad de un problema.** Está
 > dicho explícito porque el frente de B-220 lo tenía en su alcance y decidió no
@@ -2253,6 +2253,46 @@ capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
 > así que no podría distinguir «huérfano» de «original sin optimizar
 > todavía».
 
+> **2026-09-03 — hecho.** `optimizarImagen` está desplegada y barrida (ver
+> `docs/08-operacion.md`), así que la precondición de arriba ya se cumple. Se
+> tomó el **primer camino**: barrido periódico, `onSchedule every 24 hours`
+> (`limpiarImagenesHuerfanas`, `functions/imagenes-limpieza-trigger.js`), que
+> cruza los `storagePath` de **todas** las actividades —sin filtrar por
+> `estado`: un borrador sigue siendo dueño de su imagen— contra los objetos de
+> `imagenes/` y `miniaturas/`, y borra los que ya nadie referencia.
+>
+> La decisión de qué borrar es pura (`decidirLimpieza`,
+> `functions/limpieza-imagenes.js`), probada en `tests/limpieza-imagenes.test.ts`
+> con cada guarda mutada y vista fallar: sacar el corte del margen de gracia
+> pone rojos 3 tests, sacar el tope de la corrida pone rojo 1, y vaciar
+> `miniaturasReferenciadas` a mano pone rojo 1. Se corrió además, de solo
+> lectura, contra el emulador compartido de otro worktree en vivo (209 objetos
+> reales): el margen de gracia de 72 horas protegió los 209 —todos recién
+> subidos por esa suite— sin que se ejecutara ningún borrado, que es la
+> propiedad que la guarda existe para dar.
+>
+> Dos salvaguardas nuevas, la misma clase que ya usa este repo en otros lados:
+> **margen de gracia de 72 horas** (no se toca nada creado hace menos de eso) y
+> **tope de 20 borrados por corrida** (mismo criterio que `MAX_EVENTOS_RESYNC`
+> de B-04). No hace falta IAM nuevo: `roles/storage.objectUser`, que ya tiene
+> `calendar-sync@` desde B-220, incluye `storage.objects.delete`.
+>
+> `scripts/limpiar-imagenes-huerfanas.mjs` reusa la misma `decidirLimpieza` —no
+> hay una segunda copia de la decisión— para poder correr el barrido a mano en
+> seco (default) o con `--aplicar`, igual que `optimizar-imagenes.mjs` de
+> B-220.
+>
+> **Lo que quedó afuera, a propósito y anotado.** El cruce es contra los
+> documentos **en vivo** de `/actividades`, no contra
+> `/actividades/{id}/versiones/*` (§12): restaurar una versión vieja que
+> referenciaba una imagen ya barrida restauraría una `url` rota. El ítem
+> original solo pedía cruzar contra las actividades, así que no se resolvió
+> acá — queda anotado como **B-560**.
+>
+> El conteo de referencias de B-71 (para poder copiar imágenes al duplicar)
+> sigue sin hacer falta, tal como decía el ítem: "el barrido primero; el
+> conteo solo si hace falta copiar".
+
 **Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
 actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
 escrito en `subir-imagen.ts`: un objeto huérfano cuesta centavos y es invisible; un
@@ -2271,6 +2311,40 @@ que B-199 movió y no resolvió: **quién es dueño del objeto**. Dos caminos:
   escondida justamente porque no se puede, D-131 §5).
 
 El barrido primero; el conteo solo si hace falta copiar.
+
+### B-560 · El barrido de B-221 no sabe de `/actividades/{id}/versiones/*` · P3
+
+**Encontrado implementando B-221, sin tocar código.** `limpiarImagenesHuerfanas`
+cruza los `storagePath` de los documentos **en vivo** de `/actividades` contra
+los objetos del bucket — exactamente lo que el ítem original pedía. Lo que no
+pedía, y por eso no está resuelto, es cruzar también contra
+`/actividades/{id}/versiones/*` (§12, D-41): el historial guarda el `before`
+completo de cada edición, `imagenes` incluido.
+
+**La secuencia que rompe:** se saca una fila de la galería y se guarda → la
+imagen queda huérfana → el barrido la borra 72 horas después (o antes, si el
+tope de la corrida no la salteó) → alguien abre el historial y restaura esa
+versión vieja, que todavía referencia la imagen ya borrada → la fila vuelve con
+una `url` que da 404.
+
+**Por qué no es P2.** Restaurar una versión que trae de vuelta una imagen es un
+caso angosto —hay que haber sacado la imagen, esperado el barrido, y restaurado
+esa versión puntual y no una más nueva— y el modo de falla es una imagen rota
+en el panel, no un dato que se pierda ni algo público mal expuesto.
+
+**Caminos, ninguno implementado:**
+
+- Sumar `/actividades/{id}/versiones/*` a `referenciasEnUso` en
+  `imagenes-limpieza-trigger.js`: más simple, pero agranda la lectura de
+  Firestore de la Function con cada versión guardada de cada actividad —hoy son
+  pocas, pero crece sin tope— y alarga indefinidamente la vida de una imagen
+  que alguien sacó a propósito.
+- Un margen de gracia más largo que el de retención de versiones (que hoy no
+  tiene, `versiones` crece para siempre — otro posible ítem) no alcanza por sí
+  solo: no resuelve el caso, solo lo hace menos probable.
+- Que restaurar una versión avise si alguna de sus imágenes ya no existe en el
+  bucket, en vez de prevenir el borrado. Es el único camino que no le pide nada
+  nuevo al barrido.
 
 ### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
 
@@ -6646,6 +6720,19 @@ job que solo lee no cargue el alcance del que publica.
 repo ordenado segundo, y `tests/roles-deploy-ci.test.ts`, que impide que el
 documento de seguridad vuelva a decir que el daño se limita a leer.
 
+> **2026-09-03 — verificado, el disparador todavía no ocurrió.** Contra la API
+> de GitHub, con la cuenta dueña del repo (`gh api repos/benoffi7/agenda-literaria/…`):
+> **un solo colaborador** (`benoffi7`, admin), **cero forks**, **cero
+> colaboradores externos** (`?affiliation=outside`), **un solo secret de
+> Actions** (`FIREBASE_SERVICE_ACCOUNT`) y **cero `environments`** configurados.
+> El secret sigue teniendo un solo lector, así que la condición que dispara
+> este ítem sigue sin cumplirse — no se implementó el split de `build-ci@` /
+> `deploy-ci@` porque hacerlo ahora sería resolver un problema que todavía no
+> existe, en contra de lo que el ítem mismo pide ("el día que pase"). Queda
+> escrito para que la próxima vez que se agregue un colaborador con push, se
+> habilite un fork con Actions, o se sume un runner de terceros, sea la señal
+> de volver a este ítem.
+
 ---
 
 ### B-231 · La home no ofrece suscribirse al calendario, y el bloque ya está escrito · P2 — ✅ hecho (2026-09-01)
@@ -7000,7 +7087,7 @@ una pantalla 3× se ve blanda, y **un flyer es texto metido adentro de un JPEG**
 reusar la de la cartelera, y eso es una constante más en `functions/imagenes.js` y
 un objeto más por imagen en el bucket.
 
-### B-323 · `CHUNKS_A_TIRAR` es una lista negra, y ya se le escapó un bloque · P2
+### B-323 · `CHUNKS_A_TIRAR` es una lista negra, y ya se le escapó un bloque · P2 — ✅ hecho (2026-09-03)
 
 **Encontrado el 2026-09-02, con un caso real y publicado** (D-175 § auditoría). La
 portada de «Usted está aquí» traía un chunk PNG **`caBX` de 13,6 KB** con las
@@ -7035,6 +7122,31 @@ fuentes.
 razón escrita —quedarse corto tira un bloque de más, que es una imagen que se ve
 igual— y la lista blanca de APPn sí se queda corta seguido. Lo que cubre ese lado
 es `estructuraConocida`, que ahora rechaza todo APPn que no reconozca.
+
+> **2026-09-03 — hecho.** Se sacó la lista a `functions/png-chunks-seguros.js`
+> —cero dependencias binarias, ni `sharp` ni `firebase-admin`— exportando
+> `CHUNKS_PNG_SEGUROS` con los catorce chunks de siempre. `imagenes-optimizar.js`
+> (`estructuraConocida`) la importa directo, y el panel la importa por el alias
+> nuevo `@png-chunks-seguros` (`astro.config.mjs`, `tsconfig.json`,
+> `vitest.config.ts` — mismo patrón que `@calendario`/`@historial`, D-20).
+> **No hay dos copias**: es la salida que este ítem prefería sobre un JSON
+> compartido o un test que ate dos listas.
+>
+> `src/lib/imagenes-archivo.ts` invirtió su condición
+> (`if (CHUNKS_PNG_SEGUROS.has(tipoChunk))` en vez de `if (!CHUNKS_A_TIRAR.has(...))`)
+> — una línea, como anticipaba el ítem.
+>
+> **Probado con dos mutaciones, no solo verde.** Agregar `'caBX'` a la lista
+> blanca (simulando "olvidarse" de sacarlo) pone rojo el test de B-220 que fija
+> ese caso. Y se sumó un `it` nuevo en `tests/imagenes-archivo.test.ts` con un
+> chunk inventado (`'zzZZ'`, no enumerado en ningún lado) para fijar la
+> propiedad de fondo — la que el caso de `caBX` por sí solo no alcanza a
+> probar: **cualquier** chunk no enumerado se tira, lo haya visto alguien antes
+> o no. Con la lista negra que había hasta hoy ese `it` habría pasado de largo,
+> que es exactamente el modo de falla que dejó pasar `caBX` en producción.
+>
+> `npx tsc --noEmit` y la suite completa (2.537 tests) quedaron verdes con el
+> alias nuevo resuelto en los tres lugares.
 
 ### B-324 · Una foto sacada de costado se publica de costado · P2
 

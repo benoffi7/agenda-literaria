@@ -13,6 +13,11 @@ export default defineConfig({
       // evento de Calendar se importa de un solo lugar (§7.4).
       '@calendario': fileURLToPath(new URL('./functions/calendario.js', import.meta.url)),
       '@historial': fileURLToPath(new URL('./functions/historial.js', import.meta.url)),
+      // B-323 — la lista blanca de chunks PNG seguros, compartida con el
+      // panel.
+      '@png-chunks-seguros': fileURLToPath(
+        new URL('./functions/png-chunks-seguros.js', import.meta.url),
+      ),
     },
   },
   test: {

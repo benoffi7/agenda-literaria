@@ -539,3 +539,4 @@ export const dispararRebuild = onSchedule(
 export { guardarVersion, guardarVersionAlBorrar } from './historial-trigger.js';
 export { reporteAIssue } from './reportes-trigger.js';
 export { optimizarImagen } from './imagenes-trigger.js';
+export { limpiarImagenesHuerfanas } from './imagenes-limpieza-trigger.js';

@@ -58,12 +58,31 @@ const ENTRADA = (() => {
 })();
 
 /**
+ * Los alias del panel que apuntan a un archivo puntual (`@calendario`,
+ * `@historial`, `@png-chunks-seguros`, …), leídos de `astro.config.mjs` en vez
+ * de hardcodeados — lo mismo que la atadura de `tests/que-deployar.test.ts`
+ * (B-88): si el día de mañana se agrega un alias nuevo a un archivo de
+ * `functions/`, este grafo lo sigue solo, sin que haga falta acordarse de
+ * tocar este test. Antes de este arreglo (lo encontró el `auditor-privacidad`
+ * auditando B-323), `aArchivo` no resolvía ninguno de estos alias: caían del
+ * lado de "paquete de node_modules" y el recorrido se cortaba ahí — inocuo
+ * mientras esos archivos no importen nada, pero un import agregado adentro de
+ * uno de ellos quedaría fuera del grafo sin que ningún test lo note.
+ */
+const ALIAS_A_ARCHIVO: Record<string, string> = Object.fromEntries(
+  [...fuente('astro.config.mjs').matchAll(/'(@[\w-]+)':\s*fileURLToPath\(\s*new URL\('\.\/([^']+)'/g)].map(
+    (m) => [m[1]!, m[2]!],
+  ),
+);
+
+/**
  * De especificador a archivo del repo, o `null` si es un paquete de
  * `node_modules` (ahí el grafo se corta: lo que interesa es qué paquete se
  * alcanza, no cómo está armado adentro).
  */
 const aArchivo = (spec: string, desde: string | null): string | null => {
   let base: string;
+  if (spec in ALIAS_A_ARCHIVO) return ALIAS_A_ARCHIVO[spec]!;
   if (spec.startsWith('@/')) base = `src/${spec.slice(2)}`;
   else if (spec.startsWith('.') && desde) {
     const partes = desde.split('/').slice(0, -1);
@@ -142,6 +161,7 @@ const COMPLETO = recorrer(ENTRADA, true);
 const SDK_PESADO = ['firebase/firestore', 'firebase/analytics', 'firebase/storage'];
 
 describe('el recorrido del grafo ve lo que hay — B-117', () => {
+
   it('la entrada de la island es un archivo del panel', () => {
     expect(ENTRADA).toMatch(/AdminApp$/);
   });
@@ -165,6 +185,29 @@ describe('el recorrido del grafo ve lo que hay — B-117', () => {
     // querría decir que el recorrido no sabe encontrarlo.
     for (const sdk of SDK_PESADO) {
       expect([...COMPLETO.paquetes], sdk).toContain(sdk);
+    }
+  });
+
+  it('los alias a functions/ se resuelven como archivo del repo, no como paquete externo — B-323', () => {
+    /*
+     * Lo encontró el `auditor-privacidad` auditando B-323: `aArchivo` no
+     * resolvía `@calendario`/`@historial`/`@png-chunks-seguros`, así que caían
+     * del lado de "paquete de node_modules" y el recorrido se cortaba ahí. Hoy
+     * es inocuo porque esos tres archivos no importan nada más — pero un
+     * import agregado adentro de cualquiera de ellos quedaría fuera del grafo
+     * sin que este archivo lo note, salvo por este `it`.
+     *
+     * Mutación: comentar el `if (spec in ALIAS_A_ARCHIVO) …` de `aArchivo`.
+     * Los tres alias vuelven a contarse como paquete y este `it` se pone rojo.
+     */
+    expect(Object.keys(ALIAS_A_ARCHIVO).sort()).toEqual([
+      '@calendario',
+      '@historial',
+      '@png-chunks-seguros',
+    ]);
+    for (const archivo of Object.values(ALIAS_A_ARCHIVO)) {
+      expect(COMPLETO.archivos.has(archivo), archivo).toBe(true);
+      expect([...COMPLETO.paquetes]).not.toContain(archivo);
     }
   });
 });

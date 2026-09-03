@@ -22,6 +22,7 @@
  * Defensa en profundidad, no duplicación.
  */
 import { MAXIMO_BYTES } from '@/lib/imagenes';
+import { CHUNKS_PNG_SEGUROS } from '@png-chunks-seguros';
 
 /**
  * Los tipos que se aceptan **al subir**.
@@ -154,25 +155,23 @@ const esPng = (b: Uint8Array): boolean =>
   b.length > 8 && FIRMA_PNG.every((v, i) => b[i] === v);
 
 /**
- * Los chunks PNG que se tiran: los que llevan texto o EXIF. `tIME` también, que
- * es la fecha de la última modificación.
+ * B-323 — `CHUNKS_PNG_SEGUROS` (`@png-chunks-seguros`, alias a
+ * `functions/png-chunks-seguros.js`) es la lista **blanca** de chunks que se
+ * conservan; cualquier otro se tira. Reemplaza a la lista negra que había acá
+ * hasta B-323: enumeraba lo que se tira y dejaba pasar todo lo que no conocía
+ * — al revés de lo que hace falta en un saneador —, y así fue como se le
+ * escapó `caBX`: la caja JUMBF de las **credenciales de contenido C2PA**, que
+ * en la portada de una actividad real de producción medía **13,6 KB** con un
+ * manifiesto **firmado por Google LLC** («Google C2PA Media Services»). Ni la
+ * lista lo tiraba ni `quedanMetadatos` lo veía, así que estuvo público desde
+ * que se subió (D-175 § auditoría).
  *
- * **`caBX` lo agregó B-220, y lo encontró un PNG que ya estaba publicado.** Es la
- * caja JUMBF donde viven las **credenciales de contenido C2PA**, y en la portada
- * de una actividad real de producción medía **13,6 KB** con un manifiesto
- * **firmado por Google LLC** («Google C2PA Media Services»): la herramienta con la
- * que se generó la imagen, un certificado y un `urn:c2pa:` que identifica esa
- * copia. Ni esta lista lo tiraba ni `quedanMetadatos` lo veía, así que estuvo
- * público desde que se subió.
- *
- * **Y la lección es sobre la forma de la lista, no sobre el chunk.** Esta lista es
- * negra: enumera lo que se tira y deja pasar todo lo que no conoce, o sea lo
- * contrario de lo que hace falta acá. Los chunks PNG seguros **son enumerables**
- * (los enumera `estructuraConocida` en `functions/imagenes-optimizar.js`), así que
- * lo correcto es invertirla. No se hizo en este cambio para no tocar la subida del
- * panel en el mismo commit que estrena la Function: es **B-323**.
+ * Con la lista invertida, un chunk que el formato PNG agregue mañana —el que
+ * sea— no puede colarse: si no está en `CHUNKS_PNG_SEGUROS`, se tira sin que
+ * haga falta nombrarlo. Es la misma lista que usa `estructuraConocida` en
+ * `functions/imagenes-optimizar.js` (DEC-7d): una sola fuente, no dos copias
+ * que se puedan desincronizar (clase de B-88).
  */
-const CHUNKS_A_TIRAR = new Set(['eXIf', 'tEXt', 'iTXt', 'zTXt', 'tIME', 'caBX']);
 
 /**
  * Dónde termina **de verdad** el JPEG: el índice justo después de su `FF D9`.
@@ -374,7 +373,7 @@ export const sinMetadatos = (tipo: TipoSubible, datos: Uint8Array): Uint8Array =
     const tipoChunk = String.fromCharCode(...datos.subarray(i + 4, i + 8));
     const hasta = i + 12 + largo;
     if (hasta > datos.length) break;
-    if (!CHUNKS_A_TIRAR.has(tipoChunk)) partes.push(datos.subarray(i, hasta));
+    if (CHUNKS_PNG_SEGUROS.has(tipoChunk)) partes.push(datos.subarray(i, hasta));
     i = hasta;
     if (tipoChunk === 'IEND') break;
   }

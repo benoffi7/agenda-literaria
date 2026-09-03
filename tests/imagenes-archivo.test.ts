@@ -234,13 +234,17 @@ describe('los metadatos se van, y los píxeles no se tocan', () => {
      * herramienta que generó la imagen, un certificado y un `urn:c2pa:` que
      * identifica esa copia.
      *
-     * No lo tiraba `CHUNKS_A_TIRAR` y no lo veía `quedanMetadatos`, así que pasó
-     * las dos capas de este módulo. Lo encontró B-220 al medir por qué esa imagen
-     * pesaba 1091 KB, y es la mejor prueba de que una lista **negra** de chunks no
-     * alcanza: el bloque llegó después de que la lista se escribiera (B-323).
+     * No lo tiraba la lista de chunks a tirar (negra, en ese momento) y no lo
+     * veía `quedanMetadatos`, así que pasó las dos capas de este módulo. Lo
+     * encontró B-220 al medir por qué esa imagen pesaba 1091 KB, y fue la
+     * mejor prueba de que una lista **negra** de chunks no alcanza: el bloque
+     * llegó años después de que la lista se hubiera escrito. B-323 invirtió la
+     * lista a **blanca** (`CHUNKS_PNG_SEGUROS`, `@png-chunks-seguros`), así
+     * que un chunk que el formato agregue mañana no puede repetir este caso.
      *
-     * Mutación: sacar `'caBX'` de `CHUNKS_A_TIRAR` — el primer aserto se pone
-     * rojo. Sacar `'jumdc2pa'` de `MARCAS_DE_METADATOS` — el segundo también.
+     * Mutación: agregar `'caBX'` a `CHUNKS_PNG_SEGUROS` — el primer aserto se
+     * pone rojo. Sacar `'jumdc2pa'` de `MARCAS_DE_METADATOS` — el segundo
+     * también.
      */
     const CA_BX = [0x63, 0x61, 0x42, 0x58]; // 'caBX'
     // `jumdc2pa` es la caja de descripción del manifiesto, y es lo que el
@@ -266,6 +270,35 @@ describe('los metadatos se van, y los píxeles no se tocan', () => {
     // cualquier camino, el barrido corta la subida.
     expect(quedanMetadatos(conC2pa), 'el barrido tiene que ver el manifiesto').toBe(true);
     expect(quedanMetadatos(limpio)).toBe(false);
+  });
+
+  it('PNG: un chunk que el formato agregue mañana y todavía no está enumerado también se va — B-323', () => {
+    /*
+     * **La propiedad que `caBX` de arriba no alcanza a probar sola.** Ese test
+     * fija un chunk conocido; este fija la propiedad de fondo: con la lista
+     * **blanca**, cualquier chunk que `CHUNKS_PNG_SEGUROS` no enumere se tira,
+     * lo haya visto alguien antes o no. Con la lista negra que había hasta
+     * B-323 este caso pasaba de largo — es exactamente el modo de falla que
+     * dejó pasar `caBX` en producción, y `'zzZZ'` no es un chunk real: está
+     * elegido para no coincidir con nada de la lista blanca.
+     *
+     * Mutación: volver a una lista negra que no incluya `'zzZZ'` (cualquiera,
+     * la vieja incluida). Este `it` se pone rojo aunque el de `caBX` siga
+     * verde, porque ese sí lo tapaba a mano.
+     */
+    const DESCONOCIDO = [0x7a, 0x7a, 0x5a, 0x5a]; // 'zzZZ'
+    const conChunkFuturo = new Uint8Array([
+      ...png().slice(0, 33),
+      ...chunk('zzZZ', [1, 2, 3, 4]),
+      ...png().slice(33),
+    ]);
+    expect(contiene(conChunkFuturo, DESCONOCIDO)).toBe(true);
+
+    const limpio = sinMetadatos('image/png', conChunkFuturo);
+    expect(contiene(limpio, DESCONOCIDO), 'un chunk no enumerado tiene que irse').toBe(false);
+    // Y la imagen sigue entera.
+    expect(contiene(limpio, [0x49, 0x44, 0x41, 0x54])).toBe(true);
+    expect(contiene(limpio, [0x49, 0x45, 0x4e, 0x44])).toBe(true);
   });
 
   it('JPEG: lo apendado DESPUÉS del EOI no sobrevive', () => {

@@ -59,6 +59,21 @@ export default defineConfig({
          * Tampoco importa Firebase, así que Vite la bundlea igual que la otra.
          */
         '@historial': fileURLToPath(new URL('./functions/historial.js', import.meta.url)),
+
+        /*
+         * `@png-chunks-seguros` es la lista blanca de chunks PNG que se
+         * conservan al limpiar una imagen antes de subirla (B-323): la misma
+         * lista que usa `estructuraConocida` en `imagenes-optimizar.js`
+         * (DEC-7d) para decidir si un PNG optimizado necesita recomprimirse.
+         * Una sola fuente evita que las dos listas se desincronicen — la
+         * forma en la que a la anterior (negra) se le escapó `caBX`.
+         *
+         * No importa `sharp` ni `firebase-admin`, así que Vite la bundlea
+         * igual que `@calendario` y `@historial`.
+         */
+        '@png-chunks-seguros': fileURLToPath(
+          new URL('./functions/png-chunks-seguros.js', import.meta.url),
+        ),
       },
     },
     // Guarda de §5.4: firebase-admin no puede terminar en un bundle de cliente.

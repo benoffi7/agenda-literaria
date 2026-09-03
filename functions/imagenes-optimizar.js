@@ -37,6 +37,7 @@ import {
   contentTypeDe,
   formatoDeSalida,
 } from './imagenes.js';
+import { CHUNKS_PNG_SEGUROS } from './png-chunks-seguros.js';
 
 /** Fondo con el que se aplana un PNG opaco al pasarlo a JPEG. Ver `formatoDeSalida`. */
 const FONDO = { r: 255, g: 255, b: 255 };
@@ -133,29 +134,15 @@ const arranca = (b, desde, firma) => {
 export const estructuraConocida = (b, formato) => {
   if (formato === 'png') {
     // Los chunks que no llevan texto ni fechas. Cualquier otro —`eXIf`, `tEXt`,
-    // `iTXt`, `zTXt`, `tIME`, o uno que no conozcamos— cuenta como metadato.
-    const CONOCIDOS = new Set([
-      'IHDR',
-      'PLTE',
-      'IDAT',
-      'IEND',
-      'tRNS',
-      'gAMA',
-      'cHRM',
-      'sRGB',
-      'iCCP',
-      'sBIT',
-      'bKGD',
-      'pHYs',
-      'hIST',
-      'sPLT',
-    ]);
+    // `iTXt`, `zTXt`, `tIME`, `caBX`, o uno que no conozcamos— cuenta como
+    // metadato. Lista blanca compartida con el panel: `png-chunks-seguros.js`
+    // (B-323).
     let i = 8;
     while (i + 12 <= b.length) {
       const largo = ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
       const tipo = String.fromCharCode(b[i + 4], b[i + 5], b[i + 6], b[i + 7]);
       const hasta = i + 12 + largo;
-      if (hasta > b.length || !CONOCIDOS.has(tipo)) return false;
+      if (hasta > b.length || !CHUNKS_PNG_SEGUROS.has(tipo)) return false;
       i = hasta;
       // `IEND` tiene que ser el último byte del archivo: lo que venga después es
       // una cola apendada.
