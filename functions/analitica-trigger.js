@@ -41,6 +41,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
 import {
+  MOTIVOS_SIN_CONFIGURAR,
   RETRASO,
   documentoDeAnalitica,
   pedidoPrimerDia,
@@ -138,7 +139,7 @@ const informesDe = async (ga4, property, ventana) => {
 
 const leerGa4 = async (ahora) => {
   if (!GA4_PROPERTY_ID) {
-    return { ok: false, motivo: 'GA4_PROPERTY_ID sin configurar' };
+    return { ok: false, motivo: MOTIVOS_SIN_CONFIGURAR.ga4 };
   }
   const property = `properties/${GA4_PROPERTY_ID}`;
   const v = ventanas(ahora, RETRASO.ga4);
@@ -175,7 +176,7 @@ const leerGa4 = async (ahora) => {
 
 const leerSearchConsole = async (ahora) => {
   if (!SEARCH_CONSOLE_SITE) {
-    return { ok: false, motivo: 'SEARCH_CONSOLE_SITE sin configurar' };
+    return { ok: false, motivo: MOTIVOS_SIN_CONFIGURAR.searchConsole };
   }
   const v = ventanas(ahora, RETRASO.searchConsole);
   const pedidos = pedidosSearchConsole(v.actual);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MARCA_SIN_CONFIGURAR as MARCA_SIN_CONFIGURAR_PANEL,
   MAX_MOTIVO,
   ctrLegible,
   diaLegible,
@@ -7,7 +8,13 @@ import {
   periodoLegible,
   variacionLegible,
 } from '@/lib/resumenDelSitio';
-import { documentoDeAnalitica, resumenGa4, resumenSearchConsole } from '../functions/analitica.js';
+import {
+  MARCA_SIN_CONFIGURAR as MARCA_SIN_CONFIGURAR_FUNCTION,
+  MOTIVOS_SIN_CONFIGURAR,
+  documentoDeAnalitica,
+  resumenGa4,
+  resumenSearchConsole,
+} from '../functions/analitica.js';
 
 /**
  * La lectura del resumen desde el panel — B-374 y B-373, `lib/resumenDelSitio.ts`.
@@ -147,14 +154,41 @@ describe('las cuatro situaciones se distinguen — D-272', () => {
      * tablero que grita «error» por eso enseña a ignorar sus errores.
      */
     const doc = documentoDeAnalitica({
-      ga4: { ok: false, motivo: 'GA4_PROPERTY_ID sin configurar' },
-      searchConsole: { ok: false, motivo: 'SEARCH_CONSOLE_SITE sin configurar' },
+      ga4: { ok: false, motivo: MOTIVOS_SIN_CONFIGURAR.ga4 },
+      searchConsole: { ok: false, motivo: MOTIVOS_SIN_CONFIGURAR.searchConsole },
       generadoEn: '2026-10-15T10:00:00.000Z',
     });
     const r = leerResumenDelSitio(JSON.parse(JSON.stringify(doc)));
     expect(r.ga4.situacion).toBe('sin-configurar');
     expect(r.searchConsole.situacion).toBe('sin-configurar');
-    expect(r.ga4.motivo).toBe('GA4_PROPERTY_ID sin configurar');
+    expect(r.ga4.motivo).toBe(MOTIVOS_SIN_CONFIGURAR.ga4);
+  });
+
+  it('la marca que separa «sin configurar» de «falla» es la misma en los dos lados', () => {
+    /*
+     * **La red que faltaba, y la encontró el `auditor-trampas`.** El productor
+     * (`functions/analitica.js`) y el consumidor (`lib/resumenDelSitio.ts`) no
+     * se importan entre sí a propósito, y lo único que distingue «falta un paso
+     * de consola» de «la API dijo no» es que el `motivo` contenga esta frase.
+     *
+     * Antes el caso de arriba usaba el literal escrito a mano en el fixture: si
+     * alguien reformulaba el mensaje en la Function —agregarle detalle, cambiar
+     * el orden de las palabras— el test seguía verde comparando dos copias
+     * congeladas, y en producción esa rama pasaba en silencio de «cargá esta
+     * variable» a «mirá un log». No se pierde un dato; se pierde el
+     * diagnóstico, que es lo único que esta pantalla tiene para dar mientras no
+     * hay números.
+     *
+     * MUTACIÓN PROBADA: se cambió `MARCA_SIN_CONFIGURAR` de `analitica.js` a
+     * `'sin definir'` y este caso pasó a rojo (y el de arriba con él,
+     * clasificando `falla` en vez de `sin-configurar`).
+     */
+    expect(MARCA_SIN_CONFIGURAR_FUNCTION).toBe(MARCA_SIN_CONFIGURAR_PANEL);
+    for (const motivo of Object.values(MOTIVOS_SIN_CONFIGURAR)) {
+      expect(motivo.toLowerCase()).toContain(MARCA_SIN_CONFIGURAR_PANEL);
+      // Y cada motivo nombra **qué** variable falta, que es la mitad accionable.
+      expect(motivo).toMatch(/^[A-Z0-9_]+ /);
+    }
   });
 
   it('falla: la API dijo no', () => {

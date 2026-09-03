@@ -662,6 +662,15 @@ detalle, que no tiene tríptico, pagaría el peso de calcularlo—. Si la copia 
 desactualiza, un panel nuevo cae en `otro`: el clic se cuenta y el desfase se ve
 en los datos, que es la degradación que este saneador está diseñado para dar.
 
+**Y la red que falta, nombrada por el `auditor-trampas`:** `PANELES_MEDIBLES`
+es una copia sin test, a diferencia de `EJES_MEDIBLES`, que sí está atado a
+`EJES` de `listadoPublico.ts`. No se puede escribir todavía porque el tipo del
+que se copia (`ClaveDePanel`) vive en un módulo que esta rama no tiene; el test
+—un `Record<ClaveDePanel, PanelMedible>`, que **no compila** si el tríptico gana
+un panel y el evento no— va junto con el enganche, y el parche está escrito en
+`.estado/analitica-sitio.md`. Mientras tanto la degradación es visible y no
+silenciosa: un panel nuevo llega a GA4 como `panel=otro`.
+
 > ⚠️ **Estado real al 2026-09-03: el evento está declarado y testeado, y el
 > enganche no está puesto.** Este frente trabajó sobre una rama que todavía no
 > tiene B-600 —`PanelesDeAhora.tsx` y `ahoraPublico.ts` viven en la rama de ese

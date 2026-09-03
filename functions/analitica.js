@@ -57,6 +57,29 @@ export const DIAS_DE_VENTANA = 28;
  */
 export const RETRASO = { ga4: 1, searchConsole: 3 };
 
+/**
+ * Los dos motivos que esta Function produce **sin llamar a nadie**: falta un
+ * identificador en `functions/.env`.
+ *
+ * Están acá —en el módulo puro, que es el que los tests importan— y no escritos
+ * a mano en el trigger, y el motivo es la clase de bug de B-88: el consumidor
+ * (`src/lib/resumenDelSitio.ts`) distingue «falta un paso de consola» de «la API
+ * dijo no» **reconociendo esta frase**, y los dos paquetes no se importan entre
+ * sí. Con los literales sueltos, reformular el mensaje —agregarle detalle,
+ * cambiar el orden de las palabras— degradaba en silencio el diagnóstico de la
+ * pantalla: de «cargá esta variable» a «mirá un log».
+ *
+ * `MARCA_SIN_CONFIGURAR` es la parte que el consumidor busca, y está acá para
+ * que el test pueda verificar que **los dos motivos la contienen** en vez de
+ * comparar dos copias congeladas. Lo encontró el `auditor-trampas`.
+ */
+export const MARCA_SIN_CONFIGURAR = 'sin configurar';
+
+export const MOTIVOS_SIN_CONFIGURAR = {
+  ga4: `GA4_PROPERTY_ID ${MARCA_SIN_CONFIGURAR}`,
+  searchConsole: `SEARCH_CONSOLE_SITE ${MARCA_SIN_CONFIGURAR}`,
+};
+
 /** `YYYY-MM-DD` de un `Date`, en la zona del proyecto. */
 export const claveDeDia = (fecha, zona = ZONA) =>
   new Intl.DateTimeFormat('en-CA', {

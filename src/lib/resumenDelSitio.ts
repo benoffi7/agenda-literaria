@@ -186,15 +186,20 @@ const eventosDe = (v: unknown): Record<string, number> =>
   esObjeto(v) ? Object.fromEntries(Object.entries(v).map(([k, n]) => [k, num(n)])) : {};
 
 /**
- * Un motivo de falla que en realidad es «falta un paso de consola».
+ * La marca que la Function pone en los dos motivos que produce **sin llamar a
+ * nadie**: falta un identificador en `functions/.env`.
  *
- * Se reconoce por la frase que la propia Function escribe («… sin
- * configurar»), y no por adivinar sobre el mensaje de Google: los dos motivos
- * que la Function produce sin llamar a nadie son literales de
- * `analitica-trigger.js`.
+ * Se reconoce por esta frase y no adivinando sobre el mensaje de Google, y está
+ * **exportada** para que un test pueda atarla al literal real que produce
+ * `functions/analitica.js` (`MARCA_SIN_CONFIGURAR` allá). Los dos paquetes no
+ * se importan entre sí a propósito, así que sin esa red reformular el mensaje
+ * en la Function degradaba el diagnóstico de la pantalla en silencio: de «cargá
+ * esta variable» a «mirá un log». Lo encontró el `auditor-trampas`.
  */
+export const MARCA_SIN_CONFIGURAR = 'sin configurar';
+
 const esSinConfigurar = (motivo: string | null): boolean =>
-  motivo !== null && /sin configurar/i.test(motivo);
+  motivo !== null && motivo.toLowerCase().includes(MARCA_SIN_CONFIGURAR);
 
 const situacionDe = (rama: Record<string, unknown> | null, hayDatos: boolean, motivo: string | null): SituacionDeFuente => {
   if (!rama) return 'sin-documento';
