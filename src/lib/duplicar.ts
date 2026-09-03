@@ -1,4 +1,5 @@
 import { nuevaImagenId } from '@/lib/imagenes';
+import { duplicarItemMaterial } from '@/lib/material';
 import { duplicarModalidad } from '@/lib/modalidades';
 import { aDatetimeLocal, deDatetimeLocal, nuevaSesionId } from '@/lib/sesiones';
 import type { ActividadForm, SesionForm } from '@/types/actividad';
@@ -422,7 +423,10 @@ export const duplicarActividadForm = (
     material: copiar.material
       ? {
           tiene: origen.material.tiene,
-          items: origen.material.items.map((i) => ({ ...i })),
+          // B-342 — con id nuevo, misma razón que las modalidades: dos
+          // actividades con las mismas filas hacen que cualquier cosa que
+          // compare por id crea que son la misma.
+          items: origen.material.items.map(duplicarItemMaterial),
         }
       // `tiene: false` y no solo la lista vacía: con la casilla prendida y cero
       // items, el schema pide "agregá al menos un material o destildá la casilla".

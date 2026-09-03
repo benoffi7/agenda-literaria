@@ -22,6 +22,17 @@
 import { deDatetimeLocal } from '@/lib/sesiones';
 import type { Modalidad, ModalidadFila, ModalidadFilaForm, Online, Sede } from '@/types/actividad';
 
+/**
+ * B-190 / D-231 — el slug de la opción "todavía no se decidió" (§4.1,
+ * `opciones-base.json`). Vive acá y no repetido a mano en cada consumidor: lo
+ * encontró el `auditor-privacidad` sobre B-190 — el string suelto en
+ * `detallePublico.ts` y `textoRedes.ts` es la misma clase B-88 que ya costó una
+ * vez (el productor y el consumidor de un vocabulario derivando por separado).
+ * Si el slug cambia, TypeScript avisa en cada import; un string a mano no avisa
+ * en ninguno.
+ */
+export const SLUG_PLATAFORMA_A_CONFIRMAR = 'a-confirmar';
+
 /*
  * **No hay lectura de compatibilidad, y se sacó a propósito.** Hubo una que
  * sintetizaba una fila con el `modalidad`/`sede`/`online` de primer nivel de un

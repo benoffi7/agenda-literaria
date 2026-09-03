@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Campo,
   claseBotonFila,
   claseBotonPrimario,
   claseBotonSecundario,
@@ -23,7 +24,23 @@ interface Props {
   onChange: (s: SesionForm[]) => void;
   /** Los clubes de lectura muestran el campo "lectura" con más prominencia. */
   mostrarLectura?: boolean;
-  error?: string;
+  /**
+   * B-343 — el mapa entero, no un solo `error?: string`.
+   *
+   * Antes este editor recibía el error de la lista (`errorDe('sesiones')`,
+   * «Cargá al menos un encuentro») y nada más, así que `sesiones.N.inicio` y
+   * `sesiones.N.fin` («Falta la fecha de inicio», «Falta la fecha de fin») no
+   * se pintaban en la fila — la otra mitad de B-197 (material) y B-341
+   * (galería): el editor de filas no recibía con qué mostrar el rechazo de
+   * una fila puntual.
+   *
+   * El caso de un fin anterior al inicio ya tenía su propio aviso vivo en la
+   * fila (`resumirSesion`, más abajo) — eso no cambia: es más rico, dice el
+   * día de la semana, y se queda como la fuente para ese caso. Lo que faltaba
+   * era el otro camino, el del schema, para cuando el campo está directamente
+   * vacío.
+   */
+  errorDe: (path: string) => string | undefined;
 }
 
 const MS_POR_DIA = 86_400_000;
@@ -182,7 +199,7 @@ const FUNCION = {
  * (B-224). Acá queda lo propio de un encuentro: el generador de N, los saltos de
  * fecha de B-186 y la cancelación.
  */
-export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Props) {
+export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: Props) {
   const [abrirGenerador, setAbrirGenerador] = useState(false);
   const [cantidad, setCantidad] = useState(8);
   const [cadaDias, setCadaDias] = useState(7);
@@ -223,7 +240,7 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
       alCambiarCantidad={(accion, cantidadResultante) =>
         medirFuncion(FUNCION[accion], undefined, cantidadResultante)
       }
-      error={error}
+      error={errorDe('sesiones')}
       etiquetaBorrar={(s) => `Borrar encuentro ${s.inicio || ''}`}
       claseFila={(s) =>
         s.cancelada ? 'border-borde bg-black/[0.03] opacity-60' : 'border-borde bg-white'
@@ -325,28 +342,29 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, error }: Pr
       }
     >
       {(s, i, editar) => {
+        // B-343 — la ruta de esta fila, con el índice en el medio: es donde lo
+        // pone el `path` del `superRefine` (`sesiones.2.inicio`).
+        const ruta = (sufijo: string) => `sesiones.${i}.${sufijo}`;
         const resumen = resumirSesion(s);
         return (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs">
-                Inicio
+              <Campo label="Inicio" requerido error={errorDe(ruta('inicio'))}>
                 <input
                   type="datetime-local"
                   value={s.inicio}
                   onChange={(e) => reemplazar(s.id, (x) => conInicioNuevo(x, e.target.value))}
                   className={claseInput}
                 />
-              </label>
-              <label className="flex flex-col gap-1 text-xs">
-                Fin
+              </Campo>
+              <Campo label="Fin" requerido error={errorDe(ruta('fin'))}>
                 <input
                   type="datetime-local"
                   value={s.fin}
                   onChange={(e) => editar({ fin: e.target.value })}
                   className={claseInput}
                 />
-              </label>
+              </Campo>
               <label className="flex flex-col gap-1 text-xs">
                 Tema
                 <input

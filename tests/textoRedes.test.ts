@@ -348,6 +348,27 @@ describe('dónde, arancel e inscripción', () => {
     expect(salida).not.toContain('Casa Brandon ·');
   });
 
+  it('B-190 — la plataforma «a confirmar» no se nombra como si fuera una plataforma', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el `if (online.plataforma === 'a-confirmar')` y
+     * dejar que caiga en `etiqueta(labels, 'plataforma', 'a-confirmar')` —
+     * ese lookup no está en el fixture de este archivo, así que el des-slug
+     * (`lib/vistaPreviaEvento.ts`/`etiqueta`) devuelve «A confirmar» igual, y
+     * el texto sale «Por A confirmar · el link se envía a quienes se
+     * inscriban», que se lee como si «A confirmar» fuera el nombre de una
+     * plataforma. Con la guarda, cae al mismo genérico que sin plataforma.
+     */
+    const sinDecidir = act({
+      modalidad: 'virtual',
+      sede: null,
+      online: { plataforma: 'a-confirmar', url: '', urlPublica: false },
+    });
+    const salida = texto(sinDecidir);
+    expect(salida).toContain('Virtual\nEncuentro virtual · el link se envía a quienes se inscriban');
+    expect(salida).not.toContain('A confirmar');
+    expect(salida).not.toContain('a-confirmar');
+  });
+
   it('una presencial no habla de plataforma', () => {
     const presencial = act({ modalidad: 'presencial', online: null });
     const salida = texto(presencial);

@@ -58,6 +58,15 @@ const errores = (v: unknown) => {
   return r.success ? [] : r.error.issues.map((i) => i.path.join('.'));
 };
 
+/** Como `errores`, pero con el mensaje: para afirmar CUÁL rechazo y no solo QUE lo hay (B-200). */
+const mensajes = (v: unknown): Record<string, string> => {
+  const r = actividadFormSchema.safeParse(v);
+  if (r.success) return {};
+  const mapa: Record<string, string> = {};
+  for (const i of r.error.issues) mapa[i.path.join('.')] = i.message;
+  return mapa;
+};
+
 describe('schema — caso feliz', () => {
   it('acepta una actividad presencial completa', () => {
     expect(actividadFormSchema.safeParse(valido()).success).toBe(true);
@@ -166,6 +175,58 @@ describe('schema — lo que bloquea en los dos niveles', () => {
 
   it('rechaza un slug con mayúsculas y espacios, también en borrador', () => {
     expect(errores({ ...valido(), slug: 'Taller Crónica' })).toContain('slug');
+  });
+
+  /**
+   * B-200 — antes esto pasaba: `new Date('no es viernes')` es `Invalid Date`,
+   * y `Invalid Date > Date válida` da `false` por las reglas de `NaN`, así que
+   * el `.refine` de ese entonces SÍ rechazaba... pero con el mensaje de "tiene
+   * que terminar después de empezar", que es engañoso cuando el problema real
+   * es que se tipeó cualquier cosa.
+   *
+   * MUTACIÓN PROBADA: volver el `superRefine` a un `.refine` que solo compare
+   * fechas. Este caso sigue en rojo (el `errores` ya no contiene el mensaje
+   * nuevo), así que la mutación no puede colarse en silencio.
+   */
+  it('una fecha de inicio corrupta se rechaza con su propio mensaje', () => {
+    const v = valido();
+    v.sesiones = [{ ...v.sesiones[0]!, inicio: 'no es viernes' }];
+    const e = mensajes(v);
+    expect(e['sesiones.0.inicio']).toBe('Fecha de inicio inválida');
+    expect(e['sesiones.0.fin']).toBeUndefined();
+  });
+
+  it('una fecha de fin corrupta se rechaza con su propio mensaje', () => {
+    const v = valido();
+    v.sesiones = [{ ...v.sesiones[0]!, fin: 'tampoco esto' }];
+    expect(mensajes(v)['sesiones.0.fin']).toBe('Fecha de fin inválida');
+  });
+
+  /**
+   * B-200 — el agujero real: `modalidadFilaSchema` compara fechas con
+   * `!m.inicio || !m.fin || …`, así que una ventana con una sola punta cargada
+   * cortaba en el primer `||` y nunca comparaba nada. Con esa punta corrupta
+   * (no vacía, pero tampoco una fecha), pasaba el schema entero y recién
+   * `formADocumento` tiraba `Fecha inválida` al convertir — el crash real que
+   * el ítem reporta, no una hipótesis.
+   *
+   * MUTACIÓN PROBADA: volver al `.refine` con el corto circuito original. Este
+   * caso pasa a `success: true` (nada en `errores`), que es exactamente el bug.
+   */
+  it('B-200 — una ventana con una sola fecha corrupta no se cuela por el corto circuito', () => {
+    const v = valido();
+    v.modalidades = [{ ...v.modalidades[0]!, inicio: 'no es viernes', fin: '' }];
+    expect(mensajes(v)['modalidades.0.inicio']).toBe('Fecha de inicio inválida');
+  });
+
+  it('B-200 — el cierre de inscripción corrupto se rechaza, también en borrador', () => {
+    const v = valido();
+    v.inscripcion = { ...v.inscripcion, cierra: 'no es viernes' };
+    expect(mensajes(v)['inscripcion.cierra']).toBe('Fecha de cierre inválida');
+  });
+
+  it('B-200 — un cierre de inscripción vacío sigue siendo válido (es opcional)', () => {
+    expect(errores(valido())).not.toContain('inscripcion.cierra');
   });
 });
 
@@ -285,7 +346,7 @@ describe('schema — material (al publicar)', () => {
     const v = publicado();
     v.material = {
       tiene: true,
-      items: [{ tipo: 'lectura', titulo: '', url: '', entrega: 'previo', publico: false }],
+      items: [{ id: 'mat_1', tipo: 'lectura', titulo: '', url: '', entrega: 'previo', publico: false }],
     };
     expect(errores(v)).toContain('material.items.0.titulo');
   });
@@ -295,8 +356,8 @@ describe('schema — material (al publicar)', () => {
     v.material = {
       tiene: true,
       items: [
-        { tipo: 'lectura', titulo: 'Pedro Páramo', url: '', entrega: 'previo', publico: false },
-        { tipo: 'guia', titulo: '', url: '', entrega: 'previo', publico: false },
+        { id: 'mat_1', tipo: 'lectura', titulo: 'Pedro Páramo', url: '', entrega: 'previo', publico: false },
+        { id: 'mat_2', tipo: 'guia', titulo: '', url: '', entrega: 'previo', publico: false },
       ],
     };
     expect(errores(v)).toContain('material.items.1.titulo');

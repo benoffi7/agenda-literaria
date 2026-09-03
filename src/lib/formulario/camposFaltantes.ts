@@ -182,6 +182,8 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'material.tiene': { etiqueta: 'Tiene material', seccion: 'material' },
   'material.items': { etiqueta: 'Material', seccion: 'material' },
   'material.items.N': { etiqueta: 'Material', seccion: 'material' },
+  // B-342 — el id de cliente, como 'imagenes.N.id' y 'sesiones.N.id'.
+  'material.items.N.id': { etiqueta: 'Material', seccion: 'material' },
   'material.items.N.titulo': { etiqueta: 'Título del material', seccion: 'material' },
   'material.items.N.url': { etiqueta: 'Link del material', seccion: 'material' },
   'material.items.N.tipo': { etiqueta: 'Formato del material', seccion: 'material' },

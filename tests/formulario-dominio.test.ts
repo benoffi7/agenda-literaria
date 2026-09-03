@@ -32,7 +32,7 @@ import {
   necesitaSede,
   nombrePersona,
 } from '@/lib/formulario/condicionales';
-import { labelsPendientesDe, recordarLabel } from '@/lib/formulario/etiquetas';
+import { labelsPendientesDe, recordarLabel, usosAContar } from '@/lib/formulario/etiquetas';
 import {
   guardarActividad,
   type PuertosGuardado,
@@ -553,6 +553,133 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
     // Los que ya existían sí — sin esto el chequeo pasaría con la lista vacía.
     expect(contados).toContain('registrarUsos:tipo:taller');
     expect(contados).toContain('registrarUsos:tags:taller-largo');
+  });
+
+  /**
+   * B-340 — `usos` medía *veces guardado*, no *cuántas actividades usan esta
+   * opción*: editar la misma actividad doce veces —barato desde B-183— le
+   * sumaba doce a su tipo, su arancel, su barrio y sus etiquetas, y con eso el
+   * §4.3 no podía ni ordenar por frecuencia real ni distinguir un `usos: 1` de
+   * typo colgado de un `usos: 12` de re-guardados.
+   */
+  describe('usosAContar no vuelve a contar lo que ya estaba antes de editar (B-340)', () => {
+    const datos = (over: Partial<Parameters<typeof usosAContar>[0]> = {}) => ({
+      tipo: 'taller',
+      arancel: { tipo: 'a-la-gorra' },
+      modalidades: [{ sede: { barrio: 'villa-crespo' }, online: { plataforma: 'zoom' } }],
+      tags: ['narrativa'],
+      ...over,
+    });
+
+    it('sin `anterior`, cuenta todo (control positivo: así era antes)', () => {
+      expect(usosAContar(datos(), [], {})).toEqual({
+        arancel: ['a-la-gorra'],
+        tipo: ['taller'],
+        barrio: ['villa-crespo'],
+        plataforma: ['zoom'],
+        tags: ['narrativa'],
+      });
+    });
+
+    it('si nada cambió respecto de `anterior`, no cuenta nada', () => {
+      // El caso del ítem: la misma actividad, resguardada sin tocar un campo.
+      expect(usosAContar(datos(), [], {}, datos())).toEqual({});
+    });
+
+    it('cuenta solo el campo que cambió, no los que siguen igual', () => {
+      const anterior = datos({ tipo: 'club-lectura' });
+      expect(usosAContar(datos(), [], {}, anterior)).toEqual({ tipo: ['taller'] });
+    });
+
+    it('un barrio nuevo en una modalidad se cuenta aunque el resto no cambie', () => {
+      const anterior = datos({
+        modalidades: [{ sede: { barrio: 'palermo' }, online: { plataforma: 'zoom' } }],
+      });
+      expect(usosAContar(datos(), [], {}, anterior)).toEqual({ barrio: ['villa-crespo'] });
+    });
+
+    it('una etiqueta nueva se cuenta aunque las demás ya estuvieran', () => {
+      const anterior = datos({ tags: [] });
+      expect(usosAContar(datos(), [], {}, anterior)).toEqual({ tags: ['narrativa'] });
+    });
+
+    it('sigue restando lo recién creado con "Otro", incluso con `anterior`', () => {
+      // Las dos restas conviven: B-168 (recién creado) y B-340 (ya estaba).
+      // Sin esto, `anterior` podría tapar el bug de B-168 en vez de sumarse.
+      const anterior = datos({ arancel: { tipo: 'gratis' } });
+      const conLabelNuevo = usosAContar(
+        datos(),
+        [{ campo: 'arancel', label: 'A la gorra' }],
+        {},
+        anterior,
+      );
+      expect(conLabelNuevo).toEqual({});
+    });
+
+    it('integrado: guardarActividad no re-cuenta un tipo sin cambios (B-340)', async () => {
+      // La mutación que este test mata: si `guardar.ts` dejara de pasar
+      // `anterior` a `usosAContar` (o `ActividadFormulario` dejara de mandar
+      // `inicial`), este caso volvería a contar `tipo` en cada guardado.
+      const { puertos, llamadas } = puertosFalsos();
+      await guardarActividad(
+        entrada({
+          idActual: 'act1',
+          anterior: datos(),
+          labelsNuevos: [],
+        }),
+        puertos,
+      );
+      const contados = llamadas.filter((l) => l.startsWith('registrarUsos:'));
+      expect(contados).toEqual([]);
+    });
+
+    /**
+     * B-340 — lo señaló el `auditor-privacidad`. `elegidosDe` leía
+     * `datos.modalidades.map(...)` y `[...datos.tags]` sin default, mientras
+     * que todo otro lector del documento crudo (`actividades.ts`,
+     * `toPublic.ts`) se defiende con `?? []`. Sin el default, un `anterior`
+     * sin uno de los dos campos tira un `TypeError` que el `catch` silencioso
+     * de `guardar.ts` traga — y `usos` deja de contarse para las CINCO
+     * taxonomías, no solo la que faltaba, sin ningún síntoma en pantalla.
+     *
+     * MUTACIÓN PROBADA: sacar cualquiera de los dos `?? []` de `elegidosDe`
+     * (`etiquetas.ts`) y correr este test — tira antes de llegar al `expect`.
+     */
+    it('usosAContar sobrevive a un `anterior` sin modalidades ni tags', () => {
+      const anteriorIncompleto = {
+        tipo: 'club-lectura',
+        arancel: { tipo: 'gratis' },
+      } as Parameters<typeof usosAContar>[3];
+      expect(() => usosAContar(datos(), [], {}, anteriorIncompleto)).not.toThrow();
+      // Y sigue contando lo del form: no es que el chequeo se salteó entero.
+      const r = usosAContar(datos(), [], {}, anteriorIncompleto);
+      expect(r.tipo).toEqual(['taller']);
+      expect(r.barrio).toEqual(['villa-crespo']);
+      expect(r.tags).toEqual(['narrativa']);
+    });
+  });
+
+  /**
+   * B-340 — lo señaló el `auditor-privacidad`. `inicial` es el documento
+   * crudo —lleva `online.url`, `difusion`, `createdBy`/`updatedBy`,
+   * `sesiones[].calendarEventId`— y pasarlo entero como `anterior` deja esos
+   * campos viajando por el caso de uso sin necesidad, a un tipo que no evita
+   * que se LEAN, solo que se declaren. `ActividadFormulario` tiene que
+   * proyectar los cuatro campos de taxonomía en el propio call site, antes de
+   * que `inicial` cruce hacia `guardarActividad`.
+   */
+  it('B-340 — `anterior` se arma proyectado en el call site, no pasando `inicial` entero', () => {
+    const src = readFileSync('src/components/admin/ActividadFormulario.tsx', 'utf8');
+    expect(src).not.toMatch(/anterior:\s*inicial,/);
+    expect(src).toContain('anterior: inicial && {');
+    // Los cuatro campos que `usosAContar` de verdad mira, ni uno más.
+    for (const campo of ['tipo: inicial.tipo', 'arancel: { tipo: inicial.arancel.tipo }', 'modalidades: inicial.modalidades', 'tags: inicial.tags']) {
+      expect(src).toContain(campo);
+    }
+    // Y ninguno de los campos crudos que no debería cruzar.
+    for (const campoCrudo of ['online.url', 'difusion', 'createdBy', 'calendarEventId']) {
+      expect(src.slice(src.indexOf('anterior: inicial && {'), src.indexOf('anterior: inicial && {') + 500)).not.toContain(campoCrudo);
+    }
   });
 
   it('si la actividad no se puede escribir, no queda ninguna opción huérfana', async () => {

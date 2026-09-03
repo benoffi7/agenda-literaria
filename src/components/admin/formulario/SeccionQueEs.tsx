@@ -122,7 +122,9 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
         */}
         <Campo
           label="Flyer e imágenes"
-          error={errorDe('imagenes')}
+          // B-341 — sin `error` acá: `GaleriaEditor` ya pinta el de la lista
+          // (`errorDe('imagenes')`) y el de cada fila. Pasarlo también acá
+          // duplicaría el mismo mensaje dos veces en la misma sección.
           ayuda="El flyer es lo primero que se ve. Con imagen, la actividad entra en la cartelera del sitio y el link se comparte con algo para mirar."
           className="sm:col-span-2"
         >
@@ -130,6 +132,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
             imagenes={form.imagenes}
             onChange={(imagenes) => set('imagenes', imagenes)}
             tituloActividad={form.titulo}
+            errorDe={errorDe}
           />
         </Campo>
       </div>

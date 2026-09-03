@@ -16,6 +16,7 @@ import { libroVacio } from '@/lib/formulario/estadoInicial';
 import { buildSearchText } from '@/lib/normalize';
 import { deDatetimeLocal, aDatetimeLocal } from '@/lib/sesiones';
 import { imagenesDe } from '@/lib/imagenes';
+import { idItemMaterialMigrado } from '@/lib/material';
 import {
   filaPideOnline,
   filaPideSede,
@@ -297,7 +298,19 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
     completo: a.inscripcion.completo ?? false,
   },
   arancel: a.arancel,
-  material: a.material ?? { tiene: false, items: [] },
+  /**
+   * B-342 — un documento anterior al id de cliente puede traer ítems sin
+   * `id`. Se completa al leer, determinístico (`idItemMaterialMigrado`, mismo
+   * criterio que `imagenesDe`/D-125): un id que cambiara en cada lectura
+   * marcaría el formulario como "con cambios sin guardar" cada vez que se
+   * abre una actividad vieja sin tocar nada.
+   */
+  material: a.material
+    ? {
+        tiene: a.material.tiene,
+        items: a.material.items.map((i, n) => (i.id ? i : { ...i, id: idItemMaterialMigrado(n) })),
+      }
+    : { tiene: false, items: [] },
   difusion: a.difusion ?? { arrobar: [], notas: '' },
   estado: a.estado,
   tags: a.tags ?? [],

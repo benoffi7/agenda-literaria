@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esSlugDeCopia } from '@/lib/duplicar';
+import { deDatetimeLocal } from '@/lib/sesiones';
 import {
   ENTREGAS_MATERIAL,
   ESTADOS,
@@ -52,6 +53,21 @@ const publicando = (estado: string): boolean => estado === 'publicado';
 const esUrl = (valor: string): boolean => z.string().url().safeParse(valor).success;
 
 /**
+ * B-200 — ¿esta fecha se puede convertir? Vacío cuenta como válida: acá se usa
+ * en campos que ya tienen su propio `.min(1)` (un encuentro) o que son
+ * opcionales (una ventana de modalidad, el cierre de inscripción), así que la
+ * ausencia la cubre otra regla o no hace falta cubrirla.
+ *
+ * **El mismo parser que usa `formADocumento`** (`deDatetimeLocal`, importado y
+ * no copiado — D-20, B-72/B-75): antes solo `formADocumento` sabía distinguir
+ * una fecha corrupta de una válida, y se enteraba tarde, tirando
+ * `Fecha inválida: "…"` en medio del guardado. Con el mismo chequeo acá, el
+ * schema rechaza antes de llegar ahí y lo hace con un mensaje en el campo, no
+ * con un `{estado:'error'}` genérico.
+ */
+const fechaValida = (valor: string): boolean => !valor || deDatetimeLocal(valor) !== null;
+
+/**
  * Los esquemas con los que puede empezar la URL de una imagen: `https`, y
  * `http` **solo contra localhost**, que es el emulador de Storage. Ver el `if`
  * que lo usa, más abajo, para el razonamiento completo.
@@ -98,9 +114,40 @@ const sesionSchema = z
     cancelada: z.boolean().default(false),
     calendarEventId: z.string().nullable().default(null),
   })
-  .refine((s) => new Date(s.fin) > new Date(s.inicio), {
-    message: 'El encuentro tiene que terminar después de empezar',
-    path: ['fin'],
+  /*
+   * B-200 — antes esto era un `.refine` sin más: `new Date(s.fin) >
+   * new Date(s.inicio)`. Con una fecha corrupta ("no es viernes" en vez de un
+   * `datetime-local`), la comparación entre un `Date` inválido y uno válido da
+   * `NaN`, y cualquier comparación contra `NaN` es `false` — así que ESE caso sí
+   * quedaba cubierto, aunque con el mensaje equivocado ("tiene que terminar
+   * después de empezar" en vez de "fecha inválida"). El agujero real estaba en
+   * los campos que comparten esta forma pero con las dos fechas OPCIONALES
+   * (`modalidadFilaSchema`, más abajo): ahí el corto circuito `!m.inicio ||
+   * !m.fin || …` dejaba pasar una fecha corrupta cuando la otra estaba vacía, y
+   * recién `formADocumento` la agarraba tirando `Fecha inválida: "…"`.
+   *
+   * El `superRefine` no es por ese caso —acá las dos son obligatorias, no hay
+   * corto circuito que abrir— sino para separar el mensaje: una fecha corrupta
+   * y un orden invertido son dos problemas distintos, y agruparlos bajo "tiene
+   * que terminar después de empezar" es confuso cuando lo que pasó es que se
+   * tipeó cualquier cosa.
+   */
+  .superRefine((s, ctx) => {
+    const inicioValida = fechaValida(s.inicio);
+    const finValida = fechaValida(s.fin);
+    if (!inicioValida) {
+      ctx.addIssue({ code: 'custom', path: ['inicio'], message: 'Fecha de inicio inválida' });
+    }
+    if (!finValida) {
+      ctx.addIssue({ code: 'custom', path: ['fin'], message: 'Fecha de fin inválida' });
+    }
+    if (inicioValida && finValida && !(new Date(s.fin) > new Date(s.inicio))) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fin'],
+        message: 'El encuentro tiene que terminar después de empezar',
+      });
+    }
   });
 
 const sedeSchema = z.object({
@@ -151,12 +198,37 @@ const modalidadFilaSchema = z
     sede: sedeSchema.nullable().default(null),
     online: onlineSchema.nullable().default(null),
   })
-  .refine((m) => !m.inicio || !m.fin || new Date(m.fin) > new Date(m.inicio), {
-    message: 'La modalidad tiene que terminar después de empezar',
-    path: ['fin'],
+  /*
+   * B-200 — el agujero real. Con `!m.inicio || !m.fin || …`, una ventana con
+   * **una sola** punta cargada (la otra es opcional y queda `''`) corta en el
+   * primer `||` y nunca llega a comparar fechas — así que un `m.inicio`
+   * corrupto con `m.fin` vacío pasaba esto sin que nada lo viera, y recién
+   * `formADocumento` (línea 77 de `actividades.ts`) tiraba `Fecha inválida:
+   * "…"` al convertir. El corto circuito seguía siendo necesario —las dos son
+   * opcionales, y comparar contra una vacía no tiene sentido— pero tenía que
+   * dejar pasar solo lo que de verdad está vacío, no lo que está corrupto.
+   */
+  .superRefine((m, ctx) => {
+    const inicioValida = fechaValida(m.inicio);
+    const finValida = fechaValida(m.fin);
+    if (!inicioValida) {
+      ctx.addIssue({ code: 'custom', path: ['inicio'], message: 'Fecha de inicio inválida' });
+    }
+    if (!finValida) {
+      ctx.addIssue({ code: 'custom', path: ['fin'], message: 'Fecha de fin inválida' });
+    }
+    if (m.inicio && m.fin && inicioValida && finValida && !(new Date(m.fin) > new Date(m.inicio))) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fin'],
+        message: 'La modalidad tiene que terminar después de empezar',
+      });
+    }
   });
 
 const itemMaterialSchema = z.object({
+  // B-342 — trampa 2: el id se genera en el cliente, nunca por índice.
+  id: z.string().regex(/^mat_/, 'El id de material debe venir de nuevaItemMaterialId()'),
   tipo: z.enum(TIPOS_MATERIAL),
   // El título del material se exige al publicar: en el evento, un ítem sin
   // título sale como una línea vacía. A medio cargar puede estar en blanco.
@@ -268,6 +340,18 @@ export const actividadFormSchema = z
     if (v.imagenes.length > 0 && portadas !== 1) {
       faltaSiempre(['imagenes'], 'Elegí una sola imagen como portada');
     }
+
+    /*
+     * B-200 — el cierre de inscripción es opcional y no tenía ninguna guarda de
+     * forma: `opcional` acepta cualquier string no vacío. Va en los dos
+     * niveles, como las de la galería de arriba: una fecha corrupta haría
+     * ilegible el documento (`formADocumento` la convierte con `aTimestamp` sin
+     * chequear), no lo dejaría incompleto.
+     */
+    if (v.inscripcion.cierra && !fechaValida(v.inscripcion.cierra)) {
+      faltaSiempre(['inscripcion', 'cierra'], 'Fecha de cierre inválida');
+    }
+
   })
   .superRefine((v, ctx) => {
     if (!publicando(v.estado)) return;

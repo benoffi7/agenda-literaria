@@ -67,6 +67,43 @@ export const labelsPendientesDe = (
 };
 
 /**
+ * La forma mínima de una actividad que `usosAContar` necesita mirar — la misma
+ * para el documento que se guarda y para el que había antes de editarlo
+ * (B-340).
+ */
+interface DatosDeUsos {
+  arancel: { tipo: string };
+  tipo: string;
+  // B-224 — `sede` y `online` viven adentro de cada modalidad, y siguen siendo
+  // nulos según cuál sea (§11): una fila virtual no tiene barrio y una presencial
+  // no tiene plataforma. Se recorren **todas** las filas: con dos sedes en dos
+  // barrios, contar solo la primera dejaría al segundo barrio sin uso y ordenando
+  // último en el desplegable para siempre. Los vacíos los descarta el filtro de
+  // abajo, y `registrarUsos` ya ignora los slugs vacíos.
+  modalidades: readonly {
+    sede: { barrio: string } | null;
+    online: { plataforma: string } | null;
+  }[];
+  tags: readonly string[];
+}
+
+/** Los slugs elegidos, campo por campo, sin repetir dentro de un mismo campo. */
+const elegidosDe = (datos: DatosDeUsos) => ({
+  arancel: [datos.arancel.tipo],
+  tipo: [datos.tipo],
+  // `?? []` — mismo criterio defensivo que el resto de los lectores del
+  // documento crudo (`actividades.ts`, `toPublic.ts`): `guardado` sale de
+  // `ActividadForm`, siempre completo, pero `anterior` (B-340) puede venir de
+  // cualquier llamador futuro. Sin esto, un `anterior` incompleto tira un
+  // `TypeError` que el `catch` silencioso de `guardar.ts` traga, y `usos` deja
+  // de contarse para las cinco taxonomías sin ningún síntoma (lo señaló el
+  // `auditor-privacidad`).
+  barrio: [...new Set((datos.modalidades ?? []).map((m) => m.sede?.barrio ?? ''))],
+  plataforma: [...new Set((datos.modalidades ?? []).map((m) => m.online?.plataforma ?? ''))],
+  tags: [...(datos.tags ?? [])],
+});
+
+/**
  * Los slugs de taxonomía que esta actividad **eligió**, campo por campo, para
  * que `registrarUsos` sume el `usos` del §4.3 (B-86, B-168, D-103).
  *
@@ -77,44 +114,38 @@ export const labelsPendientesDe = (
  * hace meses es casi seguro un typo colgado"). Si esa resta se cae, el síntoma es
  * silencioso: números plausibles y un orden mal.
  *
+ * **Y se restan los que ya estaban en `anterior` (B-340).** Sin `anterior`,
+ * `usos` contaba *veces guardado* y no *cuántas actividades usan esta opción*:
+ * editar la misma actividad doce veces —barato desde B-183, que guarda
+ * borradores en cada tecleo— le sumaba doce a su tipo, su arancel, su barrio y
+ * sus etiquetas, y eso rompía justo lo que el §4.3 le pide a `usos`: ordenar
+ * por frecuencia real y detectar un `usos: 1` como typo colgado. `anterior` es
+ * el documento tal como estaba **antes de esta edición** —el `inicial` que ya
+ * tiene el formulario al abrirse, sin necesidad de una lectura extra—, así que
+ * solo cuenta lo que la edición agregó. Sin `anterior` (una actividad nueva) se
+ * cuenta todo, que es lo que corresponde: no había nada antes que restar.
+ *
  * Puro y sobre el form ya guardado, no sobre el estado del componente: cuenta lo
  * que quedó escrito, no lo que se tipeó y después se cambió.
  */
 export const usosAContar = (
-  // B-224 — `sede` y `online` viven adentro de cada modalidad, y siguen siendo
-  // nulos según cuál sea (§11): una fila virtual no tiene barrio y una presencial
-  // no tiene plataforma. Se recorren **todas** las filas: con dos sedes en dos
-  // barrios, contar solo la primera dejaría al segundo barrio sin uso y ordenando
-  // último en el desplegable para siempre. Los vacíos los descarta el filtro de
-  // abajo, y `registrarUsos` ya ignora los slugs vacíos.
-  guardado: {
-    arancel: { tipo: string };
-    tipo: string;
-    modalidades: readonly {
-      sede: { barrio: string } | null;
-      online: { plataforma: string } | null;
-    }[];
-    tags: readonly string[];
-  },
+  guardado: DatosDeUsos,
   labelsNuevos: readonly LabelNuevo[],
   tagsNuevos: Record<string, string>,
+  anterior?: DatosDeUsos,
 ): Partial<Record<'arancel' | 'tipo' | 'barrio' | 'plataforma' | 'tags', string[]>> => {
   const recienCreados = labelsPendientesDe(labelsNuevos, tagsNuevos);
   const nuevoEn = (campo: keyof LabelsTaxonomia, slug: string) =>
     Boolean(recienCreados[campo]?.[slug]);
 
-  const elegidos = {
-    arancel: [guardado.arancel.tipo],
-    tipo: [guardado.tipo],
-    // Sin repetir: dos filas en el mismo barrio son un uso, no dos.
-    barrio: [...new Set(guardado.modalidades.map((m) => m.sede?.barrio ?? ''))],
-    plataforma: [...new Set(guardado.modalidades.map((m) => m.online?.plataforma ?? ''))],
-    tags: [...guardado.tags],
-  };
+  const elegidos = elegidosDe(guardado);
+  const elegidosAntes = anterior ? elegidosDe(anterior) : null;
+  const yaEstabaAntes = (campo: keyof typeof elegidos, slug: string) =>
+    Boolean(elegidosAntes?.[campo].includes(slug));
 
   const salida: Partial<Record<keyof typeof elegidos, string[]>> = {};
   for (const [campo, slugs] of Object.entries(elegidos) as [keyof typeof elegidos, string[]][]) {
-    const aContar = slugs.filter((s) => s && !nuevoEn(campo, s));
+    const aContar = slugs.filter((s) => s && !nuevoEn(campo, s) && !yaEstabaAntes(campo, s));
     if (aContar.length) salida[campo] = aContar;
   }
   return salida;

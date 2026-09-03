@@ -58,7 +58,8 @@ const etiqueta = (labels, campo, slug) => {
 const ETIQUETA_VIA = {
   mail: 'por mail',
   whatsapp: 'por WhatsApp',
-  dm: 'por DM de Instagram',
+  // B-185 — «al Instagram», no «de Instagram».
+  dm: 'por DM al Instagram',
   formulario: 'por formulario',
 };
 

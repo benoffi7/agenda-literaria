@@ -34,7 +34,12 @@ import { diaYMes, hora, partesDeFecha, partesDeMes } from '@/lib/fechasPublicas'
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { esSinCosto } from '@/lib/arancel';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
-import { filaPideOnline, filaPideSede, modalidadResultante } from '@/lib/modalidades';
+import {
+  SLUG_PLATAFORMA_A_CONFIRMAR,
+  filaPideOnline,
+  filaPideSede,
+  modalidadResultante,
+} from '@/lib/modalidades';
 import type { Modalidad } from '@/types/actividad';
 
 // ─────────────────────────────────────────────────────────────────
@@ -168,9 +173,28 @@ export const formasDeCursar = (entrada: EntradaDeIndice): FormasDeCursar => {
  */
 export const lugarDeTarjeta = (entrada: EntradaDeIndice, etiquetas: MapaDeEtiquetas): string => {
   const { presencial, virtual } = formasDeCursar(entrada);
-  const enLinea = entrada.online?.plataforma
-    ? `Online por ${etiquetaDe(etiquetas, 'plataforma', entrada.online.plataforma)}`
-    : 'Online';
+  /*
+   * B-190 — «Online por A confirmar» se lee como si «A confirmar» fuera el
+   * nombre de una plataforma (lo señaló el `auditor-privacidad`: esta salida
+   * había quedado afuera de la lista de consumidores que B-190 corrigió, y
+   * `lugarDeTarjeta` alimenta el listado, la página de mes, /pasadas y los
+   * hubs — cuatro salidas indexadas). Se mira el slug, no el label resuelto,
+   * mismo criterio que `dondeCorto` en `detallePublico.ts`.
+   */
+  /*
+   * B-190 — «Online por A confirmar» se lee como si «A confirmar» fuera el
+   * nombre de una plataforma (lo señaló el `auditor-privacidad`: esta salida
+   * había quedado afuera de la lista de consumidores que B-190 corrigió, y
+   * `lugarDeTarjeta` alimenta el listado, la página de mes, /pasadas y los
+   * hubs — cuatro salidas indexadas). Se mira el slug, no el label resuelto,
+   * mismo criterio que `dondeCorto` en `detallePublico.ts`.
+   */
+  const enLinea =
+    entrada.online?.plataforma === SLUG_PLATAFORMA_A_CONFIRMAR
+      ? 'Online, plataforma a confirmar'
+      : entrada.online?.plataforma
+        ? `Online por ${etiquetaDe(etiquetas, 'plataforma', entrada.online.plataforma)}`
+        : 'Online';
 
   if (presencial && entrada.sede) {
     const zona = [

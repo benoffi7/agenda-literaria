@@ -2758,7 +2758,7 @@ probaron» — justo la distinción que el docblock de `emuladorVivo()` dice est
 protegiendo.
 
 
-### B-340 · `usos` cuenta cada guardado, no cada actividad · P2
+### B-340 · `usos` cuenta cada guardado, no cada actividad · P2 — ✅ hecho (2026-09-02)
 
 **Apareció verificando B-86**, que quedó cerrado el mismo día: la operación y el
 cableado están, pero lo que cuentan no es lo que el §4.3 quiere contar.
@@ -2797,7 +2797,16 @@ barrio muy usado igual queda arriba. Lo que no se puede hacer hoy es confiar en
 `usos: 1` como señal de typo — y eso vale escribirlo en la pantalla de opciones
 antes de que alguien borre por ese número.
 
-### B-341 · La galería no muestra ningún error del schema, y su prop `error` no se pasa nunca · P2
+**Hecho con la opción que el ítem ya adelantaba: `anterior`, no una lectura de
+más.** `guardarActividad` ya tenía `idActual`, pero el formulario **también**
+tiene `inicial` —el documento tal como estaba antes de esta edición, cargado al
+abrirse— y hasta ahora nadie lo usaba para esto. `usosAContar(guardado,
+labelsNuevos, tagsNuevos, anterior)` resta lo que ya estaba en `anterior` además
+de lo recién creado con "Otro" (B-168): las dos restas conviven, no se
+reemplazan. Sin `anterior` (actividad nueva) cuenta todo, como antes. Sin
+lectura extra a Firestore, sin tocar `actualizarActividad`.
+
+### B-341 · La galería no muestra ningún error del schema, y su prop `error` no se pasa nunca · P2 — ✅ hecho (2026-09-02)
 
 **Apareció haciendo B-197**, y es la misma clase con una vuelta de más: no es que
 el editor no reciba el mapa, es que **recibe una prop que nadie le pasa**.
@@ -2826,6 +2835,13 @@ Lo barato es lo mismo que B-197: pasarle `errorDe` en lugar de `error` y que cad
 fila lea el suyo. `GaleriaEditor` es de otro frente (B-167 / DEC-7), así que no se
 tocó acá.
 
+**Hecho: `errorDe` completo, no el `error` de un solo string.** `GaleriaEditor`
+pinta ahora el error de la lista (`errorDe('imagenes')`, con `data-campo-con-error`
+para el scroll de B-184) y el de cada fila (`errorDe('imagenes.N.url')`, la única
+ruta de una imagen que el schema puede rechazar aparte de la lista — `id`,
+`origen`, `storagePath`, `ancho` y `alto` son de máquina y no tienen input que
+editarlos). `SeccionQueEs` dejó de pasarle un `error` suelto al `Campo` que lo
+envuelve, para no duplicar el mismo mensaje dos veces en la misma sección.
 
 ### B-271 · Los eventos gratis en los filtros del sitio — ✅ hecho (2026-09-01)
 
@@ -5417,7 +5433,7 @@ Dos cosas que el reporte deja ver y **no** son este ítem:
   porque cuando se cargó no existía la entrega `durante-el-mes`. Ahora existe, y
   la guía la nombra.
 
-### B-185 · «DM de Instagram» debería decir «DM al Instagram» · P3
+### B-185 · «DM de Instagram» debería decir «DM al Instagram» · P3 — ✅ hecho (2026-09-02)
 
 Reporte del dueño (2026-08-25): la vía de inscripción se lee mal. Es «DM **al**
 Instagram», no «de».
@@ -5466,6 +5482,13 @@ Instagram» como ejemplo de prosa.
 > `tests/etiquetas-de-ui.test.ts` **no fija** ninguno de los dos textos: verificado.
 > El comentario de cabecera de `etiquetasUI.ts` sí cita «por DM de Instagram» como
 > ejemplo de prosa del calendario, y hay que corregirlo en el mismo commit.
+
+**Hecho, las dos líneas en el mismo commit.** `etiquetasUI.ts:31` (`dm: 'DM al
+Instagram'`) y `functions/calendario.js:61` (`'por DM al Instagram'`), más el
+comentario de cabecera de `etiquetasUI.ts` que citaba el texto viejo como
+ejemplo de prosa. `functions/calendario.js` no es un archivo prohibido para el
+frente del panel — solo `functions/imagenes*.js` lo está — así que el bloqueo
+de la nota de arriba no aplicaba.
 
 ### B-186 · El almanaque de la fecha se cierra solo si se tarda en elegir — ✅ hecho (2026-08-26)
 
@@ -5638,7 +5661,7 @@ equivocada.
 Quedó como **trampa 11** del `CLAUDE.md` §13 (D-118): es la única de la lista que
 no se identificó leyendo el código, y ningún test del repo podía verla.
 
-### B-190 · La plataforma es obligatoria para lo virtual, y a veces todavía no se sabe cuál es · P2
+### B-190 · La plataforma es obligatoria para lo virtual, y a veces todavía no se sabe cuál es · P2 — ✅ hecho (2026-09-02)
 
 [Issue #5](https://github.com/benoffi7/agenda-literaria/issues/5), del panel,
 Android, versión `1.0.1+538bef7`:
@@ -5714,6 +5737,19 @@ mapa y el `location` del evento.
 >
 > El segundo punto que el ítem levanta —que alguien tiene que volver a completarla
 > y nada se lo recuerda— sigue siendo de la familia de B-126 y no de acá.
+
+**Hecho, secuenciado como decía la nota: la entrada y los tres consumidores en un
+solo cambio.** `ModalidadDeDetalle.plataformaAConfirmar` en `detallePublico.ts`
+mira el **slug** (no el label, que se puede renombrar) y con eso `dondeCorto`
+dice «Online, plataforma a confirmar» y el JSON-LD omite `name` en vez de
+publicar `VirtualLocation { name: "A confirmar" }`. `textoRedes.ts` cae al
+genérico «Encuentro virtual». `functions/calendario.js` ya leía bien
+(«Plataforma: A confirmar») y no se tocó. `detallePublico.ts` no está en la
+lista de archivos prohibidos del frente del panel (solo lo están
+`hubsPublicos.ts`, las páginas de hub, `imagenes*.ts`, `afiche.ts`,
+`cartelera.ts` y `functions/imagenes*.js`), así que tocarlo lo mínimo para esto
+no violaba el reparto. El segundo punto —el recordatorio de volver a completar
+la plataforma antes de publicar— sigue abierto, en la familia de B-126.
 
 ### B-192 · Una librería que sale a la calle no tiene tipo — ✅ hecho (2026-08-26)
 
@@ -6881,7 +6917,7 @@ Ojo al corregirlas: **hay citas de D-100 que están bien** y no se tocan, como l
 misma lógica. Es su tema.
 
 
-### B-342 · Las filas de material no están en el chasis `FilasEditor`, y se editan por índice · P3
+### B-342 · Las filas de material no están en el chasis `FilasEditor`, y se editan por índice · P3 — ✅ hecho (2026-09-02)
 
 **Se miró haciendo B-197 y se decidió no tocarlo; queda anotado para no volver a
 discutirlo desde cero.**
@@ -6908,7 +6944,21 @@ chasis duplicado: el arreglo que se aplique al de sesiones no llega a este.
 toca el schema, `formADocumento`, `documentoAForm`, `duplicar.ts` y las fixtures.
 Es un cambio de modelo por una mejora de foco: por eso está acá y no en P2.
 
-### B-343 · Los encuentros no muestran los errores del schema por fila · P3
+**Hecho, exactamente con ese alcance.** `MaterialEditor` al chasis `FilasEditor`
+(gana Duplicar/contador/estado vacío gratis) e `ItemMaterial.id` nuevo
+(`mat_<uuid>`, generado en `src/lib/material.ts`). Los documentos anteriores a
+este cambio se leen con un id determinístico por índice
+(`idItemMaterialMigrado`, mismo criterio que `ID_IMAGEN_MIGRADA` de D-125: un id
+que cambiara en cada lectura ensuciaría el formulario), y duplicar una actividad
+regenera los ids del material igual que ya hacía con las modalidades. Tocó más
+archivos de los previstos —`analytics-eventos.ts` (`CAMPOS_VALIDABLES`),
+`camposFaltantes.ts` y nueve archivos de test que construían `ItemMaterial` a
+mano— porque el `id` nuevo es un campo más del schema y `tsc` los encontró a
+todos.
+
+**Campo nuevo → skill `campo-nuevo`, corrido después.** Las doce salidas públicas, una por una: `material.items[].id` no sale en ninguna — `toPublic.ts` (`ItemMaterialPublico`) ya era whitelist sin `id` desde antes de este cambio, y lo mismo `functions/calendario.js` y `textoRedes.ts` (que de hecho excluye `material` entero, D-20). Confirmado, no solo leído: mutación en `toPublic.ts` agregando `id` a la proyección — `tests/barrido-de-salidas-publicas.test.ts` lo agarra nombrando exactamente «material.id → CENTINELA.material.id» en `events.json`. Fila nueva en el «Qué NUNCA sale» de `07-seguridad.md`.
+
+### B-343 · Los encuentros no muestran los errores del schema por fila · P3 — ✅ hecho (2026-09-02)
 
 **La otra mitad de B-197**, y la más suave de las tres.
 
@@ -6932,6 +6982,12 @@ Lo barato es lo de B-197: `errorDe` en lugar de `error`, y de paso decidir si la
 derivación paralela se queda (es más rica: dice el día de la semana) o si el schema
 pasa a ser la única fuente.
 
+**Hecho, y la derivación paralela se queda.** `SesionesEditor` recibe `errorDe`
+completo; Inicio y Fin pasan a usar `Campo` (antes eran `<label>` a mano) y leen
+`errorDe('sesiones.N.inicio'/'fin')`, con `data-campo-con-error` para el scroll
+de B-184. `resumirSesion`/`finAntesDelInicio` sigue viva tal cual: es más rica
+(dice el día de la semana) y este ítem dejaba la decisión abierta a propósito —
+los dos caminos conviven.
 
 ### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo · P3
 **Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
@@ -7138,7 +7194,7 @@ afirmar la llamada, la sentencia completa o un dato. Quedó anotada en
 `13-agentes.md`, y se llegó a ella dos veces en el mismo cierre: primero en el
 test de la guarda de B-80, y después **en el test escrito para arreglar eso**.
 
-### B-200 · La guarda de forma del borrador no valida las fechas, y el autoguardado agranda la superficie · P3
+### B-200 · La guarda de forma del borrador no valida las fechas, y el autoguardado agranda la superficie · P3 — ✅ hecho (2026-09-02)
 
 Lo encontró el `auditor-trampas` en el cierre de `1.2.0`, y es **preexistente**:
 `pareceFormulario()` (`lib/formulario/autoguardado.ts`) chequea que `titulo` sea
@@ -7156,6 +7212,20 @@ fecha corrupta ahora puede venir de un borrador viejo y no solo de un tecleo de
 hace un minuto. El arreglo natural es que el `refine` de `sesionSchema` valide que
 la fecha se pueda convertir —que es lo que `formADocumento` ya hace, o sea la
 tercera copia de la misma regla si no se comparte (B-72, B-75)—.
+
+**Hecho, y el agujero real no era donde este ítem apuntaba.** Medido antes de
+tocar nada: el `.refine` de `sesionSchema` **ya** rechazaba una fecha corrupta
+—`new Date(corrupta) > new Date(otra)` da `false` por las reglas de `NaN`—,
+solo que con el mensaje equivocado («tiene que terminar después de empezar» en
+vez de «fecha inválida»). El agujero de verdad estaba en dos campos que
+comparten la misma forma pero con las dos fechas **opcionales**:
+`modalidadFilaSchema`, cuyo corto circuito `!m.inicio || !m.fin || …` dejaba
+pasar una ventana con una sola punta corrupta sin comparar nada, e
+`inscripcion.cierra`, que no tenía ninguna guarda de forma. Los dos llegaban
+intactos a `formADocumento`, que ahí sí tiraba `Fecha inválida` — el crash real
+del ítem, no una hipótesis. `fechaValida()` en `schema.ts` usa el mismo parser
+que `formADocumento` (`deDatetimeLocal` de `lib/sesiones.ts`, importado y no
+copiado — D-20, B-72/B-75).
 
 ### B-201 · El conteo de líneas de `10-salud-del-codigo.md` §1.3 quedó viejo — ✅ hecho (2026-09-02)
 

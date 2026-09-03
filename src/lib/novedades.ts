@@ -60,6 +60,62 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'tablero-con-pestanias',
+    fecha: '2026-09-03',
+    version: '1.5.0',
+    titulo: 'El tablero de estadísticas ahora tiene pestañas, y una sobre el sitio público',
+    detalle:
+      'Antes era una sola página larga. Ahora se divide en dos: «El catálogo», con lo que ya ' +
+      'mirabas —qué conviene revisar, qué está publicado y qué falta—, y «El sitio público», ' +
+      'nueva, para ver cómo se usa la web. Esa segunda todavía no muestra números: la medición ' +
+      'empezó hace pocos días y hay que esperar a que se junten datos.',
+    donde: 'Panel → Estadísticas.',
+  },
+  {
+    id: 'aviso-ya-paso-reencuadrado',
+    fecha: '2026-09-03',
+    version: '1.5.0',
+    titulo: 'El aviso de actividades que ya pasaron ahora explica qué hacer, en vez de alarmar',
+    detalle:
+      'Una actividad que ya pasó y sigue publicada está bien: queda como archivo en el sitio. El ' +
+      'aviso lo daba a entender como un problema. Ahora dice lo que realmente conviene hacer: si ' +
+      'es un ciclo que vuelve, cargale las fechas nuevas; si fue única, no hay nada que tocar.',
+    donde: 'Panel → Estadísticas → El catálogo → Qué conviene mirar.',
+  },
+  {
+    id: 'plataforma-a-confirmar',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'Si todavía no sabés por dónde va a ser el encuentro virtual, ya podés decirlo',
+    detalle:
+      'La plataforma era obligatoria para lo virtual, y a veces todavía no está decidido si va a ' +
+      'ser Zoom, Meet u otra. Ahora el desplegable tiene una opción «A confirmar»: el sitio publica ' +
+      '"Online, plataforma a confirmar" en vez de inventar un nombre.',
+    donde: 'Formulario, sección «Dónde», campo Plataforma.',
+  },
+  {
+    id: 'material-duplicar-y-contador',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'El material ahora se puede duplicar, y te dice cuántos cargaste',
+    detalle:
+      'La sección de material no tenía botón «Duplicar» ni contador, a diferencia del resto de las ' +
+      'listas del formulario (encuentros, formas de cursar). Ahora sí: para un club de lectura con ' +
+      'ocho lecturas parecidas, duplicar una fila y cambiar el título es más rápido que cargarla de cero.',
+    donde: 'Formulario, sección «Material».',
+  },
+  {
+    id: 'errores-de-galeria-y-encuentros-al-lado',
+    fecha: '2026-09-02',
+    version: '1.5.0',
+    titulo: 'El flyer y los encuentros también te marcan el error en la fila',
+    detalle:
+      'Misma mejora que ya tenía el material (más abajo): si una imagen quedó con una dirección ' +
+      'inválida, o un encuentro con la fecha vacía, ahora se marca en rojo al lado del campo y no ' +
+      'solo en la barra de abajo, y al intentar guardar te lleva hasta ahí.',
+    donde: 'Formulario, secciones «Qué es» (el flyer) y «Encuentros».',
+  },
+  {
     id: 'evento-borrado-a-mano-vuelve',
     fecha: '2026-09-02',
     version: '1.5.0',

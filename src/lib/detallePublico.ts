@@ -49,6 +49,7 @@ import {
   rangoCorto,
 } from '@/lib/fechasPublicas';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
+import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { urlDeDetalle } from '@/lib/rutasPublicas';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
@@ -164,6 +165,14 @@ export interface ModalidadDeDetalle {
   sede: SedeDeDetalle | null;
   /** **Solo la plataforma.** El link de la reunión no llega hasta acá (D-139). */
   plataforma: string | null;
+  /**
+   * B-190 — la plataforma es «a confirmar»: todavía no se decidió por dónde es
+   * el encuentro. No alcanza con mirar el label (`plataforma === 'A confirmar'`):
+   * el label se puede renombrar sin que el slug cambie, y esta señal tiene que
+   * sobrevivir a eso. La usan `dondeCorto` y el JSON-LD para no publicar una
+   * plataforma inventada — la entrada la agrega el panel (`opciones-base.json`).
+   */
+  plataformaAConfirmar: boolean;
 }
 
 export interface MaterialDeDetalle {
@@ -541,6 +550,8 @@ const modalidadDeDetalle = (
     : null,
   // Enumerado: `m.online` puede traer `url` (D-15) y acá se descarta (D-139).
   plataforma: m.online ? etiquetaDe(etiquetas, 'plataforma', m.online.plataforma) : null,
+  // B-190 — se mira el slug, no el label: ver el docblock de la interfaz.
+  plataformaAConfirmar: m.online?.plataforma === SLUG_PLATAFORMA_A_CONFIRMAR,
 });
 
 const itemDeDetalle = (i: ItemMaterialPublico): MaterialDeDetalle => ({
@@ -560,7 +571,13 @@ const dondeCorto = (modalidades: ModalidadDeDetalle[]): string => {
       m.sede
         ? [m.sede.nombre, m.sede.barrio].filter(Boolean).join(' · ')
         : m.plataforma
-          ? `Online por ${m.plataforma}`
+          ? // B-190 — «Online por A confirmar» se lee como si «A confirmar»
+            // fuera el nombre de una plataforma. Con el slug a la vista en vez
+            // del label, el mismo texto sirve para publicar lo que se sabe de
+            // verdad: que la plataforma todavía no está decidida.
+            m.plataformaAConfirmar
+            ? 'Online, plataforma a confirmar'
+            : `Online por ${m.plataforma}`
           : m.etiqueta,
     )
     .filter(Boolean);
@@ -1031,7 +1048,15 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
     if (m.plataforma) {
       salida.push({
         '@type': 'VirtualLocation',
-        name: m.plataforma,
+        /*
+         * B-190 — sin `name` cuando la plataforma todavía no está confirmada:
+         * no hay ninguna que nombrar, y `name: "A confirmar"` sería una
+         * plataforma inventada en los datos estructurados que indexa Google —
+         * justo lo que este bloque existe para evitar con el link de la
+         * reunión (ver el docblock de `lugaresDe`). `VirtualLocation` no pide
+         * `name`, así que omitirlo no rompe el resultado enriquecido.
+         */
+        ...(m.plataformaAConfirmar ? {} : { name: m.plataforma }),
         url: urlDeDetalle(d.slug),
       });
     }

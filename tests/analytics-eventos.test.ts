@@ -416,6 +416,7 @@ describe('formaDelFormulario — contadores, no contenido', () => {
           tiene: false,
           items: [
             {
+              id: 'mat_1',
               tipo: 'lectura',
               titulo: 'Pedro Páramo',
               url: '',

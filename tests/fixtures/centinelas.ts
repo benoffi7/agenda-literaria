@@ -124,6 +124,9 @@ const RUTAS = [
   'material.url.publico',
   'material.titulo.privado',
   'material.url.privado',
+  // B-342 — el id de cliente. Uno solo y sufijado con el índice (como
+  // `sesiones.id`): son dos items y el barrido busca por substring.
+  'material.id',
 
   // Difusión: interno, nunca público (§3.2, §5.1).
   'difusion.arrobar',
@@ -325,6 +328,8 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
     tiene: true,
     items: [
       {
+        // B-342 — id de cliente, nunca por índice (trampa 2).
+        id: `mat_${CENTINELA['material.id']}.1`,
         tipo: 'lectura',
         titulo: CENTINELA['material.titulo.publico'],
         url: CENTINELA['material.url.publico'],
@@ -332,6 +337,7 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
         publico: true,
       },
       {
+        id: `mat_${CENTINELA['material.id']}.2`,
         tipo: 'guia',
         titulo: CENTINELA['material.titulo.privado'],
         url: CENTINELA['material.url.privado'],

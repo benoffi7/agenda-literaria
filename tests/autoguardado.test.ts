@@ -488,8 +488,8 @@ describe('recuperar no puede publicar un link que estaba privado (§5.1, trampa 
     material: {
       tiene: true,
       items: [
-        { tipo: 'lectura' as const, titulo: 'Cap. 1', url: 'https://d/1', entrega: 'previo' as const, publico: true },
-        { tipo: 'guia' as const, titulo: 'Guía', url: 'https://d/2', entrega: 'previo' as const, publico: false },
+        { id: 'mat_1', tipo: 'lectura' as const, titulo: 'Cap. 1', url: 'https://d/1', entrega: 'previo' as const, publico: true },
+        { id: 'mat_2', tipo: 'guia' as const, titulo: 'Guía', url: 'https://d/2', entrega: 'previo' as const, publico: false },
       ],
     },
   });

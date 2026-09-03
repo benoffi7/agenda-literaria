@@ -359,6 +359,8 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'material.items',
   'material.items.N',
   'material.items.N.entrega',
+  // B-342 — el id de cliente, como 'imagenes.N.id' y 'sesiones.N.id'.
+  'material.items.N.id',
   'material.items.N.publico',
   'material.items.N.tipo',
   'material.items.N.titulo',

@@ -77,6 +77,8 @@ const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
     tiene: true,
     items: [
       {
+        // B-342 — id de cliente, nunca por índice (trampa 2).
+        id: 'mat_1',
         tipo: 'guia',
         titulo: 'Guía de lectura',
         url: 'https://drive/privado',
@@ -263,7 +265,14 @@ describe('duplicar una actividad — el resto del contenido', () => {
     expect(copia.modalidades[0]!.id).not.toBe(o.modalidades[0]!.id);
     expect(copia.modalidades[0]!.id).toMatch(/^mod_/);
     expect(copia.arancel).toEqual(o.arancel);
-    expect(copia.material).toEqual(o.material);
+    // B-342 — el material se hereda entero, con **id nuevo** por la misma razón
+    // que las modalidades: dos actividades con las mismas filas hacen que
+    // cualquier cosa que compare por id crea que son la misma.
+    expect(copia.material.tiene).toBe(o.material.tiene);
+    expect(copia.material.items).toHaveLength(o.material.items.length);
+    expect(copia.material.items[0]).toEqual({ ...o.material.items[0], id: copia.material.items[0]!.id });
+    expect(copia.material.items[0]!.id).not.toBe(o.material.items[0]!.id);
+    expect(copia.material.items[0]!.id).toMatch(/^mat_/);
     /*
      * B-199 — la difusión es la excepción: nace **apagada**. Es lo único que el
      * default cambió respecto de "copiá todo", y el motivo es que son notas
