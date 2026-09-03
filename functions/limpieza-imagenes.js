@@ -121,3 +121,21 @@ export const decidirLimpieza = ({ objetos = [], referenciados = new Set(), ahora
   }
   return { aBorrar: recortado, motivos };
 };
+
+
+/**
+ * Los `storagePath` que **alguna** actividad referencia hoy, de cualquier estado.
+ * Recibe el `db` (no importa `firebase-admin`), así que vive acá, en el módulo
+ * puro, y el test lo importa de acá y no del trigger — que arrastra
+ * `firebase-functions/scheduler`, ausente en el `node_modules` de la raíz (B-561).
+ */
+export const referenciasEnUso = async (db) => {
+  const referenciados = new Set();
+  const snap = await db.collection('actividades').select('imagenes').get();
+  for (const doc of snap.docs) {
+    for (const imagen of doc.data().imagenes ?? []) {
+      if (imagen?.storagePath) referenciados.add(imagen.storagePath);
+    }
+  }
+  return referenciados;
+};

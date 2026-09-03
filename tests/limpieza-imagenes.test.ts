@@ -14,9 +14,9 @@ import {
   MARGEN_DE_GRACIA_MS,
   MAX_BORRADOS_POR_CORRIDA,
   decidirLimpieza,
+  referenciasEnUso,
 } from '../functions/limpieza-imagenes.js';
 import { rutaDeMiniatura } from '../functions/imagenes.js';
-import { referenciasEnUso } from '../functions/imagenes-limpieza-trigger.js';
 
 const HORA = 60 * 60 * 1000;
 const AHORA = Date.parse('2026-09-10T12:00:00Z');

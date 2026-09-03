@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-03 · un test verde en local que rompía el deploy en CI (B-561)
+
+`tests/limpieza-imagenes.test.ts` importaba `referenciasEnUso` desde el trigger de
+la limpieza de imágenes, que importa `firebase-functions/v2/scheduler`. Esa
+dependencia está en `functions/package.json`, no en la raíz, así que en local
+resuelve (existe `functions/node_modules`) y en CI no: el `npm ci` de la raíz no la
+instala y Vite muere al cargar el módulo. Se movió `referenciasEnUso` al módulo
+puro `limpieza-imagenes.js` —recibe el `db`, no necesita firebase-functions— y se
+agregó una guarda (`tests/tests-no-importan-triggers.test.ts`) que hace cumplir la
+regla que hasta ahora era solo costumbre: un test lee un trigger como texto o
+importa el módulo puro de al lado, nunca ejecuta el trigger.
+
 ## 2026-09-03 · el aviso «ya pasó» del tablero se saca del todo (D-273)
 
 Ayer se reencuadró (D-270) para que no sonara a fricción; el dueño, al verlo,

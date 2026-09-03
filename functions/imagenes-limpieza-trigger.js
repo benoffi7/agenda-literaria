@@ -22,24 +22,11 @@ import { logger } from 'firebase-functions/v2';
 import { getStorage } from 'firebase-admin/storage';
 import { getFirestore } from 'firebase-admin/firestore';
 import { PREFIJO_MINIATURAS, PREFIJO_ORIGINALES } from './imagenes.js';
-import { decidirLimpieza, MAX_BORRADOS_POR_CORRIDA } from './limpieza-imagenes.js';
-
-/**
- * Todos los `storagePath` de imágenes propias que alguna actividad
- * referencia hoy — **sin filtrar por `estado`**. Un borrador o una
- * actividad cancelada siguen siendo dueños de su imagen: solo dejan de serlo
- * si la fila se saca de `imagenes` o la actividad se borra.
- */
-export const referenciasEnUso = async (db) => {
-  const referenciados = new Set();
-  const snap = await db.collection('actividades').select('imagenes').get();
-  for (const doc of snap.docs) {
-    for (const imagen of doc.data().imagenes ?? []) {
-      if (imagen?.storagePath) referenciados.add(imagen.storagePath);
-    }
-  }
-  return referenciados;
-};
+import {
+  decidirLimpieza,
+  MAX_BORRADOS_POR_CORRIDA,
+  referenciasEnUso,
+} from './limpieza-imagenes.js';
 
 /** Los objetos de primer nivel bajo los dos prefijos, con su fecha de creación. */
 export const objetosDelBucket = async (bucket) => {
