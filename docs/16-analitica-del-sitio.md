@@ -379,7 +379,8 @@ red — sin cambios por D-254, que solo tocó HTML):
 **Y la cuenta que importa, la que compara con el §6.1:** para quien **rechaza**
 o no decidió, el costo de este frente es nada más que esto —**2.515 B gzip**
 (440 B de HTML + 2.075 B de JS)—, porque `gtag.js` nunca se descarga (§7.3) **y
-no hay ninguna conexión de red a un tercero mientras tanto** (D-254, §7.4bis).
+no hay ninguna conexión de red a un tercero mientras tanto** (D-254, §7.4bis;
+y desde B-481 eso es literal, sin la excepción de las tipografías — §7.4ter).
 Antes de D-254 esta frase era falsa: el `preconnect` abría una conexión a
 Google en el load, la persona hubiera rechazado o no. Para quien **acepta**, se
 suma el número entero del §6.1: 152 KB de `gtag.js` más los ~2,5 KB de acá,
@@ -524,18 +525,101 @@ que costaba.
 fuente — necesitaría reimplementar el parser de Astro) y falla si aparece un
 `<link>` de conexión (`preconnect`/`dns-prefetch`/`prefetch`/`preload`/
 `stylesheet`), un `<script src>` o un `<iframe src>` apuntando a un host que no
-esté en una lista blanca explícita, con motivo. Hoy esa lista tiene dos
-entradas — `fonts.googleapis.com` y `fonts.gstatic.com`, las tipografías del
-sistema visual (B-260), anteriores a todo esto — y **no** tiene
+esté en una lista blanca explícita, con motivo. Cuando este ítem cerró esa lista
+tenía dos entradas — `fonts.googleapis.com` y `fonts.gstatic.com`, las
+tipografías del sistema visual (B-260), anteriores a todo esto — y **no** tenía
 `googletagmanager.com`: si vuelve, el test lo dice, con el archivo y el host
 exactos. Mutación probada: se repuso el `preconnect` a mano, el test pasó a
-rojo nombrándolo, se sacó de nuevo.
+rojo nombrándolo, se sacó de nuevo. **Desde B-481 la lista está vacía** (las
+tipografías se sirven de este dominio, §7.4ter): la constante queda igual, y
+agregar un tercero es agregarle una entrada con el motivo escrito.
 
 **Y una idea que quedó anotada, no resuelta:** las tipografías son, hoy, la
 misma clase de conexión a un tercero en el load que este ítem acaba de sacar
 —solo que decidida antes y sin la lupa del consentimiento encima—.
 Autoalojarlas la eliminaría del todo. Es una decisión de otro día, pero con un
 banner ya construido conviene tenerla escrita: **B-481** en el `BACKLOG`.
+
+**Resuelto el 2026-09-03 — ver el [§7.4ter](#74ter--las-tipografías-autoalojadas-b-481).**
+La lista blanca de ese test quedó **vacía**.
+
+### 7.4ter · Las tipografías, autoalojadas (B-481)
+
+Era el último tercero que quedaba en el load de una página pública, y el único
+que el test de §7.4bis todavía permitía —anotado como pendiente y no como
+aceptado—. Se sacó del mismo modo que el `preconnect` de GA4: **no se
+condicionó, se eliminó la conexión.**
+
+Las tres familias del sistema visual (B-260/B-262) se sirven ahora desde
+`/fuentes/` de este dominio, con `@font-face` propias en
+`src/styles/global.css`. Son **los mismos archivos** que servía
+`fonts.gstatic.com`, copiados con la misma hoja de estilos que había en
+`Base.astro`, así que ni los pesos ni los ejes ni el `font-display: swap`
+cambiaron: la página se ve igual.
+
+**Los números, medidos igual que el §6bis** —build real, antes y después—:
+
+| | antes (Google) | ahora (propio) |
+|---|---|---|
+| Pedidos en el load de una página en castellano | **4** — 1 hoja de estilos + 3 `.woff2` | **3** — los `.woff2` |
+| Hosts de tercero contactados | **2** (`fonts.googleapis.com`, `fonts.gstatic.com`) | **0** |
+| Bytes de la hoja de fuentes | **677 B** gzip, en un pedido propio | **+351 B** gzip **adentro** del CSS del sitio, que ya se bajaba — cero pedidos |
+| Bytes de tipografía | 63.696 B (los tres subsets `latin`) | **63.696 B** — los mismos archivos |
+| Cache de la hoja de fuentes | `private, max-age=86400` — se rebajaba **cada día** | la del CSS del sitio: `/_astro/**`, un año, `immutable` |
+| Cache de los `.woff2` | `public, max-age=31536000` | `public, max-age=31536000, immutable` |
+| HTML de la home | 18.200 B / 5.545 B gzip | 18.232 B / **5.533 B** gzip |
+
+O sea **un pedido y dos handshakes TLS menos, 326 B menos en la visita fresca, y
+cero terceros** — y en la visita repetida la diferencia es mayor, porque la hoja
+de Google se rebajaba cada 24 horas y el CSS del sitio no se rebaja en un año.
+
+Tres cosas que hay que saber para no romperlo:
+
+1. **El `Cache-Control` de un año lo pone `firebase.json`** (`/fuentes/**`), y
+   no es opcional: sin esa regla Firebase sirve lo de `public/` con **una hora**
+   de cache, o sea que autoalojar sin tocar el hosting cambia una mejora por una
+   regresión. Es el mismo tipo de regla que ya existía para `/_astro/**`.
+2. **La versión va en el nombre del archivo** (`public-sans-v21-latin.woff2`),
+   que es lo que hace cierto el `immutable`: actualizar una familia cambia el
+   nombre, no el contenido de una URL cacheada por un año.
+3. **`latin-ext` está, y `vietnamese` no.** El `unicode-range` es el mismo que
+   mandaba Google, así que `latin-ext` **se baja solo si la página tiene una de
+   esas letras** — en castellano son cero bytes, exactamente como antes.
+   `vietnamese` se descartó: 20,3 KB de repositorio para un caso que este sitio
+   no tiene.
+
+**La red, y qué cambió en los dos tests que la tenían:**
+
+- `tests/terceros-antes-del-consentimiento.test.ts` tiene la lista blanca
+  **vacía**. Sigue existiendo como constante a propósito: agregar un tercero es
+  agregarle una entrada con el motivo escrito, y eso se lee en una review. Y se
+  le sumó lo que ese barrido no veía —**el CSS construido**: un
+  `@import url('https://fonts…')` o un `src: url('https://fonts.gstatic…')`
+  dentro de una `@font-face` salen a la red igual que un `<link>` y no aparecen
+  en ninguna etiqueta del HTML—, más el lado positivo (las seis `@font-face`
+  existen, apuntan a `/fuentes/` y el archivo está en el repo), porque un
+  chequeo que solo prohíbe pasa también con el archivo vacío.
+- `tests/sistema-visual.test.ts` verificaba «la hoja de fuentes pide exactamente
+  esas tres» leyendo los `family=` de la query de Google. Ese `<link>` ya no
+  existe, así que **el caso mira el lugar correcto**: las `font-family` de las
+  `@font-face`. Verifica lo mismo, en el archivo que hoy lo decide. Dejarlo
+  mirando el `<link>` habría sido peor que borrarlo: el regex no encontraría
+  nada y un caso en rojo empuja a reponer el `<link>` «para arreglar el test».
+
+Y un tercero que se llevó por delante, que conviene tener escrito porque no
+tenía nada que ver con las fuentes: el barrido de `tests/canonico.test.ts`
+—«ningún archivo de `src/` escribe un `href` interno a mano»— marcaba los tres
+`<link rel="preload">` nuevos. No era un hallazgo: un `<link>` de **recurso**
+lleva la ruta de un archivo, y un archivo con barra final es un 404. Pasaba
+inadvertido hasta acá porque los tres que había (`/marca.svg`,
+`/compartir.png`) están en la **raíz**, y para la raíz `rutaCanonica` ya
+devuelve el archivo tal cual; los `.woff2` viven en `/fuentes/`, dos segmentos,
+y ahí la única forma «canónica» es con barra. **No se tocó `rutaCanonica`** —
+tiene su propio caso decidido a propósito (una página de más de un segmento
+lleva barra *aunque tenga un punto*, porque un `slug` editado a mano puede tener
+uno): la ruta suelta no permite distinguir un archivo de una página con punto, y
+el barrido sí, porque mira la etiqueta donde está escrita. Se descartan los
+`<link>` con un `rel` de recurso, **nunca `canonical`**.
 
 ---
 
@@ -767,7 +851,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
 | **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
-| **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) son una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la eliminaría | 🔵 futuro, anotado por D-254 |
+| **B-481** | Las tipografías (`fonts.googleapis.com`/`fonts.gstatic.com`) eran una conexión a un tercero en el load, la misma clase que D-254 sacó para GA4 — autoalojarlas la elimina | ✅ **hecho (2026-09-03)** — servidas desde `/fuentes/`, **cero terceros** en el load y un pedido menos, con los números en [§7.4ter](#74ter--las-tipografías-autoalojadas-b-481). D-340 |
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
