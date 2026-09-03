@@ -853,8 +853,9 @@ mail presentado como si fuera de Google.
 ### 9.3bis · Cómo quedó construido (B-374 y B-373)
 
 **Se construyó, y con un desvío respecto de lo que el [§9.1](#91--las-piezas-una-por-una)
-listaba.** Ese cuadro pedía siete piezas; se hicieron cinco, y las dos que no
-están no se saltearon: no hacían falta.
+listaba** — escrito como **D-341** en `06-decisiones.md`. Ese cuadro pedía siete
+piezas; se hicieron cinco, y las dos que no están no se saltearon: no hacían
+falta.
 
 | Pieza del §9.1 | Cómo quedó |
 |---|---|
@@ -1114,5 +1115,9 @@ semana sin el tag es una semana de historia que no se recupera**.
   alcance de la regla de contenido), **D-250** (el banner es C3, y qué significa
   «rechazar» de verdad), **D-251** (el costo de JS aceptado, con el número),
   **D-252/D-253** (las decisiones técnicas de B-372/B-375, y lo que Enhanced
-  Measurement de GA4 no deja tapar desde el código) y **D-254** (por qué el
-  `preconnect` a GA4 se sacó en vez de condicionarlo, y la red que lo cubre).
+  Measurement de GA4 no deja tapar desde el código), **D-254** (por qué el
+  `preconnect` a GA4 se sacó en vez de condicionarlo, y la red que lo cubre),
+  **D-340** (las tipografías se autoalojan en vez de condicionarse — B-481, la
+  misma decisión que D-254 aplicada al último tercero que quedaba) y **D-341**
+  (por qué la lectura de GA4 va por un documento de Firestore y no por un
+  `onCall`, y las cuatro situaciones que la pantalla distingue).
