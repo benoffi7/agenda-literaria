@@ -363,7 +363,7 @@ pero con nombre propio y con un mensaje que dice qué corregir.
 | Cancelar un encuentro (la casilla "Cancelado") | Está en un `onChange` inline del JSX y medirlo exigía tocar el markup. Ver [B-58](BACKLOG.md) |
 | Tildar "publicar el link de la reunión" en el momento | Ídem. Se mide igual en `guardado_ok.url_publica`, que es el dato que importa |
 | El foco campo por campo (el embudo fino del formulario) | Exigiría instrumentar 30+ inputs, o refactorizar el formulario. `faltantes` da la ubicación gruesa sin tocar nada |
-| El sitio público, **por este módulo** | La proyección de acá (`analytics-eventos.ts`) no se hereda: si el sitio público mide, tiene la suya propia. **Y desde B-372/B-375 la tiene** — ver [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). El clic en el CTA de inscripción, que era «la única métrica que valdría la pena», es uno de los dos eventos propios que ya existen |
+| El sitio público, **por este módulo** | La proyección de acá (`analytics-eventos.ts`) no se hereda: si el sitio público mide, tiene la suya propia. **Y desde B-372/B-375 la tiene** — ver [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md). El clic en el CTA de inscripción, que era «la única métrica que valdría la pena», es uno de los eventos propios que ya existen — hoy son **tres** declarados: `clic_inscripcion`, `filtro_sin_resultados` y, desde B-601, `clic_triptico` |
 
 ---
 

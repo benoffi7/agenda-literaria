@@ -621,6 +621,55 @@ uno): la ruta suelta no permite distinguir un archivo de una página con punto, 
 el barrido sí, porque mira la etiqueta donde está escrita. Se descartan los
 `<link>` con un `rel` de recurso, **nunca `canonical`**.
 
+### 7.5 · El tercer evento propio: el tríptico (B-601)
+
+**B-600** puso en la home el tríptico «¿Qué hay ahora?» —tres paneles **Hoy ·
+Mañana · Este finde**, arriba del buscador— y **no emitía nada**. Es una sección
+grande, en la página que recibe casi todo el tráfico, y sin un evento no hay
+forma de saber si se usa o si es un bloque que la gente saltea para bajar al
+listado. Es la misma pregunta que `estadisticas-abrir` contesta para el tablero
+del panel ([§8.3](#83--dos-cosas-que-no-hace-y-una-que-sí)): **¿alguien lo
+toca?** — y la que decide si la sección merece crecer o achicarse.
+
+| | |
+|---|---|
+| Nombre | `clic_triptico` |
+| Parámetro | **`panel`**, y nada más: `hoy` \| `manana` \| `finde` |
+| Dónde vive la especificación | `EVENTOS_SITIO` en `src/lib/analyticsSitio.ts`, con su saneador `enum` — el mismo camino que los otros dos, así que pasa por `construirEventoSitio` y por los centinelas |
+| Qué contesta | «¿se toca el tríptico, y qué panel?» |
+
+**Lo que no manda, y el motivo escrito para que nadie lo agregue después:**
+
+- **No manda la actividad** a la que el clic lleva —ni el slug, ni el título, ni
+  la ruta—. No es prudencia genérica: el `page_view` de la página de detalle a
+  la que ese clic **navega** ya manda la ruta, así que repetirla acá no agrega
+  una respuesta y sí agrega superficie. Es el tercer punto del
+  [§5.4](#54--lo-que-la-mitad-b-no-puede-hacer), aplicado. Hay un caso de test
+  que lo fija con centinelas en cinco parámetros a la vez.
+- **No manda el rótulo del panel.** «Este finde» y «El finde que viene» son la
+  misma clave (`finde`) con dos textos que decide `ahoraPublico.ts` según el
+  día: mandar el texto sería un valor abierto para contestar lo mismo.
+- **No mide impresiones.** «Se vio el tríptico» pediría un observador de
+  intersección en una sección que hoy no ejecuta JavaScript propio, y la
+  pregunta que decide algo es la del clic.
+
+**El vocabulario de los paneles está copiado, no importado**, por el mismo
+motivo que `EJES_MEDIBLES`: `ClaveDePanel` vive en `ahoraPublico.ts`, que trae
+el motor que resuelve las tres ventanas contra el índice entero, y este archivo
+entra por el banner de `Base.astro`, o sea **en todas las páginas** —la de
+detalle, que no tiene tríptico, pagaría el peso de calcularlo—. Si la copia se
+desactualiza, un panel nuevo cae en `otro`: el clic se cuenta y el desfase se ve
+en los datos, que es la degradación que este saneador está diseñado para dar.
+
+> ⚠️ **Estado real al 2026-09-03: el evento está declarado y testeado, y el
+> enganche no está puesto.** Este frente trabajó sobre una rama que todavía no
+> tiene B-600 —`PanelesDeAhora.tsx` y `ahoraPublico.ts` viven en la rama de ese
+> otro frente—, así que instrumentar el componente habría sido escribirlo de
+> nuevo y garantizar un conflicto. Falta una prop opcional en
+> `PanelesDeAhora` y el handler en `Buscador.tsx`; el parche exacto quedó en
+> `.estado/analitica-sitio.md`. **Hasta que se aplique, `clic_triptico` no
+> emite.**
+
 ---
 
 ## 8 · El primer tramo, el que se implementó
@@ -855,6 +904,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
+| **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | 🟡 el evento está declarado y testeado; **falta el enganche** en `PanelesDeAhora`/`Buscador` — el parche está en `.estado/analitica-sitio.md`, y hasta aplicarlo no emite |
 
 ---
 
