@@ -263,8 +263,13 @@ export const FALLOS_COORDENADAS = [
  * sanitizador de `detalle` los reemplaza por `otro` y los tres rechazos llegan a
  * GA4 indistinguibles — con el agravante de que **falla en silencio**, porque un
  * `otro` de más no rompe nada.
+ *
+ * `permiso` (sesión vencida o reglas) y `servidor` (cuota, error del backend) se
+ * separaron de `red` (B-590): eran todos `red` y el «fijate la conexión» que se
+ * le mostraba a la persona era falso para los dos primeros. Distinguirlos acá le
+ * da al dueño el motivo real de un «da error subir imágenes» sin abrir el issue.
  */
-export const MOTIVOS_IMAGEN = ['tamano', 'tipo', 'metadatos', 'red'] as const;
+export const MOTIVOS_IMAGEN = ['tamano', 'tipo', 'metadatos', 'red', 'permiso', 'servidor'] as const;
 export type MotivoImagen = (typeof MOTIVOS_IMAGEN)[number];
 
 /** Vocabulario del parámetro `detalle`. */

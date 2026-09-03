@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.8.0 — 2026-09-03
+
+- **Al fallar la subida de una imagen, se muestra el motivo real** (permiso/sesión,
+  espacio, conexión, o el código si es desconocido) en vez del engañoso «fijate la
+  conexión» — **B-590**. Era el «da error subir imágenes» de los reportes que no
+  decía por qué.
+- **El `events.json` lleva un eje plano de encuentros** (`{slug, sesionId, inicio}`,
+  próximos, ordenados) — **B-99**. Es la base de datos para poder mostrar «Hoy /
+  Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
+  esos paneles todavía no está: esto es solo el dato.
+
+## 2026-09-03 · el eje de encuentros en el events.json (B-99)
+
+El `events.json` lleva ahora, además del índice por actividad, un índice **plano
+de encuentros próximos** (`{slug, sesionId, inicio}`, no cancelados, desde el build
+hacia adelante, ordenados por fecha). Es dato ya público re-indexado —la sesión ya
+viaja dentro de su actividad—; lo que habilita es contestar «¿qué hay hoy / mañana
+/ este finde?» sin aplanar los ciclos en el navegador en cada filtrado. `barrer`
+obligó a declarar el id de sesión (uuid opaco, ya público en la salida 6) en la
+lista de permitidos del índice, que es exactamente el mecanismo.
+
+## 2026-09-03 · el motivo real cuando falla subir una imagen (B-590)
+
+`subir-imagen.ts` tiraba siempre «fijate la conexión y probá con una imagen más
+chica» ante cualquier falla de la subida a Storage — falso para el caso más común,
+permiso o sesión vencida (`storage/unauthorized`), que fue el «da error subir
+imágenes» de los reportes #14/#15/#19 sin pista de por qué. Ahora `code` del SDK
+se traduce a un motivo (`motivoDeSubidaFallida`, puro y testeado): permiso/sesión,
+espacio lleno, corte de conexión, o —código desconocido— el código incluido en el
+texto para poder reportarlo. La analítica gana dos causas nuevas, `permiso` y
+`servidor`, que antes caían todas en `red`.
+
 ## 1.7.0 — 2026-09-03
 
 **La tanda de cierre: el sitio se completa y el panel deja de acumular ruido.**

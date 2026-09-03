@@ -920,6 +920,16 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       centinelas: ['opcion.slug', 'opcion.label'],
       porque: '§4.4 — es lo que hace que un chip nuevo aparezca solo. Ver B-212.',
     },
+    {
+      nombre: 'el eje plano de encuentros (B-99)',
+      centinelas: ['sesiones.id'],
+      porque:
+        'El índice de encuentros de B-99 lleva `{slug, sesionId, inicio}`. El slug y el ' +
+        'inicio ya estaban permitidos arriba; lo nuevo es el **id de sesión**, un uuid ' +
+        'opaco generado en el cliente (trampa 2), sin PII, que además ya es público en la ' +
+        'salida 6 (la página de detalle lo emite en `sesiones`). El barrido obligó a ' +
+        'declararlo acá al agregarlo a esta salida, que es exactamente para lo que sirve.',
+    },
     /*
      * `modalidades` (B-224) **no está en esta lista y no le falta un centinela**:
      * el índice lleva sus **valores** —`presencial`, `virtual`, `hibrido`—, que son

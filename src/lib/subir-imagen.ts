@@ -21,6 +21,7 @@ import {
   dimensiones,
   esDelTipoDeclarado,
   esTipoSubible,
+  motivoDeSubidaFallida,
   quedanMetadatos,
   rutaDeImagen,
   sinMetadatos,
@@ -155,12 +156,13 @@ export const subirImagen = async (archivo: File, id: string): Promise<Imagen> =>
       // vacía. Nace en `false` y `GaleriaEditor` la corrige al agregar la fila.
       portada: false,
     };
-  } catch {
-    // El mensaje del SDK ("storage/unauthorized") no está escrito para nadie.
-    throw new ImagenRechazada(
-      'No se pudo subir la imagen. Fijate la conexión y volvé a intentar; si sigue ' +
-        'fallando, probá con una imagen más chica.',
-      'red',
-    );
+  } catch (e) {
+    // El `message` crudo del SDK no está escrito para nadie, pero el `code`
+    // (`storage/unauthorized`, etc.) es un enum estable que sí se traduce a un
+    // motivo — B-590. Antes acá se tiraba siempre «fijate la conexión», falso
+    // cuando el problema era permiso o sesión vencida.
+    const code = (e as { code?: string } | null)?.code;
+    const { mensaje, causa } = motivoDeSubidaFallida(code);
+    throw new ImagenRechazada(mensaje, causa);
   }
 };

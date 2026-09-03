@@ -410,3 +410,60 @@ export const dimensiones = (
   });
   return medida;
 };
+
+/**
+ * Traduce el código de una falla de subida a Storage a un motivo que le sirva a
+ * una persona — B-590.
+ *
+ * Antes el `catch` de `subir-imagen.ts` tiraba **siempre** «fijate la conexión y
+ * probá con una imagen más chica», que es falso para el caso más común: la sesión
+ * venció o las reglas no dejan (`storage/unauthorized`), donde ni la conexión ni
+ * el tamaño tienen nada que ver. Era el «da error subir imágenes» de los reportes
+ * #14/#15/#19, sin pista de por qué.
+ *
+ * El `code` del SDK (`storage/unauthorized`, etc.) es un enum estable, así que se
+ * puede traducir; lo que no se muestra es el `message` crudo, que no está escrito
+ * para nadie. Un código desconocido incluye el código en el texto —para que se
+ * pueda reportar— en vez de esconderlo detrás de un genérico.
+ *
+ * Devuelve el `mensaje` para la pantalla y la `causa` para la analítica (§9): un
+ * enum cerrado, nunca el nombre del archivo.
+ */
+export const motivoDeSubidaFallida = (
+  code: string | undefined,
+): { mensaje: string; causa: 'permiso' | 'servidor' | 'red' } => {
+  switch (code) {
+    case 'storage/unauthorized':
+    case 'storage/unauthenticated':
+      return {
+        mensaje:
+          'No se pudo subir: parece que la sesión venció o no tenés permiso. ' +
+          'Salí y volvé a entrar al panel, y probá de nuevo.',
+        causa: 'permiso',
+      };
+    case 'storage/quota-exceeded':
+      return {
+        mensaje:
+          'No se pudo subir: se llenó el espacio de almacenamiento del sitio. ' +
+          'Avisá para liberar lugar antes de seguir cargando imágenes.',
+        causa: 'servidor',
+      };
+    case 'storage/retry-limit-exceeded':
+    case 'storage/canceled':
+      return {
+        mensaje:
+          'La conexión se cortó antes de terminar de subir la imagen. ' +
+          'Probá de nuevo con mejor señal.',
+        causa: 'red',
+      };
+    default:
+      return {
+        mensaje: code
+          ? `No se pudo subir la imagen (código: ${code}). Volvé a intentar; si ` +
+            'sigue fallando, reportalo con ese código.'
+          : 'No se pudo subir la imagen. Fijate la conexión y volvé a intentar; ' +
+            'si sigue fallando, probá con una imagen más chica.',
+        causa: 'servidor',
+      };
+  }
+};

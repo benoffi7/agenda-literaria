@@ -5,12 +5,14 @@ import {
   enBytesLegibles,
   esDelTipoDeclarado,
   esTipoSubible,
+  motivoDeSubidaFallida,
   quedanMetadatos,
   rutaDeImagen,
   sinMetadatos,
   validarArchivo,
 } from '@/lib/imagenes-archivo';
 import { MAXIMO_BYTES, TIPOS_ACEPTADOS } from '@/lib/imagenes';
+import { MOTIVOS_IMAGEN } from '@/lib/analytics-eventos';
 
 /**
  * B-167, segunda tajada — el archivo de una imagen propia antes de la red.
@@ -381,5 +383,66 @@ describe('alto y ancho salen del encabezado', () => {
     // píxeles, que es peor que no reservar ninguno.
     expect(dimensiones('image/jpeg', new Uint8Array([1, 2, 3]))).toBeNull();
     expect(dimensiones('image/png', new Uint8Array([1, 2, 3]))).toBeNull();
+  });
+});
+
+describe('motivoDeSubidaFallida — el motivo real de una subida que falla (B-590)', () => {
+  /*
+   * El pedido del dueño: «cuando una imagen no se pueda subir, incluí el motivo».
+   * Antes el `catch` de `subir-imagen.ts` decía SIEMPRE «fijate la conexión»,
+   * falso para el caso más común —permiso o sesión vencida—, que fue el «da
+   * error subir imágenes» de los reportes #14/#15/#19.
+   */
+  it('un problema de permiso o sesión no dice «fijate la conexión»', () => {
+    for (const code of ['storage/unauthorized', 'storage/unauthenticated']) {
+      const { mensaje, causa } = motivoDeSubidaFallida(code);
+      expect(causa, code).toBe('permiso');
+      expect(mensaje, code).toMatch(/sesión|permiso/i);
+      expect(mensaje, code).not.toMatch(/conexión|más chica/i);
+    }
+  });
+
+  it('la cuota llena se nombra como espacio, no como red', () => {
+    const { mensaje, causa } = motivoDeSubidaFallida('storage/quota-exceeded');
+    expect(causa).toBe('servidor');
+    expect(mensaje).toMatch(/espacio|lugar/i);
+  });
+
+  it('un corte de conexión sí habla de la señal', () => {
+    for (const code of ['storage/retry-limit-exceeded', 'storage/canceled']) {
+      const { mensaje, causa } = motivoDeSubidaFallida(code);
+      expect(causa, code).toBe('red');
+      expect(mensaje, code).toMatch(/conexión|señal/i);
+    }
+  });
+
+  it('un código desconocido lo incluye en el texto, en vez de esconderlo', () => {
+    const { mensaje, causa } = motivoDeSubidaFallida('storage/algo-nuevo');
+    expect(mensaje).toContain('storage/algo-nuevo');
+    expect(causa).toBe('servidor');
+  });
+
+  it('sin código cae a un genérico, sin inventar un motivo', () => {
+    const { mensaje } = motivoDeSubidaFallida(undefined);
+    expect(mensaje).toMatch(/no se pudo subir/i);
+    expect(mensaje).not.toMatch(/storage\//);
+  });
+
+  it('toda causa que devuelve está en el vocabulario de la analítica (§9, B-88)', () => {
+    // La causa viaja a GA4; una que el vocabulario no conoce llega como «otro» en
+    // silencio. Se cubren los códigos conocidos más uno desconocido y el vacío.
+    for (const code of [
+      'storage/unauthorized',
+      'storage/unauthenticated',
+      'storage/quota-exceeded',
+      'storage/retry-limit-exceeded',
+      'storage/canceled',
+      'storage/lo-que-sea',
+      undefined,
+    ]) {
+      expect(MOTIVOS_IMAGEN as readonly string[], code).toContain(
+        motivoDeSubidaFallida(code).causa,
+      );
+    }
   });
 });

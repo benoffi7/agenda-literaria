@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { LARGO_RESUMEN, construirIndice, entradaDeIndice, resumenDe } from '@/lib/eventsJson';
+import {
+  LARGO_RESUMEN,
+  construirIndice,
+  encuentrosDelIndice,
+  entradaDeIndice,
+  resumenDe,
+} from '@/lib/eventsJson';
 import { toPublic } from '@/lib/toPublic';
 import { CENTINELA, actividadCentinela, opcionCentinela } from './fixtures/centinelas';
 import { ts } from './fixtures/tiempo';
@@ -255,5 +261,66 @@ describe('el archivo entero (§4.4)', () => {
     });
     expect(vacio.actividades).toEqual([]);
     expect(vacio.opciones).toEqual({});
+  });
+});
+
+describe('el eje plano de encuentros — B-99', () => {
+  /*
+   * Re-indexa dato ya público (las sesiones ya viajan dentro de su actividad)
+   * para contestar «hoy / mañana / este finde» sin aplanar los ciclos en el
+   * navegador. Lo que se cuida: la forma (solo slug + id + inicio), que no salga
+   * un cancelado ni un pasado, y el orden.
+   */
+  const AHORA = '2026-09-10T12:00:00.000Z';
+  const conSesiones = (slug: string, sesiones: { id: string; iso: string; cancelada?: boolean }[]) => ({
+    ...toPublic(
+      actividadCentinela({
+        slug,
+        sesiones: sesiones.map((x) => ({
+          id: x.id,
+          inicio: ts(x.iso),
+          // fin 2 h después: duración real, no el patrón de fixture flojo de B-135.
+          fin: ts(new Date(new Date(x.iso).getTime() + 2 * 60 * 60 * 1000).toISOString()),
+          tema: null,
+          lectura: null,
+          cancelada: x.cancelada ?? false,
+          calendarEventId: null,
+        })),
+      }),
+      `act_${slug}`,
+    ),
+  });
+
+  it('solo lleva slug, id de sesión e inicio — nada más', () => {
+    const acts = [conSesiones('a', [{ id: 'ses_1', iso: '2026-09-20T19:00:00.000Z' }])];
+    const [e] = encuentrosDelIndice(acts, AHORA);
+    expect(e).toBeDefined();
+    expect(Object.keys(e!).sort()).toEqual(['inicio', 'sesionId', 'slug']);
+    expect(e).toEqual({ slug: 'a', sesionId: 'ses_1', inicio: '2026-09-20T19:00:00.000Z' });
+  });
+
+  it('no incluye encuentros cancelados ni pasados, y ordena por fecha', () => {
+    const acts = [
+      conSesiones('a', [
+        { id: 'ses_pasado', iso: '2026-09-01T19:00:00.000Z' }, // antes de AHORA
+        { id: 'ses_cancel', iso: '2026-09-25T19:00:00.000Z', cancelada: true },
+        { id: 'ses_tarde', iso: '2026-09-30T19:00:00.000Z' },
+      ]),
+      conSesiones('b', [{ id: 'ses_pronto', iso: '2026-09-12T19:00:00.000Z' }]),
+    ];
+    const ids = encuentrosDelIndice(acts, AHORA).map((e) => e.sesionId);
+    expect(ids).toEqual(['ses_pronto', 'ses_tarde']); // orden ascendente, sin pasado ni cancelado
+  });
+
+  it('`construirIndice` lo incluye en el `Indice`', () => {
+    const indice = construirIndice({
+      actividades: [conSesiones('a', [{ id: 'ses_1', iso: '2026-09-20T19:00:00.000Z' }])],
+      opciones: {},
+      version: '9.9.9',
+      generadoEn: AHORA,
+    });
+    expect(indice.encuentros).toEqual([
+      { slug: 'a', sesionId: 'ses_1', inicio: '2026-09-20T19:00:00.000Z' },
+    ]);
   });
 });

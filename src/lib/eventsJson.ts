@@ -115,13 +115,55 @@ export interface EntradaDeIndice {
   searchText: string;
 }
 
+/**
+ * Un encuentro en el índice plano — B-99. Es una re-indexación de dato que ya es
+ * público (la sesión ya viaja dentro de su actividad): solo el slug de la
+ * actividad, el id de la sesión y su inicio. **Nada nuevo se expone**; lo que se
+ * gana es contestar «¿qué hay hoy / mañana / este finde?» sin aplanar los ciclos
+ * en el navegador en cada filtrado.
+ */
+export interface EncuentroDeIndice {
+  /** La actividad a la que pertenece — para ir a buscar su tarjeta en `actividades`. */
+  slug: string;
+  /** El id de la sesión (uuid del cliente, trampa 2). Identifica el encuentro. */
+  sesionId: string;
+  /** ISO del inicio. El índice va ordenado ascendente por este campo. */
+  inicio: string;
+}
+
 export interface Indice {
   generadoEn: string;
   /** La misma que estampa `scripts/version.mjs`: de qué build salió este archivo. */
   version: string;
   opciones: Record<string, OpcionPublica[]>;
   actividades: EntradaDeIndice[];
+  /**
+   * Índice **plano** de encuentros próximos (no cancelados, desde el build hacia
+   * adelante), ordenado por fecha — B-99. Deriva de `actividades[].sesiones`, no
+   * agrega dato: mismo criterio que el listado (el build emite, el cliente filtra
+   * por su reloj), pero por encuentro en vez de por actividad.
+   */
+  encuentros: EncuentroDeIndice[];
 }
+
+/**
+ * El eje plano de encuentros de B-99, derivado de las actividades ya proyectadas.
+ * Puro y exportado para el barrido de `tests/barrido-de-salidas-publicas.test.ts`
+ * y el test de forma. Emite solo encuentros **no cancelados** cuyo `inicio` es
+ * `>= generadoEn` (los pasados no sirven a «lo que viene» y solo engordarían el
+ * archivo). Los ISO son UTC, así que el `>=` y el orden son comparación de string.
+ */
+export const encuentrosDelIndice = (
+  actividades: readonly ActividadPublica[],
+  generadoEn: string,
+): EncuentroDeIndice[] =>
+  actividades
+    .flatMap((a) =>
+      a.sesiones
+        .filter((s) => !s.cancelada && s.inicio >= generadoEn)
+        .map((s) => ({ slug: a.slug, sesionId: s.id, inicio: s.inicio })),
+    )
+    .sort((x, y) => x.inicio.localeCompare(y.inicio));
 
 /** Largo del resumen. 160 es el corte útil como `meta description` (§5.1). */
 export const LARGO_RESUMEN = 160;
@@ -229,4 +271,5 @@ export const construirIndice = ({
     Object.entries(opciones).map(([campo, valores]) => [campo, opcionesPublicas(valores ?? [])]),
   ),
   actividades: actividades.map(entradaDeIndice),
+  encuentros: encuentrosDelIndice(actividades, generadoEn),
 });

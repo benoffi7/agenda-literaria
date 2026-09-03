@@ -60,6 +60,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'motivo-al-fallar-una-imagen',
+    fecha: '2026-09-03',
+    version: '1.8.0',
+    titulo: 'Si una imagen no se puede subir, ahora te dice por qué',
+    detalle:
+      'Antes, cuando fallaba subir una imagen, siempre decía «fijate la conexión» —aunque el ' +
+      'problema fuera otro—. Ahora distingue: si venció la sesión te dice que vuelvas a entrar, ' +
+      'si se llenó el espacio lo dice, y si es un corte de conexión también. Con un código raro, ' +
+      'lo muestra para que lo puedas reportar.',
+    donde: 'Formulario, sección «Qué es» — el cargador de imágenes.',
+  },
+  {
     id: 'reportes-solo-abiertos',
     fecha: '2026-09-03',
     version: '1.7.0',
