@@ -60,6 +60,16 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'una-sola-forma-de-nombrar-las-modalidades',
+    fecha: '2026-09-03',
+    titulo: 'El formulario y los filtros llaman igual a las formas de cursar',
+    detalle:
+      'En el formulario, la opción que decía «Híbrido» ahora dice «Presencial y virtual», que es ' +
+      'como ya la nombraban el filtro del listado, el sitio y el evento del calendario. Es el mismo ' +
+      'valor de siempre: no hay que volver a cargar nada.',
+    donde: 'Formulario, sección «Dónde» — el desplegable de cada forma de cursar.',
+  },
+  {
     id: 'abrir-link-corto-de-maps',
     fecha: '2026-09-03',
     titulo: 'El link corto de Maps ahora se abre desde el mismo campo',

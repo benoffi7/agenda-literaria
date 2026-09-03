@@ -963,8 +963,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'En «híbrido» se piden las dos cosas en esa misma fila: la gente que va y la que se ' +
-          'conecta se anotan igual.',
+          'En «presencial y virtual» se piden las dos cosas en esa misma fila: la gente que va y la ' +
+          'que se conecta se anotan igual.',
       },
       {
         texto:
