@@ -6842,3 +6842,60 @@ sitio» y «Clics salientes» manda de más aunque todo el código de este repo
 esté bien. Documentado en `docs/07-seguridad.md` (salida 12) y anotado como
 **B-480** en el `BACKLOG`, bloqueando el cierre real de B-372 aunque el
 código y el enganche en `Base.astro` ya estén hechos.
+
+---
+
+## D-254 · Se saca el `preconnect` a GA4 en vez de condicionarlo
+
+**Encontrado antes de pushear, no en producción.** `Base.astro` tenía
+`<link rel="preconnect" href="https://www.googletagmanager.com">`, condicionado
+solo a `conChrome` (para no ofrecerlo en `/admin`) — sin ninguna condición de
+consentimiento. El coordinador lo encontró leyendo `dist/index.html` de un
+build real, antes de pushear el merge.
+
+**Por qué un `preconnect` sin condicionar rompe D-250.** No es una pista
+pasiva: el navegador resuelve DNS, abre TCP y completa el handshake TLS con SNI
+para el host **en el load**, antes de que exista cualquier script y sin que la
+persona haya tocado el banner. No manda la URL ni cookies, pero sí le dice al
+borde de Google que este navegador, desde esta IP, entró al sitio — y eso
+pasaba también para quien **rechaza**. D-250 promete «hasta que la persona
+decide, no se mide»; con el `preconnect` puesto, esa frase era falsa desde el
+primer render.
+
+**Decisión: sacarlo, no condicionarlo.** En un sitio estático el `<head>` es el
+mismo HTML para todo el mundo — la decisión de consentimiento vive en el
+`localStorage` de cada visitante, y `Base.astro` no la conoce cuando genera la
+página. No existe un `preconnect` condicional acá. Ponerlo por JavaScript un
+instante antes de inyectar el script del tag tampoco ahorra nada: el pedido del
+script sale en el mismo tick que lo haría sin el `preconnect`.
+
+**Costo de sacarlo:** unos milisegundos de DNS/TLS en la primera carga del tag,
+y solo para quien **ya aceptó** — el único momento en que ese tiempo se
+gastaba con sentido. Barato al lado de lo que costaba dejarlo.
+
+**La red que faltaba:** `tests/terceros-antes-del-consentimiento.test.ts` lee
+el HTML **construido** (no el fuente — reimplementaría el parser de Astro) y
+exige que todo host de un `<link>` de conexión (`preconnect`/`dns-prefetch`/
+`prefetch`/`preload`/`stylesheet`), un `<script src>` o un `<iframe src>`
+absoluto esté en una lista blanca explícita, con el motivo escrito al lado de
+cada host. Hoy la lista tiene dos entradas —`fonts.googleapis.com` y
+`fonts.gstatic.com`, las tipografías del sistema visual (B-260), anteriores a
+todo esto y sin tocar en este ítem— y no tiene `googletagmanager.com`.
+
+**No mira `<img>` a propósito.** El host de la imagen de una actividad varía
+por documento (un flyer puede vivir en Instagram) y es una salida pública ya
+decidida y auditada en `07-seguridad.md`, sin relación con el consentimiento de
+analítica. Lo que este chequeo cuida es la **infraestructura fija** que sale
+igual en todas las páginas porque viene de un layout o componente compartido —
+que es exactamente la clase de bug que causó esto.
+
+**Mutación probada:** se repuso el `<link rel="preconnect">` a mano en
+`Base.astro`, se corrió el build y el test pasó a rojo nombrando
+`www.googletagmanager.com` y el archivo exacto en las doce páginas construidas
+(incluida `/admin`, porque la mutación de prueba no llevaba `conChrome`). Se
+sacó de nuevo y se confirmó que vuelve a pasar.
+
+**Anotado también, no resuelto:** las tipografías son, hoy, la misma clase de
+conexión a un tercero en el load que este ítem acaba de sacar — solo que
+decidida antes y sin la lupa del consentimiento encima. Autoalojarlas la
+eliminaría del todo. Es una decisión de otro día: **B-481** en el `BACKLOG`.

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-09-03 · el `preconnect` a GA4 se sacó antes de pushear (D-254)
+
+**El coordinador encontró, antes de pushear el merge, que `Base.astro` mandaba
+un `<link rel="preconnect" href="https://www.googletagmanager.com">` sin
+ninguna condición de consentimiento** — solo `conChrome`, para no ofrecerlo en
+`/admin`. Un `preconnect` no es una pista pasiva: abre DNS + TCP + el handshake
+TLS con Google **en el load**, para quien todavía no decidió y también para
+quien **rechaza**. Contradecía la promesa central de D-250 («hasta que la
+persona decide, no se mide») desde el primer render.
+
+**El arreglo fue sacarlo, no condicionarlo**: en un sitio estático el `<head>`
+es el mismo HTML para todo el mundo, y la decisión de consentimiento vive en el
+`localStorage` de cada visitante — no existe un `preconnect` condicional acá.
+Detalle completo en **D-254** (`06-decisiones.md`).
+
+**Y la red que faltaba**: `tests/terceros-antes-del-consentimiento.test.ts` lee
+el `dist/` construido (mismo patrón que `tests/sin-comentarios-en-el-html.test.ts`)
+y falla si aparece un host de tercero en un `<link>` de conexión, un
+`<script src>` o un `<iframe src>` que no esté en una lista blanca explícita
+con motivo — hoy solo `fonts.googleapis.com`/`fonts.gstatic.com` (tipografías,
+B-260, anteriores a esto). Mutación probada: se repuso el `preconnect` a mano,
+el test cayó nombrando el host y el archivo exacto, se sacó de nuevo.
+
+**Números del §6bis re-medidos**: sin el `preconnect`, la página de detalle
+agrega 1.591 B de HTML (antes 1.653 B) y sigue en 2.075 B gzip de JS — el total
+para quien rechaza pasa a ser **2.515 B gzip, y ahora sí ninguna conexión de
+red hasta que decide**.
+
+**Anotado, no resuelto**: las tipografías son hoy la misma clase de conexión a
+un tercero en el load que este ítem sacó para GA4, solo que decidida antes y
+sin la lupa del consentimiento encima — autoalojarlas la eliminaría. **B-481**
+en el `BACKLOG`.
+
 ## 2026-09-02 · el banner de cookies, el tag de GA4 y los dos eventos propios del sitio público (B-371, B-372, B-375, B-376)
 
 **El dueño contestó las tres preguntas que bloqueaban `16-analitica-del-sitio.md`.**
@@ -29,15 +62,17 @@ B-373 (Search Console) → diferido a propósito para el final, no ahora.
   final): el banner va con la misma condición que el resto del chrome del
   sitio (`conChrome`), así que nunca aparece ni carga nada en `/admin`.
 
-**El costo medido, byte por byte, contra un build real** (no una estimación):
-la página de detalle pasó de 17.040 a 18.693 bytes de HTML (+1.653 B, sobre
-todo el markup del banner, que sale en todas las páginas). El JavaScript propio
-—el banner, el clic de inscripción y el transporte compartido, sin arrastrar el
-motor de filtrado— son **2.075 bytes transferidos (gzip)**. Para quien rechaza
-o no decidió, ese es **todo** el costo: `gtag.js` (152 KB gzip, el número ya
-aceptado en D-251) nunca se descarga. Para quien acepta, se suma ese número
-entero; la proporción del §6.1 del diseño («8,5 veces la página») sube a 8,6.
-Detalle completo en el §6bis de `docs/16-analitica-del-sitio.md`.
+**El costo medido, byte por byte, contra un build real** (no una estimación;
+números re-medidos después de D-254, ver más abajo): la página de detalle pasó
+de 17.040 a 18.631 bytes de HTML (+1.591 B, sobre todo el markup del banner,
+que sale en todas las páginas). El JavaScript propio —el banner, el clic de
+inscripción y el transporte compartido, sin arrastrar el motor de filtrado—
+son **2.075 bytes transferidos (gzip)**. Para quien rechaza o no decidió, ese
+es **todo** el costo —**2.515 B gzip entre HTML y JS**, y **ninguna conexión
+de red a un tercero** (recién cierto desde D-254)—: `gtag.js` (152 KB gzip, el
+número ya aceptado en D-251) nunca se descarga. Para quien acepta, se suma ese
+número entero; la proporción del §6.1 del diseño («8,5 veces la página») sube a
+8,6. Detalle completo en el §6bis de `docs/16-analitica-del-sitio.md`.
 
 **Lo que encontró el `auditor-privacidad`, y no es cosmético (D-253, B-480):**
 recortar el `page_location` no alcanzaba — el `page_referrer` también podía
