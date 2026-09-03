@@ -2087,7 +2087,25 @@ describe('barrido de `/pasadas` (§5, salida 10, B-109)', () => {
   });
 });
 
-describe('barrido de `/404` (§5, salida 13, B-310)', () => {
+/*
+ * **Este `describe` NO se atribuye un número de salida, y es a propósito.**
+ *
+ * `/404` es una salida pública nueva y le correspondería la **13**, pero el índice
+ * de `docs/07-seguridad.md` todavía tiene doce filas: agregar la fila —y sus
+ * gemelas en el skill `campo-nuevo` y en la ficha del `auditor-privacidad`— es
+ * **B-654**, y esos archivos no son de este frente.
+ *
+ * Ponerle «salida 13» al rótulo mientras tanto es exactamente lo que
+ * `tests/agentes-y-skills.test.ts` prohíbe desde B-600: «un barrido se atribuye un
+ * número de salida que en el índice es otra cosa… el índice queda apuntando a la
+ * salida equivocada, y ningún otro chequeo lo ve». Y ese chequeo lo agarró: el
+ * rótulo decía «salida 13» y el caso se puso rojo al mergear main.
+ *
+ * Así que el rótulo dice **qué** barre y no qué número tiene, y el número llega
+ * junto con la fila. Lo que no cambia por eso: el barrido corre igual y afirma
+ * exactamente lo mismo.
+ */
+describe('barrido de la página de error `/404` (§5, B-310 — su fila del índice es B-654)', () => {
   /*
    * **Entra al barrido en el mismo cambio que la creó**, como la 7, la 8 y la 10.
    *
