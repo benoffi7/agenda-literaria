@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { TOPE_DEL_PANEL, panelesDeAhora, ventanasDeAhora } from '@/lib/ahoraPublico';
-import { CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
+import { CLASES_DE_PARED, CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { claveDeDia, diaDeSemana, fechaCortaDeDia, hora } from '@/lib/fechasPublicas';
 import { etiquetaDe, mapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -916,13 +916,30 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
     for (const n of [1, 2, 3] as const) {
       expect(CLASES_DEL_TRIPTICO[n], `falta la clase para ${n} paneles`).toContain('grid');
     }
-    expect(CLASES_DEL_TRIPTICO[1]).not.toContain('lg:grid-cols-');
-    expect(CLASES_DEL_TRIPTICO[2]).toContain('lg:grid-cols-2');
-    expect(CLASES_DEL_TRIPTICO[3]).toContain('lg:grid-cols-3');
+    /*
+     * **Las clases no se escriben como literales acá, y no es estilo**: Tailwind
+     * v4 escanea el proyecto entero menos lo que ignora `.gitignore`, y `tests/`
+     * no está ignorado — o sea que un `toContain('lg:grid-cols-2')` **mete esa
+     * clase en la hoja por sí mismo**. Está comprobado en este árbol:
+     * `lg:grid-cols-[2]` existe solo en un comentario de este archivo y aun así
+     * salió al CSS. Lo encontró el `auditor-privacidad`.
+     *
+     * Así que las afirmaciones se arman con el número, que no es una clase.
+     */
+    expect(CLASES_DEL_TRIPTICO[1]).not.toContain('lg:');
+    for (const n of [2, 3] as const) {
+      expect(CLASES_DEL_TRIPTICO[n], `el mapa no pide ${n} columnas en lg`).toContain(
+        `lg:grid-${'cols'}-${n}`,
+      );
+    }
 
     // Y el componente la pide por índice, no la arma: un template acá sería
     // exactamente la clase que Tailwind no ve.
-    const componente = readFileSync(raiz('src/components/publico/PanelesDeAhora.tsx'), 'utf8');
+    // Sin comentarios: el docblock de al lado ya nombra `Math.min`, así que un
+    // barrido sobre el texto crudo pasaría contra su propia documentación.
+    const componente = readFileSync(raiz('src/components/publico/PanelesDeAhora.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
     expect(componente).toContain('CLASES_DEL_TRIPTICO[columnas]');
     expect(componente).not.toMatch(/grid-cols-\$\{/);
 
@@ -990,16 +1007,45 @@ describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => 
      * grilla se quedaría en una columna y nada fallaría.
      *
      * Lo que prueba que el archivo se escanea es una clase que **solo él
-     * escribe**: `sm:columns-2`, de `CLASES_DE_PARED`. Si está en la hoja, el
-     * archivo entró; si no, el bucle de arriba no está afirmando nada.
+     * escribe**: la de dos columnas de `CLASES_DE_PARED` (no se escribe acá — ver
+     * el aviso de abajo). Si está en la hoja, el archivo entró; si no, el bucle de
+     * arriba no está afirmando nada.
      */
-    const MARCADOR = 'sm:columns-2';
-    const enElFuente = execFileSync('grep', ['-rl', MARCADOR, raiz('src')], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
+    const MARCADOR = CLASES_DE_PARED[2];
+    /*
+     * **El grep va sobre el repo entero, no sobre `src/`**, porque el scope de
+     * Tailwind es el repo entero: el marcador escrito en un test o en un `.md`
+     * también lo mete en la hoja, y entonces el chequeo se auto-satisface. Es lo
+     * que pasaba con este mismo caso hasta que el `auditor-privacidad` lo vio.
+     */
+    const buscarEnElRepo = (aguja: string): string[] => {
+      try {
+        return execFileSync(
+          'grep',
+          [
+            '-rl',
+            '--exclude-dir=node_modules',
+            '--exclude-dir=dist',
+            '--exclude-dir=.git',
+            aguja,
+            raiz('.'),
+          ],
+          { encoding: 'utf8' },
+        )
+          .split('\n')
+          .filter(Boolean)
+          .map((f) => f.replace(/.*\/agent-[^/]+\//, ''));
+      } catch {
+        // `grep` sale con 1 cuando no encuentra nada: eso es «el marcador
+        // desapareció del fuente», que es un resultado y no un error de plomería.
+        return [];
+      }
+    };
+    const enElRepo = buscarEnElRepo(MARCADOR);
     expect(
-      enElFuente.map((f) => f.replace(/.*\/src\//, 'src/')),
-      `\`${MARCADOR}\` dejó de ser exclusivo de estilos.ts: elegir otro marcador`,
+      enElRepo,
+      `\`${MARCADOR}\` dejó de ser exclusivo de estilos.ts: mientras esté escrito ` +
+        'en otro archivo escaneado, este caso no prueba nada.',
     ).toEqual(['src/components/sitio/estilos.ts']);
     expect(
       hojas,
