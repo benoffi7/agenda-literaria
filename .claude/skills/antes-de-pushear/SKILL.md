@@ -1,6 +1,6 @@
 ---
 name: antes-de-pushear
-description: Lanza los tres auditores del repo en paralelo (privacidad, trampas y documentación), junta los hallazgos y decide si el push sale o no. Invocalo antes de cualquier push o PR, cuando el usuario diga "pusheá", "subilo", "abrí el PR", "/antes-de-pushear" o pregunte si está listo para pushear. Complementa al hook de git, que corre los pasos mecánicos y no puede invocar un modelo.
+description: Lanza los auditores del repo en paralelo (trampas y documentación siempre; privacidad solo si el hook no lo corrió ya), junta los hallazgos y decide si el push sale o no. Invocalo antes de cualquier push o PR, cuando el usuario diga "pusheá", "subilo", "abrí el PR", "/antes-de-pushear" o pregunte si está listo para pushear. Complementa al hook de git, que corre los pasos mecánicos y no puede invocar un modelo, y a los hooks de Claude Code, que disparan el auditor de privacidad cuando el diff toca una salida pública.
 ---
 
 # Antes de pushear
@@ -11,12 +11,20 @@ todos**. Eso se parte en dos, porque son dos cosas distintas:
 | | Quién lo hace | Qué verifica |
 |---|---|---|
 | **Mecánico** | `githooks/pre-push` → `scripts/verificar-todo.sh` | marcadores de conflicto, typecheck, tests con los emuladores arriba, build, fuga de credenciales |
-| **Con criterio** | este skill | privacidad de un campo nuevo, trampas del §13 en código nuevo, si la doc acompaña al cambio |
+| **Con criterio, y ya corrió solo** | los hooks de `.claude/settings.json` | `auditor-privacidad`, disparado en cuanto el diff toca una salida pública (B-124, D-350) |
+| **Con criterio, y es de este skill** | este skill | trampas del §13 en código nuevo, si la doc acompaña al cambio, y privacidad **si el hook no lo disparó** |
 
 Un hook de git **no puede invocar un modelo**, así que la segunda mitad no puede
 vivir en el hook. Y un modelo no debería reimplementar lo que un script ya
 decide, así que este skill **no** re-verifica lo mecánico: lo corre y lee el
 resultado.
+
+**Desde B-124 este skill dejó de ser el único disparador.** El
+`auditor-privacidad` corre en `opus` y es el caro, así que lo despierta un hook
+en cuanto el diff toca uno de los archivos de las doce salidas — y si ya corrió
+sobre este contenido, acá **no se vuelve a gastar**. Lo que no cambió es que si
+el diff **no** tocó ninguna salida, el hook no lo corrió, y entonces la decisión
+de invocarlo sigue siendo de acá (§2).
 
 ## 1 · El gate mecánico
 
@@ -43,9 +51,22 @@ vez.
 
 | Agente | `subagent_type` | Cuándo es obligatorio |
 |---|---|---|
-| Privacidad | `auditor-privacidad` | siempre que el diff toque `src/lib/`, `functions/`, `src/types/`, `firestore.rules`, el build o el bundle |
+| Privacidad | `auditor-privacidad` | siempre que el diff toque `src/lib/`, `functions/`, `src/types/`, `firestore.rules`, el build o el bundle — **salvo que el hook ya lo haya corrido** sobre este mismo contenido |
 | Trampas | `auditor-trampas` | siempre que el diff toque `src/lib/`, `src/components/admin/`, `functions/` o las reglas |
 | Documentación | `auditor-documentacion` | **siempre** |
+
+**Antes de lanzar el de privacidad, preguntale al mecanismo** en vez de
+adivinar. Estos dos comandos contestan si corresponde y si ya corrió:
+
+```bash
+git status --porcelain | sed 's/^...//' | node scripts/auditores-que-corresponden.mjs
+cat "$(git rev-parse --absolute-git-dir)/auditores.json" 2>/dev/null
+```
+
+Si el primero dice `privacidad=false`, el diff no toca ninguna salida y no hay
+nada que auditar de este lado. Si dice `true` y el sello tiene una huella
+`auditado`, el hook ya lo corrió: no lo repitas, decilo en el resumen. Si dice
+`true` y no hay sello, lanzalo.
 
 Si el diff es solo de `docs/`, `tests/` o `.claude/`, alcanza con el de
 documentación más el de trampas (un test nuevo puede tapar un agujero o abrirlo,
@@ -112,6 +133,12 @@ Reglas para juntar:
 - "Sin red": una trampa que el cambio toca y ningún test verifica. Se avisa con
   el `it(...)` que habría que escribir. Frenar el push por un test que falta
   invita a saltear el hook, y un gate que se saltea no protege nada.
+- **Una decisión que el cambio cita y todavía no tiene entrada** en
+  `06-decisiones.md` (`node scripts/decisiones-referenciadas.mjs` la lista). Si
+  el número lo cita **este** cambio, es una tanda en vuelo y va como
+  recordatorio de cierre; si viene de otro archivo y de hace tiempo, es drift y
+  va al backlog. Ninguna de las dos frena el push: el enlace resuelve igual, así
+  que el daño es de lectura y no de funcionamiento.
 - El conteo de tests de la doc quedó viejo. **No se toca**: cambia en cada merge
   y genera conflicto en cuatro archivos a la vez.
 
