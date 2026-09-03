@@ -50,6 +50,7 @@ import { exploracionDeLaHome, indiceDelSitio, tonosDelSitio } from '@/lib/conten
 import { coleccionSchema } from '@/lib/hubsPublicos';
 import { mapaDeEtiquetas, vigentesDelIndice } from '@/lib/listadoPublico';
 import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import { instanteDeIso } from '@/lib/sesiones';
 
 const indice = await indiceDelSitio();
 /*
@@ -57,8 +58,17 @@ const indice = await indiceDelSitio();
  * propio índice declara, así que el HTML y el JSON que lo acompaña hablan del
  * mismo momento. Con `new Date()` podrían diferir en los segundos que tarda el
  * build y una actividad que termina justo ahí saldría en uno y no en el otro.
+ *
+ * **Pasa por `instanteDeIso`, el mismo parser que usa el sello del tríptico**, y
+ * eso lo pidió el `auditor-privacidad` sobre B-600: un `generadoEn` ilegible
+ * llegaba acá como `Invalid Date` y desde ahí a `claveDeDia`, que formatea con
+ * `Intl` y tira `RangeError` — o sea que el build de la home se caía **antes** de
+ * que corriera la guarda de `selloDelIndice`, que está documentada diciendo que
+ * sin sello se pierde una línea y con una excepción se pierde la página. Dos
+ * derivaciones del mismo string con políticas de falla opuestas es la clase de
+ * B-88, y una de las dos estaba documentada como si describiera las dos.
  */
-const ahora = new Date(indice.generadoEn);
+const ahora = instanteDeIso(indice.generadoEn) ?? new Date();
 const etiquetas = mapaDeEtiquetas(indice.opciones);
 // D-150 — los matices elegidos para los tipos. El HTML del build y la island
 // pintan la categoría con el mismo color porque los dos salen de acá, y desde

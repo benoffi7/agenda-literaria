@@ -263,6 +263,24 @@ describe('ventanasDeAhora — los siete días de la semana', () => {
     }
   });
 
+  it('y el salto al finde siguiente cruza el año, no solo el mes', () => {
+    /*
+     * **Lo pidió el `auditor-trampas`.** La tabla de arriba usa una sola semana de
+     * referencia para los siete días, así que el salto de `findeSiguiente` nunca se
+     * ejercita cruzando un mes ni un año a nivel de `ventanasDeAhora` — sí a nivel
+     * de `diaDesplazado` suelto, que tiene sus propios casos. Acá se cierra el
+     * hueco de integración: un domingo 27 de diciembre, el finde que viene es el 2
+     * y 3 de **enero del año siguiente**.
+     */
+    const ventanas = ventanasDeAhora(mediodia('2026-12-27'));
+    expect(ventanas.map((v) => v.dias)).toEqual([
+      ['2026-12-27'],
+      ['2026-12-28'],
+      ['2027-01-02', '2027-01-03'],
+    ]);
+    expect(ventanas[2]!.rotulo).toBe('El finde que viene');
+  });
+
   it('el finde siempre es un sábado y un domingo, en ese orden', () => {
     // Fija que el salto de semana no se hace corriendo el día suelto: los dos
     // días del panel tienen que seguir siendo el finde de alguna semana.
@@ -655,6 +673,41 @@ describe('cómo se resuelve un encuentro del eje contra su actividad', () => {
       .encuentros;
     expect(fila!.tipo).toBe('club-lectura');
     expect(fila!.tipoEtiqueta).toBe('Club de lectura');
+  });
+
+  it('la fecha de carga NO sale al tríptico, ni recortada (§5.1, D-138)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y es el hueco que el barrido de
+     * centinelas no puede ver.** `barrer` detecta un campo nuevo en la fila solo
+     * si su valor es un centinela, y `creadoEn` es una fecha: no admite uno, igual
+     * que las fechas de `modalidades` (la nota está en el fixture).
+     *
+     * Y de los campos sin centinela es el que tiene historia: **D-138** lo recortó
+     * a `AAAA-MM-DD` justamente porque, con un solo admin, el instante exacto de
+     * cada carga es su agenda de trabajo. El tríptico es además la única salida
+     * del repo donde **un string de fecha y hora al lado del título es nativo del
+     * diseño** (`19:00`, `sáb 16`, el sello), así que agregar `cargado:
+     * e.creadoEn` a la fila es una línea que compila y se ve razonable.
+     *
+     * Se afirma **por valor**, que es el patrón de `tests/modalidades.test.ts`:
+     * el fixture le pone un alta con un valor distintivo y se exige que no
+     * aparezca en la salida.
+     *
+     * MUTACIÓN PROBADA: agregar `cargado: entrada.creadoEn` a `EncuentroDePanel`
+     * deja este caso en rojo y **no** el barrido de centinelas.
+     */
+    const indice = indiceDePrueba([
+      { fechas: ['2026-09-14T23:00:00Z'], creadoEn: '2025-03-17T04:05:06Z' },
+    ]);
+    // Control positivo: el índice sí lleva el alta, así que el caso no pasa por
+    // preguntarle a un fixture que no tiene el campo.
+    expect(indice.actividades[0]!.creadoEn).toContain('2025-03-17');
+
+    const json = JSON.stringify(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS));
+    expect(json, 'la fecha de carga es agenda de trabajo del admin (D-138)').not.toContain(
+      '2025-03-17',
+    );
+    expect(json).not.toContain('2025');
   });
 
   it('el `iso` es el del encuentro, para el `datetime` del `<time>`', () => {

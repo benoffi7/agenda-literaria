@@ -302,6 +302,16 @@ describe('las primitivas de día calendario — B-600', () => {
     // Y de año.
     expect(diaDesplazado('2026-12-31', 1)).toBe('2027-01-01');
     expect(diaDesplazado('2026-01-01', -1)).toBe('2025-12-31');
+    /*
+     * El 29 de febrero, que es el borde que una aritmética escrita a mano se
+     * olvida. Hoy lo resuelve `setUTCDate` nativo y no hay nada que se pueda
+     * olvidar; el caso queda como red permanente contra una reescritura de
+     * `anclaDeDia`/`diaDesplazado` que deje de apoyarse en él. Lo pidió el
+     * `auditor-trampas`.
+     */
+    expect(diaDesplazado('2028-02-28', 1)).toBe('2028-02-29');
+    expect(diaDesplazado('2028-02-29', 1)).toBe('2028-03-01');
+    expect(diaDesplazado('2028-03-01', -1)).toBe('2028-02-29');
     // El salto de una semana, que es el que usa el panel del finde siguiente.
     expect(diaDesplazado('2026-09-26', 7)).toBe('2026-10-03');
   });

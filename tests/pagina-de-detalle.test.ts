@@ -338,8 +338,25 @@ describe('la home', () => {
      * Si el build usara su propio reloj, el HTML y el `events.json` que lo
      * acompaña hablarían de momentos distintos y una actividad que termina justo
      * en el medio saldría en uno y no en el otro.
+     *
+     * **El literal cambió con B-600, y la afirmación no.** Decía
+     * `new Date(indice.generadoEn)`; ahora el string pasa por `instanteDeIso`, el
+     * mismo parser que usa el sello del tríptico — lo pidió el
+     * `auditor-privacidad`: un `generadoEn` ilegible llegaba como `Invalid Date` a
+     * `claveDeDia`, que formatea con `Intl` y tira `RangeError`, así que el build
+     * de la home se caía **antes** de que corriera la guarda del sello, que está
+     * documentada diciendo lo contrario. Dos derivaciones del mismo string con
+     * políticas de falla opuestas es la clase de B-88.
+     *
+     * El `new Date()` que queda a la derecha del `??` es el **respaldo** de esa
+     * guarda, no la fuente del reloj, y el segundo aserto es el que mantiene la
+     * distinción: lo que sigue prohibido es que `ahora` nazca del reloj de la
+     * máquina de build.
      */
-    expect(src).toContain('new Date(indice.generadoEn)');
+    expect(src).toContain('instanteDeIso(indice.generadoEn)');
+    expect(src, 'el reloj no puede salir del reloj de la máquina de build').not.toMatch(
+      /const ahora = new Date\(\)/,
+    );
   });
 });
 

@@ -393,6 +393,123 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     );
   });
 
+  it('el número de salida que se atribuye cada barrido es el de su propia fila — B-600', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre B-600, y es el agujero que dejó
+     * pasar el error que él encontró.** El `describe` de cada salida en
+     * `tests/barrido-de-salidas-publicas.test.ts` se **titula** con su número
+     * («§5, salida 9») y ese número no estaba atado a nada: los tres `it` de
+     * arriba comparan las tres tablas **entre sí**, así que doce filas
+     * coincidentes y un barrido rotulado con el número equivocado es verde.
+     *
+     * Pasó de verdad: el barrido del tríptico de la home nació rotulado «salida
+     * 12», que en las tres tablas es la **analítica del sitio público**. Nada
+     * fallaba, y quien grepeara `salida 12` para saber qué cubre el barrido de
+     * GA4 encontraba el tríptico.
+     *
+     * Lo que se afirma es lo más simple que lo detecta: **el título del `describe`
+     * y la fila que dice cubrir tienen que hablar de lo mismo** — al menos una
+     * palabra propia del título aparece en el texto de esa fila. Las palabras
+     * genéricas del vocabulario del índice quedan fuera de la cuenta, si no
+     * cualquier fila matchearía con cualquier título.
+     *
+     * MUTACIÓN PROBADA: volver a rotular el `describe` del tríptico como «salida
+     * 12» pone este caso en rojo nombrando el título y la fila.
+     */
+    const BARRIDO = 'tests/barrido-de-salidas-publicas.test.ts';
+
+    /** El texto crudo de la fila `n` de la tabla de `07-seguridad.md`. */
+    const filaCruda = (n: number): string => {
+      const linea = fuente(SEGURIDAD)
+        .split('\n')
+        .find((l) => new RegExp(`^\\s*\\|\\s*${n}\\s*\\|`).test(l));
+      return linea ?? '';
+    };
+
+    /** Sin acentos y en minúsculas: «página» y «pagina» son la misma palabra. */
+    const plano = (t: string): string =>
+      t
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    /*
+     * El vocabulario compartido del índice. Están fuera porque aparecen en casi
+     * todas las filas y en casi todos los títulos: con ellas adentro, el chequeo
+     * pasaría siempre.
+     */
+    const GENERICAS = new Set([
+      'barrido',
+       'salida',
+      'salidas',
+      'productor',
+      'diseno',
+      'publico',
+      'publica',
+      'publicas',
+      'centinelas',
+      'centinela',
+      'indice',
+      'listado',
+      'pagina',
+      'paginas',
+      'proyeccion',
+      'formas',
+      'cursar',
+      'evento',
+      'eventos',
+      'datos',
+      'texto',
+      // Y las palabras de enlace, que con el umbral en tres letras entran solas.
+      'del',
+      'los',
+      'las',
+      'que',
+      'hay',
+      'por',
+      'con',
+      'dos',
+      'una',
+      'uno',
+      'sus',
+      'para',
+    ]);
+
+    const titulos = [...fuente(BARRIDO).matchAll(/describe\('([^']*salida (\d+)[^']*)'/g)].map(
+      (m) => ({ titulo: m[1]!, n: Number(m[2]!) }),
+    );
+
+    // Control positivo: si el regex dejara de encontrar los títulos, la lista de
+    // desalineados saldría vacía sin haber mirado nada.
+    expect(titulos.length, `no se parsearon los títulos de ${BARRIDO}`).toBeGreaterThanOrEqual(5);
+
+    const desalineados: string[] = [];
+    for (const { titulo, n } of titulos) {
+      const fila = plano(filaCruda(n));
+      expect(fila, `la tabla de ${SEGURIDAD} no tiene una fila ${n}`).not.toBe('');
+
+      /*
+       * **Tres letras y no cinco**: «mes» es la palabra que identifica a la
+       * salida 8 y con el umbral más alto ese título se quedaba sin ninguna
+       * palabra propia, o sea sin chequeo. El costo es que hay que descartar las
+       * palabras de enlace, que están en la lista de arriba.
+       */
+      const propias = [...plano(titulo).matchAll(/[a-z]{3,}/g)]
+        .map((m) => m[0]!)
+        .filter((w) => !GENERICAS.has(w));
+      if (!propias.some((w) => fila.includes(w))) {
+        desalineados.push(`«${titulo}» → la fila ${n} no habla de ${propias.join('/') || '(nada)'}`);
+      }
+    }
+
+    expect(
+      desalineados,
+      'un barrido se atribuye un número de salida que en el índice es otra cosa. ' +
+        'O el rótulo está mal, o falta la fila: las dos formas dejan el índice ' +
+        'apuntando a la salida equivocada, y ningún otro chequeo lo ve.',
+    ).toEqual([]);
+  });
+
   it('y el skill `campo-nuevo` enumera las mismas — B-265', () => {
     /*
      * **Son tres lugares y este chequeo ataba dos.** Lo encontró el

@@ -2370,13 +2370,29 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
 });
 
 /**
- * §5 — barrido del **tríptico de «¿Qué hay ahora?»** — salida 12, B-600.
+ * §5 — barrido del **tríptico de «¿Qué hay ahora?»** — salida 1, **séptimo
+ * productor**, B-600.
  *
- * Es la salida pública **nueva** del cambio, y entra al barrido en el mismo
- * cambio que la crea. Ese «en el mismo cambio» es la lección de B-212 y de los
- * hubs de la salida 11: la salida que nace fuera del barrido se queda afuera, la
- * suite queda verde igual —el índice de salidas solo se compara consigo mismo— y
- * el hueco no se nota hasta que alguien lo busca.
+ * ── Por qué es un productor de la salida 1 y no una salida nueva ──────────
+ * Porque **no es una URL nueva**: es una sección del HTML de la home, que ya es
+ * la salida 1 («`events.json` y el HTML del listado»). Tiene exactamente la forma
+ * de los otros tres productores que esa salida fue sumando: `tarjetaPublica.ts`
+ * (el cuarto, qué frases dice la fila), `identidad.ts`/`listadoPublico.ts` (el
+ * quinto y sexto, de qué color se escribe la categoría) y `coleccionSchema` de
+ * `hubsPublicos.ts` (el sexto del JSON-LD) — un módulo que decide **qué dice** el
+ * HTML de la home con los campos que el índice ya trae, sin agregar una ruta
+ * indexable.
+ *
+ * Numerarlo como «salida 13» habría sido, además, sumar una fila a las **tres
+ * tablas atadas** por `tests/agentes-y-skills.test.ts` para una salida que no
+ * recibe campos del modelo: quien agregue un campo nuevo tendría una celda más
+ * que decidir y la respuesta sería siempre la misma que la de la salida 1.
+ *
+ * Lo que **sí** entra en el mismo cambio es este `describe`, y ese «en el mismo
+ * cambio» es la lección de B-212 y de los hubs de la salida 11: el productor que
+ * nace fuera del barrido se queda afuera, la suite queda verde igual —el índice
+ * de salidas solo se compara consigo mismo— y el hueco no se nota hasta que
+ * alguien lo busca.
  *
  * ── Por qué necesita el suyo, teniendo el del índice arriba ────────────────
  * Porque **no publica el índice: publica una derivación del índice**, y las dos
@@ -2398,7 +2414,7 @@ describe('barrido de los hubs de búsqueda (§5, salida 11, B-108)', () => {
  * verifica `tests/listado-del-sitio.test.ts`—, así que barrer la salida del
  * módulo es barrer la sección entera.
  */
-describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 12, B-600)', () => {
+describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º productor, B-600)', () => {
   /*
    * El `ahora` cae **adentro** de la primera ventana del fixture: la primera
    * sesión centinela es el 3 de septiembre de 2026 a las 22:00 UTC (19:00 acá),
@@ -2466,7 +2482,11 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 12, B-600)
         'la línea de lugar la arma `lugarDeTarjeta` —la misma del listado, de la página ' +
         'de mes, de /pasadas y de los hubs— y el arancel `arancelDeTarjeta`. La ' +
         '**dirección**, las indicaciones y las coordenadas NO están en esta lista: el ' +
-        'índice no las lleva y el panel no las necesita.',
+        'índice no las lleva y el panel no las necesita. `labels.plataforma` tampoco ' +
+        'está, y su ausencia NO es una prohibición: el fixture es `hibrido`, así que ' +
+        'gana la rama de sede y la línea termina en «· y online». En una virtual pura ' +
+        '`lugarDeTarjeta` sí imprime «Online por <etiqueta>», que es público (§4.1) — ' +
+        'lo que nunca sale es el link, y eso lo afirma el `it` de `urlPublica: true`.',
     },
   ];
 

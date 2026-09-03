@@ -974,6 +974,36 @@ describe('un solo markup del tríptico, dos relojes — B-600', () => {
     expect(memo![0]).toMatch(/panelesDeAhora\(indice, ahora, etiquetas\)/);
   });
 
+  it('el reloj del build sale del mismo parser que el sello, no de un `new Date()` pelado', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre B-600, y es la clase de B-88.** El
+     * mismo string —`indice.generadoEn`— se parseaba de dos maneras, con políticas
+     * de falla **opuestas**:
+     *
+     * - `selloDelIndice` usa `instanteDeIso` y se defiende, con el motivo escrito
+     *   en su docblock y repetido en `docs/12-sitio-publico.md`: «sin sello se
+     *   pierde una línea de contexto, con una excepción se pierde la página».
+     * - `index.astro` lo parseaba con `new Date()` pelado y le pasaba el resultado
+     *   a `panelesDeAhora`. Con un `generadoEn` ilegible, `ahora` era `Invalid
+     *   Date`, y de ahí a `claveDeDia` → `Intl.format(Invalid Date)` → `RangeError`:
+     *   **el build de la home se caía antes de que corriera la guarda del sello**.
+     *
+     * O sea que la garantía documentada valía para el camino de la island —donde
+     * `ahora` es el reloj del cliente— y no para el del build, que es justo el que
+     * la frase describe.
+     *
+     * MUTACIÓN PROBADA: volver a `new Date(indice.generadoEn)` deja este caso en
+     * rojo.
+     */
+    const h = home();
+    expect(h, 'el reloj del build tiene que pasar por el mismo parser que el sello').toMatch(
+      /const ahora = instanteDeIso\(indice\.generadoEn\) \?\? new Date\(\);/,
+    );
+    expect(h, 'y no quedar un `new Date(generadoEn)` sin guarda en el frontmatter').not.toMatch(
+      /new Date\(indice\.generadoEn\)/,
+    );
+  });
+
   it('y el bloque del build vive adentro del ancla de «Saltar al listado»', () => {
     /*
      * El `id="listado"` es el destino del link de salto, y la island monta su
