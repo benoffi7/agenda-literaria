@@ -286,11 +286,38 @@ probó y qué los haría pasar— y ese docblock es la mitad del valor del chequ
 es prosa que sobre; es la que hace que un `it.fails` signifique algo dentro de
 seis meses.
 
-**La lectura de B-78, revisada con estos números y sin cambiar de conclusión**, está
-abajo en el §4: el ranking de tamaño sigue hablando de copy, y la prosa de
-`src/lib/` es deliberada. Lo que este número **no** dice es cuánta de esa prosa
-envejeció — para eso hay que leerla, y eso se hizo (ver la fila de B-78 en «Qué no
-hay que tocar»).
+**Y este número no dice cuánta de esa prosa envejeció.** Para eso hay que leerla,
+y el 2026-09-03 se leyó: los 11 archivos de mayor proporción de `src/lib/` más
+otros nueve, buscando tres cosas —prosa que afirma algo que el código ya no hace,
+prosa duplicada, y relato de tickets que dejó de explicar la forma actual.
+
+**El resultado es el que sostiene la política, no el que la cuestiona:**
+
+| Lo que se buscó | Lo que se encontró |
+|---|---|
+| Referencias muertas (archivos, funciones, tests que la prosa nombra y no existen) | **cero**, en un barrido mecánico sobre todo `src/lib/` |
+| Relato de tickets que ya no explica la forma actual | **cero** que pase el filtro. Los cuatro candidatos evaluados trabajan — el de `identidad.ts` (D-141 → D-146 → D-150, el color que se fue y volvió) es el caso de libro: sin él, «la paleta es limitada» parece seguir vigente y alguien vuelve a sacar el color |
+| Un bloque de comentario pegado dos veces, textual | **uno**, en `tarjetaPublica.ts`, del último commit |
+| Premisas temporales congeladas | **cinco** — la clase más cara, y la única que vale arreglar |
+| Contadores desincronizados entre archivos vecinos | **tres** |
+
+**La clase que importa es la segunda, y no es «prosa de más».** Son comentarios
+que sostienen una decisión **vigente** sobre un hecho que dejó de ser cierto:
+«no hay testing-library y no se va a instalar» (la instaló B-08, el mismo ticket
+que el comentario cita), «el `events.json` todavía no está escrito» (existe, y
+consume esa misma función), «el sitio público está congelado y el dominio no está
+elegido» (está publicado en `agendaleh.ar`), «el sitemap no lleva `lastmod`» (lo
+lleva desde B-112, y lo dice el encabezado del mismo archivo). El daño no es el
+volumen: es que **el lector descuenta una decisión buena por una premisa falsa**.
+
+La lista completa, con `archivo:línea` y la corrección propuesta, está en el
+reporte del frente. Ninguna se aplicó acá porque `src/**` tenía cuatro frentes
+escribiendo.
+
+**Conclusión de B-78, y no cambia:** el 46 % es deliberado y no hay que bajarlo.
+Ver la fila de `ayuda.ts` y `novedades.ts` en «Qué no hay que tocar», que además
+**contradice la propuesta del propio ítem** de mudar el contenido a una carpeta
+aparte.
 
 ---
 
@@ -529,7 +556,7 @@ Estas cosas parecen problemas si se las mira solo con métricas.
 |---|---|---|
 | **El panel como monolito en `/admin`** | Decisión cerrada: un repo, un Hosting target, un deploy. El bundle pesado ya está aislado (D-51). | `CLAUDE.md` §2.3 |
 | **Firestore como única fuente de verdad** | Decisión cerrada. Nada de sync bidireccional. | `CLAUDE.md` §2.1 |
-| **`ayuda.ts` y `novedades.ts` como los archivos más grandes** | Son **texto de usuario**, no lógica. Un archivo de copy grande no es deuda; partirlo agregaría paths para que la copy viva en cinco lugares. | §1.2 |
+| **`ayuda.ts` y `novedades.ts` como los archivos más grandes** | Son **texto de usuario**, no lógica. Un archivo de copy grande no es deuda; partirlo agregaría paths para que la copy viva en cinco lugares. **Esto contradice la propuesta de B-78** de mudarlos a una carpeta de contenido aparte, y la contradicción se resolvió el 2026-09-03 a favor de esta fila: el propio ítem dice que es cosmético y que «no cambia comportamiento ni destraba nada», y a cambio movería dos archivos que la doc, los tests y dos reglas de proceso de `05-patrones.md` nombran por su ruta. **Y no bajaría el número que el ítem cita:** son copy y casi no llevan comentarios, así que sacarlos de `src/lib/` *sube* la proporción de prosa (§1.6 lo mide en las dos direcciones). Lo que sí valía de B-78 —leer la prosa y ver cuánta envejeció— se hizo, y está en el §1.6. | §1.2, §1.6, B-78 |
 | **`CAMPOS_VALIDABLES` como constante a mano** | Derivarla en runtime metía zod (68 kB) en el chunk inicial. La garantía vive en un test que la deriva del schema. | D-60, D-98 |
 | **La copia de `CAMPOS_TAXONOMIA` en `functions/index.js`** | `functions/` se despliega con su propio `package.json` y no puede importar hacia arriba. Si molesta, la respuesta es un test que compare las dos listas, no un import imposible. | D-20 |
 | **`ETIQUETA_ENTREGA` duplicado entre panel y evento** | El panel capitaliza («Al inscribirse»), el evento va en minúscula a mitad de frase. Unificarlos haría que un cambio de copy del panel cambie lo que se publica. Lo que **sí** se unificó es `ETIQUETA_TIPO_MATERIAL`, que son sustantivos. | §5.1, B-134 |
