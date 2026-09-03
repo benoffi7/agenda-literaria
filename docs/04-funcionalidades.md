@@ -723,10 +723,11 @@ todas las páginas, las URLs del JSON-LD, `sitemap.xml`, `robots.txt` y el archi
 `BreadcrumbList` (Agenda → Tipo → título, o Agenda → título si el tipo no tiene
 hub — B-108) y la home y los cuatro hubs llevan un `CollectionPage` con
 `ItemList`, ambos con una sola función compartida (`migasDeDetalle` y
-`coleccionSchema`) entre las cinco páginas que los usan. Lo que sigue faltando
-del §5.1 del diseño son las cinco imágenes de Open Graph por tipo (**B-291**) y
-el `lastmod` del sitemap, que necesita **B-112**. El rebuild automático anda
-desde el 2026-08-25 (**B-20**).
+`coleccionSchema`) entre las cinco páginas que los usan. **Desde B-112
+(2026-09-03)** el sitemap lleva además el `lastmod` de cada actividad, recortado
+al día. Lo que sigue faltando del §5.1 del diseño son las cinco imágenes de Open
+Graph por tipo (**B-291**). El rebuild automático anda desde el 2026-08-25
+(**B-20**).
 
 ### La home — `/`
 
@@ -1111,11 +1112,12 @@ porque existe para quien tiene el link y para que Google pueda tachar el
 resultado que ya indexó; la de un mes vencido porque su URL estuvo indexada.
 Nunca un 404 sobre algo que estuvo publicado.
 
-**Sin `lastmod`**, y es una decisión: sale de `updatedAt`, que no está en la
-proyección pública (**B-112**). La alternativa disponible era estampar la fecha
-del build en las N entradas, y eso le enseña a Google que nuestras fechas mienten
-—cada rebuild por una coma diría que cambiaron todas— y a partir de ahí deja de
-mirarlas.
+**`lastmod`, desde B-112 (2026-09-03), y solo para las actividades.** Sale de
+`updatedAt`, recortado al día (D-138) — la fecha del build en las N entradas era
+la alternativa descartada, porque le enseña a Google que nuestras fechas mienten
+(cada rebuild por una coma diría que cambiaron todas). Los hubs, los meses y el
+resto de `RUTAS_FIJAS` siguen sin `lastmod`: no tienen una fecha de edición
+propia que declarar.
 
 El `robots.txt` bloquea `/admin` y anuncia el sitemap. **El `Disallow` no
 reemplaza al `noindex` de la página**: un `Disallow` impide el rastreo y por eso

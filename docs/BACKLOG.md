@@ -3339,7 +3339,7 @@ comparten está en **B-236**: algo que uno supone aislado por worktree y es glob
 del repositorio. El arreglo de fondo probablemente sea un puerto de emulador por
 worktree, o un `projectId` por worktree sobre el mismo emulador.
 
-### B-112 · `estado` y `actualizadoEn` en la proyección pública
+### B-112 · `estado` y `actualizadoEn` en la proyección pública — ✅ hecho (2026-09-03), parcial a propósito
 
 Dos campos que el sitio público necesita y `toPublic.ts` no lleva
 ([`12-sitio-publico.md`](12-sitio-publico.md) §11.2):
@@ -3374,6 +3374,37 @@ Dos campos que el sitio público necesita y `toPublic.ts` no lleva
 > la ventana de 30 días de las canceladas, pero lo lee del documento crudo, viaja
 > al lado de la proyección y **no se emite** (D-166). Que el dato esté disponible
 > ahí no lo hace publicable acá: son dos decisiones distintas.
+
+> ✅ **Se implementó el `lastmod` del sitemap, con el criterio que este ítem ya
+> había decidido — `AAAA-MM-DD`, la misma precisión que `creadoEn` (D-138).**
+> `publicadasEditadasEn` (`ContenidoDelSitio`) viaja **al lado** de la
+> proyección, igual que `canceladasEditadasEn` de B-109: `toPublic` sigue sin
+> ganar un campo, así que `events.json` y el detalle no pueden publicar una
+> fecha de edición por accidente. `lastmodDelSitemap` (`src/lib/sitemap.ts`)
+> recorta al día **otra vez**, belt-and-suspenders, para que un llamador futuro
+> que le pase el ISO completo no filtre la hora igual — con su caso en
+> `tests/sitemap.test.ts` y el centinela de hora que este ítem pedía, en el
+> barrido de la salida 9.
+>
+> **No se implementó «actualizado el …» en el detalle, y es una reducción de
+> alcance deliberada, no un olvido.** El `lastmod` del sitemap es la mitad con
+> valor de SEO claro y sin ambigüedad de diseño — una fecha en el `<head>` que
+> nadie ve. Mostrar «Actualizado el 3 de septiembre» en la ficha técnica es una
+> decisión de **contenido visible**, no de plomería: qué tan prominente, si
+> también en un ciclo con sesiones editadas por separado, si vale la pena para
+> una corrección de tipeo. Ese alcance no estaba resuelto en el diseño y no se
+> decide acá; si se quiere, es un ítem propio y chico (el dato ya
+> existe del lado del lector, falta pasarlo al view-model del detalle y decidir
+> la UI).
+>
+> **`estado` sigue sin hacer falta**, como ya decía este ítem — B-110 resolvió
+> la franja de "cancelada" sin proyectarlo.
+>
+> Verificado con `npx vitest run` (mutación probada en el filtro de
+> rutas-ofrecidas de `lastmodDelSitemap`, en el recorte al día, y en el
+> default `{}` de `xmlDelSitemap`) y con un build real contra el emulador
+> (`scripts/build-contra-emulador.mjs`, actualizado para exigir el `lastmod`
+> en la actividad publicada y su ausencia en la home).
 
 ### B-113 · Páginas de mes — `/agenda/{aaaa-mm}` — ✅ hecho (2026-09-01), con una punta afuera
 

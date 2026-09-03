@@ -62,7 +62,7 @@ import { coleccionSchema, hubDelSitio } from '@/lib/hubsPublicos';
 import { frasesDePasadas, pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { RUTA_AGENDA } from '@/lib/rutasPublicas';
 import type { TipoActividad } from '@/types/actividad';
-import { rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
+import { lastmodDelSitemap, rutasDelSitemap, textoDeRobots, xmlDelSitemap } from '@/lib/sitemap';
 import { buildSearchText } from '@/lib/normalize';
 import { construirEvento } from '../functions/calendario.js';
 import {
@@ -1907,6 +1907,29 @@ describe('barrido del sitemap (§5, salida 9, B-109)', () => {
 
   it('en el sitemap sobrevive solo el slug', () => {
     barrer('sitemap.xml', xml(), PERMITIDO_EN_EL_SITEMAP, { insensible: true });
+  });
+
+  it('el `lastmod` de B-112 nunca lleva la hora, ni aunque se lo pasen con ISO completo', () => {
+    /*
+     * El riesgo que el propio B-112 dejó anotado: «con un solo admin, un
+     * `<lastmod>2026-09-02T03:14:52.881Z</lastmod>` no es una fecha, es la
+     * agenda de trabajo de una persona identificada» (D-138). La fuente real
+     * del recorte es `contenidoDelSitio.ts` (`publicadasEditadasEn`, que ya
+     * guarda solo el día), pero `lastmodDelSitemap` recorta **de nuevo** —
+     * belt-and-suspenders— para que un llamador futuro que le pase el ISO
+     * completo por error no filtre la hora igual.
+     *
+     * MUTACIÓN PROBADA: sacar el `.slice(0, 10)` de `lastmodDelSitemap` deja
+     * este caso en rojo con el instante completo en el XML.
+     */
+    const rutasOfrecidas = rutasDelSitemap({ entradas: entradas(), canceladas: [], ahora: AHORA });
+    const lastmod = lastmodDelSitemap(rutasOfrecidas, {
+      [CENTINELA.slug]: '2026-09-02T03:14:52.881Z',
+    });
+    const xmlConFecha = xmlDelSitemap(rutasOfrecidas, lastmod);
+    expect(xmlConFecha).toContain('<lastmod>2026-09-02</lastmod>');
+    expect(xmlConFecha).not.toContain('03:14:52');
+    expect(xmlConFecha).not.toMatch(/<lastmod>[^<]*T[^<]*<\/lastmod>/);
   });
 
   it('y el robots.txt no publica ni el slug', () => {

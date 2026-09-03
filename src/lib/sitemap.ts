@@ -304,7 +304,16 @@ export const lastmodDelSitemap = (
   for (const [slug, dia] of Object.entries(actualizadasEn)) {
     if (!dia || !slug) continue;
     const ruta = rutaDeDetalle(slug);
-    if (ofrecidas.has(ruta)) resultado[ruta] = dia;
+    /*
+     * `.slice(0, 10)` **acá también**, y no solo en `contenidoDelSitio.ts`
+     * (D-138, `publicadasEditadasEn`): es la segunda mitad del mismo criterio
+     * que ya usa `creadoEn` — el instante exacto de una edición es la agenda
+     * de trabajo de un admin con un universo de uno. Un solo punto de recorte
+     * confía en que nadie más llame a esta función con un ISO completo; dos
+     * puntos hacen que ese llamador futuro no pueda filtrar la hora aunque se
+     * olvide.
+     */
+    if (ofrecidas.has(ruta)) resultado[ruta] = dia.slice(0, 10);
   }
   return resultado;
 };

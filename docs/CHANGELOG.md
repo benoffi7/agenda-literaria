@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-03 · B-112: el `lastmod` del sitemap, para las actividades publicadas
+
+**Solo la mitad que valía la pena, y la otra mitad quedó escrita como
+descarte.** El ítem pedía dos campos — `actualizadoEn` (el `lastmod`) y
+`estado`. El segundo ya no hacía falta desde B-110, que resolvió la franja de
+"cancelada" sin proyectar el estado. Del primero se implementó el `lastmod` en
+sí (la mitad con valor de SEO inequívoco); "actualizado el …" en la ficha del
+detalle quedó afuera a propósito — es una decisión de contenido visible, no de
+plomería, y no estaba resuelta en el diseño.
+
+`publicadasEditadasEn` (`ContenidoDelSitio`) viaja al lado de la proyección,
+igual que `canceladasEditadasEn` de B-109: el lector computa `updatedAt`
+recortado al día (D-138, la misma precisión que `creadoEn`) y `toPublic` no
+gana un campo. `lastmodDelSitemap` (`src/lib/sitemap.ts`) solo emite el
+`lastmod` para una ruta que `rutasDelSitemap` ya ofrece —dos derivaciones de la
+misma selección no pueden discreparse— y recorta al día **otra vez**, por las
+dudas: si algún llamador futuro le pasa el ISO completo, no filtra la hora
+igual. `xmlDelSitemap` lo recibe como segundo argumento opcional, default `{}`
+— el mismo criterio que ya usaban `cancelada` y `mesesConPagina`: el lado que
+no publica nada si alguien lo omite.
+
+Verificado con un build real contra el emulador
+(`scripts/build-contra-emulador.mjs`, que ahora exige el `lastmod` en la
+actividad publicada y su ausencia en la home) y con mutación probada en el
+filtro de rutas-ofrecidas, en el recorte al día, y en el gate del build.
+
 ## 2026-09-02 · B-107: el marcado de navegación, apoyado en los hubs de B-108
 
 **`BreadcrumbList` en el detalle y `CollectionPage`/`ItemList` en la home y los

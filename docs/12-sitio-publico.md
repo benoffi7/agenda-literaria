@@ -24,7 +24,7 @@ fragmentos de código son ilustrativos.
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
 > | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
-> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5. Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) y el `lastmod`, que necesita **B-112** |
+> | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
 > | §8 mobile | 🟡 — una columna, chips con scroll, 44px y `pb-segura` ✅; el panel de filtros dejó de comerse la pantalla en B-247 (**D-143**) pero **sigue sin ser la hoja modal** del diseño, y el **CTA fijo** tampoco existe (**B-238**) |
@@ -1029,6 +1029,15 @@ robots.txt    →  User-agent: *
 >   `updatedAt` sigue sin salir a ninguna salida. El razonamiento está en **D-166**;
 > - `lastmod` **se omite**, tal cual lo dice este bloque, y el test lo fija para
 >   que agregarlo con la fecha del build sea una decisión y no un descuido.
+>
+> ✅ **Y desde B-112 (2026-09-03), para las actividades, ya no se omite.**
+> `lastmodDelSitemap` (`lib/sitemap.ts`) arma `{ ruta: AAAA-MM-DD }` a partir de
+> `publicadasEditadasEn` — el mismo patrón que `canceladasEditadasEn`, un dato
+> que viaja al lado de la proyección y no adentro de `toPublic` — y solo lo
+> emite para una ruta que `rutasDelSitemap` ya ofrece: dos derivaciones de la
+> misma selección no pueden discreparse. Los hubs, los meses y el resto de
+> `RUTAS_FIJAS` siguen sin `lastmod`, tal como decía este bloque: no tienen una
+> fecha de edición propia que declarar.
 
 ---
 
@@ -1497,7 +1506,7 @@ son datos que ya se muestran en público por otros caminos.
 |---|---|---|---|
 | 1 | **`inscripcion.cierraEn`** (ISO de `cierra`) | Dos cosas. Una: la página quiere decir "las inscripciones cierran el 22 de septiembre", que es lo que hace que alguien escriba hoy. Dos, y más grave: **`abierta` se calcula con `Date.now()` del build** y se congela. Una inscripción que cerró a la mañana sigue diciendo "abierta" hasta el rebuild siguiente, y con el rebuild automático todavía pendiente (**B-20**) eso puede ser días. Con la fecha, el HTML dice la verdad y el cliente la recalcula. **Es un bug, no una mejora** → **B-111** | alta |
 | 2 | **`estado`** (`'publicado' \| 'cancelado'`) | Para pintar la franja CANCELADA y emitir `eventStatus`. Hoy la proyección no lo lleva, así que el HTML no puede distinguirlo | alta |
-| 3 | **`actualizadoEn`** (ISO de `updatedAt`) | `lastmod` del sitemap y "actualizado el …" en el detalle. Sin él, el sitemap va sin `lastmod` — y así salió (B-109): estampar la fecha del build en todas las entradas le enseña a Google que nuestras fechas mienten. **Ojo con el atajo:** el sitemap ya usa `updatedAt` para la ventana de 30 días de las canceladas, pero lo lee del documento crudo y **al lado** de la proyección, como predicado (D-166). Que esté disponible ahí no lo hace publicable acá: son dos decisiones distintas → **B-112** | media |
+| 3 | ~~**`actualizadoEn`** (ISO de `updatedAt`)~~ — **hecho el 2026-09-03, la mitad del `lastmod`** (B-112). `lastmodDelSitemap` la arma desde `publicadasEditadasEn`, que sigue viajando **al lado** de la proyección y no adentro de `toPublic` — el mismo patrón que `canceladasEditadasEn` (D-166). La otra mitad, "actualizado el …" en el detalle, quedó afuera a propósito: es una decisión de contenido visible y no de plomería, y no la resolvía este ítem | `lastmod` del sitemap, con la fecha recortada al día (D-138) | hecha |
 | 4 | ~~**`publicadaAlgunaVez`** (o la heurística de `calendarEventId`)~~ — **resuelto por ahora sin campo nuevo** (B-110, D-159): se prueba por el historial. El campo explícito queda en **B-285** | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
 | 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114** | baja |
 | 6 | **`sede.provincia`** | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
