@@ -228,6 +228,27 @@ describe('el aviso de «ya pasó y sigue publicada»', () => {
     });
     expect(clases([a])).toContain('ya-paso');
   });
+
+  // D-270 — que siga publicada es lo esperado (archivo, §2.1 del CLAUDE.md),
+  // así que este es el aviso menos accionable de los seis y va último. Si
+  // alguien lo vuelve a poner arriba —por ejemplo al lado de
+  // `inscripcion-cerrada`, que sí es una fricción real— este test lo dice.
+  it('es el último de la lista de gravedad, no el segundo', () => {
+    expect(CLASES_DE_AVISO[CLASES_DE_AVISO.length - 1]).toBe('ya-paso');
+    expect(CLASES_DE_AVISO.indexOf('ya-paso')).toBeGreaterThan(
+      CLASES_DE_AVISO.indexOf('inscripcion-cerrada'),
+    );
+  });
+
+  // D-270 — el texto no puede volver a sonar a fricción: una actividad que
+  // pasó y sigue publicada es el comportamiento correcto, no algo roto.
+  it('el texto no alarma: dice que es lo esperado y cuál es la única excepción accionable', () => {
+    const a = acto({ id: 'vieja', sesiones: [sesion('2026-08-01T19:00:00Z')] });
+    const av = aviso([a], 'ya-paso');
+    expect(av?.porque).toMatch(/es lo esperado/i);
+    expect(av?.porque).toMatch(/ciclo que vuelve/i);
+    expect(av?.porque).not.toMatch(/ya pasaron y siguen figurando/i);
+  });
 });
 
 describe('los avisos de completitud', () => {

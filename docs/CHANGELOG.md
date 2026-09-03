@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-03 · el aviso «ya pasó» del tablero deja de sonar a fricción — B-500
+
+El dueño lo marcó textual: «los eventos siguen publicados como archivos, no
+entiendo el aviso». Tenía razón — que una actividad publicada siga publicada
+después de pasar es el comportamiento correcto (se convierte en archivo,
+`/pasadas`, §2.1 del `CLAUDE.md`), no algo roto. El título pasa de «Publicadas
+a las que no les queda ningún encuentro» a «Terminaron y pasaron al archivo», y
+el texto dice la única acción real: si es un ciclo que vuelve, cargar las
+fechas nuevas; si fue una actividad única, no hay nada que hacer. También se
+movió al final de la lista de avisos por gravedad — ya no es una fricción
+urgente. **El filtro que decide qué actividad se señala no se tocó**: el
+criterio ya era correcto (D-270).
+
 ## 2026-09-03 · la caja de suscripción de la home, despegada de «Mes por mes»
 
 El bloque «Llevate la agenda a tu calendario» caía pegado a la última fila de la

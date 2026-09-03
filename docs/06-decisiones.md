@@ -6962,3 +6962,44 @@ sacó de nuevo y se confirmó que vuelve a pasar.
 conexión a un tercero en el load que este ítem acaba de sacar — solo que
 decidida antes y sin la lupa del consentimiento encima. Autoalojarlas la
 eliminaría del todo. Es una decisión de otro día: **B-481** en el `BACKLOG`.
+
+---
+
+## D-270 · El aviso «ya-paso» se reencuadra: no es una fricción, es el archivo funcionando
+
+**El dueño lo marcó textual: «los eventos siguen publicados como archivos, no
+entiendo el aviso».** Tenía razón. El tablero «Estado del catálogo» (B-370,
+D-200) traía un aviso, «Publicadas a las que no les queda ningún encuentro»,
+con el texto «Ya pasaron y siguen figurando como publicadas» — al lado de
+avisos que sí son fricciones reales a arreglar (la inscripción cerrada con
+gente que todavía puede escribir, sin flyer, sin etiquetas). Pero que una
+actividad publicada **siga publicada** después de pasar es exactamente el
+comportamiento correcto: se convierte en archivo, su página de detalle sigue
+viva, el slug es inmutable (§2.1 y §2.2 del `CLAUDE.md`, `/pasadas` es ese
+archivo). El texto viejo describía una anomalía donde no hay ninguna.
+
+**Dos caminos, y se eligió el (a):** reescribir el texto para que sea
+informativo y no alarmante, o sacar el aviso de la lista de fricciones y
+mostrarlo aparte como estado. Se descartó (b) — separar la sección — porque el
+tablero no distingue hoy ninguna otra gravedad de forma estructural (los seis
+avisos comparten la misma forma de tarjeta, ordenados por gravedad en una sola
+lista); crear una sección nueva para uno solo habría sido más superficie para
+un caso que el texto ya resuelve. Se aplicó (a): el título pasa a «Terminaron y
+pasaron al archivo» y el «porque» explica la única acción real —«si alguna es
+un ciclo que vuelve, cargale las fechas nuevas; si fue una actividad única, no
+hay nada que hacer»— en vez de sonar a alarma.
+
+**Y se movió al final de `CLASES_DE_AVISO`.** El orden de la lista es por
+gravedad (comentario ya existente en el código), de lo que le hace perder algo
+a alguien de afuera arriba, a lo que nos hace perder trabajo propio abajo. Un
+aviso que la mayoría de las veces no pide ninguna acción no puede ir segundo,
+al lado de «inscripción cerrada» que sí es urgente. Queda último, después de
+`esperando`.
+
+**Lo que NO se tocó: el filtro.** `publicadas.filter(a => (a.sesiones ?? []).length > 0 && !tieneFuturo(a, ahora))`
+sigue exactamente igual — el criterio de qué actividad se señala es correcto,
+lo que estaba mal era cómo se presentaba. Cerrado con `tests/estado-del-catalogo.test.ts`
+(dos casos nuevos: la posición en `CLASES_DE_AVISO` y el texto del aviso, con
+mutación probada — revertir el cambio los pone en rojo).
+
+Ítem: **B-500**.

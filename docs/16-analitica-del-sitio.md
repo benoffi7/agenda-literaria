@@ -121,7 +121,7 @@ sitio le hace perder algo a alguien**. Lista corta y defendible; no un catálogo
 | # | La fricción | Cómo se detecta | Qué se hace con eso | ¿Hoy? |
 |---|---|---|---|---|
 | 1 | **Una actividad publicada a la que ya no se puede entrar** — la inscripción cerró y todavía tiene encuentros por venir | catálogo + reloj | cambiar el estado, correr la fecha de cierre, o avisarlo en la descripción | ✅ |
-| 2 | **Una actividad que ya pasó y sigue en `publicado`** | catálogo + reloj | pasarla a un estado que refleje que terminó (lo que B-101 discute) | ✅ |
+| 2 | ~~Una actividad que ya pasó y sigue en `publicado`~~ — **reencuadrada, D-270**: eso es el archivo funcionando, no una fricción (§2.1 del `CLAUDE.md`, `/pasadas`). El tablero lo muestra como estado, no como problema, salvo la excepción real: un ciclo que vuelve necesita fechas nuevas | catálogo + reloj | si es un ciclo, cargar las fechas nuevas; si fue única, nada | ✅ |
 | 3 | **Una actividad publicada sin imagen** | catálogo | conseguir el flyer: sin él no entra a la cartelera y el link compartido va con la marca genérica. Al 2026-09-01 eran **2 de 42** | ✅ |
 | 4 | **Una actividad publicada sin etiquetas** | catálogo | ponerle etiquetas: sin ellas existe en el sitio pero no se encuentra filtrando | ✅ |
 | 5 | **Una actividad publicada con descripción demasiado corta** | catálogo | escribir dos frases más: la `meta description` sale de ahí, y es la que decide el clic | ✅ |
