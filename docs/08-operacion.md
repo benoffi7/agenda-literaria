@@ -58,6 +58,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
 | `node scripts/salud-del-codigo.mjs` | remide `docs/10-salud-del-codigo.md` (§1.1, §1.2, §1.4, §1.5, §1.6) e imprime las tablas en markdown listas para pegar. Con `--json`, para otro programa (B-311) |
 | `node scripts/etiquetas-github.mjs` | crea o actualiza en GitHub las etiquetas que el panel le pone a sus issues, derivándolas de `functions/reportes.js`. Idempotente y con verificación. Con `--dry-run` no toca nada (B-33) |
+| `node scripts/verificar-produccion.mjs` | **lee el sistema real** (B-116): escritura y lectura anónimas rechazadas con su control positivo, las cabeceras de cache contra lo que declara `firebase.json`, la versión publicada, y —con `GOOGLE_CALENDAR_ICS_PRIVADO` en el entorno— que el ICS no lleve el link de la reunión. Ver abajo |
 
 > **El conteo de tests no se escribe a mano en ninguna parte, y es una decisión.**
 > Estuvo escrito en `docs/README.md` y en la tabla de arriba, y las dos copias
@@ -69,6 +70,51 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 > lo hace cumplir (B-662): falla si `README.md` o este documento vuelven a
 > escribirlo. El `CHANGELOG`, el `BACKLOG` y `10-salud-del-codigo.md` quedan
 > afuera a propósito — ahí un conteo fechado es el dato, no un descuido.
+
+### Verificar contra el sistema real (B-116)
+
+`docs/05-patrones.md` tiene la regla que ningún test cumple solo: los unitarios
+prueban la **intención**; para lo que sale al mundo hay que **leer el resultado**.
+Los comandos que la cumplen estaban escritos —acá y en `07-seguridad.md`— y se
+corrían a mano, o sea cuando alguien se acordaba.
+
+```bash
+node scripts/verificar-produccion.mjs
+
+# con el calendario, que necesita la URL privada del ICS
+GOOGLE_CALENDAR_ICS_PRIVADO='https://…/private-…/basic.ics' \
+  node scripts/verificar-produccion.mjs
+
+# contra otro origen (por ejemplo el dominio de Firebase)
+SITIO=https://agenda-literaria.web.app node scripts/verificar-produccion.mjs
+```
+
+Qué mira, y por qué cada uno:
+
+| Chequeo | Qué atrapa |
+|---|---|
+| Escritura anónima a `/actividades` y `/opciones` | el §5.3: sin el claim `admin` no se escribe |
+| **Lectura** anónima de `/actividades`, suelta y por query | **D-128 / B-208** — la regla vieja entregaba el documento entero de toda actividad publicada, salteando `toPublic`. Es la que hay que correr después de deployar reglas |
+| Lectura de `/opciones/arancel` (**control positivo**) | sin él, todo el bloque pasa con una API key equivocada o sin red: cada sonda daría «rechazo» y se leería como «está todo cerrado» |
+| `Cache-Control` de cada ruta literal de `firebase.json` | D-38 — son la mitad del mecanismo de actualización del panel |
+| `/version.json` | qué quedó publicado, y si se buildeó con cambios sin commitear |
+| El ICS del calendario | trampa 5 — el link de la reunión en un calendario público. **Desdobla las líneas antes de buscar**: el formato ICS parte las largas, y lo largo es justamente la URL |
+| Los issues con `reporte-panel` | que no haya llegado la identidad de quien reportó a un repo público |
+
+Tres cosas del diseño que conviene saber:
+
+- **No es parte de ningún gate, a propósito.** Necesita red y producción; meterlo
+  en `verificar-todo.sh` sería un gate que falla cuando se cae el wifi, que es lo
+  que enseña a saltear un gate (B-180).
+- **Un `—` es un chequeo saltado y no cuenta como verde.** Dice por qué no pudo.
+- **No pide, no crea y no imprime ninguna credencial** (§5.4). La URL privada del
+  ICS entra por el entorno y nunca sale por pantalla; la API key sale de
+  `.env.production`, que está versionado porque la config del SDK web es pública
+  por diseño. Por eso este chequeo lo corre el dueño y no un agente.
+
+`tests/verificar-produccion.test.ts` cubre lo que decide —la derivación de las
+cabeceras, que un rechazo se distinga de una respuesta vacía, y el desdoblado del
+ICS— sin tocar la red.
 
 ### Remedir la salud del código (B-311)
 

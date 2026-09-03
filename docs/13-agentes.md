@@ -408,10 +408,17 @@ arreglo, es el detector.
 ### Porque un agente no es la herramienta
 
 - **Verificar el sistema real** (leer el ICS del calendario, las cabeceras de
-  cache, intentar la escritura anónima). Son comandos de
-  [`07-seguridad.md`](07-seguridad.md) y [`08-operacion.md`](08-operacion.md)
-  que necesitan red y secretos que un agente no debe tener en la mano. Queda como
-  B-116.
+  cache, intentar la escritura y la lectura anónimas). Necesita red y una URL
+  privada que un agente no debe tener en la mano, así que **no lo hace un agente
+  — pero sí un script**: `scripts/verificar-produccion.mjs` (**B-116**, cerrado el
+  2026-09-03). Es la misma forma que `relevar-infra.sh` de la viñeta de abajo: lo
+  delicado queda del lado del dueño, que es quien lo corre, y lo que se puede
+  decidir se decide en código con sus tests
+  (`tests/verificar-produccion.test.ts`) — la derivación de las cabeceras desde
+  `firebase.json`, que un rechazo de reglas se distinga de una respuesta vacía, y
+  el desdoblado del ICS antes de buscar. **No entra a ningún gate**: pega contra
+  producción, y un gate que falla cuando se cae el wifi es el que enseña a
+  saltear los gates (B-180).
 - **Crear credenciales** (PAT, key de service account, toggles de consola). Lo
   prohíbe el §5.4 y lo dice el backlog: es trabajo del dueño.
 - **Re-relevar el inventario de infra** (§ `02-infraestructura.md`): necesita
