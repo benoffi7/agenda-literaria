@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-03 · la caja de suscripción de la home, despegada de «Mes por mes»
+
+El bloque «Llevate la agenda a tu calendario» caía pegado a la última fila de la
+tira «Explorá por». `SuscribirseResumen` no trae margen propio —se reusa en
+`/suscribirse`, donde no lo quiere— así que la separación va en el sitio de uso,
+con el mismo `mt-12 sm:mt-16` que `ExploraPor` ya usa sobre el listado (B-482).
+
+Nota de producto, no de código: en «Mes por mes» aparece solo septiembre porque
+es el único mes con **3 o más** actividades (§2.2, `MINIMO_DE_ACTIVIDADES`).
+Octubre tiene 2 y noviembre 1, y por eso no generan página. Es la regla vigente,
+no un dato faltante.
+
 ## 2026-09-03 · GA4 configurado en la consola: B-480 y B-372 cerrados
 
 El dueño completó el paso manual que bloqueaba la analítica. En el flujo `G-9CFMHSSGRC`

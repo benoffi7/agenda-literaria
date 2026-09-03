@@ -211,7 +211,16 @@ const descripcion =
       `nivel` queda en su default (`2`): en esta página el encabezado del bloque
       cuelga del `h1` de arriba, y los marcadores de mes de la lista son `h2`
       hermanos. Saltear a `h3` dejaría el índice de la página con un hueco.
+
+      4 · **Separado de la tira de arriba** con el mismo ritmo que `ExploraPor`
+      lleva sobre el listado (`mt-12 sm:mt-16`) — B-482. El componente no trae
+      margen propio (se reusa en `/suscribirse`, donde abre la columna y no
+      quiere ninguno), así que la separación va acá, en el sitio de uso, y no
+      adentro del componente compartido. Sin esto la caja caía pegada a la fila
+      «Mes por mes».
     */}
-    <SuscribirseResumen />
+    <div class="mt-12 sm:mt-16">
+      <SuscribirseResumen />
+    </div>
   </main>
 </Base>
