@@ -43,7 +43,8 @@ import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { decidirLimpieza, MARGEN_DE_GRACIA_MS } from '../functions/limpieza-imagenes.js';
-import { referenciasEnUso, objetosDelBucket } from '../functions/imagenes-limpieza-trigger.js';
+import { referenciasEnUso } from '../functions/limpieza-imagenes.js';
+import { objetosDelBucket } from '../functions/imagenes-limpieza-trigger.js';
 
 const aplicar = process.argv.includes('--aplicar');
 const enEmulador = Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST);
