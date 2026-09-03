@@ -1,6 +1,6 @@
 ---
 name: auditor-documentacion
-description: Verifica la regla de proceso de este repo — un cambio no está terminado hasta que la documentación lo refleja — y detecta drift entre lo que la doc afirma y lo que el código hace. Usalo antes de commitear o de abrir un PR, cuando alguien diga que algo ya está listo o terminado, cuando se pida revisar si falta documentar algo, y cada tanto sobre el repo entero para encontrar afirmaciones que dejaron de ser ciertas, bloques duplicados de merges e items del BACKLOG ya resueltos. Verifica además la red de contención — que un chequeo nuevo esté documentado, que un auditor no repita lo que un test ya frena, y que la tabla de lo que se decidió no automatizar siga siendo cierta. Es de solo lectura y devuelve el checklist de lo que falta con el texto propuesto, sin escribirlo.
+description: Verifica la regla de proceso de este repo — un cambio no está terminado hasta que la documentación lo refleja — y detecta drift entre lo que la doc afirma y lo que el código hace. Usalo antes de commitear o de abrir un PR, cuando alguien diga que algo ya está listo o terminado, cuando se pida revisar si falta documentar algo, y cada tanto sobre el repo entero para encontrar afirmaciones que dejaron de ser ciertas, bloques duplicados de merges, items del BACKLOG ya resueltos y decisiones citadas que nunca se escribieron. Verifica además la red de contención — que un chequeo nuevo esté documentado, que un auditor no repita lo que un test ya frena, y que la tabla de lo que se decidió no automatizar siga siendo cierta. Es de solo lectura y devuelve el checklist de lo que falta con el texto propuesto, sin escribirlo.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -94,6 +94,24 @@ Buscá, con `grep` y leyendo:
 6. **Tono de la ayuda y de las novedades:** sin `§`, sin nombres de archivo, sin
    nombres de campo, sin jerga. Le habla a quien organiza actividades
    literarias.
+7. **Decisiones citadas y nunca escritas.** Una referencia a `D-nnn` que no
+   tiene entrada en `docs/06-decisiones.md` **no se ve rota**: el enlace a
+   `06-decisiones.md#d-350` abre el documento igual, sin ancla y sin error, así
+   que la decisión se lee como que existe. No lo busques a mano —correlo:
+
+   ```bash
+   node scripts/decisiones-referenciadas.mjs
+   ```
+
+   Lista las huérfanas con los archivos que las citan. **El juicio es tuyo, y es
+   la razón por la que esto no es un test:** una huérfana es una de dos cosas y
+   hay que mirar cuál. Si el número lo cita **el cambio que estás auditando**, es
+   una tanda en vuelo —el frente documentó su cambio y la entrada la escribe
+   otro— y va como recordatorio de cierre, no como hallazgo. Si lo cita un
+   archivo ajeno al cambio y viene de hace tiempo, es una entrada que nadie
+   escribió nunca: eso es drift, va al backlog con `archivo:línea`. Un test
+   bloqueante acá estaría rojo cada vez que una tanda está abierta, que es el
+   modo de falla de B-180 (el motivo está escrito en la cabecera del script).
 
 ## Parte 3 — la red de contención no se documenta sola
 

@@ -247,6 +247,17 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     return n;
   };
 
+  /**
+   * La cuenta escrita en palabras, que es cómo la nombra la prosa. Vive en el
+   * `describe` porque la usan dos casos: el de la prosa de cada archivo con
+   * tabla propia, y el de `13-agentes.md`, que no tiene tabla y se mide contra
+   * la de la ficha.
+   */
+  const PALABRAS: Record<number, string> = {
+    5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho',
+    9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
+  };
+
   it('el parseo no se come ninguna fila de la tabla', () => {
     /*
      * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
@@ -301,11 +312,6 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * cambio, no hay subconjunto del que se hable: un número así solo puede estar
      * hablando del total.
      */
-    const PALABRAS: Record<number, string> = {
-      5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho',
-      9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
-    };
-
     for (const archivo of [FICHA, SEGURIDAD]) {
       const cuantas = salidas(archivo).length;
       const correcta = PALABRAS[cuantas];
@@ -323,6 +329,50 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
           'el índice y la prosa del mismo archivo se contradicen, y el agente audita de menos',
       ).toEqual([]);
     }
+  });
+
+  it('y `docs/13-agentes.md` tampoco, medido contra la tabla de la ficha — B-124', () => {
+    /*
+     * **El cuarto lugar donde vive la cuenta, y el único que estaba afuera del
+     * lazo.** `docs/13-agentes.md` decía «diez salidas públicas» en **cuatro**
+     * frases mientras la ficha del agente, `07-seguridad.md` y el skill
+     * `campo-nuevo` ya estaban en doce. Los otros tres se atan entre sí y
+     * quedaban los tres en verde, así que el drift sobrevivió justo en el
+     * documento que alguien lee para entender qué hacen los auditores y cuándo
+     * corren — el que decide si se invoca al agente **a mano**.
+     *
+     * Es la misma clase que el `it` de arriba (un índice que envejece en
+     * silencio) con una diferencia que obliga a un caso propio: este archivo
+     * **no tiene tabla de salidas**, es prosa *sobre* la de la ficha. Así que la
+     * referencia es la tabla de la ficha, no una suya.
+     *
+     * MUTACIÓN PROBADA: volver a poner «diez salidas» en cualquiera de las
+     * cuatro frases pone este caso en rojo nombrando la palabra.
+     */
+    const AGENTES_DOC = 'docs/13-agentes.md';
+    const cuantas = salidas(FICHA).length;
+    expect(PALABRAS[cuantas], `no hay palabra para ${cuantas} salidas`).toBeDefined();
+
+    const texto = fuente(AGENTES_DOC);
+    // Control positivo: si el documento dejara de hablar de «N salidas», este
+    // caso pasaría sin mirar nada. Tiene que decirlo con el número correcto.
+    expect(
+      new RegExp(`${PALABRAS[cuantas]} salidas`, 'i').test(texto),
+      `${AGENTES_DOC} no dice «${PALABRAS[cuantas]} salidas» en ninguna parte: o cambió la ` +
+        'redacción, o quedó sin declarar la cuenta y este chequeo dejó de medir algo',
+    ).toBe(true);
+
+    const equivocadas = Object.entries(PALABRAS)
+      .filter(([n]) => Number(n) !== cuantas)
+      .map(([, palabra]) => palabra)
+      .filter((palabra) => new RegExp(`${palabra} salidas`, 'i').test(texto));
+
+    expect(
+      equivocadas,
+      `${AGENTES_DOC} dice «${equivocadas.join(', ')} salidas» y la tabla de la ficha tiene ` +
+        `${cuantas} filas: quien lea el documento para saber qué auditar va a resolver menos ` +
+        'celdas de las que hay',
+    ).toEqual([]);
   });
 
   it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {
