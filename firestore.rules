@@ -99,6 +99,20 @@ service cloud.firestore {
         && (d.actividad == null || d.actividad.keys().hasOnly(['id', 'titulo']))
         && d.contexto.keys().hasOnly(['versionPanel', 'navegador', 'ventana',
                                       'zonaHoraria', 'url', 'pantalla'])
+        // B-363 — `contexto.pantalla` es el único subcampo de `contexto` que la
+        // Function pasa por `desSlug()` ANTES del saneador (`functions/reportes.js`).
+        // `desSlug` reemplaza `-` por espacios, y eso le desafina los patrones al
+        // saneador: `https://mi-org.zoom.us/…` → `Https://mi org.zoom.us/…` ya no
+        // matchea `LINK_REUNION` (que no cruza un espacio), y se publicaría
+        // legible. `severidad` no corre este riesgo porque ya está acotado arriba
+        // por `in [...]`; `pantalla` no lo estaba. Acotarlo acá es más simple que
+        // reordenar el armado del issue (`redactar` corre sobre el cuerpo entero,
+        // no por campo — D-197), y cierra la única vía por la que ese campo podía
+        // traer algo que no sea uno de los cinco valores fijos de `PANTALLAS`
+        // (`src/types/reporte.ts`). `.get()` con default porque `contexto` no
+        // fuerza `pantalla` con `hasAll`, así que puede venir ausente.
+        && d.contexto.get('pantalla', 'listado')
+             in ['listado', 'nueva-actividad', 'editar-actividad', 'encuentros', 'otra']
         // §5.1 — el uid queda acá y no sale al issue. Que sea el propio evita
         // que un admin cargue un reporte a nombre del otro.
         && d.reportadoPor.keys().hasOnly(['uid', 'email'])

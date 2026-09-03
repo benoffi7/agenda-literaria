@@ -17,7 +17,13 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    // B-08 — el único rincón que necesita DOM de verdad: el cableado de una
+    // capa/menú (clic afuera, Escape, foco devuelto), que un test que lee el
+    // fuente no puede verificar sin arriesgarse a un falso verde (B-202 fue
+    // exactamente eso). El resto de la suite se queda en 'node': es más
+    // rápido y casi toda la lógica de este repo es pura a propósito (§05).
+    environmentMatchGlobs: [['tests/**/*.render.test.tsx', 'jsdom']],
+    include: ['tests/**/*.test.ts', 'tests/**/*.render.test.tsx'],
     // Los tests de integración corren contra los emuladores. Config de mentira
     // a propósito: el emulador no valida la API key.
     env: {

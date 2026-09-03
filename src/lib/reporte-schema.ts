@@ -5,7 +5,7 @@
  * Se valida en el submit con zod, como el formulario de actividades (D-01).
  */
 import { z } from 'zod';
-import { PANTALLAS, SEVERIDADES, TIPOS_REPORTE } from '@/types/reporte';
+import { PANTALLAS, SEVERIDADES, TIPOS_REPORTE, TOPE_TITULO_REPORTE } from '@/types/reporte';
 import type { ContextoReporte, Reporte, ReporteForm } from '@/types/reporte';
 
 const texto = z.string().trim();
@@ -13,14 +13,16 @@ const texto = z.string().trim();
 /**
  * Los topes de largo no son decorativos: el cuerpo del reporte termina en un
  * issue público y las mismas cotas están en `firestore.rules`, así que un
- * documento que las pase no se guarda igual.
+ * documento que las pase no se guarda igual. El del título sale de
+ * `TOPE_TITULO_REPORTE` (B-364): `firestore.rules` no puede importarlo, así
+ * que ese lado lo ata un test que compara el número.
  */
 export const reporteFormSchema = z
   .object({
     tipo: z.enum(TIPOS_REPORTE),
     titulo: texto
       .min(6, 'Escribí un título un poco más largo')
-      .max(120, 'El título tiene que ser más corto'),
+      .max(TOPE_TITULO_REPORTE, 'El título tiene que ser más corto'),
     descripcion: texto
       .min(15, 'Contá un poco más: qué esperabas y qué pasó')
       .max(4000, 'Quedó muy largo, resumilo'),

@@ -61,6 +61,195 @@ fixture de centinelas no es una URL real, así que el campo daba `null` y nunca
 ejercitó la rama que importa—. Se saltea ahora **por nombre**, con un test
 nuevo que sí usa una URL real y verifica que la miniatura es una derivación
 pura del original, sin token.
+## 2026-09-02 · segunda tanda de deuda de tests, doc e infra
+
+### D-201 escrita — la cita huérfana de la analítica del sitio
+
+`docs/16-analitica-del-sitio.md` citaba **D-201** dos veces sin que existiera: el
+frente de analítica se cayó antes de escribirla. Se redactó con el argumento que
+el propio documento ya traía —GA4 como la vara que un anunciante conoce— sin
+agregar razones nuevas, y dejando explícito qué **no** decide (B-371 y B-376
+siguen esperando al dueño).
+
+### B-205 — un push que no deploya ya se repara solo en el siguiente
+
+`decidir` (el primer job de `push-main.yml`) diffeaba contra
+`github.event.before`, el head del push anterior. Si esa corrida no llegaba a
+deployar nada —falló al arrancar, se canceló, un `major_outage` de GitHub
+Actions como el del 2026-08-26—, el push siguiente diffeaba desde un commit
+que ya estaba en `main` pero nunca se había publicado, y esos cambios
+quedaban fuera del diff **para siempre**, sin ningún síntoma de este lado.
+
+Ahora `decidir` prefiere lo que `/version.json` dice publicado de verdad
+(`INFO_VERSION.sha`) y solo cae al `before` del push cuando esa fuente no
+sirve. La decisión pasó a `scripts/commit-base-deploy.sh`, con
+`tests/commit-base-deploy.test.ts` cubriendo las cinco formas en que la fuente
+preferida puede fallar y el caso feliz, contra un servidor de mentira y
+commits reales del propio checkout. Dos mutaciones probadas y restauradas:
+deshacer la preferencia por lo publicado, y saltear la validación contra el
+historial — las dos tiran rojo.
+
+Actualizado `docs/08-operacion.md`: la fila de troubleshooting de
+`startup_failure` y la nota sobre qué hace `workflow_dispatch` sin el checkbox
+de "deployar todo".
+
+### B-215 — reverificada la adopción de `tests/fixtures/`: el número creció, no bajó
+
+Sin tocar código de test — el cambio ancho sigue sin ser seguro con cuatro
+frentes corriendo en paralelo (B-236), que es la misma precondición que el
+ítem ya pedía. Reverificado el estado real: `actividadCentinela` pasó de un
+consumidor a cuatro (adopción orgánica, efecto lateral de otro trabajo), pero
+los archivos que siguen construyendo su propia actividad de ciclo a mano son
+más que los siete originales — al menos una docena. Documentado en
+`docs/BACKLOG.md` para que la próxima medición no vuelva a partir de un
+número de hace una semana.
+
+### B-236 — `scripts/wip.sh`, la alternativa a `git stash` que no cruza worktrees
+
+`git stash` vive en `refs/stash`, del repositorio y no del working-tree: con
+varios frentes en paralelo, un `pop` puede traerse encima el trabajo de otro
+worktree — pasó dos veces el 2026-08-27/28, la segunda sin conflicto (el modo
+malo). `scripts/wip.sh guardar` deja el árbol limpio con un commit temporal
+—por-worktree de verdad— y `restaurar` lo deshace, verificando antes que el
+HEAD sea un commit del propio script.
+
+`tests/wip.test.ts` corre contra un repo git temporal, con seis casos.
+Mutado: sacar la verificación del mensaje en `restaurar`, y sacar el chequeo
+de árbol limpio en `guardar` — las dos tiran rojo, restauradas después.
+
+Nueva regla en `docs/14-plan-de-saneamiento.md` (punto 7 de "Regla para
+cualquiera que ejecute una fase") que nombra el mecanismo y el helper.
+
+### B-08 — el dueño aprobó el camino angosto: testing-library, solo para MenuAcciones
+
+Instalados `@testing-library/react`, `@testing-library/dom`,
+`@testing-library/user-event` y `jsdom`, con `environmentMatchGlobs` en
+`vitest.config.ts` acotado a `tests/**/*.render.test.tsx` — el resto de la
+suite sigue en `environment: 'node'`.
+
+Se hizo el único caso que el relevamiento de B-08 identificó como genuino:
+`tests/menu-acciones.render.test.tsx`, contra `MenuAcciones` renderizado de
+verdad (no leyendo el fuente con regex, que es lo que hacía
+`tests/foco.test.ts` hasta ahora). Cubre cierre por clic afuera —con control
+negativo—, cierre por `Escape` con el foco devuelto al "⋯", y abrir con ↓
+enfocando el primer ítem.
+
+Mutadas las cuatro aserciones contra el componente real, una por una: sacar
+el `focus()` de vuelta, comentar el listener de clic afuera, invertir la
+condición de "adentro/afuera", e ignorar la tecla al abrir. Las cuatro dieron
+rojo, restauradas después. De paso se corrigió el propio test: la primera
+versión de "Escape devuelve el foco" pasaba con la mutación adentro porque el
+foco nunca se había movido del disparador — se agregó un paso que lo mueve a
+un ítem primero.
+
+Los otros tres candidatos del relevamiento quedan sin tocar, como correspondía:
+son preguntas puras o algo que jsdom no puede medir (el scroll sin layout
+real). Actualizados `docs/05-patrones.md`, `docs/10-salud-del-codigo.md` y
+`docs/06-decisiones.md` donde afirmaban que testing-library no estaba
+instalada.
+
+### B-345 — cinco citas de D-100 que eran D-111, encontrada una tercera al buscarlas
+
+`docs/BACKLOG.md` (cuerpos de B-72 y B-177) seguía citando D-100 para «primero
+la actividad, después las etiquetas nuevas», que es D-111 — D-100 es otra cosa
+(`taxonomia.ts`). Corregidas las dos, y de paso apareció una tercera en
+`docs/CHANGELOG.md`: la propia entrada que anunciaba haber corregido las tres
+apariciones nuevas del cruce («D-187, `04-funcionalidades.md` y este
+CHANGELOG: los tres corregidos») no había tocado la de este mismo archivo.
+Verificado que D-187 y `04-funcionalidades.md` sí decían D-111.
+
+Dejadas sin tocar, a propósito, las citas correctas de D-100 (su tema real) y
+dos citas de un tercer patrón sin D-número propio (B-50, B-35) que no encajan
+en ninguno de los dos casos de este ítem — inventarles un número habría sido
+el mismo error al revés.
+
+### B-354 — «las once trampas del §13», corregido y ahora con red
+
+`docs/13-agentes.md:178` decía «las once trampas» cuando el §13 tiene trece
+desde que se sumaron la 12 y la 13. Corregido a «trece», y agregado el
+chequeo que faltaba (copiando el patrón de B-216 en
+`tests/agentes-y-skills.test.ts`): `tests/mapa-de-trampas.test.ts` compara «N
+trampas» en la prosa contra `TRAMPAS_DEL_CLAUDE_MD.length`, que ya se leía del
+§13 para otra cosa.
+
+Mutado: volver a escribir «las once trampas» tira rojo el caso nuevo,
+restaurado después.
+
+### B-364 — los tres 120 del título de un reporte pasan a ser un solo límite
+
+`firestore.rules`, `reporte-schema.ts` y el `maxLength` de
+`ReporteFormulario.tsx` decían 120 cada uno por su cuenta. Nació
+`TOPE_TITULO_REPORTE` (`src/types/reporte.ts`) y los dos primeros lo importan;
+`firestore.rules` no puede (es otro runtime), así que ese lado lo ata
+`tests/clases-de-bug.test.ts` leyendo el número de la regla con una regexp y
+comparándolo contra la constante. El `.slice(0, 200)` de `functions/reportes.js`
+y el límite de 256 de GitHub quedan sin atar a propósito: son otra cosa.
+
+Tocado al mínimo `src/components/admin/ReporteFormulario.tsx` (un import y un
+valor) — archivo de otro frente, un solo `maxLength` cambiado.
+
+Mutado en dos direcciones: subir el número de las reglas sin tocar el resto, y
+volver a escribir `120` a mano en el schema. Las dos tiran rojo, restauradas
+después.
+
+### B-352 — el helper de sesiones de `calendario.test.ts` ya no describe un estado imposible
+
+`sesionesSemanales` asignaba `calendarEventId: evt_<i>` incluso a las
+sesiones que un caso marca `cancelada: true`, algo que el sistema no puede
+tener asentado (al borrar el evento, `syncCalendar` repone `null`). Ahora
+pone `null` por default en ese caso, con `{ enTransicion: true }` para el
+único momento real en que conservarlo vivo es correcto — recién cancelada, un
+instante antes de que el sync corra. El fixture de B-162 perdió el
+`calendarEventId: null` que había que pasarle a mano.
+
+Mutado: volver al comportamiento viejo tira rojo cuatro tests de la describe
+de B-162 (la guarda emitiendo un `borrar` de más al reusar el fixture como
+las dos puntas de un diff). Restaurado después. De paso se verificó, en vez
+de suponerse, que el único test de transición existente no depende del valor
+puntual — `planificar()` resuelve el id desde `antes` primero — así que se
+dejó `enTransicion: true` igual, por precisión del fixture y no porque algún
+aserto lo necesite hoy.
+
+### B-363 — `contexto.pantalla` deja de ser el único enum sin acotar en `reporteValido()`
+
+`desSlug()` (`functions/reportes.js`) reemplaza `-` por espacios en
+`contexto.pantalla` y `severidad` ANTES de que el saneador vea el texto, y eso
+le desafina el patrón de `LINK_REUNION` — un link de reunión con guion en el
+dominio sobreviviría legible. `severidad` ya estaba acotada por valor en las
+reglas; `contexto.pantalla` no. Ahora `reporteValido()` (`firestore.rules`)
+exige que valga una de las cinco pantallas reales, con `.get('pantalla',
+'listado')` porque `contexto` no fuerza esa clave con `hasAll`.
+
+`tests/reportes.integracion.test.ts` suma los dos casos contra el emulador:
+el propio ejemplo del ítem rechazado, y las cinco pantallas reales aceptadas.
+Mutado: sacar la línea nueva de las reglas tira roja la primera prueba.
+Actualizado `docs/07-seguridad.md`.
+
+### B-367 cerrado como duplicado de B-294, con el chequeo que faltaba — y B-460
+
+B-367 describía exactamente el bug que B-294 ya había arreglado horas antes
+(commit `c9dec65`, mismo día): filas fusionadas con `||` y triplicadas en la
+tabla «no automatizar» de `docs/13-agentes.md`. Verificado de nuevo antes de
+cerrar: hoy la sección no tiene `||`, ninguna fila sin `|` inicial, y ninguna
+celda de la primera columna repetida. Se agregó `tests/red-de-contencion.test.ts`
+con las tres reglas que B-367 proponía y B-294 había dejado sin escribir,
+mutado contra la fusión real de B-294 y contra una fila duplicada — las dos
+tiran rojo.
+
+**Y de paso, B-460**: el párrafo de cierre de B-293 (la decisión D-180) había
+migrado al medio del bloque de B-294 en `docs/BACKLOG.md` — la misma clase de
+daño de merge que B-367 describía, pero en el archivo que registra los bugs,
+no en el que B-367 auditaba. Corregido: el párrafo vuelve a su lugar, sin
+tocar el resto de ninguno de los dos bloques.
+
+### B-344 cerrado — ya estaba resuelto, verificado y no solo leído
+
+El guard de Auth para los tests de integración (`emuladorAuthVivo()`) ya existía
+como efecto lateral del arreglo de B-365, y los cuatro archivos que lo
+necesitaban ya lo usaban. Se verificó apagando el emulador de Auth a mano
+(puerto muerto con Firestore arriba): el guard combinado da `false` y los cuatro
+`describe.skipIf` saltean en vez de fallar rojo. Se cerró en el backlog con esa
+evidencia.
 
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 
@@ -516,7 +705,7 @@ están y su uso tiene que contarse, y sobre la que falló es un no-op por D-103�
 nada lo fijaba.
 
 Los tres arreglados, con cinco mutaciones más. Y el auditor de trampas confirmó lo
-que había que confirmar: el orden de escritura de B-71/D-100 sigue intacto y el
+que había que confirmar: el orden de escritura de B-71/D-111 sigue intacto y el
 chequeo de clase lo sigue viendo; el import nuevo de `analytics-eventos` dentro de
 `coordenadas.ts` no arrastra Firebase al chunk del panel; y el `key={i}` de las
 filas de material **no** es una instancia nueva de la trampa 2 —el array no

@@ -2025,7 +2025,9 @@ y ver la lista orienta; el input de tags está siempre visible y una lista
 desplegada sin que nadie escriba taparía el formulario.
 
 **Por qué un módulo puro y no un hook:** se testea sin emulador y sin
-testing-library, que no está instalada (B-08). `tests/taxonomia.test.ts` cubre
+testing-library — que en ese momento no estaba instalada; desde B-08 sí, pero
+angosta y para otro caso (el cableado de `MenuAcciones`), y esto sigue sin
+necesitarla: es una pregunta pura. `tests/taxonomia.test.ts` cubre
 las cuatro variantes de "a la gorra" del §4.2, el autocompletado sin acentos, el
 tope, la exclusión de lo ya elegido, y lleva una guardia de que la copia no
 vuelva a nacer (D-98: la guardia más barata que alcance).
@@ -6691,3 +6693,58 @@ solo en el markup: `src/lib/ayudaDelSitio.ts` tenía **siete** (`/contacto`,
 se renderizan en dos páginas públicas. Por eso el barrido nuevo mira `.astro` y
 `.tsx`, y los dos módulos de texto pasaron a importar las constantes: un `href`
 interno es una ruta del sitio, no un dato de la página que lo muestra.
+
+## D-201 · GA4 va en el sitio público, porque es la vara que un anunciante conoce
+
+Cierra la mitad de arquitectura de **B-370** que estaba abierta desde que se cayó
+el frente de analítica: qué medidor usa el sitio público, hoy en cero — **cero
+eventos, cero cookies, cero JavaScript de telemetría**, verificado en producción
+el 2026-09-02 (`docs/16-analitica-del-sitio.md` §1). No es una opción entre
+varias: es la que sigue de separar el pedido del dueño en sus dos mitades
+(§2 del mismo documento).
+
+**El pedido tiene dos productos distintos, y solo uno pide GA4.** *Vender
+publicidad* necesita un número que un anunciante lea en un mail y le crea, no un
+número rico. *Mejorar el sitio* necesita precisión sobre un punto concreto —qué
+filtro deja cero, quién llega a escribirle al organizador— y eso son eventos
+propios, diseñados uno por uno, GA4 o no.
+
+**El motivo de la decisión es la mitad que vende.** Un anunciante no audita un
+contador casero por más preciso que sea: no tiene cómo verificarlo, y "confiá en
+mí" no es una moneda que se pueda ofrecer en un mail. GA4 es la moneda que ya
+conoce — la puede pedir por su cuenta, la reconoce de otros sitios, y no hace
+falta convencerlo de que el número es real. Un tablero propio, aunque muestre
+exactamente lo mismo, no compra esa credibilidad: hay que ganarla desde cero con
+cada anunciante, y GA4 ya viene con ella puesta. Por eso la mitad vendible **no
+se diseña**: se instala el tag y a los treinta días hay un número (§2, §6.3).
+
+**Lo que esta decisión no resuelve, y queda abierto a propósito:**
+
+| No decide | Por qué | Dónde vive |
+|---|---|---|
+| Si el dueño acepta el costo de JavaScript en la página de detalle | Es plata del anunciante, pero el peso lo paga la visita: 152 KB en una página de 18 KB, sin caché útil (`max-age=900`) — §6 | **B-371**, decisión del dueño |
+| El consentimiento | GA4 pone cookies de primera parte; qué aviso corresponde es una lectura legal, no técnica | **B-376**, decisión del dueño |
+
+**B-372** (instalar el tag) depende de las dos. Esta decisión es la que las
+desbloquea a ambas: sin ella no había ni siquiera qué preguntarle al dueño.
+
+**La regla de que ningún contenido sale a una salida pública** (`07-seguridad.md`,
+salida de analítica) sigue rigiendo entera para la mitad que mejora — los eventos
+propios de **B-375** no van a mandar qué actividad se miró, igual que la
+analítica del panel. La mitad que vende no la necesita: un anunciante pregunta
+volumen, no cuál actividad, y GA4 sin un solo evento personalizado no puede
+filtrar contenido porque no lo recibe.
+
+**Alternativas para pagar menos, y por qué ninguna reemplaza al snippet estándar**
+(medidas en §6.2, no supuestas): cargarlo diferido deshace la cuenta que se
+vende — quien entra y se va en dos segundos deja de contarse, y no se sabe
+cuánto; Google Tag Manager suma ~100 KB para no hacer nada que el tag directo no
+haga; el Measurement Protocol server-side no aplica a un sitio estático y sin
+`client_id` real degrada justo los dos números que se venden (usuarios y
+sesiones); instalarlo solo en la home mata la pregunta de qué páginas se miran
+más, que es una de las que se vende. La recomendación medida es el snippet
+`async` estándar, `gtag.js` directo, en todas las páginas públicas salvo
+`/admin` — pero instalarlo es B-372, no esta decisión.
+
+Detalle completo, con los números y las preguntas que el tablero contestaría:
+[`docs/16-analitica-del-sitio.md`](16-analitica-del-sitio.md).

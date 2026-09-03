@@ -33,6 +33,7 @@ import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eve
 import { construirIssue } from '../functions/reportes.js';
 import { versionesPosibles } from '../scripts/version.mjs';
 import type { Actividad } from '@/types/actividad';
+import { TOPE_TITULO_REPORTE } from '@/types/reporte';
 
 const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
@@ -1223,6 +1224,41 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
         `/^${prefijo}/`,
       );
     }
+  });
+
+  /**
+   * B-364 — el tope de largo del título de un reporte está dicho en tres
+   * lugares (`firestore.rules`, `reporte-schema.ts`, el `maxLength` del input
+   * de `ReporteFormulario.tsx`), y ninguno referenciaba a otro. No filtraba
+   * nada hoy —el recorte de las reglas solo puede partir un placeholder, y
+   * desde B-362 el orden garantiza que lo partido no sea un link— pero el día
+   * que el tope de las reglas suba a 300, el resto no se enteraría.
+   *
+   * `TOPE_TITULO_REPORTE` (`src/types/reporte.ts`) es la fuente para los dos
+   * lados que pueden importarlo. `firestore.rules` es un runtime aparte y no
+   * puede: ese lado se ata leyendo el número de la regla y comparándolo. Los
+   * otros dos topes del ítem —el `.slice(0, 200)` de `functions/reportes.js`
+   * (el margen que el saneador necesita para expandir) y el 256 de GitHub—
+   * son otra cosa y no se atan acá: atarlos sería falso.
+   */
+  it('B-364: los tres topes de 120 del título de un reporte son el mismo límite', () => {
+    const schema = fuente('src/lib/reporte-schema.ts');
+    const formulario = fuente('src/components/admin/ReporteFormulario.tsx');
+    const reglas = fuente('firestore.rules');
+
+    expect(schema, 'el schema volvió a escribir 120 a mano').toMatch(
+      /\.max\(TOPE_TITULO_REPORTE,/,
+    );
+    expect(formulario, 'el input volvió a escribir 120 a mano').toMatch(
+      /maxLength=\{TOPE_TITULO_REPORTE\}/,
+    );
+
+    const m = /d\.titulo\.size\(\)\s*<=\s*(\d+)/.exec(reglas);
+    if (!m) throw new Error('no se encontró el tope de `d.titulo.size()` en firestore.rules');
+    expect(
+      Number(m[1]),
+      'firestore.rules dejó de decir el mismo número que TOPE_TITULO_REPORTE',
+    ).toBe(TOPE_TITULO_REPORTE);
   });
 });
 

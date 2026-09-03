@@ -569,12 +569,16 @@ reglas permiten (120) puede pasar de 200 al redactarse. Con el orden invertido,
 ese caso publicaría un `https://us02web.zoom` cortado antes del dominio: medio
 link de reunión, legible.
 
-**Un camino queda abierto y está anotado (B-363):** `desSlug()` corre **aguas
+**El camino que quedaba abierto se cerró (B-363):** `desSlug()` corre **aguas
 arriba** del filtro para `contexto.pantalla` y `severidad`, y le mete un espacio
-al medio del patrón, así que `https://mi-org.zoom.us/j/x` sobrevive legible. Hoy
-la única defensa de esos dos valores es que sean enums —y `severidad` está
-acotada **por valor** en las reglas, pero `contexto.pantalla` no: las reglas
-validan el juego de claves del contexto, no sus valores.
+al medio del patrón, así que `https://mi-org.zoom.us/j/x` sobreviviría legible
+si llegara a colarse. `severidad` ya estaba acotada **por valor** en las
+reglas; `contexto.pantalla` no lo estaba —las reglas validaban el juego de
+claves del contexto, no sus valores— y desde el 2026-09-02 también lo está:
+`reporteValido()` exige `d.contexto.get('pantalla', 'listado') in [...]` con
+las cinco pantallas de `PANTALLAS` (`src/types/reporte.ts`). Los dos casos
+—el intento de colarlo y las cinco pantallas reales aceptadas— están en
+`tests/reportes.integracion.test.ts`.
 
 La decisión sobre la actividad la toma la Function leyendo el documento, no el
 panel: si dependiera del cliente, un panel viejo o modificado podría publicar el
