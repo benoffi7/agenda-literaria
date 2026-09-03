@@ -160,12 +160,20 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(codigo).not.toContain('.online.url');
   });
 
-  it('no lleva JavaScript: cero islands (§4.3, presupuesto de 0 KB)', () => {
+  it('cero islands de framework (§4.3) — el presupuesto de 0 KB era del §6 antes de B-371', () => {
     /*
      * Es la pantalla que recibe el tráfico y la que se abre en el navegador
      * embebido de Instagram. Una directiva `client:` acá no rompe nada visible
-     * —por eso hace falta el test— pero convierte una página de 0 KB de JS en una
-     * que baja React.
+     * —por eso hace falta el test— pero bajaría React entero.
+     *
+     * **El título decía «presupuesto de 0 KB» y ya no es cierto en bytes
+     * totales**: B-371 aceptó el costo de GA4 (`docs/16-analitica-del-sitio.md`
+     * §6) y B-375 agregó un `<script>` de un puñado de líneas para medir el
+     * clic de inscripción — ver `tests/detalle-visual.test.ts`, que cuenta los
+     * `<script>` de esta página y por qué ahora son dos. Lo que este `it` sigue
+     * garantizando, y es lo único que garantizaba antes, es la mitad que
+     * **no** cambió: **cero islands**. Ni React ni ningún framework se
+     * hidratan acá.
      */
     expect(src).not.toMatch(/client:(load|idle|visible|only|media)/);
   });

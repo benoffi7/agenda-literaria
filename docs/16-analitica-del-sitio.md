@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| Qué es esto | **Un documento de arquitectura, no una descripción de lo que existe.** Casi nada de lo que describe está construido: el pedido era un tablero y la primera mitad del trabajo era decidir qué se mide |
+| Qué es esto | Un documento de arquitectura que ya se implementó en la mayor parte. Sigue empezando por las preguntas y no por los eventos porque esa disciplina es la que evitó medir lo fácil en vez de lo que importa |
 | Alcance | el **sitio público** (`agendaleh.ar`). La analítica del **panel** ya existe y está en [`09-analitica.md`](09-analitica.md) |
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
-| Decidido | **GA4 va en el sitio público** (D-201). No es una opción abierta: el motivo es que **GA4 es la vara que un anunciante conoce** |
-| Abierto | **una** decisión del dueño: el **consentimiento** ([§7](#7--el-consentimiento-lo-único-que-queda-abierto)) — B-376. Y una técnica: si la página de detalle deja de tener cero JavaScript ([§6](#6--el-costo-en-la-página-de-detalle-medido)) — B-371 |
-| Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó): **«Estado del catálogo»**, que no mide a ningún visitante y sirve desde hoy |
-| La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). Lo que la decisión cambia es el **alcance** de esa regla, y eso hay que escribirlo, no suponerlo ([§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público)) |
+| Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
+| Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó) **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
+| **Lo que falta antes de que mida en producción** | **B-480**, y es bloqueante: hay que apagar «Búsquedas en el sitio» y «Clics salientes» en el Enhanced Measurement de GA4 desde la consola — ningún override de código los tapa. Ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480) |
+| La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
 ---
 
@@ -327,15 +327,61 @@ Lo que sí se puede hacer sin pagar nada:
 - **Volver a medir después de instalarlo**, y anotar el número. Si el tag pasa a
   300 KB en un año, la decisión se toma de nuevo con el número nuevo, no con este.
 
-**Lo que sigue siendo una decisión del dueño** es si acepta ese costo en la
-página de detalle sabiendo lo que se pierde: la frase «esta página no ejecuta una
-línea de JavaScript» deja de ser cierta, y un ad blocker pasa a alterar el
-resultado —una parte del tráfico no se va a medir, y no una parte al azar, sino
-la más técnica—. Está escrito como **B-371**.
+**El dueño aceptó ese costo** sabiendo lo que se pierde: la frase «esta página no
+ejecuta una línea de JavaScript» deja de ser cierta, y un ad blocker pasa a
+alterar el resultado —una parte del tráfico no se va a medir, y no una parte al
+azar, sino la más técnica—. Escrito como **D-251** en `06-decisiones.md`.
 
 ---
 
-## 7 · El consentimiento, lo único que queda abierto
+## 6bis · Lo que se agregó de verdad, medido
+
+**El número de arriba (152 KB de `gtag.js`) seguía siendo una proyección hasta
+que se construyó B-376 y B-375: había que medir también lo que este frente
+mismo agregó**, porque el banner y los dos eventos propios no son gratis.
+Medido contra un build real (`scripts/build-contra-emulador.mjs`), comparando
+el HTML de la página de detalle antes y después del cambio, byte por byte:
+
+| Qué | Antes | Después | Diferencia |
+|---|---|---|---|
+| HTML de la página, sin comprimir | 17.040 B | 18.693 B | **+1.653 B** |
+| HTML de la página, gzip | 4.279 B | 4.726 B | **+447 B** |
+| `<script>` propios (sin contar el JSON-LD) | 0 | 2 | — |
+
+La diferencia de HTML es casi entera el **markup del banner** —la caja, los dos
+botones, el control «Cookies»—, que aparece en **todas** las páginas porque vive
+en `Base.astro`; el resto son las dos etiquetas `<script type="module" src="...">`
+y el `<link rel="preconnect">` a `googletagmanager.com`.
+
+Y el JavaScript, en bytes **transferidos** (gzip, que es lo que importa en la
+red):
+
+| Chunk | Qué es | Raw | Gzip |
+|---|---|---|---|
+| `_slug_....js` | el clic de inscripción (una página) | 249 B | 274 B |
+| `AvisoDeCookies....js` | el banner (todas las páginas, vía `Base.astro`) | 524 B | 357 B |
+| `medicionSitio....js` | el transporte compartido — acá vive `analyticsSitio.ts` entero, inlineado: **no** arrastra `listadoPublico.ts` ni su motor de filtrado (D-252) | 2.190 B | 1.173 B |
+| `actividad....js` | las constantes del modelo (`VIAS_INSCRIPCION`) | 371 B | 271 B |
+| **Total** | | **3.334 B** | **2.075 B** |
+
+**Y la cuenta que importa, la que compara con el §6.1:** para quien **rechaza**
+o no decidió, el costo de este frente es nada más que esto —**~2,5 KB gzip**,
+HTML más JS juntos—, porque `gtag.js` nunca se descarga (§7.3). Para quien
+**acepta**, se suma el número entero del §6.1: 152 KB de `gtag.js` más los
+~2,5 KB de acá, contra una página que ahora pesa 18,7 KB sin comprimir.
+La proporción del §6.1 («8,5 veces la página») sube apenas, a **8,6 veces**
+en bytes transferidos — el banner y los eventos propios no son lo que pesa acá,
+`gtag.js` sigue siendo el número que manda.
+
+**Lo que no se cuenta en esta tabla:** `gtag.js` mismo (152 KB), que es el
+mismo número del §6.1 y no cambió. Y lo que el propio `gtag.js` manda por su
+cuenta una vez cargado —el Enhanced Measurement del §7.4—, que no es JavaScript
+de este repo y no tiene un byte que medir acá: es tráfico que sale igual,
+apagado o no el ítem de código.
+
+---
+
+## 7 · El consentimiento, implementado (B-376)
 
 > **Esto no es asesoramiento legal.** Es una descripción de qué hace la
 > herramienta, qué se ve en la práctica y qué costaría cada camino. Si el dueño
@@ -370,15 +416,69 @@ argentinos, de más barato a más caro:
 | **C2** | **Una página de privacidad**, linkeada del pie | una página de texto —como `/ayuda` y `/contacto`, que ya existen y no proyectan ningún documento— que dice qué se mide, con qué, qué cookies se ponen y cómo se rechaza (el ajuste del navegador, o la extensión de opt-out de Google) | **una página nueva y una línea en el pie.** Cero JavaScript, cero cookies, y **la única de las tres que se puede escribir esta semana** |
 | **C3** | **Un banner de consentimiento** | el cartel que pide aceptar antes de medir | una pieza de UI **en todas las páginas**, JavaScript en el detalle —lo que la decisión de §6 justamente pone en duda—, una preferencia guardada, el tag condicionado a ella, y **la métrica que se vende cae por lo que rechace la gente**. Si algún día hace falta, GA4 tiene «modo de consentimiento» y se puede agregar después sin rehacer nada |
 
-**Recomendación: C2.** Es la que informa sin cobrarle nada al número que se
-quiere vender, no mete JavaScript en la página de detalle, y encaja con lo que el
-sitio ya tiene: dos páginas de texto escritas a mano, con sus tests de
-centinelas, que no proyectan ningún documento
-([`07-seguridad.md`](07-seguridad.md)). Y deja C3 disponible: si el sitio crece o
-si aparecen anunciantes de afuera, el banner se agrega encima sin tocar lo demás.
+**La recomendación era C2. El dueño eligió C3** — un banner con «aceptar» o
+«rechazar», el patrón estándar de los sitios hoy. Está en `docs/06-decisiones.md`
+como **D-250**, con las palabras que importan: **el número que se vende baja por
+lo que rechace la gente**, y eso está aceptado a propósito, no es un costo que se
+descubra después.
 
-Está escrito como **B-376**, y es lo único que le queda por contestar al dueño
-sobre la decisión 1.
+### 7.3 · Lo que «rechazar» significa de verdad, y por qué no es Consent Mode v2
+
+El patrón que casi cualquier tutorial de 2026 recomienda es **Consent Mode v2**:
+cargar `gtag.js` siempre, con `analytics_storage: 'denied'` por defecto, y
+actualizar el consentimiento cuando la persona decide. **Acá no se implementó
+así**, porque en modo denegado GA4 **igual manda pings sin cookies** — el botón
+«Rechazar» mentiría.
+
+Lo que se construyó en cambio: **si la persona rechaza, no se manda nada y no se
+carga el tag.** Tres reglas que se sostienen con el mismo mecanismo:
+
+1. **Hasta que decide, no se mide.** No hay un tercer estado «mientras tanto, sin
+   cookies»: `debeCargarGA`/`debeMostrarBanner` (`src/lib/analyticsSitio.ts`) solo
+   conocen `'sin-decidir'`, `'aceptado'` y `'rechazado'`, y el tag nunca se carga
+   en el primero.
+2. **La preferencia se guarda en el navegador de cada uno, nunca en Firestore.**
+   Una sola clave de `localStorage` — no hay nada que guardar del lado nuestro, y
+   el §4 de `07-seguridad.md` es explícito en que del público no se guarda nada.
+3. **Se puede revisar y cambiar después.** El botón «Cookies» que el banner deja
+   siempre disponible una vez decidido reabre el mismo banner — un banner sin
+   forma de revisar la decisión es peor que no tenerlo.
+
+Los dos botones —«Aceptar» y «Rechazar»— son dos bloques del **mismo tamaño y el
+mismo peso**, uno macizo en `acento` y el otro con borde de `tinta`: nunca un
+botón contra un link de texto, que es el dark pattern más común de este tipo de
+banner.
+
+Construido en `src/components/sitio/AvisoDeCookies.astro` (el banner, sin
+framework ni island: es JavaScript liso, como `SuscribirseCamino.astro`),
+`src/lib/analyticsSitio.ts` (puro: el estado del consentimiento y el vocabulario
+de los eventos propios) y `src/lib/medicionSitio.ts` (el transporte: carga
+`gtag.js` solo con `'aceptado'`). Tests en `tests/analyticsSitio.test.ts` y
+`tests/medicionSitio.test.ts`, con la guarda central —«con `'rechazado'` no se
+mide, sea cual sea el resto del entorno»— probada por mutación.
+
+### 7.4 · Lo que el código no puede tapar (B-480)
+
+**Recortar el `page_location` y el `page_referrer` no alcanza.** El
+`auditor-privacidad` encontró, sobre este mismo cambio, que una vez que
+`gtag.js` carga, su **Enhanced Measurement** —prendido por default en toda
+propiedad nueva— manda tres cosas que ningún saneador de este repo ve:
+
+| Qué manda solo | El dato que se escapa |
+|---|---|
+| **«Búsquedas en el sitio»** | lee `?q=...` (`aQuery`, `listadoPublico.ts`) y lo manda como `search_term` — el mismo texto del buscador que el §5.3 ya identificaba como el riesgo, por una puerta que el recorte de `page_location` no tapa |
+| **«Cambios de página según el historial»** | la island de filtros llama a `replaceState` en cada tecla; esto dispara un `page_view` nuevo por cada una, leyendo la URL **real** en el momento |
+| **«Clics salientes»** | manda el `link_url` completo de un link a otro dominio — el botón de inscripción linkea a `wa.me/<teléfono>` o a `instagram.com/<handle>`, el **destino** que `via` existe para no mandar |
+
+**No hay un parámetro de código que las apague.** Es un ajuste del flujo de
+datos en la consola de GA4 (Administrar → Flujos de datos → el flujo → Enhanced
+measurement), la misma clase de paso manual que `docs/09-analitica.md` ya pide
+para el panel. Acá es **bloqueante**: instalar el tag sin apagar «Búsquedas en el
+sitio» y «Clics salientes» filtra aunque todo el código esté bien.
+
+Anotado como **B-480** en el `BACKLOG`, con el detalle completo en **D-253**
+(`06-decisiones.md`) y en la salida 12 de `07-seguridad.md`. Bloquea el cierre
+real de B-372 aunque el código y el enganche en `Base.astro` ya estén hechos.
 
 ---
 
@@ -523,10 +623,10 @@ semana sin el tag es una semana de historia que no se recupera**.
 | # | Qué | Por qué en ese lugar |
 |---|---|---|
 | 1 | **El tablero del catálogo** | ✅ hecho. Sirve desde hoy y no espera nada |
-| 2 | **Search Console** (**B-373**) | no necesita ninguna decisión, no pone cookies, no agrega JS, y contesta la pregunta que justifica el proyecto |
-| 3 | **La página de privacidad** (**B-376**, camino C2) | es texto y va antes del tag, no después: es lo que hace que el tag esté informado desde el primer día |
-| 4 | **El tag de GA4** (**B-372**) | lo antes posible, porque desde ahí empieza a juntar la historia que se vende. Incluye el chequeo del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) |
-| 5 | **Los eventos propios** (**B-375**) | el clic en el botón de inscripción y el filtro que deja cero. Diseño real, con su proyección y sus tests |
+| 2 | **Search Console** (**B-373**) | no necesita ninguna decisión, no pone cookies, no agrega JS, y contesta la pregunta que justifica el proyecto. **Diferido a propósito, no descartado**: el dueño lo deja para el final de todo. El motivo por el que igual conviene no demorarlo mucho es de calendario y sigue vigente — Search Console no muestra histórico anterior a la conexión, así que cada día sin conectarlo es un día que no se recupera |
+| 3 | **El banner y el consentimiento** (**B-376**, camino C3) | ✅ construido — es la pieza que hace que el tag esté informado desde el primer día en que mide de verdad |
+| 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **⛔ Bloqueado por B-480** antes de medir en producción — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480) |
+| 5 | **Los eventos propios** (**B-375**) | ✅ construidos: el clic en el botón de inscripción y el filtro que deja cero. Inertes hasta que B-480 se resuelva, igual que el resto de B-372 |
 | 6 | **El resumen vendible en el panel** (**B-374**) | recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre |
 
 ---
@@ -535,16 +635,17 @@ semana sin el tag es una semana de historia que no se recupera**.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 primera tajada hecha (el tablero del catálogo) |
-| **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ⛔ espera al dueño |
-| **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 | ⛔ depende de B-371 y B-376 |
-| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟢 no depende de nada |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | ⛔ depende de B-372 y de un mes de datos |
-| **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ⛔ depende de B-372 |
-| **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ⛔ espera al dueño |
+| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 el tablero del catálogo y el banner/tag/eventos están; falta B-373, B-374 y B-480 |
+| **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
+| **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** para medir en producción |
+| **B-373** | **Search Console**: conectar el dominio y leerlo | 🔵 **diferido a propósito** — el dueño lo deja para el final de todo |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | ⛔ depende de B-372 (con B-480 resuelto) y de un mes de datos |
+| **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos — inertes hasta que B-372/B-480 midan de verdad |
+| **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
 | **B-377** | El **inventario publicitario**: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |
 | **B-378** | El tablero del catálogo es una foto y no una serie: guardar la foto para ver la tendencia | 🔵 futuro |
 | **B-379** | El tablero agrupa en el navegador; con miles de actividades conviene un agregado | 🔵 futuro |
+| **B-480** | **Bloqueante para B-372:** apagar «Búsquedas en el sitio» y «Clics salientes» (Enhanced Measurement) en la consola de GA4 — ningún código de este repo los tapa (D-253, §7.4) | ⛔ acción manual del dueño |
 
 ---
 
@@ -554,9 +655,14 @@ semana sin el tag es una semana de historia que no se recupera**.
   su vocabulario y la garantía de que no sale contenido. Es el estándar que la
   mitad **b** tiene que cumplir.
 - [`07-seguridad.md`](07-seguridad.md#analítica-del-panel) — la salida 4 y cómo se
-  verifica; y el alcance nuevo del [§5.2](#52-por-qué-eso-igual-está-bien-dicho-con-precisión).
+  verifica; el alcance nuevo del [§5.2](#52-por-qué-eso-igual-está-bien-dicho-con-precisión);
+  y la **salida 12**, la analítica del sitio público, con la advertencia de
+  Enhanced Measurement que este documento cita en el [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480).
 - [`12-sitio-publico.md`](12-sitio-publico.md) §11.1 — la decisión 4 del dueño,
   que es la que se contestó acá.
 - [`06-decisiones.md`](06-decisiones.md) — **D-200** (por qué el tablero arranca
-  por el catálogo) y **D-201** (GA4 en el sitio público, con su costo medido y el
-  alcance de la regla de contenido).
+  por el catálogo), **D-201** (GA4 en el sitio público, con su costo medido y el
+  alcance de la regla de contenido), **D-250** (el banner es C3, y qué significa
+  «rechazar» de verdad), **D-251** (el costo de JS aceptado, con el número) y
+  **D-252/D-253** (las decisiones técnicas de B-372/B-375, y lo que Enhanced
+  Measurement de GA4 no deja tapar desde el código).

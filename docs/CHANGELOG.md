@@ -250,6 +250,60 @@ necesitaban ya lo usaban. Se verificó apagando el emulador de Auth a mano
 (puerto muerto con Firestore arriba): el guard combinado da `false` y los cuatro
 `describe.skipIf` saltean en vez de fallar rojo. Se cerró en el backlog con esa
 evidencia.
+## 2026-09-02 · el banner de cookies, el tag de GA4 y los dos eventos propios del sitio público (B-371, B-372, B-375, B-376)
+
+**El dueño contestó las tres preguntas que bloqueaban `16-analitica-del-sitio.md`.**
+B-376 → un banner con «aceptar» o «rechazar» (C3, D-250); B-371 → aceptar el
+costo de JavaScript de la página de detalle, con el número a la vista (D-251);
+B-373 (Search Console) → diferido a propósito para el final, no ahora.
+
+**Construido, en piezas separadas:**
+
+- `src/lib/analyticsSitio.ts` (puro, testeado) y `src/lib/medicionSitio.ts` (el
+  transporte): el estado del consentimiento, el vocabulario de los dos eventos
+  propios (`clic_inscripcion`, `filtro_sin_resultados`) y la carga de `gtag.js`
+  **solo** cuando el consentimiento es `'aceptado'` — nunca «mientras tanto, sin
+  cookies» (no se implementó Consent Mode v2 con default denegado; ver D-250).
+- `src/components/sitio/AvisoDeCookies.astro`: el banner, sin framework ni
+  island — JavaScript liso, como ya hacía `SuscribirseCamino.astro`. Dos
+  botones del mismo tamaño y el mismo peso, y un control «Cookies» para revisar
+  la decisión después.
+- El clic de inscripción manda la **vía** (mail/whatsapp/dm/formulario) y nunca
+  el destino: se agregó `via` a `AccionDeInscripcion` (`detallePublico.ts`) para
+  no tener que derivarlo del `href` en el cliente.
+- El filtro que deja cero manda el **eje** que `ejeQueSobra` ya identifica (la
+  misma señal que la pantalla muestra) y el `slug`, nunca el texto del
+  buscador — instrumentado en `Buscador.tsx` con una firma que evita medir la
+  misma combinación en cada tecla.
+- El enganche en `src/layouts/Base.astro` (un commit chico y aislado, al
+  final): el banner va con la misma condición que el resto del chrome del
+  sitio (`conChrome`), así que nunca aparece ni carga nada en `/admin`.
+
+**El costo medido, byte por byte, contra un build real** (no una estimación):
+la página de detalle pasó de 17.040 a 18.693 bytes de HTML (+1.653 B, sobre
+todo el markup del banner, que sale en todas las páginas). El JavaScript propio
+—el banner, el clic de inscripción y el transporte compartido, sin arrastrar el
+motor de filtrado— son **2.075 bytes transferidos (gzip)**. Para quien rechaza
+o no decidió, ese es **todo** el costo: `gtag.js` (152 KB gzip, el número ya
+aceptado en D-251) nunca se descarga. Para quien acepta, se suma ese número
+entero; la proporción del §6.1 del diseño («8,5 veces la página») sube a 8,6.
+Detalle completo en el §6bis de `docs/16-analitica-del-sitio.md`.
+
+**Lo que encontró el `auditor-privacidad`, y no es cosmético (D-253, B-480):**
+recortar el `page_location` no alcanzaba — el `page_referrer` también podía
+llevar el texto del buscador, y se corrigió. Pero lo que el código **no puede**
+tapar es el Enhanced Measurement de GA4, prendido por default: manda «Búsquedas
+en el sitio» (el texto tipeado), «Clics salientes» (el destino real del botón
+de inscripción) y un `page_view` por cada cambio de historial de la island de
+filtros — ninguno de los tres pasa por el saneador de este repo. Hace falta un
+paso manual del dueño en la consola de GA4 (apagar esos dos ajustes) antes de
+que el tag mida en producción sin filtrar de más. Anotado como **B-480**,
+bloqueando el cierre real de B-372 aunque el código ya esté hecho.
+
+**Salida 12.** El sitio público es, desde este cambio, una salida pública más
+(GA4). Se agregó a las tres tablas que tienen que coincidir —`07-seguridad.md`,
+la ficha del `auditor-privacidad` y el skill `campo-nuevo`— y lo verificó
+`tests/agentes-y-skills.test.ts` sin ningún ajuste al test.
 
 ## 2026-09-02 · tres frentes integrados, y el choque que solo se ve al integrar
 

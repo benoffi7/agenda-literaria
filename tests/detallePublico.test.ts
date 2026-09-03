@@ -140,6 +140,8 @@ describe('el CTA lleva el verbo de la vía real (§4.3)', () => {
     expect(a?.href).toBe(
       'mailto:hola@casabrandon.com?subject=Inscripci%C3%B3n%3A%20Taller%20de%20cr%C3%B3nica',
     );
+    // B-375 — la analítica del clic lee esto, nunca el `destino` real.
+    expect(a?.via).toBe('mail');
   });
 
   it('whatsapp arma un wa.me con los dígitos y el mensaje', () => {
@@ -147,19 +149,20 @@ describe('el CTA lleva el verbo de la vía real (§4.3)', () => {
     expect(a?.texto).toBe('Escribir por WhatsApp');
     expect(a?.href).toContain('https://wa.me/5491155551234?text=');
     expect(decodeURIComponent(a!.href)).toContain('Hola, quiero anotarme en Taller');
+    expect(a?.via).toBe('whatsapp');
   });
 
   it('dm lleva al perfil', () => {
-    expect(accionDeInscripcion('dm', '@casabrandon', 'X')?.href).toBe(
-      'https://instagram.com/casabrandon',
-    );
+    const a = accionDeInscripcion('dm', '@casabrandon', 'X');
+    expect(a?.href).toBe('https://instagram.com/casabrandon');
+    expect(a?.via).toBe('dm');
   });
 
   it('formulario pasa por urlSegura', () => {
     expect(accionDeInscripcion('formulario', 'javascript:alert(1)', 'X')).toBeNull();
-    expect(accionDeInscripcion('formulario', 'forms.gle/abc', 'X')?.href).toBe(
-      'https://forms.gle/abc',
-    );
+    const a = accionDeInscripcion('formulario', 'forms.gle/abc', 'X');
+    expect(a?.href).toBe('https://forms.gle/abc');
+    expect(a?.via).toBe('formulario');
   });
 
   it('un destino que no sirve para la vía no arma botón', () => {

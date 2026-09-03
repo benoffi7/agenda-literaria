@@ -555,6 +555,30 @@ gcloud services enable eventarc.googleapis.com pubsub.googleapis.com \
 `eventarc` ya está habilitada por los triggers de Firestore; `pubsub` conviene
 confirmarla.
 
+#### Estado: desplegada y barrida el 2026-09-03
+
+**`optimizarImagen` está viva en `southamerica-east1` desde el 2026-09-03**, con
+los tres permisos otorgados por el dueño ese mismo día, y el barrido corrido
+sobre el bucket entero.
+
+| | |
+|---|---|
+| Objetos en `imagenes/` | **49** |
+| Peso de los originales, antes | **7077,6 KB** |
+| Peso de los originales, después | **4022,5 KB** (−43 %) |
+| Ya optimizados en la segunda corrida en seco | **49 de 49**, 0 a reescribir |
+| `Cache-Control` de lo que sale | `public, max-age=31536000, immutable` |
+
+**El −43 % de los originales lo aportan los PNG, no los JPEG**, tal como D-175
+había medido: el objeto de muestra que se verificó a mano —un JPEG de 75.285
+bytes— salió del barrido **con el mismo peso**, porque no llegaba al
+`AHORRO_MINIMO` del 5 %, y su miniatura quedó en 36.299 bytes.
+
+**Y esto es lo que habilita el `srcset` de B-320, en ese orden y no al revés.**
+Antes del barrido la miniatura de cada afiche daba **404** —verificado contra
+producción— y un candidato de `srcset` que no existe **no degrada al `src`**: la
+imagen queda rota. Con las 49 en su lugar, la salida tiene de dónde servir.
+
 #### Después del deploy: el barrido de las que ya estaban
 
 `onObjectFinalized` corre cuando un objeto **se escribe**, así que las 30

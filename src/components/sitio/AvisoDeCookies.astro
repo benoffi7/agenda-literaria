@@ -1,0 +1,122 @@
+---
+import { foco } from '@/components/sitio/estilos';
+
+/**
+ * El banner de cookies — B-376, decisión C3 (`docs/16-analitica-del-sitio.md`
+ * §7, `docs/06-decisiones.md` D-250).
+ *
+ * ── Pieza autocontenida a propósito ────────────────────────────────────────
+ * Este componente es **suyo**: su markup, su script y la lógica en
+ * `@/lib/analyticsSitio` (pura, testeada) + `@/lib/medicionSitio` (el
+ * transporte). Se engancha en `Base.astro` en un commit aparte, chico y
+ * aislado — `Base.astro` lo está tocando otro frente en paralelo (B-107) y
+ * esta pieza no tiene por qué esperarlo ni pisarlo.
+ *
+ * ── Ni framework, ni island ─────────────────────────────────────────────
+ * El `<script>` de abajo es JavaScript liso: Astro lo procesa y lo bundlea
+ * como cualquier módulo, pero no hay React, no hay `client:load` y no hay
+ * hidratación. Es la misma forma que ya usa `SuscribirseCamino.astro` para
+ * "copiar la dirección del calendario" — la única diferencia es que acá el
+ * script puede terminar cargando un segundo script (`gtag.js`), y solo si la
+ * persona acepta.
+ *
+ * ── Sin flash de contenido, y fail-safe si el JavaScript no corre ──────────
+ * Las dos piezas (el banner y el control de "Cookies" para reabrir) nacen con
+ * `hidden` en el HTML del build. Si el JavaScript no corre —bloqueado, error,
+ * lo que sea— ninguna de las dos aparece nunca, **y tampoco se carga GA4**:
+ * el estado por defecto es el seguro, no el que mide.
+ *
+ * ── Los dos botones al mismo nivel visual ──────────────────────────────────
+ * «Aceptar» y «Rechazar» son dos bloques del mismo tamaño, el mismo padding y
+ * el mismo peso de fuente — uno macizo en acento, el otro con el borde de la
+ * tinta. Ninguno es un link de texto ni está más chico que el otro: es la
+ * garantía explícita del pedido, «que se pueda rechazar sin dark patterns».
+ */
+---
+
+<div
+  id="aviso-cookies"
+  role="region"
+  aria-label="Preferencias de cookies"
+  hidden
+  class="fixed inset-x-0 bottom-0 z-30 border-t-2 border-tinta bg-papel px-4 pt-4 pb-segura sm:px-6"
+>
+  <div class="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <p class="body-sm text-tinta">
+      Usamos Google Analytics para saber cuánta gente visita el sitio. No se
+      instala nada hasta que elijas, y se puede cambiar después.
+    </p>
+    <div class="flex shrink-0 gap-2">
+      <button
+        type="button"
+        data-consentimiento="rechazar"
+        class={`min-h-touch flex-1 border-2 border-tinta bg-papel px-4 py-2 text-center font-medium text-tinta transition-colors hover:bg-crema sm:flex-none ${foco}`}
+      >
+        Rechazar
+      </button>
+      <button
+        type="button"
+        data-consentimiento="aceptar"
+        class={`min-h-touch flex-1 bg-acento px-4 py-2 text-center font-medium text-papel transition-colors hover:bg-super sm:flex-none ${foco}`}
+      >
+        Aceptar
+      </button>
+    </div>
+  </div>
+</div>
+
+{/*
+  El control para revisar la decisión — el pedido es explícito: «un banner
+  sin forma de revisar la decisión es peor que no tenerlo». Vive acá y no en
+  el pie de página para no tocar `PieDePagina.astro`, que este frente no
+  tiene por qué asumir libre.
+*/}
+<button
+  type="button"
+  id="abrir-preferencias-cookies"
+  hidden
+  class={`label-caps fixed bottom-2 left-2 z-30 border border-borde bg-papel px-2 py-1 text-suave hover:text-tinta ${foco}`}
+>
+  Cookies
+</button>
+
+<script>
+  import { aceptar, iniciarSegunConsentimiento, mostrarBannerAlArrancar, rechazar } from '@/lib/medicionSitio';
+
+  const banner = document.getElementById('aviso-cookies');
+  const abrir = document.getElementById('abrir-preferencias-cookies') as HTMLButtonElement | null;
+
+  /** Refleja el estado guardado en los dos elementos: nunca los dos visibles
+   * a la vez, y el de reabrir solo aparece una vez que hay una decisión. */
+  const actualizarUI = (): void => {
+    const mostrar = mostrarBannerAlArrancar();
+    if (banner) banner.hidden = !mostrar;
+    if (abrir) abrir.hidden = mostrar;
+  };
+
+  // Si ya había una aceptación de una visita anterior, esto es lo que carga
+  // el tag sin volver a preguntar.
+  iniciarSegunConsentimiento();
+  actualizarUI();
+
+  banner
+    ?.querySelector('[data-consentimiento="aceptar"]')
+    ?.addEventListener('click', () => {
+      aceptar();
+      actualizarUI();
+    });
+
+  banner
+    ?.querySelector('[data-consentimiento="rechazar"]')
+    ?.addEventListener('click', () => {
+      rechazar();
+      actualizarUI();
+    });
+
+  // Reabrir no cambia la preferencia por sí solo: solo vuelve a mostrar el
+  // banner para que la persona la revise y, si quiere, la cambie.
+  abrir?.addEventListener('click', () => {
+    if (banner) banner.hidden = false;
+    if (abrir) abrir.hidden = true;
+  });
+</script>

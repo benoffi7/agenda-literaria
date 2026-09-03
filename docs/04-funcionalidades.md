@@ -723,6 +723,17 @@ todas las páginas, las URLs del JSON-LD, `sitemap.xml`, `robots.txt` y el archi
 Open Graph por tipo (**B-291**) y el `lastmod` del sitemap, que necesita **B-112**.
 El rebuild automático anda desde el 2026-08-25 (**B-20**).
 
+### El aviso de cookies (B-376, D-250)
+
+En **todas** las páginas del sitio público (nunca en `/admin`) aparece, hasta
+que se decide, una franja abajo con «Aceptar» o «Rechazar», los dos botones del
+mismo tamaño. **Rechazar no manda nada**: el tag de analítica (GA4, **B-372**)
+no se carga hasta que alguien acepta, y quien rechaza no descarga ni un byte de
+`gtag.js`. La decisión se guarda en el navegador de quien visita —nunca en
+Firestore— y se puede revisar después con el botón «Cookies» que queda en una
+esquina. Arquitectura completa en
+[`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) §7.
+
 ### La home — `/`
 
 El build imprime en HTML **todas** las actividades vigentes, con su tarjeta,

@@ -2,6 +2,7 @@
 import '@/styles/global.css';
 import Encabezado, { type Seccion } from '@/components/sitio/Encabezado.astro';
 import PieDePagina from '@/components/sitio/PieDePagina.astro';
+import AvisoDeCookies from '@/components/sitio/AvisoDeCookies.astro';
 import { NOMBRE } from '@/lib/identidad';
 import { urlAbsoluta } from '@/lib/rutasPublicas';
 
@@ -166,6 +167,12 @@ const conChrome = seccion !== 'ninguna';
       placeholder.
     */}
     <meta name="twitter:card" content="summary_large_image" />
+    {/*
+      §6.3 del diseño de analítica — no ahorra un byte de `gtag.js`, ahorra el
+      viaje de DNS + TLS del celular en la calle, que es donde se nota. Con
+      `conChrome` para no ofrecerlo en `/admin`, que nunca carga el tag.
+    */}
+    {conChrome && <link rel="preconnect" href="https://www.googletagmanager.com" />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/*
@@ -192,5 +199,17 @@ const conChrome = seccion !== 'ninguna';
       <slot />
     </div>
     {conChrome && <PieDePagina />}
+    {/*
+      El banner de cookies — B-372/B-376 (D-250 a D-252 en `06-decisiones.md`).
+
+      **Va con la misma condición que el resto del chrome del sitio**, y no una
+      prop nueva: `conChrome` es exactamente «esto es una página del sitio
+      público, no `/admin`» (arriba define si se pinta `Encabezado`), y esa es
+      la condición que la regla de proceso pide para el banner —«nunca en
+      `/admin`: el panel ya mide, con su propia proyección»—. `/admin` pasa
+      `seccion` sin definir, que cae a `'ninguna'`, así que `conChrome` es
+      `false` ahí y el banner ni se pinta ni carga `gtag.js`.
+    */}
+    {conChrome && <AvisoDeCookies />}
   </body>
 </html>
