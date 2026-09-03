@@ -13,10 +13,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ZONA,
+  claveDeDia,
   claveDeMes,
+  diaDeSemana,
+  diaDesplazado,
   diaYMes,
   fechaCompleta,
   fechaCorta,
+  fechaCortaDeDia,
   fechaLarga,
   hora,
   isoConOffset,
@@ -244,5 +248,134 @@ describe('mesDesplazado — la aritmética de meses sobre la clave', () => {
     // y devolver `NaN-NaN` produciría una URL con esa cadena adentro.
     expect(mesDesplazado('sin-fecha', 1)).toBe('sin-fecha');
     expect(mesDesplazado('', -1)).toBe('');
+  });
+});
+
+describe('las primitivas de día calendario — B-600', () => {
+  /*
+   * Las cuatro nacieron con los paneles de «¿qué hay ahora?», y son el escalón de
+   * abajo de `claveDeMes`/`mesDesplazado`: la misma decisión —hacer la aritmética
+   * **sobre la clave** y no sobre un `Date`— aplicada al día.
+   *
+   * Acá la trampa 1 pega más fuerte que en el mes. Un encuentro del 15 a las 00:30
+   * de Buenos Aires es el **14** para un navegador en UTC, y con el mes eso mueve
+   * un separador de la lista; con el día, el encuentro cae en «Ayer», que es un
+   * panel que no existe: desaparece del tríptico.
+   */
+  it('`claveDeDia` da el día de la zona del proyecto, no el de quien mira', () => {
+    /*
+     * MUTACIÓN PROBADA: `d.toISOString().slice(0, 10)` —o cualquier cosa armada
+     * con `getUTCDate()`— pasa el primer caso y falla los dos de abajo, que son
+     * los que ocurren de verdad: el circuito literario empieza a las 19:00 y una
+     * medianoche de Buenos Aires es de la madrugada siguiente en UTC.
+     */
+    expect(claveDeDia(new Date('2026-09-15T15:00:00Z'))).toBe('2026-09-15');
+    // 03:30 UTC del 15 son las 00:30 del **15** acá: el día es el mismo que dice
+    // la agenda, no el que dice el reloj de Greenwich.
+    expect(claveDeDia(new Date('2026-09-15T03:30:00Z'))).toBe('2026-09-15');
+    // Y al revés: 01:00 UTC del 1 de septiembre son las 22:00 del 31 de agosto.
+    expect(claveDeDia(new Date('2026-09-01T01:00:00Z'))).toBe('2026-08-31');
+  });
+
+  it('y la clave lleva el mes y el día con dos dígitos, para que ordene sola', () => {
+    // El eje de encuentros se compara y se ordena como string (B-99): un `9-5`
+    // sin ceros rompería el orden y la comparación con el resto de las claves.
+    expect(claveDeDia(new Date('2026-01-05T15:00:00Z'))).toBe('2026-01-05');
+  });
+
+  it('`diaDesplazado` corre días y cruza mes y año sin que nadie lo piense', () => {
+    /*
+     * Corre sobre el ancla de **mediodía** UTC, así que no hay medianoche que se
+     * pase de día por el offset de -3 ni fin de mes que haya que calcular:
+     * `setUTCDate` cruza solo.
+     *
+     * MUTACIÓN PROBADA: anclar a medianoche (`Date.UTC(a, m - 1, d)`) devuelve el
+     * día anterior en todos los casos, porque `2026-09-15T00:00:00Z` es el 14 a
+     * las 21:00 en Buenos Aires.
+     */
+    expect(diaDesplazado('2026-09-15', 1)).toBe('2026-09-16');
+    expect(diaDesplazado('2026-09-15', 0)).toBe('2026-09-15');
+    expect(diaDesplazado('2026-09-15', -1)).toBe('2026-09-14');
+    // Cruce de mes en las dos direcciones, y el mes corto.
+    expect(diaDesplazado('2026-09-30', 1)).toBe('2026-10-01');
+    expect(diaDesplazado('2026-03-01', -1)).toBe('2026-02-28');
+    // Y de año.
+    expect(diaDesplazado('2026-12-31', 1)).toBe('2027-01-01');
+    expect(diaDesplazado('2026-01-01', -1)).toBe('2025-12-31');
+    /*
+     * El 29 de febrero, que es el borde que una aritmética escrita a mano se
+     * olvida. Hoy lo resuelve `setUTCDate` nativo y no hay nada que se pueda
+     * olvidar; el caso queda como red permanente contra una reescritura de
+     * `anclaDeDia`/`diaDesplazado` que deje de apoyarse en él. Lo pidió el
+     * `auditor-trampas`.
+     */
+    expect(diaDesplazado('2028-02-28', 1)).toBe('2028-02-29');
+    expect(diaDesplazado('2028-02-29', 1)).toBe('2028-03-01');
+    expect(diaDesplazado('2028-03-01', -1)).toBe('2028-02-29');
+    // El salto de una semana, que es el que usa el panel del finde siguiente.
+    expect(diaDesplazado('2026-09-26', 7)).toBe('2026-10-03');
+  });
+
+  it('y volver por donde se vino da la misma clave', () => {
+    // La propiedad que sostiene el ancla de mediodía: `claveDeDia(anclaDeDia(c))
+    // === c`. Sin ella, cada desplazamiento acumularía un día de error.
+    for (const clave of ['2026-01-01', '2026-02-28', '2026-09-15', '2026-12-31']) {
+      expect(diaDesplazado(diaDesplazado(clave, 5), -5), clave).toBe(clave);
+    }
+  });
+
+  it('`diaDeSemana` cuenta de domingo a sábado, sobre el día de la zona', () => {
+    /*
+     * `0` domingo … `6` sábado, que es lo que espera la cuenta del sábado en
+     * `ventanasDeAhora`. Se calcula con `getUTCDay()` **sobre el ancla de
+     * mediodía**, no con `getDay()` sobre una fecha cualquiera: aquél es el día
+     * de la semana del reloj de quien mira.
+     *
+     * La semana de referencia es la del lunes 14 de septiembre de 2026, la misma
+     * que usa `tests/ahoraPublico.test.ts`.
+     */
+    expect(diaDeSemana('2026-09-14')).toBe(1);
+    expect(diaDeSemana('2026-09-15')).toBe(2);
+    expect(diaDeSemana('2026-09-16')).toBe(3);
+    expect(diaDeSemana('2026-09-17')).toBe(4);
+    expect(diaDeSemana('2026-09-18')).toBe(5);
+    expect(diaDeSemana('2026-09-19')).toBe(6);
+    expect(diaDeSemana('2026-09-20')).toBe(0);
+  });
+
+  it('y siete días después es el mismo día de la semana, todo el año', () => {
+    // La propiedad, en vez de una lista de fechas: es lo que se rompe si el ancla
+    // se corre de día en algún mes.
+    for (let i = 0; i < 52; i++) {
+      const clave = diaDesplazado('2026-01-05', i * 7);
+      expect(diaDeSemana(clave), clave).toBe(1);
+    }
+  });
+
+  it('`fechaCortaDeDia` escribe la clave igual que la tarjeta escribe la fecha', () => {
+    /*
+     * Es lo que hace que el encabezado de un panel y la fila de una tarjeta digan
+     * la fecha del mismo largo en la misma pantalla. Pasa por `fechaCorta`, así
+     * que hereda el recorte de «sept» y la coma que saca `es-AR`.
+     *
+     * MUTACIÓN PROBADA: un `Intl` propio acá devolvería «lun, 14 sept».
+     */
+    expect(fechaCortaDeDia('2026-09-14')).toBe('lun 14 sep');
+    expect(fechaCortaDeDia('2026-09-19')).toBe('sáb 19 sep');
+    expect(fechaCortaDeDia('2026-01-01')).toBe('jue 1 ene');
+    expect(fechaCortaDeDia('2026-09-14')).toBe(fechaCorta(new Date('2026-09-14T15:00:00Z')));
+  });
+
+  it('y ningún día se corre por el offset: el 1 de cada mes es el 1', () => {
+    /*
+     * El caso que la medianoche rompe. Se recorren los doce meses en vez de
+     * probar septiembre: un mes con un offset distinto —Argentina tuvo horario de
+     * verano hasta 2009 y volver a tenerlo es una decisión política— se vería acá.
+     */
+    for (let m = 1; m <= 12; m++) {
+      const clave = `2026-${String(m).padStart(2, '0')}-01`;
+      expect(fechaCortaDeDia(clave), clave).toContain(' 1 ');
+      expect(claveDeDia(new Date(`${clave}T15:00:00Z`)), clave).toBe(clave);
+    }
   });
 });

@@ -771,6 +771,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
+| **B-601** | **El tríptico «¿Qué hay ahora?» de la home no se mide** (B-600, D-320). Un clic en una fila del tríptico y uno en una fila del listado llevan al mismo lugar, así que hoy son indistinguibles: no se puede contestar si la sección se usa, cuál de los tres paneles, ni si el «+N más» —que a propósito no linkea— frustra. El evento tendría que viajar con el panel (`hoy`/`manana`/`finde`) y la posición de la fila, **nunca con el slug ni el título** | 🔵 futuro, anotado al construirlo |
 
 ---
 

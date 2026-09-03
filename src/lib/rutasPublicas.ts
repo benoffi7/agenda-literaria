@@ -10,7 +10,7 @@
  * |---|---|
  * | el que **produce** las páginas | `caminosDeDetalle` (`lib/contenidoDelSitio.ts`) |
  * | el que **linkea** desde el listado | `FilaDeActividad.tsx` |
- * | el que **linkeará** desde el posteo | `textoRedes.ts`, hoy comentado, con `${base}/actividad/${slug}` escrito |
+ * | el que **linkea** desde el posteo (B-312) | `textoRedes.ts` — `construirTextoRedes`, con `urlDeDetalle` y solo cuando la actividad ya tiene página |
  *
  * Desde B-113 hay un segundo par igual: la página de mes (`/agenda/{aaaa-mm}`) la
  * **produce** `caminosDeMes` y la **linkean** la tira de la home y la navegación

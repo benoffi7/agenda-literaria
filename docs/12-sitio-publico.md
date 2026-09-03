@@ -446,6 +446,80 @@ los títulos y el nombre de la actividad, en Lora.
 
 ### 4.1 Home — `/`
 
+> ⚠️ **Al diagrama de abajo le falta la primera sección de la página — ver D-320
+> en [`06-decisiones.md`](06-decisiones.md).** Desde **B-600** (2026-09-03), arriba
+> del buscador y **a todo el ancho**, va el **tríptico de programación
+> inmediata**: una banda de sección en la capa tonal con el rótulo «¿Qué hay
+> ahora?» a la izquierda y el sello de actualización a la derecha, y debajo tres
+> columnas separadas por reglas.
+>
+> ```
+> ├───────────────────────────────────────────────────────────┤
+> │ ¿QUÉ HAY AHORA?             ACTUALIZADO: VIE 3 SEP, 14:30 │  ← banda tonal, label-caps
+> ├──────────────────┬──────────────────┬─────────────────────┤
+> │ Hoy    VIE 3 SEP │ Mañana SÁB 4 SEP │ Este finde DOM 5 SEP│  ← rótulo + los días
+> │ 19:00            │ 11:00            │ 18:00               │    que abarca
+> │ Taller de crónica│ Club de lectura  │ Lectura en voz alta │
+> │ Casa Brandon ·   │ Online por Meet  │ Bar Lorca · Almagro │
+> │ Boedo, CABA      │ CLUB · Gratis    │ ENCUENTRO · Gorra   │
+> │ TALLER · Gorra   │                  │                     │
+> │ ──────────────── │ ──────────────── │                     │
+> │ 21:00            │ Todavía no hay   │ +2 más ese finde    │  ← texto, NO un link
+> │ …                │ nada para mañana │                     │
+> └──────────────────┴──────────────────┴─────────────────────┘
+> ```
+>
+> Lo que decide:
+>
+> - **Es centrado en el encuentro, no en la actividad.** El listado de abajo
+>   ordena por próxima fecha de la **actividad** (§2.2 del `CLAUDE.md`: un club de
+>   ocho encuentros es una tarjeta), así que un ciclo que arrancó en agosto aparece
+>   arriba con su próximo encuentro del 20 y hay que abrir tarjetas para saber qué
+>   pasa hoy. Esto lo contesta de un vistazo y **sin ningún dato nuevo**: sale del
+>   eje plano de encuentros que **B-99** metió en el `events.json` (`{slug,
+>   sesionId, inicio}`), cruzado contra las actividades del mismo índice.
+> - **Las tres ventanas.** «Hoy» es lo que **queda** de hoy —se filtra `inicio >=
+>   ahora`; el eje de B-99 no lleva el fin, a diferencia de `proximaVentana` del
+>   listado, así que una actividad que empezó hace diez minutos desaparece del
+>   panel y sigue en la lista—. «Mañana» es el día siguiente entero. El tercero es
+>   el sábado y domingo de la semana en curso **menos los días que ya contaron los
+>   dos primeros**; cuando la resta lo deja sin días salta al finde siguiente y el
+>   rótulo pasa a «El finde que viene». **La resta y el rótulo son D-320.**
+> - **No responde a los filtros.** Contesta una pregunta fija. Un panel que dice
+>   «Hoy» y esconde media programación porque quedó puesto un chip de barrio miente
+>   con el rótulo puesto, y con dos filtros combinados quedaría vacío justo cuando
+>   más orienta.
+> - **Un solo markup, dos relojes** ([§6.3](#63-con-javascript-apagado--el-listado-híbrido)).
+>   Lo pinta el build —SEO, sin un byte de JavaScript— y lo repinta la island con el
+>   reloj de quien mira ([§6.4](#64-fechas-en-el-cliente)). Acá pesa más que en el
+>   listado: **«Hoy» envejece de un día para el otro sin que cambie ningún dato**,
+>   y el sitio se rehace solo cuando cambia un dato (§8 del `CLAUDE.md`). Es el
+>   argumento de B-111 con `cierraEn`, un escalón más arriba.
+> - **Cada panel imprime los días que abarca** («Hoy · vie 3 sep»). No es
+>   decoración: es lo que impide que un rótulo armado por el build mienta cuando la
+>   página se mira dos días después, y lo único que queda en pie con JavaScript
+>   apagado.
+> - **Tope de cuatro filas**, y lo que sobra se dice en palabras y **sin enlace**
+>   (D-320: el día no es una URL de este sitio, [§2.3](#23-lo-que-decidimos-que-no-es-url)).
+> - **Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre» es
+>   información, y sacarlo dejaría un tríptico de dos columnas que se lee como si el
+>   dato faltara. **La sección entera no se dibuja** solo si las tres ventanas están
+>   vacías.
+> - **El sello** («Actualizado: vie 3 sep, 14:30», del `generadoEn` del índice)
+>   explica por qué algo cargado hace diez minutos todavía no está. Un `generadoEn`
+>   ilegible deja el sello vacío, no tira abajo la home.
+>
+> El cálculo vive en `src/lib/ahoraPublico.ts` (puro), el markup en
+> `src/components/publico/PanelesDeAhora.tsx` (presentacional: no formatea una
+> fecha, no decide una frase y no lee ninguna `EntradaDeIndice`). El bloque del
+> build va **adentro** del ancla `#listado` y la island lo saca del DOM cuando
+> tiene el índice. En el barrido de centinelas entra como **séptimo productor de
+> la salida 1** —no es una URL nueva, es una sección del HTML de la home— con su
+> propia lista de permitidos y su control negativo.
+>
+> El diagrama de abajo queda como estaba escrito, para que el desvío se lea contra
+> su original.
+
 Orden de prioridad visual, de arriba abajo:
 
 ```

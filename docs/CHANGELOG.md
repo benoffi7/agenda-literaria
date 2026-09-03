@@ -1,5 +1,27 @@
 # Changelog
 
+## Sin publicar
+
+- **El texto para redes lleva el link a la actividad** — **B-312**. No lo llevaba
+  porque la página no existía y el dominio no estaba elegido; las dos cosas
+  pasaron, así que el motivo del descarte caducó. La URL sale de `urlDeDetalle`,
+  la misma función de la que salen la canónica, el sitemap y el JSON-LD, y
+  **solo se emite cuando la actividad guardada ya tiene página** — el select del
+  formulario no alcanza. Falta un paso para que se vea: el panel tiene que pasar
+  ese dato (una prop), y hasta entonces el posteo sale sin link.
+- **El panel de admin usa el ancho de la pantalla: el listado pasa de fila a
+  grilla de tarjetas** (1 columna en el teléfono, 2/3/4 en `md`/`xl`/`2xl`) y el
+  ancho del contenedor se decide por vista — **B-620**, **D-330**. La tarjeta dice
+  además la **modalidad** y el **arancel**, que eran ejes de filtro y no
+  aparecían en el resultado.
+- **La home abre con «¿Qué hay ahora?»**: tres paneles **Hoy · Mañana · Este
+  finde** con los encuentros de cada ventana, arriba del buscador y a todo el
+  ancho — **B-600**, **D-320**. Es la mitad de UI que **B-99** había dejado
+  pendiente: el eje plano de encuentros ya estaba en el `events.json` y nadie lo
+  usaba. No responde a los filtros, lo pintan el build y la island (el rótulo
+  «Hoy» envejece de un día para el otro sin que cambie ningún dato), y cada panel
+  escribe los días que abarca para que ese rótulo no pueda mentir.
+
 ## 1.8.0 — 2026-09-03
 
 - **Al fallar la subida de una imagen, se muestra el motivo real** (permiso/sesión,
@@ -9,7 +31,167 @@
 - **El `events.json` lleva un eje plano de encuentros** (`{slug, sesionId, inicio}`,
   próximos, ordenados) — **B-99**. Es la base de datos para poder mostrar «Hoy /
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
-  esos paneles todavía no está: esto es solo el dato.
+  esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
+  día — ver «Sin publicar», arriba.)*
+
+## 2026-09-03 · el link de la actividad entra al texto para redes (B-312)
+
+El texto que se copia para Instagram terminaba en los handles y no decía a dónde
+ir a anotarse. El motivo estaba escrito en el propio módulo —«esa página todavía
+no existe y el sitio público está congelado»— y **caducó dos veces**: la página
+existe desde B-227 y el canónico es `agendaleh.ar` desde D-165. El ítem lo
+señalaba y el dueño lo confirmó: va el link del detalle, y sin UTM (un parámetro
+de medición en un texto que se pega a mano ensucia el posteo, y esa pregunta la
+contesta la analítica del sitio).
+
+El link va **último antes de los handles** —es la acción, y lo que sigue son las
+menciones— y sale de `urlDeDetalle`. Escrito a mano habría sido la **cuarta**
+derivación de la misma ruta y la única de la que no se puede volver: un posteo con
+una URL rota ya está pegado en Instagram. Sin slug no se emite nada, porque
+`urlDeDetalle('')` devolvería la home.
+
+**El `auditor-privacidad` tiró abajo dos versiones de la guarda, y las dos veces
+tenía razón.** La primera emitía el link siempre, con el argumento de que «la
+página va a existir cuando el posteo se publique»: falso para tres clases —en
+borrador el slug se re-deriva del título con cada tecla, un duplicado nace con un
+slug que el schema prohíbe publicar, y una cancelada que nunca se publicó no tiene
+página por diseño (B-110)—. La segunda miró `estado === 'publicado'`, que en este
+camino es **el select del formulario sin guardar**, así que los tres casos seguían
+alcanzables, más uno peor: si el guardado vuelve con `slug-tomado` y el admin
+cambia el slug, el link ya copiado apunta a la página de otra actividad.
+
+La guarda final es un parámetro explícito —«¿el documento **guardado** está
+publicado?»— con **default `false`**: el mismo predicado con el que el formulario
+congela el slug. Mientras el panel no lo pase, el posteo sale sin link, que es el
+lado barato de equivocarse.
+
+**El barrido de centinelas del posteo lo agarró solo**: al aparecer el link, el
+slug empezó a salir y el test quedó en rojo hasta que el permiso se escribió con
+su motivo. Es la mecánica que ese barrido existe para tener — la decisión de
+publicar un dato se toma en la lista, no en el módulo.
+
+## 2026-09-03 · el panel a todo ancho: el listado es una grilla de tarjetas (B-620, D-330)
+
+El listado del panel era una columna angosta en cualquier pantalla —el chasis
+fijaba `max-w-3xl lg:max-w-4xl` para todas las vistas—, así que en un monitor de
+1920px se veían seis actividades y había que scrollear veinte veces para llegar a
+cuarenta. Ahora es una grilla: una columna en el teléfono y **2/3/4** columnas en
+`md`-`lg` / `xl` / `2xl`, dentro de un contenedor que llega a 1600px.
+
+**El ancho es por vista y no universal** (D-330): `lib/anchoDelPanel.ts` lista qué
+pantallas se ensanchan —hoy solo el listado— y el resto se queda en el ancho de
+lectura de siempre. Un formulario de 30+ campos a 1900px separa la etiqueta de su
+error y pasa el límite de renglón cómodo, o sea que es *peor* que el panel
+angosto. El ancho completo tiene tope por la misma razón dada vuelta: sin él, en
+2560px las cuatro columnas darían tarjetas de 600px.
+
+La tarjeta dice **dos datos más** que la fila: la **modalidad** (la resultante de
+las filas de «Dónde», la misma derivación que el `events.json`) y el **arancel**
+(con el acento cuando no se paga, el criterio de `lib/arancel.ts`). Los dos eran
+ejes de filtro y no aparecían en el resultado, así que se podía filtrar por
+«Gratis» y después no ver cuál era la gratuita.
+
+Y qué dice cada tarjeta salió del JSX a `lib/tarjetaDelPanel.ts`, puro: eran cinco
+cadenas de ternarios adentro del render, o sea siete decisiones de dominio sin
+ninguna red —«qué dice una actividad sin encuentros por venir», «qué modalidad se
+lee con dos filas», «cuándo aparece Sin flyer»—. El chequeo de clase deriva los
+campos del view-model del fuente y exige que el componente pinte cada uno, así que
+un dato nuevo no puede quedarse afuera de la pantalla en silencio. El badge de
+estado se quedó en el componente a propósito (color y texto se eligen juntos).
+
+`tests/lista-actividades.render.test.tsx` es el segundo test de render del panel
+después de B-08, y cubre la mitad que un test de fuente no puede: que ninguna
+acción se perdió al pasar de fila a tarjeta, que el menú de una tarjeta es el de
+esa tarjeta y no el de la de al lado, que el recorrido del teclado es Editar → ⋯,
+y que nada clickeable es un `div` con `onClick`. La lista de acciones se deriva del
+fuente. Cinco mutaciones verificadas a mano, las cinco mueren.
+
+`tests/cupo-completo.test.ts` buscaba el literal «Cupo completo» en el JSX del
+listado; ahora lo busca donde se decide y exige del componente que pinte las
+marcas que recibe. El motivo está escrito en el test.
+
+## 2026-09-03 · el tríptico «¿Qué hay ahora?» en la home (B-600, D-320)
+
+La mitad de UI que B-99 dejó pendiente. El modelo es centrado en la **actividad**
+y eso está bien (§2.2 del `CLAUDE.md`: un club de ocho encuentros es una tarjeta),
+pero la pregunta que se le hace a una agenda es «¿qué hay el sábado?», que es
+centrada en el **encuentro**, y el listado de la home no la contestaba: ordena por
+próxima fecha de la actividad, así que un ciclo que arrancó en agosto aparece
+arriba con su próximo encuentro del 20 y había que abrir tarjetas para saber qué
+pasa hoy.
+
+Ahora la home abre, arriba del buscador y a todo el ancho, con tres paneles **Hoy
+· Mañana · Este finde**: hora, título, lugar, categoría con su color (D-150) y
+arancel, cada fila linkeando a la página de detalle de su actividad. Sin ningún
+dato nuevo: sale del eje plano de encuentros del `events.json` (B-99) cruzado
+contra las actividades del mismo índice.
+
+**Las tres ventanas.** «Hoy» es lo que **queda** de hoy —se filtra `inicio >=
+ahora`, y se mira el inicio y no el fin porque el eje de B-99 no lleva el fin: el
+costo declarado es que una actividad que empezó hace diez minutos desaparece del
+panel mientras sigue en el listado—. «Mañana» es el día siguiente entero. El
+tercero es el sábado y domingo de la semana en curso **menos los días que ya
+contaron los dos primeros**: sin la resta, un viernes el sábado sale en dos
+columnas pegadas del mismo tríptico y se lee como un error de software. Cuando la
+resta lo deja sin días —hoy es sábado o domingo— salta al finde siguiente y el
+rótulo pasa a «El finde que viene»; un domingo usa ese rótulo aunque no haya
+salto, por otra razón (el finde de su semana se está terminando), y por eso la
+condición mira el día de la semana y no la distancia. Todo eso es **D-320**, junto
+con por qué el «+N más» del pie no es un enlace: el día no es una URL de este
+sitio (§2.3), y el listado completo está en la misma página más abajo.
+
+**Un solo markup, dos relojes.** Lo pinta el build —SEO, sin un byte de
+JavaScript— y lo repinta la island con el reloj de quien mira (§6.3, §6.4). Acá
+pesa más que en el listado: «Hoy» envejece de un día para el otro **sin que cambie
+ningún dato**, y el sitio se rehace solo cuando cambia un dato (§8). Es el
+argumento de B-111 con `cierraEn`, un escalón más arriba. Y como respaldo, cada
+panel **escribe los días que abarca** («Hoy · vie 3 sep»): es lo único que queda
+en pie con JavaScript apagado, y lo que impide que un rótulo del build mienta sin
+que se note. El sello («Actualizado: vie 3 sep, 14:30», del `generadoEn`) explica
+por qué algo cargado hace diez minutos todavía no está.
+
+**No responde a los filtros**, a propósito: contesta una pregunta fija. Tope de
+cuatro filas por panel. Un panel vacío se dibuja y dice que no hay nada («el
+sábado está libre» es información); la sección entera no se dibuja solo si las
+tres ventanas están vacías, y esa condición vive en el módulo y no en cada
+llamador —el build y la island— porque dos condiciones escritas por separado son
+dos maneras de que una se quede vieja (la clase de B-88).
+
+El cálculo va en `src/lib/ahoraPublico.ts`, puro, más cuatro primitivas nuevas de
+día calendario en `src/lib/fechasPublicas.ts` (`claveDeDia`, `diaDesplazado`,
+`diaDeSemana`, `fechaCortaDeDia`, todas sobre un ancla de **mediodía UTC**: la
+medianoche se corre de día con el offset de -3). El markup, en
+`src/components/publico/PanelesDeAhora.tsx`, no formatea una fecha, no decide una
+frase y no lee ninguna `EntradaDeIndice`. El tríptico entra al barrido de
+centinelas como **séptimo productor de la salida 1** —no es una salida nueva: no
+agrega ninguna ruta indexable, es una sección del HTML de la home—, con su propia
+lista corta y justificada y su control negativo.
+
+Un bug encontrado al escribir los tests, arreglado en el mismo cambio: el módulo
+cortaba la ventana al tope y **después** resolvía cada encuentro contra su
+actividad, así que un slug sin actividad —el índice lo sirve un CDN y puede ser de
+un build anterior— caído entre los primeros cuatro dejaba el panel con tres filas
+y el pie prometiendo un cuarto que no existía.
+
+**Y un segundo bug, que encontró el `auditor-privacidad` sobre este mismo cambio
+(B-602):** el reloj del build salía de un `new Date(indice.generadoEn)` sin
+guarda, así que un `generadoEn` ilegible llegaba como `Invalid Date` a
+`claveDeDia` y tiraba `RangeError` **antes** de que corriera la guarda documentada
+del sello — la que dice «sin sello se pierde una línea de contexto, con una
+excepción se pierde la página entera», y acá se perdía la página. Dos derivaciones
+del mismo string con políticas de falla opuestas, y una documentada como si
+describiera las dos: la clase de B-88. Ahora pasa por el mismo `instanteDeIso` que
+usa el sello.
+
+Del `auditor-trampas`, que salió **limpio**, quedaron dos redes permanentes —
+ninguna sobre un bug de hoy: `diaDesplazado` cruzando un 29 de febrero, y el salto
+al finde siguiente **cruzando el año** (un domingo 27 de diciembre salta al 2 y 3
+de enero, que la tabla de los siete días no ejercitaba porque usa una sola semana
+de referencia). Y una tercera red que salió del error de rotulado: el número de
+salida que cada `describe` del barrido se atribuye ahora está **atado a su fila
+real del índice** (`tests/agentes-y-skills.test.ts`). El del tríptico nació
+rotulado «salida 12», que es la analítica del sitio público, y nada lo notaba: los
+chequeos que había comparan las tres tablas del índice **entre sí**.
 
 ## 2026-09-03 · el eje de encuentros en el events.json (B-99)
 

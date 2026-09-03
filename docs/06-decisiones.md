@@ -7412,3 +7412,130 @@ subió el `limit()` del `onSnapshot` de 10 a 50 y se filtra del lado del
 cliente, para que el filtro no le coma cupo a los reportes abiertos cuando hay
 varios resueltos entre los más nuevos.
 
+
+## D-320 · El tercer panel del tríptico resta los días ya contados, salta de semana con otro rótulo, y su «+N más» no es un enlace
+
+**Problema (B-600).** El tríptico «¿Qué hay ahora?» de la home son tres paneles
+—**Hoy · Mañana · Este finde**— y los tres tienen que caber en una sola línea de
+lectura, uno al lado del otro. Eso obliga a decidir dos cosas que con paneles
+separados no harían falta: **qué días agarra el tercero** y **qué se hace con lo
+que no entra en el tope de cuatro filas**.
+
+### La resta: el finde es sábado y domingo **menos** lo que ya contaron los dos primeros
+
+Un viernes, «Mañana» **es** el sábado. Con el finde definido como «sábado y
+domingo de esta semana» a secas, el mismo encuentro sale en la segunda y en la
+tercera columna del mismo tríptico, a diez centímetros de distancia. Eso se lee
+como un error de software y no como dos lecturas del mismo dato.
+
+**No es el caso de la actividad destacada del §4.1**, que aparece en la tira de
+arriba y otra vez en su mes: ahí las dos apariciones están a media pantalla y
+contestan preguntas distintas («lo que recomendamos» / «lo que hay en
+septiembre»). Acá los tres paneles contestan **la misma** pregunta partida en
+ventanas, y ventanas que se solapan no son ventanas.
+
+Así que el tercero se queda con los días del finde que no estén ya en «Hoy» ni en
+«Mañana». Un viernes es solo el domingo; un jueves son los dos.
+
+### El salto de semana, y por qué cambia el rótulo
+
+Cuando la resta deja la ventana **sin días** —hoy es sábado, o es domingo— hay
+tres salidas posibles y dos son peores:
+
+| Salida | Por qué no |
+|---|---|
+| Dibujar dos paneles | El tríptico deja de ser un tríptico un día y medio de cada siete, y la página cambia de forma sin que nadie la haya cambiado |
+| Dejar el tercero vacío | «Este finde: no hay nada» **un sábado** es falso: el finde es hoy, y lo que hay está en el panel de al lado |
+| **Saltar al finde siguiente** | Es lo que alguien quiere saber un domingo a la tarde, y es lo que se hizo |
+
+Pero saltando, **el rótulo no puede seguir siendo «Este finde»**: un sábado, «este
+finde» es hoy, y el panel estaría hablando de algo que falta una semana. Con la
+fecha escrita al lado («sáb 26 sep y dom 27 sep») el desvío se vería, pero un
+rótulo que hay que desmentir con la letra chica de al lado es un rótulo mal
+elegido. Así que pasa a **«El finde que viene»**.
+
+**Y un domingo usa ese mismo rótulo por una razón distinta**, que es la parte que
+se equivoca sola si se implementa mirando el salto en vez del día de la semana: un
+domingo **no hay salto** —el sábado que viene está a seis días y no se solapa con
+nada— pero el finde de su propia semana se está terminando, así que tampoco es
+«este». Los dos casos comparten rótulo y no comparten causa; por eso la condición
+mira `dow === 0` además del salto.
+
+### El «+N más» es texto, no un enlace
+
+El tope es de cuatro filas por panel (un panel de doce filas deja de leerse de un
+vistazo y empuja el listado abajo del pliegue en un teléfono — el argumento de
+D-143 sobre los filtros). Lo que sobra se dice en palabras: «+2 más hoy».
+
+**Y no linkea a ninguna parte, a propósito.** El [§2.3](12-sitio-publico.md#23-lo-que-decidimos-que-no-es-url)
+decide qué es página y qué es filtro, y **el día no está en ninguna de las dos
+listas**: no existe un «cronograma de hoy» al que mandar. Inventar acá un
+`/dia/2026-09-15` sería decidir de paso una decena de URLs indexables nuevas —con
+su título, su `meta description`, su canónica y su lugar en el sitemap— en el pie
+de un panel, y contra la regla de las tres del [§2.2](12-sitio-publico.md#22-la-regla-de-las-tres):
+un día suelto casi nunca tiene tres actividades.
+
+Lo que sí hay es **el listado completo, en esta misma página y unos centímetros
+más abajo**, ya agrupado por mes. Un enlace a otro lugar sería peor que el texto:
+mandaría a buscar afuera lo que está debajo.
+
+### Dónde vive
+
+`src/lib/ahoraPublico.ts`, puro y testeado (`tests/ahoraPublico.test.ts`, con los
+siete días de la semana table-driven). No vive en el componente por lo mismo que
+`tarjetaPublica.ts`: los componentes de este repo no tienen tests de render
+([`05-patrones.md`](05-patrones.md)), y lo que se decide acá es **aritmética de
+calendario en una zona con offset**, que es la trampa 1 del §13 en su versión más
+filosa.
+
+## D-330 · El ancho del panel se decide por vista, y el listado es una grilla de tarjetas
+
+**Problema (B-620):** el panel se veía encajonado en escritorio. El chasis fijaba
+`mx-auto max-w-3xl lg:max-w-4xl` para todas las vistas, o sea 896px como máximo en
+cualquier monitor, y el listado era una fila por actividad dentro de esa columna:
+en 1920px entraban seis actividades y el catálogo real son cuarenta y sigue
+creciendo. Un listado que obliga a scrollear veinte veces no contesta «¿qué tengo
+publicado?», que es para lo que existe.
+
+**Decisión 1: el listado pasa a grilla de tarjetas**, 1 columna hasta `md` y
+**2/3/4** en `md`-`lg` / `xl` / `2xl`. El tope es cuatro y no «todas las que
+entren»: con más, el título de un taller cae en dos renglones de seis caracteres y
+la grilla deja de leerse de un barrido, que es justo lo que se vino a ganar. `lg`
+hereda las dos columnas de `md` a propósito — una laptop de 1280 lógicos ya entra
+en `xl`, y la franja de 1024 a 1279 es donde la tercera columna empieza a apretar.
+
+**Decisión 2: el ancho es por vista, no universal.** «Aprovechar el ancho» no es
+una mejora que aplique a todo: un formulario de 30+ campos a 1900px separa la
+etiqueta de su error y pasa el límite de renglón cómodo, así que es *peor* que el
+panel angosto, no mejor. Lo que gana con el ancho es lo que se recorre de un
+barrido. `lib/anchoDelPanel.ts` tiene la lista explícita —hoy solo `lista`— y el
+**default es angosto**: la vista que se agregue mañana no aparece ahí y se comporta
+como hoy, que es el lado barato de equivocarse (mismo criterio que D-41).
+
+**Y el ancho completo tiene tope** (`max-w-[100rem]`, 1600px). `max-w-none` sería
+el problema original dado vuelta: en un monitor de 2560px las cuatro columnas
+darían tarjetas de 600px de ancho.
+
+**El calendario y el tablero quedan angostos**, y no es un olvido: las dos
+pantallas ganarían con el ancho —una grilla de mes y un tablero de métricas son
+exactamente lo que se recorre de un barrido— pero ensancharlas es un cambio visual
+propio de cada una, y este cambio no las mira. Entrar en la lista es una línea el
+día que se decida (B-621).
+
+**Decisión 3: qué dice la tarjeta vive afuera del componente**
+(`lib/tarjetaDelPanel.ts`), como `tarjetaPublica.ts` del otro lado y por el mismo
+motivo del §05: los componentes del panel no tienen tests de render salvo para el
+cableado de DOM, así que una frase decidida adentro del JSX no se puede verificar
+de ninguna manera. Eran cinco cadenas de ternarios, y la tarjeta agregaba dos datos
+más — siete decisiones sin red. El **badge de estado** se quedó en el componente:
+es lo único que lleva tinta además de texto (`COLOR_ESTADO`) y su etiqueta ya sale
+del mapa compartido con el formulario (B-76), así que pasarla por el view-model
+sería un salto más sin quitar ninguna decisión, y partiría en dos un badge cuyo
+color y cuyo texto se eligen juntos.
+
+**Por qué la modalidad y el arancel entran ahora.** Los dos eran ejes de filtro
+—modalidad desde siempre, arancel desde D-152— y no aparecían en el resultado: se
+podía filtrar por «Gratis» y después no ver cuál de las tarjetas era la gratuita.
+La modalidad que se muestra es la **resultante** de las filas de «Dónde» (B-224),
+no la de la primera fila: «la primera manda» dependería del orden del array, que es
+la trampa 2 con otra cara.

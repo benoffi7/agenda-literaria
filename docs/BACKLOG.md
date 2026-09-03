@@ -17,6 +17,18 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > barrido de backlog y drift tenía reservado el rango **B-310 a B-319** y usó los
 > tres primeros (**B-310**, **B-311**, **B-312**); los números del medio son de
 > otros frentes de la misma tanda.
+>
+> **Y un tercer hueco, con una renumeración adentro: `B-603`.** La tanda del
+> 2026-09-03 tuvo tres frentes en paralelo y dos numeraron a ciegas. El frente del
+> sitio reservó **B-600 a B-603** y usó tres (**B-600**, el tríptico de la home;
+> **B-601**, medirlo; **B-602**, el `RangeError` del reloj del build que salió de
+> auditarlo). El frente de salud del repo había
+> propuesto cuatro ítems con esos mismos números, y **se renumeraron a B-604 a
+> B-607** al integrarlos: `B-600(salud)`→**B-604**, `B-601(salud)`→**B-605**,
+> `B-602(salud)`→**B-606**, `B-603(salud)`→**B-607**. **B-600 se quedó como el
+> tríptico** porque ya estaba escrito en el código y en los commits, que es lo que
+> no se puede renumerar. Si alguna nota de otro frente cita «B-601 · analítica»
+> o «B-603 · npm audit fix», está hablando de B-605 y B-607.
 
 ---
 
@@ -28,7 +40,7 @@ trabajo.
 | # | Tema | Contexto |
 |---|---|---|
 | DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
-| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** Lo que sigue abierto de esta fila es el **handle de Instagram** (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
+| DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. (El texto original decía que faltaba el handle (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
 
 Resueltas el 2026-08-26:
 
@@ -120,7 +132,25 @@ Todo esto se midió el 2026-08-25 activando el deploy, y ninguna era una previsi
   `hayCredenciales()`, **existía y no la llamaba nadie** (**B-189**, cerrado en
   `1.2.0`).
 
-### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) · P1
+### B-295 · Los tres pasos del dominio que quedan en la consola de Firebase (B-109) — ✅ hecho (2026-09-03) · P1
+
+**Cerrado el 2026-09-03: los tres pasos están resueltos.**
+
+1. **El 301 de `agendaleh.com.ar`** — hecho por el dueño, propagando. Medido a
+   las 18:40 todavía respondía 200, que es lo esperable mientras propaga:
+   **conviene reverificar** con `curl -sI https://agendaleh.com.ar/ | head -3`,
+   que tiene que decir `301` y `location: https://agendaleh.ar/`.
+2. **El `www`** — **descartado a propósito**: queda sin configurar. Un hostname
+   que no existe no puede duplicar contenido, y agregarlo como sitio hubiera sido
+   un cuarto nombre sirviendo lo mismo.
+3. **Search Console** — conectado y con el sitemap mandado: **descubrió 80
+   páginas**. Con eso el sitemap dejó de ser un archivo que nadie lee.
+
+Las dos trampas de falla diferida **siguen vigentes y no se cierran con este
+ítem**, porque no son pasos: el TXT de verificación es permanente (borrarlo tira
+el certificado ~90 días después) y la renovación de NIC.ar no es automática (la
+delegación se apaga el día 31, así que el margen real son 30 días).
+
 
 Código terminado y publicado; estos tres no se pueden hacer desde el repo porque
 los dominios de Hosting se configuran en la consola, no en `firebase.json`. El
@@ -159,7 +189,18 @@ buscar en esta lista:
   siga siendo del dueño. O sea que el margen real son 30 días: conviene un
   recordatorio un mes antes del vencimiento, no el día.
 
-### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño
+### B-21 · Alerta de rebuild agotado — código y runbook listos, falta el click del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: no se hace.** La alerta de GCP queda sin
+configurar. El log sigue existiendo con nivel `error` y el motivo en
+`sistema/rebuild`, así que la información está: lo que no va a haber es un aviso
+que la empuje.
+
+Se cierra en vez de quedar abierto para siempre, que es lo honesto: un ítem que
+espera un click que nadie va a hacer es ruido en la lista. Si algún día el
+rebuild se cae sin que nadie lo note, el runbook de `08-operacion.md` tiene la
+configuración lista.
+
 
 Cuando el rebuild se rinde después de cinco intentos, loguea
 `el rebuild agotó los reintentos` con nivel `error` y deja el motivo en
@@ -2104,6 +2145,15 @@ mueve el peor caso de una página en vez del de un recorrido.
 
 ### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño · P3
 
+**Decidido el 2026-09-03 por el dueño: obligatorio solo en la portada.** Ni un
+campo por imagen —nadie lo llenaría en las cuatro— ni seguir derivando todo del
+título: la portada es la que va a Open Graph y a la tarjeta, o sea la que se
+comparte, y es un campo solo.
+
+Es un cambio de modelo, así que va en la tanda de modelo junto con **B-285**,
+cuando aterricen los frentes que hoy tienen el schema y el formulario.
+
+
 Anotado al cerrar **B-296** (**D-168** §1). DEC-7a (**D-125**) decidió que hay **un
 solo campo opcional** por imagen —el epígrafe— y que el texto alternativo sale del
 **título de la actividad**, a propósito, y con la contra escrita: con varias
@@ -2750,6 +2800,92 @@ El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
 puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
+
+### B-620 · El panel no usaba el ancho de la pantalla — ✅ hecho (2026-09-03) · P2
+
+El listado era una fila por actividad dentro de un contenedor de 896px
+(`max-w-3xl lg:max-w-4xl`, el chasis lo fijaba para **todas** las vistas), así que
+en escritorio el panel se veía encajonado: en 1920px entraban seis actividades y
+había que scrollear veinte veces para recorrer cuarenta.
+
+**Hecho.** Grilla de tarjetas —1 columna en el teléfono, **2/3/4** en `md`-`lg` /
+`xl` / `2xl`— y **ancho por vista**: solo el listado usa la pantalla completa
+(`max-w-[100rem]`, con tope a propósito) y el resto se queda en el ancho de
+lectura. La decisión completa, con las tres exclusiones y por qué el default es
+angosto, está en **D-330**.
+
+De paso la tarjeta dice **dos datos que la fila no decía** —la modalidad y el
+arancel—, que eran ejes de filtro y no aparecían en el resultado: se podía filtrar
+por «Gratis» y después no ver cuál de las actividades era la gratuita.
+
+Y qué dice cada tarjeta salió del JSX a `src/lib/tarjetaDelPanel.ts`, puro: eran
+cinco cadenas de ternarios adentro del render, o sea siete decisiones de dominio
+sin ninguna red. `tests/lista-actividades.render.test.tsx` es el segundo test de
+render del panel después de B-08 y cubre lo que un test de fuente no puede: que
+ninguna acción se perdió al pasar de fila a tarjeta y que el menú de una tarjeta
+es el de esa tarjeta. Cinco mutaciones probadas a mano, las cinco en rojo.
+
+Cerrado en `b9f2606`, `2ccde59`, `6423fca`, `e7808a2`, `06fa091`, integrado en
+`d9b0230`. **Los títulos de los primeros cuatro commits dicen B-600**, que quedó
+tomado por el tríptico de la home mientras este frente trabajaba: el ticket es
+B-620, y así lo dicen el código, los tests y la doc. Quedan abiertos **B-621** y
+**B-622**.
+
+### B-602 · El reloj del build de la home salía de un `new Date()` sin guarda: un `generadoEn` ilegible tiraba `RangeError` — ✅ hecho (2026-09-03) · P2
+
+**Lo encontró el `auditor-privacidad` auditando B-600, y lo señaló el
+`auditor-documentacion` al ver que el arreglo se había commiteado sin ítem.**
+
+`src/pages/index.astro` armaba `ahora` con `new Date(indice.generadoEn)`, sin
+pasar por ningún parser defensivo. `selloDelIndice` (`src/lib/ahoraPublico.ts`)
+parsea **el mismo string** con `instanteDeIso` y sí se defiende, con el motivo
+escrito en su docblock y repetido en
+[`12-sitio-publico.md`](12-sitio-publico.md): «sin sello se pierde una línea de
+contexto, con una excepción se pierde la página entera».
+
+Pero con un `generadoEn` ilegible, `ahora` llegaba como `Invalid Date` a
+`claveDeDia`, que formatea con `Intl` y tira `RangeError`: **el build de la home
+se caía antes** de que la guarda del sello llegara a correr. O sea que la garantía
+documentada valía para el camino de la island —donde `ahora` es el reloj del
+cliente— y no para el del build, que es justo el que la frase describe. Dos
+derivaciones del mismo string con políticas de falla opuestas, y una documentada
+como si describiera las dos: **la clase de B-88**.
+
+Es además un bug que **nació con B-600**: la línea es anterior, pero antes su
+`Invalid Date` solo llegaba a comparaciones —que devuelven `false` y no rompen— y
+el tríptico fue lo que la conectó con un `Intl`.
+
+**Arreglado** con `instanteDeIso(indice.generadoEn) ?? new Date()`, el mismo
+parser que el sello.
+
+**Sin red hasta este cambio.** Ahora la fija
+[`tests/listado-del-sitio.test.ts`](../tests/listado-del-sitio.test.ts) («el reloj
+del build sale del mismo parser que el sello, no de un `new Date()` pelado», con
+mutación probada), y `tests/pagina-de-detalle.test.ts` actualizó su aserto del
+literal **sin tocar la afirmación de fondo** —el reloj sigue siendo el `generadoEn`
+y no el de la máquina de build—, con el aserto que mantiene la distinción entre eso
+y el respaldo del `??`.
+
+### B-605 · `09-analitica.md` decía que `MOTIVOS_IMAGEN` tiene tres valores, y tiene seis — ✅ hecho (2026-09-03) · P2
+
+**Renumerado desde el `B-601` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`docs/09-analitica.md` decía «**Motivos de rechazo de una imagen:** `tamano`,
+`tipo`, `red`» y, más abajo, «`detalle` es un enum cerrado de **tres** valores».
+`src/lib/analytics-eventos.ts` declara seis: `metadatos` faltaba de antes, y
+`permiso` y `servidor` los agregó **B-590** el mismo día.
+
+Es el punto ciego exacto que B-590 dejó: el commit actualizó `07-seguridad.md`,
+`BACKLOG.md` y `novedades.ts`, pero no `09-analitica.md`, que es donde la tabla de
+cierre de [`05-patrones.md`](05-patrones.md) manda cuando un cambio «toca qué se
+mide o con qué nombre». **Valores nuevos de un evento que ya existía cuentan**, y
+es la parte que se saltea sola: el evento no es nuevo, así que no se siente como
+analítica nueva.
+
+Lo encontró el `auditor-documentacion` en el barrido del 2026-09-03. **Corregidas
+las dos frases** (la lista completa, con el motivo de las dos últimas, y «seis
+valores»).
 
 ### B-370 a B-379, B-480 y B-481 · La analítica del sitio público · P2
 
@@ -4514,6 +4650,57 @@ plano de encuentros próximos (fecha, id de sesión, slug), derivado en build ti
 para que la island ofrezca "este fin de semana" sin aplanar los ciclos en el
 navegador en cada filtrado. Es barato al escribir el generador y caro después.
 
+> **Se cerró en dos mitades, y el `✅ hecho` de arriba era solo la primera.** El
+> commit que lo cierra (`d366f77`) dice con todas las letras «la UI de esos paneles
+> todavía no está: esto es solo el dato», y el texto del ítem pide el eje
+> **para que la island lo use**, así que hasta el 2026-09-03 a la tarde este ítem
+> estaba cerrado afirmando algo que no era cierto todavía. Lo señaló el
+> `auditor-documentacion`. **La segunda mitad es B-600**, abajo: la fecha del cierre
+> es la misma, así que no se corrige el encabezado — se deja dicho de qué mitad
+> hablaba y a dónde fue la otra.
+
+### B-600 · La home no usaba el eje de encuentros: falta «Hoy / Mañana / Este finde» — ✅ hecho (2026-09-03) · P2
+
+**Qué era.** La mitad de UI de **B-99**. El eje plano de encuentros próximos ya
+viajaba en el `events.json` (`{slug, sesionId, inicio}`) y **nadie lo consumía**: el
+listado de la home ordena por próxima fecha de la *actividad* (§2.2 del
+`CLAUDE.md`: un club de ocho encuentros es una tarjeta), así que un ciclo que
+arrancó en agosto aparece arriba con su próximo encuentro del 20 y había que abrir
+tarjetas para saber qué pasa hoy. La pregunta que se le hace a una agenda —«¿qué hay
+el sábado?»— es centrada en el **encuentro**, y la home no la contestaba.
+
+**Qué quedó.** Arriba del buscador y a todo el ancho, un tríptico de programación
+inmediata: banda de sección con el rótulo «¿Qué hay ahora?» y el sello de
+actualización, y debajo tres paneles —**Hoy · Mañana · Este finde**— con hora,
+título, lugar, categoría en su color (D-150) y arancel, cada fila linkeando al
+detalle de su actividad. Sin ningún dato nuevo.
+
+- **Las tres ventanas, la resta del finde y el salto de semana con rótulo
+  distinto**, más por qué el «+N más» del pie no es un enlace: **D-320**.
+- **No responde a los filtros**, a propósito: contesta una pregunta fija.
+- **Un solo markup, dos relojes**: lo pinta el build y lo repinta la island con el
+  reloj de quien mira, y cada panel escribe los días que abarca para que el rótulo
+  «Hoy» de un HTML de hace tres días no pueda mentir (§6.3, §6.4 del diseño; el
+  argumento de B-111 un escalón más arriba).
+- Cálculo en `src/lib/ahoraPublico.ts` (puro) + cuatro primitivas de día calendario
+  en `src/lib/fechasPublicas.ts`; markup en
+  `src/components/publico/PanelesDeAhora.tsx`, que no formatea una fecha, no decide
+  una frase y no lee ninguna `EntradaDeIndice`.
+- Tests: [`tests/ahoraPublico.test.ts`](../tests/ahoraPublico.test.ts) (los siete
+  días de la semana table-driven, los dos casos de zona horaria), el `describe` del
+  **séptimo productor de la salida 1** —no es una salida nueva, ver la fila 1 de
+  [`07-seguridad.md`](07-seguridad.md)— en
+  [`tests/barrido-de-salidas-publicas.test.ts`](../tests/barrido-de-salidas-publicas.test.ts)
+  y la parte 7 de
+  [`tests/listado-del-sitio.test.ts`](../tests/listado-del-sitio.test.ts).
+
+**Un bug encontrado al escribir los tests y arreglado en el mismo cambio:** el
+módulo cortaba la ventana al tope de cuatro y **después** resolvía cada encuentro
+contra su actividad, así que un slug sin actividad —el índice lo sirve un CDN y
+puede ser de un build anterior— caído entre los primeros cuatro dejaba el panel con
+tres filas y el pie prometiendo un cuarto que no existía. Ahora se resuelve toda la
+ventana y recién después se corta.
+
 ### B-70 · Sacar la lógica de dominio de `ActividadFormulario.tsx` — ✅ hecho (2026-08-24)
 
 El archivo tiene 858 LOC, de las cuales **227 son lógica** y el resto JSX. Esas
@@ -5720,6 +5907,16 @@ de arriba pesa el doble.
 
 ### B-181 · Un club puede ofrecer N opciones para sumarte, y el modelo solo sabe de N encuentros · P2
 
+**Decidido el 2026-09-03 por el dueño: completo, ahora.** No la versión mínima:
+el eje `opciones` entero, con el diff del calendario incluido.
+
+**Encolado y no despachado todavía, con motivo:** toca `src/lib/sesiones.ts`,
+`functions/calendario.js`, el schema y el formulario — exactamente los archivos
+que dos frentes están escribiendo en este momento. Un dispatch en paralelo
+produciría un conflicto de merge en el código más delicado del repo (el diff de
+sesiones contra Calendar, §7). Entra apenas aterricen esos dos.
+
+
 Reporte del dueño usando el panel de verdad (2026-08-25):
 
 > un club de lectura puede darte 4 opciones para sumarte. Pero no son 4
@@ -6611,6 +6808,15 @@ que ningún **valor** matchee `private-[0-9a-f]{10,}`, `BEGIN PRIVATE KEY`,
 
 ### B-214 · Astro 5.x no tiene parche para ocho avisos de seguridad: hay que subir a 6/7 antes de B-01 · P2
 
+**Decidido el 2026-09-03 por el dueño: después de esta tanda.** No se descarta —
+se secuencia. El upgrade toca el `package-lock.json`, que es de todos los frentes
+a la vez, así que arranca contra un árbol quieto y con la suite entera de
+testigo, que hoy son 2.778 tests.
+
+Con esto se cierra también el destino de **B-607** (`npm audit fix` de `uuid`):
+va en la misma tanda, porque toca el mismo archivo.
+
+
 `npm audit --omit=dev` da 2 altas en dependencias de producción: ocho avisos de
 Astro (instalado 5.18.2) más `sharp`, que viene de Astro. Los peores son un SSRF
 de CVSS 7.5 (`GHSA-2pvr-wf23-7pc7`, fetch de la página de error prerenderizada) y
@@ -6790,7 +6996,25 @@ la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe 
 enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
 Falta el enlace y su test.
 
-### B-312 · El texto para redes no lleva el link, y el motivo caducó · P2 — decisión del dueño
+### B-312 · El texto para redes no lleva el link, y el motivo caducó — ✅ hecho (2026-09-03) · P2
+
+**Decidido y hecho el 2026-09-03.** El dueño eligió el link del detalle, sin UTM:
+un parámetro de medición en un texto que se pega a mano ensucia el posteo, y la
+pregunta «cuánto trae Instagram» se contesta desde la analítica del sitio.
+
+El link va **último antes de los handles** —es la acción, y lo que sigue son las
+menciones— y sale de `urlDeDetalle` (`lib/rutasPublicas.ts`), la misma función de
+la que salen la canónica, el sitemap y el JSON-LD. Escrito a mano habría sido la
+cuarta derivación de la misma ruta y **la única de la que no se puede volver**:
+un posteo con una URL rota ya está pegado en Instagram.
+
+Sin slug no se emite nada: `urlDeDetalle('')` devolvería la home, y mandar a la
+home a alguien que quería anotarse a un taller es peor que no poner nada.
+
+**El barrido de centinelas lo detectó solo**, que es exactamente para lo que
+existe: al agregar el link, el slug empezó a salir al posteo y el test se puso en
+rojo hasta que la decisión de publicarlo se escribió en la lista de permitidos.
+
 
 **Salió del barrido de drift del 2026-09-02.** `src/lib/textoRedes.ts` (B-95) no
 incluye la URL de la actividad, y el motivo escrito en
@@ -7243,6 +7467,120 @@ del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
 tenga dos actividades).
 ## P3 — cuando sobre tiempo
 
+### B-621 · El calendario y el tablero del panel siguen angostos · P3
+
+**D-330** dejó el ancho del panel decidido **por vista** y solo ensanchó el
+listado. Las otras dos pantallas que se recorren de un barrido —la grilla del mes
+(`CalendarioActividades`) y «Estado del catálogo» (`EstadisticasPanel`)— siguen en
+`max-w-3xl lg:max-w-4xl`, y las dos ganarían: una grilla de siete columnas en
+896px da celdas de 120px, y el tablero apila paneles que podrían ir al lado.
+
+**No se hizo con B-620 a propósito:** ensanchar cada una es un cambio visual
+propio —qué crece, qué se reparte en columnas, qué queda con su ancho—, no el mismo
+cambio aplicado dos veces más. Y el tablero se estaba rehaciendo en paralelo.
+
+**El costo es una línea por pantalla**: agregar `'calendario'` y/o `'estadisticas'`
+a `VISTAS_A_TODO_ANCHO` en [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts),
+y después mirar la pantalla y repartir lo que corresponda. `tests/ancho-del-panel.test.ts`
+lista hoy esas dos vistas entre las que arrancan angostas, así que hay que moverlas
+de grupo en el mismo cambio — que es la señal de que la decisión se está tomando y
+no filtrando por descuido.
+
+### B-622 · La tarjeta del panel no muestra `destacado` ni los tags · P3
+
+La fila no los mostraba y la tarjeta tampoco, así que **no es una regresión**: es
+que la tarjeta ahora tiene lugar y sigue sin decirlos. `destacado` decide el orden
+en el sitio público y `tags` es el eje que D-74 dejó afuera de los filtros; desde
+el panel, «¿cuáles marqué como destacadas?» solo se contesta abriendo una por una.
+
+**Qué haría falta:** una marca más en la tarjeta para `destacado` (la píldora ya
+existe, `CLASE_MARCA`) y decidir si los tags entran — que es la parte que no es
+gratis: una actividad puede tener seis y la tarjeta se convierte en una nube de
+etiquetas. Recomendación: `destacado` sí, tags no hasta que alguien lo pida.
+
+### B-601 · El tríptico de «¿Qué hay ahora?» no se mide · P3
+
+El sitio público mide **dos** eventos propios —`busqueda` y `clic_inscripcion`
+(B-375, [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md))— y el tríptico de
+**B-600** no está en ninguno de los dos. Es deliberado y no un olvido: se decidió
+al construirlo, para no meter un evento nuevo en la misma tanda que la sección.
+
+Lo que no se puede contestar sin medirlo es justamente lo que decide si la sección
+se queda como está:
+
+- **¿Se usa?** Un clic en una fila del tríptico y un clic en una fila del listado
+  llevan al mismo lugar, así que hoy son indistinguibles. Si nadie toca el
+  tríptico, es una banda que empuja el listado abajo del pliegue por nada.
+- **¿Cuál de los tres paneles?** Si todo el uso es «Hoy», el tope de cuatro está
+  mal repartido y el finde podría ser un solo panel con más filas.
+- **¿El «+N más» frustra?** El pie dice que hay más y no linkea a ninguna parte
+  (D-320, y el motivo es bueno). Si se toca —o si scrollean al listado justo
+  después—, la decisión de que el día no sea una URL merece revisarse con un dato.
+
+**Cuidado con el default de no decidir** (§5.1 de [`07-seguridad.md`](07-seguridad.md)):
+un evento del tríptico tiene que viajar con el panel (`hoy`/`manana`/`finde`) y la
+posición de la fila, **nunca con el slug ni el título de la actividad** — eso es
+contenido, y `detalle` es un enum cerrado en todos los eventos de este proyecto.
+
+### B-604 · El comentario de B-190 estaba duplicado literal en `tarjetaPublica.ts` — ✅ hecho (2026-09-03) · P3
+
+**Renumerado desde el `B-600` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+En `src/lib/tarjetaPublica.ts`, el bloque de `lugarDeTarjeta` que explica B-190
+(«Online por A confirmar» se lee como si «A confirmar» fuera el nombre de una
+plataforma) estaba pegado **dos veces seguidas**, palabra por palabra. No venía de
+un merge: lo agregó duplicado un solo commit (`fix: 5 hallazgos del
+auditor-privacidad sobre B-190/B-340/B-342`).
+
+No afectaba comportamiento; el costo es que un lector futuro lo lee dos veces
+preguntándose si el segundo dice algo distinto — y en un repo donde el comentario
+**es** la documentación de la decisión, eso es exactamente el ruido que hace que se
+dejen de leer. **Cerrado borrando el segundo bloque.**
+
+Lo encontró el `auditor-documentacion` en el barrido del 2026-09-03, que además
+buscó otros duplicados de bloques de 4+ líneas en `src/**`, `functions/**` y
+`tests/**`: los demás candidatos son falsos positivos (código repetitivo por
+patrón). El frente de salud no lo tocó porque `src/**` era de otro frente.
+
+### B-606 · La definición del `auditor-documentacion` sobre-afirma que nada atrapa los duplicados de merge · P3
+
+**Renumerado desde el `B-602` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`.claude/agents/auditor-documentacion.md`, Parte 2 punto 3, dice que
+`tests/sin-marcadores-de-conflicto.test.ts` «no atrapa esto» hablando de bloques
+duplicados o fusionados por merges. Dejó de ser del todo cierto: desde **B-367**,
+`tests/red-de-contencion.test.ts` atrapa exactamente ese patrón — pero **solo** para
+la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`.
+
+Sin la aclaración, el próximo auditor reporta como hallazgo algo que el CI ya frena
+ahí. Es la clase que este repo ya conoce: un auditor que duplica lo que un test
+frena reporta ruido, y la tabla de `13-agentes.md` existe justamente para eso.
+
+Texto propuesto, al final del punto 3:
+
+    **Excepción:** la tabla «Qué se decidió no automatizar» de `docs/13-agentes.md`
+    sí tiene red desde B-367 (`tests/red-de-contencion.test.ts`, filas fusionadas
+    con `||` o duplicadas) — no lo reportes ahí, seguí buscando el patrón en el
+    resto de la documentación.
+
+### B-607 · `npm audit fix` de `uuid`, la única vulnerabilidad de producción sin breaking · P3
+
+**Renumerado desde el `B-603` que propuso el frente de salud** (ver la nota de
+huecos del encabezado).
+
+`uuid` <11.1.1 (vía `gaxios`; moderada: falta un chequeo de límites de buffer en
+v3/v5/v6 cuando se pasa `buf`) se cierra con un `npm audit fix` **sin cambios
+incompatibles**. No se hizo el 2026-09-03 a propósito: toca `package-lock.json`,
+que es de todos los frentes, y un lock reescrito en medio de una tanda de tres
+agentes en paralelo es un conflicto garantizado.
+
+Las otras cuatro vulnerabilidades de producción quedan **fuera** de este ítem:
+`sharp` (alta, libvips) y `esbuild` (baja) solo se cierran subiendo a `astro@7.3.1`,
+dos mayores arriba — eso es la decisión que ya vive en el Problema 4 de
+`docs/10-salud-del-codigo.md`, no un `audit fix`.
+
 ### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo — ❌ descartado (2026-09-02)
 
 **La conclusión es «no se toca», y se cierra para que deje de contarse como
@@ -7523,6 +7861,11 @@ hace falta el control de selección múltiple —el sitio ya tiene uno, los chip
 `EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
 
 ### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda · P2
+
+**Decidido el 2026-09-03 por el dueño: guardarlo en el documento.** Un campo más,
+escrito una sola vez por el trigger, que saca la inferencia de los tres lugares
+donde hoy se rehace. Va en la tanda de modelo junto con **B-301**.
+
 
 B-110 necesita saber si una actividad cancelada estuvo publicada alguna vez —para
 no publicar la página de un borrador por otra puerta— y esa pregunta **no vive en
@@ -7805,7 +8148,16 @@ etiquetas que no existan, pero sin color ni descripción. Crearlas a mano una ve
 (los comandos están en [`08-operacion.md`](08-operacion.md)) deja la lista
 prolija y filtrable.
 
-### B-34 · Nada limita cuántos reportes se pueden cargar
+### B-34 · Nada limita cuántos reportes se pueden cargar — ✅ decidido: no se hace (2026-09-03)
+
+**Decidido el 2026-09-03 por el dueño: nada por ahora.** Con dos cuentas de
+confianza no hay canilla que cerrar, y un tope mal puesto le rompe el reporte a
+quien sí lo necesita. La mitad que importa —que el límite de verdad va en las
+reglas y no en el cliente, porque el cliente se puede saltear— queda escrita
+arriba para quien lo agarre. **Vuelve cuando entre una tercera cuenta que no sea
+de confianza**, que es el mismo disparador de B-28 y no es casualidad: los dos
+ítems son el mismo cambio de contexto.
+
 
 Las reglas validan la forma del reporte y que quien lo carga sea admin, pero no
 la frecuencia: cien reportes son cien issues y cien invocaciones. Con dos
@@ -8023,7 +8375,15 @@ la tabla de [`07-seguridad.md`](07-seguridad.md).
 El texto original decía «parte de B-01, el sitio público, que todavía no existe».
 El sitio existe desde B-227.
 
-### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño
+### B-28 · ¿Claim `curador` para aprobar? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Ratificado el 2026-09-03 por el dueño: no, queda como está.** Es la segunda vez
+que se decide lo mismo (la primera fue el 2026-08-26), así que el ítem se cierra
+en vez de quedar esperando una tercera. Con dos cuentas de confianza es
+maquinaria de permisos para un problema que no existe, y mover la aprobación a un
+campo propio toca reglas, modelo y la pantalla de taxonomías. Vuelve con la
+tercera cuenta.
+
 
 Hoy cualquiera de las dos cuentas con claim `admin` puede aprobar (D-28), y las
 opciones nuevas nacen pendientes **incluso las del dueño**, porque el código no
@@ -8218,7 +8578,16 @@ decidir qué hacen con eso el listado del panel (¿una pestaña "pasadas"? ¿un
 filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
 probablemente lo correcto?). Cuadra con B-96 y con B-01.
 
-### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño
+### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+**Ratificado el 2026-09-03 por el dueño: no.** El sistema no guarda ni un dato
+personal de un tercero, y por eso el §5 de seguridad cabe en una tabla. La
+inscripción sigue siendo un mail o un WhatsApp fuera del sistema.
+
+Lo que queda escrito para el día que haga falta es **el orden**, que es al revés
+del intuitivo: primero el aviso público (**B-98**), después el estado agregado
+(**B-97**), y la lista de personas solo si eso no alcanzó.
+
 
 Recomendación: **no**, y queda anotado para que la pregunta no vuelva a aparecer
 sin el razonamiento.
@@ -8681,6 +9050,12 @@ repetir. Con la mutación puesta (sacar la rama de `paso`) los otros seis casos 
 
 ### B-291 · Las cinco imágenes de Open Graph por tipo · P2
 
+**Decidido el 2026-09-03 por el dueño: generarlas en el build.** Tipográficas,
+con el sistema visual del sitio, en vez de cinco archivos que haya que rehacer el
+día que cambie la marca. Va con el frente de imágenes, que entra después del
+rescate de D-210.
+
+
 Lo último que le queda a **B-107**, y lo único del §5.1 del diseño que B-109 no
 pudo cerrar porque no depende del dominio: cinco archivos de 1200×630 en
 `public/og/`, uno por tipo de actividad, «en papel y tinta con el nombre del
@@ -8912,7 +9287,14 @@ legible, en un repo público**.
 de las reglas), con control positivo de que llega al recorte —el primer intento usó
 links **largos** y no llegaba: 106 caracteres, porque con un link largo el saneador
 **acorta**— y los dos asertos de que no sobrevive nada del link. La mutación muere.
-### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver · P3
+### B-322 · WebP y AVIF necesitan una zona de subida privada antes de volver — ✅ decidido: no se hace (2026-09-03) · P3
+
+**Decidido el 2026-09-03 por el dueño: queda anotado y no se hace.** Las
+miniaturas JPEG ya bajaron el peso del recorrido completo un 71 %, así que WebP y
+AVIF serían optimización sobre optimización — y arrastran construir la zona de
+subida privada, que es lo caro. **Lo que no se descarta es la trampa 13** (`allow
+read` en Storage incluye `list`): esa vale por sí sola y no depende de este ítem.
+
 
 **B-220 decía que volvían con la Function y no volvieron** (D-175). El argumento
 de B-220 era que la Function recomprime todo y por lo tanto los hace seguros, y no

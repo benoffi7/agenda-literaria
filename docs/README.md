@@ -23,6 +23,7 @@ Punto de entrada para retomar el proyecto, sea humano o agente.
 | 14 | [`14-plan-de-saneamiento.md`](14-plan-de-saneamiento.md) | Cómo se ataca el backlog acumulado sin que los frentes se pisen. Se reparte por archivo, no por tema. |
 | 15 | [`15-mapa-de-trampas.md`](15-mapa-de-trampas.md) | Las trampas del `CLAUDE.md` §13, con qué test fija cada una — y cuál quedó sin red. Se verifica solo. |
 | 16 | [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) | Arquitectura de la analítica del **sitio público**, que hoy no mide nada: qué preguntas contestaría un tablero, de dónde saldría cada dato, las fricciones traducidas a algo medible, y las **dos decisiones del dueño** que lo bloquean. Lo único construido de acá es el tablero del catálogo. |
+| 17 | [`17-worktrees-pendientes.md`](17-worktrees-pendientes.md) | **Temporal, se borra cuando quede vacío.** Inventario de rescate de los 33 worktrees de `.claude/worktrees/` que dejaron las tandas de frentes en paralelo: qué se rescató, qué se borró, y los comandos que esperan la confirmación del dueño. |
 | — | [`CHANGELOG.md`](CHANGELOG.md) | Qué se hizo y cuándo. |
 | — | [`BACKLOG.md`](BACKLOG.md) | Qué falta, priorizado, con el motivo de cada cosa. |
 
@@ -55,14 +56,19 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — 2.173 tests en 93 archivos. 79 de esos
-   tests necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
-   también **Storage**), repartidos en 7
-   archivos: seis se saltean enteros y de
-   `events-json-endpoint.integracion.test.ts` se saltean 4 de sus 6, porque las
-   dos ramas de credenciales no necesitan emulador. Si no están, se saltean
-   solos — **salvo con `EXIGIR_EMULADOR=1`**, que es como los corre el CI
-   justamente para que no se salteen en silencio.
+2. **Correr los tests.** `npm test` — **2.747 tests en 122 archivos**
+   (recontado el 2026-09-03 al integrar el tríptico de la home y la grilla del
+   panel; antes decía 2.637 en 118, y antes de eso 2.173 en 93, de antes de
+   B-108/B-109 y de la tanda del 2026-09-02). **107** de esos tests
+   necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
+   también **Storage**), repartidos en **9** archivos: siete se saltean enteros
+   y dos parciales — de `events-json-endpoint.integracion.test.ts` se saltean 4
+   de sus 6 porque las dos ramas de credenciales no necesitan emulador, y de
+   `emulador-aislado.test.ts` 2 de sus 13 porque once chequean la configuración
+   y no el emulador. Si no están, se saltean solos — **salvo con
+   `EXIGIR_EMULADOR=1`**, que es como los corre el CI justamente para que no se
+   salteen en silencio. El desglose archivo por archivo está en
+   [`10-salud-del-codigo.md`](10-salud-del-codigo.md) § 6.1.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
 4. **Antes de cerrar un cambio, pasar los auditores** de

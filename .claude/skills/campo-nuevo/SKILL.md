@@ -22,11 +22,11 @@ no se pueden deshacer después.
 
    | # | Salida | Quién la produce |
    |---|---|---|
-   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts`, y para el `CollectionPage`/`ItemList` de la home `src/lib/hubsPublicos.ts` (`coleccionSchema`, B-107) |
+   | 1 | `events.json` y el HTML del listado | `src/lib/toPublic.ts`, `src/lib/eventsJson.ts`, para lo que la **tarjeta dice** `src/lib/tarjetaPublica.ts`, y para el `CollectionPage`/`ItemList` de la home `src/lib/hubsPublicos.ts` (`coleccionSchema`, B-107) , y para el **tríptico «¿Qué hay ahora?»** de la home `src/lib/ahoraPublico.ts` (B-600) |
    | 2 | el evento de Calendar | `functions/calendario.js` |
    | 3 | el issue de GitHub | `functions/reportes.js` |
    | 4 | GA4 (panel) | `src/lib/analytics-eventos.ts` |
-   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts` |
+   | 5 | el texto para copiar a redes | `src/lib/textoRedes.ts`, `src/lib/rutasPublicas.ts` (`urlDeDetalle`, B-312) |
    | 6 | la página de detalle y su JSON-LD | `src/lib/detallePublico.ts` (incluido `migasDeDetalle`, el `BreadcrumbList`, B-107), y `src/lib/afiche.ts` para el texto de la tira de imágenes (B-296) |
    | 7 | la cartelera `/cartelera` | `src/lib/cartelera.ts`, `src/lib/imagenes.ts` (`urlDeMiniatura`, B-220) |
    | 8 | la página de mes `/agenda/{aaaa-mm}` | `src/lib/mesPublico.ts` |

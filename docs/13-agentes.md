@@ -33,13 +33,14 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las diez salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las doce salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
 | 🧩 | `campo-nuevo` | skill | Agregar un campo al modelo de punta a punta |
 | 🐞 | `al-backlog` | skill | Anotar un bug o una idea en el backlog, priorizado y con formato |
 | 🚀 | `que-deployar` | skill de usuario (`/que-deployar`) | Qué deployar, con qué comandos y qué verificar después |
+| ⏱ | `.claude/settings.json` + `scripts/hook-auditores.mjs` | hooks del repo | Disparan al `auditor-privacidad` **solos** cuando el diff toca una salida pública — ver [Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta) |
 
 ---
 
@@ -105,7 +106,7 @@ código.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **diez salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **doce salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
 para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
@@ -145,10 +146,17 @@ documento entero sin proyectar a propósito).
 > que ningún test fallaba — lo que faltaba era que **el índice del agente la
 > nombrara**, y su `description` no incluía el archivo, así que un cambio que
 > interpolara un campo nuevo en el posteo no lo invocaba. Lo encontró el
-> `auditor-documentacion` auditando el cambio que arregló las cinco salidas en
-> `07-seguridad.md` y se olvidó de espejarlo acá. Moraleja para la próxima salida
-> nueva: son **tres** lugares (el documento de seguridad, el cuerpo del agente y
-> su `description`), y el tercero es el que decide si el agente se entera.
+> `auditor-documentacion` auditando el cambio que arregló en `07-seguridad.md`
+> las **cinco** que había entonces, y se olvidó de espejarlo acá. Moraleja para
+> la próxima salida nueva: son **tres** lugares (el documento de seguridad, el
+> cuerpo del agente y su `description`), y el tercero es el que decide si el
+> agente se entera.
+>
+> (Esa frase dice «las cinco que había entonces» y no pega el número a la
+> palabra «salidas» a propósito: hay un chequeo que compara **toda** mención de
+> este archivo a un número de salidas contra la cuenta de hoy, y una nota
+> histórica no tiene que ponerlo en rojo. Es el `it` de B-124 en
+> `tests/agentes-y-skills.test.ts`.)
 
 **Cuándo se invoca.** Antes de cerrar cualquier cambio que toque una salida, el
 modelo, el schema, las reglas o el bundle. Su `description` nombra los archivos
@@ -165,7 +173,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las diez salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las doce salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -217,6 +225,23 @@ cambió. Eso es exactamente el hueco de B-63, y no lo puede cubrir un test.
 en `src/components/admin/AdminApp.tsx`. Quedó anotado como B-118: no se tocó
 B-56 porque el ítem no es de este bloque de trabajo.
 
+**Y tiene un barrido que no hace a ojo** (B-124): `node
+scripts/decisiones-referenciadas.mjs` lista las referencias `D-nnn` de `docs/`
+que **no tienen entrada** en `06-decisiones.md`. Vale la pena porque ese enlace
+roto no se ve roto — `06-decisiones.md#d-350` abre el documento igual, sin ancla
+y sin error, así que la decisión se lee como que existe.
+
+**No es un test bloqueante, y el motivo es la forma de trabajo de este repo:**
+citar una decisión antes de escribirla es legítimo y frecuente, porque los
+frentes en paralelo documentan su cambio en una rama y la entrada de
+`06-decisiones.md` la escribe otro. Un test así estaría rojo **mientras la tanda
+está abierta** —rojo por razones que no son el cambio de quien lo corre, o sea
+B-180— y se aprendería a saltear. El juicio de si una huérfana es una tanda en
+vuelo o una entrada que nadie escribió nunca es exactamente lo que un agente
+puede dar y un test no. Lo que sí tiene tests es la mitad que decide
+(`tests/decisiones-referenciadas.test.ts`), y `--estricto` existe para correrlo
+sobre `main` ya integrado.
+
 **Cuándo se invoca.** Antes de commitear o de abrir un PR, cuando alguien dice
 "listo", y cada tanto sobre el repo entero como barrido de mejora continua.
 
@@ -263,7 +288,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las diez salidas **antes** de escribir código, que
+arranca obligando a decidir las doce salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -306,6 +331,13 @@ segunda copia que se va a quedar vieja.
 Cierra B-115: hasta ahora nada invocaba a los auditores juntos, así que existían
 pero solo corrían si alguien se acordaba de los tres.
 
+**Desde B-124 este skill es el paso de los otros dos, no de los tres.** El
+`auditor-privacidad` ya corrió solo si el diff tocaba una salida pública, así que
+acá se lee su sello en vez de gastarlo de nuevo — pero si el diff **no** tocó
+ninguna salida, tampoco corrió, y entonces sigue siendo trabajo del skill
+decidir si hace falta. Los detalles están en
+[Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta).
+
 ### 🔁 `automatizar`
 
 La mejora continua, con una regla sola: **la segunda vez es la señal.** Busca lo
@@ -322,6 +354,115 @@ cada vez.
 Es la respuesta a la regla de que un bug no puede volver a aparecer —no el bug,
 **la idea del bug**—: cuando algo reaparece con otra cara, lo que falta no es el
 arreglo, es el detector.
+
+---
+
+## Cuándo corren, y cuánto cuesta
+
+**Decidido el 2026-09-03 (B-124, D-350), y es el intermedio que el propio ítem
+proponía:** el `auditor-privacidad` corre **solo** cuando el diff toca una
+salida pública; el `auditor-trampas` y el `auditor-documentacion` siguen yendo
+**antes del PR**, con el skill `antes-de-pushear`.
+
+| Auditor | Cuándo | Quién lo dispara | Modelo | Costo de una corrida |
+|---|---|---|---|---|
+| 🔒 `auditor-privacidad` | **solo**, en cuanto el diff sin commitear toca uno de los archivos de las doce salidas | los hooks de `.claude/settings.json` | **`opus`** | el caro — es el único con el modelo caro y es a propósito |
+| 🪤 `auditor-trampas` | antes del push o del PR | el skill `antes-de-pushear` | `sonnet` | barato |
+| 📚 `auditor-documentacion` | antes del push o del PR, **siempre** | el skill `antes-de-pushear` | `sonnet` | barato |
+
+**El argumento es de plata, y ese es el punto de la fila del medio.** Correr los
+tres en cada cierre son tres corridas por cambio y una es en `opus`; correrlos
+solo a pedido es cero costo hasta que alguien se olvida. Lo que hace que el
+intermedio funcione es que el caro se dispara **por el diff** y no por el reloj:
+en una tanda de trabajo sobre el panel, sobre los tests o sobre `docs/`, no
+corre ninguna vez. Los dos baratos se juntan en el paso que ya existía.
+
+Para revisar la decisión con números hay que mirar dos cosas: cuántas veces se
+disparó el de `opus` (una por contenido nuevo de una salida, no una por turno) y
+cuántos hallazgos trajo. La referencia de por qué vale la pena está en el
+BACKLOG: en el cierre de la `1.2.0` los tres auditores encontraron dieciséis
+bugs en tres pasadas, **dos de ellos P1 de privacidad**.
+
+### El disparo automático, pieza por pieza
+
+Un hook de git no puede invocar un modelo (es la mitad del corte de
+`antes-de-pushear`), así que la pieza que sí puede son los **hooks de Claude
+Code**, en `.claude/settings.json` — el del repo, así que viaja con el checkout
+y lo comparte el equipo.
+
+| Momento | Evento del hook | Qué hace |
+|---|---|---|
+| El modelo termina el turno | `Stop` | Si el diff sin commitear toca una salida y no pasó por el auditor, **avisa** — una sola vez por contenido |
+| El modelo va a commitear | `PreToolUse` sobre `Bash` | **Frena** el `git commit` con el mismo mensaje |
+| El auditor termina | `PostToolUse` sobre el tool de sub-agentes | **Sella** la huella de lo auditado |
+
+Los tres llaman al mismo archivo, `scripts/hook-auditores.mjs`, con un modo
+distinto. El corte es el de `relevar-infra.sh` / `comparar-infra.sh`:
+
+- **`scripts/auditores-que-corresponden.mjs` decide** y no toca nada del
+  entorno: recibe la lista de rutas por stdin y contesta qué auditores
+  corresponden. Se testea sin git y sin estado
+  (`tests/auditores-que-corresponden.test.ts`).
+- **`scripts/hook-auditores.mjs` es la plomería**: git, el sello y el código de
+  salida del hook.
+
+**La lista de archivos que disparan al auditor no está escrita en ninguno de los
+dos.** Se **deriva del `description` de cada agente**, que es el lugar donde ya
+estaba escrita y el que decide si Claude lo invoca por nombre de archivo.
+Copiarla al script habría creado un tercer lugar que envejece sin que nada
+falle — la clase de B-88, y lo mismo que B-216 vino a cerrar para la cuenta de
+salidas. Consecuencia buscada: **una salida nueva se suma a la ficha y entra
+sola al disparador.**
+
+El `auditor-documentacion` es la excepción declarada: corre siempre, y eso no se
+puede derivar de ninguna lista porque su disparador es el cambio y no el
+archivo. Está escrito como tal en el script, con el motivo al lado.
+
+**Por qué el `PreToolUse` del commit y no solo el `Stop`.** Después del commit el
+árbol queda limpio, así que el `Stop` deja de ver el cambio: sin el hook del
+commit, alcanzaría con commitear rápido para que el gate no existiera nunca.
+
+**Por qué NO va en GitHub Actions**, que era la tercera opción del ítem: el job
+tendría que invocar un modelo, o sea una API key de Anthropic como secreto de CI
+sobre un repo público, y un costo por corrida que nadie mira. El §5.4 ya dice
+que las credenciales son del dueño; sumar una más para automatizar lo que un
+hook local hace gratis es el intercambio al revés. Queda anotado para el día que
+haya varias personas empujando al repo, que es cuando el gate local deja de
+alcanzar.
+
+### El modo de falla que este gate no puede tener
+
+**«Un gate que falla por su propia plomería enseña a saltearlo»** — es la lección
+de B-180, y es la razón de cada una de estas cuatro reglas:
+
+1. **Cualquier excepción sale con 0.** Un `git` que no está, un repo sin HEAD, un
+   JSON ilegible: el hook no dice nada y no frena nada. Deja pasar un cambio sin
+   auditar antes que ponerse rojo por sí mismo.
+2. **El alcance es lo no commiteado**, nunca el diff de la rama. Con la rama
+   entera, una rama larga hace que el hook grite por el cambio de otra persona —
+   literalmente rojo por razones que no son de quien lo disparó.
+3. **El aviso del `Stop` es una sola vez por contenido.** Un hook que repite el
+   mismo aviso en cada turno se aprende a ignorar en tres turnos. La huella es el
+   contenido de los archivos de salida que el cambio toca, así que si esos
+   archivos cambian de nuevo, el aviso vuelve; si no, no.
+4. **Siempre dice por qué**: qué archivo lo disparó, qué correr, y cómo saltearlo
+   a propósito — `SALTEAR_AUDITORES=1 git commit …`, igual que
+   `SALTEAR_PRE_PUSH=1 git push`. Saltear tiene que ser una decisión escrita y no
+   un forcejeo.
+
+**Cuándo empieza a andar.** Claude Code lee `.claude/settings.json` al arrancar
+la sesión, y el vigilante de cambios solo mira los directorios que **ya tenían**
+un archivo de settings cuando la sesión empezó. Este archivo es nuevo, así que en
+una sesión que ya estaba abierta cuando se hizo el `git pull` **no se carga**:
+hay que abrir `/hooks` una vez (recarga la config) o reiniciar. Vale la pena
+saberlo porque el síntoma es el peor de todos — el hook simplemente no hace nada,
+sin ningún error. Se confirma en `/hooks`, que los lista.
+
+**Cómo se apaga.** Como cualquier hook: sacando el bloque de
+`.claude/settings.json`, o con `disableAllHooks` en la configuración personal.
+El sello vive en `<git-dir>/auditores.json`, o sea fuera del árbol de trabajo:
+no necesita entrada en `.gitignore` y es **por worktree**, que es lo correcto —
+seis frentes en paralelo no comparten qué se auditó.
 
 ---
 
@@ -380,6 +521,15 @@ arreglo, es el detector.
 | Que los workflows de Actions parseen y tengan los triggers que el §8 necesita | `workflows.test.ts` (trampa 11, B-188): parsea en modo estricto, exige `name` y al menos un trigger, y ata el `event_type` que manda la Function con el `repository_dispatch` del workflow. Mira `doc.errors` y no el objeto parseado, porque el parser se recupera del error y devolvería `name` y `on` sobre un archivo que en GitHub no funciona |
 | Que ningún `run:` de un workflow interpole datos que no controlamos, y que el motivo del rebuild sea opaco | `workflows.test.ts` y `costuras.test.ts` (B-195). El segundo es una propiedad y no una lista: ninguna interpolación del motivo puede tener un punto, porque no hay forma de alcanzar un campo del documento sin un acceso a propiedad |
 | Que `02-infraestructura.md` y `07-seguridad.md` declaren los mismos roles de `deploy-ci@`, y que `07-seguridad.md` **no** afirme que el daño se limita a leer mientras la lista tenga un rol de escritura | `roles-deploy-ci.test.ts` (B-195, D-119, D-132). El drift entre las dos listas es cómo una afirmación de seguridad estuvo mintiendo una hora. El segundo chequeo lo agregó D-132, que le devolvió a la cuenta los roles de escritura: lo que queda prohibido no es tenerlos, es tenerlos y seguir diciendo que no |
+| Que **esta misma tabla** se rompa por un merge: dos filas pegadas en una línea física detrás de un `\|\|`, o una celda de la primera columna repetida con dos versiones que se contradicen | `red-de-contencion.test.ts` (B-367, la cicatriz de B-294). Pasó de verdad el 2026-09-02: catorce filas terminaron siendo once, con una triplicada y otra fusionada. Una fila fusionada **no renderiza como fila** —media fila deja de leerse— y una triplicada afirma, dos de cada tres veces, una cobertura vieja. Justo esta tabla es la que `auditor-trampas` y `auditor-privacidad` consultan para no reportar lo que un test ya frena, así que una copia rota les hace reportar de más o de menos |
+| Que un test **importe** (ejecute) un módulo de `functions/` que arrastre `firebase-functions`, y por eso pase en local y falle solo en CI | `tests-no-importan-triggers.test.ts` (B-561). `firebase-functions` vive en `functions/package.json`: en la máquina de desarrollo `functions/node_modules` existe y el import resuelve, en CI el `npm ci` es solo de la raíz y Vite muere. Verde local, rojo CI — de los peores de diagnosticar. La regla ya existía de hecho (los tests leen el trigger como **texto**, o importan el módulo puro de al lado) y nada la hacía cumplir. La lista de módulos prohibidos **se computa sola** del fuente: un trigger nuevo entra sin tocar el test |
+| Que el sitio público contacte a un tercero —`preconnect`, `script`, `iframe`— **antes** de que la persona decida sobre las cookies | `terceros-antes-del-consentimiento.test.ts` (D-254). Lee el `dist/` de un build real y exige lista blanca con motivo para todo host absoluto. El hallazgo original fue un `preconnect` a `googletagmanager.com` sin condición: no es una pista pasiva —el navegador resuelve DNS, abre TCP y completa el handshake TLS con SNI en el load— así que le avisaba al borde de Google incluso de quien **rechaza**, contradiciendo la promesa de D-250. Lo encontró el coordinador con un `grep` a mano, que es exactamente lo que no da garantía la próxima vez |
+| Que un `describe` del barrido de salidas se atribuya el número de **otra** salida | `agentes-y-skills.test.ts` (**B-600**). Cada `describe` de `barrido-de-salidas-publicas.test.ts` se **titula** con su número («§5, salida 9») y ese número no estaba atado a nada, así que un rótulo equivocado no hacía fallar ningún `it`: los tres del describe siguen probando lo que prueban. Pasó de verdad —el barrido del tríptico nació rotulado «salida 12», que ya era la analítica del sitio— y el daño es del índice: quien grepee «salida 12» para saber qué cubre ese barrido encuentra la cosa equivocada. Ahora el rótulo se compara contra la fila del índice, por vocabulario propio de la fila |
+| Que la aritmética de días del sitio se rompa el **29 de febrero** | `fechasPublicas.test.ts` (**B-600**, lo pidió el `auditor-trampas`). Hoy lo resuelve `setUTCDate` nativo y no hay nada que se pueda olvidar; el caso queda como **red permanente** contra una reescritura de `anclaDeDia`/`diaDesplazado` que deje de apoyarse en él y vuelva a la resta a mano. Cubre las tres direcciones del borde (28→29, 29→1 de marzo, y 1 de marzo→29) |
+| Que el salto al **finde siguiente** se rompa cruzando el año, y no solo el mes | `ahoraPublico.test.ts` (**B-600**, ídem). El panel del finde suma siete días, y el único caso que ejercitaba el cruce estaba a nivel de `diaDesplazado` y no de `ventanasDeAhora`, que es donde se decide qué finde se muestra. La semana del 27 de diciembre lo prueba de punta a punta: los dos primeros paneles quedan en 2026 y el tercero en enero del año siguiente |
+| Que el **disparo automático** del `auditor-privacidad` deje de ver una salida, o se prenda con lo que no es una | `auditores-que-corresponden.test.ts` (**B-124**, D-350): las dos direcciones, con el ancla en la tabla numerada de `07-seguridad.md` para que no se satisfaga sola. **Un auditor no tiene que revisar esto** — pero sí sigue siendo criterio suyo que una salida nueva entre a la ficha, que es el punto 7 de su propio contrato |
+| Que los hooks que disparan al auditor queden cableados a la nada | `red-de-contencion.test.ts` (**B-124**). Los tres modos de falla dejan el repo en verde: un `.claude/settings.json` con JSON inválido **descarta el archivo entero**, un script renombrado sale con 0 por la propia regla anti-B-180, y un modo mal escrito no verifica nada. Se atan las dos puntas — los modos que el `settings.json` invoca tienen que existir en el script, y al revés |
+| Que el barrido de decisiones citadas **lea mal** el registro — que tome cualquier mención de `D-nnn` como una entrada escrita, o que ordene `D-9` después de `D-100` | `decisiones-referenciadas.test.ts` (**B-124**). Es la mitad que decide de `scripts/decisiones-referenciadas.mjs`, y sí es un test porque es pura. Lo que **no** se testea, a propósito, es que hoy no haya ninguna huérfana: citar una decisión antes de escribirla es legítimo con frentes en paralelo, así que ese aserto estaría rojo mientras una tanda está abierta (B-180). Ese juicio es del `auditor-documentacion` |
 
 ### Porque un agente no es la herramienta
 
@@ -427,10 +577,10 @@ El flujo de un cambio típico:
 
 ```
 pedido → (campo-nuevo, si toca el modelo) → implementar
-       → auditor-trampas        ─┐
-       → auditor-privacidad     ─┤ en paralelo, son de solo lectura
-       → auditor-documentacion  ─┘
+       → auditor-privacidad ← lo dispara el hook, si el diff tocó una salida
        → cerrar-cambio (doc, CHANGELOG, ayuda, novedades, backlog)
+       → antes-de-pushear ─┬→ auditor-trampas       ─┐ en paralelo,
+                           └→ auditor-documentacion ─┘ son de solo lectura
        → /que-deployar → commit y push
 ```
 
@@ -438,5 +588,13 @@ Los tres auditores no se pisan: cada uno deriva al otro cuando algo no es suyo.
 Y ninguno reemplaza a `npm test` — corren **además**, sobre lo que la suite no
 puede ver.
 
-Lo que falta para que esto se sostenga solo (hoy hay que invocarlos a mano) está
-en el [`BACKLOG.md`](BACKLOG.md), B-115 a B-124.
+**El primero de los tres ya no depende de que alguien se acuerde** (B-124,
+D-350): lo despiertan los hooks del repo en cuanto el diff toca uno de los
+archivos de las doce salidas, y frenan el `git commit` si todavía no pasó. Los
+otros dos siguen entrando por `antes-de-pushear`, que es el paso previo al PR.
+El detalle —qué corre cuándo, con qué modelo, y las cuatro reglas que impiden
+que el gate se ponga rojo por su propia plomería— está en
+[Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta).
+
+Lo que queda abierto de este bloque está en el [`BACKLOG.md`](BACKLOG.md),
+B-115 a B-124.

@@ -60,6 +60,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'listado-en-grilla',
+    fecha: '2026-09-03',
+    version: '1.9.0',
+    titulo: 'El listado ahora usa toda la pantalla, con las actividades en tarjetas',
+    detalle:
+      'Antes las actividades salían una debajo de la otra en una columna angosta, así que en una ' +
+      'computadora se veían seis y había que bajar mucho. Ahora se acomodan en tarjetas, de dos a ' +
+      'cuatro por fila según lo ancha que sea la pantalla. En el teléfono se ve igual que antes. Y ' +
+      'cada tarjeta dice dos cosas nuevas: si es presencial o virtual, y el arancel — que se podían ' +
+      'filtrar pero después no se veían.',
+    donde: 'La pantalla de Actividades, la primera que se abre.',
+  },
+  {
     id: 'motivo-al-fallar-una-imagen',
     fecha: '2026-09-03',
     version: '1.8.0',

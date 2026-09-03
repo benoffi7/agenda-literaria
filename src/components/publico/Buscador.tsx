@@ -71,6 +71,8 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
+import { PanelesDeAhora } from '@/components/publico/PanelesDeAhora';
+import { panelesDeAhora } from '@/lib/ahoraPublico';
 import { useCapaModal } from '@/lib/capaModal';
 import { nombreDeMes } from '@/lib/fechasPublicas';
 import { medirSitio } from '@/lib/medicionSitio';
@@ -112,6 +114,17 @@ interface Props {
    * cuando esta island toma el control, para no tener las filas dos veces.
    */
   idListadoEstatico: string;
+  /**
+   * Lo mismo para el tríptico de «¿Qué hay ahora?» (B-600), que el build
+   * también imprime y que esta island vuelve a pintar con el reloj de quien
+   * mira.
+   *
+   * Va como prop y no como un id cableado acá por lo mismo que el del listado:
+   * el `id` lo pone la plantilla que lo renderiza, y un literal repetido en los
+   * dos archivos se desincroniza sin que nada falle — el bloque del build
+   * quedaría en la página y habría dos trípticos.
+   */
+  idPanelesEstaticos: string;
 }
 
 type Carga = { estado: 'cargando' } | { estado: 'listo'; indice: Indice } | { estado: 'error' };
@@ -140,7 +153,7 @@ function Flecha() {
   );
 }
 
-export function Buscador({ version, idListadoEstatico }: Props) {
+export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Props) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
   const [filtros, setFiltros] = useState<FiltrosPublicos>(filtrosVacios);
   const [orden, setOrden] = useState<OrdenPublico>(ORDEN_PUBLICO_POR_DEFECTO);
@@ -184,9 +197,11 @@ export function Buscador({ version, idListadoEstatico }: Props) {
       .then((indice) => {
         if (!vigente) return;
         setCarga({ estado: 'listo', indice });
-        // Recién acá se saca la lista del build: si se sacara antes, un fetch
-        // que falla dejaría la página sin contenido.
+        // Recién acá se sacan los dos bloques del build —la lista y el tríptico
+        // de «¿qué hay ahora?»—: si se sacaran antes, un fetch que falla dejaría
+        // la página sin contenido.
         document.getElementById(idListadoEstatico)?.remove();
+        document.getElementById(idPanelesEstaticos)?.remove();
       })
       .catch(() => {
         if (vigente) setCarga({ estado: 'error' });
@@ -194,7 +209,7 @@ export function Buscador({ version, idListadoEstatico }: Props) {
     return () => {
       vigente = false;
     };
-  }, [version, idListadoEstatico]);
+  }, [version, idListadoEstatico, idPanelesEstaticos]);
 
   /**
    * Los filtros y el orden **vigentes**, en un ref — B-238, hallazgo del
@@ -326,6 +341,25 @@ export function Buscador({ version, idListadoEstatico }: Props) {
     [indice, entradas, filtros, orden, ahora],
   );
 
+  /**
+   * El tríptico de «¿Qué hay ahora?» — B-600.
+   *
+   * **No mira `filtros`, y eso es la decisión.** El tríptico contesta una
+   * pregunta fija —«¿qué hay hoy?»— y filtrarlo la cambiaría a «¿qué hay hoy
+   * entre lo que filtraste», que es lo que el listado de abajo ya contesta. Un
+   * panel que dice «Hoy» y esconde media programación porque quedó puesto un
+   * chip de barrio miente con el rótulo puesto; y con dos filtros combinados el
+   * tríptico quedaría vacío justo cuando más orienta.
+   *
+   * Depende de `ahora`, que es el reloj **del cliente**: es lo que hace que el
+   * rótulo «Hoy» sea cierto aunque el HTML lo haya armado un build de hace tres
+   * días (el mismo argumento de B-111 con `cierraEn`).
+   */
+  const programacion = useMemo(
+    () => (indice ? panelesDeAhora(indice, ahora, etiquetas) : null),
+    [indice, ahora, etiquetas],
+  );
+
   const meses = useMemo(() => mesesConActividad(entradas), [entradas]);
   const puestos = cantidadDeFiltrosPublicos(filtros);
   const sobra = useMemo(
@@ -426,7 +460,22 @@ export function Buscador({ version, idListadoEstatico }: Props) {
   const deshabilitado = carga.estado !== 'listo';
 
   return (
-    <div className="lg:grid lg:grid-cols-[var(--spacing-riel)_minmax(0,1fr)] lg:items-start lg:gap-x-10">
+    /*
+      El tríptico va **arriba de la grilla y a todo el ancho**, no adentro de la
+      columna de contenido: no es un resultado del filtrado —no lo toca ningún
+      filtro— sino la banda de programación inmediata de la página. Adentro de la
+      columna se leería como el primer resultado, y en el teléfono empujaría el
+      listado abajo del pliegue después de los filtros.
+
+      El fragmento existe por eso: la raíz de la island era la grilla (ver el
+      docblock de arriba) y ahora la grilla es una de sus dos hijas.
+    */
+    <>
+      {programacion && (
+        <PanelesDeAhora programacion={programacion} tonos={tonos} id={`${id}-ahora`} />
+      )}
+
+      <div className="lg:grid lg:grid-cols-[var(--spacing-riel)_minmax(0,1fr)] lg:items-start lg:gap-x-10">
       {/* ══ El riel: el índice del programa ═══════════════════════════════ */}
       {/*
         `lg:sticky` con el `top` en `--spacing-encabezado`, que es **el mismo
@@ -740,7 +789,8 @@ export function Buscador({ version, idListadoEstatico }: Props) {
             )}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -39,6 +39,13 @@ import { AA_TEXTO, contraste, mezclar, oklchASrgb, type Srgb } from '@/lib/contr
  * 4. **La accesibilidad del markup**, que el rediseño no puede haber perdido.
  * 5. **Qué campos de la entrada toca la fila.**
  * 6. **La grilla de 12 columnas y el marcador de mes.**
+ * 7. **El tríptico de «¿Qué hay ahora?»** (B-600) — que no decida ninguna frase
+ *    ni formatee ninguna fecha, y que la island saque del DOM los **dos** bloques
+ *    que imprimió el build.
+ *
+ * Las partes 1 a 5 barren `src/components/publico/*.tsx` **entero**, así que un
+ * componente nuevo de esa carpeta cae bajo esas reglas sin agregar una línea acá.
+ * Lo que sí hay que escribir es lo propio de la sección nueva, que es la parte 7.
  *
  * Los colores salen de `global.css`, no se copian acá: si mañana se aclara una
  * tinta, el chequeo se entera. Es lo mismo que hace B-235 y por el mismo motivo.
@@ -776,5 +783,240 @@ describe('la estructura del listado — D-146', () => {
     // listado con distinto ritmo vertical.
     const veces = (lista().match(/regla-gruesa-arriba/g) ?? []).length;
     expect(veces, 'la regla que abre la lista se escribe una sola vez').toBe(1);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// 7 · El tríptico de «¿Qué hay ahora?» — B-600
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * El tríptico entra en este archivo **por estar donde está**: el barrido de las
+ * secciones 1 a 5 recorre `src/components/publico/*.tsx` entero, así que
+ * `PanelesDeAhora.tsx` ya cae bajo la regla de tintas, la de las opacidades, la
+ * del `onClick`, la del anillo de foco y la de «ningún otro componente abre la
+ * entrada» — sin agregar una línea. Lo de abajo es lo **propio** de esta sección,
+ * que esas reglas genéricas no dicen.
+ *
+ * Las dos cosas que puede romper, y ninguna deja el build en rojo:
+ *
+ * 1. **Que el componente empiece a decidir.** Una fecha formateada o una frase
+ *    escrita acá adentro no la verifica nada: los componentes de este repo no
+ *    tienen tests de render (`docs/05-patrones.md`). Y acá lo que se decidiría es
+ *    aritmética de calendario en una zona con offset, que es la trampa 1.
+ * 2. **Que queden dos trípticos en la página.** El build imprime el suyo y la
+ *    island monta el suyo: si el efecto del fetch no saca el del build, la home
+ *    muestra la misma sección dos veces, una con el reloj de hace tres días.
+ */
+describe('el tríptico de «¿qué hay ahora?» no decide nada — B-600', () => {
+  const paneles = () =>
+    sinComentarios(readFileSync(raiz('src/components/publico/PanelesDeAhora.tsx'), 'utf8'));
+  const modulo = () => readFileSync(raiz('src/lib/ahoraPublico.ts'), 'utf8');
+
+  it('no formatea una sola fecha: ni `Intl`, ni `toLocale*`, ni `new Date`', () => {
+    /*
+     * **Es la trampa 1 puesta donde nada la mira.** Todo el sitio formatea con
+     * `timeZone` explícito a través de `lib/fechasPublicas.ts`; un `Intl` suelto
+     * acá adentro formatearía con la zona de quien mira y diría «00:30» de un
+     * encuentro de las 21:30, en la portada de la home.
+     *
+     * MUTACIÓN PROBADA: agregar `new Intl.DateTimeFormat('es-AR').format(...)` al
+     * componente deja este caso en rojo.
+     */
+    const src = paneles();
+    expect(src, 'el formateo de fechas vive en `lib/fechasPublicas.ts`').not.toMatch(/\bIntl\b/);
+    expect(src, 'idem: `toLocaleString` no lleva la zona del proyecto').not.toMatch(/toLocale/);
+    expect(src, 'el componente recibe strings ya resueltos, no instantes').not.toMatch(
+      /new Date\b/,
+    );
+    // Y nada de aritmética de calendario: es lo que `claveDeDia`/`diaDeSemana`
+    // existen para que nadie escriba dos veces.
+    expect(src).not.toMatch(/\.get(UTC)?(Date|Day|Month|Hours)\(/);
+  });
+
+  it('ni decide una sola frase: los rótulos y los textos vienen del módulo', () => {
+    /*
+     * `Hoy`, `Mañana`, `Este finde`, «Por hoy no queda nada» y «+2 más hoy» son
+     * **texto de producto** y viven juntos en `lib/ahoraPublico.ts`, que es puro y
+     * está testeado: es lo que permite verificar que a las once de la noche el
+     * panel diga «por hoy no queda nada» y no «hoy no hay nada» — las dos frases
+     * describen el mismo panel vacío y solo una es cierta.
+     *
+     * Lo único escrito en el markup es el rótulo de la **sección**, que no
+     * depende de ningún reloj.
+     */
+    const src = paneles();
+    for (const frase of [/['"]Hoy['"]/, /Mañana/, /finde/i, /más hoy/, /queda nada/]) {
+      expect(src, `«${frase}» tiene que salir de \`FRASES\` o del rótulo de la ventana`).not.toMatch(
+        frase,
+      );
+    }
+    // Control positivo: las frases existen, y están allá.
+    expect(modulo()).toContain('Por hoy no queda nada.');
+    expect(modulo()).toContain('El finde que viene');
+    expect(paneles(), 'el rótulo de la sección sí es del markup').toContain('¿Qué hay ahora?');
+  });
+
+  it('el tope de filas es el del módulo, no un número escrito en el markup', () => {
+    // Un `slice(0, 4)` acá adentro sería un segundo tope, y el pie «+2 más hoy»
+    // —que lo cuenta el módulo— empezaría a no coincidir con las filas dibujadas.
+    expect(paneles()).not.toMatch(/\.slice\(/);
+    expect(modulo()).toContain('export const TOPE_DEL_PANEL');
+  });
+
+  it('el «+N más» no es un enlace: el día no es una URL de este sitio', () => {
+    /*
+     * §2.3 decide qué es página y qué es filtro, y el día no está en ninguna de
+     * las dos listas: no hay «ver el cronograma de hoy» al que mandar. Lo que sí
+     * hay es el listado completo, en esta misma página. Ver D-320.
+     *
+     * MUTACIÓN PROBADA: envolver `{panel.resto}` en un `<a>` deja este caso en
+     * rojo, y es el atajo que decide de paso una decena de URLs indexables en el
+     * pie de un panel.
+     */
+    const src = paneles();
+    const pie = src.match(/panel\.resto &&[\s\S]*?\)\}/);
+    expect(pie, 'no se encontró el pie del panel en el markup').not.toBeNull();
+    expect(pie![0], 'el resto es texto, no un link').not.toMatch(/<a\b|href=/);
+  });
+
+  it('el único enlace de la fila es la actividad entera, sin botones adentro', () => {
+    // §4.2 — en móvil un botón dentro de un link es un blanco ambiguo. Es la
+    // misma regla que ya cumple `FilaDeActividad`.
+    const src = paneles();
+    expect(src).not.toMatch(/<button/);
+    expect((src.match(/<a\b/g) ?? []).length, 'una sola ancla: la fila').toBe(1);
+  });
+});
+
+describe('un solo markup del tríptico, dos relojes — B-600', () => {
+  const buscador = () =>
+    sinComentarios(readFileSync(raiz('src/components/publico/Buscador.tsx'), 'utf8'));
+  const home = () => sinComentarios(readFileSync(raiz('src/pages/index.astro'), 'utf8'));
+
+  it('el build y la island renderizan el MISMO componente', () => {
+    /*
+     * La regla del §6.3, que acá pesa más que en el listado: el rótulo «Hoy» del
+     * build envejece de un día para el otro sin que cambie ningún dato, así que
+     * la island lo recalcula con el reloj de quien mira. Dos markups serían dos
+     * maneras de que uno quede viejo (la clase de B-88).
+     */
+    expect(home()).toMatch(/import \{ PanelesDeAhora \}/);
+    expect(buscador()).toMatch(/import \{ PanelesDeAhora \}/);
+    // Y las dos llaman al mismo módulo puro para armar los paneles.
+    expect(home()).toMatch(/panelesDeAhora\(/);
+    expect(buscador()).toMatch(/panelesDeAhora\(/);
+  });
+
+  it('la island saca del DOM los DOS bloques del build, y recién con el índice', () => {
+    /*
+     * Si se sacaran antes del `then`, un fetch que falla dejaría la página sin
+     * contenido; si no se sacara el del tríptico, la home mostraría la sección dos
+     * veces —una con el reloj del build— justo arriba del buscador.
+     *
+     * MUTACIÓN PROBADA: borrar la línea del tríptico deja este caso en rojo, y es
+     * el olvido natural al agregar un segundo bloque estático a un efecto que ya
+     * sacaba uno.
+     */
+    const src = buscador();
+    expect(src).toMatch(/document\.getElementById\(idListadoEstatico\)\?\.remove\(\)/);
+    expect(src).toMatch(/document\.getElementById\(idPanelesEstaticos\)\?\.remove\(\)/);
+
+    // Los dos `remove` van adentro del `.then(...)` del fetch, después del
+    // `setCarga({ estado: 'listo' ... })`.
+    const then = src.match(/\.then\(\(indice\) => \{[\s\S]*?\}\)\s*\.catch/);
+    expect(then, 'no se encontró el `then` del fetch del índice').not.toBeNull();
+    expect(then![0]).toContain('idListadoEstatico');
+    expect(then![0]).toContain('idPanelesEstaticos');
+
+    // Y los dos ids están en las dependencias del efecto: sin eso, cambiar el id
+    // no volvería a correr la limpieza.
+    expect(src).toMatch(/\[version, idListadoEstatico, idPanelesEstaticos\]/);
+  });
+
+  it('los ids los pone la plantilla y viajan como prop, no cableados en el .tsx', () => {
+    /*
+     * Un literal repetido en los dos archivos se desincroniza sin que nada falle:
+     * el bloque del build se queda en la página y hay dos trípticos. Es el mismo
+     * motivo por el que `idListadoEstatico` ya era una prop.
+     */
+    const h = home();
+    expect(h).toMatch(/const ID_PANELES = '[a-z-]+';/);
+    expect(h).toMatch(/id=\{ID_PANELES\}/);
+    expect(h).toMatch(/idPanelesEstaticos=\{ID_PANELES\}/);
+    // Los dos ids son distintos: con el mismo, el primer `remove` se llevaría el
+    // otro bloque y el segundo no encontraría nada.
+    const ids = [...h.matchAll(/const ID_(LISTADO|PANELES) = '([a-z-]+)';/g)].map((m) => m[2]!);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size, 'los dos bloques del build comparten `id`').toBe(2);
+    // Y el componente no conoce ningún id de la plantilla.
+    expect(
+      sinComentarios(readFileSync(raiz('src/components/publico/PanelesDeAhora.tsx'), 'utf8')),
+    ).not.toMatch(/del-build/);
+  });
+
+  it('el tríptico NO mira los filtros: contesta una pregunta fija', () => {
+    /*
+     * **La decisión de B-600.** Filtrarlo cambiaría la pregunta a «¿qué hay hoy
+     * entre lo que filtraste?», que es lo que el listado de abajo ya contesta. Un
+     * panel que dice «Hoy» y esconde media programación porque quedó puesto un
+     * chip de barrio miente con el rótulo puesto; y con dos filtros combinados el
+     * tríptico quedaría vacío justo cuando más orienta.
+     *
+     * MUTACIÓN PROBADA: pasarle `entradas` filtradas en vez de `indice` —o sumar
+     * `filtros` a las dependencias— deja este caso en rojo.
+     */
+    const memo = buscador().match(/const programacion = useMemo\([\s\S]*?\);/);
+    expect(memo, 'no se encontró el memo de la programación').not.toBeNull();
+    expect(memo![0], 'el tríptico no se filtra').not.toMatch(/\bfiltros\b|\borden\b|\bvisibles\b/);
+    // Sí depende del reloj del cliente, que es lo que hace cierto el rótulo «Hoy».
+    expect(memo![0]).toMatch(/\bahora\b/);
+    expect(memo![0]).toMatch(/panelesDeAhora\(indice, ahora, etiquetas\)/);
+  });
+
+  it('el reloj del build sale del mismo parser que el sello, no de un `new Date()` pelado', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre B-600, y es la clase de B-88.** El
+     * mismo string —`indice.generadoEn`— se parseaba de dos maneras, con políticas
+     * de falla **opuestas**:
+     *
+     * - `selloDelIndice` usa `instanteDeIso` y se defiende, con el motivo escrito
+     *   en su docblock y repetido en `docs/12-sitio-publico.md`: «sin sello se
+     *   pierde una línea de contexto, con una excepción se pierde la página».
+     * - `index.astro` lo parseaba con `new Date()` pelado y le pasaba el resultado
+     *   a `panelesDeAhora`. Con un `generadoEn` ilegible, `ahora` era `Invalid
+     *   Date`, y de ahí a `claveDeDia` → `Intl.format(Invalid Date)` → `RangeError`:
+     *   **el build de la home se caía antes de que corriera la guarda del sello**.
+     *
+     * O sea que la garantía documentada valía para el camino de la island —donde
+     * `ahora` es el reloj del cliente— y no para el del build, que es justo el que
+     * la frase describe.
+     *
+     * MUTACIÓN PROBADA: volver a `new Date(indice.generadoEn)` deja este caso en
+     * rojo.
+     */
+    const h = home();
+    expect(h, 'el reloj del build tiene que pasar por el mismo parser que el sello').toMatch(
+      /const ahora = instanteDeIso\(indice\.generadoEn\) \?\? new Date\(\);/,
+    );
+    expect(h, 'y no quedar un `new Date(generadoEn)` sin guarda en el frontmatter').not.toMatch(
+      /new Date\(indice\.generadoEn\)/,
+    );
+  });
+
+  it('y el bloque del build vive adentro del ancla de «Saltar al listado»', () => {
+    /*
+     * El `id="listado"` es el destino del link de salto, y la island monta su
+     * tríptico como primera hija de su propio árbol: con el bloque del build
+     * afuera del ancla, el salto caería en un lugar distinto antes y después de
+     * hidratar — un link de accesibilidad que cambia de destino al hidratar, en la
+     * página que más se usa.
+     */
+    const h = home();
+    const ancla = h.match(/<div id="listado"[\s\S]*?<Buscador/);
+    expect(ancla, 'no se encontró el ancla del listado con el buscador adentro').not.toBeNull();
+    expect(ancla![0], 'el tríptico del build va adentro del ancla y arriba del buscador').toContain(
+      'ID_PANELES',
+    );
   });
 });

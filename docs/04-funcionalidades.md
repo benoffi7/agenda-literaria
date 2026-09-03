@@ -15,22 +15,55 @@ formas: la pantalla solo evita mostrar un panel inútil.
 ### Listado
 
 Búsqueda por `searchText`, que ignora acentos y mayúsculas (§6) — la misma
-normalización que va a usar el sitio público. Cada fila muestra tipo, cantidad de
-encuentros, barrio y un badge de estado.
+normalización que va a usar el sitio público.
 
-Cada fila dice además cuándo es su próximo encuentro y lleva hasta dos marcas
-más: **«Cupo completo»** (B-97) y **«Sin flyer»** (B-264), esta última solo en las
-**publicadas** que no tienen imagen — una publicada sin flyer ya está afuera de la
-cartelera, un borrador todavía no. Y, **si la cargó la otra cuenta, lo marca**
-(B-130). Lo propio no lleva marca: si todo lleva marca, la
-marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
-hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
-para saber quién; con tres deja de alcanzar y ahí hay que guardar el mail
-(B-179).
+**Es una grilla de tarjetas y no una lista de filas** (B-620). Una columna
+en el teléfono; de `md` en adelante se abren columnas, y son **2 / 3 / 4** en
+`md`-`lg` / `xl` / `2xl`. Antes era una columna angosta en cualquier pantalla, así
+que en un monitor de 1920px el panel mostraba seis actividades y había que
+scrollear veinte veces para ver cuarenta — que es justo lo que un listado existe
+para evitar. El ancho del panel también pasó a decidirse **por vista**: solo el
+listado usa la pantalla completa, el formulario y las demás pantallas se quedan en
+el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
+calendario y el tablero quedaron angostos a propósito— está en el docblock de
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts) y la decisión completa en
+**D-330** ([`06-decisiones.md`](06-decisiones.md)).
 
-Acciones por fila: **Editar** como botón, y un menú "⋯" con **Duplicar**,
+Cada tarjeta dice, de arriba abajo: el **badge de estado** con las marcas al lado,
+el **título** (hasta dos renglones, no cortado con puntos suspensivos), **tipo y
+cantidad de encuentros**, **modalidad y barrio**, el **arancel** —con el acento
+cuando no se paga, el mismo criterio que la fila del sitio— y, al pie, **cuándo es
+su próximo encuentro**.
+
+**La modalidad y el arancel son nuevos de B-620**, y no son un adorno: los dos
+eran ejes de filtro y no aparecían en el resultado, o sea que se podía filtrar por
+«Gratis» y después no ver cuál de las tarjetas era la gratuita. La modalidad es la
+**resultante** de las filas de «Dónde» (B-224), la misma derivación que usa el
+`events.json`: con una fila presencial y otra virtual dice «Presencial y virtual».
+
+Las marcas son hasta dos: **«Cupo completo»** (B-97) y **«Sin flyer»** (B-264),
+esta última solo en las **publicadas** que no tienen imagen — una publicada sin
+flyer ya está afuera de la cartelera, un borrador todavía no. Y, **si la cargó la
+otra cuenta, lo marca** (B-130), en su propio renglón y en la tinta más apagada:
+dice de quién es, no algo que haya que atender. Lo propio no lleva marca: si todo
+lleva marca, la marca deja de avisar. No se muestra un nombre porque `createdBy`
+es un uid y no hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra
+cuenta" alcanza para saber quién; con tres deja de alcanzar y ahí hay que guardar
+el mail (B-179).
+
+**Qué dice cada tarjeta se decide afuera del componente**, en
+[`src/lib/tarjetaDelPanel.ts`](../src/lib/tarjetaDelPanel.ts), puro y con sus
+tests — el mismo corte que `tarjetaPublica.ts` hace del otro lado y por el mismo
+motivo (§05, «Lógica pura separada de la infraestructura»). El chequeo de clase de
+`tests/tarjeta-del-panel.test.ts` deriva los campos del view-model del fuente y
+exige que la tarjeta pinte cada uno, así que un dato nuevo no puede quedarse
+afuera de la pantalla en silencio.
+
+Acciones por tarjeta: **Editar** como botón, y un menú "⋯" con **Duplicar**,
 **Historial** y **Borrar**. Van en un menú porque tres botones en fila en 360px dan blancos
-táctiles de ~100px y se erra el toque (D-19).
+táctiles de ~100px y se erra el toque (D-19). Los dos controles van al pie de la
+tarjeta, separados por una regla, y en ese orden en el recorrido del teclado: la
+acción principal no puede quedar detrás del menú.
 
 El menú implementa el patrón de menú de ARIA (B-14): se abre con ↓ o ↑ cayendo en
 el primero o en el último ítem, se recorre con las flechas dando la vuelta, con
@@ -443,6 +476,12 @@ El formulario es usable en teléfono:
 - Teclados por campo: numérico en cupo, de URL en los links, sin autocapitalizar
   ni autocorregir en slug, handles y URLs.
 
+Y en la otra punta, **el escritorio también es un caso** (B-620): el listado abre
+columnas y usa el ancho de la pantalla, mientras el formulario se queda en el
+ancho de lectura. Las dos mitades son la misma idea —el ancho lo decide lo que se
+está haciendo— y la tabla de qué pantalla usa cuál está en
+[`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts).
+
 ### La versión está siempre a la vista
 
 Al pie de las tres pantallas del panel —login, "sin permisos" y el panel mismo—
@@ -774,6 +813,50 @@ esquina. Arquitectura completa en
 
 ### La home — `/`
 
+#### El tríptico «¿Qué hay ahora?» (B-600, D-320)
+
+Arriba del buscador y a todo el ancho, la home abre con tres paneles —**Hoy ·
+Mañana · Este finde**— con los encuentros de cada ventana: hora, título, lugar,
+la categoría en la tinta de su tipo (D-150) y el arancel, y toda la fila es un
+link a la página de la actividad.
+
+Contesta la pregunta que el listado no contesta de un vistazo. El listado
+ordena por próxima fecha de la **actividad** (§2.2 del `CLAUDE.md`: un club de
+ocho encuentros es una tarjeta), así que «¿qué hay el sábado?» —que es una
+pregunta sobre el **encuentro**— obligaba a abrir tarjetas. Sale del eje plano
+de encuentros que **B-99** ya metía en el `events.json`, sin ningún dato nuevo.
+
+| Panel | Qué agarra |
+|---|---|
+| **Hoy** | lo que **queda** de hoy — se mira el inicio, no el fin, así que lo que arrancó hace diez minutos ya no está acá (sigue en el listado) |
+| **Mañana** | el día siguiente, entero |
+| **Este finde** / **El finde que viene** | el sábado y el domingo, **menos** los días que ya contaron los dos primeros. Sin días —hoy es sábado o domingo— salta al finde siguiente y el rótulo lo dice (D-320) |
+
+- **No responde a los filtros.** Contesta una pregunta fija: un panel que dice
+  «Hoy» y esconde media programación porque quedó puesto un chip de barrio
+  miente con el rótulo puesto.
+- **Lo pintan el build y la island**, con el mismo componente y el mismo módulo
+  puro. Pesa más que en el listado: «Hoy» envejece de un día para el otro sin
+  que cambie ningún dato. Cada panel **escribe los días que abarca** («Hoy ·
+  vie 3 sep»), que es lo único que queda en pie con JavaScript apagado y lo que
+  impide que el rótulo mienta sin que se note.
+- **Tope de cuatro filas** por panel; lo que sobra se dice en palabras («+2 más
+  hoy») y **no es un enlace**: el día no es una URL de este sitio (§2.3), y el
+  listado completo está en la misma página más abajo.
+- **Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre»
+  es información. La sección entera **no** se dibuja solo si las tres ventanas
+  están vacías.
+- **El sello** («Actualizado: vie 3 sep, 14:30») explica por qué algo cargado
+  hace diez minutos todavía no está: el sitio es estático y se rehace con unos
+  minutos de latencia.
+
+El cálculo está en [`src/lib/ahoraPublico.ts`](../src/lib/ahoraPublico.ts), puro y
+testeado; el markup en
+[`src/components/publico/PanelesDeAhora.tsx`](../src/components/publico/PanelesDeAhora.tsx),
+que no formatea una fecha, no decide una frase y no lee ninguna `EntradaDeIndice`.
+
+#### El listado
+
 El build imprime en HTML **todas** las actividades vigentes, con su tarjeta,
 agrupadas por mes y ordenadas por próxima fecha. Eso es lo que ve Google y lo que
 ve alguien con JavaScript apagado.
@@ -819,8 +902,9 @@ Lo que la tarjeta tiene que decir bien es del dominio, y sale de
 
 Encima va una island de React (`client:load`) que hace **un solo fetch** de
 `/events.json` y filtra, busca y ordena **en memoria** (§2.5). Cuando el índice
-llega, la island **saca del DOM la lista del build** y renderiza la suya con el
-mismo componente `FilaDeActividad` — una sola definición del markup, y como el estado
+llega, la island **saca del DOM los dos bloques del build** —la lista y el
+tríptico— y renderiza los suyos con los mismos componentes (`FilaDeActividad` y
+`PanelesDeAhora`) — una sola definición del markup, y como el estado
 inicial es el del build, no hay parpadeo. Si el fetch falla, la lista del build se
 queda donde está, los controles quedan deshabilitados y hay un aviso chico: nunca
 una pantalla vacía.

@@ -448,17 +448,24 @@ que no dice eso.
 firebase deploy --only functions:syncCalendar,functions:rebuildPorOpciones
 ```
 
-**Las seis Functions están desplegadas y ACTIVE** desde el 2026-08-25 (la última,
-`guardarVersionAlBorrar`, a mano ese día). Un `firebase deploy --only functions` sin
-filtro las incluye a las seis y hoy no rompe nada: ninguna depende de un secreto que
+**Las ocho Functions están desplegadas y ACTIVE, y todas al día.** Relevado contra
+GCP el 2026-09-03 (`gcloud functions list --project agenda-literaria
+--format='value(name,updateTime)'`): siete con `updateTime` de ese día a las 16:14
+y `limpiarImagenesHuerfanas` a las 16:37. Un `firebase deploy --only functions` sin
+filtro las incluye a las ocho y hoy no rompe nada: ninguna depende de un secreto que
 falte.
 
-**Lo que sí queda pendiente es redesplegar esas dos.** `syncCalendar` y
-`rebuildPorOpciones` cambiaron el 2026-08-24 (B-80, B-82, B-83, B-04) y las que
-corren en producción son las viejas: hasta que se redesplieguen, `syncCalendar`
-puede duplicar un evento y `rebuildPorOpciones` sigue sin publicar `destacado`. La
-verificación después del deploy está más abajo, en "Verificar el sync después de
-redesplegar".
+> **Acá decía «lo que sí queda pendiente es redesplegar esas dos», y era falso.**
+> El texto era del 2026-08-25: afirmaba que `syncCalendar` y `rebuildPorOpciones`
+> corrían en producción en su versión vieja, con la consecuencia concreta de que
+> `syncCalendar` podía duplicar un evento y `rebuildPorOpciones` no publicaba
+> `destacado`. **D-132 lo resolvió tres días después** —le dio a `deploy-ci@` los
+> roles para desplegar Functions desde CI— y desde entonces cada push que toca
+> `functions/` las redespliega solas: hubo 16 de esos pushes. Nadie volvió a leer
+> este párrafo, así que la advertencia siguió asustando durante nueve días sobre
+> algo que ya estaba arreglado. Es el costo de escribir un pendiente sin dejar
+> escrito cómo se verifica que dejó de serlo — por eso ahora el estado de arriba
+> lleva el comando de relevamiento al lado.
 
 **El deploy de Functions fue a mano por necesidad hasta el 2026-08-28.**
 `deploy-ci@` no tenía los roles para desplegarlas (D-119) y darlos era casi

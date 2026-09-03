@@ -247,6 +247,17 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     return n;
   };
 
+  /**
+   * La cuenta escrita en palabras, que es cómo la nombra la prosa. Vive en el
+   * `describe` porque la usan dos casos: el de la prosa de cada archivo con
+   * tabla propia, y el de `13-agentes.md`, que no tiene tabla y se mide contra
+   * la de la ficha.
+   */
+  const PALABRAS: Record<number, string> = {
+    5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho',
+    9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
+  };
+
   it('el parseo no se come ninguna fila de la tabla', () => {
     /*
      * **El control que faltaba, y lo pidió B-109.** El parseo corta en la primera
@@ -301,11 +312,6 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      * cambio, no hay subconjunto del que se hable: un número así solo puede estar
      * hablando del total.
      */
-    const PALABRAS: Record<number, string> = {
-      5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho',
-      9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
-    };
-
     for (const archivo of [FICHA, SEGURIDAD]) {
       const cuantas = salidas(archivo).length;
       const correcta = PALABRAS[cuantas];
@@ -323,6 +329,50 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
           'el índice y la prosa del mismo archivo se contradicen, y el agente audita de menos',
       ).toEqual([]);
     }
+  });
+
+  it('y `docs/13-agentes.md` tampoco, medido contra la tabla de la ficha — B-124', () => {
+    /*
+     * **El cuarto lugar donde vive la cuenta, y el único que estaba afuera del
+     * lazo.** `docs/13-agentes.md` decía «diez salidas públicas» en **cuatro**
+     * frases mientras la ficha del agente, `07-seguridad.md` y el skill
+     * `campo-nuevo` ya estaban en doce. Los otros tres se atan entre sí y
+     * quedaban los tres en verde, así que el drift sobrevivió justo en el
+     * documento que alguien lee para entender qué hacen los auditores y cuándo
+     * corren — el que decide si se invoca al agente **a mano**.
+     *
+     * Es la misma clase que el `it` de arriba (un índice que envejece en
+     * silencio) con una diferencia que obliga a un caso propio: este archivo
+     * **no tiene tabla de salidas**, es prosa *sobre* la de la ficha. Así que la
+     * referencia es la tabla de la ficha, no una suya.
+     *
+     * MUTACIÓN PROBADA: volver a poner «diez salidas» en cualquiera de las
+     * cuatro frases pone este caso en rojo nombrando la palabra.
+     */
+    const AGENTES_DOC = 'docs/13-agentes.md';
+    const cuantas = salidas(FICHA).length;
+    expect(PALABRAS[cuantas], `no hay palabra para ${cuantas} salidas`).toBeDefined();
+
+    const texto = fuente(AGENTES_DOC);
+    // Control positivo: si el documento dejara de hablar de «N salidas», este
+    // caso pasaría sin mirar nada. Tiene que decirlo con el número correcto.
+    expect(
+      new RegExp(`${PALABRAS[cuantas]} salidas`, 'i').test(texto),
+      `${AGENTES_DOC} no dice «${PALABRAS[cuantas]} salidas» en ninguna parte: o cambió la ` +
+        'redacción, o quedó sin declarar la cuenta y este chequeo dejó de medir algo',
+    ).toBe(true);
+
+    const equivocadas = Object.entries(PALABRAS)
+      .filter(([n]) => Number(n) !== cuantas)
+      .map(([, palabra]) => palabra)
+      .filter((palabra) => new RegExp(`${palabra} salidas`, 'i').test(texto));
+
+    expect(
+      equivocadas,
+      `${AGENTES_DOC} dice «${equivocadas.join(', ')} salidas» y la tabla de la ficha tiene ` +
+        `${cuantas} filas: quien lea el documento para saber qué auditar va a resolver menos ` +
+        'celdas de las que hay',
+    ).toEqual([]);
   });
 
   it('la numeración va de 1 a N sin saltos, o sea que el barrido no cortó antes', () => {
@@ -391,6 +441,123 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     expect(salidas(SEGURIDAD).map((s) => `${s.n} ${s.archivo}`)).toEqual(
       salidas(FICHA).map((s) => `${s.n} ${s.archivo}`),
     );
+  });
+
+  it('el número de salida que se atribuye cada barrido es el de su propia fila — B-600', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` sobre B-600, y es el agujero que dejó
+     * pasar el error que él encontró.** El `describe` de cada salida en
+     * `tests/barrido-de-salidas-publicas.test.ts` se **titula** con su número
+     * («§5, salida 9») y ese número no estaba atado a nada: los tres `it` de
+     * arriba comparan las tres tablas **entre sí**, así que doce filas
+     * coincidentes y un barrido rotulado con el número equivocado es verde.
+     *
+     * Pasó de verdad: el barrido del tríptico de la home nació rotulado «salida
+     * 12», que en las tres tablas es la **analítica del sitio público**. Nada
+     * fallaba, y quien grepeara `salida 12` para saber qué cubre el barrido de
+     * GA4 encontraba el tríptico.
+     *
+     * Lo que se afirma es lo más simple que lo detecta: **el título del `describe`
+     * y la fila que dice cubrir tienen que hablar de lo mismo** — al menos una
+     * palabra propia del título aparece en el texto de esa fila. Las palabras
+     * genéricas del vocabulario del índice quedan fuera de la cuenta, si no
+     * cualquier fila matchearía con cualquier título.
+     *
+     * MUTACIÓN PROBADA: volver a rotular el `describe` del tríptico como «salida
+     * 12» pone este caso en rojo nombrando el título y la fila.
+     */
+    const BARRIDO = 'tests/barrido-de-salidas-publicas.test.ts';
+
+    /** El texto crudo de la fila `n` de la tabla de `07-seguridad.md`. */
+    const filaCruda = (n: number): string => {
+      const linea = fuente(SEGURIDAD)
+        .split('\n')
+        .find((l) => new RegExp(`^\\s*\\|\\s*${n}\\s*\\|`).test(l));
+      return linea ?? '';
+    };
+
+    /** Sin acentos y en minúsculas: «página» y «pagina» son la misma palabra. */
+    const plano = (t: string): string =>
+      t
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    /*
+     * El vocabulario compartido del índice. Están fuera porque aparecen en casi
+     * todas las filas y en casi todos los títulos: con ellas adentro, el chequeo
+     * pasaría siempre.
+     */
+    const GENERICAS = new Set([
+      'barrido',
+       'salida',
+      'salidas',
+      'productor',
+      'diseno',
+      'publico',
+      'publica',
+      'publicas',
+      'centinelas',
+      'centinela',
+      'indice',
+      'listado',
+      'pagina',
+      'paginas',
+      'proyeccion',
+      'formas',
+      'cursar',
+      'evento',
+      'eventos',
+      'datos',
+      'texto',
+      // Y las palabras de enlace, que con el umbral en tres letras entran solas.
+      'del',
+      'los',
+      'las',
+      'que',
+      'hay',
+      'por',
+      'con',
+      'dos',
+      'una',
+      'uno',
+      'sus',
+      'para',
+    ]);
+
+    const titulos = [...fuente(BARRIDO).matchAll(/describe\('([^']*salida (\d+)[^']*)'/g)].map(
+      (m) => ({ titulo: m[1]!, n: Number(m[2]!) }),
+    );
+
+    // Control positivo: si el regex dejara de encontrar los títulos, la lista de
+    // desalineados saldría vacía sin haber mirado nada.
+    expect(titulos.length, `no se parsearon los títulos de ${BARRIDO}`).toBeGreaterThanOrEqual(5);
+
+    const desalineados: string[] = [];
+    for (const { titulo, n } of titulos) {
+      const fila = plano(filaCruda(n));
+      expect(fila, `la tabla de ${SEGURIDAD} no tiene una fila ${n}`).not.toBe('');
+
+      /*
+       * **Tres letras y no cinco**: «mes» es la palabra que identifica a la
+       * salida 8 y con el umbral más alto ese título se quedaba sin ninguna
+       * palabra propia, o sea sin chequeo. El costo es que hay que descartar las
+       * palabras de enlace, que están en la lista de arriba.
+       */
+      const propias = [...plano(titulo).matchAll(/[a-z]{3,}/g)]
+        .map((m) => m[0]!)
+        .filter((w) => !GENERICAS.has(w));
+      if (!propias.some((w) => fila.includes(w))) {
+        desalineados.push(`«${titulo}» → la fila ${n} no habla de ${propias.join('/') || '(nada)'}`);
+      }
+    }
+
+    expect(
+      desalineados,
+      'un barrido se atribuye un número de salida que en el índice es otra cosa. ' +
+        'O el rótulo está mal, o falta la fila: las dos formas dejan el índice ' +
+        'apuntando a la salida equivocada, y ningún otro chequeo lo ve.',
+    ).toEqual([]);
   });
 
   it('y el skill `campo-nuevo` enumera las mismas — B-265', () => {
