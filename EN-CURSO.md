@@ -4,83 +4,91 @@
 mismo** y cómo retomarlo o abandonarlo. La documentación de verdad vive en
 [`docs/`](docs/README.md).
 
-## Tanda del 2026-09-03 — tres frentes trabajando
+---
 
-**Sí hay trabajo en curso.** Hasta hace un rato este archivo decía «Nada en
-curso» con tres agentes escribiendo, que es exactamente la forma en que se vuelve
-inútil: si miente una vez, nadie lo vuelve a leer. La regla que ya estaba escrita
-acá —«si este archivo tiene contenido y nadie está trabajando, está mintiendo»—
-vale igual de fuerte al revés.
+## Tanda del 2026-09-03 — nueve frentes, cuatro integrados
 
-| Frente | Dónde trabaja | Propiedad exclusiva de archivos |
+`main` está en **`bb7667c`**, pusheado, con el deploy en verde (run `33814525348`,
+10m). El sitio y el panel publicados ya tienen el tríptico y la grilla.
+
+**Suite: 2.786 tests en 124 archivos, `tsc` limpio, los cinco pasos del gate
+mecánico en verde.**
+
+### Ya en `main` y publicado
+
+| Qué | Ticket |
+|---|---|
+| El tríptico «¿Qué hay ahora?» de la home | B-600, D-320 |
+| El panel en grilla de tarjetas y ancho por vista | B-620, D-330 |
+| Rescate de 33 worktrees, higiene de la raíz, drift de doc | — |
+| Los auditores se disparan por los paths del diff | B-124, D-350 |
+| El link de la actividad en el texto para redes | B-312 |
+| Dos bugs del gate mecánico (lista vieja de B-99, detección de emuladores) | — |
+
+### Ramas cerradas esperando merge
+
+**El orden importa: primero el rescate, después imágenes.** Todas tienen su texto
+de CHANGELOG/BACKLOG/decisiones listo para pegar en su archivo de `.estado/`.
+
+| Rama (en `.claude/worktrees/`) | Commits | Qué trae | Ojo al integrar |
+|---|---|---|---|
+| `worktree-agent-aba3611dce018e0a3` | 12 | Salud: B-294, B-606, B-169, B-311, B-116, B-78, B-121, B-122, B-33 | Su arreglo del gate **choca con `c095618` de `main`**: quedarse con el de main —afirma en las dos direcciones— y montar encima sus pasos 9 y 10 |
+| `worktree-agent-a435211a7fe919bfc` | 8 | Analítica: B-481 (fuentes propias), B-374/B-373, B-601 declarado | **No tiene B-600**: el enganche del evento del tríptico quedó como parche de 5 líneas en su `.estado` |
+| `worktree-agent-a3eed17892ac21287` | 4 | Ciclos: B-150, B-89, B-77 | Sus docs citan **D-361** y **B-630**, que viven en su `.estado`: sin pegarlos quedan dos enlaces colgados |
+| `worktree-agent-afaf97df7fb65b51f` | 1 | El rescate crudo de D-210 (`71f34d0`) | Lo está integrando el frente de abajo; no mergear este directamente |
+
+### Frentes corriendo
+
+| Frente | Rama | Ítems |
 |---|---|---|
-| **Sitio público** | working tree principal, `main` | `src/**`, `tests/**`, `docs/12-sitio-publico.md`, `docs/04-funcionalidades.md` |
-| **Panel de admin** | worktree `.claude/worktrees/agent-a772193cbf625e130` (locked) | el panel, en su propio worktree |
-| **Rescate, salud y cierre de doc** | working tree principal, `main` | `EN-CURSO.md`, `.estado/**`, `.gitignore`, `docs/README.md`, `docs/02-infraestructura.md`, `docs/08-operacion.md`, `docs/10-salud-del-codigo.md`, `docs/13-agentes.md`, `docs/14-plan-de-saneamiento.md`, `docs/17-worktrees-pendientes.md`, y cualquier archivo dentro de los otros worktrees |
+| Formulario y panel | `worktree-agent-afbc2e618dff083ad` | B-91, B-45, B-100, B-175, B-622, B-621, B-62, B-179, B-30, B-29, DEC-6 |
+| Sitio público | `worktree-agent-a41fecfce41a714a1` | B-310, B-114, B-292, B-101, B-274, B-261 |
+| Rescate D-210 | `worktree-agent-a7a0d08692493079a` | El `srcset` que rompe la portada, con D-210 escrita |
 
-**Dos frentes comparten el working tree principal.** Eso funciona por una sola
-razón, y no es la suerte: los conjuntos de archivos no se cruzan y **cada commit
-se hace por path explícito**. Ver «la regla que no se negocia», abajo.
+Cada uno commitea por ítem y escribe una línea en su `.estado/<frente>.md` después
+de cada commit. **Si hay que frenar: mirar `git log main..HEAD` de cada worktree
+antes que `git status`.**
 
-### Compartido por los tres, no lo toca nadie por su cuenta
+### Encolado, con motivo
 
-`docs/CHANGELOG.md`, `docs/BACKLOG.md`, `docs/06-decisiones.md`,
-`firestore.rules`, `functions/**`, `package.json` y `package-lock.json`.
+- **B-181 completo** (decidido por el dueño). Espera a que aterricen ciclos y
+  panel: toca `sesiones.ts`, `calendario.js`, el schema y el formulario, que son
+  sus archivos. Es lo primero que va cuando cierren.
+- **B-301 y B-285** — tanda de modelo, por lo mismo.
+- **B-291** (generar las imágenes de OG en el build) — con el frente de imágenes,
+  detrás del rescate.
+- **B-214 + B-607** (Astro 6/7 y `npm audit`) — después de la tanda, contra un
+  árbol quieto. Los dos tocan el `package-lock.json`.
+- **Imágenes**: B-324, B-560, B-222, B-275 — después del rescate.
 
-Lo que un frente quiera dejar en el CHANGELOG o el BACKLOG lo escribe en
-`.estado/<frente>.md` **con el formato del archivo destino**, y el orquestador lo
-pega. Es lo que evita tres agentes editando a la vez un archivo de 470 KB.
+### Lo que espera al dueño
 
-*(Por eso el `npm audit fix` de la vulnerabilidad de `uuid` —la única de las tres
-de producción que se arregla sin romper nada— quedó anotado y no hecho: toca
-`package-lock.json`. Ver [`docs/10-salud-del-codigo.md`](docs/10-salud-del-codigo.md)
-§ 6.2.)*
+- **Reverificar el 301** de `agendaleh.com.ar`: a las 18:40 todavía daba 200.
+- **Los pasos de consola de la analítica** (GA4 Data API y Search Console):
+  runbook completo en `docs/16-analitica-del-sitio.md` §9.4.
+- **Desplegar dos Functions programadas** que están escritas y sin desplegar:
+  `limpiarImagenesHuerfanas` y `limpiarVersionesHuerfanas`.
+- **B-162 y B-160** están diagnosticados y **bloqueados en una decisión suya**:
+  ¿el evento dice «Encuentro 3 de 8» o «Encuentro 3»? El frente encontró que
+  **dejaron de estar acoplados**: B-162 tiene ahora una salida propia (B-631) que
+  no depende de esa decisión.
+- **La cuenta activa de `gh` quedó en `benoffi7`** (el switch de vuelta no corrió
+  porque el push falló en el medio). Volver con
+  `gh auth switch --user gonza-benoffi-modo`.
 
-### El estado de cada frente
+### Deuda que dejó esta tanda y ningún frente pudo aplicar
 
-En [`.estado/`](.estado/README.md), un archivo por frente. Vive fuera de git a
-propósito: es coordinación, no historia. Una línea por tramo cerrado, con el hash
-del commit.
+- `docs/10-salud-del-codigo.md` describe un `functions/index.js` que ya no existe
+  (B-77 lo dejó en ~35 líneas).
+- `docs/13-agentes.md` no tiene los chequeos nuevos de la red de contención.
+- La tercera pasada del `auditor-privacidad` sobre B-312 quedó pendiente: se
+  commiteó con `SALTEAR_AUDITORES=1` porque lo aplicado eran las correcciones de
+  las dos pasadas anteriores.
 
----
+## Cómo se retoma
 
-## Cómo parar
-
-**Se para solo: no hay nada que desarmar** — nadie pushea y nadie mergea. Lo
-único que se puede perder es lo que no esté commiteado.
-
-1. **Antes de cortar, que cada frente commitee lo que tenga.** El 2026-09-02 se
-   frenó una tanda de seis y cuatro frentes tenían **cero commits** con hasta 16
-   archivos en disco. El rescate de eso está en
-   [`docs/17-worktrees-pendientes.md`](docs/17-worktrees-pendientes.md), y la
-   lección es de proceso: el commit por tramo cerrado no puede ser algo que va a
-   pasar «al final», porque cuando la tanda se frena, «al final» no llega.
-2. **`git status` del working tree principal** dice qué quedó sin commitear y de
-   quién es, cruzando contra la tabla de propiedad de arriba.
-3. **Lo que quedó abierto va a `docs/BACKLOG.md`**, priorizado, con el motivo. La
-   regla de proceso del [`CLAUDE.md`](CLAUDE.md) no se suspende porque la tanda
-   se corte.
-
-### La regla que no se negocia
-
-**`git add <paths>` explícitos, NUNCA `git add -A`.**
-
-Con dos frentes en el mismo working tree, un `add -A` se lleva puesto el trabajo
-del otro dentro de un commit que dice otra cosa. Ya pasó el 2026-09-02: dos
-frentes mezclados en dos commits, y hubo que rearmar la historia. No es una
-preferencia de estilo — es la condición para que dos agentes compartan un árbol.
-
-### Worktrees
-
-De los 33 que había quedan **8**, cada uno con su motivo en
-[`docs/17-worktrees-pendientes.md`](docs/17-worktrees-pendientes.md), junto con
-los comandos de borrado que esperan la confirmación del dueño.
-
-**Dos no se tocan por ningún motivo:** `agent-a772193cbf625e130` (el frente del
-panel, trabajando ahora) y `agent-afaf97df7fb65b51f` (tiene el commit de rescate
-`71f34d0`, que **no** está en `main`).
-
----
-
-Lo que está abierto y **no** en curso vive donde corresponde: en
-[`docs/BACKLOG.md`](docs/BACKLOG.md), priorizado.
+1. Leer esta tabla y `git log --oneline origin/main..main`.
+2. Mergear las ramas cerradas **en el orden de la tabla**, pegando el `.estado/`
+   de cada una en CHANGELOG, BACKLOG y `06-decisiones.md` en el mismo commit.
+3. Recién ahí despachar B-181, que es el más grande y necesita esos archivos
+   quietos.
