@@ -760,7 +760,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 el tablero del catálogo y el banner/tag/eventos están; falta B-373, B-374 y B-480 |
 | **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
 | **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** para medir en producción |
-| **B-373** | **Search Console**: conectar el dominio y leerlo | 🔵 **diferido a propósito** — el dueño lo deja para el final de todo |
+| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 **conectado el 2026-09-03** — el histórico ya acumula; queda la lectura al panel, que va con la tanda de datos (B-374) |
 | **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | ⛔ depende de B-372 (con B-480 resuelto) y de un mes de datos |
 | **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos — inertes hasta que B-372/B-480 midan de verdad |
 | **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
