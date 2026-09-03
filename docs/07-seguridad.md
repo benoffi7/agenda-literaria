@@ -612,7 +612,8 @@ Manager, accesible solo desde la Function (§5.4).
 match /reportes/{id} {
   allow read: if esAdmin();
   allow create: if esAdmin() && reporteValido();
-  allow update: if esAdmin() && reintentoValido();   // solo error → pendiente
+  // solo error → pendiente (B-31), o marcar/reabrir `resuelto` (B-580)
+  allow update: if esAdmin() && (reintentoValido() || resueltoValido());
   allow delete: if false;
 }
 ```
@@ -654,6 +655,31 @@ este checkout** antes de correr: el emulador sirve el `firestore.rules` del
 directorio desde el que se lo arrancó, así que con varios worktrees a la vez un
 test de reglas puede estar verificando el archivo de otra rama y dar verde sin
 haber probado nada.
+
+### La otra escritura del cliente: marcar/reabrir `resuelto` (B-580, D-310)
+
+`resueltoValido()` es el mismo patrón que `reintentoValido()`, con `resuelto`
+en vez del ciclo de vida de envío:
+
+| Condición | Qué evita |
+|---|---|
+| solo cambian `resuelto` y `actualizadoEn` | colar cualquier otro campo —texto, `estado`, `github`— por esta puerta |
+| `resuelto` está de verdad en el diff (`hasAny`) | una escritura que no toca lo que esta regla habilita |
+| `resuelto` es booleano | un valor que no sea `true`/`false` rompería el filtro `!r.resuelto` del panel |
+| `actualizadoEn == request.time` | antedatar, igual que en la creación y en el reintento |
+
+A diferencia del reintento —una transición de un solo sentido,
+`error`→`pendiente`— acá no hay condición sobre el `resuelto` previo: marcar
+resuelto y reabrir son la misma escritura en las dos direcciones, y el botón
+del panel («Marcar resuelto» / «Reabrir») manda el valor que corresponda.
+
+**No hay sync desde GitHub.** El dueño descartó (B-30, "dejamos como está")
+que cerrar el issue marque el reporte solo; `resuelto` lo decide un admin a
+mano desde el panel. Detalle y motivo completo en **D-310**.
+
+`tests/reportes-resuelto.integracion.test.ts` fija los casos contra el
+emulador, con el mismo patrón de archivo propio que `reportes-reintento` (carga
+las reglas de este checkout antes de correr).
 
 ## Analítica del panel
 

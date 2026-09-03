@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-03 · Reportes: solo se muestran los abiertos (B-580, D-310)
+
+La pantalla de Reportes mostraba todos los reportes cargados alguna vez. Se
+agrega `resuelto?: boolean` al modelo (`src/types/reporte.ts`) — ausente o
+`false` = abierto, ortogonal al `estado` de envío a GitHub — y `marcarResuelto`
+(`src/lib/reportes.ts`). `ReportesPanel.tsx` filtra por defecto a los no
+resueltos, con un botón «Marcar resuelto»/«Reabrir» por fila y un toggle «Ver
+resueltos»; el `limit()` del `onSnapshot` sube de 10 a 50 para que el filtro en
+memoria no le coma cupo a los abiertos (Firestore no matchea con `!=`/`==false`
+un documento sin el campo, así que filtrar en la query habría ocultado todo lo
+cargado antes de este cambio). `firestore.rules` suma `resueltoValido()`, mismo
+patrón que `reintentoValido` de B-31: acota la escritura a `resuelto` +
+`actualizadoEn`, exige `admin` y `resuelto is bool`. **Sin sync desde
+GitHub** — es la sync que B-30 ya describía y el dueño acaba de descartar; ver
+D-310.
+
 ## 2026-09-03 · el fix de B-205 estaba inerte, y dejó producción vieja (B-562)
 
 `scripts/commit-base-deploy.sh` (B-205) leía `.sha` de `/version.json` para

@@ -60,6 +60,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'reportes-solo-abiertos',
+    fecha: '2026-09-03',
+    version: '1.6.0',
+    titulo: 'La pantalla de Reportes ahora muestra solo los abiertos',
+    detalle:
+      'Antes quedaban ahí todos los reportes que se cargaron alguna vez. Cada uno tiene un botón ' +
+      '«Marcar resuelto» — y «Reabrir» si te equivocaste — que lo saca de la lista. Si necesitás ' +
+      'ver los que ya se resolvieron, activá «Ver resueltos» arriba de la lista.',
+    donde: 'Panel → Reportar algo → Últimos reportes.',
+  },
+  {
     id: 'historial-restaurar-campo',
     fecha: '2026-09-03',
     version: '1.6.0',

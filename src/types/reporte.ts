@@ -89,6 +89,23 @@ export interface Reporte {
   error: string | null;
   creadoEn: TimestampLike;
   actualizadoEn?: TimestampLike;
+  /**
+   * B-580 — lo marca un admin desde el panel cuando ya se resolvió, para que
+   * la pantalla de reportes deje de mostrarlo por defecto.
+   *
+   * **Ortogonal a `estado`.** `estado` es el ciclo de vida del *envío* del
+   * issue a GitHub (`pendiente` → `enviando` → `creado`/`error`) y lo mueve
+   * la Function; `resuelto` es si el problema en sí ya se solucionó, y lo
+   * mueve el panel. Un reporte puede estar `creado` (el issue existe) y
+   * seguir sin `resuelto` durante semanas, o quedar `resuelto` con el issue
+   * todavía abierto en GitHub (D-310: no hay sync GitHub→Firestore, a
+   * propósito).
+   *
+   * Opcional y no `false` a propósito: los reportes anteriores a B-580 no lo
+   * tienen. **Ausente o `false` = abierto** — así no hace falta backfillear
+   * ningún documento viejo para que la pantalla los siga mostrando.
+   */
+  resuelto?: boolean;
 }
 
 export interface ReporteConId extends Reporte {

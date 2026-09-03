@@ -7374,3 +7374,41 @@ tardar en reflejar un borrado cambia qué tan rápido se detecta el problema, y
 depender de un formato no garantizado por Google para decidir si se recrea un
 evento es peor que pedir el permiso de impersonación una vez.
 
+## D-310 · `resuelto` es un campo local del panel, no un espejo del cierre del issue en GitHub
+
+**Problema (B-580):** la pantalla de Reportes mostraba todos los reportes que
+se cargaron alguna vez, resueltos o no. El dueño quiere que refleje solo los
+abiertos.
+
+**La alternativa obvia era la sync GitHub→Firestore:** que cerrar el issue
+marque el reporte solo, con un `onSchedule` que consulte los issues con la
+etiqueta `reporte-panel` o un webhook hacia una función HTTP. Es exactamente lo
+que **B-30** ya describía ("las respuestas del dueño no vuelven al panel") y el
+dueño **acaba de descartar en esta misma tanda** ("dejamos como está") — con
+webhook, además, hay que validar `X-Hub-Signature-256` con un secreto nuevo en
+Secret Manager, más superficie para un caso de uso que no lo justifica.
+
+**Decisión: un flag `resuelto: boolean` en `/reportes/{id}`, que marca un admin
+a mano desde el panel.** Es el mismo criterio del §2.1 del `CLAUDE.md` para
+Calendar, aplicado acá: Firestore es la única fuente de verdad, y sincronizar
+de vuelta desde un sistema externo (Calendar allá, GitHub acá) es
+desproporcionado para el caso de uso. Si el dueño cierra el issue en GitHub y
+se olvida de tocar el panel, el reporte sigue en la lista de abiertos — es el
+comportamiento esperado, igual que un evento editado a mano en Calendar se
+pierde en el próximo sync.
+
+**Por qué no vive en `functions/reportes.js`:** no hay ninguna Function nueva.
+`marcarResuelto` (`src/lib/reportes.ts`) es un `updateDoc` directo desde el
+cliente, autorizado por una regla nueva (`resueltoValido`, mismo patrón que
+`reintentoValido` de B-31/D-101): acota la escritura a **solo** `resuelto` y
+`actualizadoEn`, y exige el claim `admin`.
+
+**El filtro por defecto de la pantalla es en memoria, no en la query.**
+`resuelto` es opcional —los reportes de antes de B-580 no lo tienen— y
+Firestore no matchea un documento sin el campo ni con `== false` ni con `!=`:
+una query `where('resuelto','!=',true)` habría ocultado de la vista "abiertos"
+a todo lo cargado antes de este cambio, que es lo contrario de lo pedido. Se
+subió el `limit()` del `onSnapshot` de 10 a 50 y se filtra del lado del
+cliente, para que el filtro no le coma cupo a los reportes abiertos cuando hay
+varios resueltos entre los más nuevos.
+

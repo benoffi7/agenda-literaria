@@ -1316,11 +1316,12 @@ const CENTINELA = 'https://zoom.us/j/CENTINELA-9';
 /**
  * Todo string de la entrada reemplazado por el centinela.
  *
- * `creadoEn` se excluye porque no es texto: es una fecha, y un string en su
- * lugar hace explotar el formateador antes de llegar a la aserción.
+ * `creadoEn` y `actualizadoEn` se excluyen porque no son texto: son fechas, y
+ * un string en su lugar hace explotar el formateador antes de llegar a la
+ * aserción.
  */
 const conCentinelas = (valor: unknown, clave = ''): unknown => {
-  if (clave === 'creadoEn') return valor;
+  if (clave === 'creadoEn' || clave === 'actualizadoEn') return valor;
   if (typeof valor === 'string') return CENTINELA;
   if (Array.isArray(valor)) return valor.map((v) => conCentinelas(v));
   if (valor && typeof valor === 'object') {
@@ -1384,23 +1385,55 @@ const REPORTE = {
   intentos: 0,
   github: null,
   error: null,
+  // B-580 — las dos que solo existen después de la creación (ver el
+  // docblock de `clavesDelReporteEnLasReglas` de abajo: sin esto el barrido
+  // de centinelas es ciego a cualquier campo que se escriba por
+  // `reintentoValido`/`resueltoValido` y no por `reporteValido`).
+  actualizadoEn: new Date('2026-09-03T12:00:00Z'),
+  resuelto: false,
 };
 
 /**
- * Las claves que `reporteValido()` exige, leídas de las reglas.
+ * Las claves que el cliente puede escribir en `/reportes/{id}`, leídas de
+ * las reglas — creación (`reporteValido`) **y** las dos escrituras
+ * post-creación (`reintentoValido` de B-31, `resueltoValido` de B-580).
  *
  * El fixture de arriba tiene que cubrirlas todas, y esta lista es la que lo
  * obliga: derivarla del archivo en vez de escribirla acá es lo que hace que una
  * clave nueva en el modelo del reporte entre sola al barrido, sin que nadie se
  * acuerde. Es el mismo autoexigirse de `tests/fixtures/centinelas.ts` contra
  * `src/types/actividad.ts`.
+ *
+ * **Por qué las dos post-creación entran acá y no solo en `reporteValido`.**
+ * Encontrado por el `auditor-privacidad` sobre B-580: `resuelto` (y
+ * `actualizadoEn`) se escriben por `resueltoValido()`/`reintentoValido()`,
+ * nunca por `reporteValido()`, así que sin esto quedaban fuera del fixture
+ * `REPORTE` y el barrido de centinelas (`B-361` de abajo) los daba por
+ * cubiertos sin haberlos mirado nunca — el modo de falla más caro que puede
+ * tener un barrido: parece cobertura y no lo es. Es clase, no instancia:
+ * cualquier campo que se agregue mañana a una escritura post-creación corre
+ * el mismo riesgo si no entra acá.
  */
 const clavesDelReporteEnLasReglas = (): string[] => {
   const reglas = fuente('firestore.rules');
-  const desde = reglas.indexOf('function reporteValido()');
-  const lista = /let campos = \[([\s\S]*?)\];/.exec(reglas.slice(desde));
-  if (!lista) throw new Error('no se encontró la lista `campos` de reporteValido()');
-  return [...lista[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+
+  const clavesDeUnaFuncion = (nombreFuncion: string, patron: RegExp): string[] => {
+    const desde = reglas.indexOf(`function ${nombreFuncion}()`);
+    if (desde === -1) {
+      throw new Error(`no se encontró function ${nombreFuncion}() en firestore.rules`);
+    }
+    const match = patron.exec(reglas.slice(desde));
+    if (!match) throw new Error(`no se encontró la lista de claves de ${nombreFuncion}()`);
+    return [...match[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+  };
+
+  const creacion = clavesDeUnaFuncion('reporteValido', /let campos = \[([\s\S]*?)\];/);
+  // El primer `.hasOnly([...])` de cada función es el que acota qué campos
+  // puede tocar esa escritura — es el mismo que se lee para armar la regla.
+  const reintento = clavesDeUnaFuncion('reintentoValido', /\.hasOnly\(\[([\s\S]*?)\]\)/);
+  const resuelto = clavesDeUnaFuncion('resueltoValido', /\.hasOnly\(\[([\s\S]*?)\]\)/);
+
+  return [...new Set([...creacion, ...reintento, ...resuelto])];
 };
 
 const ACTIVIDAD = { titulo: 'Taller de crónica', slug: 'taller-de-cronica' };
@@ -1483,12 +1516,33 @@ describe('clase de B-81 · el saneador va en un punto de paso obligado', () => {
      */
     const claves = clavesDelReporteEnLasReglas();
     // Control positivo: si el parseo de las reglas devuelve poco, el aserto de
-    // abajo pasa sin haber comparado nada.
-    expect(claves.length).toBeGreaterThanOrEqual(13);
+    // abajo pasa sin haber comparado nada. 15 = las 13 de creación + `resuelto`
+    // y `actualizadoEn`, que solo entran por las escrituras post-creación.
+    expect(claves.length).toBeGreaterThanOrEqual(15);
     expect(claves).toContain('reportadoPor');
+    expect(claves).toContain('resuelto');
 
     const faltan = claves.filter((k) => !(k in REPORTE));
     expect(faltan, 'claves del reporte que el barrido no está mirando').toEqual([]);
+  });
+
+  it('B-580: `resuelto` es del panel y no llega al issue público (§5.1, trampa 5)', () => {
+    /*
+     * No es texto libre —no hace falta el `CENTINELA_CRUDO`, `conCentinelas`
+     * lo deja pasar tal cual porque no es un string— pero tiene que seguir
+     * sin aparecer en el issue bajo ningún nombre: es la marca de qué se
+     * muestra en la bandeja del panel, no algo que el issue público necesite
+     * decir. Si algún día se agrega una línea "Resuelto: sí/no" al cuerpo,
+     * este test tiene que actualizarse a propósito, no romperse en silencio.
+     */
+    const issue = construirIssue({
+      id: 'rep1',
+      reporte: { ...REPORTE, resuelto: true },
+      actividad: ACTIVIDAD,
+    });
+    // Control positivo: el issue se armó de verdad y tiene contenido.
+    expect(issue.body).toContain('reportes/rep1');
+    expect(JSON.stringify(issue), '`resuelto` llegó al issue público').not.toContain('resuelto');
   });
 
   it('B-362: sanea ANTES de recortar, así un link cerca de los 200 no sale partido', () => {

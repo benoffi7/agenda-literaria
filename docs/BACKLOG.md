@@ -3823,6 +3823,13 @@ mostrarlos en la pantalla de reportes. Con webhook hay que validar la firma
 
 Mientras no exista, el formulario y la lista lo dicen con todas las letras.
 
+**Reconsiderado en B-580 (2026-09-03):** al decidir cómo cerrar un reporte se
+evaluó de nuevo espejar el cierre del issue de GitHub y se descartó por el
+mismo motivo — Firestore es la única fuente de verdad. `resuelto` se
+implementó como flag local que marca un admin a mano. Ver D-310. Este ítem
+sigue abierto para el resto de B-30 (traer los *comentarios* del issue), que
+es un alcance distinto y no se decidió.
+
 ### B-31 · Un reporte en `error` no se puede reintentar desde el panel — ✅ hecho (2026-08-24)
 
 Si la creación del issue falla por configuración (token vencido, permiso, repo
@@ -7824,6 +7831,33 @@ una implementación — hay dos y no dan lo mismo:
 La segunda es más barata y más alineada con el diseño de reportes: el reporte se
 guarda igual y lo que se limita es la salida a GitHub. Necesita decisión del
 dueño sobre el tope. Toca `functions/**`, o sea la fase 1.
+
+### B-580 · La pantalla de Reportes mostraba todo lo que se cargó alguna vez — ✅ hecho (2026-09-03)
+
+El dueño pidió que refleje solo los abiertos: los reportes resueltos no
+tenían por qué seguir ocupando la lista.
+
+**Cómo quedó.** Un flag `resuelto?: boolean` en `/reportes/{id}` (ausente o
+`false` = abierto), marcado a mano por un admin desde el panel —**no** una sync
+que lo derive de que el issue se cerró en GitHub: esa alternativa es
+exactamente lo que **B-30** ya describía, y el dueño la descartó en esta misma
+tanda ("dejamos como está"). Ver **D-310**.
+
+`ReportesPanel.tsx` filtra por defecto a los no resueltos, con botón «Marcar
+resuelto»/«Reabrir» por fila y un toggle «Ver resueltos». El filtro es en
+memoria y no en la query —Firestore no matchea con `!=`/`==false` un documento
+que no tiene el campo, así que filtrar en la query habría ocultado de la vista
+"abiertos" a todo lo cargado antes de este cambio— y el `limit()` del
+`onSnapshot` sube de 10 a 50 para que ese filtro no le coma cupo a los reportes
+abiertos.
+
+`firestore.rules` suma `resueltoValido()` (mismo patrón que `reintentoValido`
+de B-31): acota la escritura del cliente a `resuelto` + `actualizadoEn`, exige
+el claim `admin` y que `resuelto` sea booleano. `tests/reportes-resuelto.integracion.test.ts`
+fija diez casos contra el emulador — la mutación que más importa es que un
+anónimo, o un admin sin el claim, no pueda escribir `resuelto`, porque es el
+flag que decide qué se sigue mostrando en la bandeja. `tests/reportes-panel.render.test.tsx`
+cubre el filtro por defecto y el botón con DOM real.
 
 ### B-10 · `aprobada` en las opciones (§4.3) — ✅ hecho (2026-08-21)
 
