@@ -1,6 +1,10 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { TOPE_DEL_PANEL, panelesDeAhora, ventanasDeAhora } from '@/lib/ahoraPublico';
+import { CLASES_DE_PARED, CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
 import { claveDeDia, diaDeSemana, fechaCortaDeDia, hora } from '@/lib/fechasPublicas';
 import { etiquetaDe, mapaDeEtiquetas } from '@/lib/listadoPublico';
@@ -317,7 +321,9 @@ describe('la zona del proyecto decide de qué día es cada cosa (trampa 1)', () 
     expect(panelDe(programacion, 'hoy').encuentros.map((e) => e.titulo)).toEqual([
       'Vigilia de poesía',
     ]);
-    expect(panelDe(programacion, 'manana').encuentros).toEqual([]);
+    // Y no cayó en ningún otro: desde D-320 un panel sin encuentros no se dibuja,
+    // así que «no está en mañana» se lee como «mañana no existe».
+    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['hoy']);
   });
 
   it('y el fin de semana se calcula sobre el día de la zona, no sobre el de UTC', () => {
@@ -477,33 +483,82 @@ describe('el tope del panel y el «+N más»', () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// 5 · Los paneles vacíos, y cuándo no se dibuja nada
+// 5 · Los paneles vacíos no se dibujan, y la sección entera vacía tampoco
 // ───────────────────────────────────────────────────────────────────────────
 
-describe('un panel vacío se dibuja; la sección entera vacía no', () => {
-  it('el panel sin encuentros dice que no hay nada, y eso es información', () => {
-    /*
-     * «El sábado está libre» es un dato. Sacar el panel dejaría un tríptico de
-     * dos columnas que se lee como si el dato faltara.
-     */
+describe('un panel sin encuentros no se dibuja — D-320, 2026-09-03', () => {
+  /*
+   * **Esto invierte lo que B-600 había decidido**, y el motivo está en D-320: un
+   * panel vacío se dibujaba y decía «Por hoy no queda nada», con el argumento de
+   * que «el sábado está libre» es información. El dueño lo vio en pantalla y
+   * decidió lo contrario — un panel que dice que no hay nada ocupa un tercio de
+   * la banda para no decir nada.
+   *
+   * Los tres casos de abajo son las tres formas del tríptico que ahora existen, y
+   * el tercero es el que se rompe fácil: **la regla separadora se cuenta sobre la
+   * lista ya filtrada**, así que el primero de los que quedan no lleva regla a la
+   * izquierda aunque no sea «Hoy».
+   */
+  it('con solo «Hoy» lleno sale un panel, y es el único', () => {
     const indice = indiceDePrueba([{ fechas: ['2026-09-14T22:00:00Z'] }]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
 
-    expect(programacion!.paneles).toHaveLength(3);
-    expect(panelDe(programacion, 'manana').encuentros).toEqual([]);
-    expect(panelDe(programacion, 'manana').vacio).toBe('Todavía no hay nada para mañana.');
-    expect(panelDe(programacion, 'finde').vacio).toBe('Todavía no hay nada para ese finde.');
+    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['hoy']);
+    expect(programacion!.paneles[0]!.encuentros).toHaveLength(1);
   });
 
-  it('«Por hoy no queda nada» y no «hoy no hay nada»', () => {
+  it('con «Hoy» vacío y los otros dos llenos salen dos, y el primero es «Mañana»', () => {
     /*
-     * A las once de la noche las dos frases describen el mismo panel vacío y
-     * **solo una es cierta**: puede haber habido cuatro actividades hoy. Es la
-     * frase que paga el `>= ahora` del panel de hoy.
+     * El caso que fija el orden: los que sobreviven conservan el orden de las
+     * ventanas, así que el primero de la lista filtrada —el que no lleva regla a
+     * la izquierda— es «Mañana» y no «Hoy».
+     *
+     * MUTACIÓN PROBADA: filtrar en el `map` del componente en vez de acá deja
+     * este caso en verde y pone una regla a la izquierda del primer panel
+     * dibujado, que es un borde suelto contra el margen.
      */
-    const indice = indiceDePrueba([{ fechas: ['2026-09-15T22:00:00Z'] }]);
+    const indice = indiceDePrueba([
+      { fechas: ['2026-09-15T22:00:00Z'] },
+      { slug: 'del-finde', fechas: ['2026-09-19T22:00:00Z'] },
+    ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
-    expect(panelDe(programacion, 'hoy').vacio).toBe('Por hoy no queda nada.');
+
+    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['manana', 'finde']);
+    for (const panel of programacion!.paneles) {
+      expect(panel.encuentros.length, `el panel ${panel.clave} quedó vacío`).toBeGreaterThan(0);
+    }
+  });
+
+  it('con los tres llenos siguen saliendo los tres, en orden', () => {
+    // El control negativo: sin esto, filtrar de más —o devolver siempre uno—
+    // pasaría los dos casos de arriba.
+    const indice = indiceDePrueba([
+      { fechas: ['2026-09-14T22:00:00Z'] },
+      { slug: 'de-manana', fechas: ['2026-09-15T22:00:00Z'] },
+      { slug: 'del-finde', fechas: ['2026-09-19T22:00:00Z'] },
+    ]);
+    const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
+    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['hoy', 'manana', 'finde']);
+  });
+
+  it('ningún panel que salga puede venir vacío — la propiedad, no los casos', () => {
+    /*
+     * Lo que los tres casos de arriba son tres instancias de. Se barre la semana
+     * entera, que es donde el tríptico cambia de forma siete veces.
+     */
+    const indice = indiceDePrueba([
+      { fechas: ['2026-09-14T22:00:00Z'] },
+      { slug: 'del-finde', fechas: ['2026-09-19T22:00:00Z'] },
+    ]);
+    for (const dia of ['14', '15', '16', '17', '18', '19', '20']) {
+      const programacion = panelesDeAhora(indice, mediodia(`2026-09-${dia}`), ETIQUETAS);
+      for (const panel of programacion?.paneles ?? []) {
+        expect(
+          panel.encuentros.length,
+          `el ${dia} salió el panel ${panel.clave} sin un solo encuentro`,
+        ).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('con las tres ventanas vacías devuelve null y la sección no existe', () => {
@@ -513,9 +568,10 @@ describe('un panel vacío se dibuja; la sección entera vacía no', () => {
      * condiciones escritas por separado son dos maneras de que una se quede
      * vieja (la clase de B-88).
      *
-     * MUTACIÓN PROBADA: devolver siempre el objeto deja este caso en rojo, y es
-     * el atajo que produce un tríptico de tres «nada» arriba de un listado
-     * lleno.
+     * Desde D-320 es además la **misma** regla que la de arriba aplicada una vez
+     * más: si no sobrevive ningún panel, no hay sección.
+     *
+     * MUTACIÓN PROBADA: devolver siempre el objeto deja este caso en rojo.
      */
     const indice = indiceDePrueba([{ fechas: ['2026-10-14T22:00:00Z'] }]);
     expect(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS)).toBeNull();
@@ -733,7 +789,13 @@ describe('cada panel imprime los días que abarca', () => {
      * lunes que ya pasó. La fecha escrita es lo que impide que el rótulo mienta
      * sin que se note, y por eso está fijada al carácter.
      */
-    const indice = indiceDePrueba([{ fechas: ['2026-09-14T23:00:00Z'] }]);
+    // Los tres con algo: desde D-320 un panel vacío no se dibuja, así que para
+    // mirar la fecha de los tres hay que darles un encuentro a cada uno.
+    const indice = indiceDePrueba([
+      { fechas: ['2026-09-14T23:00:00Z'] },
+      { slug: 'de-manana', fechas: ['2026-09-15T23:00:00Z'] },
+      { slug: 'del-finde', fechas: ['2026-09-19T23:00:00Z'] },
+    ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
 
     expect(panelDe(programacion, 'hoy').fechas).toBe('lun 14 sep');
@@ -744,7 +806,9 @@ describe('cada panel imprime los días que abarca', () => {
   it('y el finde restado imprime el único día que le quedó', () => {
     // El viernes. Es lo que hace que «Este finde · dom 20 sep» no se lea como si
     // el sábado no existiera: dice cuál es el día del que habla.
-    const indice = indiceDePrueba([{ fechas: ['2026-09-18T23:00:00Z'] }]);
+    // El encuentro va **en el domingo**, que es el único día que le queda a la
+    // ventana: sin eso el panel no se dibuja y no hay fecha que mirar (D-320).
+    const indice = indiceDePrueba([{ fechas: ['2026-09-20T23:00:00Z'] }]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-18'), ETIQUETAS);
     expect(panelDe(programacion, 'finde').fechas).toBe('dom 20 sep');
   });
@@ -832,5 +896,162 @@ describe('el tríptico no es un resultado del filtrado', () => {
     ]);
     const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
     expect(hoy.encuentros.map((e) => e.titulo)).toEqual(['Primera', 'Segunda', 'Tercera']);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// 9 · La grilla, que tiene que existir en el CSS construido — D-320
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('la grilla del tríptico se adapta a cuántos paneles quedaron', () => {
+  const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.meta.url));
+
+  it('hay una clase por cada cantidad posible, y ninguna se arma en runtime', () => {
+    /*
+     * Desde D-320 los paneles son uno, dos o tres. Una `lg:grid-cols-3` fija
+     * dejaría columnas fantasma —un solo panel ocupando un tercio del ancho— y
+     * una clase compuesta (`lg:grid-cols-${n}`) **no existiría en la hoja**,
+     * porque Tailwind genera las utilidades leyendo el fuente.
+     */
+    for (const n of [1, 2, 3] as const) {
+      expect(CLASES_DEL_TRIPTICO[n], `falta la clase para ${n} paneles`).toContain('grid');
+    }
+    /*
+     * **Las clases no se escriben como literales acá, y no es estilo**: Tailwind
+     * v4 escanea el proyecto entero menos lo que ignora `.gitignore`, y `tests/`
+     * no está ignorado — o sea que un `toContain('lg:grid-cols-2')` **mete esa
+     * clase en la hoja por sí mismo**. Está comprobado en este árbol:
+     * `lg:grid-cols-[2]` existe solo en un comentario de este archivo y aun así
+     * salió al CSS. Lo encontró el `auditor-privacidad`.
+     *
+     * Así que las afirmaciones se arman con el número, que no es una clase.
+     */
+    expect(CLASES_DEL_TRIPTICO[1]).not.toContain('lg:');
+    for (const n of [2, 3] as const) {
+      expect(CLASES_DEL_TRIPTICO[n], `el mapa no pide ${n} columnas en lg`).toContain(
+        `lg:grid-${'cols'}-${n}`,
+      );
+    }
+
+    // Y el componente la pide por índice, no la arma: un template acá sería
+    // exactamente la clase que Tailwind no ve.
+    // Sin comentarios: el docblock de al lado ya nombra `Math.min`, así que un
+    // barrido sobre el texto crudo pasaría contra su propia documentación.
+    const componente = readFileSync(raiz('src/components/publico/PanelesDeAhora.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(componente).toContain('CLASES_DEL_TRIPTICO[columnas]');
+    expect(componente).not.toMatch(/grid-cols-\$\{/);
+
+    /*
+     * **Y que `columnas` salga de cuántos paneles hay**, que es la mitad visual
+     * del cambio. Sin esto, un `const columnas = 3` deja todo lo de arriba en
+     * verde y devuelve la grilla fija — en un componente que por convención de
+     * este repo no tiene test de render, o sea que no lo vería nadie. Lo pidió el
+     * `auditor-privacidad`.
+     */
+    expect(
+      componente,
+      'las columnas tienen que contarse de `paneles`, no ser un número escrito',
+    ).toMatch(/Math\.min\(paneles\.length, 3\)/);
+  });
+
+  it('y las tres salen de verdad en el CSS construido', () => {
+    /*
+     * **El único chequeo que sabe la verdad.** Un mapa de literales que Tailwind
+     * igual no ve —por vivir en un archivo fuera de su `content`, o porque la
+     * clase se escribió mal— tiene exactamente el mismo aspecto en el fuente y el
+     * mismo bug en pantalla: la grilla se queda en una columna y nada falla.
+     *
+     * Se saltea sin `dist/`, como los otros que miran el build: correr
+     * `npm run build` antes. En CI el build siempre corre.
+     *
+     * MUTACIÓN PROBADA: escribir el mapa con una clase que Tailwind no emite
+     * —`lg:grid-cols-[2]` con un valor arbitrario que no resuelve— pone este caso
+     * en rojo nombrando la clase que no llegó.
+     */
+    const dir = raiz('dist/_astro');
+    const hojas = existsSync(dir)
+      ? readdirSync(dir)
+          .filter((f) => f.endsWith('.css'))
+          .map((f) => readFileSync(`${dir}/${f}`, 'utf8'))
+          .join('\n')
+      : '';
+
+    if (hojas === '') return; // sin build no hay nada que mirar
+
+    /*
+     * Las clases salen **del mapa**, no escritas otra vez acá: una lista propia
+     * se queda vieja el día que el mapa cambie, y este caso pasaría mirando
+     * clases que ya nadie usa. Y se busca el **selector** (`.lg\:grid-cols-2`),
+     * no la subcadena: `grid-cols-2` a secas lo satisface `CLASES_DE_GALERIA`,
+     * que usa la misma utilidad sin el `lg:` — o sea que el chequeo pasaría sin
+     * que la del tríptico existiera.
+     */
+    const selectorDe = (clase: string): string => `.${clase.replace(/:/g, '\\:')}`;
+
+    const utilidades = [...new Set(Object.values(CLASES_DEL_TRIPTICO).flatMap((c) => c.split(' ')))];
+    expect(utilidades.length, 'el mapa dejó de tener clases que verificar').toBeGreaterThan(2);
+
+    for (const clase of utilidades) {
+      expect(hojas, `\`${clase}\` no llegó al CSS construido`).toContain(selectorDe(clase));
+    }
+
+    /*
+     * **Y la mitad que hace que lo de arriba signifique algo.** Lo encontró el
+     * `auditor-privacidad`: las cuatro utilidades del mapa **también las escriben
+     * otros archivos** —`lg:grid-cols-2` está en `EstadisticasPanel.tsx` y
+     * `lg:grid-cols-3` en `FiltrosActividades.tsx`—, así que el bucle de arriba
+     * pasaría verde aunque `components/sitio/estilos.ts` quedara **fuera del scan
+     * de Tailwind**, que es justo el modo de falla que este caso dice cubrir: la
+     * grilla se quedaría en una columna y nada fallaría.
+     *
+     * Lo que prueba que el archivo se escanea es una clase que **solo él
+     * escribe**: la de dos columnas de `CLASES_DE_PARED` (no se escribe acá — ver
+     * el aviso de abajo). Si está en la hoja, el archivo entró; si no, el bucle de
+     * arriba no está afirmando nada.
+     */
+    const MARCADOR = CLASES_DE_PARED[2];
+    /*
+     * **El grep va sobre el repo entero, no sobre `src/`**, porque el scope de
+     * Tailwind es el repo entero: el marcador escrito en un test o en un `.md`
+     * también lo mete en la hoja, y entonces el chequeo se auto-satisface. Es lo
+     * que pasaba con este mismo caso hasta que el `auditor-privacidad` lo vio.
+     */
+    const buscarEnElRepo = (aguja: string): string[] => {
+      try {
+        return execFileSync(
+          'grep',
+          [
+            '-rl',
+            '--exclude-dir=node_modules',
+            '--exclude-dir=dist',
+            '--exclude-dir=.git',
+            aguja,
+            raiz('.'),
+          ],
+          { encoding: 'utf8' },
+        )
+          .split('\n')
+          .filter(Boolean)
+          .map((f) => f.replace(/.*\/agent-[^/]+\//, ''));
+      } catch {
+        // `grep` sale con 1 cuando no encuentra nada: eso es «el marcador
+        // desapareció del fuente», que es un resultado y no un error de plomería.
+        return [];
+      }
+    };
+    const enElRepo = buscarEnElRepo(MARCADOR);
+    expect(
+      enElRepo,
+      `\`${MARCADOR}\` dejó de ser exclusivo de estilos.ts: mientras esté escrito ` +
+        'en otro archivo escaneado, este caso no prueba nada.',
+    ).toEqual(['src/components/sitio/estilos.ts']);
+    expect(
+      hojas,
+      'ninguna clase exclusiva de `components/sitio/estilos.ts` llegó al CSS: el ' +
+        'archivo quedó fuera del scan de Tailwind, así que el mapa de la grilla no ' +
+        'existe en la hoja aunque las utilidades sueltas sí (las escriben otros).',
+    ).toContain(selectorDe(MARCADOR));
   });
 });

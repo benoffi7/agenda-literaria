@@ -455,9 +455,17 @@ describe('las clases de la pared existen para los tres tamaños', () => {
      * armado en tiempo de ejecución no produce ninguna regla y la pared queda en
      * una columna, con el build en verde y sin una sola advertencia.
      */
+    /*
+     * Las clases se piden **al mapa** y no se escriben como literales acá:
+     * Tailwind v4 escanea también `tests/`, así que un literal en este archivo
+     * mete la clase en la hoja por sí mismo — y `tests/ahoraPublico.test.ts` usa
+     * `CLASES_DE_PARED[2]` como marcador para probar que `estilos.ts` se escanea.
+     * Un literal acá lo dejaría afirmando nada. Lo encontró el
+     * `auditor-privacidad`.
+     */
     const estilos = readFileSync(raiz('src/components/sitio/estilos.ts'), 'utf8');
-    expect(estilos).toContain('sm:columns-2');
-    expect(estilos).toContain('lg:columns-3');
+    expect(estilos).toContain(CLASES_DE_PARED[2]);
+    expect(estilos).toContain(CLASES_DE_PARED[3].split(' ').at(-1));
     // Sin comentarios: el docblock de `CLASES_DE_PARED` explica justamente por
     // qué no se arma en runtime, y un barrido sobre el texto crudo fallaría
     // contra su propia documentación.

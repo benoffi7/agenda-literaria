@@ -61,7 +61,13 @@
  * día que el riel cambie de ancho la lista del build queda corrida, y solo
  * mientras el JavaScript no cargó — que es justo cuando nadie mira.
  */
-import { claseBotonPrimario, claseCampo, claseCasilla, foco } from '@/components/sitio/estilos';
+import {
+  claseBotonPrimario,
+  claseCampo,
+  claseCasilla,
+  claseEtiquetaDeCampo,
+  foco,
+} from '@/components/sitio/estilos';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
@@ -125,9 +131,6 @@ type Carga = { estado: 'cargando' } | { estado: 'listo'; indice: Indice } | { es
 
 /** Un `select` del sistema: sin caja, apoyado sobre su regla, y **sin radio**. */
 const claseSelect = `${claseCampo} appearance-none pe-6 body-md disabled:opacity-60`;
-
-/** El rótulo de un control, en versalitas y azul tinta. */
-const claseEtiqueta = 'label-caps mb-1 block text-azul';
 
 /** Un botón rectangular macizo, la otra forma de botón del sistema. */
 const claseBotonBloque = `label-caps inline-flex min-h-touch shrink-0 items-center justify-center gap-2 border border-borde px-4 transition-colors ${foco} disabled:opacity-60`;
@@ -491,7 +494,7 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
             doce bytes— así que el campo queda con una pieza menos y sin ningún
             icono, que es lo que D-146 pide.
           */}
-          <label htmlFor={`${id}-q`} className={claseEtiqueta}>
+          <label htmlFor={`${id}-q`} className={claseEtiquetaDeCampo}>
             Buscar
           </label>
           {/*
@@ -597,7 +600,7 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
             } lg:static lg:z-auto lg:mt-6 lg:flex lg:max-h-none lg:flex-col lg:gap-5 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0`}
           >
             <div>
-              <label htmlFor={`${id}-cuando`} className={claseEtiqueta}>
+              <label htmlFor={`${id}-cuando`} className={claseEtiquetaDeCampo}>
                 Cuándo
               </label>
               <div className="relative">
@@ -642,7 +645,7 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
                   Solo con inscripción abierta
                 </label>
                 <div>
-                  <label htmlFor={`${id}-cursada`} className={claseEtiqueta}>
+                  <label htmlFor={`${id}-cursada`} className={claseEtiquetaDeCampo}>
                     Tipo de cursada
                   </label>
                   <div className="relative">

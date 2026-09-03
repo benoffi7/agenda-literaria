@@ -23,7 +23,8 @@ fragmentos de código son ilustrativos.
 > | §4.3 detalle | ✅ — menos la barra fija de móvil y el botón «Compartir» |
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
-> | §4.5 pasadas, calendario, acerca, 404 | ✅ **menos el 404** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**) y el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**). `/404` no se construyó y no tiene ítem: responde el de Firebase. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
+> | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**, y **desde B-292 tiene su buscador** — D-381), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
+> | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
 > | §7 casos incómodos | ✅ — §7.3 (canceladas) entró con **B-110**, con el desvío 7 de abajo; la mitad de §7.1 que vive en `/pasadas` y la ventana de 90 días del sitemap entraron con **B-109**. El §7.6 tiene el mismo desvío que el §4.2 (**D-142**) |
@@ -140,15 +141,16 @@ que exista.
 > | `/calendario` | **`/suscribirse`** | **D-134** (B-230) |
 > | `/acerca` | **`/ayuda`** + **`/contacto`** — el rol se repartió en dos | B-232, B-233 |
 > | *(no estaba)* | **`/cartelera`**, la pared de afiches | **D-148** (B-265) |
-> | `/404` | **no existe todavía** | sin ítem: Firebase sirve su 404 por defecto |
+> | `/404` | ~~**no existe todavía**~~ → **`/404.html`**, construida el 2026-09-03 | **B-310**, con **D-380** |
 >
 > La fuente de verdad de qué páginas hay es `src/pages/`, y la de qué se le ofrece
 > al buscador es `RUTAS_FIJAS` (`src/lib/sitemap.ts`) — con un test que exige que
 > toda página estática esté en esa lista **o** exceptuada con su motivo, así que la
 > próxima no se puede olvidar (B-109).
 
-**Doce patrones de ruta de página, todos estáticos: ocho construidos y los cuatro
-hubs de B-108.** Ninguno se genera si quedaría vacío.
+**Trece patrones de ruta de página, todos estáticos: ocho construidos, los cuatro
+hubs de B-108 y el `/404` de B-310.** Ninguno se genera si quedaría vacío — salvo
+el `/404`, que no puede quedar vacío porque no depende de los datos.
 
 | URL | Qué renderiza | De dónde salen los datos |
 |---|---|---|
@@ -159,16 +161,30 @@ hubs de B-108.** Ninguno se genera si quedaría vacío.
 | `/online` | Hub de lo que se hace a distancia (`virtual` + `hibrido`) | Build |
 | `/gratis` | Hub de lo que no se paga (`gratis` + `a-la-gorra`) | Build |
 | `/agenda/{aaaa-mm}` | Qué hay en un mes | Build. Solo meses vigentes con **3 o más** actividades |
-| `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo | Build |
+| `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo. **Con buscador desde B-292** (D-381) | Build. La island: `events.json` |
 | `/cartelera` | La pared de afiches: solo las actividades con flyer, la imagen entera | Build. **No estaba en este diseño** — D-148 |
 | `/suscribirse` | Cómo suscribirse al Google Calendar público. **Era `/calendario`** — D-134 | Estático, escrito a mano (`src/lib/enlaces.ts` pone las direcciones) |
 | `/ayuda` | Qué es esto, qué tipos de actividad hay, cómo se lee una ficha | Estático (`src/lib/ayudaDelSitio.ts`) |
 | `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
-| ~~`/404.html`~~ | **No se construyó.** Hoy responde el 404 por defecto de Firebase Hosting | — |
+| `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310) | Build. La tira sale de `exploracionDeLaHome`; las frases, de `src/lib/noEncontrado.ts` |
 
 Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
+
+> ✅ **`/404` construida el 2026-09-03 — B-310.** Era la única fila tachada de esta
+> tabla. Astro emite la página como `dist/404.html` en la raíz —su caso especial
+> para 404 y 500, incluso con `build.format` en `directory`— que es exactamente
+> el nombre que Firebase Hosting busca, así que no hizo falta ninguna `rewrite`.
+> **Y eso vuelve al nombre del archivo el cableado entero:** renombrarlo apaga la
+> página sin romper el build ni ningún test de contenido, así que
+> `tests/no-encontrado.test.ts` lo verifica sobre `dist/`.
+>
+> Con esto el conteo de arriba pasó de **doce a trece**. Es el único patrón de la
+> tabla que va con `noindex` y fuera del `sitemap.xml` (§5.1), y las dos mitades
+> de esa señal están atadas: la excepción de `tests/sitemap.test.ts` lleva su
+> motivo escrito, que es lo que ese test exige para dejar nacer una página fuera
+> del sitemap.
 
 ### 2.1 Por qué cada hub es una URL y no un filtro
 
@@ -485,10 +501,16 @@ los títulos y el nombre de la actividad, en Lora.
 >   apagado.
 > - **Tope de cuatro filas**, y lo que sobra se dice en palabras y **sin enlace**
 >   (D-320: el día no es una URL de este sitio, [§2.3](#23-lo-que-decidimos-que-no-es-url)).
-> - **Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre» es
+> - ~~**Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre» es
 >   información, y sacarlo dejaría un tríptico de dos columnas que se lee como si el
->   dato faltara. **La sección entera no se dibuja** solo si las tres ventanas están
->   vacías.
+>   dato faltara.~~ **Al revés desde el 2026-09-03: un panel vacío no se dibuja**, y
+>   lo decidió el dueño mirando el sitio publicado — un panel que dice que no hay
+>   nada ocupa un tercio de la banda para no decir nada, arriba del listado, que es
+>   el lugar más caro de la home. La sección sale entonces con **uno, dos o tres**
+>   paneles y la grilla se adapta (`CLASES_DEL_TRIPTICO`, un mapa de literales
+>   porque Tailwind no genera una clase compuesta en runtime). **La sección entera
+>   no se dibuja** cuando no queda ninguno, que es la misma regla una vez más. El
+>   desvío está escrito en **D-320**.
 > - **El sello** («Actualizado: vie 3 sep, 14:30», del `generadoEn` del índice)
 >   explica por qué algo cargado hace diez minutos todavía no está. Un `generadoEn`
 >   ilegible deja el sello vacío, no tira abajo la home.
@@ -777,6 +799,25 @@ el subconjunto ya filtrado.
   > de una pasada **vence a los 90 días** (§7.1), así que a partir de ahí ésta es
   > la única página que la enlaza. Sin ella, cada actividad que pasa se queda sin
   > un solo link interno tres meses después.
+  >
+  > ✅ **Y desde el 2026-09-03 sí tiene buscador — B-292, con D-381.** El segundo
+  > desvío se cerró, y **no** como el párrafo de arriba lo planteaba: no se le
+  > enseñó un modo nuevo a la island de la home. La página monta una island propia
+  > y chica, `BuscadorDePasadas`, con **una** dimensión —que es lo que el §4.5
+  > pide— y lo que reusa es lo único que podría contestar distinto: **el match**.
+  > `buscarEnPasadas` filtra con `coincideBusqueda` (`lib/listadoPublico.ts`), la
+  > misma función que usa `filtrarPublico` para la home, los hubs y los meses; y
+  > las filas las pinta el mismo `ListaDeActividades` que imprime el build. Dos
+  > definiciones de «coincide» serían la home y el archivo contestando distinto a
+  > la misma consulta, en lo único que la gente usa tipeando.
+  >
+  > Lo que la página **deja de ser** es de cero JavaScript, y está medido: el
+  > chunk propio son **2,9 KB**; el resto de lo que carga —el runtime de React y
+  > `ListaDeActividades`— ya lo trae quien pasó por la home, que es de donde se
+  > llega acá. El HTML del build sigue completo y sigue siendo la verdad (§6.3):
+  > la island saca la lista de abajo recién cuando tiene el índice, y **si el
+  > fetch falla no saca nada** — lo que se pierde es el buscador, no el archivo,
+  > que es la propiedad que esta página no puede perder.
 - **`/calendario`** — tres botones: agregar a Google Calendar, suscribirse por
   iCal, y cómo hacerlo desde el teléfono. **Solo la URL pública del calendario**
   (la que se arma con `GOOGLE_CALENDAR_ID`); la URL `private-…` del ICS es un
@@ -810,11 +851,37 @@ el subconjunto ya filtrado.
 - **`/404`** — buscador, los hubs, y "quizá la actividad que buscás ya pasó:
   mirá el archivo".
 
-  > ❌ **No se construyó, y no tiene ítem.** Hoy responde el 404 por defecto de
-  > Firebase Hosting. Se deja escrito acá porque la página tiene sentido —el
-  > destino natural de un slug viejo es el archivo, no una pared blanca— pero
-  > mientras el slug sea inmutable (trampa 10) ninguna URL nuestra se rompe
-  > sola, así que el 404 lo ven sobre todo los bots.
+  > ~~❌ **No se construyó, y no tiene ítem.**~~ **Construida el 2026-09-03 —
+  > B-310, con un desvío en D-380.** Están las tres cosas que este bullet pide:
+  > el buscador, la tira de hubs y el enlace al archivo. Lo que quedó dicho, y es
+  > el desvío:
+  >
+  > **El buscador es un `<form method="get">` a la home, no la island.** El §6.2
+  > ya define que la búsqueda vive en la query string de la home (`/?q=…`), así
+  > que un formulario GET con `name="q"` manda exactamente ahí: es *la misma*
+  > búsqueda, no una segunda implementación, y la página sale del build sin un
+  > byte de JavaScript. Montar `Buscador` acá habría traído la home entera —su
+  > listado completo, su riel de filtros y el fetch del `events.json`— a la
+  > página de error. El nombre del parámetro sale de una constante y hay un test
+  > que lo mete por `aQuery` y lo saca por `desdeQuery`: renombrarlo de un solo
+  > lado rompe eso en vez de publicar un formulario que no filtra nada.
+  >
+  > **Con JavaScript apagado el formulario llega a la agenda completa** y no
+  > aplica el texto, porque el filtrado es del cliente (§2.5). Es una degradación
+  > honesta —se llega a algo— y no un enlace roto.
+  >
+  > El motivo por el que tardó sigue valiendo tal cual y explica por qué es P3:
+  > mientras el slug sea inmutable (trampa 10) ninguna URL nuestra se rompe sola,
+  > así que este 404 lo ven sobre todo los bots y quien tipea mal una dirección.
+  > Lo que gana la página es el caso que B-310 nombra: **el link viejo de
+  > Instagram hacia algo que se renombró antes de la regla**, y el destino de esos
+  > es el archivo.
+  >
+  > Es la **salida pública 13**, y la más chica del repo: cuatro frases escritas a
+  > mano en `src/lib/noEncontrado.ts` y ningún dato de ninguna actividad. Como en
+  > `/pasadas`, la función que las arma **recibe** los únicos datos que la página
+  > ve —los grupos de la tira— y no los usa, así que el barrido de centinelas
+  > corre con la lista de permitidos **vacía**.
 
 ---
 
@@ -857,14 +924,28 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | `/suscribirse` | `Suscribirse al calendario — {NOMBRE}` | escrita a mano | la propia |
 | `/ayuda` | `Ayuda — {NOMBRE}` | escrita a mano | la propia |
 | `/contacto` | `Contacto — {NOMBRE}` | escrita a mano | la propia |
-| ~~`/404`~~ | `No encontramos esa página` | — | — · `noindex` |
+| `/404` | `No encontramos esa página · {NOMBRE}` | — | la propia · **`noindex`** |
 
 > **Las cuatro filas del medio se agregaron el 2026-09-02 (B-234)**: son páginas
 > reales que este documento no tenía —dos porque nacieron con otro nombre, una
 > porque no estaba diseñada—, y el `<title>` de cada una es el que emite hoy, no
 > el que este documento hubiera propuesto. `{NOMBRE}` sale de
 > `src/lib/identidad.ts`, que es la única vez que el nombre del sitio se escribe
-> (un test lo exige). La fila de `/404` queda tachada: la página no se construyó.
+> (un test lo exige). ~~La fila de `/404` queda tachada: la página no se
+> construyó.~~ **Destachada el 2026-09-03 — B-310**, con dos precisiones sobre lo
+> que esa fila decía:
+>
+> - **el `<title>` lleva el nombre del sitio**, como las otras doce. La fila lo
+>   omitía, y omitirlo es lo único que este documento no puede pedir: hay un test
+>   que exige que toda página se titule con `NOMBRE` (B-245, D-141), justamente
+>   porque una página sin identidad en la pestaña es cómo se llegó a que el sitio
+>   se llamara «Agenda literaria»;
+> - **la canónica se emite**, y la fila decía «—». No es un olvido: `Base.astro`
+>   la arma para **todas** las páginas de una sola vez (B-109) precisamente para
+>   que ninguna se publique sin ella, y abrirle una excepción a una página sería
+>   devolverle a cada plantilla la posibilidad de olvidarse. En esta página es
+>   inerte: Firebase la sirve con estado **404** y con `noindex, nofollow`, o sea
+>   que no hay nada que canonizar. Está en **D-380**.
 
 Reglas:
 
@@ -1005,6 +1086,26 @@ Reglas del armado, todas verificables:
 6. **Nada de `aggregateRating`, `review`, ni `Offer` sin respaldo.** Marcar datos
    que la página no muestra es lo que hace que Google deje de confiar en el sitio
    entero.
+
+> ⚠️ **La regla 4 estaba implementada por la mitad, y la mitad que faltaba era la
+> que más pesa — corregido el 2026-09-03 (B-650).** «`InStock` si la inscripción
+> está abierta **y hay sesiones por venir**»: lo segundo no se miraba. El código
+> emitía `offers` mirando solo `inscripcion.cerrada`, que a su vez mira solo
+> `cierra` — así que una actividad **sin fecha de cierre**, que es el caso normal,
+> quedaba abierta para siempre y el taller de enero seguía publicando
+> `availability: InStock` en septiembre, en el formato que Google lee como una
+> afirmación.
+>
+> Es la misma trampa que el §7.1 ya nombraba para el CTA de la página —«el CTA se
+> decide por fecha, no por `inscripcion.abierta`; `abierta` solo mira `cierra`»—
+> un nivel más abajo: la página apagaba el botón y el JSON-LD seguía ofreciendo.
+> Las tres puertas —cancelada, inscripción cerrada, ya pasada— viven ahora en una
+> sola condición (`ofrecible`, `src/lib/detallePublico.ts`) y salen del mismo
+> view-model que el botón.
+>
+> **La regla 3 sigue igual y `offers` sigue sin precio real**: el campo de monto
+> del modelo es **B-114**, y no se puede abrir desde este frente (ver la nota del
+> §11.2 #5).
 
 ### 5.4 El caso online
 
@@ -1439,7 +1540,14 @@ link de Instagram, dentro de un navegador embebido.
   medir el scroll, o sea JavaScript en la única página con presupuesto de 0 KB, y
   **D-145** cambió la regla en vez de la herramienta: en el teléfono el botón del flujo
   no se pinta y la barra es el único CTA, así que no hay nada que medir. Es `fixed` y
-  no `sticky` porque el `overflow-x-hidden` del `body` rompe `sticky` en silencio.
+  no `sticky` porque ~~el `overflow-x-hidden` del `body` rompe `sticky` en
+  silencio~~ **— ese motivo caducó, B-261.** El `body` pasó a `overflow-x: clip` con
+  **B-259**, que recorta igual y **no** crea contenedor de scroll, así que `sticky`
+  volvió a estar disponible. La barra sigue siendo `fixed` y eso no es un olvido:
+  cambiarla son dos piezas y no una clase —el aire del pie (`<style is:global>` de
+  la ruta) es la otra mitad de D-145— y `fixed` funciona. Lo que sí quedó fijado es
+  el hecho, en `tests/detalle-visual.test.ts`: el invariante condicional de D-145
+  dejó de oponerse solo, que es para lo que se escribió condicional.
 - Blancos táctiles de `var(--spacing-touch)` (44px), que ya está definido; los
   `input` a 16px en pantallas chicas, que ya está resuelto en `global.css` (iOS
   hace zoom por debajo de eso y no vuelve).
@@ -1589,10 +1697,31 @@ son datos que ya se muestran en público por otros caminos.
 | 2 | **`estado`** (`'publicado' \| 'cancelado'`) | Para pintar la franja CANCELADA y emitir `eventStatus`. Hoy la proyección no lo lleva, así que el HTML no puede distinguirlo | alta |
 | 3 | ~~**`actualizadoEn`** (ISO de `updatedAt`)~~ — **hecho el 2026-09-03, la mitad del `lastmod`** (B-112). `lastmodDelSitemap` la arma desde `publicadasEditadasEn`, que sigue viajando **al lado** de la proyección y no adentro de `toPublic` — el mismo patrón que `canceladasEditadasEn` (D-166). La otra mitad, "actualizado el …" en el detalle, quedó afuera a propósito: es una decisión de contenido visible y no de plomería, y no la resolvía este ítem | `lastmod` del sitemap, con la fecha recortada al día (D-138) | hecha |
 | 4 | ~~**`publicadaAlgunaVez`** (o la heurística de `calendarEventId`)~~ — **resuelto por ahora sin campo nuevo** (B-110, D-159): se prueba por el historial. El campo explícito queda en **B-285** | Que una cancelada no se convierta en 404, sin publicar un borrador ([7.3](#73-una-actividad-cancelada)). Es un campo del **modelo**, no solo de la proyección | media |
-| 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114** | baja |
+| 5 | **`arancel.monto` + `moneda`** | `offers.price` del JSON-LD, que es lo que hace que Google muestre el precio en el resultado. Campo del modelo → **B-114**. **Mirado el 2026-09-03 y dejado sin hacer, con el motivo escrito abajo** | baja |
 | 6 | **`sede.provincia`** | `addressRegion` del `PostalAddress`. Se puede omitir sin romper el resultado enriquecido | baja |
 | 7 | **`resumen` / copete escrito a mano** | Hoy se corta la descripción a 160 caracteres para la `meta description`. Una frase escrita a propósito rinde bastante más en el clic desde el buscador | baja |
 | 8 | **`organizador.slug`** | Solo si se hacen páginas por organizador (decisión 8) | — |
+
+> **La fila 5 (B-114) no se puede abrir desde el sitio, y conviene que quede
+> dicho — 2026-09-03.** «Precio real en `Event.offers`» suena a un cambio del
+> JSON-LD y no lo es: es el recorrido completo del skill `campo-nuevo`, y **la
+> mayor parte de ese recorrido queda del lado del panel**, no del sitio. Lo que
+> hay que tocar, en orden: el tipo (`src/types/actividad.ts`), el schema de zod,
+> la conversión form ⇄ documento, **el formulario** (`src/components/admin/**`),
+> **la proyección pública** (`src/lib/toPublic.ts`) y recién ahí `offers`.
+>
+> El punto de decisión no es técnico y por eso el ítem sigue en P3: **hay que
+> definir qué significa el monto**, y `arancel.tipo` ya dice que el binario
+> gratis/pago no alcanza. «A la gorra» no tiene precio que publicar (§4.1 del
+> `CLAUDE.md`: en el circuito es la mitad de los casos), «arancelado» puede ser
+> por encuentro o por el ciclo entero, «con beca parcial» tiene dos, y el
+> `arancel.notas` de hoy —«2 cuotas», «incluye material»— es justamente el campo
+> donde eso se escribe en prosa. Un `offers.price` que no diga por cuál de esas
+> cosas se paga es tan falso como el `price: 0` que la regla 3 prohíbe.
+>
+> Mientras tanto lo que el sitio **sí** podía arreglar de esa regla se arregló:
+> la actividad que ya pasó dejó de publicar `availability: InStock` (B-650, ver
+> la nota del §5.3).
 
 ### 11.3 Cosas que este diseño **quita** del JSON
 

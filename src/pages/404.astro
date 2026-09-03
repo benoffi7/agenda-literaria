@@ -1,0 +1,107 @@
+---
+/**
+ * `/404` — la dirección que no existe. B-310, §4.5 y §5.1 del diseño.
+ *
+ * El §4.5 pide tres cosas y están las tres: **buscador**, **los hubs**, y
+ * «quizá la actividad que buscás ya pasó: mirá el archivo». Las frases salen de
+ * `lib/noEncontrado.ts` (ver su docblock para el motivo y para por qué esta
+ * página es una salida pública propia).
+ *
+ * ── El buscador es un `<form method="get">` a la home, y no la island ─────
+ * Es la decisión de esta página. Montar `Buscador` acá sería montar la home
+ * entera en el 404 —trae su propio listado completo, su riel de filtros y el
+ * fetch del `events.json`— y convertiría la página de error en una segunda
+ * portada. El §6.2 ya define que la búsqueda **vive en la query string de la
+ * home** (`/?q=…`), así que un formulario GET con `name="q"` manda exactamente
+ * ahí: es la misma búsqueda, no una segunda implementación, y sale del build sin
+ * un byte de JavaScript.
+ *
+ * `action` sale de `RUTA_AGENDA` y el nombre del campo de `CLAVE_BUSQUEDA`, que
+ * es el mismo literal que `aQuery`/`desdeQuery` usan (`lib/listadoPublico.ts`).
+ * Escrito a mano acá, el día que ese parámetro se renombre este formulario
+ * mandaría a la home sin filtro y nadie se enteraría — la clase de B-88.
+ *
+ * **Con JavaScript apagado el formulario llega a la home y muestra todo**, sin
+ * aplicar el texto: el filtrado es del cliente (§2.5) y eso no cambia por esta
+ * página. Es una degradación honesta —se llega a la agenda completa, que es una
+ * respuesta— y no un enlace roto.
+ *
+ * ── Los hubs son la misma tira de la home, no una lista propia ────────────
+ * `exploracionDeLaHome` es lo único que esta página le pide al lector, y entrega
+ * `GrupoDeExploracion[]`: pares de ruta y texto ya armados, sin una entrada de
+ * índice adentro (D-140). Ya viene recortada —sin los hubs vacíos, que llevan
+ * `noindex` y no se enlazan, y sin los meses vencidos—, así que este 404 no puede
+ * mandar a una página que el build no generó.
+ *
+ * ── `noIndex`, y es la única página del sitio público que lo lleva ────────
+ * §5.1: el 404 va con `noindex` y **fuera del `sitemap.xml`**. Las dos mitades de
+ * la misma señal, como en los hubs vacíos: la lista de excepciones de
+ * `tests/sitemap.test.ts` lo declara con su motivo, porque ese test no deja nacer
+ * una página fuera del sitemap sin que alguien lo decida (B-109).
+ *
+ * ── El nombre del archivo tiene que ser `404` ─────────────────────────────
+ * Firebase Hosting sirve `404.html` de la raíz del directorio publicado cuando no
+ * encuentra nada; Astro emite esta página como `dist/404.html` incluso con
+ * `build.format` en `directory`, que es su caso especial para 404 y 500. O sea que
+ * no hace falta ninguna `rewrite` en `firebase.json`, y **renombrar el archivo
+ * apaga la página sin romper nada visible**: se vuelve al 404 de Firebase. Está
+ * fijado en `tests/no-encontrado.test.ts`, que lo verifica sobre `dist/`.
+ *
+ * ── `seccion="agenda"` ────────────────────────────────────────────────────
+ * Como `/pasadas`, las páginas de mes y el detalle: no son ninguna de las cinco
+ * entradas del encabezado, y cuelgan de la agenda. Lo que importa es que el
+ * chrome esté —quien cae acá tiene que poder salir— y eso lo exige
+ * `tests/chrome-del-sitio.test.ts`.
+ */
+import Base from '@/layouts/Base.astro';
+import ExploraPor from '@/components/sitio/ExploraPor.astro';
+import { claseBotonPrimario, claseCampo, claseEnlace, claseRotulo } from '@/components/sitio/estilos';
+import { exploracionDeLaHome } from '@/lib/contenidoDelSitio';
+import { NOMBRE } from '@/lib/identidad';
+import { CLAVE_BUSQUEDA, frasesDeNoEncontrado } from '@/lib/noEncontrado';
+import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
+
+export const prerender = true;
+
+const exploracion = await exploracionDeLaHome();
+/*
+ * Las frases **reciben los grupos**, que es lo único que esta página ve de los
+ * datos: es lo que hace que el barrido de centinelas de esta salida signifique
+ * algo (ver el docblock de `noEncontrado.ts`). La plantilla no arma texto.
+ */
+const frases = frasesDeNoEncontrado(exploracion);
+---
+
+<Base seccion="agenda" titulo={`${frases.titulo} · ${NOMBRE}`} noIndex>
+  <main class="mx-auto max-w-[90rem] px-4 py-8 sm:px-10 sm:py-12">
+    <div class="max-w-3xl">
+      <h1 class="headline-md text-balance text-tinta">{frases.titulo}</h1>
+      <p class="body-md mt-3 text-super">{frases.bajada}</p>
+
+      {/*
+        El buscador. `label` visible y no `placeholder`: un placeholder se va al
+        tipear y no es el nombre accesible del control (§10). El campo y el botón
+        salen del centralizador (`components/sitio/estilos.ts`), incluido el
+        anillo de foco — no se escribe a mano.
+      */}
+      <form class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-end" action={RUTA_AGENDA} method="get">
+        <div class="min-w-0 flex-1">
+          <label class={`${claseRotulo} mb-1 block`} for="q-404">{frases.buscar}</label>
+          <input class={claseCampo} id="q-404" type="search" name={CLAVE_BUSQUEDA} />
+        </div>
+        <button class={`${claseBotonPrimario} shrink-0`} type="submit">{frases.accion}</button>
+      </form>
+
+      <p class="body-md mt-8 text-super">
+        {frases.archivo} <a class={claseEnlace} href={RUTA_PASADAS}>{frases.enlace}</a>.
+      </p>
+    </div>
+
+    {/*
+      La tira de hubs, la misma de la home y de cada hub. Es la navegación sin
+      JavaScript, y acá es además la respuesta más útil que la página puede dar:
+      quien tipeó mal una dirección probablemente buscaba una de estas secciones.
+    */}
+    <ExploraPor grupos={exploracion} />
+  </main>
+</Base>

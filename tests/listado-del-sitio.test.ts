@@ -836,14 +836,17 @@ describe('el tríptico de «¿qué hay ahora?» no decide nada — B-600', () =>
 
   it('ni decide una sola frase: los rótulos y los textos vienen del módulo', () => {
     /*
-     * `Hoy`, `Mañana`, `Este finde`, «Por hoy no queda nada» y «+2 más hoy» son
-     * **texto de producto** y viven juntos en `lib/ahoraPublico.ts`, que es puro y
-     * está testeado: es lo que permite verificar que a las once de la noche el
-     * panel diga «por hoy no queda nada» y no «hoy no hay nada» — las dos frases
-     * describen el mismo panel vacío y solo una es cierta.
+     * `Hoy`, `Mañana`, `Este finde` y «+2 más hoy» son **texto de producto** y
+     * viven juntos en `lib/ahoraPublico.ts`, que es puro y está testeado.
      *
      * Lo único escrito en el markup es el rótulo de la **sección**, que no
      * depende de ningún reloj.
+     *
+     * **Las frases del panel vacío ya no están, y es a propósito** (D-320,
+     * 2026-09-03): desde que un panel sin encuentros no se dibuja, «Por hoy no
+     * queda nada» no la pinta nadie y se borró en vez de quedar como campo
+     * muerto del view-model. Por eso `queda nada` sigue prohibida en el markup
+     * —que nadie la reponga acá— y el control positivo pasó a ser otra frase.
      */
     const src = paneles();
     for (const frase of [/['"]Hoy['"]/, /Mañana/, /finde/i, /más hoy/, /queda nada/]) {
@@ -852,7 +855,7 @@ describe('el tríptico de «¿qué hay ahora?» no decide nada — B-600', () =>
       );
     }
     // Control positivo: las frases existen, y están allá.
-    expect(modulo()).toContain('Por hoy no queda nada.');
+    expect(modulo()).toContain('más hoy');
     expect(modulo()).toContain('El finde que viene');
     expect(paneles(), 'el rótulo de la sección sí es del markup').toContain('¿Qué hay ahora?');
   });

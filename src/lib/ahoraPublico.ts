@@ -137,24 +137,32 @@ export interface PanelDeAhora {
    * en el pie de un panel.
    */
   resto: string | null;
-  /** Qué dice el panel cuando no tiene ningún encuentro. */
-  vacio: string;
 }
 
 /**
  * Las frases de cada panel, que es lo que cambia entre los tres.
  *
  * Están juntas y no interpoladas en el armado porque son **texto de producto**:
- * el día que «Nada hoy» tenga que decir otra cosa se cambia acá, en las tres, y
+ * el día que «+2 más hoy» tenga que decir otra cosa se cambia acá, en las tres, y
  * no repartido en dos ramas de un `map`.
  *
- * «Por hoy no queda nada» y no «hoy no hay nada»: a las once de la noche las dos
- * frases describen el mismo panel vacío y solo una es cierta.
+ * ── Acá había una frase por panel para el caso vacío, y se fue ────────────
+ * `vacio` («Por hoy no queda nada», y sus dos hermanas) **se borró el 2026-09-03**
+ * con el cambio de D-320: un panel sin encuentros ya no se dibuja, así que nadie
+ * la pinta. No quedó como campo muerto a propósito: un dato del view-model que
+ * ningún componente imprime es peso que el próximo lector tiene que descartar, y
+ * además invita a reponer la rama que se acaba de sacar.
+ *
+ * (El chequeo de clase «ningún campo del view-model se queda sin pintar» existe
+ * para `TarjetaDelPanel` y **no** para éste: acá `restantes` tampoco se pinta —es
+ * el insumo de `resto`— así que ese chequeo, aplicado tal cual, hoy estaría en
+ * rojo. Lo aclaró el `auditor-privacidad` sobre una versión de esta nota que lo
+ * citaba como si ya cubriera el tríptico.)
  */
-const FRASES: Record<ClaveDePanel, { vacio: string; resto: (n: number) => string }> = {
-  hoy: { vacio: 'Por hoy no queda nada.', resto: (n) => `+${n} más hoy` },
-  manana: { vacio: 'Todavía no hay nada para mañana.', resto: (n) => `+${n} más mañana` },
-  finde: { vacio: 'Todavía no hay nada para ese finde.', resto: (n) => `+${n} más ese finde` },
+const FRASES: Record<ClaveDePanel, { resto: (n: number) => string }> = {
+  hoy: { resto: (n) => `+${n} más hoy` },
+  manana: { resto: (n) => `+${n} más mañana` },
+  finde: { resto: (n) => `+${n} más ese finde` },
 };
 
 /**
@@ -246,18 +254,29 @@ const fechasDeVentana = (dias: readonly string[]): string =>
   dias.map(fechaCortaDeDia).join(' y ');
 
 /**
- * Los tres paneles, o `null` cuando no hay **nada** en ninguna de las tres
- * ventanas.
+ * Los paneles **que tienen algo**, o `null` cuando no lo tiene ninguno.
  *
  * El `null` es la decisión de no dibujar la sección, y se toma **acá y no en
  * cada llamador**: la pinta el HTML del build y la pinta la island, y dos
  * condiciones escritas por separado son dos maneras de que una se quede vieja
- * (la clase de B-88). Un tríptico de tres «nada» no es una portada del programa:
- * es un hueco que ocupa el lugar de lo que sí hay.
+ * (la clase de B-88).
  *
- * Un panel vacío **con los otros dos llenos sí se dibuja**, y dice que no hay
- * nada ese día: eso es información —«el sábado está libre»— y sacarlo dejaría un
- * tríptico de dos columnas que se lee como si el dato faltara.
+ * ── Un panel vacío no se dibuja, y eso invierte lo que decía D-320 ────────
+ * B-600 lo había decidido al revés —un panel vacío se dibujaba y decía «Por hoy
+ * no queda nada», con el argumento de que «el sábado está libre» es información—
+ * y **el dueño lo vio en pantalla el 2026-09-03 y decidió lo contrario**: un
+ * panel que dice que no hay nada ocupa un tercio de la banda para no decir nada.
+ * Su criterio gana; el desvío está escrito al lado del original en D-320.
+ *
+ * Con eso el `null` de abajo deja de ser una condición aparte y pasa a ser la
+ * consecuencia natural de la misma regla: si no sobrevive ningún panel, no hay
+ * sección. Una sola frase —«se muestran los paneles con algo»— en vez de dos.
+ *
+ * **Y el filtro va acá y no en el componente**, que es lo que hace que la grilla
+ * pueda saber cuántas columnas necesita y que la regla separadora se cuente sobre
+ * la lista ya filtrada: con el filtro en el `map` del `.tsx`, el primer panel que
+ * se dibuja podría no ser el índice 0 y llevaría regla a la izquierda sin tener
+ * nada a la izquierda.
  */
 export const panelesDeAhora = (
   indice: Indice,
@@ -337,10 +356,15 @@ export const panelesDeAhora = (
       encuentros,
       restantes,
       resto: restantes > 0 ? FRASES[clave].resto(restantes) : null,
-      vacio: FRASES[clave].vacio,
     };
   });
 
-  if (!paneles.some((p) => p.encuentros.length > 0)) return null;
-  return { sello: selloDelIndice(indice.generadoEn), paneles };
+  /*
+   * Los que tienen algo, en el orden de siempre. `filter` y no `some` + `map`:
+   * el `null` de la sección es «no quedó ninguno», o sea la misma regla aplicada
+   * una vez más, y no una segunda condición que pueda quedar vieja.
+   */
+  const conAlgo = paneles.filter((p) => p.encuentros.length > 0);
+  if (conAlgo.length === 0) return null;
+  return { sello: selloDelIndice(indice.generadoEn), paneles: conAlgo };
 };

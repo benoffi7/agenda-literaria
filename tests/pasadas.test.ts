@@ -5,13 +5,27 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BAJADA_DE_PASADAS,
+  BUSCAR_EN_PASADAS,
+  CARGANDO_PASADAS,
+  ERROR_DE_PASADAS,
+  PISTA_DE_PASADAS,
+  SIN_RESULTADOS_EN_PASADAS,
   TITULO_DE_PASADAS,
   VACIO_DE_PASADAS,
+  buscarEnPasadas,
+  cuentaDePasadas,
   descripcionDePasadas,
   frasesDePasadas,
   pasadasDelSitio,
 } from '@/lib/pasadasPublicas';
-import { agruparPorMes, estadoDe, vigentesDelIndice } from '@/lib/listadoPublico';
+import {
+  agruparPorMes,
+  coincideBusqueda,
+  estadoDe,
+  filtrarPublico,
+  filtrosVacios,
+  vigentesDelIndice,
+} from '@/lib/listadoPublico';
 import { RUTA_PASADAS } from '@/lib/rutasPublicas';
 import { RUTAS_FIJAS } from '@/lib/sitemap';
 import { construirIndice } from '@/lib/eventsJson';
@@ -195,7 +209,7 @@ describe('lo que la página dice', () => {
     expect(VACIO_DE_PASADAS.trim()).not.toBe('');
   });
 
-  it('las cuatro frases salen de una función que recibe las entradas', () => {
+  it('las frases salen de una función que recibe las entradas', () => {
     /*
      * Que `frasesDePasadas` **tenga los datos a mano y no los use** es lo que hace
      * verificable el «acá no se interpola nada»: el barrido de centinelas de esta
@@ -211,6 +225,13 @@ describe('lo que la página dice', () => {
       bajada: BAJADA_DE_PASADAS,
       descripcion: descripcionDePasadas(3),
       vacio: VACIO_DE_PASADAS,
+      // Las cinco del buscador — B-292. Entran acá y no al markup de la island
+      // por lo mismo que las otras cuatro: es lo que las mete en el barrido.
+      buscar: BUSCAR_EN_PASADAS,
+      pista: PISTA_DE_PASADAS,
+      sinResultados: SIN_RESULTADOS_EN_PASADAS,
+      cargando: CARGANDO_PASADAS,
+      error: ERROR_DE_PASADAS,
     });
     // Y la página las pide, no las arma.
     expect(sinComentarios(fuente('src/pages/pasadas.astro'))).toContain(
@@ -237,6 +258,291 @@ describe('lo que la página dice', () => {
   });
 });
 
+describe('el buscador del archivo — B-292', () => {
+  /*
+   * §4.5: «sin filtros salvo la búsqueda». Lo que este `describe` fija no es que
+   * la búsqueda funcione —eso lo prueba `coincideBusqueda` en su propio archivo—
+   * sino que sea **la misma** que la del resto del sitio. Dos definiciones de
+   * «coincide» es la home y el archivo contestando distinto a la misma consulta,
+   * en lo único que la gente usa tipeando: la clase de B-88.
+   */
+  /*
+   * Dos pasadas **sin una palabra en común** salvo las que se buscan a propósito:
+   * la descripción del fixture por defecto habla de crónica, así que las dos
+   * matchearían «cronica» y el caso no probaría nada.
+   */
+  const CRONICA = entradaDePrueba({
+    id: 'cronica',
+    slug: 'cronica',
+    titulo: 'Taller de crónica',
+    descripcion: 'Ocho encuentros para escribir sobre la ciudad.',
+    barrio: 'boedo',
+    fechas: ['2026-05-20T22:00:00Z'],
+  });
+  const POESIA = entradaDePrueba({
+    id: 'poesia',
+    slug: 'poesia',
+    titulo: 'Club de poesía',
+    descripcion: 'Leemos un libro por mes y lo charlamos.',
+    barrio: 'villa-crespo',
+    fechas: ['2026-07-15T22:00:00Z'],
+  });
+  const PASADAS = pasadasDelSitio([CRONICA, POESIA, FUTURA], AHORA);
+
+  it('control positivo: las dos pasadas están y la futura no', () => {
+    // Sin esto, un fixture que dejara de producir pasadas haría pasar todo lo de
+    // abajo con la lista vacía.
+    expect(PASADAS.map((e) => e.slug)).toEqual(['poesia', 'cronica']);
+  });
+
+  it('busca por título y por barrio, sin acentos y exigiendo todas las palabras', () => {
+    // Las tres propiedades del §6, verificadas sobre el archivo: son las mismas
+    // que la home porque la función que compara es la misma.
+    expect(buscarEnPasadas(PASADAS, 'cronica').map((e) => e.slug)).toEqual(['cronica']);
+    expect(buscarEnPasadas(PASADAS, 'crónica').map((e) => e.slug)).toEqual(['cronica']);
+    expect(buscarEnPasadas(PASADAS, 'boedo').map((e) => e.slug)).toEqual(['cronica']);
+    // AND, no OR: la segunda palabra acota.
+    expect(buscarEnPasadas(PASADAS, 'cronica boedo').map((e) => e.slug)).toEqual(['cronica']);
+    expect(buscarEnPasadas(PASADAS, 'cronica villa')).toEqual([]);
+  });
+
+  it('sin texto devuelve todo, y buscar no reordena', () => {
+    /*
+     * Las dos mitades de «buscar acota, no reordena»: el orden del archivo —de lo
+     * más reciente a lo más viejo— lo decide `pasadasDelSitio`, y un resultado
+     * ordenado por «relevancia» sería un criterio que nada respalda.
+     */
+    expect(buscarEnPasadas(PASADAS, '')).toEqual(PASADAS);
+    expect(buscarEnPasadas(PASADAS, '   ')).toEqual(PASADAS);
+    const dos = buscarEnPasadas(PASADAS, 'de');
+    expect(dos.map((e) => e.slug)).toEqual(['poesia', 'cronica']);
+  });
+
+  it('es la misma comparación que usa la home — el lazo, no el parecido', () => {
+    /*
+     * La afirmación que importa: para la **misma** consulta, la home y el archivo
+     * dejan pasar exactamente las mismas entradas. Se corre `filtrarPublico` sobre
+     * las dos actividades tratadas como vigentes (`cuando` = el mes de cada una,
+     * que es lo que la home ofrece para mirar hacia atrás) y se compara contra
+     * `buscarEnPasadas`.
+     *
+     * **Qué mata y qué no**, que es lo que hay que saber de un lazo: cambiar el
+     * AND por un OR dentro de `coincideBusqueda` **no** rompe este caso —los dos
+     * lados cambian juntos, y eso es exactamente lo que un lazo promete—, rompe
+     * el caso de arriba, que sí mira el comportamiento. Lo que este caso mata es
+     * la **divergencia**: darle a `buscarEnPasadas` su propio match.
+     *
+     * MUTACIÓN PROBADA: reemplazar `coincideBusqueda` por un
+     * `e.titulo.toLowerCase().includes(q)` en `buscarEnPasadas` —que es
+     * exactamente cómo se escribiría el match «obvio» si no existiera el módulo
+     * puro— pone en rojo este caso y tres más de este `describe`.
+     */
+    for (const q of ['cronica', 'crónica', 'boedo', 'cronica boedo', 'club poesia']) {
+      const porLaHome = filtrarPublico([CRONICA, POESIA], { ...filtrosVacios(), q, cuando: '2026-05' }, AHORA)
+        .concat(
+          filtrarPublico([CRONICA, POESIA], { ...filtrosVacios(), q, cuando: '2026-07' }, AHORA),
+        )
+        .map((e) => e.slug)
+        .sort();
+      const porElArchivo = buscarEnPasadas(PASADAS, q)
+        .map((e) => e.slug)
+        .sort();
+      expect(porElArchivo, `«${q}» no da lo mismo en la home y en el archivo`).toEqual(porLaHome);
+    }
+  });
+
+  it('`pasadasPublicas` no tiene su propia normalización', () => {
+    /*
+     * La guarda de la clase, no del caso: el día que alguien «arregle» la búsqueda
+     * del archivo escribiendo el match acá, este caso lo dice. `coincideBusqueda`
+     * tiene que venir importado, y `normalize` no puede aparecer en este módulo.
+     *
+     * Es la misma forma que la guarda de `FORMATO_VERSION` (B-165): se pregunta
+     * por la **llamada**, no por el nombre, para que un import no la satisfaga.
+     */
+    const modulo = sinComentarios(fuente('src/lib/pasadasPublicas.ts'));
+    expect(modulo).toContain('coincideBusqueda');
+    expect(modulo).toMatch(/filter\(coincideBusqueda\(/);
+    expect(modulo, 'el archivo no puede normalizar por su cuenta').not.toContain('normalize');
+  });
+
+  it('el contador dice la unidad, y sale del módulo y no del componente', () => {
+    /*
+     * Va en un `aria-live`, así que es lo que **escucha** quien no ve la lista
+     * cambiar: un número pelado no dice de qué. Y vive en `pasadasPublicas.ts` y
+     * no armado con un template en la island, que es lo que lo deja adentro del
+     * barrido de centinelas de esta salida.
+     *
+     * MUTACIÓN PROBADA: volver a `${visibles.length} de ${pasadas.length}` en el
+     * componente deja este caso en rojo por el segundo aserto.
+     */
+    expect(cuentaDePasadas(3, 3)).toBe('3 actividades');
+    expect(cuentaDePasadas(1, 1)).toBe('1 actividad');
+    expect(cuentaDePasadas(1, 3)).toBe('1 de 3 actividades');
+    expect(cuentaDePasadas(0, 0)).toBe('0 actividades');
+
+    const island = sinComentarios(fuente('src/components/publico/BuscadorDePasadas.tsx'));
+    expect(island).toContain('cuentaDePasadas(visibles.length, pasadas.length)');
+    // Y **no** la `meta description` como rótulo: son dos textos con dos trabajos.
+    expect(island).not.toContain('frases.descripcion');
+  });
+
+  it('la island reusa el componente de la lista y no escribe texto', () => {
+    /*
+     * Las dos mitades de «no hay una segunda implementación»: el markup de la fila
+     * es el mismo `ListaDeActividades` que imprime el build (§6.3), y las frases
+     * salen de `frasesDePasadas`, que es lo que las mete en el barrido de
+     * centinelas de esta salida.
+     */
+    const island = sinComentarios(fuente('src/components/publico/BuscadorDePasadas.tsx'));
+    expect(island).toContain('ListaDeActividades');
+    expect(island).toContain('buscarEnPasadas');
+    expect(island).toContain('frasesDePasadas');
+    for (const clave of ['buscar', 'pista', 'sinResultados', 'cargando', 'error']) {
+      expect(island, `la island no usa frases.${clave}`).toContain(`frases.${clave}`);
+    }
+  });
+
+  it('y no escribe texto: ningún literal suelto en su markup', () => {
+    /*
+     * **La otra mitad, y la que atrapa lo que pasó.** El caso de arriba afirma que
+     * las cinco frases se **usan**, y eso no impide que se agregue una sexta
+     * escrita en el componente — que es exactamente lo que estaba: el contador
+     * salía de un template (`${visibles.length} de ${pasadas.length}`) y de la
+     * `meta description` usada como rótulo. Lo encontró el `auditor-privacidad`.
+     *
+     * Un texto escrito acá queda **fuera del barrido de centinelas de la salida
+     * 10**, que corre sobre lo que devuelve `pasadasPublicas.ts` con la lista de
+     * permitidos vacía. La mutación que hoy pasaría en verde es de un carácter:
+     * agregarle `— ${visibles[0]?.titulo}` al contador.
+     *
+     * Es el mismo caso que `tests/no-encontrado.test.ts` tiene para la salida 13,
+     * con la misma forma: nada entre etiquetas que no sea una interpolación. La
+     * puntuación suelta sí puede quedar.
+     */
+    const markup = fuente('src/components/publico/BuscadorDePasadas.tsx')
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+    /*
+     * A diferencia del `.astro`, acá **todo el archivo es código**: no hay
+     * frontmatter que sacar, así que un `=>` de una arrow y un `length > 0 ? (`
+     * caen en el mismo patrón que un texto entre etiquetas. Se descartan por lo
+     * que un texto de UI no tiene: `;`, paréntesis, llaves o un `=`. Es una
+     * heurística y se paga con un falso negativo posible —un literal con un
+     * paréntesis adentro no se vería—, que es el lado barato del error: lo que
+     * este caso tiene que atrapar es la frase que alguien escribe de apuro.
+     */
+    const esTextoDeUi = (t: string): boolean =>
+      /[\p{L}\p{N}]/u.test(t) && !/[;(){}=]/.test(t);
+
+    /*
+     * **Los delimitadores son `>` o `}` de un lado y `<` o `{` del otro**, y ésa
+     * es la mitad que se olvida. Con `>…<` a secas, la forma **más natural** de
+     * escribir en JSX la frase que este caso existe para atrapar no matchea
+     * ninguna vez:
+     *
+     *     <p>{visibles.length} de {pasadas.length} actividades</p>
+     *
+     * porque el `>` de `<p>` va seguido de `{`, y « de » y « actividades» vienen
+     * detrás de un `}`. O sea que la mutación que el docblock nombra pasaba en
+     * verde con solo escribirla en JSX en vez de en un template. Lo encontró el
+     * `auditor-privacidad`.
+     *
+     * Y los espacios se colapsan **antes** de decidir, sin descartar lo que tenga
+     * un salto de línea: una frase larga la parte prettier en dos, y descartarla
+     * por eso dejaría pasar justo la que más se nota.
+     */
+    const sueltos = [...markup.matchAll(/[>}]([^<>{}]+)[<{]/g)]
+      .map((m) => m[1]!.replace(/\s+/g, ' ').trim())
+      .filter(esTextoDeUi);
+
+    expect(
+      sueltos,
+      'estos textos están escritos en la island y no en `pasadasPublicas.ts`, así ' +
+        'que el barrido de centinelas de la salida 10 no los mira.',
+    ).toEqual([]);
+
+    /*
+     * Y la otra forma de escribir una frase acá: un template con los datos
+     * adentro, que es literalmente lo que había. Se prohíben los que interpolan
+     * **los datos** (`visibles`, `pasadas`, `q`) y no todos los templates: los
+     * que quedan arman un `id` y una lista de clases, que no son texto.
+     */
+    expect(
+      markup.match(/`[^`]*\$\{\s*(?:visibles|pasadas|q)\b/g) ?? [],
+      'la island arma texto con los datos adentro: eso va a `pasadasPublicas.ts`, ' +
+        'como `cuentaDePasadas`, que es lo que lo mete en el barrido.',
+    ).toEqual([]);
+
+    /*
+     * **Y el texto que no va entre etiquetas**: el de un atributo. `placeholder`,
+     * `aria-label`, `title` y `alt` son texto que la persona lee o escucha, y un
+     * literal ahí queda igual de afuera del barrido que uno entre etiquetas —
+     * con el agravante de que el barrido de arriba, que mira `>…<`, no lo ve.
+     * Tienen que salir de una expresión.
+     */
+    const ATRIBUTOS_DE_TEXTO = [
+      'placeholder',
+      'title',
+      'alt',
+      'label',
+      'value',
+      'aria-label',
+      'aria-description',
+      'aria-placeholder',
+      'aria-roledescription',
+      'aria-valuetext',
+    ];
+    for (const attr of ATRIBUTOS_DE_TEXTO) {
+      /*
+       * Las **dos** formas del literal, y la segunda es la que se escapaba:
+       * `placeholder="Buscá…"` y `placeholder={'Buscá…'}`. La segunda *es* una
+       * expresión, así que cumplía la letra de lo que este caso pide y no el
+       * espíritu — un literal es un literal esté o no adentro de llaves.
+       */
+      const literales =
+        markup.match(
+          new RegExp(`${attr}=(?:"[^"]*[\\p{L}]|\\{\\s*['"\`][^'"\`]*[\\p{L}])`, 'gu'),
+        ) ?? [];
+      expect(
+        literales,
+        `\`${attr}\` con un literal: ese texto tampoco lo mira el barrido de la salida 10.`,
+      ).toEqual([]);
+    }
+
+    /*
+     * Y la tercera forma de escribir una frase acá: concatenar con `+`. Es la
+     * menos probable —el repo arma strings con templates en todos lados y este
+     * archivo no tiene un solo `+`— y por eso va como una regla sola y sin
+     * excepciones: hoy da vacío, así que entra en verde sin tocar el componente.
+     */
+    expect(
+      markup.match(/['"`][^'"`\n]*['"`]\s*\+|\+\s*['"`]/g) ?? [],
+      'la island concatena un literal: eso es una frase, y va a `pasadasPublicas.ts`.',
+    ).toEqual([]);
+  });
+
+  it('el fetch falla y la lista del build se queda: nunca una pantalla vacía', () => {
+    /*
+     * La propiedad que esta página no puede perder (§2.1): su razón de ser es que
+     * cada actividad que pasó conserve un link interno. La island **solo** saca la
+     * lista del build adentro del `then` del fetch, así que un fetch que falla la
+     * deja intacta — se pierde el buscador, no el archivo.
+     *
+     * MUTACIÓN PROBADA: mover el `.remove()` afuera del `then` (por ejemplo a un
+     * efecto de montaje) deja este caso en rojo.
+     */
+    const island = fuente('src/components/publico/BuscadorDePasadas.tsx');
+    const desdeElThen = island.slice(island.indexOf('.then((indice)'));
+    const hastaElCatch = desdeElThen.slice(0, desdeElThen.indexOf('.catch('));
+    expect(hastaElCatch).toContain('.remove()');
+    // Y en ningún otro lado.
+    expect(island.match(/\.remove\(\)/g)).toHaveLength(1);
+  });
+});
+
 describe('la página', () => {
   const PAGINA = 'src/pages/pasadas.astro';
   const src = () => sinComentarios(fuente(PAGINA));
@@ -254,15 +560,47 @@ describe('la página', () => {
     expect(src()).toMatch(/<Base[^>]*\bseccion="agenda"/s);
   });
 
-  it('es estática y no monta ninguna island', () => {
+  it('es estática, y su única island es el buscador del archivo — B-292', () => {
     /*
-     * El §4.5 pide «sin filtros salvo la búsqueda», y la búsqueda es la island de
-     * la home, que filtra lo **vigente** y no sabe de pasadas: traerla acá es un
-     * cambio de la island (B-292). Mientras tanto, cero JavaScript — como el
-     * detalle y la cartelera.
+     * ~~Cero JavaScript~~: hasta B-292 la página no montaba nada, porque la única
+     * búsqueda del sitio era la de la home y filtra lo **vigente**. Hoy monta
+     * `BuscadorDePasadas`, que es una island propia y chica — no la de la home
+     * (ver el `describe` de arriba y D-381).
+     *
+     * Lo que **no** cambió, y es lo que este caso protege: la página sigue siendo
+     * `prerender`, o sea que el archivo completo sale del build en HTML. Es la
+     * mitad que le da sentido (§2.1): las páginas de detalle que ya pasaron
+     * necesitan un link interno que un buscador exista o no.
      */
     expect(src()).toContain('export const prerender = true;');
-    expect(src()).not.toMatch(/client:(load|idle|visible|only|media)/);
+    const islands = [...src().matchAll(/<(\w+)[^>]*client:(\w+)/g)].map((m) => [m[1], m[2]]);
+    expect(islands).toEqual([['BuscadorDePasadas', 'load']]);
+  });
+
+  it('la lista del build tiene id y la island lo recibe — si no, las filas van dos veces', () => {
+    /*
+     * El cableado del patrón de la home: la island saca del DOM la lista del build
+     * por su `id`. Escrito en dos lados como literal, un renombre de un solo lado
+     * deja **las filas duplicadas** en la página — se ve, pero recién con el
+     * JavaScript cargado, que es lo que nadie mira en el HTML del build.
+     */
+    const codigo = src();
+    expect(codigo).toMatch(/const ID_LISTADO = '[^']+'/);
+    expect(codigo).toMatch(/<div id=\{ID_LISTADO\}/);
+    expect(codigo).toMatch(/idListadoEstatico=\{ID_LISTADO\}/);
+  });
+
+  it('la versión del `?v=` es la misma que estampa el `events.json`', () => {
+    /*
+     * La página no puede leer el índice (D-140, ver el caso de abajo), así que la
+     * versión sale de `INFO_VERSION`. Es el **mismo** valor que el lector le pone
+     * al archivo —`indiceDelSitio` construye el índice con `INFO_VERSION.version`—
+     * y esto lo ata: si el lector pasara a estampar otra cosa, el `?v=` de esta
+     * página pediría una versión que no existe y el aserto lo dice.
+     */
+    expect(src()).toContain('INFO_VERSION.version');
+    const lector = sinComentarios(fuente('src/lib/contenidoDelSitio.ts'));
+    expect(lector).toContain('INFO_VERSION.version');
   });
 
   it('no ve el índice: recibe su view-model (D-140)', () => {
