@@ -165,7 +165,14 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   Google Maps del lugar —o un par `lat, lng`— y con eso el link del evento
   apunta al punto en vez de hacer que Google adivine por la dirección (D-46).
   Se aplica al pegar, sin apretar nada. Los links cortos `maps.app.goo.gl` no
-  traen coordenadas y el campo lo dice, con qué hacer para salir del paso. Un
+  traen coordenadas y el campo lo dice; desde **B-45** además aparece un botón
+  **«Abrir el link»** que lo abre en otra pestaña, para copiar de ahí el link
+  largo. El redirect no se puede seguir desde el navegador —CORS, y la respuesta
+  de un redirect manual es opaca—, así que lo sigue el navegador abriéndolo; la
+  Function que lo resolvería sola es un fetcher de URLs arbitrarias y necesita su
+  propio diseño de seguridad, así que sigue pendiente. El `href` no sale del
+  portapapeles: lo sanea `linkCortoParaAbrir`, que fuerza `https` y verifica
+  **host y camino** contra una lista blanca derivada de un solo lugar. Un
   punto lejos de Argentina no bloquea: avisa. Se puede quitar y volver a
   "sin coordenadas". Para confirmar que se cargó bien: el campo muestra la
   coordenada con un link al mapa, y la **vista previa del evento** muestra la
@@ -277,7 +284,9 @@ sigue diciéndolo y su evento no se toca.
 ### Editor de modalidades (B-224)
 
 **«Dónde» es una lista, con la misma interfaz que los encuentros.** Cada fila es
-una forma de cursar completa: el selector presencial / virtual / híbrido y, según
+una forma de cursar completa: el selector presencial / virtual / **«presencial y
+virtual»** —así se lee desde B-175, con el mismo vocabulario que el listado, el
+sitio y el evento; antes el formulario era el único que decía «híbrido»— y, según
 lo que se elija, la sede o los datos de la reunión — o los dos. Así una actividad
 puede darse presencial en una librería **y** virtual por Meet, que con una sede
 sola no se podía decir.
