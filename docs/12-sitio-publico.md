@@ -404,6 +404,23 @@ Notas que importan:
   `tests/build-credenciales.test.ts` fija las dos cosas: que la puerta tire, y
   que nada más en `src/` importe el Admin SDK por su cuenta.
 
+> ⚠️ **Desde D-210 el build hace una segunda lectura externa, y su modo de falla
+> es el opuesto al de esta sección.** `miniaturasConocidas()`
+> (`src/lib/contenidoDelSitio.ts`) lista `miniaturas/` en Storage —una sola vez
+> por build, con `adminBucket()`— para saber qué miniaturas existen de verdad
+> antes de ponerlas en un `srcset`. **Esa lectura nunca tira.** Sin credenciales,
+> sin permiso de listado o con Storage caído se degrada a «ninguna confirmada»,
+> avisa por `console.warn` y el sitio sale con los originales: es exactamente el
+> sitio que había antes de B-320, más pesado y **entero**. La asimetría es
+> deliberada y está argumentada en D-210: un sitio sin actividades es un
+> incidente, un sitio sin `srcset` es una optimización que no se aplicó. Lo que
+> **no** puede pasar es que un build sin ese permiso se quede sin portadas, y eso
+> lo fija un test.
+>
+> El permiso ya lo tiene `deploy-ci@` (`roles/firebase.developAdmin` incluye
+> `storage.objects.list`), así que no hay ningún paso de operación previo — ver
+> D-210 § «El permiso ya está».
+
 ### 3.3 Estados y qué se genera con cada uno
 
 | `estado` | ¿Entra a `events.json`? | ¿Tiene página de detalle? | ¿En el sitemap? |
@@ -553,6 +570,16 @@ Es el componente que más se repite; lo que muestra está elegido, en este orden
 > imagen —la portada—, y las demás que la actividad tenga (hasta cuatro, DEC-7b)
 > salen en una tira **al final** del contenido, entre «Cómo llegar» y «Organiza».
 > Hasta ese día no salían a ninguna parte del sitio.
+>
+> **Y una corrección al `srcset` de esa portada (B-321, D-210).** La portada sale
+> con dos candidatos —la miniatura de 480px y el original de 1600— y el `src`
+> **siempre** en el original. La primera versión justificaba ese `src` diciendo
+> que «un candidato de `srcset` que no existe degrada al `src`»: **es falso**. El
+> candidato elegido *reemplaza* al `src`, así que un 404 rompe la imagen en vez
+> de degradarla; el `src` es el respaldo para un navegador sin soporte de
+> `srcset`, nada más. Hoy la miniatura entra al `srcset` solo si el build la
+> **confirmó** contra Storage (`urlDeMiniaturaSiExiste`), y si no, el atributo
+> sale ausente y la portada es el original. Vale igual para `/cartelera`.
 
 La pantalla más importante del sitio, y la que **no lleva JavaScript**: es HTML
 y CSS. Cero islands, cero `events.json`, cero hidratación.
@@ -1321,6 +1348,15 @@ lista vacía es frecuente y no es un error.
   toca— y se resuelve con cinco archivos.
 - Nunca una foto de stock: prometer una foto que no es de la actividad es peor
   que no tener foto.
+
+**El caso vecino, que es nuevo: una actividad *con* imagen y *sin* miniatura**
+(D-210). Pasa en la ventana entre que el panel sube el archivo y
+`optimizarImagen` lo procesa, y en cualquier corrida del trigger que falle. La
+respuesta es la misma que arriba —no inventar—: el afiche sale **sin** `srcset`,
+o sea con el original solo. Pesa más y se ve igual, y se corrige solo en el
+rebuild siguiente. Lo que **no** se hace es poner la URL que le correspondería:
+un candidato de `srcset` que da 404 deja la imagen rota, que es peor que una
+imagen pesada y es lo que costó D-210.
 
 ### 7.7 El resto de la lista
 
