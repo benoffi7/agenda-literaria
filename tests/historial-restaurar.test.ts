@@ -108,6 +108,34 @@ describe('un campo que no existía en esa versión no es restaurable', () => {
   });
 });
 
+describe('trampa 10 — la dirección web no se restaura sobre una actividad publicada', () => {
+  /**
+   * `restaurarCampo` escribe con `updateDoc` directo — no pasa por el schema
+   * ni por `slugBloqueado` del formulario (§7, trampa 10). Si `camposRestaurables`
+   * no filtrara `slug` acá, el historial sería la puerta de atrás para romper una
+   * URL ya indexada. `HistorialActividad.tsx` confía en este filtro para no
+   * mostrar el botón; sin test, un `slugRestaurable` invertido o un filtro
+   * borrado pasarían en verde.
+   */
+  it('«slug» no se ofrece si la actividad ya está publicada', () => {
+    const version = versionAnteriorAB167();
+    version.camposCambiados = ['slug'];
+    (version.documento as Record<string, unknown>).slug = 'direccion-vieja';
+    const actual = actividad({ estado: 'publicado' });
+    expect(camposRestaurables(version as never, actual)).not.toContain('slug');
+  });
+
+  it('pero sí se ofrece sobre un borrador — todavía puede cambiar de dirección', () => {
+    // Control negativo: sin este caso, filtrar `slug` siempre (con cualquier
+    // estado) pasaría el test de arriba igual.
+    const version = versionAnteriorAB167();
+    version.camposCambiados = ['slug'];
+    (version.documento as Record<string, unknown>).slug = 'direccion-vieja';
+    const actual = actividad({ estado: 'borrador' });
+    expect(camposRestaurables(version as never, actual)).toContain('slug');
+  });
+});
+
 describe('lo que se escribe es lo que decía la versión', () => {
   it('un campo que la versión tenía se restaura con su valor', () => {
     expect(valorARestaurar('descripcion', versionAnteriorAB167() as never, actividad())).toBe(

@@ -56,7 +56,7 @@ afterEach(() => {
   vi.mocked(restaurarCampo).mockReset();
 });
 
-const actividad = (): ActividadConId =>
+const actividad = (over: Partial<ActividadConId> = {}): ActividadConId =>
   ({
     id: 'act-1',
     tipo: 'taller',
@@ -79,6 +79,7 @@ const actividad = (): ActividadConId =>
     tags: [],
     destacado: false,
     searchText: '',
+    ...over,
   }) as unknown as ActividadConId;
 
 const version = (): VersionConId =>
@@ -158,5 +159,36 @@ describe('HistorialActividad — Restaurar pide confirmación de verdad (B-40)',
     expect(llamada[1]).toBe('descripcion'); // el campo que se restauró
     expect(llamada[3]).toBe('uid-b'); // quién restauró, no quién cargó la versión vieja
     expect(onRestaurado).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('HistorialActividad — trampa 10, la dirección web sobre una actividad publicada (B-40)', () => {
+  /**
+   * `camposRestaurables` ya filtra `slug` para `estado === 'publicado'`
+   * (`tests/historial-restaurar.test.ts`). Lo que ese test no puede ver es si
+   * la PANTALLA respeta el filtro: un `HistorialActividad.tsx` que ignorara
+   * `camposRestaurables` y armara la lista a mano mostraría el botón igual.
+   */
+  it('el banner avisa y «Dirección web» no aparece entre lo restaurable', async () => {
+    const publicada = actividad({ estado: 'publicado' });
+    const conSlugViejo: VersionConId = {
+      ...version(),
+      camposCambiados: ['slug', 'descripcion'],
+      documento: { ...publicada, slug: 'direccion-vieja', descripcion: 'lo que decía antes' },
+    } as unknown as VersionConId;
+
+    vi.mocked(listarVersiones).mockResolvedValue([conSlugViejo]);
+    vi.mocked(leerActividad).mockResolvedValue(publicada);
+    render(<HistorialActividad actividad={publicada} uid="uid-b" onRestaurado={vi.fn()} />);
+
+    await screen.findByText(/La dirección web no se puede restaurar/);
+
+    const encabezado = await screen.findByRole('button', { name: /24 de agosto/ });
+    await userEvent.click(encabezado);
+
+    // Control positivo primero: si esto no aparece, la sección no se abrió y
+    // el `queryByText` de abajo pasaría por la razón equivocada.
+    await screen.findByText('Descripción');
+    expect(screen.queryByText('Dirección web')).toBeNull();
   });
 });
