@@ -438,20 +438,19 @@ los títulos y el nombre de la actividad, en Lora.
 > columnas separadas por reglas.
 >
 > ```
-> ├──────────────────────────────────────────────────────────┤
-> │ ¿QUÉ HAY AHORA?                ACTUALIZADO: VIE 3 SEP,   │  ← banda tonal,
-> │                                              14:30      │    label-caps
-> ├─────────────────┬─────────────────┬──────────────────────┤
-> │ Hoy    VIE 3 SEP│ Mañana SÁB 4 SEP│ Este finde  DOM 5 SEP│  ← rótulo + los días
-> │ 19:00           │ 11:00           │ 18:00                │    que abarca
-> │ Taller de crónica│ Club de lectura │ Lectura en voz alta │
-> │ Casa Brandon ·  │ Online por Meet │ Bar Lorca · Almagro  │
-> │ Boedo, CABA     │ CLUB · Gratis   │ ENCUENTRO · A la gorra│
-> │ TALLER · A la gorra│              │                      │
-> │ ─────────────── │ ─────────────── │                      │
-> │ 21:00           │ Todavía no hay  │ +2 más ese finde     │  ← texto, NO un link
-> │ …               │ nada para mañana│                      │
-> └─────────────────┴─────────────────┴──────────────────────┘
+> ├───────────────────────────────────────────────────────────┤
+> │ ¿QUÉ HAY AHORA?             ACTUALIZADO: VIE 3 SEP, 14:30 │  ← banda tonal, label-caps
+> ├──────────────────┬──────────────────┬─────────────────────┤
+> │ Hoy    VIE 3 SEP │ Mañana SÁB 4 SEP │ Este finde DOM 5 SEP│  ← rótulo + los días
+> │ 19:00            │ 11:00            │ 18:00               │    que abarca
+> │ Taller de crónica│ Club de lectura  │ Lectura en voz alta │
+> │ Casa Brandon ·   │ Online por Meet  │ Bar Lorca · Almagro │
+> │ Boedo, CABA      │ CLUB · Gratis    │ ENCUENTRO · Gorra   │
+> │ TALLER · Gorra   │                  │                     │
+> │ ──────────────── │ ──────────────── │                     │
+> │ 21:00            │ Todavía no hay   │ +2 más ese finde    │  ← texto, NO un link
+> │ …                │ nada para mañana │                     │
+> └──────────────────┴──────────────────┴─────────────────────┘
 > ```
 >
 > Lo que decide:
