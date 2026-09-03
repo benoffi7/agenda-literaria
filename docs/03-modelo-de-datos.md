@@ -515,12 +515,24 @@ intentos: number                // tope 3 (D-34)
 github: { numero, url, creadoEn } | null
 error: string | null
 creadoEn, actualizadoEn: Timestamp
+resuelto?: boolean              // B-580 — ausente o `false` = abierto. Ortogonal a `estado`.
 ```
 
-**El panel solo crea.** El ciclo de vida (`estado`, `intentos`, `github`,
-`error`) lo mueve la Function `reporteAIssue` con el Admin SDK; las reglas
-prohíben al cliente cualquier `update`, y validan la forma del documento en la
-creación: sin eso un reporte podría nacer "creado" y no publicarse nunca.
+**El panel solo crea, con dos excepciones acotadas.** El ciclo de vida
+(`estado`, `intentos`, `github`, `error`) lo mueve la Function `reporteAIssue`
+con el Admin SDK; las reglas prohíben al cliente tocarlo, y validan la forma
+del documento en la creación: sin eso un reporte podría nacer "creado" y no
+publicarse nunca. Las dos escrituras que sí puede hacer el panel sobre un
+reporte ya creado son B-31 (reintentar un envío en `error`) y B-580 (marcar o
+reabrir `resuelto`) — cada una autorizada por su propia regla
+(`reintentoValido`/`resueltoValido`), que acota qué campos puede tocar esa
+escritura y nada más.
+
+**`resuelto` es del panel, no de GitHub (D-310).** Lo marca un admin a mano
+cuando el problema se solucionó; no hay sync que lo derive de que el issue se
+cerró en GitHub — es la misma decisión que Google Calendar en el §2.1 del
+`CLAUDE.md`, aplicada acá. La pantalla de Reportes muestra solo los reportes
+sin `resuelto` por defecto, con un toggle para ver también los resueltos.
 
 **Los topes de largo están en tres lugares** —el schema de zod, las reglas y el
 issue— y son los mismos a propósito: el issue es público y un reporte de 40 KB

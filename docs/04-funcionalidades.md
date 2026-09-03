@@ -584,6 +584,14 @@ Solo aparece en ese estado: en cualquier otro el reporte está en cola, en vuelo
 ya publicado, y "reintentar" significaría un segundo issue del mismo reporte
 (D-101).
 
+**Solo se muestran los abiertos (B-580).** La lista "Últimos reportes" arranca
+mostrando solo los que no se marcaron resueltos; un toggle **«Ver resueltos»**
+los vuelve a traer sin ocultar los abiertos. Cada reporte tiene su botón
+**Marcar resuelto**, que pasa a **Reabrir** una vez tildado — no depende del
+estado de envío a GitHub: se puede cerrar un reporte que todavía está en cola.
+`resuelto` lo decide un admin a mano, nunca se deriva de que el issue se haya
+cerrado en GitHub (D-310): esa sync se evaluó y se descartó (B-30).
+
 **El repo es público, así que el issue también.** El formulario lo dice, el issue
 **no** lleva el mail ni el uid de quien reportó (D-32), el texto libre pasa por un
 filtro que tapa mails y links de reunión (D-33), y el título de la actividad

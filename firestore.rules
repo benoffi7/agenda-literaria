@@ -176,6 +176,44 @@ service cloud.firestore {
         && d.actualizadoEn == request.time;
     }
 
+    /**
+     * B-580 — el segundo (y único otro) cambio que el panel puede hacerle a un
+     * reporte ya creado: marcarlo resuelto, o reabrirlo.
+     *
+     * El dueño pidió que la pantalla de reportes deje de mostrar todo lo que
+     * se cargó alguna vez y refleje solo los abiertos. La alternativa —que un
+     * issue cerrado en GitHub marque el reporte solo— es la sync
+     * GitHub→Firestore que el dueño **descartó** en esta misma tanda (B-30,
+     * "dejamos como está") y que además el §2.1 del `CLAUDE.md` ya prohíbe
+     * para Calendar por el mismo motivo (D-310): Firestore es la única fuente
+     * de verdad, y quien cierra el reporte es un admin desde el panel.
+     *
+     * Mismo criterio que `reintentoValido`, con `resuelto` en vez del ciclo
+     * de vida de envío:
+     *
+     *  - solo pueden cambiar `resuelto` y `actualizadoEn`: el texto, el
+     *    estado de envío y el resto del documento no se tocan por acá.
+     *  - `resuelto` tiene que estar de verdad en el diff (`hasAny`), y no
+     *    solo `actualizadoEn` — una escritura que no cambia nada de lo que
+     *    esta regla habilita no tiene motivo para pasar por ella.
+     *  - `resuelto` tiene que ser un booleano: cualquier otro tipo (string,
+     *    número) rompería el filtro `!r.resuelto` del panel de formas raras.
+     *  - sin condición sobre el `resuelto` PREVIO, a propósito: al revés que
+     *    el reintento (que es una transición de un solo sentido,
+     *    `error`→`pendiente`), acá las dos direcciones son válidas — marcar
+     *    resuelto y reabrir son la misma operación de escritura, y el botón
+     *    del panel manda el valor que corresponda.
+     */
+    function resueltoValido() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      return d.diff(previo).affectedKeys().hasOnly(['resuelto', 'actualizadoEn'])
+        && d.diff(previo).affectedKeys().hasAny(['resuelto'])
+        && d.get('resuelto', null) is bool
+        && d.keys().hasAll(['actualizadoEn'])
+        && d.actualizadoEn == request.time;
+    }
+
     // Reportes del panel (bugs y sugerencias). Los crea un admin desde
     // /admin y la Function `reporteAIssue` los publica como issue de GitHub.
     //
@@ -192,9 +230,10 @@ service cloud.firestore {
       allow read: if esAdmin();
       allow create: if esAdmin() && reporteValido();
       // El ciclo de vida (estado, intentos, github) lo mueve la Function con el
-      // Admin SDK, que no pasa por estas reglas. La única excepción es el
-      // reintento de B-31, acotado arriba.
-      allow update: if esAdmin() && reintentoValido();
+      // Admin SDK, que no pasa por estas reglas. Las únicas dos excepciones son
+      // el reintento de B-31 y marcar/reabrir resuelto de B-580, cada una
+      // acotada arriba a los campos que le corresponden.
+      allow update: if esAdmin() && (reintentoValido() || resueltoValido());
       allow delete: if false;
     }
 
