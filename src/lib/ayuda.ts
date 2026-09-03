@@ -713,6 +713,14 @@ export const CAPITULOS: CapituloAyuda[] = [
           'una aprobación y el botón «Opciones» va a mostrar cuántas hay pendientes. Hoy nacen ' +
           'aprobadas: son todas tuyas.',
       },
+      {
+        texto:
+          'Si una opción está esperando aprobación y la otra cuenta escribe esa misma palabra, ' +
+          'se aprueba sola: que dos personas la escriban por separado es buena señal de que la ' +
+          'palabra existe. Queda marcada «la usaron las dos cuentas», para que se note que no la ' +
+          'revisó nadie — si las dos repitieron el mismo error de tipeo, se renombra o se borra ' +
+          'como cualquier otra.',
+      },
     ],
   },
   {

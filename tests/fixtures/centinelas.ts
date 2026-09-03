@@ -458,9 +458,9 @@ export const LABELS_CENTINELA: Record<string, Record<string, string>> = {
  * Los tres campos con centinela son los que pueden llevar algo identificable:
  * `slug` y `label` (que **sí** salen, §4.4) y `huellaCreador` (que **no**: es un
  * identificador estable de una persona, aunque sea una huella y no un uid, D-27).
- * `orden`, `fijo`, `usos` y `aprobada` no llevan centinela porque son números y
- * booleanos — no hay string donde esconder contenido; que no salgan se afirma
- * comparando las claves de la salida, no buscando un valor.
+ * `orden`, `fijo`, `usos`, `aprobada` y `aprobadaPorReuso` no llevan centinela
+ * porque son números y booleanos — no hay string donde esconder contenido; que no
+ * salgan se afirma comparando las claves de la salida, no buscando un valor.
  */
 export const opcionCentinela = (over: Partial<ValorOpcion> = {}): ValorOpcion => ({
   slug: CENTINELA['opcion.slug'],
@@ -469,6 +469,18 @@ export const opcionCentinela = (over: Partial<ValorOpcion> = {}): ValorOpcion =>
   fijo: false,
   usos: 3,
   aprobada: true,
+  /*
+   * B-29 — «la aprobó el reuso de la otra cuenta». Está en el fixture por la
+   * razón de siempre: un campo que el fixture no tiene no lo mira ningún barrido.
+   * Sin centinela porque es un booleano, como `aprobada`: que no salga lo fija el
+   * chequeo de claves de la proyección, no la búsqueda de un valor.
+   *
+   * Y no identifica a nadie —a diferencia de `huellaCreador`, que es la razón por
+   * la que esta interfaz entró al barrido—: dice algo de la **etiqueta**, no de
+   * quién la escribió. Que igual no salga es la regla de la whitelist: sale lo
+   * que el sitio necesita, no lo que el documento tiene.
+   */
+  aprobadaPorReuso: false,
   huellaCreador: CENTINELA['opcion.huellaCreador'],
   /*
    * D-150 — el matiz elegido. No lleva centinela porque es un número: el barrido
