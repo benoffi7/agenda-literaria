@@ -465,31 +465,80 @@ describe('schema — coordenadas de la sede (§3.1)', () => {
 });
 
 describe('schema — no publicar con el slug de una copia (trampa 10)', () => {
+  /**
+   * Una copia recién hecha, tal como la deja `duplicarActividadForm`: **la marca
+   * está en el título y en el slug a la vez**, porque la escriben juntas
+   * `tituloCopia` y `slugCopia`. Es el par lo que el schema lee (B-91), así que
+   * el fixture tiene que traer los dos o el test mediría otra cosa.
+   */
+  const copiaRecienHecha = (slug: string) => ({
+    ...valido(),
+    estado: 'publicado' as const,
+    titulo: 'Taller de crónica urbana (copia)',
+    slug,
+  });
+
   it('rechaza publicar con un slug que termina en -copia', () => {
-    const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-copia' };
-    expect(errores(v)).toContain('slug');
+    expect(errores(copiaRecienHecha('taller-cronica-urbana-copia'))).toContain('slug');
   });
 
   it('rechaza también los sufijos numerados', () => {
-    const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-copia-3' };
-    expect(errores(v)).toContain('slug');
+    expect(errores(copiaRecienHecha('taller-cronica-urbana-copia-3'))).toContain('slug');
   });
 
   it('deja GUARDAR un borrador con ese slug', () => {
     // La copia nace como borrador con `-copia` a propósito: el bloqueo es solo
     // al publicar, para no romper el flujo de duplicar.
-    const v = { ...valido(), estado: 'borrador' as const, slug: 'club-lectura-copia' };
+    const v = { ...copiaRecienHecha('taller-cronica-urbana-copia'), estado: 'borrador' as const };
     expect(errores(v)).toEqual([]);
   });
 
   it('deja publicar en cuanto se corrige el slug', () => {
-    const v = { ...valido(), estado: 'publicado' as const, slug: 'club-lectura-2027' };
-    expect(errores(v)).toEqual([]);
+    expect(errores(copiaRecienHecha('taller-cronica-urbana-2027'))).toEqual([]);
   });
 
   it('no confunde un slug que solo contiene la palabra copia', () => {
     // "copiando-a-borges" no es una copia: la regla es sobre el sufijo.
     const v = { ...valido(), estado: 'publicado' as const, slug: 'copia-de-seguridad-taller' };
+    expect(errores(v)).toEqual([]);
+  });
+
+  /**
+   * B-91 — el falso positivo que este ítem reportaba: un título legítimo que
+   * termina en esa palabra deriva en un slug `…-copia` y quedaba **imposible de
+   * publicar**, con un mensaje que hablaba de un sufijo que nadie puso.
+   *
+   * Lo que distingue los dos casos es la marca `(copia)` del título, que
+   * `duplicar` escribe junto con la del slug: acá no está, porque nadie duplicó
+   * nada.
+   */
+  it('deja publicar un título legítimo que termina en «copia» (B-91)', () => {
+    const v = {
+      ...valido(),
+      estado: 'publicado' as const,
+      titulo: 'Taller de copia',
+      slug: 'taller-de-copia',
+    };
+    expect(errores(v)).toEqual([]);
+  });
+
+  it('y tampoco frena su segunda edición, con el slug numerado (B-91)', () => {
+    // `taller-de-copia` ya estaba tomado, así que el slug legítimo es `-copia-2`
+    // — la forma exacta que el regex del sufijo numerado reconoce.
+    const v = {
+      ...valido(),
+      estado: 'publicado' as const,
+      titulo: 'El arte de la copia',
+      slug: 'el-arte-de-la-copia-2',
+    };
+    expect(errores(v)).toEqual([]);
+  });
+
+  it('el título marcado solo, sin slug de copia, no frena nada (B-91)', () => {
+    // El slug ya se corrigió: lo que queda es un título con «(copia)», que es
+    // texto y se puede editar después de publicar. No es irreversible, así que
+    // no bloquea.
+    const v = { ...copiaRecienHecha('taller-cronica-urbana-2027') };
     expect(errores(v)).toEqual([]);
   });
 });

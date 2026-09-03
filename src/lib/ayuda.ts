@@ -116,14 +116,22 @@ export const AVISOS: AvisoAyuda[] = [
       'Mientras la actividad esté en borrador la podés cambiar; en el momento en que la publicás ' +
       'queda fija para siempre. Cambiarla después rompe los links que ya circularon y hace que la ' +
       'actividad desaparezca de las búsquedas de Google. Revisá el título antes de publicar, porque ' +
-      'de ahí sale la dirección. Por lo mismo, una copia no se deja publicar mientras conserve la ' +
-      'dirección que termina en «-copia»: el panel te lo pide antes de dejarte seguir.',
+      'de ahí sale la dirección. Por lo mismo, una copia recién hecha no se deja publicar mientras ' +
+      'siga teniendo las dos marcas que le puso el panel: el «(copia)» del título y la dirección ' +
+      'que termina en «-copia». En cuanto corregís cualquiera de las dos, te deja seguir. Si tu ' +
+      'actividad se llama de verdad algo que termina en esa palabra, no te frena nada.',
     atadoA: [
       // Publicada, el título cambia y la dirección no.
       { archivo: 'tests/formulario-dominio.test.ts', it: 'con el slug bloqueado el título cambia y el slug no' },
       // Y la copia no se deja publicar mientras conserve la dirección «-copia».
       { archivo: 'tests/schema.test.ts', it: 'rechaza publicar con un slug que termina en -copia' },
       { archivo: 'tests/schema.test.ts', it: 'deja GUARDAR un borrador con ese slug' },
+      // B-91 — y no frena un título legítimo que termina en esa palabra, que es
+      // la mitad del aviso que antes era falsa.
+      {
+        archivo: 'tests/schema.test.ts',
+        it: 'deja publicar un título legítimo que termina en «copia» (B-91)',
+      },
     ],
   },
   {
