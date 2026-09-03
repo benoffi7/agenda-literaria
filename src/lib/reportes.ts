@@ -97,6 +97,30 @@ export const reintentarReporte = async (id: string): Promise<void> => {
 };
 
 /**
+ * B-580 — marca (o desmarca) un reporte como resuelto desde el panel.
+ *
+ * **Por qué no vive en `functions/reportes.js`.** El dueño descartó (B-30,
+ * "dejamos como está") sincronizar el cierre del issue de GitHub de vuelta a
+ * Firestore: es la misma sync bidireccional que el §2.1 del `CLAUDE.md` ya
+ * prohíbe para Calendar, y acá aplica el mismo motivo — desproporcionado para
+ * el caso de uso, y Firestore sigue siendo la única fuente de verdad (D-310).
+ * `resuelto` es un campo que el admin decide a mano desde el panel, no un
+ * espejo de lo que diga GitHub.
+ *
+ * `updateDoc` directo y no una función que reconstruya el documento entero:
+ * las reglas (`resueltoValido`) exigen que esta escritura toque **solo**
+ * `resuelto` y `actualizadoEn` — mismo patrón que `reintentarReporte` (B-31),
+ * cualquier otro campo por este camino queda prohibido a nivel reglas.
+ */
+export const marcarResuelto = async (id: string, valor: boolean): Promise<void> => {
+  await updateDoc(doc(db(), COL, id), {
+    resuelto: valor,
+    // Las reglas exigen `request.time`, igual que en el reintento.
+    actualizadoEn: serverTimestamp(),
+  });
+};
+
+/**
  * Escucha los últimos reportes. Es `onSnapshot` y no una lectura suelta a
  * propósito: el número de issue lo escribe la Function un segundo después de
  * guardar, y así aparece solo sin que nadie recargue.
