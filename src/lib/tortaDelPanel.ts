@@ -104,14 +104,33 @@ export const porcentajeLegible = (parte: number, total: number): string => {
  *
  * La suma se conserva: es lo que deja la torta cerrando en 360° (D-401).
  *
- * Espera las tajadas **ya ordenadas por cantidad**, que es como las devuelve
- * `estadoDelCatalogo`. No reordena: si reordenara, dos módulos decidirían el
- * orden del mismo reparto y uno de los dos se quedaría viejo.
+ * ── Ordena por cantidad, y no da por sentado que ya venga ordenado ────────
+ * La primera versión decía «espera las tajadas ya ordenadas por cantidad, que es
+ * como las devuelve `estadoDelCatalogo`» — y era **falso para la mitad de los
+ * repartos**: `repartirFijo` (el de `porEstado` y `porModalidad`) devuelve el
+ * vocabulario **en su orden**, no por magnitud. Hoy no se nota porque `ESTADOS`
+ * tiene cuatro valores y el corte recién actúa a partir de siete, así que la
+ * precondición nunca se ejerce; el día que existan un quinto y un sexto estado,
+ * «el resto» juntaría **lo último del vocabulario** en vez de lo más chico, la
+ * torta seguiría cerrando en 360° y nadie se enteraría. Lo encontró el
+ * `auditor-trampas`, y es el patrón exacto de «precondición documentada pero no
+ * verificada».
+ *
+ * Así que ordena acá, con el **mismo criterio y el mismo desempate** que
+ * `repartir`: cantidad descendente, alfabético para desempatar. El desempate no
+ * es cosmético — sin él, dos categorías con la misma cantidad quedan en el orden
+ * en que llegaron y la torta se reordena sola entre dos recargas.
+ *
+ * **No toca la lista que recibe**: la vista de lista sigue mostrando el orden que
+ * su reparto eligió, que para `porEstado` es el del vocabulario a propósito.
  */
 export const agruparCola = (tajadas: Tajada[], tope: number = TOPE_DE_TORTA): TajadaAgrupada[] => {
-  if (tajadas.length <= tope + 1) return tajadas.map((t) => ({ ...t, agrupa: 1 }));
-  const cabeza = tajadas.slice(0, tope).map((t) => ({ ...t, agrupa: 1 }));
-  const cola = tajadas.slice(tope);
+  const porCantidad = [...tajadas].sort(
+    (a, b) => b.cantidad - a.cantidad || a.valor.localeCompare(b.valor, 'es'),
+  );
+  if (porCantidad.length <= tope + 1) return porCantidad.map((t) => ({ ...t, agrupa: 1 }));
+  const cabeza = porCantidad.slice(0, tope).map((t) => ({ ...t, agrupa: 1 }));
+  const cola = porCantidad.slice(tope);
   return [
     ...cabeza,
     { valor: SLUG_RESTO, cantidad: sumaDeTajadas(cola), agrupa: cola.length },

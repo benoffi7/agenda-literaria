@@ -70,7 +70,11 @@ describe('los arcos', () => {
   it('arrancan a las 12 y giran en el sentido del reloj', () => {
     // Sin el `-90`, la trigonometría arranca a las 3: la primera cuña de un
     // cuarto saldría del lado derecho y la torta se leería rotada.
-    const [primero] = arcosDeTorta(agruparCola([t('a', 1), t('b', 3)]));
+    //
+    // Cuatro tajadas iguales para que la primera sea un cuarto exacto: con dos
+    // de distinto tamaño, `agruparCola` pone la grande adelante y el caso ya no
+    // mediría un cuarto.
+    const [primero] = arcosDeTorta(agruparCola([t('a', 1), t('b', 1), t('c', 1), t('d', 1)]));
     expect(primero!.desde).toBe(0);
     expect(primero!.hasta).toBe(90);
     // Punto de arranque: arriba del todo (50, 0). Punto de cierre: a la derecha.
@@ -150,6 +154,58 @@ describe('agrupar la cola (`agruparCola`)', () => {
 
   it('una tajada normal declara que se representa a sí misma', () => {
     expect(agruparCola([t('a', 1)])[0]!.agrupa).toBe(1);
+  });
+
+  it('ordena por cantidad aunque le llegue en el orden del vocabulario', () => {
+    /*
+     * El hallazgo del `auditor-trampas`. `repartirFijo` —el de `porEstado` y
+     * `porModalidad`— devuelve el vocabulario **en su orden**, no por magnitud,
+     * así que la vieja precondición «esperá que venga ordenado» era falsa para
+     * la mitad de los repartos del tablero. Sin ordenar acá, «el resto» juntaría
+     * lo último del vocabulario en vez de lo más chico, la torta cerraría igual
+     * en 360° y nadie se enteraría.
+     *
+     * Se prueba con siete —el primer largo en el que el corte actúa— porque con
+     * los cuatro estados que hay hoy la rama ni se toca: es un bug latente, y
+     * este caso es la red que lo espera.
+     */
+    const enOrdenDeVocabulario = [
+      t('borrador', 1),
+      t('pendiente', 2),
+      t('publicado', 40),
+      t('cancelado', 3),
+      t('archivado', 4),
+      t('revision', 5),
+      t('pausado', 6),
+    ];
+    const agrupadas = agruparCola(enOrdenDeVocabulario);
+    expect(agrupadas.map((x) => x.valor)).toEqual([
+      'publicado',
+      'pausado',
+      'revision',
+      'archivado',
+      'cancelado',
+      SLUG_RESTO,
+    ]);
+    // «El resto» junta las dos más chicas, que es lo que tiene que juntar.
+    expect(agrupadas.at(-1)).toMatchObject({ cantidad: 3, agrupa: 2 });
+    expect(sumaDeTajadas(agrupadas)).toBe(sumaDeTajadas(enOrdenDeVocabulario));
+  });
+
+  it('desempata alfabético: la torta no se reordena sola entre dos recargas', () => {
+    // Sin desempate, dos categorías con la misma cantidad quedan en el orden en
+    // que llegaron, que no está garantizado. Mismo criterio que `repartir`.
+    expect(agruparCola([t('zeta', 2), t('alfa', 2), t('beta', 2)]).map((x) => x.valor)).toEqual([
+      'alfa',
+      'beta',
+      'zeta',
+    ]);
+  });
+
+  it('no toca la lista que recibe: la vista de lista conserva su propio orden', () => {
+    const original = [t('borrador', 1), t('publicado', 9)];
+    agruparCola(original);
+    expect(original.map((x) => x.valor)).toEqual(['borrador', 'publicado']);
   });
 });
 
