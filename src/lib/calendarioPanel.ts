@@ -29,7 +29,7 @@
  * así un test puede pararse en cualquier momento sin esperar a que llegue la
  * fecha.
  */
-import { TIMEZONE, debeExistir, numeroDeEncuentro } from '@calendario';
+import { TIMEZONE, debeExistir, elEventoNumeraElCiclo, numeroDeEncuentro } from '@calendario';
 import { nombreDeMes } from '@/lib/meses';
 import { instanteDeTimestamp as instante } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, Estado, Sesion } from '@/types/actividad';
@@ -309,13 +309,35 @@ export interface Encuentro {
    * Se numeran **todos** los encuentros, incluidos los cancelados (D-95): el
    * número es la fila del formulario, no un recuento de los que siguen en pie.
    *
-   * Lo que **sigue** decidido por separado es *cuándo se muestra*: el evento
-   * numera solo si `esCiclo` está tildado (`elEventoNumeraElCiclo`) y esta vista
-   * numera cualquier actividad de más de una sesión. Es la mitad abierta de
-   * B-163, y es una decisión de producto, no una cuenta duplicada.
+   * **Sigue calculándose siempre**, aunque no se muestre: ver `numeraElCiclo`.
    */
   indice: number;
   total: number;
+  /**
+   * ¿Esta vista **muestra** el número? (B-163, D-292).
+   *
+   * Hasta acá la puerta no estaba unificada: el evento numera solo si `esCiclo`
+   * está tildado (`elEventoNumeraElCiclo`, D-190) y esta vista numeraba
+   * **cualquier** actividad de más de una sesión. El schema prohíbe `esCiclo`
+   * con menos de dos sesiones pero no el recíproco, así que tres encuentros sin
+   * tildar el ciclo eran un documento válido donde el panel numeraba y el
+   * evento público no decía nada — dos criterios para lo mismo derivado, que es
+   * la forma que D-71 y D-20 evitan.
+   *
+   * **D-292 eligió la misma puerta que el evento**, `elEventoNumeraElCiclo`, y
+   * no una propia: mostrar el número solo cuando el evento también lo muestra.
+   * De las dos salidas que D-190 dejó escritas, es la que **no reescribe
+   * ningún evento ya publicado** — la otra («que el evento numere sin
+   * `esCiclo`») le cambia el texto a los eventos de gente que ya los tiene
+   * agendados, el mismo argumento de D-95 y B-84. El costo, aceptado: una
+   * actividad de más de una sesión sin `esCiclo` tildado vuelve a mostrar sus
+   * filas sin número en el panel — el problema que la regla 1 de D-70
+   * resuelve («varias filas con el mismo título se leen como varias
+   * actividades»). Es un caso de borde: el formulario tilda «es ciclo» solo
+   * como parte de la cascada de «club de lectura»/«feria» (§11), así que en la
+   * práctica casi toda actividad de más de una sesión ya llega con `esCiclo`.
+   */
+  numeraElCiclo: boolean;
   estado: EstadoPublicacion;
 }
 
@@ -359,6 +381,8 @@ export const encuentrosDe = (actividades: ActividadConId[]): Encuentro[] => {
         cancelada: sesion.cancelada,
         indice: numero?.indice ?? 1,
         total: numero?.total ?? ordenadas.length,
+        // B-163, D-292 — misma puerta que el evento público: no una propia.
+        numeraElCiclo: elEventoNumeraElCiclo(actividad),
         estado: estadoPublicacion(actividad, sesion),
       });
     });

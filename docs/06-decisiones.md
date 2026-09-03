@@ -7236,3 +7236,134 @@ ahí tiraba `Fecha inválida: "…"` — el crash real que B-200 reporta.
    galería que corren en los dos niveles, D-120): es forma, no completitud —
    una fecha corrupta haría ilegible el documento, no lo dejaría incompleto.
 
+## D-292 · La vista calendario del panel usa la misma puerta que el evento público para numerar
+
+**Contexto (B-163).** D-190 ya había unificado la **aritmética** del número de
+encuentro (`numeroDeEncuentro`, compartida por `@calendario`) pero dejó la
+**puerta** —¿se muestra el número?— sin decidir a propósito: el evento numera
+solo si `esCiclo` está tildado (`elEventoNumeraElCiclo`), y la vista calendario
+del panel (`encuentrosDe`) numeraba **cualquier** actividad de más de una
+sesión. El schema prohíbe `esCiclo` con menos de dos sesiones pero no el
+recíproco, así que tres encuentros sin tildar el ciclo eran un documento válido
+donde el panel decía "Encuentro 2 de 3" y el evento público no decía nada — dos
+criterios para lo mismo derivado, la forma que D-71 y D-20 existen para evitar.
+
+**Decisión: la vista calendario del panel adopta `elEventoNumeraElCiclo`**, la
+misma función que ya usa `construirDescripcion`, en vez de tener su propia
+puerta. Se agrega `numeraElCiclo: boolean` a `Encuentro`
+(`src/lib/calendarioPanel.ts`) y `CalendarioActividades.tsx` la usa para decidir
+si pinta "Encuentro N de M" — la aritmética (`indice`/`total`) se sigue
+calculando siempre, se muestre o no, así que no hay nada que recalcular el día
+que se tilda `esCiclo`.
+
+**Por qué esta de las dos salidas, y no "que el evento numere sin `esCiclo`".**
+D-190 dejó escritas las dos, con su costo:
+
+- *que el evento numere con más de una sesión aunque no sea ciclo* → le cambia
+  el texto a los eventos **ya publicados** de esas actividades: a quien los
+  tiene agendados se le reescribe el evento sin que nada haya cambiado para él.
+  Es el argumento de D-95 y B-84 otra vez, y es exactamente lo que este cluster
+  de decisiones (D-95, D-190, D-191) viene evitando en cada esquina.
+- *que el panel deje de numerar sin `esCiclo`* → **no toca ningún evento
+  publicado.** Es la que se eligió.
+
+El costo que se acepta, a propósito: una actividad de más de una sesión sin
+`esCiclo` tildado vuelve a mostrar sus filas sin número en la vista calendario
+del panel — el problema que la regla 1 de D-70 existe para resolver ("varias
+filas con el mismo título se leen como varias actividades"). Se acota porque en
+la práctica el caso es de borde: el formulario tilda "es ciclo" solo como parte
+de la cascada de "club de lectura" y "feria" (§11 del CLAUDE.md), así que casi
+toda actividad de más de una sesión ya llega con `esCiclo` tildado. Si en el uso
+real aparece seguido una actividad de varias sesiones deliberadamente sin
+`esCiclo`, revisar esta decisión — pero no reescribiendo eventos ya publicados
+sin que el dueño lo pida explícitamente.
+
+**Es reversible en una línea:** `numeraElCiclo` es un campo derivado, no
+guardado; volver al criterio anterior (`total > 1`) no requiere ninguna
+migración de datos.
+
+Tests: `tests/costuras.test.ts` (`sin esCiclo ni el panel ni el evento
+numeran; con esCiclo, los dos`) fija la aritmética, la puerta compartida y que
+el panel la respeta, los tres a la vez. `tests/calendarioPanel.test.ts` cubre
+además el caso de una sola sesión con `esCiclo` tildado (el schema no prohíbe
+el recíproco).
+
+## D-293 · Leer Calendar de verdad es un script que impersona la service account, no un `onCall` del panel
+
+**Contexto (B-125, la mitad que quedaba tras D-191).** D-191 ya resuelve el
+caso en que una escritura genuina descubre un evento borrado a mano (un
+`actualizar` que pega 404 se recrea). Lo que seguía sin cerrar es enterarse
+**sin** esa escritura: la vista calendario sigue leyendo `calendarEventId` del
+documento y asumiendo que eso es lo que Calendar tiene (D-71). Cerrarlo pide
+preguntarle a la API, y la identidad para hacerlo es la de la Function
+(`calendar-sync@…`, D-06) — el panel no tiene, ni debería tener, credenciales
+propias contra Calendar.
+
+**Decisión: un script (`scripts/verificar-calendario.mjs`), no un `onCall`
+nuevo en `functions/`.** Las dos vías estaban sancionadas desde D-191 ("el
+panel o un script"); se elige la segunda porque un `onCall` suma una superficie
+de auth nueva —un endpoint HTTPS más para proteger, versionar y no romper— para
+una tarea de mantenimiento ocasional que el dueño corre a mano, no algo que el
+panel necesite en cada carga. El script:
+
+1. Se autentica **impersonando** `calendar-sync@agenda-literaria.iam.gserviceaccount.com`
+   desde las ADC de quien lo corre (`google-auth-library`, clase
+   `Impersonated`), sin bajar ninguna key — mismo espíritu que D-06. Pide un
+   permiso nuevo, de una sola vez: `roles/iam.serviceAccountTokenCreator` sobre
+   esa service account, otorgado a la cuenta de quien lo va a correr. Runbook en
+   `docs/08-operacion.md` § "Verificar contra Calendar de verdad (B-125)".
+2. Llama a la API REST de Calendar con `fetch`, no con el paquete `googleapis`:
+   el script usa un solo verbo de lectura (`events.get`) y ocasionalmente
+   `insert` para reparar, y eso no justifica sumar el SDK completo (~150 MB de
+   tipos generados) a las dependencias de la raíz del repo. `functions/` sí lo
+   usa, porque ahí es una dependencia productiva con más superficie.
+3. **Nunca toca un evento que Calendar confirma que existe.** Solo repara
+   (recrea) los que Calendar confirma con 404/410 — los mismos códigos que
+   `decidirAnteFallo` (D-191) — y dijo `desconocido` con cualquier otro código
+   (403, timeout, cuota): afirmar un borrado sobre un error ambiguo generaría
+   una reparación sobre una sospecha, y un evento duplicado es peor que no
+   decir nada.
+4. El default es de **solo lectura** (reporta, no escribe nada); reparar pide
+   `--reparar` explícito.
+5. La reparación reusa `construirEvento`, `idDeEvento` y `reponerIds` de
+   `functions/calendario.js` y `functions/sincronizacion.js` — los mismos que
+   usa el sync real — en vez de reimplementarlos: es la misma clase de bug que
+   `milisDe` ya hizo una vez (B-350) y que `clases-de-bug.test.ts` persigue.
+
+**El tope de 200 sesiones por corrida es real, con cursor — no una promesa
+vacía.** Lo encontró el `auditor-trampas` (P1) en la primera versión: la query
+no tenía orden ni cursor, así que "correr de nuevo" —lo que el mensaje y la
+doc de operación prometían— repetía siempre las mismas primeras 200
+candidatas. Una sesión borrada a mano más allá del tope no se detectaba
+**nunca**, en cualquier despliegue con más actividades publicadas de las que
+entran en una corrida — exactamente el escenario que B-125 existe para cubrir,
+fallando en silencio. Arreglado: `sesionesAVerificar`
+(`functions/reconciliacion.js`) corta por **actividad completa**, nunca a
+mitad de una, y devuelve `siguienteCursor` — el id de la última actividad
+procesada entera. La query de Firestore se ordena por
+`FieldPath.documentId()` (mismo patrón que `historial-trigger.js`) y
+`--desde <cursor>` la arranca después de ese punto con `startAfter`. El
+mensaje de la corrida truncada imprime el comando exacto para seguir, en vez
+de una promesa genérica.
+
+**Por qué no se puede probar contra el emulador, y qué se hizo en su lugar.**
+No existe un emulador de Calendar — el gate del §10 del CLAUDE.md ("nunca
+desarrollar el sync contra el calendario real") no tiene cómo aplicarse acá tal
+cual. La lógica de **decisión** (qué verificar, qué significa cada respuesta)
+es pura y está en `functions/reconciliacion.js`, testeada sin red
+(`tests/reconciliacion.test.ts`). La **orquestación** (Firestore + Calendar +
+la reparación, `ejecutarVerificacion` en el script) se separó del `main` que
+arma las credenciales reales, así que se testea con un `db` y un `cal` de
+mentira (`tests/verificar-calendario.test.ts`) sin tocar ni el emulador ni el
+calendario real — el mismo criterio con el que `functions/index.js` tampoco se
+testea de forma directa, solo sus dependencias puras.
+
+**Alternativa descartada: leer el ICS privado** (la vía que ya usa
+`docs/08-operacion.md` § "Leer el calendario real" para diagnóstico manual).
+No pide ningún permiso nuevo, pero Google actualiza los feeds ICS con demora
+—horas, no al toque— y el `UID` de cada `VEVENT` no está documentado como
+estable frente al `id` que devuelve la API: verificar contra un feed que puede
+tardar en reflejar un borrado cambia qué tan rápido se detecta el problema, y
+depender de un formato no garantizado por Google para decidir si se recrea un
+evento es peor que pedir el permiso de impersonación una vez.
+

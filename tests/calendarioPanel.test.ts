@@ -293,6 +293,50 @@ describe('del eje de actividades al eje de encuentros (§2.2, D-70)', () => {
     expect(encuentrosDe([actividad({ sesiones: [] })])).toEqual([]);
     expect(encuentrosDe([])).toEqual([]);
   });
+
+  /**
+   * B-163, D-292 — la puerta de si se **muestra** el número es la misma que usa
+   * el evento público (`elEventoNumeraElCiclo`), no una propia del panel. Antes
+   * esta vista numeraba cualquier actividad de más de una sesión aunque
+   * `esCiclo` estuviera destildado, que era la mitad de B-163 sin resolver.
+   */
+  describe('numeraElCiclo — misma puerta que el evento público (B-163, D-292)', () => {
+    it('con esCiclo tildado y más de una sesión, se muestra', () => {
+      const [e1, e2] = encuentrosDe([club]); // `club` nace con esCiclo: true
+      expect(e1!.numeraElCiclo).toBe(true);
+      expect(e2!.numeraElCiclo).toBe(true);
+    });
+
+    it('sin esCiclo, aunque haya varias sesiones, NO se muestra — la cuenta sigue calculada', () => {
+      const sinCiclo = actividad({
+        id: 'taller-varios',
+        esCiclo: false,
+        sesiones: [
+          sesion({ id: 'ses_1', inicio: '2026-09-03T22:00:00Z' }),
+          sesion({ id: 'ses_2', inicio: '2026-09-10T22:00:00Z' }),
+          sesion({ id: 'ses_3', inicio: '2026-09-17T22:00:00Z' }),
+        ],
+      });
+      const encuentros = encuentrosDe([sinCiclo]);
+      expect(encuentros.every((e) => e.numeraElCiclo === false)).toBe(true);
+      // La aritmética no se pierde, solo se deja de mostrar: sigue lista para
+      // el día que `esCiclo` se tilde, sin recalcular nada.
+      expect(encuentros.map((e) => `${e.indice} de ${e.total}`)).toEqual([
+        '1 de 3',
+        '2 de 3',
+        '3 de 3',
+      ]);
+    });
+
+    it('con esCiclo tildado pero una sola sesión, tampoco se muestra (el schema exige ≥2 para esCiclo, pero el recíproco no está prohibido)', () => {
+      const unaSola = actividad({
+        id: 'unica',
+        esCiclo: true,
+        sesiones: [sesion({ id: 'ses_1', inicio: '2026-09-03T22:00:00Z' })],
+      });
+      expect(encuentrosDe([unaSola])[0]!.numeraElCiclo).toBe(false);
+    });
+  });
 });
 
 describe('agrupar y contar', () => {

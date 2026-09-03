@@ -515,22 +515,19 @@ describe('B-84 · el número del encuentro es el mismo en el panel y en el event
   });
 
   /**
-   * B-163 — **la cuenta ya es una sola** (`numeroDeEncuentro` de `@calendario`,
-   * que el panel importa): no hay dos aritméticas que puedan separarse en
-   * silencio, que es lo que D-71 y D-20 evitan y lo que produjo B-84.
+   * B-163, D-292 — **la cuenta ya era una sola** (`numeroDeEncuentro` de
+   * `@calendario`, que el panel importa): no hay dos aritméticas que puedan
+   * separarse en silencio, que es lo que D-71 y D-20 evitan y lo que produjo
+   * B-84. Lo que faltaba era la puerta de *cuándo se muestra*, y D-292 la
+   * unificó también: el panel usa la misma `elEventoNumeraElCiclo` que el
+   * evento, en vez de numerar cualquier actividad de más de una sesión. Sin
+   * `esCiclo` tildado, ninguno de los dos numera.
    *
-   * Lo que sigue decidido por separado es *cuándo se muestra el número*, y es
-   * una decisión de producto: el evento numera solo si `esCiclo` está tildado
-   * (`elEventoNumeraElCiclo`), el panel numera cualquier actividad de más de una
-   * sesión. El schema prohíbe `esCiclo` con menos de dos sesiones pero no el
-   * recíproco, así que tres encuentros sin tildar el ciclo es un documento
-   * válido: el panel numera y el evento no dice nada.
-   *
-   * Este test fija las dos cosas a la vez —que la cuenta coincide y que la
-   * puerta es lo único que difiere— para que el día que el dueño elija una de
-   * las dos salidas de B-163 se note acá y en un solo lugar.
+   * Este test fija las tres cosas a la vez —que la cuenta coincide, que la
+   * puerta es la misma función, y que el panel la respeta en `numeraElCiclo`—
+   * para que separarlas otra vez ponga algo en rojo en un solo lugar.
    */
-  it('sin esCiclo la cuenta es la misma y solo difiere si se muestra (B-163)', () => {
+  it('sin esCiclo ni el panel ni el evento numeran; con esCiclo, los dos (B-163, D-292)', () => {
     const sinCiclo = ciclo({ esCiclo: false, sesiones: ochoSesiones().slice(0, 3) });
     const encuentros = encuentrosDe([
       { ...(sinCiclo as unknown as ActividadConId), id: 'act2', tipo: 'taller' },
@@ -546,16 +543,21 @@ describe('B-84 · el número del encuentro es el mismo en el panel y en el event
     }
     expect(encuentros[1]).toMatchObject({ indice: 2, total: 3 });
 
-    // La puerta: el evento no numera sin `esCiclo`, y lo dice con nombre.
+    // La puerta: ni el evento ni el panel numeran sin `esCiclo` (D-292).
     expect(elEventoNumeraElCiclo(sinCiclo)).toBe(false);
     expect(construirDescripcion(sinCiclo, sinCiclo.sesiones[1]!, {})).not.toContain('Encuentro');
+    expect(encuentros.every((e) => e.numeraElCiclo === false)).toBe(true);
 
-    // Con el ciclo tildado, la misma cuenta sí sale al evento.
+    // Con el ciclo tildado, la misma cuenta sí sale al evento Y al panel.
     const conCiclo = ciclo({ sesiones: ochoSesiones().slice(0, 3) });
     expect(elEventoNumeraElCiclo(conCiclo)).toBe(true);
     expect(construirDescripcion(conCiclo, conCiclo.sesiones[1]!, {})).toContain(
       'Encuentro 2 de 3',
     );
+    const encuentrosConCiclo = encuentrosDe([
+      { ...(conCiclo as unknown as ActividadConId), id: 'act3', tipo: 'club-lectura' },
+    ]);
+    expect(encuentrosConCiclo.every((e) => e.numeraElCiclo === true)).toBe(true);
   });
 });
 

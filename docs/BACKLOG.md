@@ -4931,7 +4931,7 @@ la doc, el aserto a chequear es el consuelo, no el límite.**
 
 Corregido en D-71, con el patrón anotado ahí mismo.
 
-### B-125 · Un evento borrado a mano en Calendar no se detecta · 🟡 **la mitad hecha** (2026-09-02) · P2
+### B-125 · Un evento borrado a mano en Calendar no se detecta · ✅ hecho (2026-09-03) · P2
 
 La vista calendario compara el `calendarEventId` guardado contra lo que
 **debería** existir, no contra lo que Google Calendar tiene de verdad. Si alguien
@@ -4970,6 +4970,57 @@ peor de los dos —pérdida silenciosa de un encuentro publicado, para siempre�
 eso ya no pasa; lo que queda es una vista que miente hasta el próximo guardado,
 que se parece más a un P3. No se baja acá porque la prioridad la ordena el dueño
 y no el que cierra la mitad del ítem.
+
+**Cerrado (2026-09-03, D-293): `scripts/verificar-calendario.mjs`.** Cerrarlo
+pedía leer la API de Calendar, y la identidad es de la Function (D-06) — el
+script se autentica **impersonando** `calendar-sync@…` desde las ADC de quien
+lo corre, sin bajar ninguna key (mismo espíritu que D-06; pide un permiso IAM
+nuevo, otorgado una sola vez — runbook en `docs/08-operacion.md`). Lee las
+actividades publicadas de Firestore y le pregunta a Calendar, sesión por
+sesión, si el `calendarEventId` guardado existe de verdad:
+
+- Default de **solo lectura**: reporta los borrados a mano, no toca nada.
+- `--reparar`: además los **recrea** — mismo criterio que `decidirAnteFallo`
+  (D-191), reusando `construirEvento`/`idDeEvento`/`reponerIds` del sync real
+  en vez de reimplementarlos (la clase de bug de B-350).
+- Un código de error ambiguo (403, timeout, cuota) **nunca** se interpreta
+  como "borrado": se reporta aparte como "no se pudo verificar" y no se toca.
+  Afirmar un borrado sobre un error ambiguo repararía por las dudas, y un
+  evento duplicado es peor que no decir nada.
+
+**Se decidió un script y no un botón del panel** (`onCall`): las dos vías
+estaban sancionadas desde D-191, y un `onCall` suma una superficie de auth
+nueva para una tarea de mantenimiento ocasional. Detalle completo en D-293.
+
+**Qué se pudo testear y qué no.** No hay emulador de Calendar, así que el gate
+del §10 del CLAUDE.md no se puede aplicar tal cual acá. La lógica de
+**decisión** —qué verificar, qué significa cada respuesta— es pura
+(`functions/reconciliacion.js`) y está testeada sin red
+(`tests/reconciliacion.test.ts`, con mutaciones verificadas: sacar la guarda de
+`debeExistir` y tratar `'cancelled'` como `'existe'` tiran los tests
+correspondientes en rojo). La **orquestación** (Firestore + Calendar +
+escritura) se separó en `ejecutarVerificacion`, testeada con un `db` y un `cal`
+de mentira (`tests/verificar-calendario.test.ts`) — incluida la guarda de que
+el `calendarEventId` recreado se escribe de vuelta (mutada: comentar el
+`db.runTransaction` del write-back tira en rojo el test que compara el id
+nuevo, no solo "no es null"). Contra el calendario real no se corrió: es
+efecto puro, mismo criterio con el que `functions/index.js` tampoco se testea
+en forma directa.
+
+**Pasado por `auditor-trampas` antes de cerrar, con tres hallazgos, los tres
+arreglados** (detalle en D-293):
+
+1. **P1** — sin cursor real, "correr de nuevo" repetía siempre las mismas 200
+   primeras candidatas: una sesión más allá del tope no se verificaba jamás,
+   en el escenario exacto que este ítem existe para cubrir. Arreglado con un
+   cursor por actividad completa y `--desde`.
+2. **P2** — el cliente de Calendar mandaba `id: null` literal cuando
+   `idDeEvento` no podía derivar uno (sesiones legadas), en vez de omitir el
+   campo como hace `crearEvento` del sync real. Arreglado (`cuerpoDeCreacion`,
+   testeada sin red).
+3. **P2** — una tercera copia de la proyección `ValorOpcion → {slug, label}`
+   (la clase de bug de B-212). Arreglada reusando `mapaDeEtiquetas`
+   (`functions/sincronizacion.js`) en vez de reimplementar el `.map`.
 
 ### B-126 · La vista calendario no avisa de inscripciones que cierran — ✅ hecho (2026-08-26)
 
@@ -5069,7 +5120,7 @@ escritura posterior — la misma advertencia que `tests/fixtures/ciclo.ts` ya te
 escrita (B-135), y que el helper local de `calendario.test.ts` no respeta
 (**B-352**).
 
-### B-163 · El panel numera encuentros que el evento no numera · 🟡 **la mitad hecha** (2026-09-02) · P3
+### B-163 · El panel numera encuentros que el evento no numera · ✅ hecho (2026-09-03) · P3
 
 `encuentrosDe` (D-70) y la vista calendario muestran "Encuentro 2 de 3" en
 **cualquier** actividad de más de una sesión, mientras `posicionEnCiclo` (D-95)
@@ -5114,6 +5165,31 @@ es una línea en un solo lugar y se nota en un solo test.
 una sesión sin fecha usable no se pinta en la vista calendario pero **cuenta**
 para el total, que es lo que dice el evento que la gente tiene agendado. Antes el
 panel decía "1 de 1" y el evento "2 de 2".
+
+**Cerrado (2026-09-03, D-292): se eligió "que el panel deje de numerar sin
+`esCiclo`".** De las dos salidas que quedaban, es la que **no reescribe ningún
+evento ya publicado** — la otra le cambia el texto a los eventos de quien ya
+los tiene agendados, el mismo argumento de D-95 y B-84 que atraviesa todo este
+cluster de decisiones. `numeraElCiclo: boolean` se agregó a `Encuentro`
+(`src/lib/calendarioPanel.ts`), calculado con la misma `elEventoNumeraElCiclo`
+que ya usa el evento; `CalendarioActividades.tsx` lo usa para decidir si pinta
+"Encuentro N de M". La aritmética (`indice`/`total`) se sigue calculando
+siempre, se muestre o no.
+
+**El costo, aceptado a propósito:** vuelve el problema que la regla 1 de D-70
+resuelve — una actividad de varias sesiones sin `esCiclo` tildado muestra sus
+filas sin número en el panel. Se acota porque es un caso de borde: `esCiclo` se
+tilda solo o como parte de la cascada de "club de lectura"/"feria" (§11 del
+CLAUDE.md), así que en la práctica casi toda actividad de más de una sesión ya
+llega con el ciclo tildado. Es una decisión reversible en una línea —
+`numeraElCiclo` es derivado, no se guarda— así que si el uso real dice lo
+contrario, se revisa sin ninguna migración.
+
+Tests: `tests/costuras.test.ts` fija la aritmética, la puerta compartida y que
+el panel la respeta, las tres a la vez (mutado: forzar `numeraElCiclo: true`
+tira tres tests en rojo, en `costuras.test.ts` y `calendarioPanel.test.ts`).
+`tests/calendarioPanel.test.ts` suma el caso de una sola sesión con `esCiclo`
+tildado (el schema no prohíbe el recíproco). Detalle completo en D-292.
 
 ### B-161 · Fixtures de `calendario.test.ts` que todavía no ejercitan el ciclo — ✅ hecho (2026-09-02)
 
