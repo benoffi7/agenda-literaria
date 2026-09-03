@@ -180,7 +180,8 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `guardarVersionAlBorrar` | `onDocumentDeleted actividades/{id}` | ACTIVE — desplegada a mano el 2026-08-25 |
 | `dispararRebuild` | `onSchedule every 5 minutes` | ACTIVE — lazo del §8 verificado de punta a punta el 2026-08-25 |
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
-| `optimizarImagen` | `onObjectFinalized` (bucket entero) | **escrita, sin desplegar** — B-220, D-175. Su primer deploy necesita IAM que el dueño tiene que otorgar: ver `08-operacion.md` § «Permisos que necesita `optimizarImagen`» |
+| `optimizarImagen` | `onObjectFinalized` (bucket entero) | ACTIVE — desplegada y barrida el 2026-09-03 (B-220, D-175). Ver `08-operacion.md` § «Estado: desplegada y barrida el 2026-09-03» |
+| `limpiarImagenesHuerfanas` | `onSchedule every 24 hours` | **escrita, sin desplegar** — B-221. Su primer deploy necesita el mismo IAM de `optimizarImagen` (nada nuevo: `roles/storage.objectUser` ya incluye `storage.objects.delete`). Ver `08-operacion.md` § «El barrido de huérfanas» |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
 solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas

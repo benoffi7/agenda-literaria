@@ -25,6 +25,42 @@ sitio y calendario.
 
 El detalle de cada cambio está en las entradas dateadas de abajo.
 
+## 2026-09-03 · el barrido que borra las imágenes huérfanas — B-221
+
+Nadie borraba las imágenes propias que quedaban huérfanas en Storage: sacar una
+fila de la galería, o borrar la actividad, dejaba el objeto en el bucket para
+siempre. Estaba bloqueado hasta que `optimizarImagen` (B-220) estuviera
+desplegada y barrida —si no, no había forma de distinguir «huérfano» de
+«original sin optimizar todavía»—; con eso resuelto el 2026-09-03, se pudo
+escribir.
+
+**`limpiarImagenesHuerfanas`** (`functions/imagenes-limpieza-trigger.js`),
+`onSchedule every 24 hours`: cruza los `storagePath` que las actividades
+referencian **hoy** —de todos los `estado`, no solo publicadas— contra los
+objetos de `imagenes/` y `miniaturas/`, y borra los que ya nadie referencia.
+La decisión es pura (`decidirLimpieza`, `functions/limpieza-imagenes.js`),
+probada en `tests/limpieza-imagenes.test.ts` con cada guarda mutada y vista
+fallar.
+
+**No es la trampa 12** (§13 del `CLAUDE.md`): a diferencia de `optimizarImagen`,
+este trigger corre por reloj y solo borra — `delete()` no dispara
+`onObjectFinalized`, así que no hay con qué encadenarse. Dos salvaguardas
+nuevas: margen de gracia de 72 horas (no toca nada creado hace menos) y tope de
+20 borrados por corrida (misma clase que `MAX_EVENTOS_RESYNC` de B-04). No hizo
+falta IAM nuevo: los permisos de `optimizarImagen` ya alcanzan.
+
+`scripts/limpiar-imagenes-huerfanas.mjs` corre el mismo barrido a mano, en seco
+por default, para probarlo contra el emulador antes de confiar en el reloj —
+igual que `optimizar-imagenes.mjs` de B-220.
+
+**Residual anotado, no resuelto:** el cruce no incluye
+`/actividades/{id}/versiones/*` (§12), así que restaurar una versión vieja que
+referenciaba una imagen ya barrida deja una `url` rota. Ver **B-560**.
+
+Detalle operativo completo en `docs/08-operacion.md` § «`limpiarImagenesHuerfanas`
+— el barrido de huérfanas».
+
+
 ## 2026-09-03 · el tablero pasa a pestañas — «El catálogo» y «El sitio público» — B-501, B-502
 
 El dueño pidió tres cosas para el tablero «Estado del catálogo»: pestañas en

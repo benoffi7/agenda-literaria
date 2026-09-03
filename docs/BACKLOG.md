@@ -2160,7 +2160,7 @@ Lo que falta, y por qué cada parte es cara:
 verificado sobre los bytes. La Function lo va a sacar otra vez, y eso está bien —es la
 capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
 
-### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2
+### B-221 · Nadie borra las imágenes propias que quedan huérfanas · P2 — ✅ hecho (2026-09-03)
 
 > **2026-09-02 — B-220 no lo resolvió, y le sumó la mitad de un problema.** Está
 > dicho explícito porque el frente de B-220 lo tenía en su alcance y decidió no
@@ -2201,6 +2201,46 @@ capa que no se puede saltear— pero el agujero no está abierto mientras tanto.
 > así que no podría distinguir «huérfano» de «original sin optimizar
 > todavía».
 
+> **2026-09-03 — hecho.** `optimizarImagen` está desplegada y barrida (ver
+> `docs/08-operacion.md`), así que la precondición de arriba ya se cumple. Se
+> tomó el **primer camino**: barrido periódico, `onSchedule every 24 hours`
+> (`limpiarImagenesHuerfanas`, `functions/imagenes-limpieza-trigger.js`), que
+> cruza los `storagePath` de **todas** las actividades —sin filtrar por
+> `estado`: un borrador sigue siendo dueño de su imagen— contra los objetos de
+> `imagenes/` y `miniaturas/`, y borra los que ya nadie referencia.
+>
+> La decisión de qué borrar es pura (`decidirLimpieza`,
+> `functions/limpieza-imagenes.js`), probada en `tests/limpieza-imagenes.test.ts`
+> con cada guarda mutada y vista fallar: sacar el corte del margen de gracia
+> pone rojos 3 tests, sacar el tope de la corrida pone rojo 1, y vaciar
+> `miniaturasReferenciadas` a mano pone rojo 1. Se corrió además, de solo
+> lectura, contra el emulador compartido de otro worktree en vivo (209 objetos
+> reales): el margen de gracia de 72 horas protegió los 209 —todos recién
+> subidos por esa suite— sin que se ejecutara ningún borrado, que es la
+> propiedad que la guarda existe para dar.
+>
+> Dos salvaguardas nuevas, la misma clase que ya usa este repo en otros lados:
+> **margen de gracia de 72 horas** (no se toca nada creado hace menos de eso) y
+> **tope de 20 borrados por corrida** (mismo criterio que `MAX_EVENTOS_RESYNC`
+> de B-04). No hace falta IAM nuevo: `roles/storage.objectUser`, que ya tiene
+> `calendar-sync@` desde B-220, incluye `storage.objects.delete`.
+>
+> `scripts/limpiar-imagenes-huerfanas.mjs` reusa la misma `decidirLimpieza` —no
+> hay una segunda copia de la decisión— para poder correr el barrido a mano en
+> seco (default) o con `--aplicar`, igual que `optimizar-imagenes.mjs` de
+> B-220.
+>
+> **Lo que quedó afuera, a propósito y anotado.** El cruce es contra los
+> documentos **en vivo** de `/actividades`, no contra
+> `/actividades/{id}/versiones/*` (§12): restaurar una versión vieja que
+> referenciaba una imagen ya barrida restauraría una `url` rota. El ítem
+> original solo pedía cruzar contra las actividades, así que no se resolvió
+> acá — queda anotado como **B-560**.
+>
+> El conteo de referencias de B-71 (para poder copiar imágenes al duplicar)
+> sigue sin hacer falta, tal como decía el ítem: "el barrido primero; el
+> conteo solo si hace falta copiar".
+
 **Hoy no se borra nada de Storage: ni al quitar la fila de la galería, ni al borrar la
 actividad, ni cuando una subida se abandona sin guardar.** Es deliberado y está
 escrito en `subir-imagen.ts`: un objeto huérfano cuesta centavos y es invisible; un
@@ -2219,6 +2259,40 @@ que B-199 movió y no resolvió: **quién es dueño del objeto**. Dos caminos:
   escondida justamente porque no se puede, D-131 §5).
 
 El barrido primero; el conteo solo si hace falta copiar.
+
+### B-560 · El barrido de B-221 no sabe de `/actividades/{id}/versiones/*` · P3
+
+**Encontrado implementando B-221, sin tocar código.** `limpiarImagenesHuerfanas`
+cruza los `storagePath` de los documentos **en vivo** de `/actividades` contra
+los objetos del bucket — exactamente lo que el ítem original pedía. Lo que no
+pedía, y por eso no está resuelto, es cruzar también contra
+`/actividades/{id}/versiones/*` (§12, D-41): el historial guarda el `before`
+completo de cada edición, `imagenes` incluido.
+
+**La secuencia que rompe:** se saca una fila de la galería y se guarda → la
+imagen queda huérfana → el barrido la borra 72 horas después (o antes, si el
+tope de la corrida no la salteó) → alguien abre el historial y restaura esa
+versión vieja, que todavía referencia la imagen ya borrada → la fila vuelve con
+una `url` que da 404.
+
+**Por qué no es P2.** Restaurar una versión que trae de vuelta una imagen es un
+caso angosto —hay que haber sacado la imagen, esperado el barrido, y restaurado
+esa versión puntual y no una más nueva— y el modo de falla es una imagen rota
+en el panel, no un dato que se pierda ni algo público mal expuesto.
+
+**Caminos, ninguno implementado:**
+
+- Sumar `/actividades/{id}/versiones/*` a `referenciasEnUso` en
+  `imagenes-limpieza-trigger.js`: más simple, pero agranda la lectura de
+  Firestore de la Function con cada versión guardada de cada actividad —hoy son
+  pocas, pero crece sin tope— y alarga indefinidamente la vida de una imagen
+  que alguien sacó a propósito.
+- Un margen de gracia más largo que el de retención de versiones (que hoy no
+  tiene, `versiones` crece para siempre — otro posible ítem) no alcanza por sí
+  solo: no resuelve el caso, solo lo hace menos probable.
+- Que restaurar una versión avise si alguna de sus imágenes ya no existe en el
+  bucket, en vez de prevenir el borrado. Es el único camino que no le pide nada
+  nuevo al barrido.
 
 ### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
 

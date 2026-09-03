@@ -647,6 +647,86 @@ viejo. Es cómo se pierde media hora creyendo que una mutación no hace nada.
 Si hay otra suite de emuladores corriendo (otro worktree), los puertos chocan:
 copiar `firebase.json` con puertos alternativos y pasarlo con `-c`.
 
+### `limpiarImagenesHuerfanas` — el barrido de huérfanas (B-221)
+
+Nadie borraba las imágenes propias que quedaban huérfanas en Storage: la fila
+salía de la galería, o la actividad se borraba, y el objeto se quedaba en el
+bucket para siempre. Esta Function programada (`functions/imagenes-limpieza-trigger.js`)
+lo resuelve: cada 24 horas cruza los `storagePath` que las actividades
+referencian **hoy** —sin filtrar por `estado`: un borrador sigue siendo dueño
+de su imagen— contra los objetos de primer nivel en `imagenes/` y
+`miniaturas/`, y borra los que ya nadie referencia.
+
+**Por qué esperó hasta ahora, y no es que no se supiera cómo.** B-221 estaba
+bloqueado hasta que `optimizarImagen` (B-220) estuviera desplegada y su barrido
+inicial hubiera corrido: mientras el reescritor de B-220 no había pasado por el
+bucket, no había forma de distinguir «huérfano» de «original que todavía no se
+optimizó». Con `optimizarImagen` viva y barrida desde el 2026-09-03 (ver más
+arriba), la precondición ya está.
+
+**La decisión de qué borrar es pura y vive en `functions/limpieza-imagenes.js`**
+(`decidirLimpieza`) — el mismo corte que `imagenes.js`/`imagenes-trigger.js`:
+lo que decide se puede probar sin tocar Storage ni Firestore. Está en
+`tests/limpieza-imagenes.test.ts`, con cada guarda mutada y vista fallar.
+
+**No es la trampa 12, y hay que poder decirlo con algo más que "confiá".** El
+trigger que sí escucha el bucket (`optimizarImagen`) se dispara con
+`onObjectFinalized` — creación o sobreescritura. Este barrido corre por
+`onSchedule` (un reloj) y lo único que hace sobre el bucket es **borrar**, y
+`delete()` no dispara `onObjectFinalized` — dispara `onObjectDeleted`, al que
+nada de este proyecto está suscripto. Sin un segundo trigger escuchando el
+borrado, no hay con qué encadenarse. El razonamiento completo está en el
+docblock de `limpieza-imagenes.js`.
+
+**Dos salvaguardas, además de eso:**
+
+- **Margen de gracia de 72 horas** (`MARGEN_DE_GRACIA_MS`): un objeto que no
+  esté referenciado pero se haya creado hace menos de 72 horas no se toca. Sin
+  esto, subir una imagen y no llegar a guardar la actividad todavía —o
+  guardarla mientras el barrido corre en el medio— la borraría.
+- **Tope de 20 borrados por corrida** (`MAX_BORRADOS_POR_CORRIDA`), misma clase
+  de salvaguarda que `MAX_EVENTOS_RESYNC` en `index.js` (B-04): un bug en la
+  lectura de `/actividades` no puede vaciar el bucket entero de una sola
+  pasada. Lo que sobra queda marcado en el log y se retoma en la corrida
+  siguiente.
+
+**IAM: no hace falta nada nuevo.** Corre con la misma `calendar-sync@` y los
+mismos permisos de `optimizarImagen` (ver arriba): `roles/storage.objectUser`
+ya incluye `storage.objects.delete`, así que no hay un cuarto paso de IAM que
+otorgar.
+
+**Probarlo antes de confiar en el reloj — nunca contra producción (§10 del
+`CLAUDE.md`):**
+
+```bash
+# En seco: lista qué borraría, no borra nada. Es el default — funciona contra
+# el emulador o contra producción, sin ninguna guarda extra: no escribe nada.
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 \
+  node scripts/limpiar-imagenes-huerfanas.mjs
+
+# Aplicarlo de verdad, siempre contra el emulador primero:
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 \
+  node scripts/limpiar-imagenes-huerfanas.mjs --aplicar
+
+# --aplicar en producción exige el flag de más, a propósito: sin
+# FIREBASE_STORAGE_EMULATOR_HOST seteado, `--aplicar` solo aborta y no borra
+# nada — es la guarda contra el olvido de exportar la variable (la encontró
+# el auditor-trampas).
+node scripts/limpiar-imagenes-huerfanas.mjs --aplicar --produccion
+```
+
+El script reusa la misma `decidirLimpieza` que la Function — no hay una
+segunda copia de la decisión — y sirve además para correr el barrido a mano
+sin esperar el próximo tick del reloj, o para verlo en seco contra producción
+antes de confiar en que la corrida programada hizo lo esperado.
+
+**Residual conocido, anotado para quien retome esto.** El barrido cruza contra
+los `storagePath` de los documentos **en vivo** de `/actividades`, no contra
+`/actividades/{id}/versiones/*` (§12). Restaurar una versión vieja que
+referenciaba una imagen ya barrida restauraría una `url` rota. No se resolvió
+acá — el ítem original de B-221 solo pedía cruzar contra las actividades — y
+quedó anotado en el `BACKLOG.md` como **B-560**.
+
 ### Reportes del panel → issues de GitHub (una sola vez)
 
 Cinco pasos manuales, en este orden. Los tres primeros los hace el dueño de la

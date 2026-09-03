@@ -293,9 +293,15 @@ Dos consecuencias que están decididas, no heredadas:
   vez es lo que hace que el path no pueda llevar el id de la actividad, D-131
   §1— y es aceptable porque la URL no es adivinable: el nombre es un uuid y
   **listar el prefijo está prohibido** (ver abajo).
-- **Un objeto no se despublica.** Quitar la fila de la galería lo saca del
-  documento, no del bucket, y hoy nada lo borra (B-221). Si alguna vez hay que
-  bajar una imagen de verdad, hay que borrar el objeto a mano.
+- **Un objeto no se despublica al instante.** Quitar la fila de la galería lo
+  saca del documento, no del bucket. Desde **B-221**, la Function programada
+  `limpiarImagenesHuerfanas` (`functions/imagenes-limpieza-trigger.js`, cada 24
+  horas) cruza los `storagePath` que las actividades referencian contra los
+  objetos de `imagenes/` y `miniaturas/`, y borra los que ya nadie referencia
+  — con un margen de gracia de 72 horas, así que **no** es un despublicado
+  inmediato: quien tenía la URL guardada la sigue pudiendo pedir hasta que
+  corra el barrido siguiente. Si hay que bajar una imagen de urgencia, sigue
+  siendo borrar el objeto a mano (`gcloud storage rm`) o esperar al barrido.
 
 **`get` sí, `list` no**, y esa distinción es lo que sostiene todo el argumento de
 B-206 #1. Si el prefijo se pudiera enumerar, la opacidad del path no compraría
