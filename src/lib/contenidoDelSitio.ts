@@ -64,7 +64,7 @@ import {
 import { mesesDelSitio, mesesEnlazables, type PaginaDeMes } from '@/lib/mesPublico';
 import { pasadasDelSitio } from '@/lib/pasadasPublicas';
 import { rutaDeMes } from '@/lib/rutasPublicas';
-import { rutasDelSitemap } from '@/lib/sitemap';
+import { lastmodDelSitemap, rutasDelSitemap } from '@/lib/sitemap';
 import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
 import {
@@ -88,6 +88,30 @@ const ESTADO_CANCELADO = 'cancelado';
 export interface ContenidoDelSitio {
   /** **Las publicadas, y nada más.** Es lo que alimenta todas las listas. */
   actividades: ActividadPublica[];
+  /**
+   * `{ slug: AAAA-MM-DD }` de `updatedAt` de las **publicadas** — B-112, el
+   * `lastmod` del sitemap.
+   *
+   * ── Por qué viaja al lado y no adentro de `toPublic` ──────────────────────
+   * Mismo patrón que `canceladasEditadasEn`, y mismo motivo: `toPublic` no
+   * proyecta `updatedAt` a propósito (ver su docblock en `toPublic.ts`) porque
+   * una fecha de edición publicada en la proyección general convierte cada
+   * corrección de un typo en «actualizado hoy», y ese no es el único consumidor
+   * de `toPublic`. El lector es el único que ve el documento crudo, así que el
+   * dato viaja acá y no en `ActividadPublica`.
+   *
+   * ── Por qué el día y no el instante ───────────────────────────────────────
+   * Misma razón que `creadoEn` (D-138): con un solo admin, el instante exacto
+   * de cada edición publicado en N entradas del sitemap es su agenda de
+   * trabajo, no una fecha. `AAAA-MM-DD` es toda la precisión que un `lastmod`
+   * necesita (protocolo de sitemaps, W3C Datetime) y la misma con la que ya
+   * sale `creadoEn`.
+   *
+   * A diferencia de `canceladasEditadasEn`, este mapa **sí se emite** — como
+   * `<lastmod>`, nunca como un campo de `events.json` ni del detalle. Ver
+   * `lib/sitemap.ts` (`lastmodDelSitemap`).
+   */
+  publicadasEditadasEn: Record<string, string>;
   /**
    * Las **canceladas que estuvieron publicadas** — B-110, §7.3 del diseño.
    *
@@ -124,9 +148,12 @@ export interface ContenidoDelSitio {
    * en vez de agregarle un campo a la proyección. Así el `events.json` no puede
    * publicar una fecha de modificación por accidente.
    *
-   * Y lo que hace que no agrande la superficie pública es que es un **predicado**:
-   * decide si la URL entra al sitemap y no se emite en ninguna parte — el sitemap
-   * va sin `lastmod` hasta que exista B-112.
+   * Y lo que hace que no agrande la superficie pública es que sigue siendo un
+   * **predicado**: decide si la URL entra al sitemap, y no se emite en ninguna
+   * parte con esta precisión — desde B-112 sí se emite un `<lastmod>`, pero con
+   * la fecha recortada al día (ver `publicadasEditadasEn` más arriba) y no con
+   * el ISO completo que guarda este mapa. `lastmodDelSitemap`
+   * (`lib/sitemap.ts`) es quien hace ese recorte al usarlo.
    *
    * Es un mapa por slug y no un campo del array de `canceladas` para que el tipo
    * de aquél no cambie: `ActividadPublica` es la frontera de privacidad, y meterle
@@ -150,12 +177,34 @@ export interface ContenidoDelSitio {
  * dos `==` no hay lista que crecer, y un error en la query nueva solo puede
  * producir cero páginas de canceladas — nunca una página de un borrador.
  */
-const publicadas = async (): Promise<ActividadPublica[]> => {
+const publicadas = async (): Promise<{
+  actividades: ActividadPublica[];
+  editadasEn: Record<string, string>;
+}> => {
   const snap = await adminDb()
     .collection('actividades')
     .where('estado', '==', ESTADO_PUBLICO)
     .get();
-  return snap.docs.map((d) => toPublic(d.data() as Actividad, d.id));
+
+  const proyectadas = snap.docs.map((d) => {
+    const a = d.data() as Actividad;
+    /*
+     * B-112 — la fecha de la última edición viaja **al lado** de la proyección,
+     * ya recortada al día: es el `lastmod` del sitemap y no un campo de
+     * `events.json`. Ver `ContenidoDelSitio.publicadasEditadasEn`.
+     */
+    return { publica: toPublic(a, d.id), editadaEn: aIsoSeguro(a.updatedAt).slice(0, 10) };
+  });
+
+  return {
+    actividades: proyectadas.map((p) => p.publica),
+    editadasEn: Object.fromEntries(
+      // Sin slug no hay URL a la que ponerle un `lastmod`, y sin fecha no hay
+      // nada que declarar: en los dos casos la entrada no existe, más honesto
+      // que una clave vacía.
+      proyectadas.filter((p) => p.publica.slug && p.editadaEn).map((p) => [p.publica.slug, p.editadaEn]),
+    ),
+  };
 };
 
 /**
@@ -284,13 +333,14 @@ const opcionesDeTaxonomia = async (): Promise<Partial<Record<CampoTaxonomia, Val
 
 const leer = async (): Promise<ContenidoDelSitio> => {
   if (hayCredenciales()) {
-    const [actividades, canceladasConPagina, opciones] = await Promise.all([
+    const [publicadasConPagina, canceladasConPagina, opciones] = await Promise.all([
       publicadas(),
       canceladas(),
       opcionesDeTaxonomia(),
     ]);
     return {
-      actividades,
+      actividades: publicadasConPagina.actividades,
+      publicadasEditadasEn: publicadasConPagina.editadasEn,
       canceladas: canceladasConPagina.actividades,
       canceladasEditadasEn: canceladasConPagina.editadasEn,
       opciones,
@@ -318,7 +368,13 @@ const leer = async (): Promise<ContenidoDelSitio> => {
     '[sitio] build sin credenciales: 0 actividades. ' +
       'Levantá el emulador (npm run emu) para ver datos.',
   );
-  return { actividades: [], canceladas: [], canceladasEditadasEn: {}, opciones: {} };
+  return {
+    actividades: [],
+    publicadasEditadasEn: {},
+    canceladas: [],
+    canceladasEditadasEn: {},
+    opciones: {},
+  };
 };
 
 let cache: Promise<ContenidoDelSitio> | null = null;
@@ -657,7 +713,8 @@ export const caminosDeMes = async (
 };
 
 /**
- * Las rutas del `sitemap.xml` — B-109.
+ * Las rutas del `sitemap.xml`, y desde B-112 el `lastmod` de cada actividad —
+ * B-109.
  *
  * **No agrega una lectura de Firestore**: sale del mismo `indiceDelSitio()`
  * memoizado que la home, el `events.json` y las páginas de mes, más las
@@ -665,23 +722,26 @@ export const caminosDeMes = async (
  * la misma lectura (§3 del diseño: «tres artefactos con una sola lectura», y ya
  * van cinco sin cambiar el número).
  *
- * ── Las tres cosas que este módulo aporta y `lib/sitemap.ts` no puede ─────
+ * ── Las cosas que este módulo aporta y `lib/sitemap.ts` no puede ─────────
  * 1. **el reloj**, que es el del índice y no `new Date()`: cuáles meses se
  *    emiten, qué actividad ya pasó y qué cancelada sigue siendo reciente se
  *    deciden con el **mismo** instante que decidió qué muestra la home. Con dos
  *    relojes, un build a caballo de la medianoche puede emitir una página que el
  *    sitemap no lista, y eso se ve una vez cada tanto — o sea nunca en un test;
- * 2. **el `updatedAt` de las canceladas**, que solo el lector ve porque solo él
- *    toca el documento crudo (ver `canceladasEditadasEn`);
- * 3. y que el endpoint reciba **una lista de rutas y nada más** (D-140): no ve el
- *    índice, así que no puede publicar un campo aunque quiera.
+ * 2. **el `updatedAt` de las canceladas y de las publicadas**, que solo el
+ *    lector ve porque solo él toca el documento crudo (ver `canceladasEditadasEn`
+ *    y `publicadasEditadasEn`) — la segunda es la que hace posible el `lastmod`;
+ * 3. y que el endpoint reciba **rutas y un mapa de fechas, y nada más** (D-140):
+ *    no ve el índice, así que no puede publicar un campo aunque quiera.
  */
-export const sitemapDelSitio = async (ahora?: unknown): Promise<string[]> => {
+export const sitemapDelSitio = async (
+  ahora?: unknown,
+): Promise<{ rutas: string[]; lastmod: Record<string, string> }> => {
   const indice = await indiceDelSitio();
-  const { canceladas, canceladasEditadasEn } = await contenidoDelSitio();
+  const { canceladas, canceladasEditadasEn, publicadasEditadasEn } = await contenidoDelSitio();
   const instante = ahora instanceof Date ? ahora : new Date(indice.generadoEn);
 
-  return rutasDelSitemap({
+  const rutas = rutasDelSitemap({
     entradas: indice.actividades,
     canceladas: canceladas.map((a) => ({
       slug: a.slug,
@@ -693,6 +753,19 @@ export const sitemapDelSitio = async (ahora?: unknown): Promise<string[]> => {
     opciones: indice.opciones,
     ahora: instante,
   });
+
+  /*
+   * B-112 — **solo las publicadas**, y a propósito: `canceladasEditadasEn`
+   * guarda el ISO completo porque lo necesita el predicado de la ventana de 30
+   * días con precisión de instante, no de día; recortarlo acá para el `lastmod`
+   * sería una segunda derivación de esa misma fecha con otra precisión, y las
+   * canceladas ya tienen su propia razón para no aparecer (¿cuándo se canceló
+   * no es cuándo se editó por última vez?, D-166 lo discute). Cuando eso se
+   * decida, es una línea acá — no antes.
+   */
+  const lastmod = lastmodDelSitemap(rutas, publicadasEditadasEn);
+
+  return { rutas, lastmod };
 };
 
 /**

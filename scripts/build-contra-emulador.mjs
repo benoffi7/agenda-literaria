@@ -636,12 +636,51 @@ try {
         fallo('el sitemap.xml lista /admin: el panel no se indexa.');
         salida = 1;
       }
-      if (sitemap.includes('lastmod')) {
+      // 7b-bis · Desde B-112, la publicada SÍ lleva `lastmod`, con la fecha de
+      // su `updatedAt` recortada al día — el fixture la sembró con
+      // `updatedAt: new Date()`, o sea hoy.
+      const hoy = new Date().toISOString().slice(0, 10);
+      const bloquePublicada = sitemap.slice(
+        sitemap.indexOf(`<loc>${suUrl}</loc>`),
+        sitemap.indexOf('</url>', sitemap.indexOf(`<loc>${suUrl}</loc>`)),
+      );
+      if (!bloquePublicada.includes(`<lastmod>${hoy}</lastmod>`)) {
         fallo(
-          'el sitemap.xml lleva `lastmod`.\n' +
-            '  Sale de `updatedAt`, que no está en la proyección pública (B-112). La fecha\n' +
-            '  del build en las N entradas le enseña a Google que nuestras fechas mienten.',
+          `el sitemap.xml no lleva <lastmod>${hoy}</lastmod> en /actividad/${SLUG_PUBLICADA}/.\n` +
+            '  Desde B-112 el lastmod sale de `updatedAt` recortado al día (D-138); el ' +
+            'fixture\n' +
+            '  la sembró con `updatedAt: new Date()`, o sea hoy.',
         );
+        salida = 1;
+      }
+
+      // Y la home —que no es una actividad— sigue sin uno: `lastmod` es por
+      // ruta y no un booleano global del archivo entero. La URL de la home se
+      // ubica por su `pathname` y no por el dominio (que no se escribe acá,
+      // ver el comentario de arriba de este bloque).
+      const urlHome = locs.find((u) => {
+        try {
+          return new URL(u).pathname === '/';
+        } catch {
+          return false;
+        }
+      });
+      const bloqueHome = urlHome
+        ? sitemap.slice(
+            sitemap.indexOf(`<loc>${urlHome}</loc>`),
+            sitemap.indexOf('</url>', sitemap.indexOf(`<loc>${urlHome}</loc>`)),
+          )
+        : '';
+      if (bloqueHome.includes('lastmod')) {
+        fallo(
+          'el sitemap.xml lleva `lastmod` en la home.\n' +
+            '  Solo las actividades tienen una fecha de edición que valga la pena declarar ' +
+            '(B-112); la home, los hubs y los meses siguen sin `lastmod`.',
+        );
+        salida = 1;
+      }
+      if (sitemap.includes('changefreq') || sitemap.includes('priority')) {
+        fallo('el sitemap.xml lleva `changefreq` o `priority`: Google los ignora desde hace años.');
         salida = 1;
       }
 
@@ -923,8 +962,9 @@ try {
           '  ✓ la cancelada que estuvo publicada conserva su página, con la franja y el ' +
           'EventCancelled; la que nunca lo estuvo no existe (B-110).\n' +
           '  ✓ el sitemap ofrece la publicada y la cancelada reciente con URL absoluta y ' +
-          'barra final, sin el borrador, sin /admin y sin lastmod; el robots.txt bloquea el ' +
-          'panel; y el robots, el sitemap y la canónica coinciden en un solo origen (B-109).\n' +
+          'barra final, sin el borrador ni /admin, con lastmod en la publicada y sin él en ' +
+          'la home (B-112); el robots.txt bloquea el panel; y el robots, el sitemap y la ' +
+          'canónica coinciden en un solo origen (B-109).\n' +
           '  ✓ la actividad con tres imágenes pinta las tres, con la portada marcada arriba, ' +
           'un solo `eager`, un solo texto alternativo y tres cajas de proporción distinta; y ' +
           'la de una sola imagen sigue pintando una, sin sección de galería (B-296).',

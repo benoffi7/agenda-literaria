@@ -19,18 +19,27 @@
  * distintas —«¿esta URL responde?» y «¿le pido a Google que la rastree?»— y
  * confundirlas es lo que llena el índice de páginas muertas.
  *
- * ── `lastmod` no va, y es una decisión ────────────────────────────────────
+ * ── `lastmod`, desde B-112 — y solo para las actividades ──────────────────
  * `<lastmod>` sale de `updatedAt`, que **no está en la proyección pública**
- * (§11.2 #3 del diseño, anotado como **B-112**). La alternativa disponible era
- * estampar la fecha del build en todas las entradas, y eso es peor que no poner
- * nada: le enseña a Google que nuestras fechas mienten —cada rebuild por una
- * coma en una actividad diría que las 40 cambiaron— y a partir de ahí deja de
- * mirarlas. Cuando exista B-112 se agrega, y va a ser una línea — **con la fecha
- * recortada al día** (`AAAA-MM-DD`), que es la precisión con la que sale
- * `creadoEn` y por el mismo motivo (D-138): con un solo admin, el instante exacto
- * de cada edición publicado en N entradas es su agenda de trabajo, no una fecha.
- * Lo dejó anotado el `auditor-privacidad` sobre este cambio, y está escrito en
- * B-112 para que la línea que falta no salga con el ISO completo.
+ * (§11.2 #3 del diseño). La alternativa que se descartó era estampar la fecha
+ * del build en todas las entradas, y eso es peor que no poner nada: le enseña a
+ * Google que nuestras fechas mienten —cada rebuild por una coma en una actividad
+ * diría que las 40 cambiaron— y a partir de ahí deja de mirarlas.
+ *
+ * Lo que sí se agregó es la fecha real de edición, **recortada al día**
+ * (`AAAA-MM-DD`), que es la precisión con la que ya sale `creadoEn` y por el
+ * mismo motivo (D-138): con un solo admin, el instante exacto de cada edición
+ * publicado en N entradas es su agenda de trabajo, no una fecha. `lastmodDelSitemap`
+ * la arma a partir de `ContenidoDelSitio.publicadasEditadasEn`, que el lector
+ * (`contenidoDelSitio.ts`) computa **al lado** de la proyección — el mismo patrón
+ * que `canceladasEditadasEn` (B-109), y no un campo nuevo de `toPublic` ni de
+ * `events.json`.
+ *
+ * **Solo las actividades llevan `lastmod`.** Los hubs, los meses, `/pasadas` y
+ * el resto de `RUTAS_FIJAS` no tienen una fecha de «última edición» que valga la
+ * pena declarar — son subconjuntos derivados que cambian con cada actividad que
+ * entra o sale, no documentos con su propia fecha. Para esas rutas el sitemap
+ * sigue yendo sin `lastmod`, y sigue siendo mejor que inventarle una.
  *
  * ── Cero lecturas nuevas de Firestore ─────────────────────────────────────
  * Este módulo es **puro**: recibe las entradas del índice, la lista de canceladas
@@ -39,9 +48,10 @@
  * diseño).
  *
  * ── Es una salida pública (la 9) ──────────────────────────────────────────
- * Y de las más chicas del repo: lo único que publica son **rutas**. Ni un título,
- * ni una descripción, ni una fecha — ver `docs/07-seguridad.md`. Lo que sí decide
- * es *qué páginas se le ofrecen al buscador*, y ahí el error caro es al revés del
+ * Y de las más chicas del repo: lo único que publica son **rutas y, desde
+ * B-112, la fecha de edición de cada actividad recortada al día**. Ni un título,
+ * ni una descripción — ver `docs/07-seguridad.md`. Lo que sí decide es *qué
+ * páginas se le ofrecen al buscador*, y ahí el error caro es al revés del
  * habitual: no filtrar de más, sino ofrecer la URL de algo que no tendría que
  * estar en Google.
  */
@@ -268,6 +278,38 @@ export const rutasDelSitemap = ({
 ];
 
 /**
+ * `{ ruta: AAAA-MM-DD }` — el `<lastmod>` de cada página de detalle que tiene
+ * una fecha de edición conocida. B-112.
+ *
+ * ── Por qué recibe las rutas ya armadas, y no las arma de nuevo ───────────
+ * `rutas` es el resultado de `rutasDelSitemap`: si una actividad no está ahí
+ * —cancelada fuera de la ventana de 30 días, o publicada sin `slug`— tampoco
+ * puede tener `lastmod`. Recalcular esa selección acá sería una segunda
+ * derivación de la misma regla (B-72, B-88): la que se desalinee publicaría un
+ * `<lastmod>` sobre una URL que el sitemap no ofrece, o al revés.
+ *
+ * ── Solo actividades ───────────────────────────────────────────────────────
+ * `actualizadasEn` es `{ slug: AAAA-MM-DD }` de **todas** las actividades con
+ * fecha conocida —publicadas y canceladas—, y acá se filtra contra las rutas
+ * que sí están en el sitemap. Un hub, un mes o `/pasadas` no tiene slug, así que
+ * nunca hace match: siguen sin `lastmod`, tal cual dice el encabezado del
+ * archivo.
+ */
+export const lastmodDelSitemap = (
+  rutas: readonly string[],
+  actualizadasEn: Readonly<Record<string, string>>,
+): Record<string, string> => {
+  const ofrecidas = new Set(rutas);
+  const resultado: Record<string, string> = {};
+  for (const [slug, dia] of Object.entries(actualizadasEn)) {
+    if (!dia || !slug) continue;
+    const ruta = rutaDeDetalle(slug);
+    if (ofrecidas.has(ruta)) resultado[ruta] = dia;
+  }
+  return resultado;
+};
+
+/**
  * Los cinco caracteres que hay que escapar en un XML.
  *
  * Hoy no puede hacer falta —una ruta se arma con un slug, y `slugify` deja
@@ -293,12 +335,22 @@ const escaparXml = (texto: string): string =>
  * sitemap nombrara `/cartelera` y la canónica `/cartelera/`, Google recibiría dos
  * URLs para la misma página y el sitemap le apuntaría a la que redirige.
  *
- * Sin `<lastmod>`, sin `<changefreq>` y sin `<priority>`: los dos últimos Google
- * los ignora desde hace años y el primero necesita B-112.
+ * `lastmod` es **opcional y por ruta** — B-112. El default es `{}`, o sea
+ * ningún `<lastmod>` en ninguna URL: es el lado que ya probó `tests/sitemap.test.ts`
+ * («no lleva `lastmod`, y es una decisión»), y sigue siendo cierto para quien
+ * llame a esta función sin el segundo argumento. Sin `<changefreq>` ni
+ * `<priority>`: Google los ignora desde hace años.
  */
-export const xmlDelSitemap = (rutas: readonly string[]): string => {
+export const xmlDelSitemap = (
+  rutas: readonly string[],
+  lastmod: Readonly<Record<string, string>> = {},
+): string => {
   const urls = rutas
-    .map((r) => `  <url>\n    <loc>${escaparXml(urlAbsoluta(r))}</loc>\n  </url>`)
+    .map((r) => {
+      const dia = lastmod[r];
+      const linea = dia ? `\n    <lastmod>${escaparXml(dia)}</lastmod>` : '';
+      return `  <url>\n    <loc>${escaparXml(urlAbsoluta(r))}</loc>${linea}\n  </url>`;
+    })
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 };

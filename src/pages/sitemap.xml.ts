@@ -20,7 +20,8 @@ import { xmlDelSitemap } from '@/lib/sitemap';
  * (`contenidoDelSitio.ts`, con la cláusula de credenciales de D-123 y las dos
  * queries de estado de B-110), **qué rutas entran** lo decide `lib/sitemap.ts`, y
  * acá se pega el XML. La plantilla no ve el índice ni el documento: recibe una
- * lista de rutas y nada más (D-140).
+ * lista de rutas y, desde **B-112**, un mapa `{ ruta: AAAA-MM-DD }` para el
+ * `<lastmod>` — nada más (D-140).
  *
  * ── Cero lecturas nuevas de Firestore ─────────────────────────────────────
  * `contenidoDelSitio()` está memoizada, así que este endpoint es el quinto
@@ -34,10 +35,12 @@ import { xmlDelSitemap } from '@/lib/sitemap';
  */
 export const prerender = true;
 
-export const GET: APIRoute = async () =>
-  new Response(xmlDelSitemap(await sitemapDelSitio()), {
+export const GET: APIRoute = async () => {
+  const { rutas, lastmod } = await sitemapDelSitio();
+  return new Response(xmlDelSitemap(rutas, lastmod), {
     headers: {
       'content-type': 'application/xml; charset=utf-8',
       'cache-control': 'no-cache',
     },
   });
+};

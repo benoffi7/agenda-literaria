@@ -8,6 +8,7 @@ import {
   DIAS_DE_PASADA,
   RUTAS_FIJAS,
   RUTA_BLOQUEADA,
+  lastmodDelSitemap,
   rutasDelSitemap,
   textoDeRobots,
   xmlDelSitemap,
@@ -351,18 +352,39 @@ describe('el XML', () => {
     expect(locs).toContain(`${SITIO}${rutaCanonica(rutaDeDetalle('taller'))}`);
   });
 
-  it('no lleva `lastmod`, y es una decisión (B-112)', () => {
+  it('sin un mapa de lastmod, no lleva ninguno — el default sigue siendo el mismo', () => {
     /*
-     * `lastmod` sale de `updatedAt`, que no está en la proyección pública. La
-     * alternativa disponible era la fecha del build en las 40 entradas, y eso le
-     * enseña a Google que nuestras fechas mienten. Cuando exista B-112 se agrega.
+     * Desde B-112 `xmlDelSitemap` acepta un segundo argumento opcional para el
+     * `lastmod`; este `XML` lo omite, así que el default (`{}`) tiene que seguir
+     * significando «ninguna URL lleva fecha». Es la mitad que prueba que agregar
+     * `lastmod` en algún lado no cambió el comportamiento de quien no lo pide.
      *
-     * El caso está para que agregarlo sea una decisión: quien ponga un `lastmod`
-     * con `new Date()` se encuentra este test en rojo y el motivo escrito.
+     * MUTACIÓN PROBADA: poner `new Date()` como default en vez de `{}` estampa
+     * la fecha del build en las 40 entradas y pone este caso en rojo.
      */
     expect(XML).not.toContain('lastmod');
     expect(XML).not.toContain('changefreq');
     expect(XML).not.toContain('priority');
+  });
+
+  it('con un mapa de lastmod, lo lleva solo la URL que matchea — B-112', () => {
+    /*
+     * La otra mitad: `lastmod` es **por ruta**, no un booleano global. Una URL
+     * sin entrada en el mapa se queda sin `<lastmod>`, igual que antes de
+     * B-112 — es la misma garantía que ya prueba el caso de arriba, ahora con
+     * el mapa puesto.
+     */
+    const rutasConTaller = rutas({ entradas: [suelta('taller', '2026-09-20T22:00:00Z')] });
+    const conFecha = xmlDelSitemap(rutasConTaller, {
+      [rutaDeDetalle('taller')]: '2026-09-01',
+    });
+    expect(conFecha).toContain(`<lastmod>2026-09-01</lastmod>`);
+    // Y la home —que está en `RUTAS_FIJAS` y no en el mapa— sigue sin uno.
+    const bloqueHome = conFecha.slice(
+      conFecha.indexOf(`<loc>${urlAbsoluta('/')}</loc>`) - 20,
+      conFecha.indexOf('</url>', conFecha.indexOf(`<loc>${urlAbsoluta('/')}</loc>`)),
+    );
+    expect(bloqueHome).not.toContain('lastmod');
   });
 
   it('escapa lo que rompería el XML', () => {
@@ -387,6 +409,44 @@ describe('el XML', () => {
       ahora: AHORA,
     });
     expect(conRepetida.length).toBe(new Set(conRepetida).size);
+  });
+});
+
+describe('lastmodDelSitemap — B-112', () => {
+  it('arma { ruta: día } para el slug que está en las rutas ofrecidas', () => {
+    const rutasOfrecidas = rutas({ entradas: [suelta('taller', '2026-09-20T22:00:00Z')] });
+    const lastmod = lastmodDelSitemap(rutasOfrecidas, { taller: '2026-09-01' });
+    expect(lastmod).toEqual({ [rutaDeDetalle('taller')]: '2026-09-01' });
+  });
+
+  it('un slug que NO está en las rutas ofrecidas no entra, aunque tenga fecha', () => {
+    /*
+     * El caso real: una cancelada fuera de la ventana de 30 días, o cualquier
+     * slug que por el motivo que sea no llegó a `rutasDelSitemap`. Sin este
+     * filtro, `lastmodDelSitemap` podría declarar la fecha de una URL que el
+     * sitemap no ofrece — las dos mitades de la misma señal, tan inconsistentes
+     * como un hub `noindex` y en el sitemap a la vez.
+     *
+     * MUTACIÓN PROBADA: sacar el `if (ofrecidas.has(ruta))` deja este caso en
+     * rojo con una entrada de más.
+     */
+    const rutasOfrecidas = rutas({ entradas: [suelta('taller', '2026-09-20T22:00:00Z')] });
+    const lastmod = lastmodDelSitemap(rutasOfrecidas, {
+      taller: '2026-09-01',
+      'una-que-no-esta': '2026-08-15',
+    });
+    expect(lastmod).toEqual({ [rutaDeDetalle('taller')]: '2026-09-01' });
+  });
+
+  it('sin fecha, o sin slug, no agrega una entrada vacía', () => {
+    const rutasOfrecidas = rutas({ entradas: [suelta('taller', '2026-09-20T22:00:00Z')] });
+    expect(lastmodDelSitemap(rutasOfrecidas, { taller: '' })).toEqual({});
+    expect(lastmodDelSitemap(rutasOfrecidas, { '': '2026-09-01' })).toEqual({});
+  });
+
+  it('con el mapa vacío, no hay ningún lastmod', () => {
+    const rutasOfrecidas = rutas({ entradas: [suelta('taller', '2026-09-20T22:00:00Z')] });
+    expect(lastmodDelSitemap(rutasOfrecidas, {})).toEqual({});
   });
 });
 
