@@ -7,7 +7,8 @@
 | Para qué se mide | **dos cosas distintas, con requisitos distintos** ([§2](#2--dos-mitades-y-no-una)): números para **vender publicidad**, y números para **mejorar el sitio** |
 | Decidido | **GA4 va en el sitio público** (D-201). El dueño contestó las tres preguntas que faltaban: **B-376 → C3**, un banner con aceptar/rechazar (D-250); **B-371 → aceptado**, el costo de JavaScript de la página de detalle con el número del §6 a la vista (D-251); **B-373 → diferido a propósito**, ver [§11](#11--el-orden-en-que-conviene-hacerlo) |
 | Construido | el tablero de [§8](#8--el-primer-tramo-el-que-se-implementó), con pestañas («El catálogo» / «El sitio público», B-501/B-502) — **y** el banner + el tag + los dos eventos propios de [§7](#7--el-consentimiento-implementado-b-376) — [§6bis](#6bis--lo-que-se-agregó-de-verdad-medido) tiene los bytes reales |
-| **Lo que falta antes de que mida en producción** | Nada de configuración: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta solo el deploy del código, que sale con el próximo push |
+| **Lo que falta antes de que mida en producción** | Nada de configuración para el tag: **B-480 resuelto el 2026-09-03** (ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480)). Falta el deploy del código, y —para que los números lleguen al panel— los **pasos de consola del [§9.4](#94--los-pasos-de-consola-del-dueño)**, que solo puede hacer el dueño |
+| También construido, el 2026-09-03 a la tarde | las **tipografías autoalojadas** ([§7.4ter](#74ter--las-tipografías-autoalojadas-b-481), B-481: cero terceros en el load), el **evento del tríptico** ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601), B-601, sin enganche todavía) y la **lectura de GA4 + Search Console al panel** ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373), B-374/B-373) |
 | La regla que sigue rigiendo | a GA4 **no sale contenido del panel, nunca** ([`07-seguridad.md`](07-seguridad.md#analítica-del-panel), salida 4). La salida nueva —el sitio público, salida 12— tiene su propio alcance, escrito en [§5](#5--la-regla-de-que-no-sale-contenido-y-qué-le-hace-el-sitio-público) |
 
 ---
@@ -701,7 +702,7 @@ island `client:only`, sobra JavaScript para esto y no hace falta navegación:
 | Pestaña | Qué tiene | Mide a alguien que visita el sitio |
 |---|---|---|
 | **El catálogo** | lo que ya existía, reorganizado: los avisos siguen arriba a todo lo ancho, pero «Lo que se publica» y «Qué hay cargado» pasan a ir lado a lado desde `lg` en vez de apiladas | no |
-| **El sitio público** | el andamiaje de §8.1bis: la estructura de lo que va a mostrar cuando B-374 exista, sin un número inventado | todavía no mide nadie — el tablero tampoco |
+| **El sitio público** | lo de §8.1bis, y desde B-374/B-373 **con los números de verdad** cuando los hay: visitas/personas/vistas con su variación, las páginas más vistas, de dónde entra la gente, con qué aparato, los eventos propios, y lo que Search Console dice de las búsquedas. Sin datos sigue el estado vacío, ahora explicando **cuál** de las cuatro situaciones es ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)) | lee un resumen que la Function ya calculó: la pantalla no mide a nadie |
 
 Pestañas de verdad, con el patrón «tabs, automatic activation» de WAI-ARIA APG:
 `role="tablist"`/`"tab"`/`"tabpanel"`, roving `tabIndex` (solo la pestaña
@@ -736,12 +737,19 @@ Tres bloques, en el orden de lo que hay que hacer primero:
 
 ### 8.1bis · Qué muestra la pestaña «El sitio público» — el andamiaje, no los datos (B-502)
 
+> **Esta sección describe el estado del 2026-09-03 a la mañana, y sigue siendo
+> exacta para el caso «todavía no hay datos» — que es el caso normal el primer
+> mes.** A la tarde se construyó la lectura (**B-374/B-373**), así que cuando
+> hay datos la pestaña muestra números: eso está en el
+> [§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373). Lo que **no** cambió
+> es la decisión de esta sección —ni un número inventado— y lo que se agregó es
+> decir **cuál** de las cuatro situaciones explica el vacío.
+
 El pedido original quería vistas, páginas más vistas, secciones, clics y
-fricciones **en el panel**. Esa lectura es **B-374**, no está construida, y no
-lo va a estar hasta que haya un mes de datos (GA4 no mide retroactivo, §9.2).
-Mostrar cero o inventar un número habría sido peor que no construir nada: la
-pestaña existe para dejar la estructura escrita y honesta, no para simular que
-ya mide.
+fricciones **en el panel**. Esa lectura es **B-374**, y hasta que haya un mes de
+datos no va a tener nada que mostrar (GA4 no mide retroactivo, §9.2). Mostrar
+cero o inventar un número habría sido peor que no construir nada: la pestaña
+existe para dejar la estructura escrita y honesta, no para simular que ya mide.
 
 Lo que hay hoy, agrupado igual que el [§2](#2--dos-mitades-y-no-una) de este
 documento:
@@ -842,6 +850,188 @@ defender; el que sale del catálogo, no es comparable con el de nadie. Mezclarlo
 en la misma grilla sin decir cuál es cuál es cómo un número propio termina en un
 mail presentado como si fuera de Google.
 
+### 9.3bis · Cómo quedó construido (B-374 y B-373)
+
+**Se construyó, y con un desvío respecto de lo que el [§9.1](#91--las-piezas-una-por-una)
+listaba.** Ese cuadro pedía siete piezas; se hicieron cinco, y las dos que no
+están no se saltearon: no hacían falta.
+
+| Pieza del §9.1 | Cómo quedó |
+|---|---|
+| **La Data API de GA4** | `functions/analitica.js` arma los pedidos (`runReport` v1beta) y `functions/analitica-trigger.js` los ejecuta |
+| **Una Cloud Function nueva** | `traerAnaliticaDelSitio`, un `onSchedule` diario a las 07:00 (`America/Argentina/Buenos_Aires`) |
+| **Una cuenta de servicio con acceso a la propiedad** | **no se creó una nueva.** Es `calendar-sync@`, la que ya existe y a la que el proyecto ya le da permisos a mano en consolas de Google. Una identidad menos que rotar y un paso de consola menos |
+| **Autorizar la Function** | **no hay endpoint que autorizar.** El resumen se escribe en `sistema/analitica-sitio`, que en `firestore.rules` ya es `read: if esAdmin()` / `write: if false` |
+| **Caché** | es el mismo documento. Un `onCall` con un caché al lado eran dos piezas para el mismo fin |
+| **Tests** | `tests/analitica-del-sitio.test.ts` (el módulo de la Function, con fixtures de la forma real de cada respuesta) y `tests/resumen-del-sitio.test.ts` (el lector del panel). El §9.1 ya advertía qué prueban y qué no, y los dos archivos lo repiten en su cabecera |
+| **La latencia** | la pantalla la dice: 24 a 48 h para GA4, 2 a 3 días para Search Console, y el último día de cada ventana queda afuera a propósito (`RETRASO`) |
+
+**Por qué un `onSchedule` que escribe Firestore y no un `onCall`.** Es el mismo
+razonamiento que `reportes-trigger.js` ya había escrito para el reporte a issue:
+la autorización la hacen las reglas de Firestore, así que el panel lee con el
+permiso que ya tiene y un endpoint nuevo solo agregaría una superficie de
+autenticación que hay que escribir, testear y no equivocar. Y
+`reconciliacion.js` dejó el criterio general: no se agrega un `onCall` cuando la
+vía ya sancionada por la arquitectura alcanza.
+
+**Lo que se pierde, dicho de frente:** el panel no puede pedir «recalculá
+ahora». Ve el resumen de la última corrida. No es una pérdida real —los informes
+de GA4 tardan de 24 a 48 horas, así que un botón de refrescar traería el mismo
+número— pero es un desvío del pedido y conviene tenerlo escrito.
+
+**Cinco decisiones chicas que el diseño no tenía y ahora sí:**
+
+1. **Un informe por pregunta, y una ventana por llamada.** Cinco `runReport`
+   chicos en vez de uno con las dimensiones cruzadas: un `pagePath` ×
+   `deviceCategory` × canal devuelve el producto de las tres y hay que volver a
+   agregarlo de este lado, que es exactamente donde los números se rompen. Y sin
+   usar los dos `dateRanges` que la API acepta, porque entonces GA4 agrega por su
+   cuenta una dimensión `dateRange` y las filas se duplican con un valor extra.
+2. **La variación es `null`, no `0 %`, cuando la ventana anterior fue cero.**
+   Dividir da infinito, y «+100 %» sobre una base de cero es el número que un
+   anunciante pincha primero. Es el estado del **primer mes entero** de
+   medición, no un borde raro: la pantalla dice «sin comparación todavía».
+3. **Un evento propio que todavía no ocurrió sale en cero explícito.** GA4 no
+   devuelve fila para un evento con cero ocurrencias, y sin ese relleno la
+   pantalla no puede distinguir «cero clics de inscripción» —un dato— de «este
+   evento no está enganchado» —un bug—: las dos se ven como un hueco.
+4. **Cada fuente lleva su propio estado.** Las dos APIs fallan por separado, y
+   un resumen a medias es más útil que ninguno: si GA4 contesta y Search Console
+   no, la pantalla muestra GA4 y explica la otra.
+5. **La respuesta cruda de un error va al log, nunca al documento.** El panel lee
+   ese documento; volcarle el cuerpo de una respuesta de Google es la clase de
+   fuga que el `auditor-privacidad` busca. Al log sí, porque un 403 sin cuerpo no
+   distingue «la property no existe» de «la cuenta de servicio no tiene acceso»,
+   que son dos pasos de consola distintos.
+
+**Y lo que la pantalla hace con todo eso** — es la mitad que sostiene **D-272**.
+El andamiaje de B-502 era honesto por construcción, porque no leía nada. Con
+datos entrando aparecen **cuatro situaciones que se ven parecidas y piden
+acciones distintas**, y confundir dos es cómo un tablero empieza a mentir:
+
+| Situación | Qué pasó | Qué dice la pantalla |
+|---|---|---|
+| **sin documento** | la Function nunca corrió | «todavía no llegó ningún resumen; la lectura corre una vez por día» |
+| **sin configurar** | falta el `propertyId` o el sitio de Search Console | «falta un paso de configuración», y **cuál** |
+| **falla** | la API dijo no (permiso, cuota, property equivocada) | el motivo, en el acento |
+| **sin datos** | la API contestó bien y **el número es cero** | «contestó bien y todavía no hay volumen: los números están en cero de verdad, no falta nada» |
+
+La última es la que un tablero corriente muestra como «0 visitas», y es la que
+motivó D-272: un cero durante tres semanas parece un tablero roto, y el dueño no
+puede distinguirlo de un enganche que no funciona. Las distingue
+`src/lib/resumenDelSitio.ts`, que es puro y está testeado caso por caso.
+
+### 9.4 · Los pasos de consola del dueño
+
+**Un agente no puede hacer ninguno de estos, y no es una limitación técnica: es
+el §5.4 del `CLAUDE.md`.** Son credenciales y permisos sobre recursos del dueño.
+Hasta que estén, la Function está desplegada y la pantalla dice exactamente qué
+falta («falta un paso de configuración para Google Analytics: `GA4_PROPERTY_ID`
+sin configurar»), así que no hay nada roto mientras tanto.
+
+Van en este orden porque cada uno se verifica con el anterior hecho.
+
+**1 · Habilitar las dos APIs** (una vez, en el proyecto de Google Cloud)
+
+```bash
+gcloud services enable analyticsdata.googleapis.com \
+  searchconsole.googleapis.com --project agenda-literaria
+```
+
+*Cómo verificar:* `gcloud services list --enabled --project agenda-literaria | grep -E 'analyticsdata|searchconsole'`
+tiene que devolver las dos líneas. Sin esto, la Function loguea un 403 con
+`SERVICE_DISABLED` y un link para habilitarla — que es el error más fácil de
+leer de los cuatro que pueden pasar acá.
+
+**2 · Dar acceso de lectura a la cuenta de servicio en GA4**
+
+`calendar-sync@agenda-literaria.iam.gserviceaccount.com` — **la misma que ya
+tiene el calendario**, no una nueva.
+
+En Google Analytics: Administrar → (columna Propiedad) **Accesos a la
+propiedad** → **+** → Agregar usuarios → pegar ese mail → rol **Lector** →
+destildar «Notificar por correo» (una cuenta de servicio no lee mails) →
+Agregar.
+
+*Cómo verificar:* la cuenta aparece en esa misma lista con rol «Lector». Si el
+rol quedara en «Nadie», la Data API devuelve
+`User does not have sufficient permissions for this property` — que es lo que la
+pantalla del panel va a mostrar textualmente.
+
+**3 · Dar acceso de lectura a la misma cuenta en Search Console**
+
+En Search Console: la propiedad de `agendaleh.ar` → Configuración → **Usuarios y
+permisos** → Agregar usuario → pegar el mismo mail → permiso
+**Restringido** (alcanza: solo se lee) → Agregar.
+
+*Cómo verificar:* aparece en la lista. Con el permiso mal puesto la API devuelve
+403 con `User does not have sufficient permission for site`.
+
+**4 · Cargar los dos identificadores en `functions/.env` y desplegar**
+
+```
+GA4_PROPERTY_ID=<el id NUMÉRICO de la propiedad>
+SEARCH_CONSOLE_SITE=<sc-domain:agendaleh.ar   o   https://agendaleh.ar/>
+```
+
+> ⚠️ **El `propertyId` NO es el `G-9CFMHSSGRC`.** Ese es el *measurement id*, el
+> que va en el tag del navegador. La Data API pide el **id numérico** de la
+> propiedad, que está en Administrar → **Configuración de la propiedad** →
+> Detalles de la propiedad (arriba a la derecha, «ID de propiedad»).
+> Confundirlos devuelve un 403 que no dice cuál de los dos está mal, y es el
+> primer lugar donde este ítem se traba.
+
+> ⚠️ **`SEARCH_CONSOLE_SITE` es la propiedad tal cual se registró.** Si el
+> dominio se verificó **por DNS**, es `sc-domain:agendaleh.ar` (sin `https://`,
+> sin barra). Si se registró como **prefijo de URL**, es `https://agendaleh.ar/`
+> **con la barra final**. No son intercambiables: con la que no es, 403.
+
+Los dos son identificadores de recursos, no credenciales, y por eso pueden ir en
+un `.env` versionado — `tests/env-versionados.test.ts` los tiene como excepción
+nombrada, con el motivo escrito ahí.
+
+Después: `firebase deploy --only functions:traerAnaliticaDelSitio`.
+
+**5 · Confirmar que la zona horaria de la propiedad de GA4 es la del proyecto**
+
+Administrar → Configuración de la propiedad → **Zona horaria de los informes** →
+`(GMT-03:00) Buenos Aires`.
+
+*Por qué importa:* la Function manda fechas explícitas (`2026-09-17`) y GA4 las
+interpreta **en la zona de la propiedad**. Si no coincide, los números **no
+fallan**: se corren un día. Es la trampa 1 del §13 con otra cara, y no hay forma
+de detectarla desde el código.
+
+**6 · Cargar el `sitemap.xml` en Search Console** (opcional, y conviene)
+
+Search Console → Sitemaps → `https://agendaleh.ar/sitemap.xml` → Enviar. Ya
+existe desde B-109; cargarlo hace que Google descubra las páginas nuevas más
+rápido en vez de esperar a encontrarlas.
+
+**Cómo verificar que todo quedó bien, de punta a punta**
+
+1. Forzar una corrida sin esperar al día siguiente:
+   ```bash
+   gcloud scheduler jobs run firebase-schedule-traerAnaliticaDelSitio-southamerica-east1 \
+     --location southamerica-east1 --project agenda-literaria
+   ```
+2. Mirar el log: `firebase functions:log --only traerAnaliticaDelSitio`. La línea
+   buena dice `analítica del sitio actualizada` con `ga4: ok` y
+   `searchConsole: ok`.
+3. Abrir el panel → Estadísticas → pestaña **El sitio público**. Si los pasos
+   están bien y todavía no hay volumen, va a decir «contestó bien y todavía no
+   hay volumen», que es el resultado **correcto** durante el primer mes: la
+   diferencia con «falta un paso» está a la vista, que es todo el punto de §9.3bis.
+
+**Los cuatro errores que puede tirar, y qué es cada uno**
+
+| Lo que dice el log o la pantalla | Qué es | Qué hacer |
+|---|---|---|
+| `GA4_PROPERTY_ID sin configurar` | falta el paso 4 | cargar el `.env` y desplegar |
+| `SERVICE_DISABLED` / «has not been used in project» | falta el paso 1 | habilitar la API |
+| `User does not have sufficient permissions for this property` | falta el paso 2, o el `propertyId` es de otra propiedad | revisar los dos, en ese orden |
+| `User does not have sufficient permission for site` | falta el paso 3, o `SEARCH_CONSOLE_SITE` no es la forma con la que se registró la propiedad | revisar el paso 3 y la nota de `sc-domain:` |
+
 ---
 
 ## 10 · Lo que el propósito comercial abre y nadie nombró
@@ -881,7 +1071,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | 3 | **El banner y el consentimiento** (**B-376**, camino C3) | ✅ construido — es la pieza que hace que el tag esté informado desde el primer día en que mide de verdad |
 | 4 | **El tag de GA4** (**B-372**) | ✅ código y enganche en `Base.astro` hechos, incluido el chequeo del [§5.3](#53-el-invariante-nuevo-que-esto-crea-y-que-hay-que-testear) y el de `page_referrer` (D-253). **⛔ Bloqueado por B-480** antes de medir en producción — ver [§7.4](#74--lo-que-el-código-no-puede-tapar-b-480) |
 | 5 | **Los eventos propios** (**B-375**) | ✅ construidos: el clic en el botón de inscripción y el filtro que deja cero. Inertes hasta que B-480 se resuelva, igual que el resto de B-372 |
-| 6 | **El resumen vendible en el panel** (**B-374**) | recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre |
+| 6 | **El resumen vendible en el panel** (**B-374**) | ✅ construido (2026-09-03) — y con un desvío del criterio que decía «recién cuando haya un mes de datos y `estadisticas-abrir` diga que el tablero se abre». **El criterio era correcto para el orden y se cumplió por el otro lado:** lo que se construyó no muestra un cero ni un número inventado, sino cuál de las cuatro situaciones está pasando ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)), así que sirve **antes** de que haya datos — dice si los pasos de consola están bien. Lo que sigue esperando el mes de datos son los números, no la pantalla. Ver [§9.4](#94--los-pasos-de-consola-del-dueño) para lo que falta del lado del dueño |
 
 ---
 
@@ -889,11 +1079,11 @@ semana sin el tag es una semana de historia que no se recupera**.
 
 | Ítem | Qué es | Estado |
 |---|---|---|
-| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 el tablero del catálogo y el banner/tag/eventos están; falta B-373, B-374 y B-480 |
+| **B-370** | **Analítica del sitio público** — el ítem paraguas, y este documento | 🟡 **todo el código está** (tablero, banner, tag, los tres eventos propios, las tipografías autoalojadas y la lectura de GA4 + Search Console al panel). Lo que falta no es código: los **pasos de consola del dueño** del [§9.4](#94--los-pasos-de-consola-del-dueño), el **mes de datos** que ninguna de las dos APIs mide para atrás, y el **enganche del evento del tríptico** (B-601). Los tres ítems 🔵 futuro siguen fuera de alcance a propósito |
 | **B-371** | Decisión del dueño: aceptar el costo de JavaScript en la página de detalle, con el número del [§6](#6--el-costo-en-la-página-de-detalle-medido) | ✅ resuelto — **aceptado** (D-251) |
 | **B-372** | **Instalar el tag de GA4** en las páginas públicas — la mitad vendible entera, sin un evento propio. Incluye el chequeo del §5.3 y el de `page_referrer` (D-253) | 🟡 código y enganche en `Base.astro` hechos — **⛔ bloqueado por B-480** para medir en producción |
-| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 **conectado el 2026-09-03** — el histórico ya acumula; queda la lectura al panel, que va con la tanda de datos (B-374) |
-| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | ⛔ depende de B-372 (con B-480 resuelto) y de un mes de datos |
+| **B-373** | **Search Console**: conectar el dominio y leerlo | 🟡 conectado el 2026-09-03; **la lectura al panel está construida** (2026-09-03) — con qué se busca y qué páginas rankean, en la pestaña «El sitio público». Falta el paso de consola del dueño: darle acceso de lectura a la cuenta de servicio y cargar `SEARCH_CONSOLE_SITE` ([§9.4](#94--los-pasos-de-consola-del-dueño), pasos 3 y 4) |
+| **B-374** | La Function que lee la Data API de GA4 para el resumen vendible del panel | 🟡 **construida** (2026-09-03): `traerAnaliticaDelSitio`, diaria, escribe `sistema/analitica-sitio`, y el panel la lee con estado vacío honesto por situación ([§9.3bis](#93bis--cómo-quedó-construido-b-374-y-b-373)). Falta lo que un agente no puede hacer: habilitar la Data API, dar acceso a la cuenta de servicio y cargar `GA4_PROPERTY_ID` ([§9.4](#94--los-pasos-de-consola-del-dueño)) — y **un mes de datos**, que es lo que la pantalla dice mientras no lo haya |
 | **B-375** | Los **eventos propios** de la mitad de mejora: el clic en el botón de inscripción y el filtro que deja cero | ✅ construidos — inertes hasta que B-372/B-480 midan de verdad |
 | **B-376** | El **aviso de privacidad** y el consentimiento — decisión del dueño entre C1, C2 y C3 | ✅ resuelto — **C3** (D-250), banner construido |
 | **B-377** | El **inventario publicitario**: una salida pública nueva. Anotado, no resuelto | 🔵 futuro |

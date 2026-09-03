@@ -29,10 +29,35 @@ vi.mock('@/lib/analytics', () => ({
 vi.mock('@/components/admin/useOpciones', () => ({
   useLabelsTaxonomia: () => ({}),
 }));
+/*
+ * B-374/B-373 — la pestaña «El sitio público» pasó a leer un documento de
+ * Firestore (`sistema/analitica-sitio`) al abrirse. Va mockeado por lo mismo
+ * que `listarActividades`: lo que este archivo cuida son las pestañas.
+ *
+ * El mock devuelve el resumen **vacío**, que es el estado que la pantalla tiene
+ * que dibujar cuando la Function todavía no corrió — y se arma con
+ * `leerResumenDelSitio(null)`, el lector de verdad, en vez de escribir el
+ * objeto a mano: así un campo nuevo en el resumen no deja este mock viejo
+ * fingiendo una forma que ya no existe.
+ */
+vi.mock('@/lib/analiticaDelSitio', () => ({
+  leerAnaliticaDelSitio: vi.fn(async () => leerResumenDelSitio(null)),
+}));
 
 import { EstadisticasPanel } from '@/components/admin/EstadisticasPanel';
+import { leerResumenDelSitio } from '@/lib/resumenDelSitio';
 
 afterEach(() => cleanup());
+
+/**
+ * El texto que ancla la pestaña del sitio público.
+ *
+ * **Es el de la franja de arriba, que está en las dos ramas** —con datos y
+ * sin—, y no la frase del estado vacío: ésa cambia según la situación (nunca
+ * corrió, falta configurar, falló, sin volumen), así que atar el test a una de
+ * ellas lo haría fallar el día que la pantalla dice la verdad de otra forma.
+ */
+const ANCLA_SITIO = /Cómo se usa el sitio público/;
 
 const montar = async () => {
   render(<EstadisticasPanel onEditar={() => {}} />);
@@ -47,7 +72,7 @@ describe('EstadisticasPanel — qué panel se muestra (B-501)', () => {
     const tabCatalogo = screen.getByRole('tab', { name: 'El catálogo' });
     expect(tabCatalogo.getAttribute('aria-selected')).toBe('true');
     expect(screen.getByText(/Todavía no hay actividades cargadas/)).not.toBeNull();
-    expect(screen.queryByText(/La medición del sitio arranca/)).toBeNull();
+    expect(screen.queryByText(ANCLA_SITIO)).toBeNull();
   });
 
   it('un clic en «El sitio público» cambia el panel que se ve, no solo el botón activo', async () => {
@@ -59,7 +84,10 @@ describe('EstadisticasPanel — qué panel se muestra (B-501)', () => {
     // La mitad que un cambio de estilo sin cambiar el contenido no puede
     // fingir: el texto de la otra pestaña tiene que estar, y el del catálogo
     // ya no.
-    expect(screen.getByText(/La medición del sitio arranca/)).not.toBeNull();
+    // La lectura del resumen es asíncrona: hasta que resuelve, el panel dice
+    // «Cargando…». `findByText` espera ese tick — con `getByText` este caso
+    // fallaría por la carrera y no por el cableado que verifica.
+    expect(await screen.findByText(ANCLA_SITIO)).not.toBeNull();
     expect(screen.queryByText(/Todavía no hay actividades cargadas/)).toBeNull();
   });
 });
@@ -77,7 +105,10 @@ describe('EstadisticasPanel — navegación por teclado (B-501)', () => {
 
     expect(document.activeElement).toBe(tabSitio);
     expect(tabSitio.getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByText(/La medición del sitio arranca/)).not.toBeNull();
+    // La lectura del resumen es asíncrona: hasta que resuelve, el panel dice
+    // «Cargando…». `findByText` espera ese tick — con `getByText` este caso
+    // fallaría por la carrera y no por el cableado que verifica.
+    expect(await screen.findByText(ANCLA_SITIO)).not.toBeNull();
   });
 
   it('ArrowLeft desde la primera pestaña da la vuelta a la última (wrap)', async () => {
