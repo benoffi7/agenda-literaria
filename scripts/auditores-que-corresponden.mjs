@@ -56,8 +56,12 @@ export const SIEMPRE = ['documentacion'];
  * No se usa una librería de YAML a propósito: es el mismo criterio de
  * `tests/agentes-y-skills.test.ts` — no hay ninguna instalada y estos
  * frontmatter son planos.
+ *
+ * @param {string} src
+ * @returns {Record<string, string>}
  */
 export const frontmatter = (src) => {
+  /** @type {Record<string, string>} */
   const claves = {};
   if (!src.startsWith('---\n')) return claves;
   const cierre = src.indexOf('\n---\n', 3);
@@ -79,9 +83,14 @@ export const frontmatter = (src) => {
  *
  * El mismo extractor sirve para los tres agentes: lo que cambia es qué escribió
  * cada uno en su ficha, no cómo se lee.
+ *
+ * @param {string} descripcion
+ * @returns {{ archivos: string[], prefijos: string[] }}
  */
 export const rutasQueNombra = (descripcion) => {
+  /** @type {Set<string>} */
   const archivos = new Set();
+  /** @type {Set<string>} */
   const prefijos = new Set();
 
   /*
@@ -110,15 +119,26 @@ export const rutasQueNombra = (descripcion) => {
   return { archivos: [...archivos].sort(), prefijos: [...prefijos].sort() };
 };
 
-/** ¿La ruta cae en lo que ese agente declaró mirar? */
+/**
+ * ¿La ruta cae en lo que ese agente declaró mirar?
+ *
+ * @param {string} ruta
+ * @param {{ archivos: string[], prefijos: string[] }} nombradas
+ * @returns {boolean}
+ */
 const cae = (ruta, { archivos, prefijos }) =>
   archivos.includes(ruta) || prefijos.some((p) => ruta.startsWith(p));
 
 /**
  * La decisión. `fichas` mapea auditor → contenido de su archivo de definición,
  * así que esta función es pura y el test le puede pasar fichas inventadas.
+ *
+ * @param {string[]} rutas
+ * @param {Record<string, string>} fichas
+ * @returns {Record<string, { corresponde: boolean, disparadores: string[] }>}
  */
 export const auditoresQueCorresponden = (rutas, fichas) => {
+  /** @type {Record<string, { corresponde: boolean, disparadores: string[] }>} */
   const salida = {};
   for (const auditor of Object.keys(AUDITORES)) {
     const ficha = fichas[auditor];
@@ -134,8 +154,14 @@ export const auditoresQueCorresponden = (rutas, fichas) => {
   return salida;
 };
 
-/** Lee las fichas de los tres auditores del disco, relativas a la raíz del repo. */
+/**
+ * Lee las fichas de los tres auditores del disco, relativas a la raíz del repo.
+ *
+ * @param {URL} raiz
+ * @returns {Record<string, string>}
+ */
 export const leerFichas = (raiz) => {
+  /** @type {Record<string, string>} */
   const fichas = {};
   for (const [auditor, ruta] of Object.entries(AUDITORES)) {
     try {
