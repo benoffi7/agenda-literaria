@@ -126,6 +126,14 @@ describe('la identidad de la tarjeta (§4.1)', () => {
     ).toBe('2 encuentros');
   });
 
+  it('una pieza vacía no viaja: el componente une con «·» sin preguntar', () => {
+    // Un documento a medio crear puede no tener `tipo`, y ahí la etiqueta sale
+    // vacía. Si viajara, la línea empezaría con un separador colgado.
+    const t = de({ tipo: '' } as Partial<ActividadConId>);
+    expect(t.identidad).toEqual(['0 encuentros']);
+    expect(t.identidad.join(' · ').startsWith('·')).toBe(false);
+  });
+
   it('un documento sin `sesiones` no rompe la tarjeta', () => {
     // Default de lectura: un documento a medio crear no puede tirar el listado
     // entero abajo.

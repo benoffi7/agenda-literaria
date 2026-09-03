@@ -105,6 +105,17 @@ export interface TarjetaDelPanel {
 const etiqueta = (labels: LabelsTaxonomia, campo: 'tipo' | 'barrio' | 'arancel', valor: string) =>
   labels[campo]?.[valor] ?? legible(valor);
 
+/**
+ * Las piezas de una línea, sin las vacías.
+ *
+ * Es lo que hace cierto el contrato de `TarjetaDelPanel`: el componente une con
+ * `·` sin preguntar nada, así que una pieza vacía se vería como un separador
+ * colgado al principio de la línea. Pasa con un documento a medio crear —un
+ * `tipo` sin cargar da etiqueta vacía— y filtrar acá es más barato que hacer que
+ * cada consumidor se acuerde.
+ */
+const piezas = (partes: string[]): string[] => partes.filter((p) => p !== '');
+
 /** «8 encuentros» / «1 encuentro». */
 const cuantosEncuentros = (cantidad: number): string =>
   `${cantidad} ${cantidad === 1 ? 'encuentro' : 'encuentros'}`;
@@ -125,17 +136,17 @@ export const datosDeTarjeta = (
   const slugArancel = a.arancel?.tipo ?? '';
 
   return {
-    identidad: [
+    identidad: piezas([
       etiqueta(labels, 'tipo', a.tipo),
       cuantosEncuentros(a.sesiones?.length ?? 0),
-    ],
-    donde: [
+    ]),
+    donde: piezas([
       ETIQUETA_MODALIDAD[modalidad],
       // La sede es la principal —«la primera fila que tenga»— y el documento ya
       // la trae derivada (B-224). Puede no haber ninguna: una actividad solo
       // virtual no tiene barrio.
-      ...(a.sede?.barrio ? [etiqueta(labels, 'barrio', a.sede.barrio)] : []),
-    ],
+      a.sede?.barrio ? etiqueta(labels, 'barrio', a.sede.barrio) : '',
+    ]),
     arancel: slugArancel ? etiqueta(labels, 'arancel', slugArancel) : '',
     sinCosto: esSinCosto(slugArancel),
     // B-96 — la fecha que importa es la que viene, no la última modificación: es
