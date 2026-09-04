@@ -21,9 +21,9 @@
     "calendario:verificar": "node scripts/verificar-calendario.mjs"
   },
   "dependencies": {
-    "@astrojs/react": "^4.2.0",
+    "@astrojs/react": "^5.0.7",
     "@tailwindcss/vite": "^4.0.0",
-    "astro": "^5.2.0",
+    "astro": "^6.4.8",
     "firebase": "^11.3.0",
     "google-auth-library": "^10.9.1",
     "react": "^19.0.0",
