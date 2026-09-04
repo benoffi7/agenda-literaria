@@ -42,10 +42,15 @@
  *
  * **`sizes` sin `srcset` no hace nada** (D-149) y por eso van siempre juntos: el
  * `srcset` es `{miniatura} 480w, {original} 1600w` con el original **siempre**
- * como `src` (una miniatura ausente degrada al original, no a una imagen rota) y
- * `null` para las imágenes externas, que DEC-7d no toca. Los números y el punto
- * en el que el peso sin miniatura dejaba de sostenerse están en
- * `docs/06-decisiones.md` (D-148, D-149).
+ * como `src`, y `afiche.urlMiniatura` (`src/lib/cartelera.ts`) da `null` tanto
+ * para las imágenes externas (DEC-7d no las toca) como para una que todavía no
+ * tiene la miniatura **confirmada** en Storage — D-210, y es la mitad que no
+ * es opcional: un `srcset` cuyo candidato no existe **rompe la imagen**, no
+ * degrada al `src` (el `src` es el respaldo para un navegador sin soporte de
+ * `srcset`, no para un candidato que da 404 — una vez elegido, reemplaza al
+ * `src` en el algoritmo de selección). Los números y el punto en el que el
+ * peso sin miniatura dejaba de sostenerse están en `docs/06-decisiones.md`
+ * (D-148, D-149).
  */
 import Base from '@/layouts/Base.astro';
 import { carteleraDelSitio } from '@/lib/contenidoDelSitio';
@@ -120,15 +125,27 @@ const descripcion =
                 que hace que una pared de 30 afiches no pese 2,7 MB al entrar.
 
                 `src` queda en el ORIGINAL a propósito — B-320/B-266/D-149. La
-                miniatura es un candidato de `srcset`, no el `src`: es una URL
-                derivada (no un dato guardado), así que una imagen subida antes
-                de que la Function de B-220 estuviera desplegada no la tiene
-                todavía, y `urlMiniatura` da `null`. Con el candidato ausente el
-                `srcset` degrada solo al original; con la miniatura en `src` la
-                imagen se rompe. Y para las externas (DEC-7d no las toca)
-                `urlMiniatura` es siempre `null`, así que el atributo sale
-                ausente y no vacío. `sizes` recién sirve con `srcset` puesto: sin
-                candidato es decoración que parece optimización (D-149).
+                miniatura es un candidato de `srcset`, no el `src`, y
+                `afiche.urlMiniatura` (`src/lib/cartelera.ts`) da `null` para
+                una externa (DEC-7d) y **también** si el objeto no está
+                confirmado en `miniaturasConocidas` — la lectura de Storage por
+                build que `carteleraDelSitio()` le pasa a `carteleraDeDetalles`.
+
+                ⚠️ **Esto no es un detalle de degradación prolija, es lo que
+                impide romper la imagen (D-210).** Una vez que el navegador
+                elige un candidato del `srcset`, esa URL reemplaza al `src` en
+                el algoritmo de selección: el `src` es el respaldo para un
+                navegador sin soporte de `srcset`, no para un candidato que da
+                404. Si `urlMiniatura` viniera de `urlDeMiniatura` a ciegas —lo
+                que hacía la primera versión de este cambio—, cualquier imagen
+                cuya miniatura todavía no exista publicaría el afiche **roto**,
+                no degradado. Con `optimizarImagen` desplegada y el barrido ya
+                corrido eso dejó de ser el caso general, pero sigue siendo la
+                ventana entre la subida y el trigger: chica, permanente, y la
+                atraviesa cada imagen nueva.
+
+                `sizes` recién sirve con `srcset` puesto: sin candidato es
+                decoración que parece optimización (D-149).
 
                 `srcsetDeMiniatura` compone la lista de candidatos y no un
                 template acá: `afiche.url` sale del documento tal cual lo guardó

@@ -6435,6 +6435,15 @@ descarta porque **no autoriza nada**: verificado contra producción el
 2026-09-02, el mismo objeto responde 200 con su token, **sin token** y con un
 token inventado — lo que autoriza es `allow get: if true`.
 
+> ⚠️ **La última frase del párrafo de abajo es falsa — ver D-210.** «Un `srcset`
+> cuyo candidato no existe hace que el navegador caiga al `src`» **no** es
+> cierto: el candidato elegido *reemplaza* al `src` en el algoritmo de selección
+> de imagen, así que un 404 deja la imagen **rota**, no degradada. El `src` es el
+> respaldo para un navegador sin soporte de `srcset`, nada más. B-320 y B-321 se
+> construyeron sobre esa premisa, y D-210 es la corrección: la miniatura entra al
+> `srcset` solo si el build la **confirmó** contra Storage. El párrafo queda como
+> estaba escrito, para que D-210 se lea contra su original.
+
 `Afiche.urlMiniatura` está puesto y probado; **la plantilla todavía no lo
 pinta**, porque `src/pages/cartelera.astro` es de otro frente. Falta un `srcset`
 de una línea, con el original como `src` — que es lo único que degrada bien: un
@@ -7413,6 +7422,7 @@ cliente, para que el filtro no le coma cupo a los reportes abiertos cuando hay
 varios resueltos entre los más nuevos.
 
 
+
 ## D-320 · El tercer panel del tríptico resta los días ya contados, salta de semana con otro rótulo, y su «+N más» no es un enlace
 
 > ⚠️ **Un panel vacío ya no se dibuja — lo decidió el dueño el 2026-09-03,
@@ -7677,3 +7687,206 @@ criterios conviven porque contestan preguntas distintas.
   emulador y no asumida.
 - No es la trampa 3 ni la 12: nada escucha `versiones/{version}` y un trigger de
   documento no se dispara con escrituras en subcolecciones.
+
+---
+
+## D-210 · La miniatura del `srcset` se confirma contra Storage: un candidato que da 404 rompe la imagen, no degrada
+
+**Contexto.** **B-320** (la pared de `/cartelera`) y **B-321** (la portada de la
+página de detalle) pusieron la miniatura de 480px que deriva la Function de
+B-220 como candidato chico de un `srcset`, con el original **siempre** como
+`src`. El diseño se apoyaba en una afirmación escrita, en `src/lib/cartelera.ts`
+y repetida en las dos plantillas:
+
+> «un `srcset` cuyo candidato no existe hace que el navegador caiga al `src`»
+
+**Eso es falso, y es todo el problema.** El algoritmo de selección de imagen de
+HTML elige un candidato del `srcset` y esa URL **reemplaza** al `src`: el `src`
+es el respaldo para un navegador que no soporta `srcset`, no para un candidato
+que responde 404. Una miniatura ausente no degrada al original — deja la imagen
+rota, en la página más visual del sitio y en la cabecera de cada actividad.
+
+La afirmación importaba porque `urlDeMiniatura` **deriva la URL a ciegas**: la
+saca del path que la URL del original lleva adentro (B-206 #1), sin preguntarle
+a nadie si el objeto existe. Eso es una virtud del diseño de B-220 —es lo que
+hizo innecesario el write-back de la Function al documento— y a la vez su
+límite: la función devuelve la URL que *le correspondería*.
+
+**Cuál es hoy la ventana de rotura, y por qué la corrección igual entra.**
+Cuando se escribió la primera versión de esto, `optimizarImagen` no estaba
+desplegada, así que **ninguna** miniatura existía y cada imagen propia iba a
+salir rota. Eso ya no es cierto: la Function está viva desde el 2026-09-03 y el
+barrido corrió sobre el bucket entero (49 de 49, `docs/08-operacion.md` §
+«Estado: desplegada y barrida»), así que lo que está subido tiene su miniatura.
+Lo que queda abierto es más chico y **permanente**: los segundos entre que el
+panel sube el objeto y el trigger termina, más cualquier corrida que falle o se
+saltee. Cada imagen nueva atraviesa esa ventana, y un build que caiga adentro
+publica ese afiche roto hasta el rebuild siguiente (2-7 minutos, §8, o hasta la
+próxima edición). La urgencia bajó; la corrección no cambia, porque lo que se
+arregla no es «la Function todavía no corrió» sino **un campo que promete más de
+lo que sabe**.
+
+### Decisión
+
+**El `srcset` público solo lleva miniaturas confirmadas.** Tres piezas:
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| `urlDeMiniaturaSiExiste(url, conocidas)` | `src/lib/imagenes.ts` | como `urlDeMiniatura`, pero `null` si el path no está en el set |
+| `miniaturasConocidas()` | `src/lib/contenidoDelSitio.ts` | **una sola** lectura de Storage por build: `getFiles({ prefix: 'miniaturas/' })` |
+| `adminBucket()` | `src/lib/firebase-admin.ts` | el bucket en build time, la puerta única, igual que `adminDb()` para Firestore |
+
+`urlDeMiniatura` **sigue existiendo** y sigue siendo pública: es la derivación
+pura que `urlDeMiniaturaSiExiste` usa por dentro y la que los tests comparan
+contra `rutaDeMiniatura` de `functions/imagenes.js`. Lo que cambia es que
+**ninguna salida la llama**, y eso lo fija un test por regla y no por lista:
+`tests/imagenes.test.ts` recorre `src/**`, saca los comentarios, y falla si
+alguien que no sea `src/lib/imagenes.ts` la invoca. Los dos tests de las salidas
+de hoy —el valor de `Afiche.urlMiniatura`, y el markup de `[slug].astro`, que
+afirma que la plantilla **no deriva nada**— fijan las salidas que existen; ése
+fija la tercera que alguien agregue.
+
+### Una lectura por build, no un pedido por imagen
+
+Es la parte que hace viable confirmar. **DEC-7d decidió que el build no descarga
+imágenes**, y esto no lo contradice: `getFiles` **lista** un prefijo, no baja un
+byte. Se hace una vez, se memoiza en el módulo (mismo patrón que
+`contenidoDelSitio()`, con su `olvidarMiniaturas()` para los tests) y el `Set`
+resultante viaja por referencia a los dos consumidores — como argumento de
+`carteleraDeDetalles` y como prop de cada página de detalle. Pasarlo a N páginas
+no cuesta N lecturas.
+
+**Y las dos puntas de la clave se comparan por test.** El set lo produce
+`@google-cloud/storage` (`o.name`) y la consulta la deriva `rutaDeMiniatura`:
+son dos strings que **nadie más compara**, o sea la clase de B-88. Si algún día
+el listado devolviera las claves con otra forma, `has()` daría `false` siempre,
+**todos** los `srcset` del sitio desaparecerían y la suite quedaría en verde —
+la optimización apagada en silencio, que es la familia de B-189 del lado de
+Storage. Lo ata `tests/miniaturas-storage.integracion.test.ts` contra el
+emulador; los tests de unidad no pueden, porque usan un `Set` escrito a mano, o
+sea el lado del consumidor duplicado.
+
+**Las alternativas y por qué no.** Un `HEAD` por imagen desde el build es
+exactamente el pedido de red por imagen que DEC-7d prohíbe (y 30 afiches son 30
+round-trips). Chequear desde el navegador con un `onerror` es un pedido de más
+por afiche y llega tarde: la imagen ya se rompió. Y el write-back de la Function
+al documento es justo lo que B-220 evitó a propósito, porque es la trampa 3.
+
+### Nunca tira: un build sin `srcset` no es un incidente
+
+`contenidoDelSitio()` **sí** tira sin credenciales (B-189): un `events.json`
+vacío publicado encima del que tenía datos es un incidente. Esta lectura es la
+contraria y se degrada en silencio a «ninguna confirmada»:
+
+- sin credenciales → set vacío, sin tocar la red;
+- sin permiso de listado, o con Storage caído → `console.warn` y set vacío;
+- con `FIRESTORE_EMULATOR_HOST` pero **sin** `FIREBASE_STORAGE_EMULATOR_HOST` →
+  set vacío y aviso, **a propósito** (ver abajo).
+
+En los tres casos el sitio sale con los originales: es el sitio exacto que había
+antes de B-320 —más pesado y entero—, no un sitio sin portadas. Un `throw` acá
+convertiría una optimización de peso en un bloqueante de publicación, y eso está
+fijado por test (`tests/imagenes.test.ts`, «sin credenciales: set vacío, no
+tira, y el sitio se queda con los originales»), que además afirma que el afiche
+**sigue saliendo** con su `url` original.
+
+### El permiso ya está, y la primera versión de esta decisión suponía que no
+
+Conviene dejarlo escrito porque casi genera un paso de operación inexistente:
+`deploy-ci@` ya tiene `roles/firebase.developAdmin`
+([`02-infraestructura.md`](02-infraestructura.md) § «Roles de `deploy-ci@`»), y
+ese rol incluye `storage.objects.list`. Verificado contra el proyecto el
+2026-09-03 con `gcloud iam roles describe` y `get-iam-policy`. **No hay nada que
+otorgar antes de mergear esto.**
+
+Y el canal es el del Admin SDK, no el de las reglas: `adminBucket()` bypasea
+`storage.rules` igual que `adminDb()` bypasea `firestore.rules`. La **trampa 13**
+(`allow read` en Storage incluye `list`) sigue intacta —`allow list: if
+esAdmin()` no se toca— y esto no la afloja: lo que la trampa protege es lo que
+ve un anónimo con el SDK web. `docs/08-operacion.md` ya dejaba anotada la
+contracara: `allow list` protege **un canal y no el bucket**, y ahora hay un
+principal más del otro lado, con un rol que ya tenía.
+
+### El emulador, y la variable que faltaba en `vitest.config.ts`
+
+El cliente de `@google-cloud/storage` **no** mira `FIRESTORE_EMULATOR_HOST`:
+mira `FIREBASE_STORAGE_EMULATOR_HOST`. Eso abre un modo de falla nuevo, que lo
+trae este código y no existía antes: una corrida que lea el bucket con el Admin
+SDK sin esa variable sale a **producción**, y en una máquina con credenciales de
+GCP da **verde** leyendo el bucket real.
+
+Se cierra por los dos lados: `vitest.config.ts` la setea con el mismo default
+que `HOST_STORAGE` de `tests/emulador.ts`, y `leerMiniaturas()` corta explícito
+cuando el build apunta al emulador de Firestore sin la de Storage — si no, un
+build local confirmaría paths de un bucket que no es el que está leyendo.
+
+**Lo que NO era cierto y conviene desmentir**, porque la primera versión de esta
+decisión lo afirmaba: que sin esa línea «los tests le hablaban a Storage de
+producción». Hasta acá nada de la suite tocaba Storage con el Admin SDK, y lo
+que sí lo toca —`tests/emulador.ts`— resuelve el host con `HOST_STORAGE`, que ya
+cae al emulador por defecto. La variable no arregla una fuga vieja: es la
+**condición** para que la lectura nueva pueda entrar.
+
+### Consecuencias
+
+- Un afiche cuya miniatura todavía no existe sale **sin** `srcset` (atributo
+  ausente, no vacío) y pesa lo que pesa el original. Es el precio de no
+  arriesgar una imagen rota, y se corrige solo en el rebuild siguiente.
+- El build hace una lectura de Storage más. Es una, y es un listado.
+- `carteleraDeDetalles` toma un segundo argumento con default `new Set()`: un
+  llamador que no tenga la lectura a mano —la mayoría de los tests— obtiene el
+  comportamiento **seguro**, nunca el de confiar y derivar a ciegas.
+- La página de detalle suma una segunda prop, `urlMiniaturaPortada:
+  string | null`, **ya resuelta**. Ver la sección siguiente: la primera versión
+  pasaba el `Set` y eso estaba mal por dos motivos.
+  `tests/pagina-de-detalle.test.ts` sigue fijando la lista completa de props,
+  así que una tercera obliga a decidirla.
+
+### La prop es una URL resuelta y no el set, y lo corrigió el `auditor-privacidad`
+
+La primera versión de esta decisión pasaba el `Set` de miniaturas confirmadas
+como prop de cada página de detalle y dejaba el `.has()` adentro de
+`[slug].astro`. Está mal por dos motivos, y el segundo es el que manda:
+
+1. **La plantilla dejaba de «solo acomodar»** (D-140): recibía una estructura de
+   infraestructura y derivaba con ella.
+2. **`getFiles({ prefix: 'miniaturas/' })` devuelve el prefijo entero**, y
+   `miniaturas/` es plano y compartido por todas las actividades: adentro están
+   también las miniaturas de las que están en **borrador**. O sea que la
+   enumeración que `allow list: if esAdmin()` existe para negarle a un anónimo
+   —la **trampa 13**— entraba al scope de render de una página HTML indexada.
+   Hoy no filtraba nada, porque solo se consultaba con `.has()`; el próximo
+   `map`, `size`, `<link rel=preload>` o comentario de debug sí.
+
+Y lo que cierra el argumento: **las dos redes que custodian esas props están
+ciegas a un `Set`.** Las dos (`tests/sitio-publico.integracion.test.ts`)
+serializan las props con `JSON.stringify` y buscan centinelas adentro, y
+`JSON.stringify(new Set(['miniaturas/img_x.jpg']))` es `{}`. Ningún centinela lo
+habría encontrado, ni ahora ni el que se agregue mañana. Es el modo de falla de
+B-580 —el barrido ciego a los campos post-creación— con otra causa: allá
+faltaban claves, acá **el tipo se come el contenido**.
+
+Así que la confirmación se hace en `caminosDeDetalle` y a la página llega un
+`string | null`: una URL que ya era pública (la de su propia portada, con otro
+path), que los dos barridos **sí** ven. Es además lo que la salida 7 ya hacía
+bien y sirvió de patrón — en `/cartelera` el `Set` muere adentro de
+`carteleraDeDetalles` y la plantilla nunca lo ve.
+
+De paso, la regla que `tests/pagina-de-detalle.test.ts` sostiene se volvió más
+fuerte: no solo **cuántas** props hay, sino que ninguna sea de un tipo que
+`JSON.stringify` no pueda mirar. Una prop que la red no puede auditar es peor
+que una prop de más.
+
+### Dos cachés, dos `olvidar`
+
+`contenidoDelSitio()` memoiza los documentos y `miniaturasConocidas()` memoiza
+el listado de Storage: son dos variables de módulo, y
+`tests/sitio-publico.integracion.test.ts` tiene tres bloques que siembran estados
+distintos y llamaban `olvidarContenido()` en cada uno. Con una sola caché
+olvidada, el segundo bloque siembra un estado nuevo y sigue leyendo el `Set` del
+primero. No rompía nada todavía —ningún `it` de ese archivo afirma sobre
+`urlMiniatura`— y por eso mismo el primero que lo afirme mentiría en verde. Lo
+encontró el `auditor-trampas`, y la regla que deja es la general: **una caché
+nueva se agrega al `olvidar` de todos los consumidores que ya tenían esa
+disciplina, en el mismo cambio.**
+

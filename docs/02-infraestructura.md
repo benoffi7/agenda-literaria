@@ -355,7 +355,11 @@ roles/firebasehosting.admin                desplegar el sitio y el panel
 roles/serviceusage.serviceUsageConsumer    el chequeo de "¿está la API habilitada?"
 roles/firebaserules.admin                  desplegar firestore.rules y storage.rules
 roles/datastore.indexAdmin                 desplegar firestore.indexes.json
-roles/firebase.developAdmin                leer la config del proyecto (buckets, apps)
+roles/firebase.developAdmin                leer la config del proyecto (buckets, apps), y
+                                           desde D-210 listar `miniaturas/` en Storage
+                                           desde el build (`adminBucket()`): este rol ya
+                                           incluía storage.objects.list y .get, así que
+                                           no se otorgó nada nuevo para esa lectura
 roles/secretmanager.viewer                 resolver los secrets que las Functions declaran
 roles/cloudfunctions.developer             desplegar las Functions
 roles/run.admin                            el servicio de Cloud Run que hay abajo de cada v2
@@ -382,9 +386,18 @@ suavizar, porque es lo que cambió:
 |---|---|
 | Hacer legible todo Firestore | `firebaserules.admin` reescribe `firestore.rules` |
 | Hacer legible todo Storage | el mismo rol cubre `storage.rules` |
+| **Leer, reemplazar o borrar cualquier objeto del bucket**, sin tocar las reglas | `firebase.developAdmin` incluye `storage.objects.*` — no solo `list`/`get`, también `create`, `delete` y `update` |
 | Desplegar código arbitrario | `cloudfunctions.developer` + `run.admin` + `iam.serviceAccountUser` |
 | Correr ese código como `calendar-sync@` | `iam.serviceAccountUser` sobre esa cuenta |
 | Reemplazar el sitio publicado | `firebasehosting.admin` |
+
+La fila de Storage **se agregó con D-210**, y conviene decir por qué no estaba:
+hasta entonces nadie había mirado qué trae `firebase.developAdmin` más allá de
+«leer la config del proyecto», y la tabla describía un camino **indirecto**
+—reescribir `storage.rules`— para algo que la key puede hacer **directo**. Es la
+forma exacta del drift que D-132 vino a frenar: nombrar una capacidad a medias.
+La lista de permisos se verifica con
+`gcloud iam roles describe roles/firebase.developAdmin | grep '^- storage.objects'`.
 
 No puede, todavía: **leer** el contenido de los secrets (`secretmanager.viewer` ve
 los metadatos, no las versiones), **escribir** datos en Firestore directamente

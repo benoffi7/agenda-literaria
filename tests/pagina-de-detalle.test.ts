@@ -59,17 +59,36 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(cabecera).toContain('getStaticPaths');
   });
 
-  it('las props son solo `detalle`', () => {
+  it('las props son solo `detalle` y `urlMiniaturaPortada`', () => {
     /*
-     * La frontera de privacidad es un **tipo**. Si mañana aparece una segunda
+     * La frontera de privacidad es un **tipo**. Si mañana aparece una tercera
      * prop —la actividad, el índice, las opciones crudas— esto falla y hay que
      * venir a decidirlo, que es lo que se quiere: la decisión no puede tomarla
      * un `props:` agregado con apuro.
+     *
+     * `urlMiniaturaPortada` entró con D-210 (B-320/B-321) y es un
+     * `string | null` **a propósito**. La primera versión pasaba el `Set` de
+     * miniaturas confirmadas y dejaba el `.has()` en la plantilla; lo cambió el
+     * `auditor-privacidad` por dos motivos que se refuerzan: ese set es la
+     * enumeración del prefijo `miniaturas/` **entero** —borradores incluidos—,
+     * que es justo lo que la trampa 13 existe para no entregar, y un `Set` es
+     * **invisible** para los dos barridos que custodian estas props, porque los
+     * dos serializan con `JSON.stringify` y `JSON.stringify(new Set([...]))` es
+     * `{}`. Una prop que ninguna red puede mirar es peor que una prop de más.
+     *
+     * O sea que la regla que este `it` sostiene no es «cuántas props hay» sino
+     * **de qué tipo pueden ser**: algo que el barrido pueda serializar.
      */
     const props = /interface Props \{\n([\s\S]*?)\n\}/.exec(cabecera);
     expect(props, 'la plantilla tiene que declarar su `interface Props`').not.toBeNull();
     const campos = [...props![1]!.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
-    expect(campos).toEqual(['detalle']);
+    expect(campos).toEqual(['detalle', 'urlMiniaturaPortada']);
+
+    expect(
+      props![1]!,
+      'una prop que `JSON.stringify` no puede ver es una prop que el barrido de ' +
+        'salidas públicas no audita (D-210): nada de `Set`, `Map` ni funciones',
+    ).not.toMatch(/:\s*(Readonly)?(Set|Map)\s*</);
   });
 
   it('`getStaticPaths` delega en el módulo testeable, no arma los caminos acá', () => {

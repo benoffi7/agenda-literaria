@@ -110,9 +110,15 @@ export const LADO_MAXIMO = 1600;
 /**
  * El `srcset` de dos candidatos —la miniatura de la Function y el original—
  * para un `<img>` que sirve una imagen propia. `undefined` si no hay
- * miniatura: una externa (DEC-7d) o una imagen subida antes de que la Function
- * estuviera desplegada, en cuyo caso el atributo tiene que salir **ausente y
- * no vacío** — B-320, B-321.
+ * miniatura: una externa (DEC-7d) o una imagen que todavía no la tiene, en
+ * cuyo caso el atributo tiene que salir **ausente y no vacío** — B-320, B-321.
+ *
+ * ⚠️ **`urlMiniatura` tiene que venir de `urlDeMiniaturaSiExiste`, nunca de
+ * `urlDeMiniatura` a secas** (D-210). Esta función no vuelve a verificar nada:
+ * confía en que si le pasan una URL, el objeto existe. Un candidato que no
+ * existe no degrada al original —el navegador ya reemplazó el `src` al elegir
+ * el candidato del `srcset`— así que el `undefined` de acá tiene que ser
+ * sinónimo de «confirmado ausente», no de «no lo sabemos».
  *
  * ── Por qué es una función y no un template armado en cada plantilla ───────
  * Lo encontró el `auditor-privacidad` auditando B-320: `urlOriginal` sale del
@@ -158,28 +164,16 @@ export const rutaDeMiniatura = (storagePath: string | null | undefined): string 
 };
 
 /**
- * La URL pública de la miniatura, derivada de la del original. `null` si la URL
- * no es una imagen propia nuestra.
+ * Descompone la URL pública del original en lo que hace falta para derivar la
+ * de su miniatura, sin construirla todavía. Privada: la usan `urlDeMiniatura` y
+ * `urlDeMiniaturaSiExiste`, que son las dos formas de terminar el trabajo.
  *
- * ── Por qué se puede derivar, que es lo que hace innecesario el write-back ──
- * La URL de descarga lleva el path del objeto URL-encodeado adentro (B-206 #1),
- * y el path de la miniatura es una función pura del path del original. Así que el
- * sitio puede pedir la miniatura **sin que nadie escriba nada en el documento**,
- * que era la mitad de B-220 que quedaba bloqueada.
- *
- * **El token se descarta a propósito.** La miniatura tiene el suyo y no lo
- * conocemos, pero no hace falta ninguno: lo que autoriza la lectura es
- * `allow get: if true`. Verificado contra producción el 2026-09-02 — el mismo
- * objeto responde 200 con su token, **sin token** y con un token inventado.
- *
- * ── Lo que esta función NO puede saber ─────────────────────────────────────
- * Si la miniatura **existe**. Devuelve la URL que le correspondería; una imagen
- * subida antes de que la Function estuviera desplegada no la tiene, y la
- * respuesta a eso es el barrido de `scripts/optimizar-imagenes.mjs`, no un
- * chequeo acá — el build no baja imágenes (DEC-7d) y desde el navegador
- * significaría un pedido de más por afiche.
+ * `ruta` es la que hay que buscar en el listado de Storage —`miniaturas/<id>.jpg`—
+ * para saber si el objeto existe de verdad (B-320/B-321, D-210).
  */
-export const urlDeMiniatura = (url: string | null | undefined): string | null => {
+const partesDeMiniatura = (
+  url: string | null | undefined,
+): { origen: string; prefijoObjeto: string; ruta: string } | null => {
   if (!url) return null;
   let partes: URL;
   try {
@@ -194,7 +188,79 @@ export const urlDeMiniatura = (url: string | null | undefined): string | null =>
   if (!m) return null;
   const ruta = rutaDeMiniatura(decodeURIComponent(m[2]!));
   if (!ruta) return null;
-  return `${partes.origin}${m[1]}${encodeURIComponent(ruta)}?alt=media`;
+  return { origen: partes.origin, prefijoObjeto: m[1]!, ruta };
+};
+
+/**
+ * La URL pública de la miniatura, derivada **a ciegas** de la del original.
+ * `null` si la URL no es una imagen propia nuestra.
+ *
+ * ⚠️ **NO usar directamente para un `srcset` público — usar
+ * `urlDeMiniaturaSiExiste`.** Esta función no sabe si el objeto existe (ver
+ * abajo), y B-320/B-321 se publicaron una primera vez llamando a esta
+ * directamente desde `cartelera.astro` y `[slug].astro`, apoyados en una
+ * afirmación falsa: que un candidato de `srcset` que da 404 degrada al `src`.
+ * **Rompe la imagen, no degrada**: una vez que el navegador elige un candidato
+ * del `srcset`, esa URL reemplaza al `src` en el algoritmo de selección — el
+ * `src` es el respaldo para un navegador que no soporta `srcset`, no para un
+ * candidato que 404. La corrección completa está en **D-210**.
+ *
+ * **Cuándo puede pasar hoy.** `optimizarImagen` está desplegada y el barrido
+ * corrió (`docs/08-operacion.md`), así que lo que ya está subido tiene su
+ * miniatura. Lo que queda es la ventana entre la subida y el trigger, y
+ * cualquier corrida que falle: chica, permanente, y atravesada por **cada**
+ * imagen nueva. Un build que caiga adentro publica ese afiche roto hasta el
+ * rebuild siguiente.
+ *
+ * Sigue existiendo porque hace falta la derivación pura: es lo que
+ * `urlDeMiniaturaSiExiste` usa por dentro, y lo que comparan los tests de
+ * paridad con `rutaDeMiniatura` de `functions/imagenes.js`.
+ *
+ * ── Por qué se puede derivar, que es lo que hace innecesario el write-back ──
+ * La URL de descarga lleva el path del objeto URL-encodeado adentro (B-206 #1),
+ * y el path de la miniatura es una función pura del path del original. Así que el
+ * sitio puede pedir la miniatura **sin que nadie escriba nada en el documento**,
+ * que era la mitad de B-220 que quedaba bloqueada.
+ *
+ * **El token se descarta a propósito.** La miniatura tiene el suyo y no lo
+ * conocemos, pero no hace falta ninguno: lo que autoriza la lectura es
+ * `allow get: if true`. Verificado contra producción el 2026-09-02 — el mismo
+ * objeto responde 200 con su token, **sin token** y con un token inventado.
+ *
+ * ── Lo que esta función NO puede saber, y por qué importa ─────────────────
+ * Si la miniatura **existe**. Devuelve la URL que le correspondería; una imagen
+ * que el trigger todavía no procesó no la tiene, y hasta D-210 la respuesta a
+ * eso era «el build no baja imágenes (DEC-7d)», que describe bien por qué esta
+ * función no puede chequear la existencia — pero no decía qué hacer con esa
+ * ignorancia. `urlDeMiniaturaSiExiste` es la respuesta: confirmar no es bajar,
+ * es **listar** un prefijo una vez por build.
+ */
+export const urlDeMiniatura = (url: string | null | undefined): string | null => {
+  const datos = partesDeMiniatura(url);
+  return datos ? `${datos.origen}${datos.prefijoObjeto}${encodeURIComponent(datos.ruta)}?alt=media` : null;
+};
+
+/**
+ * Como `urlDeMiniatura`, pero **solo si el objeto está confirmado** en
+ * `miniaturasConocidas` — la que hay que usar para cualquier `srcset` público
+ * (B-320/B-321, D-210).
+ *
+ * `miniaturasConocidas` es el resultado de **una sola** lectura de Storage por
+ * build (`miniaturasConocidas()` en `src/lib/contenidoDelSitio.ts`, con
+ * `bucket.getFiles({ prefix: 'miniaturas/' })`): no hay un pedido de red por
+ * imagen —eso es lo que DEC-7d prohíbe— y no hace falta write-back de la
+ * Function al documento, que es justo lo que B-220 evitó.
+ *
+ * Sin la miniatura confirmada, devuelve `null` — nunca la URL sin verificar: es
+ * exactamente el caso que rompía la imagen antes de D-210.
+ */
+export const urlDeMiniaturaSiExiste = (
+  url: string | null | undefined,
+  miniaturasConocidas: ReadonlySet<string>,
+): string | null => {
+  const datos = partesDeMiniatura(url);
+  if (!datos || !miniaturasConocidas.has(datos.ruta)) return null;
+  return `${datos.origen}${datos.prefijoObjeto}${encodeURIComponent(datos.ruta)}?alt=media`;
 };
 
 /**

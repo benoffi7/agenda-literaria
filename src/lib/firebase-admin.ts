@@ -8,6 +8,7 @@
  */
 import { initializeApp, getApps, cert, applicationDefault, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 if (typeof window !== 'undefined') {
   throw new Error(
@@ -95,3 +96,40 @@ export const adminApp = (): App => {
 };
 
 export const adminDb = (): Firestore => getFirestore(adminApp());
+
+/**
+ * El nombre del bucket. **El mismo valor que `PUBLIC_FIREBASE_STORAGE_BUCKET`**
+ * de los tres `.env.*` (`src/lib/firebase-client.ts`) y que
+ * `scripts/optimizar-imagenes.mjs` — se explicita acá y no se deja al default
+ * de la app porque `adminApp()` no configura `storageBucket` (solo lo necesita
+ * Firestore).
+ */
+const BUCKET = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'agenda-literaria.firebasestorage.app';
+
+/**
+ * El bucket de Storage en build time — B-320/B-321 (D-210).
+ *
+ * **Bypasea `storage.rules`, igual que `adminDb()` bypasea `firestore.rules`.**
+ * Es el Admin SDK: lo que autoriza el acceso es el IAM de la service account
+ * con la que corre el build (`deploy-ci@` en CI), no `allow get`/`allow list`
+ * de `storage.rules` — esas reglas son para el SDK de cliente. Es la
+ * consecuencia de IAM que `docs/08-operacion.md` ya deja anotada al lado de la
+ * trampa 13: `allow list: if esAdmin()` protege **un canal y no el bucket**.
+ *
+ * **No hace falta otorgar nada para que esto funcione**, y conviene decirlo
+ * porque la primera versión de D-210 suponía lo contrario: `deploy-ci@` ya
+ * tiene `roles/firebase.developAdmin` (`docs/02-infraestructura.md` § «Roles
+ * de `deploy-ci@`»), y ese rol incluye `storage.objects.list` y
+ * `storage.objects.get`. Verificado contra el proyecto el 2026-09-03.
+ *
+ * El único consumidor del sitio es `miniaturasConocidas()` de
+ * `contenidoDelSitio.ts`, que **lista** un prefijo y no baja ni un byte: el
+ * build no descarga imágenes (DEC-7d) y esto no lo cambia. Lo usa además
+ * `tests/miniaturas-storage.integracion.test.ts`, que sí escribe — contra el
+ * emulador, y borra lo que sube.
+ *
+ * Respeta `FIREBASE_STORAGE_EMULATOR_HOST` para apuntar al emulador, igual que
+ * `scripts/optimizar-imagenes.mjs` — es el cliente de `@google-cloud/storage`
+ * el que lo resuelve, no código de acá.
+ */
+export const adminBucket = () => getStorage(adminApp()).bucket(BUCKET);
