@@ -30,6 +30,14 @@
  * página: quien navega escuchando la barra oiría «página actual» sobre algo que
  * no es esta página.
  *
+ * ── El `<title>` y la `meta description` también salen del módulo ─────────
+ * Lo pidió el `auditor-privacidad`: escritos en el marcado quedaban **fuera del
+ * barrido del test**, y la `meta description` es el string más leído de la
+ * página —es el que Google muestra en el resultado—. O sea que era el único
+ * texto de esta salida donde un número de audiencia inventado salía en verde.
+ * De paso, el `<h1>` y la primera mitad del `<title>` dejaron de ser dos copias
+ * de la misma frase.
+ *
  * ── Lo visual sale del sistema ────────────────────────────────────────────
  * Radio 0, sin sombras, tintas con nombre y espaciados en la escala de 4px
  * (D-146). Las clases compartidas vienen de `components/sitio/estilos.ts` — el
@@ -42,11 +50,13 @@ import Base from '@/layouts/Base.astro';
 import {
   ACCION_COMERCIAL,
   ANTES_DE_ESCRIBIRNOS,
+  DESCRIPCION_COMERCIAL,
   DESPUES_DEL_MAIL,
   ENTRADA_COMERCIAL,
   LETRA_CHICA_COMERCIAL,
   POR_QUE_ACA,
   QUE_CONTARNOS,
+  TITULO_COMERCIAL,
 } from '@/lib/comercialDelSitio';
 import {
   claseBloque,
@@ -59,12 +69,12 @@ import {
 
 <Base
   seccion="anunciar"
-  titulo={`Anunciar en la agenda — ${NOMBRE}`}
-  descripcion="Espacio para cafés, librerías y espacios culturales en una agenda que leen personas buscando talleres, clubes de lectura y presentaciones en Argentina."
+  titulo={`${TITULO_COMERCIAL} — ${NOMBRE}`}
+  descripcion={DESCRIPCION_COMERCIAL}
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
     <h1 class="display-md text-balance text-acento">
-      Anunciar en la agenda
+      {TITULO_COMERCIAL}
     </h1>
 
     <p class="body-lectura mt-6 max-w-[65ch] text-super">{ENTRADA_COMERCIAL}</p>

@@ -62,6 +62,30 @@ export interface AccionComercial {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// El título y la descripción
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * El nombre de la página, y **la única copia**: es el `<h1>` y es la primera
+ * mitad del `<title>` (la segunda la pone `NOMBRE`, que por regla del repo no se
+ * escribe literal en ninguna plantilla — D-141).
+ */
+export const TITULO_COMERCIAL = 'Anunciar en la agenda';
+
+/**
+ * La `meta description`, y **vive acá por el hallazgo del `auditor-privacidad`**.
+ *
+ * Estaba escrita en el marcado, y ahí quedaba fuera de `TEXTOS()` en el test: o
+ * sea que el string **más leído** de esta salida —es el que Google muestra en el
+ * resultado— era el único texto sin barrer. «Leída por miles de personas» en la
+ * `meta description` habría salido en verde, que es exactamente el modo de falla
+ * que este módulo existe para cerrar.
+ */
+export const DESCRIPCION_COMERCIAL =
+  'Espacio para cafés, librerías y espacios culturales en una agenda que leen personas ' +
+  'buscando talleres, clubes de lectura y presentaciones en Argentina.';
+
+// ───────────────────────────────────────────────────────────────────────────
 // La entrada
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -83,9 +107,32 @@ export const ENTRADA_COMERCIAL =
 
 /**
  * Los cuatro argumentos, y **los cuatro son verificables hoy**: cualquiera puede
- * abrir el sitio, mirar el `sitemap.xml`, ver una página de actividad o revisar
- * qué scripts carga la página y comprobarlos. Ninguno afirma un tamaño de
- * audiencia, porque todavía no hay con qué (ver `LETRA_CHICA_COMERCIAL`).
+ * abrir el sitio, mirar el `sitemap.xml` o ver una página de actividad y
+ * comprobarlos. Ninguno afirma un tamaño de audiencia, porque todavía no hay con
+ * qué (ver `LETRA_CHICA_COMERCIAL`).
+ *
+ * ── Dos frases que hubo que corregir, y conviene que quede escrito ────────
+ * Las encontró el `auditor-privacidad`, y las dos son la misma clase que el
+ * número inventado: una afirmación linda que el propio sitio desmiente.
+ *
+ * **1 · «no tiene un solo script de un tercero» era falso.** Las tipografías se
+ * sirven desde `fonts.googleapis.com` (es **B-481**, anotado a propósito) y
+ * `gtag.js` se carga —con consentimiento— desde `googletagmanager.com` (B-372).
+ * Que ninguno de los dos viaje en el HTML del build lo hace fácil de creer
+ * mirando el `dist/`, y no lo vuelve cierto: peor, **el mismo `index.html` trae
+ * el banner que dice que usamos Google Analytics**. Un anunciante que abre las
+ * herramientas del navegador lo ve en diez segundos.
+ *
+ * **2 · «no hace remarketing» afirmaba un ajuste de consola que este repo no
+ * controla.** B-480 apagó cuatro cosas de Enhanced Measurement, pero la
+ * personalización de anuncios y Google Signals son settings de propiedad que
+ * nadie verificó (queda anotado como B-773). Así que la frase dice lo que sí
+ * garantiza el código y lo que sí depende de nosotros: **no hay un anuncio, ni
+ * una red, ni un píxel**, no armamos perfiles ni vendemos datos, y la medición
+ * es una sola y con consentimiento.
+ *
+ * El criterio es el mismo de los números: la versión honesta vende un poco menos
+ * y no se puede desmentir.
  */
 export const POR_QUE_ACA: BloqueComercial[] = [
   {
@@ -101,8 +148,8 @@ export const POR_QUE_ACA: BloqueComercial[] = [
     titulo: 'Se llega buscando, no pasando',
     texto:
       'El sitio está hecho para que se lo encuentre en el buscador: cada actividad tiene su ' +
-      'propia página, con su fecha y su dirección, y esas páginas se le ofrecen a Google con los ' +
-      'datos escritos para que los entienda. No es una historia que dura un día.',
+      'propia página, con su fecha y su dirección, y las que están vigentes se le ofrecen a ' +
+      'Google con los datos escritos para que los entienda. No es una historia que dura un día.',
   },
   {
     id: 'circuito',
@@ -115,9 +162,10 @@ export const POR_QUE_ACA: BloqueComercial[] = [
     id: 'sin-perseguir',
     titulo: 'No perseguimos a nadie',
     texto:
-      'El sitio no arma perfiles, no hace remarketing y no guarda de quien lo visita más de lo ' +
-      'que dice el aviso de cookies. Hoy no tiene un solo anuncio ni un script de un tercero: si ' +
-      'se muestra algo tuyo, lo vamos a cargar nosotros como cargamos una actividad.',
+      'Hoy no hay un solo anuncio en ninguna página, ni una red de anuncios, ni un píxel de ' +
+      'seguimiento. Nosotros no armamos perfiles de nadie ni vendemos datos: lo único que ' +
+      'medimos es cuánta gente entra, y solo si aceptás las cookies. Si se muestra algo tuyo, ' +
+      'lo vamos a cargar nosotros como cargamos una actividad.',
   },
 ];
 
@@ -156,8 +204,8 @@ export const LETRA_CHICA_COMERCIAL: BloqueComercial[] = [
     titulo: 'No hay una red de anuncios en el medio',
     texto:
       'Nada de lo que se muestre acá va a venir de una red que pone sus propias cookies y decide ' +
-      'sola qué mostrar. Es la razón por la que el sitio carga rápido y no te sigue: cambiar eso ' +
-      'por unos pesos sería vender lo único que lo hace distinto.',
+      'sola qué mostrar. Es lo que hace que el sitio sea liviano y que no haya nada raro entre ' +
+      'vos y quien lo lee: cambiar eso por unos pesos sería vender lo único que lo hace distinto.',
   },
 ];
 
@@ -190,7 +238,7 @@ export const ACCION_COMERCIAL: AccionComercial = {
 export const DESPUES_DEL_MAIL: string[] = [
   'Lo lee una persona, no un sistema: no vas a recibir un acuse automático y puede demorar unos ' +
     'días.',
-  'No usamos tu dirección para nada más que responderte, y no se la damos a nadie.',
+  'No usamos tu dirección para nada más que responderte.',
 ];
 
 /**

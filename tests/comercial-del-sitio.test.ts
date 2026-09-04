@@ -8,11 +8,13 @@ import { RUTAS_FIJAS } from '@/lib/sitemap';
 import {
   ACCION_COMERCIAL,
   ANTES_DE_ESCRIBIRNOS,
+  DESCRIPCION_COMERCIAL,
   DESPUES_DEL_MAIL,
   ENTRADA_COMERCIAL,
   LETRA_CHICA_COMERCIAL,
   POR_QUE_ACA,
   QUE_CONTARNOS,
+  TITULO_COMERCIAL,
 } from '@/lib/comercialDelSitio';
 
 /**
@@ -51,8 +53,18 @@ const raiz = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.
 
 const PAGINA = 'src/pages/anunciar.astro';
 
-/** Todo el texto que la página muestra, que es lo que se barre. */
+/**
+ * Todo el texto que la página muestra, que es lo que se barre.
+ *
+ * **El `<title>` y la `meta description` están en esta lista desde que las
+ * encontró el `auditor-privacidad`**, y son el hallazgo más caro del cambio:
+ * escritas en el marcado quedaban fuera de acá, o sea que el string más leído de
+ * la salida —el que Google muestra en el resultado— era el único sin barrer.
+ * «Leída por miles de personas» en la `meta description` salía en verde.
+ */
 const TEXTOS = (): string[] => [
+  TITULO_COMERCIAL,
+  DESCRIPCION_COMERCIAL,
   ENTRADA_COMERCIAL,
   ANTES_DE_ESCRIBIRNOS.texto,
   ...POR_QUE_ACA.flatMap((b) => [b.titulo, b.texto]),
@@ -74,6 +86,15 @@ const PALABRAS_DE_VOLUMEN = [
   'miles',
   'millones',
   'cientos',
+  /*
+   * Las tres de acá las pidió el `auditor-privacidad`: el barrido de cifras
+   * exige un dígito, así que «mil visitas por mes», «decenas de miles de
+   * personas» y «centenares de lectores» pasaban por los dos chequeos. Un número
+   * escrito en palabras es el mismo número.
+   */
+  'mil ',
+  'decenas',
+  'centenares',
   'masiv',
   'multitud',
   'récord',
@@ -145,8 +166,14 @@ describe('la sección comercial `/anunciar` — B-770', () => {
      * MUTACIÓN PROBADA: agregarle a `ENTRADA_COMERCIAL` la frase «Hoy la leen
      * 2.500 personas por mes» pone este caso en rojo nombrando el fragmento.
      */
+    /*
+     * `audiencia`, `gente` y `público` los agregó el `auditor-privacidad`, y el
+     * segundo es el que más importa: **es la palabra que la propia página usa
+     * para nombrar a su audiencia** («entra gente que está buscando…»), así que
+     * era el camino más corto para escribir el número que este caso prohíbe.
+     */
     const AUDIENCIA =
-      /(?:visita|persona|lector|usuario|seguidor|suscript|vista|clic|impres|alcance)/i;
+      /(?:visita|persona|lector|usuario|seguidor|suscript|vista|clic|impres|alcance|audiencia|gente|p[úu]blico)/i;
     const CIFRA = /\d[\d.,]*\s*(?:mil|millones|k\b)?/g;
 
     const sospechosos: string[] = [];
@@ -157,14 +184,25 @@ describe('la sección comercial `/anunciar` — B-770', () => {
         // Un solo dígito no es una métrica de audiencia: es «una» o «dos cosas».
         if (!/\d\d/.test(cifra) && !/mil|millones|k$/i.test(cifra)) continue;
         /*
-         * Un año pelado tampoco lo es, y esta página tiene uno a propósito:
-         * «empezamos a medir las visitas en septiembre de 2026» es justamente la
-         * frase honesta, y cae a dos palabras de «visitas». Sin esta línea el
-         * chequeo se pone rojo contra el texto que existe para cumplirlo — que es
-         * el modo de falla de B-180: un gate que falla por lo correcto se aprende
-         * a saltear.
+         * Un año **introducido** tampoco lo es, y esta página tiene uno a
+         * propósito: «empezamos a medir las visitas en septiembre **de** 2026» es
+         * justamente la frase honesta, y cae a dos palabras de «visitas». Sin
+         * esta exención el chequeo se pone rojo contra el texto que existe para
+         * cumplirlo — que es el modo de falla de B-180: un gate que falla por lo
+         * correcto se aprende a saltear.
+         *
+         * **Y la exención tiene que mirar el contexto, no la forma** — lo
+         * encontró el `auditor-privacidad`, y era un agujero de 200 valores: con
+         * `/^(?:19|20)\d\d$/` sola, «2000 personas por mes» y «1950 lectores»
+         * salían exentos por parecerse a un año, que es justo el orden de
+         * magnitud que este sitio va a tener. Así que además de tener forma de
+         * año, tiene que venir presentado como una fecha.
+         *
+         * MUTACIÓN PROBADA: sacar la segunda mitad de la condición deja pasar
+         * «2000 personas por mes», y el caso de abajo lo dice.
          */
-        if (/^(?:19|20)\d\d$/.test(cifra)) continue;
+        const antes = texto.slice(0, m.index ?? 0);
+        if (/^(?:19|20)\d\d$/.test(cifra) && /\b(?:de|en|desde|hasta)\s+$/i.test(antes)) continue;
         const desde = Math.max(0, (m.index ?? 0) - 40);
         const contexto = texto.slice(desde, (m.index ?? 0) + cifra.length + 40);
         if (AUDIENCIA.test(contexto)) sospechosos.push(`«${contexto.trim()}»`);
@@ -177,6 +215,41 @@ describe('la sección comercial `/anunciar` — B-770', () => {
         'medición arrancó el 2026-09-03 (B-372/B-373). Cuando B-374 traiga datos reales, ' +
         'este chequeo se revisa con esos datos en la mano.',
     ).toEqual([]);
+  });
+
+  it('«2000 personas por mes» no pasa por parecerse a un año', () => {
+    /*
+     * El control de la exención de arriba, por valor y no sobre el texto real:
+     * si la exención volviera a mirar solo la forma del número, doscientos
+     * valores plausibles de audiencia —justo los del orden de magnitud de este
+     * sitio— entrarían sin que nada falle. Lo encontró el `auditor-privacidad`.
+     */
+    const AUDIENCIA =
+      /(?:visita|persona|lector|usuario|seguidor|suscript|vista|clic|impres|alcance|audiencia|gente|p[úu]blico)/i;
+    const CIFRA = /\d[\d.,]*\s*(?:mil|millones|k\b)?/g;
+
+    /** El mismo predicado del caso de arriba, aplicado a un texto cualquiera. */
+    const afirmaUnNumero = (texto: string): boolean => {
+      for (const m of texto.matchAll(CIFRA)) {
+        const cifra = m[0].trim().replace(/[.,]+$/, '');
+        if (!/\d\d/.test(cifra) && !/mil|millones|k$/i.test(cifra)) continue;
+        const antes = texto.slice(0, m.index ?? 0);
+        if (/^(?:19|20)\d\d$/.test(cifra) && /\b(?:de|en|desde|hasta)\s+$/i.test(antes)) continue;
+        const desde = Math.max(0, (m.index ?? 0) - 40);
+        const contexto = texto.slice(desde, (m.index ?? 0) + cifra.length + 40);
+        if (AUDIENCIA.test(contexto)) return true;
+      }
+      return false;
+    };
+
+    // Los que tienen que caer: cifras de audiencia con forma de año, y sin.
+    expect(afirmaUnNumero('Hoy la leen 2000 personas por mes')).toBe(true);
+    expect(afirmaUnNumero('Ya somos 1950 lectores')).toBe(true);
+    expect(afirmaUnNumero('Tenemos una audiencia de 4.500')).toBe(true);
+    expect(afirmaUnNumero('Llega a 3000 personas')).toBe(true);
+    // Y los que no: la fecha de la medición y una cifra que no es de audiencia.
+    expect(afirmaUnNumero('Empezamos a medir las visitas en septiembre de 2026')).toBe(false);
+    expect(afirmaUnNumero('Un ciclo de 8 encuentros')).toBe(false);
   });
 
   it('tampoco lo insinúa con palabras de volumen', () => {
@@ -195,6 +268,53 @@ describe('la sección comercial `/anunciar` — B-770', () => {
         ).not.toContain(palabra);
       }
     }
+  });
+
+  it('no afirma que el sitio no tenga terceros: los tiene', () => {
+    /*
+     * **El hallazgo P1 del `auditor-privacidad`, convertido en chequeo.** La
+     * primera versión de esta página decía «hoy no tiene un solo anuncio ni un
+     * script de un tercero», y es falso: las tipografías se sirven desde
+     * `fonts.googleapis.com` (B-481) y `gtag.js` desde `googletagmanager.com`
+     * con consentimiento (B-372). Peor: el **mismo** `index.html` trae el banner
+     * que dice que usamos Google Analytics, así que la página se contradecía
+     * sola, y un anunciante que abre las herramientas del navegador lo ve.
+     *
+     * Es la misma clase que el número inventado —una afirmación linda que el
+     * propio sitio desmiente— así que va con la misma red y no con la memoria.
+     * Lo que la página puede afirmar es lo que dice hoy: que **no hay un
+     * anuncio, ni una red, ni un píxel**, que no armamos perfiles ni vendemos
+     * datos, y que la medición es una sola y con consentimiento.
+     *
+     * MUTACIÓN PROBADA: devolver la frase «ni un script de un tercero» al bloque
+     * `sin-perseguir` pone este caso en rojo.
+     */
+    const TERCEROS_NEGADOS = [
+      'script de un tercero',
+      'scripts de terceros',
+      'sin terceros',
+      'ningún tercero',
+      'no hay terceros',
+      'sin google analytics',
+      'no usamos google analytics',
+      'sin cookies',
+      'no usamos cookies',
+      'no hay cookies',
+    ];
+    for (const texto of TEXTOS()) {
+      for (const frase of TERCEROS_NEGADOS) {
+        expect(
+          texto.toLowerCase(),
+          `«${texto.slice(0, 60)}…» niega un tercero que el sitio sí tiene (${frase}): las ` +
+            'tipografías salen de fonts.googleapis.com (B-481) y gtag.js de googletagmanager.com ' +
+            'con consentimiento (B-372), y el banner de la misma página lo dice',
+        ).not.toContain(frase);
+      }
+    }
+
+    // Control positivo: el banner que contradiría la frase existe de verdad.
+    const banner = readFileSync(raiz('src/components/sitio/AvisoDeCookies.astro'), 'utf8');
+    expect(banner).toContain('Google Analytics');
   });
 
   it('dice que todavía no hay números, en vez de callarlo', () => {
