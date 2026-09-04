@@ -43,7 +43,13 @@
  */
 import { QUE_ES, BAJADA, NOMBRE } from '@/lib/identidad';
 import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
-import { RUTA_AYUDA, RUTA_CONTACTO, RUTA_PASADAS, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
+import {
+  RUTA_ANUNCIAR,
+  RUTA_AYUDA,
+  RUTA_CONTACTO,
+  RUTA_PASADAS,
+  RUTA_SUSCRIBIRSE,
+} from '@/lib/rutasPublicas';
 import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
 
 /**
@@ -108,6 +114,20 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
         </li>
         <li>
           <a class={`${claseFila} sm:justify-end`} href={RUTA_AYUDA}>Ayuda</a>
+        </li>
+        <li>
+          {/*
+            **La sección comercial se enlaza desde el pie y no desde el
+            encabezado** — B-770, el mismo criterio con el que `/pasadas` está
+            acá (B-109). La barra de arriba es para quien busca una actividad, y
+            eso es casi todo el mundo; quien tiene un café o una librería y viene
+            a preguntar por publicidad baja hasta el final de la página o llega
+            por el buscador, que es para lo que la página está indexada.
+
+            Va **última** porque es la fila que menos gente necesita: arriba
+            quedan las cuatro que sirven a quien vino por una actividad.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_ANUNCIAR}>Anunciar en la agenda</a>
         </li>
       </ul>
     </nav>

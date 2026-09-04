@@ -61,6 +61,7 @@ import { hubsOfrecidos } from '@/lib/hubsPublicos';
 import { mesesEnlazables } from '@/lib/mesPublico';
 import {
   RUTA_AGENDA,
+  RUTA_ANUNCIAR,
   RUTA_AYUDA,
   RUTA_CARTELERA,
   RUTA_CONTACTO,
@@ -164,6 +165,14 @@ export const RUTAS_FIJAS: readonly string[] = [
   RUTA_SUSCRIBIRSE,
   RUTA_AYUDA,
   RUTA_CONTACTO,
+  /*
+   * La sección comercial entra al sitemap **igual que `/contacto`** — B-770.
+   * Quiere ser encontrada, y por otra búsqueda que las actividades: quien tiene
+   * un café literario no busca «taller de escritura en Villa Crespo». Es también
+   * la razón por la que no lleva `noindex`: es la única página del sitio cuyo
+   * lector no es quien busca una actividad.
+   */
+  RUTA_ANUNCIAR,
 ];
 
 /** ¿Esta fecha está dentro de la ventana de `dias` contada desde `ahora`? */
