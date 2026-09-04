@@ -1097,7 +1097,12 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
  *    sin convertir dice «22:00» y la gente llega tarde (trampa 1).
  * 2. **Un ciclo es un `EventSeries` con `subEvent`**, no N eventos sueltos: la
  *    traducción literal del §2.2. N eventos sueltos le dirían a Google que hay
- *    ocho actividades distintas compitiendo entre sí.
+ *    ocho actividades distintas compitiendo entre sí. Y **cada `subEvent` es un
+ *    item completo**, no una cáscara con fechas: hereda de la actividad el
+ *    lugar, la descripción y el organizador —el mismo hecho en otra fecha—,
+ *    porque `location` es obligatorio en un `Event` (**B-721**). El `offers`,
+ *    en cambio, se vuelve a decidir encuentro por encuentro: ver la rama de la
+ *    serie, al final de esta función.
  * 3. **Una sesión cancelada conserva su fecha** con `eventStatus:
  *    EventCancelled`. Google pide el `startDate` original: sin él no puede
  *    tacharlo en el resultado.
@@ -1257,6 +1262,69 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     };
   }
 
+  /*
+   * **Cada `subEvent` es un item completo, no una cáscara con fechas** — B-721.
+   *
+   * Un `subEvent` es *la misma actividad en otra fecha*: el mismo organizador,
+   * la misma descripción, el mismo arancel y **los mismos lugares que la
+   * actividad ofrece** (el caveat de esa última está abajo). Hasta acá llevaba
+   * solo `name`, `startDate`, `endDate` y `eventStatus`, y eso tiene dos costos:
+   *
+   * 1. **`location` es obligatorio en un `Event`.** Un `subEvent` sin él es un
+   *    item incompleto que hoy Google tolera —hereda del padre— pero que no
+   *    tenemos por qué apoyar en esa tolerancia. Es el §7.7 un nivel más abajo:
+   *    si una actividad sin sede no lleva JSON-LD, un encuentro sin lugar
+   *    tampoco debería llevarlo a medias.
+   * 2. Es lo que explica **tres de los nueve avisos de Search Console**
+   *    (`description`, `organizer` y `offers`, 25 elementos cada uno): los 25 no
+   *    son 25 páginas, son los `subEvent` de esta rama, que Search Console
+   *    cuenta como items propios. La cuenta entera está en el análisis de B-721.
+   *
+   * **Y no se inventa nada**, que es la regla del §7: repetir un dato verdadero
+   * en cada encuentro del ciclo no es afirmar nada nuevo. Lo hereda de `comun`
+   * —una sola fuente, no una segunda lista de campos que se separe de la de
+   * arriba (la clase de B-88)— salvo cuatro cosas:
+   *
+   * - **`@context`** no se repite en un item anidado: va una vez, en la raíz.
+   * - **`name`** es el del encuentro, con su tema (regla 2).
+   * - **`eventStatus`** es el del encuentro (regla 3).
+   * - **`offers`** se vuelve a decidir por encuentro: la serie puede seguir
+   *   abierta y este encuentro ya haber pasado o estar cancelado, y ahí un
+   *   `availability: InStock` es la afirmación falsa que la regla 4 evita. Es
+   *   B-650 —«el `Offer` se apaga por fecha»— aplicado a la fecha de cada
+   *   encuentro y no solo a la última de la serie.
+   *
+   * El `url`, en cambio, **sí** se hereda tal cual: la página de la actividad es
+   * la que describe cada uno de sus encuentros. El §5.3 del diseño lo dibuja con
+   * el ancla de la fila (`…/actividad/x/#ses_9f2a`) y sería más preciso, pero eso
+   * publicaría el `id` de la sesión en el JSON-LD —lo frena el barrido de
+   * centinelas, y con razón: es una entrada nueva en la lista blanca del §5.1—.
+   * Queda propuesto en **B-733**; el `url` de la página no es menos verdadero.
+   *
+   * **La invariante que hace segura esta herencia**, y la fija un test de clase
+   * (`tests/detallePublico.test.ts`, «ningún `subEvent` publica una clave que la
+   * raíz no publique»): `comun` se spreadea **entero** en la raíz de las dos
+   * ramas, así que `keys(subEvent) ⊆ keys(raíz)` sin resto — nada puede
+   * aparecer en un encuentro sin aparecer antes en la serie. El test compara
+   * **claves** y no valores a propósito: el barrido de centinelas solo puede
+   * plantar strings, así que un campo numérico o booleano agregado a `comun`
+   * —un `maximumAttendeeCapacity`, digamos— se le escaparía, y esta rama lo
+   * multiplicaría por N encuentros. Lo señaló el `auditor-privacidad`.
+   *
+   * **El caveat del `location`**, y es de honestidad de datos y no de
+   * privacidad: con **más de una fila de modalidad** (B-224, «presencial los
+   * martes y por Meet los jueves») la raíz decía «la serie ocurre en estos
+   * lugares» y cada encuentro pasa a decir «*esta* fecha ocurre en todos
+   * ellos». `modalidadDeDetalle` no lleva el `inicio`/`fin` de la fila al
+   * view-model, así que el JSON-LD **no puede** saber qué encuentro va con qué
+   * lugar. No es una fuga —el conjunto de lugares ya era público y es el
+   * mismo— y no es más de lo que dice la página, que tampoco los reparte; pero
+   * es una afirmación más fina que el dato que la respalda. Hoy no hay ninguna
+   * actividad publicada con más de una fila, así que el caso es hipotético;
+   * queda anotado acá y en la regla 7 del §5.3 para cuando aparezca.
+   */
+  const { '@context': _contexto, name: _nombre, eventStatus: _estado, offers, ...deLaActividad } = comun;
+
   return {
     ...comun,
     '@type': 'EventSeries',
@@ -1265,16 +1333,21 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
     startDate: conFechas[0]!.inicioIso,
     endDate: conFechas[conFechas.length - 1]!.finIso,
     subEvent: conFecha
-      .map((e) => ({
-        '@type': subtipo,
-        name: e.tema ? `${d.titulo} — ${e.tema}` : d.titulo,
-        startDate: e.inicioIso,
-        endDate: e.finIso,
+      .map((e) => {
         // Con la actividad cancelada lo están **todos** sus encuentros, aunque
         // ninguna sesión tenga su propio flag: un subevento de una actividad
         // cancelada no puede quedar en `EventScheduled`.
-        eventStatus: d.cancelada || e.cancelada ? CANCELADO : PROGRAMADO,
-      })),
+        const cancelado = d.cancelada || e.cancelada;
+        return {
+          ...deLaActividad,
+          '@type': subtipo,
+          name: e.tema ? `${d.titulo} — ${e.tema}` : d.titulo,
+          startDate: e.inicioIso,
+          endDate: e.finIso,
+          eventStatus: cancelado ? CANCELADO : PROGRAMADO,
+          ...(offers && !cancelado && !e.paso ? { offers } : {}),
+        };
+      }),
   };
 };
 

@@ -2801,6 +2801,25 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-730 · `B-721` cerrado: los `subEvent` eran cáscaras y tres de los nueve avisos eran eso — ✅ hecho (2026-09-04) · P2
+
+Es el cierre de B-721. El cuerpo de arriba (§1 a §3) es el ítem; la parte que
+conviene que quede en el BACKLOG:
+
+- Los **25** de `description`, `organizer` y `offers` **no eran 25 páginas**: eran
+  los 25 `subEvent`, que Search Console cuenta como items propios. La cuenta
+  cierra en los nueve números con **18 páginas + 25 `subEvent` = 43 items**.
+- **La hipótesis 2 del ítem original queda descartada, y con ella su conclusión**:
+  «una actividad se puede publicar sin descripción, y eso es una decisión que
+  nadie tomó» **es falsa** — `src/lib/schema.ts` exige `descripcion.length >= 10`
+  y `organizador.nombre` para publicar, desde antes de este frente. La decisión
+  estaba tomada. Y los tres campos nacieron juntos en el primer commit del
+  detalle (`8083417`), así que **ninguna versión de la página emitió nunca un
+  `Event` sin ellos**.
+- Se arregló lo que sí era nuestro: los `subEvent` pasaron a ser items completos.
+- Los otros seis avisos son decisiones tomadas, no bugs. Detalle en el §5.3bis de
+  [`12-sitio-publico.md`](12-sitio-publico.md).
+
 ### B-721 · Search Console: nueve avisos de campos recomendados en el `Event` · P2
 
 **Lo trajo el dueño el 2026-09-04**, del informe «Eventos → Mejorar el aspecto de
@@ -7573,6 +7592,81 @@ en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la cl
 del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
 tenga dos actividades).
 ## P3 — cuando sobre tiempo
+
+### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
+
+**Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del
+próximo deploy y del rastreo siguiente:
+
+1. **Inspección de URL** sobre una página de **ciclo** —cualquiera de las 17 con
+   más de un encuentro; `feria-del-libro-malvinas-argentinas` es la más grande,
+   con 11— y confirmar que en la pestaña de datos estructurados cada `subEvent`
+   ahora trae `description`, `location` y `organizer`.
+2. En el informe «Eventos», que `description` y `organizer` **desaparezcan** de
+   la tabla de avisos, y que `offers` baje a las actividades ya pasadas.
+3. Los conteos de `performer`, `image`, `price`, `priceCurrency`, `validFrom` y
+   `organizer.url` **van a subir**, y está bien: el informe cubría 18 de 68
+   páginas y va a cubrir las 68. No es una regresión, es el rastreo llegando.
+
+**Cargar el `sitemap.xml` en Search Console si todavía no está** (lo pide B-373):
+es lo que hace que las 50 páginas que Google no había visto entren rápido.
+
+### B-733 · El `url` de cada `subEvent` podría llevar el ancla de su fila · P3
+
+El ejemplo del §5.3 del diseño lo dibuja así desde el principio
+(`…/actividad/x/#ses_9f2a`) y **el código nunca lo emitió**. Con B-730 cada
+`subEvent` heredó el `url` de la página, que no es menos verdadero pero es el
+mismo link repetido N veces; el ancla apuntaría a la fila que describe ese
+encuentro, y las anclas **existen** en el HTML (`id={e.id}` en el `<li>`, o sea
+`id="ses_…"`).
+
+**Por qué no se hizo:** publica el `id` de la sesión en el JSON-LD, y eso es una
+entrada nueva en la lista blanca del §5.1. El barrido de centinelas lo frenó al
+intentarlo —`sesiones.id → CENTINELA.sesiones.id`— y tiene razón: el uuid ya es
+público en el HTML de la página (es el ancla), así que no habría fuga nueva, pero
+**agregar un centinela a la lista de la salida 6 es una decisión del dueño y no
+de un frente**.
+
+Si se aprueba: una línea en `datosEstructurados` y una excepción justificada en
+`PERMITIDO_EN_EL_JSON_LD` (`tests/barrido-de-salidas-publicas.test.ts`). El
+`url` del `Offer` y el del `VirtualLocation` **no** llevarían ancla: el arancel y
+el acceso son de la actividad, no de una de sus filas.
+
+**Y hay una asimetría entre los dos barridos que conviene saber si esto avanza**,
+la encontró el `auditor-privacidad`: el gate sobre `dist/` tiene `sesionId` como
+excepción **de la página entera** (`scripts/build-contra-emulador.mjs`), y el
+JSON-LD viaja adentro de ese mismo HTML — el gate no puede separar el
+`<script type="application/ld+json">` del resto. O sea que el ancla la frena
+**solo** el barrido de vitest, donde `sesiones.id` está en
+`PERMITIDO_EN_EL_DETALLE` pero no en `PERMITIDO_EN_EL_JSON_LD`. Uno de los dos,
+no los dos.
+
+### B-734 · Con más de una fila de modalidad, el `location` de cada `subEvent` afirma más de lo que sabe · P3
+
+**Lo derivó el `auditor-privacidad` auditando B-730, y lo clasificó como
+honestidad de datos y no como privacidad — con razón: no hay fuga.**
+
+Con `modalidades.length > 1` (B-224, «presencial los martes y por Meet los
+jueves») la serie decía «esto ocurre en estos lugares» y cada `subEvent` pasa a
+decir «*esta fecha* ocurre en todos ellos». `modalidadDeDetalle` no lleva el
+`inicio`/`fin` de la fila al view-model, así que el JSON-LD **no puede** saber
+qué encuentro va con qué lugar.
+
+No dice más que la página, que tampoco los reparte, y el conjunto de lugares ya
+era público y es el mismo. Pero es una afirmación más fina que el dato que la
+respalda, o sea que roza la regla 6 del §5.3.
+
+**Hoy es hipotético y por eso es P3:** de las 68 actividades publicadas,
+**ninguna** tiene más de una fila (verificado sobre el `events.json` real). El
+caveat quedó escrito en la regla 7 del §5.3 y en el docblock de
+`datosEstructurados`, que es lo que hace que no se pierda.
+
+**Las dos salidas, si el caso aparece:** omitir `location` en el `subEvent`
+cuando hay más de una fila —vuelve a dejarlo incompleto, que es lo que B-730
+arregló—, o llevar las fechas de la fila al view-model y repartir los lugares de
+verdad. La segunda es la buena y es más grande que este ítem.
+
+---
 
 ### B-630 · El barrido de versiones huérfanas no tiene script en seco · P3
 

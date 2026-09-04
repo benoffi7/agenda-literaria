@@ -7890,3 +7890,73 @@ encontró el `auditor-trampas`, y la regla que deja es la general: **una caché
 nueva se agrega al `olvidar` de todos los consumidores que ya tenían esa
 disciplina, en el mismo cambio.**
 
+## D-410 · Un `subEvent` repite los datos de su actividad, y eso no es inventar
+
+**Contexto.** Search Console reportó `description`, `organizer` y `offers`
+faltando en 25 elementos cada uno, y `datosEstructurados` los emite siempre. Los
+25 eran los `subEvent` de los ciclos, que llevaban solo `name`, las dos fechas y
+el `eventStatus`.
+
+**La tensión.** El §7 del diseño y media docena de decisiones dicen lo mismo: es
+mejor un campo ausente que un campo que miente. Llenar un campo porque Google lo
+pide es exactamente lo que este repo no hace — es el motivo por el que
+`performer` no se llena con el organizador y por el que `offers` no lleva
+`price: 0` (B-114).
+
+**La decisión: se llenan, porque no es el mismo caso.** Un `subEvent` **es** la
+misma actividad en otra fecha: mismo lugar, mismo organizador, misma
+descripción. Repetir un dato verdadero no afirma nada nuevo. La línea es
+«¿existe el dato?», no «¿lo pide Google?»:
+
+- `performer` no se llena porque **el dato no existe**: no hay nadie actuando, y
+  el organizador es otra cosa.
+- `offers.price` no se llena porque **el dato no existe**: el modelo no tiene
+  monto y «a la gorra» no tiene precio.
+- `description` en un `subEvent` **sí existe**: es la de la actividad, y ya está
+  publicada tres líneas más arriba en el mismo `<script>`.
+
+**Y el argumento decisivo no es el aviso**, que es lo que hace que la decisión no
+dependa de Google: **`location` es obligatorio en un `Event`**. Un `subEvent` sin
+él era un item incompleto que Google tolera heredando del padre. Depender de esa
+tolerancia es la misma clase de apuesta que el §7.7 ya resolvió para el lado
+opuesto —una actividad presencial sin sede **no lleva** JSON-LD en vez de llevar
+un `Place` inventado—: un encuentro no debería llevarlo a medias.
+
+**Consecuencia que se aceptó.** El HTML crudo de un ciclo de 11 encuentros crece
+9,9 kB. Con brotli, que es lo que Hosting sirve, crece **45 bytes**: los strings
+repetidos son lo que un compresor borra. Se midió antes de decidir.
+
+**Lo que la decisión NO habilita.** No habilita heredar `offers` sin volver a
+mirar la fecha y el estado de cada encuentro —ahí el dato *cambia* entre la serie
+y la fila, y afirmar `InStock` en un encuentro cancelado sí sería mentir—, ni
+copiar la marca del sitio en `image` cuando la actividad no tiene imagen propia
+(ver B-732).
+
+## D-411 · Un aviso de Search Console es un dato, no un pedido
+
+**Contexto.** Nueve avisos, de los que cinco eran consecuencia de decisiones ya
+escritas y cerradas.
+
+**La decisión.** Los avisos de «campos recomendados» se tratan como **una
+observación sobre lo que Google vio**, que hay que reconciliar con lo que el
+sitio emite antes de tocar nada. Concretamente:
+
+1. **Primero se explica el número, después se cambia el código.** Los nueve
+   cerraron exactamente con 18 páginas + 25 `subEvent`, y ese ejercicio fue lo
+   que reveló que la premisa del ítem («25 páginas sin descripción») era falsa.
+   Sin la cuenta, el arreglo obvio —hacer que el formulario exija descripción—
+   habría cambiado el panel para resolver un problema que no existía.
+2. **Los conteos son de un rastreo, no del sitio.** 43 items sobre 18 páginas,
+   con 68 publicadas: cualquier proporción leída de ahí (por ejemplo «el 68 % de
+   las actividades no tiene imagen», que hoy es el 21 %) es una proporción del
+   rastreo.
+3. **Y se verifica contra el sitio publicado, que es público.** `events.json`,
+   el `sitemap.xml` y el HTML de cada página alcanzan para contar qué emite cada
+   campo, sin acceso a la consola y sin depender de cuándo Google vuelva a
+   pasar. El emulador **no** alcanza: el seed no siembra actividades.
+
+**La regla corta:** un aviso de Google no es un argumento para inventar un dato.
+Cuando el campo se puede llenar con algo verdadero, se llena; cuando no, se
+escribe por qué y se deja ausente.
+
+---

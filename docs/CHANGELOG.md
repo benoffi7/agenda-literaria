@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Los encuentros de un ciclo dejaron de ser cáscaras en los datos
+  estructurados** — **B-721**, **B-730**, **D-410**. Cada `subEvent` hereda los
+  datos de su actividad, con la oferta re-decidida por encuentro. Cuesta 45 B.
+
 - **El `calendarEventId` tiene un solo dueño, y es la Function** — **B-150**. El
   guardado del formulario relee el documento y fusiona los campos de máquina por
   id de sesión, en vez de emitir lo que tuviera el snapshot. La reposición
@@ -45,6 +49,35 @@
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
+
+## 2026-09-04 · los encuentros de un ciclo dejaron de ser cáscaras en el JSON-LD (B-721, B-730)
+
+Cada `subEvent` de un `EventSeries` llevaba solo el nombre, las dos fechas y el
+estado. Ahora hereda de la actividad la descripción, el lugar, el organizador,
+la imagen y el tallerista — es la misma actividad en otra fecha, así que no se
+afirma nada nuevo. `location` es obligatorio en un `Event`, así que hasta acá
+cada encuentro era un item incompleto que Google toleraba heredando del padre.
+
+El `offers`, en cambio, se decide **encuentro por encuentro**: la serie puede
+seguir abierta y un encuentro estar cancelado o ya haber pasado, y ahí un
+`availability: InStock` sería falso. Es B-650 aplicado a la fecha de cada fila.
+
+Cuesta **45 bytes** con brotli en la página más grande del sitio (11 encuentros).
+
+Lo que hace segura la herencia lo fija un test de clase —«ningún `subEvent`
+publica una clave que la raíz no publique»—, que compara claves y no valores:
+el barrido de centinelas solo puede plantar strings, y un campo numérico nuevo
+en el objeto común se replicaría en cada encuentro sin que nada avise. Lo pidió
+el `auditor-privacidad`.
+
+De paso contestó los nueve avisos de Search Console: **tres eran esto** —los 25
+elementos sin `description`, `organizer` y `offers` eran los `subEvent`, no 25
+páginas— y los otros seis son decisiones ya tomadas (`performer` sin tallerista,
+`offers` sin campo de monto por B-114, `image` en actividades sin imagen por
+B-291). La cuenta completa está en el §5.3bis de `docs/12-sitio-publico.md`.
+```
+
+---
 
 ## 2026-09-03 · el corte puro/trigger llega a `functions/index.js` (B-77)
 Era el único archivo de `functions/` sin el corte que

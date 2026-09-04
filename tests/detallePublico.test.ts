@@ -840,6 +840,156 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(subs[1]!.startDate).toBe('2026-09-24T19:00:00-03:00');
   });
 
+  it('cada subEvent es un item completo: hereda el lugar, la descripción y el organizador (B-721)', () => {
+    /*
+     * Un `subEvent` es la misma actividad en otra fecha, así que repetir esos
+     * datos no afirma nada nuevo (§7). Y `location` es **obligatorio** en un
+     * `Event`: sin él cada encuentro del ciclo era un item incompleto que Google
+     * tolera heredando del padre, y de esa tolerancia no hay que depender.
+     *
+     * MUTACIÓN PROBADA: volver al `subEvent` de cáscara (solo `name`,
+     * `startDate`, `endDate` y `eventStatus`) deja este caso en rojo en la
+     * primera aserción.
+     */
+    const ld = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+      }),
+    )!;
+    const subs = ld.subEvent as Record<string, unknown>[];
+    for (const sub of subs) {
+      expect(sub.location).toEqual(ld.location);
+      expect(sub.description).toBe(ld.description);
+      expect(sub.organizer).toEqual(ld.organizer);
+      expect(sub.eventAttendanceMode).toBe(ld.eventAttendanceMode);
+      // Los otros dos que la regla 7 declara heredados. Sin estas líneas,
+      // sacarlos de la herencia no ponía nada rojo — lo señaló el
+      // `auditor-privacidad`.
+      expect(sub.url).toBe(ld.url);
+      expect(sub.performer).toEqual(ld.performer);
+      // El `@context` va **una sola vez**, en la raíz: repetirlo en un item
+      // anidado es ruido que ningún consumidor pide.
+      expect(sub).not.toHaveProperty('@context');
+    }
+    // Y lo propio del encuentro sigue siendo del encuentro, no de la serie.
+    expect(subs[0]!.name).toBe('Taller de crónica — Tema 1');
+    expect(subs[1]!.name).toBe('Taller de crónica — Tema 2');
+
+    // La `image` va aparte porque el fixture normal no tiene galería: sin un
+    // caso con imagen, esa mitad de la herencia quedaba sin fijar.
+    const conImagen = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        imagenUrl: 'https://ejemplo.ar/flyer.jpg',
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+      }),
+    )!;
+    expect(conImagen.image).toBe('https://ejemplo.ar/flyer.jpg');
+    for (const sub of conImagen.subEvent as Record<string, unknown>[]) {
+      expect(sub.image).toBe(conImagen.image);
+    }
+  });
+
+  it('ningún subEvent publica una clave que la raíz no publique (§5.1, la clase)', () => {
+    /*
+     * **La invariante que hace segura la herencia**, y va por claves y no por
+     * valores a propósito.
+     *
+     * `comun` se spreadea entero en la raíz de las dos ramas, así que
+     * `keys(subEvent) ⊆ keys(raíz)` sin resto. Esto lo fija, y fija de paso las
+     * dos formas de romperlo: cambiar `...deLaActividad` por `...e` o `...d`
+     * —que metería el `id` de la sesión, la `lectura`, el `numero`— y agregarle
+     * al `subEvent` un campo propio que la serie no tenga.
+     *
+     * **Por qué claves y no centinelas:** el barrido de
+     * `barrido-de-salidas-publicas.test.ts` solo puede plantar strings, así que
+     * un campo numérico o booleano nuevo en `comun` —un
+     * `maximumAttendeeCapacity: cupo`, que es justo lo que un informe de Search
+     * Console invita a agregar— se le escapa, y esta rama lo replicaría en cada
+     * encuentro. Lo señaló el `auditor-privacidad` auditando B-721.
+     *
+     * MUTACIÓN PROBADA: reemplazar `...deLaActividad` por `...e` deja este caso
+     * en rojo nombrando las claves que sobran.
+     */
+    const ld = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        modalidades: ['hibrido'],
+        imagenUrl: 'https://ejemplo.ar/flyer.jpg',
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+        canceladas: [1],
+      }),
+    )!;
+    const subs = ld.subEvent as Record<string, unknown>[];
+    // Un `for…of` sobre un array vacío no ejecuta ninguna aserción: sin esta
+    // línea el caso pasaría en verde con `subEvent: []`. Lo señaló el
+    // `auditor-privacidad` revisando el caso.
+    expect(subs).toHaveLength(2);
+    const enLaRaiz = new Set(Object.keys(ld));
+    for (const sub of subs) {
+      expect(Object.keys(sub).filter((k) => !enLaRaiz.has(k))).toEqual([]);
+    }
+  });
+
+  it('el subEvent cancelado no ofrece nada, y el que sigue en pie sí (regla 4 por encuentro)', () => {
+    /*
+     * La serie sigue abierta —`ofrecible` mira la actividad—, pero un encuentro
+     * cancelado con `availability: InStock` afirma que a ese encuentro todavía
+     * se entra. Es la regla 4 un nivel más abajo.
+     */
+    const ld = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        arancel: 'gratis',
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+        canceladas: [1],
+      }),
+    )!;
+    expect(ld.offers).toMatchObject({ price: '0' });
+    const subs = ld.subEvent as Record<string, unknown>[];
+    expect(subs[0]!.offers).toMatchObject({ price: '0', priceCurrency: 'ARS' });
+    expect(subs[1]!.offers).toBeUndefined();
+  });
+
+  it('el encuentro que ya pasó no ofrece nada, aunque la serie siga en pie (B-650 por encuentro)', () => {
+    /*
+     * Con `AHORA` en el 10 de septiembre, el primer encuentro ya terminó y el
+     * segundo no. La serie es ofrecible —quedan fechas por venir— y el `Offer`
+     * de la raíz está bien; el del encuentro pasado sería la misma afirmación
+     * falsa que B-650 apagó para la actividad entera.
+     *
+     * MUTACIÓN PROBADA: heredar `offers` sin mirar `e.paso` deja este caso en
+     * rojo en la última aserción.
+     */
+    const ld = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        arancel: 'gratis',
+        fechas: ['2026-09-03T22:00:00Z', '2026-09-17T22:00:00Z'],
+      }),
+    )!;
+    expect(ld.offers).toBeDefined();
+    const subs = ld.subEvent as Record<string, unknown>[];
+    expect(subs[1]!.offers).toBeDefined();
+    expect(subs[0]!.offers).toBeUndefined();
+  });
+
+  it('con la actividad cancelada ningún subEvent ofrece nada', () => {
+    const ld = datosEstructurados(
+      detalleCancelado({
+        esCiclo: true,
+        arancel: 'gratis',
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+      }),
+    )!;
+    expect(ld.offers).toBeUndefined();
+    for (const sub of ld.subEvent as Record<string, unknown>[]) {
+      expect(sub.offers).toBeUndefined();
+      expect(sub.eventStatus).toBe('https://schema.org/EventCancelled');
+    }
+  });
+
   it('gratis emite precio 0 en ARS; cualquier otro arancel NO emite precio (regla 4)', () => {
     /*
      * Un `0` en un taller arancelado es un dato falso publicado en un formato que
