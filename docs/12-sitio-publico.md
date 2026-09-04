@@ -1047,18 +1047,39 @@ consigo mismo.
       "startDate": "2026-09-03T19:00:00-03:00",
       "endDate": "2026-09-03T21:00:00-03:00",
       "eventStatus": "https://schema.org/EventScheduled",
-      "url": "https://…/actividad/taller-de-cronica-en-boedo#ses_9f2a"
+      "url": "https://…/actividad/taller-de-cronica-en-boedo",
+      "description": "…",
+      "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+      "location": { "…": "el mismo Place de la serie" },
+      "organizer": { "…": "el mismo Organization" },
+      "performer": { "…": "el mismo Person" },
+      "offers": { "…": "el mismo Offer" }
     },
     {
       "@type": "EducationEvent",
       "name": "Taller de crónica de barrio — Escuchar",
       "startDate": "2026-09-17T19:00:00-03:00",
       "endDate": "2026-09-17T21:00:00-03:00",
-      "eventStatus": "https://schema.org/EventCancelled"
+      "eventStatus": "https://schema.org/EventCancelled",
+      "url": "https://…/actividad/taller-de-cronica-en-boedo",
+      "description": "…",
+      "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+      "location": { "…": "el mismo Place de la serie" },
+      "organizer": { "…": "el mismo Organization" },
+      "performer": { "…": "el mismo Person" }
     }
   ]
 }
 ```
+
+**Los `subEvent` repiten los datos de la actividad, y el segundo no lleva
+`offers`**: las dos cosas son de **B-721** y están en la regla 7, más abajo.
+Hasta el 2026-09-04 eran una cáscara con `name`, las dos fechas y el
+`eventStatus`. Este ejemplo dibujaba además el `url` con el ancla de la fila
+(`#ses_9f2a`) y **el código nunca lo emitió**; hoy el `url` es el de la página,
+heredado como el resto. El ancla sería más precisa pero publica el `id` de la
+sesión en el JSON-LD —una entrada nueva en la lista blanca del §5.1, que el
+barrido de centinelas frena— y quedó propuesta en **B-733**.
 
 Reglas del armado, todas verificables:
 
@@ -1086,6 +1107,55 @@ Reglas del armado, todas verificables:
 6. **Nada de `aggregateRating`, `review`, ni `Offer` sin respaldo.** Marcar datos
    que la página no muestra es lo que hace que Google deje de confiar en el sitio
    entero.
+7. **Cada `subEvent` es un item completo, no una cáscara con fechas** — B-721
+   (2026-09-04). Hereda de la actividad `description`, `location`, `organizer`,
+   `url`, `eventAttendanceMode`, `image` y `performer`: un encuentro de un ciclo
+   **es** la misma actividad en otra fecha —mismo lugar, mismo organizador,
+   misma descripción— así que repetir esos datos no afirma nada nuevo, que es lo
+   único que el §7 prohíbe. Lo hereda del objeto común, no de una segunda lista
+   de campos: dos listas se separan (la clase de B-88). Lo que no se hereda:
+   - **`@context`** va una sola vez, en la raíz.
+   - **`name`** y **`eventStatus`** son del encuentro (reglas 2 y 3).
+   - **`offers` se vuelve a decidir encuentro por encuentro.** La serie puede
+     seguir abierta y este encuentro estar cancelado o ya haber pasado, y ahí un
+     `availability: InStock` es la afirmación falsa que la regla 4 evita — es
+     B-650 aplicado a la fecha de cada fila y no solo a la última de la serie.
+
+   El motivo de fondo no es Search Console: **`location` es obligatorio en un
+   `Event`**, así que un `subEvent` sin él era un item incompleto que Google
+   tolera heredando del padre. Es el §7.7 un nivel más abajo — si una actividad
+   sin sede no lleva JSON-LD, un encuentro no debería llevarlo a medias.
+
+   **Cuesta 45 bytes.** Medido sobre la página real más grande (la feria de
+   11 encuentros): +9,9 kB de HTML crudo, +143 B con gzip y **+45 B con
+   brotli**, que es lo que Hosting sirve. Los strings repetidos son justo lo
+   que un compresor borra.
+
+   **La invariante que hace segura la herencia** —y la fija un test de clase,
+   «ningún `subEvent` publica una clave que la raíz no publique»— es que el
+   objeto común se emite **entero** en la raíz, así que las claves de un
+   `subEvent` son siempre un subconjunto de las de la serie: nada puede
+   aparecer en un encuentro sin aparecer antes en la serie. El test compara
+   **claves y no valores** a propósito, porque el barrido de centinelas solo
+   puede plantar strings: un campo numérico o booleano agregado al objeto común
+   —un `maximumAttendeeCapacity`, que es justo lo que un informe de Search
+   Console invita a agregar— se le escaparía, y esta rama lo multiplicaría por
+   N encuentros. Lo señaló el `auditor-privacidad`.
+
+> ⚠️ **El caveat del `location` de la regla 7, que es de honestidad de datos y
+> no de privacidad.** Con **más de una fila de modalidad** (B-224, «presencial
+> los martes y por Meet los jueves») la serie decía «esto ocurre en estos
+> lugares» y cada encuentro pasa a decir «*esta fecha* ocurre en todos ellos».
+> `modalidadDeDetalle` no lleva el `inicio`/`fin` de la fila al view-model, así
+> que el JSON-LD **no puede** saber qué encuentro va con qué lugar. No es una
+> fuga —el conjunto de lugares ya era público y es el mismo— y no dice más que
+> la página, que tampoco los reparte; pero es una afirmación más fina que el
+> dato que la respalda, o sea que roza la regla 6.
+>
+> **Hoy es hipotético**: de las 68 actividades publicadas, ninguna tiene más de
+> una fila. Si el caso aparece, las salidas son dos: omitir `location` en el
+> `subEvent` cuando hay más de una fila, o llevar las fechas de la fila al
+> view-model y repartir los lugares de verdad.
 
 > ⚠️ **La regla 4 estaba implementada por la mitad, y la mitad que faltaba era la
 > que más pesa — corregido el 2026-09-03 (B-650).** «`InStock` si la inscripción
@@ -1106,6 +1176,59 @@ Reglas del armado, todas verificables:
 > **La regla 3 sigue igual y `offers` sigue sin precio real**: el campo de monto
 > del modelo es **B-114**, y no se puede abrir desde este frente (ver la nota del
 > §11.2 #5).
+
+### 5.3bis Los nueve avisos de Search Console, y qué contestó la cuenta
+
+**B-721, 2026-09-04.** El informe «Eventos → Mejorar el aspecto de los
+elementos» listaba nueve campos recomendados faltando, con estos conteos:
+`performer` 41, `image` 28, `offers`/`description`/`organizer` 25 cada uno,
+`validFrom`/`organizer.url` 18 cada uno, `price`/`priceCurrency` 16 cada uno.
+Son **avisos, no errores**.
+
+Los dos que no cerraban eran `description` y `organizer`: el JSON-LD los emite
+**siempre**, así que 25 elementos sin ellos no podían ser 25 páginas de detalle.
+Y no lo eran.
+
+**Los 25 son los `subEvent`.** Search Console cuenta cada `subEvent` anidado
+como un item propio, y hasta este cambio esos items llevaban solo `name`, las
+dos fechas y el `eventStatus` — sin `description`, sin `organizer` y sin
+`offers`. De ahí que los tres números sean idénticos: es **un** conjunto de
+items, no tres problemas.
+
+La cuenta cierra con **18 páginas + 25 `subEvent` = 43 items**, y cierra en los
+nueve números a la vez:
+
+| Campo | Informe | De dónde sale |
+|---|---|---|
+| `description`, `organizer` | 25 | los 25 `subEvent` (una página nunca los omite) |
+| `offers` | 25 | los 25 `subEvent`; las 18 páginas lo tenían |
+| `validFrom` | 18 | las 18 con `offers` — no se emite nunca |
+| `organizer.url` | 18 | las 18 páginas; ninguna tenía `organizador.web` cargada |
+| `price`, `priceCurrency` | 16 | 16 de las 18 no eran `gratis` (regla 3) |
+| `image` | 28 | los 25 `subEvent` + 3 páginas sin imagen |
+| `performer` | 41 | los 25 `subEvent` + 16 páginas sin tallerista |
+
+**Y eran rastreos parciales, además.** 43 items sobre 18 páginas: el sitio tenía
+**59** actividades publicadas el 2026-09-03 y **68** el 2026-09-04. Google había
+rastreado menos de un tercio, que es lo esperable en una propiedad conectada el
+día anterior — los conteos de `image` (28 de 41 items) contra el sitio de hoy
+(14 de 67 páginas sin imagen) miran dos sitios distintos.
+
+**Lo que se verificó contra el sitio publicado**, no contra la consola (no hace
+falta acceso: `events.json` y las páginas son públicas): de las 68 páginas, 67
+emiten `Event` —la que falta es una presencial sin sede, el §7.7— y **las 67
+llevan `description` y `organizer.name` no vacíos**. Ninguna actividad publicada
+tiene la descripción vacía, y no puede tenerla: `src/lib/schema.ts` exige
+`descripcion.length >= 10` y `organizador.nombre` para publicar. Los tres campos
+nacieron juntos en el primer commit del detalle (`8083417`), así que **ninguna
+versión de la página emitió nunca un `Event` sin ellos**.
+
+De los nueve avisos, entonces: **tres los cierra la regla 7** (los `subEvent`
+completos). Los otros seis son decisiones ya tomadas y no bugs — `performer`
+(regla 5), `offers`/`price`/`priceCurrency`/`validFrom` (**B-114**, falta el
+campo de monto) e `image` (actividades sin imagen, que es un caso de primera
+clase del modelo; la salida decidida es **B-291**, el `og:image` generado en el
+build, que serviría también para este campo).
 
 ### 5.4 El caso online
 
@@ -1722,6 +1845,13 @@ son datos que ya se muestran en público por otros caminos.
 > Mientras tanto lo que el sitio **sí** podía arreglar de esa regla se arregló:
 > la actividad que ya pasó dejó de publicar `availability: InStock` (B-650, ver
 > la nota del §5.3).
+>
+> **Search Console lo confirmó al día siguiente y no cambia nada** (B-721,
+> [§5.3bis](#53bis-los-nueve-avisos-de-search-console-y-qué-contestó-la-cuenta)):
+> cuatro de sus nueve avisos son `offers`, `price`, `priceCurrency` y
+> `validFrom`, o sea esta fila. Un aviso de Google no es un argumento para
+> inventar el monto — es la misma decisión de producto, con un recordatorio
+> automático encima.
 
 ### 11.3 Cosas que este diseño **quita** del JSON
 
