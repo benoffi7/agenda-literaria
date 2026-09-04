@@ -2801,6 +2801,61 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-721 · Search Console: nueve avisos de campos recomendados en el `Event` · P2
+
+**Lo trajo el dueño el 2026-09-04**, del informe «Eventos → Mejorar el aspecto de
+los elementos» de Search Console para `agendaleh.ar`. Son **avisos, no errores**:
+los items son válidos y se indexan; lo que dicen es que podrían presentarse con
+más funciones.
+
+| Campo que falta | Elementos |
+|---|---|
+| `performer` | 41 |
+| `image` | 28 |
+| `offers`, `description`, `organizer` | 25 cada uno |
+| `validFrom` (en `offers`), `url` (en `organizer`) | 18 cada uno |
+| `priceCurrency`, `price` (en `offers`) | 16 cada uno |
+
+**Cinco son consecuencia de decisiones ya tomadas**, y hay que decidir si se
+revisan o se aceptan, no «arreglarlas»:
+
+- **`performer`** — el docblock de `datosEstructurados` dice «`performer` solo si
+  hay tallerista. **No se inventa el organizador como performer**». Los 41 son
+  clubes de lectura, ferias y encuentros sin tallerista cargado. Poner al
+  organizador ahí sería mentirle a Google sobre quién actúa.
+- **`offers`, `price`, `priceCurrency`, `validFrom`** — es **B-114**, y está
+  bloqueado en una decisión de producto, no en código: el modelo **no tiene campo
+  de monto**, y «a la gorra» no tiene precio. Emitir `price: 0` para una gorra
+  sería falso. Lo diagnosticó el frente del sitio y lo dejó escrito en el §11.2 #5
+  del diseño.
+- **`image`** — los 28 son actividades sin ninguna imagen cargada, que es un caso
+  de primera clase del modelo (§7.6). Acá **sí hay una salida sin decisión
+  pendiente**: las imágenes de Open Graph generadas en el build (**B-291**, ya
+  decidido: se generan) servirían también para este campo.
+
+**Y dos no cierran, que es la parte que hay que investigar:**
+
+`description` y `organizer` figuran faltando en **25 elementos cada uno**, pero
+`datosEstructurados` emite los dos **siempre** —`description: d.resumen` y el
+objeto `organizer`—. O sea que una de tres cosas pasa, y hay que averiguar cuál:
+
+1. Search Console está reportando **rastreos viejos**, anteriores a que esas
+   páginas existieran con su forma actual. Es lo más probable, porque la propiedad
+   se conectó el 2026-09-03 y el sitio se desplegó varias veces ese día.
+2. Hay actividades con `descripcion` vacía, y entonces `resumen` sale vacío: el
+   campo está presente pero sin contenido, y Search Console lo cuenta como
+   faltante. **Si es esto, el arreglo no es del JSON-LD sino del formulario** —
+   una actividad publicable sin descripción es una decisión que nadie tomó.
+3. Hay una tercera plantilla emitiendo `Event` que no es la página de detalle.
+
+**Que los tres números sean exactamente 25 es la pista**: apunta a un mismo
+conjunto de páginas, no a tres problemas distintos.
+
+**Primer paso, y es barato:** usar la inspección de URL de Search Console sobre
+dos o tres de esas páginas y comparar lo que Google vio con lo que emite
+`datosEstructurados` hoy. Antes de tocar una línea.
+
+
 ### B-720 · La galería de una actividad no se puede recorrer ni ver en grande · P2
 
 **Pedido del dueño el 2026-09-03**, mirando el sitio publicado: que la galería sea
