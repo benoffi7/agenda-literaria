@@ -166,6 +166,7 @@ el `/404`, que no puede quedar vacío porque no depende de los datos.
 | `/suscribirse` | Cómo suscribirse al Google Calendar público. **Era `/calendario`** — D-134 | Estático, escrito a mano (`src/lib/enlaces.ts` pone las direcciones) |
 | `/ayuda` | Qué es esto, qué tipos de actividad hay, cómo se lee una ficha | Estático (`src/lib/ayudaDelSitio.ts`) |
 | `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
+| `/apoyar` | Quién hace la agenda, qué cuesta sostenerla, el enlace a Cafecito y tres formas de ayudar que no son plata. **No estaba en este diseño** — B-780 | Estático (`src/lib/apoyoDelSitio.ts`; el perfil sale de `src/lib/enlaces.ts`) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
 | `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310) | Build. La tira sale de `exploracionDeLaHome`; las frases, de `src/lib/noEncontrado.ts` |
@@ -185,6 +186,13 @@ Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
 > de esa señal están atadas: la excepción de `tests/sitemap.test.ts` lleva su
 > motivo escrito, que es lo que ese test exige para dejar nacer una página fuera
 > del sitemap.
+
+> ✅ **`/apoyar` construida el 2026-09-04 — B-780.** Es la segunda fila que este
+> diseño no tenía (la primera fue `/cartelera`), y con ella el conteo de arriba
+> pasa de **trece a catorce**. Es estática y escrita a mano como `/suscribirse`,
+> `/ayuda` y `/contacto`: no depende de los datos, así que no puede quedar vacía.
+> Entra al `sitemap.xml` y **sin `noindex`**; el motivo, y el de por qué no está
+> en el encabezado, están en su bullet del [§4.5](#45-pasadas-suscribirse-ayuda--contacto-404).
 
 ### 2.1 Por qué cada hub es una URL y no un filtro
 
@@ -904,11 +912,84 @@ el subconjunto ya filtrado.
   > Instagram hacia algo que se renombró antes de la regla**, y el destino de esos
   > es el archivo.
   >
-  > Es la **salida pública 13**, y la más chica del repo: cuatro frases escritas a
+  > Es una de las **páginas de texto** del sitio —la clase que
+  > `docs/07-seguridad.md` decide **no** numerar como salida, porque no proyecta
+  > ningún documento (D-320)— y la más chica del repo: cuatro frases escritas a
   > mano en `src/lib/noEncontrado.ts` y ningún dato de ninguna actividad. Como en
   > `/pasadas`, la función que las arma **recibe** los únicos datos que la página
   > ve —los grupos de la tira— y no los usa, así que el barrido de centinelas
   > corre con la lista de permitidos **vacía**.
+- **`/apoyar`** — *(no estaba en este diseño)*. Quién hace la agenda, qué cuesta
+  sostenerla, el enlace al perfil de Cafecito y tres formas de ayudar que no son
+  plata. Construida el 2026-09-04 — **B-780**.
+
+  > **El nombre se eligió entre tres, y los otros dos tenían un problema.**
+  > `/donar` reduce la página a la plata, y la mitad de lo que ofrece no es plata;
+  > `/colaborar`, en este circuito, quiere decir *colaborar con el contenido* —
+  > que es exactamente lo que hace `/contacto`, así que serían dos páginas que
+  > suenan a lo mismo y contestan cosas distintas. `/apoyar` es el verbo de quien
+  > entra y cubre las dos formas. El razonamiento está en `RUTA_APOYAR`
+  > (`src/lib/rutasPublicas.ts`).
+  >
+  > **El botón lo dibuja el sitio, no Cafecito.** Cafecito ofrece un botón para
+  > pegar —un `<img>` servido desde `cdn.cafecito.app` dentro de un `<a>`— y no
+  > se usa: sería un pedido a un host de tercero **en el load**, sin que la
+  > persona haya tocado nada, que es lo que este sitio dejó de hacer (D-254,
+  > B-481). Tampoco se rehospeda su SVG acá: sus términos dicen que sus marcas y
+  > signos distintivos son de ellos y que acceder al sitio no da ningún derecho
+  > sobre ellos. Lo que la página hace es **nombrar** «Cafecito» en una frase y
+  > llevar a `cafecito.app/<usuario>` con un enlace de salida, dibujado con
+  > `claseBotonPrimario`.
+  >
+  > **Y no se mide.** Un click a Cafecito es un clic saliente, y el sitio ya
+  > decidió que no los mide (B-480 los apagó en la consola de GA4): esta página no
+  > agrega ningún evento propio, así que la salida 12 no crece.
+  >
+  > **Entra por el pie y por el `sitemap.xml`, y no por el encabezado.** Es el
+  > mismo criterio con el que `/pasadas` vive en el pie (B-109) —la barra ya tiene
+  > cinco pestañas y un sexto lugar fijo le daría a un pedido el mismo peso que a
+  > la agenda— más una razón propia: una página que promete que nadie tiene que
+  > pagar nada y aparece en la navegación de todas las pantallas se contradice
+  > sola. `'apoyar'` sí está en el tipo `Seccion` del encabezado y **no** en su
+  > lista de enlaces: es lo que le da encabezado y pie sin darle pestaña, y es lo
+  > que `/pasadas` resolvió reusando `'agenda'` —marcando una pestaña equivocada—
+  > antes de que existiera esta forma.
+  >
+  > **Se indexa** (sin `noindex`). Es la página que contesta «¿quién hace esto y
+  > cómo se sostiene?», que es lo primero que se pregunta quien llega a un sitio
+  > que no conoce: esconderla del buscador para que no parezca que pedimos plata
+  > sería esconder justamente donde está escrito que no hace falta pagar nada.
+  >
+  > **Es una página de texto más**, de la misma clase que `/ayuda`, `/contacto`,
+  > `/suscribirse` y `/404`, y por lo tanto **sin número de salida** (D-320, ver
+  > `docs/07-seguridad.md`): todo el texto está escrito a
+  > mano en `src/lib/apoyoDelSitio.ts` y **la página no recibe ni un dato de
+  > ninguna actividad**, así que su barrido de centinelas corre con la lista de
+  > permitidos vacía, como el de `/404` y el de `/pasadas`. Lo que sí tiene, y no
+  > tienen las otras, son **cuatro promesas** que un rediseño puede borrar sin que
+  > nada falle —«la agenda es gratis», «si nadie aporta no pasa nada», «una parte
+  > se la quedan Cafecito y Mercado Pago», «aportar no compra un lugar en la
+  > agenda»—: están exigidas una por una en `tests/apoyo-del-sitio.test.ts`, junto
+  > con el tono que pidió el dueño, por su negación (la lista de fórmulas que este
+  > texto no puede usar).
+  >
+  > **El `<title>` y la `meta description` salen del módulo** y no de la
+  > plantilla, a diferencia de `/ayuda`, `/contacto` y `/suscribirse`. Es un
+  > desvío del precedente con motivo: escritas en el `.astro` quedan afuera de
+  > `TEXTO_DE_APOYO`, o sea afuera del barrido de centinelas y de los asertos de
+  > tono — y la `meta description` es exactamente la superficie que obligó a
+  > barrer la salida 8 con centinelas. Lo encontró el `auditor-privacidad`.
+  >
+  > ⚠️ **Bloqueante del deploy: el perfil de Cafecito no existe.** `CAFECITO`
+  > (`src/lib/enlaces.ts`) está puesto por coherencia con el dominio, pero nadie
+  > registró `agendaleh` en cafecito.app. El 404 es la mitad menor; la mitad
+  > grande la señaló el `auditor-privacidad`: esta página entra al `sitemap.xml`
+  > **sin `noindex`** y se enlaza desde el pie de todas, así que deployar así
+  > **publica e indexa un nombre de usuario de cobro que no tiene dueño** —
+  > cualquiera puede registrarlo y quedarse con los aportes dirigidos a la
+  > agenda, y eso no se deshace: la página ya quedó en Google apuntando a un
+  > perfil ajeno. **Primero se crea el perfil, después se deploya.** Es **B-780**
+  > en el `BACKLOG`.
 
 ---
 
@@ -952,6 +1033,7 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | `/ayuda` | `Ayuda — {NOMBRE}` | escrita a mano | la propia |
 | `/contacto` | `Contacto — {NOMBRE}` | escrita a mano | la propia |
 | `/404` | `No encontramos esa página · {NOMBRE}` | — | la propia · **`noindex`** |
+| `/apoyar` | `Apoyar la agenda — {NOMBRE}` | escrita a mano | la propia · **sin `noindex`**, ver B-780 |
 
 > **Las cuatro filas del medio se agregaron el 2026-09-02 (B-234)**: son páginas
 > reales que este documento no tenía —dos porque nacieron con otro nombre, una
