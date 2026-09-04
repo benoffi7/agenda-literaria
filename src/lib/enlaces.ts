@@ -105,6 +105,48 @@ export const urlWebcal = (): string => urlDelIcs().replace(/^https:/, 'webcal:')
 export const urlDeInstagram = (): string => `https://www.instagram.com/${INSTAGRAM}/`;
 
 /**
+ * El usuario de Cafecito donde se reciben los aportes — B-780.
+ *
+ * ── ⚠️ Hay que confirmarlo antes de deployar ──────────────────────────────
+ * Está puesto por coherencia con el dominio (`agendaleh.ar`) y con la casilla
+ * (`agendaleh@gmail.com`), **pero el perfil todavía no está creado**: quien lo
+ * cree tiene que reservar este nombre o cambiar esta línea. Un enlace a un
+ * perfil que no existe es un 404 en la única página del sitio que le pide algo
+ * a alguien, y de las que se descubren mirando —el link se ve bien, el destino
+ * no—. Está anotado en el `BACKLOG` como bloqueante del deploy de `/apoyar`.
+ *
+ * ── Por qué es una constante y no la URL entera ───────────────────────────
+ * Porque el nombre de usuario es el único dato crudo: la URL del perfil es
+ * `cafecito.app/<usuario>` y nada más. Es el mismo criterio con el que
+ * `CALENDARIO_ID` es el único dato del que salen las cuatro direcciones del
+ * calendario — el día que el perfil se renombre, se cambia acá.
+ */
+export const CAFECITO = 'agendaleh';
+
+/**
+ * El perfil de Cafecito, y **la única forma en que el sitio toca Cafecito**.
+ *
+ * ── Es un enlace de salida, no un botón embebido ──────────────────────────
+ * Cafecito ofrece un botón para pegar en un sitio: un `<img>` servido desde
+ * `cdn.cafecito.app` envuelto en un `<a>`. **Acá no se usa.** Este sitio no
+ * contacta ningún host de tercero en el load —lo verifica
+ * `tests/terceros-antes-del-consentimiento.test.ts`, que nació justamente de un
+ * `preconnect` a un tercero que nadie había decidido— y ese `<img>` sería un
+ * pedido a un dominio ajeno en cuanto la página se abre, sin que la persona
+ * haya hecho nada. El botón lo dibuja el sitio con sus propias clases
+ * (`claseBotonPrimario`), que además es lo que hace que se vea como el resto.
+ *
+ * Rehospedar su SVG acá tampoco: sus términos dicen que las marcas y los signos
+ * distintivos son de ellos y que acceder al sitio no da ningún derecho sobre
+ * ellos. Nombrar «Cafecito» en una frase es otra cosa —es cómo se llama el
+ * servicio— y es lo único que la página hace.
+ *
+ * Sin `?`, sin `utm_` y sin nada colgado: no hay nada que medir del otro lado,
+ * y un parámetro puesto «por si acaso» es un dato más que viaja.
+ */
+export const urlDeCafecito = (): string => `https://cafecito.app/${CAFECITO}`;
+
+/**
  * El `mailto:` con el asunto ya puesto.
  *
  * `cuerpo` es opcional y sirve para precargar el contexto —por ejemplo, en qué

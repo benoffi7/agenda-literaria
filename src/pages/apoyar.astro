@@ -1,0 +1,205 @@
+---
+/**
+ * `/apoyar` — la página de aportes, B-780.
+ *
+ * **Todo el texto vive en `src/lib/apoyoDelSitio.ts`** y todas las direcciones
+ * salen de `src/lib/enlaces.ts` y `src/lib/rutasPublicas.ts`. Acá no se escribe
+ * ni una URL ni una frase: es la forma de D-140 —el módulo dice qué dice, la
+ * plantilla solo acomoda— y en esta página tiene un motivo extra, que es que las
+ * cuatro promesas que la hacen aceptable («la agenda es gratis», «nadie tiene
+ * que pagar nada», «una parte se la queda el intermediario», «aportar no compra
+ * un lugar en la agenda») se puedan verificar en un test.
+ *
+ * ── El botón lo dibujamos nosotros, y no es una preferencia estética ──────
+ * Cafecito ofrece un botón para pegar: un `<img>` servido desde su CDN dentro de
+ * un `<a>`. Ese `<img>` sería un pedido a un host de tercero **en el load**, sin
+ * que la persona haya tocado nada, y este sitio no hace eso —es lo que cierra
+ * `tests/terceros-antes-del-consentimiento.test.ts`, que nació de un
+ * `preconnect` que nadie había decidido—. Acá el botón es `claseBotonPrimario`,
+ * el mismo bloque terracota que `/contacto` usa para «esto es lo que viniste a
+ * hacer», y lo único que viaja a Cafecito es el click de quien lo dio.
+ *
+ * Y no se mide. Un click a Cafecito es un **clic saliente**, y el sitio ya
+ * decidió que no los mide (B-480 los apagó en la consola de GA4): esta página no
+ * agrega ningún evento propio, así que la salida 12 no crece con este ítem.
+ *
+ * ── Se indexa (sin `noIndex`) ─────────────────────────────────────────────
+ * Es la página que contesta «¿quién hace esto y cómo se sostiene?», que es lo
+ * primero que se pregunta quien duda de un sitio que no conoce. Esconderla del
+ * buscador para que no parezca que pedimos plata sería esconder justamente la
+ * página donde está escrito que no hace falta.
+ *
+ * ── Y no está en el encabezado, a propósito ──────────────────────────────
+ * Entra por el pie y por el `sitemap.xml`. La barra ya tiene cinco pestañas y el
+ * pie ya resolvió este caso una vez (B-109, `/pasadas`): un sexto lugar fijo le
+ * daría a un pedido el mismo peso que a la agenda. Acá pesa además la mitad del
+ * texto: una página que dice «nadie tiene que pagar nada» y aparece en la barra
+ * de todas las pantallas se está contradiciendo sola. El pie es permanente y
+ * está en todas las páginas, que es todo lo que esta ruta necesita.
+ */
+import { NOMBRE } from '@/lib/identidad';
+import Base from '@/layouts/Base.astro';
+import {
+  ANTES_DE_APOYAR,
+  EL_CAFECITO,
+  LETRA_CHICA,
+  POR_QUE_IMPORTA,
+  QUE_CUESTA,
+  QUIEN_LA_HACE,
+  SIN_PLATA,
+  ENTRADA_DE_APOYO,
+} from '@/lib/apoyoDelSitio';
+import {
+  claseBloque,
+  claseBotonPrimario,
+  claseEnlace,
+  claseHundido,
+  claseRotulo,
+} from '@/components/sitio/estilos';
+---
+
+<Base
+  seccion="apoyar"
+  titulo={`Apoyar la agenda — ${NOMBRE}`}
+  descripcion="La agenda de actividades literarias es gratis y la hace una persona. Si te sirve y querés poner algo, se puede por Cafecito — y también hay tres formas que no cuestan nada."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <h1 class="display-md text-balance text-acento">Apoyar la agenda</h1>
+    <p class="mt-4 max-w-[65ch] body-lectura text-super">{ENTRADA_DE_APOYO}</p>
+
+    {
+      [QUIEN_LA_HACE, POR_QUE_IMPORTA].map((bloque) => (
+        <section aria-labelledby={bloque.id} class="mt-14">
+          <h2 id={bloque.id} class="regla-gruesa-arriba pt-4 headline-sm text-acento">
+            {bloque.titulo}
+          </h2>
+          {bloque.parrafos.map((parrafo) => (
+            <p class="body-lectura mt-3 max-w-[65ch] text-super">{parrafo}</p>
+          ))}
+        </section>
+      ))
+    }
+
+    <section aria-labelledby={QUE_CUESTA.id} class="mt-14">
+      <h2 id={QUE_CUESTA.id} class="regla-gruesa-arriba pt-4 headline-sm text-acento">
+        {QUE_CUESTA.titulo}
+      </h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">{QUE_CUESTA.entrada}</p>
+
+      {/*
+        Una lista de definiciones y no viñetas: cada ítem tiene un nombre y una
+        explicación, que es exactamente la forma de un `<dl>` — la misma que usa
+        el glosario de `/ayuda` y «lo que el calendario no hace» de
+        `/suscribirse`.
+      */}
+      <dl class="mt-5 max-w-[65ch] space-y-5">
+        {
+          QUE_CUESTA.puntos.map((punto) => (
+            <div>
+              <dt class="body-md font-semibold text-tinta">{punto.titulo}</dt>
+              <dd class="body-md mt-1 text-super">{punto.texto}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    {/*
+      El pedido, y el único bloque con la acción primaria de la página. Va sobre
+      `claseBloque` porque es lo único de acá que hay que poder encontrar sin
+      leer: quien ya se decidió entra, busca el botón y se va.
+    */}
+    <section aria-labelledby={EL_CAFECITO.id} class={`mt-14 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 id={EL_CAFECITO.id} class="headline-sm text-tinta">{EL_CAFECITO.titulo}</h2>
+      {EL_CAFECITO.parrafos.map((parrafo) => (
+        <p class="body-lectura mt-3 max-w-[65ch] text-super">{parrafo}</p>
+      ))}
+
+      <p class="mt-6">
+        {/*
+          `rel="noopener"` y `target="_blank"`: el pago se abre en una pestaña
+          nueva para que quien estaba mirando la agenda no la pierda, y el
+          `noopener` es lo que impide que la página destino toque esta.
+
+          **Sin `nofollow`**, y no es un olvido: el perfil es nuestro y sí lo
+          avalamos, que es lo que `nofollow` niega. Y sin `sponsored`, que es
+          para un link pago — este es al revés.
+
+          El `sr-only` dice que se abre afuera para quien no ve el ícono que no
+          hay: es el mismo patrón que el enlace de Instagram del pie.
+        */}
+        <a
+          class={`${claseBotonPrimario} w-full sm:w-auto`}
+          href={EL_CAFECITO.accion.href}
+          rel="noopener"
+          target="_blank"
+        >
+          {EL_CAFECITO.accion.texto}
+          <span class="sr-only">(en cafecito.app, se abre en una pestaña nueva)</span>
+        </a>
+      </p>
+      <p class="body-sm mt-3 max-w-[65ch] text-super">{EL_CAFECITO.letraChica}</p>
+    </section>
+
+    <section aria-labelledby={SIN_PLATA.id} class="mt-14">
+      <h2 id={SIN_PLATA.id} class="regla-gruesa-arriba pt-4 headline-sm text-acento">
+        {SIN_PLATA.titulo}
+      </h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">{SIN_PLATA.entrada}</p>
+
+      {/*
+        En columna y no en grilla: no son alternativas excluyentes como los
+        cuatro caminos de `/suscribirse` —se pueden hacer las tres— así que
+        ponerlas una al lado de la otra sugeriría una elección que no hay.
+      */}
+      <div class="mt-6 space-y-4">
+        {
+          SIN_PLATA.formas.map((forma) => (
+            <section class={`min-w-0 p-5 sm:p-6 ${claseBloque}`}>
+              <h3 class="headline-sm text-tinta">{forma.titulo}</h3>
+              <p class="body-lectura mt-2 max-w-[65ch] text-super">{forma.texto}</p>
+              <p class="mt-4">
+                <a
+                  class={`flex min-h-touch items-center ${claseEnlace}`}
+                  href={forma.enlace.href}
+                  rel={forma.enlace.externo ? 'noopener' : undefined}
+                  target={forma.enlace.externo ? '_blank' : undefined}
+                >
+                  {forma.enlace.texto}
+                  {forma.enlace.externo && (
+                    <span class="sr-only">(se abre en una pestaña nueva)</span>
+                  )}
+                </a>
+              </p>
+            </section>
+          ))
+        }
+      </div>
+    </section>
+
+    {/*
+      La letra chica sobre la capa tonal más honda, igual que en `/suscribirse`:
+      tiene que verse como letra chica sin dejar de leerse. `super` da 5,15:1
+      sobre `hondo`, que es la superficie sobre la que está apoyada.
+    */}
+    <section aria-labelledby="letra-chica" class={`mt-14 p-5 sm:p-6 ${claseHundido}`}>
+      <p class={claseRotulo}>Antes de que preguntes</p>
+      <h2 id="letra-chica" class="mt-2 headline-sm text-tinta">{LETRA_CHICA.titulo}</h2>
+
+      <dl class="mt-4 max-w-[65ch] space-y-5">
+        {
+          LETRA_CHICA.puntos.map((punto) => (
+            <div>
+              <dt class="body-md font-semibold text-tinta">{punto.titulo}</dt>
+              <dd class="body-md mt-1 text-super">{punto.texto}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <p class="body-lectura mt-14 max-w-[65ch] text-super">
+      <a class={claseEnlace} href={ANTES_DE_APOYAR.href}>{ANTES_DE_APOYAR.texto}</a>.
+    </p>
+  </main>
+</Base>

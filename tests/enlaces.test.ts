@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CAFECITO,
   CALENDARIO_ID,
   CONTACTO,
   MOTIVOS_DE_CONTACTO,
+  urlDeCafecito,
   urlDeContacto,
   urlDeInstagram,
   urlDelCalendario,
@@ -31,14 +33,15 @@ const TODAS = (): string[] => [
   urlDeInstagram(),
   urlDeContacto('sugerencia'),
   urlDeContacto('error'),
+  urlDeCafecito(),
 ];
 
 describe('los enlaces externos del sitio', () => {
   it('el barrido mira todas las salidas del módulo', () => {
     // Control positivo: las tres afirmaciones de abajo recorren esta lista, y una
     // lista corta las dejaría pasar sin haber mirado nada.
-    expect(TODAS()).toHaveLength(7);
-    expect(new Set(TODAS()).size, 'dos salidas devuelven la misma URL').toBe(7);
+    expect(TODAS()).toHaveLength(8);
+    expect(new Set(TODAS()).size, 'dos salidas devuelven la misma URL').toBe(8);
   });
 
   it('ninguna es la URL privada del ICS', () => {
@@ -93,5 +96,34 @@ describe('los enlaces externos del sitio', () => {
     // Y sin cuerpo no manda un `body=` vacío, que en algunos clientes abre el
     // mail con una línea en blanco arriba de todo.
     expect(urlDeContacto('error')).not.toContain('body=');
+  });
+});
+
+describe('el perfil de Cafecito — B-780', () => {
+  it('es la URL de un perfil y nada más', () => {
+    /*
+     * La forma que publica Cafecito es `cafecito.app/<usuario>`: un solo
+     * segmento, sin query. Se afirman las **propiedades** y no la cadena entera
+     * —el usuario puede cambiar y `CAFECITO` es el único lugar donde se
+     * escribe—, que es el mismo criterio con el que este archivo verifica las
+     * cuatro URLs del calendario.
+     *
+     * El `search` vacío es una afirmación con motivo: no hay nada que medir del
+     * otro lado, y un `utm_` puesto «por si acaso» es un dato más que viaja con
+     * cada persona que dona.
+     */
+    const url = new URL(urlDeCafecito());
+    expect(url.protocol).toBe('https:');
+    expect(url.host).toBe('cafecito.app');
+    expect(url.pathname).toBe(`/${CAFECITO}`);
+    expect(url.search).toBe('');
+    expect(url.hash).toBe('');
+  });
+
+  it('el usuario es un slug: nada que haya que escapar en una URL', () => {
+    // Un usuario con un espacio o un acento produce una URL que algunos clientes
+    // rompen, y el destino de la única página que pide algo no puede fallar en
+    // silencio: el link se ve bien y el 404 lo ve solo quien hizo el click.
+    expect(CAFECITO).toMatch(/^[a-z0-9][a-z0-9._-]*$/);
   });
 });
