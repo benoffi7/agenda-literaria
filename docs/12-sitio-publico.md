@@ -24,6 +24,7 @@ fragmentos de código son ilustrativos.
 > | §4.4 hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis` | ✅ — **B-108**, cerrado el 2026-09-02. Un solo componente (`hubsPublicos.ts` + `CuerpoDeHub.astro`) para las cuatro clases, con `esIndexable` fijando que `noindex` y "fuera del sitemap" sean las dos mitades de la misma señal, y la tira «Explorá por» (`ExploraPor.astro`) como el único enlace interno que un hub tiene |
 > | §2.2 y §4.4 — las **páginas de mes** `/agenda/{aaaa-mm}` | ✅ — **B-113**, con las cuatro condiciones del §2.2 y cuatro desvíos escritos en **D-155**. Sus **dos** entradas están desde **B-280** (2026-09-02): la tira de la home y el enlace «Más en septiembre» del detalle |
 > | §4.5 pasadas, calendario, acerca, 404 | ✅ **completo desde el 2026-09-03** — `/suscribirse` es el «calendario» (**D-134**), `/pasadas` está construida (**B-109**, con dos desvíos en **D-167**, y **desde B-292 tiene su buscador** — D-381), el rol de `/acerca` se repartió entre `/ayuda` y `/contacto` (**B-232**, **B-233**) y **`/404` entró con B-310**, con un desvío en **D-380**. Los nombres del §2 y del §4.5 se corrigieron contra las rutas reales el 2026-09-02 (**B-234**) |
+> | *(fuera del diseño original)* `/anunciar` | ✅ — la sección comercial, **B-770** (2026-09-04). Tampoco estaba en este documento: nació de un pedido del dueño —ofrecerle publicidad a cafés, librerías y espacios culturales— y su acción es **un mail**, sin planes ni precios. Ver **D-450** |
 > | *(fuera del diseño original)* `/cartelera` | ✅ — la pared de afiches, **B-265**. No estaba en este documento: nació de que el flyer es el medio de difusión del circuito y el sitio lo mostraba en un solo lugar. Ver **D-148** |
 > | §5 SEO | 🟡 **casi** — `<title>`, `meta description`, JSON-LD `Event`, y desde **B-109** el `canonical` absoluto, el Open Graph, el `sitemap.xml` y el `robots.txt`. **Desde B-107 (2026-09-02)** también el `BreadcrumbList` del detalle y el `CollectionPage`/`ItemList` de la home y los cuatro hubs del §5.5, y **desde B-112 (2026-09-03)** el `lastmod` de cada actividad, recortado al día (D-138). Lo único que falta es lo que no depende del dominio: las cinco imágenes de `public/og/` (**B-291** — hoy el `og:image` es el flyer en el detalle y la marca en el resto) |
 > | §6 filtros | ✅ — con los desvíos de abajo |
@@ -141,6 +142,7 @@ que exista.
 > | `/calendario` | **`/suscribirse`** | **D-134** (B-230) |
 > | `/acerca` | **`/ayuda`** + **`/contacto`** — el rol se repartió en dos | B-232, B-233 |
 > | *(no estaba)* | **`/cartelera`**, la pared de afiches | **D-148** (B-265) |
+> | *(no estaba)* | **`/anunciar`**, la sección comercial | **D-450** (B-770) |
 > | `/404` | ~~**no existe todavía**~~ → **`/404.html`**, construida el 2026-09-03 | **B-310**, con **D-380** |
 >
 > La fuente de verdad de qué páginas hay es `src/pages/`, y la de qué se le ofrece
@@ -148,9 +150,10 @@ que exista.
 > toda página estática esté en esa lista **o** exceptuada con su motivo, así que la
 > próxima no se puede olvidar (B-109).
 
-**Trece patrones de ruta de página, todos estáticos: ocho construidos, los cuatro
-hubs de B-108 y el `/404` de B-310.** Ninguno se genera si quedaría vacío — salvo
-el `/404`, que no puede quedar vacío porque no depende de los datos.
+**Catorce patrones de ruta de página, todos estáticos: nueve construidos, los
+cuatro hubs de B-108 y el `/404` de B-310.** Ninguno se genera si quedaría vacío
+— salvo el `/404` y `/anunciar`, que no pueden quedar vacíos porque no dependen
+de los datos.
 
 | URL | Qué renderiza | De dónde salen los datos |
 |---|---|---|
@@ -166,6 +169,7 @@ el `/404`, que no puede quedar vacío porque no depende de los datos.
 | `/suscribirse` | Cómo suscribirse al Google Calendar público. **Era `/calendario`** — D-134 | Estático, escrito a mano (`src/lib/enlaces.ts` pone las direcciones) |
 | `/ayuda` | Qué es esto, qué tipos de actividad hay, cómo se lee una ficha | Estático (`src/lib/ayudaDelSitio.ts`) |
 | `/contacto` | El canal para proponer una actividad y qué conviene contar. **`/ayuda` + `/contacto` son el reparto de `/acerca`** | Estático (`src/lib/contactoDelSitio.ts`) |
+| `/anunciar` | La sección comercial: qué se le ofrece a un café, una librería o un espacio cultural, y el mail para preguntar. **No estaba en este diseño** — B-770, **D-450** | Estático (`src/lib/comercialDelSitio.ts`) |
 | `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
 | `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310) | Build. La tira sale de `exploracionDeLaHome`; las frases, de `src/lib/noEncontrado.ts` |
@@ -185,6 +189,42 @@ Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
 > de esa señal están atadas: la excepción de `tests/sitemap.test.ts` lleva su
 > motivo escrito, que es lo que ese test exige para dejar nacer una página fuera
 > del sitemap.
+
+> ✅ **`/anunciar` construida el 2026-09-04 — B-770, con D-450.** Es la primera
+> página del sitio que **no le habla a quien busca una actividad**: le habla a
+> quien tiene un café, una librería o un espacio cultural y podría pagar por estar
+> acá. Con esto el conteo de arriba pasó de **trece a catorce**.
+>
+> Cuatro cosas quedaron decididas y conviene tenerlas juntas:
+>
+> - **Se indexa, y no lleva `noindex`.** Quiere ser encontrada, y por *otra*
+>   búsqueda que las actividades: quien tiene un local no teclea «taller de
+>   escritura en Villa Crespo». Está en `RUTAS_FIJAS`, como `/contacto`.
+> - **La entrada es el pie, no el encabezado.** La barra de arriba es para quien
+>   vino por una actividad, que es casi todo el mundo; una sexta pestaña le cobra
+>   el ancho de la fila a esa mayoría para hablarle a un visitante por mes. Es el
+>   mismo criterio con el que `/pasadas` está solo en el pie (§2.1).
+> - **La acción es un `mailto:`, y no hay planes ni precios.** El sitio es
+>   estático y no hay backend que reciba un formulario, pero eso es la mitad
+>   menos importante: una tabla de «Básico / Pro / Premium» en el sitio le saca
+>   la negociación de las manos a quien tiene que negociar, y habría que inventar
+>   los tres nombres y los tres números. Fue instrucción explícita del dueño.
+> - **No afirma un número de audiencia, porque todavía no hay uno.** La medición
+>   arrancó el 2026-09-03 (B-372, B-373), así que cualquier «X visitas al mes»
+>   sería inventado. La página lo **dice** en su letra chica en vez de callarlo, y
+>   `tests/comercial-del-sitio.test.ts` barre el texto buscando cifras de
+>   audiencia y palabras de volumen: la próxima versión no las puede meter sin
+>   ponerse en rojo. Cuando **B-374** acumule datos reales, esta sección se puede
+>   volver a mirar con cifras y ese chequeo se revisa con los números en la mano.
+>
+> **Y lo que esta página NO es: el inventario publicitario.** Ofrecer espacio y
+> *servir* un anuncio son dos cosas distintas, y la segunda es **B-377** —una
+> salida pública nueva, con sus propias decisiones de privacidad y de peso, y con
+> la preferencia ya anotada en el §10 de
+> [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md): vendida por nosotros y
+> **servida** por nosotros, sin una red de anuncios en el medio—. `/anunciar` es
+> la puerta de entrada de esa conversación y no cambia nada del sitio: hoy no hay
+> un solo anuncio ni un script de un tercero en ninguna página.
 
 ### 2.1 Por qué cada hub es una URL y no un filtro
 
@@ -802,7 +842,7 @@ el subconjunto ya filtrado.
   aviso "Ahora no hay talleres con fecha próxima" y links a los demás hubs y al
   archivo. Un 404 sobre una URL indexada es peor que una página honesta y vacía.
 
-### 4.5 `/pasadas`, `/suscribirse`, `/ayuda` + `/contacto`, `/404`
+### 4.5 `/pasadas`, `/suscribirse`, `/ayuda` + `/contacto`, `/404`, `/anunciar`
 
 > **Los nombres de esta sección son los del diseño y tres cambiaron — B-234.** El
 > reparto real está en la caja del [§2](#2-mapa-de-urls); cada bullet de abajo
@@ -910,6 +950,37 @@ el subconjunto ya filtrado.
   > ve —los grupos de la tira— y no los usa, así que el barrido de centinelas
   > corre con la lista de permitidos **vacía**.
 
+- **`/anunciar`** — *no estaba en este diseño.* La sección comercial: la entrada
+  con el único argumento que la página necesita (el público de esta agenda y el de
+  un café literario son el mismo), cuatro bloques de «por qué acá» —todos
+  verificables abriendo el sitio, ninguno afirmando un tamaño de audiencia—, la
+  letra chica de lo que **todavía no se puede decir**, y el mail.
+
+  > ✅ **Construida el 2026-09-04 — B-770, con D-450.** La forma es la de
+  > `/contacto` y `/suscribirse` a propósito: es la misma clase de página
+  > («ofrecemos algo, hacé esto») y no necesita un lenguaje propio. La letra chica
+  > va sobre la capa tonal más honda, en el mismo lugar y con el mismo criterio
+  > que «lo que el calendario no hace» de `/suscribirse`: es la sección que hace
+  > honesta a la página y tiene que verse como letra chica sin dejar de leerse.
+  >
+  > Lo primero que dice, arriba de todo, es que **publicar una actividad no
+  > cuesta nada** y se pide por `/contacto`. La mitad de los espacios que van a
+  > leer esto **organizan** actividades literarias, y sin esa línea la página
+  > convierte un pedido gratuito en una consulta comercial.
+  >
+  > Todo el texto sale de `src/lib/comercialDelSitio.ts` —igual que `/ayuda`,
+  > `/contacto` y `/suscribirse`— y por el mismo motivo, que acá es más fuerte que
+  > en las otras tres: **lo que hay que verificar es el texto**, y la forma en que
+  > esta página sale mal es escribiendo un número que no existe.
+  >
+  > **No es una salida numerada del §5 de
+  > [`07-seguridad.md`](07-seguridad.md), y está decidido:** ese documento tiene
+  > escrito que «las páginas de texto del sitio no son una salida más» porque no
+  > proyectan ningún documento, y ésta es la más chica de esa clase — no recibe ni
+  > una prop, así que no hay un solo dato de una actividad que pueda tocar. Lo que
+  > sí tiene es el riesgo del texto libre en una página pública (el ejemplo bien
+  > intencionado), y de eso se ocupa el barrido de su test.
+
 ---
 
 ## 5. SEO
@@ -951,6 +1022,7 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | `/suscribirse` | `Suscribirse al calendario — {NOMBRE}` | escrita a mano | la propia |
 | `/ayuda` | `Ayuda — {NOMBRE}` | escrita a mano | la propia |
 | `/contacto` | `Contacto — {NOMBRE}` | escrita a mano | la propia |
+| `/anunciar` | `Anunciar en la agenda — {NOMBRE}` | escrita a mano | la propia |
 | `/404` | `No encontramos esa página · {NOMBRE}` | — | la propia · **`noindex`** |
 
 > **Las cuatro filas del medio se agregaron el 2026-09-02 (B-234)**: son páginas
