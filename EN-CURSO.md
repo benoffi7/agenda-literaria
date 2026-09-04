@@ -115,6 +115,28 @@ Hay que elegir una y portar lo de la otra, no fusionar líneas.
 que nadie más tocó) → rescate → salud → tablero → panel. El tablero ya trae
 analítica adentro, así que esa rama no se mergea aparte.
 
+### El upgrade de Astro queda para el final, a propósito
+
+`worktree-agent-a54c5970d33d90565` (4 commits) dejó **Astro en 7.3.1 y `npm audit
+--omit=dev` en cero** (eran 5). **No se mergea todavía**: cinco frentes están
+escribiendo contra Astro 5, y si el upgrade entra antes, cada feature nueva se
+verifica contra una versión y aterriza en otra. Va **último**, y ahí re-verifica
+todo junto.
+
+Tres hallazgos suyos que sobreviven al upgrade:
+
+- **Astro 7 rompía el nombre accesible del pie en todas las páginas**:
+  `compressHTML` pasó a `'jsx'` por default y **borra el espacio entre elementos
+  en línea** — el nombre quedaba «@librosdelatiahildita(Instagram, se abre en una
+  pestaña nueva)». Diez lugares perdían un espacio visible. Se declaró
+  `compressHTML: true`.
+- **`npm audit fix` no cerraba B-607**: no había resolución no-breaking. Se cerró
+  subiendo `google-auth-library` a 10.9.1, donde `gaxios@7` **borró** `uuid`.
+- **B-743 (P2) es un bug vivo y pre-existente**:
+  `scripts/verificar-calendario.mjs` hace spread de un `Headers`, que no tiene
+  propiedades enumerables, así que **el pedido sale sin `Authorization`** — y ese
+  script tiene un modo `--reparar` que escribe eventos.
+
 ## Cómo se retoma
 
 1. Leer esta tabla y `git log --oneline origin/main..main`.
