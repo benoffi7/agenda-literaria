@@ -130,7 +130,8 @@ export const POR_QUE_IMPORTA: BloqueDeApoyo = {
       'encontrar. Un taller con cuatro inscriptos y uno con doce cuestan lo mismo de dar, y la ' +
       'diferencia entre los dos suele ser que alguien se enteró a tiempo.',
     'Si la usás y te sirve, la mejor noticia es que ya está: no hay nada que pagar. Y si te ' +
-      'queda ganas de poner algo, hay dos formas y ninguna es obligatoria.',
+      'quedan ganas de poner algo, acá abajo está cómo — con plata y sin plata, y ninguna de ' +
+      'las dos es obligatoria.',
   ],
 };
 
