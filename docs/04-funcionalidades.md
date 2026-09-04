@@ -1379,9 +1379,16 @@ negociar, y habría que inventar los tres nombres y los tres números.
 Cuatro argumentos de «por qué acá», y los cuatro se verifican abriendo el sitio:
 el público de esta agenda y el de un café literario **son el mismo**, se llega
 buscando —una página propia por actividad, en el sitemap y con los datos escritos
-para que Google los entienda—, está cargado a mano y solo de Argentina, y el
-sitio **no persigue a nadie** (sin perfilado, sin remarketing, y hoy sin un solo
-anuncio ni script de un tercero).
+para que Google los entienda—, está cargado a mano y solo de Argentina, y **hoy
+no hay un solo anuncio en ninguna página**, ni una red de anuncios ni un píxel de
+seguimiento.
+
+Esa última frase decía «ni un script de un tercero» y **el `auditor-privacidad`
+la frenó**: es falsa —las tipografías salen de `fonts.googleapis.com` (B-481) y
+`gtag.js` de `googletagmanager.com` con consentimiento (B-372)— y el banner de la
+**misma** página dice que usamos Google Analytics. Es la misma clase que el
+número inventado, así que quedó con la misma red: el test prohíbe negar un
+tercero que el sitio sí tiene.
 
 Y una sección de **lo que todavía no te podemos decir**, que es la que la hace
 defendible: no hay números de audiencia porque la medición arrancó el 2026-09-03

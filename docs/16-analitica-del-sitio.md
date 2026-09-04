@@ -218,8 +218,8 @@ Las tres consecuencias, en orden de probabilidad:
 
 1. **Ninguna página del sitio puede llevar datos privados en su URL.** Hoy no
    los lleva: las rutas son `/`, `/cartelera`, `/agenda/{aaaa-mm}`,
-   `/actividad/{slug}`, `/pasadas`, `/ayuda`, `/contacto`, `/suscribirse` y
-   `/admin`. Y `/admin` es la que hay que mirar: es `noIndex`, pero **el tag no
+   `/actividad/{slug}`, `/pasadas`, `/ayuda`, `/contacto`, `/suscribirse`,
+   `/anunciar` (B-770) y `/admin`. Y `/admin` es la que hay que mirar: es `noIndex`, pero **el tag no
    se instala ahí** —el panel ya tiene su propia propiedad y su propia
    proyección—, y hay que dejarlo escrito para que nadie lo agregue «para tener
    todo junto».

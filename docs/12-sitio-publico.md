@@ -224,7 +224,10 @@ Sin cambios: `/admin` y `/admin/**` (panel, `noindex`), `/version.json`.
 > [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md): vendida por nosotros y
 > **servida** por nosotros, sin una red de anuncios en el medio—. `/anunciar` es
 > la puerta de entrada de esa conversación y no cambia nada del sitio: hoy no hay
-> un solo anuncio ni un script de un tercero en ninguna página.
+> un solo anuncio en ninguna página. (Lo que la página **no** puede decir es «ni
+> un script de un tercero», que es lo que decía y lo que el `auditor-privacidad`
+> frenó: las tipografías y `gtag.js` son terceros, y el banner de la misma página
+> lo dice.)
 
 ### 2.1 Por qué cada hub es una URL y no un filtro
 
