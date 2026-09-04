@@ -248,6 +248,50 @@ export const claseAfiche = 'block w-full border border-borde bg-hondo object-con
 export const claseAfichePortada = `${claseAfiche} max-h-[70svh]`;
 
 /**
+ * El afiche **dentro de la capa del visor** — B-720 (D-430).
+ *
+ * La regla de D-147 —ninguna salida del sitio recorta una imagen— vale igual acá
+ * y de hecho es la razón de la capa: quien la abre quiere ver el flyer **entero**
+ * y más grande, no un recorte a pantalla completa. De ahí `object-contain` otra
+ * vez, y los dos topes contra el hueco disponible en vez del `w-full` de la
+ * columna: en la capa la imagen no llena un ancho, entra en un rectángulo.
+ *
+ * **Sin borde y sin la capa tonal de `claseAfiche`**, y no es un olvido: el
+ * fondo del visor ya es `tinta` plena, así que la imagen se separa sola y un
+ * borde de `borde` sobre tinta sería una regla que no separa nada. `bg-hondo`
+ * además pintaría un rectángulo claro alrededor de una foto vertical mientras
+ * carga, que es justo el aspecto que B-263 vino a sacar.
+ *
+ * No lleva proporción por el mismo motivo que `claseAfiche`: es un dato de cada
+ * imagen. Acá ni siquiera hace falta reservar la caja —la imagen está centrada
+ * en un hueco fijo, así que no hay layout debajo que se corra al cargar— pero el
+ * `width`/`height` del `<img>` sigue puesto, que es lo que le da al navegador la
+ * proporción antes de tener los bytes.
+ */
+export const claseAficheEnVisor = 'max-h-full max-w-full object-contain';
+
+/**
+ * Los controles de la capa del visor: calados en papel sobre la tinta plena
+ * — B-720 (D-430).
+ *
+ * Es el gesto del sistema para lo que va sobre tinta (el mismo de la franja de
+ * estado del detalle y de `claseRotuloCalado`), y el contraste es el de la tabla
+ * de D-146 al revés: `papel` sobre `tinta` da **16,27:1**, medido con
+ * `lib/contraste.ts` sobre los tokens de `global.css`.
+ *
+ * `focoAmplio` y no `foco`: el anillo de 2px con offset 2 se pega al borde de un
+ * control que está contra el fondo de la capa, que es exactamente el caso para
+ * el que existe la variante amplia.
+ *
+ * El subrayado es lo que dice «esto se toca» sin un color propio, y acá no es
+ * una preferencia: **sobre tinta el acento del sistema no pasa AA**. `acento`
+ * sobre `tinta` da **2,57:1** (misma medición), o sea que la señal «esto es
+ * interactivo» del resto del sitio no se puede usar dentro de la capa. Con el
+ * subrayado la señal no depende del color, que además es lo que pide el §10.
+ */
+export const claseBotonDelVisor = `label-caps inline-flex min-h-touch items-center gap-2 px-2 text-papel underline decoration-2 underline-offset-4 ${focoAmplio}`;
+
+/**
  * La pared de `/cartelera`, según cuántos afiches haya — B-265.
  *
  * El número lo decide `columnasDeCartelera` (`lib/afiche.ts`), que es la regla y

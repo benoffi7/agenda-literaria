@@ -120,3 +120,83 @@ export function useCapaModal(
     // real. `alCerrar` no va — ver `cerrar` — y `caja` es un ref estable.
   }, [caja, activo]);
 }
+
+/**
+ * La entrada de historial de una capa: el botón atrás del teléfono la cierra en
+ * vez de sacar a la persona del sitio — B-720.
+ *
+ * ── Por qué esto vive acá y no en el componente ───────────────────────────
+ * El cableado ya existía, escrito a mano dentro de `Buscador.tsx` para la hoja
+ * de filtros (B-238): un `pushState` al abrir, un listener de `popstate` que
+ * cierra, y `history.back()` cuando el cierre lo pide la UI, para que los dos
+ * caminos dejen el historial igual. El visor de la galería (B-720) es la
+ * **segunda** capa que lo necesita, y una segunda copia del mismo cableado es
+ * exactamente el bug que este archivo existe para no repetir — la lección del
+ * docblock de arriba, otra vez y con la otra mitad.
+ *
+ * **La hoja de filtros todavía no lo usa**, y está dicho para que no parezca
+ * olvido: su versión arrastra una guarda propia (`cerrandoLaHoja`) porque su URL
+ * lleva los filtros elegidos, así que el `popstate` que restaura la URL de antes
+ * de abrir le pisaría la selección. Migrarla es un cambio con riesgo propio y va
+ * en su ítem (**B-750**); lo que se comparte hoy es el caso general, que es el
+ * del visor: una capa cuya URL no cambia.
+ *
+ * ── El caso general, y por qué no hace falta la bandera de la hoja ────────
+ * Cuando la capa se abre se empuja **una** entrada, con la misma URL. Cerrar es
+ * siempre `history.back()`, y eso lo hace la limpieza del efecto: o sea que
+ * `Escape`, el botón de cerrar, el click en el fondo y hasta el desmontaje del
+ * componente pasan por el mismo camino sin que ninguno tenga que acordarse. El
+ * botón atrás **real** llega como `popstate`, y ahí la bandera `nuestra` ya
+ * quedó en `false` cuando corre la limpieza, así que no se dispara un segundo
+ * `history.back()` que sacaría a la persona del sitio — el modo de falla que
+ * `entradaPropia` cuida en la hoja de filtros.
+ *
+ * Las flechas que recorren las imágenes **no** empujan historial, por el mismo
+ * criterio con el que veinte toques de filtro no son veinte entradas (§6.2 del
+ * diseño): el botón atrás cierra la capa, no deshace una foto.
+ *
+ * @param abierta  Si la capa está abierta. La entrada se empuja en la
+ *                 transición a `true` y se deshace en la de vuelta.
+ * @param alCerrar Qué hacer cuando el botón atrás cierra la capa. Puede ser una
+ *                 flecha inline: vive en un `ref` por el mismo motivo que en
+ *                 `useCapaModal`.
+ */
+export function useHistorialDeCapa(abierta: boolean, alCerrar: () => void): void {
+  const cerrar = useRef(alCerrar);
+  cerrar.current = alCerrar;
+
+  /**
+   * ¿La entrada del historial sigue siendo **nuestra**? — la guarda de B-238,
+   * acá con una sola responsabilidad. Sin ella, un `popstate` real (el botón
+   * atrás) cerraría la capa y la limpieza del efecto haría **otro**
+   * `history.back()`, sacando a la persona de la página.
+   */
+  const nuestra = useRef(false);
+
+  useEffect(() => {
+    if (!abierta) return;
+    window.history.pushState({ capaModal: true }, '', window.location.href);
+    nuestra.current = true;
+
+    const alVolver = () => {
+      // El navegador ya consumió la entrada: no queda nada que deshacer.
+      nuestra.current = false;
+      cerrar.current();
+    };
+    window.addEventListener('popstate', alVolver);
+
+    return () => {
+      window.removeEventListener('popstate', alVolver);
+      if (!nuestra.current) return;
+      /*
+       * Se apaga **antes** de `history.back()` y no después — el hallazgo del
+       * auditor de trampas en B-238. `history.back()` es asíncrono: el
+       * `popstate` que dispara no llega en esta misma vuelta, así que una
+       * segunda corrida de esta limpieza en esa ventana repetiría el `back()` y
+       * retrocedería una entrada de más.
+       */
+      nuestra.current = false;
+      window.history.back();
+    };
+  }, [abierta]);
+}

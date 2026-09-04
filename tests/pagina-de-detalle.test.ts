@@ -179,22 +179,32 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
     expect(codigo).not.toContain('.online.url');
   });
 
-  it('cero islands de framework (§4.3) — el presupuesto de 0 KB era del §6 antes de B-371', () => {
+  it('una sola island, declarada acá — B-720 dio vuelta el «cero islands» del §4.3', () => {
     /*
      * Es la pantalla que recibe el tráfico y la que se abre en el navegador
      * embebido de Instagram. Una directiva `client:` acá no rompe nada visible
-     * —por eso hace falta el test— pero bajaría React entero.
+     * —por eso hace falta el test— y baja React entero: **58,5 KB gzip** de
+     * `dist/_astro/client.*.js`, medidos en D-430.
      *
-     * **El título decía «presupuesto de 0 KB» y ya no es cierto en bytes
-     * totales**: B-371 aceptó el costo de GA4 (`docs/16-analitica-del-sitio.md`
-     * §6) y B-375 agregó un `<script>` de un puñado de líneas para medir el
-     * clic de inscripción — ver `tests/detalle-visual.test.ts`, que cuenta los
-     * `<script>` de esta página y por qué ahora son dos. Lo que este `it` sigue
-     * garantizando, y es lo único que garantizaba antes, es la mitad que
-     * **no** cambió: **cero islands**. Ni React ni ningún framework se
-     * hidratan acá.
+     * ── Lo que este caso afirmaba, y por qué cambió ──────────────────────
+     * Hasta B-720 exigía **cero** islands. Ya venía con una nota de que el
+     * título («presupuesto de 0 KB») había dejado de ser cierto en bytes
+     * totales: B-371 aceptó el costo de GA4 (D-251) y B-375 sumó un `<script>`
+     * de un puñado de líneas. Lo que quedaba en pie era la mitad de las
+     * islands, y **el dueño pidió la funcionalidad que la gasta** (B-720: la
+     * galería clickeable, para leer un flyer que a esta escala no se lee).
+     *
+     * Así que la propiedad cambia de «ninguna» a **«exactamente la que está
+     * declarada acá»**, que es la misma forma que este archivo ya usa para los
+     * imports y `detalle-visual.test.ts` para los `<script>`: la island número
+     * dos no entra sin que alguien venga a decidirlo en este `it`.
+     *
+     * MUTACIÓN PROBADA: montar `<ListaDeActividades client:load>` al pie para
+     * «mostrar otras tres actividades del barrio». No rompe nada visible, baja
+     * `events.json` en la página de detalle, y deja este caso en rojo.
      */
-    expect(src).not.toMatch(/client:(load|idle|visible|only|media)/);
+    const islands = [...src.matchAll(/<(\w+)[^>]*client:(\w+)/g)].map((m) => `${m[1]}:${m[2]}`);
+    expect(islands).toEqual(['VisorDeGaleria:idle']);
   });
 
   it('es estática (`prerender`), no una ruta servida', () => {
