@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MINIMO_ENTRE_CHEQUEOS_MS,
@@ -317,6 +319,47 @@ describe('el formato de versión que produce el build es el que la analítica ac
 
   it('`versionBase` sale del package.json, que es la parte que mueve una persona', () => {
     expect(versionBase()).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  /**
+   * B-325 — el `package-lock.json` dice una versión y el `package.json` otra.
+   *
+   * **Es `it.fails` a propósito y hoy la clase está viva:** al 2026-09-03 el
+   * `package.json` dice `1.8.0` y el lock dice `1.6.0`, en sus dos lugares (la
+   * raíz del archivo y `packages[""]`). B-325 lo encontró con 1.1.0 contra
+   * 1.5.0, B-220 lo revirtió a propósito para que sus commits fueran atómicos, y
+   * desde entonces se separó dos versiones más. O sea: **volvió, y va a volver**,
+   * que es lo que lo convierte de molestia en clase.
+   *
+   * **Qué lo haría pasar:** `npm install` y commitear el lock. Son las dos
+   * líneas del campo `version`; las dependencias resueltas están al día. Este
+   * chequeo no lo puede hacer el frente que lo escribió, porque el lock es de
+   * todos los frentes a la vez (B-607) y un lock que cambia por un motivo ajeno
+   * al cambio es exactamente el ruido que hace que nadie lea un diff de lock.
+   *
+   * **Por qué vale igual que sea un chequeo y no un ítem.** El campo es
+   * informativo —nada se rompe— así que nunca va a ser urgente, y por eso se
+   * descubrió tres veces. Lo que cuesta no es el drift: es que **cada vez que
+   * alguien lo ve tiene que volver a averiguar si importa**. Con el `it.fails`
+   * el estado queda declarado, y el día que alguien corra `npm install` el CI se
+   * pone rojo y lo promueve a `it` — de ahí en adelante, un bump de versión sin
+   * `npm install` falla en el commit de quien lo hizo, que es el único momento en
+   * que el arreglo es de una línea (B-180: el rojo es sobre el cambio propio).
+   */
+  it.fails('B-325: el package-lock declara la misma versión que el package.json', () => {
+    const leer = (archivo: string) =>
+      JSON.parse(readFileSync(fileURLToPath(new URL(`../${archivo}`, import.meta.url)), 'utf8'));
+
+    const pkg = leer('package.json');
+    const lock = leer('package-lock.json');
+
+    // Los dos lugares donde npm escribe la versión de la raíz. Se afirman los
+    // dos porque un `npm install` a medias podría dejar uno solo al día, y el
+    // que se lee al publicar no es siempre el mismo.
+    expect(lock.version, 'package-lock.json → version (raíz)').toBe(pkg.version);
+    expect(lock.packages?.['']?.version, 'package-lock.json → packages[""].version').toBe(
+      pkg.version,
+    );
   });
 
   it('B-166: «no hay versión estampada» es su propio valor, no la bolsa de `otro`', () => {

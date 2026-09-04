@@ -41,7 +41,7 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 |---|---|
 | `npm run dev` | Astro en desarrollo, contra emuladores |
 | `npm run build` | build estático a `dist/`, contra producción |
-| `npm test` | la suite completa (2.208 tests en 97 archivos al 2026-09-02, contados en esta corrida) |
+| `npm test` | la suite completa. **El tamaño lo dice ella al terminar** (`Test Files` / `Tests`) y no se copia acá: el conteo escrito a mano quedó viejo cuatro veces en dos semanas — ver la nota de abajo |
 | `npm run test:watch` | idem en watch |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run emu` | emuladores, con import/export de estado en `.emulador/` |
@@ -52,10 +52,93 @@ Síntoma: `firebase-tools no longer supports Java version before 21`.
 | `npm run opciones:aprobar:prod -- --listar` | idem, en producción |
 | `npm run calendario:verificar` | B-125 — compara Firestore contra Calendar **de verdad** y reporta eventos borrados a mano. `-- --reparar` además los recrea. Ver "Verificar contra Calendar de verdad (B-125)" más abajo |
 | `./scripts/verificar-todo.sh` | el gate de antes de pushear: marcadores, typecheck, tests con emuladores, build contra el emulador y fuga de credenciales |
-| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json` **y sobre el HTML de las páginas de detalle** que salieron (B-110) |
+| `./scripts/build-contra-emulador.mjs` | el paso 4 del gate, corrible solo: siembra, buildea y afirma sobre el `dist/events.json`, sobre el HTML de las páginas de detalle (B-110) y —desde B-121— sobre **todos** los archivos publicables del `dist/`, barriéndoles los centinelas |
 | `./scripts/emuladores-arriba.sh` | ¿hay emuladores escuchando, y en qué hosts? Es la decisión de los pasos 3 y 4 del gate, afuera para poder testearla (B-180) |
 | `node scripts/project-id-emulador.mjs` | la **base de emulador de este checkout** (`agenda-literaria-<8 hex>`). Es de dónde salen el `projectId` de los tests y el del gate (B-219) |
 | `./scripts/probar-concurrencia.sh` | corre dos suites de integración a la vez. Sin banderas tiene que dar verde; con `--misma-base` tiene que dar **rojo** — es la reproducción del flaky de B-219 |
+| `node scripts/salud-del-codigo.mjs` | remide `docs/10-salud-del-codigo.md` (§1.1, §1.2, §1.4, §1.5, §1.6) e imprime las tablas en markdown listas para pegar. Con `--json`, para otro programa (B-311) |
+| `node scripts/etiquetas-github.mjs` | crea o actualiza en GitHub las etiquetas que el panel le pone a sus issues, derivándolas de `functions/reportes.js`. Idempotente y con verificación. Con `--dry-run` no toca nada (B-33) |
+| `node scripts/verificar-produccion.mjs` | **lee el sistema real** (B-116): escritura y lectura anónimas rechazadas con su control positivo, las cabeceras de cache contra lo que declara `firebase.json`, la versión publicada, y —con `GOOGLE_CALENDAR_ICS_PRIVADO` en el entorno— que el ICS no lleve el link de la reunión. Ver abajo |
+
+> **El conteo de tests no se escribe a mano en ninguna parte, y es una decisión.**
+> Estuvo escrito en `docs/README.md` y en la tabla de arriba, y las dos copias
+> quedaron viejas —2.148, 2.006, 2.039, 2.173, 2.208 contra los 2.637 de hoy— con
+> el agravante de que `README.md` llegó a tener el mismo párrafo **tres veces** con
+> tres conteos distintos (B-296). Un número que hay que actualizar a mano en un
+> documento envejece siempre, y mientras tanto miente con autoridad. Lo dice la
+> suite al terminar; eso no puede quedar viejo. `tests/salud-del-codigo.test.ts`
+> lo hace cumplir (B-662): falla si `README.md` o este documento vuelven a
+> escribirlo. El `CHANGELOG`, el `BACKLOG` y `10-salud-del-codigo.md` quedan
+> afuera a propósito — ahí un conteo fechado es el dato, no un descuido.
+
+### Verificar contra el sistema real (B-116)
+
+`docs/05-patrones.md` tiene la regla que ningún test cumple solo: los unitarios
+prueban la **intención**; para lo que sale al mundo hay que **leer el resultado**.
+Los comandos que la cumplen estaban escritos —acá y en `07-seguridad.md`— y se
+corrían a mano, o sea cuando alguien se acordaba.
+
+```bash
+node scripts/verificar-produccion.mjs
+
+# con el calendario, que necesita la URL privada del ICS
+GOOGLE_CALENDAR_ICS_PRIVADO='https://…/private-…/basic.ics' \
+  node scripts/verificar-produccion.mjs
+
+# contra otro origen (por ejemplo el dominio de Firebase)
+SITIO=https://agenda-literaria.web.app node scripts/verificar-produccion.mjs
+```
+
+Qué mira, y por qué cada uno:
+
+| Chequeo | Qué atrapa |
+|---|---|
+| Escritura anónima a `/actividades` y `/opciones` | el §5.3: sin el claim `admin` no se escribe |
+| **Lectura** anónima de `/actividades`, suelta y por query | **D-128 / B-208** — la regla vieja entregaba el documento entero de toda actividad publicada, salteando `toPublic`. Es la que hay que correr después de deployar reglas |
+| Lectura de `/opciones/arancel` (**control positivo**) | sin él, todo el bloque pasa con una API key equivocada o sin red: cada sonda daría «rechazo» y se leería como «está todo cerrado» |
+| `Cache-Control` de cada ruta literal de `firebase.json` | D-38 — son la mitad del mecanismo de actualización del panel |
+| `/version.json` | qué quedó publicado, y si se buildeó con cambios sin commitear |
+| El ICS del calendario | trampa 5 — el link de la reunión en un calendario público. **Desdobla las líneas antes de buscar**: el formato ICS parte las largas, y lo largo es justamente la URL |
+| Los issues con `reporte-panel` | que no haya llegado la identidad de quien reportó a un repo público |
+
+Tres cosas del diseño que conviene saber:
+
+- **No es parte de ningún gate, a propósito.** Necesita red y producción; meterlo
+  en `verificar-todo.sh` sería un gate que falla cuando se cae el wifi, que es lo
+  que enseña a saltear un gate (B-180).
+- **Un `—` es un chequeo saltado y no cuenta como verde.** Dice por qué no pudo.
+- **No pide, no crea y no imprime ninguna credencial** (§5.4). La URL privada del
+  ICS entra por el entorno y nunca sale por pantalla; la API key sale de
+  `.env.production`, que está versionado porque la config del SDK web es pública
+  por diseño. Por eso este chequeo lo corre el dueño y no un agente.
+
+`tests/verificar-produccion.test.ts` cubre lo que decide —la derivación de las
+cabeceras, que un rechazo se distinga de una respuesta vacía, y el desdoblado del
+ICS— sin tocar la red.
+
+### Remedir la salud del código (B-311)
+
+`docs/10-salud-del-codigo.md` vale porque cada cifra salió de contar el árbol
+real, y su encabezado prohíbe estimarlas. El costo de esa regla era que remedir a
+mano son un par de horas, así que **no se remedía**: llegó a declarar 111 archivos
+de producción con 180 en el árbol.
+
+```bash
+node scripts/salud-del-codigo.mjs          # las tablas, en markdown
+node scripts/salud-del-codigo.mjs --json   # lo mismo, para otro programa
+```
+
+Tres cosas que conviene tener claras antes de correrlo:
+
+- **No escribe el documento y no decide nada.** Imprime las cifras; qué significa
+  que una se movió, qué entra en «lo que está bien» y qué problema abrió o cerró
+  sigue siendo trabajo de quien remide. Lo caro de ese documento nunca fue contar.
+- **No hay ningún test que compare esas cifras contra el árbol**, a propósito: se
+  mueven con cada commit de cualquier frente, y un chequeo que se pone rojo por
+  trabajo ajeno es el que enseña a saltearse los chequeos (B-180).
+- **Lo que sí está atado** vive en `tests/salud-del-codigo.test.ts`: cero ciclos
+  de import, que los archivos que las tablas nombran existan, y que el criterio
+  escrito en el documento sea el mismo que el script aplica.
 
 ### Cada checkout tiene su propia base en el emulador (B-219)
 
@@ -851,15 +934,37 @@ firebase deploy --only firestore:rules
 firebase deploy --only functions:reporteAIssue
 ```
 
-**5. Crear las etiquetas del issue** (opcional, para que queden con color):
+**5. Crear las etiquetas del issue** — **es un script desde B-33**, ya no dos
+comandos pegados a mano:
 
 ```bash
-gh label create reporte-panel --repo benoffi7/agenda-literaria \
-  --color 5319e7 --description "Cargado desde el panel de /admin"
-gh label create sugerencia --repo benoffi7/agenda-literaria \
-  --color 0e8a16 --description "Idea o mejora pedida desde el panel"
-# `bug` ya existe en todo repo de GitHub
+node scripts/etiquetas-github.mjs --dry-run   # qué haría, sin tocar nada
+node scripts/etiquetas-github.mjs             # crea o actualiza, y verifica
 ```
+
+Tres cosas que hacen que valga la pena que sea un script y no una línea del
+runbook:
+
+- **La lista no está escrita en ninguna parte.** El script corre
+  `construirIssue` de `functions/reportes.js` —la misma función que corre en la
+  Cloud Function— con cada `tipo` que `firestore.rules` permite, y junta lo que
+  devuelve en `labels`. O sea que crea **las que el productor aplica**, no las que
+  alguien creyó que aplica. La versión vieja de este paso era exactamente eso:
+  dos comandos que nombraban `reporte-panel` y `sugerencia`, con un comentario
+  diciendo que `bug` «ya existe en todo repo de GitHub» — y si mañana el
+  productor agrega una tercera, ningún comando pegado la iba a crear.
+- **Es idempotente.** `gh label create --force` crea si falta y actualiza color y
+  descripción si existe, así que correrlo dos veces no falla ni duplica. Es lo que
+  lo hace un paso repetible de un runbook y no una ceremonia de una sola vez.
+- **No pide ni crea credenciales** (§5.4): usa la sesión de `gh` que ya está en
+  la máquina. Y al terminar **lee de GitHub cómo quedaron**, para poder
+  confirmarlo sin abrir el navegador.
+
+Lo único a mano es el color y la descripción de cada etiqueta, que no se derivan
+de ninguna parte. Si el productor empieza a aplicar una que no tiene color
+elegido, el script **la crea igual** con el gris de default y avisa —una etiqueta
+sin color es mejor que una que no existe—, y `tests/etiquetas-github.test.ts` se
+pone rojo pidiendo que alguien decida cómo se ve.
 
 Verificación de punta a punta: entrar a `/admin`, cargar un reporte de prueba, y
 que en la lista "Últimos reportes" aparezca el número de issue en unos segundos.

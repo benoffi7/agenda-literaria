@@ -56,10 +56,10 @@ si el modelo cambia al construir el sitio público, hay que revisar
 1. **Leer `../CLAUDE.md` completo.** Tiene decisiones cerradas y una lista de
    trampas conocidas (§13) que ya costaron tiempo. Si algo parece mejorable,
    proponerlo — no cambiar de enfoque por cuenta propia.
-2. **Correr los tests.** `npm test` — **2.747 tests en 122 archivos**
-   (recontado el 2026-09-03 al integrar el tríptico de la home y la grilla del
-   panel; antes decía 2.637 en 118, y antes de eso 2.173 en 93, de antes de
-   B-108/B-109 y de la tanda del 2026-09-02). **107** de esos tests
+2. **Correr los tests.** `npm test` — la suite imprime al terminar cuántos son
+   (`Test Files` / `Tests`), y por eso el número **no se escribe acá**: envejeció
+   tres veces en una semana y mientras tanto mentía con autoridad (B-662, y el
+   chequeo que lo impide está en `tests/salud-del-codigo.test.ts`). **107** de esos tests
    necesitan los emuladores corriendo (`npm run emu`, que desde B-167 levanta
    también **Storage**), repartidos en **9** archivos: siete se saltean enteros
    y dos parciales — de `events-json-endpoint.integracion.test.ts` se saltean 4
@@ -69,6 +69,19 @@ si el modelo cambia al construir el sitio público, hay que revisar
    `EXIGIR_EMULADOR=1`**, que es como los corre el CI justamente para que no se
    salteen en silencio. El desglose archivo por archivo está en
    [`10-salud-del-codigo.md`](10-salud-del-codigo.md) § 6.1.
+2. **Correr los tests.** `npm test`. **El tamaño de la suite lo dice ella al
+   terminar** (`Test Files` / `Tests`) y no está escrito acá a propósito: el
+   conteo a mano quedó viejo cinco veces en dos semanas, y en un merge este mismo
+   paso llegó a estar **tres veces** con tres números distintos (B-296). Un
+   número que hay que actualizar a mano miente con autoridad hasta que alguien lo
+   nota. `tests/salud-del-codigo.test.ts` lo hace cumplir (B-662).
+
+   Lo que sí conviene saber, porque no se ve en la salida: los archivos
+   `*.integracion.test.ts` necesitan los emuladores corriendo (`npm run emu`, que
+   desde B-167 levanta también **Storage**), y si no están **se saltean solos** —
+   salvo con `EXIGIR_EMULADOR=1`, que es como los corre el CI justamente para que
+   no se salteen en silencio. Dos archivos más se saltean sin un `dist/`
+   construido, y esos los cubre el paso 4 del gate.
 3. **Nunca desarrollar el sync contra el calendario real.** Ver §10 del
    `CLAUDE.md`: un bug en el diff crea o borra eventos de verdad.
 4. **Antes de cerrar un cambio, pasar los auditores** de

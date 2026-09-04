@@ -87,13 +87,21 @@ Cosas que importan y no son obvias:
   **Al agregar o editar un agente, parsealo antes de confiar en él**, o
   verificalo con `/context` (aparece bajo los subagentes), `/doctor` y `/agents`.
 
-Detalle chico con consecuencia real: `.claude/` no está en la lista negra de
-`scripts/que-deployar.sh`, así que **un cambio a estas definiciones hoy hace
-`hosting=true`** y republica el sitio. Es inofensivo (y es el lado barato del
-error, por diseño: lo desconocido se deploya), pero sumar `^\.claude/` a
-`NO_AFECTAN` es una línea en el script más su caso en
-`tests/que-deployar.test.ts`, y eso queda fuera de este cambio porque toca
-código.
+Detalle chico con consecuencia real, **cerrado el 2026-09-03 (B-215)**: `.claude/`
+no estaba en la lista negra de `scripts/que-deployar.sh`, así que un cambio a
+estas definiciones hacía `hosting=true` y republicaba el sitio. Las que terminan
+en `.md` ya caían por la regla de las extensiones; lo que caía en «archivo
+desconocido» era el `settings.json` —donde viven los hooks, o sea el archivo que
+más se toca— y `githooks/pre-push`, que no tiene extensión. Hoy los dos prefijos
+están en `NO_AFECTAN`, con sus casos en `tests/que-deployar.test.ts`.
+
+Y con una atadura, porque una lista negra falla al revés que una blanca —no se
+queda corta, se pasa de larga, y excluir algo que sí afecta al bundle deja
+producción con código viejo y el workflow en verde—: un caso **deriva del árbol**
+que ningún archivo de `src/` ni `astro.config.mjs` referencie `.claude/` ni
+`githooks/`. El día que alguien aliasee algo de ahí, la exclusión pasa a ser falsa
+y el test lo dice antes de que un cambio deje de deployar. Es la misma forma que
+el caso de B-88 para los alias a `functions/`.
 
 **Skills** — una carpeta por skill, con `SKILL.md` adentro:
 `.claude/skills/<name>/SKILL.md`. Un archivo suelto `.claude/skills/<name>.md`
@@ -219,6 +227,17 @@ bundle; la ayuda corta de un campo va en la prop `ayuda` de `Campo`, no en
 los ítems del backlog ya resueltos, los bloques duplicados de merges mal
 resueltos, y los avisos de la guía del panel que describen un comportamiento que
 cambió. Eso es exactamente el hueco de B-63, y no lo puede cubrir un test.
+
+> **Su alcance sobre los duplicados de merge se recortó (B-606).** La ficha decía
+> que ningún test atrapaba esa clase, y desde B-367/B-660 sí atrapa una parte:
+> `red-de-contencion.test.ts` cubre, **solo en este archivo**, las filas
+> fusionadas de la tabla de abajo, las primeras celdas repetidas, los nombres de
+> test que ya no existen y las líneas de prosa pegadas. La ficha del agente ahora
+> lo dice y le pide no reportarlo. **Lo que le queda es lo que no es forma:** el
+> mismo drift en cualquier otro documento, y —acá— dos filas que se contradicen
+> entre sí, que ninguna regla mecánica distingue de dos filas que dicen cosas
+> distintas sobre temas distintos. Elegir cuál texto queda fue el trabajo de
+> criterio de B-294, y sigue siendo suyo.
 
 **Sirve, y hay prueba.** En la primera corrida sobre este repo encontró que
 **B-56 dice que nadie llama a `registrarVersion(VERSION_APP)`, y hoy se llama**
@@ -530,14 +549,27 @@ seis frentes en paralelo no comparten qué se auditó.
 | Que el **disparo automático** del `auditor-privacidad` deje de ver una salida, o se prenda con lo que no es una | `auditores-que-corresponden.test.ts` (**B-124**, D-350): las dos direcciones, con el ancla en la tabla numerada de `07-seguridad.md` para que no se satisfaga sola. **Un auditor no tiene que revisar esto** — pero sí sigue siendo criterio suyo que una salida nueva entre a la ficha, que es el punto 7 de su propio contrato |
 | Que los hooks que disparan al auditor queden cableados a la nada | `red-de-contencion.test.ts` (**B-124**). Los tres modos de falla dejan el repo en verde: un `.claude/settings.json` con JSON inválido **descarta el archivo entero**, un script renombrado sale con 0 por la propia regla anti-B-180, y un modo mal escrito no verifica nada. Se atan las dos puntas — los modos que el `settings.json` invoca tienen que existir en el script, y al revés |
 | Que el barrido de decisiones citadas **lea mal** el registro — que tome cualquier mención de `D-nnn` como una entrada escrita, o que ordene `D-9` después de `D-100` | `decisiones-referenciadas.test.ts` (**B-124**). Es la mitad que decide de `scripts/decisiones-referenciadas.mjs`, y sí es un test porque es pura. Lo que **no** se testea, a propósito, es que hoy no haya ninguna huérfana: citar una decisión antes de escribirla es legítimo con frentes en paralelo, así que ese aserto estaría rojo mientras una tanda está abierta (B-180). Ese juicio es del `auditor-documentacion` |
+| Que las **etiquetas de GitHub** que el script crea se separen de las que el panel aplica | `etiquetas-github.test.ts` (**B-33**). El script no lleva lista: ejecuta `construirIssue` de `functions/reportes.js` con cada `tipo` que `firestore.rules` permite. Lo que el test ata es lo único a mano —el color y la descripción de cada una—: si el productor empieza a aplicar una etiqueta sin cosmética elegida, se pone rojo. Y un caso verifica que los nombres **no estén cableados** en la lógica del script, que es la mutación que haría pasar a todos los demás |
+| Que dos páginas del sitio compartan el `<title>`, o que se rompa la jerarquía de encabezados | El **paso 10** de `scripts/build-contra-emulador.mjs`, con la decisión en `scripts/seo-del-artefacto.mjs` y sus casos rotos en `seo-del-artefacto.test.ts` (**B-122**). Un título repetido hace que el buscador elija cuál indexar y la que pierde deja de existir para quien busca; un `h3` con la clase del `h2` rompe el índice del lector de pantalla y se ve idéntico. Son las dos propiedades que quedaban del auditor del sitio público que **se decidió no escribir** — ver la viñeta de B-122 más abajo |
+| Que un campo privado **sobreviva en el artefacto que se sube**, en cualquier archivo del `dist/` | El **paso 9** de `scripts/build-contra-emulador.mjs` (**B-121**). Recorre todo `.html`, `.json`, `.xml` y `.txt` que el build escribió y barre los centinelas, con las excepciones declaradas por salida. **No reemplaza a `barrido-de-salidas-publicas.test.ts` ni al revés:** aquél mira las funciones puras y corre sin build; éste mira lo que quedó escrito, que es lo único que prueba que ninguna plantilla interpoló por su cuenta. Va en el gate y no en la suite porque necesita un `dist/` (criterio de B-217) |
+| Que aparezca un **ciclo de imports**, que `10-salud-del-codigo.md` nombre un archivo que ya no existe, o que su metodología escrita deje de ser la que aplica el script que mide | `salud-del-codigo.test.ts` (**B-311**). Las cifras de ese documento **no** se chequean, y está decidido: se mueven con cada commit de cualquier frente, así que un chequeo se pondría rojo en la rama de quien no tocó el documento — B-180. Lo que se ata es lo discreto, y el ciclo es el único que además es una propiedad: no aparece por trabajo ajeno. Remedir es `node scripts/salud-del-codigo.mjs`, que avisa y no bloquea |
+| Que el **conteo de la suite** vuelva a escribirse a mano en la documentación de uso | `salud-del-codigo.test.ts` (**B-662**). Es el número que más veces envejeció del repo —2.148, 2.006, 2.039, 2.173, 2.208 contra 2.637— y en un merge llegó a estar tres veces con tres valores (B-296). El chequeo no compara el número (eso sería rojo en cada test nuevo): exige que **no esté**, porque la suite lo imprime al terminar. `CHANGELOG`, `BACKLOG` y `10-salud-del-codigo.md` quedan afuera: ahí un conteo fechado es el dato |
+| Que **esta misma tabla** se rompa por un merge, o que su índice apunte a un test que ya no existe | `red-de-contencion.test.ts` (B-367, B-294 y **B-660**). Las tres primeras reglas son de forma —ninguna línea con dos barras verticales seguidas, ninguna que deje de empezar con una, ninguna primera celda repetida—; las tres de B-660 son de contenido: los cincuenta nombres de test que el documento cita existen todos, y ninguna línea de prosa pasa de 100 caracteres en un archivo envuelto a 80, que es la señal genérica de dos oraciones que un merge dejó pegadas. Es la única fila que se verifica a sí misma, y por eso está: la tabla es lo que los tres auditores consultan para no reportar lo que un test ya frena |
 
 ### Porque un agente no es la herramienta
 
 - **Verificar el sistema real** (leer el ICS del calendario, las cabeceras de
-  cache, intentar la escritura anónima). Son comandos de
-  [`07-seguridad.md`](07-seguridad.md) y [`08-operacion.md`](08-operacion.md)
-  que necesitan red y secretos que un agente no debe tener en la mano. Queda como
-  B-116.
+  cache, intentar la escritura y la lectura anónimas). Necesita red y una URL
+  privada que un agente no debe tener en la mano, así que **no lo hace un agente
+  — pero sí un script**: `scripts/verificar-produccion.mjs` (**B-116**, cerrado el
+  2026-09-03). Es la misma forma que `relevar-infra.sh` de la viñeta de abajo: lo
+  delicado queda del lado del dueño, que es quien lo corre, y lo que se puede
+  decidir se decide en código con sus tests
+  (`tests/verificar-produccion.test.ts`) — la derivación de las cabeceras desde
+  `firebase.json`, que un rechazo de reglas se distinga de una respuesta vacía, y
+  el desdoblado del ICS antes de buscar. **No entra a ningún gate**: pega contra
+  producción, y un gate que falla cuando se cae el wifi es el que enseña a
+  saltear los gates (B-180).
 - **Crear credenciales** (PAT, key de service account, toggles de consola). Lo
   prohíbe el §5.4 y lo dice el backlog: es trabajo del dueño.
 - **Re-relevar el inventario de infra** (§ `02-infraestructura.md`): necesita
@@ -546,7 +578,32 @@ seis frentes en paralelo no comparten qué se auditó.
   cerrado el 2026-08-25). La mitad que decide —`comparar-infra.sh`— está separada y
   tiene tests, porque no necesita credenciales. Lo que queda del lado del dueño es
   correrlo.
-- **Un auditor del sitio público** (SEO, indexabilidad, accesibilidad): desde
+- **Un auditor del sitio público** — ✅ **decidido que NO, el 2026-09-03 (B-122).**
+  Se cerró aplicándole al ítem el criterio de arriba —un agente que repite lo que
+  un chequeo ya frena es costo sin cobertura— y separando lo que le quedaba sin
+  red en dos montones:
+
+  | Lo que faltaba | Qué resultó ser | Dónde vive ahora |
+  |---|---|---|
+  | Un `<title>` distinto en cada página | **propiedad del artefacto** | paso 10 de `scripts/build-contra-emulador.mjs`, con la decisión en `scripts/seo-del-artefacto.mjs` y sus casos en `tests/seo-del-artefacto.test.ts` |
+  | La jerarquía de encabezados (un `h1`, sin niveles salteados al bajar) | **propiedad del artefacto** | ídem |
+  | El **nombre accesible** de un control, y el **foco en un recorrido real** | **ninguna de las dos cosas** | sigue siendo manual — ver abajo |
+
+  Las dos primeras se rompen en silencio y se ven perfectas: un título heredado
+  del layout, un `h3` con la clase del `h2`. Eso es exactamente una propiedad, y
+  una propiedad se testea. Escribir un agente para mirarlas habría sido pagar un
+  modelo por hacer un `grep`.
+
+  **Lo que queda no lo hace un agente tampoco, y por eso el ítem cierra en vez de
+  encogerse:** el nombre accesible y el recorrido de foco necesitan **tabular una
+  página viva**. Un agente con `Read` y `Grep` mira el mismo HTML que el paso 10 y
+  no puede tabular nada, así que reportaría lo mismo o menos, con costo por
+  corrida. Queda como **verificación manual**, junto a los otros dos manuales de
+  este documento, y con la puerta abierta a un runner de navegador el día que
+  haya uno — que sería otra herramienta, no un agente.
+
+  El texto original de la viñeta queda abajo, porque explica de dónde salió cada
+  parte: desde
   B-227 ya hay HTML de verdad contra el que escribirlo, así que el motivo viejo
   —«no existe»— caducó. **Y el segundo motivo también caducó el 2026-09-02:** el
   SEO absoluto existe (B-109), así que ya no hay nada que esperar. Lo que cambió
@@ -560,8 +617,9 @@ seis frentes en paralelo no comparten qué se auditó.
   allá del contraste (orden de encabezados, nombres accesibles, foco en un
   recorrido real) y la **calidad** del contenido indexable —que un `<title>` diga
   algo distinto en cada página, que la `meta description` no se corte a mitad de
-  palabra—, que son juicios y no propiedades. Y una parte ya está automatizada y no le corresponde: el contraste lo
-  calculan `tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio,
+  palabra—, que son juicios y no propiedades. Y una parte ya está automatizada
+  y no le corresponde: el contraste lo calculan
+  `tests/contraste-del-sitio.test.ts` (B-235) para el markup del sitio,
   `tests/listado-del-sitio.test.ts` (B-247, B-260) para el listado —que es donde
   hay texto encima de algo que no es el papel— y, sobre las tres superficies,
   `tests/contraste-de-superficies.test.ts` (B-243, B-256). Desde **B-260** se suma

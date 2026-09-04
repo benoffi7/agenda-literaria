@@ -78,8 +78,24 @@ Buscá, con `grep` y leyendo:
    con el mismo título, dos filas del mismo secreto con estados distintos, dos
    líneas de `firebase deploy --only functions:...` con listas distintas de
    funciones, un "desplegar solo esas tres" seguido de un "desplegar solo esas
-   dos". `tests/sin-marcadores-de-conflicto.test.ts` atrapa los marcadores de
-   git, **no** atrapa esto.
+   dos".
+
+   **Dos tests ya se llevaron una parte, y esa parte no la reportes** (B-606 —
+   la versión anterior de esta línea decía que nada de esto lo atrapaba ningún
+   test, y eso dejó de ser cierto):
+
+   | Ya cubierto | Por |
+   |---|---|
+   | Los marcadores de git (`<<<<<<<`, `=======`, `>>>>>>>`) en cualquier archivo versionado | `tests/sin-marcadores-de-conflicto.test.ts` |
+   | En **`docs/13-agentes.md`** y solo ahí: filas de la tabla «no automatizar» fusionadas con dos barras verticales, filas que dejaron de empezar con una, primeras celdas repetidas, nombres de test que ya no existen, y líneas de prosa de más de 100 caracteres (la señal de dos oraciones pegadas) | `tests/red-de-contencion.test.ts` (B-367, B-294, B-660) |
+
+   **Lo que sigue siendo tuyo, y es la mayor parte:** el mismo drift en
+   *cualquier otro* documento, y en `13-agentes.md` la variante que ninguna de
+   esas seis reglas ve — dos filas distintas que dicen cosas contradictorias
+   sobre el mismo test, o un texto que quedó describiendo un test que cambió de
+   trabajo. La forma se automatizó; el **criterio** de cuál versión de un texto
+   duplicado queda no se puede automatizar y es el trabajo que B-294 tuvo que
+   hacer a mano.
 4. **Referencias muertas:** archivos, scripts de `package.json`, funciones y
    comandos que la doc nombra y que no existen (o al revés: `src/lib/*`,
    `functions/*`, `scripts/*` y scripts de `package.json` que no están
@@ -135,9 +151,11 @@ Cuatro cosas concretas, todas verificables con `grep`:
    del caro. El patrón correcto es dejar la fila diciendo "cubierto por
    `tests/x.test.ts`, no lo reportes".
 3. **La tabla "Qué se decidió no automatizar"** de `13-agentes.md` afirma, fila
-   por fila, que *ya hay un test*. Verificá que el test siga existiendo y que
-   siga verificando eso. Una fila cuyo test se borró es una decisión que dejó de
-   tener fundamento.
+   por fila, que *ya hay un test*. Que el archivo **exista** ya lo verifica
+   `tests/red-de-contencion.test.ts` (B-660), así que eso no lo reportes. Lo que
+   sigue sin red es lo de arriba: que ese test siga verificando **eso** y no
+   otra cosa. Una fila cuyo test cambió de trabajo es una decisión que dejó de
+   tener fundamento y se lee igual de convincente que el día que se escribió.
 4. **El hook no se activa solo.** `githooks/pre-push` no hace nada sin
    `git config core.hooksPath githooks`. Si `docs/08-operacion.md` dejó de decir
    ese comando, el gate es decorativo para cualquiera que clone el repo.

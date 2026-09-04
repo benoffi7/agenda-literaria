@@ -77,27 +77,40 @@ la lista contra `docs/02-infraestructura.md` y `docs/08-operacion.md`: es la
 
 ## 4 · Verificar después
 
+**Es un script desde B-116.** Antes eran nueve bloques de markdown repartidos
+entre `07-seguridad.md` y `08-operacion.md` que había que copiar, pegar en orden e
+interpretar de a uno — o sea que se corrían cuando alguien se acordaba.
+
 ```bash
-# la credencial no se filtró al bundle (§5.4, trampa 4)
-grep -rl "firebase-admin\|private_key" dist/ && echo "FUGA" || echo "limpio"
+# la credencial no se filtró al bundle (§5.4, trampa 4) — este sigue aparte
+# porque mira el `dist/` local y no producción
+./scripts/verificar-bundle.sh dist
 
-# qué versión quedó publicada
-curl -s https://agenda-literaria.web.app/version.json
+# todo lo que se lee del sistema real: escritura y lectura anónimas rechazadas,
+# el control positivo de /opciones, las cabeceras de cache contra lo que
+# firebase.json declara, y qué versión quedó publicada
+node scripts/verificar-produccion.mjs
 
-# cabeceras de cache: no-cache en / y /admin, no-store en /version.json,
-# immutable en /_astro/* (D-38 — son la mitad del mecanismo de actualización)
-for RUTA in / /admin /version.json; do
-  echo -n "$RUTA -> "
-  curl -sI "https://agenda-literaria.web.app$RUTA" | grep -i "^cache-control" || echo "(sin cabecera)"
-done
+# y, si se tocó el sync, además el calendario real
+GOOGLE_CALENDAR_ICS_PRIVADO='https://…/private-…/basic.ics' \
+  node scripts/verificar-produccion.mjs
 ```
 
-Si se tocó el sync, el bloque de verificación contra el calendario real está en
-`docs/07-seguridad.md` — necesita la URL privada del ICS, que **no va al repo ni
-pegada en un chat**.
+Tres cosas para leer bien la salida:
+
+- **Un `—` es un chequeo saltado, y no cuenta como verde.** El script dice por
+  qué no pudo (falta la URL del ICS, no hay `gh`, no hubo red). La diferencia
+  entre «lo verifiqué» y «no pude» es la mitad del valor.
+- **Las cabeceras de cache salen de `firebase.json`**, no de una lista escrita:
+  una regla nueva se verifica sola. La lista pegada que había acá enumeraba tres
+  rutas y hay cuatro.
+- **La URL privada del ICS va por variable de entorno**, nunca en el repo ni
+  pegada en un chat: da acceso de lectura al calendario entero. El script no la
+  imprime.
 
 Un `+…-sucio.…` en la versión avisa que se buildeó con cambios sin commitear: lo
-publicado no corresponde exactamente a ningún commit.
+publicado no corresponde exactamente a ningún commit, y el script lo marca como
+fallado.
 
 ## 5 · Qué NO hacer
 

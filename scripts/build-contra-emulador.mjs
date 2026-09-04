@@ -56,6 +56,26 @@
  *      sola** imagen sigue pintando una y no lleva sección de galería. Nada de
  *      eso lo puede ver un unitario: son tres medidas atravesando una plantilla
  *      que vitest no renderiza.
+ *   6. **B-121** — el barrido de centinelas sobre **todo** el `dist/`, y no sobre
+ *      un puñado de páginas elegidas a mano. Se recorre lo que el build escribió
+ *      (`.html`, `.json`, `.xml`, `.txt`) y se barre cada archivo, con las
+ *      excepciones declaradas por salida. Es lo que el ítem pedía desde el
+ *      principio —«el grep sobre `dist/`»— y lo que hace que una página nueva
+ *      entre al barrido sin que nadie se acuerde: el listado, la cartelera, las
+ *      páginas de mes, `/pasadas` y los hubs no estaban cubiertos por ninguno de
+ *      los pasos anteriores.
+ *
+ * ── Los dos barridos, y por qué hacen falta los dos ───────────────────────
+ * `tests/barrido-de-salidas-publicas.test.ts` mira las **funciones puras** —qué
+ * decide publicar la proyección— y corre en milisegundos sin build. El paso 9 de
+ * acá mira **lo que quedó escrito en el artefacto**, que es lo único que prueba
+ * que ninguna plantilla interpoló algo por su cuenta: un `title={imagen.storagePath}`
+ * agregado a un `.astro` pasa el barrido del view-model y muere acá.
+ *
+ * La contracara es que las excepciones se declaran **en los dos**, y eso ya falló
+ * una vez: B-99 declaró el id de sesión en el barrido de vitest y no acá, así que
+ * este gate quedó **rojo por un campo que se publica a propósito** — el modo de
+ * falla de B-180 en vivo. Ver `CENTINELA_DEL_INDICE`.
  *
  * Los dos documentos se borran al final, pase lo que pase (`finally`): el
  * emulador de quien está trabajando puede tener datos persistidos
@@ -66,7 +86,8 @@
  * local, aborta.
  */
 import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import { problemasDeJerarquia, tituloDe } from './seo-del-artefacto.mjs';
 
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -355,6 +376,48 @@ const CENTINELA_DEL_DETALLE = [
   // B-296 — el epígrafe de una imagen se muestra debajo de esa imagen (D-125).
   'epigrafeImagen',
 ];
+
+/**
+ * Lo que el **`events.json`** publica a propósito y este gate creía privado.
+ *
+ * `sesionId` es el **id de sesión**, y desde **B-99** el índice lleva un eje plano
+ * de encuentros (`{slug, sesionId, inicio}`). Es un uuid opaco generado en el
+ * cliente (trampa 2), sin PII, y ya era público en la página de detalle — está en
+ * `CENTINELA_DEL_DETALLE` de arriba. `tests/barrido-de-salidas-publicas.test.ts`
+ * lo declaró en su `PERMITIDO_EN_EL_INDICE` («el eje plano de encuentros (B-99)»)
+ * cuando la salida nació; **este archivo no se actualizó en el mismo cambio**, así
+ * que el paso 3 quedó fallando por un campo que se publica a propósito.
+ *
+ * Eso es el modo de falla de B-180 en vivo —un gate que falla por su propia
+ * plomería enseña a saltearlo— y explica por qué se descubrió recién al escribir
+ * el paso 9: hay que correr el gate para verlo, y el gate estaba rojo.
+ *
+ * **La lista de al lado es la autoritativa.** Cuando un campo nuevo entre a una
+ * salida, se declara **en las dos**: allá sobre el view-model, acá sobre el
+ * artefacto. Ver la nota de `docs/13-agentes.md` sobre por qué los dos barridos
+ * existen y no se reemplazan.
+ */
+const CENTINELA_DEL_INDICE = [];
+
+/*
+ * **Está vacía a propósito, y no le falta el id de sesión.** Cuando este barrido
+ * del artefacto se escribió, `sesionId` era un centinela de `CENTINELA` —la lista
+ * de lo que el índice recorta— y había que declararlo como excepción acá. Al
+ * integrar se resolvió del otro lado y mejor: el id **salió de `CENTINELA`** y se
+ * afirma en la dirección contraria, o sea que el gate exige que **aparezca**
+ * (`ID_DE_SESION_QUE_SALE`). Una excepción es un permiso que hay que recordar;
+ * un aserto positivo se rompe solo el día que el campo deje de salir.
+ */
+
+/**
+ * Lo que la **cartelera** publica a propósito.
+ *
+ * `/cartelera` muestra los flyers con su epígrafe debajo, que es exactamente para
+ * lo que D-125 agregó el campo — el mismo criterio con el que está permitido en la
+ * página de detalle. No publica nada más de la actividad que el índice no lleve:
+ * eso es lo que el paso 9 verifica barriéndole todo el resto de la lista.
+ */
+const CENTINELA_DE_LA_CARTELERA = ['epigrafeImagen'];
 
 /**
  * Las tres imágenes del caso de B-296: **una vertical, una apaisada y una
@@ -989,6 +1052,188 @@ try {
       }
     }
 
+    /*
+     * 9 · **B-121 — el barrido sobre TODO el `dist/`, y no sobre tres páginas
+     * elegidas a mano.**
+     *
+     * Es lo que el ítem pedía desde el principio: «el `grep` sobre `dist/`
+     * buscando `difusion`, la URL de la reunión y los uids». Hasta acá el gate
+     * barría el `events.json` (paso 3) y **tres** páginas de detalle nombradas
+     * una por una: la cancelada (paso 4), la de la galería y la publicada (8g).
+     *
+     * **Lo que esa forma no ve, y es la mitad del sitio.** El listado, la
+     * cartelera, las páginas de mes, `/pasadas`, los hubs y el sitemap también
+     * son HTML indexable que interpola datos de actividades, y ninguno estaba
+     * barrido. Peor: cada página nueva que nace queda afuera hasta que alguien
+     * se acuerde de agregarla acá — que es exactamente cómo la salida 5 y la 6
+     * llegaron tarde al mapa (B-212, B-227).
+     *
+     * Así que la lista **se deriva del `dist/`**: se recorre lo que el build
+     * escribió y se barre todo lo que es texto publicable. Una página nueva
+     * entra sola. No hay nada que mantener.
+     *
+     * **Por qué esto no reemplaza a `tests/barrido-de-salidas-publicas.test.ts`
+     * ni al revés.** Aquél mira las **funciones puras** —qué decide publicar la
+     * proyección— y corre en milisegundos sin build. Éste mira **lo que quedó
+     * escrito en el artefacto**, que es lo único que prueba que ninguna
+     * plantilla interpoló algo por su cuenta: un `title={imagen.storagePath}`
+     * agregado en un `.astro` pasa el barrido del view-model y muere acá. Son
+     * complementarios y los dos hacen falta.
+     *
+     * **Por qué vive en el gate y no en la suite:** necesita un `dist/`
+     * construido, y `npm test` no puede depender de eso. Es el criterio de
+     * B-217, y es el mismo por el que dos archivos de test se saltean sin build.
+     */
+    {
+      const RAIZ_DIST = new URL('../dist/', import.meta.url);
+      const BARRIBLES = /\.(html|json|xml|txt)$/;
+
+      /** Todo lo publicable que el build escribió, relativo a `dist/`. */
+      const publicables = (await readdir(RAIZ_DIST, { recursive: true })).filter((r) =>
+        BARRIBLES.test(r),
+      );
+
+      /*
+       * Control positivo, y no es una formalidad: si el glob dejara de encontrar
+       * archivos —porque cambió el `outDir`, porque el build falló antes— este
+       * paso saldría en verde **sin haber mirado nada**, que es la forma exacta
+       * en que el paso 4 original pasaba leyendo cero documentos (B-217).
+       */
+      if (publicables.length < 5) {
+        fallo(
+          `el barrido del artefacto encontró ${publicables.length} archivo(s) publicables en dist/.\n` +
+            '  Son demasiado pocos: o el build no escribió nada, o cambió dónde escribe.\n' +
+            '  Un barrido sobre cero archivos pasa en verde sin haber mirado nada.',
+        );
+        salida = 1;
+      }
+
+      const hallazgos = [];
+      for (const relativa of publicables) {
+        const contenido = await readFile(new URL(relativa, RAIZ_DIST), 'utf8');
+
+        /*
+         * Las excepciones son **por salida**, cortas y justificadas, igual que en
+         * `tests/barrido-de-salidas-publicas.test.ts`: la página de detalle
+         * publica la descripción entera, la dirección y el tema (D-139); el
+         * índice publica el id de sesión desde B-99; la cartelera publica el
+         * epígrafe (D-125). **Todo lo demás se barre en todos los archivos**, que
+         * es lo que hace que una plantilla nueva no pueda publicar de más.
+         */
+        const permitido = relativa.startsWith('actividad/')
+          ? CENTINELA_DEL_DETALLE
+          : relativa === 'events.json'
+            ? CENTINELA_DEL_INDICE
+            : relativa.startsWith('cartelera/')
+              ? CENTINELA_DE_LA_CARTELERA
+              : [];
+        const prohibidos = Object.entries(CENTINELA).filter(
+          ([campo]) => !permitido.includes(campo),
+        );
+
+        for (const [campo, valor] of prohibidos) {
+          if (contenido.includes(valor)) hallazgos.push(`    ${relativa} → ${campo} (${valor})`);
+        }
+      }
+
+      if (hallazgos.length > 0) {
+        fallo(
+          `hay campos privados en el artefacto construido (${hallazgos.length} hallazgo(s)):\n` +
+            hallazgos.join('\n') +
+            '\n  Es B-121: el barrido sobre `dist/`. Lo que se sube tiene un campo que\n' +
+            '  ninguna salida pública debería llevar — y si el barrido de\n' +
+            '  `tests/barrido-de-salidas-publicas.test.ts` está en verde, entonces la\n' +
+            '  proyección recorta bien y lo publicó una **plantilla** por su cuenta.',
+        );
+        salida = 1;
+      }
+    }
+
+    /*
+     * 10 · **B-122 — las dos propiedades del HTML indexable que quedaban sin
+     * red, y que resultaron ser propiedades y no juicios.**
+     *
+     * El ítem pedía «un auditor del sitio público». Mirándolo con el criterio
+     * del propio repo —un agente que repite lo que un chequeo ya frena es costo
+     * sin cobertura— lo que le quedaba sin cubrir eran cuatro cosas, y solo dos
+     * de ellas necesitan un modelo:
+     *
+     *   · **un `<title>` distinto en cada página** → es una propiedad del
+     *     artefacto. Un título repetido hace que Google elija cuál de las dos
+     *     páginas indexar, y la que pierde deja de existir para quien busca. El
+     *     modo de falla clásico es una plantilla nueva que hereda el título del
+     *     layout y nadie lo nota, porque la página se ve bien.
+     *   · **la jerarquía de encabezados** → también es una propiedad: un `h1`
+     *     por página y ningún nivel salteado. Es lo primero que mira un lector
+     *     de pantalla para armarse el índice de la página, y se rompe en
+     *     silencio: visualmente un `h3` con la clase del `h2` es idéntico.
+     *   · el **nombre accesible** de un control y **el foco en un recorrido
+     *     real** → ésos no son propiedades del HTML: hay que tabular una página
+     *     viva. No los hace ni un test ni un agente con `grep`, y quedan
+     *     anotados como manuales en `docs/13-agentes.md`.
+     *
+     * Van acá y no en la suite por el mismo motivo que el paso 9: necesitan el
+     * HTML construido (criterio de B-217). Y **no cubren `/admin`**, que es una
+     * SPA de React: su HTML de build es una cáscara vacía y no tiene sentido
+     * medirle la jerarquía.
+     */
+    {
+      const paginas = (await readdir(new URL('../dist/', import.meta.url), { recursive: true }))
+        .filter((r) => r.endsWith('.html') && !r.startsWith('admin/'));
+
+      if (paginas.length < 5) {
+        fallo(
+          `el chequeo de SEO encontró ${paginas.length} página(s) en dist/: son muy pocas ` +
+            'para comparar títulos, así que un verde acá no diría nada.',
+        );
+        salida = 1;
+      }
+
+      const titulos = new Map();
+      const jerarquia = [];
+
+      for (const relativa of paginas) {
+        const html = await readFile(new URL(relativa, new URL('../dist/', import.meta.url)), 'utf8');
+
+        // 10a · El título, único.
+        const t = tituloDe(html);
+        if (!t) {
+          fallo(`dist/${relativa} no tiene <title>.`);
+          salida = 1;
+        } else {
+          if (!titulos.has(t)) titulos.set(t, []);
+          titulos.get(t).push(relativa);
+        }
+
+        // 10b · Un solo `h1`, y ningún nivel salteado al bajar.
+        for (const p of problemasDeJerarquia(html)) jerarquia.push(`    dist/${relativa} → ${p}`);
+      }
+
+      const repetidos = [...titulos.entries()].filter(([, rutas]) => rutas.length > 1);
+      if (repetidos.length > 0) {
+        fallo(
+          'hay páginas que comparten el <title>:\n' +
+            repetidos
+              .map(([t, rutas]) => `    "${t}" → ${rutas.map((r) => `dist/${r}`).join(', ')}`)
+              .join('\n') +
+            '\n  Google elige cuál de las dos indexar, y la que pierde deja de existir\n' +
+            '  para quien busca. Es el objetivo del proyecto (§2.3): que la gente\n' +
+            '  encuentre los talleres.',
+        );
+        salida = 1;
+      }
+
+      if (jerarquia.length > 0) {
+        fallo(
+          'la jerarquía de encabezados está rota:\n' +
+            jerarquia.join('\n') +
+            '\n  Es el índice con el que un lector de pantalla recorre la página, y se\n' +
+            '  rompe en silencio: un h3 con la clase del h2 se ve idéntico.',
+        );
+        salida = 1;
+      }
+    }
+
     if (salida === 0) {
       console.log(
         `\n  ✓ el build leyó Firestore: ${slugs.length} actividad(es) en el events.json, ` +
@@ -1001,7 +1246,11 @@ try {
           'canónica coinciden en un solo origen (B-109).\n' +
           '  ✓ la actividad con tres imágenes pinta las tres, con la portada marcada arriba, ' +
           'un solo `eager`, un solo texto alternativo y tres cajas de proporción distinta; y ' +
-          'la de una sola imagen sigue pintando una, sin sección de galería (B-296).',
+          'la de una sola imagen sigue pintando una, sin sección de galería (B-296).\n' +
+          '  ✓ ningún campo privado sobrevivió en NINGÚN archivo publicable del dist/ ' +
+          '(B-121): la lista se recorre, no se enumera.\n' +
+          '  ✓ cada página tiene su propio <title> y una jerarquía de encabezados sana ' +
+          '(B-122).',
       );
     }
   }

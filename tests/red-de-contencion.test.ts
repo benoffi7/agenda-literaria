@@ -156,4 +156,58 @@ describe('el disparo automático del auditor está cableado — B-124', () => {
     // nunca, y entonces el gate del commit es imposible de satisfacer.
     expect(config.hooks.PostToolUse!.map((g) => g.matcher)).toEqual(['Task|Agent']);
   });
+
+  const nombrados = (): string[] => {
+    const crudos = [...doc.matchAll(/`(?:tests\/)?([A-Za-z0-9._-]+\.test\.tsx?)`/g)].map(
+      (m) => m[1]!,
+    );
+    return [...new Set(crudos)].filter((n) => n !== 'x.test.ts');
+  };
+
+  it('nombra tests de verdad (control positivo: si da poco, el regex dejó de encontrarlos)', () => {
+    expect(nombrados().length).toBeGreaterThan(30);
+  });
+
+
+  it('todos los tests que nombra existen', () => {
+    const inexistentes = nombrados().filter(
+      (n) => !existsSync(fileURLToPath(new URL(`../tests/${n}`, import.meta.url))),
+    );
+    expect(
+      inexistentes,
+      'docs/13-agentes.md nombra tests que no existen: la fila afirma que algo ya ' +
+        'está verificado y apunta a un archivo borrado o renombrado.',
+    ).toEqual([]);
+  });
+
+
+  it('ninguna línea de prosa quedó pegada a otra por un merge', () => {
+    const LIMITE = 100;
+    let enCodigo = false;
+    const largas: string[] = [];
+    for (const [i, linea] of doc.split('\n').entries()) {
+      if (linea.trim().startsWith('```')) {
+        enCodigo = !enCodigo;
+        continue;
+      }
+      /*
+       * Fuera: bloques de código, filas de tabla y bloques indentados — los tres
+       * pasan de 100 legítimamente.
+       *
+       * La fila de tabla se reconoce **después de recortar los espacios**: una
+       * tabla anidada dentro de una viñeta va indentada dos espacios y sigue
+       * siendo una tabla. Sin el `trim` este chequeo reportaba las tres filas de
+       * la tabla de B-122, que es reportar de más — o sea, el camino más corto a
+       * que alguien afloje el umbral en vez de mirar el hallazgo.
+       */
+      if (enCodigo || linea.trim().startsWith('|') || linea.startsWith('    ')) continue;
+      if (linea.length > LIMITE) largas.push(`${i + 1}: (${linea.length}) ${linea.slice(0, 90)}…`);
+    }
+    expect(
+      largas,
+      `líneas de prosa de más de ${LIMITE} caracteres en un documento envuelto a 80 — ` +
+        'lo más probable es que un merge haya pegado dos oraciones en la misma línea:\n' +
+        largas.join('\n'),
+    ).toEqual([]);
+  });
 });

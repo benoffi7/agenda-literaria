@@ -343,4 +343,62 @@ describe('el cableado: todo lo que habla con el emulador usa esa base', () => {
       'PUBLIC_FIREBASE_PROJECT_ID: PROJECT_ID',
     );
   });
+
+  /**
+   * Y el mismo chequeo como **clase** — B-661, el cierre de B-169.
+   *
+   * El caso de arriba nombra dos archivos, y por eso protege dos archivos. El
+   * bug no era de `aprobar-opciones.mjs`: era la forma «un test de integración
+   * lanza un proceso que resuelve el proyecto por su cuenta», y esa forma la
+   * repite el segundo script que alguien ejecute desde un test. Hoy es uno; la
+   * primera vez que sean dos, el caso de arriba pasa en verde mientras vuelven
+   * los tres tests flaky de B-169 con otra cara — que es exactamente el
+   * «verificar la clase, no la instancia» de `docs/05-patrones.md`.
+   *
+   * La lista **se deriva** (`*.integracion.test.ts` del directorio, ya derivada
+   * arriba) y el criterio también: si el archivo lanza un proceso, ese proceso
+   * tiene que recibir el `projectId`. No hay nada que agregar a mano cuando
+   * nazca el próximo.
+   *
+   * **Por qué no se pone rojo por algo ajeno** (B-180): un archivo de
+   * integración nuevo solo lo activa si además lanza un proceso, y en ese caso
+   * el rojo es sobre su propio código, con el arreglo escrito en el mensaje.
+   *
+   * MUTACIÓN PROBADA: sacar el bloque `env:` del `execFileSync` de
+   * `opciones.integracion.test.ts` pone este caso en rojo nombrando el archivo.
+   */
+  it('ningún test de integración lanza un proceso sin pasarle el projectId — B-661', () => {
+    /** Los que lanzan un proceso hijo, sea con `node` o con un `.sh`. */
+    const LANZA = /\b(?:execFileSync|execSync|spawnSync|execFile|spawn)\s*\(/;
+
+    const lanzadores = ARCHIVOS_INTEGRACION.filter((a) => LANZA.test(fuente(`tests/${a}`)));
+
+    // Control positivo: si nadie lanza nada, el chequeo no compara nada y el
+    // verde no significaría que la clase está cubierta.
+    expect(
+      lanzadores.length,
+      'ningún archivo de integración lanza procesos: revisar el regex antes de ' +
+        'confiar en el verde de este caso',
+    ).toBeGreaterThan(0);
+
+    /*
+     * Se exige la forma de **clave de objeto** (`PUBLIC_FIREBASE_PROJECT_ID:`)
+     * y no la mención del nombre: los docblocks de estos archivos citan
+     * `process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria'` para
+     * explicar el bug, y con un `includes` a secas un comentario alcanzaría
+     * para satisfacer el chequeo. Fue el primer intento y la mutación lo mostró.
+     */
+    const sinProjectId = lanzadores.filter(
+      (a) => !/PUBLIC_FIREBASE_PROJECT_ID\s*:/.test(fuente(`tests/${a}`)),
+    );
+    expect(
+      sinProjectId,
+      'estos tests de integración lanzan un proceso y no le pasan ' +
+        '`PUBLIC_FIREBASE_PROJECT_ID` en el `env`: el proceso va a resolver el ' +
+        'proyecto por su cuenta (el default es el literal `agenda-literaria`) y ' +
+        'va a trabajar sobre una base distinta de la que el test siembra y ' +
+        'afirma. Es B-169: el síntoma no es un error, es un test que falla una ' +
+        'de cada N corridas.',
+    ).toEqual([]);
+  });
 });

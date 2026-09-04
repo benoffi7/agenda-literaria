@@ -1,30 +1,52 @@
 # Salud del código
 
 Diagnóstico medido, no una lista de buenas intenciones. Todo número de acá salió
-de contar el árbol real en el commit de la auditoría del **2026-08-27**, cuarenta
-commits después de la medición anterior (`13b9baa`). **Se remidió todo**: no hay
-ningún número heredado sin volver a contarlo, que es la única forma de que la
-comparación signifique algo.
+de contar el árbol real. **Se remidió todo el 2026-09-03** (B-311) sobre
+`4f51092`: no hay ningún número heredado sin volver a contarlo, que es la única
+forma de que la comparación signifique algo.
 
-> ⚠️ **Los números de este documento son del 2026-08-27 y ya quedaron viejos.** Entre
-> esa fecha y el 2026-08-31 entraron B-245/B-246 (identidad y paleta), B-249 y B-253
-> (la forma del detalle, el chrome y las tres páginas de texto): tres archivos de test
-> nuevos, un módulo nuevo (`src/components/sitio/estilos.ts`) y reescrituras grandes en
-> cinco `.astro`. **No se tocó ningún número acá a propósito** — el documento vale
-> porque cada cifra salió de contar, y estimarlas para que «queden actualizadas» es
-> exactamente lo que lo haría inútil. Hay que remedir con la misma metodología, en una
-> pasada propia.
+> ✅ **Y desde esta pasada, recontar es un comando.** `node scripts/salud-del-codigo.mjs`
+> imprime el §1.1, el §1.2, el §1.4, el §1.5 y el §1.6 en markdown, listos para
+> pegar; con `--json`, para otro programa. La metodología de abajo **es la del
+> script**, no una descripción de al lado que puede separarse: `tests/salud-del-codigo.test.ts`
+> verifica que el documento y la herramienta declaren el mismo criterio.
 >
-> **La única excepción es el §1.3, remedido el 2026-09-02 (B-201)**, con el criterio
-> del conteo escrito al lado. Se remidió solo porque era el único número que el
-> backlog pedía recontar; el resto del documento sigue esperando esa pasada. Para
-> calibrar cuánto quedó viejo el resto: el §1.1 dice **111** archivos de producción
-> y hoy son **156**.
+> El motivo por el que hacía falta: entre el 2026-08-27 y el 2026-09-03 el §1.1
+> declaraba **111** archivos de producción mientras el árbol tenía **180**. No fue
+> desidia — el documento prohíbe estimar, y remedir a mano son un par de horas, así
+> que en la práctica no se remedía. **Lo caro nunca fue el juicio; era contar.**
+>
+> **Lo que el script NO hace, a propósito:** no escribe este documento y no
+> decide nada. Qué significa que una cifra se movió, qué entra en «lo que está
+> bien» y qué problema abrió o cerró sigue siendo trabajo de quien remide. Y **no
+> hay ningún test que compare estas cifras contra el árbol**: se moverían con cada
+> commit de cualquier otro frente, y un chequeo que se pone rojo por trabajo ajeno
+> es el que enseña a saltearse los chequeos (B-180). Lo que sí está atado es lo
+> discreto — los ciclos, los archivos que las tablas nombran, y que el criterio no
+> se separe de la herramienta.
 
-Metodología: `git ls-files` filtrado a `.ts`, `.tsx`, `.js`, `.mjs` y `.astro`.
-"Significativas" excluye líneas en blanco y comentarios. El grafo de imports
-resuelve `@/`, `@calendario`, `@historial` y los relativos, e incluye los
-`import()` diferidos.
+Metodología, que es la que aplica `scripts/salud-del-codigo.mjs`:
+
+- **Corpus:** `git ls-files` filtrado a `.ts`, `.tsx`, `.js`, `.mjs` y `.astro`.
+- **Áreas:** `src/`, `functions/` y `scripts/` son producción; `tests/` va aparte
+  y no suma al total.
+- **LOC:** líneas del archivo, como `wc -l`.
+- **Significativas:** sin líneas en blanco y sin líneas de comentario. Una línea
+  con código *y* comentario al final cuenta como significativa: lo que se mide es
+  cuánta línea es **solo** prosa.
+- **Grafo de imports:** resuelve `@/`, los alias a `functions/` que declara
+  `astro.config.mjs` —hoy `@calendario`, `@historial` y `@png-chunks-seguros`, y
+  se leen de ahí en vez de listarse— y los relativos; incluye los `import()`
+  diferidos. `node_modules` queda afuera, `react` incluido.
+- **Fan-in:** consumidores **de producción**; `tests/` no cuenta.
+- **Ciclos:** DFS sobre el grafo completo.
+
+> ⚠️ **Las cifras de 2026-08-27 se midieron a mano y su criterio no está escrito.**
+> Donde una columna «antes» difiere de la de hoy por poco, parte de la diferencia
+> puede ser de criterio y no del árbol. De esta pasada en adelante el criterio es
+> el del script, así que las comparaciones futuras sí son limpias. Es el mismo
+> argumento que B-201 puso para el §1.3 y la razón por la que este documento
+> prefiere un número viejo a uno estimado: el viejo, al menos, se sabe viejo.
 
 **Qué NO es este documento:** no propone cambiar ninguna decisión del
 [`CLAUDE.md`](../CLAUDE.md). El panel es un monolito en `/admin` por decisión
@@ -35,18 +57,32 @@ resuelve `@/`, `@calendario`, `@historial` y los relativos, e incluye los
 
 ## 0. Qué cambió, en dos números
 
-| | `13b9baa` | Hoy |
-|---|---:|---:|
-| Concentración en los 15 archivos más grandes | 41,7 % | **40,6 %** |
-| Líneas de test por línea de código testeable | 1,14 | **1,45** |
-| Código de producción | 14.865 LOC | **20.611 LOC** (+39 %) |
-| Ciclos de import | 0 | **0** |
+| | `13b9baa` | 2026-08-27 | Hoy (2026-09-03) |
+|---|---:|---:|---:|
+| Concentración en los 15 archivos más grandes | 41,7 % | 40,6 % | **30,9 %** |
+| El archivo más grande, sobre el total | — | 5,6 % | **3,3 %** |
+| Líneas de test por línea de código testeable | 1,14 | 1,45 | **1,62** |
+| Código de producción | 14.865 LOC | 20.611 LOC | **41.388 LOC** (+101 %) |
+| Archivos de producción | — | 111 | **180** |
+| Ciclos de import | 0 | 0 | **0** |
 
-**El resultado no es que los números mejoraron: es que aguantaron.** El código
-creció un 39 % en cuarenta y dos commits y la concentración BAJÓ un punto.
-Cuando una métrica de forma se queda quieta mientras el denominador crece un
-tercio, no es que nadie tocó nada — es que lo que se agregó entró con la forma que
-ya tenía el repo. Eso es lo que el saneamiento estaba comprando.
+**El código se duplicó en siete días y la concentración cayó diez puntos.** Es la
+misma conclusión que la medición anterior, en un régimen más violento: la forma no
+se movió porque lo que entró entró con la forma que ya tenía el repo. La lectura
+correcta de la caída **no** es que se partieron archivos grandes —`ayuda.ts` creció
+de 1.153 a 1.354 LOC— sino que nacieron muchos archivos medianos, así que los
+quince de arriba pesan menos sobre un denominador que se duplicó.
+
+**Y por eso el porcentaje de concentración es, como el puesto del §1.3, una cifra
+que se mueve sola.** Las tres que hay que seguir son las de la derecha de la
+tabla: LOC de producción, ratio de tests y ciclos. Las dos primeras son
+denominador y numerador de la salud que este documento sabe medir; la tercera es
+la única que es una propiedad y no una foto — y es la única con test
+(`tests/salud-del-codigo.test.ts`).
+
+El ratio de tests subió de 1,45 a 1,62 mientras el código se duplicaba, que es el
+número más difícil de sostener de los cuatro: quiere decir que los tests crecieron
+más rápido que lo que verifican, dos mediciones seguidas.
 
 Lo que **sí** empeoró está abajo y es todo del mismo tipo: el método de
 verificación de los `.tsx`, que no se arregla creciendo prolijo.
@@ -59,47 +95,53 @@ verificación de los `.tsx`, que no se arregla creciendo prolijo.
 
 | Área | Archivos | LOC | Significativas |
 |---|---:|---:|---:|
-| `src/` | 96 | 17.961 | 11.444 |
-| `functions/` | 8 | 2.049 | 948 |
-| `scripts/` | 5 | 515 | 296 |
-| **Código (total)** | **111** | **20.611** | **12.735** |
-| `tests/` | 66 | 19.751 | 13.413 |
+| `src/` | 155 | 35.763 | 19.717 |
+| `functions/` | 15 | 3.494 | 1.425 |
+| `scripts/` | 10 | 2.131 | 1.268 |
+| **Código (total)** | **180** | **41.388** | **22.410** |
+| `tests/` | 125 | 45.096 | 27.315 |
 
-`tests/` son 61 archivos de test más 5 de fixtures. La suite corre **1.390 tests**,
-57 de ellos contra los emuladores.
+`tests/` son 118 archivos de test más 6 de fixtures y el helper del emulador. La
+suite corre **2.637 casos** (2.632 verdes, 5 salteados), y de los 118 archivos hay
+2 que se saltean enteros sin un `dist/` construido.
 
-Relación tests / código testeable (`.ts`/`.js`/`.mjs`, 13.579 LOC): **1,45 líneas
-de test por línea de código**, contra 1,14 en la medición anterior. Se mantuvo
-mientras el código crecía un 39 %, o sea que los tests crecieron más rápido que lo que
-verifican.
+Relación tests / código testeable (`.ts`/`.js`/`.mjs`, sin `.tsx` ni `.astro`:
+27.890 LOC): **1,62 líneas de test por línea de código**, contra 1,45 y 1,14 en las
+dos mediciones anteriores. Subió mientras el código se duplicaba.
 
 ### 1.2 Concentración
 
-Los quince archivos más grandes son el **40,6 %** del código (antes: 41,7 %). El
-más grande es el **5,6 %** (antes: 5,3 %).
+Los quince archivos más grandes son el **30,9 %** del código (antes: 40,6 % y
+41,7 %). El más grande es el **3,3 %** (antes: 5,6 %).
 
 | LOC | Archivo | Qué es |
 |---:|---|---|
-| 1.153 | `src/lib/ayuda.ts` | **texto** de la guía del panel |
-| 730 | `src/components/admin/CalendarioActividades.tsx` | vista calendario |
-| 725 | `src/lib/calendarioPanel.ts` | grilla del mes, puro |
-| 692 | `src/lib/analytics-eventos.ts` | vocabulario de eventos + sanitizado |
-| 671 | `src/lib/novedades.ts` | **texto** del historial de cambios |
-| 516 | `functions/index.js` | los tres triggers y su I/O |
-| 492 | `src/lib/textoRedes.ts` | el posteo para redes, puro |
-| 481 | `src/components/admin/AdminApp.tsx` | router del panel |
-| 464 | `src/components/admin/SesionesEditor.tsx` | filas de encuentros |
-| 448 | `functions/calendario.js` | el evento y el diff, puro |
-| 431 | `src/lib/formulario/autoguardado.ts` | el borrador del navegador |
-| 429 | `src/lib/duplicar.ts` | duplicar una actividad |
-| 380 | `src/types/actividad.ts` | el modelo |
-| 379 | `src/components/admin/ActividadFormulario.tsx` | el composer del formulario |
-| 367 | `src/components/admin/ListaActividades.tsx` | el listado |
+| 1.354 | `src/lib/ayuda.ts` | **texto** de la guía del panel |
+| 1.307 | `src/lib/detallePublico.ts` | el view-model de la página de detalle (D-140) |
+| 1.070 | `src/pages/actividad/[slug].astro` | la plantilla del detalle |
+| 989 | `scripts/build-contra-emulador.mjs` | el gate de build (B-217) |
+| 963 | `src/lib/contenidoDelSitio.ts` | qué documentos lee el build |
+| 903 | `src/lib/novedades.ts` | **texto** del historial de cambios |
+| 820 | `src/lib/analytics-eventos.ts` | vocabulario de eventos + sanitizado |
+| 743 | `src/components/publico/Buscador.tsx` | la island de filtros |
+| 742 | `src/lib/calendarioPanel.ts` | grilla del mes, puro |
+| 740 | `src/components/admin/CalendarioActividades.tsx` | vista calendario |
+| 723 | `src/lib/hubsPublicos.ts` | los hubs de indexación (B-108) |
+| 701 | `src/lib/listadoPublico.ts` | el listado, puro |
+| 593 | `src/components/admin/EstadisticasPanel.tsx` | el tablero del catálogo |
+| 580 | `functions/calendario.js` | el evento y el diff, puro |
+| 549 | `src/components/admin/AdminApp.tsx` | router del panel |
 
-Los dos primeros de la lista anterior siguen siendo **texto**, y sumaron el 46 %
-de su tamaño (`ayuda.ts` pasó de 789 a 1.153). Que la cima siga siendo copy en
-lugar de reglas de negocio es lo que hace que "el archivo más grande" no sea una
-señal de alarma acá.
+**Nueve de los quince nacieron con el sitio público o crecieron con él**, y ese es
+todo el contenido de la caída del 40,6 % al 30,9 %: no se partió nada, se agregó
+mucho. La cima sigue siendo copy (`ayuda.ts`, que creció otro 17 %), y el segundo
+puesto lo tomó `detallePublico.ts`, que es la pieza que D-140 puso a propósito
+entre Firestore y la plantilla — o sea que los dos archivos más grandes son, uno
+texto de usuario y el otro una frontera de privacidad. Ninguno de los dos es la
+clase de archivo grande que preocupa.
+
+**El que sí mirar es `functions/index.js`**, que sigue creciendo (516 → 542 LOC) y
+es el punto de concentración del Problema 3.
 
 ### 1.3 El formulario, cuatro mediciones después
 
@@ -121,11 +163,24 @@ Es el que más conviene seguir, porque es el que ya se hipertrofió una vez.
 >   sobre el mismo corpus del §1.1 (`git ls-files` filtrado a `.ts`, `.tsx`,
 >   `.js`, `.mjs` y `.astro`, sin `tests/`) — hoy **156** archivos.
 
-| | Antes del saneamiento | `13b9baa` | 2026-08-27 | Hoy (2026-09-02) |
-|---|---:|---:|---:|---:|
-| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | **376** |
-| Su fan-out | 12 | 19 | 25 | **26** |
-| Su puesto en la lista | 1º | 15º | 14º | **28º** |
+| | Antes del saneamiento | `13b9baa` | 2026-08-27 | 2026-09-02 | Hoy (2026-09-03) |
+|---|---:|---:|---:|---:|---:|
+| `ActividadFormulario.tsx` | 858 LOC | 258 | 379 | 376 | **413** |
+| Su fan-out | 12 | 19 | 25 | 26 | **24** |
+| Su puesto en la lista | 1º | 15º | 14º | 28º | **28º** |
+
+> **La columna de hoy la midió `scripts/salud-del-codigo.mjs`** (B-311), con el
+> criterio de arriba ya escrito adentro. Las anteriores se contaron a mano, así
+> que parte de la diferencia de fan-out (26 → 24) puede ser de criterio y no del
+> archivo. **Lo que no es de criterio es el LOC:** +37 líneas en un día, contra
+> −3 en los seis anteriores. El umbral escrito sigue siendo 550 con fan-out 30 y
+> sigue lejos, pero es la primera medición en la que el archivo vuelve a subir
+> con ganas — vale mirarlo en la próxima pasada antes que después.
+>
+> El puesto no se movió, y eso es coherente con lo que la propia sección dice de
+> él: no significa nada por sí solo. Catorce archivos nuevos le pasaron por
+> arriba en agosto y esta vez pasaron otros tantos, así que el archivo creció un
+> 10 % y quedó en el mismo lugar.
 
 **El número que se venía mirando dejó de subir, y el que se movió no dice lo que
 parece.** El razonamiento de las mediciones anteriores sigue siendo correcto
@@ -161,30 +216,43 @@ Fan-in, contando solo consumidores de producción:
 
 | Consumidores | Módulo | Fan-out |
 |---:|---|---:|
-| 43 | `src/types/actividad.ts` | **0** |
-| 28 | `src/components/admin/campos/Campo.tsx` | **0** |
+| 44 | `src/types/actividad.ts` | **0** |
+| 23 | `src/components/admin/campos/Campo.tsx` | **0** |
+| 19 | `src/lib/identidad.ts` | 1 |
+| 18 | `src/lib/sesiones.ts` | 1 |
+| 16 | `src/lib/rutasPublicas.ts` | **0** |
+| 15 | `functions/calendario.js` | **0** |
+| 15 | `src/components/sitio/estilos.ts` | **0** |
 | 13 | `src/components/admin/campos/Seccion.tsx` | 2 |
-| 12 | `src/lib/sesiones.ts` | 1 |
-| 9 | `functions/calendario.js` | **0** |
-| 9 | `src/lib/vistaPreviaEvento.ts` | 4 |
-| 8 | `src/components/admin/formulario/PropsSeccion.ts` | 1 |
-| 8 | `src/lib/actividades.ts` | 7 |
-| 8 | `src/lib/slugify.ts` | **0** |
+| 13 | `src/layouts/Base.astro` | 5 |
+| 13 | `src/lib/imagenes.ts` | 1 |
 
-**Los cuellos de botella siguen siendo hojas**, y el patrón se mantuvo mientras
-el fan-in del modelo subía de 36 a 43 consumidores: los dos módulos más
-importados tienen fan-out **0**. Concentrar dependencias en tipos y funciones
-puras que no dependen de nada es la forma correcta de concentrarlas. **No hay
-ningún módulo con fan-in alto y fan-out alto** — no hay god object.
+**Los cuellos de botella siguen siendo hojas, y el sitio público nació con la
+misma forma.** Es el hallazgo de esta medición en el eje de acoplamiento: los
+cuatro módulos que entraron a la lista son los cuatro del sitio —`identidad.ts`,
+`rutasPublicas.ts`, `estilos.ts` y `imagenes.ts`— y tres de ellos tienen fan-out
+**0**. Nadie los diseñó mirando esta tabla; salieron así porque el patrón ya
+estaba en el repo.
 
-El único que se acerca es `src/lib/actividades.ts` (8 in / 7 out), y es
-razonable: es la capa de acceso a Firestore, así que su trabajo es depender de
-cosas.
+`src/layouts/Base.astro` es el único con fan-in alto y fan-out no trivial (13 in
+/ 5 out), y es lo que un layout es: el lugar donde se juntan la hoja de fuentes,
+la identidad, la analítica y el chrome. **Sigue sin haber ningún god object.**
+
+`src/lib/actividades.ts`, que en la medición anterior era el único que se
+acercaba, salió de los diez: no encogió, lo pasaron. Es la capa de acceso a
+Firestore y su trabajo es depender de cosas.
 
 ### 1.5 Ciclos
 
-**Cero**, en 111 archivos de producción. Se midió con DFS sobre el grafo completo,
-`import()` diferidos incluidos.
+**Cero**, en 180 archivos de producción. DFS sobre el grafo completo, `import()`
+diferidos incluidos.
+
+**Es el único número de este documento con test.** `tests/salud-del-codigo.test.ts`
+corre el mismo DFS y falla si aparece un ciclo — y es el único que se puede atar
+sin romper la regla de B-180, porque un ciclo no aparece por trabajo ajeno: lo
+introduce el import que alguien acaba de escribir, y el rojo nombra la cadena
+entera. Las cifras de tamaño y prosa, en cambio, se mueven con cada commit de
+cualquiera, y ahí un chequeo sería el gate que falla por su propia plomería.
 
 Se volvió a medir después de B-224, con tres módulos nuevos
 (`lib/modalidades.ts`, `ModalidadesEditor.tsx`, `campos/FilasEditor.tsx`), y
@@ -196,21 +264,60 @@ cascadas la encuentre donde espera.
 
 ### 1.6 Prosa
 
-| Área | Comentarios / LOC |
-|---|---:|
-| `functions/` | 44,8 % |
-| `src/lib/` sin `ayuda.ts` ni `novedades.ts` | **43,6 %** |
-| `src/lib/` | 37,1 % |
-| `scripts/` | 31,5 % |
-| `tests/` | 20,2 % |
-| `src/components/` | 19,3 % |
+| Área | Comentarios / LOC | 2026-08-27 |
+|---|---:|---:|
+| `functions/` | **51,5 %** | 44,8 % |
+| `src/lib/` sin `ayuda.ts` ni `novedades.ts` | **50,8 %** | 43,6 % |
+| `src/lib/` | **46,3 %** | 37,1 % |
+| `src/` | **39,0 %** | — |
+| `scripts/` | **32,9 %** | 31,5 % |
+| `tests/` | **30,4 %** | 20,2 % |
+| `src/components/` | **25,9 %** | 19,3 % |
 
 El número de `src/lib/` **sube** al sacar los dos archivos de copy, porque esos
-son texto de usuario y casi no llevan comentarios: el 43,6 % de la lógica de
-`src/lib/` es prosa explicativa, contra 38,0 % en la medición anterior. Es mucho y
-es deliberado —cada decisión no obvia lleva su por qué al lado—, pero la
-observación de B-78 se agrandó junto con el número: parte de esa prosa es historia
-que pertenece al `CHANGELOG` y no al archivo.
+son texto de usuario y casi no llevan comentarios: hoy **la mitad** de la lógica
+de `src/lib/` es prosa explicativa, contra 43,6 % y 38,0 % en las dos mediciones
+anteriores.
+
+**Subieron las seis áreas, y la que más subió es `tests/` (20,2 % → 30,4 %).** Esa
+es la que dice qué está pasando: los tests que este repo escribió en la última
+semana son los de clase —los que explican qué bug los hizo nacer, qué mutación se
+probó y qué los haría pasar— y ese docblock es la mitad del valor del chequeo. No
+es prosa que sobre; es la que hace que un `it.fails` signifique algo dentro de
+seis meses.
+
+**Y este número no dice cuánta de esa prosa envejeció.** Para eso hay que leerla,
+y el 2026-09-03 se leyó: los 11 archivos de mayor proporción de `src/lib/` más
+otros nueve, buscando tres cosas —prosa que afirma algo que el código ya no hace,
+prosa duplicada, y relato de tickets que dejó de explicar la forma actual.
+
+**El resultado es el que sostiene la política, no el que la cuestiona:**
+
+| Lo que se buscó | Lo que se encontró |
+|---|---|
+| Referencias muertas (archivos, funciones, tests que la prosa nombra y no existen) | **cero**, en un barrido mecánico sobre todo `src/lib/` |
+| Relato de tickets que ya no explica la forma actual | **cero** que pase el filtro. Los cuatro candidatos evaluados trabajan — el de `identidad.ts` (D-141 → D-146 → D-150, el color que se fue y volvió) es el caso de libro: sin él, «la paleta es limitada» parece seguir vigente y alguien vuelve a sacar el color |
+| Un bloque de comentario pegado dos veces, textual | **uno**, en `tarjetaPublica.ts`, del último commit |
+| Premisas temporales congeladas | **cinco** — la clase más cara, y la única que vale arreglar |
+| Contadores desincronizados entre archivos vecinos | **tres** |
+
+**La clase que importa es la segunda, y no es «prosa de más».** Son comentarios
+que sostienen una decisión **vigente** sobre un hecho que dejó de ser cierto:
+«no hay testing-library y no se va a instalar» (la instaló B-08, el mismo ticket
+que el comentario cita), «el `events.json` todavía no está escrito» (existe, y
+consume esa misma función), «el sitio público está congelado y el dominio no está
+elegido» (está publicado en `agendaleh.ar`), «el sitemap no lleva `lastmod`» (lo
+lleva desde B-112, y lo dice el encabezado del mismo archivo). El daño no es el
+volumen: es que **el lector descuenta una decisión buena por una premisa falsa**.
+
+La lista completa, con `archivo:línea` y la corrección propuesta, está en el
+reporte del frente. Ninguna se aplicó acá porque `src/**` tenía cuatro frentes
+escribiendo.
+
+**Conclusión de B-78, y no cambia:** el 46 % es deliberado y no hay que bajarlo.
+Ver la fila de `ayuda.ts` y `novedades.ts` en «Qué no hay que tocar», que además
+**contradice la propuesta del propio ítem** de mudar el contenido a una carpeta
+aparte.
 
 ---
 
@@ -251,11 +358,13 @@ certificando una fuga porque lo que estaba mal era la especificación.
 La conclusión operativa no es "hay que medir más cosas": es que **la salud de
 forma y la corrección son ejes independientes**, y este documento solo habla del
 primero. Los auditores existen para el segundo, y esta vez encontraron lo que
-1.390 tests no.
+1.390 tests no (la suite de entonces; hoy son 2.637 y el argumento no cambia —
+son los mismos ejes).
 
-### Problema 1 · 39 componentes y 7.045 LOC de `.tsx` sin un solo test de componente
+### Problema 1 · 48 componentes y 9.962 LOC de `.tsx` con cuatro tests de render
 
-**Seguía siendo el hueco de método, y creció: eran 34 archivos y 5.355 LOC.**
+**Seguía siendo el hueco de método, y creció otra vez: eran 34 archivos y 5.355
+LOC, después 39 y 7.045, y hoy 48 y 9.962.**
 
 > ⚠️ **La premisa de este problema cambió a medias — ver B-08 en
 > [`BACKLOG.md`](BACKLOG.md), «camino propuesto, decisión del dueño».**
@@ -266,22 +375,30 @@ primero. Los auditores existen para el segundo, y esta vez encontraron lo que
 > Lo que **no** cambió es el alcance: el relevamiento de B-08 mostró que de los
 > candidatos reales, la mayoría es una pregunta pura que no necesita DOM (y ya
 > está cubierta) o algo que jsdom no puede medir (el scroll, sin layout real).
-> El único caso genuino que se hizo es `MenuAcciones` (cierre por clic afuera,
-> por `Escape`, foco devuelto), con `tests/menu-acciones.render.test.tsx`. El
-> conteo de abajo —39 componentes, 7.045 LOC— sigue siendo la foto de cuando se
-> escribió este documento y no se remidió: bajaría en uno, no en un número que
-> cambie la conclusión.
+> El primer caso genuino fue `MenuAcciones` (cierre por clic afuera, por
+> `Escape`, foco devuelto), con `tests/menu-acciones.render.test.tsx`.
+>
+> **Remedido el 2026-09-03 (B-311), y la excepción angosta creció sola a
+> cuatro:** además de `menu-acciones`, hoy hay `historial-actividad`,
+> `reportes-panel` y `estadisticas-pestanias`. Son 21 casos de render sobre 2.637
+> de la suite. Que hayan nacido tres más sin que nadie ampliara la política es la
+> señal de que el criterio de B-08 estaba bien puesto: se usan donde el cableado
+> de DOM es la pregunta, y no se derramaron al resto. El denominador, en cambio,
+> creció de 39 a 48 componentes y de 7.045 a 9.962 LOC — o sea que **el hueco se
+> agrandó más rápido de lo que se cubre**, que es exactamente lo que este problema
+> viene diciendo desde tres mediciones.
 
 Antes de B-08, estaba confirmado que no había forma de que existieran render
 tests: no había `@testing-library/*`, ni `jsdom`, ni `happy-dom` en las
 dependencias, y `vitest.config.ts` fijaba `environment: 'node'` sin excepción.
 Ese razonamiento —el texto que sigue— se escribió con esa restricción vigente.
 
-Lo que hay en su lugar, medido: **32 de los 59 archivos de test usan
-`readFileSync`** para verificar leyendo el fuente con expresiones regulares. Más
-de la mitad de la suite.
+Lo que hay en su lugar, medido: **73 de los 118 archivos de test usan
+`readFileSync`** para verificar leyendo el fuente con expresiones regulares (eran
+32 de 59). Más de la mitad de la suite, y la proporción no se movió: 54 % antes,
+62 % hoy.
 
-No todos esos 32 son el problema —leer el fuente es el enfoque **correcto** para
+No todos esos 73 son el problema —leer el fuente es el enfoque **correcto** para
 verificar el grafo de imports del bundle, que un workflow parsee, o que un mapa de
 documentación diga la verdad—, pero sí lo es cada vez que la pregunta era "¿este
 componente hace lo que corresponde?". Ese enfoque ya falló de tres maneras
@@ -382,16 +499,21 @@ había entonces es la red para subir de mayor con confianza:
 
 Un diagnóstico que solo encuentra problemas no se puede calibrar.
 
-1. **Cero ciclos de import** en 111 archivos, después de cuarenta commits que
-   agregaron un 36 % de código.
+1. **Cero ciclos de import** en 180 archivos, después de duplicar el código. Y
+   desde B-311 es el único número de acá que **no puede volver a envejecer**:
+   `tests/salud-del-codigo.test.ts` corre el mismo DFS en cada corrida.
 
-2. **Los cuellos de botella siguen siendo hojas**, y aguantaron el crecimiento:
-   los dos módulos más importados (43 y 28 consumidores) tienen fan-out **0**.
+2. **Los cuellos de botella siguen siendo hojas**, y el sitio público nació con
+   esa forma sin que nadie lo pidiera: los cuatro módulos que entraron al top-10
+   de fan-in son suyos y tres tienen fan-out **0**.
 
-3. **La forma resistió el crecimiento.** Es el hallazgo principal de esta
-   medición y es fácil de pasar por alto porque no es un número que sube: la
-   concentración se movió del 41,7 % al 40,6 % mientras el denominador crecía un
-   tercio.
+3. **La forma resistió un crecimiento del 101 %.** Es el hallazgo principal de
+   esta medición y es fácil de pasar por alto porque no es un número que sube: la
+   concentración cayó del 40,6 % al 30,9 % y los ciclos siguen en cero mientras
+   el denominador se duplicaba en siete días, con cinco frentes escribiendo en
+   paralelo. **Eso último es lo que hace que valga la pena decirlo:** la forma
+   aguantó no un crecimiento ordenado sino uno concurrente, que es el régimen en
+   el que se rompe.
 
 4. **La duplicación más peligrosa sigue prevenida por construcción.**
    `functions/calendario.js` se comparte por el alias `@calendario` (D-20) en vez
@@ -434,7 +556,7 @@ Estas cosas parecen problemas si se las mira solo con métricas.
 |---|---|---|
 | **El panel como monolito en `/admin`** | Decisión cerrada: un repo, un Hosting target, un deploy. El bundle pesado ya está aislado (D-51). | `CLAUDE.md` §2.3 |
 | **Firestore como única fuente de verdad** | Decisión cerrada. Nada de sync bidireccional. | `CLAUDE.md` §2.1 |
-| **`ayuda.ts` y `novedades.ts` como los archivos más grandes** | Son **texto de usuario**, no lógica. Un archivo de copy grande no es deuda; partirlo agregaría paths para que la copy viva en cinco lugares. | §1.2 |
+| **`ayuda.ts` y `novedades.ts` como los archivos más grandes** | Son **texto de usuario**, no lógica. Un archivo de copy grande no es deuda; partirlo agregaría paths para que la copy viva en cinco lugares. **Esto contradice la propuesta de B-78** de mudarlos a una carpeta de contenido aparte, y la contradicción se resolvió el 2026-09-03 a favor de esta fila: el propio ítem dice que es cosmético y que «no cambia comportamiento ni destraba nada», y a cambio movería dos archivos que la doc, los tests y dos reglas de proceso de `05-patrones.md` nombran por su ruta. **Y no bajaría el número que el ítem cita:** son copy y casi no llevan comentarios, así que sacarlos de `src/lib/` *sube* la proporción de prosa (§1.6 lo mide en las dos direcciones). Lo que sí valía de B-78 —leer la prosa y ver cuánta envejeció— se hizo, y está en el §1.6. | §1.2, §1.6, B-78 |
 | **`CAMPOS_VALIDABLES` como constante a mano** | Derivarla en runtime metía zod (68 kB) en el chunk inicial. La garantía vive en un test que la deriva del schema. | D-60, D-98 |
 | **La copia de `CAMPOS_TAXONOMIA` en `functions/index.js`** | `functions/` se despliega con su propio `package.json` y no puede importar hacia arriba. Si molesta, la respuesta es un test que compare las dos listas, no un import imposible. | D-20 |
 | **`ETIQUETA_ENTREGA` duplicado entre panel y evento** | El panel capitaliza («Al inscribirse»), el evento va en minúscula a mitad de frase. Unificarlos haría que un cambio de copy del panel cambie lo que se publica. Lo que **sí** se unificó es `ETIQUETA_TIPO_MATERIAL`, que son sustantivos. | §5.1, B-134 |
@@ -448,17 +570,28 @@ Estas cosas parecen problemas si se las mira solo con métricas.
 
 ## 5. Resumen en una línea
 
-**La forma aguantó un 36 % de crecimiento sin moverse, y el problema que quedó no
-es de forma.** Esta medición encontró una fuga de privacidad abierta en
+**La forma aguantó que el código se duplicara, y el problema que quedó no es de
+forma.** La medición del 2026-08-27 encontró una fuga de privacidad abierta en
 producción (B-208) que ninguna métrica de este documento podía ver y que un test
 en verde estaba certificando — la lección es que la salud de forma y la corrección
 son ejes independientes, y este archivo solo mide el primero.
 
-Del eje de forma, lo que queda es **el método, no la estructura**: 39 componentes
-y 6.962 LOC de `.tsx` se verifican leyendo el fuente con expresiones regulares
-(B-08). El mismo día dio las dos pruebas de lo que eso cuesta — **no vio** un bug
-que estaba a la vista (B-210) y **frenó** el refactor que lo arregló, poniendo
-cuatro `it` en rojo por mejorar el código.
+**Y la remedición del 2026-09-03 (B-311) agregó una segunda lección, sobre el
+documento y no sobre el código:** el eje que este archivo mide no se estaba
+midiendo. Entre las dos pasadas el §1.1 declaró 111 archivos mientras el árbol
+tenía 180, y no fue por descuido: el documento prohíbe estimar y contar a mano
+son un par de horas. **Un diagnóstico que solo se puede producir a mano es un
+diagnóstico que se produce una vez.** Por eso ahora hay
+`scripts/salud-del-codigo.mjs`, y por eso lo único que se ató con un test es lo
+discreto — atar las cifras habría puesto el gate en rojo por trabajo ajeno, que es
+el modo de falla de B-180.
+
+Del eje de forma, lo que queda es **el método, no la estructura**: 48 componentes
+y 9.962 LOC de `.tsx` con cuatro archivos de render test encima (B-08). El
+denominador creció más rápido que la cobertura, dos mediciones seguidas. Y hay
+dos pruebas de lo que eso cuesta — **no vio** un bug que estaba a la vista (B-210)
+y **frenó** el refactor que lo arregló, poniendo cuatro `it` en rojo por mejorar
+el código.
 
 Los tres P1 que esta medición abrió se cerraron el mismo día: B-210 (el cableado
 de capa modal, ahora compartido), B-211 (los trece `ts()`, ahora uno con guarda) y
