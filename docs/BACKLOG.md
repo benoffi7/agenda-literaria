@@ -7496,6 +7496,162 @@ del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
 tenga dos actividades).
 ## P3 — cuando sobre tiempo
 
+### B-630 · El barrido de versiones huérfanas no tiene script en seco · P3
+
+`limpiarImagenesHuerfanas` (B-221) tiene `scripts/limpiar-imagenes-huerfanas.mjs`:
+lista qué borraría sin borrar nada, reusa la misma decisión pura que la Function
+—no hay una segunda copia—, y sirve para correr el barrido a mano sin esperar el
+tick del reloj o para verlo en seco contra producción antes de confiar en la
+corrida programada.
+
+`limpiarVersionesHuerfanas` (B-89) no lo tiene, y la asimetría no es de diseño:
+el frente que la escribió no podía tocar `scripts/`. Hoy la única forma de
+verificar la primera corrida es por logs, ya documentada en `08-operacion.md`.
+
+El script sería el espejo del de imágenes: `subcoleccionesHuerfanas(db)` +
+`decidirPurga(...)` + imprimir, con `--aplicar` para ejecutar y la misma guarda
+de entorno que el otro (§ «Idempotencia en los scripts» de `05-patrones.md`).
+Media hora, y lo que compra es poder mirar qué va a borrar **antes** de que lo
+borre — que en una Function que borra la única copia de una actividad ya no
+existente vale más que en una que borra imágenes.
+```
+
+### B-631 · La verificación contra Calendar mira si el evento existe, no si dice lo mismo · P3
+
+`scripts/verificar-calendario.mjs` (B-125, D-293) le pregunta a Calendar por cada
+`calendarEventId` publicado y actúa sobre una sola respuesta: **existe o no
+existe**. Con `--reparar` recrea los que dan 404/410.
+
+Lo que no mira es la otra divergencia posible, que es la de **B-162**: el evento
+existe, y su texto no es el que el código de hoy produciría. Pasa cada vez que
+cambia *cómo se arma* la descripción —D-95 cambió la numeración de los ciclos con
+un encuentro cancelado y los eventos ya publicados se quedaron diciendo «de 7»—
+porque la guarda del §7.1 calcula los dos lados con el código de hoy y no ve
+diferencia (D-07). La divergencia solo se ve desde afuera, y este script es el
+único que mira desde afuera.
+
+**Y sale casi gratis:** `events.get` ya devuelve el evento entero. Hoy se usa
+`respuesta.data.status` y se descarta el resto; `summary`, `description`,
+`location`, `start` y `end` están ahí, sin una llamada más.
+
+El corte es el de siempre: la comparación pura en `functions/reconciliacion.js`
+—al lado de `interpretarExistencia` y `planificarReparacion`, que ya tienen su
+tabla testeada sin red— y el efecto en el script.
+
+Dos cuidados que no son obvios:
+
+- **Comparar el subconjunto que nosotros escribimos, no el evento entero.**
+  Calendar devuelve `etag`, `created`, `updated`, `iCalUID`, `sequence`,
+  `reminders`, `organizer`… nada de eso lo manda `construirEvento`, y compararlo
+  daría «distinto» en el 100 % de los eventos. Las claves a comparar salen de
+  `Object.keys(construirEvento(...))`, **derivadas y no listadas a mano**: un
+  campo nuevo en el evento entra solo al chequeo, que es el criterio de D-07 otra
+  vez.
+- **`start`/`end` vuelven normalizados.** Calendar devuelve `dateTime` con el
+  offset local (`2026-09-03T19:00:00-03:00`) y nosotros mandamos ISO en UTC
+  (`2026-09-03T22:00:00.000Z`): son el mismo instante y comparar los strings daría
+  distinto siempre. Se comparan por `Date.parse` (o `milisDe`), no por texto. El
+  `timeZone` sí se compara tal cual — es la trampa 1 y tiene que decir
+  `America/Argentina/Buenos_Aires`.
+
+Lo que compra: cierra **B-162** sin depender de la decisión de producto de
+**B-160** —que hasta ahora eran los dos juntos o ninguno— y deja medida la
+suposición que sostiene la guarda anti-loop para el próximo cambio de texto.
+```
+
+#### El parche de B-631, listo para el frente dueño de `scripts/`
+
+**En `functions/reconciliacion.js`** (mitad pura, con sus tests en
+`tests/reconciliacion.test.ts`):
+
+```js
+/**
+ * B-631 — ¿el evento que Calendar tiene dice lo mismo que el código de hoy
+ * produciría?
+ *
+ * Es la otra divergencia posible, la que la guarda del §7.1 no puede ver: los
+ * dos lados de esa comparación se calculan con el código de hoy (D-07), así que
+ * un cambio en *cómo se arma* la descripción deja los eventos publicados atrás
+ * y no emite ninguna operación (B-162). Desde afuera sí se ve, y este script es
+ * el único que mira desde afuera.
+ *
+ * Se comparan **solo las claves que `construirEvento` produce**, derivadas y no
+ * listadas a mano: Calendar devuelve además `etag`, `created`, `updated`,
+ * `iCalUID`, `sequence`, `reminders`, `organizer`… y compararlo entero daría
+ * "distinto" en el 100 % de los eventos. Derivarlas es lo que hace que un campo
+ * nuevo del evento entre solo a este chequeo, que es el criterio de D-07.
+ *
+ * `start`/`end` se comparan por **instante y zona**, no por texto: Calendar
+ * devuelve `dateTime` con el offset local (`…T19:00:00-03:00`) y nosotros
+ * mandamos ISO en UTC (`…T22:00:00.000Z`). Son el mismo momento; comparar los
+ * strings daría distinto siempre. El `timeZone` sí se compara tal cual — es la
+ * trampa 1, y tiene que decir `America/Argentina/Buenos_Aires`.
+ */
+export const camposDivergentes = (esperado, enCalendar) => {
+  const distintos = [];
+  for (const clave of Object.keys(esperado)) {
+    const a = esperado[clave];
+    const b = enCalendar?.[clave];
+    const iguales =
+      clave === 'start' || clave === 'end'
+        ? milisDe(a?.dateTime) === milisDe(b?.dateTime) && a?.timeZone === b?.timeZone
+        : (a ?? null) === (b ?? null);
+    if (!iguales) distintos.push(clave);
+  }
+  return distintos;
+};
+
+/**
+ * Las sesiones cuyo evento existe pero dice otra cosa. `eventos` es un `Map` de
+ * `sesion.id` → el cuerpo que devolvió `events.get`.
+ *
+ * Solo mira las que `interpretarExistencia` dio por `'existe'`: sobre una que no
+ * está, o una que no se pudo verificar, no hay contenido que comparar — y
+ * afirmar divergencia sobre un `'desconocido'` produciría un `update` sobre una
+ * sospecha, que es lo mismo que `interpretarExistencia` ya evita.
+ */
+export const planificarReescritura = (candidatas, resultados, eventos, construir) => {
+  const reescribir = [];
+  for (const c of candidatas) {
+    if ((resultados.get(c.sesion.id) ?? 'desconocido') !== 'existe') continue;
+    const esperado = construir(c.actividad, c.sesion);
+    const campos = camposDivergentes(esperado, eventos.get(c.sesion.id));
+    if (campos.length > 0) reescribir.push({ ...c, campos, evento: esperado });
+  }
+  return reescribir;
+};
+```
+
+(`milisDe` se importa de `./calendario.js`, como ya hace `rebuild.js` — D-20.)
+
+**En `scripts/verificar-calendario.mjs`**, dentro de `ejecutarVerificacion`: al
+guardar el resultado del `events.get`, guardar también el cuerpo (hoy se
+descarta), y después de `planificarReparacion` calcular la reescritura:
+
+```js
+  const resultados = new Map();
+  const eventos = new Map();                                   // ← nuevo
+  for (const c of candidatas) {
+    const respuesta = await cal.obtener(c.sesion.calendarEventId);
+    if (respuesta.ok) eventos.set(c.sesion.id, respuesta.data); // ← nuevo
+    resultados.set(/* … igual que hoy … */);
+  }
+
+  const { reparar: aReparar, desconocidos } = planificarReparacion(candidatas, resultados);
+  const aReescribir = planificarReescritura(candidatas, resultados, eventos, (a, s) =>
+    construirEvento(a, s, labels),
+  );
+```
+
+y en el bloque de `--reparar`, un `cal.actualizar(c.sesion.calendarEventId,
+c.evento)` por cada uno (no hace falta write-back: el `calendarEventId` no
+cambia). `aReescribir` sale en el `return` para que el reporte de solo lectura lo
+liste con sus `campos`, que es la mitad que vale aunque nadie repare nada.
+
+**Ojo con el orden:** la reescritura va **después** de las recreaciones, o se
+emitiría un `update` contra un evento que se acaba de recrear con ese mismo
+contenido.
+
 ### B-621 · El calendario y el tablero del panel siguen angostos · P3
 
 **D-330** dejó el ancho del panel decidido **por vista** y solo ensanchó el
@@ -8637,27 +8793,53 @@ público (B-98), después el estado agregado (B-97), y la lista de personas solo
 eso no alcanzó. Detalle en
 [`11-ideas-de-producto.md`](11-ideas-de-producto.md).
 
-### B-77 · `functions/index.js` es el único archivo de `functions/` sin el corte puro/trigger
+### B-77 · `functions/index.js` es el único archivo de `functions/` sin el corte puro/trigger — ✅ hecho (2026-09-03)
 
-327 LOC con seis responsabilidades: init de `db`, auth de Calendar, carga de
-labels, marcado de rebuild, dos triggers (`syncCalendar`, `rebuildPorOpciones`),
-el schedule `dispararRebuild` y un cliente HTTP de GitHub (líneas 239-263).
+**Siguió creciendo mientras estuvo abierto**, y conviene decirlo en vez de
+maquillarlo: el ítem lo describía con 327 LOC y para cuando se resolvió ya eran
+542. Nadie le achicó el alcance en el camino.
 
-El resto de `functions/` sí tiene el corte que
-[`05-patrones.md`](05-patrones.md) prescribe: `calendario.js`, `rebuild.js`,
-`historial.js` y `reportes.js` son puros (877 de las 1.502 LOC) y concentran los
-tests más densos del repo; `historial-trigger.js` y `reportes-trigger.js` son los
-wrappers. `index.js` quedó afuera, y es el archivo de 327 LOC **sin ningún test**.
+Ahora `index.js` queda en init del Admin SDK + re-exports, nada más. El resto se
+repartió en `despliegue.js` (región, cuenta de servicio y opciones comunes),
+`github.js` (el `repository_dispatch`, con el `fetch` inyectable — lo que el
+ítem pedía), `etiquetas.js` (el caché de `/opciones/*`, que comparten los dos
+triggers del lado de Calendar), `calendario-api.js` (auth y creación de
+eventos), `marca-de-rebuild.js`, y los tres triggers en `calendario-trigger.js`,
+`opciones-trigger.js` y `rebuild-trigger.js`.
 
-Ya se cobró una: el cliente de GitHub se duplicó sin el timeout (B-74). Extraer
-`functions/github.js` puro con `fetch` inyectable y mover `syncCalendar` a
-`calendario-trigger.js` es medio día y no hay diseño nuevo que discutir — el
-patrón se usa cinco veces en el mismo directorio.
+**El riesgo era D-35 y se verificó, no se razonó.** En ESM los imports se
+evalúan antes que el cuerpo del importador, así que el `setGlobalOptions` de
+`index.js` ya no alcanza a una Function definida en otro módulo: heredar habría
+dejado tres Functions en `us-central1` con la service account por defecto de
+Compute, a la que Calendar le contesta 404 en todo. Cada trigger declara sus
+opciones, y se comparó el `__endpoint` de las nueve Functions antes y después:
+región, cuenta de servicio, `maxInstances`, timeout, secretos y tipo de trigger
+salen **idénticos**.
 
-**No mover la copia de `CAMPOS_TAXONOMIA` de la línea 84 a `src/`:** `functions/`
-se despliega con su propio `package.json` y no puede importar hacia arriba
-(D-20 lo evaluó y descartó). Si molesta, la respuesta es un test que compare las
-dos listas.
+`github.js` estrena once tests, que es lo que el módulo hizo posible: el 401 con
+su cuerpo, el cuerpo ilegible que no puede convertir un 502 en «no falló», el
+fetch que tira sin propagar la excepción, el `AbortSignal` de B-74 y que el PAT
+no aparezca en el mensaje que se guarda en `sistema/rebuild.ultimoError`.
+
+**Y siete chequeos que leían `functions/index.js` por su nombre se pusieron
+rojos de golpe**, que es el buen final: el otro —seguir en verde leyendo un
+archivo donde ya no está lo que buscan— es el modo de falla que este repo
+persigue en todas partes. Ahora preguntan **qué archivo declara esa Function**
+(`tests/fixtures/functions.ts`). De paso apareció uno que se apagaba en
+silencio: el detector de llamadas a la red de B-85 buscaba `fetch(` en el
+archivo del trigger, y al irse el cliente a `github.js` devolvía lista vacía —
+con lo cual el regex caía en el primer paréntesis del cuerpo y la comparación de
+orden daba falso—. Ahora sigue los imports y tiene su control positivo.
+
+**No se movió la copia de `CAMPOS_TAXONOMIA`:** sigue sin poder importar de
+`src/` (D-20), y este refactor no era el lugar para discutirlo.
+
+**El drift que el propio corte dejó**, encontrado por el `auditor-documentacion`
+y cerrado en el mismo cambio: dos afirmaciones de doc que quedaron falsas
+(`02-infraestructura.md` sobre las opciones heredadas, `07-seguridad.md`
+ubicando `cargarLabels`) y tres comentarios que ubicaban `MAX_EVENTOS_RESYNC` en
+`index.js` — uno de ellos escrito por este mismo frente, o sea nacido stale.
+```
 
 ### B-78 · El 26 % de `src/lib/` es prosa, no lógica
 
@@ -9025,35 +9207,38 @@ pantalla habría mandado a arreglar algo que no está roto. Ahora tiene su propi
 `try` y su fallo **no se reporta**: lo único que se pierde es una posición en el
 orden del desplegable.
 
-### B-150 · El panel sigue siendo dueño de `calendarEventId` · P3
+### B-150 · El panel sigue siendo dueño de `calendarEventId` — ✅ hecho (2026-09-03) · P3
 
-B-80 se arregló del lado de la Function (D-91), que es el lado defensivo: el
-write-back repone el id que el panel pisó. Lo que **no** cambió es de quién es
-el campo: `formADocumento` sigue emitiendo `calendarEventId` en cada guardado,
-así que sigue habiendo una ventana en la que el documento tiene `null` y una
-sesión sin id.
+**Cerrado por la única salida que quedaba viva** (la corrección del 2026-09-02
+ya había descartado la otra): `actualizarActividad` relee el documento y fusiona
+los campos de máquina por id de sesión antes de escribir. Ver **D-360**.
 
-Con el arreglo de la Function esa ventana ya no deja daño permanente, así que
-esto es prolijidad, no un bug: que `actualizarActividad` relea el documento y
-fusione los ids por id de sesión antes de escribir, o directamente que
-`formADocumento` no emita el campo. Toca `src/lib/actividades.ts` y el
-formulario, o sea el archivo más disputado del repo (fase 2 del plan de
-saneamiento).
+Tres cosas que la implementación decidió y no eran obvias:
 
-**Corrección: de las dos salidas, una no sirve** (2026-09-02, mirado sin
-implementar). Que `formADocumento` **no emita el campo** no es la opción barata,
-es un bug peor: `actualizarActividad` usa `updateDoc` y eso **reemplaza el array
-`sesiones` entero**, así que una clave ausente adentro de cada elemento borra el
-`calendarEventId` de **todas** las sesiones. La pasada siguiente del sync no ve
-ningún id y emite `crear` por encuentro: N eventos duplicados en el calendario
-público y los originales huérfanos, que es B-80 amplificado. Es literalmente el
-argumento que el comentario de `completo` (B-97) tiene escrito dos bloques más
-abajo en el mismo archivo — un objeto de contenido que se reemplaza entero no
-tolera omitir una clave que otro escribe.
+- **La lista de campos de máquina se importa, no se copia.** Sale de
+  `CAMPOS_DE_MAQUINA_SESION` (`functions/historial.js`) por el alias
+  `@historial`, que existe exactamente para esto: sin eso el panel tendría su
+  propia idea de "qué escribe la máquina" y un campo nuevo entraría en una lista
+  y no en la otra. Y la dirección es la segura por D-41: con una lista blanca de
+  campos *editables*, olvidarse de sumar un campo del formulario descartaría su
+  edición en silencio.
+- **El tercer argumento de `payloadDeActualizacion` es obligatorio.** Un default
+  habría devuelto el bug al primer llamador que se olvide de releer, que es
+  justamente el olvido que el ítem describe.
+- **El emparejamiento ahora es uno solo.** `valorARestaurar` (restaurar
+  `sesiones` desde el historial) tenía el mismo `Map` por id escrito aparte:
+  eran dos derivaciones de la misma idea, la clase que D-20/D-71 evitan.
 
-Queda entonces **una sola** salida: releer y fusionar por id de sesión antes de
-escribir. Sigue tocando el archivo más disputado del repo, así que sigue P3.
+Fijado por cinco tests. Tres en `tests/clases-de-bug.test.ts` —el `it.fails` de
+B-80 **promovido a `it`**, más la clave que tiene que seguir viajando y la fila
+nueva que nace en `null`— y dos de integración en
+`tests/actividades.integracion.test.ts`, que son los únicos que pueden verificar
+lo que ningún test puro puede: que `actualizarActividad` haga la lectura. Las
+tres mutaciones probadas ponen los cinco en rojo: sacar la fusión, omitir la
+clave, y sacar la relectura.
+```
 
+---
 
 ### B-290 · La fila de una actividad pasada decía «Inscripción abierta» — ✅ hecho (2026-09-02)
 
@@ -9664,21 +9849,55 @@ Los dos `it.fails` de `tests/costuras.test.ts` quedaron promovidos a `it`, y el
 grep sobre el fuente de `version.mjs` salió: lo reemplaza el lazo. Ver
 [CHANGELOG](CHANGELOG.md) y **D-98**.
 
-### B-89 · Borrar una actividad deja huérfana su subcolección `versiones`
+### B-89 · Borrar una actividad deja huérfana su subcolección `versiones` — ✅ hecho (2026-09-03)
 
-`borrarActividad` es un `deleteDoc`, y Firestore no borra subcolecciones. Las
-hasta 20 versiones de `/actividades/{id}/versiones/*` quedan para siempre, con
-copias completas del documento (incluidos `online.url` y `difusion`) y sin
-ninguna forma de llegar a ellas desde el panel.
+**Hecho, pero no como el ítem proponía**, y la diferencia es la que importa
+(**D-361**). Un `onDocumentDeleted` que purgue la subcolección borraría la
+versión que `guardarVersionAlBorrar` acaba de escribir —la única de la que se
+puede recuperar la actividad entera (B-41)— y encima en carrera con ella,
+porque el orden entre dos triggers del mismo evento no está definido. El
+arreglo de este ítem habría dejado inerte al de B-41.
 
-No es una fuga: las reglas limitan la lectura al claim `admin` igual que antes
-(`match /versiones/{version} { allow read: if esAdmin() }`). Es basura que crece
-y datos internos que sobreviven a la decisión de borrar la actividad.
+Quedó `limpiarVersionesHuerfanas` (`onSchedule`, cada 24 horas), con **margen
+de rescate de 30 días** contado desde la versión más nueva de la subcolección
+—que para una actividad borrada es el instante del borrado—. El barrido corre
+más tarde, que es exactamente lo que un trigger de borrado no puede hacer.
 
-Lo barato es una Function `onDocumentDeleted` que borre la subcolección, del
-mismo tamaño que la poda que ya existe en `historial-trigger.js`. Sin test: la
-escritura de versiones es un trigger, así que verificarlo pide los emuladores con
-Functions.
+La decisión es pura (`functions/limpieza-versiones.js`, `decidirPurga`) y falla
+cerrado: una versión con la fecha ilegible bloquea la purga de esa actividad,
+porque lo que está en juego es la única copia de algo ya borrado. Tope de 20
+actividades por corrida, cortando por actividad y no por documento — media
+subcolección huérfana es peor que la entera.
+
+**Lo que sí necesitaba emulador y no se saltó:** que `listDocuments()` devuelva
+las referencias de documentos que no existen pero tienen subcolecciones. De eso
+depende todo el barrido, es una promesa de la API y no del código de este repo,
+y está verificado en `tests/limpieza-versiones.test.ts` — el ítem decía «sin
+test: verificarlo pide los emuladores con Functions», y resultó que la parte que
+había que verificar no necesita el emulador de Functions, solo el de Firestore.
+
+Doce tests, con tres mutaciones probadas y vistas fallar: sacar el margen, no
+fallar cerrado ante una fecha ilegible, y mirar la primera versión del array en
+vez de la más nueva. Más un chequeo de clase: **toda subcolección que cuelgue de
+una actividad tiene que estar en el barrido**, con la lista derivada del fuente.
+
+Y el barrido entero se corrió a mano contra el emulador antes de darlo por
+cerrado (§ «Verificar contra el sistema real» de `05-patrones.md`): crear una
+actividad con dos versiones de hace 40 días, borrarla, y ver que
+`subcoleccionesHuerfanas` la encuentra, que la query exacta del trigger lee sus
+versiones pese a no existir el padre, que `decidirPurga` dice
+`huerfana-vencida`, que el batch las borra y que la corrida siguiente ya no la
+ve.
+
+Y se corrió a mano contra el emulador antes de cerrarlo: crear una actividad
+con dos versiones de hace 40 días, borrarla, y ver que `subcoleccionesHuerfanas`
+la encuentra, que la query exacta del trigger lee sus versiones pese a no
+existir el padre, que la decisión dice `huerfana-vencida`, que el batch las
+borra y que la corrida siguiente ya no la ve.
+
+Queda sin script en seco, que es lo único que el barrido de imágenes tiene y
+este no: **B-630**.
+```
 
 ### B-91 · Un slug legítimo que termine en `-copia` no se puede publicar
 

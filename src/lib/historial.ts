@@ -36,6 +36,9 @@ import {
 } from 'firebase/firestore';
 // `firestore-client` y no `firebase-client`: el corte del bundle (B-09, D-51).
 import { db } from '@/lib/firestore-client';
+// B-150 — el emparejamiento de campos de máquina por id de sesión es UNO, y
+// vive en el borde form ⇄ documento. Acá se reusa; no se reimplementa.
+import { fusionarSesiones } from '@/lib/actividades';
 import {
   modalidadResultante,
   onlinePrincipal,
@@ -190,6 +193,12 @@ const existiaEnLaVersion = (campo: string, version: Version): boolean =>
  * existe (§7.2, trampa 2)—. Una sesión que la versión trae y hoy no existe queda
  * con `calendarEventId: null`, así el sync le crea su evento como si fuera nueva,
  * que es lo correcto.
+ *
+ * **El emparejamiento es `fusionarSesiones` y no una copia** (B-150). Era el
+ * mismo `Map` por id escrito dos veces —acá y en el guardado del formulario— y
+ * eso es la clase que D-20/D-71 evitan: el día que aparezca un segundo campo de
+ * máquina en una sesión, una de las dos copias se acuerda y la otra no, sin que
+ * nada falle. Ahora las dos recorren la lista de `@historial`.
  */
 export const valorARestaurar = (
   campo: string,
@@ -199,13 +208,7 @@ export const valorARestaurar = (
   const viejo = (version.documento as unknown as Record<string, unknown>)[campo] ?? null;
   if (campo !== 'sesiones') return viejo;
 
-  const idsDeHoy = new Map(
-    (actual.sesiones ?? []).map((s) => [s.id, s.calendarEventId ?? null] as const),
-  );
-  return ((viejo ?? []) as Sesion[]).map((s) => ({
-    ...s,
-    calendarEventId: idsDeHoy.get(s.id) ?? null,
-  }));
+  return fusionarSesiones((viejo ?? []) as Sesion[], actual.sesiones ?? []);
 };
 
 /**

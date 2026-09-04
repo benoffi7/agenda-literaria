@@ -42,8 +42,17 @@ export const MAX_VERSIONES = 20;
  */
 const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy'];
 
-/** Ídem dentro de cada sesión. `calendarEventId` es EL caso que rompe todo. */
-const CAMPOS_DE_MAQUINA_SESION = ['calendarEventId'];
+/**
+ * Ídem dentro de cada sesión. `calendarEventId` es EL caso que rompe todo.
+ *
+ * **Exportada desde B-150.** El panel la importa por el alias `@historial` para
+ * fusionar estos campos desde el documento antes de escribir
+ * (`fusionarSesiones`, `src/lib/actividades.ts`), y es el mismo motivo por el
+ * que el alias existe: si el panel tuviera su propia idea de "qué campos escribe
+ * la máquina", un campo nuevo entraría en una lista y no en la otra. Es el
+ * patrón de `@calendario` (D-20) aplicado al §12, y acá al §7.2.
+ */
+export const CAMPOS_DE_MAQUINA_SESION = ['calendarEventId'];
 
 /**
  * Ídem dentro de cada imagen de la galería — B-206 #2, B-167.

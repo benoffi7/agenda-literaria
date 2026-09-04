@@ -2,6 +2,18 @@
 
 ## Sin publicar
 
+- **El `calendarEventId` tiene un solo dueño, y es la Function** — **B-150**. El
+  guardado del formulario relee el documento y fusiona los campos de máquina por
+  id de sesión, en vez de emitir lo que tuviera el snapshot. La reposición
+  defensiva de la Function (D-91) queda como red, no como el arreglo.
+
+- **`functions/index.js` queda en init + re-exports** — **B-77**. El corte
+  puro/trigger llega al único archivo que no lo tenía; el cliente de GitHub
+  estrena módulo propio con el `fetch` inyectable y once tests.
+- **Las versiones de una actividad borrada dejan de quedarse para siempre** —
+  **B-89**. Un barrido programado purga la subcolección `versiones` huérfana 30
+  días después del borrado: el rescate de B-41 se conserva, la basura no.
+
 - **El texto para redes lleva el link a la actividad** — **B-312**. No lo llevaba
   porque la página no existía y el dominio no estaba elegido; las dos cosas
   pasaron, así que el motivo del descarte caducó. La URL sale de `urlDeDetalle`,
@@ -33,6 +45,113 @@
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
+
+## 2026-09-03 · el corte puro/trigger llega a `functions/index.js` (B-77)
+Era el único archivo de `functions/` sin el corte que
+[`05-patrones.md`](05-patrones.md) prescribe: 542 LOC con seis responsabilidades
+y **sin ningún test**. Ya se había cobrado una —el cliente de GitHub se duplicó
+sin el timeout (B-74)—, que es lo que pasa cuando el pegamento y la decisión
+viven en el mismo lugar: se copia el pegamento y se pierde la decisión.
+
+Queda como init del Admin SDK y re-exports. Lo demás se repartió en
+`despliegue.js` (región, cuenta de servicio, opciones comunes), `github.js` (el
+`repository_dispatch` con el `fetch` inyectable), `etiquetas.js` (el caché de
+`/opciones/*`), `calendario-api.js` (auth y creación de eventos),
+`marca-de-rebuild.js`, y los tres triggers en `calendario-trigger.js`,
+`opciones-trigger.js` y `rebuild-trigger.js`.
+
+**El riesgo del refactor era D-35 y se verificó, no se razonó.** En ESM los
+imports se evalúan antes del cuerpo del importador, así que el `setGlobalOptions`
+de `index.js` ya no alcanza a una Function definida en otro módulo: heredar
+habría dejado tres Functions en `us-central1` con la service account por defecto
+de Compute, a la que Calendar le contesta 404 en todo. Cada trigger declara ahora
+sus opciones, y se comparó el `__endpoint` de las nueve Functions antes y después
+del cambio: región, cuenta de servicio, `maxInstances`, timeout, secretos y tipo
+de trigger salen **idénticos**.
+
+`github.js` estrena once tests, que es exactamente lo que el módulo hizo posible:
+el 401 con su cuerpo, el cuerpo ilegible que no puede convertir un 502 en «no
+falló», el fetch que tira sin propagar la excepción (si lo hiciera, el tick
+moriría sin escribir el intento y el backoff de D-23 no avanzaría nunca), el
+`AbortSignal` de B-74 y que el PAT no aparezca en el mensaje que se guarda en
+`sistema/rebuild.ultimoError`.
+
+**Y siete chequeos que leían `functions/index.js` por su nombre se pusieron rojos
+de golpe** — que es el buen final; el otro, seguir en verde leyendo un archivo
+donde ya no está lo que buscan, es el modo de falla que este repo persigue en
+todas partes. Ahora preguntan **qué archivo declara esa Function**
+(`tests/fixtures/functions.ts`) en vez de cablear un path. De paso apareció uno
+que se apagaba en silencio: el detector de llamadas a la red de B-85 buscaba
+`fetch(` en el archivo del trigger, y al irse el cliente a `github.js` devolvía
+lista vacía —con lo cual el regex caía en el primer paréntesis del cuerpo y la
+comparación de orden daba falso—. Ahora sigue los imports y tiene su control
+positivo.
+
+## 2026-09-03 · el barrido de versiones huérfanas (B-89)
+
+`borrarActividad` es un `deleteDoc` y Firestore **no borra subcolecciones**: las
+hasta 20 versiones de `/actividades/{id}/versiones/*` quedaban para siempre, con
+copias completas del documento —`online.url` y `difusion` adentro— y sin ninguna
+forma de llegar a ellas desde el panel. No era una fuga (las reglas limitan la
+lectura al claim `admin`), pero era basura que crece y datos internos que
+sobreviven a la decisión de borrar.
+
+**No se hizo lo que el ítem proponía**, y el motivo es lo interesante: un
+`onDocumentDeleted` que purgue la subcolección borraría —en carrera, porque el
+orden entre dos triggers del mismo evento no está definido— la versión que
+`guardarVersionAlBorrar` acaba de escribir, que es la única de la que se puede
+recuperar la actividad entera (B-41). El arreglo de B-89 habría dejado inerte al
+de B-41. Por eso es un `onSchedule` con **margen de rescate de 30 días** contado
+desde la versión más nueva de la subcolección, que para una actividad borrada es
+el instante del borrado.
+
+`limpiarVersionesHuerfanas` (`functions/versiones-limpieza-trigger.js`) corre cada
+24 horas; la decisión es pura y vive en `functions/limpieza-versiones.js`
+(`decidirPurga`), con el mismo corte que `limpieza-imagenes.js`. Falla cerrado:
+una versión con la fecha ilegible bloquea la purga de esa actividad. Tope de 20
+actividades por corrida, y el corte es por actividad y no por documento — media
+subcolección huérfana es peor que la entera.
+
+Las huérfanas se encuentran con `listDocuments()`, que devuelve las referencias
+de documentos que **no existen pero tienen subcolecciones** —lo que ninguna query
+puede ver—. Eso es una promesa de la API de Firestore y no del código de este
+repo, así que está verificado contra el emulador y no asumido.
+
+De paso quedó un chequeo de clase: **toda subcolección que cuelgue de una
+actividad tiene que estar en el barrido**, con la lista derivada del fuente por
+las dos formas en que el repo escribe un path de subcolección. La segunda que
+aparezca entra o el test la nombra.
+
+## 2026-09-03 · el `calendarEventId` deja de tener dos dueños (B-150)
+
+`formADocumento` emite `calendarEventId` en cada guardado, así que el panel era
+co-dueño de un campo que escribe una Cloud Function: un form abierto desde un
+listado anterior al write-back del sync guardaba `null` y dejaba la sesión sin id.
+D-91 había puesto la red del lado de la Function —`reponerIds` en **toda**
+operación, no solo al crear y borrar—, así que la ventana ya no dejaba daño
+permanente; lo que no había cambiado era de quién es el campo.
+
+Ahora `actualizarActividad` **relee el documento** y `fusionarSesiones` repone los
+campos de máquina emparejando por id de sesión —el mismo emparejamiento que ya
+hacía la restauración del historial, que era una segunda copia y ahora es la misma
+función—. La lista de qué campos son de máquina se importa de `@historial`: es la
+que el trigger del historial usa para decidir qué escribe la máquina (D-41), y
+tenerla dos veces es cómo se separan. El tercer argumento de
+`payloadDeActualizacion` es **obligatorio**: con un default, el arreglo volvería a
+ser un acuerdo que se rompe por olvido.
+
+La otra salida que B-150 proponía —que `formADocumento` deje de emitir el campo—
+se descartó con motivo: `updateDoc` reemplaza el array `sesiones` entero, así que
+la clave ausente adentro de cada elemento borra el id de **todas** las sesiones y
+la pasada siguiente del sync crea N eventos duplicados en el calendario público.
+
+De paso, el `it.fails('B-80: el formulario no emite ningún campo que escriba una
+Function')` de `tests/clases-de-bug.test.ts` **se promovió a `it`**, que es para lo
+que un `it.fails` existe. La verificación se mudó de `formADocumento` al payload de
+escritura: `formADocumento` tiene que seguir emitiendo la clave, así que
+preguntarle a él no podía dar verde ni con el arreglo correcto puesto.
+
+---
 
 ## 2026-09-03 · el link de la actividad entra al texto para redes (B-312)
 

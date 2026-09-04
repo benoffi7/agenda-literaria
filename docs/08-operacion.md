@@ -735,6 +735,75 @@ referenciaba una imagen ya barrida restauraría una `url` rota. No se resolvió
 acá — el ítem original de B-221 solo pedía cruzar contra las actividades — y
 quedó anotado en el `BACKLOG.md` como **B-560**.
 
+### `limpiarVersionesHuerfanas` — el barrido de versiones huérfanas (B-89)
+
+`borrarActividad` es un `deleteDoc`, y Firestore **no borra subcolecciones**: las
+hasta 20 versiones de `/actividades/{id}/versiones/*` (§12) quedaban para siempre
+después de borrar la actividad, con copias completas del documento —`online.url`
+y `difusion` incluidos— y sin ninguna forma de llegar a ellas desde el panel. No
+era una fuga (las reglas limitan la lectura al claim `admin` igual que antes),
+pero era basura que crece y datos internos que sobreviven a la decisión de borrar.
+
+Esta Function programada (`functions/versiones-limpieza-trigger.js`) las purga
+cada 24 horas.
+
+**Por qué no es el `onDocumentDeleted` que B-89 proponía**, y esto es lo que hay
+que entender antes de tocarlo: el borrado de una actividad **escribe** una versión
+(`guardarVersionAlBorrar`, B-41), y esa versión es la única de la que se puede
+recuperar la actividad entera. Un segundo trigger sobre el mismo borrado la
+borraría —y encima en carrera con el primero, porque el orden entre dos triggers
+del mismo evento no está definido—: el arreglo de B-89 habría dejado inerte al de
+B-41. De ahí el reloj: el barrido tiene que correr *más tarde*, no en el momento.
+
+**Cómo encuentra las huérfanas.** `listDocuments()` sobre `/actividades` devuelve
+las referencias de la colección **incluidas las de documentos que no existen pero
+tienen subcolecciones** —los "fantasmas" que deja un `deleteDoc`—, que es
+justamente lo que ninguna query puede ver. La diferencia contra los ids que sí
+existen son los huérfanos. Es una promesa de la API de Firestore y no del código
+de este repo, así que está verificada contra el emulador en
+`tests/limpieza-versiones.test.ts` y no se asume.
+
+**La decisión de qué purgar es pura y vive en `functions/limpieza-versiones.js`**
+(`decidirPurga`) — el mismo corte que `limpieza-imagenes.js`. Dos salvaguardas:
+
+- **Margen de rescate de 30 días** (`MARGEN_DE_RESCATE_MS`), contado desde la
+  versión **más nueva** de la subcolección — que para una actividad borrada es el
+  instante del borrado. Es el tiempo que se le da al «la borré sin querer». Una
+  versión con la fecha ilegible **bloquea** la purga de esa actividad: falla
+  cerrado, porque lo que está en juego es la única copia de algo ya borrado.
+- **Tope de 20 actividades por corrida** (`MAX_ACTIVIDADES_POR_CORRIDA`), misma
+  clase de salvaguarda que `MAX_EVENTOS_RESYNC` (B-04): un bug en la lectura de
+  qué actividades existen no puede borrar el historial de todas de una pasada. El
+  corte es por actividad y no por documento a propósito — media subcolección
+  huérfana es peor que la entera.
+
+**No es la trampa 3 ni la 12.** Los dos triggers que escuchan actividades
+(`syncCalendar`, `guardarVersion`) están suscriptos a `actividades/{id}`, no a su
+subcolección, y un trigger de documento no se dispara con escrituras en
+subcolecciones. Nada escucha `versiones/{version}`. Sin un trigger del otro lado,
+no hay con qué encadenarse — y como el de imágenes, corre por reloj y solo borra.
+
+**IAM: no hace falta nada nuevo.** Corre con `calendar-sync@` y solo necesita
+`datastore.user`, que ya tiene (D-06). Es una Function más en el mismo deploy:
+
+```bash
+firebase deploy --only functions:limpiarVersionesHuerfanas
+```
+
+**Cómo verificar la primera corrida.** No hay script en seco todavía (queda como
+**B-630**), así que la verificación es por logs y por consola:
+
+```bash
+# Qué decidió el barrido: purgadas, documentos y los motivos de lo que NO tocó.
+gcloud functions logs read limpiarVersionesHuerfanas \
+  --region southamerica-east1 --project agenda-literaria --limit 50
+```
+
+Un `barrido de versiones huérfanas: nada para purgar` con `motivos` lleno de
+`dentro-del-margen-de-rescate` es el estado normal en el mes siguiente a un
+borrado. Si aparece `sin-fecha-legible`, hay una versión con el `guardadoEn`
+roto y conviene mirarla antes de que el margen deje de importar.
+
 ### Reportes del panel → issues de GitHub (una sola vez)
 
 Cinco pasos manuales, en este orden. Los tres primeros los hace el dueño de la

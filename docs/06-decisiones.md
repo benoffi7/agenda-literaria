@@ -7581,3 +7581,99 @@ podía filtrar por «Gratis» y después no ver cuál de las tarjetas era la gra
 La modalidad que se muestra es la **resultante** de las filas de «Dónde» (B-224),
 no la de la primera fila: «la primera manda» dependería del orden del array, que es
 la trampa 2 con otra cara.
+
+## D-360 · El `calendarEventId` lo escribe la Function, y el panel lo relee (B-150)
+
+**Contexto.** `formADocumento` emitía `calendarEventId` en cada guardado. B-80
+había mostrado el daño (dos eventos para el mismo encuentro, el primero
+huérfano) y D-91 lo había tapado del lado de la Function, reponiendo el id en
+**toda** operación del sync y no solo al crear y borrar. Lo que quedaba abierto
+era de quién es el campo: mientras el panel lo emitiera con lo que tuviera en el
+snapshot, la ventana existía.
+
+**Opciones.**
+
+1. **Que `formADocumento` no emita el campo.** Parecía la barata. Es un bug
+   peor: `actualizarActividad` usa `updateDoc`, que reemplaza el array `sesiones`
+   entero, así que una clave ausente adentro de cada elemento borra el
+   `calendarEventId` de **todas** las sesiones. La pasada siguiente del sync no
+   ve ningún id y emite `crear` por encuentro: N eventos duplicados en el
+   calendario público. Es el mismo argumento que el comentario de `completo`
+   (B-97) — un objeto de contenido que se reemplaza entero no tolera omitir una
+   clave que otro escribe.
+2. **Releer y fusionar por id de sesión antes de escribir.** Elegida.
+3. **Transacción de cliente en el guardado del formulario.** Descartada: cierra
+   la ventana del todo, pero le cambia los modos de falla a la acción más usada
+   del panel por un P3, y la reposición de D-91 ya cubre lo que queda —una
+   ventana del tamaño de un `updateDoc`, no de los minutos que tarda alguien en
+   guardar desde un listado viejo.
+
+**Decisión.** La 2. `actualizarActividad` hace un `getDoc` y le pasa las sesiones
+del documento a `payloadDeActualizacion`, que las fusiona con `fusionarSesiones`:
+el contenido sale del formulario, los campos de máquina salen del documento,
+emparejados por `id` de sesión. Una sesión que el documento no tiene —una fila
+recién agregada— queda con `calendarEventId: null` explícito: el panel no puede
+inventar un id, y el `null` es lo que hace que el sync le cree su evento.
+
+**Consecuencias.**
+
+- Un `getDoc` más por guardado del formulario. Irrelevante contra las llamadas a
+  Calendar que el mismo guardado dispara.
+- La reposición de D-91 sigue puesta y pasa a ser lo que es: la red de abajo, no
+  el arreglo.
+- El emparejamiento por id de sesión es **uno**: lo comparten el guardado y la
+  restauración del historial (`valorARestaurar`), que lo tenía escrito aparte.
+- La lista de campos de máquina viaja por `@historial`, así que el segundo campo
+  de máquina que aparezca en una sesión entra solo — y si no entra,
+  `tests/clases-de-bug.test.ts` lo dice.
+
+## D-361 · Las versiones huérfanas se purgan por reloj y con margen, no al borrar (B-89)
+
+**Contexto.** `borrarActividad` es un `deleteDoc` y Firestore no borra
+subcolecciones: `/actividades/{id}/versiones/*` sobrevivía para siempre al
+documento padre, con copias completas —`online.url`, `difusion`— y sin camino
+desde el panel. B-89 proponía «una Function `onDocumentDeleted` que borre la
+subcolección, del mismo tamaño que la poda que ya existe».
+
+**Por qué eso no se puede.** El borrado de una actividad **escribe** una versión:
+`guardarVersionAlBorrar` (B-41, D-94), que es la única de la que se puede
+recuperar la actividad entera. Un segundo trigger sobre el mismo evento la
+borraría, y encima en carrera con el primero —el orden entre dos triggers del
+mismo evento no está definido, así que el resultado sería *a veces* una versión y
+*a veces* ninguna, que es peor que cualquiera de los dos—. El arreglo de B-89
+habría dejado inerte al de B-41 y devuelto el último agujero de pérdida de datos
+que ese ítem había cerrado.
+
+**Opciones.**
+
+1. **`onDocumentDeleted` que purgue en el acto.** Descartada por lo de arriba.
+2. **Borrado lógico de la subcolección** (marcar y filtrar). Descartada por lo
+   mismo que D-94 descartó el borrado lógico de la actividad: toca el modelo para
+   resolver algo que no es un problema de modelo.
+3. **`onSchedule` con margen de rescate.** Elegida.
+
+**Decisión.** `limpiarVersionesHuerfanas`, cada 24 horas, purga las
+subcolecciones cuyo documento padre no existe y cuya versión **más nueva** tiene
+más de `MARGEN_DE_RESCATE_MS` (30 días). El barrido tiene que correr *más tarde*
+que el borrado, y eso es justamente lo que un trigger del borrado no puede hacer.
+
+**Por qué 30 días, y no el criterio de D-42.** La retención de versiones es por
+**cantidad** y no por antigüedad porque su caso de uso es «pisé la descripción
+hace meses y recién ahora me doy cuenta». Acá la pregunta es otra —cuánto tarda
+alguien en notar que una actividad **entera** ya no está— y esa sí tiene una
+respuesta temporal: un mes cubre un ciclo completo de uso del panel. Los dos
+criterios conviven porque contestan preguntas distintas.
+
+**Consecuencias.**
+
+- El borrado de una actividad deja de ser recuperable **para siempre** y pasa a
+  ser recuperable **por 30 días**. Es una pérdida de capacidad, y es deliberada:
+  la alternativa es que `difusion` y `online.url` de todo lo borrado vivan
+  indefinidamente en una subcolección que nadie mira.
+- La purga falla cerrado: una versión sin fecha legible bloquea la de esa
+  actividad. Ante la duda no se borra — el error caro acá es borrar de más.
+- Se apoya en `listDocuments()`, la única forma de ver un documento fantasma. Eso
+  es una promesa de la API de Firestore, así que está verificada contra el
+  emulador y no asumida.
+- No es la trampa 3 ni la 12: nada escucha `versiones/{version}` y un trigger de
+  documento no se dispara con escrituras en subcolecciones.

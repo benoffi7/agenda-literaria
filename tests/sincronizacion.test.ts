@@ -22,6 +22,7 @@ import { planificar } from '../functions/calendario.js';
 import { nuevaSesionId } from '@/lib/sesiones';
 import { ts } from './fixtures/tiempo';
 import { cicloDeOcho, sesionesDeCiclo } from './fixtures/ciclo';
+import { fuenteDeLaFunction } from './fixtures/functions';
 
 const fuente = (relativo: string) =>
   readFileSync(fileURLToPath(new URL(relativo, new URL('..', import.meta.url))), 'utf8');
@@ -538,8 +539,9 @@ describe('B-125 · el encuentro vuelve al calendario en la próxima edición', (
     expect(calendario.size).toBe(7);
   });
 
-  it('la réplica sigue siendo fiel: index.js consume decidirAnteFallo y recrea', () => {
-    const src = fuente('functions/index.js');
+  it('la réplica sigue siendo fiel: el sync consume decidirAnteFallo y recrea', () => {
+    // B-77 — por nombre de Function y no por path: ver `tests/fixtures/functions.ts`.
+    const src = fuenteDeLaFunction('syncCalendar');
     expect(src).toContain('const { accion, motivo } = decidirAnteFallo(op, code);');
     expect(src).toContain("if (accion === 'limpiar-id')");
     expect(src).toContain("} else if (accion === 'recrear') {");

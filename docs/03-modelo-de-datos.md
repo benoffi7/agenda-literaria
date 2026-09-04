@@ -86,11 +86,23 @@ eventos que la gente ya tiene agendados, perdiendo sus recordatorios y
 suscripciones (trampa 2). Hay tests específicos para esto en
 `tests/calendario.test.ts`.
 
-`calendarEventId` lo escribe la Function, no el panel. El formulario lo conserva
-tal cual al editar, y desde B-80 la Function lo **repone** en cada
-sincronización si el documento vino sin él (D-91): el panel emite el campo en
-cada guardado y puede pisarlo con `null` si guardó desde un listado que se
-refrescó antes del write-back.
+`calendarEventId` lo escribe la Function, **y desde B-150 solo la Function**.
+
+El panel sigue emitiendo el campo en cada guardado —tiene que emitirlo: la
+escritura es un `updateDoc` que **reemplaza el array `sesiones` entero**, así que
+una clave ausente adentro de cada elemento borraría el id de todas las sesiones y
+la pasada siguiente del sync crearía N eventos duplicados— pero ya no emite el
+valor del formulario: `actualizarActividad` **relee el documento** y
+`fusionarSesiones` (`src/lib/actividades.ts`) repone los campos de máquina
+emparejando por id de sesión. La lista de cuáles son se importa de `@historial`,
+o sea la misma que usa el trigger del historial para decidir qué escribe la
+máquina (§12, D-41): dos listas se separan sin que nada falle.
+
+La red de abajo sigue puesta: la Function **repone** el id en cada
+sincronización si el documento vino sin él (D-91, B-80). Antes de B-150 esa red
+era lo único que había, y tapaba una ventana que duraba lo que tardara alguien en
+guardar desde un listado refrescado antes del write-back — o sea minutos. Ahora
+la ventana es la del `updateDoc` y la red cubre solo eso.
 
 **El id del evento de Calendar se deriva del id de sesión** (`ses_<uuid>` sin el
 `_` ni los guiones, `idDeEvento` en
@@ -558,6 +570,17 @@ anterior en una subcolección:
 campo a mano es copiar y pegar. Incluye `difusion` y `online.url`, que son
 internos — la subcolección solo la lee un admin y no hay camino al `events.json`.
 Ver [`07-seguridad.md`](07-seguridad.md).
+
+**La subcolección sobrevive al documento padre, y eso ahora tiene fecha de
+vencimiento** (B-89). `borrarActividad` es un `deleteDoc` y Firestore no borra
+subcolecciones, así que las versiones de una actividad borrada quedaban para
+siempre: basura que crece, y datos internos que sobreviven a la decisión de
+borrar. Que sobrevivan un tiempo **es la feature** —es lo que hace recuperable el
+borrado (B-41)—, así que no se purgan en el acto: `limpiarVersionesHuerfanas`
+(`onSchedule`, cada 24 horas) las borra cuando pasaron **30 días** desde la
+versión más nueva, o sea desde el borrado. Ver
+[`08-operacion.md`](08-operacion.md) § «El barrido de versiones huérfanas» y
+**D-361**.
 
 `camposCambiados` está para poder elegir qué versión abrir sin revisarlas de a
 una — antes desde la consola de Firestore, y desde B-40 es lo mismo que usa la

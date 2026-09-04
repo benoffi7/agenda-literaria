@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { Timestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
-import { documentoAForm, formADocumento } from '@/lib/actividades';
+import { documentoAForm, formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eventos';
 import { construirIssue } from '../functions/reportes.js';
 import { versionesPosibles } from '../scripts/version.mjs';
@@ -370,7 +370,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los ocho triggers del proyecto', () => {
+  it('encuentra los nueve triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -386,6 +386,11 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
       // `CLASES_DE_TRIGGER` desde el principio — este test se puso rojo por el
       // conteo, que es la parte que sí hay que confirmar a mano.
       'limpiarImagenesHuerfanas',
+      // El barrido de subcolecciones `versiones` huérfanas (B-89): otro
+      // `onSchedule`, y entró solo por la misma puerta que el anterior. Lo que
+      // sí hubo que confirmar a mano es el conteo — que es la parte del chequeo
+      // que no se puede derivar.
+      'limpiarVersionesHuerfanas',
       // **El primer trigger de Storage del proyecto** (B-220, D-175), y entró
       // solo: las cuatro clases `onObject*` se habían agregado a
       // `CLASES_DE_TRIGGER` el 2026-08-28 —antes de que existiera ninguno,
@@ -467,10 +472,30 @@ const CAMPOS_QUE_ESCRIBE_EL_SYNC = listaLiteral(
   'CAMPOS_QUE_ESCRIBE_EL_SYNC',
 );
 
-/** Claves de primer nivel que la Function escribe en la actividad. */
+/**
+ * Claves de primer nivel que **el sync** escribe en la actividad.
+ *
+ * Sale de la traza de `syncCalendar` —su cuerpo más el de todo lo que llama— y
+ * no de un archivo nombrado: **el chequeo no puede depender de dónde vive el
+ * código.** Apuntar a `functions/index.js` ya se rompió dos veces, las dos por
+ * B-77: primero cuando el write-back se mudó a `sincronizacion.js`, y después
+ * cuando el corte terminó y `syncCalendar` se fue a `calendario-trigger.js`. Las
+ * dos veces el chequeo quedó recorriendo una lista vacía, o sea pasando en verde
+ * sin verificar nada.
+ *
+ * Y tampoco es `SRC_FUNCTIONS` entero, que fue el primer reflejo: ahí entran los
+ * `tx.update(ref, …)` de **otros** triggers —el de reportes tiene el suyo— y la
+ * pregunta de este chequeo es sobre el sync, no sobre cualquier escritura del
+ * proyecto. Un chequeo que mide de más también deja de medir lo que dice medir.
+ */
 const CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC = [
   ...new Set(
-    [...fuente('functions/index.js').matchAll(/tx\.update\(ref,\s*\{([^}]*)\}\)/g)].flatMap((m) =>
+    [
+      ...TRIGGERS.filter((t) => t.nombre === 'syncCalendar')
+        .flatMap((t) => trazaDe(t).cuerpos)
+        .join('\n')
+        .matchAll(/tx\.update\(ref,\s*\{([^}]*)\}\)/g),
+    ].flatMap((m) =>
       m[1]!
         .split(',')
         .map((c) => c.split(':')[0]!.trim())
@@ -582,6 +607,9 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
   });
 
   it('el sync no escribe ningún campo de primer nivel de la actividad', () => {
+    // Sin esto un `tx.update(ref, {...})` que se mude o se reescriba dejaría la
+    // lista vacía, y `[]` no contiene ningún campo prohibido: verde vacío.
+    expect(CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC.length).toBeGreaterThan(0);
     // Hoy escribe solo el contenedor `sesiones`. Un campo suelto acá —
     // `ultimoSync`, `calendarSyncedAt` — sería un dueño nuevo en disputa con el
     // formulario, y hay que decidirlo antes de escribirlo.
@@ -592,34 +620,83 @@ describe('clase de B-80 · un solo dueño por campo del documento', () => {
    * El chequeo de la clase. El formulario no puede ser dueño de un campo que
    * escribe una Function: si lo emite, lo emite con lo que tenía en el snapshot.
    *
-   * **Qué lo haría pasar:** que `formADocumento` deje de emitir el campo (y que
-   * el write-back de la Function sea el único que lo escribe), o que el camino
-   * de escritura del panel relea el documento y fusione — la primera y la
-   * segunda de las tres salidas de B-80.
+   * **Era `it.fails` y pasó a `it` con B-150** — que es lo que un `it.fails`
+   * existe para provocar. La salida elegida es la segunda de las tres de B-80:
+   * el camino de escritura del panel **relee el documento y fusiona** por id de
+   * sesión (`actualizarActividad` → `payloadDeActualizacion` →
+   * `fusionarSesiones`). La primera —que `formADocumento` deje de emitir el
+   * campo— se evaluó y es un bug peor: `updateDoc` reemplaza el array `sesiones`
+   * entero, así que la clave ausente borra el id de **todas** las sesiones y la
+   * pasada siguiente del sync crea N eventos duplicados.
+   *
+   * **La verificación se mudó de `formADocumento` al payload de escritura, y no
+   * es una concesión.** `formADocumento` sigue emitiendo el campo —tiene que
+   * emitirlo, por lo de arriba— así que preguntarle a él nunca podría dar
+   * verde con el arreglo correcto puesto. Lo que la clase afirma es que **lo que
+   * sale hacia Firestore** no lleva el valor del formulario, y eso se le
+   * pregunta al payload.
    *
    * **Qué NO lo haría pasar, a propósito:** que `syncCalendar` reponga el id
-   * también en las ops `actualizar` (la tercera salida). Eso tapa el síntoma
-   * conocido y deja la ventana abierta entre las dos escrituras, así que la
-   * clase sigue viva y este `it.fails` sigue fallando. Es información, no un
-   * falso positivo.
+   * también en las ops `actualizar` (la tercera salida, D-91). Eso tapa el
+   * síntoma conocido y deja la ventana abierta entre las dos escrituras. Sigue
+   * estando —es la red de abajo— pero no es lo que este chequeo mide.
    */
-  it.fails('B-80: el formulario no emite ningún campo que escriba una Function', () => {
+  it('B-80: el payload de escritura del panel no lleva ningún campo que escriba una Function', () => {
     const emitidos: string[] = [];
     for (const campo of CAMPOS_DE_MAQUINA_SESION) {
       const enFirestore = actividadCon({ [campo]: 'valor-escrito-por-la-function' });
       const viejo = actividadCon({ [campo]: null }); // snapshot previo al write-back
-      const escrito = formADocumento(documentoAForm(viejo), 'uid-admin', false) as {
-        sesiones: Record<string, unknown>[];
-      };
+      const escrito = payloadDeActualizacion(
+        documentoAForm(viejo),
+        'uid-admin',
+        // Lo que el documento tiene AHORA, que es lo que el panel relee.
+        enFirestore.sesiones,
+      ) as { sesiones: Record<string, unknown>[] };
       const enElDocumento = (enFirestore.sesiones as unknown as Record<string, unknown>[])[0]!;
-      if (
-        Object.prototype.hasOwnProperty.call(escrito.sesiones[0]!, campo) &&
-        escrito.sesiones[0]![campo] !== enElDocumento[campo]
-      ) {
+      if (escrito.sesiones[0]![campo] !== enElDocumento[campo]) {
         emitidos.push(`${campo}: el panel escribe ${JSON.stringify(escrito.sesiones[0]![campo])}`);
       }
     }
     expect(emitidos).toEqual([]);
+  });
+
+  /**
+   * La otra mitad, y la que hace que el chequeo de arriba no se pueda satisfacer
+   * de la forma barata y equivocada: **la clave sigue estando en el documento.**
+   *
+   * Sin esto, "que el panel no escriba el valor del formulario" se cumpliría
+   * también omitiendo la clave — y eso, con `updateDoc` reemplazando el array
+   * entero, borra el `calendarEventId` de todas las sesiones y le hace crear N
+   * eventos duplicados al sync. Es el bug que B-150 descartó explícitamente.
+   */
+  it('B-150: la clave del campo de máquina viaja igual, con el valor del documento', () => {
+    for (const campo of CAMPOS_DE_MAQUINA_SESION) {
+      const enFirestore = actividadCon({ [campo]: 'evt-de-la-function' });
+      const escrito = payloadDeActualizacion(
+        documentoAForm(actividadCon({ [campo]: null })),
+        'uid-admin',
+        enFirestore.sesiones,
+      ) as { sesiones: Record<string, unknown>[] };
+      expect(Object.keys(escrito.sesiones[0]!), campo).toContain(campo);
+      expect(escrito.sesiones[0]![campo], campo).toBe('evt-de-la-function');
+    }
+  });
+
+  /**
+   * Y la fila nueva: una sesión que el documento no tiene no puede heredar el
+   * campo de máquina de nadie. Con `[]` —el "no hay nada en el documento"
+   * explícito que el tercer argumento obliga a decidir— queda `null`, que es lo
+   * que hace que el sync le cree su evento como si fuera nueva.
+   */
+  it('B-150: una sesión que el documento no tiene queda con el campo de máquina en null', () => {
+    for (const campo of CAMPOS_DE_MAQUINA_SESION) {
+      const escrito = payloadDeActualizacion(
+        documentoAForm(actividadCon({ [campo]: 'evt-de-un-snapshot-viejo' })),
+        'uid-admin',
+        [],
+      ) as { sesiones: Record<string, unknown>[] };
+      expect(escrito.sesiones[0]![campo], campo).toBeNull();
+    }
   });
 });
 
@@ -830,11 +907,44 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
    * **Qué lo haría pasar:** que la escritura del resultado ocurra dentro de una
    * transacción que verifique que el estado sigue siendo el que se leyó.
    */
+  /**
+   * Los nombres que, llamados desde este archivo, llegan a la red: los helpers
+   * locales **y los importados de otro archivo de `functions/`**.
+   *
+   * Lo segundo lo trajo B-77, y sin eso este chequeo se apagaba en silencio: el
+   * cliente HTTP de GitHub dejó de estar inline en el trigger y pasó a
+   * `github.js`, así que `helpersConRed` del archivo del trigger devolvía `[]`,
+   * la alternativa vacía del regex hacía que `red` cayera en el primer paréntesis
+   * del cuerpo, y `lectura < red` daba falso. Verde, sin haber mirado nada — que
+   * es el modo de falla exacto que este archivo persigue en el código ajeno.
+   */
+  const nombresConRed = (archivo: string): string[] => {
+    const locales = helpersConRed(fuente(archivo));
+    const importados = [...importesDe(archivo).keys()].filter((nombre) => {
+      const decl = enFunctions(archivo, nombre);
+      return !!decl && /\bfetch\(|cal\.events\.|google\.calendar\(/.test(decl.cuerpo);
+    });
+    return [...new Set([...locales, ...importados])];
+  };
+
+  const laRedDe = (t: Trigger) =>
+    primero(t.cuerpo, new RegExp(`\\b(${[...nombresConRed(t.archivo), 'fetch'].join('|')})\\(`));
+
+  it('el detector de red encuentra la llamada aunque viva en otro archivo', () => {
+    // El positivo que impide el verde vacío del chequeo de abajo: si ningún
+    // schedule tiene una llamada a la red detectable, ese chequeo no está
+    // midiendo nada. `dispararRebuild` la tiene, importada de `github.js`.
+    const conRed = TRIGGERS.filter((x) => x.clase === 'onSchedule').filter(
+      (t) => laRedDe(t) !== Infinity,
+    );
+    expect(conRed.map((t) => t.nombre)).toContain('dispararRebuild');
+  });
+
   it('B-85: ninguna función programada escribe el estado que leyó sin compararlo', () => {
     const pierden: string[] = [];
     for (const t of TRIGGERS.filter((x) => x.clase === 'onSchedule')) {
       const lectura = primero(t.cuerpo, /\.get\(\)/);
-      const red = primero(t.cuerpo, new RegExp(`\\b(${helpersConRed(fuente(t.archivo)).join('|')}|fetch)\\(`));
+      const red = laRedDe(t);
       const escritura = primero(t.cuerpo, /\.(set|update)\(/);
       const transaccion = primero(t.cuerpo, /runTransaction\(/);
       if (lectura < red && red < escritura && transaccion === Infinity) {
@@ -1846,7 +1956,9 @@ describe('clase de B-212 · los cinco caminos de una opción leen lo mismo', () 
     // El `events.json` es el único que publica el color de la categoría (D-150).
     { archivo: 'src/lib/toPublic.ts', funcion: 'opcionPublica', permitidas: ['slug', 'label', 'tono'] },
     { archivo: 'src/lib/vistaPreviaEvento.ts', funcion: 'labelsDeOpciones', permitidas: ['slug', 'label'] },
-    { archivo: 'functions/index.js', funcion: 'cargarLabels', permitidas: ['slug', 'label'] },
+    // B-77 la mudó de `functions/index.js` a su propio módulo: el caché de
+    // etiquetas lo comparten los dos triggers del lado de Calendar.
+    { archivo: 'functions/etiquetas.js', funcion: 'cargarLabels', permitidas: ['slug', 'label'] },
     /*
      * El cuarto, que faltaba — lo encontró el `auditor-privacidad` al cerrar
      * B-270. Alimenta la salida 6 (la página de detalle y su JSON-LD), que es la
