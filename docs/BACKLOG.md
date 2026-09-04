@@ -2833,6 +2833,29 @@ revisan o se aceptan, no «arreglarlas»:
   pendiente**: las imágenes de Open Graph generadas en el build (**B-291**, ya
   decidido: se generan) servirían también para este campo.
 
+> ✅ **Investigado y resuelto el 2026-09-04, y la premisa de abajo estaba
+> errada.** Los 25 elementos **no son 25 páginas**: son los **25 `subEvent`** de
+> los ciclos, que Search Console cuenta como items propios y que llevaban solo
+> `name`, dos fechas y `eventStatus` — sin descripción, sin organizador y sin
+> oferta. Los nueve números cierran exactamente con **18 páginas + 25 subEvent =
+> 43 items**.
+>
+> La hipótesis de la descripción vacía quedó **descartada con número**: de las 68
+> páginas del sitio publicado, 67 emiten `Event` y **las 67** llevan
+> `description` y `organizer.name` no vacíos —`schema.ts` ya exige
+> `descripcion >= 10` y `organizador.nombre` para publicar, y los tres campos
+> nacieron en el mismo commit—. Y la de los rastreos viejos también es cierta: 43
+> items contra 59 actividades publicadas ese día y 68 hoy.
+>
+> **Arreglado:** cada `subEvent` hereda los datos reales de su actividad, con
+> `offers` re-decidida por encuentro (apagada si está cancelado o ya pasó).
+> Cuesta 45 B con brotli en la página más grande.
+>
+> Dato de paso, que vale para cualquier investigación futura: **`npm run seed` no
+> siembra actividades**, así que el build local da 10 páginas y ningún
+> `/actividad/*`. Para contar sobre páginas reales hay que mirar el sitio
+> publicado o sembrar a mano.
+
 **Y dos no cierran, que es la parte que hay que investigar:**
 
 `description` y `organizer` figuran faltando en **25 elementos cada uno**, pero
