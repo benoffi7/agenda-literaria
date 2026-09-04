@@ -107,13 +107,25 @@ export const urlDeInstagram = (): string => `https://www.instagram.com/${INSTAGR
 /**
  * El usuario de Cafecito donde se reciben los aportes — B-780.
  *
- * ── ⚠️ Hay que confirmarlo antes de deployar ──────────────────────────────
+ * ── ⚠️ BLOQUEANTE DEL DEPLOY: el perfil todavía no está creado ────────────
  * Está puesto por coherencia con el dominio (`agendaleh.ar`) y con la casilla
- * (`agendaleh@gmail.com`), **pero el perfil todavía no está creado**: quien lo
- * cree tiene que reservar este nombre o cambiar esta línea. Un enlace a un
- * perfil que no existe es un 404 en la única página del sitio que le pide algo
- * a alguien, y de las que se descubren mirando —el link se ve bien, el destino
- * no—. Está anotado en el `BACKLOG` como bloqueante del deploy de `/apoyar`.
+ * (`agendaleh@gmail.com`), **pero nadie registró `agendaleh` en cafecito.app**.
+ * Quien lo cree tiene que reservar ese nombre o cambiar esta línea.
+ *
+ * El 404 es la mitad menor del problema —el link se ve bien y el destino roto lo
+ * ve solo quien hizo el click, o sea justo la persona que se decidió a aportar—.
+ * La mitad grande la señaló el `auditor-privacidad`: `/apoyar` entra al
+ * `sitemap.xml` **sin `noindex`** y se enlaza desde el pie de todas las páginas,
+ * así que deployar así **publica e indexa un nombre de usuario de cobro que no
+ * tiene dueño**. Cualquiera que lea la página puede registrarlo y quedarse con
+ * los aportes dirigidos a la agenda, y eso no se deshace: la página ya está en
+ * Google apuntando a un perfil ajeno.
+ *
+ * O sea que el orden importa: **primero se crea el perfil, después se deploya**.
+ * Está anotado como bloqueante en `.estado/apoyo.md` para el `BACKLOG` (B-780).
+ * No hay test que lo pueda cubrir: que un perfil exista del otro lado no se sabe
+ * sin salir a la red, y lo que sí se verifica es la forma de la URL
+ * (`tests/enlaces.test.ts`).
  *
  * ── Por qué es una constante y no la URL entera ───────────────────────────
  * Porque el nombre de usuario es el único dato crudo: la URL del perfil es

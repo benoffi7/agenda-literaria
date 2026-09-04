@@ -10,6 +10,13 @@
  * que pagar nada», «una parte se la queda el intermediario», «aportar no compra
  * un lugar en la agenda») se puedan verificar en un test.
  *
+ * **Y «ni una frase» incluye el `<title>` y la `meta description`**, que es
+ * donde la primera versión se contradecía: las escribía acá, o sea afuera de
+ * `TEXTO_DE_APOYO`, o sea afuera del único barrido que cuida esta página. Salen
+ * de `TITULO_DE_APOYO` y `DESCRIPCION_DE_APOYO`; el porqué del desvío contra
+ * `/ayuda` y `/contacto` está en el docblock de esa segunda constante. Lo
+ * encontró el `auditor-privacidad`.
+ *
  * ── El botón lo dibujamos nosotros, y no es una preferencia estética ──────
  * Cafecito ofrece un botón para pegar: un `<img>` servido desde su CDN dentro de
  * un `<a>`. Ese `<img>` sería un pedido a un host de tercero **en el load**, sin
@@ -48,6 +55,8 @@ import {
   QUIEN_LA_HACE,
   SIN_PLATA,
   ENTRADA_DE_APOYO,
+  TITULO_DE_APOYO,
+  DESCRIPCION_DE_APOYO,
 } from '@/lib/apoyoDelSitio';
 import {
   claseBloque,
@@ -60,11 +69,11 @@ import {
 
 <Base
   seccion="apoyar"
-  titulo={`Apoyar la agenda — ${NOMBRE}`}
-  descripcion="La agenda de actividades literarias es gratis y la hace una persona. Si te sirve y querés poner algo, se puede por Cafecito — y también hay tres formas que no cuestan nada."
+  titulo={`${TITULO_DE_APOYO} — ${NOMBRE}`}
+  descripcion={DESCRIPCION_DE_APOYO}
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-    <h1 class="display-md text-balance text-acento">Apoyar la agenda</h1>
+    <h1 class="display-md text-balance text-acento">{TITULO_DE_APOYO}</h1>
     <p class="mt-4 max-w-[65ch] body-lectura text-super">{ENTRADA_DE_APOYO}</p>
 
     {
@@ -124,6 +133,18 @@ import {
           **Sin `nofollow`**, y no es un olvido: el perfil es nuestro y sí lo
           avalamos, que es lo que `nofollow` niega. Y sin `sponsored`, que es
           para un link pago — este es al revés.
+
+          **Sin `noreferrer`, que es el único `rel` que el resto del repo sí
+          usa** (la página de detalle lo pone en los links que vienen del
+          documento). Acá no va, y por eso se explica: sin política propia el
+          navegador manda `strict-origin-when-cross-origin`, o sea que a
+          Cafecito le llega `https://agendaleh.ar` y nada más — ni la ruta, ni
+          query, ni un dato de la persona. `noreferrer` borraría también eso, y
+          eso es justo lo único que le dice a Cafecito que el aporte vino del
+          sitio. Perder esa señal no compra nada. Lo pidió escrito el
+          `auditor-privacidad`; el caso donde habría que volver a decidirlo está
+          anotado, y es que el enlace salga desde otra página —ahí el `Referer`
+          empezaría a decir qué actividad estaba mirando la persona.
 
           El `sr-only` dice que se abre afuera para quien no ve el ícono que no
           hay: es el mismo patrón que el enlace de Instagram del pie.

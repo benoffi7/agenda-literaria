@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
@@ -8,8 +8,10 @@ import { RUTA_APOYAR } from '@/lib/rutasPublicas';
 import { RUTAS_FIJAS } from '@/lib/sitemap';
 import {
   ANTES_DE_APOYAR,
+  DESCRIPCION_DE_APOYO,
   EL_CAFECITO,
   ENTRADA_DE_APOYO,
+  TITULO_DE_APOYO,
   LETRA_CHICA,
   POR_QUE_IMPORTA,
   QUE_CUESTA,
@@ -241,6 +243,76 @@ describe('la página cuenta qué es y qué cuesta, que es lo que reemplaza al pe
     // Y el que no es plata, que es el que explica por qué la agenda crece
     // despacio y por qué la ayuda más útil es mandar una actividad.
     expect(costos).toMatch(/a mano|minutos/);
+  });
+
+  it('no promete que no se mide nada: el sitio mide con consentimiento (salida 12)', () => {
+    /*
+     * La primera versión decía «no se guarda quién entró», y era falso: en la
+     * misma pantalla está el banner de `AvisoDeCookies` diciendo que el sitio usa
+     * Google Analytics, y con el consentimiento aceptado sale un `page_view` con
+     * su client-id. Lo encontró el `auditor-privacidad`.
+     *
+     * No es una fuga: es una **promesa pública sobre datos que el propio sitio
+     * contradice**, en la única página cuyo valor entero es que se le crea, y en
+     * el HTML que se indexa. Los cuatro asertos de «las promesas» verificaban que
+     * estuvieran, no que fueran verdad — este cubre esa diferencia.
+     *
+     * MUTACIÓN PROBADA: reponer «y no se guarda quién entró» pone este caso en
+     * rojo.
+     */
+    const bannerExiste = existsSync(raiz('src/components/sitio/AvisoDeCookies.astro'));
+    expect(bannerExiste, 'si el banner desapareció, esta regla hay que redecidirla').toBe(true);
+
+    const absolutas = TEXTO_DE_APOYO.filter((t) =>
+      /no se (guarda|mide|registra)|sin anal[íi]tica|no hay anal[íi]tica|no us(amos|o) cookies/i.test(
+        t,
+      ),
+    );
+    expect(
+      absolutas,
+      'el sitio SÍ mide, con consentimiento (salida 12). Decilo condicionado o no lo digas.',
+    ).toEqual([]);
+
+    /*
+     * Y si el texto nombra la medición, la nombra condicionada. El detector es
+     * «Analytics» y no «se mide»: la página dice también que «el aporte **se
+     * mide**, literalmente, en cafés», que es otra cosa y no lleva condición.
+     */
+    const nombraMedicion = TEXTO_DE_APOYO.filter((t) => /analytics/i.test(t));
+    expect(nombraMedicion.length, 'la página no dice qué se mide').toBeGreaterThan(0);
+    for (const t of nombraMedicion) {
+      expect(t, `«${t.slice(0, 60)}…» nombra la medición sin la condición`).toMatch(
+        /solo si|si (lo )?acept/i,
+      );
+    }
+  });
+
+  it('el título y la meta description entran al barrido, como el resto del texto', () => {
+    /*
+     * Estaban escritas en el `.astro`, o sea **afuera de `TEXTO_DE_APOYO`**, que
+     * es la lista que este módulo declara como «un bloque que no llegue acá es un
+     * bloque que nadie revisa». O sea: dos frases exentas del barrido de
+     * centinelas y de los asertos de tono, mientras el docblock de la página
+     * afirmaba que no escribía ninguna. Lo encontró el `auditor-privacidad`.
+     *
+     * La `meta description` es exactamente la superficie que obligó a barrer la
+     * salida 8 con centinelas: texto libre en HTML indexado, a un carácter de
+     * interpolar algo.
+     */
+    expect(TEXTO_DE_APOYO).toContain(TITULO_DE_APOYO);
+    expect(TEXTO_DE_APOYO).toContain(DESCRIPCION_DE_APOYO);
+    // Y la descripción entra en el recorte de Google.
+    expect(DESCRIPCION_DE_APOYO.length).toBeLessThanOrEqual(200);
+
+    // La plantilla las consume, no las escribe: sin literales largos en `<Base>`.
+    const props = /<Base([\s\S]*?)>/.exec(sinComentarios(fuente(PAGINA)))?.[1] ?? '';
+    expect(props, 'el <Base> de la página no se encontró').not.toBe('');
+    const literales = (props.match(/"[^"]{25,}"/g) ?? []).filter((l) => !l.includes('{'));
+    expect(
+      literales,
+      'estas frases están escritas en la plantilla, así que ningún barrido las mira: ' +
+        'movelas a `apoyoDelSitio.ts` y sumalas a TEXTO_DE_APOYO.',
+    ).toEqual([]);
   });
 
   it('el trabajo es ad honorem y está dicho con hechos, no con adjetivos', () => {

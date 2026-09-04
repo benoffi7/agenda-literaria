@@ -82,6 +82,37 @@ export const ENTRADA_DE_APOYO =
   'La agenda es gratis y va a seguir siendo gratis. Esta página es para quien quiera ' +
   'poner algo igual.';
 
+/**
+ * El `<h1>` y la mitad del `<title>`.
+ *
+ * Vive acá y no en la plantilla por lo mismo que el resto: es una frase, y el
+ * docblock de este módulo promete que las frases se pueden verificar. El nombre
+ * del sitio lo agrega la página desde `identidad.ts` — acá no se escribe (D-141).
+ */
+export const TITULO_DE_APOYO = 'Apoyar la agenda';
+
+/**
+ * La `meta description`, y **la razón por la que está acá y no en el `.astro`**.
+ *
+ * `/ayuda`, `/contacto` y `/suscribirse` la escriben en la plantilla, así que
+ * esto es un desvío del precedente y hay que justificarlo: la `meta description`
+ * es exactamente la superficie que obligó a barrer la salida 8 con centinelas
+ * —es texto libre que sale en el HTML indexado y está a un carácter de
+ * interpolar algo—, y escrita en el `.astro` **queda afuera de
+ * `TEXTO_DE_APOYO`**, que es la lista que este módulo declara como «un bloque
+ * que no llegue acá es un bloque que nadie revisa».
+ *
+ * O sea que la página tenía dos frases exentas del único barrido que la cuida,
+ * mientras su propio docblock afirmaba que no escribía ninguna. Lo encontró el
+ * `auditor-privacidad`. Con las dos acá, el barrido de centinelas y los asertos
+ * de tono las miran como al resto.
+ *
+ * Los ~160 caracteres son el recorte de Google; ésta entra.
+ */
+export const DESCRIPCION_DE_APOYO =
+  'La agenda de actividades literarias es gratis y la hace una persona. Si te sirve y querés ' +
+  'poner algo, se puede por Cafecito — y también hay tres formas que no cuestan nada.';
+
 // ─────────────────────────────────────────────────────────────────
 // Qué es esto
 // ─────────────────────────────────────────────────────────────────
@@ -90,17 +121,31 @@ export const ENTRADA_DE_APOYO =
  * Quién hace la agenda y por qué es gratis.
  *
  * Acá va el espíritu ad honorem, y va contado en primera persona y con hechos
- * —no cobro, no hay anuncios, no hay datos— en vez de con adjetivos. «Proyecto
+ * —no cobro, no hay cuenta, no se vende nada— en vez de con adjetivos. «Proyecto
  * independiente y sin fines de lucro» es la versión formal de lo mismo y no dice
  * ninguna de las tres cosas.
+ *
+ * ── Lo que este párrafo NO puede decir, y por qué ─────────────────────────
+ * La primera versión decía «**no se guarda quién entró**», y era falso: en la
+ * misma pantalla está el banner de `AvisoDeCookies` diciendo que el sitio usa
+ * Google Analytics, y con el consentimiento aceptado sale un `page_view` con su
+ * client-id (la **salida 12**). Lo encontró el `auditor-privacidad`: no es una
+ * fuga de nada, es peor de otra manera — **una promesa pública sobre datos que
+ * el propio sitio contradice, en la única página cuyo valor entero es que se le
+ * crea**, y en el HTML que se indexa. Los cuatro asertos de «las promesas»
+ * verificaban que estuvieran, no que fueran verdad.
+ *
+ * Lo que quedó es lo verificable, con la condición dicha: se mide cuánta gente
+ * entra, con Google Analytics y **solo si lo aceptás**. Y hay un test que
+ * prohíbe volver a la versión sin condición.
  */
 export const QUIEN_LA_HACE: BloqueDeApoyo = {
   id: 'quien-la-hace',
   titulo: 'Quién hace esto',
   parrafos: [
     'Una persona, en los ratos que le quedan. No cobro por publicar una actividad y no vendo ' +
-      'datos de nadie porque no los tengo: acá no hay cuenta, no hay newsletter y no se guarda ' +
-      'quién entró.',
+      'datos de nadie: acá no hay cuenta, no hay newsletter, y lo único que se mide es cuánta ' +
+      'gente entra — con Google Analytics, y solo si lo aceptás.',
     'Empezó porque me perdí un taller que quería hacer. Estaba anunciado en una historia de ' +
       'Instagram que duró un día y me enteré tres semanas después, cuando ya había empezado. Eso ' +
       'sigue pasando todo el tiempo, y es lo único que la agenda arregla: que lo que se organiza ' +
@@ -184,7 +229,7 @@ export const QUE_CUESTA: {
       texto:
         'Cada actividad se carga a mano: alguien la lee, entiende cuándo y dónde es, chequea ' +
         'cómo se anota la gente y la escribe. Son unos minutos por actividad, y es la razón por ' +
-        'la que hay treinta y no trescientas.',
+        'la que la agenda crece despacio.',
     },
   ],
 };
@@ -338,6 +383,8 @@ export const ANTES_DE_APOYAR: EnlaceDeApoyo = {
  * que nadie revisa.
  */
 export const TEXTO_DE_APOYO: string[] = [
+  TITULO_DE_APOYO,
+  DESCRIPCION_DE_APOYO,
   ENTRADA_DE_APOYO,
   QUIEN_LA_HACE.titulo,
   ...QUIEN_LA_HACE.parrafos,
