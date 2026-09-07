@@ -477,7 +477,23 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
     */
     <>
       {programacion && (
-        <PanelesDeAhora programacion={programacion} tonos={tonos} id={`${id}-ahora`} />
+        <PanelesDeAhora
+          programacion={programacion}
+          tonos={tonos}
+          id={`${id}-ahora`}
+          /*
+            B-601 — el único parámetro es la clave del panel. **No va la actividad
+            a la que el clic lleva**: el `page_view` de la página de detalle ya
+            manda la ruta (§5.4 del diseño, tercer punto), así que mandarla acá
+            sería el mismo dato dos veces y una decisión de privacidad de más.
+
+            El handler va acá y no adentro de `PanelesDeAhora` porque **el mismo
+            componente lo pintan el build y la island**, y el del build no se
+            hidrata: adentro del componente, el transporte de analítica entraría
+            en los dos usos y mediría en uno solo.
+          */
+          onEncuentro={(panel) => medirSitio('clic_triptico', { panel })}
+        />
       )}
 
       <div className="lg:grid lg:grid-cols-[var(--spacing-riel)_minmax(0,1fr)] lg:items-start lg:gap-x-10">

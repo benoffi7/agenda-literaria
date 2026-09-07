@@ -2803,6 +2803,35 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-799 · P3 — el hook de los auditores frena comandos de solo lectura que dicen «commit»
+
+**Encontrado usándolo el 2026-09-07, media hora después de B-796.** El hook se
+dispara sobre la **cadena del comando**, así que cualquier invocación que
+contenga la palabra la frena — incluida una que no escribe nada. Pasó **dos
+veces en veinte minutos**:
+
+1. `git log --oneline -1; echo "--- ¿es HEAD el commit con el mail?"; git log …`
+   — tres `git log` y un `echo`, cero escrituras. Lo frenó la palabra adentro del
+   `echo`.
+2. El comando que escribía **este mismo ítem**, porque el texto de acá la nombra.
+
+**Por qué no es cosmético.** Es la regla que el propio hook se puso: «un hook que
+repite el mismo aviso se aprende a ignorar en tres turnos» (B-180). Un aviso que
+aparece sobre un `git log` es peor que repetido: es **falso**, y enseña a leer el
+bloque del hook como ruido — justo el bloque que un día va a estar frenando una
+credencial.
+
+**El arreglo es del lado del hook**: mirar el comando como comando y no como
+texto. Alcanza con exigir que la palabra sea el verbo de un `git` de verdad —al
+principio del comando o después de un `;`, `&&` o `|`, admitiendo las variables
+de entorno adelante— en vez de un `includes`. Sigue siendo un regex y no un
+parser de shell, y eso está bien: **el error tiene que quedar del lado de frenar
+de más**. Lo que hay que sacar son los falsos positivos evidentes, no todos.
+
+**Lo que no hay que hacer:** aflojar el hook para que la escritura pase. El
+problema es el alcance de la detección, no la decisión.
+
+
 ### B-798 · P2 — «Filtros que no encuentran nada» dice cuántas veces, no cuál filtro
 
 **Lo preguntó el dueño el 2026-09-07 mirando la pantalla:** «no hay que expandir

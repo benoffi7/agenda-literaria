@@ -984,6 +984,39 @@ describe('el tríptico de «¿qué hay ahora?» no decide nada — B-600', () =>
     expect(pie![0], 'la ruta viene armada, no se concatena acá').not.toMatch(/cuando=/);
   });
 
+  it('el enganche de la analítica entra por prop, no importando el transporte — B-601', () => {
+    /*
+     * **El enganche de `clic_triptico`, y por qué el handler no vive acá.**
+     *
+     * El mismo componente lo pintan **el build y la island** (`index.astro` y
+     * `Buscador.tsx`), y el del build **no se hidrata**: no ejecuta un `onClick`.
+     * Si el `medirSitio` viviera adentro del componente, el transporte de
+     * analítica entraría en los **dos** usos —incluido el HTML que hoy no lleva
+     * una línea de JavaScript por esta sección— y mediría en uno solo.
+     *
+     * Con la prop, el único que la pasa es el que puede medir. Lo que este caso
+     * fija son las dos mitades: que el componente **no importe** el transporte, y
+     * que **sí** reciba la prop.
+     *
+     * La consecuencia honesta, que está escrita en el docblock de la prop: se mide
+     * el clic del tríptico de la island, no el del HTML del build —el de antes de
+     * que hidrate—, que es una ventana de milisegundos.
+     *
+     * MUTACIÓN PROBADA: mover el `medirSitio` adentro de `PanelesDeAhora` deja
+     * este caso en rojo por la primera mitad.
+     */
+    const src = paneles();
+    expect(src, 'el componente importa el transporte de analítica').not.toMatch(
+      /from '@\/lib\/(medicionSitio|analyticsSitio)'/,
+    );
+    expect(src, 'el componente no recibe el enganche por prop').toContain('onEncuentro');
+    // Y el que sí puede medir lo pasa: la island.
+    const island = sinComentarios(readFileSync(raiz('src/components/publico/Buscador.tsx'), 'utf8'));
+    expect(island, 'la island no engancha el evento del tríptico').toMatch(
+      /onEncuentro=\{\(panel\) => medirSitio\('clic_triptico', \{ panel \}\)\}/,
+    );
+  });
+
   it('los dos enlaces del panel son la fila y el pie, y no hay botones adentro', () => {
     // §4.2 — en móvil un botón dentro de un link es un blanco ambiguo. Es la
     // misma regla que ya cumple `FilaDeActividad`. El pie es el **segundo**

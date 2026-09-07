@@ -34,7 +34,7 @@
  * no separa nada.
  */
 import { CLASES_DEL_TRIPTICO, foco } from '@/components/sitio/estilos';
-import type { ProgramacionInmediata } from '@/lib/ahoraPublico';
+import type { ClaveDePanel, ProgramacionInmediata } from '@/lib/ahoraPublico';
 import { estiloDeTipo, type TonosDeTipo } from '@/lib/listadoPublico';
 
 interface Props {
@@ -44,10 +44,22 @@ interface Props {
   tonos: TonosDeTipo;
   /** El `id` del `h2`, para que el `aria-labelledby` de la sección lo alcance. */
   id?: string;
+  /**
+   * Qué hacer cuando se toca un encuentro de un panel — B-601. Recibe la clave
+   * del panel y **nada más**: el componente no sabe de analítica, y no tiene que
+   * saber (el motivo largo está en `docs/16-analitica-del-sitio.md` §7.5).
+   *
+   * **Opcional a propósito**: el markup que pinta el build no se hidrata, así que
+   * ahí no hay handler que llamar y la prop no viaja. La consecuencia, escrita
+   * para que no se descubra como bug: **se mide el clic del tríptico de la
+   * island, no el del HTML del build** —el de antes de que hidrate—, que es una
+   * ventana de milisegundos en la home.
+   */
+  onEncuentro?: (panel: ClaveDePanel) => void;
 }
 
 /** El alto de las columnas no se iguala: cada panel mide lo que tiene. */
-export function PanelesDeAhora({ programacion, tonos, id = 'ahora' }: Props) {
+export function PanelesDeAhora({ programacion, tonos, id = 'ahora', onEncuentro }: Props) {
   const { sello, paneles } = programacion;
   /*
    * Cuántas columnas: **las que hay**, topeadas a tres y con piso en una.
@@ -147,6 +159,7 @@ export function PanelesDeAhora({ programacion, tonos, id = 'ahora' }: Props) {
                   <a
                     href={e.ruta}
                     className={`group flex min-w-0 flex-col gap-1 px-2 py-3 transition-colors hover:bg-crema lg:px-4 ${foco}`}
+                    onClick={onEncuentro && (() => onEncuentro(panel.clave))}
                   >
                     {/*
                       La hora, y el día solo cuando el panel abarca dos (el
