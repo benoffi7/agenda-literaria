@@ -2848,7 +2848,29 @@ mira» de «cambió lo que el auditor pidió».
 Lo que **no** hay que hacer es aflojar el bloqueo. El hook existe porque publicar
 es irreversible, y ya evitó exactamente lo que vino a evitar en esta misma tanda.
 
-### B-792 · P2 — el sello del tríptico publica la hora y el minuto del último build
+### B-792 · ✅ hecho (2026-09-07) — el sello del tríptico publica la hora y el minuto del último build
+
+**Recortado al día**: `Actualizado: vie 3 sep`. De las dos salidas que este ítem
+planteaba se eligió ésta y no el relativo, y el motivo es la página **sin
+JavaScript**: un «hace unos minutos» lo calcula el build, así que un HTML de tres
+días atrás lo afirmaría **para siempre** hasta que hidrate. Un sello que miente es
+peor que un sello impreciso — y el sello existe justamente para que la página vieja
+no mienta.
+
+**Lo que la hora explicaba no se perdió, y quedó atado**: la pregunta «vi una
+actividad anunciada y acá no está» ya tenía su respuesta en `/ayuda` («un cambio
+recién hecho tarda unos minutos en verse»), y hay un caso nuevo que la verifica
+desde el test del sello. Si alguien saca esa respuesta de la ayuda, el
+razonamiento de este ítem se pone en rojo en vez de quedar como un comentario
+falso.
+
+La celda de precisión quedó escrita en el docblock de `selloDelIndice` al lado de
+D-138, que es donde esta pregunta ya se había contestado una vez.
+
+El planteo original queda abajo.
+
+---
+
 
 **Lo levantó el `auditor-privacidad` auditando B-791, y es preexistente:** nació
 con B-600 y este cambio no lo toca. Se anota porque es una **celda que nunca se

@@ -522,7 +522,7 @@ los títulos y el nombre de la actividad, en Lora.
 >
 > ```
 > ├───────────────────────────────────────────────────────────┤
-> │ ¿QUÉ HAY AHORA?             ACTUALIZADO: VIE 3 SEP, 14:30 │  ← banda tonal, label-caps
+> │ ¿QUÉ HAY AHORA?                    ACTUALIZADO: VIE 3 SEP │  ← banda tonal, label-caps
 > ├──────────────────┬──────────────────┬─────────────────────┤
 > │ Hoy    VIE 3 SEP │ Este finde       │ Esta semana         │  ← rótulo + los días
 > │                  │ SÁB 4 A DOM 5 SEP│ LUN 7 A JUE 10 SEP  │    que abarca
@@ -594,9 +594,13 @@ los títulos y el nombre de la actividad, en Lora.
 >   porque Tailwind no genera una clase compuesta en runtime). **La sección entera
 >   no se dibuja** cuando no queda ninguno, que es la misma regla una vez más. El
 >   desvío está escrito en **D-320**.
-> - **El sello** («Actualizado: vie 3 sep, 14:30», del `generadoEn` del índice)
->   explica por qué algo cargado hace diez minutos todavía no está. Un `generadoEn`
->   ilegible deja el sello vacío, no tira abajo la home.
+> - **El sello** («Actualizado: vie 3 sep», del `generadoEn` del índice) dice de
+>   qué día es la página que se está mirando, que es lo que impide que «Hoy»
+>   prometa ser el estado del mundo. Un `generadoEn` ilegible deja el sello vacío,
+>   no tira abajo la home. **Decía la hora y el minuto hasta B-792**: con el
+>   debounce de cinco minutos del rebuild, eso publicaba cuándo fue la última
+>   escritura del panel, que es la cantidad que D-138 decidió no publicar. La
+>   latencia que la hora explicaba está contestada en `/ayuda`.
 >
 > El cálculo vive en `src/lib/ahoraPublico.ts` (puro), el markup en
 > `src/components/publico/PanelesDeAhora.tsx` (presentacional: no formatea una

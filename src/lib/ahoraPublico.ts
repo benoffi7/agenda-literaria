@@ -288,20 +288,43 @@ export const ventanasDeAhora = (ahora: Date): Ventana[] => {
 };
 
 /**
- * `Actualizado: vie 3 sep, 14:30` — cuándo se generó lo que se está mirando.
+ * `Actualizado: vie 3 sep` — de qué día es lo que se está mirando.
  *
- * Es el dato que explica por qué una actividad cargada hace diez minutos todavía
- * no está: el sitio es estático y se rehace cuando cambia algo, con unos minutos
- * de latencia (§8). Sin esto, «Hoy» promete ser el estado del mundo y no lo es.
+ * Sin esto, «Hoy» promete ser el estado del mundo y no lo es: el sitio es
+ * estático y se rehace cuando cambia algo, con unos minutos de latencia (§8), así
+ * que una página servida tres días después de la última carga diría «Hoy» de un
+ * viernes que ya pasó.
  *
  * Sale de `generadoEn`, que es el instante que el propio índice declara — el
  * mismo reloj con el que se armó el HTML.
+ *
+ * ── Decía la hora y el minuto, y dejó de decirlos — B-792 ─────────────────
+ * Era `Actualizado: vie 3 sep, 14:30`, y el argumento de la hora era buenísimo:
+ * «explica por qué una actividad cargada hace diez minutos todavía no está».
+ *
+ * **Lo levantó el `auditor-privacidad`.** El rebuild lo dispara
+ * `sistema/rebuild.pendiente` con un debounce de cinco minutos, así que un sello
+ * al minuto le dice a cualquiera que abra la home, con cinco minutos de
+ * precisión, **cuándo fue la última escritura del panel**. Con un solo admin eso
+ * es su agenda de trabajo, que es exactamente la cantidad que **D-138** decidió
+ * no publicar cuando recortó `creadoEn` a `AAAA-MM-DD`.
+ *
+ * De las dos salidas posibles se eligió **recortar al día** y no pasarlo a
+ * relativo («hace unos minutos»), y el motivo es la página sin JavaScript: un
+ * relativo lo calcula el build, así que un HTML de tres días atrás afirmaría
+ * «hace unos minutos» **para siempre** hasta que hidrate. Un sello que miente es
+ * peor que un sello impreciso.
+ *
+ * Y lo que la hora explicaba **no se perdió**: la pregunta «vi una actividad
+ * anunciada y acá no está» tiene su respuesta en `/ayuda`, que dice que un cambio
+ * recién hecho tarda unos minutos en verse. Ahí es donde se explica la latencia;
+ * acá solo hace falta de qué día es esta página.
  */
 const selloDelIndice = (generadoEn: string): string => {
   const d = instanteDeIso(generadoEn);
   // Un `generadoEn` ilegible no puede tirar abajo la home: sin sello se pierde
   // una línea de contexto, y con una excepción se pierde la página entera.
-  return d ? `Actualizado: ${fechaCorta(d)}, ${hora(d)}` : '';
+  return d ? `Actualizado: ${fechaCorta(d)}` : '';
 };
 
 /** `vie 15 sep`, o `sáb 16 sep y dom 17 sep`. */

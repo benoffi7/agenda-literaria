@@ -998,19 +998,49 @@ describe('cada panel imprime los días que abarca', () => {
 });
 
 describe('el sello de frescura', () => {
-  it('dice cuándo se generó lo que se está mirando', () => {
+  it('dice de qué DÍA es lo que se está mirando, y no de qué minuto — B-792', () => {
     /*
-     * Es el dato que explica por qué una actividad cargada hace diez minutos
-     * todavía no está: el sitio es estático y se rehace con unos minutos de
-     * latencia (§8). Sin esto, «Hoy» promete ser el estado del mundo.
+     * Sin el sello, «Hoy» promete ser el estado del mundo: el sitio es estático y
+     * una página servida tres días después de la última carga diría «Hoy» de un
+     * viernes que ya pasó.
+     *
+     * **Decía `Actualizado: lun 14 sep, 09:30` hasta B-792**, con el argumento de
+     * que la hora explica por qué una actividad cargada hace diez minutos todavía
+     * no está. Lo levantó el `auditor-privacidad`: con el debounce de cinco
+     * minutos del rebuild, un sello al minuto publica **cuándo fue la última
+     * escritura del panel**, y con un solo admin eso es su agenda de trabajo — la
+     * misma cantidad que D-138 decidió no publicar al recortar `creadoEn` a
+     * `AAAA-MM-DD`.
+     *
+     * Lo que la hora explicaba vive en `/ayuda` («un cambio recién hecho tarda
+     * unos minutos en verse»), y se verifica ahí abajo para que sacarla de la
+     * ayuda deje este razonamiento en rojo.
+     *
+     * MUTACIÓN PROBADA: reponer `, ${hora(d)}` deja este caso en rojo, y también
+     * el `it` del sello en el barrido de centinelas.
      */
     const indice = indiceDePrueba(
       [{ fechas: ['2026-09-14T23:00:00Z'] }],
       '2026-09-14T12:30:00.000Z',
     );
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
-    // 12:30 UTC son las 09:30 de Buenos Aires, que es cuando corrió el build.
-    expect(programacion!.sello).toBe('Actualizado: lun 14 sep, 09:30');
+    // 12:30 UTC son las 09:30 de Buenos Aires: el día sale, la hora no.
+    expect(programacion!.sello).toBe('Actualizado: lun 14 sep');
+    expect(programacion!.sello, 'el minuto del build no sale (D-138)').not.toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  it('y la latencia que el minuto explicaba está contestada en la ayuda', () => {
+    /*
+     * La otra mitad de B-792, y la razón por la que recortar el sello no pierde
+     * nada: la pregunta «vi una actividad anunciada y acá no está» tiene su
+     * respuesta en `/ayuda`. Si esa respuesta se saca, este caso se pone en rojo y
+     * hay que redecidir el sello, no borrar el aserto.
+     */
+    const ayuda = readFileSync(
+      fileURLToPath(new URL('../src/lib/ayudaDelSitio.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(ayuda).toContain('tarda unos minutos en verse');
   });
 
   it('un `generadoEn` ilegible devuelve cadena vacía y no una excepción', () => {

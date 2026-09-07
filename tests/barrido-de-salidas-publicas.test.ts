@@ -2664,7 +2664,9 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º p
      * interpolar el título de una actividad ahí arriba.
      */
     const programacion = panelesDeAhora(indice(), AHORA, LABELS_CENTINELA);
-    expect(programacion!.sello).toBe('Actualizado: jue 3 sep, 09:00');
+    // Sin la hora desde B-792: el minuto del build es la agenda de trabajo del
+    // admin (D-138). Ver el docblock de `selloDelIndice`.
+    expect(programacion!.sello).toBe('Actualizado: jue 3 sep');
     barrer('sello del tríptico', programacion!.sello, []);
   });
 

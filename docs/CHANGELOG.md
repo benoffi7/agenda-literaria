@@ -2,6 +2,20 @@
 
 ## Sin publicar
 
+- **El sello del tríptico dice el día y ya no el minuto** — **B-792**. Decía
+  `Actualizado: vie 3 sep, 14:30`, y con el debounce de cinco minutos del rebuild
+  eso le decía a cualquiera que abriera la home, con cinco minutos de precisión,
+  **cuándo fue la última escritura del panel**. Con un solo admin es su agenda de
+  trabajo: la misma cantidad que D-138 decidió no publicar cuando recortó
+  `creadoEn` a `AAAA-MM-DD`. Lo levantó el `auditor-privacidad`.
+
+  Se recortó al día y **no** se pasó a relativo, y el motivo es la página sin
+  JavaScript: un «hace unos minutos» lo calcula el build, así que un HTML de tres
+  días atrás lo afirmaría para siempre hasta hidratar — y el sello existe
+  justamente para que la página vieja no mienta. Lo que la hora explicaba está
+  contestado en `/ayuda`, y ahora hay un caso que lo ata: si esa respuesta se saca,
+  el razonamiento del sello se pone en rojo.
+
 - **Tres ítems de la red de contención, cerrados** — **B-783**, **B-784** y
   **B-294**.
 

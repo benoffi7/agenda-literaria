@@ -927,9 +927,10 @@ rebuild.
   ninguno. Lo decidió el dueño mirando el sitio publicado; el argumento contrario
   —«el sábado está libre» es información— está escrito al lado del original en
   D-320.
-- **El sello** («Actualizado: vie 3 sep, 14:30») explica por qué algo cargado
-  hace diez minutos todavía no está: el sitio es estático y se rehace con unos
-  minutos de latencia.
+- **El sello** («Actualizado: vie 3 sep») dice de qué día es la página que se
+  está mirando: el sitio es estático y se rehace con unos minutos de latencia.
+  **Sin la hora desde B-792** —publicaba, con cinco minutos de precisión, cuándo
+  fue la última escritura del panel—; la latencia la explica `/ayuda`.
 
 El cálculo está en [`src/lib/ahoraPublico.ts`](../src/lib/ahoraPublico.ts), puro y
 testeado; el markup en
