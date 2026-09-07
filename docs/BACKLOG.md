@@ -2837,7 +2837,31 @@ puede volver a inventarlo. Recuperar el signo va a poner ese caso en rojo a
 propósito.
 
 
-### B-796 · P3 — el hook de los auditores bloquea el comando entero, y se pierde lo que venía adelante
+### B-796 · ✅ hecho (2026-09-07) — el hook de los auditores bloquea el comando entero, y se pierde lo que venía adelante
+
+**Hecho lo que se podía hacer del lado del hook: el mensaje ahora lo dice.** Tres
+líneas al final del aviso —«esto rechazó el comando ENTERO, no solo el commit; si
+venía encadenado con algo adelante, eso tampoco corrió; verificalo antes de
+reintentar»—. Probado invocando el hook con una salida pública tocada.
+
+**Lo que no se tocó, y es a propósito: el chequeo.** El commit no tenía que pasar.
+Aflojar el bloqueo para que «al menos corra la edición» sería exactamente el
+`SALTEAR_AUDITORES` implícito que B-180 advierte.
+
+**Y la otra mitad no es del hook.** Encadenar una edición con un commit es apostar
+a que el commit pase; con un gate que puede frenarlo por diseño, la edición va en
+un comando aparte. Eso es criterio y no se automatiza — pero ahora el mensaje lo
+recuerda en el momento exacto en que hace falta.
+
+Queda escrito además el agravante de la segunda vez, que es una lección aparte:
+el reintento fue un `replace` sobre un texto que ya no existía y **no falló**
+porque no tenía `assert`, así que el arreglo se perdió en silencio por segunda
+vez. Un `replace` de reparación sin `assert` es un no-op con cara de arreglo.
+
+El planteo original queda abajo.
+
+---
+
 
 **Encontrado usándolo el 2026-09-07.** El `PreToolUse` de
 `scripts/hook-auditores.mjs` rechaza **la invocación de Bash completa**, no el

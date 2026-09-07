@@ -115,6 +115,22 @@ const estado = () => {
   return { disparadores, fp: huellaDeAuditoria(raiz, disparadores) };
 };
 
+/**
+ * El aviso, y la línea del final que no es adorno — B-796.
+ *
+ * Este hook rechaza **la invocación de Bash entera**, no el `git commit` solo. Un
+ * comando encadenado —editar la doc, `git add`, `git commit`— se rechaza completo:
+ * la edición **no corre**, y el único rastro es este mensaje, que habla del
+ * commit.
+ *
+ * Pasó dos veces el 2026-09-07, con el cierre documental de un ítem, y la segunda
+ * fue peor: el reintento era un `replace` sobre un texto que ya no existía y **no
+ * falló** (no tenía `assert`), así que el arreglo también se perdió en silencio.
+ * Se descubrió por un `git status` que no mostraba lo que tenía que mostrar.
+ *
+ * El chequeo es correcto y no se afloja: el commit no tenía que pasar. Lo que se
+ * puede mejorar es lo que el mensaje **dice**, y son dos líneas.
+ */
 const aviso = (disparadores, comoSaltear) =>
   [
     `⚠ El cambio toca ${disparadores.length} salida(s) pública(s) y todavía no pasó por el \`${AGENTE}\`:`,
@@ -125,6 +141,10 @@ const aviso = (disparadores, comoSaltear) =>
     '  o un link de reunión público (B-124, D-350).',
     '',
     `  Para saltearlo a propósito: ${comoSaltear}`,
+    '',
+    '  OJO: esto rechazó el comando ENTERO, no solo el commit. Si venía encadenado',
+    '  con algo adelante (una edición, un script), eso tampoco corrió — verificalo',
+    '  antes de reintentar, y mandá la edición en un comando aparte (B-796).',
   ].join('\n');
 
 const modos = {
