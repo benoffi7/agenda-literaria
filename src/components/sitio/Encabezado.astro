@@ -5,6 +5,8 @@ import {
   RUTA_AGENDA,
   RUTA_AYUDA,
   RUTA_CARTELERA,
+  RUTA_ANUNCIAR,
+  RUTA_APOYAR,
   RUTA_CONTACTO,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
@@ -108,6 +110,22 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
   { seccion: 'suscribirse', href: RUTA_SUSCRIBIRSE, texto: 'Suscribirse' },
   { seccion: 'ayuda', href: RUTA_AYUDA, texto: 'Ayuda' },
   { seccion: 'contacto', href: RUTA_CONTACTO, texto: 'Contacto' },
+  /*
+   * **`Anunciar` y `Apoyar` suben del pie a la barra** — pedido del dueño el
+   * 2026-09-07, que revierte una decisión de cada frente: B-770 y D-461 las
+   * habían dejado solo en el pie, con el argumento de que la barra es para quien
+   * vino por una actividad y una pestaña más le cobraba el ancho a la mayoría.
+   *
+   * El desvío es del dueño y el motivo es el opuesto: son las dos formas de que
+   * el proyecto se sostenga —una vende espacio, la otra pide un cafecito— y
+   * esconderlas en el pie es donde no se ven. Están **al final de la fila** y en
+   * ese orden a propósito: la agenda y la cartelera siguen primeras.
+   *
+   * Quedan siete pestañas. Si en algún momento no entran, lo que hay que revisar
+   * es esta fila entera y no sacar la última que llegó.
+   */
+  { seccion: 'anunciar', href: RUTA_ANUNCIAR, texto: 'Anunciar' },
+  { seccion: 'apoyar', href: RUTA_APOYAR, texto: 'Apoyar' },
 ];
 ---
 
@@ -136,7 +154,27 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
     sistema es de página completa, no de contenedor angosto.
   */}
   <div class="mx-auto flex max-w-[90rem] items-end justify-between gap-4 px-4 py-3 sm:min-h-encabezado sm:px-10 sm:py-4">
-    <a href={RUTA_AGENDA} class={`group flex min-w-0 items-end ${focoAmplio}`}>
+    {/*
+      **El logo va acá, en la barra, al lado del nombre** — pedido del dueño el
+      2026-09-07. Primero se puso en el cuerpo de la home; lo que quería era esto.
+      Y así aparece en **todas** las páginas y no solo en una, que es lo que hace
+      que sea la marca del sitio y no un adorno de la portada.
+
+      `alt` vacío: el nombre está escrito al lado, adentro del mismo enlace, así
+      que el enlace ya tiene nombre accesible y un `alt` lo diría dos veces.
+
+      `items-center` y no `items-end` como el resto de la fila: el logo es
+      cuadrado y alinearlo por la base lo deja flotando sobre la línea de la
+      tipografía.
+    */}
+    <a href={RUTA_AGENDA} class={`group flex min-w-0 items-center gap-2 sm:gap-3 ${focoAmplio}`}>
+      <img
+        src="/marca-512.png"
+        alt=""
+        width="40"
+        height="40"
+        class="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
+      />
       <span class="marca text-tinta group-hover:text-acento">{NOMBRE}</span>
     </a>
 

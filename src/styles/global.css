@@ -377,33 +377,6 @@
  * referencia los dos iban a 72px y competían. El mes gana, porque es lo que
  * estructura la página; el nombre se dice una vez y se aprende.
  */
-/*
- * `marca-home` — el logo y el nombre juntos, centrados, arriba de la home.
- *
- * Pedido del dueño el 2026-09-07: el logo tiene que aparecer en la home, con
- * «Agenda LEH» al lado, en Archivo Narrow. O sea que **no** es `marca` —que es la
- * display del encabezado— ni `headline-md`, que es el tamaño del titular de la
- * página y competiría con él.
- *
- * Va un escalón arriba del titular (40px contra 32px) y en la condensada, que es
- * lo que la hace leerse como **el nombre de la publicación** y no como un título
- * más: en un programa impreso la cabecera y el titular no son la misma cosa ni el
- * mismo tipo.
- */
-@utility marca-home {
-  font-family: var(--font-titulo);
-  font-weight: 700;
-  font-size: 32px;
-  line-height: 32px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-
-  @media (width >= 40rem) {
-    font-size: 40px;
-    line-height: 40px;
-  }
-}
-
 @utility marca {
   font-family: var(--font-display);
   font-weight: 800;

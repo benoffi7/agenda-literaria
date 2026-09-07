@@ -436,25 +436,32 @@ describe('la página entra al sitio como corresponde', () => {
     expect(fuente(PAGINA)).not.toMatch(/<Base[^>]*\bnoIndex\b/s);
   });
 
-  it('el pie la enlaza, y el encabezado no', () => {
+  it('la enlazan el pie Y el encabezado — el dueño la subió el 2026-09-07', () => {
     /*
-     * La decisión, atada en las dos direcciones. El pie es el único link
-     * permanente que necesita (mismo criterio que `/pasadas`, B-109) y la barra
-     * no la lleva: una página que promete que nadie tiene que pagar nada y
-     * aparece en la navegación de todas las pantallas se contradice sola.
+     * **Este caso decía lo contrario, y el rojo funcionó como estaba escrito.**
+     * D-461 la había dejado solo en el pie, con este argumento: «una página que
+     * promete que nadie tiene que pagar nada y aparece en la navegación de todas
+     * las pantallas se contradice sola». Y el caso avisaba: «si algún día se
+     * decide subirla al encabezado, este caso se pone en rojo y hay que venir a
+     * decidirlo acá».
      *
-     * Si algún día se decide subirla al encabezado, este caso se pone en rojo y
-     * hay que venir a decidirlo acá — que es exactamente lo que se quiere.
+     * Pasó exactamente eso. El dueño la subió, y su motivo es el opuesto y
+     * también es bueno: **es una de las dos formas de que el proyecto se
+     * sostenga, y en el pie es donde no se ve**. La contradicción que D-461 temía
+     * la resuelve el texto de la página, que sigue diciendo que si nadie aporta
+     * no pasa nada — eso es lo que hay que cuidar, y lo cuidan los casos de
+     * arriba.
+     *
+     * Se sigue afirmando en las dos direcciones, solo que ahora las dos son
+     * «está»: si mañana alguien la saca de la barra, este caso lo dice.
      */
-    const pie = fuente('src/components/sitio/PieDePagina.astro');
-    expect(pie).toContain('RUTA_APOYAR');
+    expect(fuente('src/components/sitio/PieDePagina.astro')).toContain('RUTA_APOYAR');
 
     const encabezado = sinComentarios(fuente('src/components/sitio/Encabezado.astro'));
     expect(
       encabezado,
-      'si `/apoyar` sube al encabezado, actualizá el motivo en la página y en el pie',
-    ).not.toContain('RUTA_APOYAR');
-    // Y sí declara la sección, que es lo que le da chrome sin darle pestaña.
+      'si `/apoyar` sale del encabezado, actualizá el motivo acá y en la página',
+    ).toContain('RUTA_APOYAR');
     expect(encabezado).toContain("'apoyar'");
   });
 

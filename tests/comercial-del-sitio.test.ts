@@ -462,16 +462,19 @@ describe('la sección comercial `/anunciar` — B-770', () => {
     expect(src).toMatch(/<Base[^>]*seccion="anunciar"/s);
   });
 
-  it('el pie la enlaza, y el encabezado a propósito no', () => {
+  it('la enlazan el pie Y la barra — el dueño la subió el 2026-09-07', () => {
     /*
-     * La decisión, atada: la barra de arriba es para quien busca una actividad y
-     * tiene cinco enlaces (`tests/estilos-del-sitio.test.ts` fija cuáles). La
-     * entrada de esta página es el pie, que es el único lugar que se ve en todas
-     * las páginas sin cobrarle ancho a nadie.
+     * **Este caso afirmaba lo contrario y el rojo hizo su trabajo:** decía «si
+     * cambió tiene que cambiar con su motivo escrito», y acá está el motivo.
      *
-     * Y `'anunciar'` es una `Seccion` sin enlace en la barra: eso prende el
-     * chrome sin poner un `aria-current="page"` sobre un enlace que lleva a otra
-     * página.
+     * B-770 la había dejado solo en el pie porque «la barra de arriba es para
+     * quien busca una actividad» y una pestaña más le cobraba ancho a la mayoría.
+     * El dueño la subió con el argumento opuesto: es una de las dos formas de que
+     * el proyecto se sostenga, y en el pie es donde no se ve.
+     *
+     * Sigue atado en las dos direcciones —ahora las dos son «está»— y sigue
+     * declarando su `Seccion`, que es lo que le da chrome. Lo que cambió es de
+     * qué lado está la afirmación, no que haya afirmación.
      */
     const pie = readFileSync(raiz('src/components/sitio/PieDePagina.astro'), 'utf8');
     expect(pie).toContain('RUTA_ANUNCIAR');
@@ -481,8 +484,7 @@ describe('la sección comercial `/anunciar` — B-770', () => {
     expect(encabezado).toContain("'anunciar'");
     expect(
       encabezado.includes('RUTA_ANUNCIAR'),
-      'la sección comercial entró a la barra de navegación: era una decisión (B-770), ' +
-        'así que si cambió tiene que cambiar con su motivo escrito',
-    ).toBe(false);
+      'si la sección comercial sale de la barra, actualizá el motivo acá y en el pie',
+    ).toBe(true);
   });
 });

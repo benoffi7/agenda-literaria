@@ -169,7 +169,7 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
     expect(readFileSync(raiz('src/layouts/Base.astro'), 'utf8')).toContain('id="contenido"');
   });
 
-  it('las cinco secciones y `aria-current` siguen ahí', () => {
+  it('las siete secciones y `aria-current` siguen ahí', () => {
     const src = encabezado();
     /*
      * Los destinos son **constantes** desde B-330 y no literales: `/cartelera`
@@ -181,6 +181,16 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
      * B-265 — la cartelera entra segunda, pegada a la agenda: son las dos formas
      * de mirar lo mismo. Mover «Cartelera» al final la esconde detrás de tres
      * enlaces de servicio.
+     *
+     * **`Anunciar` y `Apoyar` entraron el 2026-09-07, y van últimas** — decisión
+     * del dueño, que revierte a B-770 y D-461: los dos frentes las habían dejado
+     * solo en el pie con el argumento de que la barra es para quien vino por una
+     * actividad. El motivo del desvío es el opuesto y está escrito en el
+     * encabezado: son las dos formas de que el proyecto se sostenga, y en el pie
+     * es donde no se ven.
+     *
+     * El orden importa igual que antes: la agenda y la cartelera siguen primeras,
+     * y lo que llegó último quedó último.
      */
     const hrefs = [...src.matchAll(/href:\s*([A-Z_]+),/g)].map((m) => m[1]);
     expect(hrefs).toEqual([
@@ -189,6 +199,8 @@ describe('el chrome conserva lo que no se puede sacar — B-229', () => {
       'RUTA_SUSCRIBIRSE',
       'RUTA_AYUDA',
       'RUTA_CONTACTO',
+      'RUTA_ANUNCIAR',
+      'RUTA_APOYAR',
     ]);
     // `aria-current="page"` es lo que dice «estás acá» a quien no ve el color.
     expect(src).toMatch(/aria-current=\{activa === seccion \? 'page' : undefined\}/);
