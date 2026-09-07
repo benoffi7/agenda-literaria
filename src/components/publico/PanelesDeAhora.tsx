@@ -1,7 +1,7 @@
 /**
  * El tríptico de «¿Qué hay ahora?» — **B-600**, la mitad de UI de B-99.
  *
- * Tres paneles —**Hoy · Mañana · Este finde**— arriba del listado de la home,
+ * Tres paneles —**Hoy · Este finde · Esta semana**— arriba del listado de la home,
  * con los encuentros que caen en cada ventana. Es la portada del programa: la
  * respuesta a «¿qué hay el sábado?», que el listado ordenado por próxima fecha
  * no da de un vistazo.
@@ -204,13 +204,24 @@ export function PanelesDeAhora({ programacion, tonos, id = 'ahora' }: Props) {
             </ul>
 
             {/*
-              Lo que el tope dejó afuera. Es texto y no un link a propósito: el
-              día no es una URL de este sitio (§2.3) y el listado completo está en
-              esta misma página, más abajo. El motivo largo está en
-              `lib/ahoraPublico.ts`.
+              Lo que el tope dejó afuera, **y a dónde ir a verlo** — B-791. Era
+              texto suelto («el día no es una URL de este sitio, §2.3») y ahora es
+              un link al listado de esta misma página filtrado por los días de la
+              ventana: sigue sin haber una página por día, y el pie deja de ser un
+              cartel sin salida. La ruta la arma `lib/ahoraPublico.ts`, que es
+              donde vive la gramática de `?cuando=`; acá no se concatena nada.
+
+              El `<a>` es de página completa y no un `onClick`: tiene que
+              funcionar en el HTML del build, antes de que la island hidrate. La
+              home lee la query al montar (`desdeQuery`), así que llega filtrada.
             */}
-            {panel.resto && (
-              <p className="label-caps px-2 py-3 text-super lg:px-4">{panel.resto}</p>
+            {panel.resto && panel.rutaDelResto && (
+              <a
+                href={panel.rutaDelResto}
+                className={`label-caps block px-2 py-3 text-super underline decoration-borde decoration-1 underline-offset-4 transition-colors hover:bg-crema hover:text-acento lg:px-4 ${foco}`}
+              >
+                {panel.resto}
+              </a>
             )}
           </article>
         ))}

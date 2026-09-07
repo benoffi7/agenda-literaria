@@ -123,14 +123,36 @@ export const claveDeDia = (d: Date): string => {
  * llegue a tener —tuvo horario de verano hasta 2009 y volver a tenerlo es una
  * decisión política (ver `isoConOffset`)— y `claveDeDia(anclaDeDia(c)) === c`.
  *
- * La clave sale siempre de `claveDeDia`: no hay ningún camino desde la URL hasta
- * acá, a diferencia de la clave de mes, que sí llega de `/agenda/{mes}` y por eso
- * `mesDesplazado` se defiende de una clave ilegible.
+ * **La clave llegaba siempre de `claveDeDia`, y desde B-791 ya no.** Decía acá:
+ * «no hay ningún camino desde la URL hasta acá, a diferencia de la clave de mes,
+ * que sí llega de `/agenda/{mes}` y por eso `mesDesplazado` se defiende de una
+ * clave ilegible». El filtro por día del pie del tríptico abrió ese camino:
+ * `?cuando=2026-09-19..2026-09-20` es texto de la URL que termina en
+ * `diaDesplazado`. La defensa es `esClaveDeDia`, que se aplica **antes** —en
+ * `diasDelCuando`— y no acá: esta función sigue asumiendo una clave válida, que
+ * es lo que la deja en cuatro líneas.
  */
 const anclaDeDia = (clave: string): Date => {
   const [anio, mes, dia] = clave.split('-').map(Number);
   return new Date(Date.UTC(anio ?? 1970, (mes ?? 1) - 1, dia ?? 1, 12));
 };
+
+/**
+ * ¿Es una clave de día de verdad? — `2026-13-01` tiene la forma y no existe.
+ *
+ * Nace con B-791, que abrió el primer camino desde la URL hasta la aritmética de
+ * días (ver `anclaDeDia`). La forma sola no alcanza: `\d{4}-\d{2}-\d{2}` acepta
+ * el mes 13 y el 31 de febrero, y `Date.UTC(2026, 12, 1)` no falla — **rueda** a
+ * enero de 2027 en silencio. Un `?cuando=2026-13-01` filtraría por un día que la
+ * persona no pidió.
+ *
+ * Se verifica con la ida y la vuelta —`claveDeDia(anclaDeDia(c)) === c`, la
+ * propiedad que el docblock del ancla ya afirmaba— en vez de con una tabla de
+ * días por mes: los años bisiestos salen gratis y no hay una segunda definición
+ * de calendario que mantener.
+ */
+export const esClaveDeDia = (clave: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(clave) && claveDeDia(anclaDeDia(clave)) === clave;
 
 /**
  * La clave del día corrido `n` días — `diaDesplazado('2026-09-15', 1) === '2026-09-16'`.

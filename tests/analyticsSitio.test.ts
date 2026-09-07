@@ -17,6 +17,7 @@ import {
   type PanelMedible,
 } from '@/lib/analyticsSitio';
 import { EJES } from '@/lib/listadoPublico';
+import type { ClaveDePanel } from '@/lib/ahoraPublico';
 
 /**
  * `analyticsSitio.ts` es la proyección que hace segura la analítica del
@@ -239,8 +240,37 @@ describe('construirEventoSitio — whitelist en las dos direcciones', () => {
   });
 
   describe('clic_triptico — B-601', () => {
+    it('todo panel de ClaveDePanel es medible: PANELES_MEDIBLES no queda atrás', () => {
+      /*
+       * **La red que el docblock de `PANELES_MEDIBLES` proponía y no existía**, y
+       * la escribió el `auditor-trampas` mirando B-791: ese renombre
+       * (`manana` → `semana`) hubo que hacerlo **a mano en los dos lados**, y la
+       * única consecuencia de olvidarse uno habría sido un `panel=otro` en GA4
+       * semanas después. Es el patrón de B-88: dos listas de lo mismo, derivadas
+       * por separado.
+       *
+       * El `Record` es lo que verifica: **no compila** si `ClaveDePanel` gana una
+       * clave que `PanelMedible` no tiene. Vive en el test y no en el módulo
+       * porque `ahoraPublico.ts` no puede entrar al bundle que carga en todas las
+       * páginas —el banner de `Base.astro` importa este archivo—, y un
+       * `import type` no deja rastro.
+       *
+       * MUTACIÓN PROBADA: sacar `'semana'` de `PANELES_MEDIBLES` deja este caso
+       * en rojo en `tsc`, no en runtime, que es antes.
+       */
+      const cubiertos: Record<ClaveDePanel, PanelMedible> = {
+        hoy: 'hoy',
+        finde: 'finde',
+        semana: 'semana',
+      };
+      // Y la vuelta, que el tipo no puede dar: ningún panel medible sobra.
+      for (const panel of Object.values(cubiertos)) {
+        expect(construirEventoSitio('clic_triptico', { panel })?.params).toEqual({ panel });
+      }
+    });
+
     it('los tres paneles pasan tal cual', () => {
-      for (const panel of ['hoy', 'manana', 'finde'] satisfies PanelMedible[]) {
+      for (const panel of ['hoy', 'finde', 'semana'] satisfies PanelMedible[]) {
         expect(construirEventoSitio('clic_triptico', { panel })?.params).toEqual({ panel });
       }
     });

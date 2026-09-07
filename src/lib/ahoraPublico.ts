@@ -32,13 +32,17 @@
  * | Panel | Qué agarra |
  * |---|---|
  * | **Hoy** | lo que **queda** de hoy |
- * | **Mañana** | el día siguiente, entero |
- * | **Este finde** / **El finde que viene** | el sábado y el domingo, **menos** lo que ya contaron los dos primeros |
+ * | **Este finde** / **El finde que viene** | el sábado y el domingo, **menos** hoy |
+ * | **Esta semana** | los días que faltan hasta el domingo, **menos** los dos de arriba |
  *
- * La resta del tercero no es un detalle: un viernes, «mañana» y «este finde»
- * comparten el sábado, y el mismo encuentro repetido en dos paneles pegados de
- * un tríptico se lee como un error de software (no es el caso de una destacada
- * apareciendo en la tira y en su mes, que están a media pantalla de distancia).
+ * (Eran `Hoy · Mañana · Este finde` hasta B-791: el dueño pidió los rótulos de
+ * ahora. Lo que **no** cambió es que las tres ventanas son **disjuntas**, que es
+ * la decisión de D-320 y sobrevive intacta — ver la resta de `semana`.)
+ *
+ * La resta no es un detalle: un viernes, «este finde» y «esta semana» comparten
+ * el sábado, y el mismo encuentro repetido en dos paneles pegados de un tríptico
+ * se lee como un error de software (no es el caso de una destacada apareciendo
+ * en la tira y en su mes, que están a media pantalla de distancia).
  * Cuando la resta deja el finde en curso sin días —o sea hoy es sábado o
  * domingo— la ventana pasa al finde siguiente y **el rótulo lo dice**: nunca se
  * llama «este finde» a un sábado que falta una semana.
@@ -62,23 +66,28 @@ import {
   hora,
   partesDeFecha,
 } from '@/lib/fechasPublicas';
-import { etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
+import { cuandoDeDias, etiquetaDe, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import { instanteDeIso } from '@/lib/sesiones';
-import { rutaDeDetalle } from '@/lib/rutasPublicas';
+import { RUTA_AGENDA, rutaDeDetalle } from '@/lib/rutasPublicas';
 import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
 
 /**
  * Cuántos encuentros muestra un panel antes de cortar.
  *
- * Cuatro y no «todos»: el tríptico es la **portada del programa**, y un panel de
+ * Dos y no «todos»: el tríptico es la **portada del programa**, y un panel de
  * doce filas deja de leerse de un vistazo y empuja el listado abajo del pliegue
  * en un teléfono —que es el argumento de D-143 sobre los filtros, acá otra vez—.
  * Lo que queda afuera no se esconde: el panel dice cuántos son, y el listado
  * completo está en la misma página, unos centímetros más abajo.
+ *
+ * **Eran cuatro hasta B-791**, y el dueño lo bajó a dos junto con el sorteo. Los
+ * dos cambios van juntos y por el mismo motivo: con cuatro filas de un día que
+ * tiene cinco, el orden fijo alcanzaba; con dos de cinco, mostrar siempre las
+ * mismas dos condena a las otras tres a no aparecer nunca — de ahí `sorteados`.
  */
-export const TOPE_DEL_PANEL = 4;
+export const TOPE_DEL_PANEL = 2;
 
-export type ClaveDePanel = 'hoy' | 'manana' | 'finde';
+export type ClaveDePanel = 'hoy' | 'finde' | 'semana';
 
 /** Un encuentro como lo muestra un panel: strings ya decididos, nada que derivar. */
 export interface EncuentroDePanel {
@@ -93,9 +102,9 @@ export interface EncuentroDePanel {
   /**
    * `sáb 16`, y solo cuando el panel abarca **más de un día**.
    *
-   * En «Hoy» y en «Mañana» el día ya lo dijo el encabezado del panel, y
-   * repetirlo en cada fila es ruido; en el finde son dos días y sin esto no se
-   * sabe cuál de los dos.
+   * En «Hoy» el día ya lo dijo el encabezado del panel, y repetirlo en cada
+   * fila es ruido; en el finde son dos días y en la semana pueden ser cinco, y
+   * sin esto no se sabe cuál.
    */
   dia: string | null;
   titulo: string;
@@ -110,12 +119,12 @@ export interface EncuentroDePanel {
 
 export interface PanelDeAhora {
   clave: ClaveDePanel;
-  /** `Hoy` · `Mañana` · `Este finde` · `El finde que viene`. */
+  /** `Hoy` · `Este finde` · `El finde que viene` · `Esta semana`. */
   rotulo: string;
   /** Los días que abarca, escritos: `vie 15 sep`, `sáb 16 sep y dom 17 sep`. */
   fechas: string;
   /**
-   * Los primeros `TOPE_DEL_PANEL`.
+   * Los `TOPE_DEL_PANEL` que salieron sorteados (ver `sorteados`).
    *
    * No viaja el total de la ventana: lo que el panel necesita saber del resto lo
    * dice `resto`, ya en palabras. Un `cuantos` de más sería un dato que el
@@ -128,15 +137,37 @@ export interface PanelDeAhora {
   /**
    * `+2 más hoy` — los que el tope dejó afuera, o `null` si entraron todos.
    *
-   * **No es un enlace, y eso es una decisión**: el día no es una URL de este
-   * sitio (§2.3 del diseño decide qué es página y qué es filtro, y el día no está
-   * en ninguna de las dos listas), así que no hay ningún «ver el cronograma de
-   * hoy» al que mandar. Lo que sí hay es el listado completo, en esta misma
+   * ── Ahora es un enlace, y antes era una decisión que no lo fuera ──────────
+   * Decía: «**No es un enlace, y eso es una decisión**: el día no es una URL de
+   * este sitio (§2.3 del diseño decide qué es página y qué es filtro, y el día no
+   * está en ninguna de las dos listas), así que no hay ningún "ver el cronograma
+   * de hoy" al que mandar. Lo que sí hay es el listado completo, en esta misma
    * página y unos centímetros más abajo. Inventar acá una página por día sería
    * decidir de paso una decena de URLs indexables, que no es algo que se resuelva
-   * en el pie de un panel.
+   * en el pie de un panel.»
+   *
+   * El dueño pidió el link (B-791), y el argumento de arriba **no se cayó**: el
+   * día sigue sin ser una página. Lo que se hizo es lo otro que el §2.3 permite
+   * —un **filtro**, no una página—: el pie lleva a la home con `?cuando=` puesto
+   * en los días de la ventana. Cero URLs indexables nuevas (la home canoniza a
+   * `/` sin query), y el destino es el mismo listado que ya estaba abajo, ahora
+   * acotado a lo que el pie promete.
+   *
+   * La otra salida que se descartó era una página por día: cientos de URLs casi
+   * vacías, indexables, y la mitad de ellas sin una sola actividad.
    */
   resto: string | null;
+  /**
+   * A dónde va el pie: la home filtrada por los días de esta ventana. `null`
+   * exactamente cuando `resto` es `null`.
+   *
+   * Se arma acá y no en el componente por lo mismo que todo lo demás de este
+   * módulo: la gramática de `?cuando=` la decide `cuandoDeDias`, y armarla en el
+   * `.tsx` sería una segunda copia que puede quedar vieja cuando el filtro cambie
+   * —el link seguiría existiendo y el listado se caería al default sin decir
+   * nada, que es la peor forma de romperse—.
+   */
+  rutaDelResto: string | null;
 }
 
 /**
@@ -161,7 +192,7 @@ export interface PanelDeAhora {
  */
 const FRASES: Record<ClaveDePanel, { resto: (n: number) => string }> = {
   hoy: { resto: (n) => `+${n} más hoy` },
-  manana: { resto: (n) => `+${n} más mañana` },
+  semana: { resto: (n) => `+${n} más esta semana` },
   finde: { resto: (n) => `+${n} más ese finde` },
 };
 
@@ -201,7 +232,6 @@ interface Ventana {
  */
 export const ventanasDeAhora = (ahora: Date): Ventana[] => {
   const hoy = claveDeDia(ahora);
-  const manana = diaDesplazado(hoy, 1);
   const dow = diaDeSemana(hoy);
 
   // `(6 - dow + 7) % 7`: sábado a sábado da 0, lunes da 5, y **domingo da 6** —
@@ -210,25 +240,50 @@ export const ventanasDeAhora = (ahora: Date): Ventana[] => {
   const sabado = diaDesplazado(hoy, (6 - dow + 7) % 7);
   const domingo = diaDesplazado(sabado, 1);
 
-  // La resta: lo que ya contaron «Hoy» y «Mañana» no se repite en el finde.
-  const delFinde = [sabado, domingo].filter((d) => d !== hoy && d !== manana);
-  // Sábado y domingo, o los dos ya contados: la ventana salta una semana. Es el
-  // único caso en que el panel habla de algo que no es «lo que viene ya», y por
-  // eso es también el único en que cambia el rótulo.
+  // La resta: lo que ya contó «Hoy» no se repite en el finde.
+  const delFinde = [sabado, domingo].filter((d) => d !== hoy);
+  // Con hoy sábado y domingo cubiertos por «Hoy» + el propio finde no queda
+  // nada: la ventana salta una semana, y es el único caso en que el panel habla
+  // de algo que no es «lo que viene ya» — por eso es también el único en que
+  // cambia el rótulo.
   const salta = delFinde.length === 0;
-  const findeSiguiente = [diaDesplazado(sabado, 7), diaDesplazado(domingo, 7)];
+  const findeDelPanel = salta ? [diaDesplazado(sabado, 7), diaDesplazado(domingo, 7)] : delFinde;
+
+  /*
+   * **La semana: los días que quedan hasta el domingo, menos los que ya contaron
+   * los otros dos paneles** — B-791.
+   *
+   * El dueño pidió «Hoy · Este finde · Esta semana», y esas tres ventanas están
+   * **anidadas**: hoy ⊂ esta semana, y el finde ⊂ esta semana. Las tres de antes
+   * eran disjuntas por decisión de D-320 —«el mismo encuentro repetido en dos
+   * paneles pegados de un tríptico se lee como un error de software»— y esa
+   * decisión no cambió: lo que cambió son los rótulos.
+   *
+   * Así que la tercera resta, igual que el finde restaba antes. Lo que la hace
+   * honesta no es el rótulo sino **los días escritos**: el panel dice «lun 8 y
+   * mar 9», así que nadie puede leer «esta semana» como «todo lo de la semana».
+   * Sin esa línea el rótulo mentiría, y por eso está desde el primer día.
+   *
+   * Un domingo la ventana queda vacía —no hay días entre hoy y el domingo— y el
+   * panel se esconde solo, que es lo que el dueño pidió para los vacíos.
+   */
+  // Hasta el domingo de esta semana. Un domingo, `hasta` es hoy mismo y no queda
+  // ningún día: la ventana sale vacía a propósito y el panel se esconde solo.
+  const hasta = dow === 0 ? hoy : domingo;
+  const semana = Array.from({ length: 7 }, (_, i) => diaDesplazado(hoy, i + 1))
+    .filter((d) => d <= hasta && !findeDelPanel.includes(d));
 
   return [
     { clave: 'hoy', rotulo: 'Hoy', dias: [hoy] },
-    { clave: 'manana', rotulo: 'Mañana', dias: [manana] },
     {
       clave: 'finde',
       // Un domingo no salta —el sábado que viene está a seis días, no se solapa
       // con nada— pero tampoco es «este finde»: el finde de su semana se está
       // terminando. Los dos casos comparten rótulo por razones distintas.
       rotulo: salta || dow === 0 ? 'El finde que viene' : 'Este finde',
-      dias: salta ? findeSiguiente : delFinde,
+      dias: findeDelPanel,
     },
+    { clave: 'semana', rotulo: 'Esta semana', dias: semana },
   ];
 };
 
@@ -252,6 +307,65 @@ const selloDelIndice = (generadoEn: string): string => {
 /** `vie 15 sep`, o `sáb 16 sep y dom 17 sep`. */
 const fechasDeVentana = (dias: readonly string[]): string =>
   dias.map(fechaCortaDeDia).join(' y ');
+
+/**
+ * Un número estable a partir de un string. FNV-1a de 32 bits, cuatro líneas.
+ *
+ * No es criptografía ni pretende serlo: lo único que se le pide es que el mismo
+ * string dé siempre el mismo número, en el Node del build y en el navegador de
+ * quien mira. `Math.random()` no sirve para eso, y es exactamente el motivo por
+ * el que el sorteo de abajo no lo usa.
+ */
+const numeroDe = (s: string): number => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+};
+
+/**
+ * Los encuentros de la ventana **mezclados al azar, pero con el mismo azar en
+ * las dos pinturas** — B-791.
+ *
+ * El dueño pidió que los dos que muestra cada panel sean aleatorios. El problema
+ * es que el panel se pinta **dos veces**: el build genera el HTML y la island lo
+ * reemplaza cuando arranca (§6.4, el patrón de los dos relojes). Con
+ * `Math.random()` los dos sorteos dan distinto, así que el HTML muestra dos
+ * actividades y medio segundo después la island muestra otras dos: **la página
+ * cambia sola delante de quien la está leyendo**. Ese parpadeo es peor que el
+ * orden fijo que había antes.
+ *
+ * De las tres salidas posibles —sortear en el build y que el orden viaje en el
+ * índice; sortear con una semilla que las dos partes puedan derivar; sortear en
+ * el cliente— se eligió la segunda, y la semilla son **los días de la ventana**.
+ * Consecuencias, las dos a favor:
+ *
+ * - las dos pinturas coinciden sin agregar ni un campo al `events.json`, porque
+ *   la semilla se deriva de un dato que ambas ya tienen;
+ * - el sorteo **rota una vez por día**, no en cada rebuild. Alguien que entra
+ *   tres veces en la tarde ve lo mismo las tres veces, y al día siguiente ve
+ *   otra cosa. Un sorteo por rebuild haría que la portada cambie cada vez que se
+ *   corrige un typo en otra actividad, que no es lo que «aleatorio» quiere decir
+ *   acá.
+ *
+ * El costo, escrito para que nadie lo descubra como bug: **una actividad puede
+ * no aparecer nunca en el panel** si el sorteo de su día la deja tercera y el
+ * tope es dos. Por eso el pie «+N más» tiene que seguir siendo la salida al
+ * listado completo, y por eso `restantes` se cuenta contra la ventana entera y
+ * no contra lo sorteado.
+ *
+ * Se ordena por el número de cada clave —no se permuta el array— para que
+ * agregar o borrar un encuentro no reacomode a los demás.
+ */
+const sorteados = <T extends { clave: string }>(
+  encuentros: readonly T[],
+  dias: readonly string[],
+): T[] => {
+  const semilla = dias.join('|');
+  return [...encuentros].sort((a, b) => numeroDe(semilla + a.clave) - numeroDe(semilla + b.clave));
+};
 
 /**
  * Los paneles **que tienen algo**, o `null` cuando no lo tiene ninguno.
@@ -346,7 +460,7 @@ export const panelesDeAhora = (
       ];
     });
 
-    const encuentros = resueltos.slice(0, tope);
+    const encuentros = sorteados(resueltos, dias).slice(0, tope);
     const restantes = resueltos.length - encuentros.length;
 
     return {
@@ -356,6 +470,7 @@ export const panelesDeAhora = (
       encuentros,
       restantes,
       resto: restantes > 0 ? FRASES[clave].resto(restantes) : null,
+      rutaDelResto: restantes > 0 ? `${RUTA_AGENDA}?cuando=${cuandoDeDias(dias)}` : null,
     };
   });
 

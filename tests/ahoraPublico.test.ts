@@ -3,9 +3,16 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { TOPE_DEL_PANEL, panelesDeAhora, ventanasDeAhora } from '@/lib/ahoraPublico';
+import {
+  TOPE_DEL_PANEL,
+  type ClaveDePanel,
+  panelesDeAhora,
+  ventanasDeAhora,
+} from '@/lib/ahoraPublico';
 import { CLASES_DE_PARED, CLASES_DEL_TRIPTICO } from '@/components/sitio/estilos';
 import { construirIndice, type Indice } from '@/lib/eventsJson';
+import { cuandoDeDias, desdeQuery, diasDelCuando } from '@/lib/listadoPublico';
+import { RUTA_AGENDA } from '@/lib/rutasPublicas';
 import { claveDeDia, diaDeSemana, fechaCortaDeDia, hora } from '@/lib/fechasPublicas';
 import { etiquetaDe, mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { rutaDeDetalle } from '@/lib/rutasPublicas';
@@ -100,7 +107,9 @@ const nEncuentros = (dia: string, horas: readonly number[]): OpcionesDeEntrada[]
 
 const panelDe = (
   programacion: ReturnType<typeof panelesDeAhora>,
-  clave: 'hoy' | 'manana' | 'finde',
+  // La clave sale del tipo del módulo y no escrita acá: es lo que hizo que el
+  // renombre de las ventanas de B-791 apareciera en `tsc` y no en un `undefined`.
+  clave: ClaveDePanel,
 ) => {
   expect(programacion, 'la sección no se dibujó y el caso la necesita').not.toBeNull();
   const panel = programacion!.paneles.find((p) => p.clave === clave);
@@ -147,76 +156,77 @@ describe('la semana de referencia de este archivo', () => {
 const SEMANA: readonly {
   dia: string;
   hoy: string;
-  manana: string;
   rotuloDelFinde: string;
   diasDelFinde: readonly string[];
+  diasDeLaSemana: readonly string[];
   porque: string;
 }[] = [
   {
     dia: 'lunes',
     hoy: '2026-09-14',
-    manana: '2026-09-15',
     rotuloDelFinde: 'Este finde',
     diasDelFinde: ['2026-09-19', '2026-09-20'],
-    porque: 'el finde está a cinco días y sigue siendo el de esta semana',
+    diasDeLaSemana: ['2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18'],
+    porque: 'el finde está a cinco días, y «esta semana» son los cuatro que hay antes',
   },
   {
     dia: 'martes',
     hoy: '2026-09-15',
-    manana: '2026-09-16',
     rotuloDelFinde: 'Este finde',
     diasDelFinde: ['2026-09-19', '2026-09-20'],
-    porque: 'nada que restar: ni hoy ni mañana caen en el finde',
+    diasDeLaSemana: ['2026-09-16', '2026-09-17', '2026-09-18'],
+    porque: 'la ventana del medio se acorta un día por día que pasa',
   },
   {
     dia: 'miércoles',
     hoy: '2026-09-16',
-    manana: '2026-09-17',
     rotuloDelFinde: 'Este finde',
     diasDelFinde: ['2026-09-19', '2026-09-20'],
+    diasDeLaSemana: ['2026-09-17', '2026-09-18'],
     porque: 'idem',
   },
   {
     dia: 'jueves',
     hoy: '2026-09-17',
-    manana: '2026-09-18',
     rotuloDelFinde: 'Este finde',
     diasDelFinde: ['2026-09-19', '2026-09-20'],
-    porque: 'mañana es viernes, que no es finde: el panel sigue con los dos días',
+    diasDeLaSemana: ['2026-09-18'],
+    porque: 'a «esta semana» le queda un solo día: el viernes',
   },
   {
     dia: 'viernes',
     hoy: '2026-09-18',
-    manana: '2026-09-19',
     rotuloDelFinde: 'Este finde',
-    diasDelFinde: ['2026-09-20'],
+    diasDelFinde: ['2026-09-19', '2026-09-20'],
+    diasDeLaSemana: [],
     porque:
-      'LA RESTA. Mañana **es** el sábado, así que el finde se queda solo con el domingo. ' +
-      'Sin restar, el mismo encuentro saldría en dos columnas pegadas del tríptico. ' +
-      'El rótulo NO cambia: el domingo sigue siendo el de esta semana.',
+      'LA RESTA. Los dos días que le quedan a la semana **son** el finde, así que la ' +
+      'tercera ventana queda vacía y el panel no se dibuja. Sin restar, el mismo ' +
+      'encuentro saldría en dos columnas pegadas del tríptico.',
   },
   {
     dia: 'sábado',
     hoy: '2026-09-19',
-    manana: '2026-09-20',
-    rotuloDelFinde: 'El finde que viene',
-    diasDelFinde: ['2026-09-26', '2026-09-27'],
+    rotuloDelFinde: 'Este finde',
+    diasDelFinde: ['2026-09-20'],
+    diasDeLaSemana: [],
     porque:
-      'la resta deja la ventana sin días (hoy es el sábado y mañana el domingo), así que ' +
-      'salta al finde siguiente — y el rótulo lo dice: nunca se llama «este finde» a un ' +
-      'sábado que falta una semana.',
+      'el sábado es hoy, así que «Hoy» se lo lleva y al finde le queda el domingo. El ' +
+      'rótulo NO cambia: el domingo sigue siendo el de este finde. (Con las ventanas ' +
+      'viejas el sábado saltaba al finde siguiente, porque «Mañana» le comía el domingo ' +
+      'también; sin ese panel ya no hace falta saltar.)',
   },
   {
     dia: 'domingo',
     hoy: '2026-09-20',
-    manana: '2026-09-21',
     rotuloDelFinde: 'El finde que viene',
     diasDelFinde: ['2026-09-26', '2026-09-27'],
+    diasDeLaSemana: [],
     porque:
-      'MISMO RÓTULO, OTRA RAZÓN: acá no hay salto —el sábado que viene está a seis días y ' +
-      'no se solapa con nada—, pero el finde de esta semana se está terminando, así que ' +
-      'tampoco es «este finde». Es el caso que falla si el rótulo se decide por el salto ' +
-      'y no por el día de la semana.',
+      'EL RÓTULO NO SE DECIDE POR EL SALTO: acá no hay nada que restar —el sábado que ' +
+      'viene está a seis días—, pero el finde de esta semana se está terminando, así que ' +
+      'tampoco es «este finde». Es el caso que falla si el rótulo sale de la resta y no ' +
+      'del día de la semana.',
   },
 ];
 
@@ -227,26 +237,43 @@ describe('ventanasDeAhora — los siete días de la semana', () => {
       expect(
         ventanas.map((v) => v.clave),
         `el ${dia}`,
-      ).toEqual(['hoy', 'manana', 'finde']);
+      ).toEqual(['hoy', 'finde', 'semana']);
     }
   });
 
-  it('«Hoy» es el día de quien mira y «Mañana» el siguiente, siempre uno solo', () => {
-    for (const { dia, hoy, manana } of SEMANA) {
-      const [h, m] = ventanasDeAhora(mediodia(hoy));
+  it('«Hoy» es el día de quien mira, y es siempre un solo día', () => {
+    for (const { dia, hoy } of SEMANA) {
+      const [h] = ventanasDeAhora(mediodia(hoy));
       expect(h!.rotulo, `el ${dia}`).toBe('Hoy');
       expect(h!.dias, `el ${dia}`).toEqual([hoy]);
-      expect(m!.rotulo, `el ${dia}`).toBe('Mañana');
-      expect(m!.dias, `el ${dia}`).toEqual([manana]);
     }
   });
 
-  it('el tercer panel: qué días agarra y cómo se llama, día por día', () => {
+  it('«Esta semana» son los días que faltan hasta el domingo, menos los otros dos paneles', () => {
     /*
-     * MUTACIÓN PROBADA: sacar la resta (`.filter(...)`) deja el caso del viernes
-     * en rojo con `['2026-09-19','2026-09-20']`; decidir el rótulo por el salto
-     * (`salta ? … : 'Este finde'`, sin el `dow === 0`) deja el del domingo en
-     * rojo.
+     * **La ventana que B-791 agregó, y la que puede mentir.** El rótulo dice
+     * «Esta semana» y la ventana NO es toda la semana: es lo que queda después de
+     * restar hoy y el finde, porque las tres siguen siendo disjuntas (D-320). Lo
+     * que hace honesto al rótulo son las fechas escritas, que se verifican en
+     * «cada panel imprime los días que abarca».
+     *
+     * MUTACIÓN PROBADA: sacar el `!findeDelPanel.includes(d)` deja el lunes en
+     * rojo (aparecen el 19 y el 20); cambiar `hasta` por siete días fijos deja el
+     * domingo en rojo (aparece la semana siguiente entera).
+     */
+    for (const { dia, hoy, diasDeLaSemana, porque } of SEMANA) {
+      const semana = ventanasDeAhora(mediodia(hoy)).find((v) => v.clave === 'semana')!;
+      expect(semana.rotulo, `el ${dia}`).toBe('Esta semana');
+      expect(semana.dias, `el ${dia}: ${porque}`).toEqual(diasDeLaSemana);
+    }
+  });
+
+  it('el panel del finde: qué días agarra y cómo se llama, día por día', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar la resta (`.filter((d) => d !== hoy)`) deja el caso
+     * del sábado en rojo con `['2026-09-19','2026-09-20']`; decidir el rótulo por
+     * el salto (`salta ? … : 'Este finde'`, sin el `dow === 0`) deja el del
+     * domingo en rojo.
      */
     for (const { dia, hoy, rotuloDelFinde, diasDelFinde, porque } of SEMANA) {
       const finde = ventanasDeAhora(mediodia(hoy)).find((v) => v.clave === 'finde')!;
@@ -279,10 +306,10 @@ describe('ventanasDeAhora — los siete días de la semana', () => {
     const ventanas = ventanasDeAhora(mediodia('2026-12-27'));
     expect(ventanas.map((v) => v.dias)).toEqual([
       ['2026-12-27'],
-      ['2026-12-28'],
       ['2027-01-02', '2027-01-03'],
+      [],
     ]);
-    expect(ventanas[2]!.rotulo).toBe('El finde que viene');
+    expect(ventanas[1]!.rotulo).toBe('El finde que viene');
   });
 
   it('el finde siempre es un sábado y un domingo, en ese orden', () => {
@@ -331,14 +358,13 @@ describe('la zona del proyecto decide de qué día es cada cosa (trampa 1)', () 
      * **El caso que separa las dos implementaciones de raíz.** Las 02:00 UTC del
      * sábado 19 son las **23:00 del viernes 18** en Buenos Aires:
      *
-     * | | día de hoy | tercer panel |
+     * | | día de hoy | panel del finde |
      * |---|---|---|
-     * | con la zona (correcto) | viernes 18 | «Este finde», solo el domingo 20 |
-     * | con UTC (`getDay()`) | sábado 19 | «El finde que viene», 26 y 27 |
+     * | con la zona (correcto) | viernes 18 | «Este finde», el 19 y el 20 |
+     * | con UTC (`getDay()`) | sábado 19 | «Este finde», solo el domingo 20 |
      *
      * O sea: a las once de la noche de un viernes, el tríptico dejaría de
-     * ofrecer el sábado y el domingo que empiezan en una hora, y mandaría a la
-     * gente al finde siguiente.
+     * ofrecer el sábado que empieza en una hora.
      *
      * MUTACIÓN PROBADA: cambiar `diaDeSemana(clave)` por `ahora.getUTCDay()`
      * deja este caso en rojo y no toca ningún otro de la tabla de arriba (todos
@@ -347,10 +373,10 @@ describe('la zona del proyecto decide de qué día es cada cosa (trampa 1)', () 
     const ventanas = ventanasDeAhora(new Date('2026-09-19T02:00:00Z'));
     expect(ventanas.map((v) => v.dias)).toEqual([
       ['2026-09-18'],
-      ['2026-09-19'],
-      ['2026-09-20'],
+      ['2026-09-19', '2026-09-20'],
+      [],
     ]);
-    expect(ventanas[2]!.rotulo).toBe('Este finde');
+    expect(ventanas[1]!.rotulo).toBe('Este finde');
   });
 
   it('la hora de cada fila también es la de Buenos Aires', () => {
@@ -414,37 +440,36 @@ describe('el panel de hoy muestra lo que queda de hoy, no el día entero', () =>
 // 4 · El tope y el pie que dice cuántos quedaron afuera
 // ───────────────────────────────────────────────────────────────────────────
 
-describe('el tope del panel y el «+N más»', () => {
-  it('el tope es cuatro', () => {
+describe('el tope del panel, el sorteo y el «+N más»', () => {
+  it('el tope es dos', () => {
     // El número está en la constante y no escrito en el markup: el componente no
-    // decide cuántas filas hay. Ver el docblock de `TOPE_DEL_PANEL`.
-    expect(TOPE_DEL_PANEL).toBe(4);
+    // decide cuántas filas hay. Ver el docblock de `TOPE_DEL_PANEL` — eran cuatro
+    // hasta B-791.
+    expect(TOPE_DEL_PANEL).toBe(2);
   });
 
-  it('con seis encuentros en un día salen cuatro y el pie dice «+2 más hoy»', () => {
+  it('con seis encuentros en un día salen dos y el pie dice «+4 más hoy»', () => {
     const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18, 19, 20, 21]));
     const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
 
-    expect(hoy.encuentros).toHaveLength(4);
-    // Los cuatro **primeros** por hora, que es el orden en que el eje viene.
-    expect(hoy.encuentros.map((e) => e.hora)).toEqual(['13:00', '14:00', '15:00', '16:00']);
-    expect(hoy.restantes).toBe(2);
-    expect(hoy.resto).toBe('+2 más hoy');
+    expect(hoy.encuentros).toHaveLength(2);
+    expect(hoy.restantes).toBe(4);
+    expect(hoy.resto).toBe('+4 más hoy');
   });
 
   it('con uno de sobra el texto queda en singular sin decir «1 más» dos veces', () => {
     // «+1 más hoy» se lee bien: el «+1» ya dice la cantidad y «más» no concuerda
     // en número. Es el caso que hay que mirar cuando se cambie la frase.
-    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18, 19, 20]));
+    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18]));
     const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
     expect(hoy.restantes).toBe(1);
     expect(hoy.resto).toBe('+1 más hoy');
   });
 
-  it('con exactamente cuatro no hay pie: no hay nada que anunciar', () => {
-    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18, 19]));
+  it('con exactamente dos no hay pie: no hay nada que anunciar', () => {
+    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17]));
     const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
-    expect(hoy.encuentros).toHaveLength(4);
+    expect(hoy.encuentros).toHaveLength(2);
     expect(hoy.restantes).toBe(0);
     expect(hoy.resto).toBeNull();
   });
@@ -452,14 +477,14 @@ describe('el tope del panel y el «+N más»', () => {
   it('cada panel dice el resto con su propia frase, no con una interpolada', () => {
     /*
      * Las tres frases viven juntas en `FRASES` porque son texto de producto. El
-     * caso las fija las tres: «+2 más mañana» y «+2 más ese finde» —«ese» y no
-     * «este», porque el panel puede estar hablando del finde que viene—.
+     * caso las fija las tres: «+4 más esta semana» y «+4 más ese finde» —«ese» y
+     * no «este», porque el panel puede estar hablando del finde que viene—.
      */
     const indice = indiceDePrueba([
-      ...nEncuentros('2026-09-15', [16, 17, 18, 19, 20, 21]).map((o, i) => ({
+      ...nEncuentros('2026-09-16', [16, 17, 18, 19, 20, 21]).map((o, i) => ({
         ...o,
-        id: `man_${i}`,
-        slug: `manana-${i}`,
+        id: `sem_${i}`,
+        slug: `semana-${i}`,
       })),
       ...nEncuentros('2026-09-19', [16, 17, 18, 19, 20, 21]).map((o, i) => ({
         ...o,
@@ -468,8 +493,61 @@ describe('el tope del panel y el «+N más»', () => {
       })),
     ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
-    expect(panelDe(programacion, 'manana').resto).toBe('+2 más mañana');
-    expect(panelDe(programacion, 'finde').resto).toBe('+2 más ese finde');
+    expect(panelDe(programacion, 'semana').resto).toBe('+4 más esta semana');
+    expect(panelDe(programacion, 'finde').resto).toBe('+4 más ese finde');
+  });
+
+  it('el pie lleva al listado filtrado por los días de la ventana — B-791', () => {
+    /*
+     * El destino del «+N más». **No es una página por día** —el día sigue sin ser
+     * una URL de este sitio, §2.3— sino la home con el filtro puesto: cero URLs
+     * indexables nuevas, y el listado que ya estaba abajo acotado a lo que el pie
+     * promete.
+     *
+     * Se afirma contra `cuandoDeDias`, que es la función que decide la gramática
+     * de `?cuando=`, y no contra un string escrito a mano: escribirlo acá sería
+     * una tercera copia de la gramática (el módulo, el filtro y este caso).
+     */
+    const indice = indiceDePrueba([
+      ...nEncuentros('2026-09-14', [16, 17, 18]),
+      ...nEncuentros('2026-09-19', [16, 17, 18]).map((o, i) => ({
+        ...o,
+        id: `fin_${i}`,
+        slug: `finde-${i}`,
+      })),
+    ]);
+    const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
+
+    expect(panelDe(programacion, 'hoy').rutaDelResto).toBe(
+      `${RUTA_AGENDA}?cuando=${cuandoDeDias(['2026-09-14'])}`,
+    );
+    // El finde son dos días, así que el filtro es un rango.
+    expect(panelDe(programacion, 'finde').rutaDelResto).toBe(
+      `${RUTA_AGENDA}?cuando=${cuandoDeDias(['2026-09-19', '2026-09-20'])}`,
+    );
+  });
+
+  it('y ese link es un «Cuándo» que el listado sabe leer — la ida y la vuelta', () => {
+    /*
+     * **El caso que impide el link roto.** El pie arma la URL y el listado la
+     * lee; son dos módulos, y si la gramática cambia en uno el link sigue
+     * existiendo y el listado se cae al default **sin decir nada**. Acá se cierra
+     * pasando lo que el panel produce por el parser de verdad, `desdeQuery`, y
+     * exigiendo que vuelvan los días de la ventana.
+     */
+    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18]));
+    const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
+    const { filtros } = desdeQuery(hoy.rutaDelResto!.split('?')[1]!);
+    expect(diasDelCuando(filtros.cuando)).toEqual(['2026-09-14']);
+  });
+
+  it('sin resto no hay ruta: el pie no existe y no hay a dónde ir', () => {
+    // Los dos campos son `null` juntos, siempre. Una ruta con `resto: null` sería
+    // un link que el componente no dibuja, o —peor— que dibuja sin texto.
+    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17]));
+    const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
+    expect(hoy.resto).toBeNull();
+    expect(hoy.rutaDelResto).toBeNull();
   });
 
   it('el tope entra por parámetro, así que el pie no depende de la constante', () => {
@@ -480,11 +558,100 @@ describe('el tope del panel y el «+N más»', () => {
     expect(hoy.encuentros).toHaveLength(1);
     expect(hoy.resto).toBe('+2 más hoy');
   });
-});
 
-// ───────────────────────────────────────────────────────────────────────────
-// 5 · Los paneles vacíos no se dibujan, y la sección entera vacía tampoco
-// ───────────────────────────────────────────────────────────────────────────
+  /*
+   * ── El sorteo — B-791 ───────────────────────────────────────────────────
+   *
+   * Con dos filas de un día que tiene seis, mostrar siempre las dos primeras por
+   * hora condena a las otras cuatro a no aparecer nunca. El dueño pidió que sean
+   * aleatorias, y «aleatorio» acá tiene una restricción que no es obvia: el panel
+   * se pinta **dos veces** —el build genera el HTML y la island lo reemplaza, el
+   * patrón de los dos relojes del §6.4—, así que un `Math.random()` haría que la
+   * página cambie sola delante de quien la está leyendo.
+   *
+   * De ahí que lo que se verifica no sea «es aleatorio» —no se puede— sino las
+   * tres propiedades que lo hacen usable: **es estable** dentro del día, **rota**
+   * de un día al otro, y **no privilegia la primera hora**.
+   */
+
+  it('la misma ventana sorteada dos veces da lo mismo: el HTML y la island coinciden', () => {
+    /*
+     * La propiedad que hace que no parpadee, y la razón por la que la semilla son
+     * los días de la ventana y no el instante.
+     *
+     * MUTACIÓN PROBADA: cambiar la semilla por `Date.now()` o el orden por
+     * `Math.random() - 0.5` deja este caso en rojo.
+     */
+    const indice = indiceDePrueba(nEncuentros('2026-09-14', [16, 17, 18, 19, 20, 21]));
+    // Dos relojes distintos del mismo día: el build a las 13:00 y la visita a las
+    // 13:05. Ninguno de los seis encuentros empezó todavía.
+    const delBuild = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
+    const deLaIsland = panelDe(
+      panelesDeAhora(indice, new Date('2026-09-14T15:05:00Z'), ETIQUETAS),
+      'hoy',
+    );
+    expect(deLaIsland.encuentros.map((e) => e.clave)).toEqual(
+      delBuild.encuentros.map((e) => e.clave),
+    );
+  });
+
+  it('y de un día al otro sale otra cosa: rota una vez por día, no en cada rebuild', () => {
+    /*
+     * La contracara. Si la semilla no dependiera del día, el sorteo sería una
+     * permutación fija y el panel mostraría las mismas dos actividades para
+     * siempre — que es justo el problema que el sorteo viene a resolver.
+     *
+     * Se compara el orden completo y no las dos primeras: con seis encuentros y
+     * dos días, que las dos primeras coincidan por azar es perfectamente posible,
+     * y el test no puede depender de eso.
+     */
+    const conMismosSlugs = (dia: string): OpcionesDeEntrada[] =>
+      nEncuentros(dia, [16, 17, 18, 19, 20, 21]).map((o, i) => ({ ...o, slug: `taller-${i}` }));
+    const indice = indiceDePrueba([
+      ...conMismosSlugs('2026-09-14'),
+      ...conMismosSlugs('2026-09-16').map((o, i) => ({ ...o, id: `mie_${i}` })),
+    ]);
+    // El mismo día, sin tope, para poder mirar el orden entero de las dos ventanas.
+    const lunes = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS, 99), 'hoy');
+    const miercoles = panelDe(
+      panelesDeAhora(indice, mediodia('2026-09-16'), ETIQUETAS, 99),
+      'hoy',
+    );
+    expect(lunes.encuentros).toHaveLength(6);
+    expect(miercoles.encuentros).toHaveLength(6);
+    expect(miercoles.encuentros.map((e) => e.hora)).not.toEqual(
+      lunes.encuentros.map((e) => e.hora),
+    );
+  });
+
+  it('el sorteo no privilegia la primera hora: sobre veinte días, el último también sale', () => {
+    /*
+     * La propiedad que separa el sorteo del orden por hora, escrita como
+     * propiedad: sobre veinte días distintos, la actividad de las 21:00 tiene que
+     * entrar en el panel alguna vez. Con el `slice(0, 2)` del eje ordenado no
+     * entra ninguna.
+     *
+     * No se fija en qué días sale —eso sería fijar el hash— sino que sale.
+     */
+    const salieron = new Set<string>();
+    for (let i = 0; i < 20; i += 1) {
+      const dia = `2026-09-${String(i + 8).padStart(2, '0')}`;
+      const indice = indiceDePrueba(
+        nEncuentros(dia, [16, 17, 18, 19, 20, 21]).map((o, j) => ({
+          ...o,
+          id: `d${i}_${j}`,
+          slug: `taller-${j}`,
+        })),
+      );
+      const p = panelesDeAhora(indice, mediodia(dia), ETIQUETAS);
+      for (const panel of p?.paneles ?? [])
+        for (const e of panel.encuentros) salieron.add(e.hora);
+    }
+    expect(salieron, 'las seis horas del día entraron al panel alguna vez').toEqual(
+      new Set(['13:00', '14:00', '15:00', '16:00', '17:00', '18:00']),
+    );
+  });
+});
 
 describe('un panel sin encuentros no se dibuja — D-320, 2026-09-03', () => {
   /*
@@ -507,23 +674,23 @@ describe('un panel sin encuentros no se dibuja — D-320, 2026-09-03', () => {
     expect(programacion!.paneles[0]!.encuentros).toHaveLength(1);
   });
 
-  it('con «Hoy» vacío y los otros dos llenos salen dos, y el primero es «Mañana»', () => {
+  it('con «Hoy» vacío y los otros dos llenos salen dos, y el primero es «Este finde»', () => {
     /*
      * El caso que fija el orden: los que sobreviven conservan el orden de las
      * ventanas, así que el primero de la lista filtrada —el que no lleva regla a
-     * la izquierda— es «Mañana» y no «Hoy».
+     * la izquierda— es «Este finde» y no «Hoy».
      *
      * MUTACIÓN PROBADA: filtrar en el `map` del componente en vez de acá deja
      * este caso en verde y pone una regla a la izquierda del primer panel
      * dibujado, que es un borde suelto contra el margen.
      */
     const indice = indiceDePrueba([
-      { fechas: ['2026-09-15T22:00:00Z'] },
-      { slug: 'del-finde', fechas: ['2026-09-19T22:00:00Z'] },
+      { fechas: ['2026-09-19T22:00:00Z'] },
+      { slug: 'de-la-semana', fechas: ['2026-09-16T22:00:00Z'] },
     ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
 
-    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['manana', 'finde']);
+    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['finde', 'semana']);
     for (const panel of programacion!.paneles) {
       expect(panel.encuentros.length, `el panel ${panel.clave} quedó vacío`).toBeGreaterThan(0);
     }
@@ -534,11 +701,11 @@ describe('un panel sin encuentros no se dibuja — D-320, 2026-09-03', () => {
     // pasaría los dos casos de arriba.
     const indice = indiceDePrueba([
       { fechas: ['2026-09-14T22:00:00Z'] },
-      { slug: 'de-manana', fechas: ['2026-09-15T22:00:00Z'] },
+      { slug: 'de-la-semana', fechas: ['2026-09-16T22:00:00Z'] },
       { slug: 'del-finde', fechas: ['2026-09-19T22:00:00Z'] },
     ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
-    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['hoy', 'manana', 'finde']);
+    expect(programacion!.paneles.map((p) => p.clave)).toEqual(['hoy', 'finde', 'semana']);
   });
 
   it('ningún panel que salga puede venir vacío — la propiedad, no los casos', () => {
@@ -659,30 +826,32 @@ describe('cómo se resuelve un encuentro del eje contra su actividad', () => {
      * repetirlo en cada fila es ruido; en el finde son dos días y sin esto no se
      * sabe cuál de los dos.
      *
-     * El caso mira los tres paneles del **lunes**, que es el único día en que el
-     * finde tiene sus dos días.
+     * El caso mira los tres paneles del **lunes**: el finde tiene sus dos días y
+     * «esta semana» le queda uno solo con algo cargado.
      */
     const indice = indiceDePrueba([
       { id: 'h', slug: 'hoy', fechas: ['2026-09-14T23:00:00Z'] },
-      { id: 'm', slug: 'manana', fechas: ['2026-09-15T23:00:00Z'] },
+      { id: 'm', slug: 'de-la-semana', fechas: ['2026-09-15T23:00:00Z'] },
       { id: 's', slug: 'sabado', fechas: ['2026-09-19T23:00:00Z'] },
       { id: 'd', slug: 'domingo', fechas: ['2026-09-20T23:00:00Z'] },
     ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
 
     expect(panelDe(programacion, 'hoy').encuentros.map((e) => e.dia)).toEqual([null]);
-    expect(panelDe(programacion, 'manana').encuentros.map((e) => e.dia)).toEqual([null]);
-    expect(panelDe(programacion, 'finde').encuentros.map((e) => e.dia)).toEqual([
-      'sáb 19',
-      'dom 20',
-    ]);
+    expect(panelDe(programacion, 'semana').encuentros.map((e) => e.dia)).toEqual(['mar 15']);
+    // El sorteo puede darlos en cualquier orden, así que se comparan como conjunto.
+    expect(new Set(panelDe(programacion, 'finde').encuentros.map((e) => e.dia))).toEqual(
+      new Set(['sáb 19', 'dom 20']),
+    );
   });
 
   it('y un finde de un solo día tampoco lo lleva: el encabezado ya lo dijo', () => {
-    // El viernes, después de la resta, el panel del finde es solo el domingo. Un
-    // día por fila ahí sería el ruido que la regla existe para sacar.
+    // El **sábado**, después de la resta, el panel del finde es solo el domingo
+    // —el sábado se lo llevó «Hoy»—. Un día por fila ahí sería el ruido que la
+    // regla existe para sacar. (Era el viernes hasta B-791, cuando la resta
+    // dejaba de restar el sábado porque «Mañana» dejó de existir.)
     const indice = indiceDePrueba([{ slug: 'domingo', fechas: ['2026-09-20T23:00:00Z'] }]);
-    const finde = panelDe(panelesDeAhora(indice, mediodia('2026-09-18'), ETIQUETAS), 'finde');
+    const finde = panelDe(panelesDeAhora(indice, mediodia('2026-09-19'), ETIQUETAS), 'finde');
     expect(finde.encuentros.map((e) => e.dia)).toEqual([null]);
   });
 
@@ -793,23 +962,28 @@ describe('cada panel imprime los días que abarca', () => {
     // mirar la fecha de los tres hay que darles un encuentro a cada uno.
     const indice = indiceDePrueba([
       { fechas: ['2026-09-14T23:00:00Z'] },
-      { slug: 'de-manana', fechas: ['2026-09-15T23:00:00Z'] },
+      { slug: 'de-la-semana', fechas: ['2026-09-15T23:00:00Z'] },
       { slug: 'del-finde', fechas: ['2026-09-19T23:00:00Z'] },
     ]);
     const programacion = panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS);
 
     expect(panelDe(programacion, 'hoy').fechas).toBe('lun 14 sep');
-    expect(panelDe(programacion, 'manana').fechas).toBe('mar 15 sep');
     expect(panelDe(programacion, 'finde').fechas).toBe('sáb 19 sep y dom 20 sep');
+    // **La ventana que más necesita esta línea** (B-791): el rótulo dice «Esta
+    // semana» y son cuatro días, no siete. La fecha escrita es lo único que
+    // impide que el rótulo mienta.
+    expect(panelDe(programacion, 'semana').fechas).toBe(
+      'mar 15 sep y mié 16 sep y jue 17 sep y vie 18 sep',
+    );
   });
 
   it('y el finde restado imprime el único día que le quedó', () => {
-    // El viernes. Es lo que hace que «Este finde · dom 20 sep» no se lea como si
+    // El sábado. Es lo que hace que «Este finde · dom 20 sep» no se lea como si
     // el sábado no existiera: dice cuál es el día del que habla.
     // El encuentro va **en el domingo**, que es el único día que le queda a la
     // ventana: sin eso el panel no se dibuja y no hay fecha que mirar (D-320).
     const indice = indiceDePrueba([{ fechas: ['2026-09-20T23:00:00Z'] }]);
-    const programacion = panelesDeAhora(indice, mediodia('2026-09-18'), ETIQUETAS);
+    const programacion = panelesDeAhora(indice, mediodia('2026-09-19'), ETIQUETAS);
     expect(panelDe(programacion, 'finde').fechas).toBe('dom 20 sep');
   });
 
@@ -883,19 +1057,37 @@ describe('el tríptico no es un resultado del filtrado', () => {
     expect(hoy.encuentros[0]!.hora).toBe('17:00');
   });
 
-  it('el orden es el del eje —por hora— y no el del listado', () => {
+  it('el panel no hereda el orden del listado, y desde B-791 tampoco el del eje', () => {
     /*
-     * El listado ordena por próxima fecha de la **actividad** y admite otros
-     * órdenes (D-138). El panel es un cronograma: la única lectura posible es la
-     * hora, y el eje ya viene ordenado por eso desde el build.
+     * **Este caso cambió de afirmación en B-791, y por eso está escrito el
+     * original.** Decía «el orden es el del eje —por hora—», con el argumento de
+     * que el panel es un cronograma y la única lectura posible es la hora. Sigue
+     * siendo cierto que no hereda el orden del listado (que ordena por próxima
+     * fecha de la actividad y admite otros órdenes, D-138), pero el orden por
+     * hora se lo llevó el sorteo: con dos filas de seis, mostrar siempre las dos
+     * primeras condena a las otras cuatro a no aparecer nunca. Ver `sorteados`.
+     *
+     * Lo que queda por verificar es que el orden **sea el del sorteo**, o sea el
+     * que `sorteados` produce para esa ventana, y no el del eje ni el del
+     * listado. Se afirma contra la función y no contra un orden escrito a mano
+     * para no fijar el hash: si mañana se cambia `numeroDe`, este caso sigue
+     * siendo cierto y el de «la misma ventana sorteada dos veces» sigue siendo el
+     * que protege al lector del parpadeo.
      */
     const indice = indiceDePrueba([
       { id: 'c', slug: 'tarde', titulo: 'Tercera', fechas: ['2026-09-14T23:00:00Z'] },
       { id: 'a', slug: 'temprano', titulo: 'Primera', fechas: ['2026-09-14T20:00:00Z'] },
       { id: 'b', slug: 'medio', titulo: 'Segunda', fechas: ['2026-09-14T21:30:00Z'] },
     ]);
-    const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS), 'hoy');
-    expect(hoy.encuentros.map((e) => e.titulo)).toEqual(['Primera', 'Segunda', 'Tercera']);
+    const hoy = panelDe(panelesDeAhora(indice, mediodia('2026-09-14'), ETIQUETAS, 99), 'hoy');
+    // Los tres están, ninguno se perdió por el camino.
+    expect(new Set(hoy.encuentros.map((e) => e.titulo))).toEqual(
+      new Set(['Primera', 'Segunda', 'Tercera']),
+    );
+    // Y el eje sigue viniendo por hora del build, que es lo que el sorteo mezcla.
+    expect(indice.encuentros.map((e) => e.inicio)).toEqual(
+      [...indice.encuentros.map((e) => e.inicio)].sort(),
+    );
   });
 });
 

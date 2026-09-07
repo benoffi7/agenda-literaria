@@ -80,6 +80,8 @@ import {
   CUANDO_ESTE_MES,
   CUANDO_PROXIMAS,
   CUANDO_TRES_MESES,
+  diasDelCuando,
+  etiquetaDeDias,
   EJES,
   ETIQUETA_EJE,
   ETIQUETA_ORDEN_PUBLICO,
@@ -361,6 +363,9 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
   );
 
   const meses = useMemo(() => mesesConActividad(entradas), [entradas]);
+  // Los días del «Cuándo» actual, cuando el filtro llegó por la URL del pie del
+  // tríptico (B-791). `null` en el caso normal, que es todos los demás.
+  const diasElegidos = useMemo(() => diasDelCuando(filtros.cuando), [filtros.cuando]);
   const puestos = cantidadDeFiltrosPublicos(filtros);
   const sobra = useMemo(
     () => (visibles.length === 0 ? ejeQueSobra(entradas, filtros, ahora) : null),
@@ -610,6 +615,21 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
                   value={filtros.cuando}
                   onChange={(e) => setFiltros({ ...filtros, cuando: e.target.value })}
                 >
+                  {/*
+                    El día que llegó por la URL — B-791. El pie del tríptico
+                    manda a `?cuando=2026-09-19..2026-09-20`, y un `<select>`
+                    cuyo `value` no está entre sus `<option>` se dibuja **en
+                    blanco**: el listado saldría filtrado y el control diría que
+                    no hay filtro puesto. Se agrega la opción para que el filtro
+                    se vea, y con eso se puede sacar eligiendo otra cosa.
+
+                    Va primero y no al final para que quede a la vista sin
+                    desplegar, que es donde tiene que estar el filtro que la
+                    persona no eligió a mano.
+                  */}
+                  {diasElegidos && (
+                    <option value={filtros.cuando}>{etiquetaDeDias(diasElegidos)}</option>
+                  )}
                   <option value={CUANDO_PROXIMAS}>Próximas</option>
                   <option value={CUANDO_ESTE_MES}>Este mes</option>
                   <option value={CUANDO_TRES_MESES}>Próximos 3 meses</option>

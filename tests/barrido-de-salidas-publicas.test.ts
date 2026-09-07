@@ -2610,6 +2610,52 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º p
     );
   });
 
+  it('el pie «+N más» y su ruta tampoco llevan nada de la actividad (B-791)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y el hueco era de rama y no de campo.**
+     * Los ocho centinelas del fixture son sesiones **semanales**, así que con este
+     * `ahora` sobrevive un solo panel con **una** fila: `restantes = 0`, o sea
+     * `resto: null` y `rutaDelResto: null`. El barrido de arriba recorre el objeto
+     * entero, pero los dos campos que B-791 agregó los ve **solo en su rama
+     * nula** — que es una manera de pasar sin verificar nada.
+     *
+     * Se fuerza la otra rama con el tope en 1: el panel de «Hoy» queda con un
+     * encuentro afuera, y entonces el pie y su ruta salen con contenido.
+     *
+     * Qué frena, concretamente: `rutaDelResto` se arma **interpolando**
+     * (`${RUTA_AGENDA}?cuando=${…}`), y el próximo pedido razonable sobre ese pie
+     * es «que el listado ya llegue buscando esto» —un `&q=${entrada.titulo}`—.
+     * Eso compila, se ve bien, y publica en la query de la portada lo que el pie
+     * no tiene por qué llevar. Es el mismo motivo por el que la salida 8 se barre
+     * en sus dos ramas: una de sus frases interpola.
+     *
+     * MUTACIÓN PROBADA: agregarle `&q=${encodeURIComponent(resueltos[0]?.titulo)}`
+     * a `rutaDelResto` deja este caso en rojo nombrando `titulo →
+     * CENTINELA.titulo`, y **no** deja en rojo al barrido de arriba. El
+     * `encodeURIComponent` no lo salva: el centinela no tiene espacios ni acentos,
+     * así que sobrevive al escape — que es justo lo que hace útil que los
+     * centinelas sean `CENTINELA.<ruta>` y no prosa.
+     */
+    const dos = construirIndice({
+      actividades: [
+        toPublic(actividadCentinela(), 'act_paneles'),
+        toPublic(actividadCentinela({ slug: 'otra-centinela' }), 'act_paneles_2'),
+      ],
+      opciones: {},
+      version: '1.8.0+abc1234',
+      generadoEn: GENERADO_EN,
+    });
+    const programacion = panelesDeAhora(dos, AHORA, LABELS_CENTINELA, 1);
+    const hoy = programacion!.paneles.find((p) => p.clave === 'hoy')!;
+
+    // Control positivo: sin esto el caso barrería otra vez la rama nula.
+    expect(hoy.encuentros, 'el tope de 1 no cortó').toHaveLength(1);
+    expect(hoy.resto, 'no quedó nada afuera, así que no hay pie que barrer').not.toBeNull();
+    expect(hoy.rutaDelResto).not.toBeNull();
+
+    barrer('pie del tríptico', `${hoy.resto} ${hoy.rutaDelResto}`, []);
+  });
+
   it('el sello de frescura no lleva ningún dato del documento', () => {
     /*
      * Sale de `generadoEn`, que es del archivo y no de ninguna actividad. Se

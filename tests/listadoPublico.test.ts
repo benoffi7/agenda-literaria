@@ -19,7 +19,10 @@ import {
   aQuery,
   cantidadDeFiltrosPublicos,
   chipsDe,
+  cuandoDeDias,
   desdeQuery,
+  diasDelCuando,
+  etiquetaDeDias,
   ejeQueSobra,
   estadoDe,
   etiquetaDe,
@@ -279,6 +282,205 @@ describe('el filtro de «Cuándo»', () => {
   it('un valor que no reconocemos cae al default en vez de vaciar el listado', () => {
     // Una URL vieja compartida por WhatsApp tiene que seguir mostrando algo.
     expect(con('la-semana-que-viene')).toEqual(['este', 'tres', 'lejos']);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// «Cuándo» por día y por rango — el destino del pie del tríptico (B-791)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('«Cuándo» por día: la gramática', () => {
+  it('un día suelto se acepta tal cual', () => {
+    expect(diasDelCuando('2026-09-18')).toEqual(['2026-09-18']);
+  });
+
+  it('un rango se expande a los días que abarca, con los dos extremos adentro', () => {
+    expect(diasDelCuando('2026-09-19..2026-09-20')).toEqual(['2026-09-19', '2026-09-20']);
+    expect(diasDelCuando('2026-09-15..2026-09-18')).toEqual([
+      '2026-09-15',
+      '2026-09-16',
+      '2026-09-17',
+      '2026-09-18',
+    ]);
+  });
+
+  it('y cruzar el mes o el año es el caso normal, no el raro (trampa 1)', () => {
+    /*
+     * El pie del tríptico arma un rango cualquier día del año, así que
+     * `2026-12-31..2027-01-01` es una URL que se va a generar sola. Se camina con
+     * `diaDesplazado`, que ancla al mediodía UTC; restando milisegundos, el
+     * cambio de mes o de horario de verano corre el día.
+     */
+    expect(diasDelCuando('2026-12-31..2027-01-01')).toEqual(['2026-12-31', '2027-01-01']);
+    expect(diasDelCuando('2026-09-30..2026-10-01')).toEqual(['2026-09-30', '2026-10-01']);
+  });
+
+  it('lo que no es un día o un rango devuelve null, incluido un mes', () => {
+    /*
+     * El `null` es lo que hace que `pasaCuando` siga con su cadena y que
+     * `desdeQuery` descarte el valor. **El mes tiene que dar `null`**: lo maneja
+     * `esMes`, y si `diasDelCuando` se lo quedara, `?cuando=2026-09` dejaría de
+     * ser «septiembre» y pasaría a no ser nada.
+     */
+    for (const valor of [
+      '2026-09',
+      'proximas',
+      '',
+      '2026-9-1',
+      '2026-09-18..',
+      '..2026-09-18',
+      '2026-09-18..2026-09-19..2026-09-20',
+      'hoy..manana',
+    ]) {
+      expect(diasDelCuando(valor), `«${valor}» no es un día`).toBeNull();
+    }
+  });
+
+  it('un rango al revés no se acomoda solo: es un valor inválido', () => {
+    // Acomodarlo sería adivinar. Devolver `null` lo manda al default, que es lo
+    // que hace este módulo con todo lo que viene de la URL.
+    expect(diasDelCuando('2026-09-20..2026-09-19')).toBeNull();
+  });
+
+  it('un rango de más de una semana también, para que el rótulo no sea ilegible', () => {
+    // Siete es la ventana más larga que arma el tríptico. `2026-01-01..2026-12-31`
+    // no es peligroso, es un chip con 365 fechas escritas.
+    expect(diasDelCuando('2026-09-14..2026-09-20')).toHaveLength(7);
+    expect(diasDelCuando('2026-09-14..2026-09-21')).toBeNull();
+  });
+
+  it('cuandoDeDias es la vuelta exacta de diasDelCuando', () => {
+    /*
+     * **La propiedad, y no los dos casos.** Son la ida y la vuelta de la misma
+     * gramática: si una cambia y la otra no, el pie del tríptico arma un link que
+     * el listado descarta y el filtro se cae al default sin decir nada.
+     */
+    for (const dias of [
+      ['2026-09-18'],
+      ['2026-09-19', '2026-09-20'],
+      ['2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18'],
+    ]) {
+      expect(diasDelCuando(cuandoDeDias(dias)), dias.join(',')).toEqual(dias);
+    }
+  });
+
+  it('un día solo no se escribe como rango: la URL más corta posible', () => {
+    expect(cuandoDeDias(['2026-09-18'])).toBe('2026-09-18');
+    expect(cuandoDeDias(['2026-09-19', '2026-09-20'])).toBe('2026-09-19..2026-09-20');
+  });
+
+  it('una ventana vacía cae en «Próximas», no en un rango vacío', () => {
+    // El caso del panel que no se dibuja: sin días, el link no tiene destino y el
+    // default es lo único honesto.
+    expect(cuandoDeDias([])).toBe(CUANDO_PROXIMAS);
+  });
+
+  it('la etiqueta escribe las fechas, que es lo que impide que el chip mienta', () => {
+    expect(etiquetaDeDias(['2026-09-18'])).toBe('vie 18 sep');
+    expect(etiquetaDeDias(['2026-09-19', '2026-09-20'])).toBe('sáb 19 sep a dom 20 sep');
+    // Un tramo largo se nombra por los extremos: es lo que hace que «Esta semana»
+    // quepa en un `<option>`.
+    expect(etiquetaDeDias(['2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18'])).toBe(
+      'mar 15 sep a vie 18 sep',
+    );
+  });
+});
+
+describe('«Cuándo» por día: lo que filtra', () => {
+  const hoy = entradaDePrueba({ slug: 'hoy', fechas: ['2026-09-18T22:00:00Z'] });
+  const manana = entradaDePrueba({ slug: 'manana', fechas: ['2026-09-19T22:00:00Z'] });
+  const otro = entradaDePrueba({ slug: 'otro', fechas: ['2026-09-25T22:00:00Z'] });
+  const todas = [hoy, manana, otro];
+
+  const con = (cuando: string) =>
+    filtrarPublico(todas, { ...filtrosVacios(), cuando }, AHORA).map((e) => e.slug);
+
+  it('un día trae lo de ese día y nada más', () => {
+    expect(con('2026-09-18')).toEqual(['hoy']);
+  });
+
+  it('un rango trae los días del tramo', () => {
+    expect(con('2026-09-18..2026-09-19')).toEqual(['hoy', 'manana']);
+  });
+
+  it('trae el día ENTERO, también lo que ya empezó', () => {
+    /*
+     * **La única diferencia entre el panel del tríptico y su propio link, y es
+     * deliberada.** El panel «Hoy» muestra lo que todavía no arrancó (mira
+     * `inicio >= ahora`); el filtro muestra el día completo. Alguien que llega a
+     * las nueve de la noche por «+3 más hoy» ve también los tres de las siete: el
+     * pie promete «lo de hoy», y lo de hoy incluye lo de las siete.
+     */
+    const yaEmpezo = entradaDePrueba({ slug: 'temprano', fechas: ['2026-09-18T12:00:00Z'] });
+    // Las 22:00 UTC del 18 son las 19:00 de Buenos Aires: la de las 09:00 ya pasó.
+    const ahora = new Date('2026-09-18T22:00:00Z');
+    expect(
+      filtrarPublico([yaEmpezo], { ...filtrosVacios(), cuando: '2026-09-18' }, ahora).map(
+        (e) => e.slug,
+      ),
+    ).toEqual(['temprano']);
+  });
+
+  it('el día se decide en la zona del proyecto y no en UTC (trampa 1)', () => {
+    // 02:00 UTC del 19 son las 23:00 del **18** en Buenos Aires: la actividad es
+    // del 18, y el filtro del 19 no la tiene que traer.
+    const tarde = entradaDePrueba({ slug: 'tarde', fechas: ['2026-09-19T02:00:00Z'] });
+    expect(
+      filtrarPublico([tarde], { ...filtrosVacios(), cuando: '2026-09-18' }, AHORA),
+    ).toHaveLength(1);
+    expect(
+      filtrarPublico([tarde], { ...filtrosVacios(), cuando: '2026-09-19' }, AHORA),
+    ).toHaveLength(0);
+  });
+
+  it('un ciclo aparece en el día en que tiene un encuentro, como con el mes', () => {
+    const ciclo = entradaDePrueba({
+      slug: 'ciclo',
+      esCiclo: true,
+      fechas: ['2026-09-18T22:00:00Z', '2026-10-08T22:00:00Z'],
+    });
+    expect(
+      filtrarPublico([ciclo], { ...filtrosVacios(), cuando: '2026-09-18' }, AHORA),
+    ).toHaveLength(1);
+  });
+
+  it('una sesión cancelada no cuenta, igual que en el filtro por mes', () => {
+    const cancelada = entradaDePrueba({
+      slug: 'cancelada',
+      fechas: ['2026-09-18T22:00:00Z'],
+      canceladas: [0],
+    });
+    expect(
+      filtrarPublico([cancelada], { ...filtrosVacios(), cuando: '2026-09-18' }, AHORA),
+    ).toHaveLength(0);
+  });
+
+  it('cuenta como un filtro puesto, así que el botón «Filtros» lo dice', () => {
+    // Si no contara, alguien que llega por el pie del tríptico vería un listado
+    // acotado y un panel de filtros que dice que no hay ninguno.
+    expect(cantidadDeFiltrosPublicos({ ...filtrosVacios(), cuando: '2026-09-18' })).toBe(1);
+  });
+});
+
+describe('«Cuándo» por día: la URL', () => {
+  it('desdeQuery acepta el día y el rango', () => {
+    expect(desdeQuery('cuando=2026-09-18').filtros.cuando).toBe('2026-09-18');
+    expect(desdeQuery('cuando=2026-09-19..2026-09-20').filtros.cuando).toBe(
+      '2026-09-19..2026-09-20',
+    );
+  });
+
+  it('y descarta lo que no es una fecha, sin vaciar el listado', () => {
+    // Nada de lo que viene de la URL se cree sin chequear: es texto que escribe
+    // cualquiera.
+    for (const crudo of ['2026-09-18..2026-09-30', '2026-13-01..2026-13-02', 'ayer']) {
+      expect(desdeQuery(`cuando=${crudo}`).filtros.cuando, crudo).toBe(CUANDO_PROXIMAS);
+    }
+  });
+
+  it('el ida y vuelta por la query string no pierde el día', () => {
+    const filtros = { ...filtrosVacios(), cuando: '2026-09-19..2026-09-20' };
+    expect(desdeQuery(aQuery(filtros, 'proxima')).filtros.cuando).toBe('2026-09-19..2026-09-20');
   });
 });
 

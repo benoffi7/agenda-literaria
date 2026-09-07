@@ -7425,6 +7425,15 @@ varios resueltos entre los más nuevos.
 
 ## D-320 · El tercer panel del tríptico resta los días ya contados, salta de semana con otro rótulo, y su «+N más» no es un enlace
 
+> ⚠️ **Los rótulos, el tope y el pie cambiaron en B-791 — ver [D-470](#d-470--el-tríptico-cambia-de-ventanas-sortea-dos-por-panel-y-el-pie-lleva-al-filtro).**
+> Las ventanas son hoy **Hoy · Este finde · Esta semana**, el tope es de **dos**
+> filas **sorteadas** y el «+N más» **sí** es un enlace —al listado de la misma
+> página con `?cuando=` puesto—. Lo que **no** cambió es lo que esta entrada
+> decide y sigue vigente: las tres ventanas son **disjuntas**, el salto de semana
+> cambia el rótulo, y el día **sigue sin ser una página** del sitio (el pie usa el
+> filtro, no una URL nueva). Lo de abajo queda como estaba escrito, para que
+> D-470 se lea contra su original.
+>
 > ⚠️ **Un panel vacío ya no se dibuja — lo decidió el dueño el 2026-09-03,
 > mirando el sitio publicado.** Esta entrada y el §4.1 de
 > [`12-sitio-publico.md`](12-sitio-publico.md) decían lo contrario: que un panel
@@ -8048,7 +8057,6 @@ una actividad que pueda tocar— y lo que sí tiene, el riesgo del texto libre e
 una página pública, lo cubre el barrido de su test, igual que en esas dos. Si se
 decide contarla igual, es **B-772**, junto con la fila pendiente del `/404`
 (B-654).
-```
 
 ---
 
@@ -8078,6 +8086,33 @@ renombra después de publicar, como cualquier ruta (trampa 10).
 ---
 
 ## D-461 · `/apoyar` entra por el pie y por el sitemap, no por el encabezado
+
+> ⚠️ **Revertido por el dueño el 2026-09-07: `/apoyar` y `/anunciar` están en el
+> encabezado.** El pedido fue literal —«anunciar en la agenda y apoyar en la
+> agenda, tambien subirlo. ahora esta en el footer»— y el criterio del dueño gana
+> sobre los dos motivos de abajo. Esta entrada dejó escrito que «el día que se
+> decida subirla el caso se pone en rojo y hay que venir a decidirlo acá»: los
+> tres casos de `tests/apoyo-del-sitio.test.ts` se pusieron en rojo, se
+> actualizaron con su motivo, y esto es la parte de venir a decidirlo.
+>
+> Qué queda en pie del argumento y qué no:
+>
+> - **El motivo 1 caducó por decisión.** La barra tiene ahora siete pestañas. El
+>   argumento de que un sexto lugar fijo «le daría a un pedido el mismo peso que a
+>   la agenda» era razonable y el dueño decidió que ese peso está bien.
+> - **El motivo 2 sigue siendo verdad y ahora es un riesgo asumido**, no una
+>   objeción: una página que promete que nadie tiene que pagar nada gana en
+>   visibilidad lo que puede perder en no parecer un peaje. Lo que lo compensa es
+>   el texto de la propia página, que abre diciendo que el sitio es gratis y va a
+>   seguir siéndolo.
+> - **Lo que no cambió**: sigue indexándose, sigue en el `sitemap.xml`, y el pie
+>   la sigue enlazando. Subirla al encabezado sumó una entrada, no movió ninguna.
+> - **La mecánica que esta entrada inventó no se perdió** —una sección que está en
+>   el tipo `Seccion` y no en `ENLACES`— y sigue siendo la forma que le falta a
+>   `/pasadas`. Ahora no tiene usuario; el día que haya otra página de solo-pie,
+>   está lista.
+>
+> Lo de abajo queda como estaba escrito.
 
 **Fecha:** 2026-09-04 · **Ítem:** B-780
 
@@ -8111,6 +8146,136 @@ disponible para la próxima página de pie.
 **Consecuencia:** `tests/apoyo-del-sitio.test.ts` ata las **dos** direcciones (el
 pie la enlaza, el encabezado no), así que el día que se decida subirla el caso se
 pone en rojo y hay que venir a decidirlo acá.
-```
+
+---
+
+## D-470 · El tríptico cambia de ventanas, sortea dos por panel, y el pie lleva al filtro
+
+**Fecha:** 2026-09-07 · **Ítem:** B-791 · **Revisa:** [D-320](#d-320--el-tercer-panel-del-tríptico-resta-los-días-ya-contados-salta-de-semana-con-otro-rótulo-y-su-n-más-no-es-un-enlace)
+
+**Quién lo pidió.** El dueño, mirando el sitio publicado, con tres pedidos en una
+línea: «dos elementos por día aleatorios», «que el texto “+xx mañana” sea un link
+para que aparezcan todos», «cambiar Hoy, este Finde, está semana». Los tres tocan
+decisiones escritas de D-320, así que van con el original al lado.
+
+### 1 · Las ventanas: `Hoy · Este finde · Esta semana`
+
+Eran `Hoy · Mañana · Este finde`. El cambio parece de rótulos y no lo es: **las
+tres viejas eran disjuntas por naturaleza** —tres tramos distintos del calendario—
+y **las nuevas están anidadas**: hoy está dentro de esta semana, y el finde
+también.
+
+D-320 decidió que ningún encuentro puede salir en dos paneles («el mismo encuentro
+repetido en dos columnas pegadas de un tríptico se lee como un error de
+software»), y esa decisión **no se cayó**. Así que la resta que antes hacía el
+tercer panel ahora la hacen dos:
+
+| Panel | Ventana |
+|---|---|
+| **Hoy** | lo que queda de hoy |
+| **Este finde** / **El finde que viene** | sábado y domingo, **menos hoy** |
+| **Esta semana** | los días que faltan hasta el domingo, **menos** los dos de arriba |
+
+Con eso, «Esta semana» un lunes son el martes, miércoles, jueves y viernes: **no
+es toda la semana, y el rótulo solo no lo dice**. Lo que lo hace honesto es lo que
+D-320 ya había puesto por otro motivo —**cada panel escribe los días que
+abarca**—: «Esta semana · mar 15 sep a vie 18 sep». Sin esa línea, el rótulo de
+este cambio mentiría; con ella, la resta es visible. Es la razón por la que la
+línea de fechas no es decorativa y no se puede sacar para ganar espacio.
+
+Dos efectos secundarios, los dos a favor y ninguno pedido:
+
+- **El sábado ya no salta de semana.** Antes «Mañana» le comía el domingo al panel
+  del finde y la ventana quedaba sin días, así que un sábado el tríptico ofrecía
+  el finde **siguiente**. Ahora un sábado el panel dice «Este finde · dom 20 sep»,
+  que es lo que alguien quiere saber ese día.
+- **Un domingo el tercer panel queda vacío** —no hay días entre hoy y el domingo—
+  y no se dibuja, que es la regla que el dueño ya había pedido para los vacíos.
+
+### 2 · Dos por panel, y sorteados
+
+El tope pasó de cuatro a dos. Cuatro filas de un día que tiene cinco dejaban
+afuera una; **dos filas de cinco dejan afuera tres, y con un orden fijo por hora
+son siempre las mismas tres**: la actividad de las 21:00 no aparece nunca en la
+portada. Por eso el tope y el sorteo son un solo cambio y no dos.
+
+El problema del sorteo no es sortear: es que **el panel se pinta dos veces**. El
+build genera el HTML y la island lo reemplaza al arrancar —el patrón de los dos
+relojes del §6.4—, los dos con el mismo módulo. Con `Math.random()` los dos
+sorteos dan distinto: el HTML muestra dos actividades y medio segundo después la
+island muestra otras dos, o sea **la página cambia sola delante de quien la está
+leyendo**. Ese parpadeo es peor que el orden fijo que veníamos de tener.
+
+| Salida | Por qué no / por qué sí |
+|---|---|
+| Sortear en el cliente | El parpadeo de arriba, y además el HTML que ve Google no coincide con el que ve la gente |
+| Sortear en el build y que el orden viaje en el `events.json` | Funciona, pero le agrega un campo al índice —o le impone un orden al eje de encuentros de B-99, que hoy es por hora y lo usan otros— para un problema de presentación |
+| **Semilla derivada de los días de la ventana** | Las dos pinturas derivan la misma semilla de un dato que **ya tienen**, sin agregar nada al índice. Es lo que se hizo |
+
+La semilla son los días del panel (`2026-09-19|2026-09-20`), así que el sorteo
+**rota una vez por día**. Eso es deliberado y es más de lo que la semilla resuelve
+de paso: sortear por rebuild haría que la portada cambie cada vez que se corrige
+un typo en otra actividad, que no es lo que «aleatorio» quiere decir acá. Quien
+entra tres veces en la tarde ve lo mismo las tres veces.
+
+Se ordena por un número derivado de cada clave (FNV-1a de 32 bits, cuatro líneas)
+en vez de permutar el array, para que agregar o borrar un encuentro no reacomode a
+los demás.
+
+**El costo, escrito para que nadie lo descubra como bug:** una actividad puede no
+aparecer en el panel de su día si el sorteo la deja tercera. Por eso el pie tiene
+que llevar a algún lado, que es el punto siguiente.
+
+### 3 · El pie es un enlace, y el día sigue sin ser una página
+
+D-320 decía: «el "+N más" es texto, no un enlace: el día no es una URL de este
+sitio (§2.3), así que no hay ningún "ver el cronograma de hoy" al que mandar».
+
+Ese argumento **sigue siendo cierto**, y el link no lo contradice. El §2.3 separa
+lo que es **página** de lo que es **filtro**, y el pie usa lo segundo: lleva a la
+home con `?cuando=` puesto en los días de la ventana. Ni una URL indexable nueva
+—la home canoniza a `/` sin query—, y el destino es el listado que ya estaba
+abajo, ahora acotado a lo que el pie promete.
+
+| Salida | Por qué no / por qué sí |
+|---|---|
+| Una página por día | Cientos de URLs casi vacías e indexables, la mitad sin una sola actividad. Es la decisión que D-320 se negó a tomar en el pie de un panel, y con razón |
+| Expandir el panel en su lugar | Un panel de doce filas empuja el listado abajo del pliegue en un teléfono (D-143), que es el argumento por el que existe el tope |
+| **Filtrar el listado por los días de la ventana** | Cero URLs nuevas, el listado completo ya está en la página, y el filtro por «Cuándo» ya aceptaba un mes puntual. Es lo que se hizo |
+
+Para eso, «Cuándo» pasó a aceptar **un día** (`2026-09-18`) y **un rango de hasta
+siete** (`2026-09-19..2026-09-20`). Reusa el campo que ya existía en vez de
+agregar un eje nuevo: la idea de «acotá el listado a este tramo del calendario» ya
+vivía ahí (el mes puntual), y reusándolo el filtro por día es mutuamente
+excluyente con el mes **por construcción**. Un rango y no una lista de días
+sueltos porque las tres ventanas del tríptico son siempre un tramo seguido.
+
+Tres cosas que el cambio obligó a escribir, y son las que valen:
+
+1. **`esClaveDeDia`.** El docblock de `anclaDeDia` decía «la clave sale siempre de
+   `claveDeDia`: no hay ningún camino desde la URL hasta acá». **B-791 abrió ese
+   camino**, y la forma sola no alcanza: `2026-13-01` pasa un
+   `\d{4}-\d{2}-\d{2}` y `Date.UTC(2026, 12, 1)` no falla —**rueda** a enero de
+   2027 en silencio—, así que el listado filtraría por un día que nadie pidió. Se
+   valida con la ida y la vuelta (`claveDeDia(anclaDeDia(c)) === c`), que es la
+   propiedad que ese docblock ya afirmaba.
+2. **El `<option>` del select.** Un `<select>` cuyo `value` no está entre sus
+   opciones se dibuja **en blanco**: el listado saldría filtrado y el control
+   diría que no hay filtro puesto. Cuando el «Cuándo» es un día, se agrega la
+   opción con las fechas escritas.
+3. **El filtro trae el día entero y el panel no.** «Hoy» muestra lo que todavía no
+   arrancó; `?cuando=2026-09-18` muestra las 24 horas. Es la única diferencia
+   entre el panel y su propio link, y es deliberada: el pie promete «lo de hoy», y
+   lo de hoy incluye lo de las siete.
+
+### Lo que queda pendiente
+
+**El evento de analítica del tríptico (B-601) sigue sin enganche**, y ahora tiene
+un clic más que medir: el del pie. `PANELES_MEDIBLES` se actualizó al renombre
+(`manana` → `semana`) porque es un `Record<ClaveDePanel, …>` que **no compila** si
+el tríptico gana o pierde un panel —lo cual funcionó exactamente como su autor
+esperaba—, pero el `clic_triptico` del pie no está decidido: si el pie cuenta como
+clic del panel o como un evento propio es una pregunta que se contesta cuando se
+enganche.
 
 ---

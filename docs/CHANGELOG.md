@@ -2,6 +2,59 @@
 
 ## Sin publicar
 
+- **El tríptico de la home cambió de ventanas, sortea dos por panel y su pie
+  lleva a algún lado** — **B-791**, **D-470**. Los rótulos son ahora **Hoy · Este
+  finde · Esta semana** (eran `Hoy · Mañana · Este finde`), cada panel muestra
+  **dos** filas en vez de cuatro y las **sortea**, y el «+N más» pasó de texto a
+  **enlace** al listado de la misma página filtrado por los días de esa ventana.
+  Los tres los pidió el dueño mirando el sitio publicado.
+
+  Lo que hay que saber de cada uno:
+
+  - **Las ventanas nuevas están anidadas** («hoy» está dentro de «esta semana»),
+    y las tres siguen siendo **disjuntas** —la decisión de D-320 no se cayó—, así
+    que la resta ahora la hacen dos paneles. «Esta semana» un lunes son cuatro
+    días, no siete, y lo que impide que el rótulo mienta es la línea de fechas que
+    cada panel ya escribía: «Esta semana · mar 15 sep a vie 18 sep». **Esa línea
+    no es decorativa y no se puede sacar para ganar espacio.**
+  - **El sorteo usa una semilla derivada de los días de la ventana**, no
+    `Math.random()`. El panel se pinta **dos veces** —el build genera el HTML y la
+    island lo reemplaza— y con dos sorteos distintos la página cambiaría sola
+    delante de quien la está leyendo. Con la semilla, las dos pinturas coinciden
+    sin agregar un campo al `events.json`, y el sorteo **rota una vez por día** en
+    vez de en cada rebuild.
+  - **El pie no inventó una página por día**: usa el filtro. «Cuándo» pasó a
+    aceptar un día (`2026-09-18`) y un rango de hasta siete
+    (`2026-09-19..2026-09-20`), así que el enlace es `/?cuando=…` y no agrega ni
+    una URL indexable. El día **sigue** sin ser una URL de este sitio, que es lo
+    que D-320 había decidido.
+  - **Aparecieron dos defensas que el cambio hizo necesarias.** `esClaveDeDia`:
+    B-791 abrió el primer camino desde la URL hasta la aritmética de días, y la
+    forma sola no alcanza —`2026-13-01` pasa el regex y `Date.UTC(2026, 12, 1)`
+    **rueda** a enero de 2027 en silencio—. Y el `<option>` del select de
+    «Cuándo»: un `<select>` cuyo valor no está entre sus opciones se dibuja **en
+    blanco**, o sea listado filtrado y control diciendo que no hay filtro.
+  - **Queda una diferencia deliberada entre el panel y su propio link:** «Hoy»
+    muestra lo que todavía no arrancó, `?cuando=` muestra el día entero. El pie
+    promete «lo de hoy», y lo de hoy incluye lo de las siete.
+
+  Los tres auditores corrieron sobre el cambio. El de **trampas** salió limpio y
+  cobró de paso la red que faltaba entre `ClaveDePanel` y `PANELES_MEDIBLES`. El
+  de **privacidad** salió limpio en lo caro —ningún campo del modelo se tocó, no
+  hay salida nueva, y el `<option>` no refleja texto de la URL— y encontró tres
+  cosas de red: el barrido de centinelas veía los dos campos nuevos **solo en su
+  rama nula** (se agregó el caso que fuerza la otra, con la mutación probada), las
+  dos tablas atadas no nombraban a los productores nuevos de texto público (se
+  nombraron), y el **sello publica la hora y el minuto del build**, que es
+  preexistente y quedó como **B-792**. El pie que puede llevar a un día pasado
+  antes de hidratar quedó como **B-793**. Y usar el hook de B-124 dejó a la vista
+  que **aplicar los hallazgos del auditor invalida su propio sello** —el sello es
+  la huella del diff, y corregir lo que el auditor pidió cambia esa huella—, que
+  es la clase de B-180 y quedó como **B-794**.
+
+  Lo que sigue pendiente: **el evento de analítica del tríptico (B-601) no tiene
+  enganche**, y ahora tiene un clic más que medir.
+
 - **El gate de antes de pushear corre la suite dos veces, con el reloj en otra
   zona** — el CI corre en UTC y esta máquina en Buenos Aires, así que un test que
   pregunta la fecha sin `timeZone` explícito pasa acá y falla allá. Ya se cobró

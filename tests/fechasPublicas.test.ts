@@ -17,6 +17,7 @@ import {
   claveDeMes,
   diaDeSemana,
   diaDesplazado,
+  esClaveDeDia,
   diaYMes,
   fechaCompleta,
   fechaCorta,
@@ -377,5 +378,50 @@ describe('las primitivas de día calendario — B-600', () => {
       expect(fechaCortaDeDia(clave), clave).toContain(' 1 ');
       expect(claveDeDia(new Date(`${clave}T15:00:00Z`)), clave).toBe(clave);
     }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// `esClaveDeDia` — la defensa que nació con el filtro por día (B-791)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('esClaveDeDia — la forma no alcanza', () => {
+  it('acepta un día que existe', () => {
+    for (const c of ['2026-09-18', '2026-01-01', '2026-12-31', '2024-02-29']) {
+      expect(esClaveDeDia(c), c).toBe(true);
+    }
+  });
+
+  it('rechaza lo que tiene la forma y no es un día', () => {
+    /*
+     * **El caso por el que esto existe.** `Date.UTC(2026, 12, 1)` no falla:
+     * **rueda** a enero de 2027 en silencio, así que un `?cuando=2026-13-01`
+     * filtraría por un día que la persona no pidió. Y el 29 de febrero de un año
+     * no bisiesto rueda al 1 de marzo.
+     *
+     * MUTACIÓN PROBADA: dejar solo el regex de forma deja los cuatro en rojo.
+     */
+    for (const c of ['2026-13-01', '2026-00-10', '2026-02-30', '2026-09-31', '2025-02-29']) {
+      expect(esClaveDeDia(c), c).toBe(false);
+    }
+  });
+
+  it('y rechaza lo que no tiene ni la forma', () => {
+    for (const c of ['2026-09', '2026-9-1', '', 'hoy', '2026-09-18T12:00:00Z', '20260918']) {
+      expect(esClaveDeDia(c), c).toBe(false);
+    }
+  });
+
+  it('todo lo que sale de claveDeDia pasa — la propiedad, no los casos', () => {
+    // La ida y la vuelta que el docblock del ancla afirma, barrida sobre un año
+    // entero: si `esClaveDeDia` rechazara una clave que el propio módulo genera,
+    // el filtro por día se caería al default en algún día del año y en los demás
+    // no, que es la peor forma de romperse.
+    let d = '2026-01-01';
+    for (let i = 0; i < 366; i += 1) {
+      expect(esClaveDeDia(d), d).toBe(true);
+      d = diaDesplazado(d, 1);
+    }
+    expect(d).toBe('2027-01-02');
   });
 });

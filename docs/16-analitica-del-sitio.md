@@ -625,7 +625,8 @@ el barrido sí, porque mira la etiqueta donde está escrita. Se descartan los
 ### 7.5 · El tercer evento propio: el tríptico (B-601)
 
 **B-600** puso en la home el tríptico «¿Qué hay ahora?» —tres paneles **Hoy ·
-Mañana · Este finde**, arriba del buscador— y **no emitía nada**. Es una sección
+Este finde · Esta semana** desde B-791, arriba del buscador— y **no emitía
+nada**. Es una sección
 grande, en la página que recibe casi todo el tráfico, y sin un evento no hay
 forma de saber si se usa o si es un bloque que la gente saltea para bajar al
 listado. Es la misma pregunta que `estadisticas-abrir` contesta para el tablero
@@ -635,7 +636,7 @@ toca?** — y la que decide si la sección merece crecer o achicarse.
 | | |
 |---|---|
 | Nombre | `clic_triptico` |
-| Parámetro | **`panel`**, y nada más: `hoy` \| `manana` \| `finde` |
+| Parámetro | **`panel`**, y nada más: `hoy` \| `finde` \| `semana` (eran `hoy` \| `manana` \| `finde` hasta B-791) |
 | Dónde vive la especificación | `EVENTOS_SITIO` en `src/lib/analyticsSitio.ts`, con su saneador `enum` — el mismo camino que los otros dos, así que pasa por `construirEventoSitio` y por los centinelas |
 | Qué contesta | «¿se toca el tríptico, y qué panel?» |
 
@@ -1141,7 +1142,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
-| **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | 🟡 el evento está declarado y testeado; **falta el enganche** en `PanelesDeAhora`/`Buscador` — el parche está en `.estado/analitica-sitio.md`, y hasta aplicarlo no emite |
+| **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | 🟡 el evento está declarado y testeado; **falta el enganche** en `PanelesDeAhora`/`Buscador` — el parche está en `.estado/analitica-sitio.md`, y hasta aplicarlo no emite. **B-791 le sumó un clic que decidir**: el pie «+N más» ahora es un enlace al listado filtrado, y si cuenta como clic del panel o como evento propio se contesta al enganchar (D-470) |
 
 ---
 

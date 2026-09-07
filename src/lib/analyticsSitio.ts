@@ -177,13 +177,15 @@ const EJES_MEDIBLES = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'
  * GA4 aparece como `panel=otro` — no se pierde el clic y el desfase se **ve**
  * en los datos, que es la misma degradación que tiene `via` en
  * `clic_inscripcion` y la que este saneador está diseñado para dar. Lo que
- * **no** hay todavía es la red que lo diga antes: un
- * `Record<ClaveDePanel, …>` en `tests/analyticsSitio.test.ts` —que sí puede
- * importar el tipo, porque un `import type` no deja rastro en el bundle— no
- * compilaría si el tríptico ganara un panel y acá no se agregara. Está pendiente
- * junto con el enganche de este evento, ver `.estado/analitica-sitio.md`.
+ * **no** había era la red que lo dijera antes, y **desde B-791 está**: el
+ * `Record<ClaveDePanel, PanelMedible>` de `tests/analyticsSitio.test.ts` —que sí
+ * puede importar el tipo, porque un `import type` no deja rastro en el bundle—
+ * **no compila** si el tríptico gana un panel y acá no se agrega. La escribió el
+ * `auditor-trampas` mirando justo ese cambio: el renombre `manana` → `semana`
+ * hubo que hacerlo a mano en los dos lados, y olvidarse uno solo se habría visto
+ * como un `panel=otro` en GA4 semanas después.
  */
-const PANELES_MEDIBLES = ['hoy', 'manana', 'finde'] as const;
+const PANELES_MEDIBLES = ['hoy', 'finde', 'semana'] as const;
 
 /** Los paneles que este módulo sabe medir. Lo usa quien arma el handler del
  * tríptico, para no escribir las claves a mano dos veces. */
@@ -247,7 +249,7 @@ export const EVENTOS_SITIO = {
   /**
    * ¿Se toca el tríptico «¿Qué hay ahora?», y qué panel? — **B-601**.
    *
-   * B-600 puso tres paneles (Hoy · Mañana · Este finde) arriba del buscador, en
+   * B-600 puso tres paneles (Hoy · Este finde · Esta semana, renombrados en B-791) arriba del buscador, en
    * la home, y **no emitían nada**: no había forma de saber si la sección se usa
    * o si es un bloque grande que la gente saltea para ir al listado. Es la misma
    * pregunta que `estadisticas-abrir` contesta para el tablero del panel (§8.3

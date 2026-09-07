@@ -474,7 +474,7 @@ const NOMBRE_DE_EVENTO: Record<string, { titulo: string; detalle: string }> = {
   clic_triptico: {
     titulo: 'Clics en «¿Qué hay ahora?»',
     detalle:
-      'Si la gente usa los tres paneles de la home (Hoy · Mañana · Este finde) o baja ' +
+      'Si la gente usa los tres paneles de la home (Hoy · Este finde · Esta semana) o baja ' +
       'directo al listado. Mide qué panel, nunca qué actividad se abrió.',
   },
 };

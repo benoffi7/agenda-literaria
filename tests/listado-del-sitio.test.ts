@@ -956,28 +956,42 @@ describe('el tríptico de «¿qué hay ahora?» no decide nada — B-600', () =>
     expect(modulo()).toContain('export const TOPE_DEL_PANEL');
   });
 
-  it('el «+N más» no es un enlace: el día no es una URL de este sitio', () => {
+  it('el «+N más» es un enlace al filtro, y la ruta no se concatena en el markup', () => {
     /*
-     * §2.3 decide qué es página y qué es filtro, y el día no está en ninguna de
-     * las dos listas: no hay «ver el cronograma de hoy» al que mandar. Lo que sí
-     * hay es el listado completo, en esta misma página. Ver D-320.
+     * **Este caso cambió de afirmación en B-791, y por eso está escrito el
+     * original.** Decía «el "+N más" NO es un enlace: el día no es una URL de este
+     * sitio», con el argumento de que §2.3 decide qué es página y qué es filtro y
+     * el día no está en ninguna de las dos listas.
      *
-     * MUTACIÓN PROBADA: envolver `{panel.resto}` en un `<a>` deja este caso en
-     * rojo, y es el atajo que decide de paso una decena de URLs indexables en el
-     * pie de un panel.
+     * El dueño pidió el link, y el argumento no se cayó: el día **sigue** sin ser
+     * una página. Lo que hay es lo otro que el §2.3 permite —un filtro—: el pie
+     * lleva a la home con `?cuando=` en los días de la ventana, sin una sola URL
+     * indexable nueva.
+     *
+     * Lo que este caso fija ahora es dónde se arma esa ruta: **en
+     * `lib/ahoraPublico.ts` y no acá**. Un `href={`/?cuando=${...}`}` en el
+     * markup sería una segunda copia de la gramática de `?cuando=`, y el día que
+     * el filtro cambie el link seguiría existiendo y el listado se caería al
+     * default sin decir nada.
+     *
+     * MUTACIÓN PROBADA: cambiar el `href` por una plantilla armada en el
+     * componente deja este caso en rojo.
      */
     const src = paneles();
     const pie = src.match(/panel\.resto &&[\s\S]*?\)\}/);
     expect(pie, 'no se encontró el pie del panel en el markup').not.toBeNull();
-    expect(pie![0], 'el resto es texto, no un link').not.toMatch(/<a\b|href=/);
+    expect(pie![0], 'el pie lleva al filtro').toMatch(/href=\{panel\.rutaDelResto\}/);
+    expect(pie![0], 'la ruta viene armada, no se concatena acá').not.toMatch(/cuando=/);
   });
 
-  it('el único enlace de la fila es la actividad entera, sin botones adentro', () => {
+  it('los dos enlaces del panel son la fila y el pie, y no hay botones adentro', () => {
     // §4.2 — en móvil un botón dentro de un link es un blanco ambiguo. Es la
-    // misma regla que ya cumple `FilaDeActividad`.
+    // misma regla que ya cumple `FilaDeActividad`. El pie es el **segundo**
+    // enlace desde B-791, y es hermano de la fila, no un hijo: eso es lo que lo
+    // deja pasar la regla.
     const src = paneles();
     expect(src).not.toMatch(/<button/);
-    expect((src.match(/<a\b/g) ?? []).length, 'una sola ancla: la fila').toBe(1);
+    expect((src.match(/<a\b/g) ?? []).length, 'dos anclas: la fila y el pie').toBe(2);
   });
 });
 

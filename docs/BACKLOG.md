@@ -2803,7 +2803,153 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-791 · Cambios al tríptico «¿Qué hay ahora?» · P2
+### B-794 · P2 — aplicar los hallazgos del `auditor-privacidad` invalida su propio sello
+
+**Encontrado usando el hook de B-124/D-350 en B-791**, y es la clase de B-180: «un
+gate que falla por su propia plomería enseña a saltearlo».
+
+El hook `PreToolUse(Bash)` de `scripts/hook-auditores.mjs` bloquea el `git commit`
+cuando el diff toca una de las salidas públicas y el `auditor-privacidad` no
+corrió. Sella con la **huella del diff** en el momento en que el agente termina
+(`marcar`, `.git/auditores.json`).
+
+El problema es el orden natural del trabajo:
+
+1. se hace el cambio,
+2. corre el auditor y sella la huella,
+3. **se aplican sus hallazgos** —que es para lo que se lo corrió—,
+4. la huella cambia, el sello queda viejo, y el commit se bloquea otra vez.
+
+O sea que el único camino en que el sello sirve es «auditar y no cambiar nada»,
+que es el caso en que el auditor no encontró nada. En cuanto encuentra algo —el
+caso útil— hay que correrlo de nuevo sobre un diff que ya incorpora sus
+correcciones, o saltearlo con `SALTEAR_AUDITORES=1`. En B-791 se hizo lo segundo,
+con el motivo escrito en el commit; el riesgo de que eso se vuelva costumbre es
+justo lo que B-180 documenta.
+
+**Y la segunda pasada no es gratis:** esta auditoría gastó unos 176 mil tokens.
+Volver a correrla para revalidar comentarios y tests que ella misma pidió es el
+costo que hace que el escape sea tentador.
+
+Salidas posibles, sin decidir:
+
+- **Sellar por archivo y no por diff entero.** El sello guardaría la huella de
+  cada salida pública auditada; los cambios en `tests/` y `docs/` no la moverían,
+  y aplicar un hallazgo en un `.md` o en un test no invalidaría nada. Un cambio de
+  código en una salida sí, que es lo correcto.
+- **Sellar el contenido de las salidas y no el diff**, con la misma idea un
+  escalón más fino: solo los archivos de la lista de 32, y solo su contenido.
+- **Aceptar el sello por N horas** además de por huella. Más simple y más flojo:
+  auditar temprano y cambiar mucho después pasaría.
+
+La primera parece la correcta: es la que distingue «cambió lo que el auditor
+mira» de «cambió lo que el auditor pidió».
+
+Lo que **no** hay que hacer es aflojar el bloqueo. El hook existe porque publicar
+es irreversible, y ya evitó exactamente lo que vino a evitar en esta misma tanda.
+
+### B-792 · P2 — el sello del tríptico publica la hora y el minuto del último build
+
+**Lo levantó el `auditor-privacidad` auditando B-791, y es preexistente:** nació
+con B-600 y este cambio no lo toca. Se anota porque es una **celda que nunca se
+escribió** —«con qué precisión sale»— y porque el auditor pasó por ese archivo.
+
+El tríptico abre con `Actualizado: jue 3 sep, 09:00` (`selloDelIndice`,
+`src/lib/ahoraPublico.ts`), fijado por valor en el barrido de centinelas. El
+rebuild lo dispara `sistema/rebuild.pendiente` con un debounce de cinco minutos
+(§8), así que ese string le dice a cualquiera que abra la home, **al minuto**,
+cuándo fue la última escritura del panel.
+
+**Es la misma cantidad que D-138 decidió no publicar.** Ahí el argumento fue: «con
+un solo admin, el instante exacto de cada carga es su agenda de trabajo, no una
+fecha», y por eso `creadoEn` sale recortado a `AAAA-MM-DD` en el índice. El sello
+no es `creadoEn` —sale de `generadoEn`, que es del archivo— pero con el debounce
+de cinco minutos **aproxima lo mismo**: si el sello dice 09:00, alguien cargó algo
+entre 08:55 y 09:00.
+
+**Contra qué hay que pesarlo**: el sello existe por un motivo bueno y no es
+decorativo. Es lo que explica por qué una actividad cargada hace diez minutos
+todavía no está —el sitio es estático y se rehace con latencia— y sin él «Hoy»
+promete ser el estado del mundo y no lo es.
+
+Dos salidas, y la decisión es de precisión y no de sacarlo:
+
+- **Recortar al día** (`Actualizado: jue 3 sep`). Conserva casi todo lo que el
+  sello explica: quien mira una página de hace tres días ve que el dato es viejo.
+  Pierde el caso de «cargué hace diez minutos y no está», que es justo el que más
+  se consulta.
+- **Pasarlo a relativo grueso** («Actualizado hoy» / «ayer» / «el 3 de sep»). Igual
+  de honesto y no publica ni la hora ni el día exacto del build.
+
+Cualquiera de las dos hay que escribirla como celda al lado de D-138, que es el
+lugar donde esta pregunta ya se contestó una vez.
+
+Test que lo fijaría: `it('el sello dice el día del build y no su hora (§5.1, D-138)')`.
+
+### B-793 · P3 — el pie del tríptico puede llevar a un día que ya pasó, antes de que hidrate
+
+**Lo levantó el `auditor-privacidad` de B-791 como fuera de su alcance, y tiene
+razón: es correctitud, no privacidad.**
+
+El pie «+N más» viaja en el HTML del build con **los días del build**. Si la
+página se mira tres días después del último rebuild —que es exactamente el
+escenario que el sello existe para explicar—, ese enlace navega a
+`?cuando=<día del build>`, o sea un día pasado. El filtro por día trae el día
+entero incluido lo que ya pasó (es deliberado, D-470), así que la página no se
+rompe: muestra lo que hubo ese día.
+
+**Es el patrón de los dos relojes que el rótulo «Hoy» ya tenía** (§6.4, B-600), y
+la island lo corrige al arrancar: reemplaza el bloque entero, pie incluido. Lo
+nuevo es que ahora esa ventana tiene una **consecuencia navegable** y no solo un
+rótulo desactualizado.
+
+Cuándo importa de verdad: con **JavaScript apagado**, donde la island no llega
+nunca. Ahí el rótulo dice «Hoy · vie 4 sep» —o sea que la fecha escrita ya avisa
+que habla de otro día, que es para lo que esa línea existe— y el enlace es
+coherente con el rótulo. Discutible si eso es un bug o el comportamiento correcto
+de una página estática vieja.
+
+Salidas posibles, si se decide que es un bug:
+
+- **No emitir el pie en el HTML del build** y dejar que lo agregue la island. Se
+  pierde en la página sin JavaScript, que es donde el tríptico funciona hoy
+  completo.
+- **Dejarlo como está y escribirlo**, que es lo que este ítem hace: la fecha del
+  rótulo ya desambigua, y el destino es honesto respecto de lo que el rótulo dice.
+
+### B-791 · Cambios al tríptico «¿Qué hay ahora?» · ✅ hecho (2026-09-07)
+
+**Resuelto el mismo día, con las tres preguntas de diseño contestadas en
+[D-470](06-decisiones.md#d-470--el-tríptico-cambia-de-ventanas-sortea-dos-por-panel-y-el-pie-lleva-al-filtro).**
+Qué se eligió de lo que este ítem planteaba:
+
+1. **Dos por panel y sorteados** con una **semilla derivada de los días de la
+   ventana** —la segunda salida de las tres que están más abajo—: las dos pinturas
+   derivan la misma semilla de un dato que ya tienen, sin agregarle un campo al
+   `events.json` ni imponerle un orden al eje de encuentros de B-99. Rota una vez
+   por día, que además es mejor que rotar por rebuild (la portada no cambia porque
+   se corrigió un typo en otra actividad).
+2. **El pie lleva al filtro**, que era la recomendación: `?cuando=` acepta ahora un
+   día y un rango de hasta siete. Cero URLs indexables nuevas.
+3. **Las ventanas restan**, y las tres siguen disjuntas. Lo que impide que «Esta
+   semana» mienta son los días escritos —el punto 4 de este ítem—, que se
+   conservó tal cual.
+
+Dos cosas que aparecieron al hacerlo y no estaban previstas acá: **`esClaveDeDia`**
+(B-791 abrió el primer camino desde la URL hasta la aritmética de días, y
+`2026-13-01` pasa un regex de forma pero `Date.UTC` lo **rueda** a 2027 en
+silencio) y el **`<option>` del select de «Cuándo»** (un `<select>` cuyo valor no
+está entre sus opciones se dibuja en blanco: listado filtrado y control diciendo
+que no hay filtro). Y el `auditor-trampas` cobró de paso la red que faltaba entre
+`ClaveDePanel` y `PANELES_MEDIBLES`, que este mismo renombre había tenido que
+hacer a mano en los dos lados.
+
+**Queda pendiente y es de B-601**, no de acá: el evento `clic_triptico` sigue sin
+enganche, y ahora tiene un clic más que medir (el del pie).
+
+El planteo original queda abajo, que es contra lo que D-470 se lee.
+
+---
 
 **Pedido del dueño el 2026-09-07**, mirando el sitio publicado. Son cuatro
 cambios y **tres de ellos revierten decisiones escritas en D-320**, así que van
@@ -10444,6 +10590,8 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **D-460 y D-461 enteras quedaron dentro de un bloque de código** en la doc de decisiones | dos ` ``` ` huérfanos —uno antes de D-460 y otro después de D-461— sin ninguna apertura que cerrar. En Markdown eso no es un error: el primero **abre** un bloque y el segundo lo cierra, así que las dos decisiones de la página de apoyo se renderizaban como código plano, sin sus tablas, sus negritas ni sus links. Nada lo agarró porque ningún chequeo cuenta fences y en el editor el texto se lee igual. Se encontró de casualidad, leyendo D-461 por otro motivo (B-791). Cerrado borrando las dos líneas; el conteo de fences del archivo pasó de 22 a 20, todos apareados | B-780, `docs/06-decisiones.md` (2026-09-07) |
+| **La decisión de que `/apoyar` no estuviera en el encabezado (D-461) quedó desactualizada un día** | el dueño pidió subir `/apoyar` y `/anunciar` a la barra el 2026-09-07 y se hizo: los tres casos de `apoyo-del-sitio.test.ts` que ataban las dos direcciones se pusieron en rojo y se actualizaron, **pero la decisión no**. La entrada de D-461 había dejado escrito «el día que se decida subirla el caso se pone en rojo y hay que venir a decidirlo acá», y esa segunda mitad no se hizo en el momento. Cerrado con el aviso al frente de D-461, que dice qué motivo caducó por decisión, cuál sigue siendo verdad y pasó a ser un riesgo asumido, y qué no cambió | B-780, `docs/06-decisiones.md` (2026-09-07) |
 | Al fallar la subida de una imagen, el mensaje era siempre «fijate la conexión», engañoso | el `catch` de la subida a Storage tiraba un único `ImagenRechazada` genérico con causa `red`, ignorando el `code` del SDK. Para `storage/unauthorized` (permiso/sesión) o `quota-exceeded` (espacio) el texto mentía sobre la causa — era el «da error subir imágenes» de #14/#15/#19. Cerrado con `motivoDeSubidaFallida` (puro): traduce el `code` a un motivo y, si es desconocido, lo incluye en el texto. Dos causas nuevas de analítica, `permiso` y `servidor` | B-590, `src/lib/imagenes-archivo.ts`, `src/lib/subir-imagen.ts` (2026-09-03) |
 | El fix de B-205 quedó **inerte**: producción no se actualizaba tras un deploy fallido | `scripts/commit-base-deploy.sh` leía `.sha` de `/version.json` para diffear contra lo publicado, pero `version.json` **no publica** ese campo —`INFO_VERSION` es `{version, generadoEn}`— así que siempre daba vacío y caía al `before` del push. Se descubrió porque tras el deploy fallido de la tanda de fusiones, el push siguiente (solo tests/functions/docs) resolvió `hosting=false` y dejó B-107, B-238, B-112 y la remoción del aviso sin publicar. El test de B-205 mockeaba un `.sha` que la realidad no tiene — la trampa mock≠realidad. Cerrado sacando el sha del sufijo `+<sha>` del campo `version` (solo build limpio), con dos casos nuevos y su mutación | B-562, `scripts/commit-base-deploy.sh`, `tests/commit-base-deploy.test.ts` (2026-09-03) |
 | Un test verde en local rompía el deploy en CI | `tests/limpieza-imagenes.test.ts` **importaba** `referenciasEnUso` desde el trigger `imagenes-limpieza-trigger.js`, que importa `firebase-functions/v2/scheduler`. Esa dependencia vive en `functions/package.json`, no en la raíz: en local resuelve porque existe `functions/node_modules`, en CI el `npm ci` es solo de la raíz y Vite muere con `loadAndTransform` sobre esa línea. Reproducido moviendo `functions/node_modules` fuera. Cerrado moviendo `referenciasEnUso` al módulo puro `limpieza-imagenes.js` (recibe `db`, no necesita firebase-functions) y dejando una guarda —`tests/tests-no-importan-triggers.test.ts`— que falla si un test importa cualquier módulo de `functions/` que arrastre `firebase-functions`, con la lista computada sola | B-561, `functions/limpieza-imagenes.js`, `tests/tests-no-importan-triggers.test.ts` (2026-09-03) |

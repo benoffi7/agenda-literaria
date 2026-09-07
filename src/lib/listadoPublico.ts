@@ -31,7 +31,15 @@
  */
 import { primeroSinCosto } from '@/lib/arancel';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
-import { claveDeMes, mesDesplazado, nombreDeMes } from '@/lib/fechasPublicas';
+import {
+  claveDeDia,
+  claveDeMes,
+  diaDesplazado,
+  esClaveDeDia,
+  fechaCortaDeDia,
+  mesDesplazado,
+  nombreDeMes,
+} from '@/lib/fechasPublicas';
 import { colorDeTipo, esTonoElegible } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { instanteDeIso, proximaVentana } from '@/lib/sesiones';
@@ -191,6 +199,96 @@ export const CUANDO_TRES_MESES = 'tres-meses';
 /** Un valor de «Cuándo» que es un mes puntual, `2026-09`. */
 export const esMes = (cuando: string): boolean => /^\d{4}-\d{2}$/.test(cuando);
 
+/**
+ * El tope de días de un «Cuándo» por día o por rango. Siete: una semana, que es
+ * el techo del tramo del calendario que el tríptico razona. (Lo pidió el
+ * `auditor-trampas`: la ventana más larga que el tríptico **genera** son los
+ * cuatro días de «Esta semana» un lunes, así que siete es un superconjunto
+ * holgado y no la cota exacta. Se deja en siete a propósito —una semana es el
+ * tramo que alguien podría querer compartir a mano— y no en cuatro, que ataría el
+ * filtro a la forma de hoy del tríptico.)
+ *
+ * No es una defensa contra nada peligroso —un rango largo sería un filtro amplio,
+ * no un problema— sino contra un rótulo ilegible: `2026-01-01..2026-12-31` en el
+ * chip del filtro son 365 fechas escritas. Como todo lo que entra por la URL, un
+ * valor que se pasa se descarta y se cae al default (ver `desdeQuery`).
+ */
+const TOPE_DE_DIAS = 7;
+
+/**
+ * Los días que abarca un «Cuándo», o `null` si no es uno por día — B-791.
+ *
+ * Dos formas, las dos generadas por el pie del tríptico y **no** por la UI del
+ * filtro:
+ *
+ * - `2026-09-18` — un día;
+ * - `2026-09-19..2026-09-20` — un rango de días seguidos.
+ *
+ * ── Por qué un rango y no una lista ───────────────────────────────────────
+ * El pie «+4 más esta semana» tiene que llevar a **lo de esa ventana**, y las
+ * tres ventanas del tríptico son siempre un tramo **seguido** de días (hoy; el
+ * sábado y el domingo; los días que faltan hasta el finde). Con eso, un rango
+ * alcanza y la URL queda legible. Una lista de días sueltos (`?cuando=19,20,26`)
+ * cubriría más casos de los que existen y sería una segunda gramática que
+ * mantener.
+ *
+ * ── Y por qué reusa `cuando` en vez de agregar un filtro nuevo ────────────
+ * Porque «Cuándo» ya acepta un mes puntual (`2026-09`), o sea que la idea de
+ * «acotá el listado a este tramo del calendario» ya vivía acá. Un eje nuevo
+ * habría que contarlo en `cantidadDeFiltrosPublicos`, mostrarlo en el panel,
+ * escribirlo en la URL y combinarlo con «Cuándo» —¿qué gana si están los dos?—.
+ * Reusando el campo, el filtro por día es mutuamente excluyente con el mes por
+ * construcción, que es lo correcto.
+ */
+export const diasDelCuando = (cuando: string): string[] | null => {
+  if (esClaveDeDia(cuando)) return [cuando];
+
+  const rango = cuando.split('..');
+  if (rango.length !== 2) return null;
+  const [desde, hasta] = rango as [string, string];
+  /*
+   * `esClaveDeDia` y no un regex de forma: `2026-13-01` tiene la forma y no es un
+   * día, y `Date.UTC(2026, 12, 1)` no falla —rueda a enero de 2027 en silencio—,
+   * así que el listado filtraría por un día que nadie pidió. Es la defensa que
+   * `diaDesplazado` no trae porque hasta B-791 nadie le pasaba texto de la URL.
+   */
+  if (!esClaveDeDia(desde) || !esClaveDeDia(hasta) || hasta < desde) return null;
+
+  const dias: string[] = [];
+  // Se camina día por día con `diaDesplazado` —que ancla al mediodía UTC— en vez
+  // de restar milisegundos: es la trampa 1 del §13, y acá cruzar un cambio de
+  // mes o de año es el caso normal, no el raro.
+  for (let d = desde; d <= hasta; d = diaDesplazado(d, 1)) {
+    if (dias.length >= TOPE_DE_DIAS) return null;
+    dias.push(d);
+  }
+  return dias;
+};
+
+/**
+ * El «Cuándo» que hay que poner en la URL para ver un tramo de días.
+ *
+ * Vive al lado de `diasDelCuando` porque son la ida y la vuelta de la misma
+ * gramática: si una cambia y la otra no, el pie del tríptico arma un link que el
+ * listado descarta y el filtro se cae al default sin decir nada.
+ */
+export const cuandoDeDias = (dias: readonly string[]): string => {
+  const primero = dias[0];
+  if (!primero) return CUANDO_PROXIMAS;
+  const ultimo = dias[dias.length - 1]!;
+  return primero === ultimo ? primero : `${primero}..${ultimo}`;
+};
+
+/** `vie 18 sep`, o `sáb 19 sep a dom 20 sep`. El rótulo del filtro por día. */
+export const etiquetaDeDias = (dias: readonly string[]): string => {
+  const primero = dias[0];
+  if (!primero) return '';
+  const ultimo = dias[dias.length - 1]!;
+  return primero === ultimo
+    ? fechaCortaDeDia(primero)
+    : `${fechaCortaDeDia(primero)} a ${fechaCortaDeDia(ultimo)}`;
+};
+
 export interface FiltrosPublicos {
   /** Texto libre. Se compara contra `searchText` con `normalize` (§6). */
   q: string;
@@ -289,6 +387,19 @@ const mesesDesde = (ahora: Date, cantidad: number): string[] => {
  * por la primera fecha escondería de «este mes» un ciclo que arrancó el mes
  * pasado y sigue.
  */
+/**
+ * ¿Alguna sesión cae en alguno de esos días? — la versión por día de
+ * `caeEnAlgunMes`, con el mismo criterio para los ciclos: matchea si **alguna**
+ * sesión cae adentro, así que un ciclo de ocho encuentros aparece en el filtro
+ * del día en que tiene uno.
+ */
+const caeEnAlgunDia = (e: EntradaDeIndice, dias: readonly string[]): boolean =>
+  e.sesiones.some((s) => {
+    if (s.cancelada) return false;
+    const d = instanteDeIso(s.inicio);
+    return d !== null && dias.includes(claveDeDia(d));
+  });
+
 const caeEnAlgunMes = (e: EntradaDeIndice, meses: readonly string[]): boolean =>
   e.sesiones.some((s) => {
     if (s.cancelada) return false;
@@ -301,6 +412,15 @@ const pasaCuando = (e: EntradaDeIndice, estado: EstadoDeEntrada, cuando: string,
   if (cuando === CUANDO_ESTE_MES) return caeEnAlgunMes(e, mesesDesde(ahora, 1));
   if (cuando === CUANDO_TRES_MESES) return caeEnAlgunMes(e, mesesDesde(ahora, 3));
   if (esMes(cuando)) return caeEnAlgunMes(e, [cuando]);
+  /*
+   * El filtro por día del pie del tríptico (B-791). **Muestra el día entero**, y
+   * el panel «Hoy» solo lo que todavía no empezó: alguien que llega a las nueve
+   * de la noche por «+3 más hoy» ve también los tres que ya arrancaron. Es
+   * deliberado —el pie promete «lo de hoy», y lo de hoy incluye lo de las siete—
+   * y es la única diferencia entre el panel y su propio link.
+   */
+  const dias = diasDelCuando(cuando);
+  if (dias) return caeEnAlgunDia(e, dias);
   // Un valor que no reconocemos (una URL vieja, alguien tipeando) no puede
   // vaciar el listado: se cae al default y se muestra lo que viene.
   return !estado.paso;
@@ -701,7 +821,12 @@ export const desdeQuery = (
 
   filtros.q = p.get('q') ?? '';
   const cuando = p.get('cuando') ?? '';
-  if (cuando === CUANDO_ESTE_MES || cuando === CUANDO_TRES_MESES || esMes(cuando)) {
+  if (
+    cuando === CUANDO_ESTE_MES ||
+    cuando === CUANDO_TRES_MESES ||
+    esMes(cuando) ||
+    diasDelCuando(cuando) !== null
+  ) {
     filtros.cuando = cuando;
   }
   for (const eje of EJES) {

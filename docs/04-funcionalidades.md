@@ -873,12 +873,18 @@ esquina. Arquitectura completa en
 
 ### La home — `/`
 
-#### El tríptico «¿Qué hay ahora?» (B-600, D-320)
+#### El tríptico «¿Qué hay ahora?» (B-600, D-320, D-470)
 
 Arriba del buscador y a todo el ancho, la home abre con tres paneles —**Hoy ·
-Mañana · Este finde**— con los encuentros de cada ventana: hora, título, lugar,
-la categoría en la tinta de su tipo (D-150) y el arancel, y toda la fila es un
-link a la página de la actividad.
+Este finde · Esta semana**— con **dos** encuentros de cada ventana, sorteados:
+hora, título, lugar, la categoría en la tinta de su tipo (D-150) y el arancel, y
+toda la fila es un link a la página de la actividad. Al pie, «+N más» lleva al
+listado de abajo filtrado por los días de esa ventana.
+
+> Los rótulos eran **Hoy · Mañana · Este finde** y el tope era de cuatro filas
+> fijas por hora hasta **B-791**, que también convirtió el pie en enlace. Los tres
+> cambios los pidió el dueño mirando el sitio publicado; qué se conservó de D-320
+> y qué no está en **D-470**.
 
 Contesta la pregunta que el listado no contesta de un vistazo. El listado
 ordena por próxima fecha de la **actividad** (§2.2 del `CLAUDE.md`: un club de
@@ -889,8 +895,21 @@ de encuentros que **B-99** ya metía en el `events.json`, sin ningún dato nuevo
 | Panel | Qué agarra |
 |---|---|
 | **Hoy** | lo que **queda** de hoy — se mira el inicio, no el fin, así que lo que arrancó hace diez minutos ya no está acá (sigue en el listado) |
-| **Mañana** | el día siguiente, entero |
-| **Este finde** / **El finde que viene** | el sábado y el domingo, **menos** los días que ya contaron los dos primeros. Sin días —hoy es sábado o domingo— salta al finde siguiente y el rótulo lo dice (D-320) |
+| **Este finde** / **El finde que viene** | el sábado y el domingo, **menos** hoy. Sin días —hoy es domingo, o el sábado ya se lo llevó «Hoy» y el domingo también— salta al finde siguiente y el rótulo lo dice (D-320) |
+| **Esta semana** | los días que faltan hasta el domingo, **menos** los que ya contaron los otros dos. Un domingo queda vacía y el panel no se dibuja |
+
+**Las tres ventanas son disjuntas**, que es lo que sigue vivo de D-320: el mismo
+encuentro repetido en dos columnas pegadas se lee como un error de software. Los
+rótulos de ahora están **anidados** («hoy» está dentro de «esta semana»), así que
+la disjunción la sostiene la resta, y lo que impide que «Esta semana» mienta son
+**los días escritos al lado del rótulo** («Esta semana · mar 15 sep a vie 18
+sep»).
+
+**Dos filas por panel, y sorteadas** (D-470). Con dos de cinco, un orden fijo
+condena a las otras tres a no aparecer nunca; el sorteo usa una **semilla derivada
+de los días de la ventana**, así que el build y la island sortean igual —la página
+no cambia sola delante de quien la lee— y **rota una vez por día**, no en cada
+rebuild.
 
 - **No responde a los filtros.** Contesta una pregunta fija: un panel que dice
   «Hoy» y esconde media programación porque quedó puesto un chip de barrio
@@ -900,12 +919,14 @@ de encuentros que **B-99** ya metía en el `events.json`, sin ningún dato nuevo
   que cambie ningún dato. Cada panel **escribe los días que abarca** («Hoy ·
   vie 3 sep»), que es lo único que queda en pie con JavaScript apagado y lo que
   impide que el rótulo mienta sin que se note.
-- **Tope de cuatro filas** por panel; lo que sobra se dice en palabras («+2 más
-  hoy») y **no es un enlace**: el día no es una URL de este sitio (§2.3), y el
-  listado completo está en la misma página más abajo.
-- **Un panel vacío se dibuja** y dice que no hay nada: «el sábado está libre»
-  es información. La sección entera **no** se dibuja solo si las tres ventanas
-  están vacías.
+- **Tope de dos filas** por panel; lo que sobra se dice en palabras («+4 más
+  hoy») y **es un enlace** al listado de abajo con `?cuando=` en los días de la
+  ventana. El día sigue sin ser una página del sitio (§2.3) — el pie usa el
+  **filtro**, así que no agrega ni una URL indexable (D-470).
+- **Un panel vacío no se dibuja**, y la sección entera desaparece si no queda
+  ninguno. Lo decidió el dueño mirando el sitio publicado; el argumento contrario
+  —«el sábado está libre» es información— está escrito al lado del original en
+  D-320.
 - **El sello** («Actualizado: vie 3 sep, 14:30») explica por qué algo cargado
   hace diez minutos todavía no está: el sitio es estático y se rehace con unos
   minutos de latencia.

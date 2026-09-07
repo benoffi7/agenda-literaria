@@ -514,7 +514,7 @@ los títulos y el nombre de la actividad, en Lora.
 ### 4.1 Home — `/`
 
 > ⚠️ **Al diagrama de abajo le falta la primera sección de la página — ver D-320
-> en [`06-decisiones.md`](06-decisiones.md).** Desde **B-600** (2026-09-03), arriba
+> y D-470 en [`06-decisiones.md`](06-decisiones.md).** Desde **B-600** (2026-09-03), arriba
 > del buscador y **a todo el ancho**, va el **tríptico de programación
 > inmediata**: una banda de sección en la capa tonal con el rótulo «¿Qué hay
 > ahora?» a la izquierda y el sello de actualización a la derecha, y debajo tres
@@ -524,17 +524,30 @@ los títulos y el nombre de la actividad, en Lora.
 > ├───────────────────────────────────────────────────────────┤
 > │ ¿QUÉ HAY AHORA?             ACTUALIZADO: VIE 3 SEP, 14:30 │  ← banda tonal, label-caps
 > ├──────────────────┬──────────────────┬─────────────────────┤
-> │ Hoy    VIE 3 SEP │ Mañana SÁB 4 SEP │ Este finde DOM 5 SEP│  ← rótulo + los días
-> │ 19:00            │ 11:00            │ 18:00               │    que abarca
+> │ Hoy    VIE 3 SEP │ Este finde       │ Esta semana         │  ← rótulo + los días
+> │                  │ SÁB 4 A DOM 5 SEP│ LUN 7 A JUE 10 SEP  │    que abarca
+> │ 19:00            │ 11:00  sáb 4     │ 18:00  lun 7        │
 > │ Taller de crónica│ Club de lectura  │ Lectura en voz alta │
 > │ Casa Brandon ·   │ Online por Meet  │ Bar Lorca · Almagro │
 > │ Boedo, CABA      │ CLUB · Gratis    │ ENCUENTRO · Gorra   │
 > │ TALLER · Gorra   │                  │                     │
-> │ ──────────────── │ ──────────────── │                     │
-> │ 21:00            │ Todavía no hay   │ +2 más ese finde    │  ← texto, NO un link
-> │ …                │ nada para mañana │                     │
-> └──────────────────┴──────────────────┴─────────────────────┘
+> │ ──────────────── │ ──────────────── │ ─────────────────── │
+> │ 21:00            │ 18:00  dom 5     │ 20:00  mié 9        │
+> │ …                │ …                │ …                   │
+> │ ──────────────── │ ──────────────── │ ─────────────────── │
+> │ +3 MÁS HOY       │ +2 MÁS ESE FINDE │ +5 MÁS ESTA SEMANA  │  ← enlace al listado
+> └──────────────────┴──────────────────┴─────────────────────┘    con ?cuando= puesto
 > ```
+>
+> ⚠️ **El diagrama es el de B-791 (2026-09-07) y el texto de abajo es el de
+> B-600.** Cambiaron tres cosas y las decide **D-470**: los rótulos (eran «Hoy ·
+> Mañana · Este finde»), el tope (era de cuatro filas, ordenadas por hora; ahora
+> son **dos sorteadas** con una semilla derivada de los días de la ventana, para
+> que el build y la island pinten lo mismo) y el pie (era texto, ahora es un
+> **enlace** al listado de la misma página filtrado por esos días — el día sigue
+> sin ser una URL del sitio). Lo que **no** cambió: las tres ventanas siguen siendo
+> **disjuntas** y cada panel sigue escribiendo los días que abarca, que es lo que
+> ahora impide que «Esta semana» —que son cuatro días, no siete— mienta.
 >
 > Lo que decide:
 >
@@ -552,6 +565,9 @@ los títulos y el nombre de la actividad, en Lora.
 >   el sábado y domingo de la semana en curso **menos los días que ya contaron los
 >   dos primeros**; cuando la resta lo deja sin días salta al finde siguiente y el
 >   rótulo pasa a «El finde que viene». **La resta y el rótulo son D-320.**
+>   (Con B-791 el segundo panel es el finde —restando solo hoy— y el tercero «Esta
+>   semana», restando los otros dos. La resta sigue; lo que cambió es de qué panel
+>   es. Ver D-470.)
 > - **No responde a los filtros.** Contesta una pregunta fija. Un panel que dice
 >   «Hoy» y esconde media programación porque quedó puesto un chip de barrio miente
 >   con el rótulo puesto, y con dos filtros combinados quedaría vacío justo cuando
