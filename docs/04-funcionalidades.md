@@ -177,9 +177,31 @@ de sección más los módulos de dominio puros de `lib/formulario/` (`estadoInic
 [`10-salud-del-codigo.md`](10-salud-del-codigo.md) §1.3 y quedó viejo: es **B-201**.
 
 Secciones: Qué es · Encuentros · Dónde · Quién · Arancel e inscripción ·
-Material · Opcional · Difusión · Vista previa del evento. Las cuatro últimas son
-acordeones colapsados, y desde B-184 cada sección tiene un ancla propia para que
-el mensaje de campos faltantes pueda abrirla y llevar hasta el campo.
+Material · Opcional · Difusión · Texto para publicar · Vista previa del evento.
+Desde B-184 cada una tiene un ancla propia para que el mensaje de campos faltantes
+pueda llevar hasta el campo.
+
+**Desde el 2026-09-07 son pestañas y no una sola columna** (D-490, pedido del
+dueño: «quedó muy largo. Que sean tabs y con la barra de guardar siempre visible
+como ahora»). Nueve solapas: una por sección, con los nombres de arriba, salvo la
+última —«Vista previa»— que junta las dos que no tienen campos que cargar. La
+barra de guardar sigue fija abajo.
+
+Dos cosas que sostienen el rediseño, y las dos son la misma:
+
+- **cada solapa dice cuántos campos le faltan para publicar.** Con todo apilado un
+  campo pendiente se encontraba scrolleando; con nueve pestañas, ocho están fuera
+  de la pantalla;
+- **el enlace de la barra cambia de pestaña** antes de llevar al campo. Sin eso, un
+  campo que falta para publicar y vive en otra solapa no está en ninguna parte de
+  la pantalla — el mismo problema que B-184 resolvió cuando el campo estaba dentro
+  de un acordeón cerrado.
+
+Los acordeones de adentro **siguen existiendo pero ya casi no trabajan**: al entrar
+a una pestaña de una sola sección, esa sección se abre. Donde el acordeón sigue
+sirviendo es en la única solapa que tiene dos, «Vista previa»: cerrar el texto para
+Instagram para ver el evento del calendario es una preferencia legítima, y es la
+que B-193 recuerda.
 
 **El cargador de imágenes vive en «Qué es» desde el 2026-09-01** (B-264). Estaba en
 «Opcional» —un acordeón cerrado y llamado literalmente así— y el resultado era
@@ -257,9 +279,9 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
 - **La barra de abajo dice qué falta, y lleva hasta ahí.** Con pocos campos los
   nombra («Falta completar: Título, Arancel»); con muchos nombra las secciones
   con su cuenta («Dónde (2), Arancel e inscripción (1)»). Cada nombre es un
-  botón: **abre la sección si estaba cerrada** y scrollea hasta el campo, que es
-  lo que faltaba —un campo rechazado adentro de un acordeón colapsado no estaba
-  en ninguna parte de la pantalla (B-184, D-121). Cuando el borrador se puede
+  botón: **cambia a la pestaña de esa sección** (D-490), la abre si estaba cerrada
+  y scrollea hasta el campo, que es lo que faltaba —un campo rechazado que no está
+  en la pantalla no está en ninguna parte (B-184, D-121)—. Cuando el borrador se puede
   guardar pero le falta algo para publicar, la misma barra lo dice en gris: es
   aviso, no bloqueo. Y **un tercer nivel, abajo de ese** (B-264): lo que conviene
   tener y no frena nada. Hoy hay uno solo —el flyer— y está redactado al revés

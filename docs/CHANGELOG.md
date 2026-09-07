@@ -2,6 +2,41 @@
 
 ## Sin publicar
 
+- **El formulario de carga va en pestañas** — **D-490**, pedido del dueño: «quedó
+  muy largo. Que sean tabs y con la barra de guardar siempre visible como ahora». Y
+  con la agrupación que él eligió: nueve solapas, una por sección, con los nombres
+  de hoy —salvo la última, «Vista previa», que junta las dos que no tienen campos
+  que cargar—.
+
+  **Las pestañas se derivan del registro de secciones**, que ya existía y es el que
+  la barra usa para decir «Falta completar: Dónde (2)». Una segunda lista de nueve
+  nombres al lado garantizaba el bug de siempre: la sección que se agregue mañana
+  entra en el registro, la barra la nombra y no tiene pestaña donde vivir. Ahora el
+  default es una pestaña por sección y lo único escrito a mano es la excepción; el
+  test exige la **partición** —cada sección en exactamente una— y el mapa de
+  contenido está tipado, así que una sección sin cuerpo no compila.
+
+  **El riesgo del rediseño es el que B-184 ya había pagado:** un campo que falta y
+  no está en la pantalla no está en ninguna parte. De nueve secciones, ocho quedan
+  fuera. Lo cierran dos cosas, las dos parte de la decisión: el enlace de la barra
+  **cambia de pestaña** antes de llevar al campo, y **cada solapa dice cuántos
+  campos le faltan para publicar** —los pendientes, que existen desde la primera
+  tecla, no los que el schema rechazó, que existen recién después de un guardado
+  fallido—.
+
+  Los nueve paneles se quedan montados y los inactivos se esconden con una clase:
+  el estado de cada sección vive adentro de ella (el acordeón, la imagen que se está
+  subiendo) y desmontarla lo perdería al cambiar de solapa. Se esconden con el
+  `hidden` de Tailwind y **no** con el atributo HTML: el `[hidden]` del preflight va
+  con `:where()`, especificidad cero, así que cualquier utilidad de `display` le
+  gana y el panel «escondido» se vería igual.
+
+  Y una consecuencia que vale nombrar: **el acordeón dejó de ser el mecanismo de
+  plegado**. Al entrar a una pestaña de una sola sección, esa sección se abre — un
+  panel que muestra un título y un ▶ es un click de más. La memoria de B-193 sigue
+  mandando en la única solapa con dos secciones, que es donde cerrar una para ver la
+  otra sigue siendo una preferencia.
+
 - **El panel filtra por etiquetas y por destacadas** — **B-274**, **D-480**,
   decisión del dueño («los dos»). Son los dos descartes que le quedaban a D-74, y
   acá el motivo no es que se decidiera pagarlos: los dos argumentos **habían

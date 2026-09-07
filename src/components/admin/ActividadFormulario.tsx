@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAutoguardado } from '@/components/admin/useAutoguardado';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { useMedicionFormulario } from '@/components/admin/useMedicionFormulario';
 import { AvisoBorradorLocal } from '@/components/admin/formulario/AvisoBorradorLocal';
+import {
+  PestaniasFormulario,
+  idDePanel,
+  idDeSolapa,
+} from '@/components/admin/formulario/PestaniasFormulario';
 import { BarraAcciones } from '@/components/admin/formulario/BarraAcciones';
 import { SeccionArancelInscripcion } from '@/components/admin/formulario/SeccionArancelInscripcion';
 import { SeccionDifusion } from '@/components/admin/formulario/SeccionDifusion';
@@ -29,6 +34,13 @@ import {
   teniaFlagsDePublicacion,
 } from '@/lib/formulario/autoguardado';
 import { resumirFaltantes, type IdSeccion } from '@/lib/formulario/camposFaltantes';
+import {
+  PESTANIAS,
+  PRIMERA_PESTANIA,
+  faltantesPorPestania,
+  pestaniaDe,
+  type IdPestania,
+} from '@/lib/formulario/pestanias';
 import { cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import { esCharla, esClub, esTaller, nombrePersona } from '@/lib/formulario/condicionales';
 import { formVacio } from '@/lib/formulario/estadoInicial';
@@ -87,6 +99,20 @@ export function ActividadFormulario({
    * de que alguien la cerró a mano.
    */
   const [aperturas, setAperturas] = useState<Partial<Record<IdSeccion, number>>>({});
+  /**
+   * En qué pestaña está parado el formulario (pedido del dueño, 2026-09-07: «que
+   * sean tabs»). Arranca en la primera del registro, que es «Qué es»: es la que
+   * tiene el tipo, y el tipo es lo que decide qué se muestra en el resto.
+   *
+   * **Los nueve paneles se quedan montados** y los que no están activos se
+   * esconden con una clase. No es pereza: el estado de cada sección vive adentro
+   * de ella —el acordeón abierto, la fila de imagen que se está subiendo, el
+   * editor de encuentros— y desmontarla lo perdería al cambiar de solapa. Además,
+   * `[data-campo-con-error]` tiene que existir en el DOM para que la barra pueda
+   * llevar hasta él. Y no cuesta nada nuevo: hasta hoy los nueve estaban
+   * montados **y** visibles.
+   */
+  const [pestania, setPestania] = useState<IdPestania>(PRIMERA_PESTANIA);
 
   useFormularioSucio(form);
 
@@ -180,8 +206,58 @@ export function ActividadFormulario({
    */
   const recomendaciones = useMemo(() => recomendacionesDelFormulario(form), [form]);
 
-  const irASeccion = (id: IdSeccion) =>
+  /**
+   * Llevar a una sección: **cambiar de pestaña y abrir el acordeón**, en ese
+   * orden.
+   *
+   * Con todo apilado bastaba con abrir el acordeón (B-184). Con pestañas, una
+   * sección de otra solapa no está en la pantalla —es el mismo problema que
+   * B-184 resolvió, con otra cara— así que el cambio de pestaña es parte del
+   * mismo gesto y no algo que quien carga tenga que adivinar.
+   *
+   * El `setAperturas` se conserva igual porque una pestaña puede tener más de una
+   * sección y las colapsables siguen colapsadas adentro: «Material» arranca
+   * cerrada si no es un club, y su pestaña puede estar activa con la sección
+   * cerrada.
+   */
+  /** Cuántos campos pendientes tiene cada solapa. Ver el prop `pendientes`. */
+  const pendientesPorPestania = useMemo(
+    () => faltantesPorPestania(pendientesParaPublicar),
+    [pendientesParaPublicar],
+  );
+
+  const irASeccion = (id: IdSeccion) => {
+    const destino = pestaniaDe(id);
+    if (destino) setPestania(destino);
     setAperturas((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+  };
+
+  /**
+   * **Al entrar a una pestaña, su sección se abre** — si la pestaña tiene una
+   * sola.
+   *
+   * Cinco secciones son acordeones que arrancan cerrados (B-184, B-193), y con
+   * pestañas eso deja un panel que se abre para mostrar un título y un ▶: quien
+   * hizo click en «Material» hizo click justamente para verlo. **La pestaña pasó
+   * a ser el mecanismo de plegado**, así que el acordeón de adentro no tiene nada
+   * que plegar.
+   *
+   * **Salvo cuando la pestaña tiene dos secciones**, y ahí el acordeón sigue
+   * sirviendo: en «Vista previa» conviven el texto para Instagram y el evento del
+   * calendario, y cerrar uno para ver el otro es una preferencia legítima — que es
+   * exactamente lo que B-193 le puso memoria. La condición sale de `PESTANIAS`
+   * (`secciones.length`), no de una lista escrita a mano: la sección que se
+   * agregue mañana cae del lado correcto sola.
+   *
+   * Es un `pedidoDeApertura`, así que **solo abre**: quien cierre el acordeón
+   * dentro de la pestaña activa lo deja cerrado hasta que se vaya y vuelva.
+   */
+  useEffect(() => {
+    const activa = PESTANIAS.find((p) => p.id === pestania);
+    const unica = activa?.secciones.length === 1 ? activa.secciones[0] : undefined;
+    if (!unica) return;
+    setAperturas((prev) => ({ ...prev, [unica]: (prev[unica] ?? 0) + 1 }));
+  }, [pestania]);
 
   /**
    * Un guardado que falla abre las secciones donde quedó algo pendiente y lleva
@@ -194,7 +270,14 @@ export function ActividadFormulario({
    */
   useEffect(() => {
     if (faltantes.total === 0) return;
-    for (const seccion of faltantes.secciones) irASeccion(seccion.id);
+    /*
+     * **En orden inverso a propósito.** `irASeccion` cambia de pestaña, así que
+     * si se recorren de arriba hacia abajo la que manda es la **última**, y hay
+     * que quedarse en la **primera** —«el primer error» se resuelve por orden del
+     * documento, y es donde el scroll de abajo va a caer—. Recorrer al revés deja
+     * los nueve acordeones pedidos y la pestaña en la de arriba.
+     */
+    for (const seccion of [...faltantes.secciones].reverse()) irASeccion(seccion.id);
     const id = setTimeout(() => {
       document
         .querySelector('[data-campo-con-error]')
@@ -351,73 +434,123 @@ export function ActividadFormulario({
         </div>
       )}
 
-      {/* ── Las nueve secciones del §11 ─────────────────────────
+      {/* ── Las secciones del §11, una por pestaña ──────────────
         Cada una en su archivo (B-79). El formulario se queda con el estado, las
         cascadas y el guardado; las secciones son presentación y reciben lo que
         necesitan por props. Era el segundo archivo más tocado del repo, y en
         este proyecto ya se commitearon marcadores de conflicto que sobrevivieron
         dos commits (`tests/sin-marcadores-de-conflicto.test.ts`).
+
+        **El mapa está tipado `Record<IdSeccion, ReactNode>` y eso no es
+        decoración:** obliga a que toda sección del registro tenga contenido acá.
+        Una sección nueva declarada en `camposFaltantes.ts` gana su pestaña sola
+        (`pestanias.ts`) y **no compila** hasta que se le escribe el cuerpo — sin
+        eso, la barra podría mandar a una pestaña vacía.
       */}
-      <SeccionQueEs
-        form={form}
-        set={set}
-        errorDe={errorDe}
-        uid={uid}
-        conTitulo={conTitulo}
-        conTipo={conTipo}
-        anotarLabel={anotarLabel}
-        slugBloqueado={slugBloqueado}
+      {/*
+        La fila de solapas. Va **después** de los dos avisos —el borrador local y
+        el de copia— porque los dos son decisiones sobre con qué contenido se
+        trabaja, y tomarlas después de haber recorrido tres pestañas no sirve de
+        nada. Es la misma razón por la que el aviso del borrador iba primero.
+      */}
+      <PestaniasFormulario
+        activa={pestania}
+        onCambiar={setPestania}
+        /*
+          El número de cada solapa es **lo que le va a faltar para publicar**
+          (`pendientesParaPublicar`) y no lo que el schema rechazó
+          (`faltantes`), y la diferencia importa: lo segundo existe solo después
+          de un guardado fallido, y lo primero está desde la primera tecla. La
+          barra de abajo muestra los dos niveles; la solapa muestra el que sirve
+          para orientarse mientras se carga.
+        */
+        pendientes={pendientesPorPestania}
       />
 
-      <SeccionEncuentros form={form} set={set} errorDe={errorDe} esClub={esClub(form)} />
+      {(() => {
+        const contenido: Record<IdSeccion, ReactNode> = {
+          'que-es': (
+            <SeccionQueEs
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              uid={uid}
+              conTitulo={conTitulo}
+              conTipo={conTipo}
+              anotarLabel={anotarLabel}
+              slugBloqueado={slugBloqueado}
+            />
+          ),
+          encuentros: (
+            <SeccionEncuentros form={form} set={set} errorDe={errorDe} esClub={esClub(form)} />
+          ),
+          donde: (
+            <SeccionDonde form={form} set={set} errorDe={errorDe} uid={uid} anotarLabel={anotarLabel} />
+          ),
+          quien: (
+            <SeccionQuien
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              esTaller={esTaller(form)}
+              esCharla={esCharla(form)}
+              nombrePersona={nombrePersona(form)}
+            />
+          ),
+          'arancel-inscripcion': (
+            <SeccionArancelInscripcion
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              uid={uid}
+              anotarLabel={anotarLabel}
+            />
+          ),
+          material: (
+            <SeccionMaterial
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              esClub={esClub(form)}
+              pedidoDeApertura={aperturas['material']}
+            />
+          ),
+          opcional: (
+            <SeccionOpcional
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              uid={uid}
+              setTagsNuevos={setTagsNuevos}
+              pedidoDeApertura={aperturas['opcional']}
+            />
+          ),
+          difusion: <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />,
+          'texto-redes': <SeccionTextoRedes form={form} labelsPendientes={labelsPendientes} />,
+          'vista-previa': <SeccionVistaPrevia form={form} labelsPendientes={labelsPendientes} />,
+        };
 
-      <SeccionDonde
-        form={form}
-        set={set}
-        errorDe={errorDe}
-        uid={uid}
-        anotarLabel={anotarLabel}
-      />
-
-      <SeccionQuien
-        form={form}
-        set={set}
-        errorDe={errorDe}
-        esTaller={esTaller(form)}
-        esCharla={esCharla(form)}
-        nombrePersona={nombrePersona(form)}
-      />
-
-      <SeccionArancelInscripcion
-        form={form}
-        set={set}
-        errorDe={errorDe}
-        uid={uid}
-        anotarLabel={anotarLabel}
-      />
-
-      <SeccionMaterial
-        form={form}
-        set={set}
-        errorDe={errorDe}
-        esClub={esClub(form)}
-        pedidoDeApertura={aperturas['material']}
-      />
-
-      <SeccionOpcional
-        form={form}
-        set={set}
-        errorDe={errorDe}
-        uid={uid}
-        setTagsNuevos={setTagsNuevos}
-        pedidoDeApertura={aperturas['opcional']}
-      />
-
-      <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />
-
-      <SeccionTextoRedes form={form} labelsPendientes={labelsPendientes} />
-
-      <SeccionVistaPrevia form={form} labelsPendientes={labelsPendientes} />
+        return PESTANIAS.map((p) => (
+          <div
+            key={p.id}
+            role="tabpanel"
+            id={idDePanel(p.id)}
+            aria-labelledby={idDeSolapa(p.id)}
+            /*
+              La activa se pinta y las otras se esconden con `hidden` **de
+              Tailwind y no con el atributo HTML**: el `[hidden]` del preflight va
+              con `:where()`, o sea especificidad cero, así que cualquier utilidad
+              de `display` en el mismo elemento le gana y el panel «escondido» se
+              vería igual. Con la clase no hay dos reglas peleando.
+            */
+            className={p.id === pestania ? 'flex flex-col gap-4' : 'hidden'}
+          >
+            {p.secciones.map((seccion) => (
+              <Fragment key={seccion}>{contenido[seccion]}</Fragment>
+            ))}
+          </div>
+        ));
+      })()}
 
       <BarraAcciones
         guardando={guardando}

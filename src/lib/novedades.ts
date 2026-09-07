@@ -60,6 +60,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'formulario-en-pestanias',
+    fecha: '2026-09-07',
+    version: '1.9.0',
+    titulo: 'El formulario de carga ahora está en pestañas',
+    detalle:
+      'Era una sola columna muy larga: ahora arriba hay nueve solapas —Qué es, Encuentros, Dónde, ' +
+      'Quién, Arancel e inscripción, Material, Opcional, Difusión y Vista previa— y se ve una a la ' +
+      'vez. No se pierde nada al cambiar de pestaña: se guarda todo junto con los botones de ' +
+      'abajo, que siguen fijos. Y si a una pestaña le falta algo para publicar, la solapa lo dice ' +
+      'con un número al lado del nombre.',
+    donde: 'Formulario de carga, la fila de solapas de arriba.',
+  },
+  {
     id: 'filtros-de-etiquetas-y-destacadas',
     fecha: '2026-09-07',
     version: '1.9.0',

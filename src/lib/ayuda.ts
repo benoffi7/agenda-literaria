@@ -766,6 +766,40 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'el-formulario-en-pestanias',
+    titulo: 'El formulario está en pestañas',
+    paraQue:
+      'Cargar una actividad son treinta y pico de campos. Están repartidos en nueve pestañas, así que en la pantalla hay una parte a la vez y no todo de arrastre.',
+    puntos: [
+      {
+        texto:
+          'Arriba hay una fila de solapas: Qué es, Encuentros, Dónde, Quién, Arancel e ' +
+          'inscripción, Material, Opcional, Difusión y Vista previa. La fila queda pegada arriba, ' +
+          'así que se cambia de sección sin volver al principio.',
+      },
+      {
+        texto:
+          'Lo que cargás no se pierde al cambiar de pestaña: es un solo formulario y se guarda ' +
+          'todo junto, con los botones de abajo. Podés ir y venir todas las veces que quieras.',
+      },
+      {
+        texto:
+          'Si a una pestaña le falta algo para publicar, la solapa lo dice con un número al lado ' +
+          'del nombre. Es la forma de saber qué falta sin abrir las nueve.',
+      },
+      {
+        texto:
+          'Y cuando la barra de abajo nombra una sección que falta, tocarla te lleva ahí: cambia ' +
+          'de pestaña y baja hasta el campo.',
+      },
+      {
+        texto:
+          'Desde el teléfono la fila de solapas se corre para el costado en vez de partirse en ' +
+          'tres renglones: así cada solapa queda siempre en el mismo lugar.',
+      },
+    ],
+  },
+  {
     id: 'que-es',
     titulo: 'Qué es',
     seccionFormulario: 'Qué es',
@@ -782,8 +816,9 @@ export const CAPITULOS: CapituloAyuda[] = [
     puntos: [
       {
         texto:
-          'El tipo decide qué campos aparecen más abajo: un taller pide tallerista, una presentación ' +
-          'o una charla piden autor invitado, un club de lectura abre la sección de material.',
+          'El tipo decide qué campos aparecen en las otras pestañas: un taller pide tallerista, una ' +
+          'presentación o una charla piden autor invitado, un club de lectura abre la sección de ' +
+          'material. Por eso «Qué es» es la primera: lo que elijas acá cambia el resto.',
       },
       {
         texto:
@@ -1487,8 +1522,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Cuando algo está mal cargado, esa barra nombra lo que falta —los campos si son pocos, ' +
-          'las secciones con su cuenta si son muchos— y tocando un nombre se abre esa sección y ' +
-          'baja hasta el campo. El detalle también está al lado de cada campo, en rojo.',
+          'las secciones con su cuenta si son muchos— y tocando un nombre te lleva ahí: cambia a ' +
+          'la pestaña de esa sección y baja hasta el campo. El detalle también está al lado de ' +
+          'cada campo, en rojo.',
       },
       {
         texto:

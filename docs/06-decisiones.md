@@ -8400,3 +8400,77 @@ La salida no fue declararlo dos veces —**es la misma cosa mirada por quien car
 por quien busca**, y dos declaraciones se separan sin que nada falle— sino moverlo a
 `lib/chip.ts`, un módulo de cuatro campos que los dos importan. `listadoPublico` lo
 reexporta para no tocar los imports que ya estaban escritos.
+
+## D-490 · El formulario de carga va en pestañas, y la barra de guardar sigue fija
+
+**Fecha:** 2026-09-07 · **Ítem:** pedido directo del dueño · **Revisa:** [D-121](#d-121--la-barra-de-acciones-dice-qué-campos-faltan-y-lleva-hasta-ellos), [B-184](BACKLOG.md), [B-193](BACKLOG.md)
+
+**Quién lo pidió y con qué palabras.** «¿Podemos hacer un rediseño del formulario
+en la carga? Quedó muy largo. Que sean tabs y con la barra de guardar siempre
+visible como ahora.» Y la agrupación la eligió él: **una pestaña por sección**, con
+los nombres de hoy.
+
+El §11 del CLAUDE.md ya lo había anticipado —«con este esquema el formulario
+completo son 30+ campos y es inusable de corrido»— y había resuelto dos tercios:
+los campos condicionales por tipo y el acordeón «opcional». Lo que faltaba es lo
+que el dueño pidió: que **no** haya que recorrerlo entero para llegar a la parte
+que se está cargando.
+
+### Nueve pestañas, y ninguna lista escrita a mano
+
+El registro de secciones ya existía (`lib/formulario/camposFaltantes.ts`): id,
+título y ancla de cada una, y es el que la barra usa para decir «Falta completar:
+Dónde (2)». **Escribir una segunda lista de nueve nombres al lado garantizaba el
+bug de siempre**: la sección que se agregue mañana entra en el registro, la barra
+la nombra, y no tiene pestaña donde vivir.
+
+Así que las pestañas se **derivan** del registro: una por sección, en su orden, y
+lo único escrito a mano son las excepciones. Hay una sola —«Vista previa» junta
+«Texto para publicar» y «Vista previa del evento», que son las dos «cómo se ve esto
+afuera» y ninguna tiene campos que cargar—. El título de esa pestaña se declara
+aparte porque no puede ser el de ninguna de las dos.
+
+`tests/pestanias-del-formulario.test.ts` exige la **partición**: cada sección del
+registro en exactamente una pestaña. Ni huérfanas ni repetidas, y una sección nueva
+sin cuerpo **no compila** —el mapa de contenido está tipado `Record<IdSeccion,
+ReactNode>`—.
+
+### El riesgo entero del rediseño es el mismo que B-184 ya había pagado
+
+B-184 arregló esto: **un campo rechazado adentro de un acordeón cerrado no está en
+ninguna parte de la pantalla.** La barra decía «3 campos» y se veían cero.
+
+Las pestañas reintroducen el mismo agujero con otra cara: de nueve secciones, ocho
+están fuera de la pantalla. Dos cosas lo cierran, y las dos son parte de la
+decisión y no un extra:
+
+1. **El enlace de la barra cambia de pestaña** antes de abrir el acordeón y
+   scrollear. Es una línea, y sin ella el rediseño rompe la funcionalidad que
+   D-121 documenta.
+2. **Cada solapa dice cuántos campos le faltan para publicar.** No los que el
+   schema rechazó —eso existe recién después de un guardado fallido— sino los
+   pendientes, que están desde la primera tecla. Es lo que permite orientarse sin
+   abrir las nueve.
+
+### Tres cosas que **no** cambiaron, y una que sí
+
+- **La barra de guardar sigue fija abajo** (pedido explícito). Está fuera de los
+  paneles: adentro de uno se esconderían los botones de guardar en ocho de las
+  nueve pestañas.
+- **Los nueve paneles se quedan montados**, y los inactivos se esconden con una
+  clase. El estado de cada sección vive adentro de ella —el acordeón, la imagen que
+  se está subiendo, el editor de encuentros— y desmontarla lo perdería al cambiar
+  de solapa; además `[data-campo-con-error]` tiene que existir en el DOM para que
+  la barra pueda llevar hasta él. No cuesta nada nuevo: hasta hoy los nueve estaban
+  montados **y** visibles.
+- **Se esconden con la clase `hidden` de Tailwind y no con el atributo HTML.** El
+  `[hidden]` del preflight va con `:where()`, o sea especificidad cero, así que
+  cualquier utilidad de `display` en el mismo elemento le gana y el panel
+  «escondido» se vería igual.
+- **Lo que sí cambió: el acordeón dejó de ser el mecanismo de plegado.** Al entrar
+  a una pestaña de una sola sección, esa sección se abre — quien hizo click en
+  «Material» hizo click para verlo, y un panel que muestra un título y un ▶ es un
+  click de más. La memoria de B-193 sigue mandando en la única solapa que tiene
+  **dos** secciones, que es donde cerrar una para ver la otra sigue siendo una
+  preferencia legítima. La condición sale de `PESTANIAS` (`secciones.length`), no de
+  una lista: la sección que se agregue cae del lado correcto sola.
