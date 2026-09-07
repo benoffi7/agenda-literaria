@@ -381,6 +381,93 @@ export const sinMetadatos = (tipo: TipoSubible, datos: Uint8Array): Uint8Array =
 };
 
 /**
+ * Las orientaciones EXIF que **no** son «derecha» — B-324.
+ *
+ * El tag `Orientation` (0x0112) vale 1 a 8. `1` es la foto derecha; las otras
+ * siete piden rotar, espejar, o las dos cosas. Es el dato que una cámara de
+ * teléfono escribe cuando la sacás de costado: **los píxeles salen como los vio
+ * el sensor** y el visor los endereza leyendo este número.
+ *
+ * `sinMetadatos` tira el APP1 entero —incluido este tag— y **no rota los
+ * píxeles**, así que una foto sacada de costado se publica de costado. Es lo que
+ * el ítem describe, y por eso hace falta leer el número **antes** de tirar el
+ * bloque.
+ */
+export const ORIENTACION_DERECHA = 1;
+
+/**
+ * El valor del tag `Orientation` del EXIF, o `null` si no hay ninguno legible.
+ *
+ * ── Qué hace y qué NO hace ────────────────────────────────────────────────
+ * **Lee un entero, nada más.** No rota, no reescribe y no conserva el tag: eso
+ * es lo que B-324 decidió no hacer por ahora —el dueño eligió «solo avisar en el
+ * panel cuando la foto viene rotada»— y este parseo es lo único que ese aviso
+ * necesita.
+ *
+ * ── Por qué se parsea a mano ──────────────────────────────────────────────
+ * Por lo mismo que `dimensiones`: así es verificable sin DOM y el módulo entero
+ * sirve desde un test. Y porque la alternativa —un `Image` del navegador— no
+ * expone la orientación.
+ *
+ * ── El recorrido, y por qué falla hacia `null` ────────────────────────────
+ * APP1 arranca con `Exif\0\0`, y adentro hay un **TIFF**: dos bytes de orden
+ * (`II` little-endian o `MM` big-endian), el número 42 como verificación, y el
+ * offset del primer directorio. Cada entrada del directorio son 12 bytes: tag,
+ * tipo, cantidad y valor.
+ *
+ * Cualquier cosa que no cierre —una firma que no está, un orden de bytes que no
+ * es ninguno de los dos, un offset que se va del buffer— devuelve `null`, que
+ * significa «no sé» y **no** «está derecha». El llamador solo avisa cuando hay
+ * un número y no es 1: con `null` no dice nada, que es lo correcto para un aviso
+ * (un falso «tu foto está de costado» sobre un flyer derecho enseña a ignorarlo).
+ */
+export const orientacionExif = (tipo: TipoSubible, datos: Uint8Array): number | null => {
+  // Solo JPEG: el EXIF de un PNG es otra cosa y las cámaras no lo escriben ahí.
+  if (tipo !== 'image/jpeg' || !esJpeg(datos)) return null;
+
+  let encontrada: number | null = null;
+  recorrerJpeg(datos, (marcador, desde, hasta) => {
+    if (encontrada !== null || marcador !== 0xe1) return;
+    // +4: el `FF E1` y los dos bytes del largo. Después va `Exif\0\0`.
+    const exif = desde + 4;
+    const firma = String.fromCharCode(...datos.subarray(exif, exif + 4));
+    if (firma !== 'Exif') return;
+
+    const tiff = exif + 6;
+    if (tiff + 8 > hasta) return;
+    const orden = String.fromCharCode(datos[tiff]!, datos[tiff + 1]!);
+    if (orden !== 'II' && orden !== 'MM') return;
+    const chico = orden === 'II';
+
+    const u16 = (i: number) => (chico ? datos[i]! | (datos[i + 1]! << 8) : leer16(datos, i));
+    const u32 = (i: number) =>
+      chico
+        ? (datos[i]! | (datos[i + 1]! << 8) | (datos[i + 2]! << 16) | (datos[i + 3]! << 24)) >>> 0
+        : leer32(datos, i);
+
+    if (u16(tiff + 2) !== 42) return;
+    const ifd = tiff + u32(tiff + 4);
+    if (ifd + 2 > hasta) return;
+
+    const cuantas = u16(ifd);
+    for (let n = 0; n < cuantas; n += 1) {
+      const entrada = ifd + 2 + n * 12;
+      if (entrada + 12 > hasta) return;
+      if (u16(entrada) !== 0x0112) continue;
+      /*
+       * El valor de un `SHORT` va en los **primeros dos bytes** del campo de
+       * cuatro, y del lado que el orden de bytes indica. Leerlo con `u16` sobre
+       * el offset del campo lo resuelve para los dos órdenes.
+       */
+      const valor = u16(entrada + 8);
+      if (valor >= 1 && valor <= 8) encontrada = valor;
+      return;
+    }
+  });
+  return encontrada;
+};
+
+/**
  * Alto y ancho, leídos del encabezado. `null` si el archivo no se deja leer.
  *
  * Se parsean en vez de pedírselos a un `Image` del navegador por la misma razón

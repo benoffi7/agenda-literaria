@@ -8419,6 +8419,27 @@ la URL y `mesesEnlazables` (`src/lib/mesPublico.ts`) dice si esa página existe 
 enlace solo se puede pintar si el mes pasó el corte de tres, si no es un 404—.
 Falta el enlace y su test.
 
+**Hecho**, y el ítem tenía razón en que era corto — pero **no en dónde iba la
+decisión**. «El enlace solo se puede pintar si el mes pasó el corte» no lo puede
+evaluar la plantilla: `mesesEnlazables` recorre el índice **entero**, y la página
+de detalle no lo ve (D-140). Así que el mes viaja en el view-model —
+`DetallePublico.mes`, `{ clave, nombre } | null`— y lo decide el lector, que es el
+mismo patrón con el que B-110 resolvió `cancelada` y B-109 la fecha de las
+canceladas: **lo decide quien tiene el dato, y llega como argumento**.
+
+El default de ese argumento es `{}`, o sea «no enlazar nada»: quien lo omita
+pierde un enlace interno, no publica un 404 desde la página que más tráfico
+recibe.
+
+Verificado sobre HTML construido contra el emulador, con los cuatro casos: un mes
+con 3+ enlaza («Más en septiembre» → `/agenda/2026-09/`), un mes con 2 no enlaza
+nada, una pasada no enlaza nada, y un ciclo de septiembre a octubre enlaza
+**septiembre** —el mes de su próxima fecha— y se corre solo a octubre cuando
+septiembre pasa. Siete casos con mutación en `tests/detallePublico.test.ts` y uno
+en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la clave
+del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
+tenga dos actividades).
+
 ### B-312 · El texto para redes no lleva el link, y el motivo caducó — ✅ hecho (2026-09-03) · P2
 
 **Decidido y hecho el 2026-09-03.** El dueño eligió el link del detalle, sin UTM:
@@ -8802,7 +8823,7 @@ es `estructuraConocida`, que ahora rechaza todo APPn que no reconozca.
 > `npx tsc --noEmit` y la suite completa (2.537 tests) quedaron verdes con el
 > alias nuevo resuelto en los tres lugares.
 
-### B-324 · Una foto sacada de costado se publica de costado · P2
+### B-324 · Una foto sacada de costado se publica de costado · P2 — ✅ decidido (2026-09-07): avisa, no rota
 
 **Anterior a B-220 y encontrado por el `auditor-trampas` mientras lo auditaba**
 (D-175 § auditoría). El panel saca el bloque APP1 sin recomprimir (`sinMetadatos`,
@@ -8864,30 +8885,64 @@ una ventana de privacidad», es «mi foto salió acostada».
 > resolver esto con un camino nuevo mientras B-322 sigue pendiente arriesga
 > dos implementaciones de la misma cosa.
 >
+> **Ese motivo (3) caducó un día después de escribirse, y estuvo cinco días en
+> pie:** el 2026-09-03 B-322 se cerró «no se hace». Se corrige recién acá, al
+> cerrar B-324, porque es cuando alguien volvió a leer el ítem — y es la forma
+> que toma este drift: no una afirmación equivocada, una que era cierta cuando
+> se escribió.
+>
 > Queda **anotado y no implementado**: si el dueño prefiere esta cuarta
 > salida en vez de esperar a B-322, es una propuesta chica (un campo de
 > metadata, una función de mapeo con 4 casos y un `else` que no rota, sus
 > tests) y no un cambio de arquitectura.
-**Hecho**, y el ítem tenía razón en que era corto — pero **no en dónde iba la
-decisión**. «El enlace solo se puede pintar si el mes pasó el corte» no lo puede
-evaluar la plantilla: `mesesEnlazables` recorre el índice **entero**, y la página
-de detalle no lo ve (D-140). Así que el mes viaja en el view-model —
-`DetallePublico.mes`, `{ clave, nombre } | null`— y lo decide el lector, que es el
-mismo patrón con el que B-110 resolvió `cancelada` y B-109 la fecha de las
-canceladas: **lo decide quien tiene el dato, y llega como argumento**.
 
-El default de ese argumento es `{}`, o sea «no enlazar nada»: quien lo omita
-pierde un enlace interno, no publica un 404 desde la página que más tráfico
-recibe.
+**Decidido por el dueño el 2026-09-07: «por ahora solo avisar en el panel cuando
+la foto viene rotada».** De las cuatro salidas de arriba, ninguna: una quinta que
+no estaba anotada porque no arregla la foto — **se la muestra a quien la sube,
+mientras la sube**, que es el único momento en que darla vuelta cuesta un minuto y
+no una reedición.
 
-Verificado sobre HTML construido contra el emulador, con los cuatro casos: un mes
-con 3+ enlaza («Más en septiembre» → `/agenda/2026-09/`), un mes con 2 no enlaza
-nada, una pasada no enlaza nada, y un ciclo de septiembre a octubre enlaza
-**septiembre** —el mes de su próxima fecha— y se corre solo a octubre cuando
-septiembre pasa. Siete casos con mutación en `tests/detallePublico.test.ts` y uno
-en `tests/pagina-de-detalle.test.ts`, que prohíbe que la plantilla derive la clave
-del mes de `proxima.iso` (el atajo que compila, se ve bien y da 404 el mes que
-tenga dos actividades).
+**Lo que se implementó:**
+
+- `orientacionExif(tipo, datos)` (`src/lib/imagenes-archivo.ts`) parsea el APP1 lo
+  justo para leer el tag `0x0112`: `Exif\0\0`, la cabecera TIFF —los **dos**
+  órdenes de bytes, `II` y `MM`—, IFD0 y el tag. Cualquier cosa que no entienda
+  devuelve **`null`, que significa «no sé» y no «derecha»**: un JPEG sin EXIF, uno
+  con el APP1 cortado y un PNG dan lo mismo, y ninguno de los tres genera un aviso
+  falso.
+- `subirImagen` la lee **del crudo y antes de `sinMetadatos`**, y devuelve
+  `Subida { imagen, orientacion }`. El orden es la decisión y no un detalle de
+  implementación: el tag vive adentro del bloque que `sinMetadatos` tira, así que
+  leerlo después da `null` **siempre** — y un `null` siempre no rompe nada
+  visible, la subida sale bien y el aviso no aparece nunca. Por eso el orden está
+  afirmado sobre el fuente en `tests/imagenes-archivo.test.ts`: es lo único que se
+  puede verificar de dos líneas que ningún test ejecuta (`subirImagen` habla con
+  Storage).
+- `GaleriaEditor` muestra el aviso con `role="status"` y en `text-suave` —**no**
+  `alert` ni `text-acento`—: la subida salió bien, no es una urgencia, y el acento
+  es el color de «algo se rompió» (D-146). Pintar un aviso con el color del error
+  hace que el próximo error de verdad se lea como un aviso.
+- Se mide: `medirFuncion('imagen-rotada', undefined, orientacion)`, con el número
+  de `Orientation` como valor.
+
+**Y la medición es la que va a decidir lo que queda abierto**, que es justamente
+por qué el evento lleva el número y no un `1`. Si de cien fotos ninguna trae la
+marca, el aviso es un cartel que nadie ve y el ítem se cierra. Si trae la mitad,
+rotar deja de ser opcional — y ahí el valor dice **cómo**: si aparecen solo 3, 6 y
+8 alcanza con las cuatro simples; si aparece un 2, 4, 5 o 7 hay espejado y el
+mapeo es el delicado que el bloque de arriba describe.
+
+**Lo que sigue pendiente y no cambió:** la foto se publica igual de costado. **Y
+rotar ya no es B-322**, aunque la tabla de arriba lo diga: ese ítem se cerró «no
+se hace» el 2026-09-03, o sea que la zona de subida privada —el vehículo con el
+que la fila 3 resolvía esto de paso— **no se va a construir**. Lo cobró el
+`auditor-documentacion` sobre este mismo cierre, que arrastraba la frase vieja.
+
+Si algún día se quiere rotar de verdad, lo que queda en pie es **la cuarta
+salida** anotada el 2026-09-02: `customMetadata.orientacion` al subir y el mapeo
+del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
+Esto de acá es un aviso, y está anotado como aviso.
+
 ## P3 — cuando sobre tiempo
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3

@@ -215,6 +215,22 @@ export const FUNCIONES = [
    */
   'imagen-rechazada',
   /**
+   * B-324 — una foto subida que traía marca de rotación del teléfono. El `valor`
+   * es el número de `Orientation` (2 a 8; el 1 no emite, porque es «derecha»).
+   *
+   * **Es el dato que decide si el aviso alcanza o hay que rotar de verdad.** El
+   * dueño eligió avisar en vez de rotar, y esa elección se puede revisar con
+   * números: si de cien fotos subidas ninguna trae la marca, el aviso es un
+   * cartel que nadie ve; si trae la mitad, rotar deja de ser opcional. Sin este
+   * evento, esa revisión sería una impresión.
+   *
+   * Y el valor importa además por otra cosa: **las orientaciones 2, 4, 5 y 7
+   * llevan espejado** y son las que hacen que rotar en la Function sea más
+   * delicado que multiplicar por 90 (ver B-324). Saber cuáles aparecen de verdad
+   * decide si alcanza con cubrir las cuatro simples.
+   */
+  'imagen-rotada',
+  /**
    * B-370 / D-200 — se abrió «Estado del catálogo», con cuántas actividades
    * tenía el catálogo en ese momento como `valor`.
    *

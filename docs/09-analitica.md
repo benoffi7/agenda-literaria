@@ -255,7 +255,7 @@ evento por función.
 |---|---|
 | `funcion` | ver la tabla de abajo |
 | `detalle` | según la función: un campo de taxonomía, una sección, o un modo de fallo |
-| `valor` | **−366 a 1000**, un número con sentido según la función. El saneador redondea y recorta a ese rango. El piso es negativo **por una sola función** —ver la nota abajo de la tabla—; las otras veintitrés cuentan cosas y nunca dan menos de cero |
+| `valor` | **−366 a 1000**, un número con sentido según la función. El saneador redondea y recorta a ese rango. El piso es negativo **por una sola función** —ver la nota abajo de la tabla—; las otras veinticuatro cuentan cosas y nunca dan menos de cero |
 
 | `funcion` | Cuándo | `detalle` | `valor` |
 |---|---|---|---|
@@ -281,6 +281,7 @@ evento por función.
 | `coordenadas-fallo` | ese link no se pudo resolver | el modo de fallo | — |
 | `imagen-subida` | una imagen propia terminó de subir a Storage | — | — |
 | `imagen-rechazada` | la subida no salió | por qué | — |
+| `imagen-rotada` | una foto subida traía marca de rotación | — | el número de `Orientation`, 2 a 8 (B-324) |
 | `estadisticas-abrir` | se abre «Estadísticas» en el listado | — | actividades del catálogo |
 
 > ⚠️ **El piso del `valor` es negativo por una sola función, y la historia vale.**
@@ -298,7 +299,7 @@ evento por función.
 > Dos cosas de esa decisión, porque el `min` no es gratis:
 >
 > - **Es del parámetro, no de la función.** El sanitizador es uno por parámetro,
->   así que el piso negativo queda abierto para las veinticuatro. Se acepta porque
+>   así que el piso negativo queda abierto para las veinticinco. Se acepta porque
 >   **el techo es lo que acota de verdad**: un valor inventado sigue encerrado en
 >   `[−366, 1000]`, que es un entero chico y sin contenido.
 > - **−366 y no sin límite:** un año de días para atrás es el salto más grande que

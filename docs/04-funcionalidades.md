@@ -286,6 +286,17 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   Lo que **no** cambió: las imágenes de otros sitios no se tocan ni se descargan
   (DEC-7d). Y sigue habiendo un paso manual pendiente para las 30 que ya estaban en
   el bucket antes de la Function: `scripts/optimizar-imagenes.mjs`.
+- **Si la foto trae la marca de rotación del teléfono, el panel avisa al subirla**
+  (B-324). **No la rota**: se publica tal cual se la ve en el panel en ese momento.
+  No es un error —la subida sale bien igual— sino el dato en el único momento en
+  que darla vuelta cuesta un minuto y no una reedición: el aviso dice «rotala en
+  el teléfono y volvé a subirla».
+
+  Se lee del archivo **antes** de sacarle los metadatos, que es lo que hace que el
+  aviso pueda existir: la marca vive adentro del bloque que se tira. Y el uso se
+  mide (`imagen-rotada`, con el número de orientación como valor), porque es lo que
+  va a decir si avisar alcanzó o si hay que rotar de verdad.
+
 - **Duplicar no copia las imágenes subidas al panel**, solo las que son un link a
   otro sitio: la copia y el original compartirían el mismo archivo, y borrar una le
   rompería las imágenes a la otra. Lo dice la letra chica del modal de duplicar.

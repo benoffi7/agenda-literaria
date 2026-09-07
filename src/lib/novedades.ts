@@ -60,6 +60,31 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'aviso-foto-rotada',
+    fecha: '2026-09-07',
+    version: '1.9.0',
+    titulo: 'El panel te avisa si una foto viene rotada',
+    detalle:
+      'Las fotos sacadas con el teléfono de costado traen adentro una marca que dice para qué ' +
+      'lado va, y el sitio no la usa: se publican como las vio la cámara. Ahora, si subís una ' +
+      'que trae esa marca, el panel te lo dice ahí mismo, debajo de la fila. No es un error y la ' +
+      'foto se sube igual: la foto se publica tal cual la ves en el panel, así que si quedó ' +
+      'acostada, rotala en el teléfono y volvé a subirla.',
+    donde: 'Formulario, sección «Qué es» — el cargador de imágenes, debajo de la fila que subiste.',
+  },
+  {
+    id: 'describir-la-portada-ya-no-frena',
+    fecha: '2026-09-07',
+    version: '1.9.0',
+    titulo: 'Describir la portada volvió a ser opcional',
+    detalle:
+      'El campo «Qué se ve en la portada» sigue estando y conviene completarlo —lo lee quien usa ' +
+      'un lector de pantalla— pero ya no te frena para publicar. Si lo dejás vacío, la página ' +
+      'usa «Imagen de» más el título, como antes. Reemplaza a la novedad de tres días atrás, que ' +
+      'decía que hacía falta.',
+    donde: 'Formulario, sección «Qué es» — la fila de la portada, en el cargador de imágenes.',
+  },
+  {
     id: 'slug-fijo-para-siempre',
     fecha: '2026-09-04',
     version: '1.9.0',
@@ -76,13 +101,24 @@ export const NOVEDADES: Novedad[] = [
     id: 'describir-la-portada',
     fecha: '2026-09-04',
     version: '1.9.0',
+    /*
+     * **Quedó falsa tres días después y no se reescribe: se reenvía.** El
+     * 2026-09-07 el dueño sacó el bloqueo, y hay una entrada nueva arriba que lo
+     * dice. Esta lista es un historial —el `id` es la marca de «hasta acá leí» de
+     * cada navegador—, así que reescribir una entrada vieja le cambiaría el pasado
+     * a quien ya la leyó. Lo único que se le agrega es el aviso al final del
+     * `detalle`, y a cambio se le saca la frase que explicaba **cuándo** era
+     * obligatorio, que es la que describe una regla que ya no existe. El tope de
+     * 420 caracteres del propio `tests/novedades.test.ts` forzó elegir una de las
+     * dos, y se quedó la vigente.
+     */
     titulo: 'La portada ahora se describe a mano, y hace falta para publicar',
     detalle:
       'Debajo del epígrafe de la portada hay un campo nuevo: «Qué se ve en la portada». Ese ' +
       'texto no se muestra en pantalla — lo lee quien usa un lector de pantalla y lo usa Google ' +
       'cuando la imagen no carga. Antes se usaba el título de la actividad, que casi nunca ' +
-      'describe la imagen. Se pide solo en la portada, no en las otras tres, y solo si cargaste ' +
-      'alguna imagen: guardar como borrador sigue funcionando sin completarlo.',
+      'describe la imagen. Se pide solo en la portada, no en las otras tres. ' +
+      '(07/09: el campo sigue estando, pero ya no hace falta para publicar.)',
     donde: 'Formulario, sección «Qué es» — la fila de la portada, en el cargador de imágenes.',
   },
   {

@@ -18,7 +18,9 @@ import type { FirebaseStorage } from 'firebase/storage';
 import { app, usarEmuladores } from '@/lib/firebase-client';
 import { CACHE_AL_SUBIR } from '@/lib/imagenes';
 import {
+  ORIENTACION_DERECHA,
   dimensiones,
+  orientacionExif,
   esDelTipoDeclarado,
   esTipoSubible,
   motivoDeSubidaFallida,
@@ -80,7 +82,24 @@ export class ImagenRechazada extends Error {
  * comparten, y no hay papelera de la que sacarlo. La limpieza queda anotada en el
  * BACKLOG con su criterio.
  */
-export const subirImagen = async (archivo: File, id: string): Promise<Imagen> => {
+/**
+ * Lo que la subida devuelve: la fila, y **un aviso si hay algo que decir**.
+ *
+ * B-324 — el dueño eligió «solo avisar en el panel cuando la foto viene rotada»
+ * de las tres salidas que el ítem planteaba. La subida sale bien igual: esto no
+ * es un rechazo, es información que la persona necesita **antes** de publicar.
+ */
+export interface Subida {
+  imagen: Imagen;
+  /**
+   * El valor del tag `Orientation` que traía el archivo, cuando **no era 1**.
+   * `null` es «venía derecha» o «no se pudo leer», que para un aviso son lo
+   * mismo: no se dice nada.
+   */
+  orientacion: number | null;
+}
+
+export const subirImagen = async (archivo: File, id: string): Promise<Subida> => {
   const motivo = validarArchivo({ tipo: archivo.type, bytes: archivo.size });
   // El orden importa: el guard de tipo tiene que quedar **después** de haber
   // devuelto el mensaje de `validarArchivo`, que es el que dice cuál era el tipo.
@@ -106,6 +125,19 @@ export const subirImagen = async (archivo: File, id: string): Promise<Imagen> =>
       'tipo',
     );
   }
+
+  /*
+   * **Antes de `sinMetadatos`, que es lo único que hace que esto sea posible** —
+   * B-324. El tag `Orientation` viaja adentro del APP1, y `sinMetadatos` tira ese
+   * bloque entero sin rotar los píxeles: después de esta línea el dato no existe
+   * más. Leerlo acá cuesta un recorrido del JPEG y es lo único que el aviso
+   * necesita.
+   *
+   * Se lee del **crudo** y no del limpio a propósito, y el orden de las dos
+   * líneas es la decisión: invertirlas daría `null` siempre y el aviso nunca
+   * saldría, sin que nada se pusiera rojo.
+   */
+  const orientacion = orientacionExif(tipo, crudo);
 
   const limpio = sinMetadatos(tipo, crudo);
 
@@ -146,6 +178,11 @@ export const subirImagen = async (archivo: File, id: string): Promise<Imagen> =>
     });
     const url = await getDownloadURL(destino);
     return {
+      // `orientacion` viaja **al lado** de la imagen y no adentro: no es un campo
+      // del modelo —no se guarda ni se publica— es una observación sobre el
+      // archivo que se acaba de subir, y solo le sirve a la pantalla.
+      orientacion: orientacion === ORIENTACION_DERECHA ? null : orientacion,
+      imagen: {
       id,
       url,
       epigrafe: '',
@@ -158,6 +195,7 @@ export const subirImagen = async (archivo: File, id: string): Promise<Imagen> =>
       // La portada la decide el llamador, que es el que sabe si la lista estaba
       // vacía. Nace en `false` y `GaleriaEditor` la corrige al agregar la fila.
       portada: false,
+      },
     };
   } catch (e) {
     // El `message` crudo del SDK no está escrito para nadie, pero el `code`

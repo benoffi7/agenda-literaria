@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  ORIENTACION_DERECHA,
+  orientacionExif,
   TIPOS_SUBIBLES,
   dimensiones,
   enBytesLegibles,
@@ -12,6 +15,7 @@ import {
   validarArchivo,
 } from '@/lib/imagenes-archivo';
 import { MAXIMO_BYTES, TIPOS_ACEPTADOS } from '@/lib/imagenes';
+import { FUNCIONES } from '@/lib/analytics-eventos';
 import { MOTIVOS_IMAGEN } from '@/lib/analytics-eventos';
 
 /**
@@ -444,5 +448,311 @@ describe('motivoDeSubidaFallida — el motivo real de una subida que falla (B-59
         motivoDeSubidaFallida(code).causa,
       );
     }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// La orientación EXIF, que `sinMetadatos` se lleva puesta — B-324
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Un JPEG mínimo con un APP1 EXIF que declara `Orientation`.
+ *
+ * Se arma a mano —y en los **dos órdenes de bytes**— porque el parseo real que
+ * hay que verificar es justamente ése: el EXIF es un TIFF embebido, y un TIFF
+ * puede venir little-endian (`II`, lo normal en cámaras) o big-endian (`MM`, lo
+ * que escriben algunos teléfonos). Un fixture en un solo orden dejaría la mitad
+ * del código sin ejercitar, y la mitad que quedaría afuera es aritmética de
+ * bytes: la que se equivoca en silencio.
+ */
+const conOrientacion = (valor: number, chico = true): Uint8Array => {
+  const u16 = (v: number) => (chico ? [v & 0xff, v >> 8] : [v >> 8, v & 0xff]);
+  const u32 = (v: number) =>
+    chico
+      ? [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, v >>> 24]
+      : [v >>> 24, (v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+
+  const tiff = [
+    ...(chico ? [0x49, 0x49] : [0x4d, 0x4d]),
+    ...u16(42), // la verificación del TIFF
+    ...u32(8), // el primer directorio arranca en el byte 8
+    ...u16(1), // una entrada
+    ...u16(0x0112), // tag Orientation
+    ...u16(3), // tipo SHORT
+    ...u32(1), // cantidad
+    ...u16(valor), 0, 0, // el valor, en los primeros dos bytes de los cuatro
+    ...u32(0), // no hay directorio siguiente
+  ];
+
+  const exif = [0x45, 0x78, 0x69, 0x66, 0, 0, ...tiff];
+  const largo = exif.length + 2;
+  return new Uint8Array([
+    0xff, 0xd8, // SOI
+    0xff, 0xe1, largo >> 8, largo & 0xff, ...exif, // APP1
+    0xff, 0xda, 0x00, 0x02, // SOS
+    0xff, 0xd9, // EOI
+  ]);
+};
+
+describe('orientacionExif — el dato que `sinMetadatos` tira (B-324)', () => {
+  it('lee el valor en los dos órdenes de bytes', () => {
+    /*
+     * Los cuatro valores elegidos son los que produce una cámara de teléfono: 1
+     * derecha, 3 al revés, 6 y 8 los dos costados. Los otros cuatro (2, 4, 5, 7)
+     * llevan espejado y son los que hacen que rotar en la Function sea más
+     * delicado que multiplicar por 90 — están en el caso de abajo.
+     */
+    for (const v of [1, 3, 6, 8]) {
+      expect(orientacionExif('image/jpeg', conOrientacion(v, true)), `II ${v}`).toBe(v);
+      expect(orientacionExif('image/jpeg', conOrientacion(v, false)), `MM ${v}`).toBe(v);
+    }
+  });
+
+  it('acepta los ocho valores del rango y rechaza lo de afuera', () => {
+    // El rango es 1 a 8 por spec. Un 0 o un 9 es un archivo roto o algo que no es
+    // una orientación, y ahí `null` —«no sé»— es más honesto que un número.
+    for (const v of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      expect(orientacionExif('image/jpeg', conOrientacion(v)), `valor ${v}`).toBe(v);
+    }
+    expect(orientacionExif('image/jpeg', conOrientacion(0))).toBeNull();
+    expect(orientacionExif('image/jpeg', conOrientacion(9))).toBeNull();
+  });
+
+  it('devuelve null —«no sé»— y no 1, cuando no puede leerlo', () => {
+    /*
+     * **La distinción que hace usable al aviso.** `null` no significa «está
+     * derecha»: significa que no se sabe. El llamador solo avisa cuando hay un
+     * número **y** no es 1, así que con `null` no dice nada — y un falso «tu foto
+     * está de costado» sobre un flyer derecho es exactamente lo que enseña a
+     * ignorar un aviso (B-180).
+     */
+    expect(orientacionExif('image/jpeg', new Uint8Array([0xff, 0xd8, 0xff, 0xd9]))).toBeNull();
+    expect(orientacionExif('image/jpeg', new Uint8Array([1, 2, 3]))).toBeNull();
+    // Un PNG: las cámaras no escriben EXIF ahí, y el parseo es de JPEG.
+    expect(orientacionExif('image/png', conOrientacion(6))).toBeNull();
+  });
+
+  it('y `sinMetadatos` se lo lleva puesto: por eso hay que leerlo ANTES', () => {
+    /*
+     * **El caso que explica el orden de las dos líneas en `subirImagen`.** El tag
+     * vive en el APP1 y `sinMetadatos` tira ese bloque entero **sin rotar los
+     * píxeles**, así que después de limpiar el dato no existe: leerlo del archivo
+     * limpio daría `null` siempre y el aviso nunca saldría, sin que nada se
+     * pusiera rojo.
+     *
+     * MUTACIÓN PROBADA: mover el `orientacionExif` abajo del `sinMetadatos` en
+     * `subir-imagen.ts` deja este caso **verde** —es de otro módulo, acá se
+     * verifica la propiedad y no el orden— y pone en rojo el de más abajo,
+     * «la orientación se lee ANTES de sacar los metadatos», que afirma el orden
+     * sobre el fuente. Por eso están los dos, y por eso el de abajo no es
+     * redundante: es la **única** red del orden, porque `subirImagen` habla con
+     * Storage y ningún test lo ejecuta.
+     *
+     * (El comentario original mandaba a un `tests/subir-imagen.test.ts` que no
+     * existe. Lo cobró el `auditor-trampas`, y era justo la clase de error que
+     * hace que alguien borre el test de abajo por creerlo duplicado.)
+     */
+    const crudo = conOrientacion(6);
+    expect(orientacionExif('image/jpeg', crudo)).toBe(6);
+    expect(orientacionExif('image/jpeg', sinMetadatos('image/jpeg', crudo))).toBeNull();
+  });
+
+  it('un IFD que apunta afuera, o que declara más entradas de las que hay, da null', () => {
+    /*
+     * **El caso que pidió el `auditor-trampas`, y el motivo por el que existe.**
+     * Los offsets de este parser vienen del archivo que sube un tercero: el byte
+     * que dice «el directorio arranca acá» y el que dice «tiene N entradas» son
+     * datos, no estructura. Un JPEG cortado a la mitad por una subida que se
+     * interrumpió alcanza para que apunten a cualquier lado.
+     *
+     * Lo que se exige es `null` y **no** una excepción: `subirImagen` llama a esto
+     * antes de subir, así que un `throw` acá no sería «no sé la orientación», sería
+     * **la subida entera caída** por una foto con el EXIF raro.
+     *
+     * ── Y la mutación desmintió el motivo que este caso iba a declarar ──────
+     * Iba escrito que sacar las dos guardas del parser (`ifd + 2 > hasta`,
+     * `entrada + 12 > hasta`) ponía esto en rojo con un `RangeError`. **Se probó y
+     * es falso: sin ninguna de las dos, los dos casos siguen verdes.** El motivo
+     * es del lenguaje y no del código: un índice fuera de rango en un
+     * `Uint8Array` no tira, devuelve `undefined`, y los operadores de bits lo
+     * convierten en 0 — así que el parser lee ceros, no encuentra el tag y se
+     * apaga solo.
+     *
+     * Eso cambia **qué** verifica este caso y para qué sirven las guardas:
+     *
+     * - **la seguridad ante un archivo roto no viene de las guardas**, viene de
+     *   cómo se leen los bytes. Por eso el aserto es `not.toThrow()` sobre un
+     *   fixture **efectivamente roto** y no una lectura de las guardas: si algún
+     *   día el parser pasa a `DataView` —cuyo `getUint16` **sí** tira
+     *   `RangeError`— este caso se pone en rojo, que es exactamente cuando las
+     *   guardas dejarían de ser un lujo;
+     * - **las guardas acotan el trabajo, no el crash**: cortan el recorrido en vez
+     *   de barrer las hasta 65535 entradas que `cuantas` puede declarar. Por eso
+     *   se quedan, y por eso no hay un caso que las afirme por separado — sería un
+     *   test de rendimiento disfrazado.
+     */
+    const roto = (retoque: (tiff: number[]) => void): Uint8Array => {
+      const base = [...conOrientacion(6)];
+      // El TIFF arranca después de SOI (2) + marca APP1 (2) + largo (2) + 'Exif\0\0' (6).
+      const tiff = 12;
+      const bytes = base.slice(tiff);
+      retoque(bytes);
+      return new Uint8Array([...base.slice(0, tiff), ...bytes]);
+    };
+
+    // a · el offset del primer directorio se va del segmento (`u32(8)` → 9999).
+    const afuera = roto((t) => {
+      t[4] = 0x0f;
+      t[5] = 0x27;
+    });
+    expect(() => orientacionExif('image/jpeg', afuera)).not.toThrow();
+    expect(orientacionExif('image/jpeg', afuera)).toBeNull();
+
+    // b · el directorio dice 50 entradas y hay lugar para una.
+    const infladas = roto((t) => {
+      t[8] = 50;
+    });
+    expect(() => orientacionExif('image/jpeg', infladas)).not.toThrow();
+    /*
+     * Acá el `null` **no** es lo único aceptable y por eso el aserto es el otro:
+     * la primera entrada del directorio sí está y sí es la Orientation, así que
+     * encontrarla es correcto. Lo que se exige es que las 49 que no existen no
+     * revienten nada — o sea, `6` o `null`, nunca una excepción.
+     */
+    expect([6, null]).toContain(orientacionExif('image/jpeg', infladas));
+  });
+
+  it('el 1 no es un caso especial acá: la decisión de no avisar es del llamador', () => {
+    /*
+     * Esta función devuelve lo que el archivo dice, incluido el 1. Convertir el 1
+     * en `null` acá mezclaría dos cosas distintas —«derecha» y «no sé»— y
+     * dejaría al llamador sin poder distinguirlas. La conversión pasa en
+     * `subirImagen`, con `ORIENTACION_DERECHA`, que es donde vive la decisión de
+     * qué se avisa.
+     */
+    expect(orientacionExif('image/jpeg', conOrientacion(ORIENTACION_DERECHA))).toBe(1);
+  });
+});
+
+describe('el aviso de rotación está cableado donde tiene que estar — B-324', () => {
+  const fuente = (rel: string): string => readFileSync(`${process.cwd()}/${rel}`, 'utf8');
+
+  it('la orientación se lee ANTES de sacar los metadatos', () => {
+    /*
+     * **El orden de dos líneas, y no se puede verificar corriéndolo:**
+     * `subirImagen` habla con Storage, así que no hay test que lo ejecute. Lo que
+     * sí se puede afirmar es el orden en el fuente, y es lo único que hace que el
+     * aviso exista: el tag vive en el APP1 y `sinMetadatos` tira ese bloque, así
+     * que leerlo después daría `null` siempre.
+     *
+     * Un `null` siempre **no rompe nada visible**: la subida sale bien y el aviso
+     * simplemente no aparece nunca. Es el modo de falla que este caso frena, y la
+     * razón por la que se afirma el orden y no la existencia de las dos llamadas.
+     *
+     * MUTACIÓN PROBADA: mover el `orientacionExif` abajo del `sinMetadatos` deja
+     * este caso en rojo.
+     */
+    const src = fuente('src/lib/subir-imagen.ts');
+    const lee = src.indexOf('orientacionExif(tipo, crudo)');
+    const limpia = src.indexOf('sinMetadatos(tipo, crudo)');
+
+    expect(lee, 'no se lee la orientación en la subida').toBeGreaterThan(-1);
+    expect(limpia, 'no se sacan los metadatos en la subida').toBeGreaterThan(-1);
+    expect(lee, 'la orientación se lee después de limpiar: siempre va a dar null').toBeLessThan(
+      limpia,
+    );
+    // Y del CRUDO, no del limpio: leerla del limpio es la misma falla con otra
+    // forma, y pasaría el orden de arriba.
+    expect(src).toContain('orientacionExif(tipo, crudo)');
+  });
+
+  it('lo que sube a Storage es el archivo limpio y nunca el crudo', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y es el hallazgo más caro de los que
+     * encontró.** B-324 le dio a `crudo` un **segundo consumidor**
+     * (`orientacionExif`) después del punto donde antes quedaba consumido, así que
+     * ahora hay dos arrays vivos en la misma función: uno con el EXIF adentro
+     * —GPS incluido— y uno limpio. Y lo único que los distingue en la línea del
+     * `uploadBytes` es **una palabra**.
+     *
+     * Un `uploadBytes(destino, crudo, …)` no lo frena nada de lo que ya existe:
+     * pasaría `quedanMetadatos` —que barre `limpio`, o sea otra variable— y
+     * pasaría `storage.rules`, porque el `contentType` es el mismo. Publicaría las
+     * coordenadas de una casa particular, y eso **no se despublica**.
+     *
+     * Va sobre el fuente por lo mismo que el orden: `subirImagen` habla con
+     * Storage y ningún test lo ejecuta. Es el aserto que hace verdadera la frase
+     * de `docs/06-decisiones.md` —«el barrido se hace en los bytes que se van a
+     * subir»—, que hasta acá era verdad por coincidencia de nombres.
+     *
+     * MUTACIÓN PROBADA: cambiar `limpio` por `crudo` en el `uploadBytes` deja el
+     * resto de la suite en verde y solo este caso en rojo.
+     */
+    const src = fuente('src/lib/subir-imagen.ts');
+    expect(src).toContain('uploadBytes(destino, limpio');
+    expect(src, 'sube el crudo, con el EXIF adentro').not.toMatch(
+      /uploadBytes\([^)]*\bcrudo\b/,
+    );
+    // Y que el barrido siga mirando lo mismo que se sube, no la otra variable.
+    expect(src).toContain('quedanMetadatos(limpio');
+  });
+
+  it('la foto derecha no avisa ni se mide: el 1 se convierte en null', () => {
+    /*
+     * **La otra que pidió el `auditor-privacidad`.** `orientacionExif` devuelve el
+     * `1` a propósito —«derecha» es un dato tan válido como «de costado»— así que
+     * la decisión de qué se avisa vive en `subirImagen`, en una sola línea, que es
+     * justo la parte que ningún test ejecuta.
+     *
+     * Esa línea sostiene dos afirmaciones a la vez: la fila «el número de
+     * Orientation, 2 a 8» de `docs/09-analitica.md`, y el «no avisa de más» del
+     * BACKLOG. Si se cae, **cada foto derecha** dispara el aviso y emite un
+     * `imagen-rotada` con `valor: 1`. No es una fuga —el 1 no es contenido— pero
+     * deja la fila de la tabla falsa y convierte el aviso en un cartel que se
+     * aprende a ignorar, que es la clase de B-180 y el motivo por el que el dueño
+     * eligió avisar en vez de rotar.
+     *
+     * El sanitizador no lo tapa: acota a `[-366, 1000]` y es **uno por parámetro,
+     * no por función** (B-797), así que el 1 pasa entero.
+     */
+    expect(fuente('src/lib/subir-imagen.ts')).toContain(
+      'orientacion === ORIENTACION_DERECHA ? null : orientacion',
+    );
+  });
+
+  it('el panel lo muestra como aviso y no como error', () => {
+    /*
+     * Las dos diferencias con el error de subida, que son deliberadas y las dos
+     * se pueden perder de un copy-paste:
+     *
+     * - **`role="status"` y no `role="alert"`**: un `alert` interrumpe al lector
+     *   de pantalla, y esto no es una urgencia — la subida salió bien.
+     * - **la tinta suave y no el acento**: el acento es el color de «algo se
+     *   rompió» en este sistema visual (D-146). Pintar un aviso con el color del
+     *   error hace que el próximo error de verdad se lea como un aviso.
+     */
+    const src = fuente('src/components/admin/GaleriaEditor.tsx');
+    const bloque = /\{avisoDeRotacion && \([\s\S]*?\)\}/.exec(src)?.[0] ?? '';
+    expect(bloque, 'no se encontró el aviso en el markup').not.toBe('');
+    expect(bloque).toContain('role="status"');
+    expect(bloque, 'el aviso usa el color del error').not.toContain('text-acento');
+  });
+
+  it('y el uso se mide, para poder revisar si avisar alcanzó', () => {
+    /*
+     * El dueño eligió **avisar** en vez de rotar, de tres salidas posibles. Esa
+     * elección se puede revisar con números: si de cien fotos ninguna trae la
+     * marca, el aviso es un cartel que nadie ve; si trae la mitad, rotar deja de
+     * ser opcional. Sin el evento, la revisión sería una impresión.
+     *
+     * El `valor` es el número de `Orientation`, y eso decide lo otro que B-324
+     * dejó abierto: si aparecen solo 3, 6 y 8 —las de una cámara de teléfono—
+     * alcanza con cubrir las cuatro simples; si aparecen 2, 4, 5 o 7, hay
+     * espejado y el mapeo es más delicado.
+     */
+    expect(FUNCIONES).toContain('imagen-rotada');
+    expect(fuente('src/components/admin/GaleriaEditor.tsx')).toContain(
+      "medirFuncion('imagen-rotada', undefined, orientacion)",
+    );
   });
 });

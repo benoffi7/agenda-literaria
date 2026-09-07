@@ -62,6 +62,13 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
   const [urlNueva, setUrlNueva] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
+  /**
+   * El aviso de B-324, aparte de `errorSubida` **y no en el mismo estado**: uno
+   * dice «no se subió» y el otro «se subió, y mirá esto». Compartir el estado
+   * haría que un aviso tape un error o al revés, y los dos pueden pasar en la
+   * misma sesión.
+   */
+  const [avisoDeRotacion, setAvisoDeRotacion] = useState<string | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
 
   /**
@@ -123,13 +130,31 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
    */
   const subir = async (archivo: File) => {
     setErrorSubida(null);
+    setAvisoDeRotacion(null);
     setSubiendo(true);
     try {
       const { subirImagen } = await import('@/lib/subir-imagen');
-      const subida = await subirImagen(archivo, nuevaImagenId());
+      const { imagen, orientacion } = await subirImagen(archivo, nuevaImagenId());
       // La primera nace portada, igual que al pegar una URL.
-      onChange([...imagenes, { ...subida, portada: imagenes.length === 0 }]);
+      onChange([...imagenes, { ...imagen, portada: imagenes.length === 0 }]);
       medirFuncion('imagen-subida');
+      /*
+       * **La foto venía de costado** — B-324, y el dueño eligió avisar en vez de
+       * rotar. No es un error: la subida salió bien y la imagen está arriba. Es
+       * información que hace falta **antes de publicar**, porque el sitio la va a
+       * mostrar como está.
+       *
+       * Sale después del `onChange` a propósito: primero la fila aparece —así se
+       * ve la foto y se puede juzgar el aviso mirándola— y después el texto.
+       */
+      if (orientacion !== null) {
+        setAvisoDeRotacion(
+          'Esta foto trae una marca de rotación del teléfono, y al sacarle los datos ' +
+            'ocultos esa marca se va: en el sitio se va a ver como la ves acá arriba. ' +
+            'Si quedó acostada, rotala en el teléfono y volvé a subirla.',
+        );
+        medirFuncion('imagen-rotada', undefined, orientacion);
+      }
     } catch (e) {
       // `ImagenRechazada` trae un mensaje escrito para una persona; cualquier
       // otra cosa, no — y mostrar el `message` crudo de un SDK es peor que un
@@ -347,6 +372,27 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
       {errorSubida && (
         <p role="alert" className="text-xs text-acento">
           {errorSubida}
+        </p>
+      )}
+
+      {/*
+        El aviso de B-324, y las dos diferencias con el error de arriba son
+        deliberadas:
+
+        - **`role="status"` y no `role="alert"`**: un `alert` interrumpe al lector
+          de pantalla, y esto no es una urgencia — la subida salió bien. `status`
+          lo anuncia cuando la persona llega.
+        - **La tinta suave y no el acento**: el acento es el color de «algo se
+          rompió» en este sistema visual, y acá no se rompió nada. Pintarlo igual
+          que un error haría que el próximo error de verdad se lea como un aviso.
+
+        Se muestra debajo de la fila que se acaba de agregar, así se puede mirar
+        la foto y el aviso a la vez — que es lo único que hace accionable al
+        texto: decide quien la ve.
+      */}
+      {avisoDeRotacion && (
+        <p role="status" className="border-l-2 border-borde pl-2 text-xs text-suave">
+          {avisoDeRotacion}
         </p>
       )}
 

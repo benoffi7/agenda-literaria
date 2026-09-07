@@ -2,6 +2,33 @@
 
 ## Sin publicar
 
+- **El panel avisa cuando una foto viene rotada** — **B-324**, decisión del dueño:
+  «por ahora solo avisar en el panel cuando la foto viene rotada». La foto se
+  publica igual de costado; lo que cambia es que ahora **se lo dice a quien la
+  sube, mientras la sube**, que es el único momento en que darla vuelta cuesta un
+  minuto en vez de una reedición.
+
+  `orientacionExif` parsea el APP1 lo justo para leer el tag `0x0112` —los dos
+  órdenes de bytes— y devuelve `null` para todo lo que no entiende, porque `null`
+  significa «no sé» y no «derecha»: un JPEG sin EXIF, uno cortado y un PNG dan lo
+  mismo, y ninguno avisa de más.
+
+  **Se lee del crudo y antes de `sinMetadatos`, y ese orden es la decisión.** El
+  tag vive adentro del bloque que `sinMetadatos` tira, así que leerlo después daría
+  `null` siempre — y un `null` siempre no rompe nada visible: la subida sale bien y
+  el aviso nunca aparece. Como `subirImagen` habla con Storage y ningún test lo
+  ejecuta, el orden queda afirmado **sobre el fuente**.
+
+  El aviso va con `role="status"` y en `text-suave`, no `alert` ni `text-acento`:
+  la subida salió bien, y el acento es el color de «algo se rompió» (D-146) —
+  pintar un aviso con el color del error hace que el próximo error de verdad se lea
+  como un aviso.
+
+  Y se mide con el número de `Orientation` como valor, porque **eso es lo que va a
+  decidir si avisar alcanzó**: si nunca aparece la marca, el cartel no lo ve nadie;
+  si aparece seguido, rotar deja de ser opcional — y el valor dice cómo, porque un
+  2, 4, 5 o 7 lleva espejado y el mapeo se vuelve el delicado.
+
 - **Las seis páginas de texto se numeran como salidas públicas** — **B-772** y
   **B-654**, decisión del dueño. Son las filas **13 a 18**: `/suscribirse`,
   `/ayuda`, `/contacto`, `/404`, `/apoyar` y `/anunciar`.
@@ -88,6 +115,15 @@
   original citado**. Y la etiqueta de la barra **se queda**: ese mapa traduce
   cualquier ruta que el schema pueda reportar, y el campo sigue teniendo forma
   (largo máximo) — lo que se fue es la exigencia de que esté, no la del formato.
+
+  **Faltaba avisarlo en el panel, y se agregó tres días después** (2026-09-07): la
+  novedad del 04/09 decía «hace falta para publicar» y el `novedades.ts` es lo
+  único que lee la segunda persona que carga actividades. La entrada vieja **no se
+  reescribe** —el `id` es la marca de «hasta acá leí» de cada navegador, así que
+  reescribirla le cambia el pasado a quien ya la leyó— así que hay una entrada
+  nueva arriba y a la vieja se le cambió solo la frase que explicaba cuándo era
+  obligatorio, por el aviso de que ya no lo es. El tope de 420 caracteres del
+  propio test forzó elegir una de las dos.
 
 - **El hook de los auditores dejó de frenar comandos de solo lectura** —
   **B-799**. Buscaba la palabra en cualquier parte del comando, así que frenó tres
