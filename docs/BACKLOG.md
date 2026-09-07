@@ -2803,6 +2803,48 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-801 · ✅ hecho (2026-09-07) — las visitas al panel contaban como visitas del sitio público
+
+**Lo vio el dueño en la pantalla:** «/admin/ sacalo de las estadisticas».
+`/admin/` aparecía en «Las páginas más vistas» **del sitio público**.
+
+**Y la causa no era el ranking.** La analítica del panel (`src/lib/analytics.ts`,
+por Firebase Analytics) y la del sitio (`medicionSitio.ts`, por `gtag.js`) usan el
+**mismo `PUBLIC_FIREBASE_MEASUREMENT_ID`**, o sea **la misma propiedad de GA4**. Y
+`getAnalytics` configura `gtag` con `send_page_view` en `true` por default, así
+que **cada vez que se abría el panel se contaba una vista de página del sitio**.
+
+O sea que no era una fila fea en un ranking: las visitas al panel entraban también
+en **sesiones, personas y vistas** — los tres números que la pestaña ofrece «para
+un anunciante». El síntoma visible era la punta.
+
+**El arreglo, en dos capas:**
+
+1. **La causa de raíz**: el panel inicializa con `send_page_view: false`
+   (`initializeAnalytics`, que es la única forma de pasar `config` — `getAnalytics`
+   sobre una app ya inicializada devuelve la instancia que hay y el flag no
+   llega). Con `catch` que cae al `getAnalytics` de siempre: sin eso, una app ya
+   inicializada por otro camino dejaría al panel **sin medir nada**, o sea el
+   arreglo llevándose puesta la funcionalidad que arreglaba.
+2. **Defensa en profundidad**: el ranking de páginas excluye `/admin` con
+   `BEGINS_WITH`. Hace falta igual, por dos motivos concretos: los días ya medidos
+   tienen esas vistas y **GA4 no recalcula para atrás**, y el ranking tiene tope de
+   diez, así que una fila del panel **desplaza a una página real**.
+
+**Y el panel no pierde medición**: ninguno de sus números salía del `page_view`, y
+«¿alguien abre el tablero?» ya se mide con `estadisticas-abrir`. Apagar la
+recolección entera —que también saca `/admin/` del ranking— habría apagado
+`funcion_usada` y `guardado_ok` de paso; hay un caso que lo prohíbe.
+
+**Lo que no se puede deshacer, y queda escrito:** los días ya medidos tienen las
+visitas al panel adentro de **sesiones, personas y vistas**, y ahí el filtro por
+ruta no sirve —una sesión que pasó por el panel es una sesión igual, y filtrarla
+por `pagePath` daría medio número—. Se corrige solo a medida que la ventana de 28
+días avanza. La única forma de excluirlas de verdad sería un **filtro de datos en
+la consola de GA4**, que tampoco es retroactivo; queda anotado acá y no se hizo
+porque para cuando valga la pena, la ventana ya se movió.
+
+
 ### B-800 · ✅ hecho (2026-09-07) — la pestaña del sitio muestra tres métricas más de GA4
 
 **Pedido del dueño:** «en la pagina de estadisticas hay que sumarle más cosas con
@@ -3398,10 +3440,11 @@ señales que coinciden**: el TXT `google-site-verification=` en el apex del DNS
 selector de Search Console aparece **sin el `https://`**. Cómo distinguirlas de
 un vistazo quedó escrito en el §9.4, que era la pregunta que costó.
 
-**Lo único que queda es el paso 5, y es el que falla sin fallar:** la zona horaria
-de la propiedad de GA4 en `(GMT-03:00) Buenos Aires`. Si no coincide, los números
-no dan error — se corren un día. Es la trampa 1 del §13 con otra cara y no hay
-forma de detectarla desde el código.
+**Los cinco pasos están hechos**, el quinto —la zona horaria de la propiedad en
+`(GMT-03:00) Buenos Aires`— confirmado por el dueño el 2026-09-07. Era el que
+falla sin fallar: si no coincide, los números no dan error, se corren un día. Es
+la trampa 1 del §13 con otra cara y no hay forma de detectarla desde el código,
+así que lo único que la sostiene es que esté escrito quién la miró y cuándo.
 
 **Y una nota que vale para leer los primeros números:** ninguna de las dos APIs
 mide para atrás, así que la historia arranca ahora y no el 2026-09-03.

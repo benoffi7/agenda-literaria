@@ -18,6 +18,7 @@ import {
   fechaDeGa4,
   numero,
   pedidoPrimerDia,
+  RUTA_DEL_PANEL,
   pedidosGa4,
   pedidosSearchConsole,
   ranking,
@@ -487,6 +488,64 @@ describe('fechaDeGa4', () => {
 // ─────────────────────────────────────────────────────────────────────
 // 4 · El resumen
 // ─────────────────────────────────────────────────────────────────────
+
+describe('el panel no es una página del sitio público — B-801', () => {
+  it('el ranking de páginas excluye las rutas del panel', () => {
+    /*
+     * **Lo vio el dueño en la pantalla:** `/admin/` aparecía en «Las páginas más
+     * vistas» del sitio público.
+     *
+     * La causa de raíz estaba del otro lado —la analítica del panel usa la misma
+     * propiedad de GA4 y mandaba su `page_view` automático, apagado en
+     * `src/lib/analytics.ts`— y este filtro es defensa en profundidad por dos
+     * motivos que no son teóricos:
+     *
+     * 1. **los días ya medidos tienen esas vistas y GA4 no recalcula para atrás**,
+     *    así que sin el filtro `/admin/` sigue apareciendo hasta que la ventana de
+     *    28 días lo deje atrás;
+     * 2. **el ranking tiene tope de diez**, o sea que una fila del panel no es
+     *    ruido: desplaza a una página real.
+     *
+     * MUTACIÓN PROBADA: sacar el `dimensionFilter` deja este caso en rojo; cambiar
+     * `BEGINS_WITH` por `EXACT` también, y ése es el que importa —con igualdad,
+     * `/admin/` pasa y una pantalla nueva del panel entra sola—.
+     */
+    const pedidos = pedidosGa4({ desde: '2026-09-15', hasta: '2026-10-12' });
+    const filtro = pedidos.paginas.dimensionFilter;
+
+    expect(filtro, 'el ranking de páginas no filtra nada').toBeDefined();
+    // `notExpression`: se excluye, no se incluye. Con un `filter` a secas el
+    // ranking mostraría SOLO el panel, que es el error opuesto y silencioso.
+    expect(filtro.notExpression.filter.fieldName).toBe('pagePath');
+    expect(filtro.notExpression.filter.stringFilter).toEqual({
+      matchType: 'BEGINS_WITH',
+      value: RUTA_DEL_PANEL,
+    });
+    expect(RUTA_DEL_PANEL).toBe('/admin');
+  });
+
+  it('y no se le puso el filtro a los informes donde no corresponde', () => {
+    /*
+     * El control que evita el arreglo de más. `totales`, `canales` y
+     * `dispositivos` son **sesiones**, no vistas de página: una sesión que pasó
+     * por el panel es una sesión igual, y filtrarla por `pagePath` daría un número
+     * que no es ni «con panel» ni «sin panel» — sería la mitad de una sesión.
+     *
+     * Eso queda como lo que es: los días ya medidos tienen esas sesiones adentro,
+     * y la única forma de excluirlas de verdad es un filtro de datos en la consola
+     * de GA4, que tampoco es retroactivo. Está escrito en B-801.
+     */
+    const pedidos = pedidosGa4({ desde: '2026-09-15', hasta: '2026-10-12' });
+    for (const informe of ['totales', 'canales', 'dispositivos']) {
+      expect(
+        'dimensionFilter' in pedidos[informe],
+        `${informe} no se filtra por ruta: son sesiones, no vistas de página`,
+      ).toBe(false);
+    }
+    // El de eventos sí tiene el suyo, y es el de los eventos propios.
+    expect(pedidos.eventos.dimensionFilter.filter.fieldName).toBe('eventName');
+  });
+});
 
 describe('las tres métricas que sumó B-800', () => {
   it('llegan desde la respuesta cruda, con su variación', () => {

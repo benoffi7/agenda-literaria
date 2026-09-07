@@ -1075,7 +1075,7 @@ nombrada, con el motivo escrito ahí.
 
 Después: `firebase deploy --only functions:traerAnaliticaDelSitio`.
 
-**5 · Confirmar que la zona horaria de la propiedad de GA4 es la del proyecto**
+**5 · Confirmar que la zona horaria de la propiedad de GA4 es la del proyecto** — ✅ **hecho el 2026-09-07**
 
 Administrar → Configuración de la propiedad → **Zona horaria de los informes** →
 `(GMT-03:00) Buenos Aires`.

@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **Las visitas al panel contaban como visitas del sitio público** — **B-801**. Lo
+  vio el dueño: `/admin/` aparecía en «Las páginas más vistas».
+
+  La causa no era el ranking: la analítica del panel y la del sitio usan el
+  **mismo measurement id**, o sea la misma propiedad de GA4, y `getAnalytics`
+  manda el `page_view` automático por default. Cada vez que se abría el panel se
+  contaba una vista del sitio — y las visitas al panel entraban también en
+  sesiones, personas y vistas, que son los tres números que la pestaña ofrece
+  «para un anunciante».
+
+  Arreglado en dos capas: el panel inicializa con `send_page_view: false` (la
+  causa), y el ranking excluye `/admin` (defensa en profundidad, porque los días
+  ya medidos tienen esas vistas y GA4 no recalcula para atrás — y el ranking tiene
+  tope de diez, así que una fila del panel desplaza a una página real).
+
+  El panel no pierde medición: ninguno de sus números salía del `page_view`.
+  Apagar la recolección entera también habría sacado `/admin/` del ranking, y de
+  paso `funcion_usada` y `guardado_ok`; hay un caso que lo prohíbe.
+
 - **La pestaña del sitio muestra tres métricas más, y el evento del tríptico
   empezó a emitir** — **B-800** y **B-601**. Pedido del dueño: «sumarle más cosas
   con lo que nos de google, por ejemplo los eventos y sus valores».

@@ -146,6 +146,16 @@ export const EVENTOS_PROPIOS = ['clic_inscripcion', 'filtro_sin_resultados', 'cl
 export const TOPE_DE_RANKING = 10;
 
 /**
+ * El prefijo de las rutas del panel, que **no son páginas del sitio público** y
+ * quedan fuera del ranking (B-801).
+ *
+ * Es una constante y no un literal en el pedido para que el test lo pueda nombrar
+ * sin repetir el string — y para que el día que el panel cambie de ruta haya un
+ * solo lugar donde mirar.
+ */
+export const RUTA_DEL_PANEL = '/admin';
+
+/**
  * Las **únicas** dimensiones que este módulo le puede pedir a la Data API.
  *
  * ── Por qué es una lista blanca y no cinco strings sueltos ─────────────────
@@ -255,6 +265,33 @@ export const pedidosGa4 = (ventana) => {
       dimensions: [dimension('pagePath')],
       metrics: [{ name: 'screenPageViews' }],
       orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+      /*
+       * **El panel no es una página del sitio público** — B-801. Lo vio el dueño:
+       * `/admin/` aparecía en «Las páginas más vistas».
+       *
+       * La causa de raíz se arregló del otro lado —la analítica del panel usaba la
+       * misma propiedad de GA4 y mandaba su `page_view` automático, apagado en
+       * `src/lib/analytics.ts`— y este filtro es **defensa en profundidad**, por dos
+       * motivos concretos:
+       *
+       * 1. **Los días ya medidos tienen esas vistas y GA4 no recalcula para atrás.**
+       *    Sin el filtro, `/admin/` sigue apareciendo en el ranking hasta que la
+       *    ventana de 28 días lo deje atrás.
+       * 2. **El ranking tiene tope de diez**, así que una fila del panel no es
+       *    ruido: **desplaza a una página real** del sitio.
+       *
+       * `BEGINS_WITH` y no una igualdad: cubre `/admin/`, `/admin` y cualquier ruta
+       * de abajo, que es lo que hace que una pantalla nueva del panel no vuelva a
+       * entrar sola.
+       */
+      dimensionFilter: {
+        notExpression: {
+          filter: {
+            fieldName: 'pagePath',
+            stringFilter: { matchType: 'BEGINS_WITH', value: RUTA_DEL_PANEL },
+          },
+        },
+      },
       limit: TOPE_DE_RANKING,
     },
     canales: {

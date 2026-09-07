@@ -104,7 +104,40 @@ const iniciarSdk = async (): Promise<void> => {
       inutilizable = true;
       return;
     }
-    const instancia = sdk.getAnalytics(app());
+    /*
+     * **`send_page_view: false`, y esto arregla un bug de verdad** — B-801.
+     *
+     * El dueño lo vio en la pantalla: `/admin/` aparecía en «Las páginas más
+     * vistas» **del sitio público**. La causa no era el ranking: la analítica del
+     * panel y la del sitio usan el **mismo `PUBLIC_FIREBASE_MEASUREMENT_ID`**, o
+     * sea la misma propiedad de GA4. Y `getAnalytics` configura `gtag` con
+     * `send_page_view` en `true` por default, así que **cada vez que se abría el
+     * panel se contaba una vista de página del sitio**.
+     *
+     * Con `initializeAnalytics` y el flag apagado, el panel sigue mandando lo que
+     * se quiere de él —`funcion_usada`, `guardado_ok`, los eventos propios— y
+     * deja de mandar la vista automática. La medición del panel no pierde nada:
+     * ninguno de sus números salía del `page_view` (§9 de `docs/09-analitica.md`),
+     * y «¿alguien abre el tablero?» ya se mide con `estadisticas-abrir`.
+     *
+     * **Lo que no se puede deshacer, y queda escrito:** los días ya medidos
+     * tienen las visitas al panel adentro de sesiones, personas y vistas. GA4 no
+     * recalcula para atrás, así que los números de la ventana que incluya esos
+     * días quedan un poco altos. Se corrige solo a medida que la ventana avanza.
+     *
+     * `initializeAnalytics` y no `getAnalytics` porque el `config` solo se puede
+     * pasar en la **inicialización**: `getAnalytics` sobre una app ya inicializada
+     * devuelve la instancia que hay y el flag no llega. Y va con `try` propio: si
+     * ya estuviera inicializada por otro camino, se cae al `getAnalytics` de
+     * siempre en vez de perder la medición del panel entera.
+     */
+    const instancia = (() => {
+      try {
+        return sdk.initializeAnalytics(app(), { config: { send_page_view: false } });
+      } catch {
+        return sdk.getAnalytics(app());
+      }
+    })();
     const perfil = perfilAnonimo();
     if (perfil) sdk.setUserId(instancia, perfil);
     emisor = (nombre, params) => sdk.logEvent(instancia, nombre as string, params);

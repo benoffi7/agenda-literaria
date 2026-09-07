@@ -433,3 +433,58 @@ describe('toda función medida está documentada — B-58', () => {
       .toHaveProperty('valor');
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// El panel no cuenta como visita del sitio público — B-801
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('la analítica del panel no manda vistas de página — B-801', () => {
+  const fuente = (): string =>
+    readFileSync(`${process.cwd()}/src/lib/analytics.ts`, 'utf8').replace(/\s+/g, ' ');
+
+  it('inicializa con `send_page_view: false`', () => {
+    /*
+     * **El bug que este caso frena, y era real.** El dueño vio `/admin/` en «Las
+     * páginas más vistas» **del sitio público**, y la causa no era el ranking: la
+     * analítica del panel y la del sitio usan el **mismo**
+     * `PUBLIC_FIREBASE_MEASUREMENT_ID`, o sea la misma propiedad de GA4. Y
+     * `getAnalytics` configura `gtag` con `send_page_view` en `true` por default,
+     * así que **cada vez que se abría el panel se contaba una vista del sitio**.
+     *
+     * No es solo `/admin/` en un ranking: las visitas al panel entraban también en
+     * sesiones, personas y vistas, que son los tres números que la pestaña ofrece
+     * «para un anunciante».
+     *
+     * MUTACIÓN PROBADA: volver a `getAnalytics(app())` deja este caso en rojo.
+     */
+    expect(fuente(), 'el panel volvió a mandar la vista automática').toMatch(
+      /initializeAnalytics\(\s*app\(\),\s*\{\s*config:\s*\{\s*send_page_view:\s*false/,
+    );
+  });
+
+  it('y el panel sigue midiendo lo suyo: apagar la vista no apaga los eventos', () => {
+    /*
+     * La otra mitad, y la que impide el arreglo de más. Apagar la analítica del
+     * panel entera —`setAnalyticsCollectionEnabled(false)`— también saca `/admin/`
+     * del ranking, y de paso apaga `funcion_usada`, `guardado_ok` y los eventos con
+     * los que se decide qué se usa del panel. La medición del panel **no pierde
+     * nada** con este cambio: ninguno de sus números salía del `page_view`, y
+     * «¿alguien abre el tablero?» ya se mide con `estadisticas-abrir`.
+     */
+    const src = fuente();
+    expect(src, 'se apagó la recolección entera en vez de la vista').not.toContain(
+      'setAnalyticsCollectionEnabled',
+    );
+    expect(src, 'el panel dejó de emitir sus eventos').toContain('sdk.logEvent(');
+  });
+
+  it('el fallback existe: si ya estaba inicializada, no se pierde la medición', () => {
+    /*
+     * `initializeAnalytics` tira si la app ya tiene una instancia. Sin el `catch`,
+     * ese caso dejaría al panel **sin medir nada** — un cambio pensado para sacar
+     * un dato de más terminaría sacando todos. Es la clase de B-180: el arreglo
+     * que se lleva puesta la funcionalidad que arreglaba.
+     */
+    expect(fuente()).toMatch(/catch\s*\{\s*return sdk\.getAnalytics\(app\(\)\);/);
+  });
+});
