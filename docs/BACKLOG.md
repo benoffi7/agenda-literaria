@@ -2803,6 +2803,45 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-790 · Ya hay estadísticas del sitio y el panel no las muestra · P2
+
+**Reportado por el dueño el 2026-09-07:** Search Console y GA4 ya tienen datos
+—la propiedad se conectó el 2026-09-03 y descubrió 80 páginas— pero la pestaña
+«El sitio público» del tablero **no los refleja**.
+
+**No es un bug de la pantalla, y por eso el ítem no es «arreglar el panel».** El
+tablero lee `sistema/analitica-sitio`, un documento que escribe
+`traerAnaliticaDelSitio` (`functions/analitica-trigger.js`), un `onSchedule`
+diario. Ese documento no existe todavía, y por dos motivos que hay que atacar en
+orden:
+
+1. **La Function está escrita y sin desplegar.** Salió con el merge de la tanda y
+   nadie corrió el deploy de Functions — que además, por diseño, no lo hace el
+   push a `main`: `deploy-ci@` no tiene los roles a propósito.
+2. **Le faltan los pasos de consola del dueño**, que son los que le dan permiso y
+   le dicen qué property leer. Están escritos paso a paso en
+   `docs/16-analitica-del-sitio.md` §9.4: habilitar `analyticsdata` y
+   `searchconsole`, dar rol **Lector** a `calendar-sync@` en GA4 y **Restringido**
+   en Search Console, y cargar `GA4_PROPERTY_ID` —el **numérico**, no el `G-…`— y
+   `SEARCH_CONSOLE_SITE`.
+
+**Lo que el panel debería estar mostrando mientras tanto es «falta configurar»**,
+que es uno de los cuatro estados que D-272 le exigió distinguir —nunca corrió /
+falta la consola / falló / contestó bien y es cero—. Así que hay una pregunta real
+antes de tocar nada: **¿qué dice hoy la pestaña?** Si dice «nunca corrió» o «falta
+configurar», el panel está bien y lo que falta es el deploy y la consola. **Si no
+dice nada, o dice cero sin aclarar por qué, entonces sí hay un bug** — y es
+justamente el que D-272 vino a evitar, porque un tablero que muestra «0 visitas»
+cuando en realidad no está configurado es el peor de los cuatro estados.
+
+**Primer paso, y es de mirar y no de escribir:** abrir la pestaña y leer qué
+estado declara. Recién ahí se sabe si esto es un ítem de operación o de código.
+
+Ojo con el orden si se hace el deploy: la Function lanza once informes de GA4 y la
+cuota es de diez concurrentes, así que van en serie — está resuelto, pero explica
+por qué la primera corrida tarda.
+
+
 **`B-780` es P0 y bloquea el deploy.** Los otros son P1/P2/P3.
 
 ```md
