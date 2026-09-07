@@ -53,7 +53,6 @@ import {
   DESCRIPCION_COMERCIAL,
   DESPUES_DEL_MAIL,
   ENTRADA_COMERCIAL,
-  LETRA_CHICA_COMERCIAL,
   POR_QUE_ACA,
   QUE_CONTARNOS,
   TITULO_COMERCIAL,
@@ -114,24 +113,6 @@ import {
           ))
         }
       </div>
-    </section>
-
-    <section aria-labelledby="lo-que-no-tenemos" class={`mt-14 p-5 sm:p-6 ${claseHundido}`}>
-      <p class={claseRotulo}>La letra chica</p>
-      <h2 id="lo-que-no-tenemos" class="mt-2 headline-sm text-tinta">
-        Lo que todavía no te podemos decir
-      </h2>
-
-      <dl class="mt-4 max-w-[65ch] space-y-5">
-        {
-          LETRA_CHICA_COMERCIAL.map((bloque) => (
-            <div id={bloque.id}>
-              <dt class="body-md font-semibold text-tinta">{bloque.titulo}</dt>
-              <dd class="body-md mt-1 text-super">{bloque.texto}</dd>
-            </div>
-          ))
-        }
-      </dl>
     </section>
 
     <section aria-labelledby="como-sigue" class="mt-14 regla-gruesa-arriba pt-4">

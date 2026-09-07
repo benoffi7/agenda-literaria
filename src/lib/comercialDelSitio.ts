@@ -109,7 +109,7 @@ export const ENTRADA_COMERCIAL =
  * Los cuatro argumentos, y **los cuatro son verificables hoy**: cualquiera puede
  * abrir el sitio, mirar el `sitemap.xml` o ver una página de actividad y
  * comprobarlos. Ninguno afirma un tamaño de audiencia, porque todavía no hay con
- * qué (ver `LETRA_CHICA_COMERCIAL`).
+ * qué.
  *
  * ── Dos frases que hubo que corregir, y conviene que quede escrito ────────
  * Las encontró el `auditor-privacidad`, y las dos son la misma clase que el
@@ -157,55 +157,6 @@ export const POR_QUE_ACA: BloqueComercial[] = [
     texto:
       'Solo hay actividades literarias en Argentina, cargadas y revisadas una por una. No es un ' +
       'directorio automático que junta todo lo que encuentra, y por eso quien lo usa vuelve.',
-  },
-  {
-    id: 'sin-perseguir',
-    titulo: 'No perseguimos a nadie',
-    texto:
-      'Hoy no hay un solo anuncio en ninguna página, ni una red de anuncios, ni un píxel de ' +
-      'seguimiento. Nosotros no armamos perfiles de nadie ni vendemos datos: lo único que ' +
-      'medimos es cuánta gente entra, y solo si aceptás las cookies. Si se muestra algo tuyo, ' +
-      'lo vamos a cargar nosotros como cargamos una actividad.',
-  },
-];
-
-// ───────────────────────────────────────────────────────────────────────────
-// La letra chica: lo que todavía no se puede decir
-// ───────────────────────────────────────────────────────────────────────────
-
-/**
- * **La sección que hace honesta a la página**, y la que le da a esta salida su
- * único chequeo propio.
- *
- * Va escrita antes de que la pregunten, y en la página se ve como letra chica sin
- * dejar de leerse — el mismo lugar y el mismo criterio que «lo que el calendario
- * no hace» en `/suscribirse`. Quien vende publicidad y no tiene números tiene dos
- * caminos: inventarlos, o decir que no los tiene. El segundo es más incómodo por
- * un minuto y no se puede desmentir nunca.
- */
-export const LETRA_CHICA_COMERCIAL: BloqueComercial[] = [
-  {
-    id: 'sin-numeros',
-    titulo: 'Todavía no tenemos números de audiencia',
-    texto:
-      'Empezamos a medir las visitas en septiembre de 2026, así que no hay un histórico que ' +
-      'valga presentar. Lo decimos antes de que lo preguntes: cuando haya datos te los pasamos ' +
-      'como estén, sin redondear para arriba.',
-  },
-  {
-    id: 'sin-planes',
-    titulo: 'No hay planes ni una lista de precios',
-    texto:
-      'No vendemos paquetes cerrados ni hay un formato fijo todavía. Contanos qué espacio tenés ' +
-      'y lo vemos con vos, que para eso alcanza un mail y no un formulario de diez campos.',
-  },
-  {
-    id: 'sin-red',
-    titulo: 'No hay una red de anuncios en el medio',
-    texto:
-      'Nada de lo que se muestre acá va a venir de una red que pone sus propias cookies y decide ' +
-      'sola qué mostrar. Es lo que hace que el sitio sea liviano y que no haya nada raro entre ' +
-      'vos y quien lo lee: cambiar eso por unos pesos sería vender lo único que lo hace distinto.',
   },
 ];
 

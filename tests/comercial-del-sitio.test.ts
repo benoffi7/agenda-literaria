@@ -11,7 +11,6 @@ import {
   DESCRIPCION_COMERCIAL,
   DESPUES_DEL_MAIL,
   ENTRADA_COMERCIAL,
-  LETRA_CHICA_COMERCIAL,
   POR_QUE_ACA,
   QUE_CONTARNOS,
   TITULO_COMERCIAL,
@@ -68,7 +67,6 @@ const TEXTOS = (): string[] => [
   ENTRADA_COMERCIAL,
   ANTES_DE_ESCRIBIRNOS.texto,
   ...POR_QUE_ACA.flatMap((b) => [b.titulo, b.texto]),
-  ...LETRA_CHICA_COMERCIAL.flatMap((b) => [b.titulo, b.texto]),
   ...QUE_CONTARNOS,
   ACCION_COMERCIAL.etiqueta,
   ACCION_COMERCIAL.asunto,
@@ -144,11 +142,10 @@ describe('la sección comercial `/anunciar` — B-770', () => {
      * corta pasaría sin haber leído nada. Es el modo de falla de B-109 (un
      * barrido que se acorta en silencio) aplicado a un módulo de texto.
      */
-    expect(POR_QUE_ACA.length).toBeGreaterThanOrEqual(4);
-    expect(LETRA_CHICA_COMERCIAL.length).toBeGreaterThanOrEqual(3);
+    expect(POR_QUE_ACA.length).toBeGreaterThanOrEqual(3);
     expect(QUE_CONTARNOS.length).toBeGreaterThanOrEqual(3);
-    expect(TEXTOS().length).toBeGreaterThanOrEqual(20);
-    expect(TEXTOS().join(' ').length).toBeGreaterThan(1500);
+    expect(TEXTOS().length).toBeGreaterThanOrEqual(12);
+    expect(TEXTOS().join(' ').length).toBeGreaterThan(900);
   });
 
   it('no afirma ningún número de audiencia', () => {
@@ -317,22 +314,17 @@ describe('la sección comercial `/anunciar` — B-770', () => {
     expect(banner).toContain('Google Analytics');
   });
 
-  it('dice que todavía no hay números, en vez de callarlo', () => {
-    /*
-     * Que no mienta no alcanza: **el silencio también engaña** en una página
-     * comercial, porque quien la lee supone que si no dicen los números es porque
-     * son malos, o porque los van a mandar después. La página lo dice antes de
-     * que lo pregunten, y eso es lo que la hace defendible.
-     */
-    const letraChica = LETRA_CHICA_COMERCIAL.map((b) => `${b.titulo} ${b.texto}`)
-      .join(' ')
-      .toLowerCase();
-
-    expect(letraChica).toMatch(/número|numeros|números/);
-    expect(letraChica).toMatch(/medi[rmc]|medición/);
-    // Y la fecha de arranque de la medición, que es el dato que sí existe.
-    expect(letraChica).toContain('septiembre de 2026');
-  });
+  /*
+   * **El caso que había acá pedía lo contrario, y lo sacó el dueño el
+   * 2026-09-07.** Exigía que la página *declarara* que todavía no hay números de
+   * audiencia, con el argumento de que en una página comercial el silencio
+   * también engaña. El dueño sacó la letra chica entera: la sección quedó más
+   * corta y no habla de lo que no tiene.
+   *
+   * Lo que se conserva —y es lo que de verdad protege— es la otra mitad, que está
+   * más abajo: **que no insinúe un número que no existe**. Esa no depende de que
+   * la página confiese nada.
+   */
 
   it('no promete planes ni precios: eso lo negocia una persona por mail', () => {
     /*
@@ -351,11 +343,11 @@ describe('la sección comercial `/anunciar` — B-770', () => {
       }
     }
 
-    const letraChica = LETRA_CHICA_COMERCIAL.map((b) => `${b.titulo} ${b.texto}`)
-      .join(' ')
-      .toLowerCase();
-    expect(letraChica).toMatch(/plan/);
-    expect(letraChica).toMatch(/precio|paquete/);
+    /*
+     * Antes se exigía además que la página **dijera** que no hay lista de
+     * precios. Con la letra chica afuera (decisión del dueño, 2026-09-07) queda
+     * la dirección que importa: que no aparezca un precio en ninguna parte.
+     */
   });
 
   it('manda a `/contacto` a quien organiza actividades, que es gratis', () => {
@@ -441,13 +433,13 @@ describe('la sección comercial `/anunciar` — B-770', () => {
   it('cada bloque tiene ancla propia, estable y única', () => {
     // El ancla es la URL de una sección (`/anunciar#sin-numeros`): repetida, el
     // navegador salta al primero y el link lleva al lugar equivocado sin fallar.
-    const ids = [...POR_QUE_ACA, ...LETRA_CHICA_COMERCIAL].map((b) => b.id);
+    const ids = POR_QUE_ACA.map((b) => b.id);
     expect(new Set(ids).size, 'hay ids repetidos').toBe(ids.length);
     for (const id of ids) expect(id, `«${id}» no es un ancla válida`).toMatch(/^[a-z][a-z0-9-]*$/);
   });
 
   it('ningún bloque queda sin texto', () => {
-    for (const bloque of [...POR_QUE_ACA, ...LETRA_CHICA_COMERCIAL]) {
+    for (const bloque of POR_QUE_ACA) {
       expect(bloque.titulo.trim().length, `«${bloque.id}» sin título`).toBeGreaterThan(10);
       expect(bloque.texto.trim().length, `«${bloque.id}» sin texto`).toBeGreaterThan(80);
     }
