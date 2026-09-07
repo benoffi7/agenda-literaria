@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { analiticaHabilitada } from '@/lib/analytics';
 import {
@@ -320,5 +321,115 @@ describe('la taxonomía es chica y estable', () => {
       'funcion_usada',
     ];
     expect([...NOMBRES_EVENTOS].sort()).toEqual([...nombres].sort());
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// La tabla de `09-analitica.md` no puede quedarse corta — B-58
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('toda función medida está documentada — B-58', () => {
+  const doc = (): string => readFileSync(`${process.cwd()}/docs/09-analitica.md`, 'utf8');
+
+  /**
+   * Las filas de **la tabla de funciones**, y no las de todo el documento.
+   *
+   * Se busca su encabezado y se toman las filas contiguas que siguen. Es la pieza
+   * que el primer intento no tenía, y sin ella el chequeo **no verificaba lo que
+   * decía verificar**: lo levantó el `auditor-privacidad`. Buscar el nombre en
+   * `doc` entero deja pasar el borrado de una fila para las cinco funciones que
+   * el documento **también** nombra en la prosa (`estadisticas-abrir`,
+   * `imagen-subida`, `imagen-rechazada`, `seccion-abrir`, `seccion-cerrar`) — y el
+   * docblock afirmaba que esa mutación estaba probada, cuando lo único probado
+   * era el caso de una función que no aparece en ninguna otra parte.
+   */
+  const filasDeLaTabla = (): string[] => {
+    const lineas = doc().split('\n');
+    const encabezado = lineas.findIndex((l) => /^\| `funcion` \| Cuándo \|/.test(l));
+    expect(encabezado, 'no se encontró el encabezado de la tabla de funciones').toBeGreaterThan(-1);
+
+    const filas: string[] = [];
+    // +2: el encabezado y su separador `|---|`.
+    for (let i = encabezado + 2; i < lineas.length && lineas[i]!.startsWith('|'); i += 1) {
+      filas.push(lineas[i]!);
+    }
+    expect(filas.length, 'la tabla de funciones salió vacía o cortada').toBeGreaterThan(15);
+    return filas;
+  };
+
+  /**
+   * Los nombres de la **primera celda** de cada fila, que es la que nombra la
+   * función. Las otras tres son prosa y valores de `detalle`, que son slugs con
+   * guion también (`arancel-e-inscripcion`, `coord-link-corto`) y no son
+   * funciones.
+   */
+  const nombradasEnLaTabla = (): Set<string> =>
+    new Set(
+      filasDeLaTabla().flatMap((l) =>
+        [...(l.split('|')[1] ?? '').matchAll(/`([a-z][a-z0-9-]+)`/g)].map((m) => m[1]!),
+      ),
+    );
+
+  it('la tabla de `docs/09-analitica.md` nombra todas las funciones, y ninguna de más', () => {
+    /*
+     * **Encontrado al agregar `encuentro-cancelar`.** La tabla del §«funcion» de
+     * `docs/09-analitica.md` es lo único que dice **qué mide el panel y con qué
+     * `valor`**, y estaba corta en cuatro: `duplicar-desmarcar` (B-199),
+     * `encuentro-correr` (B-186), `actividad-cupo-completo` (B-97) y la nueva.
+     * O sea que tres se habían agregado al enum sin pasar por la tabla — no es un
+     * olvido de una vez, es un patrón.
+     *
+     * Por qué importa más que un índice desactualizado: esa tabla es la que se
+     * consulta para saber si un evento **puede llevar texto libre**. Una función
+     * que no está en la tabla es una que se mide sin que nadie haya escrito qué
+     * manda, y el §9 del diseño es justamente «enum cerrado, nada de texto libre».
+     *
+     * **La cantidad no se escribe acá.** Sale de `FUNCIONES`: un título que diga
+     * «las 24» miente el día que entre la 25 sin que nada falle.
+     *
+     * MUTACIÓN PROBADA, las dos direcciones: agregar un valor a `FUNCIONES` sin
+     * tocar la doc deja este caso en rojo nombrándolo, y **borrar la fila de
+     * `estadisticas-abrir`** —que el documento nombra dos veces en la prosa, o sea
+     * el caso que el primer intento dejaba pasar— también.
+     */
+    const enTabla = nombradasEnLaTabla();
+
+    const sinDocumentar = FUNCIONES.filter((f) => !enTabla.has(f));
+    expect(
+      sinDocumentar,
+      'estas funciones se miden y la tabla de `09-analitica.md` no las nombra: ' +
+        'nadie escribió qué mandan',
+    ).toEqual([]);
+
+    // La vuelta: la tabla no puede nombrar una función que ya no existe, porque
+    // eso hace creer que se mide algo que no.
+    const fantasmas = [...enTabla].filter((n) => !(FUNCIONES as readonly string[]).includes(n));
+    expect(fantasmas, 'la tabla nombra funciones que el enum no tiene').toEqual([]);
+  });
+
+  it('el `valor` de `encuentro-correr` viaja SIN signo: el clamp lo lleva a 0 (§9)', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad`, y contra una afirmación falsa que este
+     * repo estrenó el mismo día.** La tabla de `09-analitica.md` decía que este
+     * valor «lleva signo, porque correr un encuentro dos días para atrás y dos
+     * para adelante no son el mismo dato». El saneador de `entero` es
+     * `Math.min(Math.max(Math.round(n), 0), max)`, así que de los cuatro saltos
+     * que ofrece el editor los **dos hacia atrás llegan los dos como `0`**.
+     *
+     * Se fija el comportamiento **real** para que la doc no vuelva a inventarlo, y
+     * para que recuperar el signo (B-797) sea un cambio que ponga esto en rojo a
+     * propósito en vez de pasar sin que nadie note qué se arregló.
+     *
+     * Y se fija que el `0` **se emite**: el saneador saltea `undefined`, no el
+     * cero, así que «se corrió hacia atrás» sigue siendo distinguible de «no se
+     * corrió» —que no emite nada—. Es lo que salva la pregunta de B-186.
+     */
+    const valorDe = (v: number) =>
+      construirEvento('funcion_usada', { funcion: 'encuentro-correr', valor: v })?.params.valor;
+
+    expect([valorDe(-7), valorDe(-1), valorDe(1), valorDe(7)]).toEqual([0, 0, 1, 7]);
+    // El cero se emite, no se descarta.
+    expect(construirEvento('funcion_usada', { funcion: 'encuentro-correr', valor: -7 })?.params)
+      .toHaveProperty('valor');
   });
 });

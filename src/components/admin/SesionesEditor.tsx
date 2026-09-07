@@ -435,7 +435,17 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: 
               <input
                 type="checkbox"
                 checked={s.cancelada}
-                onChange={(e) => editar({ cancelada: e.target.checked })}
+                onChange={(e) => {
+                  /*
+                   * B-58 — la cancelación no se medía en ninguna parte, y es el
+                   * dato que falta para decidir B-162: si el rótulo de un
+                   * encuentro cancelado de un ciclo publicado hay que
+                   * actualizarlo en el calendario depende de cuántas veces pasa.
+                   * `1` al prender, `0` al apagar, igual que el cupo completo.
+                   */
+                  medirFuncion('encuentro-cancelar', undefined, e.target.checked ? 1 : 0);
+                  editar({ cancelada: e.target.checked });
+                }}
               />
               Cancelado — se borra del calendario público (§7.3)
             </label>

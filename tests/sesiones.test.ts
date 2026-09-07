@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { FUNCIONES } from '@/lib/analytics-eventos';
 import {
   aDatetimeLocal,
   deDatetimeLocal,
@@ -242,5 +244,47 @@ describe('helpers de lista', () => {
     const ordenada = ordenarPorInicio(lista);
     expect(ordenada[0]!.inicio).toBe('2026-09-03T19:00');
     expect(lista[0]!.inicio).toBe('2026-09-10T19:00');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// La cancelación de un encuentro se mide — B-58
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('tildar «Cancelado» se mide, con vocabulario cerrado (§9) — B-58', () => {
+  const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
+  const fuente = (rel: string): string => readFileSync(raiz(rel), 'utf8').replace(/\s+/g, '');
+
+  it('la función está en el enum y el editor la emite', () => {
+    /*
+     * **Estaba sin medir a propósito**, y el motivo caducó: el `onChange` es
+     * inline en el JSX y medirlo pedía reacomodar el markup de un componente que
+     * otros frentes estaban tocando.
+     *
+     * No es un evento por completitud. Es el dato que falta para decidir
+     * **B-162**, trabado desde agosto: si el rótulo de un encuentro cancelado de
+     * un ciclo publicado hay que actualizarlo en el calendario depende de cuántas
+     * veces pasa, y hoy nadie lo sabe.
+     *
+     * MUTACIÓN PROBADA: sacar el `medirFuncion` del `onChange` deja este caso en
+     * rojo; sacar la entrada del enum lo deja en rojo **y** no compila, que es la
+     * red que ya existía.
+     */
+    expect(FUNCIONES).toContain('encuentro-cancelar');
+    expect(fuente('src/components/admin/SesionesEditor.tsx')).toContain(
+      "medirFuncion('encuentro-cancelar'",
+    );
+  });
+
+  it('y se emite con 1 al prender y 0 al apagar, no solo al prender', () => {
+    /*
+     * La mitad que se olvida: medir solo el «prender» hace que el número cuente
+     * cancelaciones **y** arrepentimientos como si fueran lo mismo, y el dato que
+     * B-162 necesita es cuántos encuentros quedan cancelados de verdad. Es el
+     * mismo par que usa `actividad-cupo-completo`.
+     */
+    expect(fuente('src/components/admin/SesionesEditor.tsx')).toContain(
+      "medirFuncion('encuentro-cancelar',undefined,e.target.checked?1:0)",
+    );
   });
 });

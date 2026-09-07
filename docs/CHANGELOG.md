@@ -2,6 +2,32 @@
 
 ## Sin publicar
 
+- **Cancelar un encuentro ahora se mide** — **B-58**, la mitad que faltaba. Estaba
+  afuera porque medirlo pedía reacomodar el markup de un componente que otros
+  frentes estaban tocando, y eso caducó.
+
+  No entró por completitud: **es el dato que falta para decidir B-162**, trabado
+  desde agosto. Si el rótulo de un encuentro cancelado de un ciclo publicado hay
+  que actualizarlo en el calendario depende de cuántas veces pasa, y hoy nadie lo
+  sabe. Se emite con 1 al prender y 0 al apagar — medir solo el prendido contaría
+  cancelaciones y arrepentimientos como lo mismo.
+
+  Y al agregarla apareció un drift de tres: la tabla de `docs/09-analitica.md`
+  —lo único que dice **qué mide el panel y con qué `valor`**— no nombraba
+  `duplicar-desmarcar`, `encuentro-correr` ni `actividad-cupo-completo`. Tres
+  funciones agregadas al enum sin pasar por la tabla, o sea un patrón y no un
+  olvido. Importa porque esa tabla es la que se consulta para saber si un evento
+  **puede llevar texto libre**. Completada, con red en las dos direcciones.
+
+  Sigue afuera, y sigue estando bien: `url_publica` ya se mide en `guardado_ok`, y
+  el embudo fino del formulario sigue costando 30+ inputs para lo que
+  `formulario_abandonado.faltantes` da grueso.
+
+- **B-310 ya estaba hecho** y quedó abierto: `/404` existe, se construye, lleva
+  `noIndex` —la única página del sitio público que lo lleva— y está en la lista de
+  excepciones del sitemap con su motivo, que era la parte que el ítem pedía no
+  saltear.
+
 - **El barrido de versiones huérfanas tiene script en seco** — **B-630**.
   `scripts/limpiar-versiones-huerfanas.mjs`, espejo del de imágenes y reusando la
   **misma** `decidirPurga` de la Function. Hasta ahora la única forma de verificar

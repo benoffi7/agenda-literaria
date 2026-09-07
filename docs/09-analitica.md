@@ -255,7 +255,7 @@ evento por función.
 |---|---|
 | `funcion` | ver la tabla de abajo |
 | `detalle` | según la función: un campo de taxonomía, una sección, o un modo de fallo |
-| `valor` | 0–1000, un número con sentido según la función |
+| `valor` | **0–1000**, un número con sentido según la función. El saneador redondea y recorta a ese rango, así que **un negativo llega como `0`** — ver la nota abajo de la tabla |
 
 | `funcion` | Cuándo | `detalle` | `valor` |
 |---|---|---|---|
@@ -273,11 +273,33 @@ evento por función.
 | `taxonomia-sugerencia` | se elige una del autocompletado | el campo | — |
 | `seccion-abrir` / `seccion-cerrar` | se despliega o colapsa un acordeón | la sección | — |
 | `actividad-duplicar` | "Duplicar" en el menú ⋯ del listado | — | encuentros del original |
+| `duplicar-desmarcar` | se confirma el modal de duplicar | — | casillas destildadas (B-199) |
+| `encuentro-correr` | se corre un encuentro con los botones | — | días, **sin signo**: los saltos hacia atrás llegan como `0` (B-186, B-797) |
+| `encuentro-cancelar` | se tilda o destilda "Cancelado" en una fila | — | `1` al prender, `0` al apagar (B-58) |
+| `actividad-cupo-completo` | se prende o apaga "se llenó" desde el menú ⋯ | — | `1` al prender, `0` al apagar (B-97) |
 | `coordenadas-pegar` | se pega un link de Google Maps en la sede | — | — |
 | `coordenadas-fallo` | ese link no se pudo resolver | el modo de fallo | — |
 | `imagen-subida` | una imagen propia terminó de subir a Storage | — | — |
 | `imagen-rechazada` | la subida no salió | por qué | — |
 | `estadisticas-abrir` | se abre «Estadísticas» en el listado | — | actividades del catálogo |
+
+> ⚠️ **El `valor` no lleva signo, y eso le come un dato a `encuentro-correr`.** Lo
+> encontró el `auditor-privacidad` el 2026-09-07, contra una afirmación falsa que
+> este mismo documento había estrenado unas horas antes. El saneador de `entero`
+> es `Math.min(Math.max(Math.round(n), 0), max)`, así que de los cuatro saltos que
+> ofrece el editor —`−1 sem`, `−1 día`, `+1 día`, `+1 sem`— **los dos hacia atrás
+> llegan los dos como `valor: 0`**: no se distinguen entre sí. Medido:
+> `-7 → 0`, `-1 → 0`, `1 → 1`, `7 → 7`.
+>
+> Lo que **no** se pierde es la pregunta que B-186 vino a contestar —«¿se usan los
+> botones o se sigue peleando con el almanaque?»—: un salto hacia atrás igual
+> emite el evento, y `valor: 0` no se confunde con «sin valor» (el saneador
+> saltea `undefined`, no el cero). Lo que se pierde es la dirección.
+>
+> Recuperarla es un `min` en el sanitizador y queda como **B-797**. La fila de
+> arriba dice la verdad mientras eso no se haga, que es lo que este aviso
+> protege: una fila de esta tabla es lo único que dice qué manda cada evento, y
+> una fila falsa vale menos que ninguna.
 
 Valores de `detalle`:
 

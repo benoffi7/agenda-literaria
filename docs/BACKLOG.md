@@ -2803,6 +2803,65 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-797 · P3 — el `valor` de la analítica del panel no lleva signo, y `encuentro-correr` lo necesita
+
+**Lo encontró el `auditor-privacidad` el 2026-09-07**, contra una afirmación falsa
+que la doc había estrenado unas horas antes: la tabla de `09-analitica.md` decía
+que el `valor` de `encuentro-correr` «lleva signo, porque correr un encuentro dos
+días para atrás y dos para adelante no son el mismo dato». No lo lleva.
+
+El saneador de `entero` es `Math.min(Math.max(Math.round(n), 0), max)`, así que de
+los cuatro saltos que ofrece el editor —`−1 sem`, `−1 día`, `+1 día`, `+1 sem`—
+**los dos hacia atrás llegan los dos como `valor: 0`**. Medido: `-7 → 0`,
+`-1 → 0`, `1 → 1`, `7 → 7`.
+
+**Qué se pierde y qué no.** La pregunta que B-186 vino a contestar —«¿se usan los
+botones o se sigue peleando con el almanaque?»— sobrevive: un salto hacia atrás
+igual emite el evento, y el `0` **se emite** (el saneador saltea `undefined`, no el
+cero), así que «corrió hacia atrás» sigue distinguiéndose de «no corrió». Lo que se
+pierde es la **dirección**, y con ella la pregunta más fina: si los botones se usan
+para adelantar o para reprogramar hacia atrás, que son dos usos distintos del
+mismo control.
+
+**El arreglo es un `min` en el sanitizador `entero`** (`{ tipo: 'entero', min:
+-366, max: 1000 }` para ese caso) y tocar el `Math.max`. Es chico y tiene una
+decisión adentro: el `min` sería **por sanitizador**, o sea disponible para
+cualquier `entero`, y hoy ningún otro lo necesita —los demás cuentan cosas, y
+contar no da negativo—. Hay que decidir si se agrega el parámetro para un solo
+caso o si `encuentro-correr` pasa a mandar la magnitud en `valor` y la dirección
+en `detalle` (que es un enum y ya viaja vacío en esta función).
+
+Mientras no se haga, **el comportamiento real está fijado** en
+`tests/analytics-privacidad.test.ts` y escrito en la tabla, así que la doc no
+puede volver a inventarlo. Recuperar el signo va a poner ese caso en rojo a
+propósito.
+
+
+### B-796 · P3 — el hook de los auditores bloquea el comando entero, y se pierde lo que venía adelante
+
+**Encontrado usándolo el 2026-09-07.** El `PreToolUse` de
+`scripts/hook-auditores.mjs` rechaza **la invocación de Bash completa**, no el
+`git commit` solo. Un comando encadenado —editar la doc, `git add`, `git commit`—
+se rechaza entero: la edición **no corre**, y el único rastro es el mensaje del
+hook, que habla del commit y no de lo que se perdió.
+
+Pasó de verdad cerrando B-58: las entradas del BACKLOG y del CHANGELOG se
+perdieron en silencio y se descubrieron dos comandos más tarde, por un `git
+status` que no las mostraba. Y la segunda vez fue peor: un `replace` de Python
+sobre un texto que ya no existía **no falló** —no tenía `assert`— así que el
+arreglo también se perdió en silencio.
+
+**El chequeo es correcto y no hay que aflojarlo.** El commit no tenía que pasar.
+Lo que se puede mejorar es lo que el hook **dice**: hoy explica por qué frenó el
+commit; podría además avisar que si el comando traía algo adelante, eso tampoco
+corrió. Dos líneas en el mensaje.
+
+La otra mitad no es del hook: **encadenar una edición con un commit es apostar a
+que el commit pase**. Con un gate que puede frenar el commit por diseño, la
+edición va en un comando aparte. Eso es criterio y no se puede automatizar, pero
+sí escribir — y queda escrito acá.
+
+
 ### B-795 · ✅ hecho (2026-09-07) — todos los «?» del formulario parecían ir al mismo lugar
 
 **Reportado por el dueño el 2026-09-07:** «Lo del ? en cada seccion esta bueno
@@ -2849,6 +2908,22 @@ capítulos **distintos**. Si dos «?» volvieran al mismo lugar, eso es el rojo.
 
 
 ### B-794 · ✅ hecho (2026-09-07) — aplicar los hallazgos del `auditor-privacidad` invalida su propio sello
+
+> **2026-09-07, un rato después — el hook tiene un segundo filo que no es el
+> sello, y este sí queda abierto (B-796).** El `PreToolUse` bloquea **el comando
+> de Bash entero**, no solo el `git commit`. Un `python3 … && git add … && git
+> commit …` en una sola invocación se rechaza completo: la edición de la doc que
+> venía adelante **tampoco corre**, y no queda rastro de que no corrió más que el
+> mensaje del hook, que habla del commit.
+>
+> Pasó de verdad al cerrar B-58: las entradas del BACKLOG y del CHANGELOG se
+> perdieron en silencio y se descubrieron dos comandos después, por un
+> `git status` que no las mostraba. El chequeo del hook es correcto —el commit no
+> tenía que pasar— pero el efecto colateral se paga en trabajo perdido.
+>
+> No es del hook arreglarlo del todo: **es del lado de quien escribe el comando**
+> —encadenar una edición con un commit es apostar a que el commit pase—. Pero el
+> hook puede ayudar diciéndolo en el mensaje. Queda como **B-796**.
 
 **Y el diagnóstico del ítem era más grueso que el problema.** La huella **ya** era
 solo de los archivos disparadores, no del diff entero: los cambios en `tests/` y
@@ -9612,7 +9687,49 @@ bien. Si el número de abandonos parece bajo, esta es la primera sospecha.
 Arreglarlo bien pide `sendBeacon` contra el Measurement Protocol, que es bastante
 más máquina de la que amerita.
 
-### B-58 · Dos interacciones sin medir, por no tocar el JSX
+### B-58 · 🟡 la mitad hecha (2026-09-07) — Dos interacciones sin medir, por no tocar el JSX
+
+**Hecha la que faltaba de verdad: `encuentro-cancelar`.** El motivo por el que
+estaba afuera —«medirlas exigía reacomodar el markup de componentes que otros
+cambios están tocando»— caducó: no hay frentes en paralelo.
+
+Y no entró por completitud. **Es el dato que falta para decidir B-162**, trabado
+desde agosto: si el rótulo de un encuentro cancelado de un ciclo publicado hay que
+actualizarlo en el calendario depende de **cuántas veces pasa**, y hoy nadie lo
+sabe. Un ciclo que se cancela una vez al año no justifica reescribir N eventos de
+Calendar; uno que se cancela cada dos semanas sí. La cancelación es además el único
+de los estados de una sesión que **borra un evento del calendario público** (§7.3),
+o sea el que más se nota afuera.
+
+Se emite con **1 al prender y 0 al apagar**, como `actividad-cupo-completo`: medir
+solo el prendido contaría cancelaciones y arrepentimientos como lo mismo, y el
+número que B-162 necesita es cuántos encuentros quedan cancelados de verdad. Los
+dos casos están en `tests/sesiones.test.ts` con su mutación.
+
+**Y al agregarla apareció un drift de tres:** la tabla del §«funcion» de
+`docs/09-analitica.md` —lo único que dice **qué mide el panel y con qué `valor`**—
+no nombraba `duplicar-desmarcar` (B-199), `encuentro-correr` (B-186) ni
+`actividad-cupo-completo` (B-97). O sea que tres funciones se habían agregado al
+enum sin pasar por la tabla: no es un olvido de una vez, es un patrón. Importa más
+que un índice viejo, porque **esa tabla es la que se consulta para saber si un
+evento puede llevar texto libre**: una función que no está es una que se mide sin
+que nadie haya escrito qué manda.
+
+Completada, y con red en las dos direcciones (`tests/analytics-privacidad.test.ts`):
+la tabla no puede quedarse corta, y tampoco nombrar una función que el enum no
+tiene —eso haría creer que se mide algo que no—. La lista sale del enum. De paso
+quedó escrita la excepción del `valor`: `encuentro-correr` lleva **signo**, porque
+correr un encuentro dos días para atrás y dos para adelante no son el mismo dato.
+
+**Lo que sigue afuera, y sigue estando bien:** `url_publica` se mide igual en
+`guardado_ok`, que es el dato que importa, así que un evento propio no agrega nada.
+Y el **embudo fino** del formulario sigue costando 30+ inputs o un `onFocus` a
+nivel del `<form>` para lo que `formulario_abandonado.faltantes` ya da grueso.
+
+El planteo original queda abajo.
+
+---
+
 
 Marcar un encuentro como **cancelado** y tildar **"publicar el link de la
 reunión"** están en `onChange` inline dentro del JSX, y medirlas exigía
@@ -10505,7 +10622,22 @@ medido en esa corrida: **2.175 tests en 93 archivos**. Lo de `13-agentes.md` sig
 abierto: son ocho filas y hay que **elegir** cuál texto queda en cada una, que es
 trabajo de criterio y no de merge.
 
-### B-310 · La página `/404` está diseñada y no existe · P3
+### B-310 · ✅ hecho — La página `/404` está diseñada y no existe
+
+**Ya estaba resuelta cuando se revisó el 2026-09-07**, y con las dos cosas que este
+ítem pedía cuidar: `src/pages/404.astro` existe y se construye (`dist/404.html`),
+lleva `noIndex` —su docblock dice que es **la única página del sitio público que lo
+lleva**— y está en la **lista de excepciones** de `tests/sitemap.test.ts` con su
+motivo escrito, que era la parte que el ítem pedía no saltear.
+
+También están las tres cosas del §4.5: el buscador, los hubs —la misma tira de la
+home, ya recortada, no una lista propia— y el enlace al archivo. El texto vive en
+`src/lib/noEncontrado.ts`.
+
+El planteo original queda abajo.
+
+---
+
 
 **Salió del barrido de B-234.** El §4.5 y el §5.1 de
 [`12-sitio-publico.md`](12-sitio-publico.md) diseñan un `/404` con buscador, los

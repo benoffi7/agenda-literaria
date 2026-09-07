@@ -170,6 +170,24 @@ export const FUNCIONES = [
    * saber si se usa, y el ítem quedaría cerrado por fe.
    */
   'encuentro-correr',
+  /**
+   * B-58 — tildar «Cancelado» en una fila del editor de encuentros. El `valor`
+   * es 1 al prender y 0 al apagar, como en `actividad-cupo-completo`.
+   *
+   * **Estaba sin medir a propósito y el motivo caducó**: el `onChange` es inline
+   * en el JSX y medirlo pedía reacomodar el markup de un componente que otros
+   * frentes estaban tocando. Ya no hay frentes en paralelo.
+   *
+   * **Y no es un evento por completitud.** Es el dato que falta para decidir
+   * **B-162**, que está trabado desde agosto: si el rótulo de un encuentro
+   * cancelado de un ciclo publicado tiene que actualizarse en el calendario
+   * depende de cuántas veces pasa, y hoy nadie lo sabe. Un ciclo que se cancela
+   * una vez al año no justifica reescribir N eventos de Calendar; uno que se
+   * cancela cada dos semanas sí. La cancelación es además el único de los cinco
+   * estados de una sesión que **borra un evento del calendario público** (§7.3),
+   * o sea el que más se nota afuera.
+   */
+  'encuentro-cancelar',
   // B-97 — prender o apagar «se llenó» desde el menú del listado. La pregunta
   // que contesta es si la función se usa: si nadie la toca, el cartel de cupo
   // completo no existe en la práctica y el sitio sigue mintiendo el cupo.
