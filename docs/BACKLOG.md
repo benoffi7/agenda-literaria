@@ -2803,7 +2803,41 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-794 · P2 — aplicar los hallazgos del `auditor-privacidad` invalida su propio sello
+### B-794 · ✅ hecho (2026-09-07) — aplicar los hallazgos del `auditor-privacidad` invalida su propio sello
+
+**Y el diagnóstico del ítem era más grueso que el problema.** La huella **ya** era
+solo de los archivos disparadores, no del diff entero: los cambios en `tests/` y
+`docs/` nunca la movían. Lo que la movía era más fino y más molesto: **el hallazgo
+del auditor aplicado como docblock en el archivo auditado**, que es la forma en que
+la mitad de sus hallazgos aterrizan («escribí al lado de la decisión por qué esto
+no sale»).
+
+**Arreglo: la huella se calcula sobre el código sin comentarios.** Cualquier cambio
+real —una línea, un campo, una interpolación— la mueve igual que antes; un docblock
+no. Y es **seguro por construcción**: lo que el hook cuida es que el código no
+filtre a una salida pública, y el texto de un comentario no llega a ninguna.
+
+De las tres salidas que el ítem planteaba, ésta es la primera («sellar por archivo
+y no por diff entero») llevada un escalón más adentro: por **contenido de código**
+de cada archivo. La tercera —aceptar el sello por N horas— queda descartada por
+floja, con el motivo escrito: auditar temprano y cambiar mucho después pasaría.
+
+Salió con dos cosas más:
+
+- **La mitad pura se separó a `scripts/huella-de-auditoria.mjs`**, porque el hook
+  hace `process.exit` al importarse y no se podía testear. Ahora tiene
+  `tests/huella-de-auditoria.test.ts` con las dos direcciones: qué **no** mueve la
+  huella (docblock, reindentado, `//` y `<!-- -->` y `{/* */}`) y qué **sí** (un
+  campo nuevo en la proyección, un disparador más, borrar una salida).
+- **Un bug encontrado por ese test**: `{/* … */}` hay que sacarlo **como unidad**.
+  Sacando solo el `/* … */` de adentro quedan las llaves sueltas, y dos llaves son
+  un cambio de código — o sea que el arreglo no habría valido para `Buscador.tsx`,
+  que está en la lista de disparadores y comenta así.
+
+El planteo original queda abajo.
+
+---
+
 
 **Encontrado usando el hook de B-124/D-350 en B-791**, y es la clase de B-180: «un
 gate que falla por su propia plomería enseña a saltearlo».

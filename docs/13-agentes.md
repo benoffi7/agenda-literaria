@@ -440,6 +440,9 @@ distinto. El corte es el de `relevar-infra.sh` / `comparar-infra.sh`:
   (`tests/auditores-que-corresponden.test.ts`).
 - **`scripts/hook-auditores.mjs` es la plomería**: git, el sello y el código de
   salida del hook.
+- **`scripts/huella-de-auditoria.mjs` es la huella**, separada porque es la
+  decisión y no la plomería: **qué cuenta como «el cambio ya auditado»**. Se
+  testea sin git (`tests/huella-de-auditoria.test.ts`).
 
 **La lista de archivos que disparan al auditor no está escrita en ninguno de los
 dos.** Se **deriva del `description` de cada agente**, que es el lugar donde ya
@@ -478,8 +481,20 @@ de B-180, y es la razón de cada una de estas cuatro reglas:
    literalmente rojo por razones que no son de quien lo disparó.
 3. **El aviso del `Stop` es una sola vez por contenido.** Un hook que repite el
    mismo aviso en cada turno se aprende a ignorar en tres turnos. La huella es el
-   contenido de los archivos de salida que el cambio toca, así que si esos
-   archivos cambian de nuevo, el aviso vuelve; si no, no.
+   **código** de los archivos de salida que el cambio toca —sin sus comentarios,
+   B-794— así que si esos archivos cambian de nuevo, el aviso vuelve; si no, no.
+
+   **Los comentarios no cuentan, y ese es el arreglo de B-794.** El orden natural
+   del trabajo es: hacer el cambio, correr el auditor, y **aplicar sus
+   hallazgos** — que es para lo que se lo corrió. Y sus hallazgos aterrizan una y
+   otra vez como un docblock **en el archivo auditado**. Con la huella sobre el
+   archivo entero, aplicar la corrección invalidaba el sello y el commit se
+   bloqueaba otra vez: el único camino en que el sello servía era «auditar y no
+   cambiar nada», o sea el caso en que el auditor no encontró nada. En cuanto
+   encontraba algo —el caso útil— había que gastar la auditoría de nuevo (unos
+   176 mil tokens, medidos) o saltearla. Es esta misma regla 3 fallando por su
+   propia plomería. Y es seguro por construcción: **un comentario no puede
+   publicar un campo**.
 4. **Siempre dice por qué**: qué archivo lo disparó, qué correr, y cómo saltearlo
    a propósito — `SALTEAR_AUDITORES=1 git commit …`, igual que
    `SALTEAR_PRE_PUSH=1 git push`. Saltear tiene que ser una decisión escrita y no

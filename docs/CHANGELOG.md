@@ -2,6 +2,24 @@
 
 ## Sin publicar
 
+- **Aplicar los hallazgos del `auditor-privacidad` ya no invalida su propio
+  sello** — **B-794**. El hook frena el `git commit` cuando el diff toca una
+  salida pública y el auditor no corrió, y lo sabe por una huella. Esa huella era
+  el contenido de los archivos disparadores, así que **escribir el docblock que el
+  auditor pidió** —la forma en que aterriza la mitad de sus hallazgos— la
+  invalidaba y el commit se bloqueaba de nuevo: el único camino en que el sello
+  servía era «auditar y no cambiar nada», o sea el caso en que el auditor no
+  encontró nada. Es la clase de B-180, el gate fallando por su propia plomería, y
+  se pagó dos veces en esta misma tanda.
+
+  Ahora la huella es el **código sin comentarios**. Cualquier cambio real la mueve
+  igual que antes; un comentario no. Y es seguro por construcción: **un comentario
+  no puede publicar un campo**. La mitad pura se separó a
+  `scripts/huella-de-auditoria.mjs` para poder testearla —el hook hace
+  `process.exit` al importarse— y su test encontró de paso que `{/* … */}` hay que
+  sacarlo **como unidad**: sacando solo el interior quedan las llaves sueltas, o
+  sea que el arreglo no habría valido para `Buscador.tsx`.
+
 - **El sello del tríptico dice el día y ya no el minuto** — **B-792**. Decía
   `Actualizado: vie 3 sep, 14:30`, y con el debounce de cinco minutos del rebuild
   eso le decía a cualquiera que abriera la home, con cinco minutos de precisión,

@@ -25,9 +25,10 @@
  *
  *   { "privacidad": { "auditado": "<sha>", "avisado": "<sha>" } }
  *
- * La huella es el contenido de los archivos de salida pública que el cambio
- * toca (`git hash-object` de cada uno). Si el contenido cambia, la huella
- * cambia y el aviso vuelve. Si no cambió, no hay nada nuevo que auditar.
+ * La huella es el **código** de los archivos de salida pública que el cambio
+ * toca, sin sus comentarios: si el código cambia, la huella cambia y el aviso
+ * vuelve. Vive en `huella-de-auditoria.mjs` —la mitad pura, con tests— y ahí
+ * está escrito por qué los comentarios no cuentan (B-794).
  *
  * ── El modo de falla que este archivo NO puede tener (B-180) ──────
  * «Un gate que falla por su propia plomería enseña a saltearlo.» Así que:
@@ -47,9 +48,9 @@
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { auditoresQueCorresponden, leerFichas } from './auditores-que-corresponden.mjs';
+import { huellaDeAuditoria } from './huella-de-auditoria.mjs';
 
 /** El único auditor que corre solo. La decisión de B-124 en una constante. */
 const AUTOMATICO = 'privacidad';
@@ -74,24 +75,6 @@ const rutasSinCommitear = () =>
       const flecha = resto.indexOf(' -> ');
       return (flecha === -1 ? resto : resto.slice(flecha + 4)).replace(/^"|"$/g, '');
     });
-
-/**
- * La huella del cambio: el contenido de cada archivo disparador.
- *
- * `git hash-object` sirve igual para un archivo modificado y para uno nuevo
- * sin rastrear, que es justo lo que `git diff` no cubre. Un archivo borrado
- * entra como literal.
- */
-const huella = (raiz, rutas) => {
-  const partes = rutas.map((ruta) => {
-    try {
-      return `${git('hash-object', '--', join(raiz, ruta)).trim()} ${ruta}`;
-    } catch {
-      return `borrado ${ruta}`;
-    }
-  });
-  return createHash('sha256').update(partes.sort().join('\n')).digest('hex').slice(0, 16);
-};
 
 const rutaDelSello = () => join(git('rev-parse', '--absolute-git-dir').trim(), 'auditores.json');
 
@@ -129,7 +112,7 @@ const estado = () => {
   const decision = auditoresQueCorresponden(rutasSinCommitear(), leerFichas(new URL(`file://${raiz}/`)));
   const { disparadores } = decision[AUTOMATICO];
   if (disparadores.length === 0) return null;
-  return { disparadores, fp: huella(raiz, disparadores) };
+  return { disparadores, fp: huellaDeAuditoria(raiz, disparadores) };
 };
 
 const aviso = (disparadores, comoSaltear) =>
