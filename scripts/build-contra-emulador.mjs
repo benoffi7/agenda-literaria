@@ -993,11 +993,45 @@ try {
           );
           salida = 1;
         }
-        if (/<a\b/.test(seccion)) {
+        /*
+         * **Este aserto decía lo contrario hasta B-720, y lo cambió el dueño.**
+         * Prohibía cualquier enlace en la tira, con dos motivos: que la página
+         * tenía un presupuesto de 0 KB de JavaScript, y que un enlace al JPEG
+         * suelto agrega una parada de tabulación que no lleva a ninguna parte.
+         *
+         * Los dos se reencuadran, no se descartan. La página tiene ahora **una**
+         * island (`VisorDeGaleria`, `client:idle`) porque el dueño pidió recorrer
+         * las fotos en grande. Y el enlace al archivo **es el fallback deliberado
+         * de esa island**: con JavaScript apagado, abrir la imagen es lo mejor
+         * que se puede ofrecer, y es la condición que se le puso al frente —el
+         * HTML del build no puede depender de la island—. Con JavaScript, el
+         * visor intercepta el click y no se navega a ninguna parte.
+         *
+         * Así que lo que se verifica es **el patrón completo**: que cada imagen
+         * secundaria sea un enlace a su propio archivo (el fallback) y que la
+         * island esté en la página (el enhancement). Falta cualquiera de los dos
+         * y queda una de las dos mitades malas: un enlace crudo al binario, o una
+         * tira muerta para quien navega con teclado.
+         */
+        const enlaces = [...seccion.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+        const alArchivo = enlaces.filter((href) =>
+          /\.(jpe?g|png|webp|avif)(\?|$)/i.test(href),
+        );
+        if (enlaces.length !== alArchivo.length) {
           fallo(
-            'la sección de las secundarias tiene un enlace.\n' +
-              '  La página tiene un presupuesto de 0 KB de JavaScript y la tira no agrega\n' +
-              '  ninguna parada de tabulación: sin lightbox y sin enlaces al JPEG.',
+            'la tira de secundarias tiene un enlace que no apunta a su imagen:\n' +
+              enlaces
+                .filter((h) => !alArchivo.includes(h))
+                .map((h) => `    ${h}`)
+                .join('\n'),
+          );
+          salida = 1;
+        }
+        if (alArchivo.length > 0 && !/VisorDeGaleria|visor-de-galeria/i.test(htmlGaleria)) {
+          fallo(
+            'la tira enlaza a los archivos y el visor NO está en la página.\n' +
+              '  Sin la island, cada enlace lleva al JPEG y deja a quien navega con teclado\n' +
+              '  afuera del sitio: el fallback quedó sin su enhancement (B-720).',
           );
           salida = 1;
         }

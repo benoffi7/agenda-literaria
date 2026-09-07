@@ -31,6 +31,35 @@ export default defineConfig({
   // canonical, en el Open Graph ni en el sitemap, y era el bloqueo de la cadena.
   site: SITIO,
   output: 'static',
+  /*
+   * B-214 — se declara explícito porque Astro 7 le cambió el default.
+   *
+   * Hasta la 6 el default era `true`: el espacio entre dos elementos en línea se
+   * colapsa a **uno**. La 7 lo pasó a `'jsx'`, que lo **borra** — la regla de
+   * JSX, donde el salto de línea entre dos etiquetas no es texto.
+   *
+   * Para este sitio eso no es cosmético, y se midió antes de decidir:
+   * buildeando con los dos valores y comparando los nodos de texto del HTML
+   * salieron **diez** lugares donde `'jsx'` se come un espacio que se ve. El
+   * caso que decide es el pie, en **todas** las páginas
+   * (`src/components/sitio/PieDePagina.astro`):
+   *
+   *     <span aria-hidden="true">@</span>{INSTAGRAM}
+   *     <span class="sr-only">(Instagram, se abre en una pestaña nueva)</span>
+   *
+   * El salto de línea antes del `sr-only` es lo único que separa el handle de
+   * la aclaración, así que con `'jsx'` el nombre accesible del enlace pasa de
+   * «@ librosdelatiahildita (Instagram, …)» a
+   * «@librosdelatiahildita(Instagram, …)»: un solo bloque para un lector de
+   * pantalla. El comentario que está arriba de esas dos líneas muestra que ese
+   * espacio se puso a propósito y para eso.
+   *
+   * Así que se conserva el comportamiento de la 6 en vez de salir a sembrar
+   * `{" "}` por los componentes: el upgrade no es el momento de reescribir el
+   * marcado del sitio, y esa reescritura es un pedido aparte —con su propia
+   * revisión de las diez— si algún día se quiere el default nuevo.
+   */
+  compressHTML: true,
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],

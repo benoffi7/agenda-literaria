@@ -345,8 +345,12 @@ describe('el formato de versión que produce el build es el que la analítica ac
    * pone rojo y lo promueve a `it` — de ahí en adelante, un bump de versión sin
    * `npm install` falla en el commit de quien lo hizo, que es el único momento en
    * que el arreglo es de una línea (B-180: el rojo es sobre el cambio propio).
+   *
+   * **Ese día llegó el 2026-09-07**, y salió exactamente como estaba escrito: el
+   * upgrade a Astro 7 corrió `npm install`, el lock quedó sincronizado y este
+   * caso se puso en rojo por cumplirse. Promovido a `it`.
    */
-  it.fails('B-325: el package-lock declara la misma versión que el package.json', () => {
+  it('B-325: el package-lock declara la misma versión que el package.json', () => {
     const leer = (archivo: string) =>
       JSON.parse(readFileSync(fileURLToPath(new URL(`../${archivo}`, import.meta.url)), 'utf8'));
 

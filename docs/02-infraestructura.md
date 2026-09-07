@@ -465,10 +465,16 @@ proyecto no usa. No molestan y desactivarlas no aporta.
 
 | | |
 |---|---|
-| Node | 22 |
+| Node | **22.12+** — lo exige Astro 7 (`engines`), no cualquier 22 |
 | **JDK 21+** | los emuladores lo exigen |
 | `firebase-tools` | **lo trae `npm ci`** (devDependency) — ya no hay que instalarlo a mano |
 | `gcloud` | autenticado, con ADC |
+
+**El piso de Node se apretó con B-214, y decir «22» ya no alcanza.** Astro 7
+declara `engines.node: >=22.12.0` —igual que Astro 6, así que el piso subió en
+el primer salto y no en el segundo—, o sea que una máquina en 22.0–22.11 deja de
+poder buildear. Los cuatro workflows no hubo que tocarlos: `node-version: '22'`
+en `setup-node` resuelve a la **última** 22.x, muy por encima del piso.
 
 **Ojo con Java.** En la máquina de desarrollo el JDK por defecto es el 17 que
 trae Android Studio, y los emuladores fallan con
