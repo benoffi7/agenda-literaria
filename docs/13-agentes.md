@@ -366,11 +366,16 @@ segunda copia que se va a quedar vieja.
 Cierra B-115: hasta ahora nada invocaba a los auditores juntos, así que existían
 pero solo corrían si alguien se acordaba de los tres.
 
-**Desde B-124 este skill es el paso de los otros dos, no de los tres.** El
-`auditor-privacidad` ya corrió solo si el diff tocaba una salida pública, así que
-acá se lee su sello en vez de gastarlo de nuevo — pero si el diff **no** tocó
-ninguna salida, tampoco corrió, y entonces sigue siendo trabajo del skill
-decidir si hace falta. Los detalles están en
+**Desde el 2026-09-07 este skill es el paso de los tres, y no es opcional.** El
+dueño contestó B-124: **siempre antes de pushear, los tres**. Lo que cambió no es
+solo el alcance del skill —es que el gate mecánico lo **exige** en su séptimo
+paso, así que si alguno no corrió sobre el contenido que se va a publicar, el
+push no sale.
+
+Lo que se conserva es no gastar dos veces: la huella del sello es del
+**contenido** de los archivos que cada auditor mira, así que si el hook ya
+despertó al de privacidad sobre este mismo árbol, acá no se vuelve a pagar. Lo
+que se fue es la posibilidad de **omitirlo**. Los detalles están en
 [Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta).
 
 ### 🔁 `automatizar`
@@ -394,10 +399,36 @@ arreglo, es el detector.
 
 ## Cuándo corren, y cuánto cuesta
 
-**Decidido el 2026-09-03 (B-124, D-350), y es el intermedio que el propio ítem
-proponía:** el `auditor-privacidad` corre **solo** cuando el diff toca una
-salida pública; el `auditor-trampas` y el `auditor-documentacion` siguen yendo
-**antes del PR**, con el skill `antes-de-pushear`.
+**Contestado por el dueño el 2026-09-07: los tres, siempre antes de pushear.**
+
+El 2026-09-03 se había decidido el intermedio que el propio ítem proponía —el de
+privacidad solo cuando el diff toca una salida, los otros dos antes del PR— y esa
+mitad sigue en pie: **el disparo automático no se sacó**, es el que hace que el de
+privacidad ya esté corrido cuando llega el push.
+
+Lo que se agregó es que **la falta se cobra**. El séptimo paso del gate exige que
+los tres hayan corrido sobre este contenido, y sin eso el push no sale. Y no es
+una nota en un documento a propósito: la opción «a pedido» estaba escrita en el
+ítem con el argumento «cero costo, **se olvida**», así que sostener «siempre» con
+una nota habría sido elegir la que se olvida y llamarla de otra manera.
+
+**Cómo sabe el gate que corrieron.** El sello se extendió a los tres y guarda dos
+huellas por auditor, con **dos alcances distintos**, porque no son la misma
+cuenta:
+
+| Huella | Alcance | Quién la lee |
+|---|---|---|
+| `auditado` | lo que **no está commiteado** | el hook que frena el `git commit` |
+| `empuje` | lo que cambió contra `origin/main`, **más** lo no commiteado | el séptimo paso del gate |
+
+Compartir una sola habría dejado el gate pasando siempre: en el momento del push
+lo no commiteado está **vacío**, así que la primera no encuentra nada que
+verificar. Y la del push incluye lo no commiteado además del diff con el remoto
+porque el push ocurre con el árbol como está: una edición sin commitear no se
+publica, pero **la huella que el auditor leyó ya no es la de este árbol**.
+
+Es del **contenido** y no del reloj, así que auditar → commitear → pushear sin
+tocar nada pasa, y auditar → editar una salida → pushear, no.
 
 | Auditor | Cuándo | Quién lo dispara | Modelo | Costo de una corrida |
 |---|---|---|---|---|

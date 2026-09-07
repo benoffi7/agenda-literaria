@@ -5236,7 +5236,24 @@ Cerrado ahora con `tests/historial-actividad.render.test.tsx` (DOM real,
 mutación verificada: sacar el `if (!confirm(...)) return` pone el control
 negativo en rojo).
 
-### B-30 · Las respuestas del dueño no vuelven al panel
+### B-30 · ❌ descartado (2026-09-07) — Las respuestas del dueño no vuelven al panel
+
+**Decisión del dueño: no. «Los reportes los hago yo y miro GitHub.»**
+
+Es la respuesta que desarma el ítem entero: el problema que describía era «quien
+reportó ve el número de issue y el link, no la respuesta, y si no tiene cuenta de
+GitHub a mano se entera por otro canal» — y con un solo reportero, que además es
+el dueño de la cuenta, no hay nadie del otro lado esperando.
+
+**El día que cargue alguien más, esto vuelve**, y con más razón que antes: un
+reporte de otra persona que termina en un issue que no puede leer es un canal de
+ida. Va junto con B-179 y la maquinaria de aprobación que B-131 dejó dormida —
+las tres esperan el mismo hecho.
+
+El planteo original queda abajo.
+
+---
+
 
 El reporte sale del panel y termina en un issue público, pero la conversación
 sigue **solo en GitHub**: quien reportó ve el número de issue y el link, no la
@@ -10202,7 +10219,22 @@ es trabajo pendiente sino un costo aceptado en D-63, así que el ítem cierra ac
   controles y devuelve el foco a lo que estaba enfocado antes de abrirse. Ver
   `src/lib/foco.ts`.
 
-### B-100 · Prellenar sede, organizador e inscripción desde lo ya cargado
+### B-100 · ❌ descartado (2026-09-07) — Prellenar sede, organizador e inscripción desde lo ya cargado
+
+**Decisión del dueño: no. «Con Duplicar alcanza.»**
+
+Era la condición que el propio ítem tenía escrita —competía con «Duplicar»
+(B-11), que ya resuelve el caso repetitivo real de este circuito: el ciclo del año
+pasado— y el dueño la resolvió del lado de no duplicar la funcionalidad.
+
+Queda el planteo abajo por si el caso cambia: si alguna vez se carga mucho de
+espacios nuevos en vez de repetir los mismos, el argumento de «Duplicar» deja de
+cubrirlo.
+
+El planteo original queda abajo.
+
+---
+
 
 Extender el patrón del §4 para que elegir "Casa Brandon" complete nombre,
 dirección, barrio, ciudad, indicaciones y coordenadas; y lo mismo con el
@@ -10777,7 +10809,35 @@ no pinta el párrafo. Sin frase propia a propósito: el bloque de fecha ya dice
 repetir. Con la mutación puesta (sacar la rama de `paso`) los otros seis casos del
 `describe` quedan en verde y solo falla el nuevo.
 
-### B-291 · Las cinco imágenes de Open Graph por tipo · P2
+### B-291 · ❌ descartado (2026-09-07) — Las cinco imágenes de Open Graph por tipo
+
+**Decisión del dueño: dejarlo. Los links sin flyer siguen sin preview.**
+
+Se decide **con el bloqueante medido enfrente**, que es lo que cambió respecto del
+2026-09-03: «generarlas en el build» era la salida elegida, y rasterizar con lo
+que ya está en el árbol **no usa nuestras tipografías** —`Fraunces` da bytes
+idénticos a `sans-serif`, y un `@font-face` con el `.woff2` como data URI
+también—. Saldrían en la Helvetica de turno, que es lo contrario de
+«tipográficas, con el sistema visual del sitio».
+
+Las dos salidas que quedaban costaban lo mismo cada una en su moneda: dos
+dependencias nuevas en un repo que se cuidó de no tenerlas, o instalar las fuentes
+para fontconfig en el CI **y** en cada máquina que buildee. Con eso enfrente, el
+dueño eligió no pagar ninguna.
+
+**Qué queda como está:** la página de detalle sigue mandando el flyer como
+`og:image` —que es la mejor imagen posible— y las actividades **sin flyer** más la
+home, la cartelera, `/pasadas` y las páginas de mes siguen compartiendo un link
+sin preview. No se emite un `og:image` roto: `Base.astro` no emite la etiqueta si
+no hay imagen y `twitter:card` baja a `summary` sola.
+
+La medición queda escrita abajo para que la próxima vez que se evalúe no haya que
+volver a hacerla.
+
+El planteo original queda abajo.
+
+---
+
 
 **Decidido el 2026-09-03 por el dueño: generarlas en el build.** Tipográficas,
 con el sistema visual del sitio, en vez de cinco archivos que haya que rehacer el
@@ -11493,7 +11553,54 @@ Arreglo: una nota en D-145 que apunte a B-259, en el estilo de los avisos apilad
 de `12-sitio-publico.md`. Cuidado con no reescribir el original: el valor de esas
 entradas es que se lean contra lo que decían.
 
-### B-124 · Decisión del dueño: ¿cuándo corren los auditores? · P3
+### B-124 · ✅ contestado (2026-09-07) — ¿cuándo corren los auditores?
+
+**«Siempre antes de pushear, los tres.»**
+
+Y no quedó como una nota, porque la opción que el dueño descartó estaba escrita
+acá abajo con el argumento «cero costo, **se olvida**»: sostener «siempre» con una
+línea en un documento habría sido elegir la que se olvida y llamarla de otra
+manera. Así que **el gate lo exige**, en un séptimo paso.
+
+**Qué hace ese paso, y qué no.** No invoca a nadie —un hook de git no puede
+llamar a un modelo, que es la razón por la que el skill `antes-de-pushear`
+existe—: verifica que los tres **ya corrieron sobre el contenido que se va a
+publicar**, informa cuáles faltan y corta. Lanzarlos sigue siendo del skill.
+
+**Cómo sabe que corrieron.** El sello se extendió a los tres —antes sellaba solo
+el de privacidad, porque era el único con un gate que lo leyera— y guarda **dos
+huellas por auditor, con dos alcances distintos**:
+
+| Huella | Alcance | Quién la lee |
+|---|---|---|
+| `auditado` | lo que **no está commiteado** | el hook que frena el `git commit` |
+| `empuje` | lo que cambió contra `origin/main`, **más** lo no commiteado | el séptimo paso del gate |
+
+**No son la misma cuenta, y compartirlas habría dejado el gate pasando
+siempre**: en el momento del push lo no commiteado está vacío, así que la primera
+no encuentra nada que verificar. Y la del push incluye lo no commiteado además del
+diff con el remoto porque el push ocurre con el árbol como está: una edición sin
+commitear no se publica, pero la huella que el auditor leyó ya no es la de este
+árbol.
+
+Es del **contenido** y no del reloj: auditar → commitear → pushear sin tocar nada
+pasa; auditar → editar una salida → pushear, no.
+
+**Lo que se conserva de la decisión del 2026-09-03 (D-350):** el disparo
+automático del de privacidad no se sacó. Es el que hace que, cuando llega el
+push, ya esté corrido — así que «los tres siempre» no significa pagar tres
+auditorías por push, significa que ninguna falta.
+
+**El escape sigue siendo explícito:** `SALTEAR_AUDITORES=1 git push`.
+
+Y un detalle que se cobró solo al escribirlo: el `description` del skill quedó con
+un `: ` adentro de un escalar sin comillas y **rompió el frontmatter** — la trampa
+11 del §13. Lo agarró el test de B-139 en la misma corrida.
+
+El planteo original queda abajo.
+
+---
+
 
 Tres opciones, y la diferencia es plata y fricción:
 

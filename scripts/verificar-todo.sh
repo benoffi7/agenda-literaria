@@ -26,7 +26,7 @@ cd "$(git rev-parse --show-toplevel)"
 PASO=0
 paso() {
   PASO=$((PASO + 1))
-  printf '\n\033[1m[%d/6] %s\033[0m\n' "$PASO" "$1"
+  printf '\n\033[1m[%d/7] %s\033[0m\n' "$PASO" "$1"
 }
 
 fallo() {
@@ -157,7 +157,21 @@ fi
 paso 'Fuga de credenciales en dist/ (§5.4, trampa 4)'
 ./scripts/verificar-bundle.sh dist || fallo 'el bundle tiene rastros del Admin SDK'
 
-printf '\n\033[32m✓ los seis pasos mecánicos pasaron.\033[0m\n'
-printf 'Lo que esto NO vio: privacidad de un campo nuevo, trampas del §13 en\n'
-printf 'código nuevo, y si la doc acompaña al cambio. Eso es criterio, y va por\n'
-printf 'el skill `antes-de-pushear` (lanza los tres auditores en paralelo).\n'
+# ── 6 · Que los tres auditores hayan corrido sobre ESTO ───────────
+# B-124, decisión del dueño (2026-09-07): «siempre antes de pushear, los tres».
+#
+# Este paso NO invoca a nadie —un hook de git no puede llamar a un modelo— y no
+# es un sexto chequeo mecánico: es el que verifica que los otros tres, los que
+# necesitan criterio, ya pasaron por el contenido que se está por publicar.
+#
+# «Por el contenido» y no «alguna vez»: la huella es del código de los archivos
+# que cada auditor mira, así que auditar → commitear → pushear sin tocar nada
+# pasa, y auditar → editar una salida pública → pushear, no.
+paso 'Los tres auditores corrieron sobre este contenido (B-124)'
+node scripts/hook-auditores.mjs push \
+  || fallo 'faltan auditores: corré el skill `antes-de-pushear` (o SALTEAR_AUDITORES=1)'
+
+printf '\n\033[32m✓ los siete pasos pasaron.\033[0m\n'
+printf 'Los seis primeros son mecánicos; el séptimo verifica que los tres\n'
+printf 'auditores —privacidad, trampas y documentación— hayan corrido sobre este\n'
+printf 'mismo contenido, que es lo que el dueño decidió en B-124.\n'

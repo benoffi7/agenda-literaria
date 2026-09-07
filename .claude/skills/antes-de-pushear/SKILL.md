@@ -1,6 +1,6 @@
 ---
 name: antes-de-pushear
-description: Lanza los auditores del repo en paralelo (trampas y documentación siempre; privacidad solo si el hook no lo corrió ya), junta los hallazgos y decide si el push sale o no. Invocalo antes de cualquier push o PR, cuando el usuario diga "pusheá", "subilo", "abrí el PR", "/antes-de-pushear" o pregunte si está listo para pushear. Complementa al hook de git, que corre los pasos mecánicos y no puede invocar un modelo, y a los hooks de Claude Code, que disparan el auditor de privacidad cuando el diff toca una salida pública.
+description: Lanza los TRES auditores del repo en paralelo (privacidad, trampas y documentación — decisión del dueño en B-124, siempre antes de pushear), junta los hallazgos y decide si el push sale o no. Invocalo antes de cualquier push o PR, cuando el usuario diga "pusheá", "subilo", "abrí el PR", "/antes-de-pushear" o pregunte si está listo para pushear. Complementa al hook de git, que corre los pasos mecánicos y no puede invocar un modelo, y a los hooks de Claude Code, que disparan el auditor de privacidad cuando el diff toca una salida pública.
 ---
 
 # Antes de pushear
@@ -19,12 +19,21 @@ vivir en el hook. Y un modelo no debería reimplementar lo que un script ya
 decide, así que este skill **no** re-verifica lo mecánico: lo corre y lee el
 resultado.
 
-**Desde B-124 este skill dejó de ser el único disparador.** El
-`auditor-privacidad` corre en `opus` y es el caro, así que lo despierta un hook
-en cuanto el diff toca uno de los archivos de las doce salidas — y si ya corrió
-sobre este contenido, acá **no se vuelve a gastar**. Lo que no cambió es que si
-el diff **no** tocó ninguna salida, el hook no lo corrió, y entonces la decisión
-de invocarlo sigue siendo de acá (§2).
+**Desde B-124 este skill dejó de ser el único disparador**, y desde el
+2026-09-07 tampoco es opcional. El dueño decidió **«siempre antes de pushear,
+los tres»**, así que los tres corren — y el gate mecánico **lo exige** en su
+séptimo paso: si alguno no corrió sobre el contenido que se va a publicar, el
+push no sale.
+
+Lo que sí se conserva es no gastar dos veces: la huella del sello es del
+**contenido** de los archivos que cada auditor mira, así que si el hook ya
+despertó al de privacidad sobre este mismo árbol, acá no se vuelve a pagar. Lo
+que cambió es que **ya no se puede omitir**: antes «privacidad solo si el hook no
+lo corrió» dejaba la decisión acá; ahora la falta la cobra el gate.
+
+**Y el gate no puede correrlos**, que es la razón por la que este skill sigue
+existiendo: un hook de git no invoca un modelo. El gate verifica que corrieron;
+lanzarlos es de acá.
 
 ## 1 · El gate mecánico
 

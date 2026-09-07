@@ -57,6 +57,19 @@ import { huellaDeAuditoria } from './huella-de-auditoria.mjs';
 const AUTOMATICO = 'privacidad';
 const AGENTE = 'auditor-privacidad';
 
+/**
+ * De `subagent_type` a la clave del sello — B-124.
+ *
+ * Los tres sellan desde que el dueño decidió «siempre antes de pushear, los
+ * tres» (2026-09-07). Antes sellaba solo el de privacidad, porque era el único
+ * que un hook disparaba y el único con un gate que lo leyera.
+ */
+const CLAVE_DEL_AGENTE = {
+  'auditor-privacidad': 'privacidad',
+  'auditor-trampas': 'trampas',
+  'auditor-documentacion': 'documentacion',
+};
+
 const git = (...args) =>
   execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 
@@ -76,6 +89,59 @@ const rutasSinCommitear = () =>
       const flecha = resto.indexOf(' -> ');
       return (flecha === -1 ? resto : resto.slice(flecha + 4)).replace(/^"|"$/g, '');
     });
+
+/**
+ * Las rutas que **el push va a publicar**: lo que cambió contra `origin/main`,
+ * más lo que todavía no está commiteado.
+ *
+ * ── Por qué el push necesita su propio alcance ────────────────────────────
+ * El sello del `commit` se calcula sobre lo **no commiteado**, que es lo
+ * correcto para avisar antes de commitear. Pero en el `git push` eso está
+ * **vacío** —ya se commiteó todo— así que el mismo cálculo no encontraría nada
+ * que verificar y el gate pasaría siempre.
+ *
+ * Se incluye lo no commiteado además del diff con el remoto porque un push
+ * ocurre con el árbol como está: si alguien editó una salida pública y no la
+ * commiteó, esa edición no se publica, pero **el audit sobre el árbol de al lado
+ * ya no vale** — es la misma huella que el auditor leyó.
+ *
+ * Si no hay `origin/main` —un clon sin remoto, un fetch que no corrió— devuelve
+ * solo lo no commiteado. Falla hacia lo de siempre y no hacia romperse.
+ */
+const rutasDelPush = () => {
+  const sinCommitear = rutasSinCommitear();
+  try {
+    const contraElRemoto = git('diff', '--name-only', 'origin/main...HEAD')
+      .split('\n')
+      .filter(Boolean);
+    return [...new Set([...contraElRemoto, ...sinCommitear])];
+  } catch {
+    return sinCommitear;
+  }
+};
+
+/**
+ * Para cada auditor: qué le corresponde auditar del push y con qué huella.
+ *
+ * `documentacion` corre SIEMPRE y **no tiene disparadores por archivo** (su
+ * disparador es el cambio, no el archivo), así que su huella se calcula sobre
+ * **todas** las rutas del push. Es lo correcto para lo que verifica —si la doc
+ * acompaña al cambio— y significa que cualquier archivo que se toque después de
+ * auditar invalida su sello, que también es correcto.
+ */
+const estadoDelPush = () => {
+  const raiz = git('rev-parse', '--show-toplevel').trim();
+  const rutas = rutasDelPush();
+  const decision = auditoresQueCorresponden(rutas, leerFichas(new URL(`file://${raiz}/`)));
+
+  const salida = {};
+  for (const [auditor, { corresponde, disparadores }] of Object.entries(decision)) {
+    if (!corresponde) continue;
+    const propias = disparadores.length > 0 ? disparadores : rutas;
+    salida[auditor] = { rutas: propias, fp: huellaDeAuditoria(raiz, propias) };
+  }
+  return salida;
+};
 
 const rutaDelSello = () => join(git('rev-parse', '--absolute-git-dir').trim(), 'auditores.json');
 
@@ -210,15 +276,83 @@ const modos = {
    */
   marcar() {
     const datos = entrada();
-    if (datos.tool_input?.subagent_type !== AGENTE) return 0;
-
-    const hoy = estado();
-    if (!hoy) return 0;
+    const clave = CLAVE_DEL_AGENTE[datos.tool_input?.subagent_type];
+    if (!clave) return 0;
 
     const sello = leerSello();
-    sello[AUTOMATICO] = { auditado: hoy.fp, avisado: hoy.fp };
+    const previo = sello[clave] ?? {};
+
+    /*
+     * **Dos huellas y dos consumidores** — B-124. El `commit` mira `auditado`
+     * (alcance: lo no commiteado) y el `push` mira `empuje` (alcance: lo que
+     * cambió contra `origin/main`, más lo no commiteado). No son la misma cuenta
+     * y no se pueden compartir: en el momento del push, la primera está vacía.
+     *
+     * Se escribe la que se pueda: si `origin/main` no está, `estadoDelPush` no
+     * devuelve nada para este auditor y `empuje` queda como estaba.
+     */
+    const hoy = estado();
+    if (clave === AUTOMATICO && hoy) {
+      previo.auditado = hoy.fp;
+      previo.avisado = hoy.fp;
+    }
+    const delPush = estadoDelPush()[clave];
+    if (delPush) previo.empuje = delPush.fp;
+
+    sello[clave] = previo;
     escribirSello(sello);
     return 0;
+  },
+
+  /**
+   * Modo `push`, para el gate de antes de pushear — B-124.
+   *
+   * **El dueño decidió «siempre antes de pushear, los tres»** (2026-09-07), y una
+   * decisión así no se puede sostener con una nota en un documento: se olvida, que
+   * es literalmente el argumento con el que la opción «a pedido» estaba escrita en
+   * el ítem. Así que el gate la exige.
+   *
+   * Exige que **cada auditor que corresponda** haya corrido sobre **este mismo
+   * contenido**. «Este mismo contenido» es la huella, no un timestamp: auditar,
+   * commitear y pushear sin tocar nada pasa; auditar y después editar una salida
+   * pública, no.
+   *
+   * **No invoca a nadie** —un script no puede— así que lo que hace es informar y
+   * cortar. La corrida la hace el skill `antes-de-pushear`, que es quien puede.
+   *
+   * Sale con 1 si falta alguno, 0 si están los tres. Y con 0 si algo se rompe:
+   * es la regla 1 de este archivo, un gate que falla por su propia plomería
+   * enseña a saltearlo (B-180).
+   */
+  push() {
+    if (process.env.SALTEAR_AUDITORES === '1') {
+      process.stderr.write('⚠ Auditores salteados por SALTEAR_AUDITORES=1.\n');
+      return 0;
+    }
+
+    const pendientes = Object.entries(estadoDelPush())
+      .filter(([auditor, { fp }]) => (leerSello()[auditor] ?? {}).empuje !== fp)
+      .map(([auditor, { rutas }]) => ({ auditor, cuantas: rutas.length }));
+
+    if (pendientes.length === 0) return 0;
+
+    process.stderr.write(
+      [
+        `⚠ ${pendientes.length} auditor(es) no corrieron sobre lo que se va a pushear:`,
+        ...pendientes.map((p) => `    auditor-${p.auditor} (${p.cuantas} archivo(s) en su alcance)`),
+        '',
+        '  El dueño decidió que los tres corren siempre antes de pushear (B-124).',
+        '  Correlos con el skill `antes-de-pushear`, que los lanza en paralelo y',
+        '  junta los hallazgos — un script no puede invocar un modelo.',
+        '',
+        '  Si ya corrieron y esto igual aparece, es que el contenido cambió después:',
+        '  la huella es del contenido y no del reloj, así que hay que volver a pasar',
+        '  el que corresponda sobre el árbol de ahora.',
+        '',
+        '  Para saltearlo a propósito: SALTEAR_AUDITORES=1 git push',
+      ].join('\n') + '\n',
+    );
+    return 1;
   },
 };
 

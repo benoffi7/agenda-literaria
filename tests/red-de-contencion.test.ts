@@ -141,7 +141,31 @@ describe('el disparo automático del auditor está cableado — B-124', () => {
     // comparación de abajo pasaría contra una lista vacía.
     expect(implementados.length).toBeGreaterThanOrEqual(3);
 
-    const invocados = comandos().map((c) => c.command.trim().split(/\s+/).pop()!);
+    /*
+     * **Hay dos invocadores, no uno** — B-124. Los hooks de Claude Code
+     * (`.claude/settings.json`) llaman a `parada`, `commit` y `marcar`; y el
+     * **gate de antes de pushear** (`scripts/verificar-todo.sh`) llama a `push`,
+     * el modo que verifica que los tres auditores hayan corrido sobre el
+     * contenido que se va a publicar.
+     *
+     * Los dos entran a la cuenta, porque lo que este caso cuida es que no haya
+     * un modo **muerto** ni uno **inventado**, y un modo que solo invoca el gate
+     * no es ninguna de las dos cosas. Buscar solo en `settings.json` habría
+     * pedido exceptuar `push`, que es tapar el chequeo en vez de enseñarle.
+     */
+    const desdeElGate = [
+      ...readFileSync(fileURLToPath(new URL('scripts/verificar-todo.sh', raiz)), 'utf8').matchAll(
+        /hook-auditores\.mjs\s+(\w+)/g,
+      ),
+    ].map((m) => m[1]!);
+    const invocados = [
+      ...comandos().map((c) => c.command.trim().split(/\s+/).pop()!),
+      ...desdeElGate,
+    ];
+    // Control positivo: el gate tiene que estar invocando algo, o la mitad de
+    // arriba de esta cuenta no verifica nada.
+    expect(desdeElGate.length, 'el gate dejó de invocar al hook').toBeGreaterThan(0);
+
     expect(invocados.filter((m) => !implementados.includes(m)), 'modos inexistentes').toEqual([]);
     // Y al revés: un modo implementado que nadie invoca es código muerto que
     // parece cobertura.

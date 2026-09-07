@@ -2,6 +2,37 @@
 
 ## Sin publicar
 
+- **Los tres auditores corren siempre antes de pushear, y el gate lo exige** —
+  **B-124**, contestado por el dueño.
+
+  No quedó como una nota, porque la opción que descartó estaba escrita con el
+  argumento «cero costo, **se olvida**»: sostener «siempre» con una línea en un
+  documento habría sido elegir la que se olvida y llamarla de otra manera. El gate
+  tiene un **séptimo paso** que verifica que los tres ya corrieron sobre el
+  contenido que se va a publicar, informa cuáles faltan y corta. No los invoca —un
+  hook de git no puede llamar a un modelo—: eso sigue siendo del skill
+  `antes-de-pushear`.
+
+  El sello se extendió a los tres y guarda **dos huellas con dos alcances**,
+  porque no son la misma cuenta: la del `commit` mira lo no commiteado y la del
+  `push` mira lo que cambió contra `origin/main` más lo no commiteado. En el
+  momento del push la primera está **vacía**, así que compartirla habría dejado el
+  gate pasando siempre. Es del contenido y no del reloj: auditar, commitear y
+  pushear sin tocar nada pasa; auditar y después editar una salida, no.
+
+  Y lo que se conserva: el disparo automático del de privacidad sigue ahí, así que
+  «los tres siempre» no significa pagar tres auditorías por push — significa que
+  ninguna falta.
+
+- **Tres ítems cerrados por decisión del dueño**, con el motivo escrito: **B-100**
+  (prellenar sede y organizador — «con Duplicar alcanza», que era la condición que
+  el propio ítem tenía), **B-30** (espejar los comentarios de los issues — con un
+  solo reportero no hay nadie del otro lado esperando; vuelve el día que cargue
+  alguien más) y **B-291** (las imágenes de Open Graph — se decide con el
+  bloqueante medido enfrente: rasterizar con lo que hay no usa nuestras
+  tipografías, y las dos salidas que quedaban costaban dos dependencias nuevas o
+  tocar el CI y cada máquina que buildee).
+
 - **El texto alternativo de la portada dejó de ser obligatorio para publicar** —
   pedido del dueño, y revierte lo que B-301 / D-440 había decidido cuatro días
   antes. El campo **sigue existiendo**, se guarda y se edita; lo que se sacó es
