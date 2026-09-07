@@ -264,6 +264,10 @@ export function ListaActividades({
         labels={labels}
         total={actividades.length}
         mostradas={filtradas.length}
+        // B-274 — sin filtrar y con el mismo reloj que el listado: es lo que
+        // necesita el eje de etiquetas para contar cada faceta.
+        actividades={actividades}
+        ahora={ahora}
       />
 
       {cargando && <p className="text-sm text-tinta/50">Cargando…</p>}

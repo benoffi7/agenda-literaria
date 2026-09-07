@@ -2,6 +2,57 @@
 
 ## Sin publicar
 
+- **El panel filtra por etiquetas y por destacadas** — **B-274**, **D-480**,
+  decisión del dueño («los dos»). Son los dos descartes que le quedaban a D-74, y
+  acá el motivo no es que se decidiera pagarlos: los dos argumentos **habían
+  caducado**. A `tags` le faltaba la curación de la lista —«cuando exista B-06 se
+  reconsidera», y B-05/B-06 existen— y a `destacado` le faltaba alguien que
+  consumiera el booleano —«el sitio público todavía no existe», y hoy la fila del
+  listado pinta «Destacada»—. El tercer descarte, quién la cargó, **no se revisa**:
+  es un uid.
+
+  «Destacada» va con tres valores y el tercero es el que faltaba: «Solo no
+  destacadas» contesta «¿qué publiqué que todavía no destaqué?». Los dos valores
+  **parten el universo**, documentos viejos incluidos: se compara con
+  `!a.destacado`, así que un `undefined` cuenta como «no destacada» en vez de
+  volverse invisible para los dos filtros.
+
+  Las etiquetas no son un desplegable —son multivaluadas— sino **chips de
+  alternancia** con el número de cada una, y las tres reglas de conteo son las del
+  sitio: el número se cuenta con los demás filtros puestos y este eje no (si no,
+  elegir la primera deja las otras en cero y no hay cómo sumar la segunda), un chip
+  en cero no se muestra salvo que esté elegido (si desapareciera no habría cómo
+  sacarlo), y el orden es por cantidad y después alfabético.
+
+  **En el botón «Filtros» cuentan como uno.** Ese número dice cuánto se está
+  recortando el listado, y adentro del eje las etiquetas se unen con «o»: la segunda
+  **ensancha**. Contarlas de a una diría que hay más recorte cuando hay menos.
+
+  **El camino corto que el ítem proponía no se tomó.** Traer el `EjeDeFiltro` del
+  sitio metía su sistema visual —`label-caps`, `bg-acento`, radio 0— adentro del
+  panel, que tiene el suyo, y ponía a los tests visuales del sitio a medir un
+  componente usado sobre otras superficies. Se comparte lo que no puede divergir: la
+  aritmética del foco (`lib/foco.ts`), la forma del chip y el motivo de cada regla.
+
+  **Y apareció un ciclo de imports**, que lo cobró `salud-del-codigo`:
+  `listadoPublico` ya importaba `ETIQUETA_MODALIDAD` del panel, así que pedirle el
+  tipo `Chip` cerraba el círculo. No se declaró dos veces —es la misma cosa mirada
+  por quien carga y por quien busca— sino que se mudó a `lib/chip.ts`.
+
+  **El `auditor-trampas` encontró una que se habría notado semanas después:** los
+  chips resolvían la etiqueta con `desSlug` a secas, con un comentario que decía que
+  la curada «no había llegado al componente» — y sí había llegado. `desSlug` no
+  restaura acentos, así que una etiqueta cargada como «Poesía» (slug `poesia`) se
+  leía «Poesia» en el panel y «Poesía» en el formulario, en la tarjeta y en el
+  sitio. Peor: **el test de render lo había fijado como esperado**. Hoy hay un caso
+  por cada camino.
+
+  De paso, dos cosas que salieron de escribir los tests: el `<fieldset>` publicaba
+  **dos grupos con el mismo nombre** (el `<legend>` ya es el nombre accesible, así
+  que el `role="group"` de adentro sobraba), y un aserto propio estaba mal pensado
+  —«ninguna etiqueta contiene su valor guardado» falla contra «Solo **no**
+  destacadas», porque en castellano se dice así—.
+
 - **«Agenda LEH» pasa a la tipografía del título** — pedido del dueño: «al lado del
   logo tiene que ser en la tipografía del título "Talleres…"». O sea Archivo
   Narrow, la del `h1` de la home, y no Fraunces, con la que estaba compuesta.

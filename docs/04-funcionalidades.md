@@ -92,8 +92,9 @@ el primero o en el último ítem, se recorre con las flechas dando la vuelta, co
 "⋯"** — sin eso había que re-tabular el listado entero para volver a la fila.
 
 **Ordenar y filtrar** viven detrás del botón «Filtros», con el número de puestos al
-lado. Son **seis**: estado, tipo, **arancel**, modalidad, barrio y fechas, cruzados
-entre sí y con el buscador. El de arancel lo agregó **B-272** revirtiendo **D-74**,
+lado. Son **siete desplegables más el eje de etiquetas**: estado, tipo, **arancel**,
+modalidad, barrio, fechas y **destacada**, más los **chips de etiquetas** debajo de
+la grilla — todos cruzados entre sí y con el buscador. El de arancel lo agregó **B-272** revirtiendo **D-74**,
 que lo había descartado a propósito: la pregunta que contesta no es «¿cuál era?»
 —esa la cubre el buscador— sino «¿qué tengo publicado que sea gratis?», que es de
 repaso y que el buscador no puede contestar porque el arancel no está en el
@@ -104,6 +105,23 @@ Los desplegables de tipo, arancel y barrio ofrecen **solo los valores que alguna
 actividad usa**, así que ninguno devuelve cero, y el de arancel pone **primero lo
 que no se paga** — con el mismo comparador que los chips del sitio (D-151), para que
 «Gratis» no quede arriba en una pantalla y abajo en la otra.
+
+**Los dos últimos los agregó B-274** (D-480), revirtiendo los otros dos descartes de
+D-74. Acá el motivo es distinto del de B-272: los dos argumentos de D-74 **habían
+caducado** —a `tags` le faltaba la curación de la lista, que B-05 y B-06 ya
+trajeron; a `destacado` le faltaba alguien que consumiera el booleano, y hoy la fila
+del listado pinta «Destacada»—. Un descarte que sobrevive a su razón es peor que una
+decisión equivocada, porque nadie lo vuelve a mirar.
+
+- **Destacada** tiene tres valores, y el tercero es el que faltaba: «Solo no
+  destacadas» contesta «¿qué publiqué que todavía no destaqué?». Solo aparece si hay
+  alguna destacada, como el barrio y el arancel.
+- **Las etiquetas son chips y no un desplegable**, porque una actividad tiene varias:
+  se prenden y se apagan, cada uno trae **su número**, y adentro del eje se suman con
+  «o» —dos etiquetas muestran las que tengan alguna de las dos—. El número se cuenta
+  con los demás filtros puestos y este eje no, que es lo que permite elegir la
+  segunda. En el botón «Filtros» cuentan como **uno**: la segunda etiqueta ensancha
+  el resultado, no lo recorta.
 
 ### Duplicar una actividad
 

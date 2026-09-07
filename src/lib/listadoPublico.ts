@@ -30,6 +30,7 @@
  * la island lo recalcula con el de quien mira (§6.4 del diseño).
  */
 import { primeroSinCosto } from '@/lib/arancel';
+import type { Chip } from '@/lib/chip';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import {
   claveDeDia,
@@ -633,12 +634,14 @@ export const etiquetaDe = (
   return etiquetas[campo]?.[valor] ?? desSlug(valor);
 };
 
-export interface Chip {
-  valor: string;
-  label: string;
-  cantidad: number;
-  elegido: boolean;
-}
+/*
+ * La forma del chip vive en `lib/chip.ts` y se reexporta desde acá: la usan las
+ * dos pantallas y este módulo **ya importa** de `filtrosActividades`, así que
+ * declararla acá y usarla desde allá cerraba un ciclo (B-274). El reexport
+ * deja intactos los `import type { Chip } from '@/lib/listadoPublico'` que ya
+ * estaban escritos.
+ */
+export type { Chip } from '@/lib/chip';
 
 /**
  * Los chips de un eje, **con su número y sin los que dan cero**.

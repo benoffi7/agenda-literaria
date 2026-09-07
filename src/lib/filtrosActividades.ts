@@ -16,6 +16,10 @@
  * un test no puede depender de qué día es hoy.
  */
 import { primeroSinCosto } from '@/lib/arancel';
+import type { Chip } from '@/lib/chip';
+// El mismo respaldo que reexporta este módulo como `legible`, importado acá
+// porque un `export ... from` no crea un binding local que se pueda llamar.
+import { desSlug } from '@calendario';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
 import { normalize } from '@/lib/normalize';
 import { instanteDeTimestamp as instante, proximaVentana } from '@/lib/sesiones';
@@ -52,14 +56,37 @@ export const ETIQUETA_CUANDO: Record<Cuando, string> = {
   'sin-futuro': 'Sin fechas por venir',
 };
 
+export const DESTACADOS = ['', 'si', 'no'] as const;
+export type FiltroDestacado = (typeof DESTACADOS)[number];
+
+export const ETIQUETA_DESTACADO: Record<FiltroDestacado, string> = {
+  '': 'Cualquiera',
+  si: 'Solo destacadas',
+  no: 'Solo no destacadas',
+};
+
 /**
- * Los seis ejes que se pueden cruzar, más el texto.
+ * Los ocho ejes que se pueden cruzar, más el texto.
  *
  * `''` es "sin filtrar" en todos los que son un valor suelto. Los que guardan
  * slugs de taxonomía (`tipo`, `barrio`, `arancel`) guardan el slug: la etiqueta la
  * resuelve quien pinta, con las opciones que el panel ya tiene cargadas (§4.1).
  *
- * Qué **no** está y por qué, en D-74: `tags`, `destacado` y quién la cargó.
+ * ── `tags` y `destacado` entran, y también estaban descartados (B-274) ────
+ * D-74 los dejó afuera y **B-274 verificó que los dos motivos habían caducado**:
+ * a `tags` le faltaba la curación de la lista («cuando exista B-06, se
+ * reconsidera» — B-05 y B-06 existen) y a `destacado` le faltaba alguien que
+ * consumiera el booleano («el sitio público todavía no existe» — existe, y la
+ * fila del listado pinta «Destacada»). El dueño los pidió los dos el 2026-09-07.
+ *
+ * Lo único que queda del argumento viejo es el costo del control: `tags` es
+ * **multivaluado**, así que un desplegable no alcanza. Va con chips de
+ * alternancia, que es el mismo control que el sitio (ver `chipsDeTags`).
+ *
+ * Del tercer descarte de D-74 —quién la cargó— **no se revisa nada**: es un uid,
+ * y el §5.1 mantiene los identificadores afuera de todo lo que se muestre.
+ *
+ * Qué **no** está y por qué, en D-74: quién la cargó.
  *
  * ── `arancel` estaba descartado, y se revierte (B-272, D-152) ─────────────
  * D-74 lo dejó afuera con este argumento: «es un atributo de publicación, no una
@@ -83,6 +110,19 @@ export interface Filtros {
   modalidad: Modalidad | '';
   barrio: string;
   cuando: Cuando;
+  /**
+   * B-274 — `''` es sin filtrar. **Los tres estados y no una casilla**: «solo no
+   * destacadas» es la pregunta de curaduría que faltaba —«¿qué publiqué que
+   * todavía no destaqué?»— y cuesta lo mismo que las otras dos.
+   */
+  destacado: FiltroDestacado;
+  /**
+   * B-274 — los slugs elegidos. **Adentro del eje se suman con «o»**: elegir dos
+   * etiquetas muestra las que tienen alguna de las dos, que es lo que hace un
+   * eje multivaluado y lo que permite que el número de cada chip sirva para
+   * sumar el siguiente.
+   */
+  tags: string[];
 }
 
 export const FILTROS_VACIOS: Filtros = {
@@ -93,6 +133,8 @@ export const FILTROS_VACIOS: Filtros = {
   modalidad: '',
   barrio: '',
   cuando: 'cualquiera',
+  destacado: '',
+  tags: [],
 };
 
 /**
@@ -107,7 +149,15 @@ export const cantidadDeFiltros = (f: Filtros): number =>
   (f.arancel ? 1 : 0) +
   (f.modalidad ? 1 : 0) +
   (f.barrio ? 1 : 0) +
-  (f.cuando !== 'cualquiera' ? 1 : 0);
+  (f.cuando !== 'cualquiera' ? 1 : 0) +
+  (f.destacado ? 1 : 0) +
+  /*
+   * **Las etiquetas cuentan como UNO, no como una por etiqueta** (B-274). Este
+   * número contesta «cuántas cosas están recortando el listado», y adentro del eje
+   * las etiquetas se suman con «o»: la segunda etiqueta **ensancha** el resultado,
+   * no lo recorta. Contarlas de a una diría que hay más recorte cuando hay menos.
+   */
+  (f.tags.length > 0 ? 1 : 0);
 
 /** ¿Hay algo filtrando, texto incluido? Decide el mensaje del listado vacío. */
 export const hayFiltros = (f: Filtros): boolean =>
@@ -199,6 +249,19 @@ export const filtrar = (
       return false;
     }
     if (filtros.barrio && (a.sede?.barrio ?? '') !== filtros.barrio) return false;
+    /*
+     * B-274 — `!!` y no `=== true`: `destacado` es opcional en el tipo y los
+     * documentos anteriores al campo no lo tienen, así que «no destacadas» tiene
+     * que incluirlos. Sin el default, `undefined !== false` los dejaría afuera de
+     * los dos filtros y no habría forma de encontrarlos con ninguno.
+     */
+    if (filtros.destacado === 'si' && !a.destacado) return false;
+    if (filtros.destacado === 'no' && a.destacado) return false;
+    // B-274 — «o» adentro del eje: alguna de las elegidas alcanza.
+    if (filtros.tags.length > 0) {
+      const suyas = a.tags ?? [];
+      if (!filtros.tags.some((t) => suyas.includes(t))) return false;
+    }
     if (filtros.cuando === 'por-venir' && !tieneFuturo(a, ahora)) return false;
     if (filtros.cuando === 'sin-futuro' && tieneFuturo(a, ahora)) return false;
     return true;
@@ -265,6 +328,14 @@ export interface OpcionesPresentes {
   modalidades: Modalidad[];
   /** Slugs de barrio. La etiqueta la resuelve quien pinta (§4.1). */
   barrios: string[];
+  /**
+   * B-274 — ¿hay alguna destacada? Decide si el desplegable aparece, con el mismo
+   * criterio que el barrio y el arancel: sin ninguna destacada, los tres valores
+   * del filtro contestan lo mismo y el control es ruido.
+   */
+  hayDestacadas: boolean;
+  /** B-274 — los slugs de etiqueta que existen en los datos. */
+  tags: string[];
 }
 
 /** Los cuatro estados, en el idioma del panel. */
@@ -311,8 +382,12 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
   const aranceles = new Set<string>();
   const modalidades = new Set<Modalidad>();
   const barrios = new Set<string>();
+  const tags = new Set<string>();
+  let hayDestacadas = false;
 
   for (const a of actividades) {
+    if (a.destacado) hayDestacadas = true;
+    for (const t of a.tags ?? []) if (t) tags.add(t);
     estados.add(a.estado);
     if (a.tipo) tipos.add(a.tipo);
     if (a.arancel?.tipo) aranceles.add(a.arancel.tipo);
@@ -349,5 +424,88 @@ export const opcionesPresentes = (actividades: ActividadConId[]): OpcionesPresen
     ),
     modalidades: [...modalidades].sort(porDeclaracion(MODALIDADES)),
     barrios: [...barrios].sort((a, b) => a.localeCompare(b, 'es')),
+    hayDestacadas,
+    /*
+     * Alfabético acá, y **por frecuencia en los chips**: esta lista es el universo
+     * y `chipsDeTags` es lo que se pinta, que ordena por cantidad como el sitio
+     * (§4.3). Se deja ordenada igual para que el orden no dependa del orden de
+     * llegada de los datos, que `listarActividades()` no garantiza.
+     */
+    tags: [...tags].sort((a, b) => a.localeCompare(b, 'es')),
   };
 };
+
+/**
+ * Los chips del eje de etiquetas, **con su número y sin los que dan cero**.
+ *
+ * Es el mismo contrato que `chipsDe` del sitio (`lib/listadoPublico.ts`) y las
+ * tres reglas son las de allá, por el mismo motivo cada una:
+ *
+ * 1. **El número se cuenta con los demás filtros puestos y este eje no.** Si se
+ *    contara con el propio eje puesto, elegir «poesía» dejaría todas las otras
+ *    etiquetas en cero y no habría forma de sumar la segunda.
+ * 2. **Un chip en cero no se muestra, salvo que esté elegido.** Ofrecer un filtro
+ *    que devuelve una lista vacía es ofrecer un callejón; el elegido se muestra
+ *    igual —aunque quede en cero— porque si desapareciera no habría cómo sacarlo.
+ * 3. **El orden es por cantidad y después alfabético**, que es la frecuencia real
+ *    del §4.3 con el desempate estable para que dos empatados no se intercambien
+ *    entre renders.
+ *
+ * La etiqueta de cada chip sale de `/opciones/tags` y `desSlug` es el respaldo,
+ * igual que allá: ver el parámetro `etiquetas`.
+ *
+ * **No se importa `chipsDe`, y no es por descuido:** aquél recorre el índice
+ * público (`EntradaDeIndice`, con las sesiones en ISO y sin estado ni difusión) y
+ * éste las actividades del panel (`ActividadConId`, con `Timestamp`). Son dos
+ * tipos distintos y dos juegos de filtros distintos. Lo que **sí** se comparte es
+ * la forma del chip —el tipo `Chip`— para que las dos pantallas no tengan dos
+ * ideas de qué es un chip.
+ */
+export const chipsDeTags = (
+  actividades: ActividadConId[],
+  filtros: Filtros,
+  ahora: Date,
+  /**
+   * `{ slug: etiqueta }` de `/opciones/tags`, lo mismo que los desplegables usan
+   * por `labels[campo]` (§4.1). **Es opcional y el default es «todavía no
+   * llegaron»**, no «no hay»: las opciones se cargan aparte del listado.
+   *
+   * Lo pidió el `auditor-trampas`, y el comentario que había acá era falso: decía
+   * que la etiqueta curada «no llegó al componente» y sí había llegado —
+   * `useLabelsTaxonomia` trae `tags`—, solo que esta función no la recibía. El
+   * síntoma: una etiqueta cargada como «Poesía» se guarda con el slug `poesia`, y
+   * el chip del panel iba a decir «Poesia» sin tilde mientras el autocompletado,
+   * la tarjeta y los chips del sitio decían «Poesía». `desSlug` separa por guiones
+   * y capitaliza; no restaura acentos ni la ñ, y no puede.
+   */
+  etiquetas: Readonly<Record<string, string>> = {},
+): Chip[] => {
+  // Los demás filtros puestos, este no: es la regla 1.
+  const base = filtrar(actividades, { ...filtros, tags: [] }, ahora);
+  const cuenta = new Map<string, number>();
+  for (const a of base) {
+    for (const t of a.tags ?? []) if (t) cuenta.set(t, (cuenta.get(t) ?? 0) + 1);
+  }
+  for (const t of filtros.tags) if (!cuenta.has(t)) cuenta.set(t, 0);
+
+  return [...cuenta.entries()]
+    .map(([valor, cantidad]) => ({
+      valor,
+      cantidad,
+      // La curada primero y `desSlug` como último recurso, que es exactamente lo
+      // que hace `etiqueta()` en los desplegables y `etiquetaDe` en los chips del
+      // sitio (§4.1).
+      label: etiquetas[valor] ?? desSlug(valor),
+      elegido: filtros.tags.includes(valor),
+    }))
+    .filter((c) => c.cantidad > 0 || c.elegido)
+    .sort((a, b) => b.cantidad - a.cantidad || a.label.localeCompare(b.label, 'es'));
+};
+
+/** Alterna una etiqueta del eje, sin mutar los filtros que recibió. */
+export const conTagAlternada = (filtros: Filtros, valor: string): Filtros => ({
+  ...filtros,
+  tags: filtros.tags.includes(valor)
+    ? filtros.tags.filter((t) => t !== valor)
+    : [...filtros.tags, valor],
+});

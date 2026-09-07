@@ -1,21 +1,27 @@
-import { useId, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { Campo, claseBotonChip, claseBotonChipActivo, claseInput } from '@/components/admin/campos/Campo';
 import {
   CUANDOS,
+  DESTACADOS,
   ETIQUETA_CUANDO,
+  ETIQUETA_DESTACADO,
   ETIQUETA_ESTADO,
   ETIQUETA_MODALIDAD,
   ETIQUETA_ORDEN,
   FILTROS_VACIOS,
   ORDENES,
   cantidadDeFiltros,
+  chipsDeTags,
+  conTagAlternada,
   legible,
   type Filtros,
+  type FiltroDestacado,
   type OpcionesPresentes,
   type Orden,
 } from '@/lib/filtrosActividades';
+import { indiceDeTecla } from '@/lib/foco';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
-import type { Estado, Modalidad } from '@/types/actividad';
+import type { ActividadConId, Estado, Modalidad } from '@/types/actividad';
 
 interface Props {
   filtros: Filtros;
@@ -29,6 +35,15 @@ interface Props {
   /** Cuántas hay en total y cuántas quedaron después de filtrar. */
   total: number;
   mostradas: number;
+  /**
+   * B-274 — las actividades **sin filtrar** y el reloj, que es lo que necesita
+   * `chipsDeTags` para contar cada etiqueta con los demás filtros puestos y este
+   * eje no. Se pasan en vez de recibir los chips ya armados para que el
+   * componente siga recibiendo datos y no una vista: el conteo depende de
+   * `filtros`, que ya está acá.
+   */
+  actividades: ActividadConId[];
+  ahora: Date;
 }
 
 /**
@@ -43,6 +58,12 @@ interface Props {
  * bug que se arregla, es una decisión que se da vuelta, y el motivo está escrito
  * en las dos entradas.
  *
+ * **Y los otros dos descartes de D-74 también se reponen** (B-274, pedido del
+ * dueño el 2026-09-07): «Destacada» como séptimo desplegable —solo si hay alguna
+ * destacada— y las **etiquetas**, que no son un desplegable porque son
+ * multivaluadas: van como chips de alternancia debajo de la grilla, con el número
+ * de cada una.
+ *
  * **No hay una sola query nueva:** todo sale de las actividades que el listado ya
  * tiene en memoria (§2.5).
  */
@@ -55,6 +76,8 @@ export function FiltrosActividades({
   labels,
   total,
   mostradas,
+  actividades,
+  ahora,
 }: Props) {
   const puestos = cantidadDeFiltros(filtros);
   const [abierto, setAbierto] = useState(puestos > 0);
@@ -62,6 +85,33 @@ export function FiltrosActividades({
 
   const cambiar = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) =>
     onFiltros({ ...filtros, [campo]: valor });
+
+  /*
+   * B-274 · los chips de etiquetas. El memo es por lo mismo que el del listado:
+   * `chipsDeTags` recorre la colección entera para contar cada faceta, y este
+   * componente se re-renderiza con cada tecla del buscador.
+   */
+  const chips = useMemo(
+    // `labels.tags` y no `desSlug` a secas: una etiqueta cargada como «Poesía»
+    // tiene el slug `poesia`, y sin la curada el chip diría «Poesia» mientras el
+    // autocompletado y el sitio dicen «Poesía» (§4.1). Lo cobró el auditor.
+    () => chipsDeTags(actividades, filtros, ahora, labels.tags),
+    [actividades, filtros, ahora, labels.tags],
+  );
+  const botonesDeTag = useRef<(HTMLButtonElement | null)[]>([]);
+
+  /*
+   * Las flechas mueven el foco dentro del grupo, con la **misma aritmética** que
+   * el menú «⋯» del listado, la capa de ayuda y los chips del sitio
+   * (`lib/foco.ts`, B-14/B-64): dónde cae el foco al pasar del último y qué tecla
+   * mueve a dónde son las dos cosas que es fácil escribir mal por segunda vez.
+   */
+  const alTeclado = (e: React.KeyboardEvent, i: number) => {
+    const destino = indiceDeTecla(e.key, i, chips.length);
+    if (destino === null) return;
+    e.preventDefault();
+    botonesDeTag.current[destino]?.focus();
+  };
 
   /** La etiqueta de un valor de taxonomía, con la legibilización como respaldo. */
   const etiqueta = (campo: 'tipo' | 'barrio' | 'arancel', valor: string) =>
@@ -220,7 +270,99 @@ export function FiltrosActividades({
                 ))}
               </select>
             </Campo>
+
+            {/*
+              B-274 — `destacado`, que D-74 había descartado porque «el sitio
+              público todavía no existe». Hoy existe y la fila del listado pinta
+              «Destacada», o sea que el booleano lo consume alguien.
+
+              Solo aparece si hay alguna destacada, como el barrio y el arancel:
+              sin ninguna, los tres valores contestan lo mismo.
+            */}
+            {opciones.hayDestacadas && (
+              <Campo
+                label="Destacada"
+                htmlFor={`${id}-destacado`}
+                ayuda="«Solo no destacadas» sirve para repasar qué está publicado y todavía no destacaste."
+              >
+                <select
+                  id={`${id}-destacado`}
+                  className={claseInput}
+                  value={filtros.destacado}
+                  onChange={(e) => cambiar('destacado', e.target.value as FiltroDestacado)}
+                >
+                  {DESTACADOS.map((d) => (
+                    <option key={d} value={d}>
+                      {ETIQUETA_DESTACADO[d]}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
           </div>
+
+          {/*
+            B-274 · el eje de etiquetas. **Va abajo de la grilla y no adentro**:
+            es multivaluado y no entra en una celda de desplegable — con veinte
+            etiquetas cargadas, una lista de chips necesita el ancho entero.
+
+            **No es el `EjeDeFiltro` del sitio, y no es por no haberlo mirado.**
+            Ese componente está compuesto con el sistema visual del sitio
+            —`label-caps`, `bg-acento`, `text-papel`, radio 0— y el panel tiene el
+            suyo, con radio y otras tintas. Traerlo dejaría un pedazo del sitio
+            adentro del panel y pondría a los tests visuales del sitio a medir un
+            componente usado sobre superficies que no son las suyas. Lo que **sí**
+            se comparte es lo que de verdad no puede divergir: la aritmética del
+            foco (`lib/foco.ts`), la forma del chip (`Chip`, en `lib/chip.ts`) y
+            las tres reglas de conteo, escritas en `chipsDeTags`.
+          */}
+          {chips.length > 0 && (
+            <fieldset className="min-w-0 border-0 p-0">
+              <legend className="mb-1 text-xs text-tinta/60">
+                Etiquetas
+                {filtros.tags.length > 0 && ` (${filtros.tags.length})`}
+              </legend>
+
+              {/*
+                Sin `role="group"` ni `aria-label` acá: el `<fieldset>` **ya** es un
+                grupo y su `<legend>` **ya** es su nombre accesible, así que
+                repetirlos publicaba dos grupos con el mismo nombre. Lo cobró el
+                test de render, que encontró dos donde tenía que haber uno.
+              */}
+              <div className="flex flex-wrap gap-1">
+                {chips.map((chip, i) => (
+                  <button
+                    key={chip.valor}
+                    ref={(el) => {
+                      botonesDeTag.current[i] = el;
+                    }}
+                    type="button"
+                    /*
+                      `aria-pressed` y no una casilla escondida: así lo anuncia un
+                      lector de pantalla como «Poesia, botón de alternancia, no
+                      presionado», y funciona con Enter y con barra espaciadora sin
+                      escribir un `onKeyDown` de más.
+                    */
+                    aria-pressed={chip.elegido}
+                    onClick={() => onFiltros(conTagAlternada(filtros, chip.valor))}
+                    onKeyDown={(e) => alTeclado(e, i)}
+                    className={chip.elegido ? claseBotonChipActivo : claseBotonChip}
+                  >
+                    <span className="min-w-0 truncate">{chip.label}</span>
+                    {/*
+                      El número va aparte del nombre y `aria-hidden`: «Poesia 12»
+                      se leería como una poesía número 12. `tabular-nums` para que
+                      la columna no baile.
+                    */}
+                    <span aria-hidden="true" className="ml-1.5 tabular-nums text-tinta/50">
+                      {chip.cantidad}
+                    </span>
+                    <span className="sr-only">{`, ${chip.cantidad} ${chip.cantidad === 1 ? 'actividad' : 'actividades'}`}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           {puestos > 0 && (
             <button

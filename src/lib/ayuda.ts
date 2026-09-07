@@ -649,9 +649,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'El botón «Filtros» abre seis: estado, tipo, arancel, modalidad, barrio y fechas. Se ' +
-          'cruzan entre sí y se combinan con el buscador. El número al lado del botón dice ' +
-          'cuántos hay puestos, para que un filtro olvidado no parezca un listado vacío.',
+          'El botón «Filtros» abre siete y, debajo, las etiquetas: estado, tipo, arancel, ' +
+          'modalidad, barrio, fechas y destacada. Se cruzan entre sí y se combinan con el ' +
+          'buscador. El número al lado del botón dice cuántos hay puestos, para que un filtro ' +
+          'olvidado no parezca un listado vacío.',
       },
       {
         texto:
@@ -664,6 +665,19 @@ export const CAPITULOS: CapituloAyuda[] = [
           '«Con algo por venir» deja las actividades que todavía tienen un encuentro por pasar, y ' +
           'su opuesto deja las que ya terminaron o nunca tuvieron fecha. Es la forma de encontrar ' +
           'lo que quedó sin cerrar.',
+      },
+      {
+        texto:
+          '«Destacada» tiene tres opciones, y la más útil es «Solo no destacadas»: sirve para ' +
+          'repasar qué está publicado y todavía no marcaste. Aparece solo cuando ya destacaste ' +
+          'alguna actividad.',
+      },
+      {
+        texto:
+          'Debajo de los desplegables están las etiquetas, como botones que se prenden y se ' +
+          'apagan, cada uno con cuántas actividades la tienen. Podés prender varias: muestra las ' +
+          'que tengan alguna de las que elegiste, no las que tengan todas. Por eso en el número ' +
+          'del botón «Filtros» cuentan como una sola cosa, aunque prendas tres.',
       },
       {
         texto:

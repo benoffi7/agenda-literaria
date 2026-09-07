@@ -60,6 +60,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'filtros-de-etiquetas-y-destacadas',
+    fecha: '2026-09-07',
+    version: '1.9.0',
+    titulo: 'Podés filtrar el listado por etiquetas y por destacadas',
+    detalle:
+      'Abriendo «Filtros» hay dos cosas nuevas. «Destacada» tiene tres opciones, y la más útil es ' +
+      '«Solo no destacadas»: sirve para repasar qué está publicado y todavía no destacaste. Y ' +
+      'abajo aparecen las etiquetas como botones, con cuántas actividades tiene cada una: podés ' +
+      'prender varias a la vez y muestra las que tengan alguna de ellas.',
+    donde: 'La pantalla de Actividades, detrás del botón «Filtros».',
+  },
+  {
     id: 'aviso-foto-rotada',
     fecha: '2026-09-07',
     version: '1.9.0',

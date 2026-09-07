@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   CUANDOS,
+  DESTACADOS,
+  ETIQUETA_DESTACADO,
+  chipsDeTags,
+  conTagAlternada,
   ETIQUETA_CUANDO,
   ETIQUETA_ESTADO,
   ETIQUETA_MODALIDAD,
@@ -392,12 +396,19 @@ describe('los desplegables ofrecen lo que existe en los datos', () => {
   });
 
   it('sin actividades no ofrece nada', () => {
+    /*
+     * El `toEqual` es exhaustivo a propósito: un eje nuevo que se agregue a
+     * `OpcionesPresentes` pone este caso en rojo, y ahí es donde se decide si
+     * también hay que ofrecerlo vacío. Lo cobró B-274 con `tags`/`hayDestacadas`.
+     */
     expect(opcionesPresentes([])).toEqual({
       estados: [],
       tipos: [],
       aranceles: [],
       modalidades: [],
       barrios: [],
+      tags: [],
+      hayDestacadas: false,
     });
   });
 });
@@ -439,5 +450,222 @@ describe('un encuentro en curso todavía cuenta como por venir (H1)', () => {
     const [e] = encuentrosDe([enCurso]);
     expect(yaPaso(e!, durante)).toBe(false);
     expect(tieneFuturo(enCurso, durante)).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+// B-274 · los dos descartes de D-74 que el dueño repuso
+// ─────────────────────────────────────────────────────────────────
+
+describe('destacada: los tres estados, y el que incluye a los documentos viejos — B-274', () => {
+  const puestas = [
+    acto({ id: 'destacada', destacado: true }),
+    acto({ id: 'comun', destacado: false }),
+    // **El caso que importa:** `destacado` es opcional y los documentos
+    // anteriores al campo no lo tienen. Sin el default, `undefined` se caía de
+    // los dos filtros y no había forma de encontrarla con ninguno.
+    acto({ id: 'vieja' }),
+  ];
+
+  const ids = (destacado: (typeof DESTACADOS)[number]) =>
+    filtrar(puestas, { ...FILTROS_VACIOS, destacado }, ahora).map((a) => a.id);
+
+  it('«cualquiera» no filtra, «solo destacadas» deja una, y «solo no destacadas» deja las otras dos', () => {
+    /*
+     * MUTACIÓN PROBADA: cambiar el `!a.destacado` por `a.destacado === false`
+     * deja «solo no destacadas» sin la vieja y este caso en rojo.
+     */
+    expect(ids('')).toEqual(['destacada', 'comun', 'vieja']);
+    expect(ids('si')).toEqual(['destacada']);
+    expect(ids('no')).toEqual(['comun', 'vieja']);
+  });
+
+  it('los tres valores se reparten el total: ninguna actividad queda sin filtro que la encuentre', () => {
+    /*
+     * La propiedad, y no los tres casos de arriba: `si` y `no` tienen que
+     * **partir** el universo. Es lo que garantiza que ningún documento —viejo,
+     * nuevo, o con el campo puesto en `null` por una restauración— se vuelva
+     * invisible para los dos.
+     */
+    expect(ids('si').length + ids('no').length).toBe(puestas.length);
+    expect([...ids('si'), ...ids('no')].sort()).toEqual([...ids('')].sort());
+  });
+
+  it('el desplegable solo se ofrece si hay alguna destacada', () => {
+    // Mismo criterio que el barrio y el arancel: sin ninguna, los tres valores
+    // contestan lo mismo y el control es ruido.
+    expect(opcionesPresentes(puestas).hayDestacadas).toBe(true);
+    expect(opcionesPresentes([acto({ id: 'sola' })]).hayDestacadas).toBe(false);
+  });
+
+  it('cada valor tiene su etiqueta, y las tres son distintas', () => {
+    /*
+     * El aserto original decía «ninguna etiqueta contiene su valor guardado» y era
+     * una mala idea de este test, no del código: «Solo **no** destacadas» contiene
+     * el `'no'` porque en castellano se dice así. Lo que hay que exigir es que las
+     * tres existan y digan cosas distintas — el modo de falla real es un
+     * copy-paste que deje dos opciones con el mismo texto.
+     */
+    const etiquetas = DESTACADOS.map((d) => ETIQUETA_DESTACADO[d]);
+    for (const [i, e] of etiquetas.entries()) {
+      expect(e, `falta la etiqueta de «${DESTACADOS[i]}»`).toBeTruthy();
+    }
+    expect(new Set(etiquetas).size, 'dos opciones dicen lo mismo').toBe(DESTACADOS.length);
+  });
+});
+
+describe('etiquetas: un eje multivaluado que suma con «o» — B-274', () => {
+  const conTags = [
+    acto({ id: 'a', tags: ['poesia', 'principiantes'] }),
+    acto({ id: 'b', tags: ['poesia'] }),
+    acto({ id: 'c', tags: ['narrativa'] }),
+    acto({ id: 'sin' }),
+  ];
+
+  const ids = (tags: string[]) =>
+    filtrar(conTags, { ...FILTROS_VACIOS, tags }, ahora).map((a) => a.id);
+
+  it('sin etiquetas no filtra; con una deja las que la tienen; con dos, la unión', () => {
+    /*
+     * **La segunda etiqueta ensancha, no recorta**, y ese es el contrato de un
+     * eje multivaluado: es lo que hace que el número de cada chip sirva para
+     * elegir la siguiente.
+     *
+     * MUTACIÓN PROBADA: cambiar el `some` por un `every` deja el caso de dos
+     * etiquetas con una sola actividad y este aserto en rojo.
+     */
+    expect(ids([])).toHaveLength(4);
+    expect(ids(['poesia'])).toEqual(['a', 'b']);
+    expect(ids(['narrativa'])).toEqual(['c']);
+    expect(ids(['poesia', 'narrativa'])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('una etiqueta que no tiene nadie deja el listado vacío, y no lo rompe', () => {
+    expect(ids(['inexistente'])).toEqual([]);
+  });
+
+  it('cuenta como UN filtro, no como una por etiqueta', () => {
+    /*
+     * El número del botón «Filtros» contesta «cuántas cosas están recortando el
+     * listado». Adentro del eje las etiquetas se suman con «o», así que contarlas
+     * de a una diría que hay **más** recorte cuando hay **menos**.
+     */
+    expect(cantidadDeFiltros({ ...FILTROS_VACIOS, tags: ['poesia'] })).toBe(1);
+    expect(cantidadDeFiltros({ ...FILTROS_VACIOS, tags: ['poesia', 'narrativa'] })).toBe(1);
+    // Y el eje de destacada sí es uno más, que es el contraste.
+    expect(cantidadDeFiltros({ ...FILTROS_VACIOS, tags: ['poesia'], destacado: 'si' })).toBe(2);
+    expect(hayFiltros({ ...FILTROS_VACIOS, tags: ['poesia'] })).toBe(true);
+    expect(hayFiltros({ ...FILTROS_VACIOS, destacado: 'no' })).toBe(true);
+  });
+
+  it('alternar una etiqueta no muta los filtros que recibió', () => {
+    const antes: typeof FILTROS_VACIOS = { ...FILTROS_VACIOS, tags: ['poesia'] };
+    const conDos = conTagAlternada(antes, 'narrativa');
+    expect(conDos.tags).toEqual(['poesia', 'narrativa']);
+    expect(antes.tags).toEqual(['poesia']);
+    // Y sacarla es la misma operación.
+    expect(conTagAlternada(conDos, 'poesia').tags).toEqual(['narrativa']);
+  });
+
+  it('las etiquetas ofrecidas son las que existen en los datos, sin vacías', () => {
+    expect(opcionesPresentes(conTags).tags).toEqual(['narrativa', 'poesia', 'principiantes']);
+    // Una cadena vacía en el array no puede llegar a ser un chip sin nombre.
+    expect(opcionesPresentes([acto({ id: 'x', tags: ['', 'poesia'] })]).tags).toEqual(['poesia']);
+  });
+});
+
+describe('los chips de etiquetas cuentan como los del sitio — B-274', () => {
+  /*
+   * Las tres reglas son las de `chipsDe` (`lib/listadoPublico.ts`) y se verifican
+   * acá **de nuevo** y no por parecido: son dos módulos, dos tipos de entrada y
+   * dos juegos de filtros. Lo que se comparte es la forma del chip y el motivo de
+   * cada regla, no el código.
+   */
+  const datos = [
+    acto({ id: 'a', estado: 'publicado', tags: ['poesia'] }),
+    acto({ id: 'b', estado: 'publicado', tags: ['poesia'] }),
+    acto({ id: 'c', estado: 'borrador', tags: ['narrativa'] }),
+  ];
+
+  it('el número se cuenta con los demás filtros puestos y este eje no', () => {
+    /*
+     * La regla que hace posible sumar la segunda etiqueta: si el conteo se hiciera
+     * con el propio eje puesto, elegir «poesía» dejaría «narrativa» en cero y no
+     * habría cómo agregarla.
+     *
+     * MUTACIÓN PROBADA: sacarle el `tags: []` al `filtrar` de `chipsDeTags` deja
+     * el segundo aserto en 0 y este caso en rojo.
+     */
+    const sinNada = chipsDeTags(datos, FILTROS_VACIOS, ahora);
+    expect(sinNada.map((c) => [c.valor, c.cantidad])).toEqual([
+      ['poesia', 2],
+      ['narrativa', 1],
+    ]);
+
+    const conPoesia = chipsDeTags(datos, { ...FILTROS_VACIOS, tags: ['poesia'] }, ahora);
+    expect(conPoesia.find((c) => c.valor === 'narrativa')?.cantidad).toBe(1);
+    expect(conPoesia.find((c) => c.valor === 'poesia')?.elegido).toBe(true);
+  });
+
+  it('los demás filtros sí achican el número', () => {
+    // Es la otra mitad de la regla 1: «los demás puestos» tiene que significar algo.
+    const soloBorradores = chipsDeTags(datos, { ...FILTROS_VACIOS, estado: 'borrador' }, ahora);
+    expect(soloBorradores.map((c) => c.valor)).toEqual(['narrativa']);
+  });
+
+  it('un chip en cero no se muestra, salvo que esté elegido', () => {
+    /*
+     * Ofrecer un filtro que devuelve una lista vacía es ofrecer un callejón. El
+     * elegido se muestra igual —aunque quede en cero— porque si desapareciera no
+     * habría cómo sacarlo, y el listado quedaría vacío sin explicación.
+     */
+    const cruzado = { ...FILTROS_VACIOS, estado: 'borrador' as const, tags: ['poesia'] };
+    const chips = chipsDeTags(datos, cruzado, ahora);
+    const poesia = chips.find((c) => c.valor === 'poesia');
+    expect(poesia, 'el elegido desapareció y no habría cómo sacarlo').toBeTruthy();
+    expect(poesia?.cantidad).toBe(0);
+  });
+
+  it('el orden es por cantidad y después alfabético', () => {
+    const empatadas = [
+      acto({ id: 'a', tags: ['zeta'] }),
+      acto({ id: 'b', tags: ['alfa'] }),
+      acto({ id: 'c', tags: ['mucha'] }),
+      acto({ id: 'd', tags: ['mucha'] }),
+    ];
+    // Por frecuencia real (§4.3), con el desempate estable para que dos empatadas
+    // no se intercambien entre renders.
+    expect(chipsDeTags(empatadas, FILTROS_VACIOS, ahora).map((c) => c.valor)).toEqual([
+      'mucha',
+      'alfa',
+      'zeta',
+    ]);
+  });
+
+  it('cada chip lleva la etiqueta legible y no el slug', () => {
+    const chips = chipsDeTags([acto({ id: 'a', tags: ['club-de-poesia'] })], FILTROS_VACIOS, ahora);
+    expect(chips[0]?.label).toBe(legible('club-de-poesia'));
+    expect(chips[0]?.label).not.toBe('club-de-poesia');
+  });
+
+  it('y si la etiqueta está curada en `/opciones/tags`, gana esa', () => {
+    /*
+     * **El hallazgo del `auditor-trampas`, y por qué importa más de lo que
+     * parece.** `desSlug` capitaliza y separa por guiones: no restaura acentos ni
+     * la ñ. Una etiqueta cargada como «Poesía» se guarda con el slug `poesia`
+     * (§4.2), así que el respaldo dice «Poesia» — y el autocompletado del
+     * formulario, la tarjeta y los chips del sitio dicen «Poesía», porque los tres
+     * resuelven contra `/opciones/*`. Es el mismo dato con dos nombres en dos
+     * pantallas que se miran juntas.
+     *
+     * El orden también depende de esto: el desempate es por `label`.
+     */
+    const datos = [acto({ id: 'a', tags: ['poesia'] })];
+    expect(chipsDeTags(datos, FILTROS_VACIOS, ahora, { poesia: 'Poesía' })[0]?.label).toBe(
+      'Poesía',
+    );
+    // Y sin las opciones cargadas todavía, el respaldo: el default es «no
+    // llegaron», no «no hay».
+    expect(chipsDeTags(datos, FILTROS_VACIOS, ahora)[0]?.label).toBe('Poesia');
   });
 });

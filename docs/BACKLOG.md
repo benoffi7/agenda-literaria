@@ -9630,7 +9630,7 @@ filtraba nada hoy y ninguna dejaba el build en rojo**.
 | P2 | El aserto que cerraba la plantilla era **lista negra** de tres nombres: `{e.resumen}` o `{e.creadoEn}` pasaban limpios | Invertido a lista blanca —qué puede sacar del view-model, campo por campo— más la mitad que la lista no da: `entradas` viaja entera a la lista y no se abre (ni indexar, ni recorrer, ni desestructurar) |
 
 Las cinco mutaciones de los arreglos mueren.
-### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` · P3
+### B-274 · Dos descartes de D-74 cuyo motivo caducó: `tags` y `destacado` — ✅ hecho (2026-09-07) · P3
 
 Al revertir D-74 para el arancel (B-272, D-152) se revisaron sus otros tres
 descartes uno por uno. **No se agregó ninguno —no se pidieron— pero dos de los tres
@@ -9646,6 +9646,28 @@ su razón.**
 Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, primero
 hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
 `EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
+
+**El dueño decidió el 2026-09-07: «los dos». Hecho, y está en D-480.** «Destacada»
+es un desplegable de tres valores que solo aparece si hay alguna destacada; las
+etiquetas son chips de alternancia debajo de la grilla, con el número de cada una y
+las tres reglas de conteo del sitio.
+
+Dos cosas que el ítem no había previsto:
+
+- **el camino corto no se tomó.** Traer el `EjeDeFiltro` del sitio metía su sistema
+  visual —`label-caps`, `bg-acento`, radio 0— adentro del panel, que tiene el suyo, y
+  ponía a los tests visuales del sitio a medir un componente usado sobre otras
+  superficies. Se comparte lo que no puede divergir: la aritmética del foco, la forma
+  del chip y el motivo de cada regla de conteo. Está argumentado en D-480;
+- **apareció un ciclo de imports.** `chipsDeTags` devuelve la misma forma que
+  `chipsDe`, y `listadoPublico` ya importaba `ETIQUETA_MODALIDAD` del panel, así que
+  importarle el tipo `Chip` cerró el círculo. Lo cobró `salud-del-codigo` y el tipo
+  se mudó a `lib/chip.ts`, que los dos importan.
+
+Y una decisión de conteo que vale escribir: **las etiquetas suman UNO al número del
+botón «Filtros»**, no una por etiqueta. Adentro del eje se unen con «o», así que la
+segunda ensancha el resultado; contarlas de a una diría que hay más recorte cuando
+hay menos.
 
 ### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda — ✅ hecho (2026-09-07) · P2
 

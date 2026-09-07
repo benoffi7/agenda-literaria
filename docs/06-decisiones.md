@@ -1526,12 +1526,17 @@ días — queda anotado en B-128.
 
 ## D-74 · Cinco filtros, y cuatro descartados con su motivo
 
-> ⚠️ **El descarte de `arancel` se revirtió el 2026-09-01 — ver D-152.** Hoy los
-> filtros son **seis**. El argumento de abajo no se borra ni se corrige: sigue
-> siendo cierto para la pregunta que contestaba («nadie *busca* el taller
-> arancelado»), y lo que cambió es que se pide contestar otra. D-152 dice cuál, qué
-> se paga por revertir, y qué pasó con los otros tres descartes — el de `tags`
-> caducó a medias y el de `destacado` entero (**B-274**).
+> ⚠️ **Tres de los cuatro descartes cayeron — ver D-152 y D-480.** El de `arancel`
+> se revirtió el 2026-09-01 (D-152); los de `tags` y `destacado`, el 2026-09-07
+> (D-480). Sigue en pie **solo el de quién la cargó**, que es un uid. Hoy el
+> listado tiene **siete desplegables más el eje de etiquetas**, no seis ni cinco.
+>
+> El argumento de abajo no se borra ni se corrige, y los dos motivos son
+> distintos: para `arancel` **sigue siendo cierto** para la pregunta que contestaba
+> («nadie *busca* el taller arancelado») y lo que cambió es que se pide contestar
+> otra; para `tags` y `destacado` lo que cambió es que **el motivo del descarte
+> caducó** —la lista sin curar ya está curada, y el booleano que no consumía nadie
+> lo consume el sitio—. D-152 y D-480 dicen, cada una, cuál es su caso.
 
 **Decisión:** el listado filtra por **estado, tipo, modalidad, barrio y fechas**
 ("con algo por venir" / "sin fechas por venir"), y todo se cruza con el buscador
@@ -8301,3 +8306,97 @@ clic del panel o como un evento propio es una pregunta que se contesta cuando se
 enganche.
 
 ---
+
+## D-480 · El panel gana los filtros de etiquetas y destacada — se revierte D-74 del todo
+
+**Fecha:** 2026-09-07 · **Ítem:** B-274 · **Revisa:** [D-74](#d-74--el-listado-del-panel-filtra-por-cinco-ejes-y-no-por-todos) · **Continúa:** [D-152](#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74)
+
+**Quién lo pidió.** El dueño, contestando la pregunta abierta de B-274: «los dos:
+filtro por tags y por destacado».
+
+D-74 eligió cinco ejes y descartó cuatro. D-152 repuso `arancel`; esta entrada
+repone los otros dos que quedaban, y el tercero —**quién la cargó**— se queda
+afuera: es un uid, y el §5.1 mantiene los identificadores afuera de todo lo que se
+muestre. Ese descarte no se revisa.
+
+### La diferencia con D-152: acá los motivos **caducaron**, no se pagaron
+
+D-152 fue una decisión pagada: el argumento de D-74 sobre el arancel seguía siendo
+cierto y se decidió pagar el costo igual. Estos dos son otra cosa, y B-274 lo había
+verificado antes de que el dueño los pidiera:
+
+| Eje | Lo que decía D-74 | Por qué ya no |
+|---|---|---|
+| `tags` | «hoy nadie cura esa lista: sin normalización ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. **Cuando exista B-06, se reconsidera**» | **B-05 y B-06 existen.** La condición que D-74 se puso a sí mismo para reconsiderarlo se cumplió |
+| `destacado` | «un booleano que hoy no consume nadie: **el sitio público todavía no existe** (B-01)» | El sitio existe y la fila del listado pinta «Destacada»: el booleano lo consume alguien |
+
+**Un descarte que sobrevive a su razón es peor que una decisión equivocada**, porque
+nadie lo vuelve a mirar. Por eso B-274 existía como ítem aunque nadie hubiera
+pedido los filtros.
+
+### Lo que sí quedó del argumento viejo: el control
+
+De `tags` seguía en pie la otra mitad —**es multivaluado**, y ninguno de los seis
+desplegables del panel sabe seleccionar más de un valor—. Se resuelve con **chips
+de alternancia**, con las tres reglas de conteo que el sitio ya usa (`chipsDe`):
+
+1. el número de cada chip se cuenta **con los demás filtros puestos y este eje no**
+   —si no, elegir la primera etiqueta deja todas las otras en cero y no hay forma de
+   sumar la segunda—;
+2. un chip en cero no se muestra **salvo que esté elegido**, porque si desapareciera
+   no habría cómo sacarlo y el listado quedaría vacío sin explicación;
+3. el orden es por cantidad y después alfabético: frecuencia real (§4.3) con el
+   desempate estable.
+
+**No se importó el `EjeDeFiltro` del sitio, que era el camino corto que B-274
+proponía.** Está compuesto con el sistema visual del sitio —`label-caps`,
+`bg-acento`, `text-papel`, radio 0— y el panel tiene el suyo. Traerlo dejaría un
+pedazo del sitio adentro del panel y pondría a los tests visuales del sitio a medir
+un componente usado sobre superficies que no son las suyas. Lo que se comparte es lo
+que de verdad no puede divergir: la aritmética del foco (`lib/foco.ts`), la forma del
+chip y el motivo de cada una de las tres reglas.
+
+### Tres decisiones chicas que están adentro
+
+- **`destacado` va con tres valores y no con una casilla.** «Solo no destacadas» es
+  la pregunta de curaduría que faltaba —«¿qué publiqué que todavía no destaqué?»— y
+  cuesta lo mismo. Los dos valores **parten** el universo, incluidos los documentos
+  anteriores al campo: se compara con `!a.destacado`, así que un `undefined` cuenta
+  como «no destacada» y no se vuelve invisible para los dos filtros.
+- **El desplegable de destacada solo aparece si hay alguna**, como el barrio y el
+  arancel: sin ninguna, los tres valores contestan lo mismo.
+- **Las etiquetas cuentan como UN filtro en el número del botón «Filtros».** Ese
+  número contesta «cuántas cosas están recortando el listado», y adentro del eje las
+  etiquetas se suman con «o»: la segunda **ensancha**. Contarlas de a una diría que
+  hay más recorte cuando hay menos.
+
+### La etiqueta de cada chip sale de `/opciones/tags`, y estuvo a punto de no salir
+
+`chipsDeTags` nació resolviendo la etiqueta con `desSlug` a secas, con un comentario
+que decía que la curada «no había llegado al componente». **Era falso y lo cobró el
+`auditor-trampas`:** `useLabelsTaxonomia` trae `tags`, el componente ya tenía
+`labels.tags`, y lo que faltaba era pasárselo.
+
+El síntoma habría aparecido semanas después y en un solo lugar: `desSlug` separa por
+guiones y capitaliza, **no restaura acentos ni la ñ**. Una etiqueta cargada como
+«Poesía» se guarda con el slug `poesia` (§4.2), así que el chip del panel iba a decir
+«Poesia» mientras el autocompletado del formulario, la tarjeta de la actividad y los
+chips del sitio decían «Poesía» — el mismo dato con dos nombres en dos pantallas que
+se miran juntas. Y el orden dependía de eso también: el desempate es por `label`.
+
+Lo peor no era el bug: **el test de render lo había fijado como comportamiento
+esperado**, afirmando el nombre sin tilde. Hoy hay dos casos, uno por cada camino, y
+el que verifica la curada tiene su mutación probada.
+
+### Un ciclo de imports que apareció, y dónde quedó el tipo
+
+`chipsDeTags` devuelve la misma forma que `chipsDe`, así que lo primero fue importar
+el tipo `Chip` de `lib/listadoPublico.ts`. **Eso cerró un ciclo**: ese módulo ya
+importa `ETIQUETA_MODALIDAD` del panel, para que «Presencial y virtual» se diga igual
+en las dos pantallas. Lo cobró `tests/salud-del-codigo.test.ts`, que afirma cero
+ciclos (§1.5 de `10-salud-del-codigo.md`).
+
+La salida no fue declararlo dos veces —**es la misma cosa mirada por quien carga y
+por quien busca**, y dos declaraciones se separan sin que nada falle— sino moverlo a
+`lib/chip.ts`, un módulo de cuatro campos que los dos importan. `listadoPublico` lo
+reexporta para no tocar los imports que ya estaban escritos.
