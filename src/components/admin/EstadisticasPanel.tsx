@@ -32,6 +32,8 @@ import {
   ctrLegible,
   diaLegible,
   periodoLegible,
+  duracionLegible,
+  engancheLegible,
   variacionLegible,
   type FilaDeBusqueda,
   type FilaDeRanking,
@@ -545,21 +547,28 @@ function GrupoDeMetricas({
   );
 }
 
-/** Un número grande con su variación. La variación solo si existe. */
+/**
+ * Un número grande con su variación. La variación solo si existe.
+ *
+ * `formato` es opcional y **el default sigue siendo el entero con separador de
+ * miles**, que es lo que necesitan las cuatro métricas de conteo. Lo usan las dos
+ * que no son enteras (B-800): los segundos promedio y la tasa de enganche, que
+ * vienen crudas de GA4 justamente para que el formato lo decida esta pantalla.
+ */
 function NumeroGrande({
   titulo,
   metrica,
+  formato = (v) => v.toLocaleString('es-AR'),
 }: {
   titulo: string;
   metrica: MetricaConVariacion;
+  formato?: (valor: number) => string;
 }) {
   const variacion = variacionLegible(metrica.variacion);
   return (
     <div className="min-w-0 border border-borde px-3 py-2.5">
       <p className="text-xs font-semibold uppercase tracking-wide text-tinta/55">{titulo}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">
-        {metrica.valor.toLocaleString('es-AR')}
-      </p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums">{formato(metrica.valor)}</p>
       {/*
         «Sin comparación» y no «0 %»: son dos cosas distintas y las dos pasan.
         `null` es «no hay ventana anterior con qué comparar», que es el estado
@@ -755,6 +764,32 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
             <NumeroGrande titulo="Visitas" metrica={ga4.sesiones} />
             <NumeroGrande titulo="Personas" metrica={ga4.personas} />
             <NumeroGrande titulo="Vistas de página" metrica={ga4.vistas} />
+            {/*
+              B-800 — las tres que pidió el dueño («sumarle más cosas con lo que
+              nos de google»). Cada una contesta una pregunta que las de arriba
+              no: si la audiencia **crece** o son los mismos volviendo, cuánto se
+              **quedan**, y si **hacen algo** o entran y salen.
+
+              Van con `&&` y no dentro del `hayNumerosDeGa4` de la sección: una
+              propiedad de GA4 puede contestar las tres primeras y no estas —son
+              métricas más nuevas— y en ese caso la fila no se dibuja en vez de
+              mostrar un cero que no midió nada.
+            */}
+            {ga4.nuevos && <NumeroGrande titulo="Gente nueva" metrica={ga4.nuevos} />}
+            {ga4.duracion && (
+              <NumeroGrande
+                titulo="Cuánto se quedan"
+                metrica={ga4.duracion}
+                formato={duracionLegible}
+              />
+            )}
+            {ga4.enganche && (
+              <NumeroGrande
+                titulo="Sesiones con interacción"
+                metrica={ga4.enganche}
+                formato={engancheLegible}
+              />
+            )}
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <RankingDelSitio

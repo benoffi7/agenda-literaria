@@ -2803,6 +2803,60 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-800 · ✅ hecho (2026-09-07) — la pestaña del sitio muestra tres métricas más de GA4
+
+**Pedido del dueño:** «en la pagina de estadisticas hay que sumarle más cosas con
+lo que nos de google. por ejemplo los eventos y sus valores».
+
+Dos cosas, y la de los eventos era la que faltaba de verdad:
+
+1. **El evento del tríptico dejó de estar sin enganchar (B-601).** De los tres
+   eventos propios del sitio, `clic_triptico` estaba declarado, testeado y
+   documentado —con el aviso de que no emitía— y le faltaba el handler. Se aplicó
+   el parche que estaba escrito desde el 2026-09-03. Ahora los tres emiten.
+2. **Tres métricas nuevas** en el informe de totales, que son lo que GA4 da y no
+   se estaba pidiendo:
+
+   | Métrica | Qué contesta |
+   |---|---|
+   | **Gente nueva** (`newUsers`) | ¿crece la audiencia o son los mismos volviendo? |
+   | **Cuánto se quedan** (`averageSessionDuration`) | ¿entran y se van, o leen? |
+   | **Sesiones con interacción** (`engagementRate`) | GA4 reemplazó el rebote por esto |
+
+**Por qué fue barato, y es la parte que conviene entender:** son **métricas**, no
+dimensiones. Una métrica es un agregado sobre la ventana entera y no puede traer
+contenido de nadie; por eso `DIMENSIONES_PERMITIDAS` existe con su lista blanca y
+para métricas no hace falta una. Y entran en el **mismo informe** que las tres que
+ya había: el pedido se ejecuta dos veces —ventana actual y anterior— así que la
+variación de las tres sale **sin un round trip más**. Hay un caso que ata las dos
+cosas: que el informe de totales siga sin dimensiones, y que sean seis métricas.
+
+**Dos decisiones de formato, las dos escritas:**
+
+- **El valor viaja crudo de la Function** —segundos con decimales, enganche entre
+  0 y 1— y el formato lo decide la pantalla (`duracionLegible`,
+  `engancheLegible`), igual que `variacionLegible`. Si la Function devolviera
+  «2 min 15 s», el panel no podría mostrar el mismo dato de otra forma ni un test
+  comparar números.
+- **El enganche va sin decimal y el CTR con uno**, y no es una inconsistencia: el
+  CTR de Search Console vive entre 1 % y 5 %, donde el decimal es la mitad de la
+  información; el enganche vive entre 40 % y 80 %, donde es ruido. Los dos casos
+  están juntos en el test para que la diferencia se lea como decisión.
+
+**Y los tiles nuevos se dibujan con `&&` y no dentro del `hayNumerosDeGa4` de la
+sección**: una propiedad de GA4 puede contestar las tres viejas y no estas —son
+métricas más nuevas— y en ese caso la fila no aparece, en vez de mostrar un cero
+que no midió nada. Es el criterio de D-272 una vez más.
+
+Las tres claves entraron **a mano** a `CLAVES_DEL_RESUMEN`, que es el punto de esa
+lista: el test de claves exactas pide que agregar algo al documento que lee el
+panel sea una decisión explícita, no el resultado de un spread.
+
+**Lo que sigue pendiente y es de B-798:** «Filtros que no encuentran nada» sigue
+mostrando la cuenta y no **cuál** filtro. Eso no es una métrica más — pide
+registrar dimensiones personalizadas en la consola, y no es retroactivo.
+
+
 ### B-799 · P3 — el hook de los auditores frena comandos de solo lectura que dicen «commit»
 
 **Encontrado usándolo el 2026-09-07, media hora después de B-796.** El hook se

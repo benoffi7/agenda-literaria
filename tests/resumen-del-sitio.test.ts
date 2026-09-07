@@ -3,6 +3,8 @@ import {
   MARCA_SIN_CONFIGURAR as MARCA_SIN_CONFIGURAR_PANEL,
   MAX_MOTIVO,
   ctrLegible,
+  duracionLegible,
+  engancheLegible,
   diaLegible,
   leerResumenDelSitio,
   periodoLegible,
@@ -343,6 +345,39 @@ describe('un documento de otra versión no dibuja huecos', () => {
 // ─────────────────────────────────────────────────────────────────────
 // 3 · El formateo
 // ─────────────────────────────────────────────────────────────────────
+
+describe('el formateo de las dos métricas que no son enteras — B-800', () => {
+  it('la duración se parte en minutos, y abajo del minuto son segundos solos', () => {
+    /*
+     * «134,7 segundos» es un número que hay que dividir en la cabeza. Y el corte
+     * de abajo del minuto tiene su motivo: «0 min 43 s» se lee peor que «43 s».
+     *
+     * MUTACIÓN PROBADA: sacar el caso de `< 60` deja el primer aserto en rojo con
+     * «0 min 43 s».
+     */
+    expect(duracionLegible(43)).toBe('43 s');
+    expect(duracionLegible(0)).toBe('0 s');
+    expect(duracionLegible(59.6)).toBe('1 min'); // redondea a 60 y cruza el corte
+    expect(duracionLegible(60)).toBe('1 min');
+    expect(duracionLegible(134.7)).toBe('2 min 15 s');
+    expect(duracionLegible(3600)).toBe('60 min');
+  });
+
+  it('el enganche va sin decimal, y eso es distinto del CTR a propósito', () => {
+    /*
+     * El CTR de Search Console **sí** lleva un decimal, y no es una
+     * inconsistencia: vive entre 1 % y 5 %, donde el decimal es la mitad de la
+     * información. El enganche vive entre 40 % y 80 %, donde el decimal es ruido.
+     * Los dos están acá juntos para que la diferencia se lea como decisión.
+     */
+    expect(engancheLegible(0.6432)).toBe('64 %');
+    expect(engancheLegible(0)).toBe('0 %');
+    expect(engancheLegible(1)).toBe('100 %');
+    expect(engancheLegible(0.005)).toBe('1 %'); // redondea, no trunca
+    // Y el de al lado, para que la diferencia quede fijada y no sea casualidad.
+    expect(ctrLegible(0.0437)).toBe('4,4 %');
+  });
+});
 
 describe('el formateo para la pantalla', () => {
   it('la fecha NO se parsea con `new Date`, que corre el día', () => {

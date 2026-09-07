@@ -85,6 +85,21 @@ export interface ResumenGa4 {
   sesiones: MetricaConVariacion | null;
   personas: MetricaConVariacion | null;
   vistas: MetricaConVariacion | null;
+  /**
+   * Cuánta de esa gente entra por primera vez — B-800. Entero, como los tres de
+   * arriba.
+   */
+  nuevos: MetricaConVariacion | null;
+  /**
+   * Segundos promedio por sesión — B-800. **Viene crudo, con decimales**: el
+   * formato («2 min 14 s») lo decide la pantalla, igual que `variacionLegible`.
+   */
+  duracion: MetricaConVariacion | null;
+  /**
+   * La proporción de sesiones con interacción, **0 a 1** — B-800. GA4 reemplazó
+   * el rebote por esto. Viene cruda por lo mismo que la duración.
+   */
+  enganche: MetricaConVariacion | null;
   paginas: FilaDeRanking[];
   canales: FilaDeRanking[];
   dispositivos: FilaDeRanking[];
@@ -222,6 +237,9 @@ const SIN_DOCUMENTO: ResumenDelSitio = {
     sesiones: null,
     personas: null,
     vistas: null,
+    nuevos: null,
+    duracion: null,
+    enganche: null,
     paginas: [],
     canales: [],
     dispositivos: [],
@@ -272,6 +290,9 @@ export const leerResumenDelSitio = (doc: unknown): ResumenDelSitio => {
       sesiones: ga4Crudo?.estado === 'ok' ? metricaDe(ga4Crudo.sesiones) : null,
       personas: ga4Crudo?.estado === 'ok' ? metricaDe(ga4Crudo.personas) : null,
       vistas: ga4Crudo?.estado === 'ok' ? metricaDe(ga4Crudo.vistas) : null,
+      nuevos: ga4Crudo?.estado === 'ok' ? metricaDe(ga4Crudo.nuevos) : null,
+      duracion: ga4Crudo?.estado === 'ok' ? metricaDe(ga4Crudo.duracion) : null,
+      enganche: ga4Crudo?.estado === 'ok' ? metricaDe(ga4Crudo.enganche) : null,
       paginas: rankingDe(ga4Crudo?.paginas),
       canales: rankingDe(ga4Crudo?.canales),
       dispositivos: rankingDe(ga4Crudo?.dispositivos),
@@ -330,6 +351,34 @@ export const variacionLegible = (v: number | null): string | null => {
   if (v === 0) return 'igual';
   return v > 0 ? `+${v} %` : `−${Math.abs(v)} %`;
 };
+
+/**
+ * `134.7` → `2 min 15 s` — B-800. Los segundos promedio por sesión.
+ *
+ * Se redondea al segundo y se parte en minutos: «134,7 segundos» es un número
+ * que hay que dividir en la cabeza. Abajo del minuto se muestran los segundos
+ * solos, porque «0 min 43 s» se lee peor que «43 s».
+ *
+ * Vive acá y no en la Function por lo mismo que `variacionLegible`: cómo se ve un
+ * número es del lado de la pantalla, y así el mismo dato crudo puede mostrarse
+ * distinto en dos lugares sin tocar el que lo trae.
+ */
+export const duracionLegible = (segundos: number): string => {
+  const total = Math.round(segundos);
+  if (total < 60) return `${total} s`;
+  const min = Math.floor(total / 60);
+  const resto = total % 60;
+  return resto === 0 ? `${min} min` : `${min} min ${resto} s`;
+};
+
+/**
+ * `0.6432` → `64 %` — B-800. La tasa de enganche, en entero.
+ *
+ * **Sin decimal, a diferencia del CTR de abajo**, y es deliberado: el CTR de
+ * Search Console vive entre 1 % y 5 %, donde un decimal es la mitad de la
+ * información; el enganche vive entre 40 % y 80 %, donde el decimal es ruido.
+ */
+export const engancheLegible = (tasa: number): string => `${Math.round(tasa * 100)} %`;
 
 /** `0.0437` → `4,4 %`. Coma decimal, que es la del idioma del proyecto. */
 export const ctrLegible = (ctr: number): string =>

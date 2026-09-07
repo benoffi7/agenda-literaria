@@ -61,13 +61,47 @@ import { NOMBRES_EVENTOS_SITIO } from '@/lib/analyticsSitio';
 // ─────────────────────────────────────────────────────────────────────
 
 /** Un informe sin dimensiones: una fila con N métricas, todas string. */
-const totales = (sesiones: string, personas: string, vistas: string) => ({
+/**
+ * La respuesta de `totales`, con la forma real de la Data API.
+ *
+ * **Las tres últimas métricas tienen default** (B-800): así los treinta casos que
+ * ya existían siguen pasando tres argumentos y este helper no obliga a reescribir
+ * ninguno. Los defaults son valores plausibles y no ceros, para que un caso que
+ * no las nombra no afirme sin querer que la gente nueva es cero.
+ *
+ * Y **vienen como string, con decimales en dos de ellas**, porque así las manda
+ * GA4: `averageSessionDuration` en segundos con coma y `engagementRate` entre 0 y
+ * 1. Un fixture con enteros redondos habría dejado sin ejercitar el único lugar
+ * donde eso importa —el formateo— y es justo donde estaba el riesgo.
+ */
+const totales = (
+  sesiones: string,
+  personas: string,
+  vistas: string,
+  nuevos = '180',
+  duracion = '134.7',
+  enganche = '0.6432',
+) => ({
   metricHeaders: [
     { name: 'sessions', type: 'TYPE_INTEGER' },
     { name: 'activeUsers', type: 'TYPE_INTEGER' },
     { name: 'screenPageViews', type: 'TYPE_INTEGER' },
+    { name: 'newUsers', type: 'TYPE_INTEGER' },
+    { name: 'averageSessionDuration', type: 'TYPE_SECONDS' },
+    { name: 'engagementRate', type: 'TYPE_FLOAT' },
   ],
-  rows: [{ metricValues: [{ value: sesiones }, { value: personas }, { value: vistas }] }],
+  rows: [
+    {
+      metricValues: [
+        { value: sesiones },
+        { value: personas },
+        { value: vistas },
+        { value: nuevos },
+        { value: duracion },
+        { value: enganche },
+      ],
+    },
+  ],
   rowCount: 1,
   metadata: { currencyCode: 'ARS', timeZone: 'America/Argentina/Buenos_Aires' },
   kind: 'analyticsData#runReport',
@@ -453,6 +487,85 @@ describe('fechaDeGa4', () => {
 // ─────────────────────────────────────────────────────────────────────
 // 4 · El resumen
 // ─────────────────────────────────────────────────────────────────────
+
+describe('las tres métricas que sumó B-800', () => {
+  it('llegan desde la respuesta cruda, con su variación', () => {
+    /*
+     * **Que las seis salgan del mismo informe es la decisión que este caso
+     * fija.** `pedidosGa4` ya se ejecuta dos veces —ventana actual y anterior—
+     * así que las tres nuevas traen su variación **sin un round trip más**. Si
+     * alguien las moviera a un informe propio, el pedido pasaría de dos a cuatro
+     * llamadas a la Data API por corrida y la variación habría que armarla a
+     * mano.
+     *
+     * MUTACIÓN PROBADA: pedirle 3 métricas a `metricasDeLaFila` en vez de 6 deja
+     * las tres nuevas en `0` y este caso en rojo.
+     */
+    const r = resumenGa4({
+      actual: { ...informesVacios(), totales: totales('412', '317', '1103', '180', '134.7', '0.6432') },
+      anterior: { ...informesVacios(), totales: totales('300', '250', '900', '150', '120', '0.58') },
+      primerDia: {},
+      ventana: { desde: '2026-09-15', hasta: '2026-10-12' },
+    });
+
+    expect(r.nuevos).toEqual({ valor: 180, variacion: 20 });
+    // Los dos que no son enteros llegan CRUDOS: el formato es de la pantalla.
+    expect(r.duracion.valor).toBeCloseTo(134.7, 5);
+    expect(r.enganche.valor).toBeCloseTo(0.6432, 5);
+    expect(r.duracion.variacion).toBe(12);
+  });
+
+  it('y no se formatean en la Function: el valor viaja como lo manda GA4', () => {
+    /*
+     * La otra mitad de la decisión. Si la Function devolviera `'2 min 15 s'`, el
+     * panel no podría mostrar el mismo dato de otra forma —ni un test comparar
+     * números— y el formato quedaría cableado del lado que no lo mira. Es el mismo
+     * criterio con el que `variacionLegible` vive en `src/` y no acá.
+     */
+    const r = resumenGa4({
+      actual: { ...informesVacios(), totales: totales('1', '1', '1', '1', '134.7', '0.6432') },
+      anterior: informesVacios(),
+      primerDia: {},
+      ventana: { desde: '2026-09-15', hasta: '2026-10-12' },
+    });
+    expect(typeof r.duracion.valor).toBe('number');
+    expect(typeof r.enganche.valor).toBe('number');
+    expect(JSON.stringify(r.duracion)).not.toContain('min');
+    expect(JSON.stringify(r.enganche)).not.toContain('%');
+  });
+
+  it('las tres son MÉTRICAS y no agregan ninguna dimensión — la razón de que sean baratas', () => {
+    /*
+     * **Lo que hace que sumarlas no sea una decisión de privacidad.** Una métrica
+     * es un agregado sobre la ventana entera y no puede traer contenido de nadie;
+     * una dimensión sí —`pageLocation` llevaría el `?q=` de lo que alguien tipeó, y
+     * `city`/`userGender` la demografía—. Por eso hay lista blanca de dimensiones y
+     * no de métricas.
+     *
+     * Este caso ata esa afirmación: el informe de totales sigue **sin dimensiones**.
+     * Si alguien le agregara una para «desglosar», el test de dimensiones
+     * permitidas la vería, pero recién si además está fuera de la lista blanca —
+     * esto lo frena antes, en el informe donde no tiene por qué haber ninguna.
+     */
+    const pedidos = pedidosGa4({ desde: '2026-09-15', hasta: '2026-10-12' });
+    /*
+     * `dimensions` no está en el tipo inferido del objeto —justamente porque el
+     * informe no la lleva— así que se lo pregunta por clave. Un `as` diría lo
+     * mismo y con menos ruido, pero también dejaría de fallar el día que alguien
+     * agregue la propiedad: `in` no.
+     */
+    expect('dimensions' in pedidos.totales).toBe(false);
+    expect(pedidos.totales.metrics).toHaveLength(6);
+    expect(pedidos.totales.metrics.map((m: { name: string }) => m.name)).toEqual([
+      'sessions',
+      'activeUsers',
+      'screenPageViews',
+      'newUsers',
+      'averageSessionDuration',
+      'engagementRate',
+    ]);
+  });
+});
 
 describe('resumenGa4', () => {
   const ventana = { desde: '2026-09-17', hasta: '2026-10-14' };

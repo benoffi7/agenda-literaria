@@ -852,7 +852,23 @@ sin período no se puede usar, así que el tablero muestra exactamente esto:
 | **Vistas de página** | ídem | el otro número que se cotiza, y el que dice si la gente mira más de una actividad por visita |
 | **Las 10 páginas más vistas** | ídem | de la mitad **a** es lo que se le ofrece a un anunciante como lugar caro; de la mitad **b**, la lista de qué se mira |
 | **De dónde entran** (buscador / redes / directo) y **con qué aparato** | ídem | lo que se pregunta segundo |
+| **Gente nueva** (`newUsers`) | ídem | **B-800.** Contesta lo que sesiones y personas no: si la audiencia **crece** o son los mismos volviendo. Con las tres primeras solas, un mes de puro público fiel y un mes de puro descubrimiento se ven iguales |
+| **Cuánto se quedan** (`averageSessionDuration`) | ídem | **B-800.** Entrar y salir no es leer. Es además el número que separa «llegó por una búsqueda que no era» de «encontró lo que buscaba» |
+| **Sesiones con interacción** (`engagementRate`) | ídem | **B-800.** GA4 reemplazó el rebote por esto. Va **sin decimal** —vive entre 40 % y 80 %, donde el decimal es ruido—, a diferencia del CTR de Search Console, que lleva uno porque vive entre 1 % y 5 % |
 | **Desde cuándo hay datos** | la fecha del primer dato | **es la línea que hace creíble a las demás.** «12.000 visitas» sin decir que la medición arrancó hace seis semanas es un número que se cae en la primera pregunta |
+
+> **Las tres de B-800 fueron baratas por una razón que conviene tener escrita:
+> son métricas, no dimensiones.** Una métrica es un agregado sobre la ventana
+> entera y no puede traer contenido de nadie; una dimensión sí —`pageLocation`
+> llevaría el `?q=` de lo que alguien tipeó, `city` y `userGender` la
+> demografía—. Por eso hay lista blanca de dimensiones (§ `DIMENSIONES_PERMITIDAS`)
+> y no de métricas. Y entran en el **mismo informe** que las tres primeras, así
+> que la variación de las tres sale sin un round trip más.
+>
+> El corolario, para la próxima vez que se quiera «sumar algo»: **agregar una
+> métrica es mecánico; agregar una dimensión es una decisión de privacidad.** El
+> desglose de «qué filtro no encontró nada» (B-798) es del segundo tipo, y por eso
+> es un ítem y no una línea.
 
 Y una línea que el tablero tiene que decir siempre, porque es la que evita el
 error más caro: **de dónde sale cada número.** El que sale de GA4 se puede

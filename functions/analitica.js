@@ -220,7 +220,35 @@ export const pedidosGa4 = (ventana) => {
   return {
     totales: {
       dateRanges,
-      metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'screenPageViews' }],
+      /*
+       * **Seis métricas y ninguna dimensión** — B-800. Las tres primeras son las
+       * de B-374; las tres nuevas las pidió el dueño («sumarle más cosas con lo
+       * que nos de google»).
+       *
+       * Que sean **métricas** y no dimensiones es lo que hace que agregarlas sea
+       * barato: una métrica es un agregado —un número sobre la ventana entera— y
+       * no puede traer contenido de nadie. Por eso `DIMENSIONES_PERMITIDAS`
+       * existe con su lista blanca y acá no hace falta una: el riesgo que esa
+       * lista cuida —`pageLocation` con el `?q=` de lo que alguien tipeó, la
+       * demografía— vive del lado de las dimensiones.
+       *
+       * Y las tres entran en **este mismo informe** y no en uno nuevo: el pedido
+       * ya se ejecuta dos veces (ventana actual y anterior), así que la variación
+       * de las tres sale gratis y no hay un round trip más.
+       */
+      metrics: [
+        { name: 'sessions' },
+        { name: 'activeUsers' },
+        { name: 'screenPageViews' },
+        // Cuánta de esa gente entra por primera vez. Contesta «¿crece la
+        // audiencia o son los mismos volviendo?», que es otra pregunta.
+        { name: 'newUsers' },
+        // Segundos promedio por sesión. Se formatea en el panel, no acá.
+        { name: 'averageSessionDuration' },
+        // 0..1 — la proporción de sesiones «con interacción» (GA4 reemplazó el
+        // rebote por esto). El panel lo muestra como porcentaje.
+        { name: 'engagementRate' },
+      ],
     },
     paginas: {
       dateRanges,
@@ -350,8 +378,12 @@ export const fechaDeGa4 = (valor) =>
  * cruda de cada uno. `primerDia` es la respuesta de `pedidoPrimerDia`.
  */
 export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
-  const [sesiones, personas, vistas] = metricasDeLaFila(actual?.totales, 3);
-  const [sesionesAntes, personasAntes, vistasAntes] = metricasDeLaFila(anterior?.totales, 3);
+  const [sesiones, personas, vistas, nuevos, duracion, enganche] = metricasDeLaFila(
+    actual?.totales,
+    6,
+  );
+  const [sesionesAntes, personasAntes, vistasAntes, nuevosAntes, duracionAntes, engancheAntes] =
+    metricasDeLaFila(anterior?.totales, 6);
 
   return {
     ventana,
@@ -367,6 +399,22 @@ export const resumenGa4 = ({ actual, anterior, primerDia, ventana }) => {
     sesiones: { valor: sesiones, variacion: variacion(sesiones, sesionesAntes) },
     personas: { valor: personas, variacion: variacion(personas, personasAntes) },
     vistas: { valor: vistas, variacion: variacion(vistas, vistasAntes) },
+    nuevos: { valor: nuevos, variacion: variacion(nuevos, nuevosAntes) },
+    /*
+     * Los dos de abajo **no son enteros** y por eso el `valor` viaja crudo: los
+     * segundos con sus decimales y el enganche como 0..1. Formatearlos acá sería
+     * decidir en la Function cómo se ven en la pantalla, y esa decisión vive del
+     * lado del panel —igual que `variacionLegible`—.
+     *
+     * La variación sí se calcula acá, y para el enganche es **la variación de la
+     * tasa en porcentaje**, no en puntos porcentuales: pasar de 0,50 a 0,55 da
+     * «+10 %» y no «+5 puntos». Es una decisión y está escrita porque las dos
+     * lecturas son legítimas; se eligió el porcentaje porque es lo que hace la
+     * misma `variacion()` que las otras cinco, y una segunda forma de variar
+     * sería un segundo formato que explicar.
+     */
+    duracion: { valor: duracion, variacion: variacion(duracion, duracionAntes) },
+    enganche: { valor: enganche, variacion: variacion(enganche, engancheAntes) },
     paginas: ranking(actual?.paginas),
     canales: ranking(actual?.canales),
     dispositivos: ranking(actual?.dispositivos),
@@ -562,6 +610,12 @@ export const CLAVES_DEL_RESUMEN = {
     'sesiones',
     'personas',
     'vistas',
+    // B-800 — las tres que pidió el dueño. Van acá **a mano y una por una**,
+    // que es el punto de esta lista: agregar una clave al documento que lee el
+    // panel es una decisión, y el test de claves exactas la pide explícita.
+    'nuevos',
+    'duracion',
+    'enganche',
     'paginas',
     'canales',
     'dispositivos',

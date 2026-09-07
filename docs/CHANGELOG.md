@@ -2,6 +2,30 @@
 
 ## Sin publicar
 
+- **La pestaña del sitio muestra tres métricas más, y el evento del tríptico
+  empezó a emitir** — **B-800** y **B-601**. Pedido del dueño: «sumarle más cosas
+  con lo que nos de google, por ejemplo los eventos y sus valores».
+
+  Lo de los eventos era lo que faltaba de verdad: de los tres eventos propios,
+  `clic_triptico` estaba declarado, testeado y documentado **con el aviso de que
+  no emitía**, y le faltaba el handler desde el 2026-09-03. Aplicado. Va en
+  `Buscador.tsx` y no adentro del componente porque **el mismo componente lo
+  pintan el build y la island** y el del build no se hidrata: adentro, el
+  transporte de analítica entraría en los dos usos y mediría en uno solo.
+
+  Y tres métricas nuevas: **gente nueva** (¿crece la audiencia o son los mismos
+  volviendo?), **cuánto se quedan** y **sesiones con interacción** —lo que GA4 usa
+  en lugar del rebote—. Fueron baratas por una razón que quedó escrita: **son
+  métricas, no dimensiones**. Una métrica es un agregado y no puede traer
+  contenido de nadie; por eso hay lista blanca de dimensiones y no de métricas. Y
+  entran en el mismo informe que las tres viejas, así que su variación sale sin
+  una llamada más a la API.
+
+  El valor viaja **crudo** de la Function y el formato lo decide la pantalla, igual
+  que la variación. Y el enganche va sin decimal mientras el CTR lleva uno: no es
+  inconsistencia, es que uno vive entre 40 % y 80 % y el otro entre 1 % y 5 %. Los
+  dos casos están juntos en el test para que la diferencia se lea como decisión.
+
 - **Cancelar un encuentro ahora se mide** — **B-58**, la mitad que faltaba. Estaba
   afuera porque medirlo pedía reacomodar el markup de un componente que otros
   frentes estaban tocando, y eso caducó.
