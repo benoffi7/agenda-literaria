@@ -986,6 +986,10 @@ gcloud services enable analyticsdata.googleapis.com \
   searchconsole.googleapis.com --project agenda-literaria
 ```
 
+> ✅ **Hecho el 2026-09-07** por el dueño, y verificado con el comando de abajo:
+> las dos APIs aparecen habilitadas (`Google Analytics Data API`, `Google Search
+> Console API`). **Faltan los pasos 2, 3 y 4.**
+
 *Cómo verificar:* `gcloud services list --enabled --project agenda-literaria | grep -E 'analyticsdata|searchconsole'`
 tiene que devolver las dos líneas. Sin esto, la Function loguea un 403 con
 `SERVICE_DISABLED` y un link para habilitarla — que es el error más fácil de

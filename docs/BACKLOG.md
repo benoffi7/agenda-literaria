@@ -3227,7 +3227,29 @@ rebuild. Si «Esta semana» no puede escribir sus días de forma corta, hay que
 resolver eso, no sacar la línea.
 
 
-### B-790 · Ya hay estadísticas del sitio y el panel no las muestra · P2
+### B-790 · 🟡 en curso (paso 1 de 4 hecho, 2026-09-07) — Ya hay estadísticas del sitio y el panel no las muestra
+
+> **Avance del 2026-09-07.** El dueño corrió el **paso 1** de los cuatro de
+> `docs/16-analitica-del-sitio.md` §9.4 —habilitar `analyticsdata` y
+> `searchconsole`— y quedó verificado con `gcloud services list --enabled`: las
+> dos aparecen.
+>
+> **Faltan los tres que son de consola y de `.env`, y ninguno es de código:**
+>
+> 1. ~~habilitar las dos APIs~~ ✅
+> 2. **GA4** → Administrar → Accesos a la propiedad → agregar
+>    `calendar-sync@agenda-literaria.iam.gserviceaccount.com` con rol **Lector**
+>    (la misma cuenta del calendario, no una nueva).
+> 3. **Search Console** → la propiedad de `agendaleh.ar` → Usuarios y permisos →
+>    el mismo mail, permiso **Restringido**.
+> 4. `functions/.env` con `GA4_PROPERTY_ID` —**el numérico**, no el
+>    `G-9CFMHSSGRC`— y `SEARCH_CONSOLE_SITE`, y después
+>    `firebase deploy --only functions:traerAnaliticaDelSitio`.
+>
+> Y lo que conviene tener presente al mirar el resultado: la Function corre **una
+> vez por día**, así que los números aparecen al día siguiente del deploy; y
+> **ninguna de las dos APIs mide para atrás**, así que el primer mes de historia
+> arranca cuando esto queda andando.
 
 **Reportado por el dueño el 2026-09-07:** Search Console y GA4 ya tienen datos
 —la propiedad se conectó el 2026-09-03 y descubrió 80 páginas— pero la pestaña
