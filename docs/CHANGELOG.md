@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El gate de antes de pushear corre la suite dos veces, con el reloj en otra
+  zona** — el CI corre en UTC y esta máquina en Buenos Aires, así que un test que
+  pregunta la fecha sin `timeZone` explícito pasa acá y falla allá. Ya se cobró
+  tres veces; ahora se agarra antes del push. `Asia/Tokyo` a propósito: está
+  **adelante** de UTC y atrapa los dos sentidos del error.
+
 - **El login del panel dice por qué falló** — **B-790**. El botón hacía
   `void loginConGoogle()`: descartaba la promesa y con ella el error, así que un
   dominio sin autorizar se veía como «el panel carga pero no entra». Ahora hay un

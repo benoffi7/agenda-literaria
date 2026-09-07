@@ -352,7 +352,26 @@ describe('el formateo para la pantalla', () => {
      * clase de bug que este repo ya arregló en `instanteDeIso`.
      */
     expect(diaLegible('2026-09-17')).toBe('17 de septiembre');
-    expect(new Date('2026-09-17').getDate()).toBe(16); // el testigo del bug
+    /*
+     * **El testigo del bug, y va con `timeZone` explícito** — arreglado el
+     * 2026-09-07. Estaba escrito como `new Date('2026-09-17').getDate() === 16`,
+     * que es cierto **solo en una zona detrás de UTC**: pasaba en Buenos Aires y
+     * fallaba en CI, que corre en UTC y devuelve 17. O sea que el testigo de la
+     * trampa 1 caía él mismo en la trampa 1, y en su forma más pura — la de
+     * «verde en local, roto de verdad» que este repo ya se comió en B-561 y
+     * B-562.
+     *
+     * Preguntado con la zona del proyecto —la misma que usa el código de
+     * producción— la afirmación es cierta en cualquier runner: ese instante UTC
+     * **es** el 16 en Buenos Aires, y por eso `diaLegible` no puede parsear con
+     * `new Date`.
+     */
+    expect(
+      new Date('2026-09-17').toLocaleDateString('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        day: 'numeric',
+      }),
+    ).toBe('16');
     expect(diaLegible('2026-01-01')).toBe('1 de enero');
     expect(diaLegible('2026-12-31', true)).toBe('31 de diciembre de 2026');
   });

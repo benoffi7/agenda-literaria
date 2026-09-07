@@ -26,7 +26,7 @@ cd "$(git rev-parse --show-toplevel)"
 PASO=0
 paso() {
   PASO=$((PASO + 1))
-  printf '\n\033[1m[%d/5] %s\033[0m\n' "$PASO" "$1"
+  printf '\n\033[1m[%d/6] %s\033[0m\n' "$PASO" "$1"
 }
 
 fallo() {
@@ -115,6 +115,33 @@ fi
 # Así que el paso siembra, buildea y **afirma sobre el archivo que salió**. El
 # detalle está en el script; acá solo se decide contra qué emulador corre, con la
 # misma detección del paso 3: el que ya está arriba, o uno efímero.
+# ── 3b · La suite otra vez, con el reloj de otra zona ─────────────
+# **Por qué existe este paso.** El CI corre en **UTC** y esta máquina en Buenos
+# Aires (−03), así que un test que pregunta la fecha con `getDate()` en vez de con
+# `timeZone` explícito pasa acá y **falla allá** — o al revés, que es peor: pasa
+# en los dos y miente en uno. Es la trampa 1 del §13 aplicada a los tests, y ya se
+# cobró tres veces: B-561, B-562 y, el 2026-09-07, el testigo de la trampa 1 de
+# `resumen-del-sitio.test.ts`, que afirmaba `new Date('2026-09-17').getDate() ===
+# 16` — cierto solo detrás de UTC.
+#
+# Enterarse en el CI es caro: el push ya salió, el deploy ya arrancó y el rojo
+# llega cuando nadie está mirando el cambio. Correr la suite una segunda vez con
+# el reloj movido cuesta unos segundos y lo agarra antes.
+#
+# **`Asia/Tokyo` y no `UTC`**, a propósito: está **adelante** de UTC, así que
+# atrapa los dos sentidos del error. Con UTC solo se detectan los tests que
+# asumen una zona detrás.
+#
+# No hace falta emulador acá: lo que se busca son los tests de fecha, que son
+# puros. Se saltea con `SALTEAR_TZ=1` para una corrida de apuro.
+if [ "${SALTEAR_TZ:-}" = '1' ]; then
+  printf '\n\033[33m⚠ el paso de zona horaria se salteó por SALTEAR_TZ=1.\033[0m\n'
+else
+  paso 'La suite con el reloj en otra zona (TZ=Asia/Tokyo)'
+  TZ=Asia/Tokyo npm test \
+    || fallo 'la suite no pasa con el reloj de otra zona: hay un test que depende de la zona del runner'
+fi
+
 paso 'Build del sitio y del panel, leyendo Firestore de verdad'
 if [ "$EMU_ARRIBA" = true ]; then
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
@@ -130,7 +157,7 @@ fi
 paso 'Fuga de credenciales en dist/ (§5.4, trampa 4)'
 ./scripts/verificar-bundle.sh dist || fallo 'el bundle tiene rastros del Admin SDK'
 
-printf '\n\033[32m✓ los cinco pasos mecánicos pasaron.\033[0m\n'
+printf '\n\033[32m✓ los seis pasos mecánicos pasaron.\033[0m\n'
 printf 'Lo que esto NO vio: privacidad de un campo nuevo, trampas del §13 en\n'
 printf 'código nuevo, y si la doc acompaña al cambio. Eso es criterio, y va por\n'
 printf 'el skill `antes-de-pushear` (lanza los tres auditores en paralelo).\n'

@@ -230,7 +230,7 @@ funcionar nunca y solo retrasa el aviso.
 
 ## El gate de antes de pushear
 
-Cinco pasos mecánicos, en un script para poder correrlos a mano, y un hook que
+Seis pasos mecánicos, en un script para poder correrlos a mano, y un hook que
 solo los llama. La separación es la misma lección de `que-deployar.sh`: un `if`
 adentro de un hook es igual de imposible de probar que un `if` adentro de un
 YAML.
