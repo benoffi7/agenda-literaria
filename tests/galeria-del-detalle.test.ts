@@ -609,6 +609,75 @@ describe('cada imagen se abre en la capa, y el abridor es un enlace de verdad �
     expect(figuraDePortada).toContain('aria-label={rotuloDeAmpliar(1)}');
   });
 
+  it('y el enlace tampoco le cuenta a nadie qué página se está mirando — §5.1, trampa 5', () => {
+    /*
+     * **Hallazgo del `auditor-privacidad` sobre este mismo cambio.** El `<img>`
+     * de al lado lleva `referrerpolicy="no-referrer"` por una decisión testeada
+     * —«no le cuenta a un host cualquiera qué taller está mirando quién», más
+     * arriba en este archivo— y el `<a>` nuevo apunta a **la misma URL** de
+     * terceros. Sin `rel`, la garantía queda apoyada en el default del navegador
+     * (`strict-origin-when-cross-origin`: manda el origen, no el path) en vez de
+     * en el markup, que es exactamente lo que la imagen decidió no hacer. Y no es
+     * solo el camino sin JavaScript: el click con Cmd/Ctrl y el del botón del
+     * medio **no se interceptan a propósito**, así que la navegación al host
+     * externo existe con la island hidratada.
+     *
+     * Los otros siete enlaces externos de esta plantilla llevan
+     * `rel="noopener noreferrer"`: los dos abridores eran los únicos que no.
+     *
+     * MUTACIÓN PROBADA: borrar el `rel`. Nada se ve distinto, ningún otro test se
+     * mueve, y la fuga solo aparece en los logs del host de la imagen.
+     */
+    const codigo = sinComentarios(src());
+    const enlaces = [...codigo.matchAll(/<a\b[\s\S]*?data-visor[\s\S]*?>/g)].map((m) => m[0]);
+    expect(enlaces, 'los dos abridores: la portada y la tira').toHaveLength(2);
+    for (const a of enlaces) expect(a).toContain('rel="noreferrer"');
+  });
+
+  it('`data-visor` está en los dos abridores y en nada más', () => {
+    /*
+     * **La garantía de la island es la exclusividad de este atributo**, y es el
+     * otro hallazgo del `auditor-privacidad`. Su entrada no es el view-model sino
+     * `document.querySelectorAll('[data-visor]')`, o sea proyección abierta en la
+     * forma: hoy no puede alcanzar ningún dato privado —todo lo que lee (`href`,
+     * `alt`, medidas, `figcaption`) ya está en el HTML, acotado por
+     * `DetallePublico`— pero el modo de falla concreto es reusar el atributo en
+     * otro enlace de la página.
+     *
+     * MUTACIÓN PROBADA: agregar `data-visor` al `<a>` del CTA «Escribir por
+     * WhatsApp». La página se ve igual y tocar el CTA abre una capa con el
+     * teléfono de quien organiza adentro de un `<img>` a pantalla completa.
+     */
+    expect([...sinComentarios(src()).matchAll(/data-visor/g)]).toHaveLength(2);
+  });
+
+  it('una URL que no sirve nunca llega al `href`: sería un XSS en HTML indexado', () => {
+    /*
+     * El tercer hallazgo del `auditor-privacidad`. Que `imagen.url` crudo en el
+     * `href` no sea un agujero lo sostiene `imagenesDeDetalle`
+     * (`lib/detallePublico.ts`), que pasa cada URL por `urlSegura` y **descarta**
+     * las que no son `http:`/`https:`. Un `<img src="javascript:…">` era inerte;
+     * un `<a href="javascript:…">` en la página que se queda en Google, no.
+     *
+     * El caso «una URL que no sirve no deja un hueco en la tira», más arriba,
+     * ejercita el mismo filtro — pero su propiedad declarada es de
+     * **maquetación**, así que la mutación que lo abre es la que alguien haría
+     * por motivos visuales: cambiar el filtro por un placeholder («una caja gris
+     * en vez de esconder la imagen») devuelve la fila al array con su URL
+     * original, y el `javascript:` llega al `href`. Este caso afirma el saneo
+     * como lo que ahora también es: una defensa de XSS.
+     */
+    const { portada, secundarias } = comoLaPagina([
+      imagen({ id: 'img_1', url: 'javascript:alert(document.cookie)', portada: true }),
+      imagen({ id: 'img_2', url: 'data:text/html;base64,PHNjcmlwdD4=', portada: false }),
+      imagen({ id: 'img_3', url: 'https://ejemplo.com/patio.jpg', portada: false }),
+    ]);
+    const urls = [portada?.url, ...secundarias.map((i) => i.url)].filter(
+      (u): u is string => typeof u === 'string',
+    );
+    expect(urls, 'la única que sobrevive es la http(s)').toEqual(['https://ejemplo.com/patio.jpg']);
+  });
+
   it('los enlaces llevan el anillo de foco del sistema, no uno propio', () => {
     // Son las primeras paradas de tabulación de esta parte de la página: sin
     // anillo, quien navega con teclado no ve dónde está. `foco` viene de
