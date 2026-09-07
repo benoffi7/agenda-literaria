@@ -3148,7 +3148,6 @@ por qué la primera corrida tarda.
 
 **`B-780` es P0 y bloquea el deploy.** Los otros son P1/P2/P3.
 
-```md
 ### B-780 — ✅ hecho (2026-09-07) · P0 ⛔ — `/apoyar` publica e indexa un usuario de cobro que nadie registró
 
 > ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el perfil de Cafecito existe y verificado contra la red (200).
@@ -3446,21 +3445,70 @@ decidió que está bien tiene que estar escrito antes de que haya un segundo cas
 Dos: **si algún día el enlace sale desde otra página** —una tira en el pie de la
 página de detalle, por ejemplo— el `Referer` pasa a decir **qué actividad** estaba
 mirando, y ahí sí hay algo que decidir.
-```
 
 ---
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
-```
+> ⚠️ **Este bloque estaba dentro de un bloque de código, y con él B-780 a B-786.**
+> Dos ` ``` ` de sobra —restos de un texto pegado desde `.estado/comercial.md` con
+> sus propias marcas— envolvían primero las tres filas de acá y después **siete
+> ítems enteros**, que se renderizaban como código plano: sin tablas, sin negritas
+> y sin links. Arreglado el 2026-09-07, junto con la misma cicatriz en
+> `06-decisiones.md` (D-460 y D-461). Es el patrón de «merge mal resuelto» que ya
+> tenía ítem propio en **B-294** y que ningún chequeo cuenta.
 
-Y las filas:
-
-```md
+| # | Qué | Estado |
+|---|---|---|
 | **B-770** | **La sección comercial `/anunciar`**: ofrecerle espacio a cafés, librerías y espacios culturales, con el mail como única acción. Sin planes, sin precios y sin un número de audiencia inventado | ✅ hecho (2026-09-04) — D-450, `src/lib/comercialDelSitio.ts` + `src/pages/anunciar.astro`. Entra al sitemap y al pie; **B-377 sigue intacto** |
 | **B-771** | **Revisar `/anunciar` cuando haya datos de audiencia.** Hoy la página dice que no los tenemos, que es lo correcto: la medición arrancó el 2026-09-03. Con un mes de historia (**B-374**) se puede agregar un número real, y ahí hay que revisar el chequeo de `tests/comercial-del-sitio.test.ts` que hoy prohíbe las cifras de audiencia — con los números en la mano, no sacándolo porque molesta | 🟡 depende de B-374 |
 | **B-772** | **La fila de `/anunciar` en el índice de salidas públicas, si se decide numerarla.** Hoy **no** la lleva, y con criterio: `07-seguridad.md` tiene escrito que «las páginas de texto del sitio no son una salida más» —`/ayuda` y `/contacto` no proyectan ningún documento y no tienen fila—, y ésta es la más chica de esa clase (no recibe ni una prop). Si se decide contarla igual, va junto con **B-654** (la fila del `/404`, también pendiente): las dos filas y el salto de «doce» a «catorce» son un solo cambio atómico sobre cuatro archivos. El texto exacto está en `.estado/comercial.md` § 5 | 🔵 futuro, junto con B-654 |
-```
+| **B-773** | **Los settings de propiedad de GA4 que nadie verificó** — ver abajo, tiene cuerpo propio desde el 2026-09-07 | 🟡 pendiente, es de consola |
+
+#### B-773 · Los settings de propiedad de GA4 que nadie verificó · P2
+
+**Estaba citado en tres lugares y no tenía cuerpo.** Lo nombran la ficha del
+`auditor-privacidad` (fila 12), `docs/13-agentes.md` y el texto de `/anunciar`, y
+hasta hoy no había ítem que dijera qué es — o sea que las tres citas mandaban a un
+número.
+
+**Qué es.** B-480 cerró en la consola de GA4 las cuatro cosas del «Enhanced
+Measurement» que mandaban eventos por su cuenta —búsquedas en el sitio, clics
+salientes, `page_view` por cambio de historial, y el borrado de la clave `q`—.
+**Lo que no se tocó son los settings de propiedad**, que son otra pantalla y otra
+decisión:
+
+- **personalización de anuncios** (`Google signals` / `Ad personalization`), que
+  habilita audiencias y remarketing;
+- **Google Signals**, que cruza la medición con la sesión de Google de quien mira
+  y agrega datos demográficos.
+
+**Por qué importa, y no es hipotético.** El texto de `/anunciar` afirma que «no hay
+un anuncio, ni una red, ni un píxel», y el docblock de `comercialDelSitio.ts` ya
+dejó escrito que la frase se redactó **evitando decir «no hacemos remarketing»**
+justamente porque eso afirmaría un ajuste de consola que este repo no controla. O
+sea: la página está escrita para no mentir sobre esto, y lo que falta es
+**confirmar el estado real**.
+
+**Y no hay ningún test que lo sostenga, ni puede haberlo**: es configuración de una
+consola, no código. Es la misma clase que B-480 —cerrado y sin red— y por eso la
+ficha del auditor ahora lo dice con esas palabras: si alguien lo reactiva, ningún
+rojo lo dice.
+
+**Qué habría que hacer**, y es de consola, no de repo:
+
+1. En GA4 → Administrar → Configuración de datos → **Recopilación de datos**:
+   confirmar que **Google Signals** está desactivado.
+2. En Administrar → **Configuración de la propiedad**: confirmar que la
+   personalización de anuncios no está habilitada para la propiedad.
+3. Escribir el estado encontrado en `docs/16-analitica-del-sitio.md` §9.4, al lado
+   de los otros pasos de consola, **con la fecha** — que es lo único que puede
+   hacer de red acá: dejar por escrito qué se vio y cuándo.
+
+Si alguno de los dos está activado, es una decisión: apagarlo (y entonces el texto
+de `/anunciar` puede afirmar más) o dejarlo (y entonces hay que revisar que ninguna
+página afirme lo contrario — el barrido de `tests/promesas-sobre-datos.test.ts`
+mira las promesas sobre medición, no sobre publicidad).
 
 ---
 
@@ -8380,7 +8428,6 @@ de entorno que el otro (§ «Idempotencia en los scripts» de `05-patrones.md`).
 Media hora, y lo que compra es poder mirar qué va a borrar **antes** de que lo
 borre — que en una Function que borra la única copia de una actividad ya no
 existente vale más que en una que borra imágenes.
-```
 
 ### B-631 · La verificación contra Calendar mira si el evento existe, no si dice lo mismo · P3
 
@@ -8423,7 +8470,6 @@ Dos cuidados que no son obvios:
 Lo que compra: cierra **B-162** sin depender de la decisión de producto de
 **B-160** —que hasta ahora eran los dos juntos o ninguno— y deja medida la
 suposición que sostiene la guarda anti-loop para el próximo cambio de texto.
-```
 
 #### El parche de B-631, listo para el frente dueño de `scripts/`
 
@@ -9725,7 +9771,6 @@ y cerrado en el mismo cambio: dos afirmaciones de doc que quedaron falsas
 (`02-infraestructura.md` sobre las opciones heredadas, `07-seguridad.md`
 ubicando `cargarLabels`) y tres comentarios que ubicaban `MAX_EVENTOS_RESYNC` en
 `index.js` — uno de ellos escrito por este mismo frente, o sea nacido stale.
-```
 
 ### B-78 · El 26 % de `src/lib/` es prosa, no lógica — ✅ hecho (2026-09-07)
 
@@ -10126,7 +10171,6 @@ nueva que nace en `null`— y dos de integración en
 lo que ningún test puro puede: que `actualizarActividad` haga la lectura. Las
 tres mutaciones probadas ponen los cinco en rojo: sacar la fusión, omitir la
 clave, y sacar la relectura.
-```
 
 ---
 
@@ -10311,7 +10355,35 @@ existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
 suite hoy — así que el número del documento está bien y el de esta nota estaba
 mal.
 
-### B-294 · ✅ hecho — La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas
+### B-294 · ✅ hecho (2026-09-07) — La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas, y seis bloques de doc estaban dentro de un bloque de código
+
+> **2026-09-07 — la clase de este ítem tenía una segunda cara, peor y sin red.**
+> Buscando la cicatriz de «merge mal resuelto» en el resto del repo aparecieron
+> **seis bloques de documentación adentro de un bloque de código**: D-460 y D-461
+> completas, siete ítems del BACKLOG (B-780 a B-786), las filas de B-770, trece
+> ítems viejos (B-78 a B-150), y dos entradas del CHANGELOG. **Más de
+> cuatrocientas líneas** que se renderizaban como código plano —sin tablas, sin
+> negritas, sin links— y que nadie podía leer como documentación.
+>
+> Misma causa que las filas duplicadas: texto pegado desde un `.estado/*.md`
+> **con sus propias marcas de bloque**. Y nadie lo veía porque en un editor el
+> texto se lee igual, `red-de-contencion.test.ts` cuenta filas y no fences, y el
+> `auditor-documentacion` lee el **contenido** —que está bien; lo que estaba mal
+> es cómo se renderiza—.
+>
+> Arreglado, y con red: `tests/bloques-de-codigo-en-la-doc.test.ts`, con las dos
+> mitades que hacen falta. La primera —**todo bloque cierra**— agarra el fence sin
+> pareja que mete el resto del archivo adentro de un bloque. La segunda —**ningún
+> bloque contiene un encabezado ni una fila de tabla del backlog**— es la que
+> agarra el daño real, porque los fences de sobra venían **en pares** y la primera
+> mitad los veía balanceados. Mutación probada en las dos direcciones.
+>
+> Un detalle del parseo que hizo falta para ver el daño: en CommonMark **un fence
+> de cierre no lleva info string**, así que un ` ```md ` adentro de un bloque
+> abierto es contenido y no lo cierra. Sin eso, el caso del BACKLOG se leía como
+> dos bloques chicos y el encabezado de adentro quedaba «afuera».
+
+### B-294 · lo original — La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas
 
 **Ya estaba resuelto cuando se revisó el 2026-09-07, y tiene red.** Verificado a
 mano contra el archivo: la tabla tiene **67 filas**, ninguna con `||`, **ninguna
@@ -10913,7 +10985,6 @@ borra y que la corrida siguiente ya no la ve.
 
 Queda sin script en seco, que es lo único que el barrido de imágenes tiene y
 este no: **B-630**.
-```
 
 ### B-91 · Un slug legítimo que termine en `-copia` no se puede publicar — ✅ hecho (2026-09-07)
 

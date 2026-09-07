@@ -2,6 +2,31 @@
 
 ## Sin publicar
 
+- **Seis bloques de documentación estaban adentro de un bloque de código** —
+  **B-294**, la segunda cara de ese ítem. D-460 y D-461 completas, siete ítems del
+  BACKLOG (B-780 a B-786), las filas de B-770, trece ítems viejos y dos entradas de
+  este mismo archivo: **más de cuatrocientas líneas** que se renderizaban como
+  código plano, sin tablas, sin negritas y sin links.
+
+  Misma causa que las filas duplicadas del ítem original: texto pegado desde un
+  `.estado/*.md` **con sus propias marcas de bloque**. Nadie lo veía porque en un
+  editor se lee igual, el chequeo que había cuenta filas de tabla y no fences, y el
+  `auditor-documentacion` lee el contenido —que estaba bien; lo que estaba mal era
+  cómo se renderiza—.
+
+  La red nueva tiene las dos mitades que hacen falta: «todo bloque cierra» agarra el
+  fence sin pareja, y «ningún bloque contiene un encabezado ni una fila de tabla»
+  agarra el daño real, que venía **en pares** y por eso se veía balanceado.
+
+- **B-773 tenía tres citas y ningún cuerpo.** Lo nombran la ficha del
+  `auditor-privacidad`, `docs/13-agentes.md` y el texto de `/anunciar`, y hasta
+  ahora las tres mandaban a un número. Ya tiene ítem: son los **settings de
+  propiedad de GA4** —Google Signals y la personalización de anuncios— que B-480 no
+  tocó porque son otra pantalla. Importa porque `/anunciar` está escrita
+  **evitando** decir «no hacemos remarketing» justamente para no afirmar un ajuste
+  que este repo no controla; lo que falta es confirmar el estado real en la consola
+  y escribir la fecha.
+
 - **Cuatro ítems del backlog que ya estaban resueltos, y uno que faltaba a medias**
   — **B-261**, **B-120**, **B-292** y **B-325**.
 
@@ -272,7 +297,6 @@
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
 
-```md
 ### `/apoyar` — la sección de donaciones, con Cafecito (B-780)
 
 Una página nueva que cuenta **qué es la agenda y qué cuesta sostenerla**, en vez
@@ -307,7 +331,6 @@ de pedir. Es la primera del sitio que le pide algo a quien la lee.
   `docs/12-sitio-publico.md`.
 
 > ⛔ **Bloqueante del deploy: el perfil de Cafecito no existe.** Ver **B-780**.
-```
 
 ---
 
@@ -375,7 +398,6 @@ Detalles de forma, todos por el patrón que ya existía:
 Ofrecer espacio y **servir** un anuncio siguen siendo dos cosas distintas: la
 segunda es **B-377** y no se tocó. `/anunciar` es la puerta de entrada de esa
 conversación y no cambia nada del sitio.
-```
 
 ---
 
@@ -404,7 +426,6 @@ elementos sin `description`, `organizer` y `offers` eran los `subEvent`, no 25
 páginas— y los otros seis son decisiones ya tomadas (`performer` sin tallerista,
 `offers` sin campo de monto por B-114, `image` en actividades sin imagen por
 B-291). La cuenta completa está en el §5.3bis de `docs/12-sitio-publico.md`.
-```
 
 ---
 
