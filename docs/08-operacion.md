@@ -971,6 +971,36 @@ Un `barrido de versiones huérfanas: nada para purgar` con `motivos` lleno de
 borrado. Si aparece `sin-fecha-legible`, hay una versión con el `guardadoEn`
 roto y conviene mirarla antes de que el margen deje de importar.
 
+### Las cuentas de Instagram de la base, para seguirlas
+
+**Pedido del dueño.** `npm run instagrams` arma una página local con **todas** las
+cuentas de Instagram que aparecen en la base, ordenadas por en cuántas actividades
+salen, con el link a cada perfil y en qué rol aparece cada una.
+
+```bash
+npm run instagrams          # contra producción, solo lectura
+open .estado/instagrams.html
+```
+
+Tres cosas que decide, y las tres tienen motivo:
+
+- **Sale a `.estado/`, que está en el `.gitignore`, y no a `public/`.** La lista
+  incluye `difusion.arrobar`, que el §5.1 marca como trabajo interno que **nunca
+  sale al público**: un archivo en `public/` se publicaría con el próximo build.
+  Por eso la página es local y no se sube a ningún lado.
+- **Lee toda la colección, no solo lo publicado.** Un borrador ya tiene cargado a
+  su organizador, y para seguir una cuenta no hace falta esperar a publicar.
+- **Lo que no se puede leer como handle no se descarta en silencio**: va a una
+  sección aparte con el valor crudo. En la primera corrida (2026-09-07, 122
+  actividades, 74 cuentas) eso encontró dos datos mal cargados —un **nombre**
+  («Festival Argentino de Historieta») y un **mail**— en el campo de Instagram.
+
+El normalizador es una **copia** del del sitio (`handleInstagram`), porque un
+`.mjs` no resuelve los alias `@/`: misma restricción que D-20 y misma red, un test
+que corre las dos contra la misma batería y exige que contesten igual. Importa
+más que la mayoría de las copias, porque lo que deciden es **a qué cuenta apunta
+un link**.
+
 ### Reportes del panel → issues de GitHub (una sola vez)
 
 Cinco pasos manuales, en este orden. Los tres primeros los hace el dueño de la

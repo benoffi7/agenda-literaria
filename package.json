@@ -18,7 +18,8 @@
     "opciones:aprobar:prod": "node scripts/aprobar-opciones.mjs",
     "admin:claim": "FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST:-127.0.0.1:9099} node scripts/set-admin-claim.mjs",
     "admin:claim:prod": "node scripts/set-admin-claim.mjs",
-    "calendario:verificar": "node scripts/verificar-calendario.mjs"
+    "calendario:verificar": "node scripts/verificar-calendario.mjs",
+    "instagrams": "node scripts/instagrams-de-la-base.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.5",
