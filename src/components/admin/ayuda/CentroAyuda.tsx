@@ -69,6 +69,7 @@ export function CentroAyuda({
   const [nuevos] = useState(() => new Set(idsSinLeer));
 
   const caja = useRef<HTMLDivElement>(null);
+  const cuerpo = useRef<HTMLDivElement>(null);
   const idTitulo = useId();
   const idPestania = useId();
 
@@ -81,6 +82,46 @@ export function CentroAyuda({
    */
   const capituloAbierto =
     (seccion ? capituloDeSeccion(seccion)?.id : undefined) ?? CAPITULO_POR_CONTEXTO[contexto];
+
+  /**
+   * **Abrir el capítulo no alcanza: hay que llegar hasta él** — B-795.
+   *
+   * El «?» de cada sección del formulario ya abría la guía con **su** capítulo
+   * desplegado (B-62), pero la capa arranca scrolleada arriba, y arriba están los
+   * seis avisos de «Lo que no se puede deshacer» más los capítulos anteriores
+   * colapsados. Con diez capítulos, el de «Difusión» queda a dos pantallas de
+   * distancia: quien toca el «?» ve **siempre lo mismo**, y la conclusión razonable
+   * es que todos los «?» del formulario van al mismo lugar. Lo reportó el dueño
+   * así, con esas palabras.
+   *
+   * Tres cosas que este efecto hace a propósito:
+   *
+   * - **Solo cuando se pidió una sección.** Abierta desde el botón del encabezado
+   *   no hay a dónde ir: el lugar correcto es arriba, donde están los avisos. Por
+   *   eso la condición es `seccion` y no `capituloAbierto`, que siempre tiene
+   *   valor.
+   * - **No toca el foco.** `useCapaModal` acaba de ponerlo en el diálogo y
+   *   moverlo acá lo sacaría del contenedor que atrapa el Tab. Se scrollea el
+   *   contenedor, no se enfoca el capítulo.
+   * - **Se busca adentro de la capa** (`cuerpo.current.querySelector`) y por un
+   *   `data-`, no por `id`. Los capítulos de la guía tienen los mismos nombres que
+   *   las secciones del formulario, que sigue montado detrás con sus propias
+   *   anclas (`id="difusion"`): un `document.getElementById` encontraría **la del
+   *   formulario**, que está tapada, y el scroll no se vería.
+   *
+   * Y el `typeof` no es paranoia: **jsdom no implementa `scrollIntoView`**
+   * —comprobado— así que sin la guarda el primer test de render que abra esta
+   * capa muere con «not a function», que es un rojo que no habla del cambio que
+   * lo disparó (B-180). El test que verifica esto le pone un doble y comprueba
+   * **cuál** elemento recibió el scroll.
+   */
+  useEffect(() => {
+    if (!seccion || pestania !== 'guia') return;
+    const destino = cuerpo.current?.querySelector(`[data-capitulo="${capituloAbierto}"]`);
+    // `block: 'start'` y no `center`: el título del capítulo arriba, y su
+    // contenido —que es lo que se vino a leer— abajo y entero.
+    if (typeof destino?.scrollIntoView === 'function') destino.scrollIntoView({ block: 'start' });
+  }, [seccion, pestania, capituloAbierto]);
 
   // Ver las novedades es haberlas visto: se marca al mostrar la pestaña.
   useEffect(() => {
@@ -165,6 +206,7 @@ export function CentroAyuda({
         </header>
 
         <div
+          ref={cuerpo}
           role="tabpanel"
           aria-labelledby={`${idPestania}-${pestania}`}
           className="flex-1 overflow-y-auto overscroll-contain px-segura py-4 pb-segura sm:px-4"
@@ -201,8 +243,16 @@ function Guia({ capituloAbierto }: { capituloAbierto: string }) {
       </section>
 
       {CAPITULOS.map((c) => (
+        /*
+         * El `data-capitulo` es lo que le permite a la capa scrollear hasta el
+         * capítulo que se pidió (B-795). Va en un `div` de envoltorio y **no**
+         * como `ancla` de la `Seccion`: `ancla` se emite como `id`, y el
+         * formulario de atrás —que sigue montado— ya usa esos mismos nombres
+         * para sus anclas. Dos elementos con el mismo `id` no es HTML válido y
+         * hace que la búsqueda encuentre el de abajo.
+         */
+        <div key={c.id} data-capitulo={c.id}>
         <Seccion
-          key={c.id}
           titulo={c.titulo}
           descripcion={c.paraQue}
           colapsable
@@ -215,6 +265,7 @@ function Guia({ capituloAbierto }: { capituloAbierto: string }) {
             ))}
           </ul>
         </Seccion>
+        </div>
       ))}
     </div>
   );

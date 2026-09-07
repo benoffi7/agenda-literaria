@@ -2803,6 +2803,51 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-795 · ✅ hecho (2026-09-07) — todos los «?» del formulario parecían ir al mismo lugar
+
+**Reportado por el dueño el 2026-09-07:** «Lo del ? en cada seccion esta bueno
+pero lo que deberia abrir o mostrar es la ayuda de ese panel. ahora todas las
+ayudas dentro del formulario van al mismo lugar.»
+
+**El mecanismo estaba bien y el síntoma era real.** B-62 ya hacía viajar el título
+de la sección hasta la capa, que lo resuelve a capítulo y lo abre desplegado; y
+`tests/ayuda.test.ts` ya exigía que las diez secciones tengan capítulo, así que la
+resolución **nunca estuvo rota**. Lo que faltaba era **llegar hasta él**: la capa
+arranca scrolleada arriba, y arriba están los seis avisos de «Lo que no se puede
+deshacer» más los capítulos anteriores colapsados. Con diez capítulos, el de
+«Difusión» —el octavo— quedaba a dos pantallas de distancia.
+
+O sea: la ayuda correcta se abría **abajo del pliegue**, y lo que se veía era
+siempre lo mismo. La conclusión del dueño era la única razonable con lo que la
+pantalla mostraba.
+
+Cómo quedó, y las tres cosas que se cuidaron:
+
+- **Solo scrollea cuando se pidió una sección.** Abierta desde el botón «Ayuda»
+  del encabezado no hay a dónde ir: el lugar correcto es arriba, donde están los
+  avisos. La condición es `seccion` y no `capituloAbierto`, que siempre tiene
+  valor — y hay un caso que lo fija en esa dirección.
+- **No toca el foco.** `useCapaModal` acaba de ponerlo en el diálogo, y moverlo
+  lo sacaría del contenedor que atrapa el Tab. Se scrollea el contenedor, no se
+  enfoca el capítulo.
+- **Se busca por `data-capitulo` adentro de la capa, no por `id`.** Los capítulos
+  de la guía tienen los mismos nombres que las secciones del formulario, que sigue
+  montado detrás con sus propias anclas (`id="difusion"`): un
+  `document.getElementById` habría encontrado **la del formulario**, tapada, y el
+  scroll no se habría visto.
+
+**Y un detalle que valía guardar:** jsdom **no implementa `scrollIntoView`**
+—comprobado—, así que la llamada va con guarda de `typeof`. Sin eso, el primer
+test de render que abra esta capa muere con «not a function», que es un rojo que
+no habla del cambio que lo disparó (B-180). El test nuevo le pone un doble en el
+prototipo, que además es lo que permite afirmar **cuál** elemento recibió el
+scroll.
+
+El caso que lo cierra es de **clase**: barre todas las secciones que la guía
+declara —sacadas de la guía, no de una lista a mano— y exige que lleven a
+capítulos **distintos**. Si dos «?» volvieran al mismo lugar, eso es el rojo.
+
+
 ### B-794 · ✅ hecho (2026-09-07) — aplicar los hallazgos del `auditor-privacidad` invalida su propio sello
 
 **Y el diagnóstico del ítem era más grueso que el problema.** La huella **ya** era

@@ -616,6 +616,23 @@ data tipada, no repartido en JSX (D-62):
 - El capítulo que aparece desplegado depende de desde dónde se abrió: del
   listado abre "El listado de actividades"; del formulario, "Cómo llega una
   actividad a la gente".
+- **Cada sección del formulario tiene su propio «?», y la capa scrollea hasta su
+  capítulo** (B-62 lo abría, **B-795** hace que se llegue). El título de la
+  sección viaja hasta la capa —no el id del capítulo, porque quien lo pasa está
+  adentro del formulario y no puede importar la guía sin traerse sus ~25 kB al
+  chunk inicial— y la resolución la hace la capa, que ya la cargó.
+
+  **Abrir el capítulo no alcanzaba.** La capa arranca scrolleada arriba, y arriba
+  están los seis avisos de «Lo que no se puede deshacer» más los capítulos
+  anteriores colapsados: con diez capítulos, el de «Difusión» quedaba a dos
+  pantallas. Se veía siempre lo mismo, así que la lectura razonable era que todos
+  los «?» del formulario iban al mismo lugar — y así lo reportó el dueño.
+
+  **Abierta desde el botón «Ayuda» del encabezado no se scrollea**, y es a
+  propósito: ahí no se pidió una sección, y el lugar correcto es arriba, donde
+  están los avisos. Las dos direcciones están fijadas en
+  `tests/ayuda-de-seccion.render.test.ts`, que monta la capa de verdad porque lo
+  que hay que verificar es qué elemento recibe el scroll.
 
 **No duplica la ayuda de campo.** Los textos cortos de un campo puntual siguen
 en la prop `ayuda` de `Campo`, al lado del campo. La guía es el *para qué* y lo

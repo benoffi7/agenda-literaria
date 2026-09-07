@@ -2,6 +2,27 @@
 
 ## Sin publicar
 
+- **El «?» de cada sección del formulario ahora lleva hasta la ayuda de esa
+  sección** — **B-795**, reportado por el dueño: «todas las ayudas dentro del
+  formulario van al mismo lugar».
+
+  El mecanismo estaba bien —B-62 ya abría el capítulo correcto, y hay un test que
+  exige que las diez secciones tengan el suyo— pero la capa arranca scrolleada
+  arriba, y arriba están los seis avisos de «Lo que no se puede deshacer» más los
+  capítulos anteriores colapsados. Con diez capítulos, el de «Difusión» quedaba a
+  dos pantallas: **la ayuda correcta se abría abajo del pliegue**, y lo que se veía
+  era siempre lo mismo.
+
+  Abierta desde el botón «Ayuda» del encabezado **no** scrollea, y es a propósito:
+  ahí no se pidió una sección y el lugar correcto es arriba. Se busca por
+  `data-capitulo` **adentro de la capa** y no por `id`, porque el formulario sigue
+  montado detrás con anclas del mismo nombre. Y la llamada va con guarda de
+  `typeof`: jsdom no implementa `scrollIntoView`, así que sin eso el primer test de
+  render de la capa moriría con «not a function».
+
+  El caso que lo cierra es de clase: barre las secciones que la guía declara y
+  exige que lleven a capítulos **distintos**.
+
 - **Seis bloques de documentación estaban adentro de un bloque de código** —
   **B-294**, la segunda cara de ese ítem. D-460 y D-461 completas, siete ítems del
   BACKLOG (B-780 a B-786), las filas de B-770, trece ítems viejos y dos entradas de
