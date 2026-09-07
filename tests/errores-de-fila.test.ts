@@ -115,11 +115,15 @@ describe('el error de una fila de material se pinta al lado del campo (B-197)', 
  * `GaleriaEditor` declaraba `error?: string` y lo pintaba, pero `SeccionQueEs`
  * lo montaba sin ese atributo — la línea que pinta el error era código muerto,
  * y todo lo que el schema rechaza de `imagenes` se veía solo en la barra de
- * abajo. De los ocho campos de una imagen (`imagenes.N.*`), el schema solo
- * puede rechazar `url` (el resto son de máquina —`id`, `origen`, `storagePath`,
- * `ancho`, `alto`— o no tienen refine —`epigrafe`, `portada`—), así que acá no
- * se deriva la lista completa de `CAMPOS_VALIDABLES` como en B-197: se fija a
- * mano el único sufijo que puede fallar.
+ * abajo.
+ *
+ * **B-301 le agregó el segundo sufijo, y por eso esta lista se fija a mano.** De
+ * los nueve campos de una imagen (`imagenes.N.*`), el schema puede rechazar
+ * `url` y —desde D-440— `textoAlternativo`; el resto son de máquina (`id`,
+ * `origen`, `storagePath`, `ancho`, `alto`) o no tienen refine (`epigrafe`,
+ * `portada`). Acá no se deriva la lista completa de `CAMPOS_VALIDABLES` como en
+ * B-197: se enumeran los sufijos que pueden fallar, y agregar uno obliga a
+ * pasar por acá.
  */
 describe('el error de una fila de la galería se pinta al lado del campo (B-341)', () => {
   const EDITOR = fuente('components/admin/GaleriaEditor.tsx');
@@ -142,6 +146,17 @@ describe('el error de una fila de la galería se pinta al lado del campo (B-341)
   it('el editor arma la ruta de la fila con el índice en el medio', () => {
     // Es donde lo pone el `path` del superRefine (`imagenes.2.url`).
     expect(EDITOR).toMatch(/`imagenes\.\$\{i\}\.url`/);
+  });
+
+  /**
+   * B-301 / D-440 — el segundo sufijo rechazable de una fila. Sin esto, «Describí
+   * la portada» se vería solo en la barra de abajo, que es exactamente el bug de
+   * B-341 en el campo nuevo.
+   */
+  it('el alternativo de la portada también tiene su ruta y su cartel', () => {
+    expect(CAMPOS_VALIDABLES).toContain('imagenes.N.textoAlternativo');
+    expect(EDITOR).toMatch(/`imagenes\.\$\{i\}\.textoAlternativo`/);
+    expect(EDITOR).toContain('{errorAlternativo}');
   });
 
   it('cada fila lee su propio error de url', () => {

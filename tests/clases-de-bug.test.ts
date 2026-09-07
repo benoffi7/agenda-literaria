@@ -1103,6 +1103,15 @@ const EFECTOS_INCONDICIONALES = [
   // `imagenUrl`, `searchText`, `slug`) no llegan nunca al sitio si el rebuild
   // cuelga del sync.
   'marcarRebuild',
+  /*
+   * B-285 — la marca de «estuvo publicada alguna vez» corresponde porque la
+   * actividad **pasó a publicado**, no porque el calendario haya recibido
+   * operaciones. `syncCalendar` corta antes si no hay ops o si falta
+   * `GOOGLE_CALENDAR_ID`, así que detrás de cualquiera de los dos la marca no se
+   * escribiría nunca — y sin ella una cancelada pierde su página pública (B-110,
+   * D-159), que es un 404 en una URL que estuvo en Google.
+   */
+  'marcarPublicada',
 ];
 
 const llamadasAEfecto = () =>

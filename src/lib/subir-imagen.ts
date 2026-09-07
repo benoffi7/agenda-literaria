@@ -149,6 +149,9 @@ export const subirImagen = async (archivo: File, id: string): Promise<Imagen> =>
       id,
       url,
       epigrafe: '',
+      // B-301 — vacío, como el epígrafe: lo escribe una persona en el editor, no
+      // la subida. Nace presente para que la fila tenga siempre la misma forma.
+      textoAlternativo: '',
       origen: 'propia',
       storagePath: ruta,
       ...(medida ?? {}),

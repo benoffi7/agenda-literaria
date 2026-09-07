@@ -100,6 +100,9 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'imagenes.N.origen': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
   'imagenes.N.portada': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
   'imagenes.N.storagePath': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
+  // B-301 — es el único de la galería que el nivel «publicar» puede rechazar por
+  // sí mismo, así que su nombre es el que va a leer la barra de abajo.
+  'imagenes.N.textoAlternativo': { etiqueta: 'Descripción de la portada', seccion: 'que-es' },
   'imagenes.N.url': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
 
   // ── Encuentros ──

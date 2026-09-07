@@ -322,10 +322,64 @@ El default de lectura es `libroVacio()`, **una sola fábrica** para el formulari
 nuevo, la lectura de todo documento anterior y el molde con el que el autoguardado
 poda lo recuperado. Es determinístico a propósito: la lección de D-125. Ver **D-126**.
 
+## `publicadaAlgunaVez` — «estuvo publicada alguna vez» (B-285)
+
+Un booleano **pegajoso**: se prende y no vuelve a apagarse. Contesta la pregunta
+que B-110 necesita —una actividad `cancelado` conserva su página pública **solo
+si estuvo publicada**, porque publicar la de un borrador que nació y murió sin ver
+la luz sería filtrar un borrador (§7.3 del diseño)— y que hasta acá se **infería**
+en el build.
+
+**Lo que reemplaza.** `estuvoPublicada` (`src/lib/contenidoDelSitio.ts`) probaba
+dos cosas: que alguna sesión conserve `calendarEventId` —heurística del §7.3 que
+el propio sync borra al cancelar (D-159)— y, si no, que
+`/actividades/{id}/versiones` tenga una entrada con `documento.estado:
+'publicado'`. Funciona y es lo que hizo posible B-110, porque el historial vale
+**retroactivamente**. Lo que cuesta: una query por cancelada, y la retención de
+D-42 —veinte ediciones empujan la versión publicada afuera del historial y la
+página vuelve a dar 404.
+
+**Lo escribe el trigger, nunca el panel** (decisión del dueño, 2026-09-03). Lo
+prende `syncCalendar`, que es el único `onDocumentWritten` sobre
+`actividades/{id}` y por lo tanto el único que ve también la actividad que **nace**
+publicada. La decisión de si hay que marcarla es pura (`faltaMarcarPublicada`, en
+`functions/historial.js`) y el efecto vive aparte
+(`functions/marca-de-publicada.js`), por el corte del §05 y porque el chequeo de
+la clase de B-83 recorre llamadas **nombradas**: con la escritura inline el
+trigger quedaba fuera de esa red.
+
+Tres cosas que no se adivinan:
+
+- **Ausente NO significa `false`: significa «no lo sabemos».** Solo el trigger lo
+  escribe, y solo lo escribe en `true`. Por eso hay **dos** funciones y no una:
+  `marcadaComoPublicada` es estricta (`=== true`) y la usa el build, que si no
+  sabe **cae en la inferencia de D-159**; `estuvoPublicada` aplica el default del
+  panel (`?? estado === 'publicado'`). Un `?? false` haría que una cancelada de
+  hace un mes pierda su página — la regresión de B-110, un 404 en una URL que
+  estuvo tres semanas en Google.
+- **Es campo de máquina** (`CAMPOS_DE_MAQUINA`). Sin eso el write-back contaría
+  como cambio de contenido y cada publicación costaría una versión de historial y
+  un rebuild del sitio de más (trampa 3), y el panel ofrecería «restaurar» un
+  campo que nadie edita. Y `formADocumento` no lo emite: `actualizarActividad`
+  usa `updateDoc`, que solo pisa las claves que recibe, así que el formulario no
+  puede apagarlo por omisión (la clase de B-80). Un duplicado nace sin la clave y
+  en `borrador`, o sea «no estuvo publicado», sin necesidad de una rama en
+  `duplicar.ts`.
+- **No sale a ninguna salida pública.** Es un **predicado**, como `updatedAt` en
+  la ventana de 30 días del sitemap (B-109): decide si se genera la página y no se
+  emite en ninguna parte. Publicarlo diría además, de una actividad en borrador,
+  que alguna vez estuvo publicada.
+
+**Cerró de paso la puerta de atrás de la trampa 10.** «El slug es inmutable
+después de publicar» se preguntaba en dos lugares como `estado === 'publicado'`
+—`slugBloqueado` en el formulario y `slugRestaurable` en el historial—, o sea que
+bastaba despublicar para volver a editar la dirección de una URL ya indexada. Los
+dos preguntan ahora `estuvoPublicada`, la misma función del trigger.
+
 ## `imagenes` — la galería, y el campo que reemplaza (B-167)
 
 Era `imagenUrl: string | null`. Es `imagenes: Imagen[]`, con
-`{ id, url, epigrafe, origen, storagePath?, ancho?, alto?, portada }`.
+`{ id, url, epigrafe, textoAlternativo?, origen, storagePath?, ancho?, alto?, portada }`.
 
 Tres cosas que no se adivinan del tipo:
 
@@ -334,10 +388,36 @@ Tres cosas que no se adivinan del tipo:
   sesiones: borrar la segunda imagen renumera todo y cualquier cosa que compare
   por posición cree que cambiaron todas.
 - **`epigrafe` es un pie de foto, no el texto alternativo.** El alternativo —lo
-  que leen un lector de pantalla y Google— sale del **título de la actividad**.
-  Es una decisión de accesibilidad tomada a propósito (D-125): pedir un campo por
-  imagen produce "foto" como texto alternativo, que es peor que un título
-  descriptivo.
+  que leen un lector de pantalla y Google— es `textoAlternativo`, y desde **B-301
+  / D-440** es un campo propio: ver el bloque de abajo.
+- **`textoAlternativo` existe solo para la portada, y es obligatorio ahí (B-301,
+  D-440).** DEC-7a (D-125) había decidido lo contrario a propósito: el alternativo
+  salía del título de la actividad, porque un campo obligatorio por imagen en un
+  panel de una persona produce «foto», que es peor que un título descriptivo. El
+  desvío del dueño (2026-09-03) **le acepta el argumento y le cambia el alcance**:
+  un campo, no cuatro, y en la que se comparte. Tres cosas que no se adivinan:
+  - **Vive en `Imagen` y no en `Actividad`**, porque describe *esa* imagen: si la
+    portada pasa a ser otra fila, el alternativo de la anterior sigue siendo
+    cierto para ella. Lo que cumple «un campo solo» es el **formulario**, que lo
+    muestra únicamente en la fila que `portadaDe` devuelve — la misma función que
+    usa el `superRefine` para decidir a quién pedírselo, porque con dos
+    derivaciones el schema lo pediría en una fila y el editor lo mostraría en otra
+    (la clase de B-268 y B-341 a la vez).
+  - **Se exige solo al publicar** (nivel «publicar» de D-120): un borrador con la
+    imagen a medio cargar se guarda igual.
+  - **Bloquea el re-publicado de lo que ya está publicado, y es deliberado.** Las
+    imágenes que hoy están en producción no tienen el campo, así que la próxima vez
+    que alguien publique esa actividad tiene que escribirlo. El aviso sale en la
+    barra de abajo desde el principio (`faltaParaPublicar`) y el sitio no se rompe
+    mientras tanto: sin el campo, la página sigue armando el `alt` con «Imagen de
+    {título}», que es exactamente lo que hacía antes (D-26).
+  - **Viaja en `toPublic` y todavía no llega a ninguna salida**, y hay que leerlo
+    así: el `alt` de la página lo sigue armando la plantilla con el título, y el
+    archivo que se sirve como `events.json` es el **índice**, que de la galería
+    solo lleva la URL de la portada. La celda está permitida **por adelantado**
+    —lo dejó dicho el `auditor-privacidad`— para el consumidor que falta:
+    `detallePublico.ts` tiene que proyectar el campo y la plantilla usarlo, y ese
+    cambio decide además el `alt` del JSON-LD y el `og:image:alt`.
 - **`storagePath` nunca sale al público** (§5.1), pero **no porque sea secreto** —
   esa era la frase de la primera tajada y B-206 #1 demostró que era falsa: la URL
   de descarga lleva el path adentro, y esa URL sí se publica. Lo que se hizo en

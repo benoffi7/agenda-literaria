@@ -325,12 +325,12 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'El epígrafe es lo que se muestra debajo de la foto, y es opcional. Para la portada, ' +
-          'quien usa un lector de pantalla y Google leen el título de la actividad, así que un ' +
-          'título que describa bien lo que es alcanza. Para las otras imágenes el epígrafe es lo ' +
-          'único que las describe: si no le ponés ninguno, quien no puede ver la foto no se ' +
-          'entera de qué es. Repetir el título en las cuatro sería peor, porque se leería cuatro ' +
-          'veces lo mismo.',
+          'El epígrafe es lo que se muestra debajo de la foto, y es opcional. La portada tiene ' +
+          'además un campo aparte, «Qué se ve en la portada», que sí hace falta para publicar: ' +
+          'ese texto no se muestra en pantalla, lo lee quien usa un lector de pantalla y lo usa ' +
+          'Google cuando la imagen no carga. Se pide solo en la portada, que es la que se ' +
+          'comparte; las otras no lo tienen, y para ellas el epígrafe es lo único que las ' +
+          'describe.',
       },
       {
         texto:
@@ -767,10 +767,18 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'El flyer no es obligatorio y nunca frena la publicación, pero es lo que más cambia: ' +
-          'con imagen la actividad entra en la cartelera del sitio, que es la página donde están ' +
-          'todos los flyers uno al lado del otro, y el link se comparte con algo para mirar. Sin ' +
-          'imagen la actividad se publica igual, pero en la cartelera no está.',
+          'El flyer no es obligatorio, pero es lo que más cambia: con imagen la actividad entra ' +
+          'en la cartelera del sitio, que es la página donde están todos los flyers uno al lado ' +
+          'del otro, y el link se comparte con algo para mirar. Sin imagen la actividad se ' +
+          'publica igual, pero en la cartelera no está.',
+      },
+      {
+        texto:
+          'Lo que sí frena la publicación, si cargaste una imagen, es la descripción de la ' +
+          'portada. No es el epígrafe: es «Qué se ve en la portada», y aparece debajo de él en ' +
+          'la fila de la portada. Se puede guardar como borrador sin completarla; el aviso de ' +
+          'abajo dice que falta desde el momento en que agregás la imagen.',
+        cuidado: true,
       },
       {
         texto:
@@ -812,9 +820,16 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Cuando cargás más de una, el epígrafe de cada una pasa a importar más: es lo único ' +
-          'que describe esa foto para quien usa un lector de pantalla. La portada se describe ' +
-          'con el título de la actividad; las otras, solo con su epígrafe.',
+          'La portada se describe con su propio campo, «Qué se ve en la portada». Contá qué se ' +
+          've, no repitas el título: «Flyer con la fecha y la sede», «Retrato de la autora». Si ' +
+          'lo dejás vacío no se puede publicar, y hasta que lo completes el sitio dice «Imagen ' +
+          'de» y el título, que no describe nada.',
+      },
+      {
+        texto:
+          'Las otras no tienen ese campo, y es a propósito: cuatro campos obligatorios se ' +
+          'llenarían con «foto», que es peor que nada. Para ellas el epígrafe es lo único que ' +
+          'las describe, así que cuando cargás más de una conviene ponerles uno.',
       },
       {
         texto:

@@ -60,6 +60,32 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'slug-fijo-para-siempre',
+    fecha: '2026-09-04',
+    version: '1.9.0',
+    titulo: 'La dirección web queda fija desde la primera vez que se publica',
+    detalle:
+      'Antes, si pasabas una actividad publicada a borrador, la dirección volvía a ser ' +
+      'editable — y cambiarla rompía el link que ya estaba en Instagram y en Google. Ahora ' +
+      'queda fija desde la primera publicación, aunque después la despubliques, y el ' +
+      '«Historial» tampoco la ofrece para restaurar. Una actividad que nunca se publicó se ' +
+      'sigue pudiendo cambiar sin problema.',
+    donde: 'Formulario, sección «Qué es» — el campo de la dirección web.',
+  },
+  {
+    id: 'describir-la-portada',
+    fecha: '2026-09-04',
+    version: '1.9.0',
+    titulo: 'La portada ahora se describe a mano, y hace falta para publicar',
+    detalle:
+      'Debajo del epígrafe de la portada hay un campo nuevo: «Qué se ve en la portada». Ese ' +
+      'texto no se muestra en pantalla — lo lee quien usa un lector de pantalla y lo usa Google ' +
+      'cuando la imagen no carga. Antes se usaba el título de la actividad, que casi nunca ' +
+      'describe la imagen. Se pide solo en la portada, no en las otras tres, y solo si cargaste ' +
+      'alguna imagen: guardar como borrador sigue funcionando sin completarlo.',
+    donde: 'Formulario, sección «Qué es» — la fila de la portada, en el cargador de imágenes.',
+  },
+  {
     id: 'listado-en-grilla',
     fecha: '2026-09-03',
     version: '1.9.0',

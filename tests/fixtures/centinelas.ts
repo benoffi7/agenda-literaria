@@ -72,6 +72,10 @@ const RUTAS = [
   'imagenes.id',
   'imagenes.url',
   'imagenes.epigrafe',
+  // B-301 / D-440 — el texto alternativo de la portada. Es público a propósito
+  // (es el `alt` que la página pinta), así que su celda va en la lista de
+  // permitidos del `events.json` y no en la de ausentes.
+  'imagenes.textoAlternativo',
   'imagenes.storagePath',
 
   // Quién.
@@ -226,6 +230,10 @@ const imagenCentinela = (): Imagen => ({
   id: `img_${CENTINELA['imagenes.id']}`,
   url: CENTINELA['imagenes.url'],
   epigrafe: CENTINELA['imagenes.epigrafe'],
+  // B-301 — cargado, no vacío: el barrido afirma que este centinela **sí** sale
+  // al `events.json`, y una cadena vacía haría pasar esa mitad por casualidad
+  // (mismo cuidado que `tema`/`lectura` de las sesiones).
+  textoAlternativo: CENTINELA['imagenes.textoAlternativo'],
   origen: 'propia',
   // §5.1 — la ruta del bucket no sale. Es la única clave de `Imagen` que el
   // fixture pone para que **no** aparezca.
@@ -351,6 +359,18 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
     notas: CENTINELA['difusion.notas'],
   },
   estado: 'publicado',
+  /*
+   * B-285 — la marca de «estuvo publicada alguna vez». **No lleva centinela
+   * porque es un booleano** —no hay string donde esconder contenido— y que no
+   * salga se afirma comparando el JSON con el resto del barrido, no buscando un
+   * valor. Está en el fixture igual, y por la razón de siempre: un campo que el
+   * fixture no tiene no lo mira ningún barrido.
+   *
+   * En `true` a propósito: el caso interesante es una actividad **marcada** que
+   * igual no publica el campo. Con `false` o ausente, «no aparece en el JSON»
+   * pasaría por casualidad.
+   */
+  publicadaAlgunaVez: true,
   tags: [CENTINELA.tags],
   destacado: true,
   searchText: CENTINELA.searchText,

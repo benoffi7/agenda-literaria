@@ -18,7 +18,8 @@ import { planificar } from './calendario.js';
 import { CALENDAR_ID, calendario, crearEvento } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
 import { cargarLabels } from './etiquetas.js';
-import { huboCambioDeContenido } from './historial.js';
+import { faltaMarcarPublicada, huboCambioDeContenido } from './historial.js';
+import { marcarPublicada } from './marca-de-publicada.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
 import { decidirAnteFallo, reponerIds } from './sincronizacion.js';
 
@@ -57,6 +58,52 @@ export const syncCalendar = onDocumentWritten(
     // misma propiedad de D-07, y no un acuerdo entre dos listas de campos.
     if (huboCambioDeContenido(antes, despues)) {
       await marcarRebuild(db, `actividad ${id}`);
+    }
+
+    /*
+     * B-285 — la marca de «estuvo publicada alguna vez», que reemplaza la
+     * inferencia que el build rehacía por su cuenta (D-159).
+     *
+     * ── Por qué vive en ESTE trigger ──────────────────────────────────────
+     * Porque es el único `onDocumentWritten` sobre `actividades/{id}`, y la marca
+     * tiene que prenderse también cuando la actividad **nace** publicada — el
+     * panel deja crear y publicar en el mismo guardado. `guardarVersion` es un
+     * `onDocumentUpdated` y se perdería ese caso, que es justo el de las
+     * actividades nuevas, o sea todas las que este campo viene a servir.
+     *
+     * Va acá arriba, al lado de `marcarRebuild`, y por el mismo motivo que ése:
+     * corresponde por que **la actividad cambió**, no por que el calendario haya
+     * recibido operaciones. Abajo hay dos cortes tempranos —sin ops y sin
+     * `GOOGLE_CALENDAR_ID`— y detrás de cualquiera de los dos la marca no se
+     * escribiría nunca en una instalación sin Calendar configurado.
+     *
+     * (Y la palabra que nombra esos cortes no se escribe acá arriba a propósito:
+     * el chequeo de la clase de B-83 busca la palabra clave en el **texto** que
+     * precede a la llamada, comentarios incluidos, así que nombrarla en esta
+     * prosa daba un falso positivo. Es la misma rugosidad del parser que ya
+     * costó un productor fantasma en `07-seguridad.md`.)
+     *
+     * La guarda anti-loop es doble y las dos mitades hacen falta (trampa 3):
+     * `faltaMarcarPublicada` corta la segunda pasada porque la marca ya está, y
+     * `MARCA_DE_PUBLICADA` está en `CAMPOS_DE_MAQUINA`, así que esa escritura no
+     * cuenta como cambio de contenido — si no, cada publicación costaría una
+     * versión de historial y un rebuild de más.
+     *
+     * El efecto vive en `marca-de-publicada.js` y no inline, por el mismo corte
+     * que `marcarRebuild` y por una razón que se verifica: el chequeo de la clase
+     * de B-83 recorre **llamadas nombradas**, así que una escritura inline habría
+     * quedado fuera de la red que atrapa exactamente este error.
+     *
+     * Si falla, se loguea y **no se corta el sync**: la marca es para el build de
+     * mañana, los eventos del calendario son de ahora.
+     */
+    if (faltaMarcarPublicada(despues)) {
+      try {
+        await marcarPublicada(db, id);
+        logger.info('marcada como publicada alguna vez', { id });
+      } catch (e) {
+        logger.warn('no se pudo marcar la actividad como publicada', { id, error: e?.message });
+      }
     }
 
     const labels = await cargarLabels(db);

@@ -369,6 +369,11 @@ describe('schema — la galería (B-167)', () => {
     id: 'img_1',
     url: 'https://ejemplo.ar/tapa.jpg',
     epigrafe: '',
+    // B-301 — cargado en el molde: el alternativo de la portada es obligatorio
+    // para publicar (D-440), así que sin esto todos los casos de abajo medirían
+    // ese rechazo en vez del que dice su nombre. Su ausencia tiene sus propios
+    // casos, más abajo.
+    textoAlternativo: 'Flyer con la fecha y la sede',
     origen: 'externa',
     portada: true,
     ...over,
@@ -435,6 +440,84 @@ describe('schema — la galería (B-167)', () => {
     expect(
       errores({ ...publicado(), imagenes: [img({ origen: 'propia', storagePath: 'a/b.jpg' })] }),
     ).toEqual([]);
+  });
+});
+
+/**
+ * B-301 · **D-440** — el texto alternativo se exige **solo en la portada** y
+ * **solo al publicar**.
+ *
+ * DEC-7a (D-125) había decidido lo contrario a propósito —el alternativo salía
+ * del título de la actividad— y el desvío del dueño (2026-09-03) le cambia el
+ * alcance, no el argumento: un campo por imagen nadie lo llenaría en las cuatro,
+ * y la portada es la única que se comparte.
+ *
+ * Los dos ejes de la condición tienen su caso, porque son las dos formas de
+ * escribir mal la regla: pedirlo en todas las filas (y el formulario tendría
+ * cuatro campos que el dueño rechazó) o pedirlo en un borrador (y una carga a
+ * medio hacer dejaría de guardarse).
+ */
+describe('el texto alternativo de la portada (B-301, D-440)', () => {
+  const img = (over: Partial<Imagen> = {}): Imagen => ({
+    id: 'img_1',
+    url: 'https://ejemplo.ar/tapa.jpg',
+    epigrafe: '',
+    textoAlternativo: 'Flyer con la fecha y la sede',
+    origen: 'externa',
+    portada: true,
+    ...over,
+  });
+
+  it('sin él, no se puede publicar, y el error cae en la fila de la portada', () => {
+    expect(errores({ ...publicado(), imagenes: [img({ textoAlternativo: '' })] })).toContain(
+      'imagenes.0.textoAlternativo',
+    );
+  });
+
+  it('en blanco tampoco alcanza: espacios no describen nada', () => {
+    expect(errores({ ...publicado(), imagenes: [img({ textoAlternativo: '   ' })] })).toContain(
+      'imagenes.0.textoAlternativo',
+    );
+  });
+
+  it('un documento anterior al campo tampoco publica, y eso es el punto', () => {
+    // La clave directamente no está: es el caso de las 30 imágenes que ya están
+    // en producción. Que el rechazo aparezca acá es deliberado — el aviso sale
+    // en la barra desde el principio (`faltaParaPublicar`) y guardar como
+    // borrador sigue funcionando.
+    const sinCampo = img();
+    delete (sinCampo as { textoAlternativo?: string }).textoAlternativo;
+    expect(errores({ ...publicado(), imagenes: [sinCampo] })).toContain(
+      'imagenes.0.textoAlternativo',
+    );
+  });
+
+  it('un borrador sin él se guarda igual (D-120: es completitud, no forma)', () => {
+    expect(errores({ ...valido(), imagenes: [img({ textoAlternativo: '' })] })).toEqual([]);
+  });
+
+  it('las secundarias NO lo piden: es un campo solo, el de la portada', () => {
+    const conSecundariaVacia = [
+      img(),
+      img({ id: 'img_2', portada: false, textoAlternativo: '' }),
+    ];
+    expect(errores({ ...publicado(), imagenes: conSecundariaVacia })).toEqual([]);
+  });
+
+  it('lo pide la fila marcada portada, no la primera de la lista', () => {
+    // Es lo que hace `portadaDe`, y es la mitad que una derivación propia acá se
+    // equivocaría: pedir el campo en la fila que no se comparte.
+    const laSegundaEsPortada = [
+      img({ id: 'img_1', portada: false, textoAlternativo: '' }),
+      img({ id: 'img_2', portada: true, textoAlternativo: '' }),
+    ];
+    expect(errores({ ...publicado(), imagenes: laSegundaEsPortada })).toContain(
+      'imagenes.1.textoAlternativo',
+    );
+  });
+
+  it('sin imágenes no se pide nada: la imagen nunca fue obligatoria', () => {
+    expect(errores({ ...publicado(), imagenes: [] })).toEqual([]);
   });
 });
 

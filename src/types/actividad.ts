@@ -165,11 +165,46 @@ export interface Imagen {
   id: string;
   url: string;
   /**
-   * Pie de foto, **opcional** (DEC-7a). No es el texto alternativo: ese sale del
-   * título de la actividad, decidido a propósito para no pedir un campo por
-   * imagen que terminaría diciendo "foto". Ver D-125.
+   * Pie de foto, **opcional** (DEC-7a). No es el texto alternativo: ese es
+   * `textoAlternativo`, y se pide **solo en la portada** (B-301, D-440). El
+   * epígrafe se muestra debajo de la foto; el alternativo lo leen un lector de
+   * pantalla y Google, y no se muestra nunca.
    */
   epigrafe: string;
+  /**
+   * El texto alternativo de esta imagen — B-301, **D-440**, que reabre DEC-7a.
+   *
+   * ── Qué cambió respecto de D-125 ──────────────────────────────────────
+   * DEC-7a decidió, a propósito, que este campo **no** existiera: el alternativo
+   * se derivaba del título de la actividad, con el argumento de que un campo
+   * obligatorio por imagen en un panel de una persona produce «foto», que es
+   * peor que un título descriptivo. El desvío del dueño (2026-09-03) acepta ese
+   * argumento y le cambia el alcance: el campo existe, pero **se pide solo en la
+   * portada** — la que va a Open Graph y a la tarjeta, o sea la única que se
+   * comparte. Ni un campo por imagen (nadie lo llenaría en las cuatro) ni seguir
+   * derivando todo del título.
+   *
+   * Vive en `Imagen` y no en `Actividad` porque describe **esta** imagen: si
+   * mañana la portada pasa a ser otra fila, el alternativo de la anterior sigue
+   * siendo cierto para ella y vuelve solo al recuperar la portada. Lo que cumple
+   * «un campo solo» es el **formulario**, que lo muestra únicamente en la fila
+   * que hoy es portada (§11).
+   *
+   * **Opcional a propósito:** los documentos que ya están en producción no lo
+   * tienen, y el default de lectura de las salidas públicas es el de siempre
+   * —«Imagen de {título}»—, que es exactamente el comportamiento anterior a este
+   * campo (D-26). Que el tipo lo declare opcional es lo que obliga al compilador
+   * a decidirlo en cada lectura.
+   *
+   * **Es público a propósito, y es el punto del campo** — con una salvedad que
+   * el `auditor-privacidad` pidió dejar escrita: viaja en `toPublic` pero **hoy
+   * no llega a ninguna salida**. El `alt` de la página lo sigue armando la
+   * plantilla con el título, y el archivo que se sirve como `events.json` es el
+   * índice. La celda está permitida por adelantado para el consumidor que falta;
+   * ver el docblock de `ImagenPublica.textoAlternativo` en `src/lib/toPublic.ts`.
+   * No dice nada de nadie: es la descripción de una imagen que ya se publica.
+   */
+  textoAlternativo?: string;
   /**
    * `externa` es una URL de otro lado, que se sirve tal cual desde su origen;
    * `propia` está en nuestro Storage (DEC-7c).
@@ -346,6 +381,49 @@ export interface Actividad {
   difusion: Difusion;
 
   estado: Estado;
+  /**
+   * B-285 — ¿estuvo publicada **alguna vez**? Un booleano pegajoso: se prende y
+   * no vuelve a apagarse.
+   *
+   * ── Qué reemplaza ─────────────────────────────────────────────────────
+   * La pregunta la necesita B-110: una actividad `cancelado` conserva su página
+   * pública **solo si estuvo publicada**, porque publicar la de un borrador que
+   * nació y murió sin ver la luz sería filtrar un borrador (§7.3 del diseño). Sin
+   * este campo la respuesta se **infería**: primero por si alguna sesión conserva
+   * `calendarEventId` —heurística que el propio sync borra al cancelar— y si no,
+   * consultando `/actividades/{id}/versiones` (D-159). Funciona, y cuesta una
+   * query por cancelada más la retención de D-42: veinte ediciones empujan la
+   * versión publicada afuera del historial y la página vuelve a dar 404.
+   *
+   * ── Quién lo escribe: **el trigger, nunca el panel** ──────────────────
+   * Decisión del dueño (2026-09-03). Lo prende `syncCalendar` —el único
+   * `onDocumentWritten` sobre `actividades/{id}`, así que cubre también la
+   * actividad que nace publicada— y la regla vive en una sola función,
+   * `faltaMarcarPublicada` de `functions/historial.js`, importable por el panel
+   * con `@historial`. Está además en `CAMPOS_DE_MAQUINA`: sin eso, ese write-back
+   * costaría una versión de historial y un rebuild por cada publicación
+   * (trampa 3), y el panel ofrecería «restaurar» un campo de máquina.
+   *
+   * `formADocumento` **no lo emite** y no está en `ActividadForm`: así el
+   * formulario no puede apagarlo por omisión —`actualizarActividad` usa
+   * `updateDoc`, que solo pisa las claves que recibe— y un cliente no puede
+   * afirmarlo (las reglas de `/actividades` validan quién escribe, no la forma).
+   * Un duplicado nace sin la clave y en `borrador`, o sea «no estuvo publicado»,
+   * que es lo correcto sin necesidad de una rama en `duplicar.ts`.
+   *
+   * **Opcional a propósito, y ausente NO significa `false`:** significa «no lo
+   * sabemos». Los documentos que ya están en producción no lo tienen, y quien
+   * pregunta tiene dos defaults según lo que pueda leer — el build cae en la
+   * inferencia de D-159, el panel en `estado === 'publicado'`. Los dos preservan
+   * el comportamiento anterior (D-26); un `?? false` haría que una cancelada de
+   * hace un mes pierda su página, que es la regresión de B-110.
+   *
+   * **No sale a ninguna salida pública.** Es un **predicado**: decide si se
+   * genera la página, igual que `updatedAt` decide la ventana de 30 días del
+   * sitemap (B-109). Publicarlo diría además, de una actividad en borrador, que
+   * alguna vez estuvo publicada — un dato de gestión que nadie afuera necesita.
+   */
+  publicadaAlgunaVez?: boolean;
   tags: string[];
   destacado: boolean;
   /** Normalizado — §6. Lo calcula el cliente al guardar. */
