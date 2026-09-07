@@ -3788,7 +3788,7 @@ desde Google. Unificarlos obligaría a que un cambio de tono en uno pase por el 
 
 ## D-136 · La ayuda se muestra entera, no en un acordeón
 
-**Contexto.** 20 preguntas en una página. El reflejo es un acordeón: se ve
+**Contexto.** 21 preguntas en una página. El reflejo es un acordeón: se ve
 corto, prolijo y moderno.
 
 **Decisión.** Todo abierto, con encabezados jerárquicos, un índice arriba y un ancla

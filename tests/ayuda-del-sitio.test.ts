@@ -282,12 +282,23 @@ describe('la ayuda del sitio público — B-232', () => {
      * que contradecir. Lo que no puede es mentir.
      */
     const reales = PREGUNTAS_DE_AYUDA.length;
-    const documentos = [
-      'docs/04-funcionalidades.md',
-      'docs/06-decisiones.md',
-      'docs/BACKLOG.md',
-      'docs/CHANGELOG.md',
-    ];
+    /*
+     * **`docs/CHANGELOG.md` salió de la lista en B-785, y con motivo.** Estaba, y
+     * la entrada de B-232 dice «20 preguntas en cinco grupos» describiendo lo que
+     * se publicó **ese día**. Cuando B-785 sumó la vigesimoprimera, este caso pidió
+     * corregir esa línea — o sea pidió **reescribir el registro de lo que pasó**,
+     * que es lo contrario de para qué existe un CHANGELOG.
+     *
+     * La regla queda igual para los cuatro documentos que **describen el sitio de
+     * hoy**: ahí un número viejo miente. En un registro histórico no miente, fecha
+     * lo que dice. Es el mismo criterio con el que el barrido de «salida pública N»
+     * de `agentes-y-skills.test.ts` deja afuera el BACKLOG y el CHANGELOG.
+     *
+     * `docs/BACKLOG.md` **sí** se queda: sus ítems abiertos describen el sitio de
+     * hoy para decidir sobre él, y un conteo viejo ahí manda a alguien a razonar
+     * sobre una página que ya no es esa.
+     */
+    const documentos = ['docs/04-funcionalidades.md', 'docs/06-decisiones.md', 'docs/BACKLOG.md'];
 
     // Control positivo: si la doc dejó de nombrar el conteo en todos lados, este
     // chequeo pasa vacío y conviene saberlo antes de confiar en él.

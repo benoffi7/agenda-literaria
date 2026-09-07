@@ -30,7 +30,7 @@
  * Cómo se ve. La página elige el marcado; acá está qué dice y en qué orden.
  */
 import opcionesBase from '@/lib/opciones-base.json';
-import { RUTA_AGENDA, RUTA_CONTACTO, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
+import { RUTA_AGENDA, RUTA_APOYAR, RUTA_CONTACTO, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
 
 /** Un destino del propio sitio que una respuesta ofrece al final. */
 export interface EnlaceDeAyuda {
@@ -163,6 +163,30 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
           'Existe porque hoy todo eso se anuncia en historias que duran un día y en grupos a los ' +
             'que hay que estar adentro. Acá queda escrito, con fecha, lugar y cómo entrar.',
         ],
+      },
+      {
+        /*
+         * **La pregunta que no estaba contestada en ningún lado** — B-785. La
+         * respuesta vive entera en `/apoyar`, y la ayuda es donde se busca: quien
+         * llega a un sitio que no conoce se pregunta quién lo hace y cómo se
+         * sostiene antes de confiarle una fecha.
+         *
+         * La respuesta acá es **corta y manda**, no resume la página: si dijera
+         * lo mismo con otras palabras, serían dos textos sobre plata que hay que
+         * mantener de acuerdo. Lo único que afirma es lo que no puede cambiar sin
+         * que cambie el proyecto —es gratis, no hay publicidad, lo hace una
+         * persona— y eso está atado por el test de `/apoyar`.
+         */
+        id: 'es-gratis',
+        pregunta: '¿Esto es gratis? ¿Quién lo paga?',
+        respuesta: [
+          'Sí, es gratis, no tiene publicidad y va a seguir así. Lo hace una persona, a mano y en ' +
+            'los ratos libres; lo que cuesta plata es poco —el dominio y el alojamiento— y lo ' +
+            'paga ella.',
+          'Si querés dar una mano, hay una página que cuenta cómo, y la forma más útil no ' +
+            'involucra plata: contarnos una actividad que no esté cargada.',
+        ],
+        enlaces: [{ href: RUTA_APOYAR, texto: 'Cómo apoyar la agenda' }],
       },
       {
         id: 'no-es-inscripcion',

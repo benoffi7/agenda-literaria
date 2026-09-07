@@ -2,6 +2,28 @@
 
 ## Sin publicar
 
+- **La ayuda contesta «¿esto es gratis? ¿quién lo paga?»** — **B-785**, la mitad
+  que faltaba. La respuesta vivía entera en `/apoyar` y la ayuda es donde se busca:
+  quien llega a un sitio que no conoce se pregunta quién lo hace y cómo se sostiene
+  antes de confiarle una fecha. La respuesta es corta y **manda a la página** en vez
+  de resumirla, para no tener dos textos sobre plata que haya que mantener de
+  acuerdo.
+
+  El chequeo que ata el conteo de preguntas pidió, de paso, corregir la línea de
+  este mismo archivo donde la entrada de B-232 cuenta cuántas preguntas tenía la
+  ayuda **el día que se publicó** — o sea reescribir el registro de lo que pasó. El CHANGELOG salió de la lista de ese
+  test con el motivo escrito; los documentos que describen el sitio de **hoy**
+  siguen atados.
+
+  Sigue abierto el `Organization` del §5.5, por el mismo motivo de antes.
+
+- **El pie del tríptico puede llevar a un día pasado antes de hidratar, y se deja
+  así** — **B-793**, decidido y escrito. Con JavaScript la ventana es de
+  milisegundos; sin JavaScript el rótulo ya imprime los días que abarca, así que la
+  página vieja avisa de qué día habla y el pie lleva a ese mismo día. La
+  alternativa —no emitir el pie en el HTML del build— lo perdería justamente donde
+  el tríptico hoy funciona completo.
+
 - **Aplicar los hallazgos del `auditor-privacidad` ya no invalida su propio
   sello** — **B-794**. El hook frena el `git commit` cuando el diff toca una
   salida pública y el auditor no corrió, y lo sabe por una huella. Esa huella era

@@ -2942,7 +2942,33 @@ lugar donde esta pregunta ya se contestó una vez.
 
 Test que lo fijaría: `it('el sello dice el día del build y no su hora (§5.1, D-138)')`.
 
-### B-793 · P3 — el pie del tríptico puede llevar a un día que ya pasó, antes de que hidrate
+### B-793 · ✅ decidido (2026-09-07) — el pie del tríptico puede llevar a un día que ya pasó, antes de que hidrate
+
+**Decisión: se deja como está, y esto es escribirlo** — la segunda de las dos
+salidas que el ítem plantea. El razonamiento, para que la próxima persona no lo
+lea como un bug sin arreglar:
+
+- **Con JavaScript, la ventana es de milisegundos.** La island reemplaza el bloque
+  entero al arrancar, pie incluido, así que el enlace se corrige solo.
+- **Sin JavaScript, el enlace es coherente con lo que la página dice.** El rótulo
+  imprime los días que abarca —«Hoy · vie 4 sep»—, así que una página vieja **ya
+  avisa** que habla de otro día, y el pie lleva a ese mismo día. Es exactamente
+  para lo que esa línea de fechas existe (D-320), y ahora se paga sola una segunda
+  vez.
+- **El destino no rompe nada:** el filtro por día trae el día entero incluido lo
+  que ya pasó (deliberado, D-470), así que la página muestra lo que hubo ese día
+  en vez de quedar vacía.
+- **La alternativa cuesta más de lo que arregla:** no emitir el pie en el HTML del
+  build lo perdería en la página sin JavaScript, que es donde hoy el tríptico
+  funciona completo.
+
+Si algún día el rótulo dejara de imprimir los días, esto vuelve a ser un problema
+—y sería el mismo problema que tendría el rótulo—.
+
+El planteo original queda abajo.
+
+---
+
 
 **Lo levantó el `auditor-privacidad` de B-791 como fuera de su alcance, y tiene
 razón: es correctitud, no privacidad.**
@@ -3366,7 +3392,32 @@ reactiva, ningún rojo lo dice».
 
 ---
 
-### B-785 · P3 — `/apoyar` no está en la ayuda ni en el `Organization` del §5.5
+### B-785 · 🟡 la mitad hecha (2026-09-07) — `/apoyar` no está en la ayuda ni en el `Organization` del §5.5
+
+**La ayuda ya la menciona.** Entró la pregunta «¿Esto es gratis? ¿Quién lo paga?»
+en el grupo «Qué es esta agenda», con su enlace a `/apoyar`. La respuesta es
+**corta y manda**, no resume la página: si dijera lo mismo con otras palabras
+serían dos textos sobre plata que hay que mantener de acuerdo. Lo único que afirma
+es lo que no puede cambiar sin que cambie el proyecto —es gratis, no hay
+publicidad, lo hace una persona— y eso ya está atado por el test de `/apoyar`.
+
+Y de paso salió un hallazgo del propio chequeo que ata el conteo de preguntas:
+pedía corregir la línea del **CHANGELOG** donde la entrada de B-232 cuenta cuántas
+preguntas tenía la ayuda **el día que se publicó**, o sea **reescribir el registro
+de lo que pasó**. (Y el número no se cita acá por lo mismo: este archivo sí está
+atado.) El CHANGELOG salió de la lista de ese test con el motivo escrito; los
+cuatro documentos que describen el sitio de hoy siguen atados, `BACKLOG.md`
+incluido.
+
+**Lo que sigue abierto es la otra mitad**, y por el mismo motivo de antes: el
+`Organization` del §5.5 no existe todavía, y no se agrega JSON-LD a `/apoyar` sola
+—sería un `Organization` suelto en una página secundaria compitiendo con el que
+algún día vaya en la home—.
+
+El planteo original queda abajo.
+
+---
+
 
 Dos huecos chicos, los dos deliberados para no tocar archivos de otros frentes:
 
@@ -3883,7 +3934,7 @@ Las dos primeras páginas terminadas del sitio público. Son texto y nada más: 
 sin depender de él.
 
 **`/ayuda`** le habla a quien busca una actividad, no a quien la carga —la guía del
-panel es otra cosa y vive adentro del panel—. 20 preguntas en cinco grupos,
+panel es otra cosa y vive adentro del panel—. 21 preguntas en cinco grupos,
 todas abiertas y con ancla propia (`/ayuda#a-la-gorra`). Las que el encargo pedía
 están fijadas en el test con el motivo de cada una: que esto **no es una plataforma
 de inscripción**, qué es cada tipo, «a la gorra» (§4.1), el ciclo como una tarjeta y

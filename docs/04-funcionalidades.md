@@ -1395,7 +1395,7 @@ Las primeras dos páginas del sitio público terminadas. No leen `events.json` n
 Firestore: son texto, y por eso pudieron escribirse antes que el listado.
 
 **`/ayuda`** le habla a **quien busca una actividad**, no a quien la carga — la guía
-del panel es otra cosa y vive adentro del panel. 20 preguntas en cinco
+del panel es otra cosa y vive adentro del panel. 21 preguntas en cinco
 grupos, todas abiertas, con un ancla estable cada una (`/ayuda#a-la-gorra`) para
 poder mandar el link de una respuesta suelta. Contesta, entre otras: que esto **no
 es una plataforma de inscripción**, qué es cada tipo de actividad, qué quiere decir
