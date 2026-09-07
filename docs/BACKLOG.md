@@ -2803,6 +2803,82 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-791 · Cambios al tríptico «¿Qué hay ahora?» · P2
+
+**Pedido del dueño el 2026-09-07**, mirando el sitio publicado. Son cuatro
+cambios y **tres de ellos revierten decisiones escritas en D-320**, así que van
+con su motivo nuevo al lado del viejo y no borrando el anterior.
+
+**1 · Dos elementos por panel, y elegidos al azar.** Hoy el tope es cuatro y se
+toman **los primeros por hora** (`TOPE_DEL_PANEL`, `ahoraPublico.ts`).
+
+Bajar a dos es una línea. **Lo aleatorio no**, y es la parte que hay que pensar
+antes de escribir: el tríptico lo pintan **el build y la island**, con el mismo
+módulo, y esa es la propiedad que lo hace no parpadear —«como el estado inicial es
+el del build, lo que aparece es idéntico a lo que había»—. Con dos sorteos
+distintos, el HTML muestra dos actividades y la island muestra otras dos: **la
+página cambia sola delante de quien la está leyendo.** Y los tests dejan de poder
+afirmar qué sale.
+
+Salidas posibles, en orden de cuánto conservan:
+
+- **Sortear en el build y que la island respete ese orden.** El índice ya viaja;
+  alcanza con que el orden del sorteo viaje con él. Determinista para quien mira,
+  distinto en cada rebuild (o sea que rota cada pocos minutos, que es
+  probablemente lo que el pedido busca).
+- **Sortear con una semilla derivada del día** (`claveDeDia`): los dos lados
+  sacan lo mismo sin coordinarse, y rota una vez por día.
+- Sortear en el cliente: es lo que rompe la propiedad. **No.**
+
+**2 · Que el «+2 más mañana» sea un link que muestre todos.** Hoy es texto a
+propósito, y el motivo era que **el día no es una URL de este sitio** (§2.3 del
+diseño decide qué es página y qué es filtro, y el día no está en ninguna de las
+dos listas).
+
+Ese motivo no caducó: sigue sin haber página por día. Así que este cambio **exige
+elegir un destino**, y las opciones no son equivalentes:
+
+- **Un filtro en la home** (`?cuando=2026-09-17`). El filtro «Cuándo» hoy acepta
+  `proximas`, `este-mes`, `tres-meses` y un mes puntual — **no un día**. Habría
+  que agregarlo a `FiltrosPublicos`, a `desdeQuery`, a `aQuery` y a los chips.
+  Es la salida más barata y no crea URLs indexables nuevas (la home canoniza a
+  `/`).
+- **Una página por día** (`/agenda/2026-09-17`). Da un link limpio y **crea una
+  URL indexable por día**, o sea cientos de páginas casi vacías: es justo lo que
+  §2.3 evitó.
+- **Abrir el panel en su lugar** (mostrar los que faltan sin navegar). No hay URL
+  y no hay nada que decidir sobre indexación, pero mete JavaScript en un bloque
+  que hoy funciona sin nada.
+
+**Recomendación**: el filtro por día. Y ojo con una cosa: hoy el tríptico **no
+responde a los filtros** a propósito, así que un link que filtra la home tiene que
+dejar claro que lo que se ve abajo cambió.
+
+**3 · Las ventanas pasan a «Hoy · Este finde · Esta semana».** Hoy son «Hoy ·
+Mañana · Este finde».
+
+**Esto cambia el modelo, no los rótulos.** Las tres ventanas de hoy son
+**disjuntas** —el finde resta los días que ya contaron los otros dos— y eso fue una
+decisión de D-320: «el mismo encuentro repetido en dos paneles pegados de un
+tríptico se lee como un error de software». Las tres nuevas están **anidadas**: hoy
+⊂ esta semana, y el finde ⊂ esta semana. O sea que hay que decidir explícitamente:
+
+- ¿«Esta semana» **incluye** hoy y el finde, y entonces un encuentro aparece dos
+  veces en la misma banda?
+- ¿O resta lo ya contado, y entonces «Esta semana» en realidad dice «el resto de
+  la semana» y hay que rotularlo así para no mentir?
+- ¿Y qué es «esta semana» un domingo? Con la semana de lunes a domingo, un domingo
+  «esta semana» es solo hoy, y el panel queda vacío o repetido. El caso análogo ya
+  está resuelto para el finde (salta al siguiente y **cambia el rótulo**), y
+  conviene mirar cómo antes de inventar otro.
+
+**4 · Lo que no hay que perder de D-320 al hacer todo esto**: cada panel escribe
+**los días que abarca**, y eso no es decoración — es lo único que impide que el
+rótulo del build mienta cuando la página se mira un día después del último
+rebuild. Si «Esta semana» no puede escribir sus días de forma corta, hay que
+resolver eso, no sacar la línea.
+
+
 ### B-790 · Ya hay estadísticas del sitio y el panel no las muestra · P2
 
 **Reportado por el dueño el 2026-09-07:** Search Console y GA4 ya tienen datos
