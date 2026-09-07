@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { formDeCiclo } from './fixtures/formulario-de-ciclo';
+import { modalidadVacia } from '@/lib/formulario/estadoInicial';
 import { planificar } from '@calendario';
 import { formADocumento } from '@/lib/actividades';
 import { labelsDeOpciones, vistaPreviaEvento } from '@/lib/vistaPreviaEvento';
@@ -39,34 +41,51 @@ const sesion = (over: Partial<SesionForm> = {}): SesionForm => ({
   ...over,
 });
 
-const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
-  tipo: 'club-lectura',
-  titulo: 'Club de lectura latinoamericana',
-  slug: 'club-latinoamericana',
-  descripcion: 'Ocho encuentros para leer el boom.',
-  imagenes: [],
-  organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: 'https://casabrandon.example' },
-  tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
-  libro: { titulo: '', autor: '' },
-  esCiclo: true,
-  sesiones: [sesion()],
-  modalidades: [
-    {
-      id: 'mod_1',
-      modalidad: 'hibrido',
-      inicio: '',
-      fin: '',
-      sede: {
-        nombre: 'Casa Brandon',
-        direccion: 'Luis María Drago 236',
-        barrio: 'villa-crespo',
-        ciudad: 'CABA',
-        indicaciones: 'Timbre 2, tocar fuerte',
-        geo: null,
-      },
-      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+/**
+ * El formulario del que sale la vista previa.
+ *
+ * El andamiaje sale de `formDeCiclo` (B-215). **Lo que este archivo afirma se
+ * declara acá**: la `web` del organizador y los dos items de material —uno
+ * público y uno privado— son justo lo que la vista previa tiene que decidir si
+ * muestra, así que traerlos de un fixture sería dejar que un default decida el
+ * aserto.
+ */
+const form = (over: Partial<ActividadForm> = {}): ActividadForm =>
+  formDeCiclo({
+    descripcion: 'Ocho encuentros para leer el boom.',
+    organizador: {
+      nombre: 'Casa Brandon',
+      instagram: '@casabrandon',
+      web: 'https://casabrandon.example',
     },
-  ],
+    tallerista: { nombre: 'María Moreno', bio: 'Cronista y ensayista.', instagram: '@mmoreno' },
+    /*
+     * **La sede se declara acá, y no sale del fixture, porque este archivo
+     * afirma sobre ella.** El aserto de D-10/D-11 compara la línea completa
+     * —«Casa Brandon, Luis María Drago 236, Villa Crespo, CABA, Argentina»— así
+     * que la dirección y las indicaciones son el sujeto del test, no andamiaje.
+     *
+     * Lo encontró la migración de B-215: con la sede del fixture (`Drago 236`,
+     * sin el «Luis María») el caso se puso en rojo, que es exactamente el
+     * comportamiento correcto de un test cuyo valor asertado se le quiere mover a
+     * un default compartido.
+     */
+    modalidades: [
+      {
+        ...modalidadVacia('hibrido'),
+        id: 'mod_a',
+        sede: {
+          nombre: 'Casa Brandon',
+          direccion: 'Luis María Drago 236',
+          barrio: 'villa-crespo',
+          ciudad: 'CABA',
+          indicaciones: 'Timbre 2, tocar fuerte',
+          geo: null,
+        },
+        online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
+      },
+    ],
+    sesiones: [sesion()],
   inscripcion: {
     requiere: true,
     via: 'mail',
@@ -78,7 +97,6 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
     // reimplemente la línea (D-20).
     completo: false,
   },
-  arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
   material: {
     tiene: true,
     items: [
@@ -100,12 +118,12 @@ const form = (over: Partial<ActividadForm> = {}): ActividadForm => ({
       },
     ],
   },
-  difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
-  estado: 'publicado',
-  tags: ['narrativa'],
-  destacado: false,
-  ...over,
-});
+    difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
+    estado: 'publicado',
+    tags: ['narrativa'],
+    destacado: false,
+    ...over,
+  });
 
 /** Atajo: la vista previa de un formulario que se sabe válido. */
 const previa = (f: ActividadForm, sesionId: string | null = null) => {

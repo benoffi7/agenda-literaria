@@ -7929,7 +7929,55 @@ Lo que **no** se prohibió: `let vivo` en general. Es el idioma correcto de
 cualquier efecto asincrónico del panel —lo usan `useOpciones` y
 `ReporteFormulario` con razón— así que prohibirlo sería prohibir el patrón bueno.
 
-**Sigue abierta la que queda:**
+**Hecha la tercera el 2026-09-07, y el ítem estaba mal encuadrado.** Decía «la
+adopción de `tests/fixtures/`», y medido resultó otra cosa: **42 de 153** archivos
+ya consumen fixtures, y solo **seis** armaban su propia actividad de ciclo — no
+«al menos una docena». De esos seis, cuatro no pueden adoptar ninguno de los
+fixtures que existen, y por buenos motivos:
+
+| Archivo | Por qué se queda con el suyo |
+|---|---|
+| `schema.test.ts` | su `valido()` es **mínimo-válido** a propósito: prueba el schema, así que necesita variantes deliberadamente incompletas |
+| `costo-por-tecla.test.ts` | parametriza por N encuentros; lo que varía **es** el sujeto del test |
+| `modalidades.test.ts` | arma un `ActividadForm`, y `cicloDeOcho` es un **documento** (y con la forma singular pre-B-224) |
+| `duplicar.test.ts` (en parte) | ver abajo: los valores que afirma se quedan escritos ahí |
+
+**Y el malentendido de fondo eran los fixtures, no los archivos:** hay **tres** y
+hacen tres trabajos distintos. `centinelas.ts` y `formulario.ts` cargan
+**centinelas** para el barrido de privacidad —usarlos como fixture general hace
+que un aserto se lea `CENTINELA.titulo`—; `ciclo.ts` carga **el caso normal del
+dominio** para los invariantes; y los builders locales cargan **la forma que ese
+test prueba**. Confundirlos era la mitad del ítem.
+
+**Lo que sí era duplicación, medida:** tres archivos armaban casi el mismo
+`ActividadForm` —`duplicar`, `actividades.integracion` y `vistaPreviaEvento`— con
+**20 a 25 líneas idénticas entre cada par**. Y el costo no era hipotético: **el
+comentario de B-224 estaba copiado en los tres**, o sea que esa migración de
+modelo se pagó tres veces. Salió a `tests/fixtures/formulario-de-ciclo.ts`.
+
+**Con una regla escrita, que es lo que evita el fixture flojo:** el fixture trae
+**solo el andamiaje inerte** —quién organiza, dónde se cursa, el arancel— y **el
+valor sobre el que un test afirma se declara en ese test**, con su comentario,
+aunque quede repetido. Si `inscripcion.completo: true` viniera del fixture,
+cambiar ese default haría que el chequeo de B-97 en `duplicar` —que la copia **no**
+hereda el cupo completo— **pase por vacío** sin ningún rojo. Es la lección que
+`ciclo.ts` ya tenía escrita.
+
+**Dos cosas que la migración encontró sola, y las dos valen más que el refactor:**
+
+1. **`vistaPreviaEvento` afirma sobre la dirección.** Con la sede del fixture
+   (`Drago 236`, sin el «Luis María») el caso de D-10/D-11 se puso en rojo — que
+   es el comportamiento correcto de un test al que se le quiere mover a un default
+   el valor que compara. Su sede volvió al archivo, con el motivo escrito.
+2. **El detector de fixtures flojos (B-135) se puso en rojo**, porque acepta un
+   archivo si **ve** `esCiclo: true` en su fuente y la migración lo escondió
+   detrás del fixture. Se le enseñó el fixture nuevo **y se le agregó la mitad que
+   lo hace honesto**: un caso que verifica que `formDeCiclo` de verdad arma un
+   ciclo. Aceptar un fixture por su **nombre** era el agujero; ahora la aceptación
+   no puede podrirse.
+
+---
+
 - **La adopción de `tests/fixtures/`** — **reverificado el 2026-09-02, y el
   número creció en vez de bajar.** La foto original era «7 archivos sobre 59,
   cuatro firmas». Hoy `actividadCentinela` (`tests/fixtures/centinelas.ts`) ya

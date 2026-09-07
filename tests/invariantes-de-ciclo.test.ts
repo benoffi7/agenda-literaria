@@ -298,9 +298,36 @@ describe('detector de fixtures flojos — B-135', () => {
       const ejercitaCiclo =
         /esCiclo:\s*true/.test(src) ||
         /fixtures\/ciclo/.test(src) ||
-        /cicloDeOcho|CICLOS_QUE_NUMERAN|FAMILIA_DE_CICLOS/.test(src);
+        /cicloDeOcho|CICLOS_QUE_NUMERAN|FAMILIA_DE_CICLOS/.test(src) ||
+        // B-215 — `formDeCiclo` arma un `ActividadForm` con `esCiclo: true`. Que
+        // eso siga siendo cierto lo verifica el caso de abajo, así que aceptarlo
+        // acá no abre un agujero: si el fixture dejara de ser un ciclo, el rojo
+        // aparece ahí y no en un archivo que pasa de casualidad.
+        /formDeCiclo/.test(src);
       if (!ejercitaCiclo) sinCiclo.push(archivo);
     }
     expect(sinCiclo).toEqual([]);
+  });
+
+  it('y el fixture que el detector acepta es de verdad un ciclo — B-215', () => {
+    /*
+     * **La mitad que hace honesta a la de arriba.** El detector acepta un archivo
+     * por **nombrar** un fixture, y un nombre no garantiza nada: si
+     * `formDeCiclo` dejara de traer `esCiclo: true` —o de traer más de una
+     * sesión— los archivos que lo usan seguirían pasando el detector **sin
+     * ejercitar un ciclo**, que es literalmente el bug que este `describe`
+     * persigue (B-135).
+     *
+     * Es la misma forma que `fixtures/ciclo.ts` ya tiene para `cicloDeOcho`: el
+     * fixture es del dominio, así que su forma se afirma en un test y no se
+     * confía a su nombre.
+     *
+     * MUTACIÓN PROBADA: sacar `esCiclo: true` del fixture deja este caso en rojo.
+     */
+    const fixture = readFileSync(
+      fileURLToPath(new URL('tests/fixtures/formulario-de-ciclo.ts', raiz)),
+      'utf8',
+    );
+    expect(fixture, '`formDeCiclo` dejó de armar un ciclo').toMatch(/esCiclo:\s*true/);
   });
 });

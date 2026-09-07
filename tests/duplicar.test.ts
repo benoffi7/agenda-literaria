@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formDeCiclo } from './fixtures/formulario-de-ciclo';
 import {
   CASILLAS_COPIA,
   COPIA_POR_DEFECTO,
@@ -29,74 +30,55 @@ const sesion = (over: Partial<SesionForm> = {}): SesionForm => ({
   ...over,
 });
 
-/** Ciclo de tres martes de 2025, con un salto de dos semanas en el medio. */
-const original = (over: Partial<ActividadForm> = {}): ActividadForm => ({
-  tipo: 'club-lectura',
-  titulo: 'Club de lectura latinoamericana',
-  slug: 'club-latinoamericana',
-  descripcion: 'Ocho encuentros por narrativa del boom y después.',
-  imagenes: [],
-  organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
-  tallerista: { nombre: 'María Moreno', bio: 'Cronista', instagram: '@mmoreno' },
-  libro: { titulo: 'Los siete locos', autor: 'Roberto Arlt' },
-  esCiclo: true,
-  sesiones: [
-    sesion({ id: 'ses_a', inicio: '2025-09-02T19:00', fin: '2025-09-02T21:00' }),
-    sesion({ id: 'ses_b', inicio: '2025-09-09T19:00', fin: '2025-09-09T21:00' }),
-    // Se saltea una semana (feriado) — el hueco irregular tiene que sobrevivir.
-    sesion({ id: 'ses_c', inicio: '2025-09-23T19:00', fin: '2025-09-23T21:30' }),
-  ],
-  // B-224 — una fila híbrida: el mismo lugar de antes, ahora adentro de la forma
-  // de cursar. `modalidad`, `sede` y `online` son derivados y los escribe
-  // `formADocumento`.
-  modalidades: [
-    {
-      id: 'mod_a',
-      modalidad: 'hibrido',
-      inicio: '',
-      fin: '',
-      sede: {
-        nombre: 'Casa Brandon',
-        direccion: 'Drago 236',
-        barrio: 'villa-crespo',
-        ciudad: 'CABA',
-        indicaciones: 'Timbre 2',
-        geo: null,
-      },
-      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
-    },
-  ],
-  inscripcion: {
-    requiere: true,
-    via: 'mail',
-    destino: 'hola@casabrandon.example',
-    cupo: 12,
-    cierra: '2025-08-30T00:00',
-    // B-97 — el original está completo, así que la copia tiene algo que NO
-    // heredar. Con `false` el chequeo de abajo pasaría por vacío.
-    completo: true,
-  },
-  arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
-  material: {
-    tiene: true,
-    items: [
-      {
-        // B-342 — id de cliente, nunca por índice (trampa 2).
-        id: 'mat_1',
-        tipo: 'guia',
-        titulo: 'Guía de lectura',
-        url: 'https://drive/privado',
-        entrega: 'al-inscribirse',
-        publico: false,
-      },
+/**
+ * Ciclo de tres martes de 2025, con un salto de dos semanas en el medio.
+ *
+ * El andamiaje —quién organiza, dónde se cursa, el arancel— sale de
+ * `formDeCiclo` (B-215). **Lo que este archivo afirma se declara acá**, con su
+ * comentario: si `completo`, `destacado`, `tags`, `difusion` o `material`
+ * vinieran del fixture, cambiar un default suyo haría que los chequeos de qué
+ * hereda una copia **pasen por vacío**.
+ */
+const original = (over: Partial<ActividadForm> = {}): ActividadForm =>
+  formDeCiclo({
+    titulo: 'Club de lectura latinoamericana',
+    libro: { titulo: 'Los siete locos', autor: 'Roberto Arlt' },
+    sesiones: [
+      sesion({ id: 'ses_a', inicio: '2025-09-02T19:00', fin: '2025-09-02T21:00' }),
+      sesion({ id: 'ses_b', inicio: '2025-09-09T19:00', fin: '2025-09-09T21:00' }),
+      // Se saltea una semana (feriado) — el hueco irregular tiene que sobrevivir.
+      sesion({ id: 'ses_c', inicio: '2025-09-23T19:00', fin: '2025-09-23T21:30' }),
     ],
-  },
-  difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
-  estado: 'publicado',
-  tags: ['narrativa'],
-  destacado: true,
-  ...over,
-});
+    inscripcion: {
+      requiere: true,
+      via: 'mail',
+      destino: 'hola@casabrandon.example',
+      cupo: 12,
+      cierra: '2025-08-30T00:00',
+      // B-97 — el original está completo, así que la copia tiene algo que NO
+      // heredar. Con `false` el chequeo de abajo pasaría por vacío.
+      completo: true,
+    },
+    material: {
+      tiene: true,
+      items: [
+        {
+          // B-342 — id de cliente, nunca por índice (trampa 2).
+          id: 'mat_1',
+          tipo: 'guia',
+          titulo: 'Guía de lectura',
+          url: 'https://drive/privado',
+          entrega: 'al-inscribirse',
+          publico: false,
+        },
+      ],
+    },
+    difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
+    estado: 'publicado',
+    tags: ['narrativa'],
+    destacado: true,
+    ...over,
+  });
 
 const imagen = (over: Partial<Imagen> = {}): Imagen => ({
   id: 'img_1',

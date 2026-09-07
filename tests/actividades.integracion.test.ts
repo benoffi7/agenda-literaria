@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { formDeCiclo } from './fixtures/formulario-de-ciclo';
 import { fileURLToPath } from 'node:url';
 import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
@@ -101,62 +102,50 @@ const tokenAdmin = async (uid: string, esAdmin: boolean) => {
   return token;
 };
 
-const formCompleto = (): ActividadForm => ({
-  tipo: 'club-lectura',
-  titulo: 'Club de lectura latinoamericana',
-  slug: 'club-latinoamericana',
-  descripcion: 'Ocho encuentros por narrativa del boom y después.',
-  imagenes: [],
-  organizador: { nombre: 'Casa Brandon', instagram: '@casabrandon', web: '' },
-  tallerista: { nombre: 'María Moreno', bio: 'Cronista', instagram: '@mmoreno' },
-  libro: { titulo: '', autor: '' },
-  esCiclo: true,
-  sesiones: [
-    { ...sesionVacia(), inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00', tema: 'Cap. 1-4' },
-    { ...sesionVacia(), inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00', tema: 'Cap. 5-8' },
-  ],
-  // B-224 — una fila híbrida: el mismo lugar de antes, ahora adentro de la forma
-  // de cursar. `modalidad`, `sede` y `online` son derivados y los escribe
-  // `formADocumento`.
-  modalidades: [
-    {
-      id: 'mod_a',
-      modalidad: 'hibrido',
-      inicio: '',
-      fin: '',
-      sede: {
-        nombre: 'Casa Brandon',
-        direccion: 'Drago 236',
-        barrio: 'villa-crespo',
-        ciudad: 'CABA',
-        indicaciones: 'Timbre 2',
-        geo: null,
-      },
-      online: { plataforma: 'zoom', url: 'https://zoom.us/j/secreto', urlPublica: false },
-    },
-  ],
-  inscripcion: {
-    requiere: true,
-    via: 'mail',
-    destino: 'hola@casabrandon.example',
-    cupo: 12,
-    cierra: '2026-09-01T00:00',
-    // B-97 — en `true` para que la ida y vuelta lo ejercite: con `false` no se
-    // distingue "lo conserva" de "lo pisa con el default".
-    completo: true,
-  },
-  arancel: { tipo: 'a-la-gorra', notas: 'incluye material' },
-  material: {
-    tiene: true,
-    items: [
-      { id: 'mat_1', tipo: 'guia', titulo: 'Guía de lectura', url: 'https://drive/privado', entrega: 'al-inscribirse', publico: false },
+/**
+ * El formulario que va y vuelve del emulador.
+ *
+ * El andamiaje sale de `formDeCiclo` (B-215); **lo que este archivo afirma se
+ * declara acá**: las dos sesiones con tema (la ida y vuelta de `Timestamp` y de
+ * los ids de cliente), el `completo: true` de B-97 y el id de material de B-342.
+ * Si esos valores vinieran del fixture, cambiar un default suyo dejaría los
+ * chequeos pasando por vacío.
+ */
+const formCompleto = (): ActividadForm =>
+  formDeCiclo({
+    sesiones: [
+      { ...sesionVacia(), inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00', tema: 'Cap. 1-4' },
+      { ...sesionVacia(), inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00', tema: 'Cap. 5-8' },
     ],
-  },
-  difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
-  estado: 'borrador',
-  tags: ['narrativa'],
-  destacado: false,
-});
+    inscripcion: {
+      requiere: true,
+      via: 'mail',
+      destino: 'hola@casabrandon.example',
+      cupo: 12,
+      cierra: '2026-09-01T00:00',
+      // B-97 — en `true` para que la ida y vuelta lo ejercite: con `false` no se
+      // distingue "lo conserva" de "lo pisa con el default".
+      completo: true,
+    },
+    material: {
+      tiene: true,
+      items: [
+        // B-342 — id de cliente, nunca por índice (trampa 2).
+        {
+          id: 'mat_1',
+          tipo: 'guia',
+          titulo: 'Guía de lectura',
+          url: 'https://drive/privado',
+          entrega: 'al-inscribirse',
+          publico: false,
+        },
+      ],
+    },
+    difusion: { arrobar: ['@editorial'], notas: 'coordinar con prensa' },
+    estado: 'borrador',
+    tags: ['narrativa'],
+    destacado: false,
+  });
 
 describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
   beforeAll(async () => {
