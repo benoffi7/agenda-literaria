@@ -2398,6 +2398,32 @@ en el panel, no un dato que se pierda ni algo público mal expuesto.
   bucket, en vez de prevenir el borrado. Es el único camino que no le pide nada
   nuevo al barrido.
 
+> **2026-09-07 — verificado contra el código: el caso es alcanzable hoy, y el
+> ítem no lo decía.** Faltaba comprobar la premisa, así que se comprobó:
+>
+> - **La UI de restaurar existe** (`src/components/admin/HistorialActividad.tsx`,
+>   `restaurarCampo` de `src/lib/historial.ts`), y no es un plan: está construida.
+> - **`imagenes` es uno de los campos restaurables** —está en el mapa de rótulos
+>   del historial— así que la secuencia entera del ítem se puede ejecutar con
+>   clics: sacar la fila, esperar el barrido, restaurar esa versión.
+>
+> O sea que no es teórico. Lo que **sí** sigue siendo cierto es por qué es P3: el
+> modo de falla es una imagen rota en el panel, no un dato perdido ni algo
+> público mal expuesto, y hay que encadenar tres cosas para llegar.
+>
+> **Y de los tres caminos, el tercero sigue siendo el bueno**, ahora con un
+> argumento más: `historial.ts` ya tiene escrito un problema de la misma familia
+> —restaurar `imagenes` cuando la versión es anterior a B-167 escribe
+> `imagenes: null` y «la galería entera se»— o sea que **restaurar imágenes ya es
+> el campo con más aristas del historial**. Avisar ahí, donde ya hay lógica
+> propia, es más barato que enseñarle al barrido a leer todas las versiones de
+> todas las actividades (camino 1), que además alargaría indefinidamente la vida
+> de una imagen que alguien sacó a propósito.
+>
+> No se implementó en esta pasada por lo que el ítem ya dice —es P3 y el daño es
+> una miniatura rota— y para no meterle una llamada de red por imagen a un flujo
+> que hoy no hace ninguna sin decidirlo primero.
+
 ### B-222 · Servir las imágenes propias por un dominio propio o un rewrite de Hosting · P3
 
 **El motivo NO es privacidad** — eso quedó resuelto en B-206 #1 con el path opaco y la
