@@ -3233,7 +3233,27 @@ filas de la tabla de la ficha.
 
 ---
 
-### B-783 · P2 — `src/lib/enlaces.ts` no despierta al `auditor-privacidad`
+### B-783 · ✅ hecho (2026-09-07) — `src/lib/enlaces.ts` no despierta al `auditor-privacidad`
+
+Hecho como el ítem lo pedía: `src/lib/enlaces.ts` entró al `description` de la
+ficha, justo antes de `rutasPublicas.ts`. **Sin tocar el script** —el disparador se
+deriva de la ficha— y sin tocar el hook, que llama a la misma función
+(`auditoresQueCorresponden` sobre `leerFichas`), así que el `git commit` también lo
+frena ahora.
+
+El caso quedó en `tests/auditores-que-corresponden.test.ts` como caso **propio** y
+no como una fila más del barrido de la ficha, y la diferencia importa: el barrido
+verifica que la ficha y el script coincidan, y esto verifica **que ese archivo esté
+en la ficha**, que es la decisión.
+
+`apoyoDelSitio.ts` quedó afuera, como el ítem recomendaba: su red es su test propio
+con centinelas, igual que `/ayuda` y `/contacto`. Desde B-781 esa clase tiene
+además el barrido de promesas, que sí los cubre a los cuatro.
+
+El planteo original queda abajo.
+
+---
+
 
 El disparador se **deriva del `description`** de
 `.claude/agents/auditor-privacidad.md` (`scripts/auditores-que-corresponden.mjs`),
@@ -3259,7 +3279,19 @@ disparador, sin tocar el script.
 
 ---
 
-### B-784 · P2 — la ficha del auditor dice que B-480 está pendiente, y ya está hecho
+### B-784 · ✅ hecho (2026-09-07) — la ficha del auditor dice que B-480 está pendiente, y ya está hecho
+
+Corregido con el texto que el propio auditor propuso, y con la parte que más
+importa dicha: esa puerta la cerró B-480 el 2026-09-03 **en la consola**, o sea que
+es configuración y no código y **no hay ningún test que la sostenga**. Si alguien la
+reactiva, ningún rojo lo dice — y hay afirmaciones de páginas públicas que dependen
+de que siga cerrada (que un clic a Cafecito no se mide, en `/apoyar`). Lo que sigue
+sin verificar son los settings de propiedad, que quedan en **B-773**.
+
+El planteo original queda abajo.
+
+---
+
 
 `.claude/agents/auditor-privacidad.md` (fila 12): «Es la puerta que **B-480** deja
 **pendiente** de un ajuste manual en la consola de GA4». `docs/BACKLOG.md:2996` y
@@ -10095,7 +10127,26 @@ existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
 suite hoy — así que el número del documento está bien y el de esta nota estaba
 mal.
 
-### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas · P2
+### B-294 · ✅ hecho — La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas
+
+**Ya estaba resuelto cuando se revisó el 2026-09-07, y tiene red.** Verificado a
+mano contra el archivo: la tabla tiene **67 filas**, ninguna con `||`, **ninguna
+primera celda repetida**, y los **67 tests que nombra existen todos**. Las cuatro
+filas que este ítem señalaba —`color-de-tipo`, `estilos-del-sitio`, `cartelera` y
+`afiche`— aparecen una vez cada una como dueñas de su fila.
+
+Y la red que impide que vuelva ya existe: `tests/red-de-contencion.test.ts`,
+`describe('la tabla «no automatizar» no se rompe por merges — B-367/B-294')`, con
+las cuatro mitades —hay filas de verdad, ninguna línea con `||`, toda línea empieza
+con `|`, ninguna primera celda repetida— más «todos los tests que nombra existen» y
+«ninguna línea de prosa quedó pegada a otra por un merge».
+
+O sea que el ítem quedó abierto en el BACKLOG después de arreglarse, que es el
+mismo drift que el ítem describe una vuelta más arriba. El planteo original queda
+abajo.
+
+---
+
 **Drift de documentación, no de código.** En la tabla «Porque ya hay un test, y
 duplicarlo daría falsa cobertura» hay filas concatenadas con `||` dentro de una
 celda en vez de separadas por salto de línea, y por eso hay filas **repetidas dos

@@ -2,6 +2,26 @@
 
 ## Sin publicar
 
+- **Tres ítems de la red de contención, cerrados** — **B-783**, **B-784** y
+  **B-294**.
+
+  `src/lib/enlaces.ts` ahora **despierta al `auditor-privacidad`**. No estaba en el
+  `description` de la ficha, de donde se deriva el disparador, así que un cambio
+  que tocara solo el destino de Cafecito no lo prendía; `/apoyar` lo prendió de
+  casualidad por otros dos archivos. Y ahí viven la dirección privada del `.ics`,
+  la casilla del proyecto y un destino de cobro — más es el archivo donde ya hubo
+  una fuga de verdad (B-246). El hook del `git commit` usa la misma función, así
+  que también lo frena ahora.
+
+  La ficha decía que **B-480 estaba pendiente** y está cerrado desde el 2026-09-03.
+  Corregido diciendo lo que importa: esa puerta se cerró **en la consola**, así que
+  **ningún test la sostiene** — si alguien la reactiva no hay rojo que lo diga, y
+  hay páginas públicas cuyo texto depende de que siga cerrada.
+
+  **B-294 ya estaba arreglado** y quedó abierto en el BACKLOG: la tabla «no
+  automatizar» tiene 67 filas, ninguna duplicada, y los 67 tests que nombra
+  existen. La red que lo impide ya estaba en `tests/red-de-contencion.test.ts`.
+
 - **Ninguna página del sitio promete sobre datos algo que el sitio contradice** —
   **B-781** (el único P1 que quedaba) y **B-782**, que es la misma clase.
 

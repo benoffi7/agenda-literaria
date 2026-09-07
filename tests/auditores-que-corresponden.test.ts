@@ -188,6 +188,28 @@ describe('cuándo NO se dispara — la mitad que sostiene la decisión', () => {
     expect(d.trampas.corresponde).toBe(true);
   });
 
+  it('`enlaces.ts` despierta al auditor, y es el único destino externo del sitio — B-783', () => {
+    /*
+     * **El caso que faltaba, y el motivo es lo que ese archivo guarda.** El
+     * disparador se deriva del `description` de la ficha, y ese `description` no
+     * nombraba `src/lib/enlaces.ts`: un cambio que tocara **solo** el destino de
+     * Cafecito no despertaba al auditor. `/apoyar` lo despertó de casualidad, por
+     * `sitemap.ts` y `rutasPublicas.ts`.
+     *
+     * Y ahí viven **la dirección privada del `.ics`**, la casilla del proyecto, el
+     * Instagram y un **destino de cobro**. Es además el archivo donde ya hubo una
+     * fuga de verdad: B-246, una casilla ajena versionada tres días en un repo
+     * público. Un cambio de una línea puede repuntar un destino externo en todas
+     * las páginas del sitio.
+     *
+     * Está escrito como caso propio y no como una fila más del barrido de la
+     * ficha porque el barrido verifica que la ficha y el script coincidan; esto
+     * verifica **que ese archivo esté en la ficha**, que es la decisión.
+     */
+    const d = decidir(['src/lib/enlaces.ts']);
+    expect(d.privacidad.corresponde, 'enlaces.ts salió de la ficha').toBe(true);
+  });
+
   it('un diff vacío no dispara nada más que el que corre siempre', () => {
     const d = decidir([]);
     expect(d.privacidad.corresponde).toBe(false);
