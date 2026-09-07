@@ -536,7 +536,9 @@ describe('el panel no es una página del sitio público — B-801', () => {
      * de GA4, que tampoco es retroactivo. Está escrito en B-801.
      */
     const pedidos = pedidosGa4({ desde: '2026-09-15', hasta: '2026-10-12' });
-    for (const informe of ['totales', 'canales', 'dispositivos']) {
+    // `as const` para que las claves sean literales: sin eso son `string` y
+    // TypeScript no puede indexar el objeto de pedidos. Lo agarró el gate.
+    for (const informe of ['totales', 'canales', 'dispositivos'] as const) {
       expect(
         'dimensionFilter' in pedidos[informe],
         `${informe} no se filtra por ruta: son sesiones, no vistas de página`,
