@@ -34,6 +34,7 @@ export function SeccionVistaPrevia({ form, labelsPendientes }: Props) {
     <Seccion
       ancla="vista-previa"
       titulo="Vista previa del evento"
+      conAyuda
       descripcion="Cómo va a quedar en Google Calendar. Lo arma la misma lógica que publica el evento."
       colapsable
       recuerdaComo="vista-previa"

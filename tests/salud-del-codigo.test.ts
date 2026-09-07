@@ -1,7 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { AREAS_PRODUCCION, ciclos, contarLineas, corpus, grafo } from '../scripts/salud-del-codigo.mjs';
+import {
+  AREAS_PRODUCCION,
+  ciclos,
+  contarLineas,
+  corpus,
+  grafo,
+  grafoEstatico,
+} from '../scripts/salud-del-codigo.mjs';
 
 /**
  * Lo que de `docs/10-salud-del-codigo.md` **sí** se puede atar — B-311.
@@ -35,7 +42,13 @@ const doc = readFileSync(fileURLToPath(new URL('docs/10-salud-del-codigo.md', ra
 
 describe('salud del código — ciclos de import (B-311)', () => {
   it('cero ciclos, que es lo único que el documento afirma como propiedad', () => {
-    const encontrados = ciclos(grafo());
+    /*
+     * **El grafo estático, no el completo** — 2026-09-07. Un `import()` diferido
+     * no puede cerrar un ciclo de inicialización: se resuelve cuando la función
+     * corre y no cuando el módulo se evalúa, así que ninguno de los dos ve al
+     * otro a medio construir. El motivo largo está en `grafoEstatico`.
+     */
+    const encontrados = ciclos(grafoEstatico());
     expect(
       encontrados.map((c: string[]) => c.join(' → ')),
       'apareció un ciclo de imports. El §1.5 de docs/10-salud-del-codigo.md ' +

@@ -169,6 +169,21 @@ export function TaxonomiasPanel() {
                   sin aprobar
                 </span>
               )}
+              {/*
+                B-29 — la marca es la mitad que hace segura la auto-aprobación:
+                sin ella, «la aprobó el reuso» es indistinguible de «la miró una
+                persona», y el contra que el ítem nombra —que las dos repitan el
+                mismo typo— no se podría revisar por ningún lado. Con la marca, la
+                fila queda igual que cualquier otra: se puede renombrar o borrar.
+              */}
+              {v.aprobadaPorReuso === true && (
+                <span
+                  className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/60"
+                  title="Quedó aprobada sola porque la escribieron las dos cuentas. Nadie la revisó: si es un typo repetido, se puede renombrar o borrar."
+                >
+                  la usaron las dos cuentas
+                </span>
+              )}
             </p>
             <p className="text-xs text-tinta/55">
               <code>{v.slug}</code> · {v.usos === 1 ? '1 uso' : `${v.usos} usos`}
@@ -200,14 +215,22 @@ export function TaxonomiasPanel() {
                   Color
                 </button>
               )}
-              {!v.fijo && pendiente && (
+              {/*
+                B-29 — el botón aparece también sobre una etiqueta que ya está
+                aprobada, si la aprobó el reuso: ahí no aprueba, **confirma**. Es
+                lo que cierra el círculo de la marca — dice «nadie la miró», así
+                que tiene que haber una forma de mirarla. Sin esto la marca era
+                irreversible y una etiqueta revisada iba a seguir diciendo que
+                nadie la revisó.
+              */}
+              {!v.fijo && (pendiente || v.aprobadaPorReuso === true) && (
                 <button
                   type="button"
                   className={claseBotonFila}
                   disabled={ocupado}
                   onClick={() => void correr(() => aprobarOpcion(campo, v.slug))}
                 >
-                  Aprobar
+                  {pendiente ? 'Aprobar' : 'Ya la miré'}
                 </button>
               )}
               {!v.fijo && (

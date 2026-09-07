@@ -41,13 +41,88 @@ const RE_TITULO_COPIA = /\s*\(copia(?:\s+\d+)?\)\s*$/i;
 const RE_SLUG_COPIA = /-copia(?:-\d+)?$/;
 
 /**
- * ¿Este slug es el que se propuso automáticamente para una copia?
+ * ¿Este slug **tiene la forma** del que se propone para una copia?
  *
- * Lo usa el schema para no dejar publicar con él: el slug queda inmutable al
- * publicar (trampa 10), así que una URL `…-copia` publicada por descuido no se
- * puede arreglar nunca más sin perder el SEO de esa página.
+ * Es solo el reconocimiento del texto, y por sí solo no alcanza para decidir
+ * nada: ver `esCopiaSinRevisar`, que es lo que usa el schema.
  */
 export const esSlugDeCopia = (slug: string): boolean => RE_SLUG_COPIA.test(slug);
+
+/**
+ * La marca del título **para leerla**, sin anclar al final.
+ *
+ * `RE_TITULO_COPIA` está anclada porque `tituloCopia` la usa para *recortar* el
+ * sufijo anterior y no encadenar «(copia) (copia)». Reusarla para *reconocer*
+ * era un error, y el borde no era hipotético —lo encontró el
+ * `auditor-privacidad`—: cruzada con `&&`, la estrictez del ancla se volvía el
+ * agujero de los dos lados, porque el slug lo deriva `slugify` y
+ * `RE_SLUG_COPIA` es tolerante justo donde esta era estricta.
+ *
+ * | Título tras editar la copia | Slug que deriva `cambiarTitulo` | Con el ancla |
+ * |---|---|---|
+ * | `Club X (copia)` | `club-x-copia` | frenaba |
+ * | `Club X (copia) 2027` | `club-x-copia-2027` | **dejaba publicar** |
+ * | `Club X (copia).` | `club-x-copia` | **dejaba publicar** |
+ *
+ * En las dos últimas filas **nadie tocó el slug**: lo derivó la cascada del
+ * título, que es el camino automático. Y escribirle el año detrás de la marca es
+ * justo el gesto de «esta es la edición del año que viene», o sea el más
+ * probable de los tres.
+ */
+const RE_TITULO_MARCADO = /\(copia(?:\s+\d+)?\)/i;
+
+/**
+ * ¿Este título lleva la marca «(copia)» que le pone `tituloCopia`? En cualquier
+ * posición, no solo al final — ver `RE_TITULO_MARCADO`.
+ */
+export const esTituloDeCopia = (titulo: string): boolean => RE_TITULO_MARCADO.test(titulo);
+
+/**
+ * ¿Esta actividad es una copia que nadie revisó todavía? Es lo que el schema
+ * bloquea al publicar: el slug queda inmutable al publicar (trampa 10), así que
+ * una URL `…-copia` publicada por descuido no se arregla nunca más sin perder el
+ * SEO de esa página.
+ *
+ * ── B-91 · por qué mira el título y no solo el slug ────────────────────────
+ * Antes esto era `esSlugDeCopia(slug)` a secas, o sea **adivinar la marca desde
+ * el texto**, y adivinar tiene falsos positivos: un título legítimo que termine
+ * en esa palabra —«Taller de copia», «El arte de la copia»— deriva en
+ * `taller-de-copia` y quedaba **imposible de publicar**, con un mensaje que
+ * hablaba de un sufijo que la persona no puso. El error era del lado seguro, y
+ * seguía siendo un error: la única salida era renombrar la actividad.
+ *
+ * El arreglo no es aflojar el regex sino **dejar de adivinar**: `duplicar`
+ * escribe la marca en los dos lados a la vez (`tituloCopia` + `slugCopia`), así
+ * que «esto es una copia sin revisar» es un estado que se puede *leer* en lugar
+ * de inferir. Y se lee del par, no de una sola punta:
+ *
+ * | Título | Slug | Qué es | Publica |
+ * |---|---|---|---|
+ * | `Club X (copia)` | `club-x-copia` | la copia recién hecha | **no** |
+ * | `Taller de copia` | `taller-de-copia` | una actividad de verdad | sí |
+ * | `Club X (copia)` | `club-x-2027` | el slug ya se corrigió | sí |
+ *
+ * **Por qué el título y no un flag del formulario**, que es lo que proponía
+ * B-91 («la marca puede ir en el estado»): el título **se guarda en el
+ * documento**. Una copia que se deja como borrador y se retoma mañana vuelve a
+ * abrirse con su marca puesta, y el bloqueo sigue en pie; un flag que viviera
+ * solo en el form se perdería en el primer guardado y el bloqueo sería una
+ * ilusión — justo en el caso más probable, porque la copia nace borrador.
+ *
+ * **Qué se pierde:** una copia a la que le sacaron el «(copia)» del título y le
+ * dejaron el slug `-copia` **editado a mano** ya no se frena. Para llegar ahí
+ * hay que tocar el campo del slug a propósito —mientras la actividad no esté
+ * publicada, cambiar el título lo vuelve a derivar solo (`cambiarTitulo`)— y eso
+ * es alguien pidiendo esa URL, que es exactamente el caso que B-91 reporta como
+ * bloqueado de más.
+ *
+ * **Lo que NO se pierde, y por poco:** el título editado *alrededor* de la marca
+ * —«Club X (copia) 2027», «Club X (copia).»— sigue frenando. Esa era la
+ * regresión de la primera versión de este cambio, y salía del camino automático
+ * y no de una edición deliberada: ver `RE_TITULO_MARCADO`.
+ */
+export const esCopiaSinRevisar = (a: { slug: string; titulo: string }): boolean =>
+  esSlugDeCopia(a.slug) && esTituloDeCopia(a.titulo);
 
 /**
  * El título se marca como copia: en el listado, dos filas con el mismo título

@@ -180,6 +180,16 @@ export const datosDeTarjeta = (
        * aviso del formulario y la cartelera.
        */
       ...(a.estado === 'publicado' && faltaElFlyer(imagenesDe(a)) ? ['Sin flyer'] : []),
+      /*
+       * B-622 — **destacada sí, los tags no**, y lo decidió el dueño el
+       * 2026-09-03. `destacado` decide el orden en el sitio público y desde el
+       * panel «¿cuáles marqué?» solo se contestaba abriendo una por una.
+       *
+       * Los tags **no entran**: una actividad puede tener seis y la tarjeta se
+       * convierte en una nube de etiquetas. Vuelve cuando alguien lo pida, y esta
+       * ausencia es deliberada — no un olvido de este cambio.
+       */
+      ...(a.destacado === true ? ['Destacada'] : []),
     ],
     autoria: ETIQUETA_AUTORIA[autoriaDe(a, uid)],
   };

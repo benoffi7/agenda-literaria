@@ -5,6 +5,8 @@ import {
   AVISOS,
   CAPITULOS,
   CAPITULO_POR_CONTEXTO,
+  capituloDeSeccion,
+  type CapituloAyuda,
   type ContextoAyuda,
   type PuntoAyuda,
 } from '@/lib/ayuda';
@@ -14,6 +16,16 @@ import { NOVEDADES, fechaLegible, guardarVisto } from '@/lib/novedades';
 interface Props {
   /** Desde dónde se pidió la ayuda: decide qué capítulo abre desplegado. */
   contexto: ContextoAyuda;
+  /**
+   * B-62 — título de la sección del formulario desde cuyo «?» se abrió, si se
+   * abrió desde uno. Gana sobre `contexto`: es más específico.
+   *
+   * Viaja el **título** y no el id del capítulo porque quien lo pasa está adentro
+   * del formulario y no puede importar `ayuda.ts` sin traerse los ~25 kB de la
+   * guía al chunk inicial del panel (D-61, B-09). La resolución la hace acá, que
+   * es donde la guía ya está cargada.
+   */
+  seccion?: string;
   /** Ids de novedades sin leer al momento de abrir, para marcarlas «nuevo». */
   idsSinLeer: string[];
   onCerrar: () => void;
@@ -39,7 +51,13 @@ type Pestania = 'guia' | 'novedades';
  * En mobile ocupa la pantalla completa: la guía es texto largo y una ventanita
  * de 300px de alto no se lee. Desde `sm` es un cuadro centrado.
  */
-export function CentroAyuda({ contexto, idsSinLeer, onCerrar, onNovedadesLeidas }: Props) {
+export function CentroAyuda({
+  contexto,
+  seccion,
+  idsSinLeer,
+  onCerrar,
+  onNovedadesLeidas,
+}: Props) {
   // Si hay algo sin leer, abre en Novedades: es la razón por la que la persona
   // hizo clic. Si no, en la guía.
   const [pestania, setPestania] = useState<Pestania>(idsSinLeer.length ? 'novedades' : 'guia');
@@ -54,7 +72,15 @@ export function CentroAyuda({ contexto, idsSinLeer, onCerrar, onNovedadesLeidas 
   const idTitulo = useId();
   const idPestania = useId();
 
-  const capituloAbierto = CAPITULO_POR_CONTEXTO[contexto];
+  /*
+   * B-62 — la sección gana sobre el contexto cuando viene: es más específica.
+   * Si el título no tiene capítulo se cae al de la pantalla en vez de abrir la
+   * guía sin nada desplegado — `tests/ayuda.test.ts` exige que todas las
+   * secciones del formulario tengan el suyo, así que en la práctica no pasa, pero
+   * el default es el que preserva el comportamiento anterior.
+   */
+  const capituloAbierto =
+    (seccion ? capituloDeSeccion(seccion)?.id : undefined) ?? CAPITULO_POR_CONTEXTO[contexto];
 
   // Ver las novedades es haberlas visto: se marca al mostrar la pestaña.
   useEffect(() => {
@@ -182,6 +208,7 @@ function Guia({ capituloAbierto }: { capituloAbierto: string }) {
           colapsable
           abiertaPorDefecto={c.id === capituloAbierto}
         >
+          <CabezaDeCapitulo capitulo={c} />
           <ul className="flex flex-col gap-2.5">
             {c.puntos.map((p, i) => (
               <Punto key={i} punto={p} />
@@ -189,6 +216,39 @@ function Guia({ capituloAbierto }: { capituloAbierto: string }) {
           </ul>
         </Seccion>
       ))}
+    </div>
+  );
+}
+
+/**
+ * B-62 — «qué sale de acá» y «un ejemplo», arriba de la lista de puntos.
+ *
+ * Es la forma que pidió el dueño y no una decoración: la duda de quien está
+ * cargando es *qué pasa si pongo esto* y *cómo se carga mi caso*, y las dos se
+ * contestaban —cuando se contestaban— repartidas entre siete puntos. Van
+ * primero, antes de la letra chica, porque son lo que se lee cuando se abre el
+ * «?» con el formulario a medio llenar.
+ *
+ * Los capítulos que no explican una sección del formulario no los tienen y no
+ * pintan nada: «el recorrido de una actividad» no tiene un impacto ni un ejemplo
+ * en el sentido de esto.
+ */
+function CabezaDeCapitulo({ capitulo }: { capitulo: CapituloAyuda }) {
+  if (!capitulo.impacto && !capitulo.ejemplo) return null;
+  return (
+    <div className="mb-3 flex flex-col gap-2">
+      {capitulo.impacto && (
+        <div className="rounded-md border border-borde bg-white px-3 py-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-tinta/50">Qué sale</p>
+          <p className="mt-0.5 text-sm text-tinta/80">{capitulo.impacto}</p>
+        </div>
+      )}
+      {capitulo.ejemplo && (
+        <div className="rounded-md border border-borde bg-white px-3 py-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-tinta/50">Un ejemplo</p>
+          <p className="mt-0.5 text-sm text-tinta/80">{capitulo.ejemplo}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -752,9 +752,10 @@ describe('barrido de las opciones públicas (§4.4, B-212)', () => {
   });
 
   it('los campos de gestión tampoco: no llevan texto, así que se afirma por clave', () => {
-    // `orden`, `fijo`, `usos` y `aprobada` son números y booleanos: no hay
-    // string donde esconder contenido, así que el barrido de centinelas no los
-    // ve. Se comparan las claves de la salida contra la lista permitida.
+    // `orden`, `fijo`, `usos`, `aprobada` y `aprobadaPorReuso` (B-29) son
+    // números y booleanos: no hay string donde esconder contenido, así que el
+    // barrido de centinelas no los ve. Se comparan las claves de la salida
+    // contra la lista permitida.
     //
     // `tono` es el único de los cinco que sale (D-150): el color de la categoría
     // lo pinta el sitio, y el sitio no lee Firestore. Es la lista de claves —y no

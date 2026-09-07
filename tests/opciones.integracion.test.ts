@@ -233,6 +233,65 @@ describe.skipIf(!vivo)('aprobación de taxonomías — §4.3', () => {
     expect(opcionesVisibles(valores).map((v) => v.slug)).not.toContain('con-beca-parcial');
   });
 
+  /**
+   * B-29 — el camino de escritura completo, y no solo la condición pura.
+   *
+   * Lo señaló el `auditor-privacidad`: `conElUso` reescribe un elemento del array
+   * **creado por otra persona**, en un documento de lectura pública, y lo único
+   * que garantiza que la huella del autor no se reasigne al que reusa es un
+   * spread. Eso estaba afirmado tres veces en prosa y cero en un test.
+   *
+   * Acá corre `upsertOpcion` de verdad contra el emulador y se mira el documento
+   * crudo, que es lo que un anónimo puede leer.
+   */
+  it('el reuso de otra cuenta aprueba y marca, sin reasignar el autor ni meter el uid (§5.1, B-29)', async () => {
+    // Sobre `tags` y con un slug propio: los `it` de este archivo comparten la
+    // base (el `beforeAll` siembra una vez), así que tocar `arancel` acá le
+    // cambiaría los `usos` a los casos de más abajo.
+    await upsertOpcion('tags', 'Reuso ajeno', UID);
+    await volverPendiente('tags', 'reuso-ajeno');
+
+    // La otra cuenta tipea la misma etiqueta en «Otro»: es el único camino por el
+    // que puede llegar a ella, porque una pendiente ajena no está en su
+    // desplegable.
+    await upsertOpcion('tags', 'Reuso ajeno', UID_OTRO);
+
+    const v = (await valoresCrudos('tags')).find((x) => x.slug === 'reuso-ajeno')!;
+    expect(v.aprobada).toBe(true);
+    expect(v.aprobadaPorReuso).toBe(true);
+    // El autor NO se reasigna: sigue siendo quien la creó.
+    expect(v.huellaCreador).toBe(huellaCreador(UID));
+    expect(v.huellaCreador).not.toBe(huellaCreador(UID_OTRO));
+    // Y ningún uid, de ninguna de las dos cuentas, en un documento público.
+    expect(JSON.stringify(v)).not.toContain(UID);
+    expect(JSON.stringify(v)).not.toContain(UID_OTRO);
+  });
+
+  it('reusar la propia etiqueta pendiente no la aprueba (B-29)', async () => {
+    // La señal es «dos personas», no «dos veces»: sin esto cualquiera se aprueba
+    // sus etiquetas usándolas de nuevo, que es no tener aprobación.
+    await upsertOpcion('tags', 'Reuso propio', UID);
+    await volverPendiente('tags', 'reuso-propio');
+    await upsertOpcion('tags', 'Reuso propio', UID);
+
+    const v = (await valoresCrudos('tags')).find((x) => x.slug === 'reuso-propio')!;
+    expect(estaAprobada(v)).toBe(false);
+    expect(v.aprobadaPorReuso).toBeFalsy();
+  });
+
+  it('renombrarla limpia la marca: renombrar es mirarla (B-29)', async () => {
+    // Sin esto la marca es irreversible y una etiqueta ya revisada sigue diciendo
+    // que nadie la revisó, que es lo contrario de para qué existe.
+    await upsertOpcion('tags', 'Reuso renombrado', UID);
+    await volverPendiente('tags', 'reuso-renombrado');
+    await upsertOpcion('tags', 'Reuso renombrado', UID_OTRO);
+
+    await renombrarOpcion('tags', 'reuso-renombrado', 'Reuso ya revisado');
+    const v = (await valoresCrudos('tags')).find((x) => x.slug === 'reuso-renombrado')!;
+    expect(v.aprobadaPorReuso).toBe(false);
+    expect(estaAprobada(v)).toBe(true);
+  });
+
   it('registrar el uso de una opción base no la vuelve pendiente ni le pone autor', async () => {
     await upsertOpcion('arancel', 'Gratis', UID);
     const gratis = (await valoresCrudos('arancel')).find((v) => v.slug === 'gratis')!;

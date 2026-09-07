@@ -13,6 +13,7 @@ import { huellaCreador } from '@/lib/huella';
 import { revisarTono } from '@/lib/identidad';
 import { slugify } from '@/lib/slugify';
 import {
+  elReusoLaAprueba,
   estaAprobada,
   etiquetaPresentable,
   opcionesVisibles,
@@ -25,7 +26,7 @@ import type { CampoTaxonomia, DocOpciones, ValorOpcion } from '@/types/actividad
  * para que nadie tenga que cambiar de import: este módulo sigue siendo la
  * puerta única a `/opciones/*`.
  */
-export { estaAprobada, etiquetaPresentable, opcionesVisibles, ordenarValores };
+export { elReusoLaAprueba, estaAprobada, etiquetaPresentable, opcionesVisibles, ordenarValores };
 
 /**
  * §4 — patrón genérico de taxonomía: desplegable enumerado + casilla "Otro"
@@ -71,9 +72,18 @@ export const observarOpciones = (
  * nueva pisarían el array uno al otro.
  *
  * §4.3 — lo que se crea acá queda marcado con la huella de su autor y **nace
- * aprobada** (B-131, decisión del dueño). Reusar una opción existente solo suma
- * un uso: no toca `aprobada` ni la huella, así que registrar el uso de una
- * opción base no la vuelve pendiente ni le cambia el autor.
+ * aprobada** (B-131, decisión del dueño). Reusar una opción existente suma un uso
+ * y **nunca le cambia el autor**: registrar el uso de una opción base no la
+ * vuelve pendiente ni la reasigna.
+ *
+ * §4.3 · B-29 — y si la opción reusada estaba **pendiente y era de otra cuenta**,
+ * el reuso la aprueba y la deja marcada (`conElUso`, más abajo). Es el único
+ * camino por el que eso puede pasar, y vale saber por qué: una opción pendiente
+ * **no aparece en el desplegable de los demás** (`opcionesVisibles`), así que la
+ * segunda cuenta solo puede llegar a ella tipeándola en «Otro» — o sea, pasando
+ * por acá. `registrarUsos`, que es lo que corre al elegir del desplegable, no
+ * necesita esta regla (ni recibe un uid): lo que se elige del desplegable ya
+ * estaba visible, y lo visible ya estaba aprobado.
  *
  * B-05 — el label se guarda con `etiquetaPresentable`: el slug es la identidad
  * y esto es lo que se ve, en el desplegable, en el evento de Calendar y en los
@@ -88,6 +98,28 @@ export const upsertOpcion = async (
   if (!slug) throw new Error('La etiqueta quedó vacía después de normalizar.');
 
   const ref = refOpciones(campo);
+  const huella = huellaCreador(uid);
+
+  /**
+   * §4.3 · B-29 — reusar una opción le suma un uso y, si la creó **otra** cuenta
+   * y todavía estaba pendiente, la aprueba y la deja marcada.
+   *
+   * Va **adentro de la transacción que ya existe**, en el mismo `map` que
+   * incrementa `usos`: la opción ya está leída acá, así que la decisión no cuesta
+   * ni una lectura más. Resolverlo afuera —leer, decidir, escribir— sería además
+   * una carrera contra el otro guardado simultáneo, que es exactamente lo que
+   * esta transacción existe para evitar.
+   *
+   * La condición vive en `lib/taxonomia.ts` y no acá: es una regla del §4.3, es
+   * la que tiene los tres bordes (ya aprobada, sin huella, misma persona), y así
+   * se prueba sin Firestore.
+   */
+  const conElUso = (v: ValorOpcion): ValorOpcion => {
+    const sumado: ValorOpcion = { ...v, usos: (v.usos ?? 0) + 1 };
+    return elReusoLaAprueba(v, huella)
+      ? { ...sumado, aprobada: true, aprobadaPorReuso: true }
+      : sumado;
+  };
   const nueva = (): ValorOpcion => ({
     slug,
     label: etiquetaPresentable(label),
@@ -120,7 +152,7 @@ export const upsertOpcion = async (
       const base = OPCIONES_BASE[campo];
       const existe = base.find((v) => v.slug === slug);
       const valores = existe
-        ? base.map((v) => (v.slug === slug ? { ...v, usos: v.usos + 1 } : v))
+        ? base.map((v) => (v.slug === slug ? conElUso(v) : v))
         : [...base, nueva()];
       tx.set(ref, { valores });
       return slug;
@@ -130,11 +162,7 @@ export const upsertOpcion = async (
     const existe = valores.find((v) => v.slug === slug);
 
     if (existe) {
-      tx.update(ref, {
-        valores: valores.map((v) =>
-          v.slug === slug ? { ...v, usos: (v.usos ?? 0) + 1 } : v,
-        ),
-      });
+      tx.update(ref, { valores: valores.map((v) => (v.slug === slug ? conElUso(v) : v)) });
     } else {
       tx.update(ref, { valores: [...valores, nueva()] });
     }
@@ -272,7 +300,10 @@ export const renombrarOpcion = async (
 ): Promise<string> => {
   const nuevo = etiquetaPresentable(label);
   if (!nuevo) throw new Error('La etiqueta no puede quedar vacía.');
-  await editarValor(campo, slug, (v) => ({ ...v, label: nuevo }));
+  // B-29 — renombrarla **es** mirarla: corregir el texto de una etiqueta es
+  // exactamente la revisión que la marca «la usaron las dos cuentas» pide, así
+  // que dejarla puesta después sería que la marca dejara de significar algo.
+  await editarValor(campo, slug, (v) => ({ ...v, label: nuevo, aprobadaPorReuso: false }));
   return nuevo;
 };
 
@@ -293,15 +324,23 @@ export const borrarOpcion = async (campo: CampoTaxonomia, slug: string): Promise
  * máquina con Node y `gcloud` (que es lo que pide
  * `scripts/aprobar-opciones.mjs`, y desde el teléfono no hay).
  *
- * Idempotente: aprobar algo ya aprobado no cambia nada. No toca `usos` ni la
- * huella del autor, que es el rastro de quién la creó.
+ * Idempotente sobre `aprobada`. No toca `usos` ni la huella del autor, que es el
+ * rastro de quién la creó.
  *
- * Hoy nada nace pendiente (B-131), así que esto solo aplica a las opciones que
- * quedaron pendientes antes de esa decisión — y al día en que se vuelva a
- * prender la aprobación.
+ * **Y limpia la marca de B-29**, que es lo que cierra el círculo de esa
+ * decisión: `aprobadaPorReuso` significa *nadie la miró*, así que en cuanto
+ * alguien la mira y dice «está bien», deja de ser cierto. Sin esto la marca era
+ * **irreversible** —lo señaló el `auditor-privacidad`— y una etiqueta revisada a
+ * mano iba a seguir diciendo que nadie la revisó, para siempre. Es también por lo
+ * que la pantalla ofrece el botón sobre una etiqueta ya aprobada: ahí el botón no
+ * aprueba, confirma.
+ *
+ * Hoy nada nace pendiente (B-131), así que la parte de aprobar solo aplica a las
+ * opciones que quedaron pendientes antes de esa decisión — y al día en que se
+ * vuelva a prender la aprobación.
  */
 export const aprobarOpcion = async (campo: CampoTaxonomia, slug: string): Promise<void> =>
-  editarValor(campo, slug, (v) => ({ ...v, aprobada: true }));
+  editarValor(campo, slug, (v) => ({ ...v, aprobada: true, aprobadaPorReuso: false }));
 
 /**
  * §4.1 · D-150 — elige el **matiz** de una opción, o lo saca para volver al

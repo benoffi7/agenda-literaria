@@ -141,8 +141,8 @@ export function ReportesPanel({ usuario }: Props) {
           </label>
         </div>
         <p className="text-xs text-tinta/55">
-          El dueño contesta en el issue de GitHub. El panel todavía no trae las respuestas
-          de vuelta.
+          Las respuestas se escriben en GitHub y no se traen acá: cada reporte publicado tiene
+          su link «Ver respuestas» para ir a leerlas.
         </p>
 
         {fallo && (
@@ -193,14 +193,25 @@ export function ReportesPanel({ usuario }: Props) {
                     {reintentando === r.id ? 'Reintentando…' : 'Reintentar'}
                   </button>
                 )}
+                {/*
+                  B-30 — el link dice **a qué se va**, y no solo el número.
+                  Traer las respuestas al panel se descartó (ver el ítem: choca
+                  con «Firestore es la única fuente de verdad», y espejar
+                  comentarios de un repo público es abrir una entrada de texto
+                  ajeno a esta pantalla). Lo que queda es que quien reportó
+                  encuentre la conversación, y para eso «#12 ↗» no alcanza: no
+                  dice que ahí está la respuesta. El texto de arriba lo explica
+                  una vez; esto lo dice en la fila, que es donde se busca.
+                */}
                 {r.github && (
                   <a
                     href={r.github.url}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label={`Ver la conversación del reporte #${r.github.numero} en GitHub`}
                     className="inline-flex min-h-touch items-center rounded-md px-2 text-xs font-medium text-acento hover:bg-acento/10"
                   >
-                    #{r.github.numero} ↗
+                    Ver respuestas #{r.github.numero} ↗
                   </a>
                 )}
                 {/* B-580 — no depende del `estado` de envío a GitHub: se puede

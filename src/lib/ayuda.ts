@@ -82,6 +82,34 @@ export interface CapituloAyuda {
   titulo: string;
   /** Una frase: para qué sirve esta parte del panel. */
   paraQue: string;
+  /**
+   * B-62 — **qué sale de acá**: al sitio, al calendario, a ningún lado.
+   *
+   * Es la parte que no se adivina mirando la pantalla, y la que el dueño pidió
+   * explícitamente («qué hace la sección, qué impacto tiene y un ejemplo»). Un
+   * campo con un solo trabajo y no un punto más de la lista: así hay un lugar
+   * donde el impacto **tiene** que estar escrito, en vez de quedar repartido
+   * entre siete puntos o no estar.
+   *
+   * Obligatorio en los capítulos que explican una sección del formulario —los
+   * que tienen `seccionFormulario`—, que son justo los que se abren desde el «?»
+   * de al lado del título mientras alguien está cargando. `tests/ayuda.test.ts`
+   * lo exige.
+   */
+  impacto?: string;
+  /**
+   * B-62 — **un caso concreto**, y es la parte que resuelve el reporte que
+   * agrandó el ítem.
+   *
+   * Un segundo admin cargando una feria no entendió el generador de encuentros:
+   * «no entiendo por qué hay 2 opciones… lo estoy probando en una feria que son
+   * encuentros en varios días en mismos horarios». Lo que contesta eso es «una
+   * feria de tres días: Cuántos encuentros 3, Cada cuántos días 1». Una
+   * definición, no.
+   *
+   * Obligatorio junto con `impacto`, y por el mismo motivo.
+   */
+  ejemplo?: string;
   puntos: PuntoAyuda[];
   /**
    * Título exacto de la sección del formulario que explica este capítulo, si
@@ -116,14 +144,22 @@ export const AVISOS: AvisoAyuda[] = [
       'Mientras la actividad esté en borrador la podés cambiar; en el momento en que la publicás ' +
       'queda fija para siempre. Cambiarla después rompe los links que ya circularon y hace que la ' +
       'actividad desaparezca de las búsquedas de Google. Revisá el título antes de publicar, porque ' +
-      'de ahí sale la dirección. Por lo mismo, una copia no se deja publicar mientras conserve la ' +
-      'dirección que termina en «-copia»: el panel te lo pide antes de dejarte seguir.',
+      'de ahí sale la dirección. Por lo mismo, una copia recién hecha no se deja publicar mientras ' +
+      'siga teniendo las dos marcas que le puso el panel: el «(copia)» del título y la dirección ' +
+      'que termina en «-copia». En cuanto corregís cualquiera de las dos, te deja seguir. Si tu ' +
+      'actividad se llama de verdad algo que termina en esa palabra, no te frena nada.',
     atadoA: [
       // Publicada, el título cambia y la dirección no.
       { archivo: 'tests/formulario-dominio.test.ts', it: 'con el slug bloqueado el título cambia y el slug no' },
       // Y la copia no se deja publicar mientras conserve la dirección «-copia».
       { archivo: 'tests/schema.test.ts', it: 'rechaza publicar con un slug que termina en -copia' },
       { archivo: 'tests/schema.test.ts', it: 'deja GUARDAR un borrador con ese slug' },
+      // B-91 — y no frena un título legítimo que termina en esa palabra, que es
+      // la mitad del aviso que antes era falsa.
+      {
+        archivo: 'tests/schema.test.ts',
+        it: 'deja publicar un título legítimo que termina en «copia» (B-91)',
+      },
     ],
   },
   {
@@ -369,6 +405,14 @@ export const CAPITULOS: CapituloAyuda[] = [
           'Cada fila tiene «Editar» y un menú «⋯» con «Marcar cupo completo», «Duplicar», ' +
           '«Historial» y «Borrar». Están en el menú, y no como botones sueltos, para que ' +
           '«Borrar» no quede pegado a «Editar» en el teléfono.',
+      },
+      {
+        texto:
+          'A la derecha de cada fila está el estado, y debajo los carteles de lo que se sale de lo ' +
+          'común: «Destacada» si la marcaste para que aparezca arriba en el sitio, «Cupo completo» ' +
+          'y «Sin flyer». Solo se muestra lo excepcional a propósito: si todas las filas llevaran ' +
+          'carteles, dejarían de avisar. Las etiquetas no aparecen ahí —son muchas y empujarían el ' +
+          'título en el teléfono—: se encuentran con el buscador y se administran desde «Opciones».',
       },
       {
         texto:
@@ -697,6 +741,14 @@ export const CAPITULOS: CapituloAyuda[] = [
           'una aprobación y el botón «Opciones» va a mostrar cuántas hay pendientes. Hoy nacen ' +
           'aprobadas: son todas tuyas.',
       },
+      {
+        texto:
+          'Si una opción está esperando aprobación y la otra cuenta escribe esa misma palabra, ' +
+          'se aprueba sola: que dos personas la escriban por separado es buena señal de que la ' +
+          'palabra existe. Queda marcada «la usaron las dos cuentas», para que se note que no la ' +
+          'revisó nadie — si las dos repitieron el mismo error de tipeo, se renombra o se borra ' +
+          'como cualquier otra.',
+      },
     ],
   },
   {
@@ -704,6 +756,15 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Qué es',
     seccionFormulario: 'Qué es',
     paraQue: 'El tipo, el título, la descripción y el flyer. Va primero porque el resto del formulario se acomoda a lo que elijas acá.',
+    impacto:
+      'Todo lo de acá es público: el título y la descripción salen a la página de la actividad, al ' +
+      'listado del sitio y a la descripción de cada evento del calendario. El tipo decide en qué ' +
+      'filtro aparece y de qué color se pinta la categoría. El flyer es lo que se ve en la ' +
+      'cartelera y lo que se muestra cuando alguien comparte el link por WhatsApp.',
+    ejemplo:
+      'Un taller de crónica: tipo «Taller», título «Taller de crónica urbana», y en la descripción ' +
+      'qué se va a escribir y para quién es. El título es de donde sale la dirección web, así que ' +
+      'conviene dejarlo como va a quedar antes de publicar.',
     puntos: [
       {
         texto:
@@ -829,6 +890,15 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Encuentros',
     seccionFormulario: 'Encuentros',
     paraQue: 'Las fechas. Un ciclo de ocho encuentros es una sola actividad con ocho encuentros, no ocho actividades.',
+    impacto:
+      'Cada encuentro que cargues acá es un evento en el calendario público, con su fecha, su hora ' +
+      'y su tema. Si cancelás uno, ese evento se borra del calendario de todos los que estaban ' +
+      'suscriptos. Las fechas también deciden si la actividad aparece como lo que se viene o si ya ' +
+      'pasó.',
+    ejemplo:
+      'Una feria de tres días seguidos: «Cuántos encuentros» 3 y «Cada cuántos días» 1. Un club de ' +
+      'lectura de ocho martes: 8 y 7. Después se corrige a mano el que caiga en un feriado — el ' +
+      'generador pone las fechas parejas y vos las movés.',
     puntos: [
       {
         texto:
@@ -896,6 +966,15 @@ export const CAPITULOS: CapituloAyuda[] = [
     paraQue:
       'Una fila por forma de cursar. Cada una puede ser presencial, virtual o las dos, y trae su ' +
       'propia dirección o plataforma.',
+    impacto:
+      'El lugar sale a la página de la actividad y al evento del calendario, y de la dirección sale ' +
+      'el mapa que abre quien va. El link de la reunión es la excepción: se guarda pero no se ' +
+      'publica, salvo que tildes la casilla, y en ese caso sale solo al calendario.',
+    ejemplo:
+      'Un taller que se da en la librería los martes y por Meet los jueves: dos filas. La primera ' +
+      'presencial, con la dirección; la segunda virtual, con la plataforma. En una sola fila ' +
+      '«Presencial y virtual» se cargan las dos cosas juntas: es el caso del encuentro que se puede ' +
+      'seguir online.',
     puntos: [
       {
         texto:
@@ -942,8 +1021,9 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Los links cortos de Maps (los que empiezan con «maps.app.goo.gl») no sirven: no traen la ' +
-          'ubicación adentro. Abrilo en el navegador y pegá el link largo que queda en la barra de ' +
-          'direcciones, o hacé clic derecho sobre el punto en el mapa y pegá los dos números que ' +
+          'ubicación adentro. Si pegás uno, aparece un botón «Abrir el link» que lo abre en otra ' +
+          'pestaña: de ahí copiás el link largo de la barra de direcciones y lo pegás acá. La otra ' +
+          'salida es hacer clic derecho sobre el punto en el mapa y pegar los dos números que ' +
           'copia Google.',
       },
       {
@@ -954,8 +1034,8 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'En «híbrido» se piden las dos cosas en esa misma fila: la gente que va y la que se ' +
-          'conecta se anotan igual.',
+          'En «presencial y virtual» se piden las dos cosas en esa misma fila: la gente que va y la ' +
+          'que se conecta se anotan igual.',
       },
       {
         texto:
@@ -970,6 +1050,14 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Quién',
     seccionFormulario: 'Quién',
     paraQue: 'Quién organiza y quién está adelante. Todo esto es público.',
+    impacto:
+      'Sale entero al sitio y al evento del calendario: el nombre de quien organiza, el de quien ' +
+      'está adelante y sus cuentas de Instagram, que se publican como link. No pongas acá nada que ' +
+      'no quieras que se vea.',
+    ejemplo:
+      'Un club en un centro cultural: organiza «Casa Brandon», y adelante está la persona que ' +
+      'coordina, con su Instagram y dos líneas de bio. En una presentación, adelante va el autor ' +
+      'invitado.',
     puntos: [
       {
         texto:
@@ -1001,6 +1089,15 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Arancel e inscripción',
     seccionFormulario: 'Arancel e inscripción',
     paraQue: 'Cuánto sale y por dónde se anota la gente.',
+    impacto:
+      'El arancel sale al sitio como una etiqueta —«Gratis», «A la gorra»— y es uno de los filtros ' +
+      'con los que la gente busca. El canal de inscripción sale al sitio y al calendario: el mail, ' +
+      'el teléfono o el arroba que pongas ahí queda público y lo pueden levantar los robots, así ' +
+      'que usá uno de trabajo.',
+    ejemplo:
+      'Un taller a la gorra al que se anotan por mensaje: arancel «A la gorra», por dónde «DM al ' +
+      'Instagram», y en el destino la cuenta. Si además tiene cupo, el número va en «cupo» y el día ' +
+      'que se llene lo marcás desde el listado, sin abrir el formulario.',
     puntos: [
       {
         texto:
@@ -1043,6 +1140,14 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Material',
     seccionFormulario: 'Material',
     paraQue: 'Lecturas, guías y contexto. Aparece sobre todo en los clubes de lectura.',
+    impacto:
+      'Los títulos del material salen siempre —al sitio y al evento del calendario— y los links ' +
+      'solo si tildás «público». Lo que no es público se ve como el título y cuándo llega, sin el ' +
+      'link: así se puede contar qué incluye sin regalar el archivo.',
+    ejemplo:
+      'Un club de lectura: la novela del mes como lectura, con entrega «al inscribirse» y sin ' +
+      'tildar público —el link se lo mandás a quien se anota—; y una playlist con entrega «previo ' +
+      'al encuentro», esa sí pública.',
     puntos: [
       {
         texto:
@@ -1068,6 +1173,13 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Opcional',
     seccionFormulario: 'Opcional',
     paraQue: 'Etiquetas y destacado. Nada de esto es obligatorio, pero las etiquetas son las que hacen que la gente encuentre la actividad. Las imágenes se mudaron a «Qué es».',
+    impacto:
+      'Las etiquetas salen al sitio y son con las que la gente filtra: una actividad sin etiquetas ' +
+      'se encuentra solo buscándola por su nombre. «Destacada» la hace aparecer arriba en el sitio, ' +
+      'y desde el listado del panel se ve cuáles marcaste.',
+    ejemplo:
+      'Un taller de escritura de no ficción: etiquetas «crónica», «no ficción» y «principiantes». ' +
+      'Destacada, la del mes que querés empujar — si están todas destacadas, ninguna lo está.',
     puntos: [
       {
         texto:
@@ -1141,6 +1253,13 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Difusión',
     seccionFormulario: 'Difusión',
     paraQue: 'Tu cuaderno de trabajo. Es la única parte del formulario que no sale a ningún lado.',
+    impacto:
+      'Nada. Es la única parte del formulario que no sale al sitio, ni al calendario, ni al texto ' +
+      'para redes: se guarda para vos y para la otra cuenta.',
+    ejemplo:
+      'Las cuentas a arrobar cuando publiques el posteo —la del centro cultural, la de quien da el ' +
+      'taller—, y en las notas lo que haga falta acordarse: «falta confirmar la sala», «el flyer lo ' +
+      'manda ella el lunes».',
     puntos: [
       {
         texto:
@@ -1163,6 +1282,13 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Texto para publicar',
     seccionFormulario: 'Texto para publicar',
     paraQue: 'El posteo armado con lo que ya cargaste, para copiar y pegar.',
+    impacto:
+      'Nada por su cuenta: es un texto armado con lo que ya cargaste, para que lo copies. Lo que ' +
+      'publiques con eso sale porque lo pegaste vos, no porque el panel lo mande a ningún lado.',
+    ejemplo:
+      'Terminás de cargar el ciclo, abrís esta sección, tocás «Copiar» en la variante «anuncio» y ' +
+      'lo pegás en Instagram. Antes de cada encuentro, la variante «recordatorio» trae ese ' +
+      'encuentro solo, con su tema.',
     puntos: [
       {
         texto:
@@ -1219,6 +1345,13 @@ export const CAPITULOS: CapituloAyuda[] = [
     titulo: 'Vista previa del evento',
     seccionFormulario: 'Vista previa del evento',
     paraQue: 'Ver el evento del calendario antes de publicarlo. Es el último paso, y el más barato.',
+    impacto:
+      'Nada: es una vista, no escribe nada. Muestra el evento del calendario tal como va a quedar ' +
+      'cuando publiques, con el título, la descripción, el lugar y el link del mapa armados.',
+    ejemplo:
+      'Antes de pasar la actividad a «publicado», abrís esta sección y leés el evento como lo va a ' +
+      'leer quien esté suscripto al calendario. Es donde se nota la dirección incompleta o la ' +
+      'descripción que quedó a medias.',
     puntos: [
       {
         texto:
@@ -1343,6 +1476,23 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
 ];
+
+/**
+ * B-62 — el capítulo que explica **esta** sección del formulario, o `null`.
+ *
+ * La guía se abre desde el encabezado y muestra desplegado el capítulo de la
+ * pantalla en la que estás, y eso alcanzaba mientras la unidad fuera la pantalla.
+ * No lo es: la duda aparece mirando «Difusión», no pensando en abrir la ayuda.
+ * Con esto, el «?» de al lado de cada título abre la guía **en ese capítulo**.
+ *
+ * Se busca por el **título de la sección** y no por un id nuevo a propósito:
+ * `seccionFormulario` ya es exactamente ese vínculo, y `tests/ayuda.test.ts` ya
+ * exige que ninguna sección del formulario se quede sin capítulo. Un id aparte
+ * sería una segunda lista que mantener de acuerdo con la primera, que es la
+ * clase de B-75.
+ */
+export const capituloDeSeccion = (tituloDeSeccion: string): CapituloAyuda | null =>
+  CAPITULOS.find((c) => c.seccionFormulario === tituloDeSeccion) ?? null;
 
 /** Capítulo por el que conviene abrir la guía según desde dónde se la pidió. */
 export const CAPITULO_POR_CONTEXTO = {

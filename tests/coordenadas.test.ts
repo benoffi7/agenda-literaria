@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FALLOS_COORDENADAS } from '@/lib/analytics-eventos';
-import { formatearGeo, linkMapa, parsearCoordenadas } from '@/lib/coordenadas';
+import {
+  formatearGeo,
+  linkCortoParaAbrir,
+  linkMapa,
+  parsearCoordenadas,
+} from '@/lib/coordenadas';
 
 /** Atajo: en los casos felices solo interesa el punto. */
 const geoDe = (entrada: string) => {
@@ -89,6 +94,15 @@ describe('parsearCoordenadas — lo que NO se soporta falla visible', () => {
     const r = parsearCoordenadas('https://goo.gl/maps/aBcDeF123');
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/link corto/i);
+  });
+
+  it('el mensaje del link corto nombra el botón que lo resuelve (B-45)', () => {
+    // Sin esto, el mensaje puede volver a pedir "abrilo en el navegador" a mano
+    // mientras el botón ya está en pantalla: la instrucción y la salida real se
+    // separan y nada falla.
+    const r = parsearCoordenadas('https://maps.app.goo.gl/aBcDeF123');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('Abrir el link');
   });
 
   it('link de Maps sin coordenadas: solo el nombre del lugar', () => {
@@ -369,5 +383,166 @@ describe('el campo de coordenadas se mide (B-55)', () => {
     expect(FUENTE).not.toMatch(
       /medirFuncion\([^)]*\b(entrada|texto|pegado|error|geo|lat|lng|clipboardData)\b/,
     );
+  });
+});
+
+/**
+ * B-45 — la salida del link corto.
+ *
+ * Seguir el redirect desde el navegador **no se puede** (CORS y respuestas
+ * opacas: el razonamiento completo está en `linkCortoParaAbrir`), así que lo
+ * único que se puede hacer sin una Function que sea un fetcher de URLs
+ * arbitrarias es abrirlo. Y abrirlo significa poner un `href` en la pantalla del
+ * panel con texto que salió de un portapapeles, así que lo que estos casos fijan
+ * no es la comodidad: es que ese `href` no pueda ser cualquier cosa.
+ */
+describe('linkCortoParaAbrir — el href sale saneado o no sale (B-45)', () => {
+  it('devuelve el link corto de la app de Maps, que es el caso del teléfono', () => {
+    expect(linkCortoParaAbrir('https://maps.app.goo.gl/aBcDeF123')).toBe(
+      'https://maps.app.goo.gl/aBcDeF123',
+    );
+  });
+
+  it('y las otras dos formas cortas que el campo reconoce', () => {
+    expect(linkCortoParaAbrir('https://goo.gl/maps/aBcDeF123')).toBe(
+      'https://goo.gl/maps/aBcDeF123',
+    );
+    expect(linkCortoParaAbrir('https://g.co/kgs/aBcDeF')).toBe('https://g.co/kgs/aBcDeF');
+  });
+
+  it('completa el esquema cuando se pegó el link sin él', () => {
+    // Copiar desde la app deja a veces el host pelado, y sin esquema el `href`
+    // se resolvería relativo a /admin en vez de salir del sitio.
+    expect(linkCortoParaAbrir('maps.app.goo.gl/aBcDeF123')).toBe(
+      'https://maps.app.goo.gl/aBcDeF123',
+    );
+  });
+
+  it('fuerza https y no conserva el esquema pegado', () => {
+    // `http` degradado no; y esto es lo que impide que un `javascript:` pegado
+    // llegue al atributo.
+    expect(linkCortoParaAbrir('http://maps.app.goo.gl/aBcDeF123')).toBe(
+      'https://maps.app.goo.gl/aBcDeF123',
+    );
+    expect(linkCortoParaAbrir('javascript:alert(1)//maps.app.goo.gl')).toBeNull();
+  });
+
+  /**
+   * El hallazgo del `auditor-privacidad`: reconocer con un regex de **texto** y
+   * habilitar con una lista de **hosts** son dos derivaciones de la misma idea, y
+   * no coincidían. Con la cadena de señuelo en el fragmento o en la query, el
+   * panel ofrecía abrir un `goo.gl/<lo que sea>` — que es un acortador genérico y
+   * va a cualquier lado.
+   *
+   * Hoy las dos salen de `FORMAS_CORTAS`, y el chequeo corre sobre la URL ya
+   * normalizada: `hostname` y `pathname`, no el texto crudo.
+   */
+  it('el link que se ofrece abrir es corto por host Y por camino, no por una cadena suelta (B-88)', () => {
+    expect(linkCortoParaAbrir('https://goo.gl/XYZ#maps.app.goo.gl')).toBeNull();
+    expect(linkCortoParaAbrir('https://goo.gl/phish?x=g.co/kgs')).toBeNull();
+    // `goo.gl` y `g.co` sin su camino son acortadores genéricos: el host solo no
+    // alcanza para decir que es un mapa.
+    expect(linkCortoParaAbrir('https://goo.gl/aBcDeF')).toBeNull();
+    expect(linkCortoParaAbrir('https://g.co/aBcDeF')).toBeNull();
+  });
+
+  /**
+   * El otro lado del mismo hallazgo, y es el caso **normal**: la hoja de
+   * «Compartir» de Maps en el teléfono copia el nombre del lugar y después el
+   * link. Es el escenario que hizo existir a B-45, y exigir que el texto entero
+   * fuera la URL lo dejaba sin botón mientras el mensaje lo nombraba.
+   */
+  it('el pegado del botón Compartir trae el nombre del lugar antes del link (B-45)', () => {
+    expect(linkCortoParaAbrir('Librería Notán\nhttps://maps.app.goo.gl/aBcDeF123')).toBe(
+      'https://maps.app.goo.gl/aBcDeF123',
+    );
+  });
+
+  it('el texto que sobra no se mete en el camino del link que se abre (B-45)', () => {
+    // Sin cortar en el espacio, esto abría `…/aBc%20-%20el%20lugar`: un 404 que
+    // no es el link que la persona quiso abrir, y sin nada que lo dijera.
+    expect(linkCortoParaAbrir('https://maps.app.goo.gl/aBc - el lugar')).toBe(
+      'https://maps.app.goo.gl/aBc',
+    );
+    expect(linkCortoParaAbrir('maps.app.goo.gl/x\nhttps://ejemplo.com')).toBe(
+      'https://maps.app.goo.gl/x',
+    );
+  });
+
+  /**
+   * El mensaje y el botón son **la misma decisión**, no dos que hoy coinciden.
+   * Sin esto vuelve la grieta: un reconocedor laxo para el texto del error y uno
+   * estricto para el `href` dejan un mensaje que manda a tocar un botón que no
+   * está.
+   */
+  it('el mensaje del link corto y el botón salen del mismo reconocedor (B-88)', () => {
+    const dicaLinkCorto = (t: string) => {
+      const r = parsearCoordenadas(t);
+      return !r.ok && r.motivo === 'coord-link-corto';
+    };
+    for (const t of [
+      'https://maps.app.goo.gl/aBcDeF123',
+      'Librería Notán\nhttps://maps.app.goo.gl/aBcDeF123',
+      'https://goo.gl/XYZ#maps.app.goo.gl',
+      'https://goo.gl/aBcDeF',
+      'https://www.google.com/maps/@-34.59,-58.43,17z',
+    ]) {
+      expect(dicaLinkCorto(t), `desalineados sobre «${t}»`).toBe(linkCortoParaAbrir(t) !== null);
+    }
+  });
+
+  it('un host ajeno que CONTIENE el nuestro no es el nuestro', () => {
+    // Es la diferencia entre la lista blanca y un `includes` sobre el texto: el
+    // regex de detección mira el texto entero, así que sin el chequeo de host
+    // exacto este link se ofrecería para abrir.
+    expect(linkCortoParaAbrir('https://maps.app.goo.gl.ejemplo.com/x')).toBeNull();
+  });
+
+  it('ni con el host nuestro puesto donde parece el host', () => {
+    // `https://maps.app.goo.gl@otro.sitio/` tiene hostname `otro.sitio`: es el
+    // truco clásico de leer una URL a ojo. Acá ni siquiera llega al parser —
+    // después del host viene un `@` y no un `/`, así que no matchea.
+    expect(linkCortoParaAbrir('https://maps.app.goo.gl@otro.sitio/x')).toBeNull();
+  });
+
+  it('las credenciales no viajan: se caen con el resto del texto de alrededor', () => {
+    // No hay un chequeo de `username`/`password` porque no hace falta: la
+    // extracción arranca en el host, así que un `usuario:clave@` queda afuera del
+    // match. Sale el link limpio, que es mejor que no salir.
+    expect(linkCortoParaAbrir('https://usuario:clave@maps.app.goo.gl/x')).toBe(
+      'https://maps.app.goo.gl/x',
+    );
+  });
+
+  it('lo que no es un link corto no devuelve nada', () => {
+    expect(linkCortoParaAbrir('')).toBeNull();
+    expect(linkCortoParaAbrir('-34.5989, -58.4392')).toBeNull();
+    expect(linkCortoParaAbrir('https://www.google.com/maps/@-34.59,-58.43,17z')).toBeNull();
+  });
+
+  it('el componente pone en el href lo saneado y nunca el texto del campo', () => {
+    const COMPONENTE = readFileSync('src/components/admin/CoordenadasSede.tsx', 'utf8');
+    // El único `href` del bloque del link corto es el estado que llenó
+    // `linkCortoParaAbrir`. Un `href={texto}` acá es un link arbitrario puesto
+    // por un pegado, y el typecheck no lo ve.
+    expect(COMPONENTE).toContain('setLinkCorto(linkCortoParaAbrir(entrada))');
+    expect(COMPONENTE).toContain('href={linkCorto}');
+    expect(COMPONENTE).not.toMatch(/href=\{(texto|entrada|pegado)\}/);
+  });
+
+  /**
+   * B-45, lo que señaló el `auditor-privacidad`: hoy el `rel` está bien y **nada
+   * lo fijaba**.
+   *
+   * `target="_blank"` implica `noopener` por su cuenta en los navegadores
+   * actuales, pero **no** implica `noreferrer`: perder el `rel` en un reordenado
+   * del JSX no rompe nada visible y empieza a mandarle a Google la URL del panel
+   * en el `Referer`. En todo el repo no había ningún test que atara un `rel` a un
+   * `_blank`, así que el hueco es del repo; este archivo es el que lo introduce y
+   * el que ya lee el fuente.
+   */
+  it('el link corto se abre en otra pestaña sin opener ni referrer (B-45)', () => {
+    const COMPONENTE = readFileSync('src/components/admin/CoordenadasSede.tsx', 'utf8');
+    expect(COMPONENTE).toMatch(/href=\{linkCorto\}[\s\S]{0,160}rel="noopener noreferrer"/);
   });
 });

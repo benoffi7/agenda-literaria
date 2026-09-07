@@ -73,6 +73,93 @@ export const NOVEDADES: Novedad[] = [
     donde: 'La pantalla de Actividades, la primera que se abre.',
   },
   {
+    id: 'copia-con-titulo-legitimo-se-publica',
+    fecha: '2026-09-03',
+    titulo: 'Un título que termina en «copia» ya se puede publicar',
+    detalle:
+      'Si tu actividad se llama de verdad algo que termina en esa palabra —«Taller de copia»— antes ' +
+      'el panel te la frenaba igual que a una copia recién hecha, y no había forma de seguir salvo ' +
+      'cambiarle el título. Ahora distingue: solo frena mientras la actividad todavía tenga las dos ' +
+      'marcas que le pone duplicar, el «(copia)» del título y la dirección terminada en «-copia».',
+    donde: 'Formulario, al pasar una actividad a «publicado».',
+  },
+  {
+    id: 'taxonomia-aprobada-por-reuso',
+    fecha: '2026-09-03',
+    titulo: 'Si la otra cuenta escribe una etiqueta que estaba esperando, queda aprobada',
+    detalle:
+      'Que dos personas escriban la misma palabra por separado es buena señal de que la palabra ' +
+      'existe. Ahora esa etiqueta se aprueba sola y queda marcada «la usaron las dos cuentas», para ' +
+      'que se note que no la revisó nadie: si las dos repitieron el mismo error de tipeo, se ' +
+      'renombra o se borra igual que cualquier otra. Y hay un botón «Ya la miré» para confirmarla.',
+    donde: 'Panel → Opciones.',
+  },
+  {
+    id: 'estadisticas-sedes-repetidas',
+    fecha: '2026-09-03',
+    titulo: 'El catálogo te dice si estás repitiendo sedes',
+    detalle:
+      'Un número nuevo cuenta cuántas de las actividades con lugar cargado están en una sede que ' +
+      'también usa otra, y nombra las tres más repetidas. Sirve para decidir algo que estaba ' +
+      'trabado por falta de dato: si conviene poder reusar una sede en vez de volver a cargarla ' +
+      'entera cada vez.',
+    donde: 'Panel → Estadísticas → El catálogo.',
+  },
+  {
+    id: 'ayuda-por-seccion-del-formulario',
+    fecha: '2026-09-03',
+    titulo: 'Cada sección del formulario tiene su «?» al lado del título',
+    detalle:
+      'Antes la ayuda se abría desde el botón del encabezado y había que buscar el capítulo. Ahora ' +
+      'cada sección tiene un «?» que abre la guía justo en lo suyo. Y esos capítulos ahora dicen ' +
+      'tres cosas: para qué es la sección, qué sale de ahí al sitio y al calendario, y un ejemplo ' +
+      'concreto — como cargar una feria de tres días seguidos.',
+    donde: 'Formulario, al lado del título de cada sección.',
+  },
+  {
+    id: 'calendario-y-tablero-mas-anchos',
+    fecha: '2026-09-03',
+    titulo: 'El calendario y las estadísticas usan toda la pantalla',
+    detalle:
+      'En una computadora, esas dos pantallas quedaban encajadas en una columna angosta: el mes ' +
+      'no entraba y los números había que mirarlos de a uno. Ahora se ensanchan y los bloques se ' +
+      'acomodan de a dos. El formulario y el listado no cambian: ahí una columna angosta se lee ' +
+      'mejor. En el teléfono no cambia nada.',
+    donde: 'Panel → Calendario, y Panel → Estadísticas.',
+  },
+  {
+    id: 'destacada-se-ve-en-el-listado',
+    fecha: '2026-09-03',
+    titulo: 'El listado ahora te dice cuáles marcaste como destacadas',
+    detalle:
+      '«Destacada» se prende en el acordeón «Opcional» del formulario y decide que la actividad ' +
+      'aparezca arriba en el sitio, pero desde el listado no había forma de saber cuáles lo ' +
+      'estaban: había que abrirlas de a una. Ahora la fila lo dice, al lado de «Cupo completo» y ' +
+      '«Sin flyer».',
+    donde: 'Panel → Listado, a la derecha de cada fila.',
+  },
+  {
+    id: 'una-sola-forma-de-nombrar-las-modalidades',
+    fecha: '2026-09-03',
+    titulo: 'El formulario y los filtros llaman igual a las formas de cursar',
+    detalle:
+      'En el formulario, la opción que decía «Híbrido» ahora dice «Presencial y virtual», que es ' +
+      'como ya la nombraban el filtro del listado, el sitio y el evento del calendario. Es el mismo ' +
+      'valor de siempre: no hay que volver a cargar nada.',
+    donde: 'Formulario, sección «Dónde» — el desplegable de cada forma de cursar.',
+  },
+  {
+    id: 'abrir-link-corto-de-maps',
+    fecha: '2026-09-03',
+    titulo: 'El link corto de Maps ahora se abre desde el mismo campo',
+    detalle:
+      'Cuando pegás el link del botón «Compartir» de Maps (el que empieza con maps.app.goo.gl), ' +
+      'el panel te sigue diciendo que no trae la ubicación adentro — pero ahora aparece al lado un ' +
+      'botón «Abrir el link» que lo abre en otra pestaña. De ahí copiás el link largo de la barra ' +
+      'de direcciones y lo pegás. Antes había que abrirlo a mano.',
+    donde: 'Formulario, sección «Dónde» — el campo del punto exacto en el mapa.',
+  },
+  {
     id: 'motivo-al-fallar-una-imagen',
     fecha: '2026-09-03',
     version: '1.8.0',

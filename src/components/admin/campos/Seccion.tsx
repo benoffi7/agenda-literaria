@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
+import { AyudaDeSeccion } from '@/components/admin/ayuda/AyudaDeSeccion';
 import { medirSeccion } from '@/lib/analytics';
 import type { AlmacenLocal } from '@/lib/formulario/borradoresDelNavegador';
 
@@ -28,6 +29,20 @@ interface Props {
    * (B-193). Sin clave no recuerda nada, que es el comportamiento de siempre.
    */
   recuerdaComo?: string;
+  /**
+   * B-62 — muestra el «?» que abre la guía en el capítulo de esta sección.
+   *
+   * Es opt-in y no automático por dos razones. Una: la guía **se dibuja a sí
+   * misma con `Seccion`** (un acordeón por capítulo), así que un «?» automático
+   * pondría un botón de ayuda adentro de la ayuda. Y dos: no toda sección del
+   * panel es una sección del formulario —el tablero y el formulario de reportes
+   * también usan este componente— y solo las del formulario tienen capítulo.
+   *
+   * No lleva el id del capítulo: la llave es el `titulo` de esta misma sección,
+   * que ya es el vínculo que la guía declara (`seccionFormulario`). Así el string
+   * se escribe una vez.
+   */
+  conAyuda?: boolean;
   children: ReactNode;
 }
 
@@ -124,6 +139,7 @@ export function Seccion({
   ancla,
   pedidoDeApertura = 0,
   recuerdaComo,
+  conAyuda = false,
   children,
 }: Props) {
   const [abierta, setAbierta] = useState(() =>
@@ -165,32 +181,45 @@ export function Seccion({
   // mensaje de campos faltantes de la barra.
   return (
     <section id={ancla} className="scroll-mt-4 rounded-lg border border-borde bg-white/60">
-      {colapsable ? (
-        // Un <button> real y no un div con onClick: se abre con teclado, lo
-        // anuncia el lector de pantalla, y en mobile el blanco táctil ocupa
-        // todo el ancho del encabezado en lugar de solo el texto.
-        <button
-          type="button"
-          aria-expanded={abierta}
-          aria-controls={idPanel}
-          onClick={() => {
-            const proxima = !abierta;
-            // Qué acordeones se despliegan de verdad. Va el slug del título,
-            // que es un literal del código (docs/09-analitica.md).
-            medirSeccion(titulo, proxima);
-            // Lo que se recuerda es el click, no el `pedidoDeApertura`: que la
-            // barra abra una sección para mostrar un campo rechazado (B-184) no
-            // es una preferencia de nadie.
-            recordarSeccion(almacenDelNavegador(), recuerdaComo, proxima);
-            setAbierta(proxima);
-          }}
-          className="flex min-h-touch w-full items-center px-4 py-3"
-        >
-          {encabezado}
-        </button>
-      ) : (
-        <header className="flex items-center px-4 py-3">{encabezado}</header>
-      )}
+      {/*
+        B-62 — el «?» va **al lado** del disparador del acordeón y no adentro:
+        un <button> anidado dentro de otro <button> no es HTML válido, y el
+        navegador desarma el markup de formas que no se ven hasta que alguien
+        navega con teclado.
+      */}
+      <div className="flex items-center">
+        {colapsable ? (
+          // Un <button> real y no un div con onClick: se abre con teclado, lo
+          // anuncia el lector de pantalla, y en mobile el blanco táctil ocupa
+          // todo el ancho del encabezado en lugar de solo el texto.
+          <button
+            type="button"
+            aria-expanded={abierta}
+            aria-controls={idPanel}
+            onClick={() => {
+              const proxima = !abierta;
+              // Qué acordeones se despliegan de verdad. Va el slug del título,
+              // que es un literal del código (docs/09-analitica.md).
+              medirSeccion(titulo, proxima);
+              // Lo que se recuerda es el click, no el `pedidoDeApertura`: que la
+              // barra abra una sección para mostrar un campo rechazado (B-184) no
+              // es una preferencia de nadie.
+              recordarSeccion(almacenDelNavegador(), recuerdaComo, proxima);
+              setAbierta(proxima);
+            }}
+            className="flex min-h-touch min-w-0 flex-1 items-center px-4 py-3"
+          >
+            {encabezado}
+          </button>
+        ) : (
+          <header className="flex min-w-0 flex-1 items-center px-4 py-3">{encabezado}</header>
+        )}
+        {conAyuda && (
+          <div className="shrink-0 pr-3">
+            <AyudaDeSeccion seccion={titulo} />
+          </div>
+        )}
+      </div>
       {abierta && (
         <div id={idPanel} className="border-t border-borde px-3 py-4 sm:px-4">
           {children}

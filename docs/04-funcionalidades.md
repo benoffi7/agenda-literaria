@@ -28,6 +28,27 @@ el ancho de lectura de siempre. El motivo de cada exclusión —y por qué el
 calendario y el tablero quedaron angostos a propósito— está en el docblock de
 [`src/lib/anchoDelPanel.ts`](../src/lib/anchoDelPanel.ts) y la decisión completa en
 **D-330** ([`06-decisiones.md`](06-decisiones.md)).
+Cada fila dice además cuándo es su próximo encuentro y lleva hasta tres marcas
+más: **«Cupo completo»** (B-97), **«Destacada»** (B-622) y **«Sin flyer»**
+(B-264), esta última solo en las **publicadas** que no tienen imagen — una
+publicada sin flyer ya está afuera de la cartelera, un borrador todavía no.
+«Destacada», en cambio, se marca también en un borrador: destacar es deliberado y
+conviene poder revisarlo **antes** de publicar.
+
+**Cuáles son y por qué no hay más, en `src/lib/tarjetaDelPanel.ts`.** La regla es
+que solo se marca lo excepcional —poco frecuente, que cambie lo que se ve afuera, y
+que no se pueda leer de otra cosa que ya esté en la fila—, y por eso **las
+etiquetas no están** (decisión del dueño, B-622): son muchas y de largo variable,
+casi toda actividad tiene, y ya se encuentran con el buscador y se administran
+desde «Opciones». La decisión vive en un módulo puro y no en el JSX, que es cómo
+`destacado` se quedó sin mostrar durante meses.
+
+Y, **si la cargó la otra cuenta, lo marca**
+(B-130). Lo propio no lleva marca: si todo lleva marca, la
+marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
+hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
+para saber quién; con tres deja de alcanzar y ahí hay que guardar el mail
+(B-179).
 
 Cada tarjeta dice, de arriba abajo: el **badge de estado** con las marcas al lado,
 el **título** (hasta dos renglones, no cortado con puntos suspensivos), **tipo y
@@ -186,7 +207,14 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   Google Maps del lugar —o un par `lat, lng`— y con eso el link del evento
   apunta al punto en vez de hacer que Google adivine por la dirección (D-46).
   Se aplica al pegar, sin apretar nada. Los links cortos `maps.app.goo.gl` no
-  traen coordenadas y el campo lo dice, con qué hacer para salir del paso. Un
+  traen coordenadas y el campo lo dice; desde **B-45** además aparece un botón
+  **«Abrir el link»** que lo abre en otra pestaña, para copiar de ahí el link
+  largo. El redirect no se puede seguir desde el navegador —CORS, y la respuesta
+  de un redirect manual es opaca—, así que lo sigue el navegador abriéndolo; la
+  Function que lo resolvería sola es un fetcher de URLs arbitrarias y necesita su
+  propio diseño de seguridad, así que sigue pendiente. El `href` no sale del
+  portapapeles: lo sanea `linkCortoParaAbrir`, que fuerza `https` y verifica
+  **host y camino** contra una lista blanca derivada de un solo lugar. Un
   punto lejos de Argentina no bloquea: avisa. Se puede quitar y volver a
   "sin coordenadas". Para confirmar que se cargó bien: el campo muestra la
   coordenada con un link al mapa, y la **vista previa del evento** muestra la
@@ -196,9 +224,12 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   —con comas no se distingue si son dos números o cuatro— pero el campo dice que
   el problema es la coma y muestra la forma que sí funciona. Antes caía en «no
   parece un link ni un par de coordenadas», que era falso.
-  **Los cuatro modos de fallo se miden** (B-55, `09-analitica.md`): es lo que
-  decide si vale la pena resolver los links cortos (B-45) o alcanza con explicar
-  mejor el campo.
+  **Los cuatro modos de fallo se miden** (B-55, `09-analitica.md`). Lo que ese
+  número decidía —si vale la pena resolver los links cortos o alcanza con explicar
+  mejor el campo— quedó **resuelto por el medio** en B-45: el campo no los
+  resuelve solo, pero ofrece el botón que los abre, que es lo que el mensaje ya
+  pedía hacer a mano. La medición sigue sirviendo para lo que queda: si aun así el
+  link corto es la mitad de los fallos, ahí sí se justifica la Function.
 - **Guardar borrador pide lo mínimo: título y dirección web.** Nada más. Todo lo
   demás —tipo, descripción, organizador, arancel, encuentros, sede— se exige
   **al publicar**, que es lo que sale al sitio y al calendario (B-183, D-120).
@@ -262,6 +293,13 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   Guardarlo como borrador sí, porque la copia nace justamente con ese slug: el
   bloqueo es solo al publicar, porque ahí el slug queda fijo para siempre
   (trampa 10).
+
+  **Desde B-91 la condición mira el par título+slug y no el slug solo**, que es
+  como `duplicar` escribe la marca: en las dos puntas a la vez. Antes se adivinaba
+  del texto del slug, así que una actividad legítima cuyo título terminara en esa
+  palabra —«Taller de copia»— quedaba **imposible de publicar**, con un mensaje
+  que hablaba de un sufijo que nadie había puesto. Ahora esa se publica sin
+  problema, y la copia recién hecha sigue frenada.
 - Las etiquetas creadas con "Otro" se persisten **en el submit**, no al
   tipearlas: abandonar el formulario no debe dejar basura en la taxonomía.
 - **Y si esa persistencia falla, ahora se ve** (B-177, D-187). Son dos
@@ -298,7 +336,9 @@ sigue diciéndolo y su evento no se toca.
 ### Editor de modalidades (B-224)
 
 **«Dónde» es una lista, con la misma interfaz que los encuentros.** Cada fila es
-una forma de cursar completa: el selector presencial / virtual / híbrido y, según
+una forma de cursar completa: el selector presencial / virtual / **«presencial y
+virtual»** —así se lee desde B-175, con el mismo vocabulario que el listado, el
+sitio y el evento; antes el formulario era el único que decía «híbrido»— y, según
 lo que se elija, la sede o los datos de la reunión — o los dos. Así una actividad
 puede darse presencial en una librería **y** virtual por Meet, que con una sede
 sola no se podía decir.
@@ -388,6 +428,20 @@ el evento de Calendar dice "Con beca parcial", no "con-beca-parcial").
 Si alguien tipea en "Otro" una etiqueta que ya existe como pendiente de la otra
 cuenta, el formulario avisa y **reusa** ese slug: la deduplicación del §4.2 gana
 sobre la visibilidad.
+
+**Y desde B-29 ese reuso además la aprueba**, decisión del dueño: que dos personas
+escriban la misma palabra por separado es la mejor señal automática de que la
+palabra existe, y hasta acá esa etiqueta quedaba en el peor estado posible —dos la
+usan y ninguna la ve en su desplegable—. No se aprueba sola si no se sabe de quién
+era (los documentos anteriores a que existiera la huella) ni si la reusa quien la
+creó: la señal es *dos personas*, no *dos veces*.
+
+Queda **marcada** «la usaron las dos cuentas» en la pantalla de taxonomías, y eso
+es lo que hace que aprobar sin revisión sea seguro: el contra —que las dos repitan
+el mismo error de tipeo— se corrige renombrando o borrando, como cualquier otra. La
+marca se limpia sola al renombrarla, y hay un botón **«Ya la miré»** para
+confirmarla sin cambiarle nada. Aprobar es también **publicar**: la etiqueta entra
+al `events.json` y a los chips del sitio aunque solo la usen borradores.
 
 Las opciones base (`fijo: true`) están aprobadas por definición, y **las que ya
 estaban cargadas antes de que existiera el campo siguen visibles** (D-26).
@@ -553,6 +607,12 @@ data tipada, no repartido en JSX (D-62):
   novedades y la carga desde el teléfono. Cada capítulo dice **para qué** sirve
   la sección y lista los comportamientos que no se ven; los puntos marcados como
   "cuidado" llevan una barra de acento.
+- Los capítulos de una sección del formulario tienen además **tres partes
+  obligatorias** (B-62, pedido del dueño después de un caso real): el *para qué*,
+  **qué sale de ahí** —al sitio, al calendario, a ningún lado— y **un ejemplo
+  concreto**. El ejemplo es la parte que resuelve la duda que motivó el ítem:
+  «una feria de tres días seguidos: Cuántos encuentros 3 y Cada cuántos días 1»
+  contesta lo que una definición no. `tests/ayuda.test.ts` exige las tres.
 - El capítulo que aparece desplegado depende de desde dónde se abrió: del
   listado abre "El listado de actividades"; del formulario, "Cómo llega una
   actividad a la gente".

@@ -76,8 +76,8 @@ export interface LibroPublico {
  * §4.4 — una opción de taxonomía en el `events.json`: **`slug` y `label`, nada
  * más**.
  *
- * `ValorOpcion` tiene además `orden`, `fijo`, `usos`, `aprobada` y
- * `huellaCreador`. Ninguno de esos cinco tiene por qué salir:
+ * `ValorOpcion` tiene además `orden`, `fijo`, `usos`, `aprobada`,
+ * `aprobadaPorReuso` y `huellaCreador`. Ninguno de esos seis tiene por qué salir:
  *
  * | Campo | Por qué no sale |
  * |---|---|
@@ -85,6 +85,7 @@ export interface LibroPublico {
  * | `fijo` | dice si la UI del panel puede borrarla, no le sirve a nadie afuera |
  * | `usos` | cuántas veces se usó es dato de gestión, y publicado dibuja qué carga esta gente y con qué frecuencia |
  * | `aprobada` | estado interno de moderación (§4.3) |
+ * | `aprobadaPorReuso` | lo mismo, y además dice que la moderación fue automática (B-29): es una nota para quien administra la taxonomía, no para quien filtra el sitio |
  * | `huellaCreador` | **es el que importa**: aunque sea una huella y no un uid (D-27), es un identificador estable de una persona, y §5.1 dice que del creador no sale nada al público |
  *
  * ── Por qué esto existe antes que su consumidor ──────────────────────────

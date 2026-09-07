@@ -6,7 +6,13 @@ import {
   claseInput,
 } from '@/components/admin/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
-import { formatearGeo, linkMapa, parsearCoordenadas, type Geo } from '@/lib/coordenadas';
+import {
+  formatearGeo,
+  linkCortoParaAbrir,
+  linkMapa,
+  parsearCoordenadas,
+  type Geo,
+} from '@/lib/coordenadas';
 
 interface Props {
   geo: Geo | null;
@@ -47,6 +53,16 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [advertencia, setAdvertencia] = useState<string | null>(null);
   /**
+   * B-45 — el link corto que se pegó, si lo que se pegó es uno.
+   *
+   * Se guarda el **saneado** que devuelve `linkCortoParaAbrir` y no el texto del
+   * campo: lo que va a un `href` no puede salir del portapapeles sin pasar por
+   * la lista blanca de hosts y el `https` forzado. Y se guarda al fallar y no se
+   * deriva del `texto` en el render, porque el campo se puede seguir tipeando
+   * mientras el mensaje de error está en pantalla.
+   */
+  const [linkCorto, setLinkCorto] = useState<string | null>(null);
+  /**
    * Lo último que se midió, para no contar dos veces lo mismo.
    *
    * Hace falta porque hay **cuatro** disparadores sobre el mismo texto —pegar,
@@ -66,6 +82,7 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
       // no hubo intento.
       setError(null);
       setAdvertencia(null);
+      setLinkCorto(null);
       return;
     }
     const r = parsearCoordenadas(entrada);
@@ -80,10 +97,14 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
       if (!yaMedido) medirFuncion('coordenadas-fallo', r.motivo);
       setError(r.error);
       setAdvertencia(null);
+      // B-45 — `null` cuando no es un link corto: si no se limpiara, el botón de
+      // abrir quedaría colgado del intento anterior apuntando a otra cosa.
+      setLinkCorto(linkCortoParaAbrir(entrada));
       return;
     }
     setError(null);
     setAdvertencia(r.advertencia);
+    setLinkCorto(null);
     setTexto('');
     // El campo queda vacío, así que el próximo intento es uno nuevo aunque se
     // pegue el mismo link: sin esto, corregir a mano y volver a pegar lo mismo
@@ -95,6 +116,7 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
   const quitar = () => {
     setError(null);
     setAdvertencia(null);
+    setLinkCorto(null);
     setTexto('');
     medido.current = null;
     onChange(null);
@@ -173,6 +195,29 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
             Usar
           </button>
         </div>
+      )}
+
+      {/*
+        B-45 — la salida del link corto, a un toque.
+        El mensaje de error ya explicaba cómo salir del paso ("abrilo y pegá el
+        link largo"), y hacerlo a mano son cuatro pasos en el teléfono, que es
+        justo donde el botón "Compartir" de Maps entrega este link. El redirect
+        no se puede seguir desde el navegador (ver `linkCortoParaAbrir`), así que
+        lo sigue el navegador abriéndolo, que es lo único que funciona sin una
+        Function que sea un fetcher de URLs arbitrarias.
+
+        El `href` sale de `linkCortoParaAbrir` —lista blanca de hosts y `https`
+        forzado— y nunca del texto del campo, que es un pegado del portapapeles.
+      */}
+      {linkCorto && (
+        <a
+          href={linkCorto}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${claseBotonSecundario} self-start`}
+        >
+          Abrir el link ↗
+        </a>
       )}
 
       {advertencia && (

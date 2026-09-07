@@ -6,10 +6,14 @@ import {
   diasDeDesplazamiento,
   duplicarActividadForm,
   duplicarSesionParaCopia,
+  esCopiaSinRevisar,
+  esSlugDeCopia,
+  esTituloDeCopia,
   slugCopia,
   tituloCopia,
   type QueCopiar,
 } from '@/lib/duplicar';
+import { cambiarTitulo } from '@/lib/formulario/cascadas';
 import { actividadFormSchema } from '@/lib/schema';
 import { deDatetimeLocal } from '@/lib/sesiones';
 import type { ActividadForm, Imagen, SesionForm } from '@/types/actividad';
@@ -160,6 +164,117 @@ describe('duplicar una actividad — lo que NO se puede heredar (B-11)', () => {
   it('marca el título como copia: dos filas con el mismo título son indistinguibles en el listado', () => {
     const copia = duplicarActividadForm(original(), { ahora: AHORA });
     expect(copia.titulo).toBe('Club de lectura latinoamericana (copia)');
+  });
+});
+
+/**
+ * B-91 — «es una copia sin revisar» se **lee** del par título+slug, no se
+ * adivina del texto del slug.
+ *
+ * Los dos casos que importan son los de las dos primeras filas: la copia que
+ * `duplicarActividadForm` acaba de producir tiene que dar `true` (si no, el
+ * bloqueo de la trampa 10 desaparece) y un título legítimo que termina en esa
+ * palabra tiene que dar `false` (que es el bug reportado).
+ */
+describe('duplicar — reconocer una copia sin revisar (B-91)', () => {
+  it('la copia que produce duplicar es una copia sin revisar', () => {
+    const copia = duplicarActividadForm(original(), { ahora: AHORA });
+    expect(esCopiaSinRevisar(copia)).toBe(true);
+  });
+
+  it('una actividad cuyo título termina legítimamente en «copia», no', () => {
+    expect(esCopiaSinRevisar({ titulo: 'Taller de copia', slug: 'taller-de-copia' })).toBe(false);
+    expect(esCopiaSinRevisar({ titulo: 'El arte de la copia', slug: 'el-arte-de-la-copia-2' })).toBe(
+      false,
+    );
+  });
+
+  it('con el slug ya corregido tampoco, aunque el título siga marcado', () => {
+    expect(esCopiaSinRevisar({ titulo: 'Club (copia)', slug: 'club-2027' })).toBe(false);
+  });
+
+  /**
+   * El precio de mirar el par, fijado por un test y no solo por un comentario
+   * —lo señaló el `auditor-trampas`—: acá el bloqueo de la trampa 10 **no** se
+   * aplica, y eso es a propósito.
+   *
+   * Para llegar a este estado hay que editar el campo del slug a mano *después*
+   * de haberle corregido el título: mientras la actividad no esté publicada,
+   * `cambiarTitulo` re-deriva el slug en cada tecla, así que sacarle el
+   * «(copia)» al título ya deja un slug sin `-copia`. O sea que quien llega acá
+   * está pidiendo esa URL, que es exactamente el caso que B-91 reportaba como
+   * bloqueado de más.
+   *
+   * Si algún día se decide lo contrario, lo que cambia es este caso: es el que
+   * dice qué se eligió.
+   */
+  it('un título corregido con el slug -copia dejado a mano no frena la publicación (B-91, riesgo aceptado)', () => {
+    expect(esCopiaSinRevisar({ titulo: 'Club de lectura 2027', slug: 'club-copia' })).toBe(false);
+  });
+
+  /**
+   * El agujero de la primera versión de B-91, que encontró el
+   * `auditor-privacidad`: leer la marca del título con el regex **anclado al
+   * final** —el que `tituloCopia` necesita para recortar— la volvía invisible en
+   * cuanto se escribía algo detrás. Y no era un caso rebuscado: escribirle el
+   * año a la copia es el gesto de «esta es la edición del año que viene».
+   */
+  it('frena la copia aunque la marca del título no quede al final (B-91)', () => {
+    expect(esCopiaSinRevisar({ titulo: 'Club X (copia) 2027', slug: 'club-x-copia-2027' })).toBe(
+      true,
+    );
+    expect(esCopiaSinRevisar({ titulo: 'Club X (copia).', slug: 'club-x-copia' })).toBe(true);
+  });
+
+  /**
+   * H2 del `auditor-privacidad`, y es el caso que hubiera evitado H1: los demás
+   * pasan pares **escritos a mano**, y en la pantalla el slug no se escribe —lo
+   * **deriva** `cambiarTitulo` del título mientras la actividad no esté
+   * publicada—. Un par escrito a mano no puede ver que las dos derivaciones se
+   * separen, que es la clase de B-88.
+   *
+   * Acá el slug sale de la cascada real, así que un retoque a `slugify`, a
+   * `RE_SLUG_COPIA` o a la marca del título mueve el borde y esto se pone rojo.
+   */
+  it('el par título→slug lo deriva la cascada y el bloqueo sigue en pie (B-88, B-91)', () => {
+    const copia = duplicarActividadForm(original(), { ahora: AHORA });
+
+    // Lo que se tipea encima de la copia sin sacarle la marca: sigue frenando.
+    for (const titulo of [
+      'Club de lectura latinoamericana (copia)',
+      'Club de lectura latinoamericana (copia) 2027',
+      'Club de lectura latinoamericana (copia).',
+    ]) {
+      const f = cambiarTitulo(copia, titulo, false);
+      expect(esCopiaSinRevisar(f), `debería frenar: «${titulo}» → ${f.slug}`).toBe(true);
+    }
+
+    // Y en cuanto el slug derivado deja de terminar en la marca, se puede
+    // publicar: no hace falta tocar el campo del slug. El tercero es el caso
+    // fino —la marca queda en el medio del título, así que el slug derivado no
+    // lleva el sufijo y la URL no es la que se propuso para la copia—.
+    for (const titulo of [
+      'Club de lectura latinoamericana 2027',
+      'Taller de copia',
+      'Club (copia) de lectura',
+    ]) {
+      const f = cambiarTitulo(copia, titulo, false);
+      expect(esCopiaSinRevisar(f), `no debería frenar: «${titulo}» → ${f.slug}`).toBe(false);
+    }
+  });
+
+  it('y el sufijo numerado de la propuesta sí cuenta', () => {
+    // `slugCopia` propone `-copia-2` cuando `-copia` está tomado: las dos formas
+    // son la misma marca, así que las dos tienen que frenar.
+    expect(esCopiaSinRevisar({ titulo: 'Club (copia)', slug: 'club-copia-2' })).toBe(true);
+  });
+
+  it('las dos puntas de la marca las escribe el mismo duplicado', () => {
+    // La garantía de la que depende todo lo de arriba: si algún día `duplicar`
+    // dejara de marcar el título, el bloqueo se apagaría en silencio.
+    const copia = duplicarActividadForm(original(), { ahora: AHORA });
+    expect(esTituloDeCopia(copia.titulo)).toBe(true);
+    expect(esSlugDeCopia(copia.slug)).toBe(true);
   });
 });
 

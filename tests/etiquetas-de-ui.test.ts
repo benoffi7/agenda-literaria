@@ -1,11 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ETIQUETA_ESTADO as ETIQUETA_ESTADO_FORM } from '@/components/admin/formulario/etiquetasUI';
+import {
+  ETIQUETA_ESTADO as ETIQUETA_ESTADO_FORM,
+  ETIQUETA_MODALIDAD as ETIQUETA_MODALIDAD_FORM,
+  ETIQUETA_VIA as ETIQUETA_VIA_FORM,
+} from '@/components/admin/formulario/etiquetasUI';
+import { ETIQUETA_VIA } from '@/lib/etiquetas';
 import { ETIQUETA_ESTADO, ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
 import { ENTREGAS_MATERIAL, TIPOS_MATERIAL } from '@/types/actividad';
 import { ETIQUETA_TIPO_MATERIAL } from '@calendario';
-import { ESTADOS, MODALIDADES } from '@/types/actividad';
+import { ESTADOS, MODALIDADES, VIAS_INSCRIPCION } from '@/types/actividad';
 
 /**
  * B-76 — el vocabulario de etiquetas de la UI, verificado como clase.
@@ -109,18 +114,51 @@ describe('el formulario y el listado no pueden decir lo mismo de dos maneras (B-
   });
 
   /**
-   * Clase todavía viva (B-175). El formulario dice "Híbrido" y el listado
-   * "Presencial y virtual" para el mismo valor guardado.
+   * B-175, la clase que quedaba viva: el formulario decía «Híbrido» y el listado
+   * «Presencial y virtual» para el mismo `'hibrido'`.
    *
-   * Qué lo haría pasar: un solo vocabulario que usen las dos pantallas
-   * (`src/lib/etiquetas.ts`, lo que propone B-76). Eso toca
-   * `ActividadFormulario.tsx`, que es de otro frente, así que queda anotado y
-   * este chequeo se queda en rojo-esperado hasta entonces.
+   * Este chequeo era un `it.fails` esperando la decisión de copy —cuál de los
+   * dos gana— que B-76 no podía tomar. Tomada (ganó el del listado, que es
+   * además el que ya usan el sitio y el evento: el razonamiento está en
+   * `src/lib/etiquetas.ts`), pasa a ser un `it` normal.
+   *
+   * Y se verifica por **identidad y no por igualdad**, igual que `estado`: dos
+   * objetos con el mismo contenido vuelven a divergir el día que alguien toca
+   * uno. Comparar el texto leído del fuente probaría que hoy coinciden, no que
+   * es un solo mapa — que es lo que hace falta.
    */
-  it.fails('las modalidades coinciden', () => {
-    const delFormulario = mapaDelFuente(FORMULARIO, 'MODALIDAD');
-    expect(Object.keys(delFormulario).length).toBe(MODALIDADES.length);
-    for (const m of MODALIDADES) expect(delFormulario[m]).toBe(ETIQUETA_MODALIDAD[m]);
+  it('las modalidades coinciden', () => {
+    expect(ETIQUETA_MODALIDAD_FORM).toBe(ETIQUETA_MODALIDAD);
+    for (const m of MODALIDADES) expect(ETIQUETA_MODALIDAD[m]).toBeTruthy();
+  });
+
+  /**
+   * La otra mitad de B-175, y la que impide que la clase vuelva por la puerta de
+   * al lado: `etiquetasUI.ts` no puede volver a **declarar** un mapa propio.
+   *
+   * Sin esto, el día que alguien agregue ahí un `ETIQUETA_LO_QUE_SEA = { … }`
+   * nace la tercera copia y los dos asertos de identidad de arriba siguen en
+   * verde, porque miran los dos mapas que ya existen.
+   */
+  it('el módulo del formulario no declara vocabulario propio, solo reexporta', () => {
+    expect(mapaDelFuente(FORMULARIO, 'MODALIDAD')).toEqual({});
+    expect(FORMULARIO).not.toMatch(/^export const ETIQUETA_/m);
+  });
+
+  /**
+   * Y la vía, que era el tercer mapa del formulario.
+   *
+   * No se compara contra los de `textoRedes.ts` ni `detallePublico.ts` a
+   * propósito: esos son **prosa de una salida** («por DM» en un caption,
+   * «Escribir por Instagram» en el botón del sitio), no etiquetas de control.
+   * Lo que se fija es que el panel tenga una sola, y que no le falte ninguna
+   * vía — que es el agujero de B-134 aplicado a este mapa.
+   */
+  it('la vía de inscripción es un solo mapa del panel, sin agujeros', () => {
+    expect(ETIQUETA_VIA_FORM).toBe(ETIQUETA_VIA);
+    for (const v of VIAS_INSCRIPCION) {
+      expect(ETIQUETA_VIA[v], `el panel no sabe decir «${v}»`).toBeTruthy();
+    }
   });
 });
 

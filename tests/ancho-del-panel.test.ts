@@ -49,10 +49,11 @@ describe('el ancho lo decide la vista (B-620)', () => {
     // Agregar una pantalla y olvidarse de esta lista la deja como está hoy, que
     // es el lado barato de equivocarse (mismo criterio que D-41).
     //
-    // `calendario` sigue acá **a propósito** después de B-621: la mitad del
-    // ítem que se resolvió es el tablero, y ensanchar la grilla del mes es un
-    // reparto de columnas propio que nadie decidió todavía (D-400).
-    for (const vista of ['historial', 'reportes', 'taxonomias', 'calendario']) {
+    // `calendario` **salió de esta lista el 2026-09-07**, por pedido del dueño:
+    // la grilla del mes en 896px daba celdas de 120px. Lo que sigue sin hacerse
+    // es el reparto de la grilla por dentro —el trabajo real de B-621— y eso no
+    // lo puede fijar este test: acá solo vive qué pantalla se ensancha.
+    for (const vista of ['historial', 'reportes', 'taxonomias']) {
       expect(ocupaTodoElAncho(vista), vista).toBe(false);
     }
     expect(ocupaTodoElAncho('inventada')).toBe(false);

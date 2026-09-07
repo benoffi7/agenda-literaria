@@ -46,7 +46,15 @@
  * «angosta»: agregar una pantalla y olvidarse de esto la deja como está hoy, que
  * es el lado barato de equivocarse (mismo criterio que D-41).
  */
-export const VISTAS_A_TODO_ANCHO = ['lista', 'estadisticas'] as const;
+/*
+ * `'calendario'` entra el 2026-09-07, por pedido del dueño mirando el panel
+ * publicado (B-621): la grilla del mes en 896px daba celdas de 120px. Es la
+ * decisión que D-330 había dejado explícitamente afuera —«ensanchar cada una es
+ * un cambio visual propio»— y el aviso de arriba sigue valiendo: **entrar acá es
+ * una línea; repartir la grilla por dentro es el trabajo real**, y eso todavía
+ * no está hecho.
+ */
+export const VISTAS_A_TODO_ANCHO = ['lista', 'estadisticas', 'calendario'] as const;
 
 export type VistaATodoAncho = (typeof VISTAS_A_TODO_ANCHO)[number];
 

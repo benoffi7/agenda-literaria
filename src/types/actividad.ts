@@ -475,6 +475,24 @@ export interface ValorOpcion {
    */
   aprobada?: boolean;
   /**
+   * §4.3 · B-29 — esta opción quedó aprobada **porque la reusó otra cuenta**, no
+   * porque alguien la mirara.
+   *
+   * Es la mitad de la decisión del dueño que hace que auto-aprobar sea seguro: el
+   * contra de aprobar sin revisión es que dos personas repitan el mismo typo, y
+   * sin la marca esa aprobación sería indistinguible de una humana. Con ella, la
+   * pantalla de taxonomías puede señalar cuáles conviene mirar.
+   *
+   * **No es identidad de nadie**: es un booleano sobre la etiqueta, así que a
+   * diferencia de `huellaCreador` no hay nada que razonar sobre su publicación.
+   * Igual no sale, por construcción: la proyección del §4.4 (`opcionPublica`) es
+   * una whitelist que emite `slug`, `label` y el `tono`.
+   *
+   * Opcional como los otros dos: ausente significa «no pasó», que es el estado de
+   * todo lo que ya está cargado.
+   */
+  aprobadaPorReuso?: boolean;
+  /**
    * Huella del uid de quien la creó, para que la siga viendo mientras espera
    * aprobación. **Es una huella, no un uid:** este documento es de lectura
    * pública (§5.3) y los uids no salen al público (§5.1). Ver `lib/huella.ts`.

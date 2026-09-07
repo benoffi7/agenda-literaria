@@ -196,6 +196,42 @@ export const grafo = (raiz = RAIZ, archivos = corpus(raiz)) => {
   return g;
 };
 
+/**
+ * El grafo **sin las aristas diferidas** — `import()` dinámico.
+ *
+ * Es el grafo que usan los ciclos, y no el completo, porque un `import()`
+ * diferido **no puede cerrar un ciclo de inicialización**: se resuelve cuando la
+ * función corre, no cuando el módulo se evalúa, así que ninguno de los dos
+ * módulos ve al otro a medio construir. Es lo que la propiedad «cero ciclos»
+ * afirma de verdad.
+ *
+ * El grafo completo sigue incluyéndolos, que es lo correcto para el fan-in: si A
+ * carga B, B es una dependencia de A aunque llegue tarde.
+ *
+ * Apareció el 2026-09-07 al integrar B-62: el «?» de cada sección del formulario
+ * hace `Seccion → AyudaDeSeccion → import('CentroAyuda') → Seccion`, y el ciclo
+ * se cierra **solo** por esa arista diferida — que es además el patrón que
+ * `BotonAyuda` ya usaba para lo mismo.
+ */
+export const grafoEstatico = (raiz = RAIZ, archivos = corpus(raiz)) => {
+  const enElCorpus = new Set(archivos);
+  const alias = aliasDelBuild(raiz);
+  const g = new Map();
+  for (const archivo of archivos) {
+    const src = readFileSync(join(raiz, archivo), 'utf8');
+    const destinos = new Set();
+    for (const m of src.matchAll(IMPORTS)) {
+      // `m[2]` es la captura del `import()` diferido: se saltea acá y solo acá.
+      const especificador = m[1] ?? m[3];
+      if (!especificador) continue;
+      const destino = resolver(especificador, archivo, enElCorpus, alias);
+      if (destino && destino !== archivo) destinos.add(destino);
+    }
+    g.set(archivo, [...destinos].sort());
+  }
+  return g;
+};
+
 /** Los ciclos del grafo, por DFS con pila de color. */
 export const ciclos = (g) => {
   const encontrados = [];

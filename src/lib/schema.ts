@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
-import { esSlugDeCopia } from '@/lib/duplicar';
+import { esCopiaSinRevisar } from '@/lib/duplicar';
 import { deDatetimeLocal } from '@/lib/sesiones';
 import {
   ENTREGAS_MATERIAL,
@@ -445,7 +445,11 @@ export const actividadFormSchema = z
     // `…-copia` publicada por descuido no se arregla nunca más sin perder el
     // SEO de esa página. Se bloquea al publicar, no al guardar borrador: la
     // copia nace como borrador con ese slug a propósito.
-    if (esSlugDeCopia(v.slug)) {
+    //
+    // B-91 — mira el par título+slug y no el slug solo: adivinar la marca desde
+    // el texto del slug bloqueaba «Taller de copia», que es un título legítimo.
+    // El porqué completo, en `esCopiaSinRevisar`.
+    if (esCopiaSinRevisar(v)) {
       falta(['slug'], 'Antes de publicar, cambiá el slug: quedaría fijo con «-copia» en la URL');
     }
   });
