@@ -401,6 +401,28 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
       'rebuildPorOpciones',
       'reporteAIssue',
       'syncCalendar',
+      /*
+       * B-374/B-373 — la lectura de GA4 y de Search Console para el panel. El
+       * tercer `onSchedule` del proyecto, y **entró solo**: la clase ya estaba
+       * en `CLASES_DE_TRIGGER`, así que lo único que hubo que confirmar a mano
+       * es el conteo, que es la parte que este `it` existe para pedir.
+       *
+       * Vale la pena anotar por qué **no** cae en los dos chequeos de abajo,
+       * porque no es casualidad y el día que se toque conviene saberlo:
+       *
+       *  - **B-82** (efecto duplicable sin guarda) mira los triggers *de
+       *    documento*, y éste es un schedule; y su efecto tampoco es
+       *    duplicable: escribe un documento fijo con `set`, así que dos
+       *    corridas producen un documento y no dos.
+       *  - **B-85** (leer estado → red → escribir lo leído) pide que la lectura
+       *    venga **antes** de la red, y acá no hay ninguna lectura de Firestore:
+       *    el resumen se arma entero de las dos APIs y se escribe pisando.
+       *    Si algún día se quisiera conservar algo del documento anterior
+       *    —«desde cuándo hay datos», por ejemplo, para no depender del informe
+       *    del primer día— ese `.get()` lo pondría en la clase de B-85 y habría
+       *    que meter la escritura en una transacción.
+       */
+      'traerAnaliticaDelSitio',
     ]);
   });
 

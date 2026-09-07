@@ -14,6 +14,7 @@ import {
   VIAS_INSCRIPCION,
   type AlmacenConsentimiento,
   type EstadoConsentimiento,
+  type PanelMedible,
 } from '@/lib/analyticsSitio';
 import { EJES } from '@/lib/listadoPublico';
 
@@ -234,6 +235,54 @@ describe('construirEventoSitio — whitelist en las dos direcciones', () => {
 
     it('sin un eje que explique el cero (ejeQueSobra devolvió null), el evento se manda sin eje ni slug', () => {
       expect(construirEventoSitio('filtro_sin_resultados', {})?.params).toEqual({});
+    });
+  });
+
+  describe('clic_triptico — B-601', () => {
+    it('los tres paneles pasan tal cual', () => {
+      for (const panel of ['hoy', 'manana', 'finde'] satisfies PanelMedible[]) {
+        expect(construirEventoSitio('clic_triptico', { panel })?.params).toEqual({ panel });
+      }
+    });
+
+    it('un panel fuera del vocabulario cae en "otro", y el clic no se pierde', () => {
+      /*
+       * Es la degradación diseñada, no un descuido: si el tríptico gana un
+       * panel y `PANELES_MEDIBLES` no se actualiza, en GA4 aparece
+       * `panel=otro` — el clic se cuenta y el desfase **se ve en los datos**.
+       * Descartar el parámetro en silencio haría que un panel nuevo se
+       * pareciera a un clic sin panel, que es una fila distinta.
+       */
+      expect(construirEventoSitio('clic_triptico', { panel: 'la-semana' })?.params.panel).toBe(
+        FUERA_DE_VOCABULARIO_SITIO,
+      );
+    });
+
+    it('NO manda la actividad a la que el clic lleva — ni slug, ni título, ni ruta', () => {
+      /*
+       * **El caso que fija la decisión de diseño de este evento** (§5.4 del
+       * diseño, tercer punto): el `page_view` de la página de detalle a la que
+       * el clic lleva ya manda la ruta, así que repetirla acá no agrega una
+       * respuesta y sí agrega superficie. El sanitizador lo cumple sin una
+       * regla nueva —whitelist en las dos direcciones—, y este caso es lo que
+       * impide que alguien «enriquezca» el evento más adelante sin que nada
+       * falle.
+       */
+      const evento = construirEventoSitio('clic_triptico', {
+        panel: 'hoy',
+        slug: 'CENTINELA-taller-de-cronica',
+        titulo: 'CENTINELA Taller de crónica',
+        ruta: '/actividad/CENTINELA-taller-de-cronica/',
+        href: 'https://agendaleh.ar/actividad/CENTINELA-taller-de-cronica/',
+        rotulo: 'El finde que viene',
+      });
+      expect(evento?.params).toEqual({ panel: 'hoy' });
+    });
+
+    it('sin `panel`, el evento se manda igual y sin ese parámetro', () => {
+      // Un clic contado sin saber de qué panel sigue contestando «¿se toca el
+      // tríptico?», que es la mitad más importante de la pregunta.
+      expect(construirEventoSitio('clic_triptico', {})?.params).toEqual({});
     });
   });
 });

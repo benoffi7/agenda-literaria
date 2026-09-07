@@ -22,6 +22,16 @@ describe('el ancho lo decide la vista (B-620)', () => {
     expect(ocupaTodoElAncho('lista')).toBe(true);
   });
 
+  it('y el tablero también, desde B-621: es una grilla de gráficos', () => {
+    /*
+     * La otra mitad de B-621. Cambió de grupo **a propósito y en el mismo
+     * cambio** que le repartió las columnas (D-400): moverla acá sin mirar la
+     * pantalla la dejaría con un tablero de 1600px de ancho y una sola columna
+     * de contenido, que es peor que el panel encajonado.
+     */
+    expect(ocupaTodoElAncho('estadisticas')).toBe(true);
+  });
+
   it('ninguna vista con formulario lo usa', () => {
     /*
      * La mitad que importa de la decisión. Un formulario de 30+ campos a 1900px
@@ -38,7 +48,11 @@ describe('el ancho lo decide la vista (B-620)', () => {
   it('las demás vistas arrancan angostas: el default es no ensanchar', () => {
     // Agregar una pantalla y olvidarse de esta lista la deja como está hoy, que
     // es el lado barato de equivocarse (mismo criterio que D-41).
-    for (const vista of ['historial', 'reportes', 'taxonomias', 'calendario', 'estadisticas']) {
+    //
+    // `calendario` sigue acá **a propósito** después de B-621: la mitad del
+    // ítem que se resolvió es el tablero, y ensanchar la grilla del mes es un
+    // reparto de columnas propio que nadie decidió todavía (D-400).
+    for (const vista of ['historial', 'reportes', 'taxonomias', 'calendario']) {
       expect(ocupaTodoElAncho(vista), vista).toBe(false);
     }
     expect(ocupaTodoElAncho('inventada')).toBe(false);

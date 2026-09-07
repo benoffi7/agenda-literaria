@@ -19,7 +19,17 @@
  * | `reportes` | lectura | un formulario y una lista corta |
  * | `taxonomias` | lectura | filas de dos campos: el ancho extra queda vacío |
  * | `calendario` | lectura | la grilla del mes **sí** ganaría, y queda anotado; ensancharla es un cambio visual propio y no entra en este frente |
- * | `estadisticas` | lectura | ídem, y además se está rehaciendo en paralelo |
+ * | `estadisticas` | todo | B-621, D-400: un tablero de gráficos es el caso puro de «se recorre de un barrido» |
+ *
+ * ── Por qué `estadisticas` entró y `calendario` no (B-621) ────────────────
+ * B-621 nombraba las dos, y el ítem dice por qué van por separado: «ensanchar
+ * cada una es un cambio visual propio —qué crece, qué se reparte en columnas,
+ * qué queda con su ancho—, no el mismo cambio aplicado dos veces más». El
+ * tablero pasó a tener repartos con torta, dos vistas de tiempo y un mapa de
+ * calor de ocho semanas, así que el reparto de columnas existe y está escrito
+ * (D-400). La grilla del mes sigue esperando el suyo: ensancharla sin decidirlo
+ * daría siete columnas de 220px con el mismo contenido de 120 — más aire, no
+ * más información.
  *
  * ── Por qué es un módulo y no un `vista.tipo === 'lista'` en `AdminApp` ───
  * Por el mismo motivo que `salida-del-panel.ts`, que es el precedente exacto: la
@@ -36,7 +46,7 @@
  * «angosta»: agregar una pantalla y olvidarse de esto la deja como está hoy, que
  * es el lado barato de equivocarse (mismo criterio que D-41).
  */
-export const VISTAS_A_TODO_ANCHO = ['lista'] as const;
+export const VISTAS_A_TODO_ANCHO = ['lista', 'estadisticas'] as const;
 
 export type VistaATodoAncho = (typeof VISTAS_A_TODO_ANCHO)[number];
 

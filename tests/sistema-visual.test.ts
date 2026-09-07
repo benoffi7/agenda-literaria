@@ -310,27 +310,44 @@ describe('la tipografía es la del sistema — B-260', () => {
     expect(declarado).not.toContain('Lora');
   });
 
-  it('la hoja de fuentes pide exactamente esas tres, y ninguna más', () => {
+  it('se cargan exactamente esas tres familias, y ninguna más', () => {
     /*
-     * Es lo que hace que el peso medido siga siendo cierto: agregar una cuarta
-     * familia al `<link>` no rompe nada y no se nota, y la página pasa de 58,8 KB
-     * de fuentes a lo que sea.
+     * Es lo que hace que el peso medido siga siendo cierto: sumar una cuarta
+     * familia no rompe nada y no se nota, y la página pasa de 62,0 KB de fuentes
+     * a lo que sea.
      *
      * También cierra la corrección 2 de `stitch-detalle.md`: la referencia dejaba
      * el `<link>` a **Material Symbols** en el `<head>` aunque no usaba ningún
      * icono. Peso muerto, y el archivo que devuelve el sitio a Google.
      *
-     * MUTACIÓN PROBADA: sumar `&family=Inter:wght@400` al `href` hace fallar este
-     * caso.
+     * ── QUÉ CAMBIÓ ACÁ, Y POR QUÉ — B-481 ─────────────────────────────────
+     * Este caso miraba el `href` del `<link rel="stylesheet">` a
+     * `fonts.googleapis.com` de `Base.astro` y contaba los `family=` de la
+     * query. **Ese `<link>` ya no existe**: las tres familias se sirven desde
+     * `/fuentes/` de este dominio y se declaran con `@font-face` en
+     * `global.css`, porque un pedido a Google en el load de toda página pública
+     * era la misma clase de conexión a un tercero que D-254 sacó para GA4.
+     *
+     * Así que el test **no verifica menos, verifica el lugar correcto**: la
+     * lista de familias que se cargan pasó de ser una query a ser el conjunto de
+     * `font-family` de las `@font-face`, y ahí es donde hay que contarlas ahora.
+     * Dejarlo mirando el `<link>` habría sido peor que borrarlo: el regex no
+     * encontraría nada, y un `toHaveLength(1)` en rojo empuja a reponer el
+     * `<link>` para «arreglar el test».
+     *
+     * Lo que **no** cambia es la otra mitad del contrato: que las fuentes no
+     * salgan a un tercero lo verifica
+     * `tests/terceros-antes-del-consentimiento.test.ts`, que es el archivo cuyo
+     * tema es ése.
+     *
+     * MUTACIÓN PROBADA: agregar una `@font-face` de `Inter` en `global.css` hace
+     * fallar este caso nombrando la familia de más.
      */
-    const base = readFileSync(raiz('src/layouts/Base.astro'), 'utf8');
-    const links = [...base.matchAll(/https:\/\/fonts\.googleapis\.com\/css2\?([^"']+)/g)];
-    expect(links, 'no se encontró la hoja de fuentes').toHaveLength(1);
-
-    const familias = [...links[0]![1]!.matchAll(/family=([^:&]+)/g)].map((m) =>
-      decodeURIComponent(m[1]!.replace(/\+/g, ' ')),
+    const familias = [...css.matchAll(/@font-face\s*\{[^}]*?font-family:\s*'([^']+)'/g)].map(
+      (m) => m[1]!,
     );
-    expect(familias.sort()).toEqual(['Archivo Narrow', 'Fraunces', 'Public Sans']);
+    expect(familias.length, 'no se encontró ninguna @font-face en global.css').toBeGreaterThan(0);
+    expect([...new Set(familias)].sort()).toEqual(['Archivo Narrow', 'Fraunces', 'Public Sans']);
 
     /*
      * El eje óptico de la display va **fijado**, y no es una micro-optimización:
@@ -339,9 +356,20 @@ describe('la tipografía es la del sistema — B-260', () => {
      * display va de 30px (la marca) a 72px (el mes)—, el mismo criterio con el
      * que la Bodoni estaba fijada en 48.
      *
-     * MUTACIÓN PROBADA: abrir el eje (`opsz,wght@9..144,900`) hace fallar esto.
+     * Con las fuentes autoalojadas eso ya no es un parámetro de una URL de
+     * Google: **es el archivo que se bajó**, y lo que lo fija es su nombre
+     * (`fraunces-v38-opsz72-…`) más el `font-weight: 900` de su `@font-face`.
+     * Un archivo con el eje abierto tendría otro nombre y otro peso.
+     *
+     * MUTACIÓN PROBADA: cambiar el `900` de Fraunces por un rango
+     * (`font-weight: 100 900`) hace fallar esto.
      */
-    expect(links[0]![1]).toContain('Fraunces:opsz,wght@72,900');
+    expect(css).toContain('/fuentes/fraunces-v38-opsz72-latin.woff2');
+    const fraunces = [...css.matchAll(/@font-face\s*\{([^}]*Fraunces[^}]*)\}/g)].map((m) => m[1]!);
+    expect(fraunces.length, 'no se encontró la @font-face de Fraunces').toBeGreaterThan(0);
+    for (const face of fraunces) {
+      expect(face).toMatch(/font-weight:\s*900\s*;/);
+    }
   });
 
   it('no hay ninguna librería de iconos', () => {

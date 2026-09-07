@@ -588,3 +588,154 @@ describe('el tablero no se lleva nada a la analítica', () => {
     expect(serializado).toContain(CENTINELAS.titulo);
   });
 });
+
+describe('el reparto por barrio (B-702)', () => {
+  const enBarrios = (id: string, barrios: (string | null)[]): ActividadConId =>
+    acto({
+      id,
+      modalidades: barrios.map((barrio, i) => ({
+        id: `mod_${i}`,
+        modalidad: barrio === null ? 'virtual' : 'presencial',
+        inicio: null,
+        fin: null,
+        sede:
+          barrio === null
+            ? null
+            : { nombre: '', direccion: '', barrio, ciudad: '', indicaciones: '', geo: null },
+        online: null,
+      })),
+    } as Partial<ActividadConId> & { id: string });
+
+  it('cuenta cada barrio en el que la actividad se dicta', () => {
+    const estado = estadoDelCatalogo(
+      [enBarrios('a', ['almagro']), enBarrios('b', ['boedo'])],
+      AHORA,
+    );
+    expect(estado.porBarrio).toEqual([
+      { valor: 'almagro', cantidad: 1 },
+      { valor: 'boedo', cantidad: 1 },
+    ]);
+  });
+
+  it('una actividad en dos barrios cuenta en los dos: la lista de lugares es `modalidades`', () => {
+    /*
+     * La lección de B-224 aplicada al barrio. Leer `sede.barrio` —el derivado
+     * «la primera fila que tenga sede»— haría que un taller que es en Almagro
+     * los martes y en Boedo los jueves desapareciera de Boedo, y el barrio que
+     * gana dependería del orden del array: la trampa 2 con otra cara.
+     */
+    const estado = estadoDelCatalogo([enBarrios('a', ['almagro', 'boedo'])], AHORA);
+    expect(estado.porBarrio.map((t) => t.valor).sort()).toEqual(['almagro', 'boedo']);
+    // Y por eso puede sumar más que el total, igual que `porModalidad`.
+    expect(estado.porBarrio.reduce((s, t) => s + t.cantidad, 0)).toBeGreaterThan(estado.total);
+  });
+
+  it('dos filas en el mismo barrio son una sola actividad, no dos', () => {
+    // Sin el `Set`, un ciclo con seis filas en Almagro contaría seis veces y el
+    // barrio se vería seis veces más grande de lo que es.
+    const estado = estadoDelCatalogo([enBarrios('a', ['almagro', 'almagro', 'almagro'])], AHORA);
+    expect(estado.porBarrio).toEqual([{ valor: 'almagro', cantidad: 1 }]);
+  });
+
+  it('las virtuales no aparecen: no tienen barrio', () => {
+    // Meterlas como «sin barrio» mezclaría dos preguntas, y la segunda ya la
+    // contesta `porModalidad`.
+    const estado = estadoDelCatalogo([enBarrios('a', [null]), enBarrios('b', ['almagro'])], AHORA);
+    expect(estado.porBarrio).toEqual([{ valor: 'almagro', cantidad: 1 }]);
+  });
+
+  it('un barrio en blanco tampoco: una sede a medio cargar no es una categoría', () => {
+    const estado = estadoDelCatalogo(
+      [enBarrios('a', ['   ']), enBarrios('b', ['almagro'])],
+      AHORA,
+    );
+    expect(estado.porBarrio).toEqual([{ valor: 'almagro', cantidad: 1 }]);
+  });
+
+  it('se cae a `sede` cuando no hay filas: los documentos anteriores a B-224', () => {
+    const vieja = acto({
+      id: 'vieja',
+      modalidades: [],
+      sede: { nombre: '', direccion: '', barrio: 'once', ciudad: '', indicaciones: '', geo: null },
+    } as Partial<ActividadConId> & { id: string });
+    expect(estadoDelCatalogo([vieja], AHORA).porBarrio).toEqual([{ valor: 'once', cantidad: 1 }]);
+  });
+});
+
+describe('las tres proporciones de inscripción (B-703)', () => {
+  const conInscripcion = (
+    id: string,
+    over: { requiere: boolean; cupo?: number | null; completo?: boolean },
+  ): ActividadConId =>
+    acto({
+      id,
+      inscripcion: {
+        requiere: over.requiere,
+        via: 'mail',
+        destino: 'hola@ejemplo.test',
+        cupo: over.cupo ?? null,
+        cierra: null,
+        completo: over.completo ?? false,
+      },
+    } as Partial<ActividadConId> & { id: string });
+
+  it('cuenta cuántas publicadas piden inscripción', () => {
+    const estado = estadoDelCatalogo(
+      [conInscripcion('a', { requiere: true }), conInscripcion('b', { requiere: false })],
+      AHORA,
+    );
+    expect(estado.publicadas.conInscripcion).toBe(1);
+  });
+
+  it('el cupo y las completas se cuentan sobre las que piden inscripción, no sobre todas', () => {
+    /*
+     * El denominador es la mitad del dato. Un cupo cargado en una actividad de
+     * entrada libre no significa nada, y contarlo sobre las publicadas daría
+     * «1 de 3 con cupo» donde lo cierto es «1 de 1». Un porcentaje con el
+     * denominador equivocado es una mentira que se ve perfecta.
+     */
+    const estado = estadoDelCatalogo(
+      [
+        conInscripcion('a', { requiere: true, cupo: 12, completo: true }),
+        conInscripcion('b', { requiere: true }),
+        conInscripcion('c', { requiere: false, cupo: 99, completo: true }),
+      ],
+      AHORA,
+    );
+    expect(estado.publicadas.conInscripcion).toBe(2);
+    expect(estado.publicadas.conCupo).toBe(1);
+    expect(estado.publicadas.completas).toBe(1);
+  });
+
+  it('un cupo en cero no es un cupo', () => {
+    const estado = estadoDelCatalogo([conInscripcion('a', { requiere: true, cupo: 0 })], AHORA);
+    expect(estado.publicadas.conCupo).toBe(0);
+  });
+
+  it('`completo` ausente se lee como `false`: los documentos anteriores a B-97', () => {
+    const vieja = acto({
+      id: 'vieja',
+      inscripcion: { requiere: true, via: 'mail', destino: 'x@y.test', cupo: null, cierra: null },
+    } as unknown as Partial<ActividadConId> & { id: string });
+    expect(estadoDelCatalogo([vieja], AHORA).publicadas.completas).toBe(0);
+  });
+
+  it('las que no están publicadas no cuentan en ninguna de las tres', () => {
+    const borrador = acto({
+      id: 'b',
+      estado: 'borrador',
+      inscripcion: {
+        requiere: true,
+        via: 'mail',
+        destino: 'x@y.test',
+        cupo: 5,
+        cierra: null,
+        completo: true,
+      },
+    } as Partial<ActividadConId> & { id: string });
+    const estado = estadoDelCatalogo([borrador], AHORA);
+    expect(estado.publicadas.conInscripcion).toBe(0);
+    expect(estado.publicadas.conCupo).toBe(0);
+    expect(estado.publicadas.completas).toBe(0);
+  });
+});

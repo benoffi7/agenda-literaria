@@ -153,6 +153,26 @@ export interface EstadoDelCatalogo {
   porTipo: Tajada[];
   porArancel: Tajada[];
   /**
+   * B-702 — dónde se concentra la programación presencial.
+   *
+   * Sale de **todas** las filas de «Dónde» (`modalidades[].sede.barrio`) y no de
+   * `sede.barrio`, que es el derivado «la primera fila que tenga sede»: elegir
+   * por posición del array es la trampa 2 con otra cara, y una actividad que se
+   * dicta en Almagro los martes y en Boedo los jueves está en los dos barrios.
+   *
+   * **Cada actividad cuenta una sola vez por barrio** aunque tenga dos filas
+   * ahí, así que la cantidad de una tajada es «cuántas actividades hay en este
+   * barrio» y no «cuántas filas». Pero una actividad **puede** estar en dos, así
+   * que —igual que `porModalidad`— estas cantidades pueden sumar más que
+   * `total`, y quien pinta tiene que decir sobre qué todo está repartiendo
+   * (D-401).
+   *
+   * Las virtuales no aparecen: no tienen barrio, y meterlas como «sin barrio»
+   * mezclaría dos preguntas (dónde se dicta lo presencial / cuánto es virtual,
+   * que ya contesta `porModalidad`).
+   */
+  porBarrio: Tajada[];
+  /**
    * En el orden de `MODALIDADES`. Cada actividad cuenta en **cada** forma que
    * ofrece (B-224), así que estas cantidades pueden sumar más que `total`.
    */
@@ -170,6 +190,23 @@ export interface EstadoDelCatalogo {
     conFlyer: number;
     conEtiquetas: number;
     conDescripcionSuficiente: number;
+    /**
+     * B-703 — las tres proporciones de inscripción, sobre las publicadas.
+     *
+     * **No son un reparto y por eso no tienen torta** (D-401): son tres
+     * preguntas de sí/no independientes —¿pide inscripción?, ¿declara cupo?,
+     * ¿está llena?— y no las partes de un todo. Una torta sobre ellas sumaría
+     * tres porcentajes que se solapan (una actividad puede estar en las tres) y
+     * dibujaría más de una vuelta.
+     *
+     * `conCupo` y `completas` se cuentan **sobre las que piden inscripción**,
+     * no sobre todas las publicadas: un cupo en una actividad de entrada libre
+     * no significa nada, y el denominador equivocado es lo que convierte una
+     * proporción en una mentira.
+     */
+    conInscripcion: number;
+    conCupo: number;
+    completas: number;
   };
   /** Solo los que tienen al menos una actividad, en el orden de `CLASES_DE_AVISO`. */
   avisos: Aviso[];
@@ -231,6 +268,24 @@ const inscripcionCerrada = (a: ActividadConId, ahora: Date): boolean => {
   return cierra !== null && cierra.getTime() < ahora.getTime();
 };
 
+/**
+ * Los barrios en los que se dicta una actividad, **sin repetir** — B-702.
+ *
+ * Es el hermano de `modalidadesQueOfrece` un campo más abajo, y por el mismo
+ * motivo: la lista real de lugares es `modalidades[]`, no el `sede` derivado. El
+ * `Set` es lo que hace que dos filas en Almagro cuenten una vez.
+ *
+ * Se cae a `sede` solo si no hay ninguna fila, que es la forma de los documentos
+ * anteriores a B-224 — el mismo respaldo que usa `porModalidad`.
+ */
+const barriosQueOfrece = (a: ActividadConId): string[] => {
+  const filas = a.modalidades ?? [];
+  const barrios = (filas.length > 0 ? filas.map((f) => f.sede) : [a.sede])
+    .map((sede) => (sede?.barrio ?? '').trim())
+    .filter((barrio) => barrio !== '');
+  return [...new Set(barrios)];
+};
+
 /** Los encuentros que de verdad pueden pasar: ni cancelados, ni de una cancelada. */
 const encuentrosVivos = (actividades: ActividadConId[]): [Date, Date][][] =>
   actividades
@@ -252,6 +307,8 @@ export const estadoDelCatalogo = (
   ahora: Date,
 ): EstadoDelCatalogo => {
   const publicadas = actividades.filter((a) => a.estado === 'publicado');
+  /** B-703 — el subconjunto sobre el que `conCupo` y `completas` significan algo. */
+  const conInscripcion = publicadas.filter((a) => a.inscripcion?.requiere === true);
   const ventanas = encuentrosVivos(actividades).flat();
   const limite = ahora.getTime() + DIAS_PROXIMOS * MS_POR_DIA;
   const viejo = ahora.getTime() - DIAS_ESPERANDO * MS_POR_DIA;
@@ -279,6 +336,9 @@ export const estadoDelCatalogo = (
     ),
     porTipo: repartir(actividades.map((a) => a.tipo)),
     porArancel: repartir(actividades.map((a) => a.arancel?.tipo ?? '')),
+    // B-702 — una fila por barrio ofrecido, sin repetir dentro de la misma
+    // actividad. Como `porModalidad`, puede sumar más que `total`.
+    porBarrio: repartir(actividades.flatMap(barriosQueOfrece)),
     // B-224 — cada actividad cuenta en **cada forma que ofrece**, con la misma
     // regla que el desplegable del listado (`modalidadesQueOfrece`): una con una
     // fila presencial y otra virtual cuenta en las tres. Contar solo la
@@ -307,6 +367,11 @@ export const estadoDelCatalogo = (
       conFlyer: publicadas.filter((a) => !faltaElFlyer(imagenesDe(a))).length,
       conEtiquetas: publicadas.filter((a) => (a.tags ?? []).length > 0).length,
       conDescripcionSuficiente: publicadas.filter((a) => !descripcionCorta(a)).length,
+      // B-703 — el denominador de las dos últimas es `conInscripcion`, no
+      // `publicadas`: un cupo en una actividad de entrada libre no dice nada.
+      conInscripcion: conInscripcion.length,
+      conCupo: conInscripcion.filter((a) => (a.inscripcion?.cupo ?? 0) > 0).length,
+      completas: conInscripcion.filter((a) => a.inscripcion?.completo === true).length,
     },
     avisos: CLASES_DE_AVISO.filter((clase) => candidatos[clase].length > 0).map((clase) => ({
       clase,
