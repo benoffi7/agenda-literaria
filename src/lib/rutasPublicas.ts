@@ -187,6 +187,20 @@ export const RUTA_CONTACTO = rutaCanonica('/contacto');
  */
 export const RUTA_PASADAS = rutaCanonica('/pasadas');
 
+/**
+ * La sección comercial: `/anunciar/` — B-770.
+ *
+ * **`/anunciar` y no `/publicidad`**, y es una decisión (D-450): el sitio nombra
+ * sus páginas por lo que la persona va a hacer —`/suscribirse`, `/contacto`,
+ * `/anunciar`— y no por el nombre de la industria. «Publicidad» además es la
+ * consulta de quien busca cómo funciona la publicidad, no de quien quiere poner
+ * un aviso en esta agenda.
+ *
+ * Tiene dos consumidores el día uno, que es lo que hace nacer una constante acá:
+ * el pie del sitio y el sitemap.
+ */
+export const RUTA_ANUNCIAR = rutaCanonica('/anunciar');
+
 // ─────────────────────────────────────────────────────────────────
 // Las páginas generadas
 // ─────────────────────────────────────────────────────────────────

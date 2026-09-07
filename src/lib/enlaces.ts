@@ -72,6 +72,40 @@ export const MOTIVOS_DE_CONTACTO = {
 
 export type MotivoDeContacto = keyof typeof MOTIVOS_DE_CONTACTO;
 
+/**
+ * El asunto del mail de la sección comercial (`/anunciar`) — B-770.
+ *
+ * ── Por qué NO es un tercer `MOTIVO_DE_CONTACTO` ──────────────────────────
+ * Porque `MOTIVOS_DE_CONTACTO` no es «la lista de asuntos del proyecto»: es **la
+ * lista de motivos por los que un visitante escribe**, y `/contacto` **deriva sus
+ * bloques recorriéndola** (`contactoDelSitio.ts`). Agregar acá el motivo
+ * comercial le pondría a esa página una tercera tarjeta —«Anunciar en la
+ * agenda»— sin que nadie lo decida, en una página cuyo `<title>` y cuya
+ * `meta description` hablan de sugerir una actividad y de reportar un error, y
+ * cuya forma es «una elección entre dos» (B-253). El público tampoco es el mismo:
+ * `/contacto` le habla a quien busca talleres, y esto a quien tiene un local.
+ *
+ * Lo que **sí** se comparte es lo que importa, que es el mecanismo: la casilla
+ * (`CONTACTO`), el armado del `mailto:` y la regla de que el asunto viaja para
+ * poder separar el mensaje en la bandeja sin abrirlo. De eso se ocupa
+ * `mailtoAlProyecto`, y por eso este asunto tiene que ser distinto de los otros
+ * dos — lo verifica `tests/enlaces.test.ts`.
+ */
+export const ASUNTO_COMERCIAL = 'Publicidad en la agenda';
+
+/**
+ * El `mailto:` a la casilla del proyecto, con el asunto ya puesto.
+ *
+ * `cuerpo` es opcional y sirve para precargar el contexto. No se precarga nada
+ * más: un `mailto:` largo se rompe en algunos clientes y, sobre todo, escribir
+ * por adelantado lo que la persona quería decir hace que no lo diga.
+ */
+const mailtoAlProyecto = (asunto: string, cuerpo?: string): string => {
+  const partes = [`subject=${encodeURIComponent(asunto)}`];
+  if (cuerpo) partes.push(`body=${encodeURIComponent(cuerpo)}`);
+  return `mailto:${CONTACTO}?${partes.join('&')}`;
+};
+
 /** El calendario en la web de Google, para "abrirlo y ver". */
 export const urlDelCalendario = (): string =>
   `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(CALENDARIO_ID)}&ctz=America/Argentina/Buenos_Aires`;
@@ -112,8 +146,17 @@ export const urlDeInstagram = (): string => `https://www.instagram.com/${INSTAGR
  * largo se rompe en algunos clientes y, sobre todo, escribir por adelantado lo
  * que la persona quería decir hace que no lo diga.
  */
-export const urlDeContacto = (motivo: MotivoDeContacto, cuerpo?: string): string => {
-  const partes = [`subject=${encodeURIComponent(MOTIVOS_DE_CONTACTO[motivo].asunto)}`];
-  if (cuerpo) partes.push(`body=${encodeURIComponent(cuerpo)}`);
-  return `mailto:${CONTACTO}?${partes.join('&')}`;
-};
+export const urlDeContacto = (motivo: MotivoDeContacto, cuerpo?: string): string =>
+  mailtoAlProyecto(MOTIVOS_DE_CONTACTO[motivo].asunto, cuerpo);
+
+/**
+ * El mail de la sección comercial — B-770.
+ *
+ * Es el mismo mecanismo que `urlDeContacto` con otro asunto, y no una segunda
+ * implementación: las dos salen de `mailtoAlProyecto`, o sea de la misma casilla
+ * y del mismo armado. Un `mailto:` escrito a mano en la página comercial
+ * funcionaría igual de bien hoy y dejaría de funcionar el día que la casilla
+ * cambie, en una sola de las páginas y sin que nada falle (la clase B-72/B-88).
+ */
+export const urlDeContactoComercial = (cuerpo?: string): string =>
+  mailtoAlProyecto(ASUNTO_COMERCIAL, cuerpo);

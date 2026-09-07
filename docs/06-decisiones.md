@@ -7960,3 +7960,94 @@ Cuando el campo se puede llenar con algo verdadero, se llena; cuando no, se
 escribe por qué y se deja ausente.
 
 ---
+
+## D-450 · La sección comercial ofrece un mail, no un plan — y no inventa un número
+
+**2026-09-04 · B-770**
+
+El pedido del dueño fue una sección para ofrecerle publicidad a cafés, espacios
+culturales, librerías y establecimientos afines, con dos frases que son el
+alcance entero: *«la idea no es más que mandarnos un mail»* y *«no hagas planes
+ni nada»*.
+
+### Las tres decisiones
+
+**1 · La acción es un `mailto:`, y no hay planes ni precios.** Que el sitio sea
+estático y no tenga backend para un formulario es la mitad menos importante del
+argumento: se podría publicar un formulario de Google en dos minutos. La razón
+es la otra. Una tabla de «Básico / Pro / Premium» con un precio al lado **le
+saca la negociación de las manos a quien tiene que negociar** —el dueño arregla
+por mail, caso por caso, y con un precio publicado ya arrancó cediendo— y, peor,
+habría que inventar los tres nombres, las tres duraciones y los tres números,
+que hoy no existen. La página dice que no hay lista de precios en vez de dejar
+el tema sin mencionar: el silencio en una página comercial también engaña,
+porque quien lee supone que hay una lista y que se la van a mandar.
+
+**2 · No se afirma ningún número de audiencia, y se dice por qué.** El sitio
+empezó a medir el 2026-09-03 (B-372, B-373). Cualquier «X visitas al mes» o
+«llegamos a N personas» estaría inventado, y es exactamente lo que una página
+comercial se escribe sola: suena mejor que la verdad y no se puede desmentir
+hasta que un anunciante pregunte de dónde salió. Es la misma regla que D-138,
+D-159 y D-272 vienen aplicando del lado de los datos —**mejor un dato ausente
+que uno que miente**— entrando por la puerta que ninguna proyección cubre:
+texto libre en una página pública.
+
+Lo que se vende en su lugar es lo que sí es cierto y no necesita un número:
+
+| Lo que se afirma | Cómo se verifica |
+|---|---|
+| el público es **el mismo**, no parecido: quien entra ya salió a buscar algo para leer o escribir | el sitio entero, y el §1 del diseño |
+| se llega **buscando**: una página propia por actividad, en el sitemap, con los datos escritos para que Google los entienda | `sitemap.xml`, cualquier `/actividad/{slug}` |
+| es **de acá** y **cargado a mano**, solo actividades literarias en Argentina | `/ayuda`, y el propio catálogo |
+| **hoy no hay un anuncio, ni una red, ni un píxel**, no armamos perfiles ni vendemos datos, y la medición es una sola y con consentimiento | el `dist/` de cualquier página, `src/lib/medicionSitio.ts` y `tests/terceros-antes-del-consentimiento.test.ts`. **No** se afirma «ningún script de un tercero» —las tipografías y `gtag.js` lo son— ni «no hacemos remarketing», que es un ajuste de consola que el repo no controla (**B-773**) |
+
+Y el chequeo que lo sostiene no es la buena intención:
+`tests/comercial-del-sitio.test.ts` barre el texto buscando **la forma** de una
+cifra de audiencia (dos dígitos o más a menos de 40 caracteres de «visitas»,
+«personas», «lectores»…) y una lista de palabras de volumen («miles»,
+«cientos», «masivo», «líder»). Las dos mutaciones están probadas y ponen el
+caso en rojo. Un año pelado queda exceptuado, con su motivo escrito: la frase
+honesta de la página —«empezamos a medir las visitas en septiembre de 2026»— cae
+a dos palabras de «visitas», y un gate que falla contra lo correcto se aprende
+a saltear (B-180).
+
+**3 · Lo primero que dice la página es que publicar es gratis.** La mitad de los
+espacios que la van a leer **organizan** actividades literarias, y eso entra en
+la agenda sin costo por `/contacto`, donde además está la lista de qué conviene
+contar. Sin esa línea arriba de todo, la sección comercial convierte un pedido
+gratuito en una consulta comercial: una confusión que sale caro aclarar después
+y que se la come el dueño en la bandeja.
+
+### Lo que se descartó, y por qué
+
+| Alternativa | Por qué no |
+|---|---|
+| tres planes con precios | el pedido decía lo contrario, y arriba está el motivo de fondo |
+| un formulario | no hay backend, y sobre todo no hace falta: el pedido es «que nos manden un mail» |
+| `/publicidad` como ruta | el sitio nombra sus páginas por lo que la persona va a hacer (`/suscribirse`, `/contacto`, `/anunciar`), no por el nombre de la industria. Y «publicidad» es la consulta de quien quiere entender cómo funciona la publicidad, no de quien quiere poner un aviso acá |
+| ponerla en el encabezado | la barra es para quien busca una actividad, que es casi todo el mundo: una sexta pestaña le cobra el ancho de la fila a esa mayoría para hablarle a un visitante por mes. Va en el pie, como `/pasadas` (§2.1 del diseño) |
+| `seccion="contacto"` para reusar la pestaña | pone `aria-current="page"` en un enlace que lleva a **otra** página: quien navega escuchando la barra oiría «página actual» sobre algo que no es esta página. Se agregó `'anunciar'` a `Seccion` **sin enlace**, que prende el chrome y no marca nada |
+| un tercer `MOTIVO_DE_CONTACTO` para el asunto | `/contacto` deriva sus bloques recorriendo ese registro, así que le habría aparecido una tercera tarjeta —«Anunciar en la agenda»— a una página cuyo `<title>`, cuya `meta description` y cuya forma («una elección entre dos», B-253) hablan de sugerir una actividad y de reportar un error. Se comparte lo que importa, que es el mecanismo: la casilla y el armado del `mailto:` salen del mismo helper privado de `enlaces.ts` |
+| `noindex` | es la única página del sitio cuyo lector **no** es quien busca una actividad, así que quiere ser encontrada por otra búsqueda. Entra al sitemap como `/contacto` |
+
+### Qué NO hace esta decisión
+
+**No abre B-377.** Ofrecer espacio y *servir* un anuncio son dos cosas
+distintas: la segunda es una salida pública nueva, con sus propias decisiones de
+privacidad, de peso y de identidad, y con la preferencia ya anotada en el §10 de
+`16-analitica-del-sitio.md` (vendida por nosotros y **servida** por nosotros,
+sin una red de anuncios en el medio). `/anunciar` es la puerta de entrada de esa
+conversación: no muestra un anuncio, no carga un script y no cambia una sola
+página del sitio.
+
+**Y no la hace una salida numerada del índice del §5 de `07-seguridad.md`**, que
+ya tiene escrito que «las páginas de texto del sitio no son una salida más»:
+`/ayuda` y `/contacto` no proyectan ningún documento y no llevan fila. Ésta es
+la más chica de esa clase —no recibe ni una prop, así que no hay un solo dato de
+una actividad que pueda tocar— y lo que sí tiene, el riesgo del texto libre en
+una página pública, lo cubre el barrido de su test, igual que en esas dos. Si se
+decide contarla igual, es **B-772**, junto con la fila pendiente del `/404`
+(B-654).
+```
+
+---

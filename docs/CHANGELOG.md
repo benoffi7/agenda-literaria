@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La sección comercial, `/anunciar`** — **B-770**, **D-450**: ofrece espacio
+  a cafés, librerías y espacios culturales, con un mail como única acción. Sin
+  planes ni precios, y **sin inventar un número de audiencia** que el sitio
+  todavía no tiene: la letra chica lo dice en vez de callarlo.
+
 - **Los encuentros de un ciclo dejaron de ser cáscaras en los datos
   estructurados** — **B-721**, **B-730**, **D-410**. Cada `subEvent` hereda los
   datos de su actividad, con la oferta re-decidida por encuentro. Cuesta 45 B.
@@ -49,6 +54,74 @@
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
+
+## 2026-09-04 · la sección comercial: `/anunciar` (B-770, D-450)
+
+El sitio tiene por primera vez una página que **no le habla a quien busca una
+actividad**. `/anunciar` le habla a quien tiene un café, una librería o un
+espacio cultural y podría pagar por estar acá, y su acción es **un mail**: sin
+formulario, sin alta de cuenta, sin planes y sin precios.
+
+Lo que la página dice, y es todo verificable hoy: que el público de esta agenda
+y el de un café literario **son el mismo**, que el sitio está hecho para que se
+lo encuentre en el buscador —una página propia por actividad, en el sitemap y
+con los datos escritos para que Google los entienda—, que las actividades se
+cargan a mano y solo de Argentina, y que **hoy no hay un solo anuncio en ninguna
+página** —ni una red de anuncios ni un píxel de seguimiento—, que no armamos
+perfiles ni vendemos datos, y que lo único que se mide es cuánta gente entra, con
+consentimiento.
+
+Esa última frase decía «ni un script de un tercero» y **la frenó el
+`auditor-privacidad`**: es falsa —las tipografías salen de `fonts.googleapis.com`
+(B-481) y `gtag.js` de `googletagmanager.com` (B-372)— y el banner de la **misma**
+página dice que usamos Google Analytics. Y «no hace remarketing» afirmaba un
+ajuste de la consola de GA4 que este repo no controla (**B-773**). Las dos son la
+misma clase que el número inventado, así que las dos quedaron con la misma red: el
+test prohíbe negar un tercero que el sitio sí tiene.
+
+Y lo que la página dice **de lo que no tiene**, que es la mitad que la hace
+defendible: la medición arrancó el 2026-09-03 (B-372, B-373), así que **no hay
+números de audiencia** y la letra chica lo dice antes de que lo pregunten, en
+vez de callarlo. `tests/comercial-del-sitio.test.ts` barre el texto buscando
+cifras de audiencia y palabras de volumen («miles», «cientos», «masivo»), así
+que la próxima versión de la página no las puede meter sin ponerse en rojo.
+Cuando **B-374** acumule datos reales, la sección se puede volver a mirar con
+cifras y ese chequeo se revisa con los números en la mano.
+
+Lo primero que la página dice, arriba de todo, es que **publicar una actividad
+no cuesta nada** y se pide por `/contacto`: la mitad de los espacios que van a
+leer esto organizan actividades literarias, y sin esa línea la página convierte
+un pedido gratuito en una consulta comercial.
+
+Detalles de forma, todos por el patrón que ya existía:
+
+- **el texto vive en `src/lib/comercialDelSitio.ts`**, no en el `.astro` —
+  igual que `/ayuda`, `/contacto` y `/suscribirse`, y acá el motivo pesa más
+  que en las otras tres: lo que hay que verificar es el texto;
+- **el `mailto:` sale de `enlaces.ts`** (`urlDeContactoComercial`), que ahora
+  comparte el armado con `urlDeContacto` a través de un helper privado. El
+  asunto es «Publicidad en la agenda», distinto de los dos motivos del
+  visitante, que es lo único que permite separar el mensaje en la bandeja sin
+  abrirlo. **No es un tercer `MOTIVO_DE_CONTACTO`**: `/contacto` deriva sus
+  bloques de ese registro y le habría aparecido una tercera tarjeta a una
+  página escrita para otro lector;
+- **se indexa** (está en `RUTAS_FIJAS`, sin `noIndex`) porque quiere ser
+  encontrada por otra búsqueda que las actividades;
+- **la entrada es el pie y no el encabezado**, con el mismo criterio con el que
+  `/pasadas` está solo en el pie: la barra de arriba es para quien vino por una
+  actividad. `'anunciar'` es el primer valor de `Seccion` **sin enlace en la
+  barra**: prende el encabezado y el pie sin poner un `aria-current="page"`
+  sobre un enlace que lleva a otra página;
+- **`/anunciar` y no `/publicidad`**: el sitio nombra sus páginas por lo que la
+  persona va a hacer (`/suscribirse`, `/contacto`), no por el nombre de la
+  industria.
+
+Ofrecer espacio y **servir** un anuncio siguen siendo dos cosas distintas: la
+segunda es **B-377** y no se tocó. `/anunciar` es la puerta de entrada de esa
+conversación y no cambia nada del sitio.
+```
+
+---
 
 ## 2026-09-04 · los encuentros de un ciclo dejaron de ser cáscaras en el JSON-LD (B-721, B-730)
 

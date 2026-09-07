@@ -2801,6 +2801,20 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-770 a B-773 · La sección comercial `/anunciar` · P2
+
+```
+
+Y las filas:
+
+```md
+| **B-770** | **La sección comercial `/anunciar`**: ofrecerle espacio a cafés, librerías y espacios culturales, con el mail como única acción. Sin planes, sin precios y sin un número de audiencia inventado | ✅ hecho (2026-09-04) — D-450, `src/lib/comercialDelSitio.ts` + `src/pages/anunciar.astro`. Entra al sitemap y al pie; **B-377 sigue intacto** |
+| **B-771** | **Revisar `/anunciar` cuando haya datos de audiencia.** Hoy la página dice que no los tenemos, que es lo correcto: la medición arrancó el 2026-09-03. Con un mes de historia (**B-374**) se puede agregar un número real, y ahí hay que revisar el chequeo de `tests/comercial-del-sitio.test.ts` que hoy prohíbe las cifras de audiencia — con los números en la mano, no sacándolo porque molesta | 🟡 depende de B-374 |
+| **B-772** | **La fila de `/anunciar` en el índice de salidas públicas, si se decide numerarla.** Hoy **no** la lleva, y con criterio: `07-seguridad.md` tiene escrito que «las páginas de texto del sitio no son una salida más» —`/ayuda` y `/contacto` no proyectan ningún documento y no tienen fila—, y ésta es la más chica de esa clase (no recibe ni una prop). Si se decide contarla igual, va junto con **B-654** (la fila del `/404`, también pendiente): las dos filas y el salto de «doce» a «catorce» son un solo cambio atómico sobre cuatro archivos. El texto exacto está en `.estado/comercial.md` § 5 | 🔵 futuro, junto con B-654 |
+```
+
+---
+
 ### B-730 · `B-721` cerrado: los `subEvent` eran cáscaras y tres de los nueve avisos eran eso — ✅ hecho (2026-09-04) · P2
 
 Es el cierre de B-721. El cuerpo de arriba (§1 a §3) es el ítem; la parte que

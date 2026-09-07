@@ -54,7 +54,25 @@ import {
  * todos los tamaños. Es además la «marca de registro» que el sistema pide —una
  * línea de imprenta que cruza la página entera.
  */
-export type Seccion = 'agenda' | 'cartelera' | 'suscribirse' | 'ayuda' | 'contacto';
+/**
+ * Las secciones que una página puede declarar.
+ *
+ * **`'anunciar'` no tiene enlace en esta barra, y es el primer valor así** —
+ * B-770. `/anunciar` es la sección comercial: le habla a quien tiene un café o
+ * una librería, no a quien busca una actividad, así que su entrada está en el pie
+ * y no acá — una sexta pestaña le cobraría el ancho de la fila a la mayoría que
+ * vino por un taller. Pero la página necesita **una** sección igual: el default
+ * de `Base.astro` es `'ninguna'`, que apaga el encabezado y el pie enteros (eso
+ * es para `/admin`), y publicar una página sin salida es el bug que
+ * `tests/chrome-del-sitio.test.ts` existe para frenar.
+ *
+ * La alternativa era declarar `'contacto'` y reusar su pestaña. No se hizo porque
+ * eso pone `aria-current="page"` en un enlace que lleva a **otra** página: quien
+ * navega escuchando la barra oiría «página actual» sobre algo que no es la página
+ * en la que está. Un valor sin enlace no marca nada, que es exactamente lo que
+ * corresponde a una página que no está en el menú.
+ */
+export type Seccion = 'agenda' | 'cartelera' | 'suscribirse' | 'ayuda' | 'contacto' | 'anunciar';
 
 interface Props {
   activa?: Seccion;

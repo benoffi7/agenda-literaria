@@ -1244,7 +1244,7 @@ el sitemap.
 
 | Qué | Entra al sitemap |
 |---|---|
-| las páginas fijas (`/`, `/cartelera`, `/pasadas`, `/suscribirse`, `/ayuda`, `/contacto`) | siempre |
+| las páginas fijas (`/`, `/cartelera`, `/pasadas`, `/suscribirse`, `/ayuda`, `/contacto`, `/anunciar`) | siempre |
 | una publicada con fechas por venir | siempre |
 | una publicada que ya pasó | hasta **90 días** después de su última fecha |
 | una cancelada que estuvo publicada | hasta **30 días** después de su última edición |
@@ -1366,6 +1366,58 @@ el markup: salen todas de `src/lib/enlaces.ts` (B-228). El motivo está en D-133
 `src/components/sitio/SuscribirseResumen.astro` —el bloque corto, el botón de
 Google más un enlace a esta página— **está cableado en la home desde B-231**
 (2026-09-01), abajo del listado. Ver la sección de la home y **D-134**.
+### `/anunciar` — la sección comercial (B-770, D-450)
+
+La página que le ofrece **espacio en el sitio** a cafés, librerías y espacios
+culturales, y **la única del sitio cuyo lector no es quien busca una actividad**.
+Su acción es un `mailto:` con el asunto «Publicidad en la agenda», que sale de
+`enlaces.ts` como los otros dos (B-228). No hay formulario, no hay alta de cuenta
+y —esto fue instrucción del dueño— **no hay planes ni precios**: una tabla de
+«Básico / Pro / Premium» le saca la negociación de las manos a quien tiene que
+negociar, y habría que inventar los tres nombres y los tres números.
+
+Cuatro argumentos de «por qué acá», y los cuatro se verifican abriendo el sitio:
+el público de esta agenda y el de un café literario **son el mismo**, se llega
+buscando —una página propia por actividad, en el sitemap y con los datos escritos
+para que Google los entienda—, está cargado a mano y solo de Argentina, y **hoy
+no hay un solo anuncio en ninguna página**, ni una red de anuncios ni un píxel de
+seguimiento.
+
+Esa última frase decía «ni un script de un tercero» y **el `auditor-privacidad`
+la frenó**: es falsa —las tipografías salen de `fonts.googleapis.com` (B-481) y
+`gtag.js` de `googletagmanager.com` con consentimiento (B-372)— y el banner de la
+**misma** página dice que usamos Google Analytics. Es la misma clase que el
+número inventado, así que quedó con la misma red: el test prohíbe negar un
+tercero que el sitio sí tiene.
+
+Y una sección de **lo que todavía no te podemos decir**, que es la que la hace
+defendible: no hay números de audiencia porque la medición arrancó el 2026-09-03
+(B-372, B-373), no hay lista de precios, y no va a haber una red de anuncios en
+el medio. Decirlo es mejor que callarlo: en una página comercial el silencio
+también engaña, porque quien lee supone que la lista existe y que se la van a
+mandar.
+
+Dos cosas que no se ven mirando la página:
+
+- **El chequeo es de la clase, no de la instancia.**
+  `tests/comercial-del-sitio.test.ts` barre el texto buscando **la forma** de una
+  cifra de audiencia —dos dígitos o más cerca de «visitas», «personas»,
+  «lectores»— y una lista de palabras de volumen («miles», «cientos», «masivo»).
+  Un número inventado se ve perfectamente bien en pantalla y suena mejor que la
+  verdad; es la misma regla de D-138 y D-272 —mejor un dato ausente que uno que
+  miente— entrando por la puerta que ninguna proyección cubre, que es el texto
+  libre. Cuando **B-374** traiga datos reales, el chequeo se revisa con los
+  números en la mano (**B-771**).
+- **Lo primero que dice es que publicar es gratis**, con el enlace a `/contacto`.
+  La mitad de los espacios que la van a leer **organizan** actividades
+  literarias, y sin esa línea la sección convierte un pedido gratuito en una
+  consulta comercial.
+
+**Entra al sitemap y no lleva `noindex`** (quiere ser encontrada, por otra
+búsqueda que las actividades) y **su entrada es el pie, no el encabezado**: la
+barra de arriba es para quien vino por una actividad. Ofrecer espacio y *servir*
+un anuncio siguen siendo dos cosas distintas — la segunda es **B-377**.
+
 ## Historial de versiones
 
 Cada vez que una edición pisa algo que cargó una persona, `guardarVersion`

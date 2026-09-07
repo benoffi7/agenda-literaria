@@ -6,8 +6,8 @@
 2. **Sitio público** — Astro estático (SSG). **Publicado en
    [`agendaleh.ar`](https://agendaleh.ar)** (D-165): el listado con búsqueda y
    filtros y la página de detalle (**B-227**), la cartelera de flyers
-   (**B-265**), las páginas de mes (**B-113**), el archivo `/pasadas`, las tres
-   páginas de texto (`/ayuda`, `/contacto`, `/suscribirse`) y el `canonical`
+   (**B-265**), las páginas de mes (**B-113**), el archivo `/pasadas`, las cuatro
+   páginas de texto (`/ayuda`, `/contacto`, `/suscribirse`, `/anunciar`) y el `canonical`
    absoluto + Open Graph + `sitemap.xml` + `robots.txt` de **B-109**. Lo que
    queda son los hubs de taxonomía (**B-108**).
 3. **Google Calendar público** — espejo de solo lectura.
@@ -155,6 +155,9 @@ src/
     ayudaDelSitio.ts        el contenido de /ayuda, como datos (B-232)
     contactoDelSitio.ts     el contenido de /contacto, derivado de enlaces (B-232)
     suscripcion.ts          los caminos de /suscribirse, como datos (B-230)
+    comercialDelSitio.ts    el contenido de /anunciar, como datos: el texto de la
+                            sección comercial, sin un número de audiencia que
+                            todavía no existe (B-770, D-450)
     contenidoDelSitio.ts    SOLO build time — el ÚNICO lector de Firestore del
                             sitio: el where del §5.3, y una lectura para los
                             tres artefactos (B-227)
@@ -191,6 +194,8 @@ src/
     ayuda.astro             /ayuda — texto, sin JS ni Firestore (B-232)
     contacto.astro          /contacto — dos mailto con asunto propio (B-232)
     suscribirse.astro       /suscribirse — llevarse la agenda (B-230)
+    anunciar.astro          /anunciar — la sección comercial: ofrece espacio y la
+                            acción es un mailto, sin planes (B-770, D-450)
 functions/                  puro arriba, pegamento en el medio, *-trigger.js abajo
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario

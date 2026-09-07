@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ASUNTO_COMERCIAL,
   CALENDARIO_ID,
   CONTACTO,
   MOTIVOS_DE_CONTACTO,
   urlDeContacto,
+  urlDeContactoComercial,
   urlDeInstagram,
   urlDelCalendario,
   urlDelIcs,
@@ -31,14 +33,18 @@ const TODAS = (): string[] => [
   urlDeInstagram(),
   urlDeContacto('sugerencia'),
   urlDeContacto('error'),
+  // B-770: la sección comercial es la octava salida del módulo. Entra a esta
+  // lista y no aparte, porque las propiedades transversales de abajo —ninguna es
+  // la URL privada del ICS, ninguna repite a otra— valen para todas.
+  urlDeContactoComercial(),
 ];
 
 describe('los enlaces externos del sitio', () => {
   it('el barrido mira todas las salidas del módulo', () => {
     // Control positivo: las tres afirmaciones de abajo recorren esta lista, y una
     // lista corta las dejaría pasar sin haber mirado nada.
-    expect(TODAS()).toHaveLength(7);
-    expect(new Set(TODAS()).size, 'dos salidas devuelven la misma URL').toBe(7);
+    expect(TODAS()).toHaveLength(8);
+    expect(new Set(TODAS()).size, 'dos salidas devuelven la misma URL').toBe(8);
   });
 
   it('ninguna es la URL privada del ICS', () => {
@@ -83,6 +89,25 @@ describe('los enlaces externos del sitio', () => {
     expect(asunto('sugerencia')).not.toBe(asunto('error'));
   });
 
+  it('el asunto comercial es propio y no pisa a los dos motivos — B-770', () => {
+    /*
+     * El asunto es lo que permite separar los mensajes en la bandeja sin
+     * abrirlos, y una consulta comercial se lee en otro momento que una
+     * sugerencia. Si compartiera el asunto con alguno de los dos motivos, la
+     * regla que el dueño pidió se rompería sin que nada falle.
+     *
+     * Y **no es un tercer `MOTIVO_DE_CONTACTO`** a propósito: `/contacto` deriva
+     * sus bloques recorriendo ese registro, así que agregarlo ahí le pondría una
+     * tercera tarjeta a una página escrita para otro lector. El motivo completo
+     * está en `enlaces.ts`.
+     */
+    expect(new URL(urlDeContactoComercial()).searchParams.get('subject')).toBe(ASUNTO_COMERCIAL);
+
+    const asuntos = Object.values(MOTIVOS_DE_CONTACTO).map((m) => m.asunto);
+    expect(asuntos).not.toContain(ASUNTO_COMERCIAL);
+    expect(Object.keys(MOTIVOS_DE_CONTACTO)).not.toContain('comercial');
+  });
+
   it('el mailto va a la casilla del proyecto y precarga el cuerpo si se lo pasan', () => {
     expect(urlDeContacto('error').startsWith(`mailto:${CONTACTO}?`)).toBe(true);
 
@@ -93,5 +118,13 @@ describe('los enlaces externos del sitio', () => {
     // Y sin cuerpo no manda un `body=` vacío, que en algunos clientes abre el
     // mail con una línea en blanco arriba de todo.
     expect(urlDeContacto('error')).not.toContain('body=');
+
+    // Las dos salidas comparten el armado (`mailtoAlProyecto`), así que las dos
+    // propiedades valen para las dos: misma casilla, mismo trato del cuerpo.
+    expect(urlDeContactoComercial().startsWith(`mailto:${CONTACTO}?`)).toBe(true);
+    expect(urlDeContactoComercial()).not.toContain('body=');
+    expect(new URL(urlDeContactoComercial('Tengo un café en Boedo')).searchParams.get('body')).toBe(
+      'Tengo un café en Boedo',
+    );
   });
 });

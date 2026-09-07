@@ -1,0 +1,164 @@
+---
+/**
+ * `/anunciar` — la sección comercial (B-770, **D-450**).
+ *
+ * Le ofrece espacio en el sitio a cafés, librerías y espacios culturales, y **la
+ * acción es un mail**: no hay formulario porque el sitio es estático y no hay
+ * nada que reciba uno, y no hay planes ni precios porque eso lo negocia una
+ * persona por mail y una tabla en el sitio se lo saca de las manos. El motivo
+ * completo está en el docblock de `lib/comercialDelSitio.ts`, que es de donde
+ * sale **todo** el texto de esta página.
+ *
+ * ── El nombre de la ruta ──────────────────────────────────────────────────
+ * `/anunciar` y no `/publicidad`: el sitio nombra sus páginas por lo que la
+ * persona va a hacer (`/suscribirse`, `/contacto`) y no por el nombre de la
+ * industria. Vive en `RUTA_ANUNCIAR` (`lib/rutasPublicas.ts`) con su motivo.
+ *
+ * ── Se indexa, y no está en el encabezado ─────────────────────────────────
+ * Las dos mitades de la misma decisión. **Se indexa** porque quiere ser
+ * encontrada por *otra* búsqueda que las actividades: quien tiene un local no
+ * busca «taller de escritura en Villa Crespo». Y **no va en la barra de arriba**
+ * porque ahí van las cinco cosas que busca quien vino por una actividad, que es
+ * casi todo el mundo; una sexta pestaña le cobraría a esa mayoría el ancho de la
+ * fila para hablarle a un visitante por mes. La entrada está en el pie, que es
+ * donde el sitio pone lo que se busca a propósito.
+ *
+ * `seccion="anunciar"` es un valor de `Seccion` **sin enlace en el encabezado**,
+ * y es el primero del sitio: prende el chrome —sin él la página se publicaría sin
+ * salida (B-229)— y no marca ninguna pestaña. La alternativa era marcar
+ * «Contacto», y eso pone un `aria-current="page"` en un enlace que lleva a otra
+ * página: quien navega escuchando la barra oiría «página actual» sobre algo que
+ * no es esta página.
+ *
+ * ── El `<title>` y la `meta description` también salen del módulo ─────────
+ * Lo pidió el `auditor-privacidad`: escritos en el marcado quedaban **fuera del
+ * barrido del test**, y la `meta description` es el string más leído de la
+ * página —es el que Google muestra en el resultado—. O sea que era el único
+ * texto de esta salida donde un número de audiencia inventado salía en verde.
+ * De paso, el `<h1>` y la primera mitad del `<title>` dejaron de ser dos copias
+ * de la misma frase.
+ *
+ * ── Lo visual sale del sistema ────────────────────────────────────────────
+ * Radio 0, sin sombras, tintas con nombre y espaciados en la escala de 4px
+ * (D-146). Las clases compartidas vienen de `components/sitio/estilos.ts` — el
+ * anillo de foco no se escribe acá, que es lo que `tests/estilos-del-sitio.test.ts`
+ * exige. La forma es la de `/contacto` y `/suscribirse`, a propósito: es la misma
+ * clase de página («ofrecemos algo, hacé esto») y no necesita un lenguaje propio.
+ */
+import { NOMBRE } from '@/lib/identidad';
+import Base from '@/layouts/Base.astro';
+import {
+  ACCION_COMERCIAL,
+  ANTES_DE_ESCRIBIRNOS,
+  DESCRIPCION_COMERCIAL,
+  DESPUES_DEL_MAIL,
+  ENTRADA_COMERCIAL,
+  LETRA_CHICA_COMERCIAL,
+  POR_QUE_ACA,
+  QUE_CONTARNOS,
+  TITULO_COMERCIAL,
+} from '@/lib/comercialDelSitio';
+import {
+  claseBloque,
+  claseBotonPrimario,
+  claseEnlace,
+  claseHundido,
+  claseRotulo,
+} from '@/components/sitio/estilos';
+---
+
+<Base
+  seccion="anunciar"
+  titulo={`${TITULO_COMERCIAL} — ${NOMBRE}`}
+  descripcion={DESCRIPCION_COMERCIAL}
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <h1 class="display-md text-balance text-acento">
+      {TITULO_COMERCIAL}
+    </h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">{ENTRADA_COMERCIAL}</p>
+
+    {/*
+      Va arriba de todo y no al final: quien organiza actividades tiene que
+      enterarse **antes** de leer una página comercial de que lo suyo es gratis.
+    */}
+    <p class="body-lectura mt-4 max-w-[65ch] text-super">
+      <a class={claseEnlace} href={ANTES_DE_ESCRIBIRNOS.href}>{ANTES_DE_ESCRIBIRNOS.texto}</a>.
+    </p>
+
+    <section aria-labelledby="por-que-aca" class="mt-14">
+      <h2 id="por-que-aca" class="regla-gruesa-arriba pt-4 headline-sm text-acento">
+        Por qué acá
+      </h2>
+
+      {/*
+        Grilla de dos columnas de `sm` en adelante, como los motivos de
+        `/contacto` y los caminos de `/suscribirse`: son cuatro argumentos
+        independientes y no cuatro pasos, y en una sola columna se leen como una
+        secuencia. `items-start` para que el bloque corto no se estire al alto del
+        largo.
+      */}
+      <div class="mt-6 grid items-start gap-4 sm:grid-cols-2">
+        {
+          POR_QUE_ACA.map((bloque) => (
+            <section
+              aria-labelledby={`arg-${bloque.id}`}
+              class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}
+            >
+              <h3 id={`arg-${bloque.id}`} class="headline-sm text-tinta">
+                {bloque.titulo}
+              </h3>
+              <p class="body-lectura mt-2 text-super">{bloque.texto}</p>
+            </section>
+          ))
+        }
+      </div>
+    </section>
+
+    <section aria-labelledby="lo-que-no-tenemos" class={`mt-14 p-5 sm:p-6 ${claseHundido}`}>
+      <p class={claseRotulo}>La letra chica</p>
+      <h2 id="lo-que-no-tenemos" class="mt-2 headline-sm text-tinta">
+        Lo que todavía no te podemos decir
+      </h2>
+
+      <dl class="mt-4 max-w-[65ch] space-y-5">
+        {
+          LETRA_CHICA_COMERCIAL.map((bloque) => (
+            <div id={bloque.id}>
+              <dt class="body-md font-semibold text-tinta">{bloque.titulo}</dt>
+              <dd class="body-md mt-1 text-super">{bloque.texto}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section aria-labelledby="como-sigue" class="mt-14 regla-gruesa-arriba pt-4">
+      <h2 id="como-sigue" class="headline-sm text-acento">
+        Cómo sigue
+      </h2>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">
+        Se arranca con un mail, y con estas cuatro cosas alcanza para contestarte
+        algo útil de una:
+      </p>
+
+      <ul class="body-md mt-4 max-w-[65ch] list-disc space-y-1 ps-5 text-super marker:text-azul">
+        {QUE_CONTARNOS.map((item) => <li class="min-w-0">{item}</li>)}
+      </ul>
+
+      <p class="mt-8">
+        <a class={`${claseBotonPrimario} w-full sm:w-auto`} href={ACCION_COMERCIAL.href}>
+          {ACCION_COMERCIAL.etiqueta}
+        </a>
+      </p>
+      {/* El asunto se muestra para que se entienda por qué viene puesto, y para
+          que quien prefiera escribir desde otra casilla lo pueda copiar. */}
+      <p class="mt-2 body-sm text-super">Se manda con el asunto «{ACCION_COMERCIAL.asunto}».</p>
+
+      {DESPUES_DEL_MAIL.map((parrafo) => (
+        <p class="body-lectura mt-3 max-w-[65ch] text-super">{parrafo}</p>
+      ))}
+    </section>
+  </main>
+</Base>
