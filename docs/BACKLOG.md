@@ -3237,14 +3237,20 @@ resolver eso, no sacar la línea.
 > **Faltan los tres que son de consola y de `.env`, y ninguno es de código:**
 >
 > 1. ~~habilitar las dos APIs~~ ✅
-> 2. **GA4** → Administrar → Accesos a la propiedad → agregar
->    `calendar-sync@agenda-literaria.iam.gserviceaccount.com` con rol **Lector**
->    (la misma cuenta del calendario, no una nueva).
-> 3. **Search Console** → la propiedad de `agendaleh.ar` → Usuarios y permisos →
->    el mismo mail, permiso **Restringido**.
-> 4. `functions/.env` con `GA4_PROPERTY_ID` —**el numérico**, no el
->    `G-9CFMHSSGRC`— y `SEARCH_CONSOLE_SITE`, y después
->    `firebase deploy --only functions:traerAnaliticaDelSitio`.
+> 2. ~~**GA4** → rol **Lector** para `calendar-sync@`~~ ✅ **hecho el 2026-09-07**
+>    (lo confirmó el dueño).
+> 3. ~~**Search Console** → permiso **Restringido** para la misma cuenta~~
+>    ✅ **hecho el 2026-09-07** (lo confirmó el dueño).
+> 4. ~~`functions/.env` con los dos identificadores~~ ✅ **cargados el
+>    2026-09-07**: `GA4_PROPERTY_ID=551073593` (el numérico, no el
+>    `G-9CFMHSSGRC`) y `SEARCH_CONSOLE_SITE=sc-domain:agendaleh.ar` —confirmado
+>    por dos señales: el TXT de verificación en el DNS y que en el selector de
+>    Search Console la propiedad aparece **sin el `https://`**—. **Falta el
+>    deploy:** `firebase deploy --only functions:traerAnaliticaDelSitio`.
+> 5. **La zona horaria de la propiedad de GA4** en `(GMT-03:00) Buenos Aires`
+>    (§9.4 paso 5). Es el que más conviene no saltear: si no coincide, los
+>    números **no fallan**, se corren un día — la trampa 1 del §13 con otra cara,
+>    y no hay forma de detectarla desde el código.
 >
 > Y lo que conviene tener presente al mirar el resultado: la Function corre **una
 > vez por día**, así que los números aparecen al día siguiente del deploy; y

@@ -995,7 +995,7 @@ tiene que devolver las dos líneas. Sin esto, la Function loguea un 403 con
 `SERVICE_DISABLED` y un link para habilitarla — que es el error más fácil de
 leer de los cuatro que pueden pasar acá.
 
-**2 · Dar acceso de lectura a la cuenta de servicio en GA4**
+**2 · Dar acceso de lectura a la cuenta de servicio en GA4** — ✅ **hecho el 2026-09-07**
 
 `calendar-sync@agenda-literaria.iam.gserviceaccount.com` — **la misma que ya
 tiene el calendario**, no una nueva.
@@ -1010,7 +1010,7 @@ rol quedara en «Nadie», la Data API devuelve
 `User does not have sufficient permissions for this property` — que es lo que la
 pantalla del panel va a mostrar textualmente.
 
-**3 · Dar acceso de lectura a la misma cuenta en Search Console**
+**3 · Dar acceso de lectura a la misma cuenta en Search Console** — ✅ **hecho el 2026-09-07**
 
 En Search Console: la propiedad de `agendaleh.ar` → Configuración → **Usuarios y
 permisos** → Agregar usuario → pegar el mismo mail → permiso
@@ -1037,6 +1037,21 @@ SEARCH_CONSOLE_SITE=<sc-domain:agendaleh.ar   o   https://agendaleh.ar/>
 > dominio se verificó **por DNS**, es `sc-domain:agendaleh.ar` (sin `https://`,
 > sin barra). Si se registró como **prefijo de URL**, es `https://agendaleh.ar/`
 > **con la barra final**. No son intercambiables: con la que no es, 403.
+>
+> ✅ **Resuelto el 2026-09-07: es `sc-domain:agendaleh.ar`**, ya cargado. Dos
+> señales que coinciden: el DNS de `agendaleh.ar` tiene un TXT
+> `google-site-verification=` en el apex —el único método de verificación de una
+> propiedad de dominio— y el dueño confirmó que en el selector de Search Console
+> aparece **sin el `https://`**, que es como se lista una propiedad de dominio.
+>
+> **Cómo distinguirlas de un vistazo**, que es la pregunta que costó: en el
+> selector de propiedades, una **propiedad de dominio** se lista como
+> `agendaleh.ar` a secas y cubre todo lo de abajo (con y sin `www`, http y https,
+> subdominios); un **prefijo de URL** se lista **con el esquema y la barra**,
+> `https://agendaleh.ar/`, y cubre solo eso. La de dominio se verifica **solo**
+> por DNS; el prefijo admite además archivo HTML, etiqueta `meta`, Analytics o
+> Tag Manager — así que el TXT del DNS es señal fuerte pero no prueba, y por eso
+> hicieron falta las dos.
 
 Los dos son identificadores de recursos, no credenciales, y por eso pueden ir en
 un `.env` versionado — `tests/env-versionados.test.ts` los tiene como excepción
