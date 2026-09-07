@@ -199,12 +199,24 @@ describe('el resto del recorrido del skill campo-nuevo', () => {
     expect(imagenExterna('https://x.ar/1.jpg', true).textoAlternativo).toBe('');
   });
 
-  it('la barra de abajo sabe nombrarlo (B-184)', () => {
-    // Sin nombre, un guardado a `publicado` diría «falta algo» sin decir qué.
+  it('la barra de abajo ya no lo nombra, porque ya no falta para publicar', () => {
+    /*
+     * **Decía lo contrario**: «la barra de abajo sabe nombrarlo (B-184) — sin
+     * nombre, un guardado a `publicado` diría "falta algo" sin decir qué». Era
+     * cierto mientras el campo bloqueara; el dueño sacó el bloqueo el 2026-09-07.
+     *
+     * Y la etiqueta **se queda** en `CAMPOS`, que es la parte que hay que
+     * entender para no borrarla de paso: ese mapa traduce **cualquier** ruta que
+     * el schema pueda reportar, y `imagenes.N.textoAlternativo` sigue siendo una
+     * ruta válida —el campo existe y tiene su forma (largo máximo)—. Si algún día
+     * alguien escribe 400 caracteres ahí, el rechazo va a caer en esa ruta y la
+     * barra tiene que saber nombrarla. Lo que se fue es la exigencia de que
+     * **esté**, no la del formato.
+     */
     expect(CAMPOS['imagenes.N.textoAlternativo']).toBeDefined();
     expect(
       faltaParaPublicar({ ...conImagen({ textoAlternativo: '' }) }).map((i) => i.path.join('.')),
-    ).toContain('imagenes.0.textoAlternativo');
+    ).not.toContain('imagenes.0.textoAlternativo');
   });
 
   it('la analítica conoce la ruta, y solo la ruta', () => {

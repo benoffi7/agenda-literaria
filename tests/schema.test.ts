@@ -457,7 +457,20 @@ describe('schema — la galería (B-167)', () => {
  * cuatro campos que el dueño rechazó) o pedirlo en un borrador (y una carga a
  * medio hacer dejaría de guardarse).
  */
-describe('el texto alternativo de la portada (B-301, D-440)', () => {
+/**
+ * **El texto alternativo dejó de ser obligatorio para publicar** — lo pidió el
+ * dueño el 2026-09-07 («sacame lo de la descripcion obligatoria de la imagen»), y
+ * revierte el bloqueo que B-301 / D-440 había puesto cuatro días antes.
+ *
+ * Los cuatro casos que afirmaban el bloqueo están abajo **dados vuelta y con su
+ * texto original citado**, que es cómo este repo registra un desvío: el valor de
+ * esos casos era decir qué se rompía si el bloqueo desaparecía, y ahora dicen que
+ * desapareció a propósito.
+ *
+ * **Lo que NO cambió, y sigue con sus casos intactos:** el campo existe, se
+ * guarda, viaja en `toPublic`, y las filas secundarias nunca lo pidieron.
+ */
+describe('el texto alternativo de la portada (B-301, D-440, revertido)', () => {
   const img = (over: Partial<Imagen> = {}): Imagen => ({
     id: 'img_1',
     url: 'https://ejemplo.ar/tapa.jpg',
@@ -468,28 +481,39 @@ describe('el texto alternativo de la portada (B-301, D-440)', () => {
     ...over,
   });
 
-  it('sin él, no se puede publicar, y el error cae en la fila de la portada', () => {
-    expect(errores({ ...publicado(), imagenes: [img({ textoAlternativo: '' })] })).toContain(
-      'imagenes.0.textoAlternativo',
-    );
+  it('sin él SÍ se puede publicar — el bloqueo se sacó a pedido del dueño', () => {
+    /*
+     * **Decía lo contrario**: «sin él, no se puede publicar, y el error cae en la
+     * fila de la portada». Era la decisión de D-440 y duró cuatro días.
+     *
+     * El argumento del dueño es el que DEC-7a (D-125) ya había escrito: un campo
+     * obligatorio en un panel de una persona produce «foto», y un alternativo de
+     * compromiso es peor que el título descriptivo que se arma solo — suena a
+     * descripción y no lo es.
+     *
+     * MUTACIÓN PROBADA: reponer el `superRefine` deja este caso y los tres de
+     * abajo en rojo.
+     */
+    expect(errores({ ...publicado(), imagenes: [img({ textoAlternativo: '' })] })).toEqual([]);
   });
 
-  it('en blanco tampoco alcanza: espacios no describen nada', () => {
-    expect(errores({ ...publicado(), imagenes: [img({ textoAlternativo: '   ' })] })).toContain(
-      'imagenes.0.textoAlternativo',
-    );
+  it('y en blanco tampoco bloquea: no hay nada que exigir', () => {
+    // Decía «espacios no describen nada», que era cierto mientras se exigiera.
+    expect(errores({ ...publicado(), imagenes: [img({ textoAlternativo: '   ' })] })).toEqual([]);
   });
 
-  it('un documento anterior al campo tampoco publica, y eso es el punto', () => {
+  it('un documento anterior al campo publica sin problema, y ESE era el punto', () => {
     // La clave directamente no está: es el caso de las 30 imágenes que ya están
     // en producción. Que el rechazo aparezca acá es deliberado — el aviso sale
     // en la barra desde el principio (`faltaParaPublicar`) y guardar como
-    // borrador sigue funcionando.
+    // borrador sigue funcionando.»
+    //
+    // Y ése era el costo que el dueño decidió no pagar: las 30 imágenes que ya
+    // están en producción no tienen el campo, así que la próxima vez que alguien
+    // publicara cualquiera de esas actividades tenía que escribirlo primero.
     const sinCampo = img();
     delete (sinCampo as { textoAlternativo?: string }).textoAlternativo;
-    expect(errores({ ...publicado(), imagenes: [sinCampo] })).toContain(
-      'imagenes.0.textoAlternativo',
-    );
+    expect(errores({ ...publicado(), imagenes: [sinCampo] })).toEqual([]);
   });
 
   it('un borrador sin él se guarda igual (D-120: es completitud, no forma)', () => {
@@ -504,16 +528,23 @@ describe('el texto alternativo de la portada (B-301, D-440)', () => {
     expect(errores({ ...publicado(), imagenes: conSecundariaVacia })).toEqual([]);
   });
 
-  it('lo pide la fila marcada portada, no la primera de la lista', () => {
-    // Es lo que hace `portadaDe`, y es la mitad que una derivación propia acá se
-    // equivocaría: pedir el campo en la fila que no se comparte.
+  it('y no lo pide en ninguna fila, ni en la marcada portada', () => {
+    /*
+     * Decía «lo pide la fila marcada portada, no la primera de la lista», y era
+     * el caso que ataba el schema a `portadaDe` — la mitad que una derivación
+     * propia se habría equivocado, pidiendo el campo en la fila que no se
+     * comparte (la clase de B-268).
+     *
+     * **Ese acoplamiento ya no existe acá**, y conviene saber que `portadaDe`
+     * sigue siendo la única respuesta a «cuál es la portada»: la usan el editor
+     * —que muestra el campo solo en esa fila— la vista previa y el detalle. Lo
+     * que se fue es el consumidor del schema, no la función.
+     */
     const laSegundaEsPortada = [
       img({ id: 'img_1', portada: false, textoAlternativo: '' }),
       img({ id: 'img_2', portada: true, textoAlternativo: '' }),
     ];
-    expect(errores({ ...publicado(), imagenes: laSegundaEsPortada })).toContain(
-      'imagenes.1.textoAlternativo',
-    );
+    expect(errores({ ...publicado(), imagenes: laSegundaEsPortada })).toEqual([]);
   });
 
   it('sin imágenes no se pide nada: la imagen nunca fue obligatoria', () => {

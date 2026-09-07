@@ -390,8 +390,32 @@ Tres cosas que no se adivinan del tipo:
 - **`epigrafe` es un pie de foto, no el texto alternativo.** El alternativo —lo
   que leen un lector de pantalla y Google— es `textoAlternativo`, y desde **B-301
   / D-440** es un campo propio: ver el bloque de abajo.
-- **`textoAlternativo` existe solo para la portada, y es obligatorio ahí (B-301,
-  D-440).** DEC-7a (D-125) había decidido lo contrario a propósito: el alternativo
+- **`textoAlternativo` existe solo para la portada, y es OPCIONAL.**
+
+  > ⚠️ **Era obligatorio y dejó de serlo el 2026-09-07**, a pedido del dueño
+  > («sacame lo de la descripcion obligatoria de la imagen»), cuatro días después
+  > de D-440. El campo **sigue existiendo**, se guarda y se edita en la fila de la
+  > portada; lo que se sacó es que bloquee el publicado.
+  >
+  > **El argumento es el que DEC-7a (D-125) ya había escrito y D-440 aceptó a
+  > medias**: un campo obligatorio en un panel de una persona produce «foto», y un
+  > alternativo de compromiso es peor que el título descriptivo que se arma solo,
+  > porque suena a descripción y no lo es. Con el campo opcional, el que se
+  > escriba va a ser el que alguien quiso escribir.
+  >
+  > **Qué se pierde, dicho una vez:** no hay imágenes sin `alt` —la página sigue
+  > armando «Imagen de {título}» (D-26)— hay un `alt` **genérico**. Lo que se
+  > pierde es lo que el título no dice y el flyer sí: la fecha, el precio, la
+  > sede, que en un flyer viajan como texto **dentro** de la imagen.
+  >
+  > Y lo que el bloqueo costaba, que es lo que el dueño decidió no pagar: las 30
+  > imágenes que ya están en producción no tienen el campo, así que **la próxima
+  > vez que alguien publicara cualquiera de esas actividades tenía que escribirlo
+  > primero**.
+  >
+  > Lo de abajo queda como estaba escrito.
+
+  **(El original, de B-301 / D-440.)** DEC-7a (D-125) había decidido lo contrario a propósito: el alternativo
   salía del título de la actividad, porque un campo obligatorio por imagen en un
   panel de una persona produce «foto», que es peor que un título descriptivo. El
   desvío del dueño (2026-09-03) **le acepta el argumento y le cambia el alcance**:

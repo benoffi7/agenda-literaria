@@ -79,8 +79,11 @@ const ESQUEMA_PERMITIDO = /^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?
  * las que harían ilegible el documento, no las que lo harían incompleto.
  *
  * `epigrafe` es opcional a propósito (DEC-7a): es un pie de foto, no el texto
- * alternativo — ese es `textoAlternativo`, y **se exige solo en la portada y solo
- * al publicar** (B-301, D-440). Ver el `superRefine` del nivel «publicar».
+ * alternativo — ese es `textoAlternativo`, y **también es opcional**: B-301 /
+ * D-440 lo había hecho obligatorio en la portada al publicar, y el dueño sacó ese
+ * bloqueo el 2026-09-07. El campo sigue existiendo, se guarda y se edita; lo que
+ * no hace es impedir publicar. El motivo largo está donde estaba el
+ * `superRefine`, en el nivel «publicar».
  */
 const imagenSchema = z.object({
   id: z.string().regex(/^img_/, 'El id de imagen debe venir de nuevaImagenId()'),
@@ -400,41 +403,36 @@ export const actividadFormSchema = z
     });
 
     /*
-     * B-301 / D-440 — el texto alternativo de **la portada** es obligatorio para
-     * publicar, y solo el de la portada.
+     * ── El texto alternativo de la portada **dejó de ser obligatorio** ─────
+     * Lo pidió el dueño el 2026-09-07: «sacame lo de la descripcion obligatoria
+     * de la imagen». Revierte el bloqueo que B-301 / D-440 había puesto el
+     * 2026-09-03 — el campo **sigue existiendo** y se sigue mostrando en la fila
+     * de la portada, lo que se saca es que impida publicar.
      *
-     * ── Por qué acá y no en `imagenSchema` ────────────────────────────────
-     * Porque la regla es condicional en dos ejes —qué fila y a qué estado se
-     * guarda— y ninguno de los dos se puede escribir en el tipo. Es el molde de
-     * los condicionales del §11 (la sede en presencial, la plataforma en
-     * virtual): la condición vive acá y el mensaje cae al lado del control por
-     * `path.join('.')`.
+     * Lo que decía el `superRefine` que había acá, para que la decisión se lea
+     * contra su original: pedía `textoAlternativo` en la portada al publicar,
+     * usando `portadaDe` para saber cuál es —«y sí, esto bloquea el publicado de
+     * lo que ya está publicado», que era el punto de la decisión del dueño de
+     * entonces—.
      *
-     * ── Cuál es la portada lo decide `portadaDe`, no este archivo ─────────
-     * Es la única respuesta escrita a «cuál es la portada» (`lib/imagenes.ts`) y
-     * la que usan el panel, la vista previa y el detalle. Preguntarlo acá con un
-     * `find` propio sería la clase de B-268: dos derivaciones de la misma
-     * decisión, y la que se equivoca pide el campo en la fila que no se comparte.
-     * A esta altura el nivel corto ya garantizó **exactamente una** portada, así
-     * que el fallback de `portadaDe` («la primera si no hay ninguna marcada») no
-     * se ejerce.
+     * ── Qué se pierde, dicho una vez y sin dramatizar ─────────────────────
+     * Sin el campo, la página sigue armando el `alt` con «Imagen de {título}»
+     * (D-26), así que **no hay imágenes sin `alt`**: hay un `alt` genérico. Lo
+     * que se pierde es lo que el título no dice y el flyer sí —la fecha, el
+     * precio, la sede, que en un flyer viajan como texto **dentro** de la
+     * imagen—: quien usa un lector de pantalla oye el título y no eso.
      *
-     * ── Y sí, esto bloquea el publicado de lo que ya está publicado ───────
-     * Una actividad publicada antes de B-301 no tiene el campo, así que no se
-     * puede volver a publicar sin escribirlo. Es deliberado y es el punto de la
-     * decisión del dueño: el aviso aparece en la barra desde el principio
-     * (`faltaParaPublicar`, B-183/B-184), guardar como borrador o pendiente sigue
-     * funcionando, y el sitio de hoy no se rompe — el default de lectura de la
-     * página sigue siendo «Imagen de {título}» hasta que alguien lo complete.
+     * ── Y por qué el argumento del dueño es bueno ─────────────────────────
+     * Es el mismo que DEC-7a (D-125) había escrito y que D-440 aceptó a medias:
+     * **un campo obligatorio en un panel de una persona produce «foto»**. Un
+     * alternativo escrito de compromiso para poder publicar es peor que el título
+     * descriptivo que ya se arma solo, porque suena a descripción y no lo es. Con
+     * el campo opcional, el que se escriba va a ser el que alguien quiso escribir.
+     *
+     * Queda pendiente lo que D-440 ya dejaba pendiente y no cambia con esto: que
+     * `detallePublico.ts` proyecte el campo y la plantilla lo use cuando está.
+     * Hoy viaja en `toPublic` y no llega a ninguna salida.
      */
-    const portada = portadaDe(v.imagenes as Parameters<typeof portadaDe>[0]);
-    if (portada && !portada.textoAlternativo?.trim()) {
-      const n = v.imagenes.indexOf(portada as (typeof v.imagenes)[number]);
-      falta(
-        ['imagenes', String(n < 0 ? 0 : n), 'textoAlternativo'],
-        'Describí la portada para quien no puede verla',
-      );
-    }
 
     if (v.sesiones.length === 0) falta(['sesiones'], 'Cargá al menos un encuentro');
 

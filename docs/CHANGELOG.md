@@ -2,6 +2,29 @@
 
 ## Sin publicar
 
+- **El texto alternativo de la portada dejó de ser obligatorio para publicar** —
+  pedido del dueño, y revierte lo que B-301 / D-440 había decidido cuatro días
+  antes. El campo **sigue existiendo**, se guarda y se edita; lo que se sacó es
+  que bloquee el publicado.
+
+  El argumento es el que DEC-7a ya había escrito y D-440 aceptó a medias: **un
+  campo obligatorio en un panel de una persona produce «foto»**, y un alternativo
+  de compromiso es peor que el título descriptivo que se arma solo, porque suena a
+  descripción y no lo es.
+
+  Qué se pierde, dicho una vez: no hay imágenes sin `alt` —la página sigue armando
+  «Imagen de {título}»— hay un `alt` **genérico**. Lo que se pierde es lo que el
+  título no dice y el flyer sí: la fecha, el precio, la sede, que en un flyer
+  viajan como texto dentro de la imagen. Y lo que el bloqueo costaba, que es lo
+  que se decidió no pagar: las 30 imágenes que ya están en producción no tienen el
+  campo, así que la próxima vez que alguien publicara esas actividades tenía que
+  escribirlo primero.
+
+  Los cinco casos que afirmaban el bloqueo están **dados vuelta con su texto
+  original citado**. Y la etiqueta de la barra **se queda**: ese mapa traduce
+  cualquier ruta que el schema pueda reportar, y el campo sigue teniendo forma
+  (largo máximo) — lo que se fue es la exigencia de que esté, no la del formato.
+
 - **El hook de los auditores dejó de frenar comandos de solo lectura** —
   **B-799**. Buscaba la palabra en cualquier parte del comando, así que frenó tres
   veces en una sola sesión sin que ninguno escribiera nada: un `git log` con la
