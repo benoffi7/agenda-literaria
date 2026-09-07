@@ -7649,12 +7649,35 @@ ninguno de los dos dominios, son un hecho del castellano. Lo que estaba a un typ
 de distancia es un acento corregido en un archivo y no en el otro, con las dos
 pantallas a un clic — la divergencia de B-175, exactamente.
 
-**Siguen abiertas las otras dos, y el motivo no es que no valgan:**
+**Hecha la segunda el 2026-09-07: `useActividades(version)`.** La precondición
+que el ítem pedía —«cuando el backlog se trabaje de a un frente»— se cumplió, así
+que salió a `src/components/admin/useActividades.ts`.
 
-- **El `useEffect` de carga de actividades** (`CalendarioActividades.tsx` y
-  `ListaActividades.tsx`). Sigue en `src/components/admin/`, que tiene dueño y
-  no es este frente: la extracción a `useActividades(version)` sigue siendo
-  correcta y sigue sin hacerse.
+Lo que se cuidó al hacerlo:
+
+- **Devuelve los setters, a propósito.** `ListaActividades` muta la lista en
+  memoria después de una acción —marcar cupo completo, borrar— para no releer la
+  colección por un campo (§2.5), y usa `fallo` también para los errores de esas
+  acciones. El hook es dueño de *cargar*; el componente sigue siendo dueño de *lo
+  que hace después con lo cargado*. Esconder los setters pediría un segundo estado
+  de error en la misma pantalla.
+- **`EstadisticasPanel` y `ReporteFormulario` NO lo usan, y está escrito por qué.**
+  La primera **mide** en la carga (`medirFuncion('estadisticas-abrir', …)` con la
+  cantidad, que es lo que decide si vale construir la mitad que lee GA4) y **no
+  tiene rama de error** —su resumen vacío ya sabe decir qué falta—. La segunda se
+  **come el error a propósito** y depende de `[]` y no de `[version]`. Son tres
+  variantes de la misma lectura, no tres copias.
+- **El guard es de clase**: la lista de quién puede llamar a `listarActividades`
+  sale del **directorio**, no escrita a mano, y hay tres casos —quién la llama,
+  que las dos vistas migradas piden la lista al hook con `version`, y que el flag
+  de cancelación no vuelva a convivir con esta lectura afuera del hook—. Mutación
+  probada: reponer el `useEffect` los pone en rojo los tres.
+
+Lo que **no** se prohibió: `let vivo` en general. Es el idioma correcto de
+cualquier efecto asincrónico del panel —lo usan `useOpciones` y
+`ReporteFormulario` con razón— así que prohibirlo sería prohibir el patrón bueno.
+
+**Sigue abierta la que queda:**
 - **La adopción de `tests/fixtures/`** — **reverificado el 2026-09-02, y el
   número creció en vez de bajar.** La foto original era «7 archivos sobre 59,
   cuatro firmas». Hoy `actividadCentinela` (`tests/fixtures/centinelas.ts`) ya

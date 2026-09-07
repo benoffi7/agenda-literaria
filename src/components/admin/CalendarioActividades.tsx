@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   claseBotonChip,
   claseBotonChipActivo,
   claseBotonSecundario,
   claseEnlaceCelda,
 } from '@/components/admin/campos/Campo';
-import { listarActividades } from '@/lib/actividades';
+import { useActividades } from '@/components/admin/useActividades';
 import {
   ESTADOS_CIERRE,
   INFO_CIERRE,
@@ -250,9 +250,9 @@ function FilaEncuentro({
  * uno abajo del otro, con blancos táctiles de 44px.
  */
 export function CalendarioActividades({ onEditar, version }: Props) {
-  const [actividades, setActividades] = useState<ActividadConId[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [fallo, setFallo] = useState<string | null>(null);
+  // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
+  // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
+  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(version);
   const [mesElegido, setMesElegido] = useState<string | null>(null);
   const [modo, setModo] = useState<'mes' | 'agenda'>('mes');
   const [grupo, setGrupo] = useState<GrupoPublicacion | null>(null);
@@ -260,18 +260,6 @@ export function CalendarioActividades({ onEditar, version }: Props) {
   // El reloj se captura una vez: si cada render preguntara la hora, "ya pasó"
   // podría cambiar en medio de una interacción.
   const [ahora] = useState(() => new Date());
-
-  useEffect(() => {
-    let vivo = true;
-    setCargando(true);
-    listarActividades()
-      .then((as) => vivo && setActividades(as))
-      .catch((e: unknown) => vivo && setFallo(e instanceof Error ? e.message : 'Error al listar'))
-      .finally(() => vivo && setCargando(false));
-    return () => {
-      vivo = false;
-    };
-  }, [version]);
 
   const porIdActividad = useMemo(
     () => new Map(actividades.map((a) => [a.id, a])),

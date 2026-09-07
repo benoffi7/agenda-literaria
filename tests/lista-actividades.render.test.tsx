@@ -20,7 +20,7 @@
  * Vive en `.render.test.tsx` porque `vitest.config.ts` monta jsdom solo para ese
  * patrón (`environmentMatchGlobs`).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -292,5 +292,112 @@ describe('accesibilidad de la tarjeta (B-620)', () => {
     // «Editar» primero y el «⋯» después, como en la fila: la acción principal
     // no puede quedar detrás del menú en el recorrido del teclado.
     expect(document.activeElement).toBe(mas);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// La carga vive en un solo lugar — B-215
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * El `useEffect` que carga la colección estaba **verbatim** en `ListaActividades`
+ * y `CalendarioActividades`, y salió a `useActividades` (B-215, D-200).
+ *
+ * Lo que este `describe` cuida no es la repetición —son diez líneas— sino que
+ * **las copias eran el único lugar donde vivía la cancelación**: el flag `vivo`
+ * existe porque quien cambia de pestaña mientras la lectura viaja desmonta el
+ * componente, y arreglar eso en una copia y no en la otra es la divergencia de
+ * B-175 con dos pantallas a un clic de distancia.
+ *
+ * Se afirma sobre el **fuente** y no sobre el render: lo que hay que impedir es
+ * que la próxima vista del panel se escriba copiando el efecto otra vez, y eso no
+ * se ve montando nada.
+ */
+describe('la carga de la colección no se vuelve a copiar — B-215', () => {
+  // `raiz` es el helper que ya tiene este archivo, sobre `process.cwd()`.
+  /**
+   * Quién puede llamar a `listarActividades()`, y por qué son estos dos:
+   *
+   * - `useActividades.ts` es el hook, o sea el lugar;
+   * - `EstadisticasPanel.tsx` **no** usa el hook a propósito, y el motivo está en
+   *   el docblock del hook: su carga **mide** (`medirFuncion('estadisticas-abrir',
+   *   …)` con la cantidad, que es lo que decide si vale construir la mitad que lee
+   *   GA4) y **no tiene rama de error** —su resumen vacío ya sabe decir qué
+   *   falta—. Meterla al hook pediría un callback y un flag, o sea un hook con dos
+   *   formas para ahorrar cuatro líneas.
+   * - `ReporteFormulario.tsx` la llama para armar su desplegable de «¿sobre qué
+   *   actividad?», y su efecto es una tercera variante: **se come el error a
+   *   propósito** —`.catch(() => {})`, porque el reporte se manda igual sin
+   *   referencia y no es motivo para bloquear el formulario— y depende de `[]` y
+   *   no de `[version]`, porque el formulario no se refresca al guardar. El hook
+   *   le daría un `fallo` que esa pantalla no quiere mostrar.
+   *
+   * Si aparece un cuarto, la pregunta es si le sirve el hook. Si le sirve, usarlo;
+   * si no, agregarlo acá **con el motivo escrito**, que es lo que esta lista es.
+   */
+  const PUEDEN_LLAMARLA = [
+    'src/components/admin/useActividades.ts',
+    'src/components/admin/EstadisticasPanel.tsx',
+    'src/components/admin/ReporteFormulario.tsx',
+  ];
+
+  const archivosDelPanel = (): string[] =>
+    readdirSync(raiz('src/components/admin'))
+      .filter((f) => /\.tsx?$/.test(f))
+      .map((f) => `src/components/admin/${f}`);
+
+  it('solo el hook y los dos casos escritos llaman a `listarActividades`', () => {
+    // Control positivo: si el glob dejara de encontrar archivos, esto pasaría
+    // vacío. La lista sale del directorio, no escrita a mano.
+    const archivos = archivosDelPanel();
+    expect(archivos.length, 'el glob del panel no encontró archivos').toBeGreaterThan(10);
+
+    const llamadores = archivos.filter((rel) =>
+      /listarActividades\s*\(/.test(readFileSync(raiz(rel), 'utf8')),
+    );
+    expect(llamadores.sort()).toEqual([...PUEDEN_LLAMARLA].sort());
+  });
+
+  it('y las dos vistas que se migraron usan el hook, con `version`', () => {
+    /*
+     * El lado positivo, y el que agarra la re-inlineación: «no llama a
+     * `listarActividades`» también lo cumple una vista que dejó de cargar nada.
+     * Estas dos tienen que pedirle la lista **al hook**, y pasándole `version` —
+     * que es lo que hace que guardar una actividad refresque la pantalla.
+     *
+     * MUTACIÓN PROBADA: reponer el `useEffect` en `CalendarioActividades.tsx` deja
+     * en rojo **los tres** casos de este `describe`.
+     */
+    for (const rel of [
+      'src/components/admin/ListaActividades.tsx',
+      'src/components/admin/CalendarioActividades.tsx',
+    ]) {
+      expect(readFileSync(raiz(rel), 'utf8'), rel).toContain('useActividades(version)');
+    }
+  });
+
+  it('el flag de cancelación no se combina con esta lectura fuera del hook', () => {
+    /*
+     * `let vivo` es el idioma de **cualquier** efecto asincrónico del panel —lo
+     * usan `useOpciones` y `ReporteFormulario` con toda razón— así que prohibirlo
+     * en general sería prohibir el patrón correcto. Lo que no puede volver a
+     * pasar es que conviva con **esta** lectura afuera del hook, que es la copia
+     * que B-215 sacó.
+     *
+     * `EstadisticasPanel` es la excepción escrita (ver `PUEDEN_LLAMARLA`): su
+     * carga mide y no tiene rama de error.
+     */
+    const conLosDos = archivosDelPanel().filter((rel) => {
+      const src = readFileSync(raiz(rel), 'utf8');
+      return /let\s+vivo\s*=/.test(src) && /listarActividades\s*\(/.test(src);
+    });
+    /*
+     * Los tres son los de `PUEDEN_LLAMARLA` y por los mismos motivos: el hook, la
+     * carga que mide y no tiene rama de error, y la que se come el error a
+     * propósito. Que las dos listas coincidan no es casualidad —quien pueda hacer
+     * esta lectura y la cancele es la misma pregunta— y por eso se afirma contra
+     * la constante en vez de repetirla.
+     */
+    expect(conLosDos.sort()).toEqual([...PUEDEN_LLAMARLA].sort());
   });
 });

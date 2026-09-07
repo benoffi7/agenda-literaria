@@ -2,6 +2,24 @@
 
 ## Sin publicar
 
+- **La carga de la colección del panel vive en un solo lugar** — **B-215**, la
+  segunda de las tres duplicaciones. Era el mismo `useEffect` **verbatim** en
+  `ListaActividades` y `CalendarioActividades`, y salió a `useActividades(version)`.
+
+  Lo que molestaba no era la repetición —son diez líneas— sino que **las dos copias
+  eran el único lugar donde vivía la cancelación**: el flag existe porque quien
+  cambia de pestaña mientras la lectura viaja desmonta el componente, y arreglarlo
+  en una copia y no en la otra es la divergencia de B-175 con dos pantallas a un
+  clic de distancia.
+
+  `EstadisticasPanel` y `ReporteFormulario` **no** usan el hook, y está escrito por
+  qué: la primera mide en la carga y no tiene rama de error; la segunda se come el
+  error a propósito y no depende de `version`. Son tres variantes de la misma
+  lectura, no tres copias. El guard deriva del directorio y no de una lista a mano,
+  y no prohíbe `let vivo` en general —es el idioma correcto de cualquier efecto
+  asincrónico del panel— sino que vuelva a convivir con **esta** lectura afuera del
+  hook.
+
 - **La ayuda contesta «¿esto es gratis? ¿quién lo paga?»** — **B-785**, la mitad
   que faltaba. La respuesta vivía entera en `/apoyar` y la ayuda es donde se busca:
   quien llega a un sitio que no conoce se pregunta quién lo hace y cómo se sostiene

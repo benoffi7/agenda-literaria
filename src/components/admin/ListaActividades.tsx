@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   claseBotonPrimario,
   claseBotonSecundario,
@@ -7,6 +7,7 @@ import {
 import { DialogoDuplicar } from '@/components/admin/DialogoDuplicar';
 import { FiltrosActividades } from '@/components/admin/FiltrosActividades';
 import { MenuAcciones } from '@/components/admin/MenuAcciones';
+import { useActividades } from '@/components/admin/useActividades';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
 import {
   borrarActividad,
@@ -95,9 +96,9 @@ export function ListaActividades({
   version,
   uid,
 }: Props) {
-  const [actividades, setActividades] = useState<ActividadConId[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [fallo, setFallo] = useState<string | null>(null);
+  // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
+  // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
+  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(version);
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS);
   const [orden, setOrden] = useState<Orden>(ORDEN_POR_DEFECTO);
 
@@ -123,18 +124,6 @@ export function ListaActividades({
   // que mostrar la etiqueta. Se resuelven con las opciones que el panel ya tiene
   // cargadas, igual que la vista previa del evento.
   const labels = useLabelsTaxonomia(SIN_PENDIENTES);
-
-  useEffect(() => {
-    let vivo = true;
-    setCargando(true);
-    listarActividades()
-      .then((as) => vivo && setActividades(as))
-      .catch((e: unknown) => vivo && setFallo(e instanceof Error ? e.message : 'Error al listar'))
-      .finally(() => vivo && setCargando(false));
-    return () => {
-      vivo = false;
-    };
-  }, [version]);
 
   /**
    * B-96 / B-126 — filtrar y ordenar es función pura sobre lo que ya está en
