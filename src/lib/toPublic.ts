@@ -1,4 +1,5 @@
 import { esTonoElegible } from '@/lib/identidad';
+import { admiteMonto } from '@/lib/arancel';
 import { imagenesDe } from '@/lib/imagenes';
 /*
  * De `taxonomia` y no de `opciones`: las dos exportan `opcionesVisibles` —la
@@ -241,8 +242,17 @@ export interface ActividadPublica {
    * lo habría atravesado.
    */
   arancel: { tipo: string; notas: string; monto: number | null };
-  organizador: Actividad['organizador'];
-  tallerista: Actividad['tallerista'];
+  /*
+   * Enumerados campo por campo desde B-114, por lo mismo que el arancel: un
+   * `Actividad['x']` publica solo lo que hoy tiene el tipo, y el campo que se
+   * agregue mañana sale sin que nadie lo decida (§5.2). Con un subcampo de texto
+   * la red aguanta —el fixture lo fuerza y el barrido pide su excepción— pero con
+   * uno **numérico o booleano** no: ése es el camino por el que `monto` habría
+   * atravesado el passthrough del arancel sin un solo rojo. Los dos son todo
+   * strings hoy; el riesgo es del próximo campo.
+   */
+  organizador: { nombre: string; instagram: string; web: string };
+  tallerista: { nombre: string; bio: string; instagram: string } | null;
   libro: LibroPublico | null;
   esCiclo: boolean;
   sesiones: SesionPublica[];
@@ -525,13 +535,35 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   arancel: {
     tipo: a.arancel.tipo,
     notas: a.arancel.notas,
-    // B-114 — decisión del dueño: el monto **es público**. Es para lo que se
-    // agregó: el `offers.price` del JSON-LD y los cuatro lugares que ya dicen el
-    // arancel. `?? null` porque los documentos anteriores no lo tienen (D-26).
-    monto: a.arancel.monto ?? null,
+    /*
+     * B-114 — decisión del dueño: el monto **es público**. Es para lo que se
+     * agregó: el `offers.price` del JSON-LD y los cuatro lugares que ya dicen el
+     * arancel. `?? null` porque los documentos anteriores no lo tienen (D-26).
+     *
+     * **Y la regla se aplica acá también, que era el sexto lugar que faltaba** —
+     * lo encontró el `auditor-privacidad` (P1). Un arancel que no se paga no lleva
+     * monto: el schema lo rechaza, la cascada lo limpia, el view-model del detalle
+     * lo ignora y la descripción del evento no lo emite… y esta proyección lo
+     * publicaba igual. Es **la fuente de las demás** y el archivo que un tercero
+     * scrapea entero, así que era el peor de los seis para dejar afuera: un
+     * documento con «gratis + 8000» —de la consola de Firestore, o del próximo
+     * camino de escritura que alguien agregue— salía al `events.json` diciendo las
+     * dos cosas.
+     */
+    monto: admiteMonto(a.arancel.tipo) ? (a.arancel.monto ?? null) : null,
   },
-  organizador: a.organizador,
-  tallerista: a.tallerista ?? null,
+  organizador: {
+    nombre: a.organizador.nombre,
+    instagram: a.organizador.instagram,
+    web: a.organizador.web,
+  },
+  tallerista: a.tallerista
+    ? {
+        nombre: a.tallerista.nombre,
+        bio: a.tallerista.bio,
+        instagram: a.tallerista.instagram,
+      }
+    : null,
   libro: libroPublico(a.libro),
   esCiclo: a.esCiclo ?? false,
   sesiones: (a.sesiones ?? []).map(sesionPublica),

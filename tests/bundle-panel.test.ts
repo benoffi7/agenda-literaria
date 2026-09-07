@@ -33,12 +33,27 @@ const ruta = (rel: string): string => fileURLToPath(new URL(`../${rel}`, import.
 const fuente = (rel: string): string => readFileSync(ruta(rel), 'utf8');
 
 /** Imports estáticos (`import ... from 'x'`), sin los `import type`. */
-const importsEstaticos = (src: string): string[] =>
-  [...src.matchAll(/^import\s+(?!type\s)[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]!);
+/*
+ * **Las dos comillas y el import de efecto**, y no es cosmética: los archivos que
+ * este grafo recorre incluyen los de `functions/` alcanzados por alias
+ * (`@calendario`, …), que son JS suelto — el repo no tiene prettier ni eslint, así
+ * que **nada normaliza la comilla**. Con solo `'` en el patrón, un
+ * `import { getFirestore } from "firebase-admin/firestore"` quedaba **fuera del
+ * grafo**: no lo veía este archivo y `tests/build-credenciales.test.ts` tampoco,
+ * porque recorre `src/`. Lo encontró el `auditor-privacidad` sobre el `it` que
+ * cerraba justamente ese punto ciego.
+ *
+ * El `import 'x'` sin `from` va aparte: no declara nada, así que un patrón con
+ * `from` no lo puede ver, y arrastra el módulo igual.
+ */
+const importsEstaticos = (src: string): string[] => [
+  ...[...src.matchAll(/^import\s+(?!type\s)[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!),
+  ...[...src.matchAll(/^import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!),
+];
 
 /** Los `import('x')` diferidos, en el orden en que aparecen. */
 const importsDiferidos = (src: string): string[] =>
-  [...src.matchAll(/\bimport\(\s*'([^']+)'\s*\)/g)].map((m) => m[1]!);
+  [...src.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)].map((m) => m[1]!);
 
 /**
  * La entrada del bundle del panel: es lo que `admin.astro` monta como island
@@ -208,6 +223,51 @@ describe('el recorrido del grafo ve lo que hay — B-117', () => {
     for (const archivo of Object.values(ALIAS_A_ARCHIVO)) {
       expect(COMPLETO.archivos.has(archivo), archivo).toBe(true);
       expect([...COMPLETO.paquetes]).not.toContain(archivo);
+    }
+  });
+
+  it('y esos archivos no importan nada: es lo único que hace inocuo el corte', () => {
+    /*
+     * **Lo pidió el `auditor-privacidad` auditando B-114**, y el motivo es que ese
+     * cambio movió la frontera: `src/lib/arancel.ts` pasó a reexportar de
+     * `@calendario`, y `arancel.ts` lo importa `tarjetaPublica.ts`, que lo importa
+     * una island del **sitio público**. Hasta ahí `functions/calendario.js` solo
+     * era alcanzable desde el bundle del panel, que es el único grafo con test.
+     *
+     * El `it` de arriba verifica que el grafo **los siga**; este verifica la
+     * premisa que los vuelve inofensivos: que no tengan ningún import estático.
+     * Son archivos de `functions/`, donde un
+     * `import { getFirestore } from 'firebase-admin/firestore'` es lo más natural
+     * del mundo — y `tests/build-credenciales.test.ts` no lo vería, porque recorre
+     * `src/`. Lo taparía `scripts/verificar-bundle.sh` sobre `dist/`, pero recién
+     * en el gate y no en la suite.
+     *
+     * MUTACIÓN PROBADA: agregar un `import { readFileSync } from 'node:fs'` en
+     * `functions/calendario.js` deja este caso en rojo nombrando el archivo.
+     */
+    for (const archivo of Object.values(ALIAS_A_ARCHIVO)) {
+      /*
+       * Las **dos** comillas, y el import de efecto aparte — lo cobró el
+       * `auditor-privacidad` sobre este mismo caso: con solo `'`, un
+       * `from "firebase-admin/firestore"` en un archivo de `functions/` —que es JS
+       * suelto, sin nada que normalice la comilla— pasaba este aserto **y** se le
+       * escapaba al grafo de arriba.
+       */
+      const src = fuente(archivo);
+      const imports = [
+        ...[...src.matchAll(/^\s*(?:import|export)\s[^;]*?from\s+['"]([^'"]+)['"]/gm)].map(
+          (m) => m[1]!,
+        ),
+        ...[...src.matchAll(/^\s*import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!),
+      ];
+      expect(
+        imports,
+        `${archivo} importa algo, y este archivo lo comparten el panel, el sitio y una ` +
+          `Function: cualquier dependencia suya entra a los tres bundles`,
+      ).toEqual([]);
+      // Y tampoco por `require` ni por import dinámico, que el regex de arriba no ve.
+      expect(src, `${archivo} usa require()`).not.toMatch(/\brequire\s*\(/);
+      expect(src, `${archivo} usa import() dinámico`).not.toMatch(/\bimport\s*\(/);
     }
   });
 });

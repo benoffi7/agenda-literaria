@@ -938,7 +938,19 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                 detalle.arancel.esGratis ? 'font-semibold text-acento' : 'text-tinta',
               ]}
             >
-              {detalle.arancel.etiqueta}
+              {/*
+                B-114 — `precio` y no `etiqueta`: es la etiqueta con el monto
+                pegado («Arancelado · $15.000») y cae a la etiqueta sola cuando no
+                hay monto, que es el caso de la mayoría.
+
+                **Lo cobró el `auditor-privacidad` (P1):** el view-model ya
+                producía `precio` y esta línea seguía pintando `etiqueta`, así que
+                la tarjeta del listado decía el precio y la página de detalle de la
+                misma actividad no — con la doc de D-500 afirmando que sí. Es el
+                modo de falla de D-140 al revés: el view-model decidió y la
+                plantilla no lo tomó.
+              */}
+              {detalle.arancel.precio}
               {
                 detalle.arancel.notas && (
                   <span class="block font-normal text-super">{detalle.arancel.notas}</span>

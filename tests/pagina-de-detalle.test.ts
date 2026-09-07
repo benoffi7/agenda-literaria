@@ -276,6 +276,32 @@ describe('la página de detalle recibe el view-model y nada más (D-140)', () =>
   });
 });
 
+describe('la ficha dice el precio y no solo la categoría del arancel (B-114)', () => {
+  it('pinta `arancel.precio`, que es el que trae el monto pegado', () => {
+    /*
+     * **Lo encontró el `auditor-privacidad` y era un P1.** El view-model producía
+     * `arancel.precio` —la etiqueta con el monto— y esta plantilla seguía pintando
+     * `arancel.etiqueta`: la tarjeta del listado decía «Arancelado · $15.000» y la
+     * página de detalle de la misma actividad decía «Arancelado», con D-500 y
+     * `07-seguridad.md` afirmando que la página lo dice.
+     *
+     * Es el modo de falla de D-140 al revés —el view-model decide y la plantilla
+     * no lo toma— y no lo veía nadie: `tests/detallePublico.test.ts` afirma que
+     * `precio` se calcula bien, y eso seguía siendo cierto con el campo sin
+     * consumidor.
+     *
+     * MUTACIÓN PROBADA: volver la línea a `detalle.arancel.etiqueta` deja este
+     * caso en rojo.
+     */
+    const src = sinComentarios(fuente(DETALLE));
+    expect(src, 'la ficha no pinta el precio').toContain('detalle.arancel.precio');
+    expect(
+      src,
+      'volvió a pintar solo la etiqueta: el monto no aparece en la ficha',
+    ).not.toContain('detalle.arancel.etiqueta');
+  });
+});
+
 describe('la home', () => {
   const src = fuente(HOME);
 

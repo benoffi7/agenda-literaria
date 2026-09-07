@@ -188,7 +188,18 @@ lo habría atravesado.
 
 Sale a las que ya decían el arancel —las salidas **1**, **2**, **5** y **6** con su
 JSON-LD— y **no** a la cartelera ni al issue de GitHub, con test para las dos
-ausencias. (Dicho así y no con el número en palabras: el chequeo de B-216 exige que
+ausencias.
+
+**Y sale además al HTML de las páginas que pintan la tarjeta del listado** —la
+página de mes, los hubs y `/pasadas`—, porque las tres reciben `EntradaDeIndice` y
+la frase la arma una sola productora (`arancelDeTarjeta`). Dos de esas tres no
+necesitan una decisión propia: son las filas de la home con otro recorte. **La
+tercera sí, y la señaló el `auditor-privacidad`:** `/pasadas` es el único link
+interno permanente de una actividad que ya pasó, así que **el precio de una edición
+que ya se dio queda publicado ahí para siempre**, sobreviviendo a la entrada del
+sitemap. Se acepta —es un precio que se publicó a propósito y el archivo es
+justamente el registro de lo que pasó— y queda escrito para que no se herede en
+silencio. (Dicho así y no con el número en palabras: el chequeo de B-216 exige que
 ninguna prosa de este archivo nombre una cuenta de salidas distinta de la de su
 tabla, y con razón — es lo que hace que el auditor no audite de menos.) Y a GA4 sale
 **solo la ruta** `arancel.monto` cuando el schema la rechaza, nunca el número: ahí no

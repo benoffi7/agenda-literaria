@@ -830,7 +830,15 @@ describe('el monto del arancel llega a las salidas que lo publican, y a ninguna 
       new Date('2020-01-01T00:00:00Z'),
       {},
     );
-    const cartelera = JSON.stringify(carteleraDeDetalles([detalle]));
+    const afiches = carteleraDeDetalles([detalle]);
+    /*
+     * **El control positivo, que pidió el `auditor-privacidad`.**
+     * `carteleraDeDetalles` filtra por portada, por cancelada y por próxima fecha:
+     * si mañana cambian las fechas del fixture o su portada, la lista vuelve vacía
+     * y los dos `not.toContain` de abajo pasan **sin haber mirado la cartelera**.
+     */
+    expect(afiches, 'la cartelera devolvió vacío: el barrido no midió nada').toHaveLength(1);
+    const cartelera = JSON.stringify(afiches);
     expect(cartelera).not.toContain(CRUDO);
     expect(cartelera).not.toContain(LEGIBLE);
   });

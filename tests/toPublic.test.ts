@@ -353,3 +353,52 @@ describe('toPublic — la fecha de alta (D-138)', () => {
     expect(toPublic(sentinel, 'id1').creadoEn).toBe('');
   });
 });
+
+describe('la proyección aplica la regla del monto, no solo el schema (B-114)', () => {
+  /**
+   * **El sexto lugar que faltaba, y lo encontró el `auditor-privacidad` (P1).**
+   * «Un arancel que no se paga no lleva monto» se aplicaba en el schema (los dos
+   * niveles), en la cascada, en el view-model del detalle, en la tarjeta y en la
+   * descripción del evento… y **no acá**, que es la fuente de las demás y el
+   * archivo que un tercero scrapea entero.
+   *
+   * Un documento con «gratis + 8000» —de la consola de Firestore, o del próximo
+   * camino de escritura que alguien agregue— salía al `events.json` diciendo las
+   * dos cosas. Los cinco docblocks del cambio argumentan que ese caso hay que
+   * defenderlo **aunque el schema lo impida**, y este era el que no lo hacía.
+   *
+   * MUTACIÓN PROBADA: volver a `monto: a.arancel.monto ?? null` deja este caso en
+   * rojo.
+   */
+  const conArancel = (tipo: string, monto: number | null) =>
+    toPublic(actividad({ arancel: { tipo, notas: '', monto } }), 'act_1');
+
+  it('un monto en un arancel que no se paga no sale al `events.json`', () => {
+    for (const tipo of ['gratis', 'a-la-gorra']) {
+      expect(conArancel(tipo, 8000).arancel.monto, tipo).toBeNull();
+      expect(JSON.stringify(conArancel(tipo, 8000)), tipo).not.toContain('8000');
+    }
+  });
+
+  it('y en uno que se paga sale tal cual', () => {
+    // El control positivo: sin esto, un `monto: null` a ciegas pasaría el caso de
+    // arriba y rompería lo que B-114 vino a hacer.
+    expect(conArancel('arancelado', 15000).arancel.monto).toBe(15000);
+  });
+
+  it('la forma del arancel proyectado es cerrada: tres claves y ninguna más', () => {
+    /*
+     * El precedente de `ValorOpcion` (B-212), aplicado al campo que acaba de
+     * cerrar su passthrough. Es la mitad que el barrido de centinelas **no**
+     * puede dar: su recorrido exige que todo *string* del fixture sea rastreable,
+     * y los números y booleanos caen por el `return` sin decir nada. Un
+     * `arancel.cuotas: 12` futuro pasaría el chequeo de cobertura con un valor
+     * inocente y ningún barrido lo vería; este aserto sí.
+     */
+    expect(Object.keys(conArancel('arancelado', 15000).arancel).sort()).toEqual([
+      'monto',
+      'notas',
+      'tipo',
+    ]);
+  });
+});
