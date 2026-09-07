@@ -467,9 +467,25 @@ const NOMBRE_DE_EVENTO: Record<string, { titulo: string; detalle: string }> = {
   },
   filtro_sin_resultados: {
     titulo: 'Filtros que no encuentran nada',
+    /*
+     * **Decía «qué combinación de filtros deja la lista vacía» y esta fila no
+     * puede decir cuál** — lo preguntó el dueño el 2026-09-07, mirando la
+     * pantalla: «no hay que expandir eso para saber qué filtros?».
+     *
+     * Tenía razón. El evento **sí** lleva el eje y el slug elegidos
+     * (`analyticsSitio.ts`), pero la Function pide a GA4 `eventName` +
+     * `eventCount` y nada más, así que lo que llega al panel es **el número de
+     * veces**, no el desglose. La frase prometía el desglose.
+     *
+     * Ahora dice lo que la fila muestra. Traer el desglose es **B-798**, y no es
+     * solo código: pide registrar `eje` y `slug` como dimensiones
+     * personalizadas en la consola de GA4 —que **no es retroactivo**— y sumar
+     * una dimensión a `DIMENSIONES_PERMITIDAS`, que es una lista blanca que
+     * existe justamente para que no entre `pageLocation` ni la demografía.
+     */
     detalle:
-      'Qué combinación de filtros deja la lista vacía, para saber qué etiqueta conviene ' +
-      'completar o retirar. Mide el filtro elegido, nunca lo que alguien escribió en el buscador.',
+      'Cuántas veces alguien filtró y no quedó nada. Todavía no dice cuál filtro fue ' +
+      '(B-798). Mide el filtro elegido, nunca lo que alguien escribió en el buscador.',
   },
   clic_triptico: {
     titulo: 'Clics en «¿Qué hay ahora?»',
@@ -678,38 +694,31 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
           mal — la lee cien veces la misma persona, que después de la primera ya
           sabe.
 
-          Lo que **sí** se queda es la línea de abajo: desde cuándo hay medición.
-          Ésa no explica la pantalla, califica los números, y sin ella un total no
-          se puede leer.
+          Y **los tres párrafos que seguían también los borró**, el mismo día y
+          por lo mismo: «Hay datos desde el …, antes de esa fecha el sitio no
+          medía nada», «los números son de GA4, 28 días contra los 28 anteriores,
+          los informes tardan 24 a 48 horas» y «resumen calculado el …, se
+          recalcula una vez por día».
+
+          El argumento que yo había escrito acá para conservar el primero —«no
+          explica la pantalla, califica los números, y sin ella un total no se
+          puede leer»— **perdió contra verlo puesto**, y queda escrito porque era
+          razonable y puede volver a tentar.
+
+          Lo que hay que saber para no reponerlo por las dudas: **nada de eso era
+          lo único que impedía leer mal un número.**
+
+          - La comparación contra los 28 días anteriores **no puede mentir sin el
+            texto**: `variacion` es `null` a propósito cuando la ventana anterior
+            fue cero —el primer mes de medición entero— y la fila muestra «sin
+            comparación todavía» en vez de un porcentaje. Vive en
+            `resumenDelSitio.ts` y tiene su test.
+          - Los cuatro estados vacíos siguen abajo (`QueFalta`, D-272): nunca
+            corrió, falta un paso de consola y cuál, la API falló y por qué, o
+            contestó y hay cero de verdad.
+          - El «desde cuándo» sigue en el dato (`ga4.desdeCuando`), así que
+            reponerlo es una línea el día que se lo extrañe.
         */}
-        {/*
-          La línea que hace creíbles a las demás (§9.3): «12.000 visitas» sin
-          decir que la medición arrancó hace seis semanas es un número que se
-          cae en la primera pregunta. La fecha sale de GA4 —el primer día con
-          sesiones— y no de una constante escrita acá.
-        */}
-        <p className="mt-2 text-sm text-tinta/70">
-          {ga4.desdeCuando ? (
-            <>
-              Hay datos desde el <strong>{diaLegible(ga4.desdeCuando, true)}</strong>.
-            </>
-          ) : (
-            <>
-              La medición del sitio arrancó el{' '}
-              <strong>3 de septiembre de 2026</strong>.
-            </>
-          )}{' '}
-          Antes de esa fecha el sitio público no medía nada —cero cookies, cero
-          JavaScript de analítica— así que no hay historia previa que mostrar, y Google
-          Analytics no la puede reconstruir después: no mide para atrás.
-        </p>
-        {periodo && hayNumerosDeGa4 && (
-          <p className="mt-2 text-xs text-tinta/55">
-            Los números de abajo son de Google Analytics, {periodo} — 28 días, comparados
-            contra los 28 anteriores. Los informes de Google tardan de 24 a 48 horas, así
-            que el último día siempre queda afuera.
-          </p>
-        )}
         <div className="mt-2 space-y-1">
           <QueFalta fuente="Google Analytics" situacion={ga4.situacion} motivo={ga4.motivo} />
           <QueFalta

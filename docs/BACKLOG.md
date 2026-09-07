@@ -2803,6 +2803,44 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-798 · P2 — «Filtros que no encuentran nada» dice cuántas veces, no cuál filtro
+
+**Lo preguntó el dueño el 2026-09-07 mirando la pantalla:** «no hay que expandir
+eso para saber qué filtros?». Tenía razón, y la fila **prometía** lo que no podía
+dar: decía «qué combinación de filtros deja la lista vacía, para saber qué etiqueta
+conviene completar o retirar» y lo que muestra es **un número**.
+
+**Dónde se corta el dato.** El evento sí lleva el eje y el slug elegidos
+(`filtro_sin_resultados`, `analyticsSitio.ts`), pero la Function le pide a GA4
+`eventName` + `eventCount` y nada más (`functions/analitica.js`), así que al panel
+llega la cuenta y no el desglose. La promesa ya se corrigió: la fila dice ahora lo
+que muestra.
+
+**Traer el desglose son tres cosas, y la primera es la que corre el reloj:**
+
+1. **Registrar `eje` y `slug` como dimensiones personalizadas de evento en la
+   consola de GA4.** Un parámetro de evento **no se puede consultar** por la Data
+   API hasta que está registrado como dimensión personalizada, y **el registro no
+   es retroactivo**: los datos empiezan a acumularse desde que se registra. O sea
+   que **registrarlo hoy es lo único que hace posible verlo el mes que viene** —
+   y por eso conviene hacerlo aunque el resto quede para después.
+2. **Sumar la dimensión a `DIMENSIONES_PERMITIDAS`** (`functions/analitica.js`), y
+   eso es **una decisión de privacidad, no un cambio mecánico**: esa lista blanca
+   existe con su docblock escrito para que no entren `pageLocation` —que llevaría
+   `?q=<lo que alguien tipeó>`— ni `city`, `region`, `userAgeBracket` o
+   `userGender`. `customEvent:eje` y `customEvent:slug` son agregados sin persona
+   y el slug ya es público, así que el caso es defendible; lo que no se puede es
+   agregarlo sin pasar por ahí. `tests/analitica-del-sitio.test.ts` compara el
+   conjunto exacto de dimensiones contra esa lista, así que el test lo va a pedir.
+3. **El desglose en el panel**: la fila pasa a poder expandirse y mostrar los
+   ejes con más ceros. Es lo más chico de los tres.
+
+**Y lo que se gana es concreto**, que es el motivo por el que el ítem no es P3: la
+pregunta que contesta es «qué etiqueta conviene cargar o retirar». Un `barrio` que
+se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta que
+sobra, y hoy eso no se puede saber.
+
+
 ### B-797 · P3 — el `valor` de la analítica del panel no lleva signo, y `encuentro-correr` lo necesita
 
 **Lo encontró el `auditor-privacidad` el 2026-09-07**, contra una afirmación falsa

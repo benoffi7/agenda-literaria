@@ -77,11 +77,21 @@ afterEach(() => cleanup());
  * se ancla a una explicación se cae cuando alguien mejora la redacción, que es
  * exactamente lo que pasó.
  *
- * Se ancla a **la línea que califica los números** —desde cuándo hay medición—,
- * que no es decoración: sin ella un total no se puede leer, así que si desaparece
- * el test tiene razón en caerse.
+ * **Y volvió a pasar el mismo día**, con el reemplazo: se había anclado a «la
+ * línea que califica los números» —desde cuándo hay medición— con el argumento de
+ * que sin ella un total no se puede leer, «así que si desaparece el test tiene
+ * razón en caerse». El dueño también la borró, junto con los otros dos párrafos
+ * de contexto.
+ *
+ * Dos veces en un día es un patrón, no mala suerte: **todo párrafo explicativo
+ * arriba de los números es material que se va a borrar**, así que ninguno sirve
+ * de ancla. Ahora se ancla al **encabezado de sección** —«Para ofrecer a un
+ * anunciante»—, que es estructura y no prosa: existe en las dos ramas del panel
+ * (con datos y sin datos), no explica nada, y el día que se vaya es porque el
+ * panel dejó de tener esa sección, que sí es un cambio que un test tiene razón en
+ * frenar.
  */
-const ANCLA_SITIO = /La medición del sitio arrancó|Hay datos desde el/;
+const ANCLA_SITIO = /Para ofrecer a un anunciante/;
 
 const montar = async () => {
   render(<EstadisticasPanel onEditar={() => {}} />);
