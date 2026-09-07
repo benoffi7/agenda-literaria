@@ -2829,6 +2829,142 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-805 · «No se pueden subir imágenes» — el error que ya se había arreglado y volvía — ✅ hecho (2026-09-07) · P1
+
+**Reporte del dueño, dos veces.** El texto exacto: «me siguen diciendo que no se
+pueden subir imágenes y dice "no se pudo subir la imagen, volvé a intentarlo…",
+que creo que es algo que ya arreglamos».
+
+**Tenía razón en las dos mitades.** B-590 sí lo había arreglado —desde entonces
+los códigos de Storage se traducen: permiso, cuota, conexión— y ese mensaje
+seguía apareciendo, porque es **el genérico del `catch`** y este fallo nunca
+llega a Storage.
+
+### La cadena
+
+1. el SDK de Storage se carga diferido (B-09, D-51), así que el código de la
+   subida vive en un chunk con el hash del build en el nombre;
+2. `firebase.json` sirve el HTML con `no-cache` y `/_astro/**` con
+   `immutable, max-age=31536000`: **una pestaña abierta se queda con el HTML
+   viejo**, que apunta a un chunk que el deploy siguiente borró de Hosting;
+3. el `import('@/lib/subir-imagen')` se lleva un **404**;
+4. el error no es un `ImagenRechazada`, así que cae en «No se pudo subir la
+   imagen. Volvé a intentar en un momento.»
+
+Le pasa **exactamente a quien dejó el panel abierto cargando una actividad**, que
+es cuando se suben las fotos. Y el mensaje manda a repetir lo único que no puede
+funcionar: el archivo no existe más.
+
+### Y el aviso de versión nueva estaba en contra
+
+Lo que hizo que el reporte volviera. El aviso decía **«si recargás ahora, se
+pierde»** y su botón, «Recargar sin guardar». Las dos cosas eran **falsas desde
+D-122**: el formulario se guarda solo en el navegador con cada tecla y al abrir
+ofrece lo que quedó.
+
+O sea que el panel **desalentaba la única acción que arreglaba el problema**. Es
+la parte del reporte que no se veía mirando el código de la subida.
+
+### Qué se hizo
+
+- el `import()` tiene su propio `try`, y su mensaje nombra **las dos** causas
+  posibles —la conexión y la pestaña vieja— porque **no se distinguen**: sin red,
+  Chromium tira el mismo `TypeError`. Ofrece la única acción que sirve para las
+  dos, con un botón ahí mismo;
+- el mensaje dice que **lo cargado no se pierde**. Sin esa frase, «recargá» se lee
+  como «perdé lo que estabas haciendo»;
+- el aviso de versión dice la verdad, nombra la consecuencia de no recargar (que
+  subir imágenes puede fallar) y su botón se llama «Recargar ahora». **La decisión
+  de fondo no cambió**: con el formulario a medio cargar el panel avisa y no
+  recarga solo — que el borrador esté a salvo no vuelve agradable que la pantalla
+  se reinicie sola en medio de una frase;
+- se mide aparte (`imagen-rechazada` con `detalle: carga`) porque **el arreglo es
+  distinto**: no hay nada que corregir en la imagen. Si aparece seguido, lo que hay
+  que revisar es la política de actualización y no las imágenes;
+- **las puertas de carga diferida ganaron un límite de error** (`SiNoCarga`). Hasta
+  hoy un `import()` que fallaba adentro de `lazy` tiraba hacia arriba y React
+  desmontaba el árbol: **el panel quedaba en blanco**, sin mensaje y sin nada que
+  tocar. El límite atrapa **solo** el fallo de carga y vuelve a tirar cualquier otro
+  error, para que un bug de render no se disfrace de «recargá la página».
+
+  **Y la cuenta de esas puertas estaba mal, lo que costó un segundo P1.** El primer
+  arreglo decía «seis vistas»: son **diez** —ocho vistas por `diferido()`, la
+  subida, y el centro de ayuda montado desde **dos** lugares—, y la del encabezado
+  quedaba **fuera** de todo límite. O sea que tocar «Ayuda» en una pestaña vieja
+  seguía dejando el panel en blanco: la misma falla, por otra puerta, y con el
+  agravante de que «Ayuda» es el gesto de cualquiera que se traba. Lo encontraron
+  los dos auditores, y ahora hay un chequeo **de clase**: todo archivo del panel que
+  declare un `lazy` tiene que envolverlo, y el límite va **por encima** del
+  `Suspense`.
+
+- **La promesa «lo que cargaste no se pierde» quedó acotada a donde es cierta.** La
+  frase es la que hace que alguien recargue, pero el autoguardado existe **solo en
+  el formulario de actividad** (D-122): el de **reportes** no lo tiene, y es el
+  origen de B-191 («reporté algo y todo lo que escribí se borró»). Está partida en
+  dos constantes y el mensaje genérico del límite **no la dice**.
+
+  Y hay un caso en que sería falsa incluso en el formulario: si el deploy nuevo
+  subió `VERSION_BORRADOR`, el borrador guardado se descarta al leerlo — o sea que
+  **el deploy que muestra el mensaje puede ser el que borró el borrador**. Ese par
+  está atado por un test: subir la versión sin revisar la frase queda en rojo. Las
+  dos cosas las encontró el `auditor-privacidad`.
+
+### Lo que queda abierto, y es una pregunta de producto
+
+El panel **no** se recarga solo mientras hay un formulario a medio cargar, y eso
+sigue siendo una decisión y no un olvido. Con el borrador local a salvo, la
+alternativa —recargar igual— es defendible; lo que la frena no es perder datos sino
+que la pantalla se reinicie mientras alguien escribe. **Si el reporte vuelve una
+tercera vez, esto es lo que hay que revisar.**
+
+
+### B-803 · El barrido de centinelas solo mira strings, y ya entró un campo numérico · P2
+
+**Lo encontró el `auditor-privacidad` auditando B-114** (su hallazgo H5), y es la
+mitad del mecanismo que no es genérica.
+
+El chequeo de envejecimiento del fixture tiene dos partes. La primera **sí** es de
+clase: la cobertura de interfaces exige que todo campo del modelo esté en
+`tests/fixtures/centinelas.ts`, y por eso `arancel.monto` entró sin que nadie se
+acordara. La segunda —el recorrido que exige que cada valor sea **rastreable**—
+recorre solo los strings: los números y los booleanos caen por el `return` sin
+decir nada.
+
+O sea que `arancel.monto` está en la red porque alguien escribió `MONTO_CENTINELA`
+y un `describe` a mano. **El próximo campo numérico —`arancel.cuotas`,
+`inscripcion.senia`— va a pasar la cobertura con un `12` inocente y ningún barrido
+lo va a ver.**
+
+Dos salidas, y alcanza una:
+
+| | qué cuesta |
+|---|---|
+| Un aserto de **claves** sobre cada proyección, como el que `ValorOpcion` ya tiene (B-212) | Dos líneas por proyección, y hay que acordarse de agregarlo en la próxima. Ya está hecho para `arancel` (`tests/toPublic.test.ts`) |
+| Extender el recorrido: **todo valor no-string** del fixture tiene que estar declarado en una lista con su motivo, como `VOCABULARIO_CERRADO` hace con los enums | Es la versión de clase, y la que no hay que recordar. Más trabajo: hay que declarar los que ya están (`portada`, `cancelada`, `destacado`, `cupo`, `ancho`/`alto`…) |
+
+**La segunda es la buena** y por eso esto es un ítem y no una línea: la primera ya
+está aplicada donde el auditor la pidió, y deja la clase abierta.
+
+### B-804 · El gate del build contra el emulador no siembra el monto del arancel · P2
+
+**Lo encontró el `auditor-privacidad` auditando B-114** (su hallazgo H3, segunda
+mitad). El paso 9 de `scripts/build-contra-emulador.mjs` barre **todo** `dist/`
+buscando centinelas, y su semilla carga `arancel: { tipo: 'gratis', notas: … }`:
+sin `monto`, y con un tipo que además **no lo admite**. O sea que el barrido sobre
+el HTML de verdad no siembra ni busca el campo nuevo.
+
+La decisión quedó declarada en el barrido de vitest —que la cubre bien, en las dos
+formas— y no en el del gate, que es el que mira el artefacto publicado. Es la
+asimetría de B-99/B-180 al revés.
+
+**Y no es copiar y pegar**, que es lo que lo hace un ítem: si se siembra el monto
+con un tipo que lo admita, el modelo de excepciones del gate —tres canastas
+(`actividad/`, `events.json`, `cartelera/`) y `[]` para todo lo demás— **pone en
+rojo `/agenda/*`, `/pasadas` y los hubs**, porque la tarjeta compartida lo imprime
+ahí. Ese rojo no es un bug: es la cuarta canasta pidiendo que se escriba, y la celda
+de `/pasadas` que D-500 ya anotó.
+
+
 ### B-772 / B-654 · ✅ hecho (2026-09-07) — las páginas de texto se numeran como salidas públicas
 
 **Decisión del dueño:** numerarlas. Y era, como el ítem anticipaba, **un solo
@@ -8945,6 +9081,29 @@ Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
 
+### B-806 · `10-salud-del-codigo.md` dice que hay cuatro tests de render y hay doce · P3
+
+**Lo encontró el `auditor-documentacion`** cerrando B-805, y ya estaba mal antes de
+ese cierre. El §«Problema 1» dice: «hoy hay cuatro: `menu-acciones`,
+`historial-actividad`, `reportes-panel` y `estadisticas-pestanias`. Son 21 casos de
+render sobre 2.637».
+
+Los archivos `*.render.test.tsx` de hoy son **doce**: además de esos cuatro están
+`ayuda-de-seccion`, `buscador-de-pasadas`, `filtros-del-panel`,
+`formulario-en-pestanias`, `lista-actividades`, `texto-alternativo`,
+`visor-de-galeria` y `si-no-carga`. El conteo de casos y el total de la suite
+también quedaron atrás.
+
+**El propio documento explica por qué nada lo ata** —esas cifras se mueven con
+cualquier commit ajeno, y un test que las fije sería rojo en cada test nuevo
+(B-180)— y dice cómo remedirlas: `scripts/salud-del-codigo.mjs`. O sea que esto no
+es un chequeo que falte: es una corrida del script y una reescritura de la lista.
+
+Se anota en vez de arreglarse a ojo porque **los números hay que medirlos**: la
+lista de archivos se puede leer, pero «21 casos de render» y el total de la suite
+salen del script, y escribirlos a mano es cómo envejecieron la primera vez.
+
+
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3
 
 **Lo único que queda del lado del dueño, y es mirar, no arreglar.** Después del
@@ -11426,7 +11585,11 @@ derivarlo, igual que la miniatura; hay que mirarlo.
 **Cerrado por el `npm install` de la subida a Astro 7**, y su propio autor lo había
 previsto: el `it.fails` que marcaba la clase pasó a verde y hubo que promoverlo a
 `it`, que es exactamente la señal que ese patrón existe para dar. Verificado el
-2026-09-07: `package.json` y `package-lock.json` dicen los dos **1.8.0**.
+2026-09-07 **dos veces, y la segunda es la que importa**: decían los dos 1.8.0, y
+al cortar la 1.9.0 se movieron **los dos juntos** —el `it` que los ata no dejó
+avanzar con uno solo—, así que hoy dicen los dos **1.9.0**. Es la primera
+publicación de versión desde que existe el chequeo, o sea la primera prueba de que
+la clase quedó cerrada de verdad.
 
 El planteo original queda abajo.
 

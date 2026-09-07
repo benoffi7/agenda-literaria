@@ -313,7 +313,9 @@ Valores de `detalle`:
 - **Modos de fallo de coordenadas:** `coord-link-corto`,
   `coord-sin-coordenadas`, `coord-coma-decimal`, `coord-formato`.
 - **Motivos de rechazo de una imagen:** `tamano`, `tipo`, `metadatos`, `red`,
-  `permiso`, `servidor` — las dos últimas las sumó **B-590**: antes cualquier
+  `permiso`, `servidor` y —desde el 2026-09-07— **`carga`**, que no es un rechazo
+  sino «el código de la subida no llegó» y se explica aparte, más abajo
+  (**B-805**). Las dos anteriores las sumó **B-590**: antes cualquier
   `storage/unauthorized` (sesión vencida o sin permiso) o la cuota llena viajaban
   como `red`, que era falso.
 
@@ -326,8 +328,16 @@ número está mal elegido y lo que hay que hacer es recomprimir del lado de la
 Function, no explicar mejor.
 
 **Nunca viaja el nombre del archivo ni su tamaño real**, aunque el mensaje que ve
-la persona sí los diga: eso es contenido, y `detalle` es un enum cerrado de seis
-valores.
+la persona sí los diga: eso es contenido, y `detalle` es un enum cerrado.
+
+**`detalle: carga` es de otra clase que los demás, y se agregó el 2026-09-07** con
+un reporte del dueño («me siguen diciendo que no se pueden subir imágenes»). No es
+que el archivo no sirva ni que Storage haya dicho no: es que **el código de la
+subida no llegó al navegador**. Pasa cuando una pestaña quedó abierta desde antes
+de un deploy —el chunk diferido tiene el hash del build en el nombre y ya no
+existe— y por eso vale medirlo aparte: **el arreglo es distinto**. No hay nada que
+corregir en la imagen, hay que recargar. Si aparece seguido, lo que hay que revisar
+es la política de actualización del panel y no las imágenes.
 
 **`estadisticas-abrir` es el termómetro del tablero del catálogo** (B-370, D-200,
 [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md)). Contesta la única

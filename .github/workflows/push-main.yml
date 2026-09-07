@@ -250,11 +250,39 @@ jobs:
           rm -f /tmp/sa.json
 
   # ───────────────────────────────────────────────────────────────
-  # El tag: solo cuando cambia `version` en package.json, o sea cuando una
-  # persona decidió que esto es una versión. No uno por commit.
+  # Los tags. **Dos por deploy y no uno**, y son de distinta naturaleza —
+  # pedido del dueño el 2026-09-07: «cada push que hacemos tiene que generar un
+  # tag y version».
+  #
+  # Antes acá se creaba un tag **solo** cuando cambiaba `version` en el
+  # `package.json`, o sea cuando una persona decidía que eso era una versión. El
+  # pedido es lo contrario y tiene un motivo concreto detrás: el dueño quería
+  # poder señalar exactamente qué se publicó cuando alguien reporta un problema.
+  #
+  # Lo que ya funcionaba y conviene no confundir: **la versión del panel ya
+  # cambia en cada push**. `scripts/version.mjs` la compone como
+  # `1.9.0+<sha corto>`, así que el `/version.json` de producción y el bundle que
+  # corre en el navegador se distinguen commit por commit — es lo que hace que la
+  # detección de «pestaña vieja» funcione. Lo que faltaba era el **tag**: la
+  # versión existía y no se podía escribir `git show` de ella.
+  #
+  # Por eso hay dos:
+  #
+  #   v1.9.0+a1b2c3d  — el deploy. Uno por push, y es EXACTAMENTE la cadena que
+  #                     el panel muestra y que un reporte de bug copia. Liviano
+  #                     (`git tag` sin `-a`): son muchos y no llevan mensaje.
+  #   v1.9.0          — la versión, cuando `package.json` cambia. Anotado, con
+  #                     mensaje, como hasta hoy. Es el que sirve para leer el
+  #                     historial: `git tag --list 'v*.*.*'` los da sin el ruido
+  #                     de los de deploy, porque los otros llevan `+`.
+  #
+  # El `+` es legal en un nombre de ref (lo que git prohíbe es el espacio, `~`,
+  # `^`, `:`, `?`, `*`, `[`, `\`, `..` y `@{`), y es el separador que semver
+  # define para metadata de build — o sea que el tag se llama igual que la
+  # versión, sin traducción de nadie.
   # ───────────────────────────────────────────────────────────────
   etiquetar:
-    name: Tag de versión
+    name: Tags del deploy
     needs: [verificar, hosting, functions, firestore]
     if: always() && needs.verificar.result == 'success' && !failure() && !cancelled()
     runs-on: ubuntu-latest
@@ -262,16 +290,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - name: Crear el tag si la versión es nueva
+      - name: Tag del deploy, y el de la versión si es nueva
         run: |
           set -euo pipefail
-          V="v$(node -p "require('./package.json').version")"
-          if git rev-parse -q --verify "refs/tags/$V" >/dev/null; then
-            echo "::notice::$V ya existe, no se toca"
-            exit 0
-          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$V" -m "Versión ${V#v} — desplegada desde ${{ github.sha }}"
-          git push origin "$V"
-          echo "::notice::tag $V creado"
+
+          # La cadena la compone `scripts/version.mjs` y NADIE MÁS (B-88, D-98):
+          # si acá se armara a mano, el tag y lo que dice el panel se separarían
+          # en el primer cambio de formato.
+          VERSION=$(node -e "import('./scripts/version.mjs').then((m) => console.log(m.infoVersion().version))")
+          BASE="v$(node -p "require('./package.json').version")"
+          DEPLOY="v$VERSION"
+
+          # Un árbol sucio en el runner sellaría la versión como «-sucio» y el tag
+          # quedaría con basura. El job `verificar` ya lo corta para el build; acá
+          # se vuelve a chequear porque este job no depende de ese artefacto.
+          case "$VERSION" in
+            *-sucio*|*sin-git*)
+              echo "::error::la versión salió «$VERSION»: no hay commit limpio del que colgar el tag"
+              exit 1;;
+          esac
+
+          # ── El tag del deploy: uno por push ──────────────────────────
+          if git rev-parse -q --verify "refs/tags/$DEPLOY" >/dev/null; then
+            echo "::notice::$DEPLOY ya existe (re-run del mismo commit), no se toca"
+          else
+            git tag "$DEPLOY"
+            git push origin "$DEPLOY"
+            echo "::notice::tag de deploy $DEPLOY creado"
+          fi
+
+          # ── El de la versión: solo cuando la movió una persona ───────
+          if git rev-parse -q --verify "refs/tags/$BASE" >/dev/null; then
+            echo "::notice::$BASE ya existe, no se toca"
+          else
+            git tag -a "$BASE" -m "Versión ${BASE#v} — desplegada desde ${{ github.sha }}"
+            git push origin "$BASE"
+            echo "::notice::tag de versión $BASE creado"
+          fi

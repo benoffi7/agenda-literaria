@@ -22,6 +22,7 @@
  * usar el panel, no va: esta lista no es un registro de trabajo.
  */
 
+import { PROMESA_DEL_BORRADOR } from '@/lib/carga-diferida';
 import { nombreDeMes } from '@/lib/meses';
 import { DOMINIO } from '@/lib/rutasPublicas';
 
@@ -59,6 +60,32 @@ export interface Novedad {
  * que decide qué está sin leer, así que **las entradas nuevas van primero**.
  */
 export const NOVEDADES: Novedad[] = [
+  {
+    id: 'recargar-cuando-algo-no-carga',
+    fecha: '2026-09-07',
+    version: '1.9.0',
+    titulo: 'Si algo del panel no carga, ahora te dice que recargues',
+    /*
+     * **La frase del borrador va acotada, y usa la constante** — lo cobró el
+     * `auditor-privacidad` sobre la primera versión de esta entrada, que decía «en
+     * cualquier parte del panel… lo que estabas cargando no se pierde». El
+     * autoguardado existe **solo cargando una actividad**: el formulario de
+     * **reportes** no lo tiene, y es el origen de B-191 («reporté algo y todo lo
+     * que escribí se borró»). Prometerlo en general es falso justo ahí.
+     *
+     * Y se **importa** en vez de repetirse: dos derivaciones del mismo texto es la
+     * clase de B-88, y la copia de acá no la alcanzaría ninguno de los dos tests
+     * que cuidan la promesa.
+     */
+    detalle:
+      'Cuando dejás el panel abierto y mientras tanto se publica una versión nueva, algunas ' +
+      'partes pueden dejar de cargar —subir una imagen, por ejemplo— porque el navegador tiene ' +
+      'la página vieja. Antes decía «no se pudo subir la imagen, volvé a intentar», que no ' +
+      'servía: ahora te lo explica y te pone un botón para recargar. Si estabas cargando una ' +
+      'actividad:' +
+      PROMESA_DEL_BORRADOR,
+    donde: 'En cualquier parte del panel, y en el aviso de arriba cuando hay una versión nueva.',
+  },
   {
     id: 'monto-del-arancel',
     fecha: '2026-09-07',

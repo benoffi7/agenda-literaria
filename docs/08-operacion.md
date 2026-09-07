@@ -463,9 +463,22 @@ desconocido cae del lado de deployar, que es el error barato.
 nuevo escribe campos que las reglas viejas rechazan, el orden inverso deja una
 ventana de escrituras fallidas.
 
-**El tag** lo crea el workflow cuando cambia `version` en `package.json`, no en
-cada commit: aparece cuando una persona decidió que eso es una versión. Es
-idempotente.
+**Los tags son dos y los crea el workflow** — D-510, pedido del dueño el
+2026-09-07 («cada push que hacemos tiene que generar un tag y version»):
+
+| Tag | Cuándo | Para qué |
+|---|---|---|
+| `v1.9.0+a1b2c3d` | **cada push que deploya**. Liviano | Es exactamente la cadena que el panel muestra y que un reporte de bug copia: `git show v1.9.0+a1b2c3d` para pararse en lo que esa persona estaba usando |
+| `v1.9.0` | cuando `version` de `package.json` cambia. Anotado | Leer el historial: `git tag --list 'v*.*.*'` los da **sin** los de deploy, porque esos llevan `+` |
+
+Los dos son idempotentes: un re-run del mismo commit no falla por el tag que ya
+existe. Y la cadena la compone `scripts/version.mjs` y no el YAML (D-98), con un
+test que lo exige — armada a mano, el tag y el panel se separarían en el primer
+cambio de formato.
+
+**Ojo con lo que ya funcionaba:** la *versión* del panel cambia en cada push desde
+siempre (`1.9.0+<sha>`), y es de eso que depende la detección de «pestaña vieja».
+Lo que faltaba era el tag.
 
 Para deployar todo sin mirar el diff: Actions → «Deploy desde main» → Run
 workflow → *Deployar todo*.

@@ -1,6 +1,115 @@
 # Changelog
 
-## Sin publicar
+## 1.9.0 — 2026-09-07
+
+**La tanda del reporte que destapó dos avisos que mentían, y del panel que se
+volvió navegable.** Todo lo construido después de 1.8.0.
+
+- **«No se pueden subir imágenes» era una pestaña vieja** (**B-805**), y el aviso
+  de versión nueva **desalentaba la única acción que lo arreglaba**: decía «si
+  recargás ahora, se pierde», falso desde que el formulario se autoguarda. Hoy el
+  error nombra la causa, ofrece recargar ahí mismo y se mide aparte; y las diez
+  puertas de carga diferida del panel tienen un límite de error, porque un chunk
+  borrado dejaba **el panel en blanco**.
+- **Cada push deja su tag** (`v1.9.0+<sha>`), más el anotado de la versión cuando
+  la mueve una persona (**D-510**). La cadena la compone `version.mjs` y no el
+  YAML, con test.
+- **El formulario de carga va en pestañas** (**D-490**): nueve solapas, una por
+  sección, con la barra de guardar fija y el número de campos pendientes en cada
+  una — sin eso, ocho de nueve secciones quedan fuera de la pantalla.
+- **El arancel puede llevar el monto** (**B-114**, **D-500**) y sale a las salidas
+  que ya decían el arancel, más el `offers.price` que Google muestra como precio.
+  El campo era un `type="number"`, y para HTML el punto separa decimales: `15.000`
+  se publicaba como **$15**.
+- **El listado del panel filtra por etiquetas y por destacadas** (**B-274**,
+  **D-480**), los dos descartes de D-74 cuyo motivo había caducado.
+- **Panel**: avisa cuando una foto viene rotada (**B-324**), el «?» de cada sección
+  abre **su** ayuda (**B-795**), el texto alternativo de la portada dejó de ser
+  obligatorio, el login dice por qué falló (**B-790**), y la versión se lee debajo
+  del mail.
+- **Sitio público**: «Agenda LEH» pasa a la tipografía del título, cada encuentro
+  del JSON-LD apunta a su propia fila (**B-733**), el tríptico cambió de ventanas
+  y sortea (**B-791**, **D-470**), y las seis páginas de texto se numeran como
+  salidas públicas (**B-772**, **B-654**).
+- **El sitio y el panel sumaron piezas grandes que estaban esperando su versión**:
+  dos páginas nuevas —`/apoyar` (**B-780**, **D-460**, **D-461**) y `/anunciar`
+  (**B-770**, **D-450**)—, la home con «¿Qué hay ahora?» (**B-600**, **D-320**),
+  el listado del panel en grilla de tarjetas (**B-620**, **D-330**), y los
+  `subEvent` de un ciclo con su propia oferta en el JSON-LD (**B-721**, **B-730**,
+  **D-410**). Este corte las alcanza a todas: es la primera versión desde 1.8.0.
+- **La red de contención creció con el trabajo**: los tres auditores corren
+  siempre antes de pushear (**B-124**), la analítica del sitio empezó a leerse de
+  verdad (**B-800**, **B-801**), y aparecieron chequeos de clase para los bloques
+  de doc partidos (**B-294**), las promesas sobre datos (**B-781**) y el sello de
+  auditoría (**B-794**).
+
+El detalle de cada cambio está en las entradas de abajo.
+
+- **«No se pueden subir imágenes»: el error que ya se había arreglado y volvía** —
+  reporte del dueño, **B-805**. Y tenía razón en las dos mitades: **B-590 sí lo
+  había arreglado** —los códigos de Storage se traducen desde entonces— y **ese
+  mensaje seguía apareciendo**, porque es el genérico del `catch` y este fallo
+  nunca llega a Storage.
+
+  La cadena, que es lo que hacía difícil de ver: el SDK de Storage se carga
+  diferido (B-09, D-51), o sea que el código de la subida vive en un chunk con el
+  hash del build en el nombre. Hosting sirve el HTML con `no-cache` y `/_astro/**`
+  como `immutable`, así que **una pestaña abierta se queda con el HTML viejo** y
+  ese HTML apunta a un chunk que el deploy siguiente ya borró. El `import()` se
+  lleva un 404 → no es un `ImagenRechazada` → mensaje genérico. Le pasa
+  exactamente a quien dejó el panel abierto cargando una actividad, que es cuando
+  se suben las fotos. Y «volvé a intentar en un momento» manda a repetir **lo
+  único que no puede funcionar**.
+
+  **Lo peor era el aviso de versión nueva**, que decía «si recargás ahora, se
+  pierde» y tenía un botón «Recargar sin guardar». Las dos cosas eran **falsas
+  desde D-122**: el formulario se guarda solo en este navegador con cada tecla y
+  al abrir ofrece lo que quedó. O sea que el panel estaba **desalentando la única
+  acción que arreglaba el problema**. Hoy dice la verdad, nombra la consecuencia de
+  no recargar —que subir imágenes puede fallar— y el botón se llama «Recargar
+  ahora».
+
+  Lo demás del arreglo: el `import()` tiene su propio `try` y su mensaje —que
+  nombra **las dos** causas posibles, porque sin red Chromium tira el mismo error—
+  con un botón para recargar ahí mismo; se mide aparte (`imagen-rechazada` con
+  `detalle: carga`) porque **el arreglo es distinto**, no hay nada que corregir en
+  la imagen; y las puertas de carga diferida del panel ganaron un límite de error
+  (`SiNoCarga`), porque hasta hoy un `import()` que fallaba adentro de `lazy`
+  **dejaba el panel en blanco**, sin mensaje y sin nada que tocar. Ese límite
+  atrapa **solo** el fallo de carga: cualquier otro error se vuelve a tirar, para
+  que un bug de render no se disfrace de «recargá la página».
+
+  **Los auditores encontraron dos cosas sobre el propio arreglo, y las dos eran
+  P1.** La cuenta de puertas decía «seis vistas» y son **diez** —ocho vistas, la
+  subida, y el centro de ayuda montado desde dos lugares—: la del encabezado
+  quedaba fuera de todo límite, así que tocar «Ayuda» en una pestaña vieja seguía
+  dejando el panel en blanco. Hoy hay un chequeo **de clase**: todo archivo del
+  panel que declare un `lazy` tiene que envolverlo. Y la frase «lo que cargaste no
+  se pierde» quedó **acotada a donde es cierta**: el autoguardado existe solo en el
+  formulario de actividad, y el de reportes —origen de B-191— no lo tiene. Además,
+  el deploy que muestra el mensaje puede ser el que **borra** el borrador si subió
+  `VERSION_BORRADOR`: ese par está atado por un test.
+
+- **Cada push deja su tag, y son dos** — pedido del dueño, **D-510**. Antes se
+  creaba un tag solo cuando cambiaba `version` en el `package.json`.
+
+  Lo que ya funcionaba y conviene no confundir: **la versión del panel ya cambiaba
+  en cada push** (`1.9.0+<sha>`), y es lo que hace que la detección de «pestaña
+  vieja» funcione. Lo que faltaba era el tag: la versión existía y no se podía
+  hacer `git show` de ella. Ahora hay `v1.9.0+a1b2c3d` por deploy —liviano, y es
+  exactamente la cadena que el panel muestra y que un reporte copia— y `v1.9.0`
+  cuando la versión la mueve una persona, anotado y con mensaje.
+
+  La cadena la compone `scripts/version.mjs` **y nadie más** (D-98), con un test
+  que lo exige: armada a mano en el YAML, el día que cambie el formato el tag y el
+  panel dirían cosas distintas y `git show` de lo que reporta una persona no
+  encontraría nada.
+
+- **La versión del panel se lee debajo del mail** — pedido del dueño. Estaba al
+  pie del contenido, y para leerla había que scrollear el formulario entero: es el
+  dato que se pide justo cuando algo no funciona. En las pantallas sin encabezado
+  —login y «sin permisos»— se queda al pie, que es donde tiene sentido.
+
 
 - **El arancel puede llevar el monto, y sale a las cinco salidas que ya lo decían**
   — **B-114**, **D-500**, decisión del dueño. `arancel.monto` es un entero en pesos
@@ -719,7 +828,7 @@
   próximos, ordenados) — **B-99**. Es la base de datos para poder mostrar «Hoy /
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
-  día — ver «Sin publicar», arriba.)*
+  día — ver **1.9.0**, arriba.)*
 
 ### `/apoyar` — la sección de donaciones, con Cafecito (B-780)
 

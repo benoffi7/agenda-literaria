@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from 'react';
+import { SiNoCarga } from '@/components/admin/SiNoCarga';
 
 /**
  * El «?» de al lado del título de una sección del formulario (B-62).
@@ -75,15 +76,28 @@ export function AyudaDeSeccion({ seccion }: Props) {
       </button>
 
       {abierto && (
-        <Suspense fallback={null}>
-          <CentroAyuda
-            contexto="formulario"
-            seccion={seccion}
-            idsSinLeer={[]}
-            onCerrar={() => setAbierto(false)}
-            onNovedadesLeidas={() => {}}
-          />
-        </Suspense>
+        /*
+          **`SiNoCarga` acá también, aunque este punto ya estuviera cubierto** —
+          B-805. Este `lazy()` se monta adentro del formulario, o sea debajo del
+          límite que `diferido()` ya pone en `AdminApp`; el que estaba **afuera**
+          era el gemelo de `BotonAyuda`, en el encabezado, y ése era el P1.
+
+          Se envuelve igual por dos razones: el chequeo de clase pide que **todo**
+          archivo que declare un `lazy` lo envuelva —así el que se agregue mañana
+          no depende de dónde lo monten— y un límite más cerca del `lazy` deja el
+          cartel en la sección en vez de reemplazar la pantalla entera.
+        */
+        <SiNoCarga>
+          <Suspense fallback={null}>
+            <CentroAyuda
+              contexto="formulario"
+              seccion={seccion}
+              idsSinLeer={[]}
+              onCerrar={() => setAbierto(false)}
+              onNovedadesLeidas={() => {}}
+            />
+          </Suspense>
+        </SiNoCarga>
       )}
     </>
   );

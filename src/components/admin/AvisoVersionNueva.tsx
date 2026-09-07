@@ -1,4 +1,5 @@
 import { claseBotonPrimario } from '@/components/admin/campos/Campo';
+import { PROMESA_DEL_BORRADOR } from '@/lib/carga-diferida';
 import type { DecisionVersion } from '@/lib/version';
 
 interface Props {
@@ -22,6 +23,25 @@ interface Props {
  * cuando el problema se resolvió — y al guardar el formulario se va solo,
  * porque ahí ya no queda nada que perder y la recarga ocurre sin preguntar.
  *
+ * ── El texto decía lo contrario de lo que pasa, y eso tenía consecuencias ──
+ * Hasta el 2026-09-07 este aviso decía **«si recargás ahora, se pierde»** y el
+ * botón «Recargar sin guardar». Las dos cosas eran **falsas desde D-122**: el
+ * formulario se guarda solo en este navegador con cada tecla y al abrir ofrece lo
+ * que quedó. Recargar no pierde nada.
+ *
+ * No era un detalle de redacción. El dueño reportó dos veces que «no se pueden
+ * subir imágenes», y la cadena era ésta: la pestaña queda vieja → el aviso
+ * aparece → dice que recargar destruye el trabajo → nadie recarga → el
+ * `import()` del SDK de Storage se lleva un 404 porque su chunk ya no existe →
+ * «no se pudo subir la imagen». **El aviso estaba desalentando la única acción
+ * que arreglaba el problema.**
+ *
+ * Hoy dice la verdad, nombra la consecuencia concreta de no recargar —que subir
+ * imágenes puede fallar— y el botón se llama «Recargar ahora». Lo que **no**
+ * cambió es la decisión de fondo: con el formulario a medio cargar el panel
+ * **avisa y no recarga solo**. Que el borrador esté a salvo no vuelve agradable
+ * que la pantalla se reinicie sola en medio de una frase.
+ *
  * Recibe el estado por props en vez de llamar a `useVersionPublicada`: ese hook
  * hace el fetch y el `reload()`, así que dos componentes llamándolo serían dos
  * chequeos en paralelo y, en el peor caso, dos recargas. Lo llama `AdminApp`
@@ -44,7 +64,7 @@ export function AvisoVersionNueva({ decision, versionActual, versionPublicada }:
           <p className="text-sm text-amber-950">
             <strong className="font-semibold">Hay una versión nueva del panel.</strong>{' '}
             {esPorElFormulario
-              ? 'Guardá lo que estás cargando y después recargá: si recargás ahora, se pierde.'
+              ? `Conviene recargar. Hasta que recargues, puede fallar subir imágenes.${PROMESA_DEL_BORRADOR}`
               : 'Recargar no alcanzó para traerla. Cerrá la pestaña y volvé a abrirla, o recargá forzando (⇧ + recargar).'}
           </p>
           {/* Las dos versiones a la vista: es lo que hay que copiar en un reporte. */}
@@ -57,7 +77,7 @@ export function AvisoVersionNueva({ decision, versionActual, versionPublicada }:
           onClick={() => window.location.reload()}
           className={`${claseBotonPrimario} shrink-0`}
         >
-          {esPorElFormulario ? 'Recargar sin guardar' : 'Reintentar'}
+          {esPorElFormulario ? 'Recargar ahora' : 'Reintentar'}
         </button>
       </div>
     </div>

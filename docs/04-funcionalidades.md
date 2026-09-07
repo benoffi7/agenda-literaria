@@ -203,6 +203,31 @@ sirviendo es en la única solapa que tiene dos, «Vista previa»: cerrar el text
 Instagram para ver el evento del calendario es una preferencia legítima, y es la
 que B-193 recuerda.
 
+**Si una parte del panel no llega, lo dice y ofrece recargar** (B-805). Vale para
+las **diez** puertas de carga diferida que tiene el panel: las ocho vistas, la
+subida de imágenes y el centro de ayuda. Una pestaña que quedó abierta desde antes
+de una actualización apunta a archivos que el deploy ya borró: hasta el 2026-09-07
+eso daba «no se pudo subir la imagen, volvé a intentar» —que manda a repetir lo
+único que no puede funcionar— o directamente **dejaba el panel en blanco** al abrir
+una vista. Hoy el mensaje nombra las dos causas posibles (la conexión o la pestaña
+vieja) y trae el botón para recargar ahí mismo.
+
+**La frase «lo que cargaste queda guardado» se dice en dos lugares y no en el
+resto**: subiendo una imagen —que es adentro del formulario de actividad— y en el
+aviso de «hay una versión nueva» cuando hay un formulario de actividad a medio
+cargar. El autoguardado existe **ahí** y no en el formulario de reportes, así que
+prometerlo en general sería falso justo donde más duele (es el origen de B-191). Y
+se dice solo si el navegador de verdad tiene dónde guardar: en modo privado o con
+la cuota llena no guarda nada.
+
+Tampoco promete que te lo vaya a **ofrecer** al volver, aunque sea lo normal: eso
+depende de la versión que cargue la próxima vez, y si el formulario cambió de forma
+el borrador viejo se descarta a propósito.
+
+Y el aviso de «hay una versión nueva» dejó de decir que recargar destruye el
+trabajo, que era falso desde que existe el borrador local y era lo que hacía que
+nadie recargara.
+
 **El cargador de imágenes vive en «Qué es» desde el 2026-09-01** (B-264). Estaba en
 «Opcional» —un acordeón cerrado y llamado literalmente así— y el resultado era
 medible: 2 actividades con imagen sobre 42 publicadas. En «Opcional» quedaron las

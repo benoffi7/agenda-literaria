@@ -5,6 +5,7 @@ import { Suspense, lazy, useEffect, useRef, useState, type ComponentType, type R
 import { AvisoEtiquetas } from '@/components/admin/AvisoEtiquetas';
 import { AvisoVersionNueva } from '@/components/admin/AvisoVersionNueva';
 import { PieVersion } from '@/components/admin/PieVersion';
+import { SiNoCarga } from '@/components/admin/SiNoCarga';
 import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
@@ -83,9 +84,25 @@ const diferido = <P extends object>(
 ): ComponentType<P> => {
   const Cargado = lazy(cargar);
   return (props: P) => (
-    <Suspense fallback={<p className="p-8 text-sm text-tinta/50">Cargando…</p>}>
-      <Cargado {...props} />
-    </Suspense>
+    /*
+     * `SiNoCarga` envuelve el `Suspense` y no al revés — reporte del 2026-09-07.
+     * Una pestaña abierta desde antes de un deploy apunta a chunks que Hosting ya
+     * borró, y un `import()` que falla adentro de `lazy` tira hacia arriba: sin
+     * este límite, React desmonta el árbol y **el panel queda en blanco**, sin
+     * mensaje y sin nada que tocar.
+     *
+     * Va acá, en el helper, y así cubre de una las ocho vistas que pasan por él.
+     * Las otras dos puertas de carga del panel llevan el suyo: la subida de
+     * imágenes con un `try` propio —ahí el error no pasa por el render— y el
+     * centro de ayuda, que se monta desde el encabezado y desde cada sección del
+     * formulario, o sea **fuera** de este helper. Esa última quedó sin límite hasta
+     * que los auditores la encontraron, y hoy lo verifica un chequeo de clase.
+     */
+    <SiNoCarga>
+      <Suspense fallback={<p className="p-8 text-sm text-tinta/50">Cargando…</p>}>
+        <Cargado {...props} />
+      </Suspense>
+    </SiNoCarga>
   );
 };
 
@@ -433,6 +450,14 @@ export function AdminApp() {
                             : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
+          {/*
+            **Debajo del mail** — pedido del dueño (2026-09-07). Antes vivía al
+            pie del contenido, y para leerla había que scrollear el formulario
+            entero: es el dato que se pide justo cuando algo no funciona. Acá
+            queda al lado de quién está logueado, que es la otra mitad de «contra
+            qué versión se probó».
+          */}
+          <PieVersion {...estadoVersion} enLinea />
         </div>
         {vista.tipo !== 'lista' && (
           <button
@@ -606,7 +631,6 @@ export function AdminApp() {
           }}
         />
       )}
-      <PieVersion {...estadoVersion} />
     </div>
   );
 }

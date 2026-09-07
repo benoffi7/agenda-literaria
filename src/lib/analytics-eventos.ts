@@ -303,7 +303,26 @@ export const FALLOS_COORDENADAS = [
  * le mostraba a la persona era falso para los dos primeros. Distinguirlos acá le
  * da al dueño el motivo real de un «da error subir imágenes» sin abrir el issue.
  */
-export const MOTIVOS_IMAGEN = ['tamano', 'tipo', 'metadatos', 'red', 'permiso', 'servidor'] as const;
+/*
+ * `carga` se agregó con el reporte del 2026-09-07 y es de otra clase que los
+ * cinco de arriba: no es que el archivo no sirva ni que Storage haya dicho no —
+ * es que **el código de la subida no llegó al navegador**. Pasa cuando una
+ * pestaña quedó abierta desde antes de un deploy: el chunk diferido tiene el hash
+ * del build en el nombre y ya no existe.
+ *
+ * Vale la pena medirlo aparte justamente porque **el arreglo es distinto**: no hay
+ * nada que corregir en la imagen, hay que recargar. Si aparece seguido, lo que hay
+ * que revisar es la política de actualización del panel y no las imágenes.
+ */
+export const MOTIVOS_IMAGEN = [
+  'tamano',
+  'tipo',
+  'metadatos',
+  'red',
+  'permiso',
+  'servidor',
+  'carga',
+] as const;
 export type MotivoImagen = (typeof MOTIVOS_IMAGEN)[number];
 
 /** Vocabulario del parámetro `detalle`. */

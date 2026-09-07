@@ -103,6 +103,65 @@ const pasosConScript = (archivo: string): { nombre: string; run: string }[] => {
   );
 };
 
+describe('los tags: uno por push, y la cadena no se arma a mano (B-88)', () => {
+  const yml = readFileSync(join(DIR, 'push-main.yml'), 'utf8');
+  /** El job de los tags, aislado: lo que sigue son afirmaciones sobre sus pasos. */
+  const etiquetar = yml.slice(yml.indexOf('  etiquetar:'));
+
+  it('hay un tag del deploy en cada push, y no solo cuando cambia `package.json`', () => {
+    /*
+     * Pedido del dueño el 2026-09-07: «cada push que hacemos tiene que generar un
+     * tag y version». Antes acá se creaba un tag **solo** cuando `version` del
+     * `package.json` cambiaba.
+     *
+     * Lo que se verifica es que existan **los dos**: el del deploy (uno por push,
+     * con el SHA adentro) y el de la versión (cuando la mueve una persona). Un
+     * chequeo de «hay un `git tag`» pasaría con el comportamiento viejo.
+     */
+    expect(etiquetar).toContain('git tag "$DEPLOY"');
+    expect(etiquetar).toContain('git push origin "$DEPLOY"');
+    expect(etiquetar).toMatch(/git tag -a "\$BASE"/);
+    expect(etiquetar).toContain('git push origin "$BASE"');
+  });
+
+  it('la cadena del tag la compone `scripts/version.mjs` y no el YAML', () => {
+    /*
+     * **La clase de B-88, y acá el modo de falla es mudo.** El tag del deploy tiene
+     * que ser *exactamente* la cadena que el panel muestra y que un reporte de bug
+     * copia (`1.9.0+a1b2c3d`): si el YAML la armara a mano —un `echo
+     * "v$VERSION+$(git rev-parse --short HEAD)"`— el día que `componerVersion`
+     * cambie de formato el tag y el panel dirían cosas distintas, y `git show` de
+     * lo que reporta una persona no encontraría nada.
+     *
+     * `version.mjs` es «el único lugar donde se arma una cadena de versión» (D-98),
+     * y esto lo hace cumplir del lado del workflow.
+     *
+     * MUTACIÓN PROBADA: reemplazar la línea del `node -e` por un armado con
+     * `git rev-parse --short HEAD` deja este caso en rojo.
+     */
+    expect(etiquetar, 'el tag del deploy no sale de version.mjs').toContain(
+      'scripts/version.mjs',
+    );
+    expect(etiquetar).toContain('infoVersion().version');
+    // Y no se arma con git a mano en ese job.
+    expect(etiquetar, 'la versión del tag se compone en el YAML').not.toMatch(
+      /VERSION=.*rev-parse/,
+    );
+  });
+
+  it('un árbol sucio no llega a ser un tag', () => {
+    // La misma guarda que el job del build: una versión sellada como «-sucio» o
+    // «sin-git» no identifica ningún commit, así que como tag es basura.
+    expect(etiquetar).toMatch(/\*-sucio\*\|\*sin-git\*/);
+  });
+
+  it('y un re-run del mismo commit no falla por el tag que ya existe', () => {
+    // `git push` de un tag existente sale con error, y el job entero quedaría
+    // rojo por algo que ya está bien.
+    expect(etiquetar).toMatch(/rev-parse -q --verify "refs\/tags\/\$DEPLOY"/);
+  });
+});
+
 describe('los scripts de los workflows no interpolan datos ajenos — §5.4', () => {
   /**
    * **Por qué es un chequeo de seguridad y no de estilo** (B-195). `${{ … }}`

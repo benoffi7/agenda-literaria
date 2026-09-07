@@ -24,6 +24,12 @@ import {
 } from '@/lib/imagenes';
 import { TIPOS_SUBIBLES, enBytesLegibles } from '@/lib/imagenes-archivo';
 import { medirFuncion } from '@/lib/analytics';
+import {
+  MENSAJE_PESTANIA_VIEJA,
+  PROMESA_DEL_BORRADOR,
+  esFalloDeCarga,
+} from '@/lib/carga-diferida';
+import { almacenDelNavegador } from '@/lib/formulario/borradoresDelNavegador';
 import type { Imagen } from '@/types/actividad';
 
 interface Props {
@@ -62,6 +68,13 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
   const [urlNueva, setUrlNueva] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
+  /**
+   * **El error de arriba es de los que se arreglan recargando** — reporte del
+   * dueño (2026-09-07). Va en su propio estado y no dentro del mensaje porque lo
+   * que agrega es un **botón**: decirle «recargá» a alguien sin ponerle dónde es
+   * la mitad del arreglo, y en un teléfono la otra mitad son cuatro toques.
+   */
+  const [debeRecargar, setDebeRecargar] = useState(false);
   /**
    * El aviso de B-324, aparte de `errorSubida` **y no en el mismo estado**: uno
    * dice «no se subió» y el otro «se subió, y mirá esto». Compartir el estado
@@ -131,9 +144,55 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
   const subir = async (archivo: File) => {
     setErrorSubida(null);
     setAvisoDeRotacion(null);
+    setDebeRecargar(false);
     setSubiendo(true);
     try {
-      const { subirImagen } = await import('@/lib/subir-imagen');
+      /*
+       * **El `import()` va en su propio `try`, y ese es el arreglo del reporte
+       * del dueño** (2026-09-07: «me siguen diciendo que no se pueden subir
+       * imágenes»). Es lo primero que hace la subida y lo único de este flujo que
+       * puede fallar sin ser un `ImagenRechazada`, así que caía en el mensaje
+       * genérico —«volvé a intentar en un momento»— que además manda a repetir lo
+       * único que no puede funcionar: el chunk no existe más.
+       *
+       * Por qué falla: el SDK de Storage se carga diferido (B-09, D-51), o sea
+       * que este código vive en un archivo con el hash del build en el nombre.
+       * Hosting sirve el HTML con `no-cache` y `/_astro/**` como `immutable`, así
+       * que **una pestaña abierta se queda con el HTML viejo** y ese HTML apunta a
+       * un chunk que el deploy siguiente borró. Le pasa justo a quien dejó el
+       * panel abierto cargando una actividad, que es cuando se suben las fotos.
+       *
+       * El detalle en `lib/carga-diferida.ts`, incluido por qué el mensaje no
+       * afirma que la pestaña esté vieja: sin red, Chrome tira el mismo error.
+       */
+      let subirImagen: typeof import('@/lib/subir-imagen').subirImagen;
+      try {
+        ({ subirImagen } = await import('@/lib/subir-imagen'));
+      } catch (e) {
+        if (!esFalloDeCarga(e)) throw e;
+        /*
+         * Las **dos** frases, y la segunda **solo si hay dónde guardar**.
+         *
+         * Este editor vive adentro del formulario de actividad, que es el único
+         * con autoguardado (D-122), así que acá la promesa del borrador es cierta
+         * — el límite genérico (`SiNoCarga`) no la dice, porque envuelve también
+         * vistas que no lo tienen.
+         *
+         * Pero el autoguardado es **best-effort**: `guardarBorradorLocal` devuelve
+         * si pudo, y sin almacén usable —modo privado, cuota llena, cookies
+         * bloqueadas en un iframe— no guardó nada. Lo señaló el
+         * `auditor-privacidad`: prometerlo ahí es el segundo modo en que esta
+         * frase nace falsa, y no depende de ninguna versión.
+         */
+        const conBorrador = almacenDelNavegador() !== null;
+        setErrorSubida(
+          MENSAJE_PESTANIA_VIEJA + (conBorrador ? PROMESA_DEL_BORRADOR : ''),
+        );
+        setDebeRecargar(true);
+        medirFuncion('imagen-rechazada', 'carga');
+        return;
+      }
+
       const { imagen, orientacion } = await subirImagen(archivo, nuevaImagenId());
       // La primera nace portada, igual que al pegar una URL.
       onChange([...imagenes, { ...imagen, portada: imagenes.length === 0 }]);
@@ -372,6 +431,21 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
       {errorSubida && (
         <p role="alert" className="text-xs text-acento">
           {errorSubida}
+          {/*
+            El botón solo aparece en el caso que se arregla recargando, y va
+            **adentro del mismo `role="alert"`** para que un lector de pantalla lo
+            anuncie junto con el motivo: separado, se lee el problema y después
+            «botón, recargar» sin relación entre los dos.
+          */}
+          {debeRecargar && (
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="ms-1 min-h-touch font-medium underline hover:no-underline sm:min-h-0"
+            >
+              Recargar ahora
+            </button>
+          )}
         </p>
       )}
 

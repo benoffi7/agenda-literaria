@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { SiNoCarga } from '@/components/admin/SiNoCarga';
 
 /**
  * La capa se carga al abrirla, no al montar el panel: `ayuda.ts` son ~25 kB de
@@ -69,14 +70,25 @@ export function BotonAyuda({ contexto }: Props) {
       {abierto && (
         // Sin fallback visible: la capa pesa poco y aparece en un tick. Un
         // "Cargando…" parpadeando molesta más que esperar ese tick.
-        <Suspense fallback={null}>
-          <CentroAyuda
-            contexto={contexto}
-            idsSinLeer={sinLeer}
-            onCerrar={() => setAbierto(false)}
-            onNovedadesLeidas={apagarNumero}
-          />
-        </Suspense>
+        /*
+          **`SiNoCarga` acá también** — lo encontró el `auditor-trampas` sobre
+          B-805 y era un P1: este `lazy()` vive en el encabezado, o sea **fuera**
+          de los ocho `diferido()` de `AdminApp`, y `Suspense` no atrapa errores.
+          Con una pestaña abierta desde antes de un deploy, tocar «Ayuda» —que es
+          el gesto de cualquiera que se traba, y está visible en todas las
+          pantallas— se llevaba el mismo 404 y **dejaba el panel entero en
+          blanco**: la falla que B-805 decía haber cerrado, por otra puerta.
+        */
+        <SiNoCarga>
+          <Suspense fallback={null}>
+            <CentroAyuda
+              contexto={contexto}
+              idsSinLeer={sinLeer}
+              onCerrar={() => setAbierto(false)}
+              onNovedadesLeidas={apagarNumero}
+            />
+          </Suspense>
+        </SiNoCarga>
       )}
     </>
   );

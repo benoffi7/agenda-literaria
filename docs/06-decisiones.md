@@ -8526,6 +8526,14 @@ se lee de un tirón, y ninguna de las cinco superficies necesita un renglón má
 | 6 · la página de detalle | la frase, y el `offers.price` del JSON-LD |
 | 4 · GA4 | **solo la ruta** `arancel.monto` cuando el schema la rechaza, nunca el número |
 
+A eso hay que sumarle **las páginas que pintan la tarjeta del listado** —la de mes,
+los hubs y `/pasadas`—: las tres reciben `EntradaDeIndice` y la frase la arma la
+misma productora, así que el monto aparece ahí sin una decisión nueva. Dos son la
+home con otro recorte; **`/pasadas` no**, y lo señaló el `auditor-privacidad`: es el
+único link interno permanente de una actividad que ya pasó, así que el precio de una
+edición que ya se dio queda publicado para siempre. Se acepta —el archivo es el
+registro de lo que pasó, y el precio se publicó a propósito— y queda escrito.
+
 Y **no** llega a la cartelera (salida 7), que no muestra el arancel de ninguna
 forma, ni al issue de GitHub (salida 3), que reporta un problema y no una ficha
 comercial. Las dos ausencias están afirmadas por test, para que el día que la
@@ -8555,3 +8563,52 @@ daría verde en la mitad de las salidas por el motivo equivocado.
 - **La copia hereda el monto** (`duplicar.ts`). Es un dato de la actividad y no de
   una edición del ciclo: quien duplica un taller de $15.000 lo va a dar al mismo
   precio, o lo cambia en el mismo formulario donde revisa el título y las fechas.
+
+## D-510 · Cada push deja su tag, y son dos de distinta naturaleza
+
+**Fecha:** 2026-09-07 · **Ítem:** pedido directo del dueño · **Revisa:** la decisión escrita en `push-main.yml` («el tag: solo cuando cambia `version` en package.json, o sea cuando una persona decidió que esto es una versión. No uno por commit»)
+
+**Quién lo pidió.** El dueño, en la misma línea del reporte de B-805: «cada push que
+hacemos tiene que generar un tag y version».
+
+### Lo primero es separar dos cosas que se estaban mezclando
+
+**La versión del panel ya cambiaba en cada push.** `scripts/version.mjs` la compone
+como `1.9.0+<sha corto>`, así que el `/version.json` de producción y el bundle que
+corre en cada navegador se distinguen commit por commit — verificado contra
+producción el 2026-09-07: decía `1.8.0+28f4c6d`. **Es lo que hace que la detección
+de «pestaña vieja» funcione**, y no estaba roto.
+
+Lo que faltaba era el **tag**: la versión existía, se mostraba en el panel, viajaba
+en cada reporte de bug… y no se podía hacer `git show` de ella. Eso es lo que el
+pedido arregla.
+
+### Dos tags, porque son dos preguntas distintas
+
+| Tag | Cuándo | Para qué |
+|---|---|---|
+| `v1.9.0+a1b2c3d` | **uno por push** que deploya. Liviano | Es **exactamente** la cadena que el panel muestra y que un reporte copia. Sirve para pararse en lo que esa persona estaba usando |
+| `v1.9.0` | cuando `package.json` cambia. Anotado, con mensaje | Leer el historial. `git tag --list 'v*.*.*'` los da sin el ruido de los de deploy, porque los otros llevan `+` |
+
+El `+` es legal en un nombre de ref —git prohíbe el espacio, `~`, `^`, `:`, `?`,
+`*`, `[`, `\`, `..` y `@{`— y es el separador que semver define para metadata de
+build. O sea que **el tag se llama igual que la versión**, sin traducción de nadie.
+
+### La cadena la compone `version.mjs` y nadie más
+
+Es la clase de B-88 (D-98: «el único lugar donde se arma una cadena de versión»), y
+acá el modo de falla es mudo: si el YAML armara el tag a mano —un
+`v$VERSION+$(git rev-parse --short HEAD)`— el día que `componerVersion` cambie de
+formato el tag y el panel dirían cosas distintas, y `git show` de lo que reporta una
+persona no encontraría nada. Hay un test que lo exige sobre el YAML.
+
+### Lo que **no** se hizo, y por qué
+
+**El número de `package.json` sigue moviéndolo una persona.** La alternativa era que
+CI le sumara el patch en cada push y commiteara el cambio: eso da un `1.9.13` que no
+dice nada —trece pushes no son trece versiones— y mete a CI a escribir en `main`,
+con el riesgo de disparar su propio workflow. La identidad por push ya la da el
+SHA, que es más preciso y no requiere una escritura.
+
+Si algún día se quiere que el número también se mueva solo, la línea a cambiar está
+en el job `etiquetar` y esta entrada es contra qué leerla.
