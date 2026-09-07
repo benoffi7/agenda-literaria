@@ -89,6 +89,34 @@ respuesta es siempre «no sale», que es el criterio de D-320.
 `docs/12-sitio-publico.md` llamaba a `/404` «la salida pública 13»: era esta clase
 mal contada, y se corrigió con B-780.
 
+**El riesgo propio de esta clase no es la fuga: es la promesa** — B-781. Estas
+páginas no proyectan ningún documento, así que no hay campo que se cuele; lo que
+tienen es **texto libre, escrito a mano, en HTML indexado, que afirma cosas sobre
+tratamiento de datos**. Y una afirmación así puede **nacer falsa**, no solo
+envejecer: `/apoyar` salió diciendo «no se guarda quién entró» mientras el banner
+de la misma pantalla decía que el sitio usa Google Analytics (salida 12). Lo
+encontró el `auditor-privacidad`; se corrigió; y después el barrido general
+encontró la segunda, en `/ayuda`: «esta agenda no toma inscripciones, no cobra y
+**no guarda tus datos**».
+
+`tests/promesas-sobre-datos.test.ts` es la red de esa clase, y es de **clase y no
+de instancia** en los dos ejes que importan:
+
+- **los archivos salen de globs** —todo `src/lib/*DelSitio.ts`, las páginas de
+  `src/pages/` y los componentes de `src/components/sitio/`— así que la página que
+  se escriba mañana entra al barrido sin que nadie la agregue, que es justo el
+  modo de falla de `/apoyar`;
+- **lo que detecta son fórmulas de negación** («no se guarda», «sin analítica»,
+  «nadie te sigue»), no una lista de frases prohibidas, y la decisión la toma la
+  ventana de contexto: una negación pasa si la frase la **condiciona** («no se
+  instala nada hasta que elijas», la forma del banner) o la **acota** («no te
+  pedimos ni guardamos datos para anotarte», la forma corregida de `/ayuda`).
+
+Las dos escapatorias están en un solo lugar del test y se verifican en los dos
+sentidos, con la frase histórica de `/apoyar` como control negativo. **Agregar una
+frase a la lista de alcances no es arreglarla**: cada entrada de esa lista es una
+promesa que alguien tiene que poder desmentir mirando el código.
+
 **`/apoyar` (B-780) suma la primera arista propia de esta clase: un destino de
 salida a un tercero que recibe plata.** `CAFECITO` y `urlDeCafecito()`
 (`src/lib/enlaces.ts`) son el único lugar donde ese destino se escribe — la página

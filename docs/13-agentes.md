@@ -144,6 +144,22 @@ La fila 1 de la tabla nombraba solo el primero hasta el 2026-08-27 (B-218), que 
 la forma de B-216 un archivo más adentro: con la tabla vieja, un cambio que tocara
 solo `eventsJson.ts` no despertaba a este agente por nombre de archivo.
 
+**Y hay una clase que NO se numera, con su propio riesgo** — B-782. `/ayuda`,
+`/contacto`, `/suscribirse`, `/404`, `/apoyar` y `/anunciar` no proyectan ningún
+documento: son texto escrito a mano, sin campo que se pueda colar por un spread,
+así que no hay proyección que auditar y una fila más agregaría, por cada campo
+nuevo del modelo, una celda cuya respuesta es siempre «no sale» (D-320). Si alguna
+nota vieja habla de «la salida pública 13», es esta clase mal contada.
+
+Lo que sí tienen es **la promesa**: texto libre en HTML indexado que afirma cosas
+sobre tratamiento de datos, y que puede **nacer falso**. `/apoyar` salió diciendo
+«no se guarda quién entró» con el banner de Google Analytics en la misma pantalla,
+y `/ayuda` decía «no guarda tus datos». La red es
+`tests/promesas-sobre-datos.test.ts` (B-781): archivos por glob, detección por
+fórmula, y una negación pasa solo si está condicionada o acotada. Lo que le queda
+al agente es lo que el test no puede — si una frase nueva es **verdad** dada la
+salida 12 y dado lo que la consola de GA4 tiene activado.
+
 El agente sabe qué archivo produce cada una, qué nunca sale, y las excepciones que
 cuestan de recordar (`online.urlPublica` vale para el JSON y el calendario pero
 **nunca** para la analítica ni para el posteo; el historial de versiones guarda el

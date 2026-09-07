@@ -168,9 +168,17 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
         id: 'no-es-inscripcion',
         pregunta: '¿Me anoto desde acá?',
         respuesta: [
-          'No. Esta agenda no toma inscripciones, no cobra y no guarda tus datos: cada actividad ' +
-            'se inscribe por el canal de quien la organiza, que puede ser un mail, un WhatsApp, un ' +
-            'mensaje directo o un formulario propio. En la página de cada actividad está cuál es.',
+          // «no te pedimos ni guardamos datos para anotarte» y no «no guarda tus ' +
+          // datos» — B-781. La frase original era del mismo tipo que la que
+          // `/apoyar` tuvo que corregir: leída de corrido, en una página indexada,
+          // afirmaba algo sobre tratamiento de datos que el sitio contradice (mide
+          // con Google Analytics cuando hay consentimiento, salida 12). Lo que la
+          // respuesta quiere decir —acá no te anotás, así que no hay ningún dato
+          // tuyo de inscripción— sigue entero y ahora es verdad literal.
+          'No. Esta agenda no toma inscripciones, no cobra y no te pedimos ni guardamos datos ' +
+            'para anotarte: cada actividad se inscribe por el canal de quien la organiza, que ' +
+            'puede ser un mail, un WhatsApp, un mensaje directo o un formulario propio. En la ' +
+            'página de cada actividad está cuál es.',
           'Lo decimos fuerte porque es la confusión que sale cara: si nos escribís a nosotros para ' +
             'reservar un lugar, ese lugar no queda reservado en ningún lado.',
         ],

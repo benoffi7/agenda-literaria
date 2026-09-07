@@ -105,6 +105,36 @@ lugar de `e.titulo` publica tres descripciones enteras normalizadas). Por eso
 tiene barrido de centinelas propio en `tests/barrido-de-salidas-publicas.test.ts`,
 sobre las tres frases y en sus dos ramas (mes vigente y mes vencido).
 
+### Las páginas de texto no son una salida más, y el riesgo que tienen es la promesa
+
+**No se numeran, y no es un olvido** — B-782. `/ayuda`, `/contacto`,
+`/suscribirse`, `/404`, `/apoyar` y `/anunciar` **no proyectan ningún documento**:
+su contenido está escrito a mano en `src/lib/ayudaDelSitio.ts`,
+`src/lib/contactoDelSitio.ts`, `src/lib/enlaces.ts`, `src/lib/noEncontrado.ts`,
+`src/lib/apoyoDelSitio.ts` y `src/lib/comercialDelSitio.ts`. No hay campo que se
+cuele por un spread, así que no hay proyección que auditar, y una fila más en las
+tres tablas atadas agregaría —por cada campo nuevo del modelo— una celda cuya
+respuesta es siempre «no sale» (el criterio de D-320). Si alguna nota vieja habla
+de «la salida pública 13», es esta clase mal contada.
+
+**Pero mirarlas sí, y por algo que las filas de arriba no cubren: la promesa.** Es
+texto libre, escrito a mano, en HTML **indexado**, que afirma cosas sobre
+tratamiento de datos — y una afirmación así puede **nacer falsa**. `/apoyar` salió
+diciendo «no se guarda quién entró» mientras el banner de la misma pantalla decía
+que el sitio usa Google Analytics (salida 12); `/ayuda` decía «esta agenda no toma
+inscripciones, no cobra y **no guarda tus datos**».
+
+La red es `tests/promesas-sobre-datos.test.ts` (B-781), de clase y no de
+instancia: los archivos salen de **globs** —así entra la página que se escriba
+mañana, que es justo el modo de falla de `/apoyar`— y lo que detecta son
+**fórmulas** de negación, no frases prohibidas. Una negación pasa solo si la frase
+la **condiciona** («hasta que elijas») o la **acota** («para anotarte»).
+
+**Qué te toca a vos acá:** cuando el diff toque uno de esos archivos de texto,
+preguntá lo que el barrido no puede — si una frase nueva es **verdad** dada la
+salida 12 y dado lo que la consola de GA4 tiene activado (B-480, B-773). El test
+detecta la forma; que la afirmación sea cierta es criterio.
+
 ## Qué nunca sale
 
 - `online.url` — salvo `online.urlPublica === true`, y **solo** al `events.json`

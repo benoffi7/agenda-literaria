@@ -3109,7 +3109,45 @@ tu llamada.
 
 ---
 
-### B-781 · P1 — el mismo tipo de promesa que `/apoyar` tuvo que corregir puede estar en otras páginas
+### B-781 · ✅ hecho (2026-09-07) — el mismo tipo de promesa que `/apoyar` tuvo que corregir puede estar en otras páginas
+
+**Cerrado con `tests/promesas-sobre-datos.test.ts`, y el barrido encontró una.**
+`/ayuda` decía «esta agenda no toma inscripciones, no cobra y **no guarda tus
+datos**»: la misma clase que `/apoyar` —negación absoluta sobre tratamiento de
+datos, en HTML indexado, mientras el sitio mide con consentimiento— y era la única
+del sitio. Se corrigió **acotándola**: «no te pedimos ni guardamos datos **para
+anotarte**», que es lo que la respuesta quería decir y ahora es verdad literal.
+
+Cómo quedó la red, y por qué es de clase:
+
+- **Los archivos salen de globs** —todo `src/lib/*DelSitio.ts`, las páginas de
+  `src/pages/` y los componentes de `src/components/sitio/`— así que la página que
+  se escriba mañana entra sin que nadie la agregue. Era el punto: `/apoyar` **nació**
+  con la frase falsa, así que una lista a mano no habría alcanzado.
+- **Lo que detecta son fórmulas**, no frases prohibidas: el verbo de la negación
+  («no se guarda», «sin analítica», «no usamos cookies», «nadie te sigue»), y la
+  decisión la toma la ventana de contexto.
+- **Dos escapatorias, las dos en un solo lugar y con su motivo**: la frase pasa si
+  se **condiciona** («no se instala nada hasta que elijas», la forma del banner) o
+  si se **acota** («para anotarte», «tu dirección»). Está escrito en el test que
+  agregar una frase a la lista de alcances **no es arreglarla**.
+- **Se verifica en los dos sentidos**, con la frase histórica de `/apoyar` y con
+  las dos formas verdaderas como fixtures.
+
+Lo que el test no puede y le queda al `auditor-privacidad`: si una frase nueva es
+**verdad** dada la salida 12 y dado lo que la consola de GA4 tiene activado
+(B-480, B-773). El test detecta la forma; que la afirmación sea cierta es criterio.
+Eso quedó escrito en la ficha del agente y en `docs/13-agentes.md`.
+
+`/contacto` se revisó y **no había que tocarla**: «No usamos tu dirección para
+nada más que responderte» es una promesa acotada a la casilla, verdadera, y
+ortogonal a la medición del sitio. La ayuda del **panel** (`src/lib/ayuda.ts`)
+queda fuera del barrido a propósito, con su caso que lo dice.
+
+El planteo original queda abajo.
+
+---
+
 
 `/apoyar` decía «no se guarda quién entró» y era falso: el sitio mide con Google
 Analytics cuando hay consentimiento (salida 12). Se corrigió, y hay un test que
@@ -3128,7 +3166,39 @@ patrones en un solo lugar.
 
 ---
 
-### B-782 · P2 — `docs/07-seguridad.md` y `docs/13-agentes.md` no nombran las páginas de texto
+### B-782 · ✅ hecho (2026-09-07) — `docs/07-seguridad.md` y `docs/13-agentes.md` no nombran las páginas de texto
+
+**Cerrado junto con B-781, que es de la misma clase.** Se hizo lo que este ítem
+pedía, con una vuelta más:
+
+- **El párrafo de la clase está ahora en los tres lugares**, no solo a medias en
+  `07-seguridad.md`: la ficha del `auditor-privacidad` y `docs/13-agentes.md` lo
+  tienen, con el dictamen —**estas páginas no se numeran**, porque no proyectan
+  ningún documento y una fila más agregaría por cada campo nuevo una celda cuya
+  respuesta es siempre «no sale» (D-320)— y con **qué le toca al agente igual**:
+  el riesgo de esta clase no es la fuga, es la promesa.
+- **El test que este ítem propuso existe** (`tests/agentes-y-skills.test.ts`),
+  y es más ancho que lo propuesto: barre **todos** los `.md` versionados del repo
+  —no solo `docs/12`— buscando `salida(s) pública(s) N` y `salida N`, y exige que
+  todo número citado sea ≤ la cantidad de filas de la tabla de la ficha. Los
+  cuatro documentos que se atan entre sí pueden estar de acuerdo y un quinto igual
+  citar un número inventado, que es lo que pasó.
+- **Con una excepción, corta y con su motivo**: una cita que dice que el número
+  está **mal** es la documentación del arreglo, y hay que poder escribirla. Se
+  exige el marcador en la **misma oración**, no en el párrafo, así que la cita
+  usada como referencia sigue prohibida. Probado en las dos direcciones.
+- `BACKLOG.md` y `CHANGELOG.md` quedan fuera del barrido a propósito: son
+  registros históricos, y ahí una cita a un número que ya no existe **es** el
+  registro.
+
+Lo que este ítem dejaba abierto y **sigue abierto**: si algún día se decide
+numerar las páginas de texto, son cinco filas en tres archivos más el `PALABRAS`
+de ese test. Está en **B-772** y **B-654**, como estaba.
+
+El planteo original queda abajo.
+
+---
+
 
 Drift **anterior a este cambio**, encontrado por el `auditor-privacidad` al buscar
 dónde numerar `/apoyar`. `docs/12-sitio-publico.md` llamaba a `/404` «la salida

@@ -331,6 +331,79 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     }
   });
 
+  it('ningún documento cita una «salida pública N» que no exista — B-782', () => {
+    /*
+     * **El drift que este lazo no podía ver.** `docs/12-sitio-publico.md` llamaba
+     * a `/404` «la salida pública 13» cuando las tres tablas atadas tienen **doce**
+     * filas y ninguna nombra a `/404`. No era un error de conteo: era la clase de
+     * páginas que **no se numeran** —texto escrito a mano, sin ningún documento
+     * proyectado— citada como si tuviera fila. Y eso importa porque **lo que decide
+     * si el `auditor-privacidad` mira un archivo es que alguna tabla lo nombre**:
+     * un número inventado hace creer que algo está cubierto cuando no lo está.
+     *
+     * Los casos de arriba atan la ficha, `07-seguridad.md`, el skill y
+     * `13-agentes.md` **entre sí**, así que los cuatro pueden estar de acuerdo y un
+     * quinto documento igual citar un número que no existe. Este barre **todos**
+     * los `.md` versionados del repo contra la cantidad real de filas.
+     *
+     * MUTACIÓN PROBADA, las dos direcciones: escribir «El `/404` es la salida
+     * pública 13 del sitio» en `docs/12-sitio-publico.md` deja este caso en rojo
+     * nombrando el archivo y la cita; y las tres frases que hoy **cuentan** que
+     * `docs/12` la llamaba así siguen en verde, porque el marcador está en la
+     * misma oración.
+     */
+    const cuantas = salidas(FICHA).length;
+    /*
+     * `versionados()` lista solo `.claude`, así que los `docs/` se piden aparte —
+     * y son la mitad que importa: el drift original vivía en
+     * `docs/12-sitio-publico.md`. `BACKLOG.md` y `CHANGELOG.md` quedan afuera a
+     * propósito: son registros históricos, y ahí una cita a un número que ya no
+     * existe **es** el registro.
+     */
+    const md = [
+      ...versionados().filter((f) => /\.md$/.test(f)),
+      ...execFileSync('git', ['ls-files', '-z', 'docs'], { encoding: 'utf8' })
+        .split('\0')
+        .filter((f) => /\.md$/.test(f) && !/^docs\/(BACKLOG|CHANGELOG)\.md$/.test(f)),
+    ];
+
+    /*
+     * **La única excepción, y es corta a propósito:** una cita que dice que el
+     * número está mal *es* la documentación del arreglo. Los tres documentos
+     * cuentan que `docs/12` llamaba a `/404` «la salida pública 13», y eso hay que
+     * poder escribirlo — si no, la corrección de B-780 no se puede narrar y la
+     * próxima persona vuelve a numerarla.
+     *
+     * Lo que la excepción NO permite es la cita usada como **referencia**, que es
+     * la que hace creer que algo está cubierto. Se exige el marcador en la misma
+     * oración, no en el párrafo.
+     */
+    const MARCADO_COMO_ERROR = /mal contada|no existe|llamaba|era esta clase|inventad/i;
+
+    const citas: string[] = [];
+    for (const archivo of md) {
+      const texto = fuente(archivo);
+      for (const patron of [/salidas? p[úu]blicas? (\d+)/gi, /\bsalida (\d+)\b/gi]) {
+        for (const m of texto.matchAll(patron)) {
+          if (Number(m[1]) <= cuantas) continue;
+          // La oración: hasta el punto anterior y el siguiente.
+          const desde = Math.max(0, texto.lastIndexOf('.', m.index) + 1);
+          const hasta = texto.indexOf('.', m.index + m[0].length);
+          const oracion = texto.slice(desde, hasta === -1 ? undefined : hasta);
+          if (MARCADO_COMO_ERROR.test(oracion)) continue;
+          citas.push(`${archivo}: «${m[0]}»`);
+        }
+      }
+    }
+
+    expect(
+      citas,
+      `hay ${cuantas} salidas numeradas y estos documentos citan una que no existe. ` +
+        'Si la intención era numerar una página de texto, son cinco filas en tres ' +
+        'archivos más el `PALABRAS` de este test, no un número suelto (B-772, B-654)',
+    ).toEqual([]);
+  });
+
   it('y `docs/13-agentes.md` tampoco, medido contra la tabla de la ficha — B-124', () => {
     /*
      * **El cuarto lugar donde vive la cuenta, y el único que estaba afuera del

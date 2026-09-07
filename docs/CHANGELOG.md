@@ -2,6 +2,31 @@
 
 ## Sin publicar
 
+- **Ninguna página del sitio promete sobre datos algo que el sitio contradice** —
+  **B-781** (el único P1 que quedaba) y **B-782**, que es la misma clase.
+
+  `/apoyar` había salido diciendo «no se guarda quién entró» mientras el banner de
+  la misma pantalla decía que el sitio usa Google Analytics. Se había corregido con
+  un test **en esa página**; esto es el barrido general, y **encontró la segunda**:
+  `/ayuda` decía «esta agenda no toma inscripciones, no cobra y **no guarda tus
+  datos**». Se corrigió acotándola —«no te pedimos ni guardamos datos **para
+  anotarte**»—, que es lo que la respuesta quería decir y ahora es verdad literal.
+
+  La red (`tests/promesas-sobre-datos.test.ts`) es de clase en los dos ejes: los
+  archivos salen de **globs**, así que la página que se escriba mañana entra sola
+  —era el punto, porque `/apoyar` **nació** con la frase falsa—, y lo que detecta
+  son **fórmulas** de negación y no frases prohibidas. Una negación pasa solo si la
+  frase la **condiciona** («no se instala nada hasta que elijas») o la **acota**
+  («para anotarte»), y está escrito que agregar una frase a la lista de alcances
+  **no es arreglarla**.
+
+  De paso quedó dicho, en los tres lugares donde vive el índice de salidas, que
+  **las páginas de texto no se numeran y por qué**, y que el riesgo propio de esa
+  clase no es la fuga sino la promesa. Y hay un test que prohíbe citar una «salida
+  pública N» que no exista —el drift que llamaba a `/404` «la salida pública 13»—
+  en cualquier `.md` del repo, con una sola excepción: la cita que dice que el
+  número está mal, que es la documentación del arreglo.
+
 - **El tríptico de la home cambió de ventanas, sortea dos por panel y su pie
   lleva a algún lado** — **B-791**, **D-470**. Los rótulos son ahora **Hoy · Este
   finde · Esta semana** (eran `Hoy · Mañana · Este finde`), cada panel muestra
