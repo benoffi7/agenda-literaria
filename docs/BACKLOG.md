@@ -10178,6 +10178,47 @@ lo cerró el `auditor-privacidad` en B-109. Falta **diseñar y generar los cinco
 archivos**, y elegirlos por tipo con la misma derivación que el color (`identidad.ts`),
 no con un `switch` que deje sin imagen al tipo que alguien cree mañana (§4, trampa 6).
 
+> ⚠️ **2026-09-07 — «generarlas en el build» tiene un bloqueante medido, y no es
+> el diseño: es la fuente.** Se intentó y quedó a mitad de camino a propósito, con
+> la medición escrita para que nadie la repita.
+>
+> El camino obvio sin dependencias nuevas es armar un SVG de 1200×630 con los
+> tokens del sistema visual y rasterizarlo con **`sharp`**, que ya está en el árbol
+> (dependencia **opcional** de Astro, así que `npm ci` la trae). Rasteriza bien.
+> **Lo que no hace es usar nuestras tipografías**, y se comprobó por bytes:
+>
+> | SVG | bytes del PNG |
+> |---|---|
+> | `font-family='Fraunces'` | 4994 |
+> | `font-family='sans-serif'` | **4994** |
+> | `font-family='serif'` | 6511 |
+> | `@font-face` con el `.woff2` como **data URI** | **4994** |
+>
+> Idéntico al fallback en los dos casos que nos interesan: `sharp` rasteriza con
+> **librsvg**, que resuelve familias por **fontconfig** —o sea fuentes instaladas
+> en el sistema— y **no soporta `@font-face`**, ni con archivo ni con data URI. Así
+> que un `og:image` generado por este camino saldría en la Helvetica de turno, que
+> es justamente lo contrario de «tipográficas, con el sistema visual del sitio».
+>
+> **Dos caminos, y los dos son una decisión del dueño porque los dos cuestan:**
+>
+> | | Qué cuesta |
+> |---|---|
+> | **Un renderizador de texto a paths** (`satori` + `@resvg/resvg-js`, el stack estándar de OG): recibe el `.ttf`/`.woff` y emite el texto como curvas, así que la tipografía viaja en el archivo | **Dos dependencias nuevas** en un repo que se cuidó de no tenerlas —se autoalojaron las fuentes para no depender de un tercero (B-481) y se descartó Algolia por prematuro—. Son de build, no van al bundle del sitio |
+> | **Instalar las fuentes para fontconfig** en cada máquina que buildea | Toca el workflow de Actions **y** el setup local, y es la clase de arreglo que funciona en la máquina de quien lo escribió. Cero dependencias nuevas |
+>
+> **Y hay una tercera que no es un camino sino un recorte:** aceptar cinco PNG
+> hechos a mano en `public/og/`. Es lo que el dueño descartó el 2026-09-03 —«en vez
+> de cinco archivos que haya que rehacer el día que cambie la marca»— y se anota
+> solo para que la decisión se relea con el costo real del otro lado enfrente.
+>
+> **Lo que ya se puede dar por sabido cuando esto se retome:** `sharp` está
+> disponible pero **no declarado** en `package.json` (llega como opcional de
+> Astro). Si el build pasa a depender de él, **hay que declararlo**: es la lección
+> de B-561, donde una dependencia que vivía en `functions/package.json` resolvía en
+> local y rompía el CI, que hace `npm ci` solo de la raíz. Una dependencia opcional
+> que no instala en una plataforma deja el build roto **solo ahí**.
+
 ### B-292 · ✅ hecho — `/pasadas` no tiene buscador propio
 
 **Ya estaba resuelto cuando se revisó el 2026-09-07**, y con la salida que este
