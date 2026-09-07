@@ -3227,7 +3227,39 @@ rebuild. Si «Esta semana» no puede escribir sus días de forma corta, hay que
 resolver eso, no sacar la línea.
 
 
-### B-790 · 🟡 en curso (paso 1 de 4 hecho, 2026-09-07) — Ya hay estadísticas del sitio y el panel no las muestra
+### B-790 · ✅ hecho (2026-09-07) — Ya hay estadísticas del sitio y el panel no las muestra
+
+**Cerrado, y con una corrección al diagnóstico del propio ítem.** Decía que «la
+Function está escrita y sin desplegar» y **eso era falso**: la salida del deploy
+fue `updating`, no `creating`, o sea que `traerAnaliticaDelSitio` ya estaba
+desplegada. Lo que faltaba eran los **permisos** y las **variables**, no el
+deploy — el deploy solo hizo falta para que la Function recogiera el `.env` nuevo.
+
+Los cuatro pasos de consola los hizo el dueño el 2026-09-07: las dos APIs
+habilitadas (verificado con `gcloud services list`), el rol **Lector** de
+`calendar-sync@` en GA4, el permiso **Restringido** en Search Console, y los dos
+identificadores en `functions/.env` —`GA4_PROPERTY_ID=551073593` y
+`SEARCH_CONSOLE_SITE=sc-domain:agendaleh.ar`—.
+
+**Verificado de punta a punta**, y no por fe: se forzó una corrida del job
+(`gcloud scheduler jobs run firebase-schedule-traerAnaliticaDelSitio-…`) y el log
+dice `analítica del sitio actualizada`, o sea que las dos APIs contestaron y el
+documento `sistema/analitica-sitio` se escribió. La pestaña «El sitio público»
+tiene de dónde leer.
+
+Y la duda de la forma de la propiedad de Search Console se resolvió con **dos
+señales que coinciden**: el TXT `google-site-verification=` en el apex del DNS
+—el único método de verificación de una propiedad de dominio— y que en el
+selector de Search Console aparece **sin el `https://`**. Cómo distinguirlas de
+un vistazo quedó escrito en el §9.4, que era la pregunta que costó.
+
+**Lo único que queda es el paso 5, y es el que falla sin fallar:** la zona horaria
+de la propiedad de GA4 en `(GMT-03:00) Buenos Aires`. Si no coincide, los números
+no dan error — se corren un día. Es la trampa 1 del §13 con otra cara y no hay
+forma de detectarla desde el código.
+
+**Y una nota que vale para leer los primeros números:** ninguna de las dos APIs
+mide para atrás, así que la historia arranca ahora y no el 2026-09-03.
 
 > **Avance del 2026-09-07.** El dueño corrió el **paso 1** de los cuatro de
 > `docs/16-analitica-del-sitio.md` §9.4 —habilitar `analyticsdata` y

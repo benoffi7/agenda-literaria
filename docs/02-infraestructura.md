@@ -172,9 +172,23 @@ deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 **Son ocho, y las ocho están ACTIVE.**
 
+> **Rerelevado contra GCP el 2026-09-07**, y la tabla estaba mal otra vez:
+> `gcloud functions list --project agenda-literaria --regions southamerica-east1`
+> devuelve **diez** Functions, todas desplegadas — incluidas
+> `limpiarVersionesHuerfanas`, que esta tabla declaraba «escrita, sin desplegar»,
+> y `traerAnaliticaDelSitio`, que no estaba en la tabla. Es **la misma cicatriz
+> que el aviso de abajo describe**, una vuelta más: desde D-132 el CI despliega
+> Functions solo, así que una fila que dice «sin desplegar» envejece sin que nadie
+> la toque.
+>
+> **Y esta tabla no puede tener test**: es el estado de un sistema remoto, y el CI
+> no tiene —ni tiene que tener— credenciales para preguntárselo. Lo único que la
+> sostiene es **la fecha del relevamiento**, que por eso va escrita arriba y en
+> cada fila. Si la fecha es vieja, la tabla es una hipótesis.
+
 > **Estado relevado contra GCP el 2026-09-03**, no deducido del árbol:
 > `gcloud functions list --project agenda-literaria --format='value(name,updateTime)'`.
-> Las ocho tienen `updateTime` de ese día — siete a las 16:14 (el job «Cloud
+> Las ocho de entonces tenían `updateTime` de ese día — siete a las 16:14 (el job «Cloud
 > Functions» de `push-main.yml`, que despliega sin filtro) y
 > `limpiarImagenesHuerfanas` a las 16:37. Antes de este relevamiento esta tabla
 > decía que `syncCalendar` y `rebuildPorOpciones` «hay que redesplegar» y que
@@ -194,7 +208,8 @@ Todas en `southamerica-east1`, Node 22, `maxInstances: 5` (`reporteAIssue`, 3).
 | `reporteAIssue` | `onDocumentWritten reportes/{id}` | ACTIVE — 9 issues creados |
 | `optimizarImagen` | `onObjectFinalized` (bucket entero) | ACTIVE — desplegada y barrida el 2026-09-03 (B-220, D-175). Ver `08-operacion.md` § «Estado: desplegada y barrida el 2026-09-03» |
 | `limpiarImagenesHuerfanas` | `onSchedule every 24 hours` | ACTIVE — desplegada el 2026-09-03 16:37 (041ab45), B-221 cerrado. El IAM que pedía era el mismo de `optimizarImagen` y no hacía falta nada nuevo: `roles/storage.objectUser` ya incluye `storage.objects.delete`. Ver `08-operacion.md` § «El barrido de huérfanas» |
-| `limpiarVersionesHuerfanas` | `onSchedule every 24 hours` | **escrita, sin desplegar** — B-89. Sin IAM nuevo: corre con `calendar-sync@` y solo necesita `datastore.user`, que ya tiene. Ver `08-operacion.md` § «El barrido de versiones huérfanas» |
+| `limpiarVersionesHuerfanas` | `onSchedule every 24 hours` | ACTIVE — **desplegada**, relevado el 2026-09-07 (la tabla decía «escrita, sin desplegar» y era de antes de D-132). Sin IAM nuevo: corre con `calendar-sync@` y solo necesita `datastore.user`, que ya tiene. Desde B-630 tiene **script en seco**: `scripts/limpiar-versiones-huerfanas.mjs`. Ver `08-operacion.md` § «El barrido de versiones huérfanas» |
+| `traerAnaliticaDelSitio` | `onSchedule every day 07:00` | ACTIVE — **faltaba en esta tabla**, agregada el 2026-09-07. Lee GA4 y Search Console con `calendar-sync@` y escribe `sistema/analitica-sitio`, que es de donde lee la pestaña «El sitio público» del panel. Los cuatro pasos de consola quedaron hechos el 2026-09-07 y se verificó forzando una corrida: el log dice `analítica del sitio actualizada` (B-790, `16-analitica-del-sitio.md` §9.4) |
 
 `rebuildPorOpciones` pasó a llevar `timeoutSeconds: 300` porque desde B-04 no
 solo marca el rebuild: al renombrar una etiqueta reescribe los eventos de todas
