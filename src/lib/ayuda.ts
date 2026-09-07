@@ -1154,8 +1154,8 @@ export const CAPITULOS: CapituloAyuda[] = [
     seccionFormulario: 'Arancel e inscripción',
     paraQue: 'Cuánto sale y por dónde se anota la gente.',
     impacto:
-      'El arancel sale al sitio como una etiqueta —«Gratis», «A la gorra»— y es uno de los filtros ' +
-      'con los que la gente busca. El canal de inscripción sale al sitio y al calendario: el mail, ' +
+      'El arancel sale al sitio como una etiqueta —«Gratis», «A la gorra»— y, si cargás el monto, ' +
+      'con el precio al lado. Es uno de los filtros con los que la gente busca. El canal de inscripción sale al sitio y al calendario: el mail, ' +
       'el teléfono o el arroba que pongas ahí queda público y lo pueden levantar los robots, así ' +
       'que usá uno de trabajo.',
     ejemplo:
@@ -1163,6 +1163,19 @@ export const CAPITULOS: CapituloAyuda[] = [
       'Instagram», y en el destino la cuenta. Si además tiene cupo, el número va en «cupo» y el día ' +
       'que se llene lo marcás desde el listado, sin abrir el formulario.',
     puntos: [
+      {
+        texto:
+          'Si el arancel se paga, aparece el campo «Monto». Es opcional: cargalo en pesos y sin ' +
+          'centavos —15000— y se publica como «$15.000», pegado al arancel, en el listado, en la ' +
+          'página de la actividad, en el evento del calendario y en el texto para redes. Google ' +
+          'además lo muestra como precio en el resultado de búsqueda.',
+      },
+      {
+        texto:
+          'Con «Gratis» o «A la gorra» el campo no aparece: no hay precio que publicar. Y si ' +
+          'cargaste un monto y después cambiás el arancel a uno de esos dos, el monto se borra ' +
+          'solo — así no queda un número escondido que después frene el guardado.',
+      },
       {
         texto:
           'El arancel no viene elegido a propósito. Si viniera puesto en «Gratis» y alguna vez nadie ' +

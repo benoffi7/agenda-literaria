@@ -1217,6 +1217,28 @@ describe('planificar — cuántos eventos reescribe cada edición (B-161)', () =
       esperado: todos,
     },
     {
+      /*
+       * B-114 — **corregir solo el precio propaga a los ocho encuentros.** Es la
+       * trampa 9 con el campo nuevo: un taller que sube el arancel y no propaga
+       * queda con el precio viejo en el calendario de todos los suscriptos, y eso
+       * no avisa. Sale gratis porque la guarda compara el payload entero y no una
+       * lista de campos (§7.1), pero el caso está escrito igual: es la afirmación
+       * que se cae si alguien vuelve a la lista.
+       */
+      nombre: 'cambiar solo el monto del arancel',
+      antes: cicloCompleto({ arancel: { tipo: 'arancelado', notas: '', monto: 15000 } }),
+      despues: cicloCompleto({ arancel: { tipo: 'arancelado', notas: '', monto: 18000 } }),
+      esperado: todos,
+    },
+    {
+      // Y cargarlo por primera vez también: `null` → un número es un cambio del
+      // texto que la gente ve en su calendario.
+      nombre: 'cargar el monto donde no había',
+      antes: cicloCompleto({ arancel: { tipo: 'arancelado', notas: '', monto: null } }),
+      despues: cicloCompleto({ arancel: { tipo: 'arancelado', notas: '', monto: 15000 } }),
+      esperado: todos,
+    },
+    {
       nombre: 'cambiar el organizador',
       antes: cicloCompleto(),
       despues: cicloCompleto({ organizador: { nombre: 'Otro', instagram: '', web: '' } }),

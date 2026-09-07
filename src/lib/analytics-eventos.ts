@@ -357,6 +357,10 @@ export type Grupo = (typeof GRUPOS)[number];
  */
 export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'arancel',
+  // B-114 — `arancel.monto` es una ruta que el schema puede rechazar («un
+  // arancel que no se paga no lleva monto»), así que el vocabulario la tiene que
+  // reconocer. Lo que viaja es **la ruta**, nunca el número.
+  'arancel.monto',
   'arancel.notas',
   'arancel.tipo',
   'descripcion',

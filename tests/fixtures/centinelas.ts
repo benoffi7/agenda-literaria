@@ -121,6 +121,18 @@ const RUTAS = [
   'inscripcion.destino',
   'arancel.tipo',
   'arancel.notas',
+  /*
+   * **`arancel.monto` NO está en esta lista, y es una decisión** — B-114. Los
+   * centinelas de acá son strings (`CENTINELA.<ruta>`) y el monto es un **entero**:
+   * meterlo en `RUTAS` hacía que el barrido buscara el texto
+   * `'CENTINELA.arancel.monto'`, que ninguna salida puede contener nunca — o sea
+   * un chequeo que pasa **siempre**, esté la fuga o no.
+   *
+   * El campo entra al fixture igual (`monto: MONTO_CENTINELA`, que es lo que el
+   * chequeo de cobertura de interfaces exige) y lo que lo mira es un `describe`
+   * propio en el barrido, que afirma las dos formas en que puede salir: el número
+   * crudo en las salidas JSON y `$987.654` en las de texto.
+   */
 
   // Material: un item público y uno privado, con centinelas separados, porque
   // de uno sobrevive la URL y del otro no (§5.2).
@@ -162,6 +174,17 @@ const RUTAS = [
 export type RutaCentinela = (typeof RUTAS)[number];
 
 /** `titulo` → `CENTINELA.titulo`. El valor dice de qué campo salió. */
+/**
+ * El monto del arancel, que es el único campo **numérico** con centinela — B-114.
+ *
+ * Un centinela de texto no sirve: el schema declara `arancel.monto` como entero
+ * positivo, así que un string haría fallar la validación en vez de medir a dónde
+ * llega el dato. `987654` no aparece en ningún otro lugar del fixture ni del
+ * repo, y eso es lo que lo hace un centinela: si el barrido lo encuentra en una
+ * salida, salió de acá.
+ */
+export const MONTO_CENTINELA = 987654;
+
 export const CENTINELA = Object.fromEntries(
   RUTAS.map((r) => [r, `CENTINELA.${r}`]),
 ) as Record<RutaCentinela, string>;
@@ -331,7 +354,22 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
     // y `completo: true` viaja al JSON. Un booleano no admite centinela.
     completo: true,
   },
-  arancel: { tipo: CENTINELA['arancel.tipo'], notas: CENTINELA['arancel.notas'] },
+  arancel: {
+    tipo: CENTINELA['arancel.tipo'],
+    notas: CENTINELA['arancel.notas'],
+    /*
+     * B-114 — un monto que no se confunde con nada: `987654` no aparece en ningún
+     * otro lado del fixture, así que si el barrido lo encuentra en una salida es
+     * porque **este** campo salió por ahí. Y no puede ser un string: el schema lo
+     * declara entero, y un `'centinela'` en un campo numérico haría fallar la
+     * validación en vez de medir la salida.
+     *
+     * El tipo de arancel del fixture es un centinela y por lo tanto **no** está en
+     * `SIN_COSTO`, así que `admiteMonto` lo deja pasar: el monto sale a las
+     * salidas que lo publican, que es lo que hay que poder medir.
+     */
+    monto: MONTO_CENTINELA,
+  },
   material: {
     tiene: true,
     items: [

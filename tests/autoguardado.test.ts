@@ -834,6 +834,8 @@ describe('la versión del formato y la forma del formulario no derivan por separ
       }).sort(),
     )
       .toEqual([
+        // B-114 — ver el bloque de abajo: es aditivo, así que la versión no subió.
+        'arancel.monto',
         'arancel.notas',
         'arancel.tipo',
         'descripcion',
@@ -904,6 +906,18 @@ describe('la versión del formato y la forma del formulario no derivan por separ
      * virtual recuperado volvería como presencial, con la sede y el link
      * perdidos, sin que nada avise. Eso es exactamente lo que el bump existe
      * para evitar.
+     */
+    /*
+     * **B-114 la puso roja y NO la subió**, y es el caso de `libro` y de
+     * `inscripcion.completo`, no el de B-167 ni el de B-224: `arancel.monto` es
+     * **aditivo**. Un borrador anterior no trae la clave, `podarConMolde` no la
+     * copia y la mezcla la completa con el `null` de `formVacio()` — o sea
+     * exactamente lo que muestra un formulario abierto hoy sin cargar el monto.
+     *
+     * No hay forma nueva que haga que lo viejo **parezca** bueno, que es el
+     * criterio del bump: nada se recupera con un valor equivocado, solo sin el
+     * campo que antes no existía. Subirla tiraría a la basura todo borrador en
+     * curso en el navegador de cada admin a cambio de nada.
      */
     expect(VERSION_BORRADOR).toBe(3);
   });

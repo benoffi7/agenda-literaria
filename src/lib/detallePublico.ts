@@ -38,6 +38,7 @@
 // `resumenDe` vive en `eventsJson.ts` porque nació con el índice: se importa para
 // que la tarjeta del listado y la `meta description` del detalle recorten igual.
 import { NOMBRE, colorDeTipo } from '@/lib/identidad';
+import { admiteMonto, montoLegible } from '@/lib/arancel';
 import { resumenDe } from '@/lib/eventsJson';
 import {
   claveDeMes,
@@ -308,7 +309,20 @@ export interface DetallePublico {
   /** El texto corto de dónde: «Casa Brandon · Boedo» o «Online por Meet». */
   donde: string;
 
-  arancel: { etiqueta: string; notas: string; esGratis: boolean };
+  /**
+   * B-114 — `monto` es el número crudo y `precio` la frase ya armada. Los dos,
+   * porque los dos consumidores son distintos: la página pinta `precio`
+   * («Arancelado · $15.000») y el `offers` del JSON-LD necesita el número sin
+   * formato, en `price`. Derivar uno del otro del lado del consumidor sería
+   * parsear una cadena que este módulo ya tuvo entera (D-140).
+   */
+  arancel: {
+    etiqueta: string;
+    notas: string;
+    esGratis: boolean;
+    monto: number | null;
+    precio: string;
+  };
 
   inscripcion: {
     requiere: boolean;
@@ -965,11 +979,24 @@ export const detalleDeActividad = (
     modalidades,
     donde,
 
-    arancel: {
-      etiqueta: etiquetaDe(etiquetas, 'arancel', a.arancel.tipo),
-      notas: a.arancel.notas,
-      esGratis: a.arancel.tipo === 'gratis',
-    },
+    arancel: (() => {
+      const etiqueta = etiquetaDe(etiquetas, 'arancel', a.arancel.tipo);
+      /*
+       * B-114 — el monto solo cuenta si el arancel lo admite. El schema ya lo
+       * impide, pero un documento anterior a esa regla —o restaurado del
+       * historial— puede traer las dos cosas, y la página no puede publicar
+       * «Gratis · $8.000». Se ignora acá, en el view-model, que es el único lugar
+       * que ve las dos mitades.
+       */
+      const monto = admiteMonto(a.arancel.tipo) ? (a.arancel.monto ?? null) : null;
+      return {
+        etiqueta,
+        notas: a.arancel.notas,
+        esGratis: a.arancel.tipo === 'gratis',
+        monto,
+        precio: monto != null && etiqueta ? `${etiqueta} · ${montoLegible(monto)}` : etiqueta,
+      };
+    })(),
 
     inscripcion,
 
@@ -1232,7 +1259,26 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
       ? {
           offers: {
             '@type': 'Offer',
-            ...(d.arancel.esGratis ? { price: '0', priceCurrency: 'ARS' } : {}),
+            /*
+             * **B-114 · el precio de verdad, que es lo que este ítem pedía.**
+             * Antes solo se emitía `price: '0'` para `gratis` y nada más, porque
+             * `arancel.tipo` es un slug y no un número: un `0` en un taller pago
+             * es un dato falso en un formato que las máquinas creen.
+             *
+             * Ahora hay monto en el modelo, así que hay tres casos y no dos:
+             * `gratis` → `0`; con monto cargado → el monto; **sin monto y no
+             * gratis → sigue sin emitir precio**, que es la regla original y no
+             * una excepción — es la mitad del circuito («a la gorra») y un
+             * arancelado al que nadie le cargó el número.
+             *
+             * El número va **sin formato** (`'15000'`, no `'$15.000'`): el
+             * consumidor es una máquina y `priceCurrency` ya dice la moneda.
+             */
+            ...(d.arancel.esGratis
+              ? { price: '0', priceCurrency: 'ARS' }
+              : d.arancel.monto != null
+                ? { price: String(d.arancel.monto), priceCurrency: 'ARS' }
+                : {}),
             availability: 'https://schema.org/InStock',
             category: d.arancel.etiqueta,
             // §5.4 — dónde se consigue: **esta página**, nunca el canal de

@@ -2,6 +2,62 @@
 
 ## Sin publicar
 
+- **El arancel puede llevar el monto, y sale a las cinco salidas que ya lo decían**
+  — **B-114**, **D-500**, decisión del dueño. `arancel.monto` es un entero en pesos
+  o `null`; la moneda es `ARS` siempre, porque un campo de moneda con un solo valor
+  posible es una decisión que nadie tomó.
+
+  Lo que pedía el ítem era el `offers.price` del JSON-LD, donde antes solo `gratis`
+  emitía precio: `arancel.tipo` es un slug y no un número, y un `0` en un taller
+  pago es un dato falso en un formato que las máquinas creen. Ahora hay **tres
+  casos**: `gratis` → `'0'`, con monto → el monto, y **sin monto y sin ser gratis →
+  sigue sin precio**, que es «a la gorra» (la mitad del circuito) y el arancelado al
+  que nadie le cargó el número.
+
+  El alcance lo eligió el dueño —«en todo lo que ya dice el arancel»— así que va
+  pegado a la etiqueta en la tarjeta del listado, en la página de detalle, en la
+  descripción del evento de Calendar y en el texto para redes: «Arancelado ·
+  $15.000». Pegado y no en un renglón propio, porque califica al dato de al lado.
+
+  **«Solo donde tiene sentido» es una regla del schema y va en los dos niveles.** Un
+  arancel que no se paga no lleva monto, y eso no es completitud: es una
+  contradicción. Un borrador con «Gratis · $8.000» no está incompleto, dice dos
+  cosas que no pueden ser ciertas a la vez — y el documento también entra por
+  «Duplicar» y por «Restaurar». La decide `admiteMonto`, la misma función que usan
+  el formulario, la cascada que limpia el monto al cambiar de tipo, el view-model
+  del detalle y la descripción del evento.
+
+  **Dos cosas que el ítem no había previsto.** El formato del número **no podía
+  vivir en `src/lib/`**: la descripción del evento la arma una Function, que no
+  puede importar de `src/` (D-20), así que `admiteMonto` y `montoLegible` están en
+  `functions/calendario.js` y `src/lib/arancel.ts` reexporta — una implementación en
+  vez de una copia atada por un test. Y `montoLegible` es **a mano y no
+  `Intl.NumberFormat`**, porque el mismo número lo escriben tres entornos (el build,
+  la Function y el navegador del panel) y `Intl` depende de la versión de ICU: con
+  `es-AR` devuelve `'$ 15.000'`, con espacio.
+
+  **El `auditor-trampas` encontró un P1 en el propio cambio, y era el peor
+  posible.** El campo era un `<input type="number">` con `Number(e.target.value)`,
+  y para HTML **el punto es el separador decimal**: `15.000` —la forma natural de
+  escribir quince mil acá— es un número válido que vale **quince**. Ni `min`, ni
+  `step`, ni el `z.number().int().positive()` del schema lo marcan, porque 15 es un
+  entero positivo legal. El taller de $15.000 se publicaba como **$15** en las cinco
+  salidas, sin un test en rojo y sin un error de validación — un precio falso en un
+  formato que las máquinas creen, que es justo lo que este ítem vino a evitar.
+
+  El campo pasó a `type="text"` con `inputMode="numeric"` y la interpretación la
+  hace `montoDesdeTexto`: los puntos son miles, la coma corta (los centavos no
+  existen acá), y lo que no es un monto es `null` y no cero. Tipear «15.000» tecla
+  por tecla llega al mismo número, y hay un caso que verifica esa secuencia porque
+  es el camino real.
+
+  **Y el barrido de centinelas no servía tal cual.** Los centinelas son strings y el
+  monto es un entero: registrarlo en `RUTAS_CENTINELA` hacía que el barrido buscara
+  el texto `'CENTINELA.arancel.monto'`, que ninguna salida puede contener nunca — un
+  chequeo verde para siempre, esté la fuga o no. Se ancla por valor y en las **dos**
+  formas en que sale, el crudo y el formateado, porque mirar una sola daba verde en
+  la mitad de las salidas por el motivo equivocado.
+
 - **El formulario de carga va en pestañas** — **D-490**, pedido del dueño: «quedó
   muy largo. Que sean tabs y con la barra de guardar siempre visible como ahora». Y
   con la agrupación que él eligió: nueve solapas, una por sección, con los nombres

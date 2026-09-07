@@ -5,7 +5,7 @@
  * siempre especificarlos». Antes la barra decía «3 campos para revisar» y nada
  * más. La decisión escrita era mostrar solo el contador —listar rutas de campo
  * tapaba media pantalla en mobile, y el detalle está en rojo al lado de cada
- * campo— y le faltaba un dato: **cuatro de las nueve secciones arrancan
+ * campo— y le faltaba un dato: **cinco de las diez secciones arrancan
  * colapsadas**. Un campo rechazado adentro de un acordeón cerrado no está en
  * ninguna parte de la pantalla: el contador dice tres y no hay forma de saber
  * dónde mirar.
@@ -38,7 +38,13 @@ export interface SeccionFormulario {
 }
 
 /**
- * Las nueve secciones del §11, en orden de pantalla.
+ * Las **diez** secciones del §11, en orden de pantalla.
+ *
+ * (Diez y no nueve: la cuenta decía nueve desde antes de que «Texto para
+ * publicar» entrara con B-95, y nada la verificaba. La corrigió el
+ * `auditor-documentacion` sobre el cierre de D-490, que además las convirtió en
+ * **nueve pestañas** — las dos últimas comparten solapa, y esa cuenta se deriva de
+ * acá en `lib/formulario/pestanias.ts`.)
  *
  * El orden importa dos veces: el mensaje las nombra de arriba hacia abajo (que
  * es el orden en que quien carga va a recorrerlas) y «el primer error» se
@@ -166,6 +172,9 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
 
   // ── Arancel e inscripción ──
   arancel: { etiqueta: 'Arancel', seccion: 'arancel-inscripcion' },
+  // B-114 — el nombre es el del campo en la pantalla («Monto»), que es lo que la
+  // barra tiene que decir para que se pueda ir a buscar.
+  'arancel.monto': { etiqueta: 'Monto', seccion: 'arancel-inscripcion' },
   'arancel.tipo': { etiqueta: 'Arancel', seccion: 'arancel-inscripcion' },
   'arancel.notas': { etiqueta: 'Notas del arancel', seccion: 'arancel-inscripcion' },
   inscripcion: { etiqueta: 'Inscripción', seccion: 'arancel-inscripcion' },

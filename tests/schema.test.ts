@@ -685,3 +685,67 @@ describe('faltaParaPublicar — el aviso que no bloquea', () => {
     expect(faltaParaPublicar(null).length).toBeGreaterThan(0);
   });
 });
+
+describe('schema — el monto del arancel (B-114)', () => {
+  /**
+   * La regla es de dos campos y por eso vive en el `superRefine`: **un arancel
+   * que no se paga no lleva monto.** Va en el schema y no solo en el formulario
+   * porque el formulario no es la única puerta —también entra por «Duplicar» y
+   * por «Restaurar» del historial— y un «Gratis · $8.000» sale al `offers` del
+   * JSON-LD, o sea a un formato que las máquinas creen.
+   */
+  const conArancel = (tipo: string, monto: number | null) => ({
+    ...valido(),
+    arancel: { tipo, notas: '', monto },
+  });
+
+  it('un arancelado con monto entero pasa', () => {
+    expect(errores(conArancel('arancelado', 15000))).toEqual([]);
+  });
+
+  it('un arancelado sin monto pasa: el campo es opcional', () => {
+    // Es el caso de la mayoría, y el motivo por el que el JSON-LD sigue teniendo
+    // una rama sin precio: `arancel.tipo` es lo esencial.
+    expect(errores(conArancel('arancelado', null))).toEqual([]);
+  });
+
+  it('«gratis» y «a la gorra» con monto se rechazan, y el mensaje dice qué hacer', () => {
+    /*
+     * MUTACIÓN PROBADA: sacar el bloque del `superRefine` deja los dos casos en
+     * verde y publica «Gratis · $8.000».
+     */
+    for (const tipo of ['gratis', 'a-la-gorra']) {
+      expect(errores(conArancel(tipo, 8000)), tipo).toEqual(['arancel.monto']);
+      expect(mensajes(conArancel(tipo, 8000))['arancel.monto']).toMatch(
+        /no se paga no lleva monto/,
+      );
+    }
+    // Y sin monto los dos siguen pasando: la regla es sobre el par, no sobre el tipo.
+    expect(errores(conArancel('gratis', null))).toEqual([]);
+    expect(errores(conArancel('a-la-gorra', null))).toEqual([]);
+  });
+
+  it('un monto que no es un entero positivo se rechaza', () => {
+    // Los centavos no existen en este dominio y un negativo no es un precio. El
+    // `0` tampoco: para eso está el arancel «Gratis».
+    expect(errores(conArancel('arancelado', 0))).toEqual(['arancel.monto']);
+    expect(errores(conArancel('arancelado', -100))).toEqual(['arancel.monto']);
+    expect(errores(conArancel('arancelado', 1500.5))).toEqual(['arancel.monto']);
+  });
+
+  it('el default es `null` y no cero: «no cargué el monto» no es «cuesta cero»', () => {
+    /*
+     * El fixture `valido()` **no tiene la clave**, que es a propósito: es la forma
+     * de un formulario anterior a B-114 y de cualquier documento en producción
+     * hoy. Lo que se afirma es que el schema lo completa con `null` y no con `0`
+     * —«no cargué el monto» y «cuesta cero» son cosas distintas, y la segunda no
+     * existe en este modelo: para eso está el arancel «Gratis»—.
+     */
+    const r = actividadFormSchema.safeParse(valido());
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.arancel.monto).toBeNull();
+      expect(r.data.arancel.monto).not.toBe(0);
+    }
+  });
+});

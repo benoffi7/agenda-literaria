@@ -9942,7 +9942,7 @@ Vale la pena porque un test que falla una de cada N corridas enseña a ignorar e
 rojo, que es lo único peor que no tener el test. Primer paso: correr la suite en
 loop unas cuantas veces para ver cada cuánto pasa y con qué vecino.
 
-### B-114 · Precio real en los datos estructurados
+### B-114 · Precio real en los datos estructurados — ✅ hecho (2026-09-07)
 
 `arancel.tipo` es un slug de taxonomía, no un monto, así que el `offers` del
 JSON-LD puede decir "a la gorra" pero no un precio. Google muestra el precio en
@@ -9956,6 +9956,41 @@ un dato falso en un formato que las máquinas creen.
 
 Es P3 porque `arancel.tipo` ya comunica lo esencial —y en la mitad de los casos
 del circuito es "a la gorra", que no tiene precio que publicar.
+
+**Hecho el 2026-09-07, decidido por el dueño («sí: agregar `arancel.monto` al
+modelo»), y está en D-500.** El campo es un entero en pesos o `null`, la moneda es
+`ARS` siempre —un campo de moneda con un solo valor posible es una decisión que
+nadie tomó— y el alcance lo eligió él: **en todo lo que ya dice el arancel** (la
+tarjeta, el detalle, el evento de Calendar y el texto para redes), más el
+`offers.price` que era el pedido original.
+
+Lo que el ítem tenía bien y no cambió: **la tercera rama sigue existiendo.** Con
+monto se emite el monto, con `gratis` se emite `0`, y **sin monto y sin ser gratis
+se sigue sin emitir precio** — no es una excepción por falta de tiempo, es «a la
+gorra» y el arancelado al que nadie le cargó el número.
+
+Tres cosas que el ítem no había previsto:
+
+- **la regla «solo donde tiene sentido» es del schema y va en los dos niveles**, no
+  solo del formulario. Un borrador con «Gratis · $8.000» no está incompleto: dice
+  dos cosas que no pueden ser ciertas a la vez, y el documento también entra por
+  «Duplicar» y por «Restaurar»;
+- **el formato del número no podía ir en `src/lib/`.** La descripción del evento la
+  arma una Function, que no puede importar de `src/` (D-20), así que `admiteMonto` y
+  `montoLegible` viven en `functions/calendario.js` y `src/lib/arancel.ts`
+  reexporta. Y `montoLegible` es a mano y no `Intl`, porque el mismo número lo
+  escriben tres entornos con distinta ICU;
+- **el barrido de centinelas no servía tal cual**: son strings y el monto es un
+  entero, así que registrarlo habría dado un chequeo verde para siempre. Se ancla
+  por valor y en las dos formas —el crudo y el formateado—, con su `describe`
+  propio.
+
+**Y un P1 que encontró el `auditor-trampas` sobre el propio cambio:** el campo era
+un `<input type="number">` y para HTML **el punto separa decimales**, así que
+`15.000` es un número válido que vale **quince**, aceptado por `min`, por `step` y
+por el schema. El taller de $15.000 se publicaba como **$15** en las cinco salidas.
+Hoy el campo es `type="text"` con `inputMode="numeric"` y lo lee `montoDesdeTexto`,
+que trata el punto como miles y corta en la coma.
 
 ### B-33 · Las etiquetas de GitHub hay que crearlas una vez — ✅ hecho (2026-09-07)
 

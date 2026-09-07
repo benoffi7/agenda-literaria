@@ -225,7 +225,14 @@ export const formADocumento = (
        */
       completo: f.inscripcion.completo,
     },
-    arancel: { tipo: f.arancel.tipo, notas: limpiar(f.arancel.notas) },
+    arancel: {
+      tipo: f.arancel.tipo,
+      notas: limpiar(f.arancel.notas),
+      // B-114 — `null` explícito y no la ausencia de la clave: así el documento
+      // dice «no hay monto» en vez de «no sé», y `documentoAForm` no tiene que
+      // adivinar la diferencia.
+      monto: f.arancel.monto ?? null,
+    },
     material: {
       tiene: f.material.tiene,
       items: f.material.tiene ? f.material.items : [],
@@ -316,7 +323,17 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
     // (D-125, D-126).
     completo: a.inscripcion.completo ?? false,
   },
-  arancel: a.arancel,
+  /*
+   * B-114 — el arancel se **reconstruye campo por campo** y no se pasa entero.
+   * `monto` no existe en los documentos anteriores, así que un passthrough
+   * dejaría `undefined` donde el formulario espera `number | null` y el input
+   * quedaría en un estado que React no controla (D-26).
+   */
+  arancel: {
+    tipo: a.arancel.tipo,
+    notas: a.arancel.notas,
+    monto: a.arancel.monto ?? null,
+  },
   /**
    * B-342 — un documento anterior al id de cliente puede traer ítems sin
    * `id`. Se completa al leer, determinístico (`idItemMaterialMigrado`, mismo

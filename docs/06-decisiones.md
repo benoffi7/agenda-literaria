@@ -2669,6 +2669,14 @@ publicar, en gris: aviso, no bloqueo.
 
 ## D-121 · El mensaje de la barra nombra campos o secciones, y lleva hasta ahí
 
+> ⚠️ **El botón hace una cosa más desde [D-490](#d-490--el-formulario-de-carga-va-en-pestañas-y-la-barra-de-guardar-sigue-fija).**
+> Antes de abrir la sección y scrollear, ahora **cambia a la pestaña de esa
+> sección**: con pestañas, una sección de otra solapa no está en la pantalla, que
+> es el mismo agujero que esta entrada cerró cuando la sección estaba dentro de un
+> acordeón colapsado. Y cada solapa muestra cuántos campos le faltan para
+> publicar, que es la otra mitad. Lo de abajo queda como estaba escrito, para que
+> la entrada de D-490 se lea contra su original.
+
 **Contexto.** Reporte del dueño (2026-08-25): *"cuando no se pueda guardar y diga que
 faltan campos, siempre especificarlos"*. La barra decía «3 campos para revisar». Era
 una decisión escrita —listar rutas de campo tapaba media pantalla en mobile y el
@@ -2679,7 +2687,7 @@ secciones con su cuenta cuando son muchos, y cada nombre es un botón que abre l
 sección y scrollea hasta el primer campo rechazado.
 
 **El dato que la decisión original no tuvo en cuenta**, y que es el que la vuelve
-equivocada: **cuatro de las nueve secciones arrancan colapsadas**. Un campo rechazado
+equivocada: **cinco de las diez secciones arrancan colapsadas**. Un campo rechazado
 adentro de un acordeón cerrado no está en ninguna parte de la pantalla —el contador
 decía tres y se veían cero—, así que no era un resumen apretado: era un mensaje que
 no se podía accionar. Nombrar secciones con su cuenta resuelve además lo que motivó
@@ -8474,3 +8482,76 @@ decisión y no un extra:
   **dos** secciones, que es donde cerrar una para ver la otra sigue siendo una
   preferencia legítima. La condición sale de `PESTANIAS` (`secciones.length`), no de
   una lista: la sección que se agregue cae del lado correcto sola.
+
+## D-500 · El monto del arancel se publica en las cinco salidas que ya dicen el arancel
+
+**Fecha:** 2026-09-07 · **Ítem:** B-114 · **Continúa:** [D-16](#d-16--el-arancel-no-se-preselecciona), [D-152](#d-152--el-panel-gana-el-filtro-de-arancel--se-revierte-d-74)
+
+**Quién lo pidió.** El dueño: «sí: agregar `arancel.monto` al modelo», y después,
+sobre el alcance, «en todo lo que ya dice el arancel» y «solo donde tiene sentido».
+
+### Qué pedía B-114, y qué regla reemplaza
+
+El `offers` del JSON-LD podía decir la **categoría** del arancel pero no un precio,
+porque `arancel.tipo` es un slug de taxonomía. La regla del §5.3 era **no emitir
+precio salvo `gratis`**: un `price: '0'` en un taller pago es un dato falso
+publicado en un formato que las máquinas creen, y Google lo muestra en el resultado
+enriquecido.
+
+Con el monto en el modelo hay **tres casos y no dos**, y el tercero es el que
+importa que siga existiendo:
+
+| Arancel | `offers` |
+|---|---|
+| `gratis` | `price: '0'`, `priceCurrency: 'ARS'` |
+| cualquier otro **con monto** | el monto, sin formato (`'15000'`) |
+| cualquier otro **sin monto** | **sin precio**, como antes |
+
+La tercera fila no es una excepción a la que se llegó por falta de tiempo: es «a la
+gorra» —la mitad de los casos del circuito, §4.1— y el arancelado al que nadie le
+cargó el número. Un precio inventado ahí sería peor que la ausencia.
+
+### Dónde se muestra: las cinco que ya decían el arancel
+
+El dueño eligió el alcance amplio, y el criterio es sencillo de sostener: **el monto
+califica al arancel, así que va donde el arancel ya está.** En las cinco va *pegado*
+a la etiqueta y no en una línea propia («Arancelado · $15.000»): es una sola cosa que
+se lee de un tirón, y ninguna de las cinco superficies necesita un renglón más.
+
+| Salida | Qué dice |
+|---|---|
+| 1 · `events.json` y la tarjeta del listado | «Arancelado · $15.000» en la fila |
+| 2 · el evento de Calendar | `Arancel: Arancelado · $15.000` en la descripción |
+| 5 · el texto para redes | lo mismo, en el bloque del arancel |
+| 6 · la página de detalle | la frase, y el `offers.price` del JSON-LD |
+| 4 · GA4 | **solo la ruta** `arancel.monto` cuando el schema la rechaza, nunca el número |
+
+Y **no** llega a la cartelera (salida 7), que no muestra el arancel de ninguna
+forma, ni al issue de GitHub (salida 3), que reporta un problema y no una ficha
+comercial. Las dos ausencias están afirmadas por test, para que el día que la
+cartelera empiece a decir el arancel esa celda se decida en vez de heredarse.
+
+### El monto es un número, así que su barrido no podía ser el de siempre
+
+Los centinelas del fixture son **strings** (`CENTINELA.<ruta>`) y el monto es un
+entero. Registrarlo en `RUTAS_CENTINELA` hacía que el barrido buscara el texto
+`'CENTINELA.arancel.monto'` en cada salida — algo que ninguna puede contener nunca,
+o sea **un chequeo verde para siempre, esté la fuga o no**. Es la peor clase de red:
+la que se cree puesta.
+
+Se ancla por valor (`987654`) y en **las dos formas** en que puede salir: el número
+crudo en las salidas que serializan JSON y `$987.654` en las que arman texto. Mirar
+una sola era la trampa siguiente — el crudo no aparece en la descripción del evento
+y el formateado no aparece en el `events.json`—, así que un barrido de una forma
+daría verde en la mitad de las salidas por el motivo equivocado.
+
+### Tres decisiones chicas que están adentro
+
+- **Vacío es `null` y no `0`.** «No cargué el monto» y «cuesta cero» son cosas
+  distintas, y la segunda no existe en este modelo: para eso está el arancel
+  `gratis`. El schema rechaza el `0` explícitamente.
+- **Sin centavos.** `z.number().int()`: los centavos no existen en este dominio y un
+  `$15.000,50` en un cartel es un error de carga. `montoLegible` redondea.
+- **La copia hereda el monto** (`duplicar.ts`). Es un dato de la actividad y no de
+  una edición del ciclo: quien duplica un taller de $15.000 lo va a dar al mismo
+  precio, o lo cambia en el mismo formulario donde revisa el título y las fechas.

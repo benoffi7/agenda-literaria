@@ -300,6 +300,39 @@ hace veinte días no lo pise.
 Default de lectura `false`, determinístico. **No entra al `searchText`**: nadie busca
 «completo» y ese campo viaja entero al `events.json`. Ver **D-127**.
 
+## `arancel.monto` — el precio, cuando hay uno (B-114)
+
+`arancel: { tipo, notas, monto }`, donde `monto` es **un entero en pesos o
+`null`**. La moneda no es un campo: es `ARS` siempre (§14). Un campo de moneda con
+un solo valor posible es una decisión que nadie tomó, y el día que haya que cobrar
+en otra hay que revisar bastante más que este número.
+
+**Para qué se agregó.** `arancel.tipo` es un slug de taxonomía, así que el `offers`
+del JSON-LD podía decir «a la gorra» pero no un precio, y la regla del §5.3 era **no
+emitir precio salvo `gratis`**: un `0` en un taller pago es un dato falso en un
+formato que las máquinas creen. Con el monto hay tres casos y no dos — ver **D-500**.
+
+**Un arancel que no se paga no lleva monto**, y eso lo hace cumplir el schema en
+**los dos niveles** (borrador y publicado), no solo el formulario: no es
+completitud, es una **contradicción**. Un borrador con «Gratis · $8.000» no está
+incompleto, dice dos cosas que no pueden ser ciertas a la vez. La decide
+`admiteMonto`, que es la misma función que usan el formulario (muestra el campo),
+la cascada (lo limpia al cambiar de tipo), el view-model del detalle (lo ignora si
+el documento lo trae igual) y la descripción del evento.
+
+**Dónde vive esa función, y por qué no en `src/lib/`.** `admiteMonto` y
+`montoLegible` están en `functions/calendario.js`: las necesitan la Function —para
+la descripción del evento— y el sitio, y una Function no puede importar de `src/`
+(**D-20**). `src/lib/arancel.ts` las reexporta y queda como la puerta del sitio.
+`montoLegible` es **a mano y no `Intl.NumberFormat`** porque el mismo número lo
+escriben tres entornos (build, Function, navegador) y `Intl` depende de la versión
+de ICU del runtime.
+
+Default de lectura `null`, y el tipo lo declara opcional (`monto?: number | null`)
+para que el compilador obligue a decidirlo en cada lectura: los documentos
+anteriores a B-114 no tienen la clave (**D-26**). Nada lo escribe solo, y no hay
+backfill.
+
 ## `libro` — la obra que se presenta (DEC-1)
 
 `libro: { titulo, autor } | null`. El §11 lo listaba para presentaciones y charlas

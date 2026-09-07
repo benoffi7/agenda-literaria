@@ -60,6 +60,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'monto-del-arancel',
+    fecha: '2026-09-07',
+    version: '1.9.0',
+    titulo: 'Podés cargar el precio del arancel',
+    detalle:
+      'Cuando el arancel se paga aparece un campo «Monto». Cargalo en pesos y sin centavos ' +
+      '(15000) y se publica como «$15.000» al lado del arancel: en el listado, en la página de ' +
+      'la actividad, en el evento del calendario y en el texto para redes. Google también lo ' +
+      'muestra como precio en el resultado de búsqueda. Es opcional, y con «Gratis» o «A la ' +
+      'gorra» no aparece.',
+    donde: 'Formulario, pestaña «Arancel e inscripción».',
+  },
+  {
     id: 'formulario-en-pestanias',
     fecha: '2026-09-07',
     version: '1.9.0',

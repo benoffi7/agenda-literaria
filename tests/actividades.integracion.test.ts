@@ -127,6 +127,12 @@ const formCompleto = (): ActividadForm =>
       // distingue "lo conserva" de "lo pisa con el default".
       completo: true,
     },
+    /*
+     * B-114 — con monto cargado por lo mismo que `completo: true`: con `null` no
+     * se distingue «lo conserva» de «lo pisa con el default». El tipo tiene que
+     * admitirlo, si no el schema rechaza el par.
+     */
+    arancel: { tipo: 'arancelado', notas: '2 cuotas', monto: 15000 },
     material: {
       tiene: true,
       items: [
@@ -370,6 +376,14 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     expect(vuelta.sesiones[0]!.inicio).toBe('2026-09-03T19:00');
     expect(vuelta.inscripcion.cierra).toBe('2026-09-01T00:00');
     expect(vuelta.material.items[0]!.publico).toBe(false);
+    /*
+     * B-114 — el monto vuelve como número y no como string ni `undefined`. El
+     * modo de falla que esto frena es el input del formulario: con `undefined` el
+     * campo pasa a no controlado y React deja de reflejar lo que se escribe, sin
+     * que nada falle.
+     */
+    expect(vuelta.arancel.monto).toBe(15000);
+    expect(vuelta.arancel.notas).toBe('2 cuotas');
   });
 
   it('la copia se guarda como documento nuevo sin tocar los ids ni los eventos del original (B-11)', async () => {

@@ -11,6 +11,7 @@
  */
 import { personaVacia } from '@/lib/formulario/estadoInicial';
 import { slugify } from '@/lib/slugify';
+import { admiteMonto } from '@/lib/arancel';
 import type { ActividadForm } from '@/types/actividad';
 
 /**
@@ -88,3 +89,26 @@ export const cambiarTipo = (f: ActividadForm, tipo: string): ActividadForm => ({
  * donde B-70 dice que están las cascadas del formulario.
  */
 export { conModalidadDeFila } from '@/lib/formulario/estadoInicial';
+
+/**
+ * Cambiar el tipo de arancel **limpia el monto si el nuevo no lo admite** —
+ * B-114.
+ *
+ * Sin esto, la secuencia «Arancelado · $15.000 → cambio a Gratis» deja el número
+ * cargado y **el guardado se rechaza** con un mensaje sobre un campo que ya no se
+ * ve: el schema prohíbe el monto en un arancel que no se paga, y el input
+ * desaparece del formulario cuando el tipo cambia. Quien carga vería «no se puede
+ * guardar» sin nada roto en la pantalla.
+ *
+ * Es una cascada y va acá por lo mismo que las otras dos: es una regla del modelo
+ * —«el monto pertenece al tipo»— y no una decisión de un componente. Del otro
+ * lado, el formulario solo muestra u oculta el campo.
+ */
+export const cambiarArancel = (f: ActividadForm, tipo: string): ActividadForm => ({
+  ...f,
+  arancel: {
+    ...f.arancel,
+    tipo,
+    monto: admiteMonto(tipo) ? f.arancel.monto : null,
+  },
+});

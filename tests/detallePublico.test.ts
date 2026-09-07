@@ -966,6 +966,68 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(subs[1]!.offers).toBeUndefined();
   });
 
+  it('con monto cargado el `offers` lleva el precio de verdad (B-114)', () => {
+    /*
+     * **Lo que B-114 pedía, y la regla que reemplaza.** Antes solo `gratis` emitía
+     * precio (`'0'`) porque `arancel.tipo` es un slug y no un número: un `0` en un
+     * taller pago es un dato falso en un formato que las máquinas creen.
+     *
+     * Ahora hay tres casos y no dos, y los tres están acá porque el de en medio no
+     * se puede leer sin los otros dos.
+     */
+    const conMonto = datosEstructurados(
+      detalleDe({}, { arancel: { tipo: 'arancelado', notas: '', monto: 15000 } }),
+    )!;
+    expect(conMonto.offers).toMatchObject({ price: '15000', priceCurrency: 'ARS' });
+
+    // Sin formato: el consumidor es una máquina y `priceCurrency` dice la moneda.
+    expect(JSON.stringify(conMonto.offers)).not.toContain('$15.000');
+
+    // `gratis` sigue siendo `'0'`, con o sin monto (el schema no lo deja tener uno).
+    expect(
+      datosEstructurados(detalleDe({}, { arancel: { tipo: 'gratis', notas: '', monto: null } }))!
+        .offers,
+    ).toMatchObject({ price: '0', priceCurrency: 'ARS' });
+
+    /*
+     * Y **sin monto y sin ser gratis sigue sin emitir precio**, que es la regla
+     * original y no una excepción: es «a la gorra» —la mitad del circuito— y el
+     * arancelado al que nadie le cargó el número.
+     */
+    const sinMonto = datosEstructurados(
+      detalleDe({}, { arancel: { tipo: 'arancelado', notas: '', monto: null } }),
+    )!;
+    expect(sinMonto.offers).toBeDefined();
+    expect(sinMonto.offers).not.toHaveProperty('price');
+    expect(sinMonto.offers).not.toHaveProperty('priceCurrency');
+  });
+
+  it('un monto en un arancel que no se paga se ignora, aunque el documento lo traiga (B-114)', () => {
+    /*
+     * El schema lo prohíbe, pero un documento anterior a esa regla —o restaurado
+     * del historial— puede traer las dos cosas, y esta página es HTML indexado: un
+     * «Gratis · $8.000» ahí se lo lleva Google. El view-model lo descarta, que es
+     * el único lugar que ve las dos mitades.
+     *
+     * MUTACIÓN PROBADA: sacar el `admiteMonto` del view-model deja este caso en
+     * rojo por los dos lados —el `precio` de la página y el `price` del JSON-LD—.
+     */
+    const d = detalleDe({}, { arancel: { tipo: 'gratis', notas: '', monto: 8000 } });
+    expect(d.arancel.monto).toBeNull();
+    expect(d.arancel.precio).toBe(d.arancel.etiqueta);
+    expect(datosEstructurados(d)!.offers).toMatchObject({ price: '0' });
+    expect(JSON.stringify(datosEstructurados(d))).not.toContain('8000');
+  });
+
+  it('la frase de la página pega el monto a la etiqueta del arancel (B-114)', () => {
+    const d = detalleDe({}, { arancel: { tipo: 'arancelado', notas: '', monto: 15000 } });
+    // `precio` es lo que pinta la página; `monto` es el número que necesita el
+    // JSON-LD. Los dos, porque derivar uno del otro del lado del consumidor sería
+    // parsear una cadena que este módulo ya tuvo entera (D-140).
+    expect(d.arancel.precio).toBe(`${d.arancel.etiqueta} · $15.000`);
+    expect(d.arancel.monto).toBe(15000);
+  });
+
   it('el encuentro que ya pasó no ofrece nada, aunque la serie siga en pie (B-650 por encuentro)', () => {
     /*
      * Con `AHORA` en el 10 de septiembre, el primer encuentro ya terminó y el

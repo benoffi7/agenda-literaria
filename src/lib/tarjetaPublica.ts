@@ -32,7 +32,7 @@
 import type { EntradaDeIndice } from '@/lib/eventsJson';
 import { diaYMes, hora, partesDeFecha, partesDeMes } from '@/lib/fechasPublicas';
 import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
-import { esSinCosto } from '@/lib/arancel';
+import { admiteMonto, esSinCosto, montoLegible } from '@/lib/arancel';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import {
   SLUG_PLATAFORMA_A_CONFIRMAR,
@@ -63,13 +63,36 @@ export interface ArancelDeTarjeta {
   sinCosto: boolean;
 }
 
+/**
+ * **El monto va pegado a la etiqueta y no en una línea propia** — B-114.
+ * «Arancelado · $15.000» es una sola cosa que se lee de un tirón, y la tarjeta ya
+ * tiene cinco datos: agregarle un renglón para un número que califica al de al
+ * lado la haría más alta sin decir más.
+ *
+ * Sin monto cargado la frase queda exactamente como antes, que es el caso de la
+ * mayoría —`arancel.tipo` sigue siendo lo esencial y en la mitad del circuito es
+ * «a la gorra», que no tiene precio—.
+ *
+ * Y sin etiqueta no se emite el monto solo: un «$15.000» suelto no dice si es el
+ * arancel, una beca o un bono, y el modo de falla es un slug de arancel que no
+ * está en `/opciones/*` todavía.
+ */
 export const arancelDeTarjeta = (
   entrada: EntradaDeIndice,
   etiquetas: MapaDeEtiquetas,
-): ArancelDeTarjeta => ({
-  texto: entrada.arancel.tipo ? etiquetaDe(etiquetas, 'arancel', entrada.arancel.tipo) : '',
-  sinCosto: esSinCosto(entrada.arancel.tipo),
-});
+): ArancelDeTarjeta => {
+  const etiqueta = entrada.arancel.tipo
+    ? etiquetaDe(etiquetas, 'arancel', entrada.arancel.tipo)
+    : '';
+  const monto = entrada.arancel.monto;
+  return {
+    texto:
+      etiqueta && monto != null && admiteMonto(entrada.arancel.tipo)
+        ? `${etiqueta} · ${montoLegible(monto)}`
+        : etiqueta,
+    sinCosto: esSinCosto(entrada.arancel.tipo),
+  };
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Cuándo — el bloque de fecha

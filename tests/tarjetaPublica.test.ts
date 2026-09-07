@@ -70,7 +70,7 @@ describe('el arancel de la tarjeta', () => {
   it('un arancel sin cargar no imprime una etiqueta inventada', () => {
     // Con `texto: ''` la tarjeta no pinta la línea. Devolver `desSlug('')` o el
     // slug crudo dejaría un renglón vacío o un `''` visible en el pie.
-    const e = { ...entradaDePrueba(), arancel: { tipo: '' } };
+    const e = { ...entradaDePrueba(), arancel: { tipo: '', monto: null } };
     expect(arancelDeTarjeta(e, ETIQUETAS).texto).toBe('');
   });
 });

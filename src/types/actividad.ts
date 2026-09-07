@@ -282,6 +282,27 @@ export interface Arancel {
   tipo: string;
   /** Libre: "2 cuotas", "incluye material". */
   notas: string;
+  /**
+   * **El monto en pesos, entero y sin centavos** — B-114. `null` es «no hay
+   * monto cargado», que es lo normal: `arancel.tipo` sigue siendo lo esencial y
+   * en la mitad de los casos del circuito es «a la gorra», que no tiene precio
+   * que publicar.
+   *
+   * **Opcional en el tipo porque los documentos anteriores a B-114 no lo
+   * tienen** (D-26): el compilador obliga a decidir el default en cada lectura,
+   * y el default es `null`. Nada lo escribe solo.
+   *
+   * La moneda no es un campo: es **`ARS` siempre** (§14 del CLAUDE.md, «Moneda:
+   * ARS»). Un campo de moneda con un solo valor posible es una decisión que
+   * nadie tomó, y el día que haya que cobrar en otra hay que revisar bastante
+   * más que este número.
+   *
+   * **Un arancel que no se paga no puede llevar monto**, y eso lo hace cumplir
+   * el schema y no solo el formulario: `esSinCosto` (`lib/arancel.ts`) decide.
+   * Es lo que evita publicar «Gratis · $8.000» en un formato que las máquinas
+   * creen.
+   */
+  monto?: number | null;
 }
 
 export interface ItemMaterial {

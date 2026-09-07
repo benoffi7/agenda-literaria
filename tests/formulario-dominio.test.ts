@@ -21,9 +21,11 @@ import opcionesBase from '@/lib/opciones-base.json';
 import {
   CICLOS_POR_TIPO,
   conModalidadDeFila,
+  cambiarArancel,
   cambiarTipo,
   cambiarTitulo,
 } from '@/lib/formulario/cascadas';
+import { admiteMonto, montoDesdeTexto, montoLegible } from '@/lib/arancel';
 import {
   esCharla,
   esClub,
@@ -861,5 +863,183 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
     const { puertos, llamadas } = puertosFalsos();
     await guardarActividad(entrada({ labelsNuevos: [] }), puertos);
     expect(llamadas.filter((l) => l.startsWith('upsert'))).toEqual([]);
+  });
+});
+
+describe('cambiarArancel — el tipo arrastra el monto (B-114)', () => {
+  /**
+   * **La cascada existe por una secuencia concreta**, no por prolijidad:
+   * «Arancelado · $15.000» → cambio el tipo a «Gratis». Sin limpiar el monto, el
+   * schema rechaza el guardado —un arancel que no se paga no lleva monto— y el
+   * campo del monto **ya no está en la pantalla**, porque el formulario lo
+   * esconde cuando el tipo no lo admite. Quien carga vería «no se puede guardar»
+   * sin nada roto a la vista.
+   */
+  const conMonto = (tipo: string, monto: number | null) => ({
+    ...formVacio(),
+    arancel: { tipo, notas: 'incluye material', monto },
+  });
+
+  it('pasar a un arancel que no se paga borra el monto', () => {
+    for (const tipo of ['gratis', 'a-la-gorra']) {
+      const f = cambiarArancel(conMonto('arancelado', 15000), tipo);
+      expect(f.arancel.tipo, tipo).toBe(tipo);
+      expect(f.arancel.monto, tipo).toBeNull();
+    }
+  });
+
+  it('entre dos aranceles que se pagan, el monto se conserva', () => {
+    /*
+     * La otra mitad, y la que hace que la cascada no sea un `null` a ciegas:
+     * corregir «Arancelado» por «Con beca parcial» no es motivo para hacer
+     * retipear el número.
+     */
+    const f = cambiarArancel(conMonto('arancelado', 15000), 'con-beca-parcial');
+    expect(f.arancel.monto).toBe(15000);
+  });
+
+  it('no toca las notas ni nada más del formulario', () => {
+    const antes = conMonto('arancelado', 15000);
+    const f = cambiarArancel(antes, 'gratis');
+    expect(f.arancel.notas).toBe('incluye material');
+    expect(f.titulo).toBe(antes.titulo);
+    // Y no muta: es `form → form`, como las otras dos cascadas.
+    expect(antes.arancel.monto).toBe(15000);
+  });
+
+  it('el par cascada/schema es coherente: lo que la cascada deja, el schema lo acepta', () => {
+    /*
+     * **Es la afirmación que importa y no los tres casos de arriba.** La cascada y
+     * la regla del schema son dos escrituras de la misma decisión —«el monto
+     * pertenece al tipo»— y si divergen el formulario deja un estado que no se
+     * puede guardar. Las dos salen de `admiteMonto`, y esto lo verifica.
+     */
+    for (const tipo of ['gratis', 'a-la-gorra', 'arancelado', 'con-beca-parcial']) {
+      const f = cambiarArancel(conMonto('arancelado', 15000), tipo);
+      expect(admiteMonto(tipo) ? f.arancel.monto : null, tipo).toBe(f.arancel.monto);
+      // La condición del schema, escrita como la escribe el schema.
+      expect(f.arancel.monto != null && !admiteMonto(f.arancel.tipo), tipo).toBe(false);
+    }
+  });
+});
+
+describe('montoLegible — el número como se escribe en un flyer (B-114)', () => {
+  it('agrupa de a tres con puntos y no lleva centavos', () => {
+    expect(montoLegible(15000)).toBe('$15.000');
+    expect(montoLegible(1500)).toBe('$1.500');
+    expect(montoLegible(999)).toBe('$999');
+    expect(montoLegible(1234567)).toBe('$1.234.567');
+    // Redondea: un `$15.000,5` en un cartel es un error de carga, no un precio.
+    expect(montoLegible(1500.4)).toBe('$1.500');
+    expect(montoLegible(1500.6)).toBe('$1.501');
+  });
+
+  it('no usa `Intl`, y ese es el punto', () => {
+    /*
+     * **Este número lo escriben tres entornos** —el build de Astro, la Cloud
+     * Function y el navegador del panel para la vista previa— y `Intl` depende de
+     * la versión de ICU del runtime. Con `es-AR`, `Intl` además mete un espacio
+     * (`'$ 15.000'`).
+     *
+     * Medido: `new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS',
+     * maximumFractionDigits: 0 }).format(15000)` devuelve `'$ 15.000'` en Node —con
+     * el espacio— y no es lo que se escribe en un flyer. Este caso lo fija por
+     * valor: si alguien lo «mejora» con `Intl`, se pone rojo.
+     */
+    expect(montoLegible(15000)).not.toContain(' ');
+    expect(montoLegible(15000)).toBe('$15.000');
+  });
+
+  it('un negativo o un cero no explotan, aunque el schema no los deje entrar', () => {
+    // Defensivo y con motivo: esta función también la llama la Function sobre un
+    // documento que puede venir de antes de la regla del schema.
+    expect(montoLegible(0)).toBe('$0');
+    expect(montoLegible(-1500)).toBe('$1.500');
+  });
+});
+
+describe('admiteMonto — la regla dicha una vez (B-114)', () => {
+  it('los dos aranceles que no se pagan no admiten monto, y sin tipo tampoco', () => {
+    expect(admiteMonto('gratis')).toBe(false);
+    expect(admiteMonto('a-la-gorra')).toBe(false);
+    expect(admiteMonto('')).toBe(false);
+  });
+
+  it('cualquier otro sí, incluido uno creado desde «Otro»', () => {
+    /*
+     * El lado prudente del §4.2: una opción nueva creada por alguien cae **afuera**
+     * de `SIN_COSTO`, así que admite monto. Es lo correcto — «Con beca parcial» y
+     * «Bono social» se pagan— y es el mismo default que ya usaba `esSinCosto`.
+     */
+    expect(admiteMonto('arancelado')).toBe(true);
+    expect(admiteMonto('con-beca-parcial')).toBe(true);
+  });
+});
+
+describe('montoDesdeTexto — el punto agrupa miles, no separa decimales (B-114)', () => {
+  /**
+   * **El caso que lo motivó, y era un P1 del `auditor-trampas`.** El campo era un
+   * `<input type="number">` con `Number(e.target.value)`: para HTML el punto es el
+   * separador **decimal**, así que `15.000` es un número válido que vale
+   * **quince**, y `min`, `step` y el `z.number().int().positive()` del schema lo
+   * aceptan todos —15 es un entero positivo legal—.
+   *
+   * El taller de $15.000 se publicaba como **$15** en la tarjeta, en el detalle,
+   * en el JSON-LD que indexa Google, en el calendario de todos los suscriptos y en
+   * el texto pegado en Instagram. Sin un test en rojo y sin un error de
+   * validación.
+   */
+  it('lee la forma en que se escribe un precio acá', () => {
+    expect(montoDesdeTexto('15.000')).toBe(15000);
+    expect(montoDesdeTexto('15000')).toBe(15000);
+    expect(montoDesdeTexto('1.234.567')).toBe(1234567);
+    // Pegado desde otro lado, con el signo y con espacios.
+    expect(montoDesdeTexto('$ 15.000')).toBe(15000);
+  });
+
+  it('corta en la coma: los centavos no existen en este dominio', () => {
+    expect(montoDesdeTexto('15.000,50')).toBe(15000);
+    expect(montoDesdeTexto('1500,99')).toBe(1500);
+  });
+
+  it('lo que no es un monto es `null`, que no es cero', () => {
+    /*
+     * `null` y `0` no son lo mismo: «no cargué el monto» y «cuesta cero» son
+     * cosas distintas, y la segunda no existe en este modelo — para eso está el
+     * arancel «Gratis», y el schema rechaza el `0` explícitamente.
+     */
+    expect(montoDesdeTexto('')).toBeNull();
+    expect(montoDesdeTexto('   ')).toBeNull();
+    expect(montoDesdeTexto('gratis')).toBeNull();
+    expect(montoDesdeTexto('0')).toBeNull();
+    expect(montoDesdeTexto('-500')).toBe(500);
+  });
+
+  it('un pegado absurdo no se guarda', () => {
+    // Cuarenta dígitos dan un float que el schema rechazaría igual; acá se corta
+    // antes, así el formulario no queda con un estado que no se puede guardar.
+    expect(montoDesdeTexto('9'.repeat(40))).toBeNull();
+  });
+
+  it('tipear «15.000» tecla por tecla llega al mismo número', () => {
+    /*
+     * Con el estado guardando un número, el input muestra lo parseado: al tipear
+     * el punto no se ve, y las tres teclas siguientes lo completan. Se verifica la
+     * secuencia entera porque es el camino real, y porque es donde un parseo
+     * "prolijo" que devolviera `null` ante el punto rompería la carga sin que el
+     * caso de arriba se ponga rojo.
+     */
+    const teclas = ['1', '5', '.', '0', '0', '0'];
+    let mostrado = '';
+    for (const tecla of teclas) {
+      const parseado = montoDesdeTexto(mostrado + tecla);
+      mostrado = parseado === null ? '' : String(parseado);
+    }
+    expect(mostrado).toBe('15000');
+  });
+
+  it('y el resultado se lee como se escribió', () => {
+    // El par completo: lo que se tipea vuelve a leerse igual.
+    expect(montoLegible(montoDesdeTexto('15.000')!)).toBe('$15.000');
   });
 });

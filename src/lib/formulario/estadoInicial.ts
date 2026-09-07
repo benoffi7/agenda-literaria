@@ -169,7 +169,7 @@ export const formVacio = (): ActividadForm => ({
   // desde ahí: se prende desde el menú del listado, y si el formulario no lo
   // trajera, cada guardado lo apagaría (ver `formADocumento`).
   inscripcion: { requiere: false, via: null, destino: '', cupo: null, cierra: '', completo: false },
-  arancel: { tipo: '', notas: '' },
+  arancel: { tipo: '', notas: '', monto: null },
   material: { tiene: false, items: [] },
   difusion: { arrobar: [], notas: '' },
   estado: 'borrador',

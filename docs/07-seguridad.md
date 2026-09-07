@@ -179,6 +179,26 @@ no crece con esta página.
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los cuatro de abajo |
 
+**`arancel.monto` sí sale, y es una decisión explícita** (B-114, **D-500**). El
+`arancel` dejó de proyectarse entero: `toPublic` lo **enumera campo por campo**,
+porque el passthrough tipado (`Actividad['arancel']`) era un agujero latente —
+cualquier campo que se agregue a `Arancel` habría salido publicado sin que nadie lo
+decidiera, que es exactamente lo que el §5.2 prohíbe—. El monto fue el primero que
+lo habría atravesado.
+
+Sale a las que ya decían el arancel —las salidas **1**, **2**, **5** y **6** con su
+JSON-LD— y **no** a la cartelera ni al issue de GitHub, con test para las dos
+ausencias. (Dicho así y no con el número en palabras: el chequeo de B-216 exige que
+ninguna prosa de este archivo nombre una cuenta de salidas distinta de la de su
+tabla, y con razón — es lo que hace que el auditor no audite de menos.) Y a GA4 sale
+**solo la ruta** `arancel.monto` cuando el schema la rechaza, nunca el número: ahí no
+sale contenido.
+
+Su barrido no pudo ser el de siempre: los centinelas del fixture son strings y el
+monto es un entero, así que registrarlo en `RUTAS_CENTINELA` habría hecho buscar el
+texto `'CENTINELA.arancel.monto'` — un chequeo verde para siempre. Se ancla por
+valor y en las **dos** formas en que sale, el número crudo y el formateado.
+
 **De `/opciones/{campo}` salen `slug`, `label` y —desde D-150— `tono`** (§4.4). La proyección
 se escribió **antes** que su consumidor —B-212 antes que B-106— y eso era a
 propósito: el camino corto al implementar el índice es volcar `valores` tal cual, y

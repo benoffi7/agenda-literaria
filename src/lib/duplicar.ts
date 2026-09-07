@@ -494,6 +494,13 @@ export const duplicarActividadForm = (
      * editar la copia no puede tocar nada del original ni en el estado de React.
      */
     modalidades: origen.modalidades.map(duplicarModalidad),
+    /*
+     * B-114 — el monto se copia con el resto del arancel. Es un dato de **la
+     * actividad** y no de una edición del ciclo: quien duplica un taller de
+     * $15.000 lo va a dar por el mismo precio, o lo cambia en el mismo formulario
+     * donde revisa el título y las fechas. Vaciarlo obligaría a recargarlo
+     * siempre, que es lo contrario de lo que duplicar existe para ahorrar.
+     */
     arancel: { ...origen.arancel },
     material: copiar.material
       ? {

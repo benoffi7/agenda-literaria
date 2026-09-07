@@ -208,6 +208,18 @@ que B-193 recuerda.
 medible: 2 actividades con imagen sobre 42 publicadas. En «Opcional» quedaron las
 etiquetas y «destacar».
 
+**El arancel puede llevar el monto desde el 2026-09-07** (B-114, D-500). Es
+opcional y **aparece solo si el arancel lo admite**: con «Gratis» sería una
+contradicción y con «A la gorra» no hay precio que publicar, que en este circuito
+es la mitad de los casos. Se carga en pesos y sin centavos, y se publica pegado a
+la etiqueta —«Arancelado · $15.000»— en la tarjeta del listado, en la página de
+detalle, en la descripción del evento de Calendar y en el texto para redes. En los
+datos estructurados va sin formato, que es lo que Google muestra como precio en el
+resultado enriquecido.
+
+Cambiar el tipo de arancel a uno que no se paga **borra el monto solo**: si no, el
+guardado se rechazaría por un campo que ya no está en la pantalla.
+
 **Material** (§3.1) tiene siete formatos —libro o lectura, guía, contexto, sobre
 el autor, newsletter, playlist, otro— y cuatro momentos de entrega: previo al
 encuentro, al inscribirse, **durante el mes** y en el encuentro. «Durante el mes»

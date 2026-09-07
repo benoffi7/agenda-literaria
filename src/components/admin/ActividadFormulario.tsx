@@ -41,7 +41,7 @@ import {
   pestaniaDe,
   type IdPestania,
 } from '@/lib/formulario/pestanias';
-import { cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
+import { cambiarArancel, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import { esCharla, esClub, esTaller, nombrePersona } from '@/lib/formulario/condicionales';
 import { formVacio } from '@/lib/formulario/estadoInicial';
 import {
@@ -173,6 +173,8 @@ export function ActividadFormulario({
   const conTitulo = (titulo: string) =>
     setForm((f) => cambiarTitulo(f, titulo, slugBloqueado));
   const conTipo = (tipo: string) => setForm((f) => cambiarTipo(f, tipo));
+  /** B-114 — el tipo de arancel arrastra el monto: ver `cambiarArancel`. */
+  const conArancel = (tipo: string) => setForm((f) => cambiarArancel(f, tipo));
 
   /**
    * Lo que el schema rechazó, agrupado por sección y con el nombre de cada campo
@@ -504,6 +506,7 @@ export function ActividadFormulario({
               errorDe={errorDe}
               uid={uid}
               anotarLabel={anotarLabel}
+              onArancel={conArancel}
             />
           ),
           material: (

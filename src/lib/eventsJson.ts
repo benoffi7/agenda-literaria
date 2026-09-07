@@ -83,7 +83,13 @@ export interface EntradaDeIndice {
   modalidades: string[];
   sede: SedeDeIndice | null;
   /** Solo el slug del arancel: las notas («2 cuotas») son del detalle. */
-  arancel: { tipo: string };
+  /*
+   * B-114 — el índice lleva **el monto además del tipo** porque la tarjeta del
+   * listado lo dice. Sigue sin llevar `notas`: eso es texto libre («2 cuotas»,
+   * «incluye material») que la tarjeta no muestra, y el índice recorta más que
+   * `toPublic` a propósito.
+   */
+  arancel: { tipo: string; monto: number | null };
   /** **Strings, no objetos**: el Instagram y la bio son del detalle. */
   organizador: string;
   tallerista: string | null;
@@ -229,7 +235,7 @@ export const entradaDeIndice = (a: ActividadPublica): EntradaDeIndice => ({
   sede: a.sede
     ? { nombre: a.sede.nombre, barrio: a.sede.barrio, ciudad: a.sede.ciudad }
     : null,
-  arancel: { tipo: a.arancel.tipo },
+  arancel: { tipo: a.arancel.tipo, monto: a.arancel.monto ?? null },
   organizador: a.organizador.nombre,
   tallerista: a.tallerista?.nombre ?? null,
   tags: a.tags,

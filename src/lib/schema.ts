@@ -1,4 +1,6 @@
 import { z } from 'zod';
+
+import { admiteMonto } from '@/lib/arancel';
 import { MAXIMO_IMAGENES, portadaDe } from '@/lib/imagenes';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esCopiaSinRevisar } from '@/lib/duplicar';
@@ -319,6 +321,13 @@ export const actividadFormSchema = z
     arancel: z.object({
       tipo: opcional,
       notas: opcional,
+      /*
+       * B-114 — entero positivo o `null`. **Sin decimales**: los centavos no
+       * existen en este dominio, y un `$15.000,50` en un cartel es un error de
+       * carga. La regla de «solo donde tiene sentido» está en el `superRefine`
+       * de abajo, porque depende de otro campo.
+       */
+      monto: z.number().int().positive().nullable().default(null),
     }),
 
     material: z.object({
@@ -363,6 +372,28 @@ export const actividadFormSchema = z
      */
     if (v.inscripcion.cierra && !fechaValida(v.inscripcion.cierra)) {
       faltaSiempre(['inscripcion', 'cierra'], 'Fecha de cierre inválida');
+    }
+
+    /*
+     * B-114 — **un arancel que no se paga no lleva monto**, y va en los DOS
+     * niveles como las de arriba: no es completitud, es una **contradicción**. Un
+     * borrador con «Gratis · $8.000» no está incompleto, dice dos cosas que no
+     * pueden ser ciertas a la vez, y el día que se publique el número ya está
+     * escrito.
+     *
+     * Va en el schema y no solo en el formulario porque el formulario no es la
+     * única puerta: el documento también entra por «Duplicar» y por «Restaurar»
+     * del historial. Publicado, sale al `offers` del JSON-LD, o sea a un formato
+     * que las máquinas creen.
+     *
+     * El mensaje dice qué hacer con el número que ya está escrito, no solo que
+     * está mal: borrarlo o cambiar el tipo de arancel.
+     */
+    if (v.arancel.monto != null && !admiteMonto(v.arancel.tipo)) {
+      faltaSiempre(
+        ['arancel', 'monto'],
+        'Un arancel que no se paga no lleva monto: borralo o cambiá el tipo de arancel',
+      );
     }
 
   })

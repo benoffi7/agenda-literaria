@@ -74,6 +74,57 @@ const ETIQUETA_VIA = {
  * desplegable. Esa diferencia es correcta y unificarla haría que un cambio de
  * copy del panel cambie lo que se publica.
  */
+/**
+ * **Los aranceles que no se pagan, y el formato del monto** — B-271, B-114.
+ *
+ * Vive acá, y no en `src/lib/`, por la misma razón que `desSlug`: lo necesitan la
+ * **Function** —para la descripción del evento— y el **sitio**, y una Function no
+ * puede importar de `src/` (D-20). La alternativa era una copia atada por un
+ * test; esto es una sola implementación, que el sitio toma por `@calendario` y
+ * `src/lib/arancel.ts` reexporta.
+ *
+ * `'a-la-gorra'` está en la lista y **no es un caso raro**: el §4.1 del CLAUDE.md
+ * dice que en el circuito literario es la mitad de los casos y que no entra en el
+ * binario gratis/pago.
+ *
+ * Una opción nueva creada desde «Otro» cae **afuera** por defecto, que es el lado
+ * prudente: cobrarse de menos en un filtro es peor que no aparecer en él.
+ */
+export const SIN_COSTO = ['gratis', 'a-la-gorra'];
+
+export const esSinCosto = (slugArancel) => SIN_COSTO.includes(slugArancel);
+
+/**
+ * ¿Este arancel puede llevar monto? — B-114.
+ *
+ * La regla dicha una vez: **un arancel que no se paga no tiene precio que
+ * publicar.** La usan el schema (que rechaza), el formulario (que muestra el
+ * campo), la cascada (que lo limpia al cambiar de tipo), el view-model del
+ * detalle y esta misma descripción. Una sola función para que ninguna de las
+ * cinco pueda estar en desacuerdo.
+ */
+export const admiteMonto = (slugArancel) => Boolean(slugArancel) && !esSinCosto(slugArancel);
+
+/**
+ * `15000` → `'$15.000'` — B-114.
+ *
+ * **A mano y no con `Intl.NumberFormat`**, porque este número lo escriben tres
+ * entornos: el build de Astro (Node), esta Function (Node) y el navegador del
+ * panel para la vista previa. `Intl` depende de la versión de ICU del runtime, así
+ * que un separador distinto entre Node y Chrome dejaría la vista previa diciendo
+ * una cosa y el evento publicado otra — la divergencia que D-20 existe para
+ * evitar, y la que menos se nota porque las dos cadenas *parecen* bien. Con
+ * `es-AR`, `Intl` además mete un espacio (`'$ 15.000'`) que no es lo que se
+ * escribe en un flyer.
+ *
+ * Redondea a entero: los centavos no existen en este dominio y un `$15.000,5` en
+ * un cartel es un error de carga, no un precio.
+ */
+export const montoLegible = (monto) => {
+  const entero = Math.round(Math.abs(Number(monto) || 0));
+  return `$${String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+};
+
 export const ETIQUETA_TIPO_MATERIAL = {
   lectura: 'Libro o lectura',
   guia: 'Guía',
@@ -381,7 +432,23 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   // ── Arancel ───────────────────────────────────────────────────
   const arancel = [];
   if (actividad.arancel?.tipo) {
-    arancel.push(`Arancel: ${etiqueta(labels, 'arancel', actividad.arancel.tipo)}`);
+    /*
+     * B-114 — el monto va **pegado a la etiqueta** («Arancel: Arancelado ·
+     * $15.000») y no en una línea propia: es un dato que califica al de al lado, y
+     * la descripción del evento ya tiene siete bloques.
+     *
+     * Se emite solo si el arancel lo admite, aunque el schema ya lo garantice: un
+     * documento anterior a esa regla —o restaurado del historial— puede traer las
+     * dos cosas, y este texto va al calendario **público** de la gente que se
+     * suscribió. «Gratis · $8.000» ahí no se puede corregir después.
+     */
+    const tipo = etiqueta(labels, 'arancel', actividad.arancel.tipo);
+    const monto = actividad.arancel?.monto;
+    arancel.push(
+      monto != null && admiteMonto(actividad.arancel.tipo)
+        ? `Arancel: ${tipo} · ${montoLegible(monto)}`
+        : `Arancel: ${tipo}`,
+    );
   }
   if (actividad.arancel?.notas) arancel.push(actividad.arancel.notas);
   if (arancel.length) bloques.push(arancel.join('\n'));

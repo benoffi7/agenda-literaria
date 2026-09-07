@@ -70,6 +70,7 @@
  * depender de qué día es hoy.
  */
 import { desSlug } from '@calendario';
+import { admiteMonto, montoLegible } from '@/lib/arancel';
 import { formADocumento } from '@/lib/actividades';
 import { encuentrosDe, fechaHoraLegible } from '@/lib/calendarioPanel';
 import { ETIQUETA_MODALIDAD, proximoEncuentro } from '@/lib/filtrosActividades';
@@ -260,11 +261,30 @@ const bloqueDonde = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): st
   return lineas.join('\n');
 };
 
-/** Arancel y sus notas, que se publican tal cual (son "2 cuotas", "incluye material"). */
+/**
+ * Arancel y sus notas, que se publican tal cual (son "2 cuotas", "incluye
+ * material").
+ *
+ * **El monto va pegado a la etiqueta** — B-114, igual que en la tarjeta y en la
+ * descripción del evento: «Arancel: Arancelado · $15.000». En un posteo de
+ * Instagram el precio es de lo primero que se pregunta en los comentarios, así que
+ * ponerlo en el texto que se pega ahorra la ida y vuelta.
+ *
+ * Se emite solo si el arancel lo admite, aunque el schema ya lo garantice: **este
+ * texto es el más irreversible de las salidas** —un posteo pegado ya está copiado—
+ * y un «Gratis · $8.000» ahí no se corrige.
+ */
 const bloqueArancel = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): string => {
   const lineas: string[] = [];
   const tipo = etiqueta(labels, 'arancel', actividad.arancel?.tipo ?? '');
-  if (tipo) lineas.push(`Arancel: ${tipo}`);
+  const monto = actividad.arancel?.monto;
+  if (tipo) {
+    lineas.push(
+      monto != null && admiteMonto(actividad.arancel?.tipo ?? '')
+        ? `Arancel: ${tipo} · ${montoLegible(monto)}`
+        : `Arancel: ${tipo}`,
+    );
+  }
   const notas = actividad.arancel?.notas?.trim();
   if (notas) lineas.push(notas);
   return lineas.join('\n');

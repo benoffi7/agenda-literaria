@@ -233,7 +233,14 @@ export interface ActividadPublica {
    * (§11.2 #3) va a ser una línea, con su propia decisión.
    */
   creadoEn: string;
-  arancel: Actividad['arancel'];
+  /*
+   * B-114 — se enumera campo por campo y **ya no es `Actividad['arancel']`**.
+   * El passthrough tipado era un agujero latente: cualquier campo que se agregue
+   * a `Arancel` sale publicado sin que nadie lo decida, que es exactamente lo que
+   * el §5.2 prohíbe («whitelist, nunca un spread»). El `monto` fue el primero que
+   * lo habría atravesado.
+   */
+  arancel: { tipo: string; notas: string; monto: number | null };
   organizador: Actividad['organizador'];
   tallerista: Actividad['tallerista'];
   libro: LibroPublico | null;
@@ -515,7 +522,14 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
    * todavía es el sentinel de `serverTimestamp()`— sigue ordenando al fondo.
    */
   creadoEn: aIsoSeguro(a.createdAt).slice(0, 10),
-  arancel: a.arancel,
+  arancel: {
+    tipo: a.arancel.tipo,
+    notas: a.arancel.notas,
+    // B-114 — decisión del dueño: el monto **es público**. Es para lo que se
+    // agregó: el `offers.price` del JSON-LD y los cuatro lugares que ya dicen el
+    // arancel. `?? null` porque los documentos anteriores no lo tienen (D-26).
+    monto: a.arancel.monto ?? null,
+  },
   organizador: a.organizador,
   tallerista: a.tallerista ?? null,
   libro: libroPublico(a.libro),
