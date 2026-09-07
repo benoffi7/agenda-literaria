@@ -2143,7 +2143,9 @@ van `lazy` y al final de la página, D-168 §2).
 El disparador escrito de B-220 sigue en **B-266**; esto es el segundo, y el que
 mueve el peor caso de una página en vez del de un recorrido.
 
-### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño · P3
+### B-301 · Un campo de texto alternativo por imagen — reabre DEC-7a, decisión del dueño — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el texto alternativo se pide en la portada.
 
 **Decidido el 2026-09-03 por el dueño: obligatorio solo en la portada.** Ni un
 campo por imagen —nadie lo llenaría en las cuatro— ni seguir derivando todo del
@@ -2804,7 +2806,9 @@ puestos y no hay que tocarlos.
 **`B-780` es P0 y bloquea el deploy.** Los otros son P1/P2/P3.
 
 ```md
-### B-780 · P0 ⛔ — `/apoyar` publica e indexa un usuario de cobro que nadie registró
+### B-780 — ✅ hecho (2026-09-07) · P0 ⛔ — `/apoyar` publica e indexa un usuario de cobro que nadie registró
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el perfil de Cafecito existe y verificado contra la red (200).
 
 `CAFECITO` (`src/lib/enlaces.ts`) está en `'agendaleh'`, puesto por coherencia con
 el dominio (`agendaleh.ar`) y con la casilla (`agendaleh@gmail.com`), **pero nadie
@@ -3009,7 +3013,9 @@ conviene que quede en el BACKLOG:
 - Los otros seis avisos son decisiones tomadas, no bugs. Detalle en el §5.3bis de
   [`12-sitio-publico.md`](12-sitio-publico.md).
 
-### B-721 · Search Console: nueve avisos de campos recomendados en el `Event` · P2
+### B-721 · Search Console: nueve avisos de campos recomendados en el `Event` — ✅ hecho (2026-09-07) · P2
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** los `subEvent` dejaron de ser cáscaras.
 
 **Lo trajo el dueño el 2026-09-04**, del informe «Eventos → Mejorar el aspecto de
 los elementos» de Search Console para `agendaleh.ar`. Son **avisos, no errores**:
@@ -3087,7 +3093,9 @@ dos o tres de esas páginas y comparar lo que Google vio con lo que emite
 `datosEstructurados` hoy. Antes de tocar una línea.
 
 
-### B-720 · La galería de una actividad no se puede recorrer ni ver en grande · P2
+### B-720 · La galería de una actividad no se puede recorrer ni ver en grande — ✅ hecho (2026-09-07) · P2
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la galería se recorre y se ve en pantalla completa.
 
 **Pedido del dueño el 2026-09-03**, mirando el sitio publicado: que la galería sea
 **clickeable para recorrer las fotos y verlas en pantalla completa**.
@@ -4715,7 +4723,9 @@ alternativo por imagen, que reabre DEC-7a y es decisión del dueño).
 
 ---
 
-### B-62 · Ayuda contextual por sección del formulario
+### B-62 · Ayuda contextual por sección del formulario — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** ayuda por sección del formulario.
 
 La guía (B-60) se abre desde el encabezado y muestra desplegado el capítulo de
 la pantalla en la que estás, pero no hay un "?" al lado del título de cada
@@ -7121,7 +7131,9 @@ matchee una whitelist (`^PUBLIC_`, más las dos excepciones nombradas a mano), y
 que ningún **valor** matchee `private-[0-9a-f]{10,}`, `BEGIN PRIVATE KEY`,
 `ghp_` ni `github_pat_`. Compara claves y formas, nunca imprime valores.
 
-### B-214 · Astro 5.x no tiene parche para ocho avisos de seguridad: hay que subir a 6/7 antes de B-01 · P2
+### B-214 · Astro 5.x no tiene parche para ocho avisos de seguridad: hay que subir a 6/7 antes de B-01 — ✅ hecho (2026-09-07) · P2
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** Astro 7.3.1.
 
 **Decidido el 2026-09-03 por el dueño: después de esta tanda.** No se descarta —
 se secuencia. El upgrade toca el `package-lock.json`, que es de todos los frentes
@@ -8013,7 +8025,9 @@ liste con sus `campos`, que es la mitad que vale aunque nadie repare nada.
 emitiría un `update` contra un evento que se acaba de recrear con ese mismo
 contenido.
 
-### B-621 · El calendario y el tablero del panel siguen angostos · P3
+### B-621 · El calendario y el tablero del panel siguen angostos — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el calendario y el tablero usan todo el ancho — **falta repartir la grilla del mes**.
 
 **D-330** dejó el ancho del panel decidido **por vista** y solo ensanchó el
 listado. Las otras dos pantallas que se recorren de un barrido —la grilla del mes
@@ -8032,7 +8046,9 @@ lista hoy esas dos vistas entre las que arrancan angostas, así que hay que move
 de grupo en el mismo cambio — que es la señal de que la decisión se está tomando y
 no filtrando por descuido.
 
-### B-622 · La tarjeta del panel no muestra `destacado` ni los tags · P3
+### B-622 · La tarjeta del panel no muestra `destacado` ni los tags — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la tarjeta dice «Destacada»; los tags no, por decisión.
 
 La fila no los mostraba y la tarjeta tampoco, así que **no es una regresión**: es
 que la tarjeta ahora tiene lugar y sigue sin decirlos. `destacado` decide el orden
@@ -8044,7 +8060,9 @@ existe, `CLASE_MARCA`) y decidir si los tags entran — que es la parte que no e
 gratis: una actividad puede tener seis y la tarjeta se convierte en una nube de
 etiquetas. Recomendación: `destacado` sí, tags no hasta que alguien lo pida.
 
-### B-601 · El tríptico de «¿Qué hay ahora?» no se mide · P3
+### B-601 · El tríptico de «¿Qué hay ahora?» no se mide — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el tríptico entra al vocabulario de la analítica — **falta el enganche**.
 
 El sitio público mide **dos** eventos propios —`busqueda` y `clic_inscripcion`
 (B-375, [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md))— y el tríptico de
@@ -8089,7 +8107,9 @@ buscó otros duplicados de bloques de 4+ líneas en `src/**`, `functions/**` y
 `tests/**`: los demás candidatos son falsos positivos (código repetitivo por
 patrón). El frente de salud no lo tocó porque `src/**` era de otro frente.
 
-### B-606 · La definición del `auditor-documentacion` sobre-afirma que nada atrapa los duplicados de merge · P3
+### B-606 · La definición del `auditor-documentacion` sobre-afirma que nada atrapa los duplicados de merge — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** la ficha del auditor ya no sobre-afirma.
 
 **Renumerado desde el `B-602` que propuso el frente de salud** (ver la nota de
 huecos del encabezado).
@@ -8111,7 +8131,9 @@ Texto propuesto, al final del punto 3:
     con `||` o duplicadas) — no lo reportes ahí, seguí buscando el patrón en el
     resto de la documentación.
 
-### B-607 · `npm audit fix` de `uuid`, la única vulnerabilidad de producción sin breaking · P3
+### B-607 · `npm audit fix` de `uuid`, la única vulnerabilidad de producción sin breaking — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `uuid` desaparece al subir `google-auth-library`.
 
 **Renumerado desde el `B-603` que propuso el frente de salud** (ver la nota de
 huecos del encabezado).
@@ -8406,7 +8428,9 @@ Qué haría falta para cerrarlo: decidir si alguno se agrega. Si es `tags`, prim
 hace falta el control de selección múltiple —el sitio ya tiene uno, los chips de
 `EjeDeFiltro`, así que el camino corto es traerlo al panel en vez de inventar otro—.
 
-### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda · P2
+### B-285 · «Estuvo publicada alguna vez» se infiere, no se guarda — ✅ hecho (2026-09-07) · P2
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `publicadaAlgunaVez` se guarda, con «ausente» leído como la inferencia.
 
 **Decidido el 2026-09-03 por el dueño: guardarlo en el documento.** Un campo más,
 escrito una sola vez por el trigger, que saca la inferencia de los tres lugares
@@ -8641,7 +8665,9 @@ magnitud: no es un objetivo de performance, es el piso de lo absurdo — detecta
 alguien meta red, `crypto` o una regla cuadrática en el camino del tecleo, no un
 20 % de variación de máquina.
 
-### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa · P3
+### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** confirmado con cinco corridas, y el chequeo pasó a ser de clase.
 ### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-02, con B-219)
 
 **Cerrado por B-219 (D-195).** La sospecha de este ítem apuntaba a la interacción
@@ -8687,7 +8713,9 @@ un dato falso en un formato que las máquinas creen.
 Es P3 porque `arancel.tipo` ya comunica lo esencial —y en la mitad de los casos
 del circuito es "a la gorra", que no tiene precio que publicar.
 
-### B-33 · Las etiquetas de GitHub hay que crearlas una vez
+### B-33 · Las etiquetas de GitHub hay que crearlas una vez — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** script idempotente de etiquetas.
 
 El issue se crea con `reporte-panel` y `bug`/`sugerencia`. GitHub crea las
 etiquetas que no existan, pero sin color ni descripción. Crearlas a mano una vez
@@ -8795,7 +8823,9 @@ mostrar `start`/`end` (el formulario ya muestra las fechas al lado).
 > Un merge mal resuelto, preexistente: `tests/sin-marcadores-de-conflicto.test.ts`
 > no lo agarra porque no hay marcadores de git, solo texto en el lugar equivocado.
 > Lo encontró el `auditor-documentacion` el 2026-09-02 y se movió a su lugar.
-### B-45 · Los links cortos de Maps (`maps.app.goo.gl`) no se pueden pegar
+### B-45 · Los links cortos de Maps (`maps.app.goo.gl`) no se pueden pegar — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** los links cortos de Maps se pegan.
 
 El campo de coordenadas (D-46) acepta el link largo y el par `lat, lng`, pero no
 el link corto del botón "Compartir", que es justo el que ofrece la app de Maps
@@ -8942,7 +8972,9 @@ es un array de maps y no se puede comparar elemento por elemento.
 
 No se implementó por cuenta propia: cambia el modelo de permisos.
 
-### B-29 · ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? — decisión del dueño
+### B-29 · ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? — decisión del dueño — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** auto-aprobación con marca reversible.
 
 Si la cuenta B tipea en "Otro" una etiqueta que ya existe como pendiente de la
 cuenta A, hoy se reusa el slug (bien, §4.2) pero la opción **sigue pendiente**:
@@ -9202,7 +9234,9 @@ ubicando `cargarLabels`) y tres comentarios que ubicaban `MAX_EVENTOS_RESYNC` en
 `index.js` — uno de ellos escrito por este mismo frente, o sea nacido stale.
 ```
 
-### B-78 · El 26 % de `src/lib/` es prosa, no lógica
+### B-78 · El 26 % de `src/lib/` es prosa, no lógica — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** cerrado con el argumento: no hay prosa que borrar.
 
 `ayuda.ts` (616 LOC de guía) y el array `NOVEDADES` (175 de las 300 LOC de
 `novedades.ts`), más `opciones-base.json`, son 937 LOC de **contenido
@@ -9300,7 +9334,9 @@ Ojo con el efecto compartido: `cargarReglas` cambia las reglas del emulador
 **para todos** los tests que estén corriendo contra él. Con un solo checkout es
 inocuo; corriendo dos suites en paralelo, la última que carga gana.
 
-### B-175 · El formulario y el listado tienen cada uno su vocabulario de etiquetas · P3
+### B-175 · El formulario y el listado tienen cada uno su vocabulario de etiquetas — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** un solo vocabulario de etiquetas.
 
 Residual de **B-76**, y la parte que era la causa y no el síntoma. El listado ya
 usa `ETIQUETA_ESTADO` de `src/lib/filtrosActividades.ts`, pero
@@ -9774,7 +9810,9 @@ entra al `sitemap.xml`, así que va a la **lista de excepciones** de
 esté en `RUTAS_FIJAS` o exceptuada, y no deja nacer una página fuera del sitemap
 sin que alguien lo decida.
 
-### B-311 · Remedir `10-salud-del-codigo.md` completo, con la metodología escrita · P3
+### B-311 · Remedir `10-salud-del-codigo.md` completo, con la metodología escrita — ✅ hecho (2026-09-07) · P3
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** remedido entero.
 
 **Sale de B-201**, que remidió solo el §1.3 porque era lo único que el backlog
 pedía. Todo el resto del documento es del **2026-08-27** y quedó viejo por el
@@ -9947,7 +9985,9 @@ auditor que corresponda al cerrar un cambio) o un job de GitHub Actions sobre el
 PR. El hook es inmediato pero cuesta una corrida por cierre; el job de Actions es
 más barato de ignorar. Decidirlo con B-124.
 
-### B-116 · La verificación contra el sistema real no está automatizada · P2
+### B-116 · La verificación contra el sistema real no está automatizada — ✅ hecho (2026-09-07) · P2
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** `scripts/verificar-produccion.mjs`.
 
 [`07-seguridad.md`](07-seguridad.md) y [`08-operacion.md`](08-operacion.md)
 tienen el bloque que importa de verdad: leer el ICS del calendario y buscar el
@@ -10029,7 +10069,9 @@ el directorio y el documento. También podría validar el frontmatter, que es
 justamente lo que rompió tres agentes en silencio la primera vez (ver
 [`13-agentes.md`](13-agentes.md)).
 
-### B-121 · Con el sitio público hay que sumar sus salidas al auditor · P1 (junto con B-01)
+### B-121 · Con el sitio público hay que sumar sus salidas al auditor — ✅ hecho (2026-09-07) · P1 (junto con B-01)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el barrido del artefacto llega al HTML del detalle.
 
 Hoy el `auditor-privacidad` audita `toPublic.ts` como **función**, porque el
 `events.json` no se genera todavía. Cuando exista el sitio público (B-01) van a
@@ -10080,7 +10122,9 @@ secciones. Va primero **B-241**.
 > además que el **agente** —y no solo el gate— mire `dist/`. Los dos pasos ya
 > están nombrados en la ficha del `auditor-privacidad`.
 
-### B-122 · Falta un auditor del sitio público · P2 (después de B-01)
+### B-122 · Falta un auditor del sitio público — ✅ hecho (2026-09-07) · P2 (después de B-01)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** decidido que NO se escribe el agente: eran dos chequeos.
 
 El proyecto existe para que la gente encuentre los talleres en Google (§2.3), y
 eso se rompe en silencio: un `getStaticPaths` que se saltea una actividad, un
@@ -10260,7 +10304,9 @@ Queda sin script en seco, que es lo único que el barrido de imágenes tiene y
 este no: **B-630**.
 ```
 
-### B-91 · Un slug legítimo que termine en `-copia` no se puede publicar
+### B-91 · Un slug legítimo que termine en `-copia` no se puede publicar — ✅ hecho (2026-09-07)
+
+> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** el slug legítimo terminado en `-copia` se publica.
 
 `esSlugDeCopia` es `/-copia(?:-\d+)?$/` sobre el slug entero, y el schema lo usa
 para bloquear la publicación. Un título que derive en algo como
