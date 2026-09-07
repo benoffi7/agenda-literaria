@@ -15,6 +15,11 @@ import { SeccionQuien } from '@/components/admin/formulario/SeccionQuien';
 import { SeccionTextoRedes } from '@/components/admin/formulario/SeccionTextoRedes';
 import { SeccionVistaPrevia } from '@/components/admin/formulario/SeccionVistaPrevia';
 import { documentoAForm } from '@/lib/actividades';
+// B-285 — «estuvo publicada alguna vez» se pregunta con la MISMA función que usa
+// el trigger que escribe la marca, importada por `@historial` (el patrón de D-20
+// aplicado al §12). Reescribirla acá sería dos ideas del mismo predicado, y la
+// que se olvide del campo vuelve a abrir el candado del slug.
+import { estuvoPublicada } from '@historial';
 import {
   claveBorrador,
   conIdsDeCalendarioDe,
@@ -113,8 +118,25 @@ export function ActividadFormulario({
   const set = <K extends keyof ActividadForm>(k: K, v: ActividadForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  /** Trampa 10 — el slug es inmutable después de publicar: si no, URLs rotas y SEO perdido. */
-  const slugBloqueado = inicial?.estado === 'publicado';
+  /**
+   * Trampa 10 — el slug es inmutable después de publicar: si no, URLs rotas y SEO
+   * perdido.
+   *
+   * **B-285 — «después de publicar» y no «mientras está publicada».** Esto era
+   * `inicial?.estado === 'publicado'`, y con eso despublicar abría el candado:
+   * pasar una actividad a borrador dejaba editar el slug de una URL que ya estuvo
+   * en Google y en Instagram, y volver a publicarla la rompía. Es el mismo
+   * agujero que `slugRestaurable` (`lib/historial.ts`) cierra del lado del
+   * historial, con la nota escrita —«el historial no puede ser la puerta de
+   * atrás»— mientras el formulario era la puerta de adelante.
+   *
+   * La pregunta la contesta `estuvoPublicada`, importada de `@historial` y no
+   * reescrita acá: es la misma función que usa el trigger que escribe la marca, y
+   * su default de lectura para un documento anterior al campo es justamente el
+   * `estado === 'publicado'` de antes (D-26). El `=== true` es la coerción: la
+   * Function es JS plano y su tipo inferido es `any`.
+   */
+  const slugBloqueado = estuvoPublicada(inicial) === true;
 
   const errorDe = (path: string) => errores[path];
 

@@ -134,6 +134,23 @@ describe('trampa 10 — la dirección web no se restaura sobre una actividad pub
     const actual = actividad({ estado: 'borrador' });
     expect(camposRestaurables(version as never, actual)).toContain('slug');
   });
+
+  /**
+   * B-285 — el agujero que quedaba abierto: **despublicar no des-indexa nada**.
+   *
+   * Con `actual.estado !== 'publicado'` bastaba pasar la actividad a borrador
+   * para que el historial volviera a ofrecer el slug de una URL que estuvo tres
+   * semanas en Google y en Instagram. La marca pegajosa lo cierra, y el caso de
+   * arriba sigue valiendo: un borrador que **nunca** se publicó sí puede cambiar
+   * de dirección.
+   */
+  it('un borrador que ESTUVO publicado tampoco ofrece el slug (B-285)', () => {
+    const version = versionAnteriorAB167();
+    version.camposCambiados = ['slug'];
+    (version.documento as Record<string, unknown>).slug = 'direccion-vieja';
+    const actual = actividad({ estado: 'borrador', publicadaAlgunaVez: true });
+    expect(camposRestaurables(version as never, actual)).not.toContain('slug');
+  });
 });
 
 describe('lo que se escribe es lo que decía la versión', () => {

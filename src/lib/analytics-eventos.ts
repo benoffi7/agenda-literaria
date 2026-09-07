@@ -345,6 +345,9 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'imagenes.N.origen',
   'imagenes.N.portada',
   'imagenes.N.storagePath',
+  // B-301 — el **nombre** del campo, no el texto: el alternativo de la portada es
+  // texto libre y no sale a la analítica, igual que el epígrafe y la URL.
+  'imagenes.N.textoAlternativo',
   'imagenes.N.url',
   'inscripcion',
   'inscripcion.cierra',

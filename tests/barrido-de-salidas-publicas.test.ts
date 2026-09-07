@@ -106,12 +106,23 @@ const PERMITIDO_EN_EVENTS_JSON: readonly Excepcion[] = [
   },
   {
     nombre: 'galería',
-    centinelas: ['imagenes.id', 'imagenes.url', 'imagenes.epigrafe'],
+    centinelas: [
+      'imagenes.id',
+      'imagenes.url',
+      'imagenes.epigrafe',
+      'imagenes.textoAlternativo',
+    ],
     porque:
       'la URL es lo que el navegador va a pedir igual y el epígrafe se muestra debajo ' +
       'de la foto (D-125); el id identifica la fila de la galería y es a lo que apunta ' +
-      '`portada`, no es contenido. `storagePath` NO está en esta lista: es la ruta ' +
-      'interna del bucket (§5.1).',
+      '`portada`, no es contenido. **`textoAlternativo` está permitido por adelantado** ' +
+      '(B-301, D-440): viaja en esta proyección y hoy NO llega a ninguna salida — el ' +
+      'archivo que se sirve es el índice, y el `alt` de la página lo sigue armando la ' +
+      'plantilla con el título. Va a poder salir cuando `detallePublico.ts` lo ' +
+      'proyecte, porque el `alt` se pinta del lado del sitio y el sitio no lee ' +
+      'Firestore (§2.5); ese cambio tiene que decidir además el JSON-LD y el ' +
+      '`og:image:alt`. Lo dejó dicho así el `auditor-privacidad`. `storagePath` NO ' +
+      'está en esta lista: es la ruta interna del bucket (§5.1).',
   },
   {
     nombre: 'quién',

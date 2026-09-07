@@ -172,16 +172,36 @@ describe('qué de cada imagen es público (§5.1, paso 0 de campo-nuevo)', () =>
   });
 
   it('lo que sí sale es lo que el sitio necesita para no saltar al cargar', () => {
-    const publica = toPublic(actividad([img({ ancho: 1200, alto: 630, epigrafe: 'El patio' })]), 'a');
+    const publica = toPublic(
+      actividad([
+        img({ ancho: 1200, alto: 630, epigrafe: 'El patio', textoAlternativo: 'Flyer vertical' }),
+      ]),
+      'a',
+    );
     expect(publica.imagenes[0]).toEqual({
       id: 'img_1',
       url: 'https://ejemplo.ar/tapa.jpg',
       epigrafe: 'El patio',
+      // B-301 / D-440 — sale, y es el punto del campo: el `alt` lo pinta el
+      // sitio, que no lee Firestore (§2.5).
+      textoAlternativo: 'Flyer vertical',
       origen: 'externa',
       portada: true,
       ancho: 1200,
       alto: 630,
     });
+  });
+
+  /**
+   * B-301 — el **default de lectura** del campo, que es la mitad que decide si
+   * las 30 imágenes que ya están en producción siguen funcionando (D-26).
+   */
+  it('una imagen anterior al campo sale con el alternativo vacío, no ausente', () => {
+    const publica = toPublic(actividad([img()]), 'a');
+    // La clave existe siempre: vacía significa «usá el default», y el default
+    // («Imagen de {título}») lo aplica el consumidor, que es el que conoce el
+    // título. Distinguir ausente de vacío no le compraría nada a nadie.
+    expect(publica.imagenes[0]).toHaveProperty('textoAlternativo', '');
   });
 
   it('un documento viejo se proyecta con la lista migrada, no con el campo viejo', () => {

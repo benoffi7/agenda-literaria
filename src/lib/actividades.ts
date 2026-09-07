@@ -162,6 +162,19 @@ export const formADocumento = (
       id: i.id,
       url: limpiar(i.url),
       epigrafe: limpiar(i.epigrafe),
+      /*
+       * B-301 — se escribe **siempre y como cadena**, igual que `epigrafe` y no
+       * como el spread condicional de `storagePath`/`ancho`/`alto`: es contenido
+       * que tipea una persona, no un campo de máquina, así que no tiene el
+       * problema de los dos escritores. El `?? ''` cubre las filas de un
+       * documento anterior a este campo, que llegan sin la clave.
+       *
+       * Consecuencia dicha: la primera vez que se guarde una actividad vieja, sus
+       * imágenes ganan `textoAlternativo: ''`. Eso es un cambio de contenido —una
+       * versión al historial y un rebuild— pero solo ocurre dentro de un guardado
+       * que ya iba a producir los dos.
+       */
+      textoAlternativo: limpiar(i.textoAlternativo ?? ''),
       origen: i.origen,
       portada: i.portada,
       ...(i.storagePath === undefined ? {} : { storagePath: i.storagePath }),

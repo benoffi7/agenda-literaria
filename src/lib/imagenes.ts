@@ -275,11 +275,19 @@ export const urlDeMiniaturaSiExiste = (
  */
 export const TIPOS_ACEPTADOS = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'] as const;
 
-/** Una fila nueva de la galería, para una URL de afuera. */
+/**
+ * Una fila nueva de la galería, para una URL de afuera.
+ *
+ * `textoAlternativo` nace en `''` y no ausente (B-301): así la fila tiene la
+ * misma forma que la que produce la subida y que la que devuelve el schema, y el
+ * input del editor no tiene que distinguir «no lo escribió» de «no existe el
+ * campo». Es la cadena vacía la que el nivel «publicar» rechaza en la portada.
+ */
 export const imagenExterna = (url: string, esPrimera: boolean): Imagen => ({
   id: nuevaImagenId(),
   url: url.trim(),
   epigrafe: '',
+  textoAlternativo: '',
   origen: 'externa',
   portada: esPrimera,
 });
@@ -357,6 +365,12 @@ export const imagenesDe = (doc: {
       id: ID_IMAGEN_MIGRADA,
       url: doc.imagenUrl,
       epigrafe: '',
+      // B-301 — vacío, como el epígrafe: el alternativo de un documento anterior
+      // a la galería no existe, y el default de la salida pública sigue siendo el
+      // título de la actividad (D-125, D-440). Constante y no derivado, por la
+      // misma razón que el id: un default que variara marcaría el formulario como
+      // sucio en cada apertura.
+      textoAlternativo: '',
       origen: 'externa',
       portada: true,
     },

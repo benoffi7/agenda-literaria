@@ -19,6 +19,7 @@ import {
   conPortada,
   imagenExterna,
   nuevaImagenId,
+  portadaDe,
   sinImagen,
 } from '@/lib/imagenes';
 import { TIPOS_SUBIBLES, enBytesLegibles } from '@/lib/imagenes-archivo';
@@ -28,7 +29,13 @@ import type { Imagen } from '@/types/actividad';
 interface Props {
   imagenes: Imagen[];
   onChange: (imagenes: Imagen[]) => void;
-  /** El título de la actividad: es el texto alternativo de todas (DEC-7a, D-125). */
+  /**
+   * El título de la actividad. **Ya no es el texto alternativo de todas** (D-440,
+   * B-301): la portada tiene el suyo y las secundarias son decorativas (D-168).
+   * Queda porque sigue siendo el **default de lectura** de lo que se cargó antes
+   * de que el campo existiera, y decirlo es lo que hace obvio por qué conviene
+   * escribir el alternativo en vez de dejarlo vacío.
+   */
   tituloActividad: string;
   /**
    * B-341 — el mapa entero, no un solo `error?: string`.
@@ -167,6 +174,21 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
         // pone el `path` del `superRefine` (`imagenes.2.url`). Armada distinto,
         // el error existe en el mapa y no se pinta nunca.
         const errorUrl = errorDe(`imagenes.${i}.url`);
+        /*
+         * B-301 — el campo del texto alternativo se muestra **solo en la
+         * portada**, que es lo que cumple «un campo solo» del desvío del dueño
+         * (D-440): la portada es la que va a Open Graph y a la tarjeta, o sea la
+         * única que se comparte.
+         *
+         * Cuál es la portada lo contesta `portadaDe` y no `img.portada`, que es
+         * la misma función que usa el `superRefine` para decidir a qué fila le
+         * pide el campo. Con dos derivaciones, una lista sin ninguna marcada
+         * —posible en un documento anterior a la galería— pediría el campo en una
+         * fila y lo mostraría en otra: el error existiría en el mapa y no se
+         * pintaría en ninguna parte, que es la clase de B-341.
+         */
+        const esPortada = portadaDe(imagenes)?.id === img.id;
+        const errorAlternativo = errorDe(`imagenes.${i}.textoAlternativo`);
         return (
           <div key={img.id} className="rounded-md border border-borde p-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -267,6 +289,34 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
                   placeholder="Epígrafe (opcional)"
                   aria-label="Epígrafe"
                 />
+                {esPortada && (
+                  <>
+                    <input
+                      type="text"
+                      className={claseInput}
+                      value={img.textoAlternativo ?? ''}
+                      onChange={(e) => editar(img.id, { textoAlternativo: e.target.value })}
+                      placeholder="Qué se ve en la portada"
+                      aria-label="Descripción de la portada"
+                    />
+                    {errorAlternativo && (
+                      <p
+                        data-campo-con-error
+                        role="alert"
+                        className="-mt-1 scroll-mt-16 text-xs font-medium text-acento"
+                      >
+                        {errorAlternativo}
+                      </p>
+                    )}
+                    <p className="text-xs text-tinta/55">
+                      {img.textoAlternativo?.trim()
+                        ? 'Se necesita para publicar. No se muestra en pantalla: lo lee quien usa un lector de pantalla, y Google cuando la imagen no carga.'
+                        : `Se necesita para publicar. Sin esto se publica ${
+                            tituloActividad ? `«Imagen de ${tituloActividad}»` : '«Imagen de» el título'
+                          }, que no describe nada. Contá qué se ve: «Flyer con la fecha y la sede», «Retrato de la autora».`}
+                    </p>
+                  </>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="flex min-h-touch items-center gap-2 text-xs">
                     <input
@@ -379,13 +429,20 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
         el sitio: la cartelera se arma con las que tienen imagen y el `og:image`
         del detalle sale de la portada.
       */}
+      {/*
+        B-301 / D-440 — este texto decía que el alternativo sale del título, y
+        desde el desvío del dueño eso solo vale para lo que ya estaba cargado: hoy
+        la portada tiene su propio campo y es obligatorio para publicar. Las
+        secundarias siguen decorativas (D-168), y decirlo acá es lo que evita que
+        alguien busque el campo que no está en esas filas.
+      */}
       <p className="text-xs text-tinta/55">
         {imagenes.length === 0
           ? 'Sin imagen la actividad se publica igual, pero no aparece en la cartelera del ' +
             'sitio y el link se comparte sin nada que mirar.'
-          : `Para quien no puede ver la imagen, y para Google, se usa el título de la actividad${
-              tituloActividad ? ` («${tituloActividad}»)` : ''
-            }. El epígrafe es aparte y se muestra debajo de la foto.`}
+          : 'La descripción se pide solo en la portada, que es la que se comparte. Las demás ' +
+            'la página las trata como decoración, así que un lector de pantalla no las ' +
+            'anuncia. El epígrafe es otra cosa: se muestra debajo de la foto.'}
       </p>
     </div>
   );

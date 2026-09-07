@@ -145,7 +145,23 @@ describe.skipIf(!vivo)('las páginas de detalle salen solo de lo publicado (§5.
 
     await db
       .doc('actividades/sitio-cancelada-nunca')
-      .set(sinIdsDeCalendar(documento({ slug: SLUG_CANCELADA_NUNCA, estado: 'cancelado' })));
+      .set(
+        sinIdsDeCalendar(
+          documento({
+            slug: SLUG_CANCELADA_NUNCA,
+            estado: 'cancelado',
+            /*
+             * B-285 — **explícito, y es la mitad del caso.** El fixture marca
+             * `publicadaAlgunaVez: true` por default, porque tiene que llevar
+             * todos los campos del modelo; para esta actividad eso sería mentira
+             * y le daría la página que este caso existe para negarle. Una que
+             * nació en borrador y se canceló sin pasar por publicado nunca
+             * recibió esa marca del trigger.
+             */
+            publicadaAlgunaVez: false,
+          }),
+        ),
+      );
     /*
      * Y una versión que **no** prueba nada: nació en borrador y se canceló sin
      * pasar por publicado. Sin esto, el caso pasaría por no tener subcolección, y

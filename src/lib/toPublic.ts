@@ -53,6 +53,38 @@ export interface ImagenPublica {
   id: string;
   url: string;
   epigrafe: string;
+  /**
+   * B-301 · **D-440** — el texto alternativo de esta imagen.
+   *
+   * ⚠️ **Viaja en la proyección y hoy NO llega a ninguna salida**, y conviene
+   * leerlo así y no al revés. Lo encontró el `auditor-privacidad` al revisar
+   * B-301: la primera versión de este docblock decía, en presente, «es el `alt`
+   * que pinta la página de detalle», y eso todavía es falso por dos lados —el
+   * `alt` de la portada lo arma la plantilla con el título de la actividad
+   * (`actividad/[slug].astro`), y el archivo que se sirve como `events.json` no
+   * es `ActividadPublica` sino el **índice** (`eventsJson.ts`), que no lleva
+   * imágenes más allá de la URL de la portada—.
+   *
+   * O sea: la celda de este campo está permitida **por adelantado**, para el
+   * consumidor que falta. Que falte está anotado como pendiente; el día que
+   * `detallePublico.ts` lo proyecte y la plantilla lo use hay que volver acá y
+   * decidir de paso las dos celdas que ese cambio abre —el JSON-LD y el
+   * `og:image:alt`—, en vez de que se decidan de paso.
+   *
+   * **Por qué puede salir cuando exista ese consumidor:** el `alt` se pinta del
+   * lado del sitio, y el sitio no lee Firestore (§2.5), así que sin el campo en
+   * la proyección lo que alguien escribe en el panel no tendría cómo llegar a una
+   * pantalla. Es el mismo argumento de `OpcionPublica.tono`. Y no publica nada de
+   * nadie: describe una imagen que ya se publica.
+   *
+   * **Siempre presente, aunque sea `''`.** No es un campo condicionado por un
+   * flag (D-15): es una cadena que puede estar vacía, y vacía significa
+   * exactamente «este documento es anterior a B-301, usá el default». El default
+   * lo aplica el consumidor —sigue siendo «Imagen de {título}», D-125— porque es
+   * el que conoce el título. Emitirlo condicionalmente obligaría a cada
+   * consumidor a distinguir ausente de vacío para llegar a la misma respuesta.
+   */
+  textoAlternativo: string;
   origen: 'externa' | 'propia';
   portada: boolean;
   ancho?: number;
@@ -326,6 +358,14 @@ const imagenPublica = (i: Imagen): ImagenPublica => ({
   id: i.id,
   url: i.url,
   epigrafe: i.epigrafe,
+  /*
+   * B-301 — el default de lectura de un documento anterior al campo es `''`, y
+   * quien lo traduce a «Imagen de {título}» es la página (D-440). Acá no se puede
+   * hacer: `imagenPublica` no conoce el título de la actividad, y meterlo por
+   * parámetro para inventar un texto sería publicar un derivado que el consumidor
+   * ya puede calcular — el mismo error que `OpcionPublica.tono` evita.
+   */
+  textoAlternativo: i.textoAlternativo ?? '',
   origen: i.origen,
   portada: i.portada,
   ...(i.ancho !== undefined ? { ancho: i.ancho } : {}),

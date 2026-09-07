@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAXIMO_IMAGENES } from '@/lib/imagenes';
+import { MAXIMO_IMAGENES, portadaDe } from '@/lib/imagenes';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esCopiaSinRevisar } from '@/lib/duplicar';
 import { deDatetimeLocal } from '@/lib/sesiones';
@@ -79,12 +79,22 @@ const ESQUEMA_PERMITIDO = /^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?
  * las que harían ilegible el documento, no las que lo harían incompleto.
  *
  * `epigrafe` es opcional a propósito (DEC-7a): es un pie de foto, no el texto
- * alternativo — ese sale del título de la actividad.
+ * alternativo — ese es `textoAlternativo`, y **se exige solo en la portada y solo
+ * al publicar** (B-301, D-440). Ver el `superRefine` del nivel «publicar».
  */
 const imagenSchema = z.object({
   id: z.string().regex(/^img_/, 'El id de imagen debe venir de nuevaImagenId()'),
   url: texto.min(1, 'Falta la dirección de la imagen'),
   epigrafe: opcional,
+  /*
+   * B-301 — acá va sin regla: el campo es una cadena en las dos filas y en los
+   * dos niveles. La obligatoriedad es **condicional** —solo la portada, solo al
+   * publicar— y por eso vive en el `superRefine`, como los condicionales del §11
+   * y por el mismo motivo: en el tipo no se puede escribir «obligatorio si esta
+   * fila es la portada», y un `.min(1)` acá dejaría inguardable cualquier
+   * borrador con una imagen a medio cargar.
+   */
+  textoAlternativo: opcional,
   origen: z.enum(['externa', 'propia']),
   // `storagePath` no se valida contra un formato: atarlo a un patrón acá haría
   // que un cambio del lado del servidor rompa el guardado del panel.
@@ -388,6 +398,44 @@ export const actividadFormSchema = z
         falta(['imagenes', String(n), 'url'], 'La dirección tiene que empezar con https://');
       }
     });
+
+    /*
+     * B-301 / D-440 — el texto alternativo de **la portada** es obligatorio para
+     * publicar, y solo el de la portada.
+     *
+     * ── Por qué acá y no en `imagenSchema` ────────────────────────────────
+     * Porque la regla es condicional en dos ejes —qué fila y a qué estado se
+     * guarda— y ninguno de los dos se puede escribir en el tipo. Es el molde de
+     * los condicionales del §11 (la sede en presencial, la plataforma en
+     * virtual): la condición vive acá y el mensaje cae al lado del control por
+     * `path.join('.')`.
+     *
+     * ── Cuál es la portada lo decide `portadaDe`, no este archivo ─────────
+     * Es la única respuesta escrita a «cuál es la portada» (`lib/imagenes.ts`) y
+     * la que usan el panel, la vista previa y el detalle. Preguntarlo acá con un
+     * `find` propio sería la clase de B-268: dos derivaciones de la misma
+     * decisión, y la que se equivoca pide el campo en la fila que no se comparte.
+     * A esta altura el nivel corto ya garantizó **exactamente una** portada, así
+     * que el fallback de `portadaDe` («la primera si no hay ninguna marcada») no
+     * se ejerce.
+     *
+     * ── Y sí, esto bloquea el publicado de lo que ya está publicado ───────
+     * Una actividad publicada antes de B-301 no tiene el campo, así que no se
+     * puede volver a publicar sin escribirlo. Es deliberado y es el punto de la
+     * decisión del dueño: el aviso aparece en la barra desde el principio
+     * (`faltaParaPublicar`, B-183/B-184), guardar como borrador o pendiente sigue
+     * funcionando, y el sitio de hoy no se rompe — el default de lectura de la
+     * página sigue siendo «Imagen de {título}» hasta que alguien lo complete.
+     */
+    const portada = portadaDe(v.imagenes as Parameters<typeof portadaDe>[0]);
+    if (portada && !portada.textoAlternativo?.trim()) {
+      const n = v.imagenes.indexOf(portada as (typeof v.imagenes)[number]);
+      falta(
+        ['imagenes', String(n < 0 ? 0 : n), 'textoAlternativo'],
+        'Describí la portada para quien no puede verla',
+      );
+    }
+
     if (v.sesiones.length === 0) falta(['sesiones'], 'Cargá al menos un encuentro');
 
     // B-224 — sin al menos una modalidad no se sabe si la actividad es

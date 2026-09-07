@@ -46,7 +46,7 @@ import {
 } from '@/lib/modalidades';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { fechaHoraCorta } from '@/lib/sesiones';
-import { camposCambiados } from '@historial';
+import { camposCambiados, estuvoPublicada } from '@historial';
 import type {
   Actividad,
   ActividadConId,
@@ -112,8 +112,17 @@ export const listarVersiones = async (actividadId: string): Promise<VersionConId
  * Trampa 10 — el slug es inmutable después de publicar: restaurarlo rompe la URL
  * que ya está indexada y compartida. El formulario lo bloquea por la misma razón
  * (`slugBloqueado`), y el historial no puede ser la puerta de atrás.
+ *
+ * **B-285 — «después de publicar», no «mientras está publicada».** Esto era
+ * `actual.estado !== 'publicado'`, y con eso la puerta de atrás quedaba abierta
+ * de todos modos: bastaba pasar la actividad a borrador para poder restaurar el
+ * slug de una URL ya indexada. La pregunta la contesta ahora `estuvoPublicada`
+ * (`@historial`), la misma función del trigger que escribe la marca, cuyo default
+ * de lectura para un documento anterior al campo es el `estado === 'publicado'`
+ * de antes (D-26). El `=== true` es la coerción: la Function es JS plano.
  */
-export const slugRestaurable = (actual: Actividad): boolean => actual.estado !== 'publicado';
+export const slugRestaurable = (actual: Actividad): boolean =>
+  estuvoPublicada(actual) !== true;
 
 /**
  * Los campos de esta versión que **hoy** están distintos, o sea lo único que

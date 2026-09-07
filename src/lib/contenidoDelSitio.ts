@@ -68,6 +68,12 @@ import { rutaDeMes } from '@/lib/rutasPublicas';
 import { lastmodDelSitemap, rutasDelSitemap } from '@/lib/sitemap';
 import { aIsoSeguro, toPublic, type ActividadPublica } from '@/lib/toPublic';
 import { INFO_VERSION } from '@/lib/version';
+// B-285 — la marca de «estuvo publicada alguna vez», y la pregunta escrita en un
+// solo lugar. `marcadaComoPublicada` es la versión ESTRICTA (`=== true`): acá
+// ausente significa «no lo sabemos» y lo que sigue es la inferencia de D-159, no
+// un `false`. Con `estuvoPublicada` (el default del panel) una cancelada daría
+// «nunca» y perdería su página — la regresión de B-110.
+import { marcadaComoPublicada } from '@historial';
 import {
   CAMPOS_TAXONOMIA,
   type Actividad,
@@ -251,6 +257,15 @@ const estuvoPublicada = async (
   ref: FirebaseFirestore.DocumentReference,
   a: Actividad,
 ): Promise<boolean> => {
+  /*
+   * B-285 — el campo, primero: cuando el trigger ya lo escribió, la pregunta se
+   * contesta sin leer nada. Las dos pruebas de abajo pasan a ser el **default de
+   * lectura** de los documentos anteriores al campo (D-26), y se quedan: una
+   * actividad ya cancelada no la vuelve a escribir nadie, así que el campo nunca
+   * le va a llegar. Sacarlas les quitaría la página a todas ellas.
+   */
+  if (marcadaComoPublicada(a)) return true;
+
   // §7.3 tal cual, primero y sin costo: si el id sobrevivió —un sync que no llegó
   // a correr, un borrado que falló— alcanza y no hace falta ir al historial.
   if ((a.sesiones ?? []).some((s) => s.calendarEventId)) return true;

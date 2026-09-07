@@ -21,6 +21,23 @@
 export const MAX_VERSIONES = 20;
 
 /**
+ * El estado que hace que una actividad exista para el público (§7.3). Vive acá
+ * porque de él depende `faltaMarcarPublicada`, más abajo.
+ */
+const ESTADO_PUBLICADO = 'publicado';
+
+/**
+ * B-285 — el nombre del campo que marca «esta actividad estuvo publicada alguna
+ * vez». Una constante y no un literal repetido: lo escribe un trigger y lo leen
+ * el build y el panel, y tres literales iguales son tres lugares donde escribir
+ * mal el nombre no rompe nada (falla en silencio devolviendo `undefined`).
+ *
+ * Se declara **antes** de `CAMPOS_DE_MAQUINA` porque entra en esa lista: al
+ * revés sería un TDZ al evaluar el módulo.
+ */
+export const MARCA_DE_PUBLICADA = 'publicadaAlgunaVez';
+
+/**
  * Los campos que escribe la máquina, no una persona.
  *
  * Es lo único que se enumera a mano, y es deliberadamente el complemento de lo
@@ -40,7 +57,73 @@ export const MAX_VERSIONES = 20;
  *
  * Ante la duda, entonces, se guarda. Un campo nuevo del modelo entra solo.
  */
-const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy'];
+const CAMPOS_DE_MAQUINA = ['updatedAt', 'updatedBy', MARCA_DE_PUBLICADA];
+
+/**
+ * B-285 — ¿el **campo** afirma que estuvo publicada?
+ *
+ * Estricto a propósito: `=== true` y no `??`. Solo el trigger lo escribe y solo
+ * lo escribe en `true`, así que ausente significa **«no lo sabemos»** y no «no».
+ * Quien lo consulte tiene que poder distinguir esos dos casos, porque lo que
+ * sigue cuando no se sabe es la inferencia de D-159 (el historial), y con un `??`
+ * a `false` una actividad cancelada antes de B-285 perdería su página pública —
+ * o sea exactamente la regresión de B-110 que este campo no puede causar.
+ */
+export const marcadaComoPublicada = (documento) =>
+  documento?.[MARCA_DE_PUBLICADA] === true;
+
+/**
+ * B-285 — ¿estuvo publicada alguna vez? **Con el default de lectura del panel.**
+ *
+ * Es la respuesta para quien tiene el documento entero a mano y no puede —ni
+ * necesita— ir al historial: el formulario, que congela el slug (trampa 10), y la
+ * restauración de una versión, que es la puerta de atrás del mismo candado.
+ *
+ * El default de un documento anterior al campo es `estado === 'publicado'`, que es
+ * **exactamente lo que esos dos lugares hacían antes** (D-26): así el cambio no
+ * afloja ni endurece nada retroactivamente. Lo que agrega es hacia adelante —una
+ * actividad que se publicó y hoy está en borrador queda con el slug fijo, que es
+ * lo que la trampa 10 siempre quiso decir con «inmutable después de publicar»—.
+ *
+ * **No es la respuesta del build**, y la diferencia importa: ahí la pregunta se
+ * hace sobre actividades `cancelado`, donde este default daría `false` y taparía
+ * la inferencia del historial (D-159). El build usa `marcadaComoPublicada` y, si
+ * no, infiere. Ver `estuvoPublicada` en `src/lib/contenidoDelSitio.ts`.
+ */
+export const estuvoPublicada = (documento) =>
+  documento?.[MARCA_DE_PUBLICADA] ?? documento?.estado === ESTADO_PUBLICADO;
+
+/**
+ * B-285 — ¿esta escritura tiene que prender la marca?
+ *
+ * La decisión del dueño (2026-09-03) es que el campo lo escriba **el trigger** y
+ * no el panel, y eso es más que una preferencia de implementación:
+ *
+ *  - las reglas de `/actividades` validan **quién** escribe y no la forma (§5.3),
+ *    así que un campo que prende el panel es un campo que un cliente puede
+ *    afirmar; acá es el servidor el único que lo escribe;
+ *  - cubre **todos** los caminos de escritura, no solo el formulario: un guardado
+ *    desde el listado, un script, la consola de Firestore;
+ *  - y `formADocumento` no lo emite, así que el panel no puede **apagarlo** por
+ *    omisión — `actualizarActividad` usa `updateDoc`, que solo pisa las claves
+ *    que le pasan. Es el arreglo de B-80 aplicado antes de que el bug exista: un
+ *    solo dueño por campo.
+ *
+ * **Pegajoso: nunca vuelve a `false`.** No hay rama que lo apague, y por eso el
+ * nombre es «alguna vez». Despublicar no des-indexa la URL que estuvo tres
+ * semanas en Instagram, así que la pregunta que este campo contesta no tiene
+ * vuelta atrás.
+ *
+ * **Y la guarda anti-loop es el `!== true`, más la lista negra de arriba** (trampa
+ * 3, D-07): la escritura vuelve a disparar el trigger, y en esa segunda pasada la
+ * marca ya está, así que no se escribe de nuevo — se corta en dos pasadas, igual
+ * que `calendarEventId`. Que el campo esté en `CAMPOS_DE_MAQUINA` es la otra
+ * mitad: sin eso, `huboCambioDeContenido` vería un cambio de contenido y esa
+ * escritura costaría **una versión de historial y un rebuild del sitio** por cada
+ * actividad que se publica.
+ */
+export const faltaMarcarPublicada = (documento) =>
+  documento?.estado === ESTADO_PUBLICADO && !marcadaComoPublicada(documento);
 
 /**
  * Ídem dentro de cada sesión. `calendarEventId` es EL caso que rompe todo.
