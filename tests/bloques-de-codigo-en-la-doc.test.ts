@@ -155,3 +155,61 @@ describe('ningún `.md` versionado tiene un bloque de código roto — B-294', (
     ).toEqual([]);
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Ningún ítem del backlog tiene dos encabezados — B-294
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * **La tercera cara de la misma cicatriz.** B-294 nació por filas duplicadas de
+ * una tabla; después aparecieron los bloques de código que se comen la
+ * documentación; y buscando eso aparecieron **cuatro ítems del BACKLOG con dos
+ * encabezados `### B-<n>` cada uno**: B-275, B-169, B-13 y B-294 mismo.
+ *
+ * Cada caso tenía su forma —dos cierres del mismo ítem pegados, una lápida
+ * («~~B-13…~~ → cerrado») abajo del cierre real, un planteo original a 150 líneas
+ * de la nota que dice «el texto de abajo»— y todas la misma causa: **texto
+ * reinsertado en un merge sin mirar si el encabezado ya estaba**.
+ *
+ * Qué se rompe, concretamente: el índice del documento queda con **dos entradas
+ * para el mismo ítem**, y quien busque «B-13» encuentra primero la que no dice
+ * nada. En un archivo de 11 mil líneas que es la única fuente de qué está
+ * pendiente, eso es una respuesta equivocada.
+ */
+describe('ningún ítem del backlog tiene dos encabezados — B-294', () => {
+  it('cada `### B-<n>` aparece una sola vez', () => {
+    /*
+     * Los sub-encabezados (`#### El planteo original — B-275`) **no** cuentan, y
+     * es la forma en que este archivo se ordenó: cuando un ítem tiene un cierre y
+     * su planteo original, o dos cierres de fechas distintas, van bajo **un**
+     * `###` con `####` adentro. Así el índice tiene una entrada por ítem y el
+     * historial no se pierde.
+     *
+     * MUTACIÓN PROBADA: duplicar cualquier `### B-<n>` deja este caso en rojo
+     * nombrando el número y las líneas.
+     */
+    const lineas = readFileSync(raiz('docs/BACKLOG.md'), 'utf8').split('\n');
+    const porNumero = new Map<string, number[]>();
+    lineas.forEach((l, i) => {
+      const m = /^### (B-\d+)/.exec(l);
+      if (!m) return;
+      const previo = porNumero.get(m[1]!) ?? [];
+      porNumero.set(m[1]!, [...previo, i + 1]);
+    });
+
+    // Control positivo: si el regex dejara de encontrar encabezados, esto pasaría
+    // vacío sobre un archivo de once mil líneas.
+    expect(porNumero.size, 'no se encontraron encabezados de ítem').toBeGreaterThan(200);
+
+    const repetidos = [...porNumero.entries()]
+      .filter(([, lns]) => lns.length > 1)
+      .map(([n, lns]) => `${n} en las líneas ${lns.join(', ')}`);
+
+    expect(
+      repetidos,
+      'estos ítems tienen dos encabezados: el índice del documento queda con dos ' +
+        'entradas para el mismo número. Un cierre y su planteo original van bajo ' +
+        'UN `###`, con `####` adentro',
+    ).toEqual([]);
+  });
+});

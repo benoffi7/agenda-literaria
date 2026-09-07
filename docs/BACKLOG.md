@@ -8884,6 +8884,38 @@ escrito acá, y el camino corto —una cajita como la del listado en vez de teñ
 la línea entera, medida con `contrasteCaladoDelTono` o `contrasteDelTono`, sin
 nada nuevo que medir— también. Si el dueño lo pide, se reabre con eso ya
 resuelto, que era el propósito de haberlo anotado.
+
+---
+
+#### El planteo original — B-275
+**Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
+vuelva a discutir desde cero.**
+
+`src/pages/cartelera.astro` pone `{tipoEtiqueta} · {cuando}` con `claseRotulo`
+(`label-caps text-azul`). Es la tercera pieza pública que nombra la categoría, después
+de la cajita del listado y la de la cabecera del detalle — que desde D-153 llevan las
+dos el color de su tipo.
+
+**Por qué no entró en B-273:**
+
+- **No es la misma pieza.** Las otras dos son una cajita con la categoría sola; ésta
+  es una **línea compuesta** donde el tipo comparte renglón con la fecha. Pintarla del
+  color de la categoría pintaría también el «jue 24 sep», que es exactamente lo que
+  D-150 dejó afuera con su motivo escrito: «extenderlo al resto de la fila lo
+  convierte en decoración y devuelve la textura de plataforma».
+- **No hay salto que arreglar.** Nadie ve una cajita cambiar de color al navegar: acá
+  no hay cajita, hay texto en `azul`, que es la tinta que el sistema visual le asigna
+  a lo funcional y a las categorías. Sigue siendo coherente con el sistema.
+- **Partir la línea para pintar solo el tipo** es una decisión de diseño nueva —dos
+  colores en un renglón de tres palabras— y no la corrección de una afirmación falsa,
+  que es lo que B-273 era.
+
+Qué haría falta para cerrarlo: que el dueño decida si la pared también tiene que
+identificar la categoría por color. Si dice que sí, el camino corto es una cajita
+como la del listado en vez de teñir la línea entera, y el par a medir es el mismo que
+ya mide `contrasteCaladoDelTono` (si va calada) o `contrasteDelTono` (si va con
+borde) — no hace falta medir nada nuevo.
+
 ### B-345 · Cinco citas apuntan a D-100 para una decisión que es D-111 — ✅ hecho (2026-09-02) · P3
 
 **Corregidas las dos heredadas que el ítem nombraba**, más una tercera que
@@ -9014,35 +9046,6 @@ completo; Inicio y Fin pasan a usar `Campo` (antes eran `<label>` a mano) y leen
 de B-184. `resumirSesion`/`finAntesDelInicio` sigue viva tal cual: es más rica
 (dice el día de la semana) y este ítem dejaba la decisión abierta a propósito —
 los dos caminos conviven.
-
-### B-275 · El rótulo de la cartelera nombra la categoría en azul fijo · P3
-**Se miró al cerrar B-273 y se decidió dejarlo así; queda anotado para que no se
-vuelva a discutir desde cero.**
-
-`src/pages/cartelera.astro` pone `{tipoEtiqueta} · {cuando}` con `claseRotulo`
-(`label-caps text-azul`). Es la tercera pieza pública que nombra la categoría, después
-de la cajita del listado y la de la cabecera del detalle — que desde D-153 llevan las
-dos el color de su tipo.
-
-**Por qué no entró en B-273:**
-
-- **No es la misma pieza.** Las otras dos son una cajita con la categoría sola; ésta
-  es una **línea compuesta** donde el tipo comparte renglón con la fecha. Pintarla del
-  color de la categoría pintaría también el «jue 24 sep», que es exactamente lo que
-  D-150 dejó afuera con su motivo escrito: «extenderlo al resto de la fila lo
-  convierte en decoración y devuelve la textura de plataforma».
-- **No hay salto que arreglar.** Nadie ve una cajita cambiar de color al navegar: acá
-  no hay cajita, hay texto en `azul`, que es la tinta que el sistema visual le asigna
-  a lo funcional y a las categorías. Sigue siendo coherente con el sistema.
-- **Partir la línea para pintar solo el tipo** es una decisión de diseño nueva —dos
-  colores en un renglón de tres palabras— y no la corrección de una afirmación falsa,
-  que es lo que B-273 era.
-
-Qué haría falta para cerrarlo: que el dueño decida si la pared también tiene que
-identificar la categoría por color. Si dice que sí, el camino corto es una cajita
-como la del listado en vez de teñir la línea entera, y el par a medir es el mismo que
-ya mide `contrasteCaladoDelTono` (si va calada) o `contrasteDelTono` (si va con
-borde) — no hace falta medir nada nuevo.
 
 ### B-276 · La suite completa falla a veces en los tests de integración, y es el orden — ✅ hecho (2026-09-02, con B-219)
 
@@ -9379,10 +9382,13 @@ magnitud: no es un objetivo de performance, es el piso de lo absurdo — detecta
 alguien meta red, `crypto` o una regla cuadrática en el camino del tecleo, no un
 20 % de variación de máquina.
 
-### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-07) · P3
+### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-02 por B-219; reconfirmado 2026-09-07) · P3
 
-> ✅ **Cerrado el 2026-09-07 al integrar la tanda:** confirmado con cinco corridas, y el chequeo pasó a ser de clase.
-### B-169 · Los tests de integración de aprobación fallaron una vez en una corrida completa — ✅ hecho (2026-09-02, con B-219)
+> ✅ **Dos cierres del mismo ítem, unidos el 2026-09-07.** Había **dos
+> encabezados con el mismo número, pegados uno al otro**: el de B-219 (2026-09-02)
+> y el de la tanda del 2026-09-07 —«confirmado con cinco corridas, y el chequeo
+> pasó a ser de clase»—, que no cerraba nada nuevo sino que **reconfirmaba** lo
+> mismo. Es la cicatriz de merge de B-294, esta vez en un encabezado.
 
 **Cerrado por B-219 (D-195).** La sospecha de este ítem apuntaba a la interacción
 entre el script y «el estado que dejan los otros archivos de integración», y era
@@ -9591,10 +9597,12 @@ B-12** (la vista previa del evento) y la línea tachada de B-13 al final, o sea 
 > del paso, y desde B-55 el otro caso frecuente —la coma decimal— también tiene el
 > suyo. El próximo paso es **leer el dato**, no escribir código.
 
-### B-13 · El schedule de `dispararRebuild` no reintenta con backoff
-
-~~B-13 · El schedule de `dispararRebuild` no reintenta con backoff~~ →
-[cerrado](#cerrados).
+<!-- B-13 tenía acá un segundo encabezado con una lápida —«~~B-13…~~ → cerrado»—
+     que ya no dice nada: el ítem está cerrado arriba, con su motivo y sus
+     referencias. Se sacó el 2026-09-07 junto con las otras tres cicatrices de la
+     misma clase (B-294): un número repetido en dos encabezados hace que el
+     índice del documento tenga dos entradas para el mismo ítem, y que quien
+     busque «B-13» encuentre primero la que no dice nada. -->
 ### B-14 · El menú de acciones del listado no se navega con flechas — ✅ hecho (2026-08-24)
 
 `MenuAcciones` cierra con `Escape` y con un click afuera, y sus ítems son
@@ -10548,6 +10556,12 @@ importar las constantes.
 
 ### B-294 · La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas — ✅ hecho (2026-09-02)
 
+> **Y tuvo una segunda cara el 2026-09-07, con la misma causa y peor efecto:
+> seis bloques de documentación estaban adentro de un bloque de código.** Está
+> abajo, en «La segunda cara de este ítem». Los dos cierres viven bajo **un solo
+> encabezado** porque tener dos `### B-294` hacía que el índice del documento
+> tuviera dos entradas para el mismo ítem — que es, otra vez, la misma clase.
+
 **Catorce filas pasaron a once, eligiendo texto** — que era el trabajo que nadie
 quería hacer, porque las versiones no eran iguales: se contradecían. Qué quedó y
 con qué evidencia:
@@ -10572,7 +10586,7 @@ existen todos en `tests/`, y no quedó ninguna primera celda duplicada.
 suite hoy — así que el número del documento está bien y el de esta nota estaba
 mal.
 
-### B-294 · ✅ hecho (2026-09-07) — La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas, y seis bloques de doc estaban dentro de un bloque de código
+#### La segunda cara de este ítem — seis bloques de doc dentro de un bloque de código
 
 > **2026-09-07 — la clase de este ítem tenía una segunda cara, peor y sin red.**
 > Buscando la cicatriz de «merge mal resuelto» en el resto del repo aparecieron
@@ -10600,7 +10614,7 @@ mal.
 > abierto es contenido y no lo cierra. Sin eso, el caso del BACKLOG se leía como
 > dos bloques chicos y el encabezado de adentro quedaba «afuera».
 
-### B-294 · lo original — La tabla «no automatizar» de `13-agentes.md` tiene filas duplicadas y triplicadas
+#### El planteo original — B-294
 
 **Ya estaba resuelto cuando se revisó el 2026-09-07, y tiene red.** Verificado a
 mano contra el archivo: la tabla tiene **67 filas**, ninguna con `||`, **ninguna
