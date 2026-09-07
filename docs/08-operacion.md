@@ -172,6 +172,62 @@ aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
 `opciones:aprobar` sigue la misma convención, y además el script anuncia el
 objetivo (EMULADOR o PRODUCCIÓN) antes de escribir.
 
+### Dar permiso de admin a una cuenta (producción)
+
+**El orden importa y es al revés del intuitivo: primero se entra, después se da
+el permiso.** El claim se escribe sobre un usuario que tiene que existir, y con
+Google el usuario **nace en el primer login**, no antes.
+
+1. **Que la persona entre una vez** a `/admin` con esa cuenta de Google. Va a ver
+   la pantalla de «sin permisos», y eso es lo esperado: alcanza para que Firebase
+   Auth cree el usuario.
+2. **Dar el claim**, con credenciales de producción en el entorno:
+
+   ```bash
+   npm run admin:claim:prod -- agendaleh@gmail.com
+   ```
+
+   El script anuncia el objetivo (PRODUCCIÓN) antes de escribir. Si dice que no
+   encontró la cuenta, el paso 1 no se hizo.
+3. **Que vuelva a entrar.** El claim viaja en el token, así que la sesión que ya
+   estaba abierta **no lo tiene**: hay que cerrar sesión y volver a entrar (o
+   esperar a que el token se renueve, hasta una hora).
+
+Y un cuidado que no es del script: **el login por popup solo funciona en un
+dominio autorizado**. Ver «Los dominios autorizados de Auth», más abajo.
+
+### Los dominios autorizados de Auth
+
+**El síntoma**: el panel **carga** en `agendaleh.ar` y en `agendaleh.com.ar` pero
+el login no pasa — se abre la ventana de Google y no vuelve nada. Reportado por el
+dueño el 2026-09-07.
+
+**La causa**: `loginConGoogle` usa `signInWithPopup`, que abre el handler en el
+`authDomain` del proyecto (`agenda-literaria.firebaseapp.com`) y ése **valida el
+origen que lo abrió** contra la lista de dominios autorizados de Firebase Auth. Un
+dominio propio **no está en esa lista por default**: `agenda-literaria.web.app` y
+`agenda-literaria.firebaseapp.com` sí, los dos `agendaleh` no. El SDK falla con
+`auth/unauthorized-domain`.
+
+**El arreglo, que es de consola y no de código**: Firebase → **Authentication** →
+**Settings** → **Authorized domains** → *Add domain*, y agregar los dos:
+`agendaleh.ar` y `agendaleh.com.ar`. No hay que redeployar nada; el cambio es
+inmediato.
+
+**Verificar**: entrar a `https://agendaleh.ar/admin` y apretar «Entrar con
+Google». Antes de este arreglo la pantalla decía «Este dominio todavía no está
+habilitado para entrar»; después, abre el popup y vuelve con la sesión.
+
+**Y por qué no se veía** (B-790): el botón hacía `void loginConGoogle()`, o sea
+que **descartaba la promesa y con ella el error**. El popup fallaba y la pantalla
+quedaba igual — de ahí el «carga pero no entra». Es la misma clase de B-590, donde
+el `code` del SDK se ignoraba y el mensaje mentía sobre la causa. Ahora el motivo
+se muestra, con el código a la vista cuando no se reconoce.
+
+**El caso que no se arregla del lado de quien entra** —éste, y el acceso con
+Google deshabilitado— **no ofrece «probar de nuevo»**: reintentar no va a
+funcionar nunca y solo retrasa el aviso.
+
 ## El gate de antes de pushear
 
 Cinco pasos mecánicos, en un script para poder correrlos a mano, y un hook que

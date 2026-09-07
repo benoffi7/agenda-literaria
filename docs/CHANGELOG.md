@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El login del panel dice por qué falló** — **B-790**. El botón hacía
+  `void loginConGoogle()`: descartaba la promesa y con ella el error, así que un
+  dominio sin autorizar se veía como «el panel carga pero no entra». Ahora hay un
+  motivo por código, y los casos que no se arreglan del lado de quien entra **no**
+  ofrecen reintentar. Es la misma clase que B-590.
+
 - **El logo del proyecto**, y la home abre con él: el trébol de tres libros junto
   a «Agenda LEH» en Archivo Narrow, centrado. Reemplaza a `marca.svg`, que era una
   marca de relleno hecha para tener algo mientras no hubiera logo. El favicon pasa

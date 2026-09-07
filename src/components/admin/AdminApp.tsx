@@ -9,6 +9,7 @@ import { useVersionPublicada } from '@/components/admin/useVersionPublicada';
 // El SDK de analítica lo carga este módulo de forma diferida, así que el
 // import no engorda el chunk inicial.
 import { medirPanelAbierto, registrarVersion } from '@/lib/analytics';
+import { motivoDeLoginFallido, type MotivoDeLogin } from '@/lib/motivoDeLogin';
 // B-620 — qué vista usa todo el ancho. Puro y con su test, por lo mismo que
 // `salida-del-panel.ts`: la vista que se agregue mañana arranca angosta y quien
 // la escriba decide en una línea, en vez de heredar un `===` suelto en el JSX.
@@ -309,6 +310,22 @@ export function AdminApp() {
     medirPanelAbierto();
   }, []);
 
+  /*
+   * B-790 — el motivo del login fallido. Antes el botón hacía
+   * `void loginConGoogle()` y el error se descartaba: el popup fallaba y la
+   * pantalla no decía nada, que es el síntoma «carga pero no entra».
+   */
+  const [motivoDeLogin, setMotivoDeLogin] = useState<MotivoDeLogin | null>(null);
+
+  const entrar = async () => {
+    setMotivoDeLogin(null);
+    try {
+      await loginConGoogle();
+    } catch (error) {
+      setMotivoDeLogin(motivoDeLoginFallido(error));
+    }
+  };
+
   if (cargando) {
     return <p className="p-8 text-sm text-tinta/50">Cargando…</p>;
   }
@@ -322,11 +339,22 @@ export function AdminApp() {
         </p>
         <button
           type="button"
-          onClick={() => void loginConGoogle()}
+          onClick={() => void entrar()}
           className="mt-6 min-h-touch w-full rounded-md bg-acento px-4 text-sm font-medium text-white"
         >
-          Entrar con Google
+          {motivoDeLogin?.reintentable ? 'Probar de nuevo' : 'Entrar con Google'}
         </button>
+
+        {motivoDeLogin && (
+          /*
+           * `role="alert"` para que un lector de pantalla lo diga sin que haya
+           * que ir a buscarlo: quien apretó el botón está esperando una respuesta
+           * y el foco se quedó en el botón.
+           */
+          <p role="alert" className="mt-4 text-sm text-acento">
+            {motivoDeLogin.texto}
+          </p>
+        )}
         {usarEmuladores && (
           <p className="mt-4 text-xs text-tinta/45">
             Emuladores activos — la cuenta que uses es de mentira.
