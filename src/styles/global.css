@@ -359,7 +359,15 @@
  */
 @utility display-lg {
   font-family: var(--font-display);
-  font-weight: 800;
+  /*
+   * **900 y no el 800 de la referencia, y no es un desvío: es el mismo número.**
+   * La `@font-face` de Fraunces declara una sola face en 900 (el eje óptico va
+   * fijado, B-262), así que un `800` resuelve al 900 igual — se pintaba 900 desde
+   * el primer día. Lo que cambia es que ahora está escrito, y el chequeo de
+   * `tests/sistema-visual.test.ts` no deja que un rol declare un peso que su
+   * familia no sabe rendir.
+   */
+  font-weight: 900;
   font-size: 48px;
   line-height: 44px;
   letter-spacing: -0.01em;
@@ -376,18 +384,50 @@
  * La marca. **El nombre del sitio no puede ser tan grande como el mes**: en la
  * referencia los dos iban a 72px y competían. El mes gana, porque es lo que
  * estructura la página; el nombre se dice una vez y se aprende.
+ *
+ * ── Va en la tipografía del título, no en la display ──────────────────────
+ * Pedido del dueño el 2026-09-07: «Agenda LEH al lado del logo tiene que ser en
+ * la tipografía del título». O sea `--font-titulo` (Archivo Narrow), la misma del
+ * `h1` de la home, y **no** `--font-display` (Fraunces), que es con la que se
+ * había compuesto.
+ *
+ * Con eso la display queda para dos cosas y las dos son **contenido**: el
+ * marcador de mes (`display-lg`) y el título de la página de detalle
+ * (`display-md`). La marca pasa a la familia del **chrome** —la barra, los
+ * rótulos, el bloque de fecha—, que es donde vive.
+ *
+ * **Tres cosas hubo que corregirle al hacer el cambio, y ninguna es cosmética:**
+ *
+ * 1 · **El peso baja de 800 a 700**, que es el peso que se pinta. La `@font-face`
+ *     de Archivo Narrow declara `font-weight: 400 700`: pedirle 800 no da un 800
+ *     ni falla — el navegador resuelve al 700, el más cercano que la face sabe
+ *     rendir. Dejar escrito un 800 es una hoja de estilos que dice un número y
+ *     pinta otro, y el próximo que quiera afinar el peso lo va a estar
+ *     ajustando desde un valor que nunca existió.
+ * 2 · **El tracking pasa de -0.01em a 0.02em.** El negativo estaba puesto para
+ *     los glifos anchos de la display; una narrow en versalitas con tracking
+ *     negativo se apiña. El sistema ya tiene el precedente: `label-caps`, la otra
+ *     cosa en versalitas, va en +0.05em.
+ * 3 · **El cuerpo sube a 30/36px.** Una narrow ocupa menos ancho con el mismo
+ *     cuerpo, así que a 26px el nombre quedaba más chico que lo que había —y la
+ *     marca tiene que seguir siendo lo más grande del encabezado, que es lo único
+ *     que el escalón le pedía—. Sigue **abajo** de `display-md` (36px), así que el
+ *     orden de la escala no se toca.
+ *
+ * El desfasaje de registro de abajo (B-295) se queda: va en `em`, así que escala
+ * igual, y es el gesto del logo aprobado — no dependía de la familia.
  */
 @utility marca {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 26px;
-  line-height: 26px;
-  letter-spacing: -0.01em;
+  font-family: var(--font-titulo);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 30px;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 
   @media (width >= 40rem) {
-    font-size: 32px;
-    line-height: 30px;
+    font-size: 36px;
+    line-height: 34px;
   }
 
   /*
@@ -397,7 +437,7 @@
    * `text-shadow` pinta **detrás** del glifo, así que la tinta queda arriba y
    * las otras dos asoman por los costados — exactamente una impresión donde la
    * plancha se corrió. El desplazamiento va en **em**, así que escala con el
-   * cuerpo y se ve igual a 26px que a 32.
+   * cuerpo y se ve igual a 30px que a 36.
    *
    * **Las dos van para lados opuestos, y una sola cantidad.** Un desfasaje real
    * corre toda la plancha en una dirección: si cada tinta se corre para donde
@@ -432,7 +472,8 @@
  */
 @utility display-md {
   font-family: var(--font-display);
-  font-weight: 800;
+  /* 900 por lo mismo que `display-lg`: es el único peso que Fraunces sirve. */
+  font-weight: 900;
   font-size: 36px;
   line-height: 36px;
   letter-spacing: -0.02em;

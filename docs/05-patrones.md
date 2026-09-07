@@ -514,9 +514,12 @@ funcional y las categorías) y `super` (la superposición: cuerpo denso, reglas,
 **el hover de toda tinta plena**). `borde` y `regla` son **para reglas, nunca para
 texto** — dan 4,26:1 y 1,62:1, y el piso es 4,5.
 
-Tres familias: **Bodoni Moda** (`font-display`, el mes y la marca), **Archivo
-Narrow** (`font-titulo`, títulos y versalitas) y **Public Sans** (`font-sans`, el
-cuerpo). La escala está en `global.css` como utilidades —`display-lg`,
+Tres familias: **Fraunces** (`font-display`, el marcador de mes y el título del
+detalle), **Archivo Narrow** (`font-titulo`, títulos, versalitas **y la marca**) y
+**Public Sans** (`font-sans`, el cuerpo). Las dos correcciones sobre la referencia
+aprobada —Fraunces en vez de Bodoni Moda (B-262) y la marca en la tipografía del
+título (pedido del dueño, 2026-09-07)— están anotadas en
+`docs/referencias/sistema-visual.md`, arriba de la tabla. La escala está en `global.css` como utilidades —`display-lg`,
 `headline-md`, `label-caps`, `body-md`…— y **se usan esas, no tamaños sueltos**.
 
 > **`font-serif` no existe más.** El token se borró, pero Tailwind trae el suyo

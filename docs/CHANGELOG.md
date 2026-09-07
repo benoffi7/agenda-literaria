@@ -2,6 +2,41 @@
 
 ## Sin publicar
 
+- **«Agenda LEH» pasa a la tipografía del título** — pedido del dueño: «al lado del
+  logo tiene que ser en la tipografía del título "Talleres…"». O sea Archivo
+  Narrow, la del `h1` de la home, y no Fraunces, con la que estaba compuesta.
+
+  Cambia en el encabezado **y en el pie**, porque el nombre del sitio sale de la
+  misma utilidad (`marca`) en los dos lugares: el mismo nombre en dos tipografías
+  en una misma página es peor que cualquiera de las dos.
+
+  Con esto la display queda para dos cosas y las dos son **contenido** —el
+  marcador de mes y el título de la página de detalle— y la marca pasa a la
+  familia del chrome, que es donde vive.
+
+  **Tres correcciones que el cambio de familia arrastra**, ninguna cosmética: el
+  peso baja de 800 a 700 (Archivo Narrow sirve 400–700: un 800 no da un 800, da un
+  700 y la hoja de estilos queda diciendo un número que no se pinta), el tracking
+  pasa de −0,01em a +0,02em (el negativo era para los glifos anchos de la display;
+  una condensada en versalitas se apiña, y el precedente del sistema es el +0,05em
+  de `label-caps`), y el cuerpo sube a 30/36px (una condensada ocupa menos ancho
+  con el mismo cuerpo, y la marca tiene que seguir siendo lo más grande del
+  encabezado — sigue **abajo** del título del detalle, así que el orden de la
+  escala no se toca).
+
+  **Y salió un chequeo nuevo de clase**: ninguna utilidad puede declarar un
+  `font-weight` que su familia no sepa rendir. Encontró **tres** al escribirse, las
+  tres viejas: `display-lg` y `display-md` pedían 800 a una Fraunces que sirve solo
+  900, y la marca llegó pidiendo 800 al pasar de familia. Las tres pintaban lo que
+  el navegador eligió por ellas — ahora está escrito el número que se pinta. Lo que
+  el chequeo **no** es: el falso negrita. Sintetizar pasa cuando no hay ninguna
+  face bold, y las dos familias tienen una; el riesgo acá es de exactitud.
+
+  De paso, dos afirmaciones que dejaron de ser ciertas: la tabla de
+  `docs/referencias/sistema-visual.md` todavía decía **Bodoni Moda** (la display es
+  Fraunces desde B-262) y `docs/05-patrones.md` repetía «el mes y la marca». La
+  referencia queda como está escrita, con la nota arriba de la tabla.
+
 - **El panel avisa cuando una foto viene rotada** — **B-324**, decisión del dueño:
   «por ahora solo avisar en el panel cuando la foto viene rotada». La foto se
   publica igual de costado; lo que cambia es que ahora **se lo dice a quien la

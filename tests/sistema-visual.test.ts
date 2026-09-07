@@ -353,7 +353,7 @@ describe('la tipografía es la del sistema — B-260', () => {
      * El eje óptico de la display va **fijado**, y no es una micro-optimización:
      * abierto, Fraunces cuesta **31,1 KB** contra los **17,7 KB** de la instancia
      * fija. Se fija en **72**, que es el punto óptico del rango de uso real —la
-     * display va de 30px (la marca) a 72px (el mes)—, el mismo criterio con el
+     * display va de 36px (el título del detalle) a 72px (el mes)—, el mismo criterio con el
      * que la Bodoni estaba fijada en 48.
      *
      * Con las fuentes autoalojadas eso ya no es un parámetro de una URL de
@@ -383,6 +383,88 @@ describe('la tipografía es la del sistema — B-260', () => {
     const conIconos = buscar(/material-symbols|material-icons|font-awesome|lucide|heroicons/i);
     expect(conIconos).toEqual([]);
     expect(readFileSync(raiz('src/layouts/Base.astro'), 'utf8')).not.toContain('Material+Symbols');
+  });
+
+  it('ninguna utilidad pide un peso que su familia no sirve', () => {
+    /*
+     * **Una hoja de estilos que dice un número y pinta otro.** Cuando una utilidad
+     * pide un `font-weight` que la `@font-face` de su familia no declara, no falla
+     * nada: el navegador resuelve al peso más cercano que la face sabe rendir. La
+     * regla dice 800, la pantalla muestra 700 —o 900—, y el próximo que quiera
+     * afinar el peso lo ajusta desde un valor que nunca existió.
+     *
+     * Encontró **tres** al escribirse, y las tres estaban así de entrada:
+     * `display-lg` y `display-md` pedían 800 a una Fraunces que sirve solo 900, y
+     * la marca llegó pidiendo 800 a una Archivo Narrow que sirve 400–700 al pasar
+     * a `--font-titulo` (2026-09-07). Ninguna se veía mal: las tres pintaban lo
+     * que el navegador eligió por ellas.
+     *
+     * **Lo que este caso NO afirma, y conviene tenerlo escrito**: no es el falso
+     * negrita. Sintetizar es otra cosa y pasa cuando **no hay ninguna face
+     * bold** —el navegador engorda los trazos él mismo—; acá las dos familias
+     * tienen una, así que el riesgo es de exactitud y no de dibujo.
+     *
+     * Se verifica **la clase**: se leen los rangos de las `@font-face` y se cruza
+     * cada `@utility` con la familia que nombra. Cualquier cambio de familia
+     * futuro, en cualquier rol, queda cubierto por esto y no por acordarse — que
+     * es justo lo que falló acá, porque el cambio de familia de la marca no vino
+     * con el del peso.
+     *
+     * MUTACIÓN PROBADA: volver `marca` a `font-weight: 800` deja este caso en rojo
+     * nombrando la utilidad, la familia y el rango; y volver `display-lg` a 800
+     * también.
+     */
+    /** Familia → pesos que sus `@font-face` declaran (rango o valor único). */
+    const rangos = new Map<string, [number, number]>();
+    for (const m of css.matchAll(/@font-face\s*\{([^}]*)\}/g)) {
+      const bloque = m[1]!;
+      const familia = /font-family:\s*'([^']+)'/.exec(bloque)?.[1];
+      const peso = /font-weight:\s*(\d+)(?:\s+(\d+))?\s*;/.exec(bloque);
+      if (!familia || !peso) continue;
+      const desde = Number(peso[1]);
+      const hasta = peso[2] ? Number(peso[2]) : desde;
+      const previo = rangos.get(familia);
+      rangos.set(
+        familia,
+        previo ? [Math.min(previo[0], desde), Math.max(previo[1], hasta)] : [desde, hasta],
+      );
+    }
+    expect(rangos.size, 'no se leyó ninguna @font-face').toBeGreaterThan(0);
+
+    /** Token `--font-x` → la primera familia de su pila, que es la que se carga. */
+    const familiaDelToken = new Map<string, string>();
+    for (const m of css.matchAll(/--font-([a-z]+):\s*'([^']+)'/g)) {
+      familiaDelToken.set(m[1]!, m[2]!);
+    }
+
+    const sintetizados: string[] = [];
+    for (const m of css.matchAll(/@utility\s+([\w-]+)\s*\{([\s\S]*?)\n\}/g)) {
+      const [, utilidad, cuerpo] = m as unknown as [string, string, string];
+      const tokenUsado = /font-family:\s*var\(--font-([a-z]+)\)/.exec(cuerpo)?.[1];
+      const peso = /font-weight:\s*(\d+)/.exec(cuerpo)?.[1];
+      if (!tokenUsado || !peso) continue;
+      const familia = familiaDelToken.get(tokenUsado);
+      // Un token cuya pila arranca en una face del sistema (`ui-serif`) no carga
+      // archivo propio y no puede sintetizar nada nuestro.
+      if (!familia) continue;
+      const rango = rangos.get(familia);
+      if (!rango) continue;
+      if (Number(peso) < rango[0] || Number(peso) > rango[1]) {
+        sintetizados.push(
+          `${utilidad}: pide ${peso} y «${familia}» sirve ${rango[0]}–${rango[1]}`,
+        );
+      }
+    }
+
+    expect(
+      sintetizados,
+      'la regla declara un peso que su familia no sabe rendir: se va a pintar otro',
+    ).toEqual([]);
+
+    // Control positivo: que el cruce esté mirando algo. Si los dos mapas quedaran
+    // vacíos por un cambio de formato del CSS, el aserto de arriba pasaría igual.
+    expect(familiaDelToken.get('titulo')).toBe('Archivo Narrow');
+    expect(rangos.get('Archivo Narrow')).toEqual([400, 700]);
   });
 
   it('la escala del sistema está definida entera, y en un solo lugar', () => {
@@ -689,8 +771,10 @@ describe('lo que se le corrigió a la referencia no vuelve', () => {
   it('el nombre del sitio no compite con el marcador de mes', () => {
     /*
      * Corrección 3 del encargo: en la referencia los dos van a 72px. El mes gana
-     * porque es lo que estructura el listado; la marca usa `marca`, que es la
-     * misma display un escalón y medio abajo.
+     * porque es lo que estructura el listado; la marca usa `marca`, que es un
+     * escalón abajo del título del detalle — y desde el 2026-09-07 en la
+     * tipografía del título (`--font-titulo`) y no en la display, por pedido del
+     * dueño.
      */
     const encabezado = sinComentarios(
       readFileSync(raiz('src/components/sitio/Encabezado.astro'), 'utf8'),

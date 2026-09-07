@@ -45,6 +45,23 @@ La jerarquía tipográfica **es** el elemento estructural de la interfaz.
 | `body-sm` | Public Sans | 12 / 16 | peso 400 |
 | `label-caps` | Archivo Narrow | 11 / 12 | peso 600, `tracking 0.05em`, VERSALITAS |
 
+> ⚠️ **Dos cosas de esta tabla ya no son lo que la implementación hace, y las dos
+> tienen motivo escrito. El documento queda como está** —es la referencia
+> aprobada, y las decisiones se leen contra su original.
+>
+> 1. **La display no es Bodoni Moda: es Fraunces** (**B-262**). Bodoni Moda a los
+>    cuerpos de este sistema —y sobre todo en el móvil— adelgazaba los remates
+>    hasta desaparecer; Fraunces sostiene el contraste alto con el eje óptico
+>    fijado en 72. El `peso 800` de las dos filas de `display-lg` se lee **900** en
+>    `global.css`, que es el único peso que la face sirve: no es un desvío, es el
+>    mismo número escrito con el valor que se pinta.
+> 2. **La marca no va en la display** (pedido del dueño, 2026-09-07): «Agenda LEH
+>    al lado del logo tiene que ser en la tipografía del título», o sea Archivo
+>    Narrow. Con eso la display queda para las dos cosas que son **contenido** —el
+>    marcador de mes y el título del detalle— y la marca pasa a la familia del
+>    chrome, que es donde vive. La tabla de arriba no la nombra: `marca` es una de
+>    las adiciones a la escala, y su definición está en `global.css`.
+
 - **Display y títulos:** Bodoni Moda, por su alto contraste y su elegancia
   literaria. En zonas densas se pasa a Archivo Narrow, condensada y utilitaria.
 - **Cuerpo:** Public Sans, un grotesco neutro que hace de contrapunto. Chico
