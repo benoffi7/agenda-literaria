@@ -86,6 +86,59 @@ const archivos = (): string[] =>
     .filter((f) => f.endsWith('.tsx'));
 
 /**
+ * Los componentes de esta carpeta que **no son el listado** — B-720.
+ *
+ * La carpeta era «el listado entero» y dejó de serlo: `VisorDeGaleria` es la capa
+ * de la galería de la **página de detalle**, y vive acá porque es el único lugar
+ * del repo para un componente React del sitio público (el panel tiene el suyo).
+ *
+ * ── Qué se excluye, y qué NO ──────────────────────────────────────────────
+ * Se excluye de **una** regla: la parte 3, «el listado no lleva imágenes»
+ * (D-146). Esa decisión es de forma y es del listado —filas tipográficas, sin
+ * miniatura—; el visor es una capa cuyo contenido *es* una imagen, así que
+ * aplicarle la regla sería exigirle que no haga lo único que hace.
+ *
+ * Sigue bajo **todas** las demás: las tintas y el contraste (parte 1), las
+ * atenuaciones (parte 2), y la accesibilidad del markup (parte 4) — incluido el
+ * `div` con `onClick` y el anillo de foco, que es justo lo que una capa de
+ * imágenes hecha a medias se olvida. La exclusión es por nombre de archivo y no
+ * por patrón: el componente que se agregue mañana entra a la regla, como antes.
+ */
+const FUERA_DEL_LISTADO: Record<string, string> = {
+  'src/components/publico/VisorDeGaleria.tsx':
+    'la capa de la galería del detalle — B-720 (D-430). Su contenido es una imagen.',
+};
+
+/**
+ * Las clases de `estilos.ts` que **ya traen el anillo de foco adentro**, leídas
+ * del módulo en vez de enumeradas a mano — B-720.
+ *
+ * Un componente que las usa no tiene que escribir además el `${foco}` suelto, y
+ * exigírselo sería castigar el uso del centralizador (la nota de B-259 en el
+ * chequeo de más abajo). La lista escrita a mano tenía el mismo defecto un nivel
+ * más arriba: no conocía la clase compartida que se agregara después.
+ *
+ * Se expande dos veces porque las clases se componen entre ellas
+ * (`claseBotonPrimario` termina en `${foco}`), igual que en
+ * `tests/sistema-visual.test.ts`.
+ */
+const CLASES_CON_ANILLO: ReadonlySet<string> = (() => {
+  const src = readFileSync(raiz('src/components/sitio/estilos.ts'), 'utf8');
+  const valores = new Map<string, string>();
+  for (const m of src.matchAll(/export const (\w+)\s*=\s*[`']([\s\S]*?)[`'];/g)) {
+    valores.set(m[1]!, m[2]!);
+  }
+  const expandir = (t: string): string => {
+    let out = t;
+    for (let i = 0; i < 2; i++) out = out.replace(/\$\{(\w+)\}/g, (todo, n) => valores.get(n) ?? todo);
+    return out;
+  };
+  return new Set(
+    [...valores].filter(([, v]) => /focus-visible:outline/.test(expandir(v))).map(([k]) => k),
+  );
+})();
+
+/**
  * El fuente **sin comentarios**.
  *
  * Los docblocks de estos componentes explican justamente por qué el valor elegido
@@ -359,6 +412,7 @@ describe('el listado es puramente tipográfico', () => {
      * hace fallar este caso **y** el de los campos que la fila lee.
      */
     const conImagen = fuentes()
+      .filter((f) => !(f.archivo in FUERA_DEL_LISTADO))
       .filter((f) => /<img\b|background-image|backgroundImage/.test(f.codigo))
       .map((f) => f.archivo);
     expect(
@@ -366,6 +420,18 @@ describe('el listado es puramente tipográfico', () => {
       'el listado no lleva imágenes (D-146). La portada solo existe en la página ' +
         'de detalle, y solo cuando la actividad tiene una foto de verdad.',
     ).toEqual([]);
+  });
+
+  it('y la exclusión de la parte 3 nombra archivos que existen', () => {
+    /*
+     * El control de la exclusión de B-720: una entrada de `FUERA_DEL_LISTADO`
+     * con un nombre viejo —un archivo renombrado o borrado— dejaría de excluir a
+     * nadie sin que nada lo diga, y peor: si el archivo vuelve con otro nombre,
+     * la regla no lo mira y nadie se enteró. Es el mismo control que
+     * `estilos-del-sitio.test.ts` le pone a su `FUERA_DE_ALCANCE`.
+     */
+    const todos = archivos();
+    for (const f of Object.keys(FUERA_DEL_LISTADO)) expect(todos).toContain(f);
   });
 
   it('y la portada generada ya no existe en ninguna parte', () => {
@@ -429,15 +495,38 @@ describe('la accesibilidad del listado', () => {
       const importado =
         /import \{[^}]*\bfoco\b[^}]*\} from '@\/components\/sitio\/estilos'/.test(codigo) &&
         /\$\{foco\}/.test(codigo);
-      // `claseCampo`, `claseCasilla` y los dos botones ya traen el anillo adentro:
-      // exigir además el `${foco}` suelto castigaría usarlas.
-      const heredado = /clase(Campo|Casilla|BotonPrimario|BotonSecundario)/.test(codigo);
+      const heredado = [...CLASES_CON_ANILLO].some((c) => new RegExp(`\\b${c}\\b`).test(codigo));
 
       if (!literal && !importado && !heredado) {
         sinFoco.push(`${archivo} — tiene controles sin foco visible`);
       }
     }
     expect(sinFoco).toEqual([]);
+  });
+
+  it('y la lista de clases que ya traen el anillo sale de `estilos.ts`, no de acá', () => {
+    /*
+     * **B-720 la sacó de estar escrita a mano**, y el motivo es el mismo que la
+     * nota de B-259 de arriba: la versión anterior enumeraba
+     * `clase(Campo|Casilla|BotonPrimario|BotonSecundario)`, así que la clase
+     * compartida que se agregara después —`claseBotonDelVisor`, la de los
+     * controles de la capa— quedaba afuera y ponía en rojo al componente que hacía
+     * lo correcto (usarla). O sea: la lista escrita a mano volvía a castigar la
+     * deduplicación, un nivel más arriba.
+     *
+     * Derivada, el chequeo se entera solo. Y los dos asertos de abajo son su
+     * control: sin ellos, un cambio de formato en `estilos.ts` dejaría el conjunto
+     * vacío y la comprobación pasaría a exigir el literal a todo el mundo (falso
+     * rojo), o —si alguien lo «arregla» al revés— a no exigir nada (falso verde).
+     */
+    expect(CLASES_CON_ANILLO.size).toBeGreaterThan(4);
+    for (const esperada of ['foco', 'focoAmplio', 'claseBotonPrimario', 'claseBotonDelVisor']) {
+      expect(CLASES_CON_ANILLO, `${esperada} trae el anillo y el chequeo no lo sabe`).toContain(
+        esperada,
+      );
+    }
+    // Y una que no lo trae: `claseBloque` es forma, no un control.
+    expect(CLASES_CON_ANILLO).not.toContain('claseBloque');
   });
 
   it('y ninguna interpolación del anillo quedó en un string que no interpola', () => {

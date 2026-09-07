@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { detalleDeActividad } from '@/lib/detallePublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { toPublic } from '@/lib/toPublic';
-import { ROTULO_DE_GALERIA, columnasDeGaleria } from '@/lib/afiche';
+import { ROTULO_DE_GALERIA, columnasDeGaleria, rotuloDeAmpliar } from '@/lib/afiche';
 import { CLASES_DE_GALERIA } from '@/components/sitio/estilos';
 import { actividadDePrueba, type OpcionesDeEntrada } from './fixtures/indice';
 import type { Actividad, Imagen } from '@/types/actividad';
@@ -524,25 +524,210 @@ describe('la forma de la tira', () => {
   });
 });
 
-describe('la tira no agrega una sola parada de tabulación', () => {
-  it('sin enlaces, sin `tabindex` y sin island', () => {
+describe('cada imagen se abre en la capa, y el abridor es un enlace de verdad — B-720', () => {
+  /*
+   * ── Este describe reemplaza a «la tira no agrega una sola parada de
+   * tabulación», y conviene decir qué se dio vuelta ──────────────────────────
+   * Aquél afirmaba lo contrario de esto: sin `<a>`, sin `href`, sin `tabindex` y
+   * sin island, porque «un lightbox accesible es bastante más de lo que este
+   * ítem pide» y la página tenía presupuesto de 0 KB de JavaScript. La mitad del
+   * argumento sigue en pie —el visor **es** más caro, y D-430 lo mide— y la otra
+   * mitad estaba mal: un flyer es texto tipografiado adentro de un JPEG (D-147),
+   * así que a un tercio de columna la tira mostraba imágenes que no se podían
+   * leer. Lo pidió el dueño mirando el sitio publicado (B-720).
+   *
+   * Su objeción concreta, en cambio, sigue viva y por eso hay dos casos abajo en
+   * vez de uno: envolver una secundaria con `alt=""` en un enlace **sin nombre**
+   * agrega una parada de tabulación que no dice nada. Eso es lo que
+   * `rotuloDeAmpliar` cierra, y lo que este archivo ata.
+   */
+  it('la tira envuelve cada imagen en un `<a href>` con `data-visor`', () => {
     /*
-     * La página de detalle tiene un presupuesto de **0 KB de JavaScript** (§4.3),
-     * y un lightbox accesible —foco atrapado, cierre con Escape, foco devuelto al
-     * disparador— es bastante más de lo que este ítem pide. Sin él, la tira no
-     * suma ni un elemento al orden de tabulación: se recorre con el scroll, como
-     * el resto de la página.
+     * `data-visor` es el contrato con la island: `VisorDeGaleria` junta los
+     * abridores con `document.querySelectorAll('[data-visor]')` y **el orden del
+     * documento es el orden de la galería**. Está escrito literal en las dos
+     * puntas a propósito (un `.astro` no puede compartir una constante con el
+     * `.tsx` sin que el atributo pase a ser dinámico), así que este aserto es el
+     * acuerdo.
      *
-     * MUTACIÓN PROBADA: envolver cada imagen en un `<a href={imagen.url}>` para
-     * «verla grande». Agrega tres paradas de tabulación que no dicen nada —el alt
-     * está vacío, así que el enlace se anuncia sin nombre— y saca al lector del
-     * sitio a un JPEG suelto.
+     * MUTACIÓN PROBADA: borrar `data-visor` de la tira. La página se ve idéntica
+     * y los clicks en las secundarias dejan de abrir la capa: navegan al JPEG,
+     * que es el respaldo sin JavaScript — o sea que el bug se ve como «así estaba
+     * pensado».
      */
     const tira = bloqueDeLaTira();
-    expect(tira).not.toMatch(/<a[\s>]/);
-    expect(tira).not.toContain('href');
-    expect(tira).not.toContain('tabindex');
-    expect(tira).not.toContain('client:');
+    expect(tira).toMatch(/<a\s/);
+    expect(tira, 'el enlace apunta al original, que es lo que la capa muestra (D-210)').toContain(
+      'href={imagen.url}',
+    );
+    expect(tira).toContain('data-visor');
+    expect(tira, 'la capa la abre la island, no un `tabindex` a mano').not.toContain('tabindex');
+  });
+
+  it('el enlace tiene nombre accesible propio, y no es el título de la actividad', () => {
+    /*
+     * **La objeción del test que este reemplaza, atendida.** Las secundarias van
+     * con `alt=""` (D-168), así que el enlace que las envuelve no hereda ningún
+     * nombre: un lector de pantalla anunciaría «enlace» tres veces. El rótulo
+     * dice la acción y la posición, que es lo único que las distingue.
+     *
+     * Y **no** puede ser el título: eso son tres nombres idénticos, que es el bug
+     * que D-168 cerró volviendo por la puerta del enlace. El aserto de más arriba
+     * («una secundaria no puede llevar el título como texto alternativo») ya
+     * prohíbe `detalle.titulo` en toda la sección, así que acá se afirma la
+     * mitad positiva: que el rótulo salga de la función testeada.
+     *
+     * MUTACIÓN PROBADA: sacarle el `aria-label` al enlace. Nada se ve distinto y
+     * la tira queda con tres paradas de tabulación sin nombre — exactamente lo
+     * que el test anterior no quería.
+     */
+    const tira = bloqueDeLaTira();
+    expect(tira).toContain('aria-label={rotuloDeAmpliar(i + 2)}');
+    expect(rotuloDeAmpliar(2)).toContain('2');
+    expect(rotuloDeAmpliar(2).toLowerCase()).toContain('imagen');
+  });
+
+  it('la portada también se abre, y es la 1 de la galería', () => {
+    /*
+     * **El caso que motivó el pedido es la portada**, no la tira: el flyer con la
+     * letra chica es la imagen de arriba, y es la mitad de lo que se carga. Una
+     * capa que solo abriera las secundarias habría dejado sin resolver el 100 %
+     * de las actividades con una sola imagen (26 de 30 medidas el 2026-09-02).
+     *
+     * La numeración arranca en la portada —`rotuloDeAmpliar(1)` acá,
+     * `(i + 2)` en la tira— porque es la misma que la capa muestra («2 de 3»).
+     *
+     * MUTACIÓN PROBADA: numerar la tira desde `i + 1`. La capa diría «2 de 3»
+     * para la imagen que el enlace llamó «imagen 1»; nada falla y los dos números
+     * de la misma foto no coinciden.
+     */
+    const codigo = sinComentarios(src());
+    const figuraDePortada = /portada && \([\s\S]*?<\/figure>/.exec(codigo)?.[0] ?? '';
+    expect(figuraDePortada, 'no se encontró la figura de la portada').toContain('src={portada.url}');
+    expect(figuraDePortada).toContain('href={portada.url}');
+    expect(figuraDePortada).toContain('data-visor');
+    expect(figuraDePortada).toContain('aria-label={rotuloDeAmpliar(1)}');
+  });
+
+  it('y el enlace tampoco le cuenta a nadie qué página se está mirando — §5.1, trampa 5', () => {
+    /*
+     * **Hallazgo del `auditor-privacidad` sobre este mismo cambio.** El `<img>`
+     * de al lado lleva `referrerpolicy="no-referrer"` por una decisión testeada
+     * —«no le cuenta a un host cualquiera qué taller está mirando quién», más
+     * arriba en este archivo— y el `<a>` nuevo apunta a **la misma URL** de
+     * terceros. Sin `rel`, la garantía queda apoyada en el default del navegador
+     * (`strict-origin-when-cross-origin`: manda el origen, no el path) en vez de
+     * en el markup, que es exactamente lo que la imagen decidió no hacer. Y no es
+     * solo el camino sin JavaScript: el click con Cmd/Ctrl y el del botón del
+     * medio **no se interceptan a propósito**, así que la navegación al host
+     * externo existe con la island hidratada.
+     *
+     * Los otros siete enlaces externos de esta plantilla llevan
+     * `rel="noopener noreferrer"`: los dos abridores eran los únicos que no.
+     *
+     * MUTACIÓN PROBADA: borrar el `rel`. Nada se ve distinto, ningún otro test se
+     * mueve, y la fuga solo aparece en los logs del host de la imagen.
+     */
+    const codigo = sinComentarios(src());
+    const enlaces = [...codigo.matchAll(/<a\b[\s\S]*?data-visor[\s\S]*?>/g)].map((m) => m[0]);
+    expect(enlaces, 'los dos abridores: la portada y la tira').toHaveLength(2);
+    for (const a of enlaces) expect(a).toContain('rel="noreferrer"');
+  });
+
+  it('`data-visor` está en los dos abridores y en nada más', () => {
+    /*
+     * **La garantía de la island es la exclusividad de este atributo**, y es el
+     * otro hallazgo del `auditor-privacidad`. Su entrada no es el view-model sino
+     * `document.querySelectorAll('[data-visor]')`, o sea proyección abierta en la
+     * forma: hoy no puede alcanzar ningún dato privado —todo lo que lee (`href`,
+     * `alt`, medidas, `figcaption`) ya está en el HTML, acotado por
+     * `DetallePublico`— pero el modo de falla concreto es reusar el atributo en
+     * otro enlace de la página.
+     *
+     * MUTACIÓN PROBADA: agregar `data-visor` al `<a>` del CTA «Escribir por
+     * WhatsApp». La página se ve igual y tocar el CTA abre una capa con el
+     * teléfono de quien organiza adentro de un `<img>` a pantalla completa.
+     */
+    expect([...sinComentarios(src()).matchAll(/data-visor/g)]).toHaveLength(2);
+  });
+
+  it('una URL que no sirve nunca llega al `href`: sería un XSS en HTML indexado', () => {
+    /*
+     * El tercer hallazgo del `auditor-privacidad`. Que `imagen.url` crudo en el
+     * `href` no sea un agujero lo sostiene `imagenesDeDetalle`
+     * (`lib/detallePublico.ts`), que pasa cada URL por `urlSegura` y **descarta**
+     * las que no son `http:`/`https:`. Un `<img src="javascript:…">` era inerte;
+     * un `<a href="javascript:…">` en la página que se queda en Google, no.
+     *
+     * El caso «una URL que no sirve no deja un hueco en la tira», más arriba,
+     * ejercita el mismo filtro — pero su propiedad declarada es de
+     * **maquetación**, así que la mutación que lo abre es la que alguien haría
+     * por motivos visuales: cambiar el filtro por un placeholder («una caja gris
+     * en vez de esconder la imagen») devuelve la fila al array con su URL
+     * original, y el `javascript:` llega al `href`. Este caso afirma el saneo
+     * como lo que ahora también es: una defensa de XSS.
+     */
+    const { portada, secundarias } = comoLaPagina([
+      imagen({ id: 'img_1', url: 'javascript:alert(document.cookie)', portada: true }),
+      imagen({ id: 'img_2', url: 'data:text/html;base64,PHNjcmlwdD4=', portada: false }),
+      imagen({ id: 'img_3', url: 'https://ejemplo.com/patio.jpg', portada: false }),
+    ]);
+    const urls = [portada?.url, ...secundarias.map((i) => i.url)].filter(
+      (u): u is string => typeof u === 'string',
+    );
+    expect(urls, 'la única que sobrevive es la http(s)').toEqual(['https://ejemplo.com/patio.jpg']);
+  });
+
+  it('los enlaces llevan el anillo de foco del sistema, no uno propio', () => {
+    // Son las primeras paradas de tabulación de esta parte de la página: sin
+    // anillo, quien navega con teclado no ve dónde está. `foco` viene de
+    // `estilos.ts` y `estilos-del-sitio.test.ts` prohíbe escribirlo a mano.
+    const codigo = sinComentarios(src());
+    for (const m of codigo.matchAll(/<a[^>]*data-visor[\s\S]*?>/g)) {
+      expect(m[0], 'un abridor de la capa sin el anillo de foco compartido').toContain('${foco}');
+    }
+    expect(codigo).toMatch(/import \{[\s\S]*?foco[\s\S]*?\} from '@\/components\/sitio\/estilos'/);
+  });
+
+  it('la island es una sola, es `client:idle` y no se monta sin imágenes', () => {
+    /*
+     * Las tres mitades del costo de D-430, atadas donde se deciden. El runtime de
+     * React son 58,5 KB gzip: `client:load` los pondría en el camino de la
+     * primera pantalla de la página que recibe el tráfico de Google, y montar la
+     * island en una actividad sin imágenes los cobraría por una capa que no
+     * puede abrirse (16 de 46 publicadas no tienen ninguna).
+     *
+     * MUTACIÓN PROBADA: cambiar `client:idle` por `client:load`. Todo se ve y
+     * funciona igual, y el visor pasa a competir con el LCP de la portada.
+     */
+    const codigo = sinComentarios(src());
+    const islands = [...codigo.matchAll(/<(\w+)[^>]*client:(\w+)/g)].map((m) => [m[1], m[2]]);
+    expect(islands).toEqual([['VisorDeGaleria', 'idle']]);
+    expect(codigo).toContain('detalle.imagenes.length > 0 && (');
+    expect(
+      codigo,
+      'la única prop es el título: las imágenes las lee del HTML, no viajan dos veces',
+    ).toMatch(/<VisorDeGaleria client:idle titulo=\{detalle\.titulo\} \/>/);
+  });
+
+  it('la tira no depende de la island para verse: el HTML es la verdad (§6.3)', () => {
+    /*
+     * **La garantía de que el desvío no cuesta el SSG.** Sin JavaScript —y en la
+     * ventana antes de que la island hidrate— las imágenes se ven igual, con su
+     * tamaño y su proporción, y el enlace abre el archivo en el visor del
+     * navegador. Lo que lo hace cierto es que la tira sigue siendo markup del
+     * build: un `<img src>` con `loading="lazy"` adentro de un `<a href>`.
+     *
+     * MUTACIÓN PROBADA: mover la tira adentro del componente React y dejar acá
+     * solo la island. La página se ve igual **en un navegador con JavaScript**, y
+     * Google —y quien lo tenga apagado— ve una sección vacía.
+     */
+    const tira = bloqueDeLaTira();
+    expect(tira, 'las imágenes las pinta el build, no la island').toContain('src={imagen.url}');
+    expect(tira).toContain('loading="lazy"');
+    expect(tira, 'la island no se monta acá adentro: la capa es `fixed` y vive al final').not.toContain(
+      'client:',
+    );
   });
 });
 

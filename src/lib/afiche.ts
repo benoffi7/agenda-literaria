@@ -168,3 +168,56 @@ export const columnasDeGaleria = (n: number): 2 | 3 => (n >= 3 ? 3 : 2);
  * prueba, no se escribe en el markup.
  */
 export const ROTULO_DE_GALERIA = 'Más imágenes';
+
+/**
+ * El nombre accesible del enlace que abre una imagen en la capa — B-720.
+ *
+ * ── Por qué hace falta un rótulo y no alcanza la imagen ───────────────────
+ * Las secundarias van con `alt=""` a propósito (D-168), así que un enlace que
+ * las envuelve **no tiene nombre**: un lector de pantalla anuncia «enlace» y
+ * nada más, que es la objeción que dejó escrita el test de B-296 cuando prohibió
+ * envolverlas. El rótulo es la respuesta a esa objeción, no un adorno: dice la
+ * acción («ver en grande») y **cuál** de las imágenes es, que es lo único que
+ * distingue tres enlaces seguidos.
+ *
+ * ── Por qué la posición y no el título de la actividad ────────────────────
+ * DEC-7a (D-125) deriva el texto alternativo del título, y con tres imágenes eso
+ * son tres nombres idénticos — el bug que D-168 vino a cerrar, que volvería por
+ * la puerta del enlace. La posición es lo que cambia entre uno y otro, y el
+ * diálogo ya dice de qué actividad son (`rotuloDelVisor`), así que el título no
+ * hace falta acá y repetirlo sería el error de antes con otra cara.
+ *
+ * La posición es **en la galería entera**, con la portada como 1: es el mismo
+ * número que la capa muestra («2 de 3»), y dos numeraciones distintas para la
+ * misma imagen serían peor que ninguna.
+ *
+ * Es una función y no un literal en la plantilla por el criterio de D-133: el
+ * texto del sitio es dato y se prueba. Y no tiene concordancia de número que
+ * mantener, que es la lección de B-302.
+ */
+export const rotuloDeAmpliar = (posicion: number): string =>
+  `Ver la imagen ${posicion} en grande`;
+
+/**
+ * El nombre accesible de la capa del visor — B-720.
+ *
+ * Un diálogo sin nombre se anuncia como «diálogo» y no dice de qué. Éste sí
+ * lleva el título de la actividad: es **uno** por capa, así que la repetición
+ * que D-168 prohíbe no se puede dar, y quien entra a la capa desde una foto
+ * suelta necesita saber a qué actividad pertenece.
+ */
+export const rotuloDelVisor = (titulo: string): string => `Imágenes de ${titulo}`;
+
+/**
+ * Dónde estoy dentro de la galería — B-720.
+ *
+ * Es el único indicio de que hay más de una imagen y de cuántas quedan, y sirve
+ * para las dos mitades a la vez: se muestra en la capa y es el `aria-live` que
+ * anuncia el cambio a quien no ve la foto nueva. Con una sola imagen la capa no
+ * lo pinta —«1 de 1» es ruido— y por eso la decisión de mostrarlo vive en el
+ * componente y no acá: esta función solo arma el texto.
+ *
+ * «de» y no «/»: un lector de pantalla lee «2 / 3» como «dos barra tres».
+ */
+export const posicionEnLaGaleria = (posicion: number, total: number): string =>
+  `${posicion} de ${total}`;

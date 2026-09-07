@@ -727,8 +727,23 @@ Es el componente que más se repite; lo que muestra está elegido, en este orden
 > **confirmó** contra Storage (`urlDeMiniaturaSiExiste`), y si no, el atributo
 > sale ausente y la portada es el original. Vale igual para `/cartelera`.
 
-La pantalla más importante del sitio, y la que **no lleva JavaScript**: es HTML
-y CSS. Cero islands, cero `events.json`, cero hidratación.
+> **Y una cuarta vuelta, el 2026-09-04 (B-720, D-430): la galería se recorre y se
+> ve en pantalla completa.** Cada imagen —la portada y las de la tira— es un
+> enlace a su archivo, y una island lo intercepta para abrirla en una capa que se
+> recorre con las flechas. Es **la primera island de esta página**, así que el
+> «cero islands» del párrafo de abajo dejó de ser cierto: el costo está medido en
+> D-430 y anotado en el [§9](#9-rendimiento-y-cache). Lo pidió el dueño mirando
+> el sitio publicado, y el caso que lo motiva es el flyer: es texto tipografiado
+> adentro de un JPEG (D-147) y al tamaño que entra en la columna no se lee.
+
+La pantalla más importante del sitio, y la que **casi no lleva JavaScript**: es
+HTML y CSS, cero `events.json`, y **una** island —el visor de la galería
+(B-720)— que no participa de la primera pantalla (`client:idle`) y que ni se
+monta cuando la actividad no tiene imágenes.
+
+~~Cero islands, cero `events.json`, cero hidratación.~~ **La mitad de las
+islands se desvió en B-720** (D-430); la de `events.json` sigue en pie: esta
+página no baja el índice.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -805,7 +820,40 @@ Decisiones de esta pantalla:
   DEC-7a lo deriva del título de la actividad, y repetirlo en tres imágenes es peor
   que no decir nada, así que la cuenta se dice una vez en el encabezado («Dos
   imágenes más») y el epígrafe, cuando está cargado, es el `figcaption` de su imagen
-  y lo único que la describe. Sin lightbox: no agrega ninguna parada de tabulación.
+  y lo único que la describe. ~~Sin lightbox: no agrega ninguna parada de
+  tabulación.~~ **Desviado por B-720 (D-430):** sí hay capa, y sí agrega una
+  parada de tabulación por imagen — con nombre accesible propio, que es lo que
+  aquella frase protegía (un enlace alrededor de un `alt=""` se anuncia sin
+  nombre).
+- **La galería se recorre y se ve en pantalla completa** (**B-720**, **D-430**).
+  Cada imagen es un `<a href>` a su archivo con `data-visor`, y la island
+  `VisorDeGaleria` intercepta el click para abrir una capa: la imagen entera
+  sobre `bg-tinta`, con su epígrafe, el contador («2 de 3») y los controles
+  calados en papel. Se recorre con **← →** y con dos botones, cierra con
+  `Escape`, con el botón, tocando el fondo y con el **botón atrás del teléfono**
+  (`pushState`, compartido con la hoja de filtros de B-238 desde
+  `useHistorialDeCapa`). El foco queda atrapado en la capa y vuelve al enlace que
+  la abrió.
+
+  Cuatro decisiones que la hacen barata, y que son las que no se pueden perder:
+
+  1. **El abridor es un `<a href>`, no un `<button>`.** Sin JavaScript —y en la
+     ventana antes de que la island hidrate— el click abre el archivo en el visor
+     del navegador, que es «verla grande» igual. Un `<button>` impreso por el
+     build sería un control que miente. Un click con Cmd/Ctrl/Shift o del botón
+     del medio **no se intercepta**: ahí la persona pidió otra pestaña.
+  2. **La capa muestra el original y no la miniatura** (D-210), y no por
+     acordarse: muestra el `href` del enlace, que es el original por
+     construcción. El `<img>` de la página puede haber elegido la miniatura de
+     480px del `srcset`, que en pantalla completa se vería mal.
+  3. **Una sola imagen en el aire.** La capa no precarga la siguiente ni arma una
+     tira: las originales de una actividad suman hasta 3,15 MB (D-168) porque la
+     recompresión no existe todavía. La contra asumida es que pasar a la
+     siguiente espera esa descarga.
+  4. **Las imágenes no viajan como props.** La island las lee del HTML que
+     imprimió el build ([§6.3](#63-con-javascript-apagado--el-listado-híbrido)):
+     su única prop es el título, que es el nombre accesible del diálogo. Así
+     ninguna URL se serializa dos veces y no hay dos fuentes de la misma galería.
 - **Un solo CTA, con el verbo de la vía.** `inscripcion.via` dice el verbo:
   `whatsapp` → "Escribir por WhatsApp" a un `wa.me` con mensaje precargado
   ("Hola, quiero anotarme en Taller de crónica"); `mail` → `mailto:` con asunto
@@ -1918,6 +1966,36 @@ Otras reglas:
     existir** (B-220, DEC-7d), así que hoy se sirve el original: es B-266 y
     B-300.
 - La home no bloquea nada esperando `events.json`: el HTML ya está completo.
+- **El costo de la island del detalle, medido contra `dist/` el 2026-09-04**
+  (**B-720**, **D-430**). Es la primera de esa página, así que el número hay que
+  tenerlo escrito y no estimado:
+
+  | Pieza | Sin comprimir | gzip |
+  |---|---|---|
+  | `client.*.js` — el runtime de React | 186.619 | **58.536** |
+  | `VisorDeGaleria.*.js` — el componente | 2.713 | **1.279** |
+  | el `<astro-island>` + su runtime inline, dentro del HTML | 3.808 | (va con el HTML) |
+  | **total de JS nuevo** | **189.332** | **59.815** |
+
+  Los dos vecinos que lo ponen en escala, los dos de esta misma página: el HTML
+  de una página de detalle con tres imágenes pesa **24.847** sin comprimir
+  (6.752 gzip), y el `gtag.js` que D-251 aceptó acá pesa **155.578 gzip** — o
+  sea que la island es el **38 %** del tag de analítica que ya está aprobado, y
+  ~9 veces el HTML.
+
+  Tres cosas lo abaratan y son parte de la decisión, no optimizaciones
+  posteriores: **`client:idle`** (no compite con el LCP de la portada, y el
+  respaldo mientras no hidrata es el enlace al archivo), **la island no se monta
+  si la actividad no tiene imágenes** (16 de 46 publicadas, medido el
+  2026-09-02: esas páginas siguen en cero bytes de framework), y **las imágenes
+  no viajan como props** (§4.3), así que el HTML no crece con la galería.
+
+  Lo que **no** se hizo, dicho para que no parezca olvido: escribir la capa en
+  JavaScript a mano habría costado ~2 KB en vez de 58, y se descartó porque
+  duplicaba `lib/capaModal.ts` —el cableado de foco, `Escape` y scroll que ya
+  tienen las otras tres capas del repo— y esa duplicación es la clase de bug que
+  ese archivo existe para cerrar (su docblock cuenta el caso: dos copias, una
+  con el arreglo y la otra sin él).
 
 ---
 
@@ -1936,6 +2014,25 @@ Lo mínimo que no se negocia, y que además es lo que el buscador lee:
   fondo, y **atrapa el foco**. Es la deuda que quedó abierta en **B-14** y
   **B-64** en el panel; en el sitio público se hace bien de entrada, y ese
   componente puede después resolver las dos.
+- **La capa de la galería del detalle es la segunda capa del sitio** (**B-720**),
+  y usa el mismo cableado (`useCapaModal`): foco atrapado, `Escape`, scroll de
+  atrás frenado, y el foco de vuelta al enlace que la abrió. Lo propio de ésta,
+  que es lo que una capa de imágenes hecha a medias se olvida:
+  - **← →** para recorrer, y el contador («2 de 3») en un `aria-live="polite"`:
+    con `alt=""` en las secundarias (D-168), ese contador es lo **único** que le
+    dice a quien no ve la foto nueva que la flecha hizo algo.
+  - Los abridores son enlaces de verdad con **nombre accesible propio**
+    (`rotuloDeAmpliar`): un enlace alrededor de un `alt=""` se anunciaría sin
+    nombre, que era la objeción con la que D-168 rechazaba el lightbox.
+  - Los controles van **calados en papel** y con subrayado, no en el acento:
+    sobre `tinta`, `acento` da **2,57:1** y no pasa AA, así que la señal de «esto
+    se toca» no puede depender del color ahí.
+  - El botón atrás del teléfono cierra la capa en vez de salir del sitio, igual
+    que la hoja de filtros (§8) y con el mismo hook.
+  - Sin animación: no hay nada que `prefers-reduced-motion` tenga que apagar.
+  Todo eso se verifica ejecutando el componente, en
+  `tests/visor-de-galeria.render.test.tsx` — un test de fuente sobre este tipo de
+  cableado da falso verde (la lección de B-202).
 - Foco visible en todo lo enfocable, con el acento.
 - Contraste: **medido en B-227**, y la respuesta a la pregunta abierta es que el
   acento se puede usar en texto chico.

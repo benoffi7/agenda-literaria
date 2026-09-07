@@ -81,8 +81,14 @@
 import Base from '@/layouts/Base.astro';
 import { caminosDeDetalle } from '@/lib/contenidoDelSitio';
 import { datosEstructurados, migasDeDetalle, type DetallePublico } from '@/lib/detallePublico';
-import { ROTULO_DE_GALERIA, columnasDeGaleria, estiloDeAfiche } from '@/lib/afiche';
+import {
+  ROTULO_DE_GALERIA,
+  columnasDeGaleria,
+  estiloDeAfiche,
+  rotuloDeAmpliar,
+} from '@/lib/afiche';
 import { srcsetDeMiniatura } from '@/lib/imagenes';
+import VisorDeGaleria from '@/components/publico/VisorDeGaleria';
 import {
   claseAfiche,
   claseAfichePortada,
@@ -404,6 +410,13 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
           */
           portada && (
             <figure class="mt-6">
+              <a
+                href={portada.url}
+                data-visor
+                rel="noreferrer"
+                aria-label={rotuloDeAmpliar(1)}
+                class={`block ${foco}`}
+              >
               <img
                 src={portada.url}
                 srcset={srcsetDeMiniatura(urlMiniaturaPortada, portada.url)}
@@ -418,6 +431,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                 referrerpolicy="no-referrer"
                 class={claseAfichePortada}
               />
+              </a>
               {portada.epigrafe && (
                 <figcaption class="body-sm mt-1.5 text-super">{portada.epigrafe}</figcaption>
               )}
@@ -729,10 +743,25 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
             epígrafe vacío, así que «el epígrafe es el alt» no habría descrito ni
             una sola imagen.
 
-            ── Sin JavaScript, y sin agregar una parada de tabulación ──────
-            No hay lightbox, no hay enlaces y no hay `tabindex`: la tira no suma
-            ni un elemento al orden de tabulación de la página. Es la mitad
-            barata de la accesibilidad, y la que un visor modal habría gastado.
+            ── ~~Sin JavaScript, y sin agregar una parada de tabulación~~ ──
+            **Se dio vuelta en B-720 (D-430), a pedido del dueño.** Hasta
+            entonces acá decía que no había lightbox, ni enlaces, ni `tabindex`,
+            y que eso era «la mitad barata de la accesibilidad». El argumento
+            estaba bien planteado y le faltaba el otro lado: un flyer es texto
+            metido adentro de un JPEG (D-147) y a esta escala no se puede leer,
+            así que la tira mostraba imágenes que **no se podían mirar**. Hoy
+            cada imagen —la portada también— es un enlace a su archivo, y una
+            island (`VisorDeGaleria`, al final de esta página) lo intercepta para
+            abrirla en una capa que se recorre con las flechas.
+
+            **El enlace es un `<a href>` y no un `<button>`**, y esa es la parte
+            que hace que el desvío no cueste nada: sin JavaScript —y antes de que
+            la island hidrate— el click abre el archivo en el visor del
+            navegador, que es «verla grande» igual. Un `<button>` impreso por el
+            build sería un control que miente mientras no haya JS. Las paradas de
+            tabulación que se agregan (una por imagen) tienen nombre accesible
+            propio: `rotuloDeAmpliar` existe para eso, porque el `alt=""` de una
+            secundaria dejaría el enlace sin nombre.
           */
           secundarias.length > 0 && (
             <section aria-labelledby="mas-imagenes" class="mt-12">
@@ -740,8 +769,15 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                 {ROTULO_DE_GALERIA}
               </h2>
               <div class={`mt-4 ${CLASES_DE_GALERIA[columnasDeGaleria(secundarias.length)]}`}>
-                {secundarias.map((imagen) => (
+                {secundarias.map((imagen, i) => (
                   <figure>
+                    <a
+                      href={imagen.url}
+                      data-visor
+                      rel="noreferrer"
+                      aria-label={rotuloDeAmpliar(i + 2)}
+                      class={`block ${foco}`}
+                    >
                     <img
                       src={imagen.url}
                       alt=""
@@ -753,6 +789,7 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                       referrerpolicy="no-referrer"
                       class={claseAfiche}
                     />
+                    </a>
                     {imagen.epigrafe && (
                       <figcaption class="body-sm mt-1.5 text-super">{imagen.epigrafe}</figcaption>
                     )}
@@ -1026,6 +1063,43 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
           {detalle.inscripcion.accion.texto}
         </a>
       </div>
+    )
+  }
+
+  {
+    /*
+      ══ El visor de la galería — B-720 (D-430) ═════════════════════════════
+
+      **La primera island de esta página**, y hasta acá el §4.3 decía «cero
+      islands, cero hidratación». Se dio vuelta a pedido del dueño, con el costo
+      medido: el runtime de React son **58,5 KB gzip** (`dist/_astro/client.*`,
+      186,6 KB sin comprimir) más ~2 KB de este componente. El número que hace
+      que sea aceptable y no un despropósito es el vecino: el `gtag.js` que
+      D-251 ya aceptó en esta misma página pesa **155,6 KB gzip** contra 18,3 KB
+      de HTML.
+
+      Tres cosas la abaratan, y las tres están acá y no en el componente porque
+      son decisiones de la plantilla:
+
+      1. **`client:idle`**, no `client:load`: el visor no participa de la
+         primera pantalla. Mientras no hidrata, un click en una imagen abre el
+         archivo en el navegador, que es el mismo respaldo que sin JavaScript.
+      2. **No se monta si la actividad no tiene imágenes.** 16 de 46 publicadas
+         no tienen ninguna (medido el 2026-09-02) y esas páginas siguen mandando
+         cero bytes de framework.
+      3. **La única prop es el título**, que es el nombre accesible del diálogo
+         (D-125). Las imágenes no viajan como props: la island las lee del HTML
+         que este mismo archivo imprimió (§6.3, «el HTML es la verdad»), así que
+         ninguna URL se serializa dos veces y la capa muestra el **original** por
+         construcción —el `href` de cada enlace— y no la miniatura del `srcset`
+         (D-210).
+
+      Va al final del `<main>` a propósito: la capa es `position: fixed`, así
+      que su lugar en el documento no cambia nada de lo que se ve, y acá no se
+      mete entre el contenido y su orden de lectura.
+    */
+    detalle.imagenes.length > 0 && (
+      <VisorDeGaleria client:idle titulo={detalle.titulo} />
     )
   }
 
