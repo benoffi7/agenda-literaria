@@ -8868,7 +8868,41 @@ próximo deploy y del rastreo siguiente:
 **Cargar el `sitemap.xml` en Search Console si todavía no está** (lo pide B-373):
 es lo que hace que las 50 páginas que Google no había visto entren rápido.
 
-### B-733 · El `url` de cada `subEvent` podría llevar el ancla de su fila · P3
+### B-733 · ✅ hecho (2026-09-07) — El `url` de cada `subEvent` lleva el ancla de su fila
+
+**Aprobado por el dueño**, que era lo único que faltaba: el ítem estaba resuelto
+salvo la decisión de agregar `sesiones.id` a la lista blanca de la salida 6.
+
+Hecho como el ítem lo describía: `url` de cada `subEvent` pasa de heredar la
+canónica de la página a `…/actividad/x/#ses_9f2a`, el ancla de esa fila — que
+**ya existe en el HTML** (`id={e.id}` en el `<li>`).
+
+**El barrido de centinelas lo había frenado, y tenía razón.** Volvió a frenarlo
+al implementarlo, y la excepción entró con su motivo escrito: lo que la hace
+aceptable no es que sea inofensivo en general, es que **el uuid ya es público en
+el HTML de esta misma página**. Es el mismo dato en el mismo documento, no un dato
+nuevo.
+
+**Lo que sigue sin ancla, y es la mitad que el ítem pedía no olvidar:** el `url`
+del `Offer` y el del `VirtualLocation`. El arancel y el acceso son de la
+actividad, no de una de sus filas — un ancla ahí afirmaría que el precio es de ese
+encuentro.
+
+Y el caso que afirmaba la herencia (`sub.url === ld.url`, de B-730) se dio vuelta
+con su original citado, más uno nuevo: **las anclas de dos encuentros distintos
+tienen que ser distintas**. Sin eso, «lleva ancla» lo cumpliría un `#` de adorno
+repetido.
+
+**La asimetría entre los dos barridos que el ítem anotaba sigue siendo cierta y
+no cambió:** el gate sobre `dist/` tiene `sesionId` como excepción de la página
+entera, y el JSON-LD viaja adentro de ese mismo HTML, así que el gate no puede
+separarlos. Lo que frena esto es el barrido de vitest, donde la lista del JSON-LD
+es propia. Uno de los dos, no los dos.
+
+El planteo original queda abajo.
+
+---
+
 
 El ejemplo del §5.3 del diseño lo dibuja así desde el principio
 (`…/actividad/x/#ses_9f2a`) y **el código nunca lo emitió**. Con B-730 cada

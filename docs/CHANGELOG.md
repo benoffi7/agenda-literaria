@@ -2,6 +2,20 @@
 
 ## Sin publicar
 
+- **Cada encuentro del JSON-LD apunta a su propia fila** — **B-733**, aprobado por
+  el dueño. El `url` de cada `subEvent` pasa de heredar la canónica de la página
+  —el mismo link repetido N veces— al ancla de ese encuentro
+  (`…/actividad/x/#ses_9f2a`), que ya existe en el HTML.
+
+  El barrido de centinelas lo había frenado y volvió a frenarlo: agregar
+  `sesiones.id` a la lista blanca de esa salida era la decisión que faltaba. Lo
+  que la hace aceptable quedó escrito: **el uuid ya es público en el HTML de esta
+  misma página**, porque es el ancla de la fila. Es el mismo dato en el mismo
+  documento.
+
+  El `Offer` y el `VirtualLocation` **siguen sin ancla**: el arancel y el acceso
+  son de la actividad, no de una de sus filas.
+
 - **Los tres auditores corren siempre antes de pushear, y el gate lo exige** —
   **B-124**, contestado por el dueño.
 

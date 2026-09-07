@@ -1288,6 +1288,7 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'labels.plataforma',
         'labels.arancel',
         'slug',
+        'sesiones.id',
       ],
       porque:
         '§5.2 — `name`, `description` (el resumen), `organizer`, `performer`, `location` con ' +
@@ -1301,7 +1302,16 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'canónica de la actividad (`url`, el `url` del `VirtualLocation` del §5.4 y el del ' +
         '`Offer`), y una canónica es el slug con el origen adelante. Es el mismo dato que ' +
         'ya es la URL de la página y el `href` de cada fila del listado — no hay campo ' +
-        'nuevo, hay un dato público escrito completo.',
+        'nuevo, hay un dato público escrito completo. ' +
+        '**Y `sesiones.id` entró con B-733**, aprobado por el dueño el 2026-09-07: cada ' +
+        '`subEvent` lleva el ancla de su propia fila (`…/actividad/x/#ses_9f2a`) en vez ' +
+        'del `url` de la página repetido N veces. **Este barrido lo frenó cuando se ' +
+        'intentó sin permiso, y tenía razón**: agregar un centinela a esta lista es una ' +
+        'decisión del dueño y no de un frente. Lo que la hace aceptable es que el uuid ' +
+        '**ya es público en el HTML de esta misma página** —es el ancla de la fila, ' +
+        '`id={e.id}` en el `<li>`— así que es el mismo dato en el mismo documento, no un ' +
+        'dato nuevo. El `Offer` y el `VirtualLocation` **siguen sin ancla**: el arancel y ' +
+        'el acceso son de la actividad y no de una de sus filas.',
     },
   ];
 

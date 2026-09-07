@@ -1342,6 +1342,27 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
           ...deLaActividad,
           '@type': subtipo,
           name: e.tema ? `${d.titulo} — ${e.tema}` : d.titulo,
+          /*
+           * **El ancla de su propia fila** — B-733, aprobado por el dueño el
+           * 2026-09-07. El ejemplo del §5.3 del diseño lo dibuja así desde el
+           * principio (`…/actividad/x/#ses_9f2a`) y el código nunca lo emitió:
+           * con B-730 cada `subEvent` heredó el `url` de la página, que no es
+           * menos verdadero pero es **el mismo link repetido N veces**.
+           *
+           * ── Publica el id de la sesión, y eso fue la decisión ─────────────
+           * El barrido de centinelas lo frenó al intentarlo, con razón: agregar
+           * un centinela a la lista blanca de esta salida es una decisión del
+           * dueño y no de un frente. Lo aprobó con el argumento que ya estaba
+           * escrito en el ítem — **el uuid ya es público en el HTML de esta misma
+           * página**, porque es el ancla de la fila (`id={e.id}` en el `<li>`),
+           * así que no hay fuga nueva: es el mismo dato en el mismo documento.
+           *
+           * ── Qué NO lleva ancla, y por qué ────────────────────────────────
+           * El `url` del `Offer` y el del `VirtualLocation` **se quedan sin
+           * ella**: el arancel y el acceso son de la actividad, no de una de sus
+           * filas. Un ancla ahí afirmaría que el precio es de ese encuentro.
+           */
+          url: `${urlDeDetalle(d.slug)}#${e.id}`,
           startDate: e.inicioIso,
           endDate: e.finIso,
           eventStatus: cancelado ? CANCELADO : PROGRAMADO,

@@ -863,15 +863,29 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
       expect(sub.description).toBe(ld.description);
       expect(sub.organizer).toEqual(ld.organizer);
       expect(sub.eventAttendanceMode).toBe(ld.eventAttendanceMode);
-      // Los otros dos que la regla 7 declara heredados. Sin estas líneas,
-      // sacarlos de la herencia no ponía nada rojo — lo señaló el
-      // `auditor-privacidad`.
-      expect(sub.url).toBe(ld.url);
+      // El otro que la regla 7 declara heredado. Sin esta línea, sacarlo de la
+      // herencia no ponía nada rojo — lo señaló el `auditor-privacidad`.
       expect(sub.performer).toEqual(ld.performer);
+      /*
+       * **El `url` dejó de ser heredado** — B-733, aprobado por el dueño el
+       * 2026-09-07. Decía `expect(sub.url).toBe(ld.url)`, y era la herencia que
+       * B-730 había puesto: no menos verdadera, pero **el mismo link repetido N
+       * veces**. Ahora cada `subEvent` apunta al ancla de su propia fila.
+       *
+       * Se afirma por partes y no contra un string armado a mano: la página
+       * adelante, el ancla del encuentro atrás. Escribir la URL entera acá sería
+       * una segunda copia de cómo se arma una canónica.
+       */
+      expect(String(sub.url).startsWith(String(ld.url))).toBe(true);
+      expect(String(sub.url)).toMatch(/#ses_/);
       // El `@context` va **una sola vez**, en la raíz: repetirlo en un item
       // anidado es ruido que ningún consumidor pide.
       expect(sub).not.toHaveProperty('@context');
     }
+    // Y los dos anclas son distintas, que es el punto: si fueran iguales, el
+    // `url` seguiría siendo el mismo link N veces con un `#` de adorno.
+    expect(subs[0]!.url).not.toBe(subs[1]!.url);
+
     // Y lo propio del encuentro sigue siendo del encuentro, no de la serie.
     expect(subs[0]!.name).toBe('Taller de crónica — Tema 1');
     expect(subs[1]!.name).toBe('Taller de crónica — Tema 2');
