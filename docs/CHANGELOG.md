@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El Instagram del proyecto es `@agenda.leh`** — era `@librosdelatiahildita`, la
+  cuenta personal que se usó mientras el proyecto no tenía la suya. Se cambió en un
+  solo lugar (`enlaces.ts`), que es para lo que ese módulo existe: el pie, el
+  `Organization` de los datos estructurados, el texto para redes y la página de
+  apoyo lo toman de ahí.
+
 - **La sección para apoyar la agenda, `/apoyar`** — **B-780**, **D-460**,
   **D-461**: qué cuesta plata, el enlace a Cafecito y **tres formas que no
   cuestan nada** y ayudan más. Sin embeber un tercero: el botón se dibuja acá.

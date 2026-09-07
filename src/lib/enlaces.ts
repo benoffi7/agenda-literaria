@@ -37,8 +37,18 @@
 export const CALENDARIO_ID =
   '68e6037bad1570002e484be4a5a21b6dd052afadef1af6c4cb99946b0d2aaea3@group.calendar.google.com';
 
-/** La cuenta donde se anuncian las actividades. */
-export const INSTAGRAM = 'librosdelatiahildita';
+/**
+ * La cuenta donde se anuncian las actividades.
+ *
+ * **Cambió el 2026-09-07**: era `librosdelatiahildita` —la cuenta personal que se
+ * usó mientras el proyecto no tenía la suya— y pasa a `agenda.leh`, que es la del
+ * proyecto y la que coincide con el nombre y el dominio.
+ *
+ * El punto es parte del handle y no un separador: la URL es
+ * `instagram.com/agenda.leh`. Vale decirlo porque un handle con punto es el caso
+ * que rompe un validador escrito para `[a-z0-9_]`.
+ */
+export const INSTAGRAM = 'agenda.leh';
 
 /**
  * La casilla de contacto del proyecto.
