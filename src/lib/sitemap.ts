@@ -62,6 +62,7 @@ import { mesesEnlazables } from '@/lib/mesPublico';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
+  RUTA_APOYAR,
   RUTA_AYUDA,
   RUTA_CARTELERA,
   RUTA_CONTACTO,
@@ -173,6 +174,18 @@ export const RUTAS_FIJAS: readonly string[] = [
    * lector no es quien busca una actividad.
    */
   RUTA_ANUNCIAR,
+  /*
+   * `/apoyar` entra al sitemap **sin `noindex`** — B-780. Es la página que
+   * contesta «¿quién hace esto y cómo se sostiene?», que es lo primero que se
+   * pregunta quien llega a un sitio que no conoce, y esconderla del buscador
+   * para que no parezca que pedimos plata sería esconder justamente la página
+   * donde está escrito que no hace falta pagar nada.
+   *
+   * Y es estable: su contenido no depende de los datos, así que no puede quedar
+   * vacía como un hub de barrio (§4.3 de `hubsPublicos.ts`) — el mismo caso que
+   * `/suscribirse`, `/ayuda` y `/contacto`, que están arriba.
+   */
+  RUTA_APOYAR,
 ];
 
 /** ¿Esta fecha está dentro de la ventana de `dias` contada desde `ahora`? */

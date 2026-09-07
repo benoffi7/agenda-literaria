@@ -2801,6 +2801,181 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+**`B-780` es P0 y bloquea el deploy.** Los otros son P1/P2/P3.
+
+```md
+### B-780 · P0 ⛔ — `/apoyar` publica e indexa un usuario de cobro que nadie registró
+
+`CAFECITO` (`src/lib/enlaces.ts`) está en `'agendaleh'`, puesto por coherencia con
+el dominio (`agendaleh.ar`) y con la casilla (`agendaleh@gmail.com`), **pero nadie
+registró ese nombre en cafecito.app**.
+
+El 404 es la mitad menor del problema —el link se ve perfecto y el destino roto lo
+ve solo quien hizo el click, o sea justo la persona que se decidió a aportar—. La
+mitad grande la señaló el `auditor-privacidad`: `/apoyar` entra al `sitemap.xml`
+**sin `noindex`** y se enlaza desde el pie de **todas** las páginas, así que
+deployar así **publica e indexa un nombre de usuario de cobro sin dueño**.
+Cualquiera que lea la página puede registrar `cafecito.app/agendaleh` y quedarse
+con los aportes dirigidos a la agenda — y eso no se deshace: la página ya está en
+Google apuntando a un perfil ajeno.
+
+**Primero se crea el perfil, después se deploya.** Una de dos, antes del deploy:
+
+1. crear el perfil en cafecito.app reservando `agendaleh`, o
+2. cambiar esa constante por el usuario que exista.
+
+Es una línea y hay un solo lugar donde se escribe. `tests/enlaces.test.ts`
+verifica la **forma** de la URL (`cafecito.app/<slug>`, sin query), que es lo que
+un test puede verificar: que el perfil exista del otro lado no se sabe sin salir a
+la red.
+
+Al crear la cuenta, dos cosas que este ítem no puede decidir: si el nombre público
+del perfil dice «Agenda LEH» (el visitante llega desde acá y tiene que reconocer
+dónde cayó), y qué precio por café se elige, porque el default de la plataforma no
+es el único.
+
+**Si preferís una guarda de código en vez de un ítem**, el `auditor-privacidad`
+propuso `export const CAFECITO_CONFIRMADO = false` y condicionar `RUTAS_FIJAS` + el
+link del pie. No lo implementé y el motivo es honesto: dejar `/apoyar` fuera de
+`RUTAS_FIJAS` obliga a declararla en las `EXCEPTUADAS` de `tests/sitemap.test.ts`,
+o sea a escribir una excepción que va a ser mentira en cuanto el perfil exista, y
+la regla «una página nueva no entra sola al sitemap» deja de decir la verdad. Es
+tu llamada.
+
+---
+
+### B-781 · P1 — el mismo tipo de promesa que `/apoyar` tuvo que corregir puede estar en otras páginas
+
+`/apoyar` decía «no se guarda quién entró» y era falso: el sitio mide con Google
+Analytics cuando hay consentimiento (salida 12). Se corrigió, y hay un test que
+prohíbe volver — **pero solo en esa página**.
+
+Lo que este ítem propone es el barrido general: `/ayuda` («no guarda tus datos»),
+`/contacto` («No usamos tu dirección para nada más que responderte») y
+`AvisoDeCookies` son texto libre en páginas indexadas que afirman cosas sobre
+tratamiento de datos, y **nada verifica que sigan siendo ciertas** cuando la
+analítica cambie. El caso de `/apoyar` muestra que la afirmación puede nacer
+falsa, no solo envejecer.
+
+La forma sería un test que barra el texto de las cuatro y exija que toda
+afirmación sobre medición esté condicionada al consentimiento, con la lista de
+patrones en un solo lugar.
+
+---
+
+### B-782 · P2 — `docs/07-seguridad.md` y `docs/13-agentes.md` no nombran las páginas de texto
+
+Drift **anterior a este cambio**, encontrado por el `auditor-privacidad` al buscar
+dónde numerar `/apoyar`. `docs/12-sitio-publico.md` llamaba a `/404` «la salida
+pública 13», pero las tres tablas atadas tienen **doce** filas y **ninguna nombra
+`/ayuda`, `/contacto`, `/suscribirse` ni `/404`**.
+
+O sea que cuatro páginas indexadas de texto libre nacieron sin que ninguna de las
+tres tablas las nombre — y *lo que decide si el `auditor-privacidad` mira un
+archivo es que alguna de ellas lo nombre*. Es el agujero de la salida 5, que
+estuvo abierto hasta el 2026-08-27.
+
+`tests/agentes-y-skills.test.ts` no lo puede ver: ata las tres tablas entre sí y
+la prosa, pero **no mira `docs/12`**.
+
+El dictamen del auditor —y lo que ya apliqué en `docs/12`— es que **esas páginas no
+se numeran**: no proyectan ningún documento, así que una fila más agregaría, por
+cada campo nuevo del modelo, una celda cuya respuesta es siempre «no sale» (el
+criterio de D-320). Lo que falta es **el párrafo de la clase**, que
+`07-seguridad.md` ya tiene a medias y que ni la ficha ni el skill mencionan. El
+texto exacto está en el § 7 de este archivo.
+
+Test que lo fijaría: barrer `docs/12-sitio-publico.md` buscando
+`/salida(s)? pública s? \d+/` y exigir que todo número citado sea ≤ la cantidad de
+filas de la tabla de la ficha.
+
+> Y un aviso si el coordinador prefiere lo contrario (numerar todo HTML indexado
+> escrito a mano): no son «13 para `/404`», son **cinco** filas nuevas
+> (`/suscribirse`, `/ayuda`, `/contacto`, `/404`, `/apoyar` → 13 a 17) en los tres
+> archivos, **más** agregar `trece`…`diecisiete` al `PALABRAS` de
+> `tests/agentes-y-skills.test.ts`, que hoy corta en `12: 'doce'` y **falla** en
+> cuanto una tabla pase de doce filas.
+
+---
+
+### B-783 · P2 — `src/lib/enlaces.ts` no despierta al `auditor-privacidad`
+
+El disparador se **deriva del `description`** de
+`.claude/agents/auditor-privacidad.md` (`scripts/auditores-que-corresponden.mjs`),
+y ese `description` no nombra `src/lib/enlaces.ts`. Este cambio despertó al
+auditor **solo** por `sitemap.ts` y `rutasPublicas.ts`: un cambio que toque
+únicamente el destino de Cafecito no lo despierta.
+
+Y `enlaces.ts` es el único lugar donde viven **la dirección privada del `.ics`**,
+la casilla del proyecto y ahora un **destino de cobro** — más el archivo donde ya
+hubo una fuga real (B-246: una casilla ajena versionada, tres días en un repo
+público). Un cambio de una línea ahí puede repuntar un destino externo en todas
+las páginas del sitio sin que nada pregunte.
+
+**Arreglo:** insertar `src/lib/enlaces.ts, ` inmediatamente antes de
+`src/lib/rutasPublicas.ts, ` en el `description` de la ficha. Entra solo al
+disparador, sin tocar el script.
+
+**Test:** en `tests/auditores-que-corresponden.test.ts`,
+`expect(auditoresQueCorresponden(['src/lib/enlaces.ts'], fichas).privacidad.corresponde).toBe(true)`.
+
+`apoyoDelSitio.ts` yo lo dejaría afuera, por consistencia con `/ayuda` y
+`/contacto`: su red es el test propio con centinelas.
+
+---
+
+### B-784 · P2 — la ficha del auditor dice que B-480 está pendiente, y ya está hecho
+
+`.claude/agents/auditor-privacidad.md` (fila 12): «Es la puerta que **B-480** deja
+**pendiente** de un ajuste manual en la consola de GA4». `docs/BACKLOG.md:2996` y
+`docs/CHANGELOG.md:626` dicen ✅ hecho el 2026-09-03.
+
+Importa para `/apoyar`: «un click a Cafecito no se mide» es cierto **solo** porque
+B-480 está cerrado. Con la ficha desactualizada, el próximo auditor no sabe si esa
+afirmación de la página es verdadera.
+
+**Arreglo (texto del auditor):** reemplazar «Es la puerta que **B-480** … deja
+pendiente de un ajuste manual en la consola de GA4, no de código» por «Esa puerta
+la cerró **B-480** el 2026-09-03 en la consola de GA4 (búsquedas en el sitio,
+clics salientes, `page_view` por historial, y borrado de la clave `q`): es
+configuración y no código, así que **no hay test que la sostenga** — si alguien la
+reactiva, ningún rojo lo dice».
+
+---
+
+### B-785 · P3 — `/apoyar` no está en la ayuda ni en el `Organization` del §5.5
+
+Dos huecos chicos, los dos deliberados para no tocar archivos de otros frentes:
+
+- **`/ayuda` no la menciona.** Hay una pregunta natural que hoy no está contestada
+  en ningún lado: «¿esto es gratis? ¿quién lo paga?». La respuesta vive en
+  `/apoyar` y la ayuda es donde se busca. Es una entrada en
+  `src/lib/ayudaDelSitio.ts` con su enlace, en el grupo «Qué es esta agenda».
+- **El `Organization` del §5.5** —que sigue sin existir— es donde iría el
+  `funder`/`sameAs` del perfil. No se agrega JSON-LD a `/apoyar` sola: sería un
+  `Organization` suelto en una página secundaria, compitiendo con el que algún día
+  vaya en la home.
+
+---
+
+### B-786 · P3 — el `Referer` a Cafecito, y cuándo habría que volver a decidirlo
+
+El enlace sale con el `Referer` por defecto
+(`strict-origin-when-cross-origin`), así que a Cafecito le llega
+`https://agendaleh.ar` — el origen, sin ruta ni query. No identifica a nadie, y no
+se puso `noreferrer` a propósito: borraría la única señal de que el aporte vino del
+sitio, y eso es información que nos interesa perder por nada.
+
+Queda anotado por dos motivos. Uno: es la primera vez que el sitio manda un
+`Referer` a un tercero **por una acción de la persona**, y el criterio con el que se
+decidió que está bien tiene que estar escrito antes de que haya un segundo caso.
+Dos: **si algún día el enlace sale desde otra página** —una tira en el pie de la
+página de detalle, por ejemplo— el `Referer` pasa a decir **qué actividad** estaba
+mirando, y ahí sí hay algo que decidir.
+```
+
+---
+
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
 ```

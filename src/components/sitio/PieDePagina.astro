@@ -45,6 +45,7 @@ import { QUE_ES, BAJADA, NOMBRE } from '@/lib/identidad';
 import { urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
 import {
   RUTA_ANUNCIAR,
+  RUTA_APOYAR,
   RUTA_AYUDA,
   RUTA_CONTACTO,
   RUTA_PASADAS,
@@ -128,6 +129,17 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             quedan las cuatro que sirven a quien vino por una actividad.
           */}
           <a class={`${claseFila} sm:justify-end`} href={RUTA_ANUNCIAR}>Anunciar en la agenda</a>
+            **`/apoyar` se enlaza desde el pie y no desde el encabezado** —
+            B-780, mismo criterio con el que `/pasadas` vive acá (B-109): la
+            barra ya tiene cinco pestañas y un sexto lugar fijo le daría a un
+            pedido el mismo peso que a la agenda. Y acá pesa además lo que la
+            página dice: una que promete que nadie tiene que pagar nada y
+            aparece en la barra de todas las pantallas se contradice sola.
+
+            Va **última** de la columna, después de la ayuda: es lo que se mira
+            al final, si se mira.
+          */}
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_APOYAR}>Apoyar la agenda</a>
         </li>
       </ul>
     </nav>

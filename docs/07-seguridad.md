@@ -79,17 +79,29 @@ de dónde sale. Lo señaló el `auditor-privacidad`.
 
 **Las páginas de texto del sitio no son una salida más, y conviene tenerlo
 escrito** para que nadie las cuente ni las deje de mirar. `/ayuda` y `/contacto`
-(B-232) no proyectan ningún documento: su contenido está escrito a mano en
-`src/lib/ayudaDelSitio.ts` y `src/lib/contactoDelSitio.ts`. No hay campo que se pueda
-colar por un spread, así que no hay proyección que auditar.
+(B-232), `/suscribirse` (B-230), `/404` (B-310) y `/apoyar` (B-780) no proyectan
+ningún documento: su contenido está escrito a mano en `src/lib/ayudaDelSitio.ts`,
+`src/lib/contactoDelSitio.ts`, `src/lib/enlaces.ts`, `src/lib/noEncontrado.ts` y
+`src/lib/apoyoDelSitio.ts`. No hay campo que se pueda colar por un spread, así que
+no hay proyección que auditar — y por eso **ninguna se numera**: una fila más en las
+tres tablas atadas agregaría, por cada campo nuevo del modelo, una celda cuya
+respuesta es siempre «no sale», que es el criterio de D-320.
+`docs/12-sitio-publico.md` llamaba a `/404` «la salida pública 13»: era esta clase
+mal contada, y se corrigió con B-780.
 
-Lo que sí tienen es el riesgo propio del texto libre en una página pública: el
-**ejemplo bien intencionado**. Una ayuda que explica por qué el link de la reunión no
-se publica está a una frase de ilustrarlo con un link de reunión de verdad, que es la
-trampa 5 entrando por la puerta que ninguna proyección cubre. Por eso los dos módulos
-tienen barrido de centinelas en sus tests (`zoom.us/j`, `meet.google.com/`, `wa.me/`,
-cualquier `http`) y el chequeo de que la casilla de contacto no está escrita en el
-marcado de ninguna página — sale de `enlaces.ts` o no sale.
+**`/apoyar` (B-780) suma la primera arista propia de esta clase: un destino de
+salida a un tercero que recibe plata.** `CAFECITO` y `urlDeCafecito()`
+(`src/lib/enlaces.ts`) son el único lugar donde ese destino se escribe — la página
+no escribe ninguna URL y `tests/apoyo-del-sitio.test.ts` lo exige. El botón lo
+dibuja el sitio con `claseBotonPrimario` y **no** se usa el botón oficial de
+Cafecito (un `<img>` de `cdn.cafecito.app`), que sería un host de tercero en el
+load: eso lo cuida `tests/terceros-antes-del-consentimiento.test.ts` para todo lo
+que no es `<img>`, y el `<img>` en particular lo cubre el barrido de
+`tests/apoyo-del-sitio.test.ts` sobre `src/` y `public/`. Lo único que viaja a
+Cafecito es el click de quien lo dio, con el `Referer` que el navegador manda por
+default (`strict-origin-when-cross-origin`: el origen, sin ruta ni query). El clic
+saliente **no se mide** —B-480 lo apagó en la consola de GA4—, así que la salida 12
+no crece con esta página.
 
 ## Qué NUNCA sale
 

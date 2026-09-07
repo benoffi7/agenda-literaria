@@ -73,6 +73,17 @@ import {
  * corresponde a una página que no está en el menú.
  */
 export type Seccion = 'agenda' | 'cartelera' | 'suscribirse' | 'ayuda' | 'contacto' | 'anunciar';
+ * `'apoyar'` está en la unión y **no** en `ENLACES`, y eso es a propósito
+ * (B-780). `Base.astro` apaga el encabezado y el pie enteros cuando no le pasan
+ * sección (`'ninguna'`, para `/admin`), así que una página del sitio tiene que
+ * declarar la suya para tener chrome —lo exige `tests/chrome-del-sitio.test.ts`—
+ * pero declararla no la pone en la barra: `activa` solo se compara contra las
+ * entradas de abajo, y una sección sin entrada simplemente no marca ninguna
+ * pestaña. Es lo que le hacía falta a `/apoyar`, que entra por el pie y por el
+ * sitemap; `/pasadas` resolvió el mismo caso reusando `'agenda'`, que marcaba
+ * una pestaña equivocada.
+ */
+export type Seccion = 'agenda' | 'cartelera' | 'suscribirse' | 'ayuda' | 'contacto' | 'apoyar';
 
 interface Props {
   activa?: Seccion;

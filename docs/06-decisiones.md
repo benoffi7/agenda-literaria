@@ -8051,3 +8051,66 @@ decide contarla igual, es **B-772**, junto con la fila pendiente del `/404`
 ```
 
 ---
+
+## D-460 · La página se llama `/apoyar`, y no `/donar` ni `/colaborar`
+
+**Fecha:** 2026-09-04 · **Ítem:** B-780
+
+**Decisión:** la ruta es `/apoyar`.
+
+**Motivo:** los tres nombres se pensaron y dos tenían un problema concreto.
+
+- **`/donar`** reduce la página a la plata, y la mitad de lo que ofrece no es
+  plata: mandar una actividad que falta o pasarle el link a alguien sostienen la
+  agenda igual, y de hecho más. «Donar» además pone al visitante frente a una
+  causa, y esto no es una causa.
+- **`/colaborar`** es el peor de los tres. En el circuito literario «colaborar»
+  quiere decir *colaborar con el contenido* —mandar un texto, sugerir una
+  actividad—, que es exactamente lo que hace `/contacto`. Serían dos páginas que
+  suenan a lo mismo y contestan cosas distintas.
+- **`/apoyar`** es el verbo de quien entra, cubre las dos formas y no promete nada
+  que la página no tenga.
+
+**Consecuencia:** el razonamiento vive en `RUTA_APOYAR`
+(`src/lib/rutasPublicas.ts`), donde lo va a leer quien vaya a renombrarla. Y no se
+renombra después de publicar, como cualquier ruta (trampa 10).
+
+---
+
+## D-461 · `/apoyar` entra por el pie y por el sitemap, no por el encabezado
+
+**Fecha:** 2026-09-04 · **Ítem:** B-780
+
+**Decisión:** la página se enlaza desde el pie y desde el `sitemap.xml`, sin
+`noindex`. **No** tiene pestaña en el encabezado.
+
+**Motivo:** dos, y el segundo es propio de esta página.
+
+1. El de siempre, el que B-109 ya aplicó a `/pasadas`: la barra tiene cinco
+   pestañas y un sexto lugar fijo le daría a un pedido el mismo peso que a la
+   agenda. Para lo que esta ruta necesita alcanza **un** link permanente desde
+   todas las páginas, y el pie lo es.
+2. El propio: **una página que promete que nadie tiene que pagar nada y aparece en
+   la navegación de todas las pantallas se contradice sola.** Lo que hace que un
+   aporte sea un gesto y no un peaje es que haya que ir a buscarlo.
+
+Y **sí se indexa**. Es tentador esconderla para que el sitio no parezca que pide
+plata, y sería al revés: es la página que contesta «¿quién hace esto y cómo se
+sostiene?» —lo primero que se pregunta quien llega a un sitio que no conoce— y
+esconderla del buscador es esconder justamente donde está escrito que no hace
+falta pagar nada. Mismo razonamiento con el que `/contacto` se indexa aunque
+publique una casilla.
+
+**Mecánica:** `'apoyar'` entra al tipo `Seccion` de `Encabezado.astro` y **no** a
+su lista `ENLACES`. Eso es lo que le da encabezado y pie sin darle pestaña:
+`Base.astro` los apaga enteros si no le pasan sección (`'ninguna'`, para `/admin`)
+y `activa` solo se compara contra las entradas de `ENLACES`. Es la forma que a
+`/pasadas` le faltaba —reusó `'agenda'` y marca una pestaña equivocada— y queda
+disponible para la próxima página de pie.
+
+**Consecuencia:** `tests/apoyo-del-sitio.test.ts` ata las **dos** direcciones (el
+pie la enlaza, el encabezado no), así que el día que se decida subirla el caso se
+pone en rojo y hay que venir a decidirlo acá.
+```
+
+---

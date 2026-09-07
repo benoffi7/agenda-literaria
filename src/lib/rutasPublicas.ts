@@ -178,6 +178,26 @@ export const RUTA_AYUDA = rutaCanonica('/ayuda');
 export const RUTA_CONTACTO = rutaCanonica('/contacto');
 
 /**
+ * `/apoyar/` — la página de aportes, B-780.
+ *
+ * **Se llama `/apoyar` y no `/donar` ni `/colaborar`**, y los tres se pensaron:
+ *
+ * - **`/donar`** reduce la página a la plata, y la mitad de lo que ofrece no es
+ *   plata: mandar una actividad que falta o pasarle el link a alguien sostienen
+ *   la agenda igual. Además «donar» pone al visitante frente a una causa, y esto
+ *   no es una causa.
+ * - **`/colaborar`** en este circuito quiere decir *colaborar con el contenido*
+ *   —mandar un texto, sugerir una actividad—, que es exactamente lo que hace
+ *   `/contacto`. Dos páginas que suenan a lo mismo y contestan cosas distintas
+ *   es la peor de las tres.
+ * - **`/apoyar`** es el verbo de quien entra: apoyar la agenda. Cubre las dos
+ *   formas y no promete nada que la página no tenga.
+ *
+ * Y no se renombra después de publicar, como cualquier ruta (trampa 10).
+ */
+export const RUTA_APOYAR = rutaCanonica('/apoyar');
+
+/**
  * El archivo: `/pasadas/` — B-109, §4.5 del diseño.
  *
  * Vive acá y no como literal en cada llamador porque tiene **tres** consumidores

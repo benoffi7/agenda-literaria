@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **La sección para apoyar la agenda, `/apoyar`** — **B-780**, **D-460**,
+  **D-461**: qué cuesta plata, el enlace a Cafecito y **tres formas que no
+  cuestan nada** y ayudan más. Sin embeber un tercero: el botón se dibuja acá.
+
 - **La sección comercial, `/anunciar`** — **B-770**, **D-450**: ofrece espacio
   a cafés, librerías y espacios culturales, con un mail como única acción. Sin
   planes ni precios, y **sin inventar un número de audiencia** que el sitio
@@ -54,6 +58,45 @@
   Mañana / Este finde» en la home sin aplanar los ciclos en el navegador. La UI de
   esos paneles todavía no está: esto es solo el dato. *(La puso **B-600** el mismo
   día — ver «Sin publicar», arriba.)*
+
+```md
+### `/apoyar` — la sección de donaciones, con Cafecito (B-780)
+
+Una página nueva que cuenta **qué es la agenda y qué cuesta sostenerla**, en vez
+de pedir. Es la primera del sitio que le pide algo a quien la lee.
+
+- **Ruta `/apoyar`**, elegida entre tres (**D-460**). Entra al `sitemap.xml`
+  **sin `noindex`** y se enlaza desde el **pie**, no desde el encabezado
+  (**D-461**).
+- **El texto vive entero en `src/lib/apoyoDelSitio.ts`** y la plantilla solo
+  acomoda (D-140) — el `<title>` y la `meta description` incluidos, que es un
+  desvío contra `/ayuda` y `/contacto` con motivo: escritas en el `.astro` quedan
+  afuera del barrido de centinelas.
+- **Cuatro promesas exigidas una por una** en `tests/apoyo-del-sitio.test.ts`:
+  «la agenda es gratis» (en la primera línea), «si nadie aporta no pasa nada»,
+  «una parte se la quedan Cafecito y Mercado Pago» y «aportar no compra un lugar
+  en la agenda». Ninguna es necesaria para que la página se vea bien, así que un
+  rediseño las puede borrar de a una con el build en verde.
+- **Y el tono está atado por su negación**: la lista de fórmulas que este texto no
+  puede usar, más cero signos de exclamación y un tope al chiste del café. Es el
+  mismo mecanismo con el que `sistema-visual.test.ts` prohíbe las sombras.
+- **El botón lo dibuja el sitio.** Cafecito ofrece uno para pegar —un `<img>` de
+  `cdn.cafecito.app` dentro de un `<a>`— y no se usa: sería un host de tercero en
+  el load. A Cafecito se va por un enlace de salida.
+- **Ningún evento nuevo de analítica** (B-480 apagó los clics salientes) y **sin
+  porcentaje de comisión escrito**: se dice que hay comisión y se manda a leerla
+  donde es cierta.
+- Nuevo: `src/pages/apoyar.astro`, `src/lib/apoyoDelSitio.ts`,
+  `tests/apoyo-del-sitio.test.ts`. Tocados: `src/lib/enlaces.ts`,
+  `src/lib/rutasPublicas.ts`, `src/lib/sitemap.ts`,
+  `src/components/sitio/PieDePagina.astro`,
+  `src/components/sitio/Encabezado.astro`, `tests/enlaces.test.ts`,
+  `docs/12-sitio-publico.md`.
+
+> ⛔ **Bloqueante del deploy: el perfil de Cafecito no existe.** Ver **B-780**.
+```
+
+---
 
 ## 2026-09-04 · la sección comercial: `/anunciar` (B-770, D-450)
 
