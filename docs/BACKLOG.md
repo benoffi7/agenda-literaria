@@ -10178,7 +10178,20 @@ lo cerró el `auditor-privacidad` en B-109. Falta **diseñar y generar los cinco
 archivos**, y elegirlos por tipo con la misma derivación que el color (`identidad.ts`),
 no con un `switch` que deje sin imagen al tipo que alguien cree mañana (§4, trampa 6).
 
-### B-292 · `/pasadas` no tiene buscador propio · P3
+### B-292 · ✅ hecho — `/pasadas` no tiene buscador propio
+
+**Ya estaba resuelto cuando se revisó el 2026-09-07**, y con la salida que este
+ítem descartaba —«enseñarle un modo nuevo a esa island»— cambiada por otra mejor:
+`BuscadorDePasadas` es una **island propia y chica**, y lo que se compartió es **el
+match**, no el componente. `buscarEnPasadas` (`src/lib/pasadasPublicas.ts`) filtra
+con `coincideBusqueda`, que se separó de `filtrarPublico` justamente para esto: una
+sola definición de «coincide» para la home y para el archivo, que era la clase de
+B-88 en la funcionalidad que la gente usa tipeando.
+
+El planteo original queda abajo.
+
+---
+
 
 El §4.5 pide la página «sin filtros salvo la búsqueda», y la búsqueda que el sitio
 tiene es la island de la home, que filtra `vigentesDelIndice` — el índice de lo
@@ -10447,7 +10460,17 @@ imagen—, y esa es la pregunta que D-175 disolvió en vez de resolver. Con
 `allow list` cerrado y el path derivado del id de la fila puede alcanzar con
 derivarlo, igual que la miniatura; hay que mirarlo.
 
-### B-325 · El `package-lock.json` decía 1.1.0 con el `package.json` en 1.5.0 · P3
+### B-325 · ✅ hecho — El `package-lock.json` decía 1.1.0 con el `package.json` en 1.5.0
+
+**Cerrado por el `npm install` de la subida a Astro 7**, y su propio autor lo había
+previsto: el `it.fails` que marcaba la clase pasó a verde y hubo que promoverlo a
+`it`, que es exactamente la señal que ese patrón existe para dar. Verificado el
+2026-09-07: `package.json` y `package-lock.json` dicen los dos **1.8.0**.
+
+El planteo original queda abajo.
+
+---
+
 
 Encontrado de paso al instalar dependencias en un worktree nuevo el 2026-09-02
 (B-220): `npm install` cambió **dos líneas** del lock, las dos el campo `version`
@@ -10569,7 +10592,23 @@ Un archivo chico de mapeo —trampa, archivo donde vive, test que la fija— har
 reporte determinístico y, de paso, un test podría verificar que las diez trampas
 sigan teniendo dueño. Es la mitad de B-63 aplicada a las trampas.
 
-### B-120 · Nada verifica que `13-agentes.md` liste los agentes que existen · P3
+### B-120 · ✅ hecho — Nada verifica que `13-agentes.md` liste los agentes que existen
+
+**Ya estaba resuelto cuando se revisó el 2026-09-07, y el test lo dice en su
+nombre:** `tests/agentes-y-skills.test.ts`,
+`describe('docs/13-agentes.md dice lo que hay — cierra B-120')`, con **las dos
+direcciones** que este ítem pedía —«nombra todos los agentes y skills que existen»
+y «no nombra agentes ni skills que ya no existen»—. La lista sale del directorio
+`.claude/` vía `git ls-files`, no escrita a mano.
+
+La validación del frontmatter, que el ítem mencionaba como «también podría», está
+en el `describe('las definiciones de .claude/ cargan de verdad — B-139')` del mismo
+archivo.
+
+El planteo original queda abajo.
+
+---
+
 
 Un agente nuevo en `.claude/agents/` que no entre al documento es invisible: no
 lo va a invocar nadie que lea la doc. Y al revés, un agente borrado deja una
@@ -10703,7 +10742,26 @@ Dos detalles que valieron la pena:
   Lo escribí mal la primera vez y el propio script gritó en falso; la primera vez que
   un chequeo grita en falso se lo empieza a ignorar, así que también tiene test.
 
-### B-261 · D-145 sigue citando `overflow-x-hidden`, y el `body` pasó a `overflow-x: clip` · P3
+### B-261 · ✅ hecho (2026-09-07) — D-145 sigue citando `overflow-x-hidden`, y el `body` pasó a `overflow-x: clip`
+
+**La mitad del test ya estaba** (el `bodyRecorta` de `detalle-visual.test.ts`
+preguntaba por el literal y pasó a leer **cuál** es el modo contra la lista de los
+que crean contenedor de scroll). Faltaba la nota en la decisión, que es la que este
+ítem pedía, y está escrita con el cuidado que el propio ítem pide: **no se reescribió
+el original**, va como aviso apilado arriba.
+
+Y al escribirla apareció lo que la nota tenía que decir y el ítem no había visto:
+B-259 cambió `hidden` por `clip` **justamente porque `hidden` rompe `sticky` en
+silencio**, o sea que el problema que D-145 describe es el que B-259 fue a arreglar
+un nivel más abajo. Con `clip`, `sticky` **funcionaría**; lo que ya no hay es
+urgencia de cambiar el CTA, porque `fixed` anda. El invariante condicional del test
+sigue verde, pero **por la otra rama** —`bodyRecorta` es falso— y eso es lo que hace
+que no haya que tocarlo: está escrito como cruce y no como prohibición.
+
+El planteo original queda abajo.
+
+---
+
 
 Lo encontró el `auditor-documentacion` al cerrar B-260, y **es anterior a ese
 cambio**: D-145 explica por qué la barra fija del detalle es `fixed` y no `sticky`

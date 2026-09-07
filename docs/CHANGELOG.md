@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **Cuatro ítems del backlog que ya estaban resueltos, y uno que faltaba a medias**
+  — **B-261**, **B-120**, **B-292** y **B-325**.
+
+  De B-261 faltaba solo la nota en **D-145**, que sigue explicando la barra fija del
+  detalle con un `overflow-x-hidden` que el `body` no tiene desde B-259. Va como
+  aviso apilado —sin reescribir el original— y al escribirla apareció lo que el ítem
+  no había visto: B-259 cambió `hidden` por `clip` **justamente porque `hidden`
+  rompe `sticky` en silencio**, o sea que el problema que D-145 describe es el que
+  B-259 fue a arreglar un nivel más abajo. El invariante del test sigue verde pero
+  **por la otra rama**, y eso es lo correcto: está escrito como cruce y no como
+  prohibición.
+
+  Los otros tres estaban hechos y quedaron abiertos: B-120 tiene su test («cierra
+  B-120» en el nombre, con las dos direcciones y la lista sacada del directorio),
+  B-292 tiene `BuscadorDePasadas` como island propia compartiendo **el match** y no
+  el componente, y B-325 lo cerró el `npm install` de la subida a Astro 7 —su
+  `it.fails` pasó a verde y hubo que promoverlo, que es la señal que ese patrón
+  existe para dar—.
+
 - **La carga de la colección del panel vive en un solo lugar** — **B-215**, la
   segunda de las tres duplicaciones. Era el mismo `useEffect` **verbatim** en
   `ListaActividades` y `CalendarioActividades`, y salió a `useActividades(version)`.

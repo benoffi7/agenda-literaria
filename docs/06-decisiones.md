@@ -4188,6 +4188,28 @@ sí toma de ahí es el **cintillo del tipo**: una barra fina y el nombre del tip
 
 ## D-145 · El CTA fijo de móvil no lleva JavaScript, y es `fixed` y no `sticky`
 
+> ⚠️ **El disparador de la decisión 2 ya no existe: el `body` no lleva
+> `overflow-x-hidden` desde B-259 — pasó a `overflow-x: clip`.** Lo encontró el
+> `auditor-documentacion`, y es **anterior** al cambio que lo encontró.
+>
+> Quien lea la decisión abajo va a buscar en `Base.astro` algo que no está. Qué
+> queda en pie y qué no:
+>
+> - **La decisión sigue siendo la correcta y el CTA sigue siendo `fixed`.** No hay
+>   nada que cambiar en el código.
+> - **El motivo que la justificaba cambió de forma, no de fondo.** B-259 cambió
+>   `hidden` por `clip` **justamente porque `hidden` crea un contenedor de scroll y
+>   rompe `sticky` en silencio** — o sea que el problema que esta entrada describe
+>   es el que B-259 fue a arreglar, un nivel más abajo. Con `clip`, `sticky`
+>   **funcionaría**; lo que ya no hay es la urgencia de cambiar el CTA, porque
+>   `fixed` anda y la barra no tiene ningún problema.
+> - **El invariante condicional de abajo sigue teniendo sentido y sigue verde**,
+>   pero ahora por la otra rama: `bodyRecorta` es falso. Eso es lo correcto y es lo
+>   que hace que el chequeo no haya que tocarlo — está escrito como cruce y no como
+>   prohibición precisamente para esto.
+>
+> Lo de abajo queda como estaba escrito.
+
 **Contexto.** El §8 del diseño pedía «CTA fijo abajo en el detalle, con `pb-segura`,
 **desde que el botón original sale de la pantalla**». B-238 no lo construyó y anotó
 por qué: esa cláusula —«desde que sale de la pantalla»— obliga a medir el scroll, o
