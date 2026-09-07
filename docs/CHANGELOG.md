@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El logo del proyecto**, y la home abre con él: el trébol de tres libros junto
+  a «Agenda LEH» en Archivo Narrow, centrado. Reemplaza a `marca.svg`, que era una
+  marca de relleno hecha para tener algo mientras no hubiera logo. El favicon pasa
+  a tres PNG (32 / 180 / 512); **a 32px la marca se lee como forma y no como tres
+  libros**, que es el precio del cambio y está escrito donde se declara.
+
 - **El Instagram del proyecto es `@agenda.leh`** — era `@librosdelatiahildita`, la
   cuenta personal que se usó mientras el proyecto no tenía la suya. Se cambió en un
   solo lugar (`enlaces.ts`), que es para lo que ese módulo existe: el pie, el

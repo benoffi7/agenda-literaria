@@ -136,22 +136,37 @@ const conChrome = seccion !== 'ninguna';
       página que no queremos en Google igual se comparte por WhatsApp.
     */}
     {/*
-      El favicon — B-295. Tres declaraciones y ninguna de más:
+      El favicon — B-295, rehecho el 2026-09-07 con el logo del proyecto.
 
-      · **`marca.svg`** es la principal. Nueve rectángulos, 2,6 KB, nítida a
-        cualquier tamaño. Lleva `color` en el `<link>` porque un SVG con
-        `currentColor` no tiene de quién heredar cuando lo pide el navegador
-        como icono: sin eso sale negro por defecto y no en la tinta del sitio.
-      · **`compartir.png`** cubre a Safari, que hasta hace poco ignoraba el SVG,
-        y a Android como icono de la pantalla de inicio.
-      · **`mask-icon`** es el pinned tab de Safari, que es monocromo por diseño.
+      Antes era `marca.svg`: nueve rectángulos, 2,6 KB, nítidos a cualquier
+      tamaño. Se retira porque **era una marca de relleno** —hecha para tener
+      algo mientras no hubiera logo— y tener dos marcas distintas según el tamaño
+      del icono es peor que perder nitidez en una.
+
+      El logo es un trébol de tres libros abiertos, en el terracota y la tinta del
+      sistema. Es un raster (no hay versión vectorial), así que van tres tamaños en
+      vez de un SVG:
+
+      · **32px** para la pestaña. Es el precio de este cambio y conviene tenerlo
+        escrito: a ese tamaño los contornos finos se juntan y la marca se lee como
+        una forma, no como tres libros. El SVG viejo era más legible ahí y menos
+        parecido a la marca.
+      · **180px** para el icono de pantalla de inicio de iOS.
+      · **512px** para Android y para cualquier consumidor que quiera el grande.
+
+      Se fue el `mask-icon` (el pinned tab de Safari, monocromo por diseño): pedía
+      un SVG y el logo no lo tiene. Safari cae al de 32, que es lo correcto.
+
+      **`compartir.png` sigue siendo el `og:image`** y no se toca: el logo es
+      cuadrado y con fondo transparente, o sea justo lo que no funciona en la
+      previsualización de un chat.
 
       No hay `.ico`: solo lo pide IE y buscarlo en la raíz da un 404 silencioso
       que a nadie molesta.
     */}
-    <link rel="icon" type="image/svg+xml" href="/marca.svg" color="#1B1C19" />
-    <link rel="apple-touch-icon" href="/compartir.png" />
-    <link rel="mask-icon" href="/marca.svg" color="#1B1C19" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/marca-32.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/marca-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/marca-180.png" />
     <link rel="canonical" href={canonical} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={NOMBRE} />

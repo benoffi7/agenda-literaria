@@ -169,7 +169,40 @@ const schemaHome = coleccionSchema(TITULO_DE_LA_HOME, RUTA_AGENDA, vigentes);
       32px— y **no** en `display-lg`: el cuerpo de 72px es del marcador de mes, y
       dos cosas al mismo tamaño máximo es ninguna.
     */}
-    <div class="max-w-3xl">
+    {/*
+      **La marca de la home: el logo y el nombre, centrados** — pedido del dueño
+      el 2026-09-07.
+
+      Tres decisiones que valen escritas:
+
+      · **El `alt` está vacío a propósito.** El nombre del sitio está escrito al
+        lado, en texto: un `alt="Agenda LEH"` haría que un lector de pantalla lo
+        diga dos veces seguidas. Es la regla de la imagen decorativa junto a su
+        propio rótulo, no un olvido.
+      · **`width` y `height` explícitos**, y el archivo grande servido chico: sin
+        las dos medidas el navegador no reserva el lugar y la página salta cuando
+        el PNG llega. Se pide el de 512 y no el de 180 porque en una pantalla
+        retina 96px de caja son 192px de píxeles.
+      · **No es un enlace.** El nombre del encabezado ya lleva a la home, y un
+        segundo enlace a la página en la que ya estás es una parada de tabulación
+        que no hace nada.
+
+      Va **arriba del titular y no en su lugar**: el titular es la frase que se
+      busca en Google —«talleres, clubes de lectura y encuentros»— y sigue siendo
+      el `h1`. Esto es la cabecera de la publicación.
+    */}
+    <div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-5">
+      <img
+        src="/marca-512.png"
+        alt=""
+        width="96"
+        height="96"
+        class="h-20 w-20 sm:h-24 sm:w-24"
+      />
+      <p class="marca-home text-tinta">{NOMBRE}</p>
+    </div>
+
+    <div class="mt-8 max-w-3xl sm:mt-10">
       <h1 class="headline-md text-balance text-tinta">{TITULO_DE_LA_HOME}</h1>
       <p class="body-md mt-3 text-super">
         {cuantas === 0
