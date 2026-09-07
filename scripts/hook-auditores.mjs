@@ -50,6 +50,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { auditoresQueCorresponden, leerFichas } from './auditores-que-corresponden.mjs';
+import { esUnCommit } from './comando-de-commit.mjs';
 import { huellaDeAuditoria } from './huella-de-auditoria.mjs';
 
 /** El único auditor que corre solo. La decisión de B-124 en una constante. */
@@ -179,8 +180,13 @@ const modos = {
    */
   commit() {
     const comando = entrada().tool_input?.command ?? '';
-    // Pre-filtro barato: nada de git antes de saber que es un commit.
-    if (!/\bgit\b[^\n]*\bcommit\b/.test(comando)) return 0;
+    /*
+     * Pre-filtro barato: nada de git antes de saber que escribe. La detección
+     * vive en `comando-de-commit.mjs` y mira **el código y no el texto** — B-799:
+     * antes frenaba cualquier comando que tuviera las dos palabras en algún
+     * lado, incluido un `git log` con la palabra adentro de un `echo`.
+     */
+    if (!esUnCommit(comando)) return 0;
     if (/SALTEAR_AUDITORES=1/.test(comando)) {
       process.stderr.write('⚠ Auditor de privacidad salteado por SALTEAR_AUDITORES=1.\n');
       return 0;

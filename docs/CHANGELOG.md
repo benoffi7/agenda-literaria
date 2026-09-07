@@ -2,6 +2,21 @@
 
 ## Sin publicar
 
+- **El hook de los auditores dejó de frenar comandos de solo lectura** —
+  **B-799**. Buscaba la palabra en cualquier parte del comando, así que frenó tres
+  veces en una sola sesión sin que ninguno escribiera nada: un `git log` con la
+  palabra adentro de un `echo`, el comando que escribía el ítem que describe este
+  problema, y otro que la nombraba en un heredoc.
+
+  Importa por la regla que el propio hook se puso: un aviso falso enseña a leer su
+  bloque como ruido, y es el bloque que un día va a estar frenando una credencial.
+
+  Se arregló sacándole al comando **lo que es texto** —heredocs y comillas— y no
+  anclando la palabra al verbo, y esa elección es lo que vale: un ancla que no
+  cubriera alguna forma de `git commit` la dejaría pasar **sin auditar**, que es el
+  modo de falla caro. Así el error queda del lado de frenar de más, y hay un caso
+  que lo fija para que nadie lo «mejore» sin decidirlo.
+
 - **Las visitas al panel contaban como visitas del sitio público** — **B-801**. Lo
   vio el dueño: `/admin/` aparecía en «Las páginas más vistas».
 

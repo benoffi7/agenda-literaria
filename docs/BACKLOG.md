@@ -2899,7 +2899,38 @@ mostrando la cuenta y no **cuál** filtro. Eso no es una métrica más — pide
 registrar dimensiones personalizadas en la consola, y no es retroactivo.
 
 
-### B-799 · P3 — el hook de los auditores frena comandos de solo lectura que dicen «commit»
+### B-799 · ✅ hecho (2026-09-07) — el hook de los auditores frena comandos de solo lectura que dicen «commit»
+
+**Arreglado sacándole al comando lo que es texto, no anclando la palabra al
+verbo** — y esa elección es la parte que importa.
+
+La tentación era exigir que la palabra fuera el verbo de un `git` de verdad
+(`/(^|[;&|])\s*git\s+commit/`). **Se descartó por la dirección del error:** una
+forma que el ancla no cubriera —un `git -C /otro/repo commit`, algo con una
+opción global en el medio— **pasaría sin auditar**, que es el modo de falla caro.
+
+Lo que se hizo es seguir con la detección amplia y aplicarla al **código y no al
+texto**: `soloCodigo` saca los cuerpos de heredoc y los spans entre comillas, que
+es donde estaban los tres falsos positivos. Así cualquier `git … commit` **fuera
+de comillas** sigue frenando, y la palabra adentro de un `echo`, de un mensaje de
+commit o del texto de un ítem del backlog deja de contar.
+
+**El orden de los dos reemplazos no es casual y tiene su caso:** los heredocs van
+primero, porque adentro puede haber una comilla sin cerrar —un apóstrofo— y sacar
+las comillas antes desbalancearía el resto del comando.
+
+**Lo que sigue siendo falso positivo, y queda aceptado con un test que lo fija:**
+un heredoc con un delimitador que el saneador no reconozca deja su cuerpo adentro.
+Frena de más, nunca de menos. Si alguien lo vuelve más preciso, ese caso se pone
+en rojo y hay que decidirlo en vez de descubrirlo.
+
+Diez casos, los cuatro que no frenan escritos con su motivo —tres son reales— y
+la mutación probada: volver al comando crudo pone los dos casos reales en rojo.
+
+El planteo original queda abajo.
+
+---
+
 
 **Encontrado usándolo el 2026-09-07, media hora después de B-796.** El hook se
 dispara sobre la **cadena del comando**, así que cualquier invocación que

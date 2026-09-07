@@ -443,6 +443,12 @@ distinto. El corte es el de `relevar-infra.sh` / `comparar-infra.sh`:
 - **`scripts/huella-de-auditoria.mjs` es la huella**, separada porque es la
   decisión y no la plomería: **qué cuenta como «el cambio ya auditado»**. Se
   testea sin git (`tests/huella-de-auditoria.test.ts`).
+- **`scripts/comando-de-commit.mjs` decide si el comando escribe**, y es la otra
+  mitad decidible: **qué cuenta como un `git commit`**. Mira el **código y no el
+  texto** —saca heredocs y comillas— porque el detector viejo frenaba cualquier
+  comando con las dos palabras en algún lado, incluido un `git log` con la palabra
+  adentro de un `echo` (B-799). Se testea sin git
+  (`tests/comando-de-commit.test.ts`).
 
 **La lista de archivos que disparan al auditor no está escrita en ninguno de los
 dos.** Se **deriva del `description` de cada agente**, que es el lugar donde ya
