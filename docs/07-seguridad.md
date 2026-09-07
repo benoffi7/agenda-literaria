@@ -4,7 +4,7 @@ Premisa del §5: **todo lo que sale al `events.json` o al calendario es público
 scrapeable.** El calendario es tan público como el JSON, así que las dos salidas
 comparten las mismas reglas.
 
-**Son doce salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
+**Son dieciocho salidas, no dos.** Conviene tenerlas contadas antes de leer el resto,
 porque la tabla de acá abajo habla de las dos primeras y es fácil auditar solo
 esas. La **6** nació con B-227 y es la primera que es una *página* y no un
 archivo de datos: por eso su proyección vive en un módulo aparte y la plantilla no
@@ -49,6 +49,12 @@ filtra — ver la advertencia después de la tabla.
 | 10 | El **archivo** `/pasadas` — HTML indexado, y el único link interno permanente de cada actividad que ya pasó (B-109) | `src/lib/pasadasPublicas.ts` (`pasadasDelSitio` decide qué entra y en qué orden; `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS` y `descripcionDePasadas` son sus frases); `src/lib/contenidoDelSitio.ts` (`vistaDePasadas`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar — y las canceladas no le llegan ni queriendo, porque nunca entran al índice (B-110). Ninguna de sus frases interpola datos de una actividad, a diferencia de la 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (**D-140**) |
 | 11 | Los **hubs de búsqueda** `/tipo/{slug}`, `/barrio/{slug}`, `/gratis` y `/online` — HTML indexado, cuatro rutas con una sola productora (B-108) | `src/lib/hubsPublicos.ts` (`hubDelSitio` arma el view-model y las frases; la `meta description` **interpola hasta tres títulos**; y desde **B-107**, `coleccionSchema` arma el `CollectionPage`/`ItemList` del JSON-LD de cada hub — la misma función que usa la home, salida 1), `src/lib/contenidoDelSitio.ts` (`caminosDeTipo`, `caminosDeBarrio`, `vistaDeHubTematico`). **Deriva de la salida 1** —`EntradaDeIndice[]`—, así que solo puede sacar campos; la etiqueta va resuelta y el slug en la URL (§4.1, trampa 10) | `tests/hubsPublicos.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` |
 | 12 | La **analítica del sitio público** (GA4, B-372/B-375/B-601) — el `page_view` automático más **tres** eventos propios | `src/lib/analyticsSitio.ts` (puro: el vocabulario y el saneador de `clic_inscripcion`, `filtro_sin_resultados` y `clic_triptico`, `ubicacionSinQuery` — recorta la query del `page_location`, y desde D-253 también del `page_referrer`); `src/lib/medicionSitio.ts` (el transporte: carga `gtag.js` solo con consentimiento `'aceptado'`, `medirSitio`); `src/components/sitio/AvisoDeCookies.astro` (el banner y el consentimiento, guardado en `localStorage`, nunca en Firestore). **Deriva de dos salidas y no del documento**: `via` viene de la salida 6 (`AccionDeInscripcion`, `detallePublico.ts`), y `eje`/`slug` —y, con B-601, también la clave del panel del tríptico— de la salida 1: los dos primeros de `filtros.valores` (`listadoPublico.ts`) y el tercero de `ClaveDePanel` (`ahoraPublico.ts`, el 7º productor de esa salida), así que solo puede sacar lo que esas dos ya decidieron publicar. **Y el productor no es solo nuestro código**: una vez que `gtag.js` carga, GA4 manda por su cuenta lo que su «Enhanced Measurement» trae activado — ver la advertencia de abajo, que es la que hace que esta fila no alcance sola | `tests/analyticsSitio.test.ts`, `tests/detallePublico.test.ts`, `tests/detalle-visual.test.ts` |
+| 13 | La página **`/suscribirse`** (B-230) — el `.ics` público del calendario y el mail de contacto | `src/lib/enlaces.ts` (`CALENDARIO_ICS`, `CONTACTO` y sus constructores: es el **único** lugar donde se escribe un destino externo del sitio) y `src/pages/suscribirse.astro`, que arma el texto. **No proyecta ningún documento**: no hay campo del modelo que se pueda colar por un spread, y por eso esta fila y las cinco de abajo se numeran **por la promesa, no por la proyección** — ver el párrafo de la clase | `tests/suscribirse.test.ts`, `tests/promesas-sobre-datos.test.ts` |
+| 14 | La **ayuda** `/ayuda` (B-232) — veintiuna preguntas escritas a mano, en HTML indexado | `src/lib/ayudaDelSitio.ts`. Texto libre que **afirma cosas sobre tratamiento de datos** («no te pedimos ni guardamos datos para anotarte»), y ése es el riesgo propio de esta clase: una afirmación así puede **nacer falsa** | `tests/ayuda-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
+| 15 | El **contacto** `/contacto` (B-232) — la casilla del proyecto y qué pasa después de escribir | `src/lib/contactoDelSitio.ts` y `src/lib/enlaces.ts` (`CONTACTO`). Afirma «no usamos tu dirección para nada más que responderte», que es una promesa **acotada a la casilla** y verificable: nada del repo guarda esa dirección | `tests/contacto-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
+| 16 | El **`/404`** (B-310) — la única página del sitio con `noindex` | `src/lib/noEncontrado.ts`. Lleva el buscador, la tira de hubs —la misma de la home, ya recortada— y el enlace al archivo. **No entra al `sitemap.xml`** y está en la lista de excepciones de ese test con su motivo | `tests/no-encontrado.test.ts`, `tests/sitemap.test.ts` |
+| 17 | La página de **apoyo** `/apoyar` (B-780) — y la primera arista propia de esta clase: un destino de cobro | `src/lib/apoyoDelSitio.ts` y `src/lib/enlaces.ts` (`CAFECITO`, `urlDeCafecito()`: el **único** lugar donde ese destino se escribe). Es la página donde la promesa ya nació falsa una vez —decía «no se guarda quién entró» con el banner de GA4 en la misma pantalla— y de ahí salió el barrido de la salida 12 cruzado con esta clase | `tests/apoyo-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/terceros-antes-del-consentimiento.test.ts` |
+| 18 | La página **comercial** `/anunciar` (B-770) — ofrece espacio y la única acción es un mail | `src/lib/comercialDelSitio.ts` y `src/lib/enlaces.ts` (`CONTACTO`). **No inventa un número de audiencia** y el test lo prohíbe: la medición arrancó el 2026-08-21, así que cualquier cifra sería inventada hasta que haya historia (B-771). Y su texto está redactado **evitando** afirmar ajustes de consola que este repo no controla (B-773) | `tests/comercial-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
 
 Y una más que **estuvo abierta hasta el 2026-08-27**: la lectura directa de
 Firestore por un anónimo, que no pasaba por ninguna de las proyecciones.
@@ -76,6 +82,29 @@ de cada plantilla: lo que ninguna arma es su propio `<head>`, y
 los dos textos que la salida ya decidió (`titulo` y `descripcion`) y una imagen
 que su view-model ya trae; lo que hay que mirar si aparece una prop nueva ahí es
 de dónde sale. Lo señaló el `auditor-privacidad`.
+
+> ⚠️ **Decisión del dueño el 2026-09-07: SÍ se numeran.** Son las filas **13 a
+> 18**, y este párrafo —que decía lo contrario— queda porque su argumento sigue
+> siendo el que hay que entender para leer bien esas seis filas.
+>
+> **Lo que el argumento tenía bien:** estas páginas no proyectan ningún
+> documento, así que no hay campo que se cuele por un spread y **no hay proyección
+> que auditar**. Eso no cambió, y es lo que hace que sus seis celdas nuevas
+> contesten «no sale» a cualquier campo del modelo.
+>
+> **Lo que el argumento no veía:** el índice de salidas no es solo un mapa de
+> proyecciones, es **la lista de lo que hay que mirar** —lo que decide si el
+> `auditor-privacidad` abre un archivo es que una de las tres tablas lo nombre—. Y
+> estas páginas tienen un riesgo propio que ninguna otra fila tiene: **la
+> promesa**. Texto libre, escrito a mano, en HTML indexado, que afirma cosas sobre
+> tratamiento de datos — y que puede **nacer falso**, como nació el de `/apoyar`.
+> Con seis páginas de esa clase afuera del índice, lo que estaba pasando es que la
+> lista de lo que hay que mirar no las nombraba.
+>
+> Así que se numeran **por la promesa, no por la proyección**. Y el costo que el
+> argumento anticipaba —una celda de más por cada campo nuevo del modelo, con la
+> respuesta siempre igual— es real y se paga: son seis celdas cuya respuesta es
+> «no sale» y que hay que escribir igual.
 
 **Las páginas de texto del sitio no son una salida más, y conviene tenerlo
 escrito** para que nadie las cuente ni las deje de mirar. `/ayuda` y `/contacto`
@@ -143,7 +172,7 @@ no crece con esta página.
 | `material.items[].id` | id de cliente (B-342), de máquina — no dice nada sobre la actividad, pero tampoco aporta nada afuera: es la trampa 2 en miniatura, no un dato de contenido | `toPublic.ts` |
 | `createdBy` / `updatedBy` | uids | ambos |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
-| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las doce salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
+| `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las dieciocho salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
 | `imagenes[].storagePath` | no lo emitimos: es el handle autoritativo y no hace falta en el sitio (B-167). **Ojo, no es un secreto:** para una imagen propia el path viaja URL-encodeado adentro de la URL de descarga, junto con un token permanente, así que es público por ese lado. Lo que lo vuelve inofensivo es que el **nombre es opaco** —`imagenes/img_<uuid>.jpg`, un solo prefijo plano y sin nada de la actividad— y que bajo ese prefijo `storage.rules` da lectura pública, así que el token no protege nada que no estuviera abierto (B-206 #1, **D-131**; **medido contra producción el 2026-09-02** — el mismo objeto responde 200 con su token, sin token y con un token inventado) | `toPublic.ts` |
 | `imagenes[].storagePath`, por la puerta de la miniatura | la miniatura de B-220 vive en `miniaturas/<id>.jpg`, **derivado** del path del original, así que su URL se puede calcular sin conocer el path… y al revés: el path del original se puede calcular desde la URL de la miniatura. No agrega exposición —las dos URLs son públicas y el nombre sigue siendo opaco— pero sí agrega una razón más para que `allow list` siga cerrado en **los dos** prefijos: enumerar uno es enumerar el otro (**D-175**) | `imagenes.ts` (`urlDeMiniatura`), `storage.rules` |

@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **Las seis páginas de texto se numeran como salidas públicas** — **B-772** y
+  **B-654**, decisión del dueño. Son las filas **13 a 18**: `/suscribirse`,
+  `/ayuda`, `/contacto`, `/404`, `/apoyar` y `/anunciar`.
+
+  El argumento para no numerarlas sigue siendo cierto en su parte —no proyectan
+  ningún documento, así que sus celdas contestan «no sale» a cualquier campo— y lo
+  que no veía es que el índice **no es solo un mapa de proyecciones**: es la lista
+  de lo que hay que mirar, porque lo que decide si el auditor abre un archivo es
+  que una tabla lo nombre. Se numeran **por la promesa, no por la proyección**.
+
+  Y el agujero se comprobó en el acto: el test que ata la ficha con la tabla pidió
+  los productores nuevos, o sea que **antes de esto un cambio que tocara solo
+  `/ayuda` o `/contacto` no despertaba al auditor por nombre de archivo**.
+
+  De paso, un falso positivo latente desde el primer día: «dieciocho salidas»
+  **contiene** «ocho salidas», así que el chequeo que compara la prosa con la tabla
+  se acusaba a sí mismo leyendo su propio encabezado correcto. Le pasaría lo mismo
+  a «nueve» dentro de «diecinueve».
+
 - **Cada encuentro del JSON-LD apunta a su propia fila** — **B-733**, aprobado por
   el dueño. El `url` de cada `subEvent` pasa de heredar la canónica de la página
   —el mismo link repetido N veces— al ancla de ese encuentro

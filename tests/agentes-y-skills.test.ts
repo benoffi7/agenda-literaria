@@ -253,9 +253,22 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
    * tabla propia, y el de `13-agentes.md`, que no tiene tabla y se mide contra
    * la de la ficha.
    */
+  /*
+   * Hasta 18 desde B-772, que numeró las seis páginas de texto. El ítem había
+   * anticipado que este mapa era parte del cambio atómico —«más agregar
+   * `trece`…`diecisiete` al `PALABRAS`, que hoy corta en 12 y **falla** en cuanto
+   * una tabla pase de doce filas»— y así fue: se puso en rojo con «no hay palabra
+   * para 18 salidas» antes que cualquier otra cosa.
+   *
+   * Llega hasta 20 y no hasta 18 a propósito: dos de colchón para que la próxima
+   * fila no vuelva a frenar el cambio por el diccionario. Más allá de eso, que
+   * frene está bien — una tabla de veinte filas es una señal por sí misma.
+   */
   const PALABRAS: Record<number, string> = {
     5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho',
     9: 'nueve', 10: 'diez', 11: 'once', 12: 'doce',
+    13: 'trece', 14: 'catorce', 15: 'quince', 16: 'dieciséis',
+    17: 'diecisiete', 18: 'dieciocho', 19: 'diecinueve', 20: 'veinte',
   };
 
   it('el parseo no se come ninguna fila de la tabla', () => {
@@ -321,7 +334,17 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
       const equivocadas = Object.entries(PALABRAS)
         .filter(([n]) => Number(n) !== cuantas)
         .map(([, palabra]) => palabra)
-        .filter((palabra) => new RegExp(`${palabra} salidas`, 'i').test(texto));
+        /*
+         * **`\\b` adelante, y hace falta de verdad desde B-772.** «dieciocho
+         * salidas» **contiene** «ocho salidas», así que sin la frontera de
+         * palabra este chequeo se acusaba a sí mismo: con la tabla en 18 filas
+         * reportaba «dice ocho salidas» leyendo su propio encabezado correcto.
+         *
+         * Es un falso positivo que solo aparece cuando la cuenta cruza a los
+         * «dieci-», o sea que estuvo latente desde el primer día y lo despertó el
+         * crecimiento. Lo mismo le pasaría a «nueve» dentro de «diecinueve».
+         */
+        .filter((palabra) => new RegExp(`\\b${palabra} salidas`, 'i').test(texto));
 
       expect(
         equivocadas,
@@ -438,7 +461,17 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     const equivocadas = Object.entries(PALABRAS)
       .filter(([n]) => Number(n) !== cuantas)
       .map(([, palabra]) => palabra)
-      .filter((palabra) => new RegExp(`${palabra} salidas`, 'i').test(texto));
+      /*
+         * **`\\b` adelante, y hace falta de verdad desde B-772.** «dieciocho
+         * salidas» **contiene** «ocho salidas», así que sin la frontera de
+         * palabra este chequeo se acusaba a sí mismo: con la tabla en 18 filas
+         * reportaba «dice ocho salidas» leyendo su propio encabezado correcto.
+         *
+         * Es un falso positivo que solo aparece cuando la cuenta cruza a los
+         * «dieci-», o sea que estuvo latente desde el primer día y lo despertó el
+         * crecimiento. Lo mismo le pasaría a «nueve» dentro de «diecinueve».
+         */
+        .filter((palabra) => new RegExp(`\\b${palabra} salidas`, 'i').test(texto));
 
     expect(
       equivocadas,

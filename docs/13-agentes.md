@@ -33,7 +33,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 
 | | Nombre | Tipo | Para qué |
 |---|---|---|---|
-| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las doce salidas públicas |
+| 🔒 | `auditor-privacidad` | agente (solo lectura) | Que nada privado llegue a las dieciocho salidas públicas |
 | 🪤 | `auditor-trampas` | agente (solo lectura) | Las trampas del §13 y los fallos que dejan el build en verde |
 | 📚 | `auditor-documentacion` | agente (solo lectura) | Que la doc acompañe al cambio, y que no afirme cosas que dejaron de ser ciertas |
 | ✅ | `cerrar-cambio` | skill | El procedimiento de cierre — doc, CHANGELOG, ayuda, novedades, backlog |
@@ -114,7 +114,7 @@ el caso de B-88 para los alias a `functions/`.
 
 ### 🔒 `auditor-privacidad`
 
-**Para qué.** El proyecto tiene **doce salidas públicas** y una sola regla
+**Para qué.** El proyecto tiene **dieciocho salidas públicas** y una sola regla
 (§5.1), y cada una tiene su productor: `calendario.js` para el evento de Calendar,
 `reportes.js` para el issue de GitHub (el repo es público), `analytics-eventos.ts`
 para GA4 —la más estricta, donde no sale contenido ni con permiso del dueño—,
@@ -197,7 +197,7 @@ lee secretos (`.env`, la URL del ICS, el PAT), y no propone aflojar un test para
 que pase un cambio.
 
 **Qué devuelve.** Veredicto (`LIMPIO` / `HALLAZGOS: N`), la tabla de los campos
-tocados contra las doce salidas, un bloque por hallazgo (severidad P0/P1/P2,
+tocados contra las dieciocho salidas, un bloque por hallazgo (severidad P0/P1/P2,
 `archivo:línea`, qué se filtra, el arreglo mínimo, el `it(...)` que lo fijaría) y
 qué verificó que estaba bien.
 
@@ -323,7 +323,7 @@ Un campo del modelo toca once lugares — tipo, schema, conversión, formulario,
 proyección pública, evento de Calendar, duplicar, analítica, reglas, tests, doc —
 y los que se olvidan son siempre los mismos tres: la proyección, el default de
 lectura de los documentos que ya están en producción, y la ayuda. El skill
-arranca obligando a decidir las doce salidas **antes** de escribir código, que
+arranca obligando a decidir las dieciocho salidas **antes** de escribir código, que
 es la parte que no se puede deshacer. DEC-1 (el libro presentado) fue su primer
 caso pendiente.
 
@@ -432,7 +432,7 @@ tocar nada pasa, y auditar → editar una salida → pushear, no.
 
 | Auditor | Cuándo | Quién lo dispara | Modelo | Costo de una corrida |
 |---|---|---|---|---|
-| 🔒 `auditor-privacidad` | **solo**, en cuanto el diff sin commitear toca uno de los archivos de las doce salidas | los hooks de `.claude/settings.json` | **`opus`** | el caro — es el único con el modelo caro y es a propósito |
+| 🔒 `auditor-privacidad` | **solo**, en cuanto el diff sin commitear toca uno de los archivos de las dieciocho salidas | los hooks de `.claude/settings.json` | **`opus`** | el caro — es el único con el modelo caro y es a propósito |
 | 🪤 `auditor-trampas` | antes del push o del PR | el skill `antes-de-pushear` | `sonnet` | barato |
 | 📚 `auditor-documentacion` | antes del push o del PR, **siempre** | el skill `antes-de-pushear` | `sonnet` | barato |
 
@@ -718,7 +718,7 @@ puede ver.
 
 **El primero de los tres ya no depende de que alguien se acuerde** (B-124,
 D-350): lo despiertan los hooks del repo en cuanto el diff toca uno de los
-archivos de las doce salidas, y frenan el `git commit` si todavía no pasó. Los
+archivos de las dieciocho salidas, y frenan el `git commit` si todavía no pasó. Los
 otros dos siguen entrando por `antes-de-pushear`, que es el paso previo al PR.
 El detalle —qué corre cuándo, con qué modelo, y las cuatro reglas que impiden
 que el gate se ponga rojo por su propia plomería— está en

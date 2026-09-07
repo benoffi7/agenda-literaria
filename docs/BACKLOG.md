@@ -2829,6 +2829,46 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-772 / B-654 · ✅ hecho (2026-09-07) — las páginas de texto se numeran como salidas públicas
+
+**Decisión del dueño:** numerarlas. Y era, como el ítem anticipaba, **un solo
+cambio atómico**: seis filas iguales en las tres tablas atadas, el diccionario del
+test, y la prosa de los tres documentos que declara la cuenta.
+
+**Son seis y no cinco.** El ítem decía cinco (`/suscribirse`, `/ayuda`,
+`/contacto`, `/404`, `/apoyar` → 13 a 17) porque `/anunciar` era el sujeto de
+B-772 y todavía no existía cuando se escribió. Con ella son **13 a 18**, y cierra
+**B-654** —la fila del `/404`— de paso: eran el mismo cambio.
+
+**Por qué se numeran, que es lo que hay que entender para leer esas seis filas.**
+El argumento para no hacerlo era bueno y sigue siendo cierto en su parte: estas
+páginas **no proyectan ningún documento**, así que no hay campo que se cuele por
+un spread y sus seis celdas nuevas contestan «no sale» a cualquier campo del
+modelo. Lo que no veía es que el índice **no es solo un mapa de proyecciones**: es
+**la lista de lo que hay que mirar** —lo que decide si el `auditor-privacidad` abre
+un archivo es que una de las tres tablas lo nombre— y estas páginas tienen un
+riesgo que ninguna otra fila tiene: **la promesa**. Se numeran por eso, no por la
+proyección.
+
+**Tres cosas que el cambio se cobró solo, y las tres eran previsibles menos una:**
+
+1. **El `PALABRAS` del test frenó primero**, exactamente como el ítem había
+   anticipado. Llega ahora hasta 20 —dos de colchón— para que la próxima fila no
+   vuelva a frenar el cambio por el diccionario.
+2. **El `description` del agente pedía los productores nuevos**, que es el test
+   que ata la ficha con la tabla. Entraron `ayudaDelSitio`, `contactoDelSitio`,
+   `apoyoDelSitio` y `noEncontrado` — o sea que **antes de esto, un cambio que
+   tocara solo una de esas páginas no despertaba al auditor por nombre de
+   archivo**. Ése era el agujero de verdad, y es el argumento de la decisión
+   comprobado en el acto.
+3. **La que no era previsible: «dieciocho salidas» contiene «ocho salidas».** El
+   chequeo que compara la prosa con la tabla no tenía frontera de palabra, así que
+   con la tabla en 18 filas **se acusaba a sí mismo** leyendo su propio encabezado
+   correcto. Es un falso positivo latente desde el primer día que despertó el
+   crecimiento; le pasaría lo mismo a «nueve» dentro de «diecinueve». Arreglado
+   con `\b`.
+
+
 ### B-801 · ✅ hecho (2026-09-07) — las visitas al panel contaban como visitas del sitio público
 
 **Lo vio el dueño en la pantalla:** «/admin/ sacalo de las estadisticas».
@@ -3912,7 +3952,7 @@ mirando, y ahí sí hay algo que decidir.
 |---|---|---|
 | **B-770** | **La sección comercial `/anunciar`**: ofrecerle espacio a cafés, librerías y espacios culturales, con el mail como única acción. Sin planes, sin precios y sin un número de audiencia inventado | ✅ hecho (2026-09-04) — D-450, `src/lib/comercialDelSitio.ts` + `src/pages/anunciar.astro`. Entra al sitemap y al pie; **B-377 sigue intacto** |
 | **B-771** | **Revisar `/anunciar` cuando haya datos de audiencia.** Hoy la página dice que no los tenemos, que es lo correcto: la medición arrancó el 2026-09-03. Con un mes de historia (**B-374**) se puede agregar un número real, y ahí hay que revisar el chequeo de `tests/comercial-del-sitio.test.ts` que hoy prohíbe las cifras de audiencia — con los números en la mano, no sacándolo porque molesta | 🟡 depende de B-374 |
-| **B-772** | **La fila de `/anunciar` en el índice de salidas públicas, si se decide numerarla.** Hoy **no** la lleva, y con criterio: `07-seguridad.md` tiene escrito que «las páginas de texto del sitio no son una salida más» —`/ayuda` y `/contacto` no proyectan ningún documento y no tienen fila—, y ésta es la más chica de esa clase (no recibe ni una prop). Si se decide contarla igual, va junto con **B-654** (la fila del `/404`, también pendiente): las dos filas y el salto de «doce» a «catorce» son un solo cambio atómico sobre cuatro archivos. El texto exacto está en `.estado/comercial.md` § 5 | 🔵 futuro, junto con B-654 |
+| **B-772** | **La fila de `/anunciar` en el índice de salidas públicas** | ✅ **hecho (2026-09-07)** — el dueño decidió numerarlas. Son **seis** filas y no cinco (`/suscribirse`, `/ayuda`, `/contacto`, `/404`, `/apoyar` y `/anunciar` → **13 a 18**), en las tres tablas atadas, más el `PALABRAS` del test y la prosa de los tres documentos. Cerró **B-654** de paso. Ver el ítem propio abajo |
 | **B-773** | **Los settings de propiedad de GA4 que nadie verificó** — ver abajo, tiene cuerpo propio desde el 2026-09-07 | 🟡 pendiente, es de consola |
 
 #### B-773 · Los settings de propiedad de GA4 que nadie verificó · P2

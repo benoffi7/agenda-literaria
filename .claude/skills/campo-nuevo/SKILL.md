@@ -18,7 +18,7 @@ se usa.
 Escribilas y **confirmalas con el usuario** antes de tocar código. Son las que
 no se pueden deshacer después.
 
-1. **¿Es público?** Resolvé las **doce** salidas, una por una:
+1. **¿Es público?** Resolvé las **dieciocho** salidas, una por una:
 
    | # | Salida | Quién la produce |
    |---|---|---|
@@ -34,6 +34,12 @@ no se pueden deshacer después.
    | 10 | el archivo `/pasadas` | `src/lib/pasadasPublicas.ts` |
    | 11 | los hubs `/tipo/{slug}`, `/barrio/{slug}`, `/gratis`, `/online` | `src/lib/hubsPublicos.ts` (B-108), incluido `coleccionSchema` (B-107) |
    | 12 | GA4 (sitio público) | `src/lib/analyticsSitio.ts` (B-372/B-375) |
+   | 13 | la página `/suscribirse` | `src/lib/enlaces.ts` (el `.ics` y el mail), `src/pages/suscribirse.astro` |
+   | 14 | la ayuda `/ayuda` | `src/lib/ayudaDelSitio.ts` |
+   | 15 | el contacto `/contacto` | `src/lib/contactoDelSitio.ts`, `src/lib/enlaces.ts` (la casilla) |
+   | 16 | el `/404` | `src/lib/noEncontrado.ts` |
+   | 17 | la página de apoyo `/apoyar` | `src/lib/apoyoDelSitio.ts`, `src/lib/enlaces.ts` (el destino de cobro) |
+   | 18 | la página comercial `/anunciar` | `src/lib/comercialDelSitio.ts`, `src/lib/enlaces.ts` (la casilla) |
 
    "No decidí" no es una opción: el default de agregarlo al `pick` es publicar
    (§5.1). El mapa autoritativo, con el motivo de cada celda, está en
