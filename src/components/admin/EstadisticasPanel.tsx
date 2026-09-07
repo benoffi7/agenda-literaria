@@ -666,10 +666,22 @@ function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
   return (
     <div className="space-y-6">
       <div className="border border-borde bg-white px-3 py-3">
-        <p className="text-sm text-tinta">
-          Cómo se usa el sitio público — quién lo mira, qué páginas recorre, dónde hace
-          clic — y no lo que hay cargado, que es la otra pestaña.
-        </p>
+        {/*
+          **Acá había un párrafo que explicaba de qué es esta pestaña** —«cómo se
+          usa el sitio público, y no lo que hay cargado, que es la otra»— y lo sacó
+          el dueño el 2026-09-07.
+
+          Estaba puesto por el andamiaje honesto de D-272, y el argumento de
+          entonces era bueno: la pestaña iba a estar vacía un mes y algo tenía que
+          decir de qué se trata. Pero el nombre de la pestaña ya lo dice, y una
+          explicación de para qué sirve la pantalla que se está mirando envejece
+          mal — la lee cien veces la misma persona, que después de la primera ya
+          sabe.
+
+          Lo que **sí** se queda es la línea de abajo: desde cuándo hay medición.
+          Ésa no explica la pantalla, califica los números, y sin ella un total no
+          se puede leer.
+        */}
         {/*
           La línea que hace creíbles a las demás (§9.3): «12.000 visitas» sin
           decir que la medición arrancó hace seis semanas es un número que se

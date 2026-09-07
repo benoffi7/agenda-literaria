@@ -69,7 +69,19 @@ afterEach(() => cleanup());
  * corrió, falta configurar, falló, sin volumen), así que atar el test a una de
  * ellas lo haría fallar el día que la pantalla dice la verdad de otra forma.
  */
-const ANCLA_SITIO = /Cómo se usa el sitio público/;
+/*
+ * **El ancla del panel del sitio, y por qué es ésta** — cambiada el 2026-09-07.
+ *
+ * Era la frase que explicaba de qué es la pestaña («cómo se usa el sitio
+ * público…»), y el dueño la sacó: el nombre de la pestaña ya lo dice. Un test que
+ * se ancla a una explicación se cae cuando alguien mejora la redacción, que es
+ * exactamente lo que pasó.
+ *
+ * Se ancla a **la línea que califica los números** —desde cuándo hay medición—,
+ * que no es decoración: sin ella un total no se puede leer, así que si desaparece
+ * el test tiene razón en caerse.
+ */
+const ANCLA_SITIO = /La medición del sitio arrancó|Hay datos desde el/;
 
 const montar = async () => {
   render(<EstadisticasPanel onEditar={() => {}} />);
