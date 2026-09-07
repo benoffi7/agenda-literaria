@@ -8455,7 +8455,40 @@ verdad. La segunda es la buena y es más grande que este ítem.
 
 ---
 
-### B-630 · El barrido de versiones huérfanas no tiene script en seco · P3
+### B-630 · ✅ hecho (2026-09-07) — El barrido de versiones huérfanas no tiene script en seco
+
+Hecho como el ítem lo pedía: `scripts/limpiar-versiones-huerfanas.mjs`, espejo del
+de imágenes, reusando la **misma** `decidirPurga` de la Function.
+
+Dos cosas que el ítem no pedía y valen:
+
+- **Informa lo mismo que haría la Function, incluido lo que NO haría.**
+  `decidirPurga` recorta a `MAX_ACTIVIDADES_POR_CORRIDA` y marca el resto como
+  `diferida-por-tope`; el script no relaja ese tope. Un script que barriera «todo
+  de una» mostraría un plan que la Function nunca ejecuta, y mirarlo antes de
+  confiar en la corrida programada no probaría nada.
+- **La guarda de entorno pasó a ser una clase con test**
+  (`tests/guardas-de-los-scripts.test.ts`): todo `.mjs` de `scripts/` que acepte
+  `--aplicar` tiene que detectar el emulador, pedir `--produccion` explícito y
+  **cortar**. Era una regla escrita en `05-patrones.md` que nada verificaba, y el
+  `auditor-trampas` ya la había encontrado faltando una vez.
+
+**Y el chequeo encontró un tercero antes de existir del todo:**
+`optimizar-imagenes.mjs` acepta `--aplicar`, **reescribe todos los objetos del
+bucket** y no tenía la guarda. No es más benigno que borrar: un `--aplicar` con el
+host del emulador sin exportar pasa el pipeline entero por las imágenes de
+producción, y con el `sharp` de la máquina de quien lo corre en vez del de la
+Function — que es el riesgo que el propio archivo se había escrito unas líneas más
+arriba. Guarda agregada.
+
+Verificado a mano contra el emulador: sembrada una huérfana de 40 días y otra de
+5, el script marca solo la primera, `--aplicar` borra sus dos versiones, la corrida
+siguiente ya no la ve, y `--aplicar` sin el host del emulador aborta con código 1.
+
+El planteo original queda abajo.
+
+---
+
 
 `limpiarImagenesHuerfanas` (B-221) tiene `scripts/limpiar-imagenes-huerfanas.mjs`:
 lista qué borraría sin borrar nada, reusa la misma decisión pura que la Function

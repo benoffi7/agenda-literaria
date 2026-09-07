@@ -2,6 +2,25 @@
 
 ## Sin publicar
 
+- **El barrido de versiones huérfanas tiene script en seco** — **B-630**.
+  `scripts/limpiar-versiones-huerfanas.mjs`, espejo del de imágenes y reusando la
+  **misma** `decidirPurga` de la Function. Hasta ahora la única forma de verificar
+  una corrida era por logs, y lo que ese barrido borra es **la única copia** de una
+  actividad que ya no existe (§12).
+
+  Informa lo mismo que haría la Function, **incluido lo que no haría**: no relaja
+  el tope de 20 actividades por corrida, porque un script que barriera «todo de
+  una» mostraría un plan que la Function nunca ejecuta.
+
+  Y la guarda de entorno pasó a ser una **clase con test**: todo script de
+  `scripts/` que acepte `--aplicar` tiene que detectar el emulador, pedir
+  `--produccion` explícito y cortar. Era una regla escrita que nada verificaba — y
+  el chequeo **encontró un tercero antes de existir del todo**:
+  `optimizar-imagenes.mjs` reescribe todos los objetos del bucket y no tenía la
+  guarda. Un `--aplicar` con el host del emulador sin exportar pasaba el pipeline
+  entero por las imágenes de producción, con el `sharp` de la máquina de quien lo
+  corre en vez del de la Function. Guarda agregada.
+
 - **El «?» de cada sección del formulario ahora lleva hasta la ayuda de esa
   sección** — **B-795**, reportado por el dueño: «todas las ayudas dentro del
   formulario van al mismo lugar».

@@ -737,8 +737,12 @@ miniatura y siguen pesando lo que pesaban. Es lo que arregla el barrido, y es
 # 1 · Ver qué haría (no escribe nada). El default es este.
 node scripts/optimizar-imagenes.mjs
 
-# 2 · Aplicarlo.
-node scripts/optimizar-imagenes.mjs --aplicar
+# 2 · Aplicarlo. En producción hace falta `--produccion` explícito (B-630): un
+#     `--aplicar` sin `FIREBASE_STORAGE_EMULATOR_HOST` seteado reescribiría
+#     TODOS los objetos del bucket con el `sharp` de esta máquina y no el de la
+#     Function, y ese olvido pasa justo cuando se lo quiere probar «contra el
+#     emulador primero». Sin el flag, aborta.
+node scripts/optimizar-imagenes.mjs --aplicar --produccion
 
 # 3 · Un minuto después, volver a correr el paso 1: si algún objeto sigue
 #     apareciendo en la lista, la Function no está desplegada, no tiene los
@@ -929,14 +933,38 @@ no hay con qué encadenarse — y como el de imágenes, corre por reloj y solo b
 firebase deploy --only functions:limpiarVersionesHuerfanas
 ```
 
-**Cómo verificar la primera corrida.** No hay script en seco todavía (queda como
-**B-630**), así que la verificación es por logs y por consola:
+**Cómo verificar la primera corrida.** Con el script en seco (**B-630**, el
+espejo del de imágenes) o por logs:
 
 ```bash
-# Qué decidió el barrido: purgadas, documentos y los motivos de lo que NO tocó.
+# En seco: lista qué purgaría con el motivo de cada caso, no borra nada. Es el
+# default. Informa lo MISMO que haría la Function, incluido lo que dejaría para
+# la corrida siguiente por el tope de 20 actividades.
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+  node scripts/limpiar-versiones-huerfanas.mjs
+
+# Aplicarlo de verdad, siempre contra el emulador primero:
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+  node scripts/limpiar-versiones-huerfanas.mjs --aplicar
+
+# --aplicar en producción exige el flag de más, a propósito: sin
+# FIRESTORE_EMULATOR_HOST seteado, `--aplicar` solo aborta. Acá la guarda vale
+# más que en el de imágenes: lo que se borra es la ÚNICA copia de una actividad
+# que ya no existe (§12).
+node scripts/limpiar-versiones-huerfanas.mjs --aplicar --produccion
+
+# Y lo que la Function decidió, cuando ya corrió sola:
 gcloud functions logs read limpiarVersionesHuerfanas \
   --region southamerica-east1 --project agenda-literaria --limit 50
 ```
+
+El script reusa la misma `decidirPurga` que la Function —no hay una segunda copia
+de la decisión, y `tests/guardas-de-los-scripts.test.ts` lo exige— así que mirarlo
+en seco antes de confiar en la corrida programada prueba algo. Verificado a mano
+contra el emulador el 2026-09-07: sembrada una huérfana de 40 días y otra de 5, el
+script marca `[PURGAR] … huerfana-vencida` solo la primera, deja la otra en
+`dentro-del-margen-de-rescate`, `--aplicar` borra sus dos versiones, la corrida
+siguiente ya no la ve, y `--aplicar` sin el host del emulador aborta con código 1.
 
 Un `barrido de versiones huérfanas: nada para purgar` con `motivos` lleno de
 `dentro-del-margen-de-rescate` es el estado normal en el mes siguiente a un

@@ -4,7 +4,9 @@
  * bucket antes de que existiera la Function.
  *
  *   node scripts/optimizar-imagenes.mjs                 # solo informa
- *   node scripts/optimizar-imagenes.mjs --aplicar
+ *   FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 \
+ *     node scripts/optimizar-imagenes.mjs --aplicar               # reescribe, en el emulador
+ *   node scripts/optimizar-imagenes.mjs --aplicar --produccion    # reescribe, en producción
  *
  * ── Por qué hace falta un script y no alcanza la Function ─────────────────
  * `onObjectFinalized` corre cuando un objeto **se escribe**. Las 30 imágenes que
@@ -42,9 +44,37 @@ import { MARCA_OPTIMIZADA, PREFIJO_ORIGINALES, rutaDeMiniatura } from '../functi
 
 const aplicar = process.argv.includes('--aplicar');
 const enEmulador = Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST);
+const confirmaProduccion = process.argv.includes('--produccion');
 const projectId = process.env.PUBLIC_FIREBASE_PROJECT_ID ?? 'agenda-literaria';
 const bucketName =
   process.env.PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'agenda-literaria.firebasestorage.app';
+
+/*
+ * **La guarda que faltaba** — la encontró el chequeo de clase de B-630
+ * (`tests/guardas-de-los-scripts.test.ts`), que barre todo script con
+ * `--aplicar` y exige las tres piezas. Este las tenía a medias: detectaba el
+ * emulador y **no** pedía nada para apuntar a producción.
+ *
+ * No borra, reescribe — y no es más benigno de lo que suena: este script
+ * **reescribe todos los objetos del bucket** (lo dice su propio encabezado), así
+ * que un `--aplicar` con `FIREBASE_STORAGE_EMULATOR_HOST` sin exportar pasa el
+ * pipeline entero por las imágenes de producción. Y el riesgo lo nombra este
+ * mismo archivo unas líneas más arriba: una versión distinta de `sharp`
+ * produciría objetos distintos de los que produce la Function, o sea que la
+ * corrida accidental no es idempotente respecto de lo que hay.
+ *
+ * Es el mismo olvido que la guarda de los otros dos evita, y en el mismo
+ * momento: cuando alguien quiere probarlo «contra el emulador primero».
+ */
+if (aplicar && !enEmulador && !confirmaProduccion) {
+  console.error(
+    '--aplicar sin FIREBASE_STORAGE_EMULATOR_HOST apunta a PRODUCCIÓN y reescribe\n' +
+      'TODOS los objetos del bucket, con el `sharp` de esta máquina y no el de la Function.\n' +
+      'Si es un accidente: exportá FIREBASE_STORAGE_EMULATOR_HOST y probá contra el emulador.\n' +
+      'Si es a propósito: agregá también --produccion. Abortando.',
+  );
+  process.exit(1);
+}
 
 initializeApp(
   enEmulador
