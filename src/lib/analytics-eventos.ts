@@ -455,7 +455,19 @@ export const normalizarCampo = (valor: unknown): string => {
 // ── Sanitizadores ──────────────────────────────────────────────────
 
 type Sanitizador =
-  | { tipo: 'entero'; max: number }
+  /**
+   * Un entero recortado a `[min, max]`. `min` es **opcional y su default es 0**
+   * (B-797): los enteros de este vocabulario cuentan cosas —encuentros,
+   * segundos, intentos— y contar no da negativo, así que el piso en cero es el
+   * correcto para todos menos uno.
+   *
+   * La excepción es `encuentro-correr`, que manda **días con signo**: el editor
+   * ofrece `−1 sem`, `−1 día`, `+1 día` y `+1 sem`, y con el piso en cero los dos
+   * hacia atrás llegaban **los dos como `0`** — no se distinguían entre sí ni de
+   * un salto de cero días. Lo encontró el `auditor-privacidad` contra una
+   * afirmación falsa de la doc.
+   */
+  | { tipo: 'entero'; max: number; min?: number }
   | { tipo: 'version' }
   | { tipo: 'booleano' }
   | { tipo: 'enum'; valores: readonly string[] }
@@ -517,7 +529,9 @@ const sanitizar = (san: Sanitizador, valor: unknown): string | number | undefine
     case 'entero': {
       const n = Number(valor);
       if (!Number.isFinite(n)) return undefined;
-      return Math.min(Math.max(Math.round(n), 0), san.max);
+      // `min ?? 0` y no `min || 0`: un `min: 0` explícito tiene que valer igual
+      // que el default, y `||` no distingue el cero del ausente.
+      return Math.min(Math.max(Math.round(n), san.min ?? 0), san.max);
     }
     case 'booleano':
       return valor ? 1 : 0;
@@ -656,7 +670,20 @@ export const EVENTOS = {
     ...COMUNES,
     funcion: { tipo: 'enum', valores: FUNCIONES },
     detalle: { tipo: 'enum', valores: DETALLES },
-    valor: { tipo: 'entero', max: 1000 },
+    /*
+     * B-797 — el piso baja a −366 **solo acá**, y es por `encuentro-correr`: es
+     * la única función que manda un valor con signo (días, y los saltos hacia
+     * atrás son negativos). Los otros veintitrés cuentan cosas y su piso natural
+     * es cero, pero el sanitizador es **uno por parámetro y no por función**, así
+     * que abrir el piso lo abre para todas.
+     *
+     * Se acepta, y el motivo es que el techo es lo que acota de verdad: un
+     * `valor` inventado sigue estando encerrado en `[−366, 1000]`, que es un
+     * entero chico y sin contenido. Y −366 y no `-Infinity`: un año de días para
+     * atrás es el salto más grande que el editor puede producir con clics, así
+     * que cualquier cosa más allá es un error y se recorta.
+     */
+    valor: { tipo: 'entero', max: 1000, min: -366 },
   },
 } satisfies Record<string, Especificacion>;
 

@@ -407,30 +407,45 @@ describe('toda función medida está documentada — B-58', () => {
     expect(fantasmas, 'la tabla nombra funciones que el enum no tiene').toEqual([]);
   });
 
-  it('el `valor` de `encuentro-correr` viaja SIN signo: el clamp lo lleva a 0 (§9)', () => {
+  it('el `valor` de `encuentro-correr` viaja CON signo — B-797', () => {
     /*
-     * **Lo pidió el `auditor-privacidad`, y contra una afirmación falsa que este
-     * repo estrenó el mismo día.** La tabla de `09-analitica.md` decía que este
-     * valor «lleva signo, porque correr un encuentro dos días para atrás y dos
-     * para adelante no son el mismo dato». El saneador de `entero` es
-     * `Math.min(Math.max(Math.round(n), 0), max)`, así que de los cuatro saltos
-     * que ofrece el editor los **dos hacia atrás llegan los dos como `0`**.
+     * **Este caso cambió de afirmación el mismo día que se escribió, y por eso
+     * está escrito el original.** Decía «viaja SIN signo: el clamp lo lleva a 0»,
+     * y era cierto: el sanitizador de `entero` recortaba a `[0, max]`, así que de
+     * los cuatro saltos que ofrece el editor —`−1 sem`, `−1 día`, `+1 día`,
+     * `+1 sem`— los dos hacia atrás llegaban **los dos como `0`**. Ni se
+     * distinguían entre sí ni de un salto de cero días.
      *
-     * Se fija el comportamiento **real** para que la doc no vuelva a inventarlo, y
-     * para que recuperar el signo (B-797) sea un cambio que ponga esto en rojo a
-     * propósito en vez de pasar sin que nadie note qué se arregló.
+     * Lo había fijado como está —el comportamiento real, no el deseado— para que
+     * la doc no volviera a inventar el signo, y con el arreglo (**B-797**) ese
+     * caso se puso en rojo, que es exactamente lo que tenía que pasar: el cambio
+     * lo pidió explícitamente en vez de pasar sin que nadie note qué se arregló.
      *
-     * Y se fija que el `0` **se emite**: el saneador saltea `undefined`, no el
-     * cero, así que «se corrió hacia atrás» sigue siendo distinguible de «no se
-     * corrió» —que no emite nada—. Es lo que salva la pregunta de B-186.
+     * El piso ahora es **−366**, y son dos decisiones que conviene tener juntas:
+     *
+     * - **`min` es del parámetro y no de la función.** El sanitizador es uno por
+     *   parámetro, así que abrir el piso lo abre para las veinticuatro funciones.
+     *   Se acepta porque el techo es lo que acota de verdad: un `valor` inventado
+     *   sigue encerrado en `[−366, 1000]`, un entero chico y sin contenido.
+     * - **−366 y no `-Infinity`:** un año de días para atrás es el salto más
+     *   grande que el editor puede producir con clics, así que más allá es un
+     *   error y se recorta.
+     *
+     * MUTACIÓN PROBADA: sacar el `min` del spec deja este caso en rojo con los dos
+     * negativos en `0`.
      */
     const valorDe = (v: number) =>
       construirEvento('funcion_usada', { funcion: 'encuentro-correr', valor: v })?.params.valor;
 
-    expect([valorDe(-7), valorDe(-1), valorDe(1), valorDe(7)]).toEqual([0, 0, 1, 7]);
-    // El cero se emite, no se descarta.
-    expect(construirEvento('funcion_usada', { funcion: 'encuentro-correr', valor: -7 })?.params)
+    expect([valorDe(-7), valorDe(-1), valorDe(1), valorDe(7)]).toEqual([-7, -1, 1, 7]);
+
+    // El cero se emite, no se descarta: el saneador saltea `undefined`, no el 0.
+    expect(construirEvento('funcion_usada', { funcion: 'encuentro-correr', valor: 0 })?.params)
       .toHaveProperty('valor');
+
+    // Y el piso acota: un año y medio para atrás se recorta a −366.
+    expect(valorDe(-500)).toBe(-366);
+    expect(valorDe(5000)).toBe(1000);
   });
 });
 

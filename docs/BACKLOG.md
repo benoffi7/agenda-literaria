@@ -2997,7 +2997,32 @@ se filtra seguido y nunca tiene nada es una actividad que falta o una etiqueta q
 sobra, y hoy eso no se puede saber.
 
 
-### B-797 · P3 — el `valor` de la analítica del panel no lleva signo, y `encuentro-correr` lo necesita
+### B-797 · ✅ hecho (2026-09-07) — el `valor` de la analítica del panel no lleva signo, y `encuentro-correr` lo necesita
+
+**Hecho con la primera de las dos salidas: un `min` en el sanitizador `entero`**,
+en `−366`. De las dos que el ítem planteaba, se descartó la otra —mandar la
+magnitud en `valor` y la dirección en `detalle`— porque partiría un dato en dos
+campos que hay que volver a juntar para leerlo, y porque `detalle` es el enum de
+campos de taxonomía y secciones: meterle `atras`/`adelante` sería usarlo para otra
+cosa.
+
+**La decisión que el ítem pedía tomar, tomada y escrita:** el `min` es **del
+parámetro y no de la función**, así que el piso negativo queda abierto para las
+veinticuatro. Se acepta porque el techo es lo que acota de verdad —un valor
+inventado sigue encerrado en `[−366, 1000]`, un entero chico y sin contenido— y
+porque el default de `min` es `0`, así que ninguna de las otras cambia de
+comportamiento. Y `−366` y no sin límite: un año de días para atrás es el salto
+más grande que el editor puede producir con clics.
+
+**Y el test que fijaba el comportamiento viejo se puso en rojo, que es lo que
+tenía que pasar.** Estaba escrito así a propósito —fijando lo real y no lo
+deseado, para que la doc no volviera a inventar el signo— y el arreglo tuvo que
+pedirlo explícitamente en vez de pasar sin que nadie note qué se corrigió.
+
+El planteo original queda abajo.
+
+---
+
 
 **Lo encontró el `auditor-privacidad` el 2026-09-07**, contra una afirmación falsa
 que la doc había estrenado unas horas antes: la tabla de `09-analitica.md` decía
