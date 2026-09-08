@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { camposRestaurables, payloadDeRestauracion, valorARestaurar } from '@/lib/historial';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import type { Actividad } from '@/types/actividad';
+import { ts } from './fixtures/tiempo';
 
 /**
  * B-40 — la restauración de un campo desde una versión vieja.
@@ -47,6 +48,18 @@ const actividad = (over: Partial<Actividad> = {}): Actividad =>
     searchText: '',
     ...over,
   }) as unknown as Actividad;
+
+/** Un encuentro mínimo, para los casos que solo miran su `comisionId` (B-181). */
+const sesionDePrueba = (id: string) => ({
+  id,
+  inicio: ts('2026-09-15T22:00:00Z'),
+  fin: ts('2026-09-16T00:00:00Z'),
+  tema: null,
+  lectura: null,
+  cancelada: false,
+  calendarEventId: null,
+  comisionId: null,
+});
 
 /** Una versión guardada **antes** de que existiera `imagenes` (B-167). */
 const versionAnteriorAB167 = () => ({
@@ -150,6 +163,199 @@ describe('trampa 10 — la dirección web no se restaura sobre una actividad pub
     (version.documento as Record<string, unknown>).slug = 'direccion-vieja';
     const actual = actividad({ estado: 'borrador', publicadaAlgunaVez: true });
     expect(camposRestaurables(version as never, actual)).not.toContain('slug');
+  });
+});
+
+describe('B-181 — el historial tampoco restaura una etiqueta con un link de reunión', () => {
+  /**
+   * **La otra mitad de la puerta**, y la encontró el `auditor-privacidad` como P1
+   * sobre la guarda que el schema ya tenía: `restaurarCampo` escribe con
+   * `updateDoc` y **no pasa por el schema**, así que el camino era
+   *
+   *   guardar el link en la etiqueta en **borrador** (permitido a propósito) →
+   *   corregirlo y publicar → la versión conserva el link → «Restaurar → Opciones
+   *   para sumarse» lo escribe sobre la publicada, y marca rebuild.
+   *
+   * Es el precedente de B-285 con otro campo: «el historial no puede ser la puerta
+   * de atrás».
+   */
+  const conEtiqueta = (etiqueta: string) => {
+    const version = versionAnteriorAB167();
+    version.camposCambiados = ['comisiones'];
+    (version.documento as Record<string, unknown>).comisiones = [{ id: 'com_1', etiqueta }];
+    return version;
+  };
+
+  const conComisiones = (estado: Actividad['estado'], etiqueta: string): Actividad =>
+    actividad({
+      estado,
+      comisiones: [{ id: 'com_1', etiqueta }],
+    });
+
+  it('sobre una publicada no se ofrece', () => {
+    /*
+     * MUTACIÓN PROBADA: sacando el filtro de `comisiones` de `camposRestaurables`,
+     * este caso queda en verde y el link llega al `<h3>` de la página indexada.
+     */
+    const version = conEtiqueta('Martes 19 h — se pasa a https://meet.google.com/abc');
+    const actual = conComisiones('publicado', 'Martes 19 h');
+    expect(camposRestaurables(version as never, actual)).not.toContain('comisiones');
+  });
+
+  it('sobre una cancelada tampoco: su página sigue indexada (B-110)', () => {
+    const version = conEtiqueta('Martes 19 h — zoom.us/j/84123?pwd=aB3');
+    const actual = conComisiones('cancelado', 'Martes 19 h');
+    expect(camposRestaurables(version as never, actual)).not.toContain('comisiones');
+  });
+
+  it('sobre un borrador SÍ se ofrece: de ahí no sale nada', () => {
+    // Control negativo, y el que impide «filtrar comisiones siempre»: restaurar lo
+    // que se escribió sobre un borrador es exactamente para lo que existe el
+    // historial.
+    const version = conEtiqueta('Martes 19 h — https://meet.google.com/abc');
+    const actual = conComisiones('borrador', 'Martes 19 h');
+    expect(camposRestaurables(version as never, actual)).toContain('comisiones');
+  });
+
+  it('restaurar las opciones no deja encuentros apuntando a una que ya no existe', () => {
+    /*
+     * **`comisiones` y `sesiones[].comisionId` son un par**, y esta pantalla puede
+     * restaurar una mitad sola. Lo cobró la cuarta pasada del
+     * `auditor-privacidad`: una versión anterior a la creación de una comisión la
+     * borra, y las sesiones que la referencian quedan colgadas — un documento que
+     * el schema rechaza al publicar, entrando por la única puerta que no lo valida,
+     * y con rebuild marcado.
+     *
+     * Es el patrón de `modalidades` (B-224): el derivado se arregla en la **misma**
+     * escritura.
+     *
+     * MUTACIÓN PROBADA: sacando el bloque `campo === 'comisiones'` de
+     * `payloadDeRestauracion`, este caso falla con `com_1` colgado en las dos
+     * sesiones.
+     */
+    const version = conEtiqueta('Jueves 19 h');
+    (version.documento as Record<string, unknown>).comisiones = [
+      { id: 'com_2', etiqueta: 'Jueves 19 h' },
+    ];
+    const actual = actividad({
+      estado: 'publicado',
+      comisiones: [{ id: 'com_1', etiqueta: 'Martes 19 h' }],
+      sesiones: [
+        { ...sesionDePrueba('ses_1'), comisionId: 'com_1' },
+        { ...sesionDePrueba('ses_2'), comisionId: 'com_1' },
+      ],
+    });
+
+    const payload = payloadDeRestauracion('comisiones', version as never, actual, 'uid_1');
+    expect((payload.sesiones as { comisionId: string | null }[]).map((x) => x.comisionId)).toEqual([
+      null,
+      null,
+    ]);
+    // Y la comisión restaurada es la de la versión, no una mezcla.
+    expect((payload.comisiones as { id: string }[]).map((c) => c.id)).toEqual(['com_2']);
+  });
+
+  it('restaurar los encuentros tampoco reintroduce una opción que ya no existe', () => {
+    /*
+     * **El sentido simétrico**, y lo cobró la quinta pasada del `auditor-trampas`
+     * sobre la corrección del primero: cerrar una mitad de un par y no la otra es
+     * la clase D-30/B-88.
+     *
+     * `comisionId` no es un campo de máquina (`CAMPOS_DE_MAQUINA_SESION` es solo
+     * `calendarEventId`), así que `fusionarSesiones` trae el `comisionId` de la
+     * versión vieja tal cual. Si esa comisión se borró después, restaurar
+     * «Encuentros» la reintroduce colgada — y es alcanzable sin consola: abrir una
+     * comisión, cursar unos meses, borrarla, y restaurar una versión anterior.
+     *
+     * MUTACIÓN PROBADA: sin la rama `campo === 'sesiones'`, este caso falla con
+     * `com_vieja` puesto.
+     */
+    const version = versionAnteriorAB167();
+    version.camposCambiados = ['sesiones'];
+    (version.documento as Record<string, unknown>).sesiones = [
+      { ...sesionDePrueba('ses_1'), comisionId: 'com_vieja' },
+      { ...sesionDePrueba('ses_2'), comisionId: 'com_hoy' },
+    ];
+    const actual = actividad({
+      estado: 'publicado',
+      comisiones: [{ id: 'com_hoy', etiqueta: 'Martes 19 h' }],
+      sesiones: [
+        { ...sesionDePrueba('ses_1'), comisionId: 'com_hoy' },
+        { ...sesionDePrueba('ses_2'), comisionId: 'com_hoy' },
+      ],
+    });
+
+    const payload = payloadDeRestauracion('sesiones', version as never, actual, 'uid_1');
+    expect((payload.sesiones as { comisionId: string | null }[]).map((x) => x.comisionId)).toEqual([
+      // La que apuntaba a la comisión borrada queda sin opción…
+      null,
+      // …y la que apunta a una que existe conserva la suya.
+      'com_hoy',
+    ]);
+  });
+
+  it('restaurar las opciones sin ningún encuentro colgado NO reescribe las sesiones', () => {
+    /*
+     * **B-80 por una puerta nueva**, y lo cobró el `auditor-privacidad` sobre la
+     * corrección anterior: `actual` es el snapshot que la pantalla leyó al montar,
+     * así que escribir el array de sesiones cuando no hay nada que desenganchar
+     * devuelve al documento los `calendarEventId` de entonces — el panel volviendo
+     * a ser dueño de un campo que escribe la Function (D-360, B-150).
+     *
+     * Y no se autorrepara: sin cambios en el payload del evento, `planificar` no
+     * emite operaciones y el trigger no repone los ids (D-91).
+     *
+     * MUTACIÓN PROBADA: asignando `payload.sesiones` sin el `if`, este caso falla
+     * con las sesiones adentro del payload.
+     */
+    const version = conEtiqueta('Jueves 19 h');
+    (version.documento as Record<string, unknown>).comisiones = [
+      { id: 'com_hoy', etiqueta: 'Jueves 19 h' },
+    ];
+    const actual = actividad({
+      estado: 'publicado',
+      comisiones: [{ id: 'com_hoy', etiqueta: 'Martes 19 h' }],
+      sesiones: [{ ...sesionDePrueba('ses_1'), comisionId: 'com_hoy' }],
+    });
+
+    const payload = payloadDeRestauracion('comisiones', version as never, actual, 'uid_1');
+    expect(payload).not.toHaveProperty('sesiones');
+  });
+
+  it('el encuentro que SÍ resuelve conserva su opción', () => {
+    /*
+     * El control negativo de «desenganchar todo»: con dos encuentros y una sola
+     * comisión borrada, el que apunta a la que sigue existiendo conserva la suya.
+     * (Con **ninguno** colgado no se escriben las sesiones en absoluto — ver el
+     * caso de arriba —, así que el control necesita una mezcla.)
+     */
+    const version = conEtiqueta('Jueves 19 h');
+    (version.documento as Record<string, unknown>).comisiones = [
+      { id: 'com_hoy', etiqueta: 'Jueves 19 h' },
+    ];
+    const actual = actividad({
+      estado: 'publicado',
+      comisiones: [{ id: 'com_hoy', etiqueta: 'Martes 19 h' }],
+      sesiones: [
+        { ...sesionDePrueba('ses_1'), comisionId: 'com_borrada' },
+        { ...sesionDePrueba('ses_2'), comisionId: 'com_hoy' },
+      ],
+    });
+
+    const payload = payloadDeRestauracion('comisiones', version as never, actual, 'uid_1');
+    expect((payload.sesiones as { comisionId: string | null }[]).map((x) => x.comisionId)).toEqual([
+      null,
+      'com_hoy',
+    ]);
+  });
+
+  it('una versión con etiquetas limpias se restaura igual sobre una publicada', () => {
+    // El otro control negativo: la guarda mira el **contenido** de la versión, no
+    // el campo. Sin este caso, filtrar `comisiones` en toda publicada pasaría los
+    // dos primeros.
+    const version = conEtiqueta('Jueves 19 h');
+    const actual = conComisiones('publicado', 'Martes 19 h');
+    expect(camposRestaurables(version as never, actual)).toContain('comisiones');
   });
 });
 

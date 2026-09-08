@@ -307,6 +307,37 @@ export const comisionDe = (actividad, sesion) => {
   return (actividad?.comisiones ?? []).find((c) => c?.id === id) ?? null;
 };
 
+/**
+ * **La etiqueta de una comisión, saneada: `null` si no dice nada** — y es la única
+ * derivación de «esta comisión tiene nombre» **del lado de las salidas**.
+ *
+ * El schema tiene la suya (`!o.etiqueta.trim()`, para pedir el nombre al publicar)
+ * y eso está bien: es una validación de entrada, no una proyección. Hoy las dos
+ * coinciden en valor porque las dos son `.trim()`, y la aclaración importa porque
+ * la primera versión de este docblock decía «de todo el proyecto» — lo cobró el
+ * `auditor-privacidad`.
+ *
+ * Vive acá y no en el lado del sitio porque la etiqueta tiene **cinco**
+ * consumidores repartidos en dos salidas: el `summary` del evento, el encabezado
+ * de su descripción y el bloque «Otras opciones» (salida 2), más el encabezado del
+ * grupo y el `subEvent.name` de la página (salida 6). Es el caso de D-20/D-71: lo
+ * derivado se escribe una vez y los dos lados lo importan.
+ *
+ * Lo cobró la sexta pasada del `auditor-privacidad`, y el hallazgo es aleccionador:
+ * la vuelta anterior había arreglado el trim **del lado del sitio**, así que las
+ * dos salidas dejaron de coincidir —el detalle no pintaba encabezado y el evento
+ * mandaba «Título —    · tema»—. La divergencia no desapareció: se mudó de adentro
+ * de la salida 6 a **entre** la 6 y la 2, que es la clase de B-88 que el docblock
+ * de `tituloDeEvento` invoca como argumento.
+ *
+ * El `?? ''` es la otra mitad: `etiqueta` es `string` en el tipo, pero un documento
+ * editado a mano puede no tenerla, y nadie valida el documento en el build. Con un
+ * `.trim()` a secas eso tiraba un `TypeError` adentro de `getStaticPaths` y **el
+ * build entero se caía** — de una página degradada a ningún sitio.
+ */
+export const etiquetaDeComision = (comision) =>
+  ((comision?.etiqueta ?? '').trim() || null);
+
 /** Las sesiones que comparten comisión con esta —todas, si no hay comisiones. */
 const hermanasDeComision = (actividad, sesion) => {
   const sesiones = actividad?.sesiones ?? [];
@@ -394,7 +425,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    * corta el `summary` y muestra el cuerpo, y "de qué comisión es esto" es
    * justamente lo que hay que poder leer sin abrir el evento.
    */
-  const encabezado = [tipo, comision?.etiqueta, posicion].filter(Boolean).join(' · ');
+  const encabezado = [tipo, etiquetaDeComision(comision), posicion].filter(Boolean).join(' · ');
   if (encabezado) bloques.push(encabezado);
 
   if (actividad.descripcion) bloques.push(actividad.descripcion.trim());
@@ -437,8 +468,8 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
    * de los dieciséis eventos.
    */
   const otras = (actividad.comisiones ?? [])
-    .filter((o) => o?.etiqueta && o.id !== comision?.id)
-    .map((o) => `- ${o.etiqueta}`);
+    .filter((o) => etiquetaDeComision(o) && o.id !== comision?.id)
+    .map((o) => `- ${etiquetaDeComision(o)}`);
   if (otras.length) {
     bloques.push(['Otras opciones para el mismo ciclo:', ...otras].join('\n'));
   }
@@ -656,7 +687,7 @@ export const construirEvento = (actividad, sesion, labels = {}) => {
   const comision = comisionDe(actividad, sesion);
 
   return {
-    summary: tituloDeEvento(actividad.titulo, comision?.etiqueta ?? null, sesion.tema),
+    summary: tituloDeEvento(actividad.titulo, etiquetaDeComision(comision), sesion.tema),
     description: construirDescripcion(actividad, sesion, labels),
     location: construirUbicacion(actividad, labels),
     start: { dateTime: aIso(sesion.inicio), timeZone: TIMEZONE },

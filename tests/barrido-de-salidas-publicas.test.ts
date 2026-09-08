@@ -94,13 +94,21 @@ import { barrer, type Excepcion } from './fixtures/barrido';
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * §5.2 + D-125/D-126/D-127 — lo que el `events.json` publica.
+ * §5.2 + D-125/D-126/D-127 — lo que la **proyección** de una actividad publica.
+ *
+ * **Se llamaba `PERMITIDO_EN_EVENTS_JSON` y el nombre estaba mal**, y lo cobró el
+ * `auditor-privacidad` sobre B-181: lo que se barre acá es `toPublic`, no el
+ * archivo `dist/events.json` — ése es el **índice** recortado de B-106
+ * (`entradaDeIndice`, con su propia lista más abajo) y publica bastante menos.
+ * Esa diferencia de nombre ya hizo escribir un aserto falso en el gate del build,
+ * así que arreglar la prosa y dejar la etiqueta era dejar puesta la trampa: lo que
+ * un rojo **imprime** ahora dice «proyección de la actividad (toPublic)».
  *
  * Nueve grupos. Lo que **no** está acá y por eso el barrido lo exige ausente:
  * `difusion.*`, `createdBy`/`updatedBy`, `sesiones.calendarEventId`,
  * `imagenes[].storagePath`, `online.url` y la URL del material privado.
  */
-const PERMITIDO_EN_EVENTS_JSON: readonly Excepcion[] = [
+const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   {
     nombre: 'identidad',
     centinelas: ['titulo', 'descripcion', 'slug', 'searchText'],
@@ -341,10 +349,10 @@ const PERMITIDO_EN_SEARCH_TEXT: readonly Excepcion[] = [
   },
 ];
 
-describe('barrido del events.json (§5.2, la proyección pública)', () => {
+describe('barrido de la proyección de la actividad (§5.2, `toPublic`)', () => {
   it('sobreviven exactamente los centinelas permitidos', () => {
     const publica = toPublic(actividadCentinela(), 'act_centinela');
-    barrer('events.json', JSON.stringify(publica), PERMITIDO_EN_EVENTS_JSON);
+    barrer('proyección de la actividad (toPublic)', JSON.stringify(publica), PERMITIDO_EN_LA_PROYECCION);
   });
 
   it('un documento anterior a la galería publica el `imagenUrl` viejo y nada más', () => {
@@ -355,8 +363,8 @@ describe('barrido del events.json (§5.2, la proyección pública)', () => {
       imagenes: undefined,
       imagenUrl: CENTINELA.imagenUrl,
     });
-    barrer('events.json (documento anterior a B-167)', JSON.stringify(toPublic(legacy, 'act_viejo')), [
-      ...PERMITIDO_EN_EVENTS_JSON.filter((g) => g.nombre !== 'galería'),
+    barrer('proyección (documento anterior a B-167)', JSON.stringify(toPublic(legacy, 'act_viejo')), [
+      ...PERMITIDO_EN_LA_PROYECCION.filter((g) => g.nombre !== 'galería'),
       {
         nombre: 'la imagen del campo viejo',
         centinelas: ['imagenUrl'],
@@ -372,8 +380,8 @@ describe('barrido del events.json (§5.2, la proyección pública)', () => {
     // el formulario su casilla. El default sigue siendo `false` — el caso base de
     // arriba exige que el centinela del link NO salga.
     const abierta = actividadCentinela(conLinkPublico());
-    barrer('events.json (link de reunión publicado a mano)', JSON.stringify(toPublic(abierta, 'act_abierta')), [
-      ...PERMITIDO_EN_EVENTS_JSON,
+    barrer('proyección (link de reunión publicado a mano)', JSON.stringify(toPublic(abierta, 'act_abierta')), [
+      ...PERMITIDO_EN_LA_PROYECCION,
       {
         nombre: 'el link de la reunión, publicado a mano',
         centinelas: ['online.url'],
@@ -385,7 +393,7 @@ describe('barrido del events.json (§5.2, la proyección pública)', () => {
   });
 });
 
-describe('barrido del events.json con dos formas de cursar (B-224)', () => {
+describe('barrido de la proyección con dos formas de cursar (B-224)', () => {
   /**
    * El caso que la lista hace posible y que una sola fila no puede ver: los tres
    * derivados salen de la **primera** fila, así que un cambio que leyera el flag
@@ -394,8 +402,8 @@ describe('barrido del events.json con dos formas de cursar (B-224)', () => {
    */
   it('sale el link de la fila que lo tildó, y NO el de la que no', () => {
     const dos = actividadCentinela(conDosFormasDeCursar());
-    barrer('events.json (dos formas de cursar)', JSON.stringify(toPublic(dos, 'act_dos')), [
-      ...PERMITIDO_EN_EVENTS_JSON,
+    barrer('proyección (dos formas de cursar)', JSON.stringify(toPublic(dos, 'act_dos')), [
+      ...PERMITIDO_EN_LA_PROYECCION,
       {
         nombre: 'la segunda forma de cursar',
         centinelas: ['modalidades.2.id', 'modalidades.2.online.plataforma'],
@@ -417,8 +425,8 @@ describe('barrido del events.json con dos formas de cursar (B-224)', () => {
 
   it('con dos sedes salen las dos direcciones', () => {
     const dos = actividadCentinela(conDosSedes());
-    barrer('events.json (dos sedes)', JSON.stringify(toPublic(dos, 'act_sedes')), [
-      ...PERMITIDO_EN_EVENTS_JSON,
+    barrer('proyección (dos sedes)', JSON.stringify(toPublic(dos, 'act_sedes')), [
+      ...PERMITIDO_EN_LA_PROYECCION,
       {
         nombre: 'la segunda sede',
         centinelas: [
@@ -546,7 +554,7 @@ describe('barrido del searchText (§6 — salida pública por la puerta de atrá
 describe('el barrido falla cuando debe, y dice qué se escapó', () => {
   const actividad = actividadCentinela();
 
-  it('una fuga en el events.json falla nombrando el centinela y la salida', () => {
+  it('una fuga en la proyección falla nombrando el centinela y la salida', () => {
     // La fuga más plausible: alguien agrega la difusión a la proyección "para
     // que el sitio pueda mostrar los handles".
     const conFuga = {
@@ -555,14 +563,17 @@ describe('el barrido falla cuando debe, y dice qué se escapó', () => {
     };
     let error: unknown;
     try {
-      barrer('events.json', JSON.stringify(conFuga), PERMITIDO_EN_EVENTS_JSON);
+      barrer('proyección de la actividad (toPublic)', JSON.stringify(conFuga), PERMITIDO_EN_LA_PROYECCION);
     } catch (e) {
       error = e;
     }
     const mensaje = String((error as Error | undefined)?.message ?? '');
     expect(error, 'el barrido tenía que fallar con la difusión adentro').toBeDefined();
     expect(mensaje).toContain('FUGA DE PRIVACIDAD');
-    expect(mensaje).toContain('events.json');
+    // B-181 — la salida se nombra por lo que es: lo barrido es `toPublic`, no el
+    // archivo `dist/events.json` (que es el índice). El nombre viejo mandaba a
+    // buscar la fuga al archivo equivocado.
+    expect(mensaje).toContain('proyección de la actividad');
     expect(mensaje).toContain('difusion.notas');
     expect(mensaje).toContain('difusion.arrobar');
   });
@@ -595,7 +606,7 @@ describe('el barrido falla cuando debe, y dice qué se escapó', () => {
     const sinLibro = toPublic(actividadCentinela({ libro: null }), 'act_sin_libro');
     let error: unknown;
     try {
-      barrer('events.json', JSON.stringify(sinLibro), PERMITIDO_EN_EVENTS_JSON);
+      barrer('proyección de la actividad (toPublic)', JSON.stringify(sinLibro), PERMITIDO_EN_LA_PROYECCION);
     } catch (e) {
       error = e;
     }

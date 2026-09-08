@@ -507,7 +507,7 @@ const gruposDeEncuentros =
                   título es la mitad del arreglo; la otra son los encabezados de
                   cada grupo, abajo.
                 */}
-                {detalle.comisiones.length > 0
+                {detalle.opcionesConNombre > 0
                   ? 'Elegí tu opción'
                   : detalle.encuentros.length === 1
                     ? 'El encuentro'
@@ -517,11 +517,29 @@ const gruposDeEncuentros =
               </h2>
 
               {
-                detalle.comisiones.length > 0 && (
+                /*
+                  La bajada cuenta **las opciones con nombre**, no los grupos: la
+                  bolsa de los huérfanos es un grupo y no es un horario, y contarla
+                  hacía decir «se da en 3 horarios» habiendo dos. Lo cobró el
+                  `auditor-privacidad`, junto con el plural cableado —«se da en 1
+                  horarios»—, que es alcanzable publicando normal: con una sola
+                  opción el schema no dice nada.
+
+                  Y con una sola, la bajada no se pinta: «cada persona va a uno
+                  solo» no informa nada cuando hay uno, y el encabezado del grupo ya
+                  dice cuál es.
+
+                  **La cuenta viene del view-model** (`opcionesConNombre`) y no se
+                  deriva acá: es la misma que usa el rótulo de la ficha, y tenerla
+                  dos veces —una en este archivo, una en `detallePublico.ts`— era la
+                  clase de B-88 con tres frases públicas colgando. Y en un `.astro`
+                  no la puede mirar ningún test (D-140).
+                */
+                detalle.opcionesConNombre > 1 && (
                   <p class="body-md mt-3 text-super">
-                    El mismo ciclo se da en {detalle.comisiones.length} horarios. Cada
-                    persona va a <strong>uno solo</strong>: estos son los encuentros de
-                    cada opción.
+                    El mismo ciclo se da en {detalle.opcionesConNombre} horarios. Cada persona
+                    va a <strong>uno solo</strong>: estos son los encuentros de cada
+                    opción.
                   </p>
                 )
               }

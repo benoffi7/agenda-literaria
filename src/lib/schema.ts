@@ -37,8 +37,14 @@ import {
  * publicado es exactamente lo que sale al sitio y a Calendar. §7.3 borra los
  * eventos de todo lo que no está publicado, y el listado público filtra por ese
  * mismo estado, así que nada de lo que no está publicado puede publicar algo
- * incompleto. `pendiente` y `cancelado` se guardan con el nivel corto a
- * propósito: el bloqueo llega cuando se intenta publicar, que es cuando importa.
+ * incompleto — **salvo `cancelado`, y esa excepción costó un P1** (B-181, cuarta
+ * pasada del `auditor-privacidad`): una cancelada que estuvo publicada **conserva
+ * su página** y su entrada de sitemap (B-110, §7.3), así que sí puede publicar
+ * algo. `pendiente` y `cancelado` se guardan con el nivel corto a propósito —el
+ * bloqueo de **completitud** llega cuando se intenta publicar, que es cuando
+ * importa— pero una regla que existe para que **un dato no salga** no va en ese
+ * nivel: va con `tienePagina` (ver más abajo), que es la línea de «esto tiene
+ * página». Es la premisa sobre la que hay que decidir B-817.
  *
  * Lo que el modelo necesita para no corromperse **sigue siendo obligatorio en
  * los dos niveles**: los ids de sesión, las fechas y el formato del slug. Eso no
@@ -50,6 +56,69 @@ const opcional = texto.default('');
 
 /** ¿Este guardado sale al público? Es la línea que separa los dos niveles. */
 const publicando = (estado: string): boolean => estado === 'publicado';
+
+/**
+ * ¿Este estado **tiene página en el sitio**? — B-181, y lo cobró el
+ * `auditor-privacidad` como P1.
+ *
+ * No es lo mismo que `publicando`, y la diferencia es exactamente el agujero que
+ * encontró: una actividad **cancelada** conserva su página si estuvo publicada
+ * alguna vez (B-110, §7.3), y entra al sitemap hasta 30 días después de su última
+ * edición. Pero el bloque de completitud entero arranca con
+ * `if (!publicando(v.estado)) return`, así que **un guardado a `cancelado` se
+ * saltea todas las reglas de publicar** — incluidas las que existen para que algo
+ * no se publique.
+ *
+ * Para la mayoría de esas reglas está bien: son de completitud, y a una cancelada
+ * no hay que pedirle que esté completa. Para las que impiden **publicar un dato
+ * que no puede salir**, no: el camino es corto y verosímil —publicar, después
+ * cancelar y editar la etiqueta para avisar por dónde sigue— y el destino es un
+ * HTML indexado.
+ *
+ * Se usa **solo** para esas reglas, una por una y con su motivo. No es un tercer
+ * nivel de validación.
+ */
+export const tienePagina = (estado: string): boolean =>
+  estado === 'publicado' || estado === 'cancelado';
+
+/**
+ * ¿Este texto lleva una dirección de reunión? — B-181.
+ *
+ * **Mira el host y no el esquema**, y eso lo cobró el `auditor-privacidad`: la
+ * primera versión buscaba `https?://` y dejaba pasar `meet.google.com/abc-defg`,
+ * `zoom.us/j/8412345678?pwd=aB3` y `//meet.google.com/abc`, que son direcciones
+ * perfectamente utilizables. Lo que no puede publicarse es **la dirección**, no el
+ * `https://`: el `?pwd=` es el dato caro y viaja igual sin esquema.
+ *
+ * La lista es de hosts conocidos y no un patrón de dominio genérico, a propósito:
+ * un `/([a-z0-9-]+\.)+[a-z]{2,}/` rechazaría «Sábados 11.30 hs» y «Comisión A.M.»,
+ * y una etiqueta que no se puede guardar por tener un punto es peor que el riesgo
+ * que evita. Si mañana aparece una plataforma nueva se agrega acá — y el esquema
+ * suelto sigue bloqueado igual, que es la red de lo que la lista no conoce.
+ *
+ * ── Sin grupo de borde, y eso lo cobró la tercera pasada ───────────────────
+ * La primera versión exigía que el host viniera después de inicio, espacio, `(`,
+ * `/` o `@`. O sea que `Virtual:meet.google.com/abc-defg` pasaba —los dos puntos
+ * sin espacio son la forma más natural de tipear ese campo— y también
+ * `«meet.google.com/abc»`, `[meet.google.com/abc]` y `Martes-meet.google.com/abc`.
+ * El `?pwd=`, que es el dato caro, viajaba igual.
+ *
+ * Peor: **los cinco casos del `it.each` de rechazo caían todos donde el borde se
+ * cumplía**, así que el test verde no decía nada de las otras posiciones — el test
+ * estaba formado como la implementación. Sacar el borde no cuesta ningún falso
+ * positivo (ninguna etiqueta legítima contiene «zoom.us» o «meet.google» como
+ * subcadena) y cierra todas las variantes de puntuación de una vez.
+ *
+ * **Tampoco se mira `//` suelto**, que sí era un falso positivo real: «Martes //
+ * Jueves 19 h» es un separador tipográfico plausible en un cartel, y lo rechazaba
+ * con un mensaje que no explicaba nada. Un `//meet.google.com/abc` lo agarra la
+ * lista de hosts igual, que es donde vive la decisión.
+ */
+const HOSTS_DE_REUNION =
+  /(meet\.google|zoom\.us|teams\.microsoft|teams\.live|meet\.jit\.si|whereby\.com|discord\.gg|gotomeet)/i;
+
+export const llevaLinkDeReunion = (texto: string): boolean =>
+  /https?:\/\//i.test(texto) || HOSTS_DE_REUNION.test(texto);
 
 /** Una URL válida, para las validaciones que solo corren al publicar. */
 const esUrl = (valor: string): boolean => z.string().url().safeParse(valor).success;
@@ -373,9 +442,26 @@ export const actividadFormSchema = z
     tags: z.array(texto).default([]),
     destacado: z.boolean().default(false),
   })
-  // ── Nivel «publicar» ──────────────────────────────────────────────
-  // Todo lo de acá abajo corre **solo** si el guardado es a `publicado`. Es la
-  // completitud del §11: lo que evita que el sitio o el evento salgan a medias.
+  /*
+   * ── Reglas que NO son de completitud ──────────────────────────────
+   * Todo lo de acá abajo usa `faltaSiempre`, o sea que **no** está gateado por
+   * `publicando`: son las reglas que hacen **ilegible o contradictorio** el
+   * documento —y por eso corren también sobre un borrador— más **una que no es de
+   * completitud ni de coherencia**: la de la etiqueta de una opción, que existe
+   * para que un dato **no salga** y por eso se acota con `tienePagina` (corre en
+   * `publicado` y en `cancelado`, no en borrador; ver su bloque, y B-817).
+   *
+   * O sea que el criterio del bloque no es «corre siempre»: es «no es
+   * completitud». El nivel «publicar» —la completitud del §11— es el
+   * `superRefine` siguiente, el que abre con `if (!publicando(v.estado)) return`.
+   *
+   * **El encabezado de acá decía «todo lo de acá abajo corre solo si el guardado
+   * es a `publicado`», y era del bloque de al lado.** Lo cobró el
+   * `auditor-privacidad`, y no como prolijidad: quien lea eso pegado a la regla
+   * que usa `tienePagina` va a concluir que ese helper es redundante y
+   * «simplificarlo» a `publicando`, que es exactamente el P1 que la vuelta
+   * anterior cerró.
+   */
   .superRefine((v, ctx) => {
     const faltaSiempre = (path: (string | number)[], message: string) =>
       ctx.addIssue({ code: 'custom', path, message });
@@ -425,7 +511,47 @@ export const actividadFormSchema = z
       );
     }
 
+    /*
+     * B-181 — **la etiqueta de una opción no puede llevar la dirección de una
+     * reunión**, y esta regla vive acá y no con las otras tres suyas por un
+     * motivo: las otras tres son de completitud y coherencia, y esta existe para
+     * que un dato **no salga**.
+     *
+     * El argumento es de probabilidad y no de forma: la etiqueta es texto libre
+     * como el `tema`, pero su contenido natural es «cómo se cursa este grupo» —el
+     * propio ejemplo del campo incluye «Turno virtual»— y el bloque «Otras
+     * opciones» del evento invita a describir la modalidad de cada uno. Es el
+     * campo del modelo con más chances de recibir el link de la reunión, y su
+     * destino incluye el `<h3>` de una página indexada, donde D-139 dice que ese
+     * link no va **nunca**, con flag o sin flag.
+     *
+     * **Corre en `publicado` y en `cancelado`, y eso lo cobró el
+     * `auditor-privacidad` como P1** (ver `tienePagina`): la cancelada conserva
+     * su página y entra al sitemap, y el camino es corto —publicar, cancelar, y
+     * editar la etiqueta para avisar por dónde sigue—. En **borrador** no molesta
+     * a propósito: un link pegado a medio escribir no tiene por qué trabar el
+     * guardado, y de un borrador no sale nada.
+     */
+    if (tienePagina(v.estado)) {
+      v.comisiones.forEach((o, i) => {
+        if (llevaLinkDeReunion(o.etiqueta)) {
+          faltaSiempre(
+            ['comisiones', i, 'etiqueta'],
+            'Acá va solo el nombre de la opción («Martes 19 h»): el link se publica en la página',
+          );
+        }
+      });
+    }
+
   })
+  // ── Nivel «publicar» ──────────────────────────────────────────────
+  // Todo lo de acá abajo corre **solo** si el guardado es a `publicado`. Es la
+  // completitud del §11: lo que evita que el sitio o el evento salgan a medias.
+  //
+  // OJO al agregar una regla acá: si existe para que un **dato no salga** y no
+  // para que el formulario esté completo, este bloque es el lugar equivocado —
+  // una actividad `cancelado` conserva su página (B-110) y se saltea todo esto.
+  // Ver `tienePagina`, y B-817 para la que quedó de este lado.
   .superRefine((v, ctx) => {
     if (!publicando(v.estado)) return;
 
@@ -562,27 +688,6 @@ export const actividadFormSchema = z
       if (!o.etiqueta.trim()) {
         falta(['comisiones', i, 'etiqueta'], 'Ponele nombre a la opción («Martes 19 h»)');
       }
-      /*
-       * **Y no puede llevar un link** — lo cobró el `auditor-privacidad`, y el
-       * argumento es de probabilidad y no de forma: la etiqueta es texto libre
-       * como el `tema`, pero su contenido natural es «cómo se cursa este grupo»
-       * —el propio ejemplo del campo incluye «Turno virtual»— y el bloque «Otras
-       * opciones» del evento invita a describir la modalidad de cada uno. O sea
-       * que es el campo del modelo con más chances de recibir el link de la
-       * reunión, y su destino incluye el `<h3>` de una página indexada, donde
-       * D-139 dice que ese link no va **nunca**, con flag o sin flag.
-       *
-       * Se bloquea al publicar y no al guardar: un borrador con un link pegado a
-       * medio escribir no tiene por qué trabarse, y lo que importa es que no
-       * salga.
-       */
-      if (/https?:\/\//i.test(o.etiqueta)) {
-        falta(
-          ['comisiones', i, 'etiqueta'],
-          'Acá va solo el nombre de la opción («Martes 19 h»): el link se publica en la página',
-        );
-      }
-
     });
 
     /*

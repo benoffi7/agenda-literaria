@@ -410,6 +410,49 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
+### B-818 · Restaurar «Estado» desde el historial publica sin pasar por ninguna validación · P1
+
+**Lo encontró el `auditor-privacidad`** cerrando B-181, como la mitad general de
+un hallazgo cuya mitad puntual ya se arregló (el historial no restaura una
+etiqueta de comisión con un link de reunión sobre una página indexada).
+
+`restaurarCampo` escribe con un `updateDoc` que **no pasa por el schema** —lo dice
+el propio `historial.ts`— y `camposRestaurables` filtra `slug` (trampa 10, B-285),
+los cuatro derivados, los campos que no existían en esa versión y, desde B-181,
+`comisiones` con un link. **`estado` no está filtrado.**
+
+O sea que «Restaurar → Estado» escribe `estado: 'publicado'` **salteando todas las
+reglas del nivel publicar**: la sede incompleta, el canal de inscripción sin
+destino, el monto contradictorio, el slug `-copia`, el link en una etiqueta. El
+camino no necesita mala fe ni consola:
+
+1. publicada → se pasa a borrador y se edita algo que en borrador está permitido
+   (por ejemplo el link en la etiqueta de una opción, que es legítimo ahí);
+2. «Restaurar → Estado» sobre una versión que decía `publicado`;
+3. la actividad queda publicada con ese contenido, y la escritura **marca
+   rebuild**, así que sale al sitio sola.
+
+**Es P1 y es preexistente**: vale para todas las reglas de publicar desde que
+existe la pantalla de restaurar (B-40), no solo para las de B-181. Lo que lo hizo
+visible es la guarda nueva, que es la primera regla de «que un dato no salga» que
+vive en ese nivel.
+
+**El arreglo probablemente sea filtrar `estado`**, con el argumento de que
+restaurar «publicado» no es recuperar contenido: **es publicar**, y publicar tiene
+una puerta con validación. Pero es una decisión de producto y no un bug obvio —
+saca una fila de una pantalla que el dueño usa— así que va anotado y no aplicado.
+Las alternativas, para que la decisión se tome sobre las tres:
+
+| Salida | Costo |
+|---|---|
+| filtrar `estado` de `camposRestaurables` | una línea; se pierde «volver a publicar desde el historial», que probablemente nadie usa — **el único lugar donde se cambia el estado es el select del formulario, y ése sí valida** (`guardarActividad` hace `safeParse` antes de escribir). El menú del listado tiene «se llenó / se liberó», «Duplicar», «Historial» y «Borrar»: ninguna publica. Lo corrigió el `auditor-privacidad`, y la afirmación anterior —«despublicar y publicar están en el menú del listado»— era falsa |
+| validar el documento resultante antes de escribir | lo correcto en general y lo más caro: `restaurarCampo` pasa a armar el documento completo y correrlo por el schema, que hoy no conoce |
+| dejarlo y documentarlo | gratis, y deja abierta una puerta que ya se sabe que existe |
+
+Dónde: `camposRestaurables` en `src/lib/historial.ts`, al lado del filtro del slug
+y del de comisiones. El test iría en `tests/historial-restaurar.test.ts`, al lado
+del `describe` de la trampa 10.
+
 ### B-263 · La portada recortaba el 51 % del flyer — ✅ hecho (2026-09-01)
 
 **El bug con el que arranca toda la tanda.** `src/pages/actividad/[slug].astro`
@@ -2997,6 +3040,73 @@ Esto queda como ítem y no como arreglo porque las tres filas de arriba piden
 **decidir**, no reemplazar un número: sobre todo la segunda, que es una decisión de
 producto sobre qué se muestra de la autoría.
 
+
+### B-817 · El esquema de la URL de una imagen se valida solo al publicar, y una cancelada también tiene página · P2
+
+**Lo marcó el `auditor-trampas`** cerrando B-181, y explícitamente como fuera de
+esa tanda: es el mismo agujero que B-181 acaba de cerrar del otro lado, en el
+campo de al lado.
+
+El chequeo de esquema de `imagenes[].url` (`esUrl` + `ESQUEMA_PERMITIDO`,
+`src/lib/schema.ts`) vive en el `superRefine` que arranca con
+`if (!publicando(v.estado)) return`, o sea que **solo corre cuando el estado
+destino es `publicado`**. Y una actividad **cancelada** conserva su página si
+estuvo publicada (B-110, §7.3), esa página sigue pintando `<img src>` y
+`og:image` desde `imagenes[]`, y entra al sitemap hasta 30 días después de su
+última edición.
+
+**El camino es el mismo que motivó el arreglo de B-181:** publicar normal,
+después pasar la actividad a `cancelado` y en la misma edición pisar la URL de
+una imagen con un `data:` o un `javascript:`. El schema no dice nada, porque el
+bloque entero se salteó.
+
+**El arreglo es de una palabra**, y la pieza ya existe: cambiar la puerta de ese
+`forEach` de `publicando` a **`tienePagina`** (el helper que B-181 agregó al lado,
+con su motivo escrito). No hay que inventar nada; hay que decidir si va, y de paso
+**si hay otras reglas del mismo tipo en ese bloque**: el criterio para mudarlas es
+«¿esta regla existe para que un dato no salga, o para que el formulario esté
+completo?». Las de completitud se quedan donde están —a una cancelada no hay que
+pedirle que esté completa—; las otras, no.
+
+**Por qué no se arregló en el momento:** no es de B-181 y tocarlo habría metido en
+esa tanda un cambio de comportamiento sobre un campo que no era el suyo. Pero es
+del mismo día y de la misma clase, así que conviene resolverlo antes de que la
+distinción `publicando`/`tienePagina` se olvide.
+
+### B-816 · Ningún nivel valida que los ids de un array sean únicos · P2
+
+**Lo marcó el `auditor-privacidad` cerrando B-181, explícitamente como «no es de
+esta tanda»** — y tiene razón: vale para `sesiones[].id` desde que existe el
+modelo, y para `imagenes`, `modalidades`, `material.items` y ahora `comisiones`.
+El schema valida el **prefijo** (`ses_`, `com_`, `mod_`, `img_`, `mat_`) y nada
+más: dos filas con el mismo id son un documento válido.
+
+**Qué pasa con dos ids iguales, y por qué es peor que un dato raro:** el id es la
+llave con la que **todo** resuelve por fila. Con dos comisiones del mismo id,
+`porComision` emite el mismo encuentro en dos grupos, la página escribe dos
+`<li id="ses_…">` repetidos —HTML inválido y dos anclas iguales—, y el par
+`comisionDe` (que hace `.find`, o sea la primera) contra el `Map` de etiquetas
+(donde gana la última) resuelve **etiquetas distintas para el mismo encuentro**:
+el evento de Calendar diría «Martes» y la página «Jueves». Es la clase de B-88
+—dos derivaciones del mismo dato que se separan— y justamente la que B-181 cerró
+por el otro lado (`tituloDeEvento` compartido). Con dos sesiones del mismo id, el
+diff del §7.2 pierde una: el `Map` por id se queda con la última.
+
+**Hoy solo llega editando a mano** en la consola de Firestore, o por un bug en
+una fábrica de ids —que es lo que la trampa 2 vigila—. No hay ningún camino desde
+el panel: los cinco ids salen de `crypto.randomUUID()`.
+
+**El arreglo es chico y va en el schema, en el nivel de forma** (los dos niveles,
+como el prefijo): un `refine` por array que compare `new Set(ids).size` contra
+`ids.length`. Cinco reglas de una línea, o una función que las cinco usen. Lo que
+hay que decidir es el mensaje: «hay dos filas con el mismo id» no le dice nada a
+quien carga, y el caso no lo puede producir desde la UI — así que probablemente
+el mensaje correcto sea el que reconoce que es un documento roto y no un
+formulario incompleto, como `'El id de sesión debe venir de nuevaSesionId()'`.
+
+**Por qué vale la pena igual:** es la única invariante de la trampa 2 que no está
+verificada. La fábrica de ids tiene tests en las cinco listas; que dos filas no
+compartan id no lo afirma nadie, y es la mitad de la que depende todo el resto.
 
 ### B-815 · `D-440` está citada en tres lugares y nunca se escribió como entrada · P2
 

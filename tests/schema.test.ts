@@ -939,4 +939,106 @@ describe('la etiqueta de una opción no puede llevar un link (B-181)', () => {
     const borrador = { ...conEtiqueta('https://meet.google.com/abc'), estado: 'borrador' as const };
     expect(errores(borrador)).toEqual([]);
   });
+
+  /**
+   * **Y en `cancelado` tampoco se puede** — lo cobró el `auditor-privacidad` como
+   * P1 en su segunda pasada, y el agujero era de alcance: la regla vivía adentro
+   * del bloque que arranca con `if (!publicando(v.estado)) return`, así que un
+   * guardado a `cancelado` la salteaba entera.
+   *
+   * Y la cancelada **tiene página** si estuvo publicada (B-110, §7.3) y entra al
+   * sitemap hasta 30 días después de su última edición. El camino es corto y
+   * verosímil: publicar con «Martes 19 h», cancelar, y editar la etiqueta a
+   * «Martes 19 h — se pasa a https://…» para avisar por dónde sigue.
+   */
+  it('en cancelado tampoco: su página sigue indexada (B-110)', () => {
+    /*
+     * MUTACIÓN PROBADA: volviendo la regla adentro del bloque de `publicando`,
+     * este caso queda en verde y el link llega al `<h3>` de una página indexada.
+     */
+    const cancelada = {
+      ...conEtiqueta('Martes 19 h — se pasa a https://meet.google.com/abc'),
+      estado: 'cancelado' as const,
+    };
+    expect(errores(cancelada)).toContain('comisiones.0.etiqueta');
+  });
+
+  describe('mira la dirección, no el `https://`', () => {
+    /**
+     * Segundo hallazgo de la misma pasada: lo que no puede publicarse es **la
+     * dirección**, no el esquema — el `?pwd=` es el dato caro y viaja igual sin
+     * `https://`.
+     *
+     * La guarda es una **lista de hosts conocidos** y no un patrón de dominio
+     * genérico, a propósito: un `([a-z0-9-]+\.)+[a-z]{2,}` rechazaría «Sábados
+     * 11.30 hs», y una etiqueta que no se puede guardar por tener un punto es peor
+     * que el riesgo que evita.
+     */
+    /*
+     * **Una posición por clase de puntuación, y no cinco strings parecidos** — lo
+     * cobró la tercera pasada del `auditor-privacidad`: los cinco casos de la
+     * primera versión caían todos donde el grupo de borde de la regex se cumplía
+     * (tres al inicio, uno por el `//`, uno después de un paréntesis), así que el
+     * verde **no decía nada** de las otras posiciones. El test estaba formado como
+     * la implementación.
+     *
+     * `Virtual:meet.google.com/…` es el caso que importa: los dos puntos sin
+     * espacio son la forma más natural de tipear este campo, y pasaba.
+     */
+    it.each([
+      'meet.google.com/abc-defg-hij',
+      'Virtual:meet.google.com/abc-defg-hij',
+      'Martes-meet.google.com/abc',
+      '«meet.google.com/abc»',
+      '[meet.google.com/abc]',
+      'zoom.us/j/8412345678?pwd=aB3',
+      'us02web.zoom.us/j/84123',
+      '//meet.google.com/abc',
+      'Turno virtual (teams.microsoft.com/l/meetup-join/x)',
+      'Turno virtual, entrás por teams.live.com/meet/x',
+      'https://algo-que-la-lista-no-conoce.example/x',
+    ])('rechaza «%s»', (etiqueta) => {
+      /*
+       * MUTACIÓN PROBADA (dos): con la guarda vieja (`/https?:\/\//i` solo) pasan
+       * los nueve sin esquema; con el grupo de borde puesto, pasan los cuatro de
+       * puntuación pegada.
+       */
+      expect(errores(conEtiqueta(etiqueta))).toEqual(['comisiones.0.etiqueta']);
+    });
+
+    it.each([
+      'Martes 19 h',
+      'Sábados 11.30 hs',
+      'Comisión A.M.',
+      'Turno virtual',
+      'Comisión 2 · tarde',
+      // El `//` como separador tipográfico: la primera versión de la guarda lo
+      // rechazaba con el mensaje del link, que no explicaba nada. Lo cobró el
+      // `auditor-privacidad` como falso positivo real, y un `//meet.google.com`
+      // lo agarra igual la lista de hosts.
+      'Martes // Jueves 19 h',
+    ])('deja pasar «%s», que es un nombre y no una dirección', (etiqueta) => {
+      // La otra mitad, y la que hace usable la guarda: los falsos positivos de un
+      // patrón de dominio genérico caen todos acá.
+      expect(errores(conEtiqueta(etiqueta))).toEqual([]);
+    });
+
+    /**
+     * **Lo que la guarda NO agarra, dicho acá y no en un comentario.** Un host de
+     * reunión que no está en la lista y viene sin esquema pasa, y eso es el
+     * costo aceptado de no usar un patrón de dominio genérico (que rechazaría
+     * «Sábados 11.30 hs»).
+     *
+     * Está como test y no como nota para que el día que alguien amplíe la lista lo
+     * vea, y para que la ayuda del panel no prometa más de lo que hay: dice «un
+     * link de Meet, Zoom, Teams o Jitsi», que es exactamente esto.
+     */
+    it('un host de reunión fuera de la lista y sin esquema pasa: es el costo aceptado', () => {
+      expect(errores(conEtiqueta('bbb.miuni.edu.ar/b/abc-def'))).toEqual([]);
+      // Con esquema, en cambio, no pasa ninguno.
+      expect(errores(conEtiqueta('https://bbb.miuni.edu.ar/b/abc-def'))).toEqual([
+        'comisiones.0.etiqueta',
+      ]);
+    });
+  });
 });

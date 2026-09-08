@@ -126,6 +126,186 @@
      página indexada, donde D-139 dice que ese link no va nunca. Se rechaza al
      publicar, con su línea en la ayuda del panel.
 
+  **Y la segunda pasada del mismo auditor encontró siete más, tres de ellos
+  producidos por las correcciones de arriba; y la tercera, seis más, otra vez tres
+  sobre las correcciones de la segunda.** Vale anotarlo como lección y no como
+  anécdota: **la corrección de un hallazgo es código nuevo y hay que auditarla como
+  tal.** Lo que salió de la segunda:
+
+  - **Un P1 de alcance:** la guarda del link vivía adentro del bloque que arranca
+    con `if (!publicando(v.estado)) return`, así que **un guardado a `cancelado` la
+    salteaba entera** — y una cancelada conserva su página indexada (B-110) y entra
+    al sitemap. El camino es corto: publicar, cancelar, y editar la etiqueta para
+    avisar por dónde sigue. Ahora corre bajo `tienePagina(estado)`, un helper con
+    su motivo escrito al lado de `publicando`, y solo para esa regla.
+  - **La guarda miraba el esquema y no la dirección:** `meet.google.com/abc-defg`,
+    `zoom.us/j/84123?pwd=aB3` y `//meet.google.com/abc` pasaban. Lo que no puede
+    publicarse es la dirección, y el `?pwd=` viaja igual sin `https://`. Ahora hay
+    una lista de hosts conocidos —y no un patrón de dominio genérico, que
+    rechazaría «Sábados 11.30 hs»—, con los dos lados probados.
+  - **Una comisión sin nombre pero con encuentros se llevaba sus fechas puestas**:
+    el filtro pedía etiqueta *y* encuentros, así que esas filas no aparecían en
+    ningún grupo mientras el JSON-LD las seguía emitiendo. Es el mismo error que la
+    bolsa de huérfanos había arreglado, un paso más adentro. Ahora se filtra solo
+    por «tiene encuentros», y la propiedad quedó fijada de una vez: **la unión de
+    los grupos son todos los encuentros, siempre**.
+  - **El rótulo y la bajada contaban la bolsa de huérfanos como una opción** («3
+    opciones para sumarse» habiendo dos), y **el plural estaba cableado** («1
+    opciones para sumarse», alcanzable publicando normal con una sola comisión).
+  - **El barrido seguía imprimiendo «events.json» sobre lo que barre**, que es la
+    proyección. Corregir la prosa y dejar la etiqueta era dejar puesta la trampa que
+    ya había producido un aserto falso: la lista pasó a llamarse
+    `PERMITIDO_EN_LA_PROYECCION` y un rojo ahora nombra «proyección de la actividad
+    (toPublic)».
+  - **La ayuda del panel prometía más de lo que el schema hacía** («no se puede
+    guardar con un link adentro»): ahora dice «no se puede publicar ni cancelar».
+
+  **Y la tercera pasada, sobre esas correcciones**, cerró tres agujeros más y
+  mejoró tres tests que estaban formados como la implementación:
+
+  - **La otra mitad de la puerta del link: el historial.** `restaurarCampo` escribe
+    con `updateDoc` y no pasa por el schema, así que el camino era guardar el link
+    en borrador (permitido), corregirlo, publicar, y después «Restaurar → Opciones
+    para sumarse». Ahora `camposRestaurables` filtra `comisiones` cuando la
+    actividad de hoy tiene página y la versión trae una etiqueta con un link —
+    reusando `llevaLinkDeReunion` del schema, no un patrón nuevo. Es el precedente
+    de B-285 («el historial no puede ser la puerta de atrás») con otro campo. La
+    mitad **general** —restaurar `estado` saltea todas las reglas de publicar— es
+    preexistente y quedó como **B-818**.
+  - **La guarda se evitaba con un signo de puntuación:** el grupo de borde de la
+    regex exigía espacio antes del host, así que `Virtual:meet.google.com/abc`
+    pasaba. Peor: **los cinco casos del `it.each` caían todos donde el borde se
+    cumplía**, o sea que el test estaba formado como la implementación. Se sacó el
+    borde (no cuesta ningún falso positivo) y también el `includes('//')`, que sí
+    era un falso positivo real («Martes // Jueves 19 h»). El `it.each` pasó a tener
+    una posición por clase de puntuación, y hay un caso que declara **lo que la
+    guarda no agarra**: un host de reunión fuera de la lista y sin esquema.
+  - **La frase «se da en N horarios» vivía en la plantilla**, derivando por su
+    cuenta lo mismo que el rótulo deriva en el view-model: dos derivaciones, dos
+    archivos, tres frases públicas — y ningún test podía mirarla, porque un
+    `.astro` no se importa desde vitest (D-140). Ahora el view-model expone
+    `opcionesConNombre` y la plantilla lo lee.
+  - **Dos frases residuales del rótulo:** «1 opción para sumarse · 8 encuentros
+    cada una» (el «cada una» no tiene con qué comparar) y «· 0 encuentros cada
+    una», alcanzable con una comisión de encuentros todos cancelados más un huérfano
+    vivo — o sea en la rama de la cancelada, que es página indexada.
+  - **La propiedad que se había fijado se pasaba en verde con una fila perdida:**
+    las cuatro formas tenían todos los encuentros vivos, así que la mutación «no
+    repetir los cancelados en cada opción» las dejaba pasar sacando los cancelados
+    de la página — justo lo que B-110 decide que no puede pasar. Se agregó una
+    quinta forma con cancelados y un `expect` antes del loop, porque el `continue`
+    podía dejar el `it` con cero aserciones.
+  - **Tres comentarios que decían lo contrario del código**, dos pegados a las
+    reglas nuevas: el que anunciaba que una comisión sin nombre no se emite (veinte
+    líneas arriba del que explica por qué sí), el encabezado «todo lo de acá abajo
+    corre solo si el guardado es a publicado» sobre el bloque de los **dos** niveles
+    —que es la instrucción para «simplificar» `tienePagina` a `publicando`, o sea
+    para reabrir el P1— y los `describe` del barrido que seguían diciendo
+    «events.json».
+
+  **Y la cuarta pasada** —sobre esas correcciones— cerró dos puertas que las
+  correcciones habían dejado a medio decidir, y dos afirmaciones nuevas que el
+  código no sostenía:
+
+  - **«Tiene nombre» estaba definido dos veces y difería en un valor:** el schema
+    lo define como `etiqueta.trim() !== ''` y el view-model lo definía por
+    truthiness, así que `'   '` contaba como opción — publicaba un `<h3>` vacío,
+    contaba «1 opción para sumarse» y mandaba «Título —    · tema» al JSON-LD. Se
+    trima **en el origen**, donde nace la etiqueta que consumen los cuatro
+    consumidores (el primer intento lo puso en el armado del grupo, que cubría tres
+    de los cuatro: el `subEvent.name` sale del `Map` que resuelve la referencia, y
+    seguía crudo). **No llega por el panel**: `formADocumento` ya trima
+    (`limpiar`), así que la red es para un documento editado a mano o una versión
+    vieja restaurada verbatim — el motivo escrito en el primer intento («el form se
+    escribe crudo») era falso para este campo.
+  - **`comisiones` y `sesiones[].comisionId` son un par, y el historial restauraba
+    una mitad sola:** restaurar una versión anterior a la creación de una comisión
+    la borra y deja los encuentros colgados — un documento que el schema rechaza al
+    publicar, entrando por la única puerta que no lo valida y con rebuild marcado.
+    Ahora `payloadDeRestauracion` los desengancha en la misma escritura, que es
+    exactamente el patrón que `modalidades` ya usaba (B-224).
+  - **El docblock de apertura del schema seguía afirmando la premisa que el P1
+    refutó** («nada de lo que no está publicado puede publicar algo incompleto»), a
+    diez líneas de `tienePagina` y siendo el párrafo más autoritativo del archivo —
+    o sea la cuarta instancia de la clase que la vuelta anterior vino a cerrar. Es
+    además la premisa sobre la que hay que decidir B-817.
+  - **La recomendación de B-818 se apoyaba en un menú que no existe:** decía que
+    «despublicar y publicar están en el menú del listado», y ese menú tiene «se
+    llenó / se liberó», «Duplicar», «Historial» y «Borrar». El único lugar donde se
+    cambia el estado es el select del formulario.
+
+  **Y en la quinta** salieron cuatro más, tres de ellos afirmaciones que el código
+  no sostenía: el `.trim()` cubría tres de los cuatro consumidores (el
+  `subEvent.name` seguía crudo), el motivo escrito para ese trim era falso
+  —`formADocumento` ya trima—, el desenganche de la restauración **reescribía el
+  array de sesiones aunque no hubiera nada que desenganchar** (B-80 por una puerta
+  nueva: `actual` es el snapshot que la pantalla leyó al montar, así que devolvía
+  `calendarEventId` viejos, y en ese caso el trigger no los repone porque no emite
+  ninguna operación), y el encabezado que la vuelta anterior había reescrito
+  sobre-afirmaba —«todo lo de acá abajo corre también sobre un borrador»— justo
+  sobre el bloque que hospeda la regla acotada con `tienePagina`.
+
+  Y en la misma vuelta, el `auditor-trampas` encontró que el desenganche había
+  cerrado **una sola mitad del par**: `comisionId` no es un campo de máquina, así
+  que restaurar «Encuentros» reintroducía la referencia a una comisión borrada — el
+  sentido simétrico del que se acababa de arreglar, y la clase D-30/B-88 otra vez.
+  Ahora las dos ramas comparten la misma función y el par queda cerrado de los dos
+  lados.
+
+  Y el `auditor-trampas`, en su cuarta, encontró que **el test del «0 encuentros
+  cada una» pasaba por la rama equivocada**: con una sola opción, el `cada` se
+  suprime antes de mirar el cero, así que sacar ese término dejaba la suite verde.
+  El caso que sí lo ejercita necesita **dos** opciones canceladas más un huérfano
+  vivo.
+
+  **Y en la sexta**, que es la que cerró: tres hallazgos, y el más aleccionador es
+  que **el arreglo del trim había mudado la divergencia en vez de cerrarla**. La
+  quinta lo había puesto del lado del sitio; el evento de Calendar deriva por su
+  cuenta desde el documento crudo, así que el detalle dejaba de pintar el
+  encabezado y el evento seguía mandando «Título —    · tema». La divergencia pasó
+  de estar **adentro** de la salida 6 a estar **entre** la 6 y la 2 — la misma
+  clase de B-88 que el docblock invocaba como argumento. Ahora hay **una sola
+  derivación** de «esta comisión tiene nombre» (`etiquetaDeComision`, en
+  `@calendario`) y la comparten los cinco consumidores (D-20, D-71). De paso cierra
+  lo otro que ese trim había abierto: `.trim()` sobre una etiqueta que un documento
+  editado a mano puede no tener tiraba un `TypeError` adentro de `getStaticPaths`,
+  o sea **se caía el build entero** en vez de degradar una página.
+
+  Y el `auditor-trampas`, en la misma vuelta, cobró el test con el que se había
+  cerrado eso: era un chequeo **sobre la fuente** —buscaba `await
+  leerActividad(actual.id)` en el texto del archivo— o sea calcado de la
+  implementación, que es el antipatrón que este mismo cambio ya había arreglado dos
+  veces en otros tests. Se reemplazó por uno de **comportamiento**
+  (`tests/historial-relectura.test.ts`, con `leerActividad` y `updateDoc` doblados):
+  afirma qué dato terminó en el `updateDoc`, con el escenario exacto de B-80 —la
+  pantalla montada antes del write-back del sync— y su control negativo.
+
+  Y la tercera: **la corrección del snapshot reducía la exposición y no la
+  cerraba.** «Con colgados de verdad la reposición de D-91 tapa la ventana» era
+  falso — `reponerIds` solo toca las sesiones que **tuvieron operación**, así que
+  las demás se quedaban con el `calendarEventId` del snapshot. Ahora
+  `restaurarCampo` **relee el documento** antes de armar el payload, que es
+  literalmente el arreglo que B-150 le hizo a `actualizarActividad` aplicado a esta
+  puerta.
+
+  **Y en la séptima** —la que cerró— tres más, uno P1: **la relectura arreglaba el
+  payload y dejaba la guarda mirando el snapshot**. `camposRestaurables` decide qué
+  ofrece en el render, así que con la pantalla montada mientras la actividad era
+  borrador —donde la etiqueta con un link es legítima— y publicada desde otra
+  pestaña, el click escribía el link sobre el documento releído, que ya tiene
+  página. Ahora `restaurarCampo` re-evalúa las dos guardas contra lo releído y tira
+  si dejaron de valer (el `catch` de la pantalla ya mostraba el mensaje). Cierra de
+  paso la misma clase para el **slug**, que era preexistente: la guarda de la trampa
+  10 también se evaluaba contra el snapshot.
+
+  Los otros dos son afirmaciones acotadas: `etiquetaDeComision` es la única
+  derivación **del lado de las salidas** —el schema tiene la suya para pedir el
+  nombre al publicar, que es entrada y no proyección—, y el comentario del `if` de
+  las sesiones decía que la ventana era la del montaje cuando ya es la del
+  `getDoc`→`updateDoc`. Y como los casos de comportamiento prueban cada salida por
+  separado, ahora hay un **chequeo estructural** que impide volver a inlinear el
+  saneado en uno de los dos lados — que es exactamente lo que pasó dos veces.
+
 - **Anotados de la lectura de Search Console del 2026-09-08** — **B-731**,
   **B-812**, **B-813**. El dueño pasó el informe «Eventos»: 44 no válidas por
   `Falta el campo "location"`, 24 válidas y nueve avisos. **Las 44 son el markup
@@ -137,6 +317,30 @@
   monto) y el único que sí lo es —`validFrom` en `offers`, que no se emite nunca—
   quedó como B-812. Que el panel avise qué se va a perder antes de publicar es
   B-813.
+
+- **Anotado (P1): restaurar «Estado» desde el historial publica sin validar nada**
+  — **B-818**, la mitad general de un hallazgo cuya mitad puntual sí se arregló.
+  `restaurarCampo` escribe con un `updateDoc` que no pasa por el schema, y
+  `camposRestaurables` filtra el slug, los derivados y —desde ahora— las comisiones
+  con un link, pero **no `estado`**: «Restaurar → Estado» escribe `publicado`
+  salteando todas las reglas del nivel publicar, y marca rebuild. Es preexistente
+  (vale desde B-40 para todas esas reglas, no solo para las de B-181) y el arreglo
+  es una decisión de producto: el ítem deja las tres alternativas con su costo.
+
+- **Anotado: el esquema de la URL de una imagen solo se valida al publicar** —
+  **B-817**, que marcó el `auditor-trampas` cerrando B-181 y explícitamente como
+  fuera de esa tanda: es el mismo agujero que B-181 cerró del otro lado, en el
+  campo de al lado. Una cancelada conserva su página y sigue pintando `<img src>`
+  y `og:image`, así que un `data:` o un `javascript:` pisado en la misma edición
+  que cancela no lo frena nadie. El arreglo es cambiar esa puerta de `publicando`
+  a `tienePagina`, el helper que esta tanda dejó escrito.
+
+- **Anotado: nadie valida que los ids de un array sean únicos** — **B-816**, que
+  el `auditor-privacidad` marcó explícitamente como *no de esta tanda*: vale para
+  `sesiones[].id` desde que existe el modelo. Con dos ids iguales, el diff del
+  §7.2 pierde una fila y la página resuelve una etiqueta distinta que el evento —
+  la clase de B-88 que B-181 cerró por el otro lado. Solo llega editando a mano, y
+  el arreglo es un `refine` por array.
 
 - **Anotado: `D-440` citada en tres lugares y nunca escrita** — **B-815**, que lo
   encontró el `auditor-documentacion` cerrando B-181. Es el caso hermano de B-808

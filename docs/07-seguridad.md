@@ -228,8 +228,22 @@ porque no salen igual:
   Así que no hay ninguna excepción de barrido para el id en el detalle: la primera
   versión la tenía, y era un permiso para algo que nunca se pinta.
 
-**Y la etiqueta tiene una guarda que el `tema` no tiene:** al publicar se rechaza
-si contiene `http://` o `https://`. No es una regla de forma, es de probabilidad —
+**Y la etiqueta tiene una guarda que el `tema` no tiene:** se rechaza si lleva la
+dirección de una reunión —el `https://` suelto o uno de los hosts conocidos
+(`meet.google`, `zoom.us`, `teams.microsoft`…), en cualquier posición del texto— y
+corre en **`publicado` y en `cancelado`**, que son los dos estados con página
+indexada (`tienePagina`, y la cancelada entra al sitemap por B-110). En **borrador**
+no molesta: de ahí no sale nada. **Y también cubre la puerta del historial**, que
+escribe con `updateDoc` sin pasar por el schema: `camposRestaurables` no ofrece
+`comisiones` cuando la versión trae una etiqueta con un link y la actividad tiene
+página, **y `restaurarCampo` vuelve a evaluar esa guarda contra el documento que
+relee antes de escribir** — sin eso la contestaba el snapshot de cuando se abrió la
+pantalla, y bastaba publicar desde otra pestaña para colarla (el precedente es
+B-285, que cerró la misma puerta para el slug; esa guarda también se re-evalúa
+ahora). Lo
+que la guarda **no** agarra está fijado en un test y no en un comentario: un host
+de reunión fuera de la lista y sin esquema. No es una regla de forma, es de
+probabilidad —
 su contenido natural es «cómo se cursa este grupo» (el propio ejemplo del campo
 incluye «Turno virtual»), así que es el campo del modelo con más chances de recibir
 el link de la reunión, y su destino incluye una página indexada, donde D-139 dice

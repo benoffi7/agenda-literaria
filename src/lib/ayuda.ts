@@ -364,8 +364,9 @@ export const CAPITULOS: CapituloAyuda[] = [
           'publicar se piden dos cosas: que cada opción tenga nombre y que ningún encuentro ' +
           'quede sin opción. Si borrás una opción, sus encuentros no se borran: quedan sin ' +
           'opción y hay que asignarles otra. En el nombre de la opción **no pongas el link ' +
-          'de la reunión**: ese nombre se publica en la página y en el calendario, así que ' +
-          'no se puede guardar con un link adentro. El link va donde siempre, en «Dónde».',
+          'de la reunión**: ese nombre se publica en la página y en el calendario, así que con ' +
+          'un link de Meet, Zoom, Teams o Jitsi adentro no se puede publicar ni cancelar. En ' +
+          'un borrador sí, que es donde no sale nada. El link va donde siempre, en «Dónde».',
       },
       {
         texto:

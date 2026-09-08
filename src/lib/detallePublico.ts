@@ -57,7 +57,13 @@ import { porComision } from '@/lib/comisiones';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad, ViaInscripcion } from '@/types/actividad';
-import { ETIQUETA_TIPO_MATERIAL, construirLinkMapa, desSlug, tituloDeEvento } from '@calendario';
+import {
+  ETIQUETA_TIPO_MATERIAL,
+  construirLinkMapa,
+  desSlug,
+  etiquetaDeComision as etiquetaSaneada,
+  tituloDeEvento,
+} from '@calendario';
 
 // ─────────────────────────────────────────────────────────────────
 // Saneamiento de lo que va a un href
@@ -309,6 +315,25 @@ export interface DetallePublico {
    * sola al cancelar un encuentro.
    */
   comisiones: { etiqueta: string; encuentros: EncuentroDeDetalle[] }[];
+  /**
+   * **Cuántas de esas son una opción de verdad** — B-181, o sea las que tienen
+   * nombre. Cero cuando el ciclo no tiene comisiones.
+   *
+   * No es `comisiones.length`, y por eso viaja: esa lista puede traer el grupo sin
+   * etiqueta —la bolsa de los `comisionId` que no resuelven, y la comisión que
+   * todavía no tiene nombre—, y ninguno de los dos es un horario que alguien pueda
+   * elegir.
+   *
+   * **Viaja calculada y no se deriva en la plantilla**, y eso lo cobró el
+   * `auditor-privacidad`: la primera versión de este arreglo puso la cuenta en el
+   * frontmatter del `.astro` para el `<h2>` y la bajada, mientras `rotuloCiclo` la
+   * derivaba acá para el rótulo. Dos derivaciones de «este grupo es una opción de
+   * verdad», en dos archivos, para tres frases públicas — la clase de B-88, y con
+   * el peor modo de falla: el día que una de las dos agregue un `.trim()`, el
+   * rótulo dice «2 opciones» y la bajada «se da en 3 horarios» en la misma
+   * pantalla. Y ningún test la nombraba, porque vivía en un `.astro` (D-140).
+   */
+  opcionesConNombre: number;
   /**
    * La próxima fecha, o `null` si ya pasó todo.
    *
@@ -690,9 +715,34 @@ const rotuloDeCiclo = (
      */
     const porOpcion = comisiones.map((c) => c.encuentros.filter((e) => !e.cancelada).length);
     const parejas = porOpcion.every((n) => n === porOpcion[0]) ? porOpcion[0]! : null;
-    const cuantas = `${comisiones.length} opciones para sumarse`;
+    /*
+     * **El singular no es cosmético: es alcanzable publicando normal.** Con una
+     * sola comisión el schema publica sin chistar, y también con dos donde una
+     * todavía no tiene fechas. «1 opciones para sumarse» en una página indexada lo
+     * encontró el `auditor-privacidad`; el «cada una» ya tenía su singular.
+     */
+    const cuantas =
+      comisiones.length === 1
+        ? '1 opción para sumarse'
+        : `${comisiones.length} opciones para sumarse`;
+    /*
+     * **«cada una» necesita que haya más de una, y que el número no sea cero.** Las
+     * dos mitades las cobró la tercera pasada del `auditor-privacidad`, y las dos
+     * son alcanzables publicando normal:
+     *
+     * - con **una** opción, «1 opción para sumarse · 8 encuentros cada una» — el
+     *   «cada una» no tiene con qué comparar;
+     * - con `parejas === 0`, «· 0 encuentros cada una». El corte temprano de arriba
+     *   es `vivos.length === 0` y es **global**: una comisión con nombre y todos sus
+     *   encuentros cancelados, más un encuentro vivo huérfano, llega hasta acá con
+     *   cero. Y esa es la rama de la cancelada, que es página indexada (B-110).
+     */
     const cada =
-      parejas === null ? '' : parejas === 1 ? ' · 1 encuentro cada una' : ` · ${parejas} encuentros cada una`;
+      parejas === null || parejas === 0 || comisiones.length === 1
+        ? ''
+        : parejas === 1
+          ? ' · 1 encuentro cada una'
+          : ` · ${parejas} encuentros cada una`;
     return `${cuantas}${cada}${rango}`;
   }
 
@@ -952,7 +1002,29 @@ export const detalleDeActividad = (
    * B-88 y encima usando esa equivalencia como argumento. Resolviendo la
    * referencia primero, las dos cuentas agrupan igual: los huérfanos, juntos.
    */
-  const etiquetaDeComision = new Map((a.comisiones ?? []).map((c) => [c.id, c.etiqueta]));
+  /*
+   * **Se sanea acá, en el origen, y con la función de `@calendario`.**
+   *
+   * Dos pasadas del `auditor-privacidad` para llegar acá, y las dos lecciones
+   * valen: primero el `.trim()` estaba en el armado del grupo, que cubre el
+   * encabezado y la cuenta pero **no** `EncuentroDeDetalle.comision.etiqueta` —que
+   * sale de este `Map` y es lo que alimenta el `subEvent.name`—; después, con el
+   * trim acá, las dos **salidas** dejaron de coincidir, porque el evento de
+   * Calendar deriva por su cuenta desde el documento crudo. La divergencia no se
+   * había arreglado: se había mudado de adentro de la salida 6 a entre la 6 y la 2.
+   *
+   * `etiquetaDeComision` (en `@calendario`, importada acá como `etiquetaSaneada`)
+   * es ahora la única derivación de «esta comisión tiene nombre» **del lado de las
+   * salidas**, y los cinco consumidores la comparten (D-20, D-71). El schema tiene
+   * la suya para pedir el nombre al publicar, que es una validación de entrada y
+   * no una proyección; hoy coinciden en valor. Devuelve `null` cuando no
+   * dice nada, y es null-safe: un documento editado a mano sin `etiqueta` hacía que
+   * un `.trim()` a secas tirara un `TypeError` adentro de `getStaticPaths`, o sea
+   * **el build entero**.
+   */
+  const etiquetaDeComision = new Map(
+    (a.comisiones ?? []).map((c) => [c.id, etiquetaSaneada(c) ?? '']),
+  );
   const claveDe = (comisionId: string | null): string =>
     comisionId && etiquetaDeComision.has(comisionId) ? comisionId : '';
   const contados = new Map<string, number>();
@@ -1034,8 +1106,11 @@ export const detalleDeActividad = (
    * los de cada una salen ya ordenados por fecha, porque `encuentros` lo está.
    *
    * Una comisión **sin ningún encuentro no se emite**: es una etiqueta a medio
-   * cargar, y pintarla dejaría un título con nada abajo. Tampoco se emite la que
-   * no tiene nombre, por lo mismo.
+   * cargar, y pintarla dejaría un título con nada abajo. **La que no tiene nombre
+   * sí se emite**, y se pinta sin encabezado: ahí lo que falta es el título, no las
+   * fechas, y esconderlas fue el hallazgo H1 de la segunda pasada del
+   * `auditor-privacidad` (el comentario decía lo contrario veinte líneas arriba del
+   * que lo explica, que es la instrucción para que alguien lo reponga).
    *
    * Se calcula acá arriba y no en el objeto de retorno porque lo usan dos cosas:
    * el campo `comisiones` y el rótulo del ciclo, que con opciones cambia de
@@ -1046,10 +1121,48 @@ export const detalleDeActividad = (
     ordenadas.map((s, i) => ({ comisionId: s.comisionId, encuentro: encuentros[i]! })),
   );
   const grupos = [
+    /*
+     * **Se filtra por «tiene encuentros» y NO por «tiene nombre»** — lo cobró el
+     * `auditor-privacidad` en su segunda pasada, y era el mismo error que la bolsa
+     * de huérfanos vino a arreglar, un paso más adentro: una comisión que **existe
+     * pero todavía no tiene etiqueta** se llevaba sus fechas puestas. `porComision`
+     * solo manda a `sinComision` lo que no resuelve, así que esas filas caían en su
+     * grupo, el grupo se descartaba, y —si alguna otra comisión sí tenía nombre— la
+     * plantilla entraba por la rama de grupos y esas fechas no se pintaban en
+     * ningún lado. El JSON-LD las seguía emitiendo, así que Google veía un
+     * `subEvent` que la página no mostraba.
+     *
+     * Y es alcanzable sin editar nada a mano: la regla que pide el nombre vive en
+     * el nivel «publicar», así que una **cancelada** —que conserva su página
+     * indexada por B-110— se guarda con una comisión recién agregada y sin nombre.
+     *
+     * El encabezado lo resuelve la plantilla con `c.etiqueta || null`, igual que
+     * con la bolsa: sin nombre, el grupo se pinta sin título.
+     */
     ...agrupados
-      .filter((g) => g.comision.etiqueta && g.sesiones.length > 0)
+      .filter((g) => g.sesiones.length > 0)
       .map((g) => ({
-        etiqueta: g.comision.etiqueta,
+        /*
+         * El saneado de verdad está **en el origen** (`etiquetaDeComision`, arriba):
+         * ahí es donde nace la etiqueta que consumen los cuatro —esta, el
+         * encabezado, la cuenta y el `subEvent.name`—. Éste queda como red para el
+         * caso en que alguien agregue una fuente nueva a `porComision`, y es
+         * inocuo: trimar dos veces no cambia nada.
+         *
+         * **Qué se está evitando:** el schema define «tiene nombre» como
+         * `etiqueta.trim() !== ''` y este lado lo definía por truthiness, así que
+         * difieren en exactamente un valor, `'   '`. Con la regla del nombre
+         * viviendo en el nivel publicar, el estado que lo acepta es `cancelado` —
+         * la rama con página indexada (B-110).
+         *
+         * **Y no llega por el panel:** `formADocumento` ya trima la etiqueta
+         * (`limpiar`), así que esto es la red para un documento **editado a mano**
+         * o para una versión vieja restaurada verbatim — la misma clase que la
+         * defensa de `comisionDe` contra un `comisionId` colgado. La primera
+         * versión de este comentario decía que el form se escribe crudo y era
+         * falso para este campo; lo cobró el `auditor-privacidad`.
+         */
+        etiqueta: etiquetaSaneada(g.comision) ?? '',
         encuentros: g.sesiones.map((x) => x.encuentro),
       })),
     /*
@@ -1072,7 +1185,16 @@ export const detalleDeActividad = (
     ...(huerfanos.length > 0 && agrupados.some((g) => g.sesiones.length > 0)
       ? [{ etiqueta: '', encuentros: huerfanos.map((x) => x.encuentro) }]
       : []),
+    /*
+     * La invariante que hace segura toda esta rama, y la fija un test: **la unión
+     * de los grupos son todos los encuentros**. Si el día que alguien agregue un
+     * filtro más acá una fila se cae de la página, ese test se pone rojo — es la
+     * propiedad, no el caso.
+     */
   ];
+
+  /** Los grupos que son una opción de verdad: los que tienen nombre (B-181). */
+  const conNombre = grupos.filter((g) => g.etiqueta);
 
   const todoCancelado = encuentros.length > 0 && vivos.length === 0;
   const yaPaso = proximos.length === 0;
@@ -1100,7 +1222,18 @@ export const detalleDeActividad = (
     imagenes: imagenesDeDetalle(a.imagenes),
 
     esCiclo: a.esCiclo,
-    rotuloCiclo: rotuloDeCiclo(a.esCiclo, vivos, grupos),
+    /*
+     * B-181 — al rótulo van **solo los grupos que son una opción de verdad**, o
+     * sea los que tienen etiqueta. Lo cobró el `auditor-privacidad`: con la bolsa
+     * de huérfanos adentro de la cuenta, dos comisiones más un encuentro colgado
+     * publicaban «3 opciones para sumarse», que es una frase falsa producida por
+     * el arreglo anterior.
+     *
+     * `conNombre` se calcula **una vez** y lo consumen las tres frases públicas:
+     * este rótulo, el `<h2>` de la sección y la bajada (ver `opcionesConNombre`).
+     */
+    rotuloCiclo: rotuloDeCiclo(a.esCiclo, vivos, conNombre),
+    opcionesConNombre: conNombre.length,
     encuentros,
     comisiones: grupos,
     proxima: siguiente

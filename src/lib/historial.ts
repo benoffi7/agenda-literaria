@@ -38,7 +38,7 @@ import {
 import { db } from '@/lib/firestore-client';
 // B-150 — el emparejamiento de campos de máquina por id de sesión es UNO, y
 // vive en el borde form ⇄ documento. Acá se reusa; no se reimplementa.
-import { fusionarSesiones } from '@/lib/actividades';
+import { fusionarSesiones, leerActividad } from '@/lib/actividades';
 import {
   modalidadResultante,
   onlinePrincipal,
@@ -47,6 +47,7 @@ import {
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { fechaHoraCorta } from '@/lib/sesiones';
 import { camposCambiados, estuvoPublicada } from '@historial';
+import { llevaLinkDeReunion, tienePagina } from '@/lib/schema';
 import type {
   Actividad,
   ActividadConId,
@@ -139,8 +140,44 @@ export const slugRestaurable = (actual: Actividad): boolean =>
 export const camposRestaurables = (version: Version, actual: Actividad): string[] =>
   (camposCambiados(version.documento, actual) as string[])
     .filter((campo) => campo !== 'slug' || slugRestaurable(actual))
+    .filter((campo) => campo !== 'comisiones' || comisionesRestaurables(version, actual))
     .filter((campo) => !CAMPOS_DERIVADOS.includes(campo))
     .filter((campo) => existiaEnLaVersion(campo, version));
+
+/**
+ * ¿Se pueden restaurar **estas** comisiones sobre **esta** actividad? — B-181, y
+ * lo encontró el `auditor-privacidad` como P1.
+ *
+ * **El historial es una puerta al documento que no pasa por el schema** (lo dice
+ * el docblock de `existiaEnLaVersion`, tres bloques abajo: `restaurarCampo`
+ * escribe con un `updateDoc` y marca rebuild). Así que la guarda que B-181 puso en
+ * el schema —una etiqueta no puede llevar la dirección de una reunión si la
+ * actividad tiene página— tenía la mitad de la puerta abierta:
+ *
+ *   guardar el link en la etiqueta **en borrador** (permitido a propósito: de un
+ *   borrador no sale nada) → corregirlo y publicar → la versión guardada conserva
+ *   el link → «Restaurar → Opciones para sumarse» lo escribe sobre la publicada.
+ *
+ * Y el panel no podía avisar: `resumenDeCampo` resume un array como «2 elementos»,
+ * así que la pantalla ofrecía «Opciones para sumarse — Decía: 2 elementos». Destino
+ * del link: el `<h3>` de la página indexada, el `subEvent` del JSON-LD y el
+ * `summary` del evento público.
+ *
+ * Es el precedente de B-285 con otro campo: «el historial no puede ser la puerta
+ * de atrás» —eso cerró el slug (trampa 10)—, y la regla es la misma. Se reusa
+ * `llevaLinkDeReunion` del schema en vez de escribir el patrón otra vez: dos
+ * derivaciones de «esto es un link de reunión» que se separan es la clase de B-88,
+ * y la que se quedaría corta sería justamente ésta.
+ *
+ * **Solo bloquea si la actividad de hoy tiene página** (`tienePagina`): restaurar
+ * esa misma versión sobre un borrador es legítimo —es recuperar lo que se escribió—
+ * y de un borrador no sale nada.
+ */
+export const comisionesRestaurables = (version: Version, actual: Actividad): boolean => {
+  if (!tienePagina(actual.estado)) return true;
+  const comisiones = (version.documento as { comisiones?: { etiqueta?: string }[] }).comisiones;
+  return !(comisiones ?? []).some((c) => llevaLinkDeReunion(c?.etiqueta ?? ''));
+};
 
 /**
  * Los campos que **nadie edita**: los calcula `formADocumento` a partir de otros
@@ -267,6 +304,91 @@ export const payloadDeRestauracion = (
   }
 
   /**
+   * B-181 — restaurar las comisiones **desengancha los encuentros que quedan
+   * colgados**, en la misma escritura. Es el patrón de `modalidades` de arriba
+   * aplicado al par que este ítem creó, y lo cobró la cuarta pasada del
+   * `auditor-privacidad`.
+   *
+   * `comisiones` y `sesiones[].comisionId` son **un par**, y esta pantalla puede
+   * restaurar una mitad sola: una versión anterior a la creación de una comisión
+   * la borra, y las sesiones que la referencian quedan apuntando a un id que ya no
+   * existe. El schema rechaza ese documento al publicar —«Este encuentro apunta a
+   * una opción que ya no existe»— pero **esta puerta no pasa por el schema**, y la
+   * escritura marca rebuild: los encuentros pasan a la bolsa sin encabezado, la
+   * cuenta de opciones baja, y los N eventos de Calendar de esas sesiones pierden
+   * su «— Martes 19 h» de una pasada.
+   *
+   * Se desengancha en vez de bloquear la restauración: el que restaura quiere el
+   * contenido de esa versión, y dejar los encuentros **sin** opción es exactamente
+   * el estado que el formulario sabe pedir que se complete (`sinComision` hace lo
+   * mismo cuando se borra una desde el panel). Bloquearlo sería esconder una
+   * versión legítima.
+   */
+  /*
+   * **El par se desengancha en los dos sentidos**, y el segundo lo cobró la quinta
+   * pasada del `auditor-trampas` sobre la corrección del primero: cerrar una
+   * mitad de un par y no la otra es la clase D-30/B-88, y acá el sentido que
+   * faltaba es igual de alcanzable.
+   *
+   * `comisionId` **no** es un campo de máquina (`CAMPOS_DE_MAQUINA_SESION` es solo
+   * `calendarEventId`), así que restaurar `sesiones` trae el `comisionId` tal como
+   * estaba en la versión vieja. Si esa comisión se borró después —o se rehízo con
+   * otro id—, la restauración **reintroduce** la referencia colgada: la fila cae a
+   * la bolsa sin encabezado en la página y su evento de Calendar pierde el
+   * «— Martes 19 h», sin que nada tire error.
+   */
+  const idsDeComisionValidos = (comisiones: unknown): Set<string> =>
+    new Set(((comisiones ?? []) as { id: string }[]).map((c) => c.id));
+
+  const sinComisionColgada = (
+    sesiones: readonly Sesion[],
+    ids: Set<string>,
+  ): Sesion[] =>
+    sesiones.map((sesion) =>
+      sesion.comisionId && !ids.has(sesion.comisionId) ? { ...sesion, comisionId: null } : sesion,
+    );
+
+  if (campo === 'comisiones') {
+    /*
+     * **Solo si hay algo que desenganchar** — y esto lo cobró la quinta pasada del
+     * `auditor-privacidad` sobre la corrección de la cuarta, como B-80 por una
+     * puerta nueva.
+     *
+     * **La ventana ya no es la del montaje** —`restaurarCampo` relee antes de
+     * llamar acá, ver su docblock— **pero sigue habiendo una**: la que va del
+     * `getDoc` al `updateDoc`, exactamente la misma que `actualizarActividad`
+     * documenta desde B-150. Escribir el array entero cuando no hay ningún colgado
+     * mete al panel en esa ventana **sin necesidad**: vuelve a ser dueño de un
+     * campo que escribe la Function, y a cambio de nada.
+     *
+     * Las dos cosas van juntas y ninguna reemplaza a la otra: la relectura acorta
+     * la ventana, este `if` evita entrar en ella cuando la escritura no hacía
+     * falta. Si alguien saca una de las dos, vuelve la clase de B-80.
+     *
+     * Y en ese caso **no se autorrepara**: si el payload del evento no cambió,
+     * `planificar` devuelve cero operaciones y el trigger retorna antes de reponer
+     * los ids (D-91), así que el `null` se queda hasta la edición siguiente — que
+     * emite `crear` y deja un segundo evento en el calendario público con el
+     * primero huérfano.
+     *
+     * Con colgados de verdad el título del evento sí cambia, hay `actualizar`, y la
+     * reposición de D-91 tapa la ventana. O sea que la única exposición era el caso
+     * en que la escritura no hacía falta.
+     */
+    const desenganchadas = sinComisionColgada(actual.sesiones ?? [], idsDeComisionValidos(valor));
+    if (desenganchadas.some((s, i) => s !== (actual.sesiones ?? [])[i])) {
+      payload.sesiones = desenganchadas;
+    }
+  }
+
+  if (campo === 'sesiones') {
+    payload.sesiones = sinComisionColgada(
+      (valor ?? []) as Sesion[],
+      idsDeComisionValidos(actual.comisiones),
+    );
+  }
+
+  /**
    * El `searchText` se arma sobre **el documento que va a quedar**, derivados
    * incluidos — y no sobre `actual` con el campo restaurado encima.
    *
@@ -339,6 +461,31 @@ export const resumenDeCampo = (valor: unknown, largo = 90): string => {
  * **Deja versión de lo restaurado, y está bien:** es una escritura al documento,
  * así que dispara `guardarVersion` y el estado anterior queda guardado. Deshacer
  * un "deshacer" tiene que ser posible.
+ *
+ * ── Relee el documento antes de armar el payload (B-150, D-360) ────────────
+ * `actual` es el snapshot que la pantalla leyó **al montar** (`leerActividad`, un
+ * `getDoc` único), y la pantalla puede quedar abierta. Todo lo que el payload tome
+ * de `actual` —el `calendarEventId` de cada sesión al fusionar, las comisiones
+ * contra las que se desengancha, el documento sobre el que se arma el
+ * `searchText`— sería de entonces.
+ *
+ * Es exactamente el arreglo que B-150 le hizo a `actualizarActividad` («el panel
+ * sigue emitiendo el campo, pero ya no emite el valor del formulario: relee el
+ * documento y repone los campos de máquina»), y lo cobró la sexta pasada del
+ * `auditor-privacidad`: sin esto, restaurar podía devolverle al documento un
+ * `calendarEventId: null` de antes del write-back del sync, y la edición siguiente
+ * emitía `crear` — un segundo evento en el calendario **público** con el primero
+ * huérfano (B-80, D-91). La reposición del trigger no lo tapa: `reponerIds` solo
+ * toca las sesiones que tuvieron operación.
+ *
+ * **Si el documento ya no está** se usa el snapshot y el `updateDoc` falla igual,
+ * así que el `?? actual` es por forma y no un fallback de verdad. **Si la lectura
+ * rechaza**, la restauración aborta sin escribir —`leerActividad` no atrapa nada—
+ * y **tiene que seguir abortando**: envolverla en un `try/catch` que caiga al
+ * snapshot haría que las dos guardas de abajo las contestara el estado del
+ * montaje, que es exactamente el agujero que cierran. La primera versión de este
+ * docblock prometía ese fallback y no existía; lo cobró el `auditor-privacidad`,
+ * porque una frase así es una invitación escrita a reabrir el P1.
  */
 export const restaurarCampo = async (
   actual: ActividadConId,
@@ -346,5 +493,38 @@ export const restaurarCampo = async (
   version: Version,
   uid: string,
 ): Promise<void> => {
-  await updateDoc(doc(db(), COL, actual.id), payloadDeRestauracion(campo, version, actual, uid));
+  const fresco = (await leerActividad(actual.id)) ?? actual;
+
+  /*
+   * ── Y las guardas se re-evalúan contra lo releído ─────────────────────
+   * Lo cobró la séptima pasada del `auditor-privacidad` como P1, y el argumento es
+   * el mismo docblock de arriba llevado hasta el final: `camposRestaurables` decide
+   * qué ofrece **en el render**, contra el snapshot del montaje, y esta función
+   * confiaba en que la lista renderizada ya había filtrado.
+   *
+   * El camino: la pantalla se monta con la actividad en `borrador` —donde la
+   * etiqueta con un link es legítima y la guarda está en verde—, alguien la publica
+   * desde otra pestaña u otro dispositivo, y el click escribe esa etiqueta **sobre
+   * el documento releído, que ya tiene página**. Lo mismo con el slug (trampa 10)
+   * sobre una que se publicó en el medio.
+   *
+   * Se tira y no se salta en silencio: el `catch` de la pantalla muestra el
+   * mensaje, y «no pude» es la respuesta correcta a «restaurá esto» cuando dejó de
+   * ser restaurable — restaurar a medias sería peor.
+   *
+   * Se re-evalúan **estas dos** y no `camposRestaurables` entero: esa función
+   * también filtra por «sigue estando distinto», y ahí la respuesta correcta no es
+   * un error sino no hacer nada. Las dos de acá son las que existen para que algo
+   * **no salga**.
+   */
+  if (campo === 'slug' && !slugRestaurable(fresco)) {
+    throw new Error('La dirección web no se puede restaurar: la actividad ya se publicó.');
+  }
+  if (campo === 'comisiones' && !comisionesRestaurables(version, fresco)) {
+    throw new Error(
+      'Esa versión tiene un link en el nombre de una opción, y esta actividad ya tiene página.',
+    );
+  }
+
+  await updateDoc(doc(db(), COL, actual.id), payloadDeRestauracion(campo, version, fresco, uid));
 };

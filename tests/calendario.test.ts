@@ -1738,6 +1738,69 @@ describe('las opciones para sumarse a un ciclo (B-181)', () => {
     });
   });
 
+  describe('una etiqueta que no dice nada se comporta igual que no tenerla', () => {
+    /**
+     * **Y sale igual al evento y a la página, que es el punto** — lo cobró la sexta
+     * pasada del `auditor-privacidad`. La vuelta anterior había saneado la etiqueta
+     * del lado del sitio, y con eso las dos salidas dejaron de coincidir: el detalle
+     * no pintaba encabezado y el evento mandaba «Club de lectura —    · Cap. 1-4».
+     * La divergencia no se había arreglado, se había mudado de adentro de la salida
+     * 6 a **entre** la 6 y la 2 — la clase de B-88 que `tituloDeEvento` invoca.
+     *
+     * Ahora las dos importan `etiquetaDeComision` de `@calendario`, que es la única
+     * derivación de «esta comisión tiene nombre» (D-20, D-71).
+     */
+    const conEtiquetaVacia = (etiqueta: unknown) =>
+      conDosComisiones({
+        comisiones: [{ id: MARTES.id, etiqueta }, JUEVES],
+      });
+
+    it('una etiqueta de solo espacios no ensucia el título ni el encabezado', () => {
+      /*
+       * MUTACIÓN PROBADA: volviendo `comision?.etiqueta` en el `summary` y en el
+       * encabezado, los dos salen con el hueco («Club de lectura —    · …»).
+       */
+      const a = conEtiquetaVacia('   ');
+      const s = porId(a, 'ses_m1');
+      expect(construirEvento(a, s).summary).toBe('Club de lectura');
+      expect(construirDescripcion(a, s).split('\n')[0]).toBe('Encuentro 1 de 2');
+    });
+
+    it('y no aparece como una línea vacía en «Otras opciones»', () => {
+      /*
+       * El `filter` miraba `o?.etiqueta`, que deja pasar el whitespace: la lista
+       * salía con un `- ` colgado. Con la única otra opción sin nombre, el bloque
+       * **no se emite**: no hay nada que nombrar, que es lo correcto.
+       */
+      const a = conEtiquetaVacia('   ');
+      expect(construirDescripcion(a, porId(a, 'ses_j1'))).not.toContain('Otras opciones');
+    });
+
+    it('con una tercera opción con nombre, el bloque lista esa y no la vacía', () => {
+      // El control que impide «no emitir nunca el bloque»: la lista existe y trae
+      // exactamente las que tienen nombre.
+      const SABADOS = { id: 'com_sabados', etiqueta: 'Sábados 11 h' };
+      const a = conDosComisiones({
+        comisiones: [{ id: MARTES.id, etiqueta: '   ' }, JUEVES, SABADOS],
+      });
+      const d = construirDescripcion(a, porId(a, 'ses_j1'));
+      expect(d).toContain('Otras opciones para el mismo ciclo:\n- Sábados 11 h');
+      expect(d).not.toMatch(/^- *$/m);
+    });
+
+    it('una comisión SIN la clave `etiqueta` tampoco rompe nada', () => {
+      /*
+       * Es el documento editado a mano, que es el único que puede llegar así — y el
+       * que hacía que un `.trim()` a secas tirara un `TypeError` adentro de
+       * `getStaticPaths`, o sea que se cayera **el build entero** en vez de
+       * degradar una página.
+       */
+      const a = conEtiquetaVacia(undefined);
+      expect(() => construirEvento(a, porId(a, 'ses_m1'))).not.toThrow();
+      expect(construirEvento(a, porId(a, 'ses_m1')).summary).toBe('Club de lectura');
+    });
+  });
+
   describe('un `comisionId` que no existe no pierde el evento', () => {
     /**
      * El schema rechaza este documento al publicar, así que solo puede llegar

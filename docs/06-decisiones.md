@@ -8726,6 +8726,44 @@ enterarse de que hay uno los jueves—.
 - **Borrar una comisión desengancha sus encuentros y no los borra** (`sinComision`,
   una sola función para las dos mitades). Son fechas cargadas a mano: que
   desaparezcan por sacar una etiqueta sería destruir trabajo sin preguntar.
+- **La etiqueta no puede llevar la dirección de una reunión**, y la guarda tiene
+  **tres** mitades que costaron tres pasadas del `auditor-privacidad`:
+  1. corre en `publicado` **y en `cancelado`** —los dos estados con página
+     indexada (`tienePagina`, B-110)— y no solo al publicar;
+  2. mira **hosts conocidos** (`meet.google`, `zoom.us`, `teams.microsoft`…) y no
+     solo el `https://`, **sin grupo de borde**: con él, `Virtual:meet.google.com/…`
+     pasaba, y los cinco casos del test caían todos donde el borde se cumplía;
+  3. y cubre la puerta del **historial**, que no pasa por el schema:
+     `camposRestaurables` no ofrece `comisiones` cuando la actividad de hoy tiene
+     página y la versión trae una etiqueta con un link. Es el precedente de B-285
+     con otro campo. Lo que **no** cubre —restaurar `estado`, que saltea todas las
+     reglas de publicar— es preexistente y quedó como **B-818**.
+
+  Y por la misma puerta, la otra propiedad del campo: `comisiones` y
+  `sesiones[].comisionId` son **un par**, y restaurar una mitad sola deja
+  encuentros apuntando a una opción que no existe. `payloadDeRestauracion` los
+  desengancha **en los dos sentidos** y en la misma escritura, que es el patrón que
+  `modalidades` ya usaba (B-224). El segundo sentido lo cobró el `auditor-trampas`
+  sobre la corrección del primero: cerrar una mitad de un par y no la otra es la
+  clase D-30/B-88.
+
+  Lo que la guarda deja pasar está declarado en un test y no en un comentario: un
+  host de reunión que no está en la lista y viene sin esquema. Es el costo de no
+  usar un patrón de dominio genérico, que rechazaría «Sábados 11.30 hs».
+
+- **«Esta comisión tiene nombre» se deriva en un solo lugar**
+  (`etiquetaDeComision`, en `functions/calendario.js`, importada por el sitio con
+  `@calendario`), y lo comparten los **cinco** consumidores de la etiqueta: el
+  `summary` del evento, el encabezado de su descripción, el bloque «Otras
+  opciones», el encabezado del grupo en la página y el `subEvent.name` del JSON-LD.
+  Es D-20/D-71, y el camino hasta acá vale como lección: el primer arreglo del
+  espacio en blanco quedó del lado del sitio, y con eso la divergencia no se cerró
+  —se mudó de adentro de la salida 6 a **entre** la 6 y la 2—.
+- **La página nunca pierde una fila.** Los grupos se arman con `porComision` y se
+  filtran solo por «tiene encuentros»: una comisión sin nombre y los encuentros
+  cuyo `comisionId` no resuelve se pintan **sin encabezado**. La invariante está
+  fijada como propiedad —la unión de los grupos son todos los encuentros— porque
+  este mismo cambio la rompió dos veces, en dos correcciones distintas.
 
 ### Por qué `comisiones` en el código y «opciones» en pantalla
 

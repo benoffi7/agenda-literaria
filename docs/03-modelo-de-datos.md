@@ -155,17 +155,27 @@ razonamiento completo está en **[D-530](06-decisiones.md#d-530--las-comisiones-
    una**. Lo segundo es lo que impide el documento mitad y mitad, que multiplica
    dos dimensiones y hace ilegible la lista.
 
+Y una cuarta, que no es de coherencia sino de privacidad: **la etiqueta no puede
+llevar la dirección de una reunión**. Corre en `publicado` y en `cancelado` —los
+dos estados con página indexada (B-110)—, mira hosts conocidos y no solo el
+esquema, y **también tapa la puerta del historial** (`camposRestaurables` no
+ofrece `comisiones` con un link sobre una actividad con página). El motivo está en
+[`07-seguridad.md`](07-seguridad.md).
+
 `functions/calendario.js` igual se defiende de un `comisionId` colgado
 (`comisionDe` devuelve `null` y el encuentro se comporta como si no tuviera
 comisión): el schema impide que el documento **nazca** así, y esa red es para el
-que llegue editado a mano desde la consola.
+que llegue editado a mano desde la consola. **La página, además, nunca pierde una
+fila:** los grupos se filtran solo por «tiene encuentros», así que una comisión sin
+nombre y los `comisionId` que no resuelven se pintan sin encabezado en vez de
+desaparecer.
 
 ### Qué cambia en las salidas
 
 | Salida | Con comisiones |
 |---|---|
 | evento de Calendar | el `summary` es «Club de Saer — Martes 19 h · Cap. 1-4», el encabezado de la descripción nombra la comisión y el número, y un bloque final nombra **las otras** opciones |
-| el número «Encuentro 2 de 8» | se cuenta **dentro de la comisión** (D-520 sigue valiendo adentro del grupo: el cancelado se cuenta). Una comisión de una sola fecha **no** se numera |
+| el número «Encuentro 2 de 8» | se cuenta **dentro de la comisión** (D-95 sigue valiendo adentro del grupo: el cancelado se cuenta). Una comisión de una sola fecha **no** se numera |
 | la **proyección** del §5.2 | viajan `comisiones` y el `comisionId` de cada sesión, con su celda en el barrido de centinelas. **Al `events.json` no llegan**: ese archivo es el índice del listado (`entradaDeIndice`), y el listado no agrupa. La proyección la lee el build de la página de detalle (§2.4) |
 | página de detalle | el título pasa a «Elegí tu opción» y los encuentros se agrupan por comisión, con su encabezado |
 | `rotuloCiclo` | cambia de sujeto: «2 opciones para sumarse · 2 encuentros cada una». Si las comisiones tienen distinta cantidad **no se elige un número** (ni el máximo ni el de la primera: las dos serían falsas para alguien) |

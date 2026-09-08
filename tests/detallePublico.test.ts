@@ -6,6 +6,7 @@
  * misma proyección. Acá están las instancias —el botón de cada vía, el JSON-LD,
  * los casos incómodos del §7— y allá está la clase.
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   accionDeInscripcion,
@@ -1899,5 +1900,299 @@ describe('las opciones para sumarse, en la página de detalle (B-181)', () => {
       // ningún `·` de más.
       expect(ld.subEvent[0]!.name).toBe('Taller de crónica — Tema 1');
     });
+  });
+});
+
+describe('los grupos de opciones no pierden ni inventan encuentros (B-181)', () => {
+  /**
+   * **Las tres cosas de acá las encontró la segunda pasada del
+   * `auditor-privacidad`, y las tres las había producido el arreglo de la
+   * primera.** Vale anotarlo: la corrección de un hallazgo es código nuevo y hay
+   * que auditarla como tal.
+   */
+  const MARTES = { id: 'com_martes', etiqueta: 'Martes 19 h' };
+  const SIN_NOMBRE = { id: 'com_nueva', etiqueta: '' };
+
+  const sesion = (id: string, comisionId: string | null, dia: string, cancelada = false) => ({
+    id,
+    comisionId,
+    inicio: ts(`2026-09-${dia}T22:00:00Z`),
+    fin: ts(`2026-09-${dia}T23:59:00Z`),
+    tema: null,
+    lectura: null,
+    cancelada,
+    calendarEventId: null,
+  });
+
+  const con = (comisiones: { id: string; etiqueta: string }[], sesiones: unknown[]) =>
+    detalleDe({}, { esCiclo: true, comisiones, sesiones } as Partial<Actividad>);
+
+  /**
+   * **La propiedad, no el caso.** Un filtro de más en el armado de los grupos
+   * hace desaparecer filas de la página sin que nada falle, y ya pasó dos veces
+   * en la misma tanda (el huérfano y la comisión sin nombre). Esto lo fija de una
+   * vez: lo que se pinta agrupado es **exactamente** lo que hay.
+   */
+  it('la unión de los grupos son todos los encuentros, siempre', () => {
+    /*
+     * **La quinta forma lleva cancelados, y eso lo cobró la tercera pasada del
+     * `auditor-privacidad`:** con las cuatro primeras todas en `cancelada: false`,
+     * la mutación «no repetir los cancelados en cada opción» —un
+     * `.filter(x => !x.encuentro.cancelada)` en el armado de los grupos— dejaba los
+     * cuatro casos en verde y sacaba los cancelados de la página. Es plausible como
+     * cambio y su daño es exactamente lo que B-110 decide que no puede pasar: «el
+     * cancelado sigue visible», porque quien tenía esa fecha anotada necesita ver
+     * que se movió.
+     *
+     * Y el `expect` de arriba del loop es la otra mitad: sin él, el `continue`
+     * podía dejar el `it` con cero aserciones y **pasar vacío**.
+     */
+    const casos = [
+      con([MARTES], [sesion('s1', MARTES.id, '15'), sesion('s2', MARTES.id, '22')]),
+      con([MARTES, SIN_NOMBRE], [sesion('s1', MARTES.id, '15'), sesion('s2', SIN_NOMBRE.id, '22')]),
+      con([MARTES], [sesion('s1', MARTES.id, '15'), sesion('s2', 'com_borrada', '22')]),
+      con([MARTES], [sesion('s1', MARTES.id, '15'), sesion('s2', null, '22')]),
+      con(
+        [MARTES, SIN_NOMBRE],
+        [
+          sesion('s1', MARTES.id, '15'),
+          sesion('s2', MARTES.id, '22', true),
+          sesion('s3', SIN_NOMBRE.id, '24', true),
+          sesion('s4', 'com_borrada', '29', true),
+        ],
+      ),
+    ];
+
+    // Las cinco formas tienen que **entrar** al invariante: si alguna deja de
+    // producir grupos, el loop no la mira y el test se vuelve vacío sin ponerse
+    // rojo.
+    expect(
+      casos.filter((d) => d.comisiones.length > 0),
+      'las cinco formas tienen que producir grupos: si no, el invariante no se evalúa',
+    ).toHaveLength(casos.length);
+
+    for (const d of casos) {
+      expect(d.comisiones.flatMap((c) => c.encuentros.map((e) => e.id)).sort()).toEqual(
+        d.encuentros.map((e) => e.id).sort(),
+      );
+    }
+  });
+
+  it('una opción sin nombre pero con encuentros los pinta igual, sin encabezado', () => {
+    /*
+     * Es alcanzable sin editar nada a mano: la regla que pide el nombre vive en el
+     * nivel «publicar», y una **cancelada** conserva su página indexada (B-110).
+     *
+     * MUTACIÓN PROBADA: con el filtro viejo (`g.comision.etiqueta && …`) los dos
+     * encuentros de la opción sin nombre no aparecen en ningún grupo, y como la
+     * otra opción sí tiene nombre la plantilla entra por la rama de grupos: esas
+     * dos fechas no se pintan en ninguna parte.
+     */
+    const d = con(
+      [MARTES, SIN_NOMBRE],
+      [
+        sesion('s1', MARTES.id, '15'),
+        sesion('s2', SIN_NOMBRE.id, '22'),
+        sesion('s3', SIN_NOMBRE.id, '29'),
+      ],
+    );
+    const sinTitulo = d.comisiones.find((c) => !c.etiqueta)!;
+    expect(sinTitulo.encuentros.map((e) => e.id)).toEqual(['s2', 's3']);
+  });
+
+  describe('el rótulo cuenta opciones, no grupos', () => {
+    it('el grupo sin encabezado no se cuenta como una opción', () => {
+      /*
+       * MUTACIÓN PROBADA: pasándole `grupos` sin filtrar a `rotuloDeCiclo`, esto
+       * dice «2 opciones para sumarse» habiendo una.
+       */
+      const d = con([MARTES], [sesion('s1', MARTES.id, '15'), sesion('s2', null, '22')]);
+      expect(d.rotuloCiclo).toContain('1 opción para sumarse');
+      expect(d.rotuloCiclo).not.toContain('2 opciones');
+    });
+
+    it('con una sola opción va en singular y NO dice «cada una»', () => {
+      /*
+       * «1 opciones para sumarse» en una página indexada, y es alcanzable
+       * publicando normal: con una comisión el schema no dice nada. El «cada una»
+       * es la mitad que la corrección anterior había dejado afuera —lo cobró la
+       * tercera pasada—: no tiene con qué comparar cuando hay una sola.
+       */
+      const d = con([MARTES], [sesion('s1', MARTES.id, '15'), sesion('s2', MARTES.id, '22')]);
+      expect(d.rotuloCiclo).toContain('1 opción para sumarse');
+      expect(d.rotuloCiclo).not.toMatch(/1 opciones/);
+      expect(d.rotuloCiclo).not.toContain('cada una');
+    });
+
+    it('una opción sin encuentros vivos no publica «0 encuentros cada una»', () => {
+      /*
+       * El corte temprano de `rotuloDeCiclo` es `vivos.length === 0` y es
+       * **global**: una comisión con nombre y todos sus encuentros cancelados, más
+       * un encuentro vivo huérfano, llega hasta la cuenta por opción con cero. Y
+       * ésa es la rama de la cancelada, que conserva página indexada (B-110).
+       */
+      const d = con(
+        [MARTES, SIN_NOMBRE],
+        [
+          sesion('s1', MARTES.id, '15', true),
+          sesion('s2', MARTES.id, '22', true),
+          sesion('s3', SIN_NOMBRE.id, '24'),
+        ],
+      );
+      expect(d.rotuloCiclo).not.toContain('0 encuentros');
+    });
+
+    it('dos opciones sin encuentros vivos tampoco publican «0 encuentros cada una»', () => {
+      /*
+       * **El caso de arriba pasaba por la razón equivocada**, y lo cobró el
+       * `auditor-trampas`: con una sola comisión con nombre, el `cada` se suprime
+       * por la rama `comisiones.length === 1` **antes** de mirar `parejas === 0`.
+       * O sea que sacar el término del cero dejaba ese test en verde.
+       *
+       * Para ejercitar la rama del cero hacen falta **dos** comisiones con nombre,
+       * las dos con todos sus encuentros cancelados, más un huérfano vivo aparte
+       * —el huérfano es lo que sostiene `vivos.length > 0` y evita el corte
+       * temprano—. Es el escenario que el comentario del código describe, y es
+       * alcanzable: una cancelada con página indexada (B-110).
+       *
+       * MUTACIÓN PROBADA: sacando `parejas === 0` de la condición, este caso falla
+       * con «2 opciones para sumarse · 0 encuentros cada una».
+       */
+      const JUEVES = { id: 'com_jueves', etiqueta: 'Jueves 19 h' };
+      const d = con(
+        [MARTES, JUEVES],
+        [
+          sesion('s1', MARTES.id, '15', true),
+          sesion('s2', JUEVES.id, '17', true),
+          sesion('s3', null, '24'),
+        ],
+      );
+      expect(d.opcionesConNombre).toBe(2);
+      expect(d.rotuloCiclo).not.toContain('0 encuentros');
+    });
+
+    it('una etiqueta de solo espacios no cuenta como opción ni pinta encabezado', () => {
+      /*
+       * **Por dónde llega, dicho bien:** no por el panel. `formADocumento` trima la
+       * etiqueta (`limpiar`), así que las dos puertas del formulario la dejan
+       * limpia — la primera versión de este comentario decía que el form se
+       * escribe crudo y era falso para este campo; lo cobró el
+       * `auditor-privacidad`. Llega por un documento **editado a mano** o por una
+       * versión vieja restaurada verbatim, que es la misma clase que la defensa de
+       * `comisionDe` contra un `comisionId` colgado.
+       *
+       * Y el estado que la acepta con la regla del nombre en el nivel publicar es
+       * `cancelado`, que conserva página indexada (B-110).
+       *
+       * MUTACIÓN PROBADA: sacando el `.trim()` del `Map` de etiquetas, esto cuenta
+       * la opción («1 opción para sumarse») y pinta un `<h3>` vacío.
+       */
+      const d = con(
+        [{ id: 'com_espacios', etiqueta: '   ' }],
+        [sesion('s1', 'com_espacios', '15'), sesion('s2', 'com_espacios', '22')],
+      );
+      expect(d.opcionesConNombre).toBe(0);
+      expect(d.comisiones.map((c) => c.etiqueta)).toEqual(['']);
+      expect(d.rotuloCiclo).not.toContain('opción para sumarse');
+    });
+
+    it('el `subEvent` del JSON-LD usa la misma etiqueta trimada que el encabezado (B-88)', () => {
+      /*
+       * **La mitad que el `.trim()` no cubría.** `EncuentroDeDetalle.comision
+       * .etiqueta` no sale del grupo: sale del `Map` que resuelve la referencia, y
+       * es lo que `tituloDeEvento` usa para el `name` de cada `subEvent`. Con la
+       * etiqueta cruda, el `<h3>` decía una cosa y Google leía otra —que es
+       * justamente la divergencia que `tituloDeEvento` existe para evitar—.
+       *
+       * MUTACIÓN PROBADA: sacando el `.trim()` del `Map`, el `name` sale como
+       * «Taller de crónica —    · Martes uno» y este caso falla.
+       */
+      const d = con(
+        [{ id: 'com_espacios', etiqueta: '  Martes 19 h  ' }],
+        [sesion('s1', 'com_espacios', '15'), sesion('s2', 'com_espacios', '22')],
+      );
+      expect(d.comisiones[0]!.etiqueta).toBe('Martes 19 h');
+      const ld = datosEstructurados(d) as { subEvent: { name: string }[] };
+      expect(ld.subEvent[0]!.name).toBe('Taller de crónica — Martes 19 h');
+    });
+
+    it('la cuenta de horarios del view-model es la misma que cuenta el rótulo (B-88)', () => {
+      /*
+       * Las tres frases públicas —el rótulo de la ficha, el `<h2>` de la sección y
+       * la bajada— salen de la **misma** cuenta. Vivía dos veces, una acá y una en
+       * el frontmatter del `.astro`, y ningún test la nombraba porque un `.astro`
+       * no se importa desde vitest (D-140).
+       */
+      const d = con([MARTES, SIN_NOMBRE], [sesion('s1', MARTES.id, '15'), sesion('s2', SIN_NOMBRE.id, '22')]);
+      expect(d.opcionesConNombre).toBe(1);
+      expect(d.rotuloCiclo).toContain('1 opción para sumarse');
+
+      const dos = con(
+        [MARTES, { id: 'com_jueves', etiqueta: 'Jueves 19 h' }],
+        [sesion('s1', MARTES.id, '15'), sesion('s2', 'com_jueves', '17')],
+      );
+      expect(dos.opcionesConNombre).toBe(2);
+      expect(dos.rotuloCiclo).toContain('2 opciones para sumarse');
+    });
+  });
+});
+
+describe('la etiqueta de una opción se sanea en un solo lugar (B-181, clase de B-88)', () => {
+  /**
+   * **Un chequeo estructural, y hace falta por lo que ya pasó dos veces en este
+   * mismo ítem.** Los casos de comportamiento prueban cada salida por separado —el
+   * detalle acá, el evento en `tests/calendario.test.ts`— así que si alguien vuelve
+   * a inlinear el saneado en uno de los dos lados **todo queda verde** y la
+   * divergencia entre la salida 2 y la 6 vuelve a estar a un carácter. Eso es
+   * exactamente lo que pasó: el primer arreglo del espacio en blanco quedó del lado
+   * del sitio y la divergencia se mudó, no se cerró.
+   *
+   * Lo pidió el `auditor-privacidad`, con el molde que este repo ya usa para las
+   * propiedades del grafo de imports (`tests/pagina-de-detalle.test.ts`,
+   * `tests/bundle-panel.test.ts`): se lee la fuente, porque lo que se afirma es qué
+   * **nombra** el archivo.
+   */
+  /*
+   * **Sobre el código y no sobre los comentarios de bloque ni los de línea
+   * completa** — es la lección de B-799, y este chequeo la necesitaba desde el
+   * primer intento: el docblock de al lado **cita** `etiqueta.trim() !== ''` para
+   * explicar qué hace el schema, así que buscar en el archivo entero daba rojo por
+   * una cita.
+   *
+   * Los comentarios **al final de una línea de código** no se barren, y es a
+   * propósito: el archivo tiene catorce `https://` y un regex de `//` a fin de
+   * línea se los llevaría, rompiendo el aserto positivo. La consecuencia —un
+   * `// …etiqueta.trim()…` pegado a una línea de código daría rojo— es la
+   * dirección segura del error. Lo precisó el `auditor-privacidad`.
+   */
+  const sinComentarios = (src: string): string =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  const fuente = sinComentarios(readFileSync('src/lib/detallePublico.ts', 'utf8'));
+
+  it('el detalle importa `etiquetaDeComision` de `@calendario`', () => {
+    expect(fuente).toMatch(/etiquetaDeComision as etiquetaSaneada/);
+    // Y que el barrido de comentarios no se llevó el código: si `sinComentarios`
+    // vaciara el archivo, el caso de abajo pasaría por eso.
+    expect(fuente).toContain('etiquetaSaneada(g.comision)');
+  });
+
+  it('y no vuelve a derivar el saneado por su cuenta', () => {
+    /*
+     * MUTACIÓN PROBADA: reemplazando `etiquetaSaneada(c)` por
+     * `(c.etiqueta ?? '').trim() || null`, este caso falla nombrando la línea.
+     *
+     * El patrón busca `.trim()` aplicado a algo que se llame `etiqueta`, que es la
+     * forma que tomó las dos veces.
+     */
+    const reimplementaciones = [...fuente.matchAll(/etiqueta[^\n]*\.trim\(\)/g)].map((m) => m[0]);
+    expect(
+      reimplementaciones,
+      `estas líneas vuelven a derivar «esta comisión tiene nombre» en vez de usar ` +
+        `\`etiquetaSaneada\`: ${reimplementaciones.join(' · ')}. Dos derivaciones en dos ` +
+        `salidas es la clase de B-88, y acá se separan en silencio.`,
+    ).toEqual([]);
   });
 });
