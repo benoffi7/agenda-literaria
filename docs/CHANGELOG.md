@@ -65,6 +65,37 @@
   **Cuatro decisiones del dueño quedaron anotadas y bloquean el cierre**, no el
   arranque: **DEC-10** a **DEC-13** en el BACKLOG.
 
+  **El `auditor-documentacion` los revisó y encontró cinco cosas**, las cinco
+  corregidas antes de seguir. Tres eran drift del inventario, que es justo donde más
+  duele porque mañana alguien codea leyéndolo: `VISTAS_A_TODO_ANCHO` vive en
+  `anchoDelPanel.ts` y el inventario mandaba a `vistaDelPanel.ts` —dos archivos con
+  nombre parecido y otra responsabilidad—; citaba un `tests/formulario-sucio.test.ts`
+  que **no existe** (es `salida-del-panel.test.ts`); y daba B-785 por más abierto de
+  lo que está. Las otras dos valían más que una corrección de path:
+
+  - **B-786 dice lo contrario de lo que el PRD 3 asumía.** No es una discusión
+    abierta: es una decisión tomada de **no** poner `noreferrer` en el link a
+    Cafecito, para no perder la señal de que el aporte vino del sitio. Lo que B-786
+    anticipaba —«el criterio tiene que estar escrito antes de que haya un segundo
+    caso»— es exactamente este PRD. Así que `noreferrer` **sí** para el link de una
+    suscripción, donde no hay señal que valga conservar, y **el de Cafecito no se
+    toca**: aplicarlo parejo habría revertido esa decisión sin decirlo.
+  - **Los seis documentos no coincidían en cuándo hacer la navegación**, y la cuenta
+    de pestañas delataba por qué: «7 a 10» solo cierra si `/proponer` **no** es
+    pestaña, y la intro decía que los cuatro sí lo eran. Resuelto: los tres
+    directorios son sección, `/proponer` es una acción y vive en `/contacto`, el pie
+    y una llamada al pie de la agenda. Y B-835 se partió en dos, que es lo que
+    faltaba: **la decisión** va antes de publicar la primera sección —define si la
+    URL es `/librerias` o `/guia/librerias`, y eso no se mueve después (trampa 10)—;
+    la implementación de la barra agrupada, antes de la segunda.
+
+- **Y apareció B-840 (P3), que no es de esta tanda** — la fila DEC-6 de este
+  backlog tiene una cicatriz de merge del 2026-08-26: prosa duplicada, un paréntesis
+  que nunca cierra y dos afirmaciones incompatibles sobre el dominio en la misma
+  celda. Misma clase que B-294 y B-367, con la diferencia de que el daño no es de
+  renderizado sino de contenido. Queda anotada, sin arreglar: DEC-6 está cerrada y
+  nadie depende de leerla bien.
+
 - **Los cinco pendientes que dejaron las auditorías, cerrados** — B-821, B-822,
   B-823, B-824 y B-826. Cuatro son red que faltaba y uno es doc que envejeció; van
   juntos porque son la misma cosa: garantías que existían pero eran voluntarias.

@@ -436,7 +436,7 @@ rompen en silencio están en
 | **B-831** | **Directorio de librerías** — `/librerias`, `/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | 🟡 listo para codear |
 | **B-832** | **Directorio de suscripciones literarias** — `/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. **Y un choque de nombre que hay que resolver antes de la primera línea**: la barra ya dice «Suscribirse» (el calendario) | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | 🟡 listo para codear |
 | **B-833** | **Directorio de lugares para eventos** — `/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | 🟡 listo para codear |
-| **B-835** | **La barra de navegación pasa de 7 a 10 pestañas** y ya no entra en un teléfono. Es decisión de producto, no CSS: lo más probable es una pestaña «Guía» con las tres adentro. Va **antes** de publicar la segunda sección | [`prd/README.md`](prd/README.md) § 5 | 🟡 |
+| **B-835** | **La barra de navegación pasa de 7 a 10 pestañas** —siete hoy, más los tres directorios; `/proponer` no es pestaña— y ya no entra en un teléfono. Es decisión de producto, no CSS: lo más probable es una pestaña «Guía» con las tres adentro. **La decisión va antes de publicar la primera sección**, porque define si la URL es `/librerias` o `/guia/librerias` y eso no se mueve después (trampa 10); la implementación, antes de la segunda | [`prd/README.md`](prd/README.md) § 1 y § 6 | 🟡 |
 | **B-838** | **Retención de datos de contacto de terceros** — reabre **B-102** («¿el sistema guarda algo de quien se inscribe?» → *no*), que dejó de ser cierto el día que existe una bandeja con el mail de quien propone. Function `onSchedule`, plazo por **DEC-13** | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 7 | 🟡 |
 | **B-839** | **`/contacto` suma Instagram como canal** — pedido del dueño el 2026-09-08. Hoy `BLOQUES_DE_CONTACTO` son dos `mailto:` y el handle (`agenda.leh`) está en el chrome, no como forma de escribir. En este circuito el canal real es el DM. Chico y sin dependencias; el cuidado es que **un DM no tiene `asunto`** y `BLOQUES_DE_CONTACTO` hoy es homogéneo | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 2 | 🟢 se hace en una tarde |
 
@@ -10004,6 +10004,38 @@ del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
 Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
+
+### B-840 · La fila DEC-6 de este archivo tiene una cicatriz de merge · P3
+
+**Lo encontró el `auditor-documentacion`** el 2026-09-08, auditando otra cosa (los
+PRDs de B-830). La fila **DEC-6** de «Decisiones pendientes del usuario» tiene
+prosa **duplicada y cortada a mitad de oración**, con un `|` suelto en el medio:
+arranca con la resolución del 2026-09-03, abre un paréntesis que dice «El texto
+original decía que faltaba el handle (#2)…», y ese paréntesis nunca cierra — sigue
+con el texto viejo entero, que contradice al nuevo (dice que falta el dominio, y
+el dominio está desde el 2026-09-02).
+
+**No es de esta tanda.** `git blame` la fecha el **2026-08-26**, o sea que estuvo
+así casi dos semanas. Queda anotada porque es el rastro que pide la regla de
+proceso, y porque es **la misma clase que B-294 y B-367**: texto pegado de un
+merge sin resolver, que no rompe nada y nadie ve. La diferencia con esas dos es
+que acá el daño no es de renderizado —la tabla se dibuja bien— sino de contenido:
+**la fila afirma dos cosas incompatibles y hay que leerla dos veces para saber
+cuál vale**.
+
+**El arreglo** es reescribir la fila con la resolución sola, y mover el texto
+original a una cita `>` abajo si se lo quiere conservar — que es lo que este
+archivo ya hace en otras entradas. Es P3 porque DEC-6 **está cerrada**: nadie
+depende de leerla bien.
+
+**Y no hay red que lo agarre**, ni la va a haber baratamente:
+`tests/bloques-de-codigo-en-la-doc.test.ts` cuenta fences, `red-de-contencion.test.ts`
+cuenta filas de **una** tabla puntual, y el `auditor-documentacion` lo encontró
+leyendo. Una tercera cicatriz de la misma clase justificaría preguntarse por un
+barrido de «paréntesis que no cierra en una celda de tabla», pero con dos y una de
+ellas cerrada, todavía no.
+
+---
 
 ### B-823 · El scroll al fallar la validación, con más de una sección en error y en vista apilada — ✅ hecho (2026-09-08) · P3
 

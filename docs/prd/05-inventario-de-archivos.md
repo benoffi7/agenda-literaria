@@ -132,7 +132,7 @@ plazos se escriben del lado de la Function y se atan con un test, como se hizo c
 | Archivo | Qué cambia | Qué se rompe si se olvida |
 |---|---|---|
 | `src/lib/rutasPublicas.ts` | **primero esto**: `RUTA_LIBRERIAS`, `RUTA_SUSCRIPCIONES`, `RUTA_LUGARES`, `RUTA_PROPONER`, `PREFIJO_LIBRERIA`… y sus constructores, todos por `rutaCanonica` | Un `href` a mano cuesta un 301 por click y deja dos textos de la misma URL (era B-293, y B-330 lo cerró) |
-| `src/components/sitio/Encabezado.astro` | tres entradas en `ENLACES` + el tipo `Seccion`. **Y la barra pasa de 7 a 10: ver B-835** | `tests/chrome-del-sitio.test.ts` exige encabezado y pie en toda página del sitio |
+| `src/components/sitio/Encabezado.astro` | tres entradas en `ENLACES` + el tipo `Seccion` — **tres y no cuatro**: `/proponer` no es pestaña (`prd/README.md` § 1). Hoy hay siete, y el propio archivo lo dice en un comentario: «Quedan siete pestañas. Si en algún momento no entran…». **Con esto son 10: ver B-835** | `tests/chrome-del-sitio.test.ts` exige encabezado y pie en toda página del sitio |
 | `src/components/sitio/PieDePagina.astro` | los mismos destinos | — |
 | `src/layouts/Base.astro` | el union de `seccion` gana tres valores | El chrome sale apagado (su default es `'ninguna'`, a propósito, por `/admin`) |
 | `src/lib/sitemap.ts` | `RUTAS_FIJAS` gana `/librerias/`, `/suscripciones/`, `/lugares/`, `/proponer/`; y `rutasDelSitemap` las fichas | ⚠️ **en silencio**: las páginas existen y Google no las ve. `tests/sitemap.test.ts` cubre la forma, no la completitud |
@@ -182,8 +182,8 @@ archivos que toca, para que se vea el tamaño: `src/types/actividad.ts`,
 | Archivo | Qué cambia | Qué se rompe si se olvida |
 |---|---|---|
 | `src/components/admin/AdminApp.tsx` | cuatro vistas nuevas en el `Vista` y en la cadena de ternarios (`:463-490`), más sus botones y badges | — |
-| `src/lib/vistaDelPanel.ts` | si las vistas nuevas van a todo ancho (`VISTAS_A_TODO_ANCHO`) | `tests/ancho-del-panel.test.ts` |
-| `src/lib/salida-del-panel.ts` | el aviso de salir con el formulario sucio, para los formularios nuevos | `tests/formulario-sucio.test.ts` |
+| `src/lib/anchoDelPanel.ts` | si las vistas nuevas van a todo ancho (`VISTAS_A_TODO_ANCHO`, `ocupaTodoElAncho`). **Ojo con el vecino**: `src/lib/vistaDelPanel.ts` se llama parecido y es otra cosa —la preferencia PC/celular del formulario, B-814— y no va acá | `tests/ancho-del-panel.test.ts` |
+| `src/lib/salida-del-panel.ts` | el aviso de salir con el formulario sucio: `VISTAS_CON_FORMULARIO` y `tieneFormulario` para las vistas nuevas | `tests/salida-del-panel.test.ts` |
 | `src/lib/ayuda.ts` | `CAPITULOS` + `CAPITULO_POR_CONTEXTO` para las pantallas nuevas | ⚠️ El `?` de la sección apunta a un capítulo que no existe (era B-795) |
 | `src/lib/novedades.ts` | una `Novedad` por tajada — es lo que le avisa al dueño que la pantalla nueva existe | ⚠️ en silencio |
 | `src/lib/analytics-eventos.ts` | `FUNCIONES`, `SECCIONES`, `CAMPOS_TAXONOMIA_MEDIBLES` | `tests/analytics-campos.test.ts` y `analytics-eventos.test.ts` fallan si el vocabulario no está |
@@ -195,7 +195,7 @@ archivos que toca, para que se vea el tamaño: `src/types/actividad.ts`,
 |---|---|---|
 | `src/lib/enlaces.ts` | **B-839**: Instagram como canal de contacto; y `MOTIVOS_DE_CONTACTO.sugerencia` apuntando a `/proponer` (**DEC-10**) | `tests/enlaces.test.ts` barre las URLs |
 | `src/lib/contactoDelSitio.ts` | el bloque de Instagram. **`BLOQUES_DE_CONTACTO` deja de ser homogéneo**: un DM no tiene `asunto` | `tests/contacto-del-sitio.test.ts` exige que cada bloque salga de `MOTIVOS_DE_CONTACTO` |
-| `src/lib/ayudaDelSitio.ts` | `GRUPOS_DE_AYUDA` y `PREGUNTAS_DE_AYUDA`: cómo propongo, qué pasa después, qué se guarda | ⚠️ B-785 es exactamente esto sin cerrar: una página que no está en la ayuda |
+| `src/lib/ayudaDelSitio.ts` | `GRUPOS_DE_AYUDA` y `PREGUNTAS_DE_AYUDA`: cómo propongo, qué pasa después, qué se guarda | ⚠️ **B-785 es el precedente**, y su mitad cerrada es la que enseña: la ayuda de una página nueva se olvida con la misma facilidad con la que se olvidó `/apoyar`. Ahí ya está corregido —lo que sigue abierto de B-785 es el `Organization` del §5.5, no la ayuda—; acá hay que hacerlo desde el día uno |
 | `src/lib/comercialDelSitio.ts` | `/anunciar` le habla al mismo público que `/lugares/sumar` (PRD 4 §2) | `tests/comercial-del-sitio.test.ts` prohíbe cifras de audiencia |
 | `src/lib/noEncontrado.ts` | el 404 sugiere secciones; hay tres más | — |
 | `src/lib/identidad.ts` | color por tipo de entidad, si los directorios usan la misma paleta | `tests/contraste-del-sitio.test.ts` |
@@ -285,7 +285,10 @@ exclusiva de archivos**.
 **Tajada 2 — el motor y librerías (B-834 + B-831)**
 11. `src/lib/directorios.ts` + `DirectorioPanel` genérico.
 12. `/librerias` de punta a punta: tipo, schema, reglas, panel, listado, ficha, JSON, sitemap, `BookStore`, rebuild.
-13. **B-835**: la barra de navegación, antes de publicar la segunda sección.
+13. **B-835**: la barra de navegación. La **decisión** (¿`/librerias` o
+    `/guia/librerias`?) va **antes del paso 12**, porque la URL es inmutable una vez
+    indexada; la **implementación** de la barra agrupada, antes de publicar la
+    segunda sección.
 
 **Tajada 3 — suscripciones (B-832)** · **Tajada 4 — lugares (B-833)**
 Las dos calcadas de la 2. En lugares, `direccionPublica` y su par en el historial

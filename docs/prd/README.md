@@ -14,9 +14,16 @@ faltan.
 | 4 | [`04-lugares-para-eventos.md`](04-lugares-para-eventos.md) | Directorio de **lugares para hacer eventos** | `/lugares` + `/lugares/sumar` |
 | — | [`05-inventario-de-archivos.md`](05-inventario-de-archivos.md) | **El inventario archivo por archivo**: qué se crea, qué se toca, de dónde se copia cada patrón, en qué orden, y las siete cosas que se rompen en silencio | — |
 
-Los cuatro son, además, **una sección nueva de la barra de navegación** — eso lo
-pidió el dueño con esas palabras: «cada uno de estos formularios también es una
-sección superior en la web».
+**Los tres directorios son, además, una sección nueva de la barra de navegación** —
+eso lo pidió el dueño con esas palabras: «cada uno de estos formularios también es
+una sección superior en la web», dicho de los tres.
+
+**`/proponer` no.** No porque no importe —es el de más valor— sino porque no es una
+sección que se visite: es una acción, y su lugar son los tres puntos donde alguien
+se pregunta cómo avisar de una actividad: `/contacto`, el pie, y una llamada al pie
+de la agenda («¿Organizás algo? Cargalo»). La cuenta sale de ahí: la barra pasa de
+**7 a 10** pestañas, no a 11. Si el dueño la quiere en la barra, es una línea y la
+cuenta pasa a 11 — pero entonces B-835 se vuelve más urgente, no menos.
 
 Y un pedido chico del mismo día, que no es un PRD y va derecho al backlog:
 **`/contacto` suma Instagram como canal** (**B-839**). Está razonado en el
@@ -221,7 +228,11 @@ eso arrastra:
 4. **B-831 / B-832 / B-833 — los tres directorios**, en ese orden: librerías es el
    más chico y el que valida el motor; suscripciones el que tiene el modelo más
    raro; lugares el que más taxonomía nueva pide.
-5. **B-835 — la navegación**, antes de publicar la tercera sección.
+5. **B-835 — la navegación.** Y acá hay que separar dos cosas que no van juntas:
+   la **decisión** va **antes de publicar la primera** sección, porque es la que
+   define si las URLs son `/librerias` o `/guia/librerias` — y una vez indexada, la
+   URL no se mueve (trampa 10). La **implementación** de la barra agrupada puede
+   esperar a la segunda, que es cuando el ancho empieza a doler de verdad.
 
 ---
 

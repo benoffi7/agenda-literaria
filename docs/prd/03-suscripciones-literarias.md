@@ -250,9 +250,19 @@ PRDs tiene:
    con un botón grande es un endoso. La acción tiene que decir a dónde va:
    «Suscribite en la página de <nombre>». Es la lección de B-780/B-781.
 2. **`rel="noopener noreferrer"` y `target="_blank"`.** Sin `noopener` la página de
-   destino puede tocar la nuestra; y el `noreferrer` es lo que evita mandarle
-   nuestro dominio de referencia, que es la discusión abierta de **B-786** (el
-   `Referer` a Cafecito). Conviene resolverla igual para los dos.
+   destino puede tocar la nuestra; el `noreferrer` es lo que evita mandarle nuestro
+   dominio de referencia.
+
+   **Y acá hay que leer B-786 con cuidado, porque dice lo contrario de lo que
+   parece.** B-786 es una decisión **ya tomada**: el link a Cafecito **no** lleva
+   `noreferrer`, a propósito, porque borraría la única señal de que el aporte vino
+   del sitio. Lo que B-786 anticipa es exactamente esto: «el criterio tiene que
+   estar escrito antes de que haya un segundo caso». **Este es el segundo caso**, y
+   la respuesta es distinta porque el link es distinto: de una suscripción no
+   ganamos ninguna señal que valga la pena conservar, así que **`noreferrer` sí para
+   `linkDeSuscripcion`**. Eso **no cierra B-786 ni toca el link de Cafecito** —
+   aplicar `noreferrer` parejo a todo link externo revertiría esa decisión sin
+   decirlo.
 3. **Los links se validan al publicar, no solo al cargar.** B-817 dejó anotado
    exactamente este agujero para las imágenes: el esquema de la URL se validaba
    solo al publicar y una cancelada también tiene página. Un `linkDeSuscripcion`
@@ -322,4 +332,4 @@ se puede decir del directorio de librerías.
 | — | ¿Cómo se resuelve el choque «Suscribirse» / «Suscripciones»? | **Opción A** del §2: la barra dice «Calendario» para `/suscribirse`, sin cambiar la URL |
 | — | ¿`periodicidad` se modela o se asume mensual? | **Se modela**, con default `mensual` (§4.1) |
 | **DEC-12** | El precio, ¿va con fecha visible o no va? | **Va con fecha visible**, fuera de filtros y fuera del JSON-LD (§6) |
-| — | ¿Se resuelve B-786 (`Referer` a terceros) acá? | **Sí** — `noreferrer` para todos los links externos, y se cierra B-786 de paso |
+| — | ¿`noreferrer` en el link de suscripción? | **Sí**, y **solo ahí**: B-786 decidió a propósito que el de Cafecito no lo lleve. Este es el «segundo caso» que B-786 anticipaba, no su cierre (§7) |
