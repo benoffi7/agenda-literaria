@@ -42,6 +42,7 @@ import {
   pestaniaDe,
   type IdPestania,
 } from '@/lib/formulario/pestanias';
+import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
 import { cambiarArancel, cambiarTipo, cambiarTitulo } from '@/lib/formulario/cascadas';
 import { esCharla, esClub, esTaller, nombrePersona } from '@/lib/formulario/condicionales';
 import { formVacio } from '@/lib/formulario/estadoInicial';
@@ -58,6 +59,22 @@ import type { ActividadConId, ActividadForm } from '@/types/actividad';
 
 interface Props {
   uid: string;
+  /**
+   * **Con qué forma se dibuja el formulario** — B-814. `pc`: pestañas y todo el
+   * ancho. `celular`: las nueve secciones a lo largo, sin pestañas, que es cómo
+   * era antes de D-490.
+   *
+   * Entra como prop y **no** lo lee este componente de `localStorage`: la
+   * preferencia la elige la cabecera del panel (decisión del dueño), así que el
+   * dueño del estado es `AdminApp` y acá llega ya resuelta.
+   *
+   * **Sin default, a propósito.** La primera versión le puso `'celular'` diciendo
+   * «el comportamiento de antes de B-814», y era al revés: antes de B-814 este
+   * formulario tenía pestañas (D-490). Un default que significa una cosa acá y la
+   * contraria en `anchoDelPanel.ts` es la clase de trampa que no falla en el
+   * compilador — así que se pide, y quien monte el formulario elige.
+   */
+  vistaDelPanel: VistaDelPanel;
   /** Si viene, el formulario edita; si no, crea. */
   inicial?: ActividadConId;
   /**
@@ -82,12 +99,20 @@ interface Props {
 
 export function ActividadFormulario({
   uid,
+  vistaDelPanel,
   inicial,
   copia,
   tituloOrigen,
   onGuardado,
   onCancelar,
 }: Props) {
+  /**
+   * B-814 — la única pregunta que este componente le hace a la vista elegida.
+   * Se calcula una vez y no se repite el `=== 'pc'` en los cuatro lugares que la
+   * usan; el motivo de que sea una función y no un `===` está en
+   * `usaPestanias`.
+   */
+  const conPestanias = usaPestanias(vistaDelPanel);
   const [form, setForm] = useState<ActividadForm>(() =>
     inicial ? documentoAForm(inicial) : (copia ?? formVacio()),
   );
@@ -237,9 +262,33 @@ export function ActividadFormulario({
   );
 
   const irASeccion = (id: IdSeccion) => {
-    const destino = pestaniaDe(id);
-    if (destino) setPestania(destino);
+    /*
+     * **Con pestañas cambia de pestaña; apilado, scrollea hasta el ancla**
+     * (B-814). Las dos rutas ya existían: el ancla es de B-184 —de antes de
+     * D-490— y el cambio de pestaña se le agregó encima. Lo que hace B-814 es
+     * elegir por vista, porque en apilado `setPestania` no movería nada: los
+     * nueve paneles están visibles, y la sección que falta puede estar tres
+     * pantallas más abajo.
+     *
+     * El `pedidoDeApertura` va en las dos: abrir el acordeón es lo que hace que
+     * el campo **esté en la pantalla**, que es el problema entero de B-184, y en
+     * apilado sigue habiendo acordeones (son los de antes de D-490).
+     *
+     * El scroll va **después** del pedido de apertura y por eso en un
+     * `requestAnimationFrame`: si scrolleara antes de que la sección se abra,
+     * llegaría a la posición que el ancla tenía cerrada, y el campo quedaría
+     * abajo del pliegue otra vez.
+     */
+    if (conPestanias) {
+      const destino = pestaniaDe(id);
+      if (destino) setPestania(destino);
+    }
     setAperturas((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    if (!conPestanias) {
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    }
   };
 
   /**
@@ -263,11 +312,21 @@ export function ActividadFormulario({
    * dentro de la pestaña activa lo deja cerrado hasta que se vaya y vuelva.
    */
   useEffect(() => {
+    /*
+     * B-814 — apilado esto no corre, y es a propósito: **la pestaña era el
+     * mecanismo de plegado** («quien hizo click en Material hizo click para
+     * verlo»), y sin pestañas ese click no existe. Abrir las cinco secciones
+     * colapsables al montar daría exactamente el formulario largo que D-490 vino
+     * a partir, y encima ignorando la memoria de B-193. En apilado los
+     * acordeones vuelven a ser los de antes de D-490, que es lo que el pedido
+     * describe.
+     */
+    if (!conPestanias) return;
     const activa = PESTANIAS.find((p) => p.id === pestania);
     const unica = activa?.secciones.length === 1 ? activa.secciones[0] : undefined;
     if (!unica) return;
     setAperturas((prev) => ({ ...prev, [unica]: (prev[unica] ?? 0) + 1 }));
-  }, [pestania]);
+  }, [pestania, conPestanias]);
 
   /**
    * Un guardado que falla abre las secciones donde quedó algo pendiente y lleva
@@ -463,6 +522,7 @@ export function ActividadFormulario({
         trabaja, y tomarlas después de haber recorrido tres pestañas no sirve de
         nada. Es la misma razón por la que el aviso del borrador iba primero.
       */}
+      {conPestanias && (
       <PestaniasFormulario
         activa={pestania}
         onCambiar={setPestania}
@@ -476,6 +536,7 @@ export function ActividadFormulario({
         */
         pendientes={pendientesPorPestania}
       />
+      )}
 
       {(() => {
         const contenido: Record<IdSeccion, ReactNode> = {
@@ -550,9 +611,9 @@ export function ActividadFormulario({
         return PESTANIAS.map((p) => (
           <div
             key={p.id}
-            role="tabpanel"
-            id={idDePanel(p.id)}
-            aria-labelledby={idDeSolapa(p.id)}
+            role={conPestanias ? 'tabpanel' : undefined}
+            id={conPestanias ? idDePanel(p.id) : undefined}
+            aria-labelledby={conPestanias ? idDeSolapa(p.id) : undefined}
             /*
               La activa se pinta y las otras se esconden con `hidden` **de
               Tailwind y no con el atributo HTML**: el `[hidden]` del preflight va
@@ -560,7 +621,20 @@ export function ActividadFormulario({
               de `display` en el mismo elemento le gana y el panel «escondido» se
               vería igual. Con la clase no hay dos reglas peleando.
             */
-            className={p.id === pestania ? 'flex flex-col gap-4' : 'hidden'}
+            /*
+              B-814 — **apilado no esconde ninguno**: la vista celular son las
+              nueve secciones a lo largo, que es literalmente «no aplicar la
+              clase `hidden`». El `role="tabpanel"` sí se saca, porque sin la
+              fila de solapas no hay `tablist` que lo gobierne y un `tabpanel`
+              huérfano le miente al lector de pantalla.
+            */
+            className={
+              !conPestanias
+                ? 'flex flex-col gap-4'
+                : p.id === pestania
+                  ? 'flex flex-col gap-4'
+                  : 'hidden'
+            }
           >
             {p.secciones.map((seccion) => (
               <Fragment key={seccion}>{contenido[seccion]}</Fragment>

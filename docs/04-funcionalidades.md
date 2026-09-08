@@ -189,6 +189,13 @@ como ahora»). Nueve solapas: una por sección, con los nombres de arriba, salvo
 última —«Vista previa»— que junta las dos que no tienen campos que cargar. La
 barra de guardar sigue fija abajo.
 
+**Desde B-814 esto describe la vista «PC», que es una de dos.** Con el interruptor
+de la cabecera en «Celular» no hay pestañas: las nueve secciones van una debajo de
+la otra, como antes de D-490. Todo lo que sigue en esta sección —las solapas, el
+contador de faltantes por solapa— es de la vista «PC»; lo que valen las dos está
+en [«Dos formas del formulario»](#dos-formas-del-formulario-y-las-elige-quien-carga),
+más abajo.
+
 Dos cosas que sostienen el rediseño, y las dos son la misma:
 
 - **cada solapa dice cuántos campos le faltan para publicar.** Con todo apilado un
@@ -806,6 +813,38 @@ cargó quedan en Firestore.
 
 **Limitación:** las respuestas del dueño se leen en GitHub. El panel todavía no
 las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
+
+## Dos formas del formulario, y las elige quien carga
+
+El interruptor **«PC / Celular»** de la cabecera del panel (B-814, D-550) decide
+cómo se dibuja el formulario de carga. **No se detecta por el aparato**: es
+elección, y esa es la decisión del pedido, no un atajo de implementación.
+
+| | «PC» (el default) | «Celular» |
+|---|---|---|
+| Secciones | una pestaña a la vez | las nueve a lo largo |
+| Ancho | todo el de la pantalla, con tope de 100rem | el de lectura, como el resto del panel |
+| Columnas | dos, y tres cuando el contenedor pasa 64rem | una |
+| Acordeones | la pestaña activa abre su sección | los de antes de D-490, con su memoria (B-193) |
+| «Falta completar: Dónde (2)» | cambia de pestaña y hace foco | scrollea hasta la sección |
+
+La elección se recuerda en el navegador (`agenda:vista-del-panel`) y es una
+**marca**, no contenido: clave fija, sin la huella del uid — la distinción está en
+[`07-seguridad.md`](07-seguridad.md) → «El borrador autoguardado tampoco es una
+salida».
+
+**Por qué existen las dos.** Las pestañas son D-490 y resolvieron un problema
+medido («quedó muy largo»), pero en 390px las nueve solapas no entran en una fila:
+la tira scrollea horizontal y «¿en qué pestaña estaba el arancel?» se contesta
+buscando. El dueño carga desde el teléfono —de ahí salieron B-186, B-204 y media
+docena de reportes— así que la forma de antes de D-490 no era peor: era otra, y
+seguía siendo la buena para el pulgar. Ninguna gana siempre, que es la condición
+para que se elija en vez de decidirse.
+
+**El ancho revisa D-330** y el razonamiento está en D-550: el argumento de B-620
+—«un formulario de 30+ campos a 1900px»— sigue valiendo, y por eso la vista
+«celular» vuelve al ancho de lectura; lo que cambió es que con pestañas lo que se
+pinta son seis campos y no treinta.
 
 ## Analítica del panel
 

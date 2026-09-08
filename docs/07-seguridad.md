@@ -527,7 +527,15 @@ solo la primera dejaría sin avisar un link público cargado en la segunda.
 El formulario se persiste solo en el navegador de quien está cargando. **Es la
 única cosa que el panel guarda fuera de Firestore que es contenido**: todo lo
 demás que vive en el navegador son marcas (qué novedad se leyó, qué acordeón se
-abrió, qué versión se vio).
+abrió, qué versión se vio, con qué forma se dibuja el formulario —B-814—, con qué
+vista se pinta un reparto del tablero).
+
+Esa distinción es la que decide **cómo se llama la clave**, y por eso está escrita
+acá y no solo en cada módulo: el borrador lleva la huella del uid porque es
+contenido de una persona; una marca no la lleva, y su clave es fija
+(`agenda:vista-del-panel`, `agenda:grafico:*`, el prefijo de secciones). Si algún
+día una marca empieza a guardar algo que alguien tipeó, deja de ser una marca y le
+corresponde el tratamiento del borrador.
 
 Por qué no es una salida nueva:
 

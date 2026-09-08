@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'vista-pc-o-celular',
+    fecha: '2026-09-08',
+    version: '1.10.0',
+    titulo: 'Elegís si el formulario va en pestañas o todo a lo largo',
+    detalle:
+      'Arriba del panel hay un interruptor «PC / Celular». En «PC» el formulario va en pestañas ' +
+      'y usa todo el ancho de la pantalla; en «Celular» va todo a lo largo, sin pestañas, para ' +
+      'recorrerlo con el pulgar. No se detecta solo: lo elegís vos, y queda elegido para la ' +
+      'próxima vez.',
+    donde: 'Arriba del panel, al lado de «Reportar algo».',
+  },
+  {
     id: 'historial-no-publica-a-ciegas',
     fecha: '2026-09-08',
     version: '1.10.0',

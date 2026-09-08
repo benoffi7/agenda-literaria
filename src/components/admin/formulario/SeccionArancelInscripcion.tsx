@@ -31,7 +31,7 @@ export function SeccionArancelInscripcion({
 }: Props) {
   return (
     <Seccion ancla="arancel-inscripcion" titulo="Arancel e inscripción" conAyuda>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
         <Campo label="Arancel" requerido error={errorDe('arancel.tipo')}>
           <TaxonomiaSelect
             campo="arancel"
@@ -142,7 +142,7 @@ export function SeccionArancelInscripcion({
       )}
 
       {form.inscripcion.requiere && (
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
           <Campo label="Por dónde" requerido error={errorDe('inscripcion.via')}>
             <select
               className={claseInput}

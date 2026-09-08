@@ -221,7 +221,23 @@ export function Seccion({
         )}
       </div>
       {abierta && (
-        <div id={idPanel} className="border-t border-borde px-3 py-4 sm:px-4">
+        <div
+          id={idPanel}
+          /*
+            `@container` — B-814. El reparto de columnas de las secciones
+            pregunta por el ancho de **este** cuerpo y no por el del viewport, y
+            es lo que hace posible la vista celular: el mismo monitor de 1920px
+            pinta el formulario a 896px cuando la vista elegida es «celular», y
+            un `xl:grid-cols-3` de viewport repartiría en tres dentro de esos
+            896px — tres columnas de 290px, que es peor que dos de 430.
+
+            Va acá y no en cada grilla: una grilla no puede consultarse a sí
+            misma (`container-type` habilita la consulta a los **descendientes**),
+            así que el contenedor tiene que ser un ancestro. El cuerpo de la
+            sección es el ancestro común de todas, así que es una línea y no
+            nueve.
+          */
+          className="@container border-t border-borde px-3 py-4 sm:px-4">
           {children}
         </div>
       )}

@@ -2957,6 +2957,88 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-825 · Reanudar un auditor no sella, así que la re-auditoría del delta no cuenta · P2
+
+**Lo encontré cerrando B-814, usando el mecanismo.** El sello de
+`<git-dir>/auditores.json` lo escribe el hook `PostToolUse` de
+`.claude/settings.json`, con `"matcher": "Task|Agent"`. Pero un auditor se puede
+**reanudar** con `SendMessage` —que es lo más barato y lo que el skill
+`antes-de-pushear` empuja a hacer cuando hay que re-auditar un delta chico: el
+agente ya tiene el cambio en contexto y solo mira lo que se movió—. `SendMessage`
+no matchea ese hook, así que la corrida **no sella**, y para el gate es como si
+nunca hubiera pasado.
+
+**Qué se pierde.** Las dos salidas son malas. O se paga una pasada completa de
+más solo para mover una huella (que es lo que el sello quería evitar), o se
+saltea el gate con `SALTEAR_AUDITORES=1` teniendo la auditoría hecha — y ahí el
+gate enseñó a saltearlo, que es exactamente el modo de falla que **B-180** dice
+que un gate no puede tener. En B-814 pasó tal cual: los dos auditores
+re-corrieron sobre el delta, dieron limpio, y el sello quedó con la huella de la
+pasada anterior.
+
+**Dónde.** `.claude/settings.json`, el `PostToolUse` que corre
+`scripts/hook-auditores.mjs marcar`. Si el matcher no puede cubrir `SendMessage`
+—hay que confirmar si el hook llega a dispararse con ese tool—, la alternativa es
+un modo explícito del script (`marcar --auditor trampas`) que el skill invoque
+después de leer un reporte de re-auditoría, con el nombre del auditor como
+argumento en vez de deducirlo del payload del hook.
+
+**Ojo con no arreglarlo de más:** el sello tiene que seguir siendo del
+**contenido** y no del reloj (B-794), así que lo que hay que arreglar es *quién
+escribe la huella*, nunca *cómo se calcula*.
+
+### B-821 · Las marcas del navegador no tienen barrido de clase, y ya van tres · P2
+
+**Lo encontró el `auditor-privacidad` cerrando B-814.** `docs/07-seguridad.md`
+acaba de escribir la regla como normativa: *una marca del navegador tiene clave
+fija y no guarda nada que alguien tipeó; si empieza a guardar contenido, deja de
+ser una marca y le corresponde el tratamiento del borrador* (huella del uid,
+borrado, los 30 días — **D-122**). Lo que no existe es un test que la verifique
+**como clase**. Hay tres de instancia, cada uno escrito junto con su módulo:
+`tests/vista-del-panel.test.ts`, `tests/vista-de-grafico.test.ts` y
+`tests/secciones-recordadas.test.ts`.
+
+**Qué se pierde.** Es la forma exacta del «se acordaron de sanear los cinco
+campos que había»: la **cuarta** marca nace sin ninguna afirmación, y el modo de
+falla que importa —una marca que empieza a guardar un valor tipeado, digamos «el
+último barrio que escribí» o el texto del buscador del panel— deja los tres tests
+de instancia en verde. Van tres módulos con el mismo `AlmacenDe*` copiado a
+propósito, así que la cuarta es cuestión de tiempo.
+
+**Dónde.** Un caso en `tests/clases-de-bug.test.ts` que recorra `src/lib/**` y
+`src/components/admin/**` buscando literales `'agenda:…'` / `'agenda …'` y exija
+de cada uno: (a) que su módulo exporte la constante de la clave, (b) que la clave
+sea un literal fijo o un prefijo cerrado por un enum, y (c) que esté nombrada en
+la sección de marcas de `docs/07-seguridad.md`. Las seis claves de hoy pasan —
+`version-recargada`, `agenda:seccion `, `agenda:analitica perfil`,
+`consentimiento-analitica`, `agenda:grafico `, `agenda:vista-del-panel`— así que
+nace verde y sirve de acá en adelante.
+
+```
+it('una marca del navegador tiene clave fija y valor de vocabulario cerrado, o es contenido (§5.1, D-122)')
+```
+
+### B-822 · Nada verifica que cambiar de vista no borre el formulario a medio cargar · P2
+
+**Lo encontró el `auditor-trampas` cerrando B-814.** Hoy **no hay bug**: se
+verificó a mano que ni `AdminApp` ni el wrapper `diferido(...)` le ponen un
+`key={vistaDelPanel}` a `ActividadFormulario`, así que cambiar de vista es un
+cambio de prop y React no remonta nada. Lo que falta es la red.
+
+**Qué se pierde.** Es la clase de trampa que no falla al principio. Alguien que
+mañana agregue un `key` para forzar el remount —por ejemplo para resetear el
+scroll al cambiar de vista, que es un pedido razonable— le **borra el formulario
+en curso** a quien estaba cargando, y ningún test lo nota. Y el momento en que
+pasa es el peor posible: quien carga tocó el interruptor justo porque el
+formulario le quedaba incómodo, o sea con datos ya escritos.
+
+**Dónde.** Un render-test que monte `ActividadFormulario`, escriba un campo,
+haga `rerender` con la otra vista y afirme que el valor sobrevive.
+
+```
+it('cambiar la vista de PC a celular no reinicia el formulario que se estaba cargando')
+```
+
 ### B-820 · Restaurar el slug no verifica que no esté tomado por otra actividad · P2
 
 **Lo encontró el `auditor-privacidad` cerrando B-818**, midiendo el ancho de la
@@ -2984,7 +3066,28 @@ así que consultar `slugDisponible(valor, actual.id)` cuando `campo === 'slug'` 
 del mismo molde que las guardas que ya tiene. Cuesta una query más, solo en el
 único campo que la necesita.
 
-### B-814 · El formulario con vista «PC» o «celular», elegida a mano y no detectada · P2
+### B-814 · El formulario con vista «PC» o «celular», elegida a mano y no detectada — ✅ hecho (2026-09-08) · P2
+
+> **Los tres puntos hechos, con las dos preguntas abiertas contestadas por el
+> dueño** (D-550). El interruptor va en **la cabecera del panel** —es una
+> preferencia, y desde ahí se puede elegir antes de entrar a cargar— y el punto 3
+> se hizo **con el reparto**, no solo con el `max-w`: era la condición para que el
+> ancho no quedara como aire (la lección de B-621).
+>
+> «¿Qué pasa con *llevame al campo que falta*?» se resolvió sin preguntar, porque
+> las dos rutas ya existían en el código: con pestañas cambia de solapa y hace
+> foco; apilado scrollea al ancla, porque `setPestania` no movería nada con los
+> nueve paneles visibles.
+>
+> **Lo que el ítem advertía se confirmó:** el punto 3 contradecía D-330, y el
+> ancho no se estiró solo. Lo que **no** hizo falta fue el reparto desde cero: tres
+> de las diez secciones ya tenían `grid sm:grid-cols-2` apretado en 896px, y las
+> tres que no reparten son editores de filas, o sea el caso que D-330 dice que gana
+> con el ancho directamente. El trabajo fue la tercera columna, y ahí estuvo el bug
+> de la primera versión: `xl:grid-cols-3` es breakpoint de **viewport**, así que
+> repartía en tres dentro de los 896px de la vista celular.
+>
+> El texto de abajo queda como estaba escrito, con las tres cosas separadas.
 
 Pedido del dueño (2026-09-08):
 
@@ -9652,6 +9755,42 @@ del lado de la Function, con la decisión de cuántos de los 8 casos se cubren.
 Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
+
+### B-823 · El scroll al fallar la validación, con más de una sección en error y en vista apilada · P3
+
+**Lo encontró el `auditor-trampas` cerrando B-814.**
+`src/components/admin/ActividadFormulario.tsx` recorre `faltantes.secciones` en
+orden inverso llamando a `irASeccion` por cada una. En vista «PC» eso converge
+bien: cada `setPestania` pisa al anterior y queda la primera sección con error.
+En apilado, cada llamada además agenda su propio
+`requestAnimationFrame(() => scrollIntoView(...))`; el resultado **también**
+converge, porque los callbacks corren en el orden en que se agendaron — pero eso
+depende de que los `rAF` no se re-ordenen entre sí, y hoy nadie lo verifica con
+más de un error a la vez.
+
+**Qué se pierde.** Poco, y por eso es P3: el peor caso es que el formulario
+scrollee a la sección equivocada al intentar publicar, no que se pierda nada.
+`tests/formulario-apilado.render.test.tsx` cubre el click manual en la barra —una
+sección sola—, así que el punto ciego es exactamente el caso de dos o tres.
+
+**Dónde.** Un caso con dos o tres secciones incompletas, con assert sobre cuál
+`scrollIntoView` fue el último llamado.
+
+### B-824 · La frase de cierre de B-620 quedó falsa, y ya van dos cambios que la empeoran · P3
+
+**Lo encontró el `auditor-documentacion` cerrando B-814.** B-620 (P2, cerrado el
+2026-09-03) cierra diciendo «**ancho por vista**: solo el listado usa la pantalla
+completa». Dejó de ser cierto **antes** de B-814: B-621 le sumó `estadisticas` y
+`calendario` a `VISTAS_A_TODO_ANCHO` el 2026-09-07. B-814 lo empeora, porque
+ahora también el formulario en vista «PC».
+
+**Qué se pierde.** Es drift de lectura, no de funcionamiento — el código está
+bien y **D-330** documenta la lista real. Pero es la tercera vez que un ítem
+cerrado repite un dato que vive en otro lado y envejece solo (ver **B-118** y
+**B-92**, los dos por lo mismo). El arreglo que no vuelve a envejecer es **quitar
+la frase**, no corregirla: D-330 ya la tiene, y B-620 no necesita repetirla.
+
+**Dónde.** `docs/BACKLOG.md`, el cierre de **B-620**.
 
 ### B-812 · El `offers` del JSON-LD no emite `validFrom`, y son 24 avisos · P3
 

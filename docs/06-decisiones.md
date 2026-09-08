@@ -7585,7 +7585,27 @@ siete días de la semana table-driven). No vive en el componente por lo mismo qu
 calendario en una zona con offset**, que es la trampa 1 del §13 en su versión más
 filosa.
 
-## D-330 · El ancho del panel se decide por vista, y el listado es una grilla de tarjetas
+## D-330 · El ancho del panel se decide por vista, y el listado es una grilla de tarjetas — la decisión 2 acotada por D-550
+
+> **Acotada el 2026-09-08 (B-814, D-550).** La **decisión 2** de acá —el
+> formulario excluido del ancho completo— dejó de ser universal: hoy depende de la
+> vista que elige quien carga, y por eso `ocupaTodoElAncho` toma dos parámetros y
+> no uno.
+>
+> En vista **«celular»** sigue exactamente como está escrito abajo, y el motivo
+> también: ahí el formulario **es** la lista de 30+ campos de la que habla este
+> párrafo, así que el ancho de lectura sigue ganando. En vista **«PC»** el
+> formulario usa todo el ancho, porque el motivo dejó de aplicar entero por dos
+> cosas posteriores a esta entrada: D-490 lo partió en pestañas —una pestaña tiene
+> seis campos, no treinta— y las secciones ya reparten en columnas. No es una
+> derogación: es la misma decisión con el eje que le faltaba.
+>
+> Dos frases de abajo hay que leer con eso puesto: «es *peor* que el panel
+> angosto» vale para el formulario apilado y no para el de pestañas, y la lista de
+> `anchoDelPanel.ts` ya no es «hoy solo `lista`» (B-621 le sumó `estadisticas` y
+> `calendario`, y B-814 el formulario en «PC»). Lo que **no** cambió es el
+> **default angosto**, que sigue siendo el lado barato de equivocarse. Ver D-550
+> para el razonamiento completo. El bloque de abajo queda como estaba escrito.
 
 **Problema (B-620):** el panel se veía encajonado en escritorio. El chasis fijaba
 `mx-auto max-w-3xl lg:max-w-4xl` para todas las vistas, o sea 896px como máximo en
@@ -8961,3 +8981,105 @@ fuera del panel.
   puede juntar diez, y una lista de diez en un cartel de error no se lee. Es B-184
   con otra cara: decir «no se puede» sin decir qué es lo mismo que decir «faltan 4
   campos» sin decir cuáles.
+
+---
+
+## D-550 · El formulario tiene dos formas y las elige quien carga, no el navegador
+
+**Fecha:** 2026-09-08 · **Ítem:** B-814 · **Revisa:** D-330 (B-620)
+
+**Contexto.** Pedido del dueño: «el formulario que tenga una vista PC o mobile
+configurable. si es mobile es a lo largo y si es pc usar pestañas y todo a lo
+ancho. **que no sea automatico por deteccion sino eleccion del usuario**».
+
+### La decisión que va contra el reflejo
+
+Esa última frase es la decisión, y el reflejo era un `@media` o un `matchMedia`.
+El pedido tiene razón: **el ancho de la ventana no es la pregunta.** Quien carga
+desde una notebook con la ventana a media pantalla puede querer las nueve
+secciones apiladas, y quien carga desde una tablet apoyada puede querer las
+pestañas. Detectar acierta en el promedio **y no se puede contradecir**; elegir
+acierta siempre.
+
+Consecuencia práctica: en `src/lib/vistaDelPanel.ts` no hay ninguna consulta de
+ancho, y eso lo fija un test sobre la fuente (`tests/vista-del-panel.test.ts`) —
+porque un `matchMedia` agregado mañana dejaría todos los demás tests en verde: el
+módulo seguiría devolviendo una vista válida. Lo que se rompería es el pedido.
+
+El **default es `pc`**, que es lo que el panel ya hacía: quien no toque el
+interruptor no ve ningún cambio. Y el default tampoco se detecta, por lo mismo de
+arriba: uno que dependiera del ancho de la primera visita haría que la misma
+persona abriera el panel de dos formas según con qué aparato entró, sin haber
+elegido nada.
+
+### Dónde vive el interruptor
+
+En la **cabecera del panel**, elegido por el dueño sobre las tres alternativas
+(formulario / cabecera / las dos). Es una preferencia, y una preferencia se busca
+donde están las preferencias; la cabecera se ve en todas las pantallas (mismo
+argumento que D-61 para el botón de ayuda), así que también es el único lugar
+desde donde se puede elegir **antes** de entrar a cargar — que es lo que quiere
+quien abre el panel en el teléfono.
+
+Contra asumida: con el formulario abierto hay que mirar arriba de todo. Se aceptó
+porque es una elección que se hace una vez y se recuerda. Si resultara que se
+cambia seguido, el atajo en la barra de guardar es la tercera alternativa, y queda
+escrita acá.
+
+### Y esto revisa D-330, que hay que decirlo
+
+D-330 excluyó `nueva`/`editar`/`duplicar` del ancho completo con un motivo
+escrito: «un formulario de 30+ campos a 1900px es peor que a 900, porque la
+etiqueta de un campo y su error quedan a treinta centímetros del ojo». **Ese
+motivo era cierto y dejó de aplicar entero**, por dos cosas que pasaron después:
+
+1. **D-490 partió el formulario en pestañas.** El argumento hablaba de 30+
+   campos; una pestaña tiene seis.
+2. **Las secciones ya reparten en dos columnas** (`grid sm:grid-cols-2`, con los
+   textos largos abarcando la fila), y ese reparto estaba **apretado en 896px**.
+   O sea que el ancho no se estira: se usa, que es exactamente lo que B-621 pide
+   antes de ensanchar algo.
+
+Así que la fila de la tabla de `anchoDelPanel.ts` dejó de ser fija y pasó a
+depender de la vista: **lectura en «celular», todo en «PC»**. Y no es una
+derogación de D-330 — es su acotación a la vista donde sigue siendo cierto: en
+«celular» el formulario vuelve a ser la lista de 30+ campos de la que hablaba, así
+que vuelve al ancho de lectura. Es la misma vista la que decide las dos cosas, y
+eso es lo que hace imposible la combinación absurda: apilado y a 1900px.
+
+### El reparto, que es el trabajo real (B-621)
+
+Ensanchar sin repartir da «más aire, no más información», que es la lección que
+B-621 dejó escrita con la grilla del calendario. Dos cosas:
+
+- **Los textos largos abarcan la fila entera** (`col-span-full`) y no dos
+  columnas. Con tres columnas, un `col-span-2` deja una celda vacía al lado de la
+  descripción.
+- **La tercera columna la decide el contenedor y no el viewport**
+  (`@5xl:grid-cols-3` sobre un `@container` en el cuerpo de `Seccion`). Un
+  `xl:grid-cols-3` mira la ventana: el mismo monitor de 1920px pinta el formulario
+  a 896px cuando la vista elegida es «celular», y ahí tres columnas son de 290px.
+  **Fue el bug de la primera versión de este cambio**, y el umbral también estuvo
+  mal antes de quedar en 64rem — 48rem lo cruza el ancho de lectura.
+  Y el `@container` va en el cuerpo de la sección y no en cada grilla: una grilla
+  no puede consultarse a sí misma, así que el contenedor tiene que ser un
+  ancestro.
+
+Las tres secciones que **no** reparten —«Encuentros», «Dónde», «Material»— son
+editores de **filas**, o sea el caso que D-330 dice que sí gana con el ancho
+directamente, sin reparto que decidir.
+
+### Lo que la vista «celular» conserva de antes de D-490
+
+- **Los acordeones vuelven a ser los de antes**: apilado no corre el efecto que
+  abre la sección de la pestaña activa, y es a propósito — «la pestaña era el
+  mecanismo de plegado», y sin pestañas ese click no existe. Abrir las cinco
+  colapsables al montar daría el formulario largo que D-490 vino a partir, y
+  encima ignorando la memoria de B-193.
+- **La barra sigue llevando al campo que falta** (B-184), y ésa es la única pieza
+  que hubo que elegir por vista: con pestañas cambia de solapa; apilado scrollea
+  al ancla, porque `setPestania` no movería nada con los nueve paneles visibles.
+  Las dos rutas ya existían en el código —el ancla es de antes de D-490—.
+- **No quedan `tabpanel` huérfanos.** Sin la fila de solapas no hay `tablist` que
+  los gobierne, y un `tabpanel` suelto le anuncia al lector de pantalla una
+  pestaña que no existe.

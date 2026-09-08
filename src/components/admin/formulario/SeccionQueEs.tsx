@@ -43,7 +43,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
       conAyuda
       descripcion="Elegí el tipo primero: el resto del formulario se adapta."
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
         <Campo label="Tipo de actividad" requerido error={errorDe('tipo')}>
           <TaxonomiaSelect
             campo="tipo"
@@ -71,7 +71,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
           </select>
         </Campo>
 
-        <Campo label="Título" requerido error={errorDe('titulo')} className="sm:col-span-2">
+        <Campo label="Título" requerido error={errorDe('titulo')} className="sm:col-span-full">
           <input
             className={claseInput}
             value={form.titulo}
@@ -89,7 +89,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
               ? 'Bloqueado: la actividad ya está publicada y cambiarlo rompe la URL y el SEO.'
               : 'Se arma solo desde el título. Después de publicar queda fijo.'
           }
-          className="sm:col-span-2"
+          className="sm:col-span-full"
         >
           <input
             autoCapitalize="off"
@@ -106,7 +106,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
           label="Descripción"
           requerido
           error={errorDe('descripcion')}
-          className="sm:col-span-2"
+          className="sm:col-span-full"
         >
           <textarea
             className={`${claseInput} min-h-32`}
@@ -127,7 +127,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
           // (`errorDe('imagenes')`) y el de cada fila. Pasarlo también acá
           // duplicaría el mismo mensaje dos veces en la misma sección.
           ayuda="El flyer es lo primero que se ve. Con imagen, la actividad entra en la cartelera del sitio y el link se comparte con algo para mirar."
-          className="sm:col-span-2"
+          className="sm:col-span-full"
         >
           <GaleriaEditor
             imagenes={form.imagenes}

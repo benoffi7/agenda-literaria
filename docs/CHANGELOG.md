@@ -2,6 +2,77 @@
 
 ## Sin publicar
 
+- **El formulario tiene dos formas, y las elige quien carga** — **B-814**,
+  decisión del dueño escrita como **D-550**. Pedido suyo: «el formulario que tenga
+  una vista PC o mobile configurable. si es mobile es a lo largo y si es pc usar
+  pestañas y todo a lo ancho. **que no sea automatico por deteccion sino eleccion
+  del usuario**».
+
+  Esa última frase es la decisión entera y va contra el reflejo, que sería un
+  `@media`. Y tiene razón: **el ancho de la ventana no es la pregunta.** Quien
+  carga desde una notebook con la ventana a media pantalla puede querer las nueve
+  secciones apiladas, y quien carga desde una tablet apoyada puede querer las
+  pestañas. Detectar acierta en el promedio y no se puede contradecir; elegir
+  acierta siempre. Así que en `src/lib/vistaDelPanel.ts` no hay ninguna consulta de
+  ancho, y eso lo fija un test **sobre la fuente**: un `matchMedia` agregado mañana
+  dejaría todos los demás tests en verde —el módulo seguiría devolviendo una vista
+  válida— y lo que se rompería es el pedido.
+
+  El default es «PC», que es lo que el panel ya hacía. Y el interruptor va en la
+  **cabecera del panel** (elegido por el dueño sobre las tres alternativas): es una
+  preferencia, se busca donde están las preferencias, y es el único lugar desde el
+  que se puede elegir **antes** de entrar a cargar.
+
+  **Esto revisa D-330, y hay que decirlo.** Esa decisión excluyó el formulario del
+  ancho completo con un motivo escrito: «un formulario de 30+ campos a 1900px es
+  peor que a 900». El motivo era cierto y dejó de aplicar entero, por dos cosas
+  posteriores: D-490 partió el formulario en pestañas —una pestaña tiene seis
+  campos, no treinta— y las secciones **ya reparten en dos columnas**, hoy
+  apretadas en 896px. O sea que el ancho no se estira: se usa, que es lo que B-621
+  pide antes de ensanchar algo. No es una derogación: la vista «celular» vuelve al
+  ancho de lectura, porque ahí el formulario **sí** es la lista de 30+ campos de la
+  que D-330 hablaba. La misma vista decide las dos cosas, y eso hace imposible la
+  combinación absurda (apilado y a 1900px).
+
+  **El reparto es el trabajo real** (la lección de B-621 con el calendario:
+  ensanchar sin repartir da «más aire, no más información»). Los textos largos
+  abarcan la fila entera y no dos columnas —con tres, un `col-span-2` deja una
+  celda vacía— y la tercera columna la decide **el contenedor y no el viewport**
+  (`@5xl:grid-cols-3` sobre un `@container` en el cuerpo de `Seccion`). Ese fue el
+  bug de la primera versión: un `xl:grid-cols-3` mira la ventana, así que el mismo
+  monitor de 1920px repartía en tres dentro de los 896px de la vista celular —
+  columnas de 290px—. El umbral también estuvo mal antes de quedar en 64rem, porque
+  48rem lo cruza el ancho de lectura. Y el `@container` va en el cuerpo de la
+  sección y no en cada grilla: una grilla no puede consultarse a sí misma.
+
+  Y una corrección de diseño en el camino: los dos defaults nuevos
+  (`ocupaTodoElAncho` y el prop del formulario) se sacaron. «El comportamiento de
+  antes de B-814» son **dos cosas distintas** según el archivo —ancho de lectura en
+  uno, pestañas en el otro— así que un default significaba una en cada lado y quien
+  se equivocara no se iba a enterar. Sin default, el compilador nombró los tres call
+  sites.
+
+  Tests: `tests/vista-del-panel.test.ts` (10 — el módulo puro, el barrido contra
+  la detección y el cableado del interruptor en `AdminApp`),
+  `tests/formulario-apilado.render.test.tsx` (4, el gemelo del de pestañas — un
+  `grep` sobre el JSX no distingue las dos vistas) y tres casos nuevos en
+  `tests/ancho-del-panel.test.ts` para el reparto. Ocho mutaciones corridas:
+  solapas siempre, esconder igual en apilado, sin scroll al ancla, el formulario
+  nunca se ensancha, breakpoint de viewport, `col-span-2`, el olvido del
+  `setVistaDelPanel` y guardar en otro almacén del que se lee. Las ocho fallan.
+
+  Los dos últimos son de la auditoría de cierre, y valen el renglón porque el
+  modo de falla es de los peores: `InterruptorDeVista` recibe `vista` como prop,
+  así que un `elegirVista` que solo persista y se olvide del `setVistaDelPanel`
+  **igual cambia de color** al click. Feedback visual correcto y estado viejo —
+  quien carga ve que eligió y el formulario sigue como estaba.
+
+  Doc: [`06-decisiones.md`](06-decisiones.md) → D-550 (nueva),
+  [`04-funcionalidades.md`](04-funcionalidades.md) → «Dos formas del formulario»
+  (nueva, con la tabla), [`07-seguridad.md`](07-seguridad.md) (la lista de marcas
+  del navegador y por qué su clave no lleva la huella del uid). Novedad del panel:
+  `vista-pc-o-celular`. Ayuda: un punto nuevo en «El listado de actividades».
+
 - **Restaurar del historial ya no puede publicar salteando todas las reglas** —
   **B-818**, P1, decisión del dueño escrita como **D-540**. Lo había encontrado el
   `auditor-privacidad` cerrando B-181, como la mitad general de un hallazgo cuya

@@ -15,6 +15,12 @@ import { motivoDeLoginFallido, type MotivoDeLogin } from '@/lib/motivoDeLogin';
 // `salida-del-panel.ts`: la vista que se agregue mañana arranca angosta y quien
 // la escriba decide en una línea, en vez de heredar un `===` suelto en el JSX.
 import { ocupaTodoElAncho } from '@/lib/anchoDelPanel';
+import { InterruptorDeVista } from '@/components/admin/InterruptorDeVista';
+import {
+  recordarVistaDelPanel,
+  vistaInicialDelPanel,
+  type VistaDelPanel,
+} from '@/lib/vistaDelPanel';
 // Store de módulo, sin Firestore ni React context (ver formulario-sucio.ts).
 import { hayCambiosSinGuardar, marcarCambiosSinGuardar } from '@/lib/formulario-sucio';
 import {
@@ -209,6 +215,29 @@ export function AdminApp() {
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
   const [cargando, setCargando] = useState(true);
   const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
+
+  /**
+   * **La forma del formulario de carga, elegida a mano** — B-814.
+   *
+   * El inicializador es **perezoso** (`useState(() => …)`) y no un valor: leer
+   * `localStorage` en cada render sería una lectura sincrónica por pintada, y
+   * sobre todo el valor tiene que venir de la primera —si arrancara en el default
+   * y un `useEffect` lo corrigiera después, el formulario se dibujaría con
+   * pestañas y saltaría a apilado a la vista de todos.
+   *
+   * `globalThis.localStorage` con `?? null` y no `window.localStorage`: este
+   * componente lo monta una island `client:only`, así que en el navegador está
+   * siempre — pero el mismo módulo lo importan los tests de render, donde el
+   * almacén puede no existir, y el módulo puro está escrito para recibir `null`.
+   */
+  const [vistaDelPanel, setVistaDelPanel] = useState<VistaDelPanel>(() =>
+    vistaInicialDelPanel(globalThis.localStorage ?? null),
+  );
+
+  const elegirVista = (nueva: VistaDelPanel) => {
+    setVistaDelPanel(nueva);
+    recordarVistaDelPanel(globalThis.localStorage ?? null, nueva);
+  };
   const [version, setVersion] = useState(0);
 
   // Una sola llamada: el hook hace el fetch de /version.json y el reload().
@@ -424,7 +453,7 @@ export function AdminApp() {
        * formulario queda alineado con los campos.
        */
       className={`mx-auto px-segura py-6 ${
-        ocupaTodoElAncho(vista.tipo) ? ANCHO_COMPLETO : ANCHO_DE_LECTURA
+        ocupaTodoElAncho(vista.tipo, vistaDelPanel) ? ANCHO_COMPLETO : ANCHO_DE_LECTURA
       }`}
     >
       <AvisoVersionNueva {...estadoVersion} />
@@ -505,6 +534,13 @@ export function AdminApp() {
             Reportar algo
           </button>
         )}
+        {/*
+          B-814 — el interruptor de la forma del formulario. Va en la cabecera y
+          no en el formulario (decisión del dueño): es una **preferencia**, y se
+          busca donde están las preferencias. Se ve en todas las pantallas, así
+          que también se puede elegir antes de entrar a cargar.
+        */}
+        <InterruptorDeVista vista={vistaDelPanel} onCambiar={elegirVista} />
         {/* Única entrada a la ayuda y a las novedades (D-61): el encabezado se
             ve en todas las pantallas, y al ser una capa se puede consultar sin
             perder el formulario a medio cargar. */}
@@ -620,6 +656,7 @@ export function AdminApp() {
       {(vista.tipo === 'nueva' || vista.tipo === 'editar' || vista.tipo === 'duplicar') && (
         <ActividadFormulario
           uid={usuario.uid}
+          vistaDelPanel={vistaDelPanel}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
           copia={vista.tipo === 'duplicar' ? vista.copia : undefined}
           tituloOrigen={vista.tipo === 'duplicar' ? vista.tituloOrigen : undefined}

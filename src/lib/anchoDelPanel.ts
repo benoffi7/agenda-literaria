@@ -1,3 +1,5 @@
+import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
+
 /**
  * Qué pantallas del panel usan todo el ancho de la pantalla — B-620.
  *
@@ -20,6 +22,11 @@
  * | `taxonomias` | lectura | filas de dos campos: el ancho extra queda vacío |
  * | `calendario` | lectura | la grilla del mes **sí** ganaría, y queda anotado; ensancharla es un cambio visual propio y no entra en este frente |
  * | `estadisticas` | todo | B-621, D-400: un tablero de gráficos es el caso puro de «se recorre de un barrido» |
+ *
+ * **La fila de `nueva`/`editar`/`duplicar` dejó de ser fija con B-814**: hoy es
+ * «lectura en vista celular, todo en vista PC». El motivo está abajo, en
+ * `VISTAS_DE_FORMULARIO`, y no reemplaza el argumento de esta tabla — lo acota a
+ * la vista donde sigue siendo cierto.
  *
  * ── Por qué `estadisticas` entró y `calendario` no (B-621) ────────────────
  * B-621 nombraba las dos, y el ítem dice por qué van por separado: «ensanchar
@@ -58,5 +65,49 @@ export const VISTAS_A_TODO_ANCHO = ['lista', 'estadisticas', 'calendario'] as co
 
 export type VistaATodoAncho = (typeof VISTAS_A_TODO_ANCHO)[number];
 
-export const ocupaTodoElAncho = (tipoDeVista: string): boolean =>
-  (VISTAS_A_TODO_ANCHO as readonly string[]).includes(tipoDeVista);
+/**
+ * Las vistas del formulario, que **dependen de la vista del panel** — B-814.
+ *
+ * ── Esto revisa la decisión de B-620, y hay que decirlo ───────────────────
+ * La tabla de arriba las excluye con un motivo escrito: «a 1900px la etiqueta y
+ * el error se separan del campo». **Ese motivo era cierto y dejó de aplicar
+ * entero**, por dos cosas que pasaron después:
+ *
+ * 1. **D-490 partió el formulario en pestañas.** El argumento de B-620 hablaba de
+ *    «un formulario de 30+ campos»; una pestaña tiene seis. El renglón largo que
+ *    cansaba era la lista entera, no una sección.
+ * 2. **Las secciones ya reparten en dos columnas** (`grid sm:grid-cols-2`, con
+ *    `sm:col-span-2` para la descripción y los textos largos), y hoy ese reparto
+ *    está apretado en 896px. O sea que el ancho no se estira: **se usa**, que es
+ *    exactamente lo que B-621 pide antes de ensanchar algo («qué crece, qué se
+ *    reparte en columnas»). Y las tres secciones que no reparten —«Encuentros»,
+ *    «Dónde», «Material»— son editores de **filas**, que es el caso que B-620
+ *    dice que sí gana con el ancho.
+ *
+ * Pedido del dueño el 2026-09-08 («si es pc usar pestañas y todo a lo ancho») y
+ * decidido por él sobre las tres alternativas.
+ *
+ * ── Y por eso cuelga de la vista elegida, no de la ventana ────────────────
+ * En vista «celular» el formulario va a lo largo y sin pestañas, o sea que vuelve
+ * a ser la lista de 30+ campos de la que hablaba B-620 — y ahí su argumento sigue
+ * intacto, así que vuelve al ancho de lectura. Es la misma vista la que decide las
+ * dos cosas, que es lo que evita la combinación absurda: apilado y a 1900px.
+ */
+const VISTAS_DE_FORMULARIO: readonly string[] = ['nueva', 'editar', 'duplicar'];
+
+/**
+ * ¿Esta vista se pinta a todo ancho?
+ *
+ * **`vistaDelPanel` es obligatorio, sin default**, y eso es deliberado: la primera
+ * versión le puso uno y no había ninguno honesto. «El comportamiento de antes de
+ * B-814» son **dos cosas distintas** según el archivo —acá, ancho de lectura;
+ * en el formulario, pestañas— así que un default significaba una en cada lado y
+ * el que se equivocara no se iba a enterar. Es la misma razón por la que este
+ * módulo existe en vez de un `===` en el JSX: obligar a que alguien lo mire.
+ */
+export const ocupaTodoElAncho = (
+  tipoDeVista: string,
+  vistaDelPanel: VistaDelPanel,
+): boolean =>
+  (VISTAS_A_TODO_ANCHO as readonly string[]).includes(tipoDeVista) ||
+  (VISTAS_DE_FORMULARIO.includes(tipoDeVista) && usaPestanias(vistaDelPanel));

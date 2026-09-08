@@ -427,6 +427,16 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Arriba del panel hay un interruptor «PC / Celular», y cambia cómo se dibuja el ' +
+          'formulario de carga. En «PC» va en pestañas y usa todo el ancho: los campos se ' +
+          'acomodan en dos o tres columnas según la pantalla. En «Celular» va todo a lo largo, ' +
+          'sin pestañas, y con las secciones que se abren y cierran. No se detecta por el ' +
+          'aparato a propósito: hay quien prefiere las pestañas en el teléfono y quien prefiere ' +
+          'todo a lo largo en la computadora, así que lo elegís vos. Queda guardado en ese ' +
+          'navegador, así que si entrás desde otro aparato lo volvés a elegir ahí.',
+      },
+      {
+        texto:
           'Cada fila tiene «Editar» y un menú «⋯» con «Marcar cupo completo», «Duplicar», ' +
           '«Historial» y «Borrar». Están en el menú, y no como botones sueltos, para que ' +
           '«Borrar» no quede pegado a «Editar» en el teléfono.',
@@ -811,7 +821,7 @@ export const CAPITULOS: CapituloAyuda[] = [
     id: 'el-formulario-en-pestanias',
     titulo: 'El formulario está en pestañas',
     paraQue:
-      'Cargar una actividad son treinta y pico de campos. Están repartidos en nueve pestañas, así que en la pantalla hay una parte a la vez y no todo de arrastre.',
+      'Cargar una actividad son treinta y pico de campos. Con el interruptor en «PC» están repartidos en nueve pestañas, así que en la pantalla hay una parte a la vez y no todo de arrastre.',
     puntos: [
       {
         texto:
@@ -838,6 +848,12 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'Desde el teléfono la fila de solapas se corre para el costado en vez de partirse en ' +
           'tres renglones: así cada solapa queda siempre en el mismo lugar.',
+      },
+      {
+        texto:
+          'Todo esto es la vista «PC». Con el interruptor de arriba en «Celular» no hay pestañas: ' +
+          'las nueve secciones quedan una debajo de la otra, para recorrerlas con el pulgar. Lo que ' +
+          'cargaste no se pierde al cambiar de vista.',
       },
     ],
   },

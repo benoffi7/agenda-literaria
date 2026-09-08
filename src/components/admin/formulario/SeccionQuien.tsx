@@ -17,7 +17,7 @@ type Props = Omit<PropsSeccion, 'uid'> & {
 export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePersona }: Props) {
   return (
     <Seccion ancla="quien" titulo="Quién" conAyuda>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
         <Campo label="Organizador" requerido error={errorDe('organizador.nombre')}>
           <input
             className={claseInput}
@@ -36,7 +36,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             placeholder="@casabrandon"
           />
         </Campo>
-        <Campo label="Web del organizador" className="sm:col-span-2">
+        <Campo label="Web del organizador" className="sm:col-span-full">
           <input
             className={claseInput}
             value={form.organizador.web}
@@ -48,7 +48,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
 
       {(esTaller || esCharla) && (
         <div className="mt-4 border-t border-borde pt-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
             <Campo label={nombrePersona}>
               <input
                 className={claseInput}
@@ -75,7 +75,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                 }
               />
             </Campo>
-            <Campo label="Bio" className="sm:col-span-2">
+            <Campo label="Bio" className="sm:col-span-full">
               <textarea
                 className={`${claseInput} min-h-20`}
                 value={form.tallerista?.bio ?? ''}
@@ -106,7 +106,7 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
       */}
       {muestraLibro(form) && (
         <div className="mt-4 border-t border-borde pt-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
             <Campo
               label="Libro presentado"
               error={errorDe('libro.titulo')}
