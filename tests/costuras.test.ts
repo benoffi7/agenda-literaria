@@ -51,6 +51,7 @@ const ochoSesiones = (over: (i: number) => Record<string, unknown> = () => ({}))
     lectura: null,
     cancelada: false,
     calendarEventId: `evt_${i}`,
+    comisionId: null,
     ...over(i),
   }));
 
@@ -101,6 +102,7 @@ const actividadPlana = (calendarEventId: string | null): Actividad =>
         lectura: null,
         cancelada: false,
         calendarEventId,
+        comisionId: null,
       },
     ],
     modalidad: 'presencial',
@@ -246,6 +248,7 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
       lectura: null,
       cancelada: false,
       calendarEventId: null,
+      comisionId: null,
     },
   ];
   const publicar = () => ({
@@ -599,6 +602,7 @@ describe('B-90 · el generador de encuentros sobre un ciclo publicado', () => {
         lectura: null,
         cancelada: false,
         calendarEventId: s.calendarEventId,
+        comisionId: null,
       })),
     });
 
@@ -612,6 +616,7 @@ describe('B-90 · el generador de encuentros sobre un ciclo publicado', () => {
       lectura: '',
       cancelada: false,
       calendarEventId: `evt_${i}`,
+      comisionId: null,
     }));
 
   it('correr el ciclo una semana mueve los ocho eventos, no los recrea', () => {

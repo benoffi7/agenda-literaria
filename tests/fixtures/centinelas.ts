@@ -40,6 +40,7 @@
  */
 import type {
   Actividad,
+  Comision,
   Imagen,
   ModalidadFila,
   Online,
@@ -95,6 +96,24 @@ const RUTAS = [
   'sesiones.tema',
   'sesiones.lectura',
   'sesiones.calendarEventId',
+  /*
+   * Las opciones para sumarse (B-181). Las dos rutas son públicas a propósito y
+   * cada una por su motivo, así que van con centinelas separados:
+   *
+   * - `comisiones.etiqueta` es el texto que se muestra («Martes 19 h»): sale al
+   *   título del evento, a la página y al `subEvent` del JSON-LD.
+   * - `comisiones.id` es el uuid que ata cada encuentro a su grupo. Es un id
+   *   interno —la clase de dato que el §5.1 mira con lupa— y sale porque sin él
+   *   la página tiene las etiquetas y no sabe qué encuentro va con cuál. Mismo
+   *   argumento que `sesiones.id` en el `url` de cada `subEvent` (B-733).
+   *
+   * `sesiones.comisionId` **no tiene ruta propia**: su valor *es* `comisiones.id`
+   * —es una referencia, no un dato— y darle un centinela distinto haría que el
+   * fixture describa un documento imposible (un encuentro apuntando a una
+   * comisión que no existe), que es justo lo que el schema rechaza.
+   */
+  'comisiones.id',
+  'comisiones.etiqueta',
 
   // Dónde: la forma de cursar (B-224). `sede` y `online` viven adentro de la
   // fila, y los de primer nivel son los **derivados** que escribe
@@ -246,8 +265,27 @@ const sesionesCentinela = (): Actividad['sesiones'] =>
       lectura: CENTINELA['sesiones.lectura'],
       cancelada: false,
       calendarEventId: `${CENTINELA['sesiones.calendarEventId']}.${i + 1}`,
+      /*
+       * B-181 — **todos** los encuentros del fixture van en la misma comisión, y
+       * eso es lo que el schema exige cuando hay comisiones (si hay, cada
+       * encuentro pertenece a una). Repartirlos entre dos habría dado un fixture
+       * más rico, y también uno donde el grupo de cada comisión tiene la mitad de
+       * las fechas: el barrido afirma sobre las salidas de **todos** los
+       * encuentros, y perder la mitad en cada grupo debilita esas aserciones.
+       */
+      comisionId: `com_${CENTINELA['comisiones.id']}`,
     };
   });
+
+/**
+ * La comisión del fixture (B-181). Una sola: con dos, el barrido tendría que
+ * decidir cuál mirar en cada salida, y lo que se está verificando —que la
+ * etiqueta y el id salgan solo donde se decidió— no necesita la segunda.
+ */
+const comisionCentinela = (): Comision => ({
+  id: `com_${CENTINELA['comisiones.id']}`,
+  etiqueta: CENTINELA['comisiones.etiqueta'],
+});
 
 const imagenCentinela = (): Imagen => ({
   id: `img_${CENTINELA['imagenes.id']}`,
@@ -337,6 +375,7 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
   libro: { titulo: CENTINELA['libro.titulo'], autor: CENTINELA['libro.autor'] },
   esCiclo: true,
   sesiones: sesionesCentinela(),
+  comisiones: [comisionCentinela()],
   modalidades: [modalidadCentinela()],
   // Los tres derivados que escribe `formADocumento` (B-224): con una sola fila
   // son exactamente lo que la fila dice. Se arman con las mismas fábricas para

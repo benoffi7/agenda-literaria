@@ -27,6 +27,7 @@ const sesion = (over: Partial<SesionForm> = {}): SesionForm => ({
   lectura: 'Los siete locos',
   cancelada: false,
   calendarEventId: 'evento_del_original',
+  comisionId: null,
   ...over,
 });
 
@@ -690,5 +691,62 @@ describe('duplicar — qué se copia se elige (B-199)', () => {
       actividadFormSchema.safeParse(duplicarActividadForm(o, { ahora: AHORA, copiar: nada }))
         .success,
     ).toBe(true);
+  });
+});
+
+describe('la copia rehace los ids de las comisiones (B-181)', () => {
+  const MARTES = { id: 'com_martes', etiqueta: 'Martes 19 h' };
+  const JUEVES = { id: 'com_jueves', etiqueta: 'Jueves 19 h' };
+
+  const conComisiones = () =>
+    original({
+      comisiones: [MARTES, JUEVES],
+      sesiones: [
+        sesion({ id: 'ses_1', inicio: '2025-09-02T19:00', fin: '2025-09-02T21:00', comisionId: MARTES.id }),
+        sesion({ id: 'ses_2', inicio: '2025-09-04T19:00', fin: '2025-09-04T21:00', comisionId: JUEVES.id }),
+        sesion({ id: 'ses_3', inicio: '2025-09-09T19:00', fin: '2025-09-09T21:00', comisionId: MARTES.id }),
+      ],
+    });
+
+  it('las etiquetas se heredan: son la estructura del ciclo', () => {
+    const copia = duplicarActividadForm(conComisiones(), { ahora: AHORA });
+    expect(copia.comisiones.map((c) => c.etiqueta)).toEqual(['Martes 19 h', 'Jueves 19 h']);
+  });
+
+  it('los ids son nuevos', () => {
+    /*
+     * Compartirlos dejaría dos actividades cuyos encuentros apuntan al mismo
+     * grupo, y borrar una comisión en el original desengancharía los de la copia
+     * (`sinComision` filtra por id, no por actividad).
+     */
+    const copia = duplicarActividadForm(conComisiones(), { ahora: AHORA });
+    expect(copia.comisiones.map((c) => c.id)).not.toContain(MARTES.id);
+    expect(copia.comisiones.map((c) => c.id)).not.toContain(JUEVES.id);
+    expect(new Set(copia.comisiones.map((c) => c.id)).size).toBe(2);
+  });
+
+  it('cada encuentro apunta a la comisión que le corresponde DE LA COPIA', () => {
+    /*
+     * Es la mitad que se rompe por descuido: con ids nuevos y `comisionId` sin
+     * remapear, la copia queda con tres encuentros colgados y el schema no la
+     * deja publicar.
+     *
+     * MUTACIÓN PROBADA: dejando `comisionId: s.comisionId` —o sea copiando la
+     * referencia vieja— este test falla con los tres apuntando a ids que la copia
+     * no tiene.
+     */
+    const copia = duplicarActividadForm(conComisiones(), { ahora: AHORA });
+    const [nuevaMartes, nuevaJueves] = copia.comisiones.map((c) => c.id);
+    expect(copia.sesiones.map((s) => s.comisionId)).toEqual([
+      nuevaMartes,
+      nuevaJueves,
+      nuevaMartes,
+    ]);
+  });
+
+  it('sin comisiones la copia sigue igual que siempre', () => {
+    const copia = duplicarActividadForm(original(), { ahora: AHORA });
+    expect(copia.comisiones).toEqual([]);
+    expect(copia.sesiones.every((s) => s.comisionId === null)).toBe(true);
   });
 });

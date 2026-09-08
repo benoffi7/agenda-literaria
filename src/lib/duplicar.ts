@@ -3,6 +3,7 @@ import { duplicarItemMaterial } from '@/lib/material';
 import { duplicarModalidad } from '@/lib/modalidades';
 import { aDatetimeLocal, deDatetimeLocal, nuevaSesionId } from '@/lib/sesiones';
 import type { ActividadForm, SesionForm } from '@/types/actividad';
+import { nuevaComisionId } from '@/lib/comisiones';
 
 /**
  * Duplicar una actividad entera (B-11).
@@ -418,15 +419,39 @@ export const duplicarActividadForm = (
   const dias = diasDeDesplazamiento(origen.sesiones, opts.ahora ?? new Date());
   const copiar: QueCopiar = { ...COPIA_POR_DEFECTO, ...opts.copiar };
 
+  /*
+   * B-181 — el mapa `id viejo → id nuevo` de las comisiones, armado **antes** de
+   * recorrer las dos listas. Es lo que hace que la copia sea coherente en una
+   * sola pasada: sin él habría que copiar las comisiones, después buscar cada
+   * `comisionId` por posición —que es la trampa 2— o recorrer dos veces.
+   */
+  const comisionesNuevas = new Map(origen.comisiones.map((c) => [c.id, nuevaComisionId()]));
+
   return {
     ...origen,
     titulo: tituloCopia(origen.titulo),
     slug: slugCopia(origen.slug, opts.tomados),
+    /**
+     * B-181 — las comisiones se copian con **ids nuevos**, y el mapa de abajo es
+     * lo que mantiene apuntando cada encuentro a la comisión que le corresponde
+     * **de la copia**.
+     *
+     * Compartir el id no rompería el calendario —una comisión no sincroniza
+     * nada— pero dejaría dos actividades cuyos encuentros apuntan al mismo
+     * grupo, y borrar una comisión en el original desengancharía los de la copia
+     * (`sinComision` filtra por id, no por actividad). Es la trampa 2 en la
+     * forma de B-71: estado compartido entre dos filas que se creen la misma.
+     *
+     * La etiqueta **sí** se hereda: «Martes 19 h» es la estructura del ciclo, lo
+     * mismo que las fechas, y es lo que hace que duplicar sirva.
+     */
+    comisiones: origen.comisiones.map((c) => ({ ...c, id: comisionesNuevas.get(c.id)! })),
     // Las fechas y la estructura del ciclo se copian siempre (D-17); el tema y
     // la lectura son lo elegible, porque son de esa temporada y no del ciclo.
     sesiones: origen.sesiones.map((s) => {
       const copia = duplicarSesionParaCopia(s, dias);
-      return copiar.temas ? copia : { ...copia, tema: '', lectura: '' };
+      const conComision = { ...copia, comisionId: comisionesNuevas.get(s.comisionId ?? '') ?? null };
+      return copiar.temas ? conComision : { ...conComision, tema: '', lectura: '' };
     }),
     descripcion: copiar.descripcion ? origen.descripcion : '',
 

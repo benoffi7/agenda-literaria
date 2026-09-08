@@ -210,6 +210,31 @@ monto es un entero, así que registrarlo en `RUTAS_CENTINELA` habría hecho busc
 texto `'CENTINELA.arancel.monto'` — un chequeo verde para siempre. Se ancla por
 valor y en las **dos** formas en que sale, el número crudo y el formateado.
 
+**`comisiones[].etiqueta` sale, y `comisiones[].id` casi no** (B-181, **D-530**).
+Las «opciones para sumarse» son dos campos nuevos y cada uno tiene su celda,
+porque no salen igual:
+
+- **La etiqueta sale** a la salida **2** (el `summary` del evento, el encabezado de
+  su descripción y el bloque «Otras opciones para el mismo ciclo») y a la **6** (el
+  `<h3>` de cada grupo, la bajada, el `rotuloCiclo` y el `name` de cada
+  `subEvent`). Es texto que el dueño escribe para mostrarlo, del mismo orden que
+  el `tema` de un encuentro. **No** sale a la 1, la 5 ni la 7, y las tres ausencias
+  están afirmadas.
+- **El id sale a la proyección del §5.2 y a ningún artefacto.** Es la distinción
+  que el `auditor-privacidad` cobró dos veces: lo que se sirve como `/events.json`
+  es el **índice** del listado (`entradaDeIndice`), que no lo lleva porque el
+  listado no agrupa; y en la página de detalle el id se usa **dentro** del build
+  para armar los grupos y no llega al view-model — el HTML solo tiene la etiqueta.
+  Así que no hay ninguna excepción de barrido para el id en el detalle: la primera
+  versión la tenía, y era un permiso para algo que nunca se pinta.
+
+**Y la etiqueta tiene una guarda que el `tema` no tiene:** al publicar se rechaza
+si contiene `http://` o `https://`. No es una regla de forma, es de probabilidad —
+su contenido natural es «cómo se cursa este grupo» (el propio ejemplo del campo
+incluye «Turno virtual»), así que es el campo del modelo con más chances de recibir
+el link de la reunión, y su destino incluye una página indexada, donde D-139 dice
+que ese link no va **nunca**, con flag o sin flag.
+
 **De `/opciones/{campo}` salen `slug`, `label` y —desde D-150— `tono`** (§4.4). La proyección
 se escribió **antes** que su consumidor —B-212 antes que B-106— y eso era a
 propósito: el camino corto al implementar el índice es volcar `valores` tal cual, y

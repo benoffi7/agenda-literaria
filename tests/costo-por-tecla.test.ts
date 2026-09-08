@@ -64,6 +64,7 @@ const conEncuentros = (n: number): ActividadForm => {
       lectura: 'Cap. 1-4',
       cancelada: false,
       calendarEventId: null,
+      comisionId: null,
     })),
   };
 };

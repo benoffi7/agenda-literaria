@@ -46,6 +46,10 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   libro: 'Libro presentado',
   esCiclo: 'Es un ciclo',
   sesiones: 'Encuentros',
+  // B-181 — el nombre de pantalla, no el del modelo: en el panel se llaman
+  // «opciones para sumarse» (ver el docblock de `Comision`). Sin esta entrada el
+  // historial mostraría la clave cruda `comisiones`.
+  comisiones: 'Opciones para sumarse',
   // B-224 — la lista es lo que se edita; `modalidad`, `sede` y `online` son
   // derivados y cambian con ella, así que nombrarlos aparte diría cuatro veces
   // el mismo cambio.

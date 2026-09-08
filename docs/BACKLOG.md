@@ -2829,6 +2829,97 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-814 · El formulario con vista «PC» o «celular», elegida a mano y no detectada · P2
+
+Pedido del dueño (2026-09-08):
+
+> el formulario que tenga una vista PC o mobile configurable. si es mobile es a
+> lo largo y si es pc usar pestañas y todo a lo ancho. que no sea automatico por
+> deteccion sino eleccion del usuario
+
+Son **tres cosas** y conviene separarlas, porque una ya existe a medias y las
+otras dos son decisiones nuevas:
+
+1. **Un interruptor con dos vistas, y la elección se recuerda.** Es el corazón
+   del pedido y el punto donde no hay que discutir el diseño: lo elige el que
+   carga, no el navegador.
+2. **Vista celular = todo a lo largo**, o sea las nueve secciones apiladas y
+   **sin pestañas** — que es exactamente cómo era el formulario antes de D-490.
+3. **Vista PC = pestañas y todo el ancho.** Las pestañas ya son D-490; lo nuevo
+   es el ancho: hoy `nueva`/`editar`/`duplicar` están en la lista de vistas de
+   **ancho de lectura** a propósito (B-620, ver la tabla de
+   `src/lib/anchoDelPanel.ts`), con este motivo escrito: «un formulario de 30+
+   campos a 1900px es peor que a 900, porque la etiqueta de un campo y su error
+   quedan a treinta centímetros del ojo».
+
+**Ese punto 3 contradice una decisión tomada, y hay que decirlo antes de
+hacerlo.** No es un impedimento —el dueño puede elegir lo contrario de lo que
+B-620 decidió, y con las pestañas el argumento cambió: una pestaña sola tiene
+seis campos, no treinta— pero el ancho **no se estira solo**: hay que decidir
+qué crece y qué se reparte en columnas, que es literalmente lo que B-621 dice
+que hay que hacer una vista a la vez. Un `max-w` más grande sin ese reparto deja
+los mismos campos angostos con más aire al costado.
+
+**Por qué vale la pena.** El dueño carga desde el teléfono (es de donde salieron
+B-186, B-204 y media docena de reportes más), y ahí las pestañas cuestan: en una
+pantalla de 390px las nueve no entran en una fila, así que la tira scrollea
+horizontalmente y «¿en qué pestaña estaba el arancel?» se contesta buscando.
+Apilado, el mismo formulario se recorre con el pulgar.
+
+**Dónde.** El interruptor y su memoria: `AdminApp` + `localStorage` (el patrón
+de `VERSION_BORRADOR` **no** aplica: esto es una preferencia de pantalla, no
+datos). El apilado: `ActividadFormulario.tsx` ya tiene las nueve secciones y su
+mapa de contenido —hoy pinta una y esconde ocho (`p.id === pestania ? … :
+'hidden'`)—, así que «todas a lo largo» es no esconder ninguna. El ancho:
+`src/lib/anchoDelPanel.ts`, con la decisión de B-620 revisada.
+
+**Dos preguntas que hay que contestar al implementarlo**, y ninguna es obvia:
+
+- **¿Dónde va el interruptor?** En el formulario (donde se usa) o en un lugar
+  único del panel (donde se busca una preferencia). Con la barra de guardar fija
+  arriba hay lugar en las dos.
+- **¿Qué pasa con «llevame al campo que falta»?** Con pestañas, un error de
+  guardado cambia de pestaña y hace foco (D-490); apilado, tiene que ser un
+  scroll al ancla. Las dos rutas ya existen en el código —el ancla es de antes de
+  D-490— pero hay que elegir por vista.
+
+### B-813 · Cuatro de los nueve avisos de Google son datos que faltan, y el panel no los pide · P2
+
+Sale del informe «Eventos» del 2026-09-08 (la lectura entera está en **B-731**).
+Cuatro avisos no son un bug del markup: el código emite el campo **cuando el dato
+está cargado**, y no está.
+
+| Aviso | Elementos | El dato que falta |
+|---|---|---|
+| `performer` | 65 | la actividad no tiene tallerista/invitado cargado |
+| `image` | 49 | no tiene ninguna imagen |
+| `url` (en `organizer`) | 24 | el organizador no tiene web |
+| `price` + `priceCurrency` | 20 | es arancelada y no tiene `arancel.monto` |
+
+**Por qué vale la pena.** El objetivo del proyecto es que la gente encuentre las
+actividades en Google (P1 del archivo), y el resultado enriquecido con foto y
+precio es lo que hace que un resultado de eventos se vea como un evento y no como
+un link. 49 de 68 páginas sin `image` es la mitad del catálogo publicándose sin
+foto — y no porque el código no la publique, sino porque nadie la cargó.
+
+**Inventar el dato está prohibido** (§7, y la regla 5 de `armarJsonLd`: «no se
+inventa el organizador como performer»). Lo que sí se puede es **pedirlo donde se
+carga**: el formulario ya sabe qué campos están vacíos —tiene el schema en dos
+niveles (B-183) y la lista de faltantes por pestaña (D-490)— así que el aviso
+sería una fila más en la barra de guardar, con la forma «esto se publica igual,
+pero en Google va a salir sin foto ni precio».
+
+**Va como aviso y NO como validación de publicado.** Ese es el punto fino: D-440
+hizo obligatoria la portada al publicar y el dueño sacó ese bloqueo a propósito
+(ver el docblock de `imagenes` en `src/lib/schema.ts`). Una actividad sin flyer
+tiene que poder publicarse; lo que no tiene que pasar es que se publique **sin
+que nadie se haya enterado** de lo que pierde.
+
+Dónde: `src/lib/formulario/` (el resumen de faltantes) y la barra de guardar de
+`ActividadFormulario.tsx`. El criterio de qué campos mirar sale de las cuatro
+filas de arriba, y conviene derivarlo de `armarJsonLd` en vez de escribir una
+segunda lista (la clase de B-88).
+
 ### B-810 · `admin:claim` apuntaba al emulador y el error no lo decía — ✅ hecho (2026-09-08) · P2
 
 **Lo encontró el dueño de la forma más cara.** Corrió
@@ -2906,6 +2997,33 @@ Esto queda como ítem y no como arreglo porque las tres filas de arriba piden
 **decidir**, no reemplazar un número: sobre todo la segunda, que es una decisión de
 producto sobre qué se muestra de la autoría.
 
+
+### B-815 · `D-440` está citada en tres lugares y nunca se escribió como entrada · P2
+
+**Lo encontró el `auditor-documentacion`** cerrando B-181, corriendo
+`scripts/decisiones-referenciadas.mjs`. Es el caso hermano de **B-808** (que ya
+tiene el análogo de `D-350`), y el vacío es **anterior** a esta tanda: B-181 solo
+le agregó la tercera cita.
+
+`docs/03-modelo-de-datos.md`, `docs/CHANGELOG.md` y ahora `docs/BACKLOG.md`
+(dentro de B-813) citan **D-440** —la decisión de B-301 sobre el
+`textoAlternativo` de las imágenes— y `docs/06-decisiones.md` no tiene ninguna
+entrada `## D-440`.
+
+El razonamiento **existe** y es bueno: está en prosa, en el docblock del nivel
+«publicar» de `src/lib/schema.ts`, donde quedó escrito el `superRefine` que el
+dueño mandó sacar el 2026-09-07 («sacame lo de la descripcion obligatoria de la
+imagen»), con qué se pierde y por qué el argumento del dueño es bueno. O sea que
+la cita manda a un lugar que no está y el motivo vive en un tercero.
+
+Las dos salidas son las de B-808 y hay que elegir una: escribir la entrada `D-440`
+con lo que ya está argumentado en el schema, o corregir las tres citas para que
+apunten a donde el razonamiento vive de verdad. **Conviene resolverlos juntos**:
+son el mismo trabajo dos veces y el script los lista en la misma corrida.
+
+Es P2 por lo mismo que B-808: una decisión citada que no existe es lo que hace que
+la próxima persona la reinvente distinta — y con `textoAlternativo` eso significa
+volver a hacerlo obligatorio, que es justo lo que el dueño decidió que no.
 
 ### B-808 · `D-350` está citada en cuatro lugares y nunca se escribió como entrada · P2
 
@@ -7575,16 +7693,64 @@ comparten los pasos 3 **y** 4, así que ese `if` sin test decide dos ramas y no
 una. Sigue en P3 —el modo de falla es ruidoso, no silencioso— pero el argumento
 de arriba pesa el doble.
 
-### B-181 · Un club puede ofrecer N opciones para sumarte, y el modelo solo sabe de N encuentros · P2
+### B-181 · Un club puede ofrecer N opciones para sumarte, y el modelo solo sabe de N encuentros — ✅ hecho (2026-09-08) · P2
 
-**Decidido el 2026-09-03 por el dueño: completo, ahora.** No la versión mínima:
-el eje `opciones` entero, con el diff del calendario incluido.
+**Hecho como el dueño lo decidió: completo, con el camino 3.** Se llama
+`comisiones` en el código y «opciones para sumarse» en pantalla — el porqué del
+nombre está en **D-530** y en el docblock de `Comision`, y en una línea es que
+`opciones` ya significa la taxonomía del §4 en todo este repo (la colección
+`/opciones/{campo}`, la clave `opciones` del `events.json`, `lib/opciones.ts`).
 
-**Encolado y no despachado todavía, con motivo:** toca `src/lib/sesiones.ts`,
-`functions/calendario.js`, el schema y el formulario — exactamente los archivos
-que dos frentes están escribiendo en este momento. Un dispatch en paralelo
-produciría un conflicto de merge en el código más delicado del repo (el diff de
-sesiones contra Calendar, §7). Entra apenas aterricen esos dos.
+**Las dos decisiones que tomó el dueño el 2026-09-08, y las dos son las que
+abaratan el cambio:**
+
+1. **Cada encuentro dice de qué opción es** —`comisiones: [{id, etiqueta}]`
+   arriba y un `comisionId` en cada fila de `sesiones`— y **no** los encuentros
+   anidados adentro de cada opción. Con eso, `sesiones` sigue siendo una lista
+   plana: el diff contra Calendar (§7.2), los filtros, la tarjeta, el sitemap y
+   «la próxima fecha» **no se tocan**, y una actividad sin comisiones queda byte
+   por byte como estaba (el argumento de D-95: ningún evento publicado se
+   reescribe).
+2. **El calendario publica todas las opciones y cada evento dice de cuál es**, en
+   el `summary` («Club de Saer — Martes 19 h») y en el encabezado de la
+   descripción, más un bloque que nombra las otras.
+
+**Lo que quedó, ítem por ítem del reporte:**
+
+| Lo que el ítem señalaba | Cómo quedó |
+|---|---|
+| el calendario publica cuatro eventos y tres no son tuyos | siguen publicándose los cuatro (decisión del dueño), pero cada uno dice de qué opción es y nombra las otras |
+| «Encuentro 2 de 4» no significa nada sobre una alternativa | se numera **dentro de la comisión**: el segundo de los martes es «2 de 2». Y una comisión de una sola fecha no se numera |
+| las dos dimensiones se multiplican y la lista deja de ser legible | el schema exige que **si hay comisiones, cada encuentro pertenezca a una**; la página agrupa por opción y el título dice «Elegí tu opción» |
+| «con algo por venir» y el orden cuentan cuatro fechas donde hay una | **sigue igual, y es deliberado**: son preguntas sobre la actividad («¿queda algo?»), no sobre una comisión. Ver el pendiente de abajo |
+
+**Dónde:** `src/types/actividad.ts` (`Comision`, `Actividad.comisiones`,
+`Sesion.comisionId`), `src/lib/comisiones.ts` (id de cliente, agrupado, el
+borrado que desengancha), `src/lib/schema.ts` (las tres reglas de coherencia),
+`functions/calendario.js` (`comisionDe`, `numeroDeEncuentro`, `tituloDeEvento`),
+`src/lib/toPublic.ts`, `src/lib/detallePublico.ts`,
+`src/components/admin/ComisionesEditor.tsx` y el desplegable por fila de
+`SesionesEditor.tsx`.
+
+**Lo que NO entró, y hay que decirlo:**
+
+- **`rotuloCiclo`, la cartelera y el listado** hablan de la actividad y no de una
+  comisión. El rótulo sí cambió de sujeto («2 opciones para sumarse · 2
+  encuentros cada una»), pero el **orden del listado** sigue usando el encuentro
+  más próximo del conjunto, que es lo correcto para «¿qué pasa esta semana?».
+- **Un cupo por comisión.** Es lo primero que va a pedirse cuando esto se use en
+  serio —los clubes abren comisiones porque no les entra la gente— y es un campo
+  nuevo con su propia decisión: `inscripcion.cupo` es de la actividad.
+- **Encuentros comunes a todas las comisiones** (una clase magistral abierta). El
+  schema lo prohíbe hoy a propósito: mitad con opciones y mitad sin ellas es
+  justo lo que hace ilegible la lista.
+- **El texto para redes y la vista calendario del panel no nombran la comisión.**
+  El **número** ya es el correcto en las dos —salen de `numeroDeEncuentro`, así que
+  cuentan dentro del grupo— pero ninguna dice de cuál es: un recordatorio que dice
+  «Encuentro 2 de 2» sirve para el grupo de los martes y para el de los jueves. Es
+  un campo más en `Encuentro` (`calendarioPanel.ts`) y una línea en cada salida;
+  se dejó afuera para no ampliar el frente, y la salida irreversible —el evento de
+  Calendar— sí lo dice.
 
 
 Reporte del dueño usando el panel de verdad (2026-08-25):
@@ -9265,6 +9431,30 @@ Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
 
+### B-812 · El `offers` del JSON-LD no emite `validFrom`, y son 24 avisos · P3
+
+Sale del informe «Eventos» del 2026-09-08 (ver la lectura en **B-731**):
+`Falta el campo "validFrom" (en "offers")`, 24 elementos. Es el único de los
+nueve avisos que es **código y no dato faltante**: el campo no se emite nunca.
+
+`validFrom` es «desde cuándo se puede conseguir esto». Google lo pide en un
+`Offer` para saber si la oferta ya está vigente, y sin él lo trata como válido
+desde siempre.
+
+**Qué habría para poner, y por qué no es obvio.** El dato honesto sería «desde
+cuándo se puede inscribir», y ese campo no existe en el modelo: `inscripcion`
+tiene `cierra` y no tiene «abre» (§3.1). Las opciones, de más honesta a más
+cómoda:
+
+1. **`creadoEn`** — ya viaja al detalle público (`toPublic`, B-109) y es cierto:
+   la actividad se ofrece desde que se cargó. Es una línea en el `offers` de
+   `armarJsonLd` (`src/lib/detallePublico.ts`).
+2. **un campo nuevo `inscripcion.abre`** — más preciso y más caro: campo,
+   formulario, schema, proyección y las dieciocho salidas.
+
+La 1 alcanza para el aviso y no afirma nada falso. **No hacerlo no rompe nada**:
+es un aviso, no un error, y el resultado enriquecido sale igual. De ahí el P3.
+
 ### B-806 · `10-salud-del-codigo.md` dice que hay cuatro tests de render y hay doce · P3
 
 **Lo encontró el `auditor-documentacion`** cerrando B-805, y ya estaba mal antes de
@@ -9311,6 +9501,50 @@ próximo deploy y del rastreo siguiente:
 
 **Cargar el `sitemap.xml` en Search Console si todavía no está** (lo pide B-373):
 es lo que hace que las 50 páginas que Google no había visto entren rápido.
+
+#### La lectura del 2026-09-08 (informe actualizado al 6/9) — el rastreo todavía no llegó
+
+El dueño pasó la pantalla del informe «Eventos». Así está:
+
+| | Elementos |
+|---|---|
+| **No válidas** — `Falta el campo "location"` (crítico) | **44** |
+| **Válidas** | **24** |
+
+Y los nueve avisos: `performer` 65, `image` 49, `offers` 44, `description` 44,
+`organizer` 44, `validFrom` (en `offers`) 24, `url` (en `organizer`) 24,
+`priceCurrency` 20, `price` 20.
+
+**El punto 2 de arriba todavía no se puede dar por cumplido, y los números dicen
+por qué:** `location`, `description`, `organizer` y `offers` valen **44 los
+cuatro**. Ese 44 es exactamente el conjunto que B-730 arregló —los `subEvent` que
+eran cáscaras de `name` + fechas, sin ninguno de los cuatro campos— así que lo
+que se está mirando es el markup **anterior** al arreglo. B-730 se implementó el
+2026-09-04 y el informe está actualizado al 6/9 con el rastreo a mitad de camino
+(las barras arrancan el 31/8), o sea que Google todavía no volvió a leer esas
+páginas. Las 44 no válidas son el pasado del sitio, no su estado.
+
+**Lo que hay que hacer con esto: nada todavía, y no pedir la validación aún.**
+Pedirla antes de que el rastreo termine la hace fallar y el informe queda con la
+marca de «validación fallida» encima. El orden es: esperar el rastreo → confirmar
+por Inspección de URL que una página de ciclo ya trae los cuatro campos en cada
+`subEvent` → recién ahí pedir la validación de `location`.
+
+**De los nueve avisos, ocho no son código.** Se separan en tres grupos y solo uno
+tiene arreglo en el repo:
+
+- **Es el markup viejo** (van a caer con el rastreo): `description`, `organizer`,
+  `offers`, los tres en 44.
+- **Falta el dato, no el campo** — el código ya los emite cuando están cargados,
+  y no están: `performer` 65 (actividades sin tallerista), `image` 49 (sin
+  imagen), `url` en `organizer` 24 (organizador sin web), `price` y
+  `priceCurrency` 20 (arancelado sin `arancel.monto`, que es el campo que B-114
+  acaba de agregar). Inventarlos sería afirmar algo falso, que es la regla del
+  §7; lo que sí se puede hacer es que el panel avise **antes de publicar** qué se
+  va a perder — **B-813**.
+- **No se emite nunca**: `validFrom` en `offers`, 24 — **B-812**.
+
+
 
 ### B-733 · ✅ hecho (2026-09-07) — El `url` de cada `subEvent` lleva el ancla de su fila
 
@@ -12259,6 +12493,7 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **«Generar N encuentros» sobre una comisión podía moverle la fecha al evento de otro encuentro** | lo encontró el `auditor-trampas` sobre B-181, y era un P1 sin ningún rojo. `generarSesiones` hereda `id` y `calendarEventId` **por posición** (`previas[i]`, B-90) y las fechas que produce son ascendentes: el mapeo solo dice la verdad si `previas` viene en orden cronológico. El array del formulario no lo garantiza —se agregan filas en cualquier orden, se duplica una del medio— y B-181 lo empeoró, porque ahora se pasa un **subconjunto filtrado por comisión**, donde el botón «Ordenar por fecha» no alcanza (ordena el array entero, no cada grupo). Con el grupo desordenado, el encuentro nuevo heredaba el evento de otro y el diff del §7.2 le movía la fecha **en silencio**: nadie ve un error, el suscripto ve su evento en otro día. Es la trampa 2 sin ids por índice — el id es un uuid, lo que se calculaba por posición es a quién se lo hereda. Cerrado ordenando `previas` **adentro** de `generarSesiones` (el riesgo es de su contrato, así que la defensa vive con él), lo que arregla también el caso sin comisiones que ya era frágil, con dos casos y su mutación probada | B-181, `src/lib/sesiones.ts`, `tests/sesiones.test.ts` (2026-09-08) |
 | **D-460 y D-461 enteras quedaron dentro de un bloque de código** en la doc de decisiones | dos ` ``` ` huérfanos —uno antes de D-460 y otro después de D-461— sin ninguna apertura que cerrar. En Markdown eso no es un error: el primero **abre** un bloque y el segundo lo cierra, así que las dos decisiones de la página de apoyo se renderizaban como código plano, sin sus tablas, sus negritas ni sus links. Nada lo agarró porque ningún chequeo cuenta fences y en el editor el texto se lee igual. Se encontró de casualidad, leyendo D-461 por otro motivo (B-791). Cerrado borrando las dos líneas; el conteo de fences del archivo pasó de 22 a 20, todos apareados | B-780, `docs/06-decisiones.md` (2026-09-07) |
 | **La decisión de que `/apoyar` no estuviera en el encabezado (D-461) quedó desactualizada un día** | el dueño pidió subir `/apoyar` y `/anunciar` a la barra el 2026-09-07 y se hizo: los tres casos de `apoyo-del-sitio.test.ts` que ataban las dos direcciones se pusieron en rojo y se actualizaron, **pero la decisión no**. La entrada de D-461 había dejado escrito «el día que se decida subirla el caso se pone en rojo y hay que venir a decidirlo acá», y esa segunda mitad no se hizo en el momento. Cerrado con el aviso al frente de D-461, que dice qué motivo caducó por decisión, cuál sigue siendo verdad y pasó a ser un riesgo asumido, y qué no cambió | B-780, `docs/06-decisiones.md` (2026-09-07) |
 | Al fallar la subida de una imagen, el mensaje era siempre «fijate la conexión», engañoso | el `catch` de la subida a Storage tiraba un único `ImagenRechazada` genérico con causa `red`, ignorando el `code` del SDK. Para `storage/unauthorized` (permiso/sesión) o `quota-exceeded` (espacio) el texto mentía sobre la causa — era el «da error subir imágenes» de #14/#15/#19. Cerrado con `motivoDeSubidaFallida` (puro): traduce el `code` a un motivo y, si es desconocido, lo incluye en el texto. Dos causas nuevas de analítica, `permiso` y `servidor` | B-590, `src/lib/imagenes-archivo.ts`, `src/lib/subir-imagen.ts` (2026-09-03) |

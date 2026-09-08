@@ -10,6 +10,7 @@ import { imagenesDe } from '@/lib/imagenes';
 import { opcionesVisibles } from '@/lib/taxonomia';
 import type {
   Actividad,
+  Comision,
   Imagen,
   ItemMaterial,
   Libro,
@@ -40,6 +41,40 @@ export interface SesionPublica {
   tema: string | null;
   lectura: string | null;
   cancelada: boolean;
+  /**
+   * **De qué comisión es** — B-181. `null` cuando el ciclo no tiene comisiones.
+   *
+   * **Sale a esta proyección, y de acá NO llega a ningún archivo.** La diferencia
+   * importa y la cobró el `auditor-privacidad`: lo que se sirve como
+   * `/events.json` es el **índice** del listado (`entradaDeIndice`, una whitelist
+   * propia), y ese índice no proyecta ni `comisiones` ni `comisionId` — el listado
+   * no agrupa, muestra una tarjeta por actividad. Es la misma aclaración que ya
+   * está tres bloques más abajo, en `ImagenPublica.textoAlternativo`.
+   *
+   * Quien lee esta proyección es el **build de la página de detalle** (§2.4), y
+   * ahí el `comisionId` se usa para armar los grupos y **no se pinta**: el
+   * view-model lleva solo la etiqueta de cada comisión. O sea que el id es
+   * público en el sentido de que viaja en la proyección, y en ninguno más.
+   *
+   * Se anota igual en el barrido —por valor, con su celda— porque la proyección
+   * **es** una de las dieciocho salidas: si mañana alguien la vuelca a un archivo,
+   * el campo ya está decidido y no entra de contrabando.
+   */
+  comisionId: string | null;
+}
+
+/**
+ * §5.1 — una comisión del ciclo, proyectada. Son dos campos y los dos son
+ * públicos: la etiqueta porque es lo que se muestra, el id porque es lo que ata
+ * cada encuentro a su grupo (ver `SesionPublica.comisionId`).
+ *
+ * Se enumera campo por campo, como todo lo demás desde B-114: un
+ * `Actividad['comisiones']` publicaría el campo que alguien le agregue mañana
+ * —un cupo por comisión, una sede por comisión— sin que nadie lo decida.
+ */
+export interface ComisionPublica {
+  id: string;
+  etiqueta: string;
 }
 
 export interface ItemMaterialPublico {
@@ -256,6 +291,8 @@ export interface ActividadPublica {
   libro: LibroPublico | null;
   esCiclo: boolean;
   sesiones: SesionPublica[];
+  /** B-181 — las comisiones del ciclo, o vacío. Ver `ComisionPublica`. */
+  comisiones: ComisionPublica[];
   inscripcion: {
     requiere: boolean;
     via: Actividad['inscripcion']['via'];
@@ -457,6 +494,14 @@ const sesionPublica = (s: Sesion): SesionPublica => ({
   tema: s.tema ?? null,
   lectura: s.lectura ?? null,
   cancelada: s.cancelada ?? false,
+  // B-181 — `?? null` para los documentos anteriores al campo (D-26).
+  comisionId: s.comisionId ?? null,
+});
+
+/** §5.1 — la comisión, campo por campo. Ver `ComisionPublica`. */
+const comisionPublica = (c: Comision): ComisionPublica => ({
+  id: c.id,
+  etiqueta: c.etiqueta,
 });
 
 /** Un item privado conserva título y tipo, pero pierde la URL (§5.1). */
@@ -567,6 +612,19 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   libro: libroPublico(a.libro),
   esCiclo: a.esCiclo ?? false,
   sesiones: (a.sesiones ?? []).map(sesionPublica),
+  /*
+   * B-181 — las comisiones. `?? []` es el default de lectura de siempre: un
+   * documento anterior al campo publica «no tiene comisiones», que es lo que es.
+   *
+   * **Se publican todas, incluida la que ya terminó.** El filtro por fecha lo
+   * hace el consumidor con las sesiones de cada una, que es donde está la fecha;
+   * podar acá dejaría un `comisionId` apuntando a una comisión que no viajó, y la
+   * página tendría que adivinar qué hacer con esos encuentros.
+   *
+   * **Al índice del listado no llegan** (ver `SesionPublica.comisionId`): esta
+   * proyección la lee el build de la página de detalle.
+   */
+  comisiones: (a.comisiones ?? []).map(comisionPublica),
   inscripcion: {
     requiere: a.inscripcion.requiere,
     via: a.inscripcion.via,

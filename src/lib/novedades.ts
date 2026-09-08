@@ -61,6 +61,19 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'opciones-para-sumarse',
+    fecha: '2026-09-08',
+    version: '1.10.0',
+    titulo: 'Un ciclo puede tener varias opciones de horario',
+    detalle:
+      'Si el mismo club se da los martes y los jueves y cada persona va a uno solo, ahora se ' +
+      'carga así: en «Encuentros» agregás las opciones («Martes 19 h») y cada encuentro dice de ' +
+      'cuál es. La página los muestra agrupados, cada evento del calendario lleva el nombre de ' +
+      'su opción, y los encuentros se numeran dentro de la suya: el segundo de los martes es el ' +
+      '2, no el 3.',
+    donde: 'Pestaña «Encuentros», arriba de la lista. Aparece cuando tildás «es un ciclo».',
+  },
+  {
     id: 'recargar-cuando-algo-no-carga',
     fecha: '2026-09-07',
     version: '1.9.0',

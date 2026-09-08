@@ -20,6 +20,7 @@ import { SeccionQuien } from '@/components/admin/formulario/SeccionQuien';
 import { SeccionTextoRedes } from '@/components/admin/formulario/SeccionTextoRedes';
 import { SeccionVistaPrevia } from '@/components/admin/formulario/SeccionVistaPrevia';
 import { documentoAForm } from '@/lib/actividades';
+import { sinComision } from '@/lib/comisiones';
 // B-285 — «estuvo publicada alguna vez» se pregunta con la MISMA función que usa
 // el trigger que escribe la marca, importada por `@historial` (el patrón de D-20
 // aplicado al §12). Reescribirla acá sería dos ideas del mismo predicado, y la
@@ -175,6 +176,13 @@ export function ActividadFormulario({
   const conTipo = (tipo: string) => setForm((f) => cambiarTipo(f, tipo));
   /** B-114 — el tipo de arancel arrastra el monto: ver `cambiarArancel`. */
   const conArancel = (tipo: string) => setForm((f) => cambiarArancel(f, tipo));
+  /**
+   * B-181 — borrar una opción de cursada saca la fila **y** desengancha sus
+   * encuentros. Las dos mitades en una sola transformación (`sinComision`), por
+   * lo mismo que las de arriba: el formulario nunca queda con un `comisionId`
+   * apuntando a una opción que ya no está.
+   */
+  const borrarComision = (id: string) => setForm((f) => sinComision(f, id));
 
   /**
    * Lo que el schema rechazó, agrupado por sección y con el nombre de cada campo
@@ -484,7 +492,13 @@ export function ActividadFormulario({
             />
           ),
           encuentros: (
-            <SeccionEncuentros form={form} set={set} errorDe={errorDe} esClub={esClub(form)} />
+            <SeccionEncuentros
+              form={form}
+              set={set}
+              errorDe={errorDe}
+              esClub={esClub(form)}
+              borrarComision={borrarComision}
+            />
           ),
           donde: (
             <SeccionDonde form={form} set={set} errorDe={errorDe} uid={uid} anotarLabel={anotarLabel} />

@@ -35,7 +35,13 @@ const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
   readFileSync(fileURLToPath(new URL(relativo, raiz)), 'utf8');
 
-type Sesion = { id: string; cancelada: boolean; calendarEventId: string | null };
+type Sesion = {
+  id: string;
+  cancelada: boolean;
+  calendarEventId: string | null;
+  /** B-181 — de qué comisión es, o `null`. Lo usa el invariante del total. */
+  comisionId: string | null;
+};
 const sesionesDe = (actividad: Record<string, unknown>) => actividad.sesiones as Sesion[];
 
 /** La misma actividad con un encuentro cancelado, elegido por id. */
@@ -149,14 +155,34 @@ describe('invariantes de un ciclo — sobre la familia, no sobre una instancia',
     expect(renumerados).toEqual([]);
   });
 
-  it('B-84: el total del ciclo es su cantidad de encuentros, cancelados incluidos', () => {
+  /**
+   * **El «de N» es el de su grupo, y desde B-181 el grupo puede no ser la
+   * actividad entera.**
+   *
+   * El invariante era «el total es la cantidad de encuentros de la actividad» y
+   * eso dejó de ser cierto para un ciclo con comisiones: quien cursa los martes
+   * va a cuatro de los ocho, así que su evento dice «de 4» y decir «de 8» sería
+   * hablarle de encuentros a los que no va (D-530).
+   *
+   * Lo que el invariante protege **no cambió**, y es lo que B-84 rompía: el total
+   * es el tamaño del grupo **contando los cancelados**, así que cancelar uno no lo
+   * baja y no renumera a nadie. Lo que cambió es cuál es el grupo, y por eso se
+   * calcula acá con el mismo criterio del código (las hermanas de comisión) en vez
+   * de con `caso.cantidad`.
+   */
+  it('B-84: el total es el tamaño de su grupo, cancelados incluidos', () => {
     const mal: string[] = [];
     for (const caso of CICLOS_QUE_NUMERAN) {
-      for (const s of sesionesDe(caso.actividad)) {
+      const todas = sesionesDe(caso.actividad);
+      for (const s of todas) {
         if (s.cancelada) continue;
+        // El grupo: sus hermanas de comisión, o la actividad entera si no tiene.
+        const grupo = s.comisionId
+          ? todas.filter((x) => x.comisionId === s.comisionId).length
+          : caso.cantidad;
         const posicion = posicionDeclarada(caso.actividad, s);
-        if (posicion && posicion[1] !== caso.cantidad) {
-          mal.push(`${caso.nombre} · ${s.id}: dice "de ${posicion[1]}" y son ${caso.cantidad}`);
+        if (posicion && posicion[1] !== grupo) {
+          mal.push(`${caso.nombre} · ${s.id}: dice "de ${posicion[1]}" y su grupo tiene ${grupo}`);
         }
       }
     }

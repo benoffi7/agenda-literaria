@@ -47,6 +47,11 @@ export const CENTINELAS = {
   // cualquier otro campo de contenido: la analítica no puede llevarlo.
   libro: 'CENTINELA-LIBRO Los detectives salvajes',
   autorDelLibro: 'CENTINELA-AUTORLIBRO Roberto Bolano',
+  // B-181 — la etiqueta de la comisión es texto libre que alguien tipea, así que
+  // tiene centinela como cualquier otro campo de contenido: sale al título del
+  // evento y a la página, y por eso mismo tiene que poder buscarse en la
+  // analítica y afirmar que ahí no está.
+  comision: 'CENTINELA-COMISION martes a las 19',
 } as const;
 
 /** Todos los centinelas, para recorrerlos en las aserciones. */
@@ -78,6 +83,7 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
   },
   libro: { titulo: CENTINELAS.libro, autor: CENTINELAS.autorDelLibro },
   esCiclo: true,
+  comisiones: [{ id: 'com_1111', etiqueta: CENTINELAS.comision }],
   sesiones: [
     {
       id: 'ses_1111',
@@ -87,6 +93,7 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
       lectura: CENTINELAS.lectura,
       cancelada: false,
       calendarEventId: 'evt_interno_1',
+      comisionId: 'com_1111',
     },
     {
       id: 'ses_2222',
@@ -96,6 +103,7 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
       lectura: CENTINELAS.lectura,
       cancelada: false,
       calendarEventId: null,
+      comisionId: 'com_1111',
     },
   ],
   /*

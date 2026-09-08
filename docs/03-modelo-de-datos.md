@@ -72,7 +72,8 @@ sesiones: [{
   tema: string | null,
   lectura: string | null,
   cancelada: boolean,
-  calendarEventId: string | null
+  calendarEventId: string | null,
+  comisionId: string | null   // B-181 — de qué comisión es, o null
 }]
 ```
 
@@ -116,6 +117,70 @@ una sesión y su evento.
 `null`** (`src/lib/duplicar.ts`). Dos actividades con los mismos ids de sesión
 harían que editar una toque los eventos de la otra: el diff del §7.2 no tiene
 forma de distinguirlas.
+
+## `comisiones` — las opciones para sumarse a un ciclo (B-181, D-530)
+
+```
+comisiones: [{
+  id: 'com_<uuid>',       // generado en el cliente, NUNCA por índice
+  etiqueta: string        // «Martes 19 h». Libre, no es taxonomía
+}]
+```
+
+**El eje que el modelo no podía expresar.** `sesiones` es una **secuencia**: N
+filas son N encuentros que pasan todos y quien se anota va a todos. Un club que
+abre cuatro horarios del mismo ciclo tiene cuatro grupos de filas que son
+**alternativas excluyentes** — cada persona va a una sola.
+
+Vacío o ausente es «no tiene comisiones», que es el caso de **todas** las
+actividades de hoy.
+
+### La forma: plana, con la referencia en cada encuentro
+
+Los encuentros **no** viven adentro de la comisión. La lista sigue siendo plana y
+cada fila lleva su `comisionId`, y eso es lo que hace que el diff contra Calendar
+(§7.2), los filtros, la tarjeta, «la próxima fecha» y el sitemap no se toquen. El
+razonamiento completo está en **[D-530](06-decisiones.md#d-530--las-comisiones-de-un-ciclo-son-un-comisionid-en-cada-encuentro-no-encuentros-anidados)**.
+
+### Las tres reglas que el schema exige (al publicar)
+
+1. **La etiqueta no puede estar vacía.** Es lo único que se lee de una comisión:
+   sale al título del evento y a la página.
+2. **Dos comisiones no pueden llamarse igual** (comparando sin espacios ni
+   mayúsculas). Ninguna salida muestra el id, así que dos «Martes 19 h» son dos
+   grupos que nadie puede distinguir. **No es un `slugify`** (§4.2): esto no es
+   una taxonomía que se reuse entre actividades, así que no hay nada que curar.
+3. **Integridad referencial en los dos sentidos:** un `comisionId` tiene que
+   existir en `comisiones`, y **si hay comisiones, todo encuentro pertenece a
+   una**. Lo segundo es lo que impide el documento mitad y mitad, que multiplica
+   dos dimensiones y hace ilegible la lista.
+
+`functions/calendario.js` igual se defiende de un `comisionId` colgado
+(`comisionDe` devuelve `null` y el encuentro se comporta como si no tuviera
+comisión): el schema impide que el documento **nazca** así, y esa red es para el
+que llegue editado a mano desde la consola.
+
+### Qué cambia en las salidas
+
+| Salida | Con comisiones |
+|---|---|
+| evento de Calendar | el `summary` es «Club de Saer — Martes 19 h · Cap. 1-4», el encabezado de la descripción nombra la comisión y el número, y un bloque final nombra **las otras** opciones |
+| el número «Encuentro 2 de 8» | se cuenta **dentro de la comisión** (D-520 sigue valiendo adentro del grupo: el cancelado se cuenta). Una comisión de una sola fecha **no** se numera |
+| la **proyección** del §5.2 | viajan `comisiones` y el `comisionId` de cada sesión, con su celda en el barrido de centinelas. **Al `events.json` no llegan**: ese archivo es el índice del listado (`entradaDeIndice`), y el listado no agrupa. La proyección la lee el build de la página de detalle (§2.4) |
+| página de detalle | el título pasa a «Elegí tu opción» y los encuentros se agrupan por comisión, con su encabezado |
+| `rotuloCiclo` | cambia de sujeto: «2 opciones para sumarse · 2 encuentros cada una». Si las comisiones tienen distinta cantidad **no se elige un número** (ni el máximo ni el de la primera: las dos serían falsas para alguien) |
+| JSON-LD | el `name` de cada `subEvent` sale de `tituloDeEvento`, **la misma función** que el `summary` del evento |
+
+### En el panel
+
+Se llaman **«Opciones para sumarse»** (la palabra del reporte del dueño) y viven
+en la sección «Encuentros», que es donde está la pregunta «cuándo es esto». El
+bloque aparece solo si la actividad es un ciclo —o si ya tiene comisiones
+cargadas, para que no queden invisibles— y cada encuentro gana un desplegable.
+
+**Borrar una comisión desengancha sus encuentros y no los borra** (`sinComision`,
+`src/lib/comisiones.ts`, las dos mitades en una sola función). Son fechas
+cargadas a mano.
 
 ## Fechas
 
@@ -724,6 +789,17 @@ una — antes desde la consola de Firestore, y desde B-40 es lo mismo que usa la
 pantalla de historial del panel para no mostrar las 20 versiones abiertas de
 entrada.
 
+**Los nombres de campo de esa pantalla tienen red desde B-181.**
+`HistorialActividad.tsx` traduce cada clave a su nombre de pantalla con un
+diccionario escrito a mano (`sesiones` → «Encuentros»), y un campo nuevo que
+nadie agregue ahí se muestra con la **clave cruda** — no falla nada, no lo ve
+ningún test, y el que lo ve es el que está tratando de recuperar una descripción
+que pisó. `tests/historial-actividad.render.test.tsx` lee los campos de primer
+nivel de `Actividad` del propio tipo y exige que cada uno tenga entrada, con una
+lista corta de exclusiones (los de auditoría y los de máquina, que el historial
+no ofrece). Es un chequeo de **clase**: el campo que se agregue mañana lo pone
+rojo.
+
 ### Cuándo se guarda una versión — y cuándo no
 
 Lo escribe `guardarVersion` (`onDocumentUpdated`), que **se dispara con toda
@@ -767,6 +843,7 @@ puntos donde el modelo implementado ya no coincide, con su motivo:
 | `material.items[].tipo` | `lectura \| guia \| contexto \| autor \| otro` | **siete**: + `newsletter`, `playlist` | Cargando un club de lectura real aparecieron formatos que no entraban en ninguno (B-134). **No** se agregó `libro`: `lectura` ya es eso, y tener los dos partiría los datos existentes en dos valores que después no se pueden volver a juntar. Se cambió la etiqueta a "Libro o lectura", que es reversible. |
 | `modalidad` / `sede` / `online` | un escalar y dos objetos sueltos | **`modalidades: ModalidadFila[]`**, con `sede` y `online` adentro de cada fila; los tres de primer nivel siguen existiendo como **derivados** | Pedido del dueño (B-224, D-130): una actividad puede darse presencial en una librería y virtual por Meet, y con una sede sola eso no se puede decir. Los derivados quedan porque el `location` del evento, el `searchText` y el filtro por barrio solo admiten un valor. |
 | `material.items[].entrega` | `previo \| al-inscribirse \| en-el-encuentro` | **cuatro**: + `durante-el-mes` | Pedido concreto del dueño (B-134), y dice algo del dominio: la entrega no siempre es un instante, puede ser progresiva a lo largo del ciclo. Encaja con el §2.2 — ocho encuentros con su lectura cada uno. |
+| `sesiones[]` / la actividad | sin ningún eje de alternativas | gana **`comisiones: Comision[]`** y un `comisionId` por sesión | Reporte del dueño (B-181, D-530): «un club de lectura puede darte 4 opciones para sumarte. Pero no son 4 encuentros, sino opciones». El §2.2 decide que un ciclo es **una** actividad con N encuentros y eso no cambia; lo que faltaba era decir que esas N filas pueden ser **grupos paralelos** en vez de una secuencia. Se llama `comisiones` y no `opciones` porque esa palabra ya es la taxonomía del §4 en todo el repo. |
 | `material.items[]` | sin `id` | gana `id: string` (`mat_<uuid>`, generado en cliente) | B-342: el editor de filas dejó de operar por índice del array. No es la trampa 2 en sentido estricto —un ítem de material no sincroniza con Calendar— pero sigue la misma convención que `sesiones[].id`, `imagenes[].id` y `modalidades[].id`. Los documentos anteriores a B-342 se leen con un id determinístico por posición (`idItemMaterialMigrado`, mismo criterio que `ID_IMAGEN_MIGRADA` de D-125). |
 
 `entrega` sigue siendo un **enum cerrado** a propósito, a diferencia de las cinco

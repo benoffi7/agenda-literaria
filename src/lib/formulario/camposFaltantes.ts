@@ -122,6 +122,14 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'sesiones.N.lectura': { etiqueta: 'Lectura del encuentro', seccion: 'encuentros' },
   'sesiones.N.cancelada': { etiqueta: 'Encuentro cancelado', seccion: 'encuentros' },
   'sesiones.N.calendarEventId': { etiqueta: 'Encuentro', seccion: 'encuentros' },
+  // B-181 — las opciones para sumarse. La etiqueta es la de la pantalla
+  // («Opción») y no la del modelo («comisión»): es el texto que la barra de abajo
+  // le lee al que está cargando.
+  'sesiones.N.comisionId': { etiqueta: 'Opción del encuentro', seccion: 'encuentros' },
+  comisiones: { etiqueta: 'Opciones para sumarse', seccion: 'encuentros' },
+  'comisiones.N': { etiqueta: 'Opción', seccion: 'encuentros' },
+  'comisiones.N.id': { etiqueta: 'Opción', seccion: 'encuentros' },
+  'comisiones.N.etiqueta': { etiqueta: 'Nombre de la opción', seccion: 'encuentros' },
 
   // ── Dónde ──
   // B-224 — las modalidades son una lista, y `sede`/`online` viven adentro de

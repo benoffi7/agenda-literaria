@@ -267,6 +267,8 @@ evento por función.
 | `modalidad-agregar` | "+ Agregar modalidad" en «Dónde» | — | modalidades resultantes |
 | `modalidad-duplicar` | "Duplicar" en una fila de modalidad | — | modalidades resultantes |
 | `modalidad-borrar` | "Borrar" en una fila de modalidad | — | modalidades resultantes |
+| `comision-agregar` | "+ Agregar opción" en «Encuentros» (B-181) | — | opciones resultantes |
+| `comision-borrar` | "Borrar" en una opción para sumarse | — | opciones resultantes |
 | `taxonomia-otro` | se elige "Otro…" en un desplegable | el campo | — |
 | `taxonomia-nueva` | se confirma una etiqueta que no existía | el campo | — |
 | `taxonomia-reusada` | lo tipeado normalizó a un slug existente | el campo | — |

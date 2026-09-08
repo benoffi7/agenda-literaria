@@ -8655,3 +8655,98 @@ B-162 se cerró igual, y por otro camino: **medición**. Contra producción, el
 la divergencia que describía no existe en ninguna actividad. Si mañana nace, se
 corrige sola con el próximo cambio que salga al evento; un resync de verdad sigue
 siendo **B-125**.
+
+---
+
+## D-530 · Las comisiones de un ciclo son un `comisionId` en cada encuentro, no encuentros anidados
+
+**Fecha:** 2026-09-08 · **Ítem:** B-181 · **Continúa:** [D-95](#d-95--el-número-del-encuentro-cuenta-también-los-cancelados), [D-520](#d-520--el-número-del-encuentro-se-queda-con-el-total-aun-a-costa-de-reescribir-el-ciclo)
+
+**Contexto.** El reporte del dueño usando el panel (2026-08-25): «un club de
+lectura puede darte 4 opciones para sumarte. Pero no son 4 encuentros, sino
+opciones». `sesiones` (§2.2) es una **secuencia** —N filas son N encuentros que
+pasan todos y quien se anota va a todos— y un club que abre cuatro horarios del
+mismo ciclo tiene cuatro grupos de filas que son **alternativas excluyentes**.
+
+El ítem dejaba tres caminos y el dueño eligió el tercero, el del eje nuevo. Lo
+que esta entrada decide es **la forma** de ese eje, que era la pregunta abierta.
+
+### La decisión, en dos partes
+
+**1 · La lista de encuentros sigue siendo plana.** El documento gana
+`comisiones: [{ id, etiqueta }]` y **cada fila de `sesiones` gana su
+`comisionId`**. Lo que el ítem proponía —`opciones: [{ id, etiqueta, sesiones }]`,
+con los encuentros adentro— se descartó.
+
+El motivo es dónde queda el riesgo:
+
+- El **diff contra Calendar** (§7.2) es un `Map` por id de sesión sobre una lista
+  plana, y es el código más delicado del repo: con los encuentros anidados hay que
+  rehacerlo. Con el `comisionId` no se toca una línea.
+- Lo mismo vale para todo lo que hoy recorre `sesiones` de corrido: los filtros,
+  la tarjeta del listado, «la próxima fecha», el sitemap, el JSON-LD.
+- **Una actividad sin comisiones queda byte por byte como estaba.** Eso es el
+  argumento de D-95 y de B-84: la guarda anti-loop compara payloads recalculados,
+  así que cualquier cambio en la composición del evento —para todos— habría
+  updateado los eventos de cada ciclo publicado y renombrado lo que la gente ya
+  tiene agendado.
+
+**2 · El calendario publica todas las comisiones, y cada evento dice de cuál
+es.** En el `summary` («Club de Saer — Martes 19 h · Cap. 1-4»), en el encabezado
+de la descripción, y con un bloque que nombra a las otras («Otras opciones para el
+mismo ciclo»).
+
+La alternativa era publicar una sola comisión, o pedir que se elija cuál se
+publica. Se descartó: el calendario es un espejo de lo que existe (§2.1), y quien
+se suscribe puede elegir si sabe de cuál es cada evento. El bloque de las otras
+existe para el caso inverso —caer en el evento de los martes por un link y no
+enterarse de que hay uno los jueves—.
+
+### Lo que se deriva de la forma elegida
+
+- **El número se cuenta dentro de la comisión** (`numeroDeEncuentro`): quien
+  cursa los martes va a cuatro encuentros, no a los dieciséis del ciclo. D-95
+  sigue valiendo **adentro** del grupo: el cancelado se cuenta igual, porque el
+  número es la identidad de la fila. Y una comisión de **una sola** fecha no se
+  numera: «Encuentro 1 de 1» tres veces es ruido.
+- **El `comisionId` sale a la proyección del §5.2, y de ahí no llega a ningún
+  archivo.** La distinción la cobró el `auditor-privacidad` y vale escribirla: lo
+  que se sirve como `/events.json` es el **índice** del listado
+  (`entradaDeIndice`), que no lleva ni las comisiones ni el `comisionId` porque el
+  listado no agrupa. Quien lee la proyección es el build de la página de detalle,
+  y ahí el id se usa para armar los grupos y **no se pinta** — el view-model lleva
+  solo la etiqueta. Las dos rutas quedan igual ancladas en el barrido de
+  centinelas: la proyección es una de las dieciocho salidas.
+- **Tres reglas de coherencia en el schema**, y las tres son de dos campos a la
+  vez —por eso viven en el `superRefine` de la actividad—: la etiqueta no puede
+  estar vacía, dos comisiones no pueden llamarse igual, y **si hay comisiones cada
+  encuentro pertenece a una**. Esta última es la que impide el documento mitad y
+  mitad, que multiplica dos dimensiones y es exactamente lo que el ítem señalaba
+  como ilegible.
+- **Borrar una comisión desengancha sus encuentros y no los borra** (`sinComision`,
+  una sola función para las dos mitades). Son fechas cargadas a mano: que
+  desaparezcan por sacar una etiqueta sería destruir trabajo sin preguntar.
+
+### Por qué `comisiones` en el código y «opciones» en pantalla
+
+`opciones` **ya está tomada en este repo, y significa otra cosa**: la taxonomía
+autogestionada del §4 —la colección `/opciones/{campo}`, la clave `opciones` del
+`events.json` (§4.4), `lib/opciones.ts`, `opciones-base.json`, el panel de
+taxonomías—. Dos `opciones` distintas, y una adentro de cada actividad del mismo
+JSON que ya tiene la otra en la raíz, es una trampa permanente para cualquier
+grep.
+
+`comisiones` es la palabra que el circuito usa para los grupos paralelos de un
+mismo curso —«la comisión de los martes»— y es la que usó la propia decisión del
+dueño al elegir el título del evento. **El nombre de pantalla es el del reporte**:
+«Opciones para sumarse» en el formulario, «Elegí tu opción» en la página. Las dos
+son correctas y ninguna se contradice: una es el modelo, la otra es el idioma de
+quien lee.
+
+**Consecuencia.** El campo es aditivo con el default más benigno posible: sin
+`comisiones`, todo se comporta como antes —incluido `VERSION_BORRADOR`, que **no**
+subió (un borrador viejo recuperado sobre la forma nueva no queda con ningún valor
+equivocado, solo sin el campo que antes no existía)—. Lo que queda para cuando
+esto se use en serio: un **cupo por comisión** (hoy `inscripcion.cupo` es de la
+actividad) y los **encuentros comunes a todas** las comisiones, los dos anotados en
+B-181.

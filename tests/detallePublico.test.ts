@@ -1598,3 +1598,306 @@ describe('migasDeDetalle — Agenda → Tipo → título', () => {
     expect(crudo.replace(/</g, '\\u003c')).not.toContain('</script>');
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Las opciones para sumarse — B-181
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('las opciones para sumarse, en la página de detalle (B-181)', () => {
+  /**
+   * El reporte del dueño: «un club de lectura puede darte 4 opciones para
+   * sumarte. Pero no son 4 encuentros, sino opciones».
+   *
+   * **Ésta es la página donde vive el malentendido**: es la única superficie que
+   * muestra la lista de encuentros entera, así que dieciséis fechas de corrido se
+   * leen como un ciclo de dieciséis encuentros.
+   */
+  const MARTES = { id: 'com_martes', etiqueta: 'Martes 19 h' };
+  const JUEVES = { id: 'com_jueves', etiqueta: 'Jueves 19 h' };
+
+  /** Dos comisiones de dos encuentros, alternadas en el tiempo. */
+  const conDosComisiones = (over: Partial<Actividad> = {}) =>
+    detalleDe(
+      {},
+      {
+        esCiclo: true,
+        comisiones: [MARTES, JUEVES],
+        sesiones: [
+          {
+            id: 'ses_m1',
+            comisionId: MARTES.id,
+            inicio: ts('2026-09-15T22:00:00Z'),
+            fin: ts('2026-09-16T00:00:00Z'),
+            tema: 'Martes uno',
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+          {
+            id: 'ses_j1',
+            comisionId: JUEVES.id,
+            inicio: ts('2026-09-17T22:00:00Z'),
+            fin: ts('2026-09-18T00:00:00Z'),
+            tema: 'Jueves uno',
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+          {
+            id: 'ses_m2',
+            comisionId: MARTES.id,
+            inicio: ts('2026-09-22T22:00:00Z'),
+            fin: ts('2026-09-23T00:00:00Z'),
+            tema: 'Martes dos',
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+          {
+            id: 'ses_j2',
+            comisionId: JUEVES.id,
+            inicio: ts('2026-09-24T22:00:00Z'),
+            fin: ts('2026-09-25T00:00:00Z'),
+            tema: 'Jueves dos',
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+        ],
+        ...over,
+      },
+    );
+
+  describe('los encuentros se agrupan por opción', () => {
+    it('un grupo por opción, en el orden del documento y con sus fechas ordenadas', () => {
+      const d = conDosComisiones();
+      expect(
+        d.comisiones.map((c) => [c.etiqueta, c.encuentros.map((e) => e.id)]),
+      ).toEqual([
+        ['Martes 19 h', ['ses_m1', 'ses_m2']],
+        ['Jueves 19 h', ['ses_j1', 'ses_j2']],
+      ]);
+    });
+
+    /**
+     * `encuentros` sigue viajando entero y **eso no es redundancia**: lo
+     * consumen el JSON-LD, «la próxima fecha» y los rótulos, que razonan sobre
+     * la actividad y no sobre una de sus opciones.
+     */
+    it('la lista plana sigue estando, con los cuatro y en orden cronológico', () => {
+      expect(conDosComisiones().encuentros.map((e) => e.id)).toEqual([
+        'ses_m1',
+        'ses_j1',
+        'ses_m2',
+        'ses_j2',
+      ]);
+    });
+
+    it('sin opciones la lista de grupos está vacía y la plana no cambia', () => {
+      // Es el caso de todas las actividades de hoy: la plantilla pinta la lista
+      // de siempre porque no hay grupos que pintar.
+      const d = detalleDe({ fechas: ['2026-09-15T22:00:00Z', '2026-09-22T22:00:00Z', '2026-09-29T22:00:00Z'] });
+      expect(d.comisiones).toEqual([]);
+      expect(d.encuentros).toHaveLength(3);
+    });
+
+    it('una opción sin nombre o sin encuentros no se emite', () => {
+      /*
+       * Las dos son etiquetas a medio cargar y pintarlas dejaría un encabezado
+       * con nada abajo. El schema no deja publicar la primera; la segunda sí es
+       * publicable —una opción que todavía no tiene fechas— y no tiene nada que
+       * mostrar en la página.
+       */
+      const d = conDosComisiones({
+        comisiones: [MARTES, JUEVES, { id: 'com_vacia', etiqueta: 'Sábados 11 h' }],
+      });
+      expect(d.comisiones.map((c) => c.etiqueta)).toEqual(['Martes 19 h', 'Jueves 19 h']);
+    });
+  });
+
+  describe('el número de cada encuentro es el de su opción', () => {
+    /**
+     * Es la misma regla que el evento de Calendar (`numeroDeEncuentro`, D-520):
+     * quien cursa los martes va a dos encuentros, no a los cuatro del ciclo.
+     */
+    it('el segundo de los martes es el 2, aunque por fecha sea el tercero', () => {
+      /*
+       * MUTACIÓN PROBADA: volviendo a `numero: i + 1` sobre la lista ordenada
+       * —lo que hacía antes de B-181— este caso da 3 y falla.
+       */
+      const d = conDosComisiones();
+      expect(d.encuentros.find((e) => e.id === 'ses_m2')!.numero).toBe(2);
+      expect(d.encuentros.find((e) => e.id === 'ses_j1')!.numero).toBe(1);
+    });
+
+    it('sin opciones se numera sobre el ciclo entero, como siempre', () => {
+      expect(detalleDe({ fechas: ['2026-09-15T22:00:00Z', '2026-09-22T22:00:00Z', '2026-09-29T22:00:00Z'] }).encuentros.map((e) => e.numero)).toEqual([1, 2, 3]);
+    });
+
+    it('cada encuentro dice de qué opción es, con su etiqueta y NADA más', () => {
+      /*
+       * **Solo la etiqueta, y el `toEqual` es el que lo fija:** el id del grupo
+       * no viaja al view-model. La página no lo necesita —los grupos ya vienen
+       * armados— y publicarlo sería una entrada más en la lista blanca del §5.1
+       * a cambio de nada. Lo cobró el `auditor-privacidad`, y el barrido de
+       * centinelas se pone rojo si vuelve (la excepción se borró).
+       */
+      const d = conDosComisiones();
+      expect(d.encuentros.find((e) => e.id === 'ses_j2')!.comision).toEqual({
+        etiqueta: JUEVES.etiqueta,
+      });
+    });
+
+    it('un `comisionId` colgado se lee como «sin opción» y no rompe la página', () => {
+      // El schema lo rechaza al publicar; solo puede llegar editado a mano, o por
+      // una actividad **cancelada** (B-110), que conserva su página y no pasa por
+      // el nivel «publicar».
+      const d = conDosComisiones({ comisiones: [JUEVES] });
+      expect(d.encuentros.find((e) => e.id === 'ses_m1')!.comision).toBeNull();
+    });
+
+    describe('y el encuentro huérfano NO desaparece de la página', () => {
+      /**
+       * **Era el peor de los cinco hallazgos del `auditor-privacidad`.** Con los
+       * grupos armados solo desde `comisiones`, un encuentro cuyo `comisionId` no
+       * resuelve se caía de la página: no estaba en ningún grupo, y la plantilla
+       * pinta los grupos cuando la lista no está vacía.
+       *
+       * `lib/comisiones.ts` tiene la bolsa `sinComision` exactamente por esto —
+       * «perder una fila en pantalla es el peor de los dos errores posibles»— y el
+       * lado público cometía ese error.
+       */
+      it('sale en un grupo final sin encabezado', () => {
+        /*
+         * MUTACIÓN PROBADA: armando `grupos` solo desde `a.comisiones` —lo que
+         * hacía antes— este caso falla: `ses_m1` y `ses_m2` no aparecen en ningún
+         * grupo.
+         */
+        const d = conDosComisiones({ comisiones: [JUEVES] });
+        const ultimo = d.comisiones[d.comisiones.length - 1]!;
+        expect(ultimo.etiqueta).toBe('');
+        expect(ultimo.encuentros.map((e) => e.id)).toEqual(['ses_m1', 'ses_m2']);
+      });
+
+      it('no aparece ningún grupo vacío cuando NINGUNA opción resuelve', () => {
+        // Con todas colgadas no hay nada que agrupar: la página vuelve a la lista
+        // plana de siempre, que es lo que corresponde («no hay opciones»).
+        const d = conDosComisiones({ comisiones: [] });
+        expect(d.comisiones).toEqual([]);
+        expect(d.encuentros).toHaveLength(4);
+      });
+
+      it('la página y el evento numeran igual al huérfano (B-88)', () => {
+        /*
+         * Los dos agrupan los huérfanos **entre ellos**: la página resolviendo la
+         * referencia antes de contar, y `numeroDeEncuentro` de `@calendario` con
+         * `comisionDe`, que devuelve `null` para un id que no existe. Antes de la
+         * corrección la página los numeraba en un balde por id colgado y el evento
+         * a todos juntos: el mismo encuentro con dos números.
+         */
+        const d = conDosComisiones({ comisiones: [JUEVES] });
+        expect(d.encuentros.filter((e) => !e.comision).map((e) => e.numero)).toEqual([1, 2]);
+      });
+    });
+  });
+
+  describe('el rótulo del ciclo cambia de sujeto', () => {
+    /**
+     * «Ciclo de 4 encuentros» sería **falso para todo el mundo** cuando son dos
+     * opciones de dos: nadie va a los cuatro.
+     */
+    it('dice cuántas opciones hay y, si son parejas, cuántos encuentros cada una', () => {
+      expect(conDosComisiones().rotuloCiclo).toContain('2 opciones para sumarse');
+      expect(conDosComisiones().rotuloCiclo).toContain('2 encuentros cada una');
+    });
+
+    it('si las opciones tienen distinta cantidad, no se elige un número', () => {
+      /*
+       * Ni el máximo ni el de la primera: las dos serían una afirmación falsa
+       * para alguien. El detalle está en la lista, tres párrafos más abajo.
+       */
+      const d = conDosComisiones({
+        comisiones: [MARTES, JUEVES],
+        sesiones: [
+          {
+            id: 'ses_m1',
+            comisionId: MARTES.id,
+            inicio: ts('2026-09-15T22:00:00Z'),
+            fin: ts('2026-09-16T00:00:00Z'),
+            tema: null,
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+          {
+            id: 'ses_j1',
+            comisionId: JUEVES.id,
+            inicio: ts('2026-09-17T22:00:00Z'),
+            fin: ts('2026-09-18T00:00:00Z'),
+            tema: null,
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+          {
+            id: 'ses_j2',
+            comisionId: JUEVES.id,
+            inicio: ts('2026-09-24T22:00:00Z'),
+            fin: ts('2026-09-25T00:00:00Z'),
+            tema: null,
+            lectura: null,
+            cancelada: false,
+            calendarEventId: null,
+          },
+        ],
+      });
+      expect(d.rotuloCiclo).toContain('2 opciones para sumarse');
+      expect(d.rotuloCiclo).not.toMatch(/encuentros cada una/);
+    });
+
+    it('sin opciones el rótulo es el de siempre', () => {
+      expect(
+        detalleDe({
+          esCiclo: true,
+          fechas: [
+            '2026-09-15T22:00:00Z',
+            '2026-09-22T22:00:00Z',
+            '2026-09-29T22:00:00Z',
+            '2026-10-06T22:00:00Z',
+          ],
+        }).rotuloCiclo,
+      ).toContain('Ciclo de 4 encuentros');
+    });
+  });
+
+  describe('el JSON-LD nombra la opción de cada `subEvent`', () => {
+    /**
+     * **Y con la misma función que el evento de Calendar** (`tituloDeEvento` de
+     * `@calendario`). Dos composiciones para el mismo texto es la clase de B-88 y
+     * acá se separarían en silencio: nada falla si el evento dice «— Martes 19 h»
+     * y Google lee «· Martes 19 h».
+     */
+    it('el `name` lleva la etiqueta y después el tema', () => {
+      const ld = datosEstructurados(conDosComisiones()) as {
+        subEvent: { name: string }[];
+      };
+      expect(ld.subEvent.map((s) => s.name)).toEqual([
+        'Taller de crónica — Martes 19 h · Martes uno',
+        'Taller de crónica — Jueves 19 h · Jueves uno',
+        'Taller de crónica — Martes 19 h · Martes dos',
+        'Taller de crónica — Jueves 19 h · Jueves dos',
+      ]);
+    });
+
+    it('sin opciones el `name` es exactamente el de antes', () => {
+      // Es D-95 en la otra superficie: el markup de las actividades publicadas
+      // no cambia una coma por este ítem.
+      const ld = datosEstructurados(
+        detalleDe({ fechas: ['2026-09-15T22:00:00Z', '2026-09-22T22:00:00Z'] }),
+      ) as { subEvent: { name: string }[] };
+      // El formato de siempre: título + ` — ` + tema, con **una** raya y sin
+      // ningún `·` de más.
+      expect(ld.subEvent[0]!.name).toBe('Taller de crónica — Tema 1');
+    });
+  });
+});

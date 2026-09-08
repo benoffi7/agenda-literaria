@@ -78,6 +78,7 @@ const formConFilas = (filas: ActividadForm['modalidades']): ActividadForm => ({
     lectura: '',
     cancelada: false,
     calendarEventId: `evt_${i + 1}`,
+    comisionId: null,
   })).slice(0, 8),
   modalidades: filas,
 });

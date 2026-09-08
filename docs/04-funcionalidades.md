@@ -140,6 +140,8 @@ Lo que la copia **no** hereda:
 | `createdAt` / `createdBy` | son de la copia, no del original |
 | los encuentros cancelados | vuelven a estar activos: una cancelación es una excepción del ciclo viejo |
 
+| las comisiones | se copian con **ids nuevos** y cada encuentro queda apuntando a la comisión que le corresponde de la copia (B-181). Compartir el id no rompería el calendario —las comisiones no sincronizan nada— pero dejaría dos actividades cuyos encuentros apuntan al mismo grupo, y borrar una comisión en el original desengancharía los de la copia |
+
 **Las fechas se corren en semanas enteras** hacia adelante, hasta después del
 último encuentro del original (y siempre en el futuro). Así se conservan el día
 de semana, la hora, las duraciones y los huecos irregulares del ciclo, y solo

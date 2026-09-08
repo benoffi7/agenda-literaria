@@ -128,6 +128,15 @@ const sesionSchema = z
     lectura: opcional,
     cancelada: z.boolean().default(false),
     calendarEventId: z.string().nullable().default(null),
+    /*
+     * B-181 — de qué comisión es este encuentro. `null` es «el ciclo no tiene
+     * comisiones», el caso de todas las actividades anteriores al campo.
+     *
+     * Acá solo se valida la **forma**; que el id **exista** en `comisiones` es
+     * integridad referencial entre dos campos hermanos y va en el `superRefine`
+     * de la actividad, que es el único nivel que ve los dos.
+     */
+    comisionId: z.string().nullable().default(null),
   })
   /*
    * B-200 — antes esto era un `.refine` sin más: `new Date(s.fin) >
@@ -190,6 +199,20 @@ const onlineSchema = z.object({
   url: opcional,
   // Por defecto el link NO se publica (§5.1, trampa 5).
   urlPublica: z.boolean().default(false),
+});
+
+/**
+ * Una comisión del ciclo (B-181): «Martes 19 h», «Sábados 11 h».
+ *
+ * Sigue el molde de `sesionSchema` y `modalidadFilaSchema`: el id de cliente va
+ * en **los dos niveles** —es la trampa 2 y lo que haría ilegible el documento—,
+ * y que la etiqueta esté escrita es **completitud**, así que se exige al publicar
+ * (abajo, en el `superRefine`). Una opción a medio crear no puede bloquear el
+ * guardado de un borrador: nace vacía cuando se aprieta «agregar».
+ */
+const comisionSchema = z.object({
+  id: z.string().regex(/^com_/, 'El id de opción debe venir de nuevaComisionId()'),
+  etiqueta: opcional,
 });
 
 /**
@@ -292,6 +315,12 @@ export const actividadFormSchema = z
 
     esCiclo: z.boolean().default(false),
     sesiones: z.array(sesionSchema),
+
+    /**
+     * B-181 — las comisiones del ciclo. Vacío es «no hay comisiones», el caso de
+     * todas las actividades de hoy (D-26).
+     */
+    comisiones: z.array(comisionSchema).default([]),
 
     /**
      * B-224 — las formas de cursar, con su sede o su bloque online adentro.
@@ -517,6 +546,90 @@ export const actividadFormSchema = z
     if (v.esCiclo && v.sesiones.length < 2) {
       falta(['sesiones'], 'Un ciclo tiene más de un encuentro');
     }
+
+    /*
+     * ── B-181 · las opciones para sumarse ──────────────────────────────────
+     *
+     * Tres reglas, y las tres son de **coherencia entre `opciones` y
+     * `sesiones`**, no de completitud de un campo suelto. Por eso van juntas y
+     * acá: es el único nivel del schema que ve los dos arrays.
+     */
+
+    // 1 · La etiqueta es lo único que se lee de una opción. Sin ella, el título
+    //     del evento diría «Club de Saer — » y el desplegable del formulario
+    //     mostraría una fila en blanco imposible de elegir a conciencia.
+    v.comisiones.forEach((o, i) => {
+      if (!o.etiqueta.trim()) {
+        falta(['comisiones', i, 'etiqueta'], 'Ponele nombre a la opción («Martes 19 h»)');
+      }
+      /*
+       * **Y no puede llevar un link** — lo cobró el `auditor-privacidad`, y el
+       * argumento es de probabilidad y no de forma: la etiqueta es texto libre
+       * como el `tema`, pero su contenido natural es «cómo se cursa este grupo»
+       * —el propio ejemplo del campo incluye «Turno virtual»— y el bloque «Otras
+       * opciones» del evento invita a describir la modalidad de cada uno. O sea
+       * que es el campo del modelo con más chances de recibir el link de la
+       * reunión, y su destino incluye el `<h3>` de una página indexada, donde
+       * D-139 dice que ese link no va **nunca**, con flag o sin flag.
+       *
+       * Se bloquea al publicar y no al guardar: un borrador con un link pegado a
+       * medio escribir no tiene por qué trabarse, y lo que importa es que no
+       * salga.
+       */
+      if (/https?:\/\//i.test(o.etiqueta)) {
+        falta(
+          ['comisiones', i, 'etiqueta'],
+          'Acá va solo el nombre de la opción («Martes 19 h»): el link se publica en la página',
+        );
+      }
+
+    });
+
+    /*
+     * 2 · Dos opciones con la misma etiqueta no se pueden distinguir en ninguna
+     *     salida: el título del evento, el desplegable del panel y la página
+     *     pública muestran el texto, no el id. Y no es un `slugify` (§4.2): esto
+     *     no es una taxonomía que se reuse entre actividades —cada club arma sus
+     *     horarios—, así que no hay nada que curar ni que deduplicar globalmente.
+     *     Se comparan normalizadas para que «Martes 19 h» y «martes 19 h » no
+     *     pasen como dos.
+     */
+    const vistas = new Map<string, number>();
+    v.comisiones.forEach((o, i) => {
+      const clave = o.etiqueta.trim().toLowerCase();
+      if (!clave) return;
+      if (vistas.has(clave)) {
+        falta(['comisiones', i, 'etiqueta'], 'Ya hay otra opción con este nombre');
+      } else {
+        vistas.set(clave, i);
+      }
+    });
+
+    /*
+     * 3 · Integridad referencial, **en los dos sentidos**:
+     *
+     *  - un `comisionId` tiene que existir en `opciones` — si no, el encuentro
+     *    queda colgado: el panel no sabe en qué grupo mostrarlo y
+     *    `numeroDeEncuentro` lo cuenta contra un conjunto que no es el suyo;
+     *  - **si hay opciones, todo encuentro pertenece a una**. Un ciclo mitad con
+     *    opciones y mitad sin ellas multiplica dos dimensiones y la lista deja de
+     *    ser legible, que es justo lo que el ítem pedía arreglar. Encuentros
+     *    comunes a todas las opciones serían una decisión nueva, no un descuido
+     *    que el schema deba tolerar.
+     *
+     * `functions/calendario.js` igual se defiende de las dos cosas y no pierde el
+     * evento (`comisionDe` devuelve `null`): esto es el nivel que impide que el
+     * documento nazca así, no el que lo aguanta.
+     */
+    const ids = new Set(v.comisiones.map((o) => o.id));
+    v.sesiones.forEach((s, i) => {
+      if (s.comisionId && !ids.has(s.comisionId)) {
+        falta(['sesiones', i, 'comisionId'], 'Este encuentro apunta a una opción que ya no existe');
+      }
+      if (ids.size > 0 && !s.comisionId) {
+        falta(['sesiones', i, 'comisionId'], 'Elegí de qué opción es este encuentro');
+      }
+    });
 
     // Trampa 10 — el slug queda inmutable al publicar, así que una URL
     // `…-copia` publicada por descuido no se arregla nunca más sin perder el

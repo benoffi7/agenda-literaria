@@ -38,6 +38,7 @@ const sesion = (over: Partial<SesionForm> = {}): SesionForm => ({
   lectura: '',
   cancelada: false,
   calendarEventId: null,
+  comisionId: null,
   ...over,
 });
 

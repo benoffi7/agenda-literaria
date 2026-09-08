@@ -34,7 +34,18 @@ export const deDatetimeLocal = (s: string): Date | null => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
-export const sesionVacia = (inicio?: Date, duracionMs = DOS_HORAS_MS): SesionForm => {
+export const sesionVacia = (
+  inicio?: Date,
+  duracionMs = DOS_HORAS_MS,
+  /**
+   * B-181 — de qué comisión nace el encuentro. El default es `null` («ninguna»),
+   * y quien agrega una fila estando en un ciclo con comisiones pasa la que
+   * corresponde: un encuentro nuevo sin comisión en un ciclo que las tiene es
+   * exactamente lo que el schema rechaza al publicar, así que hacérselo elegir
+   * después sería inventar un paso que la UI puede resolver sola.
+   */
+  comisionId: string | null = null,
+): SesionForm => {
   const desde = inicio ?? new Date();
   return {
     id: nuevaSesionId(),
@@ -44,6 +55,7 @@ export const sesionVacia = (inicio?: Date, duracionMs = DOS_HORAS_MS): SesionFor
     lectura: '',
     cancelada: false,
     calendarEventId: null,
+    comisionId,
   };
 };
 
@@ -93,10 +105,47 @@ export const generarSesiones = (opts: {
    * bajas.
    */
   previas?: readonly SesionForm[];
+  /**
+   * B-181 — la comisión que reciben las filas **nuevas**; las que ya existen
+   * conservan la suya.
+   *
+   * **El llamador tiene que pasar en `previas` las sesiones de esa comisión y no
+   * la lista entera**, y esta función no lo verifica: con la lista entera,
+   * generar 4 fechas para los martes le pisaría las fechas a los cuatro primeros
+   * encuentros del ciclo, que pueden ser de otro grupo. El único llamador
+   * (`SesionesEditor`) filtra; queda dicho acá porque es un contrato y no una
+   * casualidad.
+   */
+  comisionId?: string | null;
 }): SesionForm[] => {
-  const { cantidad, inicio, duracionMinutos, cadaDias = 7, previas = [] } = opts;
+  const { cantidad, inicio, duracionMinutos, cadaDias = 7, previas = [], comisionId = null } = opts;
   const primera = deDatetimeLocal(inicio);
   if (!primera || cantidad < 1) return [];
+
+  /*
+   * **`previas` se ordena por fecha acá adentro, y esto lo encontró el
+   * `auditor-trampas` sobre B-181.**
+   *
+   * La herencia de `id`/`calendarEventId` es **por posición**, y las fechas que
+   * este generador produce son ascendentes por construcción. O sea que el mapeo
+   * «la fila N hereda de `previas[N]`» solo dice la verdad si `previas` viene en
+   * orden cronológico — y el array del formulario **no lo garantiza**: se pueden
+   * agregar filas en cualquier orden, duplicar una del medio, o (desde B-181)
+   * asignarle una comisión a una fila huérfana que quedó en su posición vieja.
+   *
+   * Con el array desordenado, el encuentro nuevo del martes heredaba el
+   * `calendarEventId` de otro encuentro del grupo, y el diff del §7.2 le movía la
+   * fecha al evento equivocado **en silencio**: nadie ve un error, el suscripto ve
+   * su evento en otro día. Es la trampa 2 sin ids por índice — el id es un uuid,
+   * lo que se calcula por posición es a quién se lo hereda.
+   *
+   * Ordenar acá y no en el llamador es a propósito: el riesgo es del contrato de
+   * esta función, así que la defensa vive con él. Antes de B-181 el único
+   * llamador pasaba el array entero y el botón «Ordenar por fecha» era la
+   * mitigación **manual**; ahora pasa un subconjunto filtrado por comisión, donde
+   * ni ese botón alcanza (ordena el array entero, no cada grupo).
+   */
+  const enOrden = ordenarPorInicio([...previas]);
 
   const saltoMs = cadaDias * 24 * 60 * 60 * 1000;
   const duracionMs = duracionMinutos * 60 * 1000;
@@ -106,7 +155,7 @@ export const generarSesiones = (opts: {
     // desvíos, y con Date local para que un cambio de horario de verano no
     // corra el horario del encuentro.
     const arranque = new Date(primera.getTime() + saltoMs * i);
-    const previa = previas[i];
+    const previa = enOrden[i];
     return {
       // El id se hereda por posición, pero **nunca se deriva del índice**
       // (trampa 2): el de una fila nueva sigue siendo un uuid de cliente.
@@ -135,6 +184,15 @@ export const generarSesiones = (opts: {
       // Va con el id: sin él, el diff vería una sesión conocida sin evento y
       // crearía un segundo evento para el mismo encuentro.
       calendarEventId: previa?.calendarEventId ?? null,
+      /*
+       * B-181 — la comisión se conserva, y va con el bloque de arriba por el
+       * mismo motivo: regenerar las fechas de un ciclo con comisiones no puede
+       * dejar ocho encuentros huérfanos. Una fila nueva hereda la comisión del
+       * generador (`comisionId` de las opciones), que es la que se está
+       * generando; sin eso, «generar 8 encuentros semanales» en la comisión de
+       * los martes produciría ocho filas que el schema no deja publicar.
+       */
+      comisionId: previa?.comisionId ?? comisionId ?? null,
     };
   });
 };

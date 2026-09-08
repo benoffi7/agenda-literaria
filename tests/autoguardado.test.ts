@@ -421,6 +421,7 @@ describe('recuperar no puede duplicar eventos del calendario (familia de B-80)',
     lectura: '',
     cancelada: false,
     calendarEventId,
+    comisionId: null,
   });
 
   it('la fila recuperada se queda con el id de calendario de hoy', () => {
@@ -619,6 +620,7 @@ describe('recuperar no publica ni despublica nada (§5.1, trampa 10)', () => {
     lectura: '',
     cancelada,
     calendarEventId: null,
+    comisionId: null,
   });
 
   it('un borrador que decía «publicado» no re-publica lo que hoy está retirado', () => {
@@ -838,6 +840,10 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'arancel.monto',
         'arancel.notas',
         'arancel.tipo',
+        // B-181 — `comisiones` es un array: entra como hoja, igual que
+        // `sesiones`, `imagenes` y `modalidades`. Aditivo, así que la versión
+        // tampoco subió (ver el bloque de abajo).
+        'comisiones',
         'descripcion',
         'destacado',
         'difusion.arrobar',
@@ -918,6 +924,23 @@ describe('la versión del formato y la forma del formulario no derivan por separ
      * criterio del bump: nada se recupera con un valor equivocado, solo sin el
      * campo que antes no existía. Subirla tiraría a la basura todo borrador en
      * curso en el navegador de cada admin a cambio de nada.
+     */
+    /*
+     * **B-181 la puso roja y NO la subió**, y es el caso de `libro`, de
+     * `inscripcion.completo` y de `arancel.monto`, no el de B-167 ni el de
+     * B-224: `comisiones` es **aditivo**, y encima con el default más benigno
+     * posible.
+     *
+     * Un borrador anterior no trae la clave, `podarConMolde` no la copia y la
+     * mezcla la completa con el `[]` de `formVacio()` — o sea «este ciclo no
+     * tiene opciones para sumarse», que es lo que era cuando se guardó y lo que
+     * son todas las actividades de hoy. Y `sesiones` es un array, así que se toma
+     * entero del borrador: sus filas vuelven sin `comisionId`, que con la lista
+     * vacía es exactamente coherente (el schema pide comisión **solo si hay
+     * comisiones**).
+     *
+     * Nada se recupera con un valor equivocado, que es el criterio del bump.
+     * Subirla tiraría todo borrador en curso a cambio de nada.
      */
     expect(VERSION_BORRADOR).toBe(3);
   });

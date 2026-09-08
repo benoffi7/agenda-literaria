@@ -160,6 +160,14 @@ export const formVacio = (): ActividadForm => ({
   libro: libroVacio(),
   esCiclo: false,
   sesiones: [sesionVacia()],
+  /*
+   * B-181 — **vacío, y no una comisión inicial.** Una actividad normal no tiene
+   * comisiones (son cuatro horarios alternativos del mismo ciclo), así que
+   * arrancar con una fila obligaría a todo el mundo a borrarla; y el schema exige
+   * que si hay comisiones **cada** encuentro pertenezca a una, o sea que una
+   * comisión de regalo convertiría el formulario vacío en uno inválido.
+   */
+  comisiones: [],
   // B-224 — una sola fila presencial, que es lo que el formulario mostraba antes
   // de que las modalidades fueran una lista: el mismo default, en la forma nueva.
   // `modalidad`, `sede` y `online` ya no están en el formulario: los deriva

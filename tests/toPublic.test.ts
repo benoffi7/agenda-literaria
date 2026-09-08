@@ -402,3 +402,59 @@ describe('la proyección aplica la regla del monto, no solo el schema (B-114)', 
     ]);
   });
 });
+
+describe('la proyección publica las opciones para sumarse (B-181)', () => {
+  const MARTES = { id: 'com_martes', etiqueta: 'Martes 19 h' };
+
+  it('las comisiones salen enteras, campo por campo', () => {
+    const p = toPublic(actividad({ comisiones: [MARTES] }), 'act_1');
+    expect(p.comisiones).toEqual([MARTES]);
+  });
+
+  it('cada encuentro sale con la comisión a la que pertenece', () => {
+    /*
+     * **Es lo que hace útil el campo en el sitio.** Sin el `comisionId` de cada
+     * sesión, la página tiene las etiquetas y no sabe qué encuentro va con cuál:
+     * publicaría «hay cuatro opciones» y abajo dieciséis fechas de corrido, que
+     * es el malentendido que B-181 vino a arreglar.
+     */
+    const p = toPublic(
+      actividad({
+        comisiones: [MARTES],
+        sesiones: [{ ...actividad().sesiones[0]!, comisionId: MARTES.id }],
+      }),
+      'act_1',
+    );
+    expect(p.sesiones[0]!.comisionId).toBe(MARTES.id);
+  });
+
+  it('un documento anterior al campo publica lista vacía y `null`, no `undefined`', () => {
+    /*
+     * D-26 — el default de lectura preserva lo anterior. Y la forma importa: el
+     * consumidor es un JSON, así que `undefined` desaparecería de la clave y
+     * `comisiones` dejaría de existir en vez de estar vacía — dos formas del
+     * mismo documento según cuándo se guardó.
+     */
+    const { comisiones: _, ...sinElCampo } = actividad();
+    const p = toPublic(sinElCampo as Actividad, 'act_viejo');
+    expect(p.comisiones).toEqual([]);
+    expect(p.sesiones[0]!.comisionId).toBeNull();
+  });
+
+  it('no se publica ningún campo más de la comisión que el que se decidió', () => {
+    /*
+     * La whitelist del §5.2 en la única forma que la verifica de verdad: se
+     * inventa un campo de más en el documento y se afirma que no sale.
+     *
+     * MUTACIÓN PROBADA: cambiando `comisionPublica` por un spread de la fila,
+     * este test falla con `cupo` publicado.
+     */
+    const conCampoDeMas = actividad({
+      comisiones: [{ ...MARTES, cupo: 8 } as unknown as typeof MARTES],
+    });
+    expect(Object.keys(toPublic(conCampoDeMas, 'act_1').comisiones[0]!)).toEqual([
+      'id',
+      'etiqueta',
+    ]);
+  });
+});

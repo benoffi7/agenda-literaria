@@ -2,6 +2,153 @@
 
 ## Sin publicar
 
+- **Un ciclo puede darse en varios horarios, y el modelo ya lo puede decir** —
+  **B-181**, la primera forma del dominio que el modelo no podía expresar.
+  Reporte del dueño usando el panel: «un club de lectura puede darte 4 opciones
+  para sumarte. Pero no son 4 encuentros, sino opciones».
+
+  Se llaman `comisiones` en el código y **«opciones para sumarse»** en pantalla, y
+  las dos cosas son a propósito: `opciones` ya significa la taxonomía del §4 en
+  todo este repo —la colección `/opciones/{campo}`, la clave del `events.json`,
+  `lib/opciones.ts`— y dos `opciones` distintas, una adentro de cada actividad del
+  mismo JSON que ya tiene la otra en la raíz, es una trampa permanente para
+  cualquier grep. «Comisión» es la palabra del circuito y la que usó la propia
+  decisión del dueño al elegir el título del evento.
+
+  **Las dos decisiones del dueño son las que abaratan el cambio**, y quedaron
+  escritas como **D-530**:
+
+  1. **La lista de encuentros sigue siendo plana** —`comisiones: [{id, etiqueta}]`
+     arriba y un `comisionId` por fila— y no los encuentros anidados adentro de
+     cada opción. Con eso el diff contra Calendar (§7.2), los filtros, la tarjeta,
+     «la próxima fecha» y el sitemap **no se tocan**, y una actividad sin
+     comisiones queda byte por byte como estaba: ningún evento publicado se
+     reescribe, que es el argumento de D-95 y de B-84.
+  2. **El calendario publica todas las opciones y cada evento dice de cuál es**,
+     en el `summary` («Club de Saer — Martes 19 h · Cap. 1-4») y en el encabezado
+     de la descripción, más un bloque que nombra a las otras — para el que cae en
+     el evento de los martes por un link y no se enteraría de que hay uno los
+     jueves.
+
+  **El número se cuenta dentro de la comisión:** el segundo de los martes es «2 de
+  2» y no «3 de 4». D-95 sigue valiendo adentro del grupo (el cancelado se cuenta,
+  porque el número es la identidad de la fila) y una comisión de **una sola** fecha
+  no se numera: «Encuentro 1 de 1» tres veces es ruido.
+
+  El título del evento sale de `tituloDeEvento` en `@calendario`, **y el `name` de
+  cada `subEvent` del JSON-LD sale de la misma función**: dos composiciones del
+  mismo texto es la clase de B-88 y acá se habrían separado en silencio, porque
+  nada falla si el evento dice «— Martes 19 h» y Google lee «· Martes 19 h».
+
+  Tres reglas nuevas en el schema, las tres de coherencia entre `comisiones` y
+  `sesiones` —por eso viven en el `superRefine` de la actividad—: la etiqueta no
+  puede estar vacía, dos comisiones no pueden llamarse igual, y **si hay
+  comisiones cada encuentro pertenece a una**. Esta última es la que impide el
+  documento mitad y mitad, que multiplica dos dimensiones y es exactamente lo que
+  el ítem señalaba como ilegible. Las cuatro mutaciones están probadas.
+
+  Dos cosas que el propio trabajo encontró y no estaban en el ítem: **borrar una
+  opción tiene que desenganchar sus encuentros** (una sola función, `sinComision`,
+  para que el que borra desde la UI no tenga que acordarse de la segunda mitad; los
+  encuentros no se borran, son fechas cargadas a mano) y **duplicar tiene que
+  rehacer los ids** — el primer intento generaba ids nuevos dos veces, así que la
+  copia quedaba con tres encuentros apuntando a comisiones que no existían. Lo
+  cazó su propio test.
+
+  **`VERSION_BORRADOR` no subió, y esta vez es el caso de `libro` y no el de
+  B-224:** `comisiones` es aditivo con el default más benigno posible. Un borrador
+  anterior no trae la clave y la mezcla la completa con `[]` —«este ciclo no tiene
+  opciones»—, que es lo que era cuando se guardó. Nada se recupera con un valor
+  equivocado, que es el criterio del bump.
+
+  **El `auditor-trampas` encontró un P1 que no tenía ningún rojo**, y vale
+  contarlo porque no es la trampa 2 en su forma conocida: los ids son uuids, lo
+  que se calculaba por posición es **a quién se le hereda** el
+  `calendarEventId`. `generarSesiones` empareja `previas[i]` con la fecha i-ésima
+  que produce, y eso solo dice la verdad si `previas` viene ordenado por fecha —
+  el array del formulario no lo garantiza, y con comisiones se le pasa un
+  subconjunto filtrado por grupo donde el botón «Ordenar por fecha» no alcanza.
+  Con el grupo desordenado, el encuentro nuevo heredaba el evento de otro y el
+  diff le movía la fecha al evento equivocado sin que nada avisara. Se arregló
+  ordenando adentro de `generarSesiones`, que además tapa el caso sin comisiones
+  que ya era frágil. Y a pedido del mismo auditor, `FAMILIA_DE_CICLOS` estrenó un
+  caso con dos comisiones **alternadas**: los invariantes de B-84 no ejercitaban
+  la pieza de conteo que este ítem reescribió. Uno de ellos —«el total es la
+  cantidad de encuentros de la actividad»— pasó a ser «el total es el tamaño de su
+  grupo», que es lo que el invariante siempre protegía.
+
+  Y salió un chequeo de clase que no era de este ítem: el diccionario de nombres
+  de campo del **historial** es una lista escrita a mano al lado de un modelo que
+  crece, así que un campo nuevo se mostraba con su clave cruda en la pantalla de
+  restaurar. Ahora se deriva del tipo y falla con el que venga
+  (`tests/historial-actividad.render.test.tsx`).
+
+  El barrido de centinelas frenó las dos rutas nuevas y las dos entraron con su
+  motivo escrito. **Y una de las dos estaba mal justificada**: el
+  `auditor-privacidad` encontró cinco cosas, todas P2, y las cinco cambiaron el
+  cambio:
+
+  1. **El `id` de comisión viajaba al view-model del detalle y la plantilla no lo
+     usa** — agrupa con lo que ya viene agrupado. La excepción del barrido decía
+     «es con lo que el view-model agrupa», que describe un paso interno y no una
+     necesidad de la página: un permiso para algo que nunca se pinta es la clase de
+     excepción que después habilita al campo siguiente. Ahora el view-model lleva
+     **solo la etiqueta** y la excepción se borró — el propio barrido la pidió
+     borrar, en su otra dirección («dejó de publicar algo que la lista dice que
+     sale»).
+  2. **Ese id no estaba barrido en el artefacto**, ni como ausente ni como
+     presente: declarado *permitido* en vitest y *nada* en el gate del build, que
+     es la asimetría que ese archivo prohíbe. Pasó a `CENTINELA`, o sea a
+     «no aparece en ningún archivo del `dist/`», que es lo que es.
+  3. **«sale al `events.json`» era falso, y estaba dicho en cuatro lugares.** El
+     archivo que se sirve es el **índice** del listado (`entradaDeIndice`) y no
+     lleva ninguno de los dos campos, porque el listado no agrupa; la proyección la
+     lee el build de la página de detalle (§2.4). La creencia ya había producido
+     código: un aserto del gate que era rojo determinístico, y cuyo arreglo cómodo
+     era proyectar las comisiones **en el índice**, o sea publicar etiquetas e ids
+     en lote en el archivo más barato de cosechar (lo que D-129 evita). Corregido
+     en los cuatro, y la ausencia en el índice pasó de estar *afirmada por falta de
+     excepción* a tener su caso con nombre y motivo.
+  4. **Un encuentro con la opción colgada desaparecía de la página.**
+     `lib/comisiones.ts` tiene la bolsa `sinComision` justamente porque «perder una
+     fila en pantalla es el peor de los dos errores posibles», y el lado público
+     armaba los grupos solo desde `comisiones`. Ahora usa esa misma función y pinta
+     los huérfanos como grupo final **sin encabezado**. No era hipotético: las tres
+     reglas de coherencia viven en el nivel «publicar», así que una actividad
+     **cancelada** —que conserva su página por B-110— puede guardarse con
+     encuentros huérfanos. De paso se corrigió la clave del contador del número,
+     que agrupaba distinto que `@calendario` para un id colgado: el mismo encuentro
+     con dos números, la clase de B-88 usando esa equivalencia como argumento.
+  5. **La etiqueta no puede llevar un link**, y la regla es de probabilidad y no de
+     forma: su contenido natural es «cómo se cursa este grupo» —el ejemplo del
+     propio campo incluye «Turno virtual»— así que es el campo del modelo con más
+     chances de recibir el link de la reunión, y su destino incluye el `<h3>` de una
+     página indexada, donde D-139 dice que ese link no va nunca. Se rechaza al
+     publicar, con su línea en la ayuda del panel.
+
+- **Anotados de la lectura de Search Console del 2026-09-08** — **B-731**,
+  **B-812**, **B-813**. El dueño pasó el informe «Eventos»: 44 no válidas por
+  `Falta el campo "location"`, 24 válidas y nueve avisos. **Las 44 son el markup
+  anterior a B-730** —`location`, `description`, `organizer` y `offers` valen 44
+  los cuatro, que es exactamente el conjunto de `subEvent` que ese ítem arregló—,
+  así que lo que se está mirando es el rastreo a mitad de camino y **no hay que
+  pedir la validación todavía**. De los nueve avisos, ocho no son código: cuatro
+  son datos que faltan (sin tallerista, sin imagen, sin web del organizador, sin
+  monto) y el único que sí lo es —`validFrom` en `offers`, que no se emite nunca—
+  quedó como B-812. Que el panel avise qué se va a perder antes de publicar es
+  B-813.
+
+- **Anotado: `D-440` citada en tres lugares y nunca escrita** — **B-815**, que lo
+  encontró el `auditor-documentacion` cerrando B-181. Es el caso hermano de B-808
+  y el vacío es anterior a esta tanda: B-181 solo le agregó la tercera cita.
+  Conviene resolverlos juntos.
+
+- **Anotado: el formulario con vista «PC» o «celular», elegida a mano** —
+  **B-814**, pedido del dueño. Apilado en celular, pestañas y todo el ancho en PC,
+  y **no por detección**. El punto 3 contradice una decisión tomada (B-620 puso el
+  formulario en ancho de lectura a propósito) y el ítem lo dice en vez de taparlo:
+  con las pestañas el argumento cambió, pero el ancho no se estira solo.
+
 - **`admin:claim` apuntaba al emulador y el error no lo decía** — **B-810**. El
   dueño corrió `npm run admin:claim` contra una cuenta de producción y vio el
   `USER_NOT_FOUND` crudo del SDK con veinte líneas de stack, que no dice ni contra

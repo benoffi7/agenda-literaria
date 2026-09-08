@@ -113,6 +113,65 @@ export interface Sesion {
   lectura: string | null;
   cancelada: boolean;
   calendarEventId: string | null;
+  /**
+   * **De qué comisión es este encuentro** — B-181. `null` o ausente es «el ciclo
+   * no tiene comisiones», que es el caso de todas las actividades de hoy.
+   *
+   * Apunta a `Actividad.comisiones[].id`, y el schema exige que exista: un
+   * `comisionId` colgado deja un encuentro que el panel no sabe dónde poner y que
+   * el evento numeraría contra un conjunto que no es el suyo.
+   */
+  comisionId?: string | null;
+}
+
+/**
+ * **Una comisión del ciclo** — B-181, el eje que el modelo no podía expresar.
+ *
+ * Reporte del dueño usando el panel (2026-08-25): «un club de lectura puede
+ * darte 4 opciones para sumarte. Pero no son 4 encuentros, sino opciones».
+ *
+ * `sesiones` es una **secuencia** (§2.2): N filas son N encuentros que pasan
+ * todos y quien se anota va a todos. Un club que abre cuatro horarios del mismo
+ * ciclo —martes 19, jueves 19, sábado 11, y uno virtual— tiene cuatro grupos de
+ * filas que son **alternativas excluyentes**: cada persona va a una sola.
+ *
+ * ── La forma: cada encuentro dice de qué comisión es ──────────────────────
+ * El ítem proponía `[{ id, etiqueta, sesiones }]` —los encuentros adentro— y el
+ * dueño eligió lo otro: **la lista de encuentros sigue siendo plana** y cada fila
+ * lleva su `comisionId`.
+ *
+ * El motivo es dónde queda el riesgo. El diff contra Calendar (§7.2) es hoy un
+ * `Map` por id de sesión sobre una lista plana, y es el código más delicado del
+ * repo: con los encuentros anidados hay que rehacerlo, y con el `comisionId` **no
+ * se toca**. Lo mismo vale para todo lo que hoy recorre `sesiones` de corrido —
+ * los filtros, la tarjeta, el JSON-LD, el sitemap—. Y una actividad sin comisiones
+ * queda **exactamente** como hoy, byte por byte, así que ningún evento publicado
+ * se reescribe por este cambio (el argumento de D-95).
+ *
+ * La etiqueta es libre y no una taxonomía: «Martes 19 h», «Sábados 11 h», «Turno
+ * virtual». No es un valor que se reuse entre actividades —cada club arma sus
+ * horarios— así que no hay nada que curar (§4).
+ *
+ * ── Por qué `comisiones` y no `opciones` ──────────────────────────────────
+ * El reporte del dueño dice «opciones» y las pantallas también van a decirlo
+ * («Opciones para sumarse»): es la palabra del dominio para quien lee. Pero
+ * **`opciones` ya está tomada en el código y significa otra cosa**: la taxonomía
+ * autogestionada del §4 —la colección `/opciones/{campo}`, la clave `opciones`
+ * del `events.json` (§4.4), `lib/opciones.ts`, `opciones-base.json`, el panel de
+ * taxonomías—. Dos `opciones` distintas en el mismo repo, y una adentro de cada
+ * actividad del mismo JSON que ya tiene la otra en la raíz, es una trampa
+ * permanente para cualquier grep.
+ *
+ * `comisiones` es la palabra que el circuito usa para los grupos paralelos de un
+ * mismo curso —«la comisión de los martes»— y es la que usó la propia decisión
+ * del dueño al elegir el título del evento. El código dice `comisiones`, la
+ * pantalla dice «opciones para sumarse», y las dos son correctas.
+ */
+export interface Comision {
+  /** `com_<uuid>` — generado en cliente, NUNCA por índice (trampa 2). */
+  id: string;
+  /** Lo que se lee: «Martes 19 h». Libre, no es taxonomía. */
+  etiqueta: string;
 }
 
 /**
@@ -397,6 +456,17 @@ export interface Actividad {
   online: Online | null;
 
   inscripcion: Inscripcion;
+  /**
+   * **Las comisiones del ciclo** — B-181, las «opciones para sumarse» de la
+   * pantalla. Vacío o ausente es «no hay comisiones», el caso de todas las
+   * actividades anteriores a este campo (D-26).
+   *
+   * Si hay comisiones, **todo encuentro pertenece a una** (lo exige el schema):
+   * un ciclo mitad con comisiones y mitad sin ellas multiplica dos dimensiones y
+   * la lista deja de ser legible, que es justamente lo que el ítem señalaba.
+   * Encuentros comunes a todas las comisiones serían una decisión nueva.
+   */
+  comisiones?: Comision[];
   arancel: Arancel;
   material: Material;
   difusion: Difusion;
@@ -471,6 +541,8 @@ export interface SesionForm {
   lectura: string;
   cancelada: boolean;
   calendarEventId: string | null;
+  /** B-181 — de qué comisión es. `null` es «este ciclo no tiene comisiones». */
+  comisionId: string | null;
 }
 
 /**
@@ -495,6 +567,7 @@ export interface ActividadForm
   extends Omit<
     Actividad,
     | 'sesiones'
+    | 'comisiones'
     | 'searchText'
     | 'createdAt'
     | 'updatedAt'
@@ -510,6 +583,14 @@ export interface ActividadForm
     | 'online'
   > {
   sesiones: SesionForm[];
+  /**
+   * B-181 — las comisiones. **Obligatorio acá y opcional en el documento**, que
+   * es el mismo reparto que `modalidades`: el estado del formulario siempre tiene
+   * la lista (vacía si no hay), y el `?` del documento existe solo para los que
+   * se escribieron antes del campo. Así ningún componente tiene que preguntarse
+   * si el array está.
+   */
+  comisiones: Comision[];
   /**
    * B-224 — las formas de cursar, con su lugar y su ventana.
    *

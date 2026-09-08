@@ -749,3 +749,194 @@ describe('schema — el monto del arancel (B-114)', () => {
     }
   });
 });
+
+describe('schema — las opciones para sumarse (B-181)', () => {
+  /**
+   * Las tres reglas son de **coherencia entre dos campos hermanos**
+   * (`comisiones` y `sesiones`), y por eso viven en el `superRefine` de la
+   * actividad y no en el schema de la fila: es el único nivel que ve los dos.
+   *
+   * Van en el nivel «publicar» como el resto de la completitud: una opción a
+   * medio crear no puede bloquear el guardado de un borrador, porque nace vacía
+   * cuando se aprieta «+ Agregar opción».
+   */
+  const MARTES = { id: 'com_martes', etiqueta: 'Martes 19 h' };
+  const JUEVES = { id: 'com_jueves', etiqueta: 'Jueves 19 h' };
+
+  const conComisiones = (
+    comisiones: { id: string; etiqueta: string }[],
+    idsDeSesion: (string | null)[],
+  ) => ({
+    ...publicado(),
+    esCiclo: true,
+    comisiones,
+    sesiones: idsDeSesion.map((comisionId, i) => ({
+      ...sesionVacia(),
+      inicio: `2026-09-0${i + 1}T19:00`,
+      fin: `2026-09-0${i + 1}T21:00`,
+      comisionId,
+    })),
+  });
+
+  it('sin opciones, un ciclo normal pasa igual que siempre', () => {
+    expect(errores(conComisiones([], [null, null]))).toEqual([]);
+  });
+
+  it('dos opciones con sus encuentros repartidos pasan', () => {
+    expect(errores(conComisiones([MARTES, JUEVES], [MARTES.id, JUEVES.id]))).toEqual([]);
+  });
+
+  describe('1 · la opción necesita nombre', () => {
+    /**
+     * Es lo único que se lee de una opción: sin ella el título del evento diría
+     * «Club de Saer — » y el desplegable del formulario mostraría una fila en
+     * blanco imposible de elegir a conciencia.
+     */
+    it('una opción sin etiqueta se rechaza al publicar, con el índice de la fila', () => {
+      /*
+       * MUTACIÓN PROBADA: sacando el bloque 1 del `superRefine`, este caso queda
+       * en verde y publica una opción sin nombre.
+       */
+      // Dos encuentros: con uno solo y `esCiclo` salta además «un ciclo tiene
+      // más de un encuentro», que es otra regla y ensucia la aserción.
+      const r = conComisiones([{ id: MARTES.id, etiqueta: '   ' }], [MARTES.id, MARTES.id]);
+      expect(errores(r)).toEqual(['comisiones.0.etiqueta']);
+      expect(mensajes(r)['comisiones.0.etiqueta']).toMatch(/Ponele nombre/);
+    });
+
+    it('en borrador no molesta: la opción nace vacía cuando se la agrega', () => {
+      const borrador = {
+        ...conComisiones([{ id: MARTES.id, etiqueta: '' }], [MARTES.id, MARTES.id]),
+        estado: 'borrador' as const,
+      };
+      expect(errores(borrador)).toEqual([]);
+    });
+  });
+
+  describe('2 · dos opciones no pueden llamarse igual', () => {
+    /**
+     * Ninguna salida muestra el id: el título del evento, el desplegable del
+     * panel y la página pública muestran el texto. Dos «Martes 19 h» son dos
+     * grupos que nadie puede distinguir.
+     *
+     * No es un `slugify` (§4.2): esto no es una taxonomía que se reuse entre
+     * actividades, así que no hay nada que curar. Se compara normalizado nada más
+     * para que el espacio y la mayúscula no cuelen un duplicado.
+     */
+    it('se rechaza la segunda, y el acento del caso es que difieran solo en espacios y mayúsculas', () => {
+      /*
+       * MUTACIÓN PROBADA: sin el bloque 2, esto queda en verde y el panel muestra
+       * dos filas idénticas en el desplegable de cada encuentro.
+       */
+      const r = conComisiones(
+        [MARTES, { id: JUEVES.id, etiqueta: '  martes 19 H ' }],
+        [MARTES.id, JUEVES.id],
+      );
+      expect(errores(r)).toEqual(['comisiones.1.etiqueta']);
+      expect(mensajes(r)['comisiones.1.etiqueta']).toMatch(/Ya hay otra opción/);
+    });
+
+    it('dos opciones sin nombre no se cuentan como duplicadas entre sí', () => {
+      // Si no, agregar dos filas de una vez daría el error equivocado: el que
+      // corresponde es «ponele nombre», uno por fila, y son los dos que salen.
+      const r = conComisiones(
+        [
+          { id: MARTES.id, etiqueta: '' },
+          { id: JUEVES.id, etiqueta: '' },
+        ],
+        [MARTES.id, JUEVES.id],
+      );
+      expect(errores(r)).toEqual(['comisiones.0.etiqueta', 'comisiones.1.etiqueta']);
+    });
+  });
+
+  describe('3 · integridad referencial, en los dos sentidos', () => {
+    it('un encuentro que apunta a una opción que no existe se rechaza', () => {
+      /*
+       * MUTACIÓN PROBADA: sin la primera mitad del bloque 3, esto queda verde y
+       * el documento sale con un encuentro colgado — que el panel no sabe dónde
+       * mostrar y que el evento numeraría contra un conjunto que no es el suyo.
+       */
+      const r = conComisiones([MARTES], [MARTES.id, 'com_borrada']);
+      expect(errores(r)).toEqual(['sesiones.1.comisionId']);
+      expect(mensajes(r)['sesiones.1.comisionId']).toMatch(/una opción que ya no existe/);
+    });
+
+    it('con opciones, un encuentro sin ninguna se rechaza', () => {
+      /*
+       * Es la mitad que hace legible la lista: un ciclo mitad con opciones y
+       * mitad sin ellas multiplica dos dimensiones, que es justo el malentendido
+       * que el ítem vino a arreglar.
+       *
+       * MUTACIÓN PROBADA: sin la segunda mitad del bloque 3, queda verde.
+       */
+      const r = conComisiones([MARTES], [MARTES.id, null]);
+      expect(errores(r)).toEqual(['sesiones.1.comisionId']);
+      expect(mensajes(r)['sesiones.1.comisionId']).toMatch(/Elegí de qué opción/);
+    });
+
+    it('sin opciones, un encuentro sin opción es lo normal y no se rechaza', () => {
+      // La vuelta que hace que el campo sea aditivo: todas las actividades de
+      // hoy están en este caso.
+      expect(errores(conComisiones([], [null, null]))).toEqual([]);
+    });
+
+    it('el id de una opción tiene que venir de `nuevaComisionId` (trampa 2)', () => {
+      // Como los de sesión y los de modalidad: en los dos niveles, porque un id
+      // por índice haría que borrar una opción reapunte los encuentros de otra.
+      const r = {
+        ...conComisiones([{ id: '1', etiqueta: 'Martes' }], ['1', '1']),
+        estado: 'borrador' as const,
+      };
+      expect(errores(r)).toContain('comisiones.0.id');
+    });
+  });
+});
+
+describe('la etiqueta de una opción no puede llevar un link (B-181)', () => {
+  /**
+   * Lo cobró el `auditor-privacidad`, y el argumento es de **probabilidad**, no
+   * de forma: la etiqueta es texto libre como el `tema`, pero su contenido
+   * natural es «cómo se cursa este grupo» —el ejemplo del propio campo incluye
+   * «Turno virtual»— y el bloque «Otras opciones» del evento invita a describir
+   * la modalidad de cada uno. Es el campo del modelo con más chances de recibir
+   * el link de la reunión, y su destino incluye el `<h3>` de la página indexada,
+   * donde D-139 dice que ese link no va nunca.
+   */
+  const conEtiqueta = (etiqueta: string) => ({
+    ...publicado(),
+    esCiclo: true,
+    comisiones: [{ id: 'com_1', etiqueta }],
+    sesiones: [
+      { ...sesionVacia(), inicio: '2026-09-01T19:00', fin: '2026-09-01T21:00', comisionId: 'com_1' },
+      { ...sesionVacia(), inicio: '2026-09-08T19:00', fin: '2026-09-08T21:00', comisionId: 'com_1' },
+    ],
+  });
+
+  it('con un link de reunión no se publica, y el mensaje dice qué va en el campo', () => {
+    /*
+     * MUTACIÓN PROBADA: sacando la guarda del `superRefine`, esto queda en verde y
+     * el link sale al título del evento, al `<h3>` de la página y al `subEvent`
+     * del JSON-LD.
+     */
+    const r = conEtiqueta('Turno virtual https://meet.google.com/abc-defg-hij');
+    expect(errores(r)).toEqual(['comisiones.0.etiqueta']);
+    expect(mensajes(r)['comisiones.0.etiqueta']).toMatch(/el link se publica/);
+  });
+
+  it('también con http, y sin importar la mayúscula', () => {
+    expect(errores(conEtiqueta('HTTP://zoom.us/j/999'))).toEqual(['comisiones.0.etiqueta']);
+  });
+
+  it('un nombre normal pasa, aunque nombre la modalidad', () => {
+    // La regla es contra el **link**, no contra hablar de la modalidad: «Turno
+    // virtual» es exactamente uno de los ejemplos del campo.
+    expect(errores(conEtiqueta('Turno virtual'))).toEqual([]);
+    expect(errores(conEtiqueta('Martes 19 h'))).toEqual([]);
+  });
+
+  it('en borrador no molesta: pegar un link a medio escribir no traba el guardado', () => {
+    const borrador = { ...conEtiqueta('https://meet.google.com/abc'), estado: 'borrador' as const };
+    expect(errores(borrador)).toEqual([]);
+  });
+});

@@ -196,7 +196,20 @@ export const formADocumento = (
       lectura: nuloSiVacio(s.lectura),
       cancelada: s.cancelada,
       calendarEventId: s.calendarEventId ?? null,
+      // B-181 — de qué comisión es. Se escribe **siempre**, aunque no haya
+      // comisiones: `null` es un valor del modelo («este ciclo no las usa»), no
+      // la ausencia del campo, y omitirlo dejaría documentos de dos formas
+      // distintas según cuándo se guardaron.
+      comisionId: s.comisionId ?? null,
     })),
+
+    /*
+     * B-181 — las comisiones, enumeradas campo por campo como todo lo demás que
+     * entra en un array del documento (§5.2): un spread de la fila publicaría
+     * mañana el campo que alguien agregue al estado del formulario sin que nadie
+     * lo decida. Es la clase que `imagenes` ya tuvo (`storagePath`, B-206 #2).
+     */
+    comisiones: f.comisiones.map((c) => ({ id: c.id, etiqueta: limpiar(c.etiqueta) })),
 
     modalidades,
     modalidad,
@@ -298,8 +311,13 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
       lectura: s.lectura ?? '',
       cancelada: s.cancelada,
       calendarEventId: s.calendarEventId ?? null,
+      // B-181 — `?? null` para los documentos anteriores al campo (D-26): se
+      // leen como «este ciclo no tiene comisiones», que es lo que son.
+      comisionId: s.comisionId ?? null,
     }),
   ),
+  /** B-181 — `?? []` por lo mismo: sin el campo, no hay comisiones. */
+  comisiones: (a.comisiones ?? []).map((c) => ({ id: c.id, etiqueta: c.etiqueta })),
   /**
    * B-224 — las formas de cursar. `?? []` y **ninguna lectura de compatibilidad**
    * que sintetice una fila a partir del `modalidad`/`sede`/`online` viejo: no hay

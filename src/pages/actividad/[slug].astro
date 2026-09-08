@@ -225,6 +225,30 @@ const hayCta = detalle.inscripcion.mostrarAccion;
 
 /** Una fila de la ficha técnica: rótulo a la izquierda, valor a la derecha. */
 const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-2 last:border-0';
+
+/**
+ * **Los encuentros, en grupos** — B-181.
+ *
+ * Sin opciones para sumarse hay **un** grupo sin título y la lista queda
+ * exactamente como estaba (que es el caso de todas las actividades de hoy). Con
+ * opciones hay un grupo por opción, cada uno con su encabezado.
+ *
+ * Se arma acá y no en el markup para que la fila del encuentro —el bloque de
+ * fecha, el número, el tema, la lectura, los tres estados— quede escrita **una
+ * sola vez**: dos copias del mismo `<li>`, una para cada caso, es la clase de
+ * B-88 con la peor variante posible, porque nada falla si se separan. Solo que
+ * una de las dos listas dejaría de mostrar la lectura del club.
+ */
+const gruposDeEncuentros =
+  detalle.comisiones.length > 0
+    ? detalle.comisiones.map((c) => ({
+        // La etiqueta vacía es la bolsa de los huérfanos: se pintan sin
+        // encabezado, porque no hay ninguno honesto para «ninguna de las de
+        // arriba» (ver `comisiones` en el view-model).
+        titulo: c.etiqueta || null,
+        encuentros: c.encuentros,
+      }))
+    : [{ titulo: null, encuentros: detalle.encuentros }];
 ---
 
 <Base
@@ -476,106 +500,138 @@ const claseFilaFicha = 'regla-fina flex items-baseline justify-between gap-4 py-
                 puede cambiar**. Lo que sobra es decir el número dos veces.
               */}
               <h2 id="encuentros" class={`regla-gruesa pb-2 ${claseTituloSeccion}`}>
-                {detalle.encuentros.length === 1
-                  ? 'El encuentro'
-                  : detalle.esCiclo
-                    ? 'El programa'
-                    : 'Las fechas'}
+                {/*
+                  B-181 — con opciones para sumarse el título cambia, porque lo
+                  que sigue **no es un programa de dieciséis encuentros**: son
+                  cuatro programas paralelos y hay que elegir uno. Decirlo en el
+                  título es la mitad del arreglo; la otra son los encabezados de
+                  cada grupo, abajo.
+                */}
+                {detalle.comisiones.length > 0
+                  ? 'Elegí tu opción'
+                  : detalle.encuentros.length === 1
+                    ? 'El encuentro'
+                    : detalle.esCiclo
+                      ? 'El programa'
+                      : 'Las fechas'}
               </h2>
 
-              <ol class="flex flex-col">
-                {detalle.encuentros.map((e) => (
-                  <li
-                    id={e.id}
-                    class:list={[
-                      'regla-fina relative flex scroll-mt-24 gap-4 py-4',
-                      /*
-                        **El cancelado sigue visible.** Baja de tinta pero no
-                        desaparece y no se pinta de alarma: quien tenía anotada esa
-                        fecha necesita ver que se movió. La regla que lo cruza va
-                        abajo, como pseudo-elemento decorativo.
-                      */
-                      e.cancelada && 'cancelado text-super',
-                    ]}
-                  >
-                    {/*
-                      El bloque de fecha del encuentro: la misma pieza que abre
-                      cada fila del listado, desde `estilos.ts`. El cancelado y el
-                      que ya pasó van en la tinta de superposición — el terracota
-                      es la tinta de lo que todavía se puede hacer.
-                    */}
-                    <time
-                      datetime={e.inicioIso}
+              {
+                detalle.comisiones.length > 0 && (
+                  <p class="body-md mt-3 text-super">
+                    El mismo ciclo se da en {detalle.comisiones.length} horarios. Cada
+                    persona va a <strong>uno solo</strong>: estos son los encuentros de
+                    cada opción.
+                  </p>
+                )
+              }
+
+              {gruposDeEncuentros.map((g) => (
+                <>
+                  {/*
+                    El encabezado de la opción. Va en `h3` bajo el `h2` de la
+                    sección, así que el índice de la página se lee «Elegí tu
+                    opción → Martes 19 h → Jueves 19 h» y no como cuatro
+                    secciones sueltas.
+                  */}
+                  {g.titulo && (
+                    <h3 class="label-caps regla-fina mt-8 pb-1 text-azul">{g.titulo}</h3>
+                  )}
+                <ol class="flex flex-col">
+                  {g.encuentros.map((e) => (
+                    <li
+                      id={e.id}
                       class:list={[
-                        claseBloqueFecha,
-                        'self-start',
+                        'regla-fina relative flex scroll-mt-24 gap-4 py-4',
                         /*
-                          Una tinta y **solo una**: `class:list` concatena, así que
-                          con `bg-acento` en la clase compartida y `bg-super` acá
-                          encima, cuál gana lo decide el orden en que Tailwind
-                          emitió las dos utilidades, no este archivo. Ver el
-                          docblock de `claseBloqueFecha`.
+                          **El cancelado sigue visible.** Baja de tinta pero no
+                          desaparece y no se pinta de alarma: quien tenía anotada esa
+                          fecha necesita ver que se movió. La regla que lo cruza va
+                          abajo, como pseudo-elemento decorativo.
                         */
-                        e.cancelada || e.paso ? 'bg-super' : 'bg-acento',
+                        e.cancelada && 'cancelado text-super',
                       ]}
                     >
-                      <span class="label-caps">{e.bloque.diaSemana}</span>
-                      <span class="fecha-dia">{e.bloque.dia}</span>
-                      <span class="label-caps">{e.bloque.mes}</span>
-                    </time>
+                      {/*
+                        El bloque de fecha del encuentro: la misma pieza que abre
+                        cada fila del listado, desde `estilos.ts`. El cancelado y el
+                        que ya pasó van en la tinta de superposición — el terracota
+                        es la tinta de lo que todavía se puede hacer.
+                      */}
+                      <time
+                        datetime={e.inicioIso}
+                        class:list={[
+                          claseBloqueFecha,
+                          'self-start',
+                          /*
+                            Una tinta y **solo una**: `class:list` concatena, así que
+                            con `bg-acento` en la clase compartida y `bg-super` acá
+                            encima, cuál gana lo decide el orden en que Tailwind
+                            emitió las dos utilidades, no este archivo. Ver el
+                            docblock de `claseBloqueFecha`.
+                          */
+                          e.cancelada || e.paso ? 'bg-super' : 'bg-acento',
+                        ]}
+                      >
+                        <span class="label-caps">{e.bloque.diaSemana}</span>
+                        <span class="fecha-dia">{e.bloque.dia}</span>
+                        <span class="label-caps">{e.bloque.mes}</span>
+                      </time>
 
-                    <div class="flex min-w-0 flex-1 flex-col gap-1">
-                      <p class="label-caps flex flex-wrap items-baseline gap-x-3 text-azul">
-                        {/* El número es la identidad del encuentro dentro del
-                            ciclo y se cuenta sobre todos, cancelados incluidos
-                            (D-95). */}
-                        <span class:list={[e.cancelada && 'line-through']}>
-                          Encuentro {e.numero}
-                        </span>
-                        <span class="text-super">{e.hora}</span>
-                        {e.cancelada && <span class="text-acento">Cancelado</span>}
-                        {e.esProximo && !e.cancelada && <span class="text-acento">El próximo</span>}
-                        {e.paso && !e.cancelada && <span class="text-super">Ya pasó</span>}
-                      </p>
+                      <div class="flex min-w-0 flex-1 flex-col gap-1">
+                        <p class="label-caps flex flex-wrap items-baseline gap-x-3 text-azul">
+                          {/* El número es la identidad del encuentro dentro del
+                              ciclo y se cuenta sobre todos, cancelados incluidos
+                              (D-95). */}
+                          <span class:list={[e.cancelada && 'line-through']}>
+                            Encuentro {e.numero}
+                          </span>
+                          <span class="text-super">{e.hora}</span>
+                          {e.cancelada && <span class="text-acento">Cancelado</span>}
+                          {e.esProximo && !e.cancelada && <span class="text-acento">El próximo</span>}
+                          {e.paso && !e.cancelada && <span class="text-super">Ya pasó</span>}
+                        </p>
 
-                      {
-                        /*
-                          **Corrección 9 de la referencia**: en el mockup el
-                          encuentro cancelado mostraba el título del siguiente. Con
-                          datos reales el cancelado bien puede no tener tema, así
-                          que la fila no asume que lo haya — y cuando lo hay, va
-                          tachado, no borrado.
-                        */
-                        e.tema && (
-                          <p
-                            class:list={[
-                              'headline-sm',
-                              e.cancelada ? 'text-super line-through' : 'text-tinta',
-                            ]}
-                          >
-                            {e.tema}
-                          </p>
-                        )
-                      }
+                        {
+                          /*
+                            **Corrección 9 de la referencia**: en el mockup el
+                            encuentro cancelado mostraba el título del siguiente. Con
+                            datos reales el cancelado bien puede no tener tema, así
+                            que la fila no asume que lo haya — y cuando lo hay, va
+                            tachado, no borrado.
+                          */
+                          e.tema && (
+                            <p
+                              class:list={[
+                                'headline-sm',
+                                e.cancelada ? 'text-super line-through' : 'text-tinta',
+                              ]}
+                            >
+                              {e.tema}
+                            </p>
+                          )
+                        }
 
-                      {
-                        /*
-                          La lectura, en la display. La referencia la pide en **cursiva**
-                          y va redonda: la itálica es un archivo aparte y con
-                          Fraunces cuesta 21,8 KB —más que la redonda— para una
-                          línea que solo aparece en los clubes de lectura. El
-                          terracota ya la separa del tema.
-                        */
-                        e.lectura && (
-                          <p class="font-display text-[1.0625rem] leading-6 text-acento">
-                            {e.lectura}
-                          </p>
-                        )
-                      }
-                    </div>
-                  </li>
-                ))}
-              </ol>
+                        {
+                          /*
+                            La lectura, en la display. La referencia la pide en **cursiva**
+                            y va redonda: la itálica es un archivo aparte y con
+                            Fraunces cuesta 21,8 KB —más que la redonda— para una
+                            línea que solo aparece en los clubes de lectura. El
+                            terracota ya la separa del tema.
+                          */
+                          e.lectura && (
+                            <p class="font-display text-[1.0625rem] leading-6 text-acento">
+                              {e.lectura}
+                            </p>
+                          )
+                        }
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                </>
+              ))}
             </section>
           )
         }

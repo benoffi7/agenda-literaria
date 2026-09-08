@@ -343,6 +343,30 @@ export const CAPITULOS: CapituloAyuda[] = [
           'encuentro que hayas agregado. Si no querés poner fechas todavía, borrá la fila del ' +
           'encuentro y agregala cuando las sepas.',
       },
+      /*
+       * B-181 — las opciones para sumarse. Va acá, entre el generador y el
+       * autoguardado, porque es la otra pregunta de la sección «Encuentros»:
+       * cuándo es esto. Y dice explícitamente **cuándo NO usarlas**: son para el
+       * ciclo que se da en varios horarios, y la mayoría no lo hace.
+       */
+      {
+        texto:
+          'Si el mismo ciclo se da en varios horarios y cada persona va a uno solo —los martes ' +
+          'a las 19 o los sábados a las 11—, eso son «opciones para sumarse» y no encuentros ' +
+          'distintos. Las agregás arriba de la lista, con el nombre que la gente va a leer, y ' +
+          'después cada encuentro dice de qué opción es. Si el ciclo tiene un solo horario, que ' +
+          'es lo normal, no hace falta ninguna.',
+      },
+      {
+        texto:
+          'Con opciones cargadas, cada evento del calendario lleva el nombre de la suya y los ' +
+          'encuentros se numeran dentro de su opción: el segundo de los martes es el 2. Al ' +
+          'publicar se piden dos cosas: que cada opción tenga nombre y que ningún encuentro ' +
+          'quede sin opción. Si borrás una opción, sus encuentros no se borran: quedan sin ' +
+          'opción y hay que asignarles otra. En el nombre de la opción **no pongas el link ' +
+          'de la reunión**: ese nombre se publica en la página y en el calendario, así que ' +
+          'no se puede guardar con un link adentro. El link va donde siempre, en «Dónde».',
+      },
       {
         texto:
           'Mientras completás, el formulario se va guardando solo en el dispositivo que estés ' +

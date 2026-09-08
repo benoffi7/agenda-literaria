@@ -78,6 +78,7 @@ describe('generarSesiones — reemplazo de una lista existente (B-90)', () => {
       lectura: 'Pedro Páramo',
       cancelada: false,
       calendarEventId: `evt_${i}`,
+      comisionId: null,
     }));
 
   it('la fila de cada posición hereda el id y su evento de calendario', () => {
@@ -196,6 +197,7 @@ describe('duplicarSesion', () => {
     lectura: 'Pedro Páramo',
     cancelada: true,
     calendarEventId: 'evt_123',
+    comisionId: null,
   };
 
   it('cambia el id y corre una semana', () => {
@@ -217,6 +219,17 @@ describe('duplicarSesion', () => {
     const copia = duplicarSesion(base);
     expect(copia.tema).toBe('Cap. 1-4');
     expect(copia.lectura).toBe('Pedro Páramo');
+  });
+
+  it('conserva la comisión: duplicar una fila es agregar otra fecha al mismo grupo', () => {
+    /*
+     * Lo pidió el `auditor-trampas` sobre B-181, y con motivo: la conserva por
+     * spread, o sea que ninguna línea la nombra. Con `comisionId` afuera del
+     * spread —o pisado a `null`— duplicar un encuentro produciría una fila
+     * huérfana que el schema no deja publicar, y nada más lo diría.
+     */
+    expect(duplicarSesion({ ...base, comisionId: 'com_martes' }).comisionId).toBe('com_martes');
+    expect(duplicarSesion(base).comisionId).toBeNull();
   });
 });
 
@@ -286,5 +299,104 @@ describe('tildar «Cancelado» se mide, con vocabulario cerrado (§9) — B-58',
     expect(fuente('src/components/admin/SesionesEditor.tsx')).toContain(
       "medirFuncion('encuentro-cancelar',undefined,e.target.checked?1:0)",
     );
+  });
+});
+
+describe('generarSesiones con comisiones (B-181)', () => {
+  const MARTES = 'com_martes';
+  const s = (id: string, inicio: string, over: Partial<SesionForm> = {}): SesionForm => ({
+    id,
+    inicio,
+    fin: inicio.replace('T19:00', 'T21:00'),
+    tema: '',
+    lectura: '',
+    cancelada: false,
+    calendarEventId: `evt_${id}`,
+    comisionId: MARTES,
+    ...over,
+  });
+
+  it('las filas nuevas nacen en la comisión que se pidió', () => {
+    /*
+     * Sin esto, «generar 8 encuentros» en la comisión de los martes producía ocho
+     * filas huérfanas que el schema no deja publicar — y el que las generó tendría
+     * que elegirle la opción a las ocho, una por una.
+     */
+    const r = generarSesiones({
+      cantidad: 3,
+      inicio: '2026-09-01T19:00',
+      duracionMinutos: 120,
+      comisionId: MARTES,
+    });
+    expect(r.map((x) => x.comisionId)).toEqual([MARTES, MARTES, MARTES]);
+  });
+
+  it('la fila que ya existía conserva SU comisión, no la del generador', () => {
+    // `previa?.comisionId ?? comisionId`: el generador recalcula fechas, no
+    // reasigna grupos. Mover un encuentro de comisión es otra acción.
+    const otra = s('ses_1', '2026-09-01T19:00', { comisionId: 'com_jueves' });
+    const r = generarSesiones({
+      cantidad: 1,
+      inicio: '2026-09-08T19:00',
+      duracionMinutos: 120,
+      previas: [otra],
+      comisionId: MARTES,
+    });
+    expect(r[0]!.comisionId).toBe('com_jueves');
+  });
+
+  describe('la herencia por posición se hace sobre el orden CRONOLÓGICO', () => {
+    /**
+     * **Lo encontró el `auditor-trampas` sobre B-181, y era un P1.**
+     *
+     * La herencia de `id`/`calendarEventId` es por posición, y las fechas que el
+     * generador produce son ascendentes. Con `previas` desordenado, el encuentro
+     * nuevo del 1º heredaba el evento del último, y el diff del §7.2 le movía la
+     * fecha al evento equivocado **en silencio**.
+     *
+     * Antes de B-181 el array se pasaba entero y el botón «Ordenar por fecha» era
+     * la mitigación manual; con comisiones se pasa un subconjunto filtrado por
+     * grupo, donde ese botón no alcanza — ordena el array entero, no cada grupo.
+     */
+    it('un grupo desordenado en el array igual empareja bien', () => {
+      /*
+       * MUTACIÓN PROBADA: volviendo a `previas[i]` en lugar del array ordenado,
+       * este caso falla con los eventos cruzados (`evt_c`, `evt_a`, `evt_b`).
+       */
+      const desordenadas = [
+        s('ses_c', '2026-09-15T19:00'),
+        s('ses_a', '2026-09-01T19:00'),
+        s('ses_b', '2026-09-08T19:00'),
+      ];
+      const r = generarSesiones({
+        cantidad: 3,
+        inicio: '2026-09-02T19:00',
+        duracionMinutos: 120,
+        cadaDias: 7,
+        previas: desordenadas,
+        comisionId: MARTES,
+      });
+      expect(r.map((x) => x.id)).toEqual(['ses_a', 'ses_b', 'ses_c']);
+      expect(r.map((x) => x.calendarEventId)).toEqual(['evt_ses_a', 'evt_ses_b', 'evt_ses_c']);
+    });
+
+    it('y el contenido de cada fila viaja con su id, no con su posición vieja', () => {
+      // Es la otra mitad de B-176: el tema y la lectura son de ese encuentro.
+      const desordenadas = [
+        s('ses_b', '2026-09-08T19:00', { tema: 'Segundo' }),
+        s('ses_a', '2026-09-01T19:00', { tema: 'Primero' }),
+      ];
+      const r = generarSesiones({
+        cantidad: 2,
+        inicio: '2026-09-02T19:00',
+        duracionMinutos: 120,
+        previas: desordenadas,
+        comisionId: MARTES,
+      });
+      expect(r.map((x) => [x.id, x.tema])).toEqual([
+        ['ses_a', 'Primero'],
+        ['ses_b', 'Segundo'],
+      ]);
+    });
   });
 });

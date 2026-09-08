@@ -53,10 +53,11 @@ import { pluralDeTipo } from '@/lib/hubsPublicos';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { RUTA_AGENDA, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
+import { porComision } from '@/lib/comisiones';
 import { instanteDeIso } from '@/lib/sesiones';
 import type { ActividadPublica, ImagenPublica, ItemMaterialPublico } from '@/lib/toPublic';
 import type { Modalidad, ViaInscripcion } from '@/types/actividad';
-import { ETIQUETA_TIPO_MATERIAL, construirLinkMapa, desSlug } from '@calendario';
+import { ETIQUETA_TIPO_MATERIAL, construirLinkMapa, desSlug, tituloDeEvento } from '@calendario';
 
 // ─────────────────────────────────────────────────────────────────
 // Saneamiento de lo que va a un href
@@ -115,8 +116,23 @@ export const enlaceInstagram = (crudo: string | null | undefined): string | null
 export interface EncuentroDeDetalle {
   /** El uuid de la sesión (§3.1): es el ancla `#ses_…` de la fila. */
   id: string;
-  /** `1` … `N`, **numerado sobre todas las sesiones, canceladas incluidas**. */
+  /**
+   * `1` … `N`, **numerado sobre todas las sesiones, canceladas incluidas** — y
+   * desde B-181, **dentro de su comisión**: quien cursa los martes va a cuatro
+   * encuentros, no a los dieciséis del ciclo entero. Es la misma regla que el
+   * evento de Calendar (`numeroDeEncuentro`, D-520).
+   */
   numero: number;
+  /**
+   * **De qué comisión es** — B-181, o `null` si el ciclo no tiene comisiones (o
+   * si el `comisionId` de este encuentro no apunta a ninguna que exista).
+   *
+   * **Solo la etiqueta.** El id del grupo no viaja: es un dato interno del
+   * documento y la página no lo necesita —los grupos ya vienen armados en
+   * `comisiones`—, así que publicarlo sería una entrada más en la lista blanca del
+   * §5.1 a cambio de nada. Lo cobró el `auditor-privacidad`.
+   */
+  comision: { etiqueta: string } | null;
   inicioIso: string;
   finIso: string;
   fecha: string;
@@ -277,6 +293,22 @@ export interface DetallePublico {
   /** `Ciclo de 8 encuentros`, o `null` si no hay nada que decir. */
   rotuloCiclo: string | null;
   encuentros: EncuentroDeDetalle[];
+  /**
+   * **Los encuentros agrupados por comisión** — B-181. Vacío cuando el ciclo no
+   * tiene comisiones, y ése es el caso de todas las actividades de hoy: la
+   * plantilla pinta la lista plana de `encuentros` como siempre y no cambia nada.
+   *
+   * Con comisiones, esto es lo que la página muestra en vez de la lista plana —
+   * dieciséis fechas de corrido se leen como un ciclo de dieciséis encuentros,
+   * que es exactamente el malentendido que B-181 vino a arreglar—. `encuentros`
+   * sigue viajando entero: lo consumen el JSON-LD, «la próxima fecha» y los
+   * rótulos, que razonan sobre la actividad y no sobre una comisión.
+   *
+   * El orden es el de `comisiones` en el documento —el que armó el dueño— y no el
+   * de la primera fecha: reordenarlo por fecha haría que la lista se reacomode
+   * sola al cancelar un encuentro.
+   */
+  comisiones: { etiqueta: string; encuentros: EncuentroDeDetalle[] }[];
   /**
    * La próxima fecha, o `null` si ya pasó todo.
    *
@@ -630,13 +662,43 @@ const horaDeFin = (e: EncuentroDeDetalle): string => {
  * sin llamarlo ciclo: el flag manda para el vocabulario, los datos para las
  * fechas.
  */
-const rotuloDeCiclo = (esCiclo: boolean, vivos: EncuentroDeDetalle[]): string | null => {
+const rotuloDeCiclo = (
+  esCiclo: boolean,
+  vivos: EncuentroDeDetalle[],
+  /**
+   * B-181 — cuántas opciones para sumarse hay. Con opciones, **el rótulo cambia
+   * de sujeto**: «Ciclo de 16 encuentros» sería falso para todo el mundo, porque
+   * nadie va a los dieciséis; cada persona va a los de su opción.
+   */
+  comisiones: { encuentros: EncuentroDeDetalle[] }[] = [],
+): string | null => {
   if (vivos.length === 0) return null;
-  if (vivos.length === 1) return '1 encuentro';
+
   const desde = instanteDeIso(vivos[0]!.inicioIso);
   const hasta = instanteDeIso(vivos[vivos.length - 1]!.inicioIso);
+  const rango = desde && hasta ? ` · ${rangoCorto(desde, hasta)}` : '';
+
+  if (comisiones.length > 0) {
+    /*
+     * Se dice «N encuentros» solo si **todas** las opciones tienen los mismos, y
+     * se cuentan los vivos de cada una (los cancelados no van: acá el número es
+     * «a cuántos vas», no la identidad de una fila).
+     *
+     * Cuando difieren no se elige un número —ni el máximo, ni el de la primera:
+     * las dos serían una afirmación falsa para alguien— y el rótulo dice solo
+     * cuántas opciones hay. El detalle está tres párrafos más abajo, en la lista.
+     */
+    const porOpcion = comisiones.map((c) => c.encuentros.filter((e) => !e.cancelada).length);
+    const parejas = porOpcion.every((n) => n === porOpcion[0]) ? porOpcion[0]! : null;
+    const cuantas = `${comisiones.length} opciones para sumarse`;
+    const cada =
+      parejas === null ? '' : parejas === 1 ? ' · 1 encuentro cada una' : ` · ${parejas} encuentros cada una`;
+    return `${cuantas}${cada}${rango}`;
+  }
+
+  if (vivos.length === 1) return '1 encuentro';
   const cabecera = `${esCiclo ? 'Ciclo de ' : ''}${vivos.length} encuentros`;
-  return desde && hasta ? `${cabecera} · ${rangoCorto(desde, hasta)}` : cabecera;
+  return `${cabecera}${rango}`;
 };
 
 /**
@@ -875,9 +937,33 @@ export const detalleDeActividad = (
 ): DetallePublico => {
   const ordenadas = [...a.sesiones].sort((x, y) => x.inicio.localeCompare(y.inicio));
 
-  const enOrden: EncuentroDeDetalle[] = ordenadas.map((s, i) => {
+  /*
+   * B-181 — el número se cuenta **dentro de la comisión**, así que hace falta
+   * saber cuántas van antes de ésta en su propio grupo. Se lleva un contador por
+   * comisión sobre la lista ya ordenada por fecha, que es equivalente a filtrar y
+   * buscar el índice —lo que hace `numeroDeEncuentro` en `@calendario`— pero en
+   * una sola pasada.
+   *
+   * **La clave del contador es la comisión que existe de verdad, no el
+   * `comisionId` crudo**, y esa diferencia la cobró el `auditor-privacidad`: con
+   * el crudo, un `comisionId` colgado se numeraba en un balde propio («Encuentro
+   * 1») mientras `numeroDeEncuentro` de `@calendario` lo numeraba junto a los
+   * demás huérfanos — el mismo encuentro con dos números, que es la clase de
+   * B-88 y encima usando esa equivalencia como argumento. Resolviendo la
+   * referencia primero, las dos cuentas agrupan igual: los huérfanos, juntos.
+   */
+  const etiquetaDeComision = new Map((a.comisiones ?? []).map((c) => [c.id, c.etiqueta]));
+  const claveDe = (comisionId: string | null): string =>
+    comisionId && etiquetaDeComision.has(comisionId) ? comisionId : '';
+  const contados = new Map<string, number>();
+
+  const enOrden: EncuentroDeDetalle[] = ordenadas.map((s) => {
     const inicio = instanteDeIso(s.inicio);
     const fin = instanteDeIso(s.fin) ?? inicio;
+    const clave = claveDe(s.comisionId);
+    const numero = (contados.get(clave) ?? 0) + 1;
+    contados.set(clave, numero);
+    const etiqueta = clave ? (etiquetaDeComision.get(clave) ?? '') : '';
     return {
       id: s.id,
       // Se numera sobre **todas**, canceladas incluidas: el número es la
@@ -885,7 +971,19 @@ export const detalleDeActividad = (
       // que siguen en pie. Es la misma regla que el evento de Calendar (D-95):
       // numerar sobre las no canceladas renombraba los otros siete eventos al
       // cancelar el tercero (B-84).
-      numero: i + 1,
+      numero,
+      /*
+       * B-181 — solo si la comisión existe de verdad: un `comisionId` colgado se
+       * lee como «sin comisión», igual que en `comisionDe` de `@calendario`.
+       *
+       * **Viaja la etiqueta y no el id**, y eso lo cobró el `auditor-privacidad`:
+       * el id es un dato interno del documento, la plantilla no lo usa —agrupa
+       * con lo que ya viene agrupado— y una excepción del barrido para algo que
+       * nunca se pinta es la clase de permiso que después habilita al campo
+       * siguiente. El agrupado se resuelve **acá adentro**, donde el id todavía
+       * está a mano.
+       */
+      comision: etiqueta ? { etiqueta } : null,
       inicioIso: inicio ? isoConOffset(inicio) : '',
       finIso: fin ? isoConOffset(fin) : '',
       fecha: inicio ? fechaLarga(inicio) : '',
@@ -931,6 +1029,51 @@ export const detalleDeActividad = (
 
   // §7.3 del diseño con la corrección de B-254: sin ningún encuentro en pie la
   // actividad **no pasó**, se canceló. Los dos casos llegaban a `yaPaso: true`.
+  /*
+   * B-181 — los encuentros agrupados por comisión. El orden es el del documento y
+   * los de cada una salen ya ordenados por fecha, porque `encuentros` lo está.
+   *
+   * Una comisión **sin ningún encuentro no se emite**: es una etiqueta a medio
+   * cargar, y pintarla dejaría un título con nada abajo. Tampoco se emite la que
+   * no tiene nombre, por lo mismo.
+   *
+   * Se calcula acá arriba y no en el objeto de retorno porque lo usan dos cosas:
+   * el campo `comisiones` y el rótulo del ciclo, que con opciones cambia de
+   * sujeto.
+   */
+  const { grupos: agrupados, sinComision: huerfanos } = porComision(
+    a.comisiones ?? [],
+    ordenadas.map((s, i) => ({ comisionId: s.comisionId, encuentro: encuentros[i]! })),
+  );
+  const grupos = [
+    ...agrupados
+      .filter((g) => g.comision.etiqueta && g.sesiones.length > 0)
+      .map((g) => ({
+        etiqueta: g.comision.etiqueta,
+        encuentros: g.sesiones.map((x) => x.encuentro),
+      })),
+    /*
+     * **La bolsa de huérfanos, sin título** — lo cobró el `auditor-privacidad`, y
+     * era el peor de los cinco hallazgos: con los grupos armados solo desde
+     * `comisiones`, un encuentro cuyo `comisionId` no resuelve **desaparecía de la
+     * página**. `lib/comisiones.ts` tiene esa bolsa justamente porque «perder una
+     * fila en pantalla es el peor de los dos errores posibles», y el lado público
+     * cometía ese error.
+     *
+     * No es un caso de consola nada más: las tres reglas de coherencia viven en el
+     * nivel «publicar», así que una actividad **cancelada** —que conserva su
+     * página por B-110— se puede guardar con encuentros huérfanos, y esa página es
+     * exactamente donde la fecha tiene que seguir visible.
+     *
+     * Sin título a propósito: no hay ninguna etiqueta honesta para «ninguna de
+     * las de arriba», y un encabezado inventado afirmaría un grupo que el
+     * documento no tiene.
+     */
+    ...(huerfanos.length > 0 && agrupados.some((g) => g.sesiones.length > 0)
+      ? [{ etiqueta: '', encuentros: huerfanos.map((x) => x.encuentro) }]
+      : []),
+  ];
+
   const todoCancelado = encuentros.length > 0 && vivos.length === 0;
   const yaPaso = proximos.length === 0;
 
@@ -957,8 +1100,9 @@ export const detalleDeActividad = (
     imagenes: imagenesDeDetalle(a.imagenes),
 
     esCiclo: a.esCiclo,
-    rotuloCiclo: rotuloDeCiclo(a.esCiclo, vivos),
+    rotuloCiclo: rotuloDeCiclo(a.esCiclo, vivos, grupos),
     encuentros,
+    comisiones: grupos,
     proxima: siguiente
       ? {
           fecha: siguiente.fecha,
@@ -1387,7 +1531,13 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
         return {
           ...deLaActividad,
           '@type': subtipo,
-          name: e.tema ? `${d.titulo} — ${e.tema}` : d.titulo,
+          /*
+           * B-181 — el mismo título que el evento de Calendar, y de la misma
+           * función (`tituloDeEvento` de `@calendario`): con comisiones, dieciséis
+           * `subEvent` con el nombre de la actividad repetido no le dicen a Google
+           * —ni a quien lo lea en un resultado— cuál es cuál.
+           */
+          name: tituloDeEvento(d.titulo, e.comision?.etiqueta ?? null, e.tema),
           /*
            * **El ancla de su propia fila** — B-733, aprobado por el dueño el
            * 2026-09-07. El ejemplo del §5.3 del diseño lo dibuja así desde el

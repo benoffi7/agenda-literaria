@@ -888,6 +888,13 @@ Decisiones de esta pantalla:
 - **La lista de encuentros muestra los que ya pasaron**, atenuados. Borrarlos
   haría parecer que el ciclo es más corto, y ver que van cuatro encuentros es
   parte de decidir si te subís.
+- **Con opciones para sumarse, la lista se agrupa** (B-181, D-530). El título de
+  la sección pasa a «Elegí tu opción», arriba dice en cuántos horarios se da el
+  mismo ciclo y que cada persona va a uno solo, y cada grupo lleva el nombre de su
+  opción con sus fechas debajo. El número de cada encuentro es el de **su** grupo:
+  quien cursa los martes ve «Encuentro 1» y «Encuentro 2», no el 3 y el 7 del ciclo
+  entero. Sin opciones —el caso de todas las actividades de hoy— la sección es
+  exactamente la de siempre.
 
 ### 4.4 Hubs — `/tipo/*`, `/barrio/*`, `/online`, `/gratis`, `/agenda/*`
 

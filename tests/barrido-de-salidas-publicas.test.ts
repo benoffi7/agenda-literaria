@@ -160,6 +160,24 @@ const PERMITIDO_EN_EVENTS_JSON: readonly Excepcion[] = [
       '`calendarEventId` NO está: es interno (§5.1).',
   },
   {
+    nombre: 'opciones para sumarse',
+    centinelas: ['comisiones.id', 'comisiones.etiqueta'],
+    porque:
+      'B-181 — la etiqueta es lo que se muestra («Martes 19 h»): sin ella la página no ' +
+      'puede decir qué opciones hay, que es el punto del campo. El **id** sale por lo ' +
+      'mismo que `modalidades.id`: es el uuid con el que el **build** ata cada encuentro ' +
+      'a su grupo, no contenido. El `comisionId` de cada sesión es ese mismo valor: por ' +
+      'eso no tiene centinela propio (ver `RUTAS` en el fixture) — y por eso mismo, **un ' +
+      'rojo que nombre `comisiones.id` puede ser en realidad una fuga de ' +
+      '`sesiones[].comisionId`**: antes de ampliar esta celda conviene mirar cuál de los ' +
+      'dos se escapó. Lo señaló el `auditor-privacidad`. ' +
+      '**OJO con el nombre de esta lista:** lo que se barre acá es la **proyección** ' +
+      '(`toPublic`), no el archivo `dist/events.json` — ése es el índice recortado de ' +
+      'B-106 (`entradaDeIndice`) y **no lleva ninguna de las dos rutas**, porque el ' +
+      'listado no agrupa. Esa confusión ya hizo escribir un aserto falso en el gate del ' +
+      'build, así que la ausencia en el índice tiene su propio caso, más abajo.',
+  },
+  {
     nombre: 'dónde',
     centinelas: ['sede.nombre', 'sede.direccion', 'sede.ciudad', 'sede.indicaciones'],
     porque:
@@ -246,6 +264,17 @@ const PERMITIDO_EN_EVENTO_DE_CALENDAR: readonly Excepcion[] = [
       'el tema va también en el `summary` («Título — Tema»): es lo que distingue un ' +
       'encuentro del siguiente en la agenda de quien se suscribió. El id de sesión NO ' +
       'está: el evento no lo lleva (lo lleva el documento, en `calendarEventId`).',
+  },
+  {
+    nombre: 'de qué opción es',
+    centinelas: ['comisiones.etiqueta'],
+    porque:
+      'B-181, decisión del dueño: el calendario publica **todas** las opciones y cada ' +
+      'evento dice de cuál es, en el `summary` («Club de Saer — Martes 19 h») y en el ' +
+      'encabezado de la descripción. Sin eso, dieciséis eventos con el mismo título no ' +
+      'dejan elegir a qué suscribirse. La etiqueta la escribe el dueño para mostrarla, ' +
+      'igual que el título. **`comisiones.id` NO está en esta lista**: el evento no ' +
+      'lleva ids, lo mismo que pasa con `sesiones.id`.',
   },
   {
     nombre: 'dónde',
@@ -625,6 +654,11 @@ describe('el fixture de centinelas no puede envejecer', () => {
      * pusiera rojo.
      */
     ValorOpcion: opcionCentinela() as unknown as Record<string, unknown>,
+    // B-181 — las opciones para sumarse. Los dos campos son públicos y cada uno
+    // por su motivo (ver `RUTAS` en el fixture), así que la interfaz se ancla:
+    // un campo nuevo acá —un cupo por comisión, una sede por comisión— tiene que
+    // decidir si sale antes de compilar.
+    Comision: actividad.comisiones![0] as unknown as Record<string, unknown>,
   };
 
   /**
@@ -1104,6 +1138,38 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
     barrer('events.json (índice del listado)', JSON.stringify(indice), PERMITIDO_EN_EL_INDICE);
   });
 
+  it('la etiqueta y el id de la opción NO entran al índice: el detalle los lee de la proyección (B-181)', () => {
+    /*
+     * **La ausencia estaba afirmada y no estaba decidida**, que es la diferencia
+     * que cobró el `auditor-privacidad`: la garantía existía solo como *falta de
+     * excepción* en `PERMITIDO_EN_EL_INDICE`, y una ausencia no le dice a nadie
+     * que alguien la eligió.
+     *
+     * Y la eligió: el listado muestra **una tarjeta por actividad** y no agrupa,
+     * así que no tiene qué hacer con las comisiones. Proyectarlas «para tener todo
+     * a mano» publicaría etiquetas e ids **en lote, en el archivo más barato de
+     * cosechar**, que es lo que D-129 evita. La página de detalle no lo necesita:
+     * se genera en el build leyendo `toPublic` directo (§2.4).
+     *
+     * Cuando el listado quiera filtrar por «hay opción los sábados», esto se pone
+     * rojo y ahí se decide — que es exactamente para lo que está.
+     */
+    const indice = construirIndice({
+      actividades: [toPublic(actividadCentinela(), 'act_centinela')],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    const crudo = JSON.stringify(indice);
+    for (const ruta of ['comisiones.id', 'comisiones.etiqueta'] as const) {
+      expect(
+        crudo.includes(CENTINELA[ruta]),
+        `\`${ruta}\` entró al índice del listado. Si es a propósito, decidilo: ` +
+          `es una entrada nueva a la salida más barata de cosechar (D-129).`,
+      ).toBe(false);
+    }
+  });
+
   it('lleva los valores de las formas de cursar, no las filas (B-224)', () => {
     /*
      * La celda del campo nuevo en la tercera proyección. El filtro necesita saber
@@ -1364,6 +1430,21 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'concreto: es el ancla `#ses_…` de la fila. `calendarEventId` NO está: es interno.',
     },
     {
+      nombre: 'las opciones para sumarse',
+      centinelas: ['comisiones.etiqueta'],
+      porque:
+        'B-181 — es la página donde la lista de encuentros se muestra entera, así que es ' +
+        'donde el malentendido vive: dieciséis fechas de corrido se leen como un ciclo de ' +
+        'dieciséis encuentros y son cuatro de cuatro. La etiqueta es el encabezado de cada ' +
+        'grupo. **`comisiones.id` NO está, y lo estuvo por error**: el permiso decía «es con ' +
+        'lo que el view-model agrupa», que describe un paso interno y no una necesidad de la ' +
+        'página — el agrupado se resuelve dentro de `detalleDeActividad` y la plantilla solo ' +
+        'usa la etiqueta. Lo cobró el `auditor-privacidad`, y la asimetría con `sesiones.id` ' +
+        'es justo el punto: aquél está permitido porque **es** el ancla `#ses_…` del `<li>`, ' +
+        'un consumidor verificable. Un permiso para algo que nunca se pinta es la clase de ' +
+        'excepción que después habilita al campo siguiente.',
+    },
+    {
       nombre: 'dónde, completo',
       centinelas: [
         'modalidades.id',
@@ -1428,6 +1509,7 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'labels.arancel',
         'slug',
         'sesiones.id',
+        'comisiones.etiqueta',
       ],
       porque:
         '§5.2 — `name`, `description` (el resumen), `organizer`, `performer`, `location` con ' +
@@ -1450,7 +1532,14 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         '**ya es público en el HTML de esta misma página** —es el ancla de la fila, ' +
         '`id={e.id}` en el `<li>`— así que es el mismo dato en el mismo documento, no un ' +
         'dato nuevo. El `Offer` y el `VirtualLocation` **siguen sin ancla**: el arancel y ' +
-        'el acceso son de la actividad y no de una de sus filas.',
+        'el acceso son de la actividad y no de una de sus filas. ' +
+        '**`comisiones.etiqueta` entró con B-181**, y por el mismo camino que el tema: el ' +
+        '`name` de cada `subEvent` sale de `tituloDeEvento`, la misma función que arma el ' +
+        '`summary` del evento de Calendar, y con opciones para sumarse eso incluye la ' +
+        'etiqueta («Club de Saer — Martes 19 h»). Es texto que el dueño escribe para ' +
+        'mostrarlo, y sin él Google recibe dieciséis `subEvent` con el mismo nombre. ' +
+        '**`comisiones.id` NO está**: el JSON-LD ya tiene el ancla de la fila y no ' +
+        'necesita el id del grupo.',
     },
   ];
 

@@ -1553,3 +1553,264 @@ describe('etiquetas — el calendario es público, no puede mostrar slugs crudos
     expect(texto).not.toContain('Otro,');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────
+// B-181 · las opciones para sumarse («comisiones»)
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * El reporte del dueño: «un club de lectura puede darte 4 opciones para
+ * sumarte. Pero no son 4 encuentros, sino opciones».
+ *
+ * Lo que se verifica acá es el lado del calendario, que es donde el dueño tomó
+ * las dos decisiones: **se publican todas** las opciones y **cada evento dice de
+ * cuál es**.
+ */
+describe('las opciones para sumarse a un ciclo (B-181)', () => {
+  const MARTES = { id: 'com_martes', etiqueta: 'Martes 19 h' };
+  const JUEVES = { id: 'com_jueves', etiqueta: 'Jueves 19 h' };
+
+  /** Dos comisiones de dos encuentros cada una, alternadas en el tiempo. */
+  const conDosComisiones = (over: Record<string, unknown> = {}) =>
+    actividad({
+      esCiclo: true,
+      comisiones: [MARTES, JUEVES],
+      sesiones: [
+        sesion({
+          id: 'ses_m1',
+          comisionId: MARTES.id,
+          inicio: ts('2026-09-01T22:00:00Z'),
+          fin: ts('2026-09-02T00:00:00Z'),
+        }),
+        sesion({
+          id: 'ses_j1',
+          comisionId: JUEVES.id,
+          inicio: ts('2026-09-03T22:00:00Z'),
+          fin: ts('2026-09-04T00:00:00Z'),
+        }),
+        sesion({
+          id: 'ses_m2',
+          comisionId: MARTES.id,
+          inicio: ts('2026-09-08T22:00:00Z'),
+          fin: ts('2026-09-09T00:00:00Z'),
+        }),
+        sesion({
+          id: 'ses_j2',
+          comisionId: JUEVES.id,
+          inicio: ts('2026-09-10T22:00:00Z'),
+          fin: ts('2026-09-11T00:00:00Z'),
+        }),
+      ],
+      ...over,
+    });
+
+  const porId = (a: ReturnType<typeof conDosComisiones>, id: string) =>
+    (a.sesiones as { id: string }[]).find((s) => s.id === id)!;
+
+  describe('el número es el de su comisión, no el del ciclo entero', () => {
+    /**
+     * Es la mitad del ítem: quien cursa los martes va a **dos** encuentros, no a
+     * los cuatro del ciclo. Sin esto, el segundo encuentro de los jueves —cuarto
+     * por fecha— decía «Encuentro 4 de 4» a alguien que va a dos.
+     */
+    it('el segundo de los martes es «2 de 2» aunque por fecha sea el tercero', () => {
+      const a = conDosComisiones();
+      expect(numeroDeEncuentro(a, porId(a, 'ses_m2'))).toEqual({ indice: 2, total: 2 });
+    });
+
+    it('el primero de los jueves es «1 de 2» aunque por fecha sea el segundo', () => {
+      const a = conDosComisiones();
+      expect(numeroDeEncuentro(a, porId(a, 'ses_j1'))).toEqual({ indice: 1, total: 2 });
+    });
+
+    /**
+     * MUTACIÓN PROBADA: con `hermanasDeComision` devolviendo `actividad.sesiones`
+     * tal cual —o sea, sin agrupar— los dos casos de arriba dan `{3, 4}` y
+     * `{2, 4}` y los dos fallan.
+     */
+    it('sin comisiones se cuenta sobre el ciclo entero, como siempre', () => {
+      const a = ciclo({ cantidad: 8 });
+      expect(numeroDeEncuentro(a, (a.sesiones as { id: string }[])[5]!)).toEqual({
+        indice: 6,
+        total: 8,
+      });
+    });
+
+    /**
+     * D-95 sigue valiendo **dentro** de la comisión: el cancelado se cuenta,
+     * porque el número es la identidad de la fila y no un recuento en vivo.
+     */
+    it('el cancelado de la comisión se cuenta igual', () => {
+      const a = conDosComisiones();
+      const conCancelado = {
+        ...a,
+        sesiones: (a.sesiones as Record<string, unknown>[]).map((s) =>
+          s.id === 'ses_m1' ? { ...s, cancelada: true } : s,
+        ),
+      };
+      expect(numeroDeEncuentro(conCancelado, porId(a, 'ses_m2'))).toEqual({
+        indice: 2,
+        total: 2,
+      });
+    });
+  });
+
+  describe('el título del evento dice de qué opción es', () => {
+    it('lleva la etiqueta de la comisión', () => {
+      const a = conDosComisiones();
+      expect(construirEvento(a, porId(a, 'ses_m1')).summary).toBe('Club de lectura — Martes 19 h');
+    });
+
+    it('con tema, el tema va después y con `·`, no con una segunda raya', () => {
+      const a = conDosComisiones();
+      const conTema = { ...porId(a, 'ses_m1'), tema: 'Cap. 1-4' };
+      expect(construirEvento(a, conTema).summary).toBe(
+        'Club de lectura — Martes 19 h · Cap. 1-4',
+      );
+    });
+
+    /**
+     * **Esto es D-95, y es lo que hace seguro el cambio:** una actividad sin
+     * comisiones produce el título de siempre, byte por byte. Si no, la guarda
+     * anti-loop —que compara payloads recalculados— vería distinto el evento de
+     * cada encuentro publicado y el diff los updatearía todos.
+     */
+    it('sin comisiones el título es exactamente el de antes', () => {
+      const a = actividad({ sesiones: [sesion({ tema: 'Cap. 1-4' })] });
+      expect(construirEvento(a, (a.sesiones as unknown[])[0]).summary).toBe(
+        'Club de lectura — Cap. 1-4',
+      );
+    });
+
+    it('una comisión sin nombre no ensucia el título: cae al formato de siempre', () => {
+      const a = conDosComisiones({ comisiones: [{ id: MARTES.id, etiqueta: '' }, JUEVES] });
+      expect(construirEvento(a, porId(a, 'ses_m1')).summary).toBe('Club de lectura');
+    });
+  });
+
+  describe('la descripción ubica el encuentro y nombra las otras opciones', () => {
+    it('el encabezado dice la opción y el número dentro de ella', () => {
+      const a = conDosComisiones();
+      // Sin `labels` no hay etiqueta de tipo (el fixture de este archivo no
+      // carga `tipo`), así que el encabezado arranca en la comisión.
+      expect(construirDescripcion(a, porId(a, 'ses_m2')).split('\n')[0]).toBe(
+        'Martes 19 h · Encuentro 2 de 2',
+      );
+    });
+
+    /**
+     * La otra mitad de la decisión del dueño: el calendario publica las cuatro
+     * opciones, así que quien cae en el evento de los martes por un link tiene
+     * que poder enterarse de que existe el de los jueves.
+     */
+    it('nombra las otras opciones y NO la propia', () => {
+      const a = conDosComisiones();
+      const d = construirDescripcion(a, porId(a, 'ses_m1'));
+      expect(d).toContain('Otras opciones para el mismo ciclo:\n- Jueves 19 h');
+      expect(d).not.toContain('- Martes 19 h');
+    });
+
+    it('con una sola opción no hay bloque de otras', () => {
+      const a = conDosComisiones({
+        comisiones: [MARTES],
+        sesiones: (conDosComisiones().sesiones as Record<string, unknown>[])
+          .filter((s) => s.comisionId === MARTES.id)
+          .map((s) => ({ ...s })),
+      });
+      expect(construirDescripcion(a, porId(a, 'ses_m1'))).not.toContain('Otras opciones');
+    });
+
+    /**
+     * Con una comisión de una sola fecha, «Encuentro 1 de 1» es ruido: el número
+     * existe para ubicar la fila dentro de una serie y una serie de uno no lo
+     * necesita. La etiqueta sí se sigue diciendo.
+     */
+    it('una comisión de un solo encuentro no se numera, pero sí se nombra', () => {
+      const a = conDosComisiones({
+        sesiones: [
+          sesion({ id: 'ses_m1', comisionId: MARTES.id }),
+          sesion({ id: 'ses_j1', comisionId: JUEVES.id, inicio: ts('2026-09-10T22:00:00Z') }),
+        ],
+      });
+      const d = construirDescripcion(a, porId(a, 'ses_m1'));
+      expect(d.split('\n')[0]).toBe('Martes 19 h');
+      expect(d).not.toContain('Encuentro 1 de 1');
+    });
+  });
+
+  describe('un `comisionId` que no existe no pierde el evento', () => {
+    /**
+     * El schema rechaza este documento al publicar, así que solo puede llegar
+     * editado a mano en la consola. La regla es que el evento **igual se
+     * construya**: el encuentro se comporta como si no tuviera comisión.
+     */
+    it('se lee como «sin comisión» y el evento sale con el título de siempre', () => {
+      const a = conDosComisiones({ comisiones: [JUEVES] });
+      expect(construirEvento(a, porId(a, 'ses_m1')).summary).toBe('Club de lectura');
+    });
+  });
+
+  describe('renombrar una opción propaga al calendario', () => {
+    const conIdsDeEvento = (a: Record<string, unknown>) => ({
+      ...a,
+      sesiones: (a.sesiones as Record<string, unknown>[]).map((s) => ({
+        ...s,
+        calendarEventId: `evt_${s.id}`,
+      })),
+    });
+
+    /**
+     * Es la trampa 9 con otra cara —«un cambio de sede tiene que actualizar las
+     * 8 sesiones»— y sale gratis porque la guarda del §7.1 compara **payloads
+     * recalculados** y no una lista de campos: la etiqueta entra al `summary` y a
+     * la descripción, así que el diff lo ve.
+     *
+     * **Y actualiza los cuatro, no los dos de la comisión renombrada.** No es un
+     * exceso: cada evento nombra a las **otras** opciones en su descripción, así
+     * que el texto de los jueves también cambió de verdad. Es lo contrario del
+     * caso de D-95 —ahí el texto quedaba igual y el diff updateaba por
+     * contabilidad—: acá lo que se publicó dejó de ser exacto y updatear es lo
+     * correcto.
+     *
+     * MUTACIÓN PROBADA: quitando la etiqueta del `summary` y el bloque «Otras
+     * opciones» de la descripción, `planificar` no devuelve ninguna operación y
+     * este test falla — o sea que lo que lo pone verde es la propagación, no la
+     * mera existencia del campo.
+     */
+    it('renombrar una opción updatea los eventos de las cuatro filas del ciclo', () => {
+      const conIds = conIdsDeEvento(conDosComisiones());
+      const despues = {
+        ...conIds,
+        comisiones: [{ ...MARTES, etiqueta: 'Martes 19.30' }, JUEVES],
+      };
+
+      const ops = planificar(conIds, despues);
+      expect(ops.map((o) => `${o.tipo}:${o.id}`).sort()).toEqual([
+        'actualizar:ses_j1',
+        'actualizar:ses_j2',
+        'actualizar:ses_m1',
+        'actualizar:ses_m2',
+      ]);
+    });
+
+    /**
+     * La vuelta que hay que fijar, porque es la que se rompe por descuido:
+     * **mover un encuentro de comisión no borra ni recrea su evento**. Sigue
+     * siendo la misma fila con el mismo id, así que quien lo tiene agendado lo
+     * ve cambiar de nombre y no desaparecer y volver.
+     */
+    it('mover un encuentro de opción lo actualiza, no lo borra y recrea', () => {
+      const conIds = conIdsDeEvento(conDosComisiones());
+      const despues = {
+        ...conIds,
+        sesiones: (conIds.sesiones as Record<string, unknown>[]).map((s) =>
+          s.id === 'ses_m2' ? { ...s, comisionId: JUEVES.id } : s,
+        ),
+      };
+
+      const ops = planificar(conIds, despues);
+      expect(ops.filter((o) => o.tipo === 'borrar')).toEqual([]);
+      expect(ops.some((o) => o.tipo === 'actualizar' && o.id === 'ses_m2')).toBe(true);
+    });
+  });
+});

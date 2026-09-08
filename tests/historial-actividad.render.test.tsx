@@ -22,6 +22,7 @@
  * lo importa para medir aperturas, y ese módulo arrastra `firebase-client` —
  * nada que este archivo necesite ejercitar.
  */
+import { readFileSync } from 'node:fs';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -190,5 +191,55 @@ describe('HistorialActividad — trampa 10, la dirección web sobre una activida
     // el `queryByText` de abajo pasaría por la razón equivocada.
     await screen.findByText('Descripción');
     expect(screen.queryByText('Dirección web')).toBeNull();
+  });
+});
+
+describe('todo campo del modelo tiene nombre de pantalla en el historial (B-181)', () => {
+  /**
+   * **Un chequeo de clase, no de este campo.** El diccionario
+   * `NOMBRE_DE_CAMPO` de `HistorialActividad.tsx` es una lista escrita a mano al
+   * lado de un modelo que crece: cada campo nuevo que nadie agregue ahí se
+   * muestra con su **clave cruda** en la pantalla de restaurar. No falla nada, no
+   * lo ve ningún test, y el que lo ve es el que está tratando de recuperar una
+   * descripción que pisó.
+   *
+   * Se lee la fuente y no el módulo por lo mismo que
+   * `tests/pagina-de-detalle.test.ts`: lo que se afirma es una propiedad de lo
+   * que el archivo **nombra**, y el diccionario no se exporta.
+   *
+   * MUTACIÓN PROBADA: sacando la entrada `comisiones` del diccionario, este caso
+   * falla nombrándola.
+   */
+  const CAMPOS_SIN_NOMBRE: readonly string[] = [
+    // Los de auditoría: el historial no los ofrece para restaurar (D-41), así
+    // que no tienen por qué tener nombre de pantalla.
+    'createdAt',
+    'updatedAt',
+    'createdBy',
+    'updatedBy',
+    // Campos de máquina: los escribe un trigger, no el formulario.
+    'publicadaAlgunaVez',
+  ];
+
+  it('ningún campo de `Actividad` se mostraría con la clave cruda', () => {
+    const fuente = readFileSync('src/components/admin/HistorialActividad.tsx', 'utf8');
+    const modelo = readFileSync('src/types/actividad.ts', 'utf8');
+
+    // Los campos de primer nivel de `Actividad`, leídos del bloque de la
+    // interfaz: es la lista que crece cuando alguien agrega un campo.
+    const bloque = modelo.slice(modelo.indexOf('export interface Actividad {'));
+    const cuerpo = bloque.slice(0, bloque.indexOf('\n}'));
+    const campos = [...cuerpo.matchAll(/^ {2}(\w+)\??:/gm)].map((m) => m[1]!);
+
+    const sinNombre = campos.filter(
+      (c) => !CAMPOS_SIN_NOMBRE.includes(c) && !new RegExp(`^ {2}${c}: '`, 'm').test(fuente),
+    );
+    expect(
+      sinNombre,
+      `estos campos del modelo se mostrarían con su clave cruda en el historial: ` +
+        `${sinNombre.join(', ')}. Agregalos a NOMBRE_DE_CAMPO en ` +
+        `HistorialActividad.tsx, o a CAMPOS_SIN_NOMBRE de este test si el ` +
+        `historial no los ofrece.`,
+    ).toEqual([]);
   });
 });

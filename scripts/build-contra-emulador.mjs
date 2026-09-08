@@ -180,6 +180,21 @@ const CENTINELA = {
   // su imagen) y **no** al `events.json`, que solo lleva la URL de la portada.
   // O sea que este centinela se afirma en las dos direcciones a la vez.
   epigrafeImagen: 'gate.imagenes.epigrafe',
+  /*
+   * B-181 — el **id** de la comisión no sale a ninguna parte, y por eso está acá
+   * y no en la familia de los que sí salen.
+   *
+   * Lo cobró el `auditor-privacidad`: estaba declarado como *permitido* en el
+   * barrido de vitest y como *nada* en el del artefacto, que es la asimetría que
+   * el docblock de `CENTINELA_DEL_INDICE` prohíbe («cuando un campo nuevo entre a
+   * una salida, se declara en las dos»). No dejaba el gate rojo: dejaba el campo
+   * invisible. Con el centinela acá, el paso 9 —el que recorre todo el `dist/`—
+   * lo verifica solo.
+   *
+   * La página agrupa con la **etiqueta**, no con el id: el agrupado se resuelve
+   * dentro de `detalleDeActividad`.
+   */
+  comisionId: 'com_gate.comisiones.id',
 };
 
 /**
@@ -205,6 +220,31 @@ const CENTINELA = {
  * en el cliente (trampa 2), sin PII, y ya público en la página de detalle.
  */
 const ID_DE_SESION_QUE_SALE = 'ses_gate.sesiones.id';
+
+/**
+ * La etiqueta de la comisión (B-181), que **también sale** — y por eso está acá y
+ * no en `CENTINELA`.
+ *
+ * Se afirma **en una sola dirección y sobre un solo artefacto**: el HTML de la
+ * página, donde es el encabezado del grupo de encuentros y donde hace que el
+ * título de la sección pase a «Elegí tu opción».
+ *
+ * Es la razón de que esto exista: el agrupado por comisión vive en
+ * `src/pages/actividad/[slug].astro` y **ningún test unitario puede mirarlo** —un
+ * `.astro` no se importa desde vitest (D-140), así que `detallePublico.ts` afirma
+ * qué se decide mostrar y este gate es el único que ve si la plantilla lo muestra.
+ * Es el mismo motivo por el que B-804 pide que el gate siembre el monto.
+ *
+ * **Y NO se afirma sobre el `events.json`, que es lo primero que se intentó.**
+ * Ese archivo no es la proyección: es el **índice recortado** de B-106
+ * (`entradaDeIndice`, una whitelist propia con lo que el listado necesita), y las
+ * comisiones no están ahí porque el listado no agrupa — muestra una tarjeta por
+ * actividad. La página de detalle no lo lee: se genera en el build desde
+ * `toPublic` directo (§2.4). El barrido de centinelas llama «events.json» a la
+ * proyección, y esa diferencia de nombre es justo la que hizo escribir el aserto
+ * equivocado.
+ */
+const ETIQUETA_DE_COMISION = 'gate.comisiones.etiqueta';
 
 /**
  * La descripción del fixture: larga a propósito, para que `resumenDe` tenga que
@@ -256,6 +296,13 @@ const actividadDePrueba = (slug, estado) => ({
   },
   libro: null,
   esCiclo: false,
+  /*
+   * B-181 — una comisión, con su único encuentro adentro. Alcanza una: lo que el
+   * gate mira es que la plantilla **agrupe** —que aparezca el encabezado y que el
+   * título de la sección cambie—, y eso ya pasa con un grupo. Con dos, el mismo
+   * aserto costaría dos sesiones más y no probaría nada nuevo.
+   */
+  comisiones: [{ id: CENTINELA.comisionId, etiqueta: ETIQUETA_DE_COMISION }],
   sesiones: [
     {
       id: ID_DE_SESION_QUE_SALE,
@@ -265,6 +312,7 @@ const actividadDePrueba = (slug, estado) => ({
       lectura: CENTINELA.lectura,
       cancelada: false,
       calendarEventId: null,
+      comisionId: CENTINELA.comisionId,
     },
   ],
   /*
@@ -624,6 +672,36 @@ try {
         fallo(
           'la página de la actividad CANCELADA publica campos privados:\n' +
             enLaPagina.map(([campo, valor]) => `    ${campo} → ${valor}`).join('\n'),
+        );
+        salida = 1;
+      }
+    }
+
+    /*
+     * 4b · B-181 — **el agrupado por opción, sobre el HTML de verdad.**
+     *
+     * Es la mitad que ningún test unitario puede mirar: `detallePublico.ts`
+     * decide los grupos y los tiene barridos, pero que la plantilla los **pinte**
+     * solo se ve en el archivo que sale (D-140, el mismo argumento del punto 4).
+     */
+    const htmlPublicadaGrupos = await htmlDe(SLUG_PUBLICADA);
+    if (htmlPublicadaGrupos === null) {
+      fallo(`no se generó dist/actividad/${SLUG_PUBLICADA}/index.html.`);
+      salida = 1;
+    } else {
+      if (!htmlPublicadaGrupos.includes(ETIQUETA_DE_COMISION)) {
+        fallo(
+          'la página no muestra el encabezado de la opción para sumarse (B-181).\n' +
+            '  El view-model la agrupa y la plantilla no la pinta: la lista de encuentros\n' +
+            '  se lee como un ciclo largo, que es el malentendido que B-181 arregló.',
+        );
+        salida = 1;
+      }
+      if (!htmlPublicadaGrupos.includes('Elegí tu opción')) {
+        fallo(
+          'la página no cambió el título de la sección de encuentros (B-181).\n' +
+            '  Con opciones para sumarse tiene que decir «Elegí tu opción»: lo que sigue\n' +
+            '  no es un programa, son programas paralelos y hay que elegir uno.',
         );
         salida = 1;
       }

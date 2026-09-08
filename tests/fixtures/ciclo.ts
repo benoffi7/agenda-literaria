@@ -59,6 +59,8 @@ export type SesionFixture = {
   lectura: string | null;
   cancelada: boolean;
   calendarEventId: string | null;
+  /** B-181 — de qué comisión es, o `null` si el ciclo no tiene. */
+  comisionId: string | null;
 };
 
 export type OpcionesSesiones = {
@@ -72,6 +74,18 @@ export type OpcionesSesiones = {
   canceladas?: number[];
   /** Devolver el array al revés: el orden del array no es el orden del tiempo. */
   desordenadas?: boolean;
+  /**
+   * B-181 — repartir los encuentros entre estas comisiones, **alternando**: con
+   * dos, los pares van a la primera y los impares a la segunda.
+   *
+   * Alternar y no partir en dos mitades es a propósito, y es lo que hace útil el
+   * caso: si los cuatro primeros fueran de una comisión y los cuatro últimos de
+   * la otra, el orden del array coincidiría con el de cada grupo y la
+   * numeración por grupo daría lo mismo que la numeración global en la mitad de
+   * las filas. Alternadas, el tercer encuentro por fecha es el «2» de su
+   * comisión.
+   */
+  comisiones?: readonly string[];
 };
 
 /**
@@ -85,6 +99,7 @@ export const sesionesDeCiclo = (opciones: OpcionesSesiones = {}): SesionFixture[
     conEventos = true,
     canceladas = [],
     desordenadas = false,
+    comisiones = [],
   } = opciones;
 
   const sesiones = Array.from({ length: cantidad }, (_, i) => {
@@ -110,6 +125,7 @@ export const sesionesDeCiclo = (opciones: OpcionesSesiones = {}): SesionFixture[
       // invariantes ejercitan.
       calendarEventId:
         conEventos && !canceladas.includes(i) ? `evt_${String(i + 1).padStart(4, '0')}` : null,
+      comisionId: comisiones.length > 0 ? comisiones[i % comisiones.length]! : null,
     };
   });
 
@@ -184,6 +200,26 @@ export const FAMILIA_DE_CICLOS: CasoDeCiclo[] = [
     nombre: 'encuentro único (el fixture que dejó pasar B-84)',
     actividad: cicloDeOcho({ esCiclo: false, sesiones: sesionesDeCiclo({ cantidad: 1 }) }),
     cantidad: 1,
+  },
+  /*
+   * B-181 — lo pidió el `auditor-trampas`: la pieza de conteo que ese ítem
+   * reescribió (`numeroDeEncuentro` agrupa antes de numerar) no se ejercitaba
+   * contra los invariantes de regresión de esta familia, porque ninguno de los
+   * casos tenía comisiones.
+   *
+   * Ocho encuentros repartidos **alternados** en dos comisiones: cuatro de cada
+   * una, y el orden del array **no** coincide con el de ningún grupo.
+   */
+  {
+    nombre: 'ciclo de ocho en dos comisiones alternadas (B-181)',
+    actividad: cicloDeOcho({
+      comisiones: [
+        { id: 'com_martes', etiqueta: 'Martes 19 h' },
+        { id: 'com_jueves', etiqueta: 'Jueves 19 h' },
+      ],
+      sesiones: sesionesDeCiclo({ comisiones: ['com_martes', 'com_jueves'] }),
+    }),
+    cantidad: 8,
   },
 ];
 

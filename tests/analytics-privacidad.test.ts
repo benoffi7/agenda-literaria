@@ -252,6 +252,7 @@ describe('los payloads reales de los puntos de medición', () => {
           lectura: CENTINELAS.lectura,
           cancelada: false,
           calendarEventId: null,
+          comisionId: null,
         },
       ],
       inscripcion: {

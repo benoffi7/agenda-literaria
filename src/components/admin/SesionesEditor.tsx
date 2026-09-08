@@ -17,11 +17,20 @@ import {
   ordenarPorInicio,
   sesionVacia,
 } from '@/lib/sesiones';
-import type { SesionForm } from '@/types/actividad';
+import type { Comision, SesionForm } from '@/types/actividad';
 
 interface Props {
   sesiones: SesionForm[];
   onChange: (s: SesionForm[]) => void;
+  /**
+   * B-181 — las opciones para sumarse, si el ciclo tiene. Vacío es el caso
+   * normal y entonces **nada de esto se muestra**: ni el desplegable de cada
+   * fila ni el de el generador.
+   *
+   * Llegan de arriba y no se editan acá: las edita `ComisionesEditor`, que vive
+   * al lado. Este editor solo necesita saber a qué puede apuntar cada encuentro.
+   */
+  comisiones?: readonly Comision[];
   /** Los clubes de lectura muestran el campo "lectura" con más prominencia. */
   mostrarLectura?: boolean;
   /**
@@ -199,10 +208,27 @@ const FUNCION = {
  * (B-224). Acá queda lo propio de un encuentro: el generador de N, los saltos de
  * fecha de B-186 y la cancelación.
  */
-export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: Props) {
+export function SesionesEditor({
+  sesiones,
+  onChange,
+  mostrarLectura,
+  errorDe,
+  comisiones = [],
+}: Props) {
   const [abrirGenerador, setAbrirGenerador] = useState(false);
   const [cantidad, setCantidad] = useState(8);
   const [cadaDias, setCadaDias] = useState(7);
+  /*
+   * B-181 — para qué opción se generan las N fechas. Arranca en la primera, que
+   * es la respuesta correcta la primera vez y la única que no obliga a elegir
+   * antes de entender la pregunta.
+   *
+   * Vive acá y no en el formulario porque es estado de **este** control, como
+   * `cantidad` y `cadaDias`: no se guarda en el documento ni sobrevive a cerrar
+   * el panel del generador.
+   */
+  const [comisionAGenerar, setComisionAGenerar] = useState<string>('');
+  const paraGenerar = comisiones.find((c) => c.id === comisionAGenerar) ?? comisiones[0] ?? null;
 
   const primera = sesiones[0];
   const duracion = primera ? duracionMinutos(primera) : 120;
@@ -212,13 +238,35 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: 
     onChange(sesiones.map((s) => (s.id === id ? f(s) : s)));
 
   const generar = () => {
-    const inicio = primera?.inicio ?? aDatetimeLocal(new Date());
+    /*
+     * B-181 — con opciones, el generador trabaja **sobre una sola**: las que
+     * existen de las otras no se tocan y las nuevas nacen en la elegida.
+     *
+     * `previas` tiene que ser el subconjunto de esa opción y no la lista entera,
+     * porque el generador hereda id y `calendarEventId` **por posición**: con
+     * las dieciséis, generar 4 fechas para los martes le pisaría las fechas a
+     * los cuatro primeros encuentros del ciclo, que pueden ser de otra comisión.
+     */
+    const deLaComision = paraGenerar
+      ? sesiones.filter((s) => s.comisionId === paraGenerar.id)
+      : sesiones;
+    const inicio = deLaComision[0]?.inicio ?? primera?.inicio ?? aDatetimeLocal(new Date());
     medirFuncion('encuentros-generar', undefined, cantidad);
-    onChange(
+    const generadas = generarSesiones({
+      cantidad,
+      inicio,
+      duracionMinutos: duracion,
+      cadaDias,
       // `previas` para que las filas que ya existen conserven su id y su evento
       // de calendario (B-90): sin eso, regenerar un ciclo publicado borraba y
       // recreaba los ocho eventos, y con ellos los recordatorios de la gente.
-      generarSesiones({ cantidad, inicio, duracionMinutos: duracion, cadaDias, previas: sesiones }),
+      previas: deLaComision,
+      comisionId: paraGenerar?.id ?? null,
+    });
+    onChange(
+      paraGenerar
+        ? [...sesiones.filter((s) => s.comisionId !== paraGenerar.id), ...generadas]
+        : generadas,
     );
     setAbrirGenerador(false);
   };
@@ -234,7 +282,18 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: 
         const ultima = filas[filas.length - 1];
         const base = ultima ? deDatetimeLocal(ultima.inicio) : null;
         const siguiente = base ? new Date(base.getTime() + 7 * 86400_000) : new Date();
-        return sesionVacia(siguiente, duracion * 60_000);
+        /*
+         * B-181 — hereda la opción de la última fila, y si no hay filas, la
+         * primera opción. Es la respuesta correcta en los dos casos que
+         * importan: cargar una comisión de corrido (todas iguales) y arrancar
+         * una nueva (se elige una vez y sigue). Con `null` habría que elegirla
+         * en cada una de las ocho filas.
+         */
+        return sesionVacia(
+          siguiente,
+          duracion * 60_000,
+          ultima?.comisionId ?? comisiones[0]?.id ?? null,
+        );
       }}
       duplicar={(s) => duplicarSesion(s, 7)}
       alCambiarCantidad={(accion, cantidadResultante) =>
@@ -314,6 +373,22 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: 
                   className={`${claseInput} w-32`}
                 />
               </label>
+              {comisiones.length > 0 && (
+                <label className="flex flex-col gap-1 text-xs">
+                  Para qué opción
+                  <select
+                    value={paraGenerar?.id ?? ''}
+                    onChange={(e) => setComisionAGenerar(e.target.value)}
+                    className={`${claseInput} w-44`}
+                  >
+                    {comisiones.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.etiqueta || 'Sin nombre'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <button
                 type="button"
                 onClick={generar}
@@ -328,6 +403,13 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: 
               temas, las lecturas y las cancelaciones que ya cargaste se conservan.
               Toma la fecha y duración del primer encuentro como base — después
               ajustás las excepciones una por una.
+              {comisiones.length > 0 && paraGenerar && (
+                <>
+                  {' '}
+                  Genera <strong>solo los de «{paraGenerar.etiqueta || 'Sin nombre'}»</strong>:
+                  los encuentros de las otras opciones quedan como están.
+                </>
+              )}
               {sesiones.some((s) => s.calendarEventId) && (
                 <>
                   {' '}
@@ -374,6 +456,39 @@ export function SesionesEditor({ sesiones, onChange, mostrarLectura, errorDe }: 
                   className={claseInput}
                 />
               </label>
+              {/*
+                B-181 — de qué opción es este encuentro. Aparece **solo si hay
+                opciones**, que es la mitad del diseño: una actividad normal no
+                ve ni una casilla nueva.
+
+                Sin «— elegí una —» no habría forma de representar el estado en
+                que nace un encuentro de un ciclo que ya tiene opciones y que se
+                agregó desde otro lado (un duplicado, un borrador viejo): el
+                `select` mostraría la primera opción como si alguien la hubiera
+                elegido, y el schema no tendría nada que rechazar.
+              */}
+              {comisiones.length > 0 && (
+                <Campo
+                  label="Opción"
+                  htmlFor={`sesion-comision-${s.id}`}
+                  requerido
+                  error={errorDe(ruta('comisionId'))}
+                >
+                  <select
+                    id={`sesion-comision-${s.id}`}
+                    value={s.comisionId ?? ''}
+                    onChange={(e) => editar({ comisionId: e.target.value || null })}
+                    className={claseInput}
+                  >
+                    <option value="">— elegí una —</option>
+                    {comisiones.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.etiqueta || 'Sin nombre'}
+                      </option>
+                    ))}
+                  </select>
+                </Campo>
+              )}
               {mostrarLectura !== false && (
                 <label className="flex flex-col gap-1 text-xs">
                   Lectura asignada

@@ -56,6 +56,19 @@ pierde en el próximo sync. Es el comportamiento esperado.
 
 ### 2.2 Actividad ≠ Encuentro
 
+> ⚠️ **Esta decisión no cambió, y desde B-181 tiene un eje más al lado — ver
+> D-530 en [`docs/06-decisiones.md`](docs/06-decisiones.md).** Un ciclo sigue
+> siendo **una** actividad con N sesiones y sigue sin usar RRULE. Lo que faltaba
+> era poder decir que esas N filas pueden ser **grupos paralelos** en vez de una
+> secuencia: un club que abre cuatro horarios del mismo ciclo tiene cuatro
+> alternativas excluyentes y cada persona va a una sola («un club de lectura puede
+> darte 4 opciones para sumarte. Pero no son 4 encuentros, sino opciones», el
+> dueño). El documento gana `comisiones: [{id, etiqueta}]` y cada sesión un
+> `comisionId`; **la lista de sesiones sigue siendo plana**, que es lo que deja
+> intacto el diff del §7.2. En el panel y en el sitio se llaman «opciones para
+> sumarse»; en el código, `comisiones`, porque `opciones` ya es la taxonomía del
+> §4. El bloque de abajo queda como estaba escrito.
+
 Un club de lectura de 8 encuentros es **una** actividad con **ocho** sesiones en
 un array embebido. No son 8 documentos.
 

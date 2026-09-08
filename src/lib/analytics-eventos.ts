@@ -147,6 +147,17 @@ export const FUNCIONES = [
   'modalidad-agregar',
   'modalidad-duplicar',
   'modalidad-borrar',
+  /**
+   * B-181 — las opciones para sumarse a un ciclo. Contestan lo mismo que las
+   * modalidades: el campo nació de **un** reporte de **un** club, y si nadie
+   * agrega nunca una opción, el desplegable de cada encuentro es una casilla más
+   * en un formulario que ya tiene treinta.
+   *
+   * No hay `comision-duplicar`: duplicar una opción no significa nada (el nombre
+   * tiene que ser distinto, lo exige el schema), y por eso el editor no lo ofrece.
+   */
+  'comision-agregar',
+  'comision-borrar',
   'taxonomia-otro',
   'taxonomia-nueva',
   'taxonomia-reusada',
@@ -454,6 +465,10 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'modalidades.N.sede.geo.lng',
   'modalidades.N.sede.indicaciones',
   'modalidades.N.sede.nombre',
+  'comisiones',
+  'comisiones.N',
+  'comisiones.N.etiqueta',
+  'comisiones.N.id',
   'organizador',
   'organizador.instagram',
   'organizador.nombre',
@@ -462,6 +477,7 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'sesiones.N',
   'sesiones.N.calendarEventId',
   'sesiones.N.cancelada',
+  'sesiones.N.comisionId',
   'sesiones.N.fin',
   'sesiones.N.id',
   'sesiones.N.inicio',

@@ -794,7 +794,16 @@ describe('textoRedesDeForm — el camino del panel', () => {
   it('una fecha a medio cargar no rompe: lo dice', () => {
     const aMedias = formularioLleno({
       sesiones: [
-        { id: 'ses_1', inicio: '2026-09-03', fin: '', tema: '', lectura: '', cancelada: false, calendarEventId: null },
+        {
+          id: 'ses_1',
+          inicio: '2026-09-03',
+          fin: '',
+          tema: '',
+          lectura: '',
+          cancelada: false,
+          calendarEventId: null,
+          comisionId: null,
+        },
       ],
     });
     const r = textoRedesDeForm(aMedias, 'anuncio', ANTES, LABELS);

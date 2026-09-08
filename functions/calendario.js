@@ -282,9 +282,47 @@ const paraOrdenar = (t) => milisDe(t) ?? 0;
  * Se numera **por fecha y no por posición en el array**: el array puede estar
  * desordenado (el formulario deja mover las filas) y "Encuentro 5" tiene que
  * ser el quinto en el tiempo.
+ *
+ * ── Se cuenta **dentro de la opción** (B-181) ──────────────────────────────
+ * Un club que abre cuatro horarios del mismo ciclo tiene cuatro grupos de filas
+ * que son alternativas excluyentes: quien va los martes cursa cuatro encuentros,
+ * no dieciséis. Así que el "de N" es el de **su** opción, y el primer encuentro
+ * de cada comisión es el "1". Sin comisiones —todas las actividades de hoy— el
+ * grupo es la actividad entera y la cuenta es exactamente la de antes.
  */
-export const numeroDeEncuentro = (actividad, sesion) => {
+/**
+ * **De qué comisión es este encuentro** — B-181. `null` cuando el ciclo no tiene
+ * comisiones, que es el caso de todas las actividades anteriores al campo.
+ *
+ * Resuelve por id contra `actividad.comisiones` y devuelve la comisión entera, no la
+ * etiqueta: quien la necesite para agrupar quiere el id, y quien la necesite para
+ * mostrar quiere el texto. Un `comisionId` que no está en la lista devuelve `null`
+ * —el schema lo prohíbe, pero un documento viejo o editado a mano puede tenerlo—
+ * y eso hace que el encuentro se comporte como si no tuviera comisión, que es el
+ * lado del error que no pierde el evento.
+ */
+export const comisionDe = (actividad, sesion) => {
+  const id = sesion?.comisionId;
+  if (!id) return null;
+  return (actividad?.comisiones ?? []).find((c) => c?.id === id) ?? null;
+};
+
+/** Las sesiones que comparten comisión con esta —todas, si no hay comisiones. */
+const hermanasDeComision = (actividad, sesion) => {
   const sesiones = actividad?.sesiones ?? [];
+  const comision = comisionDe(actividad, sesion);
+  if (!comision) {
+    // Sin comisión, «el ciclo» es la actividad entera. Ojo: cuando la actividad
+    // **sí** tiene comisiones, las sesiones sin `comisionId` caen todas juntas
+    // acá y se numeran entre ellas. El schema no deja publicar eso; el fallback
+    // está para que un documento así siga siendo legible, no para apoyarse en él.
+    return sesiones.filter((s) => !comisionDe(actividad, s));
+  }
+  return sesiones.filter((s) => s?.comisionId === comision.id);
+};
+
+export const numeroDeEncuentro = (actividad, sesion) => {
+  const sesiones = hermanasDeComision(actividad, sesion);
   const ordenadas = [...sesiones].sort((a, b) => paraOrdenar(a?.inicio) - paraOrdenar(b?.inicio));
 
   const i = ordenadas.findIndex((s) => s?.id === sesion?.id);
@@ -321,11 +359,21 @@ export const numeroDeEncuentro = (actividad, sesion) => {
 export const elEventoNumeraElCiclo = (actividad) =>
   actividad?.esCiclo === true && (actividad?.sesiones ?? []).length >= 2;
 
-/** "Encuentro 3 de 8" para la descripción del evento, o `null`. */
+/**
+ * "Encuentro 3 de 8" para la descripción del evento, o `null`.
+ *
+ * **El `total < 2` es por B-181**, y no es la misma condición que
+ * `elEventoNumeraElCiclo`: ésa mira la actividad —¿el dueño dijo que es un
+ * ciclo?— y esto mira el grupo que se está numerando. Con comisiones, un ciclo de
+ * seis encuentros repartidos en tres comisiones de dos está bien numerado, pero
+ * uno de tres comisiones de **una** fecha cada una diría "Encuentro 1 de 1" tres
+ * veces, que es ruido y no información.
+ */
 const posicionEnCiclo = (actividad, sesion) => {
   if (!elEventoNumeraElCiclo(actividad)) return null;
   const numero = numeroDeEncuentro(actividad, sesion);
-  return numero ? `Encuentro ${numero.indice} de ${numero.total}` : null;
+  if (!numero || numero.total < 2) return null;
+  return `Encuentro ${numero.indice} de ${numero.total}`;
 };
 
 /**
@@ -338,8 +386,15 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
 
   // ── Encabezado: qué es y, si es ciclo, qué encuentro ──────────
   const tipo = etiqueta(labels, 'tipo', actividad.tipo);
+  const comision = comisionDe(actividad, sesion);
   const posicion = posicionEnCiclo(actividad, sesion);
-  const encabezado = [tipo, posicion].filter(Boolean).join(' · ');
+  /*
+   * La etiqueta de la opción va **también acá** y no solo en el título (B-181).
+   * No es repetir por repetir: el recordatorio que manda Google Calendar por mail
+   * corta el `summary` y muestra el cuerpo, y "de qué comisión es esto" es
+   * justamente lo que hay que poder leer sin abrir el evento.
+   */
+  const encabezado = [tipo, comision?.etiqueta, posicion].filter(Boolean).join(' · ');
   if (encabezado) bloques.push(encabezado);
 
   if (actividad.descripcion) bloques.push(actividad.descripcion.trim());
@@ -368,6 +423,25 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
   if (sesion.tema) deEsteEncuentro.push(`Tema: ${sesion.tema}`);
   if (sesion.lectura) deEsteEncuentro.push(`Lectura: ${sesion.lectura}`);
   if (deEsteEncuentro.length) bloques.push(deEsteEncuentro.join('\n'));
+
+  // ── Las otras opciones para sumarse (B-181) ───────────────────
+  /*
+   * Decisión del dueño: **el calendario publica las cuatro opciones**, y cada
+   * evento dice de cuál es. Eso resuelve quién ve qué —el que se suscribe al
+   * calendario ve el ciclo entero y elige— pero deja abierto lo contrario: quien
+   * cae en el evento de los martes por un link no tiene cómo saber que existe el
+   * de los jueves. Por eso el evento nombra a las otras.
+   *
+   * Son etiquetas, nunca fechas: la fecha de la otra comisión es la de **sus**
+   * encuentros, y listarlas acá sería copiar la agenda entera adentro de cada uno
+   * de los dieciséis eventos.
+   */
+  const otras = (actividad.comisiones ?? [])
+    .filter((o) => o?.etiqueta && o.id !== comision?.id)
+    .map((o) => `- ${o.etiqueta}`);
+  if (otras.length) {
+    bloques.push(['Otras opciones para el mismo ciclo:', ...otras].join('\n'));
+  }
 
   // ── Dónde ─────────────────────────────────────────────────────
   /*
@@ -537,6 +611,39 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
 };
 
 /**
+ * **El título de un evento del ciclo**: la actividad, su comisión y el tema de
+ * ese encuentro, en ese orden.
+ *
+ * ── La comisión va en el título (B-181) ────────────────────────────────────
+ * Decisión del dueño: «cada evento dice de quién es». Con dieciséis eventos del
+ * mismo club en el calendario, un título repetido dieciséis veces no deja elegir
+ * a qué suscribirse.
+ *
+ * **Sin comisión el título es exactamente el de antes, byte por byte.** Eso es
+ * D-95 otra vez: cambiar la composición para todos reescribiría el `summary` de
+ * cada evento ya publicado —la guarda compara payloads recalculados, así que el
+ * diff los updatearía todos— y a quien los tiene agendados se le renombrarían sin
+ * que nada hubiera cambiado para él.
+ *
+ * Con comisión, el tema se une con ` · ` y no con un segundo ` — `: dos rayas en
+ * el mismo título («Club de Saer — Martes 19 h — Cap. 1-4») no se leen como
+ * jerarquía sino como una lista mal puntuada.
+ *
+ * ── Por qué es una función exportada y no dos líneas inline ────────────────
+ * El mismo título lo arma el `subEvent` del JSON-LD de la página
+ * (`armarJsonLd`, `src/lib/detallePublico.ts`), que trabaja sobre el view-model
+ * y no sobre el documento. Dos composiciones para el mismo texto es la clase de
+ * B-88 —el productor y el consumidor derivando por separado—, y acá se
+ * separarían en silencio: nada falla si el evento dice «— Martes 19 h» y Google
+ * lee «· Martes 19 h». Toma primitivos justamente para que los dos lados puedan
+ * llamarla con lo que tienen.
+ */
+export const tituloDeEvento = (titulo, etiquetaComision, tema) =>
+  etiquetaComision
+    ? `${titulo} — ${etiquetaComision}${tema ? ` · ${tema}` : ''}`
+    : titulo + (tema ? ` — ${tema}` : '');
+
+/**
  * §7.4 — Cuerpo completo del evento.
  *
  * `timeZone` explícito y siempre: es el bug clásico de eventos corridos tres
@@ -546,8 +653,10 @@ export const construirEvento = (actividad, sesion, labels = {}) => {
   const aIso = (t) =>
     (typeof t?.toDate === 'function' ? t.toDate() : new Date(t)).toISOString();
 
+  const comision = comisionDe(actividad, sesion);
+
   return {
-    summary: actividad.titulo + (sesion.tema ? ` — ${sesion.tema}` : ''),
+    summary: tituloDeEvento(actividad.titulo, comision?.etiqueta ?? null, sesion.tema),
     description: construirDescripcion(actividad, sesion, labels),
     location: construirUbicacion(actividad, labels),
     start: { dateTime: aIso(sesion.inicio), timeZone: TIMEZONE },
