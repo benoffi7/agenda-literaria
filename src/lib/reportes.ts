@@ -125,9 +125,9 @@ export const marcarResuelto = async (id: string, valor: boolean): Promise<void> 
  * propósito: el número de issue lo escribe la Function un segundo después de
  * guardar, y así aparece solo sin que nadie recargue.
  *
- * Sin `where` por autor: son dos admins, las reglas ya limitan la lectura a
- * ellos, y filtrar por `reportadoPor.uid` con `orderBy` obligaría a un índice
- * compuesto para nada.
+ * Sin `where` por autor: son cuatro admins (dos hasta el 2026-09-08), las reglas
+ * ya limitan la lectura a ellos, y filtrar por `reportadoPor.uid` con `orderBy`
+ * obligaría a un índice compuesto para nada.
  */
 export const observarReportes = (
   cb: (rs: ReporteConId[]) => void,

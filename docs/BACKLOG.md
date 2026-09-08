@@ -2878,6 +2878,8 @@ dos: **argumentan** sobre dos, y ese argumento cambia con cuatro.
 | `docs/04-funcionalidades.md` (dos veces) | «con dos cuentas "otra cuenta" alcanza» | Es la decisión de **no mostrar quién cargó** una actividad: con dos, «otra cuenta» identifica sin nombrar. Con cuatro no identifica nada — y eso puede ser mejor (menos dato) o peor (menos útil), pero es una decisión que hoy nadie tomó |
 | `docs/03-modelo-de-datos.md` § `aprobada` | «desde que hay dos cuentas con claim `admin` cargando actividades…» | La regla de aprobación por reuso es «**dos cuentas distintas**», que sigue valiendo. Lo que envejeció es el conteo |
 | `docs/06-decisiones.md` § **D-57** —y el mismo párrafo, **palabra por palabra, en `src/lib/analytics.ts`**— | «el conjunto de admins es de dos personas conocidas, así que el hash se revierte probando dos entradas» | Es el **origen** del argumento que repite `07-seguridad.md`: la razón por la que el uid y el mail no salen a la analítica ni hasheados. Con cuatro sigue siendo cierto —cuatro entradas tampoco son un espacio de búsqueda— pero el número está en tres lugares y el razonamiento en uno |
+| `docs/06-decisiones.md`, la decisión de `creadoEn`, **citando a D-57** | «con dos admins conocidos, un hash se revierte probando dos entradas» | **Tercera** copia del mismo argumento, y la encontró el `auditor-documentacion` después de que la tabla ya listaba dos. Mismo tratamiento: se corrige cuando se reescriba el original |
+| `src/lib/reportes.ts` (comentario) | «Sin `where` por autor: son dos admins…» | **Ya corregido a cuatro**, porque acá la conclusión —no filtrar por autor— **no depende** del número: sigue valiendo. Era un conteo, no un argumento |
 | `src/lib/formulario/autoria.ts` (comentario) | «Con dos cuentas —las que hay— "otra cuenta" identifica sola a la otra persona. Con tres deja de alcanzar» | **Ya tiene ítem propio: B-179**, y su disparador era la tercera cuenta. Con la cuarta se cruzó dos veces |
 
 **Lo que esto destapa, y es lo más importante del ítem: dos disparadores que ya
@@ -6903,7 +6905,7 @@ caminos del componente pasan por ahí, así que funciona. El día que alguien
 alimente `mesInicial` con una lista armada de otra forma, la vista abre en un mes
 arbitrario y nadie lo nota. Un `.sort()` lo cierra.
 
-### B-160 · Agregar o borrar una fila de un ciclo publicado reescribe los otros N · P3
+### B-160 · Agregar o borrar una fila de un ciclo publicado reescribe los otros N — ✅ decidido (2026-09-08): se queda con el total · P3
 
 Residual de B-84, y por diseño (D-95): el número del evento es "Encuentro 3 de
 8", así que cambiar el largo del ciclo hace falso el "de 8" de todos los demás y
@@ -6921,9 +6923,9 @@ con uso real, no antes.
 Ojo con el orden: si la fila nueva se intercala **antes** de encuentros que ya
 existen, esos sí cambian de número con cualquier variante. Eso es correcto.
 
-**Sigue abierto, y ahora el costo está medido** (2026-09-02). No se decidió nada
-—el ítem dice "se decide con uso real, no antes" y eso es una decisión del dueño,
-no técnica— pero la tabla de fan-out de B-161 le puso el número: agregar un
+**Así se veía el 2026-09-02, antes de la decisión de abajo:** seguía abierto y sin
+decidir —el ítem dice "se decide con uso real, no antes" y eso es una decisión del
+dueño, no técnica— pero la tabla de fan-out de B-161 ya le había puesto el número: agregar un
 noveno encuentro al final son **1 `crear` + 8 `actualizar`**, y borrar la fila del
 último son **1 `borrar` + 7 `actualizar`**. Hay además un `it` propio que verifica
 que esos ocho `actualizar` dicen "de 9" y que no hay ningún `borrar`. Con la
@@ -6935,7 +6937,27 @@ de texto que esta salida implica reescribe una vez los N eventos de todo ciclo
 publicado, y eso **cierra B-162 de paso** (le corrige el número viejo a los
 ciclos con un encuentro cancelado). El costo asumido compra dos cosas, no una.
 
-### B-162 · Los ciclos ya publicados con un encuentro cancelado se quedan con el número viejo · P3
+---
+
+**Decidido por el dueño el 2026-09-08: «"Encuentro 3 de 8" (con el total; agregar
+o borrar una fila reescribe los N)», y escrito en D-520.** O sea **el total se queda** y el costo se
+paga: no hay código que cambiar, y el ítem cierra con la decisión escrita en vez
+de con un arreglo.
+
+Lo que el dueño está comprando con eso, dicho una vez: **el número dice de cuántos
+encuentros es el ciclo**, que es el dato que le sirve a quien recibe el evento
+—«voy al 3 de 8» ubica; «voy al 3» no—. Y lo que paga es la reescritura: agregar
+un noveno encuentro son 1 `crear` + 8 `actualizar`, y borrar el último 1 `borrar`
++ 7 `actualizar`, medido en la tabla de fan-out de B-161. **Nunca `borrar`+`crear`**,
+así que los recordatorios y las suscripciones de la gente sobreviven — que es la
+parte que de verdad importaba.
+
+**Consecuencia para B-162, y es la que hay que tener presente:** el «camino gratis»
+que ese ítem esperaba —sacar el total reescribía los N eventos y de paso les
+corregía el número viejo— **queda descartado con esta decisión**. Ver su cierre.
+
+
+### B-162 · Los ciclos ya publicados con un encuentro cancelado se quedan con el número viejo — ✅ cerrado (2026-09-08): medido, cero afectados · P3
 
 Consecuencia de D-95 en lo que ya está en el calendario. La guarda del §7.1
 compara el payload de antes contra el de después **calculando los dos con el
@@ -6954,18 +6976,22 @@ Un resync de verdad —leer Calendar y reconciliar— es **B-125**, que necesita
 el panel o un script se pueda autenticar contra la API. Mientras eso no exista,
 esto es texto viejo en eventos ya publicados: molesta, no rompe.
 
-**Queda medido, y sigue abierto** (2026-09-02). Lo que faltaba y ya está es que
+**Así se veía el 2026-09-02, antes del cierre de abajo:** medido y abierto. Lo que
+faltaba y ya estaba es que
 el mecanismo esté escrito en el código y con red: la guarda del §7.1 supone que
 **lo que Calendar tiene es lo que este código habría escrito a partir de
 `antes`**, porque calcula los dos lados con el código de hoy. Esa suposición no
-estaba dicha en ninguna parte, y este ítem es su modo de falla. Seis tests en
-`tests/calendario.test.ts` fijan la cadena entera: que el código de hoy numera
+estaba dicha en ninguna parte, y este ítem es su modo de falla. **Cinco** tests en
+`tests/calendario.test.ts` fijan la cadena entera —decía «seis» y son cinco,
+contados: lo cobró el `auditor-documentacion`—: que el código de hoy numera
 distinto de lo publicado, que re-guardar no emite nada, que tampoco lo hace un
 cambio interno, que un cambio que **sí** sale al evento los pone al día de paso,
 y la propiedad general —mismo payload recalculado ⇒ cero operaciones, por valor y
 no por referencia—.
 
-**El camino gratis, que es el hallazgo que vale:** el día que se acepte la salida
+**El camino gratis que se veía entonces, y que la decisión de B-160 descartó** (se
+deja escrito porque era el hallazgo que valía, y porque su desaparición es la mitad
+del cierre de abajo): el día que se acepte la salida
 de **B-160** —sacar el total de la descripción— ese cambio de texto reescribe los
 N eventos de todo ciclo publicado, y **de paso les corrige el número viejo**. La
 migración que este ítem necesita viene incluida en la decisión del otro. Los dos
@@ -6977,6 +7003,40 @@ repone `null`. Con el id vivo, `planificar` emite un borrado de más en cada
 escritura posterior — la misma advertencia que `tests/fixtures/ciclo.ts` ya tenía
 escrita (B-135), y que el helper local de `calendario.test.ts` no respeta
 (**B-352**).
+
+---
+
+**Cerrado el 2026-09-08, y no por un arreglo: por una medición.**
+
+El dueño decidió en **B-160** quedarse con el total («Encuentro 3 de 8»), así que
+el «camino gratis» que este ítem esperaba —sacar el total reescribía los N eventos
+y de paso les corregía el número— **quedó descartado**. La pregunta pasó a ser
+cuántas actividades tienen hoy el número viejo publicado. La respuesta, contra
+producción:
+
+| | |
+|---|---|
+| Ciclos publicados (2+ encuentros) | **36** |
+| Con algún encuentro cancelado | **0** |
+
+**Cero.** La divergencia que este ítem describe —el calendario diciendo «de 7»
+mientras el panel dice «de 8»— no existe en ninguna actividad publicada. No hay
+nada que migrar, y construir la herramienta para forzar el refresco de cero casos
+habría sido trabajo puro.
+
+**Lo que queda en pie, y es lo que este ítem deja de valor:** el mecanismo está
+escrito y con red. La guarda del §7.1 **supone que lo que Calendar tiene es lo que
+este código habría escrito a partir de `antes`**, porque calcula los dos lados con
+el código de hoy; esa suposición no estaba dicha en ninguna parte y este ítem es su
+modo de falla. Los **cinco** tests de `tests/calendario.test.ts` la fijan.
+
+Así que si mañana se cancela un encuentro de un ciclo publicado, la divergencia
+**nace ahí** y se corrige sola con el próximo cambio que salga al evento —título,
+descripción, sede, tema, lectura—. Un resync de verdad sigue siendo **B-125**.
+
+Se reabre si algún día la cuenta deja de ser cero **y** molesta: el comando para
+medirlo es una query de una línea sobre `/actividades` con
+`where('estado','==','publicado')`, mirando `sesiones[].cancelada`.
 
 ### B-163 · El panel numera encuentros que el evento no numera · ✅ hecho (2026-09-03) · P3
 
@@ -7447,11 +7507,18 @@ Sale con B-70/B-71, cuando `guardar()` deje de vivir dentro del componente.
 > cerrando B-811.
 >
 > No hace falta re-planificarlo: la propuesta de abajo sigue en pie y las dos
-> verificaciones también. **Lo que hay que decidir es la prioridad**, y hay un
-> matiz que juega a favor de esperar: con cuatro cuentas, «otra cuenta» publica
-> *menos* dato sobre quién cargó qué, y el §5.1 mantiene los identificadores
-> afuera de todo lo que se muestre. O sea que la marca perdió utilidad **y**
-> ganó privacidad, y no es obvio que el saldo sea negativo.
+> verificaciones también. **Lo que hay que decidir es la prioridad.**
+>
+> Y una corrección al primer intento de escribir este aviso, porque el
+> razonamiento era malo y lo desarmó el `auditor-documentacion`: decía que con
+> cuatro cuentas la marca «publica menos dato» y por lo tanto **ganó privacidad**,
+> invocando el §5.1. Es un salto de contexto — el §5.1 gobierna qué sale del panel
+> **hacia el público anónimo**, y esta marca es interna entre cuentas que ya pueden
+> leer y escribir todo lo de las demás. No hay nadie de quien protegerse ahí.
+>
+> El umbral que importa es el de **B-28/B-34: la confianza, no la cantidad**. Si
+> las cuatro cuentas son de confianza, la pérdida de identificación es puro costo;
+> si alguna no lo es, lo que hace falta es **más** trazabilidad y no menos.
 
 B-130 marca lo ajeno con «La cargó otra cuenta», que alcanza porque hay **dos**
 cuentas: no ser vos implica ser la otra persona. Con la tercera, la marca dice

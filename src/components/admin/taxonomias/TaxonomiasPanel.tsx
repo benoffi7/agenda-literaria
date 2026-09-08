@@ -180,7 +180,7 @@ export function TaxonomiasPanel() {
                 <span
                   className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/60"
                   /*
-                    **«dos cuentas distintas» y no «las dos»** — B-810. El rótulo se
+                    **«dos cuentas distintas» y no «las dos»** — B-811. El rótulo se
                     escribió cuando había exactamente dos admins; desde el
                     2026-09-08 hay cuatro, y «las dos» dejó de nombrar a nadie en
                     particular. La regla no cambió —la escribieron **dos cuentas

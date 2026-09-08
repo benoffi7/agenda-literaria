@@ -711,6 +711,15 @@ el mismo día. El detalle de cada una está en el commit `861f0fd`; en una líne
 
 El hallazgo más grande del día no es de código: eran **33 worktrees** en
 `.claude/worktrees/` de los que nadie sabía qué contenían, con un frente que
-había quedado con 14 archivos sin commitear. Tiene su propio archivo, porque es
-temporal y se borra cuando quede vacío:
-[`17-worktrees-pendientes.md`](17-worktrees-pendientes.md).
+había quedado con 14 archivos sin commitear.
+
+**Cerrado el 2026-09-08: quedan cero.** Tuvo su propio archivo
+(`17-worktrees-pendientes.md`), que era temporal y decía «se borra cuando la tabla
+quede vacía» — así que se borró, y el rastro quedó en el CHANGELOG. El inventario
+sirvió para lo que existía: de los 33 no había **ninguno** con commits fuera de
+`main`, y el único con trabajo de verdad se rescató en `71f34d0`, cuyo contenido
+después entró a `main` por su propio frente.
+
+Lo que queda son **16 ramas** `worktree-agent-*` sin working copy: son refs
+baratas, todas con su tip ya en `main` salvo la del rescate. Borrarlas es una línea
+y no urge.

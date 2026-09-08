@@ -1995,7 +1995,8 @@ canceló. La alternativa lo borra de la historia y le renombra el resto.
 ciclo publicado cambia el largo del ciclo, así que el "de N" de los demás pasa a
 ser falso y se actualizan (nunca se borran ni se recrean). Ahí el conjunto de
 encuentros cambió de verdad; en una cancelación no. Queda anotado como **B-160**
-por si el costo molesta en la práctica.
+por si el costo molesta en la práctica — **y se resolvió el 2026-09-08 a favor de
+dejarlo así: ver [D-520](#d-520--el-número-del-encuentro-se-queda-con-el-total-aun-a-costa-de-reescribir-el-ciclo).**
 
 
 ---
@@ -8612,3 +8613,45 @@ SHA, que es más preciso y no requiere una escritura.
 
 Si algún día se quiere que el número también se mueva solo, la línea a cambiar está
 en el job `etiquetar` y esta entrada es contra qué leerla.
+
+## D-520 · El número del encuentro se queda con el total, aun a costa de reescribir el ciclo
+
+**Fecha:** 2026-09-08 · **Ítem:** B-160 (y cierra B-162 por otro camino) · **Continúa:** [D-95](#d-95--el-número-del-encuentro-cuenta-también-los-cancelados)
+
+**Contexto.** D-95 decidió que el número cuenta también los cancelados, y dejó
+explícitamente abierta la otra mitad: qué hacer cuando se **agrega o se borra** una
+fila de un ciclo publicado, que sí cambia el largo del ciclo y vuelve falso el «de
+N» de todos los demás. Quedó anotado como **B-160** con una instrucción clara: «se
+decide con uso real, no antes» — o sea que no era una decisión técnica.
+
+**Quién lo pidió y con qué palabras.** El dueño, el 2026-09-08: «"Encuentro 3 de 8"
+(con el total; agregar o borrar una fila reescribe los N)».
+
+### La decisión
+
+**El total se queda.** «Encuentro 3 de 8», no «Encuentro 3». Agregar o borrar una
+fila de un ciclo publicado sigue reescribiendo los otros N eventos.
+
+**Lo que compra:** el número no es un contador en vivo, es la **identidad del
+encuentro dentro del ciclo** —el mismo argumento de D-95— y el total dice de
+cuántos encuentros es el ciclo. Es el dato que ubica a quien recibe el evento en su
+calendario: «voy al 3 de 8» dice algo que «voy al 3» no dice.
+
+**Lo que paga, con número medido** (la tabla de fan-out de B-161): agregar un noveno
+encuentro son **1 `crear` + 8 `actualizar`**; borrar el último, **1 `borrar` + 7
+`actualizar`**. Y lo que **no** paga, que es lo que de verdad importaba: **nunca
+`borrar`+`crear`**, así que los recordatorios que la gente puso y sus suscripciones
+sobreviven a la reescritura.
+
+### La consecuencia que hay que tener presente
+
+B-162 —los ciclos ya publicados con un encuentro cancelado se quedan con el número
+viejo en el calendario— esperaba **la decisión contraria**: sacar el total habría
+reescrito los N eventos de todo ciclo publicado y, de paso, les habría corregido el
+número. Ese «camino gratis» **queda descartado** por esta decisión.
+
+B-162 se cerró igual, y por otro camino: **medición**. Contra producción, el
+2026-09-08, **cero de 36 ciclos publicados** tienen un encuentro cancelado, así que
+la divergencia que describía no existe en ninguna actividad. Si mañana nace, se
+corrige sola con el próximo cambio que salga al evento; un resync de verdad sigue
+siendo **B-125**.

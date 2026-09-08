@@ -22,6 +22,21 @@
   rótulo y los dos valores. Un chequeo que da verde con el bug puesto es peor que
   no tenerlo.
 
+- **La numeración del evento se queda con el total, y su ítem hermano cerró con
+  una medición** — **B-160**, **B-162**. El dueño eligió «Encuentro 3 de 8»: el
+  número dice de cuántos es el ciclo, que es el dato que ubica a quien recibe el
+  evento, y se paga la reescritura de los N cuando se agrega o se borra una fila
+  (1 `crear` + 8 `actualizar` para un noveno encuentro, medido en B-161). Nunca
+  `borrar`+`crear`, así que los recordatorios de la gente sobreviven. Quedó escrita
+  como **D-520**, con el aviso correspondiente en D-95.
+
+  Eso descartó el «camino gratis» que B-162 esperaba, así que la pregunta pasó a
+  ser cuántas actividades tienen hoy el número viejo publicado. **Medido contra
+  producción: cero, sobre 36 ciclos publicados.** Ninguno tiene un encuentro
+  cancelado, así que la divergencia no existe y no hay nada que migrar —
+  construir la herramienta para refrescar cero casos habría sido trabajo puro. El
+  mecanismo queda escrito y con red por si mañana nace.
+
 - **Los conteos que la cuarta cuenta volvió falsos, y dos disparadores que ya
   pasaron** — el cierre de **B-811** después del `auditor-documentacion`.
   `02-infraestructura.md` decía «**Son dos**» de las cuentas admin,
@@ -38,14 +53,30 @@
   De paso, mi propia contradicción en el commit anterior: el docblock del script
   decía «el único de los **tres**» y son **siete** los que deciden entre entornos.
 
-- **Once worktrees menos.** Quedaban 16 en `.claude/worktrees/` de las tandas de
-  frentes en paralelo: se borraron los **diez** que estaban limpios, sin lock y sin
-  nada fuera de `main`, más el del **rescate** —cuyo commit `71f34d0` sigue
-  alcanzable por su rama, y cuyo contenido ya está en `main` (verificado sobre el
-  caso que agregaba a `tests/imagenes.test.ts`)—. Los **cinco `locked` no se
-  tocaron**: un lock es una declaración de «esto no se toca» y desde afuera no se
-  distingue el de un frente vivo del que quedó colgado. `17-worktrees-pendientes.md`
-  quedó actualizado.
+- **Cero worktrees**, y el archivo que los inventariaba se borró. Quedaban **16**
+  en `.claude/worktrees/` de las tandas de frentes en paralelo; hoy queda solo
+  `main`.
+
+  Se borraron en dos pasos y el segundo salió de una corrección del
+  `auditor-documentacion`: **el primero dio por locked a cinco que no lo estaban**.
+  La lectura de `git worktree list` me hizo creer que había cinco bloqueados —los
+  dejé sin tocar, que es la política— y el auditor lo verificó contra
+  `--porcelain`: ninguno tenía lock, y los cinco que la tabla del archivo nombraba
+  como locked **ya no existían** desde antes de hoy. Los cinco que sí estaban eran
+  de tandas posteriores, sin inventariar. Verificado de las dos formas —el
+  porcelain y los archivos `locked` del `.git`— los cinco estaban limpios: nada
+  fuera de `main` y, en el único con archivos sin commitear, solo `node_modules`.
+  Se sacaron esas dependencias y se removieron **sin `--force`**, que es la regla
+  que existe para no perder trabajo.
+
+  El del **rescate** también se fue, y su rama quedó: `71f34d0` sigue alcanzable, y
+  de todas formas su contenido ya está en `main` (verificado sobre el caso que ese
+  commit agregaba a `tests/imagenes.test.ts`).
+
+  Con la tabla vacía, `17-worktrees-pendientes.md` **se borró — lo dice el propio
+  archivo**: «cuando la tabla quede vacía, este archivo se borra». Lo que queda son
+  16 ramas `worktree-agent-*` sin working copy: refs baratas, todas con su tip en
+  `main` salvo la del rescate.
 
 - **Cuatro cuentas con `admin`, y un rótulo que decía «las dos»** — **B-811**. Se
   agregó una cuarta cuenta al panel, y la pantalla de taxonomías decía «la usaron

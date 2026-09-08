@@ -301,7 +301,7 @@ export const renombrarOpcion = async (
   const nuevo = etiquetaPresentable(label);
   if (!nuevo) throw new Error('La etiqueta no puede quedar vacía.');
   // B-29 — renombrarla **es** mirarla: corregir el texto de una etiqueta es
-  // exactamente la revisión que la marca «la usaron las dos cuentas» pide, así
+  // exactamente la revisión que la marca «la usaron dos cuentas» pide, así
   // que dejarla puesta después sería que la marca dejara de significar algo.
   await editarValor(campo, slug, (v) => ({ ...v, label: nuevo, aprobadaPorReuso: false }));
   return nuevo;
