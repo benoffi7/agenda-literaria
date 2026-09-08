@@ -48,6 +48,17 @@
   que hace. Un archivo con el nombre de un mecanismo que ya no existe miente igual
   que un párrafo.
 
+  **Dos bugs propios que el cierre encontró, y los dos son de la misma clase:**
+  un número o un nombre que sobrevive a lo que describía. El `description` del
+  skill nuevo tenía un `": "` sin comillas —YAML inválido, que hace que el skill
+  se ignore **entero y sin error visible**, la trampa 11 con otra cara— y el
+  contador del gate siguió imprimiendo `[n/7]` con seis pasos. El primero lo
+  agarró el pre-push (tarde: `agentes-y-skills.test.ts` enumera con `git
+  ls-files`, así que una definición untracked queda fuera del barrido justo
+  cuando nunca fue validada — **B-826**); el segundo se vio en la salida del push
+  y ahora lo fija `guardas-de-los-scripts.test.ts`, comparando el total escrito a
+  mano contra las invocaciones de `paso`, con la mutación probada.
+
   Cerró **B-825** sin efecto: se abrió y se murió el mismo día, porque su causa
   era el sello. Y quedó dicho en D-560 que **D-350 nunca se escribió** — la
   decisión que esto revierte se citaba por un número que no tiene entrada, y

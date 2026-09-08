@@ -240,3 +240,48 @@ describe('todo script que puede tocar producción dice contra qué está apuntan
     expect(src, 'no nombra el primer login').toMatch(/PRIMER LOGIN|primer login/);
   });
 });
+
+describe('el gate de pre-push cuenta bien sus pasos — D-560', () => {
+  /*
+   * **Un contador hardcodeado contra una lista que cambia.** El helper `paso()`
+   * de `verificar-todo.sh` imprime `[n/TOTAL]` con el TOTAL escrito a mano, y los
+   * pasos son las llamadas a `paso`. Sacar uno —lo que hizo D-560 con el séptimo,
+   * el que exigía los auditores— deja el total viejo, y el gate termina diciendo
+   * «[6/7] pasaron» con seis pasos de seis. Es cosmético, pero es la clase de
+   * mentira que este repo persigue en la doc: un número que afirma algo que ya no
+   * es cierto, y que nadie va a mirar de nuevo.
+   *
+   * Pasó tal cual: el `[6/7]` sobrevivió al borrado del paso 7 y se vio recién en
+   * la salida del push.
+   */
+  const gate = (): string => readFileSync(raiz('scripts/verificar-todo.sh'), 'utf8');
+
+  it('el total que imprime es la cantidad de pasos que corre', () => {
+    const src = gate();
+
+    const total = /\[%d\/(\d+)\]/.exec(src)?.[1];
+    expect(total, 'no se encontró el contador `[%d/N]` en el helper `paso()`').toBeDefined();
+
+    /*
+     * Se cuentan las **invocaciones**, salteando la definición del helper. Sobre
+     * el fuente sin comentarios, porque un `paso 'algo'` nombrado dentro de un
+     * docblock explicativo no es un paso que corra — es justo lo que
+     * `sin-comentarios.mjs` está para distinguir.
+     */
+    const invocaciones = [...sinComentarios(src).matchAll(/(?:^|;|\s)paso '/g)].length;
+
+    // Control positivo: si el regex dejara de encontrar las invocaciones, la
+    // comparación de abajo pasaría contra un cero y no verificaría nada.
+    expect(invocaciones).toBeGreaterThanOrEqual(5);
+    expect(Number(total), `el helper dice /${total} y hay ${invocaciones} pasos`).toBe(
+      invocaciones,
+    );
+  });
+
+  it('y no volvió a exigir los auditores, que es lo que se sacó', () => {
+    // La otra mitad de D-560, del lado del script. `red-de-contencion.test.ts`
+    // lo afirma también; acá vale porque este archivo es el que mira los scripts,
+    // y el que alguien va a leer si toca `verificar-todo.sh`.
+    expect(gate()).not.toContain('hook-auditores');
+  });
+});

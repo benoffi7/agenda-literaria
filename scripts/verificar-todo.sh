@@ -27,7 +27,7 @@ cd "$(git rev-parse --show-toplevel)"
 PASO=0
 paso() {
   PASO=$((PASO + 1))
-  printf '\n\033[1m[%d/7] %s\033[0m\n' "$PASO" "$1"
+  printf '\n\033[1m[%d/6] %s\033[0m\n' "$PASO" "$1"
 }
 
 fallo() {
