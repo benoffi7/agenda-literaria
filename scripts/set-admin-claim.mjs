@@ -32,8 +32,11 @@ initializeApp(enEmulador ? { projectId } : { credential: credencial(), projectId
  * **El objetivo, dicho antes de escribir** — B-810.
  *
  * `docs/08-operacion.md` ya afirmaba que este script «anuncia el objetivo
- * (EMULADOR o PRODUCCIÓN) antes de escribir», y era el único de los tres que
- * **no lo hacía** (`aprobar-opciones.mjs` e `instagrams-de-la-base.mjs` sí).
+ * (EMULADOR o PRODUCCIÓN) antes de escribir», y era el único de los **siete** que
+ * deciden entre los dos entornos que **no lo hacía** — la lista la deriva
+ * `tests/guardas-de-los-scripts.test.ts`, y decía «tres» acá porque el borrador de
+ * este comentario se escribió antes de contarlos (lo cobró el
+ * `auditor-documentacion`).
  *
  * No es cosmética: los dos comandos existen justamente para no darle admin a una
  * cuenta real creyendo estar en local, y el que se equivoca de comando no tiene

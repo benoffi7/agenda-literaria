@@ -65,6 +65,16 @@ Leelos: esto es el mapa de dónde vive cada una y **dónde los tests no miran**.
   equivocado, en las dos direcciones (`seed-emulador` aborta si el host no es
   local; `preparar-produccion` aborta si ve variables de emulador).
 
+  **Dos mitades de esto ya tienen red y no hace falta que las reportes**
+  (`tests/guardas-de-los-scripts.test.ts`): que todo script con `--aplicar` exija
+  `--produccion` fuera del emulador (**B-630**), y que todo script que **decide**
+  entre emulador y producción lo **anuncie** antes de escribir (**B-810**). Las dos
+  se derivan de `scripts/` y no de una lista, así que el script nuevo entra solo.
+
+  Lo que sí te toca: la **idempotencia** —correrlo dos veces— que ningún test mide,
+  y el script que decida el entorno con otro nombre de variable o en `.sh`, que el
+  detector no ve.
+
 ## Las clases de bug con red, y qué te toca a vos
 
 `tests/clases-de-bug.test.ts` y `tests/invariantes-de-ciclo.test.ts` ya no

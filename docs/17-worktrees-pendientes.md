@@ -138,6 +138,24 @@ fuera de `main`, y no `locked`.
 | Borrados | **25** |
 | Quedan | **8** |
 
+> **Actualizado el 2026-09-08: quedan cinco, y son los cinco `locked`.** Entre el
+> 3 y el 8 de septiembre las tandas siguientes volvieron a dejar worktrees (había
+> **16** esta mañana). Se borraron **once**: los diez que estaban limpios, sin
+> lock y sin nada fuera de `main`, más el del rescate.
+>
+> **El del rescate (`agent-afaf97df7fb65b51f`) se borró y su rama quedó.** El
+> commit `71f34d0` sigue alcanzable por `worktree-agent-afaf97df7fb65b51f`, así que
+> no se perdió nada — y de todas formas su contenido **ya está en `main`**:
+> verificado sobre el caso que ese commit agregaba, «confirmada en el set: devuelve
+> la misma URL que `urlDeMiniatura`», que hoy está en `tests/imagenes.test.ts`. El
+> frente de D-210/B-320 lo reimplementó.
+>
+> **Ninguno de los cinco `locked` se tocó**, y el motivo es el mismo de abajo: un
+> lock es una declaración explícita de «esto no se toca» y desde afuera no se
+> distingue el de un frente vivo del que quedó colgado. Uno de los cinco tiene
+> además el árbol sucio. Los comandos para desbloquearlos y borrarlos están al pie
+> de este archivo, uno por línea, y siguen esperando la confirmación del dueño.
+
 Los 8 que quedan, con el motivo:
 
 | Worktree | Motivo de que quede |

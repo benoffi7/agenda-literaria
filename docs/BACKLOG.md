@@ -2877,6 +2877,21 @@ dos: **argumentan** sobre dos, y ese argumento cambia con cuatro.
 | `docs/07-seguridad.md` § analítica | «con dos admins conocidos, un hash del mail se…» | Es un argumento de **privacidad**: con dos, un hash es reversible por enumeración. Con cuatro sigue siéndolo, pero el razonamiento hay que rehacerlo, no reetiquetarlo |
 | `docs/04-funcionalidades.md` (dos veces) | «con dos cuentas "otra cuenta" alcanza» | Es la decisión de **no mostrar quién cargó** una actividad: con dos, «otra cuenta» identifica sin nombrar. Con cuatro no identifica nada — y eso puede ser mejor (menos dato) o peor (menos útil), pero es una decisión que hoy nadie tomó |
 | `docs/03-modelo-de-datos.md` § `aprobada` | «desde que hay dos cuentas con claim `admin` cargando actividades…» | La regla de aprobación por reuso es «**dos cuentas distintas**», que sigue valiendo. Lo que envejeció es el conteo |
+| `docs/06-decisiones.md` § **D-57** —y el mismo párrafo, **palabra por palabra, en `src/lib/analytics.ts`**— | «el conjunto de admins es de dos personas conocidas, así que el hash se revierte probando dos entradas» | Es el **origen** del argumento que repite `07-seguridad.md`: la razón por la que el uid y el mail no salen a la analítica ni hasheados. Con cuatro sigue siendo cierto —cuatro entradas tampoco son un espacio de búsqueda— pero el número está en tres lugares y el razonamiento en uno |
+| `src/lib/formulario/autoria.ts` (comentario) | «Con dos cuentas —las que hay— "otra cuenta" identifica sola a la otra persona. Con tres deja de alcanzar» | **Ya tiene ítem propio: B-179**, y su disparador era la tercera cuenta. Con la cuarta se cruzó dos veces |
+
+**Lo que esto destapa, y es lo más importante del ítem: dos disparadores que ya
+pasaron.**
+
+- **B-179** («con la tercera cuenta la marca de autoría deja de identificar a
+  nadie») esperaba exactamente este escenario. No lo reemplaza este ítem: B-179 ya
+  tiene la propuesta escrita y las dos verificaciones a hacer antes. Lo que
+  corresponde es **revisar su prioridad ahora que el escenario existe**.
+- **B-28 y B-34**, los dos cerrados «✅ decidido: no se hace», dicen casi textual:
+  «vuelve cuando entre una tercera cuenta **que no sea de confianza**». La cuarta
+  cuenta ya entró, y si es de entera confianza del dueño el descarte sigue en pie;
+  si no, los dos ítems vuelven. **Es una pregunta para el dueño y no algo que se
+  pueda verificar desde el código.**
 
 **Lo que sí se arregló ya**, porque era un texto visible y falso: el rótulo de la
 pantalla de taxonomías decía «la usaron **las** dos cuentas» y hoy dice «la usaron
@@ -7424,6 +7439,19 @@ el orden importa:
 Sale con B-70/B-71, cuando `guardar()` deje de vivir dentro del componente.
 
 ### B-179 · Con tres admins, «otra cuenta» deja de identificar a nadie · P2
+
+> ⚠️ **El disparador de este ítem ya pasó, y dos veces.** Desde el **2026-09-08**
+> hay **cuatro** cuentas con claim `admin` (eran dos hasta esa mañana), así que la
+> marca «La cargó otra cuenta» ya está diciendo «no fuiste vos» y nada más — que es
+> exactamente lo que este ítem esperaba. Lo encontró el `auditor-documentacion`
+> cerrando B-811.
+>
+> No hace falta re-planificarlo: la propuesta de abajo sigue en pie y las dos
+> verificaciones también. **Lo que hay que decidir es la prioridad**, y hay un
+> matiz que juega a favor de esperar: con cuatro cuentas, «otra cuenta» publica
+> *menos* dato sobre quién cargó qué, y el §5.1 mantiene los identificadores
+> afuera de todo lo que se muestre. O sea que la marca perdió utilidad **y**
+> ganó privacidad, y no es obvio que el saldo sea negativo.
 
 B-130 marca lo ajeno con «La cargó otra cuenta», que alcanza porque hay **dos**
 cuentas: no ser vos implica ser la otra persona. Con la tercera, la marca dice

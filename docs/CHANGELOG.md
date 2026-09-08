@@ -22,6 +22,31 @@
   rótulo y los dos valores. Un chequeo que da verde con el bug puesto es peor que
   no tenerlo.
 
+- **Los conteos que la cuarta cuenta volvió falsos, y dos disparadores que ya
+  pasaron** — el cierre de **B-811** después del `auditor-documentacion`.
+  `02-infraestructura.md` decía «**Son dos**» de las cuentas admin,
+  `04-funcionalidades.md` citaba el rótulo viejo y `10-salud-del-codigo.md` decía
+  «dos personas cargando» — los tres corregidos.
+
+  Y lo que destapó: **B-179** («con la tercera cuenta, "otra cuenta" deja de
+  identificar a nadie») esperaba exactamente este escenario, y su disparador ya se
+  cruzó dos veces; queda con un aviso y la prioridad para revisar. **B-28 y B-34**,
+  cerrados «no se hace», decían «vuelve cuando entre una tercera cuenta **que no
+  sea de confianza**»: eso es una pregunta para el dueño y no algo verificable
+  desde el código.
+
+  De paso, mi propia contradicción en el commit anterior: el docblock del script
+  decía «el único de los **tres**» y son **siete** los que deciden entre entornos.
+
+- **Once worktrees menos.** Quedaban 16 en `.claude/worktrees/` de las tandas de
+  frentes en paralelo: se borraron los **diez** que estaban limpios, sin lock y sin
+  nada fuera de `main`, más el del **rescate** —cuyo commit `71f34d0` sigue
+  alcanzable por su rama, y cuyo contenido ya está en `main` (verificado sobre el
+  caso que agregaba a `tests/imagenes.test.ts`)—. Los **cinco `locked` no se
+  tocaron**: un lock es una declaración de «esto no se toca» y desde afuera no se
+  distingue el de un frente vivo del que quedó colgado. `17-worktrees-pendientes.md`
+  quedó actualizado.
+
 - **Cuatro cuentas con `admin`, y un rótulo que decía «las dos»** — **B-811**. Se
   agregó una cuarta cuenta al panel, y la pantalla de taxonomías decía «la usaron
   **las** dos cuentas» sobre una etiqueta aprobada por reuso. La regla no cambió

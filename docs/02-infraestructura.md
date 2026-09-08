@@ -114,7 +114,9 @@ client. No es automatizable con las credenciales del proyecto.
 
 ### Cuentas con claim `admin`
 
-**Son dos.** Los mails y los uids no se listan acá: este repo es público (§5.1,
+**Son cuatro** desde el 2026-09-08 — eran dos hasta esa fecha, y varios argumentos
+del repo todavía razonan sobre dos: está anotado en **B-811**. Los mails y los uids
+no se listan acá: este repo es público (§5.1,
 D-57 — uid y mail de admin no salen ni crudos ni hasheados, y esta tabla los
 publicaba mapeados uno contra otro, con el cartel de que son exactamente las
 cuentas que pueden escribir todo). Para verlas:

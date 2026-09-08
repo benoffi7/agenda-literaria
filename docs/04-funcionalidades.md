@@ -524,7 +524,7 @@ usan y ninguna la ve en su desplegable—. No se aprueba sola si no se sabe de q
 era (los documentos anteriores a que existiera la huella) ni si la reusa quien la
 creó: la señal es *dos personas*, no *dos veces*.
 
-Queda **marcada** «la usaron las dos cuentas» en la pantalla de taxonomías, y eso
+Queda **marcada** «la usaron dos cuentas» en la pantalla de taxonomías, y eso
 es lo que hace que aprobar sin revisión sea seguro: el contra —que las dos repitan
 el mismo error de tipeo— se corrige renombrando o borrando, como cualquier otra. La
 marca se limpia sola al renombrarla, y hay un botón **«Ya la miré»** para

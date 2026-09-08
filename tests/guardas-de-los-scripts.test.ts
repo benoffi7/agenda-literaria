@@ -149,7 +149,7 @@ describe('las guardas de los scripts que escriben — B-630', () => {
 
 describe('todo script que puede tocar producción dice contra qué está apuntando — B-810', () => {
   /**
-   * **La doc lo afirmaba y uno de los tres no lo hacía.**
+   * **La doc lo afirmaba y uno de los siete no lo hacía.**
    * `docs/08-operacion.md` dice que estos scripts «anuncian el objetivo (EMULADOR
    * o PRODUCCIÓN) antes de escribir», y `set-admin-claim.mjs` era el que no —
    * justamente el que le da permiso de escritura a una cuenta real.

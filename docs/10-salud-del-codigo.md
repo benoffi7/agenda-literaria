@@ -564,7 +564,7 @@ Estas cosas parecen problemas si se las mira solo con métricas.
 | **~~`toPublic.ts` con fan-in de producción 0~~ — ya no aplica** | Era cierto hasta `1.4.0`: la medición lo marcaba y la respuesta era «es la pieza del sitio público, que todavía no existe». **B-106 lo estrenó**: hoy lo importan `src/lib/eventsJson.ts` y `src/pages/events.json.ts` en producción. Se deja la fila tachada y no borrada porque el falso positivo va a volver con cada proyección nueva que nazca antes que su consumidor — le pasó a `eventsJson.ts` en el mismo commit (B-218). | B-01, B-106, B-218 |
 | **La tabla de privacidad del posteo, que vive en el docblock de `textoRedes.ts` y no en `07-seguridad.md`** | Es la autoritativa y se apunta a ella. Dos copias de una tabla de privacidad es el problema que D-20 evita en otro lado, y la copia que envejece siempre es la del documento. | §5.1 |
 | **`src/lib/` plano** | Cero ciclos y los módulos más importados son hojas. La excepción es `src/lib/formulario/`, que existe porque los módulos que salieron del `.tsx` son un grupo con sentido. | §1.4 |
-| **Algolia / Typesense, microservicios, librería de formularios, state manager** | Evaluados y descartados. Son dos personas cargando actividades literarias. | §2.5, D-01 |
+| **Algolia / Typesense, microservicios, librería de formularios, state manager** | Evaluados y descartados. Son cuatro cuentas cargando actividades literarias (dos hasta el 2026-09-08) — el argumento no depende del número exacto sino del orden de magnitud, y sigue siendo el mismo. | §2.5, D-01 |
 
 ---
 

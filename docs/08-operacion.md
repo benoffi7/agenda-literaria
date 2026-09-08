@@ -168,9 +168,11 @@ documentos quedan acotados a esa base. Lo que hay que saber para operar:
   la corrida sin la bandera no prueba nada.
 
 `admin:claim` apunta al emulador por defecto; `admin:claim:prod` es un script
-aparte para que nadie le dé admin a una cuenta real creyendo estar en local.
-`opciones:aprobar` sigue la misma convención, y además el script anuncia el
-objetivo (EMULADOR o PRODUCCIÓN) antes de escribir.
+aparte para que nadie le dé admin a una cuenta real creyendo estar en local, y
+**desde B-810 anuncia el objetivo (EMULADOR o PRODUCCIÓN) antes de escribir** —
+hasta entonces era el único de los siete que deciden entre los dos entornos que no
+lo hacía, justo el que reparte permisos—. `opciones:aprobar` sigue la misma
+convención y ya lo anunciaba.
 
 ### Dar permiso de admin a una cuenta (producción)
 
