@@ -2829,6 +2829,83 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
+### B-810 · `admin:claim` apuntaba al emulador y el error no lo decía — ✅ hecho (2026-09-08) · P2
+
+**Lo encontró el dueño de la forma más cara.** Corrió
+`npm run admin:claim -- <uid>` contra una cuenta que existe en **producción** y lo
+único que vio fue el error crudo del SDK —«There is no user record corresponding to
+the provided identifier»— con veinte líneas de stack.
+
+El diseño estaba bien y documentado: hay **dos** comandos a propósito
+(`admin:claim` → emulador, `admin:claim:prod` → producción) justamente «para que
+nadie le dé admin a una cuenta real creyendo estar en local», y
+`docs/08-operacion.md` ya explicaba el orden contraintuitivo (con Google el usuario
+**nace en el primer login**, así que primero entra y después se le da el claim).
+
+**Lo que faltaba era la señal.** Dos cosas, y las dos estaban afirmadas en la doc
+sin ser ciertas:
+
+1. `08-operacion.md` decía que estos scripts «anuncian el objetivo (EMULADOR o
+   PRODUCCIÓN) antes de escribir», y `set-admin-claim.mjs` era **el único de los
+   siete que no lo hacía** — justo el que reparte permiso de escritura;
+2. el `user-not-found` no explicaba **ninguna** de sus dos causas reales.
+
+Hoy anuncia el objetivo y el error dice las dos causas en el orden en que conviene
+revisarlas: el comando equivocado (con el comando correcto ya escrito, listo para
+copiar) y la cuenta que todavía no existe.
+
+**El chequeo de clase costó dos mutaciones**, y las dos son la misma lección: la
+primera versión buscaba las palabras «EMULADOR» y «PRODUCCIÓN» en el archivo y
+**pasaba con el anuncio borrado**, porque las nombra el docblock; la segunda las
+buscaba en el código y seguía pasando, porque las nombra el mensaje de error. Lo que
+se exige ahora es la **forma** que los siete comparten: un `console.log` con el
+rótulo (`Objetivo:` o `Firestore:`) y los dos valores al lado. Un chequeo que da
+verde con el bug puesto es peor que no tenerlo.
+
+De paso, el detector se afinó: buscar la variable de entorno agarraba tres scripts
+que **no deciden nada** —corren contra un solo lado y se niegan a arrancar si falta—
+y pedirles el anuncio habría sido ruido. El detector es `enEmulador`, que es la
+variable con la que los siete lo deciden.
+
+### B-811 · La doc razona sobre «dos cuentas admin» y desde hoy son cuatro · P2
+
+**Encontrado al agregar la cuarta** (2026-09-08). Varios lugares no solo *dicen*
+dos: **argumentan** sobre dos, y ese argumento cambia con cuatro.
+
+| Dónde | Qué afirma | Por qué importa |
+|---|---|---|
+| `docs/07-seguridad.md` § analítica | «con dos admins conocidos, un hash del mail se…» | Es un argumento de **privacidad**: con dos, un hash es reversible por enumeración. Con cuatro sigue siéndolo, pero el razonamiento hay que rehacerlo, no reetiquetarlo |
+| `docs/04-funcionalidades.md` (dos veces) | «con dos cuentas "otra cuenta" alcanza» | Es la decisión de **no mostrar quién cargó** una actividad: con dos, «otra cuenta» identifica sin nombrar. Con cuatro no identifica nada — y eso puede ser mejor (menos dato) o peor (menos útil), pero es una decisión que hoy nadie tomó |
+| `docs/03-modelo-de-datos.md` § `aprobada` | «desde que hay dos cuentas con claim `admin` cargando actividades…» | La regla de aprobación por reuso es «**dos cuentas distintas**», que sigue valiendo. Lo que envejeció es el conteo |
+
+**Lo que sí se arregló ya**, porque era un texto visible y falso: el rótulo de la
+pantalla de taxonomías decía «la usaron **las** dos cuentas» y hoy dice «la usaron
+dos cuentas» —la regla es dos cuentas **distintas**, cualesquiera— y lo mismo en la
+guía del panel. Las entradas de novedades que citan el rótulo viejo **no se
+reescriben**: son historial, y el `id` es la marca de «hasta acá leí» de cada
+navegador.
+
+Esto queda como ítem y no como arreglo porque las tres filas de arriba piden
+**decidir**, no reemplazar un número: sobre todo la segunda, que es una decisión de
+producto sobre qué se muestra de la autoría.
+
+
+### B-808 · `D-350` está citada en cuatro lugares y nunca se escribió como entrada · P2
+
+**Lo encontró el `auditor-documentacion`** cerrando B-805, corriendo
+`scripts/decisiones-referenciadas.mjs`. `docs/13-agentes.md` y `docs/BACKLOG.md`
+citan **D-350** —el disparo automático del `auditor-privacidad`, decidido el
+2026-09-03— y `docs/06-decisiones.md` no tiene ninguna entrada `## D-350`.
+
+El razonamiento **existe**, pero en prosa adentro de B-124: o sea que la cita manda
+a un lugar que no está y el motivo vive en otro. Las dos salidas son válidas y hay
+que elegir una: escribir la entrada `D-350` con lo que ya está argumentado en B-124,
+o corregir las cuatro citas para que apunten a donde el razonamiento vive de verdad.
+
+Es P2 y no P3 porque una decisión citada que no existe es exactamente lo que hace
+que la próxima persona la reinvente distinta.
+
+
 ### B-805 · «No se pueden subir imágenes» — el error que ya se había arreglado y volvía — ✅ hecho (2026-09-07) · P1
 
 **Reporte del dueño, dos veces.** El texto exacto: «me siguen diciendo que no se
@@ -2908,6 +2985,18 @@ la parte del reporte que no se veía mirando el código de la subida.
   **el deploy que muestra el mensaje puede ser el que borró el borrador**. Ese par
   está atado por un test: subir la versión sin revisar la frase queda en rojo. Las
   dos cosas las encontró el `auditor-privacidad`.
+
+  **Y el mismo agujero reapareció en el componente gemelo**, que lo encontró el
+  `auditor-documentacion` en la pasada de sello: el editor de imágenes chequeaba el
+  almacén antes de prometer y **el aviso de versión nueva lo prometía siempre** — en
+  el peor momento posible, porque ese aviso aparece justamente cuando hay un
+  formulario con cambios sin guardar. Arreglado, y con un chequeo de clase: todo
+  archivo que use la constante tiene que preguntar por el almacén.
+
+  Ese chequeo empezó siendo débil y la mutación lo demostró: pedir solo el import
+  pasaba **con el bug puesto**, porque el import seguía ahí. Hoy exige el ternario,
+  y el booleano se llama `conBorrador` en los dos lados a propósito — una convención
+  de una línea que es lo que hace verificable esto sin un parser.
 
 ### Lo que queda abierto, y es una pregunta de producto
 
@@ -9102,6 +9191,12 @@ es un chequeo que falte: es una corrida del script y una reescritura de la lista
 Se anota en vez de arreglarse a ojo porque **los números hay que medirlos**: la
 lista de archivos se puede leer, pero «21 casos de render» y el total de la suite
 salen del script, y escribirlos a mano es cómo envejecieron la primera vez.
+
+**Y la misma cifra aparece dos veces en el propio documento**: además del §«Problema
+1», el párrafo de síntesis del cierre la repite («48 componentes y 9.962 LOC de
+`.tsx` con cuatro archivos de render test encima»). Las dos se remiden con la misma
+corrida y se actualizan juntas — no es un segundo hallazgo, es el mismo número
+citado dos veces.
 
 
 ### B-731 · Confirmar en la consola que los avisos bajaron, después del próximo rastreo · P3

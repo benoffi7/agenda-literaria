@@ -200,6 +200,68 @@ describe('la subida separa «no llegó el módulo» de «Storage dijo no»', () 
   });
 });
 
+/**
+ * Los `.tsx` del panel, recursivo. Está en el scope del módulo porque lo usan dos
+ * `describe`: el de la promesa del borrador y el de los puntos de carga diferida.
+ */
+const archivosDelPanel = (dir: string): string[] =>
+  readdirSync(`${process.cwd()}/${dir}`, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory()
+      ? archivosDelPanel(`${dir}/${e.name}`)
+      : e.name.endsWith('.tsx')
+        ? [`${dir}/${e.name}`]
+        : [],
+  );
+
+describe('la promesa del borrador se dice solo donde hay dónde guardarlo', () => {
+  /**
+   * **El agujero reapareció en el componente gemelo**, y lo encontró el
+   * `auditor-documentacion` cerrando B-805: `GaleriaEditor` chequeaba el almacén
+   * antes de prometer, y `AvisoVersionNueva` la prometía siempre.
+   *
+   * Y el aviso es el peor lugar para prometer de más: aparece justamente cuando
+   * hay un formulario con cambios sin guardar. En modo privado o con la cuota
+   * llena, `guardarBorradorLocal` no guardó nada y el texto empuja a recargar
+   * igual.
+   *
+   * Se verifica **de clase**: cualquier archivo que use la constante tiene que
+   * chequear el almacén. El día que aparezca un tercer punto de uso, entra solo.
+   *
+   * MUTACIÓN PROBADA: sacar el `conBorrador ?` de `AvisoVersionNueva` deja este
+   * caso en rojo nombrando el archivo.
+   */
+  it('los dos puntos de uso preguntan por el almacén', () => {
+    const usan = archivosDelPanel('src/components/admin').filter((rel) =>
+      fuente(rel).includes('PROMESA_DEL_BORRADOR'),
+    );
+    expect(usan.length, 'nadie usa la promesa: el chequeo no está midiendo nada').toBeGreaterThan(
+      1,
+    );
+
+    /*
+     * **Se exige el ternario y no solo el import**, porque el import solo no
+     * alcanza: al probar la mutación —sacarle el `conBorrador ?` al aviso— el
+     * chequeo seguía verde, porque `almacenDelNavegador` seguía importado en el
+     * archivo. Un chequeo que pasa con el bug puesto es peor que no tenerlo.
+     *
+     * Los dos puntos de uso llaman al booleano igual (`conBorrador`), y eso es
+     * una **convención a propósito**: cuesta una línea y es lo que hace posible
+     * verificar esto sin un parser. Si un tercero lo llama distinto, este caso lo
+     * va a decir y la respuesta es renombrarlo, no aflojar el chequeo.
+     */
+    const sinChequear = usan.filter((rel) => {
+      const src = fuente(rel);
+      return !/almacenDelNavegador\(\)/.test(src) || !/conBorrador\s*\?/.test(src);
+    });
+    expect(
+      sinChequear,
+      'prometen el borrador sin preguntar si el navegador tiene dónde guardarlo ' +
+        '(o el booleano no se llama `conBorrador`, que es la convención que hace ' +
+        'verificable esto)',
+    ).toEqual([]);
+  });
+});
+
 describe('todo `lazy()` del panel cuelga de un `SiNoCarga` — de clase, no de lista', () => {
   /**
    * **La puerta que el primer arreglo no contó, y la encontraron los dos
@@ -217,15 +279,6 @@ describe('todo `lazy()` del panel cuelga de un `SiNoCarga` — de clase, no de l
    * se exige que cada archivo que declare uno tenga también un `SiNoCarga`. La
    * puerta que se agregue mañana entra sola.
    */
-  const archivosDelPanel = (dir: string): string[] =>
-    readdirSync(`${process.cwd()}/${dir}`, { withFileTypes: true }).flatMap((e) =>
-      e.isDirectory()
-        ? archivosDelPanel(`${dir}/${e.name}`)
-        : e.name.endsWith('.tsx')
-          ? [`${dir}/${e.name}`]
-          : [],
-    );
-
   it('los archivos que declaran un `lazy` también nombran el límite', () => {
     const conLazy = archivosDelPanel('src/components/admin').filter((rel) =>
       /\blazy\(/.test(fuente(rel)),

@@ -2,7 +2,8 @@
  * **El límite de error que evita que el panel quede en blanco** — reporte del
  * dueño (2026-09-07).
  *
- * El panel tiene diez puertas de carga diferida, y una pestaña abierta desde antes de
+ * El panel tiene diez puertas de carga diferida —este límite cubre nueve; la de la
+ * subida de imágenes tiene su propio `try`— y una pestaña abierta desde antes de
  * un deploy apunta a chunks que Hosting ya borró. Un `import()` que falla adentro
  * de `lazy` **tira hacia arriba y React desmonta el árbol**: sin este límite, el
  * panel queda en blanco, sin mensaje y sin nada que tocar.

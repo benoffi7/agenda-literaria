@@ -1,5 +1,6 @@
 import { claseBotonPrimario } from '@/components/admin/campos/Campo';
 import { PROMESA_DEL_BORRADOR } from '@/lib/carga-diferida';
+import { almacenDelNavegador } from '@/lib/formulario/borradoresDelNavegador';
 import type { DecisionVersion } from '@/lib/version';
 
 interface Props {
@@ -52,6 +53,19 @@ export function AvisoVersionNueva({ decision, versionActual, versionPublicada }:
   if (decision.accion !== 'avisar') return null;
 
   const esPorElFormulario = decision.motivo === 'cambios-sin-guardar';
+  /*
+   * **La promesa del borrador solo si hay dónde guardarlo** — lo encontró el
+   * `auditor-documentacion` cerrando B-805, y era el mismo agujero que ese ítem
+   * había tapado en el editor de imágenes, reaparecido en el componente gemelo:
+   * `GaleriaEditor` chequea el almacén y esto lo prometía siempre.
+   *
+   * `decidirAccion` no puede saberlo —solo mira si el formulario cambió contra su
+   * estado inicial— así que se pregunta acá, igual que allá. Sin almacén usable
+   * (modo privado, cuota llena, cookies bloqueadas en un iframe)
+   * `guardarBorradorLocal` no guarda nada, y el aviso aparece justo cuando hay
+   * trabajo sin guardar: es el peor momento para prometer de más.
+   */
+  const conBorrador = almacenDelNavegador() !== null;
 
   return (
     <div
@@ -64,7 +78,9 @@ export function AvisoVersionNueva({ decision, versionActual, versionPublicada }:
           <p className="text-sm text-amber-950">
             <strong className="font-semibold">Hay una versión nueva del panel.</strong>{' '}
             {esPorElFormulario
-              ? `Conviene recargar. Hasta que recargues, puede fallar subir imágenes.${PROMESA_DEL_BORRADOR}`
+              ? `Conviene recargar. Hasta que recargues, puede fallar subir imágenes.${
+                  conBorrador ? PROMESA_DEL_BORRADOR : ''
+                }`
               : 'Recargar no alcanzó para traerla. Cerrá la pestaña y volvé a abrirla, o recargá forzando (⇧ + recargar).'}
           </p>
           {/* Las dos versiones a la vista: es lo que hay que copiar en un reporte. */}

@@ -187,8 +187,11 @@ Google el usuario **nace en el primer login**, no antes.
    npm run admin:claim:prod -- agendaleh@gmail.com
    ```
 
-   El script anuncia el objetivo (PRODUCCIÓN) antes de escribir. Si dice que no
-   encontró la cuenta, el paso 1 no se hizo.
+   El script anuncia el objetivo (PRODUCCIÓN) antes de escribir — **desde B-810,
+   porque hasta entonces era el único de los siete que no lo hacía y esta misma
+   línea ya lo prometía**. Y si no encuentra la cuenta, el error dice las dos
+   causas posibles con el comando correcto listo para copiar: el comando
+   equivocado (`admin:claim` va al **emulador**) o el paso 1 sin hacer.
 3. **Que vuelva a entrar.** El claim viaja en el token, así que la sesión que ya
    estaba abierta **no lo tiene**: hay que cerrar sesión y volver a entrar (o
    esperar a que el token se renueve, hasta una hora).

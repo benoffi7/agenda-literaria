@@ -30,6 +30,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
+import { sinComentarios } from '../scripts/huella-de-auditoria.mjs';
+
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
 
 const scripts = (): string[] =>
@@ -142,5 +144,99 @@ describe('las guardas de los scripts que escriben — B-630', () => {
     }
     // Control: la lista no puede quedarse corta en silencio.
     expect(ESPEJAN_UNA_FUNCTION.every((r) => losQueEscriben().some((s) => s.rel === r))).toBe(true);
+  });
+});
+
+describe('todo script que puede tocar producción dice contra qué está apuntando — B-810', () => {
+  /**
+   * **La doc lo afirmaba y uno de los tres no lo hacía.**
+   * `docs/08-operacion.md` dice que estos scripts «anuncian el objetivo (EMULADOR
+   * o PRODUCCIÓN) antes de escribir», y `set-admin-claim.mjs` era el que no —
+   * justamente el que le da permiso de escritura a una cuenta real.
+   *
+   * Lo encontró el dueño de la forma más cara: corrió `npm run admin:claim` —que
+   * apunta al **emulador**— contra una cuenta de producción, y lo único que vio
+   * fue el `USER_NOT_FOUND` crudo del SDK con veinte líneas de stack, que **no
+   * dice contra qué proyecto miró**.
+   *
+   * Los dos comandos existen precisamente para que nadie le dé admin a una cuenta
+   * real creyendo estar en local (`08-operacion.md`), y sin el anuncio esa
+   * separación no se puede verificar desde afuera.
+   *
+   * Es de clase: cualquier script nuevo que decida entre emulador y producción
+   * entra solo.
+   */
+  /**
+   * Los que **eligen** objetivo, y no los que exigen uno.
+   *
+   * El detector es `enEmulador`, que es la variable con la que los siete lo
+   * deciden. **Buscar la variable de entorno era demasiado ancho**, y el primer
+   * intento lo demostró: agarraba `build-contra-emulador.mjs`,
+   * `seed-emulador.mjs` y `preparar-produccion.mjs`, que **no deciden nada** —
+   * corren contra un solo lado y se niegan a arrancar si no está—. Un script que
+   * no puede equivocarse de objetivo no tiene nada que anunciar, y pedirle el
+   * anuncio sería ruido que se aprende a ignorar (B-180).
+   */
+  const DECIDEN_OBJETIVO = (): { rel: string; src: string }[] =>
+    scripts()
+      .map((rel) => ({ rel, src: readFileSync(raiz(rel), 'utf8') }))
+      .filter(({ src }) => /\benEmulador\b/.test(src));
+
+  it('hay scripts que eligen objetivo, y son los que se esperan', () => {
+    // Control positivo: sin esto, un cambio en cómo se lee el entorno dejaría el
+    // caso de abajo iterando sobre una lista vacía y pasando en verde.
+    const rels = DECIDEN_OBJETIVO().map(({ rel }) => rel);
+    expect(rels.length, 'ningún script decide entre emulador y producción').toBeGreaterThan(5);
+    // El que trajo el ítem tiene que estar en la lista, si no el caso de abajo no
+    // lo está mirando.
+    expect(rels).toContain('scripts/set-admin-claim.mjs');
+  });
+
+  it('cada uno nombra EMULADOR y PRODUCCIÓN antes de escribir', () => {
+    /*
+     * **Se mira el código y no los comentarios**, y eso lo cobró la mutación: la
+     * primera versión de este caso buscaba las dos palabras en el archivo entero
+     * y **pasaba con el anuncio borrado**, porque el docblock que explica el
+     * arreglo las nombra. Un chequeo que da verde con el bug puesto es peor que
+     * no tenerlo — es la misma lección que B-799 dejó para el hook.
+     *
+     * `sinComentarios` es el mismo saneador que usa la huella de auditoría
+     * (B-794), importado en vez de copiado.
+     *
+     * MUTACIÓN PROBADA: sacar el `console.log` del objetivo de
+     * `scripts/set-admin-claim.mjs` deja este caso en rojo nombrando el archivo.
+     */
+    /*
+     * **Y se pide el `console.log` del rótulo, no las palabras sueltas** — la
+     * mutación lo cobró por segunda vez: con el anuncio borrado el archivo
+     * seguía teniendo «EMULADOR» y «PRODUCCIÓN» en el **código** del mensaje de
+     * error, así que el chequeo pasaba igual. Lo que se exige es la forma que los
+     * siete comparten: un `console.log` con un rótulo (`Objetivo:` o
+     * `Firestore:`) y los dos valores posibles al lado.
+     */
+    const mudos = DECIDEN_OBJETIVO().filter(({ src }) => {
+      const codigo = sinComentarios(src);
+      const anuncio = /console\.log\([^;]*(?:Objetivo|Firestore):[^;]*(?:EMULADOR|PRODUCCIÓN)/.test(
+        codigo,
+      );
+      return !(anuncio && codigo.includes('EMULADOR') && codigo.includes('PRODUCCIÓN'));
+    });
+    expect(
+      mudos.map(({ rel }) => rel),
+      'no dicen contra qué apuntan: quien se equivoca de comando no tiene ninguna señal',
+    ).toEqual([]);
+  });
+
+  it('y el claim explica el `user-not-found` en vez de tirar el error crudo', () => {
+    /*
+     * Las dos causas reales, en el orden en que conviene revisarlas: el comando
+     * equivocado (`admin:claim` vs `admin:claim:prod`) y **la cuenta que todavía
+     * no existe** — con Google el usuario nace en el primer login, que es el orden
+     * al revés del intuitivo y la mitad que más se olvida.
+     */
+    const src = readFileSync(raiz('scripts/set-admin-claim.mjs'), 'utf8');
+    expect(src).toContain("'auth/user-not-found'");
+    expect(src, 'no nombra el otro comando').toContain('admin:claim:prod');
+    expect(src, 'no nombra el primer login').toMatch(/PRIMER LOGIN|primer login/);
   });
 });

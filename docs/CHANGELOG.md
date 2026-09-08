@@ -1,5 +1,38 @@
 # Changelog
 
+## Sin publicar
+
+- **`admin:claim` apuntaba al emulador y el error no lo decía** — **B-810**. El
+  dueño corrió `npm run admin:claim` contra una cuenta de producción y vio el
+  `USER_NOT_FOUND` crudo del SDK con veinte líneas de stack, que no dice ni contra
+  qué proyecto miró.
+
+  El diseño estaba bien —hay dos comandos a propósito, `admin:claim` para el
+  emulador y `admin:claim:prod` para producción— y `08-operacion.md` ya explicaba
+  el orden contraintuitivo: con Google el usuario **nace en el primer login**, así
+  que primero entra y después se le da el claim. Lo que faltaba era la señal, y las
+  dos mitades estaban **afirmadas en la doc sin ser ciertas**: el script era el
+  único de los siete que no anunciaba su objetivo, y el `user-not-found` no
+  explicaba ninguna de sus dos causas.
+
+  El chequeo de clase costó **dos** mutaciones, y las dos son la misma lección:
+  buscar «EMULADOR» y «PRODUCCIÓN» en el archivo pasaba con el anuncio borrado
+  (las nombra el docblock), y buscarlas en el código también (las nombra el mensaje
+  de error). Hoy se exige la forma que los siete comparten: un `console.log` con el
+  rótulo y los dos valores. Un chequeo que da verde con el bug puesto es peor que
+  no tenerlo.
+
+- **Cuatro cuentas con `admin`, y un rótulo que decía «las dos»** — **B-811**. Se
+  agregó una cuarta cuenta al panel, y la pantalla de taxonomías decía «la usaron
+  **las** dos cuentas» sobre una etiqueta aprobada por reuso. La regla no cambió
+  —la escribieron **dos cuentas distintas**, cualesquiera— así que el rótulo ahora
+  lo dice así, igual que la guía del panel.
+
+  Lo que queda anotado es más interesante: tres lugares de la doc no *dicen* dos,
+  **argumentan** sobre dos —el hash del mail en la analítica, el «otra cuenta» que
+  evita mostrar quién cargó, y el conteo de la regla de aprobación— y esos piden
+  decidir, no reemplazar un número.
+
 ## 1.9.0 — 2026-09-07
 
 **La tanda del reporte que destapó dos avisos que mentían, y del panel que se
@@ -27,7 +60,9 @@ volvió navegable.** Todo lo construido después de 1.8.0.
   abre **su** ayuda (**B-795**), el texto alternativo de la portada dejó de ser
   obligatorio, el login dice por qué falló (**B-790**), y la versión se lee debajo
   del mail.
-- **Sitio público**: «Agenda LEH» pasa a la tipografía del título, cada encuentro
+- **Sitio público**: «Agenda LEH» pasa a la tipografía del título, el proyecto
+  estrena **logo** —en la home, al lado del nombre, y como favicon en tres
+  tamaños—, cada encuentro
   del JSON-LD apunta a su propia fila (**B-733**), el tríptico cambió de ventanas
   y sortea (**B-791**, **D-470**), y las seis páginas de texto se numeran como
   salidas públicas (**B-772**, **B-654**).
@@ -88,7 +123,11 @@ El detalle de cada cambio está en las entradas de abajo.
   se pierde» quedó **acotada a donde es cierta**: el autoguardado existe solo en el
   formulario de actividad, y el de reportes —origen de B-191— no lo tiene. Además,
   el deploy que muestra el mensaje puede ser el que **borra** el borrador si subió
-  `VERSION_BORRADOR`: ese par está atado por un test.
+  `VERSION_BORRADOR`: ese par está atado por un test. Y en la pasada de sello
+  apareció el mismo agujero en el componente gemelo —el aviso de versión prometía
+  el borrador sin chequear el almacén, justo cuando hay trabajo sin guardar—:
+  arreglado, con un chequeo de clase que la mutación tuvo que endurecer, porque
+  pedir solo el import pasaba con el bug puesto.
 
 - **Cada push deja su tag, y son dos** — pedido del dueño, **D-510**. Antes se
   creaba un tag solo cuando cambiaba `version` en el `package.json`.

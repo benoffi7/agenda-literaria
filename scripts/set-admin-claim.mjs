@@ -28,7 +28,56 @@ const credencial = () => {
 
 initializeApp(enEmulador ? { projectId } : { credential: credencial(), projectId });
 
+/**
+ * **El objetivo, dicho antes de escribir** — B-810.
+ *
+ * `docs/08-operacion.md` ya afirmaba que este script «anuncia el objetivo
+ * (EMULADOR o PRODUCCIÓN) antes de escribir», y era el único de los tres que
+ * **no lo hacía** (`aprobar-opciones.mjs` e `instagrams-de-la-base.mjs` sí).
+ *
+ * No es cosmética: los dos comandos existen justamente para no darle admin a una
+ * cuenta real creyendo estar en local, y el que se equivoca de comando no tiene
+ * ninguna señal hasta que el error de Firebase le dice «no existe ese usuario» —
+ * que es lo que pasó el 2026-09-08 con una cuenta que existía en producción.
+ */
+console.log(
+  enEmulador
+    ? `Objetivo: EMULADOR (${process.env.FIREBASE_AUTH_EMULATOR_HOST})`
+    : `Objetivo: PRODUCCIÓN (${projectId})`,
+);
+
 const auth = getAuth();
+
+/**
+ * Un `user-not-found` explicado — B-810.
+ *
+ * El error crudo del SDK es `There is no user record corresponding to the
+ * provided identifier` más un stack de veinte líneas, y **no dice ni contra qué
+ * proyecto miró**. Las dos causas reales son las dos que este mensaje nombra, en
+ * el orden en que conviene revisarlas:
+ *
+ * 1. **el comando equivocado**: `admin:claim` va al emulador y
+ *    `admin:claim:prod` a producción. Es el caso que pasó;
+ * 2. **la cuenta todavía no existe**: con Google, el usuario **nace en el primer
+ *    login** (`08-operacion.md` § «Dar permiso de admin»), así que hay que
+ *    entrar una vez y recién después dar el claim. El orden es al revés del
+ *    intuitivo y es la mitad que más se olvida.
+ */
+const explicarSiNoExiste = (e) => {
+  if (e?.errorInfo?.code !== 'auth/user-not-found') throw e;
+  console.error(
+    `\nNo existe «${objetivo}» en ${enEmulador ? 'el EMULADOR' : `PRODUCCIÓN (${projectId})`}.\n\n` +
+      (enEmulador
+        ? '  · Si la cuenta es de producción, el comando es `npm run admin:claim:prod -- ' +
+          `${objetivo}\`: este apunta al emulador.\n`
+        : '  · Si la cuenta es del emulador, el comando es `npm run admin:claim -- ' +
+          `${objetivo}\`.\n`) +
+      '  · Y si es la cuenta correcta: con Google el usuario nace en el PRIMER LOGIN.\n' +
+      '    Que entre una vez a /admin (va a ver «sin permisos», eso está bien) y\n' +
+      '    repetí este comando después.',
+  );
+  process.exit(1);
+};
 
 /**
  * `--todos` es comodidad de desarrollo: entrás una vez con el popup del
@@ -51,9 +100,10 @@ if (objetivo === '--todos') {
     console.log(`admin -> ${u.email ?? u.uid}`);
   }
 } else {
-  const usuario = objetivo.includes('@')
-    ? await auth.getUserByEmail(objetivo)
-    : await auth.getUser(objetivo);
+  const usuario = await (objetivo.includes('@')
+    ? auth.getUserByEmail(objetivo)
+    : auth.getUser(objetivo)
+  ).catch(explicarSiNoExiste);
   await auth.setCustomUserClaims(usuario.uid, { admin: true });
   console.log(`admin -> ${usuario.email ?? usuario.uid}${enEmulador ? ' (emulador)' : ''}`);
 }

@@ -179,9 +179,16 @@ export function TaxonomiasPanel() {
               {v.aprobadaPorReuso === true && (
                 <span
                   className="ml-2 rounded-full bg-tinta/8 px-2 py-0.5 text-xs font-sans font-normal text-tinta/60"
-                  title="Quedó aprobada sola porque la escribieron las dos cuentas. Nadie la revisó: si es un typo repetido, se puede renombrar o borrar."
+                  /*
+                    **«dos cuentas distintas» y no «las dos»** — B-810. El rótulo se
+                    escribió cuando había exactamente dos admins; desde el
+                    2026-09-08 hay cuatro, y «las dos» dejó de nombrar a nadie en
+                    particular. La regla no cambió —la escribieron **dos cuentas
+                    distintas**, cualesquiera— y es esa la que hay que leer.
+                  */
+                  title="Quedó aprobada sola porque la escribieron dos cuentas distintas. Nadie la revisó: si es un typo repetido, se puede renombrar o borrar."
                 >
-                  la usaron las dos cuentas
+                  la usaron dos cuentas
                 </span>
               )}
             </p>
