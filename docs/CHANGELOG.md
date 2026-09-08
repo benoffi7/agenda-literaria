@@ -2,6 +2,43 @@
 
 ## Sin publicar
 
+- **El historial tampoco restaura un slug que otra actividad ya usa** — **B-820**,
+  P2, lo encontró el `auditor-privacidad` cerrando B-818 midiendo el ancho de la
+  promesa nueva de la ayuda contra el ancho de la guarda.
+
+  El formulario no deja guardar **una** cosa, deja de guardar **dos**: lo que
+  rechaza `actividadFormSchema` y lo que rechaza `slugDisponible`. El piso de B-818
+  cubría solo la primera, porque el schema es **puro** y la unicidad es una query.
+  El camino: una actividad que nunca se publicó —habilitada a restaurar su slug, y
+  es correcto por la trampa 10— recupera el slug viejo que en el medio otra
+  actividad reusó. Quedan dos documentos con la misma dirección, y si las dos se
+  publican `getStaticPaths` colisiona: la URL sirve el contenido de una de las dos
+  y nada avisa.
+
+  `restaurarCampo` consulta `slugDisponible` **última de todas** y **sobre el
+  `payload`**. Última porque es la única guarda que cuesta una lectura de la
+  colección entera y las tres puntuales más el schema son gratis: si algo de arriba
+  ya rechazó, no se paga. Sobre el `payload` por lo mismo que el schema valida el
+  payload y no un objeto rearmado — dos derivaciones de «lo que se va a escribir»
+  es la clase que ese archivo ya evita en `searchText`, en `fusionarSesiones` y en
+  `CAMPOS_DE_SEARCH_TEXT`. Y no lleva un `campo === 'slug'` adelante: `payload.slug`
+  solo existe cuando el campo es el slug, así que la condición está en el dato y no
+  en dos lugares.
+
+  Tres casos en `historial-relectura.test.ts`, que es donde va el cableado
+  —doblando la escritura, no afirmando sobre la fuente, que es lo que el
+  `auditor-trampas` ya rechazó en este camino—: que no escriba el duplicado, que
+  pregunte por el valor del payload excluyendo la actividad misma (sin el `idActual`
+  se rechazaría contra sí misma), y que restaurar otro campo **no gaste la query**.
+
+  **Dos errores propios que vale anotar**, porque los dos los atrapó la red y no
+  yo. Uno: al mover la guarda de lugar, un recorte mal medido se llevó las guardas
+  de `comisiones` y de los flags de publicación — lo cazó un test de comportamiento
+  que ya existía (`historial-relectura`), que es exactamente para lo que está. Dos:
+  el espía de `slugDisponible` arrancaba con `mockResolvedValue` sin `mockReset`, y
+  `mockResolvedValue` no limpia el historial de llamadas, así que el caso de «no
+  gasta la query» veía las llamadas de los casos anteriores.
+
 - **El historial ya no vuelve a publicar un link que se había apagado** —
   **B-819**, P1, lo encontró el `auditor-privacidad` cerrando B-818.
 

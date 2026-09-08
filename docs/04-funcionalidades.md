@@ -1671,13 +1671,14 @@ cada edición y permite restaurar.
 ### Qué no se puede restaurar, y quién lo frena
 
 La restauración escribe con un `updateDoc` directo, así que **es la única puerta
-del panel al documento que no venía del formulario**. Lo que la limita, en dos
+del panel al documento que no venía del formulario**. Lo que la limita, en tres
 capas:
 
 | Capa | Qué frena | Cuándo se ve |
 |---|---|---|
 | `camposRestaurables` — no ofrece la fila | la dirección web si la actividad estuvo publicada (trampa 10, B-285); los cuatro derivados de `modalidades` sueltos (B-224); un campo que **no existía** en esa versión (B-167); el nombre de una opción con un link de reunión sobre una con página (B-181); las `modalidades` o el `material` que **estrenarían** un link de publicación que hoy no sale (**B-819**) | la fila no aparece |
 | `issuesDeRestauracion` — valida el documento resultante (**B-818**, D-540) | cualquier regla del schema que la restauración **rompería**: restaurar «publicado» sobre una incompleta, un título de dos letras, una inscripción sin destino | al apretar «Restaurar», con el mensaje de qué rompería |
+| `slugDisponible` — la unicidad, que es una query (**B-820**) | que el slug de la versión ya lo use **otra** actividad | al apretar «Restaurar», con el mensaje de cambiarlo desde el formulario |
 
 **La fila de B-819 mide lo que sale, no el flag,** y eso costó un P0 de la
 auditoría de cierre: la primera versión definía «hoy ya sale» como
@@ -1687,6 +1688,17 @@ apurado para cortar un zoombombing, porque el input y la casilla son
 independientes— la guarda leía «ya publicado» y dejaba pasar la restauración, que
 reescribía la URL. El predicado ahora se **importa** de `toPublic.ts`, del lado del
 productor, y un test de clase rechaza cualquier copia local.
+
+**La tercera existe porque el formulario no deja guardar una sola cosa, deja de
+guardar dos** (B-820): lo que rechaza el schema, y lo que rechaza `slugDisponible`.
+La segunda capa cubre solo la primera, porque el schema es **puro** y la unicidad es
+una query. El camino que quedaba abierto: una actividad que nunca se publicó
+—habilitada a restaurar su slug, y es correcto por la trampa 10— recupera el slug
+viejo que en el medio otra actividad reusó, y quedan dos documentos con la misma
+dirección; si las dos se publican, `getStaticPaths` colisiona y la URL sirve el
+contenido de una de las dos sin que nada avise. Va **última** de todas, porque es
+la única que cuesta una lectura: si el schema o las tres puntuales ya rechazaron, no
+se paga.
 
 La segunda capa es la que cierra **«Restaurar → Estado»**, que hasta B-818
 escribía `estado: 'publicado'` salteando el nivel entero de publicar y salía al

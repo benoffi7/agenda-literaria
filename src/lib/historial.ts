@@ -38,7 +38,7 @@ import {
 import { db } from '@/lib/firestore-client';
 // B-150 — el emparejamiento de campos de máquina por id de sesión es UNO, y
 // vive en el borde form ⇄ documento. Acá se reusa; no se reimplementa.
-import { documentoAForm, fusionarSesiones, leerActividad } from '@/lib/actividades';
+import { documentoAForm, fusionarSesiones, leerActividad, slugDisponible } from '@/lib/actividades';
 import {
   modalidadResultante,
   onlinePrincipal,
@@ -933,6 +933,37 @@ export const restaurarCampo = async (
    */
   const issues = issuesDeRestauracion(fresco, payload);
   if (issues.length > 0) throw new Error(mensajeDeRestauracionInvalida(issues));
+
+  /*
+   * ── Y la unicidad, que el schema no puede ver — B-820 ─────────────────
+   * El formulario no deja guardar **dos** cosas: lo que rechaza
+   * `actividadFormSchema` y lo que rechaza `slugDisponible`
+   * (`formulario/guardar.ts`, «Ya hay otra actividad con este slug»). El piso de
+   * arriba cubre solo la primera, porque el schema es **puro** y la unicidad es
+   * una query. Esta mitad no la veía nadie.
+   *
+   * El camino: una actividad que **nunca se publicó** —`slugRestaurable` la
+   * habilita, y es correcto por la trampa 10— restaura su slug viejo, que en el
+   * medio otra actividad reusó. Quedan dos documentos con el mismo slug, y si las
+   * dos terminan publicadas `getStaticPaths` colisiona: la URL sirve el contenido
+   * de una de las dos y nada avisa.
+   *
+   * **Va última, y sobre el `payload`.** Última porque es la única que cuesta una
+   * query y las tres puntuales más el schema son gratis: si algo de arriba ya
+   * rechazó, no se paga. Y sobre el `payload` por lo mismo que el schema valida el
+   * payload y no un objeto rearmado (B-818): dos derivaciones de «lo que se va a
+   * escribir» es la clase que este archivo evita en `searchText`, en
+   * `fusionarSesiones` y en `CAMPOS_DE_SEARCH_TEXT`.
+   *
+   * No lleva `campo === 'slug'` adelante: `payload.slug` solo existe cuando el
+   * campo es el slug, así que la condición ya está en el dato.
+   */
+  const slugNuevo = (payload as { slug?: unknown }).slug;
+  if (typeof slugNuevo === 'string' && !(await slugDisponible(slugNuevo, actual.id))) {
+    throw new Error(
+      'Esa dirección web ya la usa otra actividad. Cambiala desde el formulario antes de restaurarla.',
+    );
+  }
 
   await updateDoc(doc(db(), COL, actual.id), payload);
 };

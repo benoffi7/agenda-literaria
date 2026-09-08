@@ -3130,7 +3130,26 @@ haga `rerender` con la otra vista y afirme que el valor sobrevive.
 it('cambiar la vista de PC a celular no reinicia el formulario que se estaba cargando')
 ```
 
-### B-820 · Restaurar el slug no verifica que no esté tomado por otra actividad · P2
+### B-820 · Restaurar el slug no verifica que no esté tomado por otra actividad — ✅ hecho (2026-09-08) · P2
+
+> **Resuelto con el molde que el ítem proponía**, y una decisión de ubicación:
+> `restaurarCampo` consulta `slugDisponible` **última de todas** y **sobre el
+> `payload`**. Última porque es la única guarda que cuesta una lectura de la
+> colección entera, y las tres puntuales más el schema son gratis: si algo de
+> arriba ya rechazó, no se paga. Sobre el `payload` por lo mismo que el schema
+> valida el payload y no un objeto rearmado (B-818) — dos derivaciones de «lo que
+> se va a escribir» es la clase que este archivo evita tres veces.
+>
+> No lleva un `campo === 'slug'` adelante: `payload.slug` solo existe cuando el
+> campo es el slug, así que la condición ya está en el dato y no en dos lugares.
+>
+> Tres casos en `historial-relectura.test.ts` —el archivo donde va el cableado,
+> doblando la escritura y no afirmando sobre la fuente, que es lo que el
+> `auditor-trampas` ya rechazó en este camino—: que no escriba el duplicado, que
+> pregunte por el valor del payload excluyendo la actividad misma (sin el
+> `idActual` se rechazaría contra sí misma), y que restaurar otro campo **no gaste
+> la query**. Mutación probada.
+
 
 **Lo encontró el `auditor-privacidad` cerrando B-818**, midiendo el ancho de la
 promesa nueva de la ayuda contra el ancho de la guarda. El hueco es

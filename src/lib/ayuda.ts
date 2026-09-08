@@ -466,6 +466,13 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Y si todavía es borrador pero esa dirección vieja hoy la está usando otra actividad, ' +
+          'tampoco: quedarían dos con el mismo link y el sitio serviría una de las dos sin avisar. ' +
+          'Se cambia primero desde el formulario.',
+        cuidado: true,
+      },
+      {
+        texto:
           'Y hay una cosa que te frena aunque ya estuviera de antes: un link de reunión escrito ' +
           'en el nombre de una opción para sumarse. Si pasás la actividad a publicada y ese ' +
           'nombre tiene un link, la restauración se rechaza — publicarla lo pondría en el ' +

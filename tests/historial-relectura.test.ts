@@ -48,10 +48,17 @@ vi.mock('@/lib/firestore-client', () => ({ db: () => ({}) }));
  */
 vi.mock('@/lib/actividades', async () => {
   const real = await vi.importActual<typeof import('@/lib/actividades')>('@/lib/actividades');
-  return { ...real, leerActividad: vi.fn() };
+  /*
+   * `slugDisponible` se dobla desde B-820: es una **query** (`getDocs` sobre la
+   * colección entera) y el mock de `firebase/firestore` de arriba no la cubre, así
+   * que sin doblarla el caso del slug intentaría hablar con Firestore de verdad.
+   * Doblarla es además lo correcto para lo que se afirma: que `restaurarCampo` la
+   * **consulte** y respete su respuesta.
+   */
+  return { ...real, leerActividad: vi.fn(), slugDisponible: vi.fn() };
 });
 
-import { leerActividad } from '@/lib/actividades';
+import { leerActividad, slugDisponible } from '@/lib/actividades';
 import { restaurarCampo } from '@/lib/historial';
 
 const sesion = (id: string, calendarEventId: string | null) => ({
@@ -106,6 +113,14 @@ const version = () => ({
 beforeEach(() => {
   updateDocEspia.mockReset();
   vi.mocked(leerActividad).mockReset();
+  /*
+   * `mockReset()` **antes** del valor por defecto: `mockResolvedValue` no limpia el
+   * historial de llamadas, así que sin el reset el caso «restaurar otro campo no
+   * gasta la query» veía las llamadas de los casos anteriores y fallaba con «been
+   * called 2 times». Lo pagué escribiéndolo.
+   */
+  vi.mocked(slugDisponible).mockReset();
+  vi.mocked(slugDisponible).mockResolvedValue(true);
 });
 
 describe('restaurarCampo — el payload se arma con lo releído', () => {
@@ -304,5 +319,80 @@ describe('restaurarCampo — el payload se arma con lo releído', () => {
 
     expect(vi.mocked(leerActividad)).toHaveBeenCalledTimes(1);
     expect(updateDocEspia).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('restaurarCampo — la unicidad del slug, que el schema no puede ver (B-820)', () => {
+  /*
+   * El formulario no deja guardar **dos** cosas: lo que rechaza
+   * `actividadFormSchema` y lo que rechaza `slugDisponible`
+   * (`formulario/guardar.ts`, «Ya hay otra actividad con este slug»). El piso de
+   * B-818 cubre solo la primera, porque el schema es **puro** y la unicidad es una
+   * query — así que esta mitad no la veía nadie.
+   *
+   * El camino: una actividad que **nunca se publicó** —`slugRestaurable` la
+   * habilita, y es correcto por la trampa 10— restaura su slug viejo, que en el
+   * medio otra actividad reusó. Quedan dos documentos con el mismo slug, y si las
+   * dos terminan publicadas `getStaticPaths` colisiona: la URL sirve el contenido
+   * de una de las dos y nada avisa.
+   */
+  const borrador = (over: Partial<Actividad> = {}) =>
+    actividad({ estado: 'borrador', estuvoPublicada: false, ...over } as never);
+
+  const versionConSlug = (slug: string) => ({
+    guardadoEn: ts('2026-09-01T12:00:00Z'),
+    actualizadoPor: 'uid_viejo',
+    camposCambiados: ['slug'],
+    documento: actividad({ slug }) as unknown as Actividad,
+  });
+
+  it('no escribe si el slug de la versión ya lo usa otra actividad', async () => {
+    vi.mocked(leerActividad).mockResolvedValue(borrador({ slug: 'club-nuevo' } as never));
+    vi.mocked(slugDisponible).mockResolvedValue(false);
+
+    await expect(
+      restaurarCampo(
+        borrador({ slug: 'club-nuevo' } as never),
+        'slug',
+        versionConSlug('club-de-lectura') as never,
+        'uid_1',
+      ),
+    ).rejects.toThrow(/ya la usa otra actividad/i);
+
+    expect(updateDocEspia, 'escribió igual el slug duplicado').not.toHaveBeenCalled();
+  });
+
+  it('y pregunta por el slug del payload, excluyendo la actividad misma', async () => {
+    /*
+     * El `idActual` importa: sin él, restaurar un slug que la actividad **ya tiene**
+     * se rechazaría contra sí misma. Y lo que se consulta es el valor del
+     * `payload` —lo que se va a escribir— y no el del snapshot, por lo mismo que el
+     * schema valida el payload (B-818).
+     */
+    vi.mocked(leerActividad).mockResolvedValue(borrador({ slug: 'club-nuevo' } as never));
+
+    await restaurarCampo(
+      borrador({ slug: 'club-nuevo' } as never),
+      'slug',
+      versionConSlug('club-de-lectura') as never,
+      'uid_1',
+    );
+
+    expect(vi.mocked(slugDisponible)).toHaveBeenCalledWith('club-de-lectura', 'act_1');
+    expect(updateDocEspia).toHaveBeenCalled();
+  });
+
+  it('restaurar otro campo no gasta la query', async () => {
+    /*
+     * Va última y solo cuando hay slug en el payload: las tres guardas puntuales y
+     * el schema son gratis, y esta cuesta una lectura de la colección entera.
+     * Cobrarla en cada restauración sería pagar por todos el precio de un campo.
+     */
+    vi.mocked(leerActividad).mockResolvedValue(actividad({ sesiones: [sesion('ses_1', 'evt_1')] }));
+
+    await restaurarCampo(actividad(), 'sesiones', version() as never, 'uid_1');
+
+    expect(vi.mocked(slugDisponible)).not.toHaveBeenCalled();
+    expect(updateDocEspia).toHaveBeenCalled();
   });
 });
