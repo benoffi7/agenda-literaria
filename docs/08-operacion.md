@@ -290,9 +290,15 @@ verificó.
 ### Lo que el gate no puede ver
 
 Privacidad de un campo nuevo, trampas del §13 en código nuevo, y si la doc
-acompaña al cambio. Eso necesita criterio y va por el skill
-`antes-de-pushear`, que lanza los tres auditores en paralelo: un hook de git no
-puede invocar un modelo. Ver [`13-agentes.md`](13-agentes.md).
+acompaña al cambio. Eso necesita criterio y va por el skill `/audit`, que lanza
+los auditores que correspondan al alcance, en paralelo: un hook de git no puede
+invocar un modelo. Ver [`13-agentes.md`](13-agentes.md).
+
+**Y el gate no verifica que hayas auditado.** Hasta el 2026-09-08 sí: su séptimo
+paso exigía los tres sellados sobre el contenido que se iba a publicar. Se
+eliminó con **D-560**, así que hoy los seis pasos pueden pasar en verde sin que
+nadie haya corrido un auditor. Correr `/audit` antes de pushear sigue siendo lo
+que conviene; lo que ya no hay es nada que te lo recuerde.
 
 ## Aprobar una etiqueta nueva (§4.3)
 

@@ -2,6 +2,57 @@
 
 ## Sin publicar
 
+- **Los auditores corren a pedido, con `/audit`** — **D-560**, pedido del dueño:
+  «saca las auditorias. ahora se haran a pedido con un comando /audit que tenes
+  que diseñar». Tercera respuesta a «¿cuándo corren los tres auditores?», y
+  revisa las dos anteriores: el intermedio del 2026-09-03 y el «siempre los tres,
+  y el gate lo exige» de **B-124** (2026-09-07).
+
+  **Se sacó:** los tres hooks de `.claude/settings.json` (avisar al terminar el
+  turno, frenar el `git commit`, sellar lo auditado), el séptimo paso de
+  `verificar-todo.sh` —el gate quedó en seis—, el sello
+  (`<git-dir>/auditores.json`), `scripts/hook-auditores.mjs`,
+  `scripts/comando-de-commit.mjs` y `SALTEAR_AUDITORES=1`, que sin gate no
+  significa nada. El skill `antes-de-pushear` pasó a ser `/audit`: el nombre viejo
+  describía un momento del flujo y eso dejó de ser cierto.
+
+  **Los tres agentes quedan intactos** — cambió quién los llama, no lo que saben
+  mirar. Y sobrevivió la mitad buena del mecanismo:
+  `auditores-que-corresponden.mjs` sigue decidiendo **qué** auditor corresponde a
+  un alcance, así que `/audit` sobre una tanda que solo toca `docs/` no gasta el
+  de `opus`. «A pedido» decide si se audita; el script, qué se audita.
+
+  **La contra está asumida y escrita en tres lugares** (el skill, D-560 y el
+  propio B-124, que quedó anotado como revisado): la opción «a pedido» estaba en
+  ese ítem con el argumento «cero costo, **se olvida**», y sigue siendo cierta. Lo
+  que cambió no es la evaluación del riesgo sino quién lo asume. Ningún test puede
+  cubrir el olvido, porque lo que falta es una decisión humana.
+
+  Lo que sí quedó cubierto es la otra cara. `tests/red-de-contencion.test.ts`
+  cambió de bug a vigilar: antes verificaba que el disparo automático estuviera
+  cableado —«un hook que no hace nada y nadie se entera»—; ahora verifica que **a
+  los auditores se pueda llegar**, o sea que no vuelva un hook sin decidirlo, que
+  el gate no los exija, y que `/audit` nombre a los tres. Sin disparo automático,
+  un auditor que el skill no nombra no corre nunca y su ficha se queda pareciendo
+  cobertura. Los casos de `13-agentes.md` que vivían en ese bloque por vecindad y
+  no por tema se separaron a su propio `describe`, y lo cobraron al toque: la
+  tabla nombraba dos tests que se fueron con el sello.
+
+  **Con el sello se fue B-794 entero.** Hashear el código sin comentarios existía
+  porque el sello volvía a pedir la auditoría cuando uno aplicaba sus hallazgos
+  —que aterrizan como un docblock en el archivo auditado—: la clase de B-180, unos
+  176 mil tokens por vuelta. Sin sello no hay nada que invalidar.
+  `huellaDeAuditoria` se borró y `huella-de-auditoria.mjs` pasó a
+  `sin-comentarios.mjs`, que es lo que hace hoy: el saneador que usan los tests
+  sobre fuente para distinguir lo que el código hace de lo que un comentario dice
+  que hace. Un archivo con el nombre de un mecanismo que ya no existe miente igual
+  que un párrafo.
+
+  Cerró **B-825** sin efecto: se abrió y se murió el mismo día, porque su causa
+  era el sello. Y quedó dicho en D-560 que **D-350 nunca se escribió** — la
+  decisión que esto revierte se citaba por un número que no tiene entrada, y
+  redactarla hoy, con el resultado a la vista, sería reescribir y no documentar.
+
 - **El formulario tiene dos formas, y las elige quien carga** — **B-814**,
   decisión del dueño escrita como **D-550**. Pedido suyo: «el formulario que tenga
   una vista PC o mobile configurable. si es mobile es a lo largo y si es pc usar

@@ -40,7 +40,7 @@ que lo mire — y ahí es donde este proyecto se lastima.
 | 🧩 | `campo-nuevo` | skill | Agregar un campo al modelo de punta a punta |
 | 🐞 | `al-backlog` | skill | Anotar un bug o una idea en el backlog, priorizado y con formato |
 | 🚀 | `que-deployar` | skill de usuario (`/que-deployar`) | Qué deployar, con qué comandos y qué verificar después |
-| ⏱ | `.claude/settings.json` + `scripts/hook-auditores.mjs` | hooks del repo | Disparan al `auditor-privacidad` **solos** cuando el diff toca una salida pública — ver [Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta) |
+| 🛡️ | `audit` | skill (`/audit`) | El único camino a los tres auditores: elige alcance, los lanza en paralelo y junta los hallazgos — ver [Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta) |
 
 ---
 
@@ -348,35 +348,35 @@ no deben desplegarse todavía** porque les falta el PAT (B-20, D-13). Es
 conocimiento que hoy vive en dos párrafos de
 [`08-operacion.md`](08-operacion.md) y que se paga caro olvidando.
 
-### 🛡️ `antes-de-pushear`
+### 🛡️ `audit`
 
-El pedido era que los auditores **prevengan antes de pushear** y que se lancen
-todos. Este skill lanza los tres en paralelo, junta los hallazgos y decide si el
-push sale.
+**El único camino a los tres auditores, y corre solo cuando alguien lo pide.**
+Elige el alcance, lanza en paralelo los que corresponden, junta los hallazgos en
+una tabla y dice qué frena y qué se anota.
 
-La parte que importa es el corte: un hook de git **no puede invocar un modelo**,
-así que lo mecánico (marcadores de conflicto, typecheck, tests con emuladores,
-build, fuga de credenciales) vive en `githooks/pre-push` →
+Acepta qué auditar y sobre qué: `/audit` solo (elige alcance y auditores),
+`/audit privacidad`, `/audit todo`, `/audit HEAD~3`, `/audit src/lib/toPublic.ts`.
+Un pedido explícito gana sobre el mecanismo — si se nombra un auditor que no
+corresponde al alcance, corre igual y el reporte lo dice.
+
+La parte que importa sigue siendo el corte: un hook de git **no puede invocar un
+modelo**, así que lo mecánico (marcadores de conflicto, typecheck, tests con
+emuladores, build, fuga de credenciales) vive en `githooks/pre-push` →
 `scripts/verificar-todo.sh`, y lo que necesita criterio (¿este campo nuevo es
-publicable?, ¿el código nuevo cae en una trampa del §13?, ¿la doc acompañó?)
-vive acá. El skill **no** re-verifica lo mecánico: corre el script y lee el
-resultado, porque un modelo reimplementando lo que un script ya decide es una
-segunda copia que se va a quedar vieja.
+publicable?, ¿el código nuevo cae en una trampa del §13?, ¿la doc acompañó?) vive
+acá. El skill **no** re-verifica lo mecánico: corre el script y lee el resultado,
+porque un modelo reimplementando lo que un script ya decide es una segunda copia
+que se va a quedar vieja.
 
-Cierra B-115: hasta ahora nada invocaba a los auditores juntos, así que existían
+Cierra B-115: hasta acá nada invocaba a los auditores juntos, así que existían
 pero solo corrían si alguien se acordaba de los tres.
 
-**Desde el 2026-09-07 este skill es el paso de los tres, y no es opcional.** El
-dueño contestó B-124: **siempre antes de pushear, los tres**. Lo que cambió no es
-solo el alcance del skill —es que el gate mecánico lo **exige** en su séptimo
-paso, así que si alguno no corrió sobre el contenido que se va a publicar, el
-push no sale.
-
-Lo que se conserva es no gastar dos veces: la huella del sello es del
-**contenido** de los archivos que cada auditor mira, así que si el hook ya
-despertó al de privacidad sobre este mismo árbol, acá no se vuelve a pagar. Lo
-que se fue es la posibilidad de **omitirlo**. Los detalles están en
-[Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta).
+**Se llamaba `antes-de-pushear` y era obligatorio; desde D-560 es `/audit` y es a
+pedido.** El nombre viejo describía un momento del flujo —antes del push— y eso
+dejó de ser cierto: hoy sirve igual para revisar algo a mitad de camino, para
+auditar un alcance explícito, o para preguntar por un solo auditor. El racional
+del cambio está en **D-560**; la contra asumida está escrita ahí y también acá,
+porque es la que importa: **nada te va a recordar que corras esto.**
 
 ### 🔁 `automatizar`
 
@@ -399,157 +399,98 @@ arreglo, es el detector.
 
 ## Cuándo corren, y cuánto cuesta
 
-**Contestado por el dueño el 2026-09-07: los tres, siempre antes de pushear.**
-
-El 2026-09-03 se había decidido el intermedio que el propio ítem proponía —el de
-privacidad solo cuando el diff toca una salida, los otros dos antes del PR— y esa
-mitad sigue en pie: **el disparo automático no se sacó**, es el que hace que el de
-privacidad ya esté corrido cuando llega el push.
-
-Lo que se agregó es que **la falta se cobra**. El séptimo paso del gate exige que
-los tres hayan corrido sobre este contenido, y sin eso el push no sale. Y no es
-una nota en un documento a propósito: la opción «a pedido» estaba escrita en el
-ítem con el argumento «cero costo, **se olvida**», así que sostener «siempre» con
-una nota habría sido elegir la que se olvida y llamarla de otra manera.
-
-**Cómo sabe el gate que corrieron.** El sello se extendió a los tres y guarda dos
-huellas por auditor, con **dos alcances distintos**, porque no son la misma
-cuenta:
-
-| Huella | Alcance | Quién la lee |
-|---|---|---|
-| `auditado` | lo que **no está commiteado** | el hook que frena el `git commit` |
-| `empuje` | lo que cambió contra `origin/main`, **más** lo no commiteado | el séptimo paso del gate |
-
-Compartir una sola habría dejado el gate pasando siempre: en el momento del push
-lo no commiteado está **vacío**, así que la primera no encuentra nada que
-verificar. Y la del push incluye lo no commiteado además del diff con el remoto
-porque el push ocurre con el árbol como está: una edición sin commitear no se
-publica, pero **la huella que el auditor leyó ya no es la de este árbol**.
-
-Es del **contenido** y no del reloj, así que auditar → commitear → pushear sin
-tocar nada pasa, y auditar → editar una salida → pushear, no.
+**Contestado por el dueño el 2026-09-08: a pedido, con `/audit`.** Es la
+tercera respuesta a la misma pregunta y revisa las dos anteriores — el intermedio
+del 2026-09-03 (privacidad automático por diff, los otros dos antes del PR) y el
+«siempre los tres, y el gate lo exige» del 2026-09-07 (B-124). El racional
+completo está en **D-560**; acá va el estado de hoy y qué se sacó.
 
 | Auditor | Cuándo | Quién lo dispara | Modelo | Costo de una corrida |
 |---|---|---|---|---|
-| 🔒 `auditor-privacidad` | **solo**, en cuanto el diff sin commitear toca uno de los archivos de las dieciocho salidas | los hooks de `.claude/settings.json` | **`opus`** | el caro — es el único con el modelo caro y es a propósito |
-| 🪤 `auditor-trampas` | antes del push o del PR | el skill `antes-de-pushear` | `sonnet` | barato |
-| 📚 `auditor-documentacion` | antes del push o del PR, **siempre** | el skill `antes-de-pushear` | `sonnet` | barato |
+| 🔒 `auditor-privacidad` | cuando alguien lo pide | el skill `/audit` | **`opus`** | el caro — es el único con el modelo caro y es a propósito |
+| 🪤 `auditor-trampas` | cuando alguien lo pide | el skill `/audit` | `sonnet` | barato |
+| 📚 `auditor-documentacion` | cuando alguien lo pide | el skill `/audit` | `sonnet` | barato |
 
-**El argumento es de plata, y ese es el punto de la fila del medio.** Correr los
-tres en cada cierre son tres corridas por cambio y una es en `opus`; correrlos
-solo a pedido es cero costo hasta que alguien se olvida. Lo que hace que el
-intermedio funcione es que el caro se dispara **por el diff** y no por el reloj:
-en una tanda de trabajo sobre el panel, sobre los tests o sobre `docs/`, no
-corre ninguna vez. Los dos baratos se juntan en el paso que ya existía.
+La columna «cuándo» dice lo mismo tres veces, y eso **es** la decisión: no hay
+momento del flujo en que alguno corra solo.
 
-Para revisar la decisión con números hay que mirar dos cosas: cuántas veces se
-disparó el de `opus` (una por contenido nuevo de una salida, no una por turno) y
-cuántos hallazgos trajo. La referencia de por qué vale la pena está en el
-BACKLOG: en el cierre de la `1.2.0` los tres auditores encontraron dieciséis
-bugs en tres pasadas, **dos de ellos P1 de privacidad**.
+Lo que `/audit` sí sigue derivando del mecanismo es **cuáles** corren para un
+alcance dado: `scripts/auditores-que-corresponden.mjs` recibe las rutas por
+stdin y contesta. Así que «a pedido» decide *si* se audita, y el script decide
+*qué* — pedir `/audit` sobre una tanda que solo toca `docs/` no gasta el de
+`opus`.
 
-### El disparo automático, pieza por pieza
+**La lista de archivos que disparan a cada auditor no está escrita en el
+script.** Se **deriva del `description` de cada agente**, que es el lugar donde ya
+estaba y el que decide si Claude lo invoca por nombre de archivo. Copiarla habría
+creado un tercer lugar que envejece sin que nada falle — la clase de B-88, y lo
+mismo que B-216 vino a cerrar para la cuenta de salidas. Consecuencia buscada:
+**una salida nueva se suma a la ficha y entra sola al selector de auditores.**
 
-Un hook de git no puede invocar un modelo (es la mitad del corte de
-`antes-de-pushear`), así que la pieza que sí puede son los **hooks de Claude
-Code**, en `.claude/settings.json` — el del repo, así que viaja con el checkout
-y lo comparte el equipo.
-
-| Momento | Evento del hook | Qué hace |
-|---|---|---|
-| El modelo termina el turno | `Stop` | Si el diff sin commitear toca una salida y no pasó por el auditor, **avisa** — una sola vez por contenido |
-| El modelo va a commitear | `PreToolUse` sobre `Bash` | **Frena** el `git commit` con el mismo mensaje |
-| El auditor termina | `PostToolUse` sobre el tool de sub-agentes | **Sella** la huella de lo auditado |
-
-Los tres llaman al mismo archivo, `scripts/hook-auditores.mjs`, con un modo
-distinto. El corte es el de `relevar-infra.sh` / `comparar-infra.sh`:
-
-- **`scripts/auditores-que-corresponden.mjs` decide** y no toca nada del
-  entorno: recibe la lista de rutas por stdin y contesta qué auditores
-  corresponden. Se testea sin git y sin estado
-  (`tests/auditores-que-corresponden.test.ts`).
-- **`scripts/hook-auditores.mjs` es la plomería**: git, el sello y el código de
-  salida del hook.
-- **`scripts/huella-de-auditoria.mjs` es la huella**, separada porque es la
-  decisión y no la plomería: **qué cuenta como «el cambio ya auditado»**. Se
-  testea sin git (`tests/huella-de-auditoria.test.ts`).
-- **`scripts/comando-de-commit.mjs` decide si el comando escribe**, y es la otra
-  mitad decidible: **qué cuenta como un `git commit`**. Mira el **código y no el
-  texto** —saca heredocs y comillas— porque el detector viejo frenaba cualquier
-  comando con las dos palabras en algún lado, incluido un `git log` con la palabra
-  adentro de un `echo` (B-799). Se testea sin git
-  (`tests/comando-de-commit.test.ts`).
-
-**La lista de archivos que disparan al auditor no está escrita en ninguno de los
-dos.** Se **deriva del `description` de cada agente**, que es el lugar donde ya
-estaba escrita y el que decide si Claude lo invoca por nombre de archivo.
-Copiarla al script habría creado un tercer lugar que envejece sin que nada
-falle — la clase de B-88, y lo mismo que B-216 vino a cerrar para la cuenta de
-salidas. Consecuencia buscada: **una salida nueva se suma a la ficha y entra
-sola al disparador.**
-
-El `auditor-documentacion` es la excepción declarada: corre siempre, y eso no se
-puede derivar de ninguna lista porque su disparador es el cambio y no el
+El `auditor-documentacion` es la excepción declarada: corresponde siempre, y eso
+no se puede derivar de ninguna lista porque su disparador es el cambio y no el
 archivo. Está escrito como tal en el script, con el motivo al lado.
 
-**Por qué el `PreToolUse` del commit y no solo el `Stop`.** Después del commit el
-árbol queda limpio, así que el `Stop` deja de ver el cambio: sin el hook del
-commit, alcanzaría con commitear rápido para que el gate no existiera nunca.
+### Qué se eliminó, y qué se llevó puesto
 
-**Por qué NO va en GitHub Actions**, que era la tercera opción del ítem: el job
-tendría que invocar un modelo, o sea una API key de Anthropic como secreto de CI
-sobre un repo público, y un costo por corrida que nadie mira. El §5.4 ya dice
-que las credenciales son del dueño; sumar una más para automatizar lo que un
-hook local hace gratis es el intercambio al revés. Queda anotado para el día que
-haya varias personas empujando al repo, que es cuando el gate local deja de
-alcanzar.
+Lo que había hasta el 2026-09-08, y ya no está:
 
-### El modo de falla que este gate no puede tener
+| Pieza | Qué hacía |
+|---|---|
+| `.claude/settings.json`, hook `Stop` | Avisaba al terminar el turno si el diff tocaba una salida sin auditar |
+| `.claude/settings.json`, hook `PreToolUse`/`Bash` | **Frenaba** el `git commit` con el mismo mensaje |
+| `.claude/settings.json`, hook `PostToolUse`/`Task` | **Sellaba** la huella de lo auditado |
+| `scripts/verificar-todo.sh`, paso 7 | Exigía los tres sellos para dejar pushear |
+| `scripts/hook-auditores.mjs` | La plomería de los cuatro: git, el sello, los códigos de salida |
+| `scripts/comando-de-commit.mjs` | Decidía qué cuenta como un `git commit` (solo lo necesitaba el hook del commit) |
+| `<git-dir>/auditores.json` | El sello: dos huellas por auditor, `auditado` y `empuje` |
+| `SALTEAR_AUDITORES=1` | La salida explícita, que sin gate no tiene sentido |
 
-**«Un gate que falla por su propia plomería enseña a saltearlo»** — es la lección
-de B-180, y es la razón de cada una de estas cuatro reglas:
+**Lo que sobrevivió, y por qué:**
 
-1. **Cualquier excepción sale con 0.** Un `git` que no está, un repo sin HEAD, un
-   JSON ilegible: el hook no dice nada y no frena nada. Deja pasar un cambio sin
-   auditar antes que ponerse rojo por sí mismo.
-2. **El alcance es lo no commiteado**, nunca el diff de la rama. Con la rama
-   entera, una rama larga hace que el hook grite por el cambio de otra persona —
-   literalmente rojo por razones que no son de quien lo disparó.
-3. **El aviso del `Stop` es una sola vez por contenido.** Un hook que repite el
-   mismo aviso en cada turno se aprende a ignorar en tres turnos. La huella es el
-   **código** de los archivos de salida que el cambio toca —sin sus comentarios,
-   B-794— así que si esos archivos cambian de nuevo, el aviso vuelve; si no, no.
+- **`scripts/auditores-que-corresponden.mjs`** — es la decisión pura de qué
+  auditor corresponde a qué archivos, se testea sin git y sin estado
+  (`tests/auditores-que-corresponden.test.ts`), y ahora es lo que `/audit` usa
+  para elegir. Era la mitad buena del mecanismo.
+- **`scripts/sin-comentarios.mjs`** — era la mitad pura de la huella (B-794) y se
+  quedó porque tiene un uso propio: los tests que afirman **sobre el fuente**
+  necesitan distinguir lo que el código hace de lo que un comentario dice que
+  hace. Se renombró al renombrar lo que hace; se llamaba
+  `huella-de-auditoria.mjs`, y un archivo con el nombre de un mecanismo que ya no
+  existe es el drift que este repo persigue en la doc.
+- **Los tres agentes**, intactos. Lo que se sacó es *quién los llama*, no lo que
+  saben mirar.
 
-   **Los comentarios no cuentan, y ese es el arreglo de B-794.** El orden natural
-   del trabajo es: hacer el cambio, correr el auditor, y **aplicar sus
-   hallazgos** — que es para lo que se lo corrió. Y sus hallazgos aterrizan una y
-   otra vez como un docblock **en el archivo auditado**. Con la huella sobre el
-   archivo entero, aplicar la corrección invalidaba el sello y el commit se
-   bloqueaba otra vez: el único camino en que el sello servía era «auditar y no
-   cambiar nada», o sea el caso en que el auditor no encontró nada. En cuanto
-   encontraba algo —el caso útil— había que gastar la auditoría de nuevo (unos
-   176 mil tokens, medidos) o saltearla. Es esta misma regla 3 fallando por su
-   propia plomería. Y es seguro por construcción: **un comentario no puede
-   publicar un campo**.
-4. **Siempre dice por qué**: qué archivo lo disparó, qué correr, y cómo saltearlo
-   a propósito — `SALTEAR_AUDITORES=1 git commit …`, igual que
-   `SALTEAR_PRE_PUSH=1 git push`. Saltear tiene que ser una decisión escrita y no
-   un forcejeo.
+**Y con el sello se fue B-794 entero.** Ese arreglo existía porque el sello
+volvía a pedir la auditoría cuando uno aplicaba los hallazgos del auditor —los
+hallazgos aterrizan como un docblock **en el archivo auditado**—, así que se
+hasheaba el código sin comentarios. Sin sello no hay nada que invalidar: el
+problema desapareció con su causa. Vale dejarlo escrito porque el razonamiento
+sigue siendo bueno y puede volver a hacer falta el día que algo vuelva a querer
+recordar «esto ya se revisó».
 
-**Cuándo empieza a andar.** Claude Code lee `.claude/settings.json` al arrancar
-la sesión, y el vigilante de cambios solo mira los directorios que **ya tenían**
-un archivo de settings cuando la sesión empezó. Este archivo es nuevo, así que en
-una sesión que ya estaba abierta cuando se hizo el `git pull` **no se carga**:
-hay que abrir `/hooks` una vez (recarga la config) o reiniciar. Vale la pena
-saberlo porque el síntoma es el peor de todos — el hook simplemente no hace nada,
-sin ningún error. Se confirma en `/hooks`, que los lista.
+### El modo de falla que este cambio acepta
 
-**Cómo se apaga.** Como cualquier hook: sacando el bloque de
-`.claude/settings.json`, o con `disableAllHooks` en la configuración personal.
-El sello vive en `<git-dir>/auditores.json`, o sea fuera del árbol de trabajo:
-no necesita entrada en `.gitignore` y es **por worktree**, que es lo correcto —
-seis frentes en paralelo no comparten qué se auditó.
+Las cuatro reglas anti-B-180 del hook ya no aplican —no hay hook—, pero la
+lección sí, y ahora se paga del otro lado.
+
+**Antes el riesgo era un gate rojo por su propia plomería**, que es lo que enseña
+a saltearlo: un `git` que no está, un JSON ilegible, un modo mal escrito. Se
+manejaba haciendo que cualquier excepción saliera con 0 — preferir dejar pasar un
+cambio sin auditar antes que ponerse rojo por sí mismo.
+
+**Ahora el riesgo es el olvido, y no tiene mitigación técnica.** Está asumido y
+escrito acá y en `/audit`: si el cambio toca una salida pública y nadie invoca el
+skill, no hay red. La opción «a pedido» estaba en el ítem original de B-124 con
+el argumento «cero costo, **se olvida**», así que esto no se elige por
+desconocer la contra.
+
+Lo que queda para revisar la decisión con números, si alguna vez se quiere: en el
+cierre de la `1.2.0` los tres auditores encontraron dieciséis bugs en tres
+pasadas, **dos de ellos P1 de privacidad**; cerrando B-818 encontraron once en
+dos rondas; cerrando B-814, cinco ítems de backlog y tres de doc. Lo que hay que
+mirar no es cuántos encuentran cuando corren —eso ya se sabe—, sino **cuántas
+veces se los invoca** ahora que nada los llama.
 
 ---
 
@@ -713,10 +654,10 @@ El flujo de un cambio típico:
 
 ```
 pedido → (campo-nuevo, si toca el modelo) → implementar
-       → auditor-privacidad ← lo dispara el hook, si el diff tocó una salida
        → cerrar-cambio (doc, CHANGELOG, ayuda, novedades, backlog)
-       → antes-de-pushear ─┬→ auditor-trampas       ─┐ en paralelo,
-                           └→ auditor-documentacion ─┘ son de solo lectura
+       → /audit ─┬→ auditor-privacidad     ─┐ los que corresponden
+                 ├→ auditor-trampas         │ al alcance, en paralelo,
+                 └→ auditor-documentacion  ─┘ son de solo lectura
        → /que-deployar → commit y push
 ```
 
@@ -724,12 +665,13 @@ Los tres auditores no se pisan: cada uno deriva al otro cuando algo no es suyo.
 Y ninguno reemplaza a `npm test` — corren **además**, sobre lo que la suite no
 puede ver.
 
-**El primero de los tres ya no depende de que alguien se acuerde** (B-124,
-D-350): lo despiertan los hooks del repo en cuanto el diff toca uno de los
-archivos de las dieciocho salidas, y frenan el `git commit` si todavía no pasó. Los
-otros dos siguen entrando por `antes-de-pushear`, que es el paso previo al PR.
-El detalle —qué corre cuándo, con qué modelo, y las cuatro reglas que impiden
-que el gate se ponga rojo por su propia plomería— está en
+**La flecha de `/audit` es la única que llega a un auditor, y sale de una decisión
+humana** (D-560). Antes el de privacidad se despertaba solo cuando el diff tocaba
+una salida, y el gate de push exigía los tres; eso se eliminó entero. Cuál de los
+tres corre para un alcance dado lo sigue decidiendo el mecanismo —una tanda que
+solo toca `docs/` no gasta el de `opus`—, pero **que se audite o no lo decide
+quien trabaja**, y nada se lo recuerda. Qué se sacó, qué sobrevivió y la contra
+asumida están en
 [Cuándo corren, y cuánto cuesta](#cuándo-corren-y-cuánto-cuesta).
 
 Lo que queda abierto de este bloque está en el [`BACKLOG.md`](BACKLOG.md),

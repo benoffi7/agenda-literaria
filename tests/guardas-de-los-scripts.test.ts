@@ -30,7 +30,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-import { sinComentarios } from '../scripts/huella-de-auditoria.mjs';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 
 const raiz = (rel: string): string => `${process.cwd()}/${rel}`;
 

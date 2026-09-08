@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { AUDITORES } from '../scripts/auditores-que-corresponden.mjs';
+
 /**
  * La tabla «Qué se decidió no automatizar» de `docs/13-agentes.md` no se
  * rompe por merges — B-367 (duplicado de B-294, la misma cicatriz).
@@ -67,120 +69,113 @@ describe('la tabla «no automatizar» no se rompe por merges — B-367/B-294', (
 });
 
 /**
- * Los hooks que disparan al `auditor-privacidad` están cableados de verdad —
- * B-124, D-350.
+ * A los auditores se puede llegar — D-560.
  *
- * **Clase de bug: un hook que no hace nada y nadie se entera.** Es la de
- * `tests/agentes-y-skills.test.ts` (un frontmatter inválido hace que el agente
- * se ignore sin ningún error visible) una capa más arriba. Acá los modos de
- * falla son tres, y los tres dejan el repo en verde:
+ * **Este bloque cambió de bug a cubrir el 2026-09-08.** Antes verificaba que el
+ * disparo **automático** estuviera cableado: tres hooks en
+ * `.claude/settings.json` (uno avisaba al terminar el turno, uno frenaba el
+ * `git commit`, uno sellaba lo auditado) más un séptimo paso del gate de push que
+ * exigía los tres sellos. La clase de bug era «un hook que no hace nada y nadie
+ * se entera», y tenía tres modos: JSON inválido —Claude Code descarta el archivo
+ * entero—, un comando apuntando a un script renombrado, y un modo inexistente que
+ * hacía salir con 0 sin verificar nada.
  *
- * 1. `.claude/settings.json` con JSON inválido → Claude Code **descarta el
- *    archivo entero**, así que se pierden los tres hooks de golpe.
- * 2. El comando apunta a un script que se renombró → el hook corre, falla, y
- *    —por la regla anti-B-180 de `hook-auditores.mjs`, que sale con 0 ante
- *    cualquier excepción— el silencio es total.
- * 3. El modo que el comando pasa no existe en el script → el script sale con 0
- *    sin verificar nada. Un `parada` mal escrito no avisa nunca.
+ * **Todo eso se eliminó.** Los auditores corren a pedido, por el skill `/audit`,
+ * y no queda ni un hook ni un gate que los espere. Así que la clase de bug que
+ * hay que cubrir ahora es la otra cara, y es más simple: **un auditor al que
+ * ningún camino llega.** Con el disparo automático, un auditor huérfano se
+ * notaba porque el hook fallaba; sin él, un auditor que `/audit` no nombra
+ * simplemente no corre nunca, y su ficha sigue en el repo pareciendo cobertura.
  *
- * El chequeo ata las dos puntas: los modos que `settings.json` invoca tienen
- * que ser modos que el script implementa, y al revés.
+ * Se atan las dos puntas, como antes:
+ *
+ * 1. los auditores que el registro conoce (`AUDITORES`, que es lo que decide el
+ *    alcance) tienen que existir como ficha en `.claude/agents/`;
+ * 2. el skill `/audit` tiene que nombrarlos a todos — si agrega uno un día, este
+ *    caso pide que el registro lo conozca, y al revés.
+ *
+ * Lo que **no** se verifica acá es que alguien invoque `/audit`, porque no se
+ * puede: es una decisión humana por diseño, y es la contra asumida de D-560.
  */
-describe('el disparo automático del auditor está cableado — B-124', () => {
+describe('a los auditores se puede llegar — D-560', () => {
   const raiz = new URL('..', import.meta.url);
-  const settings = readFileSync(fileURLToPath(new URL('.claude/settings.json', raiz)), 'utf8');
-  const script = readFileSync(fileURLToPath(new URL('scripts/hook-auditores.mjs', raiz)), 'utf8');
+  const skill = readFileSync(
+    fileURLToPath(new URL('.claude/skills/audit/SKILL.md', raiz)),
+    'utf8',
+  );
 
-  /** Los comandos de hook declarados, con el evento en el que están. */
-  const comandos = (): { evento: string; command: string }[] => {
-    const config = JSON.parse(settings) as {
-      hooks?: Record<string, { hooks?: { type?: string; command?: string }[] }[]>;
-    };
-    return Object.entries(config.hooks ?? {}).flatMap(([evento, grupos]) =>
-      grupos.flatMap((g) =>
-        (g.hooks ?? [])
-          .filter((h) => h.type === 'command' && typeof h.command === 'string')
-          .map((h) => ({ evento, command: h.command! })),
-      ),
-    );
-  };
-
-  it('`.claude/settings.json` es JSON válido', () => {
-    // Modo de falla 1. Un JSON roto descarta el archivo completo, sin error.
+  it('no quedó ningún hook disparando auditores', () => {
+    /*
+     * El caso que fija la decisión. Un hook que vuelva sin decidirlo de nuevo
+     * reintroduce lo que D-560 sacó, y lo haría en silencio: los hooks corren
+     * fuera de la vista y su salida no se lee.
+     */
+    const settings = readFileSync(fileURLToPath(new URL('.claude/settings.json', raiz)), 'utf8');
+    // Sigue teniendo que ser JSON válido: uno roto se descarta entero, y el día
+    // que este archivo tenga otra cosa adentro nadie se enteraría.
     expect(() => JSON.parse(settings)).not.toThrow();
+    const config = JSON.parse(settings) as { hooks?: Record<string, unknown> };
+    expect(Object.keys(config.hooks ?? {}), 'volvió un hook de auditoría').toEqual([]);
   });
 
-  it('están los tres eventos que la decisión necesita', () => {
-    /*
-     * `Stop` avisa al terminar el turno; `PreToolUse` frena el `git commit`,
-     * que es donde el aviso tiene que valer (después del commit el árbol queda
-     * limpio y el `Stop` ya no ve el cambio); `PostToolUse` sella lo auditado.
-     * Sin el tercero el gate no se puede satisfacer nunca, y un gate que no se
-     * puede satisfacer se aprende a saltear — B-180.
-     */
-    const eventos = [...new Set(comandos().map((c) => c.evento))].sort();
-    expect(eventos).toEqual(['PostToolUse', 'PreToolUse', 'Stop']);
+  it('y el gate mecánico tampoco los exige', () => {
+    // La otra mitad de lo que se sacó. El gate verifica seis cosas mecánicas y
+    // ninguna es «alguien auditó»: si esto vuelve, vuelve el modo de falla de
+    // B-180, porque el gate no puede invocar un modelo para satisfacerse.
+    const gate = readFileSync(fileURLToPath(new URL('scripts/verificar-todo.sh', raiz)), 'utf8');
+    expect(gate).not.toContain('hook-auditores');
+    expect(gate).not.toContain('SALTEAR_AUDITORES');
   });
 
-  it('cada comando apunta a un script que existe', () => {
-    // Modo de falla 2.
-    const rotos = comandos()
-      .map((c) => ({ ...c, ruta: /scripts\/[\w.-]+\.mjs/.exec(c.command)?.[0] }))
-      .filter((c) => !c.ruta || !existsSync(fileURLToPath(new URL(c.ruta, raiz))));
-    expect(rotos.map((r) => `${r.evento}: ${r.command}`)).toEqual([]);
+  it('cada auditor del registro tiene su ficha en disco', () => {
+    // Control positivo primero: si el registro quedara vacío, el `filter` de
+    // abajo pasaría contra una lista vacía y este caso no verificaría nada.
+    expect(Object.keys(AUDITORES).length).toBe(3);
+
+    const sinFicha = Object.entries(AUDITORES).filter(
+      ([, ficha]) => !existsSync(fileURLToPath(new URL(ficha, raiz))),
+    );
+    expect(sinFicha.map(([nombre]) => nombre), 'auditores sin ficha').toEqual([]);
   });
 
-  it('los modos que invoca son modos que el script implementa', () => {
+  it('y el skill `/audit` nombra a los tres', () => {
     /*
-     * Modo de falla 3, y el que vale: un modo mal escrito hace que el hook
-     * corra, no encuentre nada que hacer y salga con 0. El gate deja de existir
-     * sin que nada lo diga.
-     */
-    const implementados = [...script.matchAll(/^ {2}(\w+)\(\) \{$/gm)].map((m) => m[1]!);
-    // Control positivo: si el regex dejara de encontrar los modos, la
-    // comparación de abajo pasaría contra una lista vacía.
-    expect(implementados.length).toBeGreaterThanOrEqual(3);
-
-    /*
-     * **Hay dos invocadores, no uno** — B-124. Los hooks de Claude Code
-     * (`.claude/settings.json`) llaman a `parada`, `commit` y `marcar`; y el
-     * **gate de antes de pushear** (`scripts/verificar-todo.sh`) llama a `push`,
-     * el modo que verifica que los tres auditores hayan corrido sobre el
-     * contenido que se va a publicar.
+     * El caso que vale. `/audit` es el único camino: un auditor que el skill no
+     * nombra no lo va a lanzar nadie, y su ficha se queda en el repo dando la
+     * impresión de que ese frente está cubierto.
      *
-     * Los dos entran a la cuenta, porque lo que este caso cuida es que no haya
-     * un modo **muerto** ni uno **inventado**, y un modo que solo invoca el gate
-     * no es ninguna de las dos cosas. Buscar solo en `settings.json` habría
-     * pedido exceptuar `push`, que es tapar el chequeo en vez de enseñarle.
+     * Se busca el nombre del agente (`auditor-privacidad`) y no la clave del
+     * registro (`privacidad`), porque es el nombre del agente lo que hay que
+     * pasarle a la tool `Agent` para que corra.
      */
-    const desdeElGate = [
-      ...readFileSync(fileURLToPath(new URL('scripts/verificar-todo.sh', raiz)), 'utf8').matchAll(
-        /hook-auditores\.mjs\s+(\w+)/g,
-      ),
-    ].map((m) => m[1]!);
-    const invocados = [
-      ...comandos().map((c) => c.command.trim().split(/\s+/).pop()!),
-      ...desdeElGate,
-    ];
-    // Control positivo: el gate tiene que estar invocando algo, o la mitad de
-    // arriba de esta cuenta no verifica nada.
-    expect(desdeElGate.length, 'el gate dejó de invocar al hook').toBeGreaterThan(0);
-
-    expect(invocados.filter((m) => !implementados.includes(m)), 'modos inexistentes').toEqual([]);
-    // Y al revés: un modo implementado que nadie invoca es código muerto que
-    // parece cobertura.
-    expect(implementados.filter((m) => !invocados.includes(m)), 'modos que nadie invoca').toEqual([]);
+    const noNombrados = Object.values(AUDITORES)
+      .map((ficha) => ficha.replace('.claude/agents/', '').replace('.md', ''))
+      .filter((agente) => !skill.includes(agente));
+    expect(noNombrados, 'auditores que `/audit` no nombra').toEqual([]);
   });
 
-  it('el hook del commit mira el tool `Bash` y el del sello el de sub-agentes', () => {
-    const config = JSON.parse(settings) as { hooks: Record<string, { matcher?: string }[]> };
-    expect(config.hooks.PreToolUse!.map((g) => g.matcher)).toEqual(['Bash']);
-    // `Task` es el nombre del tool de sub-agentes y `Agent` su alias: los dos
-    // están a propósito. Con el matcher equivocado el sello no se escribe
-    // nunca, y entonces el gate del commit es imposible de satisfacer.
-    expect(config.hooks.PostToolUse!.map((g) => g.matcher)).toEqual(['Task|Agent']);
+  it('el skill no quedó apuntando al mecanismo que se borró', () => {
+    // Si `/audit` explica cómo satisfacer un sello que no existe, manda a
+    // alguien a buscar un archivo borrado. Es el drift de siempre, en un skill.
+    expect(skill).not.toContain('hook-auditores');
+    expect(skill).not.toContain('SALTEAR_AUDITORES');
   });
 
+});
+
+/**
+ * `docs/13-agentes.md` no nombra tests que ya no existen.
+ *
+ * Vivía adentro del describe de los hooks por vecindad y no por tema; al
+ * reemplazar aquél (D-560) se separó, que es lo que había que hacer desde el
+ * principio. Lo que cubre es la fila que **afirma que algo está verificado** y
+ * apunta a un archivo borrado o renombrado: se lee como cobertura y no la hay.
+ *
+ * Lo cobró al toque el borrado de D-560: la tabla seguía nombrando
+ * `comando-de-commit.test.ts` y `huella-de-auditoria.test.ts`, los dos tests que
+ * se fueron con el sello.
+ */
+describe('la tabla de `13-agentes.md` apunta a tests que existen — B-260', () => {
   const nombrados = (): string[] => {
     const crudos = [...doc.matchAll(/`(?:tests\/)?([A-Za-z0-9._-]+\.test\.tsx?)`/g)].map(
       (m) => m[1]!,

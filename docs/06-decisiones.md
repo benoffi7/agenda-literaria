@@ -9083,3 +9083,89 @@ directamente, sin reparto que decidir.
 - **No quedan `tabpanel` huérfanos.** Sin la fila de solapas no hay `tablist` que
   los gobierne, y un `tabpanel` suelto le anuncia al lector de pantalla una
   pestaña que no existe.
+
+## D-560 · Los auditores corren a pedido, con `/audit`, y nada los dispara solo
+
+**Pedido del dueño, el 2026-09-08:** «Comitea y saca las auditorias. ahora se
+haran a pedido con un comando /audit que tenes que diseñar.»
+
+Es la **tercera** respuesta a la misma pregunta —«¿cuándo corren los tres
+auditores?»— y revisa las dos anteriores:
+
+| Fecha | Decisión | Qué la sostenía |
+|---|---|---|
+| 2026-09-03 | El intermedio: privacidad automático cuando el diff toca una salida; los otros dos antes del PR | el costo — el de privacidad corre en `opus` |
+| 2026-09-07 | **Siempre los tres antes de pushear**, y el gate lo exige (B-124) | «a pedido se olvida» |
+| **2026-09-08** | **A pedido, con `/audit`.** Ni un hook ni un gate | esta entrada |
+
+### Qué se sacó
+
+Los tres hooks de `.claude/settings.json` (avisar al terminar el turno, frenar el
+`git commit`, sellar lo auditado), el séptimo paso de `verificar-todo.sh` que
+exigía los tres sellos, el sello entero (`<git-dir>/auditores.json`), la plomería
+que lo escribía (`scripts/hook-auditores.mjs`), el detector de commits que solo
+existía para el hook del commit (`scripts/comando-de-commit.mjs`) y la salida
+explícita `SALTEAR_AUDITORES=1`, que sin gate no significa nada. El inventario
+pieza por pieza está en [`13-agentes.md`](13-agentes.md).
+
+**Los tres agentes quedan intactos.** Lo que cambió es *quién los llama*, no lo
+que saben mirar — y siguen siendo lo que encuentra lo que la suite no puede ver.
+
+### Qué sobrevivió, y por qué no es casual
+
+- **`scripts/auditores-que-corresponden.mjs`.** Era la mitad buena del
+  mecanismo: la decisión pura de qué auditor corresponde a qué archivos, testeada
+  sin git y sin estado. `/audit` la usa para elegir. Así que «a pedido» decide
+  **si** se audita, y el script sigue decidiendo **qué**: pedir `/audit` sobre una
+  tanda que solo toca `docs/` no gasta el de `opus`. La lista de disparadores
+  sigue derivándose del `description` de cada ficha, así que una salida nueva
+  entra sola.
+- **`scripts/sin-comentarios.mjs`** (era `huella-de-auditoria.mjs`). La huella se
+  fue con el sello, pero el saneador tiene un consumidor propio y bien vivo: los
+  tests que afirman **sobre el fuente** necesitan distinguir lo que el código hace
+  de lo que un comentario dice que hace. Se renombró al renombrar lo que hace, por
+  la misma razón por la que este documento persigue el drift: un archivo con el
+  nombre de un mecanismo que ya no existe miente igual que un párrafo.
+
+### La contra, que estaba escrita de antes
+
+**El argumento contra esto es el de B-124, y sigue siendo cierto: «a pedido, cero
+costo, *se olvida*».** No se elige por desconocerlo. Lo que cambió no es la
+evaluación del riesgo sino quién lo asume: con el disparo automático, el
+mecanismo cargaba con acordarse; ahora carga quien trabaja. Si el cambio toca una
+salida pública y nadie invoca `/audit`, **no hay red** — y ningún test puede
+cubrir eso, porque lo que falta es una decisión humana. Está escrito en el propio
+skill, arriba de todo, para que se lea antes de usarlo.
+
+Lo que sí quedó cubierto es la otra cara. `tests/red-de-contencion.test.ts` cambió
+de bug a vigilar: antes verificaba que el disparo automático estuviera cableado
+—la clase «un hook que no hace nada y nadie se entera»—; ahora verifica que **a
+los auditores se pueda llegar**, o sea que no vuelva un hook sin decidirlo, que
+el gate no los exija, y que `/audit` nombre a los tres. Sin el disparo
+automático, un auditor que el skill no nombra no corre nunca y su ficha se queda
+en el repo pareciendo cobertura.
+
+### Y con el sello se fue B-794 entero
+
+Ese arreglo —hashear el código **sin comentarios**— existía porque el sello volvía
+a pedir la auditoría justo cuando uno aplicaba sus hallazgos, que aterrizan como
+un docblock en el archivo auditado. Era la clase de B-180 (un gate que falla por
+su propia plomería enseña a saltearlo) y costaba unos 176 mil tokens por vuelta.
+Sin sello no hay nada que invalidar: **el problema desapareció con su causa.**
+
+Vale dejar el razonamiento escrito porque sigue siendo bueno y va a hacer falta
+el día que algo vuelva a querer recordar «esto ya se revisó». Y sirve de aviso: la
+huella tiene que ser del **contenido** y no del reloj, y el sello no puede
+invalidarse con el trabajo que él mismo provocó.
+
+### Una nota sobre D-350, que nunca existió
+
+Esta entrada revisa una decisión que la doc citaba como **D-350** —el disparo
+automático, B-124— y que **nunca se escribió**: sigue en la lista de referencias
+huérfanas de `node scripts/decisiones-referenciadas.mjs`, citada desde
+`13-agentes.md` y el `BACKLOG.md`. Así que no hay entrada que anotar como
+revisada, y el número queda apuntando a algo que ni se documentó ni existe más.
+
+Se deja dicho acá en vez de escribir D-350 a posteriori: redactar hoy la entrada
+de una decisión ya revertida, con el resultado a la vista, no es documentar sino
+reescribir. Las otras ocho huérfanas siguen abiertas y son su propio pendiente.

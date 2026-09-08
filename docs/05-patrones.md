@@ -85,7 +85,7 @@ en el camino.
 | cerrar un cambio (doc, CHANGELOG, ayuda, novedades, backlog) | `cerrar-cambio` |
 | agregar un campo al modelo | `campo-nuevo` |
 | anotar un bug o una idea | `al-backlog` |
-| pushear o abrir un PR | `antes-de-pushear` |
+| auditar un cambio — antes de pushear, o cuando quieras | `/audit` |
 | automatizar algo que ya se hizo dos veces | `automatizar` |
 | decidir qué deployar | `/que-deployar` |
 

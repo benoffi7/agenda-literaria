@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # El gate mecánico de antes de pushear: todo lo que un script puede decidir sin
-# criterio. Lo que necesita criterio (los tres auditores) va por el skill
-# `antes-de-pushear`, porque un hook de git no puede invocar un modelo.
+# criterio. Lo que necesita criterio (los auditores) va por el skill `/audit`,
+# porque un hook de git no puede invocar un modelo — y desde D-560 va **solo
+# cuando alguien lo pide**: este script ya no verifica que hayan corrido.
 #
 #   ./scripts/verificar-todo.sh
 #
@@ -157,21 +158,7 @@ fi
 paso 'Fuga de credenciales en dist/ (§5.4, trampa 4)'
 ./scripts/verificar-bundle.sh dist || fallo 'el bundle tiene rastros del Admin SDK'
 
-# ── 6 · Que los tres auditores hayan corrido sobre ESTO ───────────
-# B-124, decisión del dueño (2026-09-07): «siempre antes de pushear, los tres».
-#
-# Este paso NO invoca a nadie —un hook de git no puede llamar a un modelo— y no
-# es un sexto chequeo mecánico: es el que verifica que los otros tres, los que
-# necesitan criterio, ya pasaron por el contenido que se está por publicar.
-#
-# «Por el contenido» y no «alguna vez»: la huella es del código de los archivos
-# que cada auditor mira, así que auditar → commitear → pushear sin tocar nada
-# pasa, y auditar → editar una salida pública → pushear, no.
-paso 'Los tres auditores corrieron sobre este contenido (B-124)'
-node scripts/hook-auditores.mjs push \
-  || fallo 'faltan auditores: corré el skill `antes-de-pushear` (o SALTEAR_AUDITORES=1)'
-
-printf '\n\033[32m✓ los siete pasos pasaron.\033[0m\n'
-printf 'Los seis primeros son mecánicos; el séptimo verifica que los tres\n'
-printf 'auditores —privacidad, trampas y documentación— hayan corrido sobre este\n'
-printf 'mismo contenido, que es lo que el dueño decidió en B-124.\n'
+printf '\n\033[32m✓ los seis pasos pasaron.\033[0m\n'
+printf 'Los seis son mecánicos. Lo que necesita criterio —privacidad, trampas y\n'
+printf 'documentación— NO lo verifica este script: va por el skill `/audit`, a\n'
+printf 'pedido (D-560). Que estos seis pasen no significa que alguien auditó.\n'

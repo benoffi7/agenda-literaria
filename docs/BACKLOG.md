@@ -2957,7 +2957,44 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-825 · Reanudar un auditor no sella, así que la re-auditoría del delta no cuenta · P2
+### B-826 · El frontmatter de una definición nueva no se chequea hasta que se commitea · P2
+
+**Lo cobró D-560 sobre el skill que ese mismo cambio creó.** El
+`description` de `.claude/skills/audit/SKILL.md` tenía un `": "` sin comillas
+—YAML inválido, que hace que Claude Code **ignore el skill entero y sin ningún
+error visible**, la trampa 11 del §13 con otra cara—. `agentes-y-skills.test.ts`
+lo detecta, y aun así la suite dio verde tres veces seguidas antes del commit.
+
+**Por qué.** El test enumera con `git ls-files -z .claude`, o sea **solo archivos
+versionados**. Una definición nueva es untracked hasta el `git add`, así que
+queda fuera del barrido exactamente cuando más falta hace: es el único momento en
+que su frontmatter nunca fue validado por nada. Lo agarró el gate de pre-push,
+que corre después del commit — o sea, tarde: el commit ya estaba hecho y el
+mensaje ya estaba escrito.
+
+**Qué se pierde.** No es teórico: pasó, en el primer skill que se escribió después
+de sacar los auditores automáticos. Y el modo de falla es del peor tipo, porque el
+síntoma es que **el skill simplemente no existe** — no hay error, no hay log, y el
+próximo que lo invoque va a pensar que se equivocó de nombre.
+
+**Dónde.** `tests/agentes-y-skills.test.ts:26`, la función `versionados()`. El
+arreglo es enumerar también lo no versionado: `git ls-files -z --others
+--exclude-standard .claude` además del `ls-files` de ahora, unidos. Así una
+definición nueva se valida en la primera corrida, sin esperar al `git add`.
+
+**Ojo con el efecto de al lado:** hay un caso que afirma «un skill suelto no se
+carga, así que no hay ninguno». Si se suma lo untracked al barrido, ese caso
+empieza a ver archivos que antes no veía; hay que mirarlo en la misma pasada.
+
+### B-825 · Reanudar un auditor no sella, así que la re-auditoría del delta no cuenta — ✅ sin efecto (2026-09-08, por D-560) · P2
+
+> **Se murió con su causa, el mismo día que se abrió.** D-560 eliminó el sello
+> entero, así que no hay huella que escribir ni gate que la lea: el problema de
+> abajo no tiene dónde ocurrir. Se deja el texto porque el razonamiento vale para
+> lo que venga — **si algo vuelve a querer recordar «esto ya se revisó», hay que
+> mirar todos los caminos por los que una auditoría puede correr, no solo el que
+> el hook observa.** Reanudar un agente ya existente era uno, y era el barato.
+
 
 **Lo encontré cerrando B-814, usando el mecanismo.** El sello de
 `<git-dir>/auditores.json` lo escribe el hook `PostToolUse` de
@@ -12687,7 +12724,20 @@ Arreglo: una nota en D-145 que apunte a B-259, en el estilo de los avisos apilad
 de `12-sitio-publico.md`. Cuidado con no reescribir el original: el valor de esas
 entradas es que se lean contra lo que decían.
 
-### B-124 · ✅ contestado (2026-09-07) — ¿cuándo corren los auditores?
+### B-124 · ✅ contestado (2026-09-07) — ¿cuándo corren los auditores? — revisado el 2026-09-08 (D-560)
+
+> **Revisado el 2026-09-08 (D-560).** La respuesta de abajo se revirtió: los
+> auditores corren **a pedido**, con el skill `/audit`, y no queda ni un hook ni
+> un gate que los dispare o los exija. Se sacaron los tres hooks, el séptimo paso
+> del gate, el sello y su plomería.
+>
+> **La contra que este ítem tenía escrita es la que se aceptó**, y conviene leerla
+> acá abajo tal como estaba: la opción «a pedido» decía «cero costo, **se
+> olvida**». Eso sigue siendo cierto — lo que cambió no es la evaluación del
+> riesgo sino quién lo asume. El razonamiento completo está en **D-560**.
+>
+> Ojo con el párrafo de abajo sobre el «séptimo paso»: ese paso ya no existe, y el
+> gate hoy tiene seis. El resto queda como estaba escrito.
 
 **«Siempre antes de pushear, los tres.»**
 
