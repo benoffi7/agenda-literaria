@@ -2,6 +2,69 @@
 
 ## Sin publicar
 
+- **Cuatro PRDs escritos, nada construido todavía** — **B-830 a B-839**, P1 para
+  el 2026-09-09. Pedido del dueño: un formulario público **sin login** para que los
+  organizadores carguen su actividad y les llegue a una bandeja, más tres
+  directorios con formulario público y privado y sección propia en la web
+  (**librerías**, **suscripciones literarias**, **lugares para eventos**).
+
+  Viven en [`prd/`](prd/README.md), que es un directorio nuevo de `docs/` y está en
+  su índice. Son cinco documentos: uno por pedido, más el **inventario archivo por
+  archivo** —qué se crea, qué se toca, de dónde se copia cada patrón, el orden por
+  commit y las siete cosas que se rompen en silencio— escrito para que la sesión de
+  código no arranque explorando.
+
+  **Lo que salió de escribirlos juntos, que es el valor de haberlo hecho antes de
+  codear:**
+
+  - **Los cuatro abren la primera escritura anónima del proyecto.** Hoy
+    `firestore.rules` es tajante: sin el claim `admin` no hay `write`, y el
+    `match /{document=**}` cierra el resto. Eso deja al §5.3 del `CLAUDE.md`
+    desactualizado el día que esto se construya, y convierte a **B-836** —App
+    Check, validación en la regla, topes, honeypot— en bloqueante de los cuatro.
+  - **Y guardan el primer dato personal de un tercero**, que es **B-102 al revés**
+    («¿el sistema guarda algo de quien se inscribe?» → *no*). Sin forma de
+    repreguntarle a quien propone, la bandeja no sirve; así que se reabre a
+    propósito, con retención (**B-838**) y con las dos clases de contacto
+    separadas: el WhatsApp de una librería **es** público, el mail de quien cargó
+    la ficha no sale nunca.
+  - **«Qué incluye» apareció tres veces en cuatro pedidos** —el evento, la
+    suscripción, el lugar— y es el patrón §4 que ya está implementado. Una
+    taxonomía por entidad, y ningún vocabulario nuevo inventado.
+  - **El precio de una suscripción y las promos bancarias de una librería son el
+    mismo problema**, y el dueño lo dudó solo en su pedido («porque puede
+    cambiar»). Sale un mecanismo compartido, **B-837**: el dato no se muestra
+    nunca sin su fecha de carga, no entra a ningún filtro y no va al `Offer` del
+    JSON-LD, porque un precio de tres meses en el resultado de Google se publica
+    equivocado con la credibilidad de un dato estructurado.
+  - **El «no sé si todos cobran, o le dicen que tienen que consumir» de los lugares
+    ya tiene respuesta en este repo.** El precio no es un número, es una forma de
+    arreglo: `con-consumicion` es el `a-la-gorra` de los lugares, y el §4.1 del
+    `CLAUDE.md` ya decidió que eso es opción de primera clase y no un caso raro.
+    Misma forma que `arancel: { tipo, notas }`.
+  - **Lugares es el único que puede publicar la dirección de la casa de alguien**,
+    y lo carga cualquiera sin login. De ahí `direccionPublica` con default por tipo
+    de lugar — que es la **tercera** instancia del par flag+dato privado, junto a
+    `online.urlPublica` y `material.items[].publico`, con la advertencia de B-819 al
+    lado: el flag y el dato son un par y el historial los restaura juntos o no
+    restaura ninguno.
+  - **Un choque de nombre que no se veía:** la barra ya dice «Suscribirse» (el
+    calendario, `/suscribirse`, indexado y con slug inmutable). Poner
+    «Suscripciones» al lado son dos páginas peleando por la misma búsqueda. Se
+    resuelve renombrando **la etiqueta** de la barra a «Calendario», sin tocar la
+    URL — y la etiqueta mejora, porque «Suscribirse» no dice a qué.
+  - **Y la barra pasaría de 7 a 10 pestañas** (**B-835**), que ya no entra en un
+    teléfono.
+
+  **Además, dos pedidos chicos del mismo día:** el campo de contacto de los cuatro
+  formularios acepta **Instagram** además de mail y WhatsApp, y **`/contacto` suma
+  Instagram como canal** (**B-839**) — hoy los dos bloques son `mailto:` y el
+  handle está en el chrome, no como forma de escribir, cuando en este circuito el
+  canal real es el DM.
+
+  **Cuatro decisiones del dueño quedaron anotadas y bloquean el cierre**, no el
+  arranque: **DEC-10** a **DEC-13** en el BACKLOG.
+
 - **Los cinco pendientes que dejaron las auditorías, cerrados** — B-821, B-822,
   B-823, B-824 y B-826. Cuatro son red que faltaba y uno es doc que envejeció; van
   juntos porque son la misma cosa: garantías que existían pero eran voluntarias.

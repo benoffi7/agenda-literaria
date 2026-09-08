@@ -18,6 +18,10 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 > tres primeros (**B-310**, **B-311**, **B-312**); los números del medio son de
 > otros frentes de la misma tanda.
 >
+> **Y un cuarto hueco, chico y del mismo motivo: `B-828` y `B-829`.** El último
+> ítem era B-827 y la tanda de los cuatro formularios del 2026-09-08 arrancó a
+> numerar en **B-830** para dejarse un par de números de margen. Nada se borró.
+>
 > **Y un tercer hueco, con una renumeración adentro: `B-603`.** La tanda del
 > 2026-09-03 tuvo tres frentes en paralelo y dos numeraron a ciegas. El frente del
 > sitio reservó **B-600 a B-603** y usó tres (**B-600**, el tríptico de la home;
@@ -39,6 +43,10 @@ trabajo.
 
 | # | Tema | Contexto |
 |---|---|---|
+| **DEC-10** | **¿El formulario público de propuestas reemplaza el `mailto:` «Sugerir una actividad» de `/contacto`, o conviven?** | Bloquea el cierre de **B-830**. Recomendación: **reemplazarlo**, con el motivo de contacto llevando a `/proponer`. Dos caminos para lo mismo hace que la mitad de las propuestas llegue por el peor. Razonado en [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 11 |
+| **DEC-11** | **¿Un anónimo puede subir un archivo de imagen, o solo pegar una URL?** | Bloquea **B-830** y los tres `sumar`. El dueño pidió «cargar la foto o subir la url». La URL es un string; el archivo es abrirle `write` a Storage a un anónimo, con la trampa 13 (`read` incluye `list`) y los huérfanos de B-221. Recomendación: **solo URL en la v1**, y el archivo en una segunda tajada con prefijo aislado. Ver [`prd/README.md`](prd/README.md) § 2 |
+| **DEC-12** | **El dato que envejece: ¿van las promos bancarias de una librería y el precio de una suscripción?** | Recomendación: **las promos no** (un dato viejo acá no es viejo, es equivocado, y lo paga la librería); **el precio sí**, con **la fecha de carga visible**, fuera de todo filtro y fuera del `Offer` del JSON-LD. El mecanismo compartido es **B-837**. Razonado en [`prd/02-librerias.md`](prd/02-librerias.md) § 6 y [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 |
+| **DEC-13** | **¿Cuántos días se guarda una propuesta rechazada?** | Es el primer dato personal de un tercero que el sistema va a guardar, o sea que reabre **B-102** a propósito. Recomendación: **30 días** para las rechazadas; las aceptadas quedan. Lo borra una Function `onSchedule`, como las tres que ya existen |
 | DEC-1 | ~~`libro presentado`~~ **resuelto e implementado el 2026-08-26** (D-126). | El §11 lo lista para presentaciones y charlas, pero el §3.1 no lo tiene en el modelo. Decidido el 2026-08-21: campo propio con título de la obra y autor de la obra si difiere del invitado, para poder filtrar y mostrarlo aparte. |
 | DEC-6 | ~~**El nombre está: «Agenda LEH — Leer, Escribir, Hacer».** Falta **registrar el dominio**~~ — **el dominio está: `agendaleh.ar`, registrado y elegido como canónico el 2026-09-02 (D-165), y con él se cerró B-109.** El **handle de Instagram es `@librosdelatiahildita`**, decidido el 2026-09-03: con eso DEC-6 queda cerrada entera. Lo que sigue abierto son las decisiones #4 a #8 del §11.1, ninguna bloqueante. (El texto original decía que faltaba el handle (#2) y las decisiones #4 a #8 del §11.1, ninguna bloqueante. El texto original: | Resuelto el 2026-08-27. Era el bloqueo de la cadena entera: sin nombre no hay dominio, sin dominio no hay `site`, y sin `site` no hay canonical, ni Open Graph, ni sitemap — o sea B-109 y con él **B-01 a B-114**. El acrónimo hace trabajo: «LEH» es corto para la marca y «Leer, Escribir, Hacer» funciona como la línea de qué es, que también hacía falta (va en `og:site_name`, en el `Organization` y en las cinco imágenes de OG). Y «Hacer» abre el paraguas más allá de talleres y clubes, que es donde entraron «Feria» y «Librería a la calle». **Lo que falta decidir es qué parte del nombre va en el dominio** —el completo es largo para una URL— y registrarlo antes de que se indexe nada. Sigue abierto además el handle de Instagram (#2, ya decidido el canal) y las decisiones #4 a #8 del §11.1 de [`12-sitio-publico.md`](12-sitio-publico.md), que ya no bloquean: el sitio se puede empezar. |
 
@@ -409,6 +417,49 @@ con la Function de B-220 (D-175) y el `srcset` de **B-320**: la página más pes
 del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5 KB
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
+
+### B-830 a B-839 · Los cuatro formularios: propuestas de organizadores y los tres directorios · P1 — **para mañana (2026-09-09)**
+
+**Los PRDs están escritos y el inventario de archivos también.** Pedido del dueño
+el 2026-09-08; la especificación completa vive en [`prd/`](prd/README.md) y esto
+es solo la fila del backlog. La sesión de mañana **no tiene que explorar**: el
+inventario archivo por archivo, el orden por commit y las siete cosas que se
+rompen en silencio están en
+[`prd/05-inventario-de-archivos.md`](prd/05-inventario-de-archivos.md).
+
+| # | Qué | Dónde está especificado | Estado |
+|---|---|---|---|
+| **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🔴 primero, y no se negocia |
+| **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
+| **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | 🔴 piso, es un helper y un test |
+| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟡 listo para codear |
+| **B-831** | **Directorio de librerías** — `/librerias`, `/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | 🟡 listo para codear |
+| **B-832** | **Directorio de suscripciones literarias** — `/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. **Y un choque de nombre que hay que resolver antes de la primera línea**: la barra ya dice «Suscribirse» (el calendario) | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | 🟡 listo para codear |
+| **B-833** | **Directorio de lugares para eventos** — `/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | 🟡 listo para codear |
+| **B-835** | **La barra de navegación pasa de 7 a 10 pestañas** y ya no entra en un teléfono. Es decisión de producto, no CSS: lo más probable es una pestaña «Guía» con las tres adentro. Va **antes** de publicar la segunda sección | [`prd/README.md`](prd/README.md) § 5 | 🟡 |
+| **B-838** | **Retención de datos de contacto de terceros** — reabre **B-102** («¿el sistema guarda algo de quien se inscribe?» → *no*), que dejó de ser cierto el día que existe una bandeja con el mail de quien propone. Function `onSchedule`, plazo por **DEC-13** | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 7 | 🟡 |
+| **B-839** | **`/contacto` suma Instagram como canal** — pedido del dueño el 2026-09-08. Hoy `BLOQUES_DE_CONTACTO` son dos `mailto:` y el handle (`agenda.leh`) está en el chrome, no como forma de escribir. En este circuito el canal real es el DM. Chico y sin dependencias; el cuidado es que **un DM no tiene `asunto`** y `BLOQUES_DE_CONTACTO` hoy es homogéneo | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 2 | 🟢 se hace en una tarde |
+
+**Por qué esto es P1 y no P2.** Los tres directorios, solos, serían P2 —son
+información al costado de la agenda—. Lo que los pone acá es **B-830**: el
+proyecto existe para que la gente encuentre las actividades (§2.3 del
+`CLAUDE.md`), y hoy el cuello de botella no es el sitio sino **la carga**, que es
+una persona transcribiendo mails. Un formulario que le llega la actividad cargada
+ataca eso directo.
+
+**Lo que hay que aceptar al empezar, escrito para que no sorprenda:**
+
+1. **Se abre la primera escritura anónima del proyecto.** El §5.3 del `CLAUDE.md`
+   deja de ser cierto tal como está redactado, y hay que actualizarlo en el mismo
+   cambio.
+2. **Se guarda el primer dato personal de un tercero.** Es B-102 al revés, y con
+   los ojos abiertos: sin forma de repreguntar, la bandeja no sirve.
+3. **Son once vocabularios de taxonomía nuevos.** Vale revisar cuáles pueden
+   arrancar como texto libre; la única que yo dejaría libre es la temática de una
+   suscripción.
+4. **Un directorio vacío es peor que no tenerlo.** Con seis fichas la sección
+   parece abandonada. Antes de publicar cada una hay que cargarla, y eso es
+   trabajo del dueño, no del código.
 
 ### B-819 · Restaurar puede volver a publicar un link que estaba apagado — y el flag es un par — ✅ hecho (2026-09-08) · P1
 
