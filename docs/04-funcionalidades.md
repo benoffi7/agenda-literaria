@@ -1676,8 +1676,17 @@ capas:
 
 | Capa | Qué frena | Cuándo se ve |
 |---|---|---|
-| `camposRestaurables` — no ofrece la fila | la dirección web si la actividad estuvo publicada (trampa 10, B-285); los cuatro derivados de `modalidades` sueltos (B-224); un campo que **no existía** en esa versión (B-167); el nombre de una opción con un link de reunión sobre una con página (B-181) | la fila no aparece |
+| `camposRestaurables` — no ofrece la fila | la dirección web si la actividad estuvo publicada (trampa 10, B-285); los cuatro derivados de `modalidades` sueltos (B-224); un campo que **no existía** en esa versión (B-167); el nombre de una opción con un link de reunión sobre una con página (B-181); las `modalidades` o el `material` que **estrenarían** un link de publicación que hoy no sale (**B-819**) | la fila no aparece |
 | `issuesDeRestauracion` — valida el documento resultante (**B-818**, D-540) | cualquier regla del schema que la restauración **rompería**: restaurar «publicado» sobre una incompleta, un título de dos letras, una inscripción sin destino | al apretar «Restaurar», con el mensaje de qué rompería |
+
+**La fila de B-819 mide lo que sale, no el flag,** y eso costó un P0 de la
+auditoría de cierre: la primera versión definía «hoy ya sale» como
+`urlPublica === true`, y los tres productores lo definen como `flag && url`. Con
+`{urlPublica: true, url: ''}` —el estado que queda cuando alguien borra el link
+apurado para cortar un zoombombing, porque el input y la casilla son
+independientes— la guarda leía «ya publicado» y dejaba pasar la restauración, que
+reescribía la URL. El predicado ahora se **importa** de `toPublic.ts`, del lado del
+productor, y un test de clase rechaza cualquier copia local.
 
 La segunda capa es la que cierra **«Restaurar → Estado»**, que hasta B-818
 escribía `estado: 'publicado'` salteando el nivel entero de publicar y salía al

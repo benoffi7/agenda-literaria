@@ -410,7 +410,61 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
-### B-819 · Restaurar puede volver a publicar un link que estaba apagado — y el flag es un par · P1
+### B-819 · Restaurar puede volver a publicar un link que estaba apagado — y el flag es un par — ✅ hecho (2026-09-08) · P1
+
+> **Resuelto con una sola función para las dos mitades**, como pedía el ítem:
+> `flagsDePublicacionRestaurables` en `src/lib/historial.ts`. Saca «Modalidades» y
+> «Material» de la pantalla cuando la versión prende un flag que hoy está apagado
+> y la actividad tiene página. Se casa por `id` y nunca por posición; un item sin
+> `id` (material anterior a B-342) bloquea igual, porque no se puede probar que ya
+> sea público.
+>
+> **Y apareció una tercera cosa que el ítem no nombraba:** la guarda nacía con el
+> agujero de B-285 —decidía contra el snapshot del montaje, así que publicar desde
+> otra pestaña la dejaba pasar—. Lo señaló el docblock de `07-seguridad.md`, que ya
+> contaba que las otras dos se re-evalúan contra lo releído. Ahora se re-evalúan
+> **las tres**, y eso lo fija un control de **clase**: el test barre las llamadas
+> del cuerpo de `restaurarCampo` y rechaza cualquiera que mire `actual`. Con eso, la
+> cuarta guarda que entre no puede repetir el agujero — que es lo que pasó tres
+> veces seguidas.
+>
+> **Y la auditoría de cierre encontró un P0 en el propio arreglo**, que vale más
+> que el ítem: la guarda definía «hoy este link ya sale» como `flag === true`, y
+> los tres productores lo definen como `flag && url`. Con
+> `{urlPublica: true, url: ''}` —el estado que queda cuando alguien borra el link
+> apurado para cortar un zoombombing, porque el input y la casilla son
+> independientes y ni `formADocumento` ni el schema atan una cosa a la otra— la
+> guarda leía «ya publicado», dejaba pasar la restauración y la URL volvía a las
+> dos salidas. **El escenario literal de B-819 después del arreglo de B-819.**
+>
+> Es la clase D-30/B-88 en el eje que no se había mirado: no el par de campos
+> —eso ya estaba resuelto con una función para los dos flags— sino el par
+> **guarda ⇄ productor**. El predicado se extrajo a `toPublic.ts`
+> (`linkDeReunionQueSale`, `urlDeMaterialQueSale`) y la guarda lo **importa**, con
+> un test de clase que rechaza cualquier copia local. Eso cerró de una vez los
+> otros tres hallazgos menores: el gate de `material.tiene` que estrenaba la
+> página indexada, el `Set<id>` que colapsaba dos filas con el mismo id (la clave
+> es `id|url`), y el `=== true` que dependía del `z.boolean()` del piso de B-818.
+>
+> **Se abrió la sección «Las puertas» en la ficha del `auditor-privacidad`.** El
+> agregado de `historial.ts` a los disparadores no lo sostenía ningún test —la
+> lista se deriva de las **productoras**, y una puerta no produce ninguna salida—,
+> así que sacarlo no habría puesto nada en rojo: el mismo modo de falla que el
+> agregado vino a cerrar, un nivel más arriba. Entraron también
+> `actividades.ts`, `opciones.ts` y `reportes.ts`, con la tabla que dice por qué
+> cada una es una puerta y dos asertos que la atan al `description`.
+> `formulario/autoguardado.ts` queda afuera a propósito, con el argumento escrito.
+>
+> **No se abrió una D-xxx**, y el motivo es del `auditor-documentacion`: B-819 no
+> decide nada nuevo, aplica **D-124** —que ya estableció que los dos flags son un
+> par y se tratan con una sola función— a una segunda puerta. Abrir D-570 sería
+> documentar dos veces la misma decisión.
+>
+> 23 casos nuevos y siete mutaciones probadas. Las que importan: olvidarse de la
+> mitad del material rompe dos casos (D-30/B-88); volver al predicado del flag
+> rompe los siete del P0; y hacer regresar una guarda **vieja** al snapshot lo
+> agarra el control de clase, que es la prueba de que sirve para la cuarta.
+
 
 **Lo encontró el `auditor-privacidad` cerrando B-818**, y lo nombró como lo que
 queda afuera a propósito: ni las guardas puntuales del historial ni el piso nuevo

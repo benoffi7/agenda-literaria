@@ -710,6 +710,63 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
     expect(sinNombrar, 'productores ausentes del description').toEqual([]);
   });
 
+  /**
+   * Las rutas de la sección «Las puertas» de la ficha — B-819.
+   *
+   * Se derivan de la **tabla**, que es donde está escrito por qué cada una es una
+   * puerta. Si la lista viviera solo en el `description`, no habría dónde leer el
+   * motivo; si viviera solo en la tabla, no dispararía nada. Los dos asertos de
+   * abajo las atan.
+   */
+  const puertas = (ficha: string): string[] => {
+    const src = fuente(ficha);
+    const desde = src.indexOf('## Las puertas');
+    if (desde === -1) return [];
+    const hasta = src.indexOf('\n## ', desde + 4);
+    const seccion = src.slice(desde, hasta === -1 ? undefined : hasta);
+    /*
+     * Solo las **filas de la tabla**, no la prosa de la sección. La prosa nombra a
+     * propósito una puerta que queda **afuera** de la lista
+     * (`formulario/autoguardado.ts`, con el argumento a favor y en contra escrito),
+     * y un barrido de la sección entera la exigiría en el `description` — o sea
+     * exigiría lo contrario de lo que la ficha decide. Lo cobró este mismo caso al
+     * escribirlo.
+     */
+    return seccion
+      .split('\n')
+      .filter((l) => l.startsWith('| `'))
+      .flatMap((l) => [...l.matchAll(/`((?:src|functions)\/[\w/.-]+)`/g)].map((m) => m[1]!));
+  };
+
+  it('el description del agente nombra también las puertas, no solo las productoras', () => {
+    /*
+     * **El agujero que este caso cierra.** El aserto de arriba deriva de la tabla
+     * de salidas, así que solo cubre **productoras**. `src/lib/historial.ts` no
+     * produce ninguna salida —es una puerta: escribe el documento y de ahí sale por
+     * una productora que está bien— y los **dos últimos P1 de privacidad vivieron
+     * ahí** (B-818 y B-819), con el disparo por nombre sin despertarse nunca.
+     *
+     * Se agregó al `description`, y sin este caso ese agregado no lo sostenía nada:
+     * el día que alguien lo saque, ningún test se pone rojo. O sea el mismo modo de
+     * falla que el agregado vino a cerrar, un nivel más arriba.
+     */
+    const nombradas = puertas(FICHA);
+    // Control positivo: si el barrido de la sección dejara de encontrar rutas, el
+    // `filter` de abajo pasaría contra una lista vacía.
+    expect(nombradas.length, 'no se encontró la tabla de puertas en la ficha').toBeGreaterThanOrEqual(4);
+
+    const { claves } = frontmatter(fuente(FICHA));
+    const sinNombrar = nombradas.filter((p) => !(claves.description ?? '').includes(p));
+    expect(sinNombrar, 'puertas ausentes del description: no van a disparar nada').toEqual([]);
+  });
+
+  it('y todas las puertas que nombra existen', () => {
+    const inexistentes = puertas(FICHA).filter(
+      (p) => !existsSync(fileURLToPath(new URL(p, raiz))),
+    );
+    expect(inexistentes, 'la ficha nombra puertas que no existen').toEqual([]);
+  });
+
   it('todos los archivos productores existen', () => {
     // `versionados()` de arriba lista solo `.claude/`, así que acá se mira el
     // disco: los productores viven en `src/` y en `functions/`.

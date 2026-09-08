@@ -446,12 +446,53 @@ const libroPublico = (l: Libro | null | undefined): LibroPublico | null =>
  * para el bloque principal desde B-224: dos copias de esta condición son dos
  * maneras de que una se olvide del flag.
  */
-const onlinePublico = (online: Online | null): { plataforma: string; url?: string } | null =>
-  online
-    ? online.urlPublica && online.url
-      ? { plataforma: online.plataforma, url: online.url }
-      : { plataforma: online.plataforma }
-    : null;
+const onlinePublico = (online: Online | null): { plataforma: string; url?: string } | null => {
+  if (!online) return null;
+  const url = linkDeReunionQueSale(online);
+  return url ? { plataforma: online.plataforma, url } : { plataforma: online.plataforma };
+};
+
+/**
+ * **¿Este link de reunión sale, y cuál?** — el predicado, exportado — B-819.
+ *
+ * Existe separado de `onlinePublico` porque hay un segundo lector, y no es una
+ * salida: `flagsDePublicacionRestaurables` (`lib/historial.ts`) necesita
+ * contestar «¿esto que hoy hay ya está publicado?» para decidir si restaurar una
+ * versión vieja **estrenaría** un link.
+ *
+ * Y tiene que ser **el mismo** predicado, no uno parecido. La primera versión de
+ * esa guarda miraba solo `urlPublica === true` y el `auditor-privacidad` la
+ * reventó con el caso más ordinario que hay: se publica el link, se llena la
+ * reunión de gente que nadie invitó, y lo más rápido a mano es **borrar el link y
+ * guardar** —el input y la casilla son independientes, y ni `formADocumento` ni el
+ * schema atan una cosa a la otra—. Queda `{urlPublica: true, url: ''}`: hoy no
+ * sale nada, pero la guarda lo leía como «ya publicado» y dejaba pasar la
+ * restauración, que reescribía la URL. O sea el escenario literal de B-819
+ * después del arreglo de B-819.
+ *
+ * Es la clase D-30/B-88 en el eje que no se había mirado: no el par de campos
+ * —eso ya estaba resuelto con una función para los dos flags— sino el par
+ * **guarda ⇄ productor**. De ahí que el predicado viva acá, del lado del
+ * productor, y que la guarda lo importe.
+ */
+export const linkDeReunionQueSale = (online: Online | null): string | null =>
+  online?.urlPublica && online.url ? online.url : null;
+
+/**
+ * **¿La URL de este material sale, y cuál?** — la otra mitad del par, y con un
+ * gate más: `material.tiene`.
+ *
+ * `toPublic` emite los items sin mirar `tiene` (la salida 1 los lleva igual), pero
+ * la **página de detalle** sí lo gatea, así que para la pregunta que hace la
+ * guarda —«¿esto ya está publicado?»— `tiene` importa: con la casilla apagada, la
+ * URL no está en el HTML indexado, y restaurar una versión que la prende **estrena**
+ * esa página. Por eso el gate va en el predicado y no en el llamador.
+ *
+ * `tiene` viaja aparte porque `ItemMaterial` no lo conoce: es del `Material` que
+ * lo contiene.
+ */
+export const urlDeMaterialQueSale = (i: ItemMaterial, tiene: boolean): string | null =>
+  tiene && i.publico && i.url ? i.url : null;
 
 /**
  * La sede, **enumerada campo por campo**.

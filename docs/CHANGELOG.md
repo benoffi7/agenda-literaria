@@ -2,6 +2,85 @@
 
 ## Sin publicar
 
+- **El historial ya no vuelve a publicar un link que se había apagado** —
+  **B-819**, P1, lo encontró el `auditor-privacidad` cerrando B-818.
+
+  `online.urlPublica` (D-15) y `material.items[].publico` (§5.1) deciden lo mismo
+  con dos nombres: si un link privado sale. **El schema no tiene regla sobre
+  ninguno** —la decisión se delegó al flag a propósito—, así que el piso de B-818
+  devolvía `[]` y no frenaba nada: restaurar unas `modalidades` o un `material` de
+  antes de que el dueño apagara el flag lo volvía a prender, con destino al
+  `events.json`, al evento de Calendar y al detalle, y con rebuild marcado.
+
+  **Lo que lo hizo P1 y no P2 es que la pantalla no puede avisar.**
+  `resumenDeCampo` resume un array como «2 elementos» y un objeto sin `nombre`
+  como sus claves, así que la fila decía «Modalidades — Decía: 2 elementos» o
+  «Material — Decía: tiene, items». Quien apretaba no veía que estaba volviendo a
+  publicar un link que él mismo había despublicado. Es la forma de B-181 con otro
+  campo y sin el schema atrás.
+
+  `flagsDePublicacionRestaurables` saca las dos filas cuando la versión prende
+  algo que hoy está apagado y la actividad tiene página. **Los dos flags en una
+  sola función y no dos guardas parecidas:** son un par, el precedente de tratarlos
+  juntos lo escribió el propio repo (`sinFlagsDePublicacion`, el P1 nº 1 de D-124),
+  y cerrar una mitad es la clase D-30/B-88 — que es justo lo que le pasó a la
+  primera versión del ítem, que nombraba solo `urlPublica`. Se casa por `id` y
+  nunca por posición (trampa 2), y un item sin `id` —material anterior a B-342—
+  bloquea igual: en la duda no se publica.
+
+  **Y apareció una tercera cosa que el ítem no nombraba.** La guarda nacía con el
+  agujero de B-285: decidía contra el snapshot del montaje, así que la pantalla
+  abierta sobre un borrador —donde está en verde, porque de un borrador no sale
+  nada— más alguien publicando desde otra pestaña la dejaba pasar. **Lo señaló el
+  docblock de `07-seguridad.md`**, que ya contaba que las otras dos se re-evalúan
+  contra lo releído; ninguna herramienta lo dijo. Ahora se re-evalúan las tres, y
+  lo fija un control de **clase**: el test barre las llamadas del cuerpo de
+  `restaurarCampo` y rechaza cualquiera que mire `actual`. La cuarta guarda que
+  entre no puede repetir el agujero, que es lo que pasó tres veces seguidas.
+
+  **Y la auditoría de cierre encontró un P0 en el arreglo mismo**, que es lo más
+  valioso de esta entrada. La guarda definía «hoy este link ya sale» como
+  `flag === true`; los tres productores lo definen como `flag && url`
+  (`toPublic.ts`, `functions/calendario.js`). Con `{urlPublica: true, url: ''}`
+  —el estado que queda cuando alguien borra el link apurado para cortar un
+  zoombombing, porque el input y la casilla son independientes y nadie ata una
+  cosa a la otra— la guarda leía «ya publicado», dejaba pasar la restauración y la
+  URL volvía al `events.json` y al evento. **El escenario literal de B-819 después
+  del arreglo de B-819.**
+
+  Es la clase D-30/B-88 en el eje que no se había mirado: no el par de campos
+  —resuelto con una función para los dos flags— sino el par **guarda ⇄
+  productor**. El predicado se extrajo a `toPublic.ts` (`linkDeReunionQueSale`,
+  `urlDeMaterialQueSale`), la guarda lo **importa**, y un test de clase rechaza
+  cualquier copia local. Eso cerró de una vez los otros tres hallazgos: el gate de
+  `material.tiene` —con la casilla apagada la URL no está en el HTML indexado, así
+  que restaurar **estrena** esa página, y una página indexada no se despublica—, el
+  `Set<id>` que colapsaba dos filas con el mismo id (la clave es `id|url`), y el
+  `=== true` que dependía del `z.boolean()` del piso de B-818 para no filtrar.
+
+  **La ficha del `auditor-privacidad` ganó una sección «Las puertas».** Agregarle
+  `historial.ts` a los disparadores no lo sostenía ningún test: esa lista se deriva
+  de las **productoras**, y una puerta no produce ninguna salida, así que sacarlo no
+  habría puesto nada en rojo — el mismo modo de falla que el agregado vino a
+  cerrar, un nivel más arriba. Entraron también `actividades.ts`, `opciones.ts` y
+  `reportes.ts`, con la tabla que dice por qué cada una es una puerta y dos asertos
+  que la atan al `description`. `formulario/autoguardado.ts` queda afuera a
+  propósito, con el argumento escrito en la ficha.
+
+  Y el `auditor-trampas` atacó el control de clase, que era lo que le pedí: el
+  regex cortaba en el primer `)`, así que una guarda con el **primer argumento
+  computado** —`algoRestaurable(obtenerConfig(campo), actual)`— pasaba en verde
+  mirando el snapshot. Es el bug que el control existe para atajar, y el control
+  positivo no lo cubría porque el conteo de matches no baja. Ahora tolera un nivel
+  de anidamiento.
+
+  23 casos nuevos en `historial-restaurar.test.ts` (el `auditor-documentacion`
+  cazó que la entrada decía «once»: eran 11 antes de sumar la simetría del material
+  y los siete del P0) y siete mutaciones probadas. Doc, ayuda y novedad al día;
+  `04-funcionalidades.md` y `13-agentes.md` incluidos. **No se abrió una D-xxx**:
+  B-819 no decide nada nuevo, aplica D-124 —los dos flags son un par— a una segunda
+  puerta.
+
 - **Los auditores corren a pedido, con `/audit`** — **D-560**, pedido del dueño:
   «saca las auditorias. ahora se haran a pedido con un comando /audit que tenes
   que diseñar». Tercera respuesta a «¿cuándo corren los tres auditores?», y

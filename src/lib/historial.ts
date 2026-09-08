@@ -45,6 +45,7 @@ import {
   sedePrincipal,
 } from '@/lib/modalidades';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
+import { linkDeReunionQueSale, urlDeMaterialQueSale } from '@/lib/toPublic';
 import { fechaHoraCorta } from '@/lib/sesiones';
 // §7.3 — «una sesión tiene evento si la actividad está publicada y la sesión no
 // está cancelada». Importada y no reescrita: su propio docblock dice que se
@@ -151,6 +152,7 @@ export const camposRestaurables = (version: Version, actual: Actividad): string[
   (camposCambiados(version.documento, actual) as string[])
     .filter((campo) => campo !== 'slug' || slugRestaurable(actual))
     .filter((campo) => campo !== 'comisiones' || comisionesRestaurables(version, actual))
+    .filter((campo) => flagsDePublicacionRestaurables(campo, version, actual))
     .filter((campo) => !CAMPOS_DERIVADOS.includes(campo))
     .filter((campo) => existiaEnLaVersion(campo, version));
 
@@ -194,6 +196,118 @@ export const comisionesRestaurables = (version: Version, actual: Actividad): boo
   if (!tienePagina(actual.estado)) return true;
   const comisiones = (version.documento as { comisiones?: { etiqueta?: string }[] }).comisiones;
   return !(comisiones ?? []).some((c) => llevaLinkDeReunion(c?.etiqueta ?? ''));
+};
+
+/**
+ * ¿Restaurar **este** campo vuelve a prender un flag de publicación que hoy está
+ * apagado? — B-819, y lo encontró el `auditor-privacidad` cerrando B-818.
+ *
+ * ── Los dos flags son un par, y por eso es UNA función ────────────────────
+ * `online.urlPublica` (D-15) y `material.items[].publico` (§5.1) deciden lo
+ * mismo con dos nombres: si un link privado sale o no. **El schema no tiene
+ * ninguna regla sobre ninguno de los dos** —la decisión se delegó al flag a
+ * propósito—, así que `issuesDeRestauracion` devuelve `[]` y el piso de B-818 no
+ * los ve. Tampoco los ven las guardas puntuales.
+ *
+ * **El precedente de tratarlos juntos lo escribió el propio repo:** el P1 nº 1 de
+ * D-124 —el borrador autoguardado— los apaga a los dos con una sola función
+ * (`sinFlagsDePublicacion`). Cerrar una mitad de un par y no la otra es la clase
+ * D-30/B-88 que este archivo ya cita tres veces, y acá la mitad que se quedaría
+ * corta es la del material, que fue la que la primera versión de B-819 no
+ * nombraba.
+ *
+ * ── Por qué se saca la fila en vez de avisar ──────────────────────────────
+ * Porque **la pantalla no puede avisar**, y eso es lo que lo hizo P1:
+ * `resumenDeCampo` resume un array como «2 elementos» y un objeto sin `nombre`
+ * como sus claves, así que la fila dice «Modalidades — Decía: 2 elementos» o
+ * «Material — Decía: tiene, items». Quien aprieta no ve que está volviendo a
+ * publicar un link que hoy está apagado, y la escritura marca rebuild: sale solo.
+ * Es exactamente la forma de B-181, con otro campo y sin el schema atrás.
+ *
+ * Nombrarlo en el `confirm()` era la alternativa barata y peor: ese texto ya dice
+ * «¿Restaurar modalidades…?» y una advertencia más no cambia que la fila sigue
+ * diciendo «2 elementos».
+ *
+ * ── Se compara por `id`, nunca por posición ───────────────────────────────
+ * Las dos listas tienen id de cliente (`mod_<uuid>`, `mat_<uuid>` — trampa 2), y
+ * comparar por índice haría que agregar una fila corriera todas las demás y la
+ * guarda mirara el flag de otra. Un item **sin** counterpart hoy también bloquea:
+ * restaurarlo agrega un link publicado que hoy no está publicado, que es el mismo
+ * daño. Y un item de la versión **sin id** —material anterior a B-342— bloquea
+ * igual: no se puede probar que ya sea público, y en la duda no se publica.
+ *
+ * **Solo bloquea si la actividad de hoy tiene página** (`tienePagina`), como
+ * `comisionesRestaurables`: de un borrador no sale nada, así que restaurar ahí es
+ * recuperar lo que se escribió.
+ *
+ * **El caso legítimo que esto NO rompe:** volver a prender un flag a propósito se
+ * hace desde el formulario, que es donde está la casilla y donde el texto dice qué
+ * hace (B-240). El historial no es el lugar para eso.
+ */
+export const flagsDePublicacionRestaurables = (
+  campo: string,
+  version: Version,
+  actual: Actividad,
+): boolean => {
+  if (campo !== 'modalidades' && campo !== 'material') return true;
+  if (!tienePagina(actual.estado)) return true;
+
+  /**
+   * **Lo que sale, no el flag.** `id|url`, porque estrenar es de la URL.
+   *
+   * Un `Set` de ids contestaba «¿hay alguna fila con este id prendida?», y eso
+   * colapsa dos filas con el mismo id —nada valida unicidad: el schema solo
+   * chequea el prefijo `mod_`— y tapa el caso «mismo id, otra URL». La clave
+   * lleva las dos cosas.
+   *
+   * La `url` sale del predicado del **productor** (`@/lib/toPublic`), nunca de
+   * una copia local: ver el docblock de `linkDeReunionQueSale`, que cuenta el P0
+   * que costó la primera versión de esta guarda.
+   */
+  const loQueSale = (doc: Partial<Actividad>): { url: string; clave: string | null }[] => {
+    /*
+     * `tiene` entra al predicado del material porque la página de detalle lo
+     * gatea: con la casilla apagada la URL no está en el HTML indexado, así que
+     * restaurar una versión que la prende **estrena** esa página. Es un destino
+     * nuevo, y el argumento asimétrico de D-139 dice que una página indexada no se
+     * despublica.
+     */
+    const tiene = doc.material?.tiene === true;
+
+    const crudas: { url: string | null; id: string | undefined }[] =
+      campo === 'modalidades'
+        ? (doc.modalidades ?? []).map((m) => ({
+            url: linkDeReunionQueSale(m?.online ?? null),
+            id: m?.id,
+          }))
+        : (doc.material?.items ?? []).map((i) => ({
+            url: i ? urlDeMaterialQueSale(i, tiene) : null,
+            id: i?.id,
+          }));
+
+    // `flatMap` y no `filter` + type predicate: el predicado obliga a declarar el
+    // tipo de `id` dos veces y las dos listas lo tienen distinto (`ModalidadFila.id`
+    // es obligatorio, el del material puede faltar antes de B-342).
+    return crudas.flatMap(({ url, id }) =>
+      url ? [{ url, clave: id ? `${id}|${url}` : null }] : [],
+    );
+  };
+
+  const hoy = new Set(
+    loQueSale(actual)
+      .map(({ clave }) => clave)
+      .filter((c): c is string => c !== null),
+  );
+
+  /*
+   * Bloquea si la versión publica algo que hoy no está publicado. Una entrada
+   * **sin `id`** —material anterior a B-342— no se puede casar con nada, así que
+   * cuenta como no publicada hoy: no se puede probar que ya salga, y en la duda no
+   * se publica (§5.1, trampa 5).
+   */
+  return !loQueSale(version.documento as Partial<Actividad>).some(
+    ({ clave }) => !clave || !hoy.has(clave),
+  );
 };
 
 /**
@@ -745,7 +859,7 @@ export const resumenDeCampo = (valor: unknown, largo = 90): string => {
  * así que el `?? actual` es por forma y no un fallback de verdad. **Si la lectura
  * rechaza**, la restauración aborta sin escribir —`leerActividad` no atrapa nada—
  * y **tiene que seguir abortando**: envolverla en un `try/catch` que caiga al
- * snapshot haría que las dos guardas de abajo las contestara el estado del
+ * snapshot haría que las tres guardas de abajo las contestara el estado del
  * montaje, que es exactamente el agujero que cierran. La primera versión de este
  * docblock prometía ese fallback y no existía; lo cobró el `auditor-privacidad`,
  * porque una frase así es una invitación escrita a reabrir el P1.
@@ -775,10 +889,10 @@ export const restaurarCampo = async (
    * mensaje, y «no pude» es la respuesta correcta a «restaurá esto» cuando dejó de
    * ser restaurable — restaurar a medias sería peor.
    *
-   * Se re-evalúan **estas dos** y no `camposRestaurables` entero: esa función
-   * también filtra por «sigue estando distinto», y ahí la respuesta correcta no es
-   * un error sino no hacer nada. Las dos de acá son las que existen para que algo
-   * **no salga**.
+   * Se re-evalúan **estas tres** (la tercera es B-819) y no `camposRestaurables`
+   * entero: esa función también filtra por «sigue estando distinto», y ahí la
+   * respuesta correcta no es un error sino no hacer nada. Las de acá son las que
+   * existen para que algo **no salga**.
    */
   if (campo === 'slug' && !slugRestaurable(fresco)) {
     throw new Error('La dirección web no se puede restaurar: la actividad ya se publicó.');
@@ -788,12 +902,28 @@ export const restaurarCampo = async (
       'Esa versión tiene un link en el nombre de una opción, y esta actividad ya tiene página.',
     );
   }
+  if (!flagsDePublicacionRestaurables(campo, version, fresco)) {
+    /*
+     * La tercera, y entra por el mismo camino que las dos de arriba — B-819. La
+     * carrera es idéntica: la pantalla se monta con la actividad en `borrador`,
+     * donde la guarda está en verde porque de un borrador no sale nada; alguien la
+     * publica desde otra pestaña, y el click escribiría el flag prendido **sobre
+     * el documento releído, que ya tiene página**.
+     *
+     * No lleva `campo === '…'` adelante porque la función ya decide sobre qué
+     * campos opina: dos lugares eligiendo los mismos dos nombres es la clase que
+     * este archivo evita.
+     */
+    throw new Error(
+      'Esa versión tiene el link marcado como público y hoy está apagado. Volver a publicarlo se hace desde el formulario.',
+    );
+  }
 
   const payload = payloadDeRestauracion(campo, version, fresco, uid);
 
   /*
    * ── Y el documento que va a quedar pasa por el schema (B-818) ─────────
-   * La guarda general, después de las dos puntuales: éstas nombran su problema
+   * La guarda general, después de las tres puntuales: éstas nombran su problema
    * mejor, y el schema no conoce la inmutabilidad del slug.
    *
    * Se valida **el `payload` de arriba**, el mismo objeto que se escribe dos

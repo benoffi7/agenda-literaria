@@ -240,7 +240,34 @@ página, **y `restaurarCampo` vuelve a evaluar esa guarda contra el documento qu
 relee antes de escribir** — sin eso la contestaba el snapshot de cuando se abrió la
 pantalla, y bastaba publicar desde otra pestaña para colarla (el precedente es
 B-285, que cerró la misma puerta para el slug; esa guarda también se re-evalúa
-ahora). Lo
+ahora).
+
+**Y hay una tercera guarda en esa misma puerta, por los dos flags de publicación**
+— B-819. `online.urlPublica` (D-15) y `material.items[].publico` deciden lo mismo
+con dos nombres: si un link privado sale. **El schema no tiene regla sobre ninguno
+de los dos** —la decisión se delegó al flag a propósito—, así que el piso de B-818
+devuelve `[]` y no frena nada: restaurar unas `modalidades` o un `material` de
+antes de que el dueño apagara el flag lo vuelve a prender, y la escritura marca
+rebuild. Lo que lo hizo P1 y no P2 es que **la pantalla no puede avisar**:
+`resumenDeCampo` resume un array como «2 elementos», así que la fila dice
+«Modalidades — Decía: 2 elementos».
+
+`flagsDePublicacionRestaurables` saca las dos filas cuando la versión prende algo
+que hoy está apagado y la actividad tiene página, **y se re-evalúa contra lo
+releído** igual que las otras dos. Los dos flags van en **una sola función**: son
+un par, el precedente de tratarlos juntos lo escribió el propio repo
+(`sinFlagsDePublicacion`, el P1 nº 1 de D-124), y cerrar una mitad de un par es la
+clase D-30/B-88. Se casa por `id` y nunca por posición (trampa 2), y un item sin
+`id` —material anterior a B-342— bloquea igual: no se puede probar que ya sea
+público, y en la duda no se publica.
+
+Que las **tres** guardas se evalúen contra el documento releído lo fija ahora un
+control de **clase** y no tres asertos: `tests/historial-restaurar.test.ts` barre
+las llamadas del cuerpo de `restaurarCampo` y rechaza cualquiera que mire el
+snapshot del montaje. Es lo que faltó las dos veces anteriores — la tercera guarda
+nació con el mismo agujero, y lo señaló este párrafo, no un test.
+
+Lo
 que la guarda **no** agarra está fijado en un test y no en un comentario: un host
 de reunión fuera de la lista y sin esquema. No es una regla de forma, es de
 probabilidad —

@@ -475,6 +475,15 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Tampoco vas a ver «Modalidades» ni «Material» si esa versión los tenía con el link ' +
+          'marcado como público y hoy lo tenés apagado. Restaurarlos volvería a publicar un link ' +
+          'que vos despublicaste, y la fila no te lo podría avisar: dice «2 elementos», no dice ' +
+          'cuál. Si querés volver a publicarlo, se hace desde el formulario, con la casilla que ' +
+          'dice qué hace.',
+        cuidado: true,
+      },
+      {
+        texto:
           'Restaurar revisa antes que la actividad no quede incompleta. Si el dato viejo la ' +
           'dejaría sin algo que hace falta para publicar —restaurar «Estado: publicado» cuando ' +
           'falta la sede, o un título de dos letras—, no lo escribe y te dice qué le falta. Lo ' +

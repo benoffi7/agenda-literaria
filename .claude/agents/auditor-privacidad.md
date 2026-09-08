@@ -1,6 +1,6 @@
 ---
 name: auditor-privacidad
-description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/cartelera.ts, src/lib/imagenes.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/pages/cartelera.astro, src/lib/listadoPublico.ts, src/lib/mesPublico.ts, src/lib/tarjetaPublica.ts, src/lib/ahoraPublico.ts, src/lib/fechasPublicas.ts, src/lib/identidad.ts, src/pages/agenda/[mes].astro, src/lib/sitemap.ts, src/lib/hubsPublicos.ts, src/lib/pasadasPublicas.ts, src/lib/enlaces.ts, src/lib/rutasPublicas.ts, src/layouts/Base.astro, src/pages/sitemap.xml.ts, src/pages/robots.txt.ts, src/pages/pasadas.astro, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/analyticsSitio.ts, src/lib/medicionSitio.ts, src/components/sitio/AvisoDeCookies.astro, src/components/publico/Buscador.tsx, src/lib/textoRedes.ts, src/lib/comercialDelSitio.ts, src/lib/ayudaDelSitio.ts, src/lib/contactoDelSitio.ts, src/lib/apoyoDelSitio.ts, src/lib/noEncontrado.ts, src/types/actividad.ts, src/lib/schema.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
+description: Audita que nada privado se escape a una salida pública en este repo. Usalo ANTES de dar por cerrado cualquier cambio que toque src/lib/toPublic.ts, src/lib/eventsJson.ts, src/pages/events.json.ts, src/lib/detallePublico.ts, src/lib/cartelera.ts, src/lib/imagenes.ts, src/lib/contenidoDelSitio.ts, src/pages/actividad/[slug].astro, src/pages/cartelera.astro, src/lib/listadoPublico.ts, src/lib/mesPublico.ts, src/lib/tarjetaPublica.ts, src/lib/ahoraPublico.ts, src/lib/fechasPublicas.ts, src/lib/identidad.ts, src/pages/agenda/[mes].astro, src/lib/sitemap.ts, src/lib/hubsPublicos.ts, src/lib/pasadasPublicas.ts, src/lib/enlaces.ts, src/lib/rutasPublicas.ts, src/layouts/Base.astro, src/pages/sitemap.xml.ts, src/pages/robots.txt.ts, src/pages/pasadas.astro, functions/calendario.js, functions/reportes.js, src/lib/analytics-eventos.ts, src/lib/analyticsSitio.ts, src/lib/medicionSitio.ts, src/components/sitio/AvisoDeCookies.astro, src/components/publico/Buscador.tsx, src/lib/textoRedes.ts, src/lib/comercialDelSitio.ts, src/lib/ayudaDelSitio.ts, src/lib/contactoDelSitio.ts, src/lib/apoyoDelSitio.ts, src/lib/noEncontrado.ts, src/types/actividad.ts, src/lib/schema.ts, src/lib/historial.ts, src/lib/actividades.ts, src/lib/opciones.ts, src/lib/reportes.ts, firestore.rules, el build de Astro o el bundle del panel; y siempre que se agregue un campo al modelo, una salida nueva, un log, un endpoint, una interpolación de texto en una salida o un dato al evento de Calendar, al issue de GitHub, al texto para redes o a la analítica. Busca además la instancia nueva de dos clases con red — el saneador aplicado campo por campo y el productor de un formato cuyo consumidor deriva por separado. También cuando alguien pregunte si algo es público o si se puede publicar. Es de solo lectura y reporta sin arreglar.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -165,6 +165,33 @@ la **condiciona** («hasta que elijas») o la **acota** («para anotarte»).
 preguntá lo que el barrido no puede — si una frase nueva es **verdad** dada la
 salida 12 y dado lo que la consola de GA4 tiene activado (B-480, B-773). El test
 detecta la forma; que la afirmación sea cierta es criterio.
+
+## Las puertas: archivos que no producen ninguna salida y aun así publican
+
+Las dieciocho de arriba son **productoras**: proyectan o emiten. Estas otras son
+**puertas** — deciden qué valor termina en el documento, o lo escriben, y de ahí
+sale por una productora que ya está bien. Ninguna aparecería en la tabla de
+salidas, y por eso hay que nombrarlas aparte.
+
+El motivo de que esta sección exista: **los dos últimos P1 de privacidad vivieron
+en una puerta** (B-818 y B-819, los dos en `src/lib/historial.ts`), y el disparo
+por nombre de archivo nunca se despertaba por ella. La lista se agregó al
+`description` y este bloque es lo que la sostiene: `tests/agentes-y-skills.test.ts`
+exige que cada ruta de acá esté también allá, así que sacarla del `description`
+pone un test en rojo.
+
+| Puerta | Qué decide o escribe |
+|---|---|
+| `src/lib/historial.ts` | `restaurarCampo` escribe el documento en vivo con `updateDoc` y marca rebuild. Tres guardas puntuales más el piso de B-818 |
+| `src/lib/actividades.ts` | `formADocumento` decide el **valor** de cada campo. Ahí vive saneo con consecuencia de privacidad (`items: f.material.tiene ? … : []`) |
+| `src/lib/opciones.ts` | `upsertOpcion` escribe `/opciones/{campo}`, que tiene `allow read: if true` y viaja a la salida 1 |
+| `src/lib/reportes.ts` | escribe `/reportes/{id}`, que una Function convierte en un issue del repo **público** |
+
+**`src/lib/formulario/autoguardado.ts` queda afuera, y es discutible.** Su
+`sinFlagsDePublicacion` es la otra mitad del par de flags que B-819 cerró, así que
+el argumento para incluirlo es el mismo. Queda afuera porque el borrador vive en
+el navegador de quien carga y no sale de ahí (D-122). Si alguna vez ese borrador
+se sincroniza, entra a esta tabla el mismo día.
 
 ## Qué nunca sale
 

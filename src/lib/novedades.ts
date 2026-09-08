@@ -73,6 +73,18 @@ export const NOVEDADES: Novedad[] = [
     donde: 'Arriba del panel, al lado de «Reportar algo».',
   },
   {
+    id: 'historial-no-reenciende-links',
+    fecha: '2026-09-08',
+    version: '1.10.0',
+    titulo: 'El historial ya no vuelve a publicar un link que apagaste',
+    detalle:
+      'Si una versión vieja tenía el link de la reunión —o un material— marcado como público y ' +
+      'hoy lo tenés apagado, «Modalidades» y «Material» no se ofrecen para restaurar. La fila ' +
+      'no podía avisarte: dice «2 elementos». Volver a publicarlo se hace desde el formulario, ' +
+      'donde está la casilla que dice qué hace.',
+    donde: 'Menú «⋯» de cada fila del listado → «Historial».',
+  },
+  {
     id: 'historial-no-publica-a-ciegas',
     fecha: '2026-09-08',
     version: '1.10.0',

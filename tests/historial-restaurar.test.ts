@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import {
   camposRestaurables,
   issuesDeRestauracion,
@@ -806,5 +807,455 @@ describe('la restauración pasa por el schema (B-818)', () => {
     expect(mensaje).toContain('uno · dos · tres');
     expect(mensaje).not.toContain('cuatro');
     expect(mensaje).toContain('(y 1 más)');
+  });
+});
+
+describe('B-819 — restaurar no vuelve a prender un flag de publicación apagado', () => {
+  /*
+   * Los dos flags que deciden si un link privado sale: `online.urlPublica` (D-15)
+   * y `material.items[].publico` (§5.1). **El schema no tiene regla sobre
+   * ninguno** —la decisión se delegó al flag a propósito—, así que el piso de
+   * B-818 devuelve `[]` acá y lo único que frena es el filtro.
+   *
+   * Van juntos y con una sola función porque son un par, y el precedente lo
+   * escribió el propio repo: el P1 nº 1 de D-124 los apaga a los dos con
+   * `sinFlagsDePublicacion`. Cerrar una mitad y no la otra es la clase D-30/B-88.
+   */
+
+  /** Una forma de cursar online, con el flag donde lo pide el caso. */
+  const online = (id: string, urlPublica: boolean, plataforma = 'Zoom') => ({
+    id,
+    modalidad: 'virtual',
+    inicio: null,
+    fin: null,
+    sede: null,
+    online: { plataforma, url: 'https://zoom.us/j/999', urlPublica },
+  });
+
+  const item = (id: string, publico: boolean) => ({
+    id,
+    tipo: 'lectura',
+    titulo: 'El cuento',
+    url: 'https://drive/el-cuento.pdf',
+    entrega: 'previo',
+    publico,
+  });
+
+  const version = (documento: Record<string, unknown>) => ({
+    documento,
+    camposCambiados: Object.keys(documento),
+    guardadaEn: ts('2026-08-01T10:00:00'),
+    guardadaPor: 'uid',
+  });
+
+  describe('online.urlPublica', () => {
+    it('la versión que lo trae prendido NO se ofrece sobre una publicada', () => {
+      const hoy = actividad({ modalidades: [online('mod_1', false)] } as never);
+      const campos = camposRestaurables(
+        version({ modalidades: [online('mod_1', true)] }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('modalidades');
+    });
+
+    it('pero sobre un borrador sí: de ahí no sale nada', () => {
+      // La misma condición que `comisionesRestaurables`. Restaurar sobre un
+      // borrador es recuperar lo que se escribió.
+      const hoy = actividad({
+        estado: 'borrador',
+        modalidades: [online('mod_1', false)],
+      } as never);
+      const campos = camposRestaurables(
+        version({ modalidades: [online('mod_1', true)] }) as never,
+        hoy,
+      );
+      expect(campos).toContain('modalidades');
+    });
+
+    it('sobre una cancelada tampoco se ofrece: su página sigue indexada (B-110)', () => {
+      const hoy = actividad({ estado: 'cancelado', modalidades: [online('mod_1', false)] } as never);
+      const campos = camposRestaurables(
+        version({ modalidades: [online('mod_1', true)] }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('modalidades');
+    });
+
+    it('si hoy ya está prendido, restaurar no abre nada y se ofrece', () => {
+      /*
+       * El control que evita que la guarda se vuelva un «nunca». Si el link ya
+       * es público, la versión no lo publica: lo deja como está.
+       *
+       * La fila tiene que diferir en **algo que no sea el flag** —acá la
+       * plataforma— o `camposCambiados` no reporta `modalidades` y el campo no
+       * llega al filtro: el caso pasaría sin ejercitar la guarda.
+       */
+      const hoy = actividad({ modalidades: [online('mod_1', true, 'Zoom')] } as never);
+      const campos = camposRestaurables(
+        version({ modalidades: [online('mod_1', true, 'Google Meet')] }) as never,
+        hoy,
+      );
+      expect(campos).toContain('modalidades');
+    });
+
+    it('se casa por `id` y no por posición', () => {
+      /*
+       * Trampa 2 aplicada a la guarda. Hoy `mod_2` está publicado y `mod_1` no;
+       * la versión trae los dos, con `mod_1` prendido y en la otra posición. Una
+       * comparación por índice miraría el flag de la fila equivocada y dejaría
+       * pasar la publicación de `mod_1`.
+       */
+      const hoy = actividad({
+        modalidades: [online('mod_1', false), online('mod_2', true)],
+      } as never);
+      const campos = camposRestaurables(
+        version({ modalidades: [online('mod_2', true), online('mod_1', true)] }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('modalidades');
+    });
+
+    it('una fila que hoy no existe también bloquea', () => {
+      // Restaurarla agrega un link publicado que hoy no está publicado: el mismo
+      // daño que reencender uno, así que la misma respuesta.
+      const hoy = actividad({ modalidades: [online('mod_1', false)] } as never);
+      const campos = camposRestaurables(
+        version({ modalidades: [online('mod_1', false), online('mod_9', true)] }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('modalidades');
+    });
+  });
+
+  describe('material.items[].publico — la otra mitad del par', () => {
+    it('la versión que lo trae público NO se ofrece sobre una publicada', () => {
+      const hoy = actividad({ material: { tiene: true, items: [item('mat_1', false)] } } as never);
+      const campos = camposRestaurables(
+        version({ material: { tiene: true, items: [item('mat_1', true)] } }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('material');
+    });
+
+    it('sobre un borrador sí se ofrece', () => {
+      const hoy = actividad({
+        estado: 'borrador',
+        material: { tiene: true, items: [item('mat_1', false)] },
+      } as never);
+      const campos = camposRestaurables(
+        version({ material: { tiene: true, items: [item('mat_1', true)] } }) as never,
+        hoy,
+      );
+      expect(campos).toContain('material');
+    });
+
+    it('un item sin `id` —material anterior a B-342— bloquea igual', () => {
+      /*
+       * No se puede casar con nada, así que no se puede probar que ya sea
+       * público. En la duda no se publica: es el mismo criterio que el default
+       * `false` del flag (§5.1, trampa 5).
+       */
+      const sinId = { ...item('x', true) } as Record<string, unknown>;
+      delete sinId.id;
+      const hoy = actividad({ material: { tiene: true, items: [item('mat_1', true)] } } as never);
+      const campos = camposRestaurables(
+        version({ material: { tiene: true, items: [sinId] } }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('material');
+    });
+
+    it('se casa por `id` y no por posición — también acá, no solo en modalidades', () => {
+      /*
+       * Hoy es el mismo código parametrizado por `campo`, así que este caso no
+       * puede fallar sin que falle el de modalidades. Existe igual porque el día
+       * que alguien separe las dos ramas —para agregarle una condición propia al
+       * material— esta mitad se queda sin ejercitar. Lo pidió el `auditor-trampas`
+       * como «sin red», y la asimetría era real: modalidades tenía tres casos que
+       * material no.
+       */
+      const hoy = actividad({
+        material: { tiene: true, items: [item('mat_1', false), item('mat_2', true)] },
+      } as never);
+      const campos = camposRestaurables(
+        version({
+          material: { tiene: true, items: [item('mat_2', true), item('mat_1', true)] },
+        }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('material');
+    });
+
+    it('un item que hoy no existe también bloquea', () => {
+      const hoy = actividad({ material: { tiene: true, items: [item('mat_1', false)] } } as never);
+      const campos = camposRestaurables(
+        version({
+          material: { tiene: true, items: [item('mat_1', false), item('mat_9', true)] },
+        }) as never,
+        hoy,
+      );
+      expect(campos).not.toContain('material');
+    });
+
+    it('si hoy ya sale la misma URL, restaurar no estrena nada y se ofrece', () => {
+      // Difiere en el título del item, no en el flag ni en la URL: si no difiriera
+      // en algo, `camposCambiados` no reportaría `material` y el caso no
+      // ejercitaría la guarda.
+      const hoy = actividad({ material: { tiene: true, items: [item('mat_1', true)] } } as never);
+      const campos = camposRestaurables(
+        version({
+          material: { tiene: true, items: [{ ...item('mat_1', true), titulo: 'El cuento (v1)' }] },
+        }) as never,
+        hoy,
+      );
+      expect(campos).toContain('material');
+    });
+
+    it('un material sin nada público se restaura normal', () => {
+      const hoy = actividad({ material: { tiene: true, items: [item('mat_1', false)] } } as never);
+      const campos = camposRestaurables(
+        version({
+          material: { tiene: true, items: [item('mat_1', false), item('mat_2', false)] },
+        }) as never,
+        hoy,
+      );
+      expect(campos).toContain('material');
+    });
+  });
+
+  it('y los otros campos no los toca esta guarda', () => {
+    // Control de que el filtro no se coma la pantalla entera: solo mira los dos
+    // campos que llevan flag.
+    const hoy = actividad({ modalidades: [online('mod_1', false)] } as never);
+    const campos = camposRestaurables(
+      version({ titulo: 'El título de antes', modalidades: [online('mod_1', true)] }) as never,
+      hoy,
+    );
+    expect(campos).toContain('titulo');
+    expect(campos).not.toContain('modalidades');
+  });
+});
+
+describe('B-819 — y la guarda se re-evalúa contra lo releído', () => {
+  /*
+   * La carrera de B-285, tercera instancia. `camposRestaurables` decide en el
+   * **render**, contra el snapshot del montaje: la pantalla se abre con la
+   * actividad en `borrador` —donde la guarda está en verde porque de un borrador
+   * no sale nada—, alguien la publica desde otra pestaña, y el click escribiría
+   * el flag prendido sobre el documento releído, que ya tiene página.
+   *
+   * `restaurarCampo` es `async` y escribe con `updateDoc`, así que no se testea
+   * llamándola. Se afirma que la re-evaluación **está en el código**, igual que
+   * hace `tests/historial-relectura.test.ts` con las otras dos.
+   */
+  const fuente = readFileSync('src/lib/historial.ts', 'utf8');
+
+  /**
+   * El cuerpo de `restaurarCampo`, **sin comentarios**.
+   *
+   * Las dos cosas importan. Acotar al cuerpo, porque `camposRestaurables` llama a
+   * las mismas guardas contra `actual` y eso es **correcto**: ahí decide qué
+   * ofrecer en el render, y el snapshot del montaje es lo único que tiene. Y sin
+   * comentarios, porque los docblocks de esta función nombran las guardas al
+   * explicarlas y un chequeo de presencia se conformaría con eso.
+   */
+  const cuerpoDeRestaurarCampo = (): string =>
+    sinComentarios(fuente.slice(fuente.indexOf('export const restaurarCampo')));
+
+  it('`restaurarCampo` la vuelve a evaluar contra `fresco`, no contra `actual`', () => {
+    const cuerpo = cuerpoDeRestaurarCampo();
+    expect(cuerpo).toContain('flagsDePublicacionRestaurables(campo, version, fresco)');
+    expect(cuerpo).not.toContain('flagsDePublicacionRestaurables(campo, version, actual)');
+  });
+
+  it('y las tres guardas se evalúan contra el documento releído', () => {
+    /*
+     * Control de clase, no de instancia: si mañana entra una cuarta guarda que se
+     * evalúa contra `actual`, este caso la agarra. Es lo que faltó las dos veces
+     * anteriores — la tercera guarda nació con el mismo agujero y lo señaló el
+     * docblock de `07-seguridad.md`, no un test.
+     *
+     * `Restaurables?` con la `s` opcional: `slugRestaurable` es singular, y un
+     * patrón que solo mirara el plural contaría dos guardas donde hay tres y
+     * dejaría la de menos afuera del control.
+     */
+    /*
+     * `[^()]*(?:\([^()]*\)[^()]*)*` y no `[^)]*`: la clase negada simple corta en
+     * el **primer** `)`, así que una guarda cuyo primer argumento sea a su vez una
+     * llamada —`algoRestaurable(obtenerConfig(campo), actual)`— daba un match que
+     * terminaba en `obtenerConfig(campo)` y dejaba `actual` **afuera**. El control
+     * pasaba en verde con la guarda mirando el snapshot, que es exactamente el bug
+     * que existe para atajar. Lo encontró el `auditor-trampas`, y el
+     * `toBeGreaterThanOrEqual` de abajo no lo cubría: el conteo no baja, solo
+     * cambia lo que dice el match.
+     */
+    const guardas = [
+      ...cuerpoDeRestaurarCampo().matchAll(/(\w*Restaurables?)\([^()]*(?:\([^()]*\)[^()]*)*\)/g),
+    ];
+    expect(
+      guardas.length,
+      'se encontraron menos guardas de las que tiene `restaurarCampo`',
+    ).toBeGreaterThanOrEqual(3);
+
+    const contraElSnapshot = guardas.filter((m) => m[0].includes('actual'));
+    expect(
+      contraElSnapshot.map((m) => m[0]),
+      'una guarda se evalúa contra el snapshot del montaje y no contra lo releído',
+    ).toEqual([]);
+  });
+});
+
+describe('B-819 — la guarda mide lo que SALE, no el flag (el P0 de la primera versión)', () => {
+  /*
+   * **El hallazgo P0 del `auditor-privacidad` sobre el arreglo de B-819.** La
+   * primera versión de la guarda definía «hoy este link ya sale» como
+   * `flag === true`; los tres productores lo definen como `flag && url`
+   * (`toPublic.ts`, `functions/calendario.js`). Dos derivaciones del mismo
+   * predicado derivando por separado: la clase D-30/B-88 en el eje que no se había
+   * mirado — no el par de campos, el par **guarda ⇄ productor**.
+   *
+   * El camino no necesita consola ni actor externo: se publica el link, se llena
+   * la reunión de gente que nadie invitó, y lo más rápido a mano es **borrar el
+   * link y guardar** —el input y la casilla son independientes, y ni
+   * `formADocumento` ni el schema atan una cosa a la otra—. Queda
+   * `{urlPublica: true, url: ''}`: hoy no sale nada, pero la guarda lo leía como
+   * «ya publicado», dejaba pasar la restauración, y la URL volvía al `events.json`
+   * y al evento de Calendar. O sea el escenario literal de B-819 después del
+   * arreglo de B-819.
+   */
+
+  const online = (id: string, urlPublica: boolean, url = 'https://zoom.us/j/AAA') => ({
+    id,
+    modalidad: 'virtual',
+    inicio: null,
+    fin: null,
+    sede: null,
+    online: { plataforma: 'Zoom', url, urlPublica },
+  });
+
+  const item = (id: string, publico: boolean, url = 'https://drive/el-cuento.pdf') => ({
+    id,
+    tipo: 'lectura',
+    titulo: 'El cuento',
+    url,
+    entrega: 'previo',
+    publico,
+  });
+
+  const version = (documento: Record<string, unknown>) => ({
+    documento,
+    camposCambiados: Object.keys(documento),
+    guardadaEn: ts('2026-08-01T10:00:00'),
+    guardadaPor: 'uid',
+  });
+
+  it('un link con el flag prendido y la URL vacía hoy NO cuenta como publicado', () => {
+    const hoy = actividad({ modalidades: [online('mod_1', true, '')] } as never);
+    const campos = camposRestaurables(
+      version({ modalidades: [online('mod_1', true, 'https://zoom.us/j/AAA')] }) as never,
+      hoy,
+    );
+    expect(campos, 'la guarda leyó el flag y no lo que sale').not.toContain('modalidades');
+  });
+
+  it('y lo mismo para un material público sin URL cargada', () => {
+    // Esta mitad es peor: el destino incluye el HTML indexado de la página de
+    // detalle, y una página indexada no se despublica (el argumento asimétrico de
+    // D-139).
+    const hoy = actividad({ material: { tiene: true, items: [item('mat_1', true, '')] } } as never);
+    const campos = camposRestaurables(
+      version({ material: { tiene: true, items: [item('mat_1', true)] } }) as never,
+      hoy,
+    );
+    expect(campos).not.toContain('material');
+  });
+
+  it('con «tiene» apagado hoy, un item público de la versión bloquea: estrenaría la página', () => {
+    /*
+     * `toPublic` emite los items sin mirar `tiene`, pero la página de detalle sí
+     * lo gatea. Así que con `tiene: false` la URL está en el `events.json` y **no**
+     * en el HTML indexado: restaurar una versión que prende `tiene` estrena esa
+     * página, que es un destino nuevo.
+     *
+     * Alcance angosto y vale decirlo: `formADocumento` vacía los items al
+     * destildar, así que ninguna versión escrita por el panel llega acá. Hace falta
+     * un documento escrito por fuera — el mismo alcance que el fail-open que
+     * `issuesDeRestauracion` declara en voz alta.
+     */
+    const hoy = actividad({ material: { tiene: false, items: [item('mat_1', true)] } } as never);
+    const campos = camposRestaurables(
+      version({ material: { tiene: true, items: [item('mat_1', true)] } }) as never,
+      hoy,
+    );
+    expect(campos).not.toContain('material');
+  });
+
+  it('dos filas con el mismo id no se tapan entre ellas', () => {
+    /*
+     * Un `Set` de ids contestaba «¿hay alguna fila con este id prendida?», y
+     * `toPublic` recorre **todas** las filas: con el id repetido, la segunda URL
+     * salía sin que la guarda la viera. Nada valida unicidad de `id` —el schema
+     * solo chequea el prefijo—, así que la clave lleva `id|url`.
+     */
+    const hoy = actividad({ modalidades: [online('mod_1', true, 'https://zoom.us/j/AAA')] } as never);
+    const campos = camposRestaurables(
+      version({
+        modalidades: [
+          online('mod_1', true, 'https://zoom.us/j/AAA'),
+          online('mod_1', true, 'https://zoom.us/j/BBB'),
+        ],
+      }) as never,
+      hoy,
+    );
+    expect(campos).not.toContain('modalidades');
+  });
+
+  it('mismo id, otra URL: se publica una URL que hoy no sale, así que bloquea', () => {
+    const hoy = actividad({ modalidades: [online('mod_1', true, 'https://zoom.us/j/AAA')] } as never);
+    const campos = camposRestaurables(
+      version({ modalidades: [online('mod_1', true, 'https://zoom.us/j/BBB')] }) as never,
+      hoy,
+    );
+    expect(campos).not.toContain('modalidades');
+  });
+
+  it('un flag no booleano ya no depende del schema para frenar', () => {
+    /*
+     * El `=== true` de la primera versión leía `publico: 1` como **apagado** en los
+     * dos lados, mientras los productores lo leen como prendido (`i.publico ?`).
+     * Que eso no filtrara dependía del `z.boolean()` del piso de B-818, cuyo propio
+     * docblock declara que con el documento de hoy ilegible no corre nada.
+     *
+     * Con el predicado del productor —truthy, no `=== true`— la guarda frena sola,
+     * y el enganche con el schema deja de ser necesario.
+     */
+    const hoy = actividad({ material: { tiene: true, items: [item('mat_1', false)] } } as never);
+    const campos = camposRestaurables(
+      version({
+        material: { tiene: true, items: [{ ...item('mat_1', false), publico: 1 }] },
+      }) as never,
+      hoy,
+    );
+    expect(campos).not.toContain('material');
+  });
+
+  it('y el predicado es el del productor, no una copia local', () => {
+    /*
+     * El aserto de clase que cierra la puerta para siempre, al estilo del control
+     * de `debeExistir`/`@calendario` que ya tiene `cambiaElDestino`: la guarda
+     * **importa** el predicado de `@/lib/toPublic` y no vuelve a derivar «esto
+     * sale». Si alguien reescribe la condición acá, este caso se pone rojo aunque
+     * los seis de arriba sigan pasando — porque una copia local puede empezar
+     * igual y separarse después, que es literalmente lo que pasó.
+     */
+    const codigo = sinComentarios(readFileSync('src/lib/historial.ts', 'utf8'));
+    expect(codigo).toContain('linkDeReunionQueSale');
+    expect(codigo).toContain('urlDeMaterialQueSale');
+    expect(codigo, 'volvió a derivar el predicado en vez de importarlo').not.toMatch(
+      /urlPublica\s*===?\s*true/,
+    );
+    expect(codigo, 'volvió a derivar el predicado en vez de importarlo').not.toMatch(
+      /\.publico\s*===?\s*true/,
+    );
   });
 });
