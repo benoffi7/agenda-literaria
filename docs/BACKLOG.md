@@ -3011,7 +3011,56 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-826 · El frontmatter de una definición nueva no se chequea hasta que se commitea · P2
+### B-827 · El `label` de `Campo` no está asociado a su input, y la asociación es opt-in · P2
+
+**Lo destapó el test de B-822**, que no pudo agarrar el campo «Título» con
+`getByLabelText`: *«Found a label with the text of: /título/i, however no form
+control was found associated to that label»*. Se resolvió agarrando por
+`placeholder`, que es un parche del test y no del problema.
+
+`src/components/admin/campos/Campo.tsx` acepta un `htmlFor` **opcional** y lo pasa
+al `<label>`. Donde nadie lo pasa —y el input no tiene `id`— el label queda
+huérfano: **un lector de pantalla no anuncia el nombre del campo.** Quien navega
+el formulario con teclado y lector escucha «cuadro de texto» y nada más, en un
+formulario de treinta y pico de campos.
+
+**Es una clase, no una instancia.** La asociación es opt-in en once archivos que
+usan `Campo`, así que no se sabe cuántos están bien sin mirarlos uno por uno — y el
+que se agregue mañana nace mal por default, porque el default es no pasarlo. Es la
+misma forma que B-821: la garantía existe pero es voluntaria.
+
+**Qué se pierde.** Accesibilidad real del panel, y el efecto de al lado es que los
+tests de render no pueden usar `getByLabelText` —la forma en que Testing Library
+espera que se busque un campo, justamente porque es la que se parece a cómo lo
+encuentra una persona—. Hoy hay tests agarrando por placeholder por este motivo.
+
+**Dónde y el molde.** Que `htmlFor` sea **obligatorio** en `Campo` y que el hijo
+lleve ese mismo `id`. Con TypeScript, hacerlo requerido rompe la compilación en
+cada uso que falte, así que el compilador enumera el trabajo. Y un caso en
+`clases-de-bug.test.ts` que barra los usos de `<Campo` y exija el par
+`htmlFor`/`id`, para que el que venga después no nazca huérfano.
+
+```
+it('todo `Campo` asocia su label con su control (§accesibilidad, B-235/B-243)')
+```
+
+### B-826 · El frontmatter de una definición nueva no se chequea hasta que se commitea — ✅ hecho (2026-09-08) · P2
+
+> **Resuelto como decía el ítem:** `definiciones()` —antes `versionados()`, y el
+> nombre se cambió porque ya no dice lo que hace— une `git ls-files` con
+> `git ls-files --others --exclude-standard`, ordena y deduplica. Una definición
+> nueva se valida en la primera corrida, sin esperar al `git add`. Verificado con
+> un skill roto sin versionar: pone dos casos en rojo.
+>
+> **Y el «efecto de al lado» que el ítem pedía mirar tiene dos mitades.** El caso
+> «un skill suelto no se carga» sigue bien: mira `.claude/skills/<name>.md` sin
+> carpeta, y sumar lo untracked solo lo hace más estricto. La que sí cambió es «
+> `13-agentes.md` nombra todo lo que existe»: ahora un skill nuevo **también** deja
+> la suite roja hasta que se lo documente. Se deja así a propósito —es la regla de
+> proceso del repo, no un efecto colateral— y la alternativa (chequear solo el
+> frontmatter de lo untracked) sería un caso especial que reabre la mitad del
+> agujero.
+
 
 **Lo cobró D-560 sobre el skill que ese mismo cambio creó.** El
 `description` de `.claude/skills/audit/SKILL.md` tenía un `": "` sin comillas
@@ -3078,7 +3127,32 @@ argumento en vez de deducirlo del payload del hook.
 **contenido** y no del reloj (B-794), así que lo que hay que arreglar es *quién
 escribe la huella*, nunca *cómo se calcula*.
 
-### B-821 · Las marcas del navegador no tienen barrido de clase, y ya van tres · P2
+### B-821 · Las marcas del navegador no tienen barrido de clase, y ya van tres — ✅ hecho (2026-09-08) · P2
+
+> **Resuelto con una tabla normativa y un barrido bidireccional.**
+> `07-seguridad.md` ganó «Las marcas, una por una» con las **ocho** que existen
+> (eran más de las seis que el ítem contaba: faltaban `agenda:analitica:perfil` y
+> `agenda-literaria:novedad-vista`), y `clases-de-bug.test.ts` la deriva de ahí y
+> del fuente, fallando en los dos sentidos: una marca nueva sin fila, y una fila
+> que ya no exista en el código. Antes la lista de la doc era ilustrativa —«tres a
+> modo de ejemplo»—, que es justo la parte débil.
+>
+> **Dos desvíos de lo que pedía el ítem, con el motivo:** la constante puede ser
+> `const` del módulo y no hace falta `export` —lo que hace segura a la clave es
+> que sea un literal fijo en un solo lugar, y exigir el export forzaría cinco
+> exports que nadie importa; tres de las ocho son privadas hoy y está bien—. Y se
+> agregó un cuarto caso que el ítem no pedía: que **nadie arme la clave al lado
+> del `setItem`**, porque una clave inline no se puede casar con la tabla y se
+> escapa del barrido, y un barrido que se puede esquivar sin querer no es una red.
+>
+> Lo que el test **no** puede ver quedó escrito en la doc: si el sufijo de un
+> prefijo sale de verdad de un vocabulario cerrado. Se puede exigir que la clave
+> declarada sea fija, no que lo que se le pega al final no sea texto tipeado — y
+> esa es la parte que convierte una marca en contenido.
+>
+> Tres mutaciones probadas, una de ellas con el ejemplo literal del ítem
+> (`agenda:ultimo-barrio`).
+
 
 **Lo encontró el `auditor-privacidad` cerrando B-814.** `docs/07-seguridad.md`
 acaba de escribir la regla como normativa: *una marca del navegador tiene clave
@@ -3109,7 +3183,18 @@ nace verde y sirve de acá en adelante.
 it('una marca del navegador tiene clave fija y valor de vocabulario cerrado, o es contenido (§5.1, D-122)')
 ```
 
-### B-822 · Nada verifica que cambiar de vista no borre el formulario a medio cargar · P2
+### B-822 · Nada verifica que cambiar de vista no borre el formulario a medio cargar — ✅ hecho (2026-09-08) · P2
+
+> **Dos casos en `formulario-apilado.render.test.tsx`**, uno por dirección: un
+> `key` puesto de un solo lado rompería las dos, pero una condición mal escrita
+> —`key` solo en apilado— rompería una sola. Mutación probada agregando
+> `key={vistaDelPanel}`: el caso falla con el mensaje que dice qué pasó.
+>
+> **Y destapó otra cosa, que quedó como B-827:** el campo se tuvo que agarrar por
+> `placeholder` porque `getByLabelText` no lo encuentra — el `label` de `Campo`
+> lleva un `htmlFor` **opcional** y «Título» no lo pasa, así que un lector de
+> pantalla tampoco lo anuncia.
+
 
 **Lo encontró el `auditor-trampas` cerrando B-814.** Hoy **no hay bug**: se
 verificó a mano que ni `AdminApp` ni el wrapper `diferido(...)` le ponen un
@@ -4935,10 +5020,13 @@ en escritorio el panel se veía encajonado: en 1920px entraban seis actividades 
 había que scrollear veinte veces para recorrer cuarenta.
 
 **Hecho.** Grilla de tarjetas —1 columna en el teléfono, **2/3/4** en `md`-`lg` /
-`xl` / `2xl`— y **ancho por vista**: solo el listado usa la pantalla completa
-(`max-w-[100rem]`, con tope a propósito) y el resto se queda en el ancho de
-lectura. La decisión completa, con las tres exclusiones y por qué el default es
-angosto, está en **D-330**.
+`xl` / `2xl`— y **ancho por vista**, con tope a propósito (`max-w-[100rem]`) y
+default angosto. **Qué vistas lo usan vive en `D-330` y no acá** (B-824): esta
+línea decía «solo el listado» y se volvió falsa dos veces —B-621 sumó
+`estadisticas` y `calendario`, B-814 el formulario en vista «PC»—. Repetir acá un
+dato que se decide en otro lado es la tercera vez que pasa lo mismo (ver **B-118**
+y **B-92**), así que en vez de corregir el número se quitó: la decisión completa,
+con la lista real y por qué el default es angosto, está en **D-330**.
 
 De paso la tarjeta dice **dos datos que la fila no decía** —la modalidad y el
 arancel—, que eran ejes de filtro y no aparecían en el resultado: se podía filtrar
@@ -9866,7 +9954,22 @@ Esto de acá es un aviso, y está anotado como aviso.
 
 ## P3 — cuando sobre tiempo
 
-### B-823 · El scroll al fallar la validación, con más de una sección en error y en vista apilada · P3
+### B-823 · El scroll al fallar la validación, con más de una sección en error y en vista apilada — ✅ hecho (2026-09-08) · P3
+
+> **Un caso en `formulario-apilado.render.test.tsx`** con el formulario vacío, que
+> tiene varias secciones incompletas. Afirma que el **último** scroll de sección
+> es el de la sección más arriba, derivando cuál es de la barra —que las lista en
+> orden del documento— y no de un id escrito a mano: la sección que se agregue
+> mañana no rompe el caso.
+>
+> Mira solo los scrolls **de sección**, porque después de los `rAF` hay un
+> `setTimeout` que scrollea hasta `[data-campo-con-error]`: el último scroll de
+> todos no es de una sección, y afirmar sobre ése habría sido verificar otra cosa.
+>
+> El comportamiento ya era correcto —los `rAF` corren en el orden en que se
+> agendaron, y la iteración inversa hace que el último en ejecutarse sea el de la
+> primera sección—; lo que faltaba era la red.
+
 
 **Lo encontró el `auditor-trampas` cerrando B-814.**
 `src/components/admin/ActividadFormulario.tsx` recorre `faltantes.secciones` en
@@ -9886,7 +9989,12 @@ sección sola—, así que el punto ciego es exactamente el caso de dos o tres.
 **Dónde.** Un caso con dos o tres secciones incompletas, con assert sobre cuál
 `scrollIntoView` fue el último llamado.
 
-### B-824 · La frase de cierre de B-620 quedó falsa, y ya van dos cambios que la empeoran · P3
+### B-824 · La frase de cierre de B-620 quedó falsa, y ya van dos cambios que la empeoran — ✅ hecho (2026-09-08) · P3
+
+> **Se quitó la frase en vez de corregirla**, que es lo que el ítem proponía: el
+> dato vive en D-330 y repetirlo acá es lo que lo hizo envejecer dos veces. En su
+> lugar quedó escrito **por qué** no está, para que el próximo no la reponga.
+
 
 **Lo encontró el `auditor-documentacion` cerrando B-814.** B-620 (P2, cerrado el
 2026-09-03) cierra diciendo «**ancho por vista**: solo el listado usa la pantalla

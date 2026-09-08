@@ -564,6 +564,37 @@ contenido de una persona; una marca no la lleva, y su clave es fija
 día una marca empieza a guardar algo que alguien tipeó, deja de ser una marca y le
 corresponde el tratamiento del borrador.
 
+### Las marcas, una por una — B-821
+
+La lista es **normativa y exhaustiva**: `tests/clases-de-bug.test.ts` la deriva de
+acá y del fuente, y falla en los dos sentidos —una marca nueva que no esté en la
+tabla, o una fila que ya no exista en el código—. Antes esta sección nombraba tres
+«a modo de ejemplo», y esa era la parte débil: la **cuarta** marca nacía sin
+ninguna afirmación, que es la forma exacta del «se acordaron de sanear los cinco
+campos que había».
+
+| Clave | Qué guarda | Dónde |
+|---|---|---|
+| `agenda:vista-del-panel` | con qué forma se dibuja el formulario, `pc` o `celular` (B-814) | `lib/vistaDelPanel.ts` |
+| `agenda:grafico:` | con qué vista se pinta un reparto del tablero (B-701) | `lib/vistaDeGrafico.ts` |
+| `agenda:seccion:` | qué acordeón del formulario quedó abierto | `components/admin/campos/Seccion.tsx` |
+| `agenda:version-recargada` | qué versión del bundle ya se recargó, para no recargar en loop | `components/admin/useVersionPublicada.ts` |
+| `agenda:analitica:perfil` | el perfil de medición del panel | `lib/analytics.ts` |
+| `agenda:consentimiento-analitica` | si quien visita el sitio aceptó la analítica | `lib/analyticsSitio.ts` |
+| `agenda-literaria:novedad-vista` | qué novedad del panel ya se leyó | `lib/novedades.ts` |
+| `agenda-literaria:borrador:` | **contenido** — el formulario a medio cargar (D-122) | `lib/formulario/borradoresDelNavegador.ts` |
+
+Las siete primeras son marcas: clave fija —o un prefijo cerrado, con el sufijo
+saliendo de un vocabulario del propio módulo— y valor de un enum o un contador. La
+última es la excepción y la única que es contenido, así que es la única que lleva la
+huella del uid y los 30 días.
+
+**Lo que el barrido NO puede ver, y conviene tenerlo escrito:** si el sufijo de un
+prefijo sale de verdad de un vocabulario cerrado. Un test puede exigir que la clave
+declarada sea un literal fijo —y lo hace—, pero no que lo que se le pega al final no
+sea texto que alguien tipeó. Esa parte sigue siendo de quien revisa, y es
+justamente la que convierte una marca en contenido.
+
 Por qué no es una salida nueva:
 
 1. **No sale del dispositivo.** No hay red en el camino: se escribe y se lee del

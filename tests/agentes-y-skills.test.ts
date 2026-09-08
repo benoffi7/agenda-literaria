@@ -23,13 +23,32 @@ const raiz = new URL('..', import.meta.url);
 const fuente = (relativo: string) =>
   readFileSync(fileURLToPath(new URL(relativo, raiz)), 'utf8');
 
-const versionados = (): string[] =>
-  execFileSync('git', ['ls-files', '-z', '.claude'], { encoding: 'utf8' })
-    .split('\0')
-    .filter(Boolean);
+/**
+ * Las definiciones de `.claude/` **versionadas y sin versionar** — B-826.
+ *
+ * Antes era solo `git ls-files`, y eso dejaba un agujero justo donde más importa:
+ * una definición **nueva** es untracked hasta el `git add`, o sea que su
+ * frontmatter no lo validaba nada en el único momento en que nunca fue validado.
+ * Lo cobró el skill `/audit` de D-560: su `description` tenía un `": "` sin
+ * comillas —YAML inválido, que hace que Claude Code **ignore el skill entero y sin
+ * error visible**, la trampa 11— y la suite dio verde tres veces antes del commit.
+ * Lo agarró el gate de pre-push, o sea después de commitear.
+ *
+ * `--others --exclude-standard` es «lo no rastreado que no está en el
+ * `.gitignore`»: se suma a lo versionado, se ordena y se deduplica, así que el
+ * resultado no depende de en qué mitad apareció cada archivo.
+ */
+const definiciones = (): string[] => {
+  const listar = (args: string[]): string[] =>
+    execFileSync('git', ['ls-files', '-z', ...args, '.claude'], { encoding: 'utf8' })
+      .split('\0')
+      .filter(Boolean);
+  return [...new Set([...listar([]), ...listar(['--others', '--exclude-standard'])])].sort();
+};
 
-const AGENTES = versionados().filter((f) => /^\.claude\/agents\/[^/]+\.md$/.test(f));
-const SKILLS = versionados().filter((f) => /^\.claude\/skills\/[^/]+\/SKILL\.md$/.test(f));
+
+const AGENTES = definiciones().filter((f) => /^\.claude\/agents\/[^/]+\.md$/.test(f));
+const SKILLS = definiciones().filter((f) => /^\.claude\/skills\/[^/]+\/SKILL\.md$/.test(f));
 
 type Frontmatter = { claves: Record<string, string>; errores: string[] };
 
@@ -113,7 +132,7 @@ describe('las definiciones de .claude/ cargan de verdad — B-139', () => {
 
   it('un skill suelto no se carga, así que no hay ninguno', () => {
     // `.claude/skills/<name>.md` (sin carpeta) es ignorado por Claude Code.
-    expect(versionados().filter((f) => /^\.claude\/skills\/[^/]+\.md$/.test(f))).toEqual([]);
+    expect(definiciones().filter((f) => /^\.claude\/skills\/[^/]+\.md$/.test(f))).toEqual([]);
   });
 
   it('los auditores son de solo lectura: sin Write ni Edit en `tools`', () => {
@@ -377,14 +396,14 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
      */
     const cuantas = salidas(FICHA).length;
     /*
-     * `versionados()` lista solo `.claude`, así que los `docs/` se piden aparte —
+     * `definiciones()` lista solo `.claude`, así que los `docs/` se piden aparte —
      * y son la mitad que importa: el drift original vivía en
      * `docs/12-sitio-publico.md`. `BACKLOG.md` y `CHANGELOG.md` quedan afuera a
      * propósito: son registros históricos, y ahí una cita a un número que ya no
      * existe **es** el registro.
      */
     const md = [
-      ...versionados().filter((f) => /\.md$/.test(f)),
+      ...definiciones().filter((f) => /\.md$/.test(f)),
       ...execFileSync('git', ['ls-files', '-z', 'docs'], { encoding: 'utf8' })
         .split('\0')
         .filter((f) => /\.md$/.test(f) && !/^docs\/(BACKLOG|CHANGELOG)\.md$/.test(f)),
@@ -768,7 +787,7 @@ describe('la cuenta de salidas públicas no puede divergir — B-216', () => {
   });
 
   it('todos los archivos productores existen', () => {
-    // `versionados()` de arriba lista solo `.claude/`, así que acá se mira el
+    // `definiciones()` de arriba lista solo `.claude/`, así que acá se mira el
     // disco: los productores viven en `src/` y en `functions/`.
     const inexistentes = salidas(FICHA)
       .map((s) => s.archivo)

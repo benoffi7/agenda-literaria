@@ -2,6 +2,55 @@
 
 ## Sin publicar
 
+- **Los cinco pendientes que dejaron las auditorías, cerrados** — B-821, B-822,
+  B-823, B-824 y B-826. Cuatro son red que faltaba y uno es doc que envejeció; van
+  juntos porque son la misma cosa: garantías que existían pero eran voluntarias.
+
+  **B-821 — las marcas del navegador tienen barrido de clase.**
+  `07-seguridad.md` ganó «Las marcas, una por una» con las **ocho** que existen
+  —dos más de las que el ítem contaba— y `clases-de-bug.test.ts` la deriva de ahí y
+  del fuente, fallando en los dos sentidos: una marca nueva sin fila, y una fila
+  que ya no exista en el código. Antes la lista era ilustrativa, «tres a modo de
+  ejemplo», y esa era la parte débil: la novena marca nacía sin ninguna afirmación.
+  Se agregó un cuarto caso que el ítem no pedía —que nadie arme la clave al lado
+  del `setItem`—, porque una clave inline no se puede casar con la tabla y se
+  escapa del barrido. Y lo que el test **no** puede ver quedó escrito: si el sufijo
+  de un prefijo sale de verdad de un vocabulario cerrado. Tres mutaciones probadas,
+  una con el ejemplo literal del ítem.
+
+  **B-826 — una definición nueva se valida antes de commitear.** `definiciones()`
+  —antes `versionados()`, y el nombre cambió porque ya no decía lo que hace— une
+  `git ls-files` con `--others --exclude-standard`. El agujero era el momento en
+  que más importa: una definición untracked no la validaba nada, y por eso el
+  `description` del skill `/audit` viajó con un `": "` sin comillas por tres
+  corridas verdes. **Efecto de al lado, a propósito:** ahora un skill nuevo también
+  deja la suite roja hasta documentarlo en `13-agentes.md`. Es la regla de proceso
+  del repo; la alternativa —chequear solo el frontmatter de lo untracked— sería un
+  caso especial que reabre la mitad del agujero.
+
+  **B-822 — cambiar de vista no borra el formulario a medio cargar.** No había bug
+  y ahora hay red, en las dos direcciones: un `key` puesto de un solo lado rompe
+  las dos, pero una condición mal escrita rompería una sola. Mutación probada.
+
+  **B-823 — el scroll con más de una sección en error.** El comportamiento ya era
+  correcto; faltaba el caso. Afirma que el último scroll **de sección** es el de la
+  sección más arriba, derivando cuál es de la barra y no de un id a mano — y mira
+  solo los de sección, porque el `setTimeout` que scrollea al campo con error corre
+  después.
+
+  **B-824 — la frase de B-620 se quitó, no se corrigió.** Decía «solo el listado
+  usa la pantalla completa» y se volvió falsa dos veces (B-621, B-814). El dato vive
+  en D-330; repetirlo era lo que lo hacía envejecer. Quedó escrito **por qué** no
+  está, para que nadie la reponga.
+
+  **Y apareció B-827 (P2), que es de los que valen.** El test de B-822 no pudo
+  agarrar «Título» con `getByLabelText`: el `label` de `Campo` lleva un `htmlFor`
+  **opcional** y ese campo no lo pasa, así que **un lector de pantalla no anuncia el
+  nombre del campo**. Es una clase —la asociación es opt-in en once usos, y el que
+  se agregue mañana nace mal por default— y tiene un efecto de al lado que ya se
+  está pagando: hay tests agarrando por `placeholder` porque no pueden usar la
+  forma en que Testing Library espera que se busque un campo.
+
 - **El historial tampoco restaura un slug que otra actividad ya usa** — **B-820**,
   P2, lo encontró el `auditor-privacidad` cerrando B-818 midiendo el ancho de la
   promesa nueva de la ayuda contra el ancho de la guarda.

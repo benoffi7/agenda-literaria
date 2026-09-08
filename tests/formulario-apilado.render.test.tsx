@@ -146,3 +146,136 @@ describe('la barra sigue llevando al campo que falta, sin pestañas (B-184)', ()
     expect(scroll.mock.instances[0]).toBe(document.getElementById('donde'));
   });
 });
+
+describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', () => {
+  /*
+   * **Hoy no hay bug, y el test existe igual.** Se verificó a mano que ni
+   * `AdminApp` ni el wrapper `diferido(...)` le ponen un `key={vistaDelPanel}` a
+   * `ActividadFormulario`, así que cambiar de vista es un cambio de prop y React no
+   * remonta nada. Lo que faltaba era la red — lo pidió el `auditor-trampas` como
+   * «sin red», y es la clase de trampa que no falla al principio: alguien que
+   * mañana agregue un `key` para forzar el remount —por ejemplo para resetear el
+   * scroll al cambiar de vista, que es un pedido razonable— le **borra el
+   * formulario en curso** a quien estaba cargando, y ningún test lo nota.
+   *
+   * Y el momento en que pasa es el peor posible: quien carga tocó el interruptor
+   * justo porque el formulario le quedaba incómodo, o sea con datos ya escritos.
+   */
+  const pintarCon = (vista: 'pc' | 'celular') =>
+    render(
+      <ActividadFormulario
+        vistaDelPanel={vista}
+        uid="uid-de-prueba"
+        onGuardado={vi.fn()}
+        onCancelar={vi.fn()}
+      />,
+    );
+
+  it('lo escrito sobrevive al pasar de «PC» a «Celular»', async () => {
+    const { rerender } = pintarCon('pc');
+
+    /*
+     * Se agarra por **placeholder** y no por label, y eso destapó otra cosa: el
+     * `label` de `Campo` lleva un `htmlFor` **opcional** y el campo «Título» no lo
+     * pasa, así que `getByLabelText` no encuentra el control — o sea que un lector
+     * de pantalla tampoco lo anuncia. Es una clase y no una instancia (la
+     * asociación es opt-in en once usos de `Campo`), y quedó como **B-827**. Acá se
+     * usa el placeholder para no atar este caso a ese arreglo.
+     */
+    const titulo = screen.getByPlaceholderText('Taller de crónica urbana');
+    await userEvent.type(titulo, 'Un ciclo a medio cargar');
+
+    rerender(
+      <ActividadFormulario
+        vistaDelPanel="celular"
+        uid="uid-de-prueba"
+        onGuardado={vi.fn()}
+        onCancelar={vi.fn()}
+      />,
+    );
+
+    expect(
+      (screen.getByPlaceholderText('Taller de crónica urbana') as HTMLInputElement).value,
+      'cambiar de vista remontó el formulario y se perdió lo cargado',
+    ).toBe('Un ciclo a medio cargar');
+  });
+
+  it('y también al volver de «Celular» a «PC»', async () => {
+    // Las dos direcciones: un `key` puesto de un lado rompe las dos, pero una
+    // condición mal escrita —`key` solo en apilado, digamos— rompería una sola.
+    const { rerender } = pintarCon('celular');
+
+    await userEvent.type(screen.getByPlaceholderText('Taller de crónica urbana'), 'Otro a medio cargar');
+
+    rerender(
+      <ActividadFormulario
+        vistaDelPanel="pc"
+        uid="uid-de-prueba"
+        onGuardado={vi.fn()}
+        onCancelar={vi.fn()}
+      />,
+    );
+
+    expect(
+      (screen.getByPlaceholderText('Taller de crónica urbana') as HTMLInputElement).value,
+    ).toBe('Otro a medio cargar');
+  });
+});
+
+describe('con más de una sección incompleta, el scroll cae en la primera — B-823', () => {
+  /*
+   * `ActividadFormulario` recorre `faltantes.secciones` **en orden inverso**
+   * llamando a `irASeccion` por cada una. Con pestañas eso converge porque cada
+   * `setPestania` pisa al anterior. Apilado, cada llamada agenda su propio
+   * `requestAnimationFrame`, y el resultado también converge —los callbacks corren
+   * en el orden en que se agendaron, así que el **último** en ejecutarse es el de
+   * la **primera** sección— pero eso depende de que los `rAF` no se re-ordenen, y
+   * nadie lo verificaba con más de un error a la vez.
+   *
+   * El archivo cubría el click manual en la barra, que es **una** sección. Lo pidió
+   * el `auditor-trampas` como «sin red», y el peor caso es scrollear a la sección
+   * equivocada al intentar publicar: molesta, no pierde nada. De ahí que sea P3.
+   */
+  it('el último scroll de sección es el de la sección más arriba', async () => {
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    pintar();
+
+    /*
+     * La barra lista lo que falta **en orden del documento**, así que su primer
+     * enlace es la sección más arriba. Se deriva de ahí y no de un id escrito a
+     * mano: la sección que se agregue mañana no rompe el caso, y si el orden de
+     * `SECCIONES` cambia, el test sigue afirmando lo correcto.
+     */
+    const barra = screen.getByRole('status');
+    const primerFaltante = within(barra).getAllByRole('button')[0]!;
+    const titulo = primerFaltante.textContent?.trim() ?? '';
+    const seccion = SECCIONES.find((s) => titulo.startsWith(s.titulo));
+    expect(seccion, `no se pudo mapear «${titulo}» a una sección`).toBeDefined();
+
+    // Un formulario vacío tiene varias secciones incompletas: si tuviera una, este
+    // caso sería el que ya existe con otro nombre.
+    expect(within(barra).getAllByRole('button').length).toBeGreaterThan(1);
+
+    scroll.mockClear();
+    await userEvent.click(screen.getByRole('button', { name: /crear actividad/i }));
+
+    await vi.waitFor(() => expect(scroll).toHaveBeenCalled());
+
+    /*
+     * Se miran solo los scrolls **de sección**: después de los `rAF` hay un
+     * `setTimeout` que scrollea hasta `[data-campo-con-error]`, así que el último
+     * scroll de todos no es de una sección. Lo que se afirma es el último de los
+     * que sí lo son.
+     */
+    /*
+     * `mock.instances` viene tipado por el `this` de `scrollIntoView`, que TS no
+     * puede estrechar con `instanceof`. Se castea a `Element[]`, que es lo que son:
+     * el doble se instaló en `Element.prototype`.
+     */
+    const deSeccion = (scroll.mock.instances as unknown as Element[]).filter(
+      (el) => el?.tagName === 'SECTION',
+    );
+    expect(deSeccion.length, 'ninguna sección recibió scroll').toBeGreaterThan(0);
+    expect(deSeccion[deSeccion.length - 1]).toBe(document.getElementById(seccion!.id));
+  });
+});
