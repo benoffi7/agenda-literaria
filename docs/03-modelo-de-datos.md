@@ -159,8 +159,9 @@ Y una cuarta, que no es de coherencia sino de privacidad: **la etiqueta no puede
 llevar la dirección de una reunión**. Corre en `publicado` y en `cancelado` —los
 dos estados con página indexada (B-110)—, mira hosts conocidos y no solo el
 esquema, y **también tapa la puerta del historial** (`camposRestaurables` no
-ofrece `comisiones` con un link sobre una actividad con página). El motivo está en
-[`07-seguridad.md`](07-seguridad.md).
+ofrece `comisiones` con un link sobre una actividad con página; y desde B-818 esa
+puerta además valida el documento resultante contra el schema entero — D-540). El
+motivo está en [`07-seguridad.md`](07-seguridad.md).
 
 `functions/calendario.js` igual se defiende de un `comisionId` colgado
 (`comisionDe` devuelve `null` y el encuentro se comporta como si no tuviera

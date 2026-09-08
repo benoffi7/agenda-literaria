@@ -410,7 +410,92 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
-### B-818 · Restaurar «Estado» desde el historial publica sin pasar por ninguna validación · P1
+### B-819 · Restaurar puede volver a publicar un link que estaba apagado — y el flag es un par · P1
+
+**Lo encontró el `auditor-privacidad` cerrando B-818**, y lo nombró como lo que
+queda afuera a propósito: ni las guardas puntuales del historial ni el piso nuevo
+de B-818 lo pueden ver.
+
+`online.urlPublica` es el flag de D-15: con `false` el link de la reunión no sale
+a ninguna parte, con `true` sale al `events.json` y al evento de Calendar. **El
+schema no tiene ninguna regla sobre ese flag** —la decisión se delegó al flag a
+propósito— así que `issuesDeRestauracion` devuelve `[]` y no hay nada que frenar.
+
+`online` está en `CAMPOS_DERIVADOS` y no se restaura suelto, pero **`modalidades`
+sí, y lo trae adentro**: restaurar una versión anterior a que el dueño apagara el
+flag lo vuelve a prender, y con eso el link vuelve a las dos salidas. La escritura
+marca rebuild, así que sale solo.
+
+**Y la pantalla no puede avisar**, que es lo que lo hace P1 y no P2: `resumenDeCampo`
+resume un array como «2 elementos», o sea que la fila dice «Modalidades — Decía: 2
+elementos». Quien aprieta no ve que está volviendo a publicar un link que hoy está
+apagado. Es exactamente la forma de B-181, con otro campo y sin el schema atrás.
+
+**Dónde y el molde.** `src/lib/historial.ts`, al lado de `comisionesRestaurables`:
+no restaurar unas `modalidades` que traen `urlPublica: true` sobre un documento que
+hoy lo tiene en `false` y tiene página. La alternativa —nombrarlo en el `confirm()`
+en vez de bloquear— es más barata y peor: el `confirm()` ya dice «¿Restaurar
+modalidades…?» y agregarle una advertencia no cambia que la fila sigue diciendo «2
+elementos».
+
+**El caso legítimo que no hay que romper:** volver a prender el flag a propósito se
+hace desde el formulario, que es donde está la casilla y donde el texto dice qué
+hace (B-240). El historial no es el lugar para eso.
+
+#### Y es un par: `material.items[].publico` es la otra mitad
+
+Lo agregó la segunda pasada del `auditor-privacidad`, sobre la primera versión de
+este ítem, que nombraba solo `online.urlPublica`. **El precedente lo escribió el
+propio repo:** el P1 nº 1 de D-124 —el borrador autoguardado— trató los dos flags
+**juntos** y los apagó juntos con `sinFlagsDePublicacion`. Por la puerta del
+historial se había nombrado uno.
+
+`material` es restaurable, el schema no tiene ninguna regla sobre `publico` (la
+decisión se delegó al flag, D-15), así que `issuesDeRestauracion` devuelve `[]`. Y
+`resumenDeCampo` sobre un objeto sin `nombre` emite **las claves**, o sea que la
+fila dice «Material — Decía: tiene, items»: quien aprieta no ve que vuelve a
+publicar la URL del material que había despublicado. Destino: el `events.json`, la
+descripción del evento y el detalle.
+
+**Cerrar una mitad de un par y no la otra es la clase D-30/B-88** que
+`historial.ts` ya cita tres veces, así que las dos mitades van con **una sola
+función**, no con dos guardas parecidas.
+
+**Lo que NO entra:** `inscripcion.destino`. Ese valor ya era público en las dos
+versiones, así que no hay flag que se prenda ni destino que se abra.
+
+### B-818 · Restaurar «Estado» desde el historial publica sin pasar por ninguna validación — ✅ hecho (2026-09-08) · P1
+
+> **Resuelto con la segunda de las tres salidas: validar el documento resultante**
+> (decisión del dueño, escrita como **D-540**). No se filtró `estado`: filtrarlo
+> cerraba la instancia visible y dejaba la puerta abierta — restaurar una
+> `inscripcion` sin destino o unas `modalidades` incompletas **sobre una
+> publicada** saltea el mismo nivel por el mismo `updateDoc`, y eso no lo tapaba
+> ninguna de las guardas puntuales.
+>
+> `issuesDeRestauracion` (`src/lib/historial.ts`) corre el documento que va a
+> quedar por el mismo `actividadFormSchema` que usa `guardarActividad`, entrando
+> por el mismo `documentoAForm`, y **compara los rechazos de antes y de después:
+> solo bloquean los nuevos**. Sin esa resta, una actividad publicada antes de que
+> existiera la regla que hoy la rechaza quedaría con la pantalla de recuperación
+> entera bloqueada, que es justo la pantalla a la que se va cuando algo está roto.
+> El caso de este ítem igual queda bloqueado porque restaurar `publicado` **mueve
+> el nivel de validación**, así que todos los rechazos del nivel largo son nuevos
+> por definición.
+>
+> **Las guardas puntuales se quedan todas**, y no por prudencia: `documentoAForm`
+> lee `imagenes: null` con `imagenesDe`, que cae al `imagenUrl` viejo y devuelve
+> una galería **válida**, así que el schema no puede distinguir «restaurado a
+> `null`» de «no tiene imágenes» — eso lo sigue viendo solo `existiaEnLaVersion`
+> (B-167). La validación general es un piso, no un reemplazo.
+>
+> Siete casos en `tests/historial-restaurar.test.ts`, uno de ellos **sobre la
+> fuente** (`readFileSync`): `issuesDeRestauracion` es pura, así que un test suyo
+> no podría notar que nadie la llame ni que la llamen **después** del `updateDoc`.
+> Las dos mutaciones se corrieron de verdad y las dos fallan.
+>
+> El texto de abajo queda como estaba escrito, con las tres alternativas, para que
+> la decisión se lea contra lo que se decidió.
 
 **Lo encontró el `auditor-privacidad`** cerrando B-181, como la mitad general de
 un hallazgo cuya mitad puntual ya se arregló (el historial no restaura una
@@ -2871,6 +2956,33 @@ El `lazy` de todos menos el primero, la caja reservada y el `decoding` ya están
 puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
+
+### B-820 · Restaurar el slug no verifica que no esté tomado por otra actividad · P2
+
+**Lo encontró el `auditor-privacidad` cerrando B-818**, midiendo el ancho de la
+promesa nueva de la ayuda contra el ancho de la guarda. El hueco es
+**preexistente**; lo que nació con B-818 fue la frase que sugería que estaba
+tapado, y esa frase ya se acotó en el mismo cambio.
+
+El formulario no deja guardar **dos cosas**: lo que rechaza `actividadFormSchema` y
+lo que rechaza `slugDisponible` (`src/lib/formulario/guardar.ts`, «Ya hay otra
+actividad con este slug»). `issuesDeRestauracion` solo cubre la primera, porque el
+schema es puro y la unicidad es una query.
+
+El camino: una actividad que **nunca se publicó** —`slugRestaurable` la habilita,
+que es correcto por la trampa 10— restaura su slug viejo, que hoy usa otra
+actividad. Ni el schema ni la guarda lo ven, y quedan dos documentos con el mismo
+slug. Si las dos terminan publicadas, `getStaticPaths` colisiona y la URL sirve el
+contenido de una de las dos, sin que nada avise.
+
+**Por qué P2 y no P1:** hace falta que el slug viejo ya lo esté usando otra
+actividad, o sea que alguien lo haya reusado a mano en el medio; y la colisión se ve
+en el build. No es silencioso hasta el final como B-819.
+
+**Dónde.** `restaurarCampo` ya es `async` y ya hace una lectura (`leerActividad`),
+así que consultar `slugDisponible(valor, actual.id)` cuando `campo === 'slug'` es
+del mismo molde que las guardas que ya tiene. Cuesta una query más, solo en el
+único campo que la necesita.
 
 ### B-814 · El formulario con vista «PC» o «celular», elegida a mano y no detectada · P2
 

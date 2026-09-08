@@ -38,7 +38,7 @@ import {
 import { db } from '@/lib/firestore-client';
 // B-150 — el emparejamiento de campos de máquina por id de sesión es UNO, y
 // vive en el borde form ⇄ documento. Acá se reusa; no se reimplementa.
-import { fusionarSesiones, leerActividad } from '@/lib/actividades';
+import { documentoAForm, fusionarSesiones, leerActividad } from '@/lib/actividades';
 import {
   modalidadResultante,
   onlinePrincipal,
@@ -46,8 +46,18 @@ import {
 } from '@/lib/modalidades';
 import { CAMPOS_DE_SEARCH_TEXT, buildSearchText } from '@/lib/normalize';
 import { fechaHoraCorta } from '@/lib/sesiones';
+// §7.3 — «una sesión tiene evento si la actividad está publicada y la sesión no
+// está cancelada». Importada y no reescrita: su propio docblock dice que se
+// exporta para eso (D-20).
+import { debeExistir } from '@calendario';
 import { camposCambiados, estuvoPublicada } from '@historial';
-import { llevaLinkDeReunion, tienePagina } from '@/lib/schema';
+import {
+  ES_RECHAZO_DE_PRIVACIDAD,
+  actividadFormSchema,
+  llevaLinkDeReunion,
+  tienePagina,
+  type IssueDeSchema,
+} from '@/lib/schema';
 import type {
   Actividad,
   ActividadConId,
@@ -148,8 +158,8 @@ export const camposRestaurables = (version: Version, actual: Actividad): string[
  * ¿Se pueden restaurar **estas** comisiones sobre **esta** actividad? — B-181, y
  * lo encontró el `auditor-privacidad` como P1.
  *
- * **El historial es una puerta al documento que no pasa por el schema** (lo dice
- * el docblock de `existiaEnLaVersion`, tres bloques abajo: `restaurarCampo`
+ * **El historial era una puerta al documento que no pasaba por el schema** (lo
+ * decía el docblock de `existiaEnLaVersion`, tres bloques abajo: `restaurarCampo`
  * escribe con un `updateDoc` y marca rebuild). Así que la guarda que B-181 puso en
  * el schema —una etiqueta no puede llevar la dirección de una reunión si la
  * actividad tiene página— tenía la mitad de la puerta abierta:
@@ -172,6 +182,13 @@ export const camposRestaurables = (version: Version, actual: Actividad): string[
  * **Solo bloquea si la actividad de hoy tiene página** (`tienePagina`): restaurar
  * esa misma versión sobre un borrador es legítimo —es recuperar lo que se escribió—
  * y de un borrador no sale nada.
+ *
+ * **Desde B-818 la puerta sí pasa por el schema** (`issuesDeRestauracion`), o sea
+ * que esta guarda dejó de ser lo único que frena este caso. Se queda igual, y por
+ * dos motivos: nombra el problema —«esa versión tiene un link en el nombre de una
+ * opción»— donde el genérico diría el mensaje del schema sin decir de dónde sale, y
+ * es la que además **saca la fila de la pantalla** en vez de dejarla para que el
+ * click la rechace.
  */
 export const comisionesRestaurables = (version: Version, actual: Actividad): boolean => {
   if (!tienePagina(actual.estado)) return true;
@@ -205,7 +222,7 @@ const CAMPOS_DERIVADOS: readonly string[] = ['modalidad', 'sede', 'online', 'sea
  * existía.
  *
  * Sin este filtro, `valorARestaurar` lo convierte en `null` con su `??`, y
- * `restaurarCampo` lo escribe con un `updateDoc` que **no pasa por el schema**. O
+ * `restaurarCampo` lo escribe con un `updateDoc` directo. O
  * sea: la pantalla ofrece "Imágenes — Decía: (vacío)" sobre una versión anterior a
  * B-167, y restaurarla escribe `imagenes: null` en el documento en vivo. De ahí
  * `imagenesDe` lo ve falsy, cae al `imagenUrl` viejo, y **la galería entera se
@@ -217,6 +234,13 @@ const CAMPOS_DERIVADOS: readonly string[] = ['modalidad', 'sede', 'online', 'sea
  * duele, pero el mismo camino existía para todos los anteriores. Es el patrón del
  * §5 de `05-patrones.md` —un campo nuevo se lee con el default que preserva lo
  * anterior— aplicado al lugar donde nadie lo miró: la restauración.
+ *
+ * **Y la validación de B-818 no lo cubre**, aunque desde ese ítem la escritura sí
+ * pasa por el schema: `documentoAForm` lee `imagenes: null` con `imagenesDe`, que
+ * cae al `imagenUrl` viejo y devuelve una galería **válida**. El schema no puede
+ * distinguir «restaurado a `null`» de «no tiene imágenes cargadas», así que este
+ * filtro sigue siendo el único que ve la diferencia. La guarda general es un piso,
+ * no un reemplazo de las puntuales.
  */
 const existiaEnLaVersion = (campo: string, version: Version): boolean =>
   campo in (version.documento as unknown as Record<string, unknown>);
@@ -313,7 +337,8 @@ export const payloadDeRestauracion = (
    * restaurar una mitad sola: una versión anterior a la creación de una comisión
    * la borra, y las sesiones que la referencian quedan apuntando a un id que ya no
    * existe. El schema rechaza ese documento al publicar —«Este encuentro apunta a
-   * una opción que ya no existe»— pero **esta puerta no pasa por el schema**, y la
+   * una opción que ya no existe»— y hasta B-818 **esta puerta no pasaba por el
+   * schema**, así que nada lo frenaba; la
    * escritura marca rebuild: los encuentros pasan a la bolsa sin encabezado, la
    * cuenta de opciones baja, y los N eventos de Calendar de esas sesiones pierden
    * su «— Martes 19 h» de una pasada.
@@ -323,6 +348,20 @@ export const payloadDeRestauracion = (
    * el estado que el formulario sabe pedir que se complete (`sinComision` hace lo
    * mismo cuando se borra una desde el panel). Bloquearlo sería esconder una
    * versión legítima.
+   *
+   * **Y desde B-818 eso vale solo mientras la actividad no tenga que publicarse**,
+   * que lo cobró el `auditor-privacidad` sobre la guarda nueva. El desenganche deja
+   * `comisionId: null` con `comisiones` no vacío, y eso es el rechazo «Elegí de qué
+   * opción es este encuentro» del nivel largo: sobre una **publicada**,
+   * `issuesDeRestauracion` lo cuenta como nuevo y `restaurarCampo` tira. O sea que
+   * el desenganche sigue siendo el comportamiento en borrador y pendiente, y sobre
+   * una publicada la restauración se rechaza con el mensaje del schema.
+   *
+   * **Es coherente y no un efecto de costado**: dejar publicada una actividad con
+   * encuentros sin opción es exactamente lo que el nivel largo no permite, y hasta
+   * acá esta puerta lo escribía igual. El desenganche no sobra —es lo que evita el
+   * `comisionId` colgado, que el rechazo de arriba tampoco tapa en borrador— pero
+   * dejó de ser lo último que decide. Está anotado en D-540.
    */
   /*
    * **El par se desengancha en los dos sentidos**, y el segundo lo cobró la quinta
@@ -412,6 +451,230 @@ export const payloadDeRestauracion = (
   payload.updatedBy = uid;
   payload.updatedAt = serverTimestamp();
   return payload;
+};
+
+/**
+ * ¿Qué rechaza el schema sobre **este** documento? — el insumo de la guarda de
+ * B-818, y `null` si el documento no se puede ni leer.
+ *
+ * Es el mismo `safeParse` del guardado (`guardarActividad`) sobre el mismo
+ * schema, entrando por el mismo borde: `documentoAForm`. **Importado y no
+ * reescrito**, y no es una comodidad: el schema tiene dos niveles sobre el mismo
+ * objeto y la línea que los separa es `tienePagina(estado)`, así que una segunda
+ * derivación de «esto se valida con el nivel largo» es exactamente la clase de
+ * B-88 en el único lugar del panel que escribe sin validar.
+ *
+ * El `null` es «ilegible», que no es lo mismo que «inválido»: `documentoAForm`
+ * llama `.toDate()` sobre las fechas, y sobre un documento con una fecha que no
+ * es un `Timestamp` tira. Quién lo distingue de `[]` —y qué hace con cada uno—
+ * lo decide `issuesDeRestauracion`.
+ */
+const issuesDelDocumento = (a: Actividad): IssueDeSchema[] | null => {
+  let form;
+  try {
+    form = documentoAForm(a);
+  } catch {
+    return null;
+  }
+  const r = actividadFormSchema.safeParse(form);
+  if (r.success) return [];
+  return r.error.issues.map((i) => ({
+    path: [...i.path],
+    message: i.code === 'invalid_enum_value' ? MENSAJE_DE_VALOR_INVALIDO : i.message,
+  }));
+};
+
+/**
+ * El único mensaje de zod que **devuelve el valor recibido**, reemplazado — y lo
+ * cobró el `auditor-privacidad` sobre el barrido de centinelas de este camino.
+ *
+ * Los mensajes del schema los escribe el schema y son literales; de los defaults
+ * de zod alcanzables acá, `invalid_enum_value` es el único que interpola el valor
+ * (`received '…'`). Los campos con enum detrás son vocabularios cerrados —`estado`,
+ * `inscripcion.via`, `material.items[].tipo`/`entrega`, `modalidades[].modalidad`—
+ * así que hoy lo que devolvería no es un dato privado; pero el valor sale del
+ * documento, y un documento escrito por fuera del panel puede tener cualquier cosa
+ * ahí. Con esto el mensaje no puede llevar un valor del documento **por
+ * construcción**, no por suerte, que es lo que `tests/historial-restaurar.test.ts`
+ * afirma con centinelas.
+ *
+ * Y se gana lo otro, que vale igual: «Invalid enum value. Expected 'a' | 'b',
+ * received 'x'» está en inglés y no le dice nada a quien carga actividades. El §5
+ * ya lo decía para las salidas —«viaja la etiqueta, no el mensaje»—; el cartel del
+ * panel no es una salida pública, y aun así es el mismo criterio.
+ */
+const MENSAJE_DE_VALOR_INVALIDO = 'Ese campo tiene un valor que no es de los posibles';
+
+/** Un issue, en una clave comparable: el mismo mensaje en el mismo campo. */
+const claveDeIssue = (i: IssueDeSchema): string => `${i.path.join('.')}|${i.message}`;
+
+/**
+ * Lo que el schema no va a poder leer, dicho como un rechazo más para no tener
+ * dos caminos de salida en `issuesDeRestauracion`.
+ */
+const ILEGIBLE: IssueDeSchema = {
+  path: [],
+  message: 'esa versión trae datos que el formulario no puede leer',
+};
+
+/**
+ * ¿Este rechazo existe para que un dato **no salga**? — la excepción a la resta,
+ * y lo cobró el `auditor-privacidad` sobre la primera versión de esta guarda.
+ *
+ * La lista vive en el schema (`MENSAJES_DE_PRIVACIDAD`), que es donde están las
+ * reglas: acá se pregunta, no se decide. El motivo largo está en su docblock; en
+ * una línea, enmascarar un rechazo **de completitud** que ya estaba es lo correcto
+ * y enmascarar uno **de privacidad** es dejar pasar una fuga cuyo destino cambió.
+ */
+const esDePrivacidad = (i: IssueDeSchema): boolean =>
+  ES_RECHAZO_DE_PRIVACIDAD.includes(i.message);
+
+/**
+ * ¿Esta restauración **le abre al dato un destino que hoy no tiene**? — lo que
+ * acota la excepción de arriba, y el tercer intento.
+ *
+ * El primero no la acotaba, y con eso una actividad que ya filtra quedaba con
+ * **toda** restauración bloqueada: la pantalla tapiada que la resta existe para
+ * evitar, y encima sobre el documento que hay que arreglar. El segundo preguntaba
+ * solo si **cambiaba el estado**, y ésa era la mitad del §7.3: la condición del
+ * sync es `estado === 'publicado' && !sesion.cancelada`, o sea que **descancelar
+ * un encuentro crea un evento que no existía** sin que el estado se mueva. El
+ * camino, que lo midió el `auditor-privacidad`: una publicada con el link en la
+ * etiqueta y todos los encuentros cancelados no tiene hoy ningún evento —el link
+ * está solo en la página— y «Restaurar → Encuentros» sobre una versión que los
+ * tenía activos lo pone en el `summary` del calendario **público**. La variante es
+ * la misma con un encuentro que hoy no existe.
+ *
+ * Así que la pregunta es la de verdad, y son dos mitades porque los destinos son
+ * dos:
+ *
+ * - **la página** la decide `estado` (`tienePagina`), y para eso alcanza con ver
+ *   si se movió;
+ * - **el evento de Calendar** lo decide `debeExistir`, que mira el estado **y** el
+ *   `cancelada` de cada sesión. Se importa de `@calendario` y no se reescribe: dos
+ *   derivaciones de «esta sesión tiene evento» que se separan es la clase de B-88,
+ *   y el propio docblock de `debeExistir` dice que se exporta justamente para
+ *   esto (D-20).
+ *
+ * Solo cuenta lo que **crece**: publicar o descancelar abre un destino, despublicar
+ * o cancelar lo cierra, y cerrar un destino nunca es una fuga nueva.
+ */
+const cambiaElDestino = (actual: Actividad, resultante: Actividad): boolean => {
+  if (resultante.estado !== actual.estado) return true;
+
+  const conEvento = (a: Actividad): Set<string> =>
+    new Set((a.sesiones ?? []).filter((s) => debeExistir(a, s)).map((s) => s.id));
+
+  const antes = conEvento(actual);
+  return [...conEvento(resultante)].some((id) => !antes.has(id));
+};
+
+/**
+ * Los rechazos del schema que **esta restauración introduce** — B-818, P1.
+ *
+ * ── Qué agujero cierra ────────────────────────────────────────────────────
+ * `restaurarCampo` escribe con un `updateDoc` que no pasa por el schema, y eso
+ * lo dice medio archivo: los docblocks de `existiaEnLaVersion`, de
+ * `comisionesRestaurables` y del bloque `comisiones` de `payloadDeRestauracion`
+ * arrancan todos por ahí. Hasta acá la respuesta había sido **una guarda por
+ * regla**, escrita cuando algún auditor encontraba la instancia: el slug (trampa
+ * 10, B-285), la etiqueta con un link (B-181), el par de comisiones colgado.
+ *
+ * Y quedaba afuera la regla que abre todas las demás: **`estado`**. «Restaurar →
+ * Estado» sobre una versión que decía `publicado` escribe `estado: 'publicado'`
+ * salteando el nivel entero de publicar —la sede incompleta, el canal de
+ * inscripción sin destino, el monto contradictorio, el slug `-copia`— y la
+ * escritura marca rebuild, así que sale al sitio sola. El camino no necesita
+ * mala fe ni consola: publicada → borrador → editar algo que **en borrador está
+ * permitido a propósito** → «Restaurar → Estado».
+ *
+ * Así que la guarda dejó de ser por regla y pasó a ser la pregunta general:
+ * **¿el documento que va a quedar pasa el schema?** Eso cubre `estado` y cubre
+ * también lo que nadie había mirado —restaurar una `inscripcion` sin destino o
+ * unas `modalidades` incompletas **sobre una publicada** salteaba el mismo nivel
+ * por el mismo `updateDoc`—, y cubre la regla que se agregue mañana sin que haya
+ * que volver a pasar por acá. Las guardas puntuales **se quedan**: el slug no lo
+ * frena el schema (que solo rechaza `-copia`, no la mutación) y el mensaje de las
+ * comisiones nombra el problema mejor que el genérico.
+ *
+ * ── Por qué el diff y no el veredicto ─────────────────────────────────────
+ * Se comparan los rechazos de **antes** y de **después**, y solo bloquean los
+ * nuevos. Sin eso, una actividad publicada que hoy ya no pasa el nivel largo
+ * —porque se publicó antes de que existiera la regla que ahora la rechaza—
+ * quedaría con la pantalla de recuperación **entera** bloqueada, y es justo la
+ * pantalla a la que se va cuando algo está roto. La restauración responde por lo
+ * que rompe, no por lo que se encontró roto.
+ *
+ * El caso de B-818 igual queda bloqueado, y no por casualidad: restaurar
+ * `publicado` **mueve el nivel de validación**, así que todos los rechazos del
+ * nivel largo son nuevos por definición. Y el simétrico sigue libre: restaurar
+ * `borrador` sobre una publicada solo puede quitar rechazos.
+ *
+ * **Con una excepción, y es la que hace que la resta no sea una fuga:** cuando la
+ * restauración **le abre al dato un destino que hoy no tiene**, los rechazos que
+ * existen para que un dato no salga bloquean aunque ya estuvieran
+ * (`esDePrivacidad` × `cambiaElDestino`). Los dos casos medidos son una cancelada
+ * cuya etiqueta ya lleva un link —publicarla le da eventos de Calendar que no
+ * tenía— y una publicada con todos los encuentros cancelados, donde
+ * **descancelarlos hace lo mismo sin tocar el estado**. Acotada al destino y no
+ * aplicada siempre: si no, una actividad que ya filtra queda con toda restauración
+ * bloqueada. Ver `MENSAJES_DE_PRIVACIDAD` y `cambiaElDestino`.
+ *
+ * ── El ilegible, y para qué lado falla ────────────────────────────────────
+ * Los dos lados se leen con `documentoAForm`, que puede tirar. **Si el que no se
+ * puede leer es el de hoy, no se bloquea** (`antes === null` → `[]`): no hay
+ * línea de base contra la que comparar, y dejar la restauración cerrada sobre un
+ * documento ya ilegible es tapiar la única salida. **Si el que no se puede leer
+ * es el resultado, sí**: entonces la restauración es lo que lo rompió.
+ *
+ * **Lo que el fail-open deja sin cubrir, dicho en voz alta:** con `antes === null`
+ * no corre nada, ni la excepción de privacidad de arriba. Es el precio elegido —
+ * una pantalla de recuperación tapiada sobre el documento que solo se arregla
+ * desde ahí es peor— y el alcance es angosto: para llegar hace falta un documento
+ * cuyas fechas no sean `Timestamp`, o sea escrito por fuera del panel.
+ *
+ * Es pura y exportada para poder verificarla sin Firestore, como sus vecinas.
+ * Recibe el `payload` ya armado y no lo rearma: lo que se valida tiene que ser
+ * **exactamente** lo que se escribe, y dos derivaciones del mismo documento que
+ * se separan es el bug que este archivo ya tiene documentado tres veces.
+ */
+export const issuesDeRestauracion = (
+  actual: Actividad,
+  payload: Record<string, unknown>,
+): IssueDeSchema[] => {
+  const antes = issuesDelDocumento(actual);
+  if (antes === null) return [];
+
+  const resultante = { ...actual, ...payload } as Actividad;
+  const despues = issuesDelDocumento(resultante);
+  if (despues === null) return [ILEGIBLE];
+
+  const reevaluarPrivacidad = cambiaElDestino(actual, resultante);
+  const yaEstaban = new Set(antes.map(claveDeIssue));
+  return despues.filter(
+    (i) =>
+      (reevaluarPrivacidad && esDePrivacidad(i)) || !yaEstaban.has(claveDeIssue(i)),
+  );
+};
+
+/**
+ * El mensaje que ve quien apretó «Restaurar» — B-818.
+ *
+ * Dice **qué** rompería y no solo que no se puede: el aviso de B-184 («la barra
+ * dice cuántos campos faltan pero no cuáles») es el mismo error, y el schema ya
+ * escribe sus rechazos en el idioma del panel. Se muestran hasta tres porque
+ * restaurar `estado` sobre una incompleta puede juntar diez, y una lista de diez
+ * en un cartel de error no se lee.
+ */
+export const mensajeDeRestauracionInvalida = (issues: readonly IssueDeSchema[]): string => {
+  const muestra = issues.slice(0, 3).map((i) => i.message);
+  const resto = issues.length - muestra.length;
+  return (
+    'No se puede restaurar: el resultado rompe reglas que hoy se cumplen — ' +
+    muestra.join(' · ') +
+    (resto > 0 ? ` (y ${resto} más)` : '') +
+    '.'
+  );
 };
 
 /**
@@ -526,5 +789,20 @@ export const restaurarCampo = async (
     );
   }
 
-  await updateDoc(doc(db(), COL, actual.id), payloadDeRestauracion(campo, version, fresco, uid));
+  const payload = payloadDeRestauracion(campo, version, fresco, uid);
+
+  /*
+   * ── Y el documento que va a quedar pasa por el schema (B-818) ─────────
+   * La guarda general, después de las dos puntuales: éstas nombran su problema
+   * mejor, y el schema no conoce la inmutabilidad del slug.
+   *
+   * Se valida **el `payload` de arriba**, el mismo objeto que se escribe dos
+   * líneas más abajo. Rearmarlo para validar sería tener dos derivaciones del
+   * documento resultante, que es la clase que este archivo evita en `searchText`,
+   * en `fusionarSesiones` y en `CAMPOS_DE_SEARCH_TEXT`.
+   */
+  const issues = issuesDeRestauracion(fresco, payload);
+  if (issues.length > 0) throw new Error(mensajeDeRestauracionInvalida(issues));
+
+  await updateDoc(doc(db(), COL, actual.id), payload);
 };

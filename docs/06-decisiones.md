@@ -8660,6 +8660,19 @@ siendo **B-125**.
 
 ## D-530 · Las comisiones de un ciclo son un `comisionId` en cada encuentro, no encuentros anidados
 
+> ⚠️ **La guarda #3 de más abajo describe un estado que B-818 cerró — ver D-540.**
+> «cubre la puerta del **historial**, que no pasa por el schema» y «lo que **no**
+> cubre —restaurar `estado`— … quedó como **B-818**» dejaron de ser ciertos: desde
+> D-540 esa puerta corre el documento resultante por el mismo schema que usa el
+> guardado (`issuesDeRestauracion`), y restaurar `estado` salteando el nivel de
+> publicar es justamente lo que esa guarda general bloquea. La guarda de la
+> etiqueta con un link **sigue viva igual** —nombra el problema mejor y saca la
+> fila de la pantalla, que la general no hace—, así que ninguna de las tres
+> mitades de abajo quedó de más. Y su mensaje pasó a ser una constante nombrada
+> (`MENSAJES_DE_PRIVACIDAD`) porque D-540 necesita distinguir un rechazo de
+> privacidad de uno de completitud. El bloque de abajo queda como estaba escrito,
+> para que D-540 se lea contra su original.
+
 **Fecha:** 2026-09-08 · **Ítem:** B-181 · **Continúa:** [D-95](#d-95--el-número-del-encuentro-cuenta-también-los-cancelados), [D-520](#d-520--el-número-del-encuentro-se-queda-con-el-total-aun-a-costa-de-reescribir-el-ciclo)
 
 **Contexto.** El reporte del dueño usando el panel (2026-08-25): «un club de
@@ -8788,3 +8801,163 @@ equivocado, solo sin el campo que antes no existía)—. Lo que queda para cuand
 esto se use en serio: un **cupo por comisión** (hoy `inscripcion.cupo` es de la
 actividad) y los **encuentros comunes a todas** las comisiones, los dos anotados en
 B-181.
+
+---
+
+## D-540 · Restaurar del historial valida el documento resultante, en vez de filtrar campo por campo
+
+**El problema, que era B-818 y lo encontró el `auditor-privacidad` cerrando
+B-181.** `restaurarCampo` escribe con un `updateDoc` directo, así que la pantalla
+de historial es la única puerta del panel al documento que no pasaba por el
+schema. La respuesta a eso había sido, hasta acá, **una guarda por regla**,
+escrita cada vez que un auditor encontraba la instancia:
+
+| Guarda | Ítem |
+|---|---|
+| el slug no se restaura si la actividad estuvo publicada (trampa 10) | B-40, B-285 |
+| los cuatro derivados no se ofrecen sueltos | B-224 |
+| un campo que no existía en esa versión no se ofrece | B-167 |
+| la etiqueta de una opción con un link de reunión, sobre una con página | B-181 |
+
+Y faltaba la que abre todas las demás: **`estado`**. «Restaurar → Estado» sobre
+una versión que decía `publicado` escribía `estado: 'publicado'` **salteando el
+nivel entero de publicar** —la sede incompleta, el canal de inscripción sin
+destino, el monto contradictorio, el slug `-copia`—, y la escritura marca rebuild,
+así que sale al sitio sola. El camino no necesita mala fe ni consola: publicada →
+borrador → editar algo que **en borrador está permitido a propósito** → «Restaurar
+→ Estado».
+
+### Las tres salidas, y por qué la del medio
+
+El ítem se anotó sin aplicar justamente porque era una decisión de producto y no
+un bug obvio. Las tres, como quedaron escritas en el BACKLOG:
+
+| Salida | Costo | Veredicto |
+|---|---|---|
+| filtrar `estado` de `camposRestaurables` | una línea | **no**: cierra una fila y deja el resto de la puerta abierta |
+| **validar el documento resultante antes de escribir** | una función y un mensaje | **elegida** |
+| dejarlo y documentarlo | gratis | **no**: es una puerta que ya se sabe que existe |
+
+Lo que decidió es que **filtrar `estado` no cerraba el agujero, solo su instancia
+más visible**. Restaurar una `inscripcion` sin destino o unas `modalidades`
+incompletas **sobre una publicada** saltea el mismo nivel por el mismo
+`updateDoc`, y eso no lo tapaba ninguna de las guardas de la tabla de arriba. La
+pregunta general —«¿el documento que va a quedar pasa el schema?»— las cubre a
+todas, y cubre la regla que se agregue mañana sin que haya que volver a pasar por
+acá.
+
+### La forma: el diff de rechazos, no el veredicto
+
+`issuesDeRestauracion` (`src/lib/historial.ts`) compara los rechazos del
+documento de **hoy** con los del documento que **va a quedar**, y solo bloquean
+los nuevos.
+
+Sin esa resta, una actividad publicada **antes** de que existiera la regla que hoy
+la rechaza quedaría con la pantalla de recuperación entera bloqueada — y es justo
+la pantalla a la que se va cuando algo está roto. La restauración responde por lo
+que rompe, no por lo que se encontró roto.
+
+El caso de B-818 igual queda bloqueado, y no por casualidad: restaurar `publicado`
+**mueve el nivel de validación** (`tienePagina`), así que todos los rechazos del
+nivel largo son nuevos por definición. Y el simétrico sigue libre: restaurar
+`borrador` sobre una publicada solo puede quitar rechazos.
+
+Los dos lados se leen con `documentoAForm` —el mismo borde que usa el formulario—
+y se validan con `actividadFormSchema` —el mismo schema que usa `guardarActividad`—.
+**Importados y no reescritos**: el schema tiene dos niveles sobre el mismo objeto y
+la línea que los separa es `tienePagina(estado)`, así que una segunda derivación de
+«esto se valida con el nivel largo» sería la clase de B-88 en el único lugar del
+panel que escribía sin validar.
+
+### Las dos consecuencias que hay que tener presentes
+
+**1. La resta tiene una excepción, y sin ella la guarda era una fuga.** Lo cobró
+el `auditor-privacidad` sobre la primera versión de esto. Enmascarar un rechazo
+que ya estaba es correcto para la **completitud** e incorrecto para las reglas que
+existen para que un dato **no salga**: el mismo rechazo sobre un estado que cambia
+el destino del dato es una fuga nueva. El caso medido: una actividad **cancelada**
+cuya etiqueta de opción ya lleva un link de reunión tiene ese rechazo en la línea
+de base —`tienePagina` ya es `true`— así que restaurar `estado: 'publicado'` no lo
+contaba como nuevo; y publicarla **sí mueve el dato**, porque una cancelada no
+tiene eventos de Calendar (§7.3) y una publicada sí: el link pasa a salir en el
+`summary` del evento **público**, donde no estaba. Esos rechazos ahora bloquean
+aunque estuvieran, y viven nombrados en el schema (`MENSAJES_DE_PRIVACIDAD`), que
+es donde están las reglas — `historial.ts` pregunta, no decide.
+
+**La condición pasó por tres versiones, y las dos primeras estaban mal.** La
+primera no acotaba nada: con eso una actividad que ya filtra quedaba con **toda**
+restauración bloqueada, o sea la pantalla tapiada que la resta existe para evitar,
+y encima sobre el documento que hay que arreglar. La segunda preguntaba si
+**cambiaba el estado**, y ésa era la mitad del §7.3: la condición del sync es
+`estado === 'publicado' && !sesion.cancelada`, así que **descancelar un encuentro
+crea un evento que no existía** sin que el estado se mueva — una publicada con el
+link en la etiqueta y todos los encuentros cancelados no tiene hoy ningún evento, y
+«Restaurar → Encuentros» le pone el link en el `summary` del calendario público. La
+tercera pregunta lo que importa: **¿esta restauración le abre al dato un destino que
+hoy no tiene?** (`cambiaElDestino`), con las dos mitades que los destinos son dos —
+la página la decide `estado`, el evento lo decide `debeExistir`, importada de
+`@calendario` y no reescrita (D-20). Solo cuenta lo que **crece**: cancelar o
+despublicar cierra un destino, y cerrar nunca es una fuga.
+
+**Y la lista no queda colgada de la memoria.** `tests/schema.test.ts` deriva del
+comportamiento el conjunto de reglas que solo corren con página —los mensajes que
+aparecen en `cancelado` y no en `borrador`— y exige que estén todos declarados. Sin
+eso, el docblock decidía que «la regla que se agregue mañana … decide en una línea»
+y nada se lo preguntaba: una regla nueva quedaba afuera, la resta la enmascaraba y
+la suite seguía verde. Es una lista y no un flag por regla porque el default tiene
+que ser «completitud».
+
+**Lo que la excepción no mira es el valor**, y está dicho en el docblock para que
+nadie lo suponga: el enmascaramiento compara `path|message`, así que el mismo
+rechazo con otro valor en el mismo path cuenta como «ya estaba». Hoy no filtra
+porque la única regla de la lista cae en `comisiones[].etiqueta` y ahí
+`comisionesRestaurables` rechaza cualquier versión con un link. Se abre el día que
+una regla de privacidad caiga en un campo sin guarda puntual, y la que está anotada
+para entrar es **B-817**: la decisión se toma ahí, con la regla en la mano.
+
+**2. El desenganche de B-181 dejó de ser lo último que decide, sobre una
+publicada.** `payloadDeRestauracion` desengancha los encuentros que quedarían
+apuntando a una opción borrada, y B-181 eligió eso **en vez de** bloquear la
+restauración («bloquearlo sería esconder una versión legítima»). El desenganche
+deja `comisionId: null` con `comisiones` no vacío, y ése es el rechazo «Elegí de
+qué opción es este encuentro» del nivel largo: sobre una publicada la guarda
+general lo cuenta como nuevo y la restauración se rechaza. Es coherente —dejar
+publicada una actividad con encuentros sin opción es justo lo que el nivel largo
+no permite, y hasta acá esta puerta lo escribía igual— pero **es un cambio de
+comportamiento respecto de B-181** y por eso queda escrito acá y en el docblock.
+En borrador y pendiente el desenganche sigue siendo el comportamiento.
+
+**3. El mensaje no puede llevar un valor del documento, y ahora por
+construcción.** De los defaults de zod alcanzables, `invalid_enum_value` es el
+único que interpola el valor recibido; se reemplaza por un mensaje escrito, que
+además está en castellano y dice algo («Invalid enum value. Expected 'a' | 'b',
+received 'x'» no le sirve a nadie que cargue actividades). El cartel del panel no
+es una salida pública, así que esto no era una fuga: era una propiedad sin nada que
+la sostenga, y el barrido de centinelas de `historial-restaurar.test.ts` ahora la
+sostiene — su primera versión **no podía fallar**, porque los centinelas del
+fixture estaban en campos válidos que no producen ningún rechazo.
+
+**4. El fail-open del ilegible no corre la excepción de privacidad.** Con
+`antes === null` no corre nada. Es el precio elegido y el alcance es angosto: para
+llegar hace falta un documento cuyas fechas no sean `Timestamp`, o sea escrito por
+fuera del panel.
+
+### Lo que **no** cambió, y hay que tenerlo presente
+
+- **Las guardas puntuales se quedan todas.** El slug no lo frena el schema —que
+  rechaza el `-copia`, no la mutación— y el mensaje de las comisiones nombra el
+  problema mejor que el genérico. Y la de `existiaEnLaVersion` es la que **el
+  schema no puede ver**: `documentoAForm` lee `imagenes: null` con `imagenesDe`,
+  que cae al `imagenUrl` viejo y devuelve una galería válida. **La validación
+  general es un piso, no un reemplazo.**
+- **La fila sigue en la pantalla.** Se valida al apretar «Restaurar», no al
+  renderizar: hacerlo en el render serían hasta veinte versiones por N campos de
+  `safeParse` en cada pintada, y a cambio de nada — el mensaje dice qué rompería,
+  que es más que esconder la fila sin motivo.
+- **Se valida el `payload` que se escribe**, no uno rearmado: `restaurarCampo` lo
+  construye una vez, lo valida y lo escribe. Dos derivaciones del mismo documento
+  resultante es el bug que `historial.ts` ya tiene documentado tres veces.
+- **El mensaje corta en tres rechazos.** Restaurar el estado sobre una incompleta
+  puede juntar diez, y una lista de diez en un cartel de error no se lee. Es B-184
+  con otra cara: decir «no se puede» sin decir qué es lo mismo que decir «faltan 4
+  campos» sin decir cuáles.

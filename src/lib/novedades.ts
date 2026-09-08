@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'historial-no-publica-a-ciegas',
+    fecha: '2026-09-08',
+    version: '1.10.0',
+    titulo: 'El historial ya no puede publicar una actividad a medio cargar',
+    detalle:
+      'Restaurar un dato viejo revisa antes que la actividad no quede incompleta. Si lo que ' +
+      'traés de vuelta la dejaría sin algo que hace falta para publicar —restaurar «Estado: ' +
+      'publicado» cuando falta la sede, por ejemplo—, no lo escribe y te dice qué le falta. En ' +
+      'la guía está qué frena y qué no.',
+    donde: 'Menú «⋯» de cada fila del listado → «Historial».',
+  },
+  {
     id: 'opciones-para-sumarse',
     fecha: '2026-09-08',
     version: '1.10.0',

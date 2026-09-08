@@ -117,6 +117,52 @@ export const tienePagina = (estado: string): boolean =>
 const HOSTS_DE_REUNION =
   /(meet\.google|zoom\.us|teams\.microsoft|teams\.live|meet\.jit\.si|whereby\.com|discord\.gg|gotomeet)/i;
 
+/**
+ * Los rechazos del schema que existen **para que un dato no salga**, y no por
+ * completitud — B-818, y lo cobró el `auditor-privacidad` sobre la guarda nueva.
+ *
+ * La distinción no era necesaria mientras el schema era una puerta sola: rechazar
+ * es rechazar. La necesita `issuesDeRestauracion` (`@/lib/historial`), que compara
+ * los rechazos de antes y de después de una restauración y **enmascara los que ya
+ * estaban** — lo correcto para la completitud (si no, una actividad ya incompleta
+ * queda con la pantalla de recuperación tapiada) y **incorrecto para éstos**: el
+ * mismo rechazo, sobre una restauración que **le abre al dato un destino que hoy
+ * no tiene**, es una fuga nueva. El caso medido: una **cancelada** cuya etiqueta ya
+ * lleva un link tiene este rechazo en la línea de base —`tienePagina` ya es true—,
+ * así que restaurar `estado: 'publicado'` no lo contaba como nuevo; y publicar sí
+ * mueve el dato, porque una cancelada no tiene eventos de Calendar (§7.3) y una
+ * publicada sí: el link pasa a salir en el `summary` del evento **público**, donde
+ * no estaba.
+ *
+ * **Lo que la excepción NO mira es el valor**, y conviene que esté dicho porque es
+ * lo que se va a querer suponer: el enmascaramiento compara `path|message`, así
+ * que el **mismo** rechazo con otro valor en el mismo path cuenta como «ya
+ * estaba». Hoy no filtra porque la única regla de esta lista cae en
+ * `comisiones[].etiqueta`, y ahí `comisionesRestaurables` rechaza cualquier versión
+ * que traiga un link. Se abre el día que una regla de privacidad caiga en un campo
+ * **sin** guarda puntual, y la que está anotada para entrar es justamente ésa:
+ * **B-817**. La decisión se toma ahí, con la regla en la mano.
+ *
+ * Se comparan por mensaje —y por eso el mensaje es una constante y no un literal
+ * suelto— porque el `path` de un rechazo lleva el índice del array y cambia con
+ * él. Es una lista y no un flag en cada regla porque el default tiene que ser
+ * «completitud».
+ *
+ * **Y no queda colgada de la memoria:** `tests/schema.test.ts` deriva del
+ * comportamiento el conjunto de reglas que solo corren con página —los mensajes
+ * que aparecen en `cancelado` y no en `borrador`— y exige que estén todos acá. La
+ * regla de privacidad que se agregue mañana entra al barrido sola, que es lo que
+ * este archivo no tenía y el `auditor-privacidad` cobró: el docblock decidía que
+ * «la que la escriba decide en una línea» y nada se lo preguntaba.
+ */
+export const MENSAJES_DE_PRIVACIDAD = {
+  etiquetaConLink:
+    'Acá va solo el nombre de la opción («Martes 19 h»): el link se publica en la página',
+} as const;
+
+/** Los mensajes de arriba, para preguntar si un rechazo es de esta clase. */
+export const ES_RECHAZO_DE_PRIVACIDAD: readonly string[] = Object.values(MENSAJES_DE_PRIVACIDAD);
+
 export const llevaLinkDeReunion = (texto: string): boolean =>
   /https?:\/\//i.test(texto) || HOSTS_DE_REUNION.test(texto);
 
@@ -535,10 +581,7 @@ export const actividadFormSchema = z
     if (tienePagina(v.estado)) {
       v.comisiones.forEach((o, i) => {
         if (llevaLinkDeReunion(o.etiqueta)) {
-          faltaSiempre(
-            ['comisiones', i, 'etiqueta'],
-            'Acá va solo el nombre de la opción («Martes 19 h»): el link se publica en la página',
-          );
+          faltaSiempre(['comisiones', i, 'etiqueta'], MENSAJES_DE_PRIVACIDAD.etiquetaConLink);
         }
       });
     }

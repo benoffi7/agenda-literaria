@@ -148,6 +148,65 @@ describe('restaurarCampo — el payload se arma con lo releído', () => {
     expect(payload.sesiones[0]!.calendarEventId).toBe('evt_1');
   });
 
+  describe('y el documento resultante pasa por el schema (B-818, D-540)', () => {
+    /**
+     * **La guarda general, y la que hace que este archivo sea el lugar donde se
+     * afirma.** `issuesDeRestauracion` es pura y se ejercita directo en
+     * `historial-restaurar.test.ts`, así que un test suyo no puede notar que nadie
+     * la llame — ni que la llamen **después** del `updateDoc`, que sería no
+     * validar. Acá la escritura está doblada, así que lo que se afirma es que **no
+     * ocurrió**, que es el mismo criterio con el que el `auditor-trampas` rechazó
+     * el chequeo sobre la fuente del que nació este archivo.
+     *
+     * El camino de B-818: publicada → borrador → se edita algo que en borrador
+     * está permitido → «Restaurar → Estado» sobre una versión que decía
+     * `publicado`. Eso escribía `estado: 'publicado'` salteando el nivel entero de
+     * publicar, con rebuild marcado.
+     */
+    const versionPublicada = () => ({
+      ...version(),
+      camposCambiados: ['estado'],
+      documento: actividad({ estado: 'publicado' }) as unknown as Actividad,
+    });
+
+    it('no publica desde el historial una actividad que el formulario no dejaría publicar', async () => {
+      /*
+       * El fixture de este archivo tiene `modalidades: []`, o sea que en borrador
+       * es válido y publicado no: es exactamente la actividad a medio cargar del
+       * ítem.
+       *
+       * MUTACIÓN PROBADA: sacando la llamada a `issuesDeRestauracion` de
+       * `restaurarCampo`, este caso escribe `estado: 'publicado'` y la actividad
+       * incompleta sale al sitio sola.
+       */
+      const borrador = actividad({ estado: 'borrador' });
+      vi.mocked(leerActividad).mockResolvedValue(borrador);
+
+      await expect(
+        restaurarCampo(borrador, 'estado', versionPublicada() as never, 'uid_1'),
+      ).rejects.toThrow(/No se puede restaurar/);
+      expect(updateDocEspia).not.toHaveBeenCalled();
+    });
+
+    it('pero el simétrico sí se escribe: despublicar solo quita rechazos', async () => {
+      // El control negativo, y el que impide «bloquear el estado siempre», que era
+      // la primera de las tres salidas del ítem y la que se descartó.
+      const publicada = actividad({ estado: 'publicado' });
+      vi.mocked(leerActividad).mockResolvedValue(publicada);
+
+      const versionBorrador = {
+        ...version(),
+        camposCambiados: ['estado'],
+        documento: actividad({ estado: 'borrador' }) as unknown as Actividad,
+      };
+
+      await restaurarCampo(publicada, 'estado', versionBorrador as never, 'uid_1');
+
+      expect(updateDocEspia).toHaveBeenCalledTimes(1);
+      expect((updateDocEspia.mock.calls[0]![1] as { estado: string }).estado).toBe('borrador');
+    });
+  });
+
   describe('las guardas se re-evalúan contra lo releído, no contra el snapshot', () => {
     /**
      * **El P1 de la séptima pasada del `auditor-privacidad`.**

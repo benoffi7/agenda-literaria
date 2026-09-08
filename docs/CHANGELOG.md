@@ -2,6 +2,160 @@
 
 ## Sin publicar
 
+- **Restaurar del historial ya no puede publicar salteando todas las reglas** —
+  **B-818**, P1, decisión del dueño escrita como **D-540**. Lo había encontrado el
+  `auditor-privacidad` cerrando B-181, como la mitad general de un hallazgo cuya
+  mitad puntual se arregló ahí.
+
+  `restaurarCampo` escribe con un `updateDoc` directo, así que la pantalla de
+  historial era **la única puerta del panel al documento que no pasaba por el
+  schema**, y hasta acá la respuesta había sido una guarda por regla, escrita cada
+  vez que un auditor encontraba la instancia: el slug (trampa 10, B-285), los
+  derivados sueltos (B-224), el campo que no existía en esa versión (B-167), la
+  etiqueta con un link de reunión (B-181). Faltaba la que abre todas las demás:
+  **`estado`**. «Restaurar → Estado» sobre una versión que decía `publicado`
+  escribía `estado: 'publicado'` salteando el nivel entero de publicar —sede
+  incompleta, inscripción sin destino, monto contradictorio, slug `-copia`, link en
+  una etiqueta— y la escritura marca rebuild, así que salía al sitio sola. El camino
+  no necesitaba mala fe ni consola: publicada → borrador → editar algo que **en
+  borrador está permitido a propósito** → «Restaurar → Estado».
+
+  De las tres salidas anotadas en el ítem, el dueño eligió la del medio: **validar
+  el documento resultante**, y no filtrar `estado`. El motivo es que filtrar cerraba
+  la instancia visible y dejaba la puerta abierta — restaurar una `inscripcion` sin
+  destino o unas `modalidades` incompletas **sobre una publicada** saltea el mismo
+  nivel por el mismo `updateDoc`.
+
+  `issuesDeRestauracion` corre el documento que va a quedar por el **mismo**
+  `actividadFormSchema` que usa `guardarActividad`, entrando por el **mismo**
+  `documentoAForm` — importados y no reescritos: el schema tiene dos niveles sobre
+  el mismo objeto y la línea que los separa es `tienePagina(estado)`, así que una
+  segunda derivación de «esto se valida con el nivel largo» sería la clase de B-88
+  en el único lugar del panel que escribía sin validar.
+
+  **Compara los rechazos de antes y de después, y solo bloquean los nuevos.** Sin
+  esa resta, una actividad publicada antes de que existiera la regla que hoy la
+  rechaza quedaría con la pantalla de recuperación entera bloqueada — y es justo la
+  pantalla a la que se va cuando algo está roto. El caso de B-818 igual queda
+  bloqueado, y no por casualidad: restaurar `publicado` **mueve el nivel de
+  validación**, así que todos los rechazos del nivel largo son nuevos por
+  definición. El simétrico sigue libre: restaurar `borrador` solo puede quitar
+  rechazos.
+
+  **Las guardas puntuales se quedan todas**, y una es la que prueba que la general
+  es un piso y no un reemplazo: `documentoAForm` lee `imagenes: null` con
+  `imagenesDe`, que cae al `imagenUrl` viejo y devuelve una galería **válida**, así
+  que el schema no puede distinguir «restaurado a `null`» de «no tiene imágenes» —
+  eso lo sigue viendo solo `existiaEnLaVersion` (B-167).
+
+  Se valida el `payload` que se escribe y no uno rearmado: `restaurarCampo` lo
+  construye una vez, lo valida y lo escribe. Y el cableado se afirma **sobre la
+  fuente** (`readFileSync`, como el de `buildSearchText`): `issuesDeRestauracion` es
+  pura y se ejercita directo, así que un test suyo no podría notar que nadie la
+  llame — ni que la llamen **después** del `updateDoc`, que sería no validar.
+
+  **Los tres auditores dejaron el cambio distinto del que se escribió**, y dos de
+  los hallazgos del `auditor-privacidad` cambiaron el código, no la doc:
+
+  1. **La resta era una fuga, y ahora tiene una excepción.** Enmascarar un rechazo
+     que ya estaba es correcto para la **completitud** e incorrecto para las reglas
+     que existen para que un dato **no salga**. El caso medido: una actividad
+     **cancelada** cuya etiqueta de opción ya lleva un link tiene ese rechazo en la
+     línea de base —`tienePagina` ya es `true`— así que restaurar
+     `estado: 'publicado'` no lo contaba como nuevo; y publicarla **mueve el
+     dato**, porque una cancelada no tiene eventos de Calendar (§7.3) y una
+     publicada sí, o sea que el link pasa a salir en el `summary` del evento
+     **público**. Esos rechazos ahora bloquean aunque estuvieran, **acotado a las
+     restauraciones que mueven el estado**: la primera versión no lo acotaba y
+     dejaba una actividad que ya filtra con **toda** restauración bloqueada, que es
+     la pantalla tapiada que la resta existe para evitar. El mensaje pasó a ser una
+     constante nombrada en el schema (`MENSAJES_DE_PRIVACIDAD`), que es donde están
+     las reglas: `historial.ts` pregunta, no decide.
+  2. **Las dos ramas del «documento ilegible» no tenían test**, y la mutación de
+     una línea que reabría B-818 entero —`return [ILEGIBLE]` → `return []`— quedaba
+     en verde. Ahora las dos están fijadas, y el docblock dice en voz alta qué queda
+     sin cubrir con el fail-open.
+  3. **El desenganche de B-181 dejó de ser lo último que decide sobre una
+     publicada**, y eso es un cambio de comportamiento que estaba pasando de
+     costado: el desenganche deja `comisionId: null` con `comisiones` no vacío, que
+     es el rechazo «Elegí de qué opción es este encuentro» del nivel largo. Queda
+     escrito en el docblock y en D-540, con un test.
+  4. **La promesa de la ayuda y de la novedad era más ancha que la guarda**: el
+     formulario tampoco deja guardar un slug ya tomado (`slugDisponible`), y eso el
+     schema no lo ve. Se acotó la frase — que es el modo de falla de B-781.
+  5. **El mensaje interpola mensajes del schema**, y hoy ninguno lleva el valor del
+     campo (verificado uno por uno). Lo que no había era nada que lo sostenga: ahora
+     un barrido de centinelas sobre el mensaje fija la propiedad para el día que un
+     campo de texto libre se exprese como `z.enum`.
+
+  **Y hubo una segunda ronda, sobre el arreglo de esos hallazgos** — el hook de
+  privacidad sella por contenido de código (B-794), así que aplicar los hallazgos
+  movió la huella y el arreglo tenía que auditarse a su vez. Cobró cuatro cosas más,
+  tres de ellas en mi propio código:
+
+  - **La excepción de privacidad cubría la mitad del §7.3.** Preguntaba si cambiaba
+    el `estado`, y la condición del sync es `estado === 'publicado' && !cancelada`:
+    **descancelar un encuentro crea un evento que no existía** sin que el estado se
+    mueva, así que una publicada con el link en la etiqueta y todos los encuentros
+    cancelados —que hoy no tiene ningún evento— le ponía el link en el `summary`
+    del calendario público con «Restaurar → Encuentros». Ahora la pregunta es la de
+    verdad, «¿esto le abre al dato un destino que hoy no tiene?», con `debeExistir`
+    importada de `@calendario` y no reescrita (D-20).
+  - **El barrido de centinelas que escribí no podía fallar.** Restauraba un título
+    de dos letras, cuyo único rechazo es un literal del schema, y recorría los
+    centinelas sobre él: los centinelas del fixture están en campos **válidos**, que
+    no producen ningún issue. Ahora el valor restaurado **es** un centinela sobre un
+    campo con `z.enum` detrás, que es la única vía por la que el mensaje puede
+    llevar un dato del documento — y con eso el caso falla hoy, así que además se
+    saneó: `invalid_enum_value` se reemplaza por un mensaje escrito.
+  - **Nada forzaba a que una regla de privacidad nueva entre a la lista.** El
+    docblock decidía que «la que la escriba decide en una línea» y no se lo
+    preguntaba a nadie. Ahora `tests/schema.test.ts` deriva el conjunto **del
+    comportamiento** —los mensajes que aparecen en `cancelado` y no en `borrador`
+    son exactamente las reglas gateadas por `tienePagina`— y exige que estén
+    declarados.
+  - **B-819 cerraba una mitad de un par:** `material.items[].publico` es el otro
+    flag, y D-124 ya los había tratado juntos. El ítem se amplió a los dos, con una
+    sola función.
+
+  Más dos correcciones de texto: el docblock de `MENSAJES_DE_PRIVACIDAD` prometía
+  cubrir «el mismo rechazo con otro valor» y eso **no** está implementado (queda
+  anotado al lado de B-817, que es donde se decide), y la frase de la ayuda decía
+  «lo que ya estaba mal de antes no te frena», que la excepción volvió falso.
+
+  El `auditor-documentacion` cobró además el aviso que faltaba en **D-530** —cuya
+  guarda #3 este cambio volvió falsa— y un párrafo de `07-seguridad.md` que la
+  propia edición había partido a la mitad.
+
+  Y el test de cableado **se movió**: era un `readFileSync` sobre la fuente, que es
+  exactamente el patrón que el `auditor-trampas` ya había rechazado en este mismo
+  camino por estar calcado de la implementación. Ahora vive en
+  `tests/historial-relectura.test.ts`, que dobla la escritura y afirma que **no
+  ocurrió**.
+
+  **Trece casos** en `tests/historial-restaurar.test.ts` (sobre las funciones
+  puras), **dos** en `tests/historial-relectura.test.ts` (sobre el comportamiento) y
+  **uno** de propiedad en `tests/schema.test.ts`, con **ocho mutaciones corridas de
+  verdad**: sacar la llamada de `restaurarCampo`, devolver el veredicto pelado en vez
+  del diff, sacar la excepción de privacidad, no acotarla, acotarla solo al estado,
+  volver fail-open el ilegible, no sanear el mensaje de enum, y vaciar
+  `MENSAJES_DE_PRIVACIDAD`. Las ocho fallan.
+
+  Dos ítems nuevos que salieron de la auditoría y que B-818 **no** cierra:
+  **B-819** (P1 — restaurar `modalidades` puede reactivar `online.urlPublica` y
+  republicar el link de la reunión, y la fila dice «2 elementos») y **B-820** (P2 —
+  restaurar el slug no verifica unicidad).
+
+  Doc: [`06-decisiones.md`](06-decisiones.md) → D-540 (nueva) y el aviso en D-530,
+  [`13-agentes.md`](13-agentes.md) (la fila del chequeo nuevo),
+  [`04-funcionalidades.md`](04-funcionalidades.md) → «Qué no se puede restaurar, y
+  quién lo frena» (nueva, con la tabla de las dos capas),
+  [`07-seguridad.md`](07-seguridad.md) y
+  [`03-modelo-de-datos.md`](03-modelo-de-datos.md) (los dos decían «no pasa por el
+  schema» y ya no es cierto). Novedad del panel:
+  `historial-no-publica-a-ciegas`. Ayuda: un punto nuevo en «El listado de
+  actividades», al lado del de la dirección web.
+
 - **Un ciclo puede darse en varios horarios, y el modelo ya lo puede decir** —
   **B-181**, la primera forma del dominio que el modelo no podía expresar.
   Reporte del dueño usando el panel: «un club de lectura puede darte 4 opciones

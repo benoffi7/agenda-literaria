@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Imagen } from '@/types/actividad';
-import { actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
+import { ES_RECHAZO_DE_PRIVACIDAD, actividadFormSchema, faltaParaPublicar } from '@/lib/schema';
 import { sesionVacia } from '@/lib/sesiones';
 import type { ItemMaterial } from '@/types/actividad';
 
@@ -1040,5 +1040,63 @@ describe('la etiqueta de una opción no puede llevar un link (B-181)', () => {
         'comisiones.0.etiqueta',
       ]);
     });
+  });
+});
+
+/**
+ * **Que una regla de privacidad nueva entre sola a `MENSAJES_DE_PRIVACIDAD`** —
+ * B-818, y lo cobró el `auditor-privacidad` sobre la primera versión de esa lista.
+ *
+ * La lista existe porque `issuesDeRestauracion` (`@/lib/historial`) enmascara los
+ * rechazos que ya estaban —correcto para la completitud, incorrecto para las reglas
+ * que existen para que un dato no salga—. Y estaba colgada de la memoria: su
+ * docblock decía que «la regla que se agregue mañana … la que la escriba decide en
+ * una línea», y **nada se lo preguntaba**. Una regla nueva bajo
+ * `if (tienePagina(v.estado))` con un mensaje literal quedaba afuera, la resta la
+ * enmascaraba, y la suite seguía verde.
+ *
+ * El marcador mecánico ya lo había definido el propio schema: **una regla que
+ * existe para que un dato no salga corre con `tienePagina`** y no con el nivel de
+ * publicar. Así que la lista se deriva del **comportamiento** y no de una lista
+ * paralela: los mensajes que aparecen en `cancelado` y no en `borrador` son
+ * exactamente las reglas gateadas por `tienePagina`, porque `cancelado` tiene
+ * página y no pasa por el nivel largo.
+ *
+ * Es el patrón que este repo ya usa con las claves derivadas de `firestore.rules`.
+ */
+describe('las reglas que solo corren con página están declaradas (B-818, §5.1)', () => {
+  /** Un documento con todo lo que las reglas «de página» pueden rechazar. */
+  const conViolaciones = (estado: string) => ({
+    ...valido(),
+    estado,
+    esCiclo: true,
+    comisiones: [{ id: 'com_1', etiqueta: 'Martes — https://meet.google.com/abc' }],
+    sesiones: [{ ...sesionVacia(), comisionId: 'com_1' }],
+  });
+
+  const mensajesEn = (estado: string): Set<string> => {
+    const r = actividadFormSchema.safeParse(conViolaciones(estado));
+    return new Set(r.success ? [] : r.error.issues.map((i) => i.message));
+  };
+
+  it('toda regla gateada por `tienePagina` está en `ES_RECHAZO_DE_PRIVACIDAD`', () => {
+    /*
+     * MUTACIÓN PROBADA: vaciando `MENSAJES_DE_PRIVACIDAD`, este caso falla
+     * nombrando el mensaje que quedó sin declarar.
+     */
+    const enBorrador = mensajesEn('borrador');
+    const soloConPagina = [...mensajesEn('cancelado')].filter((m) => !enBorrador.has(m));
+
+    // Que el derivado encontró algo: con cero, la aserción de abajo pasaría sola.
+    expect(soloConPagina.length).toBeGreaterThan(0);
+
+    for (const mensaje of soloConPagina) {
+      expect(
+        ES_RECHAZO_DE_PRIVACIDAD.includes(mensaje),
+        `«${mensaje}» solo corre cuando la actividad tiene página, así que es una regla ` +
+          'de privacidad, y no está en MENSAJES_DE_PRIVACIDAD: la resta de ' +
+          '`issuesDeRestauracion` la va a enmascarar',
+      ).toBe(true);
+    }
   });
 });

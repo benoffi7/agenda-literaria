@@ -1629,6 +1629,30 @@ más vieja (D-42).
 listado, «Historial». Muestra las versiones de esa actividad, qué campos pisó
 cada edición y permite restaurar.
 
+### Qué no se puede restaurar, y quién lo frena
+
+La restauración escribe con un `updateDoc` directo, así que **es la única puerta
+del panel al documento que no venía del formulario**. Lo que la limita, en dos
+capas:
+
+| Capa | Qué frena | Cuándo se ve |
+|---|---|---|
+| `camposRestaurables` — no ofrece la fila | la dirección web si la actividad estuvo publicada (trampa 10, B-285); los cuatro derivados de `modalidades` sueltos (B-224); un campo que **no existía** en esa versión (B-167); el nombre de una opción con un link de reunión sobre una con página (B-181) | la fila no aparece |
+| `issuesDeRestauracion` — valida el documento resultante (**B-818**, D-540) | cualquier regla del schema que la restauración **rompería**: restaurar «publicado» sobre una incompleta, un título de dos letras, una inscripción sin destino | al apretar «Restaurar», con el mensaje de qué rompería |
+
+La segunda capa es la que cierra **«Restaurar → Estado»**, que hasta B-818
+escribía `estado: 'publicado'` salteando el nivel entero de publicar y salía al
+sitio solo, porque la escritura marca rebuild.
+
+**Solo bloquean los rechazos nuevos**: una actividad que hoy ya no pasa el nivel
+largo —porque se publicó antes de que existiera la regla que ahora la rechaza— no
+queda con la pantalla tapiada, que es justo la pantalla a la que se va cuando algo
+está roto. Y las dos capas conviven a propósito: la primera nombra su problema
+mejor, y hay un caso —`imagenes: null` sobre una versión anterior a la galería—
+que el schema **no puede ver**, porque lo lee con el default que cae al
+`imagenUrl` viejo. El razonamiento completo está en
+[`06-decisiones.md`](06-decisiones.md) → D-540.
+
 Se carga **diferida** (`import()`), no en el chunk inicial del panel: es la vista
 menos usada —recuperar un campo pisado es una operación rara— así que es justo la
 que no tiene por qué viajar en lo que se baja para mostrar "Entrar con Google"

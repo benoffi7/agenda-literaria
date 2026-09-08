@@ -234,7 +234,7 @@ dirección de una reunión —el `https://` suelto o uno de los hosts conocidos
 corre en **`publicado` y en `cancelado`**, que son los dos estados con página
 indexada (`tienePagina`, y la cancelada entra al sitemap por B-110). En **borrador**
 no molesta: de ahí no sale nada. **Y también cubre la puerta del historial**, que
-escribe con `updateDoc` sin pasar por el schema: `camposRestaurables` no ofrece
+escribe con `updateDoc` directo: `camposRestaurables` no ofrece
 `comisiones` cuando la versión trae una etiqueta con un link y la actividad tiene
 página, **y `restaurarCampo` vuelve a evaluar esa guarda contra el documento que
 relee antes de escribir** — sin eso la contestaba el snapshot de cuando se abrió la
@@ -248,6 +248,17 @@ su contenido natural es «cómo se cursa este grupo» (el propio ejemplo del cam
 incluye «Turno virtual»), así que es el campo del modelo con más chances de recibir
 el link de la reunión, y su destino incluye una página indexada, donde D-139 dice
 que ese link no va **nunca**, con flag o sin flag.
+
+**Y desde B-818 esa puerta ya no es la puerta sin schema.** El párrafo de arriba
+describe la tercera guarda puntual escrita para una regla puntual; el patrón se
+cerró en general: `restaurarCampo` arma el payload, y antes de escribirlo corre el
+documento resultante por el **mismo** `actividadFormSchema` que usa el guardado
+(`issuesDeRestauracion`), bloqueando los rechazos que la restauración introduce.
+Lo que lo hacía P1 era `estado`: «Restaurar → Estado» sobre una versión que decía
+`publicado` publicaba salteando el nivel entero —y con él esta misma guarda de la
+etiqueta, la sede incompleta y el slug `-copia`—, con rebuild marcado. Las guardas
+puntuales se quedan igual: son un piso más fino, no un duplicado. Ver
+[`06-decisiones.md`](06-decisiones.md) → D-540.
 
 **De `/opciones/{campo}` salen `slug`, `label` y —desde D-150— `tono`** (§4.4). La proyección
 se escribió **antes** que su consumidor —B-212 antes que B-106— y eso era a

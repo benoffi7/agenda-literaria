@@ -456,6 +456,23 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Y hay una cosa que te frena aunque ya estuviera de antes: un link de reunión escrito ' +
+          'en el nombre de una opción para sumarse. Si pasás la actividad a publicada y ese ' +
+          'nombre tiene un link, la restauración se rechaza — publicarla lo pondría en el ' +
+          'calendario público, donde ese link no va nunca. Se arregla desde el formulario, ' +
+          'sacando el link del nombre.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'Restaurar revisa antes que la actividad no quede incompleta. Si el dato viejo la ' +
+          'dejaría sin algo que hace falta para publicar —restaurar «Estado: publicado» cuando ' +
+          'falta la sede, o un título de dos letras—, no lo escribe y te dice qué le falta. Lo ' +
+          'que ya estaba incompleto de antes no te frena: solo frena lo que la restauración ' +
+          'rompería. Lo que no revisa es que la dirección web no esté usada por otra actividad.',
+      },
+      {
+        texto:
           'Cuando una actividad se llena, «Marcar cupo completo» lo dice en el evento del ' +
           'calendario de cada encuentro: quien ya se había suscripto al calendario se entera sin ' +
           'que le avises. Es un toque desde el listado, sin abrir el formulario. Si se libera un ' +
