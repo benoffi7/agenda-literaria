@@ -638,6 +638,10 @@ B-830) y comparten una forma: **son decisiones que cuestan una línea ahora y un
 rediseño después**, porque cuando la bandeja esté escrita ya va a haber
 documentos guardados.
 
+> ✅ **Las dos primeras las contestó el dueño el 2026-09-09.** La 1 como estaba
+> recomendada; la 2 con la **primera opción**. Lo que cada una cambia está al
+> final de su punto.
+
 **1 · Hoy no hay ninguna forma de borrar el dato personal del tercero.** El
 camino de admin (`origen: 'panel'`) **está abierto desde el paso 5**, así que el
 proyecto ya puede guardar el mail o el WhatsApp de alguien. Y: `allow delete: if
@@ -649,6 +653,13 @@ buena; lo que falta es que **la excepción del borrado exista antes que el dato*
 Lo más barato: no usar el camino de panel hasta que B-838 esté, y que la fila de
 `07-seguridad.md` lo diga en futuro (ya corregida).
 
+> ✅ **Decidido: el camino de panel no se usa hasta que B-838 exista.** Y eso
+> **cambia el orden del plan**: el paso 11 de la tajada 1 (la retención) pasa a ir
+> **antes** de que el `PropuestasPanel` (paso 7) tenga cualquier forma de cargar
+> una propuesta a mano. Hoy no hay UI que lo haga, así que la decisión no cuesta
+> nada — lo que no puede pasar es que esa pantalla llegue con un botón de «cargar
+> a mano» mientras la Function de retención todavía no existe.
+
 **2 · El `hasAny(['estado'])` va a bloquear el flujo de aceptar.** `affectedKeys`
 solo incluye lo que **cambió de valor**, y el flujo natural de aceptar son dos
 escrituras: mover a `aceptada` → crear la actividad → guardar su id. La segunda
@@ -657,6 +668,13 @@ que elegir una **antes** de escribir el panel: crear la actividad primero y move
 `estado` + `revision` en **una** escritura (preferible — deja la propuesta
 consistente en un solo paso), o aflojar el `hasAny`. Mejor decidirlo ahora que
 descubrirlo con la pantalla hecha.
+
+> ✅ **Decidido: una sola escritura** (**D-600**). El `hasAny(['estado'])` se
+> queda, y el flujo de aceptar es: crear la actividad → **después** mover `estado`
+> y `revision` juntos. La regla no se toca y es el panel el que se adapta, que es
+> el orden correcto: una regla que acepta una propuesta a medio revisar es más
+> difícil de arreglar que un `await` en el orden correcto. El razonamiento —y por
+> qué la asimetría de los fallos es lo que decide— está en D-600.
 
 **3 · La revisión se puede pisar sin rastro.** Un admin puede sobrescribir
 `revision` —firmándola a su nombre, que es lo que la regla exige— y el `motivo`
@@ -690,7 +708,7 @@ rompen en silencio están en
 | **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🟠 **empezado (2026-09-09)** — están el control positivo (`tests/escritura-anonima.integracion.test.ts`: hoy nadie escribe sin el claim, ni en las cuatro colecciones futuras) y **App Check cableado** (`src/lib/appcheck.ts`, reCAPTCHA **Enterprise**, con la app ya registrada por el dueño). Falta publicar, verificar en la consola y **exigir** — **B-836a**, y el orden no se puede invertir: exigir antes de que el cliente mande tokens deja al panel sin poder escribir. Las otras cuatro capas (validación en la regla, topes, honeypot, barrido) van con la colección que las estrene |
 | **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
 | **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | ✅ **hecho (2026-09-09)** — `src/lib/datoConFecha.ts` + `tests/dato-con-fecha.test.ts`. Las tres reglas son propiedades del módulo: la proyección pública es **un solo string** («$18.000 por mes · cargado el 24 de septiembre de 2026»), así que no hay número que filtrar ni que meter en un `Offer`, y **el valor sin fecha usable no sale** — desaparece en vez de publicarse solo. La fecha es absoluta y con año porque el sitio es estático: un «hace tres meses» horneado en el HTML envejece solo (**D-570**). Todavía sin consumidor: lo estrenan las librerías y las suscripciones |
-| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — pasos 4 y 5 de la tajada 1 hechos: **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). Falta `propuestas.ts` (la conversión), el `PropuestasPanel`, la imagen de DEC-11, `/proponer`, `/contacto` con Instagram y la retención |
+| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — pasos 4 y 5 de la tajada 1 hechos: **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). Falta `propuestas.ts` (la conversión), el `PropuestasPanel`, la imagen de DEC-11, `/proponer`, `/contacto` con Instagram y la retención. **Dos decisiones del dueño del 2026-09-09 cambian el resto** (B-843): aceptar es **una sola escritura**, con la actividad creada primero (**D-600**), y **la retención (B-838) va antes** de que el panel tenga cualquier forma de cargar una propuesta a mano |
 | **B-831** | **Directorio de librerías** — `/guia/librerias`, `/guia/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | 🟡 listo para codear |
 | **B-832** | **Directorio de suscripciones literarias** — `/guia/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. El choque de nombre que tenía —la barra ya dice «Suscribirse», el calendario— **se lo llevó `/guia/`**: las dos etiquetas nunca aparecen juntas | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | 🟡 listo para codear |
 | **B-833** | **Directorio de lugares para eventos** — `/guia/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | 🟡 listo para codear |

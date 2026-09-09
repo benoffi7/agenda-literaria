@@ -2,6 +2,63 @@
 
 ## Sin publicar
 
+- **La conversión de propuesta a actividad, y las dos decisiones del dueño que le
+  dan la forma** — **B-830** paso 6, **D-600**, y la corrección de **B-842**.
+
+  `src/lib/propuestas.ts` es **puro**: devuelve un `ActividadForm` prellenado más
+  una lista de **avisos**, y no escribe nada. El orden de las dos escrituras de
+  aceptar es de quien acepta, y quedó decidido: **una sola escritura, con la
+  actividad creada primero** (D-600, respuesta del dueño). `revisionValida()`
+  exige que todo update mueva el estado, así que el camino obvio —mover a
+  `aceptada` y después guardar el `actividadId`— la regla lo rechaza. Lo que
+  decide entre las dos salidas es la **asimetría del residuo**: una actividad en
+  borrador de más la ve el admin en su listado y la borra en dos clics; una
+  propuesta marcada `aceptada` que no dice en qué actividad terminó es un dato
+  **mentiroso** que nadie nota, y rompe el único trabajo de la bandeja. La regla no
+  se toca y es el panel el que se adapta.
+
+  **Y el filtro de `incluye`, que es el hallazgo del auditor hecho código.** B-842
+  afirmaba que lo que protege el contenido de una propuesta es que pase por
+  `actividadFormSchema`. Para `incluye` **eso no filtra nada** —es un
+  `z.array(texto)`— y el camino sigue: `toPublic` lo proyecta, `detallePublico` lo
+  resuelve con `etiquetaDe`, `listadoPublico` cae a `desSlug(valor)` cuando el slug
+  no está en la taxonomía. O sea que un slug inventado se publicaba **verbatim,
+  des-slugueado, como texto visible en la página de detalle**, que es HTML
+  indexado. Ahora la conversión lo filtra contra `/opciones/incluye-actividad`, y
+  lo que no está **no se descarta**: se junta con `incluyeOtro` en un aviso, que es
+  el mecanismo que el § 4.2 del PRD ya definió. El default de `slugsConocidos` es
+  `[]`, así que el llamador que se olvide de pasar la taxonomía no publica nada —
+  el lado seguro del error.
+
+  **Un comentario mío que la mutación desmintió.** Había escrito que la aritmética
+  de horas va sobre `Date.UTC` «porque con el reloj local el resultado dependería
+  de la zona del proceso». Es falso: la versión con reloj local pasa los veinte
+  casos en Buenos Aires **y** en Tokio, porque el parseo local y los getters
+  locales se cancelan. Lo que no se cancela es un **cambio de horario en el
+  medio**: `01:30 + 2h` de reloj local en una zona con DST no da `03:30`. La
+  elección sigue siendo la correcta y el motivo es otro, y como la suite no puede
+  cambiar la zona del proceso caso por caso, lo que tiene red es **la forma**: un
+  aserto sobre el fuente prohíbe los constructores de reloj local. Mutación
+  probada — reescribirlo con `new Date(\`${dia}T…\`)` + `setHours` deja los veinte
+  casos en verde y ese aserto en rojo.
+
+  **Lo que NO viaja al formulario**, cada ausencia con su caso, porque una ausencia
+  sin test se lee como olvido: el **contacto** de quien propuso (dato personal del
+  tercero, §5.1), el **estado** —la actividad nace borrador: aceptar prellena, no
+  publica (D-17)—, el **slug** —se arma del título y queda fijo al publicar,
+  trampa 10— y el **canal de inscripción**: viaja el `requiere` y no el `via`/`destino`,
+  porque `destino` es público y la propuesta solo dice cómo con sus palabras.
+
+  **La otra decisión del dueño: el camino de admin no se usa hasta que exista la
+  retención.** Hoy no hay forma de borrar el dato personal de un tercero —el
+  `delete` está prohibido, el `update` acotado, y la Function de B-838 no existe—
+  así que el paso 11 de la tajada 1 pasa a ir **antes** de que el
+  `PropuestasPanel` tenga cualquier forma de cargar una propuesta a mano. Hoy no
+  hay UI que lo haga, así que la decisión no cuesta nada; lo que no puede pasar es
+  que esa pantalla llegue con el botón y la Function todavía no.
+
+  21 casos nuevos.
+
 - **`/propuestas`: el tipo, el schema y las reglas de la colección que va a
   recibir la primera escritura anónima** — **B-830**, paso 5 de la tajada 1, más
   **D-590** y **B-842**.

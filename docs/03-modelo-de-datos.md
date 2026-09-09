@@ -471,7 +471,36 @@ que no se saltea.
 
 **Y lo que la regla no puede:** no itera listas, así que de `fechas` acota la
 cantidad y no la forma de cada fila (**B-842**). Lo que lo hace aceptable es que
-nada de una propuesta llega a una salida pública sin que un admin la convierta.
+nada de una propuesta llega a una salida pública sin que un admin la convierta —
+con **una excepción que hay que conocer**: para `incluye`, `actividadFormSchema`
+es un `z.array(texto)`, así que el filtro contra la taxonomía lo hace la
+conversión (`src/lib/propuestas.ts`) y no el schema. Sin ese filtro, un slug
+inventado se publicaría des-slugueado en la ficha.
+
+### La conversión a actividad (`src/lib/propuestas.ts`)
+
+Es **pura**: devuelve un `ActividadForm` prellenado más una lista de **avisos**, y
+no escribe nada. El orden de las dos escrituras de aceptar es de quien acepta y
+está decidido en **D-600**: se crea la actividad **primero** y después se mueven
+`estado` + `revision` en **una** sola escritura, porque `revisionValida()` exige
+que todo update mueva el estado y porque el residuo de un fallo es asimétrico —
+una actividad en borrador de más se borra en dos clics; una propuesta marcada
+`aceptada` que no dice en qué actividad terminó es un dato mentiroso.
+
+| De la propuesta | A la actividad |
+|---|---|
+| `modalidad: 'las-dos'` | `'hibrido'`, traducido en un solo lugar |
+| `fechas[]` (strings) | `sesiones[]` con `ses_<uuid>` **nuevos** (trampa 2) y `datetime-local`; sin hora de fin, dos horas y un aviso |
+| `lugar` | la **primera fila** de `modalidades`, con su cascada (B-224) |
+| `incluye` | **filtrado** contra `/opciones/incluye-actividad`; lo que no está va al aviso junto con `incluyeOtro` |
+| `inscripcion.requiere` | viaja; **el canal no** — `destino` es público y la propuesta solo dice cómo con sus palabras |
+| `contacto` | **nada**. Es el dato personal del tercero (§5.1) |
+| `estado` | **borrador** (D-17): aceptar prellena, no publica |
+| `slug` | **vacío**: se arma del título y queda fijo al publicar (trampa 10) |
+
+**Los avisos no son decoración.** Prellenar y perder son lo mismo si nadie avisa:
+sin esa lista, el admin cree que el formulario trae todo lo que la persona
+escribió.
 
 ## `incluye` — qué se llevan (B-830)
 

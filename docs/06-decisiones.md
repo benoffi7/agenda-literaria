@@ -9390,3 +9390,62 @@ y sin reloj — `Date.UTC` y no `new Date(dia)`, que obligaría a preguntar el d
 «en alguna zona» y sería la trampa 1 otra vez). Es la división que corresponde: la
 regla frena lo que un `curl` puede mandar para hacer daño, y el schema además
 ayuda a quien está completando el formulario.
+
+---
+
+## D-600 · Aceptar una propuesta es **una** escritura, y la actividad se crea primero
+
+**Decisión del dueño el 2026-09-09**, sobre el punto 2 de B-843. Lo destapó el
+`auditor-privacidad` antes de que el panel existiera, que es el único momento en
+que era barato.
+
+### El problema
+
+`revisionValida()` exige `d.diff(previo).affectedKeys().hasAny(['estado'])`: todo
+update de una propuesta tiene que **mover el estado**. Y el flujo natural de
+aceptar son dos escrituras:
+
+```
+1. propuesta.estado = 'aceptada'          ← mueve estado, pasa
+2. propuesta.revision.actividadId = 'act_…'  ← NO mueve estado, la regla lo rechaza
+```
+
+O sea que el camino obvio no funciona, y se descubre con la pantalla escrita.
+
+### Lo elegido
+
+**Crear la actividad primero, y después mover `estado` + `revision` en una sola
+escritura.**
+
+```
+1. crearActividad(...)  →  act_<uuid>
+2. propuesta: { estado: 'aceptada', revision: { porUid, en, actividadId, motivo: null } }
+```
+
+| | Dos escrituras, aflojando el `hasAny` | **Una escritura, la actividad primero** |
+|---|---|---|
+| La regla | hay que aflojarla | **queda como está** |
+| Estado intermedio posible | `aceptada` **sin** `actividadId` — una propuesta que dice que se aceptó y no dice en qué | ninguno: o está aceptada con su id, o sigue nueva |
+| Si falla el paso 1 | la propuesta ya se movió y la actividad no existe | la actividad queda huérfana, sin propuesta que la señale |
+| Si falla el paso 2 | — | la propuesta sigue `nueva` y hay una actividad **en borrador** de más |
+
+**La asimetría de los fallos es lo que decide.** Los dos órdenes pueden fallar a
+mitad de camino, pero el residuo no es el mismo: una actividad en borrador de más
+la ve el admin en su listado y la borra en dos clics; una propuesta marcada
+`aceptada` que no dice en qué actividad terminó es un dato **mentiroso** que nadie
+va a notar, y que rompe el único trabajo de la bandeja — saber qué se hizo con
+cada pedido.
+
+Y la regla se queda como está, que es el otro lado del mismo argumento: **una
+regla que acepta una propuesta a medio revisar es más difícil de arreglar que un
+`await` en el orden correcto.** Lo primero se descubre leyendo documentos raros
+meses después; lo segundo se descubre la primera vez que se corre.
+
+### Lo que esto obliga
+
+- `src/lib/propuestas.ts` no escribe: **devuelve** el `ActividadForm` prellenado.
+  Quien acepta es el panel, y el orden de las dos escrituras vive ahí, en un solo
+  lugar, con su test.
+- La actividad nace **borrador**, como cualquier copia (D-17): el admin la revisa
+  y la publica desde el formulario que ya existe. Aceptar una propuesta no publica
+  nada.
