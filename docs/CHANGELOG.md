@@ -2,6 +2,39 @@
 
 ## Sin publicar
 
+- **El barrido de promesas ya mira la plata, y su premisa se deriva de
+  `/anunciar`** — **B-851**. El barrido buscaba negaciones **sobre datos del
+  visitante**, y por eso no vio lo que encontró B-785: la ayuda decía «no tiene
+  publicidad y va a seguir así» mientras `/anunciar` vende espacio, dos ítems más
+  allá en el mismo encabezado. Misma clase que B-781, corrida de los datos a la
+  plata, y resuelta hasta hoy **en una sola página** — que es exactamente lo que
+  B-781 dijo que no alcanzaba.
+
+  Ahora son **dos familias en el mismo barrido**, con la misma forma: fórmulas y
+  las dos escapatorias que las vuelven verdaderas —nombrar la excepción o decir qué
+  es lo gratis—.
+
+  **Lo que la hace distinta es que su premisa no se afirma: se deriva.**
+  `elSitioVendeEspacio()` lee la prosa de `comercialDelSitio.ts` y la existencia de
+  `/anunciar`; el día que el sitio deje de vender espacio el barrido **se apaga
+  solo**, en vez de quedar exigiendo callar algo que ya es verdad. Y un caso aparte
+  afirma la premisa, para que la derivación no se rompa en silencio: si `/anunciar`
+  se renombra, el barrido no se apaga sin avisar.
+
+  **La única pieza que la familia de datos no tenía es `acotable`**, y no es un
+  adorno: la promesa de que no hay publicidad **no** se puede acotar, porque no
+  habla de lo que se le cobra a quien lee sino de lo que el sitio hace. La frase de
+  B-785 venía con un alcance legítimo pegado —«**es gratis**, no tiene
+  publicidad»— y un barrido que aceptara cualquier alcance cercano la habría dejado
+  pasar: **es exactamente como llegó a producción**.
+
+  Cuatro casos con sus diez mutaciones vistas fallar, en los dos sentidos: un
+  detector con una fuente **por fórmula** —una que nadie dispare se podría achicar
+  entera sin que nada se ponga rojo— y otro que exige que el texto honesto pase. El
+  barrido no pasa por vacío: hay tres frases publicadas que disparan una fórmula y
+  las rescata el alcance. De regalo, `ventana()` pasó a estar ejercitada: achicarla
+  a cero dejaba la suite verde.
+
 - **«Filtros que no encuentran nada» dice cuál, y `busqueda` es un eje — nunca lo
   que alguien tipeó** — **B-798**, la mitad de emisión.
 

@@ -1,6 +1,6 @@
 /**
- * **Ninguna página del sitio promete sobre datos algo que el sitio contradice** —
- * B-781.
+ * **Ninguna página del sitio promete algo que el sitio desmiente** — sobre los
+ * datos del visitante (B-781) y sobre la plata (B-851).
  *
  * ── De dónde sale este archivo ─────────────────────────────────────────────
  * `/apoyar` decía «no se guarda quién entró». Era **falso**: en la misma pantalla
@@ -33,8 +33,25 @@
  * acote** («para anotarte», «tu dirección»). Las dos escapatorias están acá abajo
  * con su motivo, y las dos se verifican en los dos sentidos: que el detector
  * agarre una frase falsa, y que no agarre una verdadera.
+ *
+ * ── El segundo eje: las promesas sobre plata — B-851 ───────────────────────
+ * El archivo barre **dos familias** y se sigue llamando `promesas-sobre-datos`
+ * porque así lo nombran B-781 y todo lo que lo cita; la clase, en cambio, es una
+ * sola: **una afirmación pública que el propio sitio desmiente, en HTML
+ * indexado**. La segunda familia salió de B-785, y de que este barrido no la vio:
+ * la ayuda decía «no tiene publicidad y va a seguir así» mientras `/anunciar`
+ * **vende espacio del sitio**, dos ítems más allá en el mismo encabezado. Las
+ * fórmulas de arriba son sobre medición, así que la frase pasó en verde — y el
+ * caso quedó resuelto en `tests/ayuda-del-sitio.test.ts`, o sea en **una sola
+ * página**, que es exactamente lo que B-781 dijo que no alcanzaba.
+ *
+ * Lo que hace distinta a esta familia es que **su premisa se deriva**: la promesa
+ * es imposible solo mientras el sitio venda espacio. El día que deje de venderlo,
+ * `elSitioVendeEspacio()` da `false`, el barrido deja de exigirla y la frase
+ * vuelve a ser escribible — sin que nadie tenga que acordarse de venir a borrar
+ * un test que empezó a mentir.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -84,6 +101,24 @@ const archivosBarridos = (): string[] => {
     .map((f) => `src/components/sitio/${f}`);
   return [...libs, ...paginas, ...componentes];
 };
+
+/**
+ * Un archivo barrido, ya leído y ya vuelto prosa.
+ *
+ * Existe para que un detector pueda barrer **un texto** y no solo un archivo del
+ * repo: las dos frases de B-785 —la que hubo que corregir y la corrección— son
+ * historia y no viven en ninguna salida, así que se pasan como texto con el
+ * nombre de dónde salieron, que es lo que después aparece en el mensaje de error.
+ */
+interface Fuente {
+  archivo: string;
+  prosa: string;
+}
+
+const deArchivos = (archivos: readonly string[]): Fuente[] =>
+  archivos.map((archivo) => ({ archivo, prosa: prosaDe(readFileSync(raiz(archivo), 'utf8')) }));
+
+const deTexto = (archivo: string, texto: string): Fuente => ({ archivo, prosa: prosaDe(texto) });
 
 /**
  * Las formas de negar que se mide o se guarda algo del visitante.
@@ -148,13 +183,137 @@ interface Hallazgo {
 
 const barrerPromesas = (archivos: readonly string[]): Hallazgo[] => {
   const hallazgos: Hallazgo[] = [];
-  for (const archivo of archivos) {
-    const prosa = prosaDe(readFileSync(raiz(archivo), 'utf8'));
+  for (const { archivo, prosa } of deArchivos(archivos)) {
     for (const { nombre, patron } of NEGACIONES) {
       // `matchAll` sobre una copia: el `lastIndex` de un regex global es estado.
       for (const m of prosa.matchAll(new RegExp(patron.source, patron.flags))) {
         const contexto = ventana(prosa, m.index, m[0].length);
         if (CONDICIONES.test(contexto) || ALCANCES.test(contexto)) continue;
+        hallazgos.push({ archivo, formula: nombre, frase: contexto.trim() });
+      }
+    }
+  }
+  return hallazgos;
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+// Familia 2 — las promesas sobre plata (B-851)
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * **La premisa de toda esta familia, derivada y no afirmada a mano.**
+ *
+ * Ninguna de las promesas de abajo es falsa por sí sola: son falsas **porque el
+ * sitio vende espacio**. Así que la premisa se lee del código que la hace cierta
+ * —`comercialDelSitio.ts` ofreciendo publicidad, y `/anunciar` existiendo como
+ * página— y no de una constante puesta acá.
+ *
+ * La diferencia importa el día que el sitio deje de vender espacio: el barrido se
+ * apaga solo y la promesa vuelve a ser escribible, en vez de quedar un test
+ * exigiendo callar algo que ya es verdad. Se lee la **prosa** y no el fuente
+ * entero a propósito: el docblock de ese módulo razona largo sobre publicidad, y
+ * lo que decide acá es lo que la página **dice**, no lo que su comentario cuenta.
+ */
+const elSitioVendeEspacio = (): boolean =>
+  /publicidad/i.test(prosaDe(readFileSync(raiz('src/lib/comercialDelSitio.ts'), 'utf8'))) &&
+  existsSync(raiz('src/pages/anunciar.astro'));
+
+interface FormulaDePlata {
+  nombre: string;
+  patron: RegExp;
+  /**
+   * Si **nombrar el alcance** la puede volver verdadera.
+   *
+   * «Publicar es gratis y va a seguir siendo gratis» dice qué es gratis y es
+   * cierto; «no tiene publicidad» no tiene alcance que la salve, porque no habla
+   * de lo que se le cobra a quien lee sino de lo que el sitio hace, y el sitio
+   * vende espacio.
+   *
+   * Sin esta distinción el barrido se perdería justamente la frase de B-785: venía
+   * con un alcance legítimo pegado —«es gratis, no tiene publicidad y va a seguir
+   * así»— y el alcance, que rescataba a la mitad verdadera, le habría dado paso
+   * también a la falsa.
+   */
+  acotable: boolean;
+}
+
+/**
+ * Las formas de prometer que acá no hay plata de por medio.
+ *
+ * Mismo criterio que `NEGACIONES`: son **fórmulas** y no una lista de frases
+ * prohibidas. Las tres primeras hablan de lo que el sitio **hace** —vender
+ * espacio— y las dos últimas de lo que **cuesta usarlo**; por eso solo las dos
+ * últimas se pueden acotar.
+ */
+const PROMESAS_SOBRE_PLATA: readonly FormulaDePlata[] = [
+  {
+    nombre: 'no tiene publicidad / no hay anuncios',
+    patron:
+      /no (tiene|hay|va a haber|vas a ver|tenemos|vamos a tener)\w* (ning[úu]n[ao]?s? )?(publicidad|anuncios?|avisos? publicitarios?|pauta|banners?)/gi,
+    acotable: false,
+  },
+  {
+    nombre: 'sin publicidad / libre de anuncios',
+    patron: /(sin|libre de) (publicidad|anuncios|pauta|banners)/gi,
+    acotable: false,
+  },
+  {
+    nombre: 'no vendemos espacio / no se vende nada',
+    patron: /no (se |te )?(vende|vendemos|alquila|alquilamos)\w* (nada|espacio|lugar|publicidad)/gi,
+    acotable: false,
+  },
+  {
+    nombre: 'nunca vamos a cobrar / no se cobra',
+    patron: /(nunca|jam[áa]s|no) (te |se |le )?(vamos a |va a |van a )?(cobrar|cobra|cobramos|cobran)\w*/gi,
+    acotable: true,
+  },
+  {
+    nombre: 'siempre va a ser gratis',
+    patron:
+      /((siempre|nunca) [^.]{0,24}gratis|va(n)? a seguir siendo gratis|gratis para siempre|gratis y va a seguir)/gi,
+    acotable: true,
+  },
+];
+
+/**
+ * Lo que vuelve verdadera a una promesa sobre plata: **nombrar la excepción**.
+ *
+ * Es lo que hizo la respuesta de `/ayuda` al corregirse. No dice «no hay
+ * publicidad»: dice que entrar y publicar son gratis y que **un espacio sí puede
+ * pagar para que se lo vea**. Una frase que nombra a `/anunciar` no lo esconde, y
+ * es la única forma de hablar del tema sin mentir.
+ */
+const CONDICIONES_PLATA =
+  /s[íi] (puede|pueden|pod[ée]s) pagar|pagar para que se lo vea|salvo|excepto|el espacio que se (vende|paga)/i;
+
+/**
+ * Lo que también la vuelve verdadera: **decir qué es lo gratis**.
+ *
+ * Entrar es gratis, publicar una actividad es gratis, la agenda es gratis para
+ * quien la usa, y anotarse a una actividad no pasa por acá. Las cuatro son ciertas
+ * y las cuatro nombran de qué hablan; lo que no se puede escribir es la promesa
+ * sin sujeto («nunca vamos a cobrar»), que abarca también lo que sí se cobra.
+ *
+ * La lista es corta a propósito, igual que `ALCANCES`: cada entrada es una promesa
+ * que alguien tiene que poder desmentir mirando el código, y agregarle una es
+ * agregar una promesa.
+ */
+const ALCANCES_PLATA =
+  /entrar es gratis|publicar\w* (una actividad )?(es gratis|no cuesta|tampoco)|la agenda es gratis|esta agenda no|no toma inscripciones|para anotarte/i;
+
+const barrerPlata = (fuentes: readonly Fuente[]): Hallazgo[] => {
+  // La premisa. Sin espacio vendido no hay promesa imposible, y el barrido no
+  // tiene nada que exigirle a nadie.
+  if (!elSitioVendeEspacio()) return [];
+
+  const hallazgos: Hallazgo[] = [];
+  for (const { archivo, prosa } of fuentes) {
+    for (const { nombre, patron, acotable } of PROMESAS_SOBRE_PLATA) {
+      // `matchAll` sobre una copia: el `lastIndex` de un regex global es estado.
+      for (const m of prosa.matchAll(new RegExp(patron.source, patron.flags))) {
+        const contexto = ventana(prosa, m.index, m[0].length);
+        if (CONDICIONES_PLATA.test(contexto)) continue;
+        if (acotable && ALCANCES_PLATA.test(contexto)) continue;
         hallazgos.push({ archivo, formula: nombre, frase: contexto.trim() });
       }
     }
@@ -254,5 +413,149 @@ describe('ninguna página promete sobre datos algo que el sitio contradice — B
      * verdaderas y tienen que pasar.
      */
     expect(barrerPromesas(['tests/fixtures/promesa-condicionada.ts'])).toEqual([]);
+  });
+});
+
+describe('ninguna página promete sobre plata algo que el sitio desmiente — B-851', () => {
+  it('la premisa se deriva de /anunciar, y hoy el sitio sí vende espacio', () => {
+    /*
+     * **El caso que sostiene a los otros tres.** Si esto se pone en rojo hay
+     * exactamente dos motivos, y son opuestos:
+     *
+     * 1. El sitio dejó de vender espacio. Entonces la familia entera sobra:
+     *    `barrerPlata` ya devuelve vacío solo, y lo que corresponde es **borrarla
+     *    con su motivo escrito**, no dejarla apagada.
+     * 2. La derivación se rompió —`/anunciar` se renombró, el texto dejó de decir
+     *    «publicidad»— y el sitio sigue vendiendo espacio. Entonces el barrido se
+     *    apagó en silencio, que es el modo de falla que este caso existe para que
+     *    no pase, y hay que arreglar la derivación.
+     *
+     * El aserto no puede distinguirlos; el mensaje manda a mirar cuál es.
+     */
+    expect(
+      elSitioVendeEspacio(),
+      'si /anunciar dejó de vender espacio, borrá esta familia; si no, la derivación se rompió',
+    ).toBe(true);
+  });
+
+  it('el barrido no encuentra una sola promesa sobre plata sin acotar', () => {
+    /*
+     * El gemelo del caso de B-781, sobre el otro eje. El mensaje dice archivo,
+     * fórmula y frase, que es lo que hace falta para elegir entre las tres
+     * salidas: nombrar la excepción, decir qué es lo gratis, o no prometerlo.
+     *
+     * Y ojo con el arreglo fácil, que acá es todavía más tentador que en la
+     * familia de datos: **agregar la frase a `ALCANCES_PLATA` no es arreglarla**.
+     *
+     * MUTACIÓN PROBADA: sacarle la escapatoria del alcance a `barrerPlata`
+     * (`acotable && ALCANCES_PLATA`) deja este caso en rojo nombrando las tres
+     * frases acotadas que hoy están publicadas —dos de `/apoyar` y una de
+     * `/ayuda`—, o sea que esto barre texto vivo y no aire. Que la frase de B-785
+     * caiga cuando vuelve a aparecer se prueba abajo, sobre la frase misma.
+     */
+    const hallazgos = barrerPlata(deArchivos(archivosBarridos()));
+    expect(
+      hallazgos.map((h) => `${h.archivo} · ${h.formula} · «${h.frase}»`),
+      '/anunciar vende espacio del sitio. Nombrá la excepción, decí qué es lo gratis, o no lo prometas.',
+    ).toEqual([]);
+  });
+
+  it('DETECTOR: la frase que /ayuda tuvo que corregir se agarra, y las cinco fórmulas disparan', () => {
+    /*
+     * El control negativo, con la frase histórica de verdad y no con una
+     * inventada. Va inline y no en `tests/fixtures/`: lo que enseña el caso es la
+     * **comparación** con la corrección, que está en el caso de abajo, y
+     * separarlas en otro archivo la esconde.
+     *
+     * Hay una fuente por fórmula, y no es prolijidad: una fórmula que ningún caso
+     * dispara se puede achicar entera sin que nada se ponga en rojo, y a las
+     * últimas cuatro no las ejercita el texto publicado —hoy nadie promete eso,
+     * que es justamente lo que el barrido cuida—.
+     *
+     * La segunda fuente es aparte la que hace que `acotable: false` sea algo más
+     * que una opinión escrita en un docblock. La promesa de que no hay publicidad
+     * viaja pegada a una verdadera —«la agenda es gratis», que en la frase
+     * original era «es gratis»— y en la misma ventana; un barrido que aceptara
+     * cualquier alcance cercano la dejaría pasar, que es exactamente cómo B-785
+     * llegó a producción. Con `acotable: false` las dos caen igual.
+     *
+     * Qué lo haría pasar si alguien lo rompe: sacar la promesa, o nombrar la
+     * excepción como hizo `/ayuda`. Poner `acotable: true` no es arreglarlo.
+     */
+    const hallazgos = barrerPlata([
+      deTexto(
+        'B-785 · la respuesta original de /ayuda',
+        'Sí, es gratis, no tiene publicidad y va a seguir así.',
+      ),
+      deTexto(
+        'la misma promesa con el alcance legítimo pegado',
+        'La agenda es gratis y va a seguir siendo gratis, y no tiene publicidad.',
+      ),
+      deTexto('la promesa dicha sin verbo', 'Una agenda sin publicidad, hecha a mano.'),
+      deTexto(
+        'la promesa de que no se vende espacio',
+        'Acá no se vende espacio: ninguna marca puede comprar un lugar.',
+      ),
+      deTexto(
+        'la promesa de no cobrar, sin decir a quién',
+        'Lo hace una persona en sus ratos libres, y nunca vamos a cobrar.',
+      ),
+      deTexto(
+        'la promesa de gratis para siempre, sin decir qué',
+        'Todo lo que ves acá siempre va a ser gratis.',
+      ),
+    ]);
+    expect(
+      hallazgos.map((h) => `${h.archivo} · ${h.formula}`),
+      'una fórmula dejó de disparar sobre la frase que existe para dispararla',
+    ).toEqual([
+      'B-785 · la respuesta original de /ayuda · no tiene publicidad / no hay anuncios',
+      'la misma promesa con el alcance legítimo pegado · no tiene publicidad / no hay anuncios',
+      'la promesa dicha sin verbo · sin publicidad / libre de anuncios',
+      'la promesa de que no se vende espacio · no vendemos espacio / no se vende nada',
+      'la promesa de no cobrar, sin decir a quién · nunca vamos a cobrar / no se cobra',
+      'la promesa de gratis para siempre, sin decir qué · siempre va a ser gratis',
+    ]);
+  });
+
+  it('DETECTOR: y no agarra ni el texto publicado ni la única forma honesta de negarlo', () => {
+    /*
+     * La otra dirección, la que evita que la familia se vuelva un impuesto sobre
+     * el texto honesto (B-180). Las dos primeras son texto publicado hoy:
+     *
+     * - `/ayuda`, que en vez de prometer nombra la excepción («un café sí puede
+     *   pagar para que se lo vea»): es la corrección que B-785 eligió;
+     * - `/apoyar`, que dice **qué** es lo gratis —la agenda, publicar— y eso
+     *   `/anunciar` no lo desmiente: lo que se vende es que se te vea, no leer la
+     *   agenda ni estar en ella.
+     *
+     * La tercera **no** está publicada, y es la que mantiene abierta la única
+     * puerta que le queda a una promesa no acotable: una página que necesite
+     * hablar de anuncios puede hacerlo si nombra el espacio que sí se vende. Sin
+     * este caso no hay nada que ejercite `CONDICIONES_PLATA`, y la familia queda
+     * diciendo «esto no se puede decir» en vez de «así sí».
+     *
+     * Si alguna de las tres empezara a dar hallazgo, el arreglo no es corregir la
+     * página: es que el barrido se pasó de rosca.
+     */
+    expect(
+      barrerPlata([
+        deTexto(
+          'la corrección de /ayuda',
+          'Sí. Entrar es gratis y publicar una actividad también, y las dos cosas van a seguir así. ' +
+            'Un café, una librería o un espacio cultural sí puede pagar para que se lo vea.',
+        ),
+        deTexto(
+          'la entrada de /apoyar',
+          'La agenda es gratis y va a seguir siendo gratis. Publicar es gratis y va a seguir siendo ' +
+            'gratis, así que aportar no adelanta a nadie en la fila.',
+        ),
+        deTexto(
+          'cómo sí se puede hablar de anuncios',
+          'En las páginas de actividad no vas a ver publicidad, salvo el espacio que un café, una ' +
+            'librería o un espacio cultural puede pagar para que se lo vea.',
+        ),
+      ]),
+    ).toEqual([]);
   });
 });

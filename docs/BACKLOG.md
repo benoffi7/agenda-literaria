@@ -792,7 +792,33 @@ Si alguna vez se atiende, el camino es el 3 del ítem original —que restaurar 
 cuando la imagen ya no está— y vive en `src/lib/historial.ts` +
 `HistorialActividad.tsx`, no en el barrido.
 
-### B-851 · El barrido de promesas no cubre las promesas sobre plata · P2
+### B-851 · El barrido de promesas no cubre las promesas sobre plata — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Cerrado: la familia está en el barrido que ya existía, y su premisa se
+> deriva.**
+>
+> `PROMESAS_SOBRE_PLATA` son cinco fórmulas con las dos escapatorias de siempre, y
+> `elSitioVendeEspacio()` —la prosa de `comercialDelSitio.ts` más la existencia de
+> `/anunciar`— es lo que las hace exigibles: **el día que el sitio deje de vender
+> espacio, el barrido se apaga solo** y la promesa vuelve a ser escribible, en vez
+> de quedar un test exigiendo callar algo que ya es verdad. Un caso aparte afirma
+> la premisa, para que esa derivación no se pueda romper **en silencio**.
+>
+> **Un campo que la familia de datos no necesitaba: `acotable`.** La promesa de que
+> no hay publicidad **no** se acota —habla de lo que el sitio hace, no de lo que le
+> cobra a quien lee— y sin esa distinción el barrido se pierde justo la frase de
+> B-785, que traía «es gratis» pegado en la misma ventana. Es exactamente como esa
+> frase llegó a producción.
+>
+> **El barrido no pasa por vacío:** hoy hay tres frases publicadas que disparan una
+> fórmula y las rescata el alcance. Sacar la escapatoria las nombra.
+>
+> **Dos cosas anotadas y no tocadas:** «La agenda es gratis y va a seguir siendo
+> gratis» (`apoyoDelSitio.ts`) queda **rescatada** por el alcance —mismo criterio
+> con el que B-785 conservó el «es gratis» de `/ayuda`: `/anunciar` le cobra a un
+> café por que se lo vea, no a quien lee ni a quien publica—, y el docblock de
+> `POR_QUE_ACA` en `comercialDelSitio.ts` dice «los cuatro argumentos» cuando el
+> array tiene **tres**.
 
 **Salió de cerrar la mitad de la ayuda de B-785.** `tests/promesas-sobre-datos.test.ts`
 barre todos los `*DelSitio.ts` buscando negaciones absolutas **sobre datos del
