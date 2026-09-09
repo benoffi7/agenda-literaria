@@ -644,7 +644,7 @@ porque eso es texto de una página pública y lo barre
 `tests/promesas-sobre-datos.test.ts`; (3) si la lista de Mailchimp se crea con
 doble opt-in (debería) y quién es el remitente.
 
-### B-848 · Un «usuario» en el sitio público sin login: favoritos y filtros guardados · P2 — **idea del dueño (2026-09-09)**
+### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados · P2 — **idea del dueño (2026-09-09)**
 
 **El pedido, textual:** «empezar a tener un usuario en el frente público (por
 ahora sin login ni nada). la idea es que pueda guardar favoritos de lugares (y con
@@ -670,26 +670,49 @@ los datos del sitio.
 - y el chequeo de terceros y el banner de cookies **no aplican**: `localStorage`
   para una función que la persona pidió no es analítica.
 
-**La ambigüedad que hay que resolver antes, y es la única grande: favoritos de
-qué.** El pedido dice «lugares», y `lugares` es el nombre de una de las tres
-entidades de la Guía (PRD 4), que **todavía no existe**. Hoy lo que el sitio tiene
-son **actividades**. Las tres lecturas llevan a cosas distintas:
+**Favoritos de qué: contestado por el dueño (2026-09-09) — «puede ser un evento,
+una librería, una suscripción…».** O sea el favorito es **genérico**: guarda
+cualquier ficha del sitio, con su tipo. Eso resuelve la única ambigüedad grande
+del ítem y tiene una consecuencia que hay que aprovechar **ahora**, no después:
 
-1. **actividades** — la más útil hoy («me interesa este taller, avisame»), y la que
-   choca con que una actividad **pasa**: un favorito que se vence necesita decidir
-   qué hace la sección con lo que ya ocurrió (¿lo esconde? ¿lo muestra apagado?);
-2. **lugares de la Guía** (PRD 4) — coherente con «lugares», y **bloqueado** hasta
-   que esa tajada exista;
-3. **cualquier ficha** (actividad, librería, suscripción, lugar) — lo más
-   ambicioso: un favorito genérico con su tipo, que sirve para las cuatro. Es más
-   diseño y menos código del que parece, porque la sección tiene que agrupar.
+> **La forma de lo guardado lleva el tipo desde el día uno, aunque el día uno haya
+> una sola entidad.** Los favoritos viven en el `localStorage` de cada persona, o
+> sea que son datos que **no podemos ver ni migrar**: el día que haya que
+> agregarles un campo, lo guardado no se convierte solo y el que quede viejo o se
+> pierde o hay que leerlo con un default para siempre. Guardar
+> `{ v: 1, tipo, slug, guardadoEn }` cuesta una línea hoy; guardar solo el slug y
+> tener que adivinar de qué era, cuando existan las cuatro entidades, no tiene
+> arreglo bueno. Es la misma forma de B-843: una decisión que cuesta una línea
+> ahora y un rediseño después.
 
-**Lo que hay que decidir:** (1) cuál de las tres; (2) qué pasa con un favorito que
-ya pasó o que se despublicó —el sitio es estático, así que la sección tiene que
-resolver contra el `events.json` del build y tolerar que el slug ya no exista—; (3)
-si la sección propia es una página (`/mis-favoritos`, con `noindex`: es distinta
-para cada persona) o un panel dentro del listado; (4) cuántos filtros guardados y
-si se pueden renombrar.
+La llave es **tipo + slug**, y funciona porque el slug es **inmutable después de
+publicar** (trampa 10): un favorito sobrevive a que le editen el título, la sede o
+la fecha.
+
+**Se puede construir entero con actividades y crecer solo.** Las otras tres
+entidades son las tajadas 2 a 4 de `prd/`; mientras no existan, el mismo mecanismo
+funciona con una sola y no hay que volver a diseñarlo — cada tajada nueva agrega su
+tipo, su JSON y su fila en la sección.
+
+**Lo que queda por decidir:**
+
+1. **Qué hace la sección con un favorito que ya no está** — el sitio es estático,
+   así que la página resuelve contra los JSON del build (`events.json` y los tres
+   que vienen) y **tiene que tolerar que el slug no exista**: despublicado,
+   borrado, o —solo en actividades— que ya **pasó**. Para lo que pasó hay una
+   respuesta barata que ya existe: linkear a `/pasadas` en vez de esconderlo.
+2. **Dónde vive la sección**: una página propia (`/mis-favoritos`) con **`noindex`
+   y fuera del sitemap** —para Google estaría siempre vacía, y una página vacía
+   indexada es peor que ninguna— o un panel dentro del listado.
+3. **Cuántos filtros guardados y si se pueden renombrar.**
+4. **El costo de hidratación, que es el único técnico y hay que mirarlo antes:** el
+   corazón va en cada tarjeta **y en cada ficha**. El listado ya tiene una island;
+   **la página de detalle es HTML puro hoy**, y ponerle un botón con estado le
+   agrega el runtime de React a la página más visitada del sitio. B-239 ya discutió
+   exactamente ese trade-off para la home y **se descartó** por eso. La salida
+   probable es un botón que no necesite React —un `<button>` con un script chico
+   propio, que es lo que hace el aviso de cookies— y conviene decidirlo antes de
+   escribir el componente, no después.
 
 **Y una consecuencia de SEO que conviene tener escrita:** cualquier página cuyo
 contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt` y
