@@ -496,7 +496,36 @@ del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
 
-### B-841 · `campos/` es un `import` de distancia de medir sin consentimiento en una página pública · P1
+### B-841 · `campos/` es un `import` de distancia de medir sin consentimiento en una página pública — ✅ hecho (2026-09-09) · P1
+
+> **Resuelto con el corte que el ítem pedía, y con la red desde los dos lados.**
+>
+> Los tres controles de `campos/` quedaron **genéricos**: reciben la medición
+> (`medir`, `onMedir`), el nodo de ayuda (`ayuda`) y las opciones
+> (`valores`/`elegibles`) en vez de importarlos.
+> `src/components/admin/campos-del-panel.tsx` los ata a lo del panel y **conserva
+> la API que los usos tenían** —`conAyuda`, `uid`—, así que los quince archivos que
+> los usan cambiaron de dónde importan y nada más.
+>
+> **Y había un cuarto import que el ítem no nombraba:** `estaAprobada` se traía de
+> `@/lib/opciones`, que arrastra `firestore-client` → `firebase/firestore`. Ya
+> vivía en `lib/taxonomia.ts` —el módulo puro del §4.2— y `opciones` solo lo
+> reexporta, así que fue cambiar el origen del import. Sin eso, el corte estaba a
+> medias: los controles ya no medían y seguían bajando el SDK.
+>
+> **Dos redes, y las dos hacen falta.** `tests/panel-fuera-del-sitio.test.ts` mira
+> la propiedad desde **las páginas** —ninguna salvo `/admin` alcanza la plomería—
+> y desde **el directorio**: ningún archivo de `campos/` alcanza
+> `@/lib/analytics`, `firebase-client`, `appcheck`, `lib/opciones` ni
+> `firebase/firestore`. Aquél se pone rojo cuando alguien **ya escribió** el
+> formulario público que lo arrastra, o sea tarde; éste cuando alguien mete el
+> import en `campos/`, que es donde el error se comete. Con control positivo —la
+> capa del panel **sí** alcanza las cinco cosas— y verificado por mutación.
+>
+> El corte del bundle del panel no se movió: `campos-del-panel.tsx` no es
+> alcanzable estáticamente desde la island, porque todo lo que lo usa está detrás
+> de un `import()`.
+
 
 **Sale de haber hecho el movimiento de la tajada 0**, y hay que decirlo así: el
 directorio se movió, o sea que **parece** compartido, y tres de sus seis archivos

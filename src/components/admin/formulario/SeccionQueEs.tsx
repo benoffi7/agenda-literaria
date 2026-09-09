@@ -17,11 +17,9 @@
  *
  * En «Opcional» quedan las etiquetas y «destacar», que sí son opcionales.
  */
+import { Seccion, TagsInput, TaxonomiaSelect } from '@/components/admin/campos-del-panel';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
 import { Campo, claseInput } from '@/components/campos/Campo';
-import { Seccion } from '@/components/campos/Seccion';
-import { TagsInput } from '@/components/campos/TagsInput';
-import { TaxonomiaSelect } from '@/components/campos/TaxonomiaSelect';
 import { ETIQUETA_ESTADO } from '@/components/admin/formulario/etiquetasUI';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';

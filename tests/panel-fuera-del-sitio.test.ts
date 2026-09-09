@@ -170,3 +170,75 @@ describe('la plomería del panel no llega al sitio público — B-841', () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * **`campos/` es genérico de verdad, no solo por su ubicación** — B-841.
+ *
+ * El directorio se movió en B-827 «para que lo usen los formularios públicos», y
+ * tres de sus seis archivos seguían importando hacia adentro: la medición del
+ * panel, el centro de ayuda y `useOpciones`, con su cadena hasta
+ * `firebase/firestore`. O sea que **parecía** compartido y no lo era, y el import
+ * que lo delataba ya no decía `admin/` en ninguna parte.
+ *
+ * El `describe` de arriba mira la propiedad **desde las páginas**, que es lo que
+ * hay que garantizar. Este la mira **desde el directorio**, y las dos hacen falta:
+ * aquél se pone rojo cuando alguien ya escribió el formulario público que lo
+ * arrastra —o sea tarde, con el trabajo hecho—, y éste cuando alguien mete el
+ * import en `campos/`, que es donde el error se comete.
+ */
+describe('`campos/` no alcanza nada del panel ni el SDK pesado — B-841', () => {
+  const DE_CAMPOS = (): string[] =>
+    readdirSync(ruta('src/components/campos'))
+      .filter((f) => f.endsWith('.tsx') || f.endsWith('.ts'))
+      .map((f) => `src/components/campos/${f}`)
+      .sort();
+
+  /**
+   * Lo que un control compartido no puede alcanzar. Los dos primeros son la
+   * medición sin consentimiento y su cadena; el tercero es el chunk pesado que el
+   * corte de B-09 mantiene afuera del primer render del panel, y que
+   * `useOpciones` arrastraba.
+   */
+  const PROHIBIDO = [
+    '@/lib/analytics',
+    '@/lib/firebase-client',
+    '@/lib/appcheck',
+    '@/lib/opciones',
+    'firebase/firestore',
+  ];
+
+  it('hay archivos que recorrer, y son los seis', () => {
+    const archivos = DE_CAMPOS();
+    expect(archivos.length).toBeGreaterThanOrEqual(6);
+    expect(archivos).toContain('src/components/campos/TaxonomiaSelect.tsx');
+  });
+
+  it.each(DE_CAMPOS())('%s no alcanza la plomería del panel', (archivo) => {
+    const camino = caminoHasta(archivo, PROHIBIDO);
+    expect(
+      camino === null ? null : camino.join(' → '),
+      'un control de `campos/` alcanza algo del panel: lo va a arrastrar el ' +
+        'formulario público que lo use. El corte es que lo **reciba** por prop, ' +
+        'como en `components/admin/campos-del-panel.tsx`',
+    ).toBeNull();
+  });
+
+  it('y ninguno importa de `components/admin/`', () => {
+    // Lo mismo dicho por ruta, que es como se lee en el diff. El caso de arriba
+    // ya lo cubre por la cadena; éste nombra el error como se comete.
+    const conAdmin = DE_CAMPOS().filter((f) =>
+      importsDe(fuente(f)).some((spec) => spec.startsWith('@/components/admin/')),
+    );
+    expect(conAdmin, '`campos/` volvió a importar de `admin/`').toEqual([]);
+  });
+
+  /**
+   * **Control positivo, y el que hace honesto a todo lo de arriba:** la capa del
+   * panel **sí** alcanza las cinco cosas. Si no las alcanzara, «`campos/` no las
+   * alcanza» podría querer decir que el recorrido no las sabe encontrar.
+   */
+  it('CONTROL POSITIVO: la capa del panel sí las alcanza', () => {
+    const camino = caminoHasta('src/components/admin/campos-del-panel.tsx', PROHIBIDO);
+    expect(camino, 'el grafo no encuentra la plomería ni desde la capa que la ata').not.toBeNull();
+  });
+});

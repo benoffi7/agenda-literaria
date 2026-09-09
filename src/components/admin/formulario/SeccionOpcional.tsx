@@ -5,9 +5,8 @@
  * por defecto y llamada «Opcional», y el resultado era 2 actividades con imagen
  * sobre 42 publicadas. Lo que queda son dos cosas que sí son opcionales.
  */
+import { Seccion, TagsInput } from '@/components/admin/campos-del-panel';
 import { Campo } from '@/components/campos/Campo';
-import { Seccion } from '@/components/campos/Seccion';
-import { TagsInput } from '@/components/campos/TagsInput';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 import type { CampoMultivalor } from '@/types/actividad';
 

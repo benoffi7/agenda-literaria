@@ -1,30 +1,49 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useOpciones } from '@/components/admin/useOpciones';
 import {
   claseBotonSecundario,
   claseBotonTinta,
   claseInput,
 } from '@/components/campos/Campo';
-import { medirFuncion } from '@/lib/analytics';
-import { estaAprobada } from '@/lib/opciones';
 import { desSlug } from '@calendario';
 // §4.2 — el autocompletado y la deduplicación por slug son las mismas para los
 // dos widgets de taxonomía y viven en un módulo puro (B-72).
 import {
+  estaAprobada,
   etiquetaConEstado,
   pistaDeOpcion,
   resolverEtiqueta,
   sugerenciasPara,
 } from '@/lib/taxonomia';
-import type { CampoTaxonomia } from '@/types/actividad';
+import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
 
 interface Props {
   campo: CampoTaxonomia;
   /**
-   * uid de quien está cargando. Decide qué opciones pendientes de aprobación
-   * puede elegir: las propias sí, las de otra persona no (§4.3).
+   * Las opciones del campo y las **elegibles** (§4.3), recibidas y no leídas —
+   * B-841.
+   *
+   * Este control llamaba a `useOpciones(campo, uid)`, y esa cadena llega hasta
+   * `firebase/firestore`: cualquier página que lo usara se bajaba el SDK pesado
+   * que el corte de B-09 mantiene afuera del primer render del panel. Y un
+   * formulario público **no las saca de Firestore**: las saca del `events.json`
+   * (§4.4 — «las opciones viajan en el JSON»), así que el hook no era solo un
+   * peso: era el mecanismo equivocado.
+   *
+   * El panel las pasa desde `components/admin/campos-del-panel.tsx`, que es el
+   * único lugar donde sigue viviendo el hook.
+   *
+   * `valores` es la lista **completa** —para resolver la etiqueta de algo ya
+   * guardado, incluso pendiente de aprobación— y `elegibles` es lo que se
+   * ofrece. La diferencia es de §4.3 y la decide quien las trae.
    */
-  uid: string;
+  valores: ValorOpcion[];
+  elegibles: ValorOpcion[];
+  /**
+   * Qué se mide, **recibido y no importado** (B-841): `@/lib/analytics` es la
+   * medición del panel y no tiene portón de consentimiento. Sin esta prop no se
+   * mide nada, que es lo correcto para una página pública.
+   */
+  onMedir?: (funcion: 'taxonomia-nueva' | 'taxonomia-reusada' | 'taxonomia-sugerencia' | 'taxonomia-otro', detalle?: string) => void;
   /** Slug seleccionado. */
   value: string;
   /**
@@ -61,14 +80,15 @@ const OTRO = '__otro__';
  */
 export function TaxonomiaSelect({
   campo,
-  uid,
+  valores,
+  elegibles,
+  onMedir,
   value,
   onChange,
   id,
   placeholder,
   autoSeleccionarPrimera = false,
 }: Props) {
-  const { valores, elegibles } = useOpciones(campo, uid);
   const [modoOtro, setModoOtro] = useState(false);
   const [texto, setTexto] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +124,7 @@ export function TaxonomiaSelect({
 
   const confirmarTexto = () => {
     if (!slugTipeado) return;
-    medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
+    onMedir?.(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
     // Ya existe: se reusa, no se duplica.
     onChange(slugTipeado, labelNuevo);
     setModoOtro(false);
@@ -187,7 +207,7 @@ export function TaxonomiaSelect({
                   type="button"
                   className="flex min-h-touch w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
                   onClick={() => {
-                    medirFuncion('taxonomia-sugerencia', campo);
+                    onMedir?.('taxonomia-sugerencia', campo);
                     onChange(v.slug);
                     setModoOtro(false);
                     setTexto('');
@@ -211,7 +231,7 @@ export function TaxonomiaSelect({
       value={value || ''}
       onChange={(e) => {
         if (e.target.value === OTRO) {
-          medirFuncion('taxonomia-otro', campo);
+          onMedir?.('taxonomia-otro', campo);
           setModoOtro(true);
           return;
         }

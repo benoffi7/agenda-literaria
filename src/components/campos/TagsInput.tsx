@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react';
 import { claseInput } from '@/components/campos/Campo';
-import { useOpciones } from '@/components/admin/useOpciones';
-import { medirFuncion } from '@/lib/analytics';
-import { estaAprobada } from '@/lib/opciones';
 // §4.2 — mismas reglas que el desplegable, un solo módulo puro (B-72).
-import { pistaDeOpcion, resolverEtiqueta, sugerenciasPara } from '@/lib/taxonomia';
-import type { CampoMultivalor } from '@/types/actividad';
+import { estaAprobada, pistaDeOpcion, resolverEtiqueta, sugerenciasPara } from '@/lib/taxonomia';
+import type { CampoMultivalor, ValorOpcion } from '@/types/actividad';
 
 interface Props {
   /**
@@ -17,8 +14,32 @@ interface Props {
    * `detalle` se mide la interacción, así que las dos cosas no pueden divergir.
    */
   campo: CampoMultivalor;
-  /** uid de quien carga: decide qué opciones pendientes puede elegir (§4.3). */
-  uid: string;
+  /**
+   * Las opciones del campo y las **elegibles** (§4.3), recibidas y no leídas —
+   * B-841.
+   *
+   * Este control llamaba a `useOpciones(campo, uid)`, y esa cadena llega hasta
+   * `firebase/firestore`: cualquier página que lo usara se bajaba el SDK pesado
+   * que el corte de B-09 mantiene afuera del primer render del panel. Y un
+   * formulario público **no las saca de Firestore**: las saca del `events.json`
+   * (§4.4 — «las opciones viajan en el JSON»), así que el hook no era solo un
+   * peso: era el mecanismo equivocado.
+   *
+   * El panel las pasa desde `components/admin/campos-del-panel.tsx`, que es el
+   * único lugar donde sigue viviendo el hook.
+   *
+   * `valores` es la lista **completa** —para resolver la etiqueta de algo ya
+   * guardado, incluso pendiente de aprobación— y `elegibles` es lo que se
+   * ofrece. La diferencia es de §4.3 y la decide quien las trae.
+   */
+  valores: ValorOpcion[];
+  elegibles: ValorOpcion[];
+  /**
+   * Qué se mide, **recibido y no importado** (B-841): `@/lib/analytics` es la
+   * medición del panel y no tiene portón de consentimiento. Sin esta prop no se
+   * mide nada, que es lo correcto para una página pública.
+   */
+  onMedir?: (funcion: 'taxonomia-nueva' | 'taxonomia-reusada' | 'taxonomia-sugerencia' | 'taxonomia-otro', detalle?: string) => void;
   /** Slugs seleccionados. */
   value: string[];
   onChange: (slugs: string[], labelsNuevos: Record<string, string>) => void;
@@ -39,8 +60,7 @@ interface Props {
  * chips son widgets distintos. Lo que se comparte es la lógica del §4.2
  * (`@/lib/taxonomia`), que es la que no puede divergir (B-72).
  */
-export function TagsInput({ campo, uid, value, onChange, id }: Props) {
-  const { valores, elegibles } = useOpciones(campo, uid);
+export function TagsInput({ campo, valores, elegibles, onMedir, value, onChange, id }: Props) {
   const [texto, setTexto] = useState('');
   const [nuevos, setNuevos] = useState<Record<string, string>>({});
 
@@ -89,7 +109,7 @@ export function TagsInput({ campo, uid, value, onChange, id }: Props) {
     // el vocabulario lo declara. Mismos eventos que en el desplegable; no hay
     // `taxonomia-otro` porque acá no hay modo "Otro" que abrir: el input es
     // siempre el de tipear.
-    medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
+    onMedir?.(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
     agregar(slug, labelNuevo);
   };
 
@@ -146,7 +166,7 @@ export function TagsInput({ campo, uid, value, onChange, id }: Props) {
                 type="button"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
                 onClick={() => {
-                  medirFuncion('taxonomia-sugerencia', campo);
+                  onMedir?.('taxonomia-sugerencia', campo);
                   agregar(v.slug);
                 }}
               >

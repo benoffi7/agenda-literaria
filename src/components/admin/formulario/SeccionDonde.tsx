@@ -8,7 +8,7 @@
  * `ModalidadesEditor`, igual que los encuentros viven adentro del
  * `SesionesEditor`.
  */
-import { Seccion } from '@/components/campos/Seccion';
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { ModalidadesEditor } from '@/components/admin/ModalidadesEditor';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';

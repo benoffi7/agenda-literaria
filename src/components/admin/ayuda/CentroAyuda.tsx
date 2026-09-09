@@ -1,6 +1,6 @@
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { useEffect, useId, useRef, useState } from 'react';
 import { claseBotonSecundario, claseBotonTinta } from '@/components/campos/Campo';
-import { Seccion } from '@/components/campos/Seccion';
 import {
   AVISOS,
   CAPITULOS,

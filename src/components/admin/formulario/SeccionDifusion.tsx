@@ -1,9 +1,9 @@
 /**
  * §3.2 — trabajo interno: no sale al sitio público ni al calendario (§5.1).
  */
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { ChipsInput } from '@/components/campos/ChipsInput';
-import { Seccion } from '@/components/campos/Seccion';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 type Props = Pick<PropsSeccion, 'form' | 'set'> & {

@@ -2,8 +2,8 @@
  * Organizador siempre; tallerista o autor invitado según el tipo (§11), y el
  * libro presentado en presentación y charla (DEC-1).
  */
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { Campo, claseInput } from '@/components/campos/Campo';
-import { Seccion } from '@/components/campos/Seccion';
 import { muestraLibro } from '@/lib/formulario/condicionales';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 

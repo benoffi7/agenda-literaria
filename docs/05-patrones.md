@@ -215,6 +215,42 @@ migración **opcional e idempotente** (`--backfill`), nunca como requisito para
 que el código funcione: un restore o un proyecto nuevo traen de vuelta los
 documentos sin el campo. Ver [D-26](06-decisiones.md).
 
+## Un control compartido **recibe**, no importa
+
+Un componente que van a usar dos aplicaciones distintas —el panel y el sitio
+público— no puede importar lo que solo una de las dos tiene. No es una regla de
+capas: lo que se importa **viaja**, y con él viaja lo que ese módulo importe.
+
+```tsx
+// mal — el control se trae la medición, y con ella su cadena entera
+import { medirFuncion } from '@/lib/analytics';
+import { useOpciones } from '@/components/admin/useOpciones';
+
+// bien — las recibe, y quien no las tenga no pasa nada
+interface Props { onMedir?: (f: Funcion, d?: string) => void; valores: ValorOpcion[] }
+```
+
+**El costo de equivocarse no es de organización.** `campos/TagsInput` importaba
+esas dos líneas, y la cadena real era
+`@/lib/analytics → firebase-client → appcheck → firebase/app-check` más
+`useOpciones → lib/opciones → firestore-client → firebase/firestore`. O sea que un
+formulario público a un `import` de distancia **medía sin consentimiento** —la
+analítica del panel no tiene ese portón, nunca lo necesitó— y bajaba dos terceros
+de Google antes del banner, además del SDK pesado que el corte de B-09 mantiene
+afuera. Ninguna de las redes que existían lo veía: una mira el chunk del panel y
+la otra busca `<script src>` absolutos en el HTML. **B-841**.
+
+La forma que quedó: el control genérico en `components/campos/`, y una capa fina
+—`components/admin/campos-del-panel.tsx`— que le ata lo del panel y **conserva la
+API que los usos tenían**, así el corte no obliga a tocar quince archivos. Lo
+sostiene `tests/panel-fuera-del-sitio.test.ts` desde los dos lados: ninguna página
+salvo `/admin` alcanza la plomería, y ningún archivo de `campos/` la importa.
+
+Y un detalle que se escapa: **el predicado puro también hay que traerlo de donde
+es puro.** `estaAprobada` se importaba de `lib/opciones`, que arrastra Firestore,
+cuando ya vivía en `lib/taxonomia` y `opciones` solo lo reexporta. Sin eso el
+corte queda a medias.
+
 ## Un dato que envejece se proyecta con su fecha, y en un solo string
 
 El valor y «cuándo se cargó» son un par, y un par que se proyecta en dos campos

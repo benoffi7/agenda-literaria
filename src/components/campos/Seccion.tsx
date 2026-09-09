@@ -1,6 +1,4 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { AyudaDeSeccion } from '@/components/admin/ayuda/AyudaDeSeccion';
-import { medirSeccion } from '@/lib/analytics';
 import type { AlmacenLocal } from '@/lib/formulario/borradoresDelNavegador';
 
 interface Props {
@@ -30,19 +28,29 @@ interface Props {
    */
   recuerdaComo?: string;
   /**
-   * B-62 — muestra el «?» que abre la guía en el capítulo de esta sección.
+   * El «?» que abre la guía, **recibido y no importado** — B-841.
    *
-   * Es opt-in y no automático por dos razones. Una: la guía **se dibuja a sí
+   * Era un `conAyuda?: boolean` y este archivo importaba `AyudaDeSeccion` de
+   * `components/admin/`. Eso hacía que cualquier página que usara `Seccion`
+   * arrastrara el centro de ayuda del panel y, por su cadena, la medición del
+   * panel: un formulario público a un `import` de distancia de medir sin
+   * consentimiento. Ahora el nodo lo pasa quien lo tenga —
+   * `components/admin/campos-del-panel.tsx` conserva la API `conAyuda` para que
+   * los nueve usos del panel no cambien— y un formulario público no pasa nada.
+   *
+   * Sigue siendo opt-in por las dos razones de B-62: la guía **se dibuja a sí
    * misma con `Seccion`** (un acordeón por capítulo), así que un «?» automático
-   * pondría un botón de ayuda adentro de la ayuda. Y dos: no toda sección del
-   * panel es una sección del formulario —el tablero y el formulario de reportes
-   * también usan este componente— y solo las del formulario tienen capítulo.
-   *
-   * No lleva el id del capítulo: la llave es el `titulo` de esta misma sección,
-   * que ya es el vínculo que la guía declara (`seccionFormulario`). Así el string
-   * se escribe una vez.
+   * pondría un botón de ayuda adentro de la ayuda; y no toda sección del panel es
+   * una sección del formulario.
    */
-  conAyuda?: boolean;
+  ayuda?: ReactNode;
+  /**
+   * Qué se mide al abrir o cerrar el acordeón. **Se recibe, no se importa**
+   * (B-841): `@/lib/analytics` es la medición del **panel**, que no tiene portón
+   * de consentimiento porque nunca lo necesitó. Sin esta prop no se mide nada,
+   * que es lo correcto para una página pública.
+   */
+  medir?: (titulo: string, abierta: boolean) => void;
   children: ReactNode;
 }
 
@@ -139,7 +147,8 @@ export function Seccion({
   ancla,
   pedidoDeApertura = 0,
   recuerdaComo,
-  conAyuda = false,
+  ayuda,
+  medir,
   children,
 }: Props) {
   const [abierta, setAbierta] = useState(() =>
@@ -200,7 +209,7 @@ export function Seccion({
               const proxima = !abierta;
               // Qué acordeones se despliegan de verdad. Va el slug del título,
               // que es un literal del código (docs/09-analitica.md).
-              medirSeccion(titulo, proxima);
+              medir?.(titulo, proxima);
               // Lo que se recuerda es el click, no el `pedidoDeApertura`: que la
               // barra abra una sección para mostrar un campo rechazado (B-184) no
               // es una preferencia de nadie.
@@ -214,11 +223,7 @@ export function Seccion({
         ) : (
           <header className="flex min-w-0 flex-1 items-center px-4 py-3">{encabezado}</header>
         )}
-        {conAyuda && (
-          <div className="shrink-0 pr-3">
-            <AyudaDeSeccion seccion={titulo} />
-          </div>
-        )}
+        {ayuda && <div className="shrink-0 pr-3">{ayuda}</div>}
       </div>
       {abierta && (
         <div

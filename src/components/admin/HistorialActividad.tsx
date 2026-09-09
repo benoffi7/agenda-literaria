@@ -1,6 +1,6 @@
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { useCallback, useEffect, useState } from 'react';
 import { claseBotonSecundario } from '@/components/campos/Campo';
-import { Seccion } from '@/components/campos/Seccion';
 import { leerActividad } from '@/lib/actividades';
 import { fechaHoraLegible } from '@/lib/calendarioPanel';
 import {

@@ -1,3 +1,4 @@
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { useEffect, useState } from 'react';
 import {
   claseBotonPrimario,
@@ -6,7 +7,6 @@ import {
   claseInput,
   Campo,
 } from '@/components/campos/Campo';
-import { Seccion } from '@/components/campos/Seccion';
 import { listarActividades } from '@/lib/actividades';
 import { reporteFormSchema, reporteVacio } from '@/lib/reporte-schema';
 import { contextoTecnico, crearReporte } from '@/lib/reportes';

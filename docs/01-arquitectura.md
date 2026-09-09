@@ -180,7 +180,16 @@ src/
                             TaxonomiaSelect, TagsInput, ChipsInput. Salió de
                             admin/ en B-827 porque los formularios públicos de
                             prd/ los van a usar, y por eso `Campo` exige la
-                            asociación label↔control en vez de ofrecerla
+                            asociación label↔control en vez de ofrecerla.
+                            **Genérico de verdad desde B-841**: recibe la
+                            medición, la ayuda y las opciones en vez de
+                            importarlas, así que no alcanza nada del panel ni el
+                            SDK de Firestore
+  components/admin/campos-del-panel.tsx
+                            la capa fina que ata esos tres controles a lo del
+                            panel (B-841). Es lo que un formulario público NO
+                            importa: él usa campos/ directo y le pasa sus
+                            opciones desde el JSON (§4.4)
   components/sitio/         el chrome del sitio público y sus piezas (B-229)
   components/publico/       el sitio: FilaDeActividad, ListaDeActividades,
                             MarcadorDeMes, EjeDeFiltro y Buscador (la única

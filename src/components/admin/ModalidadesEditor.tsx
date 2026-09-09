@@ -17,9 +17,9 @@
  * `deDatetimeLocal`, vía `formADocumento`), que es la que evita la trampa 1. Acá
  * son strings de `datetime-local` y en Firestore son `Timestamp`.
  */
+import { TaxonomiaSelect } from '@/components/admin/campos-del-panel';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { FilasEditor } from '@/components/campos/FilasEditor';
-import { TaxonomiaSelect } from '@/components/campos/TaxonomiaSelect';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { ETIQUETA_MODALIDAD } from '@/components/admin/formulario/etiquetasUI';
 import { medirFuncion } from '@/lib/analytics';

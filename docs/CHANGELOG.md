@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **`campos/` es genérico de verdad, no solo por su ubicación** — **B-841**,
+  cerrado. Era P1 y desbloquea `/proponer`.
+
+  El directorio salió de `admin/` en B-827 «para que lo usen los formularios
+  públicos», y tres de sus seis archivos seguían importando hacia adentro. La
+  cadena real: `campos/{Seccion,TagsInput,TaxonomiaSelect}` → `@/lib/analytics` →
+  `firebase-client` → `appcheck` → `firebase/app-check`, más `useOpciones` →
+  `lib/opciones` → `firestore-client` → `firebase/firestore`. O sea que un
+  formulario público a un `import` de distancia **medía sin consentimiento** —la
+  analítica del panel no tiene ese portón, nunca lo necesitó, y va a la misma
+  propiedad de GA4 que el sitio— y bajaba dos terceros de Google antes del banner,
+  además del SDK pesado que el corte de B-09 mantiene afuera. **Parecía compartido
+  y no lo era**, y el import que lo delataba ya no decía `admin/` en ninguna parte.
+
+  Los tres controles quedaron **genéricos**: reciben la medición (`medir`,
+  `onMedir`), el nodo de ayuda (`ayuda`) y las opciones (`valores`/`elegibles`) en
+  vez de importarlos. `components/admin/campos-del-panel.tsx` los ata a lo del
+  panel y **conserva la API que los usos tenían** —`conAyuda`, `uid`—, así que los
+  quince archivos que los usan cambiaron de dónde importan y nada más.
+
+  **Y había un cuarto import que el ítem no nombraba**, del que casi me olvido:
+  `estaAprobada` se traía de `@/lib/opciones`, que arrastra Firestore igual. Ya
+  vivía en `lib/taxonomia` —el módulo puro del §4.2— y `opciones` solo lo
+  reexporta. Sin eso, el corte quedaba a medias: los controles ya no medían y
+  seguían bajando el SDK.
+
+  **Dos redes, y las dos hacen falta porque fallan en momentos distintos.**
+  `panel-fuera-del-sitio.test.ts` mira la propiedad desde **las páginas**
+  —ninguna salvo `/admin` alcanza la plomería— y desde **el directorio**: ningún
+  archivo de `campos/` importa nada de eso. La primera se pone roja cuando alguien
+  ya escribió el formulario público que lo arrastra, o sea tarde y con el trabajo
+  hecho; la segunda cuando alguien mete el import en `campos/`, que es donde el
+  error se comete. Con control positivo —la capa del panel **sí** alcanza las cinco
+  cosas, así que «no las alcanza» no puede significar que el grafo no las encuentre—
+  y las dos verificadas por mutación.
+
+  El corte del bundle del panel no se movió: `campos-del-panel.tsx` no es
+  alcanzable estáticamente desde la island, porque todo lo que lo usa está detrás
+  de un `import()`. Comprobado sobre el grafo, no supuesto.
+
 - **La conversión de propuesta a actividad, y las dos decisiones del dueño que le
   dan la forma** — **B-830** paso 6, **D-600**, y la corrección de **B-842**.
 

@@ -12,7 +12,7 @@
  * el que hay acordeones. `recuerdaComo` hace que quien la use la encuentre abierta
  * la próxima vez, que es la mitad que faltaba en B-193.
  */
-import { Seccion } from '@/components/campos/Seccion';
+import { Seccion } from '@/components/admin/campos-del-panel';
 import { TextoRedes } from '@/components/admin/TextoRedes';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadForm } from '@/types/actividad';
