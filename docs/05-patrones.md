@@ -215,6 +215,32 @@ migración **opcional e idempotente** (`--backfill`), nunca como requisito para
 que el código funcione: un restore o un proyecto nuevo traen de vuelta los
 documentos sin el campo. Ver [D-26](06-decisiones.md).
 
+## Un dato que envejece se proyecta con su fecha, y en un solo string
+
+El valor y «cuándo se cargó» son un par, y un par que se proyecta en dos campos
+se separa: la primera pantalla lo pinta bien y la cuarta —o la tarjeta angosta,
+donde no entra la fecha— pinta el valor solo. Así que la proyección pública de un
+`DatoConFecha<T>` es **la frase ya armada**, un único string:
+
+```ts
+// bien — no hay forma de mostrar uno sin el otro
+fraseConFecha(sus.precio, (n) => `$${n.toLocaleString('es-AR')} por mes`);
+// → '$18.000 por mes · cargado el 24 de septiembre de 2026'
+
+// mal — dos campos, y la regla pasa a depender de que cada consumidor se acuerde
+{ precio: sus.precio.valor, precioCargadoEn: sus.precio.cargadoEn }
+```
+
+Y de arriba se cae la otra mitad gratis: no hay número, así que **no hay nada que
+filtrar, ordenar ni meter en un `Offer`** —comparar dos precios afirma que son
+comparables, y no lo son si uno tiene una semana y otro cuatro meses—. Es la
+misma forma que `Campo` con su `htmlFor` requerido (B-827) o los ids de cliente:
+la garantía la da el tipo, no la disciplina.
+
+**El valor sin fecha usable no se muestra**, no al revés: `fraseConFecha`
+devuelve vacío. Y el dato huérfano no se esconde, `pideRevision` lo manda al
+panel. `src/lib/datoConFecha.ts`, B-837, [D-570](06-decisiones.md).
+
 ## Filtrar lo elegible no es filtrar lo mostrable
 
 Cuando una lista sirve para dos cosas —elegir un valor y resolver el valor ya

@@ -9169,3 +9169,72 @@ revisada, y el número queda apuntando a algo que ni se documentó ni existe má
 Se deja dicho acá en vez de escribir D-350 a posteriori: redactar hoy la entrada
 de una decisión ya revertida, con el resultado a la vista, no es documentar sino
 reescribir. Las otras ocho huérfanas siguen abiertas y son su propio pendiente.
+
+---
+
+## D-570 · La proyección pública de un dato que envejece es **un string**, y la fecha es absoluta
+
+**Sale de B-837**, el mecanismo compartido de DEC-12: las promos bancarias de una
+librería y el precio de una suscripción son el mismo problema —un dato que nadie
+va a mantener y que, cuando está y ya no es cierto, es peor que ausente—. Los
+PRDs dejaron escritas las tres reglas
+([`prd/02-librerias.md`](prd/02-librerias.md) § 6,
+[`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6).
+Lo que decide esta entrada es **con qué forma** se cumplen, porque las tres se
+pueden implementar de dos maneras y una de ellas es la que este proyecto ya sabe
+que no aguanta.
+
+### La decisión
+
+`src/lib/datoConFecha.ts` no exporta ninguna función que devuelva el valor solo.
+La única salida es `fraseConFecha`, y devuelve **un solo string**:
+
+```
+$18.000 por mes · cargado el 24 de septiembre de 2026
+```
+
+| | Lo descartado | Lo elegido |
+|---|---|---|
+| Qué se proyecta | `{ valor, cargadoEn }`, y cada página los pinta | **la frase**, ya armada |
+| Regla 1 («la fecha se muestra siempre») | una convención, más un test que la vigile en cada consumidor nuevo | **imposible de romper**: no hay forma de obtener uno sin el otro |
+| Regla 2 («nunca a un filtro, a un orden ni a un `Offer`») | una prohibición: hay un número ahí, y filtrar por él es una línea | **no hay número**. `Number('$18.000 por mes · …')` es `NaN`, y ordenar frases pone «$9.000» después de «$18.000» |
+
+### Por qué la forma y no la disciplina
+
+Porque el proyecto tiene medido lo que pasa con la otra. Es el par flag+dato de
+**B-819** —`urlPublica`, `material.items[].publico`, y `direccionPublica` que
+viene— donde la garantía existe pero es voluntaria; y es la clase de **B-827**,
+cerrada el 2026-09-09 exactamente por esto: una asociación que se ofrece en vez de
+exigirse la incumplen once usos y nadie se entera. Un `{ valor, cargadoEn }`
+proyectado es la misma apuesta: el primer consumidor lo pinta bien, y el cuarto
+—o la tarjeta del listado, donde no entra la fecha— pinta el valor solo.
+
+El costo es real y se paga a propósito: el consumidor **no puede** formatear el
+precio distinto en la ficha y en la tarjeta, ni decir «desde $18.000». Si algún día
+hace falta, se agrega otro `formatear`, no otra salida.
+
+### Y el valor sin fecha usable no se muestra, no al revés
+
+La vuelta de la regla 1 es la mitad que importa. El `cargadoEn` llega de Firestore
+y puede venir ausente, en `null` o como string —un documento anterior al campo, un
+script, una restauración desde el historial—, y en cualquiera de esos casos
+`fraseConFecha` devuelve vacío: **el dato huérfano desaparece en vez de publicarse
+solo**, que es el único resultado aceptable para un dato cuyo problema es la edad.
+Tampoco tira: reventar el build de una página por un campo opcional sería peor
+(mismo criterio que el `catch` de `issuesDelDocumento` en `historial.ts`). Y el
+problema no se esconde: un dato sin fecha usable **pide revisión** en el panel, así
+que queda invisible en el sitio y visible para quien lo cargó.
+
+### La fecha es absoluta y lleva el año
+
+«cargado hace tres meses» se lee mejor y acá **no se puede**: las páginas son
+estáticas (§2.3) y se rebuildean cuando cambia un dato, no cuando pasa el tiempo,
+así que una frase relativa horneada en el HTML envejece sola y termina afirmando
+algo falso con cara de cierto — que es el daño que este módulo existe para evitar,
+y la clase de B-780.
+
+Y lleva el año aunque para un dato reciente sea ruido, así que va `fechaCompleta`
+(«24 de septiembre de 2026») y no el `12/09` que ilustraba el PRD: el único trabajo
+de esta fecha es dejar que quien lee decida si le cree, y «cargado el 24 de
+septiembre» sin año no lo deja decidir nada. De paso no agrega un cuarto formato de
+fecha al sitio.

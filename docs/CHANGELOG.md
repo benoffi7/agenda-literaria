@@ -2,6 +2,51 @@
 
 ## Sin publicar
 
+- **El dato que envejece ya tiene su mecanismo, y la regla la impone la forma** —
+  **B-837** y **D-570**, segundo paso de la tajada 0. `src/lib/datoConFecha.ts` +
+  `tests/dato-con-fecha.test.ts`: es el piso compartido de las promos bancarias de
+  una librería y el precio de una suscripción, que el dueño dudó en los dos pedidos
+  con la misma frase —«porque puede cambiar»—. La duda es la correcta y el problema
+  real es peor que la ausencia: es **cuando está y ya no es cierto**.
+
+  Las tres reglas de los PRDs, escritas como propiedades del módulo:
+
+  1. **La fecha se muestra siempre que se muestra el dato**, porque la única salida
+     es `fraseConFecha` y devuelve **un solo string** —«$18.000 por mes · cargado el
+     24 de septiembre de 2026»—. No hay ninguna función que devuelva el valor solo,
+     así que no hay forma de mostrar uno sin el otro.
+  2. **Nunca entra a un filtro, a un orden ni a un `Offer`**, y esto sale gratis de
+     lo anterior: no hay número. `Number('$18.000 por mes · …')` es `NaN`, y ordenar
+     frases pone «$9.000» después de «$18.000». Filtrar por precio afirma que los
+     precios son comparables, y no lo son si uno tiene una semana y otro cuatro meses.
+  3. **El panel avisa a los 60 días** (`pideRevision`, `DIAS_PARA_REVISAR`).
+
+  **Por qué la forma y no la disciplina** (D-570): la alternativa era proyectar
+  `{ valor, cargadoEn }` y confiar en que nadie los separe. Es la apuesta que este
+  repo ya perdió dos veces — el par flag+dato de B-819 y el `htmlFor` opt-in de
+  B-827, cerrado hoy—: una garantía que se ofrece en vez de exigirse la incumple el
+  cuarto consumidor, o la tarjeta angosta donde no entra la fecha. El costo se paga
+  a propósito: nadie puede formatear el precio distinto en la ficha y en la tarjeta.
+
+  **Y la vuelta de la regla 1, que es la mitad que importa: el valor sin fecha
+  usable no se muestra.** El `cargadoEn` llega de Firestore y puede venir ausente,
+  en `null` o como string —un documento anterior al campo, un script, una
+  restauración desde el historial—; en los tres casos la frase sale vacía y el dato
+  huérfano **desaparece en vez de publicarse solo**. Tampoco tira: reventar el build
+  de una página por un campo opcional sería peor. Y no se esconde — un dato sin
+  fecha usable **pide revisión**, así que queda invisible en el sitio y visible para
+  quien lo cargó.
+
+  **La fecha es absoluta y lleva el año**, y no el `12/09` que ilustraba el PRD: las
+  páginas son estáticas y se rebuildean cuando cambia un dato, no cuando pasa el
+  tiempo, así que un «hace tres meses» horneado en el HTML envejece solo y termina
+  afirmando algo falso con cara de cierto (la clase de B-780). Y sin año, «cargado
+  el 24 de septiembre» no deja decidir nada, que es el único trabajo de esta fecha.
+
+  **Todavía sin consumidor, y eso es la tajada 0:** lo estrenan las librerías y las
+  suscripciones. 17 casos nuevos, con la trampa 1 cubierta (la fecha es la de Buenos
+  Aires, no la del proceso).
+
 - **`campos/` es compartido, y `Campo` ya no ofrece la accesibilidad: la exige** —
   **B-827**, y el primer paso de la tajada 0 de
   [`prd/05-inventario-de-archivos.md`](prd/05-inventario-de-archivos.md) § 5. Los
