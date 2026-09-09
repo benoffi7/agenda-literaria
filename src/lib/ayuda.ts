@@ -792,6 +792,12 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Si mandaron una foto, la vas a ver en la ficha y se copia sola a la actividad al ' +
+          'convertirla, ya sin los datos ocultos que traía. Nadie más que ustedes la puede ver ' +
+          'mientras esté en la bandeja.',
+      },
+      {
+        texto:
           'Los encuentros que salen de una propuesta son nuevos y todavía no están en el ' +
           'calendario, igual que en una copia. Si algún encuentro venía sin hora de fin, queda ' +
           'con dos horas y el aviso de arriba del formulario lo dice para que lo revises.',
@@ -833,10 +839,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Rechazar pide un motivo, opcional, que no ve nadie más que ustedes. La propuesta ' +
-          'queda marcada y se puede reabrir, pero no para siempre: a los 30 días de rechazada ' +
-          'se borra sola, con la imagen que hayan mandado. Es lo que evita quedarnos con el ' +
-          'teléfono de alguien para siempre.',
+          'Rechazar pide un motivo, opcional, que no ve nadie más que ustedes. La imagen que ' +
+          'hayan mandado se borra en ese mismo momento, así que si después la reabrís, la foto ' +
+          'ya no está. El resto de la propuesta queda 30 días y se borra sola: es lo que evita ' +
+          'quedarnos con el teléfono de alguien para siempre.',
         cuidado: true,
         /*
          * El vínculo lo pidió el `auditor-privacidad`: es el único punto de este
@@ -848,6 +854,10 @@ export const CAPITULOS: CapituloAyuda[] = [
         atadoA: [
           { archivo: 'tests/retencion.test.ts', it: 'y por default son los 30 días que contestó DEC-13' },
           { archivo: 'tests/retencion.test.ts', it: 'una rechazada hace más de 30 días se borra' },
+          {
+            archivo: 'tests/propuestas-imagen.test.ts',
+            it: 'rechazar borra la imagen, y solo en la transición',
+          },
         ],
       },
       {

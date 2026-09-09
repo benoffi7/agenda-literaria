@@ -61,6 +61,25 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    /*
+     * Entrada aparte y no una frase más en la de la bandeja: son dos cosas que se
+     * usan en momentos distintos —una es «hay una pantalla nueva», la otra es
+     * «esto le pasa a la foto»— y el tope de largo del detalle está justamente
+     * para que una entrada no se convierta en un capítulo. Las dos salen en la
+     * misma versión.
+     */
+    id: 'foto-de-la-propuesta',
+    fecha: '2026-09-09',
+    version: '1.10.0',
+    titulo: 'La foto que mandan se ve en la bandeja y se copia sola a la actividad',
+    detalle:
+      'Si quien propone mandó un flyer, lo ves en la ficha —solo vos, no es público— y al ' +
+      'convertirla se copia solo a la galería de la actividad, ya sin los datos ocultos que ' +
+      'traía. Si la rechazás, la foto se borra en ese momento: reabrirla después no la trae de ' +
+      'vuelta. El resto de la propuesta se borra sola a los 30 días.',
+    donde: 'Listado → «Propuestas», en la ficha de cada una.',
+  },
+  {
     id: 'bandeja-de-propuestas',
     fecha: '2026-09-09',
     version: '1.10.0',
@@ -69,8 +88,7 @@ export const NOVEDADES: Novedad[] = [
       'El botón «Propuestas» del listado abre lo que llega de otras personas, con el número de ' +
       'las que están esperando. «Convertir en actividad» abre el formulario de siempre ya ' +
       'cargado con lo que escribieron, en borrador: revisás, corregís y publicás como cualquier ' +
-      'otra. Nada de la bandeja se ve en el sitio, y la forma de contactarlos queda solo ahí — ' +
-      'una propuesta rechazada se borra sola a los 30 días, con su imagen.',
+      'otra. Nada de la bandeja se ve en el sitio, y la forma de contactarlos queda solo ahí.',
     donde: 'Listado → «Propuestas», arriba a la derecha.',
   },
   {

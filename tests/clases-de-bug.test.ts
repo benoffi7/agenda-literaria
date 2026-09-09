@@ -371,7 +371,7 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los diez triggers del proyecto', () => {
+  it('encuentra los once triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
@@ -389,6 +389,21 @@ describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
        * (leer estado → red → escribir lo leído) pide una escritura de lo leído,
        * y acá lo único que se escribe es un borrado.
        */
+      /*
+       * B-830 paso 8 / DEC-11 — rechazar borra la imagen en el acto. Es un
+       * trigger **de documento**, así que a diferencia de su vecino de arriba sí
+       * entra a los dos chequeos de abajo, y conviene saber cómo pasa cada uno:
+       *
+       *  - **B-82** (efecto duplicable sin guarda): el efecto es un `delete()`
+       *    con `ignoreNotFound`, o sea idempotente — dos entregas del mismo
+       *    evento dejan el mismo estado. Y la guarda que lo hace decidible está
+       *    escrita igual: `decidirBorradoDeImagen` actúa **solo en la
+       *    transición** a `rechazada`, no en el estado.
+       *  - **B-85** (leer estado → red → escribir lo leído): no escribe nada. El
+       *    documento que lo dispara no se toca, y eso es deliberado — es prueba
+       *    de qué se pidió, y un write-back volvería a dispararlo (trampa 3).
+       */
+      'borrarImagenAlRechazar',
       'borrarPropuestasVencidas',
       'dispararRebuild',
       'guardarVersion',

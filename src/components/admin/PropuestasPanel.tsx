@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { claseBotonPrimario, claseBotonSecundario, claseInput } from '@/components/campos/Campo';
 import { useOpciones } from '@/components/admin/useOpciones';
+import { esFalloDeCarga } from '@/lib/carga-diferida';
 import { medirFuncion } from '@/lib/analytics';
 import {
   enlaceDeContacto,
@@ -95,6 +96,82 @@ const cuando = (p: PropuestaConId): string => {
 };
 
 /**
+ * **El flyer que mandaron, mirable desde la bandeja** — B-830 paso 8, DEC-11.
+ *
+ * La URL se pide al montar y no viene en el documento: el objeto vive en
+ * `propuestas/`, que `storage.rules` deja leer **solo a un admin** (decisión del
+ * dueño del 2026-09-09, desviándose del «`get` en `false`» del PRD, porque sin
+ * ver la foto no se puede decidir).
+ *
+ * El `import()` es el de siempre: `subir-imagen` es el único dueño de
+ * `firebase/storage` y traerlo al árbol estático deshace el corte del bundle
+ * (B-09/D-51).
+ *
+ * Los dos fallos esperables se muestran como texto y no como imagen rota: sin
+ * sesión (que no debería pasar acá) y **objeto que ya no está**, que es
+ * exactamente lo que le pasa a una propuesta rechazada.
+ */
+function FlyerDeLaPropuesta({ storagePath }: { storagePath: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [fallo, setFallo] = useState<'chunk' | 'objeto' | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      try {
+        const { urlDeImagenDePropuesta } = await import('@/lib/subir-imagen');
+        const u = await urlDeImagenDePropuesta(storagePath);
+        if (vivo) setUrl(u);
+      } catch (e) {
+        /*
+         * Las dos causas se distinguen porque se arreglan distinto: si el chunk
+         * no llegó (pestaña vieja después de un deploy), recargar alcanza; si
+         * Storage dijo que no, la imagen ya no está. Es la misma puerta que
+         * `GaleriaEditor` y la que `tests/carga-diferida.test.ts` vigila para
+         * todo `await import()` del panel.
+         */
+        if (vivo) setFallo(esFalloDeCarga(e) ? 'chunk' : 'objeto');
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [storagePath]);
+
+  if (fallo === 'chunk') {
+    return (
+      <span className="text-tinta/55">
+        No se pudo cargar esa parte del panel. Recargá la página para ver la imagen.
+      </span>
+    );
+  }
+  if (fallo === 'objeto') {
+    return (
+      <span className="text-tinta/55">
+        La imagen que subieron ya no está (se borra al rechazar la propuesta).
+      </span>
+    );
+  }
+  if (!url) return <span className="text-tinta/55">Trayendo la imagen…</span>;
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="inline-block">
+      <img
+        src={url}
+        /*
+         * El texto alternativo no puede salir del título: es texto de un tercero
+         * y describiría la actividad, no la foto. Lo que le sirve a quien escucha
+         * la pantalla es qué es esto y de quién vino.
+         */
+        alt="El flyer que mandaron con esta propuesta"
+        loading="lazy"
+        className="max-h-40 rounded-md border border-borde"
+      />
+    </a>
+  );
+}
+
+/**
  * La etiqueta de un slug, o **el slug crudo** si no está en la taxonomía.
  *
  * Que el respaldo sea el slug pelado y no un `desSlug` bonito es a propósito:
@@ -109,6 +186,8 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   const [fallo, setFallo] = useState<string | null>(null);
   /** Id de la que se está moviendo de estado, para no tocar el botón dos veces. */
   const [moviendo, setMoviendo] = useState<string | null>(null);
+  /** Id de la propuesta cuya imagen se está trayendo a la galería (paso 8). */
+  const [promoviendo, setPromoviendo] = useState<string | null>(null);
   /** Id de la que se está rechazando: mientras tanto se pide el motivo. */
   const [rechazando, setRechazando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
@@ -175,19 +254,76 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
   };
 
   /**
-   * D-600, primer movimiento: se arma el formulario y **no se escribe nada**. La
-   * propuesta se marca aceptada recién cuando la actividad existe, y eso lo
-   * dispara el chasis con `alGuardar`.
+   * D-600, primer movimiento: se arma el formulario y **no se escribe nada en
+   * Firestore**. La propuesta se marca aceptada recién cuando la actividad
+   * existe, y eso lo dispara el chasis con `alGuardar`.
+   *
+   * **Lo único que sí toca el mundo es la imagen** (B-830 paso 8, DEC-11): si la
+   * propuesta trajo una foto subida, se promueve a `imagenes/` acá, antes de
+   * abrir el formulario, para que la actividad nazca con ella. El objeto viejo no
+   * se toca: se lo lleva el ciclo de la propuesta (el rechazo o la retención).
+   *
+   * Si la conversión se abandona, lo que queda es un objeto en `imagenes/` que
+   * ninguna actividad referencia — exactamente lo mismo que subir una foto en el
+   * formulario y no guardar, y lo barre `limpiarImagenesHuerfanas` a las 72 horas
+   * (B-221). No hace falta nada nuevo.
    */
-  const convertir = (p: PropuestaConId) => {
+  const convertir = async (p: PropuestaConId) => {
     const { form, avisos } = propuestaAFormulario(
       p,
       incluyeConocido.valores.map((v) => v.slug),
     );
+    const imagenes = [...form.imagenes];
+    const avisosDeLaImagen = [...avisos];
+
+    if (p.imagen && 'storagePath' in p.imagen) {
+      setPromoviendo(p.id);
+      try {
+        // `import()` y no estático: `subir-imagen` es el único dueño de
+        // `firebase/storage` y traerlo al árbol estático deshace el corte del
+        // bundle (B-09/D-51). Mismo camino que `GaleriaEditor`.
+        let promover: typeof import('@/lib/subir-imagen').promoverImagenDePropuesta;
+        try {
+          ({ promoverImagenDePropuesta: promover } = await import('@/lib/subir-imagen'));
+        } catch (e) {
+          if (!esFalloDeCarga(e)) throw e;
+          /*
+           * **El chunk no llegó**, que es otra cosa que «Storage dijo que no» y
+           * se arregla distinto: una pestaña abierta desde antes de un deploy
+           * apunta a un chunk que Hosting ya borró. Sin esta rama, el aviso diría
+           * «no se pudo traer la imagen» y quien lo lea va a mirar el bucket.
+           *
+           * Acá **no** se ofrece el borrador como en `GaleriaEditor`: esta
+           * pantalla no tiene autoguardado, y la conversión se puede repetir
+           * entera sin perder nada.
+           */
+          throw new Error(
+            'no se pudo cargar esa parte del panel; recargá la página y probá de nuevo',
+          );
+        }
+        const { imagen } = await promover(p.imagen.storagePath);
+        imagenes.push({ ...imagen, portada: imagenes.length === 0 });
+      } catch (e: unknown) {
+        /*
+         * La conversión **sigue** sin la imagen, y el aviso lo dice. Cortar acá
+         * obligaría a resolver un problema de Storage antes de poder cargar una
+         * actividad que ya está escrita, y la foto se puede volver a poner a
+         * mano desde el formulario mientras la propuesta siga en la bandeja.
+         */
+        avisosDeLaImagen.push(
+          `La imagen que mandaron no se pudo traer (${
+            e instanceof Error ? e.message : 'error desconocido'
+          }). La actividad se abre sin ella.`,
+        );
+      } finally {
+        setPromoviendo(null);
+      }
+    }
+
     onConvertir({
-      copia: form,
+      copia: { ...form, imagenes },
       tituloOrigen: p.titulo,
-      avisos,
+      avisos: avisosDeLaImagen,
       alGuardar: async (actividadId) => {
         /*
          * Se mide acá arriba **y no después del `await`**, y no es un descuido:
@@ -239,8 +375,8 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       <p className="text-xs text-tinta/55">
         Nada de esto está en el sitio: una propuesta no se publica, se convierte en actividad y
         la actividad se publica como cualquier otra. El contacto de quien propuso es para
-        repreguntar y no sale a ninguna parte. Una rechazada se borra sola —con su imagen— a
-        los 30 días; hasta entonces se puede reabrir.
+        repreguntar y no sale a ninguna parte. Rechazar borra la imagen <strong>en el acto</strong>
+        y el resto a los 30 días: hasta entonces se puede reabrir, pero la foto ya no vuelve.
       </p>
 
       {fallo && (
@@ -342,6 +478,12 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                 Decir el path es más honesto que no decir nada: un flyer que
                 llegó y nadie ve es justo lo que hay que poder detectar.
               */}
+              {p.imagen && 'storagePath' in p.imagen && p.estado !== 'rechazada' && (
+                <div className="mt-2">
+                  <FlyerDeLaPropuesta storagePath={p.imagen.storagePath} />
+                </div>
+              )}
+
               {p.imagen && (
                 <p className="mt-1 text-xs text-tinta/55">
                   {'url' in p.imagen ? (
@@ -359,8 +501,14 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                     ) : (
                       `Pegaron una imagen y el link no se puede abrir: ${p.imagen.url}`
                     )
+                  ) : p.estado === 'rechazada' ? (
+                    // Se borró al rechazar (DEC-11) y el documento sigue
+                    // nombrándola: decirlo es lo que evita que alguien la busque.
+                    'La imagen que subieron se borró al rechazar la propuesta.'
                   ) : (
-                    `Subieron una imagen: ${p.imagen.storagePath}`
+                    // La foto se ve arriba; acá queda el path, que es lo que hay
+                    // que poder leer cuando algo no cuadra.
+                    `Subieron esa imagen: ${p.imagen.storagePath}`
                   )}
                 </p>
               )}
@@ -408,10 +556,13 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                   {p.estado !== 'aceptada' && (
                     <button
                       type="button"
-                      onClick={() => convertir(p)}
-                      className={claseBotonPrimario}
+                      onClick={() => void convertir(p)}
+                      disabled={promoviendo === p.id}
+                      className={`${claseBotonPrimario} disabled:opacity-50`}
                     >
-                      Convertir en actividad
+                      {promoviendo === p.id
+                        ? 'Trayendo la imagen…'
+                        : 'Convertir en actividad'}
                     </button>
                   )}
                   {p.estado === 'nueva' && (
@@ -459,7 +610,7 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                       disabled={moviendo === p.id}
                       className={`${claseBotonSecundario} disabled:opacity-50`}
                     >
-                      {moviendo === p.id ? 'Guardando…' : 'Reabrir'}
+                      {moviendo === p.id ? 'Guardando…' : 'Reabrir (sin la imagen)'}
                     </button>
                   )}
                 </div>

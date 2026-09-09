@@ -134,6 +134,78 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // ── La imagen de una propuesta (B-830 paso 8, DEC-11) ──────────
+    //
+    // **Es el prefijo donde va a escribir alguien sin login**, y lo que hay
+    // adentro **no es público**: una foto que una persona mandó para que la vea
+    // **una** no es el flyer de una actividad publicada. Por eso no comparte
+    // `match` con `imagenes/` — un solo bloque con dos significados termina con
+    // el más permisivo ganando.
+    match /propuestas/{archivo} {
+      // **`get` para un admin y `list` para nadie**, que es la trampa 13 aplicada
+      // al revés que arriba: acá lo que no puede pasar es que se lea desde
+      // afuera, ni siquiera con la URL exacta.
+      //
+      // El PRD pedía «`get` y `list` en `false`» y esto **se desvía a propósito**,
+      // con la decisión del dueño del 2026-09-09: con `get` cerrado para todos, el
+      // admin no puede ver el flyer que le mandaron, y decidir si acepta depende
+      // en parte de mirarlo. La trampa 13 está escrita contra el `read: if true`
+      // anónimo —el `listAll()` que devuelve el bucket entero—, no contra la
+      // sesión que ya puede leer la propuesta entera en Firestore.
+      //
+      // `list` **en `false` y no en `esAdmin()`**, que es la diferencia con
+      // `imagenes/`: allá enumerar es un lujo que el panel no usa; acá enumerar es
+      // «dame todas las fotos que mandaron», y la bandeja nunca lo necesita —
+      // llega a cada objeto por el `storagePath` de su documento.
+      allow get: if esAdmin();
+      allow list: if false;
+
+      // ⚠️ **ACÁ VA LA PRIMERA SUBIDA ANÓNIMA DEL PROYECTO, Y TODAVÍA NO ESTÁ
+      // ABIERTA** — exactamente el mismo estado y el mismo motivo que el `create`
+      // de `/propuestas` en `firestore.rules`: falta que **App Check esté
+      // exigiendo** (B-836a). Abrir esto sin enforcement publica un endpoint de
+      // subida a Storage que nada frena, y cada objeto es almacenamiento y
+      // egreso facturados.
+      //
+      // **Para abrirla**, y en este orden:
+      //   1. App Check exigiendo, verificado en la consola;
+      //   2. borrar `esAdmin() &&` de acá y del `create` de `firestore.rules` —
+      //      **las dos juntas**: una subida que no puede terminar en un documento
+      //      es un objeto huérfano, y un documento que no puede traer su imagen
+      //      es DEC-11 a medias;
+      //   3. el testigo que se pone rojo es el caso «un anónimo no puede subir»
+      //      de `tests/storage-reglas.integracion.test.ts`.
+      //
+      // `create` sin `update`: **una subida no puede pisar la de otro**. El
+      // nombre es un uuid, así que un choque solo puede ser deliberado, y del
+      // otro lado va a haber un anónimo.
+      allow create: if esAdmin()
+        && tipoAceptado()
+        && tamanoAceptado()
+        // El mismo alfabeto que `imagenes/` con otro prefijo, y **más angosto que
+        // el `matches` de `firestore.rules`**, que acepta además `jpeg` y `webp`:
+        // los dos tipos que el panel sabe limpiar son JPG y PNG (`tipoAceptado`),
+        // así que un `.webp` es un path que nunca va a existir. La asimetría está
+        // declarada en `tests/propuestas-imagen.test.ts` para que se lea como
+        // decisión y no como olvido.
+        && archivo.matches('^prop_[A-Za-z0-9_-]+[.](jpg|png)$')
+        // Misma tercera defensa que en `imagenes/`: la marca de la Function no se
+        // puede subir desde un cliente, o el trigger de optimización se saltea.
+        // Acá el objeto **no** pasa por ese trigger (está fuera de su prefijo),
+        // pero la marca viajaría con él al promoverlo a `imagenes/` si alguna vez
+        // se copiara en vez de re-subirse.
+        && (request.resource.metadata == null
+            || !('optimizada' in request.resource.metadata));
+
+      // **Nadie borra desde un cliente, ni siquiera un admin.** Los dos borrados
+      // que existen son de Functions con el Admin SDK, que pasa por encima de
+      // estas reglas: el del rechazo (`borrarImagenAlRechazar`, en el acto) y el
+      // de la retención (`borrarPropuestasVencidas`, a los 30 días). Que el panel
+      // no pueda borrar es lo que hace que el borrado sea **una consecuencia del
+      // estado** y no un botón que alguien puede olvidarse de tocar.
+      allow update, delete: if false;
+    }
+
     // Todo lo demás cerrado. Sin esto, un prefijo nuevo que alguien invente
     // mañana no tiene ninguna regla y Storage deniega — pero deniega también la
     // lectura, y el modo de falla sería una imagen rota sin explicación. Que

@@ -110,6 +110,40 @@ export const validarArchivo = (archivo: { tipo: string; bytes: number }): string
 export const rutaDeImagen = (imagenId: string, tipo: TipoSubible): string =>
   `imagenes/${imagenId}.${EXTENSION[tipo]}`;
 
+/**
+ * **El otro prefijo del bucket: la imagen de una propuesta** — B-830 paso 8,
+ * DEC-11.
+ *
+ * Vive aparte de `imagenes/` y no es una carpeta más: es el único prefijo donde
+ * va a escribir **alguien sin login**, y lo que hay adentro **no es público**
+ * (`storage.rules`: `get` solo para un admin, `list` para nadie). Una foto que
+ * alguien mandó para que la vea **una** persona no es lo mismo que el flyer de
+ * una actividad publicada, y por eso no comparten prefijo: un solo `match` con
+ * dos significados terminaría con el más permisivo ganando.
+ *
+ * El nombre es un uuid por lo mismo que el de la galería —el path viaja adentro
+ * de la URL de descarga (B-206 #1)—, con otro prefijo para que las dos clases de
+ * objeto se distingan de un vistazo en el bucket y en un log.
+ *
+ * **Está escrito en cuatro runtimes que no se pueden importar entre sí** —acá,
+ * `storage.rules`, `firestore.rules` y `functions/retencion.js`— y los ata
+ * `tests/propuestas-imagen.test.ts` leyendo los cuatro archivos. Es el patrón de
+ * los topes de `types/propuesta.ts` (B-364).
+ */
+export const PREFIJO_PROPUESTAS = 'propuestas/';
+
+/** `prop_<uuid>`. Mismo patrón y mismo fallback que `nuevaImagenId()`. */
+export const nuevaImagenPropuestaId = (): string => {
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `prop_${uuid}`;
+};
+
+export const rutaDeImagenPropuesta = (imagenId: string, tipo: TipoSubible): string =>
+  `${PREFIJO_PROPUESTAS}${imagenId}.${EXTENSION[tipo]}`;
+
 // ─────────────────────────────────────────────────────────────────────
 // Sacar los metadatos, sin recomprimir
 // ─────────────────────────────────────────────────────────────────────

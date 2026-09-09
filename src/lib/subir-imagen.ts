@@ -16,7 +16,7 @@
 import { getStorage, connectStorageEmulator, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { FirebaseStorage } from 'firebase/storage';
 import { app, usarEmuladores } from '@/lib/firebase-client';
-import { CACHE_AL_SUBIR } from '@/lib/imagenes';
+import { CACHE_AL_SUBIR, nuevaImagenId } from '@/lib/imagenes';
 import {
   ORIENTACION_DERECHA,
   dimensiones,
@@ -98,6 +98,72 @@ export interface Subida {
    */
   orientacion: number | null;
 }
+
+/**
+ * **La imagen de una propuesta pasa a ser una de la galería** — B-830 paso 8,
+ * DEC-11, decisión del dueño del 2026-09-09 sobre las dos alternativas.
+ *
+ * Baja el objeto de `propuestas/` y lo vuelve a subir por `subirImagen`, que es
+ * el camino de siempre: valida tipo y tamaño, verifica que adentro sea lo que
+ * dice ser, **saca los metadatos** —la foto de un taller en una casa lleva las
+ * coordenadas de esa casa, y esta vez la mandó alguien de afuera— y deja que el
+ * trigger de optimización haga lo suyo, porque el destino sí está en su prefijo.
+ *
+ * ── Por qué re-subir y no copiar del lado del servidor ────────────────────
+ * Copiar entre prefijos es una operación de Storage que solo puede hacer el
+ * Admin SDK, o sea una Function; y esa Function tendría que **escribir la
+ * actividad** para agregarle la imagen. Eso mete un segundo dueño en
+ * `imagenes[]` —la clase de B-80: el panel puede pisar lo que la máquina
+ * escribió— y agrega un write-back a `/actividades` que dispara los dos triggers
+ * que ya escuchan ahí. Re-subir desde el panel cuesta un viaje de ida y vuelta
+ * de hasta 3 MB en la máquina del admin y no agrega ninguna pieza: la imagen
+ * entra en el formulario **antes** de guardar, así que la actividad nace con
+ * ella.
+ *
+ * El objeto viejo **no se borra acá**. Se lo lleva el ciclo de la propuesta:
+ * si se acepta, la retención lo borra con el documento a los 30 días; si se
+ * rechaza, el trigger lo borra en el acto. Borrarlo desde el panel además no se
+ * puede —`storage.rules` cierra el `delete` para todo cliente—, y es a propósito:
+ * así el borrado es consecuencia del estado y no de que alguien se acuerde.
+ */
+/**
+ * La URL para **mirar** el flyer que mandaron con una propuesta.
+ *
+ * Existe aparte de la promoción porque la bandeja la necesita antes de decidir:
+ * el admin mira la foto y recién ahí acepta o rechaza. `storage.rules` deja el
+ * `get` solo para un admin, así que esto falla sin sesión — y falla también
+ * cuando el objeto ya no está, que es lo que pasa con una propuesta rechazada
+ * (la imagen se borra en el acto, DEC-11).
+ *
+ * **Lo que devuelve es una capability, no una vista con sesión.** El token que
+ * acuña `getDownloadURL()` sirve el objeto sin volver a evaluar las reglas, así
+ * que esta URL lee el flyer para cualquiera que la tenga. Es aceptable porque
+ * solo se acuña adentro del panel y el objeto tiene fecha de vencimiento, pero no
+ * es «nadie puede leerlo»: está dicho en `07-seguridad.md` y anotado como
+ * **B-846**.
+ */
+export const urlDeImagenDePropuesta = (storagePath: string): Promise<string> =>
+  getDownloadURL(ref(storage(), storagePath));
+
+export const promoverImagenDePropuesta = async (storagePath: string): Promise<Subida> => {
+  const origen = ref(storage(), storagePath);
+  const url = await getDownloadURL(origen);
+  const respuesta = await fetch(url);
+  if (!respuesta.ok) {
+    throw new ImagenRechazada(
+      'No se pudo traer la imagen que mandaron con la propuesta.',
+      'red',
+    );
+  }
+  const bytes = await respuesta.blob();
+  /*
+   * El `type` sale del blob y no del path: es lo que el bucket guardó como
+   * `contentType`, o sea el mismo dato que `storage.rules` validó al subirlo.
+   * Derivarlo de la extensión sería una tercera derivación del mismo hecho.
+   */
+  const archivo = new File([bytes], storagePath, { type: bytes.type });
+  return subirImagen(archivo, nuevaImagenId());
+};
 
 export const subirImagen = async (archivo: File, id: string): Promise<Subida> => {
   const motivo = validarArchivo({ tipo: archivo.type, bytes: archivo.size });

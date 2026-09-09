@@ -865,9 +865,16 @@ de esa actividad, en una sola escritura. Si esa segunda mitad falla, el panel lo
 dice arriba: la actividad quedó creada y la propuesta sigue en la bandeja, así que
 hay que cerrarla a mano o se convierte dos veces.
 
-**Lo que todavía no está:** la imagen que se sube (DEC-11, paso 8 — la bandeja
-muestra el path pero no la puede ver) y el formulario público (paso 9). **La
-retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
+**La imagen que mandan (DEC-11, paso 8) ya está**: la bandeja **muestra el
+flyer** —solo un admin puede verlo, y nadie puede enumerar el prefijo—, al
+convertir se copia sola a la galería de la actividad ya sin los datos ocultos que
+traía, y al rechazar se borra en el acto. Reabrir una rechazada no la trae de
+vuelta, y la pantalla lo dice.
+
+**Lo que todavía no está:** el formulario público (paso 9), que es el que va a
+dejar que alguien **suba** esa imagen sin login — hoy la puerta está cerrada a
+admin, igual que la escritura en `/propuestas`, esperando que App Check exija
+(B-836a). **La retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
 se borra sola, con su imagen — ver `08-operacion.md` § «La retención de
 propuestas».
 

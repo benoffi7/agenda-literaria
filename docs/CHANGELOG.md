@@ -2,6 +2,65 @@
 
 ## Sin publicar
 
+- **La imagen de una propuesta: quién la ve, quién la promueve y quién la borra**
+  — **B-830 paso 8**, **DEC-11**. Con **tres decisiones del dueño** (2026-09-09) y
+  un hallazgo que salió de un test fallando.
+
+  DEC-11 dice que quien propone puede **subir** el flyer —pedirle que lo hostee
+  para poder pegar una URL es pedirle que resuelva un problema nuestro— y que **si
+  la propuesta se descarta, la imagen se borra**. Eso es un objeto en el bucket
+  cuyo ciclo de vida no lo decide una persona sino el estado de su documento, y
+  este commit escribe las cuatro puntas: el prefijo, la vista, la promoción y el
+  borrado.
+
+  **El desvío del PRD, decidido y no improvisado.** El PRD pedía `propuestas/` con
+  «`get` y `list` en `false`». Con el `get` cerrado para todos, **el admin no puede
+  ver el flyer que le mandaron** — y decidir si acepta depende en parte de mirarlo.
+  Quedó `get: esAdmin()`, `list: false`: la trampa 13 está escrita contra el
+  `read: if true` anónimo (el `listAll()` que devuelve el bucket entero), no contra
+  la sesión que ya lee la propuesta entera en Firestore. Y `list` en `false` **y no
+  en `esAdmin()`** como en `imagenes/`: la bandeja llega a cada objeto por el
+  `storagePath` de su documento, y «dame todas las fotos que mandaron» no le sirve
+  a nadie.
+
+  **El hallazgo: `get: esAdmin()` no significa «nadie más puede leerlo».** El caso
+  que lo dice afirmaba que sin sesión no se llegaba al objeto «ni con la URL en la
+  mano», y **falló**: la URL que `getDownloadURL()` acuña sirve el objeto **sin
+  volver a evaluar las reglas**. Es una capability, igual que en `imagenes/` — solo
+  que allá es deliberado. El caso quedó afirmando las **dos** direcciones, la
+  propiedad está escrita en `07-seguridad.md` con esas palabras, y cerrarla del
+  todo (no acuñar tokens nunca, `getBlob` con CORS en el bucket) es **B-846**.
+
+  **La promoción la hace el panel y no una Function**, que es la segunda decisión.
+  Copiar entre prefijos solo lo puede hacer el Admin SDK, y esa Function tendría
+  que **escribir la actividad** para agregarle la imagen: un segundo dueño en
+  `imagenes[]` (la clase de B-80) más un write-back que despierta los dos triggers
+  que ya escuchan `/actividades`. Re-subir desde el panel cuesta un viaje de ida y
+  vuelta de hasta 3 MB y no agrega ninguna pieza — y de paso la foto pasa por
+  `subirImagen`, o sea por **el pipeline que le saca los metadatos**, que acá
+  importa más que en cualquier otra subida porque la mandó alguien de afuera.
+
+  **El borrado al rechazar es un trigger y no un botón**, que es la tercera:
+  `borrarImagenAlRechazar` actúa **solo en la transición** a `rechazada` —la
+  entrega de eventos es «al menos una vez», y sin eso cada escritura sobre una
+  rechazada volvería a llamar a Storage— y reusa **importada** la guarda de
+  prefijo de la retención, que es la que impide que un documento mal escrito se
+  lleve el flyer de una actividad publicada. `storage.rules` cierra el `delete`
+  para todo cliente, así que borrar es **consecuencia del estado** y no algo que
+  alguien puede olvidarse de tocar.
+
+  **La trampa 12 no muerde, y el caso lo dice:** `optimizarImagen` escucha el
+  bucket entero, así que la subida de una propuesta lo despierta; lo corta el
+  primer `if` de `decidirOptimizacion`, que ya existía. La promovida **sí** se
+  optimiza, que es lo que se quiere. El prefijo quedó atado en los **cuatro**
+  runtimes donde está escrito, y hay un caso que corre el `matches` de
+  `storage.rules` contra un nombre que arma el cliente de verdad — que es la
+  atadura que se puede romper sola.
+
+  **Y una consecuencia que la pantalla dice porque se descubre tarde:** reabrir una
+  rechazada **no trae la foto de vuelta**. La bandeja, la ayuda y las novedades lo
+  dicen con esas palabras.
+
 - **La retención de propuestas: a los 30 días la rechazada se va, con su imagen**
   — **B-838** / **DEC-13**, paso 11 de la tajada 1, **adelantado** al 8, 9 y 10
   por la decisión de B-843 punto 1: la excepción del borrado tiene que existir

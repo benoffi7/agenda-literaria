@@ -995,6 +995,45 @@ Un `barrido de versiones huérfanas: nada para purgar` con `motivos` lleno de
 borrado. Si aparece `sin-fecha-legible`, hay una versión con el `guardadoEn`
 roto y conviene mirarla antes de que el margen deje de importar.
 
+### La imagen de una propuesta (B-830 paso 8, DEC-11)
+
+DEC-11 dice que quien propone **puede subir el flyer** —pedirle que lo hostee en
+algún lado para poder pegar una URL es pedirle que resuelva un problema nuestro, y
+el que no pueda no manda la foto— **y que si la propuesta se descarta, la imagen
+se borra**. Eso es un objeto en el bucket cuyo ciclo de vida no lo decide una
+persona sino el estado de su documento. Las cuatro piezas:
+
+| Momento | Qué pasa | Dónde |
+|---|---|---|
+| **Sube** | a `propuestas/prop_<uuid>.jpg`, con el mismo tope de 3 MB y los mismos dos tipos que la galería | `storage.rules` |
+| **Se mira** | solo un admin, y solo por su ruta: `get: esAdmin()`, `list: false` | ídem |
+| **Se acepta** | el panel la baja y la vuelve a subir a `imagenes/` por `subirImagen` | `src/lib/subir-imagen.ts` |
+| **Se rechaza** | se borra en el acto | `borrarImagenAlRechazar` |
+| **Nadie decide** | a los 30 días se va con el documento | `borrarPropuestasVencidas` |
+
+**Por qué se re-sube en vez de copiar del lado del servidor.** Copiar entre
+prefijos solo lo puede hacer el Admin SDK, o sea una Function, y esa Function
+tendría que **escribir la actividad** para agregarle la imagen: un segundo dueño
+en `imagenes[]` (la clase de B-80) y un write-back que dispara los dos triggers
+que ya escuchan `/actividades`. Re-subir desde el panel cuesta un viaje de ida y
+vuelta de hasta 3 MB en la máquina del admin, no agrega ninguna pieza, y de paso
+la foto **pasa por el pipeline que le saca los metadatos** — que importa más acá
+que en cualquier otra subida, porque la mandó alguien de afuera.
+
+**La trampa 12 no muerde, y conviene saber por qué:** `optimizarImagen` está
+suscripto al **bucket entero**, así que la subida de una propuesta lo despierta;
+lo corta el primer `if` de `decidirOptimizacion` (fuera del prefijo de
+originales), que ya existía. La imagen **promovida** sí cae en `imagenes/` y se
+optimiza, que es lo que se quiere: es una imagen de galería como cualquier otra.
+
+**Y una consecuencia que la pantalla dice porque se descubre tarde:** reabrir una
+propuesta rechazada **no trae la foto de vuelta**. El documento sigue nombrando su
+`storagePath` y el objeto ya no está.
+
+**Lo que un `get: esAdmin()` no cierra** está en `07-seguridad.md`: la URL de
+descarga es una capability y sirve el objeto sin volver a evaluar las reglas
+(**B-846**).
+
 ### `borrarPropuestasVencidas` — la retención de propuestas (B-838, DEC-13)
 
 Una propuesta lleva **el mail o el WhatsApp de alguien que no está logueado**: el

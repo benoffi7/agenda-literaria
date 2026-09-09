@@ -4,6 +4,7 @@ import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { signInWithCustomToken, signOut } from 'firebase/auth';
 import {
   connectStorageEmulator,
+  deleteObject,
   getDownloadURL,
   getStorage,
   listAll,
@@ -12,7 +13,7 @@ import {
 } from 'firebase/storage';
 import { app, auth } from '@/lib/firebase-client';
 import { MAXIMO_BYTES } from '@/lib/imagenes';
-import { rutaDeImagen } from '@/lib/imagenes-archivo';
+import { rutaDeImagen, rutaDeImagenPropuesta } from '@/lib/imagenes-archivo';
 import { MARCA_OPTIMIZADA } from '../functions/imagenes.js';
 import { PROJECT_ID, cargarReglasStorage, emuladorStorageVivo } from './emulador';
 
@@ -188,6 +189,141 @@ describe.skipIf(!vivo)('las reglas de Storage — DEC-7b, B-167', () => {
       // tamaño — y sin pasar por el pipeline que le saca los metadatos.
       expect(
         await rechaza(subir('miniaturas/img_x.jpg', bytes(512), 'image/jpeg')),
+      ).toBe(true);
+    });
+  });
+
+  /**
+   * **El prefijo de las propuestas** — B-830 paso 8, DEC-11.
+   *
+   * Es el otro lado de todo lo de arriba: `imagenes/` es público por objeto y lo
+   * escribe un admin; `propuestas/` **no es público** y lo va a escribir alguien
+   * sin login. Las dos mitades se prueban acá porque las dos son de las reglas y
+   * ninguna se puede razonar sin el emulador.
+   */
+  describe('el prefijo de las propuestas (DEC-11)', () => {
+    const idPropuesta = () => `prop_test-${Date.now().toString(36)}-${n++}`;
+
+    it('un admin sube el flyer y lo puede VER: es lo que le deja decidir', async () => {
+      /*
+       * El desvío del PRD, con la decisión del dueño del 2026-09-09: pedía «`get`
+       * y `list` en `false`», y con `get` cerrado para todos el admin no puede
+       * mirar la foto que le mandaron. La trampa 13 está escrita contra el
+       * `read: if true` anónimo, no contra la sesión que ya lee la propuesta
+       * entera en Firestore.
+       */
+      await signInWithCustomToken(auth(), await tokenPara(UID, true));
+      const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
+      await subir(ruta, bytes(1024), 'image/jpeg');
+
+      const url = await getDownloadURL(ref(almacen(), ruta));
+      const r = await fetch(url);
+      expect(r.ok, 'el admin tiene que poder ver el flyer de la propuesta').toBe(true);
+    });
+
+    it('pero NO puede enumerar el prefijo, ni él: sería «dame todas las fotos que mandaron»', async () => {
+      /*
+       * Acá `list` está en `false` **para todos** y no en `esAdmin()` como en
+       * `imagenes/`, y la diferencia es deliberada: la bandeja llega a cada
+       * objeto por el `storagePath` de su documento y no necesita enumerar nunca.
+       * Una lista de todas las fotos que mandaron personas distintas no le sirve
+       * a nadie y es exactamente lo que la trampa 13 dice que no hay que ofrecer.
+       */
+      await signInWithCustomToken(auth(), await tokenPara(UID, true));
+      await expect(listAll(ref(almacen(), 'propuestas'))).rejects.toThrow();
+    });
+
+    it('rechaza lo mismo que `imagenes/`: el tamaño, el tipo y el nombre', async () => {
+      await signInWithCustomToken(auth(), await tokenPara(UID, true));
+      const conNombre = (archivo: string) => `propuestas/${archivo}`;
+
+      expect(
+        await rechaza(subir(rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg'), bytes(MAXIMO_BYTES + 1), 'image/jpeg')),
+        'el tope de 3 MB',
+      ).toBe(true);
+      expect(
+        await rechaza(subir(conNombre(`${idPropuesta()}.webp`), bytes(512), 'image/webp')),
+        'un tipo que no sabemos limpiar',
+      ).toBe(true);
+      expect(
+        await rechaza(subir(conNombre('flyer.jpg'), bytes(512), 'image/jpeg')),
+        'un nombre sin la forma de id',
+      ).toBe(true);
+      expect(
+        await rechaza(subir(conNombre('sub/x.jpg'), bytes(512), 'image/jpeg')),
+        'un segundo segmento: `match /propuestas/{archivo}` es de uno solo',
+      ).toBe(true);
+    });
+
+    it('nadie borra desde un cliente, ni siquiera un admin', async () => {
+      /*
+       * Los dos borrados que existen son de Functions con el Admin SDK: el del
+       * rechazo (en el acto) y el de la retención (30 días). Que el panel no
+       * pueda es lo que hace que el borrado sea **consecuencia del estado** y no
+       * de que alguien se acuerde de tocar un botón.
+       */
+      await signInWithCustomToken(auth(), await tokenPara(UID, true));
+      const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
+      await subir(ruta, bytes(512), 'image/jpeg');
+      await expect(deleteObject(ref(almacen(), ruta))).rejects.toThrow();
+    });
+
+    /**
+     * **El testigo de la puerta que todavía no está abierta.**
+     *
+     * `create` es `esAdmin() && …` a propósito: falta que App Check esté
+     * exigiendo (B-836a), exactamente igual que el `create` de `/propuestas` en
+     * `firestore.rules`. Este caso es el que se pone rojo el día que se borre ese
+     * `esAdmin() &&`, y está escrito para que abrir la puerta sea un diff visible
+     * en un test y no un efecto colateral.
+     */
+    it('un anónimo TODAVÍA no puede subir: falta que App Check exija (B-836a)', async () => {
+      await signOut(auth());
+      const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
+      expect(await rechaza(subir(ruta, bytes(512), 'image/jpeg'))).toBe(true);
+    });
+
+    /**
+     * **Y acá hay una propiedad que hay que tener escrita, porque no es la que
+     * uno supone.** La descubrió este mismo test, fallando.
+     *
+     * `allow get: if esAdmin()` cierra el acceso **por ruta**: sin sesión, pedir
+     * la URL de descarga de un objeto de `propuestas/` es un permission-denied,
+     * aunque se sepa el path exacto. Eso es lo que este caso fija.
+     *
+     * Lo que **no** cierra es la URL **ya emitida**. `getDownloadURL()` acuña un
+     * token y esa URL sirve el objeto **sin volver a evaluar las reglas**: es una
+     * capability, igual que en `imagenes/` (donde es deliberado, B-206 #1). O sea
+     * que el flyer de una propuesta es privado mientras su URL no salga del
+     * panel, y quien tenga esa URL lo lee sin sesión.
+     *
+     * Es aceptable —la URL solo se acuña adentro del panel, con una sesión de
+     * admin, y el objeto se borra al rechazar o a los 30 días— pero **no es lo
+     * mismo que «nadie puede leerlo»**, y `07-seguridad.md` lo dice con estas
+     * palabras. Cerrar también esa puerta pediría no acuñar tokens nunca (bajar
+     * los bytes con `getBlob`, que necesita CORS configurado en el bucket) y es
+     * un frente aparte: **B-846**.
+     */
+    it('sin sesión no se llega al flyer por su ruta, ni sabiéndola', async () => {
+      await signInWithCustomToken(auth(), await tokenPara(UID, true));
+      const ruta = rutaDeImagenPropuesta(idPropuesta(), 'image/jpeg');
+      await subir(ruta, bytes(512), 'image/jpeg');
+      const url = await getDownloadURL(ref(almacen(), ruta));
+
+      await signOut(auth());
+      await expect(
+        getDownloadURL(ref(almacen(), ruta)),
+        'la puerta por ruta tiene que estar cerrada sin sesión',
+      ).rejects.toThrow();
+
+      // Y el otro lado de la misma moneda, afirmado a propósito y no omitido: la
+      // URL que el panel ya acuñó **sigue sirviendo**. Si algún día deja de ser
+      // cierto —porque se dejen de acuñar tokens, B-846— este caso se pone rojo y
+      // hay que venir a decidirlo, en vez de descubrirlo con una imagen rota.
+      const r = await fetch(url);
+      expect(
+        r.ok,
+        'la URL de descarga es una capability: quien la tiene lee el objeto (ver B-846)',
       ).toBe(true);
     });
   });

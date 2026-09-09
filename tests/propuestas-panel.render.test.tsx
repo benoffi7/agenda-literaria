@@ -43,6 +43,16 @@ vi.mock('@/components/admin/useOpciones', () => ({
   }),
 }));
 
+/*
+ * El módulo dueño de `firebase/storage`, que el panel carga con `import()`. Se
+ * mockea entero: lo que este archivo ejercita es el cableado —que la bandeja lo
+ * llame y qué hace con lo que devuelve—, no la subida.
+ */
+vi.mock('@/lib/subir-imagen', () => ({
+  urlDeImagenDePropuesta: vi.fn(),
+  promoverImagenDePropuesta: vi.fn(),
+}));
+
 vi.mock('@/lib/bandejaDePropuestas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/bandejaDePropuestas')>()),
   observarPropuestas: vi.fn(),
@@ -51,10 +61,13 @@ vi.mock('@/lib/bandejaDePropuestas', async (importOriginal) => ({
 
 import { PropuestasPanel, type Conversion } from '@/components/admin/PropuestasPanel';
 import { medirFuncion } from '@/lib/analytics';
+import { promoverImagenDePropuesta, urlDeImagenDePropuesta } from '@/lib/subir-imagen';
 import { observarPropuestas, revisarPropuesta } from '@/lib/bandejaDePropuestas';
 
 afterEach(() => {
   cleanup();
+  vi.mocked(urlDeImagenDePropuesta).mockReset();
+  vi.mocked(promoverImagenDePropuesta).mockReset();
   vi.mocked(observarPropuestas).mockReset();
   vi.mocked(revisarPropuesta).mockReset();
   vi.mocked(medirFuncion).mockReset();
@@ -136,9 +149,34 @@ describe('la bandeja muestra lo que hace falta para decidir', () => {
     expect(screen.getByText(/el link no se puede abrir/)).toBeTruthy();
   });
 
-  it('y la que subieron se muestra como path: verla es del paso 8 (DEC-11)', () => {
+  it('y la que subieron se muestra, que es lo que deja decidir (DEC-11)', async () => {
+    vi.mocked(urlDeImagenDePropuesta).mockResolvedValue('https://emu.test/flyer.jpg?token=t');
     montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
-    expect(screen.getByText(/Subieron una imagen: propuestas\/abc\.jpg/)).toBeTruthy();
+
+    const img = await screen.findByRole('img', { name: /flyer que mandaron/i });
+    expect(img.getAttribute('src')).toBe('https://emu.test/flyer.jpg?token=t');
+    expect(urlDeImagenDePropuesta).toHaveBeenCalledWith('propuestas/abc.jpg');
+    // El path queda igual: es lo que hay que poder leer cuando algo no cuadra.
+    expect(screen.getByText(/Subieron esa imagen: propuestas\/abc\.jpg/)).toBeTruthy();
+  });
+
+  it('la de una rechazada no se pide siquiera: se borró al rechazar', async () => {
+    // Pedirla mostraría «trayendo la imagen…» y después un error, para algo que
+    // ya sabemos. El texto lo dice y no hay `img`.
+    montar([propuesta({ estado: 'rechazada', imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+    await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
+
+    expect(urlDeImagenDePropuesta).not.toHaveBeenCalled();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText(/se borró al rechazar/)).toBeTruthy();
+  });
+
+  it('y si el objeto ya no está, lo dice en vez de mostrar una imagen rota', async () => {
+    vi.mocked(urlDeImagenDePropuesta).mockRejectedValue(new Error('object-not-found'));
+    montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+
+    expect(await screen.findByText(/La imagen que subieron ya no está/)).toBeTruthy();
+    expect(screen.queryByRole('img')).toBeNull();
   });
 
   it('no ofrece editar el contenido: la propuesta es prueba de qué se pidió', () => {
@@ -184,6 +222,62 @@ describe('convertir en actividad — el orden de D-600', () => {
     const c = onConvertir.mock.calls[0]![0];
     expect(c.copia.incluye).toEqual(['merienda']);
     expect(c.avisos.join(' ')).toContain('pizza-gratis');
+  });
+
+  /**
+   * **La promoción de la imagen** (paso 8, DEC-11): la foto pasa de `propuestas/`
+   * a `imagenes/` al convertir, así la actividad nace con ella y no hace falta
+   * ninguna Function que escriba `/actividades` después (la clase de B-80).
+   */
+  it('la imagen que mandaron viaja a la galería, como portada', async () => {
+    vi.mocked(promoverImagenDePropuesta).mockResolvedValue({
+      imagen: {
+        id: 'img_nueva',
+        url: 'https://emu.test/img_nueva.jpg',
+        epigrafe: '',
+        textoAlternativo: '',
+        origen: 'propia',
+        storagePath: 'imagenes/img_nueva.jpg',
+        portada: false,
+      },
+      orientacion: null,
+    });
+    const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+
+    expect(promoverImagenDePropuesta).toHaveBeenCalledWith('propuestas/abc.jpg');
+    const { copia } = onConvertir.mock.calls[0]![0];
+    expect(copia.imagenes).toHaveLength(1);
+    expect(copia.imagenes[0]!.storagePath).toBe('imagenes/img_nueva.jpg');
+    // Primera de la galería: nace portada, igual que al subir una a mano.
+    expect(copia.imagenes[0]!.portada).toBe(true);
+  });
+
+  it('y si no se puede traer, la conversión sigue y el aviso lo dice', async () => {
+    /*
+     * Cortar la conversión obligaría a resolver un problema de Storage antes de
+     * poder cargar una actividad que ya está escrita. La foto se puede volver a
+     * poner a mano mientras la propuesta siga en la bandeja.
+     */
+    vi.mocked(promoverImagenDePropuesta).mockRejectedValue(new Error('se cayó la red'));
+    const onConvertir = montar([propuesta({ imagen: { storagePath: 'propuestas/abc.jpg' } })]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+
+    const c = onConvertir.mock.calls[0]![0];
+    expect(c.copia.imagenes).toHaveLength(0);
+    expect(c.avisos.join(' ')).toContain('se cayó la red');
+  });
+
+  it('una propuesta sin imagen propia no toca Storage', async () => {
+    // Control: la promoción no puede correr «por las dudas» en cada conversión.
+    const onConvertir = montar([propuesta({ imagen: { url: 'https://ejemplo.test/f.jpg' } })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Convertir en actividad' }));
+    await waitFor(() => expect(onConvertir).toHaveBeenCalled());
+    expect(promoverImagenDePropuesta).not.toHaveBeenCalled();
   });
 
   it('y recién al guardar la actividad la propuesta pasa a aceptada, con su id', async () => {
@@ -265,7 +359,7 @@ describe('los otros dos movimientos', () => {
   it('una rechazada se puede reabrir', async () => {
     montar([propuesta({ estado: 'rechazada' })]);
     await userEvent.click(screen.getByLabelText('Ver aceptadas y rechazadas'));
-    await userEvent.click(screen.getByRole('button', { name: 'Reabrir' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reabrir (sin la imagen)' }));
     expect(revisarPropuesta).toHaveBeenCalledWith('p1', 'uid_admin', 'nueva', {});
   });
 });

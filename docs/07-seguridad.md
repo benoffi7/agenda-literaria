@@ -1059,6 +1059,36 @@ rara en la bandeja». Está afirmado como asimetría —no como garantía— en
 `tests/propuestas.test.ts`, y la defensa que falta, si aparece abuso, es del lado
 de una Function (**B-842**).
 
+**El flyer de una propuesta no es público, y eso quiere decir algo preciso**
+(B-830 paso 8, DEC-11). El prefijo `propuestas/` de Storage va con **`get` solo
+para un admin y `list` para nadie** —el PRD pedía «`get` y `list` en `false`» y se
+desvía por decisión del dueño del 2026-09-09: con `get` cerrado para todos, el
+admin no puede mirar la foto que le mandaron y decidir depende en parte de eso; la
+trampa 13 está escrita contra el `read: if true` anónimo, no contra la sesión que
+ya lee la propuesta entera en Firestore—. `list` está en `false` **y no en
+`esAdmin()`** como en `imagenes/`: la bandeja llega a cada objeto por el
+`storagePath` de su documento, y una lista de todas las fotos que mandaron
+personas distintas no le sirve a nadie.
+
+**Y lo que ese `get` no cierra, dicho con todas las letras porque no es lo que uno
+supone:** la URL que `getDownloadURL()` acuña **sirve el objeto sin volver a
+evaluar las reglas**. Es una capability, igual que en `imagenes/` (donde es
+deliberado, B-206 #1). O sea que el flyer es privado **mientras su URL no salga
+del panel**, y quien tenga esa URL lo lee sin sesión. Lo descubrió
+`tests/storage-reglas.integracion.test.ts` fallando, y quedó afirmado en las dos
+direcciones: sin sesión no se llega por la ruta, y la URL ya emitida sigue
+sirviendo. Es aceptable —solo se acuña adentro del panel y el objeto se borra al
+rechazar o a los 30 días— y cerrarlo pediría no acuñar tokens nunca (`getBlob` con
+CORS configurado en el bucket): es **B-846**.
+
+**El ciclo del objeto no lo decide una persona, lo decide el estado de su
+propuesta.** Se promueve a `imagenes/` al convertir —el panel lo baja y lo vuelve
+a subir por `subirImagen`, que le saca los metadatos: la foto de un taller en una
+casa lleva las coordenadas de esa casa, y esta vez la mandó alguien de afuera— y
+se borra al rechazar, en el acto (`borrarImagenAlRechazar`). El `delete` está en
+`false` para todo cliente, así que el borrado es **consecuencia del estado** y no
+un botón que alguien puede olvidarse de tocar.
+
 **Y desde la bandeja (B-830, paso 7) el panel muestra texto escrito por un
 tercero sin login, que es una superficie que este proyecto no tenía.** Tres cosas
 salen de ahí —eran dos hasta que el `auditor-privacidad` encontró la tercera, que
