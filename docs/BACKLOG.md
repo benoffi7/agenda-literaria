@@ -736,6 +736,46 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-849 · El §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice 250 · P3
+
+**Lo trajo el frente de B-806** cerrando el conteo de tests de render, y lo dejó
+afuera a propósito: es otra pasada, no una línea suelta. El §1 declara **180
+archivos y 41.388 LOC** de producción; `node scripts/salud-del-codigo.mjs` hoy
+mide **250 y 62.139** (con `src/` en 197 archivos).
+
+El documento **vale porque cada número dice cuándo se contó**, así que la pasada
+completa es el trabajo: correr el script, actualizar las cifras del §1 y del §6, y
+dejar la medición vieja como historia con su fecha, igual que se hizo con el
+Problema 1. De paso el script reporta un **ciclo de imports vivo**
+(`campos-del-panel.tsx → AyudaDeSeccion.tsx → CentroAyuda.tsx → campos-del-panel.tsx`),
+que nació con el refactor de B-841 y no está anotado en ninguna parte.
+
+### B-850 · El campo de texto alternativo sigue diciendo «Se necesita para publicar», y su error es código muerto · P2
+
+**Dos hallazgos del mismo frente (B-815), y los dos salen de la misma reversión:**
+el 2026-09-07 el dueño mandó sacar el bloqueo que D-440 había puesto —el
+`textoAlternativo` de la portada dejó de frenar el publicado— y quedaron dos cosas
+sin actualizar.
+
+1. **`GaleriaEditor.tsx` (~línea 397) sigue diciendo «Se necesita para publicar»,
+   dos veces.** `novedades.ts` sí se corrigió (`describir-la-portada-ya-no-frena`);
+   esta copia no. Le está mintiendo a quien carga, en el campo exacto de la
+   decisión — y es la clase de mentira que este repo persigue en la ayuda del
+   sitio, adentro del panel.
+2. **El error de ese campo es código muerto, y la justificación escrita para
+   conservarlo es falsa.** `opcional = z.string().trim().default('')` **no tiene
+   largo máximo**, así que nada puede producir un issue en
+   `imagenes.N.textoAlternativo`: quedan sin consumidor el `errorAlternativo` de
+   `GaleriaEditor.tsx`, su `<p role="alert">` y la fila de `camposFaltantes.ts`. El
+   CHANGELOG lo justificó diciendo «el campo sigue teniendo forma (largo máximo)»
+   — no la tiene. Y el caso `it('el alternativo de la portada también tiene su ruta
+   y su cartel')` pasa igual **porque solo mira el fuente**: es un chequeo que ya no
+   puede fallar, que es justo la clase que este repo persigue.
+
+Lo barato y honesto: corregir el texto, y **decidir** el error — o el campo gana su
+largo máximo (y entonces el error vuelve a ser alcanzable, que es lo que la
+justificación decía) o se saca la ruta muerta con su caso.
+
 ### B-846 · La URL de descarga de un flyer privado es una capability, y eso no es «nadie puede leerlo» · P3
 
 **Lo descubrió `tests/storage-reglas.integracion.test.ts` fallando**, escribiendo
@@ -4159,7 +4199,19 @@ formulario incompleto, como `'El id de sesión debe venir de nuevaSesionId()'`.
 verificada. La fábrica de ids tiene tests en las cinco listas; que dos filas no
 compartan id no lo afirma nadie, y es la mitad de la que depende todo el resto.
 
-### B-815 · `D-440` está citada en tres lugares y nunca se escribió como entrada · P2
+### B-815 · `D-440` está citada en tres lugares y nunca se escribió como entrada — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Hecho: se escribió la entrada** (2026-09-09), que era la primera de las dos
+> salidas que este ítem planteaba, y por el motivo que el propio ítem daba: el
+> razonamiento en prosa adentro de otro documento no es a lo que la cita manda.
+>
+> **Se reconstruyó de las citas y del código, no se inventó**, y se redactó como
+> **acta de lo que se decidió entonces**, con las revisiones posteriores al pie y
+> separadas — que es lo que contesta la objeción escrita en D-560: redactar hoy,
+> con el resultado a la vista, sería reescribir. Se cerró junto con el otro ítem
+> gemelo y con B-806: eran el mismo trabajo tres veces, y el script los listaba en
+> la misma corrida (`decisiones-referenciadas.mjs` pasó de ocho huérfanas a seis).
+
 
 **Lo encontró el `auditor-documentacion`** cerrando B-181, corriendo
 `scripts/decisiones-referenciadas.mjs`. Es el caso hermano de **B-808** (que ya
@@ -4186,7 +4238,19 @@ Es P2 por lo mismo que B-808: una decisión citada que no existe es lo que hace 
 la próxima persona la reinvente distinta — y con `textoAlternativo` eso significa
 volver a hacerlo obligatorio, que es justo lo que el dueño decidió que no.
 
-### B-808 · `D-350` está citada en cuatro lugares y nunca se escribió como entrada · P2
+### B-808 · `D-350` está citada en cuatro lugares y nunca se escribió como entrada — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Hecho: se escribió la entrada** (2026-09-09), que era la primera de las dos
+> salidas que este ítem planteaba, y por el motivo que el propio ítem daba: el
+> razonamiento en prosa adentro de otro documento no es a lo que la cita manda.
+>
+> **Se reconstruyó de las citas y del código, no se inventó**, y se redactó como
+> **acta de lo que se decidió entonces**, con las revisiones posteriores al pie y
+> separadas — que es lo que contesta la objeción escrita en D-560: redactar hoy,
+> con el resultado a la vista, sería reescribir. Se cerró junto con el otro ítem
+> gemelo y con B-806: eran el mismo trabajo tres veces, y el script los listaba en
+> la misma corrida (`decisiones-referenciadas.mjs` pasó de ocho huérfanas a seis).
+
 
 **Lo encontró el `auditor-documentacion`** cerrando B-805, corriendo
 `scripts/decisiones-referenciadas.mjs`. `docs/13-agentes.md` y `docs/BACKLOG.md`
@@ -10707,7 +10771,24 @@ cómoda:
 La 1 alcanza para el aviso y no afirma nada falso. **No hacerlo no rompe nada**:
 es un aviso, no un error, y el resultado enriquecido sale igual. De ahí el P3.
 
-### B-806 · `10-salud-del-codigo.md` dice que hay cuatro tests de render y hay doce · P3
+### B-806 · `10-salud-del-codigo.md` dice que hay cuatro tests de render y hay doce — ✅ hecho (2026-09-09), y son diecisiete · P3
+
+> ✅ **Hecho, y no eran doce: son diecisiete.** El ítem contó doce y entre medio
+> nacieron cinco más, que es exactamente su propio argumento sobre por qué el
+> número hay que medirlo y no leerlo. Se remidió **toda** la frase y no solo la
+> lista: **155 casos de render** (`npx vitest list 'render.test'`) sobre los
+> **3.968 que la suite corre en verde** en 178 archivos, con el denominador en
+> **60 componentes y 14.678 LOC** de `.tsx` (eran 48 y 9.962). Y apareció un
+> **tercer** lugar con el número viejo que el ítem no nombraba: `05-patrones.md`,
+> corregido en el mismo cambio.
+>
+> La medición del 2026-09-03 se conservó como historia y la nueva va debajo,
+> fechada: este documento vale porque cada número dice cuándo se contó — y ahora
+> también **con qué comando**, que era la otra mitad que faltaba (`vitest list`
+> colecta 3.995, veintisiete más que la corrida, porque incluye lo salteado).
+>
+> **Lo que este cierre NO hizo y queda como ítem propio: B-849.**
+
 
 **Lo encontró el `auditor-documentacion`** cerrando B-805, y ya estaba mal antes de
 ese cierre. El §«Problema 1» dice: «hoy hay cuatro: `menu-acciones`,

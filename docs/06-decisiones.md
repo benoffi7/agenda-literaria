@@ -7657,6 +7657,89 @@ La modalidad que se muestra es la **resultante** de las filas de «Dónde» (B-2
 no la de la primera fila: «la primera manda» dependería del orden del array, que es
 la trampa 2 con otra cara.
 
+## D-350 · El auditor caro se dispara solo cuando el diff toca una salida pública
+
+**2026-09-03 · B-124.** *Escrita a posteriori el 2026-09-09 (**B-808**): el número
+se citaba desde `13-agentes.md`, el `BACKLOG.md` y el `CHANGELOG.md`, y no tenía
+entrada — un enlace a `#d-350` abría el documento sin ancla y sin error. Lo que
+sigue es el **acta de lo que se decidió entonces**; lo que pasó después va al pie,
+separado, para que la decisión no se lea con el resultado ya puesto.*
+
+**Contexto.** Los tres auditores de este repo miran lo que la suite no puede ver, y
+uno de ellos corre en **`opus`** a propósito: un falso negativo del de privacidad es
+una credencial filtrada o el link de una reunión público. Correrlos «siempre» no es
+gratis, y correrlos «cuando uno se acuerde» no es una red. B-124 planteó la pregunta
+como tres opciones, con la plata y la fricción de cada una.
+
+| Opción | Qué cuesta | Qué falla |
+|---|---|---|
+| **A pedido** | cero | **se olvida** |
+| **En cada cierre de cambio**, por hook | tres corridas por cambio, una con el modelo caro | nada se olvida, pero se paga siempre — incluso en una tanda que solo toca `docs/` |
+| **Solo en el PR**, por Actions | acotado, y queda escrito en el PR | llega **después** de haber commiteado |
+
+**La decisión.** El intermedio: el `auditor-privacidad` se dispara
+**automáticamente cuando el diff toca una salida pública**, y los otros dos quedan
+para antes del PR.
+
+**Y la condición que la hace verificable, que es la mitad que importa.** La
+pregunta «¿este diff toca una salida?» **no** vive adentro del hook: vive en un
+script puro que recibe rutas por stdin y contesta por stdout,
+`scripts/auditores-que-corresponden.mjs`. Un `if` adentro de un hook es igual de
+imposible de probar que un `if` adentro de un YAML, y es el mismo corte que
+`scripts/que-deployar.sh` ya tenía: la decisión se testea sin git y sin estado, y
+la plomería queda afuera.
+
+**La lista de disparadores no se mantiene en el script.** Se **deriva del
+`description` de cada ficha de `.claude/agents/`**, que es el mismo texto que decide
+si Claude invoca al auditor por nombre de archivo. Copiar las rutas al script habría
+creado un tercer lugar que envejece sin que nada falle —la clase de B-88—;
+derivándolas, **una salida nueva entra sola al disparador** en cuanto se suma a la
+ficha, que es lo que `docs/07-seguridad.md` ya pide. El `auditor-documentacion` es
+la excepción declarada: corresponde siempre, y eso no se puede derivar de ninguna
+lista porque su disparador es el cambio y no el archivo, así que está escrito en el
+script con el motivo al lado en vez de fingir que sale de un grep.
+
+**Qué se descartó, y no por desconocer la contra.** «A pedido» venía escrita en el
+propio ítem con su contra pegada —«cero costo, **se olvida**»— y se descartó por
+eso. «En cada cierre» se descartó por pagar el modelo caro en cada cambio, sin
+mirar si el cambio toca algo público. «Solo en el PR» se descartó porque el commit
+ya pasó: encontrar una fuga ahí es encontrarla tarde.
+
+**La contención que la decisión trajo con ella.**
+`tests/auditores-que-corresponden.test.ts` verifica las **dos** direcciones —que se
+dispare con cada archivo que la ficha declara, y que **no** se dispare con lo que no
+es una salida—, porque un disparador que se prende siempre es el costo de la opción
+cara con la etiqueta de la intermedia: la decisión deshecha sin que nada falle. Y
+como derivar las dos puntas del mismo `description` se satisfaría solo (sacarle una
+salida a la ficha la saca de las dos listas y todo queda verde), el test lleva un
+**ancla independiente**: la tabla numerada de salidas públicas de
+`docs/07-seguridad.md`, parseada aparte. La cadena queda **tabla → ficha → disparo**.
+
+### Qué pasó después, y qué sobrevive
+
+Esta decisión se revisó dos veces, y hoy **el disparo automático que decide ya no
+existe**:
+
+- **2026-09-07 · B-124 contestado.** El dueño pidió «siempre antes de pushear, los
+  tres», y el gate de push lo exigió en un séptimo paso con un sello por auditor.
+  Esa revisión **conservó** el disparo automático de acá: era lo que hacía que, al
+  llegar el push, el caro ya estuviera corrido — «los tres siempre» no significaba
+  pagar tres auditorías por push, significaba que ninguna faltara.
+- **2026-09-08 · D-560.** Se sacó el aparato entero —los tres hooks, el sello, el
+  paso del gate y la salida `SALTEAR_AUDITORES=1`— y los auditores pasaron a correr
+  **solo** cuando alguien invoca `/audit`.
+
+**Lo que sobrevive es la mitad buena, y sobrevive intacta.**
+`scripts/auditores-que-corresponden.mjs` y su test siguen en pie y siguen siendo lo
+que decide **cuáles** auditores corresponden a un alcance, ahora del lado de
+`/audit`: «a pedido» decide *si* se audita, el script sigue decidiendo *qué*, y
+pedir `/audit` sobre una tanda que solo toca `docs/` sigue sin gastar el de `opus`.
+Lo que se fue fue el disparo, no el criterio.
+
+Y la contra que esta entrada le puso a la opción «a pedido» —**se olvida**— es
+exactamente la que D-560 eligió pagar, con los ojos abiertos y por escrito: el
+riesgo dejó de tener mitigación técnica y pasó a cargarlo quien trabaja.
+
 ## D-360 · El `calendarEventId` lo escribe la Function, y el panel lo relee (B-150)
 
 **Contexto.** `formADocumento` emitía `calendarEventId` en cada guardado. B-80
@@ -8023,6 +8106,98 @@ sitio emite antes de tocar nada. Concretamente:
 **La regla corta:** un aviso de Google no es un argumento para inventar un dato.
 Cuando el campo se puede llenar con algo verdadero, se llena; cuando no, se
 escribe por qué y se deja ausente.
+
+## D-440 · El texto alternativo es un campo **de la imagen**, y se pide una sola vez: en la portada
+
+**2026-09-03 · B-301.** *Escrita a posteriori el 2026-09-09 (**B-815**): el número
+se citaba desde `03-modelo-de-datos.md`, el `CHANGELOG.md` y el `BACKLOG.md`, y no
+tenía entrada, mientras el razonamiento vivía en un docblock de `src/lib/schema.ts`.
+Lo que sigue es el acta de lo que se decidió entonces; la revisión del 2026-09-07 va
+al pie, separada.*
+
+**Contexto.** **D-125** —la galería (DEC-7a)— había decidido lo contrario **a
+propósito**: el texto alternativo de una imagen no era un campo, salía del título de
+la actividad («Imagen de {título}»). El argumento estaba escrito: **un campo
+obligatorio por imagen, en un panel que usa una persona, produce «foto»**, y un
+alternativo de compromiso es peor que un título descriptivo, porque suena a
+descripción y no lo es. El 2026-09-03 el dueño pidió el desvío: la portada tiene que
+poder describirse a mano.
+
+**La decisión, en tres partes que no se adivinan del tipo.**
+
+1. **El campo vive en `Imagen`, no en `Actividad`.** Describe *esa* imagen: si la
+   portada pasa a ser otra fila, el alternativo de la anterior sigue siendo cierto
+   para ella. Ponerlo en la actividad habría hecho que cambiar de portada dejara
+   una descripción mintiendo sobre otra foto.
+2. **Se pide en una sola fila: la portada.** Lo que cumple «un campo solo» no es el
+   tipo sino el **formulario**, que lo muestra únicamente en la fila que `portadaDe`
+   devuelve. Y es `portadaDe` —la misma función que usaba el `superRefine` para
+   decidir a quién pedírselo—, no `img.portada`: con dos derivaciones, una lista sin
+   ninguna fila marcada (posible en un documento anterior a la galería) pediría el
+   campo en una fila y lo mostraría en otra, o sea un error que existe en el mapa y
+   no se pinta en ninguna parte. Es la clase de B-268 y B-341 a la vez.
+3. **La obligatoriedad era condicional, y por eso no estaba en el tipo.** El schema
+   de la fila lo declara como una cadena más: un `.min(1)` ahí habría dejado
+   inguardable cualquier borrador con una imagen a medio cargar. La exigencia vivía
+   en el `superRefine` del nivel «publicar» de **D-120**, como los condicionales
+   del §11 y por el mismo motivo — en el tipo no se puede escribir «obligatorio si
+   esta fila es la portada».
+
+**Por qué la portada y no las cuatro.** Es la que va a Open Graph y a la tarjeta:
+la única que se comparte. El desvío **le acepta el argumento a D-125 y le cambia el
+alcance** — un campo, no cuatro, y en la imagen que sale del sitio.
+
+**Qué se descartó.**
+
+| Descartado | Por qué |
+|---|---|
+| Un alternativo por cada imagen de la galería | Es exactamente lo que D-125 midió y rechazó: cuatro campos obligatorios por actividad producen «foto» cuatro veces |
+| Dejarlo derivado del título, sin campo (el estado previo) | El título no dice lo que el flyer sí: la fecha, el precio, la sede, que viajan como texto **dentro** de la imagen |
+| `textoAlternativo` en `Actividad` | Sobrevive al cambio de portada describiendo la foto equivocada |
+| Un `.min(1)` en el schema de la fila | Bloquearía el **guardado** de un borrador, no el publicado |
+
+**Y una consecuencia que se aceptó a ojos abiertos:** exigirlo al publicar
+**bloqueaba el re-publicado de lo que ya estaba publicado**. Las imágenes en
+producción no tenían el campo, así que la próxima vez que alguien tocara esas
+actividades tenía que escribirlo. Se aceptó porque el sitio no se rompe mientras
+tanto —sin el campo la página sigue armando el `alt` con el título, que es lo que
+hacía antes— y porque el aviso sale en la barra de abajo desde el principio
+(`faltaParaPublicar`).
+
+### La revisión del 2026-09-07: el bloqueo se sacó, el campo se quedó
+
+Cuatro días después el dueño lo revirtió a medias: «sacame lo de la descripcion
+obligatoria de la imagen». **Se sacó el `superRefine`, no el campo.**
+
+**El argumento es el de D-125, llevado hasta el final** — el mismo que esta entrada
+había aceptado a medias: un campo obligatorio en un panel de una persona produce
+«foto», y con el campo opcional el alternativo que se escriba va a ser el que
+alguien **quiso** escribir. Del otro lado, lo que el bloqueo costaba: las 30
+imágenes que ya estaban en producción no tenían el campo, así que la próxima
+publicación de cualquiera de esas actividades lo exigía primero.
+
+**Qué se pierde, dicho una vez y sin dramatizar:** no hay imágenes sin `alt` —la
+página sigue armando «Imagen de {título}»—, hay un `alt` **genérico**. Lo que se
+pierde es lo que el título no dice y el flyer sí.
+
+### Qué de todo esto sigue siendo cierto hoy
+
+Verificado contra el código el 2026-09-09:
+
+- El campo vive en `Imagen` (`src/types/actividad.ts`) y es `textoAlternativo?:`,
+  opcional en el tipo y en las dos capas del schema (`src/lib/schema.ts`). No queda
+  ningún `superRefine` que lo exija.
+- El editor lo muestra **solo** en la fila que `portadaDe` devuelve
+  (`src/components/admin/GaleriaEditor.tsx`), que es la parte de la decisión que no
+  se revirtió.
+- **Sigue viajando en `toPublic` y sigue sin llegar a ninguna salida.**
+  `ImagenPublica.textoAlternativo` está en `src/lib/toPublic.ts` y en la lista de
+  centinelas permitidos de `tests/barrido-de-salidas-publicas.test.ts` **por
+  adelantado**: el archivo que se sirve es el índice, que de la galería lleva solo
+  la URL de la portada, y la página de detalle arma el `alt` con el título.
+- **Lo que D-440 dejó pendiente sigue pendiente**, y no cambió con la revisión: que
+  `src/lib/detallePublico.ts` proyecte el campo y la plantilla lo use cuando está.
+  Ese cambio tiene que decidir además el JSON-LD y el `og:image:alt`.
 
 ---
 
@@ -9158,17 +9333,26 @@ el día que algo vuelva a querer recordar «esto ya se revisó». Y sirve de avi
 huella tiene que ser del **contenido** y no del reloj, y el sello no puede
 invalidarse con el trabajo que él mismo provocó.
 
-### Una nota sobre D-350, que nunca existió
+### Una nota sobre D-350, que se escribió después
 
 Esta entrada revisa una decisión que la doc citaba como **D-350** —el disparo
-automático, B-124— y que **nunca se escribió**: sigue en la lista de referencias
+automático, B-124— y que cuando esto se escribió **no existía**: era una de las
 huérfanas de `node scripts/decisiones-referenciadas.mjs`, citada desde
-`13-agentes.md` y el `BACKLOG.md`. Así que no hay entrada que anotar como
-revisada, y el número queda apuntando a algo que ni se documentó ni existe más.
+`13-agentes.md`, el `BACKLOG.md` y el `CHANGELOG.md`. Lo que decía este párrafo era
+que redactarla a posteriori, con el resultado a la vista, sería reescribir y no
+documentar.
 
-Se deja dicho acá en vez de escribir D-350 a posteriori: redactar hoy la entrada
-de una decisión ya revertida, con el resultado a la vista, no es documentar sino
-reescribir. Las otras ocho huérfanas siguen abiertas y son su propio pendiente.
+**La entrada se escribió el 2026-09-09 cerrando B-808, y la objeción se manejó en
+vez de esquivarse.** D-350 está redactada como **acta de lo que se decidió el
+2026-09-03**, con las dos revisiones —la del 07 y esta— al pie y separadas, así que
+la decisión no se lee con su final ya puesto. El motivo para escribirla igual es el
+que el propio B-808 daba: una decisión citada que no existe es lo que hace que la
+próxima persona la reinvente distinta, y acá lo que se reinventaría es el disparo
+automático, que es justo lo que esta entrada sacó. Con ella escrita, la cita
+resuelve y esta revisión tiene a qué apuntar.
+
+Las huérfanas que quedan —D-9, D-340, D-341, D-380, D-381 y D-430— siguen abiertas
+y son su propio pendiente.
 
 ---
 

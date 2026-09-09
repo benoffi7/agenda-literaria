@@ -358,13 +358,13 @@ certificando una fuga porque lo que estaba mal era la especificación.
 La conclusión operativa no es "hay que medir más cosas": es que **la salud de
 forma y la corrección son ejes independientes**, y este documento solo habla del
 primero. Los auditores existen para el segundo, y esta vez encontraron lo que
-1.390 tests no (la suite de entonces; hoy son 2.637 y el argumento no cambia —
-son los mismos ejes).
+1.390 tests no (la suite de entonces; al 2026-09-09 son 3.968 casos en 178
+archivos y el argumento no cambia — son los mismos ejes).
 
-### Problema 1 · 48 componentes y 9.962 LOC de `.tsx` con cuatro tests de render
+### Problema 1 · 60 componentes y 14.678 LOC de `.tsx` con diecisiete tests de render
 
 **Seguía siendo el hueco de método, y creció otra vez: eran 34 archivos y 5.355
-LOC, después 39 y 7.045, y hoy 48 y 9.962.**
+LOC, después 39 y 7.045, después 48 y 9.962, y al 2026-09-09 son 60 y 14.678.**
 
 > ⚠️ **La premisa de este problema cambió a medias — ver B-08 en
 > [`BACKLOG.md`](BACKLOG.md), «camino propuesto, decisión del dueño».**
@@ -379,14 +379,38 @@ LOC, después 39 y 7.045, y hoy 48 y 9.962.**
 > `Escape`, foco devuelto), con `tests/menu-acciones.render.test.tsx`.
 >
 > **Remedido el 2026-09-03 (B-311), y la excepción angosta creció sola a
-> cuatro:** además de `menu-acciones`, hoy hay `historial-actividad`,
-> `reportes-panel` y `estadisticas-pestanias`. Son 21 casos de render sobre 2.637
-> de la suite. Que hayan nacido tres más sin que nadie ampliara la política es la
-> señal de que el criterio de B-08 estaba bien puesto: se usan donde el cableado
-> de DOM es la pregunta, y no se derramaron al resto. El denominador, en cambio,
-> creció de 39 a 48 componentes y de 7.045 a 9.962 LOC — o sea que **el hueco se
-> agrandó más rápido de lo que se cubre**, que es exactamente lo que este problema
-> viene diciendo desde tres mediciones.
+> cuatro:** además de `menu-acciones`, entonces había `historial-actividad`,
+> `reportes-panel` y `estadisticas-pestanias`. Eran 21 casos de render sobre 2.637
+> de la suite. El denominador, en cambio, creció de 39 a 48 componentes y de 7.045
+> a 9.962 LOC.
+>
+> **Remedido otra vez el 2026-09-09 (B-806), y ahora son diecisiete.** El párrafo
+> de arriba decía «cuatro» y ya estaba viejo: los `*.render.test.tsx` del árbol
+> son `ayuda-de-seccion`, `buscador-de-pasadas`, `campo-asociado`,
+> `campos-del-panel`, `comisiones`, `estadisticas-pestanias`, `filtros-del-panel`,
+> `formulario-apilado`, `formulario-en-pestanias`, `historial-actividad`,
+> `lista-actividades`, `menu-acciones`, `propuestas-panel`, `reportes-panel`,
+> `si-no-carga`, `texto-alternativo` y `visor-de-galeria`. Son **155 casos de
+> render** —`npx vitest list 'render.test' | wc -l`, que colecta sin correr— sobre
+> los **3.968 que la suite corre en verde** en **178 archivos**, y el denominador
+> pasó a **60 componentes y 14.678 LOC** de `.tsx`.
+>
+> Los dos números no salen del mismo comando y conviene que se sepa: `vitest list`
+> colecta **3.995**, veintisiete más, porque incluye lo que la corrida saltea. El
+> denominador que se usa acá es el de la corrida, que es el que las otras
+> mediciones de este documento venían usando.
+>
+> **La política sigue sin ampliarse, y ése sigue siendo el punto.** Que hayan
+> nacido trece más sin que nadie tocara el criterio es la señal de que el de B-08
+> estaba bien puesto: se usan donde el cableado de DOM **es** la pregunta, y no se
+> derramaron al resto. Lo que no cambió es la otra mitad — **el hueco se agranda
+> más rápido de lo que se cubre**, que es exactamente lo que este problema viene
+> diciendo desde cuatro mediciones.
+>
+> ⚠️ Y la razón por la que este número llegó viejo dos veces está en el propio
+> documento: **nada lo ata**, y a propósito. Un test que lo fijara se pondría rojo
+> con cada render test que agregue cualquiera (B-180). Se remide corriendo
+> `ls tests/*.render.test.tsx` y `npx vitest list`.
 
 Antes de B-08, estaba confirmado que no había forma de que existieran render
 tests: no había `@testing-library/*`, ni `jsdom`, ni `happy-dom` en las
@@ -586,9 +610,11 @@ diagnóstico que se produce una vez.** Por eso ahora hay
 discreto — atar las cifras habría puesto el gate en rojo por trabajo ajeno, que es
 el modo de falla de B-180.
 
-Del eje de forma, lo que queda es **el método, no la estructura**: 48 componentes
-y 9.962 LOC de `.tsx` con cuatro archivos de render test encima (B-08). El
-denominador creció más rápido que la cobertura, dos mediciones seguidas. Y hay
+Del eje de forma, lo que queda es **el método, no la estructura**: al 2026-09-09,
+60 componentes y 14.678 LOC de `.tsx` con diecisiete archivos de render test encima
+(B-08; la cifra escrita en esta línea el 2026-09-03 era «48 y 9.962 con cuatro», y
+se remidió cerrando **B-806**). El denominador creció más rápido que la cobertura,
+tres mediciones seguidas. Y hay
 dos pruebas de lo que eso cuesta — **no vio** un bug que estaba a la vista (B-210)
 y **frenó** el refactor que lo arregló, poniendo cuatro `it` en rojo por mejorar
 el código.

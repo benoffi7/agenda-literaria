@@ -435,11 +435,12 @@ una excepción angosta y a propósito**: `@testing-library/react`,
 `@testing-library/dom`, `@testing-library/user-event` y `jsdom` están
 instalados, pero **solo** para el cableado real de DOM que un test que lee el
 fuente no puede verificar sin arriesgarse a un falso verde (B-202 fue
-exactamente eso) — el primero fue `tests/menu-acciones.render.test.tsx` y hoy son
-**cuatro**: se le sumaron `historial-actividad`, `reportes-panel` y
-`estadisticas-pestanias`. Que hayan nacido tres más sin que nadie ampliara la
-política es la señal de que el criterio está bien puesto: se usan donde el
-cableado de DOM **es** la pregunta, y no se derramaron al resto. Viven en
+exactamente eso) — el primero fue `tests/menu-acciones.render.test.tsx` y al
+2026-09-09 son **diecisiete** (`ls tests/*.render.test.tsx`, remedido con B-806:
+este párrafo decía «cuatro» y era el tercer lugar donde ese número había quedado
+viejo). Que hayan nacido dieciséis más sin que nadie ampliara la política es la
+señal de que el criterio está bien puesto: se usan donde el cableado de DOM **es**
+la pregunta, y no se derramaron al resto. Viven en
 `*.render.test.tsx` y `vitest.config.ts` monta jsdom nada más que para ese
 patrón (`environmentMatchGlobs`); el resto de la suite sigue en `node`. No es
 la puerta abierta a testear cualquier componente: el análisis de B-08 mostró

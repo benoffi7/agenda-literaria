@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **Las dos decisiones que la doc citaba y nunca se habían escrito** — **B-808**
+  (`D-350`) y **B-815** (`D-440`), más el conteo de tests de render de **B-806**.
+  Los tres los había encontrado el `auditor-documentacion` y los tres son la misma
+  clase: **una afirmación que sobrevive a lo que describía.**
+
+  De las dos salidas que los ítems planteaban —escribir la entrada, o corregir las
+  citas para que apunten a donde el razonamiento vive de verdad— se eligió
+  escribir la entrada, por el motivo que los ítems daban: una decisión citada que
+  no existe es lo que hace que la próxima persona la reinvente distinta, y acá lo
+  que se reinventaría es justo lo que el dueño decidió que no.
+
+  **Ninguna se inventó: se reconstruyeron de las citas y del código**, y las dos
+  afirman contra el árbol de hoy y no contra el de su fecha. Las dos se escriben
+  como **acta fechada, con lo que pasó después al pie y separado**, porque las dos
+  fueron revertidas —`D-350` por D-560, el bloqueo de `D-440` por el pedido del
+  dueño del 2026-09-07—. Esa separación es lo que contesta la objeción que D-560
+  tenía escrita: la decisión se lee sin su final puesto, y el final está abajo con
+  su fecha. El párrafo del CHANGELOG que afirmaba «D-350 nunca se escribió» quedó
+  como estaba, con su aviso de caducidad al lado (criterio de D-125/D-128).
+
+  **Y el conteo, remedido en vez de estimado.** El ítem decía cuatro, había contado
+  doce, y son **diecisiete** — entre que se escribió el ítem y hoy nacieron cinco
+  más, que es su propio argumento sobre por qué el número se mide y no se lee. Se
+  remidió la frase entera: **155 casos de render** sobre los **3.968 que la suite
+  corre en verde** en 178 archivos, con el denominador en **60 componentes y 14.678
+  LOC** de `.tsx`. Apareció un **tercer** lugar con el número viejo que el ítem no
+  nombraba (`05-patrones.md`), corregido acá. Y quedó escrito **con qué comando** se
+  contó cada cosa, que era la mitad que faltaba: `vitest list` colecta 3.995,
+  veintisiete más que la corrida, porque incluye lo salteado.
+
+  `decisiones-referenciadas.mjs` pasó de ocho referencias huérfanas a seis.
+
+  **Tres hallazgos del mismo frente, que no eran suyos y quedaron anotados:**
+  **B-849** (el §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice
+  250, más un ciclo de imports vivo que nació con B-841) y **B-850**, que son dos
+  restos de la misma reversión del 2026-09-07: el campo de texto alternativo sigue
+  diciendo «Se necesita para publicar» —le miente a quien carga, en el campo exacto
+  de la decisión— y su ruta de error es código muerto con una justificación escrita
+  que es falsa.
+
 - **La imagen de una propuesta: quién la ve, quién la promueve y quién la borra**
   — **B-830 paso 8**, **DEC-11**. Con **tres decisiones del dueño** (2026-09-09) y
   un hallazgo que salió de un test fallando.
@@ -1283,6 +1323,12 @@
   era el sello. Y quedó dicho en D-560 que **D-350 nunca se escribió** — la
   decisión que esto revierte se citaba por un número que no tiene entrada, y
   redactarla hoy, con el resultado a la vista, sería reescribir y no documentar.
+
+  > **Se escribió el 2026-09-09 (B-808), y la objeción de arriba es la que decidió
+  > cómo.** La entrada está redactada como **acta de lo que se decidió entonces**,
+  > con la revisión posterior —esta misma— al pie y separada: la decisión se lee
+  > sin su final puesto, y el final está abajo con su fecha. El párrafo queda como
+  > estaba escrito, que es el criterio de D-125/D-128.
 
 - **El formulario tiene dos formas, y las elige quien carga** — **B-814**,
   decisión del dueño escrita como **D-550**. Pedido suyo: «el formulario que tenga
