@@ -60,6 +60,86 @@ describe('redactar — el repo de GitHub es público (§5.1, trampa 5)', () => {
     }
   });
 
+  /**
+   * **Las otras dos vías de contacto de una propuesta** — B-843, punto 4.
+   *
+   * `VIAS_CONTACTO_PROPUESTA` son tres y este saneador tapaba una. Mientras nada
+   * mostrara el contacto de un tercero no había camino; con la bandeja (B-830,
+   * paso 7) la pantalla que muestra «+54 9 11 …» vive al lado del botón
+   * «Reportar algo», y lo que se escribe ahí termina en un repo público.
+   */
+  it('tapa los teléfonos, que es la segunda vía de contacto de una propuesta', () => {
+    for (const tel of ['+54 9 11 2222-3333', '1122223333', '11 2222-3333', '(011) 4444-5555']) {
+      expect(redactar(`escribime al ${tel} dale`), tel).toBe(
+        'escribime al «teléfono oculto» dale',
+      );
+    }
+  });
+
+  /**
+   * **El teléfono pegado a una fecha, que es donde la primera versión de esta
+   * guarda dejaba pasar el teléfono entero** — lo encontró el
+   * `auditor-privacidad`.
+   *
+   * El separador entre una fecha y lo que sigue puede ser un espacio o un salto
+   * de línea, y los dos están en la clase del patrón: `'del 2026-10-07
+   * 1122223333'` es **un solo match** que contiene una fecha, así que saltearlo
+   * perdonaba las dos cosas. Por eso hoy la fecha se **aparta** en vez de
+   * perdonarse: se tapa el teléfono y la fecha vuelve a su lugar.
+   *
+   * MUTACIÓN PROBADA: volviendo al `!FECHA_ISO.test(m)` sobre el match, este caso
+   * se pone rojo y los cuatro controles de no-tapar-de-más siguen verdes.
+   */
+  it('un teléfono al lado de una fecha se tapa igual, y la fecha queda', () => {
+    expect(redactar('la propuesta del 2026-10-07 1122223333 no se puede aceptar')).toBe(
+      'la propuesta del 2026-10-07 «teléfono oculto» no se puede aceptar',
+    );
+    // Con salto de línea, que es como se pega una ficha de la bandeja.
+    expect(redactar('fechas:\n2026-10-07\ncontacto: +54 9 11 2222-3333')).toBe(
+      'fechas:\n2026-10-07\ncontacto: «teléfono oculto»',
+    );
+    // Y dos fechas seguidas vuelven cada una a su lugar, no la primera dos veces.
+    expect(redactar('del 2026-10-07 al 2026-11-01 anda mal')).toBe(
+      'del 2026-10-07 al 2026-11-01 anda mal',
+    );
+  });
+
+  it('y los handles, que es la tercera', () => {
+    expect(redactar('mandale DM a @casa.brandon')).toBe('mandale DM a «usuario oculto»');
+    // Desde un carácter: Instagram acepta handles de uno y de dos, y el mínimo
+    // de tres los dejaba pasar enteros.
+    expect(redactar('es @ab nomás')).toBe('es «usuario oculto» nomás');
+    // Después del mail y no antes: si corriera primero se comería la mitad de
+    // una dirección y dejaría el dominio suelto.
+    expect(redactar('hola@casabrandon.example y @casabrandon')).toBe(
+      '«mail oculto» y «usuario oculto»',
+    );
+  });
+
+  /**
+   * **Y el control que importa más que los dos de arriba.**
+   *
+   * Tapar de más en un issue no filtra nada, pero deja el reporte sin lo que hace
+   * falta para reproducirlo — y este panel reporta bugs de fechas todo el tiempo
+   * («el encuentro del 2026-10-07 19:00 no aparece»: son diez dígitos y no es un
+   * teléfono). Sin la guarda de la fecha ISO, el saneador se come justo el dato
+   * que el reporte existe para contar.
+   *
+   * MUTACIÓN PROBADA: sacando `!FECHA_ISO.test(m)`, este caso se pone rojo y los
+   * dos de arriba siguen verdes.
+   */
+  it('pero no se come una fecha con hora, ni el tamaño de ventana, ni la versión', () => {
+    for (const t of [
+      'el encuentro del 2026-10-07 19:00 no aparece',
+      'la ventana era 390×844 @1.5x',
+      'pasa con la versión 0.1.0+abc123 del 2026-09-09 13:00',
+      // Ocho dígitos no alcanzan: un teléfono con característica tiene diez.
+      'el código 12345678 no anda',
+    ]) {
+      expect(redactar(t), t).toBe(t);
+    }
+  });
+
   it('no toca un texto común ni un link inofensivo', () => {
     const t = 'el botón de la home https://agendaleh.ar/admin no responde';
     expect(redactar(t)).toBe(t);

@@ -112,7 +112,7 @@ export function ReporteFormulario({ usuario, onEnviado }: Props) {
         <div className="flex flex-col gap-4">
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
             <strong>El repositorio es público:</strong> lo que escribas se puede leer desde
-            internet. No hace falta que pongas mails de inscriptos ni links de reunión — si
+            internet. No hace falta que pongas mails, teléfonos, usuarios ni links de reunión — si
             se cuela alguno, el panel lo tapa antes de publicar, pero mejor no escribirlos.
             Tu cuenta no aparece en el issue.
           </p>

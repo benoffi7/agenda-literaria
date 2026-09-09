@@ -65,7 +65,13 @@ export const DISPOSITIVOS = ['mobile', 'tablet', 'escritorio'] as const;
 /** Buckets de ancho de viewport. El detalle exacto no aporta y es una huella. */
 export const ANCHOS = ['xs', 'sm', 'md', 'lg'] as const;
 
-export const MODOS = ['nueva', 'editar', 'duplicar'] as const;
+/**
+ * Con qué contenido se abrió el formulario. `'propuesta'` entra con B-830: una
+ * carga que sale de la bandeja **no es una copia** —no hereda un slug ni fechas
+ * corridas, hereda lo que escribió un tercero— y mezclarla con `duplicar`
+ * arruinaría las dos preguntas a la vez.
+ */
+export const MODOS = ['nueva', 'editar', 'duplicar', 'propuesta'] as const;
 export type ModoFormulario = (typeof MODOS)[number];
 
 /** Qué botón disparó el guardado. */
@@ -255,6 +261,28 @@ export const FUNCIONES = [
    * catálogo se mira en la pantalla.
    */
   'estadisticas-abrir',
+  /**
+   * B-830 — la bandeja de propuestas, y las tres son el termómetro de si
+   * `/proponer` sirve para algo.
+   *
+   * **`propuestas-abrir` mide el único riesgo que el PRD acepta sin
+   * mitigación** (§9): «si nadie la mira, las propuestas mueren ahí y es peor
+   * que el mail, porque el mail al menos molesta en la casilla». El `valor` es
+   * cuántas estaban esperando decisión al abrir — un entero, como en
+   * `estadisticas-abrir`, y por lo mismo: lo que se mide es el uso del panel.
+   *
+   * Las otras dos contestan la otra mitad, que es el contra del §9: una
+   * propuesta incompleta y optimista cuesta más de revisar que un mail bien
+   * escrito. Si de cien que llegan se convierten tres, el formulario público
+   * está haciendo perder tiempo y hay que pedirle más o cerrarlo. Sin estos
+   * dos eventos esa revisión sería una impresión.
+   *
+   * Ni una ni otra llevan `detalle`: el título, el contacto y el motivo del
+   * rechazo son contenido, y encima contenido de un tercero sin login (§9).
+   */
+  'propuestas-abrir',
+  'propuesta-convertida',
+  'propuesta-rechazada',
 ] as const;
 export type Funcion = (typeof FUNCIONES)[number];
 

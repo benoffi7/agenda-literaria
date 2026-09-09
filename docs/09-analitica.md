@@ -112,11 +112,15 @@ Sin parámetros propios.
 
 | Parámetro | Valores |
 |---|---|
-| `modo` | `nueva` · `editar` · `duplicar` |
+| `modo` | `nueva` · `editar` · `duplicar` · `propuesta` |
 
 `modo` es lo que permite preguntar si duplicar (B-11) sirve de verdad: si las
 cargas con `modo=duplicar` terminan en `guardado_ok` mucho más que las
 `nueva`, la función ahorró trabajo; si terminan en `formulario_abandonado`, no.
+
+`propuesta` (B-830) es la misma pregunta para la bandeja, y ahí importa más: una
+carga que sale de una propuesta y se **abandona** significa que lo que llegó por
+`/proponer` no alcanzaba, que es justo el contra que el PRD acepta correr.
 
 ---
 
@@ -129,7 +133,7 @@ Se dispara al salir del formulario sin guardar: "Cancelar", "← Volver", o
 
 | Parámetro | Valores | Para qué |
 |---|---|---|
-| `modo` | `nueva` · `editar` · `duplicar` | |
+| `modo` | `nueva` · `editar` · `duplicar` · `propuesta` | |
 | `segundos` | 0–7200 | ¿Se fue a los 5 segundos o después de 20 minutos? |
 | `avance` | 0–7 | Cuántos grupos de campos quedaron completos |
 | `faltantes` | lista de grupos, unida por coma | **Dónde se trabó.** Los grupos son `que-es`, `encuentros`, `donde`, `quien`, `arancel`, `inscripcion`, `material` |
@@ -153,7 +157,7 @@ por intento de guardado rechazado por el schema.
 
 | Parámetro | Valores | Para qué |
 |---|---|---|
-| `modo` | `nueva` · `editar` · `duplicar` | |
+| `modo` | `nueva` · `editar` · `duplicar` · `propuesta` | |
 | `accion` | `borrador` · `submit` | Qué botón se apretó |
 | `cantidad` | 0–100 | Cuántos campos fallaron a la vez |
 | `campos` | rutas del schema, unidas por coma (≤100 chars) | La **combinación** que falla junta |
@@ -171,7 +175,7 @@ campo.
 
 | Parámetro | Valores |
 |---|---|
-| `modo` | `nueva` · `editar` · `duplicar` |
+| `modo` | `nueva` · `editar` · `duplicar` · `propuesta` |
 | `campo` | una ruta del schema, o `otro` |
 | `intento` | 1–50 |
 
@@ -194,7 +198,7 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 
 | Parámetro | Valores | Para qué |
 |---|---|---|
-| `modo` | `nueva` · `editar` · `duplicar` | |
+| `modo` | `nueva` · `editar` · `duplicar` · `propuesta` | |
 | `accion` | `borrador` · `submit` | |
 | `estado` | `borrador` · `pendiente` · `publicado` · `cancelado` (los del modelo) | ¿Se publica o queda en borrador para siempre? |
 | `segundos` | 0–7200 | **Cuánto tarda una carga completa**, desde abrir el formulario |
@@ -233,7 +237,7 @@ documento. Hoy un valor nuevo del modelo se mide solo.
 
 | Parámetro | Valores |
 |---|---|
-| `modo` | `nueva` · `editar` · `duplicar` |
+| `modo` | `nueva` · `editar` · `duplicar` · `propuesta` |
 | `accion` | `borrador` · `submit` |
 | `motivo` | `slug-tomado` · `permisos` · `sin-sesion` · `red` · `fecha-invalida` · `desconocido` |
 | `codigo` | código del SDK de Firebase, de una lista cerrada |
@@ -286,6 +290,9 @@ evento por función.
 | `imagen-rechazada` | la subida no salió | por qué | — |
 | `imagen-rotada` | una foto subida traía marca de rotación | — | el número de `Orientation`, 2 a 8 (B-324) |
 | `estadisticas-abrir` | se abre «Estadísticas» en el listado | — | actividades del catálogo |
+| `propuestas-abrir` | se abre la bandeja de propuestas | — | propuestas esperando decisión (B-830) |
+| `propuesta-convertida` | se guardó la actividad que salió de una propuesta | — | — |
+| `propuesta-rechazada` | se rechaza una propuesta desde la bandeja **y la escritura salió** | — | — |
 
 > ⚠️ **El piso del `valor` es negativo por una sola función, y la historia vale.**
 > El 2026-09-07 este documento estrenó una fila que decía que `encuentro-correr`

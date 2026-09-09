@@ -761,6 +761,96 @@ export const CAPITULOS: CapituloAyuda[] = [
     ],
   },
   {
+    id: 'propuestas',
+    titulo: 'Las propuestas que llegan de afuera',
+    paraQue:
+      'Revisar lo que proponen otras personas y convertir en actividad lo que sirva, sin volver a cargarlo de cero.',
+    puntos: [
+      {
+        texto:
+          'El botón «Propuestas» del listado abre la bandeja, y el número al lado dice cuántas ' +
+          'están esperando que alguien las mire. Arranca mostrando solo esas: las que ya ' +
+          'aceptaste o rechazaste aparecen tildando «Ver aceptadas y rechazadas».',
+      },
+      {
+        texto:
+          'Nada de lo que está en la bandeja se ve en el sitio. Una propuesta no se publica: se ' +
+          'convierte en actividad, y la actividad se publica como cualquier otra, con el mismo ' +
+          'formulario y las mismas revisiones de siempre.',
+      },
+      {
+        texto:
+          '«Convertir en actividad» abre el formulario de siempre con lo que la persona escribió ' +
+          'ya puesto: título, descripción, encuentros, lugar, arancel. Queda en borrador, así ' +
+          'que guardar no publica nada.',
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-conversion.test.ts',
+            it: 'la actividad nace borrador: aceptar prellena, no publica (D-17)',
+          },
+        ],
+      },
+      {
+        texto:
+          'Los encuentros que salen de una propuesta son nuevos y todavía no están en el ' +
+          'calendario, igual que en una copia. Si algún encuentro venía sin hora de fin, queda ' +
+          'con dos horas y el aviso de arriba del formulario lo dice para que lo revises.',
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-conversion.test.ts',
+            it: 'sin hora de fin, suma las horas por defecto y cruza la medianoche bien',
+          },
+          {
+            archivo: 'tests/propuestas-conversion.test.ts',
+            it: 'las horas por defecto están declaradas y se avisan, no se esconden',
+          },
+        ],
+      },
+      {
+        texto:
+          'La propuesta se marca aceptada sola cuando guardás la actividad, no antes. Si esa ' +
+          'segunda parte falla, el panel avisa arriba: la actividad quedó creada y la propuesta ' +
+          'sigue en la bandeja, así que hay que cerrarla a mano para no cargarla dos veces.',
+        cuidado: true,
+      },
+      {
+        texto:
+          'La forma de contactar a quien propuso —mail, WhatsApp o Instagram— se ve en la ficha ' +
+          'y no sale a ninguna parte: no viaja al formulario, no va al sitio y no va al ' +
+          'calendario. Es para repreguntar lo que falte.',
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-conversion.test.ts',
+            it: 'el contacto de quien propuso no está en ninguna parte del formulario',
+          },
+        ],
+      },
+      {
+        texto:
+          'No se puede corregir lo que dice una propuesta, y es a propósito: queda como prueba ' +
+          'de qué te pidieron. Lo que haya que arreglar se arregla en la actividad que sale de ' +
+          'ella.',
+      },
+      {
+        texto:
+          'Rechazar pide un motivo, opcional, que no ve nadie más que ustedes. Por ahora no ' +
+          'borra nada: la propuesta queda marcada y se puede reabrir cuando quieras.',
+      },
+      {
+        texto:
+          'De «qué se llevan», entra lo que ya está en la lista de opciones. Lo que la persona ' +
+          'escribió y no está aparece en el aviso de arriba del formulario, para que decidas vos ' +
+          'si merece sumarse a la lista.',
+        atadoA: [
+          {
+            archivo: 'tests/propuestas-conversion.test.ts',
+            it: 'los slugs conocidos pasan y los inventados no',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'opciones-de-los-desplegables',
     titulo: 'Las opciones de los desplegables',
     paraQue:
@@ -1665,6 +1755,7 @@ export const CAPITULO_POR_CONTEXTO = {
   lista: 'listado',
   formulario: 'flujo',
   calendario: 'calendario',
+  propuestas: 'propuestas',
 } as const;
 
 export type ContextoAyuda = keyof typeof CAPITULO_POR_CONTEXTO;

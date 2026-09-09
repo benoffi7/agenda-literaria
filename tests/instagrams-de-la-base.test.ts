@@ -3,7 +3,9 @@
  *
  * `scripts/instagrams-de-la-base.mjs` arma una página local con todas las
  * cuentas de Instagram de la base. Necesita la misma normalización que el sitio
- * —`handleInstagram`, en `src/lib/detallePublico.ts`— y **no la puede importar**:
+ * —`handleInstagram`, en `src/lib/enlaceSeguro.ts` (vivía en `detallePublico.ts`
+ * hasta B-830, que lo mudó para que la bandeja de propuestas no arrastrara el
+ * view-model público entero)— y **no la puede importar**:
  * un `.mjs` que corre con `node` a secas no resuelve los alias `@/` de
  * TypeScript, y arrastrar un loader para un script de una página no vale.
  *

@@ -65,49 +65,21 @@ import {
   tituloDeEvento,
 } from '@calendario';
 
-// ─────────────────────────────────────────────────────────────────
-// Saneamiento de lo que va a un href
-// ─────────────────────────────────────────────────────────────────
+import { handleInstagram, urlSegura } from '@/lib/enlaceSeguro';
 
-/**
- * Una URL que se puede poner en un `href`, o `null`.
+/*
+ * Los dos saneadores de `href` **se mudaron a `lib/enlaceSeguro.ts`** (B-830,
+ * paso 7) y se reexportan desde acá para no tocar a ninguno de sus usos.
  *
- * **Solo `http:` y `https:`.** `organizador.web`, `inscripcion.destino` con vía
- * «formulario» y `material.items[].url` son campos de texto libre de un
- * formulario, y un `javascript:…` en cualquiera de los tres es un XSS en una
- * página pública. Astro escapa el **contenido**, no el esquema de un `href`.
- *
- * Sin esquema se asume `https://`: quien carga escribe «casabrandon.com», y
- * pedirle el `https://` en el formulario para que el link ande es trasladarle un
- * detalle nuestro.
+ * El motivo de la mudanza: la bandeja de propuestas necesita el mismo saneo —un
+ * `href` armado con texto de alguien sin login— y este módulo es el view-model
+ * de la página de detalle pública, con media docena de dependencias que el panel
+ * no tiene por qué arrastrar. La alternativa era una segunda copia del saneo, que
+ * es la clase de B-88 en el peor archivo posible: dos versiones de «qué URL es
+ * segura» divergen y una queda vieja.
  */
-export const urlSegura = (crudo: string | null | undefined): string | null => {
-  const texto = (crudo ?? '').trim();
-  if (!texto) return null;
-  const candidato = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(texto) ? texto : `https://${texto}`;
-  try {
-    const url = new URL(candidato);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-};
+export { handleInstagram, urlSegura };
 
-/**
- * `@casabrandon` / `casabrandon` / `instagram.com/casabrandon` → el handle solo.
- *
- * Se valida contra el alfabeto real de Instagram: lo que no lo cumple no se
- * convierte en link, se muestra como texto. Un handle con una barra adentro
- * armaría una URL a otra cuenta.
- */
-export const handleInstagram = (crudo: string | null | undefined): string | null => {
-  const limpio = (crudo ?? '')
-    .trim()
-    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
-    .replace(/^@/, '')
-    .replace(/\/+$/, '');
-  return /^[A-Za-z0-9._]{1,30}$/.test(limpio) ? limpio : null;
-};
 
 /** La URL del perfil, o `null` si el handle no es uno. El texto se muestra igual. */
 export const enlaceInstagram = (crudo: string | null | undefined): string | null => {

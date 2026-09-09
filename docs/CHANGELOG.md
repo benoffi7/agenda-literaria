@@ -2,6 +2,90 @@
 
 ## Sin publicar
 
+- **La bandeja de propuestas, y lo que la puerta abierta arrastra** — **B-830**,
+  paso 7 de la tajada 1. Con **D-600** adentro y **B-843 punto 4** cerrado.
+
+  El botón «Propuestas» del listado abre lo que llega de afuera, con el número de
+  las que esperan al lado — que es la única mitigación que el §9 del PRD tiene
+  para el riesgo que acepta sin mitigar: «si nadie la mira, las propuestas mueren
+  ahí y es peor que el mail, porque el mail al menos molesta en la casilla».
+
+  **Convertir es prellenar, no importar**, y no escribe nada: arma el
+  `ActividadForm` con la función pura del paso 6 y se lo pasa al chasis. La
+  propuesta pasa a `aceptada` **recién cuando la actividad existe** (D-600), en
+  una sola escritura, y si esa mitad falla el panel lo dice arriba —la actividad
+  quedó creada y la propuesta sigue en la bandeja, así que sin el aviso se
+  convierte dos veces—. El orden lo fija un test que lee `AdminApp.tsx`: la
+  propiedad no vive entera en la bandeja ni en el chasis, así que no la puede
+  fijar un test de componente.
+
+  **La pantalla no ofrece editar el contenido de una propuesta ni cargar una a
+  mano.** Lo primero porque es prueba de qué se pidió (§4.3 del PRD) y la regla ya
+  lo hace cumplir; lo segundo por la decisión del dueño de B-843 punto 1: el
+  camino de panel espera a que exista la retención (B-838), porque guardar el
+  WhatsApp de un tercero antes de que exista lo que lo borra es guardar un dato
+  personal sin fecha de vencimiento. Por lo mismo la ayuda **no** promete los 30
+  días todavía: una ayuda que miente es peor que no tener ayuda.
+
+  **Y la bandeja estrena una superficie que el proyecto no tenía: texto escrito
+  por alguien sin login, mostrado en el panel.** Tres cosas salen de ahí y las
+  tres entran en este commit — eran dos, y la tercera la encontró el
+  `auditor-privacidad`:
+
+  - el contacto se muestra como link y el link lo arma `enlaceDeContacto`, que
+    valida cada vía por separado — `mailto:` solo si parece un mail, `wa.me` solo
+    con los dígitos, Instagram solo con el alfabeto de un handle. Un `href` es
+    donde un string ajeno deja de ser texto: `javascript:` en el panel de un admin
+    logueado es código con su sesión, y React escapa el contenido de un atributo,
+    no su esquema. Cuando no se puede armar, **no hay link**;
+  - **la imagen pegada pasa por `urlSegura`**, que es el saneador que la ficha
+    pública ya usaba: `imagen.url` es el único string de una propuesta que **no
+    pasa por ningún validador de forma** —la regla pide `is string` y 1–500
+    caracteres, el schema solo el largo—, así que un `javascript:…` llega entero
+    al documento. Hoy React reescribe ese esquema y el `create` sigue cerrado a
+    admin, pero la defensa la estaba poniendo el framework. Para no tener dos
+    versiones de «qué URL es segura» —la clase de B-88 en el peor archivo
+    posible—, `urlSegura` y `handleInstagram` se mudaron a
+    `src/lib/enlaceSeguro.ts` y `detallePublico.ts` los reexporta: ningún uso
+    cambió, y la rama de Instagram del contacto pasó a reusar el saneo de la
+    ficha en vez de tener el suyo;
+  - **`redactar()` pasó a tapar las tres vías de contacto y no una** (B-843 punto
+    4): tapaba mails y links de reunión, y un teléfono o un `@handle` salían
+    enteros a un repo público. El camino no existía mientras nada mostrara el
+    contacto de un tercero; con la bandeja al lado del botón «Reportar algo»
+    existe. El teléfono no puede tapar de más, así que **las fechas se apartan
+    antes del pase y vuelven después**: «el encuentro del 2026-10-07 19:00 no
+    aparece» son diez dígitos y no es un teléfono, y un reporte sin la fecha no
+    se puede reproducir. La primera versión salteaba el match en vez de apartar
+    la fecha y **dejaba pasar el teléfono entero** cuando venía pegado a una
+    —«del 2026-10-07 1122223333» es un solo match—; lo encontró el
+    `auditor-privacidad` y tiene su caso con mutación probada, igual que el
+    mínimo del handle, que dejaba pasar `@ab`.
+
+  **Lo que se mide, y por qué** (`docs/09-analitica.md`): `propuestas-abrir` con
+  cuántas esperaban —el termómetro de que alguien la mire—, más
+  `propuesta-convertida` y `propuesta-rechazada`, que contestan el contra del §9:
+  si de cien que llegan se convierten tres, el formulario público está haciendo
+  perder tiempo. Y `modo` del formulario gana `propuesta`: una carga que sale de
+  la bandeja y se **abandona** dice que lo que llegó no alcanzaba, y mezclarla con
+  `duplicar` arruinaba las dos preguntas a la vez.
+
+  **Un hallazgo del `auditor-trampas` sobre este mismo commit:**
+  `propuesta-rechazada` se medía **antes** del `await`, y `mover` atrapa el error
+  y lo muestra en pantalla — así que una racha de fallos de red dejaba el evento
+  contando rechazos que no ocurrieron, con la suite en verde. Una métrica de
+  decisión que miente despacio es peor que no tenerla. Ahora se mide solo si la
+  escritura salió, con su caso y su mutación probada. `propuesta-convertida` se
+  queda donde está y el comentario dice por qué: el chasis lo llama con la
+  actividad **ya guardada**, así que en esa línea la conversión ya ocurrió; lo que
+  puede fallar después es marcar la propuesta, y eso no la saca del catálogo.
+
+  El test de integración de `/propuestas` escribe ahora **el objeto que arma el
+  panel** (`cambioDeRevision`) en vez de un literal calcado: los cuatro campos de
+  `revision` van siempre, y que la regla los exija con un `hasAll` significa que
+  una copia desincronizada deja la bandeja sin poder aceptar nada con la suite en
+  verde. 175 archivos de test, 3921 casos.
+
 - **`campos/` es genérico de verdad, no solo por su ubicación** — **B-841**,
   cerrado. Era P1 y desbloquea `/proponer`.
 

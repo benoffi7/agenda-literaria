@@ -534,6 +534,47 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
       ).rejects.toThrow(RECHAZADA);
     });
 
+    /**
+     * **Lo que el panel escribe de verdad, contra la regla de verdad** — B-830,
+     * paso 7.
+     *
+     * Los casos de arriba escriben literales a mano, y eso alcanza para probar la
+     * regla; lo que **no** prueban es que la bandeja mande esa forma. Es la clase
+     * de B-88: dos versiones del mismo objeto, una en el test y otra en el
+     * código, que se separan sin que nada se ponga rojo — y acá separarse
+     * significa que el panel no puede aceptar ninguna propuesta en producción,
+     * con toda la suite en verde.
+     *
+     * Por eso este caso importa `cambioDeRevision` en lugar de calcarlo. Los tres
+     * movimientos que la pantalla ofrece, los tres por el mismo constructor.
+     */
+    it('y lo que arma la bandeja pasa: los tres movimientos que el panel ofrece', async () => {
+      const { cambioDeRevision } = await import('@/lib/bandejaDePropuestas');
+      await setDoc(doc(db(), 'propuestas', 'p_panel'), documento());
+
+      await updateDoc(
+        doc(db(), 'propuestas', 'p_panel'),
+        cambioDeRevision(UID, 'en-revision', serverTimestamp()),
+      );
+      await updateDoc(
+        doc(db(), 'propuestas', 'p_panel'),
+        cambioDeRevision(UID, 'rechazada', serverTimestamp(), { motivo: 'ya está en el catálogo' }),
+      );
+      await updateDoc(
+        doc(db(), 'propuestas', 'p_panel'),
+        cambioDeRevision(UID, 'aceptada', serverTimestamp(), { actividadId: 'act_de_la_bandeja' }),
+      );
+
+      const d = (await getDoc(doc(db(), 'propuestas', 'p_panel'))).data() as Propuesta;
+      expect(d.estado).toBe('aceptada');
+      expect(d.revision.actividadId).toBe('act_de_la_bandeja');
+      expect(d.revision.porUid).toBe(UID);
+      // El motivo del rechazo anterior se pisó con `null`: el constructor manda
+      // los cuatro campos siempre, así que no queda un motivo colgado de un
+      // estado que ya no es.
+      expect(d.revision.motivo).toBeNull();
+    });
+
     it('borrar está prohibido: rechazar es un estado, no una desaparición', async () => {
       // La borra la Function de retención a los 30 días (DEC-13), con el Admin
       // SDK, que no pasa por estas reglas.

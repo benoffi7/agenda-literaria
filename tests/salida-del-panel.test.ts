@@ -22,7 +22,9 @@ const fuente = (rel: string): string =>
   readFileSync(fileURLToPath(new URL(`../src/${rel}`, import.meta.url)), 'utf8');
 
 describe('cuándo preguntar antes de salir (B-35)', () => {
-  it('en las tres vistas con formulario, si hay cambios', () => {
+  it('en toda vista con formulario, si hay cambios', () => {
+    // Sin número en el nombre y recorriendo la lista: eran tres hasta B-830, que
+    // sumó `convertir`. Un nombre que cuenta envejece con el primer agregado.
     for (const vista of VISTAS_CON_FORMULARIO) {
       expect(debeConfirmarSalida(vista, true)).toBe(true);
     }

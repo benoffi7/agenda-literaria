@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'bandeja-de-propuestas',
+    fecha: '2026-09-09',
+    version: '1.10.0',
+    titulo: 'Hay una bandeja para lo que proponen de afuera',
+    detalle:
+      'El botón «Propuestas» del listado abre lo que llega de otras personas, con el número de ' +
+      'las que están esperando. «Convertir en actividad» abre el formulario de siempre ya ' +
+      'cargado con lo que escribieron, en borrador: revisás, corregís y publicás como cualquier ' +
+      'otra. Nada de la bandeja se ve en el sitio, y la forma de contactarlos queda solo ahí.',
+    donde: 'Listado → «Propuestas», arriba a la derecha.',
+  },
+  {
     id: 'que-se-llevan',
     fecha: '2026-09-09',
     version: '1.10.0',

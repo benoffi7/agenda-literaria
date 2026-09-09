@@ -25,8 +25,9 @@ export const MAX_INTENTOS = 3;
  *
  *  - el reporte NO identifica a quien lo cargó (uid ni mail): eso queda en
  *    Firestore, que solo leen los admins;
- *  - el texto libre pasa por `redactar()`, que tapa mails y links de reunión
- *    (trampa 5) por si alguien pega uno para explicar el problema;
+ *  - el texto libre pasa por `redactar()`, que tapa mails, links de reunión,
+ *    teléfonos y handles (trampa 5) por si alguien pega uno para explicar el
+ *    problema — las tres vías de contacto de una propuesta, desde B-843;
  *  - de la actividad referida solo salen título y slug **si está publicada**;
  *    el título de un borrador todavía no es público.
  */
@@ -54,16 +55,76 @@ const LINK_REUNION =
   /https?:\/\/\S*?(?:zoom\.us|meet\.google\.com|teams\.microsoft\.com|meet\.jit\.si|whereby\.com|wa\.me|api\.whatsapp\.com)\S*/gi;
 const MAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
 
+/*
+ * ── Las dos vías que faltaban, y por qué entran ahora (B-843, punto 4) ─────
+ *
+ * `VIAS_CONTACTO_PROPUESTA` son tres —mail, WhatsApp e Instagram— y este
+ * saneador tapaba **una**. Mientras nada mostrara el contacto de un tercero no
+ * había camino; con la bandeja de propuestas (B-830, paso 7) el camino existe y
+ * es corto: la pantalla que muestra «+54 9 11 …» vive al lado del botón
+ * «Reportar algo», y el texto de un reporte se publica en un repo **público**.
+ * Copiar el teléfono de quien propuso adentro de «no me deja aceptar la de …»
+ * es lo más natural del mundo.
+ *
+ * **Y el teléfono es el que puede tapar de más**, así que las fechas se
+ * **apartan primero**: se reemplazan por un marcador, se tapa lo que tiene diez
+ * dígitos o más —un teléfono argentino con característica los tiene, una fecha
+ * `aaaa-mm-dd` tiene ocho— y después se devuelven a su lugar. Sin eso el reporte
+ * de este panel pierde la mitad de lo que hace falta para reproducirlo: «el
+ * encuentro del 2026-10-07 19:00 no aparece» son diez dígitos y no es un
+ * teléfono.
+ *
+ * **La primera versión salteaba el match en vez de apartar la fecha, y eso dejó
+ * pasar teléfonos** — lo encontró el `auditor-privacidad`. El separador entre una
+ * fecha y lo que sigue puede ser un espacio o un salto de línea, y los dos están
+ * en la clase del patrón: `'del 2026-10-07 1122223333'` es **un solo match** que
+ * contiene una fecha, así que la guarda lo perdonaba **entero** y el teléfono
+ * salía al issue público. Apartar la fecha resuelve las dos mitades a la vez —se
+ * tapa el teléfono y la fecha queda—, que es lo que la guarda quería.
+ */
+// El `\(?` inicial es para `(011) 4444-5555`, que es como se escribe medio
+// país. No lleva el paréntesis de cierre: el match tiene que terminar en dígito,
+// así que un `(ver 1122223333)` de prosa no se lleva el cierre puesto.
+const TELEFONO = /\(?\+?\d[\d\s().-]{6,}\d/g;
+const FECHA_ISO = /\d{4}-\d{2}-\d{2}/g;
+/*
+ * El marcador con el que viaja una fecha mientras corre el pase del teléfono.
+ * `\uFFFC` («object replacement character») no está en la clase del patrón, así
+ * que corta el match; y no es un carácter que alguien tipee en un reporte.
+ */
+const MARCA_FECHA = '\uFFFC';
+/*
+ * El `@handle`, después de los mails: si corriera antes se comería la mitad de
+ * un mail y dejaría el dominio suelto. El `(?<![\w@/])` es lo que evita
+ * `github.com/@algo` y lo que quede de una dirección.
+ */
+// Desde **un** carácter: Instagram acepta handles de uno y dos, y el mínimo de
+// tres dejaba pasar `@ab` entero (lo marcó el `auditor-privacidad`). Que el
+// primero sea letra o `_` es lo que salva al `@1.5x` del cuadro de contexto, que
+// es la densidad de píxeles y no el usuario de nadie.
+const HANDLE = /(?<![\w@/])@[A-Za-z_][A-Za-z0-9._]{0,29}/g;
+
 /**
- * Tapa en el texto libre lo que no debe salir a un repo público: mails
- * (los de inscripción, sobre todo) y links de reunión (§5.1, trampa 5).
+ * Tapa en el texto libre lo que no debe salir a un repo público: mails, links de
+ * reunión, teléfonos y handles (§5.1, trampa 5).
  * El texto completo queda en Firestore; esto solo recorta lo que se publica.
  */
-export const redactar = (texto) =>
-  String(texto ?? '')
+export const redactar = (texto) => {
+  const fechas = [];
+  let i = 0;
+  return String(texto ?? '')
     .replace(LINK_REUNION, '«link de reunión oculto»')
     .replace(MAIL, '«mail oculto»')
+    .replace(HANDLE, '«usuario oculto»')
+    // Las fechas salen de la línea de fuego y vuelven abajo, en el mismo orden.
+    .replace(FECHA_ISO, (f) => {
+      fechas.push(f);
+      return MARCA_FECHA;
+    })
+    .replace(TELEFONO, (m) => (m.replace(/\D/g, '').length >= 10 ? '«teléfono oculto»' : m))
+    .replaceAll(MARCA_FECHA, () => fechas[i++])
     .trim();
+};
 
 /**
  * ¿Qué hacer con el documento que disparó el trigger?
@@ -169,7 +230,8 @@ export const construirIssue = ({ id, reporte, actividad = null }) => {
   const pie =
     '---\n' +
     'Issue creado automáticamente por `reporteAIssue`. Este repo es público: el ' +
-    'panel tapa mails y links de reunión antes de publicar el texto (§5.1). ' +
+    'panel tapa mails, links de reunión, teléfonos y usuarios antes de publicar ' +
+    'el texto (§5.1). ' +
     'Contestar acá; el panel todavía no muestra las respuestas.';
 
   const cuerpo = [

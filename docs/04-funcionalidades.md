@@ -813,12 +813,64 @@ cerrado en GitHub (D-310): esa sync se evaluó y se descartó (B-30).
 
 **El repo es público, así que el issue también.** El formulario lo dice, el issue
 **no** lleva el mail ni el uid de quien reportó (D-32), el texto libre pasa por un
-filtro que tapa mails y links de reunión (D-33), y el título de la actividad
+filtro que tapa mails, links de reunión, **teléfonos y handles** (D-33, y las dos
+últimas desde B-843: son las otras dos vías de contacto de una propuesta, y la
+bandeja vive al lado de este botón), y el título de la actividad
 referida se copia solo si ya está publicada. El detalle sin recortar y quién lo
 cargó quedan en Firestore.
 
 **Limitación:** las respuestas del dueño se leen en GitHub. El panel todavía no
 las trae de vuelta (B-30), y tanto el formulario como la lista lo aclaran.
+
+### La bandeja de propuestas
+
+Botón **«Propuestas»** en el encabezado del listado, con el número de las que
+esperan decisión al lado (B-830, paso 7 de la tajada 1). Es la contracara del
+formulario público `/proponer`, que todavía **no existe**: hoy la colección
+`/propuestas` solo la puede escribir un admin, porque la escritura anónima espera
+que App Check esté exigiendo (B-836a).
+
+Cada propuesta se muestra entera —lo que escribieron, las fechas, el lugar, el
+arancel, qué se llevan— y con **el contacto de quien la mandó arriba de todo**,
+que es lo que hace que la bandeja sirva: sin forma de repreguntar, la mitad de las
+propuestas quedan a medias. Ese contacto es interno, no viaja a ninguna salida y
+no entra al formulario de actividad.
+
+**Los cuatro movimientos posibles, y son solo cuatro:**
+
+| Acción | Qué hace |
+|---|---|
+| **Convertir en actividad** | abre el formulario de siempre prellenado, en borrador |
+| **La estoy mirando** | la marca `en-revision` para que el otro admin no la duplique |
+| **Rechazar** | pide un motivo interno, opcional |
+| **Reabrir** | vuelve una rechazada a la cola |
+
+**No se puede editar el contenido de una propuesta**, y es a propósito: queda como
+prueba de qué se pidió (§4.3 del PRD). Lo que haya que corregir se corrige en la
+actividad que sale de ella. La regla lo hace cumplir (`revisionValida()` acota el
+update a `estado` + `revision`) y la pantalla ni siquiera lo ofrece.
+
+**Convertir es prellenar, no importar.** La conversión es una función pura
+(`src/lib/propuestas.ts`): traduce el vocabulario del formulario público al del
+modelo —«las dos» es `hibrido`, el lugar es la primera fila de modalidades—,
+genera un `ses_<uuid>` por fecha (trampa 2), y **no inventa un slug** (trampa 10).
+Lo que no se puede prellenar se avisa arriba del formulario: la hora de fin que
+falta queda en dos horas, el canal de inscripción no se adivina, y los «qué se
+llevan» que no están en la taxonomía se listan para que el admin decida si
+merecen entrar.
+
+**Aceptar son dos escrituras en un orden que es una decisión** (**D-600**): se
+crea la actividad **primero** y después la propuesta pasa a `aceptada` con el id
+de esa actividad, en una sola escritura. Si esa segunda mitad falla, el panel lo
+dice arriba: la actividad quedó creada y la propuesta sigue en la bandeja, así que
+hay que cerrarla a mano o se convierte dos veces.
+
+**Lo que todavía no está:** la imagen que se sube (DEC-11, paso 8 — la bandeja
+muestra el path pero no la puede ver), el formulario público (paso 9), y la
+retención a 30 días (DEC-13, **B-838**, paso 11). Por eso la bandeja **no ofrece
+cargar una propuesta a mano** aunque la regla lo permita: guardar el WhatsApp de
+un tercero antes de que exista lo que lo borra es guardar un dato personal sin
+fecha de vencimiento (decisión del dueño, B-843 punto 1).
 
 ## Dos formas del formulario, y las elige quien carga
 

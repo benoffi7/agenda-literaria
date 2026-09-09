@@ -89,6 +89,27 @@ interface Props {
   /** Título del original, solo para el aviso de la copia. */
   tituloOrigen?: string;
   /**
+   * B-830 — **de dónde salió el contenido precargado**, para que el aviso de
+   * arriba diga la verdad.
+   *
+   * `copia` era una sola cosa hasta la bandeja de propuestas: duplicar otra
+   * actividad (B-11). Convertir una propuesta llega por la misma puerta —un
+   * `ActividadForm` que se guarda por el camino de creación— pero **no es una
+   * copia**: no hay original que quede intacto, las fechas no se corrieron en
+   * semanas y lo que hay que revisar es otra cosa. Sin este prop, el aviso le
+   * diría a quien convierte que «los encuentros del original quedan intactos»,
+   * que es una frase sobre una actividad que no existe.
+   */
+  origenDeLaCopia?: 'duplicado' | 'propuesta';
+  /**
+   * B-830 — lo que la conversión **no pudo** prellenar, que es lo que hay que
+   * completar a mano (`avisosDeConversion`).
+   *
+   * Va arriba del formulario y no en un cartel del panel que se pierde al
+   * cambiar de vista: se lee mientras se corrige, que es cuando sirve.
+   */
+  avisos?: readonly string[];
+  /**
    * B-177 — el segundo argumento son las etiquetas nuevas que **no** llegaron a
    * la taxonomía. Va acá y no queda en el formulario porque al guardar el
    * formulario se desmonta: el aviso lo pinta el chasis del panel, que es lo
@@ -104,6 +125,8 @@ export function ActividadFormulario({
   inicial,
   copia,
   tituloOrigen,
+  origenDeLaCopia = 'duplicado',
+  avisos,
   onGuardado,
   onCancelar,
 }: Props) {
@@ -158,7 +181,10 @@ export function ActividadFormulario({
   );
 
   /** Analítica del ciclo de carga. No sale contenido: docs/09-analitica.md. */
-  const medicion = useMedicionFormulario(form, inicial ? 'editar' : copia ? 'duplicar' : 'nueva');
+  const medicion = useMedicionFormulario(
+    form,
+    inicial ? 'editar' : copia ? (origenDeLaCopia === 'propuesta' ? 'propuesta' : 'duplicar') : 'nueva',
+  );
 
   /**
    * Etiquetas creadas con "Otro" que todavía no están en `/opciones/*`.
@@ -501,7 +527,7 @@ export function ActividadFormulario({
         una copia guardada sin mirar es una actividad con el título del año
         pasado y un slug "-copia" que después queda fijo (trampa 10).
       */}
-      {copia && (
+      {copia && origenDeLaCopia === 'duplicado' && (
         <div className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2.5 text-xs">
           <p className="font-medium text-acento">
             Copia de «{tituloOrigen ?? copia.titulo}» — todavía no existe.
@@ -513,6 +539,34 @@ export function ActividadFormulario({
             <strong>slug</strong> y <strong>fechas</strong> antes de publicar: el
             slug queda fijo después.
           </p>
+        </div>
+      )}
+
+      {/*
+        B-830 — el aviso de la conversión. Dice las mismas dos cosas que el de la
+        copia y las dice distinto, porque acá son otras: **nada se guardó
+        todavía** (la propuesta se marca aceptada recién cuando esta actividad
+        exista, D-600) y lo que hay que revisar no es un slug heredado sino lo que
+        la propuesta **no** traía.
+      */}
+      {copia && origenDeLaCopia === 'propuesta' && (
+        <div className="rounded-md border border-acento/30 bg-acento/5 px-3 py-2.5 text-xs">
+          <p className="font-medium text-acento">
+            Sale de la propuesta «{tituloOrigen ?? copia.titulo}» — todavía no existe.
+          </p>
+          <p className="mt-1 text-tinta/70">
+            Está en borrador: guardar no la publica. Los encuentros son nuevos y no están en el
+            calendario. El contacto de quien propuso no viaja acá, queda en la bandeja. Revisá{' '}
+            <strong>título</strong> y <strong>slug</strong> antes de publicar: el slug queda fijo
+            después.
+          </p>
+          {avisos && avisos.length > 0 && (
+            <ul className="mt-1.5 list-disc pl-4 text-tinta/70">
+              {avisos.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

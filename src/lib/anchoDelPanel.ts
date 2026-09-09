@@ -16,12 +16,13 @@ import { usaPestanias, type VistaDelPanel } from '@/lib/vistaDelPanel';
  * | Vista | Ancho | Por qué |
  * |---|---|---|
  * | `lista` | todo | es la grilla de tarjetas de B-620: lo que el ancho compra son columnas |
- * | `nueva` / `editar` / `duplicar` | lectura | el formulario del §11; a 1900px la etiqueta y el error se separan del campo |
+ * | `nueva` / `editar` / `duplicar` / `convertir` | lectura | el formulario del §11; a 1900px la etiqueta y el error se separan del campo |
  * | `historial` | lectura | dos versiones enfrentadas, o sea texto: es el caso donde el renglón largo cansa |
  * | `reportes` | lectura | un formulario y una lista corta |
  * | `taxonomias` | lectura | filas de dos campos: el ancho extra queda vacío |
  * | `calendario` | lectura | la grilla del mes **sí** ganaría, y queda anotado; ensancharla es un cambio visual propio y no entra en este frente |
  * | `estadisticas` | todo | B-621, D-400: un tablero de gráficos es el caso puro de «se recorre de un barrido» |
+ * | `propuestas` | lectura | fichas de texto que se leen una por una, como `reportes` |
  *
  * **La fila de `nueva`/`editar`/`duplicar` dejó de ser fija con B-814**: hoy es
  * «lectura en vista celular, todo en vista PC». El motivo está abajo, en
@@ -93,7 +94,7 @@ export type VistaATodoAncho = (typeof VISTAS_A_TODO_ANCHO)[number];
  * intacto, así que vuelve al ancho de lectura. Es la misma vista la que decide las
  * dos cosas, que es lo que evita la combinación absurda: apilado y a 1900px.
  */
-const VISTAS_DE_FORMULARIO: readonly string[] = ['nueva', 'editar', 'duplicar'];
+const VISTAS_DE_FORMULARIO: readonly string[] = ['nueva', 'editar', 'duplicar', 'convertir'];
 
 /**
  * ¿Esta vista se pinta a todo ancho?

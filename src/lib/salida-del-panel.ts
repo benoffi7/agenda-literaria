@@ -20,8 +20,16 @@
  * en juego se aprende a ignorar, y entonces también se ignora el que sí importa.
  */
 
-/** Las vistas del router que tienen un formulario adentro. */
-export const VISTAS_CON_FORMULARIO = ['nueva', 'editar', 'duplicar'] as const;
+/**
+ * Las vistas del router que tienen un formulario adentro.
+ *
+ * `'convertir'` entra con B-830 y es la que más caro sale olvidar: lo que hay
+ * adentro salió de una propuesta que **no se puede volver a abrir igual** —la
+ * conversión genera encuentros nuevos cada vez— así que abandonarla sin aviso no
+ * pierde treinta campos tipeados, pierde media hora de correcciones sobre lo que
+ * escribió otra persona.
+ */
+export const VISTAS_CON_FORMULARIO = ['nueva', 'editar', 'duplicar', 'convertir'] as const;
 
 export type VistaConFormulario = (typeof VISTAS_CON_FORMULARIO)[number];
 

@@ -46,7 +46,9 @@ describe('el ancho lo decide la vista (B-620)', () => {
      * B-620 aplica entero.
      *
      * La lista sale de `salida-del-panel.ts` y no se repite acá: son las mismas
-     * tres vistas y no puede haber dos versiones de cuáles son.
+     * vistas y no puede haber dos versiones de cuáles son. Eran tres hasta B-830,
+     * que sumó `convertir` — y sumarla allá la trajo acá sola, que es para lo que
+     * la lista se importa en vez de copiarse.
      */
     for (const vista of VISTAS_CON_FORMULARIO) {
       expect(ocupaTodoElAncho(vista, 'celular'), vista).toBe(false);

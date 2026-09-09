@@ -49,6 +49,7 @@ import type { HistorialActividad as TipoHistorial } from '@/components/admin/His
 import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
 import type { EstadisticasPanel as TipoEstadisticas } from '@/components/admin/EstadisticasPanel';
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
+import type { PropuestasPanel as TipoPropuestas, Conversion } from '@/components/admin/PropuestasPanel';
 import type { ActividadConId, ActividadForm } from '@/types/actividad';
 import type { User } from 'firebase/auth';
 
@@ -72,7 +73,29 @@ type Vista =
   | { tipo: 'taxonomias' }
   // B-370 — «Estado del catálogo», el tablero de docs/16-analitica-del-sitio.md.
   // No lleva estado: la pantalla lee `/actividades` sola, como el listado.
-  | { tipo: 'estadisticas' };
+  | { tipo: 'estadisticas' }
+  // B-830 — la bandeja de propuestas. Como `reportes`: no lleva estado, la
+  // pantalla lee `/propuestas` sola.
+  | { tipo: 'propuestas' }
+  /*
+   * B-830 — una propuesta convertida en formulario. Es `duplicar` con dos
+   * diferencias, y las dos son de D-600:
+   *
+   *  - lleva los `avisos` de lo que la conversión **no** pudo prellenar, que se
+   *    leen mientras se corrige;
+   *  - y lleva `alGuardar`, el segundo movimiento: marcar la propuesta aceptada
+   *    con el id de la actividad **recién cuando la actividad existe**. La
+   *    función la arma la bandeja (es la que puede escribir en `/propuestas`) y
+   *    viaja acá adentro por el corte del bundle: `AdminApp` está en el chunk del
+   *    login y no puede importar nada que toque Firestore (B-09, D-51).
+   */
+  | {
+      tipo: 'convertir';
+      copia: ActividadForm;
+      tituloOrigen: string;
+      avisos: readonly string[];
+      alGuardar: (actividadId: string) => Promise<void>;
+    };
 
 /**
  * B-09 — carga diferida del panel autenticado.
@@ -167,6 +190,16 @@ const EstadisticasPanel = diferido<Parameters<typeof TipoEstadisticas>[0]>(() =>
   })),
 );
 
+// Diferida por lo mismo que las otras vistas: la bandeja lee y escribe
+// `/propuestas`, así que arrastra Firestore (B-09, D-51).
+const PropuestasPanel = diferido<Parameters<typeof TipoPropuestas>[0]>(() =>
+  import('@/components/admin/PropuestasPanel').then((m) => ({ default: m.PropuestasPanel })),
+);
+
+const PropuestasBadge = diferido<object>(() =>
+  import('@/components/admin/PropuestasBadge').then((m) => ({ default: m.PropuestasBadge })),
+);
+
 const PendientesBadge = diferido<object>(() =>
   import('@/components/admin/taxonomias/PendientesBadge').then((m) => ({
     default: m.PendientesBadge,
@@ -250,7 +283,9 @@ export function AdminApp() {
    * el calendario devolvía al listado y se perdía el mes que se estaba
    * mirando — que en una vista de calendario es la mitad del contexto.
    */
-  const [volverA, setVolverA] = useState<'lista' | 'calendario' | 'estadisticas'>('lista');
+  const [volverA, setVolverA] = useState<'lista' | 'calendario' | 'estadisticas' | 'propuestas'>(
+    'lista',
+  );
 
   /**
    * B-177 — las etiquetas nuevas que el último guardado no llegó a registrar.
@@ -262,6 +297,18 @@ export function AdminApp() {
    * fuera de esta.
    */
   const [etiquetasSinRegistrar, setEtiquetasSinRegistrar] = useState<readonly string[]>([]);
+
+  /**
+   * B-830 / D-600 — el segundo movimiento que **no** salió.
+   *
+   * Aceptar una propuesta son dos escrituras y el orden es una decisión: primero
+   * la actividad, después la propuesta. Si la segunda falla —permisos, red— la
+   * actividad ya existe y la propuesta sigue diciendo `nueva`: sin este aviso,
+   * la próxima vez que alguien mire la bandeja la convierte de nuevo y quedan
+   * dos actividades. Vive acá y no en la bandeja porque la bandeja está
+   * desmontada mientras el formulario está abierto, que es cuando esto pasa.
+   */
+  const [falloAlAceptar, setFalloAlAceptar] = useState<string | null>(null);
 
   /**
    * B-35 — toda salida del formulario pasa por acá.
@@ -476,7 +523,11 @@ export function AdminApp() {
                           ? 'Opciones de los desplegables'
                           : vista.tipo === 'estadisticas'
                             ? 'Estado del catálogo'
-                            : vista.actividad.titulo}
+                            : vista.tipo === 'propuestas'
+                              ? 'Propuestas'
+                              : vista.tipo === 'convertir'
+                                ? `Propuesta de ${vista.tituloOrigen}`
+                                : vista.actividad.titulo}
           </h1>
           <p className="truncate text-xs text-tinta/50">{usuario.email}</p>
           {/*
@@ -525,6 +576,21 @@ export function AdminApp() {
             Estadísticas
           </button>
         )}
+        {/*
+          B-830 — la entrada a la bandeja, con su badge de pendientes. Solo desde
+          el listado, como «Opciones» y «Estadísticas»: ahí no hay nada que
+          perder, así que no va envuelta en `salirDe` (B-35).
+        */}
+        {vista.tipo === 'lista' && (
+          <button
+            type="button"
+            onClick={() => setVista({ tipo: 'propuestas' })}
+            className="min-h-touch flex shrink-0 items-center rounded-md px-3 text-xs text-tinta/55 hover:bg-black/5"
+          >
+            Propuestas
+            <PropuestasBadge />
+          </button>
+        )}
         {vista.tipo !== 'reportes' && (
           <button
             type="button"
@@ -550,6 +616,8 @@ export function AdminApp() {
               ? 'lista'
               : vista.tipo === 'calendario'
                 ? 'calendario'
+                : vista.tipo === 'propuestas'
+                ? 'propuestas'
                 : vista.tipo === 'taxonomias' || vista.tipo === 'estadisticas'
                   ? 'lista'
                   : 'formulario'
@@ -575,6 +643,15 @@ export function AdminApp() {
         formulario se puede caer en el listado o en el calendario (según de dónde
         se entró), y el aviso tiene que estar en las dos.
       */}
+      {falloAlAceptar && (
+        <p
+          role="alert"
+          className="mb-4 rounded-md border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento"
+        >
+          {falloAlAceptar}
+        </p>
+      )}
+
       <AvisoEtiquetas
         etiquetas={etiquetasSinRegistrar}
         onIrAOpciones={() => {
@@ -653,17 +730,64 @@ export function AdminApp() {
         <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />
       )}
 
-      {(vista.tipo === 'nueva' || vista.tipo === 'editar' || vista.tipo === 'duplicar') && (
+      {vista.tipo === 'propuestas' && (
+        <PropuestasPanel
+          usuario={{ uid: usuario.uid }}
+          onConvertir={(c: Conversion) => {
+            // Vuelve a la bandeja y no al listado: se llegó acá desde ahí y lo
+            // más probable es que haya más de una para atender en la misma
+            // sentada (mismo criterio que el tablero).
+            setVolverA('propuestas');
+            setEtiquetasSinRegistrar([]);
+            setFalloAlAceptar(null);
+            setVista({
+              tipo: 'convertir',
+              copia: c.copia,
+              tituloOrigen: c.tituloOrigen,
+              avisos: c.avisos,
+              alGuardar: c.alGuardar,
+            });
+          }}
+        />
+      )}
+
+      {(vista.tipo === 'nueva' ||
+        vista.tipo === 'editar' ||
+        vista.tipo === 'duplicar' ||
+        vista.tipo === 'convertir') && (
         <ActividadFormulario
           uid={usuario.uid}
           vistaDelPanel={vistaDelPanel}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
-          copia={vista.tipo === 'duplicar' ? vista.copia : undefined}
-          tituloOrigen={vista.tipo === 'duplicar' ? vista.tituloOrigen : undefined}
+          copia={
+            vista.tipo === 'duplicar' || vista.tipo === 'convertir' ? vista.copia : undefined
+          }
+          tituloOrigen={
+            vista.tipo === 'duplicar' || vista.tipo === 'convertir'
+              ? vista.tituloOrigen
+              : undefined
+          }
+          origenDeLaCopia={vista.tipo === 'convertir' ? 'propuesta' : 'duplicado'}
+          avisos={vista.tipo === 'convertir' ? vista.avisos : undefined}
           onCancelar={() => salirDe(() => setVista({ tipo: volverA }))}
-          onGuardado={(_id, sinRegistrar) => {
+          onGuardado={(id, sinRegistrar) => {
             setVersion((v) => v + 1);
             setEtiquetasSinRegistrar(sinRegistrar ?? []);
+            /*
+             * D-600, segundo movimiento: la actividad ya existe, así que ahora
+             * —y solo ahora— la propuesta pasa a `aceptada` con su id. No se
+             * espera para cambiar de vista: el guardado ya salió y dejar el
+             * formulario montado mientras viaja un `update` no aporta nada.
+             */
+            if (vista.tipo === 'convertir') {
+              void vista.alGuardar(id).catch((e: unknown) => {
+                setFalloAlAceptar(
+                  'La actividad se guardó, pero la propuesta quedó sin marcar como aceptada' +
+                    ` (${e instanceof Error ? e.message : 'error desconocido'}).` +
+                    ' Marcala a mano desde la bandeja: si no, se convierte dos veces.',
+                );
+              });
+            }
             setVista({ tipo: volverA });
           }}
         />
