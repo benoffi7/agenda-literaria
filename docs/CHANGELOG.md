@@ -2,6 +2,52 @@
 
 ## Sin publicar
 
+- **Las dos reglas del schema que faltaban del lado del modelo** — **B-817** y
+  **B-816**, los dos P2, los dos marcados por auditores cerrando B-181 y los dos
+  explícitamente fuera de esa tanda. No comparten síntoma pero sí archivo y sí
+  clase: **el schema validaba lo que hace falta para publicar y no lo que hace
+  falta para que el documento no esté roto.**
+
+  **B-817 — el esquema de la URL de una imagen se pedía solo al publicar.** El
+  chequeo vivía adentro del bloque que arranca con
+  `if (!publicando(v.estado)) return`, así que un guardado a `cancelado` lo
+  salteaba entero — y una cancelada que estuvo publicada **conserva su página**
+  (B-110), que pinta todas sus imágenes desde B-296 y la portada en `og:image`. La
+  puerta pasó a ser `tienePagina`, el helper que B-181 dejó al lado.
+
+  **La otra mitad del ítem era la que costaba: la clasificación.** El criterio
+  —«¿esta regla existe para que un dato no salga, o para que el formulario esté
+  completo?»— se aplicó a los **veintidós** rechazos del nivel «publicar», y **se
+  mudó uno solo**. Se queda `esUrl` sobre esa misma URL, que es la vecina que más
+  tienta: lo que rechaza es una dirección que no resuelve —imagen rota, no fuga— y
+  la prueba de que no es la que protege es que `javascript:alert(1)` la pasa,
+  porque es una URL válida para `new URL()`. Se quedan las quince de campo vacío,
+  las tres de coherencia y el slug `-copia`. **La clasificación quedó escrita
+  arriba del bloque**, que es lo que hace que la regla de mañana caiga del lado
+  correcto sin rehacer la pasada.
+
+  El mensaje entró en `MENSAJES_DE_PRIVACIDAD` y con eso **se resolvió la pregunta
+  que B-818 había dejado anotada para acá**. El fixture de ese barrido se amplió
+  con una imagen envenenada: sin eso, la regla mudada entraba **sin declararse** y
+  la suite seguía verde — medido.
+
+  **B-816 — ningún nivel verificaba que los ids de una lista fueran únicos.** El
+  schema validaba el prefijo de los cinco y nada más, así que dos filas con el
+  mismo id eran un documento válido — y el id es la llave con la que **todo**
+  resuelve por fila. Con dos comisiones iguales, `comisionDe` (un `.find`, gana la
+  primera) y el `Map` de etiquetas (gana la última) devuelven **etiquetas distintas
+  para el mismo encuentro**: el evento de Calendar dice «Martes» y la página
+  «Jueves». Era **la única invariante de la trampa 2 que no estaba verificada**.
+
+  **Trece asertos nuevos, todos verificados por mutación**, y dos son de clase y no
+  de instancia: el fixture del barrido de B-818 y los cinco casos de ids, que se
+  recorren desde una tabla — la lista que nazca mañana entra agregando una fila.
+
+  **Y una cosa que el ítem no decía:** hoy la página de detalle ya sanea esas URLs
+  con `urlSegura`, así que el `javascript:` no llegaba al HTML. Lo que se cierra es
+  el **modelo** y el `http://`, que `urlSegura` sí deja pasar y rompe el contenido
+  mixto en silencio.
+
 - **Las dos decisiones que la doc citaba y nunca se habían escrito** — **B-808**
   (`D-350`) y **B-815** (`D-440`), más el conteo de tests de render de **B-806**.
   Los tres los había encontrado el `auditor-documentacion` y los tres son la misma

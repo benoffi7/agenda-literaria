@@ -44,7 +44,9 @@ import {
  * bloqueo de **completitud** llega cuando se intenta publicar, que es cuando
  * importa— pero una regla que existe para que **un dato no salga** no va en ese
  * nivel: va con `tienePagina` (ver más abajo), que es la línea de «esto tiene
- * página». Es la premisa sobre la que hay que decidir B-817.
+ * página». **B-817 aplicó esa premisa al bloque entero, regla por regla**: la
+ * clasificación quedó escrita arriba del nivel «publicar», y de los veintidós
+ * rechazos que había ahí se mudó uno solo.
  *
  * Lo que el modelo necesita para no corromperse **sigue siendo obligatorio en
  * los dos niveles**: los ids de sesión, las fechas y el formato del slug. Eso no
@@ -137,11 +139,19 @@ const HOSTS_DE_REUNION =
  * **Lo que la excepción NO mira es el valor**, y conviene que esté dicho porque es
  * lo que se va a querer suponer: el enmascaramiento compara `path|message`, así
  * que el **mismo** rechazo con otro valor en el mismo path cuenta como «ya
- * estaba». Hoy no filtra porque la única regla de esta lista cae en
- * `comisiones[].etiqueta`, y ahí `comisionesRestaurables` rechaza cualquier versión
- * que traiga un link. Se abre el día que una regla de privacidad caiga en un campo
- * **sin** guarda puntual, y la que está anotada para entrar es justamente ésa:
- * **B-817**. La decisión se toma ahí, con la regla en la mano.
+ * estaba». Para `comisiones[].etiqueta` no filtra, porque `comisionesRestaurables`
+ * rechaza aparte cualquier versión que traiga un link.
+ *
+ * **Y con B-817 entró la primera regla que no tiene guarda puntual detrás** —el
+ * esquema de la URL de una imagen—, así que la decisión que ese ítem dejó anotada
+ * se toma acá: **entra igual, y lo que queda abierto es angosto a propósito**. Lo
+ * único que quedaría enmascarado es cambiar un `javascript:` por otro `javascript:`
+ * **en la misma fila** de una actividad cuyo destino no crece — y ahí el dato ya
+ * está en esa página, así que la restauración no lo mueve a ningún lado nuevo.
+ * Cuando el destino sí crece —publicar una cancelada, descancelar un encuentro—
+ * `cambiaElDestino` hace que bloquee aunque estuviera en la línea de base, que es
+ * el caso que importa. Y una fila **nueva** no se enmascara nunca: el `path` lleva
+ * el índice.
  *
  * Se comparan por mensaje —y por eso el mensaje es una constante y no un literal
  * suelto— porque el `path` de un rechazo lleva el índice del array y cambia con
@@ -158,6 +168,9 @@ const HOSTS_DE_REUNION =
 export const MENSAJES_DE_PRIVACIDAD = {
   etiquetaConLink:
     'Acá va solo el nombre de la opción («Martes 19 h»): el link se publica en la página',
+  // B-817 — el esquema de la URL de una imagen. El mensaje no cambió al mudarse
+  // de nivel: es el mismo que ve quien publica desde el 2026-08-31.
+  urlDeImagenSinHttps: 'La dirección tiene que empezar con https://',
 } as const;
 
 /** Los mensajes de arriba, para preguntar si un rechazo es de esta clase. */
@@ -192,6 +205,23 @@ const fechaValida = (valor: string): boolean => !valor || deDatetimeLocal(valor)
 const ESQUEMA_PERMITIDO = /^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/)/i;
 
 /**
+ * Los mensajes de los cinco ids de cliente (trampa 2), en un solo lugar porque
+ * **cada uno lo usan dos reglas** — B-816.
+ *
+ * La fila valida el **prefijo** y la lista valida que no haya **dos iguales**, y
+ * las dos son la misma falla vista de dos lados: el id no salió de su fábrica.
+ * Con el literal repetido, el día que alguien renombre `nuevaSesionId()` corrige
+ * uno de los dos y el otro queda mintiendo.
+ */
+const MENSAJES_DE_ID = {
+  sesion: 'El id de sesión debe venir de nuevaSesionId()',
+  imagen: 'El id de imagen debe venir de nuevaImagenId()',
+  modalidad: 'El id de modalidad debe venir de nuevaModalidadId()',
+  material: 'El id de material debe venir de nuevaItemMaterialId()',
+  comision: 'El id de opción debe venir de nuevaComisionId()',
+} as const;
+
+/**
  * Una fila de la galería (B-167). Las reglas de forma van en los dos niveles: son
  * las que harían ilegible el documento, no las que lo harían incompleto.
  *
@@ -203,7 +233,7 @@ const ESQUEMA_PERMITIDO = /^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?
  * `superRefine`, en el nivel «publicar».
  */
 const imagenSchema = z.object({
-  id: z.string().regex(/^img_/, 'El id de imagen debe venir de nuevaImagenId()'),
+  id: z.string().regex(/^img_/, MENSAJES_DE_ID.imagen),
   url: texto.min(1, 'Falta la dirección de la imagen'),
   epigrafe: opcional,
   /*
@@ -232,7 +262,7 @@ const imagenSchema = z.object({
 
 const sesionSchema = z
   .object({
-    id: z.string().regex(/^ses_/, 'El id de sesión debe venir de nuevaSesionId()'),
+    id: z.string().regex(/^ses_/, MENSAJES_DE_ID.sesion),
     // Las fechas se exigen en los dos niveles: `formADocumento` las convierte a
     // `Timestamp` y una cadena vacía tira `Fecha inválida` en el guardado
     // (trampa 1). Un encuentro nuevo nace con fecha y hora puestas
@@ -326,7 +356,7 @@ const onlineSchema = z.object({
  * guardado de un borrador: nace vacía cuando se aprieta «agregar».
  */
 const comisionSchema = z.object({
-  id: z.string().regex(/^com_/, 'El id de opción debe venir de nuevaComisionId()'),
+  id: z.string().regex(/^com_/, MENSAJES_DE_ID.comision),
   etiqueta: opcional,
 });
 
@@ -344,7 +374,7 @@ const comisionSchema = z.object({
  */
 const modalidadFilaSchema = z
   .object({
-    id: z.string().regex(/^mod_/, 'El id de modalidad debe venir de nuevaModalidadId()'),
+    id: z.string().regex(/^mod_/, MENSAJES_DE_ID.modalidad),
     modalidad: z.enum(MODALIDADES),
     inicio: opcional,
     fin: opcional,
@@ -381,7 +411,7 @@ const modalidadFilaSchema = z
 
 const itemMaterialSchema = z.object({
   // B-342 — trampa 2: el id se genera en el cliente, nunca por índice.
-  id: z.string().regex(/^mat_/, 'El id de material debe venir de nuevaItemMaterialId()'),
+  id: z.string().regex(/^mat_/, MENSAJES_DE_ID.material),
   tipo: z.enum(TIPOS_MATERIAL),
   // El título del material se exige al publicar: en el evento, un ítem sin
   // título sale como una línea vacía. A medio cargar puede estar en blanco.
@@ -496,10 +526,12 @@ export const actividadFormSchema = z
    * ── Reglas que NO son de completitud ──────────────────────────────
    * Todo lo de acá abajo usa `faltaSiempre`, o sea que **no** está gateado por
    * `publicando`: son las reglas que hacen **ilegible o contradictorio** el
-   * documento —y por eso corren también sobre un borrador— más **una que no es de
-   * completitud ni de coherencia**: la de la etiqueta de una opción, que existe
-   * para que un dato **no salga** y por eso se acota con `tienePagina` (corre en
-   * `publicado` y en `cancelado`, no en borrador; ver su bloque, y B-817).
+   * documento —y por eso corren también sobre un borrador— más **dos que no son de
+   * completitud ni de coherencia**: la etiqueta de una opción y el esquema de la
+   * URL de una imagen, que existen para que un dato **no salga** y por eso se
+   * acotan con `tienePagina` (corren en `publicado` y en `cancelado`, no en
+   * borrador; van juntas en el sub-bloque del final, y el porqué de que sean esas
+   * dos y no más está arriba del nivel «publicar» — B-817).
    *
    * O sea que el criterio del bloque no es «corre siempre»: es «no es
    * completitud». El nivel «publicar» —la completitud del §11— es el
@@ -515,6 +547,54 @@ export const actividadFormSchema = z
   .superRefine((v, ctx) => {
     const faltaSiempre = (path: (string | number)[], message: string) =>
       ctx.addIssue({ code: 'custom', path, message });
+
+    /*
+     * ── B-816 · dos filas de la misma lista no pueden compartir id ─────────
+     * Lo marcó el `auditor-privacidad` cerrando B-181. El schema validaba el
+     * **prefijo** de los cinco ids y nada más, así que dos filas con el mismo id
+     * eran un documento perfectamente válido — y el id es la llave con la que
+     * **todo** resuelve por fila.
+     *
+     * Qué pasa con dos iguales, que es peor que un dato raro: con dos comisiones
+     * del mismo id, `comisionDe` (un `.find`, o sea la primera) y el `Map` de
+     * etiquetas (donde gana la última) resuelven **etiquetas distintas para el
+     * mismo encuentro** — el evento de Calendar dice «Martes» y la página
+     * «Jueves». Es la clase de B-88, dos derivaciones del mismo dato que se
+     * separan. Con dos sesiones del mismo id, el diff del §7.2 pierde una porque
+     * su `Map` se queda con la última, y la página escribe dos `<li id="ses_…">`
+     * repetidos: HTML inválido y dos anclas que llevan al mismo lugar.
+     *
+     * Va en **los dos niveles**, como el prefijo y por el mismo motivo: no es un
+     * formulario incompleto, es un documento ilegible.
+     *
+     * **El mensaje es el mismo que el del prefijo, a propósito.** Desde la UI no
+     * hay forma de producir esto —los cinco ids salen de `crypto.randomUUID()`—,
+     * así que se llega editando a mano en la consola o por un bug en una fábrica
+     * de ids, que es justo lo que la trampa 2 vigila: misma causa que el prefijo
+     * y mismo remedio. «Hay dos filas con el mismo id» no le dice nada a quien
+     * carga actividades; «el id debe venir de `nuevaSesionId()`» nombra lo que
+     * está roto y de dónde tenía que haber salido.
+     */
+    const idsRepetidos = (
+      filas: readonly { id: string }[],
+      campo: readonly (string | number)[],
+      mensaje: string,
+    ) => {
+      const vistos = new Set<string>();
+      filas.forEach((fila, i) => {
+        // El rechazo cae en la fila **repetida** y no en la lista: es el mismo
+        // path que el del prefijo (`sesiones.1.id`), así que el editor de filas
+        // lo pinta donde ya sabe pintarlo.
+        if (vistos.has(fila.id)) faltaSiempre([...campo, i, 'id'], mensaje);
+        else vistos.add(fila.id);
+      });
+    };
+
+    idsRepetidos(v.sesiones, ['sesiones'], MENSAJES_DE_ID.sesion);
+    idsRepetidos(v.imagenes, ['imagenes'], MENSAJES_DE_ID.imagen);
+    idsRepetidos(v.modalidades, ['modalidades'], MENSAJES_DE_ID.modalidad);
+    idsRepetidos(v.material.items, ['material', 'items'], MENSAJES_DE_ID.material);
+    idsRepetidos(v.comisiones, ['comisiones'], MENSAJES_DE_ID.comision);
 
     // Las dos de la galería que van en los DOS niveles (D-120): harían ilegible
     // el documento, no incompleto.
@@ -582,14 +662,59 @@ export const actividadFormSchema = z
      * a propósito: un link pegado a medio escribir no tiene por qué trabar el
      * guardado, y de un borrador no sale nada.
      */
+    /*
+     * ── Las reglas que corren con `tienePagina` ────────────────────────────
+     * O sea en `publicado` y en `cancelado`, y no en borrador. Son las dos que
+     * existen para que un dato **no salga**; el criterio con el que se eligieron
+     * —y por qué las otras quince del nivel «publicar» se quedaron ahí— está
+     * escrito arriba de ese bloque (B-817).
+     */
     if (tienePagina(v.estado)) {
       v.comisiones.forEach((o, i) => {
         if (llevaLinkDeReunion(o.etiqueta)) {
           faltaSiempre(['comisiones', i, 'etiqueta'], MENSAJES_DE_PRIVACIDAD.etiquetaConLink);
         }
       });
-    }
 
+      /*
+       * B-817 — **el esquema de la URL de una imagen**, mudado desde el nivel
+       * «publicar». Es el mismo agujero que la etiqueta de acá arriba, en el
+       * campo de al lado y encontrado el mismo día: el bloque de publicar arranca
+       * con `if (!publicando(v.estado)) return`, así que un guardado a
+       * `cancelado` lo salteaba entero — y la cancelada conserva su página
+       * (B-110, §7.3), que pinta **todas** sus imágenes en un `<img src>` desde
+       * B-296 y la portada en `og:image` (B-107). El camino es el mismo que costó
+       * el P1 de B-181: publicar normal, pasar a `cancelado`, y en esa misma
+       * edición pisar la URL con un `data:` o un `javascript:`.
+       *
+       * `z.string().url()` acepta todo lo que `new URL()` parsee, o sea también
+       * `data:` y `javascript:`, así que **la que protege es ésta y no `esUrl`**.
+       * Y un `http://` pasa la validación y después lo bloquea el contenido mixto
+       * en una página `https`: imagen rota en el sitio, sin que nada avise.
+       *
+       * La excepción de `localhost` es el emulador de Storage, que sirve por
+       * `http://127.0.0.1:9199/…`: sin ella, una imagen propia subida en
+       * desarrollo no se puede publicar ni siquiera para probar el flujo, que es
+       * justo lo que el §10 pide hacer contra emuladores. Lo que la excepción
+       * habilita en producción es una URL a `localhost`, o sea una imagen rota en
+       * la propia vista previa del panel — no un `data:` ni un `javascript:`, que
+       * siguen bloqueados por este mismo `if`.
+       *
+       * En **borrador** sigue sin molestar, como antes y por el mismo motivo que
+       * la etiqueta: una URL a medio pegar no tiene por qué trabar el guardado, y
+       * de un borrador no sale nada.
+       */
+      v.imagenes.forEach((img, n) => {
+        // La URL **vacía** no entra: no es un dato que no puede salir, es un dato
+        // que no está, y ya lo rechaza el `.min(1)` de la fila en los dos niveles.
+        // Sin esta mitad, una fila a medio cargar en una cancelada juntaría los dos
+        // rechazos en el mismo path y el formulario —que los guarda en un mapa por
+        // path— mostraría el de acá en vez de «Falta la dirección de la imagen».
+        if (img.url && !ESQUEMA_PERMITIDO.test(img.url)) {
+          faltaSiempre(['imagenes', String(n), 'url'], MENSAJES_DE_PRIVACIDAD.urlDeImagenSinHttps);
+        }
+      });
+    }
   })
   // ── Nivel «publicar» ──────────────────────────────────────────────
   // Todo lo de acá abajo corre **solo** si el guardado es a `publicado`. Es la
@@ -598,7 +723,42 @@ export const actividadFormSchema = z
   // OJO al agregar una regla acá: si existe para que un **dato no salga** y no
   // para que el formulario esté completo, este bloque es el lugar equivocado —
   // una actividad `cancelado` conserva su página (B-110) y se saltea todo esto.
-  // Ver `tienePagina`, y B-817 para la que quedó de este lado.
+  // Ver `tienePagina`.
+  //
+  // ── B-817 · el bloque se revisó regla por regla, y se mudó una ─────
+  // La pregunta, la del ítem: **¿esta regla existe para que un dato no salga, o
+  // para que el formulario esté completo?** El resultado queda escrito acá para
+  // que la próxima vez no haya que rehacer la pasada, y porque la clasificación
+  // es lo que hace que la regla que se agregue mañana caiga en el lado correcto.
+  //
+  // - **Se mudó** (arriba, con `tienePagina`): el esquema de `imagenes[].url`.
+  //   `javascript:` y `data:` son un **valor que no puede salir**, y la página de
+  //   una cancelada los pinta igual en `<img src>` y en `og:image`.
+  // - **Se queda `esUrl` sobre esa misma URL**, aunque sea la línea de al lado y
+  //   el mismo campo: lo que rechaza es una dirección que no se resuelve —una
+  //   imagen rota, no una fuga—. La prueba de que no es ésta la que protege es
+  //   que `javascript:alert(1)` la pasa: es una URL válida para `new URL()`.
+  // - **Se quedan las quince de campo vacío**: `tipo`, `titulo` corto,
+  //   `descripcion`, `organizador.nombre`, `arancel.tipo`, «al menos un
+  //   encuentro», «al menos una modalidad», la sede y la plataforma por fila, el
+  //   canal y el destino de inscripción, el material sin ítems, el título de cada
+  //   ítem y el nombre de cada opción. Un campo vacío **no publica nada**: lo que
+  //   sale de menos es la página, y eso ya pasó cuando se publicó. A una
+  //   cancelada no hay que pedirle que esté completa — es la mitad del motivo por
+  //   el que el nivel corto existe (B-183).
+  // - **Se quedan las tres de coherencia** (cuatro rechazos): el ciclo con un solo
+  //   encuentro, dos opciones con el mismo nombre, y la integridad referencial
+  //   `sesiones ⇄ comisiones` en sus dos sentidos. Hacen la página **confusa**, no
+  //   filtran nada. Si alguna vez se decidiera que un borrador tampoco puede
+  //   contradecirse, su lugar sería el bloque de arriba **sin** `tienePagina`
+  //   (como el monto de B-114); moverlas hoy cambiaría qué borradores se pueden
+  //   guardar, que es más de lo que este ítem pide y no es lo que arregla.
+  // - **Se queda el slug `-copia`** (trampa 10), que es la que más parece
+  //   candidata porque el slug **es** una URL pública. Pero lo que la trampa evita
+  //   es que el slug **quede congelado** con `-copia`, y congelarlo es lo que hace
+  //   publicar: el campo se bloquea con `estuvoPublicada`. Un `cancelado` que
+  //   nunca se publicó no tiene página ni slug congelado, y uno que sí se publicó
+  //   ya pasó por esta regla.
   .superRefine((v, ctx) => {
     if (!publicando(v.estado)) return;
 
@@ -612,27 +772,14 @@ export const actividadFormSchema = z
     if (v.descripcion.length < 10) falta(['descripcion'], 'Escribí una descripción');
     if (!v.organizador.nombre) falta(['organizador', 'nombre'], 'Falta el organizador');
     if (!v.arancel.tipo) falta(['arancel', 'tipo'], 'Elegí el arancel');
+    // El **esquema** de esta misma URL se mira arriba, con `tienePagina` (B-817).
+    // Acá queda la otra mitad: que la dirección se pueda resolver. Publicando,
+    // una URL que no es ninguna de las dos cosas —`no-es-una-url`— junta los dos
+    // rechazos en el mismo path, y está bien que los junte: son dos problemas
+    // distintos («esto no es una dirección» y «esta dirección no puede salir») y
+    // el formulario los guarda en un mapa por path, así que muestra uno.
     v.imagenes.forEach((img, n) => {
-      if (!esUrl(img.url)) {
-        falta(['imagenes', String(n), 'url'], 'URL inválida');
-        return;
-      }
-      // `z.string().url()` acepta todo lo que `new URL()` parsee, o sea también
-      // `data:` y `javascript:`, y esa URL sale entera al `events.json` y va a
-      // terminar en un `<img src>` y en `og:image` (B-107). Y un `http://` pasa
-      // la validación y después lo bloquea el contenido mixto en una página
-      // `https`: imagen rota en el sitio, sin que nada avise.
-      //
-      // La excepción de `localhost` es el emulador de Storage, que sirve por
-      // `http://127.0.0.1:9199/…`: sin ella, una imagen propia subida en
-      // desarrollo no se puede publicar ni siquiera para probar el flujo, que es
-      // justo lo que el §10 pide hacer contra emuladores. Lo que la excepción
-      // habilita en producción es una URL a `localhost`, o sea una imagen rota en
-      // la propia vista previa del panel — no un `data:` ni un `javascript:`, que
-      // siguen bloqueados por este mismo `if`.
-      if (!ESQUEMA_PERMITIDO.test(img.url)) {
-        falta(['imagenes', String(n), 'url'], 'La dirección tiene que empezar con https://');
-      }
+      if (!esUrl(img.url)) falta(['imagenes', String(n), 'url'], 'URL inválida');
     });
 
     /*

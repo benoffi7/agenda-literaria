@@ -4132,7 +4132,33 @@ Esto queda como ítem y no como arreglo porque las tres filas de arriba piden
 producto sobre qué se muestra de la autoría.
 
 
-### B-817 · El esquema de la URL de una imagen se valida solo al publicar, y una cancelada también tiene página · P2
+### B-817 · El esquema de la URL de una imagen se valida solo al publicar, y una cancelada también tiene página — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Resuelto con el cambio de una palabra —`publicando` → `tienePagina`— y con
+> la clasificación que el ítem pedía, escrita al lado de las reglas.**
+>
+> Se aplicó el criterio a los **veintidós** rechazos del nivel «publicar» y **se
+> mudó uno solo**. Lo que se queda, con su motivo: `esUrl` sobre esa **misma** URL
+> —rechaza una dirección que no resuelve, o sea una imagen rota, y la prueba de que
+> no es la que protege es que `javascript:alert(1)` la pasa, porque es una URL
+> válida para `new URL()`—; las quince de campo vacío (a una cancelada no hay que
+> pedirle que esté completa); las tres de coherencia (hacen la página confusa, no
+> filtran nada); y el slug `-copia`, que parecía la candidata más clara y no lo es:
+> lo que la trampa 10 evita es que el slug **se congele**, y congelarlo lo hace
+> publicar.
+>
+> El mensaje entró en `MENSAJES_DE_PRIVACIDAD`, y con eso **se resolvió la decisión
+> que B-818 había dejado anotada para acá**. El fixture de ese barrido se amplió
+> con una imagen envenenada: **sin eso la regla mudada entraba sin declararse y la
+> suite seguía verde** — medido, no supuesto.
+>
+> **Y la severidad real, dicha para que el ítem no se lea con más alarma de la que
+> tiene:** la página de detalle ya sanea esas URLs con `urlSegura` antes de pintar
+> el `<img src>`, el `href` del visor y el `og:image`, así que el `javascript:` no
+> llegaba al HTML. Lo que este arreglo cierra es el **modelo** —que el valor no se
+> guarde en un documento que tiene página, ni espere a la salida que mañana se
+> escriba sin saneador— y el `http://`, que `urlSegura` sí deja pasar y después
+> rompe el contenido mixto en silencio.
 
 **Lo marcó el `auditor-trampas`** cerrando B-181, y explícitamente como fuera de
 esa tanda: es el mismo agujero que B-181 acaba de cerrar del otro lado, en el
@@ -4164,7 +4190,25 @@ esa tanda un cambio de comportamiento sobre un campo que no era el suyo. Pero es
 del mismo día y de la misma clase, así que conviene resolverlo antes de que la
 distinción `publicando`/`tienePagina` se olvide.
 
-### B-816 · Ningún nivel valida que los ids de un array sean únicos · P2
+### B-816 · Ningún nivel valida que los ids de un array sean únicos — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Una función para las cinco listas, en los dos niveles, como el prefijo y por
+> el mismo motivo:** dos filas con el mismo id no son un formulario incompleto, son
+> un documento ilegible.
+>
+> **El mensaje es el del prefijo**, que es lo que el ítem proponía, y los cinco
+> literales se extrajeron a una constante que las dos reglas de cada lista
+> comparten: con el literal repetido, el día que se renombre `nuevaSesionId()`
+> alguien corrige uno y el otro queda mintiendo.
+>
+> **Un desvío chico y a propósito:** en vez del `new Set(ids).size !== ids.length`
+> que marca la lista una vez, marca **cada fila repetida** — con tres iguales hay
+> que borrar dos y una marca sola no dice cuáles, y el path por fila es el que el
+> editor ya sabe pintar al lado del control (B-341, B-343). La forma que proponía
+> el ítem quedó como mutación probada.
+>
+> Los cinco casos se recorren desde una tabla: **la lista que nazca mañana con su
+> id de cliente entra agregando una fila.**
 
 **Lo marcó el `auditor-privacidad` cerrando B-181, explícitamente como «no es de
 esta tanda»** — y tiene razón: vale para `sesiones[].id` desde que existe el

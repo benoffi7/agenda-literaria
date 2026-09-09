@@ -458,6 +458,109 @@ describe('schema — la galería (B-167)', () => {
  * medio hacer dejaría de guardarse).
  */
 /**
+ * **El esquema de la URL de una imagen corre con página, no al publicar** —
+ * B-817, y lo marcó el `auditor-trampas` cerrando B-181 explícitamente como fuera
+ * de esa tanda: es el mismo agujero que B-181 acababa de cerrar del otro lado, en
+ * el campo de al lado.
+ *
+ * El chequeo vivía adentro del bloque que arranca con
+ * `if (!publicando(v.estado)) return`, así que un guardado a `cancelado` lo
+ * salteaba entero — y la cancelada **conserva su página** si estuvo publicada
+ * (B-110, §7.3), esa página pinta **todas** sus imágenes en un `<img src>` desde
+ * B-296 y la portada en `og:image` (B-107), y entra al sitemap hasta 30 días
+ * después de su última edición. El camino es el de B-181: publicar normal, pasar a
+ * `cancelado`, y en esa misma edición pisar la URL con un `data:` o un
+ * `javascript:`.
+ */
+describe('el esquema de la URL de una imagen corre con página (B-817)', () => {
+  const conImagen = (url: string, estado: string) => ({
+    ...valido(),
+    estado,
+    imagenes: [
+      {
+        id: 'img_1',
+        url,
+        epigrafe: '',
+        textoAlternativo: '',
+        origen: 'externa' as const,
+        portada: true,
+      },
+    ],
+  });
+
+  it.each(['javascript:alert(1)', 'data:image/png;base64,AAA', 'http://ejemplo.ar/tapa.jpg'])(
+    'una cancelada no se guarda con «%s»: su página lo pinta igual (B-110, B-296)',
+    (url) => {
+      /*
+       * MUTACIÓN PROBADA: volviendo la regla al bloque de `publicando` (que es
+       * exactamente el estado anterior a B-817), los tres casos se ponen rojos —
+       * el `javascript:` se guarda y llega al `<img src>` y al `og:image` de una
+       * página que sigue indexada.
+       */
+      expect(errores(conImagen(url, 'cancelado'))).toEqual(['imagenes.0.url']);
+    },
+  );
+
+  it('y el que rechaza es el esquema, no `esUrl`', () => {
+    /*
+     * `javascript:alert(1)` **es** una URL para `new URL()`, así que
+     * `z.string().url()` la acepta: si la regla mudada hubiera sido `esUrl`, en
+     * `cancelado` no rechazaría **nada**. Es la mitad de la clasificación de
+     * B-817 escrita como aserto: cuál de las dos reglas del campo es la que
+     * existe para que un dato no salga.
+     *
+     * DOS MUTACIONES PROBADAS. Mudando `esUrl` en lugar del esquema, se ponen
+     * rojos éste (no hay mensaje) y los tres de arriba, más el caso de la galería
+     * que exige https al publicar. Cambiando el **texto** del mensaje, se ponen
+     * rojos éste y el de publicar, y los tres de arriba siguen verdes: es lo que
+     * ata que mudar de nivel no cambie lo que ve quien carga (B-341).
+     */
+    expect(mensajes(conImagen('javascript:alert(1)', 'cancelado'))['imagenes.0.url']).toBe(
+      'La dirección tiene que empezar con https://',
+    );
+  });
+
+  it('una cancelada con una URL normal se sigue guardando', () => {
+    // Control positivo: sin esto, «cancelado no se guarda nunca» pasaría los
+    // casos de arriba igual de verde.
+    expect(errores(conImagen('https://ejemplo.ar/tapa.jpg', 'cancelado'))).toEqual([]);
+  });
+
+  it('el emulador de Storage sigue siendo la excepción, también en cancelado (§10)', () => {
+    expect(errores(conImagen('http://127.0.0.1:9199/v0/b/x/o/img.jpg', 'cancelado'))).toEqual([]);
+  });
+
+  it('en borrador no molesta: una URL a medio pegar no traba el guardado (D-120)', () => {
+    // La otra mitad de la línea: de un borrador no sale nada, así que la regla no
+    // tiene por qué correr ahí. Si corriera, se rompería B-183.
+    expect(errores(conImagen('http://ejemplo.ar/tapa.jpg', 'borrador'))).toEqual([]);
+    expect(errores(conImagen('ejemplo.ar/tapa.jpg', 'borrador'))).toEqual([]);
+  });
+
+  it('la fila sin URL conserva su propio mensaje, también en cancelado', () => {
+    /*
+     * Una URL vacía no es «un dato que no puede salir», es un dato que no está, y
+     * ya lo rechaza el `.min(1)` de la fila en los dos niveles.
+     *
+     * MUTACIÓN PROBADA: sacando el `img.url &&` de la regla mudada, este caso se
+     * pone rojo — los dos rechazos caen en el mismo path y el formulario, que los
+     * guarda en un mapa por path, pasa a mostrar el de la mudanza sobre una fila
+     * que lo único que tiene es un campo en blanco.
+     */
+    expect(mensajes(conImagen('', 'cancelado'))['imagenes.0.url']).toBe(
+      'Falta la dirección de la imagen',
+    );
+  });
+
+  it('publicando sigue rechazando, y con el mismo mensaje de siempre', () => {
+    // La mudanza no relajó el nivel largo: es el caso de B-341, que es el mensaje
+    // que `GaleriaEditor` pinta en la fila.
+    const r = conImagen('data:image/png;base64,AAA', 'publicado');
+    expect(mensajes(r)['imagenes.0.url']).toBe('La dirección tiene que empezar con https://');
+  });
+});
+
+/**
  * **El texto alternativo dejó de ser obligatorio para publicar** — lo pidió el
  * dueño el 2026-09-07 («sacame lo de la descripcion obligatoria de la imagen»), y
  * revierte el bloqueo que B-301 / D-440 había puesto cuatro días antes.
@@ -1044,6 +1147,218 @@ describe('la etiqueta de una opción no puede llevar un link (B-181)', () => {
 });
 
 /**
+ * **Dos filas de la misma lista no pueden compartir id** — B-816, y lo marcó el
+ * `auditor-privacidad` cerrando B-181 como «no es de esta tanda». Vale para
+ * `sesiones[].id` desde que existe el modelo, y para `imagenes`, `modalidades`,
+ * `material.items` y `comisiones`.
+ *
+ * El schema validaba el **prefijo** y nada más, así que dos filas con el mismo id
+ * eran un documento válido — y el id es la llave con la que **todo** resuelve por
+ * fila: `comisionDe` hace un `.find` (gana la primera) contra un `Map` de
+ * etiquetas (donde gana la última), así que el evento de Calendar puede decir
+ * «Martes» y la página «Jueves» para el mismo encuentro; el diff del §7.2 pierde
+ * una sesión; y la página escribe dos `<li id="ses_…">` iguales.
+ *
+ * **Es la única invariante de la trampa 2 que no estaba verificada.** La fábrica
+ * de ids tiene tests en las cinco listas; que dos filas no compartan id no lo
+ * afirmaba nadie, y es la mitad de la que depende todo el resto.
+ *
+ * Los cinco casos son **la misma clase en las cinco listas** y no cinco tests
+ * parecidos: la tabla se recorre entera, así que la lista que nazca mañana con su
+ * id de cliente entra agregando una fila acá y no un `describe` nuevo.
+ */
+describe('dos filas de la misma lista no pueden compartir id (B-816, trampa 2)', () => {
+  const imagen = (id: string, portada: boolean) => ({
+    id,
+    url: 'https://ejemplo.ar/tapa.jpg',
+    epigrafe: '',
+    textoAlternativo: '',
+    origen: 'externa' as const,
+    portada,
+  });
+
+  const modalidad = (id: string) => ({
+    id,
+    modalidad: 'virtual' as const,
+    inicio: '',
+    fin: '',
+    sede: null,
+    online: { plataforma: 'meet', url: '', urlPublica: false },
+  });
+
+  const material = (id: string, titulo: string) => ({
+    id,
+    tipo: 'lectura' as const,
+    titulo,
+    url: '',
+    entrega: 'previo' as const,
+    publico: false,
+  });
+
+  /** Las cinco listas con id de cliente, cada una con dos filas parametrizadas. */
+  const listas = [
+    {
+      lista: 'sesiones',
+      ids: ['ses_1', 'ses_2'],
+      mensaje: 'El id de sesión debe venir de nuevaSesionId()',
+      con: (a: string, b: string) => ({
+        ...valido(),
+        sesiones: [
+          { ...sesionVacia(), id: a, inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00' },
+          { ...sesionVacia(), id: b, inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00' },
+        ],
+      }),
+      path: (n: number) => `sesiones.${n}.id`,
+    },
+    {
+      lista: 'imagenes',
+      ids: ['img_1', 'img_2'],
+      mensaje: 'El id de imagen debe venir de nuevaImagenId()',
+      con: (a: string, b: string) => ({
+        ...valido(),
+        imagenes: [imagen(a, true), imagen(b, false)],
+      }),
+      path: (n: number) => `imagenes.${n}.id`,
+    },
+    {
+      lista: 'modalidades',
+      ids: ['mod_1', 'mod_2'],
+      mensaje: 'El id de modalidad debe venir de nuevaModalidadId()',
+      con: (a: string, b: string) => ({
+        ...valido(),
+        modalidades: [modalidad(a), modalidad(b)],
+      }),
+      path: (n: number) => `modalidades.${n}.id`,
+    },
+    {
+      lista: 'material.items',
+      ids: ['mat_1', 'mat_2'],
+      mensaje: 'El id de material debe venir de nuevaItemMaterialId()',
+      con: (a: string, b: string) => ({
+        ...valido(),
+        material: { tiene: true, items: [material(a, 'Cap. 1'), material(b, 'Cap. 2')] },
+      }),
+      path: (n: number) => `material.items.${n}.id`,
+    },
+    {
+      lista: 'comisiones',
+      ids: ['com_1', 'com_2'],
+      mensaje: 'El id de opción debe venir de nuevaComisionId()',
+      con: (a: string, b: string) => ({
+        ...valido(),
+        comisiones: [
+          { id: a, etiqueta: 'Martes 19 h' },
+          { id: b, etiqueta: 'Jueves 19 h' },
+        ],
+      }),
+      path: (n: number) => `comisiones.${n}.id`,
+    },
+  ];
+
+  it.each(listas)('$lista — dos filas con el mismo id no se guardan', (caso) => {
+    /*
+     * MUTACIÓN PROBADA: sacando la llamada a `idsRepetidos` de una lista, se ponen
+     * rojos los dos casos de **esa** lista y ninguno de las otras cuatro — o sea
+     * que las cinco están atadas de verdad y no por una que las tape. Sacando las
+     * cinco llamadas, se pone rojo el `describe` entero.
+     */
+    const [a] = caso.ids;
+    expect(errores(caso.con(a, a))).toEqual([caso.path(1)]);
+  });
+
+  it.each(listas)('$lista — con ids distintos se guarda', (caso) => {
+    // Control positivo, y no es formalidad: sin él, un fixture que no valide por
+    // cualquier otro motivo haría pasar el caso de arriba sin que la regla exista.
+    const [a, b] = caso.ids;
+    expect(errores(caso.con(a, b))).toEqual([]);
+  });
+
+  it.each(listas)('$lista — el rechazo cae en la fila repetida, no en la lista', (caso) => {
+    /*
+     * DOS MUTACIONES PROBADAS. Apuntando el issue a la lista (`['sesiones']`) en
+     * vez de a la fila, se pone rojo el `describe` entero: importa porque es el
+     * path con el que el editor de filas pinta el error al lado del control
+     * (B-341, B-343), y en la lista el mensaje sale en la barra de abajo sin decir
+     * cuál fila. Y pasándole a una lista un mensaje propio («Hay dos filas con el
+     * mismo id»), se ponen rojos el caso de esa lista y el derivado de más abajo.
+     */
+    const [a] = caso.ids;
+    expect(mensajes(caso.con(a, a))).toEqual({ [caso.path(1)]: caso.mensaje });
+  });
+
+  it('bloquea también en un borrador: no es completitud, es un documento ilegible', () => {
+    /*
+     * Los dos niveles, como el prefijo y por el mismo motivo (B-183). Los fixtures
+     * de arriba son borradores, así que ellos fijan la mitad de abajo; éste fija
+     * la de arriba, que es la que se rompería si alguien acotara la regla al nivel
+     * corto «porque total es un borrador roto».
+     *
+     * MUTACIÓN PROBADA: gateando la llamada de `sesiones` con
+     * `if (!publicando(v.estado))`, este caso se pone rojo y **ningún otro**.
+     */
+    const dosIguales = {
+      ...publicado(),
+      sesiones: [
+        { ...sesionVacia(), id: 'ses_1', inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00' },
+        { ...sesionVacia(), id: 'ses_1', inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00' },
+      ],
+    };
+    expect(errores(dosIguales)).toContain('sesiones.1.id');
+  });
+
+  it('el mensaje del repetido es el del prefijo: la falla es la misma', () => {
+    /*
+     * Se **deriva** uno del otro en vez de copiar el literal. Los dos rechazos son
+     * la misma falla vista de dos lados —el id no salió de su fábrica—, y desde la
+     * UI ninguno de los dos se puede producir: los cinco ids salen de
+     * `crypto.randomUUID()`, así que a los dos se llega editando a mano o por un
+     * bug en la fábrica, que es lo que la trampa 2 vigila.
+     *
+     * DOS MUTACIONES PROBADAS. Escribiendo el mensaje del repetido como un literal
+     * distinto («Hay dos filas con el mismo id»), este caso se pone rojo — que es
+     * lo que evita que un renombre de `nuevaSesionId()` corrija uno de los dos
+     * lugares y deje al otro mintiendo. Y sacando la regla de prefijo de
+     * `sesiones`, también: el `toBeTruthy` es el control positivo que distingue
+     * «los dos mensajes coinciden» de «los dos son `undefined`».
+     */
+    const delPrefijo = mensajes({
+      ...valido(),
+      sesiones: [{ ...sesionVacia(), id: 'no-tiene-prefijo' }],
+    })['sesiones.0.id'];
+    const delRepetido = mensajes({
+      ...valido(),
+      sesiones: [
+        { ...sesionVacia(), id: 'ses_1', inicio: '2026-09-03T19:00', fin: '2026-09-03T21:00' },
+        { ...sesionVacia(), id: 'ses_1', inicio: '2026-09-10T19:00', fin: '2026-09-10T21:00' },
+      ],
+    })['sesiones.1.id'];
+
+    expect(delPrefijo).toBeTruthy();
+    expect(delRepetido).toBe(delPrefijo);
+  });
+
+  it('tres filas con el mismo id rechazan las dos repetidas, no la primera', () => {
+    /*
+     * El rechazo nombra las filas que **sobran**, una por una.
+     *
+     * MUTACIÓN PROBADA: con la forma que proponía el ítem —un
+     * `new Set(ids).size !== ids.length` que marca la lista una sola vez— este
+     * caso se pone rojo y ningún otro. Es la diferencia que se eligió: con tres
+     * repetidas hay que borrar dos filas, y una marca sola no dice cuáles.
+     */
+    const tres = {
+      ...valido(),
+      comisiones: [
+        { id: 'com_1', etiqueta: 'Martes' },
+        { id: 'com_1', etiqueta: 'Jueves' },
+        { id: 'com_1', etiqueta: 'Sábados' },
+      ],
+    };
+    expect(errores(tres)).toEqual(['comisiones.1.id', 'comisiones.2.id']);
+  });
+});
+
+/**
  * **Que una regla de privacidad nueva entre sola a `MENSAJES_DE_PRIVACIDAD`** —
  * B-818, y lo cobró el `auditor-privacidad` sobre la primera versión de esa lista.
  *
@@ -1065,13 +1380,31 @@ describe('la etiqueta de una opción no puede llevar un link (B-181)', () => {
  * Es el patrón que este repo ya usa con las claves derivadas de `firestore.rules`.
  */
 describe('las reglas que solo corren con página están declaradas (B-818, §5.1)', () => {
-  /** Un documento con todo lo que las reglas «de página» pueden rechazar. */
+  /**
+   * Un documento con todo lo que las reglas «de página» pueden rechazar.
+   *
+   * **La imagen la agregó B-817**, y no es decorativa: el barrido solo puede ver
+   * las reglas que este documento dispara, así que una regla nueva que ningún
+   * fixture viole entraría igual de silenciosa que antes. Con la fila acá, el día
+   * que alguien mude otra regla a `tienePagina` sin declararla, este caso la
+   * nombra.
+   */
   const conViolaciones = (estado: string) => ({
     ...valido(),
     estado,
     esCiclo: true,
     comisiones: [{ id: 'com_1', etiqueta: 'Martes — https://meet.google.com/abc' }],
     sesiones: [{ ...sesionVacia(), comisionId: 'com_1' }],
+    imagenes: [
+      {
+        id: 'img_1',
+        url: 'javascript:alert(1)',
+        epigrafe: '',
+        textoAlternativo: '',
+        origen: 'externa' as const,
+        portada: true,
+      },
+    ],
   });
 
   const mensajesEn = (estado: string): Set<string> => {
