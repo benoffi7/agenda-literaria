@@ -282,7 +282,13 @@ exclusiva de archivos**.
 **Tajada 0 — el piso (no toca producto)**
 1. Mover `campos/*` de `admin/` a `components/campos/` + arreglar **B-827** (el `htmlFor`).
 2. `src/lib/datoConFecha.ts` + su test (**B-837**).
-3. App Check habilitado y documentado (**B-836**) + `escritura-anonima.integracion.test.ts` afirmando que **hoy** nadie puede escribir. Ese test es el control positivo de todo lo que viene.
+3. App Check **documentado** (**B-836**) + `escritura-anonima.integracion.test.ts`
+   afirmando que **hoy** nadie puede escribir. Ese test es el control positivo de
+   todo lo que viene. **Habilitarlo** no se puede desde el repo —registrar la app
+   pide una clave de sitio de reCAPTCHA v3 desde la consola, mismo caso que el
+   proveedor Google de Auth— así que quedó como acción manual del dueño,
+   **B-836a**, con el orden de los dos interruptores escrito: exigir antes de que
+   el cliente mande tokens deja al panel sin poder escribir.
 
 **Tajada 1 — propuestas (B-830)**
 4. `incluye` en la actividad, con `/campo-nuevo`.

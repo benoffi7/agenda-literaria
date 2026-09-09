@@ -1009,6 +1009,24 @@ match /sistema/{doc} {
 }
 ```
 
+**Hoy no existe ninguna escritura anónima, y eso está fijado, no supuesto.**
+`tests/escritura-anonima.integracion.test.ts` (B-836) afirma la propiedad del
+proyecto entero contra el emulador: ni un anónimo ni alguien logueado **sin** el
+claim puede crear, actualizar ni borrar nada, en ninguna de las colecciones que
+nombran las reglas, en ninguna de las cuatro que los PRDs de
+[`prd/`](prd/README.md) van a crear, ni en una ruta inventada — esa última es la
+que prueba la red del `match /{document=**}`. La lista de colecciones sale del
+propio `firestore.rules`, así que un `match` nuevo entra al barrido solo; la de
+excepciones (`COLECCIONES_ABIERTAS`) está **vacía**, y abrir una es un cambio
+visible en un test.
+
+Se escribió **antes** de abrir la puerta a propósito: los cuatro formularios
+públicos son la primera escritura anónima del proyecto, y un test que afirma «esto
+no se puede» escrito después del cambio se escribe contra el código que quedó. Lo
+que hay que capturar es el antes. Y las dos identidades no son la misma cosa: la
+API key web es pública por diseño, así que cualquiera puede crear una cuenta —
+«no está logueado» no es la defensa, la defensa es el claim.
+
 Tres detalles que costaron encontrar:
 
 - **`token.get('admin', false)`, no `token.admin`.** Leer una clave ausente de un

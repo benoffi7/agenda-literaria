@@ -135,6 +135,55 @@ sobrevive.
 
 Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
 
+## App Check — **todavía no habilitado** (B-836)
+
+| | |
+|---|---|
+| Estado | ⛔ **sin habilitar**. Hoy no hace falta: no existe ninguna escritura anónima (lo fija `tests/escritura-anonima.integracion.test.ts`) |
+| Para qué va a hacer falta | los cuatro formularios públicos de [`prd/`](prd/README.md) abren la primera escritura anónima del proyecto. Un formulario público sin login **es un endpoint de escritura a Firestore**: sin App Check, un script llena la bandeja y la factura (el plan es Blaze) |
+| Proveedor previsto | **reCAPTCHA v3** para la web. Es el que corresponde a un sitio: los otros dos (App Attest, Play Integrity) son de apps nativas |
+| Qué protege | Firestore y Cloud Storage. El bucket entra por DEC-11: el formulario acepta subir la imagen |
+| Qué **no** protege | nada de lo que ya funciona: el panel, el build con el Admin SDK y las Functions no pasan por App Check |
+
+**Habilitarlo requiere la consola**, como el proveedor de Auth: hay que registrar
+la app web con una clave de sitio de reCAPTCHA, y esa clave no existe hasta que
+alguien la crea. No es automatizable con las credenciales del proyecto, así que
+vive en «Pendiente de acción manual del dueño» del
+[`BACKLOG.md`](BACKLOG.md#pendiente-de-acción-manual-del-dueño).
+
+### El orden importa, y equivocarse deja el panel afuera
+
+App Check tiene dos interruptores separados y **el segundo rompe cosas si se toca
+antes de tiempo**: registrar la app (empieza a *medir* tokens) y **exigir**
+(*enforce*, empieza a *rechazar* lo que no trae token). Entre los dos hay que
+pasar por el cliente:
+
+1. **Consola:** crear la clave de sitio de reCAPTCHA v3 y registrar la app web.
+   Queda en modo «no exigido», o sea que nada cambia todavía.
+2. **Código:** inicializar App Check en el cliente **antes** de la primera llamada
+   a Firestore, y publicar. La clave de sitio es pública (va en un `PUBLIC_*`, como
+   la API key web); el *secret* de reCAPTCHA no toca el repo.
+3. **Verificar en la consola** que las peticiones verificadas llegan. Es el único
+   paso que dice si el 2 quedó bien, y el que no se puede saltear.
+4. **Recién ahí, exigir.** Si se exige antes del paso 2, **el panel deja de poder
+   escribir**: sus peticiones tampoco traen token, y las reglas ni se evalúan.
+5. **Para los emuladores**, token de debug (`FIREBASE_APPCHECK_DEBUG_TOKEN`). Sin
+   eso, los tests de integración pasan a fallar por App Check y no por las reglas,
+   que es un rojo que no dice nada.
+
+### Qué pasa si se cae
+
+reCAPTCHA es un servicio de Google fuera del proyecto. Si no responde, el SDK no
+consigue token y **con enforcement activo la escritura se rechaza**: el formulario
+público deja de aceptar propuestas y el panel deja de guardar. No hay
+degradación parcial ni cola local — el modo de falla es «no se puede escribir»,
+y el aviso llega por donde llegue el reclamo, porque no hay alerta.
+
+Es la razón por la que App Check **no reemplaza** a las otras cuatro capas de
+B-836 (validación en la regla, topes de tamaño y forma, honeypot, barrido
+programado): es la que frena al script que no pasa por la página, y es la única de
+las cinco que depende de un tercero.
+
 ## Hosting
 
 | | |
@@ -469,6 +518,7 @@ cloudscheduler                               para dispararRebuild (paso 5)
 calendar-json                                sync a Calendar
 secretmanager                                el PAT de GitHub — habilitada (2026-08-21)
 cloudbilling, billingbudgets                 budget alert
+firebaseappcheck                             ⛔ NO habilitada — hace falta con B-836
 ```
 
 `secretmanager.googleapis.com` está habilitada desde el 2026-08-21, junto con la

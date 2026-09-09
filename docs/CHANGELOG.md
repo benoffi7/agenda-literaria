@@ -2,6 +2,54 @@
 
 ## Sin publicar
 
+- **«Hoy nadie escribe sin el claim `admin`» dejó de ser una suposición** —
+  **B-836**, tercer y último paso de la tajada 0.
+  `tests/escritura-anonima.integracion.test.ts` es el **control positivo de todo
+  lo que viene**: los cuatro formularios públicos de [`prd/`](prd/README.md) abren
+  la primera escritura anónima del proyecto, y este archivo fija el estado de
+  partida contra el emulador.
+
+  **Se escribió antes de abrir la puerta a propósito.** Un test que afirma «esto
+  no se puede» escrito **después** del cambio ya no prueba nada: se escribe contra
+  el código que quedó. Lo que hay que capturar es el antes.
+
+  Qué afirma: ni un anónimo ni alguien **logueado sin el claim** puede crear,
+  actualizar ni borrar nada — las dos identidades, porque la API key web es
+  pública por diseño y cualquiera puede crear una cuenta, así que «no está
+  logueado» no es la defensa; la defensa es el claim. Sobre las colecciones que
+  nombran las reglas, sobre las **cuatro que los PRDs van a crear** y sobre una
+  ruta inventada, que es lo que prueba la red del `match /{document=**}`.
+
+  **La lista de colecciones sale de `firestore.rules`**, no está escrita a mano:
+  un `match /propuestas/{id}` nuevo entra al barrido solo. Y la de excepciones
+  —`COLECCIONES_ABIERTAS`— está **vacía**, así que abrir una puerta es un cambio
+  visible en un test y no un efecto colateral de tocar las reglas. Verificado por
+  mutación: un `allow create: if true` en `/propuestas` pone dos casos en rojo, y
+  la colección nueva aparece en el barrido sin que nadie la agregue.
+
+  El control positivo del control positivo, que es lo que hace que el verde
+  signifique algo: **una denegación es también lo que devuelve un emulador que no
+  está**, una base sin reglas o un `projectId` equivocado. Así que el archivo
+  arranca afirmando dos cosas que tienen que **funcionar** —un anónimo lee
+  `/opciones` (§4.4) y un admin escribe— antes de contar denegaciones.
+
+  **App Check queda documentado y pendiente del dueño: B-836a.** Es el único paso
+  de B-836 que no se puede hacer desde el repo —registrar la app web pide una
+  clave de sitio de reCAPTCHA v3, mismo caso que el proveedor Google de Auth— y
+  ahora está en [`02-infraestructura.md`](02-infraestructura.md) con lo que
+  importa: **el orden**. App Check tiene dos interruptores y el segundo rompe
+  cosas si se adelanta: registrar la app solo *mide*; **exigir** *rechaza*, y si se
+  exige antes de que el cliente mande tokens **el panel deja de poder escribir**,
+  porque sus peticiones tampoco traen token y las reglas ni se evalúan. Está
+  escrito también el modo de falla (reCAPTCHA es un tercero: si no responde con
+  enforcement activo, no se puede escribir, sin degradación parcial ni cola) y por
+  qué **no reemplaza** a las otras cuatro capas de B-836.
+
+  23 casos nuevos. Con esto la tajada 0 está cerrada: `campos/` compartido con la
+  accesibilidad exigida (B-827), el dato que envejece (B-837) y el piso de la
+  escritura anónima. Nada de los tres toca producto, que es lo que define esa
+  tajada.
+
 - **El dato que envejece ya tiene su mecanismo, y la regla la impone la forma** —
   **B-837** y **D-570**, segundo paso de la tajada 0. `src/lib/datoConFecha.ts` +
   `tests/dato-con-fecha.test.ts`: es el piso compartido de las promos bancarias de
