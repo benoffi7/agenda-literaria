@@ -178,6 +178,23 @@ export const RUTA_AYUDA = rutaCanonica('/ayuda');
 export const RUTA_CONTACTO = rutaCanonica('/contacto');
 
 /**
+ * `/proponer/` — el formulario público de propuestas (B-830, paso 9).
+ *
+ * **Se llama `/proponer` y no `/sumar` ni `/cargar`**: es el verbo de quien
+ * entra, y describe lo que de verdad pasa —se propone, no se publica—. «Cargar»
+ * es lo que hace el panel y prometería que lo que se manda entra solo;
+ * «sumar-actividad» dice lo mismo y más largo.
+ *
+ * ⚠️ **Todavía no se anuncia**: no está en `RUTAS_FIJAS` del sitemap ni enlazada
+ * desde el chrome, porque la escritura anónima sigue cerrada hasta que App Check
+ * exija (B-836a). Indexar hoy una página cuyo formulario **no puede recibir nada**
+ * es prometer lo que no se cumple, que es lo que B-780 costó como P0. La ruta vive
+ * acá igual —el sitio necesita un solo texto por página— y anunciarla es el último
+ * paso de B-836a.
+ */
+export const RUTA_PROPONER = rutaCanonica('/proponer');
+
+/**
  * `/apoyar/` — la página de aportes, B-780.
  *
  * **Se llama `/apoyar` y no `/donar` ni `/colaborar`**, y los tres se pensaron:

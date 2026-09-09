@@ -61,11 +61,15 @@ const fuente = (rel: string): string => readFileSync(ruta(rel), 'utf8');
  * Las dos comillas, por lo mismo que en `bundle-panel.test.ts`: el repo no tiene
  * prettier, así que nada normaliza la comilla.
  */
-const importsDe = (src: string): string[] => [
+const importsEstaticos = (src: string): string[] => [
   ...[...src.matchAll(/^import\s+(?!type\s)[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!),
   ...[...src.matchAll(/^import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!),
-  ...[...src.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)].map((m) => m[1]!),
 ];
+
+const importsDiferidos = (src: string): string[] =>
+  [...src.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)].map((m) => m[1]!);
+
+const importsDe = (src: string): string[] => [...importsEstaticos(src), ...importsDiferidos(src)];
 
 /**
  * Los alias que apuntan a un archivo puntual de `functions/` (`@calendario`,
@@ -122,13 +126,24 @@ const paginas = (): string[] =>
     .map((f) => `src/pages/${f}`)
     .sort();
 
-/** El primer camino de `pagina` a `objetivo`, o `null`. Devuelve la cadena. */
-const caminoHasta = (pagina: string, objetivos: readonly string[]): string[] | null => {
+/**
+ * El primer camino de `pagina` a `objetivo`, o `null`. Devuelve la cadena.
+ *
+ * `soloEstaticos` recorta el grafo a los `import` de arriba del archivo, sin los
+ * `import()`. **Es la distinción que B-830 paso 9 obligó a hacer**, y no vale para
+ * las tres cosas por igual: ver `PLOMERIA_DEL_PANEL` y `FIREBASE_DEL_CLIENTE`.
+ */
+const caminoHasta = (
+  pagina: string,
+  objetivos: readonly string[],
+  { soloEstaticos = false } = {},
+): string[] | null => {
+  const leer = soloEstaticos ? importsEstaticos : importsDe;
   const via = new Map<string, string>([[pagina, '']]);
   const pendientes = [pagina];
   while (pendientes.length > 0) {
     const archivo = pendientes.pop()!;
-    for (const spec of importsDe(fuente(archivo))) {
+    for (const spec of leer(fuente(archivo))) {
       if (objetivos.includes(spec)) {
         // La cadena, de la página al hallazgo, para que el mensaje diga por dónde.
         const cadena = [spec, archivo];
@@ -146,12 +161,56 @@ const caminoHasta = (pagina: string, objetivos: readonly string[]): string[] | n
 };
 
 /**
- * Lo que una página pública no puede alcanzar, y los tres son el mismo problema
- * a distinta profundidad: `@/lib/analytics` mide sin consentimiento,
- * `firebase-client` es su camino, y `appcheck` es lo que ese camino arrastra
- * desde B-836a.
+ * **La medición del panel: prohibida para toda página pública, la alcance como la
+ * alcance.**
+ *
+ * No tiene portón de consentimiento —nunca lo necesitó, D-250— así que un
+ * `funcion_usada` disparado desde una página pública crea el perfil de medición en
+ * el navegador de alguien que no tocó el banner. Que el módulo entre por
+ * `import()` no cambia nada: se carga cuando el componente se usa, y mide igual.
  */
-const PLOMERIA_DEL_PANEL = ['@/lib/analytics', '@/lib/firebase-client', '@/lib/appcheck'];
+const MEDICION_DEL_PANEL = ['@/lib/analytics'];
+
+/**
+ * **Firebase del lado del cliente: prohibido de forma ESTÁTICA, y diferido solo
+ * donde escribir es el punto de la página.**
+ *
+ * ── Por qué esta lista se separó de la de arriba (B-830, paso 9) ──────────
+ * Hasta `/proponer`, las tres cosas eran el mismo problema a distinta profundidad
+ * y estaban en una sola lista: `firebase-client` era **el camino** por el que la
+ * medición del panel llegaba, y `appcheck` lo que ese camino arrastra. Ninguna
+ * página pública tenía motivo para tocarlas.
+ *
+ * `/proponer` sí lo tiene, y no es una excepción cómoda: **es el diseño**. El
+ * formulario escribe en Firestore desde el navegador de un visitante, y lo que lo
+ * hace seguro es justamente App Check —o sea reCAPTCHA Enterprise, un tercero de
+ * Google con cuota facturable por visitante—. La pregunta entonces no es *si* la
+ * página puede alcanzar Firebase, sino **cuándo**:
+ *
+ * - **estático** = el tercero carga al **abrir** la página, para cualquiera que
+ *   mire. Eso sí es lo que la lista de arriba evita, y sigue prohibido para todas.
+ * - **diferido** = carga cuando la persona **decide mandar** algo. Ahí el
+ *   anti-abuso es el motivo de la visita y no hay nada que explicarle a nadie.
+ *
+ * `app()` es el borde donde App Check se inicializa (B-836), así que el momento en
+ * que el módulo se carga **es** el momento en que el tercero entra. Por eso la
+ * distinción estático/diferido, que para la medición no significa nada, acá
+ * significa todo.
+ */
+const FIREBASE_DEL_CLIENTE = [
+  '@/lib/firebase-client',
+  '@/lib/appcheck',
+  '@/lib/firestore-client',
+];
+
+/**
+ * Las páginas que **escriben**, y por lo tanto pueden alcanzar Firebase de forma
+ * diferida. Es una lista y no una regla porque la segunda entrada tiene que ser
+ * una decisión: hoy es la única página del sitio con un formulario.
+ *
+ * Los otros tres formularios públicos de `prd/` van a entrar acá, uno por uno.
+ */
+const PAGINAS_QUE_ESCRIBEN = ['src/pages/proponer.astro'];
 
 /**
  * `/admin` es el panel: **tiene** que alcanzarla. Es la única excepción, y no es
@@ -173,23 +232,81 @@ describe('la plomería del panel no llega al sitio público — B-841', () => {
   it('CONTROL POSITIVO: `/admin` sí la alcanza, así que el grafo sabe encontrarla', () => {
     // Sin esto, «ninguna página la alcanza» podría querer decir que el recorrido
     // no resuelve los imports — que es el modo de falla de B-117.
-    const camino = caminoHasta(ES_EL_PANEL, PLOMERIA_DEL_PANEL);
+    const camino = caminoHasta(ES_EL_PANEL, MEDICION_DEL_PANEL);
     expect(camino, 'el grafo no encuentra la medición ni desde el panel').not.toBeNull();
     expect(camino!.length).toBeGreaterThan(2);
   });
 
-  it('ninguna otra página la alcanza, ni por `import()`', () => {
+  it('ninguna otra página alcanza la medición del panel, ni por `import()`', () => {
     const hallazgos = paginas()
       .filter((p) => p !== ES_EL_PANEL)
-      .map((p) => [p, caminoHasta(p, PLOMERIA_DEL_PANEL)] as const)
+      .map((p) => [p, caminoHasta(p, MEDICION_DEL_PANEL)] as const)
       .filter(([, camino]) => camino !== null)
       .map(([p, camino]) => `${p}\n      ${camino!.join('\n        → ')}`);
     expect(
       hallazgos,
       'una página del sitio público alcanza la medición del **panel**, que no tiene ' +
-        'portón de consentimiento (D-250), y su cadena arrastra App Check. Es B-841: ' +
-        'el arreglo es que el componente reciba la medición por prop, no que la importe.',
+        'portón de consentimiento (D-250). Es B-841: el arreglo es que el componente ' +
+        'reciba la medición por prop, no que la importe.',
     ).toEqual([]);
+  });
+
+  it('ni Firebase de forma ESTÁTICA: el tercero no puede cargar al abrir la página', () => {
+    /*
+     * El corte que importa desde B-830 paso 9. Estático significa que App Check
+     * —o sea reCAPTCHA, con cuota facturable por visitante— se inicializa para
+     * cualquiera que **mire** la página, haya o no tocado nada. Vale para todas,
+     * incluidas las que escriben.
+     */
+    const hallazgos = paginas()
+      .filter((p) => p !== ES_EL_PANEL)
+      .map((p) => [p, caminoHasta(p, FIREBASE_DEL_CLIENTE, { soloEstaticos: true })] as const)
+      .filter(([, camino]) => camino !== null)
+      .map(([p, camino]) => `${p}\n      ${camino!.join('\n        → ')}`);
+    expect(
+      hallazgos,
+      'una página pública alcanza Firebase **estáticamente**: App Check se inicializa ' +
+        'al abrirla y el desafío de reCAPTCHA carga para quien solo pasó a mirar. Si la ' +
+        'página escribe, el módulo que habla con Firebase entra por `import()` adentro ' +
+        'del handler (ver `lib/enviar-propuesta.ts`).',
+    ).toEqual([]);
+  });
+
+  it('y de forma diferida, solo las que escriben — que hoy es una', () => {
+    const alcanzan = paginas()
+      .filter((p) => p !== ES_EL_PANEL)
+      .filter((p) => caminoHasta(p, FIREBASE_DEL_CLIENTE) !== null);
+    expect(
+      alcanzan,
+      'una página que no escribe alcanza Firebase: no hay motivo para que cargue el ' +
+        'SDK ni App Check, ni siquiera diferido',
+    ).toEqual(PAGINAS_QUE_ESCRIBEN);
+  });
+
+  it('CONTROL POSITIVO: `/proponer` sí lo alcanza diferido, y por el módulo que escribe', () => {
+    /*
+     * La otra mitad del caso de arriba, y hace falta: «solo las que escriben» se
+     * cumpliría también con una lista **vacía** el día que alguien rompa los
+     * `import()` del formulario, y ahí la página dejaría de poder mandar nada con
+     * la suite en verde.
+     *
+     * Son **dos** asertos y no uno: el recorrido del grafo prueba que *algún*
+     * camino diferido llega a Firebase, y el segundo nombra el módulo — que es lo
+     * que quedaría en pie si alguien cambiara el camino por otro que no escribe.
+     *
+     * **Lo que estos dos NO prueban, medido y no supuesto:** que el **submit** lo
+     * llame. El componente lo difiere en dos lugares —el envío y la subida de la
+     * imagen— así que sacar el del envío deja los dos asertos verdes. Esa mitad es
+     * de `tests/proponer.render.test.tsx`, que aprieta el botón: acá se verifica
+     * **cuándo entra el tercero**, no que el formulario funcione.
+     */
+    const camino = caminoHasta(PAGINAS_QUE_ESCRIBEN[0]!, FIREBASE_DEL_CLIENTE);
+    expect(camino, 'el formulario de /proponer no llega a Firebase por ningún camino').not.toBeNull();
+
+    expect(
+      importsDiferidos(fuente('src/components/publico/FormularioPublico.tsx')),
+      'el formulario no difiere el módulo que escribe la propuesta',
+    ).toContain('@/lib/enviar-propuesta');
   });
 });
 

@@ -871,10 +871,15 @@ convertir se copia sola a la galería de la actividad ya sin los datos ocultos q
 traía, y al rechazar se borra en el acto. Reabrir una rechazada no la trae de
 vuelta, y la pantalla lo dice.
 
-**Lo que todavía no está:** el formulario público (paso 9), que es el que va a
-dejar que alguien **suba** esa imagen sin login — hoy la puerta está cerrada a
-admin, igual que la escritura en `/propuestas`, esperando que App Check exija
-(B-836a). **La retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
+**El formulario público `/proponer` ya está escrito (paso 9), y todavía no se
+anuncia.** La página existe, valida, sube el flyer y escribe en `/propuestas`; lo
+que falta no es código sino que **App Check esté exigiendo** (B-836a), porque hasta
+entonces la escritura anónima sigue cerrada y el formulario **no puede recibir nada
+de nadie sin el claim `admin`**. Por eso no está en el sitemap ni enlazada desde el
+encabezado: indexar una página cuyo formulario rebota es prometer lo que no se
+cumple. Anunciarla son tres líneas —la ruta al sitemap, el enlace, y borrar los dos
+`esAdmin() &&`— y es el último paso de B-836a. Ver «Proponer una actividad» más
+abajo. **La retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
 se borra sola, con su imagen — ver `08-operacion.md` § «La retención de
 propuestas».
 
@@ -884,6 +889,43 @@ lo que lo borra es guardar un dato personal sin fecha de vencimiento (decisión 
 dueño, B-843 punto 1) — y **ese motivo no se fue del todo con B-838**: una
 propuesta cargada a mano nace `nueva`, que es justo uno de los estados que **no**
 caducan (**B-844**).
+
+### Proponer una actividad — `/proponer` (B-830, paso 9)
+
+El único formulario del sitio público, y la única página que escribe en Firestore
+desde el navegador de quien la visita. Pide once cosas —qué es, de qué se trata,
+cuándo (hasta 12 fechas), cómo es, dónde, quién organiza, cuánto sale, si hay que
+anotarse, qué se llevan, el flyer y **por dónde escribirle a quien propone**— y
+nada de eso se publica: cae en la bandeja.
+
+**Las cuatro capas contra el abuso, y qué hace cada una.** Ninguna alcanza sola:
+
+| Capa | Qué frena | Dónde |
+|---|---|---|
+| **App Check** | un script | se activa **en el submit**, no al abrir la página |
+| **La regla de Firestore** | la forma, no el volumen — es la que un `curl` no se saltea | `firestore.rules` |
+| **Honeypot y tiempo mínimo** | lo automático y torpe, que es la mayoría | el componente |
+| **La bandeja** | el humano insistente: alguien mira y borra | el panel |
+
+**Que App Check se active en el submit y no al abrir es una decisión, no una
+optimización.** El módulo que habla con Firebase entra por `import()` adentro del
+handler, así que el desafío de reCAPTCHA —un tercero de Google, con cuota
+facturable por visitante— carga cuando la persona **decide mandar** algo y no
+cuando pasa a mirar. `tests/panel-fuera-del-sitio.test.ts` lo hace cumplir: desde
+esta página, Firebase es inalcanzable **de forma estática**.
+
+**La página dice qué se hace con el dato antes de pedirlo** (§7 del PRD): para qué
+se usa el contacto, quién lo ve y cuánto se guarda, cada una con su contraparte en
+el código —`allow read: if esAdmin()`, la ausencia de proyección pública, y
+`borrarPropuestasVencidas`—. Y las dos trampas **no se notan**: cuando el campo
+oculto viene lleno o el envío llega en menos de cinco segundos, la pantalla dice
+gracias y no se escribe nada. Decirle a un bot que lo agarraron es enseñarle qué
+corregir.
+
+**Las opciones de «qué se llevan» se leen en el build**, no en el navegador: pedir
+`/opciones/*` en runtime obligaría a inicializar Firestore —y con él App Check— al
+abrir la página. El build ya las lee para el `events.json` y el sitio se rebuildea
+cuando cambian (§4.4).
 
 ## Dos formas del formulario, y las elige quien carga
 

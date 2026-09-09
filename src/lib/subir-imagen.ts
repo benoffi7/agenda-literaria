@@ -30,6 +30,7 @@ import {
   validarArchivo,
 } from '@/lib/imagenes-archivo';
 import type { MotivoImagen } from '@/lib/analytics-eventos';
+import type { TipoSubible } from '@/lib/imagenes-archivo';
 import type { Imagen } from '@/types/actividad';
 
 /** Puerto del emulador de Storage (`firebase.json`). */
@@ -165,7 +166,25 @@ export const promoverImagenDePropuesta = async (storagePath: string): Promise<Su
   return subirImagen(archivo, nuevaImagenId());
 };
 
-export const subirImagen = async (archivo: File, id: string): Promise<Subida> => {
+export const subirImagen = async (
+  archivo: File,
+  id: string,
+  /**
+   * Dónde va el objeto. Por default, la galería de una actividad
+   * (`imagenes/<id>.<ext>`).
+   *
+   * **Entra por parámetro desde B-830 paso 9**, cuando apareció el segundo
+   * destino: el flyer que manda alguien desde `/proponer` va a `propuestas/`, que
+   * no es público y que el trigger de optimización ignora. Lo que **no** cambia
+   * es el pipeline —validar el tipo y el tamaño, verificar que el archivo sea por
+   * dentro lo que dice, y sacarle los metadatos—, y esa es toda la razón de
+   * generalizar en vez de escribir una subida nueva y más simple del otro lado:
+   * la foto de un taller en una casa lleva las coordenadas de esa casa, y quien
+   * la manda no lo sabe. Dos subidas serían dos pipelines, y el segundo nacería
+   * sin la parte que importa.
+   */
+  comoRuta: (imagenId: string, tipo: TipoSubible) => string = rutaDeImagen,
+): Promise<Subida> => {
   const motivo = validarArchivo({ tipo: archivo.type, bytes: archivo.size });
   // El orden importa: el guard de tipo tiene que quedar **después** de haber
   // devuelto el mensaje de `validarArchivo`, que es el que dice cuál era el tipo.
@@ -224,7 +243,7 @@ export const subirImagen = async (archivo: File, id: string): Promise<Subida> =>
   }
 
   const medida = dimensiones(tipo, limpio);
-  const ruta = rutaDeImagen(id, tipo);
+  const ruta = comoRuta(id, tipo);
 
   try {
     const destino = ref(storage(), ruta);

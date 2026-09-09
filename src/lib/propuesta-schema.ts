@@ -192,6 +192,23 @@ export const propuestaVacia = (): PropuestaForm => ({
 export const formAPropuesta = (
   f: PropuestaForm,
   origen: Propuesta['origen'] = 'formulario-publico',
+  /**
+   * El objeto que la subida dejó en `propuestas/`, si hubo una — B-830 paso 8,
+   * DEC-11.
+   *
+   * Entra **por parámetro y no como campo del formulario**, y no es un detalle:
+   * un `storagePath` no es algo que una persona escriba, es el resultado de una
+   * acción que ya ocurrió contra Storage. Como campo del `PropuestaForm` habría
+   * que validarlo con zod —o sea repetir el `matches` de la regla en un tercer
+   * runtime— para un valor que el propio código acaba de construir con
+   * `rutaDeImagenPropuesta`.
+   *
+   * **Gana sobre la URL pegada**, porque las dos formas son excluyentes
+   * (`imagenValida()` rechaza el mapa con las dos claves) y quien subió un
+   * archivo eligió después: el formulario esconde un campo cuando el otro tiene
+   * algo, y esto es la red por si los dos llegan igual.
+   */
+  storagePath: string | null = null,
 ): Omit<Propuesta, 'creadoEn'> => {
   const oNull = (s: string): string | null => (s.trim() ? s.trim() : null);
   const pideLugar = f.modalidad !== 'virtual';
@@ -236,7 +253,11 @@ export const formAPropuesta = (
     // no resolvería su etiqueta y la ficha lo mostraría des-slugueado.
     incluye: f.incluye.map((x) => x.trim()).filter(Boolean),
     incluyeOtro: oNull(f.incluyeOtro),
-    imagen: f.imagenUrl.trim() ? { url: f.imagenUrl.trim() } : null,
+    imagen: storagePath
+      ? { storagePath }
+      : f.imagenUrl.trim()
+        ? { url: f.imagenUrl.trim() }
+        : null,
     contacto: { via: f.contacto.via, valor: f.contacto.valor.trim() },
     estado: 'nueva',
     origen,

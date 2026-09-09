@@ -138,6 +138,24 @@ describe('las páginas fijas', () => {
        * `rutaCanonica`; lo que se publica es el archivo `dist/404.html`.
        */
       '/404/': 'la página de error va con `noindex` y fuera del sitemap (§5.1, B-310)',
+      /*
+       * **Excepción temporal y con fecha de vencimiento** — B-830 paso 9.
+       *
+       * `/proponer` **quiere** ser indexable (§8 del PRD: un organizador la busca
+       * en Google), y no lo es todavía por una sola razón: la escritura anónima
+       * sigue cerrada hasta que App Check exija (B-836a), así que hoy el
+       * formulario no puede recibir nada de nadie sin el claim `admin`. Indexar
+       * una página cuyo formulario rebota es prometer lo que no se cumple, que es
+       * lo que B-780 costó como P0.
+       *
+       * **Se saca acá el día que la puerta se abra**, junto con la ruta en
+       * `RUTAS_FIJAS` y el enlace en el chrome. Los tres son el último paso de
+       * B-836a, y esta línea es lo que hace que no se olvide: mientras esté, el
+       * comentario dice por qué.
+       */
+      '/proponer/':
+        'todavía no se anuncia: la escritura anónima está cerrada hasta que App Check exija ' +
+        '(B-836a). Entra al sitemap el día que se abra',
     };
 
     const paginas = execFileSync('git', ['ls-files', 'src/pages'], { encoding: 'utf8' })

@@ -1136,6 +1136,26 @@ es el `href` de la imagen—:
   2026-10-07 1122223333» es un solo match): lo encontró el `auditor-privacidad`,
   y tiene su caso con mutación probada.
 
+**`/proponer` está escrita y no anunciada, y esa distinción es de seguridad y no
+de producto** (B-830 paso 9). La página existe en `src/pages/`, así que **se
+publica con el sitio**: cualquiera que sepa la URL la abre. Lo que no existe es la
+puerta —`allow create: if esAdmin() && …`, en Firestore y en Storage—, así que el
+formulario rebota para quien no tenga el claim. No está en el sitemap ni enlazada
+desde el chrome porque indexar una página cuyo formulario no puede recibir nada es
+prometer lo que no se cumple (la lección de B-780), y la excepción está escrita con
+su fecha de vencimiento en `tests/sitemap.test.ts`.
+
+**Y el tercero entra en el submit, no al abrir la página.** El módulo que habla con
+Firebase se carga con `import()` adentro del handler, así que App Check —o sea
+reCAPTCHA Enterprise, que es una petición a Google **con cuota facturable por
+visitante**— se inicializa cuando alguien decide mandar algo, no cuando pasa a
+mirar. No es una optimización: `app()` es el borde donde App Check arranca (B-836),
+así que **el momento en que el módulo se carga es el momento en que el tercero
+entra**. Lo hace cumplir `tests/panel-fuera-del-sitio.test.ts`, que desde este
+cambio distingue el alcance **estático** del **diferido**: estático está prohibido
+para toda página pública —incluidas las que escriben—, y diferido solo para las que
+escriben, que hoy es una.
+
 **Hoy no existe ninguna escritura anónima, y eso está fijado, no supuesto.**
 `tests/escritura-anonima.integracion.test.ts` (B-836) afirma la propiedad del
 proyecto entero contra el emulador: ni un anónimo ni alguien logueado **sin** el

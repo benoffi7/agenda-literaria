@@ -2,6 +2,59 @@
 
 ## Sin publicar
 
+- **`/proponer`: el primer formulario del sitio público, escrito y no anunciado**
+  — **B-830 paso 9**. La página existe, valida, sube el flyer y escribe en
+  `/propuestas`; lo que falta no es código sino que **App Check esté exigiendo**
+  (B-836a). Hasta entonces **no** entra al sitemap ni al chrome: indexar una página
+  cuyo formulario rebota es prometer lo que no se cumple, y la excepción está
+  escrita **con su fecha de vencimiento** en `tests/sitemap.test.ts`, que es lo que
+  hace que no se olvide.
+
+  **La decisión de diseño del paso: cuándo entra el tercero.** El módulo que habla
+  con Firebase se carga con `import()` **adentro del handler**, así que App Check
+  —o sea reCAPTCHA Enterprise, una petición a Google con cuota facturable por
+  visitante— se inicializa cuando alguien **decide mandar** algo y no cuando pasa a
+  mirar. No es una optimización: `app()` es el borde donde App Check arranca
+  (B-836), así que el momento en que el módulo se carga **es** el momento en que el
+  tercero entra.
+
+  **Y eso obligó a partir un guard que escribí hace dos commits.**
+  `tests/panel-fuera-del-sitio.test.ts` prohibía a toda página pública alcanzar
+  `analytics`, `firebase-client` y `appcheck`, **sin distinguir estático de
+  diferido** — y con razón, mientras ninguna página tuviera motivo para tocarlas.
+  `/proponer` lo tiene, y es el diseño. Ahora son dos reglas: la **medición del
+  panel** sigue prohibida para todas, la alcance como la alcance (no tiene portón
+  de consentimiento, y un `import()` mide igual); y **Firebase** está prohibido de
+  forma **estática** para todas —incluidas las que escriben— y permitido diferido
+  solo para las que escriben, que hoy es una, con control positivo de que
+  `/proponer` sí lo alcanza. La distinción que para la medición no significa nada,
+  acá significa todo.
+
+  **Las otras dos capas van en el componente y no se notan:** el campo trampa y el
+  tiempo mínimo muestran **la misma pantalla de gracias** y no escriben nada.
+  Decirle a un bot que lo agarraron es enseñarle qué corregir; el costo es que un
+  humano con un gestor muy entusiasta podría llenar el campo oculto, y por eso está
+  fuera del flujo de tabulación, con `aria-hidden` y con un nombre que ningún
+  gestor autocompleta.
+
+  **Las opciones de «qué se llevan» se leen en el build** y viajan como prop:
+  pedirlas en runtime obligaría a inicializar Firestore —y con él App Check— al
+  abrir la página, que es justo lo que la página evita. El build ya las lee para el
+  `events.json` y el sitio se rebuildea cuando cambian (§4.4).
+
+  **La página dice qué se hace con el dato antes de pedirlo** (§7 del PRD): para
+  qué se usa el contacto, quién lo ve y cuánto se guarda, y ninguna de las tres
+  está escrita como negación absoluta —son afirmaciones acotadas, que es lo que el
+  barrido de promesas exige y lo que se puede sostener—. Cada una tiene su
+  contraparte en el código: `allow read: if esAdmin()`, la ausencia de proyección
+  pública, y `borrarPropuestasVencidas`.
+
+  Ocho casos de render con las cuatro capas verificadas por mutación —sacar la
+  trampa, sacar la validación—, y un aserto que quedó **acotado a lo que prueba**:
+  el guard de imports verifica cuándo entra el tercero, no que el submit funcione;
+  eso es del render test, y está dicho en los dos lados porque una mutación mostró
+  que el primero solo no lo agarra.
+
 - **La ayuda prometía que el sitio no va a tener publicidad, y `/anunciar` la
   vende** — **B-785**, cerrando la mitad de la ayuda. La respuesta a «¿esto es
   gratis? ¿quién lo paga?» decía «es gratis, **no tiene publicidad y va a seguir

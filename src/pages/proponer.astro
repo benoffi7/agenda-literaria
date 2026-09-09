@@ -1,0 +1,116 @@
+---
+/**
+ * `/proponer` — el formulario público de propuestas. B-830, paso 9.
+ *
+ * Es **la única página del sitio con un formulario** y la única que escribe en
+ * Firestore desde el navegador de quien la visita. El chrome y el texto salen de
+ * un `lib` como en `/contacto`; lo que la hace distinta es la island.
+ *
+ * ── Por qué el formulario es una island y no un `<form>` HTML ─────────────
+ * Porque tiene estado: fechas que se agregan y se sacan, campos condicionales
+ * por modalidad, una subida de archivo que hay que esperar, y validación en el
+ * submit (D-01). Un `<form>` que postea necesitaría algo que reciba el POST, y
+ * el sitio es estático (§2.4).
+ *
+ * **`client:load` y no `client:visible`:** el formulario es lo que se vino a
+ * hacer acá, así que no puede aparecer tres segundos después de que la página
+ * pintó — mismo criterio que el buscador del listado.
+ *
+ * ── Las opciones de «qué se llevan» se leen en el BUILD ───────────────────
+ * Y no en el navegador, aunque `/opciones/*` sea de lectura pública. Pedirlas en
+ * runtime obligaría a inicializar Firestore al **abrir** la página, y con él App
+ * Check: el desafío de reCAPTCHA cargaría para cualquiera que mire, no para quien
+ * decide mandar algo (el motivo entero está en `lib/enviar-propuesta.ts`). El
+ * build ya las lee para el `events.json`, y el sitio se rebuildea cuando cambian
+ * (§4.4), así que la lista viaja al día y gratis.
+ *
+ * ── ⚠️ Esta página existe y TODAVÍA NO SE ANUNCIA ─────────────────────────
+ * No está en `RUTAS_FIJAS` del sitemap ni enlazada desde el encabezado o el pie,
+ * a propósito: la escritura anónima sigue cerrada hasta que App Check exija
+ * (B-836a), así que hoy el formulario **no puede recibir nada** de nadie que no
+ * tenga el claim `admin`. Indexar una página cuyo formulario rebota es prometer
+ * lo que no se cumple — que es lo que B-780 costó como P0.
+ *
+ * Anunciarla es el último paso de B-836a y son tres líneas: la ruta al sitemap,
+ * el enlace en el chrome, y borrar los dos `esAdmin() &&` (el de `/propuestas` en
+ * `firestore.rules` y el de `propuestas/` en `storage.rules`, **juntos**).
+ */
+import Base from '@/layouts/Base.astro';
+import { FormularioPublico } from '@/components/publico/FormularioPublico';
+import { NOMBRE } from '@/lib/identidad';
+import { contenidoDelSitio } from '@/lib/contenidoDelSitio';
+import { opcionesPublicas } from '@/lib/toPublic';
+import {
+  ANTES_DE_EMPEZAR,
+  BAJADA,
+  QUE_PASA_CON_LO_QUE_MANDAS,
+  SI_NO_ES_ESTO,
+  SOBRE_TU_CONTACTO,
+  TITULO,
+} from '@/lib/proponerDelSitio';
+import {
+  claseBloque,
+  claseEnlace,
+  claseRotulo,
+} from '@/components/sitio/estilos';
+
+const { opciones } = await contenidoDelSitio();
+/*
+ * Solo las **aprobadas y visibles**, que es lo que `opcionesPublicas` deja pasar:
+ * una opción que otra cuenta creó y nadie validó todavía no se le ofrece a
+ * alguien de afuera (§4.3). Si el documento no existe, la lista viene vacía y el
+ * formulario esconde el bloque entero — no inventa opciones base.
+ */
+const incluyeOfrecido = opcionesPublicas(opciones['incluye-actividad'] ?? []).map((o) => ({
+  slug: o.slug,
+  label: o.label,
+}));
+---
+
+<Base
+  seccion="ninguna"
+  titulo={`${TITULO} — ${NOMBRE}`}
+  descripcion="Contanos de un taller, un club de lectura o una presentación para que esté en la agenda."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <h1 class="display-md text-balance text-acento">{TITULO}</h1>
+
+    <p class="body-lectura mt-6 max-w-[65ch] text-super">{BAJADA}</p>
+
+    <section aria-labelledby="que-pasa" class={`mt-10 p-5 sm:p-6 ${claseBloque}`}>
+      <h2 id="que-pasa" class="headline-sm text-tinta">Qué pasa con lo que mandás</h2>
+      {
+        QUE_PASA_CON_LO_QUE_MANDAS.map((p) => (
+          <p class="body-lectura mt-3 max-w-[65ch] text-super">{p}</p>
+        ))
+      }
+
+      <p class={`mt-5 ${claseRotulo}`}>Tu contacto</p>
+      {
+        SOBRE_TU_CONTACTO.map((p) => (
+          <p class="body-lectura mt-2 max-w-[65ch] text-super">{p}</p>
+        ))
+      }
+    </section>
+
+    <section aria-labelledby="antes-de-empezar" class="mt-10">
+      <h2 id="antes-de-empezar" class="headline-sm text-acento">Antes de empezar</h2>
+      <ul class="body-md mt-3 list-disc space-y-1 ps-5 text-super marker:text-azul">
+        {ANTES_DE_EMPEZAR.map((item) => <li class="min-w-0">{item}</li>)}
+      </ul>
+    </section>
+
+    <FormularioPublico client:load incluyeOfrecido={incluyeOfrecido} />
+
+    <section aria-labelledby="si-no-es-esto" class="mt-14 regla-gruesa-arriba pt-4">
+      <h2 id="si-no-es-esto" class="headline-sm text-acento">Si no es esto lo que buscabas</h2>
+      {
+        SI_NO_ES_ESTO.map((s) => (
+          <p class="body-lectura mt-3 max-w-[65ch] text-super">
+            {s.texto}, <a class={claseEnlace} href={s.href}>{s.enlace}</a>.
+          </p>
+        ))
+      }
+    </section>
+  </main>
+</Base>
