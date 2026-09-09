@@ -42,6 +42,26 @@
   alcanzable estáticamente desde la island, porque todo lo que lo usa está detrás
   de un `import()`. Comprobado sobre el grafo, no supuesto.
 
+  **Los dos hallazgos del `auditor-trampas` sobre este mismo refactor**, y el
+  primero es la clase que el refactor **crea**: sacar la medición a una prop
+  **opcional** hace que dejar de pasarla se vea idéntico. `tsc` queda verde, el
+  build queda verde, y lo que se pierde es GA4 sin `funcion_usada` para todas las
+  aperturas de sección y toda interacción de taxonomía del panel — se nota semanas
+  después, mirando un hueco en el tablero. **Y de paso degradó un aserto que ya
+  existía**: «TagsInput mide la taxonomía» hace `toContain('taxonomia-nueva')`
+  sobre el fuente, y esos literales siguen ahí como argumentos de `onMedir?.(…)`,
+  así que seguía pasando y ya no probaba que se midiera, solo que el string
+  existía. Ahora hay `campos-del-panel.render.test.tsx`, que monta la capa y
+  afirma **la llamada** —y la otra dirección, que es la razón de ser del corte: el
+  control genérico **no** mide sin la prop—, y el caso degradado se renombró a lo
+  que de verdad prueba.
+
+  El segundo es un punto ciego del grafo nuevo: `aArchivo` no resolvía los alias a
+  `functions/`, y `campos/TaxonomiaSelect.tsx` importa `desSlug` de
+  **`@calendario`**. Sin resolverlo, `caminoHasta` devolvía «no hay camino» por no
+  haber sabido mirar — un verde falso. Es el mismo punto ciego que B-323 cerró para
+  `bundle-panel.test.ts`, reintroducido al reusar el recorrido para una raíz nueva.
+
 - **La conversión de propuesta a actividad, y las dos decisiones del dueño que le
   dan la forma** — **B-830** paso 6, **D-600**, y la corrección de **B-842**.
 

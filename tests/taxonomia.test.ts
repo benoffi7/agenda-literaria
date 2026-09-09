@@ -216,11 +216,28 @@ describe('los dos widgets de taxonomía comparten la lógica del §4.2 — B-72'
     expect(usos.length, 'una rama quedó sin el id y su label queda huérfano').toBe(2);
   });
 
-  /** B-73 — el campo con más volumen esperado era el único invisible en GA4. */
-  it('TagsInput mide la taxonomía, como el desplegable', () => {
-    const src = fuente('TagsInput');
-    for (const evento of ['taxonomia-nueva', 'taxonomia-reusada', 'taxonomia-sugerencia']) {
-      expect(src, evento).toContain(evento);
+  /**
+   * B-73 — el campo con más volumen esperado era el único invisible en GA4.
+   *
+   * ⚠️ **Este caso se degradó con B-841 y hay que leerlo sabiéndolo.** Cuando se
+   * escribió, el control llamaba a `medirFuncion(...)` directo y encontrar el
+   * literal probaba que se medía. Hoy la medición **se recibe por prop**
+   * (`onMedir`), así que estos tres literales son argumentos de una llamada que
+   * puede no tener a quién llamar: lo que este caso prueba es que **el vocabulario
+   * sigue siendo el mismo en los dos widgets**, que es lo de B-72, y **no** que se
+   * mida.
+   *
+   * Que se mida de verdad lo prueba `tests/campos-del-panel.render.test.tsx`,
+   * montando la capa del panel y afirmando la llamada — y también la otra
+   * dirección: que el control genérico **no** mida sin la prop, que es lo que hace
+   * que un formulario público pueda usarlo.
+   */
+  it('los dos widgets nombran los mismos eventos de taxonomía (B-73, vocabulario)', () => {
+    for (const nombre of widgets) {
+      const src = fuente(nombre);
+      for (const evento of ['taxonomia-nueva', 'taxonomia-reusada', 'taxonomia-sugerencia']) {
+        expect(src, `${nombre} · ${evento}`).toContain(evento);
+      }
     }
   });
 });

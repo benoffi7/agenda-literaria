@@ -67,8 +67,30 @@ const importsDe = (src: string): string[] => [
   ...[...src.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)].map((m) => m[1]!),
 ];
 
+/**
+ * Los alias que apuntan a un archivo puntual de `functions/` (`@calendario`,
+ * `@historial`, `@png-chunks-seguros`), leídos de `astro.config.mjs` y no
+ * hardcodeados.
+ *
+ * **Hacen falta acá y no es teórico:** `campos/TaxonomiaSelect.tsx` importa
+ * `desSlug` de `@calendario`. Sin resolverlos, `aArchivo` los trata como paquete
+ * externo y el recorrido se corta ahí — o sea que `caminoHasta` devolvería `null`
+ * por **no haber sabido resolver** y no por no haber camino, que es un verde
+ * falso. Lo señaló el `auditor-trampas`, y es el mismo punto ciego que B-323 ya
+ * cerró para `bundle-panel.test.ts`: acá se reusó `caminoHasta` para un recorrido
+ * nuevo sin heredar esa protección.
+ */
+const ALIAS_A_ARCHIVO: Record<string, string> = Object.fromEntries(
+  [
+    ...fuente('astro.config.mjs').matchAll(
+      /'(@[\w-]+)':\s*fileURLToPath\(\s*new URL\('\.\/([^']+)'/g,
+    ),
+  ].map((m) => [m[1]!, m[2]!]),
+);
+
 const aArchivo = (spec: string, desde: string): string | null => {
   let base: string;
+  if (spec in ALIAS_A_ARCHIVO) return ALIAS_A_ARCHIVO[spec]!;
   if (spec.startsWith('@/')) base = `src/${spec.slice(2)}`;
   else if (spec.startsWith('.')) {
     const partes = desde.split('/').slice(0, -1);
@@ -206,6 +228,25 @@ describe('`campos/` no alcanza nada del panel ni el SDK pesado — B-841', () =>
     '@/lib/opciones',
     'firebase/firestore',
   ];
+
+  /**
+   * Control positivo del resolvedor de alias, calcado del de
+   * `bundle-panel.test.ts` (B-323). Sin esto, un `aArchivo` que dejara de
+   * resolverlos volvería a cortar el recorrido en silencio y todos los casos de
+   * abajo pasarían por no haber mirado esa rama.
+   */
+  it('los alias a `functions/` se resuelven como archivo del repo', () => {
+    expect(Object.keys(ALIAS_A_ARCHIVO).sort()).toEqual([
+      '@calendario',
+      '@historial',
+      '@png-chunks-seguros',
+    ]);
+    // Y el que de verdad se usa desde `campos/`: si dejara de resolverse, el
+    // recorrido lo trataría como hoja.
+    expect(aArchivo('@calendario', 'src/components/campos/TaxonomiaSelect.tsx')).toBe(
+      'functions/calendario.js',
+    );
+  });
 
   it('hay archivos que recorrer, y son los seis', () => {
     const archivos = DE_CAMPOS();
