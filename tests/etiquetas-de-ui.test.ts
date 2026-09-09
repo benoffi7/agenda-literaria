@@ -182,7 +182,7 @@ describe('el formulario y el listado no pueden decir lo mismo de dos maneras (B-
  * el des-slug compartido está en el camino.
  */
 describe('ningún desplegable pinta un slug pelado (B-132)', () => {
-  const SELECT = fuente('components/admin/campos/TaxonomiaSelect.tsx');
+  const SELECT = fuente('components/campos/TaxonomiaSelect.tsx');
 
   it('el option del valor no conocido pasa por el des-slug compartido', () => {
     // Del MISMO módulo que usa la descripción del evento público (D-20): dos

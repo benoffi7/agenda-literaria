@@ -1,5 +1,5 @@
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
-import { FilasEditor } from '@/components/admin/campos/FilasEditor';
+import { Campo, claseInput } from '@/components/campos/Campo';
+import { FilasEditor } from '@/components/campos/FilasEditor';
 import { duplicarItemMaterial, itemMaterialVacio } from '@/lib/material';
 import {
   ENTREGAS_MATERIAL,

@@ -4,7 +4,7 @@ import {
   claseBotonSecundario,
   claseBotonTinta,
   claseInput,
-} from '@/components/admin/campos/Campo';
+} from '@/components/campos/Campo';
 import {
   pendientesDe,
   useTodasLasOpciones,

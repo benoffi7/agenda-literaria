@@ -3076,14 +3076,62 @@ puestos y no hay que tocarlos.
 
 ## P2 — mejoras reales
 
-### B-827 · El `label` de `Campo` no está asociado a su input, y la asociación es opt-in · P2
+### B-827 · El `label` de `Campo` no está asociado a su input, y la asociación es opt-in — ✅ hecho (2026-09-09) · P2
+
+> **Resuelto con las dos mitades que el ítem pedía, y dos más que aparecieron al
+> hacerlo.**
+>
+> 1. **`htmlFor` es requerido** en `Campo`. Como decía el molde, hacerlo
+>    requerido rompe la compilación en cada uso que falte: el compilador enumeró
+>    **37** usos en **10** archivos, que es lo que convirtió «hay que mirar once
+>    archivos uno por uno» en una lista. Cada uno lleva ahora su `id` en el hijo.
+> 2. **El barrido de `clases-de-bug.test.ts`** (`describe` de B-827), para la
+>    mitad que el tipo no puede ver: que el hijo lleve **ese mismo** id. Un
+>    `htmlFor="act-titulo"` con un input sin `id` typecheckea perfecto y deja el
+>    label tan huérfano como antes. Verificado por mutación —sacar un `id` deja
+>    el caso en rojo nombrando el archivo— y con control positivo, para que un
+>    escaneo roto no dé verde por vacuidad.
+> 3. **La tercera mitad: el campo que rotula un grupo.** Al hacer `htmlFor`
+>    requerido aparecieron cuatro usos donde no hay **un** control al que
+>    apuntar: la tira de botones de modalidad, los dos de «¿Qué es?» de
+>    `ReporteFormulario`, el `GaleriaEditor` del flyer y la lectura de
+>    `CoordenadasSede` con el punto ya cargado. Un `<label for>` ahí sería una
+>    mentira, así que se agregó `comoGrupo`: el rótulo pasa a `<span id>` y los
+>    hijos van dentro de un `role="group"` con `aria-labelledby`. El id sigue
+>    siendo obligatorio, así que sigue sin poder olvidarse.
+>
+> **Y una cuarta mitad que apareció al mirar el control por dentro:**
+> `TaxonomiaSelect` tiene dos ramas excluyentes —el `<select>` y el input de
+> «Otro», con `autoFocus`— y el `id` estaba solo en la primera. El barrido de
+> arriba no puede verlo: mira los usos de `<Campo>`, y esto es adentro del
+> control. Lo fija `tests/taxonomia.test.ts`, que ya era la guardia de ese par de
+> widgets.
+>
+> **Y el efecto de al lado que el ítem anticipaba, cobrado:**
+> `formulario-apilado.render.test.tsx` volvió a buscar «Título» con
+> `getByLabelText` en vez de por `placeholder`. No es cosmético: el barrido lee
+> el fuente y **no puede saber si el id llega pintado**; ese caso sí, porque
+> monta el formulario de verdad. Los `getByPlaceholderText` de ese archivo son
+> cero.
+>
+> Fue junto con el movimiento de `campos/` de `admin/` a
+> `src/components/campos/` (tajada 0 de
+> [`prd/05-inventario-de-archivos.md`](prd/05-inventario-de-archivos.md) § 5), y
+> por eso se arregló **al mover y no después**: moverlo al alcance de los
+> formularios públicos sin arreglarlo convertía un problema de accesibilidad de
+> una herramienta interna que usan cuatro personas en uno de una página pública.
+>
+> **Lo que el movimiento dejó abierto y no se tapó: B-841**, acá abajo — tres de
+> los seis archivos de `campos/` siguen importando de `admin/`, y la cadena
+> arrastra el SDK de Firestore.
+
 
 **Lo destapó el test de B-822**, que no pudo agarrar el campo «Título» con
 `getByLabelText`: *«Found a label with the text of: /título/i, however no form
 control was found associated to that label»*. Se resolvió agarrando por
 `placeholder`, que es un parche del test y no del problema.
 
-`src/components/admin/campos/Campo.tsx` acepta un `htmlFor` **opcional** y lo pasa
+`src/components/campos/Campo.tsx` acepta un `htmlFor` **opcional** y lo pasa
 al `<label>`. Donde nadie lo pasa —y el input no tiene `id`— el label queda
 huérfano: **un lector de pantalla no anuncia el nombre del campo.** Quien navega
 el formulario con teclado y lector escucha «cuadro de texto» y nada más, en un
@@ -3108,6 +3156,60 @@ cada uso que falte, así que el compilador enumera el trabajo. Y un caso en
 ```
 it('todo `Campo` asocia su label con su control (§accesibilidad, B-235/B-243)')
 ```
+
+### B-841 · `campos/` salió de `admin/`, pero tres de sus seis archivos siguen importando de `admin/` · P2
+
+**Sale de haber hecho el movimiento de la tajada 0** y hay que decirlo así: el
+directorio se movió, o sea que **parece** compartido, y tres de sus seis archivos
+todavía no lo son. Un `import` es lo único que decide qué viaja.
+
+| Archivo de `campos/` | De dónde tira |
+|---|---|
+| `TaxonomiaSelect.tsx` | `@/components/admin/useOpciones` + `@/lib/analytics` |
+| `TagsInput.tsx` | idem |
+| `Seccion.tsx` | `@/components/admin/ayuda/AyudaDeSeccion` + `@/lib/analytics` |
+
+**Y lo que arrastra no es un detalle de organización: es el SDK de Firestore.**
+La cadena es estática de punta a punta —`useOpciones` → `lib/opciones` →
+`lib/firestore-client` → `firebase/firestore`—, así que una página pública que
+importe `TaxonomiaSelect` para su desplegable de barrio se baja el chunk pesado
+que `tests/bundle-panel.test.ts` existe para mantener afuera del **primer render
+del panel**. Es exactamente la novena de las «cosas que se rompen en silencio»
+del inventario (*«el formulario público importa de `admin/` → el bundle del panel
+viaja a una página pública»*), y el movimiento del directorio **no** la cerró:
+la disfrazó, porque ahora el import que la abre no dice `admin/` en ninguna
+parte.
+
+Las otras dos mitades, más chicas y de la misma forma:
+
+- **`@/lib/analytics` es la medición del panel**, no la del sitio (esa es
+  `analyticsSitio.ts`, y tiene su propio consentimiento —
+  `tests/terceros-antes-del-consentimiento.test.ts`). Un `medirFuncion` desde una
+  página pública mide con el perfil equivocado, y peor: mide **antes** de que
+  nadie haya aceptado nada.
+- **`AyudaDeSeccion`** es el `?` del panel, atado a `CAPITULOS` de `lib/ayuda.ts`.
+  El sitio tiene su propia ayuda (`ayudaDelSitio.ts`), que es otro vocabulario.
+
+**Dónde y el molde.** No es «mover tres archivos más»: lo que hay que decidir es
+de dónde saca sus opciones un formulario **público**, y la respuesta ya está
+escrita en otro lado — del **JSON** (§4.4 del `CLAUDE.md`: «las opciones viajan
+en el JSON», y la web arma los chips recorriendo `opciones.*`), no de un
+`onSnapshot`. O sea: `TaxonomiaSelect` necesita recibir sus valores en vez de
+buscarlos, y el hook queda del lado del panel. Lo mismo con la medición y con la
+ayuda: se reciben, no se importan.
+
+**Cuándo.** Antes del primer formulario público que use un desplegable de
+taxonomía — la tajada 1 (`/proponer`) según el inventario, o la 2 si el de
+propuestas no lleva ninguno. **No** bloquea la tajada 0, que es solo el
+movimiento.
+
+**Y lo que falta para que esto no vuelva a pasar en silencio:** hoy ningún
+chequeo prohíbe que `campos/` importe de `admin/`. `bundle-panel.test.ts` sigue
+el grafo **desde la island del panel**, así que mira la dirección contraria; y
+`salud-del-codigo.test.ts` cuenta ciclos, no capas. La regla —«`components/campos`
+no importa de `components/admin`»— son tres líneas sobre el grafo que ese archivo
+ya construye, y es la única forma de que el cuarto archivo compartido no nazca
+atado.
 
 ### B-826 · El frontmatter de una definición nueva no se chequea hasta que se commitea — ✅ hecho (2026-09-08) · P2
 
@@ -8017,7 +8119,7 @@ paga.
 Reportado por el dueño usando el panel (2026-08-24): *"cuando cargo barrios o
 lugares los escribe con minúscula"*.
 
-Confirmado en `src/components/admin/campos/TaxonomiaSelect.tsx:224`:
+Confirmado en `src/components/campos/TaxonomiaSelect.tsx:224`:
 
 ```tsx
 {pendienteAjena ? `${pendienteAjena.label} (sin aprobar)` : `${value} (nueva)`}

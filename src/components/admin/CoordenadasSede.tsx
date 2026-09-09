@@ -4,7 +4,7 @@ import {
   claseBotonFila,
   claseBotonSecundario,
   claseInput,
-} from '@/components/admin/campos/Campo';
+} from '@/components/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
 import {
   formatearGeo,
@@ -17,6 +17,12 @@ import {
 interface Props {
   geo: Geo | null;
   onChange: (geo: Geo | null) => void;
+  /**
+   * B-827 — id del input donde se pega el link. Lo pone quien monta el
+   * componente porque hay uno por fila de modalidad: derivarlo acá adentro
+   * repetiría el mismo id en las dos sedes de una actividad híbrida.
+   */
+  id: string;
   className?: string;
 }
 
@@ -48,7 +54,7 @@ const AYUDA =
  * **Nunca viaja lo pegado.** El link es contenido: puede llevar el nombre del
  * lugar, y el `detalle` es un enum cerrado de cuatro etiquetas de causa.
  */
-export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
+export function CoordenadasSede({ geo, onChange, id, className = '' }: Props) {
   const [texto, setTexto] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [advertencia, setAdvertencia] = useState<string | null>(null);
@@ -125,6 +131,11 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
   return (
     <Campo
       label="Punto exacto en el mapa"
+      htmlFor={id}
+      // Con el punto cargado no hay ningún control que rotular —queda la
+      // lectura y los dos botones—, así que ahí el rótulo nombra al grupo. Sin
+      // cargar, el input es el campo y el `<label for>` le corresponde.
+      comoGrupo={geo !== null}
       ayuda={geo ? undefined : AYUDA}
       error={error ?? undefined}
       className={className}
@@ -155,6 +166,7 @@ export function CoordenadasSede({ geo, onChange, className = '' }: Props) {
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
           <input
+            id={id}
             className={claseInput}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}

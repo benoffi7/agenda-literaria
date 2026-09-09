@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { claseBotonPrimario } from '@/components/admin/campos/Campo';
+import { claseBotonPrimario } from '@/components/campos/Campo';
 import { MENSAJE_PESTANIA_VIEJA, esFalloDeCarga } from '@/lib/carga-diferida';
 
 /**

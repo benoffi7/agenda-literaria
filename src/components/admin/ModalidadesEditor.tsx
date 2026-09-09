@@ -17,9 +17,9 @@
  * `deDatetimeLocal`, vía `formADocumento`), que es la que evita la trampa 1. Acá
  * son strings de `datetime-local` y en Firestore son `Timestamp`.
  */
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
-import { FilasEditor } from '@/components/admin/campos/FilasEditor';
-import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
+import { Campo, claseInput } from '@/components/campos/Campo';
+import { FilasEditor } from '@/components/campos/FilasEditor';
+import { TaxonomiaSelect } from '@/components/campos/TaxonomiaSelect';
 import { CoordenadasSede } from '@/components/admin/CoordenadasSede';
 import { ETIQUETA_MODALIDAD } from '@/components/admin/formulario/etiquetasUI';
 import { medirFuncion } from '@/lib/analytics';
@@ -68,11 +68,25 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
     >
       {(fila, i, editar) => {
         const ruta = (sufijo: string) => `modalidades.${i}.${sufijo}`;
+        // B-827 — el id del control, para que su `<label>` lo pueda nombrar. Va
+        // por `fila.id` y no por el índice: renumerar al borrar una fila
+        // desasociaría los labels de las que quedan, que es la trampa 2 del §13
+        // con otra cara.
+        const campoId = (sufijo: string) => `modalidad-${sufijo}-${fila.id}`;
         const resumen = resumirVentana(fila);
         const invertida = ventanaInvertida(fila);
         return (
           <>
-            <Campo label="Modalidad" requerido error={errorDe(ruta('modalidad'))} className="mb-4">
+            <Campo
+              label="Modalidad"
+              htmlFor={campoId('modalidad')}
+              // Tres botones y no un desplegable: no hay un control único al que
+              // apuntar, así que el rótulo nombra al grupo.
+              comoGrupo
+              requerido
+              error={errorDe(ruta('modalidad'))}
+              className="mb-4"
+            >
               <div className="flex gap-2">
                 {MODALIDADES.map((m) => (
                   <button
@@ -133,24 +147,41 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
 
             {filaPideSede(fila.modalidad) && fila.sede && (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Campo label="Sede" requerido error={errorDe(ruta('sede.nombre'))}>
+                <Campo
+                  label="Sede"
+                  htmlFor={campoId('sede-nombre')}
+                  requerido
+                  error={errorDe(ruta('sede.nombre'))}
+                >
                   <input
+                    id={campoId('sede-nombre')}
                     className={claseInput}
                     value={fila.sede.nombre}
                     onChange={(e) => editar({ sede: { ...fila.sede!, nombre: e.target.value } })}
                     placeholder="Casa Brandon"
                   />
                 </Campo>
-                <Campo label="Dirección" requerido error={errorDe(ruta('sede.direccion'))}>
+                <Campo
+                  label="Dirección"
+                  htmlFor={campoId('sede-direccion')}
+                  requerido
+                  error={errorDe(ruta('sede.direccion'))}
+                >
                   <input
+                    id={campoId('sede-direccion')}
                     className={claseInput}
                     value={fila.sede.direccion}
                     onChange={(e) => editar({ sede: { ...fila.sede!, direccion: e.target.value } })}
                     placeholder="Luis María Drago 236"
                   />
                 </Campo>
-                <Campo label="Barrio" error={errorDe(ruta('sede.barrio'))}>
+                <Campo
+                  label="Barrio"
+                  htmlFor={campoId('sede-barrio')}
+                  error={errorDe(ruta('sede.barrio'))}
+                >
                   <TaxonomiaSelect
+                    id={campoId('sede-barrio')}
                     campo="barrio"
                     uid={uid}
                     value={fila.sede.barrio}
@@ -161,8 +192,9 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                     placeholder="Elegí o agregá el barrio…"
                   />
                 </Campo>
-                <Campo label="Ciudad">
+                <Campo label="Ciudad" htmlFor={campoId('sede-ciudad')}>
                   <input
+                    id={campoId('sede-ciudad')}
                     className={claseInput}
                     value={fila.sede.ciudad}
                     onChange={(e) => editar({ sede: { ...fila.sede!, ciudad: e.target.value } })}
@@ -170,10 +202,12 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                 </Campo>
                 <Campo
                   label="Cómo llegar"
+                  htmlFor={campoId('sede-indicaciones')}
                   ayuda="Timbre, piso, referencias. Sale al sitio público."
                   className="sm:col-span-2"
                 >
                   <input
+                    id={campoId('sede-indicaciones')}
                     className={claseInput}
                     value={fila.sede.indicaciones}
                     onChange={(e) =>
@@ -182,6 +216,7 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                   />
                 </Campo>
                 <CoordenadasSede
+                  id={campoId('sede-geo')}
                   geo={fila.sede.geo}
                   onChange={(geo) => editar({ sede: { ...fila.sede!, geo } })}
                   className="sm:col-span-2"
@@ -195,8 +230,14 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                   filaPideSede(fila.modalidad) ? 'mt-4 border-t border-borde pt-4' : ''
                 }`}
               >
-                <Campo label="Plataforma" requerido error={errorDe(ruta('online.plataforma'))}>
+                <Campo
+                  label="Plataforma"
+                  htmlFor={campoId('online-plataforma')}
+                  requerido
+                  error={errorDe(ruta('online.plataforma'))}
+                >
                   <TaxonomiaSelect
+                    id={campoId('online-plataforma')}
                     campo="plataforma"
                     uid={uid}
                     value={fila.online.plataforma}
@@ -210,9 +251,11 @@ export function ModalidadesEditor({ modalidades, onChange, uid, anotarLabel, err
                 </Campo>
                 <Campo
                   label="Link del encuentro"
+                  htmlFor={campoId('online-url')}
                   ayuda="Por defecto no se publica: se manda al inscribirse."
                 >
                   <input
+                    id={campoId('online-url')}
                     type="url"
                     inputMode="url"
                     autoCapitalize="off"

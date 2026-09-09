@@ -577,7 +577,7 @@ campos que había».
 |---|---|---|
 | `agenda:vista-del-panel` | con qué forma se dibuja el formulario, `pc` o `celular` (B-814) | `lib/vistaDelPanel.ts` |
 | `agenda:grafico:` | con qué vista se pinta un reparto del tablero (B-701) | `lib/vistaDeGrafico.ts` |
-| `agenda:seccion:` | qué acordeón del formulario quedó abierto | `components/admin/campos/Seccion.tsx` |
+| `agenda:seccion:` | qué acordeón del formulario quedó abierto | `components/campos/Seccion.tsx` |
 | `agenda:version-recargada` | qué versión del bundle ya se recargó, para no recargar en loop | `components/admin/useVersionPublicada.ts` |
 | `agenda:analitica:perfil` | el perfil de medición del panel | `lib/analytics.ts` |
 | `agenda:consentimiento-analitica` | si quien visita el sitio aceptó la analítica | `lib/analyticsSitio.ts` |

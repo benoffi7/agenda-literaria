@@ -4,7 +4,7 @@ import {
   claseBotonChipActivo,
   claseBotonSecundario,
   claseEnlaceCelda,
-} from '@/components/admin/campos/Campo';
+} from '@/components/campos/Campo';
 import { useActividades } from '@/components/admin/useActividades';
 import {
   ESTADOS_CIERRE,

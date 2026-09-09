@@ -12,7 +12,7 @@
  * viajar en la carga inicial del panel (B-09/D-51, `tests/bundle-panel.test.ts`).
  */
 import { useRef, useState } from 'react';
-import { claseBotonFila, claseBotonTinta, claseInput } from '@/components/admin/campos/Campo';
+import { claseBotonFila, claseBotonTinta, claseInput } from '@/components/campos/Campo';
 import {
   MAXIMO_BYTES,
   MAXIMO_IMAGENES,

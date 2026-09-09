@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { claseBotonSecundario } from '@/components/admin/campos/Campo';
+import { claseBotonSecundario } from '@/components/campos/Campo';
 import { ReporteFormulario } from '@/components/admin/ReporteFormulario';
 import { marcarResuelto, observarReportes, reintentarReporte } from '@/lib/reportes';
 import type { EstadoReporte, ReporteConId } from '@/types/reporte';

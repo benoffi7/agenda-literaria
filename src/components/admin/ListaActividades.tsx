@@ -3,7 +3,7 @@ import {
   claseBotonPrimario,
   claseBotonSecundario,
   claseInput,
-} from '@/components/admin/campos/Campo';
+} from '@/components/campos/Campo';
 import { DialogoDuplicar } from '@/components/admin/DialogoDuplicar';
 import { FiltrosActividades } from '@/components/admin/FiltrosActividades';
 import { MenuAcciones } from '@/components/admin/MenuAcciones';

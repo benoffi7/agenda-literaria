@@ -98,7 +98,7 @@ export interface Libreria {
 | `slugify` y la unicidad del slug | `src/lib/slugify.ts` + el patrón de `slugDisponible` (B-820) |
 | `normalize` para `searchText` | `src/lib/normalize.ts` (§6) |
 | El desplegable de barrio con autocompletado | `TaxonomiaSelect.tsx` + `useOpciones.ts` |
-| `Campo`, `Seccion`, `FilasEditor` | `src/components/admin/campos/` |
+| `Campo`, `Seccion`, `FilasEditor` | `src/components/campos/` |
 | El buscador en memoria del listado | `src/components/publico/Buscador.tsx` (§2.5) |
 
 **Un `whatsapp` que se publica es una decisión, no un campo.** El §5.1 del

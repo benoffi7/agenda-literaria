@@ -1,5 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react';
-import { Campo, claseBotonChip, claseBotonChipActivo, claseInput } from '@/components/admin/campos/Campo';
+import { Campo, claseBotonChip, claseBotonChipActivo, claseInput } from '@/components/campos/Campo';
 import {
   CUANDOS,
   DESTACADOS,

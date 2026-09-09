@@ -2,8 +2,8 @@
  * Organizador siempre; tallerista o autor invitado según el tipo (§11), y el
  * libro presentado en presentación y charla (DEC-1).
  */
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
-import { Seccion } from '@/components/admin/campos/Seccion';
+import { Campo, claseInput } from '@/components/campos/Campo';
+import { Seccion } from '@/components/campos/Seccion';
 import { muestraLibro } from '@/lib/formulario/condicionales';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
@@ -18,15 +18,17 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
   return (
     <Seccion ancla="quien" titulo="Quién" conAyuda>
       <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
-        <Campo label="Organizador" requerido error={errorDe('organizador.nombre')}>
+        <Campo label="Organizador" htmlFor="org-nombre" requerido error={errorDe('organizador.nombre')}>
           <input
+            id="org-nombre"
             className={claseInput}
             value={form.organizador.nombre}
             onChange={(e) => set('organizador', { ...form.organizador, nombre: e.target.value })}
           />
         </Campo>
-        <Campo label="Instagram del organizador">
+        <Campo label="Instagram del organizador" htmlFor="org-instagram">
           <input
+            id="org-instagram"
             className={claseInput}
             autoCapitalize="off"
             autoCorrect="off"
@@ -36,8 +38,9 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             placeholder="@casabrandon"
           />
         </Campo>
-        <Campo label="Web del organizador" className="sm:col-span-full">
+        <Campo label="Web del organizador" htmlFor="org-web" className="sm:col-span-full">
           <input
+            id="org-web"
             className={claseInput}
             value={form.organizador.web}
             onChange={(e) => set('organizador', { ...form.organizador, web: e.target.value })}
@@ -49,8 +52,9 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
       {(esTaller || esCharla) && (
         <div className="mt-4 border-t border-borde pt-4">
           <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
-            <Campo label={nombrePersona}>
+            <Campo label={nombrePersona} htmlFor="persona-nombre">
               <input
+                id="persona-nombre"
                 className={claseInput}
                 value={form.tallerista?.nombre ?? ''}
                 onChange={(e) =>
@@ -62,8 +66,9 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                 }
               />
             </Campo>
-            <Campo label="Instagram">
+            <Campo label="Instagram" htmlFor="persona-instagram">
               <input
+                id="persona-instagram"
                 className={claseInput}
                 value={form.tallerista?.instagram ?? ''}
                 onChange={(e) =>
@@ -75,8 +80,9 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
                 }
               />
             </Campo>
-            <Campo label="Bio" className="sm:col-span-full">
+            <Campo label="Bio" htmlFor="persona-bio" className="sm:col-span-full">
               <textarea
+                id="persona-bio"
                 className={`${claseInput} min-h-20`}
                 value={form.tallerista?.bio ?? ''}
                 onChange={(e) =>
@@ -109,10 +115,12 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
           <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
             <Campo
               label="Libro presentado"
+              htmlFor="libro-titulo"
               error={errorDe('libro.titulo')}
               ayuda="Se publica en el sitio y en el evento del calendario."
             >
               <input
+                id="libro-titulo"
                 className={claseInput}
                 value={form.libro.titulo}
                 onChange={(e) => set('libro', { ...form.libro, titulo: e.target.value })}
@@ -121,10 +129,12 @@ export function SeccionQuien({ form, set, errorDe, esTaller, esCharla, nombrePer
             </Campo>
             <Campo
               label="Autor del libro"
+              htmlFor="libro-autor"
               error={errorDe('libro.autor')}
               ayuda="Solo si es distinto de la persona invitada."
             >
               <input
+                id="libro-autor"
                 className={claseInput}
                 value={form.libro.autor}
                 onChange={(e) => set('libro', { ...form.libro, autor: e.target.value })}

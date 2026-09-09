@@ -219,7 +219,7 @@ describe('el reparto de columnas del formulario (B-814, B-621)', () => {
      * así que el contenedor tiene que ser un ancestro, y el cuerpo de la sección
      * es el ancestro común de las nueve.
      */
-    const seccion = fuente('components/admin/campos/Seccion.tsx');
+    const seccion = fuente('components/campos/Seccion.tsx');
     expect(seccion, 'el cuerpo de la sección dejó de ser el contenedor de consulta').toContain(
       '@container',
     );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
+import { Campo, claseInput } from '@/components/campos/Campo';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
 import { deDatetimeLocal } from '@/lib/sesiones';
 import { vistaPreviaEvento, type LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
@@ -57,8 +57,13 @@ export function VistaPreviaEvento({ form, labelsPendientes }: Props) {
   return (
     <div className="flex flex-col gap-3">
       {form.sesiones.length > 1 && (
-        <Campo label="Encuentro" ayuda="Cada encuentro es un evento propio (§2.2).">
+        <Campo
+          label="Encuentro"
+          htmlFor="vista-previa-sesion"
+          ayuda="Cada encuentro es un evento propio (§2.2)."
+        >
           <select
+            id="vista-previa-sesion"
             className={claseInput}
             value={idEfectivo}
             onChange={(e) => setSesionId(e.target.value)}

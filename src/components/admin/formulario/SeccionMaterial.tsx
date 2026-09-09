@@ -2,7 +2,7 @@
  * Lecturas, guías y contexto. Sobre todo en clubes de lectura, que es donde la
  * cascada del §2.2 la deja abierta.
  */
-import { Seccion } from '@/components/admin/campos/Seccion';
+import { Seccion } from '@/components/campos/Seccion';
 import { MaterialEditor } from '@/components/admin/MaterialEditor';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 

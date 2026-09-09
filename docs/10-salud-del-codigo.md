@@ -217,13 +217,13 @@ Fan-in, contando solo consumidores de producción:
 | Consumidores | Módulo | Fan-out |
 |---:|---|---:|
 | 44 | `src/types/actividad.ts` | **0** |
-| 23 | `src/components/admin/campos/Campo.tsx` | **0** |
+| 23 | `src/components/campos/Campo.tsx` | **0** |
 | 19 | `src/lib/identidad.ts` | 1 |
 | 18 | `src/lib/sesiones.ts` | 1 |
 | 16 | `src/lib/rutasPublicas.ts` | **0** |
 | 15 | `functions/calendario.js` | **0** |
 | 15 | `src/components/sitio/estilos.ts` | **0** |
-| 13 | `src/components/admin/campos/Seccion.tsx` | 2 |
+| 13 | `src/components/campos/Seccion.tsx` | 2 |
 | 13 | `src/layouts/Base.astro` | 5 |
 | 13 | `src/lib/imagenes.ts` | 1 |
 

@@ -1,4 +1,4 @@
-import { Campo, claseBotonFila, claseBotonSecundario, claseInput } from '@/components/admin/campos/Campo';
+import { Campo, claseBotonFila, claseBotonSecundario, claseInput } from '@/components/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
 import { comisionVacia } from '@/lib/comisiones';
 import type { Comision } from '@/types/actividad';

@@ -18,7 +18,7 @@
  * `recuerdaComo` es lo que evita el otro extremo: quien la cierra a propósito la
  * encuentra cerrada la próxima vez.
  */
-import { Seccion } from '@/components/admin/campos/Seccion';
+import { Seccion } from '@/components/campos/Seccion';
 import { VistaPreviaEvento } from '@/components/admin/VistaPreviaEvento';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
 import type { ActividadForm } from '@/types/actividad';

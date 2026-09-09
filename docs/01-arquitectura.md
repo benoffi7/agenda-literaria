@@ -175,6 +175,12 @@ src/
     fechasPublicas.ts       las fechas del sitio, siempre con timeZone (trampa 1)
     rutasPublicas.ts        /actividad/{slug} y /agenda/{aaaa-mm}, una sola vez
   components/admin/         el panel entero
+  components/campos/        los controles de formulario compartidos: Campo (y
+                            las clases del panel), Seccion, FilasEditor,
+                            TaxonomiaSelect, TagsInput, ChipsInput. Salió de
+                            admin/ en B-827 porque los formularios públicos de
+                            prd/ los van a usar, y por eso `Campo` exige la
+                            asociación label↔control en vez de ofrecerla
   components/sitio/         el chrome del sitio público y sus piezas (B-229)
   components/publico/       el sitio: FilaDeActividad, ListaDeActividades,
                             MarcadorDeMes, EjeDeFiltro y Buscador (la única

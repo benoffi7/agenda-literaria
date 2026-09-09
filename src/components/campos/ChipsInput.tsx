@@ -5,7 +5,7 @@
  * queda solo el teclado y el pintado. Ver ahí por qué esto no es `TagsInput`.
  */
 import { useState } from 'react';
-import { claseInput } from '@/components/admin/campos/Campo';
+import { claseInput } from '@/components/campos/Campo';
 import { agregarChips, quitarChip, traeSeparador } from '@/lib/formulario/chips';
 
 interface Props {
@@ -14,9 +14,11 @@ interface Props {
   placeholder?: string;
   /** Para el `aria-label` del botón de cada chip: "Quitar @casabrandon". */
   etiquetaQuitar?: (chip: string) => string;
+  /** B-827 — id del input, para que el `<label>` del `Campo` lo nombre. */
+  id?: string;
 }
 
-export function ChipsInput({ value, onChange, placeholder, etiquetaQuitar }: Props) {
+export function ChipsInput({ value, onChange, placeholder, etiquetaQuitar, id }: Props) {
   const [texto, setTexto] = useState('');
 
   const confirmar = (entrada: string) => {
@@ -48,6 +50,7 @@ export function ChipsInput({ value, onChange, placeholder, etiquetaQuitar }: Pro
         </ul>
       )}
       <input
+        id={id}
         className={claseInput}
         value={texto}
         placeholder={placeholder}

@@ -5,8 +5,8 @@ import {
   claseBotonTinta,
   claseInput,
   Campo,
-} from '@/components/admin/campos/Campo';
-import { Seccion } from '@/components/admin/campos/Seccion';
+} from '@/components/campos/Campo';
+import { Seccion } from '@/components/campos/Seccion';
 import { listarActividades } from '@/lib/actividades';
 import { reporteFormSchema, reporteVacio } from '@/lib/reporte-schema';
 import { contextoTecnico, crearReporte } from '@/lib/reportes';
@@ -117,7 +117,14 @@ export function ReporteFormulario({ usuario, onEnviado }: Props) {
             Tu cuenta no aparece en el issue.
           </p>
 
-          <Campo label="¿Qué es?" requerido>
+          <Campo
+            label="¿Qué es?"
+            htmlFor="rep-tipo"
+            // Dos botones: no hay un control único al que apuntar, así que el
+            // rótulo nombra al grupo.
+            comoGrupo
+            requerido
+          >
             {/* Dos botones y no un desplegable: es la decisión que ordena el
                 resto del formulario y en el teléfono se toca de una. */}
             <div className="flex flex-col gap-2 sm:flex-row">

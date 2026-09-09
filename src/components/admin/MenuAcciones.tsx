@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { claseBotonFila, claseBotonMenu } from '@/components/admin/campos/Campo';
+import { claseBotonFila, claseBotonMenu } from '@/components/campos/Campo';
 import { indiceDeTecla } from '@/lib/foco';
 
 export interface Accion {

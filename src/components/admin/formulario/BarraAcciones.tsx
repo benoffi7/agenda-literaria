@@ -25,7 +25,7 @@
  * nombra lo que falta, nombra **lo que se pierde**. El texto vive en
  * `lib/formulario/recomendaciones.ts`, que es donde se testea.
  */
-import { claseBotonPrimario, claseBotonSecundario } from '@/components/admin/campos/Campo';
+import { claseBotonPrimario, claseBotonSecundario } from '@/components/campos/Campo';
 import {
   nombraSecciones,
   type IdSeccion,

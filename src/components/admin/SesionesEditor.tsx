@@ -5,8 +5,8 @@ import {
   claseBotonPrimario,
   claseBotonSecundario,
   claseInput,
-} from '@/components/admin/campos/Campo';
-import { FilasEditor } from '@/components/admin/campos/FilasEditor';
+} from '@/components/campos/Campo';
+import { FilasEditor } from '@/components/campos/FilasEditor';
 import { medirFuncion } from '@/lib/analytics';
 import {
   aDatetimeLocal,
@@ -431,16 +431,28 @@ export function SesionesEditor({
         return (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Campo label="Inicio" requerido error={errorDe(ruta('inicio'))}>
+              <Campo
+                label="Inicio"
+                htmlFor={`sesion-inicio-${s.id}`}
+                requerido
+                error={errorDe(ruta('inicio'))}
+              >
                 <input
+                  id={`sesion-inicio-${s.id}`}
                   type="datetime-local"
                   value={s.inicio}
                   onChange={(e) => reemplazar(s.id, (x) => conInicioNuevo(x, e.target.value))}
                   className={claseInput}
                 />
               </Campo>
-              <Campo label="Fin" requerido error={errorDe(ruta('fin'))}>
+              <Campo
+                label="Fin"
+                htmlFor={`sesion-fin-${s.id}`}
+                requerido
+                error={errorDe(ruta('fin'))}
+              >
                 <input
+                  id={`sesion-fin-${s.id}`}
                   type="datetime-local"
                   value={s.fin}
                   onChange={(e) => editar({ fin: e.target.value })}

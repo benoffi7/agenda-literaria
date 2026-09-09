@@ -4,7 +4,7 @@ import {
   claseBotonSecundario,
   claseBotonTinta,
   claseInput,
-} from '@/components/admin/campos/Campo';
+} from '@/components/campos/Campo';
 import { medirFuncion } from '@/lib/analytics';
 import { estaAprobada } from '@/lib/opciones';
 import { desSlug } from '@calendario';
@@ -121,6 +121,15 @@ export function TaxonomiaSelect({
         */}
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
+            /*
+             * B-827 — el **mismo** id que el `<select>` de abajo, y no otro: el
+             * `<label>` del `Campo` apunta a uno solo, y las dos ramas son
+             * excluyentes, así que el id nunca está dos veces en el DOM. Sin
+             * esto, entrar en «Otro» —que además hace `autoFocus`— dejaba el
+             * campo sin nombre accesible justo en el momento en que se está
+             * tipeando en él.
+             */
+            id={id}
             ref={inputRef}
             autoFocus
             enterKeyHint="done"

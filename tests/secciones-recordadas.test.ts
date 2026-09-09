@@ -5,7 +5,7 @@ import {
   recordarSeccion,
   seccionArrancaAbierta,
   type AlmacenDeSecciones,
-} from '@/components/admin/campos/Seccion';
+} from '@/components/campos/Seccion';
 
 /**
  * B-193 — la vista previa del evento ya existía y quien la pidió no la encontró.

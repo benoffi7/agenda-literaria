@@ -1,4 +1,4 @@
-import { claseBotonPrimario } from '@/components/admin/campos/Campo';
+import { claseBotonPrimario } from '@/components/campos/Campo';
 import { PROMESA_DEL_BORRADOR } from '@/lib/carga-diferida';
 import { almacenDelNavegador } from '@/lib/formulario/borradoresDelNavegador';
 import type { DecisionVersion } from '@/lib/version';

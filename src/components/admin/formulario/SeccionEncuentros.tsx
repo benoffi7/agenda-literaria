@@ -8,7 +8,7 @@
  * esto— y porque el desplegable de cada encuentro no significa nada sin la lista
  * de opciones a la vista.
  */
-import { Seccion } from '@/components/admin/campos/Seccion';
+import { Seccion } from '@/components/campos/Seccion';
 import { ComisionesEditor } from '@/components/admin/ComisionesEditor';
 import { SesionesEditor } from '@/components/admin/SesionesEditor';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';

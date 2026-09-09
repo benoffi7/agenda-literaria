@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { claseEnlaceCelda } from '@/components/admin/campos/Campo';
+import { claseEnlaceCelda } from '@/components/campos/Campo';
 import { Reparto } from '@/components/admin/estadisticas/Reparto';
 import { useLabelsTaxonomia, useOpciones } from '@/components/admin/useOpciones';
 import { listarActividades } from '@/lib/actividades';

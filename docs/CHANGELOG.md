@@ -2,6 +2,70 @@
 
 ## Sin publicar
 
+- **`campos/` es compartido, y `Campo` ya no ofrece la accesibilidad: la exige** —
+  **B-827**, y el primer paso de la tajada 0 de
+  [`prd/05-inventario-de-archivos.md`](prd/05-inventario-de-archivos.md) § 5. Los
+  seis controles de formulario (`Campo`, `Seccion`, `FilasEditor`,
+  `TaxonomiaSelect`, `TagsInput`, `ChipsInput`) salieron de
+  `src/components/admin/campos/` a **`src/components/campos/`**, que es donde los
+  van a buscar los cuatro formularios públicos de `prd/`. Son **66** referencias
+  en **48** archivos —56 de ellas imports de `src/` y `tests/`, el resto prosa de
+  la doc— y ningún cambio de comportamiento.
+
+  **Y B-827 se arregló al mover, no después, que es la parte que importa.** El
+  `htmlFor` de `Campo` era **opcional** y once usos no lo pasaban: el `<label>`
+  quedaba huérfano, o sea que un lector de pantalla anunciaba «cuadro de texto» y
+  nada más en un formulario de treinta y pico de campos. Hoy afecta al panel, que
+  usan cuatro personas; moverlo al alcance de una página pública sin arreglarlo lo
+  convertía en otra cosa.
+
+  Ahora `htmlFor` es **requerido**. El compilador enumeró el trabajo —**37** usos
+  en **10** archivos— y cada uno lleva su `id` en el hijo, con los ids de las filas
+  derivados de `fila.id` y no del índice (renumerar al borrar una fila
+  desasociaría los labels de las que quedan: es la trampa 2 del §13 con otra cara).
+  `TaxonomiaSelect` ya aceptaba un `id`; `TagsInput` y `ChipsInput` lo aceptan
+  ahora y lo reenvían a su input.
+
+  **Los cuatro casos donde no hay un control al que apuntar aparecieron recién al
+  hacerlo requerido**, y son los que le dan la forma al arreglo: la tira de botones
+  de modalidad, los dos de «¿Qué es?» del reporte, el editor de galería del flyer y
+  la lectura de `CoordenadasSede` con el punto ya cargado. Un `<label for>` ahí
+  sería una mentira, así que se agregó `comoGrupo`: el rótulo pasa a `<span id>` y
+  los hijos van dentro de un `role="group"` con `aria-labelledby`. El id sigue
+  siendo obligatorio, así que sigue sin poder olvidarse.
+
+  **Y una rama que casi se escapa:** `TaxonomiaSelect` pinta dos widgets
+  excluyentes —el `<select>` y, en modo «Otro», un input con `autoFocus`— y el
+  `id` estaba solo en el primero. O sea que entrar en «Otro» dejaba el campo sin
+  nombre accesible **justo** cuando alguien está tipeando en él. Van los dos con
+  el mismo id (las ramas son excluyentes, nunca está dos veces en el DOM) y lo
+  fija `tests/taxonomia.test.ts`, que es donde vive la guardia de esos dos
+  widgets: el barrido de `<Campo>` no puede verlo, porque esto es adentro del
+  control.
+
+  **Tres redes, porque una sola no alcanza.** El `describe` de B-827 en
+  `clases-de-bug.test.ts` barre los usos y exige el par `htmlFor`/`id` — es la
+  mitad que el tipo no puede ver, porque un `htmlFor` que apunta a un id que nadie
+  declara typecheckea perfecto. Y `formulario-apilado.render.test.tsx` volvió a
+  buscar «Título» **por label** en vez de por `placeholder`: el barrido lee el
+  fuente y no puede saber si el id llega pintado; ese caso monta el formulario de
+  verdad. El `placeholder` era el parche que este mismo test se había puesto al
+  destapar el bug (B-822), y ahora es cero.
+
+  **Lo que el movimiento dejó abierto, anotado y no tapado: B-841.** Tres de los
+  seis archivos de `campos/` siguen importando de `admin/`
+  (`useOpciones`, `AyudaDeSeccion`) y del `lib/analytics` del panel, y la cadena de
+  `useOpciones` es estática hasta `firebase/firestore`. O sea que hoy una página
+  pública que importe `TaxonomiaSelect` se baja el SDK de Firestore: es la novena
+  de las «cosas que se rompen en silencio» del inventario, y mover el directorio
+  no la cerró — **la disfrazó**, porque el import que la abre ya no dice `admin/`
+  en ninguna parte. Va antes del primer formulario público con un desplegable de
+  taxonomía, no ahora.
+
+  **Sin novedad en el panel, a propósito:** la tajada 0 no toca producto y esto no
+  se nota al usarlo — la regla de `novedades.ts` es «si el cambio no se nota al
+  usar el panel, no va».
+
 - **Tres de las cuatro decisiones de los PRDs, contestadas** — el dueño, el
   2026-09-08, y con ellas una cuarta que no estaba en la lista y es la que más
   cambió el trabajo. Los seis documentos de [`prd/`](prd/README.md) ya no proponen:

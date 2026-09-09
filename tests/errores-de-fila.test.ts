@@ -96,12 +96,12 @@ describe('el error de una fila de material se pinta al lado del campo (B-197)', 
     // El editor pintaba `<label>` a mano, sin `Campo`, y por eso ningún campo de
     // material quedaba marcado en el DOM: el scroll de B-184 caía en la línea de
     // la lista o en el principio de la sección.
-    expect(EDITOR).toMatch(/import \{[^}]*\bCampo\b[^}]*\} from '@\/components\/admin\/campos\/Campo'/);
+    expect(EDITOR).toMatch(/import \{[^}]*\bCampo\b[^}]*\} from '@\/components\/campos\/Campo'/);
     expect(EDITOR).toMatch(/<Campo\b[\s\S]*?label="Título"/);
   });
 
   it('B-342 — usa el chasis `FilasEditor`, con ids de cliente y no por índice', () => {
-    expect(EDITOR).toContain("import { FilasEditor } from '@/components/admin/campos/FilasEditor'");
+    expect(EDITOR).toContain("import { FilasEditor } from '@/components/campos/FilasEditor'");
     expect(EDITOR).toMatch(/<FilasEditor\b/);
     // El bug exacto que reemplaza: borrar/editar comparando por posición.
     expect(EDITOR).not.toMatch(/items\.filter\(\(_, j\) => j !== i\)/);
@@ -224,8 +224,10 @@ describe('el error de una fila de encuentros se pinta al lado del campo (B-343)'
   });
 
   it('inicio y fin usan `Campo`, que es quien marca el ancla de B-184', () => {
-    expect(EDITOR).toMatch(/<Campo label="Inicio"/);
-    expect(EDITOR).toMatch(/<Campo label="Fin"/);
+    // `\s+` y no un espacio: desde B-827 el tag lleva `htmlFor` y quedó
+    // multilínea, y el label sigue siendo el primer prop.
+    expect(EDITOR).toMatch(/<Campo\s+label="Inicio"/);
+    expect(EDITOR).toMatch(/<Campo\s+label="Fin"/);
   });
 
   it('la derivación paralela de "fin antes del inicio" se conserva', () => {

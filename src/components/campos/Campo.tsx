@@ -2,7 +2,31 @@ import type { ReactNode } from 'react';
 
 interface Props {
   label: string;
-  htmlFor?: string;
+  /**
+   * B-827 — **obligatorio**, y es el id del control que este campo rotula.
+   *
+   * Era opcional y once usos no lo pasaban, así que el `<label>` quedaba
+   * huérfano y un lector de pantalla anunciaba «cuadro de texto» y nada más en
+   * un formulario de treinta y pico de campos. La asociación era opt-in: el que
+   * se agregaba mañana nacía mal por default. Requerido, el compilador enumera
+   * los que faltan y el que venga después no puede olvidarse.
+   *
+   * El hijo tiene que llevar **este mismo** `id` — o, si el campo rotula un
+   * grupo de controles y no uno solo, usar `comoGrupo` (ver abajo).
+   * `tests/clases-de-bug.test.ts` barre los usos y exige el par.
+   */
+  htmlFor: string;
+  /**
+   * El campo rotula un **grupo** de controles, no uno solo: la tira de botones
+   * de modalidad, los dos botones de «¿Qué es?», el editor de galería.
+   *
+   * Un `<label for>` apunta a un único control, así que acá no sirve: el rótulo
+   * pasa a ser un `<span id>` y los hijos van dentro de un `role="group"` que lo
+   * referencia con `aria-labelledby`. Es la misma garantía —el grupo tiene
+   * nombre accesible— con el mecanismo que corresponde, y `htmlFor` sigue
+   * siendo obligatorio porque sigue habiendo un id que atar.
+   */
+  comoGrupo?: boolean;
   error?: string;
   ayuda?: string;
   requerido?: boolean;
@@ -23,22 +47,42 @@ interface Props {
 export function Campo({
   label,
   htmlFor,
+  comoGrupo = false,
   error,
   ayuda,
   requerido,
   children,
   className = '',
 }: Props) {
+  const rotulo = (
+    <>
+      {label}
+      {requerido && <span className="ml-0.5 text-acento">*</span>}
+    </>
+  );
+  const claseRotulo = 'text-sm font-medium text-tinta';
+
   return (
     <div
       data-campo-con-error={error ? '' : undefined}
       className={`flex min-w-0 scroll-mt-16 flex-col gap-1.5 ${className}`}
     >
-      <label htmlFor={htmlFor} className="text-sm font-medium text-tinta">
-        {label}
-        {requerido && <span className="ml-0.5 text-acento">*</span>}
-      </label>
-      {children}
+      {comoGrupo ? (
+        <span id={htmlFor} className={claseRotulo}>
+          {rotulo}
+        </span>
+      ) : (
+        <label htmlFor={htmlFor} className={claseRotulo}>
+          {rotulo}
+        </label>
+      )}
+      {comoGrupo ? (
+        <div role="group" aria-labelledby={htmlFor} className="flex min-w-0 flex-col gap-1.5">
+          {children}
+        </div>
+      ) : (
+        children
+      )}
       {ayuda && !error && <p className="text-xs text-tinta/55">{ayuda}</p>}
       {error && (
         <p role="alert" className="text-xs font-medium text-acento">

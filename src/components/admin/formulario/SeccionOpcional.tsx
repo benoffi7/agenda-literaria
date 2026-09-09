@@ -5,9 +5,9 @@
  * por defecto y llamada «Opcional», y el resultado era 2 actividades con imagen
  * sobre 42 publicadas. Lo que queda son dos cosas que sí son opcionales.
  */
-import { Campo } from '@/components/admin/campos/Campo';
-import { Seccion } from '@/components/admin/campos/Seccion';
-import { TagsInput } from '@/components/admin/campos/TagsInput';
+import { Campo } from '@/components/campos/Campo';
+import { Seccion } from '@/components/campos/Seccion';
+import { TagsInput } from '@/components/campos/TagsInput';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 interface Props extends PropsSeccion {
@@ -40,8 +40,9 @@ export function SeccionOpcional({
       abiertaPorDefecto={false}
     >
       <div className="grid gap-4">
-        <Campo label="Tags" ayuda="Alimentan los filtros del sitio público.">
+        <Campo label="Tags" htmlFor="act-tags" ayuda="Alimentan los filtros del sitio público.">
           <TagsInput
+            id="act-tags"
             uid={uid}
             value={form.tags}
             onChange={(slugs, nuevos) => {

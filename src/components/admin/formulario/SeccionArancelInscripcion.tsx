@@ -2,10 +2,10 @@
  * §4 — el arancel es una taxonomía y **no** se preselecciona (D-16). La
  * inscripción abre sus campos solo si se pide.
  */
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
+import { Campo, claseInput } from '@/components/campos/Campo';
 import { admiteMonto, montoDesdeTexto } from '@/lib/arancel';
-import { Seccion } from '@/components/admin/campos/Seccion';
-import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
+import { Seccion } from '@/components/campos/Seccion';
+import { TaxonomiaSelect } from '@/components/campos/TaxonomiaSelect';
 import { ETIQUETA_VIA } from '@/components/admin/formulario/etiquetasUI';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';
@@ -32,8 +32,9 @@ export function SeccionArancelInscripcion({
   return (
     <Seccion ancla="arancel-inscripcion" titulo="Arancel e inscripción" conAyuda>
       <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
-        <Campo label="Arancel" requerido error={errorDe('arancel.tipo')}>
+        <Campo label="Arancel" htmlFor="arancel-tipo" requerido error={errorDe('arancel.tipo')}>
           <TaxonomiaSelect
+            id="arancel-tipo"
             campo="arancel"
             uid={uid}
             value={form.arancel.tipo}
@@ -47,8 +48,13 @@ export function SeccionArancelInscripcion({
             placeholder="Elegí el arancel…"
           />
         </Campo>
-        <Campo label="Notas del arancel" ayuda="«2 cuotas», «incluye material»">
+        <Campo
+          label="Notas del arancel"
+          htmlFor="arancel-notas"
+          ayuda="«2 cuotas», «incluye material»"
+        >
           <input
+            id="arancel-notas"
             className={claseInput}
             value={form.arancel.notas}
             onChange={(e) => set('arancel', { ...form.arancel, notas: e.target.value })}
@@ -68,10 +74,12 @@ export function SeccionArancelInscripcion({
         {admiteMonto(form.arancel.tipo) && (
           <Campo
             label="Monto"
+            htmlFor="arancel-monto"
             error={errorDe('arancel.monto')}
             ayuda="Opcional. En pesos y sin centavos: 15000 se publica como $15.000."
           >
             <input
+              id="arancel-monto"
               className={claseInput}
               /*
                 **`type="text"` y no `type="number"`, y eso es el arreglo de un
@@ -143,8 +151,9 @@ export function SeccionArancelInscripcion({
 
       {form.inscripcion.requiere && (
         <div className="mt-3 grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
-          <Campo label="Por dónde" requerido error={errorDe('inscripcion.via')}>
+          <Campo label="Por dónde" htmlFor="insc-via" requerido error={errorDe('inscripcion.via')}>
             <select
+              id="insc-via"
               className={claseInput}
               value={form.inscripcion.via ?? ''}
               onChange={(e) =>
@@ -164,11 +173,13 @@ export function SeccionArancelInscripcion({
           </Campo>
           <Campo
             label="Destino"
+            htmlFor="insc-destino"
             requerido
             error={errorDe('inscripcion.destino')}
             ayuda="Es público. Usá un contacto de trabajo, no un WhatsApp personal."
           >
             <input
+              id="insc-destino"
               className={claseInput}
               value={form.inscripcion.destino}
               onChange={(e) =>
@@ -177,8 +188,9 @@ export function SeccionArancelInscripcion({
               placeholder="inscripciones@… o https://wa.me/…"
             />
           </Campo>
-          <Campo label="Cupo">
+          <Campo label="Cupo" htmlFor="insc-cupo">
             <input
+              id="insc-cupo"
               type="number"
               inputMode="numeric"
               min={1}
@@ -192,8 +204,9 @@ export function SeccionArancelInscripcion({
               }
             />
           </Campo>
-          <Campo label="Cierra la inscripción">
+          <Campo label="Cierra la inscripción" htmlFor="insc-cierra">
             <input
+              id="insc-cierra"
               type="datetime-local"
               className={claseInput}
               value={form.inscripcion.cierra}

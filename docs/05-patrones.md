@@ -536,8 +536,9 @@ Las clases compartidas del **sitio público** están en
 `claseBloqueFecha`… **No escribir clases de botón ni el anillo de foco sueltos.**
 
 Las del **panel** están en
-[`campos/Campo.tsx`](../src/components/admin/campos/Campo.tsx): `claseInput`,
-`claseBotonPrimario`, `claseBotonSecundario`, `claseBotonTinta`,
+[`campos/Campo.tsx`](../src/components/campos/Campo.tsx) —el archivo salió de
+`components/admin/` en B-827, pero las clases siguen siendo las del panel—:
+`claseInput`, `claseBotonPrimario`, `claseBotonSecundario`, `claseBotonTinta`,
 `claseBotonFila`, `claseBotonMenu`. El panel es una herramienta interna y **no
 sigue el sistema visual del sitio**: tiene su propio criterio y su propio
 centralizador. Sus títulos usan `font-serif`, que es **su** token —Georgia, una

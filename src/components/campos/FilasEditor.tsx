@@ -17,7 +17,7 @@
  * modalidad). Un chasis que intente cubrir eso deja de ser un chasis.
  */
 import type { ReactNode } from 'react';
-import { claseBotonFila, claseBotonTinta } from '@/components/admin/campos/Campo';
+import { claseBotonFila, claseBotonTinta } from '@/components/campos/Campo';
 
 /** Lo mínimo que una fila tiene que tener para que este chasis la maneje. */
 export interface FilaConId {

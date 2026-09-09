@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import { claseBotonPrimario, claseBotonSecundario } from '@/components/admin/campos/Campo';
+import { claseBotonPrimario, claseBotonSecundario } from '@/components/campos/Campo';
 import {
   COPIA_POR_DEFECTO,
   SIEMPRE_AL_DUPLICAR,

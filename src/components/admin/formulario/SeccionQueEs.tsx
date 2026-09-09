@@ -18,9 +18,9 @@
  * En «Opcional» quedan las etiquetas y «destacar», que sí son opcionales.
  */
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
-import { Seccion } from '@/components/admin/campos/Seccion';
-import { TaxonomiaSelect } from '@/components/admin/campos/TaxonomiaSelect';
+import { Campo, claseInput } from '@/components/campos/Campo';
+import { Seccion } from '@/components/campos/Seccion';
+import { TaxonomiaSelect } from '@/components/campos/TaxonomiaSelect';
 import { ETIQUETA_ESTADO } from '@/components/admin/formulario/etiquetasUI';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';
@@ -44,8 +44,9 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
       descripcion="Elegí el tipo primero: el resto del formulario se adapta."
     >
       <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
-        <Campo label="Tipo de actividad" requerido error={errorDe('tipo')}>
+        <Campo label="Tipo de actividad" htmlFor="act-tipo" requerido error={errorDe('tipo')}>
           <TaxonomiaSelect
+            id="act-tipo"
             campo="tipo"
             uid={uid}
             value={form.tipo}
@@ -57,8 +58,9 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
           />
         </Campo>
 
-        <Campo label="Estado" error={errorDe('estado')}>
+        <Campo label="Estado" htmlFor="act-estado" error={errorDe('estado')}>
           <select
+            id="act-estado"
             className={claseInput}
             value={form.estado}
             onChange={(e) => set('estado', e.target.value as ActividadForm['estado'])}
@@ -71,8 +73,15 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
           </select>
         </Campo>
 
-        <Campo label="Título" requerido error={errorDe('titulo')} className="sm:col-span-full">
+        <Campo
+          label="Título"
+          htmlFor="act-titulo"
+          requerido
+          error={errorDe('titulo')}
+          className="sm:col-span-full"
+        >
           <input
+            id="act-titulo"
             className={claseInput}
             value={form.titulo}
             onChange={(e) => conTitulo(e.target.value)}
@@ -82,6 +91,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
 
         <Campo
           label="Slug"
+          htmlFor="act-slug"
           requerido
           error={errorDe('slug')}
           ayuda={
@@ -92,6 +102,7 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
           className="sm:col-span-full"
         >
           <input
+            id="act-slug"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
@@ -104,11 +115,13 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
 
         <Campo
           label="Descripción"
+          htmlFor="act-descripcion"
           requerido
           error={errorDe('descripcion')}
           className="sm:col-span-full"
         >
           <textarea
+            id="act-descripcion"
             className={`${claseInput} min-h-32`}
             value={form.descripcion}
             onChange={(e) => set('descripcion', e.target.value)}
@@ -123,6 +136,10 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
         */}
         <Campo
           label="Flyer e imágenes"
+          htmlFor="act-imagenes"
+          // `GaleriaEditor` es una lista con su propio alta y sus filas: no hay
+          // un control único al que apuntar, así que el rótulo nombra al grupo.
+          comoGrupo
           // B-341 — sin `error` acá: `GaleriaEditor` ya pinta el de la lista
           // (`errorDe('imagenes')`) y el de cada fila. Pasarlo también acá
           // duplicaría el mismo mensaje dos veces en la misma sección.

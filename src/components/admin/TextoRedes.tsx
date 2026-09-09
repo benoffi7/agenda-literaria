@@ -3,7 +3,7 @@ import {
   claseBotonChip,
   claseBotonChipActivo,
   claseBotonSecundario,
-} from '@/components/admin/campos/Campo';
+} from '@/components/campos/Campo';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
 import {
   AYUDA_VARIANTE,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { claseInput } from '@/components/admin/campos/Campo';
+import { claseInput } from '@/components/campos/Campo';
 import { useOpciones } from '@/components/admin/useOpciones';
 import { medirFuncion } from '@/lib/analytics';
 import { estaAprobada } from '@/lib/opciones';
@@ -12,6 +12,8 @@ interface Props {
   /** Slugs seleccionados. */
   value: string[];
   onChange: (slugs: string[], labelsNuevos: Record<string, string>) => void;
+  /** B-827 — id del input, para que el `<label>` del `Campo` lo nombre. */
+  id?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ interface Props {
  * chips son widgets distintos. Lo que se comparte es la lógica del §4.2
  * (`@/lib/taxonomia`), que es la que no puede divergir (B-72).
  */
-export function TagsInput({ uid, value, onChange }: Props) {
+export function TagsInput({ uid, value, onChange, id }: Props) {
   const { valores, elegibles } = useOpciones('tags', uid);
   const [texto, setTexto] = useState('');
   const [nuevos, setNuevos] = useState<Record<string, string>>({});
@@ -105,6 +107,7 @@ export function TagsInput({ uid, value, onChange }: Props) {
       )}
 
       <input
+        id={id}
         className={claseInput}
         value={texto}
         placeholder="Escribí un tag y Enter — ej. narrativa, poesía, principiantes"

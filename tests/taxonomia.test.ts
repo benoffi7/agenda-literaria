@@ -180,7 +180,7 @@ describe('pistaDeOpcion y etiquetaConEstado — §4.3', () => {
 describe('los dos widgets de taxonomía comparten la lógica del §4.2 — B-72', () => {
   const widgets = ['TaxonomiaSelect', 'TagsInput'] as const;
   const fuente = (nombre: string) =>
-    readFileSync(`src/components/admin/campos/${nombre}.tsx`, 'utf8');
+    readFileSync(`src/components/campos/${nombre}.tsx`, 'utf8');
 
   it.each(widgets)('%s resuelve el texto tipeado con resolverEtiqueta', (nombre) => {
     expect(fuente(nombre)).toContain('resolverEtiqueta(');
@@ -194,6 +194,25 @@ describe('los dos widgets de taxonomía comparten la lógica del §4.2 — B-72'
     const src = fuente(nombre);
     expect(src).not.toContain("from '@/lib/slugify'");
     expect(src).not.toContain("from '@/lib/normalize'");
+  });
+
+  /**
+   * B-827 — el `id` que el `Campo` le pasa tiene que llegar al control **en
+   * todas las ramas**.
+   *
+   * `TaxonomiaSelect` pinta dos widgets excluyentes: el `<select>` y, en modo
+   * «Otro», un input con `autoFocus`. El id estaba solo en el primero, así que
+   * entrar en «Otro» dejaba el campo sin nombre accesible justo cuando alguien
+   * está tipeando en él. El barrido de `clases-de-bug.test.ts` no puede verlo:
+   * mira los usos de `<Campo>`, y esto es adentro del control.
+   */
+  it.each(widgets)('%s le pone el id que recibe a su input', (nombre) => {
+    expect(fuente(nombre), 'el id no llega al control').toContain('id={id}');
+  });
+
+  it('TaxonomiaSelect le pone el id a sus dos ramas, no solo al `<select>`', () => {
+    const usos = fuente('TaxonomiaSelect').match(/\bid=\{id\}/g) ?? [];
+    expect(usos.length, 'una rama quedó sin el id y su label queda huérfano').toBe(2);
   });
 
   /** B-73 — el campo con más volumen esperado era el único invisible en GA4. */

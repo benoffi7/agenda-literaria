@@ -1,9 +1,9 @@
 /**
  * §3.2 — trabajo interno: no sale al sitio público ni al calendario (§5.1).
  */
-import { Campo, claseInput } from '@/components/admin/campos/Campo';
-import { ChipsInput } from '@/components/admin/campos/ChipsInput';
-import { Seccion } from '@/components/admin/campos/Seccion';
+import { Campo, claseInput } from '@/components/campos/Campo';
+import { ChipsInput } from '@/components/campos/ChipsInput';
+import { Seccion } from '@/components/campos/Seccion';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 type Props = Pick<PropsSeccion, 'form' | 'set'> & {
@@ -30,17 +30,20 @@ export function SeccionDifusion({ form, set, pedidoDeApertura }: Props) {
       <div className="grid gap-4">
         <Campo
           label="Arrobar al publicar"
+          htmlFor="difusion-arrobar"
           ayuda="Enter o coma para agregar. Backspace borra el último."
         >
           <ChipsInput
+            id="difusion-arrobar"
             value={form.difusion.arrobar}
             onChange={(arrobar) => set('difusion', { ...form.difusion, arrobar })}
             placeholder="@casabrandon"
             etiquetaQuitar={(h) => `Dejar de arrobar a ${h}`}
           />
         </Campo>
-        <Campo label="Notas internas">
+        <Campo label="Notas internas" htmlFor="difusion-notas">
           <textarea
+            id="difusion-notas"
             className={`${claseInput} min-h-20`}
             value={form.difusion.notas}
             onChange={(e) => set('difusion', { ...form.difusion, notas: e.target.value })}

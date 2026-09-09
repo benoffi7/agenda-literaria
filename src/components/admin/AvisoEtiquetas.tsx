@@ -1,4 +1,4 @@
-import { claseBotonFila } from '@/components/admin/campos/Campo';
+import { claseBotonFila } from '@/components/campos/Campo';
 
 interface Props {
   /** Los labels tal como se tipearon. Vacío = no se pinta nada. */

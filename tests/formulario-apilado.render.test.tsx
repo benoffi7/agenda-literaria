@@ -175,14 +175,18 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
     const { rerender } = pintarCon('pc');
 
     /*
-     * Se agarra por **placeholder** y no por label, y eso destapó otra cosa: el
-     * `label` de `Campo` lleva un `htmlFor` **opcional** y el campo «Título» no lo
-     * pasa, así que `getByLabelText` no encuentra el control — o sea que un lector
-     * de pantalla tampoco lo anuncia. Es una clase y no una instancia (la
-     * asociación es opt-in en once usos de `Campo`), y quedó como **B-827**. Acá se
-     * usa el placeholder para no atar este caso a ese arreglo.
+     * **Se agarra por label, y eso es B-827 cerrado.** Este caso lo destapó: el
+     * `htmlFor` de `Campo` era opcional y «Título» no lo pasaba, así que
+     * `getByLabelText` no encontraba el control —o sea que un lector de pantalla
+     * tampoco lo anunciaba— y hubo que agarrarlo por `placeholder`, que era un
+     * parche del test y no del problema.
+     *
+     * Ahora `htmlFor` es requerido y el barrido de `clases-de-bug.test.ts` exige
+     * el par `htmlFor`/`id`. Buscar por label acá es lo que prueba que la
+     * asociación **resuelve en el DOM**: el barrido lee el fuente y no puede
+     * saber si el id llega pintado.
      */
-    const titulo = screen.getByPlaceholderText('Taller de crónica urbana');
+    const titulo = screen.getByLabelText(/título/i);
     await userEvent.type(titulo, 'Un ciclo a medio cargar');
 
     rerender(
@@ -195,7 +199,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
     );
 
     expect(
-      (screen.getByPlaceholderText('Taller de crónica urbana') as HTMLInputElement).value,
+      (screen.getByLabelText(/título/i) as HTMLInputElement).value,
       'cambiar de vista remontó el formulario y se perdió lo cargado',
     ).toBe('Un ciclo a medio cargar');
   });
@@ -205,7 +209,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
     // condición mal escrita —`key` solo en apilado, digamos— rompería una sola.
     const { rerender } = pintarCon('celular');
 
-    await userEvent.type(screen.getByPlaceholderText('Taller de crónica urbana'), 'Otro a medio cargar');
+    await userEvent.type(screen.getByLabelText(/título/i), 'Otro a medio cargar');
 
     rerender(
       <ActividadFormulario
@@ -217,7 +221,7 @@ describe('cambiar de vista no reinicia el formulario a medio cargar — B-822', 
     );
 
     expect(
-      (screen.getByPlaceholderText('Taller de crónica urbana') as HTMLInputElement).value,
+      (screen.getByLabelText(/título/i) as HTMLInputElement).value,
     ).toBe('Otro a medio cargar');
   });
 });

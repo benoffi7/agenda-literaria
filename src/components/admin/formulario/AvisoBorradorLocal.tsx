@@ -7,7 +7,7 @@
  * este dispositivo, de cuándo es, y que todavía no está guardado— y deja las dos
  * salidas a la vista.
  */
-import { claseBotonFila } from '@/components/admin/campos/Campo';
+import { claseBotonFila } from '@/components/campos/Campo';
 
 interface Props {
   /** Cuándo se guardó, ya formateado. */
