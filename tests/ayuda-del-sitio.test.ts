@@ -60,6 +60,9 @@ const TEXTOS = (): string[] => [
  */
 const OBLIGATORIAS: Record<string, string> = {
   'que-es': 'sin esto la página no dice qué es el sitio',
+  'es-gratis':
+    '«¿es gratis? ¿quién lo paga?» — la pregunta que no estaba contestada en ningún lado ' +
+    '(B-785), y la que decide si a este sitio se le confía una fecha',
   'no-es-inscripcion': 'esto NO es una plataforma de inscripción, y es la confusión más cara',
   tipos: 'qué significa cada tipo de actividad',
   'a-la-gorra': 'opción de primera clase del circuito, no un caso raro (§4.1)',
@@ -214,6 +217,85 @@ describe('la ayuda del sitio público — B-232', () => {
     // escribe otro frente y contacto es la única forma de avisar de un error.
     expect(destinos).toContain(RUTAS.RUTA_SUSCRIBIRSE);
     expect(destinos).toContain(RUTAS.RUTA_CONTACTO);
+  });
+
+  /*
+   * ── B-785 · la respuesta sobre la plata ─────────────────────────────────
+   * `/apoyar` existe y se publicó; lo que faltaba era que la ayuda —que es donde
+   * se busca— la nombrara. Ya la nombra, y estos tres casos son lo que impide
+   * que se vuelva a caer sin que nada avise: el enlace, el reparto de quién
+   * cuenta qué, y la promesa que no se puede hacer.
+   */
+  it('la respuesta sobre la plata manda a /apoyar', () => {
+    const p = PREGUNTAS_DE_AYUDA.find((q) => q.id === 'es-gratis')!;
+    const destinos = (p.enlaces ?? []).map((e) => e.href);
+
+    // Sin el enlace la respuesta queda contestando de memoria: el detalle —qué
+    // cuesta, por dónde se aporta, la letra chica— vive entero en `/apoyar`, y
+    // esta pregunta es la única puerta que la ayuda le da.
+    expect(destinos, 'la pregunta de la plata dejó de linkear /apoyar').toContain(
+      RUTAS.RUTA_APOYAR,
+    );
+  });
+
+  it('la ayuda no repite lo que /apoyar cuenta: lo manda', () => {
+    /*
+     * El reparto es la mitad de la decisión de B-785: acá va lo que no puede
+     * cambiar sin que cambie el proyecto, y allá el detalle. Nombrar la
+     * plataforma de aportes o un monto acá crea la segunda copia sobre plata que
+     * hay que mantener de acuerdo — B-72, B-88, la clase de siempre.
+     *
+     * Se barre la página entera y no solo esa respuesta a propósito: la copia
+     * puede nacer en cualquier otra pregunta.
+     */
+    const detalleQueEsDeApoyar = ['cafecito', 'mercado pago', 'donaci', 'suscripción mensual'];
+    for (const texto of TEXTOS()) {
+      for (const aguja of detalleQueEsDeApoyar) {
+        expect(
+          texto.toLowerCase(),
+          `«${texto.slice(0, 60)}…» cuenta acá algo que es de /apoyar: ${aguja}`,
+        ).not.toContain(aguja);
+      }
+    }
+  });
+
+  it('no promete que el sitio no va a tener publicidad, porque /anunciar la ofrece', () => {
+    /*
+     * La primera versión de la respuesta decía «es gratis, **no tiene
+     * publicidad** y va a seguir así». Era una promesa sobre el futuro del sitio
+     * que el propio sitio desmiente **en el encabezado**: `/anunciar` ofrece
+     * espacio a cafés, librerías y espacios culturales, y su botón dice
+     * «Escribirnos sobre publicidad». Misma clase que B-781 —una afirmación
+     * pública que el sitio contradice, en HTML indexado— corrida de los datos
+     * del visitante a la plata.
+     *
+     * La premisa **se deriva**, no se afirma: si algún día `/anunciar` deja de
+     * ofrecer publicidad, este caso se cae solo y la promesa vuelve a ser
+     * escribible. Lo que no puede pasar es que las dos convivan en silencio.
+     *
+     * Qué lo haría pasar si alguien lo rompe: sacar la promesa (dejar el «es
+     * gratis» sobre entrar y publicar, que sí es cierto), no aflojar el patrón.
+     */
+    const comercial = readFileSync(raiz('src/lib/comercialDelSitio.ts'), 'utf8');
+    const ofrecePublicidad = /Escribirnos sobre publicidad/.test(comercial);
+    expect(
+      ofrecePublicidad,
+      'si /anunciar dejó de ofrecer publicidad, revisá este caso antes de borrarlo',
+    ).toBe(true);
+
+    const PROMESAS_DE_SIN_PUBLICIDAD = [
+      /no (tiene|hay|va a haber|vas a ver|hay ning[úu]n) (publicidad|anuncios?|avisos?)/i,
+      /sin (publicidad|anuncios|avisos)/i,
+      /nunca (va a tener|vamos a tener|tendr[áa]) (publicidad|anuncios)/i,
+    ];
+    for (const texto of TEXTOS()) {
+      for (const patron of PROMESAS_DE_SIN_PUBLICIDAD) {
+        expect(
+          patron.test(texto),
+          `«${texto.slice(0, 80)}…» promete que no hay publicidad, y /anunciar la ofrece`,
+        ).toBe(false);
+      }
+    }
   });
 
   it('el texto no tiene jerga', () => {

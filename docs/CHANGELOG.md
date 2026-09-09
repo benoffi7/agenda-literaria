@@ -2,6 +2,43 @@
 
 ## Sin publicar
 
+- **La ayuda prometía que el sitio no va a tener publicidad, y `/anunciar` la
+  vende** — **B-785**, cerrando la mitad de la ayuda. La respuesta a «¿esto es
+  gratis? ¿quién lo paga?» decía «es gratis, **no tiene publicidad y va a seguir
+  así**». La mitad del medio no se podía sostener: el mismo encabezado que muestra
+  «Ayuda» muestra «Anunciar» dos ítems más allá, y `/anunciar` ofrece espacio del
+  sitio a cafés, librerías y espacios culturales — su propio botón dice «Escribirnos
+  sobre publicidad». Es la clase de **B-781** —una afirmación pública que el sitio
+  desmiente, en HTML indexado— corrida de los datos del visitante a la plata, y por
+  eso el barrido de `promesas-sobre-datos.test.ts` no la veía: sus fórmulas son
+  sobre medición. Queda anotado como **B-851**.
+
+  La respuesta promete ahora lo que sí es cierto y sí depende de nosotros —entrar es
+  gratis, publicar una actividad es gratis— y dice el resto en presente. Y
+  **contesta la pregunta entera**, que era la otra mitad: un espacio sí puede pagar
+  para que se lo vea, y eso no adelanta a nadie en la fila ni compra un lugar en la
+  agenda. No es una concesión — es lo primero que `/anunciar` aclara de su lado, y
+  decirlo en las dos puntas es lo que hace que las dos páginas cuenten la misma
+  historia.
+
+  **Y la pregunta pasó a estar sostenida, que es lo que faltaba de la mitad
+  anterior:** estaba escrita desde el 2026-09-07 y no la nombraba ningún test —
+  borrarla dejaba la suite en verde. Ahora es obligatoria, hay un caso que exige el
+  enlace a `/apoyar`, otro que prohíbe contar acá lo que es de `/apoyar` (la
+  plataforma, un monto: la segunda copia sobre plata que hay que mantener de
+  acuerdo, B-72/B-88), y uno cuya **premisa se deriva** de `comercialDelSitio.ts` —
+  si algún día `/anunciar` deja de vender espacio, se cae solo y la promesa vuelve a
+  ser escribible.
+
+  **La otra mitad sigue abierta, con una corrección al planteo:** la propiedad que
+  el ítem proponía para el `Organization` no es la que corresponde. `funder` va al
+  revés (es quién **nos** financia, y toma un agente, no la URL de una página
+  nuestra) y `sameAs` es identidad — el `sameAs` legítimo es el **perfil de
+  Cafecito**, no `/apoyar`. Verificado contra schema.org y escrito en el ítem, con
+  el descarte de `potentialAction: DonateAction`: el §5.5 ya decidió no emitir
+  marcado inerte, y `/apoyar` dice «no es una organización ni recibe donaciones
+  formales».
+
 - **Los tres restos de la reversión del texto alternativo** — **B-850**. El
   2026-09-07 el dueño sacó el bloqueo que D-440 había puesto, y quedaron atrás un
   cartel que le mentía a quien carga, una ruta de error que nada podía disparar, y

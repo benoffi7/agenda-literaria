@@ -30,7 +30,13 @@
  * Cómo se ve. La página elige el marcado; acá está qué dice y en qué orden.
  */
 import opcionesBase from '@/lib/opciones-base.json';
-import { RUTA_AGENDA, RUTA_APOYAR, RUTA_CONTACTO, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
+import {
+  RUTA_AGENDA,
+  RUTA_ANUNCIAR,
+  RUTA_APOYAR,
+  RUTA_CONTACTO,
+  RUTA_SUSCRIBIRSE,
+} from '@/lib/rutasPublicas';
 
 /** Un destino del propio sitio que una respuesta ofrece al final. */
 export interface EnlaceDeAyuda {
@@ -173,20 +179,43 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
          *
          * La respuesta acá es **corta y manda**, no resume la página: si dijera
          * lo mismo con otras palabras, serían dos textos sobre plata que hay que
-         * mantener de acuerdo. Lo único que afirma es lo que no puede cambiar sin
-         * que cambie el proyecto —es gratis, no hay publicidad, lo hace una
-         * persona— y eso está atado por el test de `/apoyar`.
+         * mantener de acuerdo. Por eso no nombra la plataforma de aportes ni
+         * ningún monto: eso es de `/apoyar`, y escrito acá sería la segunda copia
+         * que se queda vieja sola (B-72, B-88).
+         *
+         * ── Lo que este párrafo NO puede prometer, y por qué ──────────────
+         * La primera versión decía «es gratis, **no tiene publicidad** y va a
+         * seguir así», y la mitad del medio no se podía sostener: el mismo
+         * encabezado que muestra «Ayuda» muestra «Anunciar» dos ítems más allá, y
+         * `/anunciar` ofrece espacio del sitio a cafés, librerías y espacios
+         * culturales — su propio botón dice «Escribirnos sobre publicidad». O sea
+         * una promesa sobre el futuro del sitio que el sitio desmiente en su
+         * navegación, en HTML indexado: la misma clase de B-781, corrida de los
+         * datos del visitante a la plata.
+         *
+         * Lo que quedó promete lo que sí es cierto y sí depende de nosotros
+         * —entrar es gratis, publicar una actividad es gratis— y dice el resto en
+         * presente. Que anunciar no compre un lugar en la agenda no es una
+         * concesión: es lo primero que `/anunciar` aclara de su lado
+         * (`ANTES_DE_ESCRIBIRNOS`), y decirlo en las dos puntas es lo que hace
+         * que las dos páginas cuenten la misma historia.
          */
         id: 'es-gratis',
         pregunta: '¿Esto es gratis? ¿Quién lo paga?',
         respuesta: [
-          'Sí, es gratis, no tiene publicidad y va a seguir así. Lo hace una persona, a mano y en ' +
-            'los ratos libres; lo que cuesta plata es poco —el dominio y el alojamiento— y lo ' +
-            'paga ella.',
+          'Sí. Entrar es gratis y publicar una actividad también, y las dos cosas van a seguir ' +
+            'así. Lo hace una persona, a mano y en los ratos libres; lo que cuesta plata es poco ' +
+            '—el dominio y el alojamiento— y hoy lo paga ella.',
+          'Un café, una librería o un espacio cultural sí puede pagar para que se lo vea, y eso ' +
+            'no cambia nada de lo de arriba: no adelanta a nadie en la fila ni compra un lugar ' +
+            'en la agenda.',
           'Si querés dar una mano, hay una página que cuenta cómo, y la forma más útil no ' +
             'involucra plata: contarnos una actividad que no esté cargada.',
         ],
-        enlaces: [{ href: RUTA_APOYAR, texto: 'Cómo apoyar la agenda' }],
+        enlaces: [
+          { href: RUTA_APOYAR, texto: 'Cómo apoyar la agenda' },
+          { href: RUTA_ANUNCIAR, texto: 'Anunciar en la agenda' },
+        ],
       },
       {
         id: 'no-es-inscripcion',

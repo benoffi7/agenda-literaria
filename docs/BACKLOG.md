@@ -736,6 +736,26 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-851 · El barrido de promesas no cubre las promesas sobre plata · P2
+
+**Salió de cerrar la mitad de la ayuda de B-785.** `tests/promesas-sobre-datos.test.ts`
+barre todos los `*DelSitio.ts` buscando negaciones absolutas **sobre datos del
+visitante**, y por eso no vio que la ayuda dijera «no tiene publicidad y va a
+seguir así» con `/anunciar` vendiendo espacio en el encabezado.
+
+Es **la misma clase** —una afirmación pública que el sitio desmiente, en HTML
+indexado— sobre otro eje. Y el caso quedó resuelto en `tests/ayuda-del-sitio.test.ts`,
+o sea **en una sola página**: exactamente lo que B-781 dijo que no alcanzaba cuando
+el caso de `/apoyar` vivía solo en `apoyo-del-sitio.test.ts`.
+
+La versión general es una familia `PROMESAS_SOBRE_PLATA` en el barrido que ya
+existe, con la misma forma que la de datos: patrones de promesa («no tiene
+publicidad», «siempre va a ser gratis», «nunca vamos a cobrar»), las escapatorias
+que la acoten o la condicionen, y **la premisa derivada** de `comercialDelSitio.ts`
+—si algún día el sitio deja de vender espacio, la promesa vuelve a ser escribible y
+el barrido tiene que dejar de exigirla—. Los dos sentidos del detector, como el
+otro.
+
 ### B-849 · El §1 de `10-salud-del-codigo.md` mide 180 archivos y el script dice 250 · P3
 
 **Lo trajo el frente de B-806** cerrando el conteo de tests de render, y lo dejó
@@ -5591,7 +5611,7 @@ reactiva, ningún rojo lo dice».
 
 ---
 
-### B-785 · 🟡 la mitad hecha (2026-09-07) — `/apoyar` no está en la ayuda ni en el `Organization` del §5.5
+### B-785 · 🟡 la mitad hecha (2026-09-09) — falta el `Organization` del §5.5, y la propiedad no es la que decía este ítem
 
 **La ayuda ya la menciona.** Entró la pregunta «¿Esto es gratis? ¿Quién lo paga?»
 en el grupo «Qué es esta agenda», con su enlace a `/apoyar`. La respuesta es
@@ -5608,10 +5628,53 @@ atado.) El CHANGELOG salió de la lista de ese test con el motivo escrito; los
 cuatro documentos que describen el sitio de hoy siguen atados, `BACKLOG.md`
 incluido.
 
-**Lo que sigue abierto es la otra mitad**, y por el mismo motivo de antes: el
-`Organization` del §5.5 no existe todavía, y no se agrega JSON-LD a `/apoyar` sola
-—sería un `Organization` suelto en una página secundaria compitiendo con el que
-algún día vaya en la home—.
+> ⚠️ **La afirmación de arriba tenía un error, y era el hallazgo de esta mitad
+> (2026-09-09).** «Lo único que afirma es lo que no puede cambiar sin que cambie el
+> proyecto —es gratis, **no hay publicidad**, lo hace una persona— y eso ya está
+> atado por el test de `/apoyar`»: las dos mitades eran falsas. La respuesta decía
+> «no tiene publicidad y va a seguir así» mientras **`/anunciar` vende espacio del
+> sitio** —su propio botón dice «Escribirnos sobre publicidad», y está en el
+> encabezado dos ítems más allá de «Ayuda»—; y no estaba atada por ningún test:
+> borrar la pregunta entera dejaba la suite en verde.
+>
+> Es la clase de **B-781** —una afirmación pública que el sitio desmiente, en HTML
+> indexado— corrida de los datos del visitante **a la plata**, que es justo el eje
+> que el barrido de `promesas-sobre-datos.test.ts` no mira (**B-851**).
+>
+> Corregido: promete lo que sí es cierto y depende de nosotros —entrar es gratis,
+> publicar una actividad es gratis— y contesta la pregunta **entera**, que era la
+> otra mitad: un espacio sí puede pagar para que se lo vea, y eso no adelanta a
+> nadie en la fila ni compra un lugar en la agenda. No es una concesión: es lo
+> primero que `/anunciar` aclara de su lado. Y la pregunta pasó a estar sostenida —
+> obligatoria, con el enlace exigido, con un barrido que prohíbe repetir acá lo que
+> es de `/apoyar`, y con un caso cuya **premisa se deriva** de
+> `comercialDelSitio.ts`: el día que `/anunciar` deje de vender espacio se cae solo
+> y la promesa vuelve a ser escribible.
+
+**Lo que sigue abierto es la otra mitad**, y por el motivo de antes —el
+`Organization` del §5.5 no existe todavía, y no se agrega JSON-LD a `/apoyar` sola,
+sería un nodo suelto en una página secundaria compitiendo con el que algún día vaya
+en la home— **más uno nuevo: la propiedad que este ítem proponía es la
+incorrecta.** Verificado contra schema.org el 2026-09-09:
+
+- **`funder`** va al revés: es «quién **nos** financia», y su tipo esperado es
+  `Organization`/`Person`, no la URL de una página nuestra. Apuntarlo a `/apoyar`
+  afirma que esa página es una organización que nos financia.
+- **`sameAs`** es identidad —«*a reference Web page that unambiguously indicates the
+  item's identity*»— y `/apoyar` es una página del propio sitio. El `sameAs`
+  legítimo acá es el **perfil de Cafecito**, al lado del de Instagram: el instinto
+  del planteo era correcto, pero apunta al perfil y no a la página.
+- **No existe ninguna propiedad de `Organization` que signifique «la página donde
+  podés apoyarnos».** Lo único modelable es `potentialAction: DonateAction`, y se
+  descarta dos veces: el §5.5 ya decidió no emitir marcado inerte (`WebSite` +
+  `SearchAction`), y `/apoyar` dice «no es una organización ni recibe donaciones
+  formales» — un `DonateAction` sería, en marcado indexable, lo contrario de lo que
+  la página afirma en prosa, que es el bug que se acaba de arreglar del otro lado.
+
+Cuando se construya el nodo, `/apoyar` entra por el **`sameAs` del perfil de
+Cafecito**. Casa probable: `contactoDelSitio.ts` + `src/pages/contacto.astro` (el
+§5.5 dice que va en `/contacto`). **No** en `identidad.ts`: lo importa el panel, y
+meterle `enlaces.ts`/`rutasPublicas.ts` lo arrastra a su bundle (B-841).
 
 El planteo original queda abajo.
 
