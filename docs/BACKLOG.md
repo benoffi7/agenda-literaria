@@ -753,6 +753,29 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan · P2
+
+**Lo encontró el frente de B-798 midiendo**, y es previo a su cambio: verificado
+contra el archivo de `HEAD`. El saneador compartido reduce `Buscador.tsx` de
+**41.363 a 6.904 caracteres** —se pierden `export function Buscador` y las dos
+llamadas a `medirSitio`—, así que **cualquier test que lo use sobre ese archivo
+está afirmando sobre casi nada**.
+
+Es la **misma clase** que el bug que ese script ya tuvo con `firestore.rules`
+(2026-09-09, en la tanda de B-830): un `/*` que aparece adentro de un comentario de
+línea abre un bloque que se come todo hasta el próximo `*/`. Aquella vez se arregló
+**el orden** de los dos reemplazos; esto es otra forma del mismo agujero, así que
+el arreglo de entonces no lo cubrió y el docblock del script sigue prometiendo que
+«se audita de más y nunca de menos», que es **exactamente lo contrario** de lo que
+pasa acá.
+
+Lo que hay que hacer: encontrar cuál construcción de `Buscador.tsx` lo dispara
+—probablemente una expresión regular o un string con `/*` adentro, que es lo que un
+recorrido por texto no puede distinguir—, arreglarlo con su caso, y **barrer quién
+más lo usa**: `tests/listado-del-sitio.test.ts` y `pagina-de-detalle.test.ts` ya lo
+esquivan con un recorte propio, y ese esquive es la señal de que el problema se
+conocía a medias.
+
 ### B-852 · Las versiones que quedaron rotas antes de B-560 siguen restaurando un 404 · P4
 
 **Lo dejó anotado el frente que cerró B-560**, y es la mitad que aquel arreglo no
@@ -4853,7 +4876,46 @@ de más**. Lo que hay que sacar son los falsos positivos evidentes, no todos.
 problema es el alcance de la detección, no la decisión.
 
 
-### B-798 · P2 — «Filtros que no encuentran nada» dice cuántas veces, no cuál filtro
+### B-798 · 🟡 la emisión hecha (2026-09-09) — «Filtros que no encuentran nada» decía cuántas veces, no cuál filtro · P2
+
+> ✅ **Hecha la mitad de emisión, y el diagnóstico del ítem estaba incompleto.**
+>
+> El ítem daba por sentado que el evento ya emitía el desglose y que el corte era
+> solo de la Function. **No era así:** el `eje` salía de `ejeQueSobra`, que mira los
+> **seis** rieles de chips, y el listado tiene **diez** filtros. Un cero causado por
+> el texto del buscador, por el «Cuándo», por «abierta» o por «cursada» llegaba
+> **sin ningún parámetro** — indistinguible de «ningún filtro solo explica el cero».
+> O sea que hacer los pasos 1 y 2 y no éste habría dejado la pregunta sin contestar
+> igual, con las dimensiones registradas y todo.
+>
+> Ahora `eje` cubre los diez, **sin reimplementar `ejeQueSobra`**: su respuesta
+> manda —es la que pinta «Probá sin el filtro de…»— y los otros cuatro son la cola,
+> así que la serie histórica de los seis no cambia ni un evento.
+>
+> **La mitad de privacidad es lo que hacía interesante al ítem, y quedó escrita:**
+> `busqueda` es un eje —enum cerrado— y el texto tipeado no viaja. La garantía es
+> **estructural**: `crudosDeFiltroSinResultados` saca el `slug` del mapa de los
+> rieles y de ningún otro lado, y el buscador no escribe ahí. Y **el saneador solo
+> no alcanzaba**: `FORMATO_SLUG` acepta `poesia` igual que `club-lectura`, y los
+> cinco centinelas del barrido tienen todos mayúsculas, espacios, acentos o
+> arrobas, así que pasar el texto tipeado **habría pasado, en verde**.
+>
+> **El frente corrió el `auditor-privacidad` sobre su propio diff y se cobró dos
+> hallazgos.** El que importa: al mudar la garantía del saneador al llamador, la
+> dejó **sin red en el lugar nuevo** —`medirSitio` recibe `Record<string, unknown>`,
+> así que un payload escrito a mano compilaba, pasaba `tsc` y pasaba la suite
+> entera—. Es la clase de B-81, y ahora hay un chequeo que lee el fuente del único
+> emisor. El otro: «sale del mapa» **no es** «sale de la taxonomía» —`desdeQuery` no
+> contrasta contra las opciones conocidas—, así que la frase se corrigió y la
+> garantía quedó apoyada en el motivo correcto.
+>
+> Costo medido: **+88 B gzip** en todas las páginas y **+156 B** en el listado.
+>
+> **Siguen abiertos los otros dos tercios**, en el orden del ítem: registrar `eje` y
+> `slug` como dimensiones en la consola de GA4 —**es lo que corre el reloj**, el
+> registro no es retroactivo—, sumarlas a `DIMENSIONES_PERMITIDAS` de
+> `functions/analitica.js` (decisión de privacidad, no cambio mecánico) y el
+> desglose en la fila del panel.
 
 **Lo preguntó el dueño el 2026-09-07 mirando la pantalla:** «no hay que expandir
 eso para saber qué filtros?». Tenía razón, y la fila **prometía** lo que no podía

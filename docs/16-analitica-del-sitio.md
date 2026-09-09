@@ -377,6 +377,15 @@ red — sin cambios por D-254, que solo tocó HTML):
 | `actividad....js` | las constantes del modelo (`VIAS_INSCRIPCION`) | 371 B | 271 B |
 | **Total** | | **3.334 B** | **2.075 B** |
 
+> ⚠️ **Dos números de esa tabla envejecieron, y se vieron al re-medir para
+> B-798.** `analyticsSitio.ts` **ya no viaja inlineado** en el chunk del
+> transporte: hoy Rollup lo parte en un `analyticsSitio....js` propio, porque
+> tiene más de un importador. Lo que la fila afirma y sigue siendo cierto —lo que
+> D-252 decidió— es lo que importa: **no arrastra `listadoPublico.ts` ni su motor
+> de filtrado**. La suma sigue siendo del mismo orden; la tabla no se rehízo
+> entera porque re-medirla de verdad pide el build contra el emulador con datos,
+> y este frente midió solo su propio delta (abajo).
+
 **Y la cuenta que importa, la que compara con el §6.1:** para quien **rechaza**
 o no decidió, el costo de este frente es nada más que esto —**2.515 B gzip**
 (440 B de HTML + 2.075 B de JS)—, porque `gtag.js` nunca se descarga (§7.3) **y
@@ -680,6 +689,108 @@ silenciosa: un panel nuevo llega a GA4 como `panel=otro`.
 > `PanelesDeAhora` y el handler en `Buscador.tsx`; el parche exacto quedó en
 > `.estado/analitica-sitio.md`. **Hasta que se aplique, `clic_triptico` no
 > emite.**
+
+---
+
+### 7.6 · `filtro_sin_resultados` dice **cuál** filtro, no solo que hubo uno (B-798)
+
+**Lo preguntó el dueño el 2026-09-07 mirando la pantalla del panel:** «¿no hay
+que expandir eso para saber qué filtros?». El evento contaba los ceros y la fila
+mostraba un número, y la pregunta que decide algo es otra: **si el eje que nunca
+encuentra nada es siempre `barrio`, falta contenido en un barrio; si es la
+búsqueda de texto, el problema es otro.**
+
+Este tramo es la mitad de emisión. Las otras dos —registrar las dimensiones en la
+consola y desglosarlas en el panel— están en el [§9.4](#94--los-pasos-de-consola-del-dueño)
+paso 7 y en el ítem del backlog.
+
+**Qué faltaba, con precisión.** El evento ya llevaba `eje` y `slug`, pero el eje
+salía de `ejeQueSobra` (`listadoPublico.ts`), que mira **los seis rieles de
+chips** y nada más. El listado tiene **diez** filtros: esos seis, el texto del
+buscador, el «Cuándo», «solo con inscripción abierta» y «ciclos / encuentros
+únicos». Un cero causado por cualquiera de los cuatro últimos llegaba **sin
+ningún parámetro** — o sea, indistinguible de «ningún filtro solo explica el
+cero», que es una situación completamente distinta y se arregla de otra manera.
+
+| | Antes | Desde B-798 |
+|---|---|---|
+| cero por un chip (`barrio=villa-crespo`) | `eje=barrio`, `slug=villa-crespo` | igual, **sin un evento de diferencia** |
+| cero por el texto del buscador | *sin parámetros* | `eje=busqueda`, sin `slug` |
+| cero por «Cuándo» / «abierta» / «cursada» | *sin parámetros* | `eje=cuando` \| `abierta` \| `cursada`, sin `slug` |
+| cero que ningún filtro solo explica | *sin parámetros* | *sin parámetros* — sigue siendo la señal válida que era |
+
+**El método es el mismo que ya existía y no se reimplementó:** sacar un filtro
+solo y ver si vuelve a haber resultados. `ejeQueSobra` contesta por los seis
+chips y su respuesta **manda** —es la que la pantalla ya muestra («Probá sin el
+filtro de…»), así que la serie histórica de esos seis no se corta ni se
+contamina—; recién si ninguno lo explica se prueban los otros cuatro, en el
+orden declarado de `EJES_SIN_SLUG`. `busqueda` va primero: es el más accionable
+y el único que no se ve en la barra de filtros.
+
+#### La mitad de privacidad, que es la razón de ser del ítem
+
+**`busqueda` es un eje; el texto tipeado no viaja nunca.** Lo que llega a GA4 es
+la palabra `'busqueda'`, un valor de un enum cerrado — igual que `barrio` o
+`tipo`. Lo que la persona escribió no sale, y no sale **por construcción**:
+
+- El payload no se arma a mano. Lo arma `crudosDeFiltroSinResultados`
+  (`src/lib/analyticsSitio.ts`), que recibe el eje y **el mapa de valores de
+  taxonomía** (`filtros.valores`) — y `filtros.q` no vive en ese mapa. Un eje que
+  no es de taxonomía **ni siquiera consulta el mapa**: se va con `eje` y nada más.
+- **El saneador solo no alcanzaría, y eso está escrito y fijado en un test.**
+  `lista-slugs` verifica la *forma* (`FORMATO_SLUG`), y una búsqueda de una sola
+  palabra en minúscula —`poesia`, `borges`, `caballito`— tiene exactamente la
+  forma de un slug de taxonomía. Los centinelas del test tampoco lo verían: los
+  cinco tienen mayúsculas, espacios, acentos o arrobas. O sea que si alguien
+  pasara `filtros.q` como `slug`, **pasaría**. Lo que impide la fuga es **de dónde
+  sale el valor**, no cómo se ve, y el origen es lo único que un test puede
+  verificar.
+
+Esa distinción —un **eje** es un enum cerrado; un **slug** es seguro **por el
+campo del que sale**, no porque tenga forma de slug— quedó escrita en el docblock
+de `construirEventoSitio`, que es donde la va a leer quien agregue el próximo
+parámetro. Y hay un chequeo que lee el fuente del único emisor y exige que el
+payload pase por la helper: sin él, `medirSitio('filtro_sin_resultados', { eje,
+slug: [filtros.q] })` **compila y pasa la suite entera**, porque la helper sigue
+existiendo y sigue siendo correcta — solo que nadie la usa. Lo encontró el
+`auditor-privacidad`, y es la clase de B-81.
+
+> ⚠️ **«Sale del mapa» no es «sale de la taxonomía», y la diferencia importa
+> para no apoyarse en una frase que no era.** `desdeQuery` llena
+> `filtros.valores` partiendo el query string **sin contrastarlo contra las
+> opciones conocidas**, así que un `?barrio=lo-que-sea` entra igual y lo único
+> que lo recorta es `FORMATO_SLUG` — hay un caso de test que lo fija. Lo que
+> hace segura la proyección no es que el valor esté en la taxonomía: es que **el
+> buscador no escribe en ese mapa** y que un eje que no es de taxonomía ni lo
+> consulta. Lo que queda —un valor que la propia persona puso en su propia URL,
+> ya recortado a forma de slug— es superficie de B-375, no de este ítem.
+
+**Y la firma que decide si un cero ya se midió sigue sin incluir `q`**, como
+desde B-375: si no, cada tecla de una búsqueda que sigue en cero dispararía el
+evento de nuevo. Que `busqueda` sea ahora un eje medible no cambia eso.
+
+#### Las dos redes
+
+| Qué se puede romper en silencio | Qué lo frena |
+|---|---|
+| el listado gana un filtro y nadie lo mide | el `Record<EjeSinSlug, …>` de `SIN_EL_FILTRO` en `Buscador.tsx` **no compila** si `EJES_SIN_SLUG` gana un valor y no se escribe cómo se saca ese filtro |
+| un eje nuevo de `listadoPublico.ts` se llama igual que uno de los cuatro | `tests/analyticsSitio.test.ts` exige que los dos vocabularios sean **disjuntos**: si se solaparan, el nombre pasaría a habilitar el `slug` y la guarda de arriba diría otra cosa de la que dice |
+
+#### Lo que costó, medido
+
+El [§6](#6--el-costo-en-la-página-de-detalle-medido) se comprometió a medir cada
+cosa que este frente le suma al sitio y a no dejarla crecer de a poco, así que va
+el delta de este ítem contra el mismo build sin él:
+
+| Chunk | Dónde carga | Antes (gzip) | Después (gzip) | Diferencia |
+|---|---|---|---|---|
+| `analyticsSitio....js` | **todas** las páginas, vía el banner de `Base.astro` | 778 B | 866 B | **+88 B** |
+| `Buscador....js` | solo el listado | 5.095 B | 5.251 B | **+156 B** |
+
+**+88 B gzip en todas las páginas** es lo único que se paga en la de detalle, que
+es la que el §6 cuida: el vocabulario nuevo y el armador del payload. La
+detección —los cuatro pasajes de `filtrarPublico`— vive en `Buscador.tsx`, o sea
+**solo donde hay filtros**, y solo corre cuando la lista quedó vacía.
 
 ---
 
@@ -1091,6 +1202,43 @@ Search Console → Sitemaps → `https://agendaleh.ar/sitemap.xml` → Enviar. Y
 existe desde B-109; cargarlo hace que Google descubra las páginas nuevas más
 rápido en vez de esperar a encontrarlas.
 
+**7 · Registrar `eje` y `slug` como dimensiones personalizadas de evento** (B-798)
+
+**Este es el que corre el reloj y conviene hacerlo aunque el resto quede para
+después.** Un parámetro de evento **no se puede consultar** por la Data API hasta
+que está registrado como dimensión personalizada, y **el registro no es
+retroactivo**: los datos empiezan a acumularse desde que se registra. O sea que
+registrarlo hoy es lo único que hace posible verlo el mes que viene.
+
+En Google Analytics: Administrar → **Definiciones personalizadas** → *Crear
+dimensión personalizada*, alcance **Evento**, dos veces:
+
+| Nombre de la dimensión | Parámetro del evento | Qué va a tener |
+|---|---|---|
+| `eje` | `eje` | `tipo` · `arancel` · `modalidad` · `barrio` · `ciudad` · `tag` · `busqueda` · `cuando` · `abierta` · `cursada` · `otro` |
+| `slug` | `slug` | slugs de taxonomía, unidos por coma — **solo** de los seis primeros ejes ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) |
+
+Los dos son vocabulario cerrado o slugs de una taxonomía que ya es pública:
+**ninguno puede llevar el texto que alguien tipeó**, y eso es una garantía del
+código, no de la consola. Van con `panel` y `via`, que son los parámetros de los
+otros dos eventos propios y siguen la misma regla.
+
+El límite del plan gratuito es 50 dimensiones de evento por propiedad, y esta es
+otra propiedad que la del panel, así que sobra.
+
+*Cómo verificar:* con volumen, en Explorar → exploración libre, `eje` aparece
+como dimensión y se puede desglosar `filtro_sin_resultados` por ella. Sin el
+registro, la Data API devuelve la cuenta y nada más — que es exactamente el
+síntoma con el que nació B-798.
+
+> ⛔ **Falta además el paso 2 de B-798, que sí es código y no es de acá:** sumar
+> `customEvent:eje` y `customEvent:slug` a `DIMENSIONES_PERMITIDAS`
+> (`functions/analitica.js`) para que la Function los pida. Es **una decisión de
+> privacidad, no un cambio mecánico** — esa lista blanca existe para que no
+> entren `pageLocation` (que llevaría `?q=<lo que alguien tipeó>`), `city`,
+> `region`, `userAgeBracket` ni `userGender`. El caso de estos dos es defendible
+> —son agregados sin persona, y el slug ya es público— pero se decide ahí, no acá.
+
 **Cómo verificar que todo quedó bien, de punta a punta**
 
 1. Forzar una corrida sin esperar al día siguiente:
@@ -1177,6 +1325,7 @@ semana sin el tag es una semana de historia que no se recupera**.
 | **B-500** | El aviso «ya-paso»: reencuadrado (D-270) y después sacado del todo (D-273), porque la lista crece sin techo y no pide acción para casi nada | ✅ hecho (2026-09-03) |
 | **B-501** | El tablero pasa a pestañas internas — «El catálogo» / «El sitio público» (D-271) | ✅ hecho (2026-09-03) |
 | **B-502** | La pestaña «El sitio público»: el andamiaje honesto de lo que B-374 va a mostrar, sin datos inventados (D-272) | ✅ hecho (2026-09-03) |
+| **B-798** | `filtro_sin_resultados` decía **cuántas** veces, no **cuál** filtro dejó la lista vacía ([§7.6](#76--filtro_sin_resultados-dice-cuál-filtro-no-solo-que-hubo-uno-b-798)) | 🟡 **la emisión está** (2026-09-09): `eje` cubre los diez filtros del listado y no seis, así que un cero por el buscador ya no se confunde con «ningún filtro solo lo explica». **`busqueda` es un eje, nunca el texto tipeado** — el payload lo arma `crudosDeFiltroSinResultados`, que solo saca `slug` del mapa de taxonomía. Faltan los otros dos tercios: el **paso 7 del [§9.4](#94--los-pasos-de-consola-del-dueño)** (registrar las dimensiones en la consola — es lo que corre el reloj, GA4 no es retroactivo) y `customEvent:eje`/`customEvent:slug` en `DIMENSIONES_PERMITIDAS` de `functions/analitica.js`, que es una decisión de privacidad y no un cambio mecánico |
 | **B-601** | El tríptico «¿Qué hay ahora?» (B-600) no emitía ningún evento: `clic_triptico`, con la clave del panel y nada más ([§7.5](#75--el-tercer-evento-propio-el-tríptico-b-601)) | ✅ **enganchado el 2026-09-07**. El handler va en `Buscador.tsx` y no adentro del componente, y el motivo es que **el mismo componente lo pintan el build y la island**: el del build no se hidrata, así que un `medirSitio` adentro entraría en los dos usos y mediría en uno solo. Con la prop, el único que la pasa es el que puede medir, y el HTML del build sigue sin una línea de JavaScript por esta sección. Consecuencia escrita: **se mide el clic de la island**, no el del HTML previo a hidratar. **Lo que sigue sin decidir es el clic del pie** «+N más» de B-791: si cuenta como clic del panel o como evento propio (D-470) |
 
 ---

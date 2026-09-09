@@ -73,6 +73,12 @@ import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { PanelesDeAhora } from '@/components/publico/PanelesDeAhora';
 import { panelesDeAhora } from '@/lib/ahoraPublico';
+import {
+  EJES_SIN_SLUG,
+  crudosDeFiltroSinResultados,
+  type EjeMedible,
+  type EjeSinSlug,
+} from '@/lib/analyticsSitio';
 import { useCapaModal } from '@/lib/capaModal';
 import { nombreDeMes } from '@/lib/fechasPublicas';
 import { medirSitio } from '@/lib/medicionSitio';
@@ -93,6 +99,7 @@ import {
   chipsDe,
   desdeQuery,
   ejeQueSobra,
+  filtrarPublico,
   filtrosVacios,
   hayFiltrosPublicos,
   listaPublica,
@@ -102,7 +109,7 @@ import {
   type FiltrosPublicos,
   type OrdenPublico,
 } from '@/lib/listadoPublico';
-import type { Indice } from '@/lib/eventsJson';
+import type { EntradaDeIndice, Indice } from '@/lib/eventsJson';
 
 interface Props {
   /**
@@ -154,6 +161,61 @@ function Flecha() {
     />
   );
 }
+
+/**
+ * Cómo se saca cada uno de los cuatro filtros que no son un riel de chips —
+ * **B-798**. Devuelve `null` cuando ese filtro no estaba puesto, que es la
+ * forma de decir «acá no hay nada que sacar».
+ *
+ * El `Record<EjeSinSlug, …>` es la red: si `EJES_SIN_SLUG` gana un filtro y no
+ * se escribe cómo se saca, **esto no compila**. Es el mismo mecanismo que ata
+ * `PANELES_MEDIBLES` a `ClaveDePanel` en `tests/analyticsSitio.test.ts`, y hace
+ * falta acá porque el otro modo de fallo —agregar un filtro al listado y
+ * olvidarse de medirlo— se vería en GA4 como un cero sin eje, o sea igual que
+ * antes de este ítem.
+ */
+const SIN_EL_FILTRO: Record<EjeSinSlug, (f: FiltrosPublicos) => FiltrosPublicos | null> = {
+  busqueda: (f) => (f.q.trim() === '' ? null : { ...f, q: '' }),
+  cuando: (f) => (f.cuando === CUANDO_PROXIMAS ? null : { ...f, cuando: CUANDO_PROXIMAS }),
+  abierta: (f) => (f.soloAbierta ? { ...f, soloAbierta: false } : null),
+  cursada: (f) => (f.cursada === '' ? null : { ...f, cursada: '' }),
+};
+
+/**
+ * Qué filtro explica el cero — **B-798**, la mitad de este lado.
+ *
+ * `ejeQueSobra` (`listadoPublico.ts`) contesta lo mismo para los **seis** rieles
+ * de chips, y su respuesta es la que manda: es la que la pantalla ya muestra
+ * («Probá sin el filtro de…»), así que la serie histórica de esos seis ejes en
+ * GA4 no cambia ni un evento. Lo que se agrega es la **cola**: cuando ningún
+ * chip lo explica, se prueban los otros cuatro filtros del listado con el mismo
+ * método —sacar uno solo y ver si vuelve a haber resultados—, en el orden
+ * declarado de `EJES_SIN_SLUG`.
+ *
+ * Antes de esto, un cero causado por el texto del buscador y un cero que
+ * ninguna combinación de un solo filtro arregla llegaban **los dos** como un
+ * `filtro_sin_resultados` sin parámetros, y son dos problemas distintos: el
+ * primero se arregla con contenido o con `searchText`, el segundo mirando qué
+ * cruces se ofrecen.
+ *
+ * **No se reimplementa `ejeQueSobra`**: se lo llama y se sigue después. La cola
+ * vive acá y no en `listadoPublico.ts` porque ahí la pregunta es «qué chip
+ * ofrecerle a la persona que saque», y ninguno de estos cuatro es un chip.
+ */
+const ejeQueExplicaElCero = (
+  entradas: readonly EntradaDeIndice[],
+  filtros: FiltrosPublicos,
+  ahora: Date,
+  deTaxonomia: EjeMedible | null,
+): EjeMedible | null => {
+  if (deTaxonomia) return deTaxonomia;
+  for (const eje of EJES_SIN_SLUG) {
+    const sinEse = SIN_EL_FILTRO[eje](filtros);
+    if (!sinEse) continue;
+    if (filtrarPublico(entradas, sinEse, ahora).length > 0) return eje;
+  }
+  return null;
+};
 
 export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Props) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
@@ -371,21 +433,40 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
     () => (visibles.length === 0 ? ejeQueSobra(entradas, filtros, ahora) : null),
     [visibles.length, entradas, filtros, ahora],
   );
+  /* B-798 — el mismo cero, contestado sobre los diez filtros y no sobre seis.
+     `sobra` queda intacto: es el que pinta la pantalla, y mezclarlos haría que
+     el aviso ofreciera sacar algo que no es un chip. */
+  const ejeDelCero = useMemo(
+    () =>
+      visibles.length === 0 ? ejeQueExplicaElCero(entradas, filtros, ahora, sobra) : null,
+    [visibles.length, entradas, filtros, ahora, sobra],
+  );
 
   /**
    * B-375 — «¿qué filtro deja cero, y cuál sacar?» (pregunta 6 y fricción 7
-   * del §4 de `docs/16-analitica-del-sitio.md`).
+   * del §4 de `docs/16-analitica-del-sitio.md`), **ampliado a los diez filtros
+   * del listado en B-798**.
    *
    * **Nunca `filtros.q`**: el texto del buscador es exactamente lo que la
    * regla del §5.4 prohíbe mandar, así que la firma con la que se decide si
    * "ya se midió esta combinación" deja `q` afuera adrede — si no, cada
    * tecla de una búsqueda que sigue en cero dispararía el evento de nuevo.
    *
-   * `sobra` es la misma señal que ya pinta la pantalla («Probá sin el filtro
-   * de…»): el único eje que, si se saca, deja de dar cero. Cuando ninguno lo
-   * explica por sí solo (`sobra === null`) el evento se manda igual, pero sin
-   * `eje` ni `slug` — sigue siendo una señal válida («hubo un cero que
-   * sacar un solo eje no arregla»), y `construirEventoSitio` la deja pasar.
+   * ⚠️ **Que `busqueda` sea ahora un `eje` medible no cambia eso ni un poco.**
+   * Lo que viaja es la palabra `'busqueda'` —un valor de `EJES_SIN_SLUG`, enum
+   * cerrado— y nunca lo que se tipeó: el payload lo arma
+   * `crudosDeFiltroSinResultados`, que solo saca `slug` del mapa de taxonomía, y
+   * `filtros.q` no vive en ese mapa. La distinción está escrita entera en el
+   * docblock de `construirEventoSitio`, y el motivo por el que no alcanza con el
+   * saneador es que una búsqueda de una palabra en minúscula tiene la misma
+   * forma que un slug.
+   *
+   * `ejeDelCero` es `sobra` —la misma señal que ya pinta la pantalla («Probá
+   * sin el filtro de…»)— y, cuando ningún chip lo explica, el primero de los
+   * otros cuatro filtros que sacado solo devuelve resultados. Cuando ninguno de
+   * los diez lo explica por sí solo el evento se manda igual, pero sin `eje` ni
+   * `slug` — sigue siendo una señal válida («hubo un cero que sacar un solo
+   * filtro no arregla»), y `construirEventoSitio` la deja pasar.
    */
   const firmaDeFiltro = useMemo(
     () =>
@@ -411,12 +492,9 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
     }
     if (ultimaFirmaMedida.current === firmaDeFiltro) return;
     ultimaFirmaMedida.current = firmaDeFiltro;
-    medirSitio(
-      'filtro_sin_resultados',
-      sobra ? { eje: sobra, slug: filtros.valores[sobra] } : {},
-    );
+    medirSitio('filtro_sin_resultados', crudosDeFiltroSinResultados(ejeDelCero, filtros.valores));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indice, visibles.length, entradas.length, firmaDeFiltro, sobra]);
+  }, [indice, visibles.length, entradas.length, firmaDeFiltro, ejeDelCero]);
 
   const limpiar = () => {
     setFiltros(filtrosVacios());

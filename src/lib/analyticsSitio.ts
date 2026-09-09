@@ -137,18 +137,61 @@ export const ubicacionSinQuery = (href: string): string => {
 export const FUERA_DE_VOCABULARIO_SITIO = 'otro';
 
 /**
- * Los ejes de filtro medibles. **Copiado, no importado en runtime, a
- * propósito** — la misma decisión que `CAMPOS_VALIDABLES` en el panel
- * (`analytics-eventos.ts`): importar `@/lib/listadoPublico` acá arrastraría
- * todo el motor de filtrado al chunk que carga en **todas** las páginas (el
- * banner vive en `Base.astro`), y esa es justamente la página de detalle cuyo
- * peso este frente se comprometió a medir.
+ * Los ejes de filtro **de taxonomía** — los seis rieles de chips. **Copiado, no
+ * importado en runtime, a propósito** — la misma decisión que
+ * `CAMPOS_VALIDABLES` en el panel (`analytics-eventos.ts`): importar
+ * `@/lib/listadoPublico` acá arrastraría todo el motor de filtrado al chunk que
+ * carga en **todas** las páginas (el banner vive en `Base.astro`), y esa es
+ * justamente la página de detalle cuyo peso este frente se comprometió a medir.
  *
  * La garantía de que esta lista no se desactualice en silencio se mueve al
  * test: `tests/analyticsSitio.test.ts` importa `EJES` de `listadoPublico.ts` y
  * falla si difiere de esta copia.
+ *
+ * **Son los únicos ejes que pueden llevar `slug`**, y esa es la mitad de
+ * privacidad de B-798 — ver `crudosDeFiltroSinResultados` más abajo.
  */
-const EJES_MEDIBLES = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'] as const;
+const EJES_DE_TAXONOMIA = ['tipo', 'arancel', 'modalidad', 'barrio', 'ciudad', 'tag'] as const;
+
+/**
+ * Los otros cuatro filtros del listado, los que **no** son un riel de chips —
+ * **B-798**.
+ *
+ * El listado tiene diez filtros, no seis: además de los seis ejes de taxonomía
+ * están el texto del buscador, el «Cuándo», «solo con inscripción abierta» y
+ * «ciclos / encuentros únicos». `ejeQueSobra` de `listadoPublico.ts` mira
+ * **solo los seis** —le alcanza, porque lo que la pantalla ofrece es «probá sin
+ * el filtro de…» y esos cuatro no son un chip que se saque—, así que hasta
+ * B-798 un cero causado por cualquiera de ellos llegaba a GA4 **sin ningún
+ * `eje`**, indistinguible de «ningún filtro solo explica el cero». Las dos
+ * situaciones se arreglan distinto y llegaban como la misma fila vacía.
+ *
+ * La que más importa es `busqueda`: «el buscador no encuentra nada» es un
+ * problema de contenido o de `searchText`, no de una etiqueta que falte en un
+ * barrio, que es la distinción que el ítem plantea.
+ *
+ * **El orden es el de prueba** (ver `crudosDeFiltroSinResultados` y el llamador
+ * en `Buscador.tsx`): cuando más de uno explicaría el cero, gana el primero.
+ * `busqueda` va primero a propósito — es el más accionable de los cuatro y el
+ * único que no se ve en la barra de filtros.
+ *
+ * ⚠️ **Ninguno de los cuatro lleva `slug`, y no es una omisión.** El «valor» de
+ * `busqueda` **es el texto que alguien tipeó**: lo que el §5.4 del diseño
+ * prohíbe mandar, y lo que el saneador de `lista-slugs` **no** puede atajar solo
+ * (una búsqueda de una palabra en minúscula —`poesia`— tiene exactamente la
+ * forma de un slug). La garantía es estructural, no del saneador: ver el
+ * docblock de `crudosDeFiltroSinResultados`.
+ */
+export const EJES_SIN_SLUG = ['busqueda', 'cuando', 'abierta', 'cursada'] as const;
+
+/** Un filtro del listado que no es un riel de chips. */
+export type EjeSinSlug = (typeof EJES_SIN_SLUG)[number];
+
+/** Cualquier filtro del listado que puede explicar un cero. */
+export type EjeMedible = Eje | EjeSinSlug;
+
+/** El vocabulario completo del parámetro `eje` de `filtro_sin_resultados`. */
+const EJES_MEDIBLES = [...EJES_DE_TAXONOMIA, ...EJES_SIN_SLUG] as const;
 
 /**
  * Los tres paneles del tríptico «¿Qué hay ahora?» — **B-601**, sobre el B-600
@@ -238,10 +281,19 @@ export const EVENTOS_SITIO = {
   clic_inscripcion: {
     via: { tipo: 'enum', valores: VIAS_INSCRIPCION },
   },
-  /** ¿Qué filtro deja cero, y cuál sacar? (pregunta 6 y fricción 7 del §4).
-   * Sin `eje`/`slug` cuando el cero no se explica por un único eje — sigue
-   * siendo una señal válida: «hubo un cero que ninguna combinación de un solo
-   * eje arregla». */
+  /**
+   * ¿Qué filtro deja cero, y cuál sacar? (pregunta 6 y fricción 7 del §4).
+   *
+   * `eje` cubre los **diez** filtros del listado desde **B-798**: los seis
+   * rieles de taxonomía (`EJES_DE_TAXONOMIA`) más los cuatro que no son chips
+   * (`EJES_SIN_SLUG`). Sin `eje` cuando ningún filtro **solo** explica el cero
+   * — sigue siendo una señal válida: «hubo un cero que sacar un solo filtro no
+   * arregla».
+   *
+   * `slug` lo llevan **solo** los seis de taxonomía. El payload no se arma a
+   * mano: se arma con `crudosDeFiltroSinResultados`, que es donde vive esa
+   * garantía.
+   */
   filtro_sin_resultados: {
     eje: { tipo: 'enum', valores: EJES_MEDIBLES },
     slug: { tipo: 'lista-slugs' },
@@ -290,6 +342,24 @@ export interface EventoMedidoSitio {
  * Whitelist en las dos direcciones, igual que `construirEvento` del panel: un
  * nombre no declarado no manda nada, y un parámetro no declarado en ese evento
  * se descarta. Lo que queda pasa por su saneador y nunca es texto libre.
+ *
+ * ── Dónde **no** alcanza esta whitelist, dicho con precisión (B-798) ──────
+ *
+ * «Nunca es texto libre» es cierto para los saneadores `enum`, que comparan
+ * contra una lista cerrada. **Para `lista-slugs` es una media verdad**, y
+ * conviene tenerla escrita antes de agregarle un valor al parámetro `eje`: lo
+ * único que ese saneador exige es la **forma** de un slug (`FORMATO_SLUG`), y
+ * una búsqueda de una sola palabra en minúscula —`poesia`, `borges`,
+ * `caballito`— tiene exactamente esa forma. El texto tipeado en el buscador de
+ * un sitio de actividades literarias **pasaría** por acá si alguien se lo diera.
+ *
+ * O sea: la distinción entre «un eje» —enum cerrado, seguro por construcción— y
+ * «un slug de un riel de taxonomía» —seguro **por el campo del que sale**— es lo
+ * que hace segura la mitad **b**. El saneador cuida la forma; **de dónde sale el
+ * valor lo cuida el llamador**, y por eso el único llamador soportado para
+ * `filtro_sin_resultados` es `crudosDeFiltroSinResultados`, acá abajo: nunca
+ * `medirSitio('filtro_sin_resultados', { … })` a mano — y eso lo fija
+ * `tests/analyticsSitio.test.ts` leyendo el fuente del único que lo emite.
  */
 export const construirEventoSitio = (
   nombre: string,
@@ -304,6 +374,51 @@ export const construirEventoSitio = (
     if (valor !== undefined) params[param] = valor;
   }
   return { nombre, params };
+};
+
+const esEjeDeTaxonomia = (eje: EjeMedible): eje is Eje =>
+  (EJES_DE_TAXONOMIA as readonly string[]).includes(eje);
+
+/**
+ * Los crudos de `filtro_sin_resultados`, armados desde el eje que explica el
+ * cero y el mapa de valores de taxonomía — **B-798**.
+ *
+ * Existe por una sola razón, y es la mitad de privacidad del ítem: **acá se
+ * decide de dónde puede salir un `slug`, y la respuesta es «del mapa de la
+ * taxonomía y de ningún otro lado»**. Un eje de `EJES_SIN_SLUG` se va con `eje`
+ * y nada más, aunque el llamador le pase un mapa con una entrada para él.
+ *
+ * Sin esta función la garantía dependería de que quien llama a `medirSitio` se
+ * acuerde de no pasar `filtros.q` como `slug` — y el type-check no diría nada si
+ * se olvidara (`medirSitio` recibe `Record<string, unknown>`), ni el saneador:
+ * `FORMATO_SLUG` acepta `poesia` igual que acepta `club-lectura` (ver el
+ * docblock de `construirEventoSitio`). La forma no distingue el texto tipeado de
+ * un slug; **el campo del que sale, sí**.
+ *
+ * ⚠️ **«Sale del mapa» no es lo mismo que «sale de la taxonomía», y conviene ser
+ * exacto** — lo señaló el `auditor-privacidad`. `desdeQuery`
+ * (`listadoPublico.ts`) llena `filtros.valores` partiendo el query string **sin
+ * contrastarlo contra las opciones conocidas**, así que un
+ * `?barrio=lo-que-sea-que-alguien-escriba-en-la-url` entra al mapa igual y lo
+ * único que lo recorta es `FORMATO_SLUG`. Lo que hace segura a esta función no
+ * es que el valor esté en la taxonomía: es que **el buscador no escribe en ese
+ * mapa**, y que un eje que no es de taxonomía ni siquiera lo consulta. La
+ * superficie que queda —un valor que la propia persona puso en su propia URL, ya
+ * recortado a forma de slug— es de B-375 y no de acá.
+ *
+ * @param eje el filtro que explica el cero, o `null` si ninguno solo lo explica
+ * @param valores `filtros.valores` — **solo** los seis ejes de taxonomía; el
+ *   texto del buscador no vive ahí y no tiene por dónde entrar
+ */
+export const crudosDeFiltroSinResultados = (
+  eje: EjeMedible | null,
+  valores: Readonly<Record<Eje, readonly string[]>>,
+): { eje?: EjeMedible; slug?: readonly string[] } => {
+  if (eje === null) return {};
+  // El único acceso al mapa, y va detrás de la guarda: un `EjeSinSlug` no lo
+  // consulta ni aunque el mapa tenga una entrada con su nombre.
+  const slug = esEjeDeTaxonomia(eje) ? (valores[eje] ?? []) : [];
+  return slug.length > 0 ? { eje, slug } : { eje };
 };
 
 // Reexportados para quien arme el evento de filtro sin resultados

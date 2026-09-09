@@ -2,6 +2,50 @@
 
 ## Sin publicar
 
+- **«Filtros que no encuentran nada» dice cuál, y `busqueda` es un eje — nunca lo
+  que alguien tipeó** — **B-798**, la mitad de emisión.
+
+  **El corte no estaba donde el ítem decía.** El evento ya llevaba `eje`, pero salía
+  de `ejeQueSobra`, que mira **los seis rieles de chips**; el listado tiene **diez**
+  filtros. Un cero causado por el texto del buscador, el «Cuándo», «abierta» o
+  «cursada» llegaba **sin ningún parámetro** — indistinguible de «ningún filtro solo
+  lo explica». Registrar las dimensiones en la consola no lo habría arreglado: el
+  dato no salía del navegador, así que la pregunta del ítem no tenía cómo
+  contestarse.
+
+  El método es el que ya existía y **no se reimplementó**: sacar un filtro y ver si
+  vuelve a haber resultados. `ejeQueSobra` contesta por los seis chips y su
+  respuesta **manda** —es la que pinta la pantalla— así que la serie histórica no se
+  corta; recién si ninguno lo explica se prueban los otros cuatro.
+
+  **Y la mitad que hace que el ítem exista: el texto tipeado no puede salir.** Lo
+  que viaja es la palabra `'busqueda'`. El payload lo arma
+  `crudosDeFiltroSinResultados`, que saca el `slug` **del mapa de los rieles y de
+  ningún otro lado**, y un eje que no es de taxonomía ni lo consulta. **El saneador
+  solo no alcanzaba, y quedó escrito:** `lista-slugs` verifica la *forma*, y una
+  búsqueda de una palabra en minúscula —`poesia`, `borges`, `caballito`— tiene
+  exactamente la forma de un slug; los cinco centinelas del barrido tampoco la
+  verían, porque todos tienen mayúsculas, espacios, acentos o arrobas. Pasar el
+  texto tipeado **habría pasado, en verde**.
+
+  **El frente corrió el `auditor-privacidad` sobre su propio diff y se cobró dos
+  hallazgos.** El que importa: mudar la garantía del saneador al llamador la dejó
+  **sin red en el lugar nuevo** — `medirSitio` recibe `Record<string, unknown>`, así
+  que un payload escrito a mano compilaba, pasaba `tsc` y pasaba la suite entera. Es
+  la clase de B-81. El otro: «sale del mapa» **no es** «sale de la taxonomía»
+  (`desdeQuery` no contrasta contra las opciones conocidas), así que la frase se
+  corrigió y la garantía quedó apoyada en el motivo correcto.
+
+  Costo medido contra el mismo build sin el cambio: **+88 B gzip** en todas las
+  páginas y **+156 B** en el listado. Y **la celda de la salida 12 de
+  `07-seguridad.md` pasó a nombrar la función que hoy sostiene la garantía**, que es
+  lo que hace que un cambio futuro a ese camino despierte al auditor por nombre.
+
+  De paso quedó anotado **B-853**, que el frente encontró midiendo y es previo:
+  `sin-comentarios.mjs` se come el **83%** de `Buscador.tsx`, así que cualquier test
+  que use ese saneador sobre ese archivo está afirmando sobre casi nada. Es la misma
+  clase que el bug que ese script ya tuvo con `firestore.rules`, con otra cara.
+
 - **El `offers` del JSON-LD dice desde cuándo, con la cota inferior y no con el
   dato que falta** — **B-812**. `validFrom` no se emitía nunca (24 avisos del
   informe «Eventos», el único de los nueve que era código y no dato faltante).

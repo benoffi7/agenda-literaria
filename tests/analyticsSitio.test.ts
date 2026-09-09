@@ -1,10 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   CLAVE_CONSENTIMIENTO,
+  EJES_SIN_SLUG,
   EVENTOS_SITIO,
   FUERA_DE_VOCABULARIO_SITIO,
   NOMBRES_EVENTOS_SITIO,
   construirEventoSitio,
+  crudosDeFiltroSinResultados,
   debeCargarGA,
   debeMedirSitio,
   debeMostrarBanner,
@@ -13,10 +17,11 @@ import {
   ubicacionSinQuery,
   VIAS_INSCRIPCION,
   type AlmacenConsentimiento,
+  type Eje,
   type EstadoConsentimiento,
   type PanelMedible,
 } from '@/lib/analyticsSitio';
-import { EJES } from '@/lib/listadoPublico';
+import { EJES, desdeQuery } from '@/lib/listadoPublico';
 import type { ClaveDePanel } from '@/lib/ahoraPublico';
 
 /**
@@ -173,6 +178,149 @@ describe('los ejes medibles no se desactualizan en silencio', () => {
       expect(evento?.params.eje).toBe(eje);
     }
   });
+
+  it('los cuatro filtros que no son chips también son vocabulario — B-798', () => {
+    // La otra mitad de `EJES_MEDIBLES`. Sin esto, `eje: 'busqueda'` llegaría a
+    // GA4 como `otro` y el ítem no habría contestado nada: «el buscador no
+    // encuentra» y «un eje que no reconozco» serían la misma fila.
+    for (const eje of EJES_SIN_SLUG) {
+      expect(construirEventoSitio('filtro_sin_resultados', { eje })?.params.eje).toBe(eje);
+    }
+  });
+
+  it('los dos vocabularios son disjuntos', () => {
+    /*
+     * No es una formalidad: `crudosDeFiltroSinResultados` decide si un eje
+     * puede llevar `slug` preguntando si está en la lista de taxonomía. Si un
+     * día `EJES` de `listadoPublico.ts` estrenara un eje llamado `cuando` o
+     * `busqueda`, ese nombre pasaría a habilitar el `slug` — y el que lo emite
+     * sería el otro. Solaparlos es la única forma de que la guarda de abajo
+     * signifique otra cosa de la que dice.
+     */
+    for (const eje of EJES_SIN_SLUG) {
+      expect(EJES as readonly string[]).not.toContain(eje);
+    }
+  });
+});
+
+describe('crudosDeFiltroSinResultados — de dónde puede salir un slug (B-798)', () => {
+  /** Los seis ejes de taxonomía vacíos, derivado de `EJES` y no escrito a mano:
+   *  un eje nuevo del listado entra solo. */
+  const sinValores = (): Record<Eje, string[]> =>
+    Object.fromEntries(EJES.map((eje) => [eje, [] as string[]])) as unknown as Record<
+      Eje,
+      string[]
+    >;
+
+  it('sin un filtro que explique el cero, no manda ningún parámetro', () => {
+    // Sigue siendo la señal válida que ya existía: «hubo un cero que sacar un
+    // solo filtro no arregla».
+    expect(crudosDeFiltroSinResultados(null, sinValores())).toEqual({});
+  });
+
+  it('un eje de taxonomía viaja con los slugs que estaban puestos', () => {
+    expect(
+      crudosDeFiltroSinResultados('barrio', { ...sinValores(), barrio: ['villa-crespo'] }),
+    ).toEqual({ eje: 'barrio', slug: ['villa-crespo'] });
+  });
+
+  it('un eje de taxonomía sin valores viaja solo, sin un `slug` vacío', () => {
+    expect(crudosDeFiltroSinResultados('tipo', sinValores())).toEqual({ eje: 'tipo' });
+  });
+
+  it('los cuatro filtros que no son chips viajan sin `slug`, siempre', () => {
+    for (const eje of EJES_SIN_SLUG) {
+      expect(crudosDeFiltroSinResultados(eje, sinValores())).toEqual({ eje });
+    }
+  });
+
+  /**
+   * **El caso del ítem, y el que hay que mirar si alguien toca este archivo.**
+   *
+   * B-798 agrega `busqueda` al vocabulario de `eje` para poder distinguir «el
+   * buscador no encuentra nada» —que se arregla con contenido— de «ningún
+   * filtro solo explica el cero». Lo que **no** puede pasar por agregarlo es que
+   * el texto tipeado encuentre una salida: es exactamente lo que el §5.4 del
+   * diseño prohíbe.
+   *
+   * Acá se fuerza el peor caso posible: alguien le mete al mapa de valores una
+   * entrada con el nombre del eje nuevo y adentro lo que la persona tipeó. La
+   * función **no consulta el mapa** para un eje que no es de taxonomía, así que
+   * el texto no tiene por dónde salir.
+   *
+   * MUTACIÓN PROBADA: en `crudosDeFiltroSinResultados`
+   * (`src/lib/analyticsSitio.ts`) se reemplazó
+   * `esEjeDeTaxonomia(eje) ? (valores[eje] ?? []) : []` por el acceso directo
+   * `(valores as Record<string, readonly string[] | undefined>)[eje] ?? []`.
+   * Este `it` pasó a fallar de inmediato —el crudo salía como
+   * `{ eje: 'busqueda', slug: ['centinela-lo-que-alguien-tipeo'] }`— y el de
+   * abajo, el de punta a punta, también. Se restauró la guarda y los dos
+   * vuelven a pasar.
+   */
+  it('el texto tipeado NO puede salir por el camino nuevo, ni forzándolo', () => {
+    const conElTextoAdentro = {
+      ...sinValores(),
+      busqueda: ['centinela-lo-que-alguien-tipeo'],
+    } as unknown as Record<Eje, string[]>;
+
+    const crudos = crudosDeFiltroSinResultados('busqueda', conElTextoAdentro);
+    expect(crudos).toEqual({ eje: 'busqueda' });
+    expect(crudos.slug).toBeUndefined();
+
+    // Y de punta a punta, que es lo que llega a GA4.
+    const evento = construirEventoSitio('filtro_sin_resultados', crudos);
+    expect(evento?.params).toEqual({ eje: 'busqueda' });
+    expect(JSON.stringify(evento)).not.toContain('centinela-lo-que-alguien-tipeo');
+  });
+
+  /**
+   * **Por qué la garantía de arriba es estructural y no del saneador**, dicho
+   * con el caso que lo prueba en vez de con una promesa.
+   *
+   * El saneador `lista-slugs` verifica la **forma** (`FORMATO_SLUG`), y una
+   * búsqueda de una sola palabra en minúscula —`poesia`, `borges`,
+   * `caballito`— tiene exactamente la forma de un slug de taxonomía. O sea que
+   * si alguien pasara `filtros.q` como `slug`, **el saneador lo dejaría pasar**
+   * y el test de centinelas de más abajo tampoco lo vería: sus centinelas
+   * tienen mayúsculas, espacios, acentos o arrobas.
+   *
+   * Este caso está para que eso quede fijado y no se descubra el día que
+   * alguien «enriquezca» el evento. Lo que impide la fuga es de dónde sale el
+   * valor, y eso solo lo puede cuidar `crudosDeFiltroSinResultados`.
+   */
+  /**
+   * **La precisión que el `auditor-privacidad` pidió sobre la frase del diseño**
+   * (su H3). El docblock decía que un slug es seguro «porque viene de la
+   * taxonomía», y no es exacto: `desdeQuery` llena `filtros.valores` partiendo
+   * el query string **sin contrastarlo contra las opciones conocidas**, así que
+   * lo que la persona ponga en su propia URL entra al mapa y lo único que lo
+   * recorta es `FORMATO_SLUG`.
+   *
+   * Este caso lo deja escrito como comportamiento y no como promesa, para que
+   * nadie se apoye en la frase que no era. **La garantía sigue en pie por otro
+   * motivo**, que es el que importa: el buscador no escribe en ese mapa, y el
+   * valor que llega es el que la propia persona puso en su propia URL — no un
+   * dato de un tercero. Es superficie de B-375, no de B-798.
+   */
+  it('lo que entra por la URL llega al mapa sin pasar por la taxonomía — solo lo recorta el formato', () => {
+    const { filtros } = desdeQuery('barrio=un-barrio-que-no-existe-en-ninguna-opcion');
+    expect(filtros.valores.barrio).toEqual(['un-barrio-que-no-existe-en-ninguna-opcion']);
+
+    // Y sale, porque tiene forma de slug. Lo que lo hace aceptable no es la
+    // taxonomía: es de dónde viene el campo.
+    expect(crudosDeFiltroSinResultados('barrio', filtros.valores)).toEqual({
+      eje: 'barrio',
+      slug: ['un-barrio-que-no-existe-en-ninguna-opcion'],
+    });
+  });
+
+  it('el saneador solo no alcanzaría: una búsqueda de una palabra tiene forma de slug', () => {
+    const comoSiAlguienLoPasaraAMano = construirEventoSitio('filtro_sin_resultados', {
+      eje: 'tag',
+      slug: ['poesia'],
+    });
+    expect(comoSiAlguienLoPasaraAMano?.params.slug).toBe('poesia');
+  });
 });
 
 describe('construirEventoSitio — whitelist en las dos direcciones', () => {
@@ -314,6 +462,81 @@ describe('construirEventoSitio — whitelist en las dos direcciones', () => {
       // tríptico?», que es la mitad más importante de la pregunta.
       expect(construirEventoSitio('clic_triptico', {})?.params).toEqual({});
     });
+  });
+});
+
+describe('el payload de filtro_sin_resultados no se arma a mano — B-798, H1 del auditor', () => {
+  /**
+   * **La red donde ahora vive el riesgo, y no donde vivía antes.**
+   *
+   * B-798 mudó la garantía de privacidad del saneador al llamador, por un motivo
+   * bueno: `FORMATO_SLUG` no distingue `poesia` —lo que alguien tipeó— de
+   * `club-lectura` —un slug de taxonomía—, así que la forma no puede ser la
+   * defensa. Lo que la mudanza no dejó, y lo encontró el `auditor-privacidad`,
+   * es una red **en el lugar nuevo**: `medirSitio` acepta
+   * `Record<string, unknown>`, así que
+   * `medirSitio('filtro_sin_resultados', { eje, slug: [filtros.q] })` **compila,
+   * pasa el type-check y pasa todos los tests de este archivo** — porque
+   * `crudosDeFiltroSinResultados` sigue existiendo y sigue siendo correcta, solo
+   * que nadie la usa. Es la clase de B-81: se acordaron de armarlo bien el día
+   * que lo escribieron.
+   *
+   * Vive acá y no en `tests/listado-del-sitio.test.ts` —que ya lee este mismo
+   * archivo para `clic_triptico`— porque la regla es de **este** módulo: está
+   * escrita en el docblock de `construirEventoSitio` («el único llamador
+   * soportado es `crudosDeFiltroSinResultados`, nunca a mano») y el chequeo que
+   * la sostiene tiene que poder leerse al lado.
+   *
+   * Se mira el fuente **sin comentarios**: los docblocks de `Buscador.tsx` y de
+   * `analyticsSitio.ts` escriben la forma prohibida para explicarla, así que un
+   * barrido sobre el archivo entero se agarraría a sí mismo.
+   *
+   * MUTACIÓN PROBADA: se reemplazó la línea de `Buscador.tsx` por
+   * `medirSitio('filtro_sin_resultados', { eje: ejeDelCero, slug: [filtros.q] })`
+   * —la fuga exacta que el auditor describe, con `tsc` y el resto de la suite en
+   * verde—. Los dos `expect` de este `it` pasaron a fallar. Se restauró la
+   * llamada real y vuelven a pasar.
+   */
+  const BUSCADOR = fileURLToPath(new URL('../src/components/publico/Buscador.tsx', import.meta.url));
+
+  /**
+   * El fuente **sin comentarios**, con el mismo recorte local que usan
+   * `tests/listado-del-sitio.test.ts` y `tests/pagina-de-detalle.test.ts` sobre
+   * este mismo archivo, y **no** `scripts/sin-comentarios.mjs`: ese saneador
+   * compartido se come la mayor parte de `Buscador.tsx` —ya lo hacía antes de
+   * este cambio, se verificó contra el archivo de `HEAD`— por algún `//` que le
+   * abre una corrida adentro de sus docblocks largos. Está anotado en el
+   * reporte; acá alcanza el recorte simple.
+   */
+  const codigoDelBuscador = (): string =>
+    readFileSync(BUSCADOR, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('la única emisión del evento pasa por `crudosDeFiltroSinResultados`', () => {
+    const codigo = codigoDelBuscador();
+
+    // Una sola: dos emisiones son dos oportunidades de armar el payload, y la
+    // segunda es siempre la que se escribe sin releer la regla.
+    expect([...codigo.matchAll(/medirSitio\('filtro_sin_resultados'/g)]).toHaveLength(1);
+    expect(codigo).toMatch(
+      /medirSitio\('filtro_sin_resultados',\s*crudosDeFiltroSinResultados\(/,
+    );
+  });
+
+  it('y `filtros.q` no aparece en ninguna llamada a `medirSitio`', () => {
+    /*
+     * El complemento, por si el evento se emitiera desde otro lado del archivo:
+     * el texto del buscador no puede aparecer como argumento de ninguna
+     * medición. `filtros.q` sí se usa —para saber si el filtro está puesto y
+     * para vaciarlo en `SIN_EL_FILTRO`—, así que lo que se prohíbe es la
+     * vecindad con `medirSitio`, no la mención.
+     */
+    const codigo = codigoDelBuscador();
+    for (const [llamada] of codigo.matchAll(/medirSitio\([^;]*\);/g)) {
+      expect(llamada).not.toMatch(/\bfiltros\.q\b/);
+      expect(llamada).not.toMatch(/\bq\b\s*:/);
+    }
   });
 });
 
