@@ -10305,7 +10305,39 @@ upgrade son tres páginas.
 `functions/` aparte: 10 moderadas, ninguna alta, todas transitivas de
 `firebase-admin`/`googleapis`.
 
-### B-215 · Tres duplicaciones chicas en producción y una en los tests · P2 — parcial (2026-09-02)
+### B-215 · Dos duplicaciones chicas en producción y una en los tests — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Las tres cerradas, y las tres guardas auditadas.** El título decía «tres en
+> producción» y la lista enumera **dos**: la tercera que contó el barrido del
+> 2026-08-27 eran los componentes de chips, que el propio ítem excluye más abajo
+> (D-116, y siguen sin unificarse con el argumento intacto — son tres widgets
+> distintos y la lógica pura ya está compartida). Corregido en el título.
+>
+> **Y la auditoría de las guardas encontró más que el refactor**, que es la misma
+> forma que ya había tenido la migración del fixture: **dos de las tres daban verde
+> exactamente sobre la copia que existen para atrapar.**
+>
+> - **La de `MESES` buscaba `'enero'` con las comillas puestas**, o sea que le
+>   exigía a la copia estar escrita con comillas simples: le pedía a quien la tipea
+>   que **ya haya pasado por Prettier**, cuando el estado que esa guarda existe para
+>   agarrar es justo el anterior — es el mismo motivo por el que usa `grep -r` y no
+>   `git grep`. Una copia con comillas dobles pasaba en verde. Es el agujero de esa
+>   guarda **por segunda vez, con otra cara**. Ahora la comilla es una clase, hay
+>   una alternativa para el mismo dato escrito como mapa, y el patrón tiene su
+>   propio caso con cuatro copias y **dos controles negativos de prosa** — que es lo
+>   que impide «arreglarlo» ensanchándolo a `enero` pelado, palabra que vive en
+>   media docena de docblocks.
+> - **La de `useActividades` miraba medio panel:** `readdirSync` sin `recursive`, y
+>   el panel tiene cuatro subdirectorios. Una copia del efecto de carga en
+>   `estadisticas/` era invisible, y el control positivo que tenía («más de 10
+>   archivos») no lo agarraba porque el nivel de arriba solo ya trae más de diez.
+>   Ahora recorre recursivo **y hay un control del recursivo**.
+> - **A la del fixture de ciclo le faltaba el lado positivo:** cuidaba que el
+>   fixture *fuera* un ciclo, no que alguien lo siguiera **usando**, así que volver
+>   a inlinear el `ActividadForm` no rompía nada. Se agregó el caso simétrico al de
+>   `useActividades`, y **no** prohíbe que un test nuevo arme el suyo: el ítem dejó
+>   cuatro archivos con builder propio y con motivo, así que una prohibición general
+>   prohibiría el patrón bueno.
 
 **Hecha una de las tres: `MESES`** (D-200). Los doce nombres salieron a
 `src/lib/meses.ts`, con `nombreDeMes` y una guarda que exige que la lista se

@@ -50,6 +50,15 @@ describe('nombreDeMes', () => {
   });
 });
 
+/**
+ * El patrón que busca una copia de la lista, en las cuatro formas en que se
+ * escribe el mismo dato: `'enero'`, `"enero"`, `` `enero` `` y la clave suelta
+ * de un mapa (`{ enero: 1, … }`). Sale a una constante porque el caso de abajo
+ * lo ejercita contra muestras — un patrón de guarda que nadie prueba es una
+ * guarda que nadie sabe si mira.
+ */
+const PATRON_COPIA = "[\"'`]enero[\"'`]|\\benero:";
+
 describe('la lista no vuelve a duplicarse', () => {
   it('los nombres de los meses se declaran en un solo archivo', () => {
     /*
@@ -59,7 +68,7 @@ describe('la lista no vuelve a duplicarse', () => {
      * mostrando el mismo mes escrito distinto. Es la divergencia de B-175,
      * exactamente, que también nació de dos mapas separados «a propósito».
      *
-     * Se busca `'enero'` y no `MESES`: lo que no puede haber dos veces es la
+     * Se busca `enero` y no `MESES`: lo que no puede haber dos veces es la
      * **lista**, y quien la copie probablemente le ponga otro nombre.
      *
      * Y se busca con `grep -r` sobre el disco y no con `git grep`, que fue el
@@ -67,10 +76,28 @@ describe('la lista no vuelve a duplicarse', () => {
      * **todavía sin agregar** —justo el estado en el que está una copia recién
      * escrita— es invisible para él. El guarda daba verde exactamente en el
      * momento en que tenía que hablar.
+     *
+     * **Y no se busca `'enero'` con las comillas puestas, que fue el segundo
+     * intento y tenía el mismo agujero con otra cara.** El patrón literal
+     * `'enero'` obliga a que la copia esté escrita con comillas simples, o sea
+     * que le pide a quien la escribe que ya haya pasado por Prettier — y el
+     * estado que este guarda existe para agarrar es justo el anterior, el
+     * archivo recién tipeado y todavía sin formatear. Una copia con comillas
+     * dobles pasaba en verde; el caso de abajo lo fija. Por eso la comilla es una
+     * clase (`"`, `'`, backtick) y hay una segunda alternativa para la copia
+     * que no es una lista sino un mapa (`{ enero: 1, … }`): es el mismo dato
+     * con otra forma, y divergir es lo mismo de caro.
      */
     const apariciones = execFileSync(
       'grep',
-      ['-rl', '--exclude-dir=node_modules', "'enero'", 'src', 'functions', 'scripts'],
+      [
+        '-rlE',
+        '--exclude-dir=node_modules',
+        PATRON_COPIA,
+        'src',
+        'functions',
+        'scripts',
+      ],
       { cwd: RAIZ, encoding: 'utf8' },
     )
       .trim()
@@ -79,5 +106,39 @@ describe('la lista no vuelve a duplicarse', () => {
       .sort();
 
     expect(apariciones).toEqual(['src/lib/meses.ts']);
+  });
+
+  it('y el patrón agarra la copia con cualquier comilla, sin morder la prosa', () => {
+    /*
+     * **La mitad que hace honesto al caso de arriba.** Ese caso pasa de dos
+     * maneras: porque no hay ninguna copia, o porque el patrón no la ve. Lo
+     * segundo ya pasó una vez —el patrón literal `'enero'` dejaba entrar la
+     * copia con comillas dobles— y desde el lado de la lista de archivos las
+     * dos se leen igual: verde.
+     *
+     * Las cuatro primeras son la misma lista escrita por cuatro personas
+     * distintas. La última es el control negativo, y es lo que impide
+     * «arreglar» esto ensanchando el patrón a `enero` pelado: la palabra vive
+     * en la prosa de media docena de docblocks del repo (`fechasPublicas.ts`,
+     * `listadoPublico.ts`, `detallePublico.ts`), y una guarda que se pone roja
+     * por un comentario se termina borrando.
+     */
+    const patron = new RegExp(PATRON_COPIA);
+
+    for (const copia of [
+      "const MESES = ['enero', 'febrero',",
+      'const MESES = ["enero", "febrero",',
+      'const MESES = [`enero`, `febrero`,',
+      'const NUMERO_DE_MES = { enero: 1, febrero: 2 };',
+    ]) {
+      expect(patron.test(copia), copia).toBe(true);
+    }
+
+    for (const prosa of [
+      ' * rueda a enero de 2027 en silencio, y el filtro se lleva otro mes.',
+      ' * el taller de enero seguía publicando `availability: InStock`.',
+    ]) {
+      expect(patron.test(prosa), prosa).toBe(false);
+    }
   });
 });

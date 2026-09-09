@@ -2,6 +2,37 @@
 
 ## Sin publicar
 
+- **Las tres guardas de B-215, y las dos que daban verde sobre la copia que
+  existen para atrapar** — **B-215**, cierre. Las tres unificaciones ya estaban
+  hechas; lo que se auditó acá, mutación por mutación, es si sus guardas de verdad
+  muerden. Dos no.
+
+  **La de `MESES` buscaba `'enero'` con las comillas puestas**, o sea que le exigía
+  a la copia estar escrita con comillas simples: **le pedía a quien la tipea que ya
+  haya pasado por Prettier**, y el estado que esa guarda existe para agarrar es
+  justo el anterior — es el mismo motivo por el que usa `grep -r` y no `git grep`.
+  Una copia con comillas dobles pasaba en verde. Es el agujero de esa guarda por
+  segunda vez, con otra cara. Ahora la comilla es una clase y hay una alternativa
+  para el mismo dato escrito como mapa; el patrón salió a una constante y tiene su
+  caso con cuatro copias y **dos controles negativos de prosa**, que es lo que
+  impide ensancharlo a `enero` pelado.
+
+  **La de `useActividades` miraba medio panel:** `readdirSync` sin `recursive`, con
+  cuatro subdirectorios abajo. Una copia del efecto de carga en `estadisticas/` era
+  invisible, y el control positivo que tenía no lo agarraba porque el nivel de
+  arriba solo ya trae más de diez archivos. Recursivo, y con un control del
+  recursivo.
+
+  **A la del fixture de ciclo le faltaba el lado positivo:** cuidaba que el fixture
+  *fuera* un ciclo, no que alguien lo siguiera **usando**. Se agregó el caso
+  simétrico, y **no** prohíbe que un test nuevo arme el suyo — el ítem dejó cuatro
+  archivos con builder propio y con motivo, así que una prohibición general
+  prohibiría el patrón bueno.
+
+  De paso, el título del ítem decía «tres duplicaciones en producción» y la lista
+  enumera **dos**: la tercera que contó el barrido eran los componentes de chips,
+  que el propio ítem excluye (D-116).
+
 - **`/contacto` suma el DM de Instagram, y no como un tercer motivo** — **B-839**,
   paso 10 y último de la tajada 1. Pedido del dueño: en este circuito **el DM es el
   canal real** —se anuncia por Instagram y se responde por Instagram— y pedirle a

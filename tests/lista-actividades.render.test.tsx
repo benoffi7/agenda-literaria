@@ -341,8 +341,21 @@ describe('la carga de la colección no se vuelve a copiar — B-215', () => {
     'src/components/admin/ReporteFormulario.tsx',
   ];
 
+  /**
+   * **Recursivo, y ese es el arreglo.** La primera versión listaba
+   * `src/components/admin` a un solo nivel, y el panel tiene cuatro
+   * subdirectorios (`estadisticas/`, `ayuda/`, `formulario/`, `taxonomias/`):
+   * una copia del efecto de carga en cualquiera de ellos era **invisible** para
+   * los tres casos de este `describe`, que es exactamente el archivo nuevo que
+   * el guarda existe para frenar. Probado: un componente con el `useEffect`
+   * copiado en `estadisticas/` pasaba en verde.
+   *
+   * El control positivo del primer caso —«el glob encontró más de 10
+   * archivos»— tampoco lo agarraba, porque el nivel de arriba ya trae más de
+   * diez por sí solo.
+   */
   const archivosDelPanel = (): string[] =>
-    readdirSync(raiz('src/components/admin'))
+    readdirSync(raiz('src/components/admin'), { recursive: true, encoding: 'utf8' })
       .filter((f) => /\.tsx?$/.test(f))
       .map((f) => `src/components/admin/${f}`);
 
@@ -351,6 +364,16 @@ describe('la carga de la colección no se vuelve a copiar — B-215', () => {
     // vacío. La lista sale del directorio, no escrita a mano.
     const archivos = archivosDelPanel();
     expect(archivos.length, 'el glob del panel no encontró archivos').toBeGreaterThan(10);
+    /*
+     * Y el control del **recursivo**, que el de arriba no da: el nivel de
+     * arriba solo ya trae más de diez archivos, así que volver a
+     * `readdirSync` sin `recursive` dejaría los tres casos en verde mirando
+     * la mitad del panel. Esto exige que se vean los subdirectorios.
+     */
+    expect(
+      archivos.filter((rel) => rel.split('/').length > 4).length,
+      'el glob dejó de mirar los subdirectorios del panel',
+    ).toBeGreaterThan(0);
 
     const llamadores = archivos.filter((rel) =>
       /listarActividades\s*\(/.test(readFileSync(raiz(rel), 'utf8')),

@@ -356,4 +356,48 @@ describe('detector de fixtures flojos — B-135', () => {
     );
     expect(fixture, '`formDeCiclo` dejó de armar un ciclo').toMatch(/esCiclo:\s*true/);
   });
+
+  it('y los tres que se migraron le siguen pidiendo el andamiaje al fixture — B-215', () => {
+    /*
+     * **El lado positivo, que faltaba.** El caso de arriba cuida que el fixture
+     * sea de verdad un ciclo; ninguno cuidaba que alguien lo siga usando. Y
+     * volver a inlinear el `ActividadForm` en cualquiera de los tres no rompe
+     * nada visible: los tests siguen pasando, y la duplicación —20 a 25 líneas
+     * idénticas entre cada par— vuelve callada.
+     *
+     * Que el costo no es hipotético lo midió el propio B-215: **el comentario
+     * de la migración de B-224 estaba copiado en los tres**, o sea que ese
+     * cambio de modelo se pagó tres veces antes de que existiera el fixture.
+     *
+     * Es la misma forma que el guarda de `useActividades` (B-215, en
+     * `lista-actividades.render.test.tsx`), y por el mismo motivo escrito allá:
+     * «no llama a X» también lo cumple un archivo que dejó de hacer el trabajo.
+     *
+     * **Lo que este caso NO dice** es que un test nuevo tenga que usar el
+     * fixture. No puede decirlo: el ítem dejó cuatro archivos con builder
+     * propio y con motivo —`schema.test.ts` necesita variantes
+     * deliberadamente incompletas, `costo-por-tecla.test.ts` parametriza por N
+     * encuentros, `modalidades.test.ts` arma otra forma, `duplicar.test.ts`
+     * declara los valores que afirma— así que una prohibición general
+     * prohibiría el patrón bueno, igual que prohibir `let vivo` lo habría hecho
+     * del otro lado. Si uno de estos tres deja de necesitarlo, se saca de la
+     * lista **con el motivo escrito**, que es lo que la lista es.
+     *
+     * MUTACIÓN PROBADA: reponer el `ActividadForm` a mano en
+     * `vistaPreviaEvento.test.ts` —o solo borrarle el import— deja este caso en
+     * rojo.
+     */
+    const MIGRADOS = [
+      'tests/duplicar.test.ts',
+      'tests/actividades.integracion.test.ts',
+      'tests/vistaPreviaEvento.test.ts',
+    ];
+
+    const sinFixture = MIGRADOS.filter((rel) => {
+      const src = readFileSync(fileURLToPath(new URL(rel, raiz)), 'utf8');
+      return !/from '\.\/fixtures\/formulario-de-ciclo'/.test(src) || !/formDeCiclo\(/.test(src);
+    });
+
+    expect(sinFixture, 'volvieron a armar el `ActividadForm` a mano').toEqual([]);
+  });
 });
