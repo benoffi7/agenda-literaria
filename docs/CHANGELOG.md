@@ -2,6 +2,46 @@
 
 ## Sin publicar
 
+- **Los tres restos de la reversión del texto alternativo** — **B-850**. El
+  2026-09-07 el dueño sacó el bloqueo que D-440 había puesto, y quedaron atrás un
+  cartel que le mentía a quien carga, una ruta de error que nada podía disparar, y
+  —lo que el ítem no nombraba— **la ayuda del panel contradiciéndolo tres veces**.
+
+  **El cartel decía «Se necesita para publicar», en sus dos ramas**, en el campo
+  exacto de la decisión; `novedades.ts` se había corregido el mismo día y esta copia
+  no. Ahora dice lo que sí es cierto: que no frena la publicación y por qué conviene
+  completarlo igual —lo lee un lector de pantalla y lo usa Google cuando la imagen
+  no carga—, que es lo único que puede mover a escribirlo ahora que nada obliga.
+
+  **El error del campo era código muerto con una justificación falsa.** El CHANGELOG
+  había escrito que se conservaba porque «el campo sigue teniendo forma (largo
+  máximo)»: **no la tiene**. De las dos salidas se eligió sacar la ruta muerta, y
+  por un dato que decide solo: **ningún campo de texto del schema tiene `.max()`**
+  —los únicos son `geo.lat` y `geo.lng`—, así que la otra era inventarle al modelo
+  una regla que no tiene en ninguna parte para que una rama de render volviera a
+  tener con qué alimentarse.
+
+  **Y una corrección al ítem, que el frente verificó en vez de aceptar:** la fila de
+  `camposFaltantes.ts` **no** estaba sin consumidor. `campos-faltantes.test.ts` la
+  compara contra `CAMPOS_VALIDABLES` en las dos direcciones, y ese set es la *forma*
+  del schema y no la lista de lo rechazable — igual que `imagenes.N.alto`, que
+  tampoco puede fallar. Sacarla ponía el test en rojo.
+
+  **Lo que reemplaza al caso borrado no es otro `toContain`**: el viejo pasaba
+  porque solo miraba el fuente, y los dos strings que afirmaba **eran la rama
+  muerta**. En su lugar hay una afirmación sobre el comportamiento —los rechazos de
+  un texto de 5.000 caracteres tienen que ser los de uno corto— que se pone en rojo
+  el día que el campo gane una regla de forma, que es cuando hay que volver a
+  pintarle el error. Y el caso de render que inyectaba el error con un `errorDe`
+  falso pasó a verificar el cartel **renderizado en las dos ramas**: un `toContain`
+  sobre el fuente daría verde con una sola corregida.
+
+  Las tres frases de `src/lib/ayuda.ts` se corrigieron acá mismo —una estaba marcada
+  `cuidado: true`, o sea presentada como aviso irreversible, y otra afirmaba además
+  que el aviso de abajo lo pide desde que se agrega la imagen, que tampoco es
+  cierto—: es el archivo que existe para contarle a quien no participó de la
+  decisión lo que no se ve en pantalla.
+
 - **La red de contención de las salidas públicas deja de ser ciega a lo que no es
   texto** — **B-803** y **B-804**, los dos del `auditor-privacidad` sobre B-114 y
   los dos la misma asimetría: el mecanismo cubría una mitad y la otra pasaba en

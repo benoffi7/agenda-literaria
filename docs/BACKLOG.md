@@ -750,7 +750,41 @@ Problema 1. De paso el script reporta un **ciclo de imports vivo**
 (`campos-del-panel.tsx → AyudaDeSeccion.tsx → CentroAyuda.tsx → campos-del-panel.tsx`),
 que nació con el refactor de B-841 y no está anotado en ninguna parte.
 
-### B-850 · El campo de texto alternativo sigue diciendo «Se necesita para publicar», y su error es código muerto · P2
+### B-850 · El campo de texto alternativo sigue diciendo «Se necesita para publicar», y su error es código muerto — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Cerrado, con una corrección al propio diagnóstico y un tercer resto que el
+> ítem no nombraba.**
+>
+> El cartel dice ahora lo que es cierto —no frena la publicación, y por qué conviene
+> completarlo igual— **en sus dos ramas**. Del punto 2 se eligió **sacar la ruta
+> muerta** y no darle largo máximo al campo, por un dato que el ítem no tenía a
+> mano: **ningún campo de texto del schema tiene `.max()`** —los únicos son
+> `geo.lat` y `geo.lng`—, así que la otra salida era inventar una regla que el
+> modelo no tiene en ninguna parte para que una rama de render volviera a tener con
+> qué alimentarse.
+>
+> **La corrección: la fila de `camposFaltantes.ts` NO estaba sin consumidor**, y el
+> ítem se equivocaba. `campos-faltantes.test.ts` compara ese mapa contra
+> `CAMPOS_VALIDABLES` **en las dos direcciones**, y ese set es la *forma* del schema
+> —derivada recorriendo el `ZodObject`— y no la lista de lo rechazable, igual que
+> `imagenes.N.alto` o `imagenes.N.id`, que tampoco pueden fallar. Sacarla habría
+> puesto el test en rojo. Se corrigió su comentario, que era donde vivía la
+> afirmación falsa.
+>
+> **Y el tercer resto, que el frente encontró y no era suyo: `src/lib/ayuda.ts` lo
+> contradecía tres veces**, una de ellas marcada `cuidado: true` —o sea presentada
+> como aviso irreversible— y otra afirmando además que «el aviso de abajo dice que
+> falta desde el momento en que agregás la imagen», que tampoco es cierto:
+> `faltaParaPublicar` ya no lo devuelve. Corregidas las tres en el mismo cambio, que
+> es donde correspondía: es el archivo que existe para contarle a quien no participó
+> de la decisión lo que no se ve en pantalla.
+>
+> Lo que reemplaza al caso borrado **no es otro `toContain`**: el viejo pasaba
+> porque solo miraba el fuente —afirmaba que dos strings estaban en el `.tsx`, y
+> esos dos strings eran la rama muerta—. En su lugar hay una afirmación sobre el
+> **comportamiento**: los rechazos de un texto de 5.000 caracteres tienen que ser
+> exactamente los de uno corto, y se pone en rojo el día que el campo gane una regla
+> de forma.
 
 **Dos hallazgos del mismo frente (B-815), y los dos salen de la misma reversión:**
 el 2026-09-07 el dueño mandó sacar el bloqueo que D-440 había puesto —el

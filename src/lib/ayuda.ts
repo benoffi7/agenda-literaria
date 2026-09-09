@@ -387,7 +387,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'El epígrafe es lo que se muestra debajo de la foto, y es opcional. La portada tiene ' +
-          'además un campo aparte, «Qué se ve en la portada», que sí hace falta para publicar: ' +
+          'además un campo aparte, «Qué se ve en la portada», que también es opcional: ' +
           'ese texto no se muestra en pantalla, lo lee quien usa un lector de pantalla y lo usa ' +
           'Google cuando la imagen no carga. Se pide solo en la portada, que es la que se ' +
           'comparte; las otras no lo tienen, y para ellas el epígrafe es lo único que las ' +
@@ -1086,11 +1086,10 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Lo que sí frena la publicación, si cargaste una imagen, es la descripción de la ' +
-          'portada. No es el epígrafe: es «Qué se ve en la portada», y aparece debajo de él en ' +
-          'la fila de la portada. Se puede guardar como borrador sin completarla; el aviso de ' +
-          'abajo dice que falta desde el momento en que agregás la imagen.',
-        cuidado: true,
+          'Si cargaste una imagen, conviene describirla: es «Qué se ve en la portada», y aparece ' +
+          'debajo del epígrafe en la fila de la portada. No frena la publicación —se puede ' +
+          'publicar sin ella— y vale la pena igual: vacía, el sitio dice «Imagen de» y el ' +
+          'título, que no describe nada.',
       },
       {
         texto:
@@ -1134,8 +1133,8 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'La portada se describe con su propio campo, «Qué se ve en la portada». Contá qué se ' +
           've, no repitas el título: «Flyer con la fecha y la sede», «Retrato de la autora». Si ' +
-          'lo dejás vacío no se puede publicar, y hasta que lo completes el sitio dice «Imagen ' +
-          'de» y el título, que no describe nada.',
+          'lo dejás vacío se publica igual, y el sitio dice «Imagen de» y el título, que no ' +
+          'describe nada.',
       },
       {
         texto:

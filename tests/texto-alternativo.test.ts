@@ -28,12 +28,17 @@ import { ts } from './fixtures/tiempo';
  *     tiene que ser determinístico (D-125, D-26);
  *  2. **la ida y vuelta** formulario ⇄ documento, que no puede perder nada.
  *
- * Lo demás se verifica donde alguien lo va a editar: `schema.test.ts` (la regla
- * de obligatoriedad y sus dos ejes), `imagenes.test.ts` y
- * `barrido-de-salidas-publicas.test.ts` (que sale al `events.json` y que nada más
- * de la fila sale con él), `errores-de-fila.test.ts` (que el error se pinta al
- * lado del campo) y `analytics-privacidad.test.ts` (que el texto **no** sale a
- * GA4).
+ * Lo demás se verifica donde alguien lo va a editar: `schema.test.ts` (que
+ * publicar ya no lo exige, con los casos del bloqueo dados vuelta),
+ * `imagenes.test.ts` y `barrido-de-salidas-publicas.test.ts` (que sale al
+ * `events.json` y que nada más de la fila sale con él),
+ * `texto-alternativo.render.test.tsx` (que el campo se pide una sola vez, en la
+ * portada) y `analytics-privacidad.test.ts` (que el texto **no** sale a GA4).
+ *
+ * **B-850 — la mención a `errores-de-fila.test.ts` se fue con lo que nombraba.**
+ * Ese archivo verificaba que el rechazo del campo se pintara al lado del campo, y
+ * hoy no hay ningún rechazo: lo que queda acá abajo, en su lugar, es el caso que
+ * afirma **por qué** no lo hay.
  */
 
 const imagen = (over: Partial<Imagen> = {}): Imagen => ({
@@ -195,7 +200,9 @@ describe('el resto del recorrido del skill campo-nuevo', () => {
 
   it('una fila nueva nace con el campo presente y vacío', () => {
     // Así la fila tiene siempre la misma forma, venga de pegar una URL, de la
-    // subida o del schema. Y vacío es lo que el nivel «publicar» rechaza.
+    // subida o del schema. B-850 — y decía «y vacío es lo que el nivel
+    // «publicar» rechaza», que dejó de ser cierto el 2026-09-07: vacío es
+    // un valor legítimo, el de la portada que nadie describió.
     expect(imagenExterna('https://x.ar/1.jpg', true).textoAlternativo).toBe('');
   });
 
@@ -206,17 +213,51 @@ describe('el resto del recorrido del skill campo-nuevo', () => {
      * cierto mientras el campo bloqueara; el dueño sacó el bloqueo el 2026-09-07.
      *
      * Y la etiqueta **se queda** en `CAMPOS`, que es la parte que hay que
-     * entender para no borrarla de paso: ese mapa traduce **cualquier** ruta que
-     * el schema pueda reportar, y `imagenes.N.textoAlternativo` sigue siendo una
-     * ruta válida —el campo existe y tiene su forma (largo máximo)—. Si algún día
-     * alguien escribe 400 caracteres ahí, el rechazo va a caer en esa ruta y la
-     * barra tiene que saber nombrarla. Lo que se fue es la exigencia de que
-     * **esté**, no la del formato.
+     * entender para no borrarla de paso — pero **B-850 corrige el motivo**, que
+     * estaba mal escrito acá. Decía «el campo existe y tiene su forma (largo
+     * máximo)… si algún día alguien escribe 400 caracteres ahí, el rechazo va a
+     * caer en esa ruta»: **no hay largo máximo**, y por eso ese rechazo no
+     * existe. El motivo verdadero es otro y es más simple: `CAMPOS` espeja la
+     * *forma* del schema —`tests/campos-faltantes.test.ts` lo compara contra
+     * `CAMPOS_VALIDABLES` en las dos direcciones— igual que `imagenes.N.alto` o
+     * `imagenes.N.id`, que tampoco pueden fallar y también están nombrados. Lo
+     * que se fue es la exigencia de que **esté**; lo que nunca hubo es una regla
+     * de formato.
      */
     expect(CAMPOS['imagenes.N.textoAlternativo']).toBeDefined();
     expect(
       faltaParaPublicar({ ...conImagen({ textoAlternativo: '' }) }).map((i) => i.path.join('.')),
     ).not.toContain('imagenes.0.textoAlternativo');
+  });
+
+  it('B-850 — nada puede rechazar el alternativo: el campo no tiene forma', () => {
+    /*
+     * Es la afirmación que faltaba, y la que vuelve honesto todo lo de arriba:
+     * en el schema el campo es `opcional` —`z.string().trim().default('')`— sin
+     * `.min()` ni `.max()`, y el `superRefine` que lo exigía se sacó el
+     * 2026-09-07. O sea que **ninguna entrada produce un issue en
+     * `imagenes.N.textoAlternativo`**, y por eso `GaleriaEditor` ya no pinta un
+     * error para esa ruta (B-850 borró esa rama y su caso en
+     * `errores-de-fila.test.ts`, que solo miraba el fuente y no podía fallar).
+     *
+     * Se afirma comparando los rechazos de un texto largo contra los de uno
+     * corto, y no leyendo el fuente del schema: lo que importa no es cómo está
+     * escrita la regla sino que no exista ninguna.
+     *
+     * MUTACIÓN PROBADA: agregarle `.max(200)` a `textoAlternativo` en
+     * `src/lib/schema.ts` pone este caso en rojo — y ése es exactamente el día en
+     * que hay que volver a pintarle el error al campo en `GaleriaEditor`.
+     */
+    const rechazos = (alt: string) =>
+      faltaParaPublicar(conImagen({ textoAlternativo: alt }))
+        .map((i) => i.path.join('.'))
+        .sort();
+
+    // Control positivo: si el formulario no tuviera ningún rechazo, la
+    // comparación de abajo pasaría comparando dos listas vacías.
+    expect(rechazos('Flyer con la fecha').length).toBeGreaterThan(0);
+    expect(rechazos('a'.repeat(5_000))).toEqual(rechazos('Flyer con la fecha'));
+    expect(rechazos('a'.repeat(5_000))).not.toContain('imagenes.0.textoAlternativo');
   });
 
   it('la analítica conoce la ruta, y solo la ruta', () => {

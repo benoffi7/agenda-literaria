@@ -264,15 +264,24 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
          * (D-440): la portada es la que va a Open Graph y a la tarjeta, o sea la
          * única que se comparte.
          *
-         * Cuál es la portada lo contesta `portadaDe` y no `img.portada`, que es
-         * la misma función que usa el `superRefine` para decidir a qué fila le
-         * pide el campo. Con dos derivaciones, una lista sin ninguna marcada
-         * —posible en un documento anterior a la galería— pediría el campo en una
-         * fila y lo mostraría en otra: el error existiría en el mapa y no se
-         * pintaría en ninguna parte, que es la clase de B-341.
+         * Cuál es la portada lo contesta `portadaDe` y no `img.portada`. Es la
+         * misma función con la que `eventsJson` y `detallePublico` eligen qué
+         * imagen sale, así que el campo se pide en la fila cuyo texto se va a
+         * publicar. Con dos derivaciones, una lista sin ninguna marcada —posible
+         * en un documento anterior a la galería— haría describir una foto y
+         * publicaría otra.
+         *
+         * B-850 — acá había un `errorDe('imagenes.N.textoAlternativo')` con su
+         * `<p role="alert">`, y **no tenía cómo pintarse**: en el schema el campo
+         * es `opcional` —una cadena recortada con default `''`, sin largo
+         * máximo— y el `superRefine` que lo exigía se sacó el 2026-09-07. Ninguna
+         * regla puede producir un issue en esa ruta, así que la rama era código
+         * muerto y lo que la justificaba —«el campo sigue teniendo forma (largo
+         * máximo)»— era falso. Si el campo gana alguna vez una regla de forma,
+         * hay que volver a pintar el error acá, y lo avisa el caso «nada puede
+         * rechazar el alternativo» de `tests/texto-alternativo.test.ts`.
          */
         const esPortada = portadaDe(imagenes)?.id === img.id;
-        const errorAlternativo = errorDe(`imagenes.${i}.textoAlternativo`);
         return (
           <div key={img.id} className="rounded-md border border-borde p-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -383,19 +392,19 @@ export function GaleriaEditor({ imagenes, onChange, tituloActividad, errorDe }: 
                       placeholder="Qué se ve en la portada"
                       aria-label="Descripción de la portada"
                     />
-                    {errorAlternativo && (
-                      <p
-                        data-campo-con-error
-                        role="alert"
-                        className="-mt-1 scroll-mt-16 text-xs font-medium text-acento"
-                      >
-                        {errorAlternativo}
-                      </p>
-                    )}
+                    {/*
+                      B-850 — el cartel decía «Se necesita para publicar», dos
+                      veces, y dejó de ser cierto el 2026-09-07, cuando el dueño
+                      sacó el bloqueo (D-440). Le mentía a quien carga en el campo
+                      exacto de la decisión. Lo que dice en su lugar es por qué
+                      vale la pena completarlo igual, que es lo único que puede
+                      mover a hacerlo ahora que nada obliga — y es lo mismo que ya
+                      dice la novedad `describir-la-portada-ya-no-frena`.
+                    */}
                     <p className="text-xs text-tinta/55">
                       {img.textoAlternativo?.trim()
-                        ? 'Se necesita para publicar. No se muestra en pantalla: lo lee quien usa un lector de pantalla, y Google cuando la imagen no carga.'
-                        : `Se necesita para publicar. Sin esto se publica ${
+                        ? 'No frena la publicación, y conviene tenerlo: no se muestra en pantalla, lo lee quien usa un lector de pantalla y lo usa Google cuando la imagen no carga.'
+                        : `No frena la publicación, pero vale la pena: lo lee quien usa un lector de pantalla y lo usa Google cuando la imagen no carga. Vacío se publica ${
                             tituloActividad ? `«Imagen de ${tituloActividad}»` : '«Imagen de» el título'
                           }, que no describe nada. Contá qué se ve: «Flyer con la fecha y la sede», «Retrato de la autora».`}
                     </p>

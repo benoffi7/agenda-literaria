@@ -117,13 +117,24 @@ describe('el error de una fila de material se pinta al lado del campo (B-197)', 
  * y todo lo que el schema rechaza de `imagenes` se veía solo en la barra de
  * abajo.
  *
- * **B-301 le agregó el segundo sufijo, y por eso esta lista se fija a mano.** De
- * los nueve campos de una imagen (`imagenes.N.*`), el schema puede rechazar
- * `url` y —desde D-440— `textoAlternativo`; el resto son de máquina (`id`,
- * `origen`, `storagePath`, `ancho`, `alto`) o no tienen refine (`epigrafe`,
- * `portada`). Acá no se deriva la lista completa de `CAMPOS_VALIDABLES` como en
- * B-197: se enumeran los sufijos que pueden fallar, y agregar uno obliga a
- * pasar por acá.
+ * **De los nueve campos de una imagen (`imagenes.N.*`), el schema puede rechazar
+ * uno solo: `url`.** El resto son de máquina (`id`, `origen`, `storagePath`,
+ * `ancho`, `alto`) o no tienen refine (`epigrafe`, `portada`,
+ * `textoAlternativo`). Acá no se deriva la lista completa de `CAMPOS_VALIDABLES`
+ * como en B-197 —ese set es la *forma* del schema, no lo rechazable—: se
+ * enumeran los sufijos que pueden fallar, y agregar uno obliga a pasar por acá.
+ *
+ * **B-850 — acá vivía un segundo caso, y era un chequeo que ya no podía
+ * fallar.** B-301 había agregado `textoAlternativo` a esta lista porque el
+ * `superRefine` de D-440 lo exigía en la portada al publicar; el dueño sacó ese
+ * bloqueo el 2026-09-07 y el campo quedó como `opcional`, **sin largo máximo**,
+ * o sea sin ninguna regla que pueda producir un issue en esa ruta. El caso
+ * seguía en verde porque solo miraba el fuente: afirmaba que dos strings
+ * estaban en el `.tsx`, y esos dos strings eran la rama muerta que este ítem
+ * borró. Lo que reemplaza al caso no es otro `toContain` sino una afirmación
+ * sobre el comportamiento —«nada puede rechazar el alternativo», en
+ * `tests/texto-alternativo.test.ts`—, que es la que se pone en rojo el día que
+ * el campo gane una regla de forma y haya que volver a pintarle el error.
  */
 describe('el error de una fila de la galería se pinta al lado del campo (B-341)', () => {
   const EDITOR = fuente('components/admin/GaleriaEditor.tsx');
@@ -148,15 +159,13 @@ describe('el error de una fila de la galería se pinta al lado del campo (B-341)
     expect(EDITOR).toMatch(/`imagenes\.\$\{i\}\.url`/);
   });
 
-  /**
-   * B-301 / D-440 — el segundo sufijo rechazable de una fila. Sin esto, «Describí
-   * la portada» se vería solo en la barra de abajo, que es exactamente el bug de
-   * B-341 en el campo nuevo.
-   */
-  it('el alternativo de la portada también tiene su ruta y su cartel', () => {
-    expect(CAMPOS_VALIDABLES).toContain('imagenes.N.textoAlternativo');
-    expect(EDITOR).toMatch(/`imagenes\.\$\{i\}\.textoAlternativo`/);
-    expect(EDITOR).toContain('{errorAlternativo}');
+  it('B-850 — el alternativo no tiene ruta de error, porque no puede fallar', () => {
+    // La contracara del caso borrado: lo que se afirma ahora es que la rama
+    // muerta **no volvió**. Si alguien le da forma al campo en el schema, el
+    // arreglo es pintar el error otra vez y traer de vuelta este `not` dado
+    // vuelta — no dejar el `<p role="alert">` colgado sin nada que lo alimente.
+    expect(EDITOR).not.toContain('errorAlternativo');
+    expect(EDITOR).not.toMatch(/`imagenes\.\$\{i\}\.textoAlternativo`/);
   });
 
   it('cada fila lee su propio error de url', () => {

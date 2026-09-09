@@ -106,8 +106,18 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   'imagenes.N.origen': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
   'imagenes.N.portada': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
   'imagenes.N.storagePath': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
-  // B-301 — es el único de la galería que el nivel «publicar» puede rechazar por
-  // sí mismo, así que su nombre es el que va a leer la barra de abajo.
+  // B-301 — es la única ruta de la galería con nombre propio en vez de «Flyer e
+  // imágenes»: se puso así porque entonces era la única que la barra podía
+  // nombrar, y nombrar la sección entera habría dejado sin decir cuál de los
+  // campos de la fila era.
+  //
+  // B-850 — y lo que decía acá era falso: **hoy la barra no lo nombra nunca.** El
+  // `superRefine` que lo exigía se sacó el 2026-09-07 (D-440) y el campo es
+  // `opcional` en el schema, sin largo máximo, así que ninguna regla produce un
+  // issue en esta ruta. La fila igual **no se saca**: este mapa espeja la *forma*
+  // del schema y no la lista de lo rechazable —`tests/campos-faltantes.test.ts`
+  // lo exige en las dos direcciones—, exactamente como `imagenes.N.alto` o
+  // `imagenes.N.id`, que tampoco pueden fallar.
   'imagenes.N.textoAlternativo': { etiqueta: 'Descripción de la portada', seccion: 'que-es' },
   'imagenes.N.url': { etiqueta: 'Flyer e imágenes', seccion: 'que-es' },
 
