@@ -71,6 +71,10 @@ describe('las guardas de los scripts que escriben — B-630', () => {
      * que este chequeo encontró, antes de existir del todo.
      */
     expect(losQueEscriben().map((s) => s.rel).sort()).toEqual([
+      // B-838 — la retención de propuestas rechazadas. Entró por esta puerta,
+      // que es para lo que está: apareció acá en rojo el día que se escribió, y
+      // ahí se miró si traía la guarda.
+      'scripts/borrar-propuestas-vencidas.mjs',
       'scripts/limpiar-imagenes-huerfanas.mjs',
       'scripts/limpiar-versiones-huerfanas.mjs',
       'scripts/optimizar-imagenes.mjs',
@@ -95,6 +99,36 @@ describe('las guardas de los scripts que escriben — B-630', () => {
       // escribiendo es peor que uno sin guarda, porque parece cuidado.
       expect(src, `${rel}: no corta con process.exit(1)`).toContain('process.exit(1)');
     }
+  });
+
+  /**
+   * **La guarda propia del barrido de retención: los dos destinos tienen que ser
+   * el mismo** — lo trajo el `auditor-privacidad`.
+   *
+   * Es el único script que borra en Firestore **y** en Storage, así que puede
+   * apuntar a dos lados a la vez. La primera versión miraba una sola mezcla
+   * (Firestore en el emulador, Storage en producción) y dejaba pasar la de al
+   * lado, que es peor: con Firestore en producción y Storage en el emulador, el
+   * `delete({ ignoreNotFound: true })` no encuentra nada y **no falla**, así que
+   * el orden «objeto primero» no protege — se borra el documento real y la foto
+   * del tercero sobrevive sin referencia, con el informe diciendo que la borró.
+   *
+   * Por eso la guarda es de **coherencia y no de dirección**, y `--produccion` no
+   * la levanta: ese flag confirma el destino, no autoriza dos.
+   *
+   * MUTACIÓN PROBADA: volviendo a la condición vieja
+   * (`enEmulador && !storageEnEmulador && !confirmaProduccion`), este caso se
+   * pone rojo.
+   */
+  it('el barrido que borra en los dos lados exige que los dos apunten al mismo', () => {
+    const src = readFileSync(raiz('scripts/borrar-propuestas-vencidas.mjs'), 'utf8');
+    expect(src).toContain('enEmulador !== storageEnEmulador');
+    // Y la guarda no cuelga de `--produccion`: si lo hiciera, el flag que
+    // confirma el destino estaría autorizando dos destinos distintos.
+    const guarda = sinComentarios(src).slice(
+      sinComentarios(src).indexOf('enEmulador !== storageEnEmulador'),
+    );
+    expect(guarda.slice(0, guarda.indexOf(')'))).not.toContain('confirmaProduccion');
   });
 
   it('y el default de cada uno es NO escribir', () => {
@@ -131,12 +165,13 @@ describe('las guardas de los scripts que escriben — B-630', () => {
      * día que eso cambie haya que venir a decidirlo.
      */
     const ESPEJAN_UNA_FUNCTION = [
+      'scripts/borrar-propuestas-vencidas.mjs',
       'scripts/limpiar-imagenes-huerfanas.mjs',
       'scripts/limpiar-versiones-huerfanas.mjs',
     ];
     for (const { rel, src } of losQueEscriben().filter((s) => ESPEJAN_UNA_FUNCTION.includes(s.rel))) {
       expect(src, `${rel}: no importa la decisión de functions/`).toMatch(
-        /from '\.\.\/functions\/limpieza-(imagenes|versiones)\.js'/,
+        /from '\.\.\/functions\/(limpieza-(imagenes|versiones)|retencion)\.js'/,
       );
       expect(src, `${rel}: parece tener su propia decisión`).not.toMatch(
         /const (decidirLimpieza|decidirPurga) =/,

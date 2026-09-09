@@ -72,7 +72,7 @@ Resueltas el 2026-08-26:
 | DEC-9 | Cómo se llama la librería que sale a la calle (B-192) — **implementado el 2026-08-26** | Slug **`libreria-a-la-calle`** — el más concreto de los tres propuestos, y por eso el que menos se va a estirar para significar otra cosa. El label es cambiable; el slug no (la lección de B-134). Va `fijo: true` con su test, y la cascada del §11 es la de «Feria»: prende `esCiclo` —una semana de la librería son varias jornadas— y no pide tallerista ni material. |
 | B-28 | ¿Claim `curador` para aprobar? | **No, queda como está.** Con dos cuentas de confianza es maquinaria de permisos para un problema que todavía no existe, y mover la aprobación a un campo propio —que es lo que las reglas necesitarían— toca reglas, modelo y la pantalla de taxonomías. Vuelve cuando entre una tercera cuenta que no sea de confianza. |
 | B-29 | ¿Auto-aprobar una etiqueta que reusa una segunda cuenta? | **Sí.** Y es más barato de lo que parecía: `ValorOpcion` ya tiene `huellaCreador`, así que comparar esa huella con la de quien guarda alcanza, dentro de la misma transacción del §4.2 que ya incrementa `usos`. Dos bordes: si `huellaCreador` está ausente (documentos viejos) **no** se auto-aprueba, porque no se puede saber de quién era; y queda por decidir si la etiqueta aprobada así **se marca** en la pantalla de taxonomías o desaparece de pendientes sin rastro — conviene marcarla, es lo que permite deshacer el typo que las dos personas escribieron igual. |
-| B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. Hoy el sistema no guarda ni un dato personal de un tercero, y por eso el §5 cabe en una tabla. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
+| B-102 | ¿El sistema guarda algo de quien se inscribe? | **No**, ratificando la recomendación que ya estaba escrita. La decisión sigue en pie para **quien se inscribe** — pero «hoy el sistema no guarda ni un dato personal de un tercero», que era el argumento de al lado, **dejó de ser cierto el 2026-09-09**: `/propuestas` guarda el contacto de quien propone (B-830), con retención de 30 días para la rechazada (DEC-13, B-838) y los estados que todavía no caducan anotados en B-844. Ver el aviso arriba del ítem. Si algún día hace falta, el orden es al revés del intuitivo: primero el aviso público (B-98), después el estado agregado (B-97), y la lista de personas solo si eso no alcanzó. |
 | B-124 | ¿Cuándo corren los auditores? | **A pedido**, como hoy. La mitigación es que `/antes-de-pushear` los lanza a los tres con un comando, así que "a pedido" no es "a mano". Y conviene usarlo: en el cierre de la `1.2.0` los tres auditores encontraron **dieciséis** bugs en tres pasadas, dos de ellos P1 de privacidad. |
 
 Resueltas el 2026-08-21:
@@ -605,6 +605,49 @@ barato:
 taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
 en la suite y no en producción, que es exactamente para lo que se escribió.
 
+### B-845 · El chequeo de B-85 es ciego a todo trigger que delega en su módulo puro · P3
+
+**Lo señaló el `auditor-trampas` auditando B-838**, y es un punto ciego heredado y
+no un bug de ese cambio. El chequeo de la clase de B-85 —«ninguna función
+programada escribe el estado que leyó sin compararlo»— busca `.get()`, `.set()` y
+`.update()` **en el cuerpo del trigger**. Desde que el repo adoptó el corte
+puro/pegamento (B-77), esos verbos viven en el módulo de al lado: ni
+`imagenes-limpieza-trigger.js` ni `versiones-limpieza-trigger.js` ni
+`retencion-trigger.js` los tienen literales, así que **ninguno de los tres pasa
+por ese chequeo**.
+
+Hoy no tapa nada: los tres barridos borran y ninguno escribe lo que leyó. Lo que
+importa es que el próximo que **sí** lo haga entre igual de invisible, y el corte
+puro/pegamento —que es la convención del repo— hace que ese sea el caso normal y
+no la excepción.
+
+Lo barato: que el chequeo trace las llamadas del trigger a su módulo, que es lo
+que ya hace `trazaDe` para los efectos duplicables (`RE_TOKEN` + `enFunctions`).
+O sea, reusar el recorrido que ya existe en el mismo archivo en vez de mirar solo
+el texto del trigger.
+
+### B-844 · Solo caduca la propuesta rechazada: una `nueva` abandonada guarda el contacto para siempre · P2
+
+**Sale de escribir la retención** (B-838, paso 11) y es la mitad que DEC-13 no
+contestó porque no se le preguntó: la decisión del dueño fue «¿cuántos días se
+guarda una **rechazada**? 30», y `decidirRetencion` hace exactamente eso. Las
+otras tres —`nueva`, `en-revision`, `aceptada`— no vencen nunca.
+
+El caso que importa no es la aceptada (ahí el contacto sirve: la actividad existe
+y puede haber que repreguntar) sino **la que nadie miró**. Una propuesta que
+llegó, no interesó y quedó ahí conserva el mail o el WhatsApp de una persona
+**para siempre**, y es el mismo dato que B-102 daba por inexistente y que B-843
+punto 1 obligó a poder borrar.
+
+Hoy hay una salida y está documentada: **rechazarla** la pone en la cola de los 30
+días. O sea que el borrado existe y depende de que un admin toque un botón, que es
+justo lo que la retención automática vino a no depender.
+
+Lo barato: que `decidirRetencion` acepte un segundo plazo, más largo, para la
+`nueva`/`en-revision` sin tocar —90 días, digamos, contados desde `creadoEn`— y
+que la bandeja lo diga. Lo que hay que decidir antes es el número y si la
+`aceptada` entra o no, y eso es del dueño, no mío.
+
 ### B-842 · La regla no puede validar la forma de cada fecha de una propuesta · P2
 
 **Sale de construir `/propuestas`** (B-830, paso 5), y es una limitación del
@@ -688,6 +731,20 @@ Lo más barato: no usar el camino de panel hasta que B-838 esté, y que la fila 
 > una propuesta a mano. Hoy no hay UI que lo haga, así que la decisión no cuesta
 > nada — lo que no puede pasar es que esa pantalla llegue con un botón de «cargar
 > a mano» mientras la Function de retención todavía no existe.
+>
+> ✅ **Cumplido — y el bloqueo NO se levanta solo con B-838 (2026-09-09).** El
+> `PropuestasPanel` (paso 7) salió **sin** ninguna forma de cargar a mano, y
+> `borrarPropuestasVencidas` ya existe. Pero el bloqueo era «no guardar el dato de
+> un tercero mientras no exista lo que lo borra», y lo que se escribió borra
+> **solo la rechazada**: una propuesta cargada a mano nace `nueva` —lo **fuerza la
+> regla**, `propuestaValida()` exige `d.estado == 'nueva'` para los dos orígenes—
+> y `nueva` es justo uno de los tres estados que **no caducan** (**B-844**). O sea
+> que el alta manual seguiría produciendo un dato personal sin fecha de
+> vencimiento, con la única salida de rechazarlo a mano para meterlo en la cola.
+>
+> Lo señaló el `auditor-privacidad` sobre este mismo commit, corrigiendo lo que
+> esta nota decía al escribirse («el bloqueo se levantó»). **El alta manual queda
+> condicionada a B-844**, no a B-838.
 
 **2 · El `hasAny(['estado'])` va a bloquear el flujo de aceptar.** `affectedKeys`
 solo incluye lo que **cambió de valor**, y el flujo natural de aceptar son dos
@@ -747,12 +804,12 @@ rompen en silencio están en
 | **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🟠 **empezado (2026-09-09)** — están el control positivo (`tests/escritura-anonima.integracion.test.ts`: hoy nadie escribe sin el claim, ni en las cuatro colecciones futuras) y **App Check cableado** (`src/lib/appcheck.ts`, reCAPTCHA **Enterprise**, con la app ya registrada por el dueño). Falta publicar, verificar en la consola y **exigir** — **B-836a**, y el orden no se puede invertir: exigir antes de que el cliente mande tokens deja al panel sin poder escribir. Las otras cuatro capas (validación en la regla, topes, honeypot, barrido) van con la colección que las estrene |
 | **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
 | **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | ✅ **hecho (2026-09-09)** — `src/lib/datoConFecha.ts` + `tests/dato-con-fecha.test.ts`. Las tres reglas son propiedades del módulo: la proyección pública es **un solo string** («$18.000 por mes · cargado el 24 de septiembre de 2026»), así que no hay número que filtrar ni que meter en un `Offer`, y **el valor sin fecha usable no sale** — desaparece en vez de publicarse solo. La fecha es absoluta y con año porque el sitio es estático: un «hace tres meses» horneado en el HTML envejece solo (**D-570**). Todavía sin consumidor: lo estrenan las librerías y las suscripciones |
-| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — pasos 4 a 7 de la tajada 1 hechos: **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). **Dos decisiones del dueño del 2026-09-09 cambian el resto** (B-843): aceptar es **una sola escritura**, con la actividad creada primero (**D-600**), y **la retención (B-838) va antes** de que el panel tenga cualquier forma de cargar una propuesta a mano. **Los pasos 6 y 7 ya están**: la conversión pura (`propuestas.ts`, con sus `ses_<uuid>` y sin slug) y la **bandeja** —convertir, marcar en revisión, rechazar con motivo, reabrir— con D-600 cableado y **sin carga a mano**, que es esa decisión respetada. De paso cerró **B-843 punto 4**. Falta la imagen de DEC-11 (paso 8), `/proponer` (paso 9), `/contacto` con Instagram (paso 10) y la retención (paso 11, adelantado) |
+| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — pasos 4 a 7 **y 11** de la tajada 1 hechos: **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). **Dos decisiones del dueño del 2026-09-09 cambian el resto** (B-843): aceptar es **una sola escritura**, con la actividad creada primero (**D-600**), y **la retención (B-838) va antes** de que el panel tenga cualquier forma de cargar una propuesta a mano. **Los pasos 6 y 7 ya están**: la conversión pura (`propuestas.ts`, con sus `ses_<uuid>` y sin slug) y la **bandeja** —convertir, marcar en revisión, rechazar con motivo, reabrir— con D-600 cableado y **sin carga a mano**, que es esa decisión respetada. De paso cerró **B-843 punto 4**. Y el **paso 11 (la retención, B-838) también está**, adelantado por B-843 punto 1: `borrarPropuestasVencidas` borra la rechazada y su imagen a los 30 días, con script en seco y las dos mitades verificadas contra los emuladores; la despliega CI en el push. Queda la imagen de DEC-11 (paso 8), `/proponer` (paso 9) y `/contacto` con Instagram (paso 10) |
 | **B-831** | **Directorio de librerías** — `/guia/librerias`, `/guia/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | 🟡 listo para codear |
 | **B-832** | **Directorio de suscripciones literarias** — `/guia/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. El choque de nombre que tenía —la barra ya dice «Suscribirse», el calendario— **se lo llevó `/guia/`**: las dos etiquetas nunca aparecen juntas | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | 🟡 listo para codear |
 | **B-833** | **Directorio de lugares para eventos** — `/guia/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | 🟡 listo para codear |
 | **B-835** | **La pestaña «Guía» y la página `/guia` que la recibe.** Era «la barra pasa de 7 a 10 pestañas y ya no entra en un teléfono»; con la decisión de `/guia/*` del 2026-09-08 **pasa de 7 a 8** y el ítem se desinfló a dos cosas concretas: la entrada en `ENLACES` y `src/pages/guia/index.astro`. Va **con** la primera sección y no después — `/guia/librerias` sin `/guia` es una URL cuyo padre no existe | [`prd/README.md`](prd/README.md) § «Las decisiones del dueño» y § 6 | 🟢 chico, y ya sin decisión pendiente |
-| **B-838** | **Retención: 30 días** (DEC-13) — reabre **B-102** («¿el sistema guarda algo de quien se inscribe?» → *no*), que dejó de ser cierto el día que existe una bandeja con el mail de quien propone. Function `onSchedule`, y borra **documento e imagen** (DEC-11) | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 7 | 🟡 |
+| **B-838** | **Retención: 30 días** (DEC-13) — reabre **B-102** («¿el sistema guarda algo de quien se inscribe?» → *no*), que dejó de ser cierto el día que existe una bandeja con el mail de quien propone. Function `onSchedule`, y borra **documento e imagen** (DEC-11) | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 7 | ✅ **hecho (2026-09-09)** — `borrarPropuestasVencidas`, con su decisión pura (`functions/retencion.js`), su script en seco (`scripts/borrar-propuestas-vencidas.mjs`) y las dos mitades del borrado verificadas contra los emuladores. **Adelantado al paso 11 → antes del 8**, por la decisión de B-843 punto 1. **El deploy lo hace CI**: el push a `main` ve el cambio en `functions/` y la despliega sola, sin IAM nuevo — el job `functions` va después de `hosting`, así que hay una ventana de minutos en la que el panel promete un borrado que todavía no corre (dicho en `07-seguridad.md`). A mano, si hiciera falta: `firebase deploy --only functions:borrarPropuestasVencidas` |
 | **B-839** | **`/contacto` suma Instagram como canal** — pedido del dueño el 2026-09-08. Hoy `BLOQUES_DE_CONTACTO` son dos `mailto:` y el handle (`agenda.leh`) está en el chrome, no como forma de escribir. En este circuito el canal real es el DM. Chico y sin dependencias; el cuidado es que **un DM no tiene `asunto`** y `BLOQUES_DE_CONTACTO` hoy es homogéneo | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) § 2 | 🟢 se hace en una tarde |
 
 **Por qué esto es P1 y no P2.** Los tres directorios, solos, serían P2 —son
@@ -12113,6 +12170,18 @@ filtro?) y el sitio (¿no las lista pero conserva la página por SEO, que es
 probablemente lo correcto?). Cuadra con B-96 y con B-01.
 
 ### B-102 · ¿El sistema guarda algo de quien se inscribe? — decisión del dueño — ✅ decidido: no se hace (2026-09-03)
+
+> ⚠️ **La afirmación de fondo dejó de ser cierta el 2026-09-09, y el bloque queda
+> como estaba escrito para que se lea contra su original** (mismo criterio que los
+> avisos de D-125/D-128 en el `CLAUDE.md`). Lo que sigue diciendo «el sistema no
+> guarda ni un dato personal de un tercero» describe el estado anterior a
+> **B-830**: `/propuestas` guarda `contacto` —el mail, el WhatsApp o el Instagram
+> de quien propone— a propósito, porque sin forma de repreguntar la bandeja no
+> sirve. **La decisión de B-102 no cambió**: sigue sin guardarse nada de quien se
+> **inscribe**. Lo que cambió es la premisa «no guardamos ninguno», y con ella
+> apareció lo que este ítem no necesitaba: retención (**DEC-13**, **B-838**, 30
+> días para la rechazada) y los estados que todavía no caducan (**B-844**). Lo
+> marcó el `auditor-documentacion`.
 
 **Ratificado el 2026-09-03 por el dueño: no.** El sistema no guarda ni un dato
 personal de un tercero, y por eso el §5 de seguridad cabe en una tabla. La

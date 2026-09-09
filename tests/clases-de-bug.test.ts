@@ -371,10 +371,25 @@ const trazaSuperficial = (t: Trigger): Traza => trazar(comoDeclaracion(t), () =>
 const tieneEfectoDuplicable = (t: Trigger): boolean => trazaDe(t).marcas.includes('E');
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
-  it('encuentra los nueve triggers del proyecto', () => {
+  it('encuentra los diez triggers del proyecto', () => {
     // Si esto se rompe, todos los chequeos de abajo dejaron de mirar algo y
     // pasarían en verde sin verificar nada.
     expect(TRIGGERS.map((t) => t.nombre).sort()).toEqual([
+      /*
+       * B-838 / DEC-13 — la retención de propuestas rechazadas. El cuarto
+       * `onSchedule`, y **entró solo**: la clase ya estaba en
+       * `CLASES_DE_TRIGGER`, así que lo único que hubo que confirmar a mano es
+       * el conteo, que es la parte del chequeo que no se puede derivar.
+       *
+       * Por qué no cae en los dos chequeos de abajo, que conviene saber el día
+       * que se toque: **B-82** (efecto duplicable sin guarda) mira los triggers
+       * de documento y éste es un schedule — y su efecto tampoco es duplicable,
+       * porque borrar dos veces el mismo documento deja el mismo estado
+       * (`ignoreNotFound` en el objeto es justamente eso escrito). **B-85**
+       * (leer estado → red → escribir lo leído) pide una escritura de lo leído,
+       * y acá lo único que se escribe es un borrado.
+       */
+      'borrarPropuestasVencidas',
       'dispararRebuild',
       'guardarVersion',
       // Agregado por B-41 (guardar versión al borrar una actividad). Este test
@@ -1794,6 +1809,14 @@ describe('clase de B-81 · el saneador va en un punto de paso obligado', () => {
  *
  * El chequeo busca los dos efectos por nombre en todo `src/`, no en un archivo:
  * cuando B-70 saque `guardar()` del componente, sigue mirando.
+ *
+ * **`borrarPropuesta` (B-838) es de esta familia y no entra acá, a propósito.**
+ * También escribe en dos lugares y también el orden decide el modo de falla,
+ * pero la conclusión es la contraria: ahí los **dos** efectos son irreversibles
+ * (un objeto de Storage y un documento), así que lo que se elige no es «el que no
+ * se deshace va último» sino **cuál huérfano es peor** — y gana borrar el objeto
+ * primero. Meterlo en este registro invertiría su orden. Su propio caso está en
+ * `tests/retencion.test.ts`, con el motivo escrito.
  */
 const EFECTO_IRREVERSIBLE = /await upsertOpcion(?:es)?\(/;
 const EFECTO_QUE_PUEDE_FALLAR = /await (?:crear|actualizar)Actividad\(/;

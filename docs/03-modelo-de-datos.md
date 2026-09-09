@@ -459,7 +459,7 @@ lo impone: `revisionValida()` acota el `update` a `estado` + `revision`.
 | `creadoEn == request.time` | el cliente no puede antedatar |
 | El `origen` tiene que coincidir con **quién escribe** | una propuesta anónima no puede decir que la cargó el panel, ni al revés |
 | El formulario público ofrece **solo los tres aranceles `fijo: true`** | crear una opción es escribir en `/opciones/*`, que es de lectura pública y viaja al `events.json`. El «Otro» de `incluye` es texto libre (`incluyeOtro`) que el admin decide si promueve — § 4.2 del PRD |
-| `contacto` es **el primer dato personal de un tercero** que el proyecto guarda | B-102 decía que no guardaba ninguno. Se reabre a propósito: sin forma de repreguntar la bandeja no sirve. No sale a ninguna salida, tiene su fila en [`07-seguridad.md`](07-seguridad.md) y su retención a 30 días (DEC-13, B-838) |
+| `contacto` es **el primer dato personal de un tercero** que el proyecto guarda | B-102 decía que no guardaba ninguno. Se reabre a propósito: sin forma de repreguntar la bandeja no sirve. No sale a ninguna salida, tiene su fila en [`07-seguridad.md`](07-seguridad.md) y su retención a 30 días, **escrita y desplegándose con este commit**: `borrarPropuestasVencidas` borra la rechazada y su imagen a los 30 días del rechazo (DEC-13, B-838; la ventana entre «escrita» y «corriendo» está en [`07-seguridad.md`](07-seguridad.md)). Las que no están rechazadas no caducan — **B-844** |
 | `imagen` es `{ url }` **o** `{ storagePath }`, nunca las dos | DEC-11. El prefijo de Storage y su borrado son de la tajada siguiente; la **forma** ya la valida la regla |
 | Borrar está **prohibido** desde el cliente | la borra la Function de retención con el Admin SDK. Rechazar es un estado, no una desaparición |
 

@@ -239,8 +239,8 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
       <p className="text-xs text-tinta/55">
         Nada de esto está en el sitio: una propuesta no se publica, se convierte en actividad y
         la actividad se publica como cualquier otra. El contacto de quien propuso es para
-        repreguntar y no sale a ninguna parte. Rechazar tampoco borra nada por ahora: la
-        propuesta queda marcada y se puede reabrir.
+        repreguntar y no sale a ninguna parte. Una rechazada se borra sola —con su imagen— a
+        los 30 días; hasta entonces se puede reabrir.
       </p>
 
       {fallo && (
@@ -438,11 +438,20 @@ export function PropuestasPanel({ usuario, onConvertir }: Props) {
                   )}
                   {p.estado === 'rechazada' && (
                     /*
-                     * Un rechazo se puede deshacer, y hoy sin plazo: la retención
-                     * de 30 días (DEC-13, B-838) es el paso 11 y todavía no
-                     * existe. **El texto de arriba no la promete por eso** — la
-                     * ayuda del panel no puede afirmar algo que todavía no borra
-                     * nada, que es la clase de mentira que B-780 costó como P0.
+                     * Un rechazo se puede deshacer **mientras la retención no la
+                     * borre**: a los 30 días la propuesta rechazada desaparece con
+                     * su imagen (DEC-13, B-838, `functions/retencion.js`), así que
+                     * un rechazo por error tiene ese plazo para arreglarse.
+                     *
+                     * El texto de arriba no lo prometía hasta este commit, y la
+                     * palabra exacta importa —lo marcaron los dos auditores—: lo
+                     * que habilita la promesa no es que la Function **exista**
+                     * sino que **corra**. Sale en el mismo push (CI la despliega
+                     * al ver el cambio en `functions/`, después de `hosting`), y
+                     * la promesa recién podría ser falsa treinta días después de
+                     * la primera rechazada. La ventana está dicha en
+                     * `07-seguridad.md`; prometer un borrado que no ocurre es la
+                     * clase de mentira que B-780 costó como P0.
                      */
                     <button
                       type="button"

@@ -2,6 +2,106 @@
 
 ## Sin publicar
 
+- **La retención de propuestas: a los 30 días la rechazada se va, con su imagen**
+  — **B-838** / **DEC-13**, paso 11 de la tajada 1, **adelantado** al 8, 9 y 10
+  por la decisión de B-843 punto 1: la excepción del borrado tiene que existir
+  **antes** que el dato. Hasta este commit, el proyecto podía guardar el mail o el
+  WhatsApp de un tercero —el camino de admin existe desde el paso 5— y la única
+  forma de honrar un «borrame» era un script con el Admin SDK que nadie escribió.
+
+  `borrarPropuestasVencidas` es el cuarto `onSchedule` del proyecto y sigue el
+  corte de siempre: la decisión es pura (`functions/retencion.js`) y el pegamento
+  no decide nada. Tres cosas que no son obvias y están escritas donde se leen:
+
+  - **el plazo corre desde `revision.en`**, o sea desde el rechazo y no desde que
+    llegó: una propuesta que estuvo dos meses en la bandeja y ayer se rechazó
+    tiene sus treinta días completos;
+  - **el objeto se borra primero y el documento después.** Al revés, un fallo en
+    el medio dejaría la foto en el bucket **sin nada que la nombre** —el barrido
+    de huérfanas de B-221 solo recorre `imagenes/` y `miniaturas/`—, así que nadie
+    la volvería a encontrar. Con este orden el fallo deja las dos mitades en pie y
+    la corrida de mañana reintenta; `ignoreNotFound` es lo que hace que ese
+    reintento funcione, y tiene su caso;
+  - **lo que se borra está acotado al prefijo `propuestas/`**, con las dos guardas
+    (el prefijo y un solo segmento debajo). No es higiene: esta Function corre con
+    el Admin SDK y **no pasa por las reglas**, así que el `matches('^propuestas/…')`
+    que valida la escritura no la protege — un documento que nombrara el flyer de
+    una actividad publicada haría que borrar la propuesta se lo llevara del sitio,
+    en vivo. Es el hallazgo que el `auditor-privacidad` cobró sobre la regla en el
+    paso 5, del lado donde la regla no llega.
+
+  **Y el barrido no lee el contacto**: la query usa `select` y el mapeo arma
+  cuatro claves a mano, así que el dato personal del tercero no entra a la memoria
+  de la Function ni puede terminar en un log. Las dos mitades protegen cosas
+  distintas y **la verificación por mutación lo mostró**: sacar el `select` deja
+  el test en verde, porque el mapeo lo tapa igual. El caso quedó renombrado a lo
+  que prueba —el mapeo— y el `select` se afirma sobre el fuente, con el motivo
+  escrito para que no se lea como redundancia.
+
+  **El panel y la ayuda pasan a prometer los 30 días, y la palabra exacta la
+  discutieron los dos auditores**: lo que habilita la promesa no es que la
+  Function **exista** sino que **corra**. Sale en este mismo push —CI la despliega
+  al ver el cambio en `functions/`— pero el job va **después** de `hosting`, así
+  que hay una ventana de minutos con el panel prometiendo un borrado que todavía
+  no corre. Queda dicha una vez en `07-seguridad.md`, con lo que la vuelve
+  tolerable (la primera rechazada tendría que cumplir treinta días para que la
+  promesa fuera falsa, y hoy la colección está vacía) y con la señal si el deploy
+  falla (el rojo del CI, y `comparar-infra.sh` después). El punto nuevo de la
+  ayuda es el único del capítulo que promete un **borrado**, así que ata sus dos
+  tests — los `puntos`, a diferencia de los `AVISOS`, no lo tienen obligatorio y
+  la omisión habría pasado en verde.
+
+  **Cuatro hallazgos de los auditores, cerrados acá mismo:**
+
+  1. **Un `storagePath` fuera del prefijo borraba el documento igual** y dejaba la
+     foto viva **para siempre**: `propuestas/` no lo barre nadie, así que el
+     objeto quedaba sin nada que lo nombrara. El docblock construía el caso del
+     documento mal escrito y después no lo trataba. Ahora bloquea el borrado
+     entero (`imagen-fuera-del-prefijo`), que es fallar cerrado como
+     `sin-fecha-legible`.
+  2. **La guarda cruzada del script cubría una sola mezcla.** Faltaba la peor:
+     Firestore en producción y Storage en el emulador borra el documento real y
+     **no falla** al borrar el objeto (`ignoreNotFound`), así que la foto
+     sobrevive y el informe dice que la borró. Pasó a ser de **coherencia**: con
+     `--aplicar`, los dos destinos tienen que ser el mismo, y `--produccion` no la
+     levanta.
+  3. **El `select` traía `revision` entera**, o sea también `revision.motivo` —una
+     nota interna, con su propia fila en `07-seguridad.md`— y un uid. Acotado a
+     `revision.en` e `imagen.storagePath`, con su caso; y la clave del log pasó de
+     `motivo` a `causa`, porque tener el nombre ocupado es la mitad del camino a
+     que alguien lo llene.
+  4. **El orden del borrado no lo fijaba nada** (`auditor-trampas`): invertirlo
+     dejaba toda la suite en verde. Tiene su caso sobre el fuente, y una nota en
+     la clase de B-71 explicando por qué **no** entra en ese registro — es la
+     misma familia con la conclusión al revés: acá los dos efectos son
+     irreversibles y lo que se elige es cuál huérfano es peor.
+
+  Tiene **script en seco** (`scripts/borrar-propuestas-vencidas.mjs`), que es el
+  patrón del repo para todo barrido que borra, y acá con una guarda más que los
+  otros dos: con Firestore apuntando al emulador y Storage sin apuntar, el informe
+  diría «EMULADOR» mientras las fotos que borra son las de producción. Verificado
+  a mano contra el emulador: sembradas una rechazada de 40 días con imagen y otra
+  de 3, el seco marca solo la primera, `--aplicar` borra documento **y** objeto, la
+  corrida siguiente ya no la ve, y la guarda cruzada aborta con código 1.
+
+  **Lo que la retención NO cubre, y queda anotado: `B-844`.** Solo caduca la
+  **rechazada**, que es lo que DEC-13 contestó. Una propuesta que llegó y nadie
+  miró conserva el contacto para siempre; hoy la salida es rechazarla, que la pone
+  en esta cola.
+
+  **Y eso corrige lo que esta misma tanda había escrito**: la nota de B-843 punto
+  1 decía que con B-838 el alta manual quedaba destrabada, y es falso — una
+  propuesta cargada a mano nace `nueva`, que es justo uno de los estados que no
+  caducan, así que produciría el dato sin fecha de vencimiento que el bloqueo
+  existía para evitar. **El alta manual queda condicionada a B-844.** Lo señaló el
+  `auditor-privacidad`. De paso, el registro histórico de **B-102** («el sistema no
+  guarda ni un dato personal de un tercero») ganó su aviso de caducidad, con el
+  criterio de D-125/D-128: el bloque queda como estaba escrito y el aviso dice
+  desde cuándo dejó de ser cierto.
+
+  177 archivos de test, 3945 casos, con los emuladores de Firestore y de Storage
+  arriba.
+
 - **La bandeja de propuestas, y lo que la puerta abierta arrastra** — **B-830**,
   paso 7 de la tajada 1. Con **D-600** adentro y **B-843 punto 4** cerrado.
 

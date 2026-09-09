@@ -69,7 +69,8 @@ export const NOVEDADES: Novedad[] = [
       'El botón «Propuestas» del listado abre lo que llega de otras personas, con el número de ' +
       'las que están esperando. «Convertir en actividad» abre el formulario de siempre ya ' +
       'cargado con lo que escribieron, en borrador: revisás, corregís y publicás como cualquier ' +
-      'otra. Nada de la bandeja se ve en el sitio, y la forma de contactarlos queda solo ahí.',
+      'otra. Nada de la bandeja se ve en el sitio, y la forma de contactarlos queda solo ahí — ' +
+      'una propuesta rechazada se borra sola a los 30 días, con su imagen.',
     donde: 'Listado → «Propuestas», arriba a la derecha.',
   },
   {

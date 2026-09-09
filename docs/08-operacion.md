@@ -995,6 +995,93 @@ Un `barrido de versiones huérfanas: nada para purgar` con `motivos` lleno de
 borrado. Si aparece `sin-fecha-legible`, hay una versión con el `guardadoEn`
 roto y conviene mirarla antes de que el margen deje de importar.
 
+### `borrarPropuestasVencidas` — la retención de propuestas (B-838, DEC-13)
+
+Una propuesta lleva **el mail o el WhatsApp de alguien que no está logueado**: el
+primer dato personal de un tercero que el proyecto guarda, y el que B-102 daba por
+inexistente. DEC-13 contestó cuánto se guarda una **rechazada**: 30 días, y se va
+con su imagen.
+
+Esta Function programada (`functions/retencion-trigger.js`) las borra cada 24
+horas. Corrió antes que el resto de la tajada por decisión del dueño (B-843 punto
+1): **la excepción del borrado tiene que existir antes que el dato**, y hasta que
+existió la única forma de honrar un «borrame» era un script con el Admin SDK que
+nadie había escrito.
+
+**Por qué no borra en el momento del rechazo.** Porque el rechazo no es el
+borrado: los 30 días son el margen para el «lo rechacé sin querer» —la bandeja
+ofrece **Reabrir**— y para que quien propuso pueda repreguntar. Es el mismo
+argumento del margen de rescate de `limpiarVersionesHuerfanas`, con otro número.
+
+**La decisión es pura y vive en `functions/retencion.js`** (`decidirRetencion`),
+con tres salvaguardas:
+
+- **El plazo se cuenta desde `revision.en`**, o sea desde el rechazo y no desde
+  que llegó: una propuesta que estuvo dos meses en la bandeja y recién ayer se
+  rechazó tiene sus treinta días completos.
+- **Una fecha de revisión ilegible bloquea el borrado** (`sin-fecha-legible`):
+  falla cerrado, porque una propuesta que se ve en la bandeja se puede volver a
+  rechazar y una borrada no vuelve.
+- **Tope de 50 por corrida** (`MAX_PROPUESTAS_POR_CORRIDA`), misma clase de
+  salvaguarda que los otros dos barridos.
+
+**El objeto se borra primero y el documento después**, y el orden importa: si
+fallara el borrado del objeto con el documento ya borrado, la foto quedaría en el
+bucket **sin nada que la nombre** —el barrido de huérfanas de B-221 solo recorre
+`imagenes/` y `miniaturas/`—, así que nadie la volvería a encontrar. Con este
+orden un fallo deja las dos mitades en pie y la corrida de mañana reintenta;
+`ignoreNotFound` es lo que hace que ese reintento funcione.
+
+**Y lo que borra está acotado al prefijo `propuestas/`.** No es higiene: esta
+Function corre con el Admin SDK y **no pasa por `firestore.rules`**, así que el
+`matches('^propuestas/…')` que valida la escritura no la protege. Un documento que
+nombrara `imagenes/img_<uuid>.jpg` de una actividad publicada haría que borrar la
+propuesta se llevara el flyer del sitio, en vivo.
+
+**El barrido no lee el contacto.** La query usa `select('estado','revision','imagen')`
+y el mapeo arma cuatro claves a mano: el dato personal del tercero no entra a la
+memoria de la Function ni puede terminar en un log por accidente.
+
+**IAM: no hace falta nada nuevo.** Corre con `calendar-sync@`, que ya tiene
+`datastore.user` (D-06) y el `storage.objects.delete` que usa
+`limpiarImagenesHuerfanas`.
+
+```bash
+firebase deploy --only functions:borrarPropuestasVencidas
+```
+
+**Cómo verificar la primera corrida.** Con el script en seco o por logs:
+
+```bash
+# En seco: lista qué borraría con el motivo de cada caso. Es el default, no borra.
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199   node scripts/borrar-propuestas-vencidas.mjs
+
+# Aplicarlo de verdad, siempre contra el emulador primero:
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199   node scripts/borrar-propuestas-vencidas.mjs --aplicar
+
+# En producción exige el flag de más. Y hay una segunda guarda que los otros
+# barridos no necesitan: con Firestore en el emulador y Storage sin apuntar,
+# el informe diría «EMULADOR» mientras las fotos que borra son las de verdad.
+node scripts/borrar-propuestas-vencidas.mjs --aplicar --produccion
+
+gcloud functions logs read borrarPropuestasVencidas \
+  --region southamerica-east1 --project agenda-literaria --limit 50
+```
+
+El script reusa la misma `decidirRetencion` que la Function, así que mirarlo en
+seco prueba algo. Verificado a mano contra el emulador el 2026-09-09: sembradas
+una rechazada de 40 días **con imagen** y otra de 3, el script marca
+`[BORRAR] … rechazada-vencida` solo la primera, deja la otra en
+`dentro-del-plazo`, `--aplicar` borra el documento **y el objeto** (confirmado con
+`file().exists()`), la corrida siguiente ya no la ve, y `--aplicar` con Storage
+apuntando afuera del emulador aborta con código 1.
+
+**Lo que este barrido NO borra, dicho para que no se lea como olvido:** las
+propuestas `nueva`, `en-revision` y `aceptada`. DEC-13 habla de la rechazada, y
+esas tres conservan el contacto sin plazo — anotado como **B-844**. Hoy la forma
+de honrar un «borrame» sobre una de ellas es rechazarla desde la bandeja: entra a
+esta cola y se va en 30 días.
+
 ### Las cuentas de Instagram de la base, para seguirlas
 
 **Pedido del dueño.** `npm run instagrams` arma una página local con **todas** las

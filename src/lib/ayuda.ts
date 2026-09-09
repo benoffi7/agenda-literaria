@@ -833,8 +833,22 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Rechazar pide un motivo, opcional, que no ve nadie más que ustedes. Por ahora no ' +
-          'borra nada: la propuesta queda marcada y se puede reabrir cuando quieras.',
+          'Rechazar pide un motivo, opcional, que no ve nadie más que ustedes. La propuesta ' +
+          'queda marcada y se puede reabrir, pero no para siempre: a los 30 días de rechazada ' +
+          'se borra sola, con la imagen que hayan mandado. Es lo que evita quedarnos con el ' +
+          'teléfono de alguien para siempre.',
+        cuidado: true,
+        /*
+         * El vínculo lo pidió el `auditor-privacidad`: es el único punto de este
+         * capítulo que promete un **borrado**, y los puntos —a diferencia de los
+         * avisos— no tienen el `atadoA` obligatorio, así que la omisión habría
+         * pasado en verde. Los dos casos que lo sostienen: que el plazo sea el que
+         * dice, y que la rechazada vencida entre de verdad a la lista de borrado.
+         */
+        atadoA: [
+          { archivo: 'tests/retencion.test.ts', it: 'y por default son los 30 días que contestó DEC-13' },
+          { archivo: 'tests/retencion.test.ts', it: 'una rechazada hace más de 30 días se borra' },
+        ],
       },
       {
         texto:

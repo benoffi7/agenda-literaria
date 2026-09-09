@@ -43,4 +43,5 @@ export { limpiarVersionesHuerfanas } from './versiones-limpieza-trigger.js';
 export { reporteAIssue } from './reportes-trigger.js';
 export { optimizarImagen } from './imagenes-trigger.js';
 export { limpiarImagenesHuerfanas } from './imagenes-limpieza-trigger.js';
+export { borrarPropuestasVencidas } from './retencion-trigger.js';
 export { traerAnaliticaDelSitio } from './analitica-trigger.js';

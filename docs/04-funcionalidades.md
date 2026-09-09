@@ -866,11 +866,17 @@ dice arriba: la actividad quedó creada y la propuesta sigue en la bandeja, así
 hay que cerrarla a mano o se convierte dos veces.
 
 **Lo que todavía no está:** la imagen que se sube (DEC-11, paso 8 — la bandeja
-muestra el path pero no la puede ver), el formulario público (paso 9), y la
-retención a 30 días (DEC-13, **B-838**, paso 11). Por eso la bandeja **no ofrece
-cargar una propuesta a mano** aunque la regla lo permita: guardar el WhatsApp de
-un tercero antes de que exista lo que lo borra es guardar un dato personal sin
-fecha de vencimiento (decisión del dueño, B-843 punto 1).
+muestra el path pero no la puede ver) y el formulario público (paso 9). **La
+retención a 30 días sí** (DEC-13, **B-838**, paso 11, adelantado): una rechazada
+se borra sola, con su imagen — ver `08-operacion.md` § «La retención de
+propuestas».
+
+La bandeja sigue **sin ofrecer cargar una propuesta a mano** aunque la regla lo
+permita. El motivo era que guardar el WhatsApp de un tercero antes de que exista
+lo que lo borra es guardar un dato personal sin fecha de vencimiento (decisión del
+dueño, B-843 punto 1) — y **ese motivo no se fue del todo con B-838**: una
+propuesta cargada a mano nace `nueva`, que es justo uno de los estados que **no**
+caducan (**B-844**).
 
 ## Dos formas del formulario, y las elige quien carga
 
