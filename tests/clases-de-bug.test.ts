@@ -33,6 +33,7 @@ import { construirEvento as construirEventoAnalitica } from '@/lib/analytics-eve
 import { construirIssue } from '../functions/reportes.js';
 import { versionesPosibles } from '../scripts/version.mjs';
 import type { Actividad } from '@/types/actividad';
+import { CAMPOS_TAXONOMIA } from '@/types/actividad';
 import { TOPE_TITULO_REPORTE } from '@/types/reporte';
 
 const raiz = new URL('..', import.meta.url);
@@ -1352,6 +1353,58 @@ describe('clase de B-88 · el consumidor acepta todo lo que el productor produce
       /typeof t\?*\.toMillis === 'function'/.test(fuente(f)),
     );
     expect(definiciones).toEqual(['functions/calendario.js']);
+  });
+
+  /**
+   * **La lista de taxonomías de `functions/` está atada a la del modelo** — el
+   * test que el docblock de `functions/etiquetas.js` prometía desde D-20 y que
+   * no existía. Lo destapó B-830, que agregó la sexta taxonomía y dejó al
+   * comentario afirmando algo falso («esta lista es una copia») sin que nada
+   * fallara.
+   *
+   * `functions/` no puede importar de `src/` (D-20), así que la lista está
+   * escrita dos veces y las dos pueden divergir en dos direcciones distintas, con
+   * dos daños distintos:
+   *
+   * - **un campo de más** en la lista de la Function → `db.getAll` lee un
+   *   documento de `/opciones/*` que no es de ninguna taxonomía, y las etiquetas
+   *   de ese campo salen vacías: la descripción del evento publicaría el slug
+   *   crudo («a-la-gorra»), que es justo lo que `cargarLabels` existe para evitar;
+   * - **un campo de menos** → el evento no puede resolver esa etiqueta. Puede ser
+   *   correcto (`incluye-actividad` no sale al evento) o un olvido, y la
+   *   diferencia no se ve: las dos se leen igual desde acá.
+   *
+   * Por eso no se exige que las listas sean **iguales** sino que la de la Function
+   * sea un **subconjunto**, y que lo que falte esté nombrado en
+   * `TAXONOMIAS_FUERA_DEL_EVENTO` con su motivo. Así la próxima taxonomía obliga a
+   * decidir en vez de entrar —o quedar afuera— sola.
+   */
+  it('las taxonomías de `functions/` son un subconjunto declarado del modelo (D-20, B-830)', async () => {
+    const { CAMPOS_TAXONOMIA: enLaFunction, TAXONOMIAS_FUERA_DEL_EVENTO: fuera } = await import(
+      '../functions/etiquetas.js'
+    );
+
+    // Control positivo: dos listas vacías satisfarían todo lo de abajo.
+    expect(enLaFunction.length).toBeGreaterThan(3);
+    expect(CAMPOS_TAXONOMIA.length).toBeGreaterThan(enLaFunction.length - 1);
+
+    const delModelo = new Set<string>(CAMPOS_TAXONOMIA);
+    expect(
+      enLaFunction.filter((c: string) => !delModelo.has(c)),
+      'la Function pediría un documento de `/opciones/*` que no es de ninguna taxonomía: ' +
+        'sus etiquetas saldrían vacías y el evento publicaría el slug crudo',
+    ).toEqual([]);
+
+    const cubiertas = new Set<string>([...enLaFunction, ...fuera]);
+    expect(
+      CAMPOS_TAXONOMIA.filter((c) => !cubiertas.has(c)),
+      'una taxonomía del modelo que la Function no pide y que nadie declaró como ' +
+        'ausente a propósito: si sale al evento, va a publicar el slug crudo; si no ' +
+        'sale, decilo en `TAXONOMIAS_FUERA_DEL_EVENTO`',
+    ).toEqual([]);
+
+    // Y las ausencias declaradas tienen que ser de verdad ausencias.
+    expect(fuera.filter((c: string) => enLaFunction.includes(c))).toEqual([]);
   });
 
   it('el número del encuentro se cuenta en un solo lugar (B-163, D-20)', () => {

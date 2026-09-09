@@ -16,7 +16,8 @@ import { CAMPOS_TAXONOMIA, type CampoTaxonomia, type ValorOpcion } from '@/types
  * lo llamaba una vez por hook montado. En la primera pantalla autenticada eso
  * son **diez** listeners sobre **cinco** documentos: cinco del listado
  * (`useLabelsTaxonomia`) y cinco del contador de la cabecera
- * (`usePendientesDeAprobacion`, que por definición mira los cinco campos). Con
+ * (`usePendientesDeAprobacion`, que por definición mira **todos** los campos —
+ * cinco entonces, seis desde `incluye-actividad`). Con
  * el formulario y la vista previa abiertos se repite: los desplegables abren los
  * suyos y la vista previa otros cinco, todos sobre los mismos documentos.
  *
@@ -160,12 +161,18 @@ export function useOpciones(campo: CampoTaxonomia, uid?: string) {
 }
 
 /**
- * §4.1 — las cinco taxonomías juntas, en la forma `{ campo: { slug: etiqueta } }`
- * que necesita la descripción del evento. Es el equivalente en el panel de lo
- * que la Function resuelve leyendo `/opciones/*`.
+ * §4.1 — las taxonomías que **la descripción del evento** necesita, en la forma
+ * `{ campo: { slug: etiqueta } }`. Es el equivalente en el panel de lo que la
+ * Function resuelve leyendo `/opciones/*`.
  *
- * Cinco `useOpciones` en orden fijo: `CAMPOS_TAXONOMIA` es una constante, así
- * que la cantidad de hooks nunca cambia entre renders.
+ * **No son todas las de `CAMPOS_TAXONOMIA`, y no es un olvido:**
+ * `incluye-actividad` no entra porque **no va al evento de Calendar** (la
+ * decisión está en el docblock del campo, `types/actividad.ts`). Lo que se pide
+ * acá es lo que `construirDescripcion` puede llegar a resolver; pedir de más
+ * abriría un `onSnapshot` para un dato que la vista previa no muestra.
+ *
+ * Un `useOpciones` por campo, en orden fijo: la lista es una constante, así que
+ * la cantidad de hooks nunca cambia entre renders.
  *
  * B-127 — los cinco pasan por `registroDeOpciones`, así que montar esto **no**
  * agrega cinco `onSnapshot`: agrega cinco oyentes a los listeners que haya, y
@@ -199,14 +206,15 @@ export function useLabelsTaxonomia(pendientes: LabelsTaxonomia = {}): LabelsTaxo
 }
 
 /**
- * §4.1 · B-06 — las cinco taxonomías en vivo, sin filtrar por aprobación, para
- * la pantalla que las administra.
+ * §4.1 · B-06 — **todas** las taxonomías en vivo, sin filtrar por aprobación,
+ * para la pantalla que las administra. Acá sí van todas: administrarlas incluye
+ * la que no sale al calendario.
  *
  * Sin filtrar es el punto: administrarlas incluye ver justamente lo que el
  * desplegable esconde (lo pendiente de otra cuenta) y lo que sobra (el typo con
- * `usos: 1`). Cinco `useOpciones` en orden fijo, como `useLabelsTaxonomia`:
- * `CAMPOS_TAXONOMIA` es una constante, así que la cantidad de hooks nunca
- * cambia entre renders.
+ * `usos: 1`). Un `useOpciones` por campo, en orden fijo, como
+ * `useLabelsTaxonomia`: `CAMPOS_TAXONOMIA` es una constante, así que la cantidad
+ * de hooks nunca cambia entre renders.
  */
 export function useTodasLasOpciones(): {
   porCampo: Record<CampoTaxonomia, ValorOpcion[]>;
@@ -217,6 +225,7 @@ export function useTodasLasOpciones(): {
   const barrio = useOpciones('barrio');
   const plataforma = useOpciones('plataforma');
   const tags = useOpciones('tags');
+  const incluye = useOpciones('incluye-actividad');
 
   return useMemo(
     () => ({
@@ -226,15 +235,17 @@ export function useTodasLasOpciones(): {
         barrio: barrio.valores,
         plataforma: plataforma.valores,
         tags: tags.valores,
+        'incluye-actividad': incluye.valores,
       },
       cargando:
         arancel.cargando ||
         tipo.cargando ||
         barrio.cargando ||
         plataforma.cargando ||
-        tags.cargando,
+        tags.cargando ||
+        incluye.cargando,
     }),
-    [arancel, tipo, barrio, plataforma, tags],
+    [arancel, tipo, barrio, plataforma, tags, incluye],
   );
 }
 
@@ -254,10 +265,13 @@ export const pendientesDe = (valores: ValorOpcion[]): ValorOpcion[] =>
  * nuevas nacen aprobadas). Se deja igual: es la parte de la maquinaria dormida
  * que hay que tener lista para el día que se prenda.
  *
- * Ojo: mira los cinco campos, así que mientras esté montado los cinco
- * documentos de `/opciones/*` tienen un listener abierto — recortar el listado a
- * los dos campos que muestra no bajaría de cinco mientras la cabecera esté ahí
- * (B-127). Va montado una sola vez y en un lugar que esté siempre visible, no en
+ * Ojo: mira **todos** los campos, así que mientras esté montado hay un listener
+ * abierto por documento de `/opciones/*` — recortar el listado a los dos campos
+ * que muestra no bajaría la cuenta mientras la cabecera esté ahí (B-127). Y la
+ * cuenta crece con cada taxonomía nueva: eran cinco documentos, son seis desde
+ * `incluye-actividad`, y los PRDs traen once más
+ * (`docs/prd/05-inventario-de-archivos.md` § 2.4). Con `registroDeOpciones` no
+ * se duplican, pero sí se suman. Va montado una sola vez y en un lugar que esté siempre visible, no en
  * cada pantalla: con `registroDeOpciones` no duplica listeners, pero sí oyentes
  * y re-renders.
  */

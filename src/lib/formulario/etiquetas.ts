@@ -12,12 +12,28 @@
  */
 import { slugify } from '@/lib/slugify';
 import type { LabelsTaxonomia } from '@/lib/vistaPreviaEvento';
+import { CAMPOS_MULTIVALOR, type CampoMultivalor } from '@/types/actividad';
 
 /**
- * Los campos con taxonomía de valor único. `tags` no está: es multivalor y su
- * buffer es un mapa `slug → label` que arma `TagsInput`.
+ * Los campos con taxonomía de **valor único**. Los multivalor no están acá:
+ * viven en `CAMPOS_MULTIVALOR` (`types/actividad.ts`) y su buffer es un mapa
+ * `slug → label` que arma `TagsInput`, uno por campo.
+ *
+ * Las dos listas juntas tienen que dar `CAMPOS_TAXONOMIA`: lo fija
+ * `tests/taxonomia.test.ts`, para que una taxonomía nueva no quede sin buffer.
  */
 export type CampoLabelUnico = 'arancel' | 'tipo' | 'barrio' | 'plataforma';
+
+/**
+ * El buffer de las taxonomías **multivalor**: `campo → slug → label`.
+ *
+ * Era un solo `Record<string, string>` porque `tags` era la única multivalor.
+ * Con `incluye-actividad` (B-830) son dos, así que el mecanismo se generalizó en
+ * vez de copiarse — la clase de B-72, y con dos consumidores es el momento más
+ * barato para hacerlo. El día que entren `incluye-suscripcion` e `incluye-lugar`
+ * (`docs/prd/README.md` § 3) no hay nada que tocar acá.
+ */
+export type MultivalorNuevos = Partial<Record<CampoMultivalor, Record<string, string>>>;
 
 export interface LabelNuevo {
   campo: CampoLabelUnico;
@@ -53,15 +69,17 @@ export const recordarLabel = (
  */
 export const labelsPendientesDe = (
   labelsNuevos: readonly LabelNuevo[],
-  tagsNuevos: Record<string, string>,
+  multivalorNuevos: MultivalorNuevos,
 ): LabelsTaxonomia => {
   const mapa: LabelsTaxonomia = {};
   for (const { campo, label } of labelsNuevos) {
     mapa[campo] = { ...mapa[campo], [slugify(label)]: label.trim() };
   }
-  const tags = Object.entries(tagsNuevos);
-  if (tags.length) {
-    mapa.tags = Object.fromEntries(tags.map(([slug, label]) => [slug, label.trim()]));
+  for (const campo of CAMPOS_MULTIVALOR) {
+    const entradas = Object.entries(multivalorNuevos[campo] ?? {});
+    if (entradas.length) {
+      mapa[campo] = Object.fromEntries(entradas.map(([slug, label]) => [slug, label.trim()]));
+    }
   }
   return mapa;
 };
@@ -85,6 +103,8 @@ interface DatosDeUsos {
     online: { plataforma: string } | null;
   }[];
   tags: readonly string[];
+  /** B-830 — opcional en el tipo por lo mismo que el `?? []` de abajo. */
+  incluye?: readonly string[];
 }
 
 /** Los slugs elegidos, campo por campo, sin repetir dentro de un mismo campo. */
@@ -101,6 +121,7 @@ const elegidosDe = (datos: DatosDeUsos) => ({
   barrio: [...new Set((datos.modalidades ?? []).map((m) => m.sede?.barrio ?? ''))],
   plataforma: [...new Set((datos.modalidades ?? []).map((m) => m.online?.plataforma ?? ''))],
   tags: [...(datos.tags ?? [])],
+  'incluye-actividad': [...(datos.incluye ?? [])],
 });
 
 /**
@@ -131,10 +152,10 @@ const elegidosDe = (datos: DatosDeUsos) => ({
 export const usosAContar = (
   guardado: DatosDeUsos,
   labelsNuevos: readonly LabelNuevo[],
-  tagsNuevos: Record<string, string>,
+  multivalorNuevos: MultivalorNuevos,
   anterior?: DatosDeUsos,
-): Partial<Record<'arancel' | 'tipo' | 'barrio' | 'plataforma' | 'tags', string[]>> => {
-  const recienCreados = labelsPendientesDe(labelsNuevos, tagsNuevos);
+): Partial<Record<CampoLabelUnico | CampoMultivalor, string[]>> => {
+  const recienCreados = labelsPendientesDe(labelsNuevos, multivalorNuevos);
   const nuevoEn = (campo: keyof LabelsTaxonomia, slug: string) =>
     Boolean(recienCreados[campo]?.[slug]);
 

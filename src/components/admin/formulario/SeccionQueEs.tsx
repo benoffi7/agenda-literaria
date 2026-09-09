@@ -20,22 +20,35 @@
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { Seccion } from '@/components/campos/Seccion';
+import { TagsInput } from '@/components/campos/TagsInput';
 import { TaxonomiaSelect } from '@/components/campos/TaxonomiaSelect';
 import { ETIQUETA_ESTADO } from '@/components/admin/formulario/etiquetasUI';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 import type { CampoLabelUnico } from '@/lib/formulario/etiquetas';
 import { slugify } from '@/lib/slugify';
-import { ESTADOS, type ActividadForm } from '@/types/actividad';
+import { ESTADOS, type ActividadForm, type CampoMultivalor } from '@/types/actividad';
 
 interface Props extends PropsSeccion {
   conTitulo: (titulo: string) => void;
+  /** B-830 — las opciones de «Qué se llevan» tipeadas con «Otro» (D-02). */
+  anotarMultivalor: (campo: CampoMultivalor, nuevos: Record<string, string>) => void;
   conTipo: (tipo: string) => void;
   anotarLabel: (campo: CampoLabelUnico, label?: string) => void;
   /** Trampa 10 — después de publicar, el slug no se toca más. */
   slugBloqueado: boolean;
 }
 
-export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anotarLabel, slugBloqueado }: Props) {
+export function SeccionQueEs({
+  form,
+  set,
+  errorDe,
+  uid,
+  conTitulo,
+  conTipo,
+  anotarLabel,
+  anotarMultivalor,
+  slugBloqueado,
+}: Props) {
   return (
     <Seccion
       ancla="que-es"
@@ -126,6 +139,33 @@ export function SeccionQueEs({ form, set, errorDe, uid, conTitulo, conTipo, anot
             value={form.descripcion}
             onChange={(e) => set('descripcion', e.target.value)}
             placeholder="Qué se hace, para quién es, qué se lleva."
+          />
+        </Campo>
+
+        {/*
+          B-830 · DEC-1 del PRD 1 — «qué se llevan». Va en «Qué es» y no en
+          «Opcional» por lo mismo que el flyer (B-264): es información que
+          alguien necesita para decidir si va, no un metadato del catálogo, y un
+          campo en una sección cerrada por defecto es un campo que queda vacío.
+
+          **No es `material`.** Ese son links de lectura con su forma de entrega,
+          para el club de lectura; «merienda» no entra ahí.
+        */}
+        <Campo
+          label="Qué se llevan"
+          htmlFor="act-incluye"
+          ayuda="Material de lectura, libro, merienda, certificado. Enter o coma para agregar."
+          className="sm:col-span-full"
+        >
+          <TagsInput
+            id="act-incluye"
+            campo="incluye-actividad"
+            uid={uid}
+            value={form.incluye}
+            onChange={(slugs, nuevos) => {
+              set('incluye', slugs);
+              anotarMultivalor('incluye-actividad', nuevos);
+            }}
           />
         </Campo>
 

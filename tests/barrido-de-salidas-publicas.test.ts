@@ -205,11 +205,15 @@ const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   },
   {
     nombre: 'taxonomías, como slug',
-    centinelas: ['sede.barrio', 'arancel.tipo', 'online.plataforma', 'tags'],
+    centinelas: ['sede.barrio', 'arancel.tipo', 'online.plataforma', 'tags', 'incluye'],
     porque:
       '§4.1/§4.4 — la actividad guarda el slug y el JSON lo lleva crudo: la web arma los ' +
       'chips de filtro resolviéndolo contra `opciones`, que viajan en el mismo archivo. ' +
-      'A diferencia del evento de Calendar, acá no se resuelve la etiqueta.',
+      'A diferencia del evento de Calendar, acá no se resuelve la etiqueta. ' +
+      '**`incluye` entró con B-830** y es la única de las cinco que **no** es eje de ' +
+      'filtro: sale por esta proyección porque la consume la página de detalle, que ' +
+      'recibe una `ActividadPublica`. En el **índice** no está —`entradaDeIndice` recorta ' +
+      'más a propósito— y eso tiene su propio caso más abajo.',
   },
   {
     nombre: 'inscripción y arancel',
@@ -1181,6 +1185,45 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
     }
   });
 
+  /**
+   * **B-830 — `incluye` sale a la proyección y NO al índice, y es una decisión.**
+   *
+   * Mismo caso que las comisiones de arriba, y por eso el `it` va al lado: la
+   * garantía de que no está no puede ser solo la **falta** de una excepción en
+   * `PERMITIDO_EN_EL_INDICE`, porque una ausencia no dice que alguien la eligió.
+   *
+   * Y se eligió: `incluye` no es eje de filtro ni frase de la tarjeta. Meterlo al
+   * índice sería empezar a servir en lote un dato que solo se lee en la ficha —la
+   * salida más barata de cosechar, D-129— y, sobre todo, **compromete la forma de
+   * una URL** el día que se convierta en chip (`?incluye=`), que es lo que no se
+   * mueve una vez indexada (trampa 10). El detalle no lo necesita del índice: se
+   * genera en el build leyendo `toPublic` directo (§2.4).
+   *
+   * El día que el listado quiera filtrar por «con merienda», esto se pone rojo y
+   * ahí se decide — que es exactamente para lo que está.
+   */
+  it('`incluye` NO entra al índice: es dato de ficha, no eje de filtro (B-830)', () => {
+    const indice = construirIndice({
+      actividades: [toPublic(actividadCentinela(), 'act_centinela')],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    const crudo = JSON.stringify(indice);
+    expect(
+      crudo.includes(CENTINELA.incluye),
+      '`incluye` entró al índice del listado. Si es para filtrar por él, la decisión ' +
+        'incluye la forma de la URL del chip, que no se mueve una vez indexada (trampa 10).',
+    ).toBe(false);
+    // Control positivo: el mismo centinela **sí** está en la proyección, así que
+    // el `false` de arriba mide una ausencia real y no un centinela que no viaja.
+    expect(
+      JSON.stringify(toPublic(actividadCentinela(), 'act_centinela')).includes(
+        CENTINELA.incluye,
+      ),
+    ).toBe(true);
+  });
+
   it('lleva los valores de las formas de cursar, no las filas (B-224)', () => {
     /*
      * La celda del campo nuevo en la tercera proyección. El filtro necesita saber
@@ -1322,6 +1365,11 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
     ],
     arancel: [{ slug: CENTINELA['arancel.tipo'], label: CENTINELA['labels.arancel'] }],
     tags: [{ slug: CENTINELA.tags, label: CENTINELA['labels.tags'] }],
+    // B-830 — la clave es el nombre de la **taxonomía** (`incluye-actividad`) y
+    // no el del campo del documento (`incluye`). Sin esta línea `etiquetaDe` cae
+    // al `desSlug` y la página publicaría el slug crudo, que es justo lo que el
+    // caso de abajo prohíbe.
+    'incluye-actividad': [{ slug: CENTINELA.incluye, label: CENTINELA['labels.incluye'] }],
   });
 
   /*
@@ -1477,6 +1525,7 @@ describe('barrido de la página de detalle (§4.3 del diseño, B-227)', () => {
         'labels.plataforma',
         'labels.arancel',
         'labels.tags',
+        'labels.incluye',
       ],
       porque:
         '§4.1 — la actividad guarda el slug y la página muestra la **etiqueta**: «a-la-gorra» ' +
@@ -1876,6 +1925,7 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
     ],
     arancel: [{ slug: CENTINELA['arancel.tipo'], label: CENTINELA['labels.arancel'] }],
     tags: [{ slug: CENTINELA.tags, label: CENTINELA['labels.tags'] }],
+    'incluye-actividad': [{ slug: CENTINELA.incluye, label: CENTINELA['labels.incluye'] }],
   });
 
   // El mismo instante que el barrido del detalle: antes de la primera sesión, que

@@ -63,6 +63,9 @@ const NOMBRE_DE_CAMPO: Record<string, string> = {
   difusion: 'Difusión',
   estado: 'Estado',
   tags: 'Etiquetas',
+  // B-830 — el nombre de pantalla y no la clave: en el panel el campo se llama
+  // «Qué se llevan».
+  incluye: 'Qué se llevan',
   destacado: 'Destacada',
   searchText: 'Texto de búsqueda',
 };

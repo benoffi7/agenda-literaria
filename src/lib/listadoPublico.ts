@@ -619,10 +619,12 @@ export const mapaDeEtiquetas = (opciones: Record<string, OpcionPublica[]>): Mapa
  */
 export const etiquetaDe = (
   etiquetas: MapaDeEtiquetas,
-  // `plataforma` no es un eje de filtro —«Online» ya está cubierto por
-  // `modalidad`— pero sí es una taxonomía con etiqueta, y el detalle la muestra.
-  // Se resuelve con la misma función para que no nazca una segunda.
-  eje: Eje | 'plataforma',
+  // `plataforma` e `incluye-actividad` no son ejes de filtro —«Online» ya está
+  // cubierto por `modalidad`, y `incluye` es dato de ficha y no filtro (ver su
+  // docblock en `types/actividad.ts`)— pero las dos son taxonomías con etiqueta
+  // que el detalle muestra. Se resuelven con la misma función para que no nazca
+  // una segunda.
+  eje: Eje | 'plataforma' | 'incluye-actividad',
   valor: string,
 ): string => {
   if (eje === 'modalidad') {

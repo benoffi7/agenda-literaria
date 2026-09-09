@@ -13,12 +13,31 @@
  */
 
 /**
- * D-20 — esta lista es una **copia** de `CAMPOS_TAXONOMIA` de `src/lib/`, y no
- * se puede evitar: `functions/` se despliega con su propio `package.json` y no
- * puede importar hacia arriba. Se evaluó y se descartó; la respuesta acordada es
- * un test que compare las dos listas, no un import imposible.
+ * D-20 — las taxonomías que **el evento de Calendar muestra**, escritas de este
+ * lado: `functions/` se despliega con su propio `package.json` y no puede
+ * importar hacia arriba. Se evaluó y se descartó; la respuesta acordada es un
+ * test que ate las dos listas, no un import imposible — y desde B-830 ese test
+ * existe (`clases-de-bug.test.ts`).
+ *
+ * **No es una copia de `CAMPOS_TAXONOMIA`, y desde B-830 tampoco lo parece.** Es
+ * un **subconjunto**: `incluye-actividad` no está porque el evento no dice qué se
+ * llevan (ver el docblock del campo en `src/types/actividad.ts`), y pedir sus
+ * etiquetas sería una lectura más de Firestore en cada invocación para un dato
+ * que `construirDescripcion` nunca mira.
+ *
+ * El test lo ata en las dos direcciones: todo campo de acá tiene que existir
+ * arriba —si no, `db.getAll` leería un documento que no es de ninguna taxonomía—
+ * y el que falte tiene que estar en la lista de ausencias justificadas, para que
+ * la próxima taxonomía obligue a decidir en vez de entrar (o quedar afuera) sola.
  */
 export const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'];
+
+/**
+ * Las taxonomías que **a propósito** no entran a `CAMPOS_TAXONOMIA` de este
+ * archivo, con su motivo. Es la mitad que hace que la lista de arriba se pueda
+ * atar sin exigir que sea idéntica.
+ */
+export const TAXONOMIAS_FUERA_DEL_EVENTO = ['incluye-actividad'];
 
 /**
  * Caché por instancia: son 5 documentos que cambian muy de vez en cuando y la

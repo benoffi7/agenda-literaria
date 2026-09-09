@@ -232,6 +232,13 @@ export interface ActividadPublica {
   /** La sede principal: la de la primera fila que tenga una (B-224). */
   sede: Actividad['sede'];
   tags: string[];
+  /**
+   * Los slugs de «qué se llevan» (§4). **Sale acá y no al índice**: lo consume
+   * la página de detalle, que recibe una `ActividadPublica`; el índice recorta
+   * más a propósito y `incluye` no es eje de filtro ni frase de la tarjeta (ver
+   * el docblock del campo en `types/actividad.ts`).
+   */
+  incluye: string[];
   destacado: boolean;
   searchText: string;
   /**
@@ -607,6 +614,8 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   modalidad: a.modalidad,
   sede: sedePublica(a.sede),
   tags: a.tags ?? [],
+  // D-26 — `[]` para el documento anterior al campo.
+  incluye: a.incluye ?? [],
   destacado: a.destacado ?? false,
   searchText: a.searchText ?? '',
   /*

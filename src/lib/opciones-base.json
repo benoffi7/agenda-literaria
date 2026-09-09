@@ -118,5 +118,63 @@
       "aprobada": true
     }
   ],
-  "tags": []
+  "tags": [],
+  "incluye-actividad": [
+    {
+      "slug": "material-de-lectura",
+      "label": "Material de lectura",
+      "orden": 1,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "libro",
+      "label": "Libro",
+      "orden": 2,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "merienda",
+      "label": "Merienda",
+      "orden": 3,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "cafe",
+      "label": "Café",
+      "orden": 4,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "certificado",
+      "label": "Certificado",
+      "orden": 5,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "grabacion",
+      "label": "Grabación",
+      "orden": 6,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    },
+    {
+      "slug": "material-impreso",
+      "label": "Material impreso",
+      "orden": 7,
+      "fijo": true,
+      "usos": 0,
+      "aprobada": true
+    }
+  ]
 }

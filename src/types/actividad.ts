@@ -516,6 +516,27 @@ export interface Actividad {
    */
   publicadaAlgunaVez?: boolean;
   tags: string[];
+  /**
+   * **Qué se llevan** — material de lectura, libro, merienda, café, certificado.
+   * Taxonomía autogestionada `/opciones/incluye-actividad` (§4), pedido del
+   * dueño: «¿qué incluye el evento? (Material de lectura, libro, merienda, etc)»
+   * (`docs/prd/01-propuestas-de-organizadores.md` § 5).
+   *
+   * **No es `material`.** Ese es otra cosa: links de lectura con `entrega` y
+   * `publico`, pensados para el club de lectura. «Merienda» no entra ahí.
+   *
+   * **Opcional a propósito** (D-26): los documentos que ya están en producción
+   * no lo tienen, y el default de lectura es `[]` — «no se declaró nada», que es
+   * el comportamiento anterior. Nada nuevo lo escribe ausente.
+   *
+   * **Sale a la página de detalle y no al índice del listado**, así que no es eje
+   * de filtro ni frase de la tarjeta. Es una decisión de producto y no un olvido:
+   * un chip de filtro es una URL indexable (`?incluye=`) y no se mueve una vez
+   * indexada (trampa 10), y con cero actividades cargadas no hay con qué decidir
+   * si ese filtro sirve. De detalle a filtro el camino es aditivo; al revés rompe
+   * URLs. **Tampoco va al evento de Calendar** ni al texto para redes.
+   */
+  incluye?: string[];
   destacado: boolean;
   /** Normalizado — §6. Lo calcula el cliente al guardar. */
   searchText: string;
@@ -581,8 +602,17 @@ export interface ActividadForm
     | 'modalidad'
     | 'sede'
     | 'online'
+    | 'incluye'
   > {
   sesiones: SesionForm[];
+  /**
+   * **Obligatorio acá y opcional en el documento**, el mismo reparto que
+   * `comisiones` y `modalidades`: el estado del formulario siempre tiene la lista
+   * (vacía si no se declaró nada), y el `?` del documento existe solo para los
+   * que se escribieron antes del campo. Así ninguna pantalla tiene que
+   * preguntarse si el array está.
+   */
+  incluye: string[];
   /**
    * B-181 — las comisiones. **Obligatorio acá y opcional en el documento**, que
    * es el mismo reparto que `modalidades`: el estado del formulario siempre tiene
@@ -700,6 +730,41 @@ export interface DocOpciones {
   valores: ValorOpcion[];
 }
 
-/** Campos que usan el patrón de taxonomía autogestionada (§4). */
-export const CAMPOS_TAXONOMIA = ['arancel', 'tipo', 'barrio', 'plataforma', 'tags'] as const;
+/**
+ * Campos que usan el patrón de taxonomía autogestionada (§4).
+ *
+ * **El nombre del campo de taxonomía no es el del campo del documento**, y ya
+ * era así antes de `incluye`: `barrio` vive en `sede.barrio` y `plataforma` en
+ * `online.plataforma`. `incluye-actividad` agrega el caso inverso —el documento
+ * dice `incluye` y la taxonomía se llama distinto— y es a propósito: los PRDs
+ * traen `incluye-suscripcion` e `incluye-lugar`, y «merienda» y «proyector» no
+ * pertenecen a la misma lista (`docs/prd/README.md` § 3). Un vocabulario
+ * compartido rompería el orden por `usos`, que es lo que hace útil al
+ * desplegable.
+ */
+export const CAMPOS_TAXONOMIA = [
+  'arancel',
+  'tipo',
+  'barrio',
+  'plataforma',
+  'tags',
+  'incluye-actividad',
+] as const;
 export type CampoTaxonomia = (typeof CAMPOS_TAXONOMIA)[number];
+
+/**
+ * Las taxonomías **multivalor**: la actividad guarda un array de slugs, no uno.
+ *
+ * Se declara como lista y no se deduce, porque de esto dependen tres mecanismos
+ * que estaban escritos para `tags` y solo para `tags`: el buffer de etiquetas
+ * nuevas del formulario (D-02 — se persisten en el submit), el alta en lote
+ * (`upsertOpciones`) y el conteo de `usos` (§4.3). Con `incluye-actividad` son
+ * **dos**, así que el mecanismo se generalizó en vez de copiarse — que es la
+ * clase de B-72.
+ *
+ * El complemento son las de valor único (`CampoLabelUnico`, en
+ * `lib/formulario/etiquetas.ts`), y las dos listas juntas tienen que dar
+ * `CAMPOS_TAXONOMIA`: lo fija `tests/taxonomia.test.ts`.
+ */
+export const CAMPOS_MULTIVALOR = ['tags', 'incluye-actividad'] as const;
+export type CampoMultivalor = (typeof CAMPOS_MULTIVALOR)[number];

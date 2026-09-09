@@ -5,9 +5,19 @@ import { medirFuncion } from '@/lib/analytics';
 import { estaAprobada } from '@/lib/opciones';
 // §4.2 — mismas reglas que el desplegable, un solo módulo puro (B-72).
 import { pistaDeOpcion, resolverEtiqueta, sugerenciasPara } from '@/lib/taxonomia';
+import type { CampoMultivalor } from '@/types/actividad';
 
 interface Props {
-  /** uid de quien carga: decide qué tags pendientes puede elegir (§4.3). */
+  /**
+   * Qué taxonomía multivalor edita. Estaba fijo en `'tags'`; con
+   * `incluye-actividad` (B-830) son dos, y parametrizarlo fue más barato que un
+   * segundo widget con la misma lógica del §4.2 — que es lo que B-72 prohíbe.
+   *
+   * Decide de qué documento de `/opciones/*` salen las sugerencias **y** con qué
+   * `detalle` se mide la interacción, así que las dos cosas no pueden divergir.
+   */
+  campo: CampoMultivalor;
+  /** uid de quien carga: decide qué opciones pendientes puede elegir (§4.3). */
   uid: string;
   /** Slugs seleccionados. */
   value: string[];
@@ -17,15 +27,20 @@ interface Props {
 }
 
 /**
- * §4 — `tags` usa la misma taxonomía autogestionada que el resto, con el mismo
- * autocompletado. Los tags nuevos se registran en el submit.
+ * §4 — el editor de una taxonomía autogestionada **multivalor**, con el mismo
+ * autocompletado que el resto. Las opciones nuevas se registran en el submit
+ * (D-02).
+ *
+ * **Sirve para las dos multivalor** (`tags` e `incluye-actividad`) y por eso
+ * recibe `campo`: el nombre dice `Tags` porque nació con `tags` y renombrarlo
+ * costaría más de lo que aclara.
  *
  * No se unifica con `TaxonomiaSelect`: un `<select>` con "Otro" y un input de
  * chips son widgets distintos. Lo que se comparte es la lógica del §4.2
  * (`@/lib/taxonomia`), que es la que no puede divergir (B-72).
  */
-export function TagsInput({ uid, value, onChange, id }: Props) {
-  const { valores, elegibles } = useOpciones('tags', uid);
+export function TagsInput({ campo, uid, value, onChange, id }: Props) {
+  const { valores, elegibles } = useOpciones(campo, uid);
   const [texto, setTexto] = useState('');
   const [nuevos, setNuevos] = useState<Record<string, string>>({});
 
@@ -74,7 +89,7 @@ export function TagsInput({ uid, value, onChange, id }: Props) {
     // el vocabulario lo declara. Mismos eventos que en el desplegable; no hay
     // `taxonomia-otro` porque acá no hay modo "Otro" que abrir: el input es
     // siempre el de tipear.
-    medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', 'tags');
+    medirFuncion(coincidencia ? 'taxonomia-reusada' : 'taxonomia-nueva', campo);
     agregar(slug, labelNuevo);
   };
 
@@ -131,7 +146,7 @@ export function TagsInput({ uid, value, onChange, id }: Props) {
                 type="button"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-black/[0.04]"
                 onClick={() => {
-                  medirFuncion('taxonomia-sugerencia', 'tags');
+                  medirFuncion('taxonomia-sugerencia', campo);
                   agregar(v.slug);
                 }}
               >

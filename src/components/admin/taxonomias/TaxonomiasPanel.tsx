@@ -36,6 +36,7 @@ const TITULO: Record<CampoTaxonomia, string> = {
   barrio: 'Barrios',
   plataforma: 'Plataformas',
   tags: 'Etiquetas',
+  'incluye-actividad': 'Qué se llevan',
 };
 
 const DONDE: Record<CampoTaxonomia, string> = {
@@ -44,6 +45,8 @@ const DONDE: Record<CampoTaxonomia, string> = {
   barrio: 'Se elige en «Dónde», y viaja al evento del calendario.',
   plataforma: 'Se elige en «Dónde» cuando la actividad es virtual.',
   tags: 'Se escriben en «Opcional». Son los filtros del sitio público.',
+  'incluye-actividad':
+    'Se elige en «Qué es». Sale en la página de la actividad; no es filtro ni va al calendario.',
 };
 
 /**

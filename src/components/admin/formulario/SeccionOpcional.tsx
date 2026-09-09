@@ -9,10 +9,16 @@ import { Campo } from '@/components/campos/Campo';
 import { Seccion } from '@/components/campos/Seccion';
 import { TagsInput } from '@/components/campos/TagsInput';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
+import type { CampoMultivalor } from '@/types/actividad';
 
 interface Props extends PropsSeccion {
   /** Buffer `slug → label` de los tags tipeados que todavía no se guardaron (D-02). */
-  setTagsNuevos: (nuevos: Record<string, string>) => void;
+  /**
+   * B-830 — las etiquetas nuevas de una taxonomía multivalor, **con su campo**.
+   * Antes era solo el mapa de `tags`; ahora hay dos campos y quien recibe tiene
+   * que saber en qué documento de `/opciones/*` van.
+   */
+  anotarMultivalor: (campo: CampoMultivalor, nuevos: Record<string, string>) => void;
   /**
    * B-184 — sube cuando la barra manda a un campo de esta sección: arranca
    * cerrada, y un error adentro de un acordeón cerrado no se ve en ninguna
@@ -26,7 +32,7 @@ export function SeccionOpcional({
   set,
   errorDe,
   uid,
-  setTagsNuevos,
+  anotarMultivalor,
   pedidoDeApertura,
 }: Props) {
   return (
@@ -43,11 +49,12 @@ export function SeccionOpcional({
         <Campo label="Tags" htmlFor="act-tags" ayuda="Alimentan los filtros del sitio público.">
           <TagsInput
             id="act-tags"
+            campo="tags"
             uid={uid}
             value={form.tags}
             onChange={(slugs, nuevos) => {
               set('tags', slugs);
-              setTagsNuevos(nuevos);
+              anotarMultivalor('tags', nuevos);
             }}
           />
         </Campo>

@@ -182,5 +182,6 @@ export const formVacio = (): ActividadForm => ({
   difusion: { arrobar: [], notas: '' },
   estado: 'borrador',
   tags: [],
+  incluye: [],
   destacado: false,
 });

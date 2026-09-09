@@ -486,6 +486,10 @@ export const actividadFormSchema = z
 
     estado: z.enum(ESTADOS),
     tags: z.array(texto).default([]),
+    // Slugs de `/opciones/incluye-actividad` (§4). Mismo tratamiento que `tags`:
+    // sin tope de cantidad —el vocabulario base son siete y el «Otro» lo escribe
+    // un admin— y sin obligatoriedad: una actividad puede no incluir nada.
+    incluye: z.array(texto).default([]),
     destacado: z.boolean().default(false),
   })
   /*

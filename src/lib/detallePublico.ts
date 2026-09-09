@@ -451,6 +451,11 @@ export interface DetallePublico {
   material: { tiene: boolean; items: MaterialDeDetalle[] };
   /** Las **etiquetas** de los temas. El slug no se muestra ni linkea a nada todavía. */
   tags: string[];
+  /**
+   * «Qué se llevan», **ya resuelto a etiquetas**: la página muestra «Merienda» y
+   * no `merienda`, igual que `tags`. Vacío si no se declaró nada.
+   */
+  incluye: string[];
 
   /**
    * **Lo primero que la página dice, o `null` si no hay nada que avisar** — B-253.
@@ -1298,6 +1303,10 @@ export const detalleDeActividad = (
       items: a.material.items.map(itemDeDetalle),
     },
     tags: a.tags.map((t) => etiquetaDe(etiquetas, 'tag', t)),
+    // Mismo criterio que `tags`: sale la **etiqueta** y no el slug. El eje se
+    // llama `incluye-actividad` porque así se llama la taxonomía (§4.1), aunque
+    // el campo del documento sea `incluye`.
+    incluye: a.incluye.map((s) => etiquetaDe(etiquetas, 'incluye-actividad', s)),
 
     aviso: avisoDeEstado(cancelada, todoCancelado, yaPaso, encuentros.length > 0, inscripcion),
 

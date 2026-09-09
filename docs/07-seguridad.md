@@ -179,6 +179,17 @@ no crece con esta página.
 | `ValorOpcion.huellaCreador` | **el que menos se ve venir.** D-27 lo hizo una huella de 8 hex y no un uid justamente porque `/opciones/*` es de lectura pública — pero «no es un uid» no es «es publicable»: sigue siendo un identificador estable de una persona, y §5.1 dice que del creador no sale nada (B-212) | los cuatro de abajo |
 | `ValorOpcion.orden` / `fijo` / `usos` / `aprobada` | son de gestión del panel: `orden` es del desplegable, `fijo` dice si la UI puede borrarla, `aprobada` es estado de moderación, y `usos` publicado dibuja qué carga esta gente y con qué frecuencia | los cuatro de abajo |
 
+**`incluye` sí sale, y solo a dos de las dieciocho** (B-830, **D-580**). Va a la
+proyección —de donde lo lee la **página de detalle**, que muestra la etiqueta y no
+el slug— y a la analítica del panel como **contador**. Y **no** va al índice del
+listado, a la tarjeta, al evento de Calendar, al texto para redes ni al JSON-LD:
+las cinco ausencias están decididas y con su motivo en D-580, no son omisiones.
+La que más conviene tener presente es la del índice: meterlo ahí sería empezar a
+servir en lote un dato de ficha —la salida más barata de cosechar, D-129— y
+compromete la forma de una URL (`?incluye=`) el día que se vuelva chip, que es lo
+que no se mueve una vez indexada (trampa 10). El texto para redes lo tiene cerrado
+**por tipo**: `ActividadParaRedes` es un `Pick`.
+
 **`arancel.monto` sí sale, y es una decisión explícita** (B-114, **D-500**). El
 `arancel` dejó de proyectarse entero: `toPublic` lo **enumera campo por campo**,
 porque el passthrough tipado (`Actividad['arancel']`) era un agujero latente —

@@ -256,6 +256,11 @@ export interface QueCopiar {
   inscripcion: boolean;
   material: boolean;
   tags: boolean;
+  /**
+   * «Qué se llevan» (§4, B-830). Nace prendida por el mismo motivo que `tags`:
+   * la edición siguiente del mismo taller incluye lo mismo.
+   */
+  incluye: boolean;
   /** Notas internas y cuentas a arrobar. Nace apagada. */
   difusion: boolean;
   /**
@@ -288,6 +293,7 @@ export const COPIA_POR_DEFECTO: QueCopiar = {
   inscripcion: true,
   material: true,
   tags: true,
+  incluye: true,
   difusion: false,
   imagenesPropias: false,
 };
@@ -359,6 +365,14 @@ export const CASILLAS_COPIA: readonly CasillaCopia[] = [
     label: 'Las etiquetas',
     ayuda: 'Casi siempre son las mismas: es el mismo tipo de actividad.',
     aplica: (o) => o.tags.length > 0,
+  },
+  {
+    clave: 'incluye',
+    label: 'Qué se llevan',
+    ayuda: 'El material, la merienda, el certificado. Casi siempre es lo mismo en la edición siguiente.',
+    // Como `tags` y `material`: la fila aparece solo si hay algo que copiar. Una
+    // casilla para una lista vacía es ruido en un modal que ya tiene siete.
+    aplica: (o) => o.incluye.length > 0,
   },
   {
     clave: 'difusion',
@@ -542,6 +556,7 @@ export const duplicarActividadForm = (
       ? { arrobar: [...origen.difusion.arrobar], notas: origen.difusion.notas }
       : { arrobar: [], notas: '' },
     tags: copiar.tags ? [...origen.tags] : [],
+    incluye: copiar.incluye ? [...origen.incluye] : [],
 
     inscripcion: {
       ...origen.inscripcion,

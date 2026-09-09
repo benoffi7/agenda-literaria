@@ -282,6 +282,12 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   actividad: cambiarlo rompe la URL y el SEO (trampa 10).
 - Elegir **club de lectura** activa "es ciclo" y "tiene material", porque es
   casi siempre así.
+- **«Qué se llevan»** (`incluye`, B-830) está en «Qué es», al lado del flyer, y
+  **no en «Opcional»**: es información que alguien necesita para decidir si va, y
+  un campo en una sección cerrada por defecto es un campo que queda vacío — la
+  lección de B-264. Es el mismo widget de chips que los tags, con siete opciones
+  base y «Otro». Sale a la página de la actividad y **a ninguna otra salida**:
+  ni al listado, ni al calendario, ni al texto para redes (**D-580**).
 - `tipo` y `plataforma` **preseleccionan la primera opción**. `arancel` **no**:
   obliga a elegir, porque su default sería "Gratis" y un taller pago sin
   corregir se publicaría como gratuito (D-16). `barrio` y `tags` arrancan

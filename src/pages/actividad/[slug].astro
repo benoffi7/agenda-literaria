@@ -746,6 +746,30 @@ const gruposDeEncuentros =
           )
         }
 
+        {/*
+          B-830 — «Qué se llevan». Va **después de «Material»** y antes de
+          «Quién lo da»: es información práctica de la misma familia que el
+          material, y las dos se leen juntas («la lectura se manda antes, la
+          merienda está incluida»).
+
+          Es una lista de etiquetas y no una tabla: los valores salen de una
+          taxonomía (§4) y no llevan ningún dato propio al lado. El view-model ya
+          trae la **etiqueta** resuelta —«Merienda», no `merienda`—, así que la
+          plantilla no resuelve nada (D-140).
+        */}
+        {
+          detalle.incluye.length > 0 && (
+            <section aria-labelledby="incluye" class="mt-12">
+              <h2 id="incluye" class={`regla-gruesa pb-2 ${claseTituloSeccion}`}>Qué se llevan</h2>
+              <ul class="mt-3 flex flex-wrap gap-2">
+                {detalle.incluye.map((i) => (
+                  <li class="label-caps border border-borde px-2 py-1 text-super">{i}</li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
         {
           detalle.tallerista && (
             <section aria-labelledby="quien" class="mt-12">

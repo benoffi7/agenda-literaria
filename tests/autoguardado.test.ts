@@ -851,6 +851,9 @@ describe('la versión del formato y la forma del formulario no derivan por separ
         'esCiclo',
         'estado',
         'imagenes',
+        // `incluye` es un array: entra como hoja. Aditivo, así que la versión no
+        // subió — ver el bloque de B-830 más abajo.
+        'incluye',
         'inscripcion.cierra',
         'inscripcion.completo',
         'inscripcion.cupo',
@@ -941,6 +944,17 @@ describe('la versión del formato y la forma del formulario no derivan por separ
      *
      * Nada se recupera con un valor equivocado, que es el criterio del bump.
      * Subirla tiraría todo borrador en curso a cambio de nada.
+     */
+    /*
+     * **B-830 la puso roja y NO la subió.** `incluye` es la cuarta de la misma
+     * familia —`libro`, `inscripcion.completo`, `arancel.monto`, `comisiones`—:
+     * **aditivo, con el default más benigno posible**.
+     *
+     * Un borrador anterior no trae la clave, `podarConMolde` no la copia y la
+     * mezcla la completa con el `[]` de `formVacio()` — o sea «no se declaró qué
+     * incluye», que es lo que era cuando se guardó y lo que son todas las
+     * actividades de hoy. No hay forma nueva que haga que lo viejo **parezca**
+     * bueno, que es el criterio del bump y lo que sí pasaba con B-167 y B-224.
      */
     expect(VERSION_BORRADOR).toBe(3);
   });

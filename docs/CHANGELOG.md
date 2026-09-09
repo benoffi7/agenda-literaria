@@ -2,6 +2,82 @@
 
 ## Sin publicar
 
+- **«Qué se llevan»: el campo `incluye`, de punta a punta** — **B-830** y
+  **D-580**, primer paso de la tajada 1. Pedido del dueño para el formulario de
+  propuestas y **subido al modelo de actividad**, porque si se muestra en la ficha
+  pública tiene que existir en `/actividades`
+  ([`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md)
+  § 5). Hecho con el skill `/campo-nuevo`, que es para lo que existe.
+
+  **No es `material`, y esa distinción es por qué hace falta el campo.**
+  `material` son links de lectura con su forma de entrega, pensados para el club
+  de lectura; «merienda» no entra ahí. Lo más cerca que había era eso, o un párrafo
+  en la descripción, donde nada lo puede leer.
+
+  Va como **taxonomía autogestionada** (§4), `/opciones/incluye-actividad`, con
+  siete opciones base fijas: material de lectura, libro, merienda, café,
+  certificado, grabación, material impreso. En el panel está en «Qué es» y no en
+  «Opcional», por lo mismo que el flyer en B-264: es información que alguien
+  necesita para decidir si va, y un campo en una sección cerrada por defecto es un
+  campo que queda vacío.
+
+  **Sale a dos de las dieciocho salidas, y las cinco ausencias están decididas**
+  (D-580). Va a la proyección —de donde lo lee la página de detalle, que muestra
+  «Merienda» y no `merienda`— y a la analítica del panel como **contador, nunca los
+  slugs**. No va al índice del listado, a la tarjeta, al evento de Calendar, al
+  texto para redes ni al JSON-LD.
+
+  La ausencia que más costó decidir es la del **índice**, porque es la que decide
+  si `incluye` es eje de filtro: un chip trae una **URL** (`?incluye=merienda`) y
+  una URL indexada no se mueve (trampa 10), así que elegir su forma hoy es
+  comprometerse antes de tener con qué decidir — con cero actividades cargadas no
+  hay manera de saber si «solo las que incluyen merienda» es un filtro que alguien
+  va a usar o un séptimo chip que angosta los seis que sí sirven. Y el camino tiene
+  una sola dirección barata: de ficha a filtro es aditivo; de filtro a ficha hay
+  que retirar un parámetro que Google ya indexó.
+
+  La del **calendario** tiene además un motivo de forma: la descripción entra al
+  payload que compara la guarda anti-loop, así que un cambio en `incluye`
+  reescribiría los N eventos de un ciclo (D-07, trampa 9) y notificaría a toda la
+  gente suscripta por un dato que no cambia el cuándo ni el dónde. Y la del
+  **posteo** la garantiza el tipo: `ActividadParaRedes` es un `Pick`.
+
+  **Y sale un mecanismo generalizado, que es lo que este cambio deja para los
+  PRDs.** `incluye-actividad` es la **segunda** taxonomía multivalor, y el buffer
+  de etiquetas nuevas del formulario (D-02 — se persisten en el submit) estaba
+  escrito para `tags` y solo para `tags`, en tres lugares: el estado del
+  formulario, el alta en lote y el conteo de `usos`. Ahora es uno por campo
+  (`MultivalorNuevos`) y `TagsInput` recibe `campo` en vez de tenerlo fijo. Con
+  dos consumidores era el momento más barato para hacerlo, y los PRDs traen
+  `incluye-suscripcion` e `incluye-lugar`. Es la clase de B-72: un segundo widget
+  con la misma lógica del §4.2 es lo que ese ítem prohíbe.
+
+  **Lo que los tests existentes agarraron solos, que es la mitad del valor de
+  tenerlos:** el barrido de salidas públicas exigió el centinela y **la decisión**
+  de cada celda; el fixture, que el campo esté; el historial, un nombre de
+  pantalla; la barra de campos faltantes, etiqueta y sección; el autoguardado,
+  decidir si la versión del borrador sube (**no**: es aditivo con el default más
+  benigno, como `libro`, `arancel.monto` y `comisiones`); y `labelsDeOpciones`
+  dejó de enumerar «los cinco campos» para derivarlos de la constante.
+
+  **Y uno que faltaba y apareció al hacerlo:** `functions/etiquetas.js` decía que
+  su lista de taxonomías era «una **copia** de `CAMPOS_TAXONOMIA`» y que la ataba
+  un test — el test no existía, y con la sexta taxonomía el comentario pasó a
+  afirmar algo falso sin que nada fallara. Ahora es explícitamente un
+  **subconjunto** (`incluye-actividad` no sale al evento, así que pedir sus
+  etiquetas sería una lectura de Firestore por invocación para un dato que
+  `construirDescripcion` nunca mira) y hay un caso en `clases-de-bug.test.ts` que
+  lo ata en las dos direcciones: ningún campo de la Function puede faltar en el
+  modelo, y el que falte en la Function tiene que estar declarado en
+  `TAXONOMIAS_FUERA_DEL_EVENTO`. Verificado por mutación.
+
+  `tests/incluye.test.ts` reúne las cuatro respuestas del paso 0 del skill que no
+  tienen dueño en otro archivo, con el molde de `libro-presentado.test.ts`: 23
+  casos, con el default de lectura, la ida y vuelta, el schema, las cinco
+  ausencias con su control positivo, duplicar y **que la plantilla lo pinte** —el
+  view-model puede traer el campo y la página no mostrarlo, que es código muerto
+  que ningún barrido detecta (la lección de B-341).
+
 - **App Check cableado, con reCAPTCHA Enterprise** — **B-836a**, y salió del
   orden previsto porque el dueño creó la clave en el momento. El paso anterior
   había dejado App Check documentado y pendiente de consola; con la clave y la app

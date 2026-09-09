@@ -51,11 +51,12 @@ import {
   recordarLabel,
   type CampoLabelUnico,
   type LabelNuevo,
+  type MultivalorNuevos,
 } from '@/lib/formulario/etiquetas';
 import { guardarActividad } from '@/lib/formulario/guardar';
 import { faltaParaPublicar } from '@/lib/schema';
 import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
-import type { ActividadConId, ActividadForm } from '@/types/actividad';
+import type { ActividadConId, ActividadForm, CampoMultivalor } from '@/types/actividad';
 
 interface Props {
   uid: string;
@@ -165,7 +166,12 @@ export function ActividadFormulario({
    * debería dejar basura en la taxonomía (§4.3).
    */
   const [labelsNuevos, setLabelsNuevos] = useState<LabelNuevo[]>([]);
-  const [tagsNuevos, setTagsNuevos] = useState<Record<string, string>>({});
+  /**
+   * B-830 — el buffer de las taxonomías **multivalor**, una entrada por campo.
+   * Era el mapa de `tags` a secas; con `incluye-actividad` son dos, y el
+   * mecanismo se generalizó en vez de copiarse (la clase de B-72).
+   */
+  const [multivalorNuevos, setMultivalorNuevos] = useState<MultivalorNuevos>({});
 
   const set = <K extends keyof ActividadForm>(k: K, v: ActividadForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -194,6 +200,9 @@ export function ActividadFormulario({
 
   const anotarLabel = (campo: CampoLabelUnico, label?: string) =>
     setLabelsNuevos((prev) => recordarLabel(prev, campo, label));
+
+  const anotarMultivalor = (campo: CampoMultivalor, nuevos: Record<string, string>) =>
+    setMultivalorNuevos((prev) => ({ ...prev, [campo]: nuevos }));
 
   /** Las cascadas del modelo viven en `lib/formulario/cascadas.ts` (B-70). */
   const conTitulo = (titulo: string) =>
@@ -364,8 +373,8 @@ export function ActividadFormulario({
    * va a decir "Con beca parcial".
    */
   const labelsPendientes = useMemo(
-    () => labelsPendientesDe(labelsNuevos, tagsNuevos),
-    [labelsNuevos, tagsNuevos],
+    () => labelsPendientesDe(labelsNuevos, multivalorNuevos),
+    [labelsNuevos, multivalorNuevos],
   );
 
   /**
@@ -406,9 +415,13 @@ export function ActividadFormulario({
             online: m.online ? { plataforma: m.online.plataforma } : null,
           })),
           tags: inicial.tags,
+          // B-830 — hace falta acá por lo mismo que `tags`: sin el «antes»,
+          // `usosAContar` volvería a sumar en cada guardado lo que ya estaba,
+          // que es exactamente lo que B-340 vino a arreglar.
+          incluye: inicial.incluye,
         },
         labelsNuevos,
-        tagsNuevos,
+        multivalorNuevos,
       });
 
       if (r.estado === 'invalido') {
@@ -549,6 +562,7 @@ export function ActividadFormulario({
               conTitulo={conTitulo}
               conTipo={conTipo}
               anotarLabel={anotarLabel}
+              anotarMultivalor={anotarMultivalor}
               slugBloqueado={slugBloqueado}
             />
           ),
@@ -599,7 +613,7 @@ export function ActividadFormulario({
               set={set}
               errorDe={errorDe}
               uid={uid}
-              setTagsNuevos={setTagsNuevos}
+              anotarMultivalor={anotarMultivalor}
               pedidoDeApertura={aperturas['opcional']}
             />
           ),

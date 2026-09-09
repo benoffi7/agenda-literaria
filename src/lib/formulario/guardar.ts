@@ -16,8 +16,9 @@ import { usosAContar } from '@/lib/formulario/etiquetas';
 import { registrarUsos, upsertOpcion, upsertOpciones } from '@/lib/opciones';
 import { actividadFormSchema } from '@/lib/schema';
 import { slugify } from '@/lib/slugify';
+import { CAMPOS_MULTIVALOR } from '@/types/actividad';
 import type { ActividadForm, CampoTaxonomia } from '@/types/actividad';
-import type { LabelNuevo } from '@/lib/formulario/etiquetas';
+import type { LabelNuevo, MultivalorNuevos } from '@/lib/formulario/etiquetas';
 
 /** Lo que el schema rechazó, en la forma en que el formulario lo muestra. */
 export interface IssueDeForm {
@@ -51,11 +52,17 @@ export interface EntradaGuardado {
       online: { plataforma: string } | null;
     }[];
     tags: readonly string[];
+    incluye?: readonly string[];
   };
   /** Etiquetas tipeadas en "Otro" que todavía no están en `/opciones/*` (D-02). */
   labelsNuevos: readonly LabelNuevo[];
-  /** Ídem para tags, que son multivalor: `slug → label`. */
-  tagsNuevos: Record<string, string>;
+  /**
+   * Ídem para las taxonomías **multivalor**: `campo → slug → label`.
+   *
+   * B-830 — era el buffer de `tags` a secas. Con `incluye-actividad` son dos, y
+   * generalizarlo fue más barato que copiar el mecanismo (la clase de B-72).
+   */
+  multivalorNuevos: MultivalorNuevos;
 }
 
 export type ResultadoGuardado =
@@ -110,7 +117,8 @@ export const guardarActividad = async (
   entrada: EntradaGuardado,
   puertos: PuertosGuardado = puertosFirestore,
 ): Promise<ResultadoGuardado> => {
-  const { form, uid, estadoDestino, idActual, labelsNuevos, tagsNuevos, anterior } = entrada;
+  const { form, uid, estadoDestino, idActual, labelsNuevos, multivalorNuevos, anterior } =
+    entrada;
   // Desestructurados a propósito: el chequeo de clase de B-71
   // (`tests/clases-de-bug.test.ts`) busca las dos escrituras **por nombre en
   // todo `src/`** —el alta de opciones y la de la actividad, cada una precedida
@@ -167,7 +175,18 @@ export const guardarActividad = async (
     // escrita, y reportar error haría que el segundo intento choque contra su
     // propio slug (`slugDisponible` ya lo ve tomado) sobre un formulario que
     // en realidad se guardó bien.
-    const labelsTags = guardado.tags.map((s) => tagsNuevos[s]).filter(Boolean) as string[];
+    /*
+     * B-830 — las etiquetas nuevas de cada taxonomía multivalor, campo por
+     * campo. Era una sola lista (la de `tags`); con dos campos hay que saber
+     * **de cuál** es cada label, porque `upsertOpciones` escribe en el documento
+     * de ese campo y meter una en el otro crearía la opción en la lista
+     * equivocada.
+     */
+    const labelsPorCampo = CAMPOS_MULTIVALOR.map((campo) => {
+      const nuevos = multivalorNuevos[campo] ?? {};
+      const elegidos = campo === 'tags' ? guardado.tags : guardado.incluye;
+      return [campo, elegidos.map((s) => nuevos[s]).filter(Boolean) as string[]] as const;
+    }).filter(([, labels]) => labels.length > 0);
 
     /*
      * B-177 — qué etiquetas quedaron sin registrar, no si quedó alguna.
@@ -195,18 +214,22 @@ export const guardarActividad = async (
     const clave = (campo: string, label: string) => `${campo}\0${label}`;
     const restantes = new Map<string, string>([
       ...labelsNuevos.map((l) => [clave(l.campo, l.label), l.label] as const),
-      ...labelsTags.map((l) => [clave('tags', l), l] as const),
+      ...labelsPorCampo.flatMap(([campo, labels]) =>
+        labels.map((l) => [clave(campo, l), l] as const),
+      ),
     ]);
     try {
       for (const { campo, label } of labelsNuevos) {
         await upsertOpcion(campo, label, uid);
         restantes.delete(clave(campo, label));
       }
-      if (labelsTags.length) {
-        // Una sola llamada para todos los tags, así que es todo o nada: si
-        // `upsertOpciones` falla, ninguno quedó registrado.
-        await upsertOpciones('tags', labelsTags, uid);
-        for (const l of labelsTags) restantes.delete(clave('tags', l));
+      for (const [campo, labels] of labelsPorCampo) {
+        // Una sola llamada por campo, así que es todo o nada **dentro** del
+        // campo: si `upsertOpciones` falla, ninguna de las de ese campo quedó
+        // registrada, y las del otro campo ya escritas siguen escritas — que es
+        // lo que la clave `campo|label` de `restantes` sabe distinguir.
+        await upsertOpciones(campo, labels, uid);
+        for (const l of labels) restantes.delete(clave(campo, l));
       }
     } catch {
       // Se sale con lo que quedó en `restantes`. No se reintenta acá: la
@@ -229,7 +252,7 @@ export const guardarActividad = async (
      */
     try {
       for (const [campo, slugs] of Object.entries(
-        usosAContar(guardado, labelsNuevos, tagsNuevos, anterior),
+        usosAContar(guardado, labelsNuevos, multivalorNuevos, anterior),
       ) as [CampoTaxonomia, string[]][]) {
         await registrarUsos(campo, slugs);
       }

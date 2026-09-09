@@ -802,6 +802,9 @@ página no baja el índice.
 │  · La guía de lectura (se manda al inscribirte)          │
 │  · Crónica de Boedo → link  (los que son públicos)       │
 │                                                          │
+│ QUÉ SE LLEVAN                                            │  ← solo si incluye.length (B-830)
+│  [MERIENDA] [MATERIAL DE LECTURA]                        │
+│                                                          │
 │ CÓMO LLEGAR                                              │  ← solo si presencial
 │  Aráoz 32 · "timbre del fondo" · [ver en el mapa]        │
 │                                                          │

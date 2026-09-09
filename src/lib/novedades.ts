@@ -61,6 +61,18 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'que-se-llevan',
+    fecha: '2026-09-09',
+    version: '1.10.0',
+    titulo: 'Podés decir qué se llevan: material, merienda, certificado',
+    detalle:
+      'En «Qué es» hay un campo nuevo, «Qué se llevan», con las opciones más comunes ya ' +
+      'cargadas: material de lectura, libro, merienda, café, certificado, grabación, material ' +
+      'impreso. Si falta alguna, escribila y queda para la próxima. Sale en la página de la ' +
+      'actividad, debajo del material — no en el calendario ni en el texto para redes.',
+    donde: 'Formulario → «Qué es», abajo de la descripción.',
+  },
+  {
     id: 'vista-pc-o-celular',
     fecha: '2026-09-08',
     version: '1.10.0',

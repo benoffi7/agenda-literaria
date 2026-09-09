@@ -384,9 +384,16 @@ describe('labelsPendientesDe — lo que la vista previa necesita', () => {
     });
   });
 
-  it('suma los tags, que son multivalor', () => {
-    const mapa = labelsPendientesDe([], { 'micro-ficcion': ' Micro ficción ' });
+  it('suma las multivalor, campo por campo', () => {
+    // B-830 — el buffer pasó de ser el de `tags` a ser uno por campo, porque
+    // `incluye-actividad` es la segunda multivalor. Se piden las dos juntas: un
+    // caso que mira una sola pasaría con el mecanismo copiado a medias.
+    const mapa = labelsPendientesDe([], {
+      tags: { 'micro-ficcion': ' Micro ficción ' },
+      'incluye-actividad': { 'vino-de-honor': ' Vino de honor ' },
+    });
     expect(mapa.tags).toEqual({ 'micro-ficcion': 'Micro ficción' });
+    expect(mapa['incluye-actividad']).toEqual({ 'vino-de-honor': 'Vino de honor' });
   });
 
   it('sin etiquetas pendientes el mapa está vacío', () => {
@@ -418,7 +425,7 @@ const entrada = (over: Partial<Parameters<typeof guardarActividad>[0]> = {}) => 
   form: formularioLleno(),
   uid: 'uid-1',
   labelsNuevos: [{ campo: 'arancel' as const, label: 'Con beca parcial' }],
-  tagsNuevos: {},
+  multivalorNuevos: {},
   ...over,
 });
 
@@ -502,7 +509,7 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
   it('el orden es: chequear slug, escribir la actividad, registrar etiquetas', async () => {
     const { puertos, llamadas } = puertosFalsos();
     await guardarActividad(
-      entrada({ tagsNuevos: { 'micro-ficcion': 'Micro ficción' }, form: formularioLleno({ tags: ['micro-ficcion'] }) }),
+      entrada({ multivalorNuevos: { tags: { 'micro-ficcion': 'Micro ficción' } }, form: formularioLleno({ tags: ['micro-ficcion'] }) }),
       puertos,
     );
     // La secuencia completa, y no solo "la actividad va primero": el orden
@@ -523,6 +530,10 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       'registrarUsos:tipo:taller',
       'registrarUsos:barrio:villa-crespo',
       'registrarUsos:plataforma:zoom',
+      // B-830 — la segunda taxonomía multivalor. El fixture la trae cargada, así
+      // que su uso se cuenta como el de cualquier otra; lo que importa acá es que
+      // va **en el mismo tramo final** y no antes de sembrar (B-168, D-103).
+      'registrarUsos:incluye-actividad:merienda,material-de-lectura',
     ]);
   });
 
@@ -539,7 +550,7 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
         // campo cuyo valor guardado es otro— la resta no tiene nada que restar
         // y el chequeo pasaría sin haber mirado el caso.
         labelsNuevos: [{ campo: 'arancel' as const, label: 'Con beca parcial' }],
-        tagsNuevos: { 'micro-ficcion': 'Micro ficción' },
+        multivalorNuevos: { tags: { 'micro-ficcion': 'Micro ficción' } },
         form: formularioLleno({
           arancel: { tipo: 'con-beca-parcial', notas: '' },
           tags: ['micro-ficcion', 'taller-largo'],
@@ -570,6 +581,11 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
       arancel: { tipo: 'a-la-gorra' },
       modalidades: [{ sede: { barrio: 'villa-crespo' }, online: { plataforma: 'zoom' } }],
       tags: ['narrativa'],
+      // B-830 — los mismos que trae `formularioLleno`, para que el caso
+      // «integrado» de más abajo pueda afirmar que un guardado sin cambios no
+      // cuenta nada. Con esto desalineado, `incluye` se contaría siempre y el
+      // caso mediría lo contrario de lo que dice.
+      incluye: ['merienda', 'material-de-lectura'],
       ...over,
     });
 
@@ -580,6 +596,7 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
         barrio: ['villa-crespo'],
         plataforma: ['zoom'],
         tags: ['narrativa'],
+        'incluye-actividad': ['merienda', 'material-de-lectura'],
       });
     });
 
@@ -641,8 +658,9 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
      * que todo otro lector del documento crudo (`actividades.ts`,
      * `toPublic.ts`) se defiende con `?? []`. Sin el default, un `anterior`
      * sin uno de los dos campos tira un `TypeError` que el `catch` silencioso
-     * de `guardar.ts` traga — y `usos` deja de contarse para las CINCO
-     * taxonomías, no solo la que faltaba, sin ningún síntoma en pantalla.
+     * de `guardar.ts` traga — y `usos` deja de contarse para **todas** las
+     * taxonomías, no solo la que faltaba, sin ningún síntoma en pantalla. Eran
+     * cinco cuando se escribió; son seis desde `incluye-actividad`.
      *
      * MUTACIÓN PROBADA: sacar cualquiera de los dos `?? []` de `elegidosDe`
      * (`etiquetas.ts`) y correr este test — tira antes de llegar al `expect`.
@@ -850,7 +868,7 @@ describe('B-71 — la actividad se escribe antes que las etiquetas', () => {
           entrada({
             form: formularioLleno({ tags: ['poesia-contemporanea'] }),
             labelsNuevos: [],
-            tagsNuevos: { 'poesia-contemporanea': 'Poesía contemporánea' },
+            multivalorNuevos: { tags: { 'poesia-contemporanea': 'Poesía contemporánea' } },
           }),
           puertos,
         ),

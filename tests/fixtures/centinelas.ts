@@ -168,6 +168,12 @@ const RUTAS = [
   'difusion.notas',
 
   'tags',
+  // B-830 — «qué se llevan». Guarda **slugs** de `/opciones/incluye-actividad`,
+  // igual que `tags`, así que el par a barrer es el mismo: la página de detalle
+  // publica la **etiqueta** (`labels.incluye`) y el slug crudo no sale a ninguna
+  // parte. El schema no valida forma de slug acá —tampoco en `tags`—, así que el
+  // centinela puede ser el de siempre.
+  'incluye',
 
   // Auditoría: uids (§5.1).
   'createdBy',
@@ -180,6 +186,7 @@ const RUTAS = [
   'labels.plataforma',
   'labels.arancel',
   'labels.tags',
+  'labels.incluye',
 
   // B-212 — el documento de `/opciones/{campo}` es una salida pública propia
   // desde que existe `opcionesPublicas`, y hasta ahora `ValorOpcion` estaba en
@@ -449,6 +456,7 @@ export const actividadCentinela = (over: Partial<Actividad> = {}): Actividad => 
    */
   publicadaAlgunaVez: true,
   tags: [CENTINELA.tags],
+  incluye: [CENTINELA.incluye],
   destacado: true,
   searchText: CENTINELA.searchText,
   createdAt: ts('2026-08-01T00:00:00Z'),
@@ -540,6 +548,8 @@ export const LABELS_CENTINELA: Record<string, Record<string, string>> = {
   plataforma: { [CENTINELA['online.plataforma']]: CENTINELA['labels.plataforma'] },
   arancel: { [CENTINELA['arancel.tipo']]: CENTINELA['labels.arancel'] },
   tags: { [CENTINELA.tags]: CENTINELA['labels.tags'] },
+  // El nombre de la taxonomía, que no es el del campo del documento (§4.1).
+  'incluye-actividad': { [CENTINELA.incluye]: CENTINELA['labels.incluye'] },
 };
 
 /**

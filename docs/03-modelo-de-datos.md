@@ -15,7 +15,14 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
-`tags`.
+`tags`, `incluye-actividad`.
+
+**El nombre de la taxonomía no siempre es el del campo del documento**, y ya era
+así antes de la sexta: `barrio` vive en `sede.barrio` y `plataforma` en
+`online.plataforma`. `incluye-actividad` agrega el caso inverso —el documento dice
+`incluye`— y es a propósito: los PRDs traen `incluye-suscripcion` e
+`incluye-lugar`, y «merienda» y «proyector» no pertenecen a la misma lista
+([`prd/README.md`](prd/README.md) § 3).
 
 ### `/sistema/rebuild`
 
@@ -430,6 +437,44 @@ Tres cosas que no se adivinan del tipo:
 El default de lectura es `libroVacio()`, **una sola fábrica** para el formulario
 nuevo, la lectura de todo documento anterior y el molde con el que el autoguardado
 poda lo recuperado. Es determinístico a propósito: la lección de D-125. Ver **D-126**.
+
+## `incluye` — qué se llevan (B-830)
+
+`incluye: string[]`, slugs de `/opciones/incluye-actividad`. Pedido del dueño
+para el formulario de propuestas y subido al modelo de actividad, porque si se
+muestra en la ficha pública tiene que existir en `/actividades`
+([`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md)
+§ 5). Vocabulario base, las siete `fijo: true`: `material-de-lectura`, `libro`,
+`merienda`, `cafe`, `certificado`, `grabacion`, `material-impreso`.
+
+**No es `material`, y la distinción es lo que hace falta el campo.** `material`
+son links de lectura con su `entrega` y su `publico`, pensados para el club de
+lectura; «merienda» no entra ahí. Lo más cerca que había era eso, o un párrafo en
+la descripción, donde nada lo puede leer.
+
+Cuatro cosas que no se adivinan del tipo:
+
+- **Sale a la página de detalle y a ninguna otra salida.** Está en `toPublic`
+  —porque el detalle recibe una `ActividadPublica`— y **no** en el índice del
+  listado: no es eje de filtro ni frase de la tarjeta. Tampoco va al evento de
+  Calendar ni al texto para redes. Ver **D-580**, que es donde está el motivo de
+  las dos ausencias que podrían parecer olvidos.
+- **La página muestra la etiqueta, no el slug** («Merienda», no `merienda`), y la
+  resuelve `detallePublico.ts` con el mismo `etiquetaDe` que `tags`.
+- **No entra al `searchText`** (§6). Buscar «merienda» y que aparezcan los
+  talleres que la incluyen es plausible, y hoy no se puede: el `searchText` se
+  arma en el cliente al guardar y ahí solo hay slugs, no etiquetas. Queda anotado
+  como lo que es —una ausencia, no una decisión cerrada— porque resolverlo pide
+  meter las etiquetas al armado, que es otro cambio.
+- **Es la segunda taxonomía multivalor**, y por eso el buffer de etiquetas nuevas
+  del formulario dejó de ser el de `tags` para ser uno por campo
+  (`MultivalorNuevos`). `tests/taxonomia.test.ts` exige que toda taxonomía esté en
+  una de las dos familias: la que quede afuera tiene un «Otro» que funciona en
+  pantalla y una opción que nunca se da de alta.
+
+Default de lectura `[]`, y el tipo lo declara opcional (`incluye?: string[]`) para
+que el compilador obligue a decidirlo en cada lectura: los documentos anteriores a
+B-830 no tienen la clave (**D-26**). Nada lo escribe solo, y no hay backfill.
 
 ## `publicadaAlgunaVez` — «estuvo publicada alguna vez» (B-285)
 

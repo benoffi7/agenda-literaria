@@ -213,6 +213,10 @@ export const CAMPOS: Readonly<Record<string, CampoUI>> = {
   // ── Opcional ──
   tags: { etiqueta: 'Tags', seccion: 'opcional' },
   'tags.N': { etiqueta: 'Tags', seccion: 'opcional' },
+  // B-830 — «qué se llevan» vive en «Qué es», no en «Opcional»: es información
+  // que alguien necesita para decidir si va, no un metadato del catálogo.
+  incluye: { etiqueta: 'Qué se llevan', seccion: 'que-es' },
+  'incluye.N': { etiqueta: 'Qué se llevan', seccion: 'que-es' },
   destacado: { etiqueta: 'Destacar en la portada', seccion: 'opcional' },
 
   // ── Difusión ──

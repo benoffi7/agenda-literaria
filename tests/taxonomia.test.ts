@@ -8,6 +8,7 @@ import {
   resolverEtiqueta,
   sugerenciasPara,
 } from '@/lib/taxonomia';
+import { CAMPOS_MULTIVALOR, CAMPOS_TAXONOMIA } from '@/types/actividad';
 import type { ValorOpcion } from '@/types/actividad';
 
 /**
@@ -221,5 +222,66 @@ describe('los dos widgets de taxonomía comparten la lógica del §4.2 — B-72'
     for (const evento of ['taxonomia-nueva', 'taxonomia-reusada', 'taxonomia-sugerencia']) {
       expect(src, evento).toContain(evento);
     }
+  });
+});
+
+/**
+ * **Toda taxonomía tiene un buffer de etiquetas nuevas** — B-830.
+ *
+ * El §4 dice que las opciones creadas con «Otro» se persisten en el submit
+ * (D-02), y el mecanismo que las recuerda hasta entonces está partido en dos por
+ * la forma del campo: `CampoLabelUnico` (`recordarLabel`, una etiqueta por
+ * campo) y `CAMPOS_MULTIVALOR` (`MultivalorNuevos`, un mapa `slug → label` por
+ * campo).
+ *
+ * **La taxonomía que no esté en ninguna de las dos listas se queda sin buffer**,
+ * y el modo de falla es silencioso y de los peores: el «Otro» funciona en
+ * pantalla —el chip aparece, el formulario guarda el slug— y la opción **nunca
+ * se da de alta en `/opciones/*`**, así que la actividad queda con un slug que
+ * ningún desplegable ofrece y que el sitio muestra des-slugueado. Nada falla.
+ *
+ * Este caso lo impide desde los dos lados: que las dos listas **cubran**
+ * `CAMPOS_TAXONOMIA` y que **no se pisen** — un campo en las dos tendría dos
+ * buffers y el segundo pisaría al primero en `labelsPendientesDe`.
+ *
+ * `CampoLabelUnico` es un tipo y no una constante, así que se lee del fuente: es
+ * el único modo de compararlo con la lista de multivalor. Si el tipo se convierte
+ * en un `as const`, este caso se simplifica solo.
+ */
+describe('las dos familias de taxonomía cubren todas, y no se pisan — B-830', () => {
+  const camposDeValorUnico = (): string[] => {
+    const src = readFileSync('src/lib/formulario/etiquetas.ts', 'utf8');
+    const m = /export type CampoLabelUnico =([^;]+);/.exec(src);
+    if (!m) throw new Error('no se encontró `CampoLabelUnico` en etiquetas.ts');
+    return [...m[1]!.matchAll(/'([^']+)'/g)].map((x) => x[1]!);
+  };
+
+  it('el lector del tipo encuentra los campos de valor único', () => {
+    // Control positivo: una regex que deje de matchear daría una lista vacía y
+    // los dos casos de abajo pasarían por vacuidad.
+    const unicos = camposDeValorUnico();
+    expect(unicos.length).toBeGreaterThan(2);
+    expect(unicos).toContain('arancel');
+  });
+
+  it('entre las dos listas están todas las taxonomías', () => {
+    const cubiertas = new Set<string>([...camposDeValorUnico(), ...CAMPOS_MULTIVALOR]);
+    const huerfanas = CAMPOS_TAXONOMIA.filter((c) => !cubiertas.has(c));
+    expect(
+      huerfanas,
+      'estas taxonomías no tienen buffer de etiquetas nuevas: el «Otro» va a funcionar ' +
+        'en pantalla y la opción nunca se va a dar de alta en /opciones/*. Agregalas a ' +
+        '`CampoLabelUnico` (valor único) o a `CAMPOS_MULTIVALOR` (array de slugs).',
+    ).toEqual([]);
+  });
+
+  it('y ninguna está en las dos', () => {
+    const unicos = new Set<string>(camposDeValorUnico());
+    const enLasDos = CAMPOS_MULTIVALOR.filter((c) => unicos.has(c));
+    expect(
+      enLasDos,
+      'una taxonomía en las dos familias tiene dos buffers, y el multivalor pisa al ' +
+        'de valor único en `labelsPendientesDe`',
+    ).toEqual([]);
   });
 });

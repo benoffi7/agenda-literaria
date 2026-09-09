@@ -162,6 +162,10 @@ export const formularioLleno = (over: Partial<ActividadForm> = {}): ActividadFor
   difusion: { arrobar: [CENTINELAS.handle], notas: CENTINELAS.notasInternas },
   estado: 'borrador',
   tags: ['narrativa'],
+  // Dos slugs base, para que el ida y vuelta y las proyecciones tengan qué
+  // mover. Son slugs de taxonomía y no texto libre: no llevan centinela porque
+  // no hay nada que alguien tipee acá — la etiqueta vive en `/opciones/*`.
+  incluye: ['merienda', 'material-de-lectura'],
   destacado: false,
   ...over,
 });

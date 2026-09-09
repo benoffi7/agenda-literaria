@@ -4,6 +4,7 @@ import { modalidadVacia } from '@/lib/formulario/estadoInicial';
 import { planificar } from '@calendario';
 import { formADocumento } from '@/lib/actividades';
 import { labelsDeOpciones, vistaPreviaEvento } from '@/lib/vistaPreviaEvento';
+import { CAMPOS_TAXONOMIA } from '@/types/actividad';
 import type { ActividadForm, SesionForm, ValorOpcion } from '@/types/actividad';
 
 /**
@@ -139,11 +140,26 @@ describe('labelsDeOpciones — slugs a etiquetas (§4.1)', () => {
     expect(LABELS.tags).toEqual({ narrativa: 'Narrativa' });
   });
 
-  it('deja los cinco campos de taxonomía, aunque no tengan opciones', () => {
+  /**
+   * **La lista se deriva de `CAMPOS_TAXONOMIA`, no se enumera.** Decía «los cinco
+   * campos» con los cinco escritos a mano, y `incluye-actividad` (B-830) la puso
+   * roja sin que nada estuviera mal: el sexto campo aparece solo porque
+   * `labelsDeOpciones` recorre la constante, que es justo la propiedad que se
+   * quiere. Enumerar acá obligaba a venir a agregar una línea por cada taxonomía
+   * nueva, y los PRDs traen once (`docs/prd/05-inventario-de-archivos.md` § 2.4).
+   *
+   * Lo que sí se afirma es lo que no es tautológico: que **haya** una clave por
+   * campo aunque no haya opciones —`{}` y no la clave ausente, que es lo que deja
+   * a `etiqueta()` sin tener que preguntar— y que la lista no sea trivial.
+   */
+  it('deja una clave por campo de taxonomía, aunque no tengan opciones', () => {
     const vacio = labelsDeOpciones({});
-    expect(Object.keys(vacio).sort()).toEqual(
-      ['arancel', 'barrio', 'plataforma', 'tags', 'tipo'].sort(),
-    );
+    expect(Object.keys(vacio).sort()).toEqual([...CAMPOS_TAXONOMIA].sort());
+    // Control positivo: con una lista vacía el aserto de arriba pasaría solo.
+    expect(CAMPOS_TAXONOMIA.length).toBeGreaterThan(4);
+    expect(CAMPOS_TAXONOMIA).toContain('arancel');
+    expect(CAMPOS_TAXONOMIA).toContain('incluye-actividad');
+    for (const campo of CAMPOS_TAXONOMIA) expect(vacio[campo]).toEqual({});
   });
 
   it('las etiquetas pendientes del submit ganan sobre lo que hay en /opciones (D-02)', () => {

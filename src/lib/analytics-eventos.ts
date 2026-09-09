@@ -484,6 +484,8 @@ export const CAMPOS_VALIDABLES: ReadonlySet<string> = new Set([
   'sesiones.N.lectura',
   'sesiones.N.tema',
   'slug',
+  'incluye',
+  'incluye.N',
   'tags',
   'tags.N',
   'tallerista',
@@ -700,6 +702,7 @@ export const EVENTOS = {
      */
     imagenes: { tipo: 'entero', max: 20 },
     tags: { tipo: 'entero', max: 100 },
+    incluye: { tipo: 'entero', max: 100 },
     requiere_inscripcion: { tipo: 'booleano' },
     tiene_tallerista: { tipo: 'booleano' },
     // DEC-1 — si el libro presentado se cargó o no. Booleano y nada más: el
@@ -911,6 +914,11 @@ export const formaDelFormulario = (form: ActividadForm): Record<string, unknown>
   // B-264 — cuántas imágenes, nunca cuáles.
   imagenes: form.imagenes.length,
   tags: form.tags.length,
+  // B-830 — **cuántas cosas se declaran, nunca cuáles.** Es la pregunta que abre
+  // el campo —«¿alguien lo usa?»— y con un entero alcanza. Los slugs no van
+  // aunque sean vocabulario cerrado: el «Otro» del §4 los hace texto que alguien
+  // tipeó, y para eso ya está `taxonomia-nueva` con el nombre del campo.
+  incluye: form.incluye.length,
   requiere_inscripcion: form.inscripcion.requiere,
   tiene_tallerista: tieneTexto(form.tallerista?.nombre),
   // DEC-1 — se completó o no. Nunca el título de la obra.

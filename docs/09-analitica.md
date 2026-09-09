@@ -205,6 +205,7 @@ arancel (D-12) sería un `campo=arancel.tipo` desproporcionado.
 | `es_ciclo` | 0 · 1 | |
 | `material_items` | 0–100 | ¿Se usa el material, o la sección está de adorno? |
 | `tags` | 0–100 | ¿Alguien pone tags? Alimentan los filtros del sitio público |
+| `incluye` | 0–100 | B-830 — ¿alguien declara qué se llevan? Es la pregunta que abre el campo. **Cuántos, nunca cuáles**: el «Otro» del §4 hace que los slugs sean texto que alguien tipeó, y para saber qué se elige ya está `taxonomia-nueva` con el nombre del campo |
 | `imagenes` | 0–20 | **¿Qué proporción de lo que se publica lleva flyer?** (B-264). Se cruza con `estado`: `guardado_ok` con `estado = publicado` e `imagenes > 0`, sobre el total de `guardado_ok` con `estado = publicado`. Es la única forma de saber si mudar el campo de sección movió la aguja — al 2026-09-01 el punto de partida era **2 sobre 42**. Un entero, nunca la dirección ni el nombre del archivo |
 | `requiere_inscripcion` | 0 · 1 | |
 | `tiene_tallerista` | 0 · 1 | |
@@ -309,7 +310,10 @@ evento por función.
 
 Valores de `detalle`:
 
-- **Campos de taxonomía:** `arancel`, `tipo`, `barrio`, `plataforma`, `tags`.
+- **Campos de taxonomía:** `arancel`, `tipo`, `barrio`, `plataforma`, `tags`,
+  `incluye-actividad`. Sale de `CAMPOS_TAXONOMIA` importado del modelo y no
+  copiado (B-75): la taxonomía que se agregue se mide sola en vez de caer en
+  `'otro'`.
 - **Secciones:** `que-es`, `encuentros`, `donde`, `quien`,
   `arancel-e-inscripcion`, `material`, `opcional`, `difusion`, `vista-previa`.
 - **Modos de fallo de coordenadas:** `coord-link-corto`,

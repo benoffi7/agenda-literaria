@@ -917,6 +917,20 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          '«Qué se llevan» es para eso último, y en chips en vez de en prosa: material de lectura, ' +
+          'libro, merienda, café, certificado. Enter o coma para agregar, y si lo que necesitás no ' +
+          'está en la lista escribilo y se suma para la próxima. Sale en la página de la actividad, ' +
+          'debajo del material.',
+      },
+      {
+        texto:
+          'Lo que cargues en «Qué se llevan» **no** va al calendario ni al texto para redes, y ' +
+          'tampoco se puede filtrar por eso en el sitio. Es a propósito: el evento del calendario ' +
+          'dice cuándo y dónde, y un filtro más en el listado angosta los que sí se usan. Si en ' +
+          'algún momento hace falta filtrar por «con merienda», se agrega.',
+      },
+      {
+        texto:
           'El estado es el interruptor de todo: «borrador» y «pendiente» no se ven en ningún lado, ' +
           '«publicado» sale al sitio y al calendario, «cancelado» saca los eventos del calendario ' +
           'pero conserva la actividad acá.',

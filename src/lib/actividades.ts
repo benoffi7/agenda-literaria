@@ -257,6 +257,7 @@ export const formADocumento = (
 
     estado: f.estado,
     tags: f.tags,
+    incluye: f.incluye,
     destacado: f.destacado,
     // §6 — se recalcula en cada guardado, si no queda desfasado del título.
     searchText: buildSearchText({
@@ -368,6 +369,9 @@ export const documentoAForm = (a: Actividad): ActividadForm => ({
   difusion: a.difusion ?? { arrobar: [], notas: '' },
   estado: a.estado,
   tags: a.tags ?? [],
+  // D-26 — `[]` para el documento anterior al campo: «no se declaró nada», que
+  // es exactamente el comportamiento que tenía antes de que `incluye` existiera.
+  incluye: a.incluye ?? [],
   destacado: a.destacado ?? false,
 });
 

@@ -9238,3 +9238,75 @@ Y lleva el año aunque para un dato reciente sea ruido, así que va `fechaComple
 de esta fecha es dejar que quien lee decida si le cree, y «cargado el 24 de
 septiembre» sin año no lo deja decidir nada. De paso no agrega un cuarto formato de
 fecha al sitio.
+
+---
+
+## D-580 · `incluye` sale a la ficha y **no** al índice del listado, y no es eje de filtro
+
+**Sale de B-830** (`prd/01-propuestas-de-organizadores.md` § 5). El PRD dice que
+«qué incluye el evento» es un campo del modelo de actividad y que va como
+taxonomía autogestionada, y no dice **a qué salidas**. Las dos celdas que faltaban
+son las que este proyecto no puede dejar sin contestar: el paso 0 del skill
+`campo-nuevo` exige resolver las dieciocho, y «no decidí» no es una opción porque
+el default de agregarlo al `pick` es publicar (§5.1).
+
+### La decisión
+
+| Salida | ¿Va? |
+|---|---|
+| 1 · `toPublic` (proyección) | **sí** — es de donde lo lee la página de detalle |
+| 1 · `entradaDeIndice` (`events.json`) | **no** |
+| 1 · la frase de la tarjeta (`tarjetaPublica.ts`) | **no** |
+| 6 · la página de detalle | **sí**, con la etiqueta resuelta |
+| 6 · el JSON-LD del detalle | **no** |
+| 2 · el evento de Calendar | **no** |
+| 5 · el texto para redes | **no** |
+| 4 · la analítica del panel | **sí, como contador** |
+| las demás | no las alcanza |
+
+### Por qué no es eje de filtro, que es la parte que se decide y no se descubre
+
+Un chip de filtro trae una **URL**: `?incluye=merienda`. Y una URL indexada no se
+mueve —es la trampa 10, la misma razón por la que el slug es inmutable—, así que
+elegir hoy la forma de ese parámetro es comprometerse antes de tener con qué
+decidir. Con cero actividades cargadas con el campo, no hay manera de saber si
+«solo las que incluyen merienda» es un filtro que alguien va a usar o un séptimo
+chip que hace más angosta la fila de los seis que sí sirven.
+
+**Y el camino tiene una sola dirección barata.** De ficha a filtro es aditivo: se
+agrega al índice, se suma un valor a `EJES`, nace el chip. De filtro a ficha hay
+que **retirar** un parámetro que Google ya indexó. Así que se empieza por el lado
+del que se puede volver.
+
+El día que se quiera, el rojo está puesto: `tests/incluye.test.ts` y el barrido de
+salidas públicas afirman la ausencia **con su motivo**, no como una omisión — que
+es la diferencia que el `auditor-privacidad` ya cobró una vez sobre las comisiones
+(«la ausencia estaba afirmada y no estaba decidida»).
+
+### Por qué no al evento de Calendar
+
+Dos motivos, y el segundo es de forma. El de contenido: el calendario dice
+**cuándo y dónde**; qué te llevás es de la ficha, y una descripción de evento que
+crece con cada campo del modelo deja de leerse en el teléfono. El de forma: la
+descripción entra al payload que compara la guarda anti-loop, así que un cambio en
+`incluye` reescribiría los **N** eventos de un ciclo (D-07, trampa 9) — mucho
+trabajo y mucha notificación a la gente suscripta por un dato que no cambia el
+cuándo ni el dónde.
+
+### Por qué no al texto para redes
+
+El posteo es la salida más irreversible del proyecto (§5 del skill, B-95) y el
+texto ya dice lo que decide a alguien: qué es, cuándo, dónde, cuánto. «Incluye
+merienda» es un detalle de ficha, no un titular, y un renglón más en un texto que
+se lee en un celular se paga con que se lea menos. La garantía acá **la da el
+tipo**: `ActividadParaRedes` es un `Pick`, así que el campo no puede llegar al
+posteo sin que alguien lo agregue a mano a esa lista.
+
+### Lo que queda anotado como ausencia y no como decisión
+
+**No entra al `searchText`** (§6). Buscar «merienda» y encontrar los talleres que
+la incluyen es plausible y hoy no funciona, pero no es una decisión en contra: es
+que el `searchText` se arma en el cliente al guardar y ahí solo hay **slugs**, no
+etiquetas. Resolverlo pide meter el mapa de etiquetas al armado, que es otro
+cambio y con su propio riesgo (el `searchText` viaja entero al JSON, quinta fila de
+D-126). Queda dicho en `03-modelo-de-datos.md` para que no se lea como un olvido.
