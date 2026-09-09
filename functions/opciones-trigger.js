@@ -14,7 +14,7 @@ import { logger } from 'firebase-functions/v2';
 import { getFirestore } from 'firebase-admin/firestore';
 import { CALENDAR_ID, calendario } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
-import { cargarLabels, invalidarLabels } from './etiquetas.js';
+import { TAXONOMIAS_FUERA_DEL_EVENTO, cargarLabels, invalidarLabels } from './etiquetas.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
 import { mapaDeEtiquetas, mismasEtiquetas, replanificarPorEtiquetas } from './sincronizacion.js';
 
@@ -62,6 +62,28 @@ export const rebuildPorOpciones = onDocumentWritten(
       // guardado del formulario, o una opción nueva (que ninguna actividad usa
       // todavía). Sin esta guarda, cada guardado re-sincronizaría todo.
       logger.debug('sin etiquetas renombradas: no se re-sincroniza el calendario', { campo });
+      return;
+    }
+
+    /*
+     * B-830 — la taxonomía que **no sale al evento** no tiene eventos que
+     * re-sincronizar, y hasta la sexta este caso no existía: todas las
+     * taxonomías estaban en la descripción, así que el escaneo de abajo siempre
+     * podía tener trabajo.
+     *
+     * Sin esta guarda, renombrar «Merienda» hacía todo el trabajo caro para
+     * escribir **cero** eventos: releer las cinco taxonomías, autenticar contra
+     * la API de Calendar, leer la colección `actividades` entera y correr
+     * `replanificarPorEtiquetas` sobre cada sesión de cada actividad publicada.
+     * No rompía nada —es lectura sin escritura— y el desperdicio crece con el
+     * catálogo. Lo encontró el `auditor-trampas`.
+     *
+     * Va **después** de `marcarRebuild`, que sí corresponde: el sitio muestra la
+     * etiqueta nueva y hay que rebuildearlo (§4.4, trampa 8). Lo que se saltea
+     * es solo la mitad de Calendar.
+     */
+    if (TAXONOMIAS_FUERA_DEL_EVENTO.includes(campo)) {
+      logger.debug('la taxonomía no sale al evento: no hay nada que re-sincronizar', { campo });
       return;
     }
 

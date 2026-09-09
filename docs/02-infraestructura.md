@@ -147,6 +147,7 @@ Para agregar otro admin: `node scripts/preparar-produccion.mjs <email>`.
 | Qué va a proteger | Firestore y Cloud Storage. El bucket entra por DEC-11: el formulario acepta subir la imagen |
 | Qué **no** protege | el build con el Admin SDK ni las Functions: no pasan por App Check |
 | Costo | Enterprise tiene **su propia cuota facturable** arriba del free tier, aparte de Firebase. Entra en el budget alert del §2.3 — y el volumen esperado de un formulario público es chico, pero el de un script que lo abusa no |
+| **Dominios permitidos** | ⬜ **sin verificar.** Es la configuración de la que depende que App Check sirva para algo, y no está en el repo — ver abajo |
 
 **Registrar la app requiere la consola**, como el proveedor de Auth: hay que
 crear la clave de sitio de reCAPTCHA Enterprise, y esa clave no existe hasta que
@@ -188,6 +189,27 @@ Check.** El SDK carga el script y ejecuta el desafío por su cuenta a partir de 
 clave; las dos integraciones juntas se pelean por el mismo widget, y el síntoma
 no es un error sino un comportamiento raro. Lo prohíbe `tests/appcheck.test.ts`,
 que barre el markup buscando el script y el `grecaptcha` a mano.
+
+### Los dominios permitidos, que es de lo que depende que esto sirva
+
+**La clave de sitio es pública y viaja en el bundle**, así que lo único que impide
+que alguien la use desde su propia página es la **lista de dominios permitidos**
+de la clave, en la consola de reCAPTCHA Enterprise. Sin esa restricción, un script
+toma la clave del `dist/`, ejecuta el desafío desde donde quiera y consigue tokens
+válidos: la capa que B-836 agrega para los cuatro formularios públicos deja de
+frenar «al script que no pasa por la página», que es literalmente lo único que
+hace. Y consume la cuota facturable de Enterprise mientras lo hace.
+
+Lo señaló el `auditor-privacidad` sobre B-836a, y es la clase de B-773/B-480:
+**configuración y no código, así que ningún test la sostiene**, con una afirmación
+de esta misma página colgada de que esté bien puesta. Verificarlo es del dueño:
+
+```sh
+gcloud recaptcha keys describe <clave> --project agenda-literaria
+```
+
+y mirar `webSettings.allowedDomains` — tiene que listar `agendaleh.ar` y los dos
+dominios de Firebase Hosting, y nada más. Queda como acción manual en **B-836a**.
 
 ### Qué pasa si se cae
 

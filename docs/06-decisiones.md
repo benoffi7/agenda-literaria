@@ -9255,7 +9255,8 @@ el default de agregarlo al `pick` es publicar (§5.1).
 | Salida | ¿Va? |
 |---|---|
 | 1 · `toPublic` (proyección) | **sí** — es de donde lo lee la página de detalle |
-| 1 · `entradaDeIndice` (`events.json`) | **no** |
+| 1 · `entradaDeIndice` (`events.json`), el campo | **no** |
+| 1 · el **vocabulario** de la taxonomía en `events.json` | **no**, y hubo que decidirlo aparte — ver abajo |
 | 1 · la frase de la tarjeta (`tarjetaPublica.ts`) | **no** |
 | 6 · la página de detalle | **sí**, con la etiqueta resuelta |
 | 6 · el JSON-LD del detalle | **no** |
@@ -9263,6 +9264,28 @@ el default de agregarlo al `pick` es publicar (§5.1).
 | 5 · el texto para redes | **no** |
 | 4 · la analítica del panel | **sí, como contador** |
 | las demás | no las alcanza |
+
+### La celda que faltaba: el vocabulario también viaja, por otro camino
+
+**La primera versión de esta entrada decía «no al `events.json`» y era cierta del
+campo y falsa del archivo.** Lo cobró el `auditor-privacidad` el mismo día:
+`opcionesDeTaxonomia()` recorre `CAMPOS_TAXONOMIA` y `construirIndice` no filtraba
+ninguna clave, así que el archivo ganaba una `incluye-actividad` con los siete
+slugs y etiquetas base **más todo «Otro» que alguien tipee** — y desde B-131 una
+opción nueva nace aprobada, así que sale en el rebuild siguiente, incluso si se
+tipeó mientras se cargaba una actividad en **borrador**.
+
+Decidido que **no**, con `TAXONOMIAS_FUERA_DEL_INDICE` (`eventsJson.ts`). El §4.4
+dice para qué viajan las opciones —«la web arma los chips de filtro recorriendo
+`opciones.*`»— y eso define quién las lee: la island. Sin chip no hay lector, así
+que era la primera taxonomía del repo cuyo vocabulario viaja sin consumidor, en la
+salida más barata de cosechar (D-129). Y el filtro es gratis: la página de detalle
+resuelve las etiquetas en el **build**, contra `contenidoDelSitio()` directo, no
+contra el índice (§2.4).
+
+Es una lista y no un `!== 'incluye-actividad'` a propósito, por lo mismo que
+`TAXONOMIAS_FUERA_DEL_EVENTO`: la séptima taxonomía tiene que obligar a decidir en
+vez de entrar sola.
 
 ### Por qué no es eje de filtro, que es la parte que se decide y no se descubre
 

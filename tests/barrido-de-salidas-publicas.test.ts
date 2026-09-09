@@ -45,7 +45,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { opcionesPublicas, toPublic } from '@/lib/toPublic';
-import { construirIndice, entradaDeIndice } from '@/lib/eventsJson';
+import {
+  TAXONOMIAS_FUERA_DEL_INDICE,
+  construirIndice,
+  entradaDeIndice,
+} from '@/lib/eventsJson';
+import { CAMPOS_TAXONOMIA } from '@/types/actividad';
 import { datosEstructurados, detalleDeActividad, migasDeDetalle } from '@/lib/detallePublico';
 import { carteleraDeDetalles } from '@/lib/cartelera';
 import { panelesDeAhora } from '@/lib/ahoraPublico';
@@ -1222,6 +1227,52 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
         CENTINELA.incluye,
       ),
     ).toBe(true);
+  });
+
+  /**
+   * **El vocabulario de `incluye-actividad` tampoco viaja en el archivo** — B-830,
+   * D-580, y lo encontró el `auditor-privacidad` sobre esta misma tanda.
+   *
+   * El campo no entra al índice (el caso de arriba) y su **vocabulario** sí
+   * entraba, por el otro camino: `opcionesDeTaxonomia()` recorre
+   * `CAMPOS_TAXONOMIA` y `construirIndice` no filtraba ninguna clave. O sea que
+   * la fila de D-580 era cierta del campo y **falsa del archivo**, y el barrido
+   * de centinelas no lo podía ver porque siembra `opciones` con un solo eje.
+   *
+   * §4.4 define quién lee esas opciones: la island, para armar los chips.
+   * `incluye-actividad` no es eje de filtro, así que su vocabulario viajaba sin
+   * consumidor — y con todo «Otro» que alguien tipee adentro, que desde B-131
+   * nace aprobado y sale en el rebuild siguiente, incluso si se tipeó cargando
+   * una actividad en **borrador**.
+   *
+   * **La lista se ata contra `CAMPOS_TAXONOMIA`** para que la séptima taxonomía
+   * obligue a decidir: si entra una nueva y nadie la nombra, este caso la deja
+   * pasar al archivo, y el aserto de abajo dice cuáles viajan hoy.
+   */
+  it('el vocabulario de una taxonomía sin chip no viaja en el archivo (§4.4, D-580)', () => {
+    // Se siembran **todas** las taxonomías, que es lo que el barrido de arriba no
+    // hace: con un solo eje, el filtro no se ejercita.
+    const opciones = Object.fromEntries(
+      CAMPOS_TAXONOMIA.map((campo) => [campo, [opcionCentinela()]]),
+    );
+    const indice = construirIndice({
+      actividades: [toPublic(actividadCentinela(), 'act_centinela')],
+      opciones,
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+
+    const esperadas = CAMPOS_TAXONOMIA.filter((c) => !TAXONOMIAS_FUERA_DEL_INDICE.includes(c));
+    expect(Object.keys(indice.opciones).sort()).toEqual([...esperadas].sort());
+    // Control positivo: si la lista de exclusión quedara vacía, el aserto de
+    // arriba pasaría igual y este diría que ya no se excluye nada.
+    expect(TAXONOMIAS_FUERA_DEL_INDICE.length).toBeGreaterThan(0);
+    for (const campo of TAXONOMIAS_FUERA_DEL_INDICE) {
+      expect(
+        Object.prototype.hasOwnProperty.call(indice.opciones, campo),
+        `el vocabulario de \`${campo}\` viaja en el events.json y no hay quién lo lea`,
+      ).toBe(false);
+    }
   });
 
   it('lleva los valores de las formas de cursar, no las filas (B-224)', () => {

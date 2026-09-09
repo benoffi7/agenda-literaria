@@ -172,6 +172,35 @@ export const encuentrosDelIndice = (
     .sort((x, y) => x.inicio.localeCompare(y.inicio));
 
 /** Largo del resumen. 160 es el corte útil como `meta description` (§5.1). */
+/**
+ * Las taxonomías cuyo **vocabulario** no viaja en el `events.json` — B-830,
+ * D-580.
+ *
+ * §4.4 dice que las opciones viajan en el archivo «y la web arma los chips de
+ * filtro recorriendo `opciones.*`». Ese es el contrato, y define quién las lee:
+ * la island. `incluye-actividad` **no es eje de filtro** (D-580), así que no hay
+ * chip que armar y su vocabulario viajaría sin que nada lo lea — la primera
+ * taxonomía del repo en esa situación.
+ *
+ * Sin este filtro, el archivo gana una clave con los siete slugs y etiquetas
+ * base **más todo «Otro» que alguien tipee**, que desde B-131 nace `aprobada` y
+ * sale en el rebuild siguiente sin pasar por moderación. Y una etiqueta se tipea
+ * al guardar, también con la actividad en **borrador**: sería texto sobre algo no
+ * publicado, en la salida más barata de cosechar (D-129). Lo encontró el
+ * `auditor-privacidad` sobre B-830: el campo no entra al índice y su vocabulario
+ * sí, por el otro camino, así que la fila de D-580 era cierta del campo y falsa
+ * del archivo.
+ *
+ * **La página de detalle no se entera**, y por eso el filtro es gratis: resuelve
+ * las etiquetas en el build, contra `contenidoDelSitio()` directo, no contra el
+ * índice (§2.4).
+ *
+ * Es una lista y no un `!== 'incluye-actividad'` para que la séptima taxonomía
+ * obligue a decidir en vez de entrar sola: `tests/barrido-de-salidas-publicas.test.ts`
+ * la ata contra `CAMPOS_TAXONOMIA`.
+ */
+export const TAXONOMIAS_FUERA_DEL_INDICE: readonly CampoTaxonomia[] = ['incluye-actividad'];
+
 export const LARGO_RESUMEN = 160;
 
 /**
@@ -274,7 +303,9 @@ export const construirIndice = ({
   generadoEn,
   version,
   opciones: Object.fromEntries(
-    Object.entries(opciones).map(([campo, valores]) => [campo, opcionesPublicas(valores ?? [])]),
+    Object.entries(opciones)
+      .filter(([campo]) => !TAXONOMIAS_FUERA_DEL_INDICE.includes(campo as CampoTaxonomia))
+      .map(([campo, valores]) => [campo, opcionesPublicas(valores ?? [])]),
   ),
   actividades: actividades.map(entradaDeIndice),
   encuentros: encuentrosDelIndice(actividades, generadoEn),

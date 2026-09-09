@@ -2,6 +2,95 @@
 
 ## Sin publicar
 
+- **Los cuatro hallazgos de los dos auditores que me había salteado** — y me los
+  había salteado por un error mío: corrí `scripts/auditores-que-corresponden.mjs`
+  **sin pasarle nada por stdin**, que es de donde lee la lista de archivos, así
+  que le pregunté sobre un diff vacío y contestó lo único que corre siempre
+  (documentación). Con el diff de verdad corresponden los tres.
+
+  **El P1 · el barrido del artefacto era ciego a `incluye`.** El campo quedó
+  anclado en `tests/fixtures/centinelas.ts` en las dos direcciones y en **nada**
+  en el `CENTINELA` de `scripts/build-contra-emulador.mjs`, que es el que recorre
+  todo el `dist/`. Es **la misma asimetría que el propio gate registra como
+  cobrada una vez** (el docblock de `comisionId`), y no dejaba el gate rojo:
+  dejaba el campo invisible — si una plantilla publicara el slug crudo en la home,
+  en un hub o en `/pasadas`, el paso 9 pasaba en verde. Cerrado con
+  `CENTINELA.incluyeSlug` y con `ETIQUETA_DE_INCLUYE` en la dirección contraria,
+  que es lo único que puede ver si la plantilla **pinta** la sección (un `.astro`
+  no se importa desde vitest). Verificado corriendo el gate contra el emulador: la
+  etiqueta aparece en el HTML, el slug no, y el `events.json` no lleva ni el campo
+  ni su vocabulario.
+
+  **Y el vocabulario de `incluye-actividad` sí viajaba en el `events.json`**, por
+  un camino que no había mirado: `opcionesDeTaxonomia()` recorre
+  `CAMPOS_TAXONOMIA` y `construirIndice` no filtraba ninguna clave. O sea que
+  D-580 y el §5 de seguridad decían «no al `events.json`» y era cierto **del
+  campo** y falso **del archivo** — con los siete slugs base adentro y todo «Otro»
+  que alguien tipee, que desde B-131 nace aprobado y sale en el rebuild siguiente
+  incluso si se tipeó cargando un **borrador**. El §4.4 define quién lee esas
+  opciones (la island, para armar los chips) y `incluye` no es eje de filtro, así
+  que era la primera taxonomía del repo cuyo vocabulario viaja sin consumidor, en
+  la salida más barata de cosechar. Cerrado con `TAXONOMIAS_FUERA_DEL_INDICE` —una
+  lista y no un `!==`, para que la séptima taxonomía obligue a decidir— y un caso
+  que la ata contra `CAMPOS_TAXONOMIA` sembrando **las seis**, que es lo que el
+  barrido de centinelas no podía ver porque siembra `opciones` con un solo eje.
+
+  **Una corrección al hallazgo, que el gate contestó solo:** decía que agregar el
+  centinela pondría el gate rojo por lo del vocabulario, y no. El gate **no
+  siembra `/opciones/*`** —lo pide B-804 para el monto—, así que esa clave sale
+  vacía y el gate es ciego a esa mitad. La cubre el caso de vitest.
+
+  **B-841 subió de P2 a P1, y B-836a lo había empeorado.** Estaba anotado como un
+  problema de capas —«tres de los seis archivos de `campos/` importan de
+  `admin/`»— y la cadena real es peor: `campos/{Seccion,TagsInput,TaxonomiaSelect}`
+  → `@/lib/analytics` → `firebase-client` → **`appcheck`** (ese eslabón lo agregó
+  el commit de App Check) → `firebase/app-check`. Un formulario público a un
+  `import` de distancia haría dos cosas en el navegador de un anónimo: **medir sin
+  consentimiento** —`debeMedir` tiene tres portones y ninguno es el
+  consentimiento, porque la analítica del panel nunca lo necesitó, y va a la misma
+  propiedad de GA4 que el sitio (B-801), contra D-250— y **cargar dos terceros de
+  Google** antes del banner, el segundo con cuota facturable por visitante.
+
+  Y ninguna red lo veía: `terceros-antes-del-consentimiento.test.ts` lee el HTML de
+  `dist/` buscando `<script src>` absolutos y los dos SDK se inyectan en runtime
+  desde un chunk local; `bundle-panel.test.ts` mira el chunk inicial **del panel**,
+  la dirección contraria. Ahora está `tests/panel-fuera-del-sitio.test.ts`, que
+  recorre el grafo desde **cada** página de `src/pages` —siguiendo los `import()`
+  también, porque un diferido mide igual— y exige que ninguna salvo `/admin`
+  alcance esos tres módulos. Con control positivo y verificado por mutación: un
+  `import` de `TaxonomiaSelect` en `/cartelera` lo pone en rojo nombrando la
+  cadena entera. **Es lo que permite que el refactor de B-841 espere sin riesgo**
+  hasta el primer formulario público con desplegable de taxonomía.
+
+  **App Check: falta un paso que no estaba escrito y del que depende todo lo
+  demás.** La clave de sitio es pública y viaja en el bundle, así que lo único que
+  impide que un script la use desde su propia página es la **lista de dominios
+  permitidos** de la clave. Sin ella, App Check deja de frenar «al script que no
+  pasa por la página» —lo único que hace— y encima le consume la cuota de
+  Enterprise. Es configuración y no código, o sea que ningún test lo sostiene: va
+  como paso 3 de B-836a, con el comando para verificarlo, y como fila propia en la
+  tabla de `02-infraestructura.md`. Lo demás de App Check salió limpio —la clave no
+  se loguea, no viaja a ninguna medición, y la afirmación de que no existe una
+  clave privada de reCAPTCHA de este lado es exacta.
+
+  **Y el P2 del `auditor-trampas`:** renombrar una etiqueta de
+  `incluye-actividad` hacía todo el trabajo de re-sincronizar Calendar para
+  escribir **cero** eventos —releer las taxonomías, autenticar contra la API, leer
+  la colección `actividades` entera y correr `replanificarPorEtiquetas` sobre cada
+  sesión de cada publicada—. Es un caso que **no existía hasta la sexta
+  taxonomía**: hasta ahora todas salían al evento. Cerrado con una guarda contra
+  `TAXONOMIAS_FUERA_DEL_EVENTO`, la lista que el commit anterior ya había
+  declarado, y con un test que afirma **el orden** —después de `marcarRebuild`,
+  antes del trabajo caro—, que es la mitad que se puede romper arreglando lo otro.
+
+  **Más el punto ciego que el barrido de B-827 no podía ver:** compara texto, así
+  que un componente que **recibe** el `id` y no lo reenvía a su `<input>` lo deja
+  en verde. Cerrado con `tests/campo-asociado.render.test.tsx`, que monta el
+  formulario y busca cada campo **por su label** —uno por tipo de control— más el
+  caso del grupo. Verificado por mutación: sacar el `id={id}` de `TagsInput` deja
+  el render test en rojo y el barrido de texto **en verde**, que es exactamente el
+  punto ciego.
+
 - **«Qué se llevan»: el campo `incluye`, de punta a punta** — **B-830** y
   **D-580**, primer paso de la tajada 1. Pedido del dueño para el formulario de
   propuestas y **subido al modelo de actividad**, porque si se muestra en la ficha

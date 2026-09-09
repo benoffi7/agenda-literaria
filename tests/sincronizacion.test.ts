@@ -551,3 +551,61 @@ describe('B-125 · el encuentro vuelve al calendario en la próxima edición', (
     expect(src).not.toMatch(/op\.tipo === 'borrar' && \(code === 404/);
   });
 });
+
+/**
+ * **La taxonomía que no sale al evento no re-sincroniza nada** — B-830.
+ *
+ * Hasta la sexta taxonomía este caso no existía: todas estaban en la descripción
+ * del evento, así que el escaneo de `rebuildPorOpciones` siempre podía tener
+ * trabajo. `incluye-actividad` no sale al evento (D-580), así que renombrar
+ * «Merienda» hacía todo el trabajo caro para escribir **cero** eventos: releer
+ * las taxonomías, autenticar contra la API de Calendar, leer la colección
+ * `actividades` entera y correr `replanificarPorEtiquetas` sobre cada sesión de
+ * cada actividad publicada. Lo encontró el `auditor-trampas`.
+ *
+ * No era un bug —lectura sin escritura, nada se corrompía— y el desperdicio crece
+ * con el catálogo, que es lo que lo vuelve un ítem y no una nota.
+ *
+ * **Lo que se afirma es el orden**, porque ahí está la mitad que se puede romper
+ * arreglando lo otro: la guarda tiene que ir **después** de `marcarRebuild` —el
+ * sitio sí muestra la etiqueta nueva y hay que rebuildearlo (§4.4, trampa 8)— y
+ * **antes** de `cargarLabels` y del `.get()` de la colección, que es todo lo que
+ * viene a evitar. Subirla dos líneas rompe el rebuild; bajarla cuatro no ahorra
+ * nada.
+ */
+describe('la taxonomía que no sale al evento no re-sincroniza el calendario — B-830', () => {
+  const src = fuenteDeLaFunction('rebuildPorOpciones');
+
+  it('la guarda existe y sale por el corte', () => {
+    expect(src).toContain('TAXONOMIAS_FUERA_DEL_EVENTO.includes(campo)');
+    // Y sale: sin el `return` seguiría de largo igual.
+    expect(src).toMatch(/TAXONOMIAS_FUERA_DEL_EVENTO\.includes\(campo\)[\s\S]{0,300}?return;/);
+  });
+
+  it('va después de marcar el rebuild: el sitio se rebuildea igual (trampa 8)', () => {
+    const rebuild = src.indexOf('marcarRebuild(');
+    const guarda = src.indexOf('TAXONOMIAS_FUERA_DEL_EVENTO.includes(campo)');
+    expect(rebuild).toBeGreaterThan(-1);
+    expect(guarda).toBeGreaterThan(rebuild);
+  });
+
+  it('y antes de todo el trabajo caro, que es lo que viene a evitar', () => {
+    const guarda = src.indexOf('TAXONOMIAS_FUERA_DEL_EVENTO.includes(campo)');
+    for (const caro of ['cargarLabels(db)', "where('estado', '==', 'publicado')", 'calendario()']) {
+      const donde = src.indexOf(caro);
+      expect(donde, `no se encontró \`${caro}\` en el trigger`).toBeGreaterThan(-1);
+      expect(donde, `\`${caro}\` corre antes de la guarda`).toBeGreaterThan(guarda);
+    }
+  });
+
+  it('la lista de ausencias es la del módulo de etiquetas, no una copia', async () => {
+    // Si el trigger enumerara los campos a mano, sería la clase de B-88 con la
+    // lista que ya está declarada del otro lado.
+    const { TAXONOMIAS_FUERA_DEL_EVENTO } = await import('../functions/etiquetas.js');
+    expect(TAXONOMIAS_FUERA_DEL_EVENTO).toContain('incluye-actividad');
+    expect(src).toContain("from './etiquetas.js'");
+    expect(src, 'el trigger enumera los campos a mano').not.toMatch(
+      /includes\(\s*['"]incluye-actividad['"]/,
+    );
+  });
+});

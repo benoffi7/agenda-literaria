@@ -195,6 +195,22 @@ const CENTINELA = {
    * dentro de `detalleDeActividad`.
    */
   comisionId: 'com_gate.comisiones.id',
+  /*
+   * B-830 — el **slug** de «qué se llevan», que no sale a ninguna parte: la
+   * página muestra la etiqueta (`ETIQUETA_DE_INCLUYE`, abajo) y el índice no
+   * lleva ni el campo ni su vocabulario (D-580).
+   *
+   * **Lo cobró el `auditor-privacidad` sobre B-830**, y por la misma asimetría
+   * que `comisionId`: el campo quedó anclado en el barrido de vitest —en las dos
+   * direcciones— y en **nada** acá, así que el paso 9 era ciego al campo nuevo.
+   * No dejaba el gate rojo: dejaba el campo invisible, que es peor.
+   *
+   * Va con guiones a propósito. `desSlug` los convierte en espacios y capitaliza,
+   * así que la etiqueta derivada (`Gate Incluye Slug`) **no contiene** esta
+   * cadena: si el slug crudo apareciera en el HTML o en el archivo, sería porque
+   * alguien lo publicó sin resolver, que es exactamente lo que hay que agarrar.
+   */
+  incluyeSlug: 'gate-incluye-slug',
 };
 
 /**
@@ -245,6 +261,23 @@ const ID_DE_SESION_QUE_SALE = 'ses_gate.sesiones.id';
  * equivocado.
  */
 const ETIQUETA_DE_COMISION = 'gate.comisiones.etiqueta';
+
+/**
+ * La etiqueta de «qué se llevan» (B-830), que **sí sale** al HTML de la página —
+ * y por eso se afirma en la dirección contraria, como `ID_DE_SESION_QUE_SALE`.
+ *
+ * **No se siembra `/opciones/incluye-actividad`**, y no hace falta: sin el
+ * documento, `etiquetaDe` cae a `desSlug` y la página imprime la etiqueta
+ * derivada del slug del fixture. Eso alcanza para lo único que este gate puede
+ * ver y ningún unitario puede: **que la plantilla pinte la sección**. El
+ * `.astro` no se importa desde vitest (D-140), así que `detallePublico.ts` afirma
+ * qué se decide mostrar y esto ve si se muestra. Es el mismo motivo por el que
+ * existe `ETIQUETA_DE_COMISION`.
+ *
+ * Si algún día el gate siembra `/opciones/*` —lo pide B-804 para el monto—, este
+ * valor pasa a ser la etiqueta sembrada y el aserto no cambia de forma.
+ */
+const ETIQUETA_DE_INCLUYE = 'Gate Incluye Slug';
 
 /**
  * La descripción del fixture: larga a propósito, para que `resumenDe` tenga que
@@ -303,6 +336,9 @@ const actividadDePrueba = (slug, estado) => ({
    * aserto costaría dos sesiones más y no probaría nada nuevo.
    */
   comisiones: [{ id: CENTINELA.comisionId, etiqueta: ETIQUETA_DE_COMISION }],
+  // B-830 — un solo slug: lo que se prueba es el par slug-oculto/etiqueta-visible,
+  // y con dos el mensaje de falla no diría cuál se escapó.
+  incluye: [CENTINELA.incluyeSlug],
   sesiones: [
     {
       id: ID_DE_SESION_QUE_SALE,
@@ -697,6 +733,25 @@ try {
         );
         salida = 1;
       }
+      /*
+       * B-830 — «Qué se llevan», el mismo argumento: `detallePublico.ts` decide
+       * qué etiquetas mostrar y **solo acá se ve si la sección se pinta**. Y en
+       * las dos direcciones a la vez: la etiqueta tiene que aparecer y el slug
+       * crudo (`CENTINELA.incluyeSlug`) lo barre el paso 9 con todo el resto.
+       */
+      if (!htmlPublicadaGrupos.includes(ETIQUETA_DE_INCLUYE)) {
+        fallo(
+          'la página no muestra «Qué se llevan» (B-830).\n' +
+            '  El view-model trae las etiquetas y la plantilla no las pinta: es código\n' +
+            '  muerto que ningún barrido detecta, la lección de B-341.',
+        );
+        salida = 1;
+      }
+      if (!htmlPublicadaGrupos.includes('Qué se llevan')) {
+        fallo('la página no lleva el encabezado de la sección «Qué se llevan» (B-830).');
+        salida = 1;
+      }
+
       if (!htmlPublicadaGrupos.includes('Elegí tu opción')) {
         fallo(
           'la página no cambió el título de la sección de encuentros (B-181).\n' +

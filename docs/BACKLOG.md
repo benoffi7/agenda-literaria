@@ -276,11 +276,25 @@ activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
 
 **Lo que falta, y los tres son del dueño:**
 
-3. ⬜ **Publicar.** Mientras el cableado no se deployee, la consola no puede ver
-   nada: el paso 4 mide lo que llega de producción.
-4. ⬜ **Verificar en la consola** que llegan peticiones verificadas. Es el único
+3. ⬜ **Verificar los dominios permitidos de la clave**, y es el paso del que
+   depende que todo esto sirva. La clave de sitio es pública y viaja en el bundle,
+   así que lo único que impide que un script la use desde su propia página es esa
+   lista. Sin ella, App Check deja de frenar «al script que no pasa por la
+   página» —lo único que hace— y encima le consume la cuota facturable de
+   Enterprise. Lo señaló el `auditor-privacidad`, y es la clase de B-773: es
+   configuración, así que **ningún test lo sostiene**.
+
+   ```sh
+   gcloud recaptcha keys describe <clave> --project agenda-literaria
+   ```
+
+   `webSettings.allowedDomains` tiene que listar `agendaleh.ar` y los dos dominios
+   de Firebase Hosting, y nada más.
+4. ⬜ **Publicar.** Mientras el cableado no se deployee, la consola no puede ver
+   nada: el paso siguiente mide lo que llega de producción.
+5. ⬜ **Verificar en la consola** que llegan peticiones verificadas. Es el único
    paso que dice si el 2 quedó bien, y el que no se puede saltear.
-5. ⬜ **Recién ahí, exigir.** Al revés, **el panel deja de poder escribir**: sus
+6. ⬜ **Recién ahí, exigir.** Al revés, **el panel deja de poder escribir**: sus
    peticiones tampoco traen token y las reglas ni se evalúan.
 
 **Dos cosas que cambiaron respecto de cómo estaba escrito este ítem:**
@@ -481,6 +495,86 @@ con la Function de B-220 (D-175) y el `srcset` de **B-320**: la página más pes
 del sitio pasó de 3226,7 KB a 184,3 KB y el recorrido de la cartelera de 3518,5 KB
 a 1032,4 KB. Lo que queda de ese frente es un paso manual del dueño: los permisos
 de IAM sobre el bucket, y después `scripts/optimizar-imagenes.mjs`.
+
+### B-841 · `campos/` es un `import` de distancia de medir sin consentimiento en una página pública · P1
+
+**Sale de haber hecho el movimiento de la tajada 0**, y hay que decirlo así: el
+directorio se movió, o sea que **parece** compartido, y tres de sus seis archivos
+todavía no lo son. Un `import` es lo único que decide qué viaja.
+
+**Estaba anotado como P2 y como un problema de capas. No lo es.** Lo re-dimensionó
+el `auditor-privacidad` sobre esta misma tanda, y **B-836a lo empeoró**: el import
+estático de App Check alargó la cadena un eslabón más. La cadena real, si un
+formulario público importa cualquiera de los tres:
+
+```
+campos/{Seccion,TagsInput,TaxonomiaSelect}
+  → @/lib/analytics            ← la medición del PANEL
+    → @/lib/firebase-client
+      → @/lib/appcheck          ← estático desde B-836a
+        → firebase/app-check
+```
+
+| Archivo de `campos/` | De dónde tira |
+|---|---|
+| `TaxonomiaSelect.tsx` | `@/components/admin/useOpciones` + `@/lib/analytics` |
+| `TagsInput.tsx` | idem |
+| `Seccion.tsx` | `@/components/admin/ayuda/AyudaDeSeccion` + `@/lib/analytics` |
+
+**Dos cosas pasarían en el navegador de un visitante anónimo, y las dos son de
+las caras:**
+
+1. **Se mide sin consentimiento.** `debeMedir` tiene tres portones —navegador,
+   no-emuladores, `measurementId`— y **ninguno es el consentimiento**: la
+   analítica del panel nunca lo necesitó. La del sitio (salida 12) sí lo tiene.
+   Un `Seccion` en una página pública dispara `funcion_usada` y crea el perfil de
+   medición en `localStorage` —un identificador pseudónimo persistente— para
+   alguien que todavía no tocó el banner, y va a la **misma propiedad de GA4**,
+   que las dos comparten (B-801). Contradice **D-250** y la promesa de `/apoyar`,
+   que es lo que B-780 costó como P0.
+2. **Se cargan dos terceros de Google antes del consentimiento**: `gtag.js` y el
+   desafío de reCAPTCHA, el segundo con cuota facturable por visitante.
+
+Lo que **no** se filtra es contenido: `seccionASlug` es vocabulario cerrado con
+caída a `'otro'`, así que un título derivado de un dato no publica nada. Ese lado
+aguanta.
+
+**Y la cadena de `useOpciones` sigue arrastrando el SDK de Firestore**, que era lo
+único que estaba anotado antes: `useOpciones` → `lib/opciones` →
+`lib/firestore-client` → `firebase/firestore`, estático. Una página pública que
+importe `TaxonomiaSelect` se baja el chunk pesado que `bundle-panel.test.ts`
+existe para mantener afuera del primer render del panel.
+
+**Lo que ya está hecho, y es lo que permite que esto espere:**
+`tests/panel-fuera-del-sitio.test.ts` recorre el grafo de imports **desde cada
+página de `src/pages`** —siguiendo también los `import()`, porque un diferido mide
+igual— y exige que ninguna salvo `/admin` alcance `@/lib/analytics`,
+`@/lib/firebase-client` ni `@/lib/appcheck`. Con control positivo (`/admin` **sí**
+la alcanza, así que el grafo sabe encontrarla) y verificado por mutación: un
+`import` de `TaxonomiaSelect` en `/cartelera` lo pone en rojo nombrando la cadena
+entera. Ninguna de las redes que ya existían lo veía —
+`terceros-antes-del-consentimiento.test.ts` lee el HTML de `dist/` buscando
+`<script src>` absolutos y los dos SDK se inyectan en runtime desde un chunk
+local; `bundle-panel.test.ts` mira el chunk inicial **del panel**, la dirección
+contraria.
+
+**Dónde y el molde.** El arreglo de fondo son dos cortes, y el primero es el
+barato:
+
+1. **La medición se recibe, no se importa.** Una prop opcional
+   (`onMedir?: (funcion, detalle) => void`) en los tres componentes: el panel pasa
+   `medirFuncion`, un formulario público no pasa nada. Es el corte que hace a
+   `campos/` genérico de verdad, y de paso saca `AyudaDeSeccion` de `Seccion` por
+   el mismo camino (la ayuda es del panel, el sitio tiene la suya).
+2. **Las opciones se reciben, no se buscan.** La respuesta ya está escrita en otro
+   lado: del **JSON** (§4.4 del `CLAUDE.md` — «las opciones viajan en el JSON», y
+   la web arma los chips recorriendo `opciones.*`), no de un `onSnapshot`. O sea
+   que `TaxonomiaSelect` necesita recibir sus valores y el hook queda del lado del
+   panel.
+
+**Cuándo.** Antes del primer formulario público que use un desplegable de
+taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
+en la suite y no en producción, que es exactamente para lo que se escribió.
 
 ### B-830 a B-839 · Los cuatro formularios: propuestas de organizadores y los tres directorios · P1 — **para mañana (2026-09-09)**
 
@@ -3179,9 +3273,11 @@ puestos y no hay que tocarlos.
 > formularios públicos sin arreglarlo convertía un problema de accesibilidad de
 > una herramienta interna que usan cuatro personas en uno de una página pública.
 >
-> **Lo que el movimiento dejó abierto y no se tapó: B-841**, acá abajo — tres de
-> los seis archivos de `campos/` siguen importando de `admin/`, y la cadena
-> arrastra el SDK de Firestore.
+> **Lo que el movimiento dejó abierto y no se tapó: B-841**, que está en **P1** y
+> no acá: se anotó como P2 —«tres de los seis archivos siguen importando de
+> `admin/`»— y el `auditor-privacidad` lo re-dimensionó el mismo día. La cadena
+> no arrastra solo el SDK de Firestore: arrastra la medición del **panel**, que no
+> tiene portón de consentimiento.
 
 
 **Lo destapó el test de B-822**, que no pudo agarrar el campo «Título» con
@@ -3214,60 +3310,6 @@ cada uso que falte, así que el compilador enumera el trabajo. Y un caso en
 ```
 it('todo `Campo` asocia su label con su control (§accesibilidad, B-235/B-243)')
 ```
-
-### B-841 · `campos/` salió de `admin/`, pero tres de sus seis archivos siguen importando de `admin/` · P2
-
-**Sale de haber hecho el movimiento de la tajada 0** y hay que decirlo así: el
-directorio se movió, o sea que **parece** compartido, y tres de sus seis archivos
-todavía no lo son. Un `import` es lo único que decide qué viaja.
-
-| Archivo de `campos/` | De dónde tira |
-|---|---|
-| `TaxonomiaSelect.tsx` | `@/components/admin/useOpciones` + `@/lib/analytics` |
-| `TagsInput.tsx` | idem |
-| `Seccion.tsx` | `@/components/admin/ayuda/AyudaDeSeccion` + `@/lib/analytics` |
-
-**Y lo que arrastra no es un detalle de organización: es el SDK de Firestore.**
-La cadena es estática de punta a punta —`useOpciones` → `lib/opciones` →
-`lib/firestore-client` → `firebase/firestore`—, así que una página pública que
-importe `TaxonomiaSelect` para su desplegable de barrio se baja el chunk pesado
-que `tests/bundle-panel.test.ts` existe para mantener afuera del **primer render
-del panel**. Es exactamente la novena de las «cosas que se rompen en silencio»
-del inventario (*«el formulario público importa de `admin/` → el bundle del panel
-viaja a una página pública»*), y el movimiento del directorio **no** la cerró:
-la disfrazó, porque ahora el import que la abre no dice `admin/` en ninguna
-parte.
-
-Las otras dos mitades, más chicas y de la misma forma:
-
-- **`@/lib/analytics` es la medición del panel**, no la del sitio (esa es
-  `analyticsSitio.ts`, y tiene su propio consentimiento —
-  `tests/terceros-antes-del-consentimiento.test.ts`). Un `medirFuncion` desde una
-  página pública mide con el perfil equivocado, y peor: mide **antes** de que
-  nadie haya aceptado nada.
-- **`AyudaDeSeccion`** es el `?` del panel, atado a `CAPITULOS` de `lib/ayuda.ts`.
-  El sitio tiene su propia ayuda (`ayudaDelSitio.ts`), que es otro vocabulario.
-
-**Dónde y el molde.** No es «mover tres archivos más»: lo que hay que decidir es
-de dónde saca sus opciones un formulario **público**, y la respuesta ya está
-escrita en otro lado — del **JSON** (§4.4 del `CLAUDE.md`: «las opciones viajan
-en el JSON», y la web arma los chips recorriendo `opciones.*`), no de un
-`onSnapshot`. O sea: `TaxonomiaSelect` necesita recibir sus valores en vez de
-buscarlos, y el hook queda del lado del panel. Lo mismo con la medición y con la
-ayuda: se reciben, no se importan.
-
-**Cuándo.** Antes del primer formulario público que use un desplegable de
-taxonomía — la tajada 1 (`/proponer`) según el inventario, o la 2 si el de
-propuestas no lleva ninguno. **No** bloquea la tajada 0, que es solo el
-movimiento.
-
-**Y lo que falta para que esto no vuelva a pasar en silencio:** hoy ningún
-chequeo prohíbe que `campos/` importe de `admin/`. `bundle-panel.test.ts` sigue
-el grafo **desde la island del panel**, así que mira la dirección contraria; y
-`salud-del-codigo.test.ts` cuenta ciclos, no capas. La regla —«`components/campos`
-no importa de `components/admin`»— son tres líneas sobre el grafo que ese archivo
-ya construye, y es la única forma de que el cuarto archivo compartido no nazca
-atado.
 
 ### B-826 · El frontmatter de una definición nueva no se chequea hasta que se commitea — ✅ hecho (2026-09-08) · P2
 
@@ -13342,6 +13384,10 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **El vocabulario de `incluye-actividad` viajaba en el `events.json` sin que nada lo lea** | lo encontró el `auditor-privacidad` sobre B-830, y es un caso de doc falsa además de una publicación sin decidir: D-580 y `07-seguridad.md` decían «no al `events.json`», que era cierto **del campo** y falso **del archivo**. `opcionesDeTaxonomia()` recorre `CAMPOS_TAXONOMIA` y `construirIndice` no filtraba ninguna clave, así que el archivo ganaba una `incluye-actividad` con los siete slugs y etiquetas base **más todo «Otro» que alguien tipee** —que desde B-131 nace aprobado y sale en el rebuild siguiente, incluso si se tipeó cargando una actividad en **borrador**—. §4.4 define quién lee esas opciones: la island, para armar los chips; `incluye` no es eje de filtro (D-580), así que era la primera taxonomía del repo cuyo vocabulario viaja sin consumidor, en la salida más barata de cosechar (D-129). El barrido de centinelas no lo veía porque siembra `opciones` con un solo eje. Cerrado con `TAXONOMIAS_FUERA_DEL_INDICE` —una lista y no un `!==`, para que la séptima taxonomía obligue a decidir— y un caso que la ata contra `CAMPOS_TAXONOMIA` sembrando **las seis**. Verificado por mutación | B-830, `src/lib/eventsJson.ts`, `tests/barrido-de-salidas-publicas.test.ts` (2026-09-09) |
+| **El barrido del artefacto era ciego al campo nuevo: `incluye` estaba anclado en un solo lado** | lo encontró el `auditor-privacidad`, y es **la misma asimetría que el propio gate registra como cobrada una vez** (el docblock de `comisionId`): el campo quedó anclado en `tests/fixtures/centinelas.ts` en las dos direcciones y en **nada** en el `CENTINELA` de `scripts/build-contra-emulador.mjs`, que es el que recorre todo el `dist/`. No dejaba el gate rojo: dejaba el campo invisible. Si una plantilla publicara el slug crudo en la home, en un hub o en `/pasadas`, el paso 9 pasaba en verde. Cerrado con `CENTINELA.incluyeSlug` —con guiones, para que la etiqueta derivada por `desSlug` no lo contenga— y con `ETIQUETA_DE_INCLUYE` en la dirección contraria, que es lo único que puede ver si la plantilla **pinta** la sección (un `.astro` no se importa desde vitest, D-140). Verificado corriendo el gate: la etiqueta aparece en el HTML, el slug no, y el `events.json` no lleva ni el campo ni su vocabulario. **Y una corrección al hallazgo:** decía que agregar el centinela pondría el gate rojo por el ítem de arriba, y no — el gate **no siembra `/opciones/*`** (lo pide B-804 para el monto), así que la clave del vocabulario sale vacía y el gate es ciego a esa mitad. La cubre el caso de vitest, no el gate | B-830, `scripts/build-contra-emulador.mjs` (2026-09-09) |
+| **Renombrar una etiqueta de `incluye-actividad` hacía todo el trabajo de re-sincronizar Calendar para escribir cero eventos** | lo encontró el `auditor-trampas` sobre B-830, y es un caso que **no existía hasta la sexta taxonomía**: todas estaban en la descripción del evento, así que el escaneo de `rebuildPorOpciones` siempre podía tener trabajo. `incluye-actividad` no sale al evento (D-580), así que `mismasEtiquetas` daba `false` —las etiquetas sí cambiaron— y el trigger seguía de largo: releía las taxonomías, **autenticaba contra la API de Calendar**, leía la colección `actividades` entera y corría `replanificarPorEtiquetas` sobre cada sesión de cada actividad publicada, para terminar con `reescritos = 0`. No corrompía nada —lectura sin escritura— y el desperdicio crece con el catálogo, que es lo que lo hace un ítem y no una nota al pie. Cerrado con una guarda de una línea contra `TAXONOMIAS_FUERA_DEL_EVENTO`, la lista que el mismo cambio había declarado del lado de la Function, así que no nace una segunda. Lo que el test afirma es **el orden**, que es la mitad que se puede romper arreglando lo otro: va **después** de `marcarRebuild` —el sitio sí muestra la etiqueta nueva y hay que rebuildearlo (§4.4, trampa 8)— y **antes** de `cargarLabels`, del `.get()` de la colección y de `calendario()`. Verificado por mutación en las dos direcciones | B-830, `functions/opciones-trigger.js`, `tests/sincronizacion.test.ts` (2026-09-09) |
+| **El barrido de B-827 no podía ver un componente que recibe el `id` y no lo reenvía al DOM** | lo señaló el `auditor-trampas` sobre la misma tanda. El barrido de `clases-de-bug.test.ts` compara **texto**: exige que dentro de `<Campo htmlFor={X}>…</Campo>` aparezca `id={X}`. Eso agarra el caso original —un `htmlFor` apuntando a un id que nadie declara— y **no puede** agarrar el siguiente: el fuente dice `id={campoId('x')}` y el `<input>` sale sin nada, porque el hijo se quedó el prop. Los tres widgets que hoy reciben `id` lo reenvían bien y estaba verificado a mano, o sea que la garantía existía y no la sostenía nada. Cerrado con `tests/campo-asociado.render.test.tsx`, que monta el formulario y busca cada campo **por su label** —uno por tipo de control: input suelto, textarea, select, `TaxonomiaSelect`, `TagsInput`— más el caso del grupo (`role="group"` con `aria-labelledby`, que se busca distinto) y un control positivo que distingue «el label se rompió» de «no hay formulario». Verificado por mutación: sacar el `id={id}` de `TagsInput` deja el render test en rojo y el barrido de texto **en verde**, que es exactamente el punto ciego | B-827, `tests/campo-asociado.render.test.tsx` (2026-09-09) |
 | **«Generar N encuentros» sobre una comisión podía moverle la fecha al evento de otro encuentro** | lo encontró el `auditor-trampas` sobre B-181, y era un P1 sin ningún rojo. `generarSesiones` hereda `id` y `calendarEventId` **por posición** (`previas[i]`, B-90) y las fechas que produce son ascendentes: el mapeo solo dice la verdad si `previas` viene en orden cronológico. El array del formulario no lo garantiza —se agregan filas en cualquier orden, se duplica una del medio— y B-181 lo empeoró, porque ahora se pasa un **subconjunto filtrado por comisión**, donde el botón «Ordenar por fecha» no alcanza (ordena el array entero, no cada grupo). Con el grupo desordenado, el encuentro nuevo heredaba el evento de otro y el diff del §7.2 le movía la fecha **en silencio**: nadie ve un error, el suscripto ve su evento en otro día. Es la trampa 2 sin ids por índice — el id es un uuid, lo que se calculaba por posición es a quién se lo hereda. Cerrado ordenando `previas` **adentro** de `generarSesiones` (el riesgo es de su contrato, así que la defensa vive con él), lo que arregla también el caso sin comisiones que ya era frágil, con dos casos y su mutación probada | B-181, `src/lib/sesiones.ts`, `tests/sesiones.test.ts` (2026-09-08) |
 | **D-460 y D-461 enteras quedaron dentro de un bloque de código** en la doc de decisiones | dos ` ``` ` huérfanos —uno antes de D-460 y otro después de D-461— sin ninguna apertura que cerrar. En Markdown eso no es un error: el primero **abre** un bloque y el segundo lo cierra, así que las dos decisiones de la página de apoyo se renderizaban como código plano, sin sus tablas, sus negritas ni sus links. Nada lo agarró porque ningún chequeo cuenta fences y en el editor el texto se lee igual. Se encontró de casualidad, leyendo D-461 por otro motivo (B-791). Cerrado borrando las dos líneas; el conteo de fences del archivo pasó de 22 a 20, todos apareados | B-780, `docs/06-decisiones.md` (2026-09-07) |
 | **La decisión de que `/apoyar` no estuviera en el encabezado (D-461) quedó desactualizada un día** | el dueño pidió subir `/apoyar` y `/anunciar` a la barra el 2026-09-07 y se hizo: los tres casos de `apoyo-del-sitio.test.ts` que ataban las dos direcciones se pusieron en rojo y se actualizaron, **pero la decisión no**. La entrada de D-461 había dejado escrito «el día que se decida subirla el caso se pone en rojo y hay que venir a decidirlo acá», y esa segunda mitad no se hizo en el momento. Cerrado con el aviso al frente de D-461, que dice qué motivo caducó por decisión, cuál sigue siendo verdad y pasó a ser un riesgo asumido, y qué no cambió | B-780, `docs/06-decisiones.md` (2026-09-07) |

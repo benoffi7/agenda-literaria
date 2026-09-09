@@ -190,6 +190,15 @@ compromete la forma de una URL (`?incluye=`) el día que se vuelva chip, que es 
 que no se mueve una vez indexada (trampa 10). El texto para redes lo tiene cerrado
 **por tipo**: `ActividadParaRedes` es un `Pick`.
 
+**Y hay una sexta celda, que la primera versión de este párrafo se comió.** «No al
+`events.json`» era cierto del campo y **falso del archivo**: el **vocabulario** de
+la taxonomía viajaba por el otro camino —`opcionesDeTaxonomia()` recorre
+`CAMPOS_TAXONOMIA`— con los siete slugs base y todo «Otro» que alguien tipee, que
+desde B-131 nace aprobado. Lo cobró el `auditor-privacidad`, y hoy lo excluye
+`TAXONOMIAS_FUERA_DEL_INDICE` (`eventsJson.ts`): sin chip no hay quién lo lea
+(§4.4), y la página de detalle resuelve sus etiquetas en el build y no contra el
+índice.
+
 **`arancel.monto` sí sale, y es una decisión explícita** (B-114, **D-500**). El
 `arancel` dejó de proyectarse entero: `toPublic` lo **enumera campo por campo**,
 porque el passthrough tipado (`Actividad['arancel']`) era un agujero latente —
