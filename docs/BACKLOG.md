@@ -605,6 +605,97 @@ barato:
 taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
 en la suite y no en producción, que es exactamente para lo que se escribió.
 
+### B-847 · Newsletter con Mailchimp, adentro de `/suscribirse` · P2 — **idea del dueño (2026-09-09)**
+
+**El pedido, textual:** «un formulario para un newsletter, la idea es usar
+mailchimp. la idea es meterlo dentro de suscribirse».
+
+Encaja donde lo pide: `/suscribirse` ya es la página de «no te pierdas nada», y
+hoy ofrece **una sola forma** —suscribirse al calendario público— que sirve a
+quien vive en su calendario y no a quien vive en su casilla. Son dos maneras de la
+misma intención y la página es el lugar natural para las dos.
+
+**Lo que cambia de fondo, y hay que decirlo antes de elegir cómo:** hoy el sitio
+público **no le manda ni un dato de nadie a ningún tercero** —eso es lo que
+`tests/terceros-antes-del-consentimiento.test.ts` (D-254) verifica sobre el `dist/`
+de verdad, y lo que deja que `/ayuda` y `/contacto` afirmen lo que afirman—. Un
+newsletter mueve la casilla de una persona a **Mailchimp**, que es un tercero en
+otro país. No es un impedimento; es lo que hay que escribir en `07-seguridad.md`,
+en la página misma y en la ayuda **en el mismo cambio**, con el doble opt-in de
+Mailchimp como parte de la promesa.
+
+**Tres formas, y no son equivalentes:**
+
+| Cómo | Qué cuesta | Qué rompe |
+|---|---|---|
+| **`<form>` HTML que postea a `list-manage.com`** | nada: el sitio es estático y esto no necesita backend | **Nada de la red de contención**: no carga ningún script de tercero, así que D-254 sigue verde. Se lleva a la persona a una página de Mailchimp al enviar |
+| El **embed con JS** de Mailchimp | copiar y pegar | Carga `mc-validate.js` desde `chimpstatic.com` **antes de cualquier consentimiento** → pone en rojo D-254, y con razón |
+| Una **Function** que llame a la API con la key en Secret Manager | una Function más, y **es un endpoint de escritura anónimo**: la misma conversación de App Check que B-836a | Nada, y es la única que deja validar y limitar de nuestro lado. La casilla igual termina en Mailchimp |
+
+**Mi recomendación es la primera** para la v1: es la que no toca ninguna de las
+capas que costó construir, y el precio —que el «gracias» lo dé Mailchimp y no
+nuestro sitio— se puede revisar después. La tercera es la buena el día que
+`/proponer` haya abierto la puerta anónima con App Check exigiendo: ahí el costo
+marginal es chico y el formulario queda adentro del sitio de punta a punta.
+
+**Lo que hay que decidir antes de escribir una línea:** (1) cuál de las tres; (2)
+qué se le promete a quien se anota —cada cuánto, quién manda, cómo se da de baja—,
+porque eso es texto de una página pública y lo barre
+`tests/promesas-sobre-datos.test.ts`; (3) si la lista de Mailchimp se crea con
+doble opt-in (debería) y quién es el remitente.
+
+### B-848 · Un «usuario» en el sitio público sin login: favoritos y filtros guardados · P2 — **idea del dueño (2026-09-09)**
+
+**El pedido, textual:** «empezar a tener un usuario en el frente público (por
+ahora sin login ni nada). la idea es que pueda guardar favoritos de lugares (y con
+todo lo que implica de verlos y quitarlos en una sección propia) y guardar un
+filtro determinado. puede tener varios filtros predeterminados».
+
+**«Sin login» es la decisión más importante del ítem y la que lo hace barato:** si
+no hay cuenta, no hay nada que guardar del lado nuestro. Todo vive en el
+`localStorage` del navegador de cada persona, que es exactamente el patrón que el
+panel ya usa para los borradores (D-122) y el que hace que el sitio siga sin
+guardar un dato de nadie — la promesa que B-102 sostiene y que
+`07-seguridad.md` afirma. Es **también** lo que hay que decir en la pantalla: los
+favoritos son de **ese** navegador, no viajan al teléfono, y se van si se borran
+los datos del sitio.
+
+**Lo que ya está y lo hace más chico de lo que parece:**
+
+- los filtros del listado **ya viajan en la URL** (`?tag=poesia`, `?barrio=…`), así
+  que «guardar un filtro» es guardar **una URL con un nombre**. No hay que inventar
+  ninguna serialización;
+- el sitio ya tiene islands de React en el listado, así que la sección propia es
+  una página estática que se hidrata desde `localStorage`;
+- y el chequeo de terceros y el banner de cookies **no aplican**: `localStorage`
+  para una función que la persona pidió no es analítica.
+
+**La ambigüedad que hay que resolver antes, y es la única grande: favoritos de
+qué.** El pedido dice «lugares», y `lugares` es el nombre de una de las tres
+entidades de la Guía (PRD 4), que **todavía no existe**. Hoy lo que el sitio tiene
+son **actividades**. Las tres lecturas llevan a cosas distintas:
+
+1. **actividades** — la más útil hoy («me interesa este taller, avisame»), y la que
+   choca con que una actividad **pasa**: un favorito que se vence necesita decidir
+   qué hace la sección con lo que ya ocurrió (¿lo esconde? ¿lo muestra apagado?);
+2. **lugares de la Guía** (PRD 4) — coherente con «lugares», y **bloqueado** hasta
+   que esa tajada exista;
+3. **cualquier ficha** (actividad, librería, suscripción, lugar) — lo más
+   ambicioso: un favorito genérico con su tipo, que sirve para las cuatro. Es más
+   diseño y menos código del que parece, porque la sección tiene que agrupar.
+
+**Lo que hay que decidir:** (1) cuál de las tres; (2) qué pasa con un favorito que
+ya pasó o que se despublicó —el sitio es estático, así que la sección tiene que
+resolver contra el `events.json` del build y tolerar que el slug ya no exista—; (3)
+si la sección propia es una página (`/mis-favoritos`, con `noindex`: es distinta
+para cada persona) o un panel dentro del listado; (4) cuántos filtros guardados y
+si se pueden renombrar.
+
+**Y una consecuencia de SEO que conviene tener escrita:** cualquier página cuyo
+contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt` y
+`sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
+página vacía indexada es peor que ninguna.
+
 ### B-846 · La URL de descarga de un flyer privado es una capability, y eso no es «nadie puede leerlo» · P3
 
 **Lo descubrió `tests/storage-reglas.integracion.test.ts` fallando**, escribiendo
