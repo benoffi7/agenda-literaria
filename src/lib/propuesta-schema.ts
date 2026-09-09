@@ -21,6 +21,11 @@ import {
   ARANCELES_PROPUESTA,
   MAX_FECHAS_PROPUESTA,
   MAX_INCLUYE_PROPUESTA,
+  MIN_CONTACTO_PROPUESTA,
+  MIN_DESCRIPCION_PROPUESTA,
+  MIN_FECHAS_PROPUESTA,
+  MIN_ORGANIZADOR_PROPUESTA,
+  MIN_TITULO_PROPUESTA,
   MODALIDADES_PROPUESTA,
   TOPE_CONTACTO_PROPUESTA,
   TOPE_CORTO_PROPUESTA,
@@ -69,14 +74,14 @@ const fechaSchema = z.object({
 export const propuestaFormSchema = z
   .object({
     titulo: texto
-      .min(6, 'Escribí un título un poco más largo')
+      .min(MIN_TITULO_PROPUESTA, 'Escribí un título un poco más largo')
       .max(TOPE_TITULO_PROPUESTA, 'El título tiene que ser más corto'),
     descripcion: texto
-      .min(15, 'Contá un poco más: qué se hace y para quién es')
+      .min(MIN_DESCRIPCION_PROPUESTA, 'Contá un poco más: qué se hace y para quién es')
       .max(TOPE_DESCRIPCION_PROPUESTA, 'Quedó muy largo, resumilo'),
     fechas: z
       .array(fechaSchema)
-      .min(1, 'Poné al menos una fecha')
+      .min(MIN_FECHAS_PROPUESTA, 'Poné al menos una fecha')
       .max(MAX_FECHAS_PROPUESTA, `Hasta ${MAX_FECHAS_PROPUESTA} fechas`),
     modalidad: z.enum(MODALIDADES_PROPUESTA),
     lugar: z.object({
@@ -86,7 +91,7 @@ export const propuestaFormSchema = z
     }),
     organizador: z.object({
       nombre: texto
-        .min(2, '¿Quién organiza?')
+        .min(MIN_ORGANIZADOR_PROPUESTA, '¿Quién organiza?')
         .max(TOPE_CORTO_PROPUESTA, 'Quedó muy largo'),
       instagram: texto.max(TOPE_CORTO_PROPUESTA).default(''),
     }),
@@ -107,7 +112,7 @@ export const propuestaFormSchema = z
     contacto: z.object({
       via: z.enum(VIAS_CONTACTO_PROPUESTA),
       valor: texto
-        .min(3, '¿Cómo te escribimos si hay que preguntarte algo?')
+        .min(MIN_CONTACTO_PROPUESTA, '¿Cómo te escribimos si hay que preguntarte algo?')
         .max(TOPE_CONTACTO_PROPUESTA, 'Quedó muy largo'),
     }),
   })
@@ -193,10 +198,19 @@ export const formAPropuesta = (
   return {
     titulo: f.titulo.trim(),
     descripcion: f.descripcion.trim(),
+    /*
+     * **Recortados**, y no es cosmético: el schema los valida ya recortados
+     * —`texto = z.string().trim()` corre antes del `regex`— así que
+     * `' 2026-10-07 '` pasa la validación, y sin este `trim()` se guardaba **con
+     * los espacios**. La regla no lo puede ver porque no itera la lista (B-842),
+     * y el `matches` del schema tampoco, porque ya vio la versión recortada. Lo
+     * encontró el `auditor-privacidad`: eran los dos únicos campos donde zod
+     * recortaba y el armado no.
+     */
     fechas: f.fechas.map((x) => ({
-      dia: x.dia,
-      desde: x.desde,
-      hasta: x.hasta ? x.hasta : null,
+      dia: x.dia.trim(),
+      desde: x.desde.trim(),
+      hasta: x.hasta.trim() ? x.hasta.trim() : null,
     })),
     modalidad: f.modalidad,
     // El lugar se descarta entero si la propuesta es virtual: si la modalidad
@@ -218,7 +232,9 @@ export const formAPropuesta = (
       requiere: f.inscripcion.requiere,
       comoDice: f.inscripcion.requiere ? oNull(f.inscripcion.comoDice) : null,
     },
-    incluye: [...f.incluye],
+    // Ídem: son slugs, y un slug con un espacio adelante no es el mismo slug —
+    // no resolvería su etiqueta y la ficha lo mostraría des-slugueado.
+    incluye: f.incluye.map((x) => x.trim()).filter(Boolean),
     incluyeOtro: oNull(f.incluyeOtro),
     imagen: f.imagenUrl.trim() ? { url: f.imagenUrl.trim() } : null,
     contacto: { via: f.contacto.via, valor: f.contacto.valor.trim() },

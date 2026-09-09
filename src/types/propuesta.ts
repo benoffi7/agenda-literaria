@@ -85,6 +85,17 @@ export type OrigenPropuesta = (typeof ORIGENES_PROPUESTA)[number];
 
 /** Igual que el del reporte, y por lo mismo: es un título. */
 export const TOPE_TITULO_PROPUESTA = 120;
+/**
+ * El id de la actividad que salió de la propuesta (`act_<uuid>`), que escribe un
+ * admin al aceptarla.
+ *
+ * Tiene su propia constante y no reusa `TOPE_CORTO_PROPUESTA` aunque valga lo
+ * mismo: son cotas de cosas distintas y el día que una se mueva no tiene por qué
+ * mover la otra. Lo señaló el `auditor-trampas` — era el único número de la regla
+ * que no estaba declarado en ninguna parte, así que cambiarlo o borrarlo no
+ * ponía nada en rojo.
+ */
+export const TOPE_ACTIVIDAD_ID_PROPUESTA = 200;
 export const TOPE_DESCRIPCION_PROPUESTA = 4000;
 /** El texto libre de «qué incluye» que el admin decide si promueve (§4.2). */
 export const TOPE_INCLUYE_OTRO_PROPUESTA = 200;
@@ -109,6 +120,22 @@ export const TOPE_URL_PROPUESTA = 500;
  */
 export const MAX_FECHAS_PROPUESTA = 12;
 export const MAX_INCLUYE_PROPUESTA = 12;
+
+/*
+ * ── Y los mínimos ─────────────────────────────────────────────────────────
+ *
+ * Van declarados por lo mismo que los topes: la regla los repite, y un número
+ * suelto en `firestore.rules` que no esté declarado acá no se puede atar — o sea
+ * que cambiarlo no pone nada en rojo. Es la mitad que le faltaba al patrón de
+ * B-364, y la señaló el `auditor-trampas`.
+ */
+export const MIN_TITULO_PROPUESTA = 6;
+export const MIN_DESCRIPCION_PROPUESTA = 15;
+export const MIN_ORGANIZADOR_PROPUESTA = 2;
+export const MIN_CONTACTO_PROPUESTA = 3;
+/** Una fecha, y una imagen que no sea la cadena vacía. */
+export const MIN_FECHAS_PROPUESTA = 1;
+export const MIN_NO_VACIO_PROPUESTA = 1;
 
 /**
  * Una fecha propuesta. **Strings, no `Timestamp`** — desvío deliberado del §3.2
@@ -198,11 +225,26 @@ export interface PropuestaConId extends Propuesta {
   id: string;
 }
 
+/**
+ * Una fila de fecha **en el formulario**, donde `hasta` es siempre un string y
+ * `''` significa «no lo sé».
+ *
+ * Es la misma asimetría que `SesionForm` con el documento, y por el mismo
+ * motivo: un `<input>` no tiene `null`. `formAPropuesta` traduce el `''` a `null`
+ * al armar el documento, que es donde la ausencia tiene que representarse **de
+ * una sola forma** para que la regla pueda exigir `== null`.
+ */
+export interface FechaPropuestaForm {
+  dia: string;
+  desde: string;
+  hasta: string;
+}
+
 /** Lo que llena quien propone, en el formulario público. */
 export interface PropuestaForm {
   titulo: string;
   descripcion: string;
-  fechas: FechaPropuesta[];
+  fechas: FechaPropuestaForm[];
   modalidad: ModalidadPropuesta;
   lugar: { nombre: string; direccion: string; barrio: string };
   organizador: { nombre: string; instagram: string };

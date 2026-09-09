@@ -294,8 +294,18 @@ service cloud.firestore {
     }
 
     function lugarValido(lugar) {
+      /*
+       * **`hasOnly` + `hasAll`, y acá el `hasAll` sí hace falta** — lo encontró el
+       * `auditor-privacidad`. Con `.get(k, '')` y solo `hasOnly`, `lugar: {}` y
+       * `lugar: { barrio: 'x' }` **entraban**: el `.get()` devuelve `''` y los tres
+       * asertos de tamaño pasan. Es el espejo exacto de `imagenValida()`, donde el
+       * mismo `.get()` está para que el mapa vacío se **rechace**: la diferencia es
+       * la cota mínima, que acá no puede estar porque el schema pide **uno** de los
+       * dos primeros y no los tres.
+       */
       return lugar == null || (
         lugar.keys().hasOnly(['nombre', 'direccion', 'barrio'])
+        && lugar.keys().hasAll(['nombre', 'direccion', 'barrio'])
         && lugar.get('nombre', '') is string && lugar.get('nombre', '').size() <= 200
         && lugar.get('direccion', '') is string && lugar.get('direccion', '').size() <= 200
         && lugar.get('barrio', '') is string && lugar.get('barrio', '').size() <= 200
@@ -334,7 +344,25 @@ service cloud.firestore {
         || (imagen.keys().hasOnly(['storagePath'])
           && imagen.get('storagePath', '') is string
           && imagen.get('storagePath', '').size() >= 1
-          && imagen.get('storagePath', '').size() <= 500)
+          && imagen.get('storagePath', '').size() <= 500
+          /*
+           * **Acotado al prefijo propio, y esto no es higiene: evita borrar el
+           * afiche de otra actividad.** Lo encontró el `auditor-privacidad`.
+           *
+           * Sin esta cláusula, con la puerta abierta un anónimo puede mandar
+           * `storagePath: 'imagenes/img_<uuid>.jpg'` de una actividad **real y
+           * publicada** — y el path no hay que adivinarlo: `storage.rules` deja
+           * escrito que viaja adentro de la URL de descarga, y `rutaDeMiniatura`
+           * lo deriva al revés desde la miniatura. Con el flujo previsto de
+           * DEC-11 (rechazar → borrar la imagen), rechazar esa propuesta borra
+           * el flyer de otra actividad, en vivo, y el sitio queda con la imagen
+           * rota.
+           *
+           * Mismo idiom que el `archivo.matches(...)` de `storage.rules`. Y es un
+           * escalar, no un elemento de lista, así que **acá sí se puede** — a
+           * diferencia de las fechas (B-842).
+           */
+          && imagen.get('storagePath', '').matches('^propuestas/[A-Za-z0-9_-]+[.](jpg|jpeg|png|webp)$'))
       );
     }
 
@@ -343,6 +371,32 @@ service cloud.firestore {
       let campos = ['titulo', 'descripcion', 'fechas', 'modalidad', 'lugar', 'organizador',
                     'arancel', 'inscripcion', 'incluye', 'incluyeOtro', 'imagen',
                     'contacto', 'estado', 'creadoEn', 'origen', 'revision'];
+      /*
+       * ── Por qué todo lo anidado se lee con `.get()` ─────────────────────
+       *
+       * Es el idiom que este archivo prescribe en `esAdmin()`: leer una clave
+       * ausente de un map es un *evaluation error*, no `false`. El error deniega
+       * igual, así que la regla «funciona» — y por el camino equivocado. Acá eso
+       * importa más que en ninguna otra colección: del otro lado va a haber un
+       * navegador **anónimo**, y el caso más frecuente (un campo opcional que el
+       * cliente omite en vez de mandar `null`) fallaría con una traza de
+       * evaluación en vez de un permission-denied limpio. `reporteValido()` ya lo
+       * había resuelto así para `contexto.pantalla`; este bloque no lo seguía.
+       *
+       * **Y hay un efecto que es el que de verdad decide.** Con acceso directo,
+       * la obligatoriedad de cada clave anidada la sostenía el error de
+       * evaluación, o sea **nada declarado**: los `hasAll` que se agregaron para
+       * declararla no se podían mutar —sacarlos dejaba la suite en verde— y eran
+       * la clase de cláusula muerta que este mismo archivo persigue dos funciones
+       * más arriba. Con `.get()`, cada `hasAll` es lo único que exige su clave, y
+       * se puede verificar por mutación.
+       *
+       * `contacto` **no** lleva `hasAll` y no es un olvido: sus dos claves son
+       * obligatorias y las exigen sus propias cotas (`via in [...]` falla con
+       * `''`, y `valor.size() >= 3` también), así que un `hasAll` ahí no podría
+       * fallar. Los otros cuatro mapas **sí** lo llevan, porque tienen al menos
+       * un campo opcional cuyo chequeo es `== null` y pasa con la clave ausente.
+       */
       return d.keys().hasOnly(campos) && d.keys().hasAll(campos)
         && d.titulo is string && d.titulo.size() >= 6 && d.titulo.size() <= 120
         && d.descripcion is string
@@ -351,42 +405,79 @@ service cloud.firestore {
         && d.modalidad in ['presencial', 'virtual', 'las-dos']
         && lugarValido(d.lugar)
         && d.organizador.keys().hasOnly(['nombre', 'instagram'])
-        && d.organizador.nombre is string
-        && d.organizador.nombre.size() >= 2 && d.organizador.nombre.size() <= 200
-        && (d.organizador.instagram == null || (d.organizador.instagram is string
-              && d.organizador.instagram.size() <= 200))
+        && d.organizador.keys().hasAll(['nombre', 'instagram'])
+        && d.organizador.get('nombre', '') is string
+        && d.organizador.get('nombre', '').size() >= 2
+        && d.organizador.get('nombre', '').size() <= 200
+        && (d.organizador.get('instagram', null) == null
+             || (d.organizador.get('instagram', '') is string
+                  && d.organizador.get('instagram', '').size() <= 200))
         && d.arancel.keys().hasOnly(['tipo', 'notas'])
+        && d.arancel.keys().hasAll(['tipo', 'notas'])
         // §4.1 — solo los tres `fijo: true`. Las demás se eligen desde el panel,
         // porque crear una opción es escribir en `/opciones/*`, que es de lectura
         // pública y viaja al `events.json` (§4.2 del PRD).
-        && d.arancel.tipo in ['gratis', 'a-la-gorra', 'arancelado']
-        && (d.arancel.notas == null || (d.arancel.notas is string
-              && d.arancel.notas.size() <= 200))
+        && d.arancel.get('tipo', '') in ['gratis', 'a-la-gorra', 'arancelado']
+        && (d.arancel.get('notas', null) == null
+             || (d.arancel.get('notas', '') is string
+                  && d.arancel.get('notas', '').size() <= 200))
         && d.inscripcion.keys().hasOnly(['requiere', 'comoDice'])
-        && d.inscripcion.requiere is bool
-        && (d.inscripcion.comoDice == null || (d.inscripcion.comoDice is string
-              && d.inscripcion.comoDice.size() <= 500))
+        && d.inscripcion.keys().hasAll(['requiere', 'comoDice'])
+        && d.inscripcion.get('requiere', null) is bool
+        && (d.inscripcion.get('comoDice', null) == null
+             || (d.inscripcion.get('comoDice', '') is string
+                  && d.inscripcion.get('comoDice', '').size() <= 500))
         && d.incluye is list && d.incluye.size() <= 12
         && (d.incluyeOtro == null || (d.incluyeOtro is string
               && d.incluyeOtro.size() <= 200))
         && imagenValida(d.imagen)
         // El contacto de quien propone: interno, no sale nunca (§5.1, §7 del PRD).
         && d.contacto.keys().hasOnly(['via', 'valor'])
-        && d.contacto.via in ['mail', 'whatsapp', 'instagram']
-        && d.contacto.valor is string
-        && d.contacto.valor.size() >= 3 && d.contacto.valor.size() <= 200
+        && d.contacto.get('via', '') in ['mail', 'whatsapp', 'instagram']
+        && d.contacto.get('valor', '') is string
+        && d.contacto.get('valor', '').size() >= 3
+        && d.contacto.get('valor', '').size() <= 200
         // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
         // `curl` marca su propia propuesta como aceptada y la bandeja no sirve
         // para nada (§1 del `prd/README.md`).
         && d.estado == 'nueva'
-        // Y `revision` entera en null: nadie nace revisado.
+        /*
+         * Y `revision` entera en null: nadie nace revisado.
+         *
+         * **El `.get(clave, 'x')` es lo que rechaza la clave ausente**, y por eso
+         * acá no va `hasAll`: el default es un centinela que **no es `null`**, así
+         * que una clave que falta no puede pasar el `== null`. Ausente y `null`
+         * dejan de ser lo mismo sin necesidad de una cláusula aparte — que además
+         * no se podría mutar, y sería la clase de cláusula muerta que este archivo
+         * persigue dos funciones más arriba.
+         *
+         * En `revisionValida()` sí va `hasAll`, y ahí sí frena: los dos campos
+         * opcionales del update se chequean con `== null` **contra un default
+         * `null`**, porque ahí `null` es un valor legítimo que un admin manda.
+         */
         && d.revision.keys().hasOnly(['porUid', 'en', 'actividadId', 'motivo'])
-        && d.revision.porUid == null && d.revision.en == null
-        && d.revision.actividadId == null && d.revision.motivo == null
-        // El origen tiene que coincidir con quién escribe: una propuesta anónima
-        // no puede decir que la cargó el panel, ni al revés. Es lo que hace que
-        // el `origen` sirva para algo cuando se abra el `create`.
-        && ((d.origen == 'formulario-publico' && request.auth == null)
+        && d.revision.get('porUid', 'x') == null && d.revision.get('en', 'x') == null
+        && d.revision.get('actividadId', 'x') == null
+        && d.revision.get('motivo', 'x') == null
+        /*
+         * **`!esAdmin()` y no `request.auth == null`** — lo corrigió el
+         * `auditor-privacidad`, y las dos cosas que arregla son de las que no se
+         * ven venir:
+         *
+         *  - crear una cuenta está al alcance de cualquiera con la API key
+         *    pública, así que con `== null` alguien **logueado sin el claim** no
+         *    podría proponer, y el rechazo no diría por qué;
+         *  - y el dueño, que **es** admin y va a tener sesión persistida en el
+         *    mismo origen, no podría usar su propio formulario público. Que hoy
+         *    funcionaría depende de que `/proponer` no inicialice Auth
+         *    (`getAuth()` es lazy en `firebase-client.ts`) — un acoplamiento que
+         *    nadie escribió y que se rompe el día que esa página llame a `auth()`.
+         *
+         * La propiedad que se quiere es la misma —una propuesta anónima no puede
+         * decir que la cargó el panel, ni al revés— apoyada en la autoridad real
+         * en vez de en un proxy.
+         */
+        && ((d.origen == 'formulario-publico' && !esAdmin())
              || (d.origen == 'panel' && esAdmin()))
         // Con `request.time` el cliente no puede antedatar la propuesta.
         && d.creadoEn == request.time;
@@ -412,12 +503,15 @@ service cloud.firestore {
         && d.diff(previo).affectedKeys().hasAny(['estado'])
         && d.estado in ['nueva', 'en-revision', 'aceptada', 'rechazada']
         && d.revision.keys().hasOnly(['porUid', 'en', 'actividadId', 'motivo'])
-        && d.revision.porUid == request.auth.uid
-        && d.revision.en == request.time
-        && (d.revision.actividadId == null || (d.revision.actividadId is string
-              && d.revision.actividadId.size() <= 200))
-        && (d.revision.motivo == null || (d.revision.motivo is string
-              && d.revision.motivo.size() <= 500));
+        && d.revision.keys().hasAll(['porUid', 'en', 'actividadId', 'motivo'])
+        && d.revision.get('porUid', '') == request.auth.uid
+        && d.revision.get('en', null) == request.time
+        && (d.revision.get('actividadId', null) == null
+             || (d.revision.get('actividadId', '') is string
+                  && d.revision.get('actividadId', '').size() <= 200))
+        && (d.revision.get('motivo', null) == null
+             || (d.revision.get('motivo', '') is string
+                  && d.revision.get('motivo', '').size() <= 500));
     }
 
     match /propuestas/{id} {
@@ -441,10 +535,20 @@ service cloud.firestore {
        * **Para abrirla**, y en este orden:
        *   1. App Check exigiendo, verificado en la consola;
        *   2. borrar `esAdmin() &&` de la línea de abajo;
-       *   3. `tests/escritura-anonima.integracion.test.ts` se pone **rojo** —es
-       *      su trabajo— y ahí se agrega `'propuestas'` a `COLECCIONES_ABIERTAS`
-       *      con su motivo, que es lo que hace que abrir una puerta sea un diff
-       *      visible y no un efecto colateral;
+       *   3. **el testigo que se pone rojo es
+       *      `tests/propuestas.integracion.test.ts`**, el caso «un anónimo no
+       *      puede crear una propuesta, ni con el documento perfecto». Y hay que
+       *      agregar `'propuestas'` a `COLECCIONES_ABIERTAS` de
+       *      `tests/escritura-anonima.integracion.test.ts`, que es lo que hace que
+       *      abrir una puerta sea un diff visible y no un efecto colateral.
+       *
+       *      **Ojo con eso último, que este comentario decía mal:** ese archivo
+       *      **no** se pone rojo solo. Prueba las escrituras con un documento
+       *      sonda (`{ hola: 'mundo' }`), que `propuestaValida()` rechaza por
+       *      `hasOnly` con la puerta abierta o cerrada — así que witness de la
+       *      **lista**, no de la puerta. Lo encontró el `auditor-privacidad`, y es
+       *      la misma clase que las cláusulas muertas de más arriba: una
+       *      afirmación que se lee como load-bearing y no puede fallar;
        *   4. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
        *      barrido programado de la bandeja en su Function. Son las otras tres
        *      capas de B-836 y ninguna reemplaza a ésta.

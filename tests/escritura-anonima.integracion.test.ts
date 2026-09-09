@@ -32,6 +32,20 @@
  * repo público—, así que «no está logueado» no es la defensa. La defensa es el
  * claim, y por eso los dos casos corren sobre las mismas colecciones.
  *
+ * ── Lo que este archivo NO es testigo de, y hay que saberlo ───────────────
+ * Es testigo de la **lista de colecciones**, no de la forma de cada una. Prueba
+ * las escrituras con un documento sonda (`{ hola: 'mundo' }`), así que en una
+ * colección que además valida la forma —`/propuestas`, con `propuestaValida()`—
+ * el rechazo llega por `hasOnly` **con la puerta abierta o cerrada**: abrir el
+ * `create` anónimo de esa colección **no pone este archivo en rojo**.
+ *
+ * Lo encontró el `auditor-privacidad` sobre B-830, y no es un defecto de este
+ * archivo: es el alcance que tiene. Lo que sí hace es exigir que
+ * `COLECCIONES_ABIERTAS` se edite a mano, o sea que abrir una puerta sea un diff
+ * visible. **El testigo de cada puerta vive en el archivo de su colección** — para
+ * `/propuestas`, el caso «un anónimo no puede crear una propuesta, ni con el
+ * documento perfecto» de `propuestas.integracion.test.ts`.
+ *
  * ── El control positivo, que es lo que hace que el verde signifique algo ───
  * Todo lo de acá es una denegación esperada, y **una denegación es lo que
  * devuelve también un emulador que no está, una base sin reglas o un `projectId`

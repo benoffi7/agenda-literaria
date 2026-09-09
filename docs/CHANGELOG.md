@@ -76,7 +76,110 @@
   que lo hace aceptable es que nada de una propuesta llega a una salida pública sin
   que un admin la convierta, y esa conversión pasa por `actividadFormSchema`.
 
-  33 casos contra el emulador y 28 puros. Doc: **D-590**, la sección de
+  **Los nueve hallazgos del `auditor-privacidad` sobre este mismo commit,
+  aplicados**, y el más caro no era ninguno de los nueve sino algo que salió de
+  arreglarlos:
+
+  **El saneador de comentarios se comía código.** `sinComentarios` sacaba los
+  `/* … */` **antes** que los `//`, así que un `/*` escrito adentro de un
+  comentario de línea abría un bloque que corría hasta el próximo `*/`. En
+  `firestore.rules` pasó exactamente eso: el comentario `// … escribir en
+  /opciones/*, que es de lectura pública` se llevó **quince cláusulas** de
+  `propuestaValida()` —la regla que va a validar la primera escritura anónima— y
+  el barrido de cotas que consumía el resultado habría dado **verde sin
+  mirarlas**. Y le invierte el argumento a su propio docblock: «es el lado seguro
+  del error, se audita de más y nunca de menos» era cierto cuando calculaba una
+  huella; como saneador de un barrido, sacar de más es **auditar de menos**.
+  Arreglado invirtiendo el orden, con dos casos que fijan la dirección del error y
+  la mutación probada en los dos sentidos. Lo consumen otros nueve archivos de
+  test.
+
+  **El P1 · el testigo que la regla nombraba para abrir la puerta no se ponía
+  rojo.** El paso 3 escrito en la regla decía que
+  `escritura-anonima.integracion.test.ts` se pondría rojo al borrar el
+  `esAdmin() &&`. No se pone: ese archivo prueba con un documento sonda
+  (`{ hola: 'mundo' }`) que `propuestaValida()` rechaza igual, así que abrir la
+  puerta dejaba la suite entera en verde — y era **la única barrera que sostenía
+  la decisión de secuencia de B-836a**. Misma clase que las cláusulas muertas: una
+  afirmación que se lee como load-bearing y no puede fallar. Ahora la regla nombra
+  el testigo real, hay un aserto que lo exige, y el alcance de `escritura-anonima`
+  quedó escrito en su docblock: es testigo de la **lista** de colecciones, no de la
+  forma de cada una.
+
+  **El P1 · diez cláusulas sin ningún caso que las ejercite**, y cada una deja
+  entrar algo: `incluye: 'no vengan'` (un string de doce caracteres pasaba el tope
+  de doce, porque `string.size()` existe), `requiere: 'si'`, un `telefono` colado
+  en `organizador`, un `valor2` en `contacto` —el mapa del dato personal del
+  tercero era el único de los cinco cuyo `hasOnly` no tenía caso—,
+  `revision.motivo` escrito por un anónimo, y `lugar: {}` / `lugar: { barrio }`,
+  que **entraban**. Quince casos nuevos. Y algo más: **todo lo anidado pasó a
+  leerse con `.get()`**, el idiom que el propio archivo prescribe en `esAdmin()`,
+  porque del otro lado va a haber un navegador anónimo y el campo opcional omitido
+  fallaba con una traza de evaluación en vez de un permission-denied limpio. Ese
+  cambio es el que hace **mutables** los `hasAll`: con acceso directo la
+  obligatoriedad de cada clave la sostenía el error de evaluación, o sea nada
+  declarado. Ahora cada cláusula se puede mutar y se pone roja — y las que no
+  frenaban nada no están.
+
+  **`imagen.storagePath` aceptaba cualquier path**, y es el hallazgo con la
+  consecuencia más concreta: con la puerta abierta, un anónimo manda el path del
+  flyer de una actividad real y publicada —que no hay que adivinar: viaja adentro
+  de la URL de descarga— y el flujo de DEC-11 (rechazar → borrar la imagen)
+  **borra el flyer de otra actividad**, en vivo. Acotado al prefijo `propuestas/`.
+
+  **El acople `origen`↔identidad estaba sobre «no hay sesión» y no sobre «no es
+  admin».** Con `request.auth == null`, al abrir la puerta alguien logueado sin el
+  claim no podría proponer, y el dueño —que es admin y va a tener sesión en el
+  mismo origen— **no podría usar su propio formulario público**. Que hoy
+  funcionaría dependía de que `/proponer` no inicialice Auth, un acoplamiento que
+  nadie escribió. Ahora es `!esAdmin()`.
+
+  **Y `formAPropuesta` no recortaba las dos listas**, que son los únicos campos
+  donde zod recorta y el armado no: `' 2026-10-07 '` se guardaba con los espacios,
+  y no lo podía ver ni la regla (no itera) ni el schema (ya vio la versión
+  recortada).
+
+  **Lo que no se arregló acá porque no es de la regla, y quedó anotado: B-843** —
+  cuatro cosas que la bandeja necesita **antes** de existir. La más importante:
+  hoy no hay ninguna forma de borrar el dato personal del tercero (el `delete`
+  está prohibido, el `update` acotado, y la Function de retención de B-838 no
+  existe) y el camino de admin ya está abierto, así que la fila de seguridad pasó
+  a decirlo en futuro. Y el `hasAny(['estado'])` va a **bloquear el flujo de
+  aceptar** —dos escrituras, la segunda toca solo `revision.actividadId`— así que
+  hay que elegir ahora entre una sola escritura o aflojar la cláusula. Más **la
+  corrección a B-842**: lo que protege el contenido de una propuesta no es
+  `actividadFormSchema` —que para `incluye` es un `z.array(texto)`— sino que un
+  admin mire; y `incluye` es justo el campo donde eso es más débil, porque un slug
+  inventado se publica des-slugueado en la ficha y doce chips se leen como
+  taxonomía. El filtro va en `propuestas.ts`.
+
+  **Los tres hallazgos del `auditor-trampas` sobre este mismo commit, aplicados**,
+  y los tres eran mi atado cumplido a medias:
+
+  1. **El atado de los topes cubría 8 de 24 cotas.** `TOPE_CORTO_PROPUESTA` se usa
+     **cinco** veces en la regla y el `it.each` ataba una; `TOPE_URL_PROPUESTA` dos
+     y ataba una. Subir el tope y actualizar solo la línea que el test mira dejaba
+     el test verde, el schema aceptando 300 (comparte la constante) y Firestore
+     rechazando la escritura — el formulario diciendo que sí. Y
+     `revision.actividadId.size() <= 200` era un número que no estaba declarado en
+     **ninguna** parte. Ahora la comparación es **exhaustiva**: el test parsea
+     todas las cotas del bloque y las compara contra la lista completa, así que
+     una cota nueva que nadie declare lo pone en rojo. Se declararon además los
+     cinco **mínimos**, que también estaban sueltos, y el schema los usa en vez de
+     repetir el número.
+  2. **`hasAny(['estado'])` no tenía quién la ejercite** — la misma clase que las
+     dos cláusulas muertas de `imagenValida()`: borrarla dejaba los 33 casos en
+     verde, porque los que pasan traen `estado` y los que fallan ya se caen por el
+     `hasOnly`. Va con su caso: un `update` que toca solo `revision`.
+  3. **El recorte del bloque se anclaba al nombre del primer helper.** Un helper
+     nuevo agregado antes de ése quedaba afuera del barrido sin que nada lo diga
+     — el punto ciego de B-364 a nivel de sub-bloque. Ancla al comentario de
+     sección.
+
+  Las tres verificadas por mutación, incluida la que importa: subir **una** de las
+  cinco ocurrencias del tope de 200 ahora pone el test en rojo.
+
+  50 casos contra el emulador y 23 puros. Doc: **D-590**, la sección de
   `/propuestas` en `03-modelo-de-datos.md`, las dos filas nuevas de «qué nunca
   sale» y el bloque de reglas en `07-seguridad.md`, la fila en la tabla «no
   automatizar» y **B-842**.

@@ -261,6 +261,125 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
         lugar: { nombre: 'X', direccion: 'Y', barrio: 'z', piso: '3' },
       });
     });
+
+    /**
+     * **Y con las claves de menos, que es la mitad que `hasOnly` NO frena** — lo
+     * encontró el `auditor-privacidad`. Con `.get(k, '')` y solo `hasOnly`,
+     * `lugar: {}` y `lugar: { barrio: 'x' }` **entraban**: el `.get()` devuelve
+     * `''` y los tres asertos de tamaño pasan. El tipo declara los tres strings
+     * como requeridos, así que la bandeja iba a leer `undefined`.
+     */
+    it('un lugar con las claves de menos, o vacío', async () => {
+      await rechaza('lugar_vacio', { lugar: {} });
+      await rechaza('lugar_parcial', { lugar: { barrio: 'villa-crespo' } });
+    });
+
+    /**
+     * **Los cinco mapas anidados exigen todas sus claves**, y hasta este cambio
+     * eso lo sostenía **el error de evaluación** y no una cláusula declarada. Los
+     * casos existen para que el `hasAll` de cada uno se pueda mutar: sin ellos,
+     * borrarlo dejaba la suite en verde y la regla «funcionando» por el camino
+     * equivocado — que es lo que dejaba abierta la puerta a aflojarla sin querer
+     * al pasar los accesos directos a `.get()`.
+     *
+     * El de `contacto` es el que más importa: es el mapa del dato personal del
+     * tercero.
+     */
+    /**
+     * **La clave opcional AUSENTE, que es el caso que el `hasAll` de cada mapa
+     * es lo único que frena.**
+     *
+     * Con todo leído por `.get()` —el idiom que este archivo prescribe en
+     * `esAdmin()`— un `instagram` ausente y un `instagram: null` son
+     * indistinguibles para la regla, así que `organizador: { nombre: 'X' }`
+     * pasaría todas las cotas. El `hasAll` es lo que lo rechaza, y estos casos
+     * son los que lo hacen **mutable**: sin ellos, borrarlo dejaba la suite en
+     * verde. `contacto` no está acá a propósito: sus dos claves son obligatorias
+     * y las exigen sus propias cotas, así que un `hasAll` ahí no podría fallar.
+     */
+    it.each([
+      ['organizador', { organizador: { nombre: 'Alguien' } }],
+      ['arancel', { arancel: { tipo: 'gratis' } }],
+      ['inscripcion', { inscripcion: { requiere: false } }],
+      // `revision` no está acá: su ausencia la rechaza el centinela
+      // `.get(clave, 'x')`, que no es `null`, así que no le hace falta `hasAll`.
+      ['revision', { revision: { porUid: null, en: null } }],
+    ])('un `%s` con una clave opcional ausente no entra', async (nombre, over) => {
+      await rechaza(`falta_${nombre}`, over);
+    });
+
+    it('un `contacto` sin `valor` tampoco, y lo frena su propia cota', async () => {
+      // Sin `hasAll`: `.get('valor', '')` da `''` y el `size() >= 3` lo rechaza.
+      // Es la razón por la que ese mapa no lleva `hasAll` — no tendría qué frenar.
+      await rechaza('falta_contacto', { contacto: { via: 'mail' } });
+    });
+
+    it.each([
+      ['organizador', { organizador: { nombre: 'X', instagram: null, telefono: '+5491100000000' } }],
+      ['arancel', { arancel: { tipo: 'gratis', notas: null, moneda: 'ARS' } }],
+      ['inscripcion', { inscripcion: { requiere: false, comoDice: null, cupo: 20 } }],
+      ['contacto', { contacto: { via: 'mail', valor: 'a@b.cd', valor2: 'otro' } }],
+    ])('un `%s` con un campo de más tampoco', async (nombre, over) => {
+      // El de `organizador` es el caso concreto: un `telefono` colado en el mapa
+      // que la fila de `07-seguridad.md` declara interno.
+      await rechaza(`extra_${nombre}`, over);
+    });
+
+    it('`incluye` tiene que ser una lista: un string de doce caracteres no es doce cosas', async () => {
+      // `string.size()` existe, así que sin el `is list` un `incluye: 'no vengan'`
+      // pasaba el tope de 12. `fechas is list` tenía su caso y su gemelo no.
+      await rechaza('incluye_string', { incluye: 'no vengan' });
+    });
+
+    it('`inscripcion.requiere` tiene que ser un booleano', async () => {
+      await rechaza('requiere_string', { inscripcion: { requiere: 'si', comoDice: null } });
+      await rechaza('requiere_numero', { inscripcion: { requiere: 1, comoDice: null } });
+    });
+
+    /**
+     * **`revision.motivo` y `revision.en` en null al crearse**, que solo estaban
+     * probados para `porUid` y `actividadId`. El caso concreto: un anónimo
+     * escribiendo `motivo: 'ya lo aprobó el equipo'`, que el panel va a mostrar
+     * como si lo hubiera escrito un admin.
+     */
+    it('la revisión no puede nacer con un motivo ni una fecha', async () => {
+      const { Timestamp } = await import('firebase/firestore');
+      await rechaza('motivo', {
+        revision: { porUid: null, en: null, actividadId: null, motivo: 'ya lo aprobaron' },
+      });
+      await rechaza('revision_en', {
+        revision: {
+          porUid: null,
+          en: Timestamp.fromDate(new Date('2026-09-01T00:00:00Z')),
+          actividadId: null,
+          motivo: null,
+        },
+      });
+    });
+
+    /**
+     * **El `storagePath` acotado a `propuestas/`** (DEC-11), y no es higiene: sin
+     * esto, con la puerta abierta un anónimo manda el path del flyer de una
+     * actividad **real y publicada** —que no hay que adivinar: viaja adentro de la
+     * URL de descarga— y el flujo de rechazo lo **borra**. Lo encontró el
+     * `auditor-privacidad`.
+     */
+    it('un `storagePath` que apunta afuera de `propuestas/` no entra', async () => {
+      await rechaza('path_ajeno', { imagen: { storagePath: 'imagenes/img_abc123.jpg' } });
+      await rechaza('path_arriba', { imagen: { storagePath: 'propuestas/../imagenes/x.jpg' } });
+      await rechaza('path_raro', { imagen: { storagePath: 'propuestas/' } });
+    });
+
+    it('y uno del prefijo propio sí', async () => {
+      // Control positivo: sin esto, «no entra» podría querer decir que ninguna
+      // forma de `storagePath` entra, y el campo sería inútil.
+      await setDoc(
+        doc(db(), 'propuestas', 'p_path_ok'),
+        documento({ imagen: { storagePath: 'propuestas/img_abc123.jpg' } }),
+      );
+      const d = (await getDoc(doc(db(), 'propuestas', 'p_path_ok'))).data() as Propuesta;
+      expect(d.imagen).toEqual({ storagePath: 'propuestas/img_abc123.jpg' });
+    });
   });
 
   describe('lo que hace que la bandeja sirva para algo', () => {
@@ -344,11 +463,58 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
       ).rejects.toThrow(RECHAZADA);
     });
 
+    /**
+     * **La cláusula que no tenía quién la ejercite** — la señaló el
+     * `auditor-trampas` sobre este mismo commit, y es la misma clase que las dos
+     * cláusulas muertas de `imagenValida()`: `hasAny(['estado'])` estaba en la
+     * regla y **ningún caso la podía mutar**. Los que pasan traen `estado`, y los
+     * que fallan traen además una clave de contenido que ya los tira por el
+     * `hasOnly` anterior — así que borrar el `hasAny` dejaba los 33 en verde.
+     *
+     * Lo que la cláusula impide: re-firmar la revisión **sin mover el estado**.
+     * El daño es acotado —solo un admin ya autenticado— pero una regla que no se
+     * puede verificar por mutación es exactamente lo que este archivo dice que
+     * no quiere.
+     */
+    it('un update que toca solo `revision`, sin mover el estado, se rechaza', async () => {
+      await expect(
+        updateDoc(doc(db(), 'propuestas', 'p_rev'), {
+          revision: {
+            porUid: UID,
+            en: serverTimestamp(),
+            actividadId: 'act_otra',
+            motivo: null,
+          },
+        }),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
     it('ni firmar la revisión a nombre de otro admin', async () => {
       await expect(
         updateDoc(doc(db(), 'propuestas', 'p_rev'), {
           estado: 'rechazada',
           revision: { porUid: UID_OTRO, en: serverTimestamp(), actividadId: null, motivo: 'no' },
+        }),
+      ).rejects.toThrow(RECHAZADA);
+    });
+
+    /**
+     * **La `revision` del update con una clave de menos**, que es donde el
+     * `hasAll` de `revisionValida()` sí frena y donde el del `create` no hacía
+     * falta.
+     *
+     * La asimetría vale la pena tenerla escrita: en el `create` los cuatro
+     * campos se chequean con un default centinela (`.get(k, 'x') == null`), así
+     * que la clave ausente ya no pasa; en el `update`, los dos opcionales se
+     * chequean con `== null` **contra un default `null`** —porque ahí `null` es
+     * un valor legítimo que un admin manda— y entonces sí hace falta declarar la
+     * presencia. Verificado por mutación en los dos lados.
+     */
+    it('la revisión del update tampoco puede venir con claves de menos', async () => {
+      await expect(
+        updateDoc(doc(db(), 'propuestas', 'p_rev'), {
+          estado: 'rechazada',
+          revision: { porUid: UID, en: serverTimestamp() },
         }),
       ).rejects.toThrow(RECHAZADA);
     });
@@ -423,13 +589,36 @@ describe.skipIf(!vivo)('propuestas contra el emulador — B-830', () => {
       ).rejects.toThrow(RECHAZADA);
     });
 
-    it('la regla dice qué falta para abrirla, y no solo que está cerrada', () => {
+    /**
+     * **La regla tiene que nombrar el testigo que de verdad se pone rojo**, y la
+     * primera versión nombraba el que no.
+     *
+     * El paso 3 de la secuencia decía «`escritura-anonima.integracion.test.ts` se
+     * pone rojo — es su trabajo». **No se pone.** Ese archivo prueba las
+     * escrituras con un documento sonda (`{ hola: 'mundo' }`), que
+     * `propuestaValida()` rechaza por `hasOnly` **con la puerta abierta o
+     * cerrada**: es testigo de la **lista** de colecciones, no de esta puerta. El
+     * que sí se pone rojo es el caso de acá arriba, «ni con el documento
+     * perfecto». Lo encontró el `auditor-privacidad`, y es la misma clase que las
+     * cláusulas muertas: una afirmación que se lee como load-bearing y no puede
+     * fallar — con el agravante de que era la única barrera que sostenía la
+     * decisión de secuencia de B-836a.
+     */
+    it('la regla nombra el testigo correcto, y dice qué falta para abrirla', () => {
       // Un `esAdmin() &&` sin explicación se lee como una decisión de siempre y
       // se borra sin mirar. El comentario es la mitad que dice el orden.
       const reglas = readFileSync(REGLAS, 'utf8');
       expect(reglas).toContain('allow create: if esAdmin() && propuestaValida();');
       expect(reglas).toContain('App Check');
       expect(reglas).toContain('COLECCIONES_ABIERTAS');
+      // Y el testigo que de verdad falla: este archivo.
+      expect(reglas, 'la secuencia no nombra el test que se pone rojo').toContain(
+        'tests/propuestas.integracion.test.ts',
+      );
+      expect(
+        reglas,
+        'la secuencia volvió a decir que `escritura-anonima` se pone rojo solo',
+      ).toContain('**no** se pone rojo solo');
     });
   });
 });

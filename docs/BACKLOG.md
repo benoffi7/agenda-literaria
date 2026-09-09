@@ -589,10 +589,31 @@ documento permita. El schema de zod los rechaza y no cuenta: es lo primero que s
 saltea.
 
 **Por qué no bloquea nada, y por qué igual está anotado.** Nada de una propuesta
-llega a una salida pública sin que **un admin la convierta en actividad**, y esa
-conversión pasa por `actividadFormSchema` con su `superRefine` entero. El daño
+llega a una salida pública sin que **un admin la convierta en actividad**. El daño
 posible es «el admin ve una fila rara en la bandeja» y una escritura facturada de
-hasta 1 MB — molesto, no peligroso. Lo que sí importa es que esté **escrito como
+hasta 1 MB — molesto, no peligroso.
+
+> ⚠️ **Corrección: lo que protege no es `actividadFormSchema`, es que un admin
+> mire.** Esta entrada decía que la conversión «pasa por `actividadFormSchema` con
+> su `superRefine` entero», y para **`incluye` eso no filtra nada**: ese schema lo
+> declara `z.array(texto)`, o sea texto libre sin lista blanca. Lo cobró el
+> `auditor-privacidad`, y el camino completo es: `toPublic` lo proyecta →
+> `detallePublico` lo resuelve con `etiquetaDe` → `listadoPublico` cae a
+> `desSlug(valor)` si el slug no está en la taxonomía. O sea que **un slug
+> inventado se publica verbatim, des-slugueado, como texto visible en la página de
+> detalle**, que es HTML indexado.
+>
+> Y es el campo donde «el admin lo va a ver» es **más débil**, no más fuerte: doce
+> chips que parecen taxonomía se leen como taxonomía. `titulo` y `descripcion`
+> corren por el mismo camino y ahí el ojo humano sí alcanza, porque son texto que
+> se lee entero.
+>
+> **El arreglo no es de la regla: es una línea de la conversión** (`propuestas.ts`,
+> paso siguiente del PRD): `incluye.filter((s) => slugsConocidos.has(s))`, y lo que
+> no esté en la taxonomía cae a `incluyeOtro` para que el admin decida — que es
+> exactamente el mecanismo que el § 4.2 del PRD ya definió para el «Otro». **Va con
+> `propuestas.ts`, no después**, y su test es
+> `it('la conversión descarta los `incluye` que no están en la taxonomía')`. Lo que sí importa es que esté **escrito como
 asimetría y no como garantía**: `tests/propuestas.test.ts` tiene un caso que
 afirma que las expresiones de fecha viven **solo** en el schema y que la regla
 **no** las tiene, así que si alguien las agrega ahí, el test se pone rojo y hay que
@@ -609,6 +630,51 @@ techo de 1 MB ya lo acota.
 
 Y hay una defensa que llega antes y no es ésta: **App Check** (B-836a). El script
 que manda doce mapas de 80 KB es exactamente el que no pasa por la página.
+
+### B-843 · Cuatro cosas que la bandeja de propuestas necesita antes de existir · P1
+
+Las cuatro salen de la auditoría de `/propuestas` (el `auditor-privacidad` sobre
+B-830) y comparten una forma: **son decisiones que cuestan una línea ahora y un
+rediseño después**, porque cuando la bandeja esté escrita ya va a haber
+documentos guardados.
+
+**1 · Hoy no hay ninguna forma de borrar el dato personal del tercero.** El
+camino de admin (`origen: 'panel'`) **está abierto desde el paso 5**, así que el
+proyecto ya puede guardar el mail o el WhatsApp de alguien. Y: `allow delete: if
+false`, `revisionValida()` acota el update a `estado` + `revision` —así que
+tampoco se puede vaciar el campo— y la Function de retención de **B-838 no
+existe**. La única forma de honrar un «borrame» es un script con el Admin SDK que
+nadie escribió. La decisión de que rechazar sea un estado y no una desaparición es
+buena; lo que falta es que **la excepción del borrado exista antes que el dato**.
+Lo más barato: no usar el camino de panel hasta que B-838 esté, y que la fila de
+`07-seguridad.md` lo diga en futuro (ya corregida).
+
+**2 · El `hasAny(['estado'])` va a bloquear el flujo de aceptar.** `affectedKeys`
+solo incluye lo que **cambió de valor**, y el flujo natural de aceptar son dos
+escrituras: mover a `aceptada` → crear la actividad → guardar su id. La segunda
+toca solo `revision.actividadId` y **la regla la rechaza**. Hay dos salidas y hay
+que elegir una **antes** de escribir el panel: crear la actividad primero y mover
+`estado` + `revision` en **una** escritura (preferible — deja la propuesta
+consistente en un solo paso), o aflojar el `hasAny`. Mejor decidirlo ahora que
+descubrirlo con la pantalla hecha.
+
+**3 · La revisión se puede pisar sin rastro.** Un admin puede sobrescribir
+`revision` —firmándola a su nombre, que es lo que la regla exige— y el `motivo`
+anterior desaparece: `/propuestas` no tiene subcolección `versiones` y el trigger
+de historial solo mira `/actividades`. La propuesta queda como prueba de qué se
+pidió; **quién la revisó y por qué, no**. Con cuatro cuentas admin eso importa
+menos que con cuarenta, así que puede quedar así — pero escrito.
+
+**4 · El saneador de la salida 3 no reconoce dos de las tres vías de contacto.**
+`redactar()` (`functions/reportes.js`) tapa `LINK_REUNION` y `MAIL`, y
+`VIAS_CONTACTO_PROPUESTA` es `['mail', 'whatsapp', 'instagram']`: un teléfono y un
+`@handle` pasan enteros. Hoy no hay camino —nada lee `/propuestas` y el reporte lo
+arma el panel con su propio contexto— pero la bandeja va a vivir al lado del botón
+de reportar, y el `contexto` del reporte lleva la `url` de la pantalla. Cuando la
+bandeja entre: o dos patrones más en `redactar()`, o que el contexto del reporte
+no pueda incluir esa pantalla. Y el centinela de esa salida tiene que ser **no
+saneable** para esta clase (un `+54 9 11 …` y un `@casabrandon`), porque si no el
+test pasa por el motivo equivocado.
 
 ### B-830 a B-839 · Los cuatro formularios: propuestas de organizadores y los tres directorios · P1 — **para mañana (2026-09-09)**
 
@@ -13418,6 +13484,15 @@ Se dejan para que quede el rastro de qué se rompió.
 
 | Qué | Causa | Dónde |
 |---|---|---|
+| **El saneador de comentarios se comía código, y el barrido habría pasado sin mirar nada** | **el peor de la tanda, y salió de arreglar otra cosa.** `sinComentarios` (`scripts/sin-comentarios.mjs`) sacaba los `/* … */` **antes** que los `//`, así que un `/*` escrito **adentro de un comentario de línea** abría un bloque que corría hasta el próximo `*/` del archivo. En `firestore.rules` pasó exactamente eso: el comentario `// … escribir en /opciones/*, que es de lectura pública` se llevó **quince cláusulas** de `propuestaValida()` —o sea de la regla que va a validar la primera escritura anónima— y el barrido de cotas que consumía el resultado habría dado **verde sin mirarlas** si la lista de esperadas hubiera sido más corta. Se encontró porque la comparación exhaustiva se puso roja con un número que no cerraba. **Y le invierte el argumento a su propio docblock**: «no pretende ser un parser… es el lado seguro del error, se audita de más y nunca de menos» era cierto cuando calculaba una huella (B-794), donde sacar de más solo hacía pedir la auditoría otra vez; como saneador de un barrido sobre el fuente, sacar de más es **auditar de menos**. Cerrado invirtiendo el orden —los `//` primero— con dos casos que fijan la **dirección** del error y su mutación probada en los dos sentidos. El caso simétrico (un `//` adentro de un bloque) cae del lado seguro: deja residuo, y un residuo hace fallar un barrido, no pasarlo. Lo consumen otros nueve archivos de test | B-830, `scripts/sin-comentarios.mjs`, `tests/sin-comentarios.test.ts` (2026-09-09) |
+| **El testigo que la regla nombraba para abrir la puerta anónima no se ponía rojo** | lo encontró el `auditor-privacidad`, y era **la única barrera que sostenía la decisión de secuencia de B-836a**. El paso 3 escrito en `firestore.rules` decía «`escritura-anonima.integracion.test.ts` se pone rojo — es su trabajo». No se pone: ese archivo prueba las escrituras con un documento sonda (`{ hola: 'mundo' }`), que `propuestaValida()` rechaza por `hasOnly` **con la puerta abierta o cerrada**. O sea que borrar el `esAdmin() &&` dejaba la suite entera en verde. Es la misma clase que las cláusulas muertas de `imagenValida()`: una afirmación que se lee como load-bearing y no puede fallar. Cerrado nombrando el testigo real —el caso «ni con el documento perfecto» de `propuestas.integracion.test.ts`—, con un aserto que exige que la regla lo nombre, y con el alcance de `escritura-anonima` escrito en su propio docblock: es testigo de la **lista** de colecciones, no de la forma de cada una | B-830, `firestore.rules`, `tests/propuestas.integracion.test.ts` (2026-09-09) |
+| **`imagen.storagePath` aceptaba cualquier path, y el flujo de rechazo borra lo que nombre** | lo encontró el `auditor-privacidad`, y es el hallazgo con la consecuencia más concreta: con la puerta abierta, un anónimo manda `storagePath: 'imagenes/img_<uuid>.jpg'` de una actividad **real y publicada** —y el path no hay que adivinarlo: `storage.rules` deja escrito que viaja adentro de la URL de descarga, y `rutaDeMiniatura` lo deriva al revés desde la miniatura— y con el flujo de DEC-11 (rechazar → borrar la imagen), **rechazar esa propuesta borra el flyer de otra actividad**, en vivo. Cerrado acotándolo al prefijo `propuestas/` con un `matches`, que es el idiom de `storage.rules`, con tres casos de rechazo y un control positivo. De paso caducó el aserto que pedía que la regla no tuviera **ningún** `matches`: ahora dice que hay uno solo y sobre la imagen, y ninguno sobre las claves de una fecha | B-830, `firestore.rules` (2026-09-09) |
+| **Diez cláusulas del bloque de `/propuestas` sin ningún caso que las ejercite** | el `auditor-privacidad` las enumeró una por una, y cada una **deja entrar algo** si se borra: `incluye: 'no vengan'` (un string de doce caracteres pasaba el tope de doce, porque `string.size()` existe), `requiere: 'si'`, un `telefono` colado en `organizador`, un `valor2` en `contacto` —el mapa del dato personal del tercero era el único de los cinco cuyo `hasOnly` no tenía caso—, `revision.motivo: 'ya lo aprobó el equipo'` escrito por un anónimo, `lugar: {}` y `lugar: { barrio: 'x' }` (que **entraban**: con `.get(k, '')` y solo `hasOnly`, el mapa vacío pasa las tres cotas). Cerrado con quince casos nuevos, y con algo más: **todo lo anidado pasó a leerse con `.get()`**, que es el idiom que el propio archivo prescribe en `esAdmin()` —del otro lado va a haber un navegador anónimo, y el campo opcional omitido fallaba con una traza de evaluación en vez de un permission-denied limpio—. Ese cambio es el que hace **mutables** los `hasAll`: con acceso directo, la obligatoriedad de cada clave la sostenía el error de evaluación, o sea nada declarado, y los `hasAll` no se podían verificar. Ahora cada uno se puede mutar y se pone rojo, y los que no frenaban nada no están: `contacto` no lleva `hasAll` (sus dos cotas ya exigen las claves) y el `revision` del `create` tampoco (el centinela `.get(k, 'x')` rechaza la ausencia sin necesidad de una cláusula aparte) | B-830, `firestore.rules`, `tests/propuestas.integracion.test.ts` (2026-09-09) |
+| **El acople `origen`↔identidad estaba escrito sobre «no hay sesión» y no sobre «no es admin»** | lo corrigió el `auditor-privacidad`. Con `request.auth == null`, al abrir la puerta: alguien **logueado sin el claim** no podría proponer —y crear una cuenta está al alcance de cualquiera con la API key pública—, y el dueño, que **es** admin y va a tener sesión persistida en el mismo origen, **no podría usar su propio formulario público**. Que hoy funcionaría depende de que `/proponer` no inicialice Auth (`getAuth()` es lazy en `firebase-client.ts`): un acoplamiento que nadie escribió y que se rompe el día que esa página llame a `auth()`. Cerrado con `!esAdmin()`, que apoya la misma propiedad en la autoridad real en vez de en un proxy | B-830, `firestore.rules` (2026-09-09) |
+| **`formAPropuesta` no recortaba las dos listas, que son los únicos campos donde zod recorta y el armado no** | lo encontró el `auditor-privacidad`. `texto = z.string().trim()` corre **antes** del `regex`, así que `' 2026-10-07 '` pasa la validación; sin el `trim()` del armado se guardaba con los espacios, y no lo podía ver ni la regla (no itera la lista) ni el schema (ya vio la versión recortada). Un slug con un espacio adelante además no resuelve su etiqueta y la ficha lo mostraría des-slugueado. Cerrado recortando `fechas[].{dia,desde,hasta}` e `incluye`, con su caso | B-830, `src/lib/propuesta-schema.ts` (2026-09-09) |
+| **El atado de los topes de `/propuestas` cubría 8 de 24 cotas** | lo encontró el `auditor-trampas` sobre B-830, y es el patrón de B-364 aplicado a medias. `TOPE_CORTO_PROPUESTA` se usa **cinco** veces en `firestore.rules` —`organizador.nombre`, `organizador.instagram`, `lugar.nombre`, `lugar.direccion`, `arancel.notas`— y el `it.each` ataba **una**; `TOPE_URL_PROPUESTA` se usa dos veces y ataba una. O sea: subir el tope y actualizar solo la línea que el test mira dejaba el test **verde**, el schema de zod aceptando 300 caracteres (comparte la constante) y Firestore rechazando la escritura — con el formulario diciendo que sí. Y `d.revision.actividadId.size() <= 200` era un número que **no estaba declarado en ninguna parte**, así que cambiarlo o borrarlo no ponía nada en rojo. Cerrado con una comparación **exhaustiva**: el test parsea todas las cotas del bloque y las compara contra la lista completa de constantes, así que una cota nueva que nadie declare pone esto en rojo. Se declararon además los cinco **mínimos** (que también estaban sueltos) y `TOPE_ACTIVIDAD_ID_PROPUESTA`. Verificado por mutación en las dos direcciones: subir una de las cinco ocurrencias, y agregar una cota que nadie declaró | B-830, `src/types/propuesta.ts`, `tests/propuestas.test.ts` (2026-09-09) |
+| **Una cláusula de `revisionValida()` que ningún caso podía ejercitar** | misma clase que las dos cláusulas muertas de `imagenValida()`, y la señaló el mismo auditor en el mismo commit: `hasAny(['estado'])` estaba en la regla y **borrarla dejaba los 33 casos en verde**. Los que pasan traen `estado`; los que fallan traen además una clave de contenido que ya los tira por el `hasOnly` anterior, así que ninguno aislaba esta condición. Lo que impide es re-firmar la revisión **sin mover el estado** —daño acotado, solo un admin ya autenticado— pero una cláusula de seguridad que no se puede verificar por mutación es lo que este commit dice que no quiere. Cerrado con el caso que faltaba: un `update` que toca solo `revision` | B-830, `tests/propuestas.integracion.test.ts` (2026-09-09) |
+| **El recorte del bloque de reglas se anclaba al nombre del primer helper** | `bloqueDePropuestas()` cortaba desde `indexOf('function fechasValidas(')`. Hoy funciona porque ése es el primer helper del bloque, y un helper nuevo agregado **antes** —agrupar por tema, ordenar alfabéticamente— quedaba afuera del recorte y de todo lo que `propuestas.test.ts` verifica, **sin que nada lo señale**: el punto ciego que el patrón B-364 nombra para el archivo entero, reintroducido a nivel de sub-bloque. Lo encontró el `auditor-trampas`. Cerrado anclando al comentario de sección | B-830, `tests/propuestas.test.ts` (2026-09-09) |
 | **El vocabulario de `incluye-actividad` viajaba en el `events.json` sin que nada lo lea** | lo encontró el `auditor-privacidad` sobre B-830, y es un caso de doc falsa además de una publicación sin decidir: D-580 y `07-seguridad.md` decían «no al `events.json`», que era cierto **del campo** y falso **del archivo**. `opcionesDeTaxonomia()` recorre `CAMPOS_TAXONOMIA` y `construirIndice` no filtraba ninguna clave, así que el archivo ganaba una `incluye-actividad` con los siete slugs y etiquetas base **más todo «Otro» que alguien tipee** —que desde B-131 nace aprobado y sale en el rebuild siguiente, incluso si se tipeó cargando una actividad en **borrador**—. §4.4 define quién lee esas opciones: la island, para armar los chips; `incluye` no es eje de filtro (D-580), así que era la primera taxonomía del repo cuyo vocabulario viaja sin consumidor, en la salida más barata de cosechar (D-129). El barrido de centinelas no lo veía porque siembra `opciones` con un solo eje. Cerrado con `TAXONOMIAS_FUERA_DEL_INDICE` —una lista y no un `!==`, para que la séptima taxonomía obligue a decidir— y un caso que la ata contra `CAMPOS_TAXONOMIA` sembrando **las seis**. Verificado por mutación | B-830, `src/lib/eventsJson.ts`, `tests/barrido-de-salidas-publicas.test.ts` (2026-09-09) |
 | **El barrido del artefacto era ciego al campo nuevo: `incluye` estaba anclado en un solo lado** | lo encontró el `auditor-privacidad`, y es **la misma asimetría que el propio gate registra como cobrada una vez** (el docblock de `comisionId`): el campo quedó anclado en `tests/fixtures/centinelas.ts` en las dos direcciones y en **nada** en el `CENTINELA` de `scripts/build-contra-emulador.mjs`, que es el que recorre todo el `dist/`. No dejaba el gate rojo: dejaba el campo invisible. Si una plantilla publicara el slug crudo en la home, en un hub o en `/pasadas`, el paso 9 pasaba en verde. Cerrado con `CENTINELA.incluyeSlug` —con guiones, para que la etiqueta derivada por `desSlug` no lo contenga— y con `ETIQUETA_DE_INCLUYE` en la dirección contraria, que es lo único que puede ver si la plantilla **pinta** la sección (un `.astro` no se importa desde vitest, D-140). Verificado corriendo el gate: la etiqueta aparece en el HTML, el slug no, y el `events.json` no lleva ni el campo ni su vocabulario. **Y una corrección al hallazgo:** decía que agregar el centinela pondría el gate rojo por el ítem de arriba, y no — el gate **no siembra `/opciones/*`** (lo pide B-804 para el monto), así que la clave del vocabulario sale vacía y el gate es ciego a esa mitad. La cubre el caso de vitest, no el gate | B-830, `scripts/build-contra-emulador.mjs` (2026-09-09) |
 | **Renombrar una etiqueta de `incluye-actividad` hacía todo el trabajo de re-sincronizar Calendar para escribir cero eventos** | lo encontró el `auditor-trampas` sobre B-830, y es un caso que **no existía hasta la sexta taxonomía**: todas estaban en la descripción del evento, así que el escaneo de `rebuildPorOpciones` siempre podía tener trabajo. `incluye-actividad` no sale al evento (D-580), así que `mismasEtiquetas` daba `false` —las etiquetas sí cambiaron— y el trigger seguía de largo: releía las taxonomías, **autenticaba contra la API de Calendar**, leía la colección `actividades` entera y corría `replanificarPorEtiquetas` sobre cada sesión de cada actividad publicada, para terminar con `reescritos = 0`. No corrompía nada —lectura sin escritura— y el desperdicio crece con el catálogo, que es lo que lo hace un ítem y no una nota al pie. Cerrado con una guarda de una línea contra `TAXONOMIAS_FUERA_DEL_EVENTO`, la lista que el mismo cambio había declarado del lado de la Function, así que no nace una segunda. Lo que el test afirma es **el orden**, que es la mitad que se puede romper arreglando lo otro: va **después** de `marcarRebuild` —el sitio sí muestra la etiqueta nueva y hay que rebuildearlo (§4.4, trampa 8)— y **antes** de `cargarLabels`, del `.get()` de la colección y de `calendario()`. Verificado por mutación en las dos direcciones | B-830, `functions/opciones-trigger.js`, `tests/sincronizacion.test.ts` (2026-09-09) |

@@ -44,8 +44,31 @@ export const sinComentarios = (texto) =>
     // el caso del markup — `Buscador.tsx` está en la lista de disparadores y
     // comenta así.
     .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '')
+    /*
+     * **El `//` va ANTES del `/* … *\/`, y el orden es el arreglo de un bug que
+     * se comía código** — B-830.
+     *
+     * Estaba al revés, y con eso un `/*` escrito **adentro de un comentario de
+     * línea** abría un bloque que corría hasta el próximo `*\/` del archivo. En
+     * `firestore.rules` pasó exactamente eso: el comentario
+     * `// … escribir en /opciones/*, que es de lectura pública` se comió
+     * **quince cláusulas** de `propuestaValida()`, o sea de una regla de
+     * seguridad. Y el barrido que consumía esto —la comparación de cotas de
+     * `propuestas.test.ts`— habría pasado **sin mirar nada** si la lista de
+     * esperadas hubiera sido más corta.
+     *
+     * **Esto invierte el argumento del docblock de arriba.** «No pretende ser un
+     * parser… es el lado seguro del error, se audita de más y nunca de menos» era
+     * cierto cuando esto calculaba una huella (B-794): sacar de más solo hacía
+     * pedir la auditoría otra vez. Como saneador de un barrido sobre el fuente,
+     * sacar de más significa **auditar de menos**, que es el lado inseguro.
+     *
+     * Con el `//` primero, el caso simétrico —un `//` adentro de un `/* … *\/`—
+     * cae del lado seguro: deja un `/*` sin cerrar como residuo, y un residuo
+     * hace fallar un barrido, no pasarlo.
+     */
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1')
     .replace(/\s+/g, ' ')
     .trim();

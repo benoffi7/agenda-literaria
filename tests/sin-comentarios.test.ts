@@ -99,3 +99,46 @@ describe('cuando se equivoca, se equivoca del lado seguro', () => {
     expect(sinComentarios("const u = 'a // b';")).toBe("const u = 'a");
   });
 });
+
+/**
+ * **El orden entre `//` y `/* … *\/`, que se comía código** — B-830.
+ *
+ * Los dos reemplazos estaban al revés, y con eso un `/*` escrito **adentro de un
+ * comentario de línea** abría un bloque que corría hasta el próximo `*\/` del
+ * archivo. Pasó de verdad sobre `firestore.rules`: el comentario
+ * `// … escribir en /opciones/*, que es de lectura pública` se llevó **quince
+ * cláusulas** de una regla de seguridad, y el barrido que consumía el resultado
+ * habría pasado sin mirarlas.
+ *
+ * Lo que este `describe` fija es la **dirección del error**, que es lo que el
+ * docblock del módulo argumenta: sacar de más es seguro cuando esto calcula una
+ * huella, e **inseguro** cuando alimenta un barrido — ahí sacar de más es
+ * auditar de menos.
+ */
+describe('el orden de los reemplazos: sacar de menos, nunca código — B-830', () => {
+  it('un `/*` adentro de un comentario de línea no se lleva el código que sigue', () => {
+    const src = [
+      "const a = 1;",
+      "// ojo: escribir en /opciones/*, que es de lectura pública",
+      "const importante = 'no me borres';",
+      "/* un bloque de verdad */",
+      "const b = 2;",
+    ].join('\n');
+    const limpio = sinComentarios(src);
+    expect(limpio, 'se comió el código que seguía al comentario de línea').toContain(
+      "const importante = 'no me borres';",
+    );
+    expect(limpio).toContain('const a = 1;');
+    expect(limpio).toContain('const b = 2;');
+    expect(limpio, 'quedó el bloque de verdad').not.toContain('un bloque de verdad');
+    expect(limpio, 'quedó el comentario de línea').not.toContain('lectura pública');
+  });
+
+  it('y el caso simétrico cae del lado seguro: deja residuo, no se lleva código', () => {
+    // Un `//` adentro de un bloque: el bloque queda sin cerrar y el residuo
+    // sobrevive. Un residuo hace **fallar** un barrido, no pasarlo — que es la
+    // dirección correcta del error.
+    const limpio = sinComentarios(['/* usar // para comentar */', "const c = 3;"].join('\n'));
+    expect(limpio, 'se comió el código que seguía al bloque').toContain('const c = 3;');
+  });
+});

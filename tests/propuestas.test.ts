@@ -27,13 +27,21 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { sinComentarios } from '../scripts/sin-comentarios.mjs';
 import { RE_DIA, RE_HORA, diaReal, formAPropuesta, propuestaFormSchema, propuestaVacia } from '@/lib/propuesta-schema';
 import {
   ARANCELES_PROPUESTA,
   ESTADOS_PROPUESTA,
   MAX_FECHAS_PROPUESTA,
   MAX_INCLUYE_PROPUESTA,
+  MIN_CONTACTO_PROPUESTA,
+  MIN_DESCRIPCION_PROPUESTA,
+  MIN_FECHAS_PROPUESTA,
+  MIN_NO_VACIO_PROPUESTA,
+  MIN_ORGANIZADOR_PROPUESTA,
+  MIN_TITULO_PROPUESTA,
   MODALIDADES_PROPUESTA,
+  TOPE_ACTIVIDAD_ID_PROPUESTA,
   TOPE_CONTACTO_PROPUESTA,
   TOPE_CORTO_PROPUESTA,
   TOPE_DESCRIPCION_PROPUESTA,
@@ -51,15 +59,53 @@ const REGLAS = readFileSync(
   'utf8',
 );
 
-/** El cuerpo de `propuestaValida()` y sus tres helpers, que es donde hay que mirar. */
+/**
+ * El bloque de `/propuestas` entero: sus helpers, `propuestaValida()`,
+ * `revisionValida()` y el `match`.
+ *
+ * **El ancla es el comentario de sección y no el nombre del primer helper**, y lo
+ * señaló el `auditor-trampas`: con `indexOf('function fechasValidas(')`, un
+ * helper nuevo agregado **antes** de ése —agrupar por tema, ordenar
+ * alfabéticamente— quedaba afuera del recorte y de todo lo que este archivo
+ * verifica, sin que nada lo dijera. Era el punto ciego del patrón B-364
+ * reintroducido a nivel de sub-bloque.
+ *
+ * **El bloque se lee SIN comentarios**, porque los docblocks de la regla citan
+ * cláusulas para explicarlas —«`valor.size() >= 3` también»— y un barrido que
+ * los lea se agarra a sí mismo: la primera versión de la comparación de cotas
+ * contaba una de más que estaba escrita en un comentario. Es la misma lección
+ * que `appcheck.test.ts` y `guardas-de-los-scripts.test.ts`.
+ */
 const bloqueDePropuestas = (): string => {
-  const i = REGLAS.indexOf('function fechasValidas(');
+  const anclaje = REGLAS.indexOf('PROPUESTAS DE ORGANIZADORES');
+  // El `/*` que abre el comentario de sección, **no** el texto del comentario:
+  // recortar desde el medio de un bloque `/* … */` deja a `sinComentarios` sin
+  // la apertura y se come el código que sigue. Costó un rojo confuso.
+  const i = anclaje === -1 ? -1 : REGLAS.lastIndexOf('/*', anclaje);
   const j = REGLAS.indexOf('match /{document=**}');
   if (i === -1 || j === -1 || j <= i) {
     throw new Error('no se encontró el bloque de /propuestas en firestore.rules');
   }
-  return REGLAS.slice(i, j);
+  return sinComentarios(REGLAS.slice(i, j));
 };
+
+/**
+ * Todas las cotas de tamaño del bloque, sacadas del archivo: `[campo, op, n]`.
+ *
+ * Es la mitad que le faltaba al atado. La primera versión comparaba una **lista
+ * a mano** de ocho cotas contra un archivo que tiene **veinticuatro**, así que
+ * `TOPE_CORTO_PROPUESTA` estaba atado en `organizador.nombre` y suelto en las
+ * otras cuatro ocurrencias: subirlo de un lado y actualizar solo la línea que el
+ * test mira dejaba el test verde, el schema aceptando 300 y Firestore
+ * rechazando la escritura — el formulario diciendo que sí. Lo encontró el
+ * `auditor-trampas`.
+ */
+const cotasDeLaRegla = (): [campo: string, op: string, n: number][] =>
+  [...bloqueDePropuestas().matchAll(/([\w.'()[\], ]+)\.size\(\) (<=|>=) (\d+)/g)].map((m) => [
+    m[1]!.trim(),
+    m[2]!,
+    Number(m[3]!),
+  ]);
 
 const form = (over: Partial<PropuestaForm> = {}): PropuestaForm => ({
   ...propuestaVacia(),
@@ -87,25 +133,49 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
   });
 
   /**
-   * Cada par es `[número del modelo, cómo aparece en la regla]`. La regla escribe
-   * el literal porque no puede importar nada, así que lo que se compara es el
-   * texto — y por eso el segundo elemento incluye el campo: `<= 200` suelto
-   * aparece siete veces y no diría de cuál es.
+   * **La comparación es exhaustiva, no una muestra.** Cada cota de la regla está
+   * acá con la constante del modelo que le corresponde, y el aserto compara las
+   * **dos listas completas**: una cota nueva en `firestore.rules` que nadie
+   * agregue acá pone esto en rojo, y una que cambie de número también.
+   *
+   * Es lo que la primera versión no hacía: comparaba ocho de veinticuatro con un
+   * `it.each`, así que las otras dieciséis estaban sueltas.
    */
-  it.each([
-    [TOPE_TITULO_PROPUESTA, 'd.titulo.size() <= 120'],
-    [TOPE_DESCRIPCION_PROPUESTA, 'd.descripcion.size() <= 4000'],
-    [TOPE_CORTO_PROPUESTA, 'd.organizador.nombre.size() <= 200'],
-    [TOPE_INCLUYE_OTRO_PROPUESTA, 'd.incluyeOtro.size() <= 200'],
-    [TOPE_INSCRIPCION_PROPUESTA, 'd.inscripcion.comoDice.size() <= 500'],
-    [TOPE_CONTACTO_PROPUESTA, 'd.contacto.valor.size() <= 200'],
-    [TOPE_URL_PROPUESTA, "imagen.get('url', '').size() <= 500"],
-    [TOPE_MOTIVO_PROPUESTA, 'd.revision.motivo.size() <= 500'],
-  ])('el tope %i está escrito igual en la regla', (tope, enLaRegla) => {
-    // El número del modelo tiene que ser el que la regla escribe: si alguien
-    // sube el tope de un lado, este caso nombra cuál quedó atrás.
-    expect(enLaRegla).toContain(String(tope));
-    expect(bloqueDePropuestas()).toContain(enLaRegla);
+  it('todas las cotas de la regla son las constantes del modelo, y no falta ninguna', () => {
+    const esperadas: [string, string, number][] = [
+      // Las listas.
+      ['fechas', '>=', MIN_FECHAS_PROPUESTA],
+      ['fechas', '<=', MAX_FECHAS_PROPUESTA],
+      ['d.incluye', '<=', MAX_INCLUYE_PROPUESTA],
+      // El lugar, que es donde `TOPE_CORTO_PROPUESTA` se repite.
+      ["lugar.get('nombre', '')", '<=', TOPE_CORTO_PROPUESTA],
+      ["lugar.get('direccion', '')", '<=', TOPE_CORTO_PROPUESTA],
+      ["lugar.get('barrio', '')", '<=', TOPE_CORTO_PROPUESTA],
+      // La imagen, con sus dos formas (DEC-11) y el «no vacío» de cada una.
+      ["imagen.get('url', '')", '>=', MIN_NO_VACIO_PROPUESTA],
+      ["imagen.get('url', '')", '<=', TOPE_URL_PROPUESTA],
+      ["imagen.get('storagePath', '')", '>=', MIN_NO_VACIO_PROPUESTA],
+      ["imagen.get('storagePath', '')", '<=', TOPE_URL_PROPUESTA],
+      // El contenido.
+      ['d.titulo', '>=', MIN_TITULO_PROPUESTA],
+      ['d.titulo', '<=', TOPE_TITULO_PROPUESTA],
+      ['d.descripcion', '>=', MIN_DESCRIPCION_PROPUESTA],
+      ['d.descripcion', '<=', TOPE_DESCRIPCION_PROPUESTA],
+      ["d.organizador.get('nombre', '')", '>=', MIN_ORGANIZADOR_PROPUESTA],
+      ["d.organizador.get('nombre', '')", '<=', TOPE_CORTO_PROPUESTA],
+      ["d.organizador.get('instagram', '')", '<=', TOPE_CORTO_PROPUESTA],
+      ["d.arancel.get('notas', '')", '<=', TOPE_CORTO_PROPUESTA],
+      ["d.inscripcion.get('comoDice', '')", '<=', TOPE_INSCRIPCION_PROPUESTA],
+      ['d.incluyeOtro', '<=', TOPE_INCLUYE_OTRO_PROPUESTA],
+      // El contacto de quien propone, que es interno.
+      ["d.contacto.get('valor', '')", '>=', MIN_CONTACTO_PROPUESTA],
+      ["d.contacto.get('valor', '')", '<=', TOPE_CONTACTO_PROPUESTA],
+      // La revisión, que solo escribe un admin.
+      ["d.revision.get('actividadId', '')", '<=', TOPE_ACTIVIDAD_ID_PROPUESTA],
+      ["d.revision.get('motivo', '')", '<=', TOPE_MOTIVO_PROPUESTA],
+    ];
+    const clave = (c: [string, string, number]) => `${c[0]} ${c[1]} ${c[2]}`;
+    expect(cotasDeLaRegla().map(clave).sort()).toEqual(esperadas.map(clave).sort());
   });
 
   it('los máximos de las dos listas también', () => {
@@ -147,12 +217,23 @@ describe('los topes se dicen en dos runtimes y son el mismo número (B-364, clas
     // Las expresiones existen y son las que el schema usa.
     expect(new RegExp(RE_DIA).test('2026-10-07')).toBe(true);
     expect(new RegExp(RE_HORA).test('19:00')).toBe(true);
-    // Y la regla NO las tiene: si alguien las agrega, esto se pone rojo y hay que
-    // venir a decidir qué quedó cubierto y qué no.
-    expect(bloque, 'la regla empezó a validar la forma del día').not.toContain('matches');
     // Lo que la regla sí acota de `fechas` es la cantidad y el tipo.
     expect(bloque).toContain('fechas is list');
     expect(bloque).toContain('fechas.size() >= 1');
+    /*
+     * **Y no la forma de cada fila.** La primera versión pedía que la regla no
+     * tuviera **ningún** `matches`, y eso caducó: el `auditor-privacidad` hizo
+     * falta uno para acotar `storagePath` al prefijo `propuestas/` —que es un
+     * **escalar**, y por eso ahí sí se puede—. Lo que se afirma ahora es más
+     * preciso y sigue poniéndose rojo por el motivo correcto: hay `matches`
+     * **solo** sobre la imagen, y ninguno sobre las tres claves de una fecha. El
+     * día que aparezca uno ahí, alguien encontró cómo y hay que actualizar B-842.
+     */
+    const conMatches = [...bloque.matchAll(/(\w+)[^\n;&]*\.matches\(/g)].map((m) => m[1]!);
+    expect([...new Set(conMatches)].sort()).toEqual(['imagen']);
+    for (const clave of ['dia', 'desde', 'hasta']) {
+      expect(bloque, `la regla empezó a validar \`${clave}\``).not.toContain(`${clave}.matches`);
+    }
   });
 });
 
@@ -313,6 +394,47 @@ describe('form → documento', () => {
     expect(d.imagen).toEqual({ url: 'https://x.test/flyer.jpg' });
     // **Una sola clave**: la regla rechaza el mapa con las dos.
     expect(Object.keys(d.imagen as object)).toEqual(['url']);
+  });
+
+  /**
+   * **Los dos campos donde zod recortaba y el armado no** — lo encontró el
+   * `auditor-privacidad`. `texto = z.string().trim()` corre **antes** del
+   * `regex`, así que `' 2026-10-07 '` pasa la validación; sin el `trim()` del
+   * armado se guardaba con los espacios, y ni la regla (no itera la lista) ni el
+   * schema (ya vio la versión recortada) lo podían ver.
+   */
+  it('recorta también las dos listas, que es donde el `trim` de zod no llega', () => {
+    const d = formAPropuesta(
+      form({
+        fechas: [{ dia: ' 2026-10-07 ', desde: ' 19:00 ', hasta: ' 21:00 ' }],
+        incluye: [' merienda ', '  ', 'libro'],
+      }),
+    );
+    expect(d.fechas[0]).toEqual({ dia: '2026-10-07', desde: '19:00', hasta: '21:00' });
+    // Y el elemento que era solo espacios no queda como slug vacío.
+    expect(d.incluye).toEqual(['merienda', 'libro']);
+  });
+
+  /**
+   * **El conjunto de campos, atado contra la lista de la regla.**
+   *
+   * `formAPropuesta` emite exactamente los quince campos que `propuestaValida()`
+   * exige, más el `creadoEn` que agrega quien escribe. Hoy eso lo cobra el test
+   * de integración —`p_ok` deja de escribirse— pero con un `permission-denied`
+   * que **no dice cuál** campo sobra o falta. Este aserto lo nombra, y es la
+   * misma idea que la comparación de cotas: parsear la lista de la regla en vez
+   * de copiarla. Lo pidió el `auditor-privacidad`.
+   */
+  it('emite exactamente los campos que la regla exige, menos `creadoEn`', () => {
+    const m = /let campos = \[([\s\S]*?)\];/.exec(bloqueDePropuestas());
+    expect(m, 'no se encontró la lista `campos` en la regla').not.toBeNull();
+    const deLaRegla = [...m![1]!.matchAll(/'([^']+)'/g)].map((x) => x[1]!);
+    // Control positivo: una lista vacía dejaría la comparación pasando sola.
+    expect(deLaRegla.length).toBeGreaterThan(10);
+    expect(deLaRegla).toContain('contacto');
+
+    const delArmado = Object.keys(formAPropuesta(form()));
+    expect(delArmado.sort()).toEqual(deLaRegla.filter((c) => c !== 'creadoEn').sort());
   });
 
   it('no emite `creadoEn`: lo pone la capa que escribe, con `request.time`', () => {
