@@ -2,6 +2,48 @@
 
 ## Sin publicar
 
+- **El barrido de huérfanas le había puesto fecha de vencimiento a la función de
+  restaurar** — **B-560**. `limpiarImagenesHuerfanas` (B-221) cruzaba los
+  `storagePath` de los documentos **en vivo** contra el bucket y no miraba
+  `/actividades/{id}/versiones/*` (§12, D-41), que guarda el `before` entero de
+  cada edición con sus `imagenes`. La secuencia: se saca una fila de la galería →
+  la imagen queda huérfana → 72 horas después el barrido la borra → alguien
+  restaura esa versión y la fila vuelve con una `url` que da 404. Un barrido
+  pisando el insumo de otra feature.
+
+  Ahora **una versión que nombra un `storagePath` es una referencia tan buena como
+  la de una actividad viva**, y entra al mismo `Set`: `decidirLimpieza` no se
+  entera de que el historial existe y las miniaturas siguen sobreviviendo por
+  derivación de su original, sin tocar una línea.
+
+  **El ítem prefería el otro camino —que restaurar avise— y se eligió éste igual**:
+  el aviso **reporta** una pérdida y esto la **evita**. Las dos objeciones del ítem
+  caen con lo que ya está construido: es **una** query (`collectionGroup`) y no N
+  —recorrer de a una hace falta en `subcoleccionesHuerfanas` porque ahí se necesita
+  saber de qué actividad es cada versión, acá no— y no crece sin tope: D-42 corta
+  en 20 versiones por actividad y B-89 purga las huérfanas a los 30 días. ≤ 21
+  lecturas por actividad cada 24 horas, con el número en el docblock. El
+  `select('documento.imagenes')` no es solo costo: sin él la Function tendría en
+  memoria una copia completa de cada versión —`online.url`, `difusion`,
+  `createdBy`— para leerle un array de paths.
+
+  **El precio está dicho y se acepta:** quitar una fila ya no libera el objeto a
+  las 72 horas sino cuando se va la última versión que la nombra. Cuesta unos KB y
+  compra que restaurar nunca devuelva una imagen rota.
+
+  **Y arregla el rescate de B-41, que nadie había escrito.** Al borrar una
+  actividad, `guardarVersionAlBorrar` deja la única copia recuperable y B-89 le da
+  30 días — pero sus imágenes se iban a las 72 horas, así que el rescate devolvía
+  la actividad **con la galería rota**. El `collectionGroup` es lo que ve esas
+  subcolecciones huérfanas: ahora la subcolección sostiene sus imágenes el mismo
+  tiempo que se sostiene a sí misma.
+
+  Seis casos nuevos, cada uno con su mutación vista fallar, incluido el **control
+  negativo** —que el objeto que nadie referencia siga cayendo en `aBorrar`— que es
+  el que impide que el arreglo se convierta en «no borrar nunca nada». Las tres
+  premisas del diseño se comprobaron **contra el emulador** y no solo con el `db`
+  falso. Lo que quedó afuera es **B-852**: las versiones que ya se rompieron.
+
 - **El argumento del hash se reescribió sin número, y la marca de autoría se queda
   como está** — **B-811** y **B-179**, que resultaron ser el mismo ítem. Desde el
   2026-09-08 hay **cuatro** cuentas con claim `admin`, y varios lugares no solo

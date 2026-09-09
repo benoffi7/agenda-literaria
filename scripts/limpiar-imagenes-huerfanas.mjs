@@ -2,7 +2,8 @@
 /**
  * B-221 — lista (y opcionalmente borra) las imágenes propias que quedaron
  * huérfanas en Storage: la fila salió de la galería, o la actividad se
- * borró, y nadie más referencia ese objeto.
+ * borró, y nadie más referencia ese objeto — ni una actividad viva, ni una
+ * versión de su historial (B-560).
  *
  *   node scripts/limpiar-imagenes-huerfanas.mjs                 # solo informa
  *   FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 \
@@ -94,7 +95,9 @@ const porNombre = new Map(objetos.map((o) => [o.nombre, o.archivo]));
 const dias = (MARGEN_DE_GRACIA_MS / (24 * 60 * 60 * 1000)).toFixed(0);
 
 console.log(`${objetos.length} objetos revisados en imagenes/ y miniaturas/`);
-console.log(`${referenciados.size} storagePath en uso, leídos de /actividades`);
+console.log(
+  `${referenciados.size} storagePath en uso, leídos de /actividades y de su historial`,
+);
 console.log(`Margen de gracia: ${dias} días\n`);
 
 for (const [nombre, motivo] of Object.entries(motivos)) {

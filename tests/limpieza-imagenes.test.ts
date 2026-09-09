@@ -8,6 +8,12 @@
  * se prueba acá: correr el barrido de verdad se hizo a mano contra el
  * emulador (`scripts/limpiar-imagenes-huerfanas.mjs`), documentado en
  * `docs/CHANGELOG.md`.
+ *
+ * **B-560** — y prueba `referenciasEnUso`, que desde entonces cuenta también
+ * los `storagePath` que nombra el **historial** (`/actividades/{id}/versiones/*`,
+ * §12): sin eso, el barrido borraba a las 72 horas la imagen que una versión
+ * vieja todavía referencia, y restaurar esa versión devolvía una fila con una
+ * `url` que da 404.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -185,11 +191,27 @@ describe('decidirLimpieza — qué objeto está huérfano', () => {
 
 /**
  * Un `db` falso que registra qué le pidieron y devuelve los documentos que se
- * le pasen. Alcanza con `collection().select().get()`, que es toda la
- * superficie que `referenciasEnUso` usa.
+ * le pasen. Alcanza con `collection().select().get()` y
+ * `collectionGroup().select().get()`, que es toda la superficie que
+ * `referenciasEnUso` usa.
+ *
+ * Las dos listas son **independientes** a propósito, igual que en Firestore: una
+ * versión puede existir sin que exista su actividad (subcolección huérfana de un
+ * borrado, B-41/B-89), y eso es un caso que hay que poder escribir acá.
  */
-const dbFalso = (documentos: Record<string, unknown>[]) => {
-  const llamadas: { coleccion?: string; campo?: string } = {};
+const dbFalso = (
+  documentos: Record<string, unknown>[],
+  versiones: Record<string, unknown>[] = [],
+) => {
+  const llamadas: {
+    coleccion?: string;
+    campo?: string;
+    grupo?: string;
+    campoDeVersion?: string;
+  } = {};
+  const snap = (docs: Record<string, unknown>[]) => ({
+    docs: docs.map((data) => ({ data: () => data })),
+  });
   return {
     db: {
       collection: (coleccion: string) => {
@@ -197,11 +219,16 @@ const dbFalso = (documentos: Record<string, unknown>[]) => {
         return {
           select: (campo: string) => {
             llamadas.campo = campo;
-            return {
-              get: async () => ({
-                docs: documentos.map((data) => ({ data: () => data })),
-              }),
-            };
+            return { get: async () => snap(documentos) };
+          },
+        };
+      },
+      collectionGroup: (grupo: string) => {
+        llamadas.grupo = grupo;
+        return {
+          select: (campo: string) => {
+            llamadas.campoDeVersion = campo;
+            return { get: async () => snap(versiones) };
           },
         };
       },
@@ -265,5 +292,149 @@ describe('referenciasEnUso — qué storagePath están en uso hoy', () => {
     const { db } = dbFalso([{ imagenes: [{ url: 'https://ejemplo.com/flyer.jpg' }] }]);
     const referenciados = await referenciasEnUso(db as never);
     expect(referenciados.size).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// B-560 — el historial también referencia imágenes
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * La secuencia que estos casos existen para cerrar: se saca una fila de la
+ * galería y se guarda → la imagen queda huérfana → el barrido la borra a las 72
+ * horas → alguien restaura esa versión desde el historial y la fila vuelve con
+ * una `url` que da 404. El arreglo de B-221 le había puesto una fecha de
+ * vencimiento silenciosa a la función de restaurar del §12.
+ */
+describe('referenciasEnUso — el historial cuenta como referencia (B-560)', () => {
+  it('pide también el historial: la collection group `versiones`, proyectada a solo `documento.imagenes`', () => {
+    // Dos cosas en un caso, y las dos importan:
+    //
+    //  - **`collectionGroup` y no un recorrido por actividad.** Es una sola
+    //    query en vez de N, y es lo único que ve las subcolecciones de
+    //    actividades **borradas** (el caso de más abajo): una query sobre
+    //    `/actividades` no las devuelve — por eso `subcoleccionesHuerfanas`, en
+    //    `limpieza-versiones.js`, necesita `listDocuments()`.
+    //  - **`select('documento.imagenes')`.** Una versión guarda el `before`
+    //    entero (D-41): sin el select, la Function tendría en memoria una copia
+    //    completa de cada versión de cada actividad —`online.url`, `difusion`,
+    //    `createdBy`— para leerle un array de paths. Es el mismo cuidado del
+    //    `it` gemelo de arriba (§5.1), y acá pesa veinte veces más.
+    //
+    // MUTACIÓN PROBADA: cambiar `.select(CAMPO_IMAGENES_DE_VERSION)` por `.get()`
+    // a secas deja `llamadas.campoDeVersion` en `undefined` y este caso se pone
+    // rojo. Sacar la query entera deja también `llamadas.grupo` en `undefined`.
+    const { db, llamadas } = dbFalso([], []);
+    void referenciasEnUso(db as never);
+    expect(llamadas.grupo).toBe('versiones');
+    expect(llamadas.campoDeVersion).toBe('documento.imagenes');
+  });
+
+  it('un storagePath que hoy SOLO vive en una versión del historial cuenta como en uso', async () => {
+    // El caso de B-560 tal cual: la actividad ya no nombra la imagen —la fila se
+    // sacó de la galería— pero la versión anterior sí, y restaurarla la trae de
+    // vuelta.
+    //
+    // MUTACIÓN PROBADA: sacar el `for` que recorre `versiones.docs` —o volver
+    // `referenciasEnUso` a leer solo `/actividades`, que es el estado anterior a
+    // B-560—. El Set queda solo con `img_actual` y este caso se pone rojo.
+    const { db } = dbFalso(
+      [{ imagenes: [{ storagePath: 'imagenes/img_actual.jpg' }] }],
+      [{ documento: { imagenes: [{ storagePath: 'imagenes/img_sacada.jpg' }] } }],
+    );
+    const referenciados = await referenciasEnUso(db as never);
+    expect([...referenciados].sort()).toEqual([
+      'imagenes/img_actual.jpg',
+      'imagenes/img_sacada.jpg',
+    ]);
+  });
+
+  it('la versión de una actividad que YA NO existe también cuenta — el rescate de B-41', () => {
+    // Borrar una actividad escribe su última versión (`guardarVersionAlBorrar`),
+    // que es la única copia de la que se la puede recuperar entera, y
+    // `limpiarVersionesHuerfanas` le da 30 días de rescate (B-89). Sus imágenes,
+    // en cambio, se iban a las 72 horas: el rescate devolvía la actividad con la
+    // galería rota. Acá la lista de actividades vivas está **vacía** y la imagen
+    // igual cuenta.
+    //
+    // MUTACIÓN PROBADA: leer las versiones actividad por actividad, recorriendo
+    // `/actividades` (que es la forma "obvia" de hacerlo sin `collectionGroup`).
+    // La subcolección huérfana no aparecería por ningún lado y este caso se pone
+    // rojo — con el `db` falso, porque la lista de actividades está vacía; contra
+    // el emulador, porque la query no devuelve documentos que no existen.
+    const { db } = dbFalso(
+      [],
+      [{ documento: { imagenes: [{ storagePath: 'imagenes/img_de_borrada.jpg' }] } }],
+    );
+    return expect(referenciasEnUso(db as never)).resolves.toEqual(
+      new Set(['imagenes/img_de_borrada.jpg']),
+    );
+  });
+
+  it('la misma imagen en la actividad y en su versión entra una sola vez', async () => {
+    // Es un Set y tiene que seguir siéndolo: `decidirLimpieza` hace `refs.has()`,
+    // y el script en seco imprime `referenciados.size`. Si esto pasara a ser un
+    // array, las dos cosas seguirían "funcionando" y el conteo mentiría.
+    const { db } = dbFalso(
+      [{ imagenes: [{ storagePath: 'imagenes/img_x.jpg' }] }],
+      [
+        { documento: { imagenes: [{ storagePath: 'imagenes/img_x.jpg' }] } },
+        { documento: { imagenes: [{ storagePath: 'imagenes/img_x.jpg' }] } },
+      ],
+    );
+    const referenciados = await referenciasEnUso(db as never);
+    expect(referenciados.size).toBe(1);
+  });
+
+  it('una versión sin `imagenes`, sin `documento`, o con una imagen externa, no rompe ni ensucia', async () => {
+    // Las tres formas reales de una versión que no aporta nada:
+    //
+    //  - la de una edición que no tocó la galería: el `select` de un campo que
+    //    el documento no tiene devuelve `{}` (comprobado contra el emulador);
+    //  - la de una actividad anterior a B-167, que tenía `imagenUrl` y no
+    //    `imagenes` (el aviso del §3.1);
+    //  - una imagen externa (DEC-7c), que no tiene `storagePath` porque no hay
+    //    ningún objeto de Storage que le corresponda.
+    //
+    // MUTACIÓN PROBADA: sacarle el `?.` a `doc.data()?.documento?.imagenes` — el
+    // primer caso tira `TypeError` y el `it` se pone rojo. Sacar la guarda
+    // `if (imagen?.storagePath)` mete un `undefined` en el Set y el `size` deja
+    // de ser 0.
+    const { db } = dbFalso(
+      [],
+      [
+        {}, // el `select` no encontró el campo
+        { documento: {} },
+        { documento: { imagenUrl: 'https://viejo/flyer.jpg' } },
+        { documento: { imagenes: [] } },
+        { documento: { imagenes: [{ url: 'https://ejemplo.com/flyer.jpg' }] } },
+      ],
+    );
+    const referenciados = await referenciasEnUso(db as never);
+    expect(referenciados.size).toBe(0);
+  });
+
+  it('una imagen que no nombra ni una actividad ni ninguna versión sigue estando huérfana', async () => {
+    // Control negativo, y es el que impide que el arreglo se convierta en «no
+    // borrar nunca nada»: el objeto del bucket que nadie referencia tiene que
+    // seguir cayendo en `aBorrar`. Se prueba el camino entero —lo que
+    // `referenciasEnUso` devuelve, entrando a `decidirLimpieza`— porque la
+    // regresión que importa es esa, no el Set solo.
+    const { db } = dbFalso(
+      [{ imagenes: [{ storagePath: 'imagenes/img_actual.jpg' }] }],
+      [{ documento: { imagenes: [{ storagePath: 'imagenes/img_sacada.jpg' }] } }],
+    );
+    const referenciados = await referenciasEnUso(db as never);
+    const { aBorrar, motivos } = decidirLimpieza({
+      objetos: [
+        { nombre: 'imagenes/img_actual.jpg', creado: VIEJO },
+        { nombre: 'imagenes/img_sacada.jpg', creado: VIEJO },
+        { nombre: 'imagenes/img_de_nadie.jpg', creado: VIEJO },
+      ],
+      referenciados,
+      ahora: AHORA,
+    });
+    expect(aBorrar).toEqual(['imagenes/img_de_nadie.jpg']);
+    expect(motivos['imagenes/img_sacada.jpg']).toBe('referenciado');
   });
 });

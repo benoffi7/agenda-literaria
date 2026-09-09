@@ -1,12 +1,14 @@
 /**
  * B-221 — barrido periódico que borra las imágenes propias que quedan
  * huérfanas en Storage: la fila salió de la galería, o la actividad se borró,
- * y nadie más referencia ese objeto.
+ * y nadie más referencia ese objeto — ni una actividad viva, ni una versión de
+ * su historial (B-560).
  *
  * La decisión de qué borrar es pura y vive en `limpieza-imagenes.js` —
- * incluido el porqué esto no es la trampa 12. Acá solo se junta lo que hace
- * falta para decidir (los objetos del bucket, los `storagePath` en uso) y se
- * ejecuta lo que la decisión dice.
+ * incluido el porqué esto no es la trampa 12, el porqué el historial cuenta
+ * como referencia y qué cuesta leerlo. Acá solo se junta lo que hace falta para
+ * decidir (los objetos del bucket, los `storagePath` en uso) y se ejecuta lo que
+ * la decisión dice.
  *
  * ── Por qué `onSchedule` y no un trigger de Firestore ──────────────────────
  * Un `onDocumentWritten` en `actividades/{id}` sabría que UNA fila de galería
@@ -58,6 +60,9 @@ export const limpiarImagenesHuerfanas = onSchedule(
     const db = getFirestore();
     const bucket = getStorage().bucket();
 
+    // `referenciados` cuenta los paths de las actividades vivas **y** los de
+    // sus versiones (B-560), así que el número del log es más grande que el de
+    // antes sin que haya cambiado nada del bucket. Es lo esperado.
     const [referenciados, objetos] = await Promise.all([
       referenciasEnUso(db),
       objetosDelBucket(bucket),

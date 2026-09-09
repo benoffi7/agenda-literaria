@@ -753,6 +753,22 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-852 · Las versiones que quedaron rotas antes de B-560 siguen restaurando un 404 · P4
+
+**Lo dejó anotado el frente que cerró B-560**, y es la mitad que aquel arreglo no
+puede alcanzar: las imágenes que el barrido **ya borró** antes de que
+`referenciasEnUso` mirara el historial no vuelven. Restaurar una de esas versiones
+sigue devolviendo una fila con una `url` que da 404, y nadie avisa.
+
+Es **P4 y no P3** porque la ventana es finita y **se cierra sola**: esas versiones
+caducan con la retención de D-42 (20 por actividad) y con el barrido de B-89 (30
+días para las huérfanas). Lo que queda es el caso de una actividad muy poco editada
+cuya versión vieja sobreviva meses.
+
+Si alguna vez se atiende, el camino es el 3 del ítem original —que restaurar avise
+cuando la imagen ya no está— y vive en `src/lib/historial.ts` +
+`HistorialActividad.tsx`, no en el barrido.
+
 ### B-851 · El barrido de promesas no cubre las promesas sobre plata · P2
 
 **Salió de cerrar la mitad de la ayuda de B-785.** `tests/promesas-sobre-datos.test.ts`
@@ -3248,7 +3264,44 @@ que B-199 movió y no resolvió: **quién es dueño del objeto**. Dos caminos:
 
 El barrido primero; el conteo solo si hace falta copiar.
 
-### B-560 · El barrido de B-221 no sabe de `/actividades/{id}/versiones/*` · P3
+### B-560 · El barrido de B-221 no sabe de `/actividades/{id}/versiones/*` — ✅ hecho (2026-09-09) · P3
+
+> ✅ **Cerrado por el camino 1 —sumar el historial a `referenciasEnUso`— y no por
+> el 3, que este ítem prefería.**
+>
+> El aviso al restaurar **reporta** una pérdida; esto la **evita**, y para una
+> feature cuyo valor entero es recuperar lo que se pisó, avisar de que no se puede
+> recuperar es la mitad. Y las dos objeciones que el ítem le hacía al camino 1 no
+> sobrevivieron a mirarlas contra lo que ya está construido:
+>
+> - **«agranda la lectura, crece sin tope»** — es **una** query
+>   (`collectionGroup('versiones').select('documento.imagenes')`) y no N: el
+>   recorrido de a una de `subcoleccionesHuerfanas` hace falta **allá** porque
+>   necesita saber de qué actividad es cada versión, y acá solo interesa el
+>   conjunto de paths. Y está acotada por **D-42** (20 versiones por actividad) y
+>   por **B-89** (las huérfanas se purgan a los 30 días): ≤ 21 lecturas por
+>   actividad, una vez cada 24 horas, con el número escrito en el docblock.
+> - **«alarga indefinidamente la vida de una imagen sacada a propósito»** — la
+>   alarga, y quedó escrito como precio; pero no indefinidamente: vive lo que viva
+>   la última versión que la nombra, y eso lo acotan las mismas dos cosas. Los dos
+>   barridos se destraban en orden — primero B-89 suelta las versiones, la corrida
+>   siguiente suelta las imágenes.
+>
+> **Y arregla de yapa el rescate de B-41, que este ítem no mencionaba:** al borrar
+> una actividad, `guardarVersionAlBorrar` deja la única copia recuperable y B-89 le
+> da 30 días — pero sus imágenes se iban a las 72 horas, así que el rescate
+> devolvía la actividad **con la galería rota**. El `collectionGroup` es lo que ve
+> esas subcolecciones huérfanas (una query sobre `/actividades` no las ve), así que
+> ahora la subcolección sostiene sus imágenes exactamente el mismo tiempo que se
+> sostiene a sí misma.
+>
+> Las tres premisas del diseño se comprobaron **contra el emulador** y no solo con
+> el `db` falso: que el `select` de campo anidado conserva el anidado y deja afuera
+> el resto del documento, que el `collectionGroup` ve las subcolecciones de padres
+> inexistentes, y que una versión sin `imagenes` vuelve vacía. Sin índice nuevo.
+>
+> **Lo que sigue abierto es otro ítem y no éste: B-852** — las versiones que
+> quedaron rotas **antes** de este arreglo.
 
 **Encontrado implementando B-221, sin tocar código.** `limpiarImagenesHuerfanas`
 cruza los `storagePath` de los documentos **en vivo** de `/actividades` contra
