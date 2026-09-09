@@ -2,6 +2,36 @@
 
 ## Sin publicar
 
+- **`/contacto` suma el DM de Instagram, y no como un tercer motivo** — **B-839**,
+  paso 10 y último de la tajada 1. Pedido del dueño: en este circuito **el DM es el
+  canal real** —se anuncia por Instagram y se responde por Instagram— y pedirle a
+  alguien que abra el mail para avisar que una fecha cambió es pedirle que use
+  nuestro canal y no el suyo. El handle ya estaba en el chrome, pero como
+  **identidad** («seguinos») y no como forma de escribirnos.
+
+  **El cuidado que el ítem anticipaba —«un DM no tiene asunto»— se resolvió no
+  metiéndolo donde no entra.** `MOTIVOS_DE_CONTACTO` es la lista de **motivos** —por
+  qué escribís— y la página deriva sus bloques recorriéndola, así que un tercero le
+  pondría una tarjeta más a una página cuya forma es «una elección entre dos»
+  (B-253), y con un `asunto` vacío: justamente lo único que esos dos bloques
+  comparten y para lo que existen. Instagram no es un motivo, es un **canal**
+  —contesta «por dónde»— así que va en su propia sección, después de la elección. Es
+  el mismo argumento que ya tenía escrito el asunto comercial de B-770, aplicado del
+  otro lado.
+
+  **Y la sección dice por qué el mail sigue siendo la primera opción**, que no es
+  letra chica: un DM no llega con asunto y **se pierde entre las solicitudes de
+  mensaje** de una cuenta que no te sigue. Sin esa frase, el canal cómodo se come al
+  que deja rastro. Tiene su caso, igual que el handle —que sale de `enlaces.ts` y no
+  escrito a mano: esa cuenta ya cambió una vez, el 2026-09-07.
+
+  **Lo que NO entró, y va con el anuncio de `/proponer`:** que el texto de
+  `/contacto` mande ahí (DEC-10). Un enlace desde una página indexada **es**
+  anunciarla, así que es el último paso de B-836a y no de éste.
+
+  Con esto la **tajada 1 queda completa salvo el anuncio**: pasos 4 a 11 hechos, y
+  lo que falta es tuyo — App Check exigiendo.
+
 - **El barrido de promesas ya mira la plata, y su premisa se deriva de
   `/anunciar`** — **B-851**. El barrido buscaba negaciones **sobre datos del
   visitante**, y por eso no vio lo que encontró B-785: la ayuda decía «no tiene

@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { CONTACTO, MOTIVOS_DE_CONTACTO, urlDeContacto } from '@/lib/enlaces';
+import { CONTACTO, INSTAGRAM, MOTIVOS_DE_CONTACTO, urlDeContacto, urlDeInstagram } from '@/lib/enlaces';
 import { RUTA_AYUDA } from '@/lib/rutasPublicas';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
+  POR_INSTAGRAM,
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
 
@@ -141,6 +142,48 @@ describe('la página de contacto — B-232', () => {
     expect(texto).toContain('persona');
     expect(texto).toMatch(/demor|tard/);
     expect(QUE_PASA_DESPUES.length).toBeGreaterThanOrEqual(2);
+  });
+
+  /**
+   * **El tercer canal, y las tres cosas que lo hacen aceptable** — B-839.
+   *
+   * En este circuito el DM es el canal real: se anuncia por Instagram y se
+   * responde por Instagram. Lo que la página no puede hacer es dejar que el canal
+   * cómodo se coma al que funciona, y por eso los tres asertos van juntos.
+   */
+  it('ofrece Instagram como canal, con el handle del contrato y no escrito a mano', () => {
+    expect(POR_INSTAGRAM.href).toBe(urlDeInstagram());
+    expect(POR_INSTAGRAM.handle).toBe(`@${INSTAGRAM}`);
+    // El handle sale de `enlaces.ts` (B-228): escrito acá sería la copia que se
+    // queda vieja el día que la cuenta cambie — y ya cambió una vez, el
+    // 2026-09-07.
+    expect(readFileSync(raiz('src/lib/contactoDelSitio.ts'), 'utf8')).not.toContain(
+      `'${INSTAGRAM}'`,
+    );
+  });
+
+  it('y NO es un motivo más: un DM no tiene asunto', () => {
+    /*
+     * `MOTIVOS_DE_CONTACTO` es la lista de motivos por los que alguien escribe, y
+     * la página **deriva sus bloques recorriéndola**. Un tercer motivo pondría una
+     * tercera tarjeta en una página cuya forma es «una elección entre dos»
+     * (B-253), y encima con un `asunto` vacío — que es justamente lo único que
+     * esos bloques comparten y para lo que existen.
+     *
+     * MUTACIÓN PROBADA: agregando `instagram` a `MOTIVOS_DE_CONTACTO`, este caso
+     * se pone rojo y además aparece la tercera tarjeta en la página.
+     */
+    expect(Object.keys(MOTIVOS_DE_CONTACTO).sort()).toEqual(['error', 'sugerencia']);
+    for (const b of BLOQUES_DE_CONTACTO) {
+      expect(b.asunto, `el bloque ${b.motivo} sin asunto`).toBeTruthy();
+    }
+  });
+
+  it('y dice por qué el mail sigue siendo la primera opción', () => {
+    // Sin esta frase, el canal cómodo se come al que deja rastro: un DM no lleva
+    // asunto y se pierde entre las solicitudes de mensaje.
+    expect(POR_INSTAGRAM.cuidado).toMatch(/mail/i);
+    expect(POR_INSTAGRAM.cuidado).toMatch(/solicitudes|asunto/i);
   });
 
   it('manda a la ayuda antes de escribir', () => {

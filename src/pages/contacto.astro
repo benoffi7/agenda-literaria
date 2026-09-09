@@ -34,6 +34,7 @@ import Base from '@/layouts/Base.astro';
 import {
   ANTES_DE_ESCRIBIR,
   BLOQUES_DE_CONTACTO,
+  POR_INSTAGRAM,
   QUE_PASA_DESPUES,
 } from '@/lib/contactoDelSitio';
 import {
@@ -96,6 +97,21 @@ import {
         ))
       }
     </div>
+
+    {/*
+      B-839 — el tercer canal, **después** de la elección entre los dos motivos y
+      no como una tercera tarjeta al lado: Instagram no contesta «por qué escribís»
+      sino «por dónde», y un DM no tiene asunto, que es la funcionalidad de los
+      otros dos. El motivo entero está en `POR_INSTAGRAM`.
+    */}
+    <section aria-labelledby="por-instagram" class="mt-10">
+      <h2 id="por-instagram" class="headline-sm text-acento">{POR_INSTAGRAM.titulo}</h2>
+      <p class="body-lectura mt-3 max-w-[65ch] text-super">
+        {POR_INSTAGRAM.texto}{' '}
+        <a class={claseEnlace} href={POR_INSTAGRAM.href} rel="me">{POR_INSTAGRAM.handle}</a>.
+      </p>
+      <p class="body-md mt-2 max-w-[65ch] text-super">{POR_INSTAGRAM.cuidado}</p>
+    </section>
 
     <section aria-labelledby="que-pasa-despues" class="mt-14 regla-gruesa-arriba pt-4">
       <h2

@@ -18,7 +18,13 @@
  * Tono: el mismo que `ayudaDelSitio.ts`. Le habla a alguien que encontró un
  * dato mal o conoce una actividad que falta, no a quien mantiene el sitio.
  */
-import { MOTIVOS_DE_CONTACTO, urlDeContacto, type MotivoDeContacto } from '@/lib/enlaces';
+import {
+  INSTAGRAM,
+  MOTIVOS_DE_CONTACTO,
+  urlDeContacto,
+  urlDeInstagram,
+  type MotivoDeContacto,
+} from '@/lib/enlaces';
 import { RUTA_AYUDA } from '@/lib/rutasPublicas';
 
 export interface BloqueDeContacto {
@@ -87,6 +93,54 @@ export const BLOQUES_DE_CONTACTO: BloqueDeContacto[] = (
  */
 
 /** Qué pasa después de mandar el mail. Corto y honesto. */
+/**
+ * **El tercer canal: el DM de Instagram** — B-839, pedido del dueño el 2026-09-08.
+ *
+ * ── Por qué NO es un tercer `MOTIVO_DE_CONTACTO` ──────────────────────────
+ * Por el mismo argumento que el asunto comercial de B-770, escrito en
+ * `enlaces.ts`: `MOTIVOS_DE_CONTACTO` es **la lista de motivos por los que alguien
+ * escribe**, y esta página **deriva sus bloques recorriéndola**. Agregar Instagram
+ * ahí le pondría una tercera tarjeta a una página cuya forma es «una elección
+ * entre dos» (B-253) — y además no encaja: **un DM no tiene asunto**, que es
+ * justamente la funcionalidad de los otros dos (separar la bandeja sin abrir el
+ * mensaje). Un motivo con `asunto: ''` rompería lo único que esos bloques
+ * comparten.
+ *
+ * Instagram no es un **motivo**, es un **canal**: no contesta «por qué escribís»
+ * sino «por dónde». Por eso va en su propia sección, después de la elección.
+ *
+ * ── Y por qué se agrega, si ya hay dos formas ─────────────────────────────
+ * Porque en este circuito **el DM es el canal real**: se anuncia por Instagram y
+ * se responde por Instagram, y pedirle a alguien que abra el mail para avisar que
+ * una fecha cambió es pedirle que use nuestro canal y no el suyo. El handle ya
+ * estaba en el chrome del sitio, pero como **identidad** —«seguinos»— y no como
+ * forma de escribirnos, que es otra cosa.
+ *
+ * ── Lo que la sección dice y no se puede omitir ───────────────────────────
+ * Que un DM **no deja rastro del mismo modo**: no tiene asunto, se pierde entre
+ * las solicitudes de mensaje de una cuenta que no te sigue, y no queda en ninguna
+ * bandeja ordenada. Para algo que hay que poder encontrar después —un dato mal
+ * publicado, algo que hay que corregir— el mail sigue siendo mejor, y decirlo acá
+ * es lo que evita que el canal cómodo se coma al canal que funciona.
+ */
+export const POR_INSTAGRAM = {
+  titulo: 'O escribinos por Instagram',
+  /** El handle se muestra como lo que es; la URL la arma `enlaces.ts`. */
+  handle: `@${INSTAGRAM}`,
+  href: urlDeInstagram(),
+  texto:
+    'Si te queda más a mano, mandanos un mensaje por Instagram: es donde publicamos las ' +
+    'actividades y donde más rápido contestamos.',
+  /**
+   * El aviso, y no es letra chica: es la razón por la que los dos `mailto:` de
+   * arriba siguen siendo la primera opción de la página.
+   */
+  cuidado:
+    'Para avisar de un dato mal publicado conviene el mail: un mensaje directo se pierde ' +
+    'entre las solicitudes si no nos seguimos, y no llega con asunto, así que es más difícil ' +
+    'de encontrar después.',
+} as const;
+
 export const QUE_PASA_DESPUES: string[] = [
   'Lo lee una persona, no un sistema: no vas a recibir un acuse automático y puede demorar unos ' +
     'días.',

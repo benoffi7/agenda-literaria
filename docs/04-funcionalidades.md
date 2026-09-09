@@ -1666,6 +1666,25 @@ separar una sugerencia de un error en la bandeja sin abrirlos. Cada motivo dice 
 conviene contar, y la página cierra con qué pasa después: lo lee una persona y puede
 demorar.
 
+**Y desde B-839 ofrece un tercer canal: el DM de Instagram**, pedido del dueño. En
+este circuito el DM es **el canal real** —se anuncia por Instagram y se responde por
+Instagram— y pedirle a alguien que abra el mail para avisar que una fecha cambió es
+pedirle que use nuestro canal y no el suyo. El handle ya estaba en el chrome, pero
+como **identidad** («seguinos») y no como forma de escribirnos.
+
+Va en su **propia sección y no como un tercer bloque**, y el motivo es el mismo que
+tiene escrito el asunto comercial de B-770: `MOTIVOS_DE_CONTACTO` es la lista de
+**motivos** —por qué escribís— y la página deriva sus bloques recorriéndola, así que
+un tercero le pondría una tarjeta más a una página cuya forma es «una elección entre
+dos» (B-253). Instagram no es un motivo, es un **canal**: contesta «por dónde». Y
+encima **un DM no tiene asunto**, que es justamente lo único que esos dos bloques
+comparten.
+
+La sección dice también por qué el mail sigue siendo la primera opción, y eso no es
+letra chica: un DM no llega con asunto y **se pierde entre las solicitudes de
+mensaje** de una cuenta que no te sigue. Decirlo es lo que evita que el canal cómodo
+se coma al que deja rastro.
+
 Tres cosas que no se ven mirando las páginas:
 
 - **El contenido es data, no marcado** (`src/lib/ayudaDelSitio.ts`,
