@@ -171,6 +171,8 @@ no crece con esta página.
 | `material.items[].url` con `publico: false` | solo tipo y título | ambos |
 | `material.items[].id` | id de cliente (B-342), de máquina — no dice nada sobre la actividad, pero tampoco aporta nada afuera: es la trampa 2 en miniatura, no un dato de contenido | `toPublic.ts` |
 | `createdBy` / `updatedBy` | uids | ambos |
+| `propuestas[].contacto` | **el primer dato personal de un tercero que el proyecto guarda** (B-830), y reabre a propósito lo que B-102 había cerrado: sin forma de repreguntarle a quien propuso, la bandeja no sirve. Es interno como `difusion`, con una diferencia — no es nuestro. Retención de 30 días (DEC-13, B-838), y `allow read: if esAdmin()` en la colección entera, así que ni un anónimo ni alguien logueado sin claim la ven | `firestore.rules`, y **ninguna proyección**: `/propuestas` no tiene salida pública. Lo que se publica es la **actividad** que sale de ella, por el camino que ya existe |
+| `propuestas[].revision.motivo` | por qué un admin la rechazó. Es una nota interna sobre el trabajo de otra persona, del mismo orden que `difusion.notas` | `firestore.rules` (nadie fuera del panel lee la colección) |
 | `sesion.calendarEventId` | interno | `toPublic.ts` |
 | `modalidades[].inicio` / `modalidades[].fin` | **decisión, no olvido**: qué significa la ventana de una modalidad frente a las fechas de los encuentros sigue sin resolver (B-224), así que se guarda y no se publica en ninguna de las dieciocho salidas. Un campo que no sale no puede decir algo equivocado en el calendario de todos los suscriptos; agregarlo después es una línea | `toPublic.ts`, `calendario.js`, `textoRedes.ts`, `normalize.ts`, GA4 |
 | **los metadatos del archivo** (EXIF/GPS, XMP, IPTC) | una foto de celular lleva las coordenadas del lugar donde se sacó, y muchos talleres pasan en casas particulares. Se sacan **antes** de subir, y lo que se sube se barre buscando las tres marcas: si alguna sobrevive, la subida se corta (D-131 §3) | `imagenes-archivo.ts` (`sinMetadatos`, `quedanMetadatos`) |
@@ -1027,7 +1029,35 @@ match /sistema/{doc} {
   allow read:  if esAdmin();
   allow write: if false;        // solo el Admin SDK
 }
+match /propuestas/{id} {        // B-830
+  allow read:   if esAdmin();   // lleva el contacto de quien propuso
+  allow create: if esAdmin() && propuestaValida();   // ← el `esAdmin()` sale con B-836a
+  allow update: if esAdmin() && revisionValida();    // solo `estado` + `revision`
+  allow delete: if false;       // la borra la Function de retención (DEC-13)
+}
 ```
+
+**`/propuestas` es donde va a ir la primera escritura anónima, y todavía no está
+abierta.** El `create` es `esAdmin() && propuestaValida()`: lo que falta no es
+código sino que **App Check esté exigiendo** (B-836a — publicar, verificar los
+dominios permitidos de la clave, verificar que lleguen peticiones y recién ahí
+exigir). Sin enforcement, borrar ese `esAdmin() &&` publica un endpoint de
+escritura a Firestore que nada frena: `propuestaValida()` acota la **forma**, no
+el volumen, y cada escritura se factura en un proyecto Blaze. El orden para
+abrirla está escrito en la propia regla, y el paso 3 es que
+`escritura-anonima.integracion.test.ts` se ponga rojo — o sea que abrir la puerta
+sea un diff visible en un test.
+
+**Y lo que `propuestaValida()` no puede hacer, dicho acá y no supuesto:** una regla
+de Firestore **no itera una lista**, así que de `fechas` acota la cantidad (1–12) y
+el tipo y no la forma de cada fila — un `curl` puede mandar doce mapas arbitrarios,
+con strings tan largos como el tope de 1 MB del documento permita. Lo mismo con los
+elementos de `incluye`. Lo que lo hace aceptable es que **nada de una propuesta
+llega a una salida pública sin que un admin la convierta en actividad**, y esa
+conversión pasa por `actividadFormSchema`: el daño posible es «el admin ve una fila
+rara en la bandeja». Está afirmado como asimetría —no como garantía— en
+`tests/propuestas.test.ts`, y la defensa que falta, si aparece abuso, es del lado
+de una Function (**B-842**).
 
 **Hoy no existe ninguna escritura anónima, y eso está fijado, no supuesto.**
 `tests/escritura-anonima.integracion.test.ts` (B-836) afirma la propiedad del

@@ -259,6 +259,210 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    /*
+     * ══ PROPUESTAS DE ORGANIZADORES — B-830 ══════════════════════════════
+     *
+     * `docs/prd/01-propuestas-de-organizadores.md`. Es la colección que va a
+     * aceptar **la primera escritura anónima del proyecto**, y por eso este
+     * bloque es el más delicado del archivo.
+     *
+     * **Hoy el `create` sigue cerrado a admin, a propósito.** Ver el comentario
+     * del `allow create` más abajo: falta que App Check esté **exigiendo**
+     * (B-836a, pasos del dueño), y sin eso abrir la puerta es publicar un
+     * endpoint de escritura a Firestore sin nada que frene a un script.
+     * `tests/escritura-anonima.integracion.test.ts` es el testigo: mientras esté
+     * verde, nadie escribe sin el claim.
+     *
+     * La forma se valida acá y no solo en el schema de zod, por lo mismo que
+     * `reporteValido()` y con más razón: del otro lado hay un anónimo, así que
+     * **el schema se saltea con un `curl` y esto no**. Los números son los mismos
+     * de `src/types/propuesta.ts` y los ata `tests/propuestas.test.ts`, que lee
+     * este archivo.
+     *
+     * Lo que las reglas **no pueden** hacer, y hay que saberlo: no iteran una
+     * lista, así que de `incluye` se puede acotar la cantidad y **no** el largo
+     * de cada elemento. El tope de tamaño del documento (1 MB) es el techo real,
+     * y la defensa de fondo es que **nada de una propuesta llega a una salida
+     * pública sin que un admin la convierta en actividad**.
+     */
+    function fechasValidas(fechas) {
+      // `hasOnly` sobre las claves de cada fila no se puede sin iterar, así que
+      // lo que se acota es la cantidad y el tipo. La forma de cada fila la
+      // valida el schema, y el daño posible queda en «el admin ve una fila
+      // rara» — nada se publica sin que la convierta.
+      return fechas is list && fechas.size() >= 1 && fechas.size() <= 12;
+    }
+
+    function lugarValido(lugar) {
+      return lugar == null || (
+        lugar.keys().hasOnly(['nombre', 'direccion', 'barrio'])
+        && lugar.get('nombre', '') is string && lugar.get('nombre', '').size() <= 200
+        && lugar.get('direccion', '') is string && lugar.get('direccion', '').size() <= 200
+        && lugar.get('barrio', '') is string && lugar.get('barrio', '').size() <= 200
+      );
+    }
+
+    function imagenValida(imagen) {
+      /*
+       * Una URL de afuera **o** un objeto de nuestro bucket, nunca las dos
+       * (DEC-11). Dos mitades, y cada una tapa una forma distinta:
+       *
+       *  - **`hasOnly`** rechaza el mapa con las **dos** claves: ninguno de los
+       *    dos `hasOnly` acepta la clave del otro. Verificado por mutación —
+       *    sacarlo deja pasar `{url, storagePath}`.
+       *  - **`.get(clave, '')` + `size() >= 1`** rechaza el mapa **vacío** y la
+       *    cadena vacía. Va con `.get()` y no con acceso directo por el mismo
+       *    motivo que `esAdmin()`, dicho al principio de este archivo: leer una
+       *    clave ausente de un map es un *evaluation error*, no `false`. El
+       *    error deniega igual, así que la regla «funcionaría» — pero por el
+       *    camino equivocado, con un mensaje que no dice nada y sin una cláusula
+       *    que se pueda mutar para comprobarla.
+       *
+       * **Acá hubo dos cláusulas que no hacían nada**, y las encontró la
+       * verificación por mutación, no la lectura: primero un `size() == 1` con un
+       * comentario que decía que era lo que hacía excluyente al par (falso: eso lo
+       * hace `hasOnly`), y después un `hasAll` puesto para tapar el mapa vacío
+       * (falso también: lo tapaba el error de evaluación). Sacar cualquiera de las
+       * dos dejaba los casos en verde. Una cláusula que no puede fallar en una
+       * regla de seguridad es peor que ninguna: se lee como load-bearing, y el que
+       * venga la va a cuidar en vez de mirar la que sí frena.
+       */
+      return imagen == null || (
+        (imagen.keys().hasOnly(['url'])
+          && imagen.get('url', '') is string
+          && imagen.get('url', '').size() >= 1 && imagen.get('url', '').size() <= 500)
+        || (imagen.keys().hasOnly(['storagePath'])
+          && imagen.get('storagePath', '') is string
+          && imagen.get('storagePath', '').size() >= 1
+          && imagen.get('storagePath', '').size() <= 500)
+      );
+    }
+
+    function propuestaValida() {
+      let d = request.resource.data;
+      let campos = ['titulo', 'descripcion', 'fechas', 'modalidad', 'lugar', 'organizador',
+                    'arancel', 'inscripcion', 'incluye', 'incluyeOtro', 'imagen',
+                    'contacto', 'estado', 'creadoEn', 'origen', 'revision'];
+      return d.keys().hasOnly(campos) && d.keys().hasAll(campos)
+        && d.titulo is string && d.titulo.size() >= 6 && d.titulo.size() <= 120
+        && d.descripcion is string
+        && d.descripcion.size() >= 15 && d.descripcion.size() <= 4000
+        && fechasValidas(d.fechas)
+        && d.modalidad in ['presencial', 'virtual', 'las-dos']
+        && lugarValido(d.lugar)
+        && d.organizador.keys().hasOnly(['nombre', 'instagram'])
+        && d.organizador.nombre is string
+        && d.organizador.nombre.size() >= 2 && d.organizador.nombre.size() <= 200
+        && (d.organizador.instagram == null || (d.organizador.instagram is string
+              && d.organizador.instagram.size() <= 200))
+        && d.arancel.keys().hasOnly(['tipo', 'notas'])
+        // §4.1 — solo los tres `fijo: true`. Las demás se eligen desde el panel,
+        // porque crear una opción es escribir en `/opciones/*`, que es de lectura
+        // pública y viaja al `events.json` (§4.2 del PRD).
+        && d.arancel.tipo in ['gratis', 'a-la-gorra', 'arancelado']
+        && (d.arancel.notas == null || (d.arancel.notas is string
+              && d.arancel.notas.size() <= 200))
+        && d.inscripcion.keys().hasOnly(['requiere', 'comoDice'])
+        && d.inscripcion.requiere is bool
+        && (d.inscripcion.comoDice == null || (d.inscripcion.comoDice is string
+              && d.inscripcion.comoDice.size() <= 500))
+        && d.incluye is list && d.incluye.size() <= 12
+        && (d.incluyeOtro == null || (d.incluyeOtro is string
+              && d.incluyeOtro.size() <= 200))
+        && imagenValida(d.imagen)
+        // El contacto de quien propone: interno, no sale nunca (§5.1, §7 del PRD).
+        && d.contacto.keys().hasOnly(['via', 'valor'])
+        && d.contacto.via in ['mail', 'whatsapp', 'instagram']
+        && d.contacto.valor is string
+        && d.contacto.valor.size() >= 3 && d.contacto.valor.size() <= 200
+        // El estado inicial lo fuerza la REGLA y no el cliente. Sin esto, un
+        // `curl` marca su propia propuesta como aceptada y la bandeja no sirve
+        // para nada (§1 del `prd/README.md`).
+        && d.estado == 'nueva'
+        // Y `revision` entera en null: nadie nace revisado.
+        && d.revision.keys().hasOnly(['porUid', 'en', 'actividadId', 'motivo'])
+        && d.revision.porUid == null && d.revision.en == null
+        && d.revision.actividadId == null && d.revision.motivo == null
+        // El origen tiene que coincidir con quién escribe: una propuesta anónima
+        // no puede decir que la cargó el panel, ni al revés. Es lo que hace que
+        // el `origen` sirva para algo cuando se abra el `create`.
+        && ((d.origen == 'formulario-publico' && request.auth == null)
+             || (d.origen == 'panel' && esAdmin()))
+        // Con `request.time` el cliente no puede antedatar la propuesta.
+        && d.creadoEn == request.time;
+    }
+
+    /*
+     * El único cambio que un admin puede hacerle a una propuesta: **moverla de
+     * estado y dejar constancia de quién la revisó**.
+     *
+     * Mismo patrón que `reintentoValido()`/`resueltoValido()`: `affectedKeys`
+     * acotado. Y la razón de fondo es la misma que hace que la bandeja valga:
+     * un admin **no puede editar el contenido** de una propuesta. Si hay que
+     * corregir el título, se corrige en la actividad que sale de ella — así la
+     * propuesta queda como prueba de qué se pidió (§4.3 del PRD).
+     *
+     * `porUid == request.auth.uid` para que un admin no pueda firmar la revisión
+     * a nombre del otro, igual que `reportadoPor.uid` en `/reportes`.
+     */
+    function revisionValida() {
+      let d = request.resource.data;
+      let previo = resource.data;
+      return d.diff(previo).affectedKeys().hasOnly(['estado', 'revision'])
+        && d.diff(previo).affectedKeys().hasAny(['estado'])
+        && d.estado in ['nueva', 'en-revision', 'aceptada', 'rechazada']
+        && d.revision.keys().hasOnly(['porUid', 'en', 'actividadId', 'motivo'])
+        && d.revision.porUid == request.auth.uid
+        && d.revision.en == request.time
+        && (d.revision.actividadId == null || (d.revision.actividadId is string
+              && d.revision.actividadId.size() <= 200))
+        && (d.revision.motivo == null || (d.revision.motivo is string
+              && d.revision.motivo.size() <= 500));
+    }
+
+    match /propuestas/{id} {
+      // La bandeja la miran los admin, como `/reportes`. Y **solo** ellos: el
+      // documento lleva el contacto de quien propuso, que es el primer dato
+      // personal de un tercero que el proyecto guarda (§7 del PRD).
+      allow read: if esAdmin();
+
+      /*
+       * ⚠️ **ACÁ VA LA PRIMERA ESCRITURA ANÓNIMA DEL PROYECTO, Y TODAVÍA NO ESTÁ
+       * ABIERTA.**
+       *
+       * Lo que falta no es código: es que **App Check esté exigiendo**
+       * (B-836a, pasos del dueño — publicar, verificar los dominios permitidos
+       * de la clave, verificar que lleguen peticiones y recién ahí exigir). Sin
+       * enforcement, borrar el `esAdmin() &&` de acá abajo publica un endpoint de
+       * escritura a Firestore que **nada** frena: `propuestaValida()` acota la
+       * forma, no el volumen, y cada escritura es una escritura facturada en un
+       * proyecto Blaze (§2 del `prd/README.md`).
+       *
+       * **Para abrirla**, y en este orden:
+       *   1. App Check exigiendo, verificado en la consola;
+       *   2. borrar `esAdmin() &&` de la línea de abajo;
+       *   3. `tests/escritura-anonima.integracion.test.ts` se pone **rojo** —es
+       *      su trabajo— y ahí se agrega `'propuestas'` a `COLECCIONES_ABIERTAS`
+       *      con su motivo, que es lo que hace que abrir una puerta sea un diff
+       *      visible y no un efecto colateral;
+       *   4. el honeypot y el tiempo mínimo de tipeo van en el componente, y el
+       *      barrido programado de la bandeja en su Function. Son las otras tres
+       *      capas de B-836 y ninguna reemplaza a ésta.
+       *
+       * Mientras tanto un admin sí puede crear una propuesta a mano
+       * (`origen: 'panel'`), que es un camino del PRD y no un andamio: sirve para
+       * cargar lo que llega por DM.
+       */
+      allow create: if esAdmin() && propuestaValida();
+
+      allow update: if esAdmin() && revisionValida();
+
+      // Borrar es de la Function de retención (30 días, DEC-13 / B-838), que
+      // corre con el Admin SDK y no pasa por estas reglas. Un admin no borra una
+      // propuesta desde el panel: rechazarla es un estado, no una desaparición.
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

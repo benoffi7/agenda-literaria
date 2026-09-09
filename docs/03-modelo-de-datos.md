@@ -13,6 +13,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
+| `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |
 
 `{campo}` de opciones es uno de: `arancel`, `tipo`, `barrio`, `plataforma`,
 `tags`, `incluye-actividad`.
@@ -437,6 +438,40 @@ Tres cosas que no se adivinan del tipo:
 El default de lectura es `libroVacio()`, **una sola fábrica** para el formulario
 nuevo, la lectura de todo documento anterior y el molde con el que el autoguardado
 poda lo recuperado. Es determinístico a propósito: la lección de D-125. Ver **D-126**.
+
+## `/propuestas/{id}` — lo que alguien propone (B-830)
+
+`src/types/propuesta.ts`. Es la colección donde va a vivir **la primera escritura
+anónima del proyecto**, y la forma completa está en el tipo con su docblock por
+campo; acá va lo que no se lee del tipo.
+
+**Una propuesta no es un borrador de actividad, y por eso el modelo es otro.** Es
+**lo que alguien pidió**, y queda como prueba de eso: el vocabulario es más chico
+y más simple —`'las-dos'` en vez de `'hibrido'`, tres aranceles en vez de la
+taxonomía entera, una sola imagen— y un admin **no puede editar su contenido**. Si
+hay que corregir el título, se corrige en la actividad que sale de ella. La regla
+lo impone: `revisionValida()` acota el `update` a `estado` + `revision`.
+
+| Qué | Cómo, y dónde está el motivo |
+|---|---|
+| Las fechas son **strings** (`'aaaa-mm-dd'`, `'hh:mm'`) | desvío del §3.2 **solo acá**: un `Timestamp` armado en el navegador de un anónimo lleva su zona horaria y no hay con qué corregirlo. **D-590** |
+| El `estado` inicial y `revision` en null los fuerza **la regla** | si lo decidiera el cliente, un `curl` marca su propia propuesta como aceptada y la moderación no existe |
+| `creadoEn == request.time` | el cliente no puede antedatar |
+| El `origen` tiene que coincidir con **quién escribe** | una propuesta anónima no puede decir que la cargó el panel, ni al revés |
+| El formulario público ofrece **solo los tres aranceles `fijo: true`** | crear una opción es escribir en `/opciones/*`, que es de lectura pública y viaja al `events.json`. El «Otro» de `incluye` es texto libre (`incluyeOtro`) que el admin decide si promueve — § 4.2 del PRD |
+| `contacto` es **el primer dato personal de un tercero** que el proyecto guarda | B-102 decía que no guardaba ninguno. Se reabre a propósito: sin forma de repreguntar la bandeja no sirve. No sale a ninguna salida, tiene su fila en [`07-seguridad.md`](07-seguridad.md) y su retención a 30 días (DEC-13, B-838) |
+| `imagen` es `{ url }` **o** `{ storagePath }`, nunca las dos | DEC-11. El prefijo de Storage y su borrado son de la tajada siguiente; la **forma** ya la valida la regla |
+| Borrar está **prohibido** desde el cliente | la borra la Function de retención con el Admin SDK. Rechazar es un estado, no una desaparición |
+
+**Los topes se dicen en dos runtimes y son el mismo número** —el modelo y
+`firestore.rules`— y los ata `tests/propuestas.test.ts` leyendo el archivo de
+reglas, que es el patrón de `TOPE_TITULO_REPORTE` (B-364). Acá importa más que
+allá: del otro lado hay un anónimo, así que el tope de la **regla** es el único
+que no se saltea.
+
+**Y lo que la regla no puede:** no itera listas, así que de `fechas` acota la
+cantidad y no la forma de cada fila (**B-842**). Lo que lo hace aceptable es que
+nada de una propuesta llega a una salida pública sin que un admin la convierta.
 
 ## `incluye` — qué se llevan (B-830)
 

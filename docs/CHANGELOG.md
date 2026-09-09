@@ -2,6 +2,85 @@
 
 ## Sin publicar
 
+- **`/propuestas`: el tipo, el schema y las reglas de la colección que va a
+  recibir la primera escritura anónima** — **B-830**, paso 5 de la tajada 1, más
+  **D-590** y **B-842**.
+
+  **El `create` anónimo NO está abierto, y es una decisión de secuencia.** La regla
+  es `esAdmin() && propuestaValida()`: lo que falta no es código sino que **App
+  Check esté exigiendo** (B-836a, pasos del dueño). Sin enforcement, borrar ese
+  `esAdmin() &&` publica un endpoint de escritura a Firestore que nada frena —
+  `propuestaValida()` acota la forma, no el volumen, y cada escritura se factura en
+  Blaze. El orden para abrirla está escrito **en la propia regla**, y el paso 3 es
+  que `escritura-anonima.integracion.test.ts` se ponga rojo: abrir la puerta tiene
+  que ser un diff visible en un test. Mientras tanto un admin sí puede cargar una
+  propuesta a mano (`origen: 'panel'`), que es un camino del PRD y no un andamio —
+  sirve para lo que llega por DM.
+
+  **Una propuesta no es un borrador de actividad**, y por eso el modelo es otro:
+  es **lo que alguien pidió**, y queda como prueba de eso. Vocabulario más chico
+  —`'las-dos'` en vez de `'hibrido'`, tres aranceles en vez de la taxonomía entera—
+  y un admin **no puede editar su contenido**: `revisionValida()` acota el `update`
+  a `estado` + `revision`. Si hay que corregir el título, se corrige en la actividad
+  que sale de ella.
+
+  Lo que la regla fuerza y el cliente no decide: el `estado` inicial en `'nueva'`,
+  la `revision` entera en `null`, `creadoEn == request.time`, y —la que menos se ve
+  venir— **el `origen` acoplado a quién escribe**: una propuesta anónima no puede
+  decir que la cargó el panel, ni al revés. Es lo que hace que ese campo signifique
+  algo el día que la puerta se abra.
+
+  **D-590 — las fechas son strings** (`'aaaa-mm-dd'`, `'hh:mm'`), desvío del §3.2
+  del `CLAUDE.md` y **solo acá**. Un `Timestamp` armado en el navegador de quien
+  propone lleva **su** zona horaria, y el agravante es que el cliente es anónimo: de
+  un admin sabemos que carga desde Buenos Aires, de quien propone no sabemos nada, y
+  un `Timestamp` no deja ver ese error — llega un instante perfectamente formado y
+  equivocado. Con strings, la conversión pasa a ocurrir **una vez y del lado del
+  admin**, al convertir, que es donde el proyecto ya la hace bien.
+
+  **Y el 31 de febrero, que es la parte fina:** `2026-02-31` pasa el `matches` de
+  los dos lados —la forma es correcta y el día no existe— así que eso lo valida
+  **solo el schema**, con aritmética de calendario y sin reloj (`Date.UTC`, no
+  `new Date(dia)`, que obligaría a preguntar el día «en alguna zona» y sería la
+  trampa 1 otra vez).
+
+  **Los topes se dicen en dos runtimes y son el mismo número.** Diez números y
+  cuatro vocabularios, atados por un test que **lee `firestore.rules`** — el único
+  modo de atar un runtime que no puede importar TypeScript (el patrón de B-364).
+  Acá importa más que en `/reportes`: del otro lado hay un anónimo, así que el tope
+  de la **regla** es el único que no se saltea. Y los aranceles del formulario
+  público son los tres `fijo: true` y nada más (§4.2 del PRD: crear una opción es
+  escribir en `/opciones/*`, que es de lectura pública y viaja al `events.json`),
+  con la lista escrita a mano a propósito —derivarla haría que una cuarta opción
+  base **ensanche sola** lo que un anónimo puede mandar— y atada en las dos
+  direcciones contra `opciones-base.json`.
+
+  **La verificación por mutación se ganó el rato, y encontró cosas mías.** Dos
+  cláusulas de `imagenValida()` que **no hacían nada**, las dos con un comentario
+  que afirmaba que eran lo que frenaba: primero un `size() == 1` («es lo que lo hace
+  excluyente» — falso, eso lo hace `hasOnly`) y después un `hasAll` puesto para
+  tapar el mapa vacío (falso también: lo tapaba un error de evaluación). Sacar
+  cualquiera de las dos dejaba los casos en verde. Quedó escrito con el idiom del
+  propio archivo —`.get(clave, '')` + `size() >= 1`, como `esAdmin()`— para que el
+  rechazo sea un `false` limpio y no un error de evaluación, y ahora **cada cláusula
+  se puede mutar y se pone roja**. Una cláusula que no puede fallar en una regla de
+  seguridad es peor que ninguna: se lee como load-bearing y el que venga la va a
+  cuidar en vez de mirar la que sí frena.
+
+  **Y un aserto mío que afirmaba una garantía falsa: B-842.** Había escrito que las
+  dos expresiones de fecha estaban «en los dos lados». No: **una regla de Firestore
+  no itera una lista**, así que de `fechas` se acota la cantidad (1–12) y el tipo y
+  no la forma de cada fila — lo mismo con los elementos de `incluye`. El caso ahora
+  afirma la **asimetría**: las expresiones viven solo en el schema y la regla no las
+  tiene, así que si alguien las agrega, el test se pone rojo y hay que decidir. Lo
+  que lo hace aceptable es que nada de una propuesta llega a una salida pública sin
+  que un admin la convierta, y esa conversión pasa por `actividadFormSchema`.
+
+  33 casos contra el emulador y 28 puros. Doc: **D-590**, la sección de
+  `/propuestas` en `03-modelo-de-datos.md`, las dos filas nuevas de «qué nunca
+  sale» y el bloque de reglas en `07-seguridad.md`, la fila en la tabla «no
+  automatizar» y **B-842**.
+
 - **Los cuatro hallazgos de los dos auditores que me había salteado** — y me los
   había salteado por un error mío: corrí `scripts/auditores-que-corresponden.mjs`
   **sin pasarle nada por stdin**, que es de donde lee la lista de archivos, así

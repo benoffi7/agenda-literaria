@@ -576,6 +576,40 @@ barato:
 taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
 en la suite y no en producción, que es exactamente para lo que se escribió.
 
+### B-842 · La regla no puede validar la forma de cada fecha de una propuesta · P2
+
+**Sale de construir `/propuestas`** (B-830, paso 5), y es una limitación del
+runtime y no un olvido: **una regla de Firestore no itera una lista**. De `fechas`
+se puede acotar la cantidad (1–12) y el tipo, y no la forma de cada fila. Lo mismo
+con los elementos de `incluye`: se acota cuántos, no el largo de cada uno.
+
+O sea que el día que el `create` anónimo se abra, un `curl` va a poder mandar doce
+mapas arbitrarios ahí adentro, con strings tan largos como el tope de **1 MB** del
+documento permita. El schema de zod los rechaza y no cuenta: es lo primero que se
+saltea.
+
+**Por qué no bloquea nada, y por qué igual está anotado.** Nada de una propuesta
+llega a una salida pública sin que **un admin la convierta en actividad**, y esa
+conversión pasa por `actividadFormSchema` con su `superRefine` entero. El daño
+posible es «el admin ve una fila rara en la bandeja» y una escritura facturada de
+hasta 1 MB — molesto, no peligroso. Lo que sí importa es que esté **escrito como
+asimetría y no como garantía**: `tests/propuestas.test.ts` tiene un caso que
+afirma que las expresiones de fecha viven **solo** en el schema y que la regla
+**no** las tiene, así que si alguien las agrega ahí, el test se pone rojo y hay que
+venir a decidir qué quedó cubierto. La primera versión de ese caso afirmaba lo
+contrario —que la regla las repetía— y era falso.
+
+**Dónde y el molde, si aparece abuso.** No es del lado de la regla: es una
+Function `onDocumentCreated` sobre `/propuestas` que valide la forma fila por fila
+y marque —o borre— la que no pasa. Hay dos moldes: el barrido programado que B-836
+pide para la bandeja, y `functions/reportes.js`, que ya hace validación del lado
+del servidor sobre algo que entró por el cliente. **No hacerlo antes de tener el
+problema**: es una Function más para cubrir un caso que hoy nadie ejerce, y el
+techo de 1 MB ya lo acota.
+
+Y hay una defensa que llega antes y no es ésta: **App Check** (B-836a). El script
+que manda doce mapas de 80 KB es exactamente el que no pasa por la página.
+
 ### B-830 a B-839 · Los cuatro formularios: propuestas de organizadores y los tres directorios · P1 — **para mañana (2026-09-09)**
 
 **Los PRDs están escritos y el inventario de archivos también.** Pedido del dueño
@@ -590,7 +624,7 @@ rompen en silencio están en
 | **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🟠 **empezado (2026-09-09)** — están el control positivo (`tests/escritura-anonima.integracion.test.ts`: hoy nadie escribe sin el claim, ni en las cuatro colecciones futuras) y **App Check cableado** (`src/lib/appcheck.ts`, reCAPTCHA **Enterprise**, con la app ya registrada por el dueño). Falta publicar, verificar en la consola y **exigir** — **B-836a**, y el orden no se puede invertir: exigir antes de que el cliente mande tokens deja al panel sin poder escribir. Las otras cuatro capas (validación en la regla, topes, honeypot, barrido) van con la colección que las estrene |
 | **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
 | **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | ✅ **hecho (2026-09-09)** — `src/lib/datoConFecha.ts` + `tests/dato-con-fecha.test.ts`. Las tres reglas son propiedades del módulo: la proyección pública es **un solo string** («$18.000 por mes · cargado el 24 de septiembre de 2026»), así que no hay número que filtrar ni que meter en un `Offer`, y **el valor sin fecha usable no sale** — desaparece en vez de publicarse solo. La fecha es absoluta y con año porque el sitio es estático: un «hace tres meses» horneado en el HTML envejece solo (**D-570**). Todavía sin consumidor: lo estrenan las librerías y las suscripciones |
-| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — el paso 4 de la tajada 1 está hecho: **`incluye`** («qué se llevan») en el modelo de actividad, de punta a punta con `/campo-nuevo`, con su taxonomía `/opciones/incluye-actividad` y **D-580** decidiendo las dos salidas a las que va y las cinco a las que no. Falta lo grueso: la colección `/propuestas` con sus reglas, `propuestas.ts`, el `PropuestasPanel`, la imagen de DEC-11, `/proponer`, `/contacto` con Instagram y la retención |
+| **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟠 **empezado (2026-09-09)** — pasos 4 y 5 de la tajada 1 hechos: **`incluye`** en el modelo de actividad (con **D-580**) y la colección **`/propuestas`** con su tipo, su schema, sus reglas y sus dos tests —33 casos contra el emulador, verificados por mutación— más **D-590** (las fechas como string) y **B-842** (lo que la regla no puede). **El `create` anónimo sigue cerrado a admin**: falta que App Check exija (B-836a). Falta `propuestas.ts` (la conversión), el `PropuestasPanel`, la imagen de DEC-11, `/proponer`, `/contacto` con Instagram y la retención |
 | **B-831** | **Directorio de librerías** — `/guia/librerias`, `/guia/librerias/sumar`, panel. Reusa `/opciones/barrio` **y los hubs de barrio que ya están indexados**, que es lo que lo hace valer más que la suma de sus fichas | [`prd/02-librerias.md`](prd/02-librerias.md) | 🟡 listo para codear |
 | **B-832** | **Directorio de suscripciones literarias** — `/guia/suscripciones`. El modelo más complicado de los cuatro: campos condicionales, seis vocabularios y un precio. El choque de nombre que tenía —la barra ya dice «Suscribirse», el calendario— **se lo llevó `/guia/`**: las dos etiquetas nunca aparecen juntas | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) | 🟡 listo para codear |
 | **B-833** | **Directorio de lugares para eventos** — `/guia/lugares`. El que más cierra el círculo (quien organiza necesita lugar; el lugar quiere que pasen cosas ahí) y **el único que puede publicar la dirección de la casa de una persona**: por eso `direccionPublica`, con default por tipo de lugar | [`prd/04-lugares-para-eventos.md`](prd/04-lugares-para-eventos.md) | 🟡 listo para codear |

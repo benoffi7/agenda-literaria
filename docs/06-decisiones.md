@@ -9333,3 +9333,60 @@ que el `searchText` se arma en el cliente al guardar y ahí solo hay **slugs**, 
 etiquetas. Resolverlo pide meter el mapa de etiquetas al armado, que es otro
 cambio y con su propio riesgo (el `searchText` viaja entero al JSON, quinta fila de
 D-126). Queda dicho en `03-modelo-de-datos.md` para que no se lea como un olvido.
+
+---
+
+## D-590 · Las fechas de una propuesta son strings, no `Timestamp`
+
+**Desvío del §3.2 del `CLAUDE.md`** —«Guardar `Timestamp`, nunca strings de
+fecha»— y hay que leerlo como lo que es: la regla del §3.2 sigue valiendo para
+`/actividades` y para todo lo que el proyecto publica. Esto vale **solo para
+`/propuestas`**, y por tres motivos que no aplican a una actividad. Sale de B-830
+y estaba anticipado en el § 4.1 del PRD, que ya pedía que se escribiera acá
+«porque sin el motivo al lado parece un olvido».
+
+```ts
+fechas: { dia: string; desde: string; hasta: string | null }[]  // 'aaaa-mm-dd', 'hh:mm'
+```
+
+### Los tres motivos
+
+1. **Un `Timestamp` armado en el navegador de quien propone lleva SU zona
+   horaria.** Es literalmente la trampa 1 del §13, con el agravante que hace toda
+   la diferencia: el cliente es **anónimo**. De un admin sabemos que carga desde
+   Buenos Aires; de quien propone no sabemos nada — puede estar de viaje, con el
+   reloj mal, o en otro país cargando algo que pasa acá. Un `Timestamp` no deja
+   ver ese error: llega un instante perfectamente formado y equivocado.
+2. **La conversión pasa a ocurrir una vez, y del lado del admin.** Al convertir la
+   propuesta en actividad, con `America/Argentina/Buenos_Aires` explícito, que es
+   donde el proyecto ya la hace bien y tiene tests. En vez de N conversiones en N
+   navegadores desconocidos, una sola en el único lugar que controlamos.
+3. **`'aaaa-mm-dd'` es validable y un `Timestamp` no.** En una regla de Firestore
+   un `Timestamp` se valida por **tipo** y nada más; un string se valida con
+   `matches`. Acá eso no se llegó a usar —ver abajo— pero el argumento vale para
+   el schema, y valdría para la regla el día que se pueda.
+
+### Lo que esto cuesta, y no se esconde
+
+**La regla no puede validar la forma de cada fecha.** Una regla de Firestore no
+itera una lista, así que de `fechas` se acota la **cantidad** (1–12) y el tipo, y
+no la forma de cada fila: un `curl` puede mandar doce mapas arbitrarios ahí
+adentro, con strings tan largos como el tope de 1 MB del documento permita. Con
+`Timestamp` tampoco se podría —el problema es la lista, no el tipo— así que no es
+un costo de esta decisión, pero conviene tenerlo en el mismo párrafo.
+
+**Qué lo hace aceptable:** nada de una propuesta llega a una salida pública sin
+que un admin la convierta en actividad, y esa conversión pasa por
+`actividadFormSchema` con su `superRefine` entero. El daño posible es «el admin ve
+una fila rara en la bandeja», no un dato publicado. Está afirmado como asimetría
+—no como garantía— en `tests/propuestas.test.ts`, y si aparece abuso la defensa
+que falta es del lado de una Function, no de la regla (**B-842**).
+
+### Y el 31 de febrero
+
+`2026-02-31` pasa el `matches` de los dos lados: la forma es correcta y el día no
+existe. Eso lo valida **solo el schema** (`diaReal`, con aritmética de calendario
+y sin reloj — `Date.UTC` y no `new Date(dia)`, que obligaría a preguntar el día
+«en alguna zona» y sería la trampa 1 otra vez). Es la división que corresponde: la
+regla frena lo que un `curl` puede mandar para hacer daño, y el schema además
+ayuda a quien está completando el formulario.
