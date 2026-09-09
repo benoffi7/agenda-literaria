@@ -199,18 +199,173 @@ const RUTAS = [
 
 export type RutaCentinela = (typeof RUTAS)[number];
 
-/** `titulo` → `CENTINELA.titulo`. El valor dice de qué campo salió. */
 /**
- * El monto del arancel, que es el único campo **numérico** con centinela — B-114.
+ * Las rutas cuyo centinela es un **número**, con su valor — B-114, B-803.
  *
- * Un centinela de texto no sirve: el schema declara `arancel.monto` como entero
- * positivo, así que un string haría fallar la validación en vez de medir a dónde
- * llega el dato. `987654` no aparece en ningún otro lugar del fixture ni del
- * repo, y eso es lo que lo hace un centinela: si el barrido lo encuentra en una
- * salida, salió de acá.
+ * Es la otra mitad de `RUTAS`: un campo entero no puede llevar
+ * `CENTINELA.<ruta>` —el schema lo rechazaría y el barrido buscaría un texto que
+ * ninguna salida puede contener nunca, o sea un chequeo verde para siempre—, así
+ * que se ancla **por valor**.
+ *
+ * **Empezó siendo una constante suelta (`MONTO_CENTINELA`) y esto es la clase**:
+ * mientras el único campo numérico tuvo su constante escrita a mano, el
+ * siguiente —`arancel.cuotas`, `inscripcion.senia`— iba a entrar al fixture con
+ * un `12` inocente, pasar la cobertura de interfaces y quedar fuera de todo
+ * barrido (B-803). Con este mapa hay un lugar donde ponerlo, y el chequeo de
+ * abajo empuja para acá: todo número del fixture está registrado acá o declarado
+ * en `VALORES_NO_TEXTO`, y no hay tercera opción.
+ *
+ * **La regla de forma la verifica `tests/barrido-de-salidas-publicas.test.ts`:**
+ * seis dígitos o más, y ninguna otra cifra del fixture lo contiene. Un `12` en un
+ * JSON es cualquier cosa —un índice, un mes, un pedazo de un timestamp—: buscarlo
+ * no prueba nada. `987654` solo puede haber salido de acá, que es la definición de
+ * centinela.
+ *
+ * Lo que el registro **no** puede verificar es que alguien barra el número, y por
+ * eso registrarlo no exime de declararlo: la entrada de `VALORES_NO_TEXTO` es la
+ * que dice dónde está su barrido. Y ese barrido tiene que mirar **las dos formas**
+ * en que un número sale —crudo en las salidas JSON, formateado (`$987.654`) en las
+ * de texto—: con una sola da verde en la mitad de las salidas por el motivo
+ * equivocado (B-114).
  */
-export const MONTO_CENTINELA = 987654;
+export const CENTINELA_NUM = {
+  'arancel.monto': 987654,
+} as const satisfies Record<string, number>;
 
+export type RutaNumerica = keyof typeof CENTINELA_NUM;
+
+/**
+ * El monto del arancel — B-114. Sigue exportado con nombre propio porque su
+ * barrido lo nombra en veinte líneas, pero el valor **es** el del registro de
+ * arriba: dos fuentes para el mismo número es exactamente lo que no puede haber.
+ */
+export const MONTO_CENTINELA: number = CENTINELA_NUM['arancel.monto'];
+
+/**
+ * **Cómo se verifica cada valor del fixture que no es texto** — B-803.
+ *
+ * ── Qué agujero cierra ─────────────────────────────────────────────────────
+ * El chequeo de envejecimiento tenía dos mitades y solo una era de clase. La
+ * cobertura de interfaces exige que **todo** campo del modelo esté en este
+ * fixture, y por eso `arancel.monto` entró sin que nadie se acordara; pero el
+ * recorrido que exige que cada valor sea **rastreable** miraba solo los strings:
+ * los números, los booleanos, los `null` y los `Timestamp` caían por el `return`
+ * sin decir nada. O sea que el próximo campo numérico —`arancel.cuotas`,
+ * `inscripcion.senia`— entraba con un `12` inocente, pasaba las dos redes y
+ * ningún barrido lo veía. Lo encontró el `auditor-privacidad` sobre B-114.
+ *
+ * ── La forma ───────────────────────────────────────────────────────────────
+ * La clave es la **clase** de la ruta, con los índices colapsados
+ * (`material.items[].publico` cubre el item público y el privado): lo que se
+ * decide es del campo, no de la fila. El valor es la frase que dice **qué lo
+ * cubre en lugar del barrido de cadenas**, y se lee en la revisión — es lo mismo
+ * que `VOCABULARIO_CERRADO` hace con los enums, del otro lado del `typeof`.
+ *
+ * Tres respuestas son legítimas y ninguna otra lo es:
+ *
+ * | Clase de valor | Qué lo cubre |
+ * |---|---|
+ * | número que puede llevar contenido cargado | se registra en `CENTINELA_NUM` y se ancla **por valor**, salida por salida |
+ * | booleano o `null` | dos valores posibles no tienen dónde esconder contenido: lo que se verifica es **la clave** en la proyección |
+ * | `Timestamp` | su valor son milisegundos, que aparecen en cualquier salida con fechas: se verifica por clave, o por valor con un fixture propio |
+ *
+ * Y el chequeo va en las dos direcciones: falta una declaración → rojo; sobra
+ * una → rojo también, porque una excepción que ya no corresponde a nada es una
+ * que nadie va a releer el día que el campo vuelva con otra forma.
+ */
+export const VALORES_NO_TEXTO: Record<string, string> = {
+  // ── Números ──────────────────────────────────────────────────────────────
+  'arancel.monto':
+    'B-114 — el único registrado en `CENTINELA_NUM`: es contenido que alguien carga y su ' +
+    'presencia es una decisión distinta en cada salida, así que se ancla por valor en las dos ' +
+    'formas (`987654` y `$987.654`) en su propio describe del barrido.',
+  'inscripcion.cupo':
+    'sale a propósito al `events.json` y a la línea «Cupo: N» del evento, y lo afirma ' +
+    '`toPublic.test.ts`, que enumera las claves de `inscripcion` y compara el valor. Por valor ' +
+    'no serviría: un cupo de seis dígitos —lo que haría falta para que buscarlo pruebe algo— ' +
+    'sería un cupo que nadie puede tener, y el fixture dejaría de describir una actividad ' +
+    'posible.',
+  'imagenes[].ancho':
+    'D-147 — la medida de la imagen, que sale porque es la caja que la página reserva. No va ' +
+    'por valor: `1200` aparece solo en cualquier HTML con imágenes (un `width`, un `srcset`), ' +
+    'y una medida de seis dígitos haría que la proporción del fixture mienta.',
+  'imagenes[].alto': 'ídem `ancho`: las dos son el par que da la proporción.',
+  'opcion.orden':
+    'B-212 — campo de gestión de la taxonomía: **no** sale, y eso lo afirma el chequeo de ' +
+    'claves de `opcionesPublicas` (`[\'label\', \'slug\', \'tono\']`), que es más fuerte que ' +
+    'buscar un número.',
+  'opcion.usos': 'ídem `orden`: se cuenta cuántas veces se usó la etiqueta y no sale.',
+  'opcion.tono':
+    'D-150 — el matiz elegido, que **sí** sale (el color de la categoría en el listado y en el ' +
+    'detalle). Se afirma por clave en la misma lista de tres, y `eventsJson.test.ts` lo compara ' +
+    'contra el valor del fixture.',
+
+  // ── Booleanos: no hay dónde esconder contenido ───────────────────────────
+  esCiclo: 'booleano — §2.2, en `true` para que el fixture sea el ciclo de ocho encuentros.',
+  destacado: 'booleano — sale al índice y se afirma por clave.',
+  publicadaAlgunaVez:
+    'B-285 — booleano, y en `true` a propósito: el caso interesante es una actividad marcada ' +
+    'que igual no publica el campo. Que no salga se afirma comparando las claves del JSON.',
+  'imagenes[].portada':
+    'D-125 — booleano: señala cuál de las imágenes es la de Open Graph. Sale al índice como ' +
+    '«la portada» y no como el flag.',
+  'sesiones[].cancelada':
+    '§7.3 — booleano, en `false` para que el encuentro exista en las salidas. El caso `true` ' +
+    'es su propio caso del barrido.',
+  'modalidades[].online.urlPublica':
+    'D-15 — booleano, y el default del §5.1 (el link no se publica). El caso `true` lo arma ' +
+    '`conLinkPublico()`, que es donde se mide la otra mitad.',
+  'online.urlPublica': 'ídem: es el derivado de la primera fila, el mismo booleano.',
+  'inscripcion.requiere': 'booleano — en `true` para que el bloque de inscripción exista.',
+  'inscripcion.completo':
+    'B-97 / D-127 — booleano, prendido para que la línea «Cupo completo» exista en el evento y ' +
+    '`completo: true` viaje al JSON.',
+  'material.tiene': 'booleano — en `true` para que los dos items se proyecten.',
+  'material.items[].publico':
+    '§5.2 — booleano, y el eje del caso: del item público sobrevive la URL y del privado no. ' +
+    'Los dos valores están en el fixture y el barrido los afirma por sus centinelas de texto.',
+  'opcion.fijo':
+    'B-212 — booleano de gestión: no sale, y lo afirma el chequeo de claves de la proyección.',
+  'opcion.aprobada': 'ídem `fijo`.',
+  'opcion.aprobadaPorReuso':
+    'B-29 — ídem, y no identifica a nadie: dice algo de la etiqueta, no de quién la escribió.',
+
+  // ── `null`: el caso base lo deja vacío, y el caso que lo llena está aparte ─
+  imagenUrl:
+    'B-167 / D-125 — el campo viejo. **Tiene** centinela de texto en `RUTAS`; acá está en ' +
+    '`null` porque con `imagenes` cargado no se mira, y el caso legacy del barrido lo invierte. ' +
+    'Esa es la mitad que mide el campo.',
+  'sede.geo':
+    'sin coordenadas a propósito: es lo que hace que el link del mapa se arme con ' +
+    '`encodeURIComponent(direccion)`, o sea el único lugar donde un centinela sale escapado. ' +
+    'Es lo que vuelve verificable la regla «todos URL-safe» en vez de decorativa.',
+  'modalidades[].sede.geo': 'ídem: es la misma sede, la de la fila.',
+
+  // ── `Timestamp`: milisegundos, que aparecen en cualquier salida con fechas ─
+  'sesiones[].inicio':
+    '§13 trampa 1 — la fecha del encuentro sale (sin fechas no hay agenda) y lo que se verifica ' +
+    'de ella es la forma, no el valor: `Timestamp` en Firestore y `timeZone` explícito hacia ' +
+    'Calendar. `eventsJson.test.ts` la usa para afirmar el orden del eje de encuentros.',
+  'sesiones[].fin': 'ídem `inicio`: de las dos sale la duración del encuentro.',
+  'modalidades[].inicio':
+    'B-224 — la ventana de la forma de cursar **no sale a ninguna salida pública**, y eso lo ' +
+    'afirma `tests/modalidades.test.ts` buscándola **por su valor**, con un fixture propio y ' +
+    'con su control positivo. Es la excepción que muestra que una fecha sí se puede anclar por ' +
+    'valor cuando lo que se afirma es que no sale.',
+  'modalidades[].fin': 'ídem `inicio`: es la otra mitad de la ventana.',
+  'inscripcion.cierra':
+    'B-111 — sale, pero **transformada**: `toPublic` la proyecta como `abierta` (booleano) y ' +
+    'como `cierraEn` (ISO). Un centinela no puede viajar por ahí porque el valor cambia de ' +
+    'forma en el camino, así que las dos celdas se afirman por clave en `toPublic.test.ts`.',
+  createdAt:
+    'D-138 — la fecha de alta sale al índice (es la clave del orden «Recién agregadas») y la ' +
+    'afirma `eventsJson.test.ts` por clave, con su caso de ausencia.',
+  updatedAt:
+    '§5.1 — no sale: es dato de trabajo interno. Se afirma comparando las claves del JSON, no ' +
+    'buscando milisegundos que aparecen en cualquier salida con fechas.',
+};
+
+/** `titulo` → `CENTINELA.titulo`. El valor dice de qué campo salió. */
 export const CENTINELA = Object.fromEntries(
   RUTAS.map((r) => [r, `CENTINELA.${r}`]),
 ) as Record<RutaCentinela, string>;

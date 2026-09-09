@@ -232,6 +232,17 @@ monto es un entero, así que registrarlo en `RUTAS_CENTINELA` habría hecho busc
 texto `'CENTINELA.arancel.monto'` — un chequeo verde para siempre. Se ancla por
 valor y en las **dos** formas en que sale, el número crudo y el formateado.
 
+**Y desde B-803/B-804 eso dejó de ser un caso suelto en dos sentidos.** El ancla por
+valor tiene su registro (`CENTINELA_NUM`, con la regla de forma que hace que
+encontrar el número pruebe **de qué campo salió**), y todo valor que no es texto
+—números, booleanos, `null`, `Timestamp`— tiene que **declarar qué lo verifica en
+lugar del barrido de cadenas**: el próximo campo numérico ya no puede entrar con un
+`12` inocente. Lo mismo del lado del artefacto: el gate del build siembra el monto
+y lo barre en sus dos formas, con permisos distintos —crudo al `events.json` y al
+`Offer`, legible a la página y a **lo que pinte la tarjeta compartida** (D-500)— y
+con controles positivos, porque un barrido que solo afirma ausencias vuelve solo al
+estado del que venía.
+
 **`comisiones[].etiqueta` sale, y `comisiones[].id` casi no** (B-181, **D-530**).
 Las «opciones para sumarse» son dos campos nuevos y cada uno tiene su celda,
 porque no salen igual:

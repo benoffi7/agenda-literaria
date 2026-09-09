@@ -4411,7 +4411,28 @@ que la pantalla se reinicie mientras alguien escribe. **Si el reporte vuelve una
 tercera vez, esto es lo que hay que revisar.**
 
 
-### B-803 · El barrido de centinelas solo mira strings, y ya entró un campo numérico · P2
+### B-803 · El barrido de centinelas solo mira strings, y ya entró un campo numérico — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Resuelto con la segunda salida de la tabla, que es la de clase.**
+> `VALORES_NO_TEXTO` declara **todo** valor que no es texto con qué lo verifica en
+> lugar del barrido de cadenas —31 entradas, con la clave en la **clase** de la
+> ruta— y va en las dos direcciones: falta una → rojo, sobra una → rojo. Es lo que
+> `VOCABULARIO_CERRADO` hace con los enums, del otro lado del `typeof`.
+> `MONTO_CENTINELA` era la instancia y ahora hay clase: `CENTINELA_NUM`, el
+> registro de lo que se ancla **por valor**, con su regla de forma verificada —seis
+> dígitos o más, y ninguna otra cifra del fixture lo contiene— que es lo que hace
+> que encontrarlo en una salida pruebe **de qué campo salió**. Y registrar un
+> número **no exime de declararlo**: uno anclado por valor y sin nadie que lo barra
+> es la misma falsa cobertura con otra cara.
+>
+> Los dos chequeos pasaron a recorrer **un solo walker**: el de strings tenía el
+> suyo y éste iba a nacer al lado, que es cómo dos recorridos del mismo árbol se
+> separan en silencio.
+>
+> **Un chequeo se intentó, la mutación lo tiró, y quedó escrito por qué.** Pedir que
+> la ruta registrada aparezca en el archivo del barrido lo satisface **un
+> comentario** —el propio docblock que nombra `inscripcion.senia` alcanzaba—, y un
+> chequeo que pasa con el agujero puesto es peor que no tenerlo.
 
 **Lo encontró el `auditor-privacidad` auditando B-114** (su hallazgo H5), y es la
 mitad del mecanismo que no es genérica.
@@ -4438,7 +4459,33 @@ Dos salidas, y alcanza una:
 **La segunda es la buena** y por eso esto es un ítem y no una línea: la primera ya
 está aplicada donde el auditor la pidió, y deja la clase abierta.
 
-### B-804 · El gate del build contra el emulador no siembra el monto del arancel · P2
+### B-804 · El gate del build contra el emulador no siembra el monto del arancel — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Hecho, y el ítem tenía razón en que no era copiar y pegar: apareció la cuarta
+> canasta.** El monto lo imprime la **tarjeta compartida**, así que sale en la home
+> y en los hubs, y con el modelo de tres canastas eso era rojo — el rojo era la
+> lista pidiendo que se escriba. `PAGINAS_CON_TARJETA` es el párrafo de **D-500**
+> hecho mecánico, y va como lista y no como `else`: una página nueva que pinte la
+> tarjeta entra en rojo hasta que alguien la declare.
+>
+> **Dos formas y dos permisos** —crudo al `events.json` y al `Offer` del JSON-LD,
+> legible a la página y a la tarjeta—: es el primer centinela cuyo permiso depende
+> de **cómo se escribe**, y por eso su `permitido` es una función. Con **tres
+> controles positivos**, que son la otra mitad: un barrido que solo afirma ausencias
+> vuelve en silencio al estado del que este ítem viene. La forma legible se importa
+> de `functions/calendario.js` en vez de escribirse a mano.
+>
+> **Dos correcciones a lo que estaba anotado:** el monto **no** necesitó que el gate
+> sembrara `/opciones/*` —lo daba por hecho el docblock de `ETIQUETA_DE_INCLUYE`; sin
+> el documento, `etiquetaDe` cae a `desSlug` y la etiqueta sale igual—, y de las
+> siete rutas de la canasta esta semilla produce **dos** (`index.html` y `online/`):
+> las otras cinco piden tres actividades, `/opciones/*` sembrado o una actividad
+> pasada. Están declaradas por adelantado —la tarjeta es la misma productora— y el
+> código dice cuáles observa el gate y cuáles no.
+>
+> Mutación probada contra el emulador, y es la que cierra el ítem: **sembrar el
+> monto con `tipo: 'gratis'` —el estado exacto del que venía el gate— pone en rojo
+> los cuatro controles positivos. Antes de este cambio, ese estado era verde.**
 
 **Lo encontró el `auditor-privacidad` auditando B-114** (su hallazgo H3, segunda
 mitad). El paso 9 de `scripts/build-contra-emulador.mjs` barre **todo** `dist/`

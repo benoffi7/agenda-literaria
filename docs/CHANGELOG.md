@@ -2,6 +2,50 @@
 
 ## Sin publicar
 
+- **La red de contención de las salidas públicas deja de ser ciega a lo que no es
+  texto** — **B-803** y **B-804**, los dos del `auditor-privacidad` sobre B-114 y
+  los dos la misma asimetría: el mecanismo cubría una mitad y la otra pasaba en
+  verde sin haber mirado.
+
+  **B-803.** La cobertura de interfaces exige que todo campo del modelo esté en el
+  fixture —y por eso `arancel.monto` entró—, pero el recorrido que exige que cada
+  valor sea **rastreable** salteaba números, booleanos, `null` y `Timestamp`: el
+  próximo campo numérico entraba con un `12` inocente y ningún barrido lo veía.
+  Ahora **todo valor que no es texto declara qué lo verifica en lugar del barrido
+  de cadenas** —31 entradas, con la clave en la clase de la ruta y el chequeo en
+  las dos direcciones—, que es lo que `VOCABULARIO_CERRADO` hace con los enums.
+  `MONTO_CENTINELA` era la instancia y ahora hay clase: `CENTINELA_NUM`, con su
+  regla de forma verificada (seis dígitos o más, y ninguna otra cifra del fixture
+  lo contiene) que es lo que hace que encontrarlo pruebe **de qué campo salió**. Y
+  registrarlo **no exime de declararlo**: un número anclado por valor y sin nadie
+  que lo barra es la misma falsa cobertura con otra cara.
+
+  Los dos chequeos pasaron a recorrer **un solo walker**: el de strings tenía el
+  suyo y éste iba a nacer al lado, que es cómo dos recorridos del mismo árbol se
+  separan en silencio. **Y un chequeo se intentó, la mutación lo tiró y quedó
+  escrito por qué**: pedir que la ruta registrada aparezca en el archivo del
+  barrido lo satisface **un comentario**.
+
+  **B-804 — el gate afirmaba sobre una salida que nunca tuvo el dato**: su semilla
+  cargaba `arancel: { tipo: 'gratis' }`, o sea sin monto y con un tipo que además
+  **no lo admite**. Y no era copiar y pegar, exactamente como el ítem anticipaba:
+  **apareció la cuarta canasta**. El monto lo imprime la **tarjeta compartida**,
+  así que sale en la home y en los hubs, y el rojo era la lista pidiendo que se
+  escriba — `PAGINAS_CON_TARJETA` es el párrafo de D-500 hecho mecánico, como lista
+  y no como `else`. Es el primer centinela **numérico** y el primero cuyo permiso
+  depende de **cómo se escribe**: crudo al `events.json` y al `Offer`, legible a la
+  página y a la tarjeta. Con tres controles positivos, que son la otra mitad.
+
+  **La mutación que cierra el ítem:** sembrar el monto con `tipo: 'gratis'` —el
+  estado exacto del que venía el gate— pone en rojo los cuatro controles positivos.
+  Antes de este cambio, ese estado era **verde**.
+
+  Dos correcciones a lo que estaba anotado: el monto **no** necesitó que el gate
+  sembrara `/opciones/*` (sin el documento, `etiquetaDe` cae a `desSlug` y la
+  etiqueta sale igual), y de las siete rutas de la canasta esta semilla produce
+  **dos** — las otras cinco están declaradas por adelantado, porque la tarjeta es
+  la misma productora, y el código dice cuáles observa el gate y cuáles no.
+
 - **Las dos reglas del schema que faltaban del lado del modelo** — **B-817** y
   **B-816**, los dos P2, los dos marcados por auditores cerrando B-181 y los dos
   explícitamente fuera de esa tanda. No comparten síntoma pero sí archivo y sí

@@ -88,6 +88,10 @@
 import { spawnSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { problemasDeJerarquia, tituloDe } from './seo-del-artefacto.mjs';
+// B-804 — el número lo escribe el mismo código que lo publica. Escribir
+// `'$7.654.321'` a mano acá sería una segunda derivación de la misma idea, que
+// es cómo se separan los formatos (§ «si hay un skill, se usa», mismo motivo).
+import { montoLegible } from '../functions/calendario.js';
 
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -278,6 +282,35 @@ const ETIQUETA_DE_COMISION = 'gate.comisiones.etiqueta';
  * valor pasa a ser la etiqueta sembrada y el aserto no cambia de forma.
  */
 const ETIQUETA_DE_INCLUYE = 'Gate Incluye Slug';
+
+/**
+ * **El monto del arancel: el único centinela numérico del gate** — B-804.
+ *
+ * El paso 9 barre todo `dist/` buscando los centinelas de `CENTINELA`, que son
+ * strings, y la semilla cargaba `arancel: { tipo: 'gratis', notas }`: sin monto,
+ * y con un tipo que además **no lo admite**. O sea que el barrido sobre el
+ * artefacto de verdad no sembraba ni buscaba el campo nuevo, y la afirmación de
+ * esa salida pasaba sin haber tenido el dato. La decisión de B-114 quedó
+ * declarada en el barrido de vitest —que la cubre bien, en las dos formas— y en
+ * nada acá: es la asimetría de B-99/B-180 al revés, la misma que ya cobraron
+ * `comisionId` y `incluyeSlug`.
+ *
+ * Va **por valor y no por texto**, como en `tests/fixtures/centinelas.ts`: el
+ * schema declara el monto entero, así que `gate.arancel.monto` no podría
+ * guardarse. `7654321` no aparece en ningún otro lado del repo ni sale de ningún
+ * cálculo del sitio, así que encontrarlo en un archivo del `dist/` es porque
+ * salió de este campo.
+ *
+ * **Y hay dos formas, no una.** El número crudo viaja a las salidas JSON (el
+ * índice, el `Offer` del JSON-LD) y la forma legible a las de texto (la línea
+ * del precio, la tarjeta). Buscar una sola daría verde en la mitad de las
+ * salidas por el motivo equivocado — es la trampa que B-114 ya había pisado del
+ * lado de vitest.
+ */
+const MONTO_DEL_GATE = 7654321;
+
+/** El slug de arancel que **admite** monto (`SIN_COSTO` no lo admite). */
+const ARANCEL_CON_MONTO = 'arancelado';
 
 /**
  * La descripción del fixture: larga a propósito, para que `resumenDe` tenga que
@@ -504,6 +537,71 @@ const CENTINELA_DEL_INDICE = [];
 const CENTINELA_DE_LA_CARTELERA = ['epigrafeImagen'];
 
 /**
+ * **La cuarta canasta** — B-804.
+ *
+ * Las tres de arriba (`actividad/`, `events.json`, `cartelera/`) alcanzaban
+ * mientras lo que se barría era el contenido que **solo** la página de detalle
+ * publica. El monto rompe esa forma y por eso el ítem no era copiar y pegar:
+ * lo imprime la **tarjeta compartida**, así que sale en la home, en las páginas
+ * de mes, en `/pasadas` y en los hubs. Con el modelo de tres canastas y `[]`
+ * para todo lo demás, sembrar el monto los pone a todos en rojo — y ese rojo no
+ * es un bug, es esta lista pidiendo que se escriba (incluida la celda de
+ * `/pasadas` que D-500 dejó anotada).
+ *
+ * Es una lista y no un `else`: una página nueva que pinte la tarjeta entra en
+ * rojo hasta que alguien la agregue, que es la decisión que hay que tomar una
+ * vez por salida. Lo que no puede pasar es que entre sola. Y no inventa alcance:
+ * es el párrafo de **D-500** —«las páginas que pintan la tarjeta del listado: la
+ * de mes, los hubs y `/pasadas`»— hecho mecánico.
+ *
+ * **De esta lista, la semilla de este gate produce dos:** `index.html` y
+ * `online/`. Las otras están por adelantado y no por las dudas — la tarjeta es
+ * la misma productora en todas—, y no aparecen por motivos que son del fixture
+ * y no del sitio: las páginas de mes piden tres actividades
+ * (`MINIMO_DE_ACTIVIDADES`) y acá se siembran dos publicadas, los hubs de
+ * taxonomía piden que el slug esté en `/opciones/*` y el gate no lo siembra, y
+ * `/pasadas` pide una actividad que ya pasó. Un build de verdad las tiene todas,
+ * y ahí es donde una omisión saldría en rojo por el motivo equivocado.
+ */
+const PAGINAS_CON_TARJETA = [
+  'index.html', // la home
+  'agenda/', // las páginas de mes (B-107)
+  'pasadas/', // D-500
+  'tipo/', // los hubs de taxonomía
+  'barrio/',
+  'online/',
+  'gratis/',
+];
+
+const pintaLaTarjeta = (relativa) =>
+  PAGINAS_CON_TARJETA.some((p) => (p.endsWith('/') ? relativa.startsWith(p) : relativa === p));
+
+/**
+ * Las dos formas del monto, cada una con los archivos donde **sí** puede
+ * aparecer — B-804.
+ *
+ * `permitido` es una función y no una lista de nombres porque las dos formas no
+ * comparten canasta: el número crudo sale al índice y al JSON-LD, y la forma
+ * legible a todo lo que pinte la tarjeta. Un campo cuyo permiso depende de la
+ * forma en que se escribe es el primero que hay, y meterlo a la fuerza en el
+ * modelo de canastas habría pedido declararlo mal en una de las dos.
+ */
+const MONTO_EN_EL_ARTEFACTO = [
+  {
+    campo: 'montoCrudo',
+    valor: String(MONTO_DEL_GATE),
+    permitido: (r) => r === 'events.json' || r.startsWith('actividad/'),
+    donde: 'el `events.json` (el índice lleva el número, B-114) y el `Offer` del JSON-LD',
+  },
+  {
+    campo: 'montoLegible',
+    valor: montoLegible(MONTO_DEL_GATE),
+    permitido: (r) => r.startsWith('actividad/') || pintaLaTarjeta(r),
+    donde: 'la página de detalle y las páginas que pintan la tarjeta compartida',
+  },
+];
+
+/**
  * Las tres imágenes del caso de B-296: **una vertical, una apaisada y una
  * cuadrada**, con la portada en el medio del array.
  *
@@ -568,7 +666,23 @@ let salida = 0;
 try {
   await limpiar();
 
-  await db.doc(`actividades/${ID_PUBLICADA}`).set(actividadDePrueba(SLUG_PUBLICADA, 'publicado'));
+  /*
+   * B-804 — la publicada es la que lleva el monto, y con un tipo de arancel que
+   * lo admite: `SIN_COSTO` lo rechaza, así que sembrarlo sobre `gratis` habría
+   * dejado el campo en el documento y fuera de todas las salidas (`admiteMonto`
+   * lo descarta en el view-model), o sea un barrido verde sin haber tenido el
+   * dato — el mismo agujero con otra forma.
+   *
+   * Las otras cuatro se quedan en `gratis`, que es lo que mantiene con contenido
+   * al hub `/gratis` y deja las **dos** ramas de `admiteMonto` sembradas.
+   */
+  const publicada = actividadDePrueba(SLUG_PUBLICADA, 'publicado');
+  publicada.arancel = {
+    tipo: ARANCEL_CON_MONTO,
+    notas: CENTINELA.arancelNotas,
+    monto: MONTO_DEL_GATE,
+  };
+  await db.doc(`actividades/${ID_PUBLICADA}`).set(publicada);
   await db.doc(`actividades/${ID_BORRADOR}`).set(actividadDePrueba(SLUG_BORRADOR, 'borrador'));
 
   // B-110 — la cancelada que estuvo publicada: se le deja el `calendarEventId`
@@ -1276,6 +1390,8 @@ try {
       }
 
       const hallazgos = [];
+      /** Dónde apareció cada forma del monto — B-804. Es el control positivo. */
+      const vistos = new Map(MONTO_EN_EL_ARTEFACTO.map((f) => [f.campo, []]));
       for (const relativa of publicables) {
         const contenido = await readFile(new URL(relativa, RAIZ_DIST), 'utf8');
 
@@ -1301,6 +1417,60 @@ try {
         for (const [campo, valor] of prohibidos) {
           if (contenido.includes(valor)) hallazgos.push(`    ${relativa} → ${campo} (${valor})`);
         }
+
+        /*
+         * B-804 — y el centinela **numérico**, que no entra en el modelo de
+         * canastas de arriba porque sus dos formas no comparten permiso: el
+         * número crudo sale al índice y al JSON-LD, la forma legible a todo lo
+         * que pinte la tarjeta compartida.
+         */
+        for (const forma of MONTO_EN_EL_ARTEFACTO) {
+          if (!contenido.includes(forma.valor)) continue;
+          vistos.get(forma.campo).push(relativa);
+          if (!forma.permitido(relativa)) {
+            hallazgos.push(`    ${relativa} → ${forma.campo} (${forma.valor})`);
+          }
+        }
+      }
+
+      /*
+       * **Los tres controles positivos del monto** — B-804, y son la mitad del
+       * ítem. Un barrido que solo afirma ausencias pasa en verde el día que la
+       * semilla deja de sembrar el campo, que es exactamente el estado del que
+       * este ítem viene: el gate afirmaba sobre una salida que nunca tuvo el
+       * dato.
+       */
+      for (const forma of MONTO_EN_EL_ARTEFACTO) {
+        if (vistos.get(forma.campo).length > 0) continue;
+        fallo(
+          `el monto del arancel no aparece en NINGÚN archivo del dist/ en su forma ` +
+            `${forma.campo} (${forma.valor}).\n` +
+            `  Tendría que salir en ${forma.donde}.\n` +
+            '  O la semilla dejó de cargar `arancel.monto` con un tipo que lo admita, o la\n' +
+            '  salida dejó de publicarlo: en los dos casos el barrido de abajo estaría\n' +
+            '  afirmando sobre un dato que no existe (B-804).',
+        );
+        salida = 1;
+      }
+
+      const enLaTarjeta = vistos.get('montoLegible').filter((r) => pintaLaTarjeta(r));
+      if (enLaTarjeta.length === 0) {
+        fallo(
+          'el monto no aparece en ninguna de las páginas que pintan la tarjeta compartida.\n' +
+            `  Esperaba alguna de: ${PAGINAS_CON_TARJETA.join(', ')}.\n` +
+            '  Es la cuarta canasta de B-804: si dejó de imprimirse ahí, el permiso que le\n' +
+            '  dimos a esas páginas quedó sin nada que permitir.',
+        );
+        salida = 1;
+      }
+
+      if (!vistos.get('montoCrudo').includes('events.json')) {
+        fallo(
+          'el events.json no lleva el monto del arancel.\n' +
+            '  Lo lleva desde B-114 porque la tarjeta del listado arma la frase del precio\n' +
+            '  en el cliente: sin el número, el listado dice la etiqueta sola.',
+        );
+        salida = 1;
       }
 
       if (hallazgos.length > 0) {
@@ -1416,6 +1586,8 @@ try {
           'la de una sola imagen sigue pintando una, sin sección de galería (B-296).\n' +
           '  ✓ ningún campo privado sobrevivió en NINGÚN archivo publicable del dist/ ' +
           '(B-121): la lista se recorre, no se enumera.\n' +
+          '  ✓ el monto del arancel llega crudo al events.json y al JSON-LD, y formateado a ' +
+          'la página y a la tarjeta compartida — y a ninguna otra parte (B-804).\n' +
           '  ✓ cada página tiene su propio <title> y una jerarquía de encabezados sana ' +
           '(B-122).',
       );
