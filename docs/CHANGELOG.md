@@ -2,6 +2,48 @@
 
 ## Sin publicar
 
+- **Tres de las cuatro decisiones de los PRDs, contestadas** — el dueño, el
+  2026-09-08, y con ellas una cuarta que no estaba en la lista y es la que más
+  cambió el trabajo. Los seis documentos de [`prd/`](prd/README.md) ya no proponen:
+  dicen lo acordado, y donde la respuesta fue al revés de la recomendación queda
+  escrito así, con el motivo del dueño al lado.
+
+  **`/guia/librerias`, no `/librerias` — y esto abarató todo.** Los tres directorios
+  viven bajo `/guia/`, así que la barra gana **una** pestaña y no tres: pasa de 7 a
+  **8**, no a 10. B-835 era «la barra ya no entra en un teléfono» y se desinfló a dos
+  cosas concretas —la entrada en `ENLACES` y una página `/guia` que la reciba—, que
+  además tienen que ir **con** la primera sección y no después: `/guia/librerias`
+  sin `/guia` es una URL cuyo padre no existe. De paso se llevó puesto, de arriba, el
+  choque de nombre que el PRD 3 tenía como «hay que resolverlo antes de escribir la
+  primera línea»: «Suscribirse» y «Suscripciones» ya no pueden aparecer juntas en la
+  barra. Y una distinción que ahora hay que tener presente al leer los PRDs: **la
+  URL lleva `/guia/`, la colección no** — el documento es `/librerias/{id}`, la
+  página es `/guia/librerias/{slug}`.
+
+  **DEC-11: puede subir la imagen, y si se descarta se borra.** Es la que salió más
+  caro y al revés de la recomendación —el PRD pedía solo URL en la v1— con un motivo
+  que le gana: pedirle a un organizador que hostee su flyer para poder pegar una URL
+  es pedirle que resuelva un problema nuestro, y el que no pueda no manda la foto.
+  Lo que entra a la tajada 1 por esto: el prefijo `propuestas/` en `storage.rules`
+  con `get` y `list` en `false` (**trampa 13**), el límite de 1 archivo de 3 MB dicho
+  en el schema **y** en las reglas porque el cliente se saltea, la guarda del prefijo
+  en el trigger de optimización (**trampa 12**: promover es copiar dentro del mismo
+  bucket, o sea que sin guarda se dispara a sí mismo), el borrado **al rechazar** —en
+  el mismo paso, no esperando al barrido— y el borrado a los 30 días. El barrido de
+  huérfanos de B-221 queda como red, no como mecanismo. Y las «siete cosas que se
+  rompen en silencio» del inventario pasaron a **nueve**, las dos nuevas de acá.
+
+  **DEC-13: 30 días**, y precisado: se borra documento **e** imagen.
+
+  **DEC-10: `/contacto` queda también.** También al revés de la recomendación, y
+  también con razón: un formulario de once campos es una puerta más angosta que una
+  casilla de mail, y la propuesta que no entra por uno tiene que poder entrar por la
+  otra. Los dos conviven, con el `mailto:` de «Sugerir una actividad» mandando
+  primero a `/proponer`.
+
+  **DEC-12 sigue abierta** —el dato que envejece: las promos bancarias de una
+  librería y el precio de una suscripción— y es la única. No bloquea el arranque.
+
 - **Cuatro PRDs escritos, nada construido todavía** — **B-830 a B-839**, P1 para
   el 2026-09-09. Pedido del dueño: un formulario público **sin login** para que los
   organizadores carguen su actividad y les llegue a una bandeja, más tres

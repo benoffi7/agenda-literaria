@@ -1,4 +1,4 @@
-# PRD 2 · Librerías — `/librerias`, `/librerias/sumar` y el panel
+# PRD 2 · Librerías — `/guia/librerias`, `/guia/librerias/sumar` y el panel
 
 **Estado:** escrito el 2026-09-08, sin construir. Backlog: **B-831** (P1).
 **Depende de:** **B-836** (escritura anónima), **B-834** (motor compartido),
@@ -13,8 +13,8 @@ Un **directorio de librerías** en el sitio público, con tres puertas de entrad
 
 | Puerta | Quién entra | URL |
 |---|---|---|
-| El directorio | cualquiera | `/librerias` |
-| Formulario público | la librería, sin login | `/librerias/sumar` |
+| El directorio | cualquiera | `/guia/librerias` |
+| Formulario público | la librería, sin login | `/guia/librerias/sumar` |
 | Formulario de admin | el dueño, logueado | el panel, vista `librerias` |
 
 Campos pedidos por el dueño, textual: «Librerías / Foto / Dirección / Barrio /
@@ -50,6 +50,10 @@ de significar «un taller» y pasa a significar «un taller o una librería». E
 aceptable, pero hay que escribirlo o en tres meses confunde.
 
 ## 3 · Modelo — `/librerias/{id}`
+
+> **La colección no lleva `/guia/`.** El documento vive en `/librerias/{id}` y la
+> página se sirve en `/guia/librerias/{slug}`. `/guia/` es una decisión de
+> navegación y de SEO (`prd/README.md` § «Las decisiones del dueño»), no de modelo.
 
 ```ts
 // src/types/libreria.ts  (nuevo)
@@ -106,7 +110,7 @@ personal sin darse cuenta.
 
 ## 4 · La ficha pública y el listado
 
-### `/librerias` — el listado
+### `/guia/librerias` — el listado
 
 Mismo criterio que la agenda (§2.5): **un solo fetch de un JSON estático y
 filtrado en memoria**. Un `librerias.json` propio, o la misma proyección dentro de
@@ -118,7 +122,7 @@ bundle público (§9).
 Filtros: **barrio** y **búsqueda por texto**. Nada más en la v1 — con 40 librerías
 un filtro de más es ruido.
 
-### `/librerias/{slug}` — la ficha
+### `/guia/librerias/{slug}` — la ficha
 
 SSG con `getStaticPaths`, como `actividad/[slug].astro`. Contenido: nombre, todas
 las imágenes (el criterio de B-296: la galería entera, no solo la portada),
@@ -149,7 +153,7 @@ entra al panel local de Google. Es lo que `src/lib/schema.ts` ya hace para
   "geo": { "@type": "GeoCoordinates", … },   // si está
   "sameAs": ["https://instagram.com/…"],
   "image": ["…"],
-  "url": "https://agendaleh.ar/librerias/…/"
+  "url": "https://agendaleh.ar/guia/librerias/…/"
 }
 ```
 
@@ -242,29 +246,28 @@ Ver [`README.md`](README.md) §2 y §4. Lo específico:
 ## 9 · Criterios de aceptación
 
 1. Un anónimo puede crear una librería en estado `pendiente` desde
-   `/librerias/sumar` y **no puede publicarla**, ni leer el directorio crudo, ni
+   `/guia/librerias/sumar` y **no puede publicarla**, ni leer el directorio crudo, ni
    tocar otra colección. Verificado contra el emulador.
-2. Una librería `pendiente` **no aparece** en `/librerias`, ni en su JSON, ni en el
+2. Una librería `pendiente` **no aparece** en `/guia/librerias`, ni en su JSON, ni en el
    sitemap, ni en ninguna página. El barrido de salidas públicas lo afirma.
 3. `contactoDeQuienCargo` no sale a ninguna salida pública. Anclado con centinela.
 4. El formulario público **dice que el WhatsApp se publica** antes del input.
 5. El barrio de una librería es un slug que ya existe en `/opciones/barrio`, y un
    anónimo **no** puede crear uno nuevo.
-6. `/librerias` y cada `/librerias/{slug}` tienen `canonical`, Open Graph y entrada
+6. `/guia/librerias` y cada `/guia/librerias/{slug}` tienen `canonical`, Open Graph y entrada
    en `sitemap.xml`, con la barra final de B-330.
 7. La ficha emite `BookStore` válido, y sin `openingHours` mientras no haya
    horarios.
 8. Publicar, editar o despublicar una librería **dispara el rebuild** (trampa 8
    con otra cara: sin esto se publica una librería y el sitio no la muestra).
 9. El slug es único y no se puede cambiar después de publicar.
-10. El peso de `/librerias` con 40 fichas y sus miniaturas se mide y se anota, con
+10. El peso de `/guia/librerias` con 40 fichas y sus miniaturas se mide y se anota, con
     el criterio de B-300 (el techo de peso de una página).
 
 ## 10 · El contra
 
 **Un directorio de librerías vacío es peor que no tenerlo.** Con seis fichas la
-página parece abandonada, y la barra de navegación va a tener una pestaña que
-decepciona. Esto no lo arregla el código: se arregla cargando treinta librerías
+página parece abandonada, y `/guia` va a tener una fila que decepciona. Esto no lo arregla el código: se arregla cargando treinta librerías
 antes de publicar la sección, y eso es trabajo del dueño.
 
 Segundo: **es la primera sección del sitio que no habla de actividades**, y la

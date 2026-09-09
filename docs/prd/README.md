@@ -9,27 +9,57 @@ faltan.
 | # | PRD | Qué agrega | Link público |
 |---|---|---|---|
 | 1 | [`01-propuestas-de-organizadores.md`](01-propuestas-de-organizadores.md) | Un formulario **sin login** para que un organizador cargue su actividad, y una **bandeja** en el panel para validarla, completarla y publicarla | `/proponer` |
-| 2 | [`02-librerias.md`](02-librerias.md) | Directorio de **librerías** | `/librerias` + `/librerias/sumar` |
-| 3 | [`03-suscripciones-literarias.md`](03-suscripciones-literarias.md) | Directorio de **suscripciones literarias** | `/suscripciones` + `/suscripciones/sumar` |
-| 4 | [`04-lugares-para-eventos.md`](04-lugares-para-eventos.md) | Directorio de **lugares para hacer eventos** | `/lugares` + `/lugares/sumar` |
+| 2 | [`02-librerias.md`](02-librerias.md) | Directorio de **librerías** | `/guia/librerias` + `/guia/librerias/sumar` |
+| 3 | [`03-suscripciones-literarias.md`](03-suscripciones-literarias.md) | Directorio de **suscripciones literarias** | `/guia/suscripciones` + `/guia/suscripciones/sumar` |
+| 4 | [`04-lugares-para-eventos.md`](04-lugares-para-eventos.md) | Directorio de **lugares para hacer eventos** | `/guia/lugares` + `/guia/lugares/sumar` |
 | — | [`05-inventario-de-archivos.md`](05-inventario-de-archivos.md) | **El inventario archivo por archivo**: qué se crea, qué se toca, de dónde se copia cada patrón, en qué orden, y las siete cosas que se rompen en silencio | — |
 
 **Los tres directorios son, además, una sección nueva de la barra de navegación** —
 eso lo pidió el dueño con esas palabras: «cada uno de estos formularios también es
 una sección superior en la web», dicho de los tres.
 
-**`/proponer` no.** No porque no importe —es el de más valor— sino porque no es una
-sección que se visite: es una acción, y su lugar son los tres puntos donde alguien
-se pregunta cómo avisar de una actividad: `/contacto`, el pie, y una llamada al pie
-de la agenda («¿Organizás algo? Cargalo»). La cuenta sale de ahí: la barra pasa de
-**7 a 10** pestañas, no a 11. Si el dueño la quiere en la barra, es una línea y la
-cuenta pasa a 11 — pero entonces B-835 se vuelve más urgente, no menos.
+**Y viven todos bajo `/guia/`** — decisión del dueño el 2026-09-08 (ver «Las decisiones del dueño» abajo). Eso
+cambia la cuenta de la barra y la cambia para bien: **la barra gana una pestaña,
+«Guía», no tres**, así que pasa de **7 a 8** y el problema de ancho que era B-835 se
+desinfla antes de nacer. Lo que aparece a cambio es una página `/guia` que sea el
+índice de las tres, porque una pestaña tiene que llevar a algún lado.
+
+**`/proponer` no es pestaña.** No porque no importe —es el de más valor— sino
+porque no es una sección que se visite: es una acción, y su lugar son los tres
+puntos donde alguien se pregunta cómo avisar de una actividad: `/contacto`, el pie,
+y una llamada al pie de la agenda («¿Organizás algo? Cargalo»).
+
+> **La colección de Firestore no lleva `/guia/`.** Las URLs son `/guia/librerias`,
+> `/guia/suscripciones`, `/guia/lugares`; las colecciones siguen siendo
+> `/librerias/{id}`, `/suscripciones/{id}`, `/lugares/{id}`. Vale decirlo porque los
+> PRDs usan las dos formas y se parecen: `/guia/` es una decisión de navegación y de
+> SEO, no de modelo.
 
 Y un pedido chico del mismo día, que no es un PRD y va derecho al backlog:
 **`/contacto` suma Instagram como canal** (**B-839**). Está razonado en el
 [PRD 1 § 2](01-propuestas-de-organizadores.md#2--el-problema-como-pasa-hoy),
 porque es el mismo problema: hoy el único camino para avisar de una actividad es
 un `mailto:`, y en este circuito la gente escribe por DM.
+
+---
+
+## Las decisiones del dueño, contestadas el 2026-09-08
+
+Los PRDs se escribieron con cuatro decisiones abiertas. **Tres se contestaron el
+mismo día**, así que lo que sigue en estos documentos ya no es una propuesta: es
+lo acordado. La cuarta sigue abierta y no bloquea el arranque.
+
+| # | Qué se preguntó | Respuesta |
+|---|---|---|
+| **DEC-10** | ¿El formulario público reemplaza el «Sugerir una actividad» de `/contacto`? | **No: `/contacto` queda también.** Conviven los dos caminos — el `mailto:` para quien quiere escribir en prosa, `/proponer` para quien quiere cargar. `/contacto` linkea a `/proponer` y ahí se cierra la recomendación al revés de como estaba escrita (§ del PRD 1) |
+| **DEC-11** | ¿Un anónimo puede subir un archivo, o solo pegar una URL? | **Puede subir**, y **si la propuesta se descarta la imagen se borra**. `storage.rules` entra al alcance de la tajada 1 |
+| **DEC-12** | El dato que envejece: ¿van las promos bancarias y el precio? | 🟡 **abierta** |
+| **DEC-13** | ¿Cuántos días se guarda una propuesta rechazada? | **30 días**, documento **e** imagen |
+| — | ¿La URL de los directorios es `/librerias` o `/guia/librerias`? | **`/guia/librerias`**, y con eso las tres van bajo `/guia/`: la barra gana **una** pestaña y hace falta la página `/guia` |
+
+**La que más cambió el trabajo es DEC-11**, y para el lado más caro: la v1 ya no
+puede esquivar Storage. La que más lo abarató es la de `/guia/`, que desinfló
+B-835 antes de empezar.
 
 ---
 
@@ -127,9 +157,26 @@ La forma de tenerlo sin abrir el bucket:
 - y un barrido que borra lo que quedó sin promover, que es el mismo problema de
   huérfanos de B-221.
 
-Si esto se ve caro para la v1, la salida barata es **solo URL en el formulario
-público** y el archivo lo sube el admin desde el panel. Es una decisión del dueño
-(**DEC-11**), no una que un agente deba tomar sola.
+> ✅ **DEC-11 contestada el 2026-09-08: sí, se puede subir el archivo** — «puede
+> subir imagen» —, **y si la propuesta se descarta la imagen se borra** («si el
+> evento lo descartamos se tiene que borrar»). O sea que la salida barata —solo
+> URL— queda descartada y **`storage.rules` entra al alcance desde la tajada 1**.
+>
+> Lo que esa respuesta trae, y es más que abrir el `write`:
+>
+> 1. **El borrado es parte del ciclo de vida, no una limpieza.** Rechazar una
+>    propuesta borra su objeto en el mismo paso; y la retención de 30 días
+>    (**DEC-13**) borra documento **e** imagen juntos. Un documento borrado con su
+>    imagen viva es la clase de huérfano de **B-221**, que ya tiene barrido escrito
+>    (`functions/limpieza-imagenes.js`) y sirve como red, no como mecanismo.
+> 2. **Promover al aceptar es copiar entre prefijos del mismo bucket**, y ahí está
+>    la **trampa 12** del §13: un trigger que escribe donde lo dispararon se
+>    dispara a sí mismo. La guarda es el prefijo —`propuestas/` lo ignora el
+>    trigger de optimización, `imagenes/` no— o el `customMetadata`, que es lo que
+>    ya usa `functions/imagenes-optimizar.js`.
+> 3. **El `get`/`list` en `false` para `propuestas/` no es opcional**: es la trampa
+>    13, y con `write` abierto el prefijo pasa a tener contenido que alguien subió
+>    para que lo vea **una** persona.
 
 ---
 
@@ -228,11 +275,12 @@ eso arrastra:
 4. **B-831 / B-832 / B-833 — los tres directorios**, en ese orden: librerías es el
    más chico y el que valida el motor; suscripciones el que tiene el modelo más
    raro; lugares el que más taxonomía nueva pide.
-5. **B-835 — la navegación.** Y acá hay que separar dos cosas que no van juntas:
-   la **decisión** va **antes de publicar la primera** sección, porque es la que
-   define si las URLs son `/librerias` o `/guia/librerias` — y una vez indexada, la
-   URL no se mueve (trampa 10). La **implementación** de la barra agrupada puede
-   esperar a la segunda, que es cuando el ancho empieza a doler de verdad.
+5. **B-835 — la navegación, ya casi resuelta de arranque.** La decisión que había
+   que tomar antes de publicar la primera sección —porque la URL no se mueve una vez
+   indexada (trampa 10)— **está tomada: `/guia/*`**. Con eso la barra gana **una**
+   pestaña y lo que queda de B-835 es chico y concreto: la pestaña «Guía» y la
+   página `/guia` que la recibe. Va **junto con la primera sección**, no después:
+   `/guia/librerias` sin `/guia` es una URL cuyo padre no existe.
 
 ---
 
@@ -244,5 +292,6 @@ eso arrastra:
   propone **no vuelve a entrar**, manda y listo.
 - **Precio como dato vivo.** Ni las promos bancarias de una librería ni el precio
   de una suscripción se van a mantener al día. Cómo se publica un dato que
-  envejece es **DEC-12**, y la propuesta de los PRDs es la misma para los tres:
-  el dato lleva **la fecha en que se cargó, visible**, y no entra a ningún filtro.
+  envejece es **DEC-12**, **la única de las cuatro que sigue abierta**, y la
+  propuesta de los PRDs es la misma para los tres: el dato lleva **la fecha en que
+  se cargó, visible**, y no entra a ningún filtro.

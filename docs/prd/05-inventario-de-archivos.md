@@ -65,14 +65,21 @@ que el único modo de atarla es un test que lea el archivo.
 | Archivo | Qué es | PRD | Se copia de |
 |---|---|---|---|
 | `src/pages/proponer.astro` | el formulario público de propuestas | 1 | `src/pages/contacto.astro` (chrome + texto desde un `lib`) |
-| `src/pages/librerias/index.astro` | el listado | 2 | `src/pages/cartelera.astro` |
-| `src/pages/librerias/[slug].astro` | la ficha, SSG | 2 | `src/pages/actividad/[slug].astro` |
-| `src/pages/librerias/sumar.astro` | formulario público | 2 | `proponer.astro` |
-| `src/pages/suscripciones/{index,[slug],sumar}.astro` | idem | 3 | idem |
-| `src/pages/lugares/{index,[slug],sumar}.astro` | idem | 4 | idem |
+| **`src/pages/guia/index.astro`** | **el índice de la Guía** — la pestaña nueva lleva acá, y sin esta página `/guia/librerias` es una URL cuyo padre no existe | 2 | `src/pages/index.astro` (la parte de la tira de hubs) + `src/components/sitio/ExploraPor.astro` |
+| `src/pages/guia/librerias/index.astro` | el listado | 2 | `src/pages/cartelera.astro` |
+| `src/pages/guia/librerias/[slug].astro` | la ficha, SSG | 2 | `src/pages/actividad/[slug].astro` |
+| `src/pages/guia/librerias/sumar.astro` | formulario público | 2 | `proponer.astro` |
+| `src/pages/guia/suscripciones/{index,[slug],sumar}.astro` | idem | 3 | idem |
+| `src/pages/guia/lugares/{index,[slug],sumar}.astro` | idem | 4 | idem |
 | `src/pages/librerias.json.ts` | el JSON del listado | 2 | `src/pages/events.json.ts` |
 | `src/pages/suscripciones.json.ts` | idem | 3 | idem |
 | `src/pages/lugares.json.ts` | idem | 4 | idem |
+
+> **Las URLs llevan `/guia/`; las colecciones y los JSON no.** El documento vive en
+> `/librerias/{id}` y el endpoint es `/librerias.json` —un artefacto, no una página
+> navegable—; lo que va bajo `/guia/` son las páginas. Decidido el 2026-09-08
+> (`prd/README.md` § «Las decisiones del dueño»). Si mañana el JSON también se mueve,
+> es un cambio de `rutasPublicas.ts` y del `fetch` del island, no del modelo.
 
 **Los formularios públicos son islands de React** (`client:only`), como el panel:
 son formularios con estado y validación. Y ahí hay un cuidado propio de este repo:
@@ -109,7 +116,8 @@ y conviene hacerlo **en su propio commit**, antes de todo lo demás.
 |---|---|---|---|
 | `functions/directorios.js` | puro: qué cambios ameritan rebuild | 2/3/4 | `functions/rebuild.js` |
 | `functions/directorios-trigger.js` | `onDocumentWritten` sobre las tres colecciones | 2/3/4 | `functions/opciones-trigger.js` — es literalmente el mismo caso (§4.4: «el rebuild debe dispararse también cuando cambia `/opciones/*`») |
-| `functions/retencion.js` + `functions/retencion-trigger.js` | `onSchedule` que borra propuestas rechazadas a los N días (**DEC-13**) | 1 | `functions/limpieza-versiones.js` + `versiones-limpieza-trigger.js` |
+| `functions/retencion.js` + `functions/retencion-trigger.js` | `onSchedule` que a los **30 días** (**DEC-13**) borra la propuesta rechazada **y su imagen**. El puro decide qué caducó; el trigger borra documento y objeto | 1 | `functions/limpieza-versiones.js` + `versiones-limpieza-trigger.js`, y `functions/limpieza-imagenes.js` para el lado del bucket |
+| `functions/propuestas.js` + su trigger | el borrado **al rechazar**, que es otro momento: no espera al barrido | 1 | `functions/limpieza-imagenes.js` |
 
 **`functions/` no puede importar de `src/`** (D-20): la lista de colecciones y los
 plazos se escriben del lado de la Function y se atan con un test, como se hizo con
@@ -120,7 +128,7 @@ plazos se escriben del lado de la Function y se atan con un test, como se hizo c
 | Archivo | Qué cambia |
 |---|---|
 | `firestore.rules` | cuatro `match` nuevos + cuatro funciones de validación. **Es el archivo más delicado de todo el trabajo**: es donde vive la primera escritura anónima del proyecto |
-| `storage.rules` | solo si DEC-11 sale «sí»: prefijo `propuestas/` con `write` acotado y **`get`/`list` en `false`** (trampa 13) |
+| `storage.rules` | **en alcance, DEC-11 se contestó «puede subir imagen»**: prefijo `propuestas/` con `write` anónimo acotado (1 archivo, 3 MB, tipos de imagen), **`get` y `list` en `false`** (trampa 13), y el límite dicho también en el schema porque el cliente se saltea |
 | `firestore.indexes.json` | probablemente nada: las lecturas del build son `where('estado','==','publicado')` sin orden compuesto |
 
 ---
@@ -131,11 +139,11 @@ plazos se escriben del lado de la Function y se atan con un test, como se hizo c
 
 | Archivo | Qué cambia | Qué se rompe si se olvida |
 |---|---|---|
-| `src/lib/rutasPublicas.ts` | **primero esto**: `RUTA_LIBRERIAS`, `RUTA_SUSCRIPCIONES`, `RUTA_LUGARES`, `RUTA_PROPONER`, `PREFIJO_LIBRERIA`… y sus constructores, todos por `rutaCanonica` | Un `href` a mano cuesta un 301 por click y deja dos textos de la misma URL (era B-293, y B-330 lo cerró) |
-| `src/components/sitio/Encabezado.astro` | tres entradas en `ENLACES` + el tipo `Seccion` — **tres y no cuatro**: `/proponer` no es pestaña (`prd/README.md` § 1). Hoy hay siete, y el propio archivo lo dice en un comentario: «Quedan siete pestañas. Si en algún momento no entran…». **Con esto son 10: ver B-835** | `tests/chrome-del-sitio.test.ts` exige encabezado y pie en toda página del sitio |
+| `src/lib/rutasPublicas.ts` | **primero esto**: `RUTA_GUIA`, `RUTA_LIBRERIAS` (= `/guia/librerias/`), `RUTA_SUSCRIPCIONES`, `RUTA_LUGARES`, `RUTA_PROPONER`, los `PREFIJO_*` de cada ficha y sus constructores, **todos por `rutaCanonica`**. El `/guia/` se escribe **una vez acá** y no en cada página | Un `href` a mano cuesta un 301 por click y deja dos textos de la misma URL (era B-293, y B-330 lo cerró) |
+| `src/components/sitio/Encabezado.astro` | **una** entrada en `ENLACES` —«Guía»— + un valor en el tipo `Seccion`. **Una, no tres y no cuatro**: los tres directorios viven bajo `/guia/` y `/proponer` no es pestaña. Hoy hay siete y el propio archivo lo dice en un comentario («Quedan siete pestañas. Si en algún momento no entran…»); **con esto son 8**, y eso es lo que desinfló B-835 | `tests/chrome-del-sitio.test.ts` exige encabezado y pie en toda página del sitio |
 | `src/components/sitio/PieDePagina.astro` | los mismos destinos | — |
 | `src/layouts/Base.astro` | el union de `seccion` gana tres valores | El chrome sale apagado (su default es `'ninguna'`, a propósito, por `/admin`) |
-| `src/lib/sitemap.ts` | `RUTAS_FIJAS` gana `/librerias/`, `/suscripciones/`, `/lugares/`, `/proponer/`; y `rutasDelSitemap` las fichas | ⚠️ **en silencio**: las páginas existen y Google no las ve. `tests/sitemap.test.ts` cubre la forma, no la completitud |
+| `src/lib/sitemap.ts` | `RUTAS_FIJAS` gana **`/guia/`**, `/guia/librerias/`, `/guia/suscripciones/`, `/guia/lugares/` y `/proponer/`; y `rutasDelSitemap`, las fichas | ⚠️ **en silencio**: las páginas existen y Google no las ve. `tests/sitemap.test.ts` cubre la forma, no la completitud |
 | `src/pages/sitemap.xml.ts` | pasarle las fichas nuevas | idem |
 | `src/pages/robots.txt.ts` | nada, salvo que se decida no indexar algún formulario | — |
 | `src/lib/schema.ts` | `BookStore`, `Place`, `Product`/`Offer` | ⚠️ en silencio: el SEO del directorio es el marcado |
@@ -193,10 +201,10 @@ archivos que toca, para que se vea el tamaño: `src/types/actividad.ts`,
 
 | Archivo | Qué cambia | Qué se rompe si se olvida |
 |---|---|---|
-| `src/lib/enlaces.ts` | **B-839**: Instagram como canal de contacto; y `MOTIVOS_DE_CONTACTO.sugerencia` apuntando a `/proponer` (**DEC-10**) | `tests/enlaces.test.ts` barre las URLs |
+| `src/lib/enlaces.ts` | **B-839**: Instagram como canal de contacto. Y **`sugerencia` se queda** (DEC-10: «`/contacto` queda también»): el `mailto:` sigue, con su `ayuda` reescrita para mandar primero a `/proponer` | `tests/enlaces.test.ts` barre las URLs |
 | `src/lib/contactoDelSitio.ts` | el bloque de Instagram. **`BLOQUES_DE_CONTACTO` deja de ser homogéneo**: un DM no tiene `asunto` | `tests/contacto-del-sitio.test.ts` exige que cada bloque salga de `MOTIVOS_DE_CONTACTO` |
 | `src/lib/ayudaDelSitio.ts` | `GRUPOS_DE_AYUDA` y `PREGUNTAS_DE_AYUDA`: cómo propongo, qué pasa después, qué se guarda | ⚠️ **B-785 es el precedente**, y su mitad cerrada es la que enseña: la ayuda de una página nueva se olvida con la misma facilidad con la que se olvidó `/apoyar`. Ahí ya está corregido —lo que sigue abierto de B-785 es el `Organization` del §5.5, no la ayuda—; acá hay que hacerlo desde el día uno |
-| `src/lib/comercialDelSitio.ts` | `/anunciar` le habla al mismo público que `/lugares/sumar` (PRD 4 §2) | `tests/comercial-del-sitio.test.ts` prohíbe cifras de audiencia |
+| `src/lib/comercialDelSitio.ts` | `/anunciar` le habla al mismo público que `/guia/lugares/sumar` (PRD 4 § 2) | `tests/comercial-del-sitio.test.ts` prohíbe cifras de audiencia |
 | `src/lib/noEncontrado.ts` | el 404 sugiere secciones; hay tres más | — |
 | `src/lib/identidad.ts` | color por tipo de entidad, si los directorios usan la misma paleta | `tests/contraste-del-sitio.test.ts` |
 
@@ -232,6 +240,9 @@ olvidar». La columna de la derecha es lo que hay que agregarle a cada uno.
 | `tests/salud-del-codigo.test.ts` | cero ciclos de import, y `docs/10-salud-del-codigo.md` sin apuntar al vacío |
 | `tests/emulador.ts` + los `*.integracion.test.ts` | **un archivo de integración por colección nueva**: `propuestas.integracion.test.ts`, `librerias.integracion.test.ts`, … Es donde se prueba la escritura anónima de verdad. `tests/reportes.integracion.test.ts` es el molde |
 | `scripts/build-contra-emulador.mjs` | el gate del build tiene que sembrar las colecciones nuevas (es lo que B-804 dejó anotado para el arancel) |
+| `tests/storage-reglas.integracion.test.ts` | **el prefijo `propuestas/` con DEC-11**: que un anónimo pueda escribir uno de 3 MB y no dos, que no pueda `get` ni `list`, y que no pueda escribir en `imagenes/` |
+| `tests/miniaturas-storage.integracion.test.ts` | que el trigger de optimización **no** toque `propuestas/` (trampa 12) |
+| `tests/limpieza-imagenes.test.ts` | el barrido como red del borrado nuevo, no como su mecanismo |
 
 **Nuevos, uno por tema:** `propuestas.test.ts` (la conversión pura),
 `directorios.test.ts` (el motor), `dato-con-fecha.test.ts` (B-837),
@@ -278,28 +289,38 @@ exclusiva de archivos**.
 5. `/propuestas`: tipo, schema, reglas, test de integración.
 6. `src/lib/propuestas.ts` + su test (uuid, timezone, sin slug).
 7. `PropuestasPanel` + «convertir en actividad».
-8. `/proponer` + `FormularioPublico`.
-9. `/contacto` con Instagram (**B-839**) y `sugerencia` → `/proponer` (**DEC-10**).
-10. Retención (**DEC-13**) + doc + CHANGELOG.
+8. **La imagen (DEC-11), en su propio commit y antes del formulario:** el prefijo
+   `propuestas/` en `storage.rules` con `get`/`list` en `false`, la guarda del
+   prefijo en el trigger de optimización (trampa 12), la promoción a `imagenes/` al
+   aceptar, y el borrado al rechazar. Con su test contra el emulador de Storage —
+   `tests/storage-reglas.integracion.test.ts` es el molde.
+9. `/proponer` + `FormularioPublico`, ya con la subida enganchada.
+10. `/contacto` con Instagram (**B-839**). **`sugerencia` se queda** (DEC-10) y su
+    texto manda primero a `/proponer`.
+11. Retención a 30 días (**DEC-13**), documento **e** imagen, + doc + CHANGELOG.
 
-**Tajada 2 — el motor y librerías (B-834 + B-831)**
-11. `src/lib/directorios.ts` + `DirectorioPanel` genérico.
-12. `/librerias` de punta a punta: tipo, schema, reglas, panel, listado, ficha, JSON, sitemap, `BookStore`, rebuild.
-13. **B-835**: la barra de navegación. La **decisión** (¿`/librerias` o
-    `/guia/librerias`?) va **antes del paso 12**, porque la URL es inmutable una vez
-    indexada; la **implementación** de la barra agrupada, antes de publicar la
-    segunda sección.
+**Tajada 2 — el motor, la Guía y librerías (B-834 + B-835 + B-831)**
+12. `src/lib/directorios.ts` + `DirectorioPanel` genérico.
+13. **B-835, que ya es chico**: la pestaña «Guía» y `src/pages/guia/index.astro`.
+    Va **antes** del paso 14, no después: `/guia/librerias` sin `/guia` es una URL
+    cuyo padre no existe. La decisión que hacía grande a este ítem —la forma de la
+    URL— está tomada (`/guia/*`, 2026-09-08), y con ella la barra gana **una**
+    pestaña en vez de tres.
+14. `/guia/librerias` de punta a punta: tipo, schema, reglas, panel, listado, ficha,
+    JSON, sitemap, `BookStore`, rebuild.
 
 **Tajada 3 — suscripciones (B-832)** · **Tajada 4 — lugares (B-833)**
-Las dos calcadas de la 2. En lugares, `direccionPublica` y su par en el historial
-(B-819) van **en el mismo commit** que el campo.
+Las dos calcadas de la 2, sin el paso 13 (la Guía ya existe) y **sumando una fila a
+`/guia`** cada una. En lugares, `direccionPublica` y su par en el historial (B-819)
+van **en el mismo commit** que el campo.
 
 ---
 
-## 6 · Las siete cosas que se rompen en silencio
+## 6 · Las nueve cosas que se rompen en silencio
 
 Ninguna de estas pone el build en rojo. Son la checklist de antes de dar por
-cerrada cada tajada, y las tres primeras son las caras.
+cerrada cada tajada, y las cinco primeras son las caras — las dos nuevas entraron
+con DEC-11, que es lo que cuesta poder subir la imagen.
 
 1. **Falta el `where('estado','==','publicado')`** en la lectura del build → se
    publica lo pendiente, incluido el contacto interno.
@@ -307,10 +328,17 @@ cerrada cada tajada, y las tres primeras son las caras.
    publicado. Lo agarra el barrido **solo si la interfaz está anclada**.
 3. **`direccionPublica` restaurado sin su dirección** (o al revés) → B-819 otra vez,
    con la dirección de la casa de alguien.
-4. **El trigger de rebuild no cubre la colección nueva** → se publica una ficha y
+4. **La propuesta se borra y su imagen queda viva** (o al revés). Con DEC-11 el
+   objeto es de una persona que lo subió para que lo vea **una**; el barrido de
+   huérfanos de B-221 lo tapa recién cuando corre, y hasta entonces sigue ahí. El
+   borrado va en el mismo paso que el rechazo, y el test mira **las dos** mitades.
+5. **El trigger de optimización no ignora `propuestas/`** → se dispara a sí mismo
+   al promover (trampa 12). No falla: cobra y duplica.
+6. **El trigger de rebuild no cubre la colección nueva** → se publica una ficha y
    el sitio no la muestra (trampa 8).
-5. **Las páginas nuevas no entran al sitemap** → existen y Google no las ve.
-6. **`/proponer` promete lo que el sitio ya no cumple** → el sitio miente sobre
+7. **Las páginas nuevas no entran al sitemap** → existen y Google no las ve. Y con
+   `/guia/` hay una más que es fácil de saltear: **`/guia/` misma**.
+8. **`/proponer` promete lo que el sitio ya no cumple** → el sitio miente sobre
    datos, que es lo que B-780 costó como P0.
-7. **El formulario público importa de `admin/`** → el bundle del panel viaja a una
+9. **El formulario público importa de `admin/`** → el bundle del panel viaja a una
    página pública, con la lección del §5.4 al lado.

@@ -1,4 +1,4 @@
-# PRD 4 · Lugares para eventos — `/lugares`, `/lugares/sumar` y el panel
+# PRD 4 · Lugares para eventos — `/guia/lugares`, `/guia/lugares/sumar` y el panel
 
 **Estado:** escrito el 2026-09-08, sin construir. Backlog: **B-833** (P1).
 **Depende de:** **B-836**, **B-834**, **B-835**, **B-837**. Lo común a los cuatro
@@ -14,8 +14,8 @@ sillas y proyector.
 
 | Puerta | URL |
 |---|---|
-| El directorio | `/lugares` |
-| Formulario público (sin login) | `/lugares/sumar` |
+| El directorio | `/guia/lugares` |
+| Formulario público (sin login) | `/guia/lugares/sumar` |
 | Formulario de admin | el panel, vista `lugares` |
 
 Pedido del dueño, textual: «Lugares para eventos / Qué es el lugar: café,
@@ -44,7 +44,7 @@ Hay dos cosas construidas que lo confirman:
 
 1. **`/anunciar` le habla a este público exacto.** B-770 la describe así:
    «ofrecerle espacio a cafés, librerías y espacios culturales». O sea: la página
-   comercial y `/lugares/sumar` hablan con la **misma** gente, con dos propuestas
+   comercial y `/guia/lugares/sumar` hablan con la **misma** gente, con dos propuestas
    distintas. Tienen que linkearse, y el texto de `/anunciar` hay que releerlo
    cuando esto exista (`src/lib/comercialDelSitio.ts` + su test).
 2. **La sede de una actividad ya existe** en `modalidades[].sede`
@@ -54,6 +54,9 @@ Hay dos cosas construidas que lo confirman:
    los que ya están en la base.**
 
 ## 3 · Modelo — `/lugares/{id}`
+
+> **La colección no lleva `/guia/`**: el documento es `/lugares/{id}`, la página es
+> `/guia/lugares/{slug}`. Igual que en los otros dos directorios.
 
 ```ts
 // src/types/lugar.ts  (nuevo)
@@ -216,7 +219,7 @@ Cómo se implementa, en orden de importancia:
 
 ## 7 · El listado y la ficha
 
-### `/lugares`
+### `/guia/lugares`
 
 JSON propio, filtrado en memoria. Filtros, en orden de utilidad real:
 
@@ -228,7 +231,7 @@ JSON propio, filtrado en memoria. Filtros, en orden de utilidad real:
 4. **Qué incluye** — multi, y el que más ayuda con proyector/accesibilidad.
 5. **Tipo de lugar** — último; suena importante y filtra poco.
 
-### `/lugares/{slug}`
+### `/guia/lugares/{slug}`
 
 Nombre, imágenes, tipo, barrio (linkeado al hub), dirección **si corresponde**,
 capacidad, qué incluye, la condición con sus notas, contacto. Y —cuando exista el
@@ -256,9 +259,9 @@ condición no es un rango de precios.
 8. No hay filtro «hasta $X». El filtro de costo son las tres clases del §5.
 9. Las tres taxonomías nuevas arrancan con sus `fijo: true` y un anónimo no puede
    agregar valores.
-10. `/lugares` y cada ficha con `canonical`, OG y sitemap; publicar dispara el
+10. `/guia/lugares` y cada ficha con `canonical`, OG y sitemap; publicar dispara el
     rebuild.
-11. `/anunciar` y `/lugares/sumar` se linkean, y el texto de `/anunciar` sigue
+11. `/anunciar` y `/guia/lugares/sumar` se linkean, y el texto de `/anunciar` sigue
     siendo cierto (su test ya prohíbe cifras de audiencia inventadas).
 
 ## 9 · El contra
@@ -266,7 +269,7 @@ condición no es un rango de precios.
 **Puede convertirse en una inmobiliaria de salones, que no es lo que el proyecto
 es.** Un directorio de lugares con precios y capacidades se parece más a un
 marketplace que a una agenda literaria, y el sitio ya empujó dos veces en esa
-dirección (`/anunciar`, `/apoyar`). Si `/lugares` es la sección más visitada, el
+dirección (`/anunciar`, `/apoyar`). Si `/guia/lugares` es la sección más visitada, el
 proyecto cambió de tema sin que nadie lo decida.
 
 La mitigación es de producto, no de código: **el lugar se presenta por lo que

@@ -74,6 +74,16 @@ Así que: **`/contacto` suma Instagram como canal** (pedido del dueño el
 `instagram` como `via` —los tres son mail, WhatsApp o Instagram— porque quien
 propone va a querer que le contesten por donde escribe.
 
+**Y `/contacto` no se va a ningún lado: DEC-10 se contestó «queda también».** Los
+dos caminos conviven —el `mailto:` para quien quiere escribir en prosa, `/proponer`
+para quien quiere cargar—, con `/contacto` linkeando a `/proponer`. Es lo contrario
+de lo que este PRD recomendaba (§ 11), y el motivo del dueño le gana al mío: un
+formulario de once campos es una puerta más angosta que una casilla de mail, y la
+propuesta que no entra por el formulario tiene que poder entrar igual. Lo que había
+que evitar —que la mitad llegue por el peor camino— se ataca con la redacción, no
+cerrando la puerta: el bloque de «Sugerir una actividad» ahora empieza mandando a
+`/proponer`.
+
 Es chico y no depende de este PRD: `enlaces.ts` ya tiene el handle y la URL se
 deriva de ahí (nada de escribirla a mano — es la regla del módulo). Lo que hay
 que cuidar es que **`BLOQUES_DE_CONTACTO` deja de ser homogéneo**: hoy todos los
@@ -100,7 +110,7 @@ Esta es la lista textual del pedido, con lo que cada uno significa en el modelo:
 | 8 | **Arancel** | `arancel: { tipo, notas }` — `tipo` **solo entre los `fijo: true`** | `arancel` |
 | 9 | **¿Necesita inscripción? ¿Cómo es?** | `inscripcion: { requiere, comoDice }` | `inscripcion.{requiere, via, destino}` |
 | 10 | **¿Qué incluye?** (material de lectura, libro, merienda…) | `incluye: string[]` + `incluyeOtro: string` | `incluye` (campo **nuevo** del modelo — ver §5) |
-| 11 | **Foto: archivo o URL** | `imagen: { url } \| { storagePath }` | `imagenes[]` (B-167) |
+| 11 | **Foto: archivo o URL** | `imagen: { url } \| { storagePath }` — **las dos, DEC-11** | `imagenes[]` (B-167), promoviendo el objeto de `propuestas/` a `imagenes/` |
 | — | **Contacto de quien propone** | `contacto: { via, valor }` — mail, WhatsApp o Instagram; **interno, nunca público** | nada: se queda en la propuesta |
 
 Los cuatro campos de `meta`, que el formulario **no** muestra:
@@ -305,7 +315,7 @@ Lo que eso obliga:
 | 2 | Fila propia en la tabla de «Nunca al JSON» (§5.1) y en `07-seguridad.md` | doc |
 | 3 | El barrido de datos personales tiene que **conocer la colección nueva** | `tests/sin-datos-personales.test.ts` |
 | 4 | El `auditor-privacidad` tiene que **despertarse** con los archivos nuevos (su ficha lista los paths que lo disparan) | `docs/13-agentes.md` + la ficha del agente |
-| 5 | **Retención**: una propuesta rechazada se borra a los **N días** (**DEC-13**), con una Function `onSchedule` como las tres que ya hay | `functions/` |
+| 5 | **Retención: 30 días** (**DEC-13**, contestada). Una propuesta rechazada se borra —**documento e imagen**— con una Function `onSchedule`, como las tres que ya hay | `functions/` |
 | 6 | La página `/proponer` **dice lo que hace con el dato**, con esas palabras: para qué se usa, quién lo ve, cuánto se guarda | `src/lib/…` + `tests/promesas-sobre-datos.test.ts` |
 
 El punto 6 no es un detalle de redacción: `tests/promesas-sobre-datos.test.ts`
@@ -319,12 +329,21 @@ mismo cambio, o el sitio miente.
 Ver [`README.md`](README.md) §2 para las cinco capas. Lo específico de este
 formulario:
 
-- **La foto es el punto más caro.** El dueño la pidió: «cargar la foto o subir la
-  url». La URL es un string. El archivo abre `write` a Storage para un anónimo,
-  con la trampa 13 (`read` incluye `list`) y el problema de huérfanos de B-221.
-  Propuesta: prefijo `propuestas/` con `get`/`list` en `false`, límite de **1
-  archivo de 3 MB** (el mismo de DEC-7b), App Check, y promoción a `imagenes/` al
-  aceptar. **Es DEC-11**, y la salida barata —solo URL en la v1— es legítima.
+- **La foto es el punto más caro, y va: DEC-11 se contestó «puede subir imagen».**
+  Así que la v1 abre `write` a Storage para un anónimo, con todo lo que eso
+  arrastra: prefijo `propuestas/` con **`get` y `list` en `false`** (trampa 13),
+  **1 archivo de 3 MB** (el mismo límite de DEC-7b, dicho en el schema **y** en
+  `storage.rules` porque el cliente se saltea), App Check, y promoción a
+  `imagenes/` al aceptar — que es copiar entre prefijos del mismo bucket y por lo
+  tanto **trampa 12**: el trigger de optimización tiene que ignorar `propuestas/`,
+  o se dispara a sí mismo.
+
+  **Y el borrado es parte del ciclo, no una limpieza**: «si el evento lo
+  descartamos se tiene que borrar». Rechazar borra el objeto en el mismo paso, y la
+  retención de 30 días borra documento e imagen juntos. El barrido de huérfanos de
+  B-221 (`functions/limpieza-imagenes.js`) queda como **red**, no como mecanismo —
+  si es lo único que borra, hay una imagen de alguien viva hasta que el barrido
+  corra.
 - **Rate limit real no lo da Firestore.** App Check + honeypot frenan lo
   automático; el humano insistente no. La red que queda es la bandeja: si aparecen
   50 propuestas de la misma IP, el admin las borra. Para eso el barrido programado
@@ -373,14 +392,39 @@ el número de pendientes en el panel, que es lo que ya hace `/reportes`.
 8. La propuesta aceptada queda con `revision.actividadId` apuntando a la actividad.
 9. `/proponer` declara qué se guarda, quién lo ve y por cuánto tiempo, y ninguna
    otra página del sitio afirma lo contrario.
-10. Una propuesta rechazada desaparece a los N días sin que nadie la borre a mano.
+10. Una propuesta rechazada desaparece **a los 30 días** sin que nadie la borre a
+    mano, **y su imagen con ella**. Verificado contra el emulador de Storage.
+11. **Rechazar una propuesta borra su imagen en el mismo paso**, sin esperar al
+    barrido. Un documento borrado con su objeto vivo, o al revés, es un caso de
+    test y no una posibilidad teórica.
+12. El trigger de optimización de imágenes **ignora el prefijo `propuestas/`**, así
+    que promover una imagen aceptada no se dispara a sí mismo (trampa 12).
+13. `propuestas/` no acepta `get` ni `list`, ni siquiera con la URL exacta del
+    objeto (trampa 13).
 
-## 11 · Decisiones del dueño
+## 11 · Decisiones del dueño — **las tres contestadas el 2026-09-08**
 
-| # | Qué hay que decidir | Recomendación |
-|---|---|---|
-| **DEC-10** | ¿El formulario público reemplaza el `mailto:` de «Sugerir una actividad» en `/contacto`, o conviven? | **Reemplazarlo**, con el motivo de contacto redirigiendo a `/proponer`. Dos caminos para lo mismo es la mitad de las propuestas llegando por el peor |
-| — | ¿`/contacto` suma Instagram como canal? | **Sí** — pedido del dueño el 2026-09-08 (**B-839**). El handle ya está en `enlaces.ts`; ver §2 |
-| **DEC-11** | ¿La foto se puede **subir** desde el formulario público, o solo pegar una URL en la v1? | **Solo URL en la v1.** Es un string contra abrir `write` de Storage a un anónimo. El archivo entra en una segunda tajada, con el prefijo aislado |
-| **DEC-13** | ¿Cuántos días se guarda una propuesta rechazada? | **30 días**, y las aceptadas se quedan (son la prueba de qué se pidió, y ya no tienen el contacto si se decide limpiarlo al aceptar) |
-| — | ¿Cuántas fechas como máximo acepta el formulario? | **12.** Un ciclo más largo que eso conviene cargarlo desde el panel |
+Lo que sigue es lo acordado, no una propuesta. La segunda columna deja la pregunta
+original, porque la respuesta se entiende mejor contra ella.
+
+| # | Qué se preguntó | Respuesta | Contra lo que este PRD recomendaba |
+|---|---|---|---|
+| **DEC-10** | ¿El formulario reemplaza el `mailto:` de «Sugerir una actividad»? | **No: `/contacto` queda también** | ⚠️ **Al revés.** El PRD proponía reemplazarlo. Conviven, con `/contacto` mandando a `/proponer` — ver § 2 |
+| **DEC-11** | ¿Se puede subir el archivo, o solo pegar una URL? | **Puede subir imagen**, y **si se descarta se borra** | ⚠️ **Al revés.** El PRD proponía solo URL en la v1. `storage.rules` entra al alcance ya, con la trampa 12 y la 13 adentro — ver § 8 |
+| **DEC-13** | ¿Cuántos días se guarda una rechazada? | **30 días** | ✅ Igual, y precisado: se borra **documento e imagen** |
+| — | ¿`/contacto` suma Instagram como canal? | **Sí** (**B-839**) | ✅ El handle ya está en `enlaces.ts` — ver § 2 |
+| — | ¿Cuántas fechas acepta el formulario? | **12**, sin objeción | ✅ Un ciclo más largo conviene cargarlo desde el panel |
+
+**Las dos que salieron al revés salieron mejor que mi recomendación.** DEC-10
+porque una casilla de mail es una puerta más ancha que un formulario de once
+campos, y la propuesta que no entra por uno tiene que poder entrar por la otra.
+DEC-11 porque pedirle a un organizador que hostee su propio flyer para poder pegar
+una URL es pedirle que resuelva un problema nuestro — y el que no pueda, no manda
+la foto.
+
+**Lo que cuesta DEC-11, dicho una vez para que no sorprenda:** `storage.rules` y
+el borrado dejan de ser una segunda tajada y entran a la primera. Son la regla del
+prefijo, el límite dicho en dos lugares, la guarda de la trampa 12 en el trigger
+que ya existe, el borrado al rechazar, el borrado a los 30 días y cuatro criterios
+de aceptación más (§ 10, del 10 al 13). No cambia el diseño de nada; agranda la
+tajada 1.

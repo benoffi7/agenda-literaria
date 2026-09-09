@@ -1,4 +1,4 @@
-# PRD 3 · Suscripciones literarias — `/suscripciones`, `/suscripciones/sumar` y el panel
+# PRD 3 · Suscripciones literarias — `/guia/suscripciones`, `/guia/suscripciones/sumar` y el panel
 
 **Estado:** escrito el 2026-09-08, sin construir. Backlog: **B-832** (P1).
 **Depende de:** **B-836**, **B-834**, **B-835**, y **B-837** (el dato que
@@ -14,8 +14,8 @@ otros dos directorios:
 
 | Puerta | URL |
 |---|---|
-| El directorio | `/suscripciones` |
-| Formulario público (sin login) | `/suscripciones/sumar` |
+| El directorio | `/guia/suscripciones` |
+| Formulario público (sin login) | `/guia/suscripciones/sumar` |
 | Formulario de admin | el panel, vista `suscripciones` |
 
 Pedido del dueño, textual: «Suscripciones literarias / Creo que todos son
@@ -27,29 +27,40 @@ Las dos preguntas que el dueño se hace en el pedido —«¿podría de otra mane
 el «(opcional)» del precio— son las dos decisiones de este PRD, y las dos tienen
 respuesta acá: **§4.1** y **§6**.
 
-## 2 · El problema de nombre, que hay que resolver antes de escribir la primera línea
+## 2 · El problema de nombre, resuelto a medias por `/guia/`
 
 **El sitio ya tiene una sección llamada «Suscribirse»**, y no es esto: es
 `/suscribirse`, la página que explica cómo suscribirse **al calendario público**
-(B-230, `src/lib/suscripcion.ts`, `tests/suscribirse.test.ts`). Está indexada,
-está en el sitemap, está en la barra y su slug es inmutable (trampa 10).
+(B-230, `src/lib/suscripcion.ts`, `tests/suscribirse.test.ts`). Está indexada, está
+en el sitemap, está en la barra y su slug es inmutable (trampa 10).
 
-Si se agrega `/suscripciones` al lado, la barra de navegación dice **«Suscribirse»
-y «Suscripciones»**, que son dos cosas sin relación. Es una confusión garantizada,
-y encima entre dos páginas que compiten por la misma consulta en Google.
+Cuando este PRD se escribió, el directorio iba a vivir en `/suscripciones` y la
+barra iba a decir **«Suscribirse» y «Suscripciones»** una al lado de la otra: dos
+cosas sin relación, confusión garantizada, y dos páginas peleando por la misma
+consulta en Google.
 
-Tres salidas, con su costo:
+> ✅ **La decisión de `/guia/` del 2026-09-08 se lo llevó puesto, y de arriba.** El
+> directorio es `/guia/suscripciones` y la barra no gana una pestaña
+> «Suscripciones»: gana **«Guía»**, con las tres adentro. O sea que las dos
+> etiquetas **nunca aparecen juntas**, que era el daño concreto. Lo que queda es la
+> competencia por la búsqueda, y ahí `/guia/suscripciones` vs `/suscribirse` ya se
+> distinguen solas: rutas distintas, intenciones distintas, y el `canonical` de cada
+> una apunta a lo suyo.
 
-| Opción | Qué cuesta | Veredicto |
-|---|---|---|
-| **A. Renombrar la etiqueta de la barra de `/suscribirse` a «Calendario»** — la URL no cambia | Una línea en `ENLACES` (`Encabezado.astro:110`) y su test. La URL sigue siendo `/suscribirse`, así que no rompe nada indexado | ✅ **Recomendada.** Además la etiqueta mejora: «Calendario» dice qué es la página; «Suscribirse» no dice a qué |
-| **B. Llamar al directorio `/cajas-literarias`** | Nadie busca «caja literaria» tanto como «suscripción literaria»; se pierde la consulta | ❌ |
-| **C. Dejar las dos como están** | La confusión, y dos páginas peleando por la misma búsqueda | ❌ |
+**Lo que sigue en pie, ahora como mejora y no como arreglo:** la etiqueta de la
+barra para `/suscribirse` es floja. «Suscribirse» no dice **a qué**; «Calendario»
+sí, y es una línea en `ENLACES` (`Encabezado.astro:110`) que **no toca la URL**, así
+que no rompe nada indexado. Vale hacerlo cuando se toque la barra por B-835, no
+antes y no en su propio commit.
 
-Con la opción A, la barra queda coherente: **Calendario** es el espejo en Google
-Calendar, **Suscripciones** es el directorio.
+Las dos que quedaron descartadas, para que no vuelvan: llamar al directorio
+`/cajas-literarias` pierde la consulta —nadie busca «caja literaria»— y dejar las
+dos etiquetas juntas era el problema.
 
 ## 3 · Modelo — `/suscripciones/{id}`
+
+> **La colección no lleva `/guia/`**: el documento es `/suscripciones/{id}`, la página
+> es `/guia/suscripciones/{slug}`. Igual que en los otros dos directorios.
 
 ```ts
 // src/types/suscripcion-literaria.ts  (nuevo — ojo con el nombre: `suscripcion.ts`
@@ -180,7 +191,7 @@ busca una suscripción busca «poesía» o «independientes», no «mensual».
 
 ## 5 · El listado y la ficha
 
-### `/suscripciones`
+### `/guia/suscripciones`
 
 JSON propio (`suscripciones.json`), filtrado en memoria (§2.5). Los filtros que
 valen, en orden:
@@ -193,7 +204,7 @@ valen, en orden:
 **Sin filtro de precio y sin orden por precio.** Ver §6: filtrar por un dato que
 puede tener tres meses es prometer que está al día.
 
-### `/suscripciones/{slug}`
+### `/guia/suscripciones/{slug}`
 
 Nombre, imágenes, quién la ofrece (y si es una librería del PRD 2, **linkeada a su
 ficha** — el `libreriaSlug`), qué incluye, qué manda, extras, alcance, el precio
@@ -301,9 +312,11 @@ Todo lo del [`README.md`](README.md) §2 y §4, más:
    **y** en la regla de Firestore.
 8. Todo link externo sale con `rel="noopener noreferrer"`.
 9. La acción de la ficha nombra a quién le estás comprando.
-10. `/suscripciones` y cada ficha tienen `canonical`, OG y sitemap; publicar o
+10. `/guia/suscripciones` y cada ficha tienen `canonical`, OG y sitemap; publicar o
     editar dispara el rebuild.
-11. La barra de navegación no dice «Suscribirse» y «Suscripciones» a la vez (§2).
+11. La barra de navegación no dice «Suscribirse» y «Suscripciones» a la vez — lo
+    resuelve `/guia/`, y el criterio 11 existe para que siga siendo cierto si
+    alguien saca las tres de abajo de «Guía» (§ 2).
 12. Los seis vocabularios nuevos arrancan con sus opciones base `fijo: true`, y
     un anónimo no puede agregar ninguna.
 
@@ -329,7 +342,7 @@ se puede decir del directorio de librerías.
 
 | # | Qué | Recomendación |
 |---|---|---|
-| — | ¿Cómo se resuelve el choque «Suscribirse» / «Suscripciones»? | **Opción A** del §2: la barra dice «Calendario» para `/suscribirse`, sin cambiar la URL |
+| — | ¿Cómo se resuelve el choque «Suscribirse» / «Suscripciones»? | ✅ **Resuelto por `/guia/`** (2026-09-08): las dos etiquetas nunca aparecen juntas. Renombrar la de `/suscribirse` a «Calendario» queda como mejora, para cuando se toque la barra (§ 2) |
 | — | ¿`periodicidad` se modela o se asume mensual? | **Se modela**, con default `mensual` (§4.1) |
 | **DEC-12** | El precio, ¿va con fecha visible o no va? | **Va con fecha visible**, fuera de filtros y fuera del JSON-LD (§6) |
 | — | ¿`noreferrer` en el link de suscripción? | **Sí**, y **solo ahí**: B-786 decidió a propósito que el de Cafecito no lo lleve. Este es el «segundo caso» que B-786 anticipaba, no su cierre (§7) |
