@@ -250,40 +250,56 @@ qué hacer cuando llegue.
 Lo único que queda es el click y el canal de notificación, que es dato personal y
 configuración de consola (§5.4).
 
-### B-836a · Habilitar App Check (reCAPTCHA v3) — bloquea los cuatro formularios públicos · P1
+### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** · P1
 
-**El único paso de B-836 que no se puede hacer desde el repo.** Habilitar App
-Check pide registrar la app web con una **clave de sitio de reCAPTCHA v3**, y esa
-clave no existe hasta que alguien la crea en la consola — mismo caso que el
-proveedor Google de Auth. La forma completa, con el modo de falla, está en
+**Los dos primeros pasos están hechos el 2026-09-09**, y el que faltaba lo hizo
+el dueño: creó la clave de sitio de **reCAPTCHA Enterprise** y registró la app
+web en App Check. Con la clave en mano se cableó el cliente en el mismo día
+(`src/lib/appcheck.ts`, llamado desde `app()`). La forma completa —proveedor,
+costo, modo de falla y lo que **no** va— está en
 [`02-infraestructura.md`](02-infraestructura.md) → «App Check».
 
-**Lo que sí está hecho** (tajada 0, 2026-09-09): `tests/escritura-anonima.integracion.test.ts`,
-que fija el estado de partida —hoy **nadie** escribe sin el claim `admin`, ni
-anónimo ni logueado sin claim, ni en las cuatro colecciones que los PRDs van a
-crear— y es el control positivo de todo lo que viene. Verificado por mutación:
-abrir `/propuestas` a un `create` anónimo lo pone en rojo, y la colección nueva
-entra al barrido sola porque la lista sale de `firestore.rules`.
+**Y era Enterprise, no v3 clásico.** La primera versión de este ítem decía
+«reCAPTCHA v3» porque era lo que se asumió. No son intercambiables: cada
+proveedor valida contra un servicio distinto, así que con `ReCaptchaV3Provider`
+el token se rechazaría — y ese error **no se ve hasta que el enforcement está
+activo**, o sea el peor momento posible. Lo fija `tests/appcheck.test.ts`.
 
-**Los pasos, en este orden, y el segundo interruptor rompe el panel si se
-adelanta:**
+**Lo que sí está hecho, y en qué orden se hizo:**
 
-1. Consola → App Check → registrar la app web con una clave de sitio de
-   **reCAPTCHA v3**. Queda «no exigido»: no cambia nada todavía.
-2. Inicializar App Check en el cliente antes de la primera llamada a Firestore, y
-   publicar. La clave de sitio es pública y va en un `PUBLIC_*`; el *secret* de
-   reCAPTCHA **no** toca el repo.
-3. Verificar en la consola que llegan peticiones verificadas. Es el único paso que
-   dice si el 2 quedó bien.
-4. **Recién ahí, exigir.** Al revés, el panel deja de poder escribir: sus
+1. ✅ **Consola** — clave de sitio de reCAPTCHA Enterprise (score-based) + app web
+   registrada en App Check. Queda en «no exigido»: se mide, no se rechaza.
+2. ✅ **Código** — `src/lib/appcheck.ts` con `ReCaptchaEnterpriseProvider`,
+   activado desde `app()` de `firebase-client.ts` para que esté inicializado
+   **antes de la primera llamada a Firestore**. La clave va en
+   `PUBLIC_RECAPTCHA_SITE_KEY` (`.env.production`), pública por diseño.
+
+**Lo que falta, y los tres son del dueño:**
+
+3. ⬜ **Publicar.** Mientras el cableado no se deployee, la consola no puede ver
+   nada: el paso 4 mide lo que llega de producción.
+4. ⬜ **Verificar en la consola** que llegan peticiones verificadas. Es el único
+   paso que dice si el 2 quedó bien, y el que no se puede saltear.
+5. ⬜ **Recién ahí, exigir.** Al revés, **el panel deja de poder escribir**: sus
    peticiones tampoco traen token y las reglas ni se evalúan.
-5. Token de debug para los emuladores (`FIREBASE_APPCHECK_DEBUG_TOKEN`), o los
-   tests de integración empiezan a fallar por App Check y no por las reglas.
+
+**Dos cosas que cambiaron respecto de cómo estaba escrito este ítem:**
+
+- **El token de debug para los emuladores no hace falta**, y es mejor así. Los
+  emuladores **no verifican** App Check, así que `appcheck.ts` no lo activa
+  cuando `PUBLIC_USE_EMULATORS=true`. Con eso la suite de integración no depende
+  de un tercero para correr, que es lo que un token de debug hubiera dejado a
+  medias.
+- **Enterprise tiene su propia cuota facturable** arriba del free tier, aparte de
+  Firebase. Entra en el budget alert del §2.3, y el volumen de un formulario
+  público es chico — el de un script que lo abusa, no.
 
 **Y no reemplaza a las otras cuatro capas de B-836** (validación en la regla,
 topes de tamaño y forma, honeypot, barrido programado): App Check frena al script
 que no pasa por la página, y es la única de las cinco que depende de un tercero
 —si reCAPTCHA no responde y el enforcement está activo, no se puede escribir—.
+Hoy, con el enforcement apagado, un fallo de reCAPTCHA no rompe nada:
+`activarAppCheck` no propaga la excepción.
 
 ---
 
@@ -477,7 +493,7 @@ rompen en silencio están en
 
 | # | Qué | Dónde está especificado | Estado |
 |---|---|---|---|
-| **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🟠 **empezado (2026-09-09)** — está el control positivo (`tests/escritura-anonima.integracion.test.ts`: hoy nadie escribe sin el claim, ni en las cuatro colecciones futuras) y App Check está documentado en [`02-infraestructura.md`](02-infraestructura.md) con su orden y su modo de falla. **Falta el click del dueño**: la clave de sitio de reCAPTCHA v3 no se puede crear desde el repo — **B-836a**, arriba. Las otras cuatro capas (validación en la regla, topes, honeypot, barrido) van con la colección que las estrene |
+| **B-836** | **La defensa de la escritura anónima** — App Check + validación en la regla + topes + honeypot + barrido. **Bloquea a los otros cuatro**: hoy ninguna colección acepta una escritura sin el claim `admin`, y estos formularios abren la primera puerta | [`prd/README.md`](prd/README.md) § 2 | 🟠 **empezado (2026-09-09)** — están el control positivo (`tests/escritura-anonima.integracion.test.ts`: hoy nadie escribe sin el claim, ni en las cuatro colecciones futuras) y **App Check cableado** (`src/lib/appcheck.ts`, reCAPTCHA **Enterprise**, con la app ya registrada por el dueño). Falta publicar, verificar en la consola y **exigir** — **B-836a**, y el orden no se puede invertir: exigir antes de que el cliente mande tokens deja al panel sin poder escribir. Las otras cuatro capas (validación en la regla, topes, honeypot, barrido) van con la colección que las estrene |
 | **B-834** | **El motor compartido de los directorios** — una colección por entidad (la proyección es whitelist **por entidad**) con un solo mecanismo para el formulario público, la moderación, el `estado` y el rebuild | [`prd/README.md`](prd/README.md) § 1 | 🔴 decidir con el primero |
 | **B-837** | **El dato que envejece** — `DatoConFecha<T>`: el valor nunca se muestra sin su fecha de carga, no entra a ningún filtro, y el panel avisa a los 60 días. Resuelve de una vez las promos bancarias y el precio de una suscripción | [`prd/03-suscripciones-literarias.md`](prd/03-suscripciones-literarias.md) § 6 | ✅ **hecho (2026-09-09)** — `src/lib/datoConFecha.ts` + `tests/dato-con-fecha.test.ts`. Las tres reglas son propiedades del módulo: la proyección pública es **un solo string** («$18.000 por mes · cargado el 24 de septiembre de 2026»), así que no hay número que filtrar ni que meter en un `Offer`, y **el valor sin fecha usable no sale** — desaparece en vez de publicarse solo. La fecha es absoluta y con año porque el sitio es estático: un «hace tres meses» horneado en el HTML envejece solo (**D-570**). Todavía sin consumidor: lo estrenan las librerías y las suscripciones |
 | **B-830** | **Propuestas de organizadores** — `/proponer` sin login → `/propuestas/{id}` en estado `nueva` → bandeja en el panel → «convertir en actividad» (prellena el formulario que ya existe) → se publica como cualquier otra. **El de más valor de los cuatro**: es el único que no agrega un modelo nuevo al sitio, y le saca de encima la carga manual que hoy se hace todos los meses **Con DEC-11 adentro**: el formulario acepta archivo además de URL, o sea que `storage.rules`, la guarda de la trampa 12 y el borrado al descartar entran a esta tajada y no a una segunda | [`prd/01-propuestas-de-organizadores.md`](prd/01-propuestas-de-organizadores.md) | 🟡 listo para codear |

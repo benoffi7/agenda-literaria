@@ -8,6 +8,7 @@
  * `@/lib/firestore-client`. No re-exportar `db` desde acá.
  */
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { activarAppCheck } from '@/lib/appcheck';
 import {
   getAuth,
   connectAuthEmulator,
@@ -40,6 +41,21 @@ let _auth: Auth | null = null;
 export const app = (): FirebaseApp => {
   if (_app) return _app;
   _app = getApps().length ? getApp() : initializeApp(config);
+  /*
+   * B-836 — App Check se activa **acá y no en cada consumidor**, porque éste es
+   * el borde por el que pasan todos: auth, Firestore y Storage llaman a `app()`
+   * antes de hacer su primera petición. Es lo que garantiza el orden que App
+   * Check necesita —estar inicializado antes de la primera llamada— sin que cada
+   * módulo nuevo tenga que acordarse.
+   *
+   * No se activa contra los emuladores ni sin clave de sitio, y un fallo no
+   * rompe nada: el detalle y el motivo de cada caso están en `lib/appcheck.ts`.
+   */
+  activarAppCheck(_app, {
+    hayNavegador: typeof window !== 'undefined',
+    usarEmuladores,
+    claveDeSitio: import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY,
+  });
   return _app;
 };
 

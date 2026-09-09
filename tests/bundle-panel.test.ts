@@ -284,6 +284,31 @@ describe('corte del bundle del panel — B-09, B-117, B-50', () => {
     expect(alcanzados, `cadena: ${[...INICIAL.archivos].join(', ')}`).toEqual([]);
   });
 
+  /**
+   * **App Check sí entra al chunk inicial, y está acá para que se lea como una
+   * decisión y no como un descuido** (B-836).
+   *
+   * `firebase/app-check` es alcanzable estáticamente desde la island porque
+   * `firebase-client.ts` lo importa: App Check tiene que estar **inicializado
+   * antes de la primera llamada a Firestore**, y con un `import()` diferido la
+   * activación es asíncrona y la primera escritura puede salir sin token. Hoy
+   * sería inocuo —el enforcement está apagado— y el día que se active sería un
+   * fallo intermitente, que es la peor forma de fallar.
+   *
+   * No entra en `SDK_PESADO` porque no es de ese orden: el desafío de reCAPTCHA
+   * lo baja Google en runtime, no el bundle. Este `it` afirma el estado que se
+   * eligió en las **dos** direcciones —que esté, y que no se lo difiera— para que
+   * «optimizarlo» a un `import()` no pase en silencio.
+   */
+  it('`firebase/app-check` está en el chunk inicial a propósito — B-836', () => {
+    expect(
+      INICIAL.paquetes.has('firebase/app-check'),
+      'App Check dejó de ser estático: la activación pasa a ser asíncrona y la ' +
+        'primera escritura puede salir sin token (ver src/lib/appcheck.ts)',
+    ).toBe(true);
+    expect([...COMPLETO.diferidos]).not.toContain('firebase/app-check');
+  });
+
   it('lo que se carga con `import()` no es alcanzable estáticamente', () => {
     // Volver estático uno de los componentes diferidos deshace su chunk con el
     // build en verde. La lista sale del código —los `import()` que el grafo

@@ -2,6 +2,61 @@
 
 ## Sin publicar
 
+- **App Check cableado, con reCAPTCHA Enterprise** — **B-836a**, y salió del
+  orden previsto porque el dueño creó la clave en el momento. El paso anterior
+  había dejado App Check documentado y pendiente de consola; con la clave y la app
+  ya registradas, el paso 2 —el cliente— entra ahora.
+
+  **Y era Enterprise, no reCAPTCHA v3 clásico.** La doc del commit anterior decía
+  v3 porque fue lo que se asumió. No son intercambiables: cada proveedor valida
+  contra un servicio distinto, así que con `ReCaptchaV3Provider` el token se
+  rechazaría — y **ese error no se ve hasta que el enforcement está activo**, o sea
+  el peor momento posible. Corregido en `02-infraestructura.md` y en B-836a, y
+  fijado en `tests/appcheck.test.ts`.
+
+  `src/lib/appcheck.ts` decide en una función pura (`motivoParaNoActivar`) y
+  activa en otra. **No se activa** fuera del navegador (el build lee con el Admin
+  SDK, que no pasa por App Check), **ni contra los emuladores** —no lo verifican,
+  así que activarlo solo haría que la suite de integración dependa de un tercero
+  para correr: por eso **no hace falta el token de debug** que el plan anticipaba—,
+  **ni sin clave** (avisa por consola y sigue). Y **un fallo no propaga**: hoy la
+  autorización la dan las reglas igual, y cuando el enforcement se active el error
+  tiene que verse del lado del servidor, no dejando la pantalla de login en blanco.
+
+  **Se activa desde `app()`** de `firebase-client.ts` y no en cada consumidor. Es
+  el borde por el que pasan todos —auth, Firestore y Storage lo llaman antes de su
+  primera petición— y es lo que garantiza el orden que App Check necesita sin que
+  cada módulo nuevo tenga que acordarse. El test lo afirma por posición: la llamada
+  tiene que estar **adentro** de `app()` y **antes** del `return`.
+
+  **El import es estático y eso se pagó a propósito.** `firebase/app-check` entra
+  al chunk inicial del panel, que es justo lo que el corte de B-09 cuida. Con un
+  `import()` diferido la activación es asíncrona y la primera escritura puede salir
+  sin token: hoy inocuo, y el día del enforcement un fallo **intermitente**, que es
+  la peor forma de fallar. No es del orden de peso de los tres SDK que
+  `bundle-panel.test.ts` mantiene afuera —el desafío de reCAPTCHA lo baja Google en
+  runtime, no el bundle— y ahora ese archivo lo afirma en las dos direcciones, para
+  que «optimizarlo» a un `import()` no pase en silencio.
+
+  **Lo que no va, aunque la consola de Google lo muestre:** el `<script>` de
+  `recaptcha/enterprise.js` en el `<head>` y un `grecaptcha.enterprise.execute()`
+  propio. Esa es la integración *genérica* de reCAPTCHA; el SDK de App Check carga
+  el script y ejecuta el desafío por su cuenta, y las dos juntas se pelean por el
+  mismo widget — con un síntoma que no es un error sino un comportamiento raro. Hay
+  un caso que barre el markup buscando las dos cosas.
+
+  **La clave (`PUBLIC_RECAPTCHA_SITE_KEY`) es pública por diseño** y va versionada
+  en `.env.production`, como la API key web: el navegador la necesita para pedir el
+  desafío. Con App Check **no hay clave privada de reCAPTCHA de este lado** —el
+  *assessment* lo hace Firebase con las credenciales del proyecto—, así que no hay
+  ningún secreto nuevo que se pueda filtrar (§5.4).
+
+  **Falta lo que es del dueño, y el orden no se puede invertir:** publicar,
+  verificar en la consola que llegan peticiones verificadas, y **recién ahí
+  exigir**. Al revés, el panel deja de poder escribir. Y una cosa nueva para el
+  budget del §2.3: Enterprise tiene su propia cuota facturable arriba del free
+  tier.
+
 - **«Hoy nadie escribe sin el claim `admin`» dejó de ser una suposición** —
   **B-836**, tercer y último paso de la tajada 0.
   `tests/escritura-anonima.integracion.test.ts` es el **control positivo de todo
