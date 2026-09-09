@@ -12,9 +12,26 @@
  * se contesta con el uid que el panel ya tiene en la sesión, sin tocar el
  * modelo ni arriesgar una filtración.
  *
- * Con dos cuentas —las que hay— "otra cuenta" identifica sola a la otra persona.
- * Con tres deja de alcanzar, y ahí sí se justifica guardar el mail: queda
- * anotado en el backlog como el momento de hacerlo, no antes.
+ * **Y con cuatro cuentas la marca sigue sirviendo** (B-179 · B-811 · D-610).
+ * Escrito cuando había dos, este comentario decía que "otra cuenta" identifica
+ * sola a la otra persona y que con tres dejaba de alcanzar, así que ahí había
+ * que guardar el mail. Desde el 2026-09-08 hay cuatro y esa promesa se revisó:
+ * **el trabajo de la marca es contestar "¿esto lo cargué yo?"**, que es la
+ * pregunta que se reportó, y esa se contesta igual de bien con cuatro cuentas
+ * que con dos. Lo que caducó fue un efecto de al lado —que "no fuiste vos"
+ * equivalía a "fue la otra persona"— que nunca fue el requerimiento.
+ *
+ * Por eso el texto dice "otra cuenta" y no "la otra cuenta": el artículo
+ * indefinido es lo que hace que no envejezca con la cantidad de cuentas. El
+ * rótulo de taxonomías pagó exactamente ese bug ("la usaron **las** dos
+ * cuentas"), y `tests/autoria.test.ts` lo fija acá.
+ *
+ * **Y "quién tocó qué" ya está, mejor resuelto:** el historial del §12 guarda
+ * `updatedBy` en cada escritura, o sea cada cambio y no solo la creación.
+ * Guardar el mail en el documento sumaría un dato personal al modelo —que entra
+ * al historial, así que borrar una cuenta no lo borra, y que hay que seguir
+ * excluyendo de cada salida pública— para contestar peor algo que el historial
+ * ya contesta.
  */
 
 export type Autoria = 'propia' | 'ajena' | 'desconocida';

@@ -1273,18 +1273,37 @@ Es la intención.
 
 ## D-57 · El perfil es un identificador aleatorio, no el uid ni un hash del mail
 
-**Decisión:** para distinguir a las dos personas que cargan, se usa un valor
+**Decisión:** para distinguir a las personas que cargan, se usa un valor
 aleatorio generado en el navegador y guardado en `localStorage`.
 
 **Alternativas descartadas:**
 
 - **El uid o el mail.** Son exactamente lo que el §5.1 mantiene fuera de toda
   salida.
-- **Un hash del mail.** Parece la opción prudente y no lo es: el conjunto de
-  admins es de dos personas conocidas, así que el hash se revierte probando dos
-  entradas. Sería el mail con otro nombre.
+- **Un hash del mail.** Parece la opción prudente y no lo es. Un hash no
+  anonimiza: **renombra**. Lo que decide si se puede revertir no es cuántos
+  admins hay, es que **el conjunto de entradas sea enumerable**, y acá lo es por
+  construcción: son las cuentas con claim `admin`, una lista finita, conocida y
+  que crece de a una. Revertirlo es hashear cada candidato y comparar —una tabla
+  que se arma en un segundo— y sumar una cuenta no lo encarece. O sea que **no
+  existe un número de admins a partir del cual hashear el mail pase a ser
+  anonimizar**: sería el mail con otro nombre. Lo único que cambiaría el
+  razonamiento es una sal secreta que no salga del servidor, y entonces el valor
+  ya no lo deriva nadie del mail — es un identificador aleatorio con una clave
+  más que administrar, que es exactamente lo que ya hay, sin la clave.
 - **Solo el `client_id` de GA4.** Alcanzaría, pero es una cookie propia de GA y
   no se puede leer ni razonar sobre ella desde el código.
+
+> **El número salió de la frase a propósito** (B-811, 2026-09-09). Este párrafo
+> decía «el conjunto de admins es de dos personas conocidas, así que el hash se
+> revierte probando dos entradas», y esa redacción tenía dos problemas: quedó
+> falsa el día que entró la tercera cuenta —y estaba copiada palabra por palabra
+> en `src/lib/analytics.ts` y parafraseada en `07-seguridad.md` y en D-138, o sea
+> que envejeció en cuatro lugares a la vez— y, peor, **le sugería al lector un
+> umbral que no existe**: «bueno, ahora somos cuarenta, quizás ya está bien».
+> Escrito sobre la enumerabilidad, el argumento no tiene número que se pueda
+> quedar viejo, y las copias dejan de ser deuda: solo caducan si cambia el
+> razonamiento, que es mucho más raro que un alta de cuenta.
 
 **Costo:** el identificador se pierde si se limpia el navegador, y una misma
 persona en dos aparatos cuenta como dos. Aceptable: lo único que se necesita es
@@ -1554,7 +1573,7 @@ nuevas, cero índices compuestos. Es el §2.5 aplicado al panel.
 | `arancel` | Es un atributo de publicación, no una forma de recordar una actividad: nadie busca "el taller arancelado". Y su riesgo real —publicar un taller pago como gratuito (D-16)— se previene en el formulario, que es donde se carga, no en el listado |
 | `tags` | Es multivaluado, así que necesita un control de selección múltiple, y hoy nadie cura esa lista: sin normalización de etiquetas ni UI de administración (B-05, B-06) el desplegable sería un catálogo de variantes de lo mismo. Cuando exista B-06, se reconsidera |
 | `destacado` | Un booleano que hoy no consume nadie: el sitio público todavía no existe (B-01). Filtrar por él contesta una pregunta que nadie tiene |
-| quién la cargó | Hay dos cuentas, pero el dato es un identificador de usuario y no un nombre: haría falta un mapa de personas que no existe, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre |
+| quién la cargó | El dato es un identificador de usuario y no un nombre: haría falta un mapa de personas que no existe, y el §5.1 mantiene esos identificadores fuera de todo lo que se muestre. Vale con dos cuentas y con las cuatro que hay desde el 2026-09-08 — D-610 |
 | estado de publicación (el del calendario) | Existe, pero **en la vista calendario**. Ponerlo también acá sería derivar lo mismo en dos pantallas con dos criterios que se pueden separar, que es justo lo que D-71 evita |
 
 **Los filtros arrancan colapsados detrás de un botón con el número de filtros
@@ -3880,10 +3899,16 @@ La versión original publicaba el ISO completo, y el `auditor-privacidad` lo mar
 con **un solo admin**, un `events.json` con `"creadoEn":"2026-08-27T03:14:52.881Z"`
 en cada actividad **no es una fecha, es la agenda de trabajo de una persona
 identificada** — a qué hora carga, qué noches, en qué tandas. Es exactamente el
-razonamiento por el que D-57 rechaza el hash del mail («con dos admins conocidos,
-un hash se revierte probando dos entradas») y por el que D-27 saca `huellaCreador`
-de la salida: el dato no nombra a nadie, pero con un universo de una persona la
-desanonimización es gratis.
+razonamiento por el que D-57 rechaza el hash del mail (el conjunto de admins es
+**enumerable**, así que el hash se revierte probando la lista, sin importar cuán
+larga sea) y por el que D-27 saca `huellaCreador` de la salida: el dato no nombra
+a nadie, pero con un universo chico y conocido la desanonimización es gratis.
+
+Y una precisión que la revisión de B-811 dejó, porque acá el número **sí** hace
+falta: lo que hace que el instante de carga sea una agenda de trabajo es que
+haya **un solo** admin cargando, y por eso esta frase conserva su «un solo
+admin» mientras D-57 dejó de contar. Son dos argumentos distintos que se
+parecían: el de D-57 no depende de la cantidad y el de acá vive de ella.
 
 Y el único consumidor no necesitaba nada de eso: ordenar por día alcanza, y dos
 actividades cargadas el mismo día desempatan por título. Vale anotar la forma del
@@ -9633,3 +9658,73 @@ meses después; lo segundo se descubre la primera vez que se corre.
 - La actividad nace **borrador**, como cualquier copia (D-17): el admin la revisa
   y la publica desde el formulario que ya existe. Aceptar una propuesta no publica
   nada.
+
+---
+
+## D-610 · La marca de autoría se queda como está, y el mail no entra al documento
+
+Cierra **B-179**, que esperaba exactamente el escenario que llegó: desde el
+**2026-09-08** hay **cuatro** cuentas con claim `admin` (eran dos), así que
+«La cargó otra cuenta» ya dice «no fuiste vos» y nada más. La propuesta escrita
+del ítem era guardar el mail de quien carga en el documento para poder nombrar a
+la persona. **No se hace.**
+
+### Por qué, y esto es lo que el ítem tenía dado vuelta
+
+La marca **no se rompió**: se rompió una frase sobre la marca.
+
+| | |
+|---|---|
+| Lo que B-130 se propuso contestar | *«los eventos que crea el otro admin también me aparecen, ¿no?»* — o sea **¿esto lo cargué yo?** |
+| Lo que la marca contesta hoy, con cuatro cuentas | exactamente eso, igual de bien que con dos |
+| Lo que caducó | que «no fuiste vos» **implicara** «fue la otra persona» — un efecto de al lado, nunca el requerimiento |
+
+El texto de la marca resultó estar bien escrito de antes: dice «**otra** cuenta»,
+indefinido, y un indefinido no envejece con la cantidad de cuentas. Lo que estaba
+mal era el comentario que lo justificaba, que sí contaba. Es la misma corrección
+—y el mismo tamaño de corrección— que el rótulo de taxonomías, donde «la usaron
+**las** dos cuentas» pasó a «la usaron dos cuentas»: **el artículo definido es la
+pieza que se pone falsa, no el mecanismo.**
+
+### La pregunta que quedaba abierta no gatilla nada, y eso es lo que destraba el ítem
+
+B-179 mandaba a decidir sobre el umbral de **B-28/B-34**: la confianza, no la
+cantidad. Es una pregunta para el dueño y no se puede contestar desde el código
+— pero **las dos respuestas apuntan al mismo lado**, así que no bloquea:
+
+- **Si las cuatro cuentas son de confianza**, perder la identificación es puro
+  costo y no compra privacidad: son cuentas que ya leen y escriben todo lo de las
+  demás, no hay nadie de quien protegerse ahí (el §5.1 gobierna lo que sale al
+  público anónimo, que no es esto).
+- **Si alguna no lo fuera**, lo que hace falta es **más** trazabilidad, no menos.
+
+Y en las dos ramas la respuesta es la misma, porque **la trazabilidad ya existe y
+es mejor que un nombre en la tarjeta**: el historial del §12 guarda `updatedBy`
+en **cada** escritura. Un mail en el documento dice quién **creó** la actividad;
+el historial dice quién cambió **qué**, que es la pregunta que se hace de verdad
+el día que hay que auditar algo. Poner el mail contestaría peor algo que ya está
+contestado.
+
+### Lo que costaba, que el propio B-179 ya había anotado
+
+1. **El §5.1.** `toPublic` es lista blanca, así que un campo nuevo queda afuera
+   por construcción — pero pasa a ser un dato personal más del que acordarse en
+   cada salida que se agregue, y las salidas se agregan seguido.
+2. **El §12.** El mail entra en las versiones guardadas, así que borrar una
+   cuenta **no** lo borra de ahí.
+
+### Qué queda fijado, y dónde
+
+`tests/autoria.test.ts` afirma las tres mitades de la decisión, para que se
+discuta acá y no en un `git blame`: que el veredicto de `autoriaDe` no dependa de
+cuántas cuentas haya, que la marca no afirme que la otra cuenta es una sola, y
+que la autoría se decida leyendo `createdBy` **y ningún otro campo** del
+documento — el aserto que se pone rojo el día que alguien guarde el mail.
+
+Lo que **no** se toca son los «Contexto» de las decisiones viejas que dicen «hay
+dos cuentas» (D-26, D-28, D-32, D-73, D-104, D-124): describen el estado del día
+en que se decidió, ninguna apoya su conclusión en el número, y son historial —
+igual que las entradas de novedades que citan el rótulo viejo. Lo que se corrigió
+es lo que se afirma **en presente**: D-57, D-74, el § `aprobada` de
+`03-modelo-de-datos.md`, el § analítica de `07-seguridad.md`, las dos menciones
+de `04-funcionalidades.md` y los tres comentarios de `src/lib/`.

@@ -308,9 +308,12 @@ etiqueta—, y el matiz es presentación.
 
 ### `aprobada` y `huellaCreador`
 
-Desde que hay **dos cuentas con claim `admin`** cargando actividades, una
-etiqueta nueva no puede aparecer sola en el desplegable de la otra persona
-(§4.3). El patrón es uno solo para los cinco campos:
+Desde que hay **más de una cuenta con claim `admin`** cargando actividades, una
+etiqueta nueva no puede aparecer sola en el desplegable de las demás (§4.3). El
+número no es parte de la regla y por eso no se escribe acá: la aprobación por
+reuso pide **dos cuentas distintas**, cualesquiera, y eso vale igual con dos que
+con las cuatro que hay desde el 2026-09-08 (B-811). El patrón es uno solo para
+los cinco campos:
 
 | Campo | Tipo | Qué significa |
 |---|---|---|

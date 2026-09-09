@@ -2,6 +2,40 @@
 
 ## Sin publicar
 
+- **El argumento del hash se reescribió sin número, y la marca de autoría se queda
+  como está** — **B-811** y **B-179**, que resultaron ser el mismo ítem. Desde el
+  2026-09-08 hay **cuatro** cuentas con claim `admin`, y varios lugares no solo
+  *decían* dos: **argumentaban** sobre dos.
+
+  **Lo que se rehízo, y es la mitad que importa.** D-57 rechazaba hashear el mail
+  del admin porque «el conjunto de admins es de dos personas conocidas, así que el
+  hash se revierte probando dos entradas». Cambiarlo a «cuatro» habría sido
+  reetiquetar: el número nunca fue lo que lo sostenía. Un hash no anonimiza,
+  **renombra**, y lo que lo hace reversible es que el conjunto de entradas sea
+  **enumerable** — las cuentas con claim `admin` son una lista finita, conocida y
+  que crece de a una, así que revertirlo es hashear cada candidato y comparar, y
+  sumar una cuenta no lo encarece. **No existe un número de admins a partir del
+  cual hashear el mail pase a ser anonimizar.** La redacción vieja tenía ese
+  defecto además del número: le ofrecía al lector **un umbral inexistente**. Sin
+  número, el argumento deja de ser deuda — sus tres copias solo caducan si cambia
+  el razonamiento.
+
+  **Y B-179 cierra sin guardar el mail** (**D-610**). El ítem daba por rota una
+  marca que no se rompió: «La cargó otra cuenta» existe para contestar «¿esto lo
+  cargué yo?» —la pregunta que se reportó— y eso se contesta igual con cuatro
+  cuentas que con dos. El texto ya estaba en **indefinido**, que es por lo que
+  sobrevivió solo a dos altas: **el artículo definido es la pieza que envejece**, el
+  mismo bug que ya había pagado el rótulo de taxonomías. La pregunta de confianza de
+  B-28/B-34 no bloqueaba, porque sus dos respuestas apuntan al mismo lado — y la
+  trazabilidad de «quién tocó qué» ya existe y es mejor que un nombre en la
+  tarjeta: el historial guarda `updatedBy` en **cada** escritura, no solo en la
+  creación.
+
+  Tres asertos nuevos fijan la decisión: que el veredicto no dependa de cuántas
+  cuentas haya, que la marca no afirme que la otra es una sola, y que la autoría se
+  decida leyendo `createdBy` **y ningún otro campo** — el que se pone rojo el día
+  que alguien guarde el mail, que es cuando D-610 hay que volver a discutirla.
+
 - **`/proponer`: el primer formulario del sitio público, escrito y no anunciado**
   — **B-830 paso 9**. La página existe, valida, sube el flyer y escribe en
   `/propuestas`; lo que falta no es código sino que **App Check esté exigiendo**

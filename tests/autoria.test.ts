@@ -30,6 +30,46 @@ describe('de quién es la actividad', () => {
   it('sin sesión no se afirma nada', () => {
     expect(autoriaDe({ createdBy: 'uid_ajeno' }, undefined)).toBe('desconocida');
   });
+
+  it('el veredicto no depende de cuántas cuentas admin haya (B-179, D-610)', () => {
+    /*
+     * La clase, no la instancia. La marca se escribió con dos cuentas y desde el
+     * 2026-09-08 hay cuatro: B-179 esperaba que ahí dejara de servir. No dejó,
+     * porque `autoriaDe` compara UN uid contra el de la sesión y su respuesta a
+     * "¿esto lo cargué yo?" es la misma con dos, con cuatro y con cuarenta.
+     *
+     * Lo que este aserto mata es la forma de arreglarlo que parece razonable y
+     * no lo es: cablear el conjunto de cuentas conocidas —"si no sos vos y sos
+     * el uid de fulano, entonces ajena"—, que es el mapa uid→nombre que el
+     * comentario del módulo dice que queda viejo sin que nada falle.
+     */
+    const muchas = Array.from({ length: 40 }, (_, i) => `uid_ajeno_${i}`);
+    expect(muchas.map((u) => autoriaDe({ createdBy: u }, YO))).toEqual(muchas.map(() => 'ajena'));
+    expect(autoriaDe({ createdBy: YO }, YO)).toBe('propia');
+  });
+
+  it('la autoría se decide con `createdBy` y ningún otro campo (D-610)', () => {
+    /*
+     * D-610 cerró B-179 **sin** guardar el mail de quien carga en el documento:
+     * la trazabilidad de "quién tocó qué" ya la da el historial del §12, y un
+     * mail en el documento entra a las versiones guardadas y hay que excluirlo
+     * de cada salida pública nueva para siempre.
+     *
+     * Esto se pone rojo el día que alguien lea un campo más desde acá, que es el
+     * momento en que esa decisión hay que volver a discutirla — y en el §5.1.
+     */
+    const leidos: string[] = [];
+    const documento: Record<string, unknown> = { createdBy: 'uid_ajeno', creadoPorMail: 'a@b.c' };
+    const espia = new Proxy(documento, {
+      get(o, k) {
+        if (typeof k === 'string') leidos.push(k);
+        return o[k as string];
+      },
+    }) as { createdBy?: string | null };
+
+    expect(autoriaDe(espia, YO)).toBe('ajena');
+    expect(leidos).toEqual(['createdBy']);
+  });
 });
 
 describe('qué se muestra', () => {
@@ -49,5 +89,25 @@ describe('qué se muestra', () => {
     // No hay nombre ni mail que mostrar: `createdBy` es un uid. Y si algún día
     // se guarda el mail, este test recuerda que el §5.1 lo tiene que revisar.
     expect(texto).not.toMatch(/@/);
+  });
+
+  it('la marca no afirma que la otra cuenta sea una sola (B-811, D-610)', () => {
+    /*
+     * Con dos cuentas, "la cargó LA otra cuenta" habría sido cierto; con las
+     * cuatro que hay desde el 2026-09-08 es falso. El artículo definido —y
+     * cualquier número— es la pieza que envejece, no el mecanismo: el rótulo de
+     * taxonomías pagó exactamente este bug ("la usaron LAS dos cuentas").
+     *
+     * La marca ya estaba escrita en indefinido y por eso sobrevivió al alta de
+     * dos cuentas; el aserto es para que siga así cuando alguien la reescriba.
+     */
+    const texto = ETIQUETA_AUTORIA.ajena ?? '';
+    expect(texto).toMatch(/otra cuenta/i);
+    expect(texto, 'artículo definido: afirma que la otra cuenta es una sola').not.toMatch(
+      /\bl[ao]s? +otr[ao]/i,
+    );
+    expect(texto, 'un número acá vuelve a quedar viejo con el próximo alta').not.toMatch(
+      /\b(una|dos|tres|cuatro|cinco)\b/i,
+    );
   });
 });

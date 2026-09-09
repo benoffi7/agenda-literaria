@@ -4163,7 +4163,35 @@ que **no deciden nada** —corren contra un solo lado y se niegan a arrancar si 
 y pedirles el anuncio habría sido ruido. El detector es `enEmulador`, que es la
 variable con la que los siete lo deciden.
 
-### B-811 · La doc razona sobre «dos cuentas admin» y desde hoy son cuatro · P2
+### B-811 · La doc razona sobre «dos cuentas admin» y desde hoy son cuatro — ✅ hecho (2026-09-09) · P2
+
+> ✅ **Las filas resueltas, y la lección salió de la del hash: el problema no era el
+> número viejo, era haber escrito el argumento alrededor de un número.**
+>
+> **Lo que se rehízo** (D-57 y sus copias en `07-seguridad.md`, `analytics.ts` y la
+> cita de D-138): un hash no anonimiza, **renombra**, y lo que lo hace reversible es
+> que el conjunto de entradas sea **enumerable** — las cuentas con claim `admin` son
+> una lista finita, conocida y que crece de a una. **No existe un número de admins a
+> partir del cual hashear el mail pase a ser anonimizar.** La redacción vieja tenía
+> dos defectos y el número era el menor: le ofrecía al lector **un umbral que no
+> existe**. Sin número, las tres copias dejan de ser deuda: solo caducan si cambia
+> el razonamiento, que es mucho más raro que un alta de cuenta.
+>
+> **Y se separó un argumento que se le parecía:** D-138 (`creadoEn` al día y no al
+> instante) cita a D-57, pero **su** argumento sí depende del número —lo que hace
+> del instante de carga una agenda de trabajo es que haya **un solo** admin—, así
+> que conserva su conteo a propósito y con el motivo escrito.
+>
+> **Lo que se corrigió como conteo:** el § `aprobada` del modelo (y su «el
+> desplegable de **la otra persona**», otro definido-singular expirado), las
+> menciones de `04-funcionalidades.md`, la fila «quién la cargó» de D-74 —que la
+> tabla no listaba y apareció al barrer el archivo— y `reportes.ts`, al que se le
+> sacó el número **del todo**: su conclusión no depende de él, así que dejarlo en
+> «cuatro» era esperar el alta siguiente.
+>
+> **Lo que se decidió no tocar,** para que no se re-marque: los «Contexto» de D-26,
+> D-28, D-32, D-73, D-104 y D-124 dicen «dos cuentas» pero describen el estado del
+> día en que se decidió, ninguno apoya su conclusión en el número, y son historial.
 
 **Encontrado al agregar la cuarta** (2026-09-08). Varios lugares no solo *dicen*
 dos: **argumentan** sobre dos, y ese argumento cambia con cuatro.
@@ -9049,7 +9077,32 @@ el orden importa:
 
 Sale con B-70/B-71, cuando `guardar()` deje de vivir dentro del componente.
 
-### B-179 · Con tres admins, «otra cuenta» deja de identificar a nadie · P2
+### B-179 · Con tres admins, «otra cuenta» deja de identificar a nadie — ✅ decidido: no se hace (2026-09-09) · P2
+
+> ✅ **Cerrado con D-610, y al revés de como el ítem lo planteaba: la marca no se
+> rompió — se rompió una frase sobre la marca.**
+>
+> El trabajo de «La cargó otra cuenta» es contestar **«¿esto lo cargué yo?»**, que
+> es textualmente la pregunta que se reportó en B-130, y esa se contesta igual de
+> bien con las cuatro cuentas que hay que con las dos que había. Lo que caducó fue
+> un efecto de al lado —que «no fuiste vos» implicara «fue la otra persona»— que
+> nunca fue el requerimiento. El texto **ya estaba escrito en indefinido** («*otra*
+> cuenta») y por eso sobrevivió solo a dos altas: lo falso era el comentario que lo
+> justificaba. Mismo bug, y del mismo tamaño, que el rótulo de taxonomías que B-811
+> ya había arreglado: **el artículo definido es la pieza que envejece.**
+>
+> **La pregunta de B-28/B-34 no bloqueaba**, y eso es lo que lo destrabó: sus dos
+> respuestas apuntan al mismo lado. Con cuentas de confianza, perder la
+> identificación es puro costo y no compra privacidad —ya leen y escriben todo lo de
+> las demás—; sin confianza, hace falta **más** trazabilidad. Y esa ya existe y es
+> mejor que un nombre en la tarjeta: **el historial del §12 guarda `updatedBy` en
+> cada escritura**, o sea quién cambió *qué* y no solo quién creó. El mail en el
+> documento contestaría peor algo ya contestado, pagando los dos costos que este
+> mismo ítem había anotado.
+>
+> Fijado con tres asertos en `tests/autoria.test.ts`. El tercero —«la autoría se
+> decide con `createdBy` y ningún otro campo»— es el que se pone rojo si alguien
+> guarda el mail, que es el momento de reabrir esto.
 
 > ⚠️ **El disparador de este ítem ya pasó, y dos veces.** Desde el **2026-09-08**
 > hay **cuatro** cuentas con claim `admin` (eran dos hasta esa mañana), así que la

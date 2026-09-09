@@ -68,13 +68,17 @@ const pendientes: EventoMedido[] = [];
 const MAX_PENDIENTES = 30;
 
 /**
- * Identificador de perfil, para poder distinguir a las dos personas que cargan
- * sin saber quién es cada una.
+ * Identificador de perfil, para poder distinguir a las personas que cargan sin
+ * saber quién es cada una.
  *
  * Es un valor **aleatorio generado en el navegador**, no derivado de ningún
- * dato personal. No se usa el uid ni el mail, y tampoco un hash de ellos: el
- * conjunto de admins es de dos personas conocidas, así que un hash del mail se
- * revierte probando dos entradas — sería el mail con otro nombre.
+ * dato personal. No se usa el uid ni el mail, y tampoco un hash de ellos — y el
+ * motivo **no es cuántos admins hay**, es que el conjunto de admins es
+ * **enumerable**: son las cuentas con claim `admin`, una lista finita, conocida
+ * y que crece de a una. Revertir el hash es hashear cada candidato y comparar,
+ * y eso no se encarece al sumar una cuenta. No existe un número de admins a
+ * partir del cual hashear el mail pase a ser anonimizar: sería el mail con otro
+ * nombre. Ver **D-57**, que es donde vive el razonamiento entero.
  *
  * Vive en `localStorage`, así que sobrevive a las sesiones del panel y se
  * pierde si se limpia el navegador. Ese olvido es aceptable: sirve para

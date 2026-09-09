@@ -980,10 +980,18 @@ La consecuencia es la propiedad que importa: **no depende de que cada punto de
 medición se acuerde de filtrar.** Un `medir()` mal escrito que pase el
 formulario entero produce un payload vacío, no una fuga.
 
-El identificador que distingue a las dos personas es un valor **aleatorio**
+El identificador que distingue a las personas que cargan es un valor **aleatorio**
 generado en el navegador y guardado en `localStorage`, no el uid ni el mail, y
-tampoco un hash de ellos: con dos admins conocidos, un hash del mail se
-revierte probando dos entradas (D-57).
+tampoco un hash de ellos.
+
+**Y el motivo no es cuántos admins hay** (eran dos, desde el 2026-09-08 son
+cuatro): un hash no anonimiza, **renombra**, y lo que decide si se puede revertir
+es que el conjunto de entradas sea **enumerable**. Acá lo es por construcción —son
+las cuentas con claim `admin`, una lista finita, conocida y que crece de a una—,
+así que revertirlo es hashear cada candidato y comparar, y sumar una cuenta no lo
+encarece. **No existe un número de admins a partir del cual hashear el mail pase a
+ser anonimizar** (D-57, reescrito con B-811 justamente porque la redacción anterior
+contaba admins y sugería un umbral que no existe).
 
 ### Cómo verificar
 

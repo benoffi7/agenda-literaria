@@ -43,12 +43,15 @@ casi toda actividad tiene, y ya se encuentran con el buscador y se administran
 desde «Opciones». La decisión vive en un módulo puro y no en el JSX, que es cómo
 `destacado` se quedó sin mostrar durante meses.
 
-Y, **si la cargó la otra cuenta, lo marca**
+Y, **si la cargó otra cuenta, lo marca**
 (B-130). Lo propio no lleva marca: si todo lleva marca, la
-marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no
-hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra cuenta" alcanza
-para saber quién; con tres deja de alcanzar y ahí hay que guardar el mail
-(B-179).
+marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no hay
+nombre que mostrar sin ir a buscarlo, **y se decidió que siga así con cuatro
+cuentas** (D-610): lo que la marca contesta es «¿esto lo cargué yo?», que es la
+pregunta que se reportó, y eso no se degrada con la cantidad — dice «*otra*
+cuenta», indefinido, no «la otra». Lo que caducó con la tercera cuenta fue un
+efecto de al lado, no el requerimiento. Y «quién tocó qué» ya lo contesta el
+historial (§12), que guarda `updatedBy` en **cada** escritura (B-179).
 
 Cada tarjeta dice, de arriba abajo: el **badge de estado** con las marcas al lado,
 el **título** (hasta dos renglones, no cortado con puntos suspensivos), **tipo y
@@ -67,10 +70,7 @@ esta última solo en las **publicadas** que no tienen imagen — una publicada s
 flyer ya está afuera de la cartelera, un borrador todavía no. Y, **si la cargó la
 otra cuenta, lo marca** (B-130), en su propio renglón y en la tinta más apagada:
 dice de quién es, no algo que haya que atender. Lo propio no lleva marca: si todo
-lleva marca, la marca deja de avisar. No se muestra un nombre porque `createdBy`
-es un uid y no hay nombre que mostrar sin ir a buscarlo — con dos cuentas "otra
-cuenta" alcanza para saber quién; con tres deja de alcanzar y ahí hay que guardar
-el mail (B-179).
+lleva marca, la marca deja de avisar. No se muestra un nombre porque `createdBy` es un uid y no hay nombre que mostrar sin ir a buscarlo. **Y se decidió que siga así con cuatro cuentas** (D-610): lo que la marca contesta es «¿esto lo cargué yo?», que es la pregunta que se reportó, y eso no se degrada con la cantidad de cuentas — dice «*otra* cuenta», indefinido, no «la otra». Lo que caducó con la tercera cuenta fue un efecto de al lado, no el requerimiento. Y «quién tocó qué» ya lo contesta el historial (§12), que guarda `updatedBy` en **cada** escritura y no solo en la creación (B-179, D-610).
 
 **Qué dice cada tarjeta se decide afuera del componente**, en
 [`src/lib/tarjetaDelPanel.ts`](../src/lib/tarjetaDelPanel.ts), puro y con sus
@@ -520,8 +520,8 @@ aparece sola en el desplegable de la otra:
 | Quién | Qué ve de una opción recién creada |
 |---|---|
 | quien la creó | la ve y la puede elegir, marcada **"(sin aprobar)"** |
-| la otra cuenta | no la ve en el desplegable ni en las sugerencias |
-| la otra cuenta, editando una actividad que ya la usa | ve su etiqueta con "(sin aprobar)" y el valor no se pierde |
+| otra cuenta | no la ve en el desplegable ni en las sugerencias |
+| otra cuenta, editando una actividad que ya la usa | ve su etiqueta con "(sin aprobar)" y el valor no se pierde |
 | el sitio público y el calendario | la etiqueta se muestra normal (no el slug) |
 
 Lo que **no** cambia: la actividad se guarda con ese slug sin ninguna fricción,
@@ -569,7 +569,7 @@ está aprobada. Es donde el §4.3 se vuelve accionable (D-102):
 |---|---|---|
 | **Renombrar** | corrige cómo se ve la etiqueta, **sin mover el slug** | las creadas con "Otro" |
 | **Borrar** | la saca de las listas | las creadas con "Otro" |
-| **Aprobar** | la hace visible para la otra cuenta | las que quedaron pendientes |
+| **Aprobar** | la hace visible para las demás cuentas | las que quedaron pendientes |
 | **Color** | elige con qué matiz escribe el sitio esa categoría | **los tipos de actividad, incluidas las base** |
 
 Las opciones **base** están marcadas y no tienen acciones de identidad: son las que
