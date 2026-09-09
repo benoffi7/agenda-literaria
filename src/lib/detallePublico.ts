@@ -353,6 +353,39 @@ export interface DetallePublico {
     precio: string;
   };
 
+  /**
+   * **Desde cuándo se declara vigente el `Offer`** — B-812, o `null` si no hay
+   * fecha con la que decirlo.
+   *
+   * Sale de `creadoEn` (D-138), la fecha de alta ya recortada al día, y **se
+   * llama por su uso y no por su origen**: lo que esta página publica no es la
+   * fecha de alta de un documento, es desde cuándo esto se ofrece. Que el valor
+   * coincida con las dos cosas es lo que hace barata la afirmación; que el campo
+   * se llame así es lo que evita que mañana alguien lo pinte como «cargado el
+   * …», que sería la agenda de trabajo del dueño en una página indexada.
+   *
+   * ── Por qué no es el dato honesto, y por qué se emite igual ───────────────
+   * El dato honesto sería «desde cuándo se puede inscribir», y **ese campo no
+   * existe**: `inscripcion` tiene `cierra` y no tiene «abre» (§3.1). Tenerlo es
+   * un campo del modelo entero —formulario, schema, proyección y las dieciocho
+   * salidas— y B-812 lo deja escrito como la opción cara. Lo que se emite en su
+   * lugar **nunca dice que la oferta empezó más tarde de lo que empezó**: nada
+   * se pudo ofrecer antes de existir, así que la fecha de alta es una cota
+   * inferior y no una invención. Ésa es la diferencia con el `price: '0'` que la
+   * regla 4 rechaza, donde el valor falso es justo el que una persona lee.
+   *
+   * ── Qué publica de nuevo: nada ───────────────────────────────────────────
+   * El mismo día, con la misma precisión, ya sale en el `events.json` de esta
+   * misma actividad (salida 1, D-138). Es el argumento de B-733 —«el mismo dato
+   * en el mismo documento»— corrido una salida. **La hora no viaja**, que es lo
+   * único que D-138 protege, y la página no lo pinta: el único consumidor es el
+   * `validFrom` del `Offer`.
+   *
+   * `null` cuando `creadoEn` viene vacío —el sentinel de `serverTimestamp()`
+   * todavía sin resolver—: sin fecha no se emite la clave, nunca un `''`.
+   */
+  ofertaDesde: string | null;
+
   inscripcion: {
     requiere: boolean;
     /** El canal, en texto. Sale **también** con el cupo completo (D-127). */
@@ -1252,6 +1285,14 @@ export const detalleDeActividad = (
       };
     })(),
 
+    /*
+     * B-812 — el `validFrom` del `Offer`. Ver `DetallePublico.ofertaDesde`: el
+     * campo se llama por su uso y no por su origen. El `|| null` es lo que evita
+     * publicar un `validFrom: ''` cuando `createdAt` todavía es el sentinel de
+     * `serverTimestamp()` y `toPublic` devolvió la cadena vacía.
+     */
+    ofertaDesde: a.creadoEn || null,
+
     inscripcion,
 
     organizador: {
@@ -1386,7 +1427,8 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
  *    item completo**, no una cáscara con fechas: hereda de la actividad el
  *    lugar, la descripción y el organizador —el mismo hecho en otra fecha—,
  *    porque `location` es obligatorio en un `Event` (**B-721**). El `offers`,
- *    en cambio, se vuelve a decidir encuentro por encuentro: ver la rama de la
+ *    en cambio, se vuelve a decidir encuentro por encuentro, y el `location` se
+ *    cae cuando hay más de una forma de cursar (**B-734**): ver la rama de la
  *    serie, al final de esta función.
  * 3. **Una sesión cancelada conserva su fecha** con `eventStatus:
  *    EventCancelled`. Google pide el `startDate` original: sin él no puede
@@ -1397,7 +1439,10 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
  *    taller arancelado es un dato falso publicado en un formato que las máquinas
  *    creen (**B-114** pide el campo de monto que falta). Y no se emite `offers`
  *    con la actividad cancelada, con la inscripción cerrada, **ni con la
- *    actividad ya pasada** (B-650): ver `ofrecible`, más abajo.
+ *    actividad ya pasada** (B-650): ver `ofrecible`, más abajo. Y lleva
+ *    `validFrom` con la fecha de alta cuando la hay (**B-812**,
+ *    `DetallePublico.ofertaDesde`): no es «desde cuándo se puede inscribir»
+ *    —ese campo no existe— pero es una cota inferior y no una invención.
  * 5. **`performer` solo si hay tallerista.** No se inventa el organizador como
  *    performer.
  * 6. **Nada de `aggregateRating`, `review`, ni `Offer` sin respaldo.** Marcar lo
@@ -1537,6 +1582,20 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
               : d.arancel.monto != null
                 ? { price: String(d.arancel.monto), priceCurrency: 'ARS' }
                 : {}),
+            /*
+             * **`validFrom`, con la cota inferior y no con el dato que falta** —
+             * B-812. Es el único de los nueve avisos del informe «Eventos» que era
+             * código y no dato faltante (24 elementos, lectura del 2026-09-08): el
+             * campo no se emitía nunca, y sin él Google trata la oferta como
+             * válida desde siempre.
+             *
+             * Lo que va es `ofertaDesde` —la fecha de alta, ver su docblock—, que
+             * no es «desde cuándo se puede inscribir» pero tampoco lo inventa:
+             * nada se pudo ofrecer antes de existir. **Sin fecha no se emite la
+             * clave**: un `validFrom: ''` es peor que el aviso, porque el aviso
+             * dice que falta un dato y la cadena vacía dice que hay uno.
+             */
+            ...(d.ofertaDesde ? { validFrom: d.ofertaDesde } : {}),
             availability: 'https://schema.org/InStock',
             category: d.arancel.etiqueta,
             // §5.4 — dónde se consigue: **esta página**, nunca el canal de
@@ -1615,19 +1674,55 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
    * —un `maximumAttendeeCapacity`, digamos— se le escaparía, y esta rama lo
    * multiplicaría por N encuentros. Lo señaló el `auditor-privacidad`.
    *
-   * **El caveat del `location`**, y es de honestidad de datos y no de
-   * privacidad: con **más de una fila de modalidad** (B-224, «presencial los
-   * martes y por Meet los jueves») la raíz decía «la serie ocurre en estos
-   * lugares» y cada encuentro pasa a decir «*esta* fecha ocurre en todos
-   * ellos». `modalidadDeDetalle` no lleva el `inicio`/`fin` de la fila al
-   * view-model, así que el JSON-LD **no puede** saber qué encuentro va con qué
-   * lugar. No es una fuga —el conjunto de lugares ya era público y es el
-   * mismo— y no es más de lo que dice la página, que tampoco los reparte; pero
-   * es una afirmación más fina que el dato que la respalda. Hoy no hay ninguna
-   * actividad publicada con más de una fila, así que el caso es hipotético;
-   * queda anotado acá y en la regla 7 del §5.3 para cuando aparezca.
+   * **El caveat del `location` dejó de ser un caveat** — B-734, y es de
+   * honestidad de datos y no de privacidad. Con **más de una fila de modalidad**
+   * (B-224, «presencial los martes y por Meet los jueves») la raíz dice «la serie
+   * ocurre en estos lugares», que es cierto, y cada encuentro pasaba a decir
+   * «*esta* fecha ocurre en todos ellos», que nadie sabe: `modalidadDeDetalle` no
+   * lleva el `inicio`/`fin` de la fila al view-model, así que el JSON-LD **no
+   * puede** saber qué encuentro va con qué lugar. No era una fuga —el conjunto de
+   * lugares ya es público y es el mismo— pero era una afirmación más fina que el
+   * dato que la respalda, o sea la regla 6 al revés.
+   *
+   * Ahora el `location` **sale de la herencia** en ese caso (`repartible`, abajo)
+   * y el encuentro no dice dónde. Es la primera de las dos salidas que B-734
+   * anota, y la barata: lo devuelve al item incompleto que B-730 arregló, que es
+   * el estado que «Google tolera heredando del padre» —la raíz sigue teniendo los
+   * lugares—. La buena es la otra: llevar las fechas de cada fila al view-model y
+   * repartir los lugares de verdad, y es más grande que este ítem porque hoy
+   * `ModalidadPublica` ni siquiera trae la ventana (§5.1: «no sale a ninguna de
+   * las dieciocho salidas», y usarla acá aunque no se publique es una decisión de
+   * `toPublic`, no de este módulo).
+   *
+   * **`eventAttendanceMode` se queda, y no es un olvido**: con filas mixtas dice
+   * `Mixed`, o sea «esto se cursa de las dos formas», que es una propiedad de la
+   * actividad —y un `subEvent` es la misma actividad en otra fecha—. El
+   * `location` no: nombra lugares concretos, que es la afirmación fina. Si el
+   * reparto de verdad llega, los dos se resuelven juntos.
    */
-  const { '@context': _contexto, name: _nombre, eventStatus: _estado, offers, ...deLaActividad } = comun;
+  /*
+   * **¿Se puede atribuir un lugar a una fecha?** — B-734, ver el caveat de
+   * arriba. La cuenta es de **filas** y no de lugares, y ésa es la parte que se
+   * lee al revés: una fila híbrida produce dos lugares —un `Place` y un
+   * `VirtualLocation`— y de esa fecha las dos cosas son ciertas a la vez, así que
+   * ahí el `subEvent` conserva su `location`. Lo que no se puede atribuir son dos
+   * **filas**, porque cada una es una forma distinta de cursar con su propia
+   * ventana, y la ventana no llega hasta acá.
+   *
+   * Dos filas con la misma sede pierden el `location` de más: es el lado barato
+   * de equivocarse —un item incompleto que hereda del padre, contra un encuentro
+   * afirmando un lugar donde puede no ocurrir—.
+   */
+  const repartible = d.modalidades.length <= 1;
+
+  const {
+    '@context': _contexto,
+    name: _nombre,
+    eventStatus: _estado,
+    offers,
+    location,
+    ...deLaActividad
+  } = comun;
 
   return {
     ...comun,
@@ -1644,6 +1739,9 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
         const cancelado = d.cancelada || e.cancelada;
         return {
           ...deLaActividad,
+          // B-734 — solo cuando el lugar se puede atribuir a la fecha (ver
+          // `repartible`). La raíz lo sigue publicando en los dos casos.
+          ...(repartible ? { location } : {}),
           '@type': subtipo,
           /*
            * B-181 — el mismo título que el evento de Calendar, y de la misma

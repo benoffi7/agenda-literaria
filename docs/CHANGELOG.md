@@ -2,6 +2,45 @@
 
 ## Sin publicar
 
+- **El `offers` del JSON-LD dice desde cuándo, con la cota inferior y no con el
+  dato que falta** — **B-812**. `validFrom` no se emitía nunca (24 avisos del
+  informe «Eventos», el único de los nueve que era código y no dato faltante).
+
+  **Se eligió la opción 1 del ítem, y el motivo importa más que el cambio.** El
+  dato honesto sería «desde cuándo se puede inscribir» y ese campo no existe;
+  tenerlo es un `/campo-nuevo` entero. Lo que se emite es la fecha de alta, que
+  **nunca dice que la oferta empezó más tarde de lo que empezó** —nada se pudo
+  ofrecer antes de existir—, o sea una **cota inferior y no una invención**. Ésa es
+  la diferencia con el `price: '0'` que la regla 4 rechaza, donde el valor falso es
+  justo el que una persona lee.
+
+  **El ítem decía «es una línea» y no lo era.** `creadoEn` viaja a
+  `ActividadPublica`, no a `DetallePublico`, y había un caso —pedido por el
+  `auditor-privacidad`— afirmando que la fecha de alta **no** llega al detalle. Así
+  que esto **abre una celda que estaba cerrada con un test**, y lo que lo hace
+  aceptable es que el mismo día, con la misma precisión, **ya sale en el
+  `events.json` de la misma actividad** (D-138). El campo se llama `ofertaDesde` y
+  no `creadoEn`: lo que se publica es «desde cuándo se ofrece», y el nombre es lo
+  que evita que mañana alguien lo pinte como «cargado el …». El test viejo no se
+  borró, se **acotó** — la fecha puede estar en exactamente un campo y en ningún
+  otro, que es más fuerte que el original.
+
+- **Con más de una forma de cursar, cada encuentro afirmaba en cuál de todas
+  ocurre** — **B-734**, honestidad de datos y no privacidad. La raíz decía «la
+  serie ocurre en estos lugares», que es cierto, y cada `subEvent` heredaba eso
+  diciendo «*esta* fecha ocurre en todos ellos», que nadie sabe. Ahora el
+  `location` sale de la herencia en ese caso.
+
+  **La salida buena no se puede hacer desde la página, y ése es el hallazgo:**
+  repartir los lugares de verdad necesita `modalidades[].inicio`/`fin` en
+  `ModalidadPublica`, y hoy ésa es una fila explícita del «Qué NUNCA sale» (D-130)
+  — o sea una decisión de `toPublic`, no de esta salida.
+
+  **Y la cuenta es de filas y no de lugares**, que el ítem no decía: una fila
+  híbrida produce un `Place` y un `VirtualLocation`, y de esa fecha las dos cosas
+  son ciertas a la vez. Escribir la guarda sobre la cantidad de lugares rompe el
+  ciclo híbrido, que sí es un caso real; tiene su caso.
+
 - **El barrido de huérfanas le había puesto fecha de vencimiento a la función de
   restaurar** — **B-560**. `limpiarImagenesHuerfanas` (B-221) cruzaba los
   `storagePath` de los documentos **en vivo** contra el bucket y no miraba

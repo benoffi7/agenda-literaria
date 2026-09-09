@@ -720,21 +720,38 @@ describe('cuál es el próximo encuentro', () => {
 });
 
 describe('las fechas de auditoría no llegan al detalle', () => {
-  it('ni la de alta ni la de edición: la celda 6 que estaba resuelta por omisión', () => {
+  it('la de edición nunca, y la de alta en un solo campo — B-812 movió media celda', () => {
     /*
      * Lo pidió el `auditor-privacidad`, y es un hueco que ningún otro chequeo
      * podía ver: el barrido de centinelas no mira fechas —un `Timestamp` no lleva
      * un centinela adentro— así que «el detalle no publica `creadoEn`» estaba
      * decidido por omisión y nada lo sostenía.
      *
-     * La página **no tiene por qué decirlas**: `creadoEn` es la clave de un orden
-     * del listado y `updatedAt` no sale a ninguna salida. El fixture tiene las dos
-     * distintas (`2026-08-01` de alta, `2026-08-02` de edición) justamente para
-     * poder buscarlas por valor.
+     * **B-812 dio vuelta la mitad de esa celda, y este caso es lo que impide que
+     * se dé vuelta entera.** La fecha de alta llega ahora a **un solo campo**
+     * —`ofertaDesde`, que es el `validFrom` del `Offer`— y no como una fecha de
+     * auditoría más: el resto del view-model sigue sin verla. `updatedAt` no sale
+     * a ninguna salida y eso no se movió. El fixture tiene las dos distintas
+     * (`2026-08-01` de alta, `2026-08-02` de edición) justamente para poder
+     * buscarlas por valor.
+     *
+     * MUTACIÓN PROBADA: agregar un segundo campo con la misma fecha —un
+     * `creadoEn: a.creadoEn` al lado de `ofertaDesde`, que es lo que uno escribe
+     * el día que quiera poner «cargado el …» en la ficha— deja este caso en rojo
+     * aunque el `validFrom` siga saliendo idéntico.
      */
-    const texto = JSON.stringify(detalleDe());
-    expect(texto, 'la fecha de alta no es del detalle').not.toContain('2026-08-01');
-    expect(texto, 'la fecha de edición no sale a ninguna salida').not.toContain('2026-08-02');
+    const d = detalleDe();
+    expect(
+      JSON.stringify(d),
+      'la fecha de edición no sale a ninguna salida',
+    ).not.toContain('2026-08-02');
+
+    expect(d.ofertaDesde, 'la fecha de alta es la del `validFrom`').toBe('2026-08-01');
+    const { ofertaDesde: _validFrom, ...resto } = d;
+    expect(
+      JSON.stringify(resto),
+      'la fecha de alta solo puede estar en `ofertaDesde`',
+    ).not.toContain('2026-08-01');
   });
 });
 
@@ -1133,6 +1150,79 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     });
   });
 
+  it('el `offers` dice desde cuándo, con la fecha de alta (B-812)', () => {
+    /*
+     * El único de los nueve avisos del informe «Eventos» que era **código y no
+     * dato faltante**: `validFrom` no se emitía nunca (24 elementos, lectura del
+     * 2026-09-08). El dato honesto sería «desde cuándo se puede inscribir» y ese
+     * campo no existe (§3.1), así que va la fecha de alta: no dice que la oferta
+     * empezó más tarde de lo que empezó, porque nada se pudo ofrecer antes de
+     * existir. Ver `DetallePublico.ofertaDesde`.
+     *
+     * Se afirma contra **dos** altas distintas y no contra una: con una sola, un
+     * `validFrom` escrito a mano con la fecha del fixture pasaría igual.
+     *
+     * MUTACIÓN PROBADA: derivar `ofertaDesde` de la primera sesión —la otra fecha
+     * que este módulo tiene a mano, y la que uno agarra si no lee el ítem— deja
+     * las dos aserciones en rojo. Devolverlo siempre `null` también, y arrastra
+     * de paso al caso de la precisión y al de las fechas de auditoría.
+     */
+    const agosto = datosEstructurados(
+      detalleDe({ arancel: 'gratis', creadoEn: '2026-08-01T00:00:00Z' }),
+    )!;
+    expect(agosto.offers).toMatchObject({ validFrom: '2026-08-01' });
+
+    const julio = datosEstructurados(
+      detalleDe({ arancel: 'gratis', creadoEn: '2026-07-15T21:30:00Z' }),
+    )!;
+    expect(julio.offers).toMatchObject({ validFrom: '2026-07-15' });
+  });
+
+  it('el `validFrom` es del día: la hora del alta no viaja (B-812, D-138)', () => {
+    /*
+     * D-138 — con **un solo admin**, el instante exacto de cada carga no es una
+     * fecha, es su agenda de trabajo: a qué hora carga y en qué tandas. `toPublic`
+     * ya recorta al día y lo que este caso afirma es que la salida 6 no lo
+     * deshace, que es lo único nuevo que B-812 podía romper.
+     *
+     * MUTACIÓN PROBADA: emitir `` `${d.ofertaDesde}T00:00:00-03:00` `` —completar
+     * la fecha a un instante, que es lo que uno hace mirando los ejemplos de
+     * schema.org, todos con `dateTime`— deja este caso en rojo. Es la forma real
+     * de romperlo: la hora exacta del alta ya no llega hasta acá (`toPublic` la
+     * recortó), así que lo que hay que impedir es que alguien la reponga
+     * inventada.
+     */
+    const ld = datosEstructurados(
+      detalleDe({ arancel: 'gratis', creadoEn: '2026-08-01T03:14:52.881Z' }),
+    )!;
+    const desde = String((ld.offers as Record<string, unknown>).validFrom);
+    expect(desde).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(desde).not.toContain('T');
+  });
+
+  it('sin fecha de alta no se emite `validFrom`, y nunca uno vacío (B-812)', () => {
+    /*
+     * El sentinel de `serverTimestamp()` todavía sin resolver: `toPublic` devuelve
+     * la cadena vacía (su propio caso lo fija) y acá lo que importa es que la
+     * clave **no salga**. Un `validFrom: ''` es peor que el aviso de Search
+     * Console — el aviso dice que falta un dato y la cadena vacía dice que hay
+     * uno, en el formato que las máquinas creen.
+     *
+     * MUTACIÓN PROBADA: cambiar el spread condicional por
+     * `validFrom: d.ofertaDesde ?? ''` deja este caso en rojo y ningún otro.
+     */
+    const d = detalleDe(
+      { arancel: 'gratis' },
+      { createdAt: { _methodName: 'serverTimestamp' } as never },
+    );
+    expect(d.ofertaDesde).toBeNull();
+    const offers = datosEstructurados(d)!.offers as Record<string, unknown>;
+    // Control positivo: sin esto, un `offers` que dejó de emitirse por cualquier
+    // otro motivo haría pasar el `not.toHaveProperty` de abajo.
+    expect(offers).toMatchObject({ price: '0' });
+    expect(offers).not.toHaveProperty('validFrom');
+  });
+
   it('performer solo si hay tallerista (regla 5)', () => {
     expect(datosEstructurados(detalleDe({ tallerista: 'Ana Ruiz' }))!.performer).toMatchObject({
       name: 'Ana Ruiz',
@@ -1164,6 +1254,77 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     const ld = datosEstructurados(detalleDe({ modalidades: ['presencial', 'virtual'] }))!;
     const lugares = ld.location as Record<string, unknown>[];
     expect(lugares.map((l) => l['@type'])).toEqual(['Place', 'VirtualLocation']);
+  });
+
+  it('con dos formas de cursar, ningún subEvent afirma en cuál ocurre (B-734)', () => {
+    /*
+     * **Honestidad de datos y no privacidad**: no hay fuga, el conjunto de lugares
+     * ya es público y es el mismo. Lo que pasaba es que la raíz decía «la serie
+     * ocurre en estos lugares» —cierto— y cada encuentro decía «*esta* fecha
+     * ocurre en todos ellos», que nadie sabe: `modalidadDeDetalle` no lleva el
+     * `inicio`/`fin` de la fila al view-model, así que el JSON-LD no puede saber
+     * qué encuentro va con qué lugar. Es la regla 6 al revés — afirmar más fino
+     * que el dato que lo respalda.
+     *
+     * La serie **sí** los sigue publicando, y eso es la mitad que hace que esto no
+     * sea una regresión de B-730: el item queda incompleto en el modo que Google
+     * tolera, heredando del padre, y no sin lugar en ninguna parte.
+     *
+     * MUTACIÓN PROBADA: volver a heredar `location` siempre —sacarlo del
+     * destructuring y del spread condicional, que es como estaba— deja este caso
+     * en rojo y ningún otro: el fixture normal tiene una sola fila.
+     */
+    const ld = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        modalidades: ['presencial', 'virtual'],
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+      }),
+    )!;
+    expect((ld.location as Record<string, unknown>[]).map((l) => l['@type'])).toEqual([
+      'Place',
+      'VirtualLocation',
+    ]);
+
+    const subs = ld.subEvent as Record<string, unknown>[];
+    expect(subs).toHaveLength(2);
+    for (const sub of subs) {
+      expect(sub).not.toHaveProperty('location');
+      // Y el resto de la herencia de B-721 no se toca: lo que se cae es la
+      // afirmación fina, no el item.
+      expect(sub.description).toBe(ld.description);
+      expect(sub.organizer).toEqual(ld.organizer);
+      expect(sub.startDate).toBeTruthy();
+    }
+  });
+
+  it('una sola fila híbrida conserva el lugar, aunque sean dos (B-734)', () => {
+    /*
+     * **La cuenta es de filas y no de lugares**, y este caso es el que lo fija:
+     * una fila híbrida produce un `Place` y un `VirtualLocation`, y de cada fecha
+     * de ese ciclo las dos cosas son ciertas a la vez. Lo que no se puede atribuir
+     * son dos **filas** —dos formas de cursar, cada una con su ventana—.
+     *
+     * MUTACIÓN PROBADA: escribir la guarda sobre `lugares.length <= 1`, que es lo
+     * que uno escribe leyendo «con más de un lugar no se sabe», deja este caso en
+     * rojo: el ciclo híbrido pierde el lugar de todos sus encuentros sin que nada
+     * más cambie.
+     */
+    const ld = datosEstructurados(
+      detalleDe({
+        esCiclo: true,
+        modalidades: ['hibrido'],
+        fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
+      }),
+    )!;
+    expect((ld.location as Record<string, unknown>[]).map((l) => l['@type'])).toEqual([
+      'Place',
+      'VirtualLocation',
+    ]);
+
+    const subs = ld.subEvent as Record<string, unknown>[];
+    expect(subs).toHaveLength(2);
+    for (const sub of subs) expect(sub.location).toEqual(ld.location);
   });
 
   it('el `url` del VirtualLocation es la canónica de la actividad, no el link de la reunión (§5.4)', () => {

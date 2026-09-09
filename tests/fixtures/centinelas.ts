@@ -359,7 +359,11 @@ export const VALORES_NO_TEXTO: Record<string, string> = {
     'forma en el camino, así que las dos celdas se afirman por clave en `toPublic.test.ts`.',
   createdAt:
     'D-138 — la fecha de alta sale al índice (es la clave del orden «Recién agregadas») y la ' +
-    'afirma `eventsJson.test.ts` por clave, con su caso de ausencia.',
+    'afirma `eventsJson.test.ts` por clave, con su caso de ausencia. Y desde **B-812** sale ' +
+    'también a la salida 6, como el `validFrom` del `Offer` (`ofertaDesde`): esa mitad la ' +
+    'afirma `detallePublico.test.ts`, que exige que esté en **exactamente un campo** del ' +
+    'view-model y que la hora no viaje. Las dos celdas están declaradas acá porque el trabajo ' +
+    'de esta entrada es decir **dónde** está su barrido, y con una sola nombraba la mitad.',
   updatedAt:
     '§5.1 — no sale: es dato de trabajo interno. Se afirma comparando las claves del JSON, no ' +
     'buscando milisegundos que aparecen en cualquier salida con fechas.',

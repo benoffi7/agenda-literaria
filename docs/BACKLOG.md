@@ -11058,7 +11058,32 @@ la frase**, no corregirla: D-330 ya la tiene, y B-620 no necesita repetirla.
 
 **Dónde.** `docs/BACKLOG.md`, el cierre de **B-620**.
 
-### B-812 · El `offers` del JSON-LD no emite `validFrom`, y son 24 avisos · P3
+### B-812 · El `offers` del JSON-LD no emite `validFrom`, y son 24 avisos — ✅ hecho (2026-09-09), con la opción 1 · P3
+
+> ✅ **Hecho con la opción 1 (`creadoEn`), y la 2 queda escrita como lo que sigue.**
+> No es «desde cuándo se puede inscribir» —ese campo no existe (§3.1) y agregarlo
+> es un `/campo-nuevo` entero— pero tampoco lo inventa: **nada se pudo ofrecer
+> antes de existir**, así que es una **cota inferior**. Ésa es la diferencia con el
+> `price: '0'` que la regla 4 rechaza, donde el valor falso es justo el que una
+> persona lee.
+>
+> **Y el ítem tenía dos cosas mal, las dos en la opción 1.** `creadoEn` **no**
+> viajaba al detalle —viaja a `ActividadPublica`, y `datosEstructurados` solo ve el
+> view-model— y no era «una línea»: había un caso pedido por el
+> `auditor-privacidad` («la celda 6 que estaba resuelta por omisión») afirmando que
+> la fecha de alta **no llega al detalle**. O sea que esto **abre una celda que
+> estaba cerrada con un test**. Lo que lo hace aceptable es que el mismo día, con
+> la misma precisión, ya sale en el `events.json` de la misma actividad (D-138).
+>
+> El campo se llama **`ofertaDesde`** y no `creadoEn`: lo que se publica es «desde
+> cuándo se ofrece», y el nombre es lo que evita que mañana alguien lo pinte como
+> «cargado el …», que sería la agenda de trabajo del dueño en una página indexada.
+> El test viejo no se borró, se **acotó**: la fecha de alta puede estar en
+> exactamente un campo y en ningún otro —el segundo campo es el modo de falla
+> real— y `updatedAt` sigue sin salir a ninguna parte.
+>
+> **Lo que queda pendiente y no es de este ítem:** `inscripcion.abre`. Si alguna
+> vez se agrega, `ofertaDesde` es la única línea de esta salida que cambia.
 
 Sale del informe «Eventos» del 2026-09-08 (ver la lectura en **B-731**):
 `Falta el campo "validFrom" (en "offers")`, 24 elementos. Es el único de los
@@ -11254,7 +11279,33 @@ JSON-LD viaja adentro de ese mismo HTML — el gate no puede separar el
 `PERMITIDO_EN_EL_DETALLE` pero no en `PERMITIDO_EN_EL_JSON_LD`. Uno de los dos,
 no los dos.
 
-### B-734 · Con más de una fila de modalidad, el `location` de cada `subEvent` afirma más de lo que sabe · P3
+### B-734 · Con más de una fila de modalidad, el `location` de cada `subEvent` afirma más de lo que sabe — 🟡 hecho a medias (2026-09-09) · P3
+
+> ✅ **Hecho con la primera de las dos salidas: el `subEvent` deja de heredar
+> `location` cuando hay más de una fila.** La raíz lo sigue publicando —el conjunto
+> de lugares es de la actividad y es cierto—, así que el item vuelve al estado
+> incompleto que B-730 arregló, que es el que «Google tolera heredando del padre»,
+> y no a un encuentro sin lugar en ninguna parte.
+>
+> **La segunda salida no se puede hacer desde la página, y ése es el hallazgo.**
+> Repartir los lugares de verdad necesita `modalidades[].inicio`/`fin` en el
+> view-model, y hoy esos dos campos son una fila explícita del «Qué NUNCA sale»
+> (B-224, **D-130**). Aunque se usaran solo dentro del build para casar fila con
+> encuentro, subirlos a `ModalidadPublica` es una decisión de `toPublic` y no de
+> esta salida. Es lo que hay que decidir el día que aparezca la primera actividad
+> con dos filas.
+>
+> **Un detalle que el ítem no decía y que ahora tiene test: la cuenta es de filas,
+> no de lugares.** Una fila **híbrida** produce un `Place` y un `VirtualLocation`,
+> y de esa fecha las dos cosas son ciertas a la vez, así que conserva su
+> `location`. Escribir la guarda sobre la cantidad de lugares —que es lo que uno
+> escribe leyendo «con más de un lugar no se sabe»— rompe el ciclo híbrido, que sí
+> es un caso real de hoy.
+>
+> **`eventAttendanceMode` no se tocó, y está argumentado en el código:** con filas
+> mixtas dice «esto se cursa de las dos formas», que es una propiedad de la
+> actividad; `location` nombra lugares concretos, que es la afirmación fina. Si el
+> reparto de verdad llega, los dos se resuelven juntos.
 
 **Lo derivó el `auditor-privacidad` auditando B-730, y lo clasificó como
 honestidad de datos y no como privacidad — con razón: no hay fuga.**
