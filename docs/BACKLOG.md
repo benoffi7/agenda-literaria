@@ -698,9 +698,26 @@ tipo, su JSON y su fila en la sección.
 
 1. **Qué hace la sección con un favorito que ya no está** — el sitio es estático,
    así que la página resuelve contra los JSON del build (`events.json` y los tres
-   que vienen) y **tiene que tolerar que el slug no exista**: despublicado,
-   borrado, o —solo en actividades— que ya **pasó**. Para lo que pasó hay una
-   respuesta barata que ya existe: linkear a `/pasadas` en vez de esconderlo.
+   que vienen) y **tiene que tolerar que el slug no exista**: despublicado o
+   borrado.
+
+   **Lo que pasó lo contestó el dueño (2026-09-09): la actividad vencida sigue
+   siendo favorita**, y no se esconde. «De última se puede hacer una
+   diferenciación por color (tipo más griseada o algo). Hay que probar cómo
+   queda.» Es la decisión correcta y la barata: esconderla obliga a explicar dónde
+   se fue, y una actividad que pasó sigue diciendo algo de quien la guardó — el
+   ciclo del año que viene, el taller que se perdió. Tres cosas que se saben ya:
+
+   - **el «griseado» tiene un piso que el repo ya hace cumplir**: bajarle la tinta
+     a una tarjeta la puede dejar por debajo del contraste mínimo, y eso no es una
+     preferencia — `tests/contraste-del-sitio.test.ts` y
+     `contraste-de-superficies.test.ts` lo verifican sobre los tokens. La forma
+     que sí sobrevive a ese piso es la que el panel ya usa para lo cerrado
+     (`opacity` sobre la fila entera, no un gris nuevo), o un rótulo;
+   - **el color solo no puede ser la señal** (es la regla de accesibilidad de
+     siempre y el sitio la respeta en los estados de la tarjeta): va con una
+     palabra —«ya pasó»— y no solo con tinta;
+   - y hay a dónde mandarla: `/pasadas` existe y es el archivo del sitio.
 2. **Dónde vive la sección**: una página propia (`/mis-favoritos`) con **`noindex`
    y fuera del sitemap** —para Google estaría siempre vacía, y una página vacía
    indexada es peor que ninguna— o un panel dentro del listado.
