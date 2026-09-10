@@ -2,6 +2,42 @@
 
 ## Sin publicar
 
+- **El chequeo de la clase de B-85 sigue la llamada al módulo, y recién ahora ve
+  los tres barridos** — **B-845**. Buscaba `.get()`, `.set()` y `.update()` **en el
+  cuerpo del trigger**, y desde el corte puro/pegamento (B-77) esos verbos viven en
+  el módulo de al lado: `limpiarImagenesHuerfanas`, `limpiarVersionesHuerfanas` y
+  `borrarPropuestasVencidas` no pasaban por el chequeo. Es lo mismo que B-171 le
+  hizo al detector de B-82, y por el mismo motivo.
+
+  **El punto ciego se comprobó antes de tocar nada, con un control positivo.** La
+  misma copia mala —leer un documento de estado, hablar con la red, escribir de
+  vuelta lo leído, sin transacción— daba **rojo** escrita en `retencion-trigger.js`
+  y **verde** escrita una llamada más allá, en `retencion.js`. Esa copia quedó
+  escrita como test, con el patrón de cuerpos sintéticos que el archivo ya usaba
+  para el otro detector: no hay fixture nuevo y no hay un segundo recorrido — se
+  reusa `trazaDe`.
+
+  **El orden dejó de ser parte de la condición, y eso es deliberado.** La versión
+  anterior pedía `lectura < red < escritura`; sobre una traza ese orden no se puede
+  leer, porque `cuerpos` es el cuerpo del trigger entero y después los helpers en
+  orden de llamada, no el programa inlineado. Medido sobre `dispararRebuild`, que es
+  la instancia original de B-85: su `fetch` cae **después** de su `ref.set(fallo)`,
+  así que pedir el orden dejaría escapar la clase viva por un artefacto de la
+  concatenación. Pedir la conjunción es más estricto y es lo correcto: el único
+  blindaje que este repo acepta para esto es la transacción.
+
+  **Más estricto no salió ruidoso, y no es una esperanza.** Los tres barridos pasan
+  porque **borran** (`escritura: false`) y `dispararRebuild` pasa por su transacción
+  con los tres síntomas prendidos: las dos cosas están afirmadas, así que el
+  `toEqual([])` no puede ser un verde vacío. Doce mutaciones —siete sobre
+  `functions/` y cinco sobre el detector—, y una de ellas cobró un aserto propio:
+  `borrar lo que se leyó no es la clase` **pasaba por no tener `fetch`, no por
+  borrar**. Se le agregó la llamada a la red que le faltaba. Sin cambios de
+  producción: el ítem se cierra entero desde el test.
+
+  De ahí salió **B-862**: el detector de red conoce `fetch` y Calendar, y no el
+  resto de `googleapis`.
+
 - **La misma pregunta contestada por dos funciones: el panel y el JSON-LD ya no
   pueden discrepar sobre el flyer ni sobre el tallerista** — **B-854**. Las dos son
   la clase de B-88 en su cara menos visible: no una segunda lista de reglas escrita

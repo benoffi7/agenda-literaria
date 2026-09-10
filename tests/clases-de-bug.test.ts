@@ -803,12 +803,15 @@ const tieneGuardaDeReentrega = (t: Trigger): boolean =>
  * apagar. Con cuerpos sintéticos se prueba **el detector**, y esos cuerpos no
  * envejecen con el refactor de mañana.
  */
-const marcasDe = (cuerpo: string, helpers: Record<string, string> = {}): string =>
+const trazaFingida = (cuerpo: string, helpers: Record<string, string> = {}): Traza =>
   trazar({ archivo: 'fingido.js', nombre: 'trigger', cuerpo: sinComentarios(cuerpo) }, (_, n) =>
     helpers[n] === undefined
       ? null
       : { archivo: 'fingido.js', nombre: n, cuerpo: sinComentarios(helpers[n]!) },
-  ).marcas;
+  );
+
+const marcasDe = (cuerpo: string, helpers: Record<string, string> = {}): string =>
+  trazaFingida(cuerpo, helpers).marcas;
 
 describe('el detector de efectos duplicables discrimina — B-171', () => {
   it('un efecto que solo vive en un helper se detecta igual', () => {
@@ -980,8 +983,10 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
     return [...new Set([...locales, ...importados])];
   };
 
-  const laRedDe = (t: Trigger) =>
-    primero(t.cuerpo, new RegExp(`\\b(${[...nombresConRed(t.archivo), 'fetch'].join('|')})\\(`));
+  const reDeRed = (archivo: string) =>
+    new RegExp(`\\b(${[...nombresConRed(archivo), 'fetch'].join('|')})\\(`);
+
+  const laRedDe = (t: Trigger) => primero(t.cuerpo, reDeRed(t.archivo));
 
   it('el detector de red encuentra la llamada aunque viva en otro archivo', () => {
     // El positivo que impide el verde vacío del chequeo de abajo: si ningún
@@ -993,18 +998,216 @@ describe('clase de B-82 · todo trigger con efecto duplicable se blinda', () => 
     expect(conRed.map((t) => t.nombre)).toContain('dispararRebuild');
   });
 
+  /**
+   * ── B-845: el chequeo mira la traza, no el cuerpo del trigger ─────────────
+   *
+   * Lo mismo que B-171 le hizo al detector de B-82, y por el mismo motivo.
+   * Hasta acá los cuatro síntomas se buscaban en `t.cuerpo`, y desde
+   * que el repo adoptó el corte puro/pegamento (B-77) los verbos viven en el
+   * módulo de al lado: `limpiarImagenesHuerfanas`, `limpiarVersionesHuerfanas` y
+   * `borrarPropuestasVencidas` no tienen `.get()`, `.set()` ni `.update()`
+   * literales en el trigger, así que **ninguno de los tres pasaba por el
+   * chequeo**. Verificado con el control positivo antes de tocar nada: la misma
+   * copia mala daba rojo escrita en `retencion-trigger.js` y verde escrita una
+   * llamada más allá, en `retencion.js`. Está congelado abajo, en
+   * `describe('el detector de B-85 sigue la llamada al módulo')`.
+   *
+   * Se reusa `trazaDe` —el recorrido que ya existe— y no se escribe un segundo:
+   * el texto que se mira es el cuerpo del trigger más el de todo lo que llama,
+   * ya sin comentarios (que además arregla de arriba el falso positivo de la
+   * prosa: `laRedDe` busca sobre `t.cuerpo` **con** comentarios).
+   *
+   * ── Y por eso el orden dejó de ser parte de la condición ──────────────────
+   * La versión anterior pedía `lectura < red < escritura`. Sobre una traza ese
+   * orden **no se puede leer**: `cuerpos` es el cuerpo del trigger entero y
+   * después los de los helpers en orden de llamada, no el programa inlineado.
+   * Medido sobre `dispararRebuild`, que es la instancia original de B-85: su
+   * `fetch` cae en el texto **después** de su `ref.set(fallo)`, o sea que
+   * `red < escritura` daría falso y la clase viva se escaparía por un artefacto
+   * de la concatenación. Pedir la conjunción y no el orden es más estricto y es
+   * lo correcto: el daño es escribir lo leído del otro lado de una llamada
+   * larga, y el único blindaje que este repo acepta para eso es la transacción.
+   *
+   * Más estricto no salió ruidoso, y no es una esperanza: los tres barridos
+   * pasan porque **borran** (`escritura: false`, afirmado abajo) y
+   * `dispararRebuild` pasa por su transacción, con los tres síntomas prendidos
+   * (también afirmado abajo, que es el positivo que impide el verde vacío).
+   */
+  const textoTrazado = (t: Trigger): string => trazaDe(t).cuerpos.join('\n');
+
+  type Sintomas = { lectura: boolean; red: boolean; escritura: boolean; transaccion: boolean };
+
+  const sintomasDeB85 = (texto: string, red: RegExp): Sintomas => ({
+    lectura: /\.get\(\)/.test(texto),
+    red: red.test(texto),
+    // `.set(` de más: un `Map` en memoria también lo tiene (`ids.set(op.id, x)`,
+    // el falso positivo que el detector de B-82 nombra). Hoy no toca a ninguno
+    // —los tres barridos dan `escritura: false`, y ese aserto es lo que avisa el
+    // día que un `Map` se cuele en la traza de uno de ellos.
+    escritura: /\.(set|update)\(/.test(texto),
+    transaccion: /runTransaction\(/.test(texto),
+  });
+
+  /** ¿Se come el cambio que llegó mientras la llamada a la red estaba en vuelo? */
+  const pierdeElCambio = (s: Sintomas): boolean =>
+    s.lectura && s.red && s.escritura && !s.transaccion;
+
+  const sintomasDe = (t: Trigger): Sintomas => sintomasDeB85(textoTrazado(t), reDeRed(t.archivo));
+
+  const programadas = TRIGGERS.filter((x) => x.clase === 'onSchedule');
+
   it('B-85: ninguna función programada escribe el estado que leyó sin compararlo', () => {
-    const pierden: string[] = [];
-    for (const t of TRIGGERS.filter((x) => x.clase === 'onSchedule')) {
-      const lectura = primero(t.cuerpo, /\.get\(\)/);
-      const red = laRedDe(t);
-      const escritura = primero(t.cuerpo, /\.(set|update)\(/);
-      const transaccion = primero(t.cuerpo, /runTransaction\(/);
-      if (lectura < red && red < escritura && transaccion === Infinity) {
-        pierden.push(`${t.archivo} · ${t.nombre}`);
-      }
-    }
+    const pierden = programadas
+      .filter((t) => pierdeElCambio(sintomasDe(t)))
+      .map((t) => `${t.archivo} · ${t.nombre}`);
     expect(pierden).toEqual([]);
+  });
+
+  /**
+   * El positivo del chequeo de arriba: sin un schedule que encienda los cuatro
+   * síntomas, ese `toEqual([])` podría estar pasando porque el detector no
+   * enciende ninguno. `dispararRebuild` es la instancia original de B-85 y pasa
+   * por el único motivo aceptado — la transacción de `registrarExito`.
+   */
+  it('dispararRebuild pasa por la transacción y no por falta de síntomas', () => {
+    const t = programadas.find((x) => x.nombre === 'dispararRebuild')!;
+    const { lectura, red, escritura, transaccion } = sintomasDe(t);
+    expect({ lectura, red, escritura }).toEqual({ lectura: true, red: true, escritura: true });
+    expect(transaccion).toBe(true);
+  });
+
+  /**
+   * Y el otro lado, que es lo que B-845 vino a poder afirmar: los tres barridos
+   * del corte puro/pegamento pasan **porque borran**, no porque el chequeo no
+   * los vea. Las dos mitades importan: `lectura: true` dice que el chequeo los
+   * mira de verdad, `escritura: false` dice por qué salen limpios.
+   *
+   * Se enumeran a propósito, contra la doctrina de este archivo de afirmar la
+   * propiedad y no la lista: son los tres casos que el chequeo no veía, y lo que
+   * se congela es exactamente que ahora los ve. Un barrido nuevo no tiene que
+   * entrar acá — entra solo al chequeo de arriba, que es donde importa.
+   */
+  it('los tres barridos entran al chequeo, y pasan porque borran', () => {
+    const barridos = [
+      'limpiarImagenesHuerfanas',
+      'limpiarVersionesHuerfanas',
+      'borrarPropuestasVencidas',
+    ];
+    for (const nombre of barridos) {
+      const t = programadas.find((x) => x.nombre === nombre)!;
+      const s = sintomasDe(t);
+      expect(s.lectura, `${nombre}: el chequeo no ve su lectura`).toBe(true);
+      expect(s.escritura, `${nombre}: escribe, y eso ya no es un barrido`).toBe(false);
+    }
+  });
+
+  /**
+   * Que seguir la llamada sea lo que aporta, y no un adorno. Es el gemelo del
+   * `seguir la llamada es lo que hace visible el efecto y la guarda` de B-82: si
+   * algún día todas las lecturas volvieran al cuerpo del trigger, este test
+   * avisa — no para volver atrás, sino para que nadie crea que el seguimiento
+   * está cubierto cuando ya no se ejercita.
+   */
+  it('trazar es lo que hace visible la lectura de los barridos', () => {
+    const soloEnElModulo = programadas.filter(
+      (t) => !/\.get\(\)/.test(sinComentarios(t.cuerpo)) && /\.get\(\)/.test(textoTrazado(t)),
+    );
+    expect(soloEnElModulo.map((t) => t.nombre).length).toBeGreaterThanOrEqual(2);
+  });
+
+  /**
+   * El detector de B-85 contra cuerpos inventados — mismo criterio que
+   * `marcasDe` para el de B-82 (B-171): lo que decide si el chequeo mira algo se
+   * prueba con cuerpos sintéticos, que no envejecen con el refactor de mañana.
+   *
+   * `LA_COPIA_MALA` es la mutación con la que se verificó el punto ciego antes
+   * de ensanchar nada: leer un documento de estado, hablar con la red y escribir
+   * de vuelta lo leído, sin transacción.
+   */
+  describe('el detector de B-85 sigue la llamada al módulo — B-845', () => {
+    const LA_COPIA_MALA = `
+      const ref = db.doc('sistema/retencion');
+      const snap = await ref.get();
+      const estado = snap.exists ? snap.data() : {};
+      const respuesta = await fetch('https://api.example.com/x');
+      await ref.set({ ...estado, ultimaCorrida: Date.now(), codigo: respuesta.status });
+    `;
+
+    const pierdeFingido = (cuerpo: string, helpers: Record<string, string> = {}): boolean =>
+      pierdeElCambio(sintomasDeB85(trazaFingida(cuerpo, helpers).cuerpos.join('\n'), /\bfetch\(/));
+
+    it('la copia mala cae si está inline en el trigger', () => {
+      expect(pierdeFingido(LA_COPIA_MALA)).toBe(true);
+    });
+
+    it('y cae también un módulo más allá — el punto ciego de B-845', () => {
+      // Sin el helper resuelto, el trigger es una llamada y nada más: es
+      // literalmente lo que el chequeo veía de los tres barridos.
+      expect(pierdeFingido('await propuestasVencibles(db);')).toBe(false);
+      // Con el helper resuelto, la misma copia mala aparece. Antes de B-845
+      // esta línea daba `false`, verificado contra `functions/retencion.js`.
+      expect(
+        pierdeFingido('await propuestasVencibles(db);', { propuestasVencibles: LA_COPIA_MALA }),
+      ).toBe(true);
+    });
+
+    it('sigue la llamada más de un salto, como el otro detector', () => {
+      expect(pierdeFingido('await a();', { a: 'await b();', b: LA_COPIA_MALA })).toBe(true);
+    });
+
+    it('borrar lo que se leyó no es la clase', () => {
+      // Los tres barridos, en miniatura: leen y borran. **Con `fetch` adentro a
+      // propósito**, aunque ninguno de los tres lo tenga hoy: sin él este caso
+      // salía limpio por no tener red y no por borrar, que es otra propiedad y
+      // ya tiene su test. Lo cobró la mutación «borrar cuenta como escribir»,
+      // que dejó este aserto en verde — un test que pasa por el motivo
+      // equivocado es un test que no frena lo que dice frenar.
+      expect(
+        pierdeFingido('await barrer(db);', {
+          barrer: `
+            const snap = await db.collection('propuestas').select('estado').get();
+            await fetch('https://api.example.com/aviso');
+            for (const d of snap.docs) await d.ref.delete({ ignoreNotFound: true });
+          `,
+        }),
+      ).toBe(false);
+    });
+
+    it('sin red no es la clase: el estado no puede envejecer en vuelo', () => {
+      expect(
+        pierdeFingido('await tocar(db);', {
+          tocar: `
+            const snap = await ref.get();
+            await ref.set({ ...snap.data(), visto: true });
+          `,
+        }),
+      ).toBe(false);
+    });
+
+    it('la transacción es la salida, y también cuenta un salto más abajo', () => {
+      expect(pierdeFingido('await guardar();', { guardar: LA_COPIA_MALA })).toBe(true);
+      expect(
+        pierdeFingido('await guardar();', {
+          guardar: LA_COPIA_MALA.replace('await ref.set(', 'await db.runTransaction(tx); ref.set('),
+        }),
+      ).toBe(false);
+    });
+
+    it('un comentario que nombra la escritura no cuenta como la escritura', () => {
+      // La traza pasa por `sinComentarios`, así que la prosa que explica una
+      // guarda no puede encenderla ni apagarla. Este archivo ya se comió esa:
+      // los comentarios del repo nombran las llamadas que se buscan.
+      expect(
+        pierdeFingido('await guardar();', {
+          guardar: `
+            const snap = await ref.get();
+            const r = await fetch(URL);
+            // acá iría un ref.set({ ...snap.data() }) si no comparáramos
+            return r;
+          `,
+        }),
+      ).toBe(false);
+    });
   });
 });
 

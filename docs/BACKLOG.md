@@ -753,6 +753,23 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-862 · El detector de red del chequeo de B-85 conoce `fetch` y Calendar, y nada más de `googleapis` · P4
+
+**Lo midió el frente de B-845** al ensanchar el chequeo del otro lado.
+`helpersConRed` busca `fetch(`, `cal.events.` y `google.calendar(`, así que
+`traerAnaliticaDelSitio` —que habla con GA4 y con Search Console— da `red: false`.
+
+**Hoy no tapa nada, y el motivo es preciso:** ese schedule **no lee estado**
+(`lectura: false`), escribe una foto completa. O sea que le falta el primer
+síntoma de la clase, no solo el segundo. Pero el día que lea algo suyo —un cursor
+de la última ventana traída, por ejemplo— entra en la clase de B-85 y el chequeo
+no lo vería, **por el mismo tipo de ceguera que B-845 acaba de cerrar del otro
+lado**: el detector reconoce las formas que ya vio, no la que hay.
+
+El arreglo es una línea del regex (`google\.\w+\(` en vez de `google\.calendar\(`)
+y por eso mismo merece su ítem: **cambia el alcance del chequeo**, así que hay que
+medir qué entra que hoy no entra antes de aplicarlo, no después.
+
 ### B-860 · El `imagenUrl` del `events.json` es la tercera respuesta a «cuál es la imagen», y la única cruda · P4
 
 **Lo encontró el frente de B-854** después de unificar las otras dos.
@@ -1214,7 +1231,35 @@ Está afirmado en las **dos** direcciones en el test, así que el día que se ci
 el caso se pone rojo y hay que venir a decidirlo en vez de descubrirlo con una
 imagen rota.
 
-### B-845 · El chequeo de B-85 es ciego a todo trigger que delega en su módulo puro · P3
+### B-845 · El chequeo de B-85 es ciego a todo trigger que delega en su módulo puro — ✅ hecho (2026-09-09) · P3
+
+> ✅ **Hecho, con el punto ciego comprobado antes del arreglo y una corrección a un
+> aserto propio.**
+>
+> **El diagnóstico era correcto y se verificó con un control positivo:** la misma
+> copia mala (leer estado → `fetch` → escribir lo leído, sin transacción) daba
+> **rojo** inline en `retencion-trigger.js` y **verde** una llamada más allá, en
+> `retencion.js`. Los tres barridos no entraban al chequeo.
+>
+> El chequeo mira ahora `trazaDe(t).cuerpos`, el recorrido que ya existía — no se
+> escribió un segundo. **Lo que cambió además: el orden salió de la condición.**
+> `cuerpos` no ordena entre cuerpos, y medido sobre `dispararRebuild` su `fetch`
+> cae **después** de su `ref.set(fallo)`: pedir `red < escritura` dejaría escapar la
+> clase viva por un artefacto de la concatenación. Pedir la conjunción es más
+> estricto y es lo correcto.
+>
+> **Que no se vuelva ruidoso está afirmado, no esperado:** los tres barridos pasan
+> con `lectura: true` y `escritura: false` —los ve, y salen limpios porque borran—
+> y `dispararRebuild` pasa con los tres síntomas prendidos por su transacción, que
+> es el positivo contra el verde vacío. La copia mala vive como test con cuerpos
+> sintéticos, el patrón que el archivo ya tenía para el detector de B-82.
+>
+> **La corrección al propio trabajo:** la mutación «borrar cuenta como escribir»
+> dejó verde el aserto `borrar lo que se leyó no es la clase` — pasaba por no tener
+> red, no por borrar. Se le agregó el `fetch` que le faltaba. Sin cambios en
+> `functions/`.
+>
+> De paso quedó anotado **B-862**.
 
 **Lo señaló el `auditor-trampas` auditando B-838**, y es un punto ciego heredado y
 no un bug de ese cambio. El chequeo de la clase de B-85 —«ninguna función
