@@ -49,7 +49,7 @@ filtra — ver la advertencia después de la tabla.
 | 10 | El **archivo** `/pasadas` — HTML indexado, y el único link interno permanente de cada actividad que ya pasó (B-109) | `src/lib/pasadasPublicas.ts` (`pasadasDelSitio` decide qué entra y en qué orden; `TITULO_DE_PASADAS`, `BAJADA_DE_PASADAS`, `VACIO_DE_PASADAS` y `descripcionDePasadas` son sus frases); `src/lib/contenidoDelSitio.ts` (`vistaDePasadas`, que arma el view-model). **Su entrada es la salida 1, no el documento**: recibe `EntradaDeIndice[]`, así que solo puede sacar — y las canceladas no le llegan ni queriendo, porque nunca entran al índice (B-110). Ninguna de sus frases interpola datos de una actividad, a diferencia de la 8. La plantilla `src/pages/pasadas.astro` recibe el view-model y nada más (**D-140**) |
 | 11 | Los **hubs de búsqueda** `/tipo/{slug}`, `/barrio/{slug}`, `/gratis` y `/online` — HTML indexado, cuatro rutas con una sola productora (B-108) | `src/lib/hubsPublicos.ts` (`hubDelSitio` arma el view-model y las frases; la `meta description` **interpola hasta tres títulos**; y desde **B-107**, `coleccionSchema` arma el `CollectionPage`/`ItemList` del JSON-LD de cada hub — la misma función que usa la home, salida 1), `src/lib/contenidoDelSitio.ts` (`caminosDeTipo`, `caminosDeBarrio`, `vistaDeHubTematico`). **Deriva de la salida 1** —`EntradaDeIndice[]`—, así que solo puede sacar campos; la etiqueta va resuelta y el slug en la URL (§4.1, trampa 10) | `tests/hubsPublicos.test.ts`, `tests/barrido-de-salidas-publicas.test.ts` |
 | 12 | La **analítica del sitio público** (GA4, B-372/B-375/B-601) — el `page_view` automático más **tres** eventos propios | `src/lib/analyticsSitio.ts` (puro: el vocabulario y el saneador de `clic_inscripcion`, `filtro_sin_resultados` y `clic_triptico`, `ubicacionSinQuery` — recorta la query del `page_location`, y desde D-253 también del `page_referrer`); `src/lib/medicionSitio.ts` (el transporte: carga `gtag.js` solo con consentimiento `'aceptado'`, `medirSitio`); `src/components/sitio/AvisoDeCookies.astro` (el banner y el consentimiento, guardado en `localStorage`, nunca en Firestore). **Deriva de dos salidas y no del documento**: `via` viene de la salida 6 (`AccionDeInscripcion`, `detallePublico.ts`), y `eje`/`slug` —y, con B-601, también la clave del panel del tríptico— de la salida 1: los dos primeros de `filtros.valores` (`listadoPublico.ts`) y el tercero de `ClaveDePanel` (`ahoraPublico.ts`, el 7º productor de esa salida), así que solo puede sacar lo que esas dos ya decidieron publicar. **Con una precisión que B-798 obligó a escribir, porque la frase de arriba sola ya no describe el código:** desde ese cambio `eje` es un enum cerrado de **diez** valores y cuatro de ellos —«busqueda», «cuando», «abierta» y «cursada», que son **valores** y no funciones— dicen que un filtro que **no** es de taxonomía explicó el cero, nunca su valor; el `slug` lo arma `crudosDeFiltroSinResultados` (`analyticsSitio.ts`) **del mapa de los rieles y de ningún otro lado**, y un eje que no es de taxonomía ni lo consulta. Esa función es hoy la productora de esta celda y por eso está nombrada acá: la garantía **no** es el saneador —`lista-slugs` verifica la *forma* de un slug, y una búsqueda de una palabra en minúscula la tiene— sino de dónde sale el valor. **Y el productor no es solo nuestro código**: una vez que `gtag.js` carga, GA4 manda por su cuenta lo que su «Enhanced Measurement» trae activado — ver la advertencia de abajo, que es la que hace que esta fila no alcance sola | `tests/analyticsSitio.test.ts`, `tests/detallePublico.test.ts`, `tests/detalle-visual.test.ts` |
-| 13 | La página **`/suscribirse`** (B-230) — el `.ics` público del calendario y el mail de contacto | `src/lib/enlaces.ts` (`CALENDARIO_ICS`, `CONTACTO` y sus constructores: es el **único** lugar donde se escribe un destino externo del sitio) y `src/pages/suscribirse.astro`, que arma el texto. **No proyecta ningún documento**: no hay campo del modelo que se pueda colar por un spread, y por eso esta fila y las cinco de abajo se numeran **por la promesa, no por la proyección** — ver el párrafo de la clase | `tests/suscribirse.test.ts`, `tests/promesas-sobre-datos.test.ts` |
+| 13 | La página **`/suscribirse`** (B-230) — el `.ics` público del calendario, el mail de contacto y, desde **B-847**, el **alta al correo semanal**: la primera vez que el sitio público le manda a un tercero **un dato de una persona** | `src/lib/enlaces.ts` (`CALENDARIO_ID`, `CONTACTO`, `LISTA_DE_CORREO` y sus constructores —`urlDelIcs`, `urlDeAltaAlBoletin`, `campoTrampaDelBoletin`—: es el **único** lugar donde se escribe un destino externo del sitio), `src/lib/boletinDelSitio.ts` (las cinco promesas del correo y el texto del formulario; `formularioDelBoletin` decide si la sección existe, `tratoEnOrden` es lo que se muestra y `textoDelBoletin` el corpus del barrido de tono), `src/components/sitio/SuscribirseBoletin.astro` (el `<form method="post">`, **sin un solo script de tercero** — D-254) y `src/pages/suscribirse.astro`, que arma el texto. **No proyecta ningún documento**: no hay campo del modelo que se pueda colar por un spread, y por eso esta fila y las seis de abajo se numeran **por la promesa, no por la proyección** — ver el párrafo de la clase. **El correo no abre una fila propia**, y es una decisión: ver «El correo no es una salida nueva» más abajo | `tests/suscribirse.test.ts`, `tests/boletin-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts`, `tests/terceros-antes-del-consentimiento.test.ts` |
 | 14 | La **ayuda** `/ayuda` (B-232) — veintiuna preguntas escritas a mano, en HTML indexado | `src/lib/ayudaDelSitio.ts`. Texto libre que **afirma cosas sobre tratamiento de datos** («no te pedimos ni guardamos datos para anotarte»), y ése es el riesgo propio de esta clase: una afirmación así puede **nacer falsa** | `tests/ayuda-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
 | 15 | El **contacto** `/contacto` (B-232) — la casilla del proyecto y qué pasa después de escribir | `src/lib/contactoDelSitio.ts` y `src/lib/enlaces.ts` (`CONTACTO`). Afirma «no usamos tu dirección para nada más que responderte», que es una promesa **acotada a la casilla** y verificable: nada del repo guarda esa dirección | `tests/contacto-del-sitio.test.ts`, `tests/promesas-sobre-datos.test.ts` |
 | 16 | El **`/404`** (B-310) — la única página del sitio con `noindex` | `src/lib/noEncontrado.ts`. Lleva el buscador, la tira de hubs —la misma de la home, ya recortada— y el enlace al archivo. **No entra al `sitemap.xml`** y está en la lista de excepciones de ese test con su motivo | `tests/no-encontrado.test.ts`, `tests/sitemap.test.ts` |
@@ -161,6 +161,101 @@ Cafecito es el click de quien lo dio, con el `Referer` que el navegador manda po
 default (`strict-origin-when-cross-origin`: el origen, sin ruta ni query). El clic
 saliente **no se mide** —B-480 lo apagó en la consola de GA4—, así que la salida 12
 no crece con esta página.
+
+## El correo del sitio: la primera vez que un dato de una persona sale de acá
+
+La decisión entera —las cinco que se tomaron al construirlo— está en
+**[D-640](06-decisiones.md#d-640)**. Acá va lo que hay que saber para auditar.
+
+**Hasta B-847 el sitio público no le mandaba ni un dato de nadie a ningún
+tercero, y conviene decir con precisión qué cambió, porque no es «ahora sí».**
+Lo que había era la salida 12 —páginas ya publicadas medidas con
+consentimiento— y enlaces salientes, que le dicen a un tercero que alguien vino
+de acá y nada más. Lo que no había era **un dato que la persona escribe y que
+nosotros le pedimos**. Un correo lo tiene: la casilla de quien se anota va a
+**Mailchimp**, una empresa de Estados Unidos, y ahí queda.
+
+Las tres cosas que hacen que eso sea sostenible, y ninguna es opcional:
+
+1. **La forma es un `<form method="post">` y no el embebido con JavaScript.** El
+   embebido de Mailchimp trae `mc-validate.js` desde `chimpstatic.com` en el
+   load, o sea contacta a un tercero **antes de que nadie decida nada** y también
+   para quien apretó «Rechazar» en el banner: es exactamente lo que D-254
+   prohíbe, y ponerlo dejaría en rojo
+   `tests/terceros-antes-del-consentimiento.test.ts`, con razón. Un `<form>` no
+   contacta a nadie hasta que la persona aprieta el botón. Lo verifica además
+   `tests/boletin-del-sitio.test.ts` sobre el **fuente**, que es la mitad que
+   aquel barrido no cubre: aquél lee el `dist/` y se saltea si no hay build.
+2. **El dato no pasa por acá.** No hay Function, no hay endpoint y no hay
+   colección: el navegador de quien se anota postea **directo** a Mailchimp. El
+   sitio no ve la dirección en ningún momento, así que sigue siendo cierto que
+   este sitio no guarda un dato de nadie — lo que dejó de ser cierto es que no
+   le mande ninguno a un tercero.
+3. **La promesa se escribe donde se pide el dato.** Son cinco frases
+   (`EL_TRATO`, `src/lib/boletinDelSitio.ts`) pegadas al campo y no en una letra
+   chica: cada cuánto sale, qué trae, quién lo manda, **que la dirección la
+   recibe Mailchimp** y cómo se sale. `tests/boletin-del-sitio.test.ts` exige
+   las cinco, y exige además que el texto **no** diga «tu dirección no sale de
+   acá», que es la mentira cómoda de esta pantalla y la clase exacta de B-781.
+
+**La cadencia dice el ritmo y nombra la excepción, y eso es una decisión de
+redacción.** El dueño pidió «al menos una vez por semana»; un **piso** se
+incumple con una sola semana floja y esto vive en HTML indexado que
+`tests/promesas-sobre-datos.test.ts` barre. Así que la frase dice que sale
+semanal **y** que la semana que no haya nada no sale — la misma salida que usó
+«casi nunca trae el link de la reunión» en esta misma página y la corrección de
+`/ayuda` sobre la publicidad (B-785): nombrar la excepción en vez de aflojar la
+promesa.
+
+**El supuesto que ningún test sostiene: el doble opt-in.** La página promete que
+llega un mail de confirmación y que sin confirmar no queda nadie anotado. Eso no
+es código: es una casilla de la configuración de la lista en Mailchimp. Es la
+misma clase que los ajustes de «Enhanced Measurement» que B-480 apagó en la
+consola de GA4 —**configuración y no código, así que no hay ningún rojo que lo
+diga**— y por eso está escrito acá, en el docblock del módulo y en el checklist
+de [`08-operacion.md`](08-operacion.md). Si alguien apaga esa casilla, la página
+pasa a mentir en silencio.
+
+**Lo que el resto del sitio dice del correo se deriva de la misma constante.**
+`/ayuda` y `/apoyar` preguntan `hayBoletin()` y solo cuentan el correo del lado
+verdadero. No es prolijidad: corregir «no hay newsletter» escribiendo «hay un
+correo semanal» **con la lista apagada** es cambiar una promesa falsa por otra, y
+ningún barrido de fórmulas de negación la agarra, porque una afirmación no es una
+negación. Es el patrón de `elSitioVendeEspacio()` de
+`tests/promesas-sobre-datos.test.ts`: la premisa se lee del código que la hace
+cierta.
+
+**Y lo que no existe todavía: la lista.** `LISTA_DE_CORREO` es `null` hasta que
+el dueño la cree, y con `null` **la sección no se dibuja**. No es una
+degradación: con un `u`/`id` inventados el formulario no se rompe —postea
+igual— contra un endpoint que o no existe o **es de otra cuenta**, y ahí la
+dirección de una persona termina en la lista de un desconocido. Es el orden que
+dejó escrito B-780 con el perfil de Cafecito, y el mismo motivo: que el destino
+exista del otro lado no se sabe sin salir a la red, así que es una regla y no un
+chequeo.
+
+### El correo no es una salida nueva, y por qué
+
+Es tentador numerarlo —es un tercero, es un dato personal, es lo más nuevo que
+hay acá— y la respuesta es que no, por el criterio de **D-320** aplicado tal
+cual. Las tablas contestan «¿este campo del modelo llega a esta salida?», y este
+formulario **no recibe ni un campo del modelo**: es un `<input type="email">` y
+nada más. Una fila propia agregaría, por cada campo nuevo, una celda cuya
+respuesta es siempre «no sale» — que es exactamente el costo que D-320 decidió
+no pagar cuando el tríptico de la home se sumó como séptimo productor de la
+salida 1 en lugar de abrir la fila 20.
+
+Lo que sí hace falta es lo otro que las tablas deciden: **qué archivos mira el
+`auditor-privacidad`**. Por eso `src/lib/boletinDelSitio.ts` y
+`src/components/sitio/SuscribirseBoletin.astro` están nombrados en la fila 13 y
+el módulo está en el `description` del agente, que es lo que lo despierta
+(B-124, D-350). La cuenta sigue en **diecinueve**.
+
+El día que esto deje de ser un `<form>` —una Function que valide y limite de
+nuestro lado, la tercera opción que B-847 evaluó— cambia el análisis entero: ahí
+el dato **sí** pasa por infraestructura nuestra, hay un endpoint de escritura
+anónimo (la conversación de App Check de B-836a) y corresponde volver a hacer
+esta cuenta.
 
 ## Qué NUNCA sale
 

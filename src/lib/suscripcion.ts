@@ -1,6 +1,14 @@
 /**
  * El contenido de la página «Suscribirse» — B-230.
  *
+ * **El texto de la sección del correo no está acá**: vive en
+ * `src/lib/boletinDelSitio.ts` desde B-847. Es contenido de la misma página y
+ * podría haber entrado en este archivo; va aparte porque lo que se le verifica
+ * es otra cosa —una promesa sobre el dato de una persona, no un camino con
+ * pasos— y porque `promesas-sobre-datos.test.ts` barre por glob todo
+ * `src/lib/*DelSitio.ts`, así que ese nombre lo mete solo en la red que le
+ * corresponde.
+ *
  * ── Por qué el texto vive acá y no en el markup ───────────────────────────
  * Porque es **lo que hay que verificar**. Esta página existe para que alguien
  * que no sabe qué es un calendario suscribible termine suscripto, y la forma en

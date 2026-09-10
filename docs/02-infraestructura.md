@@ -580,6 +580,43 @@ verificar el contenido real del calendario desde la línea de comandos.
 La API key del proyecto **no** sirve para leer Calendar: las browser keys de
 Firebase tienen ese método bloqueado.
 
+## Mailchimp — la lista del correo (B-847)
+
+**Es el único servicio de tercero con una cuenta propia además de Google y
+GitHub, y el único que recibe un dato de una persona.** No tiene credencial en
+este repo y no la va a tener: el alta es un `<form method="post">` que el
+navegador de quien se anota postea **directo** a Mailchimp, así que no hay API
+key, no hay Secret Manager y no hay Function. Lo único que vive de este lado son
+cuatro valores públicos que viajan escritos en el HTML del formulario.
+
+| | |
+|---|---|
+| Cuenta | la del proyecto, con `agendaleh@gmail.com` como remitente |
+| Qué recibe | la dirección de mail de quien se anota, y nada más |
+| Dónde se escribe acá | `LISTA_DE_CORREO` en `src/lib/enlaces.ts` — los cuatro valores del formulario embebido (`cuenta`, `centro`, `u`, `id`) |
+| Plan | el gratis, mientras la lista sea chica. Está dicho en `/apoyar`, que enumera lo que cuesta |
+| Estado al 2026-09-10 | **la lista no existe todavía**: `LISTA_DE_CORREO` es `null` y la sección de `/suscribirse` no se dibuja |
+
+**Lo que hay que hacer en la consola de Mailchimp para que esto funcione, en
+este orden** — es trabajo de consola, no de código, y hasta que esté hecho el
+sitio no ofrece el correo:
+
+1. Crear la cuenta y la **audience** (la lista).
+2. **Prender el doble opt-in** en los ajustes de la audience. Es lo que la
+   página promete —«hasta que no lo confirmes no quedás anotado»— y **ningún
+   test de este repo lo puede verificar**: es la misma clase que los ajustes de
+   GA4 que B-480 apagó a mano. Si alguien lo apaga, la página miente en
+   silencio.
+3. Poner `agendaleh@gmail.com` como remitente (*from*) de la audience, que es la
+   casilla que el sitio ya usa y la que la página dice que manda.
+4. Verificar el dominio del remitente si Mailchimp lo pide, para que el correo
+   no caiga en spam.
+5. Abrir «Signup forms → Embedded form», copiar del `action` y del marcado los
+   cuatro valores (`<cuenta>.<centro>.list-manage.com`, `u`, `id`) y ponerlos en
+   `LISTA_DE_CORREO`. **Del embebido no se copia nada más**: su `<script>` de
+   `chimpstatic.com` es justo lo que este diseño evita (D-254).
+6. Rebuild del sitio. Recién ahí aparece la sección.
+
 ## APIs habilitadas relevantes
 
 ```

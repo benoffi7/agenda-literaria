@@ -1,0 +1,132 @@
+---
+/**
+ * La sección del correo de `/suscribirse` — B-847.
+ *
+ * ── Un `<form>` y nada más: cero JavaScript, cero script de tercero ───────
+ * Es la decisión del dueño y lo que hace que esta sección no rompa la red de
+ * contención. Mailchimp ofrece un embebido que trae `mc-validate.js` desde
+ * `chimpstatic.com`: ese script sale a un host de tercero **en el load**, antes
+ * de que nadie toque nada y también para quien apretó «Rechazar» en el banner,
+ * que es exactamente lo que D-254 prohíbe. Acá no hay ni un `<script>`: el
+ * navegador no contacta a Mailchimp hasta que la persona aprieta el botón.
+ *
+ * La validación la hace el navegador con `type="email"` y `required`, que es lo
+ * único que `mc-validate.js` agregaba de verdad, y del otro lado valida
+ * Mailchimp igual.
+ *
+ * ── Pestaña nueva, y avisada ──────────────────────────────────────────────
+ * El precio aceptado de esta forma es que el «gracias» lo da Mailchimp. Con
+ * `target="_blank"` la persona no pierde la página en la que estaba, y el aviso
+ * para quien no ve la pantalla va **adentro del botón** y no en un
+ * `aria-label` — un `aria-label` reemplaza el texto del control y deja a quien
+ * maneja el sitio por voz sin poder pedirlo por su nombre. Es el mismo criterio
+ * que `SuscribirseAccion.astro`, y por el mismo motivo.
+ *
+ * `rel="noopener"` va sí o sí: sin él, la pestaña que se abre puede manipular
+ * la que la abrió.
+ *
+ * ── El campo trampa ───────────────────────────────────────────────────────
+ * Es un endpoint de escritura anónimo —la misma conversación de B-836a, pero
+ * del lado de Mailchimp y no del nuestro—, así que lleva lo único que se puede
+ * poner sin JavaScript: un campo que una persona no ve y un robot completa.
+ * Mailchimp descarta el alta si viene lleno. Va en un `sr-only` con
+ * `aria-hidden` y `tabindex="-1"`: fuera de la vista, fuera del recorrido del
+ * teclado y fuera de lo que anuncia un lector de pantalla.
+ *
+ * ── Si la lista no existe, no hay sección ─────────────────────────────────
+ * `formularioDelBoletin()` devuelve `null` mientras `LISTA_DE_CORREO` sea
+ * `null`, y entonces esta sección **no se dibuja**. No es una degradación: es lo
+ * que impide publicar cinco promesas sobre una lista que nadie puede cumplir, y
+ * es el orden que dejó escrito B-780 con el perfil de Cafecito.
+ *
+ * ── Ninguna dirección escrita acá ─────────────────────────────────────────
+ * El destino sale de `enlaces.ts`, como las cuatro del calendario y por la
+ * misma razón; `tests/suscribirse.test.ts` falla si aparece una escrita en el
+ * marcado de esta página o de sus componentes.
+ */
+import { EL_BOLETIN, EL_FORMULARIO, formularioDelBoletin, tratoEnOrden } from '@/lib/boletinDelSitio';
+import {
+  claseBloque,
+  claseBotonPrimario,
+  claseCampo,
+  claseEtiquetaDeCampo,
+  claseRotulo,
+} from '@/components/sitio/estilos';
+
+const formulario = formularioDelBoletin();
+const trato = tratoEnOrden();
+---
+
+{
+  formulario && (
+    <section aria-labelledby="por-mail" class="mt-14 regla-gruesa-arriba pt-8">
+      <p class={claseRotulo}>La otra forma</p>
+      <h2 id="por-mail" class="mt-2 headline-sm text-acento">
+        {EL_BOLETIN.titulo}
+      </h2>
+      <p class="body-lectura mt-2 max-w-[65ch] text-super">{EL_BOLETIN.paraQuien}</p>
+
+      <form
+        action={formulario.accion}
+        method="post"
+        target="_blank"
+        rel="noopener"
+        class={`mt-6 p-5 sm:p-6 ${claseBloque}`}
+      >
+        <label class={claseEtiquetaDeCampo} for="boletin-mail">
+          {EL_FORMULARIO.etiqueta}
+        </label>
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div class="min-w-0 flex-1">
+            <input
+              id="boletin-mail"
+              class={claseCampo}
+              type="email"
+              name="EMAIL"
+              required
+              autocomplete="email"
+              aria-describedby="boletin-ayuda"
+            />
+          </div>
+          <button type="submit" name="subscribe" class={`${claseBotonPrimario} w-full sm:w-auto`}>
+            {EL_FORMULARIO.boton}
+            <span class="sr-only"> ({EL_FORMULARIO.avisoLector})</span>
+          </button>
+        </div>
+        <p id="boletin-ayuda" class="body-sm mt-3 max-w-[65ch] text-super">
+          {EL_FORMULARIO.ayuda}
+        </p>
+
+        {/*
+          El campo trampa. Ni se ve, ni se tabula, ni se anuncia — y un robot que
+          completa todo lo que encuentra lo llena, que es lo que lo delata.
+        */}
+        <div class="sr-only" aria-hidden="true">
+          <label for="boletin-trampa">No completes este campo</label>
+          <input
+            id="boletin-trampa"
+            type="text"
+            name={formulario.campoTrampa}
+            tabindex="-1"
+            autocomplete="off"
+            value=""
+          />
+        </div>
+      </form>
+
+      {/*
+        Las cinco promesas van **debajo del campo y en la misma sección**, no en
+        una letra chica al pie: dos de ellas hablan de adónde va la dirección, y
+        eso se lee antes de escribirla o no se lee nunca.
+      */}
+      <dl class="mt-6 max-w-[65ch] space-y-5">
+        {trato.map((t) => (
+          <div>
+            <dt class="body-md font-semibold text-tinta">{t.titulo}</dt>
+            <dd class="body-md mt-1 text-super">{t.texto}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}

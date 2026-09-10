@@ -986,6 +986,25 @@ el subconjunto ya filtrado.
   > sección de lo que el calendario **no** hace. Lo de «solo la URL pública» dejó de
   > depender de acordarse: las direcciones salen de `src/lib/enlaces.ts` (B-228) y hay
   > un test que falla si alguna aparece escrita en el markup de la página.
+  >
+  > **Y desde B-847 la página ofrece una quinta forma que no es un calendario:
+  > el correo** (D-640). Es un `<form method="post">` que postea **directo** a
+  > Mailchimp —ningún script de tercero, que es lo que deja D-254 en verde— con
+  > cinco promesas pegadas al campo: sale semanal y la semana que no haya nada
+  > no sale, trae una selección hecha a mano de todos los precios y las tres
+  > maneras de cursar, lo manda la casilla del proyecto, **la dirección la
+  > recibe Mailchimp y no este sitio**, y se sale con el enlace de baja de cada
+  > envío.
+  >
+  > Es el primer dato de una persona que el sitio público le manda a un tercero,
+  > y **no abre una salida pública nueva**: entra en la fila 13, por D-320 —no
+  > recibe ni un campo del modelo, así que su celda sería siempre «no sale»—.
+  > La cuenta sigue en diecinueve.
+  >
+  > **Sale apagada.** `LISTA_DE_CORREO` es `null` hasta que exista la lista en
+  > Mailchimp, y con `null` la sección no se dibuja: es el orden de B-780 con el
+  > perfil de Cafecito. Los pasos de la consola están en
+  > [`08-operacion.md`](08-operacion.md) § «Activar el correo semanal».
 - **`/acerca`** — qué es, quién lo mantiene, cómo se carga una actividad, y el
   canal para proponer una. Es la página que le da a un buscador y a una persona
   con quién está tratando. Necesita un canal de contacto — ver

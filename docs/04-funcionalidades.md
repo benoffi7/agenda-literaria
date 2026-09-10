@@ -1736,6 +1736,28 @@ y una actividad cancelada **desaparece** del calendario en vez de quedar tachada
 Las tres se verifican contra `functions/calendario.js`, no solo contra el texto: si
 el comportamiento cambia, el test de la página se pone en rojo (ver D-133).
 
+**Y desde B-847 hay una quinta forma, que no es un calendario: el correo.** Una
+sección con un campo de mail y cinco frases al lado, entre la letra chica y el
+bloque de Instagram. Es la otra manera de la misma intención —que no se te pase
+nada— para quien no vive en el calendario pero abre el mail.
+
+| | |
+|---|---|
+| Qué llega | una selección hecha a mano, «para todos los gustos y modalidades»: la línea editorial que pidió el dueño |
+| Cada cuánto | **semanal, y la semana que no haya nada no sale**. Se pidió «al menos una vez por semana» y se escribió así a propósito: un piso se incumple con una sola semana floja, y esto es texto de una página indexada (ver el §5 de [`07-seguridad.md`](07-seguridad.md)) |
+| Quién lo manda | la casilla del proyecto, interpolada de `CONTACTO` y no escrita a mano — esa cuenta ya cambió una vez (B-839) |
+| Cómo se anota | un `<form method="post">` que postea **directo** a Mailchimp, en una pestaña nueva. **Ningún script de tercero**: el embebido de Mailchimp carga `mc-validate.js` en el load y eso rompe D-254 |
+| Dónde queda la dirección | en Mailchimp, y la página lo dice con todas las letras. Es lo único que el sitio público le manda a un tercero |
+| Cómo se sale | el enlace de baja de cada envío, más el mail de confirmación del alta (doble opt-in) |
+
+**Está construido y apagado.** `LISTA_DE_CORREO` (`src/lib/enlaces.ts`) es `null`
+hasta que el dueño cree la lista en Mailchimp, y con `null` la sección **no se
+dibuja**: no hay formulario y no hay ninguna promesa publicada. Es el orden de
+B-780 —no publicar apuntando a un destino de tercero que todavía no existe— y acá
+el costo de saltearlo es peor, porque un `u`/`id` inventado postea igual contra
+una lista que puede ser de otro. Los pasos de la consola están en
+[`08-operacion.md`](08-operacion.md) § «Activar el correo semanal».
+
 Cierra con dónde seguir el proyecto: Instagram.
 
 **Todo el texto vive en `src/lib/suscripcion.ts`** y ninguna dirección se escribe en

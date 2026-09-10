@@ -10075,3 +10075,109 @@ de B-239 no aplica: esa página no tiene contenido que el build pueda imprimir.
 
 O sea que la diferencia entre las dos formas, en la página que importa, es de
 **dos órdenes de magnitud y medio**.
+
+---
+
+## D-640 · El correo del sitio es un `<form>` a Mailchimp, no una salida nueva, y su promesa dice la excepción
+
+**B-847, 2026-09-10.** El dueño pidió «un formulario para un newsletter, la idea
+es usar mailchimp… meterlo dentro de suscribirse», y contestó las tres preguntas
+que el ítem dejó abiertas: la forma es el `<form>` HTML, lo manda el proyecto al
+menos una vez por semana con eventos curados «para todos los gustos y
+modalidades», y el remitente es `agendaleh@gmail.com`. Esta entrada registra lo
+que **no** contestó y hubo que decidir al construirlo.
+
+### Lo que ya estaba decidido, y por qué la primera forma gana
+
+Las tres formas no eran equivalentes y una sola no toca ninguna capa construida:
+
+| Forma | Qué rompe |
+|---|---|
+| **`<form>` HTML que postea a `list-manage.com`** | nada. No carga ningún script de tercero, así que **D-254 sigue verde** |
+| El embebido con JavaScript | `mc-validate.js` desde `chimpstatic.com` **en el load**, antes de cualquier consentimiento y también para quien apretó «Rechazar» → D-254 en rojo, con razón |
+| Una Function que llame a la API | nada, y es la única que deja validar de nuestro lado — pero es **un endpoint de escritura anónimo**, o sea la conversación de App Check de B-836a otra vez |
+
+El precio aceptado del `<form>` es que **el «gracias» lo da Mailchimp**. Se
+mitiga con `target="_blank"` —quien se anota no pierde la página— y con el aviso
+para lector de pantalla adentro del botón, que es el mismo patrón que el camino
+de la aplicación Calendario en esta misma página.
+
+### Lo que se decidió acá
+
+**1 · No es una salida pública nueva.** Es la decisión menos obvia del ítem. Un
+tercero, un dato personal y una promesa nueva empujan a numerarla; el criterio
+de **D-320** dice que no. Las tres tablas atadas contestan «¿este campo del
+modelo llega a esta salida?», y este formulario **no recibe ni un campo del
+modelo**: es un `<input type="email">`. Una fila propia agregaría, por cada
+campo nuevo, una celda cuya respuesta es siempre «no sale» — el costo exacto que
+D-320 decidió no pagar cuando el tríptico de la home entró como séptimo
+productor de la salida 1 en lugar de abrir una fila. Lo que sí hacía falta es la
+otra mitad de lo que las tablas deciden —**qué archivos mira el
+`auditor-privacidad`**— y eso se resolvió nombrando los dos archivos nuevos en
+la fila **13** y agregando el módulo al `description` del agente, que es lo que
+lo despierta (B-124, D-350). La cuenta sigue en diecinueve.
+
+El día que esto sea la tercera forma —una Function— cambia el análisis: ahí el
+dato pasa por infraestructura nuestra y corresponde rehacer la cuenta.
+
+**2 · La cadencia dice el ritmo y nombra la excepción, en vez de prometer un
+piso.** «Al menos una vez por semana» es lo que se pidió y es lo que **no** se
+escribió, porque un piso se incumple con una sola semana floja y esto vive en
+HTML indexado que `tests/promesas-sobre-datos.test.ts` barre. La página dice que
+sale semanal **y** que la semana que no haya nada que valga la pena no sale. No
+es aflojar la promesa: es la salida que este repo ya usó dos veces —«casi nunca
+trae el link de la reunión» en esta misma página, porque «una advertencia que
+promete "nunca" miente el día que pasa», y la corrección de `/ayuda` sobre la
+publicidad (B-785)—. Las dos mitades son verdad hoy y lo siguen siendo la semana
+que viene, que es lo único que se le puede pedir a un texto publicado.
+
+**3 · El doble opt-in se adopta como default, y es un supuesto declarado.** El
+dueño no lo dijo; es lo que hace que la casilla sea de quien la escribió. **No
+es código**: es una casilla de la configuración de la audience en Mailchimp. Lo
+que sí es código es que la página lo **prometa** —«hasta que no lo confirmes no
+quedás anotado»— y eso está exigido por test. Que la lista esté configurada así
+no lo puede sostener ningún test de este repo: es la misma clase que los ajustes
+de «Enhanced Measurement» que B-480 apagó a mano en la consola de GA4, y por eso
+está escrito en tres lugares —el módulo, el §5 de `07-seguridad.md` y el
+checklist de `08-operacion.md`— en vez de confiado a la memoria.
+
+**4 · La lista no existe todavía, y por eso la sección sale apagada.**
+`LISTA_DE_CORREO` es `null` y con `null` no se dibuja nada. Es el orden de
+**B-780** con el perfil de Cafecito, y acá el costo de saltearlo es peor: con
+`u`/`id` inventados el formulario **no se rompe, postea igual**, contra un
+endpoint que o no existe —y quien se anotó ve un error de Mailchimp con nuestra
+promesa recién leída— o **existe y es de otra cuenta**, y ahí la dirección de una
+persona termina en la lista de un desconocido. Eso no se deshace y ningún test lo
+puede ver: que la lista sea la nuestra no se sabe sin salir a la red.
+
+**5 · Y lo que el sitio dice del correo se deriva de esa misma constante.** Es la
+mitad que casi se pierde. La primera versión de este cambio corrigió la frase
+falsa de `/apoyar` («no hay newsletter») escribiendo lo contrario —«hay un correo
+semanal»— y le sumó a `/ayuda` un párrafo que lo cuenta. Con la lista en `null`
+**eso también es falso**: no hay correo al que anotarse. Arreglar una promesa
+falsa con otra promesa falsa es B-781 al revés, y ningún barrido de fórmulas lo
+agarra, porque una afirmación no es una negación.
+
+Así que `/ayuda` y `/apoyar` **preguntan `hayBoletin()`** y el texto del correo
+existe solo del lado verdadero. Es el patrón de `elSitioVendeEspacio()` en
+`tests/promesas-sobre-datos.test.ts`: la premisa se lee del código que la hace
+cierta, no se afirma a mano. El día que la lista exista, las tres páginas
+empiezan a contarlo solas y nadie tiene que acordarse de venir a escribirlo — que
+es la otra mitad del mismo error, la que hoy nadie vería.
+
+### Lo que este cambio volvió falso, y dónde se corrigió
+
+Tres afirmaciones vivas dejaron de ser ciertas el día que existió el correo, y
+las tres estaban escritas antes de que nadie pensara en un newsletter:
+
+| Dónde | Decía | Qué se hizo |
+|---|---|---|
+| `/apoyar`, «Quién hace esto» | «acá no hay cuenta, **no hay newsletter**» | lo dice al revés: hay correo, anotarse es opcional y la lista la maneja Mailchimp |
+| `/apoyar`, «Qué cuesta plata» → «Nada más» | «no hay… **ni una herramienta de mails**» | pasa a «Casi nada más»: la herramienta existe, hoy entra en su plan gratis, y si la lista crece va a figurar en la lista de costos |
+| El pie (`PieDePagina.astro`) | «un sitio que no guarda un solo dato personal de un tercero (B-102) no tiene de qué hacer una política» | el argumento ya lo había abierto **B-830** (`propuestas[].contacto`) y esto lo mueve otra vez. La decisión no cambia —no hay `/privacidad`— pero el motivo sí: **lo que se hace con un dato se dice donde se lo pide** |
+
+La cuarta no es falsa y hay que leerla con cuidado: «este sitio no guarda un dato
+de nadie» **sigue siendo cierto**, porque el navegador postea directo a Mailchimp
+y el sitio no ve la dirección en ningún momento. Lo que dejó de ser cierto es la
+frase de al lado: que el sitio público no le mande **ningún** dato de una persona
+a un tercero.

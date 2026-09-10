@@ -424,10 +424,17 @@ apagado o no el ítem de código.
   su documentación— no almacena. Eso último es una promesa de la herramienta, no
   algo que podamos verificar de este lado; conviene decirlo así.
 - Google actúa como **procesador** de esos datos por cuenta nuestra.
-- **Lo que no pasa:** el sitio no tiene formularios, no tiene login público y no
-  guarda ni un dato personal de un tercero — eso lo ratificó **B-102** y sigue
-  siendo cierto después de instalar GA4. Lo que cambia es que hay un tercero
-  contando visitas, no que empecemos a guardar gente.
+- **Lo que no pasa:** no hay login público y GA4 no manda nada que la persona
+  haya escrito. Lo que cambia con el tag es que hay un tercero contando visitas,
+  no que empecemos a guardar gente.
+
+  **Este bullet decía además «el sitio no tiene formularios» y «no guarda ni un
+  dato personal de un tercero», y las dos envejecieron.** La segunda la abrió
+  **B-830** (`propuestas[].contacto`); la primera la cerró `/proponer` el mismo
+  día y **B-847** le sumó el alta al correo en `/suscribirse`. No es una
+  corrección cosmética: «no hay formularios» era la premisa por la que el cuarto
+  interruptor del Enhanced Measurement no figuraba en la lista de B-480 — ver el
+  §7.4.
 
 ### 7.2 · Qué hace la práctica en Argentina
 
@@ -497,12 +504,24 @@ propiedad nueva— manda tres cosas que ningún saneador de este repo ve:
 | **«Búsquedas en el sitio»** | lee `?q=...` (`aQuery`, `listadoPublico.ts`) y lo manda como `search_term` — el mismo texto del buscador que el §5.3 ya identificaba como el riesgo, por una puerta que el recorte de `page_location` no tapa |
 | **«Cambios de página según el historial»** | la island de filtros llama a `replaceState` en cada tecla; esto dispara un `page_view` nuevo por cada una, leyendo la URL **real** en el momento |
 | **«Clics salientes»** | manda el `link_url` completo de un link a otro dominio — el botón de inscripción linkea a `wa.me/<teléfono>` o a `instagram.com/<handle>`, el **destino** que `via` existe para no mandar |
+| **«Interacciones con formularios»** — ⚠️ **el cuarto, y no estaba en esta lista hasta B-847** | manda `form_start` y `form_submit` con `form_id`, `form_name`, `form_destination` y `form_submit_text`. **No manda valores de campo**, así que la dirección de quien se anota al correo no se escapa por acá; lo que sí sale es que este `client_id` mandó el formulario y **a qué lista** (`form_destination` es la URL de `list-manage`). Faltaba con motivo: hasta que existieron `/proponer` (B-830) y el alta al correo (**B-847**), este bullet del §7.1 decía «el sitio no tiene formularios» y el interruptor era irrelevante. Hoy no lo es |
 
 **No hay un parámetro de código que las apague.** Es un ajuste del flujo de
 datos en la consola de GA4 (Administrar → Flujos de datos → el flujo → Enhanced
 measurement), la misma clase de paso manual que `docs/09-analitica.md` ya pide
 para el panel. Acá es **bloqueante**: instalar el tag sin apagar «Búsquedas en el
 sitio» y «Clics salientes» filtra aunque todo el código esté bien.
+
+**Y el cuarto está pendiente.** «Interacciones con formularios» sigue **prendido**
+al 2026-09-10: nunca hizo falta apagarlo porque no había formularios que mirar.
+Con el alta al correo de B-847 pasa a ser el mismo tipo de fuga chica que los
+otros tres —conducta de una persona sobre un acto que hizo, mandada a un
+tercero— y **hay que apagarlo antes de que la lista exista**, que es cuando el
+formulario empieza a dibujarse. Está en el checklist de
+[`08-operacion.md`](08-operacion.md) § «Activar el correo semanal», junto al
+doble opt-in y por el mismo motivo: **es configuración y no código, así que no
+hay ningún test que lo sostenga**. Lo único que un test puede fijar es que el
+checklist lo nombre, y eso lo hace `tests/boletin-del-sitio.test.ts`.
 
 Anotado como **B-480** en el `BACKLOG`, con el detalle completo en **D-253**
 (`06-decisiones.md`) y en la salida 12 de `07-seguridad.md`. Bloquea el cierre

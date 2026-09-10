@@ -37,6 +37,7 @@
  * pendiente que la página tiene que ir mostrando.
  */
 import { CAFECITO, urlDeCafecito, urlDeInstagram, INSTAGRAM } from '@/lib/enlaces';
+import { hayBoletin } from '@/lib/boletinDelSitio';
 import { RUTA_AYUDA, RUTA_CONTACTO, RUTA_SUSCRIBIRSE } from '@/lib/rutasPublicas';
 
 /** Un destino que la página ofrece: del sitio o de afuera. */
@@ -144,8 +145,12 @@ export const QUIEN_LA_HACE: BloqueDeApoyo = {
   titulo: 'Quién hace esto',
   parrafos: [
     'Una persona, en los ratos que le quedan. No cobro por publicar una actividad y no vendo ' +
-      'datos de nadie: acá no hay cuenta, no hay newsletter, y lo único que se mide es cuánta ' +
-      'gente entra — con Google Analytics, y solo si lo aceptás.',
+      'datos de nadie: acá no hay cuenta que abrir, y lo único que se mide es cuánta gente ' +
+      'entra — con Google Analytics, y solo si lo aceptás.' +
+      (hayBoletin()
+        ? ' Hay un correo semanal, y anotarse es decisión tuya: esa lista la maneja Mailchimp, ' +
+          'que es quien lo manda.'
+        : ''),
     'Empezó porque me perdí un taller que quería hacer. Estaba anunciado en una historia de ' +
       'Instagram que duró un día y me enteré tres semanas después, cuando ya había empezado. Eso ' +
       'sigue pasando todo el tiempo, y es lo único que la agenda arregla: que lo que se organiza ' +
@@ -218,11 +223,15 @@ export const QUE_CUESTA: {
         'mes; si el sitio crece, sube.',
     },
     {
-      titulo: 'Nada más',
+      titulo: hayBoletin() ? 'Casi nada más' : 'Nada más',
       texto:
-        'No hay una suscripción de diseño, ni una herramienta de mails, ni un servicio de ' +
-        'búsqueda. El sitio es HTML servido tal cual, que es también por qué carga rápido en un ' +
-        'teléfono con mala señal.',
+        'No hay una suscripción de diseño ni un servicio de búsqueda: el sitio es HTML servido ' +
+        'tal cual, que es también por qué carga rápido en un teléfono con mala señal.' +
+        (hayBoletin()
+          ? ' Lo único que se suma es la herramienta que manda el correo semanal, que hoy entra ' +
+            'en su plan gratis; si la lista crece mucho empieza a costar, y ese día va a figurar ' +
+            'en esta lista.'
+          : ''),
     },
     {
       titulo: 'Y lo que cuesta y no es plata',

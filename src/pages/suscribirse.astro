@@ -7,7 +7,8 @@
  * cambia. Esa es la única idea que la página tiene que dejar clara, porque es
  * la diferencia entre anotarse las fechas a mano y que las fechas te sigan.
  *
- * **Todo el texto vive en `src/lib/suscripcion.ts`** y todas las direcciones
+ * **El texto vive en `src/lib/suscripcion.ts`** —y desde B-847 el de la sección
+ * del correo en `src/lib/boletinDelSitio.ts`— y todas las direcciones
  * salen de `src/lib/enlaces.ts`. Acá no se escribe ni una URL: la variante
  * `private-` del calendario está a un path de distancia de la pública y le da
  * acceso de lectura a quien la tenga, así que el único lugar donde se arman es
@@ -20,6 +21,13 @@
  * como cuatro pasos a hacer en orden. Van en una grilla de dos columnas de `sm`
  * en adelante, y «lo que el calendario no hace» sobre la capa tonal más honda:
  * es la letra chica y tiene que verse como tal sin dejar de leerse.
+ *
+ * ── La quinta forma, que no es un calendario: el correo (B-847, D-640) ───
+ * Entre la letra chica e Instagram va `SuscribirseBoletin`, que es un `<form>`
+ * que postea a Mailchimp. Es la otra manera de la misma intención —que no se te
+ * pase nada— y por eso está acá y no en una página propia. **Se dibuja sola
+ * cuando la lista exista**: mientras `LISTA_DE_CORREO` sea `null` el componente
+ * no emite nada y esta página queda exactamente como estaba.
  *
  * B-260 cambió **solo el lenguaje visual**, no el contenido ni la estructura: la
  * tipografía y las tintas del sistema (D-146), radio 0 y reglas en vez de bordes
@@ -40,6 +48,7 @@ import {
   DONDE_SEGUIR,
 } from '@/lib/suscripcion';
 import SuscribirseAccion from '@/components/sitio/SuscribirseAccion.astro';
+import SuscribirseBoletin from '@/components/sitio/SuscribirseBoletin.astro';
 import { claseHundido, claseRotulo } from '@/components/sitio/estilos';
 
 const caminos = caminosEnOrden();
@@ -105,6 +114,15 @@ const advertencias = advertenciasEnOrden();
         }
       </dl>
     </section>
+
+    {/*
+      El correo va **después** de la letra chica del calendario y antes de
+      Instagram: es la segunda forma de la misma intención —que no se te pase
+      nada— y no una alternativa al calendario, así que no compite con los
+      cuatro caminos de arriba. Si la lista todavía no existe, el componente no
+      dibuja nada y la página queda exactamente como estaba (B-847).
+    */}
+    <SuscribirseBoletin />
 
     <section aria-labelledby="donde-seguir" class="mt-14 regla-gruesa-arriba pt-8">
       <h2 id="donde-seguir" class="headline-sm text-tinta">

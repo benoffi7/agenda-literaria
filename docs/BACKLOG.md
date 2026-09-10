@@ -667,7 +667,7 @@ barato:
 taxonomía — la tajada 1 (`/proponer`) o la 2. Con la guarda puesta, el rojo llega
 en la suite y no en producción, que es exactamente para lo que se escribió.
 
-### B-847 · Newsletter con Mailchimp, adentro de `/suscribirse` · P2 — **idea del dueño (2026-09-09)**
+### B-847 · Newsletter con Mailchimp, adentro de `/suscribirse` — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
 
 **El pedido, textual:** «un formulario para un newsletter, la idea es usar
 mailchimp. la idea es meterlo dentro de suscribirse».
@@ -731,6 +731,32 @@ doble opt-in (debería) y quién es el remitente.
 >   redacción sabiendo eso: si una semana no sale, «al menos una vez por semana»
 >   pasa a ser falso y «semanal» sobrevive. La decisión es del dueño; lo que no
 >   vale es escribir el piso sin haberlo pensado.
+
+> ✅ **Hecho el 2026-09-10 — D-640, y las dos preguntas abiertas contestadas.**
+>
+> 1. **El piso no se escribió.** La página dice el ritmo **y nombra la
+>    excepción**: «sale semanal; la semana que no haya nada que valga la pena, no
+>    sale». La salida no fue aflojar la promesa sino la que este repo ya usó dos
+>    veces — «casi nunca trae el link de la reunión», en esta misma página, y la
+>    corrección de `/ayuda` sobre la publicidad (B-785).
+> 2. **El doble opt-in quedó escrito como supuesto** en el módulo, en
+>    `07-seguridad.md` §5 y en el checklist de `08-operacion.md`, con un test que
+>    exige que esté en los tres. **Que la casilla esté prendida no lo puede
+>    sostener ningún test** — es la clase de B-480.
+>
+> **Sale apagada.** `LISTA_DE_CORREO` es `null` y con `null` la sección no se
+> dibuja: con `u`/`id` inventados el formulario **postea igual**, contra un
+> endpoint que puede ser de otra cuenta. Es el orden de B-780.
+>
+> **No es una salida pública nueva**, y se argumentó: el formulario no recibe ni
+> un campo del modelo, así que su celda sería siempre «no sale» (D-320). Entra en
+> la fila 13 de las tres tablas. Siguen siendo diecinueve.
+>
+> **Seis hallazgos del `auditor-privacidad` sobre el propio cambio, los seis
+> adentro.** Dos valen solas: «es lo único que la agenda le manda a un tercero»
+> era **falso** con el banner de GA4 al lado —y el barrido no lo ve porque es una
+> exclusividad afirmativa, no una negación—; y el cuarto interruptor del Enhanced
+> Measurement, que es **B-874**.
 
 ### B-848 · Un «usuario» en el sitio público sin login: favoritos de cualquier ficha, y filtros guardados — ✅ hecho (2026-09-10) · P2 — **idea del dueño (2026-09-09)**
 
@@ -935,6 +961,31 @@ Tres salidas, de menos a más:
 
 Mientras tanto el remedio es manual y está escrito, incluidos los dos casos en
 los que lo correcto es **no** borrar.
+
+### B-874 · «Interacciones con formularios» sigue prendido en GA4, y B-480 no lo apagó porque no había formularios · P2
+
+**Sale del `auditor-privacidad` sobre B-847.** El Enhanced Measurement de GA4
+tiene **cuatro** interruptores prendidos por default y B-480 apagó tres:
+búsquedas en el sitio, `page_view` por historial y clics salientes. El cuarto
+—`form_start` / `form_submit`, con `form_id`, `form_name`, `form_destination` y
+`form_submit_text`— **no estaba en esa lista, ni en la tabla del §7.4, ni en
+ningún checklist**, y el motivo estaba escrito con todas las letras en el §7.1:
+«el sitio no tiene formularios».
+
+**Esa premisa se cayó dos veces y nadie volvió a mirar el interruptor.** La
+primera con `/proponer` (B-830), que es un formulario público de verdad y donde
+lo que se manda **es texto que un tercero escribió**. La segunda con B-847. Lo
+que se escapa con el consentimiento aceptado: que este `client_id` interactuó con
+el formulario y lo envió, y a qué destino. **No se escapa el contenido de los
+campos** —GA4 no manda valores— y por eso es P2 y no P1.
+
+**Es configuración y no código: ningún test lo puede sostener**, igual que los
+tres de B-480 y que los settings de propiedad de B-773. Lo que sí quedó atado es
+que el checklist lo nombre. El paso está en `08-operacion.md` como bloqueante
+junto al doble opt-in.
+
+**Y hay que mirar `/proponer` aparte**, que es lo que este ítem no resuelve: ahí
+el `form_submit` sale **hoy**, sin que la lista del correo exista.
 
 ### B-873 · Los dos tests que leen `dist/` no verifican nada en CI, y sus docblocks afirman lo contrario · P2
 

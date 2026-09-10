@@ -148,6 +148,80 @@ export const urlWebcal = (): string => urlDelIcs().replace(/^https:/, 'webcal:')
 
 export const urlDeInstagram = (): string => `https://www.instagram.com/${INSTAGRAM}/`;
 
+// ───────────────────────────────────────────────────────────────────────────
+// La lista de correo — B-847
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Los cuatro datos crudos de la lista de Mailchimp.
+ *
+ * Los cuatro son **públicos por diseño**: viajan escritos en el HTML del
+ * formulario, como la clave del SDK web viaja en el bundle. No son un secreto y
+ * no van a un `.env`: van acá, versionados, que es donde este proyecto pone los
+ * destinos externos desde B-228 (`CALENDARIO_ID`, `INSTAGRAM`, `CONTACTO`,
+ * `CAFECITO`). Lo que los hace peligrosos no es que se lean: es **a dónde
+ * apuntan**.
+ */
+export interface ListaDeCorreo {
+  /** El subdominio de la cuenta: `<cuenta>.<centro>.list-manage.com`. */
+  cuenta: string;
+  /** El centro de datos que le tocó a la cuenta: `us21`, `us14`… */
+  centro: string;
+  /** El id de la cuenta (`u` en el formulario que publica Mailchimp). */
+  u: string;
+  /** El id de la lista (`id` en ese mismo formulario). */
+  id: string;
+}
+
+/**
+ * La lista donde se anota quien quiere el correo — **todavía no existe**.
+ *
+ * ── Por qué sale `null` y no con valores de ejemplo ───────────────────────
+ * Es el orden que dejó escrito **B-780**, y acá el costo de saltearlo es peor
+ * que el de allá. Con `u` e `id` inventados el formulario no se rompe: **postea
+ * igual**, contra un endpoint que o no existe —y quien se anotó ve un error de
+ * Mailchimp con nuestra promesa recién leída— o **existe y es de otra cuenta**,
+ * y entonces la dirección de mail de una persona termina en la lista de un
+ * desconocido. Eso no se deshace, y ningún test lo puede ver: que la lista sea
+ * la nuestra no se sabe sin salir a la red.
+ *
+ * Así que mientras esto sea `null` la sección **no se dibuja** y la página no
+ * hace ninguna promesa (`formularioDelBoletin`, `src/lib/boletinDelSitio.ts`).
+ * Lo que sí se verifica de este lado es la **forma** de los cuatro valores el
+ * día que se llenen: `tests/boletin-del-sitio.test.ts`.
+ *
+ * Qué falta para que exista, y es trabajo de consola y no de código: crear la
+ * lista (la «audience») en Mailchimp, **prender el doble opt-in**, poner
+ * `CONTACTO` como remitente y copiar de su formulario embebido los cuatro
+ * valores de acá. Está anotado entero en `docs/08-operacion.md`.
+ */
+export const LISTA_DE_CORREO: ListaDeCorreo | null = null;
+
+/**
+ * El destino del `<form>`: el alta a la lista, por POST.
+ *
+ * Recibe la lista por parámetro en vez de leer la constante para que se pueda
+ * probar con una lista de mentira sin tener que crear una de verdad — que es la
+ * única forma de que el armado esté verificado antes de que exista la lista.
+ *
+ * **Sin `f_id`**, el tercer parámetro que Mailchimp pega en su embebido: es de
+ * su validador en JavaScript, que acá no se carga (D-254).
+ */
+export const urlDeAltaAlBoletin = (lista: ListaDeCorreo): string =>
+  `https://${lista.cuenta}.${lista.centro}.list-manage.com/subscribe/post` +
+  `?u=${encodeURIComponent(lista.u)}&id=${encodeURIComponent(lista.id)}`;
+
+/**
+ * El nombre del campo trampa: el que un robot completa y una persona no ve.
+ *
+ * Mailchimp lo espera con **este** nombre exacto y lo descarta si viene lleno.
+ * Se deriva de los mismos dos ids por el mismo motivo que el `cid` de Google:
+ * un `b_…` pegado a mano no se puede leer para verificar que corresponde a esta
+ * lista, y si no corresponde la trampa no filtra nada y nadie se entera.
+ */
+export const campoTrampaDelBoletin = (lista: ListaDeCorreo): string =>
+  `b_${lista.u}_${lista.id}`;
+
 /**
  * El usuario de Cafecito donde se reciben los aportes — B-780.
  *

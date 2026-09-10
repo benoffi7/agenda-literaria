@@ -2,6 +2,66 @@
 
 ## Sin publicar
 
+- **`/suscribirse` suma una segunda forma de no perderse nada —un correo semanal—
+  y sale apagada hasta que exista la lista** — **B-847**, **D-640**, idea del
+  dueño. Hasta hoy el sitio público **no le mandaba ni un dato de nadie a ningún
+  tercero**; el alta al correo es la primera vez que eso pasa, y se hizo con la
+  única de las tres formas que no toca ninguna capa construida: un
+  `<form method="post">` que postea **directo** a Mailchimp, **sin un solo script
+  de tercero**. El embebido oficial carga `mc-validate.js` desde `chimpstatic.com`
+  en el load —antes de cualquier consentimiento, y también para quien apretó
+  «Rechazar»— y eso pone en rojo D-254, con razón. El precio aceptado es que el
+  «gracias» lo da Mailchimp.
+
+  **Las cinco promesas van pegadas al campo, no en la letra chica:** cada cuánto
+  sale, qué trae, quién lo manda, **que la dirección la recibe Mailchimp y no este
+  sitio**, y cómo se sale. **La cadencia dice el ritmo y nombra la excepción** —
+  «sale semanal; la semana que no haya nada que valga la pena, no sale»— y no el
+  piso que se pidió: «al menos una vez por semana» se vuelve falso con el primer
+  feriado largo, en una página indexada que `promesas-sobre-datos.test.ts` barre.
+  La salida no fue aflojar la promesa sino nombrar la excepción, que es lo que
+  este repo ya hizo dos veces — «casi nunca trae el link de la reunión», en esta
+  misma página, y la corrección de `/ayuda` sobre la publicidad (B-785).
+
+  **Sale apagada a propósito.** `LISTA_DE_CORREO` es `null` hasta que la lista
+  exista, y con `null` la sección no se dibuja. No es cobardía: con `u`/`id`
+  inventados el formulario **no se rompe, postea igual** contra un endpoint que
+  puede ser de otra cuenta — y ahí la dirección de una persona termina en una
+  lista ajena. Es el orden de B-780 con el perfil de Cafecito, y acá el costo de
+  saltearlo es peor.
+
+  **Y lo que el resto del sitio dice del correo se deriva de esa misma
+  constante.** Corregir «no hay newsletter» en `/apoyar` escribiendo «hay un
+  correo semanal» **con la lista apagada** es cambiar una promesa falsa por otra,
+  y **ningún barrido de fórmulas la agarra porque una afirmación no es una
+  negación**. Así que `/ayuda` y `/apoyar` preguntan `hayBoletin()`: el patrón de
+  `elSitioVendeEspacio()`, la premisa leída del código que la hace cierta.
+
+  **Tres afirmaciones vivas quedaron falsas y se corrigieron en el mismo cambio:**
+  «acá no hay cuenta, no hay newsletter» y «ni una herramienta de mails»
+  (`/apoyar`), y el argumento del pie sobre no necesitar una página de privacidad
+  —que **B-830 ya había abierto** y nadie había vuelto a mirar—. La decisión no
+  cambia; el motivo sí: lo que se hace con un dato se dice **donde se lo pide**.
+
+  **No es una salida pública nueva, y se decidió con argumento**: el formulario no
+  recibe ni un campo del modelo, así que su celda en las tres tablas atadas sería
+  siempre «no sale» — el costo exacto que D-320 decidió no pagar. Entra en la fila
+  13, con los dos archivos nuevos nombrados y en el `description` del auditor.
+  Siguen siendo diecinueve, y está escrito cuándo hay que rehacer la cuenta.
+
+  **El `auditor-privacidad` encontró seis cosas sobre este mismo cambio y las seis
+  entraron.** Dos valen solas: la promesa decía «es lo único que la agenda le
+  manda a un tercero», **falso** con el banner de GA4 en la misma pantalla —y el
+  barrido no lo ve porque es una exclusividad afirmativa y no una negación—; y
+  **B-874**, el cuarto interruptor del Enhanced Measurement que B-480 no apagó
+  porque «el sitio no tiene formularios», premisa que este cambio volvió falsa
+  por segunda vez.
+
+  39 casos y **34 mutaciones**, y la que fija la decisión está probada **dos veces
+  por dos redes**: sobre el fuente, que falla en el acto, y sobre el `dist/` con
+  D-254, que se saltea si no hay build — por eso no es un duplicado, es la mitad
+  que falta.
+
 - **El gate del artefacto ahora mira las dos direcciones: que la credencial no
   esté, y que App Check sí** — **B-868**. `scripts/verificar-bundle.sh` chequeaba
   una sola cosa desde que existe: que no hubiera rastros del Admin SDK. Nada

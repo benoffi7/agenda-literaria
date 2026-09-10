@@ -30,6 +30,7 @@
  * Cómo se ve. La página elige el marcado; acá está qué dice y en qué orden.
  */
 import opcionesBase from '@/lib/opciones-base.json';
+import { hayBoletin } from '@/lib/boletinDelSitio';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
@@ -379,14 +380,45 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
     preguntas: [
       {
         id: 'suscribirme',
-        pregunta: '¿Puedo tener esto en mi calendario?',
+        /*
+         * **La pregunta nombra las dos formas desde B-847, y el ancla no cambia.**
+         * El correo podría haber sido una pregunta propia; entra acá porque son
+         * dos maneras de la misma intención —que no se te pase nada— y porque
+         * quien lee «no te manda mails» tiene que encontrar el matiz en la misma
+         * respuesta y no tres preguntas más abajo. El `id` es la URL de la
+         * respuesta y puede estar linkeado desde afuera: no se renombra.
+         */
+        pregunta: hayBoletin()
+          ? '¿Puedo tener esto en mi calendario, o que me llegue por mail?'
+          : '¿Puedo tener esto en mi calendario?',
         respuesta: [
           'Sí. Hay un calendario público al que te podés suscribir desde Google Calendar, desde el ' +
             'teléfono o desde cualquier lector de calendarios: cada encuentro entra como un evento, ' +
             'y si cambia la fecha o se cancela, se actualiza solo.',
-          'No te suscribe a nada más ni te manda mails: es un calendario de solo lectura.',
+          'Suscribirte al calendario no te anota a nada más ni te manda mails: es de solo lectura.' +
+            (hayBoletin()
+              ? ' El correo es aparte y se pide por separado, así que tener uno no te trae el otro.'
+              : ''),
+          ...(hayBoletin()
+            ? [
+                'Y sí, hay correo: sale semanal —salvo la semana que no haya nada que valga la ' +
+                  'pena— con actividades elegidas a mano, de todos los precios y de las tres ' +
+                  'maneras de cursar. Lo manda la misma casilla que figura en Contacto, te llega ' +
+                  'un mail para confirmar antes de que quedes anotado, y cada envío trae el ' +
+                  'enlace para darte de baja. Una aclaración que corresponde: la lista la maneja ' +
+                  'Mailchimp, una empresa de Estados Unidos, así que tu dirección la recibe ella ' +
+                  'y no este sitio.',
+              ]
+            : []),
         ],
-        enlaces: [{ href: RUTA_SUSCRIBIRSE, texto: 'Cómo suscribirse al calendario' }],
+        enlaces: [
+          {
+            href: RUTA_SUSCRIBIRSE,
+            texto: hayBoletin()
+              ? 'Cómo suscribirse al calendario o al correo'
+              : 'Cómo suscribirse al calendario',
+          },
+        ],
       },
       {
         id: 'buscar',

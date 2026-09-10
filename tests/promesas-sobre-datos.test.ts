@@ -143,6 +143,28 @@ const NEGACIONES: readonly { nombre: string; patron: RegExp }[] = [
     patron: /no (usamos|hay|tenemos) (cookies|anal[íi]tica|seguimiento|rastreo|medici[óo]n)/gi,
   },
   { nombre: 'nadie te sigue', patron: /nadie te (sigue|rastrea|mira|ve)\w*/gi },
+  {
+    /*
+     * **La estrenó el correo de B-847, y la señaló el `auditor-privacidad`.**
+     * Hasta que el sitio público pidió un dato no había ninguna frase de esta
+     * forma, así que la fórmula no existía: las cuatro de arriba hablan de
+     * *guardar* y *medir*, y «no te pedimos» dice lo mismo un paso antes. Es la
+     * puerta por la que una página nueva puede prometer en absoluto («acá no se
+     * pide nada») sin que nada la mire.
+     *
+     * La escapatoria es la de siempre y no una excepción: nombrar de qué habla.
+     * «Tu dirección y nada más, no pedimos ninguna otra cosa» pasa por el
+     * alcance «tu dirección», que es lo que la vuelve verdadera.
+     */
+    nombre: 'no pedimos / no se pide',
+    /*
+     * **Primera persona o impersonal, nunca la tercera**, y hace falta: la
+     * ayuda dice «algunas **no piden** inscripción», que habla de las
+     * actividades y no de nosotros. Un `piden` suelto lo agarraba, y un barrido
+     * que se pone rojo por una frase ajena al tema se afloja (B-180).
+     */
+    patron: /no (te )?(pedimos|solicitamos)\w*|no se (pide|piden|solicita|solicitan)\b/gi,
+  },
 ];
 
 /**
@@ -188,9 +210,18 @@ interface Hallazgo {
   frase: string;
 }
 
-const barrerPromesas = (archivos: readonly string[]): Hallazgo[] => {
+const barrerPromesas = (archivos: readonly string[]): Hallazgo[] =>
+  barrerFuentes(deArchivos(archivos));
+
+/**
+ * El mismo barrido sobre **texto**, para poder ejercitar una fórmula con la
+ * frase que existe para dispararla sin tener que versionar un archivo por
+ * fórmula. Es lo que `barrerPlata` ya hacía; esta familia lo ganó con B-847,
+ * cuando entraron dos fórmulas nuevas y no había dónde probarlas.
+ */
+const barrerFuentes = (fuentes: readonly Fuente[]): Hallazgo[] => {
   const hallazgos: Hallazgo[] = [];
-  for (const { archivo, prosa } of deArchivos(archivos)) {
+  for (const { archivo, prosa } of fuentes) {
     for (const { nombre, patron } of NEGACIONES) {
       // `matchAll` sobre una copia: el `lastIndex` de un regex global es estado.
       for (const m of prosa.matchAll(new RegExp(patron.source, patron.flags))) {
@@ -412,6 +443,39 @@ describe('ninguna página promete sobre datos algo que el sitio contradice — B
     expect(hallazgos[0]!.formula).toContain('no se guarda');
   });
 
+  it('DETECTOR: las dos fórmulas que estrenó el correo disparan, y la acotada no — B-847', () => {
+    /*
+     * Una fórmula que ningún caso dispara se puede achicar entera sin que nada
+     * se ponga en rojo, y a éstas no las ejercita el texto publicado —hoy nadie
+     * promete eso, que es justamente lo que el barrido cuida—. Es el mismo
+     * criterio con el que la familia de la plata tiene una fuente por fórmula.
+     *
+     * La tercera es la forma **acotada** y tiene que pasar: es el texto que hoy
+     * está al lado del campo del correo, y lo que la rescata no es una
+     * excepción sino nombrar de qué habla («tu dirección»).
+     */
+    expect(
+      barrerFuentes([
+        deTexto('la promesa de no pedir, sin sujeto', 'Para leer la agenda no te pedimos nada.'),
+        deTexto('la misma, en impersonal', 'Acá no se pide ningún dato para entrar.'),
+      ]).map((h) => `${h.archivo} · ${h.formula}`),
+      'una fórmula dejó de disparar sobre la frase que existe para dispararla',
+    ).toEqual([
+      'la promesa de no pedir, sin sujeto · no pedimos / no se pide',
+      'la misma, en impersonal · no pedimos / no se pide',
+    ]);
+
+    expect(
+      barrerFuentes([
+        deTexto(
+          'la forma acotada, que es la que está publicada',
+          'Tu dirección de mail. Nada más que eso: no pedimos tu nombre ni ninguna otra cosa.',
+        ),
+      ]),
+      'el barrido se pasó de rosca: la frase nombra de qué habla',
+    ).toEqual([]);
+  });
+
   it('DETECTOR: y no agarra la forma condicionada ni la acotada', () => {
     /*
      * La otra dirección, que es la que evita que este archivo se vuelva un
@@ -442,8 +506,14 @@ describe('una negación cuyo objeto es «nada» no se salva con una condición �
    * habla —«ninguna medición», «ninguna cookie»—, que es lo que hace verdadera a
    * la frase y no una excepción del test.
    */
+  /*
+   * **`queda` y el `se` opcional entraron con B-847.** «Acá no queda nada tuyo»
+   * es exactamente la misma frase que «no se instala nada» con otro verbo, y la
+   * primera versión del texto del correo la tenía; el regex no la veía porque
+   * pedía el `se` y no conocía ese verbo. Lo señaló el `auditor-privacidad`.
+   */
   const OBJETO_ABSOLUTO =
-    /no se (instala|guarda|manda|env[íi]a|escribe|comparte)\w*\s+nada\b/gi;
+    /no (se )?(instala|guarda|manda|env[íi]a|escribe|comparte|queda)\w*\s+nada\b/gi;
 
   it('ninguna página del sitio niega en absoluto sobre el dispositivo', () => {
     /*

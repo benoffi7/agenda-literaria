@@ -1850,6 +1850,67 @@ gcloud functions logs read dispararRebuild --project agenda-literaria \
 Mensaje esperado sin cambios pendientes: nada (el schedule sale en silencio).
 Con un cambio pendiente: `rebuild disparado`.
 
+## Activar el correo semanal (B-847)
+
+**Está construido y apagado**, y eso es a propósito. `LISTA_DE_CORREO`
+(`src/lib/enlaces.ts`) es `null` hasta que la lista de Mailchimp exista, y con
+`null` la sección de `/suscribirse` **no se dibuja**: no hay formulario que
+postee a ningún lado y no hay ninguna promesa publicada. Es el orden de B-780
+con el perfil de Cafecito, y acá el costo de saltearlo es peor — con un `u`/`id`
+inventados el formulario **postea igual**, contra un endpoint que o no existe o
+es de otra cuenta, y la dirección de una persona termina en la lista de un
+desconocido. Ningún test lo puede ver: que la lista sea la nuestra no se sabe
+sin salir a la red.
+
+Los pasos de la consola de Mailchimp, uno por uno, están en
+[`02-infraestructura.md`](02-infraestructura.md) § «Mailchimp». Lo que hay que
+tener presente al hacerlos:
+
+- **El doble opt-in va prendido.** La página promete que llega un mail de
+  confirmación y que sin confirmar no queda nadie anotado. Es una casilla de la
+  configuración de la audience, **no** una línea de código, así que **no hay
+  ningún test que lo sostenga** — misma clase que los ajustes de GA4 de B-480.
+  Si se apaga, la página pasa a mentir y nada se pone en rojo.
+- **Y hay un segundo ajuste de consola, que no es de Mailchimp sino de GA4:
+  apagar «Interacciones con formularios».** Es el **cuarto** interruptor del
+  Enhanced Measurement y el único que B-480 no apagó, porque hasta ahora el
+  sitio público no tenía ningún formulario que hablara de datos. Con el alta al
+  correo manda `form_start`/`form_submit` con `form_destination` —o sea que
+  Google se entera de que este visitante mandó el formulario y a qué lista—; la
+  dirección **no** viaja, GA4 no manda valores de campo. Se apaga en Administrar
+  → Flujos de datos → el flujo → Enhanced measurement, **antes** de cargar
+  `LISTA_DE_CORREO`, que es cuando el formulario empieza a dibujarse. Lo
+  encontró el `auditor-privacidad` sobre este mismo cambio; el detalle está en
+  [`16-analitica-del-sitio.md`](16-analitica-del-sitio.md) §7.4. Como el doble
+  opt-in: **configuración y no código, sin test que lo sostenga**.
+- **El remitente es `agendaleh@gmail.com`**, la casilla que el sitio ya usa
+  (`CONTACTO`). La página lo dice con esa constante interpolada, no escrita a
+  mano: esa cuenta ya cambió una vez (B-839).
+- **La cadencia que la página promete es semanal con su excepción escrita** —«si
+  una semana no hay nada que valga la pena, no sale»—. No es un piso: si el
+  texto vuelve a «al menos una vez por semana», la primera semana floja lo
+  vuelve falso, en HTML indexado.
+- Después de cargar los cuatro valores hace falta **un rebuild** para que la
+  sección aparezca; un cambio a `src/` no dispara el rebuild automático del §8,
+  que mira Firestore. Sale con el push a `main`.
+- **El `<title>` y la `meta description` de `/suscribirse` no se tocaron**, y es
+  a propósito: hoy hablan solo del calendario y eso es cierto mientras la
+  sección esté apagada. El día que la lista exista conviene revisarlos —la
+  página pasa a ofrecer dos cosas— y en ese momento hay que actualizar también
+  la fila de `/suscribirse` de la tabla de títulos de
+  [`12-sitio-publico.md`](12-sitio-publico.md).
+
+Para verificar que quedó bien, sin mandar un alta de prueba a la lista real:
+
+```bash
+npx vitest run tests/boletin-del-sitio.test.ts
+npm run build && grep -o 'list-manage.com[^"]*' dist/suscribirse/index.html
+```
+
+El `grep` tiene que devolver el host de **nuestra** cuenta y el `u`/`id` que
+figuran en la consola. Si devuelve otra cosa, el formulario está apuntando a una
+lista ajena.
+
 ## Alerta de rebuild agotado (B-21)
 
 El único log del proyecto que amerita despertar a alguien. Cuando el

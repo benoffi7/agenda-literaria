@@ -710,8 +710,15 @@ describe('lo que se le corrigió a la referencia no vuelve', () => {
   it('el pie no ofrece «Privacidad» ni «Términos»: no existen esas páginas', () => {
     /*
      * Corrección 3 de `stitch-detalle.md` y del encargo. Un enlace a una página
-     * que no existe es peor que no tener el enlace, y un sitio que no guarda un
-     * solo dato personal de un tercero (B-102) no tiene de qué hacer una política.
+     * que no existe es peor que no tener el enlace.
+     *
+     * **El segundo argumento cambió y conviene que quede acá también.** Decía
+     * «un sitio que no guarda un solo dato personal de un tercero (B-102) no
+     * tiene de qué hacer una política», y eso dejó de ser cierto con B-830 (el
+     * contacto de una propuesta) y se movió otra vez con B-847 (la lista del
+     * correo, en Mailchimp). Lo que sostiene la decisión hoy es otra cosa: lo
+     * que se hace con un dato se dice **donde se lo pide**. El docblock del pie
+     * lo explica entero.
      *
      * Se verifica que **no haya un enlace** con ese texto, no que la palabra no
      * aparezca: el docblock del pie explica por qué se sacaron, y castigar la
