@@ -10,6 +10,7 @@
  * Todo lo de acá es **puro** y no toca Storage ni Firestore. La subida vive en su
  * propio módulo cargado lazy, por el corte del bundle (B-09/D-51).
  */
+import { urlSegura } from '@/lib/enlaceSeguro';
 import type { Imagen } from '@/types/actividad';
 
 /**
@@ -303,18 +304,64 @@ export const portadaDe = (imagenes: readonly Imagen[] = []): Imagen | null =>
   imagenes.find((i) => i.portada) ?? imagenes[0] ?? null;
 
 /**
- * ¿A esta actividad le falta el flyer? — B-264.
+ * Las imágenes que de verdad se van a poder publicar — B-854.
+ *
+ * **Es la mitad de `imagenesDeDetalle` (`lib/detallePublico.ts`) que decide
+ * cuáles entran**, extraída acá para que el panel pueda hacer la misma pregunta
+ * sin arrastrar el view-model público entero — mismo motivo por el que
+ * `urlSegura` salió de ahí en B-830. La otra mitad —cuál de las que quedan es la
+ * portada— sigue siendo `portadaDe`, y sigue corriendo **después** de este
+ * filtro.
+ *
+ * Genérica en la fila porque la misma pregunta se hace sobre las tres formas de
+ * una imagen: la `Imagen` del documento y del formulario, y la `ImagenPublica`
+ * que recibe el detalle. Lo único que mira es `url`.
+ */
+export const imagenesPublicables = <T extends { url: string }>(
+  imagenes: readonly T[] = [],
+): T[] => imagenes.filter((i) => urlSegura(i.url) !== null);
+
+/**
+ * ¿A esta actividad le falta el flyer? — B-264, y el predicado corregido en
+ * **B-854**.
  *
  * **Una sola derivación de la condición, usada por tres lados**: el aviso del
- * formulario, la marca del listado del panel y la pared de `/cartelera`. Si cada
+ * formulario, la marca del listado del panel y el tablero del catálogo (el aviso
+ * `sin-flyer` y la cobertura «Con imagen», `lib/estadoDelCatalogo.ts`). Si cada
  * uno la escribiera por su cuenta, el panel diría «tiene flyer» y la cartelera
  * no lo mostraría, o al revés — que es la clase de B-88 con nombre y apellido.
  *
- * La condición es «no hay portada con dirección», y no «la lista está vacía»: una
- * fila con la URL en blanco existe en el array y no pinta nada en ninguna parte.
+ * ── Por qué `urlSegura` y no «la url no está en blanco» (B-854) ───────────
+ * Porque el cuarto lado no llama a esta función: **la pared de `/cartelera` y el
+ * `image` del JSON-LD contestan la misma pregunta con otra**, y hasta B-854
+ * contestaban distinto. Esos dos salen de `DetallePublico.imagenes`, que
+ * `imagenesDeDetalle` arma pasando cada URL por `urlSegura` y **descartando** las
+ * que no son `http:`/`https:`. O sea que la lista tenía tres respuestas escritas
+ * a mano y una cuarta escrita por el consumidor — la clase de B-88 en su cara
+ * menos visible: no una segunda lista de reglas, la misma pregunta contestada por
+ * dos funciones que nacieron para cosas distintas.
+ *
+ * El caso que divergía es alcanzable y no avisa: **una portada con la URL no
+ * vacía pero inválida**. `javascript:`, `data:`, `C:\fotos\flyer.jpg` o
+ * «Ver el flyer en instagram» son valores posibles en un documento con el
+ * `imagenUrl` legacy (D-125), que nunca pasó por `esUrl` ni por el esquema que
+ * B-817 puso en `imagenes[].url`. Con el predicado viejo el panel decía «tiene
+ * flyer», la cartelera no lo mostraba y Google no recibía `image`. Nadie se
+ * entera.
+ *
+ * ── Y por qué «alguna publicable» y no «la portada es publicable» ─────────
+ * Porque ése es el orden que usa la salida, y el orden importa: el docblock de
+ * `imagenesDeDetalle` lo dice explícito —«el índice de la portada se busca
+ * **después** de filtrar»— para que una portada rota no deje la página sin imagen
+ * habiendo otras válidas. Preguntar acá por la portada primero volvería a abrir
+ * la misma grieta, un caso más chico: portada rota + foto sana daría «sin flyer»
+ * mientras la pared muestra la foto.
+ *
+ * La lista vacía y la fila con la URL en blanco siguen siendo «falta», como
+ * siempre: `urlSegura` devuelve `null` para las dos.
  */
 export const faltaElFlyer = (imagenes: readonly Imagen[] = []): boolean =>
-  !portadaDe(imagenes)?.url?.trim();
+  imagenesPublicables(imagenes).length === 0;
 
 /**
  * Marca una imagen como portada y desmarca las demás.

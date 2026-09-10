@@ -1218,9 +1218,12 @@ Reglas:
   (`/?tipo=taller&barrio=boedo`), y sin canonical fijo Google indexaría
   combinaciones infinitas del mismo contenido, compitiendo con los hubs que sí
   queremos posicionar.
-- **`og:image`**: la **portada** de la galería cuando hay —`portadaDe(a.imagenes)`
-  (`src/lib/imagenes.ts`), la que lleva el flag `portada`, no la primera cargada
-  (B-268). Cuando no, una imagen estática de
+- **`og:image`**: la primera imagen de la galería que se pueda publicar, cuando
+  hay. Sale de `detalle.imagenes[0]` y no de `portadaDe(a.imagenes)` como decía
+  acá hasta B-854: la portada es la que lleva el flag `portada` y no la primera
+  cargada (B-268), pero **el flag se aplica después de descartar las URLs que
+  `urlSegura` rechaza**, así que una portada rota no deja la página sin imagen
+  habiendo otras válidas. Cuando no hay ninguna, una imagen estática de
   1200×630 en papel y tinta con el nombre del sitio, distinta por tipo de
   actividad (cinco archivos en `public/og/`). Sin generación de imágenes en el
   build: es complejidad grande para una ganancia chica, y una imagen tipográfica
@@ -1247,11 +1250,11 @@ Google pide, para el resultado enriquecido de evento:
 | `location` como `VirtualLocation` con `url` | **sí** (online) | **no exactamente** — ver [5.4](#54-el-caso-online) |
 | `endDate` | recomendado | sí — `sesiones[].fin` |
 | `description` | recomendado | sí |
-| `image` | recomendado | a veces — la **portada** de `imagenes` (`portadaDe`) |
+| `image` | recomendado | a veces — la **primera publicable**: la portada si su URL pasa `urlSegura`, si no la siguiente que pase (`imagenesPublicables` + `portadaDe`, B-854) |
 | `eventAttendanceMode` | recomendado | sí — `modalidad`, el derivado de B-224 |
 | `eventStatus` | recomendado | **parcialmente** — falta `estado` en la proyección |
 | `organizer` | recomendado | sí |
-| `performer` | recomendado | sí — `tallerista` |
+| `performer` | recomendado | a veces — `tallerista`, **y solo si tiene nombre** (B-854) |
 | `offers` (`price`, `priceCurrency`, `url`, `availability`, `validFrom`) | recomendado | **no el precio**: `arancel.tipo` es un slug, no un monto |
 | `url` | recomendado | sí — la canónica |
 

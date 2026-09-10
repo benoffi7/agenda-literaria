@@ -1231,6 +1231,38 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(datosEstructurados(detalleDe({ tallerista: null }))!.performer).toBeUndefined();
   });
 
+  it('y «hay tallerista» es que tenga nombre, no que el objeto exista — B-854', () => {
+    /*
+     * **El documento anterior a la regla de `formADocumento`.** Desde entonces el
+     * panel escribe `tallerista: null` cuando no hay nombre («el tallerista solo
+     * tiene sentido si tiene nombre», `lib/actividades.ts`), pero un documento
+     * cargado antes —o editado fuera del panel— conserva la cáscara. Con el
+     * predicado viejo (`d.tallerista ? …`) eso publicaba `performer.name: ''`:
+     * un dato falso en el formato que las máquinas creen, que es justo lo que la
+     * regla 6 de este docblock evita en todo lo demás.
+     *
+     * Se afirma sobre el view-model **y** sobre el JSON-LD porque la corrección
+     * vive en `detalleDeActividad` (D-140): la plantilla gatea la sección «Quién
+     * lo da» con el mismo objeto, así que con la cáscara pintaba un `<h2>` y un
+     * párrafo vacío debajo. Es la misma línea la que arregla las dos superficies.
+     *
+     * El `bio` cargado es a propósito: es el dato que se pierde, y perderlo es lo
+     * correcto — `formADocumento` ya lo tira en el próximo guardado, y una bio sin
+     * nombre no dice quién la da.
+     *
+     * MUTACIÓN PROBADA: volver a `tallerista: a.tallerista ? {…}` en
+     * `detallePublico.ts`. Los cuatro asertos de acá se ponen rojos y ninguna otra
+     * suite se entera.
+     */
+    for (const nombre of ['', '   ']) {
+      const d = detalleDe({}, {
+        tallerista: { nombre, bio: 'Dicta talleres desde 2010', instagram: '@ana' },
+      } as Partial<Actividad>);
+      expect(d.tallerista, JSON.stringify(nombre)).toBeNull();
+      expect(datosEstructurados(d)!.performer, JSON.stringify(nombre)).toBeUndefined();
+    }
+  });
+
   it('nada de aggregateRating ni review (regla 6)', () => {
     const texto = JSON.stringify(datosEstructurados(detalleDe())!);
     expect(texto).not.toContain('aggregateRating');

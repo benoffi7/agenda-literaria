@@ -253,6 +253,34 @@ describe('los avisos de completitud', () => {
     expect(estadoDelCatalogo([viejo], AHORA).publicadas.conFlyer).toBe(1);
   });
 
+  it('y una vieja con la dirección inválida cuenta como sin imagen — B-854', () => {
+    /*
+     * **El `imagenUrl` legacy nunca pasó por ninguna validación**: es anterior a
+     * `esUrl` y al esquema que B-817 puso sobre `imagenes[].url`, así que puede
+     * traer cualquier cosa. Con el predicado viejo (`.trim()` sobre la URL) el
+     * tablero la contaba como «Con imagen» y el sitio no la mostraba: el aviso
+     * `sin-flyer` no la listaba, la pared no la tenía y Google no recibía
+     * `image`. El número del tablero decía que estaba y el afiche no existía.
+     *
+     * Esto es además lo que hace cierta la frase del docblock de `enGoogle`: que
+     * la cobertura «Con imagen» **es** el `image` del resultado enriquecido y no
+     * una segunda derivación.
+     *
+     * MUTACIÓN PROBADA: volver `faltaElFlyer` a `!portadaDe(imagenes)?.url?.trim()`.
+     * Los tres asertos de acá se ponen rojos; el caso de arriba sigue verde.
+     */
+    for (const imagenUrl of ['javascript:alert(1)', 'Ver el flyer en el instagram', 'C:\\flyer.jpg']) {
+      const roto = acto({
+        id: 'roto',
+        imagenes: undefined,
+        imagenUrl,
+        sesiones: [sesion('2026-09-20T19:00:00Z')],
+      } as Partial<ActividadConId> & { id: string });
+      expect(clases([roto]), imagenUrl).toContain('sin-flyer');
+      expect(estadoDelCatalogo([roto], AHORA).publicadas.conFlyer, imagenUrl).toBe(0);
+    }
+  });
+
   it('señala la publicada sin etiquetas', () => {
     const a = acto({ id: 'sin-tags', tags: [], sesiones: [sesion('2026-09-20T19:00:00Z')] });
     expect(clases([a])).toContain('sin-etiquetas');

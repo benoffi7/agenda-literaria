@@ -2,6 +2,63 @@
 
 ## Sin publicar
 
+- **La misma pregunta contestada por dos funciones: el panel y el JSON-LD ya no
+  pueden discrepar sobre el flyer ni sobre el tallerista** — **B-854**. Las dos son
+  la clase de B-88 en su cara menos visible: no una segunda lista de reglas escrita
+  a mano, sino la misma pregunta respondida por funciones que nacieron para cosas
+  distintas y que nadie comparaba.
+
+  **El flyer.** `faltaElFlyer` preguntaba «¿la portada tiene una `url` no vacía?» y
+  `imagenesDeDetalle` pregunta «¿la URL pasa `urlSegura`?». El caso que las separaba
+  no avisa: **una portada con la URL no vacía pero inválida** —`javascript:`,
+  `data:`, `C:\fotos\flyer.jpg`, «Ver el flyer en instagram»—, alcanzable en
+  cualquier documento con el `imagenUrl` legacy, que nunca pasó por `esUrl` ni por
+  el esquema que B-817 puso sobre `imagenes[].url`. El panel decía «tiene flyer»,
+  `/cartelera` no lo mostraba y Google no recibía `image`.
+
+  **Y el ítem tenía un consumidor de menos:** `/cartelera` **no llamaba** a
+  `faltaElFlyer` —lo decía su docblock, no el código—. Los call-sites son cuatro en
+  tres módulos, y la cartelera con el `image` del JSON-LD son la **cuarta**
+  respuesta, escrita por el consumidor sobre `DetallePublico.imagenes`. Eso es lo
+  que hacía invisible la divergencia: no había dos funciones enfrentadas en la misma
+  lista, había una lista de tres y un consumidor contestando por su cuenta.
+
+  **El arreglo es una sola derivación y no dos que coinciden**: `imagenesPublicables`
+  (`lib/imagenes.ts`) es la mitad de `imagenesDeDetalle` que decide cuáles entran, y
+  ahora la usan las dos puntas. El predicado del panel pasó además de «la portada» a
+  «queda alguna publicable», que es el orden que la salida usa a propósito: buscar
+  la portada **antes** de filtrar dejaría la página sin imagen habiendo otras
+  válidas, y preguntarlo así en el panel reabría la grieta un tamaño más chico.
+
+  **Y una frase que era falsa pasó a ser cierta**: el docblock de `enGoogle` afirma
+  desde B-813 —de esta misma tanda— que la cuarta métrica del informe «Eventos»,
+  `image`, «ya es» la cobertura «Con imagen» y el aviso `sin-flyer`. Con dos
+  predicados distintos no lo era: una legacy rota se contaba como «Con imagen» y no
+  salía a Google.
+
+  **El tallerista.** `datosEstructurados` emitía `performer` mirando el **objeto** y
+  no el nombre, así que un documento anterior a la regla de `formADocumento`
+  publicaba `performer: { name: '' }`. Se corrigió en `detalleDeActividad` y no en
+  la línea del `performer`, y eso cierra **dos** superficies con la misma línea: la
+  plantilla gatea la sección «Quién lo da» con el mismo objeto, así que también
+  pintaba un `<h2>` con el nombre en blanco debajo. Acá el tablero del catálogo
+  estaba bien —`diceQuienLaDa` mira el nombre desde B-813— y era la salida la que
+  mentía.
+
+  **Lo que fija que no se separen de nuevo no son los casos sino la atadura:**
+  `tests/flyer-en-el-panel.test.ts` afirma sobre una familia de ocho galerías que
+  «falta el flyer» ⟺ la página no publica ninguna imagen ⟺ no entra a la cartelera ⟺
+  el JSON-LD no lleva `image`. Cuatro mutaciones probadas, y la que más importa es
+  la que rompe la **salida** y no el panel: sacarle el filtro a `imagenesDeDetalle`
+  pone la atadura en rojo, que es la dirección que los casos sueltos no cubrían.
+  Con la nota honesta de que la atadura sola no alcanza —una mutación que mueve las
+  dos puntas a la vez la deja verde—, y por eso conviven con los casos por valor.
+
+  De ahí salieron **B-860** y **B-861**: `events.json` sigue publicando `imagenUrl`
+  con la URL **cruda** de la portada (sin `urlSegura` y sin el filtro) y
+  `tallerista: ''` para la misma cáscara vacía, porque `toPublic` sigue mirando el
+  objeto.
+
 - **El filtro de `incluye` de la conversión queda atado a la asimetría que
   justifica** — **B-842**. El arreglo que el ítem pedía —`incluye.filter((s) =>
   slugsConocidos.has(s))`, y lo no reconocido al «Otro» del § 4.2— **ya había

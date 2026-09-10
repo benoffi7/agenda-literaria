@@ -263,13 +263,21 @@ export interface EstadoDelCatalogo {
      * sería una segunda derivación de la misma pregunta, que es justo lo que
      * B-813 pedía evitar.
      *
+     * **Y desde B-854 esa frase es cierta y no una intención**: `faltaElFlyer`
+     * —la función detrás de las dos— pasaba la URL por `.trim()` mientras el
+     * `image` del JSON-LD la pasa por `urlSegura`, así que una portada legacy con
+     * un valor no vacío pero inválido se contaba acá como «Con imagen» y no salía
+     * a Google. Hoy las dos filtran con `urlSegura`, que es la misma función que
+     * ya sostiene la fila de al lado (`conWebDelOrganizador`).
+     *
      * ── Y por eso no hay una segunda lista de reglas ──────────────────
      * Cada número usa **la misma función que decide el JSON-LD**, no una copia:
      * `urlSegura` es la que produce `organizer.url`, `admiteMonto` es la que el
      * schema, el formulario y la descripción del evento ya comparten (B-114), y
-     * el nombre del tallerista es la condición de `formADocumento`. Es la clase
-     * de B-88 evitada donde de verdad muerde: si mañana el JSON-LD cambia de
-     * criterio, el tablero cambia con él.
+     * el nombre del tallerista es la condición de `formADocumento` — y desde
+     * B-854, también la de `detalleDeActividad`, que es la que de verdad decide
+     * si el `performer` sale. Es la clase de B-88 evitada donde de verdad muerde:
+     * si mañana el JSON-LD cambia de criterio, el tablero cambia con él.
      */
     enGoogle: {
       /** Con tallerista o invitado: lo que se publica como `performer`. */
@@ -353,6 +361,11 @@ const inscripcionCerrada = (a: ActividadConId, ahora: Date): boolean => {
  * `tallerista: null` cuando no hay nombre («el tallerista solo tiene sentido si
  * tiene nombre», `actividades.ts`), así que mirar el objeto contaría de más
  * cualquier documento anterior a esa regla.
+ *
+ * **Y el `performer` se decidía mirando el objeto** hasta B-854, o sea que este
+ * número estaba bien y la salida estaba mal: un documento con la cáscara vacía no
+ * se contaba acá y publicaba `performer: { name: '' }` igual. Hoy
+ * `detalleDeActividad` mira el nombre, así que las dos dicen lo mismo.
  */
 const diceQuienLaDa = (a: ActividadConId): boolean =>
   (a.tallerista?.nombre ?? '').trim() !== '';

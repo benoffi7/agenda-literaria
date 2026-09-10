@@ -57,6 +57,12 @@ export const recomendacionesDelFormulario = (form: ActividadForm): Recomendacion
        * Las dos consecuencias son ciertas y las dos son verificables mirando el
        * sitio: `/cartelera` se arma con las que tienen imagen, y el `og:image`
        * del detalle sale de la portada. No se promete nada que el sitio no haga.
+       *
+       * **Y desde B-854 la promesa se verifica con la misma función**: la
+       * condición de arriba (`faltaElFlyer`) filtra con `urlSegura`, que es
+       * exactamente lo que descarta una imagen de la pared. Antes, una URL no
+       * vacía pero inválida hacía que este aviso desapareciera y la actividad no
+       * entrara igual — el aviso prometía al revés.
        */
       porQue: 'sin imagen no entra en la cartelera y el link se comparte sin nada que mirar',
       seccion: 'que-es',

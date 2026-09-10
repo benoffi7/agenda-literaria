@@ -7,8 +7,13 @@ import { recomendacionesDelFormulario } from '@/lib/formulario/recomendaciones';
 import { CAMPOS, SECCIONES } from '@/lib/formulario/camposFaltantes';
 import { EVENTOS, formaDelFormulario } from '@/lib/analytics-eventos';
 import { faltaParaPublicar } from '@/lib/schema';
+import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
+import { carteleraDeDetalles } from '@/lib/cartelera';
+import { mapaDeEtiquetas } from '@/lib/listadoPublico';
+import { toPublic } from '@/lib/toPublic';
 import { formularioLleno } from './fixtures/formulario';
-import type { Imagen } from '@/types/actividad';
+import { actividadDePrueba } from './fixtures/indice';
+import type { Actividad, Imagen } from '@/types/actividad';
 
 /**
  * Que el flyer se cargue — B-264.
@@ -56,10 +61,125 @@ describe('faltaElFlyer — una sola derivación para tres lugares', () => {
     expect(faltaElFlyer([imagen({ url: '   ' })])).toBe(true);
   });
 
-  it('mira la portada, que es la que se publica', () => {
-    // `portadaDe` cae en la primera si ninguna está marcada, así que una lista
-    // sin portada explícita tampoco es «sin flyer».
+  it('una dirección no vacía pero inválida tampoco cuenta — B-854', () => {
+    /*
+     * **El caso que separaba al panel de la salida**, y el que hace falta el
+     * `urlSegura`: los cuatro valores de abajo son no vacíos, así que el
+     * predicado viejo (`!portadaDe(imagenes)?.url?.trim()`) decía «tiene flyer»
+     * para los cuatro — mientras `imagenesDeDetalle` los descartaba, la pared
+     * quedaba vacía y Google no recibía `image`.
+     *
+     * Son alcanzables: un documento con el `imagenUrl` legacy (D-125) nunca pasó
+     * por `esUrl` ni por el esquema que B-817 puso sobre `imagenes[].url`.
+     *
+     * MUTACIÓN PROBADA: volver la condición a `!portadaDe(imagenes)?.url?.trim()`.
+     * Todo lo de arriba sigue verde y este caso se pone rojo en los cuatro.
+     */
+    for (const url of [
+      'javascript:alert(1)',
+      'data:image/png;base64,AAAA',
+      'C:\\fotos\\flyer.jpg',
+      'Ver el flyer en instagram',
+    ]) {
+      expect(faltaElFlyer([imagen({ url })]), url).toBe(true);
+    }
+  });
+
+  it('alcanza con que quede alguna publicable, no con que sea la marcada', () => {
+    /*
+     * `portadaDe` cae en la primera si ninguna está marcada, así que una lista
+     * sin portada explícita tampoco es «sin flyer».
+     *
+     * Y con la portada rota **no falta el flyer**, porque la pared muestra la
+     * otra: `imagenesDeDetalle` busca la marcada **después** de filtrar, justo
+     * para no dejar la página sin imagen habiendo una válida. Preguntar acá por
+     * la portada primero volvería a separar las dos respuestas.
+     */
     expect(faltaElFlyer([imagen({ portada: false })])).toBe(false);
+    expect(
+      faltaElFlyer([
+        imagen({ id: 'img_1', url: 'https://ejemplo.com/patio.jpg', portada: false }),
+        imagen({ id: 'img_2', url: 'javascript:alert(1)', portada: true }),
+      ]),
+    ).toBe(false);
+  });
+});
+
+/**
+ * **La atadura, que es lo que este ítem pedía** — B-854.
+ *
+ * Los avisos del panel y lo que el sitio muestra son la **misma pregunta**
+ * («¿esta actividad va a mostrar un flyer?») contestada por dos funciones que
+ * nacieron para cosas distintas: `faltaElFlyer` para el panel, `imagenesDeDetalle`
+ * para la página. Fijar cada una por separado protege cada instancia; lo que hay
+ * que fijar es que **den lo mismo**, que es lo que se rompió en silencio.
+ *
+ * Por eso se afirma sobre una familia de fixtures y no sobre un caso: la clase,
+ * no la instancia (`docs/05-patrones.md`).
+ */
+describe('el panel y la salida contestan lo mismo — B-854, clase de B-88', () => {
+  const ETIQUETAS = mapaDeEtiquetas({
+    tipo: [{ slug: 'taller', label: 'Taller' }],
+    barrio: [{ slug: 'villa-crespo', label: 'Villa Crespo' }],
+    arancel: [{ slug: 'gratis', label: 'Gratis' }],
+  });
+  const AHORA = new Date('2026-09-10T15:00:00Z');
+
+  const detalleCon = (imagenes: Imagen[]) =>
+    detalleDeActividad(
+      toPublic({ ...actividadDePrueba(), imagenes } as Actividad, 'act_1'),
+      ETIQUETAS,
+      AHORA,
+      {},
+    );
+
+  /** Las galerías que separaban las dos respuestas, y las que nunca las separaron. */
+  const FAMILIA: { nombre: string; imagenes: Imagen[] }[] = [
+    { nombre: 'sin imágenes', imagenes: [] },
+    { nombre: 'una sana', imagenes: [imagen()] },
+    { nombre: 'una en blanco', imagenes: [imagen({ url: '   ' })] },
+    { nombre: 'una legacy con `javascript:`', imagenes: [imagen({ url: 'javascript:alert(1)' })] },
+    { nombre: 'una legacy con texto', imagenes: [imagen({ url: 'Ver el flyer en instagram' })] },
+    { nombre: 'una legacy con `data:`', imagenes: [imagen({ url: 'data:image/png;base64,AAAA' })] },
+    {
+      nombre: 'portada rota y foto sana',
+      imagenes: [
+        imagen({ id: 'img_1', url: 'https://ejemplo.com/patio.jpg', portada: false }),
+        imagen({ id: 'img_2', url: 'javascript:alert(1)', portada: true }),
+      ],
+    },
+    {
+      nombre: 'las dos rotas',
+      imagenes: [
+        imagen({ id: 'img_1', url: 'data:image/png;base64,AAAA', portada: false }),
+        imagen({ id: 'img_2', url: '   ', portada: true }),
+      ],
+    },
+  ];
+
+  it('«falta el flyer» ⟺ la página no publica ninguna imagen', () => {
+    /*
+     * MUTACIÓN PROBADA: dejar `faltaElFlyer` con `!portadaDe(imagenes)?.url?.trim()`.
+     * Las cuatro filas legacy se ponen rojas acá y ninguna otra suite se entera.
+     */
+    for (const { nombre, imagenes } of FAMILIA) {
+      expect(faltaElFlyer(imagenes), nombre).toBe(detalleCon(imagenes).imagenes.length === 0);
+    }
+  });
+
+  it('«falta el flyer» ⟺ no entra a la cartelera y Google no recibe `image`', () => {
+    /*
+     * Las dos salidas que la recomendación del formulario nombra («no entra en la
+     * cartelera y el link se comparte sin nada que mirar»). Son consumidores del
+     * mismo view-model, así que esto no agrega una tercera derivación: fija que la
+     * promesa del panel es la que el sitio cumple.
+     */
+    for (const { nombre, imagenes } of FAMILIA) {
+      const detalle = detalleCon(imagenes);
+      const falta = faltaElFlyer(imagenes);
+      expect(carteleraDeDetalles([detalle]).length === 0, `${nombre} · cartelera`).toBe(falta);
+      expect(datosEstructurados(detalle)?.image === undefined, `${nombre} · JSON-LD`).toBe(falta);
+    }
   });
 });
 

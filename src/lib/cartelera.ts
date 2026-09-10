@@ -113,6 +113,12 @@ export interface Afiche {
  * Que las dos páginas muestren la misma imagen no es casualidad: las dos leen el
  * mismo índice del mismo view-model.
  *
+ * **Y que el panel diga «tiene flyer» de exactamente lo que entra acá tampoco lo
+ * es, desde B-854**: `imagenesDeDetalle` filtra con `imagenesPublicables`
+ * (`lib/imagenes.ts`), que es la función con la que `faltaElFlyer` contesta la
+ * misma pregunta del otro lado. Hasta entonces eran dos derivaciones, y una
+ * portada legacy con la URL inválida las separaba en silencio.
+ *
  * **2 · Solo lo que todavía va a pasar.** La misma regla que la home
  * (`vigentesDelIndice`). Una pared de afiches de cosas que ya ocurrieron es un
  * museo, y el clic lleva a una página que arranca con «esta actividad ya pasó».

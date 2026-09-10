@@ -9,6 +9,7 @@ import {
   conPortada,
   imagenExterna,
   imagenesDe,
+  imagenesPublicables,
   nuevaImagenId,
   portadaDe,
   sinImagen,
@@ -90,6 +91,30 @@ describe('la portada es exactamente una', () => {
 
   it('el máximo es el de DEC-7b', () => {
     expect(MAXIMO_IMAGENES).toBe(4);
+  });
+
+  it('`imagenesPublicables` deja pasar lo que `urlSegura` acepta, y nada más — B-854', () => {
+    /*
+     * Es la mitad de `imagenesDeDetalle` que decide **cuáles entran**, extraída
+     * para que el panel haga la misma pregunta sin importar el view-model
+     * público. Acá se fija su contrato; la atadura con la salida está en
+     * `tests/flyer-en-el-panel.test.ts`.
+     *
+     * Ojo con el caso «no-es-una-url»: `urlSegura` le antepone `https://` y lo
+     * acepta, porque quien carga escribe «casabrandon.com» y pedirle el esquema
+     * es trasladarle un detalle nuestro. Va acá para que se vea que la función
+     * **no** valida que la imagen exista, solo que el `src` no sea un esquema
+     * peligroso o basura impareseable.
+     */
+    const pasa = ['https://ok.test/a.jpg', 'http://127.0.0.1:9199/o/x.jpg', 'no-es-una-url'];
+    const no = ['', '   ', 'javascript:alert(1)', 'data:image/png;base64,AAAA', 'mi flyer.jpg'];
+    for (const url of pasa) expect(imagenesPublicables([img({ url })]), url).toHaveLength(1);
+    for (const url of no) expect(imagenesPublicables([img({ url })]), url).toHaveLength(0);
+    expect(imagenesPublicables()).toEqual([]);
+    // Conserva el orden y la fila entera: `imagenesDeDetalle` busca la portada
+    // sobre lo que sale de acá.
+    const lista = [img({ id: 'img_a', url: 'javascript:x' }), img({ id: 'img_b' })];
+    expect(imagenesPublicables(lista).map((i) => i.id)).toEqual(['img_b']);
   });
 });
 

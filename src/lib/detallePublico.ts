@@ -50,6 +50,7 @@ import {
   rangoCorto,
 } from '@/lib/fechasPublicas';
 import { pluralDeTipo } from '@/lib/hubsPublicos';
+import { imagenesPublicables } from '@/lib/imagenes';
 import { etiquetaDe, type MapaDeEtiquetas, type TonosDeTipo } from '@/lib/listadoPublico';
 import { SLUG_PLATAFORMA_A_CONFIRMAR } from '@/lib/modalidades';
 import { RUTA_AGENDA, rutaDeTipo, urlAbsoluta, urlDeDetalle } from '@/lib/rutasPublicas';
@@ -890,16 +891,24 @@ const avisoDeEstado = (
 const imagenesDeDetalle = (
   imagenes: readonly ImagenPublica[],
 ): { url: string; epigrafe: string; ancho: number | null; alto: number | null }[] => {
-  const saneadas = imagenes
-    .map((i) => ({
-      // Una imagen con URL inválida se descarta abajo; acá se sanea igual.
-      url: urlSegura(i.url) ?? '',
-      epigrafe: i.epigrafe,
-      ancho: i.ancho ?? null,
-      alto: i.alto ?? null,
-      portada: i.portada,
-    }))
-    .filter((i) => i.url !== '');
+  /*
+   * **El filtro es `imagenesPublicables` (`lib/imagenes.ts`) y no un `urlSegura`
+   * escrito acá** — B-854. Es la misma pregunta que el panel hace con
+   * `faltaElFlyer`, y hasta B-854 cada lado la contestaba con su propia línea:
+   * acá `urlSegura`, allá «la url no está en blanco». Con una portada legacy
+   * inválida el panel decía «tiene flyer» y esta lista salía vacía.
+   *
+   * El `!` es seguro por construcción: `imagenesPublicables` deja pasar
+   * exactamente las filas para las que `urlSegura` no devuelve `null`. Lo que se
+   * publica es el valor **saneado** y no el crudo, que es lo que ya hacía.
+   */
+  const saneadas = imagenesPublicables(imagenes).map((i) => ({
+    url: urlSegura(i.url)!,
+    epigrafe: i.epigrafe,
+    ancho: i.ancho ?? null,
+    alto: i.alto ?? null,
+    portada: i.portada,
+  }));
 
   /*
    * El índice de la portada **se busca después de filtrar**: si la marcada tiene
@@ -1302,7 +1311,25 @@ export const detalleDeActividad = (
       web: a.organizador.web,
       webUrl: urlSegura(a.organizador.web),
     },
-    tallerista: a.tallerista
+    /*
+     * **La condición es el nombre y no el objeto** — B-854.
+     *
+     * `formADocumento` ya escribe `tallerista: null` cuando no hay nombre («el
+     * tallerista solo tiene sentido si tiene nombre», `lib/actividades.ts`) y el
+     * tablero del catálogo cuenta con esa misma regla (`diceQuienLaDa`,
+     * `lib/estadoDelCatalogo.ts`). Acá se miraba el objeto, así que un documento
+     * **anterior** a esa regla —o editado fuera del panel— publicaba las dos
+     * cosas: un `<h2>Quién lo da</h2>` con el nombre en blanco debajo, y un
+     * `performer: { name: '' }` en el JSON-LD, que es el formato que las máquinas
+     * creen. Es la misma pregunta contestada por dos funciones que nacieron para
+     * cosas distintas — la clase de B-88.
+     *
+     * Se corrige acá y no en la línea del `performer` a propósito: éste es el
+     * punto de paso obligado de la página (D-140), así que la plantilla deja de
+     * poder pintar la sección vacía por el mismo cambio. Mismo criterio que
+     * `libroPublico` en `toPublic.ts`, que ya descarta el libro sin título.
+     */
+    tallerista: a.tallerista?.nombre?.trim()
       ? {
           nombre: a.tallerista.nombre,
           bio: a.tallerista.bio,
@@ -1444,7 +1471,12 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
  *    `DetallePublico.ofertaDesde`): no es «desde cuándo se puede inscribir»
  *    —ese campo no existe— pero es una cota inferior y no una invención.
  * 5. **`performer` solo si hay tallerista.** No se inventa el organizador como
- *    performer.
+ *    performer. Y «hay tallerista» es **que tenga nombre**, no que el objeto
+ *    exista (B-854): la condición vive en `detalleDeActividad`, así que ésta es
+ *    la misma respuesta que da la página y la que cuenta el tablero del catálogo
+ *    (`diceQuienLaDa`). Un `performer` con el `name` en blanco no es un
+ *    resultado enriquecido, es un dato falso en un formato que las máquinas
+ *    creen.
  * 6. **Nada de `aggregateRating`, `review`, ni `Offer` sin respaldo.** Marcar lo
  *    que la página no muestra es lo que hace que Google desconfíe del sitio
  *    entero.

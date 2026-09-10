@@ -753,6 +753,39 @@ contenido dependa del navegador de quien la abre **no se indexa** —`robots.txt
 `sitemap.ts` la dejan afuera— porque para Google estaría siempre vacía, y una
 página vacía indexada es peor que ninguna.
 
+### B-860 · El `imagenUrl` del `events.json` es la tercera respuesta a «cuál es la imagen», y la única cruda · P4
+
+**Lo encontró el frente de B-854** después de unificar las otras dos.
+`imagenUrlDe` (`src/lib/eventsJson.ts`) es `portadaDe(a.imagenes)?.url ?? null`:
+**ni `urlSegura` ni el filtro de `imagenesPublicables`**. O sea que el
+`events.json` publica `imagenUrl: "javascript:alert(1)"` para una actividad con el
+`imagenUrl` legacy roto.
+
+**El atenuante, que es lo que lo baja a P4 y hay que decirlo entero: hoy ese campo
+no tiene lector.** D-146 sacó las imágenes del listado y el `og:image` sale de
+`detalle.imagenes[0]`, ya saneado. Es un campo público sin consumidor, no un XSS
+—no hay ningún `href` ni ningún `src` que lo reciba—. Pero es un dato crudo en un
+artefacto público y estático, y el día que alguien lo lea va a leerlo creyendo que
+pasó por el mismo filtro que las otras dos respuestas.
+
+El arreglo es la línea que el frente dejó escrita:
+`urlSegura(portadaDe(imagenesPublicables(a.imagenes))?.url ?? null)`. Va con su
+caso y con el barrido de la salida 1, que es lo que lo hace más que un `sed`.
+
+### B-861 · El `tallerista` del `events.json` sigue mirando el objeto y no el nombre · P4
+
+**La hermana de B-854 del lado de la proyección.** `toPublic.ts` decide
+`tallerista: a.tallerista ? {…} : null`, y `entradaDeIndice` lo colapsa a
+`a.tallerista?.nombre ?? null`, que para la cáscara vacía da `''` y no `null`.
+
+Es el mismo predicado que B-854 corrigió en la página de detalle, en el único lugar
+donde todavía se contesta con el objeto. Vale menos que aquél —el `events.json` no
+es lo que Google lee como `performer`— pero es la misma pregunta con dos respuestas
+en el repo, que es exactamente lo que B-854 vino a cerrar.
+
+**Ojo con el alcance:** esto sí ripplea al `events.json` y al barrido de salidas
+públicas, así que no es un cambio de una línea sino de una línea más su fixture.
+
 ### B-859 · La bandeja acepta un `incluye` que `/proponer` deliberadamente no ofrece · P3
 
 **Lo encontró el frente de B-842** verificando de dónde sale la taxonomía que usa
@@ -863,7 +896,7 @@ Lo que se gana no es dedupliar por deduplicar: es que los dos recortes locales
 compartido, así que hoy son dos lugares donde el mismo bug puede volver a nacer sin
 que nada se ponga rojo.
 
-### B-854 · El panel dice «tiene flyer» y «tiene tallerista» con un predicado distinto del que publica el JSON-LD · P3
+### B-854 · El panel dice «tiene flyer» y «tiene tallerista» con un predicado distinto del que publica el JSON-LD — ✅ hecho (2026-09-09) · P3
 
 **Salió del frente de B-813**, que evitó esta clase donde estaba mirando —los tres
 números nuevos usan `urlSegura` y `admiteMonto`, las mismas funciones que deciden
@@ -889,6 +922,51 @@ el markup— y encontró dos instancias viejas al lado.
 Las dos son la clase de **B-88** con la cara menos visible: no es una segunda lista
 de reglas escrita a mano, es la **misma pregunta contestada por dos funciones** que
 nacieron para cosas distintas y hoy se leen como si fueran la misma.
+
+> ✅ **Arreglado (2026-09-09). Los dos diagnósticos eran ciertos, y el (1) tenía un
+> consumidor de menos y un agravante de más.**
+>
+> **La corrección al ítem: `/cartelera` no llamaba a `faltaElFlyer`.** Lo decía su
+> docblock y no el código. Los call-sites reales son cuatro en tres módulos —el
+> aviso del formulario, el chip del listado, y el aviso `sin-flyer` más la cobertura
+> `conFlyer` del tablero—. La cartelera y el `image` del JSON-LD son la **cuarta**
+> respuesta, escrita por el consumidor sobre `DetallePublico.imagenes`, y eso es
+> justo lo que hacía invisible la divergencia: no había dos funciones enfrentadas en
+> la misma lista, había una lista de tres y un consumidor que contestaba por su
+> cuenta.
+>
+> **El agravante:** el docblock de `enGoogle` (B-813, de esta misma tanda) afirma
+> que `image` «ya es» la cobertura «Con imagen» y el aviso `sin-flyer`, y con dos
+> predicados distintos esa frase era falsa — una legacy rota se contaba como «Con
+> imagen» y Google no recibía nada. Hoy es cierta.
+>
+> **El arreglo no es «`faltaElFlyer` usa `urlSegura`», es una sola derivación**:
+> `imagenesPublicables` (`lib/imagenes.ts`) es la mitad de `imagenesDeDetalle` que
+> decide cuáles entran, y ahora la llaman las dos puntas. Y el predicado del panel
+> pasó de «la portada tiene dirección» a «queda alguna publicable», que es lo que la
+> salida hace a propósito: `imagenesDeDetalle` busca la portada **después** de
+> filtrar para que una portada rota no deje la página sin imagen habiendo otras. El
+> arreglo literal del ítem habría dejado la misma grieta un tamaño más chico —
+> portada rota + foto sana daría «Sin flyer» con la pared mostrando la foto.
+>
+> **El (2) se corrigió en `detalleDeActividad` y no en la línea del `performer`, y
+> por eso cerró dos superficies:** la plantilla gatea la sección «Quién lo da» con
+> el mismo objeto, así que la cáscara vacía también pintaba un `<h2>` con el nombre
+> en blanco. Se pierde la `bio` de un documento sin nombre, y está bien:
+> `formADocumento` ya la tira en el próximo guardado. Mismo criterio que
+> `libroPublico`.
+>
+> **Lo que impide que se separen de nuevo es la atadura y no los casos.** Sobre una
+> familia de ocho galerías: «falta el flyer» ⟺ la página no publica ninguna imagen ⟺
+> no entra a la cartelera ⟺ el JSON-LD no lleva `image`. Cuatro mutaciones probadas;
+> la que justifica el diseño es la cuarta —sacarle el filtro a `imagenesDeDetalle`—,
+> porque pone la atadura en rojo desde el lado de la **salida**, que es la dirección
+> que ningún caso suelto cubría. Nota honesta: la atadura sola no alcanza —una
+> mutación que mueve las dos puntas a la vez la deja verde—, y por eso convive con
+> los casos por valor.
+>
+> **Quedaron dos hermanas afuera, en la proyección del `events.json`:** son **B-860**
+> y **B-861**.
 
 ### B-853 · `sin-comentarios.mjs` se come el 83% de `Buscador.tsx`, y hay tests que lo usan — ✅ hecho (2026-09-09) · P2
 
